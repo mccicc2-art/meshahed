@@ -63,7 +63,7 @@ import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
-import { bestOfYear } from "@/lib/discoverRails";
+import { bestOfYear, matchesBrowse } from "@/lib/discoverRails";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab } from "@/core/tabPrefs";
 import { regionName } from "@/core/region";
@@ -76,6 +76,7 @@ import {
   eraRange,
   seasonRange,
   browseHref,
+  localAxesOnly,
   type BrowseQuery,
   type RailWin,
 } from "@/core/browse";
@@ -1047,21 +1048,7 @@ function winQs(qs: string, w: RailWin): string {
  * **فمتى اختير أحدها غاب الصفّان كما كانا يغيبان** — وعرضُ صفٍّ «مُصفّى
  * بالموضوع» وهو غيرُ مصفّى **كذبٌ أسوأ من الغياب** (D-141).
  */
-function localAxesOnly(b: BrowseQuery): boolean {
-  return !b.tag && !b.award && !b.status && !b.season && !b.studio;
-}
 
-function matchesBrowse(r: SearchResult, b: BrowseQuery, ids?: number[]): boolean {
-  if (b.genre && ids?.length && !(r.genre_ids ?? []).some((g) => ids.includes(g))) return false;
-  if (b.lang && r.original_language !== b.lang.code) return false;
-  if (b.country && !(r.origin_country ?? []).includes(b.country.code)) return false;
-  if (b.rate && (r.vote_average ?? 0) < b.rate) return false;
-  const d = r.release_date || r.first_air_date || "";
-  const era = eraRange(b.era);
-  if (era.from && (!d || d < era.from)) return false;
-  if (era.to && (!d || d > era.to)) return false;
-  return true;
-}
 
 /* **حارسُ الرفوف انتقل إلى `topChart.ts`** (D-194): `looksAnime` كانت
    تسكن هنا، **ونظيرتُها للغة لم تكن موجودةً هنا إطلاقاً** — فكان الكوريّ

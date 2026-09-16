@@ -18,18 +18,22 @@ export function Chip({
   active,
   size = "sm",
   onPress,
+  onLongPress,
   leading,
 }: {
   label: string;
   active: boolean;
   size?: "sm" | "md";
   onPress: () => void;
+  /** D-993 — ضغطةٌ مطوّلة (حذفُ فلترٍ محفوظ) */
+  onLongPress?: () => void;
   leading?: React.ReactNode;
 }) {
   const { tokens } = useApp();
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={{

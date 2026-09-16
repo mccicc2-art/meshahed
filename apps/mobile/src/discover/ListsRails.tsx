@@ -6,6 +6,7 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
+import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 
@@ -16,7 +17,8 @@ import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
  * 🔑 **الموجةُ من `/api/v1/discover/lists` في ردٍّ واحد**، والبطاقةُ بطاقةُ
  * المكتبة نفسُها (`ListCard` — D-947، لا بطاقةَ ثانية). **الصفوفُ أفقيّةٌ بعرضٍ
  * واحد** (`PublicListsRail` — ٢٦٠ ≈ `w-[260px]`)، والعوالمُ المنسَّقة صفٌّ لكلِّ
- * عالمٍ و«الكل» يفتح `/news?tab=lists&fr=` باباً.
+ * عالمٍ و«الكل» ورقةٌ أصليّة بمجموعاته كلِّها (D-996 — كان باباً إلى `/news?tab=lists&fr=`).
+ * **ما بقي ويبيّاً هنا صفحةُ القائمة نفسُها** (`/lists/[id]`) — المحطّةُ ٤ في ترتيب النقل.
  * **رقاقتا المصدر (الكل · لوبز · المجتمع) في الشاشة لا في الخادم** — تصفيةٌ
  * محلّيّةٌ لبياناتٍ وصلت، كما يفعل `lsrc` في الصفحة. **ولا فلترَ عالمٍ هنا**:
  * «الكل» على الصفّ يكفي.
@@ -29,6 +31,9 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
   const { width } = useWindowDimensions();
   const cardW = Math.min(CARD_W, width - PAGE_PAD * 2 - 24);
   const [src, setSrc] = useState<"all" | "curated" | "community">("all");
+  /* 🆕 D-996 — «الكلّ» للعالم ورقةٌ أصليّة (كان باباً إلى `/news?tab=lists&fr=`): الردُّ يحمل
+     مجموعاتِ العالم كاملةً، فالورقةُ تعرضها شبكةً بالبطاقة نفسِها ولا تطلب شيئاً */
+  const [allOf, setAllOf] = useState<{ name: string; sets: LibraryListCard[] } | null>(null);
   const q = useQuery({
     queryKey: ["discover:lists"] as const,
     queryFn: async () => (await api<DiscoverListsPayload>("/api/v1/discover/lists")).data,
@@ -36,14 +41,14 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
   });
   const p = q.data;
 
-  const rail = (key: string, title: string, lists: LibraryListCard[], seeAll?: string) =>
+  const rail = (key: string, title: string, lists: LibraryListCard[], seeAll?: boolean) =>
     lists.length === 0 ? null : (
       <View key={key}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, marginBottom: 10 }}>
           <Icon name={seeAll ? "sparkle-star" : "list"} size={16} color={tokens.accent} />
           <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{title}</Text>
           {seeAll ? (
-            <Pressable onPress={() => onOpenWeb(seeAll)} hitSlop={8}>
+            <Pressable onPress={() => setAllOf({ name: title, sets: lists })} hitSlop={8}>
               <Text size={12} weight="600" color={tokens.accent}>{t.seeAll}</Text>
             </Pressable>
           ) : null}
@@ -102,9 +107,48 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
           {src !== "curated" ? rail("foryou", t.listsForYou, p.for_you) : null}
           {src !== "curated" ? rail("trending", t.listsTrending, p.trending) : null}
           {src !== "curated" ? rail("community", t.publicListsRail, p.community) : null}
-          {src !== "community" ? p.franchises.map((f) => rail(f.slug, f.name, f.sets, f.see_all)) : null}
+          {src !== "community" ? p.franchises.map((f) => rail(f.slug, f.name, f.sets, f.sets.length > 1)) : null}
         </>
       )}
+      {allOf ? (
+        <Sheet title={allOf.name} onClose={() => setAllOf(null)}>
+          <FlatList
+            data={allOf.sets}
+            keyExtractor={(l) => l.id}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 10 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 8 }}
+            style={{ maxHeight: 560 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <View style={{ flex: 1 }}>
+                <ListCard
+                  card={{
+                    id: item.id,
+                    name: item.name,
+                    icon: item.kind === "smart" || item.kind === "curated" ? "sparkle-star" : undefined,
+                    owner: item.owner,
+                    owner_avatar: item.owner_avatar,
+                    countText: item.count_label ?? t.listCount(item.item_count),
+                    posters: item.posters,
+                    cover: item.cover,
+                    stats: { saves: item.saves, reviews: item.reviews, rating: item.rating },
+                    playlist: null,
+                    canSave: item.can_save,
+                    savedByMe: item.saved_by_me,
+                    canReview: !!item.can_review,
+                    hasMyReview: !!item.my_review,
+                  }}
+                  onPress={() => {
+                    setAllOf(null);
+                    onOpenWeb(`/lists/${item.id}`);
+                  }}
+                />
+              </View>
+            )}
+          />
+        </Sheet>
+      ) : null}
     </View>
   );
 }

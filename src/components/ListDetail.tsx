@@ -76,6 +76,7 @@ export function ListDetail({
   smartSource = null,
   openShare = false,
   items,
+  badges,
   ratings,
   isOwner,
   owner,
@@ -110,6 +111,13 @@ export function ListDetail({
   /** 🆕 D-952 — تُفتح ورقةُ الإعلان/المشاركة من أوّل رسمة (`?share=1`، بابُ التطبيق) */
   openShare?: boolean;
   items: ListItem[];
+  /**
+   * 🆕 D-995 — **شارةُ العنصر رقمٌ يفرضه المصدر لا رتبتُه** (طلبُ أحمد بلقطة: «في ليست الجوائز
+   * تظهر مرقّمة ١ ٢ ٣، أبغى أرقّمها بتاريخ الجائزة ٢٠٢٥ ٢٠٢٤…»): لقوائم الجوائز الخريطةُ
+   * `tmdbId → سنةُ الفوز` من `awardWinners`؛ فالشارةُ سنةٌ، والغيابُ يعيد الرتبةَ. القائمةُ
+   * تبقى `ranked` (الترتيبُ بالسنة تنازليّاً كما تُبنى)، فكلُّ ما سواها كما هو.
+   */
+  badges?: Record<string, number>;
   ratings: Record<string, number>;
   isOwner: boolean;
   /**
@@ -617,7 +625,7 @@ export function ListDetail({
             <div key={keyOf(it)} className="w-[126px] sm:w-[150px] shrink-0 snap-start">
               <PosterTile
                 item={it}
-                n={numbered ? i + 1 : null}
+                n={badges?.[keyOf(it)] ?? (numbered ? i + 1 : null)}
                 rating={ratings[keyOf(it)] ?? null}
                 canRemove={canEditItems}
                 onRemove={() => remove(it)}

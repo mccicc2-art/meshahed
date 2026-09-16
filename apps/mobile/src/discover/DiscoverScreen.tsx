@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
@@ -14,11 +14,16 @@ import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
 import { TrailersRail } from "./TrailersRail";
+import { FilterSheet } from "./FilterSheet";
+import { NameSheet } from "./NameSheet";
+import { AllSheet } from "./AllSheet";
+import { sectionToRuleType } from "@/core/smartListKeys";
+import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
-import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody } from "../contracts";
+import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody, SavedFilterBody, SavedFilterResult, SmartListBody } from "../contracts";
 
 /**
  * ====== «اكتشف» أصليّةً — Phase 11-C · C1 (D-955) ======
@@ -133,6 +138,24 @@ export function DiscoverScreen() {
    * مهتمّ» يُخفي البطاقةَ فوراً (`hidden`) ويكتب في `dismissed_titles` عبر
    * `/api/v1/track/dismiss`، ولا يُعرض في هذه الجلسة بعدها.
    */
+  /**
+   * 🆕 D-992 (Phase 11-C4) — **الفلترُ أصليٌّ وينزلق مع التبويبات**: حالةٌ واحدة كما في رابط
+   * الويب (`browseState`)، تُفتح ورقتُها من الرأس وتُطبَّق دفعةً واحدة، والصفوفُ تطلب
+   * `/api/v1/discover/{rail,personal}` بالمعاملات نفسِها فتعود مفلترة. رقاقاتُ الفلاتر
+   * المحفوظة تطبّق `q` هنا بدل أن تفتح الويب.
+   */
+  const [browse, setBrowse] = useState<BrowseState>(EMPTY_BROWSE);
+  const [sheet, setSheet] = useState(false);
+  /* D-994 — «الكلّ ←» ورقةٌ أصليّة: `see_all` يحمل `/discover/<s>?m=…`، يُحوَّل إلى استعلام القسم */
+  const [all, setAll] = useState<{ title: string; query: string } | null>(null);
+  const openAll = useCallback((title: string, path: string) => {
+    const m = /^\/discover\/([^/?]+)\??(.*)$/.exec(path);
+    if (!m) return;
+    const p = new URLSearchParams(m[2] ?? "");
+    p.set("s", m[1]);
+    setAll({ title, query: p.toString() });
+  }, []);
+  const bq = browseQuery(browse);
   const [held, setHeld] = useState<{ card: CuratedCard; anchor: CardAnchor } | null>(null);
   const [busy, setBusy] = useState(false);
   const [overrides, setOverrides] = useState<Map<string, LibMark>>(() => new Map());
@@ -248,17 +271,19 @@ export function DiscoverScreen() {
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
         {/* ⚖️ D-980 — بلا سهمِ رجوع (انظر `LibraryScreen`): الشريطُ السفليّ هو المخرج */}
         <Text size={15} weight="700">{t.newsTitle}</Text>
-        {/* الفلاترُ بابٌ ويبيٌّ — الورقةُ بمحاورها الثمانية تعيش في الويب وحدَه، و`filters=1` يفتحها من أوّل رسمة (C3) */}
-        <Pressable
-          onPress={() => leaveTo(`/news?tab=${tab}&filters=1`)}
-          hitSlop={8}
-          accessibilityLabel={t.browseFilters}
-          style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}
-        >
-          <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
-            <Icon name="sliders" size={17} color={tokens.fg} />
-          </View>
-        </Pressable>
+        {/* D-992 — الفلاترُ ورقةٌ أصليّة (نقضُ C3 بقرار أحمد «كلّها أصليّة»)؛ الزرُّ يضيء بفلترٍ نشط */}
+        {tab !== "lists" ? (
+          <Pressable
+            onPress={() => setSheet(true)}
+            hitSlop={8}
+            accessibilityLabel={t.browseFilters}
+            style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: browseActive(browse) ? tokens.accent : tokens.border, backgroundColor: browseActive(browse) ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة */}
@@ -284,6 +309,9 @@ export function DiscoverScreen() {
           <DiscoverPane
             tab={k}
             active={active}
+            browse={browse}
+            bq={bq}
+            onBrowse={setBrowse}
             marks={effectiveMarks}
             hidden={hidden}
             heldKey={held ? `${held.card.kind}-${held.card.id}` : null}
@@ -295,6 +323,8 @@ export function DiscoverScreen() {
             onOpen={openCard}
             onLeave={leaveTo}
             onError={onError}
+            onToast={setToast}
+            onSeeAll={openAll}
           />
         )}
       />
@@ -313,6 +343,32 @@ export function DiscoverScreen() {
       />
       </Animated.View>
       {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
+      {all ? (
+        <AllSheet
+          title={all.title}
+          query={all.query}
+          marks={effectiveMarks}
+          hidden={hidden}
+          heldKey={held ? `${held.card.kind}-${held.card.id}` : null}
+          onHold={hold}
+          onOpen={(c) => {
+            setAll(null);
+            openCard(c);
+          }}
+          onClose={() => setAll(null)}
+        />
+      ) : null}
+      {sheet && tab !== "lists" ? (
+        <FilterSheet
+          tab={tab}
+          value={browse}
+          onApply={(next) => {
+            setBrowse(next);
+            setSheet(false);
+          }}
+          onClose={() => setSheet(false)}
+        />
+      ) : null}
       {held && heldItem ? (
         <HoldMenu
           variant="discover"
@@ -346,6 +402,9 @@ const PICKED_PAGE = 10;
 function DiscoverPane({
   tab,
   active,
+  browse,
+  bq,
+  onBrowse,
   marks,
   hidden,
   heldKey,
@@ -357,10 +416,16 @@ function DiscoverPane({
   onOpen,
   onLeave,
   onError,
+  onToast,
+  onSeeAll,
 }: {
   tab: Tab;
   /** هل هذا اللوحُ هو النشط؟ الجارُ المسلَّح يُرسم حيّاً لكنّه لا يحمّي مشغّلاً (D-975) */
   active: boolean;
+  /** D-992 — الفلترُ النشط واستعلامُه الجاهز، وتبديلُه (الرقاقات) */
+  browse: BrowseState;
+  bq: string;
+  onBrowse: (next: BrowseState) => void;
   marks: Map<string, LibMark>;
   /** D-978 — بطاقاتٌ أُخفيت بـ«غير مهتمّ» في هذه الجلسة */
   hidden: ReadonlySet<string>;
@@ -376,19 +441,74 @@ function DiscoverPane({
   onOpen: (c: CuratedCard) => void;
   onLeave: (path: string) => void;
   onError: (e: unknown) => void;
+  /** D-993 — توستٌ من اللوح (قائمةٌ ذكيّةٌ أُنشئت) */
+  onToast: (text: string) => void;
+  /** D-994 — «الكلّ» لصفٍّ: العنوانُ ومسارُ `see_all` */
+  onSeeAll: (title: string, path: string) => void;
 }) {
   const { t } = useApp();
   const router = useRouter();
   /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
   const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
   const personal = useQuery({
-    queryKey: ["discover:personal", railTab] as const,
-    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${railTab}`)).data,
+    queryKey: ["discover:personal", railTab, bq] as const,
+    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${railTab}${bq ? `&${bq}` : ""}`)).data,
     staleTime: 5 * 60_000,
     enabled: tab !== "lists",
   });
   const ps = personal.data;
   const lists = tab === "lists";
+  const filtering = browseActive(browse);
+  /**
+   * 🆕 D-993 — **«احفظ الفلتر» و«قائمة ذكيّة» أصليّان** (تتمّةُ C4): الأوّل يُدرج في
+   * `ui_state.filters` عبر `/api/v1/me/prefs/saved-filters` (الخادمُ يقرأ القائمةَ ويُدرج — التطبيقُ
+   * لا يحملها)، والثاني `createSmartList(…, "catalog")` عبر `/api/v1/lists/smart-catalog` بالشرط
+   * نفسِه الذي يبنيه `SavedFiltersRow` (`q` + `type`). **بلس شرطُهما** كالويب: `needsPlus`
+   * يفتح صفحةَ بلس. الضغطُ المطوّل على فلترٍ محفوظ يحذفه (كما في الويب).
+   */
+  const qc = useQueryClient();
+  const [naming, setNaming] = useState<null | "filter" | "smart">(null);
+  const [savingName, setSavingName] = useState(false);
+  const saveNamed = useCallback(
+    async (name: string) => {
+      if (!naming || tab === "lists") return;
+      setSavingName(true);
+      try {
+        if (naming === "filter") {
+          const r = await write<SavedFilterResult>("/api/v1/me/prefs/saved-filters", { name, section: tab, q: bq } satisfies SavedFilterBody);
+          if (r.needsPlus) {
+            onLeave("/plus");
+            return;
+          }
+          qc.setQueryData<PersonalRailsPayload>(["discover:personal", railTab, bq], (prev) => (prev ? { ...prev, filters: r.filters.filter((f) => f.section === tab).map((f) => ({ name: f.name, q: f.q })) } : prev));
+          void qc.invalidateQueries({ queryKey: ["discover:personal"] });
+        } else {
+          const type = sectionToRuleType(tab) ?? "all";
+          const r = await write<{ id: string | null; needsPlus?: true }>("/api/v1/lists/smart-catalog", { name, rule: { ...Object.fromEntries(new URLSearchParams(bq)), type } } satisfies SmartListBody);
+          if (r.needsPlus) {
+            onLeave("/plus");
+            return;
+          }
+          onToast(t.listMadeToast(name));
+        }
+        setNaming(null);
+      } catch (e) {
+        onError(e);
+      } finally {
+        setSavingName(false);
+      }
+    },
+    [naming, tab, bq, qc, railTab, onLeave, onError, onToast, t],
+  );
+  const removeSaved = useCallback(
+    async (f: { name: string; q: string }) => {
+      /* الردُّ العامّ يحمل الاسمَ والاستعلامَ لا المعرّف — فالحذفُ بالاستعلام والقسم ويقرّره الخادم */
+      const r = await write<SavedFilterResult>("/api/v1/me/prefs/saved-filters", { remove: f.q, section: tab } satisfies SavedFilterBody);
+      qc.setQueryData<PersonalRailsPayload>(["discover:personal", railTab, bq], (prev) => (prev ? { ...prev, filters: r.filters.filter((x) => x.section === tab).map((x) => ({ name: x.name, q: x.q })) } : prev));
+      void qc.invalidateQueries({ queryKey: ["discover:personal"] });
+    },
+    [railTab, tab, bq, qc],
+  );
   /**
    * 🆕 D-979 — **«اقتراحات أخرى» كما في الويب** (طلبُ أحمد: «في الويب فيه more picks،
    * في الأصليّة ما فيه»): الردُّ يحمل البِركةَ كلَّها مخلوطةً (`personalRails`)، والصفُّ
@@ -414,6 +534,8 @@ function DiscoverPane({
     setPicked(new Set(arr.slice(0, PICKED_PAGE).map(keyOf)));
   }, [foryou, foryouPool]);
   const railProps = { marks, hidden, heldKey, onHold, onOpen };
+  /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
+  const seeAll = (path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path));
   return (
     <ScrollView
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
@@ -423,16 +545,49 @@ function DiscoverPane({
       scrollEventThrottle={16}
     >
       {lists ? <ListsRails onOpenWeb={onLeave} /> : null}
-      {/* رقاقاتُ الفلاتر المحفوظة — كما `SavedFiltersRow`: تفتح `/news?<q>&tab=` باباً */}
-      {!lists && ps && ps.filters.length > 0 ? (
+      {/* رقاقاتُ الفلاتر المحفوظة — D-992: تطبّق `q` هنا (كانت تفتح `/news?<q>` باباً) */}
+      {!lists && ps && ps.filters.length > 0 && !filtering ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
           {ps.filters.map((f) => (
-            <Chip key={f.q} label={f.name} active={false} onPress={() => onLeave(`/news?${f.q}&tab=${tab}`)} />
+            <Chip key={f.q} label={f.name} active={false} onPress={() => onBrowse(browseFromQuery(f.q))} onLongPress={() => void removeSaved(f)} />
           ))}
         </ScrollView>
       ) : null}
-      {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
-      {!lists ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
+      {/* D-992 — الفلاترُ المفعّلة كما `ActiveFilters` الويب: رقاقةٌ لكلِّ محور بعلامة ×، و«مسح الكلّ» */}
+      {!lists && filtering ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8, alignItems: "center" }}>
+          {(Object.keys(browse) as AxisKey[])
+            .filter((k) => browse[k] !== null)
+            .map((k) => {
+              const label = axisValueLabel(k, browse[k] as string | number, ar ? "ar" : "en", [], t);
+              return (
+                <Chip
+                  key={k}
+                  label={`${label}  ×`}
+                  active
+                  onPress={() => onBrowse({ ...browse, [k]: null } as BrowseState)}
+                />
+              );
+            })}
+          <Chip label={t.browseClearAll} active={false} onPress={() => onBrowse(EMPTY_BROWSE)} />
+          {/* D-993 — «＋ احفظ الفلتر» لا يظهر لفلترٍ محفوظٍ أصلاً (D-217) */}
+          {!(ps?.filters ?? []).some((f) => f.q === bq) ? (
+            <Chip label={ar ? "＋ احفظ الفلتر" : "＋ Save filter"} active={false} onPress={() => setNaming("filter")} />
+          ) : null}
+          <Chip label={t.smartListLabel} active={false} onPress={() => setNaming("smart")} />
+        </ScrollView>
+      ) : null}
+      {naming ? (
+        <NameSheet
+          title={naming === "filter" ? (ar ? "احفظ الفلتر" : "Save filter") : t.smartListLabel}
+          placeholder={naming === "filter" ? (ar ? "سمِّ الفلتر" : "Name this filter") : ar ? "سمِّ القائمة الذكيّة" : "Name this smart list"}
+          busy={savingName}
+          onSubmit={(n) => void saveNamed(n)}
+          onClose={() => setNaming(null)}
+        />
+      ) : null}
+      {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ ويصمت بفلترٍ نشط كما في الصفحة */}
+      {!lists && !filtering ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
       {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
       {!lists && foryou.length > 0 ? (
         <CardsRail
@@ -447,13 +602,13 @@ function DiscoverPane({
         />
       ) : null}
       {!lists ? ps?.myrows.map((m) => (
-        <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} {...railProps} seeAll={m.see_all} onSeeAll={onLeave} />
+        <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} {...railProps} seeAll={m.see_all} onSeeAll={seeAll} />
       )) : null}
       {!lists ? RAILS[tab].map((key, i) => (
         <React.Fragment key={`${tab}-${key}`}>
-          <Rail tab={tab} railKey={key} {...railProps} onSeeAll={onLeave} ar={ar} />
+          <Rail tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
           {i === 0 && ps && ps.artists.length > 0 ? (
-            <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={onLeave} />
+            <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={seeAll} />
           ) : null}
         </React.Fragment>
       )) : null}
@@ -472,25 +627,29 @@ type RailShared = {
 function Rail({
   tab,
   railKey,
+  bq,
   onSeeAll,
   ar,
   ...shared
 }: RailShared & {
   tab: CuratedTab;
   railKey: CuratedRailKey;
-  onSeeAll: (path: string) => void;
+  /** D-992 — استعلامُ الفلتر (فارغٌ بلا فلتر) */
+  bq: string;
+  onSeeAll: (path: string, title: string) => void;
   ar: boolean;
 }) {
   const { t, tokens } = useApp();
   const q = useQuery({
-    queryKey: ["discover:rail", tab, railKey] as const,
-    queryFn: async () => (await api<CuratedRailPayload>(`/api/v1/discover/rail?tab=${tab}&key=${railKey}`)).data,
+    queryKey: ["discover:rail", tab, railKey, bq] as const,
+    queryFn: async () => (await api<CuratedRailPayload>(`/api/v1/discover/rail?tab=${tab}&key=${railKey}${bq ? `&${bq}` : ""}`)).data,
     staleTime: 10 * 60_000,
   });
   const p = q.data;
   const anime = tab === "anime";
   /* عنوانُ الصفّ كما تكتبه الصفحة — المفاتيحُ نفسُها من القاموس الواحد (والأنمي بعناوينه) */
-  const title =
+  /* D-992 — عنوانٌ يفرضه الخادم (صفُّ الجائزة باسمها) يسبق عنوانَ المفتاح */
+  const title = p?.title ? p.title :
     railKey === "cinemas"
       ? anime ? t.animeInCinemas : t.inCinemas
       : railKey === "airing"
@@ -558,7 +717,7 @@ function CardsRail({
   items: (CuratedCard & { note?: string | null })[];
   ranked: boolean;
   seeAll?: string | null;
-  onSeeAll?: (path: string) => void;
+  onSeeAll?: (path: string, title: string) => void;
   /** «مقترحٌ لك»: سطرُ السبب تحت كلِّ بطاقة */
   notes?: boolean;
   /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
@@ -579,7 +738,7 @@ function CardsRail({
             <Text size={12} weight="600" muted>{action.label}</Text>
           </Pressable>
         ) : seeAll && onSeeAll ? (
-          <Pressable onPress={() => onSeeAll(seeAll)} hitSlop={8}>
+          <Pressable onPress={() => onSeeAll(seeAll, title)} hitSlop={8}>
             <Text size={12} weight="600" color={tokens.accent}>{t.seeAll}</Text>
           </Pressable>
         ) : null}

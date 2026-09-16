@@ -16,7 +16,7 @@ import {
   getMyProfileLite,
   getCuratedSlug,
 } from "@/lib/data";
-import { curatedName, curatedBlurb } from "@/core/universes";
+import { curatedName, curatedBlurb, universeBySlug } from "@/core/universes";
 import { ListReviews } from "@/components/ListReviews";
 import { isPlus } from "@/core/plan";
 import { getT } from "@/lib/locale";
@@ -26,7 +26,7 @@ import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
 import { getWatchRegion } from "@/lib/locale";
 import { buildSection } from "@/lib/sections";
-import { titleOf } from "@/lib/tmdb";
+import { titleOf, awardWinners } from "@/lib/tmdb";
 import {
   browseToFilter,
   ruleMedia,
@@ -129,6 +129,11 @@ export default async function ListPage({
      في `/show` و`/u` بعد D-627: القراءاتُ الشخصيّةُ ذاتيّةُ الحراسة،
      والكتابةُ يردّها `requireUser`. */
   const data = await getList(id);
+  /* D-995 — قائمةُ جائزةٍ (مصدرُها عالمٌ بجائزة): شاراتُ العناصر سنواتُ الفوز لا الرُّتب */
+  const awardUniverse = data?.list.source_slug ? universeBySlug(data.list.source_slug) : null;
+  const badges: Record<string, number> | undefined = awardUniverse?.award
+    ? Object.fromEntries((await awardWinners(awardUniverse.award).catch(() => [])).map((r) => [`${r.media_type === "tv" ? "tv" : "movie"}-${r.id}`, r.awarded]))
+    : undefined;
   if (!data) notFound();
 
   const isOwner = !!user && data.list.user_id === user.id;
@@ -249,6 +254,7 @@ export default async function ListPage({
         brandPlus={isPlus(profile)}
         listId={data.list.id}
         name={curatedName(data.list.source_slug, data.list.name, loc)}
+        badges={badges}
         /* 🆕 **ونبذةُ قائمةِ لوبز** (D-373، بلاغُ أحمد: «ليستات لوبز
            لازم يكون لها شرح ونبذة مثل ليستة مشعل») — **مصاغةٌ من
            القاموس بلغة القارئ لا مخزَّنةً بلغةٍ واحدة** (D-147/D-343). */

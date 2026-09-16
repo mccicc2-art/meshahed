@@ -799,3 +799,12 @@ export function browseKey(q: BrowseQuery, page = 1) {
     page,
   ].join(":");
 }
+
+/**
+ * هل الفلترُ محاورُه محلّيّةٌ فقط (نوع · لغة · بلد · منصّة · حقبة · تقييم)؟ الصفوفُ الشخصيّة
+ * تُرشَّح بها في مكانها؛ أمّا الوسمُ والجائزةُ والحالةُ والموسمُ والاستوديو فتُسكتها.
+ * كانت في `news/page.tsx` وصار لها قارئٌ ثانٍ (التطبيق، D-992).
+ */
+export function localAxesOnly(b: BrowseQuery): boolean {
+  return !b.tag && !b.award && !b.status && !b.season && !b.studio;
+}

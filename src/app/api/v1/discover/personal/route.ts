@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { personalRails, dateOfResult } from "@/lib/discoverRails";
+import { matchesBrowse, personalRails, dateOfResult } from "@/lib/discoverRails";
 import { sectionHref } from "@/lib/sections";
 import { getProfile } from "@/lib/data";
 import { sanitizeUiState } from "@/lib/uiState";
 import { filtersOf } from "@/core/savedFilters";
+import { parseBrowse, localAxesOnly } from "@/core/browse";
 import { parseMyRows, MY_ROWS_COOKIE } from "@/core/myRows";
 import { getLocale, getWatchRegion } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
@@ -36,6 +37,36 @@ export async function GET(req: NextRequest) {
     const t = getDict(locale);
     const myRows = parseMyRows(store.get(MY_ROWS_COOKIE)?.value);
     const r = await personalRails(tab, { locale, region, myRows });
+    /* 🆕 D-992 — الفلترُ النشط يرشّح الصفوفَ الشخصيّةَ في مكانها (كما `PersonalRails` في الصفحة):
+       بمحاور محلّيّة فقط؛ وسمٌ أو جائزةٌ أو حالةٌ أو موسمٌ تُسكتها كلَّها */
+    const sp = req.nextUrl.searchParams;
+    const browse = parseBrowse({
+      type: tab === "shows" ? "tv" : tab === "anime" ? "all" : "movie",
+      g: sp.get("g") ?? undefined,
+      lang: sp.get("lang") ?? undefined,
+      co: sp.get("co") ?? undefined,
+      p: sp.get("p") ?? undefined,
+      era: sp.get("era") ?? undefined,
+      rate: sp.get("rate") ?? undefined,
+      tag: sp.get("tag") ?? undefined,
+      award: sp.get("award") ?? undefined,
+      st: sp.get("st") ?? undefined,
+      se: sp.get("se") ?? undefined,
+      std: sp.get("std") ?? undefined,
+    });
+    const b = browse.active ? browse : null;
+    const silence = !!b && !localAxesOnly(b);
+    const ids = b?.genre ? (tab === "movies" ? b.genre.movie : b.genre.tv) : undefined;
+    const keep = (x: SearchResult) => !b || matchesBrowse(x, b, ids);
+    if (silence) {
+      r.foryou = [];
+      r.myrows = [];
+      r.artists = [];
+    } else if (b) {
+      r.foryou = r.foryou.filter((s) => keep(s.result));
+      r.myrows = r.myrows.map((m) => ({ ...m, items: m.items.filter(keep) })).filter((m) => m.items.length > 0);
+      r.artists = r.artists.filter(keep);
+    }
     const card = (x: SearchResult): CuratedCard => ({
       kind: x.media_type === "tv" ? "tv" : "movie",
       id: x.id,

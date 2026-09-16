@@ -9,13 +9,14 @@ import {
   ANIME_KEYWORD,
   type SearchResult,
   type DiscoverFilter,
+  companyId,
 } from "@/lib/tmdb";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { railGuard, topChartRail, animeMovieRail, looksAnime } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import { getSuggestions } from "@/lib/suggest";
 import { getLibState } from "@/lib/libState";
-import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/core/browse";
+import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, seasonRange, type BrowseQuery } from "@/core/browse";
 import type { MyRow } from "@/core/myRows";
 import type { Locale } from "@/core/i18n";
 import type { RailWin } from "@/core/browse";
@@ -77,7 +78,39 @@ export type CuratedOpts = {
   region: string;
   /** نافذةُ أفضل عشرة (أسبوع افتراضاً) */
   win?: RailWin;
+  /**
+   * 🆕 D-992 (Phase 11-C4، قرارُ أحمد «كلّها أصليّة»): الفلترُ نفسُه الذي تطيعه الصفحةُ
+   * (`CuratedRails`/`AnimeRails`) — نوعٌ · لغةٌ · بلدٌ · منصّةٌ · حقبةٌ · تقييمٌ · وسمٌ ·
+   * حالةٌ · موسمٌ واستوديو للأنمي. غيابُه = الوصفةُ الافتراضيّة كما كانت (C2).
+   */
+  browse?: BrowseQuery | null;
 };
+
+/**
+ * قاعدةُ الاستعلام من الفلتر — **السطورُ نفسُها التي في الصفحة** (`base` في
+ * `CuratedRails` و`AnimeRails`)، جُمعت هنا لأنّ لها قارئين (D-376). الوسمُ والاستوديو
+ * يُحلّان إلى معرّفات TMDB وما تعذّر يسقط وحدَه (D-144).
+ */
+async function browseBase(b: BrowseQuery, region: string, anime: boolean): Promise<{ base: DiscoverFilter; upcoming: boolean; unmute: boolean }> {
+  const eraR = eraRange(b.era);
+  const tagId = b.tag ? await keywordId(b.tag.q) : null;
+  const studioId = anime && b.studio ? await companyId(b.studio.name) : null;
+  const y = new Date().getUTCFullYear();
+  const seasonR = anime && b.season ? seasonRange(b.season, eraR.to ? Number(eraR.to.slice(0, 4)) : y) : null;
+  const base: DiscoverFilter = {
+    lang: b.lang?.code ?? null,
+    country: b.country?.code ?? null,
+    provider: b.provider,
+    watchRegion: region,
+    from: seasonR?.from ?? eraR.from,
+    to: seasonR?.to ?? eraR.to,
+    minRate: b.rate,
+    keywords: anime ? [ANIME_KEYWORD, ...(tagId ? [tagId] : [])] : tagId ? [tagId] : undefined,
+    companies: studioId ? [studioId] : undefined,
+    ...(anime ? {} : { status: b.status?.code ?? null }),
+  };
+  return { base, upcoming: b.era?.upcoming === true, unmute: !!b.lang || !!b.country };
+}
 
 /**
  * صفٌّ واحدٌ بمفتاحه — **الوصفةُ نفسُها التي في `CuratedRails` للحالة
@@ -87,11 +120,19 @@ export type CuratedOpts = {
  */
 export async function curatedRail(
   key: CuratedKey,
-  { type, locale, region, win = "week" }: CuratedOpts,
+  { type, locale, region, win = "week", browse = null }: CuratedOpts,
 ): Promise<{ items: SearchResult[]; region?: string }> {
-  if (type === "anime") return animeRail(key, { locale, region, win });
-  const base: DiscoverFilter = { watchRegion: region };
+  if (type === "anime") return animeRail(key, { locale, region, win, browse });
+  /* D-992 — بفلترٍ نشط: القاعدةُ من الفلتر، وحُرّاسُ الصفحة معها (`active` للأقسام،
+     `unmute` لأفضل عشرة، و`upcoming` يُسكت أفضلَ عشرة كما تفعل الصفحة) */
+  const b = browse?.active ? browse : null;
+  const bb = b ? await browseBase(b, region, false) : null;
+  const base: DiscoverFilter = bb?.base ?? { watchRegion: region };
+  const active = !!b;
+  const unmute = bb?.unmute ?? false;
+  const upcomingOnly = bb?.upcoming ?? false;
   const wantMovies = type !== "tv";
+  const genreIds = b?.genre ? (wantMovies ? b.genre.movie : b.genre.tv) : undefined;
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
@@ -104,7 +145,7 @@ export async function curatedRail(
     case "cinemas": {
       if (!wantMovies) return none;
       const [results, c] = await Promise.all([
-        buildSection("in-cinemas", { media: "movie", base, active: false }, 20),
+        buildSection("in-cinemas", { media: "movie", base, genreIds, active }, 20),
         nowPlayingMovies().catch(() => null),
       ]).catch(() => [[] as SearchResult[], null] as const);
       if (!results.length || !c) return none;
@@ -114,7 +155,7 @@ export async function curatedRail(
       return {
         items: await buildSection(
           "most-popular",
-          { media: wantMovies ? "movie" : "tv", base, active: false, sample: true, locale },
+          { media: wantMovies ? "movie" : "tv", base, genreIds, active, sample: true, locale },
           20,
         )
           .then(attachImdbRatings)
@@ -123,10 +164,10 @@ export async function curatedRail(
     case "top10-movie":
     case "top10-tv": {
       const mt = key === "top10-movie" ? "movie" : "tv";
-      if ((mt === "movie") !== wantMovies) return none;
+      if ((mt === "movie") !== wantMovies || upcomingOnly) return none;
       return {
-        items: await buildSection("top-ten", { media: mt, base, active: false, win, winRange }, 10)
-          .then((rows) => railGuard(rows, { unmute: false }))
+        items: await buildSection("top-ten", { media: mt, base, genreIds, active, win, winRange }, 10)
+          .then((rows) => railGuard(rows, { unmute }))
           .then(withImdbRatings)
           .catch(() => []),
       };
@@ -135,14 +176,14 @@ export async function curatedRail(
     case "top50-tv": {
       const mt = key === "top50-movie" ? "movie" : "tv";
       if ((mt === "movie") !== wantMovies) return none;
-      return { items: await bestOfYear(mt, locale, base).catch(() => []) };
+      return { items: await bestOfYear(mt, locale, base, genreIds).catch(() => []) };
     }
     case "soon": {
       const [m, s] = await Promise.all([
-        wantMovies ? buildSection("upcoming", { media: "movie", base, active: false }, 20).catch(() => []) : [],
-        !wantMovies ? buildSection("upcoming", { media: "tv", base, active: false }, 20).catch(() => []) : [],
+        wantMovies ? buildSection("upcoming", { media: "movie", base, genreIds, active }, 20).catch(() => []) : [],
+        !wantMovies ? buildSection("upcoming", { media: "tv", base, genreIds, active }, 20).catch(() => []) : [],
       ]);
-      const items = railGuard([...m, ...s], { unmute: false })
+      const items = railGuard([...m, ...s], { unmute })
         .filter((r) => r.media_type === "tv" || r.media_type === "movie")
         .filter((r) => dateOfResult(r) >= todayStr)
         .sort((a, b) => dateOfResult(a).localeCompare(dateOfResult(b)))
@@ -160,14 +201,26 @@ export async function curatedRail(
  */
 async function animeRail(
   key: CuratedKey,
-  { locale, region, win = "week" }: Omit<CuratedOpts, "type">,
+  { locale, region, win = "week", browse = null }: Omit<CuratedOpts, "type">,
 ): Promise<{ items: SearchResult[]; region?: string }> {
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
   const winRange = win === "month" ? { from: back30.toISOString().slice(0, 10), to: todayStr } : undefined;
-  const base: DiscoverFilter = { watchRegion: region, keywords: [ANIME_KEYWORD] };
+  /* D-992 — وصفةُ `AnimeRails` بفلترٍ نشط: القاعدةُ تحمل الموسمَ والاستوديو، وأفضلُ عشرة
+     تُبنى بـ`topByFilter` على القاعدة (لا بقائمة الأسبوع الجاهزة) كما في الصفحة */
+  const b = browse?.active ? browse : null;
+  const bb = b ? await browseBase(b, region, true) : null;
+  const base: DiscoverFilter = bb?.base ?? { watchRegion: region, keywords: [ANIME_KEYWORD] };
+  const active = !!b;
+  const genreIds = b?.genre ? b.genre.tv : undefined;
   const none = { items: [] as SearchResult[] };
+  const animeTop = (mt: "movie" | "tv") =>
+    active
+      ? topByFilter(mt, { ...base, ...(winRange ?? {}), genreIds }, 10, win === "week" ? "vote_average.desc" : "popularity.desc")
+      : mt === "movie"
+        ? topTenAnimeMoviesThisWeek(10, winRange)
+        : topTenAnimeThisWeek(10, winRange);
   switch (key) {
     case "cinemas": {
       const c = await nowPlayingMovies().catch(() => null);
@@ -176,19 +229,19 @@ async function animeRail(
       return only.length ? { items: await attachImdbRatings(only), region: c.region } : none;
     }
     case "airing":
-      return { items: await buildSection("airing-now", { media: "anime", base, active: false }, 20).then(withImdbRatings).catch(() => []) };
+      return { items: await buildSection("airing-now", { media: "anime", base, genreIds, active }, 20).then(withImdbRatings).catch(() => []) };
     case "popular":
-      return { items: await buildSection("most-popular", { media: "anime", base, active: false, sample: true }, 20).then(attachImdbRatings).catch(() => []) };
+      return { items: await buildSection("most-popular", { media: "anime", base, genreIds, active, sample: true }, 20).then(attachImdbRatings).catch(() => []) };
     case "top10-movie":
       return {
-        items: await topTenAnimeMoviesThisWeek(10, winRange)
+        items: await animeTop("movie")
           .then((rows) => railGuard(rows, { anime: "only" }))
           .then(withImdbRatings)
           .catch(() => []),
       };
     case "top10-tv":
       return {
-        items: await topTenAnimeThisWeek(10, winRange)
+        items: await animeTop("tv")
           .then((rows) => railGuard(rows, { anime: "only" }))
           .then(withImdbRatings)
           .catch(() => []),
@@ -273,4 +326,21 @@ export async function personalRails(
     artists: artistWorks,
     libState,
   };
+}
+
+/**
+ * ترشيحُ نتيجةٍ جاهزة بالمحاور المحلّيّة للفلتر (نوع · لغة · بلد · تقييم · حقبة) — للصفوف
+ * الشخصيّة التي لا تُبنى باستعلام (`foryou` · صفوفي · من فنّانيك). كانت في `news/page.tsx`
+ * وصار لها قارئٌ ثانٍ (`/api/v1/discover/personal`، D-992).
+ */
+export function matchesBrowse(r: SearchResult, b: BrowseQuery, ids?: number[]): boolean {
+  if (b.genre && ids?.length && !(r.genre_ids ?? []).some((g) => ids.includes(g))) return false;
+  if (b.lang && r.original_language !== b.lang.code) return false;
+  if (b.country && !(r.origin_country ?? []).includes(b.country.code)) return false;
+  if (b.rate && (r.vote_average ?? 0) < b.rate) return false;
+  const d = r.release_date || r.first_air_date || "";
+  const era = eraRange(b.era);
+  if (era.from && (!d || d < era.from)) return false;
+  if (era.to && (!d || d > era.to)) return false;
+  return true;
 }

@@ -20,6 +20,8 @@ export type CuratedCard = DiscoverCard & {
 export type CuratedRailPayload = {
   key: CuratedRailKey;
   tab: CuratedTab;
+  /** D-992 — عنوانٌ يفرضه الخادم (صفُّ الجائزة: اسمُها)؛ `null` = عنوانُ المفتاح المعتاد */
+  title?: string | null;
   /** مرتَّبٌ بالأرقام (أفضل ١٠ · أفضل ٢٥) أم لا (السينما · الشائع · قريباً) */
   ranked: boolean;
   /** منطقةُ السينما (`cinemas` وحدَه) — لسطر «في سينمات …» */
@@ -91,3 +93,13 @@ export type TrailersRailPayload = {
   see_all: string;
   items: TrailerCard[];
 };
+
+/** `GET /api/v1/discover/providers?tab=` — منصّاتُ الاشتراك لورقة الفلاتر الأصليّة (D-992) */
+export type ProvidersPayload = { region: string; providers: { id: number; name: string; logo_path: string | null }[] };
+
+/** `POST /api/v1/me/prefs/saved-filters` — حفظُ فلترٍ أو حذفُه (D-993) */
+export type SavedFilterBody = { name?: string; section?: string; q?: string; remove?: string };
+export type SavedFilterResult = { ok: boolean; needsPlus?: true; filters: { id: string; name: string; section: string; q: string }[] };
+
+/** `GET /api/v1/discover/section` — شبكةُ «الكلّ» لصفٍّ (D-994) */
+export type SectionPayload = { section: string; media: "movie" | "tv" | "anime"; page: number; has_more: boolean; items: CuratedCard[] };
