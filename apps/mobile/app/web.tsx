@@ -14,6 +14,7 @@ import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { BACKGROUND_CLEAR_MS, session } from "../src/session";
 import { shell } from "../src/shell";
+import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
 /**
@@ -68,7 +69,8 @@ const HOME = CONFIG.apiBase + "/";
  * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
  */
 /* D-1000 — `title`: الغلافُ يفتح صفحةَ العمل أصليّةً من أيّ رابط عملٍ في الويب */
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true};true;";
+/* D-1012 — `nav`: الشريطُ السفليُّ أصليٌّ فوق كلِّ صفحةٍ ويبيّة، والويبُ يخفي شريطَه */
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true};true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -122,6 +124,7 @@ export default function Web() {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [path, setPath] = useState("/");
   const handing = useRef(false);
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
@@ -151,6 +154,14 @@ export default function Web() {
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
+    /* D-1012 — الخانةُ المضيئةُ تُقرأ من المسار (الويبُ لم يعد يرسم شريطَه داخل الغلاف) */
+    setPath(() => {
+      try {
+        return new URL(nav.url).pathname;
+      } catch {
+        return "/";
+      }
+    });
     /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
     shell.arrived(nav.url, nav.loading);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
@@ -299,6 +310,20 @@ export default function Web() {
     return () => sub.remove();
   }, [canGoBack, router]);
 
+  /**
+   * 🆕 D-1012 — **الشريطُ السفليُّ أصليٌّ في كلِّ مكان** (طلبُ أحمد بتسجيل: «الدوك في الأسفل
+   * خلّه تطبيق أصليّ حتى عند الهوم والكوميونتي والسيرش، فيسير على نفس الخطّ والشكل وقت
+   * التنقّل»): كان أصليّاً في المكتبة و«اكتشف» وويبيّاً في الباقي — فيرتجف عند كلِّ انتقال.
+   * الآن الغلافُ يرسمه فوق الـWebView، والويبُ يخفي شريطَه داخل الغلاف (`nav` في القدرات).
+   * الخانةُ المضيئةُ من مسار الصفحة، و«المكتبة»/«اكتشف» تدفعان الشاشةَ الأصليّة كما يفعل
+   * شريطُ الويب اليوم.
+   */
+  const navKey: NavKey =
+    path.startsWith("/library") ? "library"
+    : path.startsWith("/news") || path.startsWith("/discover") ? "news"
+    : path.startsWith("/people") || path.startsWith("/community") ? "people"
+    : path.startsWith("/search") ? "search"
+    : "home";
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SHELL_BG }}>
       {source ? (
@@ -340,6 +365,25 @@ export default function Web() {
           allowsFullscreenVideo
           mediaPlaybackRequiresUserAction={false}
           textZoom={100}
+        />
+      ) : null}
+      {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
+      {ready && !failed ? (
+        <BottomNav
+          active={navKey}
+          onGo={(k) => {
+            if (k === "library") {
+              router.push("/library");
+              return;
+            }
+            if (k === "news") {
+              router.push("/discover");
+              return;
+            }
+            const to = k === "home" ? "/" : k === "people" ? "/people" : "/search";
+            /* الملاحةُ في الصفحة نفسِها (تاريخُ الـWebView محفوظ) — لا تحميلَ مستندٍ جديد */
+            ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(to)}):(location.href=${JSON.stringify(CONFIG.apiBase + to)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + to)};}})();true;`);
+          }}
         />
       ) : null}
       {failed ? (

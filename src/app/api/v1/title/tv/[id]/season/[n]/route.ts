@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { getSeason } from "@/lib/tmdb";
-import { getWatchedForShow, getUserId } from "@/lib/data";
+import { getSeason, tvImdbId } from "@/lib/tmdb";
+import { seasonImdbRatings } from "@/lib/omdb";
+import { getEpisodeRatings, getWatchedForShow, getUserId } from "@/lib/data";
 import { episodeKey } from "@/core/keys";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -33,14 +34,18 @@ export async function GET(
       const lim = limited(`v1:season:${uid ?? ip}`, 60, 60_000);
       if (lim) return lim;
 
-      const [season, watched] = await Promise.all([
+      /* D-1011 — `?r=1`: تقييماتُ IMDb للحلقات وتقييماتي — كما `/api/season?r=1` في الويب */
+      const withRatings = req.nextUrl.searchParams.get("r") === "1";
+      const [season, watched, imdb, mine] = await Promise.all([
         getSeason(tvId, seasonNumber),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
+        withRatings ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => ({}) as Record<number, number>) : Promise.resolve({} as Record<number, number>),
+        withRatings && uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, { rating: number }>()) : Promise.resolve(new Map<string, { rating: number }>()),
       ]);
       const payload: SeasonPayload = {
         tv_id: tvId,
         season_number: seasonNumber,
-        episodes: season.episodes.map((e) => ({
+        episodes: season.episodes.map((e: (typeof season.episodes)[number]) => ({
           episode_number: e.episode_number,
           name: e.name,
           overview: e.overview,
@@ -48,6 +53,12 @@ export async function GET(
           runtime: e.runtime,
           still_path: e.still_path,
           watched: watched.has(episodeKey(seasonNumber, e.episode_number)),
+          ...(withRatings
+            ? {
+                imdb_rating: imdb[e.episode_number] ?? null,
+                my_rating: mine.get(episodeKey(seasonNumber, e.episode_number))?.rating ?? null,
+              }
+            : {}),
         })),
       };
       return ok(payload);

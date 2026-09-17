@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 /** اسمُ العلَم على `<html>` — يقرؤه زرُّ «المكتبة» في `BottomNav` لحظةَ الضغط */
 export const NATIVE_LIBRARY_ATTR = "data-native-library";
@@ -16,6 +17,7 @@ export const NATIVE_LIBRARY_ATTR = "data-native-library";
  * سُحبت الإدارةُ زال الزرُّ بلا إعادة تحميل.
  */
 export function NativeLibraryFlag() {
+  const router = useRouter();
   useEffect(() => {
     const el = document.documentElement;
     el.setAttribute(NATIVE_LIBRARY_ATTR, "1");
@@ -49,18 +51,28 @@ export function NativeLibraryFlag() {
       }
     };
     document.addEventListener("click", onClick, true);
+    /* D-1012 — الغلافُ يرسم الشريطَ: نُخفي شريطَنا (CSS) ونعطيه موجِّهَ الصفحة */
+    if (window.LoopzNative?.nav === true) {
+      el.setAttribute("data-native-nav", "1");
+      /* موجِّهُ الصفحة بيد الغلاف: انتقالٌ داخل التطبيق الويبيّ بلا تحميل مستند */
+      window.__loopzGo = (to: string) => router.push(to);
+    }
     return () => {
       el.removeAttribute(NATIVE_LIBRARY_ATTR);
+      el.removeAttribute("data-native-nav");
+      delete window.__loopzGo;
       document.removeEventListener("click", onClick, true);
     };
-  }, []);
+  }, [router]);
   return null;
 }
 
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean };
+    /** D-1012 — الغلافُ ينادي موجِّهَ الصفحة بدل تحميل مستندٍ جديد */
+    __loopzGo?: (path: string) => void;
   }
 }
 

@@ -364,6 +364,11 @@ html[data-chrome="hidden"] .chrome-top {
 html[data-chrome="hidden"] .chrome-sub {
   transform: translateY(calc(-100% - var(--sticky-top)));
 }
+/* D-1012 — داخل الغلاف يرسم التطبيقُ الشريطَ السفليَّ بنفسه: نخفي شريطَنا ونُبقي حشوتَه
+   (الصفحاتُ تحسب `--nav-h` في هوامشها السفليّة، والشريطُ الأصليُّ بالارتفاع نفسِه). */
+html[data-native-nav="1"] .chrome-bottom {
+  display: none !important;
+}
 html[data-chrome="hidden"] .chrome-bottom {
   transform: translateY(100%);
 }

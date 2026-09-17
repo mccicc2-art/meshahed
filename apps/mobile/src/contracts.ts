@@ -49,6 +49,7 @@ export type {
   UnfollowBody,
   SetDroppedBody,
   DismissBody,
+  EpisodeRateBody,
   ShowRefBody,
   RateBody,
   UnrateBody,

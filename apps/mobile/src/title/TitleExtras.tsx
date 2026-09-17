@@ -153,6 +153,47 @@ export function FavoriteButton({ kind, id, name, posterPath, x }: { kind: "tv" |
 }
 
 /** «إلى قائمة» — ورقةٌ بقوائمي وعلاماتِ الاحتواء (نسخةُ ورقة `TitleActions`) */
+/**
+ * D-1014 — ورقةُ «إلى قائمة» وحدَها: صفُّ الأفعال الجديد يفتحها مباشرةً بلا زرٍّ وسيط،
+ * و`AddToListButton` تبقى لمن ينادي الزرَّ (لا مستدعيَ لها في صفحة العمل بعد اليوم).
+ */
+export function ListSheet({ kind, id, name, posterPath, x, onNewList, onClose }: { kind: "tv" | "movie"; id: number; name: string; posterPath: string | null; x: TitleExtrasPayload | undefined; onNewList: () => void; onClose: () => void }) {
+  const { t, tokens } = useApp();
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: ({ listId, add }: { listId: string; add: boolean }) =>
+      write<{ done: true }>("/api/v1/lists/toggle-item", { listId, tmdbId: id, mediaType: kind, title: name, posterPath, add } satisfies ListToggleItemBody),
+    onMutate: ({ listId, add }) =>
+      qc.setQueryData<TitleExtrasPayload>(extrasKey(kind, id), (prev) =>
+        prev ? { ...prev, containing: add ? [...new Set([...prev.containing, listId])] : prev.containing.filter((v) => v !== listId) } : prev,
+      ),
+    onError: (_e, { listId, add }) =>
+      qc.setQueryData<TitleExtrasPayload>(extrasKey(kind, id), (prev) =>
+        prev ? { ...prev, containing: add ? prev.containing.filter((v) => v !== listId) : [...prev.containing, listId] } : prev,
+      ),
+  });
+  if (!x) return null;
+  return (
+    <Sheet title={t.listAddTo} onClose={onClose}>
+      <View style={{ gap: 4 }}>
+        {x.my_lists.length === 0 ? <Text size={13} muted>{t.listNoLists}</Text> : null}
+        {x.my_lists.map((l) => {
+          const on = x.containing.includes(l.id);
+          return (
+            <Pressable key={l.id} onPress={() => m.mutate({ listId: l.id, add: !on })} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }}>
+              <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: on ? tokens.accent : tokens.border, backgroundColor: on ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
+                {on ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
+              </View>
+              <Text size={14} style={{ flex: 1 }} numberOfLines={1}>{l.name}</Text>
+            </Pressable>
+          );
+        })}
+        <Button label={t.listAddTo} variant="ghost" style={{ marginTop: 8 }} onPress={onNewList} />
+      </View>
+    </Sheet>
+  );
+}
+
 export function AddToListButton({ kind, id, name, posterPath, x, onNewList }: { kind: "tv" | "movie"; id: number; name: string; posterPath: string | null; x: TitleExtrasPayload | undefined; onNewList: () => void }) {
   const { t, tokens } = useApp();
   const qc = useQueryClient();

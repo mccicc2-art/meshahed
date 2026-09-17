@@ -344,22 +344,10 @@ export function DiscoverScreen() {
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
         {/* ⚖️ D-980 — بلا سهمِ رجوع (انظر `LibraryScreen`): الشريطُ السفليّ هو المخرج */}
         <Text size={15} weight="700">{t.newsTitle}</Text>
-        {/* D-992 — الفلاترُ ورقةٌ أصليّة (نقضُ C3 بقرار أحمد «كلّها أصليّة»)؛ الزرُّ يضيء بفلترٍ نشط */}
-        {(
-          <Pressable
-            onPress={() => setSheet(true)}
-            hitSlop={8}
-            accessibilityLabel={t.browseFilters}
-            style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: browseActive(browse) ? tokens.accent : tokens.border, backgroundColor: browseActive(browse) ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
-            </View>
-          </Pressable>
-        )}
       </View>
 
-      {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة */}
+      {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة؛ D-1009 — زرُّ الأدوات في طرفه
+          كما في المكتبة لا في الرأس (طلبُ أحمد بلقطتين: «مكان الفلتر خلّه جنب كلمة ليست») */}
       <View style={{ flexDirection: "row", alignItems: "stretch", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
         {tabsOrder.map((k) => {
           const on = k === tab;
@@ -369,6 +357,14 @@ export function DiscoverScreen() {
             </Pressable>
           );
         })}
+        <Pressable
+          onPress={() => setSheet(true)}
+          hitSlop={8}
+          accessibilityLabel={t.browseFilters}
+          style={{ alignSelf: "center", marginBottom: 4, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: browseActive(browse) ? tokens.accent : tokens.border, backgroundColor: browseActive(browse) ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center", marginStart: 8 }}
+        >
+          <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
+        </Pressable>
       </View>
     </View>
     </Animated.View>

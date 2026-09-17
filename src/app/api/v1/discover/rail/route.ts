@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { unstable_cache } from "next/cache";
 import { parseBrowse } from "@/core/browse";
 import { awardBySlug } from "@/core/awards";
 import { awardWinners } from "@/lib/tmdb";
@@ -78,19 +77,15 @@ export async function GET(req: NextRequest) {
         };
         return ok(payload);
       }
-      /* 🔴 D-1003 — **الصفوفُ المنسَّقةُ واحدةٌ لكلِّ المستخدمين، فتُذكَر مرّةً على الخادم**
-         (بلاغُ أحمد: «بطء في اكتشف أوّل ما تدخل، عكس المكتبة»): المكتبةُ ردٌّ واحدٌ من
-         قاعدتنا؛ «اكتشف» ستّةُ صفوف كلٌّ منها رحلاتٌ إلى TMDB تُعاد لكلِّ فتحٍ ولكلِّ
-         مستخدم. `unstable_cache` عشرَ دقائق بمفتاح (التبويب · الصفّ · اللغة · البلد ·
-         النافذة) — كما تُذكَر الصفحةُ الويبيّة — والمفلترُ خارجه (تركيبةٌ حرّة). */
-      const b = browse.active ? browse : null;
-      const { items, region: cinemaRegion } = b
-        ? await curatedRail(key, { type, locale, region, browse: b })
-        : await unstable_cache(
-            () => curatedRail(key, { type, locale, region }),
-            ["v1:discover:rail", tab, key, locale, region],
-            { revalidate: 600 },
-          )();
+      /**
+       * ⚖️ **D-1003 نُقضت في اليوم التالي — D-1013** (بلاغُ أحمد بلقطة: «حاطّ لغة إنجليزيّة
+       * وتجيني عربيّة»): لفُّ البنّاء في `unstable_cache` أسرعَ الصفوفَ لكنّه **قطعها عن
+       * كوكي الطلب** — الدالّةُ داخل الذاكرة لا تقرأ `cookies()`، فتسقط `tmdbLanguage`
+       * إلى احتياطها (`ar-SA`) وتعود أسماءُ TMDB عربيّةً لصاحب الواجهة الإنجليزيّة.
+       * **ذاكرةٌ لا ترى هويّةَ الطلب لا تصلح لردٍّ يعتمد عليها.** التسريعُ الباقي: رأسُ
+       * `max-age=600` (كاشُ OkHttp، D-1003) وتسخينُ الشاشة قبل فتحها — وكلاهما يحترم اللغة.
+       */
+      const { items, region: cinemaRegion } = await curatedRail(key, { type, locale, region, browse: browse.active ? browse : null });
       const cards: CuratedCard[] = items
         .filter((r) => r.media_type === "tv" || r.media_type === "movie")
         .map((r) => ({

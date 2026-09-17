@@ -88,6 +88,14 @@ export type SeasonEpisode = {
   still_path: string | null;
   /** حالتي — `false` دائماً للزائر */
   watched: boolean;
+  /**
+   * 🆕 D-1011 — **تقييمُ IMDb للحلقة**: يُطلب بـ`?r=1` كما تطلبه صفحةُ الويب
+   * (`/api/season?r=1`) — رحلةٌ إلى OMDb لكلِّ موسم، فلا تُدفع إلا حين يفتح
+   * المستخدمُ التقييمات. `undefined` = لم تُطلب؛ `null` = طُلبت ولا رقم.
+   */
+  imdb_rating?: number | null;
+  /** تقييمي لهذه الحلقة (ورأيي) — من `episode_ratings_of`، فارغٌ للزائر */
+  my_rating?: number | null;
 };
 
 export type SeasonPayload = {
