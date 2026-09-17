@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, qk, write } from "../api";
+import { api, ApiError, qk, write, queryClient } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Text, Toast } from "../ui";
@@ -53,6 +53,29 @@ const PAGE_PAD = 16;
 const GAP = 12;
 /* D-965 — موضعُ التمرير لكلِّ تبويب: الجارُ المسلَّح يُرسم بموضعه هو */
 const memory: { tab: Tab; y: Partial<Record<Tab, number>> } = { tab: "shows", y: {} };
+
+/**
+ * 🆕 D-1003 — **تسخينُ «اكتشف» قبل فتحها** (بلاغُ أحمد: «بطء في اكتشف أوّل ما تدخل»):
+ * الغلافُ يناديها حين تجهز الجلسةُ والويبُ يحمّل الرئيسيّة — فتصل الشاشةُ إلى كاش
+ * `react-query` مملوءاً بصفوف التبويب الذي سيُفتح (الشخصيّ + الأربعة/الخمسة المنسَّقة +
+ * تفضيلاتُ العرض). المفاتيحُ مفاتيحُ `Rail`/`DiscoverPane` حرفاً فلا نداءَ يتكرّر.
+ */
+export function prefetchDiscover(): void {
+  const tab = memory.tab === "lists" ? "shows" : memory.tab;
+  void queryClient.prefetchQuery({ queryKey: ["discover:view"] as const, queryFn: async () => (await api<DiscoverViewPayload>("/api/v1/discover/view")).data, staleTime: 5 * 60_000 });
+  void queryClient.prefetchQuery({
+    queryKey: ["discover:personal", tab, ""] as const,
+    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${tab}`)).data,
+    staleTime: 5 * 60_000,
+  });
+  for (const key of RAILS[tab]) {
+    void queryClient.prefetchQuery({
+      queryKey: ["discover:rail", tab, key, ""] as const,
+      queryFn: async () => (await api<CuratedRailPayload>(`/api/v1/discover/rail?tab=${tab}&key=${key}`)).data,
+      staleTime: 10 * 60_000,
+    });
+  }
+}
 
 /** ترتيبُ الصفوف كما في `CuratedRails` للحالة الافتراضيّة */
 const RAILS: Record<CuratedTab, CuratedRailKey[]> = {

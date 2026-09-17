@@ -16,6 +16,7 @@ import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion } from "./SeasonAccordion";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
+import { StarRow } from "./StarRow";
 import { useExtras, RatingsLine, WatchWhere, FavoriteButton, AddToListButton, CastRail, RelatedRails } from "./TitleExtras";
 import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCommunity";
 import type {
@@ -292,14 +293,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               </View>
             ) : null}
 
-            {/* تقييمي من ١٠ — عائلةُ chip */}
+            {/* تقييمي من ١٠ — نجومٌ ورقمُها كالويب (D-1006؛ كانت رقاقاتٍ مرقّمة) */}
             <View style={{ gap: 6 }}>
               <Text size={12} weight="600" muted>{t.rateTitle}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <Chip key={n} label={String(n)} active={d.me.rating === n} onPress={() => rate.mutate({ rating: d.me.rating === n ? null : n })} />
-                ))}
-              </ScrollView>
+              <StarRow value={d.me.rating} clearable onChange={(n) => rate.mutate({ rating: n })} />
             </View>
           </View>
 
@@ -341,36 +338,36 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 {/* ⚖️ D-959 — التريلرُ كان باباً ويبيّاً بقرار (خطّةُ 11-D §٢)، وصار
                     يعمل في مكانه بأمر أحمد: الزرُّ يفتح المشغّلَ الأصليَّ تحته
                     **في الصفحة نفسِها**، والفشلُ الكاملُ يسقط إلى الباب القديم. */}
+                {/* 🔴 D-1004 — **المشغّلُ خاملٌ في مكانه واللمسةُ الحقيقيّةُ تشغّله** (بلاغُ أحمد
+                    بتسجيل على 1.9.1: «إذا أشغّل إعلاناً من داخل الفلم ما يشتغل، وأحياناً يحدّث
+                    الصفحة ويدخلني ويب»): كان الزرُّ يركّب المشغّلَ حيّاً بتشغيلٍ برمجيّ — وهو ما
+                    لا ينفّذه يوتيوب على الجوّال بلا لمسةٍ في مستنده (D-982)، فيقف، ويسقط حارسُ
+                    التعليق إلى `openWeb` **بصفحة العمل كلِّها**. الآن كما في «اكتشف»: البطاقةُ
+                    مركّبةٌ خاملةً بصورتها وثقب ▶، اللمسةُ فيه تصل الإطارَ فيشغّل يوتيوب بنفسه،
+                    والمرفوضُ لا يفتح باباً إلا بلمسة (D-984) — وبابُه صفحةُ التريلرات لا صفحةُ
+                    العمل. */}
                 {d.trailer_key ? (
-                  trailerOn ? (
-                    <View style={{ borderRadius: radius.card, overflow: "hidden" }}>
-                      <TrailerPlayer
-                        videoKeys={[d.trailer_key]}
-                        width={width - PAGE_PAD * 2}
-                        poster={backdropUrl(d.backdrop_path, "w780")}
-                        label={d.name}
-                        wantPlay={trailerWant}
-                        onWantPlay={setTrailerWant}
-                        muted={trailerMuted}
-                        onMuted={setTrailerMuted}
-                        onExhausted={() => {
-                          setTrailerOn(false);
-                          openWeb();
-                        }}
-                      />
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: "row" }}>
-                      <Button
-                        label={`▶ ${t.trailerPlay}`}
-                        variant="ghost"
-                        onPress={() => {
-                          setTrailerWant(true);
-                          setTrailerOn(true);
-                        }}
-                      />
-                    </View>
-                  )
+                  <View style={{ borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                    <TrailerPlayer
+                      videoKeys={[d.trailer_key]}
+                      width={width - PAGE_PAD * 2}
+                      poster={backdropUrl(d.backdrop_path, "w780")}
+                      label={d.name}
+                      idle={!trailerOn}
+                      onWake={() => {
+                        setTrailerWant(true);
+                        setTrailerOn(true);
+                      }}
+                      wantPlay={trailerWant}
+                      onWantPlay={setTrailerWant}
+                      muted={trailerMuted}
+                      onMuted={setTrailerMuted}
+                      onExhausted={() => {
+                        setTrailerOn(false);
+                        openWeb("", `/trailers?from=${encodeURIComponent(webPath)}&at=${kind}-${id}`);
+                      }}
+                    />
+                  </View>
                 ) : null}
                 {/* D-983 — الممثّلُ شاشةٌ أصليّة؛ `from` يبقى شاشةَ البداية فتعود السلسلةُ كلُّها إليها */}
                 <CastRail x={x} onPerson={(pid) => router.push({ pathname: "/person/[id]", params: { id: String(pid), from } })} />

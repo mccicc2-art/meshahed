@@ -8,6 +8,7 @@ import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
+import { StarRow } from "./StarRow";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
 import type { TitleCommunityPayload } from "../contracts";
@@ -163,11 +164,8 @@ export function ReviewSheet({
   return (
     <Sheet title={t.rateTitle} onClose={onClose}>
       <View style={{ gap: 12 }}>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <Chip key={n} label={String(n)} active={rating === n} onPress={() => setRating(n)} />
-          ))}
-        </View>
+        {/* D-1006 — نجومٌ ورقمُها كورقة المراجعة الويبيّة */}
+        <StarRow value={rating || null} onChange={(n) => setRating(n ?? 0)} />
         <TextInput
           value={body}
           onChangeText={setBody}

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import { parseBrowse } from "@/core/browse";
 import { awardBySlug } from "@/core/awards";
 import { awardWinners } from "@/lib/tmdb";
@@ -77,7 +78,19 @@ export async function GET(req: NextRequest) {
         };
         return ok(payload);
       }
-      const { items, region: cinemaRegion } = await curatedRail(key, { type, locale, region, browse: browse.active ? browse : null });
+      /* 🔴 D-1003 — **الصفوفُ المنسَّقةُ واحدةٌ لكلِّ المستخدمين، فتُذكَر مرّةً على الخادم**
+         (بلاغُ أحمد: «بطء في اكتشف أوّل ما تدخل، عكس المكتبة»): المكتبةُ ردٌّ واحدٌ من
+         قاعدتنا؛ «اكتشف» ستّةُ صفوف كلٌّ منها رحلاتٌ إلى TMDB تُعاد لكلِّ فتحٍ ولكلِّ
+         مستخدم. `unstable_cache` عشرَ دقائق بمفتاح (التبويب · الصفّ · اللغة · البلد ·
+         النافذة) — كما تُذكَر الصفحةُ الويبيّة — والمفلترُ خارجه (تركيبةٌ حرّة). */
+      const b = browse.active ? browse : null;
+      const { items, region: cinemaRegion } = b
+        ? await curatedRail(key, { type, locale, region, browse: b })
+        : await unstable_cache(
+            () => curatedRail(key, { type, locale, region }),
+            ["v1:discover:rail", tab, key, locale, region],
+            { revalidate: 600 },
+          )();
       const cards: CuratedCard[] = items
         .filter((r) => r.media_type === "tv" || r.media_type === "movie")
         .map((r) => ({

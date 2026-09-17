@@ -14,6 +14,7 @@ import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { BACKGROUND_CLEAR_MS, session } from "../src/session";
 import { shell } from "../src/shell";
+import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -222,6 +223,8 @@ export default function Web() {
       if (r.ok && data.session) {
         handing.current = true;
         ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
+        /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
+        prefetchDiscover();
       } else {
         ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
       }

@@ -53,7 +53,7 @@ export async function api<T>(
   /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
   if (auth && !session.has()) await session.request();
   for (let attempt = 0; ; attempt++) {
-    const headers = await baseHeaders(auth);
+    const headers = await baseHeaders(auth, path);
     if (init?.body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
       method: init?.method ?? "GET",
@@ -86,14 +86,16 @@ export async function write<T>(path: string, body: unknown): Promise<T> {
  * (D-946: لغةُ الويب تغلب لغةَ الجهاز) — فالمساراتُ التي تسقط إليها بلا كوكي
  * (`getLocale`) تعيد العنوانَ والعدَّ بلغة ما يراه المستخدم في الصفحة.
  */
-async function baseHeaders(auth: boolean): Promise<Record<string, string>> {
+async function baseHeaders(auth: boolean, path = ""): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Accept-Language": currentLocale(),
     /* D-986 — حزامٌ ثانٍ من جهة الهاتف: OkHttp يملك كاشاً قرصيّاً يحترم `max-age`، فقراءةٌ بعد
-       كتابةٍ كانت تعود قديمة (تابع ثمّ يرتدّ). `no-cache` يجبره على سؤال الخادم كلَّ مرّة؛
-       والكاشُ الحقيقيّ عندنا هو `react-query` لا HTTP. */
-    "Cache-Control": "no-cache",
+       كتابةٍ كانت تعود قديمة (تابع ثمّ يرتدّ). `no-cache` يجبره على سؤال الخادم كلَّ مرّة.
+       D-1003 — **لما يحمل حالةَ المستخدم فقط** (`/me/` · `/title/` · `/person/` · `/view`):
+       صفوفُ «اكتشف» المنسَّقةُ سواءٌ للجميع وصالحةٌ عشرَ دقائق، وكانت تُعاد من الخادم في
+       كلِّ فتحٍ — فتُترك لكاش OkHttp كما يقول رأسُها. */
+    ...(/\/api\/v1\/(me\/|title\/|person\/|discover\/view)/.test(path) ? { "Cache-Control": "no-cache" } : {}),
   };
   if (auth) {
     /* الجسرُ أوّلاً (Phase 11 · B1)؛ وجلسةُ الدخول العابرةُ سقوطٌ لا يكاد يُبلغ */
@@ -105,7 +107,7 @@ async function baseHeaders(auth: boolean): Promise<Record<string, string>> {
 
 /** مسارٌ قائمٌ من قبل `v1` (بلا غلاف `{data}`) — للبحث والاقتراح. */
 export async function rawGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${CONFIG.apiBase}${path}`, { headers: await baseHeaders(true) });
+  const res = await fetch(`${CONFIG.apiBase}${path}`, { headers: await baseHeaders(true, path) });
   if (!res.ok) throw new ApiError({ code: res.status === 429 ? "rate_limited" : "upstream", message_key: res.status === 429 ? "apiRateLimited" : "apiUpstream" }, res.status);
   return (await res.json()) as T;
 }

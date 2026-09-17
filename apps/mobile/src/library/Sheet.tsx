@@ -1,5 +1,5 @@
-import React from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -16,6 +16,22 @@ import { Icon } from "../icons";
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const { t, tokens } = useApp();
   const insets = useSafeAreaInsets();
+  /**
+   * 🔴 D-1005 — **الورقةُ ترتفع فوق لوحة المفاتيح على أندرويد** (بلاغُ أحمد بتسجيل على 1.9.1:
+   * «لوحة المفاتيح تغطّي فما أشوف وش أكتب»): `KeyboardAvoidingView` يعمل على iOS، أمّا على
+   * أندرويد فـ`Modal` بـ`statusBarTranslucent` لا يصله تصغيرُ النافذة (`adjustResize`) —
+   * فتُقرأ اللوحةُ من حدثها وتُضاف حشوةً أسفل الورقة، فيبقى الحقلُ والزرُّ مرئيّين.
+   */
+  const [kb, setKb] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKb(e.endCoordinates.height));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKb(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   return (
     <Modal transparent animationType="slide" visible onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.6)" }]} onPress={onClose} accessibilityLabel={t.closeLabel} />
@@ -29,7 +45,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
             borderBottomWidth: 0,
             borderColor: tokens.border,
             backgroundColor: tokens.elevated,
-            paddingBottom: insets.bottom + 20,
+            paddingBottom: (kb > 0 ? kb : insets.bottom) + 20,
           }}
         >
           <View style={{ height: 44, alignItems: "center", justifyContent: "center", marginBottom: -16 }}>
