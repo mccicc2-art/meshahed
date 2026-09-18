@@ -35,6 +35,47 @@ export function useExtras(kind: "tv" | "movie", id: number) {
 
 /** سطرُ التقييمات الخارجيّة + النبض — تحت الأنواع في البطل */
 /** D-1020 — `compact`: IMDb وRT وحدَهما في سطر الترويسة (النبضُ يبقى في المجتمع) */
+/**
+ * 🆕 D-1030 — **نبضُ المجتمع قطعةٌ واحدة** (طلبُ أحمد بلقطتين: «حطّ تقييم المجتمع مثل ما هو ظاهر في
+ * الويب فيو» — في طرف سطر الاسم): نجمةٌ بمتوسّط تقييمهم وعددُهم بين قوسين — شكلُ الويب
+ * (`★ 9.0 (2)`) **بلا القلب** (حكمُ أحمد أدناه). كان مرسوماً داخل `RatingsLine` غيرِ المضغوط وحدَه، والترويسةُ
+ * (المضغوطة) لا تراه. **استخراجٌ لا نسخ** (درسُ D-289): المكانان يقرآن هذا المكوّن. والبياناتُ `x.pulse`
+ * في الردّ أصلاً. عملٌ بلا قلبٍ ولا تقييم لا يرسم شيئاً — صفرٌ بجانب قلبٍ إعلانُ فراغ.
+ */
+export function Pulse({ x, mine, onPress }: { x: TitleExtrasPayload | undefined; mine?: number | null; onPress?: () => void }) {
+  const { t, tokens, locale } = useApp();
+  const p = x?.pulse;
+  /* 🆕 D-1034 — **النجمةُ بابُ التقييم الدائم** حين يُمرَّر `onPress` (الترويسة): صفُّ النجوم حُذف و«شاهدته»
+     قلّاب، فلا بدّ من بابٍ للتعديل ولمن يقيّم في منتصف الموسم. فبلا مقيِّمين تُرسم **نجمةٌ مفرَّغةٌ خافتة**
+     بدل الفراغ — بابٌ يختفي حين لا أحدَ قيّم بابٌ مكسور. وممتلئةٌ لمن قيّم. */
+  if (onPress)
+    return (
+      <Pressable onPress={onPress} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.rateTitle} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.7 : 1 })}>
+        <Icon name={p && p.votes > 0 || mine != null ? "star-filled" : "star"} size={p && p.votes > 0 ? 13 : 16} color={p && p.votes > 0 || mine != null ? tokens.accent : tokens.muted} />
+        {p && p.votes > 0 ? (
+          <>
+            <Text size={12} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{p.avg.toFixed(1)}</Text>
+            <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>({num(p.votes, locale)})</Text>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  /* ⚖️ حكمُ أحمد على المسودّة: «القلب شيله، بس تقييم المجتمع» — النجمةُ والمتوسّطُ والعددُ وحدَها.
+     القلبُ عدّادُ إعجابٍ لا تقييم، ومكانُه تبويبُ المجتمع. فبلا مقيِّمين لا يُرسم شيء. */
+  if (!p || p.votes === 0) return null;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      {p.votes > 0 ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Icon name="star-filled" size={13} color={tokens.accent} />
+          <Text size={12} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{p.avg.toFixed(1)}</Text>
+          <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>({num(p.votes, locale)})</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | undefined; compact?: boolean }) {
   const { tokens, locale } = useApp();
   if (!x) return null;
@@ -61,22 +102,7 @@ export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | un
           <Text size={10} weight="700" muted>{r.rated}</Text>
         </View>
       ) : null}
-      {!compact && (p.hearts > 0 || p.votes > 0) ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          {p.hearts > 0 ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Icon name="heart-filled" size={13} color={tokens.accent} />
-              <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(p.hearts, locale)}</Text>
-            </View>
-          ) : null}
-          {p.votes > 0 ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Icon name="star-filled" size={13} color={tokens.accent} />
-              <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{p.avg.toFixed(1)} · {num(p.votes, locale)}</Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      {!compact ? <Pulse x={x} /> : null}
     </View>
   );
 }

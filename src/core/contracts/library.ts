@@ -151,3 +151,51 @@ export type ListPlaylistBody = { listId: string; on: boolean };
 export type SaveListBody = { listId: string; save: boolean };
 export type ToWatchBody = { on: boolean };
 export type HiddenRailsBody = { keys: string[] };
+
+/**
+ * 🆕 D-1036 — **صفحةُ القائمة شاشةٌ أصليّة** (`GET /api/v1/lists/[id]`): ما تحتاجه القراءةُ — الرأسُ
+ * والأعمالُ وشريطُ الحال وحالتي (الحفظ ورأيي). **حالُ المكتبة لكلِّ ملصقٍ ليست هنا**: التطبيقُ يقرؤها
+ * من كاش `me:library` الذي عنده أصلاً (كما تفعل «اكتشف») — فلا تُرسَل مرّتين ولا تتقادم في ردٍّ ثانٍ.
+ */
+export type ListDetailItem = {
+  kind: "tv" | "movie";
+  id: number;
+  title: string;
+  poster_path: string | null;
+  /** قائمةُ جائزة (D-995): سنةُ الفوز شارةً على الملصق؛ وإلّا `null` */
+  badge: number | null;
+};
+export type ListDetailPayload = {
+  id: string;
+  name: string;
+  subtitle: string | null;
+  kind: string;
+  is_public: boolean;
+  mine: boolean;
+  /** تمتلئ وحدَها (D-823) — لا إضافةَ ولا ترتيبَ يدويّ */
+  smart: boolean;
+  /** صاحبُها كما يُعرض — `null` لقائمتي؛ وقوائمُ لوبز صاحبُها «Loopz» */
+  owner: { name: string; username: string | null; avatar: string | null } | null;
+  items: ListDetailItem[];
+  saves: number;
+  reviews: number;
+  rating: number | null;
+  can_save: boolean;
+  saved_by_me: boolean;
+  can_review: boolean;
+  my_review: { rating: number; body: string | null; has_spoiler: boolean } | null;
+  /** آراءُ الناس **للقراءة** (الأحدثُ، حتّى ٣٠) بشكل صفِّ رأي العمل نفسِه؛ الردودُ والقلوبُ أعدادٌ — كتابتُهما في الويب */
+  review_rows: {
+    user_id: string;
+    name: string;
+    username: string | null;
+    avatar_url: string | null;
+    rating: number;
+    review: string | null;
+    has_spoiler: boolean;
+    updated_at: string;
+    likes: number;
+    replies: number;
+    mine: boolean;
+  }[];
+};

@@ -39,6 +39,8 @@ export const qk = {
   title: (kind: "tv" | "movie", id: number) => [`title:${kind}:${id}`] as const,
   season: (id: number, n: number) => [`title:tv:${id}`, "season", n] as const,
   person: (id: number) => [`person:${id}`] as const,
+  /** D-1036 — صفحةُ القائمة؛ المفتاحُ وسمُها (`list:<id>`) فتُبطلها كتاباتُ القوائم بالوسم نفسِه */
+  list: (id: string) => [`list:${id}`] as const,
 };
 
 export function invalidateTags(tags: Tag[]) {

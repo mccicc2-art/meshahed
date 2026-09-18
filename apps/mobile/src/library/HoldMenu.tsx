@@ -37,7 +37,7 @@ export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "dro
  * «شاهدته كلّه» · «تعليقك» · «غير مهتمّ» — **ولا «بطاقة حمراء»** (الإيقافُ فعلُ من
  * يتابع، ومن يتابع في المكتبة). **لوحٌ واحد لا ثانٍ**: `variant` يقرّر الصفوف.
  */
-export type HoldVariant = "library" | "discover";
+export type HoldVariant = "library" | "discover" | "list";
 
 export type Anchor = { x: number; y: number; width: number; height: number };
 
@@ -69,12 +69,14 @@ export function HoldMenu({
   const insets = useSafeAreaInsets();
 
   const rows: { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" }[] =
-    variant === "discover"
+    variant === "discover" || variant === "list"
       ? [
           { key: "towatch", icon: inList ? "check-line" : "plus", label: inList ? t.quickAddRemove : t.quickAddLabel },
           { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
           { key: "review", icon: "star", label: t.reviewSectionTitle },
-          { key: "dismiss", icon: "eye-off", label: t.notInterested },
+          /* D-1036 — `list`: صفوفُ «اكتشف» **بلا «غير مهتمّ»** — صاحبُ القائمة اختار العملَ، وإخفاؤه من
+             قائمة غيري ليس لي */
+          ...(variant === "discover" ? [{ key: "dismiss" as const, icon: "eye-off" as const, label: t.notInterested }] : []),
         ]
       : item.dropped
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]

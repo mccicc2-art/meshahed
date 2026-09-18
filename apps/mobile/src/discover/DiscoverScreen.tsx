@@ -6,12 +6,14 @@ import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
+import { nativeListId } from "../list/route";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import type { HoldAction } from "../library/HoldMenu";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
+import { useCardActs } from "../cardActs";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
@@ -126,10 +128,17 @@ export function DiscoverScreen() {
   const leaveTo = useCallback(
     (path: string) => {
       if (leaving) return;
+      /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
+         القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */
+      const listId = nativeListId(path);
+      if (listId) {
+        router.push({ pathname: "/list/[id]", params: { id: listId, from: "discover" } });
+        return;
+      }
       setLeaving(true);
       void shell.open(path, { returnTo: "discover" }).then(back);
     },
-    [leaving, back],
+    [leaving, back, router],
   );
   /* D-958 — خطأُ «مكتبتي» من صفّ التريلرات: مضيفُ الإشعار الواحد كما في المكتبة */
   /* ⚖️ D-1028 (F4) — الإشعارُ في مضيفه (`ToastHost`) لا في حالة الشاشة؛ و`setToast` ثابتةُ المرجع */
@@ -200,43 +209,20 @@ export function DiscoverScreen() {
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const hold = useCallback((card: CuratedCard, anchor: CardAnchor) => holdHost.current?.open(card, anchor), []);
   const onHeld = useCallback((c: CuratedCard | null) => store.setHeld(c ? `${c.kind}-${c.id}` : null), [store]);
-  const act = useCallback(
-    async (a: HoldAction, c: CuratedCard) => {
-      const key = `${c.kind}-${c.id}`;
-      if (a === "review") {
-        openCard(c);
-        return;
-      }
-      const before = store.override(key);
-      try {
-        if (a === "towatch") {
-          const inList = !!store.mark(key);
-          store.setOverride(key, inList ? null : { saved: true, progress: 0, completed: false, dropped: false });
-          if (inList) await write<unknown>("/api/v1/track/unfollow", { tmdbId: c.id, mediaType: c.kind } satisfies UnfollowBody);
-          else await write<unknown>("/api/v1/track/follow", { tmdbId: c.id, mediaType: c.kind, title: c.title, posterPath: c.poster_path } satisfies FollowBody);
-        } else if (a === "all") {
-          store.setOverride(key, { saved: false, progress: 100, completed: true, dropped: false });
-          if (c.kind === "tv") await write<unknown>("/api/v1/track/show-watched", { showTmdbId: c.id } satisfies ShowRefBody);
-          else await write<unknown>("/api/v1/track/movie", { movieTmdbId: c.id, runtime: null, watched: true } satisfies ToggleMovieBody);
-        } else if (a === "dismiss") {
-          setHidden((prev) => new Set(prev).add(key));
-          setToast(t.dismissedToast);
-          await write<unknown>("/api/v1/track/dismiss", { tmdbId: c.id, mediaType: c.kind } satisfies DismissBody);
-        }
-      } catch (e) {
-        /* التراجعُ عن التفاؤل عند الفشل — والبطاقةُ المخفيّةُ تعود */
-        store.setOverride(key, before);
-        if (a === "dismiss")
-          setHidden((prev) => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
-        onError(e);
-      }
+  /* D-1036 — الأفعالُ نفسُها صارت في `useCardActs` (تقرؤها صفحةُ القائمة الأصليّة أيضاً) */
+  const onDismiss = useCallback(
+    (key: string, hide: boolean) => {
+      setHidden((prev) => {
+        const next = new Set(prev);
+        if (hide) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+      if (hide) setToast(t.dismissedToast);
     },
-    [store, openCard, onError, t, setToast],
+    [t, setToast],
   );
+  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError, onDismiss });
   /** بطاقةُ القائمة بشكل `CardItem` — الحقولُ التي تقرؤها `HoldMenu` وحدَها؛ تُحسب لحظةَ الفتح */
   const heldItemOf = useCallback(
     (c: CuratedCard): CardItem => {

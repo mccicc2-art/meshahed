@@ -24,20 +24,9 @@ import { ListDetail } from "@/components/ListDetail";
 import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
-import { getWatchRegion } from "@/lib/locale";
-import { buildSection } from "@/lib/sections";
-import { titleOf, awardWinners } from "@/lib/tmdb";
-import {
-  browseToFilter,
-  ruleMedia,
-  ruleToBrowse,
-  ruleToQuery,
-  sanitizeRule,
-  SMART_LIST_LIMIT,
-  isRuleSource,
-  type RuleSource,
-} from "@/lib/smartLists";
-import { evaluateLibraryRule } from "@/lib/librarySmart";
+import { awardWinners } from "@/lib/tmdb";
+import { ruleToQuery } from "@/lib/smartLists";
+import { resolveSmartItems } from "@/lib/listItems";
 
 /**
  * قائمة واحدة.
@@ -184,44 +173,8 @@ export default async function ListPage({
   /* 🆕 **والمصدرُ يفرّق القارئَ** (D-876): **`library` تُقوَّم من جداولنا**
      (`evaluateLibraryRule`) **و`catalog` من `buildSection`** — **وشرطٌ
      يُطهَّر بمفردات مصدره.** */
-  const smartSource: RuleSource = isRuleSource(data.list.rule_source) ? data.list.rule_source : "catalog";
-  const smartRule = data.list.kind === "smart" ? sanitizeRule(data.list.rule, smartSource) : null;
-  const smartRows = smartRule
-    ? await (async () => {
-        try {
-          if (smartSource === "library") {
-            const rows = await evaluateLibraryRule(smartRule, SMART_LIST_LIMIT);
-            return rows.map((r) => ({
-              tmdb_id: r.tmdb_id,
-              media_type: r.media_type,
-              title: r.title,
-              poster_path: r.poster_path,
-              added_at: r.added_at,
-              sort_order: null,
-            }));
-          }
-          const media = ruleMedia(smartRule);
-          const browse = ruleToBrowse(smartRule);
-          const region = await getWatchRegion();
-          const { base, genreIds } = await browseToFilter(browse, { media, watchRegion: region });
-          const rows = await buildSection(
-            "my-row",
-            { media, base, genreIds, active: browse.active, win: "week", winRange: null, locale },
-            SMART_LIST_LIMIT,
-          );
-          return rows.map((r) => ({
-            tmdb_id: r.id,
-            media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
-            title: titleOf(r) || "",
-            poster_path: r.poster_path ?? null,
-            added_at: "",
-            sort_order: null,
-          }));
-        } catch {
-          return [];
-        }
-      })()
-    : null;
+  /* D-1036 — الحسابُ نفسُه صار في `resolveSmartItems` (تقرؤه شاشةُ التطبيق الأصليّة أيضاً) */
+  const { rule: smartRule, source: smartSource, rows: smartRows } = await resolveSmartItems(data.list, locale);
 
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
      فلا تظهر قائمةٌ عربية داخل واجهةٍ إنجليزية */

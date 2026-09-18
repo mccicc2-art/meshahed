@@ -33,6 +33,7 @@ export const RailCard = memo(function RailCard({
   note,
   onHold,
   held: heldProp = false,
+  rankTone,
 }: {
   card: CuratedCard;
   /** رقمُ الترتيب (١..) — للمرتَّب وحدَه */
@@ -45,6 +46,8 @@ export const RailCard = memo(function RailCard({
   onHold?: (card: CuratedCard, anchor: CardAnchor) => void;
   /** البطاقةُ المضغوطةُ الآن — إطارٌ ذهبيٌّ كإطار `PosterHold` الويب */
   held?: boolean;
+  /** D-1036 — سنةُ الفوز في قائمة جائزة تُكتب **بلون التمييز** كالويب (D-995)؛ الرتبةُ بيضاءُ كما كانت */
+  rankTone?: "accent";
 }) {
   const { tokens } = useApp();
   /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
@@ -79,7 +82,7 @@ export const RailCard = memo(function RailCard({
           <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 48 }} contentFit="fill" />
         ) : null}
         {rank !== null ? (
-          <Text size={24} weight="700" color="#fff" style={[styles.rank, { position: "absolute", bottom: 4, start: 6 }]}>
+          <Text size={24} weight="700" color={rankTone === "accent" ? tokens.accent : "#fff"} style={[styles.rank, { position: "absolute", bottom: 4, start: 6 }]}>
             {String(rank)}
           </Text>
         ) : null}

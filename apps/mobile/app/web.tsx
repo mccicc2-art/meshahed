@@ -116,6 +116,9 @@ function insideUrl(url: string | undefined): boolean {
   }
 }
 
+/* D-1035 — مساراتٌ لها خانتُها في الشريط: بلوغُ أحدها يُنهي «من أين جئت» */
+const ROOTS = ["/library", "/news", "/discover", "/people", "/community", "/search"];
+
 export default function Web() {
   const { loading, signInWithGoogle } = useAuth();
   const router = useRouter();
@@ -125,6 +128,9 @@ export default function Web() {
   const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [path, setPath] = useState("/");
+  /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
+     صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
+  const [origin, setOrigin] = useState<"library" | "discover" | null>(null);
   const handing = useRef(false);
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
@@ -149,19 +155,21 @@ export default function Web() {
   useEffect(() => {
     if (typeof u !== "string" || !u || !u.startsWith("/")) return;
     pending.current = CONFIG.apiBase + u;
+    setOrigin(shell.returnTo);
     if (ready && !handing.current) flush();
   }, [u, ready, flush]);
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
     /* D-1012 — الخانةُ المضيئةُ تُقرأ من المسار (الويبُ لم يعد يرسم شريطَه داخل الغلاف) */
-    setPath(() => {
-      try {
-        return new URL(nav.url).pathname;
-      } catch {
-        return "/";
-      }
-    });
+    let next = "/";
+    try {
+      next = new URL(nav.url).pathname;
+    } catch {
+      /* عنوانٌ لا يُقرأ ⇒ الرئيسيّة */
+    }
+    setPath(next);
+    if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
     /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
     shell.arrived(nav.url, nav.loading);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
@@ -323,6 +331,15 @@ export default function Web() {
     : path.startsWith("/news") || path.startsWith("/discover") ? "news"
     : path.startsWith("/people") || path.startsWith("/community") ? "people"
     : path.startsWith("/search") ? "search"
+    /* 🔴 D-1035 — **صفحةٌ فُتحت من شاشةٍ أصليّة تُبقي خانتَها مضيئة** (بلاغُ أحمد بلقطة على 1.10.0: «دخلت
+       لقائمة في ليست.. ليش فكّها لي في الهوم؟»): مسارُ `/list/…` لا يطابق خانةً فكان يسقط على «الرئيسيّة»
+       — فيبدو أنّ التطبيق نقله إلى قسمٍ آخر. الآن ما لا خانةَ لمساره يرث **من أين جاء** (`origin` — تُؤخذ من
+       `shell.returnTo` لحظةَ الفتح، وهي التي يعود إليها زرُّ الرجوع: الضوءُ والرجوعُ يقولان الشيءَ نفسَه)، والقوائمُ بلا أصلٍ
+       معروفٍ بيتُها «المكتبة». الصفحةُ الرئيسيّةُ نفسُها (`/`) تبقى «الرئيسيّة» مهما كان الأصل. */
+    : path === "/" || path === "" ? "home"
+    : origin === "library" ? "library"
+    : origin === "discover" ? "news"
+    : path.startsWith("/list") ? "library"
     : "home";
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SHELL_BG }}>

@@ -64,6 +64,8 @@ function Shell() {
         <Stack.Screen name="library" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="discover" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
+        {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
+        <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       </Stack>
     </>

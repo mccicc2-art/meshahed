@@ -11,6 +11,7 @@ import { Sheet } from "../library/Sheet";
 import { StarRow } from "./StarRow";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
+import { posterFor } from "../poster";
 import type { TitleCommunityPayload } from "../contracts";
 
 /**
@@ -101,7 +102,8 @@ export function CommunityTab({
   );
 }
 
-function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }) {
+/** D-1036 — مُصدَّرٌ: صفحةُ القائمة الأصليّة ترسم آراءَ الناس بالصفِّ نفسِه (شكلٌ واحدٌ للرأي) */
+export function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(!r.has_spoiler);
   return (
@@ -145,46 +147,106 @@ function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }) {
   );
 }
 
-/** ورقةُ رأيي — التقييمُ ١–١٠ والنصُّ و«فيها حرق»؛ الحفظُ عبر `track/rate` (بيد المستدعي) */
+/**
+ * انبثاقُ التقييم — النجومُ ١–١٠ والتعليقُ و«فيها حرق»؛ الحفظُ عبر `track/rate` (بيد المستدعي).
+ *
+ * 🆕 D-1033 — **انبثاقٌ وسطيٌّ بتصميمٍ اختاره أحمد** (ثلاثُ مسودّاتٍ ثمّ «ممتاز نفّذ»): رأسٌ بملصق العمل
+ * واسمِه وسطرِ حال، ثمّ **الدرجةُ رقماً كبيراً بلون التمييز** فوق عشر نجومٍ تملأ العرض، ثمّ حقلُ التعليق
+ * **ظاهراً لا مطويّاً** (طلبُه)، ثمّ «فيها حرق»، ثمّ زرّان. **مكوّنٌ واحدٌ لكلِّ تقييم** — العملُ من «شاهدته»
+ * ومن آخر حلقة ومن نجمة الترويسة ومن تبويب المجتمع، **والحلقةُ** من نجمتها: شكلان للسؤال نفسِه عيب.
+ *
+ * 🔑 **حالتان لا مكوّنان**: `prompt` (سؤالٌ صعد بعد «شاهدته»: سطرُ الحال أخضرُ «أُشّر كمُشاهَد»، والزرُّ
+ * الثانويّ «لاحقاً») وغيرُها (فتحه صاحبُه: «إلغاء»، و«حذف تقييمي» إن كان له تقييمٌ ومرّر المنادي `onRemove`).
+ * ⚖️ «فيها حرق» **رقاقةٌ لا مفتاحُ تبديل** كما في المسودّة: عائلتا التحكّم اثنتان (segmented · chip)
+ * ومفتاحٌ ثالثٌ عيبٌ يُبلَّغ. **ولا نصَّ جديداً في القاموس** — كلُّ كلمةٍ هنا مفتاحٌ قائم.
+ */
 export function ReviewSheet({
   initial,
   busy,
   onClose,
   onSave,
   title,
+  head,
+  prompt = false,
+  onRemove,
 }: {
   initial: { rating: number | null; review: string | null; has_spoiler: boolean };
-  /** D-1015 — عنوانُ الورقة: «قيّم هذا العمل» افتراضاً، أو «قيّم الموسم س الحلقة ص» */
+  /** D-1015 — اسمُ السؤال: «قيّم هذا العمل» افتراضاً، أو «قيّم الموسم س الحلقة ص» */
   title?: string;
+  /** رأسُ الانبثاق: العملُ الذي يُقيَّم — بلا رأسٍ يبقى العنوانُ النصّيّ */
+  head?: { name: string; posterPath: string | null };
+  /** صعد وحدَه بعد «شاهدته»/آخر حلقة — لا فتحه صاحبُه */
+  prompt?: boolean;
+  /** «حذف تقييمي» — يُرسم فقط لمن له تقييمٌ محفوظ */
+  onRemove?: () => void;
   busy: boolean;
   onClose: () => void;
   onSave: (v: { rating: number; review: string | null; has_spoiler: boolean }) => void;
 }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale } = useApp();
   const [rating, setRating] = useState(initial.rating ?? 0);
   const [body, setBody] = useState(initial.review ?? "");
   const [spoiler, setSpoiler] = useState(initial.has_spoiler);
+  const had = initial.rating != null;
+  const ask = title ?? t.rateTitle;
+  const poster = head ? posterFor(head.posterPath, 40) : null;
   return (
-    <Sheet title={title ?? t.rateTitle} onClose={onClose}>
+    <Sheet
+      title={ask}
+      onClose={onClose}
+      placement="center"
+      header={
+        head ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ width: 40, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
+              {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <Text size={17} weight="700" numberOfLines={1}>{head.name}</Text>
+              {prompt ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="check-line" size={13} color={tokens.success} />
+                  <Text size={12} color={tokens.success}>{t.watchedMarked}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : undefined
+      }
+    >
       <View style={{ gap: 12 }}>
-        {/* D-1006 — نجومٌ ورقمُها كورقة المراجعة الويبيّة */}
-        <StarRow value={rating || null} onChange={(n) => setRating(n ?? 0)} />
+        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <Text size={13} muted numberOfLines={1} style={{ flex: 1 }}>{had ? t.listReviewMine : ask}</Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 3 }}>
+            <Text size={30} weight="700" color={rating ? tokens.accent : tokens.border} style={{ fontVariant: ["tabular-nums"], lineHeight: 36 }}>{rating ? num(rating, locale) : "–"}</Text>
+            <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>/{num(10, locale)}</Text>
+          </View>
+        </View>
+        <StarRow spread size={22} value={rating || null} onChange={(n) => setRating(n ?? 0)} />
         <TextInput
           value={body}
           onChangeText={setBody}
           multiline
-          numberOfLines={6}
+          numberOfLines={3}
           maxLength={2000}
           placeholder={t.reviewPlaceholder}
           placeholderTextColor={tokens.muted}
           textAlignVertical="top"
-          style={{ minHeight: 6 * 22 + 24, borderRadius: radius.control, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left" }}
+          /* ثلاثةُ أسطرٍ لا ستّة: الصندوقُ في الوسط ولوحةُ المفاتيح تأخذ نصفَ الشاشة — وما زاد يُمرَّر داخل الحقل */
+          style={{ minHeight: 3 * 22 + 24, maxHeight: 5 * 22 + 24, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left" }}
         />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flexDirection: "row" }}>
           <Chip label={t.spoilerMark} active={spoiler} onPress={() => setSpoiler((v) => !v)} leading={<Icon name={spoiler ? "eye-off" : "eye"} size={14} color={spoiler ? tokens.onAccent : tokens.muted} />} />
-          <View style={{ flex: 1 }} />
-          <Button label={t.doneLabel} busy={busy} disabled={!rating} onPress={() => onSave({ rating, review: body.trim() || null, has_spoiler: spoiler })} />
         </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
+          <Button label={prompt ? t.tourLater : t.cancelLabel} variant="ghost" onPress={onClose} />
+          <Button label={t.doneLabel} busy={busy} disabled={!rating} style={{ flex: 1 }} onPress={() => onSave({ rating, review: body.trim() || null, has_spoiler: spoiler })} />
+        </View>
+        {had && onRemove && !prompt ? (
+          <Pressable onPress={onRemove} hitSlop={8} disabled={busy} style={{ alignSelf: "center", paddingVertical: 4 }}>
+            <Text size={13} color={tokens.error}>{t.deleteRating}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Sheet>
   );

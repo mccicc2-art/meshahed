@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
+import { nativeListId } from "../list/route";
 import { Button, Text } from "../ui";
 import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
@@ -161,10 +162,17 @@ export function LibraryScreen() {
   const leaveTo = useCallback(
     (path: string) => {
       if (leaving) return;
+      /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
+         القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */
+      const listId = nativeListId(path);
+      if (listId) {
+        router.push({ pathname: "/list/[id]", params: { id: listId, from: "library" } });
+        return;
+      }
       setLeaving(true);
       void shell.open(path, { returnTo: "library" }).then(back);
     },
-    [leaving, back],
+    [leaving, back, router],
   );
 
   /* D-956 — صفحةُ العمل أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ؛ المكتبةُ تبقى تحتها */

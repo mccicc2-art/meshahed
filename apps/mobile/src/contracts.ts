@@ -40,6 +40,8 @@ export type {
   QueueOrderBody,
   SmartListBody,
   UiStateBody,
+  ListDetailPayload,
+  ListDetailItem,
 } from "@/core/contracts/library";
 export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload, TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";
 export type {

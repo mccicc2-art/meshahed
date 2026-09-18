@@ -11,6 +11,7 @@ import { Sheet } from "../library/Sheet";
 import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
+import { formatDateShort } from "@/core/when";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, WatchUpToBody } from "../contracts";
 
 /**
@@ -122,8 +123,24 @@ export function SeasonAccordion({
                   <Icon name="chevron-down" size={16} color={tokens.muted} />
                 </View>
                 <Text size={15} weight="700">{s.name || t.seasonLabel(s.season_number)}</Text>
-                <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{s.aired}</Text>
+                {/* 🆕 D-1029 — **موسمٌ لم يُبثّ منه شيء لا يُكتب «0/0»** (بلاغُ أحمد بلقطة، The Pitt الموسم ٣:
+                    «فاضي… المفترض على نفس الخط يظهر تاريخ بدء الموسم وعدد الحلقات»): «٠ من ٠» كسرٌ بلا
+                    معنى يُقرأ عطلاً. فمكانَ العدّاد **عددُ حلقاته المعلَن**، ومكانَ «الموسم كامل» (لا شيء
+                    يُعلَّم بعد) **تاريخُ بدئه** بصيغة الحلقات نفسِها (`airsOn` + `formatDateShort`) — والحقلان
+                    في الردّ أصلاً (`episode_count` · `air_date`) فلا نداءَ جديداً. موسمٌ بلا عددٍ ولا تاريخ
+                    يبقى اسمُه وحدَه: لا نخترع ما لم تعلنه TMDB. */}
+                {s.aired > 0 ? (
+                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{s.aired}</Text>
+                ) : s.episode_count > 0 ? (
+                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{t.episodesCount(s.episode_count)}</Text>
+                ) : null}
               </Pressable>
+              {s.aired === 0 && s.air_date ? (
+                <Text size={12} muted style={{ paddingVertical: 12, fontVariant: ["tabular-nums"] }}>
+                  {/* تاريخٌ مضى ولم تصل حلقاتُه بعد (TMDB تتأخّر): التاريخُ وحدَه — «يُعرض» لماضٍ كذبة */}
+                  {s.air_date > new Date().toISOString().slice(0, 10) ? t.airsOn(formatDateShort(s.air_date, t)) : formatDateShort(s.air_date, t)}
+                </Text>
+              ) : null}
               {s.aired > 0 ? (
                 <Pressable onPress={() => whole.mutate({ season: s.season_number, on: !done })} hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, opacity: pressed || whole.isPending ? 0.6 : 1 })}>
                   {done ? <Icon name="check-line" size={14} color={tokens.success} /> : null}
@@ -312,6 +329,7 @@ function SeasonBody({
       {rating !== null ? (
         <ReviewSheet
           title={t.epRateAria(season, rating)}
+          head={{ name: show.name, posterPath: show.poster_path }}
           initial={{
             rating: eps.find((e) => e.episode_number === rating)?.my_rating ?? null,
             review: eps.find((e) => e.episode_number === rating)?.my_review ?? null,
