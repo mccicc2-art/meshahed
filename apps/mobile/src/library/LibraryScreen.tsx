@@ -424,8 +424,12 @@ export function LibraryScreen() {
       ) : null}
 
       {/* خانةٌ تحت الشريط (D-453/D-671): «الإحصائيات» و«النشاط» بابان إلى الويب، والقلبُ مِصفاةٌ لمن له مفضّلة — **وتغيب في تبويب القوائم** (D-832) */}
+      {/* 🆕 D-1018 — **الثلاثةُ في إطارٍ واحدٍ بخلفيّةٍ سوداء والقلبُ أحمر** (تصميمُ أحمد،
+          ١٨ سبتمبر): كانت ثلاثةَ أزرارٍ بخلفيّة `surface` وفواصلَ بينها والقلبُ أصفر. الآن
+          إطارٌ واحدٌ كصفِّ أفعال صفحة العمل (D-1014): بلا فواصلَ ولا خلفيّةٍ للخانة النشطة،
+          والقلبُ يمتلئ حمرةً حين يُضغط فتُعرض المفضّلةُ وحدَها. */}
       {activeTab !== "lists" ? (
-      <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
+      <View style={{ flexDirection: "row", marginHorizontal: PAGE_PAD, marginTop: 12, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
         {(
           [
             { path: "/stats", icon: "chart", label: t.statsPageTitle },
@@ -435,7 +439,7 @@ export function LibraryScreen() {
           <Pressable
             key={b.path}
             onPress={() => leaveTo(b.path)}
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
           >
             <Icon name={b.icon} size={17} color={tokens.accent} />
             <Text size={14} weight="700">{b.label}</Text>
@@ -447,9 +451,9 @@ export function LibraryScreen() {
             accessibilityRole="togglebutton"
             accessibilityState={{ checked: fav }}
             accessibilityLabel={t.profileFavoritesRail}
-            style={{ paddingHorizontal: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: fav ? tokens.accent : tokens.border, backgroundColor: fav ? tokens.accent + "1A" : tokens.surface }}
+            style={({ pressed }) => ({ width: 58, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
           >
-            <Icon name={fav ? "heart-filled" : "heart"} size={19} color={tokens.accent} />
+            <Icon name={fav ? "heart-filled" : "heart"} size={19} color={tokens.error} />
           </Pressable>
         ) : null}
       </View>

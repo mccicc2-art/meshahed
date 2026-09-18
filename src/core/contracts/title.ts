@@ -94,8 +94,10 @@ export type SeasonEpisode = {
    * المستخدمُ التقييمات. `undefined` = لم تُطلب؛ `null` = طُلبت ولا رقم.
    */
   imdb_rating?: number | null;
-  /** تقييمي لهذه الحلقة (ورأيي) — من `episode_ratings_of`، فارغٌ للزائر */
+  /** تقييمي لهذه الحلقة — من `episode_ratings_of`، فارغٌ للزائر */
   my_rating?: number | null;
+  /** تعليقي عليها (D-1015) */
+  my_review?: string | null;
 };
 
 export type SeasonPayload = {

@@ -44,7 +44,10 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
             borderWidth: 1,
             borderBottomWidth: 0,
             borderColor: tokens.border,
-            backgroundColor: tokens.elevated,
+            /* D-1019 — **الورقةُ سوداءُ كالشاشة** (طلبُ أحمد بثلاث لقطات، ١٨ سبتمبر): كانت
+               `elevated` (رماديٌّ داكن) فتبدو لوحاً طافياً بلونٍ آخر؛ السوادُ نفسُه مع الحدِّ
+               العلويِّ والسِّترِ خلفها يكفيان لفصلها عمّا تحتها. */
+            backgroundColor: tokens.bg,
             paddingBottom: (kb > 0 ? kb : insets.bottom) + 20,
           }}
         >

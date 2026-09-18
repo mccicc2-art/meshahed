@@ -416,12 +416,18 @@ export function TrailerPlayer({
         </View>
       ) : (
         <Pressable
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { elevation: 6, zIndex: 6 }]}
           accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
           onPress={(e) => onSurface(e.nativeEvent.locationX)}
         />
       )}
       {idle ? null : (
+      /* 🔴 D-1016 — **الأدواتُ فوق الـWebView بالارتفاع لا بالترتيب** (بلاغُ أحمد بتسجيل على
+         1.9.3: «ما أقدر أوقف الفيديو أو أحطّ ميوت»): منذ D-987 صار المشغّلُ طبقةً فوق
+         المصغّرة، وعلى أندرويد **يُرسم الـWebView الأصليُّ فوق كلِّ ما يليه من طبقات JS ما لم
+         يُرفع بارتفاعٍ صريح** — فالأزرارُ تُرسم (نراها) ولا تصلها اللمسة. `elevation`
+         و`zIndex` على طبقة الأدوات يرفعانها فوقه حقّاً. */
+      <View style={[StyleSheet.absoluteFill, { elevation: 8, zIndex: 8 }]} pointerEvents="box-none">
       <>
 
       {/* 🔇 **زرُّ الصوت في رُكن السطح** (D-964، طلبُ أحمد بلقطةٍ معلَّمةٍ على الرُكن
@@ -478,6 +484,7 @@ export function TrailerPlayer({
         </View>
       ) : null}
       </>
+      </View>
       )}
     </View>
   );

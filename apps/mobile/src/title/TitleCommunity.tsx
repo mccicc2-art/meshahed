@@ -151,8 +151,11 @@ export function ReviewSheet({
   busy,
   onClose,
   onSave,
+  title,
 }: {
   initial: { rating: number | null; review: string | null; has_spoiler: boolean };
+  /** D-1015 — عنوانُ الورقة: «قيّم هذا العمل» افتراضاً، أو «قيّم الموسم س الحلقة ص» */
+  title?: string;
   busy: boolean;
   onClose: () => void;
   onSave: (v: { rating: number; review: string | null; has_spoiler: boolean }) => void;
@@ -162,7 +165,7 @@ export function ReviewSheet({
   const [body, setBody] = useState(initial.review ?? "");
   const [spoiler, setSpoiler] = useState(initial.has_spoiler);
   return (
-    <Sheet title={t.rateTitle} onClose={onClose}>
+    <Sheet title={title ?? t.rateTitle} onClose={onClose}>
       <View style={{ gap: 12 }}>
         {/* D-1006 — نجومٌ ورقمُها كورقة المراجعة الويبيّة */}
         <StarRow value={rating || null} onChange={(n) => setRating(n ?? 0)} />

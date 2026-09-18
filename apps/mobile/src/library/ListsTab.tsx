@@ -171,19 +171,20 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+        {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014) */}
+        <View style={{ flexDirection: "row", marginBottom: 16, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
           <Pressable
             onPress={() => setCreating(true)}
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
           >
             <Icon name="plus" size={14} color={tokens.fg} />
             <Text size={14} weight="700">{t.listNewGroup}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSmart(true)}
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
           >
-            <Icon name="sparkle-star" size={14} color={tokens.fg} />
+            <Icon name="sparkle-star" size={14} color={tokens.accent} />
             <Text size={14} weight="700">{t.smartListLabel}</Text>
           </Pressable>
         </View>

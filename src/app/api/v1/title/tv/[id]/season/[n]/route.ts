@@ -40,7 +40,7 @@ export async function GET(
         getSeason(tvId, seasonNumber),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
         withRatings ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => ({}) as Record<number, number>) : Promise.resolve({} as Record<number, number>),
-        withRatings && uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, { rating: number }>()) : Promise.resolve(new Map<string, { rating: number }>()),
+        withRatings && uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, { rating: number; review: string | null }>()) : Promise.resolve(new Map<string, { rating: number; review: string | null }>()),
       ]);
       const payload: SeasonPayload = {
         tv_id: tvId,
@@ -57,6 +57,7 @@ export async function GET(
             ? {
                 imdb_rating: imdb[e.episode_number] ?? null,
                 my_rating: mine.get(episodeKey(seasonNumber, e.episode_number))?.rating ?? null,
+                my_review: mine.get(episodeKey(seasonNumber, e.episode_number))?.review ?? null,
               }
             : {}),
         })),

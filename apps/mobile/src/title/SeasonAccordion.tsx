@@ -9,7 +9,7 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
-import { StarRow } from "./StarRow";
+import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, WatchUpToBody } from "../contracts";
@@ -56,7 +56,8 @@ export function SeasonAccordion({
         const done = s.aired > 0 && inSeason >= s.aired;
         const isOpen = open === s.season_number;
         return (
-          <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, overflow: "hidden" }}>
+          /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
+          <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
             <Pressable onPress={() => setOpen(isOpen ? null : s.season_number)} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text size={15} weight="700">{s.name || t.seasonLabel(s.season_number)}</Text>
@@ -105,13 +106,23 @@ function SeasonBody({
     staleTime: 60_000,
     placeholderData: (prev) => prev,
   });
+  /**
+   * 🔴 D-1015 — **ورقةُ تقييم الحلقة كورقة تقييم العمل** (بلاغُ أحمد بثلاث لقطات على 1.9.3:
+   * «تقييم الحلقة ما يشتغل… أبغى انبثاقاً مثل تقييم المسلسل أحدّد التقييم وأكتب تعليقاً»):
+   * كانت الورقةُ نجوماً عاريةً تكتب بلمسةٍ واحدة وتُغلق — **ولا أثرَ يُرى**، لأنّ `my_rating`
+   * لا يصل إلا حين يُفتح مفتاحُ التقييمات (`?r=1`)، وكاشُ التفاؤل كان يُكتب على مفتاحٍ غير
+   * المفتاح النشط. الآن `ReviewSheet` نفسُها (نجوم + تعليق + حارقٌ + «تمّ»)، والكتابةُ تُحدّث
+   * المفتاحَ النشط **وتفتح مفتاحَ التقييمات** كي تُرى النجمةُ فوراً.
+   */
   const rate = useMutation({
-    mutationFn: (v: { episode: number; rating: number | null }) =>
-      write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, runtime } satisfies EpisodeRateBody),
+    mutationFn: (v: { episode: number; rating: number; review: string | null }) =>
+      write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, review: v.review, runtime } satisfies EpisodeRateBody),
     onMutate: (v) => {
-      qc.setQueryData<SeasonPayload>([...qk.season(show.id, season), "r"], (prev) =>
-        prev ? { ...prev, episodes: prev.episodes.map((e) => (e.episode_number === v.episode ? { ...e, my_rating: v.rating } : e)) } : prev,
-      );
+      setShowRatings(true);
+      for (const key of [[...qk.season(show.id, season), "r"], [...qk.season(show.id, season), ""]] as const)
+        qc.setQueryData<SeasonPayload>(key, (prev) =>
+          prev ? { ...prev, episodes: prev.episodes.map((e) => (e.episode_number === v.episode ? { ...e, my_rating: v.rating, my_review: v.review } : e)) } : prev,
+        );
     },
     onSuccess: onSettled,
     onError,
@@ -266,16 +277,20 @@ function SeasonBody({
         );
       })}
       {rating !== null ? (
-        <Sheet title={t.epRateAria(season, rating)} onClose={() => setRating(null)}>
-          <StarRow
-            value={eps.find((e) => e.episode_number === rating)?.my_rating ?? null}
-            clearable
-            onChange={(n) => {
-              rate.mutate({ episode: rating, rating: n });
-              setRating(null);
-            }}
-          />
-        </Sheet>
+        <ReviewSheet
+          title={t.epRateAria(season, rating)}
+          initial={{
+            rating: eps.find((e) => e.episode_number === rating)?.my_rating ?? null,
+            review: eps.find((e) => e.episode_number === rating)?.my_review ?? null,
+            has_spoiler: false,
+          }}
+          busy={rate.isPending}
+          onClose={() => setRating(null)}
+          onSave={(v) => {
+            rate.mutate({ episode: rating, rating: v.rating, review: v.review });
+            setRating(null);
+          }}
+        />
       ) : null}
     </View>
   );
