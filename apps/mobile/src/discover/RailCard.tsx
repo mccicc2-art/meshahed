@@ -5,7 +5,8 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { StatusThread, type CardAnchor } from "../library/PosterCard";
-import { posterUrl } from "@/core/media";
+import { posterFor } from "../poster";
+import { useCardState } from "../cardStore";
 import type { CuratedCard } from "../contracts";
 
 /**
@@ -27,11 +28,11 @@ export type LibMark = { saved: boolean; progress: number; completed: boolean; dr
 export const RailCard = memo(function RailCard({
   card,
   rank,
-  lib,
+  lib: libProp,
   onPress,
   note,
   onHold,
-  held = false,
+  held: heldProp = false,
 }: {
   card: CuratedCard;
   /** رقمُ الترتيب (١..) — للمرتَّب وحدَه */
@@ -46,7 +47,12 @@ export const RailCard = memo(function RailCard({
   held?: boolean;
 }) {
   const { tokens } = useApp();
-  const uri = posterUrl(card.poster_path, "w342");
+  /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
+     وبلا مخزن (صفحةُ الشخص) الخاصّيّتان كما كانتا */
+  const cs = useCardState(`${card.kind}-${card.id}`);
+  const lib = cs.store ? cs.mark : libProp;
+  const held = cs.store ? cs.held : heldProp;
+  const uri = posterFor(card.poster_path, RAIL_CARD_W);
   const ref = useRef<View>(null);
   return (
     <Pressable
@@ -67,7 +73,7 @@ export const RailCard = memo(function RailCard({
           borderColor: held ? tokens.accent : tokens.border,
         }}
       >
-        {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={`${card.kind}-${card.id}`} /> : null}
+        {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" recyclingKey={`${card.kind}-${card.id}`} /> : null}
         {/* `h-12 bg-gradient-to-t from-black/90` — حجابُ الملصق نفسُه (`poster-veil`) */}
         {rank !== null || card.imdb_rating !== null ? (
           <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 48 }} contentFit="fill" />

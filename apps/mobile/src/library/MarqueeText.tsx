@@ -16,13 +16,39 @@ export function MarqueeText({
   weight,
   color,
   style,
+  active = true,
 }: {
   text: string;
   size?: number;
   weight?: "400" | "500" | "600" | "700" | "800";
   color?: string;
   style?: TextProps["style"];
+  /** D-1025 (F1) — `false`: سطرٌ ساكنٌ بلا قياسٍ ولا حركة (بطاقةٌ خارج الشاشة). الافتراضيُّ
+      `true` فكلُّ منادٍ قديمٍ على حاله. */
+  active?: boolean;
 }) {
+  if (!active) return <StillLine text={text} size={size} weight={weight} color={color} style={style} />;
+  return <MovingLine text={text} size={size} weight={weight} color={color} style={style} />;
+}
+
+type LineProps = { text: string; size?: number; weight?: "400" | "500" | "600" | "700" | "800"; color?: string; style?: TextProps["style"] };
+
+/**
+ * الساكن — القصُّ `clip` لا «…»: السطرُ الماشي يبدأ مقصوصاً من طرفه بلا نقاط، فالبطاقةُ
+ * التي تدخل الشاشة لا يتبدّل شكلُ اسمها حين تُفعَّل (التصميمُ مجمَّد في Phase 11-F).
+ */
+function StillLine({ text, size, weight, color, style }: LineProps) {
+  return (
+    <View style={{ overflow: "hidden" }}>
+      <Text size={size} weight={weight} color={color} numberOfLines={1} ellipsizeMode="clip" style={style}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/* مكوّنان لا فرعٌ داخل واحد: خطّافاتُ القياس والحركة لا تُركَّب أصلاً للساكن */
+function MovingLine({ text, size, weight, color, style }: LineProps) {
   const [boxW, setBoxW] = useState(0);
   const [textW, setTextW] = useState(0);
   const x = useRef(new Animated.Value(0)).current;

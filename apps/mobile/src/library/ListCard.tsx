@@ -5,7 +5,7 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { Icon } from "../icons";
-import { posterUrl } from "@/core/media";
+import { posterFor } from "../poster";
 import { num } from "@/core/i18n";
 
 /**
@@ -75,7 +75,8 @@ export function ListCard({
   busy?: boolean;
 }) {
   const { t, tokens, locale } = useApp();
-  const posters = card.posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[];
+  /* D-1027 (F3) — شريحةُ الغلاف ~٩٦dp: المقاسُ من القاعدة الواحدة فيطابق رابطَ بطاقة المكتبة */
+  const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
   const play =
     card.playlist === null ? null : (
       <Pressable
@@ -128,7 +129,7 @@ export function ListCard({
       ) : posters.length > 0 ? (
         <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
           {posters.slice(0, 3).map((uri, i) => (
-            <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} />
+            <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
           ))}
         </View>
       ) : null}

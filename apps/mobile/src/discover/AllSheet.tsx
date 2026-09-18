@@ -21,9 +21,7 @@ const GAP = 10;
 export function AllSheet({
   title,
   query,
-  marks,
   hidden,
-  heldKey,
   onHold,
   onOpen,
   onClose,
@@ -31,9 +29,7 @@ export function AllSheet({
   title: string;
   /** استعلامُ `see_all` بعد `?` (`m=…&s=…&…`) — مع `s` مأخوذاً من المسار */
   query: string;
-  marks: Map<string, LibMark>;
   hidden: ReadonlySet<string>;
-  heldKey: string | null;
   onHold: (c: CuratedCard, anchor: CardAnchor) => void;
   onOpen: (c: CuratedCard) => void;
   onClose: () => void;
@@ -64,13 +60,12 @@ export function AllSheet({
         key={cols}
         numColumns={cols}
         keyExtractor={(c) => `${c.kind}-${c.id}`}
-        extraData={heldKey}
         columnWrapperStyle={{ gap: GAP }}
         contentContainerStyle={{ gap: GAP, paddingBottom: 8 }}
         style={{ maxHeight: 560 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <RailCard card={item} rank={null} lib={marks.get(`${item.kind}-${item.id}`) ?? null} onPress={onOpen} onHold={onHold} held={heldKey === `${item.kind}-${item.id}`} />
+          <RailCard card={item} rank={null} lib={null} onPress={onOpen} onHold={onHold} />
         )}
         ListEmptyComponent={q.isLoading ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 40 }} /> : <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.browseEmpty}</Text>}
         ListFooterComponent={

@@ -36,6 +36,7 @@ const eslintConfig = defineConfig([
       "src/app/api/trailer-signal/route.ts",
       "src/app/api/native-signal/route.ts", // تشخيصُ بوّابة الشاشات الأصليّة (١٤ سبتمبر) — يُزال مع الإصلاح
       "src/app/api/v1/app/crash/route.ts", // D-974 — سقوطُ شاشةٍ أصليّة ⇢ `runtime_errors` (قراءةُ لوحة الإدارة، مستخدمٌ مسجَّل ومحدود)
+      "src/app/api/v1/app/perf/route.ts", // D-1024 — علاماتُ أداء الشاشات الأصليّة ⇢ `runtime_errors` بنوع `perf` (مستخدمٌ مسجَّل ومحدود، صفرُ نصٍّ حرّ)
       "src/app/p/[[]code[]]/route.ts",
     ],
     rules: {

@@ -66,6 +66,21 @@ export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = 
   return tmdbImage(path, size);
 }
 
+/**
+ * D-1027 (Phase 11-F · F3) — **مقاسُ الملصق من عرض البطاقة وكثافة الشاشة، بقاعدةٍ واحدة.**
+ * التطبيقُ كان يطلب `w342` لبطاقة «اكتشف» (١١٢dp) و`w185` لكلِّ بطاقةٍ ≤ ١٢٠dp في المكتبة —
+ * وعلى شاشة ٣× بطاقةُ ١١٨dp تحتاج ~٣٥٤ بكسلاً، فملصقاتُ المكتبة باهتة، والعملُ نفسُه يُنزَّل
+ * بمقاسين. القاعدة: أصغرُ مقاسٍ يغطّي البكسلات الفعليّة؛ **والبطاقةُ ≤ ١٣٠dp سقفُها `w342`**
+ * — `w500` هناك نطاقٌ يُحرق لفرقٍ لا تراه عين.
+ * دالّةٌ نقيّة (النواةُ مشتركةٌ مع الويب): كثافةُ الشاشة يمرّرها المنادي.
+ */
+export function posterSizeFor(widthDp: number, pixelRatio: number): "w185" | "w342" | "w500" {
+  const px = widthDp * pixelRatio;
+  if (px <= 185) return "w185";
+  if (px <= 342 || widthDp <= 130) return "w342";
+  return "w500";
+}
+
 export function backdropUrl(path: string | null, size: "w300" | "w500" | "w780" | "w1280" = "w1280") {
   return tmdbImage(path, size);
 }

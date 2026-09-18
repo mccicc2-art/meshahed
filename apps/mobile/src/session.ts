@@ -42,6 +42,9 @@ export const BACKGROUND_CLEAR_MS = 5 * 60_000;
 
 const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
+/** D-1026 (F2) — من يسمع **الخروج** (لا مجرّدَ شيخوخة الرمز): كاشُ الملفّ يُمسح هنا وحدَه */
+const signOutListeners = new Set<() => void>();
+
 function emit() {
   for (const l of listeners) l();
 }
@@ -62,6 +65,18 @@ export const session = {
   },
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
+  },
+  onSignOut(l: () => void): () => void {
+    signOutListeners.add(l);
+    return () => signOutListeners.delete(l);
+  },
+  /**
+   * D-1026 (F2) — **خروجٌ أو تبدّلُ مستخدم**، لا رمزٌ شاخ: `clear()` تُنادى كلَّ ساعةٍ وبعد كلِّ
+   * خلفيّةٍ طويلة ولا تعني أنّ صاحبَ الجهاز تغيّر؛ هذه تعنيه — فيُمسح معها ما حُفظ له.
+   */
+  signOut() {
+    session.clear();
+    for (const l of signOutListeners) l();
   },
   clear() {
     const had = !!access;
@@ -114,7 +129,7 @@ export const session = {
    */
   receive(msg: Record<string, unknown>, hostOk: boolean): boolean {
     if (msg.type === "session:clear") {
-      session.clear();
+      session.signOut();
       return true;
     }
     if (msg.type !== "session") {

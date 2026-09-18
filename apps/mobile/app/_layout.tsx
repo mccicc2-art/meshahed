@@ -9,6 +9,7 @@ import { AppStateProvider, useApp } from "../src/state";
 import { queryClient } from "../src/api";
 import { applyDirection, currentLocale } from "../src/i18n";
 import { useAppFonts } from "../src/fonts";
+import { startCachePersist } from "../src/cachePersist";
 
 /**
  * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
@@ -17,6 +18,8 @@ import { useAppFonts } from "../src/fonts";
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
 applyDirection(currentLocale());
+/* D-1026 (F2) — الكاشُ المحفوظ يُعاد قبل أوّل شاشة: «المكتبة» تفتح على ما عُرض آخرَ مرّة */
+startCachePersist();
 
 
 export default function RootLayout() {

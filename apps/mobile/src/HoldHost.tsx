@@ -1,0 +1,85 @@
+import React, { useCallback, useImperativeHandle, useState } from "react";
+import { HoldMenu, type HoldAction, type HoldVariant } from "./library/HoldMenu";
+import type { CardAnchor, CardItem } from "./library/PosterCard";
+import { Toast } from "./ui";
+
+/**
+ * ====== مضيفا القائمة والإشعار — D-1028 (Phase 11-F · F4) ======
+ *
+ * **لماذا**: `held` و`busy` و`toast` كانت حالةً في جذر الشاشتين — فكلُّ ضغطةٍ مطوّلة وكلُّ
+ * إشعارٍ يعيد رسمَ الشاشة بألواحها وصفوفها، وما تغيّر فعلاً قائمةٌ طافيةٌ أو سطرُ نصّ.
+ * الآن كلٌّ منهما **مكوّنٌ يملك حالتَه ويُركَّب مرّةً خارج `TabSlide`**، والشاشةُ تكلّمه بمرجعٍ
+ * أمريّ (`open` · `say`) — فلا يعيد رسمَ نفسه إلّا هو.
+ *
+ * 🔑 **ليسا نسخةً ثانية**: `HoldMenu` هي نفسُها و`Toast` هو نفسُه (مضيفٌ واحد، D-…) — هذان
+ * **غلافان للحالة** لا للشكل. لا مقاسَ ولا لونَ هنا.
+ */
+export type HoldHostRef<P> = { open: (payload: P, anchor: CardAnchor) => void; close: () => void };
+
+export function HoldHost<P>({
+  hostRef,
+  variant,
+  toItem,
+  inListOf,
+  onAction,
+  onHeld,
+}: {
+  hostRef: React.Ref<HoldHostRef<P>>;
+  variant: HoldVariant;
+  /** بطاقةُ القائمة بشكل `CardItem` — تُحسب عند الفتح من حال تلك اللحظة */
+  toItem: (payload: P) => CardItem;
+  inListOf?: (payload: P) => boolean;
+  /** الفعلُ نفسُه بوعده — القائمةُ تُغلق فوراً، و`busy` يحجب فعلاً ثانياً حتّى يعود */
+  onAction: (a: HoldAction, payload: P) => Promise<void> | void;
+  /** من يريد أن يعرف أيُّ بطاقةٍ مضغوطةٌ الآن (الإطارُ الذهبيّ في «اكتشف») */
+  onHeld?: (payload: P | null) => void;
+}) {
+  const [held, setHeld] = useState<{ payload: P; anchor: CardAnchor; item: CardItem; inList: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const close = useCallback(() => {
+    setHeld(null);
+    onHeld?.(null);
+  }, [onHeld]);
+  useImperativeHandle(
+    hostRef,
+    () => ({
+      open(payload, anchor) {
+        setHeld({ payload, anchor, item: toItem(payload), inList: inListOf ? inListOf(payload) : false });
+        onHeld?.(payload);
+      },
+      close,
+    }),
+    [toItem, inListOf, onHeld, close],
+  );
+  if (!held) return null;
+  return (
+    <HoldMenu
+      variant={variant}
+      item={held.item}
+      anchor={held.anchor}
+      busy={busy}
+      inList={held.inList}
+      onAction={(a) => {
+        const { payload } = held;
+        close();
+        setBusy(true);
+        void Promise.resolve(onAction(a, payload)).finally(() => setBusy(false));
+      }}
+      onClose={close}
+    />
+  );
+}
+
+export type ToastHostRef = { say: (text: string) => void };
+
+/** الإشعارُ الواحد بمؤقّته (٣٫٢ث كما كان) — `say` ثابتةُ المرجع فتمرّ إلى الألواح بلا إعادة رسم */
+export function ToastHost({ hostRef, bottom }: { hostRef: React.Ref<ToastHostRef>; bottom: number }) {
+  const [text, setText] = useState<string | null>(null);
+  useImperativeHandle(hostRef, () => ({ say: setText }), []);
+  React.useEffect(() => {
+    if (!text) return;
+    const id = setTimeout(() => setText(null), 3200);
+    return () => clearTimeout(id);
+  }, [text]);
+  return text ? <Toast text={text} bottom={bottom} /> : null;
+}

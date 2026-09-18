@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { span } from "./perfMarks";
 import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 /**
@@ -64,6 +65,7 @@ export function TabSlide<K extends string>({
   onTab,
   render,
   style,
+  perfScreen,
 }: {
   /** مفاتيحُ التبويبات بترتيب ظهورها — المخفيُّ لا يُذكر فلا يُزار */
   order: readonly K[];
@@ -73,6 +75,8 @@ export function TabSlide<K extends string>({
       `active` يقول إن كان هذا هو اللوحَ النشط (D-975: الجارُ لا يحمّي مشغّلاً) */
   render: (key: K, active: boolean) => React.ReactNode;
   style?: ViewStyle;
+  /** F0 (D-1024) — اسمُ الشاشة لعلامة `tab.arm`؛ بلا اسمٍ لا قياس */
+  perfScreen?: "library" | "discover";
 }) {
   const { width } = useWindowDimensions();
   /* الاتّجاهُ فيزيائيٌّ لا لغويّ: «التالي» في جهة النهاية — يساراً في LTR ويميناً في RTL */
@@ -95,6 +99,11 @@ export function TabSlide<K extends string>({
   st.current = { order, tab, width, phys };
   const onTabRef = useRef(onTab);
   onTabRef.current = onTab;
+  /* F0 (D-1024) — `tab.arm`: من تسليح الجار عند قفل الإيماءة إلى أوّل تخطيطٍ للوحه. هذا
+     أثقلُ تركيبٍ في الشاشة ويقع والإصبعُ يتحرّك — رقمُه يحسم F6 (نُبقي `TabSlide` أم نبدّله). */
+  const armEnd = useRef<(() => void) | null>(null);
+  const perfRef = useRef(perfScreen);
+  perfRef.current = perfScreen;
 
   const glide = useCallback(
     (to: number, ms: number, then?: () => void) => {
@@ -119,6 +128,7 @@ export function TabSlide<K extends string>({
           const dir: 1 | -1 = g.dx * s.phys < 0 ? 1 : -1;
           const next = i >= 0 ? s.order[i + dir] : undefined;
           /* التسليحُ عند القفل (D-523): الجارُ يُركَّب حيّاً أوّلَ ما يسأل الإصبع عنه */
+          if (next && sideRef.current !== next && perfRef.current) armEnd.current = span("tab.arm", { screen: perfRef.current, tab: next });
           if (next) mount(next);
           pos.setValue(base + (next ? Math.max(-s.width, Math.min(s.width, g.dx)) : g.dx * RUBBER));
         },
@@ -193,6 +203,7 @@ export function TabSlide<K extends string>({
           return (
             <View
               key={k}
+              onLayout={on ? undefined : () => { armEnd.current?.(); armEnd.current = null; }}
               style={{ position: "absolute", top: 0, bottom: 0, width, start: Math.max(0, order.indexOf(k)) * width, pointerEvents: on ? "auto" : "none" }}
             >
               {render(k, on)}

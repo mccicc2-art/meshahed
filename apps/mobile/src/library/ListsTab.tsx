@@ -13,7 +13,8 @@ import { ListCard, type ListCardData } from "./ListCard";
 import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
 import { ReorderSheet } from "./ReorderSheet";
 import { SmartListSheet } from "./SmartListSheet";
-import { profileUrl, posterUrl } from "@/core/media";
+import { profileUrl } from "@/core/media";
+import { posterFor } from "../poster";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
 
@@ -362,11 +363,11 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
               {group.items.map((x) => {
                 const w = Math.floor((width - 32 - 24) / 3);
-                const uri = posterUrl(x.poster, "w185");
+                const uri = posterFor(x.poster, w);
                 return (
                   <Pressable key={x.key} onPress={() => onOpenWeb(`/${x.media_type === "tv" ? "show" : "movie"}/${x.tmdb_id}`)} style={{ width: w }}>
                     <View style={{ width: w, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-                      {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                      {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
                     </View>
                     <Text size={12} weight="600" numberOfLines={2} style={{ marginTop: 6, lineHeight: 15 }}>{x.title}</Text>
                   </Pressable>

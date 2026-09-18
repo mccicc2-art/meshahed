@@ -6,7 +6,7 @@ import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "./Sheet";
-import { posterUrl } from "@/core/media";
+import { posterFor } from "../poster";
 import type { QueueItem } from "../contracts";
 
 /**
@@ -159,7 +159,7 @@ export function ReorderSheet({
         >
           {order.map((it, i) => {
             const dragging = from === i;
-            const url = posterUrl(it.poster_path, "w185");
+            const url = posterFor(it.poster_path, 36);
             return (
               <Animated.View
                 key={it.key}

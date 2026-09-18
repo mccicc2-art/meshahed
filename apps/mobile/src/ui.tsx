@@ -46,7 +46,21 @@ export function Screen({ children, style, ...rest }: ViewProps) {
  * ووزنه — عنوانٌ مثل «Breaking Bad — الموسم ٣» يُرسم بخطّين كما في الصفحة.
  * وقبل تحميل الخطوط يُرسم بخطّ النظام بالوزن نفسِه، لا فراغاً.
  */
+/* D-1028 (F4) — النتيجةُ محفوظةٌ بالنصّ: الدالّةُ تمرّ بتعبيرٍ نمطيٍّ على **كلِّ حرف** في **كلِّ رسمةٍ**
+   لكلِّ `Text`، والنصوصُ تتكرّر (عناوينُ الصفوف، أسماءُ الأعمال). سقفٌ ٥٠٠ ثمّ يُفرَّغ — أبسطُ من LRU
+   ويكفي: ما على الشاشة يعود إليها في رسمةٍ واحدة. والمصفوفةُ تُقرأ ولا تُعدَّل. */
+const RUNS_CACHE = new Map<string, { s: string; ar: boolean }[]>();
+const RUNS_MAX = 500;
 function runsOf(text: string): { s: string; ar: boolean }[] {
+  const hit = RUNS_CACHE.get(text);
+  if (hit) return hit;
+  const out = splitRuns(text);
+  if (RUNS_CACHE.size >= RUNS_MAX) RUNS_CACHE.clear();
+  RUNS_CACHE.set(text, out);
+  return out;
+}
+
+function splitRuns(text: string): { s: string; ar: boolean }[] {
   const out: { s: string; ar: boolean }[] = [];
   let cur = "";
   let curAr: boolean | null = null;

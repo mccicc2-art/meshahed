@@ -1,23 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text, Toast } from "../ui";
+import { Button, Text } from "../ui";
 import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
-import { HoldMenu, type HoldAction } from "./HoldMenu";
+import type { HoldAction } from "./HoldMenu";
+import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
 import { Logo } from "../Logo";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
+import { afterPaint, coldStartOnce, span } from "../perfMarks";
 import { BottomNav, navHeight } from "../BottomNav";
 import { OneTimeHint } from "./OneTimeHint";
+import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
@@ -95,11 +99,27 @@ export function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
   const navH = navHeight(insets.bottom);
+  const focused = useIsFocused();
 
   const data = useQuery({
     queryKey: qk.tag("me:library"),
     queryFn: async () => (await api<LibraryPayload>("/api/v1/me/library")).data,
   });
+
+  /* F0 (D-1024) — `library.open`: من تركيب الشاشة إلى أوّل تخطيطٍ للوحٍ فيه بيانات. و`cached`
+     يقول إن كانت البياناتُ في الكاش لحظةَ التركيب — فيُقرأ أثرُ F2 من الرقم نفسِه. */
+  const [endOpen] = useState(() => span("library.open", { cached: queryClient.getQueryData(qk.tag("me:library")) ? 1 : 0 }));
+  const onPaneReady = useCallback(() => {
+    endOpen();
+    coldStartOnce("coldstart.library");
+  }, [endOpen]);
+  /* `library.flatgrid`: يبدأ حين يغيّر صاحبُها الترتيبَ أو البحث، وينتهي بعد رسم الشبكة المسطّحة */
+  const flatEnd = useRef<((more?: { count: number }) => void) | null>(null);
+  const onFlatPainted = useCallback((count: number) => {
+    const end = flatEnd.current;
+    flatEnd.current = null;
+    if (end) afterPaint(() => end({ count }));
+  }, []);
 
   const [tab, setTab] = useState<Tab | null>(memory.tab);
   const activeTab: Tab = tab ?? data.data?.default_tab ?? "shows";
@@ -108,9 +128,11 @@ export function LibraryScreen() {
     memory.tab = tab;
     memory.open = [...open] as LibraryStatus[];
   }, [tab, open]);
-  const [held, setHeld] = useState<{ item: CardItem; anchor: CardAnchor } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  /* ⚖️ D-1028 (F4) — `held`/`busy`/`toast` خرجت من حالة الشاشة إلى مضيفَيها (`HoldHost` ·
+     `ToastHost`): ضغطةٌ مطوّلةٌ أو إشعارٌ لا يعيدان رسمَ الألواح. و`say`/`hold` ثابتتا المرجع. */
+  const holdHost = useRef<HoldHostRef<CardItem>>(null);
+  const toastHost = useRef<ToastHostRef>(null);
+  const say = useCallback((text: string) => toastHost.current?.say(text), []);
   /* B4 — أدواتُ الصفحة: بحثٌ وترتيبٌ ومفضّلة (حالةُ الشاشة كما في `LibraryGrid`) */
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<LibrarySort>("smart");
@@ -151,7 +173,7 @@ export function LibraryScreen() {
     [router],
   );
 
-  const hold = useCallback((item: CardItem, anchor: CardAnchor) => setHeld({ item, anchor }), []);
+  const hold = useCallback((item: CardItem, anchor: CardAnchor) => holdHost.current?.open(item, anchor), []);
 
   /** تعديلُ الكاش تفاؤليّاً — الوصفةُ الواحدة للحالة (D-876) تُعاد هنا من الرقمين */
   const patch = useCallback((key: string, fn: (x: LibraryItem) => LibraryItem) => {
@@ -165,11 +187,7 @@ export function LibraryScreen() {
   }, []);
 
   const act = useCallback(
-    async (a: HoldAction) => {
-      const h = held;
-      if (!h) return;
-      const { item } = h;
-      setHeld(null);
+    async (a: HoldAction, item: CardItem) => {
       if (a === "review") {
         openTitle(item);
         return;
@@ -183,7 +201,6 @@ export function LibraryScreen() {
         if (aired > 0 && w >= aired && w > 0) return "completed";
         return w > 0 ? "watching" : "unstarted";
       };
-      setBusy(true);
       try {
         if (a === "drop" || a === "resume") {
           const dropped = a === "drop";
@@ -208,19 +225,12 @@ export function LibraryScreen() {
         void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
         const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
         const msg = (t as unknown as Record<string, unknown>)[key];
-        setToast(typeof msg === "string" ? msg : t.apiInternal);
-      } finally {
-        setBusy(false);
+        say(typeof msg === "string" ? msg : t.apiInternal);
       }
     },
-    [held, openTitle, patch, t],
+    [openTitle, patch, t, say],
   );
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 3200);
-    return () => clearTimeout(id);
-  }, [toast]);
+  const asItem = useCallback((item: CardItem) => item, []);
 
   /* بناءُ بطاقات التبويب — الوصفةُ في `library/page.tsx`: التقدّمُ من
      `watched/aired`، والعدُّ المتبقّي حين بدأ ولم يكتمل ولم يُوقَف. */
@@ -242,14 +252,24 @@ export function LibraryScreen() {
   /* D-947 — الخمسةُ بعدّاداتها كما في `LibraryGrid` (`shows.length` بعد قاطع
      D-946 · `artistCount` · `lists + saved`)، بترتيب صاحبها، والمخفيُّ يغيب
      إلّا إن كان المفتوح (`applyTabPrefs` حرفاً). */
-  const allItems = data.data?.items ?? [];
+  /* D-1028 (F4) — العدّاداتُ الثلاثة بمرورٍ واحدٍ محفوظ: كانت `nOf` تصفّي المصفوفةَ كلَّها ثلاثَ
+     مرّاتٍ في **كلِّ** رسمة (وكلُّ حرفٍ في البحث رسمة). القسمةُ قسمةُ D-946 حرفاً. */
+  const coreCounts = useMemo(() => {
+    const n = { shows: 0, movies: 0, anime: 0 };
+    for (const x of data.data?.items ?? []) {
+      if (x.is_anime === true) n.anime += 1;
+      else if (x.kind === "tv") n.shows += 1;
+      else if (x.kind === "movie") n.movies += 1;
+    }
+    return n;
+  }, [data.data]);
   const nOf = (k: Tab) =>
     k === "shows"
-      ? allItems.filter((x) => x.kind === "tv" && x.is_anime !== true).length
+      ? coreCounts.shows
       : k === "movies"
-        ? allItems.filter((x) => x.kind === "movie" && x.is_anime !== true).length
+        ? coreCounts.movies
         : k === "anime"
-          ? allItems.filter((x) => x.is_anime === true).length
+          ? coreCounts.anime
           : k === "artists"
             ? (data.data?.artist_count ?? 0)
             : (data.data?.list_count ?? 0);
@@ -301,10 +321,10 @@ export function LibraryScreen() {
       } catch (e) {
         const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
         const msg = (t as unknown as Record<string, unknown>)[key];
-        setToast(typeof msg === "string" ? msg : t.apiInternal);
+        say(typeof msg === "string" ? msg : t.apiInternal);
       }
     },
-    [leaveTo, t],
+    [leaveTo, t, say],
   );
   const openWeb = leaveTo;
 
@@ -471,11 +491,12 @@ export function LibraryScreen() {
         order={tabsOrder}
         tab={activeTab}
         onTab={setTab}
-        render={(k) =>
+        perfScreen="library"
+        render={(k, on) =>
           k === "artists" ? (
             <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : k === "lists" ? (
-            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={say} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : (
             <LibraryPane
               tab={k}
@@ -495,6 +516,9 @@ export function LibraryScreen() {
               onHold={hold}
               onClearSearch={() => setQ("")}
               onLeave={leaveTo}
+              onReady={on ? onPaneReady : undefined}
+              onFlatPainted={on ? onFlatPainted : undefined}
+              focused={focused}
             />
           )
         }
@@ -516,9 +540,15 @@ export function LibraryScreen() {
       {tools ? (
         <ToolsSheet
           q={q}
-          onQ={setQ}
+          onQ={(v) => {
+            if (v.trim()) flatEnd.current = span("library.flatgrid");
+            setQ(v);
+          }}
           sort={sort}
-          onSort={setSort}
+          onSort={(v) => {
+            if (v !== "smart") flatEnd.current = span("library.flatgrid");
+            setSort(v);
+          }}
           showFilters={coreTab}
           tabs={tabPrefs}
           tabLabels={tabLabels}
@@ -535,14 +565,14 @@ export function LibraryScreen() {
           onClose={() => setTools(false)}
         />
       ) : null}
-      {held ? <HoldMenu item={held.item} anchor={held.anchor} busy={busy} onAction={(a) => void act(a)} onClose={() => setHeld(null)} /> : null}
+      <HoldHost hostRef={holdHost} variant="library" toItem={asItem} onAction={act} />
       {leaving ? (
         /* D-951 — حجابٌ يمنع ضغطةً ثانية، ومؤشّرٌ صغيرٌ فوق المكتبة حتّى تصل الصفحة (أقلّ من ثانية عادةً) */
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />
         </View>
       ) : null}
-      {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
+      <ToastHost hostRef={toastHost} bottom={navH + 16} />
     </View>
   );
 }
@@ -571,6 +601,9 @@ function LibraryPane({
   onHold,
   onClearSearch,
   onLeave,
+  onReady,
+  onFlatPainted,
+  focused,
 }: {
   tab: Tab;
   data: { data?: LibraryPayload; isLoading: boolean; isError: boolean; refetch: () => unknown };
@@ -592,6 +625,12 @@ function LibraryPane({
   onHold: (item: CardItem, anchor: CardAnchor) => void;
   onClearSearch: () => void;
   onLeave: (path: string) => void;
+  /** F0 (D-1024) — أوّلُ تخطيطٍ للّوح وفيه بيانات؛ للنشط وحدَه */
+  onReady?: () => void;
+  /** F0 — الشبكةُ المسطّحة التزمت بهذا العدد؛ للنشط وحدَه */
+  onFlatPainted?: (count: number) => void;
+  /** F1 — الشاشةُ ظاهرةٌ لا مغطّاةٌ بصفحة عمل؛ تُطفأ الأسماءُ الماشيةُ حين تُغطّى */
+  focused: boolean;
 }) {
   const { t, locale } = useApp();
   /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
@@ -633,6 +672,95 @@ function LibraryPane({
     return [...by].map(([status, items]) => ({ status, items }));
   }, [grouped, list]);
 
+  /* D-1025 (F1) — الصفوفُ المسطّحة للقائمة الافتراضيّة */
+  const rows = useMemo(() => buildRows(grouped, list, groups, open, cols), [grouped, list, groups, open, cols]);
+  const [sight] = useState(createRowSight);
+  useEffect(() => sight.setFocused(focused), [sight, focused]);
+  const onViewable = useCallback(({ viewableItems }: { viewableItems: { item: Row }[] }) => sight.set(viewableItems.map((v) => v.item.key)), [sight]);
+
+  const onToggle = useCallback(
+    (status: LibraryStatus, count: number, opening: boolean) => {
+      /* F0 — `library.shelf.open`: من الضغطة إلى ما بعد رسم الشبكة، بعدد ما فيها */
+      if (opening) afterPaint(span("library.shelf.open", { count }));
+      setOpen((prev) => {
+        const next = new Set(prev);
+        if (next.has(status)) next.delete(status);
+        else next.add(status);
+        return next;
+      });
+    },
+    [setOpen],
+  );
+  const renderRow = useCallback(
+    ({ item: r }: { item: Row }) =>
+      r.t === "grid" ? (
+        <GridRow row={r} cellW={cellW} sight={sight} onOpen={onOpen} onHold={onHold} />
+      ) : r.t === "header" ? (
+        <HeaderRow row={r} onToggle={onToggle} />
+      ) : r.t === "rail" ? (
+        <RailRow row={r} sight={sight} onOpen={onOpen} onHold={onHold} />
+      ) : (
+        <SoloRow row={r} sight={sight} onOpen={onOpen} onHold={onHold} />
+      ),
+    [cellW, sight, onOpen, onHold, onToggle],
+  );
+
+  /* 🔑 **ذاكرةُ التمرير** (`memory.y[tab]` — عقدُ المالك: الرجوعُ لا يقفز إلى الأعلى): `ScrollView`
+     كان يأخذ `contentOffset` ابتداءً، و`FlashList` لا يملكه — فيُستعاد الموضعُ بـ`scrollToOffset`
+     عند أوّل تحميل، **واللوحُ شفّافٌ حتّى يستقرّ** فلا تُرى القفزةُ من الصفر. والموضعُ يُقرأ
+     مرّةً عند التركيب: أحداثُ التمرير الأولى تكتب في `memory` قبل الاستعادة.
+     ⚖️ الثمن معلَن: القائمةُ الافتراضيّة تقدّر ارتفاعَ ما لم تقسه بعد، فموضعٌ عميقٌ قد يرسو
+     بفارق صفٍّ — يُراجَع على الجهاز. وأحداثُ ما قبل الاستعادة لا تصل الكسوةَ الذكيّة: قفزةُ
+     الاستعادة ليست «نزولاً» فلا تُخفي الرأس. */
+  const listRef = useRef<FlashListRef<Row>>(null);
+  const [startY] = useState(() => memory.y[tab] ?? 0);
+  const [shown, setShown] = useState(startY <= 0);
+  const restored = useRef(startY <= 0);
+  const restore = useCallback(() => {
+    if (restored.current) return;
+    listRef.current?.scrollToOffset({ offset: startY, animated: false });
+    afterPaint(() => {
+      restored.current = true;
+      setShown(true);
+    });
+  }, [startY]);
+  /* حزامُ أمان: لوحٌ لم يبلّغ تحميلَه (قائمةٌ فرغت في الأثناء) لا يبقى شفّافاً */
+  const waiting = data.isLoading;
+  useEffect(() => {
+    if (shown || waiting) return;
+    const id = setTimeout(() => {
+      restored.current = true;
+      setShown(true);
+    }, 600);
+    return () => clearTimeout(id);
+  }, [shown, waiting]);
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!restored.current) return;
+      memory.y[tab] = e.nativeEvent.contentOffset.y;
+      onScroll(e);
+    },
+    [tab, onScroll],
+  );
+  /* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت الأدوات)، **ولا يُرسم
+     إن قُرئ في الحساب** — على أيِّ جهاز. **رأسُ قائمةٍ لا صفٌّ فيها** (F1): الصفُّ يُنزع حين
+     يبتعد، والتلميحُ يعلن قراءتَه عند نزعه — فكان التمريرُ وحدَه سيُعلنه مقروءاً. */
+  const hintSeen = (data.data?.hints ?? []).includes("library-hold");
+  const hint = useMemo(
+    () =>
+      hintSeen ? null : (
+        <View style={{ paddingHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }}>
+          <OneTimeHint id="library-hold" text={t.longPressHint} />
+        </View>
+      ),
+    [hintSeen, t],
+  );
+
+  /* F0 — بعد كلِّ التزامٍ لشبكةٍ مسطّحة يُخبَر الأبُ؛ هو يعرف إن كان ينتظر قياساً */
+  useEffect(() => {
+    if (!grouped && list.length > 0) onFlatPainted?.(list.length);
+  }, [grouped, list, onFlatPainted]);
+
   /* ملاحظةُ التصنيف تعيش فوق اللوح المطلق (تحت الرأس مباشرةً) لا داخل التمرير */
   const note = classifying ? (
     <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8, position: "absolute", top: topPad, left: 0, right: 0, zIndex: 1 }}>{t.animeClassifying}</Text>
@@ -660,77 +788,149 @@ function LibraryPane({
       />,
     );
   return wrap(
-    <ScrollView
-      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 28 }}
-      showsVerticalScrollIndicator={false}
-      contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
-      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}
-      scrollEventThrottle={16}
-    >
-      {/* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت
-          الأدوات)، **ولا يُرسم إن قُرئ في الحساب** — على أيِّ جهاز */}
-      {!(data.data?.hints ?? []).includes("library-hold") ? (
-        <OneTimeHint id="library-hold" text={t.longPressHint} />
-      ) : null}
-      {!grouped ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-          {list.map(({ c }) => (
-            <PosterCard key={c.key} item={c} width={cellW} onPress={onOpen} onHold={onHold} />
-          ))}
-        </View>
-      ) : null}
-      {groups.map((g) => {
-        const isOpen = open.has(g.status);
-        const solo = g.items.length === 1;
-        const toggle = () =>
-          setOpen((prev) => {
-            const next = new Set(prev);
-            if (next.has(g.status)) next.delete(g.status);
-            else next.add(g.status);
-            return next;
-          });
-        return (
-          <View key={g.status}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
-              <Pressable onPress={toggle} hitSlop={6}>
-                <Text size={22} weight="700">{statusLabel(g.status, t)}</Text>
-              </Pressable>
-              <Pressable onPress={toggle} hitSlop={8}>
-                <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>
-                  {isOpen ? t.closeLabel : String(g.items.length)}
-                </Text>
-              </Pressable>
-            </View>
-            <View style={{ height: 4 }} />
-            {isOpen ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-                {g.items.map((it) => (
-                  <PosterCard key={it.key} item={it} width={cellW} onPress={onOpen} onHold={onHold} />
-                ))}
-              </View>
-            ) : solo ? (
-              <PosterCard item={g.items[0]} width={RAIL_W} onPress={onOpen} onHold={onHold} />
-            ) : (
-              <FlatList
-                horizontal
-                data={g.items}
-                keyExtractor={(it) => it.key}
-                renderItem={({ item }) => <PosterCard item={item} width={RAIL_W} onPress={onOpen} onHold={onHold} />}
-                showsHorizontalScrollIndicator={false}
-                /* `-mx-4 px-4`: الصفُّ يلامس حافّةَ الشاشة ويبدأ من الهامش */
-                style={{ marginHorizontal: -PAGE_PAD }}
-                contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP, paddingBottom: 4 }}
-                initialNumToRender={6}
-                windowSize={5}
-              />
-            )}
-          </View>
-        );
-      })}
-    </ScrollView>,
+    <View style={{ flex: 1, opacity: shown ? 1 : 0 }}>
+      <FlashList
+        ref={listRef}
+        data={rows}
+        renderItem={renderRow}
+        keyExtractor={rowKey}
+        getItemType={rowType}
+        /* `open` يغيّر نصَّ الرأس («إغلاق» بدل العدد) — وهو داخل الصفّ أصلاً، فلا `extraData` */
+        ListHeaderComponent={hint}
+        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad }}
+        showsVerticalScrollIndicator={false}
+        onLayout={onReady}
+        onLoad={restore}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={onViewable}
+        viewabilityConfig={VIEWABILITY}
+      />
+    </View>,
     true,
   );
 }
+
+/**
+ * ====== صفوفُ اللوح — D-1025 (Phase 11-F · F1) ======
+ *
+ * **لماذا**: الرفُّ المفتوح والشبكةُ المسطّحة كانا `flexWrap` + `.map()` داخل `ScrollView`:
+ * رفٌّ من ٤٠٠ عمل يركّب ٤٠٠ بطاقة دفعةً (كلٌّ بصورتين وسطرٍ يقيس نفسَه ويمشي) — فيتجمّد
+ * الفتح. الآن اللوحُ **قائمةٌ افتراضيّةٌ واحدة** (`FlashList`) من صفوفٍ مسطّحة: ما على الشاشة
+ * وجوارُه يُركَّب، والباقي لا.
+ *
+ * 🔑 **يتبدّل ما يحمل القائمة لا ما تعرضه** (التصميمُ مجمَّد): الفواصلُ نفسُها بالبكسل —
+ * ٢٨ بين الرفوف، ٦ بين رأس الرفّ وجسمه (`mb 2` + فاصل ٤)، ١٢ بين صفوف الشبكة — لكنّها
+ * صارت `mt` على الصفّ لأنّ القائمة الافتراضيّة لا تعرف `gap`. وحشوةُ الصفحة ١٦ انتقلت
+ * من الحاوية إلى كلِّ صفٍّ، **إلّا الرفَّ الأفقيّ** الذي كان يُلغيها بـ`-mx-4` ليلامس الحافّة.
+ * والرفُّ المطويُّ `FlatList` الأفقيُّ نفسُه بلا تغيير.
+ */
+type Row =
+  | { t: "header"; key: string; mt: number; status: LibraryStatus; count: number; open: boolean }
+  | { t: "rail"; key: string; mt: number; items: CardItem[] }
+  | { t: "solo"; key: string; mt: number; item: CardItem }
+  | { t: "grid"; key: string; mt: number; items: CardItem[] };
+
+const SHELF_GAP = 28;
+/* نصفُ الصفّ ظاهراً يكفي ليمشي اسمُه — وأقلُّ منه تحت الرأس أو الشريط فلا يُقرأ أصلاً */
+const VIEWABILITY = { itemVisiblePercentThreshold: 50, minimumViewTime: 120 } as const;
+const rowKey = (r: Row) => r.key;
+const rowType = (r: Row) => r.t;
+
+function gridRows(prefix: string, items: CardItem[], cols: number, firstMt: number): Row[] {
+  const out: Row[] = [];
+  for (let i = 0; i < items.length; i += cols)
+    out.push({ t: "grid", key: `${prefix}:${items[i].key}`, mt: i === 0 ? firstMt : GAP, items: items.slice(i, i + cols) });
+  return out;
+}
+
+function buildRows(grouped: boolean, list: { c: CardItem }[], groups: { status: LibraryStatus; items: CardItem[] }[], open: Set<string>, cols: number): Row[] {
+  if (!grouped) return gridRows("flat", list.map((x) => x.c), cols, 0);
+  const out: Row[] = [];
+  for (const g of groups) {
+    const isOpen = open.has(g.status);
+    out.push({ t: "header", key: `h:${g.status}`, mt: out.length === 0 ? 0 : SHELF_GAP, status: g.status, count: g.items.length, open: isOpen });
+    if (isOpen) out.push(...gridRows(g.status, g.items, cols, 0));
+    else if (g.items.length === 1) out.push({ t: "solo", key: `s:${g.status}`, mt: 0, item: g.items[0] });
+    else out.push({ t: "rail", key: `r:${g.status}`, mt: 0, items: g.items });
+  }
+  return out;
+}
+
+type CardHandlers = { onOpen: (item: CardItem) => void; onHold: (item: CardItem, anchor: CardAnchor) => void };
+
+/** صفُّ شبكة: `cols` بطاقات من جهة البداية — `row` يتبع اتّجاهَ القراءة فيمتلئ RTL من اليمين */
+const GridRow = memo(function GridRow({ row, cellW, sight, onOpen, onHold }: { row: Extract<Row, { t: "grid" }>; cellW: number; sight: RowSight } & CardHandlers) {
+  const seen = useRowSeen(sight, row.key);
+  return (
+    <View style={{ flexDirection: "row", gap: GAP, paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
+      {/* ⚖️ مراجعةُ ما قبل الرفع (D-1025): **المفتاحُ موضعُ الخانة لا هويّةُ العمل.** القائمةُ تعيد
+          استعمالَ الصفّ لبياناتٍ أخرى؛ بمفتاح العمل كان React ينزع بطاقاتِ الصفّ الأربع ويركّبها من
+          جديد مع كلِّ صفٍّ يدخل الشاشة — وهو عينُ الكلفة التي جاءت الافتراضيّةُ لإزالتها. بالموضع
+          تُحدَّث البطاقةُ في مكانها، والصورةُ تتبدّل بـ`recyclingKey`. */}
+      {row.items.map((it, i) => (
+        <PosterCard key={i} item={it} width={cellW} onPress={onOpen} onHold={onHold} marquee={seen} />
+      ))}
+    </View>
+  );
+});
+
+const SoloRow = memo(function SoloRow({ row, sight, onOpen, onHold }: { row: Extract<Row, { t: "solo" }>; sight: RowSight } & CardHandlers) {
+  const seen = useRowSeen(sight, row.key);
+  return (
+    <View style={{ paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
+      <PosterCard item={row.item} width={RAIL_W} onPress={onOpen} onHold={onHold} marquee={seen} />
+    </View>
+  );
+});
+
+const railKey = (it: CardItem) => it.key;
+const railLayout = (_: unknown, index: number) => ({ length: RAIL_W + GAP, offset: PAGE_PAD + (RAIL_W + GAP) * index, index });
+const RailRow = memo(function RailRow({ row, sight, onOpen, onHold }: { row: Extract<Row, { t: "rail" }>; sight: RowSight } & CardHandlers) {
+  const seen = useRowSeen(sight, row.key);
+  const renderItem = useCallback(
+    ({ item }: { item: CardItem }) => <PosterCard item={item} width={RAIL_W} onPress={onOpen} onHold={onHold} marquee={seen} />,
+    [onOpen, onHold, seen],
+  );
+  return (
+    <FlatList
+      /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
+      key={row.key}
+      horizontal
+      data={row.items}
+      keyExtractor={railKey}
+      renderItem={renderItem}
+      showsHorizontalScrollIndicator={false}
+      /* كان `-mx-4 px-4`: الصفُّ يلامس حافّةَ الشاشة ويبدأ من الهامش — والآن لا حشوةَ حوله أصلاً */
+      style={{ marginTop: row.mt }}
+      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP, paddingBottom: 4 }}
+      /* D-1028 (F4) — عرضُ البطاقة ثابت ⇒ الموضعُ يُحسب ولا يُقاس (الحشوةُ قبل أوّل بطاقة) */
+      getItemLayout={railLayout}
+      initialNumToRender={6}
+      windowSize={5}
+    />
+  );
+});
+
+const HeaderRow = memo(function HeaderRow({ row, onToggle }: { row: Extract<Row, { t: "header" }>; onToggle: (status: LibraryStatus, count: number, opening: boolean) => void }) {
+  const { t } = useApp();
+  const toggle = () => onToggle(row.status, row.count, !row.open);
+  return (
+    <View style={{ paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
+        <Pressable onPress={toggle} hitSlop={6}>
+          <Text size={22} weight="700">{statusLabel(row.status, t)}</Text>
+        </Pressable>
+        <Pressable onPress={toggle} hitSlop={8}>
+          <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>
+            {row.open ? t.closeLabel : String(row.count)}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ height: 4 }} />
+    </View>
+  );
+});
 
 function toCard(x: LibraryItem): CardItem {
   const isTv = x.kind === "tv";

@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import { posterUrl } from "@/core/media";
+import { posterFor } from "../poster";
 import { MarqueeText } from "./MarqueeText";
 
 /**
@@ -46,15 +46,19 @@ export const PosterCard = memo(function PosterCard({
   width,
   onPress,
   onHold,
+  marquee = true,
 }: {
   item: CardItem;
   width: number;
   onPress: (item: CardItem) => void;
   /** الضغطُ المطوَّل (`LongPressable` في الويب) — يمرّر موضعَ البطاقة في النافذة لتُرسى القائمةُ عليه */
   onHold?: (item: CardItem, anchor: CardAnchor) => void;
+  /** D-1025 (F1) — الاسمُ يمشي فقط حين يُرى صفُّ البطاقة؛ الافتراضيُّ `true` لمن لا يعرف */
+  marquee?: boolean;
 }) {
   const { tokens } = useApp();
-  const uri = posterUrl(item.posterPath, width > 120 ? "w342" : "w185");
+  /* D-1027 (F3) — كان `w185` لكلِّ عرضٍ ≤ ١٢٠: باهتٌ على شاشات ٣× */
+  const uri = posterFor(item.posterPath, width);
   const ref = useRef<View>(null);
   return (
     <Pressable
@@ -85,6 +89,7 @@ export const PosterCard = memo(function PosterCard({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             transition={150}
+            cachePolicy="memory-disk"
             recyclingKey={item.key}
           />
         ) : null}
@@ -110,7 +115,7 @@ export const PosterCard = memo(function PosterCard({
         ) : null}
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 8, paddingBottom: 8, paddingTop: 28 }}>
           <Image source={VEIL} style={StyleSheet.absoluteFill} contentFit="fill" />
-          <MarqueeText text={item.title} size={12} weight="600" color="#fff" style={styles.shadow} />
+          <MarqueeText text={item.title} size={12} weight="600" color="#fff" style={styles.shadow} active={marquee} />
         </View>
         <StatusThread progress={item.progress} completed={item.completed} dropped={item.dropped} />
       </View>
