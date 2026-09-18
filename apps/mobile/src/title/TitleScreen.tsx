@@ -19,6 +19,9 @@ import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { StarRow } from "./StarRow";
 import { ActionRow } from "./ActionRow";
 import { Sheet } from "../library/Sheet";
+import { ArtSheet } from "./ArtSheet";
+import { Logo } from "../Logo";
+import { Clipboard } from "react-native";
 import { useExtras, RatingsLine, WatchWhere, ListSheet, CastRail, RelatedRails, extrasKey } from "./TitleExtras";
 import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCommunity";
 import type {
@@ -223,6 +226,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const pct = d?.kind === "tv" && d.aired_total > 0 ? Math.round((d.me.watched_count / d.aired_total) * 100) : 0;
   /* D-1014 — ورقةُ القوائم وورقةُ البطاقة الحمراء يفتحهما صفُّ الأفعال */
   const [listOpen, setListOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [art, setArt] = useState(false);
   const [redCard, setRedCard] = useState(false);
   const favorite = useMutation({
     mutationFn: () => write<{ favorite: boolean }>("/api/v1/track/favorite", { tmdbId: id, mediaType: kind, title: d?.name ?? "", posterPath: d?.poster_path ?? null } satisfies FavoriteBody),
@@ -240,16 +245,13 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       {/* الترويسة — `DetailTopBar`: رجوعٌ · الاسمُ · مشاركة */}
-      <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
+      {/* D-1022 — الشريطُ العلويّ كالويب: شعارُ Loopz يساراً، الاسمُ وسطاً، **واليمينُ فارغٌ عمداً**
+          (قرارُ أحمد: يُترك حتى تُنقل الرئيسيّةُ والإعداداتُ فيُوضع فيه بابُ الإعدادات). السهمُ
+          و⋯ على الخلفيّة (D-1020). */}
+      <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
         <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Chevron color={tokens.fg} />
-        </Pressable>
-        <View style={{ position: "absolute", end: PAGE_PAD - 8, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 2 }}>
-          {/* D-1014 — القلبُ صار في صفِّ الأفعال؛ الترويسةُ تبقى للمشاركة والرجوع */}
-          <Pressable onPress={() => void share()} hitSlop={10} accessibilityLabel={t.listShare} style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
-            <Icon name="share" size={18} color={tokens.fg} />
-          </Pressable>
+        <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+          <Logo size={28} />
         </View>
       </View>
 
@@ -265,25 +267,43 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
             {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 96 }} contentFit="fill" />
+            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
+            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+              <Chevron color="#fff" />
+            </Pressable>
+            <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="dots" size={20} color="#fff" />
+            </Pressable>
           </View>
           {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
               كان يهبط ٥٦ تحتها فتطول الترويسةُ بلا سبب؛ الآن يرتفع بقدر ارتفاعه تقريباً
               (`-96`) فينتهي طرفُه العلويّ عند الخطّ، ويصعد ما تحته معه. */}
-          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -96, alignItems: "flex-end" }}>
+          {/* 🔴 D-1020 — **الترويسةُ بترتيب الويب** (طلبُ أحمد بثلاث لقطات): الملصقُ والاسمُ يبدآن من
+              السطر نفسِه (لا الاسمُ في أسفل الملصق)، تحت الاسم سطرُ التفاصيل ثمّ IMDb، وفي أسفل
+              الملصق يمينَ العمود رقاقاتُ التصنيف والنوع، **وشعارُ المنصّة أيقونةً** في أقصى اليمين
+              بدل زرّ «أين تشاهد». الملصقُ يعلو إلى حافّة الخلفيّة (D-1014). */}
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -96, alignItems: "flex-start" }}>
             <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
               {d.poster_path ? <Image source={{ uri: posterUrl(d.poster_path, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
             </View>
-            <View style={{ flex: 1, gap: 4, paddingBottom: 4 }}>
-              <Text size={22} weight="700" numberOfLines={2} style={{ lineHeight: 28 }}>{d.name}</Text>
-              <Text size={13} muted numberOfLines={1}>
-                {[year, d.vote_average ? `★ ${d.vote_average.toFixed(1)}` : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null].filter(Boolean).join("  ·  ")}
-              </Text>
-              {d.genres.length ? <Text size={13} muted numberOfLines={1}>{d.genres.map((g) => g.name).join(" · ")}</Text> : null}
+            <View style={{ flex: 1, minWidth: 0, gap: 4, paddingTop: 2, alignSelf: "stretch", justifyContent: "space-between" }}>
+              <View style={{ gap: 4 }}>
+                <Text size={22} weight="700" numberOfLines={2} style={{ lineHeight: 28 }}>{d.name}</Text>
+                <Text size={12} muted numberOfLines={2}>
+                  {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join(" · ")}
+                </Text>
+                <RatingsLine x={x} compact />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+                <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {x?.ratings?.rated ? <View style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="700">{x.ratings.rated}</Text></View> : null}
+                  {d.genres.slice(0, 1).map((g) => (
+                    <View key={g.id} style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="600">{g.name}</Text></View>
+                  ))}
+                </View>
+                <WatchWhere x={x} icon />
+              </View>
             </View>
-          </View>
-          <View style={{ paddingHorizontal: PAGE_PAD, gap: 10 }}>
-            <RatingsLine x={x} />
-            <WatchWhere x={x} />
           </View>
 
           {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
@@ -308,19 +328,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               }}
               onHoldWatch={d.kind === "tv" ? () => setRedCard(true) : undefined}
             />
-            {/* شريطُ التقدّم يحلّ محلَّ صندوق «شاهدت س من ص» (D-1014) */}
-            {d.kind === "tv" && d.aired_total > 0 ? (
-              <View style={{ gap: 6 }}>
-                <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
-                  <View style={{ width: `${pct}%`, height: "100%", backgroundColor: done ? tokens.success : tokens.accent }} />
-                </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text size={11} muted>{t.watchedOf(d.me.watched_count, d.aired_total)}</Text>
-                  <Text size={11} color={done ? tokens.success : tokens.accent}>{`${pct}%`}</Text>
-                </View>
-                {d.next_episode_to_air?.air_date ? <Text size={11} muted>{t.nextEpisodeOn(d.next_episode_to_air.air_date)}</Text> : null}
-              </View>
-            ) : null}
+            {/* D-1021 — شريطُ التقدّم مرّةً واحدة في رأس تبويب الحلقات (طلبُ أحمد: «شيل واتشد ذي لأنّها موجودة تحت») */}
 
             {/* تقييمي من ١٠ — نجومٌ ورقمُها كالويب (D-1006؛ كانت رقاقاتٍ مرقّمة) */}
             <View style={{ gap: 6 }}>
@@ -417,6 +425,36 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
       ) : null}
       {listOpen && d ? (
         <ListSheet kind={kind} id={id} name={d.name} posterPath={d.poster_path} x={x} onNewList={() => { setListOpen(false); openWeb("", "/lists"); }} onClose={() => setListOpen(false)} />
+      ) : null}
+      {/* D-1020 — ورقةُ «المزيد» كـ`DetailTopBar` الويب */}
+      {menuOpen && d ? (
+        <Sheet title={t.moreMenuTitle} onClose={() => setMenuOpen(false)}>
+          {(
+            [
+              { icon: "send", label: t.shareSendTitle, color: tokens.accent, run: () => openWeb("", `/people?send=${kind}-${id}`) },
+              { icon: "link", label: t.shareCopyLink, color: tokens.fg, run: () => { Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast(t.linkCopied); } },
+              { icon: "share", label: t.shareTitle, color: tokens.fg, run: () => void share() },
+              { icon: "palette", label: t.artTitle, color: tokens.fg, run: () => setArt(true) },
+            ] as const
+          ).map((it) => (
+            <Pressable key={it.label} onPress={() => { setMenuOpen(false); it.run(); }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
+              <Icon name={it.icon} size={19} color={it.color} />
+              <Text size={14}>{it.label}</Text>
+            </Pressable>
+          ))}
+          {d.kind === "tv" ? (
+            <>
+              <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
+              <Pressable onPress={() => { setMenuOpen(false); drop.mutate(!d.me.dropped); }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
+                <Icon name="card" size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
+                <Text size={14} color={d.me.dropped ? tokens.fg : tokens.error}>{d.me.dropped ? t.resumeWatching : t.redCardAction}</Text>
+              </Pressable>
+            </>
+          ) : null}
+        </Sheet>
+      ) : null}
+      {art && d ? (
+        <ArtSheet kind={kind} id={id} current={{ poster: d.poster_path, backdrop: d.backdrop_path }} onPlus={() => { setArt(false); openWeb("", "/plus"); }} onClose={() => setArt(false)} />
       ) : null}
       {/* D-1014 — البطاقةُ الحمراء وحدَها في الضغطة المطوّلة على العين */}
       {redCard && d ? (

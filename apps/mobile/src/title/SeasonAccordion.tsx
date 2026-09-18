@@ -7,7 +7,6 @@ import { backdropUrl } from "@/core/media";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
@@ -48,9 +47,67 @@ export function SeasonAccordion({
     return s?.season_number ?? show.seasons[0]?.season_number ?? null;
   }, [show]);
   const [open, setOpen] = useState<number | null>(firstOpen);
+  /**
+   * 🔴 D-1021 — **تبويبُ الحلقات بترتيب الويب** (طلبُ أحمد بلقطتين، ١٨ سبتمبر): شريطُ التقدّم
+   * ومفتاحُ التقييمات وسطرُ القاعدة **مرّةً واحدة فوق المواسم** (كانت داخل كلِّ موسم فتتكرّر
+   * وتطول)؛ ورأسُ الموسم سطرٌ واحد: السهمُ يساراً، الاسمُ والعدّ، وعلى اليمين «الموسم كلّه ✓»
+   * الذي يصير «مسح الموسم» بعد التعليم. تعليمُ الموسم كلِّه من الرأس يعتمد على `first_episode`
+   * و`aired` (D-988) فلا يحتاج فتحَ الموسم.
+   */
+  const [showRatings, setShowRatings] = useState(false);
+  const qc = useQueryClient();
+  const runtime = show.episode_run_time ?? null;
+  const total = show.aired_total;
+  const doneAll = show.me.watched_count;
+  const pctAll = total > 0 ? Math.round((doneAll / total) * 100) : 0;
+  const whole = useMutation({
+    mutationFn: ({ season, on }: { season: number; on: boolean }) => {
+      const sm = show.seasons.find((x) => x.season_number === season);
+      const first = sm?.first_episode ?? 1;
+      const count = Math.min(sm?.aired ?? 0, sm?.episode_count ?? 0);
+      const episodes = Array.from({ length: count }, (_, i) => ({ season, episode: first + i, runtime }));
+      return write<TrackResult>("/api/v1/track/season", { showTmdbId: show.id, episodes, watched: on, title: show.name, posterPath: show.poster_path } satisfies SetSeasonBody);
+    },
+    onMutate: ({ season, on }) => {
+      const sm = show.seasons.find((x) => x.season_number === season);
+      const first = sm?.first_episode ?? 1;
+      const count = Math.min(sm?.aired ?? 0, sm?.episode_count ?? 0);
+      const keys = Array.from({ length: count }, (_, i) => episodeKey(season, first + i));
+      qc.setQueryData<TvTitlePayload>(qk.title("tv", show.id), (prev) => {
+        if (!prev) return prev;
+        const set = new Set(prev.me.watched);
+        for (const k of keys) on ? set.add(k) : set.delete(k);
+        return { ...prev, me: { ...prev.me, watched: [...set], watched_count: set.size } };
+      });
+    },
+    onSuccess: onSettled,
+    onError,
+  });
 
   return (
     <View style={{ gap: 8 }}>
+      {total > 0 ? (
+        <View style={{ gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneAll, total)}</Text>
+            <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
+            <Pressable
+              onPress={() => setShowRatings((v) => !v)}
+              hitSlop={8}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: showRatings }}
+              accessibilityLabel={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: showRatings ? tokens.surface2 : "transparent" }}
+            >
+              <Icon name={showRatings ? "star-filled" : "star"} size={16} color={showRatings ? tokens.accent : tokens.muted} />
+            </Pressable>
+          </View>
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
+            <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />
+          </View>
+          <Text size={11} muted>{t.cascadeHint}</Text>
+        </View>
+      ) : null}
       {show.seasons.map((s) => {
         const inSeason = show.me.watched.filter((k) => k.startsWith(`${s.season_number}:`)).length;
         const done = s.aired > 0 && inSeason >= s.aired;
@@ -58,17 +115,23 @@ export function SeasonAccordion({
         return (
           /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
           <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
-            <Pressable onPress={() => setOpen(isOpen ? null : s.season_number)} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}>
-              <View style={{ flex: 1, gap: 2 }}>
+            {done ? <View style={{ height: 3, backgroundColor: tokens.accent }} /> : null}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
+              <Pressable onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
+                <View style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}>
+                  <Icon name="chevron-down" size={16} color={tokens.muted} />
+                </View>
                 <Text size={15} weight="700">{s.name || t.seasonLabel(s.season_number)}</Text>
-                <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason} / {s.aired}</Text>
-              </View>
-              {done ? <Icon name="check-line" size={18} color={tokens.success} /> : null}
-              <View style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}>
-                <Icon name="chevron-down" size={16} color={tokens.muted} />
-              </View>
-            </Pressable>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} /> : null}
+                <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{s.aired}</Text>
+              </Pressable>
+              {s.aired > 0 ? (
+                <Pressable onPress={() => whole.mutate({ season: s.season_number, on: !done })} hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, opacity: pressed || whole.isPending ? 0.6 : 1 })}>
+                  {done ? <Icon name="check-line" size={14} color={tokens.success} /> : null}
+                  <Text size={13} weight="600" color={done ? tokens.muted : tokens.accent}>{done ? t.seasonUndo : t.seasonAll}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} onShowRatings={() => setShowRatings(true)} /> : null}
           </View>
         );
       })}
@@ -83,11 +146,16 @@ function SeasonBody({
   watched,
   onError,
   onSettled,
+  showRatings,
+  onShowRatings,
 }: {
   show: TvTitlePayload;
   season: number;
   aired: number;
   watched: Set<string>;
+  /** D-1021 — المفتاحُ في رأس التبويب لا في الموسم */
+  showRatings: boolean;
+  onShowRatings: () => void;
   onError: (e: unknown) => void;
   onSettled: () => void;
 }) {
@@ -99,7 +167,6 @@ function SeasonBody({
    * يعلّم ما قبله (D-988). **التقييماتُ تُطلب عند فتح المفتاح لا قبله** (`?r=1` — رحلةُ OMDb
    * لكلِّ موسم)، كما يفعل `EpisodeTracker` حرفاً، والمفتاحُ يُذكَر للجلسة.
    */
-  const [showRatings, setShowRatings] = useState(false);
   const q = useQuery({
     queryKey: [...qk.season(show.id, season), showRatings ? "r" : ""] as const,
     queryFn: async () => (await api<SeasonPayload>(`/api/v1/title/tv/${show.id}/season/${season}${showRatings ? "?r=1" : ""}`)).data,
@@ -118,7 +185,7 @@ function SeasonBody({
     mutationFn: (v: { episode: number; rating: number; review: string | null }) =>
       write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, review: v.review, runtime } satisfies EpisodeRateBody),
     onMutate: (v) => {
-      setShowRatings(true);
+      onShowRatings();
       for (const key of [[...qk.season(show.id, season), "r"], [...qk.season(show.id, season), ""]] as const)
         qc.setQueryData<SeasonPayload>(key, (prev) =>
           prev ? { ...prev, episodes: prev.episodes.map((e) => (e.episode_number === v.episode ? { ...e, my_rating: v.rating, my_review: v.review } : e)) } : prev,
@@ -132,9 +199,6 @@ function SeasonBody({
   const runtime = show.episode_run_time;
   const d = today();
   const airedEps = eps.filter((e) => e.air_date && e.air_date <= d);
-  const allDone = airedEps.length > 0 && airedEps.every((e) => watched.has(episodeKey(season, e.episode_number)));
-  const doneCount = airedEps.filter((e) => watched.has(episodeKey(season, e.episode_number))).length;
-  const pct = airedEps.length > 0 ? Math.round((doneCount / airedEps.length) * 100) : 0;
 
   /* التفاؤلُ: مفاتيحُ `watched` في كاش العنوان (المصدرُ الواحد الذي يقرأه البطلُ والأكورديون) */
   const patch = (keys: string[], on: boolean) =>
@@ -187,13 +251,6 @@ function SeasonBody({
     onSuccess: onSettled,
     onError,
   });
-  const whole = useMutation({
-    mutationFn: (on: boolean) =>
-      write<TrackResult>("/api/v1/track/season", { showTmdbId: show.id, episodes: airedEps.map((e) => ref(e.episode_number)), watched: on, title: show.name, posterPath: show.poster_path } satisfies SetSeasonBody),
-    onMutate: (on) => patch(airedEps.map((e) => episodeKey(season, e.episode_number)), on),
-    onSuccess: onSettled,
-    onError,
-  });
 
   if (!q.data) {
     return (
@@ -206,34 +263,7 @@ function SeasonBody({
   }
   return (
     <View style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 6 }}>
-      {airedEps.length > 0 ? (
-        <>
-          {/* D-1011 — شريطُ التقدّم ونسبتُه ومفتاحُ تقييمات الحلقات، ثمّ سطرُ قاعدة التأشير */}
-          <View style={{ gap: 6, marginBottom: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneCount, airedEps.length)}</Text>
-              <Text size={13} weight="700" color={tokens.accent}>{`${pct}%`}</Text>
-              <Pressable
-                onPress={() => setShowRatings((v) => !v)}
-                hitSlop={8}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: showRatings }}
-                accessibilityLabel={showRatings ? t.epRatingsHide : t.epRatingsShow}
-                style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: showRatings ? tokens.surface2 : "transparent" }}
-              >
-                <Icon name={showRatings ? "star-filled" : "star"} size={16} color={showRatings ? tokens.accent : tokens.muted} />
-              </Pressable>
-            </View>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
-              <View style={{ width: `${pct}%`, height: "100%", backgroundColor: tokens.accent }} />
-            </View>
-            <Text size={11} muted>{t.cascadeHint}</Text>
-          </View>
-          <View style={{ flexDirection: "row", marginBottom: 4 }}>
-            <Chip label={allDone ? t.unwatchShowDone : t.markAllWatched} active={allDone} onPress={() => whole.mutate(!allDone)} />
-          </View>
-        </>
-      ) : null}
+      {/* D-1021 — شريطُ التقدّم وزرُّ الموسم كلِّه انتقلا إلى رأس التبويب ورأس الموسم */}
       {eps.map((e) => {
         const key = episodeKey(season, e.episode_number);
         const on = watched.has(key);
@@ -248,17 +278,23 @@ function SeasonBody({
             delayLongPress={400}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}
           >
-            <Text size={12} weight="700" muted style={{ width: 22, textAlign: "center", fontVariant: ["tabular-nums"] }}>{e.episode_number}</Text>
+            {/* D-1021 — دائرةُ التأشير يساراً كالويب، والرقمُ مع الاسم */}
+            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: on ? tokens.success : tokens.border, backgroundColor: on ? tokens.success : "transparent", alignItems: "center", justifyContent: "center" }}>
+              {on ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
+            </View>
             {/* صورةُ الحلقة — `w300` تكفي مربّعاً ٧٢×٤٠ (D-895: لا نجلب أكبر ممّا نرسم) */}
             <View style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2 }}>
               {e.still_path ? <Image source={{ uri: backdropUrl(e.still_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={120} recyclingKey={`${season}-${e.episode_number}`} /> : null}
             </View>
             <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
-              <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{e.name}</Text>
+              <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
               {e.air_date ? <Text size={11} muted>{e.air_date}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
             </View>
             {showRatings && typeof e.imdb_rating === "number" ? (
-              <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text size={9} weight="800" color="#F5C518">IMDb</Text>
+                <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
+              </View>
             ) : null}
             {/* نجمةُ تقييمي — تملأ برقمها حين أقيّم، والضغطُ يفتح منتقيَ ١..١٠ */}
             <Pressable
@@ -270,9 +306,6 @@ function SeasonBody({
               <Icon name={typeof e.my_rating === "number" ? "star-filled" : "star"} size={15} color={typeof e.my_rating === "number" ? tokens.accent : tokens.muted} />
               {typeof e.my_rating === "number" ? <Text size={11} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{e.my_rating}</Text> : null}
             </Pressable>
-            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: on ? tokens.accent : tokens.border, backgroundColor: on ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
-              {on ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
-            </View>
           </Pressable>
         );
       })}

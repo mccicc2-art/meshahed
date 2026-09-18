@@ -56,6 +56,12 @@ const ICONS = {
   "compass-filled": require("../assets/icons/compass-filled.png"),
   "people-filled": require("../assets/icons/people-filled.png"),
   "search-filled": require("../assets/icons/search-filled.png"),
+  /* 🆕 D-1020 — رموزُ قائمة «المزيد» في صفحة العمل، من `Icon.tsx` بالطريقة نفسِها (cairosvg
+     ٧٢×٧٢ أبيض على شفّاف، يُلوَّن بـ`tintColor`) */
+  dots: require("../assets/icons/dots.png"),
+  send: require("../assets/icons/send.png"),
+  palette: require("../assets/icons/palette.png"),
+  link: require("../assets/icons/link.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

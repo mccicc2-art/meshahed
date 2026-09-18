@@ -96,7 +96,6 @@ export function TrailersRail({
   const [wantPlay, setWantPlay] = useState(true);
   const [muted, setMuted] = useState(false);
   const open = useCallback((id: string) => {
-    autoRef.current = null;
     setLive(id);
     setWantPlay(true);
   }, []);
@@ -134,33 +133,10 @@ export function TrailersRail({
   const items = q.data?.items ?? [];
   const firstId = items[0] ? `${items[0].kind}-${items[0].id}` : null;
   const warmId = active ? (warm ?? firstId) : null;
-  /**
-   * 🆕 D-1010 — **التشغيلُ التلقائيُّ عند الدخول، مكتوماً** (طلبُ أحمد بلقطة: «الفيديو في
-   * اكتشف خلّه يشتغل مباشرةً أوّل ما يدخل الصفحة»): البطاقةُ الأولى تبدأ من نفسها **مكتومةً**
-   * — الكتمُ هو الطريقُ الوحيدُ الذي تبيحه سياسةُ التشغيل التلقائيّ بلا لمسة — وزرُّ الصوت
-   * يرفعه. **ومن أوقفه بيده لا يعود** (بنصِّ طلبه): `stopped` يذكر ما أوقفه صاحبُه في هذه
-   * الجلسة فلا يُعاد تشغيلُه عند العودة إليه، وتفضيلُ الكتم يبقى تفضيلَ جلسة (D-964).
-   * ⚠️ **إن رفض يوتيوب البدءَ بلا لمسة** يسقط المشغّلُ إلى الخمول (صورةٌ و▶) لا إلى باب
-   * الويب — التلقائيُّ لا يفتح باباً (D-984)؛ وتبقى اللمسةُ طريقَ التشغيل.
-   */
-  const [stopped, setStopped] = useState<ReadonlySet<string>>(new Set());
-  const autoRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!active || !warmId || live || stopped.has(warmId)) return;
-    if (autoRef.current === warmId) return;
-    autoRef.current = warmId;
-    setMuted(true);
-    setWantPlay(true);
-    setLive(warmId);
-  }, [active, warmId, live, stopped]);
-  /* إيقافٌ بيد المستخدم (D-964): يُسجَّل كي لا يعود تلقائيّاً */
-  const onWantPlayUser = useCallback(
-    (v: boolean) => {
-      setWantPlay(v);
-      if (!v && live) setStopped((prev) => new Set(prev).add(live));
-    },
-    [live],
-  );
+  /* ⚖️ D-1023 — **نُقض التشغيلُ التلقائيُّ (D-1010)** (بلاغُ أحمد بتسجيل على 1.9.4: «الفيديو ما
+     يشتغل» — البطاقةُ الأولى تفتح حيّةً بدوّارٍ عند 0:00 عشرَ ثوانٍ ثمّ تموت): يوتيوب يرفض
+     البدءَ برمجيّاً ولو مكتوماً داخل هذا الـWebView، فالتحفّظُ المسجَّل مع D-1010 تحقّق. البطاقةُ
+     تعود خاملةً بصورتها و▶ (ما نجح في 1.9.1)، واللمسةُ الحقيقيّةُ وحدَها تشغّل. */
   /* فشلُ الجلب صمتٌ لا هيكلٌ أبديّ (درسُ ١٤ سبتمبر: 500 في المسار أبقى الهيكلَ معروضاً) */
   if (q.isError) return null;
   const header = (
@@ -217,13 +193,11 @@ export function TrailersRail({
                   idle={live !== id}
                   onWake={() => open(id)}
                   wantPlay={live === id ? wantPlay : false}
-                  onWantPlay={onWantPlayUser}
+                  onWantPlay={setWantPlay}
                   muted={muted}
                   onMuted={setMuted}
                   onExhausted={() => {
                     setLive(null);
-                    /* D-1010 — ما بدأ من نفسه ورُفض يعود خاملاً بصمت؛ ما بدأ بلمسةٍ يفتح الباب */
-                    if (autoRef.current === id) return;
                     onOpenWeb(item.href);
                   }}
                 />

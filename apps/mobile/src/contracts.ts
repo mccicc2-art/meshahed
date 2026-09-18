@@ -12,6 +12,8 @@ export type {
   TitleSeason,
   SeasonPayload,
   TitleExtrasPayload,
+  TitleArtOptionsPayload,
+  TitleArtBody,
   TitleCommunityPayload,
   FavoriteBody,
   ListToggleItemBody,

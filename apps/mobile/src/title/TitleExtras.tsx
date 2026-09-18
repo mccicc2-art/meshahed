@@ -34,14 +34,16 @@ export function useExtras(kind: "tv" | "movie", id: number) {
 }
 
 /** سطرُ التقييمات الخارجيّة + النبض — تحت الأنواع في البطل */
-export function RatingsLine({ x }: { x: TitleExtrasPayload | undefined }) {
+/** D-1020 — `compact`: IMDb وRT وحدَهما في سطر الترويسة (النبضُ يبقى في المجتمع) */
+export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | undefined; compact?: boolean }) {
   const { tokens, locale } = useApp();
   if (!x) return null;
   const r = x.ratings;
   const p = x.pulse;
   if (!r && p.hearts === 0 && p.votes === 0) return null;
+  if (compact && !r?.imdb && !r?.rt) return null;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 12, marginTop: 6 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 12, marginTop: compact ? 2 : 6 }}>
       {r?.imdb ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Text size={9} weight="800" color="#F5C518">IMDb</Text>
@@ -59,7 +61,7 @@ export function RatingsLine({ x }: { x: TitleExtrasPayload | undefined }) {
           <Text size={10} weight="700" muted>{r.rated}</Text>
         </View>
       ) : null}
-      {p.hearts > 0 || p.votes > 0 ? (
+      {!compact && (p.hearts > 0 || p.votes > 0) ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           {p.hearts > 0 ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -80,7 +82,11 @@ export function RatingsLine({ x }: { x: TitleExtrasPayload | undefined }) {
 }
 
 /** «أين أشاهده» — رقاقةٌ تفتح ورقةَ المزوّدين (نسخةُ `WatchChip`) */
-export function WatchWhere({ x }: { x: TitleExtrasPayload | undefined }) {
+/**
+ * D-1020 — `icon`: أيقونةُ المنصّة وحدَها (مربّعٌ ٤٠) بدل زرّ «أين تشاهد» — للترويسة بترتيب
+ * الويب (شعارُ المنصّة في أسفل يمين الصورة)؛ الضغطُ يفتح الورقةَ نفسَها.
+ */
+export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefined; icon?: boolean }) {
   const { t, tokens, locale } = useApp();
   const [open, setOpen] = useState(false);
   if (!x?.watch) return null;
@@ -90,6 +96,11 @@ export function WatchWhere({ x }: { x: TitleExtrasPayload | undefined }) {
   const first = w.groups[0]?.providers.slice(0, 3) ?? [];
   return (
     <>
+      {icon ? (
+        <Pressable onPress={() => setOpen(true)} accessibilityLabel={t.watchWhereTitle} hitSlop={6} style={{ width: 40, height: 40, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
+          {first[0]?.logo_path ? <Image source={{ uri: `https://image.tmdb.org/t/p/w92${first[0].logo_path}` }} style={{ width: "100%", height: "100%" }} /> : null}
+        </Pressable>
+      ) : (
       <Pressable onPress={() => setOpen(true)} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingStart: 6, paddingEnd: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
         <View style={{ flexDirection: "row" }}>
           {first.map((p, i) => (
@@ -101,6 +112,7 @@ export function WatchWhere({ x }: { x: TitleExtrasPayload | undefined }) {
         <Text size={13} weight="600">{t.watchWhereTitle}</Text>
         <Icon name="chevron-down" size={12} color={tokens.muted} />
       </Pressable>
+      )}
       {open ? (
         <Sheet title={t.watchWhereTitle} onClose={() => setOpen(false)}>
           <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>

@@ -151,3 +151,8 @@ export type TitleCommunityPayload = {
 export type FavoriteBody = { tmdbId: number; mediaType: TitleKind; title: string; posterPath: string | null };
 /** `POST /api/v1/lists/toggle-item` — إضافةُ عملٍ إلى قائمةٍ أو نزعُه */
 export type ListToggleItemBody = { listId: string; tmdbId: number; mediaType: TitleKind; title: string; posterPath: string | null; add: boolean };
+
+/** `GET /api/v1/title/{kind}/{id}/art` — صورُ منتقي الغلاف (D-1020) */
+export type TitleArtOptionsPayload = { posters: string[]; backdrops: string[]; plus: boolean };
+/** `POST /api/v1/track/title-art` — `null` في الاثنين يعيد الافتراضيّ */
+export type TitleArtBody = { tmdbId: number; mediaType: "tv" | "movie"; posterPath: string | null; backdropPath: string | null };
