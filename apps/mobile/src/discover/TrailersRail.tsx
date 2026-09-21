@@ -259,7 +259,12 @@ export function TrailersRail({
           );
         })}
         {cur && active ? (
-          <View style={{ position: "absolute", top: 0, start: PAGE_PAD + at * (cardW + GAP), width: cardW, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, overflow: "hidden" }}>
+          /* 🔴 D-1054 — **الحاملُ يحتاج ارتفاعاً صريحاً** (بلاغُ أحمد بتسجيل على 1.11.1: «الفيديو لا يعمل في
+             اكتشف» — لا ▶ على البطاقة ولا استجابةَ للمس): `TrailerPlayer` بوضع `overlay` ابنٌ مطلقُ الموضع،
+             والابنُ المطلقُ لا يُكسب أباه حجماً في Yoga ⇒ ارتفاعُ الحامل صفرٌ و`overflow: hidden` يقصّ المشغّلَ
+             كلَّه (السِّتر و▶ وثقبَ اللمس). قبل D-1041 كان الحاملُ سطحَ البطاقة نفسَه بـ`aspectRatio` فلم يظهر
+             العيب. الارتفاعُ هنا بحساب المشغّل نفسِه (`width · 9/16`) لا `aspectRatio` كي يتطابقا بايتاً. */
+          <View style={{ position: "absolute", top: 0, start: PAGE_PAD + at * (cardW + GAP), width: cardW, height: Math.round((cardW * 9) / 16), borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, overflow: "hidden" }}>
             <TrailerPlayer
               videoKeys={curKeys}
               width={cardW}
