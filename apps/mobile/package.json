@@ -1,6 +1,6 @@
 {
   "name": "loopz-mobile",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "main": "index.ts",
   "dependencies": {
     "@shopify/flash-list": "^2.3.2",

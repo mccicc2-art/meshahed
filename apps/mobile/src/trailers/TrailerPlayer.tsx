@@ -347,6 +347,14 @@ export function TrailerPlayer({
   return (
     <View style={overlay ? { position: "absolute", top: 0, left: 0, width, height, overflow: "hidden" } : { width, height, backgroundColor: "#000", overflow: "hidden" }}>
       {dead ? null : (
+      /* 🔴 D-1055 — **اللمسةُ تصل زرَّنا والإطارَ معاً** (بلاغُ أحمد على 1.11.2: «⏸ الوسط ما يوقف» في اكتشف
+         وفي صفحة العمل، **والكتمُ يعمل**): على أندرويد تُسلَّم اللمسةُ إلى JS (فيعمل الزرُّ) **وإلى الشجرة
+         الأصليّة معاً**، و`pointerEvents` على `WebView` نفسِه لا يُنفَّذ هناك — ينفّذه `ReactViewGroup` وحدَه —
+         فتصل اللمسةُ إطارَ يوتيوب أيضاً؛ ونقرةٌ على سطح الفيديو (`controls: 0`) تقلب التشغيلَ فتلغي إيقافَنا،
+         بينما زرُّ الصوت في الرُكن فوق شريط عنوان يوتيوب حيث النقرةُ لا تقلب شيئاً — لذا «يعمل». هذا هو
+         سببُ D-1042 الحقيقيُّ (لا حجمُ الهدف). الغلافُ `View` أصليٌّ يعترض اللمسةَ في `onInterceptTouchEvent`
+         قبل الإطار مهما كان ترتيبُ الرسم؛ وثقبُ الخمول (D-982) باقٍ: `auto` ما دام خاملاً. */
+      <View pointerEvents={idle ? "auto" : "none"} style={{ width, height }}>
       <Player
         ref={ref}
         height={height}
@@ -418,6 +426,7 @@ export function TrailerPlayer({
           }
         }}
       />
+      </View>
       )}
 
       {/* السِّترُ — الصورةُ نفسُها التي كانت على البطاقة، فلا وميضَ عند التحوّل */}
