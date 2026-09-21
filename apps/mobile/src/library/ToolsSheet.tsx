@@ -176,7 +176,7 @@ export function ToolsSheet({
 }
 
 /** العائلةُ المقسّمة الواحدة (`segmentedItem`): خطٌّ سفليٌّ ٣ بلون التمييز على `--divider` */
-function Segmented({ items, value, onChange }: { items: { id: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+export function Segmented({ items, value, onChange }: { items: { id: string; label: string }[]; value: string; onChange: (v: string) => void }) {
   const { tokens } = useApp();
   return (
     <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider }} accessibilityRole="radiogroup">

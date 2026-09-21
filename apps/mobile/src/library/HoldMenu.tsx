@@ -28,7 +28,7 @@ import type { CardItem } from "./PosterCard";
  * الويب؛ وإن لم تسع الشاشةُ تحتها تُرفع فوقها. **`Modal` شفّاف** لا عنصرٌ
  * داخل الصفّ: الصفُّ الأفقيُّ يقصّ ما يخرج عنه.
  */
-export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop" | "towatch" | "dismiss";
+export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop" | "towatch" | "dismiss" | "remove";
 
 /**
  * 🆕 D-978 — **القائمةُ نفسُها لبطاقات «اكتشف»** (بلاغُ أحمد بلقطة: «في الويب إذا
@@ -37,7 +37,7 @@ export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "dro
  * «شاهدته كلّه» · «تعليقك» · «غير مهتمّ» — **ولا «بطاقة حمراء»** (الإيقافُ فعلُ من
  * يتابع، ومن يتابع في المكتبة). **لوحٌ واحد لا ثانٍ**: `variant` يقرّر الصفوف.
  */
-export type HoldVariant = "library" | "discover" | "list";
+export type HoldVariant = "library" | "discover" | "list" | "mylist";
 
 export type Anchor = { x: number; y: number; width: number; height: number };
 
@@ -69,7 +69,7 @@ export function HoldMenu({
   const insets = useSafeAreaInsets();
 
   const rows: { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" }[] =
-    variant === "discover" || variant === "list"
+    variant === "discover" || variant === "list" || variant === "mylist"
       ? [
           { key: "towatch", icon: inList ? "check-line" : "plus", label: inList ? t.quickAddRemove : t.quickAddLabel },
           { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
@@ -77,6 +77,8 @@ export function HoldMenu({
           /* D-1036 — `list`: صفوفُ «اكتشف» **بلا «غير مهتمّ»** — صاحبُ القائمة اختار العملَ، وإخفاؤه من
              قائمة غيري ليس لي */
           ...(variant === "discover" ? [{ key: "dismiss" as const, icon: "eye-off" as const, label: t.notInterested }] : []),
+          /* D-1037 — `mylist`: قائمتي — صفٌّ أخير «إزالة» من القائمة نفسِها (لا من المكتبة)، بلون الخطر */
+          ...(variant === "mylist" ? [{ key: "remove" as const, icon: "close" as const, label: t.listRemove, tone: "danger" as const }] : []),
         ]
       : item.dropped
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]

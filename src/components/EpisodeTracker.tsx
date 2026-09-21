@@ -40,6 +40,8 @@ export interface SeasonSummary {
   name: string;
   episode_count: number;
   aired_count: number;
+  /** D-1050 — موعدُ بدئه إن لم يُبثّ منه شيء بعد؛ اختياريٌّ فلا ينكسر منادٍ قديم */
+  air_date?: string | null;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -597,9 +599,16 @@ export function EpisodeTracker({
                   <span className="font-semibold text-15">
                     {s.name || t.seasonLabel(s.season_number)}
                   </span>
-                  <span className="text-xs text-muted tabular-nums" dir="ltr">
-                    {seasonWatched}/{s.aired_count}
-                  </span>
+                  {/* 🔴 D-1050 — **موسمٌ لم يُبثّ منه شيء لا يُكتب «0/0»** (تكافؤُ التطبيق: D-1029 ثمّ D-1039 بعد بلاغ أحمد
+                      «وصل ولم تُعالَج»): «٠ من ٠» كسرٌ بلا معنى يُقرأ عطلاً. مكانَه **عددُ حلقاته المعلَن**، وفي طرف السطر
+                      (حيث «الموسم كامل» الغائبُ أصلاً) **موعدُه، وإلّا «قريباً»** — السطرُ يقول دائماً لماذا هو فارغ. */}
+                  {s.aired_count > 0 ? (
+                    <span className="text-xs text-muted tabular-nums" dir="ltr">
+                      {seasonWatched}/{s.aired_count}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted tabular-nums">{t.episodesCount(s.episode_count)}</span>
+                  )}
                   {loading === s.season_number && (
                     <span className="text-xs text-muted">{t.loadingLabel}</span>
                   )}
@@ -613,6 +622,15 @@ export function EpisodeTracker({
                     />
                   )}
                 </button>
+                {s.aired_count === 0 && (
+                  <span className="shrink-0 text-xs text-muted tabular-nums px-2.5 py-2">
+                    {s.air_date
+                      ? s.air_date > today()
+                        ? t.airsOn(formatDateShort(s.air_date, t))
+                        : formatDateShort(s.air_date, t)
+                      : t.comingSoon}
+                  </span>
+                )}
                 {s.aired_count > 0 && (
                   <button
                     onClick={() => toggleSeason(s, !allWatched)}

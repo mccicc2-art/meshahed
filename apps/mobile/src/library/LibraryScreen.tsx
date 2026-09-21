@@ -20,6 +20,7 @@ import { ListsTab } from "./ListsTab";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span } from "../perfMarks";
+import { usePullRefresh } from "../pullRefresh";
 import { BottomNav, navHeight } from "../BottomNav";
 import { OneTimeHint } from "./OneTimeHint";
 import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
@@ -234,6 +235,8 @@ export function LibraryScreen() {
         const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
         const msg = (t as unknown as Record<string, unknown>)[key];
         say(typeof msg === "string" ? msg : t.apiInternal);
+        /* D-1043 — الفشلُ لا يهتزّ «نجاحاً» */
+        return false;
       }
     },
     [openTitle, patch, t, say],
@@ -680,6 +683,9 @@ function LibraryPane({
     return [...by].map(([status, items]) => ({ status, items }));
   }, [grouped, list]);
 
+  /* D-1044 (F5) — السحبُ يعيد جلبَ المكتبة (كاشُها واحدٌ للتبويبات كلِّها) */
+  const refreshControl = usePullRefresh([qk.tag("me:library")], topPad);
+
   /* D-1025 (F1) — الصفوفُ المسطّحة للقائمة الافتراضيّة */
   const rows = useMemo(() => buildRows(grouped, list, groups, open, cols), [grouped, list, groups, open, cols]);
   const [sight] = useState(createRowSight);
@@ -807,6 +813,7 @@ function LibraryPane({
         ListHeaderComponent={hint}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
         onLayout={onReady}
         onLoad={restore}
         onScroll={handleScroll}

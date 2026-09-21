@@ -42,7 +42,12 @@ export async function GET(req: NextRequest) {
       back30.setUTCDate(back30.getUTCDate() - 30);
       const winRange = win === "month" ? { from: back30.toISOString().slice(0, 10), to: todayStr } : null;
       const rows = await buildSection(section, { media, base, genreIds, active: browse.active, win, winRange, locale }, want);
-      const items: CuratedCard[] = rows
+      /* 🔴 D-1046 (Phase 11-F · F5) — **الردُّ شريحةُ الصفحة لا ما تراكم قبلها**: البنّاءُ يحتاج `want = LIMIT × pg`
+         صفّاً ليصل إلى الصفحة (وصفتُه تُعيد الترتيبَ من أوّلها)، **لكنّ الردَّ كان يحمل الصفوفَ كلَّها** — الصفحةُ
+         الخامسةُ ٣٠٠ عنصرٍ لأجل ٦٠ جديدة، والتطبيقُ يُسقط المكرَّر. الآن تُقصّ هنا. **التطبيقُ وحدَه ينادي هذا
+         المسار** (تحقّقٌ بالبحث)، وإصداراتُه القديمة تُسقط المكرَّر بمفتاحه فتعمل مع الشريحة كما هي. */
+      const fresh = rows.slice(LIMIT * (page - 1));
+      const items: CuratedCard[] = fresh
         .filter((r) => r.media_type === "tv" || r.media_type === "movie")
         .map((r) => ({
           kind: r.media_type === "tv" ? "tv" : "movie",

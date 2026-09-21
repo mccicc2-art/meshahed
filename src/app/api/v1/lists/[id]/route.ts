@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getList, getPublicList, getMyListSave, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, listReviewKey, getUserId } from "@/lib/data";
+import { getList, getPublicList, getMyListSave, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, getListReviewReplies, listReviewKey, getUserId } from "@/lib/data";
 import { displayNameOf } from "@/core/people";
 import { getDict } from "@/core/i18n";
 import { resolveSmartItems } from "@/lib/listItems";
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       const mine = !!uid && data.list.user_id === uid;
       const award = data.list.source_slug ? (universeBySlug(data.list.source_slug)?.award ?? null) : null;
 
-      const [pub, mySave, stats, myReview, smart, winners, reviews, social] = await Promise.all([
+      const [pub, mySave, stats, myReview, smart, winners, reviews, social, replies] = await Promise.all([
         mine ? Promise.resolve(null) : getPublicList(id),
         mine || !uid ? Promise.resolve(null) : getMyListSave(id),
         data.list.is_public ? getListCardStats([id]).catch(() => new Map<string, { saves: number; reviews: number; rating: number | null }>()) : Promise.resolve(new Map<string, { saves: number; reviews: number; rating: number | null }>()),
@@ -52,6 +52,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         award ? awardWinners(award).catch(() => []) : Promise.resolve([]),
         data.list.is_public ? getListReviews(id).catch(() => []) : Promise.resolve([]),
         data.list.is_public ? getListReviewSocial([id]).catch(() => new Map()) : Promise.resolve(new Map()),
+        data.list.is_public ? getListReviewReplies(id).catch(() => []) : Promise.resolve([]),
       ]);
       const t = getDict(locale);
       const badges = new Map(winners.map((r) => [`${r.media_type === "tv" ? "tv" : "movie"}-${r.id}`, r.awarded]));
@@ -95,8 +96,22 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             likes: soc?.likes ?? 0,
             replies: soc?.replies ?? 0,
             mine: !!uid && r.userId === uid,
+            liked_by_me: !!soc?.likedByMe,
           };
         }),
+        reply_rows: replies.slice(0, 200).map((r) => ({
+          reply_id: r.replyId,
+          review_user_id: r.reviewUserId,
+          parent_id: r.parentId,
+          name: displayNameOf(r, t.anonymousUser),
+          username: r.hide_name ? null : r.username,
+          avatar_url: r.hide_name ? null : r.avatar_url,
+          body: r.body,
+          created_at: r.createdAt,
+          mine: r.isMine,
+        })),
+        playlist: mine ? !!data.list.is_playlist : mySave?.saved ? !!mySave.playlist : null,
+        cover: mine ? { tmdb_id: data.list.cover_tmdb_id ?? null, media_type: (data.list.cover_media_type as "tv" | "movie" | null) ?? null, backdrop_path: data.list.cover_backdrop ?? null } : null,
         my_review: myReview ? { rating: myReview.rating, body: myReview.body ?? null, has_spoiler: !!myReview.hasSpoiler } : null,
       };
       return ok(payload, [listTag(id), "me:lists"]);

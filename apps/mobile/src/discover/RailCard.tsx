@@ -49,7 +49,7 @@ export const RailCard = memo(function RailCard({
   /** D-1036 — سنةُ الفوز في قائمة جائزة تُكتب **بلون التمييز** كالويب (D-995)؛ الرتبةُ بيضاءُ كما كانت */
   rankTone?: "accent";
 }) {
-  const { tokens } = useApp();
+  const { t, tokens } = useApp();
   /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
      وبلا مخزن (صفحةُ الشخص) الخاصّيّتان كما كانتا */
   const cs = useCardState(`${card.kind}-${card.id}`);
@@ -57,10 +57,22 @@ export const RailCard = memo(function RailCard({
   const held = cs.store ? cs.held : heldProp;
   const uri = posterFor(card.poster_path, RAIL_CARD_W);
   const ref = useRef<View>(null);
+  const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(card, { x, y, width: w, height: h })) : undefined;
+  const a11y = [rank !== null ? String(rank) : null, card.title, lib?.dropped ? t.libStatusDropped : lib?.completed ? t.libStatusCompleted : lib && lib.progress > 0 ? `${t.libStatusWatching} ${lib.progress}%` : lib?.saved ? t.libStatusUnstarted : null].filter(Boolean).join("، ");
   return (
     <Pressable
       onPress={() => onPress(card)}
-      onLongPress={onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(card, { x, y, width: w, height: h })) : undefined}
+      onLongPress={hold}
+      /* 🆕 D-1048 (Phase 11-F · F5) — **قارئُ الشاشة يقرأ البطاقةَ ويصل قائمتَها**: كانت بلا دورٍ ولا اسم (TalkBack
+         يقرأ ما تحتها قطعاً)، وقائمةُ الضغط المطوّل لا يبلغها من لا يضغط مطوّلاً. الاسمُ = العنوانُ وحالُه؛ وفعلٌ
+         مخصَّصٌ واحدٌ «المزيد» **يفتح `HoldMenu` نفسَها** — وصفوفُها أزرارٌ بأسمائها. مرآةُ الأفعال هنا كانت ستكون
+         نسخةً ثانيةً من منطق القائمة تفترق عنها عند أوّل صفٍّ يُضاف. */
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityActions={hold ? [{ name: "menu", label: t.moreMenuTitle }] : undefined}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "menu") hold?.();
+      }}
       delayLongPress={350}
       style={{ width: RAIL_CARD_W }}
     >

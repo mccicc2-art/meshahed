@@ -1,13 +1,7 @@
 import React, { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
-import { Icon } from "../icons";
-import { radius } from "../theme";
-import { Sheet } from "./Sheet";
-import { Chip } from "./Chip";
+import { ReviewSheet } from "../title/TitleCommunity";
 import { write, ApiError } from "../api";
-import { num } from "@/core/i18n";
 import type { ListReviewBody, ListReviewDeleteBody } from "../contracts";
 
 /**
@@ -43,19 +37,15 @@ export function ListReviewSheet({
   onSaved: (next: MyReview | null) => void;
   onError: (e: unknown) => void;
 }) {
-  const { t, tokens, locale } = useApp();
-  const [rating, setRating] = useState(mine?.rating ?? 0);
-  const [body, setBody] = useState(mine?.body ?? "");
-  const [spoiler, setSpoiler] = useState(mine?.has_spoiler ?? false);
-  const [dirty, setDirty] = useState(!mine);
+  const { t } = useApp();
   const [busy, setBusy] = useState(false);
 
-  const submit = async () => {
-    if (!rating || busy) return;
+  const submit = async (v: { rating: number; review: string | null; has_spoiler: boolean }) => {
+    if (!v.rating || busy) return;
     setBusy(true);
     try {
-      await write<{ done: true }>("/api/v1/lists/review", { listId, rating, body: body.trim() || null, hasSpoiler: spoiler } satisfies ListReviewBody);
-      onSaved({ rating, body: body.trim() || null, has_spoiler: spoiler });
+      await write<{ done: true }>("/api/v1/lists/review", { listId, rating: v.rating, body: v.review, hasSpoiler: v.has_spoiler } satisfies ListReviewBody);
+      onSaved({ rating: v.rating, body: v.review, has_spoiler: v.has_spoiler });
     } catch (e) {
       onError(e instanceof ApiError ? e : new Error("apiInternal"));
     } finally {
@@ -75,75 +65,19 @@ export function ListReviewSheet({
     }
   };
 
+  /* 🔴 D-1052 — **التقييمُ شكلٌ واحدٌ أينما فُتح**: كانت هذه ورقةً سفليّةً بصفِّ نجومٍ خاصٍّ بها، بينما تقييمُ العمل
+     والحلقة انبثاقٌ وسطيٌّ (D-1033) — شكلان لسؤالٍ واحد، دَينٌ بُلِّغ عنه مرّتين. الآن هذا الملفُّ **يملك الكتابةَ
+     وحدَها** (`lists/review*`) ويرسم `ReviewSheet` نفسَها: النجومُ والرقمُ الكبير والتعليقُ و«فيها حرق» و«حذف
+     تقييمي» تأتي منها، فلا صفَّ نجومٍ ثانياً ولا حقلاً ثانياً. الرأسُ اسمُ القائمة بلا ملصق (القائمةُ لا ملصقَ لها). */
   return (
-    <Sheet title={listName} onClose={onClose}>
-      <View style={{ gap: 12 }}>
-        <Text size={12} weight="600" muted>{t.listReviewMine}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }} accessibilityRole="radiogroup" accessibilityLabel={t.listReviewMine}>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <Pressable
-              key={n}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: rating === n }}
-              accessibilityLabel={String(n)}
-              onPress={() => {
-                setRating(n);
-                setDirty(true);
-              }}
-              style={{ width: 28, height: 32, alignItems: "center", justifyContent: "center" }}
-            >
-              <Icon name={n <= rating ? "star-filled" : "star"} size={20} color={n <= rating ? tokens.accent : tokens.disabled} />
-            </Pressable>
-          ))}
-          {rating > 0 ? (
-            <Text size={14} weight="700" color={tokens.accent} style={{ marginStart: "auto", fontVariant: ["tabular-nums"] }}>
-              {num(rating, locale)}
-            </Text>
-          ) : null}
-        </View>
-
-        <TextInput
-          value={body}
-          onChangeText={(v) => {
-            setBody(v);
-            setDirty(true);
-          }}
-          multiline
-          numberOfLines={7}
-          maxLength={2000}
-          placeholder={t.reviewPlaceholder}
-          placeholderTextColor={tokens.muted}
-          textAlignVertical="top"
-          style={{
-            minHeight: 7 * 22 + 24,
-            borderRadius: radius.control,
-            backgroundColor: tokens.surface2,
-            borderWidth: 1,
-            borderColor: tokens.border,
-            padding: 12,
-            fontSize: 15,
-            lineHeight: 22,
-            color: tokens.fg,
-            textAlign: "left",
-          }}
-        />
-
-        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <Chip
-            label={t.spoilerMark}
-            active={spoiler}
-            onPress={() => {
-              setSpoiler((v) => !v);
-              setDirty(true);
-            }}
-            leading={<Icon name={spoiler ? "eye-off" : "eye"} size={14} color={spoiler ? tokens.onAccent : tokens.muted} />}
-          />
-          <View style={{ marginStart: "auto", flexDirection: "row", gap: 8 }}>
-            <Button label={t.listReviewSave} busy={busy} disabled={!rating || !dirty} onPress={() => void submit()} />
-            {mine ? <Button label={t.listReviewDelete} variant="ghost" disabled={busy} onPress={() => void remove()} /> : null}
-          </View>
-        </View>
-      </View>
-    </Sheet>
+    <ReviewSheet
+      title={t.listReviewMine}
+      head={{ name: listName }}
+      initial={{ rating: mine?.rating ?? null, review: mine?.body ?? null, has_spoiler: mine?.has_spoiler ?? false }}
+      busy={busy}
+      onClose={onClose}
+      onSave={(v) => void submit(v)}
+      onRemove={mine ? () => void remove() : undefined}
+    />
   );
 }

@@ -104,6 +104,8 @@ const STALL_MS = 10_000;
 /** D-982 — قطرُ ثقب الإيقاظ في السطح الخامل (أيقونةُ التشغيل ٥٦ وما حولها) */
 const WAKE_HOLE = 96;
 const TICK_MS = 250;
+/** D-1041 — مهلةُ البدء التلقائيّ بعد تبديل المقطع في المكان: أقصرُ كثيراً من حارس التعثّر (١٠ث) فيسبقه */
+const AUTO_GRACE_MS = 3000;
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -121,6 +123,7 @@ export function TrailerPlayer({
   idle = false,
   onWake,
   overlay = false,
+  onAutoRefused,
 }: {
   /** بدائلُ المقطع مرتّبةً (D-743) — الأوّلُ هو المعروض، وما بعده يُجرَّب عند الرفض */
   videoKeys: readonly string[];
@@ -158,6 +161,13 @@ export function TrailerPlayer({
   onWake?: () => void;
   /** D-987 — المشغّلُ طبقةٌ فوق مصغّرةٍ ثابتة في البطاقة: يُوضع فوقها بلا خلفيّةٍ سوداء ولا سِترٍ من صورة */
   overlay?: boolean;
+  /**
+   * 🆕 D-1041 — **المقطعُ تبدّل في المكان ولم يبدأ وحدَه**: الصفُّ صار مشغّلاً واحداً تتبدّل مفاتيحُه
+   * (`loadVideoById`) بدل مشغّلٍ لكلِّ بطاقة. المستندُ الذي لُمس مرّةً يأذن له المتصفّحُ بما بعدها — لكنّ
+   * يوتيوب خدعنا مرّتين (D-968 · D-1010)، فلا وعدَ هنا: إن لم يصل `playing` خلال `AUTO_GRACE_MS` يُبلَّغ
+   * الصفُّ فيعيد البطاقةَ خاملةً بـ▶ (ما يعمل اليوم) — **لا سلسلةَ بدائل ولا بابَ ويب لرفضٍ ليس خطأً.**
+   */
+  onAutoRefused?: () => void;
 }) {
   const { t, tokens } = useApp();
   const ref = useRef<YoutubeIframeRef | null>(null);
@@ -176,6 +186,8 @@ export function TrailerPlayer({
   /* عدّادُ القفزات — الشارةُ تعيش ٧٠٠ م.ث لكلِّ قفزةٍ **وإن تكرّرت الجهةُ نفسُها** */
   const [seq, setSeq] = useState(0);
   const [barW, setBarW] = useState(0);
+  /* D-984 — «ميت»: خاملٌ رفضه يوتيوب؛ يُعرَّف هنا مع أخواته لأنّ تبديلَ المقطع (D-1041) يصفّره */
+  const [dead, setDead] = useState(false);
   const tap = useRef<{ at: number; right: boolean } | null>(null);
 
   const key = videoKeys[idx] ?? videoKeys[0] ?? "";
@@ -229,6 +241,35 @@ export function TrailerPlayer({
     const id = setTimeout(() => setSlow(true), 350);
     return () => clearTimeout(id);
   }, [veiled, idx]);
+
+  /* 🆕 D-1041 — **تبديلُ المقطع في المكان**: المشغّلُ نفسُه يبقى (مستندُه وإذنُ لمسته وكتمُه المفكوك)،
+     وحالُ المقطع وحدَها تُصفَّر — فيعود السِّترُ (`at = 0`) وتظهر مصغّرةُ البطاقة الجديدة تحته بلا إطارٍ
+     أسود (عقدُ D-987). المكتبةُ هي من ينادي `loadVideoById` حين يتبدّل `videoId`. */
+  const clip = videoKeys[0] ?? "";
+  const firstClip = useRef(true);
+  const playingRef = useRef(false);
+  playingRef.current = playing;
+  const idleRef = useRef(idle);
+  idleRef.current = idle;
+  const refusedRef = useRef(onAutoRefused);
+  refusedRef.current = onAutoRefused;
+  useEffect(() => {
+    if (firstClip.current) {
+      firstClip.current = false;
+      return;
+    }
+    setIdx(0);
+    setAt(0);
+    setDur(0);
+    setPlaying(false);
+    setDead(false);
+    setControls(true);
+    if (idleRef.current) return;
+    const id = setTimeout(() => {
+      if (!playingRef.current && !idleRef.current) refusedRef.current?.();
+    }, AUTO_GRACE_MS);
+    return () => clearTimeout(id);
+  }, [clip]);
 
   /* 🔴 D-968 — **حارسُ التعثّر**: مشغّلٌ طُلب منه التشغيلُ ولم يصل `playing` خلال عشر
      ثوانٍ يُعامل كرفض (`fail`): البديلُ التالي ثمّ البابُ الويبيّ — **فلا دوّارةَ أبديّة**
@@ -286,7 +327,6 @@ export function TrailerPlayer({
      نفسها** فوق ما كان المستخدمُ يفعله — حتى فوق ضغطته على الشريط السفليّ. البابُ فعلُ
      مستخدمٍ لا فعلُ مشغّل: الخاملُ المرفوض يصير «ميتاً» — صورةٌ وأيقونةُ ▶ كما كان،
      **واللمسةُ عليه هي التي تفتح الباب.** */
-  const [dead, setDead] = useState(false);
   const fail = useCallback((error?: string) => {
     /* D-967: رمزُ الرفض يُكتب في السجلّ — الجهازُ وحدَه يراه (logcat/A0)، والحاويةُ لا تصل يوتيوب */
     if (error) console.warn(`[trailer] youtube rejected ${videoKeys[idx] ?? "?"}: ${error}`);
@@ -452,31 +492,48 @@ export function TrailerPlayer({
         </View>
       ) : null}
 
+      {/* 🔴 D-1042 — **⏯ كبيرٌ في الوسط** (بلاغُ أحمد بتسجيل على 1.11.0: «لا أستطيع إيقاف الفيديو إذا ضغطت
+          من المنتصف أو حتّى من اليسار تحت»). التشخيص: زرُّ الصوت يعمل (بكلمته) **فالطبقةُ تصلها اللمسة** وD-1016
+          سليمة، وأمرا الإيقاف والكتم يسلكان مسارَ المكتبة نفسَه — فالعطلُ في **الزرّ**: أيقونةٌ ٢٠ بهامش ٨ = هدفٌ
+          ٣٦ (دون الـ٤٤ — D-033) محشورٌ في زاويةٍ مدوّرة تحت شريطٍ هامشُ لمسه ١٠ إلى الأسفل، فاللمسةُ تُقرأ «قفزة»
+          لا «إيقاف». الآن الهدفُ ٥٦ في الوسط حيث ضغط هو، **وهو قاعدةُ الويب حرفاً: «اللمسةُ التي ترى ⏸ توقف»**
+          (D-878/D-882 في `TrailerCardMedia`) — اللمسةُ الأولى ما زالت تكشف ولا توقف (D-771)، والضغطتان على
+          الجانبين تقفزان (D-934)؛ الدائرةُ دائرةُ ▶ الخاملة نفسُها (٥٦ · `rgba(0,0,0,0.6)`). */}
+      {controls ? (
+        <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
+          <Pressable
+            onPress={() => {
+              onWantPlay(!wantPlay);
+              show();
+            }}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={playing ? t.trailerPause : t.trailerPlay}
+            /* تحت السِّتر (متوقّفٌ أو يُحمَّل) الدائرةُ مرسومةٌ أصلاً في السِّتر بـ▶ أو دوّارة — فهذا الزرُّ هناك
+               **هدفُ لمسٍ شفّافٌ فوقها** لا دائرةٌ ثانية؛ وفوق الفيديو الظاهر يرسم دائرتَه بـ⏸ */
+            style={({ pressed }) => ({ width: 56, height: 56, borderRadius: 28, backgroundColor: veiled ? "transparent" : "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.75 : 1 })}
+          >
+            {veiled ? null : <Icon name={playing ? "pause" : "play"} size={24} color="#fff" />}
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* شريطُ الأدوات — عائلةُ الأزرار نفسُها: أيقونةٌ واحدةٌ في دائرةٍ داكنة */}
       {controls ? (
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 10, paddingBottom: 8, paddingTop: 14, backgroundColor: "rgba(0,0,0,0.45)" }}>
           <Pressable
             onPress={(e) => onBar(e.nativeEvent.locationX)}
             onLayout={(e) => setBarW(e.nativeEvent.layout.width)}
-            hitSlop={10}
+            /* D-1042 — الهامشُ إلى الأعلى وحدَه: كان ١٠ في كلِّ الجهات فيبتلع ما تحته */
+            hitSlop={{ top: 12, bottom: 2, left: 0, right: 0 }}
             accessibilityLabel={t.trailerSeek}
             style={{ height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.28)", marginBottom: 8 }}
           >
             <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct * 100}%`, borderRadius: 2, backgroundColor: tokens.accent }} />
           </Pressable>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Pressable
-              onPress={() => {
-                onWantPlay(!wantPlay);
-                show();
-              }}
-              hitSlop={8}
-              accessibilityLabel={playing ? t.trailerPause : t.trailerPlay}
-            >
-              <Icon name={playing ? "pause" : "play"} size={20} color="#fff" />
-            </Pressable>
-            {/* 🗑️ D-964 — **وزرُّ الصوت خرج من هنا**: صار في الرُكن ظاهراً دائماً،
-                **وزرّان لفعلٍ واحدٍ على سطحٍ واحد عطلٌ لا خيار** (القاعدة ٣). */}
+            {/* 🗑️ D-1042 — **زرُّ ⏸ الصغير خرج من هنا إلى وسط السطح** (أدناه): زرّان لفعلٍ واحدٍ على سطحٍ واحد
+                عطلٌ لا خيار (القاعدة ٣ — وهي التي أخرجت زرَّ الصوت في D-964). */}
             <Text size={12} weight="600" color="#fff" style={{ flex: 1 }}>
               {`${clock(at)} / ${dur > 0 ? clock(dur) : "0:00"}`}
             </Text>

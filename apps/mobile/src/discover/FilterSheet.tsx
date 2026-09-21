@@ -93,7 +93,8 @@ export function FilterSheet({
     queryFn: async () => (await api<ProvidersPayload>(`/api/v1/discover/providers?tab=${tab}`)).data,
     staleTime: 60 * 60_000,
   });
-  const provs = providers.data?.providers ?? [];
+  /* D-1049 — `?? []` كان يصنع مصفوفةً جديدةً كلَّ رسمة فيُعاد حسابُ ما يعتمد عليها بلا سبب (أوّلُ ما كشفه الفحص) */
+  const provs = useMemo(() => providers.data?.providers ?? [], [providers.data]);
   const region = providers.data?.region ?? "SA";
   const type = tab === "shows" ? "tv" : tab === "anime" ? "all" : "movie";
   const axes = axesForTab(tab);

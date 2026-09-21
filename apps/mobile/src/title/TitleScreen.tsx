@@ -263,6 +263,14 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   });
   const year = (d?.kind === "tv" ? d.first_air_date : d?.release_date)?.slice(0, 4) ?? "";
   const heroH = Math.round(width * 9 / 16);
+  /* 🔴 D-1040 — **أسفلُ الملصق = أسفلُ الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة 1.11.0: «اجعل أسفل البوستر = أسفل
+     الهيدر، ولا تنسَ ترفع البقيّة معها، اسمُ الفلم = أعلى البوستر»): الصفُّ كلُّه يصعد بارتفاع الملصق (١٦٨)، فيجلس
+     الملصقُ والاسمُ والتفاصيلُ والرقاقاتُ **داخل** الصورة، وصفُّ الأفعال يبدأ تحتها مباشرة.
+     ⚖️ **سقفٌ واحد**: على شاشةٍ ضيّقة (٣٦٠dp ⇒ خلفيّةٌ ٢٠٢) كان الملصقُ سيصعد تحت زرّ الرجوع (ينتهي عند ٤٤)؛
+     فالرفعُ `min(168, heroH − 52)` — يتطابق الأسفلان على هاتفه (٤١٢dp) وعلى كلِّ شاشةٍ تتّسع، وينزل الملصقُ
+     قليلاً عن الحافّة حيث لا تتّسع بدل أن يصطدم بالزرّ. */
+  const POSTER_H = 168;
+  const lift = Math.min(POSTER_H, heroH - 52);
   const watchedSet = useMemo(() => new Set(d?.kind === "tv" ? d.me.watched : []), [d]);
 
   return (
@@ -289,7 +297,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
             {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
-            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 144 }} contentFit="fill" />
+            {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
+            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
             {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
@@ -309,7 +318,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               حكمُه على المسودّة: «ارفعها نفس سطر البوستر» — كنتُ رفعتُ الملصقَ وحدَه فسبق الاسمَ): السطرُ
               الواحد عقدُ D-1020 ويبقى. **والحجابُ يطول معهما** (٩٦ ⇒ ١٤٤): الاسمُ صار أعلى من الحجاب القديم،
               وبدونه يُقرأ على الصورة العارية فيضيع على خلفيّةٍ فاتحة. */}
-          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -132, alignItems: "flex-start" }}>
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
             <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
               {d.poster_path ? <Image source={{ uri: posterUrl(d.poster_path, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
             </View>
@@ -317,10 +326,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               <View style={{ gap: 4 }}>
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                  <Text size={22} weight="700" numberOfLines={2} style={{ flex: 1, lineHeight: 28 }}>{d.name}</Text>
+                  <Text size={22} weight="700" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d.name}</Text>
                   <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => setReviewOpen("edit")} /></View>
                 </View>
-                <Text size={12} muted numberOfLines={2}>
+                <Text size={12} muted numberOfLines={2} style={styles.onArt}>
                   {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join(" · ")}
                 </Text>
                 <RatingsLine x={x} compact />
@@ -525,3 +534,9 @@ function Chevron({ color }: { color: string }) {
     </View>
   );
 }
+
+/* D-1040 — الاسمُ وسطرُ التفاصيل فوق الصورة مباشرةً الآن: ظلٌّ خفيفٌ كظلِّ أسماء الملصقات (`PosterCard.shadow`)،
+   فيُقرآن على خلفيّةٍ فاتحة حيث يرقّ الحجابُ في أعلاه. لا لونَ ولا مقاسَ تغيّر. */
+const styles = StyleSheet.create({
+  onArt: { textShadowColor: "rgba(0,0,0,0.85)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+});

@@ -135,10 +135,22 @@ export function SeasonAccordion({
                   <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{t.episodesCount(s.episode_count)}</Text>
                 ) : null}
               </Pressable>
-              {s.aired === 0 && s.air_date ? (
+              {/* 🔴 D-1039 — **موسمٌ أُعلن بلا موعدٍ ولا عدد لا يبقى سطراً أصمّ** (بلاغُ أحمد بلقطةٍ على 1.11.0: «وصل ولم
+                  تُعالَج» — The Pitt الموسم ٣): D-1029 أزالت «0/0» وراهنت على أنّ TMDB تعلن عدداً أو تاريخاً؛ لهذا الموسم
+                  لا تعلن شيئاً (`episode_count = 0` · `air_date = null`) **فبقي الاسمُ وحدَه وبدا عطلاً**. الآن:
+                  ١ · التاريخُ من الموسم، **وإلّا من `next_episode_to_air` إن كانت حلقتُه القادمة في هذا الموسم** (TMDB
+                      تملؤها قبل أن تملأ تاريخَ الموسم) — في الردّ أصلاً، لا نداء.
+                  ٢ · وإلّا «قريباً» (`comingSoon`، مفتاحٌ قائم) — **السطرُ يقول دائماً لماذا هو فارغ.**
+                  ولا نخترع تاريخاً ولا عدداً: «قريباً» حالٌ لا موعد. */}
+              {s.aired === 0 ? (
                 <Text size={12} muted style={{ paddingVertical: 12, fontVariant: ["tabular-nums"] }}>
-                  {/* تاريخٌ مضى ولم تصل حلقاتُه بعد (TMDB تتأخّر): التاريخُ وحدَه — «يُعرض» لماضٍ كذبة */}
-                  {s.air_date > new Date().toISOString().slice(0, 10) ? t.airsOn(formatDateShort(s.air_date, t)) : formatDateShort(s.air_date, t)}
+                  {(() => {
+                    const next = show.next_episode_to_air;
+                    const date = s.air_date ?? (next && next.season_number === s.season_number ? next.air_date : null);
+                    if (!date) return t.comingSoon;
+                    /* تاريخٌ مضى ولم تصل حلقاتُه بعد (TMDB تتأخّر): التاريخُ وحدَه — «يُعرض» لماضٍ كذبة */
+                    return date > new Date().toISOString().slice(0, 10) ? t.airsOn(formatDateShort(date, t)) : formatDateShort(date, t);
+                  })()}
                 </Text>
               ) : null}
               {s.aired > 0 ? (
@@ -305,7 +317,7 @@ function SeasonBody({
             </View>
             <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
               <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
-              {e.air_date ? <Text size={11} muted>{e.air_date}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
+              {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
             </View>
             {showRatings && typeof e.imdb_rating === "number" ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

@@ -2,6 +2,7 @@ import React, { useCallback, useImperativeHandle, useState } from "react";
 import { HoldMenu, type HoldAction, type HoldVariant } from "./library/HoldMenu";
 import type { CardAnchor, CardItem } from "./library/PosterCard";
 import { Toast } from "./ui";
+import { haptic } from "./haptics";
 
 /**
  * ====== مضيفا القائمة والإشعار — D-1028 (Phase 11-F · F4) ======
@@ -30,7 +31,8 @@ export function HoldHost<P>({
   toItem: (payload: P) => CardItem;
   inListOf?: (payload: P) => boolean;
   /** الفعلُ نفسُه بوعده — القائمةُ تُغلق فوراً، و`busy` يحجب فعلاً ثانياً حتّى يعود */
-  onAction: (a: HoldAction, payload: P) => Promise<void> | void;
+  /** `false` = الكتابةُ فشلت (فلا اهتزازَ نجاح — D-1043)؛ غيرُ ذلك نجاح */
+  onAction: (a: HoldAction, payload: P) => Promise<void | boolean> | void | boolean;
   /** من يريد أن يعرف أيُّ بطاقةٍ مضغوطةٌ الآن (الإطارُ الذهبيّ في «اكتشف») */
   onHeld?: (payload: P | null) => void;
 }) {
@@ -44,6 +46,7 @@ export function HoldHost<P>({
     hostRef,
     () => ({
       open(payload, anchor) {
+        haptic.pick();
         setHeld({ payload, anchor, item: toItem(payload), inList: inListOf ? inListOf(payload) : false });
         onHeld?.(payload);
       },
@@ -63,23 +66,38 @@ export function HoldHost<P>({
         const { payload } = held;
         close();
         setBusy(true);
-        void Promise.resolve(onAction(a, payload)).finally(() => setBusy(false));
+        void Promise.resolve(onAction(a, payload))
+          .then((r) => {
+            /* «مراجعة» بابٌ لا كتابة — لا نجاحَ يُحتفى به */
+            if (r !== false && a !== "review") haptic.success();
+          })
+          .finally(() => setBusy(false));
       }}
       onClose={close}
     />
   );
 }
 
-export type ToastHostRef = { say: (text: string) => void };
+export type ToastAction = { label: string; onPress: () => void };
+/** D-1047 — `say(text, action, ms)`: فعلٌ اختياريّ («تراجع») ومدّةٌ له؛ بلا فعلٍ المدّةُ ٣٫٢ث كما كانت */
+export type ToastHostRef = { say: (text: string, action?: ToastAction, ms?: number) => void };
 
 /** الإشعارُ الواحد بمؤقّته (٣٫٢ث كما كان) — `say` ثابتةُ المرجع فتمرّ إلى الألواح بلا إعادة رسم */
 export function ToastHost({ hostRef, bottom }: { hostRef: React.Ref<ToastHostRef>; bottom: number }) {
-  const [text, setText] = useState<string | null>(null);
-  useImperativeHandle(hostRef, () => ({ say: setText }), []);
+  const [toast, setToast] = useState<{ text: string; action?: ToastAction; ms: number } | null>(null);
+  useImperativeHandle(hostRef, () => ({ say: (text, action, ms) => setToast({ text, action, ms: ms ?? 3200 }) }), []);
   React.useEffect(() => {
-    if (!text) return;
-    const id = setTimeout(() => setText(null), 3200);
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), toast.ms);
     return () => clearTimeout(id);
-  }, [text]);
-  return text ? <Toast text={text} bottom={bottom} /> : null;
+  }, [toast]);
+  if (!toast) return null;
+  const action = toast.action;
+  return (
+    <Toast
+      text={toast.text}
+      bottom={bottom}
+      action={action ? { label: action.label, onPress: () => { setToast(null); action.onPress(); } } : undefined}
+    />
+  );
 }

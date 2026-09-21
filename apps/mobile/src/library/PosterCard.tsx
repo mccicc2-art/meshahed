@@ -56,19 +56,27 @@ export const PosterCard = memo(function PosterCard({
   /** D-1025 (F1) — الاسمُ يمشي فقط حين يُرى صفُّ البطاقة؛ الافتراضيُّ `true` لمن لا يعرف */
   marquee?: boolean;
 }) {
-  const { tokens } = useApp();
+  const { t, tokens } = useApp();
   /* D-1027 (F3) — كان `w185` لكلِّ عرضٍ ≤ ١٢٠: باهتٌ على شاشات ٣× */
   const uri = posterFor(item.posterPath, width);
   const ref = useRef<View>(null);
+  const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(item, { x, y, width: w, height: h })) : undefined;
+  const a11y = [item.title, item.dropped ? t.libStatusDropped : item.completed ? t.libStatusCompleted : item.progress > 0 ? `${t.libStatusWatching} ${item.progress}%` : null].filter(Boolean).join("، ");
   return (
     <Pressable
       ref={ref}
       onPress={() => onPress(item)}
-      onLongPress={
-        onHold
-          ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(item, { x, y, width: w, height: h }))
-          : undefined
-      }
+      onLongPress={hold}
+      /* 🆕 D-1048 (Phase 11-F · F5) — **قارئُ الشاشة يقرأ البطاقةَ ويصل قائمتَها**: كانت بلا دورٍ ولا اسم (TalkBack
+         يقرأ ما تحتها قطعاً)، وقائمةُ الضغط المطوّل لا يبلغها من لا يضغط مطوّلاً. الاسمُ = العنوانُ وحالُه؛ وفعلٌ
+         مخصَّصٌ واحدٌ «المزيد» **يفتح `HoldMenu` نفسَها** — وصفوفُها أزرارٌ بأسمائها. مرآةُ الأفعال هنا كانت ستكون
+         نسخةً ثانيةً من منطق القائمة تفترق عنها عند أوّل صفٍّ يُضاف. */
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityActions={hold ? [{ name: "menu", label: t.moreMenuTitle }] : undefined}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "menu") hold?.();
+      }}
       delayLongPress={350}
       style={{ width }}
     >

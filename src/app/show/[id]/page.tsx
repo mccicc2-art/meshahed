@@ -164,6 +164,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       name: s.name,
       episode_count: s.episode_count,
       aired_count: airedBySeason.get(s.season_number) ?? 0,
+      /* D-1050 — موعدُ الموسم الذي لم يُبثّ: تاريخُه، وإلّا تاريخُ الحلقة القادمة إن كانت فيه (TMDB تملؤها أوّلاً) */
+      air_date:
+        s.air_date ??
+        (tv.next_episode_to_air && tv.next_episode_to_air.season_number === s.season_number ? tv.next_episode_to_air.air_date : null),
     }));
 
   /* 🔴 🆕 **والترقيمُ المطلق يغيّر أرقامَ الفحص** (D-603): في One Piece

@@ -175,10 +175,14 @@ const styles = StyleSheet.create({
    `05` رقم ٢١/٢٩). بطاقةُ المكتبة الأصليّة لها `library/PosterCard.tsx` بقيم الويب. */
 
 /** مضيفُ الرسائل الواحد في التطبيق (انتقل من `LibraryScreen` إلى هنا في D-958 — «اكتشف» تحتاجه، ومضيفٌ ثانٍ خطأ) — نسخةُ `ToastHost` (الويب) بنغمة الخطأ: كبسولةٌ `rounded-full border bg-elevated ps-4 py-2.5 text-sm` بحدٍّ ونصٍّ بلون `--error`، على ارتفاع `5.5rem + safe-area` */
-export function Toast({ text, bottom }: { text: string; bottom: number }) {
+/**
+ * 🆕 D-1047 (F5) — `action` اختياريّ: **«تراجع» داخل الإشعار الواحد** لا إشعارٌ ثانٍ (مضيفُ الإشعار واحد). بلا فعلٍ
+ * يبقى كما كان حرفاً ولا يلتقط لمساً؛ وبفعلٍ تصير حبّتُه وحدَها قابلةً للضغط (`box-none` حولها).
+ */
+export function Toast({ text, bottom, action }: { text: string; bottom: number; action?: { label: string; onPress: () => void } }) {
   const { tokens } = useApp();
   return (
-    <View pointerEvents="none" style={{ position: "absolute", left: 16, right: 16, bottom: bottom + 72, alignItems: "center" }}>
+    <View pointerEvents={action ? "box-none" : "none"} style={{ position: "absolute", left: 16, right: 16, bottom: bottom + 72, alignItems: "center" }}>
       <View
         style={{
           maxWidth: 448,
@@ -196,7 +200,16 @@ export function Toast({ text, bottom }: { text: string; bottom: number }) {
           elevation: 12,
         }}
       >
-        <Text size={14} color={tokens.error}>{text}</Text>
+        {action ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+            <Text size={14} color={tokens.error} numberOfLines={1} style={{ flexShrink: 1 }}>{text}</Text>
+            <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
+              <Text size={14} weight="700" color={tokens.accent}>{action.label}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text size={14} color={tokens.error}>{text}</Text>
+        )}
       </View>
     </View>
   );

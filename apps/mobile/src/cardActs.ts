@@ -25,11 +25,11 @@ export function useCardActs<C extends ActCard>(
 ) {
   const { onReview, onError, onDismiss } = o;
   return useCallback(
-    async (a: HoldAction, c: C) => {
+    async (a: HoldAction, c: C): Promise<boolean> => {
       const key = `${c.kind}-${c.id}`;
       if (a === "review") {
         onReview(c);
-        return;
+        return true;
       }
       const before = store.override(key);
       try {
@@ -51,7 +51,9 @@ export function useCardActs<C extends ActCard>(
         store.setOverride(key, before);
         if (a === "dismiss") onDismiss?.(key, false);
         onError(e);
+        return false;
       }
+      return true;
     },
     [store, onReview, onError, onDismiss],
   );

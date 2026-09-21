@@ -1,5 +1,4 @@
-import { getDict, num, type Locale } from "@/core/i18n";
-import { Icon } from "./Icon";
+import { num, type Locale } from "@/core/i18n";
 
 /**
  * **نبضُ العمل في الترويسة — قلوبُ الناس وتقييمُهم** (D-408، طلبُ أحمد
@@ -26,7 +25,6 @@ import { Icon } from "./Icon";
  * يقول صفراً.
  */
 export function TitlePulse({
-  hearts,
   votes,
   avg,
   locale,
@@ -36,21 +34,14 @@ export function TitlePulse({
   avg: number;
   locale: Locale;
 }) {
-  const t = getDict(locale);
-  if (hearts <= 0 && votes <= 0) return null;
+  if (votes <= 0) return null;
   const rounded = Math.round(avg * 10) / 10;
 
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm">
-      {hearts > 0 && (
-        <span
-          className="inline-flex items-center gap-1.5"
-          title={t.titlePulseHearts(num(hearts, locale))}
-        >
-          <Icon name="heart-filled" size={14} className="text-[color:var(--error)] shrink-0" />
-          <span className="font-bold tabular-nums">{num(hearts, locale)}</span>
-        </span>
-      )}
+      {/* 🗑️ D-1051 — **القلبُ خرج من هنا** (حكمُ أحمد على مسودّة التطبيق، D-1030: «القلب شيله، بس تقييم المجتمع») —
+          والويبُ وحدَه لم يلحق، فكان السطحان يقولان شيئين. القلبُ عدّادُ إعجابٍ لا تقييم، ومكانُه المجتمع.
+          `hearts` يبقى في الواجهة (الصفحتان تمرّرانه) ولا يُرسم: تغييرُ ما يُعرض لا عقدِ المنادين. */}
       {votes > 0 && (
         <span className="inline-flex items-center gap-1.5 text-muted">
           <span className="font-bold text-accent tabular-nums">

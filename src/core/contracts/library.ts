@@ -148,6 +148,16 @@ export type QueueOrderBody = { row: "continue" | "towatch" | "lists" | "towatchl
 export type SmartListBody = { name: string; rule: Record<string, string> };
 export type CreateListBody = { name: string };
 export type ListPlaylistBody = { listId: string; on: boolean };
+/** 🆕 D-1037 — كتاباتُ مالك القائمة من الشاشة الأصليّة (L2)؛ كلُّها فوق دوالّ الويب القائمة */
+export type ListUpdateBody = { listId: string; name: string; isPublic: boolean; subtitle?: string | null; kind?: "regular" | "ranked" | "watch_order" };
+export type ListDeleteBody = { listId: string };
+export type ListReorderBody = { listId: string; keys: string[] };
+export type ListCoverBody = { listId: string; tmdbId: number | null; mediaType: "tv" | "movie" | null; backdropPath: string | null };
+/** 🆕 D-1038 — القلبُ والردُّ على رأيٍ في قائمة */
+export type ListReviewLikeBody = { listId: string; reviewUserId: string; liked: boolean };
+export type ListReviewReplyBody = { listId: string; reviewUserId: string; body: string; parentId?: string | null };
+export type ListReplyDeleteBody = { listId: string; replyId: string };
+export type ListReplyRow = { reply_id: string; review_user_id: string; parent_id: string | null; name: string; username: string | null; avatar_url: string | null; body: string; created_at: string; mine: boolean };
 export type SaveListBody = { listId: string; save: boolean };
 export type ToWatchBody = { on: boolean };
 export type HiddenRailsBody = { keys: string[] };
@@ -197,5 +207,13 @@ export type ListDetailPayload = {
     likes: number;
     replies: number;
     mine: boolean;
+    /** D-1038 — قلبي على هذا الرأي */
+    liked_by_me: boolean;
   }[];
+  /** D-1038 — ردودُ القائمة كلُّها (حتّى ٢٠٠) مفتاحُ خيطها `review_user_id`؛ الحدودُ (الحظر · المخفيّ · المُبلَّغ) يحترمها القارئ */
+  reply_rows: ListReplyRow[];
+  /** D-1037 — لقائمتي أو محفوظتي: هل هي في «قائمة التشغيل»؟ `null` = لا تنطبق */
+  playlist: boolean | null;
+  /** D-1037 — غلافُ قائمتي الحاليّ (لورقة التحرير) */
+  cover: { tmdb_id: number | null; media_type: "tv" | "movie" | null; backdrop_path: string | null } | null;
 };

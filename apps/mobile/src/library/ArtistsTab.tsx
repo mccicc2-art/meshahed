@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "../api";
 import { useApp } from "../state";
+import { usePullRefresh } from "../pullRefresh";
 import { Button, Text } from "../ui";
 import { radius } from "../theme";
 import { Icon } from "../icons";
@@ -31,6 +32,7 @@ const MIN_COL = 96;
 export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll }: { onOpenWeb: (path: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
+  const refreshControl = usePullRefresh([qk.tag("people")], topPad);
   const data = useQuery({
     queryKey: qk.tag("people"),
     queryFn: async () => (await api<LibraryArtistsPayload>("/api/v1/me/library/artists")).data,
@@ -53,7 +55,7 @@ export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll }: 
   if (items.length === 0) return <View style={{ paddingTop: topPad }}><Empty text={t.artistsEmpty} cta={t.artistsEmptyCta} onCta={() => onOpenWeb("/search")} /></View>;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
         {items.map((a) => (
           <ArtistCard key={a.person_id} a={a} width={cellW} onPress={() => onOpenWeb(`/person/${a.person_id}`)} />

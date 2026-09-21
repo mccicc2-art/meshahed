@@ -8,6 +8,7 @@ import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { radius } from "../theme";
 import { Icon } from "../icons";
+import { usePullRefresh } from "../pullRefresh";
 import { Sheet } from "./Sheet";
 import { ListCard, type ListCardData } from "./ListCard";
 import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
@@ -46,6 +47,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
   const { t, tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
+  const refreshControl = usePullRefresh([qk.tag("me:lists")], topPad);
   const data = useQuery({
     queryKey: qk.tag("me:lists"),
     queryFn: async () => (await api<LibraryListsPayload>("/api/v1/me/library/lists")).data,
@@ -169,7 +171,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
   const savedTitle = p.saved_count > 0 ? `${t.savedListsSection} · ${p.saved_count}` : t.savedListsSection;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
         {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014) */}

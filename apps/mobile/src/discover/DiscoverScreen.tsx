@@ -21,8 +21,9 @@ import { TrailersRail } from "./TrailersRail";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
-import { AllSheet } from "./AllSheet";
 import { coldStartVoid, span } from "../perfMarks";
+import { usePullRefresh } from "../pullRefresh";
+import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
 import type { TabPref } from "@/core/tabPrefs";
 import type { MyRow } from "@/core/myRows";
@@ -144,6 +145,43 @@ export function DiscoverScreen() {
   /* ⚖️ D-1028 (F4) — الإشعارُ في مضيفه (`ToastHost`) لا في حالة الشاشة؛ و`setToast` ثابتةُ المرجع */
   const toastHost = useRef<ToastHostRef>(null);
   const setToast = useCallback((text: string) => toastHost.current?.say(text), []);
+  /**
+   * 🆕 D-1047 (Phase 11-F · F5) — **حذفٌ بلا تأكيدٍ يحتاج «تراجع»** (دَينٌ معلَنٌ في `05`: «حذفُ فلترٍ محفوظ بضغطةٍ
+   * مطوّلة بلا تأكيدٍ ولا تراجع»). الحذفُ يُرى فوراً، **والكتابةُ تُؤجَّل أربعَ ثوانٍ** يعرض فيها الإشعارُ «تراجع»:
+   * الضغطُ يعيد ما حُذف ولا يصل الخادمَ شيء؛ وانقضاءُ المهلة يكتب. **ما عُلِّق لا يضيع**: حذفٌ ثانٍ، أو مغادرةُ
+   * الشاشة، يكتبان المعلَّقَ فوراً — «تراجع» يؤخّر الكتابةَ ولا يُسقطها.
+   */
+  const pending = useRef<{ id: ReturnType<typeof setTimeout>; commit: () => void } | null>(null);
+  const flushPending = useCallback(() => {
+    const p = pending.current;
+    if (!p) return;
+    pending.current = null;
+    clearTimeout(p.id);
+    p.commit();
+  }, []);
+  const undoable = useCallback(
+    (text: string, commit: () => void, undo: () => void) => {
+      flushPending();
+      const id = setTimeout(flushPending, 4000);
+      pending.current = { id, commit };
+      toastHost.current?.say(
+        text,
+        {
+          label: t.undoWatched,
+          onPress: () => {
+            if (pending.current?.id !== id) return;
+            clearTimeout(id);
+            pending.current = null;
+            undo();
+          },
+        },
+        4000,
+      );
+    },
+    [flushPending, t],
+  );
+  useEffect(() => flushPending, [flushPending]);
+
   const onError = useCallback(
     (e: unknown) => {
       const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
@@ -190,15 +228,18 @@ export function DiscoverScreen() {
    */
   const [browse, setBrowse] = useState<BrowseState>(EMPTY_BROWSE);
   const [sheet, setSheet] = useState(false);
-  /* D-994 — «الكلّ ←» ورقةٌ أصليّة: `see_all` يحمل `/discover/<s>?m=…`، يُحوَّل إلى استعلام القسم */
-  const [all, setAll] = useState<{ title: string; query: string } | null>(null);
-  const openAll = useCallback((title: string, path: string) => {
-    const m = /^\/discover\/([^/?]+)\??(.*)$/.exec(path);
-    if (!m) return;
-    const p = new URLSearchParams(m[2] ?? "");
-    p.set("s", m[1]);
-    setAll({ title, query: p.toString() });
-  }, []);
+  /* D-994 ⇒ ⚖️ D-1046 (F5): «الكلّ ←» كانت ورقةً سفليّةً بزرّ «المزيد»؛ صارت **شاشةً كاملة** تُدفع فوق «اكتشف»
+     بتمريرٍ لا نهائيّ (`SectionScreen`). `see_all` يحمل `/discover/<s>?m=…` فيُحوَّل إلى استعلام القسم كما كان */
+  const openAll = useCallback(
+    (title: string, path: string) => {
+      const m = /^\/discover\/([^/?]+)\??(.*)$/.exec(path);
+      if (!m) return;
+      const p = new URLSearchParams(m[2] ?? "");
+      p.set("s", m[1]);
+      router.push({ pathname: "/section", params: { title, query: p.toString(), path } });
+    },
+    [router],
+  );
   const bq = browseQuery(browse);
   /* ⚖️ D-1028 (F4) — `held`/`busy`/`overrides` خرجت من جذر الشاشة: القائمةُ في `HoldHost`، والإطارُ
      الذهبيُّ والخيطُ التفاؤليُّ في `cardStore` تقرؤهما **البطاقةُ المعنيّةُ وحدَها**. كانت ضغطةٌ
@@ -206,18 +247,15 @@ export function DiscoverScreen() {
   const [store] = useState(createCardStore);
   useEffect(() => store.setBase(marks), [store, marks]);
   const holdHost = useRef<HoldHostRef<CuratedCard>>(null);
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  /* D-1053 — المخفيُّ في الجلسة مخزنٌ تشترك فيه «اكتشف» و«الكلّ ←» */
+  const hidden = useDismissed();
   const hold = useCallback((card: CuratedCard, anchor: CardAnchor) => holdHost.current?.open(card, anchor), []);
   const onHeld = useCallback((c: CuratedCard | null) => store.setHeld(c ? `${c.kind}-${c.id}` : null), [store]);
   /* D-1036 — الأفعالُ نفسُها صارت في `useCardActs` (تقرؤها صفحةُ القائمة الأصليّة أيضاً) */
   const onDismiss = useCallback(
     (key: string, hide: boolean) => {
-      setHidden((prev) => {
-        const next = new Set(prev);
-        if (hide) next.add(key);
-        else next.delete(key);
-        return next;
-      });
+      if (hide) dismissed.add(key);
+      else dismissed.restore(key);
       if (hide) setToast(t.dismissedToast);
     },
     [t, setToast],
@@ -377,6 +415,7 @@ export function DiscoverScreen() {
             onLeave={leaveTo}
             onError={onError}
             onToast={setToast}
+            onUndoable={undoable}
             onSeeAll={openAll}
           />
         )}
@@ -396,19 +435,6 @@ export function DiscoverScreen() {
       />
       </Animated.View>
       <ToastHost hostRef={toastHost} bottom={navH + 16} />
-      {all ? (
-        <AllSheet
-          title={all.title}
-          query={all.query}
-          hidden={hidden}
-          onHold={hold}
-          onOpen={(c) => {
-            setAll(null);
-            openCard(c);
-          }}
-          onClose={() => setAll(null)}
-        />
-      ) : null}
       {sheet ? (
         <FilterSheet
           tab={tab === "lists" ? "shows" : tab}
@@ -461,6 +487,7 @@ function DiscoverPane({
   onLeave,
   onError,
   onToast,
+  onUndoable,
   onSeeAll,
 }: {
   tab: Tab;
@@ -486,6 +513,8 @@ function DiscoverPane({
   onError: (e: unknown) => void;
   /** D-993 — توستٌ من اللوح (قائمةٌ ذكيّةٌ أُنشئت) */
   onToast: (text: string) => void;
+  /** D-1047 — فعلٌ يُرى فوراً وتُؤجَّل كتابتُه بإشعار «تراجع» */
+  onUndoable: (text: string, commit: () => void, undo: () => void) => void;
   /** D-994 — «الكلّ» لصفٍّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
 }) {
@@ -556,13 +585,28 @@ function DiscoverPane({
     [naming, tab, bq, qc, railTab, onLeave, onError, onToast, t],
   );
   const removeSaved = useCallback(
-    async (f: { name: string; q: string }) => {
-      /* الردُّ العامّ يحمل الاسمَ والاستعلامَ لا المعرّف — فالحذفُ بالاستعلام والقسم ويقرّره الخادم */
-      const r = await write<SavedFilterResult>("/api/v1/me/prefs/saved-filters", { remove: f.q, section: tab } satisfies SavedFilterBody);
-      qc.setQueryData<PersonalRailsPayload>(["discover:personal", railTab, bq], (prev) => (prev ? { ...prev, filters: r.filters.filter((x) => x.section === tab).map((x) => ({ name: x.name, q: x.q })) } : prev));
-      void qc.invalidateQueries({ queryKey: ["discover:personal"] });
+    (f: { name: string; q: string }) => {
+      const key = ["discover:personal", railTab, bq] as const;
+      const before = qc.getQueryData<PersonalRailsPayload>(key);
+      /* D-1047 — يختفي الآن، ويُكتب بعد مهلة «تراجع»: الرقاقةُ تعود من اللقطة إن ضُغط */
+      qc.setQueryData<PersonalRailsPayload>(key, (prev) => (prev ? { ...prev, filters: prev.filters.filter((x) => x.q !== f.q) } : prev));
+      onUndoable(
+        t.browseRemoveFilter(f.name),
+        () => {
+          /* الردُّ العامّ يحمل الاسمَ والاستعلامَ لا المعرّف — فالحذفُ بالاستعلام والقسم ويقرّره الخادم */
+          write<SavedFilterResult>("/api/v1/me/prefs/saved-filters", { remove: f.q, section: tab } satisfies SavedFilterBody)
+            .then(() => void qc.invalidateQueries({ queryKey: ["discover:personal"] }))
+            .catch((e) => {
+              if (before) qc.setQueryData<PersonalRailsPayload>(key, before);
+              onError(e);
+            });
+        },
+        () => {
+          if (before) qc.setQueryData<PersonalRailsPayload>(key, before);
+        },
+      );
     },
-    [railTab, tab, bq, qc],
+    [railTab, tab, bq, qc, onUndoable, onError, t],
   );
   /**
    * 🆕 D-979 — **«اقتراحات أخرى» كما في الويب** (طلبُ أحمد: «في الويب فيه more picks،
@@ -592,8 +636,14 @@ function DiscoverPane({
   const railProps = useMemo(() => ({ hidden, onHold, onOpen }), [hidden, onHold, onOpen]);
   /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
   const seeAll = (path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path));
+  /* D-1044 (F5) — السحبُ يعيد جلبَ صفوف **هذا التبويب وحدَه** (المفاتيحُ تبدأ بالتبويب)؛ «قوائم» لها مفتاحُها */
+  const refreshControl = usePullRefresh(
+    lists ? [["discover:lists"]] : [["discover:rail", tab], ["discover:personal", tab], ["discover:trailers", tab]],
+    topPad,
+  );
   return (
     <ScrollView
+      refreshControl={refreshControl}
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
@@ -605,7 +655,7 @@ function DiscoverPane({
       {!lists && ps && ps.filters.length > 0 && !filtering ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
           {ps.filters.map((f) => (
-            <Chip key={f.q} label={f.name} active={false} onPress={() => onBrowse(browseFromQuery(f.q))} onLongPress={() => void removeSaved(f)} />
+            <Chip key={f.q} label={f.name} active={false} onPress={() => onBrowse(browseFromQuery(f.q))} onLongPress={() => removeSaved(f)} />
           ))}
         </ScrollView>
       ) : null}

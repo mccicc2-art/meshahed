@@ -17,10 +17,18 @@ import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../Hol
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { marksOf, useCardActs } from "../cardActs";
 import { ListReviewSheet, type MyReview } from "../library/ListReviewSheet";
-import { ReviewRow } from "../title/TitleCommunity";
+import { ReorderSheet } from "../library/ReorderSheet";
+import { Chip } from "../library/Chip";
+import { ListEditSheet } from "./ListEditSheet";
+import { ListCoverSheet } from "./ListCoverSheet";
+import { ListReviews } from "./ListReviews";
+import type { HoldAction } from "../library/HoldMenu";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard } from "../contracts";
-import type { LibraryPayload, ListDetailItem, ListDetailPayload, SaveListBody } from "../contracts";
+import type {
+  LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
+  ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody,
+} from "../contracts";
 
 /**
  * ====== صفحةُ القائمة — شاشةٌ أصليّة (D-1036 · الشريحةُ الأولى: القراءة) ======
@@ -35,8 +43,11 @@ import type { LibraryPayload, ListDetailItem, ListDetailPayload, SaveListBody } 
  * 🔑 **لا عنصرَ جديداً**: `RailCard` بطاقةُ «اكتشف» · `HoldHost`/`ToastHost`/`cardStore` (D-1028) ·
  * `useCardActs` (مستخرَجٌ من «اكتشف») · `ListReviewSheet` ورقةُ رأيي القائمة · `ReviewRow` صفُّ رأي العمل.
  *
- * ⚖️ **ما بقي ويبيّاً ببابٍ من هنا** (الشريحةُ الثانية): تحريرُ المالك (الاسمُ والنوعُ والغلافُ والترتيبُ
- * والحذف) وورقةُ الإعلان، والردودُ والقلوبُ على آراء الناس، ومفتاحُ التشغيل. **بابٌ ظاهرٌ لا نقصٌ صامت.**
+ * 🆕 **D-1037 · D-1038 (L2)** — صار أصليّاً: تحريرُ المالك (الاسمُ · النبذةُ · الخصوصيّةُ · النوع · الترتيبُ
+ * بالسحب · الغلاف · الحذف) · إزالةُ عملٍ من قائمتي (صفٌّ في قائمة الضغط المطوّل) · مفتاحُ التشغيل · القلوبُ
+ * والردودُ على آراء الناس. **كلُّ كتابةٍ تفاؤليّةٌ في كاش الصفحة، وتتراجع عند الفشل بإعادة الجلب.**
+ * ⚖️ **ما بقي ويبيّاً ببابٍ ظاهر — ثلاثةٌ مربوطةٌ بشاشاتٍ لم تُنقل**: إضافةُ عمل (⇐ البحث) · المشاركةُ لصديق/
+ * مجتمع وورقةُ الإعلان (⇐ شاشاتُ الناس) · محرّرُ شرط القائمة الذكيّة. تُغلق حين تُنقل شاشاتُها، لا قبلها.
  */
 const HEADER_H = 64;
 const PAGE_PAD = 16;
@@ -100,7 +111,124 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
   const holdHost = useRef<HoldHostRef<CuratedCard>>(null);
   const hold = useCallback((c: CuratedCard, anchor: CardAnchor) => holdHost.current?.open(c, anchor), []);
   const onHeld = useCallback((c: CuratedCard | null) => store.setHeld(c ? `${c.kind}-${c.id}` : null), [store]);
-  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail });
+  const cardAct = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail });
+
+  /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
+  const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover">(null);
+  const patch = useCallback((fn: (p: ListDetailPayload) => ListDetailPayload) => qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? fn(p) : p)), [qc, id]);
+  const run = useCallback(
+    async (optimistic: ((p: ListDetailPayload) => ListDetailPayload) | null, job: () => Promise<unknown>, done?: () => void) => {
+      setBusy(true);
+      if (optimistic) patch(optimistic);
+      try {
+        await job();
+        done?.();
+        return true;
+      } catch (e) {
+        fail(e);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [patch, fail],
+  );
+  const act = useCallback(
+    async (a: HoldAction, c: CuratedCard): Promise<boolean> => {
+      if (a !== "remove") return cardAct(a, c);
+      /* إزالةٌ من **القائمة** لا من المكتبة — `toggle-item` بـ`add:false`، وهو مسارُ صفحة العمل نفسُه */
+      return run(
+        (p) => ({ ...p, items: p.items.filter((x) => !(x.kind === c.kind && x.id === c.id)) }),
+        () => write<{ done: true }>("/api/v1/lists/toggle-item", { listId: id, tmdbId: c.id, mediaType: c.kind, title: c.title, posterPath: c.poster_path, add: false } satisfies ListToggleItemBody),
+      );
+    },
+    [cardAct, run, id],
+  );
+  const saveMeta = useCallback(
+    (v: Omit<ListUpdateBody, "listId">) =>
+      void run(
+        (p) => ({ ...p, name: v.name, subtitle: v.subtitle ?? null, is_public: v.isPublic, kind: v.kind ?? p.kind }),
+        () => write<{ done: true }>("/api/v1/lists/update", { listId: id, ...v } satisfies ListUpdateBody),
+        () => {
+          setSheet(null);
+          /* الإعلانُ يفتح شريطَ الحال والآراء — وأعدادُها عند الخادم */
+          void q.refetch();
+        },
+      ),
+    [run, id, q],
+  );
+  const saveOrder = useCallback(
+    (keys: string[]) =>
+      void run(
+        (p) => {
+          const by = new Map(p.items.map((x) => [`${x.kind}-${x.id}`, x]));
+          const next = keys.map((k) => by.get(k)).filter((x): x is ListDetailItem => !!x);
+          return { ...p, items: next.length === p.items.length ? next : p.items };
+        },
+        () => write<{ done: true }>("/api/v1/lists/reorder", { listId: id, keys } satisfies ListReorderBody),
+        () => setSheet(null),
+      ),
+    [run, id],
+  );
+  const saveCover = useCallback(
+    (v: Omit<ListCoverBody, "listId">) =>
+      void run(
+        (p) => ({ ...p, cover: { tmdb_id: v.tmdbId, media_type: v.mediaType, backdrop_path: v.backdropPath } }),
+        () => write<{ done: true }>("/api/v1/lists/cover", { listId: id, ...v } satisfies ListCoverBody),
+        () => {
+          setSheet(null);
+          say(t.savedToast);
+        },
+      ),
+    [run, id, say, t],
+  );
+  const removeList = useCallback(
+    () =>
+      void run(null, () => write<{ done: true }>("/api/v1/lists/delete", { listId: id } satisfies ListDeleteBody), () => {
+        qc.removeQueries({ queryKey: qk.list(id) });
+        back();
+      }),
+    [run, id, qc, back],
+  );
+  const setPlaylist = useCallback(
+    (on: boolean) =>
+      void run(
+        (p) => ({ ...p, playlist: on }),
+        () => write<{ on: boolean }>("/api/v1/lists/playlist", { listId: id, on } satisfies ListPlaylistBody),
+        () => say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast),
+      ),
+    [run, id, say, t],
+  );
+
+  /* ====== D-1038 — القلبُ والردُّ على رأي ====== */
+  const likeReview = useCallback(
+    (reviewUserId: string, liked: boolean) =>
+      void run(
+        (p) => ({ ...p, review_rows: p.review_rows.map((r) => (r.user_id === reviewUserId ? { ...r, liked_by_me: liked, likes: Math.max(0, r.likes + (liked ? 1 : -1)) } : r)) }),
+        () => write<{ liked: boolean }>("/api/v1/lists/review-like", { listId: id, reviewUserId, liked } satisfies ListReviewLikeBody),
+      ),
+    [run, id],
+  );
+  const replyReview = useCallback(
+    (reviewUserId: string, body: string, parentId: string | null) =>
+      /* الردُّ **لا يُخمَّن**: اسمي وصورتي ومعرّفُ الردّ عند الخادم — يُجلب بعد الكتابة */
+      run(null, () => write<{ reply_id: string | null }>("/api/v1/lists/review-reply", { listId: id, reviewUserId, body, parentId } satisfies ListReviewReplyBody), () => {
+        say(t.replySentToast);
+        void q.refetch();
+      }),
+    [run, id, say, t, q],
+  );
+  const deleteReply = useCallback(
+    (replyId: string) =>
+      void run(
+        (p) => ({ ...p, reply_rows: p.reply_rows.filter((x) => x.reply_id !== replyId && x.parent_id !== replyId) }),
+        () => write<{ done: true }>("/api/v1/lists/reply-delete", { listId: id, replyId } satisfies ListReplyDeleteBody),
+        () => void q.refetch(),
+      ),
+    [run, id, q],
+  );
+  const queue: QueueItem[] = useMemo(() => (d?.items ?? []).map((x) => ({ key: `${x.kind}-${x.id}`, title: x.title, poster_path: x.poster_path, media_type: x.kind })), [d]);
   const heldItemOf = useCallback(
     (c: CuratedCard): CardItem => {
       const m = store.mark(`${c.kind}-${c.id}`);
@@ -222,6 +350,12 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
                   </View>
                 ))}
               </View>
+              {/* D-1037 — مفتاحُ التشغيل: رقاقةٌ (عائلةُ التحكّم القائمة) — لقائمتي ولمحفوظتي وحدَهما */}
+              {d.playlist !== null ? (
+                <View style={{ flexDirection: "row", marginTop: 8 }}>
+                  <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
+                </View>
+              ) : null}
             </View>
 
             {d.items.length === 0 ? (
@@ -265,23 +399,24 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
                 {d.can_review ? (
                   <Button label={d.my_review ? `${t.listReviewMine} · ${num(d.my_review.rating, locale)}/${num(10, locale)}` : t.rateTitle} variant="ghost" onPress={() => setReviewOpen(true)} />
                 ) : null}
-                {d.review_rows.map((r) => (
-                  <ReviewRow key={r.user_id} r={r} />
-                ))}
-                {/* الردودُ والقلوبُ على الآراء ويبيّةٌ بعد — بابٌ ظاهر */}
-                {d.review_rows.length > 0 ? <Button label={`${t.tabCommunity} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} /> : null}
+                <ListReviews rows={d.review_rows} replies={d.reply_rows} canAct={d.can_review || d.mine} busy={busy} onLike={likeReview} onReply={replyReview} onDeleteReply={deleteReply} />
               </View>
             ) : null}
 
             {d.mine ? (
-              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24 }}>
-                <Button label={`${t.listEditTitle} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} />
+              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
+                <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
+                {/* ما لم تُنقل شاشتُه بعد: إضافةُ عملٍ (البحث) وشرطُ الذكيّة — بابٌ ظاهرٌ إلى الويب */}
+                <Button label={`${d.smart ? t.smartListLabel : t.listAddTitles} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} />
               </View>
             ) : null}
           </ScrollView>
         )}
 
-        <HoldHost hostRef={holdHost} variant="list" toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
+        {sheet === "edit" && d ? <ListEditSheet list={d} busy={busy} onSave={saveMeta} onReorder={() => setSheet("reorder")} onCover={() => setSheet("cover")} onDelete={removeList} onClose={() => setSheet(null)} /> : null}
+        {sheet === "reorder" && d ? <ReorderSheet items={queue} onClose={() => setSheet("edit")} onDone={saveOrder} /> : null}
+        {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet("edit")} /> : null}
+        <HoldHost hostRef={holdHost} variant={d?.mine && !d.smart ? "mylist" : "list"} toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
         {reviewOpen && d ? <ListReviewSheet listId={id} listName={d.name} mine={d.my_review ? { rating: d.my_review.rating, body: d.my_review.body, has_spoiler: d.my_review.has_spoiler } : null} onClose={() => setReviewOpen(false)} onSaved={onReviewSaved} onError={fail} /> : null}
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 16} />
       </View>

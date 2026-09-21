@@ -174,7 +174,8 @@ export function ReviewSheet({
   /** D-1015 — اسمُ السؤال: «قيّم هذا العمل» افتراضاً، أو «قيّم الموسم س الحلقة ص» */
   title?: string;
   /** رأسُ الانبثاق: العملُ الذي يُقيَّم — بلا رأسٍ يبقى العنوانُ النصّيّ */
-  head?: { name: string; posterPath: string | null };
+  /** `posterPath` غائبٌ (لا `null`) = ما يُقيَّم لا ملصقَ له أصلاً (قائمة — D-1052): الاسمُ وحدَه بلا صندوقٍ فارغ */
+  head?: { name: string; posterPath?: string | null };
   /** صعد وحدَه بعد «شاهدته»/آخر حلقة — لا فتحه صاحبُه */
   prompt?: boolean;
   /** «حذف تقييمي» — يُرسم فقط لمن له تقييمٌ محفوظ */
@@ -189,7 +190,7 @@ export function ReviewSheet({
   const [spoiler, setSpoiler] = useState(initial.has_spoiler);
   const had = initial.rating != null;
   const ask = title ?? t.rateTitle;
-  const poster = head ? posterFor(head.posterPath, 40) : null;
+  const poster = head?.posterPath ? posterFor(head.posterPath, 40) : null;
   return (
     <Sheet
       title={ask}
@@ -198,9 +199,11 @@ export function ReviewSheet({
       header={
         head ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ width: 40, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
-              {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
-            </View>
+            {head.posterPath === undefined ? null : (
+              <View style={{ width: 40, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
+                {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+              </View>
+            )}
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text size={17} weight="700" numberOfLines={1}>{head.name}</Text>
               {prompt ? (
