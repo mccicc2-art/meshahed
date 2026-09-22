@@ -233,5 +233,7 @@ export type ShareFriendBody = { listId: string; recipientId: string; note?: stri
 export type CommunityPostBody = { communityId: string; body: string };
 /** `GET /api/v1/me/friends` — من أتابعه ويتابعني، بشكل `PersonLite` (قاعدةُ الإخفاء عند القارئ: `displayNameOf`) */
 export type FriendsPayload = { people: { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean; plan?: string | null; founder?: boolean | null; verified_at?: string | null }[] };
+/** `GET /api/v1/me/follows?dir=followers|following` — قائمةُ ورقة العدّادين في الرئيسيّة الأصليّة (Phase 11-H، يقفل «ما بقي ويباً» في D-1066): الشكلُ شكلُ `FriendsPayload` نفسُه لأنّ الصفَّ نفسُه يُرسم (D-145) */
+export type FollowsPayload = FriendsPayload & { dir: "followers" | "following" };
 /** `GET /api/v1/me/communities` — مجتمعاتي (`my_communities`) */
 export type CommunitiesPayload = { rooms: { id: string; name: string; member_count: number; photo_url: string | null }[] };
