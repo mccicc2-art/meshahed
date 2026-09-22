@@ -1,0 +1,3 @@
+feat(web): Phase 11-H H0/H1 — Home computation extracted verbatim to lib/homeCore.ts (one Home for web page and app), full HomePayload contract, GET /api/v1/me/home + /me/home/extras, POST /api/v1/me/prefs/home-view + home-order; web: share sheet hides «to a friend» for non-owners (D-1065, D-1066)
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
