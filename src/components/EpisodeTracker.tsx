@@ -306,6 +306,9 @@ export function EpisodeTracker({
       setOpen(null);
       return;
     }
+    /* D-1058 — موسمٌ بلا حلقاتٍ معلَنة ولا مبثوثة لا يُفتح: لا شيءَ يُجلب ولا صندوقَ فارغاً يُرسم — سطرُه يكفي */
+    const sum = summaries.find((s) => s.season_number === n);
+    if (sum && sum.episode_count === 0 && sum.aired_count === 0) return;
     setOpen(n);
     if (!episodesBySeason[n]) void loadSeason(n);
   }
@@ -606,9 +609,9 @@ export function EpisodeTracker({
                     <span className="text-xs text-muted tabular-nums" dir="ltr">
                       {seasonWatched}/{s.aired_count}
                     </span>
-                  ) : (
+                  ) : s.episode_count > 0 ? (
                     <span className="text-xs text-muted tabular-nums">{t.episodesCount(s.episode_count)}</span>
-                  )}
+                  ) : null /* D-1058 — صفرُ حلقاتٍ لا يُكتب «٠ حلقات»؛ طرفُ السطر يقول الموعدَ أو «قريباً» */}
                   {loading === s.season_number && (
                     <span className="text-xs text-muted">{t.loadingLabel}</span>
                   )}

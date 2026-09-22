@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions, type ScrollViewProps } from "react-native";
+import { FlatList, Pressable, ScrollView, TextInput, View, useWindowDimensions, type ScrollViewProps } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
-import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { radius } from "../theme";
@@ -14,6 +13,7 @@ import { ListCard, type ListCardData } from "./ListCard";
 import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
 import { ReorderSheet } from "./ReorderSheet";
 import { SmartListSheet } from "./SmartListSheet";
+import { ShareListSheet } from "../list/ShareListSheet";
 import { profileUrl } from "@/core/media";
 import { posterFor } from "../poster";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
@@ -32,11 +32,10 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  * **رأيي في قائمةٍ** (`ListReviewSheet`) · **ترتيبُ طابور «للمشاهدة» بالسحب**
  * (`ReorderSheet`) · **قائمةٌ ذكيّةٌ بشروطها** (`SmartListSheet`) — ⚖️ نقضٌ
  * لحكم D-947 («الأشكالُ الثقيلة أبوابٌ في الويب») بأمر أحمد: «ابنِ الثلاثة».
- * 🆕 D-952 — **البابان الأخيران صارا مباشرين**: إعلانُ قائمةٍ خاصّة للمشاركة
- * يفتح `/lists/:id?share=1` **وورقةُ الإعلان مفتوحة**، وتحريرُ شرطِ ذكيّةٍ من
- * مكتبتي يفتح `/library?edit=<id>` (D-876) برمزٍ على البطاقة؛ وذكيّةُ الكتالوج
- * تُعدَّل في اكتشف من صفحتها كما في الويب. **والمشاركةُ الأصليّةُ لقائمةٍ معلَنة** بورقة
- * النظام (`Share`) — الرابطُ نفسُه الذي يشاركه الويب.
+ * D-952 — كان البابان الأخيران ويبيَّين مباشرين (`/lists/:id?share=1` و`/library?edit=<id>`).
+ * 🆕 Phase 11-G (G5/G6) — **أُقفلا**: المشاركةُ ورقةٌ أصليّة (`ShareListSheet`: إعلانٌ · صديقٌ · مجتمعٌ · رابط) للمعلنة
+ * والخاصّة معاً، وتحريرُ شرطِ ذكيّةِ المكتبة في `SmartListSheet` بوضع `editing`. **ذكيّةُ الكتالوج** وحدَها تُعدَّل في
+ * اكتشف من صفحتها كما في الويب (شرطُها شريطُ الفلاتر، D-145).
  *
  * 📐 الشبكةُ `grid-cols-1 sm:grid-cols-2` بفاصل `gap-2.5` ١٠ — عمودٌ على
  * الجوّال واثنان من ٦٤٠ (D-461).
@@ -55,6 +54,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [smart, setSmart] = useState(false);
+  /* G5 — تعديلُ شرطِ ذكيّةٍ من بطاقتها: الورقةُ نفسُها بوضع `editing` (كان باباً ويبيّاً `/library?edit=`) */
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [reorder, setReorder] = useState(false);
   const [rating, setRating] = useState<LibraryListCard | null>(null);
   const [group, setGroup] = useState<LibraryAutoGroup | null>(null);
@@ -122,23 +123,10 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     },
     [patch, say, fail, t],
   );
-  /* المشاركة: قائمةٌ معلَنةٌ ⇢ ورقةُ النظام بالرابط نفسِه؛ خاصّةٌ ⇢ صفحتُها في
-     الويب حيث ورقةُ الإعلان (`ShareListSheet`) — لا نسخةَ منها هنا. */
-  const share = useCallback(
-    async (l: LibraryListCard) => {
-      if (!l.is_public) {
-        /* D-952 — الورقةُ مفتوحةٌ عند الوصول، لا بحثٌ عن زرّ المشاركة */
-        onOpenWeb(`/lists/${l.id}?share=1`);
-        return;
-      }
-      try {
-        await Share.share({ message: `${l.name} — ${CONFIG.apiBase}/lists/${l.id}`, url: `${CONFIG.apiBase}/lists/${l.id}` });
-      } catch {
-        /* أُغلقت الورقة */
-      }
-    },
-    [onOpenWeb],
-  );
+  /* Phase 11-G (G6) — المشاركةُ ورقةٌ أصليّة (`ShareListSheet`) للمعلنة والخاصّة معاً: كانت المعلنةُ ورقةَ النظام
+     والخاصّةُ باباً ويبيّاً (`?share=1`، D-952) — الآن الإعلانُ والصديقُ والمجتمعُ والرابطُ في ورقةٍ واحدة كالويب */
+  const [sharing, setSharing] = useState<LibraryListCard | null>(null);
+  const share = useCallback((l: LibraryListCard) => setSharing(l), []);
 
   const cols = width >= 640 ? 2 : 1;
   const cardW = cols === 1 ? "100%" : Math.floor((width - PAGE_PAD * 2 - 10) / 2);
@@ -228,10 +216,10 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                   busy={busyId === l.id}
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
                   onPlaylist={(on) => void setPlaylist(l, on)}
-                  onShare={() => void share(l)}
+                  onShare={() => share(l)}
                   onEdit={
                     l.smart_source === "library"
-                      ? { label: ar ? "عدّل الشرط في مكتبتي" : "Edit the rule in your library", onPress: () => onOpenWeb(`/library?edit=${l.id}`) }
+                      ? { label: ar ? "عدّل الشرط في مكتبتي" : "Edit the rule in your library", onPress: () => setEditing({ id: l.id, name: l.name }) }
                       : undefined
                   }
                 />
@@ -301,6 +289,39 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
             say(t.listMadeToast(name));
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
             if (id) onOpenWeb(`/lists/${id}`);
+          }}
+          onError={fail}
+        />
+      ) : null}
+      {sharing ? (
+        <ShareListSheet
+          listId={sharing.id}
+          name={sharing.name}
+          isPublic={sharing.is_public}
+          mine={sharing.mine}
+          onClose={() => setSharing(null)}
+          onChanged={() => {
+            setSharing(null);
+            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
+          }}
+          onToast={say}
+          onError={fail}
+        />
+      ) : null}
+      {editing ? (
+        <SmartListSheet
+          editing={editing}
+          onClose={() => setEditing(null)}
+          onNeedsPlus={() => {
+            setEditing(null);
+            onOpenWeb("/plus");
+          }}
+          onCreated={() => setEditing(null)}
+          onUpdated={(id) => {
+            setEditing(null);
+            say(t.smartListUpdated);
+            void queryClient.invalidateQueries({ queryKey: qk.list(id) });
+            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
           }}
           onError={fail}
         />

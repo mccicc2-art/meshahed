@@ -10,7 +10,6 @@ import { nativeListId } from "../list/route";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
-import type { HoldAction } from "../library/HoldMenu";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { useCardActs } from "../cardActs";
@@ -33,7 +32,7 @@ import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
-import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
+import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
 
 /**
  * ====== «اكتشف» أصليّةً — Phase 11-C · C1 (D-955) ======
@@ -430,7 +429,12 @@ export function DiscoverScreen() {
             router.replace("/library");
             return;
           }
-          leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
+          /* Phase 11-G — البحثُ أصليّ: تبديلٌ كأخويه لا بابٌ ويبيّ */
+          if (k === "search") {
+            router.replace("/search");
+            return;
+          }
+          leaveTo(k === "home" ? "/" : "/people");
         }}
       />
       </Animated.View>

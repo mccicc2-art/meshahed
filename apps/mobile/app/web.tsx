@@ -70,7 +70,8 @@ const HOME = CONFIG.apiBase + "/";
  */
 /* D-1000 — `title`: الغلافُ يفتح صفحةَ العمل أصليّةً من أيّ رابط عملٍ في الويب */
 /* D-1012 — `nav`: الشريطُ السفليُّ أصليٌّ فوق كلِّ صفحةٍ ويبيّة، والويبُ يخفي شريطَه */
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true};true;";
+/* Phase 11-G — `search`: البحثُ شاشةٌ أصليّة؛ الويبُ يسلّح الرجوعَ إليها (`loopz:return=search`) ولا يفتح `/search` مستنداً */
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true};true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -130,7 +131,7 @@ export default function Web() {
   const [path, setPath] = useState("/");
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
-  const [origin, setOrigin] = useState<"library" | "discover" | null>(null);
+  const [origin, setOrigin] = useState<"library" | "discover" | "search" | null>(null);
   const handing = useRef(false);
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
@@ -207,6 +208,8 @@ export default function Web() {
         if (hostOk && msg.route === "library") router.push("/library");
         /* Phase 11-C (D-955) — «اكتشف» الأصليّة فوق الـWebView بالطريقة نفسِها */
         if (hostOk && msg.route === "discover") router.push("/discover");
+        /* Phase 11-G — البحثُ الأصليّ بالطريقة نفسِها (من `SessionBridge` عند الرجوع إلى جذره، ومن شريط الويب في غلافٍ بلا شريطٍ أصليّ) */
+        if (hostOk && msg.route === "search") router.push("/search");
         /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
@@ -310,7 +313,7 @@ export default function Web() {
       if (shell.returnTo) {
         const route = shell.returnTo;
         shell.returnTo = null;
-        router.push(route === "discover" ? "/discover" : "/library");
+        router.push(route === "discover" ? "/discover" : route === "search" ? "/search" : "/library");
         return true;
       }
       return false;
@@ -339,6 +342,7 @@ export default function Web() {
     : path === "/" || path === "" ? "home"
     : origin === "library" ? "library"
     : origin === "discover" ? "news"
+    : origin === "search" ? "search"
     : path.startsWith("/list") ? "library"
     : "home";
   return (
@@ -397,7 +401,12 @@ export default function Web() {
               router.push("/discover");
               return;
             }
-            const to = k === "home" ? "/" : k === "people" ? "/people" : "/search";
+            /* Phase 11-G — «بحث» شاشةٌ أصليّة كأختيها */
+            if (k === "search") {
+              router.push("/search");
+              return;
+            }
+            const to = k === "home" ? "/" : "/people";
             /* الملاحةُ في الصفحة نفسِها (تاريخُ الـWebView محفوظ) — لا تحميلَ مستندٍ جديد */
             ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(to)}):(location.href=${JSON.stringify(CONFIG.apiBase + to)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + to)};}})();true;`);
           }}

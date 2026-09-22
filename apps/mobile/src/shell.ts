@@ -42,8 +42,8 @@ export const shell = {
    * النظام يهبط على جذر المكدّس **فيخرج من التطبيق**. الغلافُ نفسُه يحفظ `returnTo`
    * ويعيد فتحَ الشاشة الأصليّة حين لا رجوعَ في الـWebView. تُمحى عند تسليم `native`.
    */
-  returnTo: null as "library" | "discover" | null,
-  open(path: string, opts?: { returnTo?: "library" | "discover" }): Promise<void> {
+  returnTo: null as "library" | "discover" | "search" | null,
+  open(path: string, opts?: { returnTo?: "library" | "discover" | "search" }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";

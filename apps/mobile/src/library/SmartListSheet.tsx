@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ScrollView, TextInput, View } from "react-native";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
@@ -6,12 +7,12 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "./Sheet";
 import { Chip } from "./Chip";
-import { write, ApiError } from "../api";
+import { api, qk, write, ApiError } from "../api";
 import { BROWSE_ERAS, BROWSE_GENRES, genreFitsType } from "@/core/browse";
 import { LIBRARY_STATUSES, type LibraryStatus } from "@/core/libraryStatus";
 import { MY_RATING_MIN } from "@/core/smartListKeys";
 import { FILTER_NAME_MAX, sanitizeFilterName } from "@/core/savedFilters";
-import type { SmartListBody } from "../contracts";
+import type { ListDetailPayload, SmartListBody, SmartRuleBody } from "../contracts";
 
 /**
  * ====== قائمةٌ ذكيّةٌ من مكتبتك — نسخةُ `LibrarySmartForm` (الويب، D-876/D-877) ======
@@ -29,17 +30,28 @@ import type { SmartListBody } from "../contracts";
  * تقييمي (`7+ 8+ 9+`) · النوعُ الفنّيُّ بحسب النوع · الحقبةُ بلا «القادم».
  * **ولا قائمةَ بلا شرطٍ غيرِ النوع** (`hasRule` — D-636)، ثمّ التسميةُ بحدِّ
  * `FILTER_NAME_MAX` ثمّ الحفظُ. **بلس** يحرسه الخادمُ ويردّ `needsPlus`.
+ *
+ * 🆕 Phase 11-G (G5) — **والورقةُ نفسُها تعدّل شرطاً قائماً** (`editing`، وصفةُ `LibrarySmartForm.editing` حرفاً):
+ * الرقاقاتُ تُسبَق بالشرط الحاليّ، **والنوعُ مجمَّد** (تغييرُه يقلب القائمةَ كلَّها — الويبُ يجمّده أيضاً)، والزرُّ
+ * «حدّث شرط …» يكتب `POST /api/v1/lists/smart-rule` ولا تسميةَ. يُقفل بابُ `/library?edit=<id>` الويبيّ في
+ * التطبيق (كان في بطاقة القائمة وفي صفحتها). حين لا يصل الشرطُ مع `editing` (بطاقةُ المكتبة تعرف الاسمَ والمصدرَ
+ * فقط) تقرؤه الورقةُ من `/api/v1/lists/<id>` — الاستعلامُ نفسُه الذي تملكه صفحةُ القائمة، فلا نداءَ إن كانت مفتوحة.
  */
 export function SmartListSheet({
   onClose,
   onCreated,
   onNeedsPlus,
   onError,
+  editing,
+  onUpdated,
 }: {
   onClose: () => void;
   onCreated: (id: string | null, name: string) => void;
   onNeedsPlus: () => void;
   onError: (e: unknown) => void;
+  /** G5 — قائمةٌ ذكيّةٌ (مصدرُها المكتبة) يُعدَّل شرطُها؛ `rule` إن كان بيد المنادي وإلّا يُجلب */
+  editing?: { id: string; name: string; rule?: Record<string, string> | null } | null;
+  onUpdated?: (id: string) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
@@ -52,6 +64,27 @@ export function SmartListSheet({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+
+  /* G5 — الشرطُ الحاليّ: من المنادي، وإلّا من صفحة القائمة (المفتاحُ نفسُه `list:<id>`) */
+  const needRule = !!editing && editing.rule === undefined;
+  const detail = useQuery({
+    queryKey: qk.list(editing?.id ?? ""),
+    queryFn: async () => (await api<ListDetailPayload>(`/api/v1/lists/${editing?.id}`)).data,
+    enabled: needRule,
+    staleTime: 60_000,
+  });
+  const current = editing ? (editing.rule !== undefined ? editing.rule : detail.data?.smart_rule) : undefined;
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    if (!editing || seeded || !current) return;
+    const tp = current.type;
+    setType(tp === "movie" || tp === "tv" || tp === "all" ? tp : null);
+    setStatus((LIBRARY_STATUSES as readonly string[]).includes(current.wst ?? "") ? (current.wst as LibraryStatus) : null);
+    setMy((MY_RATING_MIN as readonly string[]).includes(current.my ?? "") ? current.my : null);
+    setGenre(current.g ?? null);
+    setEra(current.era ?? null);
+    setSeeded(true);
+  }, [editing, current, seeded]);
 
   const genres = useMemo(() => (type ? BROWSE_GENRES.filter((g) => genreFitsType(g, type)) : []), [type]);
 
@@ -69,6 +102,28 @@ export function SmartListSheet({
     dropped: t.libStatusDropped,
   };
   const toggle = <T,>(set: (v: T | null) => void, cur: T | null, v: T) => set(cur === v ? null : v);
+
+  /* G5 — التحديث: الشرطُ نفسُه إلى `smart-rule`؛ الاسمُ لا يُمسّ (يُعدَّل من ورقة التحرير) */
+  const update = async () => {
+    if (!editing || busy) return;
+    if (!hasRule) {
+      setHint(t.librarySmartNeedsRule);
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/lists/smart-rule", { listId: editing.id, rule } satisfies SmartRuleBody);
+      if (r.needsPlus) {
+        onNeedsPlus();
+        return;
+      }
+      onUpdated?.(editing.id);
+    } catch (e) {
+      onError(e instanceof ApiError ? e : new Error("apiInternal"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!hasRule) {
@@ -102,16 +157,20 @@ export function SmartListSheet({
   );
 
   return (
-    <Sheet title={t.smartListLabel} onClose={onClose}>
+    <Sheet title={editing ? editing.name : t.smartListLabel} onClose={onClose}>
       <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {editing && !current ? (
+          <Text size={13} muted style={{ textAlign: "center", paddingVertical: 32 }}>{detail.isError ? t.apiInternal : t.loadingLabel}</Text>
+        ) : (
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Icon name="sparkle-star" size={12} color={tokens.accent} />
             <Text size={12} weight="700" muted>{t.librarySmartGroup}</Text>
           </View>
-          <Text size={12} muted style={{ marginTop: -8, lineHeight: 18 }}>{t.librarySmartHint}</Text>
+          <Text size={12} muted style={{ marginTop: -8, lineHeight: 18 }}>{editing ? t.smartListEditHint(editing.name) : t.librarySmartHint}</Text>
 
-          {row(
+          {/* G5 — النوعُ مجمَّدٌ عند التعديل (كالويب: `LibrarySmartForm` لا يرسم صفَّه حين `editing`) */}
+          {editing ? null : row(
             t.librarySmartType,
             (
               [
@@ -146,7 +205,9 @@ export function SmartListSheet({
 
           {hint ? <Text size={12} color={tokens.error}>{hint}</Text> : null}
 
-          {naming ? (
+          {editing ? (
+            <Button label={t.smartListUpdate(editing.name)} busy={busy} disabled={!hasRule} onPress={() => void update()} />
+          ) : naming ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <TextInput
                 autoFocus
@@ -177,6 +238,7 @@ export function SmartListSheet({
             </View>
           )}
         </View>
+        )}
       </ScrollView>
     </Sheet>
   );

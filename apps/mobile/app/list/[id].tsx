@@ -7,7 +7,7 @@ import { ErrorBoundary } from "../../src/ErrorBoundary";
 export default function List() {
   const router = useRouter();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-  const origin = from === "discover" ? "discover" : "library";
+  const origin = from === "discover" ? "discover" : from === "search" ? "search" : "library";
   return (
     <ErrorBoundary screen="list" webPath={`/lists/${String(id)}`} returnTo={origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
       <ListScreen id={String(id)} from={origin} />

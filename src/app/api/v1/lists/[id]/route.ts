@@ -68,6 +68,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         is_public: data.list.is_public,
         mine,
         smart: !!smart.rule,
+        /* G5 — الشرطُ للمالك وحدَه: الويبُ لا يكشف شرطَ المكتبة لغيره (`ListDetail` يرسم رابطَ التعديل للمالك فقط) */
+        smart_rule: mine && smart.rule ? smart.rule : null,
+        smart_source: mine && smart.rule ? smart.source : null,
         owner: mine
           ? null
           : curated

@@ -184,6 +184,12 @@ export type ListDetailPayload = {
   mine: boolean;
   /** تمتلئ وحدَها (D-823) — لا إضافةَ ولا ترتيبَ يدويّ */
   smart: boolean;
+  /**
+   * Phase 11-G (G5) — **شرطُ الذكيّة ومصدرُه للمالك وحدَه** (`null` لغيره ولغير الذكيّة): بهما ترسم ورقةُ الشرط
+   * الأصليّة حالتَها الحاليّة بلا نداءٍ ثانٍ. اختياريّان لترتيب الكوميتات (D-028).
+   */
+  smart_rule?: Record<string, string> | null;
+  smart_source?: "library" | "catalog" | null;
   /** صاحبُها كما يُعرض — `null` لقائمتي؛ وقوائمُ لوبز صاحبُها «Loopz» */
   owner: { name: string; username: string | null; avatar: string | null } | null;
   items: ListDetailItem[];
@@ -217,3 +223,15 @@ export type ListDetailPayload = {
   /** D-1037 — غلافُ قائمتي الحاليّ (لورقة التحرير) */
   cover: { tmdb_id: number | null; media_type: "tv" | "movie" | null; backdrop_path: string | null } | null;
 };
+
+/* ====== Phase 11-G · G5/G6 — شرطُ الذكيّة ومشاركةُ القائمة أصليّاً ====== */
+/** `POST /api/v1/lists/smart-rule` — تعديلُ شرطِ قائمةٍ ذكيّةٍ قائمة؛ المصدرُ يُقرأ من الصفّ عند الخادم (`updateSmartListRule`) */
+export type SmartRuleBody = { listId: string; rule: Record<string, string> };
+/** `POST /api/v1/lists/share-friend` — إرسالُ القائمة إلى صديق (متابعةٌ متبادلة)؛ `note` حتّى ٢٨٠ حرفاً */
+export type ShareFriendBody = { listId: string; recipientId: string; note?: string | null };
+/** `POST /api/v1/communities/post` — رسالةٌ في مجتمع (رابطُ القائمة في المشاركة) */
+export type CommunityPostBody = { communityId: string; body: string };
+/** `GET /api/v1/me/friends` — من أتابعه ويتابعني، بشكل `PersonLite` (قاعدةُ الإخفاء عند القارئ: `displayNameOf`) */
+export type FriendsPayload = { people: { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean; plan?: string | null; founder?: boolean | null; verified_at?: string | null }[] };
+/** `GET /api/v1/me/communities` — مجتمعاتي (`my_communities`) */
+export type CommunitiesPayload = { rooms: { id: string; name: string; member_count: number; photo_url: string | null }[] };

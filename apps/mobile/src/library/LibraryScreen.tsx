@@ -544,7 +544,12 @@ export function LibraryScreen() {
             router.replace("/discover");
             return;
           }
-          leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
+          /* Phase 11-G — البحثُ أصليّ: تبديلٌ كأخويه لا بابٌ ويبيّ */
+          if (k === "search") {
+            router.replace("/search");
+            return;
+          }
+          leaveTo(k === "home" ? "/" : "/people");
         }}
       />
       </Animated.View>

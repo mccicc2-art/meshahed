@@ -31,6 +31,9 @@ export type Tag =
   | "me:diary"
   | "me:reports"
   | "me:invites"
+  /* Phase 11-G (G6) — أصدقائي (متابعةٌ متبادلة) ومجتمعاتي: تقرؤهما ورقةُ مشاركة القائمة الأصليّة */
+  | "me:friends"
+  | "me:communities"
   | "people"
   | "news"
   /** لوحةُ الإدارة كاملةً — ويب فقط، ولا تدخل `v1` (§4.4). */

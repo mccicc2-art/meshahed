@@ -63,6 +63,8 @@ function Shell() {
             بلا إعادة تحميل (عقدُ المالك: الحالةُ محفوظة). */}
         <Stack.Screen name="library" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="discover" options={{ headerShown: false, animation: "none" }} />
+        {/* Phase 11-G — تبويبٌ ثالثٌ أصليّ؛ بلا حركةٍ كأخويه: تبديلُ تبويبٍ لا دفعُ صفحة */}
+        <Stack.Screen name="search" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />

@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View } from "react-native";
+import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
-import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text } from "../ui";
@@ -22,9 +21,13 @@ import { Chip } from "../library/Chip";
 import { ListEditSheet } from "./ListEditSheet";
 import { ListCoverSheet } from "./ListCoverSheet";
 import { ListReviews } from "./ListReviews";
+import { TitlePickerSheet } from "../search/TitlePickerSheet";
+import { ShareListSheet } from "./ShareListSheet";
+import { SmartListSheet } from "../library/SmartListSheet";
+import { haptic } from "../haptics";
 import type { HoldAction } from "../library/HoldMenu";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
-import type { CuratedCard } from "../contracts";
+import type { CuratedCard, SearchTitle } from "../contracts";
 import type {
   LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
   ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody,
@@ -57,7 +60,7 @@ const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id,
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
 const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
 
-export function ListScreen({ id, from }: { id: string; from: "library" | "discover" }) {
+export function ListScreen({ id, from }: { id: string; from: "library" | "discover" | "search" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -115,7 +118,7 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover">(null);
+  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "add" | "share" | "rule">(null);
   const patch = useCallback((fn: (p: ListDetailPayload) => ListDetailPayload) => qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? fn(p) : p)), [qc, id]);
   const run = useCallback(
     async (optimistic: ((p: ListDetailPayload) => ListDetailPayload) | null, job: () => Promise<unknown>, done?: () => void) => {
@@ -182,6 +185,26 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
         },
       ),
     [run, id, say, t],
+  );
+  /* Phase 11-G (G4) — **إضافةُ عملٍ من المنتقي الأصليّ** (`ListDetail.addPicked` حرفاً): موجودٌ أصلاً ⇒ رسالةٌ بلا
+     نداء؛ وإلّا صفٌّ تفاؤليٌّ في آخر القائمة ثمّ `toggle-item` بـ`add:true` — المسارُ الذي تكتب به صفحةُ العمل نفسُها،
+     و`upsert` عنده يجعل التكرارَ بلا أثر. الورقةُ تبقى مفتوحةً لإضافةٍ ثانية (الويب يغلقها — لكنّ إضافةَ خمسة أعمالٍ
+     بخمس فتحاتٍ ثمنٌ يُرى على الهاتف أكثر) — ⚖️ افتراقٌ محصورٌ يُسجَّل. */
+  const addPicked = useCallback(
+    (p: SearchTitle) => {
+      const key = `${p.mediaType}-${p.id}`;
+      if (q.data?.items.some((x) => keyOf(x) === key)) {
+        say(t.listAlreadyIn);
+        return;
+      }
+      haptic.success();
+      void run(
+        (prev) => ({ ...prev, items: [...prev.items, { kind: p.mediaType, id: p.id, title: p.title, poster_path: p.posterPath ?? null, badge: null }] }),
+        () => write<{ done: true }>("/api/v1/lists/toggle-item", { listId: id, tmdbId: p.id, mediaType: p.mediaType, title: p.title, posterPath: p.posterPath ?? null, add: true } satisfies ListToggleItemBody),
+        () => say(t.listAddedToast(p.title)),
+      );
+    },
+    [q.data, run, id, say, t],
   );
   const removeList = useCallback(
     () =>
@@ -267,16 +290,12 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
     [qc, id, q],
   );
 
-  const share = useCallback(async () => {
+  /* Phase 11-G (G6) — ورقةُ المشاركة أصليّة (`ShareListSheet`): كان ما سبق ورقةَ النظام للمعلنة وبابَ ويبٍ
+     (`?share=1`) لقائمتي الخاصّة؛ الآن الورقةُ نفسُها للحالتين — والإعلانُ ثمّ الصديقُ والمجتمعُ والرابطُ فيها */
+  const share = useCallback(() => {
     if (!d) return;
-    /* قائمتي الخاصّة: الإعلانُ قبل المشاركة، وورقتُه ويبيّةٌ بعد (`?share=1` — نهجُ `ListsTab`) */
-    if (d.mine && !d.is_public) return openWeb(`/lists/${id}?share=1`);
-    try {
-      await Share.share({ message: `${d.name} — ${CONFIG.apiBase}/lists/${id}`, url: `${CONFIG.apiBase}/lists/${id}` });
-    } catch {
-      /* أُغلقت الورقة */
-    }
-  }, [d, id, openWeb]);
+    setSheet("share");
+  }, [d]);
 
   const numbered = d ? d.kind === "ranked" || d.kind === "watch_order" : false;
   const renderItem = useCallback(
@@ -406,8 +425,17 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
             {d.mine ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
                 <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
-                {/* ما لم تُنقل شاشتُه بعد: إضافةُ عملٍ (البحث) وشرطُ الذكيّة — بابٌ ظاهرٌ إلى الويب */}
-                <Button label={`${d.smart ? t.smartListLabel : t.listAddTitles} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} />
+                {/* Phase 11-G (G4/G5) — إضافةُ عملٍ بالمنتقي الأصليّ؛ وشرطُ ذكيّةِ المكتبة بورقتها الأصليّة. **ذكيّةُ الكتالوج
+                    وحدَها** تُعدَّل في «اكتشف» الويبيّة (شرطُها هو شريطُ الفلاتر نفسُه، D-145 — لا نموذجَ فلاترَ ثانياً هنا) */}
+                {d.smart ? (
+                  d.smart_source === "library" ? (
+                    <Button label={t.smartListUpdate(d.name)} variant="ghost" onPress={() => setSheet("rule")} />
+                  ) : (
+                    <Button label={`${t.smartListLabel} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} />
+                  )
+                ) : (
+                  <Button label={t.listAddTitles} variant="ghost" onPress={() => setSheet("add")} />
+                )}
               </View>
             ) : null}
           </ScrollView>
@@ -415,6 +443,40 @@ export function ListScreen({ id, from }: { id: string; from: "library" | "discov
 
         {sheet === "edit" && d ? <ListEditSheet list={d} busy={busy} onSave={saveMeta} onReorder={() => setSheet("reorder")} onCover={() => setSheet("cover")} onDelete={removeList} onClose={() => setSheet(null)} /> : null}
         {sheet === "reorder" && d ? <ReorderSheet items={queue} onClose={() => setSheet("edit")} onDone={saveOrder} /> : null}
+        {sheet === "add" && d ? <TitlePickerSheet onPick={addPicked} onClose={() => setSheet(null)} /> : null}
+        {sheet === "share" && d ? (
+          <ShareListSheet
+            listId={id}
+            name={d.name}
+            isPublic={d.is_public}
+            mine={d.mine}
+            onClose={() => setSheet(null)}
+            onChanged={() => {
+              patch((p) => ({ ...p, is_public: true }));
+              void q.refetch();
+              void qc.invalidateQueries({ queryKey: ["me:lists"] });
+            }}
+            onToast={say}
+            onError={fail}
+          />
+        ) : null}
+        {sheet === "rule" && d && d.smart_source === "library" ? (
+          <SmartListSheet
+            editing={{ id, name: d.name, rule: d.smart_rule ?? undefined }}
+            onClose={() => setSheet(null)}
+            onNeedsPlus={() => {
+              setSheet(null);
+              openWeb("/plus");
+            }}
+            onCreated={() => setSheet(null)}
+            onUpdated={() => {
+              setSheet(null);
+              say(t.smartListUpdated);
+              void q.refetch();
+            }}
+            onError={fail}
+          />
+        ) : null}
         {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet("edit")} /> : null}
         <HoldHost hostRef={holdHost} variant={d?.mine && !d.smart ? "mylist" : "list"} toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
         {reviewOpen && d ? <ListReviewSheet listId={id} listName={d.name} mine={d.my_review ? { rating: d.my_review.rating, body: d.my_review.body, has_spoiler: d.my_review.has_spoiler } : null} onClose={() => setReviewOpen(false)} onSaved={onReviewSaved} onError={fail} /> : null}

@@ -50,6 +50,12 @@ export type {
   ListReviewReplyBody,
   ListReplyDeleteBody,
   ListReplyRow,
+  /* Phase 11-G · G5/G6 */
+  SmartRuleBody,
+  ShareFriendBody,
+  CommunityPostBody,
+  FriendsPayload,
+  CommunitiesPayload,
 } from "@/core/contracts/library";
 export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload, TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";
 export type {
@@ -76,3 +82,5 @@ export type {
   DiscoverRail,
   DiscoverCard,
 } from "@/core/contracts/home";
+/* Phase 11-G — البحثُ الأصليّ: الحمولةُ حمولةُ الويب نفسُها (`searchTypes.ts`) عبر عقد `v1` */
+export type { SearchScope, SearchTitle, SearchArtist, SearchList, SearchPayload, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "@/core/contracts/search";

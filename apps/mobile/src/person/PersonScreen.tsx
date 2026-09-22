@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
-import { shell } from "../shell";
 import { Button, Text, Toast } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
@@ -42,8 +41,8 @@ const BIO_LINES = 5;
 
 type WorksTab = "all" | "movie" | "tv" | "show";
 
-export function PersonScreen({ id, from }: { id: number; from: "library" | "discover" }) {
-  const { t, tokens, locale } = useApp();
+export function PersonScreen({ id, from }: { id: number; from: "library" | "discover" | "search" }) {
+  const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -123,8 +122,8 @@ export function PersonScreen({ id, from }: { id: number; from: "library" | "disc
     onError: fail,
   });
   const openTitle = useCallback((w: PersonWork) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: w.kind, id: String(w.id), from } }), [router, from]);
-  /* فشلُ التحميل: «ابحث» كما في الصفحة — البحثُ ويبيٌّ بعد */
-  const openSearch = useCallback(() => void shell.open("/search", { returnTo: from }).then(back), [from, back]);
+  /* فشلُ التحميل: «ابحث» كما في الصفحة — أصليٌّ منذ Phase 11-G (يحلّ محلَّ هذه الشاشة فلا تبقى صفحةٌ ساقطةٌ في المكدّس) */
+  const openSearch = useCallback(() => router.replace("/search"), [router]);
 
   const works = useMemo(() => (d ? (tab === "all" ? d.works : d.works.filter((w) => w.group === tab)) : []), [d, tab]);
   const counts = useMemo(() => {

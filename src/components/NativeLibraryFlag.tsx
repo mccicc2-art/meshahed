@@ -70,7 +70,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean };
     /** D-1012 — الغلافُ ينادي موجِّهَ الصفحة بدل تحميل مستندٍ جديد */
     __loopzGo?: (path: string) => void;
   }
@@ -104,7 +104,7 @@ export function openNativeLibrary(): boolean {
  * (الإدارةُ داخل الغلاف)، **والقدرةُ لكلِّ شاشةٍ على حدة** في `LoopzNative`
  * (غلافٌ يعرف المكتبةَ ولا يعرف «اكتشف» يبقي «اكتشف» رابطاً — درسُ ٩ سبتمبر).
  */
-export function openNative(route: "library" | "discover"): boolean {
+export function openNative(route: "library" | "discover" | "search"): boolean {
   if (!nativeLibraryOn() || window.LoopzNative?.[route] !== true) {
     signalGate(route);
     return false;
@@ -125,7 +125,7 @@ export function openNative(route: "library" | "discover"): boolean {
  * فلا ينتظر أحد. يُزال مع الإصلاح.
  */
 const gateSignalled = new Set<string>();
-function signalGate(route: "library" | "discover") {
+function signalGate(route: "library" | "discover" | "search") {
   try {
     if (!navigator.userAgent.includes("LoopzApp/") || gateSignalled.has(route)) return;
     gateSignalled.add(route);

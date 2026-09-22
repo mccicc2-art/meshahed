@@ -38,11 +38,11 @@ const FALLBACK = {
 
 type Props = {
   /** اسمُ الشاشة كما يُسجَّل (`library` · `discover` · `title`) */
-  screen: "library" | "discover" | "title" | "person" | "list";
+  screen: "library" | "discover" | "title" | "person" | "list" | "search";
   /** مسارُ الصفحة الويبيّة البديلة (`/library` · `/news` · `/show/123`) */
   webPath: string;
   /** الشاشةُ الأصليّة التي يعود إليها الرجوعُ من البديل (D-949) — لصفحة العمل */
-  returnTo?: "library" | "discover";
+  returnTo?: "library" | "discover" | "search";
   /** يُنادى بعد فتح البديل لإغلاق الشاشة الساقطة (`router.back` أو `replace("/web")`) */
   onLeave: () => void;
   children: React.ReactNode;

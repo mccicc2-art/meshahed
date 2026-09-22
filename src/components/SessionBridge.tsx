@@ -95,15 +95,16 @@ export function SessionBridge() {
     const ROOTS = new Set(["/", "/library", "/discover", "/news", "/community", "/search"]);
     /* 🆕 Phase 11-C (D-955) — العلامةُ تحمل اسمَ الشاشة (`library` · `discover`)
        فالرجوعُ يعود إلى الشاشة التي فُتحت منها الصفحة، بالآليّة نفسِها */
-    const NATIVE = new Set(["library", "discover"]);
+    /* Phase 11-G — و`search`: الرجوعُ من صفحةٍ فُتحت من البحث الأصليّ (ملفُّ عضو) يعود إليه */
+    const NATIVE = new Set(["library", "discover", "search"]);
     /* 🔴 D-973 — **جذرُ الشاشة الأصليّة نفسِها لا ينزع سلاحَها بل يعيدها** (بلاغُ
        أحمد بتسجيل على 1.8.5: «بعد ما أتصفّح دقايق يرجع اكتشف ويب فيو»): زرُّ الرجوع
        في صفحة التريلرات يستبدل العنوانَ بـ`/news`، و`/news` جذرٌ — فكان السلاحُ
        يُنزع وتُرسم «اكتشف» الويبيّةُ تحت إصبعه، ومن ذلك الباب صار كلُّ ما بعدها
        ويبيّاً. **الذهابُ إلى جذر الشاشة المسلَّحة هو عودةٌ إليها**: `/news` وأنت
        مسلَّحٌ بـ`discover`، و`/library` وأنت مسلَّحٌ بـ`library` ⇒ `native`. ما سواه
-       من الجذور (الرئيسيّة · المجتمع · البحث) ينزع السلاحَ كما كان. */
-    const ROOT_OF: Record<string, string> = { discover: "/news", library: "/library" };
+       من الجذور (الرئيسيّة · المجتمع) ينزع السلاحَ كما كان — والبحثُ صار جذراً أصليّاً هو الآخر (Phase 11-G). */
+    const ROOT_OF: Record<string, string> = { discover: "/news", library: "/library", search: "/search" };
     const toNative = () => {
       let route = "library";
       try {

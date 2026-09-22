@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text } from "../ui";
+import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { radius } from "../theme";
@@ -62,7 +62,7 @@ const HEADER_H = 64;
 const PAGE_PAD = 16;
 
 /** D-1000 — `from="web"`: فُتحت من صفحةٍ ويبيّة؛ أبوابُها بلا `returnTo` والرجوعُ إلى تلك الصفحة */
-export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: "library" | "discover" | "web" }) {
+export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: "library" | "discover" | "search" | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -246,7 +246,6 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     if (prev === false && tvDone && d.me.rating == null) setReviewOpen("prompt");
   }, [d, tvDone]);
   const done = d?.kind === "movie" ? d.me.watched : tvDone;
-  const pct = d?.kind === "tv" && d.aired_total > 0 ? Math.round((d.me.watched_count / d.aired_total) * 100) : 0;
   /* D-1014 — ورقةُ القوائم وورقةُ البطاقة الحمراء يفتحهما صفُّ الأفعال */
   const [listOpen, setListOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

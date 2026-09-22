@@ -430,6 +430,8 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                 if (key === "library" && openNative("library")) e.preventDefault();
                 /* 🆕 Phase 11-C (D-955) — «اكتشف» أصليّةً بالبوّابة نفسِها */
                 if (key === "news" && openNative("discover")) e.preventDefault();
+                /* Phase 11-G — «بحث» أصليّةً بالبوّابة نفسِها (لغلافٍ يعرفها ولا يرسم شريطَه بنفسه) */
+                if (key === "search" && openNative("search")) e.preventDefault();
               }}
             >
               {face}

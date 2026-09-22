@@ -7,7 +7,6 @@ import { backdropUrl } from "@/core/media";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Sheet } from "../library/Sheet";
 import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
@@ -77,7 +76,10 @@ export function SeasonAccordion({
       qc.setQueryData<TvTitlePayload>(qk.title("tv", show.id), (prev) => {
         if (!prev) return prev;
         const set = new Set(prev.me.watched);
-        for (const k of keys) on ? set.add(k) : set.delete(k);
+        for (const k of keys) {
+          if (on) set.add(k);
+          else set.delete(k);
+        }
         return { ...prev, me: { ...prev.me, watched: [...set], watched_count: set.size } };
       });
     },
@@ -234,7 +236,10 @@ function SeasonBody({
     qc.setQueryData<TvTitlePayload>(qk.title("tv", show.id), (prev) => {
       if (!prev || prev.kind !== "tv") return prev;
       const set = new Set(prev.me.watched);
-      for (const k of keys) on ? set.add(k) : set.delete(k);
+      for (const k of keys) {
+        if (on) set.add(k);
+        else set.delete(k);
+      }
       return { ...prev, me: { ...prev.me, watched: [...set], watched_count: set.size, following: true } };
     });
   const ref = (n: number) => ({ season, episode: n, runtime });

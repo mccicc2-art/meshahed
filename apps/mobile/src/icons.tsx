@@ -30,6 +30,11 @@ const ICONS = {
   share: require("../assets/icons/share.png"),
   comment: require("../assets/icons/comment.png"),
   "sparkle-star": require("../assets/icons/sparkle-star.png"),
+  /* Phase 11-G — بديلا الملصق في صفّ نتيجة البحث (`film` · `tv`) وبابُ «ابحث بالوصف» (`sparkles`)،
+     مساراتُ `Icon.tsx` نفسُها مرسومةً ٧٢px بالطريقة نفسِها */
+  film: require("../assets/icons/film.png"),
+  tv: require("../assets/icons/tv.png"),
+  sparkles: require("../assets/icons/sparkles.png"),
   plus: require("../assets/icons/plus.png"),
   bookmark: require("../assets/icons/bookmark.png"),
   "chevron-down": require("../assets/icons/chevron-down.png"),

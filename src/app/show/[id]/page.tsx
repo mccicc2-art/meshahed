@@ -156,8 +156,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // ثلاثين طلب TMDB وآلاف الحلقات تُرسل للمتصفح. الآن: رؤوس المواسم فقط،
   // وحلقات موسم واحد (الذي فيه أول حلقة غير مشاهَدة)، والباقي عند الفتح.
   const airedBySeason = airedPerSeason(tv);
+  /* D-1058 — **موسمٌ بصفر حلقات لا يُخفى بعد الآن** (قرارُ أحمد ٢٢ سبتمبر: «مثل التطبيق»): كان `episode_count > 0`
+     يُسقط الموسمَ المعلَن الذي لم تُحصَ حلقاتُه بعد، فيرى مستخدمُ الويب مسلسلاً «انتهى» بينما التطبيقُ يقول «قريباً».
+     الآن يمرّ كالتطبيق، وسطرُه في المتعقّب يقول ما أُعلن: عددُه إن وُجد، وموعدُه إن وُجد، وإلّا «قريباً» (D-1050). */
   const summaries: SeasonSummary[] = tv.seasons
-    .filter((s) => s.season_number >= 1 && s.episode_count > 0)
+    .filter((s) => s.season_number >= 1)
     .sort((a, b) => a.season_number - b.season_number)
     .map((s) => ({
       season_number: s.season_number,

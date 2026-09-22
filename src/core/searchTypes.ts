@@ -30,6 +30,11 @@ export interface SearchTitle {
   year: string | null;
   /** رابطٌ جاهزٌ لا مسارٌ خام — المتصفّح لا يعرف قاعدة صور TMDB */
   poster: string | null;
+  /**
+   * Phase 11-G (G4) — **المسارُ الخامُ أيضاً**، لأنّ الكتابةَ إلى قائمةٍ (`toggle-item`) تخزّن `posterPath`
+   * لا رابطاً. اختياريٌّ لترتيب الكوميتات (D-028)؛ الويبُ لا يقرؤه.
+   */
+  posterPath?: string | null;
 }
 
 export interface SearchArtist {

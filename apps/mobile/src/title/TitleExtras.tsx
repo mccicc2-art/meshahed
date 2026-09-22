@@ -77,7 +77,7 @@ export function Pulse({ x, mine, onPress }: { x: TitleExtrasPayload | undefined;
 }
 
 export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | undefined; compact?: boolean }) {
-  const { tokens, locale } = useApp();
+  const { tokens } = useApp();
   if (!x) return null;
   const r = x.ratings;
   const p = x.pulse;
