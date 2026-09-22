@@ -1,0 +1,3 @@
+feat(app): 1.11.6 — Phase 11-H (H2–H4): native Home screen over GET /api/v1/me/home (+extras): cover/top bar/greeting/stats header, week strip, continue cards (show + list, card/row), 12 sections in the owner's order with capCards and density, visual/compact toggle (home-view), «watched» on continue cards (track/episode), widget.json written from the app, pull-to-refresh, chrome hide, hold menus (library + discover hosts), section-order sheet (home-order, needsPlus → /plus), queue reorder sheets (queue-order), «all» sheet for shows/movies; NativeRoot unified in shell.ts (7 files) and `home` recognised by web.tsx/ErrorBoundary/route files; 8 icons rasterised from Icon.tsx; app version 1.11.6 (D-1066) [deploy]
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
