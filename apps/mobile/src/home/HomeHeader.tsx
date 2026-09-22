@@ -72,7 +72,8 @@ export function HomeTopBar({
   );
   return (
     <View style={{ height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD }}>
-      <Logo size={30} />
+      {/* الكلمةُ لا الرمز — قرارُ أحمد ٢٢ سبتمبر: «loopz مثل الويب للهوم، باقي الأقسام شعار لوبز» */}
+      <Logo size={30} variant="wordmark" onArt={onArt} />
       <View style={{ flex: 1 }} />
       {btn("mail", t.communityTabInbox, onInbox, unreadShares)}
       {btn("bell", t.notifTitle, onSignals, unreadSignals)}
@@ -120,11 +121,12 @@ export function HomeGreeting({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
           {h.username ? <Text size={12} color={muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{h.username}</Text> : null}
           {h.username ? <Text size={12} color={muted} style={{ opacity: 0.6 }}>•</Text> : null}
-          <Pressable onPress={onFollowers} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.followers} ${t.followersLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+          {/* القفلُ كالويب (`locked` في `FollowCountButton`): العددُ يُرى والورقةُ لا تُفتح */}
+          <Pressable onPress={onFollowers} disabled={h.hide_follow_lists} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.followers} ${t.followersLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
             <Icon name="people" size={12} color={muted} />
             <Text size={12} weight="600" color={muted} style={{ fontVariant: ["tabular-nums"] }}>{String(h.followers)}</Text>
           </Pressable>
-          <Pressable onPress={onFollowing} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.following} ${t.followingLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+          <Pressable onPress={onFollowing} disabled={h.hide_follow_lists} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.following} ${t.followingLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
             <Icon name="heart" size={12} color={muted} />
             <Text size={12} weight="600" color={muted} style={{ fontVariant: ["tabular-nums"] }}>{String(h.following)}</Text>
           </Pressable>

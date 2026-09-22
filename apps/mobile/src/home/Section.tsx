@@ -24,6 +24,7 @@ export function SectionHeader({
   onTitle,
   action,
   seeAll,
+  seeAllLabel,
   onSeeAll,
 }: {
   title: string;
@@ -33,6 +34,8 @@ export function SectionHeader({
   onTitle?: () => void;
   action?: React.ReactNode;
   seeAll?: string;
+  /** ما يُقرأ للقارئ الصوتيّ حين تختلف الكلمةُ المرئيّة عن الفعل — `QueueOrderButton` الويب: يُرى «الكل» ويُقرأ «أعد الترتيب» */
+  seeAllLabel?: string;
   onSeeAll?: () => void;
 }) {
   const { tokens } = useApp();
@@ -48,7 +51,7 @@ export function SectionHeader({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {action}
           {seeAll && onSeeAll ? (
-            <Pressable onPress={onSeeAll} hitSlop={8} accessibilityRole="button">
+            <Pressable onPress={onSeeAll} hitSlop={8} accessibilityRole="button" accessibilityLabel={seeAllLabel}>
               <Text size={12} weight="500" muted>{seeAll}</Text>
             </Pressable>
           ) : null}

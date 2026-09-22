@@ -65,6 +65,8 @@ function Shell() {
         <Stack.Screen name="discover" options={{ headerShown: false, animation: "none" }} />
         {/* Phase 11-G — تبويبٌ ثالثٌ أصليّ؛ بلا حركةٍ كأخويه: تبديلُ تبويبٍ لا دفعُ صفحة */}
         <Stack.Screen name="search" options={{ headerShown: false, animation: "none" }} />
+        {/* Phase 11-H — الرئيسيةُ الأصليّة جذرٌ رابع؛ بلا هذا السطر يرسم `Stack` ترويسته الافتراضيّة بعنوان «home» فوق الشاشة (رُئي على 1.11.6 بالعربيّة) */}
+        <Stack.Screen name="home" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />

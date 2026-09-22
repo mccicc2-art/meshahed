@@ -15,19 +15,30 @@ const MARK_H = 0.422;
 const MARK_RIGHT = 0.918;
 const MARK_TOP = 0.287;
 
-export function Logo({ size = 28 }: { size?: number }) {
+/** الكلمة `loopz-wordmark.png` ٧٢٠×٢٤٧: القامةُ ٠٫٧٦٩ من الارتفاع (أرقامُ `Logo.tsx` الويب المقيسة) */
+const WORD_RATIO = 720 / 247;
+const WORD_CAP = 0.769;
+
+/**
+ * `variant="wordmark"` — قرارُ أحمد (٢٢ سبتمبر ٢٠٢٦): **الكلمةُ في رأس الرئيسيّة كالويب، والرمزُ في بقيّة الشاشات.**
+ * ارتفاعُ الكلمة `0.72 × size` كالويب فيبقى مركزُ الشريط واحداً. `onArt`: فوق الغلاف بيضاءُ دائماً لا تتبع الثيم (D-405).
+ */
+export function Logo({ size = 28, variant = "mark", onArt = false }: { size?: number; variant?: "mark" | "wordmark"; onArt?: boolean }) {
   const { me, tokens } = useApp();
   const plus = !!(me?.plus || me?.partner);
-  const H = size * MARK_H;
-  const side = H * 0.3;
-  const gap = H * 0.07;
-  const rise = H * 0.08;
-  const left = size * MARK_RIGHT + gap;
-  const top = size * MARK_TOP - rise;
+  const mark = variant === "mark";
+  const h = mark ? size : Math.round(size * 0.72);
+  const w = mark ? size : Math.round(h * WORD_RATIO);
+  const H = mark ? size * MARK_H : h * WORD_CAP;
+  const side = H * (mark ? 0.3 : 0.27);
+  const gap = H * (mark ? 0.07 : 0.08);
+  const rise = H * (mark ? 0.08 : 0.06);
+  const left = (mark ? size * MARK_RIGHT : w) + gap;
+  const top = (mark ? size * MARK_TOP : 0) - rise;
   const bar = side * 0.24;
   return (
-    <View style={{ width: left + side, height: size }}>
-      <Image source={require("../assets/loopz-mark.png")} style={{ width: size, height: size, tintColor: tokens.fg }} contentFit="contain" />
+    <View style={{ width: left + side, height: h }}>
+      <Image source={mark ? require("../assets/loopz-mark.png") : require("../assets/loopz-wordmark.png")} style={{ width: w, height: h, tintColor: onArt ? "#FFFFFF" : tokens.fg }} contentFit="contain" />
       {plus ? (
         <View style={{ position: "absolute", left, top, width: side, height: side }}>
           <View style={{ position: "absolute", left: (side - bar) / 2, top: 0, width: bar, height: side, backgroundColor: tokens.accent }} />

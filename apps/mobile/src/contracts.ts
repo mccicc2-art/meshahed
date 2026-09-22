@@ -55,6 +55,7 @@ export type {
   ShareFriendBody,
   CommunityPostBody,
   FriendsPayload,
+  FollowsPayload,
   CommunitiesPayload,
 } from "@/core/contracts/library";
 export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload, TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";

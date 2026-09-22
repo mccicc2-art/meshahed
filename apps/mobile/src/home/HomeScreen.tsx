@@ -22,6 +22,8 @@ import type { HoldAction } from "../library/HoldMenu";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { SectionOrderSheet } from "./SectionOrderSheet";
+import { FollowsSheet } from "./FollowsSheet";
+import { CelebrateSheet } from "./CelebrateSheet";
 import { BottomNav, navHeight } from "../BottomNav";
 import { useChromeHide } from "../ChromeHide";
 import { usePullRefresh } from "../pullRefresh";
@@ -32,7 +34,7 @@ import { HomeCover, HomeTopBar, HomeGreeting, HomeStats, COVER_SOLID } from "./H
 import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
-import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody } from "../contracts";
+import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody } from "../contracts";
 import type { HomeSection } from "@/core/homePrefs";
 
 /**
@@ -119,23 +121,47 @@ export function HomeScreen() {
     write<{ view: "visual" | "compact" }>("/api/v1/me/prefs/home-view", { view: next } satisfies HomeViewBody).catch(() => toastHost.current?.say(t.errViewSave));
   }, [view, qc, t]);
 
+  /* ——— ورقةُ عدّادَي المتابعة — `FollowCountButton` الويب؛ القفلُ (`hide_follow_lists`) يُحترم في `HomeGreeting` ——— */
+  const [follows, setFollows] = useState<"followers" | "following" | null>(null);
+
   /* ——— «شاهدتُها» على بطاقة «أكمل المشاهدة» (D-437): تفاؤلٌ ثمّ كتابةٌ ثمّ إعادةُ جلب ——— */
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<{ tmdbId: number; title: string; posterPath: string | null; aired: number } | null>(null);
   const markNext = useCallback(
     async (card: Extract<HomePayload["sections"]["continue"][number], { type: "show" }>) => {
       if (card.season == null || card.episode == null || busyKey) return;
       setBusyKey(card.key);
       haptic.success();
+      const cur = { season: card.season, episode: card.episode };
+      /* الحلقةُ الأخيرةُ تُنهي المسلسل ⇐ احتفالٌ بدل «تراجع» — شرطُ `finishedAll` في `ContinueCard` الويب حرفاً */
+      const finishedAll = card.aired > 0 && card.watched + 1 >= card.aired;
       try {
-        await write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: card.season, episode: card.episode, runtime: card.runtime, watched: true, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody);
+        await write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, watched: true, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody);
         await qc.invalidateQueries({ queryKey: HOME_KEY });
+        if (finishedAll) {
+          setCelebrate({ tmdbId: card.id, title: card.title, posterPath: card.poster_path, aired: card.aired });
+          return;
+        }
+        /* «تراجع» كتوست `ContinueCard` الويبيّ حرفاً: النصُّ `S1 E2 ✓` والفعلُ يعكس الكتابةَ نفسَها (`watched:false`) ثمّ يعيد الجلب — ٦ث كمدّة توست الويب ذي الفعل */
+        toastHost.current?.say(
+          `S${cur.season} E${cur.episode} ✓`,
+          {
+            label: t.undoWatched,
+            onPress: () => {
+              write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, watched: false, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody)
+                .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+                .catch(onError);
+            },
+          },
+          6000,
+        );
       } catch (e) {
         onError(e);
       } finally {
         setBusyKey(null);
       }
     },
-    [busyKey, qc, onError],
+    [busyKey, qc, onError, t],
   );
 
   /* ——— الضغطُ المطوّل: مضيفان بقائمتَي الويب — «مكتبتي» لصفوفي و«اكتشف» لما ليس عندي ——— */
@@ -207,6 +233,25 @@ export function HomeScreen() {
     },
     [invalidateHome, onError],
   );
+  /* «للمشاهدة» في «تابِع المشاهدة» — `setToWatchQueue` الويب: تفاؤلٌ لا، كتابةٌ ثمّ إعادةُ جلب وتوست؛ الاهتزازُ من الباب الواحد */
+  const [toWatchBusy, setToWatchBusy] = useState(false);
+  const setToWatch = useCallback(
+    async (on: boolean) => {
+      if (toWatchBusy) return;
+      setToWatchBusy(true);
+      haptic.pick();
+      try {
+        await write<{ on: boolean }>("/api/v1/me/prefs/to-watch", { on } satisfies ToWatchBody);
+        await qc.invalidateQueries({ queryKey: HOME_KEY });
+        toastHost.current?.say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast);
+      } catch (e) {
+        onError(e);
+      } finally {
+        setToWatchBusy(false);
+      }
+    },
+    [toWatchBusy, qc, onError, t],
+  );
   const queueItemsOf = useCallback((items: HomeQueueItem[]) => items.map((q) => ({ key: q.key, title: q.title ?? "", poster_path: q.poster_path, media_type: q.media_type ?? ("movie" as const) })), []);
 
   /* ——— الودجت (D-929): ما كان `WidgetSync` الويبيّ يكتبه — يُكتب من هنا ——— */
@@ -223,11 +268,26 @@ export function HomeScreen() {
   const chrome = useChromeHide();
   const topH = insets.top + HEADER_H;
   const refresh = usePullRefresh([HOME_KEY, HOME_EXTRAS_KEY], topH);
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => chrome.onScroll(e), [chrome]);
+  const [pastCover, setPastCover] = useState(false);
+  const pastRef = useRef(false);
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      chrome.onScroll(e);
+      /* حدُّ العتبة حيث يذوب الغلاف (`COVER_SOLID`) مطروحاً منه ارتفاعُ الشريط — حالةٌ واحدةٌ لا تصييرَ مع كلّ بكسل */
+      const past = e.nativeEvent.contentOffset.y > COVER_SOLID - HEADER_H;
+      if (past !== pastRef.current) {
+        pastRef.current = past;
+        setPastCover(past);
+      }
+    },
+    [chrome],
+  );
   const bottomPad = navH + 24;
 
   const posterW = d ? ({ compact: 96, comfortable: 118, large: 148 } as const)[d.prefs.density] : 118;
   const cap = useCallback((n: number) => (d ? capCards(n, d.prefs.cards) : n), [d]);
+  /* فوق الغلاف الشريطُ شفّافٌ وأيقوناتُه بيضاء؛ وبعد تجاوز الغلاف يأخذ خلفيّةَ الصفحة ولونَها — الويبُ يتركه شفّافاً فوق المحتوى
+     (تعليقُ D-479 يعترف بذلك)، وهذا تحسينٌ للتطبيق وحدَه بقاعدة أحمد (٢٢ سبتمبر): الشكلُ بما يناسب التطبيق، والوظائفُ من الويب */
   const onArt = !!d?.header.cover_url;
 
   useEffect(() => {
@@ -266,7 +326,7 @@ export function HomeScreen() {
       continue:
         s.continue.length > 0 ? (
           <View key="continue">
-            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => router.push("/library")} seeAll={d.queues.continue.length > 1 ? t.listReorder : undefined} onSeeAll={() => setQueueRow("continue")} />
+            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => router.push("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
             {view === "compact" ? (
               <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : undefined} busy={busyKey === c.key} />)}</Column>
             ) : (
@@ -278,7 +338,7 @@ export function HomeScreen() {
       towatch:
         s.towatch.items.length > 0 ? (
           <View key="towatch">
-            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => router.push("/library")} seeAll={s.towatch.all.length > 1 ? t.listReorder : undefined} onSeeAll={() => setQueueRow("towatch")} />
+            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => router.push("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
             {view === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress })))}
           </View>
         ) : null,
@@ -340,11 +400,11 @@ export function HomeScreen() {
       lists:
         s.lists.cards.length > 0 || s.lists.towatch_card ? (
           <View key="lists">
-            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => router.push("/library")} seeAll={d.queues.lists.length > 1 ? t.listReorder : undefined} onSeeAll={() => setQueueRow("lists")} />
+            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => router.push("/library")} seeAll={d.queues.lists.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("lists")} />
             <Rail>
               {s.lists.cards.map((c, i) => (
                 <React.Fragment key={c.id}>
-                  {s.lists.towatch_card && s.lists.towatch_at === i ? <ToWatchQueueCard count={s.lists.towatch_card.count} posters={s.lists.towatch_card.posters} onPress={() => router.push("/library")} /> : null}
+                  {s.lists.towatch_card && s.lists.towatch_at === i ? <ToWatchQueueCard count={s.lists.towatch_card.count} posters={s.lists.towatch_card.posters} on={s.lists.towatch_card.on} busy={toWatchBusy} onPress={() => { haptic.pick(); setQueueRow("towatchlist"); }} onToggle={(on) => void setToWatch(on)} /> : null}
                   <View style={{ width: 280 }}>
                     {/* الوصفةُ نفسُها في `ListsRails` (اكتشف) — بطاقةُ القائمة الواحدة في كلِّ سطح */}
                     <ListCard
@@ -369,7 +429,7 @@ export function HomeScreen() {
                   </View>
                 </React.Fragment>
               ))}
-              {s.lists.towatch_card && (s.lists.towatch_at < 0 || s.lists.towatch_at >= s.lists.cards.length) ? <ToWatchQueueCard count={s.lists.towatch_card.count} posters={s.lists.towatch_card.posters} onPress={() => router.push("/library")} /> : null}
+              {s.lists.towatch_card && (s.lists.towatch_at < 0 || s.lists.towatch_at >= s.lists.cards.length) ? <ToWatchQueueCard count={s.lists.towatch_card.count} posters={s.lists.towatch_card.posters} on={s.lists.towatch_card.on} busy={toWatchBusy} onPress={() => { haptic.pick(); setQueueRow("towatchlist"); }} onToggle={(on) => void setToWatch(on)} /> : null}
             </Rail>
           </View>
         ) : null,
@@ -389,14 +449,14 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, busyKey, holdLibOpen, holdDiscOpen]);
+  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, busyKey, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
 
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {d ? <HomeCover url={d.header.cover_url} pos={d.header.cover_pos} /> : null}
-      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
-        <HomeTopBar onArt={onArt} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => openWeb("/messages")} onSignals={() => openWeb("/messages?tab=alerts")} onSettings={() => openWeb("/profile/settings")} />
+      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: pastCover ? tokens.bg : "transparent", borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
+        <HomeTopBar onArt={onArt && !pastCover} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => openWeb("/messages")} onSignals={() => openWeb("/messages?tab=alerts")} onSettings={() => openWeb("/profile/settings")} />
       </Animated.View>
       {!d ? (
         home.isError ? (
@@ -410,7 +470,7 @@ export function HomeScreen() {
         <ScrollView ref={scroll} refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 10, paddingBottom: bottomPad }}>
           {/* صفُّ الترحيب وبطاقةُ الأرقام يقفان على الغلاف (D-836: الغلافُ يكبر بمقدارهما لا أكثر) */}
           <View style={{ minHeight: Math.max(0, COVER_SOLID - HEADER_H - 10) }}>
-            <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => openWeb(d.header.username ? `/u/${d.header.username}` : "/profile")} onFollowers={() => openWeb(d.header.username ? `/u/${d.header.username}?tab=followers` : "/profile")} onFollowing={() => openWeb(d.header.username ? `/u/${d.header.username}?tab=following` : "/profile")} />
+            <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => openWeb(d.header.username ? `/u/${d.header.username}` : "/profile")} onFollowers={() => setFollows("followers")} onFollowing={() => setFollows("following")} />
           </View>
           <HomeStats h={d.header} onStat={openHref} />
           {!d.hints.includes("home-customize") ? (
@@ -462,6 +522,8 @@ export function HomeScreen() {
           </ScrollView>
         </Sheet>
       ) : null}
+      {celebrate ? <CelebrateSheet {...celebrate} onClose={() => setCelebrate(null)} onError={onError} /> : null}
+      {follows ? <FollowsSheet dir={follows} onClose={() => setFollows(null)} onOpenWeb={openWeb} /> : null}
       <ToastHost hostRef={toastHost} bottom={navH} />
       <BottomNav
         active="home"
@@ -482,10 +544,11 @@ export function HomeScreen() {
 }
 
 /** بطاقةُ طابور «بلا قائمة» في صفّ «قوائمي» (D-559) — ثلاثةُ ملصقاتٍ واسمٌ وعدد */
-function ToWatchQueueCard({ count, posters, onPress }: { count: number; posters: (string | null)[]; onPress: () => void }) {
+/** بطاقةُ «للمشاهدة» في صفّ القوائم — `ToWatchListCard` الويب: النقرُ يفتح ترتيبَ طابورها (`towatchlist`)، والشريحةُ On/Off تُدخلها «تابِع المشاهدة» (`prefs/to-watch`). الشريحةُ شريحةُ `ListCard` بحرفها (D-145) */
+function ToWatchQueueCard({ count, posters, on, busy, onPress, onToggle }: { count: number; posters: (string | null)[]; on: boolean; busy: boolean; onPress: () => void; onToggle: (on: boolean) => void }) {
   const { t, tokens } = useApp();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${t.libToWatch} · ${t.listCount(count)}`} style={({ pressed }) => [{ width: 280, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 12, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.85 : 1 }]}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${t.libToWatch} · ${t.listCount(count)}`} style={({ pressed }) => [{ width: 280, borderRadius: radius.card, borderWidth: 1, borderColor: on ? tokens.border : tokens.border, borderStyle: on ? "solid" : "dashed", backgroundColor: tokens.surface, padding: 12, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.85 : 1 }]}>
       <View style={{ flexDirection: "row" }}>
         {posters.slice(0, 3).map((p, i) => {
           const u = posterFor(p, 40);
@@ -503,6 +566,18 @@ function ToWatchQueueCard({ count, posters, onPress }: { count: number; posters:
         </View>
         <Text size={12} muted style={{ marginTop: 2 }}>{t.listCount(count)}</Text>
       </View>
+      <Pressable
+        onPress={() => onToggle(!on)}
+        disabled={busy}
+        hitSlop={6}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: on }}
+        accessibilityLabel={t.listPlaylist}
+        style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 28, paddingStart: 12, paddingEnd: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: on ? tokens.accent + "99" : tokens.border, backgroundColor: tokens.surface2 }}
+      >
+        <Text size={12} weight="700" color={on ? tokens.accent : tokens.muted}>{on ? t.toWatchOn : t.toWatchOff}</Text>
+        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: on ? tokens.accent : tokens.divider }} />
+      </Pressable>
     </Pressable>
   );
 }
