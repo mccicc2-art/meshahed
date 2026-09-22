@@ -374,6 +374,17 @@ export function TrailerPlayer({
         initialPlayerParams={{ controls: false, rel: false, iv_load_policy: 3, preventFullScreen: true }}
         webViewStyle={{ opacity: veiled ? 0 : 1, backgroundColor: "#000" }}
         webViewProps={{
+          /* 🔴 D-1057 — **أوامرُ المكتبة لم تكن تصل الصفحةَ قطّ على أندرويد** (كلمةُ أحمد الحاسمة على 1.11.3:
+             «أيقونةُ الكتم تتبدّل والصوتُ لا ينقطع» — والإيقافُ مثلُه): `play`/`mute` في المكتبة يمرّان بـ
+             `webView.postMessage`، و`react-native-webview` 13 على أندرويد يُطلق الحدثَ على `document` بلا
+             فقاعة (`new MessageEvent` بلا `bubbles`) بينما صفحةُ المكتبة تُنصت على `window` — فالحدثُ يموت
+             قبل أن يبلغها. أمّا `seekTo` و`getCurrentTime` و`loadVideoById` فبـ`injectJavaScript` مباشرةً
+             لذا عملت دائماً، ورسائلُ الصفحة إلينا (الحالات، الجاهزيّة) تسلك طريقاً آخر لذا رأينا `playing`.
+             ⚖️ **هذا يعيد قراءة D-968 وD-982 وD-1042 وD-1055**: `playVideo()` البرمجيُّ لم يُتجاهل من يوتيوب —
+             لم يصل أصلاً؛ والكتمُ البِكرُ (D-759) لم يُطبَّق يوماً. الجسرُ: مستمعٌ على `document` يعيد الحدثَ
+             على `window` بالبيانات نفسِها. الصفحةُ محلّيّةٌ (`useLocalHTML`) فالحقنُ بعد التحميل يكفي ويبقى. */
+          injectedJavaScript:
+            "document.addEventListener('message',function(e){window.dispatchEvent(new MessageEvent('message',{data:e.data}))});true;",
           /* الأدواتُ أدواتُنا، فلا لمسةَ تصل الإطار: التمريرُ والضغطُ للسطح فوقه.
              🔴 D-982 — **إلّا في الخمول**: أوّلُ لمسةٍ تمرّ إلى الإطار نفسِه (انظر الثقبَ في
              السطح أدناه) فيتلقّى يوتيوب لمسةً حقيقيّةً ويشغّل بنفسه — `playVideo()`
