@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import * as SecureStore from "expo-secure-store";
 
 /**
  * ====== رمزُ الوصول للشاشات الأصليّة — ذاكرةٌ فقط، وطلبٌ بـnonce ======
@@ -33,6 +34,20 @@ let pending: { nonce: string; at: number; resolve: (t: string | null) => void } 
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 /** من يحقن في الصفحة — يسجّله `web.tsx` عند تركيب الـWebView */
 let inject: ((js: string) => void) | null = null;
+/**
+ * D-1075 — **الصفحةُ جاهزةٌ للطلب؟** الإقلاعُ صار إلى الرئيسيّة الأصليّة فوق الـWebView قبل أن
+ * تُحمَّل صفحتُها؛ وطلبُ الرمز قبل التحميل كان يُحقن في فراغٍ ويعود `null` بعد ٨ث فيفشل أوّلُ
+ * نداء. الآن يصطفّ الطلبُ حتى يبلّغ الغلافُ `onLoadEnd` (أو فشلَ التحميل — فيُصرف بـ`null`
+ * كما كان). الجلسةُ ما زالت ملكَ الـWebView؛ ما تغيّر هو التوقيتُ لا المصدر.
+ */
+let pageReady = false;
+let waiters: (() => void)[] = [];
+/**
+ * D-1075 — **أثرُ جلسةٍ سابقة** (لا رمزٌ ولا سرّ): «١» بعد أوّل رمزٍ مقبول، وتُمحى عند الخروج.
+ * بها يقرّر الغلافُ عند الإقلاع أن يرفع الرئيسيّةَ الأصليّةَ فوراً؛ وبدونها (أوّلُ تثبيتٍ أو بعد
+ * خروج) يُترك الويبُ يعرض الدخولَ كما كان. الكوكي في مخزن الـWebView لا يراه RN، فهذا بديلُ السؤال.
+ */
+const SEEN_KEY = "loopz.session.seen";
 const listeners = new Set<() => void>();
 
 const NONCE_TTL_MS = 30_000;
@@ -65,6 +80,29 @@ export const session = {
   },
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
+    if (!fn) session.ready(false);
+  },
+  /** D-1075 — الصفحةُ حُمِّلت (`true`: يُصرف الطابورُ فتُحقن الطلبات) أو تُعاد/تسقط (`false`) */
+  ready(ok: boolean) {
+    pageReady = ok;
+    if (!ok) return;
+    const w = waiters;
+    waiters = [];
+    for (const r of w) r();
+  },
+  /** D-1075 — التحميلُ فشل: من انتظر يُصرف الآن ويأخذ `null` كما لو انتهى وقتُه */
+  abandon() {
+    const w = waiters;
+    waiters = [];
+    for (const r of w) r();
+  },
+  /** D-1075 — هل رأى هذا الجهازُ جلسةً ولم يخرج منها؟ */
+  seen(): boolean {
+    try {
+      return SecureStore.getItem(SEEN_KEY) === "1";
+    } catch {
+      return false;
+    }
   },
   onSignOut(l: () => void): () => void {
     signOutListeners.add(l);
@@ -76,6 +114,11 @@ export const session = {
    */
   signOut() {
     session.clear();
+    try {
+      SecureStore.deleteItemAsync(SEEN_KEY).catch(() => {});
+    } catch {
+      /* لا شيء */
+    }
     for (const l of signOutListeners) l();
   },
   clear() {
@@ -106,6 +149,8 @@ export const session = {
       });
     }
     if (!inject) return Promise.resolve(null);
+    /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك) */
+    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.request() : null));
     const nonce = bytesToHex(Crypto.getRandomBytes(16));
     return new Promise((resolve) => {
       pending = { nonce, at: Date.now(), resolve };
@@ -146,6 +191,11 @@ export const session = {
     }
     access = msg.access as string;
     exp = msg.exp as number;
+    try {
+      SecureStore.setItem(SEEN_KEY, "1"); /* D-1075 — أثرٌ لا رمز */
+    } catch {
+      /* لا شيء */
+    }
     if (pendingTimer) clearTimeout(pendingTimer);
     pendingTimer = null;
     pending = null;

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { nativeListId } from "../list/route";
+import { nativeListId, nativePersonId, nativeTitle } from "../list/route";
 import { Button, Text } from "../ui";
 import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
@@ -168,6 +168,28 @@ export function LibraryScreen() {
       const listId = nativeListId(path);
       if (listId) {
         router.push({ pathname: "/list/[id]", params: { id: listId, from: "library" } });
+        return;
+      }
+      /* D-1074 — العملُ والشخصُ والبحثُ والرئيسيّةُ أصليّةٌ منذ D-956/D-983/11-G/11-H، وكانت ما زالت
+         تُطلب هنا كمساراتِ ويب (تبويبُ الفنّانين · ورقةُ المجموعة الآليّة · زرُّ الرئيسيّة في الشريط)
+         فيُفتح الـWebView ثمّ يرتدّ. العملُ والشخصُ دفعٌ فوق المكتبة (نهجُ D-956)؛ البحثُ والرئيسيّةُ
+         تبديلٌ بين الجذور كأخويهما — لا ويبَ في أيٍّ منها. */
+      const title = nativeTitle(path);
+      if (title) {
+        router.push({ pathname: "/title/[kind]/[id]", params: { kind: title.kind, id: String(title.id), from: "library" } });
+        return;
+      }
+      const personId = nativePersonId(path);
+      if (personId) {
+        router.push({ pathname: "/person/[id]", params: { id: String(personId), from: "library" } });
+        return;
+      }
+      if (path === "/search" || path.startsWith("/search?")) {
+        router.replace("/search");
+        return;
+      }
+      if (path === "/" || path === "") {
+        router.replace("/home");
         return;
       }
       setLeaving(true);
@@ -403,24 +425,14 @@ export function LibraryScreen() {
               onPress={() => setTab(tb.key)}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              style={{ flexGrow: 1, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 8, paddingBottom: 12, paddingHorizontal: 12 }}
+              /* D-1076 — هندسةُ شريط «اكتشف» حرفاً (طلبُ أحمد بلقطتين: «الخطّ الأحمر خلّ حجمه وأبعاده مثل
+                 اكتشف»): أعمدةٌ متساوية (`flexBasis 0`)، `paddingVertical 12`، النشطُ وزن 700، وخطٌّ سفليّ
+                 2 من `borderBottom` لا حبّةٌ مطلقة 3. العدّادُ يبقى صغيراً بجوار الاسم — وهو الفرقُ الوحيد.
+                 ⚖️ شريطان لعائلةٍ واحدة بمقاسين عيبٌ (القاعدة ٣) — دُوّن للتوحيد في مكوّنٍ واحد. */
+              style={{ flexGrow: 1, flexBasis: 0, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
             >
-              <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted}>{tb.label}</Text>
+              <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{tb.label}</Text>
               <Text size={12} color={on ? tokens.accent : tokens.muted + "B3"} style={{ fontVariant: ["tabular-nums"] }}>{String(tb.n)}</Text>
-              {on ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: -1,
-                    left: 0,
-                    right: 0,
-                    height: 3,
-                    borderTopLeftRadius: radius.pill,
-                    borderTopRightRadius: radius.pill,
-                    backgroundColor: tokens.accent,
-                  }}
-                />
-              ) : null}
             </Pressable>
           );
         })}
@@ -475,10 +487,12 @@ export function LibraryScreen() {
           <Pressable
             key={b.path}
             onPress={() => leaveTo(b.path)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
           >
-            <Icon name={b.icon} size={17} color={tokens.accent} />
-            <Text size={14} weight="700">{b.label}</Text>
+            {/* D-1076 — أضيقُ قليلاً (py 12 ⇐ 9) وأصغرُ كلمةً (14 ⇐ 13، الأيقونة 17 ⇐ 16): الخانةُ بابان لا
+                عنوانٌ، فلا توازن التبويباتِ وزناً — طلبُ أحمد بلقطة ٢٢ سبتمبر بعد رفضِ بديل الرقاقات */}
+            <Icon name={b.icon} size={16} color={tokens.accent} />
+            <Text size={13} weight="700">{b.label}</Text>
           </Pressable>
         ))}
         {hasFav && coreTab ? (

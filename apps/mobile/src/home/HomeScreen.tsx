@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
 import { ApiError, write } from "../api";
@@ -77,14 +77,21 @@ export function HomeScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
   }, [router]);
+  /* D-1075 — رئيسيّةٌ رُفعت عند الإقلاع (`boot=1`): زرُّ الرجوع يخرج من التطبيق كما كان يفعل من
+     الويب، لا يكشف رئيسيّةَ الويب المحمَّلةَ تحتها */
+  const { boot } = useLocalSearchParams<{ boot?: string }>();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (boot === "1") {
+        BackHandler.exitApp();
+        return true;
+      }
       back();
       return true;
     });
     return () => sub.remove();
-  }, [back]);
+  }, [back, boot]);
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
@@ -532,9 +539,11 @@ export function HomeScreen() {
             scroll.current?.scrollTo({ y: 0, animated: true });
             return;
           }
-          if (k === "library") return router.push("/library");
-          if (k === "news") return router.push("/discover");
-          if (k === "search") return router.push("/search");
+          /* D-1074 — الجذورُ الأربعةُ أخوةٌ لا مكدّس: `replace` كما تفعل المكتبة/اكتشف/البحث بينها؛
+             `push` كان يكدّس رئيسيّةً فوق رئيسيّة عند العودة من المكتبة */
+          if (k === "library") return router.replace("/library");
+          if (k === "news") return router.replace("/discover");
+          if (k === "search") return router.replace("/search");
           openWeb("/people");
         }}
       />

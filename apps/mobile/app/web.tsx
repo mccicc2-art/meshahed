@@ -145,6 +145,20 @@ export default function Web() {
     setSource({ uri: HOME });
   }, [loading, source]);
 
+  /* D-1075 — **الإقلاعُ إلى الرئيسيّة الأصليّة، لا الويب** (طلبُ أحمد ٢٢ سبتمبر: «الإقلاع أبغاه
+     تطبيق وما يفتح ويب»): من رأى جهازُه جلسةً ولم يخرج تُرفع `/home` فوق هذه الشاشة **قبل** أن
+     تُحمَّل الصفحة، فلا يرى وميضَ الويب. الـWebView تبقى تحتها وتحمّل `/` كما كانت — هي صاحبةُ
+     الجلسة (D-922)، والرئيسيّةُ تنتظرها عبر طابور `session.request` (لا مصدرَ ثانياً للرمز).
+     ⚖️ **لا رفعَ مع رابطٍ من الودجت** (`u`): هدفُه صفحةٌ ويبيّة تُنفَّذ بعد أوّل تحميل، والرئيسيّةُ
+     فوقها تخفيها. ⚖️ **ولا رفعَ بلا أثر**: أوّلُ تثبيتٍ أو بعد خروجٍ ⇒ الويبُ يعرض الدخولَ كما كان. */
+  const booted = useRef(false);
+  useEffect(() => {
+    if (loading || booted.current) return;
+    booted.current = true;
+    if (typeof u === "string" && u) return;
+    if (session.seen()) router.push({ pathname: "/home", params: { boot: "1" } });
+  }, [loading, u, router]);
+
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
   const flush = useCallback(() => {
@@ -176,7 +190,12 @@ export default function Web() {
     shell.arrived(nav.url, nav.loading);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
-    if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) session.signOut(); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
+    if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) {
+      session.signOut(); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
+      /* D-1075 — صفحةُ الدخول تحت شاشةٍ أصليّةٍ مرفوعةٍ عند الإقلاع (كوكي شاخت مثلاً): تُنزَل الشاشاتُ
+         كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
+      if (router.canDismiss()) router.dismissAll();
+    }
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
        الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
@@ -184,7 +203,7 @@ export default function Web() {
       handing.current = false;
       flush();
     }
-  }, [flush]);
+  }, [flush, router]);
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
@@ -302,6 +321,7 @@ export default function Web() {
   const retry = useCallback(() => {
     setFailed(false);
     setReady(false);
+    session.ready(false);
     ref.current?.reload();
   }, []);
 
@@ -364,13 +384,13 @@ export default function Web() {
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
           onLoadStart={() => console.log(`[perf] onLoadStart t=${perfMs()}ms`)}
-          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); setReady(true); if (!handing.current) flush(); }}
+          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); setReady(true); session.ready(true); if (!handing.current) flush(); }}
           /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
              (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */
-          onError={() => { setFailed(true); setReady(true); }}
+          onError={() => { setFailed(true); setReady(true); session.abandon(); }}
           /* ولا تُحسب أخطاءُ HTTP انقطاعاً: صفحةُ 404 من موقعنا صفحتُنا. */
-          onRenderProcessGone={() => { setReady(false); ref.current?.reload(); }}
+          onRenderProcessGone={() => { setReady(false); session.ready(false); ref.current?.reload(); }}
           /* السحبُ للتحديث: غلافٌ بلا تحديثٍ يُجبر على قتل التطبيق لإعادة الفتح.
              ⚠️ **و`overScrollMode="never"` رُفعت من هنا**: المكتبةُ تلفّ العرضَ
              بـ`SwipeRefreshLayout` وتفرض `always` معه — **وخاصّيّتان تتنازعان

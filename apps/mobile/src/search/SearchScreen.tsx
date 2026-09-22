@@ -289,7 +289,12 @@ export function SearchScreen() {
               router.replace("/discover");
               return;
             }
-            leaveTo(k === "home" ? "/" : "/people");
+            /* D-1074 — الرئيسيّةُ أصليّة (11-H): تبديلٌ بين الجذور كأخويها، لا رحلةٌ إلى `/` الويبيّة ثمّ ارتداد */
+            if (k === "home") {
+              router.replace("/home");
+              return;
+            }
+            leaveTo("/people");
           }}
         />
       </View>
