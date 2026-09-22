@@ -1,3 +1,4 @@
+import type { NativeRoot } from "../shell";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
@@ -41,7 +42,7 @@ const BIO_LINES = 5;
 
 type WorksTab = "all" | "movie" | "tv" | "show";
 
-export function PersonScreen({ id, from }: { id: number; from: "library" | "discover" | "search" }) {
+export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();

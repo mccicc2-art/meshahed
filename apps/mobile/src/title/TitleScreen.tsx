@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, write, ApiError } from "../api";
 import { useApp } from "../state";
-import { shell } from "../shell";
+import { shell, type NativeRoot } from "../shell";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
@@ -62,7 +62,7 @@ const HEADER_H = 64;
 const PAGE_PAD = 16;
 
 /** D-1000 — `from="web"`: فُتحت من صفحةٍ ويبيّة؛ أبوابُها بلا `returnTo` والرجوعُ إلى تلك الصفحة */
-export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: "library" | "discover" | "search" | "web" }) {
+export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();

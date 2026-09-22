@@ -6,6 +6,9 @@ import { CONFIG } from "./config";
  * **بحقن `location.href` لا بتبديل المصدر** (حجّةُ `flush` في `web.tsx`:
  * تبديلُ المصدر يُعيد التركيبَ ويفقد تاريخَ الرجوع).
  */
+/** جذورُ الشاشات الأصليّة التي يعود إليها الرجوعُ من صفحةٍ ويبيّة (D-949 · D-998) — Phase 11-H أضافت `home` */
+export type NativeRoot = "library" | "discover" | "search" | "home";
+
 let inject: ((js: string) => void) | null = null;
 
 /**
@@ -42,8 +45,8 @@ export const shell = {
    * النظام يهبط على جذر المكدّس **فيخرج من التطبيق**. الغلافُ نفسُه يحفظ `returnTo`
    * ويعيد فتحَ الشاشة الأصليّة حين لا رجوعَ في الـWebView. تُمحى عند تسليم `native`.
    */
-  returnTo: null as "library" | "discover" | "search" | null,
-  open(path: string, opts?: { returnTo?: "library" | "discover" | "search" }): Promise<void> {
+  returnTo: null as NativeRoot | null,
+  open(path: string, opts?: { returnTo?: NativeRoot }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";

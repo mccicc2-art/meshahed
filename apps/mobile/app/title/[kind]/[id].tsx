@@ -14,7 +14,7 @@ export default function Title() {
   const router = useRouter();
   const { kind, id, from } = useLocalSearchParams<{ kind: string; id: string; from?: string }>();
   const k = kind === "movie" ? "movie" : "tv";
-  const origin = from === "discover" ? "discover" : from === "search" ? "search" : from === "web" ? "web" : "library";
+  const origin = from === "discover" ? "discover" : from === "search" ? "search" : from === "home" ? "home" : from === "web" ? "web" : "library";
   /* D-981 — البديلُ الويبيّ يجب أن يُرى: إغلاقُ صفحة العمل وحدَها يترك «اكتشف» الأصليّةَ فوقه
      (المقطعُ الثاني، ١٥ سبتمبر مساءً) — فيُطوى المكدّسُ الأصليّ كلُّه حتى `/web`، والرجوعُ
      من الصفحة الويبيّة يعيد الشاشةَ التي فُتح منها (D-949 بـ`returnTo`). */

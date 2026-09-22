@@ -13,7 +13,7 @@ import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { BACKGROUND_CLEAR_MS, session } from "../src/session";
-import { shell } from "../src/shell";
+import { shell, type NativeRoot } from "../src/shell";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
@@ -71,7 +71,8 @@ const HOME = CONFIG.apiBase + "/";
 /* D-1000 — `title`: الغلافُ يفتح صفحةَ العمل أصليّةً من أيّ رابط عملٍ في الويب */
 /* D-1012 — `nav`: الشريطُ السفليُّ أصليٌّ فوق كلِّ صفحةٍ ويبيّة، والويبُ يخفي شريطَه */
 /* Phase 11-G — `search`: البحثُ شاشةٌ أصليّة؛ الويبُ يسلّح الرجوعَ إليها (`loopz:return=search`) ولا يفتح `/search` مستنداً */
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true};true;";
+/* Phase 11-H — `home`: الرئيسيةُ شاشةٌ أصليّة (D-1066)؛ الويبُ يسلّح الرجوعَ إليها (`loopz:return=home`) */
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true};true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -131,7 +132,7 @@ export default function Web() {
   const [path, setPath] = useState("/");
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
-  const [origin, setOrigin] = useState<"library" | "discover" | "search" | null>(null);
+  const [origin, setOrigin] = useState<NativeRoot | null>(null);
   const handing = useRef(false);
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
@@ -210,6 +211,8 @@ export default function Web() {
         if (hostOk && msg.route === "discover") router.push("/discover");
         /* Phase 11-G — البحثُ الأصليّ بالطريقة نفسِها (من `SessionBridge` عند الرجوع إلى جذره، ومن شريط الويب في غلافٍ بلا شريطٍ أصليّ) */
         if (hostOk && msg.route === "search") router.push("/search");
+        /* Phase 11-H — الرئيسيةُ الأصليّة بالطريقة نفسِها */
+        if (hostOk && msg.route === "home") router.push("/home");
         /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
@@ -313,7 +316,7 @@ export default function Web() {
       if (shell.returnTo) {
         const route = shell.returnTo;
         shell.returnTo = null;
-        router.push(route === "discover" ? "/discover" : route === "search" ? "/search" : "/library");
+        router.push(route === "discover" ? "/discover" : route === "search" ? "/search" : route === "home" ? "/home" : "/library");
         return true;
       }
       return false;
@@ -343,6 +346,7 @@ export default function Web() {
     : origin === "library" ? "library"
     : origin === "discover" ? "news"
     : origin === "search" ? "search"
+    : origin === "home" ? "home"
     : path.startsWith("/list") ? "library"
     : "home";
   return (
@@ -406,7 +410,12 @@ export default function Web() {
               router.push("/search");
               return;
             }
-            const to = k === "home" ? "/" : "/people";
+            /* Phase 11-H — «الرئيسيّة» شاشةٌ أصليّة (D-1066) */
+            if (k === "home") {
+              router.push("/home");
+              return;
+            }
+            const to = "/people";
             /* الملاحةُ في الصفحة نفسِها (تاريخُ الـWebView محفوظ) — لا تحميلَ مستندٍ جديد */
             ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(to)}):(location.href=${JSON.stringify(CONFIG.apiBase + to)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + to)};}})();true;`);
           }}

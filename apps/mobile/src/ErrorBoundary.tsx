@@ -2,7 +2,7 @@ import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import Constants from "expo-constants";
 import { api } from "./api";
-import { shell } from "./shell";
+import { shell, type NativeRoot } from "./shell";
 import { Button, Text } from "./ui";
 import { SHELL_BG, space, tokensOf } from "./theme";
 import { currentLocale } from "./i18n";
@@ -38,11 +38,11 @@ const FALLBACK = {
 
 type Props = {
   /** اسمُ الشاشة كما يُسجَّل (`library` · `discover` · `title`) */
-  screen: "library" | "discover" | "title" | "person" | "list" | "search";
+  screen: "library" | "discover" | "title" | "person" | "list" | "search" | "home";
   /** مسارُ الصفحة الويبيّة البديلة (`/library` · `/news` · `/show/123`) */
   webPath: string;
   /** الشاشةُ الأصليّة التي يعود إليها الرجوعُ من البديل (D-949) — لصفحة العمل */
-  returnTo?: "library" | "discover" | "search";
+  returnTo?: NativeRoot;
   /** يُنادى بعد فتح البديل لإغلاق الشاشة الساقطة (`router.back` أو `replace("/web")`) */
   onLeave: () => void;
   children: React.ReactNode;

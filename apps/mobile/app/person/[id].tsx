@@ -11,7 +11,7 @@ import { ErrorBoundary } from "../../src/ErrorBoundary";
 export default function Person() {
   const router = useRouter();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-  const origin = from === "discover" ? "discover" : from === "search" ? "search" : "library";
+  const origin = from === "discover" ? "discover" : from === "search" ? "search" : from === "home" ? "home" : "library";
   return (
     <ErrorBoundary screen="person" webPath={`/person/${Number(id)}`} returnTo={origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
       <PersonScreen id={Number(id)} from={origin} />

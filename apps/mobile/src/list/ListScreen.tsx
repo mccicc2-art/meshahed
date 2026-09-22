@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
-import { shell } from "../shell";
+import { shell, type NativeRoot } from "../shell";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
@@ -60,7 +60,7 @@ const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id,
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
 const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
 
-export function ListScreen({ id, from }: { id: string; from: "library" | "discover" | "search" }) {
+export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();

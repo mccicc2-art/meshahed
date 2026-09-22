@@ -11,6 +11,15 @@ import { Image } from "expo-image";
  * **رمزٌ جديد = يُرسم من `Icon.tsx` بالطريقة نفسِها لا يُرسم بيد.**
  */
 const ICONS = {
+  /* Phase 11-H — رموزُ الرئيسية: من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */
+  mail: require("../assets/icons/mail.png"),
+  bell: require("../assets/icons/bell.png"),
+  settings: require("../assets/icons/settings.png"),
+  calendar: require("../assets/icons/calendar.png"),
+  hourglass: require("../assets/icons/hourglass.png"),
+  book: require("../assets/icons/book.png"),
+  trending: require("../assets/icons/trending.png"),
+  check: require("../assets/icons/check.png"),
   play: require("../assets/icons/play.png"),
   info: require("../assets/icons/info.png"),
   repeat: require("../assets/icons/repeat.png"),
