@@ -1,160 +1,268 @@
+import { after } from "next/server";
 import {
   getFollows,
   getWatchSummary,
-  getAllWatchedEpisodes,
-  getWatchedMovieIds,
-  getWatchedForShow,
+  getWatchedMovies,
+  getProfile,
+  getAllMovieProgress,
+  getMyRatings,
+  getUnreadSignals,
+  getUnreadShares,
+  getFollowStats,
+  getNewsGenStale,
+  refreshLoopzNews,
 } from "@/lib/data";
-import { getTv } from "@/lib/tmdb";
-import { nextUnwatchedEpisode } from "@/core/progress";
+import { getT } from "@/lib/locale";
+import { isPlus } from "@/core/plan";
+import { curatedName } from "@/core/universes";
+import { applyQueueOrder } from "@/core/homePrefs";
+import { sanitizeUiState } from "@/lib/uiState";
+import { toLibraryListCard } from "@/lib/listCard";
+import { cacheShowStats, cacheMovieStats, cacheFollowMeta } from "@/lib/actions";
+import { buildHomeHeader, buildHomeBody } from "@/lib/homeCore";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type {
-  ContinueItem,
   HomePayload,
-  StartItem,
-  WeekEpisode,
+  HomeContinueCard,
+  HomeMixedCard,
+  HomeQueueItem,
 } from "@/core/contracts/home";
 
 /**
- * `GET /api/v1/me/home` — الرئيسيةُ في التطبيق: ثلاثةُ صفوفٍ في ردٍّ واحد (D-919).
+ * `GET /api/v1/me/home` — الرئيسيةُ الويبيّةُ بحذافيرها للتطبيق (D-1066،
+ * نقضُ D-919 بقرار أحمد).
  *
- * 🔑 **الترشيحُ من القاعدة قبل TMDB**: `follows` تحمل `aired_episodes`
- * و`next_air_date`، فمن يُكمَل ومن يُذاع هذا الأسبوع يُعرفان بلا رحلة —
- * **ثمّ تُطلب تفاصيلُ TMDB للمرشَّحين وحدَهم** (١٢ + من يُذاع)، لا للمكتبة.
- * وهو ترتيبُ الرئيسية في الويب نفسُه (`CONTINUE_PROBE`).
+ * 🔑 **الموجتان موجتا الصفحة نفسُهما**: الأولى (`buildHomeHeader`) والثانية
+ * (`buildHomeBody`) من `lib/homeCore.ts` — **حرفاً ما تقرؤه `app/page.tsx`**،
+ * وهذا الملفُّ لا يحسب شيئاً: **يغيّر الشكلَ وحدَه** (JSON بدل JSX). قرارٌ
+ * في النواة يصل السطحَين معاً (القاعدة ٦).
  *
- * 🔑 **الحلقةُ التالية بالدالّة الواحدة** `nextUnwatchedEpisode` (D-603/D-374):
- * تمشي على نافذة كلِّ موسمٍ الحقيقيّة ولا تقترح حلقةً لم تُذَع.
+ * ⚡ **ما كان الويبُ يبثّه بعد الرفوف ليس هنا** — مشاهدُ «التالي»، أرقامُ
+ * حلقات القادم، والرائجُ في `me/home/extras` (نظيرُ `Suspense` الأقسام).
  *
- * ⚠️ **الفشلُ في عملٍ واحدٍ لا يُسقط الصفّ**: `getTv` قد يخفق لعملٍ
- * حُذف من TMDB — فيسقط هو وحدَه.
+ * 🔑 **آثارُ الويب الجانبيّةُ تبقى**: ما كانت `ShowStatsSync`/`MovieStatsSync`/
+ * `FollowMetaSync` تكتبه من العميل (D-023 وأخواتُها) يُكتب هنا في `after()`
+ * — **فمكتبةٌ تُفتح من التطبيق وحدَه لا تبقى بلا أعدادِ حلقاتٍ ومواعيد**؛
+ * وتجديدُ الأخبار (D-215) من الباب نفسِه لأنّ الرئيسيةَ أكثرُ الأسطح زيارة.
+ * وكلُّها صامتةُ الفشل: إحصاءٌ يكسر الرئيسيةَ أسوأُ صفقة (D-909).
  */
-const CONTINUE_MAX = 12;
-const START_MAX = 12;
-const WEEK_DAYS = 7;
-
 export async function GET() {
   return handle(async () => {
     const auth = await requireUser();
     if (!auth.ok) return auth;
     const lim = limited(`v1:home:${auth.user.id}`, 30, 60_000);
     if (lim) return lim;
+    const user = auth.user;
 
-    const [follows, summary, movieIds] = await Promise.all([
+    const { locale, t } = await getT();
+    // وعدٌ يُطلق قبل الموجة الأولى ويُنتظر في الثانية — كالصفحة (جولة ٢٢ أغسطس)
+    const movieProgressPromise = getAllMovieProgress();
+    const [followRows, summary, watchedMovies, profile, myRatings] = await Promise.all([
       getFollows(),
       getWatchSummary(),
-      getWatchedMovieIds(),
+      getWatchedMovies(),
+      getProfile(),
+      getMyRatings(),
     ]);
 
-    const watchedByShow = new Map<number, { watched: number; last: string | null }>();
-    if (summary) {
-      for (const r of summary)
-        watchedByShow.set(r.show_tmdb_id, { watched: r.watched, last: r.last_watched });
-    } else {
-      for (const e of await getAllWatchedEpisodes()) {
-        const cur = watchedByShow.get(e.show_tmdb_id) ?? { watched: 0, last: null };
-        cur.watched += 1;
-        if (!cur.last || e.watched_at > cur.last) cur.last = e.watched_at;
-        watchedByShow.set(e.show_tmdb_id, cur);
-      }
-    }
+    const head = await buildHomeHeader({ followRows, summary, watchedMovies, profile, myRatings, t });
+    const { watchedMovieIds, prefs, today, watchedByShow, lastWatchedOrder, rewatchSinceMap, headerStats } = head;
 
-    const live = follows.filter((f) => !f.dropped);
-    const airedOf = (f: (typeof follows)[number]) => f.aired_episodes ?? f.total_episodes ?? 0;
-
-    // ——— ١) أكمل المشاهدة: بدأتُه ولم ألحق بكلِّ ما أُذيع ———
-    const continueCandidates = live
-      .filter((f) => f.media_type === "tv")
-      .map((f) => ({ f, w: watchedByShow.get(f.tmdb_id) }))
-      .filter(({ f, w }) => (w?.watched ?? 0) > 0 && (w?.watched ?? 0) < airedOf(f))
-      .sort((a, b) => (b.w?.last ?? "").localeCompare(a.w?.last ?? ""))
-      .slice(0, CONTINUE_MAX);
-
-    const cont = await Promise.all(
-      continueCandidates.map(async ({ f, w }): Promise<ContinueItem | null> => {
-        try {
-          const [tv, keys] = await Promise.all([
-            getTv(f.tmdb_id),
-            getWatchedForShow(f.tmdb_id, f.rewatch_started_at ?? null),
-          ]);
-          const next = nextUnwatchedEpisode(tv, keys);
-          return {
-            id: f.tmdb_id,
-            title: f.title,
-            poster_path: f.poster_path,
-            backdrop_path: tv.backdrop_path ?? null,
-            next: next
-              ? { season: next.season, episode: next.episode, runtime: tv.episode_run_time?.[0] ?? null }
-              : null,
-            watched: w?.watched ?? 0,
-            aired: airedOf(f),
-            last_watched: w?.last ?? null,
-          };
-        } catch {
-          return null;
-        }
+    const [unreadSignals, unreadShares, followStats, body] = await Promise.all([
+      getUnreadSignals(),
+      getUnreadShares(),
+      getFollowStats(user.id).catch(() => ({ followers: 0, following: 0 })),
+      buildHomeBody({
+        followRows,
+        summary,
+        watchedMovieIds,
+        profile,
+        movieProgress: movieProgressPromise,
+        prefs,
+        watchedByShow,
+        lastWatchedOrder,
+        rewatchSinceMap,
+        myRatings,
+        locale,
+        t,
+        today,
       }),
-    );
+    ]);
 
-    // ——— ٢) أسبوعك: حلقاتٌ تُذاع خلال سبعة أيّام ———
-    const today = new Date();
-    const from = today.toISOString().slice(0, 10);
-    const to = new Date(today.getTime() + WEEK_DAYS * 864e5).toISOString().slice(0, 10);
-    const weekCandidates = live.filter(
-      (f) => f.media_type === "tv" && f.next_air_date && f.next_air_date >= from && f.next_air_date <= to,
-    );
-    const week = await Promise.all(
-      weekCandidates.map(async (f): Promise<WeekEpisode | null> => {
+    /* ——— آثارٌ جانبيّةٌ بعد الردّ — ما كان العميلُ الويبيُّ يكتبه ——— */
+    after(async () => {
+      const quiet = async (p: Promise<unknown>) => {
         try {
-          const tv = await getTv(f.tmdb_id);
-          const n = tv.next_episode_to_air;
-          return {
-            id: f.tmdb_id,
-            title: f.title,
-            poster_path: f.poster_path,
-            air_date: n?.air_date ?? f.next_air_date!,
-            season: n?.season_number ?? null,
-            episode: n?.episode_number ?? null,
-            name: n?.name ?? null,
-          };
+          await p;
         } catch {
-          return {
-            id: f.tmdb_id,
-            title: f.title,
-            poster_path: f.poster_path,
-            air_date: f.next_air_date!,
-            season: null,
-            episode: null,
-            name: null,
-          };
+          /* خدمةٌ خلفيّة — سقوطُها لا يمسّ الردّ */
         }
-      }),
-    );
+      };
+      await Promise.all([
+        body.statsToCache.length ? quiet(cacheShowStats(body.statsToCache)) : null,
+        body.movieDatesToCache.length ? quiet(cacheMovieStats(body.movieDatesToCache)) : null,
+        body.metaToCache.length ? quiet(cacheFollowMeta(body.metaToCache)) : null,
+        quiet((async () => { if (await getNewsGenStale(10)) await refreshLoopzNews(); })()),
+      ]);
+    });
 
-    // ——— ٣) ابدأ: ما أضفتُه ولم ألمسه ———
-    const start: StartItem[] = live
-      .filter((f) =>
-        f.media_type === "tv"
-          ? (watchedByShow.get(f.tmdb_id)?.watched ?? 0) === 0
-          : !movieIds.has(f.tmdb_id),
-      )
-      .sort((a, b) => b.added_at.localeCompare(a.added_at))
-      .slice(0, START_MAX)
-      .map((f) => ({
-        kind: f.media_type,
-        id: f.tmdb_id,
-        title: f.title,
-        poster_path: f.poster_path,
-        added_at: f.added_at,
-      }));
+    /* ——— الشكلُ: من متغيّرات الصفحة إلى JSON — بنفس ترتيبها وشروطها ——— */
+    const kindOf = (mt: "tv" | "movie") => mt;
+    const mixed = (x: (typeof body.toWatchRow)[number] & { date?: string }): HomeMixedCard => ({
+      key: x.key,
+      kind: kindOf(x.mediaType ?? (x.href.startsWith("/show/") ? "tv" : "movie")),
+      id: x.tmdbId ?? Number(x.href.split("/").pop()),
+      title: x.title,
+      poster_path: x.posterPath,
+      progress: x.progress ?? null,
+      badge: x.badge ?? null,
+      badge_tone: x.badgeTone ?? null,
+      subtitle: x.subtitle ?? null,
+      runtime: x.runtime ?? null,
+      date: x.date ?? null,
+      ep: x.ep ?? null,
+    });
+    const queue = (q: (typeof body.continueQueueItems)[number]): HomeQueueItem => ({
+      /* طوابيرُ الرئيسية كلُّها بمفاتيحَ صريحة (`lc-` · `pl-` · `c-` · `tw-`)؛
+         الاحتياطُ اشتقاقُ `listItemKey` حرفاً (D-581) — ووحدةُ الورقة عميلٌ لا يُستورد هنا */
+      key: q.key ?? `${q.media_type ?? "movie"}-${q.tmdb_id ?? 0}`,
+      title: q.title,
+      poster_path: q.poster_path,
+      ...(q.media_type ? { media_type: q.media_type } : {}),
+      ...(q.fallbackIcon ? { fallback_icon: q.fallbackIcon } : {}),
+    });
+
+    /* «تابِع المشاهدة» بترتيب `ContinueSection` حرفاً: طابورٌ فقوائمُ فأعمالٌ
+       ثمّ أولويّةُ صاحبها فوقها (D-605) */
+    const cont: HomeContinueCard[] = [];
+    if (body.toWatchCard)
+      cont.push({
+        type: "towatch",
+        key: "lc-towatch",
+        list_name: body.toWatchCard.name,
+        next: {
+          kind: body.toWatchCard.next.media_type,
+          id: body.toWatchCard.next.tmdb_id,
+          title: body.toWatchCard.next.title,
+          poster_path: body.toWatchCard.next.poster_path,
+        },
+        watched: body.toWatchCard.watched,
+        total: body.toWatchCard.total,
+      });
+    for (const c of body.playlistCards)
+      cont.push({
+        type: "playlist",
+        key: `pl-${c.list.id}`,
+        list_id: c.list.id,
+        list_name: curatedName(c.list.sourceSlug, c.list.name, locale),
+        next: { kind: c.next!.media_type, id: c.next!.tmdb_id, title: c.next!.title, poster_path: c.next!.poster_path, followed: c.nextFollowed },
+        watched: c.watched,
+        total: c.total,
+      });
+    for (const c of body.listCards)
+      cont.push({
+        type: "list",
+        key: `lc-${c.list.id}`,
+        list_id: c.list.id,
+        list_name: curatedName(c.list.sourceSlug, c.list.name, locale),
+        next: { kind: c.next!.media_type, id: c.next!.tmdb_id, title: c.next!.title, poster_path: c.next!.poster_path, followed: c.nextFollowed },
+        watched: c.watched,
+        total: c.total,
+      });
+    body.continueTop.forEach((i, n) => {
+      const ex = body.continueExtra[n];
+      cont.push({
+        type: "show",
+        key: `c-${i.id}`,
+        id: i.id,
+        title: i.name,
+        poster_path: i.posterPath,
+        backdrop_path: ex?.backdropPath ?? null,
+        progress: i.progress,
+        watched: i.watched,
+        aired: i.aired,
+        episode_label: ex?.episodeLabel ?? null,
+        season: ex?.season ?? null,
+        episode: ex?.episode ?? null,
+        runtime: ex?.runtime ?? null,
+      });
+    });
+    const continueOrdered = applyQueueOrder(cont, (x) => x.key, prefs.continueOrder);
 
     const payload: HomePayload = {
-      continue: cont.filter((x): x is ContinueItem => x !== null),
-      week: week
-        .filter((x): x is WeekEpisode => x !== null)
-        .sort((a, b) => a.air_date.localeCompare(b.air_date)),
-      start,
+      header: {
+        display_name: profile?.nickname || user.email?.split("@")[0] || "",
+        username: profile?.username ?? null,
+        plan: profile?.plan ?? null,
+        founder: profile?.founder ?? false,
+        plus_until: profile?.plus_until ?? null,
+        verified_at: profile?.verified_at ?? null,
+        avatar_url: profile?.avatar_url ?? null,
+        avatar_pos: profile?.avatar_pos ?? null,
+        cover_url: profile?.cover_url ?? null,
+        cover_pos: profile?.cover_pos ?? null,
+        unread_signals: unreadSignals,
+        unread_shares: unreadShares,
+        followers: followStats.followers,
+        following: followStats.following,
+        hide_follow_lists: !!profile?.hide_follow_lists,
+        stats: prefs.statsPick.map((k, n) => ({ key: k, icon: headerStats[n].icon, value: headerStats[n].value, label: headerStats[n].label, href: headerStats[n].href ?? "/library" })),
+        show_stats: prefs.stats,
+      },
+      prefs,
+      plus: isPlus(profile),
+      sections: {
+        continue: continueOrdered,
+        week: {
+          days: body.weekDays.map((d) => ({ date: d.date, weekday: d.weekday, day_num: d.dayNum })),
+          entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title })),
+        },
+        towatch: { items: body.toWatchRow.map(mixed), all: body.toWatchOrdered.map(mixed) },
+        upcoming: body.upcomingRow.map(mixed),
+        shows: {
+          items: body.myShows.map((i) => ({
+            id: i.id,
+            title: i.name,
+            poster_path: i.posterPath,
+            progress: i.progress,
+            watched: i.watched,
+            aired: i.aired,
+            count: i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : null,
+            badge: i.watched === 0 ? t.notStartedBadge : i.aired > 0 && i.watched >= i.aired ? t.watchedBadge : null,
+            badge_tone: i.aired > 0 && i.watched >= i.aired && i.watched > 0 ? "watched" : "neutral",
+          })),
+          total: body.myShows.length,
+        },
+        movies: {
+          items: body.myMovies.map((m) => ({ id: m.tmdbId, title: m.title, poster_path: m.posterPath, progress: m.progress, badge: m.badge })),
+          total: body.myMovies.length,
+        },
+        recap: body.recap,
+        ratings: body.topRated.map((r) => ({ kind: r.media_type, id: r.tmdb_id, title: r.title ?? "—", poster_path: r.poster_path, rating: r.rating })),
+        lists: {
+          cards: body.listsRowCards.map((c) => toLibraryListCard(c, locale)),
+          towatch_card: body.toWatchQueueCard,
+          towatch_at: body.toWatchListAt,
+        },
+        friends: body.friendsRows.map((r) => ({
+          kind: r.media_type,
+          id: r.tmdb_id,
+          title: r.title,
+          poster_path: r.poster_path,
+          saved: body.followedKeys.has(`${r.media_type}-${r.tmdb_id}`),
+          watched: r.media_type === "movie" ? watchedMovieIds.has(r.tmdb_id) : body.doneShowIds.has(r.tmdb_id),
+        })),
+      },
+      queues: {
+        continue: body.continueQueueItems.map(queue),
+        towatch: body.toWatchQueueItems.map(queue),
+        lists: body.listsQueueItems.map(queue),
+        towatch_list: body.toWatchListItems.map(queue),
+      },
+      widget: body.widgetItems,
+      pick_genres_hint: body.favGenres.length === 0,
+      hints: sanitizeUiState(profile?.ui_state).hints,
     };
     return ok(payload);
   });

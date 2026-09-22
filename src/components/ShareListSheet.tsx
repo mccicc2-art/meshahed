@@ -38,12 +38,18 @@ import { sheetScroll } from "./ui/controls";
  * لا تُشارَك قائمةٌ خاصة: رابطها لا يفتحه غير صاحبه (السياسة في SQL)، فزرّها
  * الوحيد يجعلها معلنة أوّلاً ثم ينسخ الرابط — و`onChanged` يُحدّث `isPublic`
  * فتظهر بعدها أزرار المشاركة كلّها.
+ *
+ * 🆕 **«إلى صديق» للمالك وحدَه** (D-1065، دَينُ D-1064): `sendListShare`
+ * يطابق `user_id = me` فيرمي لغير المالك دائماً — وزرٌّ يفشل دائماً عيبٌ
+ * لا خيار. `canSendToFriend` يُخفيه؛ افتراضيُّه `true` لأنّ صفحة «قوائمي»
+ * تفتح الورقة لقوائم المالك وحدَها. المجتمعُ والرابطُ يبقيان للجميع.
  */
 export function ShareListSheet({
   listId,
   name,
   isPublic,
   locale,
+  canSendToFriend = true,
   onClose,
   onChanged,
 }: {
@@ -51,6 +57,7 @@ export function ShareListSheet({
   name: string;
   isPublic: boolean;
   locale: Locale;
+  canSendToFriend?: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -133,21 +140,28 @@ export function ShareListSheet({
             {isPublic ? (
               <>
                 {/* داخل التطبيق قبل الخارج: الصديق والمجتمع هما بيت القائمة */}
-                <button
-                  onClick={() => {
-                    tap(6);
-                    setView("friend");
-                  }}
-                  className={buttonClass({ size: "lg", full: true })}
-                >
-                  {t.listShareToFriend}
-                </button>
+                {canSendToFriend && (
+                  <button
+                    onClick={() => {
+                      tap(6);
+                      setView("friend");
+                    }}
+                    className={buttonClass({ size: "lg", full: true })}
+                  >
+                    {t.listShareToFriend}
+                  </button>
+                )}
+                {/* لغير المالك يرتقي «المجتمع» زرّاً أوّلَ ليبقى للورقة زرٌّ رئيس */}
                 <button
                   onClick={() => {
                     tap(6);
                     setView("community");
                   }}
-                  className={buttonClass({ variant: "surface", size: "lg", full: true })}
+                  className={buttonClass({
+                    variant: canSendToFriend ? "surface" : "primary",
+                    size: "lg",
+                    full: true,
+                  })}
                 >
                   {t.listShareToCommunity}
                 </button>

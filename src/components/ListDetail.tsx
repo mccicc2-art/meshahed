@@ -853,6 +853,7 @@ export function ListDetail({
           name={name}
           isPublic={isPublic}
           locale={locale}
+          canSendToFriend={isOwner}
           onClose={() => setSheet(null)}
           onChanged={() => router.refresh()}
         />
