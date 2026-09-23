@@ -32,3 +32,12 @@ export function sanitizeFontSize(value: unknown): FontSize {
 export function fontAttr(size: FontSize): string | undefined {
   return size === "md" ? undefined : size;
 }
+
+/**
+ * 🆕 D-1105 — **معاملُ كلِّ درجة، مصدرٌ واحدٌ للتطبيق** (طلبُ أحمد ٢٣ سبتمبر: «نفّذ أ» — حجمُ الخطّ
+ * يكبّر الشاشاتِ الأصليّة كما يكبّر الويب). القيمُ هي قيمُ `:root[data-fs-*]` في `globals.css` حرفاً؛
+ * CSS لا يقرأ TS فبقيت هناك مكتوبةً — **من يغيّر درجةً يغيّرها في الموضعين**.
+ * المحتوى (كلامُ الناس) يكبر أكثر من الواجهة في الدرجتين الكبيرتين: هو ما يُقرأ طويلاً.
+ */
+export const FONT_SCALE_UI: Record<FontSize, number> = { sm: 0.92, md: 1, lg: 1.1, xl: 1.2 };
+export const FONT_SCALE_CONTENT: Record<FontSize, number> = { sm: 0.92, md: 1, lg: 1.15, xl: 1.3 };

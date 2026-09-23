@@ -1,7 +1,7 @@
 "use client";
 
 import { siteUrl } from "@/lib/site";
-import { toast } from "@/lib/toast";
+import { copiedToast } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
@@ -62,7 +62,7 @@ export function ShareTitleButton({
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast(t.linkCopied);
+      copiedToast(t.linkCopied);
     } catch {
       /* متصفّح بلا حافظة — لا رسالة تفيد هنا */
     }

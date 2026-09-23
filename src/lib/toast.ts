@@ -62,3 +62,20 @@ export function flashError(message: string) {
   }
   toast(message, { tone: "error" });
 }
+
+/**
+ * 🆕 D-1104 — **«نُسخ الرابط» مرّةً واحدة** (بلاغُ أحمد بتسجيل على 1.11.11: «Link copied» و«تم النسخ»
+ * معاً). أندرويد 13+ يؤكّد كلَّ كتابةٍ في الحافظة بنفسه (بلغة النظام)، فتوستُنا فوقه صوتٌ ثانٍ لفعلٍ
+ * واحد. داخل الغلاف على أندرويد 13+ يُترك التأكيدُ للنظام؛ وفي المتصفّح وعلى ما دونه يبقى توستُنا.
+ * الحكمُ بـ`LoopzNative` (الغلافُ يحقنها قبل المستند) وبرقم أندرويد في `userAgent`.
+ */
+export function copiedToast(message: string) {
+  try {
+    const inShell = !!(window as { LoopzNative?: unknown }).LoopzNative;
+    const m = /Android (\d+)/.exec(navigator.userAgent);
+    if (inShell && m && Number(m[1]) >= 13) return;
+  } catch {
+    /* لا شيء — نعرض توستَنا */
+  }
+  toast(message);
+}

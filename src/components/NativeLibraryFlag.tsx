@@ -70,7 +70,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean; /** D-1104 — `navigator.share` تفتح ورقةَ النظام */ share?: boolean };
     /** D-1012 — الغلافُ ينادي موجِّهَ الصفحة بدل تحميل مستندٍ جديد */
     __loopzGo?: (path: string) => void;
   }

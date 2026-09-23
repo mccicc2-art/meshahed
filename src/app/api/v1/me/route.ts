@@ -5,6 +5,7 @@ import { platformFromUA } from "@/core/platform";
 import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
+import { sanitizeFontSize } from "@/core/fontPrefs";
 
 /**
  * `GET /api/v1/me` — من أنا، بما يكفي لرسم الترويسة والإعدادات.
@@ -53,6 +54,9 @@ export async function GET() {
       partner: isPartner(p),
       verified: isVerified(p),
       founder: isFounder(p),
+      /* 🆕 D-1105 — حجما الخطّ: الشاشاتُ الأصليّةُ تكبر بهما كالويب (إضافةٌ لا تكسر غلافاً قديماً) */
+      font_ui: sanitizeFontSize(p.font_ui),
+      font_content: sanitizeFontSize(p.font_content),
     });
   });
 }

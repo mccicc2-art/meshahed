@@ -10,6 +10,7 @@ import { fitForUpload, UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { SITE_URL } from "@/lib/site";
+import { avatarStoragePath } from "@/core/avatarPath";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { type Socials } from "@/core/socials";
@@ -166,15 +167,6 @@ export function EditProfileForm({
   /* ===== الرفع ===== منقولٌ بحرفه من `ProfileForm`: نفسُ المخزن ونفسُ
      الحدّ (٢ ميجابايت) ونفسُ حذفِ السابق — **وملفٌّ قديمٌ يبقى في المخزن
      مع كلِّ تغييرٍ يملأ السعةَ بصورٍ لا يراها أحد.** */
-  function storagePathOf(url: string | null, uid: string): string | null {
-    if (!url) return null;
-    const marker = "/storage/v1/object/public/avatars/";
-    const at = url.indexOf(marker);
-    if (at < 0) return null;
-    const path = decodeURIComponent(url.slice(at + marker.length).split("?")[0]);
-    return path.startsWith(`${uid}/`) ? path : null;
-  }
-
   async function upload(picked: File, kind: "avatar" | "cover") {
     setError(null);
     if (!picked.type.startsWith("image/")) return setError(t.errPickImage);
@@ -203,7 +195,7 @@ export function EditProfileForm({
       else setCoverUrl(data.publicUrl);
 
       const previous = kind === "avatar" ? avatarUrl : coverUrl;
-      const oldPath = storagePathOf(previous, userId);
+      const oldPath = avatarStoragePath(previous, userId);
       if (oldPath && oldPath !== path) {
         await supabase.storage.from("avatars").remove([oldPath]);
       }

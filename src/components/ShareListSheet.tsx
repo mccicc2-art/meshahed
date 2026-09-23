@@ -9,7 +9,7 @@ import { buttonClass } from "./ui/Button";
 import { getDict, num, type Locale } from "@/core/i18n";
 import { siteUrl } from "@/lib/site";
 import { tap } from "@/lib/haptics";
-import { toast, flashError } from "@/lib/toast";
+import { toast, copiedToast, flashError } from "@/lib/toast";
 import {
   renameList,
   myMutualFollows,
@@ -71,7 +71,7 @@ export function ShareListSheet({
   async function copy() {
     try {
       await navigator.clipboard.writeText(url());
-      toast(t.linkCopied);
+      copiedToast(t.linkCopied);
     } catch {
       /* متصفّح بلا حافظة — لا رسالة تفيد هنا */
     }

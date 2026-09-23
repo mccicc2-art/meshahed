@@ -22,7 +22,7 @@ const TitleArtSheet = dynamic(() => import("./TitleArtSheet").then((m) => m.Titl
 import { stopWatching } from "@/lib/actions";
 import { coalescedRefresh } from "@/core/refresh";
 import { tap } from "@/lib/haptics";
-import { toast as showToast, flashError } from "@/lib/toast";
+import { toast as showToast, copiedToast, flashError } from "@/lib/toast";
 
 /**
  * زرّان عائمان فوق خلفية صفحة العمل: رجوع وقائمة «المزيد».
@@ -94,7 +94,7 @@ export function DetailTopBar({
     }
     try {
       await navigator.clipboard.writeText(url);
-      showToast(t.linkCopied);
+      copiedToast(t.linkCopied);
     } catch {
       /* متصفّح بلا حافظة — لا رسالة تفيد هنا */
     }

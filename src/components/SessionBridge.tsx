@@ -101,7 +101,10 @@ export function SessionBridge() {
     /* 🆕 Phase 11-C (D-955) — العلامةُ تحمل اسمَ الشاشة (`library` · `discover`)
        فالرجوعُ يعود إلى الشاشة التي فُتحت منها الصفحة، بالآليّة نفسِها */
     /* Phase 11-G — و`search`: الرجوعُ من صفحةٍ فُتحت من البحث الأصليّ (ملفُّ عضو) يعود إليه */
-    const NATIVE = new Set(["library", "discover", "search", "home"]);
+    const ROOT_NAMES = new Set(["library", "discover", "search", "home"]);
+    /* 🆕 D-1101 — و`settings` أو `settings/<قسم>`: صفحةٌ فُتحت من الإعدادات الأصليّة يعود رجوعُها إليها
+       (بلاغُ أحمد على 1.11.11: «تعديل الملف» ← رجوع ← الرئيسيّة). ليست جذراً — لا مسارَ لها في `ROOT_OF` */
+    const NATIVE = { has: (r: string) => ROOT_NAMES.has(r) || /^settings(\/[a-z-]+)?$/.test(r) };
     /* 🔴 D-973 — **جذرُ الشاشة الأصليّة نفسِها لا ينزع سلاحَها بل يعيدها** (بلاغُ
        أحمد بتسجيل على 1.8.5: «بعد ما أتصفّح دقايق يرجع اكتشف ويب فيو»): زرُّ الرجوع
        في صفحة التريلرات يستبدل العنوانَ بـ`/news`، و`/news` جذرٌ — فكان السلاحُ
@@ -151,6 +154,7 @@ export function SessionBridge() {
     const arrivalPath = window.location.pathname;
     const origPush = window.history.pushState;
     const origReplace = window.history.replaceState;
+    const origBack = window.history.back;
     /* الوسمُ يُحفظ على كلِّ مدخلٍ غيرِ جذرٍ ما دمنا مسلَّحين — و`replaceState`
        أيضاً لأنّ موجِّه Next يستبدل الحالةَ بعد كلِّ انتقالٍ بلا نسخِ ما ليس له. */
     const stamp = (data: unknown, url?: string | URL | null): unknown => {
@@ -191,6 +195,23 @@ export function SessionBridge() {
         return origReplace.call(this, stamp(data, url), unused, url);
       };
       window.addEventListener("popstate", onPop);
+      /* 🆕 D-1102 — **زرُّ الرجوع في صفحة الوصول يعود مباشرةً** (بلاغُ أحمد بتسجيل على 1.11.11: وميضُ
+         هيكلٍ رماديّ عند الرجوع من «تعديل الملف»). من صفحة الوصول كلُّ رجوعٍ يتجاوزها — فهو عودةٌ إلى
+         الشاشة الأصليّة مهما كان قبلها؛ لكنّ `history.back()` كان يحمّل ما قبلها (مستنداً من زيارةٍ سابقة)
+         فيُرسم هيكلُ تحميله ثمّ يُسلَّم. الآن تُسلَّم العودةُ قبل أن يتحرّك التاريخ. `router.back()` في Next
+         هو `history.back()` نفسُه، فـ`BackButton` وكلُّ رجوعٍ مكتوبٍ يمرّ من هنا. ⚖️ المسارُ وحدَه يحكم:
+         وصولٌ ← صفحةٌ ← الوصولُ نفسُه بـ`push` نادرٌ في أبواب الإعدادات، وثمنُه عودةٌ مبكّرة لا خروج. */
+      window.history.back = function (this: History) {
+        try {
+          if (window.location.pathname === arrivalPath && NATIVE.has(sessionStorage.getItem("loopz:armed") ?? "")) {
+            toNative();
+            return;
+          }
+        } catch {
+          /* لا شيء — الرجوعُ المعتاد */
+        }
+        return origBack.call(this);
+      };
     }
 
     /* 🆕 D-946 — **لغةُ الويب إلى الغلاف**: الشاشةُ الأصليّة كانت تقرأ لغةَ
@@ -226,6 +247,7 @@ export function SessionBridge() {
       if (armed) {
         window.history.pushState = origPush;
         window.history.replaceState = origReplace;
+        window.history.back = origBack;
         window.removeEventListener("popstate", onPop);
       }
       unsub?.();

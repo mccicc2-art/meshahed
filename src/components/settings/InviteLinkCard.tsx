@@ -3,7 +3,7 @@
 import { Icon } from "../Icon";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
-import { toast } from "@/lib/toast";
+import { copiedToast } from "@/lib/toast";
 
 /**
  * 🆕 بطاقةُ رابط الدعوة — **بشكل نموذج أحمد النهائيّ** (D-770b): صفُّ
@@ -24,7 +24,7 @@ export function InviteLinkCard({ url, locale }: { url: string; locale: Locale })
     tap(6);
     try {
       await navigator.clipboard.writeText(url);
-      toast(t.linkCopied);
+      copiedToast(t.linkCopied);
     } catch {
       /* متصفّحٌ بلا حافظة — لا رسالةَ تفيد هنا */
     }

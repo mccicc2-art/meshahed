@@ -73,3 +73,63 @@ export type UnblockBody = { user_id: string };
 export type HintsResetBody = { reset: true };
 
 export type PeoplePayload = { people: PersonLite[] };
+
+/* ====== 🆕 Phase 11-I · I3 — تعديلُ الملفّ والتوثيقُ أصليّاً (D-1106 · D-1107) ====== */
+
+/**
+ * `GET /api/v1/me/profile` — ما يحتاجه نموذجُ «تعديل الملف» وحدَه (`app/profile/edit/page.tsx` حرفاً):
+ * الهويّةُ والصورتان بموضعيهما، وحالةُ الظهور للقراءة، وحسابُ X للعرض (ربطُه بابٌ — جلسةُ الويب، D-932).
+ */
+export type ProfileEditPayload = {
+  nickname: string;
+  username: string;
+  bio: string;
+  avatar_url: string | null;
+  cover_url: string | null;
+  cover_pos: number;
+  avatar_pos: number;
+  is_private: boolean;
+  /** نطاقُ الرابط كما يُنسخ (`SITE_URL`) — لا يُكتب في التطبيق مرّةً ثانية */
+  site_url: string;
+  /** `null` حين لا يوجد مزوّدُ X (القسمُ يغيب كما في الويب — D-217) */
+  x: { handle: string | null; verified: boolean } | null;
+};
+
+/** الحقولُ السبعةُ التي يحرّرها النموذج — الأنواعُ والتخصيصُ تُقرأ في الخادم فلا تُمحى (D-462) */
+export type ProfileSaveBody = {
+  nickname: string;
+  username: string;
+  bio: string;
+  avatar_url: string | null;
+  cover_url: string | null;
+  cover_pos: number;
+  avatar_pos: number;
+};
+
+/** ردُّ الرفع: الرابطُ العامُّ للصورة الجديدة — لا يُكتب في الملفّ حتى «حفظ» */
+export type ProfileImagePayload = { url: string };
+
+/** `GET /api/v1/me/verify` — `getVerificationScreen` كما هو (الأهليّة · حالةُ الطلب · الحساباتُ المرتبطة) */
+export type VerifyPayload = {
+  eligibility: {
+    complete: boolean;
+    active: boolean;
+    activeDays: number;
+    needDays: number;
+    clean: boolean;
+    verified: boolean;
+    eligible: boolean;
+  };
+  state: {
+    status: "pending" | "more_info" | "approved" | "rejected" | null;
+    kind: "person" | "org" | "media" | null;
+    note: string | null;
+    createdAt: string | null;
+    decidedAt: string | null;
+    nextApplyAt: string | null;
+    canApply: boolean;
+  };
+  providers: { provider: string; handle: string | null }[];
+};
+
+export type VerifyBody = { kind: string; links: string[]; website: string; sources: string; reason: string };
