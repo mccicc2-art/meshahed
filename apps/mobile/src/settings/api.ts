@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { shell } from "../shell";
@@ -60,26 +60,36 @@ export function messageOf(e: unknown, t: Record<string, unknown>, fallback: stri
 }
 
 /**
- * بابٌ إلى الويب من الإعدادات (وصفةُ `HomeScreen.openWeb`): الصفحةُ تُفتح تحت
- * والشاشاتُ الأصليّةُ كلُّها تُنزَل (`dismissAll`) — فالرجوعُ من الصفحة يعود إلى
- * الرئيسيّة الأصليّة (`returnTo:"home"`) لا إلى إعداداتٍ معلَّقةٍ فوقها.
+ * بابٌ إلى الويب من الإعدادات (وصفةُ `HomeScreen.openWeb`): الصفحةُ تُفتح تحت والشاشاتُ الأصليّةُ
+ * كلُّها تُنزَل (`dismissAll`) — لا بدَّ، فالـWebView جذرُ المكدّس ولا تُرى وفوقها شاشة.
+ *
+ * 🔴 🆕 D-1101 — **والرجوعُ يعود إلى الإعدادات لا إلى الرئيسيّة** (بلاغُ أحمد بتسجيل على 1.11.11:
+ * «تعديل الملف» ← رجوع ← الرئيسيّة، مرّتين). كتبتُ هنا في I1 `returnTo:"home"` بحجّة «لا إعداداتٍ
+ * معلَّقةٍ فوقها» — **وهي حجّةُ تنفيذٍ لا حجّةُ مستخدم**: الويبُ يعيد «تعديلَ الملف» إلى الإعدادات،
+ * والإيماءاتُ من الويب (D-1067). الآن `settings` أو `settings/<القسم>` — القسمُ من مسار الشاشة نفسِها
+ * (`[section]`)، فلا يمرّره أحد؛ والغلافُ يعيد بناءَ المكدّس كما كان (`goNative` في `web.tsx`).
+ *
+ * 🆕 D-1103 — **`busy`: المسارُ الذي يُفتح الآن** — الصفُّ يرسم دوّارةً مكانَ سهمه لحظةَ اللمس. البابُ
+ * يأخذ ثانيةً حتى تصل الصفحة (D-951 ينتظرها)، وبلا إشارةٍ كرّر أحمد اللمسَ خمسَ مرّات.
  */
 export function useOpenWeb() {
   const router = useRouter();
-  const [leaving, setLeaving] = useState(false);
+  const { section } = useLocalSearchParams<{ section?: string }>();
+  const [busy, setBusy] = useState<string | null>(null);
   const open = useCallback(
     (path: string) => {
-      if (leaving) return;
-      setLeaving(true);
-      void shell.open(path, { returnTo: "home" }).then(() => {
-        setLeaving(false);
+      if (busy) return;
+      setBusy(path);
+      const returnTo = typeof section === "string" && /^[a-z-]+$/.test(section) ? (`settings/${section}` as const) : ("settings" as const);
+      void shell.open(path, { returnTo }).then(() => {
+        setBusy(null);
         if (router.canDismiss()) router.dismissAll();
         else router.replace("/web");
       });
     },
-    [leaving, router],
+    [busy, router, section],
   );
-  return open;
+  return Object.assign(open, { busy });
 }
 
 /** إبطالُ «من أنا» بعد تبدّل الثيم — الرموزُ تتبع `me.theme` (state.tsx) */

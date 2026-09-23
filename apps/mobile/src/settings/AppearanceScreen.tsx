@@ -9,6 +9,7 @@ import { webLocale } from "../i18n";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, ExpandRow, OptionRow, OptionList, RowsSkeleton } from "./ui";
 import { useSettings, saveSetting, invalidateMe, useOpenWeb } from "./api";
+import { fontPrefs } from "../fontScale";
 import { THEMES, themeName } from "@/core/themes";
 import { themeNeedsPlus } from "@/core/plan";
 import { FONT_SIZES, type FontSize } from "@/core/fontPrefs";
@@ -75,8 +76,16 @@ export function AppearanceScreen() {
     if (!s) return;
     const ui = which === "ui" ? size : s.appearance.font_ui;
     const content = which === "content" ? size : s.appearance.font_content;
+    /* D-1105 — التطبيقُ كلُّه يتبع لحظةَ اللمس (الشاشةُ التي أنت فيها أوّلُها)، ويعود إن فشل الحفظ */
+    const before = fontPrefs.get();
+    fontPrefs.set(ui, content);
     const out = await saveSetting<{ ui: string; content: string }>("/api/v1/me/settings/font", { ui, content } satisfies FontBody, (x) => ({ ...x, appearance: { ...x.appearance, font_ui: ui, font_content: content } }));
-    if (!out) fail();
+    if (!out) {
+      fontPrefs.set(before.ui, before.content);
+      fail();
+      return;
+    }
+    invalidateMe();
   }
 
   const theme = s ? THEMES.find((x) => x.id === s.appearance.theme) ?? THEMES[0] : THEMES[0];

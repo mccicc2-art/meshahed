@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from "react";
-import { BackHandler, I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, BackHandler, I18nManager, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
@@ -26,7 +26,23 @@ const HEADER_H = 64;
 export const ROW_H = 56;
 
 /** `toast` — مرجعُ مضيف الإشعار الواحد (القاعدة ٣) يُرسم فوق المحتوى لا داخل التمرير */
-export function SettingsScreen({ title, children, onBack, toast }: { title: string; children: React.ReactNode; onBack?: () => void; toast?: React.Ref<ToastHostRef> }) {
+export function SettingsScreen({
+  title,
+  children,
+  onBack,
+  toast,
+  action,
+  overlay,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onBack?: () => void;
+  toast?: React.Ref<ToastHostRef>;
+  /** 🆕 D-1106 — فعلُ الترويسة في طرفها الآخر («حفظ» في تعديل الملف — `SettingsPageLayout action`) */
+  action?: React.ReactNode;
+  /** ما يُرسم فوق الشاشة كلِّها (ورقةُ «تعديلاتٌ لم تُحفظ») */
+  overlay?: React.ReactNode;
+}) {
   const { tokens, t } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -53,11 +69,13 @@ export function SettingsScreen({ title, children, onBack, toast }: { title: stri
             <Icon name="chevron-down" size={24} color={tokens.fg} />
           </View>
         </Pressable>
+        {action ? <View style={{ position: "absolute", end: PAGE_PAD - 4, top: 0, bottom: 0, justifyContent: "center" }}>{action}</View> : null}
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: insets.bottom + 24, gap: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
       {toast ? <ToastHost hostRef={toast} bottom={insets.bottom} /> : null}
+      {overlay}
     </View>
   );
 }
@@ -89,6 +107,7 @@ export function Row({
   trailing,
   leading,
   disabled,
+  busy,
 }: {
   icon?: IconName;
   title: string;
@@ -101,6 +120,8 @@ export function Row({
   /** ما يُرسم بدل الرمز (وجهُ الحساب في بطاقته) */
   leading?: React.ReactNode;
   disabled?: boolean;
+  /** 🆕 D-1103 — بابٌ يُفتح الآن: دوّارةٌ مكانَ السهم حتى تصل الصفحة */
+  busy?: boolean;
 }) {
   const { tokens } = useApp();
   const color = danger ? tokens.error : tokens.fg;
@@ -112,7 +133,7 @@ export function Row({
         {subtitle ? <Text size={12} weight="500" muted numberOfLines={2} style={{ marginTop: 2 }}>{subtitle}</Text> : null}
       </View>
       {value ? <Text size={14} muted numberOfLines={1} style={{ maxWidth: "40%" }}>{value}</Text> : null}
-      {trailing !== undefined ? trailing : onPress ? <Chevron /> : null}
+      {trailing !== undefined ? trailing : onPress ? <Chevron busy={busy} /> : null}
     </>
   );
   const style = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, minHeight: ROW_H, paddingHorizontal: 14, paddingVertical: 10 };
@@ -125,8 +146,10 @@ export function Row({
 }
 
 /** سهمُ «باب» — يشير إلى الأمام في الاتّجاهين (`-rotate-90 rtl:rotate-90`) */
-export function Chevron({ open }: { open?: boolean }) {
+export function Chevron({ open, busy }: { open?: boolean; busy?: boolean }) {
   const { tokens } = useApp();
+  /* D-1103 — الدوّارةُ في مقاس السهم نفسِه (١٨) فلا يتحرّك شيءٌ في الصفّ */
+  if (busy) return <ActivityIndicator size={Platform.OS === "android" ? 18 : "small"} color={tokens.muted} />;
   const deg = open ? "0deg" : I18nManager.isRTL ? "90deg" : "-90deg";
   return (
     <View style={{ transform: [{ rotate: deg }] }}>
@@ -207,6 +230,81 @@ export function RowsSkeleton({ rows = 4 }: { rows?: number }) {
           <View style={{ height: 14, width: `${45 + (i % 3) * 12}%`, borderRadius: 6, backgroundColor: tokens.surface2 }} />
         </View>
       ))}
+    </View>
+  );
+}
+
+/**
+ * 🆕 D-1106 — **حقلُ نموذجٍ داخل بطاقة** (`EditProfileForm` · `VerifyScreen`): عنوانٌ ١٢ خافتٌ فوق نصٍّ ١٦
+ * بلا إطار (البطاقةُ هي الإطار — «ولا عائلةَ حقولٍ ثانية»، القاعدة ٣). `ltr` للمعرّفات والروابط،
+ * `prefix` لـ`@`، و`counter` يعدّ نحو `maxLength` ويحمرّ عند بلوغه. ١٦ ثابتةٌ لا تتبع حجمَ الخطّ — كحقول الويب.
+ */
+export function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  maxLength,
+  multiline,
+  lines = 1,
+  ltr,
+  prefix,
+  counter,
+  hint,
+  editable = true,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  maxLength?: number;
+  multiline?: boolean;
+  lines?: number;
+  ltr?: boolean;
+  prefix?: string;
+  counter?: boolean;
+  hint?: string;
+  editable?: boolean;
+}) {
+  const { tokens } = useApp();
+  const full = maxLength !== undefined && value.length >= maxLength;
+  return (
+    <View style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <Text size={12} weight="600" muted>{label}</Text>
+        {counter && maxLength !== undefined ? (
+          <Text size={12} color={full ? tokens.error : tokens.muted} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${value.length} / ${maxLength}`}</Text>
+        ) : null}
+      </View>
+      <View style={{ flexDirection: ltr ? "row" : undefined, alignItems: "center", gap: 4, direction: ltr ? "ltr" : undefined }}>
+        {prefix ? <Text size={16} muted>{prefix}</Text> : null}
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={tokens.muted}
+          maxLength={maxLength}
+          multiline={multiline}
+          editable={editable}
+          autoCapitalize={ltr ? "none" : "sentences"}
+          autoCorrect={!ltr}
+          style={{
+            flex: ltr ? 1 : undefined,
+            minWidth: 0,
+            padding: 0,
+            fontSize: 16,
+            lineHeight: multiline ? 24 : undefined,
+            minHeight: multiline ? lines * 24 : undefined,
+            color: tokens.fg,
+            /* "left" هو «البداية» في هذا المشروع (الاتّجاهُ مفروضٌ عند الإقلاع — `Text` و`SearchScreen`)،
+               وحاويةُ `direction:"ltr"` تجعله يساراً فعليّاً للمعرّفات والروابط كما في الويب */
+            textAlign: "left",
+            writingDirection: ltr ? "ltr" : undefined,
+            textAlignVertical: multiline ? "top" : "center",
+          }}
+        />
+      </View>
+      {hint ? <Text size={12} muted style={{ marginTop: 6, writingDirection: ltr ? "ltr" : undefined }}>{hint}</Text> : null}
     </View>
   );
 }

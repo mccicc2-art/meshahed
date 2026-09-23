@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, BackHandler, Linking, Platform, View } from "react-native";
+import { AppState, BackHandler, Linking, Platform, Share, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
@@ -13,7 +13,7 @@ import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { BACKGROUND_CLEAR_MS, session } from "../src/session";
-import { shell, type NativeRoot } from "../src/shell";
+import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
@@ -76,7 +76,18 @@ const BOOT = CONFIG.apiBase + "/app/boot";
 /* D-1012 — `nav`: الشريطُ السفليُّ أصليٌّ فوق كلِّ صفحةٍ ويبيّة، والويبُ يخفي شريطَه */
 /* Phase 11-G — `search`: البحثُ شاشةٌ أصليّة؛ الويبُ يسلّح الرجوعَ إليها (`loopz:return=search`) ولا يفتح `/search` مستنداً */
 /* Phase 11-H — `home`: الرئيسيةُ شاشةٌ أصليّة (D-1066)؛ الويبُ يسلّح الرجوعَ إليها (`loopz:return=home`) */
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true};true;";
+/**
+ * 🆕 D-1104 — **`navigator.share` أصليّةٌ داخل الغلاف** (بلاغُ أحمد بتسجيل على 1.11.11: «Link copied»
+ * و«تم النسخ» معاً): WebView أندرويد بلا `navigator.share`، فكلُّ زرِّ مشاركةٍ في الويب كان يسقط إلى
+ * الحافظة — أيقونةُ مشاركةٍ تنسخ، وأندرويد 13+ يؤكّد النسخَ بنفسه فوق توستنا. الآن الدالّةُ تُعرَّف
+ * قبل المستند وتطلب ورقةَ النظام من الغلاف (`share` في `onMessage`)، فأزرارُ المشاركة كلُّها
+ * (`ShareTitleButton` · `DetailTopBar` · `ShareListSheet` · الدعوات) تفتح واتساب/X دون أن تُمسّ.
+ * الإطارُ الأعلى وحدَه (لا مشغّلُ يوتيوب)، ولا تُستبدل دالّةٌ موجودة. الوعدُ يُرفض `AbortError`
+ * حين يُغلق المستخدمُ الورقة (iOS) — وهو ما يعدّه الويبُ «ليس خطأً» فلا ينسخ بعده.
+ */
+const SHARE_BRIDGE =
+  "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,share:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -86,7 +97,7 @@ const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,
  * حقنُ «بعد التحميل» يجري على كلِّ `onLoadEnd` بما فيه الاستعادةُ، **وهو احتياطٌ
  * لا بديل**: الأوّلُ يسبق كودَ الصفحة، والثاني يلحقه لكنّه يسبق أوّلَ ضغطة.
  */
-const CAPABILITIES_LATE = "if(!window.LoopzNative)" + CAPABILITIES;
+const CAPABILITIES_LATE = "if(!window.LoopzNative){" + CAPABILITIES + "}" + SHARE_BRIDGE + ";true;";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
 const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
@@ -138,6 +149,46 @@ export default function Web() {
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
   const handing = useRef(false);
+  /**
+   * 🆕 D-1101 — **العودةُ إلى الشاشة الأصليّة التي فُتحت منها الصفحة**، في مكانٍ واحدٍ لطريقَيها (رسالةُ
+   * `native` من الصفحة، ورجوعُ النظام). الجذورُ كما كانت دفعةً واحدة؛ والإعداداتُ ليست جذراً فتُبنى
+   * كما تركها المستخدم: الرئيسيّةُ تحتها (منها فُتحت، ورجوعُ الإعدادات يعود إليها) ثمّ الفهرسُ ثمّ
+   * القسمُ إن كان — فرجوعٌ بعد رجوعٍ يمشي الطريقَ نفسَه عكساً كما في الويب.
+   */
+  const goNative = useCallback(
+    (r: ReturnTo) => {
+      if (r === "library") router.push("/library");
+      else if (r === "discover") router.push("/discover");
+      else if (r === "search") router.push("/search");
+      else if (r === "home") router.push("/home");
+      else {
+        const section = r.split("/")[1];
+        router.push("/home");
+        router.push("/settings");
+        if (section) router.push({ pathname: "/settings/[section]", params: { section } });
+      }
+    },
+    [router],
+  );
+  /**
+   * 🆕 D-1103 — **درعُ لمسٍ لحظةَ تنكشف الصفحة** (بلاغُ أحمد بتسجيل على 1.11.11: «تم نسخ الرابط» ولم
+   * يضغط مشاركة). البابُ يأخذ ثانيةً حتى تصل الصفحة، فيكرّر الإصبعُ اللمس؛ آخرُ لمسةٍ كانت تقع على
+   * الصفحة فورَ انكشافها — على زرّ المشاركة في ملفّه. ستُّمئةِ جزءٍ من الثانية بعد الوصول تبتلع اللمسَ
+   * (نزولُ الشاشة ~٣٠٠ ثمّ هامش) — لا أحدَ يقصد زرّاً في صفحةٍ لم يرَها بعد.
+   */
+  const [shielded, setShielded] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    shell.onArrive = () => {
+      setShielded(true);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setShielded(false), 600);
+    };
+    return () => {
+      shell.onArrive = null;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
   const { u } = useLocalSearchParams<{ u?: string }>();
@@ -185,7 +236,7 @@ export default function Web() {
   useEffect(() => {
     if (typeof u !== "string" || !u || !u.startsWith("/")) return;
     pending.current = CONFIG.apiBase + u;
-    setOrigin(shell.returnTo);
+    setOrigin(rootOf(shell.returnTo));
     if (ready && !handing.current) flush();
   }, [u, ready, flush]);
 
@@ -246,16 +297,33 @@ export default function Web() {
         if (hostOk) webLocale.set((msg as { lang?: unknown }).lang);
         return;
       }
+      /* 🆕 D-1104 — ورقةُ المشاركة للنظام بدل الحافظة؛ من نطاقنا وحدَه، والنتيجةُ تُعاد إلى وعد الصفحة */
+      if (msg.type === "share") {
+        if (!hostOk) return;
+        const m = msg as { title?: unknown; text?: unknown; url?: unknown };
+        const url = typeof m.url === "string" ? m.url : "";
+        const text = typeof m.text === "string" ? m.text : "";
+        const title = typeof m.title === "string" ? m.title : "";
+        const message = [text, url].filter(Boolean).join("\n") || title;
+        let ok = false;
+        try {
+          const r = await Share.share(Platform.OS === "ios" ? { message: text || title, url, title } : { message, title });
+          ok = r.action !== Share.dismissedAction;
+        } catch {
+          ok = false;
+        }
+        ref.current?.injectJavaScript(`try{window.__loopzShareDone&&window.__loopzShareDone(${ok ? "true" : "false"})}catch(e){};true;`);
+        return;
+      }
       if (msg.type === "native") {
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
-        if (hostOk) shell.returnTo = null; /* D-998 — العودةُ سُلِّمت */
-        if (hostOk && msg.route === "library") router.push("/library");
-        /* Phase 11-C (D-955) — «اكتشف» الأصليّة فوق الـWebView بالطريقة نفسِها */
-        if (hostOk && msg.route === "discover") router.push("/discover");
-        /* Phase 11-G — البحثُ الأصليّ بالطريقة نفسِها (من `SessionBridge` عند الرجوع إلى جذره، ومن شريط الويب في غلافٍ بلا شريطٍ أصليّ) */
-        if (hostOk && msg.route === "search") router.push("/search");
-        /* Phase 11-H — الرئيسيةُ الأصليّة بالطريقة نفسِها */
-        if (hostOk && msg.route === "home") router.push("/home");
+        if (hostOk) {
+          shell.returnTo = null; /* D-998 — العودةُ سُلِّمت */
+          shell.doorPath = null;
+        }
+        /* library (D-949) · discover (D-955) · search (11-G) · home (11-H) · 🆕 settings[/قسم] (D-1101) —
+           كلُّها من `goNative`؛ والقيمةُ تُفحص قبل أن تُدفع بها شاشة */
+        if (hostOk && isReturnTo(msg.route)) goNative(msg.route);
         /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
@@ -297,7 +365,7 @@ export default function Web() {
         ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
       }
     },
-    [signInWithGoogle, router, hopHome],
+    [signInWithGoogle, router, hopHome, goNative],
   );
 
   /* Phase 11 · B1 — الجسرُ يعرف كيف يحقن في هذه الـWebView ما دامت مركَّبة */
@@ -352,6 +420,16 @@ export default function Web() {
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1102 — **على صفحة الوصول نفسِها الرجوعُ عودةٌ مباشرة** (بلاغُ أحمد بتسجيل على 1.11.11): كان
+         `goBack()` يحمّل ما قبلها في تاريخ الـWebView — ملفَّه من زيارةٍ سابقة — فيُرسم هيكلُ تحميله ربعَ
+         ثانية ثمّ سوادٌ ثمّ تُسلِّم الصفحةُ العودة. الوجهةُ واحدةٌ في الحالين؛ الفرقُ ألّا نمرّ بصفحةٍ لم تُطلب.
+         وإن تنقّل داخل الويب بعد الوصول (المسارُ تغيّر) فالرجوعُ رجوعُ الويب حتى يعود إليها. */
+      if (shell.returnTo && shell.doorPath === path) {
+        const route = shell.returnTo;
+        shell.disarm();
+        goNative(route);
+        return true;
+      }
       if (canGoBack) {
         ref.current?.goBack();
         return true;
@@ -359,14 +437,14 @@ export default function Web() {
       /* D-998 — لا رجوعَ في الـWebView لكنّ الصفحةَ فُتحت من شاشةٍ أصليّة: نعود إليها لا نخرج */
       if (shell.returnTo) {
         const route = shell.returnTo;
-        shell.returnTo = null;
-        router.push(route === "discover" ? "/discover" : route === "search" ? "/search" : route === "home" ? "/home" : "/library");
+        shell.disarm();
+        goNative(route);
         return true;
       }
       return false;
     });
     return () => sub.remove();
-  }, [canGoBack, router]);
+  }, [canGoBack, router, path, goNative]);
 
   /**
    * 🆕 D-1012 — **الشريطُ السفليُّ أصليٌّ في كلِّ مكان** (طلبُ أحمد بتسجيل: «الدوك في الأسفل
@@ -436,6 +514,8 @@ export default function Web() {
           textZoom={100}
         />
       ) : null}
+      {/* D-1103 — الدرعُ فوق الصفحة وحدَها لحظةَ انكشافها؛ لا يُرى ولا يغطّي الشريطَ الأصليّ */}
+      {shielded ? <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="auto" /> : null}
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
       {ready && !failed ? (
         <BottomNav

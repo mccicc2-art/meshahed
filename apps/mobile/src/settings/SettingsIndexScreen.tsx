@@ -29,6 +29,7 @@ export function SettingsIndexScreen() {
   const s = q.data;
   const a = s?.account;
   const displayName = a ? a.nickname || a.username || "" : "";
+  const cardPath = a?.username ? `/u/${a.username}` : "/profile";
   const go = (section: string) => router.push({ pathname: "/settings/[section]", params: { section } });
 
   return (
@@ -39,7 +40,7 @@ export function SettingsIndexScreen() {
         <Group>
           {/* بطاقةُ الحساب — بابٌ واحدٌ إلى ملفّك كما يراه الناس (D-849) */}
           <Pressable
-            onPress={() => openWeb(a?.username ? `/u/${a.username}` : "/profile")}
+            onPress={() => openWeb(cardPath)}
             accessibilityRole="link"
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: pressed ? tokens.surface2 : "transparent" }]}
           >
@@ -59,20 +60,20 @@ export function SettingsIndexScreen() {
               </View>
               {a?.username ? <Text size={12} weight="500" muted numberOfLines={1}>@{a.username}</Text> : null}
             </View>
-            <Chevron />
+            <Chevron busy={openWeb.busy === cardPath} />
           </Pressable>
         </Group>
       )}
 
       <Group label={t.setGroupAccount}>
-        <Row icon="edit" title={t.setEditProfile} onPress={() => openWeb("/profile/edit")} />
+        <Row icon="edit" title={t.setEditProfile} onPress={() => go("profile")} />
         <Row icon="person-check" title={t.setAccount} onPress={() => go("account")} />
-        <Row icon="card" title={t.setBilling} value={s?.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} />
-        <Row icon="share" title={t.setInvites} onPress={() => openWeb("/profile/settings/invites")} />
+        <Row icon="card" title={t.setBilling} value={s?.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
+        <Row icon="share" title={t.setInvites} onPress={() => openWeb("/profile/settings/invites")} busy={openWeb.busy === "/profile/settings/invites"} />
       </Group>
 
       <Group label={t.setGroupPersonalize}>
-        <Row icon="home" title={t.setHomeProfile} onPress={() => openWeb("/profile/settings/home")} />
+        <Row icon="home" title={t.setHomeProfile} onPress={() => openWeb("/profile/settings/home")} busy={openWeb.busy === "/profile/settings/home"} />
         <Row icon="palette" title={t.setAppearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>
@@ -80,7 +81,7 @@ export function SettingsIndexScreen() {
       <Group label={t.setGroupData}>
         <Row icon="shield" title={t.setPrivacy} onPress={() => go("privacy")} />
         <Row icon="bell" title={t.setNotifications} onPress={() => go("notifications")} />
-        <Row icon="download" title={t.setImport} onPress={() => openWeb("/profile/settings/import")} />
+        <Row icon="download" title={t.setImport} onPress={() => openWeb("/profile/settings/import")} busy={openWeb.busy === "/profile/settings/import"} />
       </Group>
 
       <Group label={t.setGroupSupport}>

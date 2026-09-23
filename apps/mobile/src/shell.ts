@@ -8,6 +8,24 @@ import { CONFIG } from "./config";
  */
 /** جذورُ الشاشات الأصليّة التي يعود إليها الرجوعُ من صفحةٍ ويبيّة (D-949 · D-998) — Phase 11-H أضافت `home` */
 export type NativeRoot = "library" | "discover" | "search" | "home";
+/**
+ * 🆕 D-1101 — **ما يعود إليه الرجوعُ: جذرٌ أو الإعداداتُ بقسمها** (بلاغُ أحمد بتسجيل على 1.11.11:
+ * «تعديل الملف» ← رجوع ← الرئيسيّة). الإعداداتُ ليست جذراً (لا خانةَ لها)، لكنّ الويبَ يعيد
+ * «تعديلَ الملف» إلى الإعدادات لا إلى الرئيسيّة — والإيماءاتُ من الويب (D-1067).
+ * `settings` = الفهرس · `settings/account` = قسمُه.
+ */
+export type ReturnTo = NativeRoot | "settings" | `settings/${string}`;
+
+/** قيمةُ رجوعٍ صالحة؟ — تُفحص كلُّ قيمةٍ تأتي من الصفحة قبل أن تُدفع بها شاشة */
+export function isReturnTo(v: unknown): v is ReturnTo {
+  return typeof v === "string" && (v === "library" || v === "discover" || v === "search" || v === "home" || /^settings(\/[a-z-]+)?$/.test(v));
+}
+
+/** الخانةُ المضيئةُ للصفحة المفتوحة: الإعداداتُ بلا خانة فتضيء الرئيسيّةُ التي فُتحت منها */
+export function rootOf(r: ReturnTo | null): NativeRoot | null {
+  if (!r) return null;
+  return r.startsWith("settings") ? "home" : (r as NativeRoot);
+}
 
 let inject: ((js: string) => void) | null = null;
 
@@ -45,10 +63,20 @@ export const shell = {
    * النظام يهبط على جذر المكدّس **فيخرج من التطبيق**. الغلافُ نفسُه يحفظ `returnTo`
    * ويعيد فتحَ الشاشة الأصليّة حين لا رجوعَ في الـWebView. تُمحى عند تسليم `native`.
    */
-  returnTo: null as NativeRoot | null,
-  open(path: string, opts?: { returnTo?: NativeRoot }): Promise<void> {
+  returnTo: null as ReturnTo | null,
+  /**
+   * 🆕 D-1102 — **مسارُ صفحة الوصول** (بلاغُ أحمد بتسجيل: وميضُ هيكلٍ رماديّ عند الرجوع من «تعديل
+   * الملف»). ما دام الـWebView على هذه الصفحة فرجوعُ النظام عودةٌ إلى الشاشة الأصليّة **مباشرةً** —
+   * لا `goBack()` يحمّل الصفحةَ السابقةَ في تاريخه (ملفُّك من زيارةٍ قبلها) ويرسم هيكلَ تحميلها
+   * ثمّ يُسلِّم. يُمحى مع `returnTo`.
+   */
+  doorPath: null as string | null,
+  /** 🆕 D-1103 — يُنادى لحظةَ وصول الصفحة المطلوبة (قبل نزول الشاشة الأصليّة) — `web.tsx` يرفع درعَ اللمس */
+  onArrive: null as (() => void) | null,
+  open(path: string, opts?: { returnTo?: ReturnTo }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
+    shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
     /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل
        في الدورة نفسِها على الأجهزة السريعة، فلا يجد من ينتظره. */
@@ -60,6 +88,7 @@ export const shell = {
         settle() {
           clearTimeout(timer);
           waiter = null;
+          shell.onArrive?.();
           resolve();
         },
       };
@@ -79,6 +108,12 @@ export const shell = {
    * تُرسله — ويبقى `onNavigationStateChange` في `web.tsx` هو من يرى `/auth/signout`
    * ويُنزل الشاشاتِ الأصليّة ويمسح الجلسة (D-1026). **الجلسةُ ما زالت ملكَ الـWebView** (D-932).
    */
+  /** 🆕 D-1102 — العودةُ سُلِّمت من الغلاف لا من الصفحة: يُنزع سلاحُ الصفحة كي لا يُطلق رجوعاً ثانياً */
+  disarm() {
+    shell.returnTo = null;
+    shell.doorPath = null;
+    inject?.(`try{sessionStorage.removeItem("loopz:armed")}catch(e){};true;`);
+  },
   post(path: string) {
     if (!inject || !path.startsWith("/")) return;
     inject(`(function(){var f=document.createElement("form");f.method="post";f.action=${JSON.stringify(CONFIG.apiBase + path)};document.body.appendChild(f);f.submit();})();true;`);
