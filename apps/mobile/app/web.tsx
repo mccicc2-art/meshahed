@@ -217,6 +217,12 @@ export default function Web() {
       const hostOk = insideUrl(e.nativeEvent.url);
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
       if (session.receive(msg as Record<string, unknown>, hostOk)) return;
+      /* 🆕 D-1083 — `SessionBridge` علّق سامعَ الطلب: يُصرف طابورُ الرمز الآن لا بعد آخر صورةٍ في
+         الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
+      if (msg.type === "bridge:ready") {
+        if (hostOk) session.ready(true);
+        return;
+      }
       /* 🆕 D-946 — لغةُ الويب: تُقبل من نطاقنا وحدَه، وتُفحص القيمةُ في `webLocale.set` */
       if (msg.type === "locale") {
         if (hostOk) webLocale.set((msg as { lang?: unknown }).lang);

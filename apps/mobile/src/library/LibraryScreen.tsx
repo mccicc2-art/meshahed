@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useRouter } from "expo-router";
+import { useBootRoot } from "../bootRoot";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
@@ -146,14 +147,17 @@ export function LibraryScreen() {
     else router.replace("/web");
   }, [router]);
 
+  /* D-1078 — جذرٌ وُلد من الإقلاع: رجوعُ النظام إلى الرئيسيّة الأصليّة، لا يكشف رئيسيّةَ الويب تحته */
+  const { switchTo, bootBack } = useBootRoot();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (bootBack("/library")) return true;
       back();
       return true;
     });
     return () => sub.remove();
-  }, [back]);
+  }, [back, bootBack]);
 
   /* 🆕 D-951 — **الخروجُ إلى صفحةٍ ويبيّة يُغلق الشاشةَ بعد وصولها لا قبله**:
      `shell.open` تعِد بالوصول (أو بمهلة)، والشاشةُ تبقى فوق الـWebView حتّى
@@ -185,17 +189,17 @@ export function LibraryScreen() {
         return;
       }
       if (path === "/search" || path.startsWith("/search?")) {
-        router.replace("/search");
+        switchTo("/search");
         return;
       }
       if (path === "/" || path === "") {
-        router.replace("/home");
+        switchTo("/home");
         return;
       }
       setLeaving(true);
       void shell.open(path, { returnTo: "library" }).then(back);
     },
-    [leaving, back, router],
+    [leaving, back, router, switchTo],
   );
 
   /* D-956 — صفحةُ العمل أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ؛ المكتبةُ تبقى تحتها */
@@ -555,12 +559,12 @@ export function LibraryScreen() {
         onGo={(k) => {
           if (k === "library") return;
           if (k === "news") {
-            router.replace("/discover");
+            switchTo("/discover");
             return;
           }
           /* Phase 11-G — البحثُ أصليّ: تبديلٌ كأخويه لا بابٌ ويبيّ */
           if (k === "search") {
-            router.replace("/search");
+            switchTo("/search");
             return;
           }
           leaveTo(k === "home" ? "/" : "/people");

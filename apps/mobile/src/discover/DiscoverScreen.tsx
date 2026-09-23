@@ -1,7 +1,9 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useBootRoot } from "../bootRoot";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
 import { useApp } from "../state";
@@ -15,8 +17,8 @@ import { CardStoreContext, createCardStore } from "../cardStore";
 import { useCardActs } from "../cardActs";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
-import { ListsRails } from "./ListsRails";
-import { TrailersRail } from "./TrailersRail";
+import { ListsRails, listsQuery } from "./ListsRails";
+import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
@@ -81,6 +83,28 @@ export function prefetchDiscover(): void {
       staleTime: 10 * 60_000,
     });
   }
+  /* 🆕 D-1085 — **والتريلراتُ و«قوائم» أيضاً** (بلاغُ أحمد بتسجيل على 1.11.8: «أوّل ما أدخل اكتشف يتأخّر
+     ظهور الفيديو، وقوائم كذلك»): كانا خارج التسخين، فيبدأ طلبُهما عند فتح الشاشة — والتريلراتُ أبطأُ
+     صفوفها (TMDB لكلِّ عمل) فظهرت بعد ~٧ث. ومصغّرةُ أوّل تريلرين تُجلب إلى كاش الصور فتُرسم البطاقةُ
+     فوراً ويركب المشغّلُ فوقها كما كان (D-987) — لا تغييرَ في عمل المشغّل نفسِه. */
+  void queryClient
+    .fetchQuery(trailersQuery(tab))
+    .then((d) => {
+      const urls = (d?.items ?? []).slice(0, 2).map(thumbOf);
+      if (urls.length) void Image.prefetch(urls, "memory-disk");
+    })
+    .catch(() => {});
+  void queryClient.prefetchQuery(listsQuery);
+}
+
+/** D-1085 — تسخينٌ واحدٌ لكلِّ جلسةٍ من الرئيسيّة، بعد أن تهدأ — لا مع أوّل رسمةٍ لها */
+let warmed = false;
+export function warmDiscoverOnce(): void {
+  if (warmed) return;
+  warmed = true;
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(prefetchDiscover, 1500);
+  });
 }
 
 /** ترتيبُ الصفوف كما في `CuratedRails` للحالة الافتراضيّة */
@@ -114,14 +138,17 @@ export function DiscoverScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
   }, [router]);
+  /* D-1078 — جذرٌ وُلد من الإقلاع: رجوعُ النظام إلى الرئيسيّة الأصليّة، لا يكشف رئيسيّةَ الويب تحته */
+  const { switchTo, bootBack } = useBootRoot();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (bootBack("/discover")) return true;
       back();
       return true;
     });
     return () => sub.remove();
-  }, [back]);
+  }, [back, bootBack]);
 
   /* الخروجُ إلى صفحةٍ ويبيّة — الشاشةُ تبقى حتّى تصل (D-951) وتعود إليها (D-949) */
   const [leaving, setLeaving] = useState(false);
@@ -426,17 +453,17 @@ export function DiscoverScreen() {
         onGo={(k) => {
           if (k === "news") return;
           if (k === "library") {
-            router.replace("/library");
+            switchTo("/library");
             return;
           }
           /* Phase 11-G — البحثُ أصليّ: تبديلٌ كأخويه لا بابٌ ويبيّ */
           if (k === "search") {
-            router.replace("/search");
+            switchTo("/search");
             return;
           }
           /* D-1074 — الرئيسيّةُ أصليّة (11-H): تبديلٌ بين الجذور كأخويها، لا رحلةٌ إلى `/` الويبيّة ثمّ ارتداد */
           if (k === "home") {
-            router.replace("/home");
+            switchTo("/home");
             return;
           }
           leaveTo("/people");

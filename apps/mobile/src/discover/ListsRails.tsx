@@ -26,6 +26,13 @@ import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 const PAGE_PAD = 16;
 const CARD_W = 260;
 
+/** D-1085 — خيارُ الاستعلام الواحد، يشاركه `prefetchDiscover` */
+export const listsQuery = {
+  queryKey: ["discover:lists"] as const,
+  queryFn: async () => (await api<DiscoverListsPayload>("/api/v1/discover/lists")).data,
+  staleTime: 5 * 60_000,
+};
+
 export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
@@ -34,11 +41,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
   /* 🆕 D-996 — «الكلّ» للعالم ورقةٌ أصليّة (كان باباً إلى `/news?tab=lists&fr=`): الردُّ يحمل
      مجموعاتِ العالم كاملةً، فالورقةُ تعرضها شبكةً بالبطاقة نفسِها ولا تطلب شيئاً */
   const [allOf, setAllOf] = useState<{ name: string; sets: LibraryListCard[] } | null>(null);
-  const q = useQuery({
-    queryKey: ["discover:lists"] as const,
-    queryFn: async () => (await api<DiscoverListsPayload>("/api/v1/discover/lists")).data,
-    staleTime: 5 * 60_000,
-  });
+  const q = useQuery(listsQuery);
   const p = q.data;
 
   const rail = (key: string, title: string, lists: LibraryListCard[], seeAll?: boolean) =>

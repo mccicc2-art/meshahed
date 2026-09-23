@@ -2,14 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+import { useBootRoot } from "../bootRoot";
+import { warmDiscoverOnce } from "../discover/DiscoverScreen";
 import { useQueryClient } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Loading, Text } from "../ui";
-import { Icon } from "../icons";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { PosterCard, type CardAnchor, type CardItem } from "../library/PosterCard";
@@ -34,7 +35,7 @@ import { HomeCover, HomeTopBar, HomeGreeting, HomeStats, COVER_SOLID } from "./H
 import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
-import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody } from "../contracts";
+import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody } from "../contracts";
 import type { HomeSection } from "@/core/homePrefs";
 
 /**
@@ -61,6 +62,10 @@ export function HomeScreen() {
   const navH = navHeight(insets.bottom);
   const { home, extras, backdropOf } = useHome();
   const d = home.data ?? null;
+  /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
+  useEffect(() => {
+    if (d) warmDiscoverOnce();
+  }, [d]);
   const toastHost = useRef<ToastHostRef>(null);
   const scroll = useRef<ScrollView>(null);
   const onError = useCallback(
@@ -79,19 +84,16 @@ export function HomeScreen() {
   }, [router]);
   /* D-1075 — رئيسيّةٌ رُفعت عند الإقلاع (`boot=1`): زرُّ الرجوع يخرج من التطبيق كما كان يفعل من
      الويب، لا يكشف رئيسيّةَ الويب المحمَّلةَ تحتها */
-  const { boot } = useLocalSearchParams<{ boot?: string }>();
+  const { switchTo, bootBack } = useBootRoot();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (boot === "1") {
-        BackHandler.exitApp();
-        return true;
-      }
+      if (bootBack("/home")) return true;
       back();
       return true;
     });
     return () => sub.remove();
-  }, [back, boot]);
+  }, [back, bootBack]);
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
@@ -156,6 +158,54 @@ export function HomeScreen() {
             label: t.undoWatched,
             onPress: () => {
               write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, watched: false, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody)
+                .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+                .catch(onError);
+            },
+          },
+          6000,
+        );
+      } catch (e) {
+        onError(e);
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [busyKey, qc, onError, t],
+  );
+
+  /* ——— D-1079 — الصحُّ على بطاقات القوائم وطابور «للمشاهدة» — `ListContinueCard.mark` الويب ———
+     الفيلمُ يُعلَّم مشاهَداً؛ والمسلسلُ يُختم كلُّه كما من صفحته (D-604): متابعةٌ أوّلاً إن لم يكن في
+     المكتبة، ثمّ `show-watched` الذي يعيد ما أضافه. **والرجعةُ صادقة** (D-047): «تراجع» يحذف ما أضافته
+     الضغطةُ وحدَها، ومن لم يكن متابعاً قبلها لا يبقى متابعاً بعدها (D-238). الإعادةُ تقلب البطاقةَ إلى
+     التالي — وهو الفعلُ نفسُه. الاتّجاهُ الثاني في الويب ضغطةٌ ثانية؛ هنا توستُ «تراجع» كجارتها (D-437). */
+  const markListNext = useCallback(
+    async (card: Exclude<HomePayload["sections"]["continue"][number], { type: "show" }>) => {
+      if (busyKey) return;
+      setBusyKey(card.key);
+      haptic.success();
+      const n = card.next;
+      try {
+        let undo: () => Promise<unknown>;
+        if (n.kind === "movie") {
+          await write<TrackResult>("/api/v1/track/movie", { movieTmdbId: n.id, runtime: null, watched: true } satisfies ToggleMovieBody);
+          undo = () => write<TrackResult>("/api/v1/track/movie", { movieTmdbId: n.id, runtime: null, watched: false } satisfies ToggleMovieBody);
+        } else {
+          const followedHere = !n.followed;
+          if (followedHere) await write<TrackResult>("/api/v1/track/follow", { tmdbId: n.id, mediaType: "tv", title: n.title ?? "", posterPath: n.poster_path } satisfies FollowBody);
+          const res = await write<ShowWatchedResult>("/api/v1/track/show-watched", { showTmdbId: n.id } satisfies ShowRefBody);
+          const added = res?.added ?? [];
+          undo = async () => {
+            if (added.length) await write<TrackResult>("/api/v1/track/episodes-unmark", { showTmdbId: n.id, episodes: added } satisfies UnmarkEpisodesBody);
+            if (followedHere) await write<TrackResult>("/api/v1/track/unfollow", { tmdbId: n.id, mediaType: "tv" } satisfies UnfollowBody);
+          };
+        }
+        await qc.invalidateQueries({ queryKey: HOME_KEY });
+        toastHost.current?.say(
+          `${n.title ?? card.list_name} ✓`,
+          {
+            label: t.undoWatched,
+            onPress: () => {
+              undo()
                 .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
                 .catch(onError);
             },
@@ -335,9 +385,9 @@ export function HomeScreen() {
           <View key="continue">
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => router.push("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
             {view === "compact" ? (
-              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : undefined} busy={busyKey === c.key} />)}</Column>
+              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKey === c.key} />)}</Column>
             ) : (
-              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : undefined} busy={busyKey === c.key} />)}</Rail>
+              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKey === c.key} />)}</Rail>
             )}
           </View>
         ) : null,
@@ -456,7 +506,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, busyKey, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
+  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, markListNext, busyKey, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -541,9 +591,9 @@ export function HomeScreen() {
           }
           /* D-1074 — الجذورُ الأربعةُ أخوةٌ لا مكدّس: `replace` كما تفعل المكتبة/اكتشف/البحث بينها؛
              `push` كان يكدّس رئيسيّةً فوق رئيسيّة عند العودة من المكتبة */
-          if (k === "library") return router.replace("/library");
-          if (k === "news") return router.replace("/discover");
-          if (k === "search") return router.replace("/search");
+          if (k === "library") return switchTo("/library");
+          if (k === "news") return switchTo("/discover");
+          if (k === "search") return switchTo("/search");
           openWeb("/people");
         }}
       />
@@ -552,41 +602,38 @@ export function HomeScreen() {
   );
 }
 
-/** بطاقةُ طابور «بلا قائمة» في صفّ «قوائمي» (D-559) — ثلاثةُ ملصقاتٍ واسمٌ وعدد */
-/** بطاقةُ «للمشاهدة» في صفّ القوائم — `ToWatchListCard` الويب: النقرُ يفتح ترتيبَ طابورها (`towatchlist`)، والشريحةُ On/Off تُدخلها «تابِع المشاهدة» (`prefs/to-watch`). الشريحةُ شريحةُ `ListCard` بحرفها (D-145) */
+/**
+ * بطاقةُ «للمشاهدة» في صفّ القوائم — `ToWatchListCard` الويب: النقرُ يفتح ترتيبَ طابورها (`towatchlist`)،
+ * والشريحةُ On/Off تُدخلها «تابِع المشاهدة» (`prefs/to-watch`).
+ *
+ * 🔑 D-1077 — **بطاقةُ القائمة الواحدة لا نسخةٌ ثانية** (القاعدة ٣). كانت هنا بطاقةٌ مرسومةٌ باليد
+ * (صفٌّ أفقيّ بملصقاتٍ مصغّرة) فتمدّدت إلى ارتفاع جارتها في الـ`Rail` فراغاً أسود، وبدت غريبةً بين
+ * قوائمه — بلاغُ أحمد على 1.11.8. الويبُ يلبسها `ListCardShell` نفسَها، والمكتبةُ الأصليّة تلبسها
+ * `ListCard` نفسَها (`ListsTab`) — فهنا الوصفةُ ذاتُها بحرفها: رمزُ العلامة، سطرُ «يُبنى وحده»، بلا
+ * شريط حال، وإطارٌ متقطّعٌ حين تتوقّف.
+ */
 function ToWatchQueueCard({ count, posters, on, busy, onPress, onToggle }: { count: number; posters: (string | null)[]; on: boolean; busy: boolean; onPress: () => void; onToggle: (on: boolean) => void }) {
-  const { t, tokens } = useApp();
+  const { t } = useApp();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${t.libToWatch} · ${t.listCount(count)}`} style={({ pressed }) => [{ width: 280, borderRadius: radius.card, borderWidth: 1, borderColor: on ? tokens.border : tokens.border, borderStyle: on ? "solid" : "dashed", backgroundColor: tokens.surface, padding: 12, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={{ flexDirection: "row" }}>
-        {posters.slice(0, 3).map((p, i) => {
-          const u = posterFor(p, 40);
-          return (
-            <View key={i} style={{ width: 40, height: 60, borderRadius: radius.sm, overflow: "hidden", borderWidth: 2, borderColor: tokens.surface, backgroundColor: tokens.surface2, marginStart: i > 0 ? -14 : 0, zIndex: 3 - i }}>
-              {u ? <Image source={{ uri: u }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
-            </View>
-          );
-        })}
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name="bookmark" size={14} color={tokens.accent} />
-          <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.libToWatch}</Text>
-        </View>
-        <Text size={12} muted style={{ marginTop: 2 }}>{t.listCount(count)}</Text>
-      </View>
-      <Pressable
-        onPress={() => onToggle(!on)}
-        disabled={busy}
-        hitSlop={6}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: on }}
-        accessibilityLabel={t.listPlaylist}
-        style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 28, paddingStart: 12, paddingEnd: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: on ? tokens.accent + "99" : tokens.border, backgroundColor: tokens.surface2 }}
-      >
-        <Text size={12} weight="700" color={on ? tokens.accent : tokens.muted}>{on ? t.toWatchOn : t.toWatchOff}</Text>
-        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: on ? tokens.accent : tokens.divider }} />
-      </Pressable>
-    </Pressable>
+    <View style={{ width: 280 }}>
+      <ListCard
+        card={{
+          id: "towatch",
+          name: t.libToWatch,
+          icon: "bookmark",
+          owner: null,
+          owner_avatar: null,
+          countText: `${t.listCount(count)} · ${t.toWatchAutoNote}`,
+          posters: posters.filter((x): x is string => !!x),
+          cover: null,
+          stats: null,
+          playlist: on,
+          dashed: !on,
+        }}
+        busy={busy}
+        onPlaylist={onToggle}
+        onPress={onPress}
+      />
+    </View>
   );
 }

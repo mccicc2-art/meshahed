@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
@@ -74,6 +75,7 @@ export function SearchScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
   }, [router]);
+  const { switchTo, bootBack } = useBootRoot();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -82,11 +84,13 @@ export function SearchScreen() {
         setDesc(false);
         return true;
       }
+      /* D-1078 — جذرٌ وُلد من الإقلاع: إلى الرئيسيّة الأصليّة، لا يكشف رئيسيّةَ الويب تحته */
+      if (bootBack("/search")) return true;
       back();
       return true;
     });
     return () => sub.remove();
-  }, [back, desc]);
+  }, [back, desc, bootBack]);
 
   /* الخروجُ إلى صفحةٍ ويبيّة — الشاشةُ تبقى حتى تصل (D-951) وتعود إليها (D-949/D-998) */
   const [leaving, setLeaving] = useState(false);
@@ -282,16 +286,16 @@ export function SearchScreen() {
           onGo={(k) => {
             if (k === "search") return;
             if (k === "library") {
-              router.replace("/library");
+              switchTo("/library");
               return;
             }
             if (k === "news") {
-              router.replace("/discover");
+              switchTo("/discover");
               return;
             }
             /* D-1074 — الرئيسيّةُ أصليّة (11-H): تبديلٌ بين الجذور كأخويها، لا رحلةٌ إلى `/` الويبيّة ثمّ ارتداد */
             if (k === "home") {
-              router.replace("/home");
+              switchTo("/home");
               return;
             }
             leaveTo("/people");

@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -19,8 +19,9 @@ const VEIL = require("../../assets/poster-veil.png");
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٥ (`continueCardBox`) */
-export const continueCardH = (posterW: number) => Math.round(posterW * 1.5);
+/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣٦ — كان ×١٫٥ (`continueCardBox`) حتى D-1084؛
+    المعاملُ لا الكثافة يصغر، فتبقى صفوفُ الملصقات كما هي والنسبةُ تتبع الكثافةَ كما كانت (١١٨ ⇐ ١٦٠) */
+export const continueCardH = (posterW: number) => Math.round(posterW * 1.36);
 
 export const ContinueCard = memo(function ContinueCard({
   card,
@@ -37,7 +38,7 @@ export const ContinueCard = memo(function ContinueCard({
   /** مشهدُ «التالي» لبطاقات القوائم — من `extras`، وبطاقةُ العمل تحمل مشهدَها */
   backdropPath: string | null;
   onPress: () => void;
-  /** زرُّ «شاهدتُها» — بطاقةُ العمل وحدَها (D-437) */
+  /** زرُّ «شاهدتُها» — العملُ يختم حلقتَه (D-437)، والقائمةُ تختم «التالي» فيها (D-604/D-1079) */
   onCheck?: () => void;
   busy?: boolean;
 }) {
@@ -54,18 +55,26 @@ export const ContinueCard = memo(function ContinueCard({
   /* السطرُ الثاني كالويب: «S2 E5 · باقي ٣» للعمل، وللقائمة اسمُها فوق اسم «التالي» */
   const sub = isShow ? [card.episode_label, left > 0 ? t.leftEps(left) : null].filter(Boolean).join(" · ") : (card.next.title ?? "—");
   const counter = isShow ? `${pct}%` : `${watched} / ${total}`;
+  /* D-1079 — الصحُّ على البطاقات الأربع كالويب (`ListContinueCard` يرسمه لبطاقات القوائم وطابور
+     «للمشاهدة» أيضاً)؛ كان للعمل وحدَه فغاب عن فيلم «للمشاهدة» — بلاغُ أحمد على 1.11.8 */
+  const canCheck = !isShow || !!card.episode_label;
+  /* أعلى عمود النصّ داخل الصفّ (قياسُ Yoga يشمل الإطارَ والحشوة) — تقديرُ البداية ٢٣ ثمّ القياسُ يصحّحه في الرسمة الأولى */
+  const [rowTextTop, setRowTextTop] = useState(23);
   const check =
-    isShow && onCheck ? (
+    onCheck ? (
       <Pressable
         onPress={onCheck}
-        disabled={busy || !card.episode_label}
+        disabled={busy || !canCheck}
         hitSlop={6}
         accessibilityRole="button"
         accessibilityLabel={t.markWatchedAria}
         style={({ pressed }) => [
           styles.check,
-          variant === "row" ? { top: "50%", marginTop: -22, end: 12 } : { top: 10, end: 10 },
-          { backgroundColor: "rgba(0,0,0,0.55)", borderColor: "rgba(255,255,255,0.35)", opacity: pressed ? 0.7 : card.episode_label ? 1 : 0.35 },
+          /* D-1080 — في الصفّ: أعلى الدائرة على مستوى أعلى الاسم (يُقاس من عمود النصّ لا رقمٌ أصمّ —
+             فيصحّ لبطاقة العمل ذات السطرين ولبطاقة القائمة ذات السطر الواحد)، وأرضيّتُها سوداءُ صلبة
+             لا زجاجٌ رماديّ فوق سطح البطاقة — بلاغُ أحمد على 1.11.8: «الصحّ يلامس النسبة» */
+          variant === "row" ? { top: rowTextTop, end: 12, backgroundColor: "#000" } : { top: 10, end: 10, backgroundColor: "rgba(0,0,0,0.55)" },
+          { borderColor: "rgba(255,255,255,0.35)", opacity: pressed ? 0.7 : canCheck ? 1 : 0.35 },
         ]}
       >
         <Icon name="check" size={20} color="#fff" />
@@ -79,7 +88,12 @@ export const ContinueCard = memo(function ContinueCard({
           <View style={{ width: 144, aspectRatio: 16 / 10, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
             {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={20} color={tokens.muted} /></View>}
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          {/* D-1080 — العمودُ يترك للصحّ مقعدَه (٤٤ + ١٢ من الطرف − حشوةُ الصفّ ٨ + فسحة ٨) فلا يلامس
+              العنوانُ ولا الخيطُ ولا النسبةُ الدائرة — مثلُ `pe-16` في الويب */}
+          <View
+            onLayout={onCheck ? (e) => setRowTextTop(Math.round(e.nativeEvent.layout.y)) : undefined}
+            style={{ flex: 1, minWidth: 0, paddingEnd: onCheck ? 56 : 0 }}
+          >
             {!isShow ? <Text size={10} weight="600" color={tokens.accent} numberOfLines={1}>{title}</Text> : null}
             <Text size={15} weight="600" numberOfLines={1}>{isShow ? title : (card.next.title ?? "—")}</Text>
             {isShow ? <Text size={12} weight="500" muted numberOfLines={1} style={{ marginTop: 4 }}>{sub}</Text> : null}
@@ -115,7 +129,7 @@ export const ContinueCard = memo(function ContinueCard({
               <Text size={10} weight="600" color={tokens.accent} numberOfLines={1} style={{ flexShrink: 1 }}>{title}</Text>
             </View>
           ) : null}
-          <Text size={15} weight="600" color="#fff" numberOfLines={1} style={[styles.shadow, { paddingEnd: 40 }]}>{isShow ? title : (card.next.title ?? "—")}</Text>
+          <Text size={14} weight="600" color="#fff" numberOfLines={1} style={[styles.shadow, { paddingEnd: 40 }]}>{isShow ? title : (card.next.title ?? "—")}</Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
             <Text size={12} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1 }}>{isShow ? sub : counter}</Text>
             <Text size={12} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"] }}>{isShow ? counter : `${pct}%`}</Text>

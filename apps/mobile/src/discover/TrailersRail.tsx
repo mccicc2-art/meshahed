@@ -39,7 +39,14 @@ import type { CuratedTab, FollowBody, TrackResult, TrailerCard, TrailersRailPayl
 const PAGE_PAD = 16;
 const GAP = 12;
 
-const thumbOf = (c: TrailerCard) => c.backdrop ?? `https://i.ytimg.com/vi/${c.video_key}/hqdefault.jpg`;
+export const thumbOf = (c: TrailerCard) => c.backdrop ?? `https://i.ytimg.com/vi/${c.video_key}/hqdefault.jpg`;
+
+/** D-1085 — خيارُ الاستعلام الواحد: الصفُّ و`prefetchDiscover` يطلبان بالمفتاح والدالّة نفسيهما فلا نداءَ يتكرّر */
+export const trailersQuery = (tab: string) => ({
+  queryKey: ["discover:trailers", tab] as const,
+  queryFn: async () => (await api<TrailersRailPayload>(`/api/v1/discover/trailers?tab=${tab}`)).data,
+  staleTime: 5 * 60_000,
+});
 
 export function TrailersRail({
   tab,
@@ -59,11 +66,7 @@ export function TrailersRail({
   const { width: screenW } = useWindowDimensions();
   /* عرضُ الويب `min(92vw, calc(45dvh·16/9), 760px)` — على الهاتف يحسمها `92vw`؛ هنا الهوامشُ الثابتة */
   const cardW = Math.min(screenW - PAGE_PAD * 2, 760);
-  const q = useQuery({
-    queryKey: ["discover:trailers", tab],
-    queryFn: async () => (await api<TrailersRailPayload>(`/api/v1/discover/trailers?tab=${tab}`)).data,
-    staleTime: 5 * 60_000,
-  });
+  const q = useQuery(trailersQuery(tab));
   /* «مكتبتي» متفائلٌ ويتراجع عند الفشل — نسخةُ `useTrailerFollow` (الويب) */
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
   const follow = useMutation({
@@ -220,7 +223,8 @@ export function TrailersRail({
           const id = `${item.kind}-${item.id}`;
           const isAdded = added.has(id);
           return (
-            <View key={id} style={{ width: cardW, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
+            <View key={id} style={{ width: cardW, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.bg, borderWidth: 1, borderColor: tokens.border }}>
+              {/* D-1081 — أرضيّةُ بطاقة التريلر لونُ الصفحة (أسود) لا السطحُ الرماديّ، كبطاقة القائمة */}
               {/* 🔴 D-987 — **المصغّرةُ تحت كلِّ شيءٍ دائماً** (بلاغُ أحمد بتسجيل على 1.8.7: «إذا لفّيت
                   للإعلان الآخر فيه رمشة»): تبديلُ البطاقة بين «عاديّة» و«محمّاة» كان يفكّك صورتَها
                   ويركّب مشغّلاً خلفيّتُه سوداء وسِترُه صورةٌ تُفكّ من جديد — إطارٌ أسودُ في كلِّ

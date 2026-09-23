@@ -32,7 +32,10 @@ import { currentLocale, webLocale } from "./i18n";
  *  الخلفيّة — وهذا ليس خروجاً؛ لو مسحنا معه لما عاش الكاشُ يوماً.
  *  ٤ · تبدّلُ اللغة ⇒ حذفُ الملف وإبطالُ العائلات الأربع فتُجلب بلغتها.
  */
-const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal"]);
+/* 🆕 D-1083 — و`home` و`home:extras`: الرئيسيّةُ الأصليّة صارت شاشةَ الإقلاع (D-1075)، فتُرسم من
+   آخر حمولةٍ محفوظة فورَ الفتح ثمّ تتجدّد حين يصل الرمز — بدل هيكلٍ فارغٍ ينتظر الجلسة. الملكيّةُ
+   والعمرُ والإصدارُ واللغةُ تُفحص كما لأخواتها، والخروجُ يمسحها معها */
+const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists"]);
 const MAX_AGE_MS = 24 * 60 * 60_000;
 /* ⚖️ مراجعةُ ما قبل الرفع (D-1026): الكتابةُ `dehydrate` + `JSON.stringify` لمكتبةٍ كاملة + كتابةُ ملفٍّ
    **متزامنة** على خيط JS. بخنقِ ثانيةٍ واحدة كانت تقع مرّتين أو ثلاثاً **في أثناء فتح «اكتشف»**
@@ -113,7 +116,7 @@ export function startCachePersist() {
   if (started) return;
   started = true;
 
-  /* العائلاتُ الأربع تعيش في الذاكرة بقدر ما تعيش في الملفّ — وإلّا جُمعت بعد خمس دقائق من
+  /* العائلاتُ المحفوظة تعيش في الذاكرة بقدر ما تعيش في الملفّ — وإلّا جُمعت بعد خمس دقائق من
      مغادرة شاشتها فخرجت من الكتابة التالية */
   for (const fam of FAMILIES) queryClient.setQueryDefaults([fam], { gcTime: MAX_AGE_MS });
 

@@ -51,6 +51,16 @@ export type ToggleMovieBody = {
 export type TrackResult = { done: true };
 
 /**
+ * 🆕 D-1079 — ردُّ `POST /track/show-watched`: **ما أضافه الختمُ بعينه** (ما يعيده `markShowWatched`)
+ * — عهدةُ الرجعة الصادقة (D-047/D-604): «تراجع» يحذف هذا القدرَ وحدَه لا سجلَّ صاحبه. `done` باقٍ
+ * فيقرأه كلُّ منادٍ قديم كما كان.
+ */
+export type ShowWatchedResult = { done: true; added: { s: number; e: number }[] };
+
+/** 🆕 D-1079 — `POST /track/episodes-unmark`: نفسُ `unmarkEpisodes` — يحذف الحلقاتِ المذكورة وحدَها */
+export type UnmarkEpisodesBody = { showTmdbId: number; episodes: { s: number; e: number }[] };
+
+/**
  * 🆕 Phase 11 · B3 (D-936) — **أفعالُ قائمة Hold في المكتبة الأصليّة**: «الحلقةُ
  * التالية» و«تعليمُ الكلّ» و«إعادةُ المشاهدة» تحتاج قائمةَ الحلقات المبثوثة،
  * **والويبُ يحسبها في الخادم** (`markNextEpisode` · `markShowWatched` ·

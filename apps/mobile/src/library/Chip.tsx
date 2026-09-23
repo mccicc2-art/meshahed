@@ -9,8 +9,8 @@ import { radius } from "../theme";
  * (D-948)
  *
  * 🔑 **عائلةٌ واحدة** (القاعدة ٣): `rounded-full border font-semibold` —
- * مختارةً `bg-accent text-on-accent border-accent`، وإلّا `bg-surface
- * text-muted border-border`. المقاسان `sm` (`px-2.5 py-1 text-12`) و`md`
+ * مختارةً `bg-accent text-on-accent border-accent`، وإلّا `bg-background
+ * text-muted border-border` (كانت `bg-surface` حتى D-1082). المقاسان `sm` (`px-2.5 py-1 text-12`) و`md`
  * (`px-3.5 py-2 text-sm` ١٤). **رقاقةٌ بشكلٍ آخر عيبٌ يُبلَّغ.**
  */
 export function Chip({
@@ -45,7 +45,10 @@ export function Chip({
         borderRadius: radius.pill,
         borderWidth: 1,
         borderColor: active ? tokens.accent : tokens.border,
-        backgroundColor: active ? tokens.accent : tokens.surface,
+        /* D-1082 — غيرُ المختارة بلون الصفحة (أسود) لا السطحِ الرماديّ، والمختارةُ صفراءُ كما هي —
+           بلاغُ أحمد على رقاقات «قوائم» في اكتشف. العائلةُ واحدة (القاعدة ٣)، فالتغييرُ في كلِّ رقاقة:
+           رقاقتان بلونين لغير المختار عيبٌ لا خيار */
+        backgroundColor: active ? tokens.accent : tokens.bg,
       }}
     >
       {leading ? <View>{leading}</View> : null}

@@ -15,7 +15,9 @@ import { Icon, type IconName } from "../icons";
  */
 export const PAGE_PAD = 16;
 export const RAIL_GAP = 12;
-export const BACKDROP_W = 220;
+/** عرضُ بطاقة «تابِع المشاهدة» — ٢٠٠ منذ D-1084 (كان ٢٢٠): أصغرُ بنحو ٩٪ بالهندسة نفسِها، فتظهر
+    الثانيةُ شبهَ كاملةٍ ويبقى طرفٌ مقصوصٌ يدلّ على التمرير — حكمُ أحمد بمقارنةٍ رآها */
+export const BACKDROP_W = 200;
 
 export function SectionHeader({
   title,

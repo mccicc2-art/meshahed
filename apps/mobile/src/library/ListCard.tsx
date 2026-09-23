@@ -24,7 +24,7 @@ import { num } from "@/core/i18n";
  * · الرقاقة `h-7 ps-3 pe-1.5 text-12 font-bold` · هالةُ العنقود `rounded-full
  * bg-surface/70 px-2 py-1`.
  *
- * 🔑 **والحجابُ صورةٌ ألفا تُلوَّن بلون السطح** (`tintColor`) — **فيصحّ في
+ * 🔑 **والحجابُ صورةٌ ألفا تُلوَّن بلون أرضيّة البطاقة** (`tintColor`، `bg` منذ D-1081) — **فيصحّ في
  * `daylight` من الرمز لا من رقمٍ أصمّ**، ويُقلب في RTL لأنّ اتّجاهَه اتّجاهُ
  * القراءة (القاعدة ١٧). لا حزمةَ تدرّجٍ جديدة (وصفةُ `poster-veil` نفسُها).
  */
@@ -118,7 +118,10 @@ export function ListCard({
         borderWidth: 1,
         borderStyle: card.dashed ? "dashed" : "solid",
         borderColor: tokens.border,
-        backgroundColor: tokens.surface,
+        /* D-1081 — أرضيّةُ البطاقة لونُ الصفحة (`bg`) لا السطح: بلاغُ أحمد «خلّ خلفيّتها سوداء» —
+           في الرئيسيّة والمكتبة واكتشف معاً، لأنّها بطاقةٌ واحدة. الحجابُ والهالةُ يتبعانها فلا
+           يظهر السطحُ الرماديّ شريطاً عند حافّة الملصقات؛ و`daylight` يبقى صحيحاً من الرمز */
+        backgroundColor: tokens.bg,
         overflow: "hidden",
         opacity: pressed ? 0.85 : 1,
       })}
@@ -136,7 +139,7 @@ export function ListCard({
       {/* الحجابُ بلون السطح، من جهة البداية — يُقلب في RTL */}
       <Image
         source={VEIL}
-        tintColor={tokens.surface}
+        tintColor={tokens.bg}
         contentFit="fill"
         style={[StyleSheet.absoluteFill, { transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }]}
       />
@@ -199,7 +202,7 @@ export function ListCard({
                   flexDirection: "row",
                   alignItems: "center",
                   borderRadius: radius.pill,
-                  backgroundColor: tokens.surface + "B3",
+                  backgroundColor: tokens.bg + "B3",
                   marginStart: -6,
                   paddingHorizontal: 8,
                   paddingVertical: 4,
