@@ -82,6 +82,21 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
       setMode("active");
     };
     window.addEventListener(TOUR_START_EVENT, onStart);
+    /* Phase 11-I — **الصفُّ الأصليُّ يبدأ الجولةَ بالعنوان** (`/?tour=basics`): شاشةُ
+       الإعدادات الأصليّة لا تملك `window` هذه، فتفتح الصفحةَ بمعلمةٍ تُترجَم إلى
+       الحدث نفسِه — طريقٌ واحدٌ للجولة لا اثنان. والمعلمةُ تُمحى من العنوان فلا
+       تعيد الجولةَ عند كلِّ تحديث. */
+    try {
+      const url = new URL(window.location.href);
+      const asked = url.searchParams.get("tour");
+      if (asked) {
+        url.searchParams.delete("tour");
+        window.history.replaceState(window.history.state, "", url.toString());
+        window.dispatchEvent(new CustomEvent(TOUR_START_EVENT, { detail: { id: asked } }));
+      }
+    } catch {
+      /* لا شيء — الصفُّ الويبيُّ ما زال يعمل بالحدث */
+    }
     return () => window.removeEventListener(TOUR_START_EVENT, onStart);
   }, []);
 
