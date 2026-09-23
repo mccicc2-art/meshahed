@@ -76,6 +76,11 @@ const ICONS = {
   send: require("../assets/icons/send.png"),
   palette: require("../assets/icons/palette.png"),
   link: require("../assets/icons/link.png"),
+  /* Phase 11-I — رموزُ فهرس الإعدادات، من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */
+  edit: require("../assets/icons/edit.png"),
+  "person-check": require("../assets/icons/person-check.png"),
+  shield: require("../assets/icons/shield.png"),
+  download: require("../assets/icons/download.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

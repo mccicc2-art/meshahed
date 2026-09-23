@@ -102,3 +102,18 @@ export type {
 } from "@/core/contracts/home";
 /* Phase 11-G — البحثُ الأصليّ: الحمولةُ حمولةُ الويب نفسُها (`searchTypes.ts`) عبر عقد `v1` */
 export type { SearchScope, SearchTitle, SearchArtist, SearchList, SearchPayload, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "@/core/contracts/search";
+/* Phase 11-I — الإعداداتُ أصليّاً */
+export type {
+  SettingsPayload,
+  LocaleBody,
+  ThemeBody,
+  FontBody,
+  TitleModeBody,
+  RegionBody,
+  ContentPrefsBody,
+  PrivacyBody,
+  LibraryGrantBody,
+  UnblockBody,
+  HintsResetBody,
+  PeoplePayload,
+} from "@/core/contracts/settings";

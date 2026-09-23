@@ -72,6 +72,9 @@ function Shell() {
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
         {/* D-1046 — «الكلّ ←» شاشةٌ كاملة فوق «اكتشف» */}
         <Stack.Screen name="section" options={{ headerShown: false }} />
+        {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}
+        <Stack.Screen name="settings/index" options={{ headerShown: false }} />
+        <Stack.Screen name="settings/[section]" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       </Stack>
     </>

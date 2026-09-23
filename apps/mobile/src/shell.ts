@@ -73,6 +73,16 @@ export const shell = {
    * **على صفحةٍ مرسومة**. المقارنةُ بالمسار وحدَه (`/stats`) لأنّ الويبَ قد
    * يضيف استعلاماً أو يزيل آخر، والمهمّ أنّ الرئيسيّةَ لم تعد ما يُعرض.
    */
+  /**
+   * Phase 11-I — **نموذجُ POST من الصفحة نفسِها** (تسجيلُ الخروج): `/auth/signout` يقبل
+   * `POST` من نطاقنا وحدَه (فحصُ `origin`)، فالغلافُ لا يناديه بـ`fetch` بل يجعل الصفحةَ
+   * تُرسله — ويبقى `onNavigationStateChange` في `web.tsx` هو من يرى `/auth/signout`
+   * ويُنزل الشاشاتِ الأصليّة ويمسح الجلسة (D-1026). **الجلسةُ ما زالت ملكَ الـWebView** (D-932).
+   */
+  post(path: string) {
+    if (!inject || !path.startsWith("/")) return;
+    inject(`(function(){var f=document.createElement("form");f.method="post";f.action=${JSON.stringify(CONFIG.apiBase + path)};document.body.appendChild(f);f.submit();})();true;`);
+  },
   arrived(url: string, loading: boolean) {
     if (!waiter || loading) return;
     let pathname = url;

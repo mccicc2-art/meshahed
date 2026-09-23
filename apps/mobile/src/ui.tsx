@@ -119,14 +119,20 @@ export function Text({
   );
 }
 
+/**
+ * Phase 11-I — `size:"sm"` هو `buttonClass({size:"sm"})` في الويب (٣٢ ارتفاعاً · نصٌّ ١٢): زرُّ
+ * «سحب»/«رفع الحظر» في صفوف الناس. **مقاسٌ في المصنع نفسِه لا زرٌّ ثانٍ** (القاعدة ٣).
+ */
 export function Button({
   label,
   variant = "primary",
+  size = "md",
   busy,
   style,
   ...rest
-}: PressableProps & { label: string; variant?: "primary" | "ghost" | "danger"; busy?: boolean }) {
+}: PressableProps & { label: string; variant?: "primary" | "ghost" | "danger"; size?: "md" | "sm"; busy?: boolean }) {
   const { tokens } = useApp();
+  const sm = size === "sm";
   const bg =
     variant === "primary" ? tokens.accent : variant === "danger" ? tokens.error : "transparent";
   const fg = variant === "primary" ? tokens.onAccent : variant === "danger" ? "#fff" : tokens.fg;
@@ -136,6 +142,7 @@ export function Button({
       disabled={busy || rest.disabled}
       style={({ pressed }) => [
         styles.button,
+        sm ? { minHeight: 32, paddingVertical: 0, paddingHorizontal: space.md } : null,
         {
           backgroundColor: bg,
           borderColor: variant === "ghost" ? tokens.border : bg,
@@ -144,7 +151,7 @@ export function Button({
         typeof style === "function" ? undefined : style,
       ]}
     >
-      {busy ? <ActivityIndicator color={fg} /> : <RNText style={{ color: fg, fontWeight: "600", fontSize: 15 }}>{label}</RNText>}
+      {busy ? <ActivityIndicator color={fg} /> : <RNText style={{ color: fg, fontWeight: "600", fontSize: sm ? 12 : 15 }}>{label}</RNText>}
     </Pressable>
   );
 }
