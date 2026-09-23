@@ -194,8 +194,12 @@ export function EditProfileForm({
       if (kind === "avatar") setAvatarUrl(data.publicUrl);
       else setCoverUrl(data.publicUrl);
 
+      /* 🆕 D-1108 — **المحفوظةُ لا تُمسّ هنا**: كانت تُحذف لحظةَ الرفع، فمن تراجع بقي ملفُّه يشير إلى
+         ملفٍّ محذوف. يحذفها `updateProfile` بعد أن يثبت الحفظ. ما يُحذف هنا رفعةٌ سابقةٌ **في هذه
+         الجلسة لم تُحفظ** (بدّل صورتَه مرّتين قبل «حفظ») — لا يعرفها أحدٌ سواه. */
       const previous = kind === "avatar" ? avatarUrl : coverUrl;
-      const oldPath = avatarStoragePath(previous, userId);
+      const saved = kind === "avatar" ? base.avatarUrl : base.coverUrl;
+      const oldPath = previous !== saved ? avatarStoragePath(previous, userId) : null;
       if (oldPath && oldPath !== path) {
         await supabase.storage.from("avatars").remove([oldPath]);
       }

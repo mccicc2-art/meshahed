@@ -4,8 +4,6 @@ import { updateProfile } from "@/lib/actions";
 import { xLinkEnabled } from "@/lib/xLink";
 import { sanitizeSocials } from "@/core/socials";
 import { SITE_URL } from "@/lib/site";
-import { avatarStoragePath } from "@/core/avatarPath";
-import { createClient } from "@/lib/supabase/server";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { ProfileEditPayload, ProfileSaveBody } from "@/core/contracts/settings";
@@ -50,8 +48,7 @@ export async function GET() {
  * 🔑 **الأنواعُ تُقرأ من الملفّ لا من الجسم**: الفعلُ يطلبها في كلِّ نداء، ونموذجٌ لا يعرضها لا
  * يرسلها (فلا يمحوها). و`socials` لا تُرسل أبداً — كاتبُها `syncXIdentity` وحدَها (D-839).
  *
- * 🆕 **والصورةُ القديمةُ تُحذف بعد الحفظ لا قبله**: الويبُ يحذفها لحظةَ رفع البديلة، فمن رفع ثمّ
- * تراجع بقي ملفُّه يشير إلى ملفٍّ محذوف. هنا تُحذف المحفوظةُ حين يثبت الحفظُ أنّها لم تعد صورتَه.
+ * **والصورةُ القديمةُ تُحذف بعد الحفظ لا قبله** — في `updateProfile` (D-1108)، للويب وللتطبيق.
  */
 export async function POST(req: NextRequest) {
   return handle<ProfileEditPayload>(async () => {
@@ -86,20 +83,8 @@ export async function POST(req: NextRequest) {
       throw e;
     }
 
+    /* الصورتان القديمتان يحذفهما `updateProfile` نفسُه بعد الحفظ (D-1108) — للويب والتطبيق معاً */
     const [p, xOn] = await Promise.all([getProfile(), xLinkEnabled()]);
-    /* الصورتان اللتان تركهما الحفظ — في مجلّد صاحبهما وحدَه (`avatarStoragePath`)؛ الفشلُ صمت */
-    const stale = [
-      before?.avatar_url !== p?.avatar_url ? avatarStoragePath(before?.avatar_url, auth.user.id) : null,
-      before?.cover_url !== p?.cover_url ? avatarStoragePath(before?.cover_url, auth.user.id) : null,
-    ].filter((x): x is string => !!x);
-    if (stale.length) {
-      try {
-        const supabase = await createClient();
-        await supabase.storage.from("avatars").remove(stale);
-      } catch {
-        /* ملفٌّ يتيمٌ في المخزن أهونُ من حفظٍ يُعلن فشلاً وقد نجح */
-      }
-    }
     return ok(payloadOf(p, xOn), ["user:me:profile", "home"]);
   });
 }

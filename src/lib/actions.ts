@@ -1,5 +1,6 @@
 "use server";
 
+import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { PERSON_COLS } from "@/core/people";
@@ -329,12 +330,38 @@ export async function updateProfile(input: {
       : keepPaidProfilePrefs(sanitizeProfilePrefs(storedRow?.profile_prefs), next);
   }
 
+  /* 🆕 D-1108 — **الصورةُ المحفوظةُ تُقرأ قبل الكتابة لتُحذف بعدها** (طلبُ أحمد ٢٣ سبتمبر: «نفّذه»).
+     كان `EditProfileForm` يحذف الصورةَ القديمة **لحظةَ رفع البديلة** — فمن رفع ثمّ تراجع (أو أغلق
+     الصفحة) بقي ملفُّه يشير إلى ملفٍّ محذوف: وجهٌ فارغٌ عند كلِّ من يراه. **الحذفُ مكانُه هنا بعد أن
+     يثبت الحفظ** — كاتبٌ واحدٌ للويب والتطبيق (`/api/v1/me/profile` يمرّ من هنا). */
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("avatar_url, cover_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
     // 23505 = تعارض في فهرس فريد (اسم المستخدم محجوز)
     if (error.code === "23505")
       throw new Error("اسم المستخدم محجوز، جرّب غيره. / Username is taken, try another.");
     fail(error);
+  }
+
+  /* ما تركه الحفظُ من صورتيه — في مجلّد صاحبه وحدَه (`avatarStoragePath`)، والفشلُ صمت:
+     ملفٌّ يتيمٌ في المخزن أهونُ من حفظٍ يُعلن فشلاً وقد نجح */
+  const stale = [
+    before?.avatar_url !== payload.avatar_url ? avatarStoragePath(before?.avatar_url, user.id) : null,
+    "cover_url" in payload && before?.cover_url !== payload.cover_url
+      ? avatarStoragePath(before?.cover_url, user.id)
+      : null,
+  ].filter((x): x is string => !!x);
+  if (stale.length) {
+    try {
+      await supabase.storage.from("avatars").remove(stale);
+    } catch {
+      /* لا شيء */
+    }
   }
 
   // الثيم في كوكي أيضاً: الـ layout يقرأه فورياً بلا رحلة قاعدة بيانات
