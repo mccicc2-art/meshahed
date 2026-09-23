@@ -1,7 +1,6 @@
 import { AppState, InteractionManager } from "react-native";
 import { dehydrate, hydrate, type DehydratedState, type Query } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
-import Constants from "expo-constants";
 import { queryClient } from "./api";
 import { session } from "./session";
 import { currentLocale, webLocale } from "./i18n";
@@ -22,7 +21,7 @@ import { currentLocale, webLocale } from "./i18n";
  * — **وبلا فلتر** (المفتاحُ الأخيرُ فارغ): صفوفُ الفلاتر لا حدَّ لعددها. لا صفحاتِ أعمالٍ ولا `/me`.
  *
  * 🔴 **حسابٌ آخر لا يرى هذا الكاش أبداً**:
- *  ١ · الملفُّ يحمل `sub` صاحبه (من الرمز) ونسخةَ التطبيق ولغتَه وعمرَه (٢٤ ساعة) — اختلافُ
+ *  ١ · الملفُّ يحمل `sub` صاحبه (من الرمز) ونسخةَ العقد (D-1091) ولغتَه وعمرَه (٧ أيام) — اختلافُ
  *      أيٍّ منها عند القراءة ⇒ يُحذف ولا يُقرأ.
  *  ٢ · الخروجُ (`session.signOut`: رسالةُ `session:clear` من الصفحة، أو عنوانُ `/auth/signout`
  *      أو `/login` في الـWebView) ⇒ `queryClient.clear()` وحذفُ الملف **قبل** أن يدخل أحد —
@@ -36,7 +35,13 @@ import { currentLocale, webLocale } from "./i18n";
    آخر حمولةٍ محفوظة فورَ الفتح ثمّ تتجدّد حين يصل الرمز — بدل هيكلٍ فارغٍ ينتظر الجلسة. الملكيّةُ
    والعمرُ والإصدارُ واللغةُ تُفحص كما لأخواتها، والخروجُ يمسحها معها */
 const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists"]);
-const MAX_AGE_MS = 24 * 60 * 60_000;
+/* D-1091 — **سبعةُ أيام لا يوم، ونسخةُ العقد لا نسخةُ التطبيق** (أحمد: الفتحُ الأوّل بعد كلِّ تحديثٍ
+   يعود دوّامةً): كان الملفُّ يُرفض إن اختلف `app.json` أو مضى يوم — فكلُّ إصدارٍ (وهي شبهُ يوميّة) يعيد
+   الهيكلَ الفارغ. الهيكلُ لا يتغيّر بتغيّر الإصدار بل بتغيّر **عقود** الحمولات المحفوظة؛ فالمفتاحُ
+   الآن `CACHE_SCHEMA` **ويُرفع باليد** مع أيِّ تغييرٍ في عقود `home` · `home:extras` · `me:library` ·
+   `discover:*` (`src/core/contracts`). والبياناتُ تعود «قديمة» بطابعها فتُجلب من جديد فوراً كما كانت. */
+const CACHE_SCHEMA = "2026-09-23";
+const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 /* ⚖️ مراجعةُ ما قبل الرفع (D-1026): الكتابةُ `dehydrate` + `JSON.stringify` لمكتبةٍ كاملة + كتابةُ ملفٍّ
    **متزامنة** على خيط JS. بخنقِ ثانيةٍ واحدة كانت تقع مرّتين أو ثلاثاً **في أثناء فتح «اكتشف»**
    (صفوفُه تصل تباعاً) والإصبعُ يمرّر — والحزمةُ كلُّها لأجل السلاسة. فصارت: **هدوءٌ ٤ ثوانٍ بعد
@@ -44,7 +49,6 @@ const MAX_AGE_MS = 24 * 60 * 60_000;
    عند نزول التطبيق إلى الخلفيّة — وهي اللحظةُ التي يهمّ فيها الملفُّ فعلاً. */
 const WRITE_QUIET_MS = 4_000;
 const WRITE_MAX_WAIT_MS = 20_000;
-const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
 type Stored = { v: string; sub: string; locale: string; at: number; state: DehydratedState };
 
@@ -101,7 +105,7 @@ function writeNow() {
   dirtySince = 0;
   try {
     const state = dehydrate(queryClient, { shouldDehydrateQuery: persistable });
-    const body: Stored = { v: APP_VERSION, sub: owner, locale: currentLocale(), at: Date.now(), state };
+    const body: Stored = { v: CACHE_SCHEMA, sub: owner, locale: currentLocale(), at: Date.now(), state };
     const f = file();
     if (!f.exists) f.create();
     f.write(JSON.stringify(body));
@@ -125,7 +129,7 @@ export function startCachePersist() {
       const f = file();
       if (!f.exists) return;
       const s = JSON.parse(await f.text()) as Partial<Stored>;
-      const ok = s.v === APP_VERSION && s.locale === currentLocale() && typeof s.sub === "string" && typeof s.at === "number" && Date.now() - s.at <= MAX_AGE_MS && !!s.state;
+      const ok = s.v === CACHE_SCHEMA && s.locale === currentLocale() && typeof s.sub === "string" && typeof s.at === "number" && Date.now() - s.at <= MAX_AGE_MS && !!s.state;
       /* رمزٌ وصل قبل انتهاء القراءة يحسم الملكيّةَ هنا لا بعدها */
       if (!ok || (owner !== null && owner !== s.sub)) {
         dropFile();

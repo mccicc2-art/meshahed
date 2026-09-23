@@ -96,6 +96,15 @@ type Tab = LibraryTab;
 /* D-965 — موضعُ التمرير **لكلِّ تبويب**: الجارُ المسلَّح يُرسم بموضعه هو، لا بموضع النشط */
 const memory: { tab: Tab | null; open: LibraryStatus[]; y: Partial<Record<Tab, number>> } = { tab: null, open: [], y: {} };
 
+/** D-1092 — الاستعلامُ الواحد للمكتبة، مُصدَّرٌ ليُسخَّن من الرئيسيّة (كـ`prefetchDiscover`، D-1085) فلا مفتاحَ يتكرّر */
+export const libraryQuery = {
+  queryKey: qk.tag("me:library"),
+  queryFn: async () => (await api<LibraryPayload>("/api/v1/me/library")).data,
+} as const;
+export function prefetchLibrary(): void {
+  void queryClient.prefetchQuery({ ...libraryQuery, staleTime: 60_000 });
+}
+
 export function LibraryScreen() {
   const { t, tokens } = useApp();
   const router = useRouter();
@@ -104,10 +113,7 @@ export function LibraryScreen() {
   const navH = navHeight(insets.bottom);
   const focused = useIsFocused();
 
-  const data = useQuery({
-    queryKey: qk.tag("me:library"),
-    queryFn: async () => (await api<LibraryPayload>("/api/v1/me/library")).data,
-  });
+  const data = useQuery(libraryQuery);
 
   /* F0 (D-1024) — `library.open`: من تركيب الشاشة إلى أوّل تخطيطٍ للوحٍ فيه بيانات. و`cached`
      يقول إن كانت البياناتُ في الكاش لحظةَ التركيب — فيُقرأ أثرُ F2 من الرقم نفسِه. */
@@ -313,9 +319,10 @@ export function LibraryScreen() {
   const labelOf = (k: Tab) =>
     k === "shows" ? t.shortShows : k === "movies" ? t.shortMovies : k === "anime" ? t.discoverTabAnime : k === "artists" ? t.shortArtists : t.listsTitle;
   const tabPrefs: TabPref[] = data.data?.tabs ?? (["shows", "movies", "anime", "artists", "lists"] as Tab[]).map((key) => ({ key, hidden: false }));
-  const tabs: { key: Tab; label: string; n: number }[] = tabPrefs
+  /* D-1092 — العدّادُ يُرسم حين تصل البيانات لا قبلها: «٠» بجوار كلِّ تبويبٍ أثناء التحميل كذبةٌ تقول «مكتبتُك فارغة» */
+  const tabs: { key: Tab; label: string; n: number | null }[] = tabPrefs
     .filter((p) => !p.hidden || p.key === activeTab)
-    .map((p) => ({ key: p.key as Tab, label: labelOf(p.key as Tab), n: nOf(p.key as Tab) }));
+    .map((p) => ({ key: p.key as Tab, label: labelOf(p.key as Tab), n: data.data ? nOf(p.key as Tab) : null }));
   const tabLabels = Object.fromEntries(tabPrefs.map((p) => [p.key, labelOf(p.key as Tab)]));
   const coreTab = activeTab === "shows" || activeTab === "movies" || activeTab === "anime";
   const hiddenRails = data.data?.hidden_rails ?? [];
@@ -436,7 +443,7 @@ export function LibraryScreen() {
               style={{ flexGrow: 1, flexBasis: 0, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
             >
               <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{tb.label}</Text>
-              <Text size={12} color={on ? tokens.accent : tokens.muted + "B3"} style={{ fontVariant: ["tabular-nums"] }}>{String(tb.n)}</Text>
+              {tb.n !== null ? <Text size={12} color={on ? tokens.accent : tokens.muted + "B3"} style={{ fontVariant: ["tabular-nums"] }}>{String(tb.n)}</Text> : null}
             </Pressable>
           );
         })}
@@ -1000,25 +1007,20 @@ function statusLabel(s: LibraryStatus, t: ReturnType<typeof useApp>["t"]): strin
         : t.libStatusDropped;
 }
 
-/** الهيكلُ أثناء التحميل — `aspect-[2/3] rounded-poster bg-surface border animate-pulse` (G6) */
+/** الهيكلُ أثناء التحميل — `aspect-[2/3] rounded-poster bg-surface border animate-pulse` (G6).
+    D-1092 (تسجيلُ أحمد على 1.11.9: المكتبةُ «سوداء» ثلاثَ ثوانٍ): `surface` بشفافيّة ٠٫٧ على الأسود
+    لا يُرى — بقي منه خطُّ الإطار العلويّ وحده. الآن رأسُ رفٍّ وخلايا `surface2` كهيكل «اكتشف» حرفاً
+    (`DiscoverScreen` صفٌّ بلا بيانات) — هيكلٌ واحد للعائلتين. */
 function Skeleton({ cols, cellW }: { cols: number; cellW: number }) {
   const { tokens } = useApp();
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-      {Array.from({ length: cols * 2 }, (_, i) => (
-        <View
-          key={i}
-          style={{
-            width: cellW,
-            aspectRatio: 2 / 3,
-            borderRadius: radius.poster,
-            backgroundColor: tokens.surface,
-            borderWidth: 1,
-            borderColor: tokens.border,
-            opacity: 0.7,
-          }}
-        />
-      ))}
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12 }}>
+      <View style={{ height: 22, marginBottom: 10, width: 160, borderRadius: 6, backgroundColor: tokens.surface2 }} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
+        {Array.from({ length: cols * 2 }, (_, i) => (
+          <View key={i} style={{ width: cellW, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface2 }} />
+        ))}
+      </View>
     </View>
   );
 }

@@ -152,12 +152,15 @@ export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: 
   const cols = stats.length === 4 ? 2 : stats.length;
   const rows: typeof stats[] = [];
   for (let i = 0; i < stats.length; i += cols) rows.push(stats.slice(i, i + cols));
+  /* D-1093 — بطاقةُ الأرقام على لون الصفحة (`bg`) بلا فواصل بين الخانات (أحمد بلقطة: «خلّ خلفيّتها سوداء
+     بدل رصاصي وبدون خطوط بينهم»): وصفةُ D-1081 — الإطارُ الخارجيُّ الرفيع وحده يحدّها، و`bg` لا `#000`
+     كي تصحّ `daylight`. الفراغُ بين الأرقام الثلاثة يفصلها وحدَه؛ خطٌّ فوقه كان يكرّر الفصل. */
   return (
-    <View style={{ marginHorizontal: PAGE_PAD, marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, overflow: "hidden" }}>
+    <View style={{ marginHorizontal: PAGE_PAD, marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
       {rows.map((row, r) => (
-        <View key={r} style={{ flexDirection: "row", borderTopWidth: r > 0 ? 1 : 0, borderTopColor: tokens.divider }}>
-          {row.map((s, i) => (
-            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 12, borderStartWidth: i > 0 ? 1 : 0, borderStartColor: tokens.divider, opacity: pressed ? 0.7 : 1 }]}>
+        <View key={r} style={{ flexDirection: "row" }}>
+          {row.map((s) => (
+            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 12, opacity: pressed ? 0.7 : 1 }]}>
               <Icon name={s.icon as never} size={16} color={tokens.accent} />
               <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"], lineHeight: 18 }}>{s.value}</Text>
               <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{s.label}</Text>

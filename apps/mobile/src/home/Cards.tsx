@@ -84,7 +84,9 @@ export const ContinueCard = memo(function ContinueCard({
   if (variant === "row") {
     return (
       <View>
-        <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}، ${sub}`} style={({ pressed }) => [styles.row, { borderColor: tokens.border, backgroundColor: tokens.surface, opacity: pressed ? 0.85 : 1 }]}>
+        {/* D-1089 — الصفُّ على لون الصفحة (`bg`) لا `surface` (أحمد بلقطة: «الخلفيّة الرصاصيّة أبغاها سوداء») —
+            كبطاقة القائمة والتريلر (D-1081): الحدُّ الإطارُ الرفيع وحده، و`bg` لا `#000` كي تصحّ `daylight` */}
+        <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}، ${sub}`} style={({ pressed }) => [styles.row, { borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
           <View style={{ width: 144, aspectRatio: 16 / 10, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
             {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={20} color={tokens.muted} /></View>}
           </View>
@@ -147,6 +149,7 @@ export const ContinueCard = memo(function ContinueCard({
 /**
  * `CompactMediaRow` — صفُّ المختصر و«القادم»: ملصقٌ صغير (أو رقاقةُ التاريخ)،
  * عنوانٌ ١٥/٦٠٠، سطرٌ ثانٍ ١٢ باهت، خيطُ تقدّمٍ اختياريّ، سهمٌ في الطرف.
+ * D-1089 — على لون الصفحة كأخته صفُّ «أكمل المشاهدة»: عائلةُ الصفوف واحدة (القاعدة ٣).
  */
 export const MediaRow = memo(function MediaRow({
   title,
@@ -169,7 +172,7 @@ export const MediaRow = memo(function MediaRow({
   const { tokens } = useApp();
   const uri = posterPath ? posterFor(posterPath, 40) : null;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={[title, subtitle].filter(Boolean).join("، ")} style={({ pressed }) => [styles.row, { paddingEnd: 10, borderColor: tokens.border, backgroundColor: tokens.surface, opacity: pressed ? 0.85 : 1 }]}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={[title, subtitle].filter(Boolean).join("، ")} style={({ pressed }) => [styles.row, { paddingEnd: 10, borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
       {chip ? (
         <View style={{ width: 56, height: 56, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
           <Text size={12} weight="800" color={tokens.accent} numberOfLines={2} style={{ textAlign: "center", lineHeight: 14 }}>{chip}</Text>

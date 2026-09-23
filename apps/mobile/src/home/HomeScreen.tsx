@@ -36,7 +36,7 @@ import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody } from "../contracts";
-import type { HomeSection } from "@/core/homePrefs";
+import { applyQueueOrder, type HomeSection } from "@/core/homePrefs";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -133,59 +133,93 @@ export function HomeScreen() {
   /* ——— ورقةُ عدّادَي المتابعة — `FollowCountButton` الويب؛ القفلُ (`hide_follow_lists`) يُحترم في `HomeGreeting` ——— */
   const [follows, setFollows] = useState<"followers" | "following" | null>(null);
 
-  /* ——— «شاهدتُها» على بطاقة «أكمل المشاهدة» (D-437): تفاؤلٌ ثمّ كتابةٌ ثمّ إعادةُ جلب ——— */
-  const [busyKey, setBusyKey] = useState<string | null>(null);
+  /* ——— «شاهدتُها» على بطاقة «أكمل المشاهدة» (D-437) — **تفاؤلٌ ثمّ كتابةٌ ثمّ إعادةُ جلب، بهذا الترتيب** ———
+     D-1088 (بلاغُ أحمد على 1.11.9 بتسجيل: «الصحّ لا يعمل»): كانت الضغطةُ تكتب ثمّ **تنتظر إعادةَ جلب الرئيسيّة
+     كاملةً** قبل أن تُظهر شيئاً — والجلبُ ثوانٍ على 5G — فبدت ميّتة؛ وأثناء الانتظار قفلٌ واحد (`busyKey`)
+     يُسقط ضغطاتِ البطاقات الأخرى صامتةً. الآن وصفةُ `ContinueCard.mark` الويب حرفاً: البطاقةُ تتقدّم في
+     الكاش فوراً (`setQueryData`)، والتوستُ فوراً، والخادمُ يلحق في الخلفيّة ثمّ يتجدّد الجلبُ بلا انتظار؛
+     والفشلُ يعيد البطاقةَ ويقول سببَه. والقفلُ **لكلِّ بطاقةٍ وحدَها** كالويب. */
+  const [busyKeys, setBusyKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const lock = useCallback((key: string, on: boolean) => {
+    setBusyKeys((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+  /** التفاؤل: يُبدّل بطاقةً واحدةً في حمولة الرئيسيّة المكاشة — الوسمُ نفسُه الذي يعيده الخادم فلا سباق */
+  const patchCard = useCallback(
+    (key: string, fn: (c: HomePayload["sections"]["continue"][number]) => HomePayload["sections"]["continue"][number]) =>
+      qc.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, sections: { ...prev.sections, continue: prev.sections.continue.map((c) => (c.key === key ? fn(c) : c)) } } : prev)),
+    [qc],
+  );
   const [celebrate, setCelebrate] = useState<{ tmdbId: number; title: string; posterPath: string | null; aired: number } | null>(null);
   const markNext = useCallback(
     async (card: Extract<HomePayload["sections"]["continue"][number], { type: "show" }>) => {
-      if (card.season == null || card.episode == null || busyKey) return;
-      setBusyKey(card.key);
+      if (card.season == null || card.episode == null || busyKeys.has(card.key)) return;
+      lock(card.key, true);
       haptic.success();
       const cur = { season: card.season, episode: card.episode };
+      const body = { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, title: card.title, posterPath: card.poster_path };
       /* الحلقةُ الأخيرةُ تُنهي المسلسل ⇐ احتفالٌ بدل «تراجع» — شرطُ `finishedAll` في `ContinueCard` الويب حرفاً */
       const finishedAll = card.aired > 0 && card.watched + 1 >= card.aired;
-      try {
-        await write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, watched: true, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody);
-        await qc.invalidateQueries({ queryKey: HOME_KEY });
-        if (finishedAll) {
-          setCelebrate({ tmdbId: card.id, title: card.title, posterPath: card.poster_path, aired: card.aired });
-          return;
-        }
-        /* «تراجع» كتوست `ContinueCard` الويبيّ حرفاً: النصُّ `S1 E2 ✓` والفعلُ يعكس الكتابةَ نفسَها (`watched:false`) ثمّ يعيد الجلب — ٦ث كمدّة توست الويب ذي الفعل */
-        toastHost.current?.say(
-          `S${cur.season} E${cur.episode} ✓`,
-          {
-            label: t.undoWatched,
-            onPress: () => {
-              write<TrackResult>("/api/v1/track/episode", { showTmdbId: card.id, season: cur.season, episode: cur.episode, runtime: card.runtime, watched: false, title: card.title, posterPath: card.poster_path } satisfies ToggleEpisodeBody)
+      /* التفاؤل كالويب (`bump` + `ep.e + 1`): العدّادُ والخيطُ والحلقةُ تتقدّم قبل ردّ الخادم؛ الانتقالُ بين
+         المواسم لا تعرفه البطاقةُ فيصحّحه الجلبُ حين يصل — كما في الويب */
+      const advanced = (c: typeof card) => ({ ...c, watched: c.watched + 1, episode: cur.episode + 1, episode_label: `S${cur.season} E${cur.episode + 1}`, progress: c.aired > 0 ? Math.round(((c.watched + 1) / c.aired) * 100) : c.progress });
+      const restored = (c: typeof card) => ({ ...c, watched: card.watched, episode: cur.episode, episode_label: card.episode_label, progress: card.progress });
+      patchCard(card.key, (c) => (c.type === "show" ? advanced(c) : c));
+      if (finishedAll) setCelebrate({ tmdbId: card.id, title: card.title, posterPath: card.poster_path, aired: card.aired });
+      const saved = write<TrackResult>("/api/v1/track/episode", { ...body, watched: true } satisfies ToggleEpisodeBody)
+        .then(() => {
+          void qc.invalidateQueries({ queryKey: HOME_KEY });
+          return true;
+        })
+        .catch((e) => {
+          patchCard(card.key, (c) => (c.type === "show" ? restored(c) : c));
+          setCelebrate(null);
+          onError(e);
+          return false;
+        })
+        .finally(() => lock(card.key, false));
+      if (finishedAll) return;
+      /* «تراجع» كتوست `ContinueCard` الويبيّ حرفاً: `S1 E2 ✓` والفعلُ يعكس الكتابةَ نفسَها — بعد أن تصل، لا قبلها */
+      toastHost.current?.say(
+        `S${cur.season} E${cur.episode} ✓`,
+        {
+          label: t.undoWatched,
+          onPress: () => {
+            patchCard(card.key, (c) => (c.type === "show" ? restored(c) : c));
+            void saved.then((ok) => {
+              if (!ok) return;
+              write<TrackResult>("/api/v1/track/episode", { ...body, watched: false } satisfies ToggleEpisodeBody)
                 .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
                 .catch(onError);
-            },
+            });
           },
-          6000,
-        );
-      } catch (e) {
-        onError(e);
-      } finally {
-        setBusyKey(null);
-      }
+        },
+        6000,
+      );
     },
-    [busyKey, qc, onError, t],
+    [busyKeys, lock, patchCard, qc, onError, t],
   );
 
   /* ——— D-1079 — الصحُّ على بطاقات القوائم وطابور «للمشاهدة» — `ListContinueCard.mark` الويب ———
      الفيلمُ يُعلَّم مشاهَداً؛ والمسلسلُ يُختم كلُّه كما من صفحته (D-604): متابعةٌ أوّلاً إن لم يكن في
      المكتبة، ثمّ `show-watched` الذي يعيد ما أضافه. **والرجعةُ صادقة** (D-047): «تراجع» يحذف ما أضافته
      الضغطةُ وحدَها، ومن لم يكن متابعاً قبلها لا يبقى متابعاً بعدها (D-238). الإعادةُ تقلب البطاقةَ إلى
-     التالي — وهو الفعلُ نفسُه. الاتّجاهُ الثاني في الويب ضغطةٌ ثانية؛ هنا توستُ «تراجع» كجارتها (D-437). */
+     التالي — وهو الفعلُ نفسُه. الاتّجاهُ الثاني في الويب ضغطةٌ ثانية؛ هنا توستُ «تراجع» كجارتها (D-437).
+     D-1088 — والتفاؤلُ هنا أيضاً: العدّادُ يتقدّم فوراً والتالي يبدّله الجلبُ حين يصل. */
   const markListNext = useCallback(
     async (card: Exclude<HomePayload["sections"]["continue"][number], { type: "show" }>) => {
-      if (busyKey) return;
-      setBusyKey(card.key);
+      if (busyKeys.has(card.key)) return;
+      lock(card.key, true);
       haptic.success();
       const n = card.next;
-      try {
-        let undo: () => Promise<unknown>;
+      const before = card.watched;
+      patchCard(card.key, (c) => (c.type === "show" ? c : { ...c, watched: c.watched + 1 }));
+      let undo: (() => Promise<unknown>) | null = null;
+      const saved = (async () => {
         if (n.kind === "movie") {
           await write<TrackResult>("/api/v1/track/movie", { movieTmdbId: n.id, runtime: null, watched: true } satisfies ToggleMovieBody);
           undo = () => write<TrackResult>("/api/v1/track/movie", { movieTmdbId: n.id, runtime: null, watched: false } satisfies ToggleMovieBody);
@@ -199,26 +233,33 @@ export function HomeScreen() {
             if (followedHere) await write<TrackResult>("/api/v1/track/unfollow", { tmdbId: n.id, mediaType: "tv" } satisfies UnfollowBody);
           };
         }
-        await qc.invalidateQueries({ queryKey: HOME_KEY });
-        toastHost.current?.say(
-          `${n.title ?? card.list_name} ✓`,
-          {
-            label: t.undoWatched,
-            onPress: () => {
+        void qc.invalidateQueries({ queryKey: HOME_KEY });
+        return true;
+      })()
+        .catch((e) => {
+          patchCard(card.key, (c) => (c.type === "show" ? c : { ...c, watched: before }));
+          onError(e);
+          return false;
+        })
+        .finally(() => lock(card.key, false));
+      toastHost.current?.say(
+        `${n.title ?? card.list_name} ✓`,
+        {
+          label: t.undoWatched,
+          onPress: () => {
+            patchCard(card.key, (c) => (c.type === "show" ? c : { ...c, watched: before }));
+            void saved.then((ok) => {
+              if (!ok || !undo) return;
               undo()
                 .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
                 .catch(onError);
-            },
+            });
           },
-          6000,
-        );
-      } catch (e) {
-        onError(e);
-      } finally {
-        setBusyKey(null);
-      }
+        },
+        6000,
+      );
     },
-    [busyKey, qc, onError, t],
+    [busyKeys, lock, patchCard, qc, onError, t],
   );
 
   /* ——— الضغطُ المطوّل: مضيفان بقائمتَي الويب — «مكتبتي» لصفوفي و«اكتشف» لما ليس عندي ——— */
@@ -283,12 +324,43 @@ export function HomeScreen() {
     },
     [qc, invalidateHome, openWeb, onError],
   );
+  /* D-1094 — «تمّ» يرتّب الصفَّ **فوراً** ثمّ يكتب (تسجيلُ أحمد على 1.11.9: رتّب «للمشاهدة» وضغط «تمّ»
+     فبقي الصفُّ كما كان — الترتيبُ حُفظ فعلاً في `home_prefs` لكنّ الصفَّ ينتظر إعادةَ جلب الرئيسيّة كاملةً).
+     الترتيبُ هنا `applyQueueOrder` نفسُها التي يرتّب بها الخادم — فالتفاؤلُ والجلبُ اللاحقُ يتّفقان حرفاً؛
+     والفشلُ يعيد الحمولةَ السابقة ويقول سببَه. `towatchlist` لا يُرسم ترتيبُه في الرئيسيّة فيكفيه الجلب. */
   const saveQueue = useCallback(
     (row: QueueOrderBody["row"], keys: string[]) => {
       setQueueRow(null);
-      write<{ done: true }>("/api/v1/me/prefs/queue-order", { row, keys } satisfies QueueOrderBody).then(invalidateHome).catch(onError);
+      const prev = qc.getQueryData<HomePayload>(HOME_KEY);
+      if (prev && row !== "towatchlist") {
+        const byKey = <T,>(arr: T[], keyOf: (x: T) => string) => applyQueueOrder(arr, keyOf, keys);
+        const s = prev.sections;
+        const q = prev.queues;
+        const next: HomePayload =
+          row === "continue"
+            ? { ...prev, sections: { ...s, continue: byKey(s.continue, (c) => c.key) }, queues: { ...q, continue: byKey(q.continue, (x) => x.key) } }
+            : row === "towatch"
+              ? (() => {
+                  const all = byKey(s.towatch.all, (x) => x.key);
+                  return { ...prev, sections: { ...s, towatch: { all, items: all.slice(0, s.towatch.items.length) } }, queues: { ...q, towatch: byKey(q.towatch, (x) => x.key) } };
+                })()
+              : (() => {
+                  /* صفُّ القوائم: البطاقاتُ بمعرّفها، وبطاقةُ الطابور موضعُها بين البطاقات = موضعُ مفتاحها الذي لا يطابق بطاقة */
+                  const cards = byKey(s.lists.cards, (c) => c.id);
+                  const ids = new Set(cards.map((c) => c.id));
+                  const at = s.lists.towatch_card ? keys.findIndex((k) => !ids.has(k)) : -1;
+                  return { ...prev, sections: { ...s, lists: { ...s.lists, cards, towatch_at: at } }, queues: { ...q, lists: byKey(q.lists, (x) => x.key) } };
+                })();
+        qc.setQueryData<HomePayload>(HOME_KEY, next);
+      }
+      write<{ done: true }>("/api/v1/me/prefs/queue-order", { row, keys } satisfies QueueOrderBody)
+        .then(invalidateHome)
+        .catch((e) => {
+          if (prev) qc.setQueryData<HomePayload>(HOME_KEY, prev);
+          onError(e);
+        });
     },
-    [invalidateHome, onError],
+    [qc, invalidateHome, onError],
   );
   /* «للمشاهدة» في «تابِع المشاهدة» — `setToWatchQueue` الويب: تفاؤلٌ لا، كتابةٌ ثمّ إعادةُ جلب وتوست؛ الاهتزازُ من الباب الواحد */
   const [toWatchBusy, setToWatchBusy] = useState(false);
@@ -385,9 +457,9 @@ export function HomeScreen() {
           <View key="continue">
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => router.push("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
             {view === "compact" ? (
-              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKey === c.key} />)}</Column>
+              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} />)}</Column>
             ) : (
-              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKey === c.key} />)}</Rail>
+              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} />)}</Rail>
             )}
           </View>
         ) : null,
@@ -506,7 +578,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, markListNext, busyKey, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
+  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
 
   return (
     <CardStoreContext.Provider value={store}>

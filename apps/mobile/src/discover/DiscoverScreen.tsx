@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
+import { prefetchLibrary } from "../library/LibraryScreen";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { nativeListId } from "../list/route";
@@ -97,13 +98,18 @@ export function prefetchDiscover(): void {
   void queryClient.prefetchQuery(listsQuery);
 }
 
-/** D-1085 — تسخينٌ واحدٌ لكلِّ جلسةٍ من الرئيسيّة، بعد أن تهدأ — لا مع أوّل رسمةٍ لها */
+/** D-1085 — تسخينٌ واحدٌ لكلِّ جلسةٍ من الرئيسيّة، بعد أن تهدأ — لا مع أوّل رسمةٍ لها.
+    D-1092 — والمكتبةُ معها (تسجيلُ أحمد على 1.11.9: المكتبةُ فارغةٌ ٣ث أوّلَ فتح): طلبٌ واحد
+    `me/library`، **قبل** صفوف «اكتشف» التسعة لا بعدها — أقربُ خانةٍ للإبهام تُسخَّن أوّلاً. */
 let warmed = false;
 export function warmDiscoverOnce(): void {
   if (warmed) return;
   warmed = true;
   InteractionManager.runAfterInteractions(() => {
-    setTimeout(prefetchDiscover, 1500);
+    setTimeout(() => {
+      prefetchLibrary();
+      prefetchDiscover();
+    }, 1500);
   });
 }
 

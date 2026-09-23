@@ -61,6 +61,10 @@ import { prefetchDiscover } from "../src/discover/DiscoverScreen";
  * وخلفيّةٌ أطولُ من خمس دقائق.
  */
 const HOME = CONFIG.apiBase + "/";
+/* D-1090 — صفحةُ الإقلاع الخفيفة: التخطيطُ والجسرُ بلا رئيسيّةِ الويب — الرمزُ في جزءٍ من ثانية لا تسع.
+   تُحمَّل بدل `/` **فقط** حين يُرفع الإقلاعُ الأصليّ (جهازٌ رأى جلسةً، بلا رابطٍ من الودجت)، وبعد أوّل
+   ردِّ جلسةٍ يبدّلها الغلافُ إلى `/` بـ`location.replace` — فالتاريخُ والرجوعُ كما كانا حرفاً. */
+const BOOT = CONFIG.apiBase + "/app/boot";
 /**
  * 🆕 **إعلانُ القدرة قبل المستند** (٩ سبتمبر — بلاغُ أحمد «لا أستطيع الدخول إلى
  * المكتبة»): الويبُ كان يبتلع ضغطةَ «المكتبة» لكلِّ غلافٍ يحمل الوسم، والمثبَّتُ
@@ -142,8 +146,18 @@ export default function Web() {
   const [source, setSource] = useState<Source | null>(null);
   useEffect(() => {
     if (loading || source) return;
-    setSource({ uri: HOME });
-  }, [loading, source]);
+    /* D-1090 — مع الإقلاع الأصليّ (الشرطُ نفسُه أدناه) تُسأل الصفحةُ الخفيفةُ أوّلاً؛ وإلّا `/` كما كان */
+    const lightBoot = !(typeof u === "string" && u) && session.seen();
+    setSource({ uri: lightBoot ? BOOT : HOME });
+  }, [loading, source, u]);
+  /* D-1090 — بعد أوّل ردِّ جلسة (رمزٌ أو `session:clear`) من صفحة الإقلاع الخفيفة تُبدَّل إلى `/`:
+     `replace` لا `href` فلا تدخل التاريخ، ولا تبديلَ للمصدر (يعيد تركيبَ العرض — D-1075 أعلاه) */
+  const hopped = useRef(false);
+  const hopHome = useCallback(() => {
+    if (hopped.current) return;
+    hopped.current = true;
+    ref.current?.injectJavaScript(`location.replace(${JSON.stringify(HOME)});true;`);
+  }, []);
 
   /* D-1075 — **الإقلاعُ إلى الرئيسيّة الأصليّة، لا الويب** (طلبُ أحمد ٢٢ سبتمبر: «الإقلاع أبغاه
      تطبيق وما يفتح ويب»): من رأى جهازُه جلسةً ولم يخرج تُرفع `/home` فوق هذه الشاشة **قبل** أن
@@ -216,7 +230,11 @@ export default function Web() {
       if (!msg || typeof msg !== "object") return;
       const hostOk = insideUrl(e.nativeEvent.url);
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
-      if (session.receive(msg as Record<string, unknown>, hostOk)) return;
+      if (session.receive(msg as Record<string, unknown>, hostOk)) {
+        /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
+        if (hostOk && e.nativeEvent.url.startsWith(BOOT)) hopHome();
+        return;
+      }
       /* 🆕 D-1083 — `SessionBridge` علّق سامعَ الطلب: يُصرف طابورُ الرمز الآن لا بعد آخر صورةٍ في
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
       if (msg.type === "bridge:ready") {
@@ -279,7 +297,7 @@ export default function Web() {
         ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
       }
     },
-    [signInWithGoogle, router],
+    [signInWithGoogle, router, hopHome],
   );
 
   /* Phase 11 · B1 — الجسرُ يعرف كيف يحقن في هذه الـWebView ما دامت مركَّبة */

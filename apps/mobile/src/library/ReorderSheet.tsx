@@ -99,12 +99,26 @@ export function ReorderSheet({
     setDy(0);
   };
 
-  /** مستجيبٌ واحدٌ لكلِّ مقبض — يعرف صفَّه من `i` عند الإنشاء */
-  const responderFor = (i: number) =>
-    PanResponder.create({
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  /**
+   * مستجيبٌ واحدٌ لكلِّ مقبض، **ثابتٌ عبر الرسمات ومفتاحُه مفتاحُ الصفّ** (D-1094).
+   * 🔴 كان يُنشأ `PanResponder.create` جديدٌ في كلِّ رسمة — وكلُّ حركةٍ ترسم (`setDy`) — فيتسلّم الإيماءةَ
+   * مستجيبٌ جديدٌ بـ`gestureState` فارغة: `g.dy` لا يتراكم بل يعدّ آخرَ إطارٍ وحده، فالصفُّ **يرتفع ولا يتحرّك**
+   * (تسجيلُ أحمد: أمسك «ريك آند مورتي» ثمّ «لوست» ثمّ «شيرلوك» فعادت كلُّها إلى مكانها، وما تحرّك «ذا بويز»
+   * إلّا بدفع التمرير الذاتيّ عند الحافّة). الآن المستجيبُ يُحفظ في `Map` بمفتاح الصفّ، ويقرأ موضعَه ساعةَ
+   * الإمساك من `orderRef` — لا من `i` المحبوس — فيبقى صحيحاً بعد إعادة الترتيب.
+   */
+  const responders = useRef(new Map<string, ReturnType<typeof PanResponder.create>>());
+  const responderFor = (key: string) => {
+    const hit = responders.current.get(key);
+    if (hit) return hit;
+    const r = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
+        const i = orderRef.current.findIndex((x) => x.key === key);
+        if (i < 0) return;
         fromRef.current = i;
         dyRef.current = 0;
         startScroll.current = scrollY.current;
@@ -119,10 +133,13 @@ export function ReorderSheet({
         const yInBody = g.moveY - bodyTop.current;
         edge.current = yInBody < EDGE ? -STEP : bodyH.current - yInBody < EDGE ? STEP : 0;
       },
-      onPanResponderRelease: finish,
-      onPanResponderTerminate: finish,
+      onPanResponderRelease: () => finishRef.current(),
+      onPanResponderTerminate: () => finishRef.current(),
       onPanResponderTerminationRequest: () => false,
     });
+    responders.current.set(key, r);
+    return r;
+  };
   const shift = (i: number) => {
     if (from === null || to === null) return 0;
     if (i === from) return dy;
@@ -192,7 +209,7 @@ export function ReorderSheet({
                   <Text size={12} muted style={{ marginTop: 2, fontVariant: ["tabular-nums"] }}>{String(i + 1)}</Text>
                 </View>
                 <View
-                  {...responderFor(i).panHandlers}
+                  {...responderFor(it.key).panHandlers}
                   accessibilityRole="button"
                   accessibilityLabel={`${it.title} — ${t.listPositionOf(i + 1, order.length)}`}
                   style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: dragging ? tokens.surface : "transparent" }}
