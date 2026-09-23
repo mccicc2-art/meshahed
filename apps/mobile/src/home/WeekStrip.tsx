@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
+import { useFontScale } from "../fontScale";
 import { PAGE_PAD } from "./Section";
 import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
 
@@ -15,6 +16,8 @@ import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
 export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; onDay: (showId: number) => void; onCalendar: () => void }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
+  /* D-1105 — سطرا العنوان محجوزان بارتفاعٍ ثابت (تتساوى الأيّامُ)؛ يكبر الحجزُ مع الخطّ فلا يُقصّ السطرُ الثاني */
+  const k = useFontScale();
   const byDay = new Map<string, HomeWeekEntry[]>();
   for (const e of entries) {
     if (!byDay.has(e.date)) byDay.set(e.date, []);
@@ -43,7 +46,7 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
               <Text size={10} muted style={{ lineHeight: 12 }}>{d.weekday}</Text>
               <Text size={14} weight="700" color={i === 0 ? tokens.accent : tokens.fg} style={{ marginTop: 4, lineHeight: 16 }}>{d.day_num}</Text>
               <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: has ? tokens.accent2 : tokens.border }} />
-              <Text size={9} muted numberOfLines={2} style={{ marginTop: 4, lineHeight: 11, height: 24, textAlign: "center" }}>{has ? (list.length > 1 ? `+${list.length}` : first.title) : ""}</Text>
+              <Text size={9} muted numberOfLines={2} style={{ marginTop: 4, lineHeight: 11, height: Math.ceil(24 * k), textAlign: "center" }}>{has ? (list.length > 1 ? `+${list.length}` : first.title) : ""}</Text>
             </>
           );
           const base = { width: cellW, borderRadius: 12, paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" as const, borderWidth: 1 };

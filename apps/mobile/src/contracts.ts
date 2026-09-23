@@ -116,4 +116,9 @@ export type {
   UnblockBody,
   HintsResetBody,
   PeoplePayload,
+  ProfileEditPayload,
+  ProfileSaveBody,
+  ProfileImagePayload,
+  VerifyPayload,
+  VerifyBody,
 } from "@/core/contracts/settings";

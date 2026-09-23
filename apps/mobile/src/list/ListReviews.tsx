@@ -91,7 +91,7 @@ export function ListReviews({
                 {thread.map((x) => (
                   <View key={x.reply_id} style={{ gap: 2 }}>
                     <Text size={12} weight="700" numberOfLines={1}>{x.name}</Text>
-                    <Text size={13} style={{ lineHeight: 20 }}>{x.body}</Text>
+                    <Text size={13} content style={{ lineHeight: 20 }}>{x.body}</Text>
                     <View style={{ flexDirection: "row", gap: 16, marginTop: 2 }}>
                       {canAct ? (
                         <Pressable onPress={() => setTo({ review: r.user_id, parent: x.parent_id ?? x.reply_id, name: x.name })} hitSlop={8}>

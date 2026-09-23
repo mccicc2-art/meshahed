@@ -76,6 +76,29 @@ export async function api<T>(
   }
 }
 
+/**
+ * 🆕 D-1106 — **رفعُ ملفٍّ** (`multipart/form-data`): صورةُ الملفّ والغلاف. الترويساتُ نفسُها وإعادةُ
+ * المحاولة عند `401` نفسُها كـ`api` — ولا `Content-Type` يدويّاً: `fetch` يكتب الحدَّ (`boundary`) بنفسه.
+ */
+export async function postForm<T>(path: string, form: FormData): Promise<T> {
+  if (!session.has()) await session.request();
+  for (let attempt = 0; ; attempt++) {
+    const headers = await baseHeaders(true, path);
+    const res = await fetch(`${CONFIG.apiBase}${path}`, { method: "POST", headers, body: form });
+    const json = (await res.json().catch(() => null)) as Envelope<T> | null;
+    if (!json || "error" in json) {
+      if (res.status === 401 && attempt < 2) {
+        session.clear();
+        const fresh = await session.request();
+        if (fresh) continue;
+      }
+      throw new ApiError(json?.error ?? { code: "internal", message_key: "apiInternal" }, res.status);
+    }
+    invalidateTags(json.invalidates);
+    return json.data;
+  }
+}
+
 /** كتابةٌ تُطبِّق إبطالَها بنفسها — السطرُ الذي يجعل الوسومَ حيّة. */
 export async function write<T>(path: string, body: unknown): Promise<T> {
   const r = await api<T>(path, { method: "POST", body });

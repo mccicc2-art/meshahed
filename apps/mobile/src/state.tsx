@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useMemo, useSyncExternalStore } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import { session as bridge } from "./session";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "./api";
 import { useAuth } from "./auth";
 import { currentLocale, dictFor, webLocale } from "./i18n";
 import { tokensOf, type Tokens } from "./theme";
+import { fontPrefs } from "./fontScale";
 import type { Dict, Locale } from "@/core/i18n";
 
 /** ما يعيده `GET /api/v1/me` — الملفُّ بما يكفي للترويسة والإعدادات */
@@ -24,6 +25,9 @@ export type Me = {
   partner: boolean;
   verified: boolean;
   founder: boolean;
+  /** D-1105 — حجما الخطّ (خادمٌ أقدمُ لا يرسلهما ⇒ يبقى المحفوظُ على الجهاز) */
+  font_ui?: string;
+  font_content?: string;
 } | null;
 
 type AppState = { locale: Locale; t: Dict; tokens: Tokens; me: Me; meLoading: boolean; fontsReady: boolean };
@@ -46,6 +50,12 @@ export function AppStateProvider({ children, fontsReady }: { children: React.Rea
     queryFn: async () => (await api<Me>("/api/v1/me")).data,
     enabled: on,
   });
+  /* D-1105 — «من أنا» يصحّح حجمَ الخطّ المحفوظ على الجهاز إن غيّره صاحبُه من الويب أو من جهازٍ آخر */
+  const fu = me.data?.font_ui;
+  const fc = me.data?.font_content;
+  useEffect(() => {
+    if (fu && fc) fontPrefs.set(fu, fc);
+  }, [fu, fc]);
   const value = useMemo<AppState>(
     () => ({
       locale,

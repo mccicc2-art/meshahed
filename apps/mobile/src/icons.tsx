@@ -81,6 +81,9 @@ const ICONS = {
   "person-check": require("../assets/icons/person-check.png"),
   shield: require("../assets/icons/shield.png"),
   download: require("../assets/icons/download.png"),
+  /* D-1106 — تعديلُ الملفّ أصليّاً: الصورةُ وحذفُها، من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */
+  image: require("../assets/icons/image.png"),
+  trash: require("../assets/icons/trash.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

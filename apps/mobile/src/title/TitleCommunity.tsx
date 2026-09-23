@@ -69,7 +69,7 @@ export function CommunityTab({
             </View>
           ) : null}
         </View>
-        {data.my_review?.review ? <Text size={14} style={{ lineHeight: 21 }}>{data.my_review.review}</Text> : <Text size={13} muted>{t.reviewPlaceholder}</Text>}
+        {data.my_review?.review ? <Text size={14} content style={{ lineHeight: 21 }}>{data.my_review.review}</Text> : <Text size={13} muted>{t.reviewPlaceholder}</Text>}
         <View style={{ flexDirection: "row", marginTop: 4 }}>
           <Chip label={ar ? (data.my_review?.review ? "عدّل رأيي" : "اكتب رأيي") : data.my_review?.review ? "Edit my review" : "Write my review"} active={false} onPress={onEditReview} />
         </View>
@@ -120,7 +120,7 @@ export function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }
       </View>
       {r.review ? (
         reveal ? (
-          <Text size={14} style={{ lineHeight: 21 }}>{r.review}</Text>
+          <Text size={14} content style={{ lineHeight: 21 }}>{r.review}</Text>
         ) : (
           <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
             <Icon name="eye-off" size={13} color={tokens.muted} />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loopz",
     "slug": "mesh",
-    "version": "1.11.11",
+    "version": "1.11.12",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "com.loopztv.app",
@@ -39,6 +39,14 @@
           "backgroundColor": "#050505",
           "image": "./assets/splash-icon.png",
           "imageWidth": 160
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Loopz uses your photos to set your profile picture and cover.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       "./plugins/withLoopzWidget"

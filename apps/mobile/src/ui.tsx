@@ -15,6 +15,7 @@ import { radius, space } from "./theme";
 import { ARABIC_RE, familyOf, type Weight } from "./fonts";
 import { deviceLocale } from "./i18n";
 import { isRtl } from "@/core/i18n";
+import { useFontScale } from "./fontScale";
 
 /**
  * ====== العائلاتُ الأساسيّة — مصنعُ زرٍّ واحد، نصٌّ واحد، ملصقٌ واحد ======
@@ -81,18 +82,39 @@ function splitRuns(text: string): { s: string; ar: boolean }[] {
 }
 
 export function Text({
-  style,
   muted,
   size = 15,
   weight = "400",
   color,
+  content,
   children,
+  style: rawStyle,
   ...rest
-}: TextProps & { muted?: boolean; size?: number; weight?: Weight; color?: string }) {
+}: TextProps & {
+  muted?: boolean;
+  size?: number;
+  weight?: Weight;
+  color?: string;
+  /** 🆕 D-1105 — كلامُ الناس (مراجعة · ردّ · منشور): يتبع «خطَّ المحتوى» لا «خطَّ الواجهة» */
+  content?: boolean;
+}) {
   const { tokens, fontsReady } = useApp();
+  /* 🆕 D-1105 — حجمُ الخطّ: المقاسُ وارتفاعُ السطر يُضربان معاً (سطرٌ ثابتٌ تحت خطٍّ أكبر يقصّ الحروف)،
+     وما كُتب في `style` مباشرةً يُضرب كذلك — فلا نصَّ ينجو من الإعداد لأنّه كُتب بطريقةٍ أخرى */
+  const k = useFontScale(content);
+  let style = rawStyle;
+  if (k !== 1 && rawStyle) {
+    const flat = StyleSheet.flatten(rawStyle);
+    if (flat && (flat.fontSize || flat.lineHeight)) {
+      const scaled: { fontSize?: number; lineHeight?: number } = {};
+      if (flat.fontSize) scaled.fontSize = flat.fontSize * k;
+      if (flat.lineHeight) scaled.lineHeight = flat.lineHeight * k;
+      style = [rawStyle, scaled];
+    }
+  }
   const base = {
     color: color ?? (muted ? tokens.muted : tokens.fg),
-    fontSize: size,
+    fontSize: size * k,
     fontWeight: weight,
     textAlign: "left" as const,
   };
@@ -132,6 +154,7 @@ export function Button({
   ...rest
 }: PressableProps & { label: string; variant?: "primary" | "ghost" | "danger"; size?: "md" | "sm"; busy?: boolean }) {
   const { tokens } = useApp();
+  const k = useFontScale(); /* D-1105 — نصُّ الزرّ نصُّ واجهة؛ ارتفاعُه أدنى لا ثابت فيتّسع */
   const sm = size === "sm";
   const bg =
     variant === "primary" ? tokens.accent : variant === "danger" ? tokens.error : "transparent";
@@ -151,7 +174,7 @@ export function Button({
         typeof style === "function" ? undefined : style,
       ]}
     >
-      {busy ? <ActivityIndicator color={fg} /> : <RNText style={{ color: fg, fontWeight: "600", fontSize: sm ? 12 : 15 }}>{label}</RNText>}
+      {busy ? <ActivityIndicator color={fg} /> : <RNText style={{ color: fg, fontWeight: "600", fontSize: (sm ? 12 : 15) * k }}>{label}</RNText>}
     </Pressable>
   );
 }
