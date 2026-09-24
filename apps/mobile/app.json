@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loopz",
     "slug": "mesh",
-    "version": "1.11.15",
+    "version": "1.12.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "com.loopztv.app",
@@ -64,10 +64,12 @@
     },
     "owner": "loopztvs-team",
     "updates": {
-      "url": "https://u.expo.dev/928fd255-8956-4e37-a5eb-69d687282bbf"
+      "url": "https://u.expo.dev/928fd255-8956-4e37-a5eb-69d687282bbf",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     }
   }
 }

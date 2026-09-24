@@ -20,6 +20,11 @@
 #    الجهاز: Play.** ومن أراد نسخةَ تجربةٍ يوماً فـ`eas build --profile preview`
 #    من اللوحة، أو يُعاد الملفُّ (عشرون سطراً) — **ولا يبقى مسارٌ نائمٌ يُنسى
 #    فيُبني بناءين بدولارين** (D-938/D-944).
+# ⚡ **بالبصمة لا بالإصدار — Phase 11-K · K0**: كان كلُّ تعديل JS بناءً ومراجعةَ Play.
+#    البصمةُ تجمع ما يمسّ الثنائيَّ وحدَه (تبعيّاتٌ أصليّة، إضافات، إعداداتٌ أصليّة):
+#    إن وُجد بناءٌ بالبصمة نفسِها فالتغييرُ JS خالص ⇒ تحديثٌ عبر الهواء على قناة
+#    `production` يصل الهاتفَ في الإقلاع التالي، وإلّا ⇒ بناءٌ وإرسالٌ كما كان.
+#    والإصدارُ في app.json يرتفع مع الثنائيّ فقط.
 name: Android → Play Alpha
 
 # 🆕 D-944: ثلاثُ دفعاتٍ في نصف ساعةٍ أنتجت ثلاثةَ بناءاتٍ وثلاثةَ إرسالات (٧ سبتمبر)
@@ -40,8 +45,25 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+    environment: production
+
+  get_build:
+    name: Existing build for this fingerprint?
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+
+  # لا ثنائيَّ مطابق ⇒ الطريقُ القديمُ بحرفه
   build:
     name: Build Android (production)
+    needs: [get_build]
+    if: ${{ !needs.get_build.outputs.build_id }}
     type: build
     params:
       platform: android
@@ -54,3 +76,14 @@ jobs:
     params:
       build_id: ${{ needs.build.outputs.build_id }}
       profile: production
+
+  # ثنائيٌّ مطابقٌ على الهواتف ⇒ JS وحدَه يكفي
+  update:
+    name: OTA update (channel production)
+    needs: [get_build]
+    if: ${{ needs.get_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      platform: android
+      channel: production
