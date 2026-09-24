@@ -1,9 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useApp, type Me } from "../state";
-import { api, queryClient, qk } from "../api";
-import { session } from "../session";
-import { BUILD_TAG } from "../ota";
+import { queryClient, qk } from "../api";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius, themePref } from "../theme";
@@ -33,15 +31,13 @@ import type { FontBody, LocaleBody, ThemeBody } from "../contracts";
  *   (قرارٌ مؤجَّل — يمسّ `Text` والتصميمَ المجمَّد D-1076).
  */
 export function AppearanceScreen() {
-  const { t, tokens, locale, me } = useApp();
+  const { t, tokens, locale, me, themeId } = useApp();
   const q = useSettings();
   const s = q.data;
   const toast = useRef<ToastHostRef>(null);
   const openWeb = useOpenWeb();
   const [open, setOpen] = useState<"lang" | "theme" | "ui" | "content" | null>(null);
   const [busy, setBusy] = useState(false);
-  const tokensRef = useRef(tokens);
-  tokensRef.current = tokens;
   const fail = () => toast.current?.say(t.errSaveShort);
   const toggle = (k: typeof open) => setOpen((v) => (v === k ? null : k));
 
@@ -68,7 +64,7 @@ export function AppearanceScreen() {
       openWeb("/plus");
       return;
     }
-    if (id === s.appearance.theme) return;
+    if (id === (themePref.get() ?? s.appearance.theme)) return;
     haptic.pick();
     setBusy(true);
     /* الثيمُ يُلبَس لحظةَ اللمس من مخزن الجهاز، و`me` يُكتب معه كي لا يعيده «من أنا» القديم؛ ويعود
@@ -85,7 +81,6 @@ export function AppearanceScreen() {
       if (meBefore) queryClient.setQueryData<Me>(qk.tag("user:me:profile"), () => meBefore);
       if (out?.needsPlus) patchSettings((x) => ({ ...x, appearance: { ...x.appearance, theme: meBefore?.theme ?? x.appearance.theme } }));
     }
-    if (out && !out.needsPlus) probeTheme(id, tokensRef);
     if (!out) return fail();
     if (out.needsPlus) openWeb("/plus");
   }
@@ -106,7 +101,10 @@ export function AppearanceScreen() {
     invalidateMe();
   }
 
-  const theme = s ? THEMES.find((x) => x.id === s.appearance.theme) ?? THEMES[0] : THEMES[0];
+  /* 🆕 D-1128 — **مصدرٌ واحدٌ للثيم**: العلامةُ والاسمُ من الثيم الملبوس (`themePref` ← `themeId`)
+     لا من إعدادات الخادم — كانا مصدرين فسبقت العلامةُ اللونَ إلى «النهاري» (تسجيلُ أحمد على 1.12.0) */
+  const currentTheme = themeId ?? s?.appearance.theme ?? null;
+  const theme = THEMES.find((x) => x.id === currentTheme) ?? THEMES[0];
   const plus = me?.plus ?? s?.account.plus ?? false;
 
   return (
@@ -127,7 +125,7 @@ export function AppearanceScreen() {
             {/* شبكةُ عمودين: شريطُ ألوانٍ (accent · accent-2 · surface → bg) واسمٌ تحته */}
             <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, opacity: busy ? 0.7 : 1 }}>
               {THEMES.map((th) => {
-                const on = th.id === s.appearance.theme;
+                const on = th.id === theme.id;
                 const locked = !plus && themeNeedsPlus(th.id);
                 return (
                   <Pressable
@@ -171,24 +169,4 @@ export function AppearanceScreen() {
       )}
     </SettingsScreen>
   );
-}
-
-/**
- * ====== مسبارُ الثيم — مؤقّت (D-1125) ======
- * سببُ بلاغ 1.11.15 لم يُثبت بالكود وحده: «من أنا» غائب؟ أم لم يتبدّل؟ أم الرمزُ مفقود؟ بعد أوّل حفظٍ
- * ناجحٍ في الجلسة، وبعد ثانيتين، يُكتب سطرٌ واحدٌ في سجلّ الأعطال بما رآه التطبيقُ فعلاً — فيُحسم السببُ
- * من تجربةٍ واحدة. **يُحذف بعد قراءته.**
- */
-let probed = false;
-function probeTheme(picked: string, tokensRef: { current: { bg: string } }) {
-  if (probed) return;
-  probed = true;
-  setTimeout(() => {
-    const key = qk.tag("user:me:profile");
-    const me = queryClient.getQueryData<Me>(key);
-    const st = queryClient.getQueryState(key);
-    const ageS = st?.dataUpdatedAt ? Math.round((Date.now() - st.dataUpdatedAt) / 1000) : -1;
-    const message = `ThemeProbe picked=${picked} pref=${themePref.get() ?? "-"} me=${me ? (me.theme ?? "null") : "none"} meStatus=${st?.status ?? "-"}/${st?.fetchStatus ?? "-"} meAge=${ageS}s token=${session.has() ? 1 : 0} bg=${tokensRef.current.bg}`;
-    void api("/api/v1/app/crash", { method: "POST", body: { screen: "settings", message, version: BUILD_TAG } }).catch(() => {});
-  }, 2000);
 }

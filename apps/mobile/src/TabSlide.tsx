@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { span } from "./perfMarks";
+import { jankStart, span } from "./perfMarks";
 import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 /**
@@ -104,6 +104,12 @@ export function TabSlide<K extends string>({
   const armEnd = useRef<(() => void) | null>(null);
   const perfRef = useRef(perfScreen);
   perfRef.current = perfScreen;
+  /* 🆕 D-1128 — عدّادُ إطارات السحب: يبدأ مع أوّل حركةٍ بعد القفل ويُغلق عند الرفع أو الانتزاع */
+  const jankEnd = useRef<(() => void) | null>(null);
+  const jankStop = useCallback(() => {
+    jankEnd.current?.();
+    jankEnd.current = null;
+  }, []);
 
   const glide = useCallback(
     (to: number, ms: number, then?: () => void) => {
@@ -130,9 +136,11 @@ export function TabSlide<K extends string>({
           /* التسليحُ عند القفل (D-523): الجارُ يُركَّب حيّاً أوّلَ ما يسأل الإصبع عنه */
           if (next && sideRef.current !== next && perfRef.current) armEnd.current = span("tab.arm", { screen: perfRef.current, tab: next });
           if (next) mount(next);
+          if (!jankEnd.current && perfRef.current) jankEnd.current = jankStart({ screen: perfRef.current, ...(next ? { tab: next } : {}) });
           pos.setValue(base + (next ? Math.max(-s.width, Math.min(s.width, g.dx)) : g.dx * RUBBER));
         },
         onPanResponderRelease: (_, g) => {
+          jankStop();
           const s = st.current;
           const i = s.order.indexOf(s.tab);
           const base = -Math.max(0, i) * s.width * s.phys;
@@ -150,12 +158,15 @@ export function TabSlide<K extends string>({
           glide(base, SNAP_MS, () => mount(null));
         },
         onPanResponderTerminate: () => {
+          jankStop();
           const s = st.current;
           glide(-Math.max(0, s.order.indexOf(s.tab)) * s.width * s.phys, SNAP_MS, () => mount(null));
         },
       }),
-    [pos, glide, mount],
+    [pos, glide, mount, jankStop],
   );
+  /* اللوحُ نُزع والإصبعُ عليه: العدّادُ لا يبقى يدور بلا صاحب */
+  useEffect(() => jankStop, [jankStop]);
 
   /* تبدّلُ `tab`: من سحبٍ مكتمل ⇒ المسارُ هناك أصلاً، يُنزع الجارُ فقط؛ من ضغطةٍ ⇒
      القديمُ يبقى مركّباً وينزلق المسارُ إلى موضع الجديد فيخرج ويدخل معاً */

@@ -36,7 +36,10 @@ export type PerfName =
   | "coldstart.home"
   | "search.open"
   | "tab.switch"
-  | "boot.fresh";
+  | "boot.fresh"
+  /* 🆕 D-1128 — «قبل» K2: إطاراتُ السحب الضائعة · وعمرُ الرمز لحظةَ استلامه (ثوانٍ) */
+  | "gesture.jank"
+  | "token.life";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -100,8 +103,45 @@ export function coldStartVoid() {
 /* D-1125 — الدفعةُ لا تُرسل بلا رمز (القياسُ لا يستحقّ طلبَ رمزٍ من الـWebView)، فكانت تبقى معلّقةً
    إلى علامةٍ تالية — ولم تصل من 1.11.15 علامةٌ واحدة. تُرسل الآن لحظةَ يعود الرمز. */
 session.subscribe(() => {
+  /* D-1128 — عمرُ الرمز الذي وصل للتوّ (إن وصل): الرقمُ في خانة `ms` وهو ثوانٍ، والسالبُ لا يُكتب */
+  const life = session.takeLife();
+  if (life !== null) mark("token.life", Math.max(0, life));
   if (buffer.length > 0 && session.has()) flush();
 });
+
+/**
+ * ====== إطاراتُ السحب الضائعة (`gesture.jank`) — D-1128، «قبل» K2 ======
+ * من قفل الإيماءة إلى رفع الإصبع — **المرحلةُ التي يحرّكها JS اليوم** (`pos.setValue` في كلِّ حركة)؛
+ * الطيرانُ بعد الرفع على السائق الأصليّ فلا يُعدّ. كلُّ إطارٍ على خيط JS تجاوز ١٫٥ ضعفِ **ميزانيّة
+ * 60Hz** (١٦٫٧ms) يُحسب بما فاته: فجوةُ ٥٠ms = إطاران ضائعان. الميزانيّةُ ثابتةٌ لا تُقاس من الشاشة
+ * كي تبقى الأرقامُ قابلةً للمقارنة بين الأجهزة والإصدارات.
+ * القيمةُ في خانة `ms` هي **عددُ الإطارات**، و`dur` مدّةُ السحب. بعد K2 يُقاس الشيءُ نفسُه على خيط
+ * الواجهة (الخيطُ الذي يحرّك اللوحَ حينها) بالاسم نفسِه — فالمقارنةُ «إطارٌ رآه الإصبعُ ضاع».
+ */
+const FRAME_MS = 1000 / 60;
+export function jankStart(extra: Extra): () => void {
+  let raf = 0;
+  let last = performance.now();
+  const t0 = last;
+  let dropped = 0;
+  let live = true;
+  const tick = (now: number) => {
+    if (!live) return;
+    const gap = now - last;
+    last = now;
+    if (gap > FRAME_MS * 1.5) dropped += Math.round(gap / FRAME_MS) - 1;
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+  return () => {
+    if (!live) return;
+    live = false;
+    cancelAnimationFrame(raf);
+    const dur = performance.now() - t0;
+    /* نقرةٌ قُفلت ثمّ رُفعت فوراً لا تقول شيئاً عن السحب */
+    if (dur >= 120) mark("gesture.jank", dropped, { ...extra, dur: Math.round(dur) });
+  };
+}
 
 /**
  * ====== ضغطةُ تبويب ⇒ الشاشةُ مرسومة (`tab.switch`) ======

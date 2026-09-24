@@ -49,6 +49,17 @@ let waiters: (() => void)[] = [];
  */
 const SEEN_KEY = "loopz.session.seen";
 const listeners = new Set<() => void>();
+/**
+ * 🆕 D-1128 — **الأثرُ في الذاكرة أيضاً**: `seen()` صار يُقرأ في كلِّ رسمةٍ لـ«من أنا» (`state.tsx`)،
+ * وقراءةُ SecureStore نداءٌ أصليٌّ متزامن — فتُقرأ مرّةً وتُحفظ هنا، ويبدّلها الاستلامُ والخروجُ ويُبلغان.
+ */
+let seenMem: boolean | null = null;
+/**
+ * 🆕 D-1128 — **عمرُ الرمز لحظةَ استلامه** (ثوانٍ): المسبارُ أثبت `token=0` بعد حفظٍ ناجح بثانيتين،
+ * والفرضيّةُ أنّ الصفحةَ تسلّم رمزاً باقيه أقلُّ من ٣٠ث فيُقبل هنا ثمّ يرفضه `has()` فوراً. يُقرأ مرّةً
+ * لكلِّ استلام (`takeLife`) ويُرسل علامةَ أداء `token.life` — رقمٌ لا رمز.
+ */
+let lastLife: number | null = null;
 
 const NONCE_TTL_MS = 30_000;
 const REPLY_TIMEOUT_MS = 8_000;
@@ -98,11 +109,19 @@ export const session = {
   },
   /** D-1075 — هل رأى هذا الجهازُ جلسةً ولم يخرج منها؟ */
   seen(): boolean {
+    if (seenMem !== null) return seenMem;
     try {
-      return SecureStore.getItem(SEEN_KEY) === "1";
+      seenMem = SecureStore.getItem(SEEN_KEY) === "1";
     } catch {
-      return false;
+      seenMem = false;
     }
+    return seenMem;
+  },
+  /** D-1128 — عمرُ آخر رمزٍ استُلم (ثوانٍ) — يُؤخذ مرّةً ثمّ يُمحى */
+  takeLife(): number | null {
+    const v = lastLife;
+    lastLife = null;
+    return v;
   },
   onSignOut(l: () => void): () => void {
     signOutListeners.add(l);
@@ -114,12 +133,16 @@ export const session = {
    */
   signOut() {
     session.clear();
+    const hadSeen = seenMem !== false;
+    seenMem = false;
     try {
       SecureStore.deleteItemAsync(SEEN_KEY).catch(() => {});
     } catch {
       /* لا شيء */
     }
     for (const l of signOutListeners) l();
+    /* D-1128 — «من أنا» يُفعَّل بالأثر: يُبلَغ بزواله فيتوقّف */
+    if (hadSeen) emit();
   },
   clear() {
     const had = !!access;
@@ -191,6 +214,8 @@ export const session = {
     }
     access = msg.access as string;
     exp = msg.exp as number;
+    lastLife = Math.round(exp - Date.now() / 1000);
+    seenMem = true;
     try {
       SecureStore.setItem(SEEN_KEY, "1"); /* D-1075 — أثرٌ لا رمز */
     } catch {

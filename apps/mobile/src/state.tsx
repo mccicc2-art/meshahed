@@ -44,7 +44,12 @@ export function AppStateProvider({ children, fontsReady }: { children: React.Rea
   /* 🆕 Phase 11 · B1 — الرمزُ من الجسر لا من جلسةٍ مخزونة: «مَن أنا» (والثيمُ
      معه) يُجلب حين يحمل الغلافُ رمزَ وصولٍ، أي حين تُفتح شاشةٌ أصليّة. */
   const bridged = useSyncExternalStore(bridge.subscribe, bridge.has, bridge.has);
-  const on = !!session || bridged;
+  /* 🔴 D-1128 — **«من أنا» يُفعَّل بأثر الجلسة لا بالرمز الحاضر** (مسبارُ 1.12.0 مرّتين:
+     `me=none meStatus=pending/idle token=0` بعد حفظٍ ناجح): `has()` يرفض رمزاً باقيه دون ٣٠ث،
+     فكان الاستعلامُ معطَّلاً لا فاشلاً — لا يُطلب أصلاً، وهيكلُ الإعدادات ينتظر ما لن يأتي.
+     و`api()` يطلب الرمزَ بنفسه قبل النداء، فشرطُ الرمز هنا لم يكن يحمي شيئاً. */
+  const seen = useSyncExternalStore(bridge.subscribe, bridge.seen, bridge.seen);
+  const on = !!session || bridged || seen;
   const me = useQuery({
     queryKey: qk.tag("user:me:profile"),
     queryFn: async () => (await api<Me>("/api/v1/me")).data,

@@ -596,7 +596,6 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      {d ? <HomeCover url={d.header.cover_url} pos={d.header.cover_pos} /> : null}
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: pastCover ? tokens.bg : "transparent", borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
         <HomeTopBar onArt={onArt && !pastCover} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => openWeb("/messages")} onSignals={() => openWeb("/messages?tab=alerts")} onSettings={() => router.push("/settings")} />
       </Animated.View>
@@ -610,6 +609,11 @@ export function HomeScreen() {
         )
       ) : (
         <ScrollView ref={scroll} refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 10, paddingBottom: bottomPad }}>
+          {/* 🔴 D-1128 — **الغلافُ يمرّ مع المحتوى** لا ثابتٌ خلفه (تسجيلُ أحمد على «النهاري»، 1.12.0):
+              كان مطلقاً فوق الشاشة، فبقيت صورتُه الداكنةُ تحت خاناتِ «أسبوعك» الشفّافة بعد التمرير —
+              شريطٌ أسودُ على الفاتح، ويخفى على الداكن. داخلَ المحتوى يصعد معه كما في الويب؛
+              وهو أوّلُ ابنٍ فيُرسم كلُّ ما بعده فوقه. */}
+          <HomeCover url={d.header.cover_url} pos={d.header.cover_pos} />
           {/* صفُّ الترحيب وبطاقةُ الأرقام يقفان على الغلاف (D-836: الغلافُ يكبر بمقدارهما لا أكثر) */}
           <View style={{ minHeight: Math.max(0, COVER_SOLID - HEADER_H - 10) }}>
             <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => openWeb(d.header.username ? `/u/${d.header.username}` : "/profile")} onFollowers={() => setFollows("followers")} onFollowing={() => setFollows("following")} />

@@ -249,6 +249,8 @@ export function CustomizeScreen() {
         <>
           <Group label={t.custProfileHeader}>
             <Toggle icon="chart" label={t.custStatsShort} checked={profile.stats} onChange={() => setProfile({ ...profile, stats: !profile.stats })} />
+            {/* 🆕 D-1130 — نظيرُ الويب: بابُ «الإحصائيات» يُخفى وحدَه، ولا يُعرض والبطاقةُ مخفيّة */}
+            {profile.stats ? <Toggle icon="chart" label={t.custStatsLink} hint={t.custStatsLinkHint} checked={profile.statsLink} onChange={() => setProfile({ ...profile, statsLink: !profile.statsLink })} /> : null}
           </Group>
           <Group label={t.custTabsTitle}>
             <Row icon="grip" title={t.custArrange} subtitle={t.custSectionsHint} value={t.custShownN(visibleTabs.length)} onPress={() => setSheet("tabs")} />

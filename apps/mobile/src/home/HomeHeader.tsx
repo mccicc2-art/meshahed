@@ -149,25 +149,34 @@ export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: 
   const { tokens } = useApp();
   const stats = h.stats;
   if (!h.show_stats || stats.length === 0) return null;
-  const cols = stats.length === 4 ? 2 : stats.length;
-  const rows: typeof stats[] = [];
-  for (let i = 0; i < stats.length; i += cols) rows.push(stats.slice(i, i + cols));
+  /* 🆕 D-1129 — **أربعةٌ في صفٍّ واحد** (أحمد بلقطة: «إذا كانت ٤ أبغاها خط واحد»؛ كانت عمودين ×
+     سطرين — D-620). ربعُ العرض (~٨٧) لا يتّسع لأيقونةٍ ورقمٍ واسمٍ في سطر («120d Time» يُقصّ)، فالخانةُ
+     عند الأربعة **عموديّة**: الأيقونةُ والرقمُ فوق والاسمُ تحته — بالأحجام نفسِها. الاثنان والثلاثة كما هي. */
+  const stacked = stats.length === 4;
   /* D-1093 — بطاقةُ الأرقام على لون الصفحة (`bg`) بلا فواصل بين الخانات (أحمد بلقطة: «خلّ خلفيّتها سوداء
      بدل رصاصي وبدون خطوط بينهم»): وصفةُ D-1081 — الإطارُ الخارجيُّ الرفيع وحده يحدّها، و`bg` لا `#000`
      كي تصحّ `daylight`. الفراغُ بين الأرقام الثلاثة يفصلها وحدَه؛ خطٌّ فوقه كان يكرّر الفصل. */
   return (
     <View style={{ marginHorizontal: PAGE_PAD, marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
-      {rows.map((row, r) => (
-        <View key={r} style={{ flexDirection: "row" }}>
-          {row.map((s) => (
+      <View style={{ flexDirection: "row" }}>
+        {stats.map((s) =>
+          stacked ? (
+            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 2, paddingVertical: 11, opacity: pressed ? 0.7 : 1 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Icon name={s.icon as never} size={16} color={tokens.accent} />
+                <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"], lineHeight: 18 }}>{s.value}</Text>
+              </View>
+              <Text size={12} weight="500" muted numberOfLines={1} style={{ lineHeight: 14, maxWidth: "100%" }}>{s.label}</Text>
+            </Pressable>
+          ) : (
             <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 12, opacity: pressed ? 0.7 : 1 }]}>
               <Icon name={s.icon as never} size={16} color={tokens.accent} />
               <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"], lineHeight: 18 }}>{s.value}</Text>
               <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{s.label}</Text>
             </Pressable>
-          ))}
-        </View>
-      ))}
+          ),
+        )}
+      </View>
     </View>
   );
 }
