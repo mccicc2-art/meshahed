@@ -52,8 +52,13 @@ const NAMES = new Set([
   "search.open",
   "tab.switch",
   "boot.fresh",
+  /* 🆕 D-1128 — «قبل» K2: `gesture.jank` قيمتُه **عددُ إطاراتٍ** ضائعةٍ في سحب التبويبات (`dur` مدّتُه)،
+     و`token.life` قيمتُه **ثوانٍ** باقيةٌ في رمز الوصول لحظةَ يستلمه التطبيق. الخانةُ واحدةٌ والوحدةُ
+     من الاسم — استعلامُ النِّسب أعلاه يعمل عليهما كما هو، ويُقرأ رقمُهما بوحدته. */
+  "gesture.jank",
+  "token.life",
 ]);
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

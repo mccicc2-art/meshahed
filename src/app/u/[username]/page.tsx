@@ -1490,7 +1490,11 @@ export default async function PublicProfilePage({
                 `headerStats` لا رقماً مكتوباً، **فخانةٌ رابعةٌ غداً لا تُعيد كتابةَ الشبكة.** */}
             <div
               className="grid"
-              style={{ gridTemplateColumns: `repeat(${headerStats.length}, minmax(0, 1fr)) auto` }}
+              /* 🆕 D-1130 — **بابُ الإحصائيات خانةٌ مثلها لا ذيلٌ يأكل عرضها** (أحمد بلقطةٍ محوَّطة:
+                 «Sh… Mo… Ani…»): كان `auto` ينكمش على كلمته والأرقامُ تتقاسم الباقي فتُقصّ أسماؤها.
+                 الآن أرباعٌ سواء والخانةُ عموديّة — وجهُ بطاقة الرئيسية في التطبيق (D-1129). ومن
+                 أخفى البابَ (`statsLink`) عادت خاناتُه أفقيّةً على العرض كلِّه. */
+              style={{ gridTemplateColumns: `repeat(${headerStats.length + (prefs.statsLink ? 1 : 0)}, minmax(0, 1fr))` }}
             >
               {/* 🆕 **والخانةُ صارت باباً** (D-643): «١٦ مسلسلاً» رقمٌ
                   يُضغط، **ورقمٌ يُضغط ولا يفتح شيئاً وعدٌ فارغ** (D-217).
@@ -1498,13 +1502,23 @@ export default async function PublicProfilePage({
                   ⚠️ **و`replace` هنا أيضاً**: نفسُ حكم التبويبات — **بابٌ
                   داخلَ الصفحة لا يكدّس تاريخاً.** */}
               {headerStats.map((c) => {
-                const cellClass =
-                  "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
+                const cellClass = prefs.statsLink
+                  ? "relative w-full min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-3 hover:text-accent transition"
+                  : "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
                 /* 🆕 **وجهُ الخانة يُرسم مرّةً** ثمّ يلبس فعلَه (D-644):
                     المسلسلاتُ والأفلامُ تفتحان ورقةً، **والتقييماتُ رابطُ
                     تبويبٍ لأن تبويبَها قائمٌ أصلاً** — **ولا ورقةَ لما له
                     وجهةٌ في الصفحة.** */
-                const face = (
+                /* D-1130 — مع البابِ الخانةُ عموديّة: الأيقونةُ والرقمُ سطرٌ، والاسمُ تحته بمقاسه نفسِه (D-699) */
+                const face = prefs.statsLink ? (
+                  <>
+                    <span className="flex items-center gap-1.5">
+                      <Icon name={c.icon} size={18} style={{ color: "var(--accent)" }} className="shrink-0" />
+                      <span className="text-15 font-bold leading-none tabular-nums">{c.value}</span>
+                    </span>
+                    <span className="max-w-full text-14 text-muted leading-tight truncate">{c.label}</span>
+                  </>
+                ) : (
                   <>
                     <Icon
                       name={c.icon}
@@ -1546,6 +1560,7 @@ export default async function PublicProfilePage({
                   وهو بعينه ما تمنعه D-217. **ولصاحبها مداها الكامل
                   بتبويباته، ولزائره سطحُ العضو** (`/u/<user>/stats`)
                   **بما تسمح به دوالُّ `definer` وحدَه.** */}
+              {prefs.statsLink && (
               <Link
                 href={isMe ? "/stats" : `${base}/stats`}
                 /* ⚖️ 🆕 **وخطُّ الخانة الثالثة صار خطَّ أختيها** (D-676،
@@ -1557,21 +1572,26 @@ export default async function PublicProfilePage({
                    🔑 **والوزنُ يبقى `font-semibold`**: هو الفرقُ بين
                    **بابٍ يُضغط** وكلمةٍ تصف رقماً — **والمطلوبُ توحيدُ
                    المقاس لا محوُ الفرق.** */
-                className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
+                className="min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-3 text-14 font-semibold text-muted hover:text-accent transition"
               >
+                {/* 🆕 D-1130 — خانةٌ عموديّةٌ كأخواتها: رمزُ الوجهة وسهمُها فوق، واسمُها تحت */}
+                <span className="flex items-center gap-1">
+                  <Icon name="chart" size={18} style={{ color: "var(--accent)" }} className="shrink-0" />
+                  <Icon
+                    name="chevron-down"
+                    size={14}
+                    className="shrink-0 -rotate-90 rtl:rotate-90"
+                  />
+                </span>
                 {/* ⚖️ 🆕 **والكلمةُ أقصر، ومن الوجهة نفسِها** (D-676،
                     ذيلُ حكمه: «ولو فيه كلمة أقصر اكتبها») — **نظيرُ
                     D-675 في المكتبة حرفاً**: «Statistics» صارت
                     `statsPageTitle` **وهو اسمُ الصفحة التي يفتحها**
                     («الإحصائيات» / «Stats») — **ولا مفتاحَ جديد، ولا
                     اسمانِ لوجهةٍ واحدة** (D-030/D-145). */}
-                <span className="whitespace-nowrap">{t.statsPageTitle}</span>
-                <Icon
-                  name="chevron-down"
-                  size={14}
-                  className="shrink-0 -rotate-90 rtl:rotate-90"
-                />
+                <span className="max-w-full whitespace-nowrap leading-tight truncate">{t.statsPageTitle}</span>
               </Link>
+              )}
             </div>
           </div>
         )}

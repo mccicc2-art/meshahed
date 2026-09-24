@@ -1429,6 +1429,9 @@ const ar = {
   custLayout: "التنسيق",
   custPosterSize: "حجم الملصق",
   custStatsShort: "الأرقام",
+  /* D-1130 */
+  custStatsLink: "زر الإحصائيات",
+  custStatsLinkHint: "يظهر في آخر بطاقة الأرقام",
   custPosterS: "ملصقٌ صغير",
   custPosterM: "ملصقٌ متوسّط",
   custPosterL: "ملصقٌ كبير",
@@ -3253,6 +3256,8 @@ const en: Dict = {
   custLayout: "Layout",
   custPosterSize: "Poster size",
   custStatsShort: "Statistics",
+  custStatsLink: "Stats button",
+  custStatsLinkHint: "Shown at the end of the statistics card",
   custPosterS: "Small poster",
   custPosterM: "Medium poster",
   custPosterL: "Large poster",

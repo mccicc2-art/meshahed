@@ -116,6 +116,11 @@ export type VisitAudience = (typeof VISIT_AUDIENCES)[number];
 export interface ProfilePrefs {
   /** صفّ الأرقام الأربعة فوق المستوى */
   stats: boolean;
+  /**
+   * 🆕 **بابُ «الإحصائيات» في آخر بطاقة الأرقام** (D-1130، أحمد: «ستات عاليمين عطني إمكانية
+   * إضافتها أو حذفها»). ظاهرٌ افتراضاً — ما تفعله الصفحةُ اليوم (D-152). ويُطبَّق لكلِّ زائر.
+   */
+  statsLink: boolean;
   /** شريط المستوى */
   /** شارة عدد الزيارات على الغلاف */
   visits: boolean;
@@ -273,6 +278,7 @@ export const sectionKeyOf = {
 
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   stats: true,
+  statsLink: true,
   visits: true,
   /* **والافتراضيُّ «الجميع»** — **وهو ما كانت تفعله الصفحةُ فعلاً قبل
      وجود القائمة**، فلا يتبدّل شيءٌ لمن لم يختر (D-152). */
@@ -350,7 +356,7 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
   if (!raw || typeof raw !== "object") return d;
   const o = raw as Record<string, unknown>;
 
-  const bool = (k: "stats" | "visits" | "savedLists") =>
+  const bool = (k: "stats" | "statsLink" | "visits" | "savedLists") =>
     typeof o[k] === "boolean" ? (o[k] as boolean) : d[k];
 
   let order: ProfileSection[] = d.order;
@@ -371,6 +377,7 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
 
   return {
     stats: bool("stats"),
+    statsLink: bool("statsLink"),
     visits: bool("visits"),
     visitsWho: who,
     savedLists: bool("savedLists"),

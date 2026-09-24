@@ -185,6 +185,16 @@ export function ProfileCustomize({
           checked={prefs.stats}
           onChange={() => set({ ...prefs, stats: !prefs.stats })}
         />
+        {/* 🆕 D-1130 — بابُ «الإحصائيات» يُخفى وحدَه؛ ولا معنى له والبطاقةُ نفسُها مخفيّة */}
+        {prefs.stats && (
+          <ToggleRow
+            icon="chart"
+            label={t.custStatsLink}
+            hint={t.custStatsLinkHint}
+            checked={prefs.statsLink}
+            onChange={() => set({ ...prefs, statsLink: !prefs.statsLink })}
+          />
+        )}
         {/* 🗑️ ⚖️ **ومفتاحُ المستوى سقط معه** (D-807، حكمُ أحمد: «احذف
             نظام الليفل بالكامل»): **مفتاحٌ يضبط ما لا يُرسم وعدٌ بفعلٍ
             لا يقع** (D-217) — **وهو مصيرُ مفتاح الزيارات في D-584
