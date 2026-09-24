@@ -524,6 +524,15 @@ export default function Web() {
         <BottomNav
           active={navKey}
           onGo={(k) => {
+            /* 🔴 🆕 D-1115 — **الزائرُ يتصفّح الويبَ لا الشاشاتِ الأصليّة** (فيديو مختبِرٍ نزّل التطبيقَ للتوّ:
+               «مكتبتي» و«اكتشف» هيكلٌ رماديٌّ لا ينتهي). الشاشاتُ الأصليّةُ تقرأ `/api/v1` برمز الجلسة، ومن
+               لم يدخل قطّ لا رمزَ له — فتنتظر للأبد. وبابُ «تصفَّح أوّلاً» (D-886) وعدٌ بالتصفّح: فلمن لم يدخل
+               (`session.seen()` — أثرُ أوّل دخولٍ، D-1075) تفتح الخاناتُ صفحاتِ الويب التي تخدم الزائرَ أصلاً. */
+            if (!session.seen()) {
+              const guestTo = k === "library" ? "/library" : k === "news" ? "/news" : k === "search" ? "/search" : k === "home" ? "/" : "/people";
+              ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(guestTo)}):(location.href=${JSON.stringify(CONFIG.apiBase + guestTo)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + guestTo)};}})();true;`);
+              return;
+            }
             if (k === "library") {
               router.push("/library");
               return;
