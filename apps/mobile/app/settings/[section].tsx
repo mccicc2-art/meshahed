@@ -7,6 +7,7 @@ import { PrivacyScreen } from "../../src/settings/PrivacyScreen";
 import { NotificationsScreen, HelpScreen, AboutScreen, AccountScreen } from "../../src/settings/SmallScreens";
 import { ProfileScreen } from "../../src/settings/ProfileScreen";
 import { VerifyScreen } from "../../src/settings/VerifyScreen";
+import { CustomizeScreen } from "../../src/settings/CustomizeScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -23,6 +24,8 @@ const SCREENS = {
   /* 🆕 Phase 11-I · I3 — تعديلُ الملفّ (D-1106) والتوثيقُ (D-1107) صارا أصليّين */
   profile: ProfileScreen,
   verify: VerifyScreen,
+  /* 🆕 D-1112 — «الرئيسيّة والملفّ» صارت أصليّة؛ الانهيارُ يسقط إلى `/profile/settings/home` */
+  home: CustomizeScreen,
 } as const;
 
 /** صفحةُ الويب البديلة عند الانهيار — «تعديل الملف» مسارُه `/profile/edit` لا تحت `settings` */

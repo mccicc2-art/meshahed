@@ -109,8 +109,8 @@ export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | un
 
 /** «أين أشاهده» — رقاقةٌ تفتح ورقةَ المزوّدين (نسخةُ `WatchChip`) */
 /**
- * D-1020 — `icon`: أيقونةُ المنصّة وحدَها (مربّعٌ ٤٠) بدل زرّ «أين تشاهد» — للترويسة بترتيب
- * الويب (شعارُ المنصّة في أسفل يمين الصورة)؛ الضغطُ يفتح الورقةَ نفسَها.
+ * D-1020 — `icon`: صيغةُ الترويسة (أسفل يمين الصورة)؛ الضغطُ يفتح الورقةَ نفسَها.
+ * D-1111 — صارت رقاقةَ شاشةٍ بكلمة بدل شعار المنصّة الأولى.
  */
 export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefined; icon?: boolean }) {
   const { t, tokens, locale } = useApp();
@@ -123,9 +123,11 @@ export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefi
   return (
     <>
       {icon ? (
-        <Pressable onPress={() => setOpen(true)} accessibilityLabel={t.watchWhereTitle} hitSlop={6} style={{ width: 40, height: 40, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-          {first[0]?.logo_path ? <Image source={{ uri: `https://image.tmdb.org/t/p/w92${first[0].logo_path}` }} style={{ width: "100%", height: "100%" }} /> : null}
-        </Pressable>
+        /* D-1111 — **رقاقةُ شاشةٍ لا شعارُ منصّة** (أحمد اختار «E» من ستّة أشكال: «بدل هولو تظهر علامة
+           شاشة، اضغطها وتظهر المنصّات»): الشعارُ الواحد كان يوحي أن العملَ على منصّةٍ واحدة، **وهو غالباً
+           على أكثر** — والورقةُ نفسُها تفتح. **وهي `Chip` العائلة لا رقاقةٌ مرسومةٌ بيد** (D-948: رقاقةٌ
+           بشكلٍ آخر عيب)، **والاسمُ `watchWhereTitle` القائم** لا نصٌّ جديد. */
+        <Chip label={t.watchWhereTitle} active={false} onPress={() => setOpen(true)} leading={<Icon name="tv" size={14} color={tokens.muted} />} />
       ) : (
       <Pressable onPress={() => setOpen(true)} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingStart: 6, paddingEnd: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
         <View style={{ flexDirection: "row" }}>

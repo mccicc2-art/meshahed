@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useApp } from "../state";
 import { Text, Button } from "../ui";
-import { Icon } from "../icons";
+import { Icon, iconOr } from "../icons";
 import { Sheet } from "../library/Sheet";
 import { radius } from "../theme";
 import { HOME_SECTIONS, homeSectionMeta, type HomeSection } from "@/core/homePrefs";
@@ -15,11 +15,36 @@ import { HOME_SECTIONS, homeSectionMeta, type HomeSection } from "@/core/homePre
  * (وصفةُ الويب على الجوّال حرفاً). الحفظُ للمشترك (D-791): الخادمُ يرفض
  * `needsPlus` والشاشةُ تفتح `/plus`.
  */
-export function SectionOrderSheet({ order, onClose, onDone }: { order: HomeSection[]; onClose: () => void; onDone: (next: HomeSection[]) => void }) {
+/**
+ * 🆕 D-1112 — **الورقةُ نفسُها لكلِّ سجلٍّ يُرتَّب ويُخفى** (أقسامُ الرئيسيّة · خاناتُ الأرقام · تبويباتُ
+ * الملفّ · أقسامُ نظرته العامّة) — `SettingsArrangeSheet` الويبيّةُ واحدةٌ لأربعتها، **فورقتان هنا بشكلين
+ * عطلٌ** (القاعدة ٣). `min`/`max` حدّا خانات الأرقام (٢–٤): الإخفاءُ يتوقّف عند الأدنى، والإظهارُ عند الأعلى.
+ */
+export function ArrangeSheet<K extends string>({
+  title,
+  hint,
+  all,
+  picked: initial,
+  meta,
+  min = 1,
+  max,
+  onClose,
+  onDone,
+}: {
+  title: string;
+  hint: string;
+  all: readonly K[];
+  picked: K[];
+  meta: Record<K, { icon: string; label: string }>;
+  min?: number;
+  max?: number;
+  onClose: () => void;
+  onDone: (next: K[]) => void;
+}) {
   const { t, tokens } = useApp();
-  const meta = homeSectionMeta(t);
-  const [picked, setPicked] = useState<HomeSection[]>(order);
-  const hidden = HOME_SECTIONS.filter((k) => !picked.includes(k));
+  const [picked, setPicked] = useState<K[]>(initial);
+  const hidden = all.filter((k) => !picked.includes(k));
+  const full = max !== undefined && picked.length >= max;
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= picked.length) return;
@@ -34,24 +59,24 @@ export function SectionOrderSheet({ order, onClose, onDone }: { order: HomeSecti
       </View>
     </Pressable>
   );
-  const row = (k: HomeSection, i: number, shown: boolean) => (
+  const row = (k: K, i: number, shown: boolean) => (
     <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingStart: 12, paddingEnd: 4, borderRadius: radius.md, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, opacity: shown ? 1 : 0.55 }}>
-      <Icon name={meta[k].icon as never} size={18} color={shown ? tokens.accent : tokens.muted} />
+      <Icon name={iconOr(meta[k].icon, "list")} size={18} color={shown ? tokens.accent : tokens.muted} />
       <Text size={15} weight="600" numberOfLines={1} style={[{ flex: 1 }, shown ? null : { textDecorationLine: "line-through" }]}>{meta[k].label}</Text>
       {shown ? (
         <>
           {iconBtn("chevron-down", t.custMoveUp, () => move(i, -1), i === 0, true)}
           {iconBtn("chevron-down", t.custMoveDown, () => move(i, 1), i === picked.length - 1)}
-          {iconBtn("eye-off", t.custHide, () => setPicked(picked.filter((x) => x !== k)), picked.length <= 1)}
+          {iconBtn("eye-off", t.custHide, () => setPicked(picked.filter((x) => x !== k)), picked.length <= min)}
         </>
       ) : (
-        iconBtn("eye", t.custShow, () => setPicked([...picked, k]))
+        iconBtn("eye", t.custShow, () => setPicked([...picked, k]), full)
       )}
     </View>
   );
   return (
-    <Sheet title={t.custArrange} onClose={onClose}>
-      <Text size={12} muted style={{ paddingHorizontal: 16, marginBottom: 8 }}>{t.custOrderHint}</Text>
+    <Sheet title={title} onClose={onClose}>
+      <Text size={12} muted style={{ paddingHorizontal: 16, marginBottom: 8 }}>{hint}</Text>
       <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}>
         {picked.map((k, i) => row(k, i, true))}
         {hidden.map((k) => row(k, -1, false))}
@@ -61,4 +86,10 @@ export function SectionOrderSheet({ order, onClose, onDone }: { order: HomeSecti
       </View>
     </Sheet>
   );
+}
+
+/** ترتيبُ أقسام الرئيسيّة من رأس أقسامها — الورقةُ العامّةُ بسجلّ `HOME_SECTIONS` */
+export function SectionOrderSheet({ order, onClose, onDone }: { order: HomeSection[]; onClose: () => void; onDone: (next: HomeSection[]) => void }) {
+  const { t } = useApp();
+  return <ArrangeSheet title={t.custArrange} hint={t.custOrderHint} all={HOME_SECTIONS} picked={order} meta={homeSectionMeta(t)} onClose={onClose} onDone={onDone} />;
 }

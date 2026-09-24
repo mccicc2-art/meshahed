@@ -121,4 +121,8 @@ export type {
   ProfileImagePayload,
   VerifyPayload,
   VerifyBody,
+  CustomizePayload,
+  CustomizeSaveBody,
+  CustomizeSaveResult,
+  TemplatesBody,
 } from "@/core/contracts/settings";

@@ -73,7 +73,7 @@ export function SettingsIndexScreen() {
       </Group>
 
       <Group label={t.setGroupPersonalize}>
-        <Row icon="home" title={t.setHomeProfile} onPress={() => openWeb("/profile/settings/home")} busy={openWeb.busy === "/profile/settings/home"} />
+        <Row icon="home" title={t.setHomeProfile} onPress={() => go("home")} />
         <Row icon="palette" title={t.setAppearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>

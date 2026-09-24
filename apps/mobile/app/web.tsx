@@ -457,6 +457,9 @@ export default function Web() {
   const navKey: NavKey =
     path.startsWith("/library") ? "library"
     : path.startsWith("/news") || path.startsWith("/discover") ? "news"
+    /* 🆕 D-1114 — **التريلراتُ من «اكتشف» أينما فُتحت** (أحمد: «ظاهر إني في هوم مع إن التريلرات تعتبر من
+       اكتشف»): صفُّها يسكن «اكتشف» (D-955)، فالضوءُ لها لا للأصل — والرجوعُ يبقى إلى حيث جاء (`origin`). */
+    : path.startsWith("/trailers") ? "news"
     : path.startsWith("/people") || path.startsWith("/community") ? "people"
     : path.startsWith("/search") ? "search"
     /* 🔴 D-1035 — **صفحةٌ فُتحت من شاشةٍ أصليّة تُبقي خانتَها مضيئة** (بلاغُ أحمد بلقطة على 1.10.0: «دخلت

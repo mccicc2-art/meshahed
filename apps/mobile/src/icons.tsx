@@ -87,6 +87,11 @@ const ICONS = {
 } as const;
 
 export type IconName = keyof typeof ICONS;
+/** 🆕 D-1112 — أسماءُ الأيقونات في سجلّات النواة (`homePrefs`/`profilePrefs`) أسماءُ الويب؛ ما لا نظيرَ له
+    هنا (`grid`) يسقط إلى بديلٍ لا إلى صورةٍ فارغة */
+export function iconOr(name: string, fallback: IconName): IconName {
+  return name in ICONS ? (name as IconName) : fallback;
+}
 
 export function Icon({ name, size = 18, color }: { name: IconName; size?: number; color: string }) {
   return <Image source={ICONS[name]} style={{ width: size, height: size }} tintColor={color} contentFit="contain" />;

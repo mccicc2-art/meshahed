@@ -26,16 +26,17 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
   const cellW = Math.floor((width - PAGE_PAD * 2 - 6 * 4) / 7);
   return (
     <View>
-      <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
+      <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: entries.length === 0 ? 2 : 12 }}>
         <Pressable onPress={onCalendar} accessibilityRole="link" style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
           <Icon name="calendar" size={18} color={tokens.muted} />
           <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekTitle}</Text>
           <Text size={16} muted>›</Text>
         </Pressable>
       </View>
-      <Text size={12} muted style={{ paddingHorizontal: PAGE_PAD, marginBottom: 12 }}>
-        {entries.length === 0 ? `${t.weekSub} ${t.weekNothing}` : t.weekSub}
-      </Text>
+      {/* D-1113 — الوصفُ سقط؛ سطرُ «لا حلقات هذا الأسبوع» وحدَه حين يفرغ الأسبوع (يفرّق الفراغَ عن التحميل) */}
+      {entries.length === 0 ? (
+        <Text size={12} muted style={{ paddingHorizontal: PAGE_PAD, marginBottom: 12 }}>{t.weekNothing}</Text>
+      ) : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cellW + 4} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 4 }}>
         {days.map((d, i) => {
           const list = byDay.get(d.date) ?? [];
