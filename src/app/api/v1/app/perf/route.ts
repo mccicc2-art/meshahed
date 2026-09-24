@@ -24,7 +24,8 @@ import { APP_UA_TAG } from "@/core/platform";
  *   select at, route, message from public.runtime_errors
  *   where kind = 'perf' order by at desc limit 50;
  */
-const NAMES = new Set(["library.open", "library.shelf.open", "library.flatgrid", "tab.arm", "discover.open", "coldstart.library"]);
+/* 🆕 D-1118 — `title.open` (من فتح الشاشة إلى أوّل بيانات) · `season.open` (من فتح الموسم إلى حلقاته) */
+const NAMES = new Set(["library.open", "library.shelf.open", "library.flatgrid", "tab.arm", "discover.open", "coldstart.library", "title.open", "season.open"]);
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;

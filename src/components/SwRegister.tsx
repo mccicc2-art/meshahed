@@ -27,6 +27,21 @@ export function SwRegister({ build }: { build?: string }) {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+    /* 🔴 🆕 D-1120 — **داخل غلاف التطبيق لا عاملَ خدمة** (لقطةُ أحمد من «المجتمع»: شريطان سفليّان والترويسةُ
+       في مكانها القديم). يومَ نشراتٍ متتالية وخادمٍ بطيء، مهلةُ التنقّل (٣٫٥ث في `sw.js`) أعطت HTML نشرةٍ
+       سابقة **شظاياه JS حُذفت** — فلا ترطيبَ: لا يُخفى شريطُ الويب (`data-native-nav` يُكتب في تأثير) ولا
+       يُقرأ `data-app` (لم يكن في تلك النسخة). **التطبيقُ لا يحتاج نسخةً احتياطيّةً من HTML**: شاشاتُه
+       الأصليّة تعمل من ملفّ كاشها، وصفحةٌ ويبيّةٌ منتظَرةٌ ثانيتين خيرٌ من صفحةٍ ميّتة. فيُلغى التسجيلُ
+       وتُمسح كاشاتُه؛ والمتصفّحُ باقٍ على ما كان (الشبكاتُ الضعيفةُ هناك هي من يحتاجه). الوسمُ من الخادم (D-1115). */
+    if (document.documentElement.getAttribute("data-app") === "1") {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .then(() => (typeof caches !== "undefined" ? caches.keys() : Promise.resolve([] as string[])))
+        .then((keys) => Promise.all(keys.filter((k) => k.startsWith("loopz-")).map((k) => caches.delete(k))))
+        .catch(() => {});
+      return;
+    }
 
     // أوّل تثبيتٍ (لا مُتحكّم سابق) لا يُعيد التحميل؛ تبديلُ عاملٍ قائمٍ
     // بآخر جديد هو ما يستحقّ إعادةَ تحميلٍ واحدة
@@ -67,7 +82,10 @@ export function SwRegister({ build }: { build?: string }) {
     let reg: ServiceWorkerRegistration | undefined;
     const register = async () => {
       try {
-        reg = await navigator.serviceWorker.register("/sw.js");
+        /* 🆕 D-1120 — داخل الغلاف (`data-app` من الخادم) عاملٌ لا يعرض صفحةً محفوظة: الوسمُ في العنوان
+           لأنّ عاملَ الخدمة في WebView لا يرى وكيلَ الصفحة. عنوانٌ آخر = تسجيلٌ يحلّ محلَّ القديم في النطاق نفسِه. */
+        const inApp = document.documentElement.getAttribute("data-app") === "1";
+        reg = await navigator.serviceWorker.register(inApp ? "/sw.js?app=1" : "/sw.js");
       } catch {
         /* الكاش تحسين لا التزام */
       }
