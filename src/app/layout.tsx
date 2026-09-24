@@ -17,6 +17,7 @@ import { isLoopzApp } from "@/core/platform";
 import { SessionBridge } from "@/components/SessionBridge";
 import { NativeLibraryGate } from "@/components/NativeLibraryGate";
 import { getT } from "@/lib/locale";
+import { OLD_ENGINE_CSS, OLD_ENGINE_SCRIPT, OldEngineNotice } from "@/components/OldEngineNotice";
 import { getDict, isRtl } from "@/core/i18n";
 import { themeById, themeCss } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/core/fontPrefs";
@@ -219,12 +220,17 @@ export default async function RootLayout({
               "document.documentElement.setAttribute('data-standalone','1')}catch(e){}",
           }}
         />
+        {/* 🆕 D-1116 — محرّكٌ أقدمُ من Chrome 111 يُسقط تنسيقَ Tailwind v4 كلَّه: السطرُ يسأله قبل أوّل
+            رسمة، والقاعدةُ (بلا طبقات) تُظهر «متصفّحُ جهازك قديم» مكانَ الصفحة. ثابتان بلا مدخل. */}
+        <script dangerouslySetInnerHTML={{ __html: OLD_ENGINE_SCRIPT }} />
+        <style dangerouslySetInnerHTML={{ __html: OLD_ENGINE_CSS }} />
         {/* جافاسكربت معطّلة؟ شاشةُ الإقلاع لن تجد من يذيبها — فلا تُرسم */}
         <noscript>
           <style>{`#lz-launch{display:none}`}</style>
         </noscript>
       </head>
       <body className="min-h-full flex flex-col">
+        <OldEngineNotice ar={locale === "ar"} />
         {/* شاشةُ الإقلاع — في HTML الأوّل نفسِه فتُرسم مع أوّل بايت،
             قبل أيّ جافاسكربت أو شبكة. سكربتُ الإذابة في ذيل القشرة
             أدناه، وأنماطُها في globals.css. التنقّلُ الداخليُّ لا يعيد
