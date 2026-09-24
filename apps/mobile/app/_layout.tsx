@@ -10,6 +10,10 @@ import { queryClient } from "../src/api";
 import { applyDirection, currentLocale } from "../src/i18n";
 import { useAppFonts } from "../src/fonts";
 import { startCachePersist } from "../src/cachePersist";
+import { statusBarStyleOf } from "../src/theme";
+/* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
+import "../src/ota";
+import "../src/perfMarks";
 
 /**
  * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
@@ -41,13 +45,14 @@ export default function RootLayout() {
 
 function Shell() {
   const { loading } = useAuth();
-  const { tokens } = useApp();
+  const { tokens, themeId } = useApp();
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync().catch(() => {});
   }, [loading]);
   return (
     <>
-      <StatusBar style="light" />
+      {/* D-1125 — أيقوناتُ الشريط تتبع الثيم: البيضاءُ على «النهاري» لا تُرى */}
+      <StatusBar style={statusBarStyleOf(themeId)} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: tokens.bg },

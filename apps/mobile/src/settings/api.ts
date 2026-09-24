@@ -92,7 +92,7 @@ export function useOpenWeb() {
   return Object.assign(open, { busy });
 }
 
-/** إبطالُ «من أنا» بعد تبدّل الثيم — الرموزُ تتبع `me.theme` (state.tsx) */
+/** إبطالُ «من أنا» بعد تبدّل الثيم — كي يصحّح `themePref` من الخادم إن اختلف (state.tsx) */
 export function invalidateMe() {
   void queryClient.invalidateQueries({ queryKey: qk.tag("user:me:profile") });
 }

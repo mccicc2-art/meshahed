@@ -31,6 +31,7 @@ import { usePullRefresh } from "../pullRefresh";
 import { haptic } from "../haptics";
 import { capCards } from "@/core/cardCount";
 import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
+import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { HomeCover, HomeTopBar, HomeGreeting, HomeStats, COVER_SOLID } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
@@ -62,6 +63,18 @@ export function HomeScreen() {
   const navH = navHeight(insets.bottom);
   const { home, extras, backdropOf } = useHome();
   const d = home.data ?? null;
+  /* K1 — `home.open`: من التركيب إلى أوّل رسمٍ فيه حمولة، و`cached` يفصل الكاشَ عن الشبكة كما في المكتبة.
+     والإقلاعُ صار إلى الرئيسيّة ⇒ `coldstart.home` هنا، وهو يُسكت `coldstart.library` الذي صار يقيس «متى
+     فُتحت المكتبةُ أوّلَ مرّة» لا الإقلاع */
+  const [endOpen] = useState(() => span("home.open", { cached: qc.getQueryData(HOME_KEY) ? 1 : 0 }));
+  useEffect(() => {
+    if (!d) return;
+    afterPaint(() => {
+      endOpen();
+      coldStartOnce("coldstart.home");
+    });
+  }, [d, endOpen]);
+  useEffect(() => tabLanded("home"), []);
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
     if (d) warmDiscoverOnce();

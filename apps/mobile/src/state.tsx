@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "./api";
 import { useAuth } from "./auth";
 import { currentLocale, dictFor, webLocale } from "./i18n";
-import { tokensOf, type Tokens } from "./theme";
+import { themePref, tokensOf, type Tokens } from "./theme";
 import { fontPrefs } from "./fontScale";
 import type { Dict, Locale } from "@/core/i18n";
 
@@ -30,12 +30,12 @@ export type Me = {
   font_content?: string;
 } | null;
 
-type AppState = { locale: Locale; t: Dict; tokens: Tokens; me: Me; meLoading: boolean; fontsReady: boolean };
+type AppState = { locale: Locale; t: Dict; tokens: Tokens; themeId: string | null; me: Me; meLoading: boolean; fontsReady: boolean };
 const Ctx = createContext<AppState | null>(null);
 
 /**
  * حالةُ التطبيق الواحدة: اللغةُ والقاموسُ والثيمُ ومن أنا.
- * **الثيمُ يتبع الملفَّ** (`me.theme`) — وقبل وصوله الافتراضيُّ، لا وميض.
+ * **الثيمُ من الجهاز** (`themePref`) و«من أنا» يصحّحه — فلا وميضَ عند الإقلاع ولا لمسةَ بلا أثر.
  */
 export function AppStateProvider({ children, fontsReady }: { children: React.ReactNode; fontsReady: boolean }) {
   const { session } = useAuth();
@@ -56,16 +56,25 @@ export function AppStateProvider({ children, fontsReady }: { children: React.Rea
   useEffect(() => {
     if (fu && fc) fontPrefs.set(fu, fc);
   }, [fu, fc]);
+  /* D-1125 — الثيمُ من الجهاز أوّلاً؛ و«من أنا» يصحّحه حين تتبدّل قيمتُه هو (من الويب أو جهازٍ آخر أو
+     بعد الحفظ). الاعتمادُ على القيمة لا على الكائن: لمسةٌ جديدةٌ لا يعيدها «من أنا» القديمُ إلى ما كان */
+  const localTheme = useSyncExternalStore(themePref.subscribe, themePref.get, themePref.get);
+  const meTheme = me.data?.theme;
+  useEffect(() => {
+    if (meTheme) themePref.set(meTheme);
+  }, [meTheme]);
+  const themeId = localTheme ?? meTheme ?? null;
   const value = useMemo<AppState>(
     () => ({
       locale,
       t: dictFor(locale),
-      tokens: tokensOf(me.data?.theme),
+      tokens: tokensOf(themeId),
+      themeId,
       me: me.data ?? null,
       meLoading: on && me.isLoading,
       fontsReady,
     }),
-    [locale, me.data, me.isLoading, on, fontsReady],
+    [locale, me.data, me.isLoading, on, fontsReady, themeId],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,4 +1,5 @@
-import { DEFAULT_THEME, themeById, type Theme } from "@/core/themes";
+import * as SecureStore from "expo-secure-store";
+import { DEFAULT_THEME, THEMES, themeById, themeScheme, type Theme } from "@/core/themes";
 
 /**
  * ====== الثيمُ — tokens من النواة، لا NativeWind ======
@@ -69,3 +70,44 @@ export const radius = { sm: 8, md: 12, lg: 16, control: 10, card: 14, sheet: 22,
  */
 export const SHELL_BG = tokensOf(null).bg;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
+
+/**
+ * ====== الثيمُ المختارُ على الجهاز — D-1125 ======
+ *
+ * **لماذا**: الألوانُ كانت تتبع `me.theme` وحده، فإن لم يتبدّل «من أنا» (رمزٌ غائبٌ من الـWebView،
+ * أو طلبٌ متوقّف) حُفظ الثيمُ في الخادم ولم يتبدّل لونٌ أمام صاحبه — بلاغُ أحمد بتسجيلٍ على 1.11.15
+ * بعد أن لم يُصلحه D-1121. الآن كحجم الخطّ (D-1105): يُلبَس لحظةَ اللمس، ويُحفظ هنا، ويُقرأ تزامنيّاً
+ * عند الإقلاع فلا تُرسم الألوانُ الافتراضيّةُ ثمّ تقفز؛ و«من أنا» يصحّحه إن تغيّر من الويب أو جهازٍ آخر.
+ */
+const THEME_KEY = "loopz.theme";
+const known = (v: unknown): string | null => (typeof v === "string" && THEMES.some((t) => t.id === v) ? v : null);
+let themeId: string | null = (() => {
+  try {
+    return known(SecureStore.getItem(THEME_KEY));
+  } catch {
+    return null;
+  }
+})();
+const themeListeners = new Set<() => void>();
+
+export const themePref = {
+  get(): string | null {
+    return themeId;
+  },
+  set(id: unknown) {
+    const next = known(id);
+    if (!next || next === themeId) return;
+    themeId = next;
+    for (const l of themeListeners) l();
+    SecureStore.setItemAsync(THEME_KEY, next).catch(() => {});
+  },
+  subscribe(l: () => void): () => void {
+    themeListeners.add(l);
+    return () => themeListeners.delete(l);
+  },
+};
+
+/** شريطُ حالة الهاتف: أيقوناتٌ داكنةٌ على الثيم الفاتح — وإلّا اختفت الساعةُ والبطاريّة في «النهاري» */
+export function statusBarStyleOf(themeId: string | null | undefined): "light" | "dark" {
+  return themeScheme(themeById(themeId)) === "light" ? "dark" : "light";
+}

@@ -17,6 +17,7 @@ import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, Tail, TitleRow } from "./SearchRows";
 import { MIN_QUERY, useDebounced, useSearch } from "./useSearch";
+import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 
 /**
@@ -47,6 +48,13 @@ export function SearchScreen() {
   const insets = useSafeAreaInsets();
   const navH = navHeight(insets.bottom);
   const inputRef = useRef<TextInput>(null);
+
+  /* K1 — `search.open`: البحثُ يُفتح على حقلٍ لا بيانات، فالمقياسُ من التركيب إلى أوّل رسم */
+  useEffect(() => {
+    coldStartVoid();
+    tabLanded("search");
+    afterPaint(span("search.open"));
+  }, []);
 
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<SearchScope>("all");

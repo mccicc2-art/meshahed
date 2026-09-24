@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
-import Constants from "expo-constants";
 import { api } from "./api";
+import { BUILD_TAG } from "./ota";
 import { shell, type NativeRoot } from "./shell";
 import { Button, Text } from "./ui";
 import { SHELL_BG, space, tokensOf } from "./theme";
@@ -28,7 +28,6 @@ import { currentLocale } from "./i18n";
  * فيخسر المكدّس — وهو العطلُ نفسُه بوجهٍ آخر. كلُّ مسارٍ أصليّ (`library` ·
  * `discover` · `title`) يلفّ نفسَه ويقول أين يهرب.
  */
-const APP_VERSION = Constants.expoConfig?.version ?? "0";
 const ACCENT = tokensOf(null).accent;
 
 const FALLBACK = {
@@ -66,7 +65,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         screen: this.props.screen,
         message: `${error.name}: ${error.message}`,
         stack: (info.componentStack ?? error.stack ?? "").split("\n").slice(0, 8).join("\n"),
-        version: APP_VERSION,
+        version: BUILD_TAG,
       },
     }).catch(() => {});
     this.escape();

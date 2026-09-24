@@ -1,8 +1,8 @@
 import { AppState, Platform } from "react-native";
-import Constants from "expo-constants";
 import { launchT0 } from "./perf";
-import { api } from "./api";
+import { api, queryClient } from "./api";
 import { session } from "./session";
+import { BUILD_TAG } from "./ota";
 
 /**
  * ====== علاماتُ الأداء في الشاشات الأصليّة — Phase 11-F · F0 (D-1024) ======
@@ -30,14 +30,19 @@ export type PerfName =
   | "coldstart.library"
   /* 🆕 D-1118 — بطءُ صفحة العمل والمواسم يُقاس لا يُخمَّن */
   | "title.open"
-  | "season.open";
+  | "season.open"
+  /* Phase 11-K · K1 — خطُّ الأساس قبل نقل الإيماءات والتبويبات */
+  | "home.open"
+  | "coldstart.home"
+  | "search.open"
+  | "tab.switch"
+  | "boot.fresh";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
 
 const FLUSH_MS = 30_000;
 const MAX_BUFFER = 40;
-const APP_VERSION = Constants.expoConfig?.version ?? "0";
 const MODEL = Platform.OS === "android" ? String((Platform.constants as { Model?: string }).Model ?? "android") : Platform.OS;
 
 let buffer: Mark[] = [];
@@ -54,7 +59,7 @@ function flush() {
   const marks = buffer;
   buffer = [];
   lastFlush = Date.now();
-  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: APP_VERSION, model: MODEL } }).catch(() => {});
+  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: BUILD_TAG, model: MODEL } }).catch(() => {});
 }
 
 export function mark(name: PerfName, ms: number, extra?: Extra) {
@@ -82,7 +87,7 @@ export function afterPaint(fn: () => void) {
 
 /** الإقلاعُ البارد إلى أوّل شاشةٍ أصليّة — يُكتب مرّةً في عمر العمليّة */
 let coldDone = false;
-export function coldStartOnce(name: "coldstart.library") {
+export function coldStartOnce(name: "coldstart.library" | "coldstart.home") {
   if (coldDone) return;
   coldDone = true;
   mark(name, performance.now() - launchT0);
@@ -91,6 +96,45 @@ export function coldStartOnce(name: "coldstart.library") {
 export function coldStartVoid() {
   coldDone = true;
 }
+
+/* D-1125 — الدفعةُ لا تُرسل بلا رمز (القياسُ لا يستحقّ طلبَ رمزٍ من الـWebView)، فكانت تبقى معلّقةً
+   إلى علامةٍ تالية — ولم تصل من 1.11.15 علامةٌ واحدة. تُرسل الآن لحظةَ يعود الرمز. */
+session.subscribe(() => {
+  if (buffer.length > 0 && session.has()) flush();
+});
+
+/**
+ * ====== ضغطةُ تبويب ⇒ الشاشةُ مرسومة (`tab.switch`) ======
+ * الشريطُ يسجّل الوجهةَ ووقتَها، والشاشةُ الجذرُ تعلن وصولَها بعد أوّل رسم. وصولٌ لا
+ * يطابق الوجهة (رجوعٌ، أو بابٌ ويبيّ) لا يُكتب — ولا ضغطةٌ أقدمُ من ١٠ ثوانٍ.
+ */
+let pendingTab: { to: string; t0: number } | null = null;
+export function tabPressed(to: string) {
+  pendingTab = { to, t0: performance.now() };
+}
+export function tabLanded(key: string) {
+  const p = pendingTab;
+  if (!p || p.to !== key) return;
+  pendingTab = null;
+  afterPaint(() => {
+    const ms = performance.now() - p.t0;
+    if (ms < 10_000) mark("tab.switch", ms, { tab: key });
+  });
+}
+
+/**
+ * ====== من الإقلاع إلى أوّل بياناتٍ حيّة (`boot.fresh`) ======
+ * الكاشُ المحفوظ يرسم الشاشةَ قبل الشبكة، فـ`home.open` وحدَه لا يقول متى صارت
+ * البياناتُ حقيقيّة. أوّلُ استعلامٍ ينجح من الشبكة (لا من الاستعادة — تلك `setState`
+ * لا `success`) هو اللحظة — وهو المقياسُ الذي تُحكم به K4.
+ */
+let freshDone = false;
+const unsubFresh = queryClient.getQueryCache().subscribe((e) => {
+  if (freshDone || e.type !== "updated" || e.action.type !== "success" || e.action.manual) return;
+  freshDone = true;
+  mark("boot.fresh", performance.now() - launchT0);
+  queueMicrotask(unsubFresh);
+});
 
 AppState.addEventListener("change", (s) => {
   if (s !== "active") flush();

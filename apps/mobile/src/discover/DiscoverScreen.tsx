@@ -23,7 +23,7 @@ import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
-import { coldStartVoid, span } from "../perfMarks";
+import { coldStartVoid, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
@@ -135,6 +135,7 @@ export function DiscoverScreen() {
   /* F0 (D-1024) — `discover.open`: من تركيب الشاشة إلى وصول آخر صفٍّ منسَّقٍ في تبويب الفتح.
      و«اكتشف» فُتحت أوّلاً ⇒ الإقلاعُ البارد ليس «إلى المكتبة» فلا يُسجَّل باسمها. */
   const [openTab] = useState<Tab>(memory.tab);
+  useEffect(() => tabLanded("news"), []);
   const [endOpen] = useState(() => {
     coldStartVoid();
     return span("discover.open", { tab: memory.tab });

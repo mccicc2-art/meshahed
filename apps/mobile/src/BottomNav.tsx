@@ -1,4 +1,5 @@
 import React from "react";
+import { tabPressed } from "./perfMarks";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
@@ -77,7 +78,10 @@ export function BottomNav({ active, onGo }: { active: NavKey; onGo: (key: NavKey
         return (
           <Pressable
             key={tb.key}
-            onPress={() => onGo(tb.key)}
+            onPress={() => {
+              tabPressed(tb.key);
+              onGo(tb.key);
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={label[tb.key]}

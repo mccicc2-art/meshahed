@@ -1,10 +1,12 @@
 import React, { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useApp, type Me } from "../state";
-import { queryClient, qk } from "../api";
+import { api, queryClient, qk } from "../api";
+import { session } from "../session";
+import { BUILD_TAG } from "../ota";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { radius } from "../theme";
+import { radius, themePref } from "../theme";
 import { haptic } from "../haptics";
 import { webLocale } from "../i18n";
 import type { ToastHostRef } from "../HoldHost";
@@ -24,7 +26,7 @@ import type { FontBody, LocaleBody, ThemeBody } from "../contracts";
  * • اللغة: البابُ يكتب الكوكي والعمود، **والتطبيقُ يبدّل نفسَه بـ`webLocale.set`**
  *   (D-946 + 1.11.7: يعيد تحميلَ JS إن انقلب الاتّجاه) — فالصفحةُ تحت والشاشاتُ
  *   الأصليّةُ بلغةٍ واحدة.
- * • الثيم: يُطبَّق لحظةَ اللمس على التطبيق كلِّه (الرموزُ تتبع `me.theme`) —
+ * • الثيم: يُطبَّق لحظةَ اللمس على التطبيق كلِّه (الرموزُ تتبع `themePref` على الجهاز) —
  *   اللوحُ لا يُغلق عند الاختيار ليُجرَّب الثاني والثالث. المقفولُ للبلس نجمةٌ
  *   ويفتح بابَ البلس (D-633/D-791) — والحارسُ في الخادم لا هنا.
  * • الخطّ: يُحفظ للحساب والصفحةُ تتبعه؛ ⚠️ **الشاشاتُ الأصليّةُ لا تكبر به بعد**
@@ -38,6 +40,8 @@ export function AppearanceScreen() {
   const openWeb = useOpenWeb();
   const [open, setOpen] = useState<"lang" | "theme" | "ui" | "content" | null>(null);
   const [busy, setBusy] = useState(false);
+  const tokensRef = useRef(tokens);
+  tokensRef.current = tokens;
   const fail = () => toast.current?.say(t.errSaveShort);
   const toggle = (k: typeof open) => setOpen((v) => (v === k ? null : k));
 
@@ -67,18 +71,21 @@ export function AppearanceScreen() {
     if (id === s.appearance.theme) return;
     haptic.pick();
     setBusy(true);
-    /* 🔴 🆕 D-1121 — **الثيمُ يُلبَس لحظةَ اللمس لا بعد رحلتين** (أحمد بتسجيل: «الثيمات ما تشتغل» — والقاعدةُ
-       تُثبت أن «Ocean» حُفظ في ثانيته). الألوانُ تتبع `me.theme`، و`me` لا يتبدّل إلا بعد أن يعود الحفظُ **ثمّ**
-       يعود `/api/v1/me` — رحلتان على خادمٍ بطيءٍ ذلك اليوم، فبدا اللمسُ بلا أثر. الآن `me` يُكتب فوراً (كما
-       يفعل حجمُ الخطّ، D-1105)، ويعود القديمُ إن فشل الحفظ أو طُلب بلس. */
+    /* الثيمُ يُلبَس لحظةَ اللمس من مخزن الجهاز، و`me` يُكتب معه كي لا يعيده «من أنا» القديم؛ ويعود
+       الاثنان إن فشل الحفظ أو طُلب بلس */
     const meBefore = queryClient.getQueryData<Me>(qk.tag("user:me:profile"));
+    /* D-1125 — اللونُ من مخزن الجهاز لحظةَ اللمس، لا من «من أنا» (الذي قد لا يتبدّل أبداً إن غاب الرمز) */
+    const themeBefore = themePref.get() ?? s.appearance.theme;
+    themePref.set(id);
     if (meBefore) queryClient.setQueryData<Me>(qk.tag("user:me:profile"), (m) => (m ? { ...m, theme: id } : m));
     const out = await saveSetting<{ theme: string; needsPlus?: true }>("/api/v1/me/settings/theme", { theme: id } satisfies ThemeBody, (x) => ({ ...x, appearance: { ...x.appearance, theme: id } }), invalidateMe);
     setBusy(false);
     if (!out || out.needsPlus) {
+      themePref.set(themeBefore);
       if (meBefore) queryClient.setQueryData<Me>(qk.tag("user:me:profile"), () => meBefore);
       if (out?.needsPlus) patchSettings((x) => ({ ...x, appearance: { ...x.appearance, theme: meBefore?.theme ?? x.appearance.theme } }));
     }
+    if (out && !out.needsPlus) probeTheme(id, tokensRef);
     if (!out) return fail();
     if (out.needsPlus) openWeb("/plus");
   }
@@ -164,4 +171,24 @@ export function AppearanceScreen() {
       )}
     </SettingsScreen>
   );
+}
+
+/**
+ * ====== مسبارُ الثيم — مؤقّت (D-1125) ======
+ * سببُ بلاغ 1.11.15 لم يُثبت بالكود وحده: «من أنا» غائب؟ أم لم يتبدّل؟ أم الرمزُ مفقود؟ بعد أوّل حفظٍ
+ * ناجحٍ في الجلسة، وبعد ثانيتين، يُكتب سطرٌ واحدٌ في سجلّ الأعطال بما رآه التطبيقُ فعلاً — فيُحسم السببُ
+ * من تجربةٍ واحدة. **يُحذف بعد قراءته.**
+ */
+let probed = false;
+function probeTheme(picked: string, tokensRef: { current: { bg: string } }) {
+  if (probed) return;
+  probed = true;
+  setTimeout(() => {
+    const key = qk.tag("user:me:profile");
+    const me = queryClient.getQueryData<Me>(key);
+    const st = queryClient.getQueryState(key);
+    const ageS = st?.dataUpdatedAt ? Math.round((Date.now() - st.dataUpdatedAt) / 1000) : -1;
+    const message = `ThemeProbe picked=${picked} pref=${themePref.get() ?? "-"} me=${me ? (me.theme ?? "null") : "none"} meStatus=${st?.status ?? "-"}/${st?.fetchStatus ?? "-"} meAge=${ageS}s token=${session.has() ? 1 : 0} bg=${tokensRef.current.bg}`;
+    void api("/api/v1/app/crash", { method: "POST", body: { screen: "settings", message, version: BUILD_TAG } }).catch(() => {});
+  }, 2000);
 }

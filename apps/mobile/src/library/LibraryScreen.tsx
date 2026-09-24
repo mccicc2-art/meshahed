@@ -20,7 +20,7 @@ import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
-import { afterPaint, coldStartOnce, span } from "../perfMarks";
+import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { BottomNav, navHeight } from "../BottomNav";
 import { OneTimeHint } from "./OneTimeHint";
@@ -118,6 +118,7 @@ export function LibraryScreen() {
   /* F0 (D-1024) — `library.open`: من تركيب الشاشة إلى أوّل تخطيطٍ للوحٍ فيه بيانات. و`cached`
      يقول إن كانت البياناتُ في الكاش لحظةَ التركيب — فيُقرأ أثرُ F2 من الرقم نفسِه. */
   const [endOpen] = useState(() => span("library.open", { cached: queryClient.getQueryData(qk.tag("me:library")) ? 1 : 0 }));
+  useEffect(() => tabLanded("library"), []);
   const onPaneReady = useCallback(() => {
     endOpen();
     coldStartOnce("coldstart.library");

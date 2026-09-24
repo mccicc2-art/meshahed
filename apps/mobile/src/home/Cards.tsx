@@ -19,10 +19,8 @@ const VEIL = require("../../assets/poster-veil.png");
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣ — كان ×١٫٥ حتى D-1084 ثمّ ×١٫٣٦؛
-    المعاملُ لا الكثافة يصغر، فتبقى صفوفُ الملصقات كما هي والنسبةُ تتبع الكثافةَ كما كانت.
-    ⚖️ 🆕 D-1117 — **×١٫٣ كالويب** (`continueCardBox`، D-1109): أحمد بلقطةٍ من الرئيسيّة الأصليّة: «مو نفس
-    الأبعاد اللي اتفقنا عليها» ثمّ «نفذ». المقاسُ المتّفقُ عليه واحدٌ للسطحين؛ العرضُ باقٍ (`BACKDROP_W`، D-1084). */
+/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣ كالويب (`continueCardBox`) — مشتقٌّ من الملصق فيتبع
+    الكثافة. والعرضُ `BACKDROP_W` ٢٢٠ مثله: مقاسٌ واحدٌ للسطحين طولاً وعرضاً. */
 export const continueCardH = (posterW: number) => Math.round(posterW * 1.3);
 
 export const ContinueCard = memo(function ContinueCard({
@@ -123,10 +121,12 @@ export const ContinueCard = memo(function ContinueCard({
           { width: BACKDROP_W, height: continueCardH(posterW), borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.98 : 1 }] },
         ]}
       >
-        {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={26} color={tokens.muted} /></View>}
+        {/* `top`: الصورةُ الأطولُ من البطاقة تُقصّ من أسفلها تحت الحجاب، لا من رأسها */}
+        {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={26} color={tokens.muted} /></View>}
         {/* `from-black/85 via-black/25` — حجابُ الملصق نفسُه ممدوداً على نصف البطاقة */}
         <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "60%" }} contentFit="fill" />
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 14 }}>
+        {/* السطرُ الثاني باقٍ (أيُّ حلقةٍ تالية لا يقولها الشريط)، والكتلةُ أعلى بـ٦ عن الشريط كـ`pb-5` في الويب */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 20 }}>
           {!isShow ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
               <Icon name="list" size={11} color={tokens.accent} />
