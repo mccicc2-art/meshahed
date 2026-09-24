@@ -1503,20 +1503,23 @@ export default async function PublicProfilePage({
                   داخلَ الصفحة لا يكدّس تاريخاً.** */}
               {headerStats.map((c) => {
                 const cellClass = prefs.statsLink
-                  ? "relative w-full min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-3 hover:text-accent transition"
+                  ? "relative w-full min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] hover:text-accent transition"
                   : "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
                 /* 🆕 **وجهُ الخانة يُرسم مرّةً** ثمّ يلبس فعلَه (D-644):
                     المسلسلاتُ والأفلامُ تفتحان ورقةً، **والتقييماتُ رابطُ
                     تبويبٍ لأن تبويبَها قائمٌ أصلاً** — **ولا ورقةَ لما له
                     وجهةٌ في الصفحة.** */
-                /* D-1130 — مع البابِ الخانةُ عموديّة: الأيقونةُ والرقمُ سطرٌ، والاسمُ تحته بمقاسه نفسِه (D-699) */
+                /* D-1130 — مع البابِ الخانةُ عموديّة: الأيقونةُ والرقمُ سطرٌ، والاسمُ تحته.
+                   🆕 D-1131 — **بمقاسات بطاقة الرئيسيّة حرفاً** (أحمد بلقطتين: «مساحتها كبيرة، خلّها مثل
+                   الهوم»): أيقونةٌ ١٦ · رقمٌ ١٥ · اسمٌ ١٢/١٤ · حشوةٌ ١١ — كانت ١٨ و١٤ و١٢ فعلت البطاقةُ ~٧pt.
+                   ميزانُ D-699 (الاسمُ ١٤) للاسم **بجوار** رقمه؛ تحته يقرأ ١٢ كما في الرئيسيّة. */
                 const face = prefs.statsLink ? (
                   <>
-                    <span className="flex items-center gap-1.5">
-                      <Icon name={c.icon} size={18} style={{ color: "var(--accent)" }} className="shrink-0" />
+                    <span className="flex items-center gap-1">
+                      <Icon name={c.icon} size={16} style={{ color: "var(--accent)" }} className="shrink-0" />
                       <span className="text-15 font-bold leading-none tabular-nums">{c.value}</span>
                     </span>
-                    <span className="max-w-full text-14 text-muted leading-tight truncate">{c.label}</span>
+                    <span className="max-w-full text-12 text-muted leading-[14px] truncate">{c.label}</span>
                   </>
                 ) : (
                   <>
@@ -1572,11 +1575,11 @@ export default async function PublicProfilePage({
                    🔑 **والوزنُ يبقى `font-semibold`**: هو الفرقُ بين
                    **بابٍ يُضغط** وكلمةٍ تصف رقماً — **والمطلوبُ توحيدُ
                    المقاس لا محوُ الفرق.** */
-                className="min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-3 text-14 font-semibold text-muted hover:text-accent transition"
+                className="min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] text-12 font-semibold text-muted hover:text-accent transition"
               >
                 {/* 🆕 D-1130 — خانةٌ عموديّةٌ كأخواتها: رمزُ الوجهة وسهمُها فوق، واسمُها تحت */}
                 <span className="flex items-center gap-1">
-                  <Icon name="chart" size={18} style={{ color: "var(--accent)" }} className="shrink-0" />
+                  <Icon name="chart" size={16} style={{ color: "var(--accent)" }} className="shrink-0" />
                   <Icon
                     name="chevron-down"
                     size={14}
@@ -1589,7 +1592,7 @@ export default async function PublicProfilePage({
                     `statsPageTitle` **وهو اسمُ الصفحة التي يفتحها**
                     («الإحصائيات» / «Stats») — **ولا مفتاحَ جديد، ولا
                     اسمانِ لوجهةٍ واحدة** (D-030/D-145). */}
-                <span className="max-w-full whitespace-nowrap leading-tight truncate">{t.statsPageTitle}</span>
+                <span className="max-w-full whitespace-nowrap leading-[14px] truncate">{t.statsPageTitle}</span>
               </Link>
               )}
             </div>
