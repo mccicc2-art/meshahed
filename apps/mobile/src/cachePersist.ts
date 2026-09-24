@@ -18,7 +18,8 @@ import { currentLocale, webLocale } from "./i18n";
  * سطراً ثمنٌ بلا مقابل. و`hydrate` لا تكتب فوق بياناتٍ أحدث في الذاكرة، فلا سباقَ مع جلبٍ سبقها.
  *
  * 🔑 **أربعُ عائلاتٍ لا غير**: `me:library` · `discover:view` · `discover:rail` · `discover:personal`
- * — **وبلا فلتر** (المفتاحُ الأخيرُ فارغ): صفوفُ الفلاتر لا حدَّ لعددها. لا صفحاتِ أعمالٍ ولا `/me`.
+ * — **وبلا فلتر** (المفتاحُ الأخيرُ فارغ): صفوفُ الفلاتر لا حدَّ لعددها. ولا `/me`. (وصفحاتُ الأعمال — آخرُ ثلاثين
+ *   بمواسمها — منذ D-1118.)
  *
  * 🔴 **حسابٌ آخر لا يرى هذا الكاش أبداً**:
  *  ١ · الملفُّ يحمل `sub` صاحبه (من الرمز) ونسخةَ العقد (D-1091) ولغتَه وعمرَه (٧ أيام) — اختلافُ
@@ -40,7 +41,7 @@ const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "disco
    الهيكلَ الفارغ. الهيكلُ لا يتغيّر بتغيّر الإصدار بل بتغيّر **عقود** الحمولات المحفوظة؛ فالمفتاحُ
    الآن `CACHE_SCHEMA` **ويُرفع باليد** مع أيِّ تغييرٍ في عقود `home` · `home:extras` · `me:library` ·
    `discover:*` (`src/core/contracts`). والبياناتُ تعود «قديمة» بطابعها فتُجلب من جديد فوراً كما كانت. */
-const CACHE_SCHEMA = "2026-09-23";
+const CACHE_SCHEMA = "2026-09-24";
 const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 /* ⚖️ مراجعةُ ما قبل الرفع (D-1026): الكتابةُ `dehydrate` + `JSON.stringify` لمكتبةٍ كاملة + كتابةُ ملفٍّ
    **متزامنة** على خيط JS. بخنقِ ثانيةٍ واحدة كانت تقع مرّتين أو ثلاثاً **في أثناء فتح «اكتشف»**
@@ -59,9 +60,32 @@ let owner: string | null = null;
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 let dirtySince = 0;
 
-function persistable(q: Query): boolean {
+/* 🆕 D-1118 — **صفحاتُ الأعمال ومواسمُها تُحفظ، آخرُ ثلاثين عملاً فُتح لا كلُّها** (أحمد: «التحميل بطيء إذا دخلت
+   البوستر… وظهور السيزون»): كانت خارج الملفّ عمداً («لا صفحاتِ أعمال») خشيةَ أن يكبر بلا سقف — **والسقفُ يحلّ
+   ذلك**. الفتحُ الثاني لعملٍ فُتح أمس يرسم فوراً ثمّ يتجدّد كأخواته، والموسمُ المفتوحُ يبدأ جلبُه مع الصفحة لا بعدها.
+   الموسمُ بتقييمات IMDb (`r`) لا يُحفظ — رحلةٌ اختياريّة. ⚠️ عقدُ `title`/`season` صار محفوظاً: غيّره ⇒ ارفع `CACHE_SCHEMA`. */
+const TITLES_KEPT = 30;
+let keptTitles = new Set<string>();
+
+function pickRecentTitles() {
+  const latest = new Map<string, number>();
+  for (const q of queryClient.getQueryCache().getAll()) {
+    const k = q.queryKey[0];
+    if (typeof k !== "string" || !k.startsWith("title:") || q.state.status !== "success") continue;
+    latest.set(k, Math.max(latest.get(k) ?? 0, q.state.dataUpdatedAt));
+  }
+  keptTitles = new Set([...latest.entries()].sort((a, b) => b[1] - a[1]).slice(0, TITLES_KEPT).map(([k]) => k));
+}
+
+function persistable(q: Query, checkKept = true): boolean {
   const key = q.queryKey;
-  if (q.state.status !== "success" || typeof key[0] !== "string" || !FAMILIES.has(key[0])) return false;
+  if (q.state.status !== "success" || typeof key[0] !== "string") return false;
+  if (key[0].startsWith("title:")) {
+    if (checkKept && !keptTitles.has(key[0])) return false;
+    /* `[title:k:id]` الصفحة · `[title:tv:id, "season", n, ""]` الموسمُ بلا تقييمات — لا الإضافاتُ ولا المجتمع */
+    return key.length === 1 || (key[1] === "season" && key[3] === "");
+  }
+  if (!FAMILIES.has(key[0])) return false;
   /* `discover:rail` ⇒ [_, tab, key, bq] · `discover:personal` ⇒ [_, tab, bq] — الفلترُ لا يُحفظ */
   if (key[0] === "discover:rail") return key[3] === "";
   if (key[0] === "discover:personal") return key[2] === "";
@@ -104,7 +128,8 @@ function writeNow() {
   if (!owner || !dirtySince) return;
   dirtySince = 0;
   try {
-    const state = dehydrate(queryClient, { shouldDehydrateQuery: persistable });
+    pickRecentTitles();
+    const state = dehydrate(queryClient, { shouldDehydrateQuery: (q) => persistable(q) });
     const body: Stored = { v: CACHE_SCHEMA, sub: owner, locale: currentLocale(), at: Date.now(), state };
     const f = file();
     if (!f.exists) f.create();
@@ -156,7 +181,8 @@ export function startCachePersist() {
   });
 
   queryClient.getQueryCache().subscribe((e) => {
-    if (e.type !== "updated" || e.action.type !== "success" || !persistable(e.query)) return;
+    /* الثلاثون تُحسب عند الكتابة؛ هنا يكفي أن يكون الشكلُ محفوظاً — عملٌ فُتح للتوّ هو أحدثُها */
+    if (e.type !== "updated" || e.action.type !== "success" || !persistable(e.query, false)) return;
     const now = Date.now();
     if (!dirtySince) dirtySince = now;
     if (writeTimer) clearTimeout(writeTimer);

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { mark } from "../perfMarks";
 import { Pressable, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, write } from "../api";
@@ -42,10 +43,7 @@ export function SeasonAccordion({
 }) {
   const { t, tokens } = useApp();
   /* الموسمُ المفتوحُ افتراضاً: أوّلُ موسمٍ لم يكتمل (كما `initialSeason` في الصفحة) */
-  const firstOpen = useMemo(() => {
-    const s = show.seasons.find((x) => x.aired > 0 && show.me.watched.filter((k) => k.startsWith(`${x.season_number}:`)).length < x.aired);
-    return s?.season_number ?? show.seasons[0]?.season_number ?? null;
-  }, [show]);
+  const firstOpen = useMemo(() => firstOpenSeason(show), [show]);
   const [open, setOpen] = useState<number | null>(firstOpen);
   /**
    * 🔴 D-1021 — **تبويبُ الحلقات بترتيب الويب** (طلبُ أحمد بلقطتين، ١٨ سبتمبر): شريطُ التقدّم
@@ -199,11 +197,22 @@ function SeasonBody({
    * لكلِّ موسم)، كما يفعل `EpisodeTracker` حرفاً، والمفتاحُ يُذكَر للجلسة.
    */
   const q = useQuery({
-    queryKey: [...qk.season(show.id, season), showRatings ? "r" : ""] as const,
-    queryFn: async () => (await api<SeasonPayload>(`/api/v1/title/tv/${show.id}/season/${season}${showRatings ? "?r=1" : ""}`)).data,
-    staleTime: 60_000,
+    ...seasonQuery(show.id, season, showRatings),
     placeholderData: (prev) => prev,
   });
+  /* 🆕 D-1118 — `season.open`: من فتح الموسم إلى حلقاته (`cached=1` إن كانت في الكاش أصلاً) */
+  const seasonMark = useRef<{ key: string; t0: number; cached: number } | null>(null);
+  useEffect(() => {
+    const key = `${show.id}:${season}`;
+    seasonMark.current = { key, t0: performance.now(), cached: q.data && !q.isPlaceholderData ? 1 : 0 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- البدايةُ مع فتح الموسم وحده
+  }, [show.id, season]);
+  useEffect(() => {
+    const m = seasonMark.current;
+    if (!m || !q.data || q.isPlaceholderData || m.key !== `${show.id}:${season}`) return;
+    mark("season.open", performance.now() - m.t0, { cached: m.cached });
+    seasonMark.current = null;
+  }, [q.data, q.isPlaceholderData, show.id, season]);
   /**
    * 🔴 D-1015 — **ورقةُ تقييم الحلقة كورقة تقييم العمل** (بلاغُ أحمد بثلاث لقطات على 1.9.3:
    * «تقييم الحلقة ما يشتغل… أبغى انبثاقاً مثل تقييم المسلسل أحدّد التقييم وأكتب تعليقاً»):
@@ -362,4 +371,19 @@ function SeasonBody({
       ) : null}
     </View>
   );
+}
+
+/** 🆕 D-1118 — أوّلُ موسمٍ لم يكتمل، وإلا الأوّل — تقرؤه الشاشةُ لتبدأ جلبَه مع الصفحة لا بعد رسم القائمة */
+export function firstOpenSeason(show: TvTitlePayload): number | null {
+  const s = show.seasons.find((x) => x.aired > 0 && show.me.watched.filter((k) => k.startsWith(`${x.season_number}:`)).length < x.aired);
+  return s?.season_number ?? show.seasons[0]?.season_number ?? null;
+}
+
+/** 🆕 D-1118 — استعلامُ الموسم الواحد: القائمةُ والجلبُ المسبق بالمفتاح نفسِه فلا يتكرّر */
+export function seasonQuery(showId: number, season: number, ratings = false) {
+  return {
+    queryKey: [...qk.season(showId, season), ratings ? "r" : ""] as const,
+    queryFn: async () => (await api<SeasonPayload>(`/api/v1/title/tv/${showId}/season/${season}${ratings ? "?r=1" : ""}`)).data,
+    staleTime: 60_000,
+  };
 }

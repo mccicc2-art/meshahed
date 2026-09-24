@@ -29,7 +29,9 @@ type Envelope<T> = { data: T; invalidates: Tag[] } | { error: AppError };
 
 export const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
+    /* 🆕 D-1118 — `gcTime` ٣٠ دقيقة لا ٥: صفحةُ عملٍ تُترك ثمّ يُعاد إليها بعد دقائق كانت تُجلب من الصفر،
+       وما يُستعاد من ملفّ الكاش عند الإقلاع (صفحاتُ الأعمال ومواسمُها الآن) كان يُكنس بعد خمسِ دقائق بلا مشاهد. */
+    queries: { staleTime: 60_000, gcTime: 30 * 60_000, retry: 1, refetchOnWindowFocus: false },
   },
 });
 

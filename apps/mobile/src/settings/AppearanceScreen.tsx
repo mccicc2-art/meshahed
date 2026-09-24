@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { useApp } from "../state";
+import { useApp, type Me } from "../state";
+import { queryClient, qk } from "../api";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
@@ -8,7 +9,7 @@ import { haptic } from "../haptics";
 import { webLocale } from "../i18n";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, ExpandRow, OptionRow, OptionList, RowsSkeleton } from "./ui";
-import { useSettings, saveSetting, invalidateMe, useOpenWeb } from "./api";
+import { useSettings, saveSetting, invalidateMe, useOpenWeb, patchSettings } from "./api";
 import { fontPrefs } from "../fontScale";
 import { THEMES, themeName } from "@/core/themes";
 import { themeNeedsPlus } from "@/core/plan";
@@ -66,8 +67,18 @@ export function AppearanceScreen() {
     if (id === s.appearance.theme) return;
     haptic.pick();
     setBusy(true);
+    /* 🔴 🆕 D-1121 — **الثيمُ يُلبَس لحظةَ اللمس لا بعد رحلتين** (أحمد بتسجيل: «الثيمات ما تشتغل» — والقاعدةُ
+       تُثبت أن «Ocean» حُفظ في ثانيته). الألوانُ تتبع `me.theme`، و`me` لا يتبدّل إلا بعد أن يعود الحفظُ **ثمّ**
+       يعود `/api/v1/me` — رحلتان على خادمٍ بطيءٍ ذلك اليوم، فبدا اللمسُ بلا أثر. الآن `me` يُكتب فوراً (كما
+       يفعل حجمُ الخطّ، D-1105)، ويعود القديمُ إن فشل الحفظ أو طُلب بلس. */
+    const meBefore = queryClient.getQueryData<Me>(qk.tag("user:me:profile"));
+    if (meBefore) queryClient.setQueryData<Me>(qk.tag("user:me:profile"), (m) => (m ? { ...m, theme: id } : m));
     const out = await saveSetting<{ theme: string; needsPlus?: true }>("/api/v1/me/settings/theme", { theme: id } satisfies ThemeBody, (x) => ({ ...x, appearance: { ...x.appearance, theme: id } }), invalidateMe);
     setBusy(false);
+    if (!out || out.needsPlus) {
+      if (meBefore) queryClient.setQueryData<Me>(qk.tag("user:me:profile"), () => meBefore);
+      if (out?.needsPlus) patchSettings((x) => ({ ...x, appearance: { ...x.appearance, theme: meBefore?.theme ?? x.appearance.theme } }));
+    }
     if (!out) return fail();
     if (out.needsPlus) openWeb("/plus");
   }

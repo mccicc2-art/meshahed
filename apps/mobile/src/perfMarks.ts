@@ -27,7 +27,10 @@ export type PerfName =
   | "library.flatgrid"
   | "tab.arm"
   | "discover.open"
-  | "coldstart.library";
+  | "coldstart.library"
+  /* 🆕 D-1118 — بطءُ صفحة العمل والمواسم يُقاس لا يُخمَّن */
+  | "title.open"
+  | "season.open";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

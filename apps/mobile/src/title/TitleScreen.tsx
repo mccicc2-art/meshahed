@@ -14,7 +14,8 @@ import { radius } from "../theme";
 import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
-import { SeasonAccordion } from "./SeasonAccordion";
+import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
+import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
 import { Sheet } from "../library/Sheet";
@@ -87,6 +88,20 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     staleTime: 60_000,
   });
   const d = q.data;
+  /* 🆕 D-1118 — `title.open`: من فتح الشاشة إلى أوّل بيانات (`cached=1` إن رُسمت من الكاش/الملفّ) */
+  const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
+  useEffect(() => {
+    if (!d || !openMark.current) return;
+    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind });
+    openMark.current = null;
+  }, [d, kind]);
+  /* 🆕 D-1118 — **الموسمُ المفتوحُ يُجلب مع الصفحة لا بعد رسم قائمتها**: ما إن تُعرف الصفحةُ (من الكاش أو
+     الشبكة) يبدأ جلبُ حلقات أوّل موسمٍ لم يكتمل — والقائمةُ حين تُرسم تجده في الطريق أو واصلاً (المفتاحُ واحد). */
+  useEffect(() => {
+    if (!d || d.kind !== "tv") return;
+    const n = firstOpenSeason(d);
+    if (n !== null) void qc.prefetchQuery(seasonQuery(d.id, n));
+  }, [d, qc]);
   const extras = useExtras(kind, id);
   const x = extras.data;
   const community = useCommunity(kind, id, tab === "community");

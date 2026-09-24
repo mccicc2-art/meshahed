@@ -19,9 +19,11 @@ const VEIL = require("../../assets/poster-veil.png");
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣٦ — كان ×١٫٥ (`continueCardBox`) حتى D-1084؛
-    المعاملُ لا الكثافة يصغر، فتبقى صفوفُ الملصقات كما هي والنسبةُ تتبع الكثافةَ كما كانت (١١٨ ⇐ ١٦٠) */
-export const continueCardH = (posterW: number) => Math.round(posterW * 1.36);
+/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣ — كان ×١٫٥ حتى D-1084 ثمّ ×١٫٣٦؛
+    المعاملُ لا الكثافة يصغر، فتبقى صفوفُ الملصقات كما هي والنسبةُ تتبع الكثافةَ كما كانت.
+    ⚖️ 🆕 D-1117 — **×١٫٣ كالويب** (`continueCardBox`، D-1109): أحمد بلقطةٍ من الرئيسيّة الأصليّة: «مو نفس
+    الأبعاد اللي اتفقنا عليها» ثمّ «نفذ». المقاسُ المتّفقُ عليه واحدٌ للسطحين؛ العرضُ باقٍ (`BACKDROP_W`، D-1084). */
+export const continueCardH = (posterW: number) => Math.round(posterW * 1.3);
 
 export const ContinueCard = memo(function ContinueCard({
   card,

@@ -110,7 +110,7 @@ export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | un
 /** «أين أشاهده» — رقاقةٌ تفتح ورقةَ المزوّدين (نسخةُ `WatchChip`) */
 /**
  * D-1020 — `icon`: صيغةُ الترويسة (أسفل يمين الصورة)؛ الضغطُ يفتح الورقةَ نفسَها.
- * D-1111 — صارت رقاقةَ شاشةٍ بكلمة بدل شعار المنصّة الأولى.
+ * D-1111 — صارت رقاقةَ شاشةٍ بكلمة بدل شعار المنصّة الأولى؛ ثمّ D-1119 — مربّعُ شاشةٍ بعدد منصّات الاشتراك.
  */
 export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefined; icon?: boolean }) {
   const { t, tokens, locale } = useApp();
@@ -123,11 +123,30 @@ export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefi
   return (
     <>
       {icon ? (
-        /* D-1111 — **رقاقةُ شاشةٍ لا شعارُ منصّة** (أحمد اختار «E» من ستّة أشكال: «بدل هولو تظهر علامة
-           شاشة، اضغطها وتظهر المنصّات»): الشعارُ الواحد كان يوحي أن العملَ على منصّةٍ واحدة، **وهو غالباً
-           على أكثر** — والورقةُ نفسُها تفتح. **وهي `Chip` العائلة لا رقاقةٌ مرسومةٌ بيد** (D-948: رقاقةٌ
-           بشكلٍ آخر عيب)، **والاسمُ `watchWhereTitle` القائم** لا نصٌّ جديد. */
-        <Chip label={t.watchWhereTitle} active={false} onPress={() => setOpen(true)} leading={<Icon name="tv" size={14} color={tokens.muted} />} />
+        /* D-1111 ⇒ 🆕 D-1119 — **مربّعُ شاشةٍ زجاجيٌّ بعدد المنصّات** (أحمد بدّل اختيارَه من «E» الرقاقة إلى
+           «B»، ثمّ: «لا يحسب الإيجار والشراء — بس منصّات العرض الرسميّة باشتراك»). المربّعُ زجاجُ زرّي الرجوع
+           والنقاط فوقه نفسُه (`rgba(0,0,0,.45)`) ومقاسُ الشعار القديم (٤٠ · D-1020) — لا شكلَ جديد في الترويسة.
+           **الرقمُ عددُ منصّات الاشتراك وحدَها** — الإيجارُ والشراءُ متجرٌ لا «أين يُعرض»، ويبقيان في الورقة.
+           ويغيب الرقمُ تحت اثنين: «١» لا يقول شيئاً لا يقوله المربّع. والورقةُ نفسُها تفتح. */
+        (() => {
+          const subs = w.groups.find((g) => g.key === "flatrate")?.providers.length ?? 0;
+          return (
+            <Pressable
+              onPress={() => setOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={subs > 1 ? `${t.watchWhereTitle} · ${num(subs, locale)}` : t.watchWhereTitle}
+              hitSlop={6}
+              style={({ pressed }) => ({ width: 40, height: 40, borderRadius: radius.control, backgroundColor: "rgba(0,0,0,0.45)", borderWidth: 1, borderColor: "rgba(255,255,255,0.28)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+            >
+              <Icon name="tv" size={20} color="#fff" />
+              {subs > 1 ? (
+                <View style={{ position: "absolute", top: -6, end: -6, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: tokens.accent, borderWidth: 2, borderColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
+                  <Text size={11} weight="700" color={tokens.bg} style={{ lineHeight: 13 }}>{num(subs, locale)}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })()
       ) : (
       <Pressable onPress={() => setOpen(true)} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingStart: 6, paddingEnd: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
         <View style={{ flexDirection: "row" }}>
