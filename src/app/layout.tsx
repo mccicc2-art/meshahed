@@ -144,7 +144,8 @@ export default async function RootLayout({
   /* 🆕 Phase 11 · B1 (D-936) — **داخل الغلاف الهجين وحدَه** (وسم `LoopzApp/`
      من الترويسة، لا نصٌّ يرسله العميل — D-666): جسرُ الجلسة وبوّابةُ تجربة
      «المكتبة أصليّة». المتصفّحُ لا يركّبهما ولا يدفع ثمنَهما. */
-  const inApp = signedIn && isLoopzApp((await headers()).get("user-agent"));
+  const inShell = isLoopzApp((await headers()).get("user-agent"));
+  const inApp = signedIn && inShell;
 
   return (
     <html
@@ -153,7 +154,10 @@ export default async function RootLayout({
       className="h-full antialiased"
       data-fs-ui={fsUi}
       data-fs-content={fsContent}
-      data-app={inApp ? "1" : undefined}
+      /* 🆕 D-1115 — الوسمُ للغلاف كلِّه لا للمسجَّل وحدَه: الزائرُ داخل التطبيق يرى صفحةَ البداية
+         في الـWebView نفسِه، وقواعدُ الغلاف (شريطُ الحالة · ذيلُ الصفحة · الفيضُ الأفقيّ) تخصّه أيضاً.
+         جسرُ الجلسة وأخواتُه باقيةٌ على `inApp` (بجلسة) كما كانت. */
+      data-app={inShell ? "1" : undefined}
       suppressHydrationWarning
     >
       <head>
