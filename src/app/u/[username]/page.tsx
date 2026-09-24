@@ -1157,7 +1157,11 @@ export default async function PublicProfilePage({
               aria-label={t.headerSettings}
               title={t.headerSettings}
               className="block rounded-full p-[3px] shrink-0 active:scale-95 transition"
-              style={{ background: "var(--gradient-brand)" }}
+              /* 🔴 D-1139 — **أرضيّةُ الحلقة لونُ الصفحة لا تدرّجُ الهويّة** (أحمد بتسجيل: «يجي وميض أصفر عالأفتار
+                 وقت الانتقال بين الهوم والبروفايل»): التدرّجُ مغطّى أصلاً بحلقة `ring-[3px]` بلون الأرضيّة فلا يُرى،
+                 **إلّا في الإطار الذي لم تُرسم فيه الصورةُ بعد** — فيظهر قرصاً أصفرَ كاملاً لحظةَ العودة إلى الملفّ.
+                 لونُ الصفحة يُبقي الشكلَ المستقرَّ كما هو حرفاً، ويجعل ذلك الإطارَ دائرةً داكنةً لا تُلمح. */
+              style={{ background: "var(--background)" }}
             >
               <Avatar
                 src={profile.avatar_url}
@@ -1172,7 +1176,11 @@ export default async function PublicProfilePage({
           ) : (
             <span
               className="block rounded-full p-[3px] shrink-0"
-              style={{ background: "var(--gradient-brand)" }}
+              /* 🔴 D-1139 — **أرضيّةُ الحلقة لونُ الصفحة لا تدرّجُ الهويّة** (أحمد بتسجيل: «يجي وميض أصفر عالأفتار
+                 وقت الانتقال بين الهوم والبروفايل»): التدرّجُ مغطّى أصلاً بحلقة `ring-[3px]` بلون الأرضيّة فلا يُرى،
+                 **إلّا في الإطار الذي لم تُرسم فيه الصورةُ بعد** — فيظهر قرصاً أصفرَ كاملاً لحظةَ العودة إلى الملفّ.
+                 لونُ الصفحة يُبقي الشكلَ المستقرَّ كما هو حرفاً، ويجعل ذلك الإطارَ دائرةً داكنةً لا تُلمح. */
+              style={{ background: "var(--background)" }}
             >
               <Avatar
                 src={profile.avatar_url}
