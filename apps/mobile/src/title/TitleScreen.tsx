@@ -394,6 +394,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {/* التبويبات — segmented: الحلقات (مسلسل) · المعلومات · المزيد في الويب */}
           {/* D-1133 — لاصقٌ فخلفيّتُه لونُ الصفحة (وإلّا مرّت الحلقاتُ تحته ظاهرة)؛ ومسافةُ الـ١٦ فوقه انتقلت
               إلى ذيل صفِّ الأفعال — لو بقيت فيه لالتصق ومعه شريطٌ أسودُ فارغ، وهو ما طُلب ألّا يكون */}
+          {/* 🔴 D-1138 — **غلافٌ بلا نمط حول الشريط** (أحمد بلقطة: «وش بها جايه فوق بعض!!!» — الثلاثةُ عموديّة):
+              `ScrollViewStickyHeader` في RN **ينقل نمطَ الابن اللاصق إلى غلافه ويستنسخ الابنَ بـ`{ flex: 1 }` وحدَه**
+              (`cloneElement(child, { style: styles.fill })`) — فضاع `flexDirection: "row"` واصطفّت الخاناتُ عموداً.
+              الابنُ اللاصقُ الآن غلافٌ خلفيّتُه لونُ الصفحة، والصفُّ داخله بنمطه كاملاً. */}
+          <View style={{ backgroundColor: tokens.bg }}>
           <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD, backgroundColor: tokens.bg }}>
             {(d.kind === "tv" ? (["episodes", "info", "community"] as const) : (["info", "community"] as const)).map((k) => {
               const on = tab === k;
@@ -405,6 +410,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 </Pressable>
               );
             })}
+          </View>
           </View>
 
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
