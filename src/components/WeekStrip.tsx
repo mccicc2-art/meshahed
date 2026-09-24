@@ -64,7 +64,7 @@ export function WeekStrip({
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-3 mb-1">
+      <div className={`flex items-center justify-between gap-3 ${entries.length === 0 ? "mb-1" : "mb-3"}`}>
         <h2 className="min-w-0 text-22 font-bold">
           {href ? (
             <Link href={href} className="flex items-center gap-2 hover:opacity-80 transition">
@@ -90,9 +90,15 @@ export function WeekStrip({
           لرسالةٍ واحدةٍ حين يكون الأسبوعُ فارغاً**، يفصل بينهما
           الشريطُ كلُّه. **والفراغُ يلحق بالوصف في سطره** ويسقط سطرُ
           القاع — وحين توجد حلقاتٌ يبقى الوصفُ وحدَه كما كان. */}
-      <p className="text-12 text-muted mb-3" dir="auto">
-        {entries.length === 0 ? `${t.weekSub} ${t.weekNothing}` : t.weekSub}
-      </p>
+      {/* ⚖️ 🆕 D-1113 — **الوصفُ سقط، وبقي سطرُ الفراغ وحدَه** (أحمد بقوسين على اللقطة: «احذفه»، ثمّ
+          «نفذ على اقتراحك»): «حلقاتُ أعمالك في الأسبوعين القادمين» تقولها الأيّامُ نفسُها، **أمّا «لا حلقات
+          هذا الأسبوع» فخبرٌ لا تقوله المربّعاتُ الفارغة** — بدونه لا يُفرَّق أسبوعٌ فارغٌ من صفحةٍ لم تُحمَّل.
+          فالسطرُ يظهر حين يفرغ الأسبوعُ وحدَه، والفراغُ تحت العنوان يعود `mb-3` حين يغيب. (نقضٌ لشطر D-596.) */}
+      {entries.length === 0 && (
+        <p className="text-12 text-muted mb-3" dir="auto">
+          {t.weekNothing}
+        </p>
+      )}
 
       {/* الحشوةُ السفليّةُ للالتقاط: بلا `pb` يُقصّ ظلُّ الحدّ المضيء */}
       <div className="flex gap-1 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

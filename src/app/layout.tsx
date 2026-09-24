@@ -153,6 +153,7 @@ export default async function RootLayout({
       className="h-full antialiased"
       data-fs-ui={fsUi}
       data-fs-content={fsContent}
+      data-app={inApp ? "1" : undefined}
       suppressHydrationWarning
     >
       <head>

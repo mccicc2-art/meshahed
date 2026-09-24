@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { allowsAutoHideChrome } from "@/core/chromeRules";
+import { allowsAutoHideChrome, revealsChromeOnlyAtTop } from "@/core/chromeRules";
 
 /**
  * **الكسوةُ الذكيّة** (جولة ١٩ أغسطس ليلاً، طلبُ أحمد: «عند النزول داخل
@@ -89,6 +89,8 @@ export function ChromeAutoHide() {
 
     let lastY = window.scrollY;
     let acc = 0;
+    /* 🆕 D-1114 — التريلرات: الكسوةُ تعود عند القمّة وحدَها (`revealsChromeOnlyAtTop`) */
+    const topOnly = revealsChromeOnlyAtTop(pathname);
     let raf = 0;
     let hidden = false;
 
@@ -122,7 +124,7 @@ export function ChromeAutoHide() {
            فحين ينتهي المحتوى تعود الكسوةُ فيمتلئ المقعدُ بصاحبه —
            **ولا شيءَ تحت القاع يستحقّ الإخفاءَ من أجله.** والقياسُ على
            `y` المقصوصة فارتدادُ iOS لا يقلبها (الحدّ ٣). */
-        if (max - y <= 24) {
+        if (!topOnly && max - y <= 24) {
           acc = 0;
           set(false);
           return;
@@ -133,7 +135,7 @@ export function ChromeAutoHide() {
         if ((d > 0) !== (acc > 0)) acc = 0;
         acc += d;
         if (acc > 28) set(true);
-        else if (acc < -12) set(false);
+        else if (acc < -12 && !topOnly) set(false);
       });
     };
 

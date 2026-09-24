@@ -83,6 +83,17 @@ export function allowsAutoHideChrome(pathname: string): boolean {
  * **وإخفاؤه على اللوح يقطع التنقّلَ كلَّه** — فالقاعدةُ تُطبَّق
  * بـ`hidden md:contents` لا بـ`return null` (وهو حرفُ D-122).
  */
+/**
+ * 🆕 D-1114 — **أين تعود الكسوةُ عند القمّة وحدَها لا مع كلِّ صعود** (أحمد بتسجيلٍ من «التريلرات»: «لا تخلّي
+ * الشريط يطلع وأنا طالع لفوق.. خلّه يطلع إذا وصلت أعلى نقطة»).
+ * 🔑 **الصعودُ في التريلرات تصفّحٌ لا رجوع**: القارئُ يعود لمقطعٍ فاته، **وشريطٌ ينزل فوق الفيديو مع كلِّ
+ * سحبةٍ لأعلى يغطّي رأسَ المقطع الذي عاد إليه** — والقاعدةُ العامّة (الصعودُ يُظهر) مبنيّةٌ لصفحاتٍ يعني فيها
+ * الصعودُ «أريد الخروج». ⚖️ والاختباءُ مع النزول باقٍ (D-985 كما نُقضت)، والظهورُ عند القمّة باقٍ.
+ */
+export function revealsChromeOnlyAtTop(pathname: string): boolean {
+  return pathname === "/trailers" || pathname.startsWith("/trailers/");
+}
+
 export function hidesAppHeaderOnMobile(pathname: string): boolean {
   return pathname === "/";
 }

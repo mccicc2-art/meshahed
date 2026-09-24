@@ -214,8 +214,13 @@ export const sheetScroll = "flex-1 min-h-0 overflow-y-auto overscroll-contain";
  * ⚠️ **والعرضُ يبقى لـ`RailItem`** (٢٢٠/٣٠٠) والصورةُ `object-cover`:
  * **تُقصّ ولا تُشوَّه.**
  */
+/* ⚖️ D-1109 — **المعاملُ ١٫٣ لا ١٫٥** (أحمد قصّ البطاقةَ على لقطة هاتفه بخطٍّ أزرق ثمّ قال «نفذ»):
+   البطاقةُ أقصرُ ~١٤٪ فيظهر صفُّ «للمشاهدة» أعلى في الشاشة. **ويبقى مشتقّاً من عرض الملصق**
+   (القاعدةُ أعلاه لم تُنقض) — **الذي تغيّر أنّ الصفّين لم يعودا متساويين عمداً**: بطاقةُ «تابِع»
+   عريضةٌ بمشهد، **والتساوي كان يجعلها أطولَ ممّا يلزم لقراءة سطرين.** النصُّ مثبَّتٌ في الأسفل
+   فلا يُقصّ منه شيء — الصورةُ وحدَها تُقصّ من أعلى (`object-cover`). */
 export const continueCardBox =
-  "relative h-[calc(var(--poster-w,118px)*1.5)] sm:h-[calc(var(--poster-w-sm,138px)*1.5)] rounded-poster overflow-hidden bg-surface border border-border";
+  "relative h-[calc(var(--poster-w,118px)*1.3)] sm:h-[calc(var(--poster-w-sm,138px)*1.3)] rounded-poster overflow-hidden bg-surface border border-border";
 
 /* ===== ذيلُ الأفعال — إعجابٌ وردٌّ تحت كلِّ رأيٍ أو ردّ =====
 

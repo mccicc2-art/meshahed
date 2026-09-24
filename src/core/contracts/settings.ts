@@ -2,6 +2,9 @@ import type { ContentPrefs } from "@/core/contentPrefs";
 import type { FontSize } from "@/core/fontPrefs";
 import type { TitleMode } from "@/core/titleMode";
 import type { PersonLite } from "@/core/people";
+import type { HomePrefs } from "@/core/homePrefs";
+import type { ProfilePrefs } from "@/core/profilePrefs";
+import type { PrefTemplate } from "@/core/prefTemplates";
 
 /**
  * ====== عقودُ الإعدادات — Phase 11-I (I0) ======
@@ -133,3 +136,12 @@ export type VerifyPayload = {
 };
 
 export type VerifyBody = { kind: string; links: string[]; website: string; sources: string; reason: string };
+
+/* ===== 🆕 D-1112 — تخصيصُ الرئيسيّة والملفّ (Phase 11-I · I3) =====
+   بابُ `CustomizeScreen` الويبيّة: التنسيقان كما يقرؤهما الخادمُ مُصفّيين، والقوالبُ من `ui_state.tpl`،
+   و`plus` حكمُ `isPlus` نفسُه — **لا حكمٌ ثانٍ في التطبيق**. */
+export type CustomizePayload = { home: HomePrefs; profile: ProfilePrefs; templates: PrefTemplate[]; plus: boolean };
+/** الحفظُ يرسل ما تغيّر وحدَه — الغائبُ يُترك كما هو (عقدُ `updateProfile`) */
+export type CustomizeSaveBody = { home?: HomePrefs; profile?: ProfilePrefs };
+export type CustomizeSaveResult = { data: CustomizePayload | null; needsPlus?: true };
+export type TemplatesBody = { tpl: PrefTemplate[] };
