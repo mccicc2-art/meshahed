@@ -20,7 +20,8 @@ import { APP_UA_TAG } from "@/core/platform";
  * الـWebView وحدَها). الردُّ `{done:true}` دائماً — سقوطٌ لا يُسجَّل لا يُخفي شاشةً.
  */
 const MAX_MESSAGE = 600;
-const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell"]);
+/* الرئيسيّةُ والبحثُ والإعداداتُ أصليّةٌ منذ 11-G/H/I وكانت أعطالُها تُسجَّل «unknown» */
+const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings"]);
 
 export async function POST(req: NextRequest) {
   return handle(async () => {

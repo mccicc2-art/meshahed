@@ -392,6 +392,11 @@ export function progressLadder(accent: string): [string, string, string] {
    فوقها.** ⚠️ **والعمودُ `profiles.theme_accent` باقٍ بلا كاتبٍ ولا
    قارئ** حتّى تُسقطه هجرةٌ لاحقة (D-214/D-538). */
 
+/** فاتحٌ أم داكن — يقرؤه `color-scheme` في الويب وشريطُ حالة الهاتف في التطبيق، فلا تُكتب القاعدةُ مرّتين */
+export function themeScheme(t: Theme): "light" | "dark" {
+  return t.id === "daylight" ? "light" : "dark";
+}
+
 export function themeById(id: string | null | undefined): Theme {
   return THEMES.find((t) => t.id === id) ?? DEFAULT_THEME;
 }
@@ -440,6 +445,6 @@ export function themeCss(t: Theme) {
      من تصميمَي الشاشة كليهما). **و`color-scheme` هي أداةُ المنصّة
      المخصَّصةُ لهذا القماش بالذات** — فيصير داكناً مع الثيمات الداكنة
      وفاتحاً مع النهاريّ. */
-  const scheme = t.id === "daylight" ? "light" : "dark";
+  const scheme = themeScheme(t);
   return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--progress-1:${pg[0]};--progress-2:${pg[1]};--progress-3:${pg[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }

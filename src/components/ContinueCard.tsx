@@ -339,7 +339,7 @@ export function ContinueCard({
               alt={title}
               fill
               sizes="(max-width: 640px) 70vw, 320px"
-              className="object-cover group-hover:scale-105 transition duration-300"
+              className="object-cover object-top group-hover:scale-105 transition duration-300"
             />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
@@ -350,7 +350,9 @@ export function ContinueCard({
           {/* حجاب سفليّ يحمل النصّ: يبقي الصورة مرئية ويضمن قراءة الاسم */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-          <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
+          {/* D-1124 (B2) — السطرُ الثاني باقٍ (الحلقةُ التالية لا تُعرف من الشريط)، والكتلةُ أعلى بـ٦ عن الشريط؛
+              و`object-top` يجعل القصَّ من أسفل الصورة حين تكون أطولَ من البطاقة */}
+          <div className="absolute inset-x-0 bottom-0 p-3 pb-5">
             <p className="text-15 font-semibold leading-tight text-white line-clamp-1 drop-shadow pe-10">
               {title}
             </p>

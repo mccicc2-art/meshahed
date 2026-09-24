@@ -310,7 +310,7 @@ export function ListContinueCard({
             alt=""
             fill
             sizes="(max-width: 640px) 70vw, 320px"
-            className="object-cover group-hover:scale-105 transition duration-300"
+            className="object-cover object-top group-hover:scale-105 transition duration-300"
           />
         ) : (
           <span className="absolute inset-0 grid place-items-center text-muted">
@@ -321,7 +321,7 @@ export function ListContinueCard({
         {/* الحجابُ حجابُ بطاقة الحلقة نفسُه — يبقي المشهدَ ويضمن الاسم */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-        <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
+        <div className="absolute inset-x-0 bottom-0 p-3 pb-5">
           {/* اسمُ القائمة سياقٌ لا عنوان — خافتٌ فوق اسم العمل */}
           <span className="flex items-center gap-1 text-[10px] font-semibold text-accent leading-none">
             <Icon name="list" size={11} strokeWidth={2.2} />

@@ -20,12 +20,39 @@ import { APP_UA_TAG } from "@/core/platform";
  * ومفاتيحُ `extra` من قائمةٍ مغلقة وقيمُها رقمٌ أو كلمةٌ من `[\w.-]{1,16}`. المستخدمُ
  * يُطلب للحدّ فقط ولا يُكتب. الردُّ `{done:true}` دائماً — قياسٌ ضاع لا يُقلق أحداً.
  *
- * القراءة:
+ * القراءة — الخام:
  *   select at, route, message from public.runtime_errors
  *   where kind = 'perf' order by at desc limit 50;
+ *
+ * القراءة — p50/p75/p95 لكلِّ علامةٍ لكلِّ إصدار (K1). أسماءُ العلامات وحدَها فيها نقطة، فمفاتيحُ
+ * `extra` (`count=3`) لا تُعدّ علامات. والإصدارُ بعد K0 قد يحمل هويّةَ تحديثٍ (`1.12.0_a1b2c3d4`):
+ *   with r as (select split_part(split_part(message, 'LoopzApp/', 2), ' ', 1) ver, message
+ *              from public.runtime_errors where kind = 'perf' and at > now() - interval '14 days'),
+ *        m as (select ver, g[1] mark, g[2]::int ms
+ *              from r, regexp_matches(message, '\s([a-z]+\.[a-z.]+)=(\d+)', 'g') g)
+ *   select mark, ver, count(*) n,
+ *          round(percentile_cont(.5)  within group (order by ms)) p50,
+ *          round(percentile_cont(.75) within group (order by ms)) p75,
+ *          round(percentile_cont(.95) within group (order by ms)) p95
+ *   from m group by 1, 2 order by 1, 2 desc;
  */
 /* 🆕 D-1118 — `title.open` (من فتح الشاشة إلى أوّل بيانات) · `season.open` (من فتح الموسم إلى حلقاته) */
-const NAMES = new Set(["library.open", "library.shelf.open", "library.flatgrid", "tab.arm", "discover.open", "coldstart.library", "title.open", "season.open"]);
+/* Phase 11-K · K1 — خطُّ الأساس: الرئيسيّة (والإقلاعُ إليها) · البحث · ضغطةُ التبويب · أوّلُ بياناتٍ حيّة */
+const NAMES = new Set([
+  "library.open",
+  "library.shelf.open",
+  "library.flatgrid",
+  "tab.arm",
+  "discover.open",
+  "coldstart.library",
+  "title.open",
+  "season.open",
+  "home.open",
+  "coldstart.home",
+  "search.open",
+  "tab.switch",
+  "boot.fresh",
+]);
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
