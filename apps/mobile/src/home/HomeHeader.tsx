@@ -6,9 +6,9 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
-import { radius } from "../theme";
 import { PAGE_PAD } from "./Section";
 import type { HomeHeaderPayload } from "../contracts";
+import { isFounder, isPartner, isPlus, isVerified as isVerifiedOf } from "@/core/plan";
 
 /**
  * ترويسةُ الرئيسية — `HomeHeader.tsx` الويبيّة بأرقامها (Phase 11-H · H2):
@@ -105,18 +105,19 @@ export function HomeGreeting({
   const fg = onArt ? "#fff" : tokens.fg;
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
-      <Pressable onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} style={{ width: 56, height: 56, borderRadius: 28, overflow: "hidden", borderWidth: 2, borderColor: onArt ? "rgba(255,255,255,0.6)" : tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+      {/* 🆕 D-1134 — **حلقةُ الصورة بلون الأرضيّة لا بيضاء** (أحمد بدوائر حمراء: «خلّه مثل الويب»): `HomeAvatarLink`
+          في الويب حشوةٌ ٢ بلون الصفحة حول صورة ٥٦ — حلقةٌ داكنةٌ تفصل الوجهَ عن الغلاف ولا تلمع فوقه. */}
+      <Pressable onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
         {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={24} color={tokens.muted} />}
       </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Text size={20} weight="700" color={fg} numberOfLines={1} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? styles.shadow : null]}>{h.display_name}</Text>
-          {h.verified_at ? <Icon name="check-line" size={16} color={tokens.verified} /> : null}
-          {h.plan && h.plan !== "free" ? (
-            <View style={{ paddingHorizontal: 6, height: 18, borderRadius: 9, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
-              <Text size={10} weight="700" color={tokens.onAccent}>+</Text>
-            </View>
-          ) : null}
+          {/* 🆕 D-1134 — **شاراتُ الويب نفسُها** (`AccountIdentity`: `PlanPill` ثمّ `VerifiedBadge`) بقاعدة الطبقة
+              نفسِها (`identityOf` ⇐ `@/core/plan`): قرصٌ «PARTNER»/«PLUS»/«FOUNDER» ثمّ ختمُ التوثيق الذهبيّ. كان هنا
+              خطُّ ✓ رفيعٌ وقرصُ «+» — شكلان لا يعرفهما الويب. */}
+          <PlanPill h={h} nameSize={20} />
+          {isVerified(h) ? <Image source={VERIFIED} style={{ width: 16, height: 16 }} contentFit="contain" accessibilityLabel={t.verifiedBadge} /> : null}
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
           {h.username ? <Text size={12} color={muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{h.username}</Text> : null}
@@ -137,9 +138,10 @@ export function HomeGreeting({
         accessibilityRole="button"
         accessibilityLabel={`${t.viewSwitchAria} — ${next === "compact" ? t.viewCompact : t.viewVisual}`}
         hitSlop={6}
-        style={({ pressed }) => [{ width: 44, height: 36, borderRadius: radius.lg, borderWidth: 1, borderColor: onArt ? "rgba(255,255,255,0.45)" : tokens.border, backgroundColor: onArt ? "rgba(0,0,0,0.25)" : tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}
+        /* 🆕 D-1134 — **بلا حلّةٍ ولا إطار، والرمزُ ذهبيّ** كـ`HomeViewSwitch` في الويب (D-618/D-620): دائرةُ ٤٠، رمزُ ١٨ */
+        style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
       >
-        <Icon name={next === "compact" ? "list" : "grip"} size={15} color={fg} />
+        <Icon name={next === "compact" ? "list" : "grid"} size={18} color={tokens.accent} />
       </Pressable>
     </View>
   );
@@ -179,6 +181,35 @@ export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: 
       </View>
     </View>
   );
+}
+
+/* ====== D-1134 — شاراتُ الهويّة كالويب (`AccountIdentity.tsx`) ======
+   الألوانُ ثابتةٌ هناك (`BRAND` · `INK`) لا ثيميّة — علامةٌ لا سطح؛ والمقاساتُ نسبةٌ من خطِّ الاسم (`PILL_EM` ٠٫٨٢):
+   العرضُ إلى الارتفاع ٣٨:١٦ (PLUS) و٦٢:١٦ (PARTNER/FOUNDER)، نصفُ القطر ٥:١٦، الخطُّ ٩:١٦. */
+const BRAND = "#FFD400";
+const INK = "#050505";
+const PILL_EM = 0.82;
+const VERIFIED = require("../../assets/icons/verified-badge.png");
+
+function PlanPill({ h, nameSize }: { h: HomeHeaderPayload; nameSize: number }) {
+  const { t } = useApp();
+  const who = { plan: h.plan, founder: h.founder, plus_until: h.plus_until, verified_at: h.verified_at };
+  const word = isPartner(who) ? "PARTNER" : isPlus(who) ? "PLUS" : isFounder(who) ? "FOUNDER" : null;
+  if (!word) return null;
+  const hgt = nameSize * PILL_EM;
+  const w = word === "PLUS" ? 38 : 62;
+  const tracking = word === "PLUS" ? 1.3 : 1.1;
+  const fs = (9 / 16) * hgt;
+  const label = word === "PARTNER" ? t.partnerBadge : isFounder(who) ? t.founderBadge : t.plusBadge;
+  return (
+    <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
+      <Text size={fs} weight="700" color={BRAND} style={{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }}>{word}</Text>
+    </View>
+  );
+}
+
+function isVerified(h: HomeHeaderPayload): boolean {
+  return isVerifiedOf({ plan: h.plan, founder: h.founder, plus_until: h.plus_until, verified_at: h.verified_at });
 }
 
 const styles = StyleSheet.create({

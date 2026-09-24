@@ -127,19 +127,21 @@ export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefi
            «B»، ثمّ: «لا يحسب الإيجار والشراء — بس منصّات العرض الرسميّة باشتراك»). المربّعُ زجاجُ زرّي الرجوع
            والنقاط فوقه نفسُه (`rgba(0,0,0,.45)`) ومقاسُ الشعار القديم (٤٠ · D-1020) — لا شكلَ جديد في الترويسة.
            **الرقمُ عددُ منصّات الاشتراك وحدَها** — الإيجارُ والشراءُ متجرٌ لا «أين يُعرض»، ويبقيان في الورقة.
-           ويغيب الرقمُ تحت اثنين: «١» لا يقول شيئاً لا يقوله المربّع. والورقةُ نفسُها تفتح. */
+           🆕 D-1137 — **والرقمُ يظهر من واحد** (أحمد بلقطةٍ محوَّطة على The Pitt: «لأنّه منصّة وحدة ما يطلع رقم ..
+           إذا منصّة وحدة خلّه يظهر رقم 1»): غيابُه عند الواحد كان يُقرأ «لا منصّة» لا «منصّةٌ واحدة» — ينقض ذيلَ D-1119.
+           ويغيب عند الصفر وحده (لا اشتراك: إيجارٌ أو شراءٌ فقط). والورقةُ نفسُها تفتح. */
         (() => {
           const subs = w.groups.find((g) => g.key === "flatrate")?.providers.length ?? 0;
           return (
             <Pressable
               onPress={() => setOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel={subs > 1 ? `${t.watchWhereTitle} · ${num(subs, locale)}` : t.watchWhereTitle}
+              accessibilityLabel={subs > 0 ? `${t.watchWhereTitle} · ${num(subs, locale)}` : t.watchWhereTitle}
               hitSlop={6}
               style={({ pressed }) => ({ width: 40, height: 40, borderRadius: radius.control, backgroundColor: "rgba(0,0,0,0.45)", borderWidth: 1, borderColor: "rgba(255,255,255,0.28)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
             >
               <Icon name="tv" size={20} color="#fff" />
-              {subs > 1 ? (
+              {subs > 0 ? (
                 <View style={{ position: "absolute", top: -6, end: -6, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: tokens.accent, borderWidth: 2, borderColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
                   <Text size={11} weight="700" color={tokens.bg} style={{ lineHeight: 13 }}>{num(subs, locale)}</Text>
                 </View>

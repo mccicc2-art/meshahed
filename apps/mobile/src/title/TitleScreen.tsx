@@ -307,7 +307,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           <View style={{ height: 44, borderRadius: radius.control, backgroundColor: tokens.surface2 }} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        /* 🆕 D-1133 — **شريطُ التبويبات يلتصق تحت الترويسة** (أحمد بتسجيلين، ويبٌ وتطبيق: «وأنا نازل تحت تبقى
+           الحلقات وعن وكومنتي فوق، لا يكون فيه فراغ أسود فوقها»): الابنُ الرابع (البطل · الملصق · الأفعال ·
+           **التبويبات** · المحتوى) لاصق. الترويسةُ خارج `ScrollView` فيلتصق تحتها بلا فجوة — لا `top` يُحسب. */
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false} stickyHeaderIndices={[3]}>
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
             {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
@@ -361,7 +364,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           </View>
 
           {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
-          <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, gap: 10 }}>
+          <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16, gap: 10 }}>
             <ActionRow
               inWatch={d.me.following}
               inList={(x?.containing.length ?? 0) > 0}
@@ -389,12 +392,16 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           </View>
 
           {/* التبويبات — segmented: الحلقات (مسلسل) · المعلومات · المزيد في الويب */}
-          <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD, marginTop: 16 }}>
+          {/* D-1133 — لاصقٌ فخلفيّتُه لونُ الصفحة (وإلّا مرّت الحلقاتُ تحته ظاهرة)؛ ومسافةُ الـ١٦ فوقه انتقلت
+              إلى ذيل صفِّ الأفعال — لو بقيت فيه لالتصق ومعه شريطٌ أسودُ فارغ، وهو ما طُلب ألّا يكون */}
+          <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD, backgroundColor: tokens.bg }}>
             {(d.kind === "tv" ? (["episodes", "info", "community"] as const) : (["info", "community"] as const)).map((k) => {
               const on = tab === k;
               return (
-                <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
-                  <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{k === "episodes" ? t.tabEpisodes : k === "info" ? t.tabInfo : t.tabCommunity}</Text>
+                <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
+                  {/* D-1133 — أيقوناتُ الويب نفسُها (`DetailTabs`: list · info · people، ١٦، ذهبيّةٌ للنشط) */}
+                  <Icon name={k === "episodes" ? "list" : k === "info" ? "info" : "people"} size={16} color={on ? tokens.accent : tokens.muted} />
+                  <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{k === "episodes" ? t.tabEpisodes : k === "info" ? t.tabInfo : t.tabCommunity}</Text>
                 </Pressable>
               );
             })}

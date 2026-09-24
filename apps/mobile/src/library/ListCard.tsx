@@ -7,6 +7,7 @@ import { radius } from "../theme";
 import { Icon } from "../icons";
 import { posterFor } from "../poster";
 import { num } from "@/core/i18n";
+import { themeById, themeScheme } from "@/core/themes";
 
 /**
  * ====== بطاقةُ القائمة — نسخةُ `ListCardShell` (الويب، D-677) بالبكسل ======
@@ -28,7 +29,16 @@ import { num } from "@/core/i18n";
  * `daylight` من الرمز لا من رقمٍ أصمّ**، ويُقلب في RTL لأنّ اتّجاهَه اتّجاهُ
  * القراءة (القاعدة ١٧). لا حزمةَ تدرّجٍ جديدة (وصفةُ `poster-veil` نفسُها).
  */
-const VEIL = require("../../assets/list-veil.png");
+/* 🆕 D-1135 — **حجابان بالثيم** (أحمد بصورتين معتمدتين: «اعتمد ذي الثنتين للدارك وللنهاري»، بعد «السواد مغطّي
+   عالبوستر .. جرّبت نهاري وجاي مزعج»). كان حجاباً واحداً صلباً حتى ٣٠٪ يذوب إلى الصفر عند ٦٠٪ — فيأكل الملصقَ الأوّل
+   في الداكن ويصير ضباباً أبيضَ ساطعاً في «النهاري».
+   • الداكن: الملصقاتُ في مكانها (`72%` من النهاية)، والحجابُ صلبٌ على عمود الكلام وحده (٠–٢٧٪) ثمّ **شبهُ شفّاف** فوقها:
+     ٥٥٪ عند ٢٩٪ · ٣٥٪ عند ٤٢٪ · صفرٌ عند ٦٠٪.
+   • الفاتح: **الملصقاتُ على البطاقة كلِّها**، والحجابُ أبيضُ ٧٥٪ لا صلب (٠–٣٠٪) · ٤٠٪ عند ٤٥٪ · صفرٌ عند ٦٠٪ — شيءٌ
+     تحت الكلام يكسر سطوعَ الأبيض، وهو ما طلبه («الأبيض ساطع جدّاً، خلّه أخفّ»).
+   كلاهما ألفا تُلوَّن بـ`tokens.bg` كما كان (D-1081)، ويُقلبان في RTL. */
+const VEIL_DARK = require("../../assets/list-veil-dark.png");
+const VEIL_LIGHT = require("../../assets/list-veil-light.png");
 const MIN_H = 168;
 const PAD = 14;
 
@@ -74,7 +84,10 @@ export function ListCard({
   onRate?: () => void;
   busy?: boolean;
 }) {
-  const { t, tokens, locale } = useApp();
+  const { t, tokens, locale, themeId } = useApp();
+  const light = themeScheme(themeById(themeId)) === "light";
+  /* D-1135 — الكلامُ صار فوق صورةٍ نصفِ مغطّاة: سطرُ العدّ من لون المتن مخفّفاً لا الباهت (عدّ الملصقات يبقى مقروءاً) */
+  const sub2 = tokens.fg + "CC";
   /* D-1027 (F3) — شريحةُ الغلاف ~٩٦dp: المقاسُ من القاعدة الواحدة فيطابق رابطَ بطاقة المكتبة */
   const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
   const play =
@@ -130,15 +143,15 @@ export function ListCard({
       {card.cover ? (
         <Image source={{ uri: card.cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : posters.length > 0 ? (
-        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
+        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: light ? "100%" : "72%", flexDirection: "row", justifyContent: "flex-end" }}>
           {posters.slice(0, 3).map((uri, i) => (
             <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
           ))}
         </View>
       ) : null}
-      {/* الحجابُ بلون السطح، من جهة البداية — يُقلب في RTL */}
+      {/* الحجابُ بلون الأرضيّة، من جهة البداية — يُقلب في RTL (D-1135: واحدٌ لكلِّ ثيم) */}
       <Image
-        source={VEIL}
+        source={light ? VEIL_LIGHT : VEIL_DARK}
         tintColor={tokens.bg}
         contentFit="fill"
         style={[StyleSheet.absoluteFill, { transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }]}
@@ -190,7 +203,7 @@ export function ListCard({
             <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{card.owner}</Text>
           </View>
         ) : null}
-        <Text size={12} muted numberOfLines={1} style={{ marginTop: 4, maxWidth: "58%" }}>
+        <Text size={12} color={sub2} numberOfLines={1} style={{ marginTop: 4, maxWidth: "58%" }}>
           {card.countText}
         </Text>
 

@@ -475,7 +475,12 @@ export default function Web() {
     : path.startsWith("/list") ? "library"
     : "home";
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: SHELL_BG }}>
+    /* 🆕 D-1136 — **بلا الحافّة السفليّة** (أحمد بتسجيل: «الدكس اللي تحت مقاسه فالبروفايل غير عن الهوم والمكتبة»):
+       الشريطُ الأصليُّ (`BottomNav`، D-1012) يُرسم هنا تحت الصفحة، و`SafeAreaView` بكلِّ الحوافّ كان يرفعه فوق شريط
+       الإيماءات **ثمّ** يضيف هو حشوتَه (`insets.bottom × 0.5`) — فعلا ~١٤pt عن أخيه في الشاشات الأصليّة. الآن يصل
+       إلى حافّة الشاشة كما هناك، وحشوتُه وحدَها تحجز الشريط. الصفحةُ لم تتغيّر: تنتهي عند رأس الشريط كما كانت.
+       ⚠️ الحافّةُ العليا باقية — الشريطُ الأسودُ فوق غلاف الملفّ مؤجَّلٌ بقرار أحمد («لا بس الدكس»). */
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: SHELL_BG }}>
       {source ? (
         <WebView
           ref={ref}
