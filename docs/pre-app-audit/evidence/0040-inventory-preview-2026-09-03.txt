@@ -1,0 +1,25 @@
+LOOPZ-AUD-0040 — SECURITY DEFINER / EXECUTE inventory, done on `loopz-preview` (schema copy of production, 2026-09-03), NOT on production
+======================================================================================================================================
+
+method: every function definition + its ACL came from the schema copy (identical counts to production, see evidence/0006-…). A script classified each of the 177 functions by: SECURITY DEFINER · EXECUTE for anon / authenticated / PUBLIC · writes (insert/update/delete) · guard (auth.uid() null-check, am_admin(), uid-scoped predicate) · reads of auth.* or pg_*/storage internals · trigger-returning. Every function that the script marked as a risk was then read by hand; four were reclassified as safe (their WHERE clauses are uid-scoped) and four were reclassified as risk (the remaining ops_* readers). Call sites: grep on main @ 61cb418. Function NAMES are deliberately not listed here (public repository); the named inventory, the per-function table and the SQL live in the private project document `claude/AUDIT-0040-security-definer-inventory.md`.
+
+baseline (production = preview before changes): functions 177 · EXECUTE anon 144 · authenticated 172 · PUBLIC 27 (14 of them trigger functions, not callable via RPC) · service_role 177.
+
+result — 19 functions form the real exposed surface, in five classes:
+  A2  10  admin/ops readers (SECURITY DEFINER, read auth.users statistics, database & storage size, cron job names) granted to anon AND PUBLIC — information disclosure to anyone holding the public anon key. Referenced NOWHERE in the application.
+  A1   1  unguarded SECURITY DEFINER write granted to anon — a public cache table can be poisoned by anyone.
+  B1   2  SECURITY DEFINER writes granted to authenticated with no owner/admin guard — any signed-in user can rebuild public ranking tables.
+  B2   4  bulk-write generators granted to anon+authenticated, guarded only by "signed in" — any signed-in user can inject items shown to everyone (one of them writes under the system identity). One of the four is dead code.
+  T    4  telemetry inserts/upserts granted to anon (two unbounded, two bounded counters) — abuse/flood vectors.
+  C   41  SECURITY DEFINER reads without a uid predicate — reviewed: public-by-design aggregates, lists, or reads already filtered by the profile-visibility function; three admin-named ones are guarded by the admin check inside the body. Two design questions for the owner recorded (guest people-search; relation lookups by two arbitrary UUIDs).
+  ok 101  uid-scoped or admin-guarded · TRIGGER 14.
+
+Set A — applied to `loopz-preview` (migration aud0040_set_a_revoke_ops_and_public), zero application impact (no call sites):
+  REVOKE EXECUTE on the 10 ops readers + the dead generator from PUBLIC, anon, authenticated (service_role kept) · REVOKE PUBLIC from the 3 callable functions that had it.
+  after: anon 133 · authenticated 161 · PUBLIC 14 (= the trigger functions only) · service_role 177.
+  runtime check as `anon` (set local role): the ops reader and the dead generator → permission denied; a public aggregate read still works.
+  production: NOT applied — the SQL is ready for the owner (project doc); rollback = the mirrored GRANTs.
+
+Set B — 10 functions (A1 + B1 + B2-live + T) need an architecture decision first: the server performs these "system writes" through the visitor's/user's session with the public anon key, so whoever wrote them had to grant EXECUTE to anon/authenticated. Recommended: a server-only Supabase client with the service_role key (env var on Vercel, one file, import restricted by an ESLint rule to the 10 call sites), then REVOKE from anon/authenticated. Declared cost: reverses the Phase 5 "zero service_role in code" stance in a controlled way. Alternatives (admin guard inside the functions; in-function limits; cron+pg_net) recorded with their drawbacks. Nothing of Set B was applied anywhere. Order when approved: application first (works with today's grants) → deploy → verify → REVOKE on production by the owner.
+
+status: `0040` stays OPEN P1. Closing needs: Set A on production (owner SQL) · Set B decision + D-898 + its REVOKE · independent verification in preview with two test accounts (after Auth is configured there).

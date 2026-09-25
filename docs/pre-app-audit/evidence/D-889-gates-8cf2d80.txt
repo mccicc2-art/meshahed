@@ -1,0 +1,55 @@
+D-889 — LOOPZ-AUD-0074 (P1) fix: boundary fetches start with the main wave, not after it
+========================================================================================
+
+commits (main, git log, UTC):
+  5e13806  2026-09-02 15:07:02  D-889 (1/2) src/components/CastRail.tsx + HeroRatings.tsx — optional promise props (credits / tvImdbIdPromise); default path unchanged (D-152)
+  8cf2d80  2026-09-02 15:09:57  D-889 (2/2) src/app/show/[id]/page.tsx — getCredits / getTrailer / tvImdbId promises created before `await Promise.all`, each with .catch, passed to CastRail / TrailerSection / HeroRatings  [deploy]
+rollback point: ac78296 (three files)
+scope: TV title page only. Movie page NOT touched. No cache key, TTL, append_to_response, SQL, image or Supabase change. Number of external calls per page unchanged; only their start time.
+imdbOverride (D-431) and an explicitly passed imdbId still take precedence; the promise replaces only the internal tvImdbId() call where it used to happen.
+
+gates on 8cf2d80, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully", 59/59 static pages)
+deploy: /api/build == 8cf2d8087464... read from the Claude pane at 15:13:16 UTC (Vercel MCP list_deployments still 403 = BLOCKED_BY_ACCESS)
+
+reviewer note: the ChatGPT reviewer is unreachable (owner statement in chat after 14:37:52 UTC, time not recorded). By the owner's decision Claude reviews its own deliveries with the same rules (verdict written before execution; accepted and rejected points recorded). Verdict on the §8 diagnosis and the go-ahead for D-889 are recorded in SHARED_PROGRESS.md (this round) before the delivery commit; the PR #19 comment carries the same text (its time in the PR).
+
+Before/After — same method as PHASE_10D §8-a (RSC stream markers from the Claude pane, guest, en unless stated; PARTIAL_COLD = title not opened within revalidate 3600 s, inferred from timing; breadth instead of repetition, declared)
+------------------------------------------------------------------------------------------------------------------
+BEFORE (ac78296, 14:17–14:24 UTC, 16 cold en titles; medians, ms from request start):
+  first byte 145 · hero 506 · cast 814 (= hero +313) · trailer(en) ≈ cast · ratings 1,170 (= hero +548, 7 titles) · end 1,214 (= hero +670; range 1,070–2,088)
+  warm ×3 on 4 fixed titles (12): fb 143 · hero 200 · cast 225 · ratings 232 · end 260
+  ar cold (4): trailer = hero +629…+718 (two sequential /videos calls)
+
+AFTER (8cf2d80, 15:13–15:16 UTC, 12 cold en titles = 4 new (1396 · 66732 · 100088 · 84958) + the 4 fixed titles whose hour had expired (255661 · 198178 · 278178 · 259731) + 4 new (1402 · 46648 · 2316 · 60735)):
+  title   fb   hero  cast  trailer ratings end
+  1396    393  1121  1121  —       1277    1578   (fb 393: LIKELY function cold start right after the deploy — precedes any data)
+  66732   137   493   493  493      712    1062
+  100088  618   753   753  753     1034    1342   (fb 618: same LIKELY cold start)
+  84958   131   501   501  501      718    1286
+  255661  264   800   800  —       1126    1182
+  198178  143   740   740  —        910    1057
+  278178  158   644   644  —        960     960
+  259731  378   650   650  —        917     918
+  1402    146   807   807  807      991    1598
+  46648   162   650   650  650      962    1047
+  2316    155   474   474  552      724    1193
+  60735   173   493   493  493      741    1120
+  medians: fb 160 · hero 650 · cast 650 · ratings 938 · end 1,151
+  relative to hero (the fair comparison — hero itself is TMDB latency of the hour):
+    cast − hero    : 313 → 0      (12/12 exactly 0)                      target "≈ hero"        MET
+    trailer − hero : 313 → 0      (6/7; one 78)                          target "≈ hero"        MET
+    ratings − hero : 548 → 249    (156–326)                              target "≤ hero+300"    MET (11/12; one 326)
+    end − hero     : 670 → 513    (268–791; max 1,593 → 791)             target "−300…−500"     PARTIALLY MET (−157 median)
+  the remaining tail after ratings is RelatedTitles (/recommendations then /similar, sequential rail calls) + community reads — untouched by D-889, LIKELY the next dominant item.
+  hero absolute median 506 → 650: within the cold spread of the hour (before 485–884; after 474–1,121 incl. two cold-start rows). Not attributable either way; three extra parallel TMDB calls per page could add contention — NOT PROVEN, flagged.
+  warm ×3 on the 4 fixed titles (12): fb 138 · hero 212 · cast 216 · ratings 216 · end 242 (one outlier end 636) — unchanged vs before (200/225/232/260).
+  ar (lang=ar cookie; 4 new cold titles 63174 · 71446 · 76479 · 85552): hero 479–886 · cast − hero 0/0/0/+219 · trailer − hero 248…359 (was 629…718) · ratings − hero 234…327 · end − hero 499…1,047. warm ar: hero 198–380, end 202–460.
+  rollback criterion (cast − hero < 100 ms, else revert): MET → not reverted.
+
+smoke after deploy (guest):
+  /show/66732 hard navigation in the pane: build 8cf2d80 · "Cast" heading · 23 /person/ links · trailer control present (1) · IMDb present · seasons rendered ✓
+  RSC checks: /show/304842 (no trailer, no IMDb id): cast 20, no trailer, no ratings, no failure text ✓ · /show/1429 (anime): AnimeFacts rendered (source manga) + cast 15 + trailer + IMDb ✓ · /show/999999999: load-failed message, 27 KB, no crash ✓ · /show/71446 with lang=ar: Arabic RSC (230 Arabic words), cast 15, trailer, IMDb ✓
+not measured: first paint (BLOCKED_BY_TOOLING) · movie page (not changed) · network from Riyadh · Wikidata hop in isolation.
