@@ -2239,6 +2239,8 @@ const ar = {
   errorBody:
     "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
   errorRetry: "حاول مجدداً",
+  /* D-1144 — صفحةُ العمل في التطبيق: الرمزُ لم يصل فحالتي لم تُحمَّل */
+  myStateUnavailable: "تعذّر تحميل حالتك",
   errorHome: "الرجوع للرئيسية",
   /* 🆕 أخطاءُ `/api/v1` — **الخادمُ يعيد المفتاحَ لا النصّ** (Phase 9 §4.3 القاعدة ٥):
      التطبيقُ يترجم بلغة الجهاز، والويبُ بلغة الكوكي، **من هذا القاموس وحدَه.** */
@@ -3867,6 +3869,7 @@ const en: Dict = {
   errorBody:
     "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
   errorRetry: "Try again",
+  myStateUnavailable: "Couldn't load your progress",
   errorHome: "Back to home",
   apiUnauthenticated: "Sign in to continue",
   apiForbidden: "You don't have permission for this",
