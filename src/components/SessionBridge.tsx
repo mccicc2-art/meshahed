@@ -37,6 +37,57 @@ declare global {
 
 const REQUEST_EVENT = "loopz:session-request";
 
+/**
+ * ====== 🆕 D-1143 — الرمزُ من الكوكي أوّلاً، بلا قفل ======
+ *
+ * **لماذا**: `token.wait` بعد D-1141 (٢٦ سبتمبر، جهازُ خالد): **١١ طلباً من ١١ انتهت بالمهلة (٨ث) بلا ردّ**
+ * والصفحةُ جاهزة. لو كانت بلا جلسةٍ لردّت «مسحاً» فوراً — فالصمتُ يعني أنّ الطلبَ علق هنا. والمرجَّح
+ * `getSession()`: تنتظر قفلَ الجلسة **بلا سقف**، والقفلُ يمسكه تجديدٌ تلقائيٌّ في صفحةٍ مخفيّةٍ خلف الشاشات
+ * الأصليّة لا يكتمل — فيعلق كلُّ طلبٍ بعده. وكلُّ ما هو شخصيٌّ في التطبيق ينتظر ٨ث ثمّ يمضي بلا رمز.
+ *
+ * 🔑 **الجلسةُ مكتوبةٌ في الكوكي أصلاً** (`@supabase/ssr` 0.12 — مقروءٌ في مصدرها قبل الكتابة): الاسمُ
+ * `sb-<المرجع>-auth-token` أو أجزاؤه `.0` `.1`… (كلُّ جزءٍ مُرمَّزٌ بـ`encodeURIComponent`، تُفكّ ثمّ
+ * تُضمّ)، والقيمةُ `base64-` ثمّ base64url لـJSON الجلسة. **قراءتُها لا تمسك قفلاً ولا تجدّد رمزاً** — فلا
+ * تمسّ D-932 (عميلٌ واحدٌ يدوّر رمزَ التجديد). صالحٌ لأكثر من دقيقة ⇒ يُعطى فوراً؛ وإلّا فالمسارُ القديم.
+ * وأيُّ فشلٍ في القراءة ⇒ `null` فالمسارُ القديم — لا يسوء شيء.
+ */
+function b64urlToString(b64url: string): string {
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64url.length + 3) % 4);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function cookieSession(): { access: string; exp: number; uid: string | null } | null {
+  try {
+    const ref = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0];
+    const key = `sb-${ref}-auth-token`;
+    const jar = new Map<string, string>();
+    for (const part of document.cookie.split("; ")) {
+      const i = part.indexOf("=");
+      if (i > 0) jar.set(part.slice(0, i), part.slice(i + 1));
+    }
+    let raw = jar.get(key);
+    if (raw !== undefined) raw = decodeURIComponent(raw);
+    else {
+      const chunks: string[] = [];
+      for (let i = 0; jar.has(`${key}.${i}`); i++) chunks.push(decodeURIComponent(jar.get(`${key}.${i}`)!));
+      if (chunks.length === 0) return null;
+      raw = chunks.join("");
+    }
+    const json = raw.startsWith("base64-") ? b64urlToString(raw.slice("base64-".length)) : raw;
+    const s = JSON.parse(json) as { access_token?: unknown; expires_at?: unknown; user?: { id?: unknown } } | null;
+    if (!s || typeof s.access_token !== "string" || typeof s.expires_at !== "number") return null;
+    return { access: s.access_token, exp: s.expires_at, uid: typeof s.user?.id === "string" ? s.user.id : null };
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 D-1143 — سقفُ المسار القديم: لا صمتَ بعد اليوم — ثلاثُ ثوانٍ ثمّ «علقتُ» */
+const LIB_TIMEOUT_MS = 3_000;
+
 function post(data: Record<string, unknown>) {
   try {
     window.ReactNativeWebView?.postMessage(JSON.stringify(data));
@@ -55,17 +106,34 @@ export function SessionBridge() {
     const onRequest = async (e: Event) => {
       const nonce = (e as CustomEvent<{ nonce?: unknown }>).detail?.nonce;
       if (typeof nonce !== "string" || !nonce) return;
+      /* 🆕 D-1143 — «وصلني» فوراً: يفرّق في القياس بين حدثٍ لا يصل وجسرٍ يصل ثمّ يعلق */
+      post({ type: "session:ack", nonce });
+      /* 🆕 D-1143 — الكوكي أوّلاً (بلا قفل): صالحٌ لأكثر من دقيقة ⇒ الردُّ الآن */
+      const c = cookieSession();
+      if (c && c.exp * 1000 - Date.now() > 60_000) {
+        if (c.uid) lastUserId = c.uid;
+        post({ type: "session", access: c.access, exp: c.exp, nonce, src: "cookie" });
+        return;
+      }
       try {
         const supabase = await createClient();
-        const { data } = await supabase.auth.getSession();
-        const s = data.session;
+        const got = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<"stall">((r) => setTimeout(() => r("stall"), LIB_TIMEOUT_MS)),
+        ]);
         if (disposed) return;
+        /* 🆕 D-1143 — علقت المكتبة: نقول ذلك بدل الصمت — ولا «مسح» (الجلسةُ لم تثبت غائبة) */
+        if (got === "stall") {
+          post({ type: "session:stall", nonce });
+          return;
+        }
+        const s = got.data.session;
         if (!s?.access_token || !s.expires_at) {
           post({ type: "session:clear", nonce });
           return;
         }
         lastUserId = s.user.id;
-        post({ type: "session", access: s.access_token, exp: s.expires_at, nonce });
+        post({ type: "session", access: s.access_token, exp: s.expires_at, nonce, src: "lib" });
       } catch {
         post({ type: "session:clear", nonce });
       }
