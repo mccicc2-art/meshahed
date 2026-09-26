@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { handle, requireUser, limited, fail } from "@/lib/v1";
+import { handle, limited, fail } from "@/lib/v1";
+import { getUserId } from "@/lib/data";
 import { ok } from "@/core/contracts/result";
 import { APP_UA_TAG } from "@/core/platform";
 
@@ -57,18 +58,23 @@ const NAMES = new Set([
      من الاسم — استعلامُ النِّسب أعلاه يعمل عليهما كما هو، ويُقرأ رقمُهما بوحدته. */
   "gesture.jank",
   "token.life",
+  /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
+  "token.wait",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
 
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    const auth = await requireUser();
-    if (!auth.ok) return auth;
-    const lim = limited(`v1:app:perf:${auth.user.id}`, 6, 60_000);
+    /* 🔴 D-1141 — **بلا رمزٍ مقبول**: التطبيقُ كان يحبس القياسَ حتى يصل رمز، فضاع أغلبُه (جهازٌ بلا قياسٍ
+       ١٣ ساعةً وهو يُستخدم) — وأخطرُ ما ضاع هو ما نريد رؤيتَه: اللحظاتُ التي غاب فيها الرمز. لا شيءَ هنا
+       يُكتب باسم أحد (الهويّةُ للحدّ وحدَه)، فالزائرُ يُحدّ بعنوانه كما في مسار العمل. */
+    const uid = await getUserId();
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+    const lim = limited(`v1:app:perf:${uid ?? ip}`, 6, 60_000);
     if (lim) return lim;
     let body: { marks?: unknown; version?: unknown; model?: unknown };
     try {
