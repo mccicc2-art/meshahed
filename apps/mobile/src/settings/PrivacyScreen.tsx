@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { IdentityBadges } from "../IdentityBadges";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
@@ -79,7 +80,8 @@ function PersonRow({ p, action, i, onOpen }: { p: PersonLite; action: React.Reac
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Text size={14} weight="600" numberOfLines={1} style={{ flexShrink: 1 }}>{name}</Text>
             {/* الشاراتُ جزءٌ ممّا يُبنى عليه قرارُ الثقة (D-773ب) */}
-            {!p.hide_name && p.verified_at ? <Icon name="check-line" size={14} color={tokens.verified} /> : null}
+            {/* D-1142 — الختمُ الذهبيُّ نفسُه (`IdentityBadges`) لا ✓ رفيع — للآخرين التوثيقُ وحدَه (الخطّةُ ليست في الصفّ) */}
+            {!p.hide_name && p.verified_at ? <IdentityBadges flags={{ partner: false, plus: false, founder: false, verified: true }} nameSize={14} /> : null}
           </View>
           {p.username && !p.hide_name ? <Text size={12} muted numberOfLines={1}>@{p.username}</Text> : null}
         </View>

@@ -61,6 +61,17 @@ let seenMem: boolean | null = null;
  */
 let lastLife: number | null = null;
 
+/**
+ * 🆕 D-1141 — **كم انتظرنا الرمزَ، وبأيِّ نتيجة** (`token.wait`): صفحةُ العمل انتظرت ٦ث والحلقاتُ ١٠ث
+ * أخرى في تسجيل خالد (٢٦ سبتمبر)، ولم يصل من جهازه قياسٌ واحدٌ ١٣ ساعة — **والسببُ المرجَّح صفحةٌ لا تردّ**.
+ * كلُّ طلبٍ يُبلَّغ مرّةً: مدّتُه، ونتيجتُه (`ok` · `none`)، وهل كانت الصفحةُ جاهزةً لحظةَ الطلب (`ready`).
+ * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
+ */
+type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1 }) => void;
+const waitListeners = new Set<WaitReport>();
+/** 🆕 D-1141 — طلبٌ واحدٌ في الطريق لكلِّ من يسأل — كان كلُّ نداءٍ في الطابور يرسل طلبَه بعد التحميل */
+let inflight: Promise<string | null> | null = null;
+
 const NONCE_TTL_MS = 30_000;
 const REPLY_TIMEOUT_MS = 8_000;
 /** بعد خلفيّةٍ أطولَ من هذا يُمسح الرمز (§٦-ج) */
@@ -154,6 +165,8 @@ export const session = {
     }
     if (pendingTimer) clearTimeout(pendingTimer);
     pendingTimer = null;
+    /* D-1141 — مسحٌ يليه طلبٌ جديدٌ فوراً (إعادةُ المحاولة عند 401): لا يعود الطلبُ الملغى نفسُه */
+    inflight = null;
     if (had) emit();
   },
   /**
@@ -162,6 +175,27 @@ export const session = {
    * الـWebView برسالة. طلبٌ متزامنٌ ثانٍ ينتظر الأوّلَ نفسَه.
    */
   request(): Promise<string | null> {
+    if (inflight) return inflight;
+    const t0 = Date.now();
+    const ready: 0 | 1 = pageReady ? 1 : 0;
+    const p = session.requestOnce();
+    /* يُصفَّر إن كان هو نفسُه الذي في الطريق — مسحٌ بينهما قد أطلق طلباً أحدث */
+    const mine: Promise<string | null> = p.finally(() => {
+      if (inflight === mine) inflight = null;
+    });
+    inflight = mine;
+    void p.then((tok) => {
+      for (const l of waitListeners) l(Date.now() - t0, { result: tok ? "ok" : "none", ready });
+    });
+    return mine;
+  },
+  /** 🆕 D-1141 — مستمعُ `token.wait` */
+  onWait(l: WaitReport): () => void {
+    waitListeners.add(l);
+    return () => waitListeners.delete(l);
+  },
+  /** المحاولةُ نفسُها كما كانت (D-1075) — `request()` يغلّفها بطلبٍ واحدٍ في الطريق وبالقياس */
+  requestOnce(): Promise<string | null> {
     if (pending) {
       return new Promise((resolve) => {
         const prev = pending!.resolve;
@@ -173,7 +207,7 @@ export const session = {
     }
     if (!inject) return Promise.resolve(null);
     /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك) */
-    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.request() : null));
+    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.requestOnce() : null));
     const nonce = bytesToHex(Crypto.getRandomBytes(16));
     return new Promise((resolve) => {
       pending = { nonce, at: Date.now(), resolve };

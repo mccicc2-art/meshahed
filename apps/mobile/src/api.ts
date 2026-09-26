@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { CONFIG } from "./config";
 import { accessToken } from "./auth";
@@ -76,6 +77,45 @@ export async function api<T>(
     }
     return json;
   }
+}
+
+/**
+ * ====== 🆕 D-1141 — القراءةُ العامّةُ لا تنتظر الرمز ======
+ *
+ * **لماذا**: صفحةُ العمل وحلقاتُها كانتا تنتظران الرمزَ من الـWebView (حتى ٨ث للمحاولة) قبل أن تُطلبا —
+ * في تسجيل خالد (٢٦ سبتمبر): ٦ث للصفحة ثمّ ١٠ث للحلقات. **والخادمُ لا يحتاجه لهما**: المساراتُ تقبل
+ * الزائرَ وتعيد العملَ كاملاً، والرمزُ يضيف حالتي وحدَها (D-892). وأسوأُ من البطء: بعد مهلةٍ بلا رمزٍ
+ * كان الطلبُ يمضي زائراً **فتُرسم حلقاتٌ «غيرُ مشاهَدة» وقد شوهدت**.
+ *
+ * 🔑 **الرمزُ حاضرٌ ⇒ الطلبُ كما كان. غائبٌ ⇒ يُطلب العملُ زائراً فوراً ويُوسم `_guest`، ويُطلب الرمزُ في
+ * الخلفيّة**، و`useGuestUpgrade` يعيد الجلبَ لحظةَ يصل. **والشاشةُ لا ترسم حالتي من ردِّ زائر** —
+ * أفعالُها وعلاماتُها هيكلٌ معطَّلٌ حتى الترقية: لا «غير مشاهَد» كاذب، ولا فعلَ على حالٍ لا نعرفها.
+ */
+export type Soft<T> = T & { _guest?: true };
+
+export async function softGet<T extends object>(path: string): Promise<Soft<T>> {
+  if (session.has()) return (await api<T>(path)).data;
+  void session.request();
+  const r = await api<T>(path, { auth: false });
+  return { ...r.data, _guest: true };
+}
+
+export function isGuest(v: unknown): boolean {
+  return !!v && typeof v === "object" && (v as { _guest?: unknown })._guest === true;
+}
+
+/** ردُّ زائرٍ على الشاشة ⇒ يُعاد الجلبُ حين يصل الرمز (أو فوراً إن كان وصل قبل التركيب) */
+export function useGuestUpgrade(guest: boolean, refetch: () => unknown) {
+  useEffect(() => {
+    if (!guest) return;
+    if (session.has()) {
+      void refetch();
+      return;
+    }
+    return session.subscribe(() => {
+      if (session.has()) void refetch();
+    });
+  }, [guest, refetch]);
 }
 
 /**

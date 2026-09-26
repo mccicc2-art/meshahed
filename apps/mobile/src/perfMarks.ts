@@ -39,7 +39,9 @@ export type PerfName =
   | "boot.fresh"
   /* 🆕 D-1128 — «قبل» K2: إطاراتُ السحب الضائعة · وعمرُ الرمز لحظةَ استلامه (ثوانٍ) */
   | "gesture.jank"
-  | "token.life";
+  | "token.life"
+  /* 🆕 D-1141 — انتظارُ الرمز من الصفحة: مدّتُه ونتيجتُه (`result=ok|none`) وجاهزيّةُ الصفحة (`ready=0|1`) */
+  | "token.wait";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -57,12 +59,15 @@ function flush() {
     clearTimeout(timer);
     timer = null;
   }
-  /* بلا رمزٍ لا نداء: `api()` كان سيطلب رمزاً من الـWebView لأجل قياس — لا يستحقّ */
-  if (buffer.length === 0 || !session.has()) return;
+  if (buffer.length === 0) return;
   const marks = buffer;
   buffer = [];
   lastFlush = Date.now();
-  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: BUILD_TAG, model: MODEL } }).catch(() => {});
+  /* 🔴 D-1141 — **يُرسل بلا رمزٍ إن غاب** (كان ينتظره): الدفعةُ كانت تبقى في الذاكرة حتى يصل رمز، والذاكرةُ
+     ٤٠ علامةً يُرمى أقدمُها — فجهازُ خالد لم يرسل شيئاً ١٣ ساعةً وهو يستخدم التطبيق، و«٧ سحبات» كانت ما نجا
+     لا ما حدث. **والقياسُ المفقودُ منحاز**: ينجو ما وقع والرمزُ حاضر، وتلك أسرعُ اللحظات. العلاماتُ بلا هويّة
+     أصلاً (D-881)، والخادمُ يحدّ الزائرَ بعنوانه. ولا يطلب رمزاً لأجل قياس (`auth` = ما في الذاكرة الآن). */
+  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: BUILD_TAG, model: MODEL }, auth: session.has() }).catch(() => {});
 }
 
 export function mark(name: PerfName, ms: number, extra?: Extra) {
@@ -108,6 +113,8 @@ session.subscribe(() => {
   if (life !== null) mark("token.life", Math.max(0, life));
   if (buffer.length > 0 && session.has()) flush();
 });
+/* 🆕 D-1141 — كلُّ طلبِ رمزٍ مرّةً: كم انتظر، وهل وصل، وهل كانت الصفحةُ جاهزة */
+session.onWait((ms, extra) => mark("token.wait", ms, extra));
 
 /**
  * ====== إطاراتُ السحب الضائعة (`gesture.jank`) — D-1128، «قبل» K2 ======

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FlatList, Linking, Pressable, ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, write } from "../api";
+import { softGet, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
@@ -28,7 +28,8 @@ export const extrasKey = (kind: "tv" | "movie", id: number) => ["title:extras", 
 export function useExtras(kind: "tv" | "movie", id: number) {
   return useQuery({
     queryKey: extrasKey(kind, id),
-    queryFn: async () => (await api<TitleExtrasPayload>(`/api/v1/title/${kind}/${id}/extras`)).data,
+    /* D-1141 — التقييماتُ و«أين تشاهد» عامّة: لا تنتظر الرمز؛ `containing`/`favorite` تُقرأ بعد الترقية */
+    queryFn: () => softGet<TitleExtrasPayload>(`/api/v1/title/${kind}/${id}/extras`),
     staleTime: 5 * 60_000,
   });
 }

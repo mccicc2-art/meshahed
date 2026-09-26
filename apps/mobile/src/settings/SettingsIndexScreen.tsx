@@ -2,6 +2,10 @@ import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { IdentityBadges, identityFlags, type IdentityFlags } from "../IdentityBadges";
+import { HOME_KEY } from "../home/useHome";
+import type { HomePayload } from "../contracts";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -28,13 +32,25 @@ export function SettingsIndexScreen() {
   const q = useSettings();
   const s = q.data;
   const a = s?.account;
-  const displayName = a ? a.nickname || a.username || "" : "";
-  const cardPath = a?.username ? `/u/${a.username}` : "/profile";
+  /**
+   * 🆕 D-1142 — **البطاقةُ لا تنتظر الإعدادات** (أحمد بتسجيل: «بطء في ظهور صفحة البروفايل في الإعدادات» —
+   * هيكلٌ ~٥ث): `/api/v1/me/settings` شخصيٌّ ينتظر الرمزَ من الـWebView، والبطاقةُ لا تحتاج منه شيئاً لا
+   * تملكه الرئيسيّة — والإعداداتُ لا تُفتح إلّا منها، ورأسُها محفوظٌ على القرص (`cachePersist`). فتُرسم من
+   * رأس الرئيسيّة فوراً، ومتى وصلت الإعداداتُ صارت هي المصدر (الاسمُ المستعارُ قد تغيّر في هذه الأثناء).
+   */
+  const qc = useQueryClient();
+  const h = qc.getQueryData<HomePayload>(HOME_KEY)?.header;
+  const card: { name: string; username: string | null; avatar: string | null; pos: number; flags: IdentityFlags } | null = a
+    ? { name: a.nickname || a.username || "", username: a.username, avatar: a.avatar_url, pos: a.avatar_pos, flags: { partner: a.partner, plus: a.plus, founder: a.founder, verified: a.verified } }
+    : h
+      ? { name: h.display_name, username: h.username, avatar: h.avatar_url, pos: h.avatar_pos ?? 50, flags: identityFlags(h) }
+      : null;
+  const cardPath = card?.username ? `/u/${card.username}` : "/profile";
   const go = (section: string) => router.push({ pathname: "/settings/[section]", params: { section } });
 
   return (
     <SettingsScreen title={t.settingsNavHeading}>
-      {!s ? (
+      {!card ? (
         q.isError ? <Text muted style={{ textAlign: "center", paddingVertical: 24 }}>{t.apiInternal}</Text> : <RowsSkeleton rows={3} />
       ) : (
         <Group>
@@ -45,20 +61,15 @@ export function SettingsIndexScreen() {
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: pressed ? tokens.surface2 : "transparent" }]}
           >
             <View style={{ width: 52, height: 52, borderRadius: 26, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-              {a?.avatar_url ? <Image source={{ uri: a.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${a.avatar_pos}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={22} color={tokens.muted} />}
+              {card.avatar ? <Image source={{ uri: card.avatar }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${card.pos}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={22} color={tokens.muted} />}
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{displayName}</Text>
-                {/* الشاراتُ كما في رأس الرئيسيّة (D-773ب): توثيقٌ ثمّ «+» للمشترك */}
-                {a?.verified ? <Icon name="check-line" size={16} color={tokens.verified} /> : null}
-                {a?.plus ? (
-                  <View style={{ paddingHorizontal: 6, height: 18, borderRadius: 9, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
-                    <Text size={10} weight="700" color={tokens.onAccent}>+</Text>
-                  </View>
-                ) : null}
+                <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{card.name}</Text>
+                {/* 🔴 D-1142 — شاراتُ الرئيسيّة نفسُها (`IdentityBadges`): قرصُ الخطّة ثمّ الختمُ الذهبيّ — لا ✓ رفيعٌ ولا «+» */}
+                <IdentityBadges flags={card.flags} nameSize={15} />
               </View>
-              {a?.username ? <Text size={12} weight="500" muted numberOfLines={1}>@{a.username}</Text> : null}
+              {card.username ? <Text size={12} weight="500" muted numberOfLines={1}>@{card.username}</Text> : null}
             </View>
             <Chevron busy={openWeb.busy === cardPath} />
           </Pressable>

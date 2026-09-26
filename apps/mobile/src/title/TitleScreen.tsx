@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, qk, write, ApiError } from "../api";
+import { qk, write, ApiError, softGet, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
 import { Text } from "../ui";
@@ -84,15 +84,19 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 
   const q = useQuery({
     queryKey: qk.title(kind, id),
-    queryFn: async () => (await api<TitlePayload>(`/api/v1/title/${kind}/${id}`)).data,
+    /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد)؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
+    queryFn: () => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`),
     staleTime: 60_000,
   });
   const d = q.data;
+  /** 🆕 D-1141 — ردُّ زائر: حالتي مجهولة — الأفعالُ والعدّاداتُ هيكلٌ معطَّل حتى الترقية */
+  const guest = isGuest(d);
+  useGuestUpgrade(guest, q.refetch);
   /* 🆕 D-1118 — `title.open`: من فتح الشاشة إلى أوّل بيانات (`cached=1` إن رُسمت من الكاش/الملفّ) */
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
   useEffect(() => {
     if (!d || !openMark.current) return;
-    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind });
+    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind, guest: isGuest(d) ? 1 : 0 });
     openMark.current = null;
   }, [d, kind]);
   /* 🆕 D-1118 — **الموسمُ المفتوحُ يُجلب مع الصفحة لا بعد رسم قائمتها**: ما إن تُعرف الصفحةُ (من الكاش أو
@@ -104,6 +108,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   }, [d, qc]);
   const extras = useExtras(kind, id);
   const x = extras.data;
+  useGuestUpgrade(isGuest(x), extras.refetch);
+  /* قوائمي ومفضّلتي من الإضافات، والباقي من العمل — أيُّهما زائرٌ يعطّل صفَّ الأفعال */
+  const pending = guest || isGuest(x);
   const community = useCommunity(kind, id, tab === "community");
 
   const back = useCallback(() => {
@@ -255,11 +262,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
    */
   const wasDone = useRef<boolean | null>(null);
   useEffect(() => {
-    if (d?.kind !== "tv") return;
+    /* D-1141 — ردُّ الزائر «غيرُ منتهٍ» دائماً: لو هيّأ المرجعَ لكانت الترقيةُ انتقالاً إلى «منتهٍ» فتسأل عن تقييمٍ لم يُطلب */
+    if (d?.kind !== "tv" || guest) return;
     const prev = wasDone.current;
     wasDone.current = tvDone;
     if (prev === false && tvDone && d.me.rating == null) setReviewOpen("prompt");
-  }, [d, tvDone]);
+  }, [d, tvDone, guest]);
   const done = d?.kind === "movie" ? d.me.watched : tvDone;
   /* D-1014 — ورقةُ القوائم وورقةُ البطاقة الحمراء يفتحهما صفُّ الأفعال */
   const [listOpen, setListOpen] = useState(false);
@@ -320,7 +328,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
-            <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+            <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Icon name="dots" size={20} color="#fff" />
             </Pressable>
           </View>
@@ -344,7 +352,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                   <Text size={22} weight="700" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d.name}</Text>
-                  <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => setReviewOpen("edit")} /></View>
+                  <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /></View>
                 </View>
                 <Text size={12} muted numberOfLines={2} style={styles.onArt}>
                   {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join(" · ")}
@@ -365,6 +373,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 
           {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
           <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16, gap: 10 }}>
+            {/* D-1141 — حالتي لم تصل: الصفُّ يُرسم خافتاً ولا يُضغط (لا فعلَ على حالٍ لا نعرفها) */}
+            <View pointerEvents={pending ? "none" : "auto"} style={{ opacity: pending ? 0.4 : 1 }}>
             <ActionRow
               inWatch={d.me.following}
               inList={(x?.containing.length ?? 0) > 0}
@@ -385,6 +395,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               }}
               onHoldWatch={d.kind === "tv" ? () => setRedCard(true) : undefined}
             />
+            </View>
             {/* D-1021 — شريطُ التقدّم مرّةً واحدة في رأس تبويب الحلقات (طلبُ أحمد: «شيل واتشد ذي لأنّها موجودة تحت») */}
 
             {/* ⚖️ D-1034 — صفُّ «قيّم هذا العمل» (D-1006) **حُذف من هنا**: التقييمُ يصعد انبثاقاً بعد «شاهدته»
@@ -417,7 +428,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {tab === "community" ? (
               <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => openWeb("", p)} />
             ) : tab === "episodes" && d.kind === "tv" ? (
-              <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} />
+              <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (
               <>
                 {d.overview ? (

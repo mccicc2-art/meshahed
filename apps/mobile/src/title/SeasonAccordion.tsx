@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mark } from "../perfMarks";
 import { Pressable, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, qk, write } from "../api";
+import { isGuest, qk, softGet, useGuestUpgrade, write } from "../api";
 import { Image } from "expo-image";
 import { backdropUrl } from "@/core/media";
 import { useApp } from "../state";
@@ -35,16 +35,29 @@ export function SeasonAccordion({
   watched,
   onError,
   onSettled,
+  pending = false,
 }: {
   show: TvTitlePayload;
   watched: Set<string>;
   onError: (e: unknown) => void;
   onSettled: () => void;
+  /** 🆕 D-1141 — العملُ جاء زائراً (الرمزُ لم يصل): حالتي مجهولةٌ لا «صفر» — العدّاداتُ والعلاماتُ هيكلٌ معطَّل */
+  pending?: boolean;
 }) {
   const { t, tokens } = useApp();
   /* الموسمُ المفتوحُ افتراضاً: أوّلُ موسمٍ لم يكتمل (كما `initialSeason` في الصفحة) */
   const firstOpen = useMemo(() => firstOpenSeason(show), [show]);
-  const [open, setOpen] = useState<number | null>(firstOpen);
+  const [open, setOpenRaw] = useState<number | null>(firstOpen);
+  /* D-1141 — ردُّ الزائر يفتح الموسمَ الأوّل (لا يعرف ما شوهد)؛ حين تصل حالتي يُفتح أوّلُ موسمٍ لم يكتمل —
+     ما لم يكن القارئُ قد فتح أو طوى بنفسه */
+  const touched = useRef(false);
+  const setOpen = useCallback((v: number | null) => {
+    touched.current = true;
+    setOpenRaw(v);
+  }, []);
+  useEffect(() => {
+    if (!touched.current) setOpenRaw(firstOpen);
+  }, [firstOpen]);
   /**
    * 🔴 D-1021 — **تبويبُ الحلقات بترتيب الويب** (طلبُ أحمد بلقطتين، ١٨ سبتمبر): شريطُ التقدّم
    * ومفتاحُ التقييمات وسطرُ القاعدة **مرّةً واحدة فوق المواسم** (كانت داخل كلِّ موسم فتتكرّر
@@ -90,8 +103,14 @@ export function SeasonAccordion({
       {total > 0 ? (
         <View style={{ gap: 6, marginBottom: 6 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneAll, total)}</Text>
-            <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
+            {pending ? (
+              <View style={{ flex: 1, height: 13 }}><View style={{ width: 150, height: 13, borderRadius: 4, backgroundColor: tokens.surface2 }} /></View>
+            ) : (
+              <>
+                <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneAll, total)}</Text>
+                <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
+              </>
+            )}
             <Pressable
               onPress={() => setShowRatings((v) => !v)}
               hitSlop={8}
@@ -104,7 +123,7 @@ export function SeasonAccordion({
             </Pressable>
           </View>
           <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
-            <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />
+            {pending ? null : <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />}
           </View>
           <Text size={11} muted>{t.cascadeHint}</Text>
         </View>
@@ -116,7 +135,7 @@ export function SeasonAccordion({
         return (
           /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
           <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
-            {done ? <View style={{ height: 3, backgroundColor: tokens.accent }} /> : null}
+            {done && !pending ? <View style={{ height: 3, backgroundColor: tokens.accent }} /> : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
               <Pressable onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
                 <View style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}>
@@ -129,7 +148,9 @@ export function SeasonAccordion({
                     يُعلَّم بعد) **تاريخُ بدئه** بصيغة الحلقات نفسِها (`airsOn` + `formatDateShort`) — والحقلان
                     في الردّ أصلاً (`episode_count` · `air_date`) فلا نداءَ جديداً. موسمٌ بلا عددٍ ولا تاريخ
                     يبقى اسمُه وحدَه: لا نخترع ما لم تعلنه TMDB. */}
-                {s.aired > 0 ? (
+                {s.aired > 0 && pending ? (
+                  <View style={{ width: 30, height: 12, borderRadius: 4, backgroundColor: tokens.surface2 }} />
+                ) : s.aired > 0 ? (
                   <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{s.aired}</Text>
                 ) : s.episode_count > 0 ? (
                   <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{t.episodesCount(s.episode_count)}</Text>
@@ -154,13 +175,13 @@ export function SeasonAccordion({
                 </Text>
               ) : null}
               {s.aired > 0 ? (
-                <Pressable onPress={() => whole.mutate({ season: s.season_number, on: !done })} hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, opacity: pressed || whole.isPending ? 0.6 : 1 })}>
+                <Pressable disabled={pending} onPress={() => whole.mutate({ season: s.season_number, on: !done })} hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, opacity: pending ? 0.35 : pressed || whole.isPending ? 0.6 : 1 })}>
                   {done ? <Icon name="check-line" size={14} color={tokens.success} /> : null}
                   <Text size={13} weight="600" color={done ? tokens.muted : tokens.accent}>{done ? t.seasonUndo : t.seasonAll}</Text>
                 </Pressable>
               ) : null}
             </View>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} onShowRatings={() => setShowRatings(true)} /> : null}
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} onShowRatings={() => setShowRatings(true)} pending={pending} /> : null}
           </View>
         );
       })}
@@ -177,6 +198,7 @@ function SeasonBody({
   onSettled,
   showRatings,
   onShowRatings,
+  pending,
 }: {
   show: TvTitlePayload;
   season: number;
@@ -187,6 +209,8 @@ function SeasonBody({
   onShowRatings: () => void;
   onError: (e: unknown) => void;
   onSettled: () => void;
+  /** D-1141 — حالتي لم تصل: العلامةُ والنجمةُ هيكلٌ لا يُضغط */
+  pending: boolean;
 }) {
   const { t, tokens } = useApp();
   const qc = useQueryClient();
@@ -200,6 +224,8 @@ function SeasonBody({
     ...seasonQuery(show.id, season, showRatings),
     placeholderData: (prev) => prev,
   });
+  /* D-1141 — حلقاتٌ جاءت زائرة: تُعاد حين يصل الرمز (تقييماتي على الحلقات) */
+  useGuestUpgrade(isGuest(q.data) && !q.isPlaceholderData, q.refetch);
   /* 🆕 D-1118 — `season.open`: من فتح الموسم إلى حلقاته (`cached=1` إن كانت في الكاش أصلاً) */
   const seasonMark = useRef<{ key: string; t0: number; cached: number } | null>(null);
   useEffect(() => {
@@ -314,7 +340,7 @@ function SeasonBody({
         return (
           <Pressable
             key={e.episode_number}
-            disabled={future}
+            disabled={future || pending}
             /* D-988 — التأشيرُ «حتى هنا»؛ الإزالةُ حلقةٌ واحدة */
             onPress={() => (on ? toggle.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
             onLongPress={() => upTo.mutate(e.episode_number)}
@@ -322,8 +348,8 @@ function SeasonBody({
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}
           >
             {/* D-1021 — دائرةُ التأشير يساراً كالويب، والرقمُ مع الاسم */}
-            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: on ? tokens.success : tokens.border, backgroundColor: on ? tokens.success : "transparent", alignItems: "center", justifyContent: "center" }}>
-              {on ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
+            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: pending ? 0 : 1.5, borderColor: on ? tokens.success : tokens.border, backgroundColor: pending ? tokens.surface2 : on ? tokens.success : "transparent", alignItems: "center", justifyContent: "center" }}>
+              {on && !pending ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
             </View>
             {/* صورةُ الحلقة — `w300` تكفي مربّعاً ٧٢×٤٠ (D-895: لا نجلب أكبر ممّا نرسم) */}
             <View style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2 }}>
@@ -341,6 +367,7 @@ function SeasonBody({
             ) : null}
             {/* نجمةُ تقييمي — تملأ برقمها حين أقيّم، والضغطُ يفتح منتقيَ ١..١٠ */}
             <Pressable
+              disabled={pending}
               onPress={() => setRating(e.episode_number)}
               hitSlop={6}
               accessibilityLabel={t.epRateAria(season, e.episode_number)}
@@ -383,7 +410,8 @@ export function firstOpenSeason(show: TvTitlePayload): number | null {
 export function seasonQuery(showId: number, season: number, ratings = false) {
   return {
     queryKey: [...qk.season(showId, season), ratings ? "r" : ""] as const,
-    queryFn: async () => (await api<SeasonPayload>(`/api/v1/title/tv/${showId}/season/${season}${ratings ? "?r=1" : ""}`)).data,
+    /* D-1141 — الحلقاتُ عامّة (علاماتُها من كاش العنوان لا من هنا): لا تنتظر الرمز؛ `my_rating` يُملأ بعد الترقية */
+    queryFn: () => softGet<SeasonPayload>(`/api/v1/title/tv/${showId}/season/${season}${ratings ? "?r=1" : ""}`),
     staleTime: 60_000,
   };
 }

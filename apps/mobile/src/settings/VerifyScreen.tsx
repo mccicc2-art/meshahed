@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
+import { IdentityBadges } from "../IdentityBadges";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
@@ -10,6 +11,9 @@ import type { ToastHostRef } from "../HoldHost";
 import type { VerifyBody, VerifyPayload } from "../contracts";
 import { SettingsScreen, Group, Field, OptionList, OptionRow, RowsSkeleton } from "./ui";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
+
+/** D-1142 — الختمُ وحدَه: الصفحةُ عن التوثيق لا عن الخطّة */
+const SEAL_ONLY = { partner: false, plus: false, founder: false, verified: true };
 
 /**
  * ====== التوثيقُ أصليّاً — Phase 11-I · I3 (D-1107) ======
@@ -103,7 +107,8 @@ export function VerifyScreen() {
       {/* ===== ما هي العلامة، وما ليست ===== */}
       <View style={{ borderRadius: 16, backgroundColor: tokens.surface, padding: 14, gap: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Icon name="check-line" size={16} color={tokens.verified} />
+          {/* D-1142 — الصفحةُ تشرح العلامة: تُرسم العلامةُ نفسُها (الختمُ الذهبيّ) لا ✓ رفيع */}
+          <IdentityBadges flags={SEAL_ONLY} nameSize={20} />
           <Text size={15} weight="700">{t.verifyTitle}</Text>
         </View>
         <Text size={14} muted style={{ lineHeight: 21 }}>{t.verifySub}</Text>
@@ -113,7 +118,8 @@ export function VerifyScreen() {
       {/* ===== حالةُ الحساب أو الطلب ===== */}
       {e.verified ? (
         <View style={{ borderRadius: 16, borderWidth: 1, borderColor: tokens.accent + "66", backgroundColor: tokens.accent + "1A", padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Icon name="check-line" size={16} color={tokens.verified} />
+          {/* D-1142 — الصفحةُ تشرح العلامة: تُرسم العلامةُ نفسُها (الختمُ الذهبيّ) لا ✓ رفيع */}
+          <IdentityBadges flags={SEAL_ONLY} nameSize={20} />
           <Text size={14} weight="600">{t.verifyAlready}</Text>
         </View>
       ) : statusLabel ? (

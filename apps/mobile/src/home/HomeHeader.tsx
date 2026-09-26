@@ -8,7 +8,7 @@ import { Icon } from "../icons";
 import { Logo } from "../Logo";
 import { PAGE_PAD } from "./Section";
 import type { HomeHeaderPayload } from "../contracts";
-import { isFounder, isPartner, isPlus, isVerified as isVerifiedOf } from "@/core/plan";
+import { IdentityBadges, identityFlags } from "../IdentityBadges";
 
 /**
  * ترويسةُ الرئيسية — `HomeHeader.tsx` الويبيّة بأرقامها (Phase 11-H · H2):
@@ -116,8 +116,8 @@ export function HomeGreeting({
           {/* 🆕 D-1134 — **شاراتُ الويب نفسُها** (`AccountIdentity`: `PlanPill` ثمّ `VerifiedBadge`) بقاعدة الطبقة
               نفسِها (`identityOf` ⇐ `@/core/plan`): قرصٌ «PARTNER»/«PLUS»/«FOUNDER» ثمّ ختمُ التوثيق الذهبيّ. كان هنا
               خطُّ ✓ رفيعٌ وقرصُ «+» — شكلان لا يعرفهما الويب. */}
-          <PlanPill h={h} nameSize={20} />
-          {isVerified(h) ? <Image source={VERIFIED} style={{ width: 16, height: 16 }} contentFit="contain" accessibilityLabel={t.verifiedBadge} /> : null}
+          {/* D-1142 — المكوّنُ صار مشتركاً (`IdentityBadges`) تقرؤه بطاقةُ الإعدادات أيضاً */}
+          <IdentityBadges flags={identityFlags(h)} nameSize={20} />
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
           {h.username ? <Text size={12} color={muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{h.username}</Text> : null}
@@ -181,35 +181,6 @@ export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: 
       </View>
     </View>
   );
-}
-
-/* ====== D-1134 — شاراتُ الهويّة كالويب (`AccountIdentity.tsx`) ======
-   الألوانُ ثابتةٌ هناك (`BRAND` · `INK`) لا ثيميّة — علامةٌ لا سطح؛ والمقاساتُ نسبةٌ من خطِّ الاسم (`PILL_EM` ٠٫٨٢):
-   العرضُ إلى الارتفاع ٣٨:١٦ (PLUS) و٦٢:١٦ (PARTNER/FOUNDER)، نصفُ القطر ٥:١٦، الخطُّ ٩:١٦. */
-const BRAND = "#FFD400";
-const INK = "#050505";
-const PILL_EM = 0.82;
-const VERIFIED = require("../../assets/icons/verified-badge.png");
-
-function PlanPill({ h, nameSize }: { h: HomeHeaderPayload; nameSize: number }) {
-  const { t } = useApp();
-  const who = { plan: h.plan, founder: h.founder, plus_until: h.plus_until, verified_at: h.verified_at };
-  const word = isPartner(who) ? "PARTNER" : isPlus(who) ? "PLUS" : isFounder(who) ? "FOUNDER" : null;
-  if (!word) return null;
-  const hgt = nameSize * PILL_EM;
-  const w = word === "PLUS" ? 38 : 62;
-  const tracking = word === "PLUS" ? 1.3 : 1.1;
-  const fs = (9 / 16) * hgt;
-  const label = word === "PARTNER" ? t.partnerBadge : isFounder(who) ? t.founderBadge : t.plusBadge;
-  return (
-    <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
-      <Text size={fs} weight="700" color={BRAND} style={{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }}>{word}</Text>
-    </View>
-  );
-}
-
-function isVerified(h: HomeHeaderPayload): boolean {
-  return isVerifiedOf({ plan: h.plan, founder: h.founder, plus_until: h.plus_until, verified_at: h.verified_at });
 }
 
 const styles = StyleSheet.create({
