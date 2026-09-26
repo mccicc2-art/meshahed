@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, BackHandler, Linking, Platform, Share, View } from "react-native";
+import { BackHandler, Linking, Platform, Share, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
@@ -12,7 +12,7 @@ import { currentLocale, webLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
-import { BACKGROUND_CLEAR_MS, session } from "../src/session";
+import { session } from "../src/session";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
@@ -381,20 +381,13 @@ export default function Web() {
     };
   }, []);
 
-  /* Phase 11 · B1 §٦-ج — خلفيّةٌ أطولُ من خمس دقائق تمسح الرمز؛ العودةُ تطلب
-     رمزاً جديداً قبل أوّل نداء (`api.ts` يطلب حين لا يجد). */
-  useEffect(() => {
-    let hiddenAt = 0;
-    const sub = AppState.addEventListener("change", (st) => {
-      if (st === "active") {
-        if (hiddenAt && Date.now() - hiddenAt > BACKGROUND_CLEAR_MS) session.clear();
-        hiddenAt = 0;
-      } else if (!hiddenAt) {
-        hiddenAt = Date.now();
-      }
-    });
-    return () => sub.remove();
-  }, []);
+  /* 🔴 D-1144 — **زال مسحُ الرمز بعد خمس دقائق في الخلفيّة** (كان Phase 11 · B1 §٦-ج).
+     **لماذا**: الرمزُ لا يُطلب من هذه الصفحة إلّا وهي ظاهرة — `react-native-screens` على أندرويد **ينزع
+     شاشةَ الويب من العرض** متى غطّتها شاشةٌ أصليّة (`ScreenStack.kt`: «Remove all screens underneath
+     visibleBottom»)، والحقنُ في WebView منزوعٍ لا يُنفَّذ (`token.wait` = `why=noack` كلَّ مرّة، ٢٦ سبتمبر).
+     فكان الرمزُ يُؤخذ عند الإقلاع ثمّ يُمسح بعد أوّل خروجٍ طويل **ولا يعود** — وصفحةُ العمل تبقى معطَّلة (تسجيلُ
+     خالد). الآن يعيش حتى صلاحيته (`has()` يرفضه قبل انتهائه بـ٣٠ث). ⚖️ الرمزُ في الذاكرة وحدَها، والخروجُ
+     يمسحه فوراً (`session:clear`) — وK4b تنهي الحاجةَ إلى هذا كلِّه (التطبيقُ يجدّد رمزَه بنفسه). */
 
   const onShouldStart = useCallback((req: ShouldStartLoadRequest) => {
     let host = "";

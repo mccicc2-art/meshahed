@@ -83,6 +83,7 @@ let inflight: Promise<string | null> | null = null;
 const NONCE_TTL_MS = 30_000;
 const REPLY_TIMEOUT_MS = 8_000;
 /** بعد خلفيّةٍ أطولَ من هذا يُمسح الرمز (§٦-ج) */
+/** D-1144 — لم يعد يُستعمل (زال مسحُ الخمس دقائق)؛ يبقى الاسمُ لأنّ التعليقاتَ والوثائقَ تشير إليه */
 export const BACKGROUND_CLEAR_MS = 5 * 60_000;
 
 const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;

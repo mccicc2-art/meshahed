@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, write, ApiError, softGet, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Text } from "../ui";
+import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { radius } from "../theme";
@@ -91,7 +91,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const d = q.data;
   /** 🆕 D-1141 — ردُّ زائر: حالتي مجهولة — الأفعالُ والعدّاداتُ هيكلٌ معطَّل حتى الترقية */
   const guest = isGuest(d);
-  useGuestUpgrade(guest, q.refetch);
+  const up = useGuestUpgrade(guest, q.refetch);
   /* 🆕 D-1118 — `title.open`: من فتح الشاشة إلى أوّل بيانات (`cached=1` إن رُسمت من الكاش/الملفّ) */
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
   useEffect(() => {
@@ -108,7 +108,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   }, [d, qc]);
   const extras = useExtras(kind, id);
   const x = extras.data;
-  useGuestUpgrade(isGuest(x), extras.refetch);
+  const upX = useGuestUpgrade(isGuest(x), extras.refetch);
   /* قوائمي ومفضّلتي من الإضافات، والباقي من العمل — أيُّهما زائرٌ يعطّل صفَّ الأفعال */
   const pending = guest || isGuest(x);
   const community = useCommunity(kind, id, tab === "community");
@@ -396,6 +396,13 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               onHoldWatch={d.kind === "tv" ? () => setRedCard(true) : undefined}
             />
             </View>
+            {/* 🆕 D-1144 — الرمزُ لم يصل: قلها وأعطِ زرّاً، لا صفّاً خافتاً صامتاً */}
+            {up.failed || upX.failed ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
+                <Text size={13} muted style={{ flex: 1 }} numberOfLines={2}>{t.myStateUnavailable}</Text>
+                <Button size="sm" variant="ghost" label={t.errorRetry} onPress={() => { up.retry(); upX.retry(); }} />
+              </View>
+            ) : null}
             {/* D-1021 — شريطُ التقدّم مرّةً واحدة في رأس تبويب الحلقات (طلبُ أحمد: «شيل واتشد ذي لأنّها موجودة تحت») */}
 
             {/* ⚖️ D-1034 — صفُّ «قيّم هذا العمل» (D-1006) **حُذف من هنا**: التقييمُ يصعد انبثاقاً بعد «شاهدته»

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { CONFIG } from "./config";
 import { accessToken } from "./auth";
@@ -104,18 +104,36 @@ export function isGuest(v: unknown): boolean {
   return !!v && typeof v === "object" && (v as { _guest?: unknown })._guest === true;
 }
 
-/** ردُّ زائرٍ على الشاشة ⇒ يُعاد الجلبُ حين يصل الرمز (أو فوراً إن كان وصل قبل التركيب) */
-export function useGuestUpgrade(guest: boolean, refetch: () => unknown) {
+/**
+ * ردُّ زائرٍ على الشاشة ⇒ يُعاد الجلبُ حين يصل الرمز (أو فوراً إن كان وصل قبل التركيب).
+ *
+ * 🆕 D-1144 — **ولا تعطيلَ صامتاً**: يطلب الرمزَ بنفسه، فإن انتهى الطلبُ بلا رمزٍ أعاد `failed` —
+ * والشاشةُ تقول «تعذّر تحميل حالتك» مع «حاول مجدداً» (`retry`) بدل صفِّ أفعالٍ خافتٍ لا يستجيب ولا يشرح
+ * (تسجيلُ خالد، ٢٦ سبتمبر). `retry` يطلب الرمزَ ثانيةً؛ وصولُه يُطلق الجلبَ عبر الاشتراك.
+ */
+export function useGuestUpgrade(guest: boolean, refetch: () => unknown): { failed: boolean; retry: () => void } {
+  const [failed, setFailed] = useState(false);
+  const ask = useCallback(() => {
+    setFailed(false);
+    void session.request().then((tok) => {
+      if (!tok) setFailed(true);
+    });
+  }, []);
   useEffect(() => {
-    if (!guest) return;
+    if (!guest) {
+      setFailed(false);
+      return;
+    }
     if (session.has()) {
       void refetch();
       return;
     }
+    ask();
     return session.subscribe(() => {
       if (session.has()) void refetch();
     });
-  }, [guest, refetch]);
+  }, [guest, refetch, ask]);
+  return { failed: guest && failed, retry: ask };
 }
 
 /**
