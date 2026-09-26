@@ -30,7 +30,7 @@ import * as SecureStore from "expo-secure-store";
 let access: string | null = null;
 let exp = 0; // ثوانٍ منذ الحقبة، كما يعيدها Supabase
 /** الطلبُ المعلَّق: `nonce` واحدٌ في كلِّ لحظة، ومن ردّ بغيره يُهمل */
-let pending: { nonce: string; at: number; resolve: (t: string | null) => void } | null = null;
+let pending: { nonce: string; at: number; resolve: (t: string | null) => void; acked?: boolean } | null = null;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 /** من يحقن في الصفحة — يسجّله `web.tsx` عند تركيب الـWebView */
 let inject: ((js: string) => void) | null = null;
@@ -67,7 +67,15 @@ let lastLife: number | null = null;
  * كلُّ طلبٍ يُبلَّغ مرّةً: مدّتُه، ونتيجتُه (`ok` · `none`)، وهل كانت الصفحةُ جاهزةً لحظةَ الطلب (`ready`).
  * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
  */
-type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1 }) => void;
+type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject";
+type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" }) => void;
+/**
+ * 🆕 D-1143 — **لماذا انتهى الطلبُ الأخير** (يُقرأ مرّةً عند التبليغ): `noack` لم يصل الحدثُ الصفحةَ أصلاً ·
+ * `slow` وصل ولم يُجب في ٨ث · `stall` الصفحةُ قالت إنّ مكتبتَها علقت · `host`/`jwt`/`exp` ردٌّ رُفض ·
+ * `clear` الصفحةُ بلا جلسة. ومع النجاح: `src` من الكوكي أم من المكتبة.
+ */
+let lastWhy: WaitWhy | undefined;
+let lastSrc: "cookie" | "lib" | undefined;
 const waitListeners = new Set<WaitReport>();
 /** 🆕 D-1141 — طلبٌ واحدٌ في الطريق لكلِّ من يسأل — كان كلُّ نداءٍ في الطابور يرسل طلبَه بعد التحميل */
 let inflight: Promise<string | null> | null = null;
@@ -185,7 +193,10 @@ export const session = {
     });
     inflight = mine;
     void p.then((tok) => {
-      for (const l of waitListeners) l(Date.now() - t0, { result: tok ? "ok" : "none", ready });
+      const extra = { result: tok ? ("ok" as const) : ("none" as const), ready, ...(tok ? (lastSrc ? { src: lastSrc } : {}) : lastWhy ? { why: lastWhy } : {}) };
+      lastWhy = undefined;
+      lastSrc = undefined;
+      for (const l of waitListeners) l(Date.now() - t0, extra);
     });
     return mine;
   },
@@ -205,14 +216,20 @@ export const session = {
         };
       });
     }
-    if (!inject) return Promise.resolve(null);
+    if (!inject) {
+      lastWhy = "noinject";
+      return Promise.resolve(null);
+    }
     /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك) */
     if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.requestOnce() : null));
+    lastWhy = undefined;
+    lastSrc = undefined;
     const nonce = bytesToHex(Crypto.getRandomBytes(16));
     return new Promise((resolve) => {
       pending = { nonce, at: Date.now(), resolve };
       pendingTimer = setTimeout(() => {
         if (pending?.nonce === nonce) {
+          lastWhy = pending.acked ? "slow" : "noack";
           pending.resolve(null);
           pending = null;
         }
@@ -221,6 +238,16 @@ export const session = {
         `window.dispatchEvent(new CustomEvent("loopz:session-request",{detail:{nonce:${JSON.stringify(nonce)}}}));true;`,
       );
     });
+  },
+  /** 🆕 D-1143 — إنهاءُ الطلب المعلَّق الآن بلا رمزٍ وبسببه (بدل انتظار المهلة) */
+  settle(tok: null, why: WaitWhy) {
+    if (!pending) return;
+    lastWhy = why;
+    if (pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = null;
+    const p = pending;
+    pending = null;
+    p.resolve(tok);
   },
   /**
    * استلامُ رسالةٍ من الجسر. **يقبل `session` فقط إذا**: المضيفُ في القائمة
@@ -231,7 +258,18 @@ export const session = {
    */
   receive(msg: Record<string, unknown>, hostOk: boolean): boolean {
     if (msg.type === "session:clear") {
+      lastWhy = "clear";
       session.signOut();
+      return true;
+    }
+    /* 🆕 D-1143 — «وصلني» من الصفحة: لا يُنهي الطلب، يوسمه فقط (المهلةُ بعده `slow` لا `noack`) */
+    if (msg.type === "session:ack") {
+      if (hostOk && pending && msg.nonce === pending.nonce) pending.acked = true;
+      return true;
+    }
+    /* 🆕 D-1143 — الصفحةُ تقول إنّ مكتبتَها علقت: لا ننتظر بقيّةَ الثماني ثوانٍ */
+    if (msg.type === "session:stall") {
+      if (hostOk && pending && msg.nonce === pending.nonce) session.settle(null, "stall");
       return true;
     }
     if (msg.type !== "session") {
@@ -244,8 +282,12 @@ export const session = {
     const okExp = typeof msg.exp === "number" && Number.isFinite(msg.exp) && msg.exp * 1000 > Date.now();
     if (!hostOk || !okNonce || !okAccess || !okExp) {
       console.warn(`[session] rejected session message host=${hostOk} nonce=${okNonce} access=${okAccess} exp=${okExp}`);
+      /* 🔴 D-1143 — ردٌّ لطلبنا الحاليّ رُفض ⇒ ينتهي الطلبُ الآن بسببه (كان ينتظر المهلةَ كاملةً بصمت).
+         وردٌّ بـ`nonce` قديم (وصل بعد مهلته) لا يمسّ الطلبَ الحاليّ — يُهمل كما كان */
+      if (okNonce) session.settle(null, !hostOk ? "host" : !okAccess ? "jwt" : "exp");
       return true;
     }
+    lastSrc = msg.src === "cookie" ? "cookie" : "lib";
     access = msg.access as string;
     exp = msg.exp as number;
     lastLife = Math.round(exp - Date.now() / 1000);

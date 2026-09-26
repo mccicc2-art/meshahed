@@ -283,7 +283,8 @@ export default function Web() {
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
       if (session.receive(msg as Record<string, unknown>, hostOk)) {
         /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
-        if (hostOk && e.nativeEvent.url.startsWith(BOOT)) hopHome();
+        /* D-1143 — «وصلني» ليس ردّاً: الانتقالُ عنده كان يقطع الردَّ الحقيقيَّ قبل أن يصل */
+        if (hostOk && e.nativeEvent.url.startsWith(BOOT) && msg.type !== "session:ack") hopHome();
         return;
       }
       /* 🆕 D-1083 — `SessionBridge` علّق سامعَ الطلب: يُصرف طابورُ الرمز الآن لا بعد آخر صورةٍ في
