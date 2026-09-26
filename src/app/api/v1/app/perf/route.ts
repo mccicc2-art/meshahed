@@ -58,7 +58,8 @@ const NAMES = new Set([
   "gesture.jank",
   "token.life",
 ]);
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur"]);
+/* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
