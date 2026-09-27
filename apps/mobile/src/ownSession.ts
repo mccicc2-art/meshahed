@@ -35,7 +35,7 @@ const MINT_BACKOFF_MS = 10 * 60_000;
 type Stored = { rt: string; uid: string };
 type Why = string;
 type EventName = "session.mint" | "session.renew";
-type EventExtra = { result: "ok" | "none"; why?: Why };
+type EventExtra = { result: "ok" | "none"; why?: Why; src?: "bridge" | "cookie" };
 
 let access: string | null = null;
 let exp = 0; // ثوانٍ منذ الحقبة
@@ -170,22 +170,29 @@ async function renew(s: Stored): Promise<string | null> {
   }
 }
 
-async function mint(bridgeAccess: string, sub: string): Promise<void> {
+/**
+ * السكُّ من رمزٍ وصل عبر الجسر (`bridgeAccess` + صاحبُه) — **أو من كوكي الويب** حين يكونان `null` (K4b-c):
+ * `fetch` هنا يمرّ بمخزن كوكي الـWebView على أندرويد، فيحمل جلسةَ الويب بلا جسر؛ والخادمُ يقرأ منها رمزَ الوصول
+ * ولا يجدّده. `X-Loopz-App` ترويسةُ هذا الباب الإلزاميّة (حارسُ التزوير عبر المواقع عند الخادم).
+ */
+async function mint(bridgeAccess: string | null, sub: string | null): Promise<void> {
   const t0 = Date.now();
+  const src = bridgeAccess ? ("bridge" as const) : ("cookie" as const);
   try {
-    const r = await post(`${CONFIG.apiBase}/api/v1/session/mint`, { Authorization: `Bearer ${bridgeAccess}` });
+    const r = await post(`${CONFIG.apiBase}/api/v1/session/mint`, bridgeAccess ? { Authorization: `Bearer ${bridgeAccess}` } : { "X-Loopz-App": "1" });
     const d = (r.json as { data?: { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown; user_id?: unknown }; error?: { code?: unknown } } | null) ?? null;
     const m = d?.data;
-    if (r.status === 200 && m && typeof m.access_token === "string" && typeof m.refresh_token === "string" && typeof m.expires_at === "number" && m.user_id === sub) {
-      adoptTokens(m.access_token, m.expires_at, m.refresh_token, sub);
-      report("session.mint", t0, { result: "ok" });
+    const uid = typeof m?.user_id === "string" && m.user_id ? m.user_id : null;
+    if (r.status === 200 && m && uid && typeof m.access_token === "string" && typeof m.refresh_token === "string" && typeof m.expires_at === "number" && (sub === null || uid === sub)) {
+      adoptTokens(m.access_token, m.expires_at, m.refresh_token, uid);
+      report("session.mint", t0, { result: "ok", src });
       return;
     }
     mintFailedAt = Date.now();
-    report("session.mint", t0, { result: "none", why: typeof d?.error?.code === "string" ? d.error.code.slice(0, 16) : `h${r.status}` });
+    report("session.mint", t0, { result: "none", src, why: typeof d?.error?.code === "string" ? d.error.code.slice(0, 16) : `h${r.status}` });
   } catch {
     mintFailedAt = Date.now();
-    report("session.mint", t0, { result: "none", why: "net" });
+    report("session.mint", t0, { result: "none", src, why: "net" });
   }
 }
 
@@ -226,6 +233,17 @@ export const own = {
     if (s) own.clear();
     if (Date.now() - mintFailedAt < MINT_BACKOFF_MS) return;
     minting = mint(bridgeAccess, sub).finally(() => {
+      minting = null;
+    });
+  },
+  /**
+   * 🆕 K4b-c — **السكُّ من كوكي الويب** لحظةَ تجهز صفحتُه (`web.tsx`): الصفحةُ حُمِّلت للتوّ فالخادمُ جدّد كوكيَها
+   * إن لزم، ورمزُ الوصول فيه طازج. مرّةً — لا شيء إن كانت عندنا جلسة، أو في مهلة فشلٍ سابق، أو والمفتاحُ مطفأ.
+   */
+  mintFromCookie() {
+    if (!own.enabled() || minting || readStored()) return;
+    if (Date.now() - mintFailedAt < MINT_BACKOFF_MS) return;
+    minting = mint(null, null).finally(() => {
       minting = null;
     });
   },

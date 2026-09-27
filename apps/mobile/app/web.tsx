@@ -13,6 +13,7 @@ import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { session } from "../src/session";
+import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
@@ -220,6 +221,8 @@ export default function Web() {
     if (bootAsked.current) return;
     bootAsked.current = true;
     if (session.seen() && !session.has()) void session.request();
+    /* 🆕 K4b-c — والجلسةُ المملوكةُ تُسكّ من كوكي الصفحة التي جهزت للتوّ (لا تنتظر الجسرَ الذي لا يُجاب) */
+    if (session.seen()) own.mintFromCookie();
   }, []);
 
   /* D-1075 — **الإقلاعُ إلى الرئيسيّة الأصليّة، لا الويب** (طلبُ أحمد ٢٢ سبتمبر: «الإقلاع أبغاه
