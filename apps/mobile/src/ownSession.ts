@@ -35,7 +35,9 @@ const MINT_BACKOFF_MS = 10 * 60_000;
 type Stored = { rt: string; uid: string };
 type Why = string;
 type EventName = "session.mint" | "session.renew";
-type EventExtra = { result: "ok" | "none"; why?: Why; src?: "bridge" | "cookie" };
+/** من أين جاء رمزُ السكّ: الجسر · كوكي الويب · 🆕 K6a رمزُ الدخول نفسُه (كان يُوسَم `bridge` فيختلط بالجسر) */
+type Src = "bridge" | "cookie" | "login";
+type EventExtra = { result: "ok" | "none"; why?: Why; src?: Src };
 
 let access: string | null = null;
 let exp = 0; // ثوانٍ منذ الحقبة
@@ -175,9 +177,9 @@ async function renew(s: Stored): Promise<string | null> {
  * `fetch` هنا يمرّ بمخزن كوكي الـWebView على أندرويد، فيحمل جلسةَ الويب بلا جسر؛ والخادمُ يقرأ منها رمزَ الوصول
  * ولا يجدّده. `X-Loopz-App` ترويسةُ هذا الباب الإلزاميّة (حارسُ التزوير عبر المواقع عند الخادم).
  */
-async function mint(bridgeAccess: string | null, sub: string | null): Promise<void> {
+async function mint(bridgeAccess: string | null, sub: string | null, from?: "login"): Promise<void> {
   const t0 = Date.now();
-  const src = bridgeAccess ? ("bridge" as const) : ("cookie" as const);
+  const src: Src = from ?? (bridgeAccess ? "bridge" : "cookie");
   try {
     const r = await post(`${CONFIG.apiBase}/api/v1/session/mint`, bridgeAccess ? { Authorization: `Bearer ${bridgeAccess}` } : { "X-Loopz-App": "1" });
     const d = (r.json as { data?: { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown; user_id?: unknown }; error?: { code?: unknown } } | null) ?? null;
@@ -224,7 +226,7 @@ export const own = {
    * رمزٌ وصل عبر الجسر ⇒ يُسكّ منه جلسةٌ مملوكة (مرّةً — لا شيءَ إن كانت لصاحبه نفسِه). صاحبٌ آخر ⇒ تُمسح
    * القديمةُ أوّلاً: تبدّلُ المستخدم في الويب ينقل التطبيقَ معه ولا يبقي جلسةَ غيره.
    */
-  adopt(bridgeAccess: string) {
+  adopt(bridgeAccess: string, from?: "login") {
     if (!own.enabled() || minting) return;
     const sub = subOf(bridgeAccess);
     if (!sub) return;
@@ -232,7 +234,7 @@ export const own = {
     if (s && s.uid === sub) return;
     if (s) own.clear();
     if (Date.now() - mintFailedAt < MINT_BACKOFF_MS) return;
-    minting = mint(bridgeAccess, sub).finally(() => {
+    minting = mint(bridgeAccess, sub, from).finally(() => {
       minting = null;
     });
   },
@@ -255,7 +257,7 @@ export const own = {
    */
   fresh(access: string) {
     mintFailedAt = 0;
-    own.adopt(access);
+    own.adopt(access, "login");
   },
   /** 🆕 D-1151 — جلسةٌ مملوكةٌ محفوظةٌ على الجهاز (رمزُ تجديدٍ لم يُرفض بعد) — دليلُ دخولٍ لـ`session.seen()` */
   hasStored(): boolean {
