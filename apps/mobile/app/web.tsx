@@ -210,6 +210,18 @@ export default function Web() {
     ref.current?.injectJavaScript(`location.replace(${JSON.stringify(HOME)});true;`);
   }, []);
 
+  /* 🔴 D-1147 — **الرمزُ يُطلب صراحةً لحظةَ جاهزيّة الصفحة في الإقلاع** (مرّةً واحدة، ولا ينتظره أحد):
+     هي النافذةُ الوحيدةُ التي قد يُجاب فيها الحقنُ قبل أن تغطّي الرئيسيّةُ هذه الشاشة (D-1144). كان يُؤخذ
+     مصادفةً — دفعُ القياسات كان يطلب رمزاً (D-1141 أوقفه). ⚖️ **وD-1146 نُقض**: جعل كلَّ طلبٍ قبل التركيب
+     يصطفّ، فانتظرت الرئيسيّةُ حتى ١٠ث (`boot.fresh`). هنا الطلبُ الأوّلُ يُرمى كما كان (`noinject` فوراً) ويسأل
+     هذا وحدَه في الخلفيّة — وصل الرمزُ في إقلاعٍ من اثنين على جهاز خالد (٢٧ سبتمبر). K4b تُنهي هذا كلَّه. */
+  const bootAsked = useRef(false);
+  const bootAsk = useCallback(() => {
+    if (bootAsked.current) return;
+    bootAsked.current = true;
+    if (session.seen() && !session.has()) void session.request();
+  }, []);
+
   /* D-1075 — **الإقلاعُ إلى الرئيسيّة الأصليّة، لا الويب** (طلبُ أحمد ٢٢ سبتمبر: «الإقلاع أبغاه
      تطبيق وما يفتح ويب»): من رأى جهازُه جلسةً ولم يخرج تُرفع `/home` فوق هذه الشاشة **قبل** أن
      تُحمَّل الصفحة، فلا يرى وميضَ الويب. الـWebView تبقى تحتها وتحمّل `/` كما كانت — هي صاحبةُ
@@ -290,7 +302,10 @@ export default function Web() {
       /* 🆕 D-1083 — `SessionBridge` علّق سامعَ الطلب: يُصرف طابورُ الرمز الآن لا بعد آخر صورةٍ في
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
       if (msg.type === "bridge:ready") {
-        if (hostOk) session.ready(true);
+        if (hostOk) {
+          session.ready(true);
+          bootAsk();
+        }
         return;
       }
       /* 🆕 D-946 — لغةُ الويب: تُقبل من نطاقنا وحدَه، وتُفحص القيمةُ في `webLocale.set` */
@@ -366,7 +381,7 @@ export default function Web() {
         ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
       }
     },
-    [signInWithGoogle, router, hopHome, goNative],
+    [signInWithGoogle, router, hopHome, goNative, bootAsk],
   );
 
   /* Phase 11 · B1 — الجسرُ يعرف كيف يحقن في هذه الـWebView ما دامت مركَّبة */
@@ -488,7 +503,7 @@ export default function Web() {
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
           onLoadStart={() => console.log(`[perf] onLoadStart t=${perfMs()}ms`)}
-          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); setReady(true); session.ready(true); if (!handing.current) flush(); }}
+          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); setReady(true); session.ready(true); bootAsk(); if (!handing.current) flush(); }}
           /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
              (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */
