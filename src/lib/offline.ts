@@ -8,6 +8,7 @@ import {
   markNextEpisode,
   watchUpTo,
   setSeasonWatched,
+  unmarkEpisodes,
 } from "@/lib/actions";
 
 /**
@@ -60,6 +61,8 @@ const FNS = {
   markNextEpisode,
   watchUpTo,
   setSeasonWatched,
+  /* D-1149 — إزالةُ «من هنا» في الموسم تُطابَق دون اتّصالٍ كالتأشير «حتى هنا» */
+  unmarkEpisodes,
 } as const;
 
 type FnName = keyof typeof FNS;

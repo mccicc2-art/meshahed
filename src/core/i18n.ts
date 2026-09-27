@@ -363,7 +363,7 @@ const ar = {
   redCardAction: "بطاقة حمراء",
   redCardHint: "يُعلَّم العملُ متروكاً ويبقى في مكتبتك",
   ratingSavedTitle: (n: number) => `قُيِّم ${n}/١٠`,
-  cascadeHint: "تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة تلقائياً.",
+  cascadeHint: "تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة، وإلغاؤه يلغي كل ما بعدها.",
   // تقييمات الحلقات مخفية افتراضياً (طلب أحمد): رقمُ حلقةٍ قادمة حرقٌ محتمل
   epRatingsShow: "إظهار تقييمات الحلقات (IMDb)",
   epRatingsHide: "إخفاء تقييمات الحلقات",
@@ -2578,7 +2578,7 @@ const en: Dict = {
   redCardHint: "Marks the show as dropped, stays in your library",
   ratingSavedTitle: (n: number) => `Rated ${n}/10`,
   cascadeHint:
-    "Ticking any episode marks every earlier episode as watched too.",
+    "Ticking an episode marks every earlier one as watched; unticking clears every later one.",
   epRatingsShow: "Show episode ratings (IMDb)",
   epRatingsHide: "Hide episode ratings",
   seasonAll: "Whole season ✓",

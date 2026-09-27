@@ -12,7 +12,7 @@ import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
-import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, WatchUpToBody } from "../contracts";
+import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
  * ====== المواسمُ والحلقات — نسخةُ `EpisodeTracker` (الويب) بحدود D1 ======
@@ -279,10 +279,31 @@ function SeasonBody({
     });
   const ref = (n: number) => ({ season, episode: n, runtime });
 
-  const toggle = useMutation({
-    mutationFn: (n: number) =>
-      write<TrackResult>("/api/v1/track/episode", { showTmdbId: show.id, ...ref(n), watched: !watched.has(episodeKey(season, n)), title: show.name, posterPath: show.poster_path } satisfies ToggleEpisodeBody),
-    onMutate: (n) => patch([episodeKey(season, n)], !watched.has(episodeKey(season, n))),
+  /**
+   * 🔴 D-1149 — **إزالةُ العلامة تعني «لم أشاهد من هنا»** (طلبُ أحمد بتسجيل، ٢٧ سبتمبر: «إذا ضغطت حلقة ١٠
+   * كل اللي فوقها يجي إني شاهدته — ممتاز. أبغى إذا شلت حلقة ١ كل اللي تحتها تنشال»): عكسُ D-988 — الحلقةُ
+   * وما بعدها تُزال معاً — **في موسمها وفي المواسم التالية** (أحمد: «أريده يعبر المواسم»)، مرآةُ التأشير الذي
+   * يعبر السابقة. والخاصّاتُ (الموسم ٠) لا تُمسّ من موسمٍ عاديّ، كما لا يختمها التأشير (`upToKeys`).
+   * ⚠️ **والثمنُ يُقال**: ضغطةٌ على الحلقة ١ من الموسم الأوّل تمسح المسلسلَ كلَّه — اختيارُ أحمد بعد أن عُرض عليه.
+   * `episodes-unmark` يحذف المذكورةَ بعينها، وحلقةٌ واحدةٌ تبقى على مسار الحلقة كما كانت.
+   */
+  const downFromKeys = (n: number): { s: number; e: number }[] => {
+    const out: { s: number; e: number }[] = [];
+    for (const k of watched) {
+      const [ks, ke] = k.split(":").map(Number);
+      if (!Number.isFinite(ks) || !Number.isFinite(ke)) continue;
+      if ((ks === season && ke >= n) || (season !== 0 && ks > season)) out.push({ s: ks, e: ke });
+    }
+    return out;
+  };
+  const downFrom = useMutation({
+    mutationFn: (n: number) => {
+      const list = downFromKeys(n);
+      return list.length === 1
+        ? write<TrackResult>("/api/v1/track/episode", { showTmdbId: show.id, ...ref(list[0].e), watched: false, title: show.name, posterPath: show.poster_path } satisfies ToggleEpisodeBody)
+        : write<TrackResult>("/api/v1/track/episodes-unmark", { showTmdbId: show.id, episodes: list } satisfies UnmarkEpisodesBody);
+    },
+    onMutate: (n) => patch(downFromKeys(n).map((x) => episodeKey(x.s, x.e)), false),
     onSuccess: onSettled,
     onError,
   });
@@ -341,8 +362,8 @@ function SeasonBody({
           <Pressable
             key={e.episode_number}
             disabled={future || pending}
-            /* D-988 — التأشيرُ «حتى هنا»؛ الإزالةُ حلقةٌ واحدة */
-            onPress={() => (on ? toggle.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
+            /* D-988 — التأشيرُ «حتى هنا»؛ D-1149 — والإزالةُ «من هنا» في الموسم */
+            onPress={() => (on ? downFrom.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
             onLongPress={() => upTo.mutate(e.episode_number)}
             delayLongPress={400}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}

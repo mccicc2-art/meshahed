@@ -426,15 +426,29 @@ export function EpisodeTracker({
       return;
     }
 
-    // عند إلغاء التأشير: تُلغى هذه الحلقة فقط
+    /* 🔴 D-1149 — **عند إلغاء التأشير: هذه الحلقةُ وكلُّ ما بعدها — في موسمها وفي المواسم التالية** (طلبُ أحمد
+       بتسجيل، ٢٧ سبتمبر: «إذا شلت حلقة ١ كل اللي تحتها تنشال»، ثمّ «أريده يعبر المواسم») — عكسُ `airedUpTo`: «لم
+       أشاهد من هنا». والخاصّاتُ (الموسم ٠) لا تُمسّ من موسمٍ عاديّ كما لا يختمها التأشير. ⚠️ ضغطةٌ على الحلقة ١
+       من الموسم الأوّل تمسح المسلسلَ كلَّه — اختيارُه بعد أن عُرض عليه. والتطبيقُ مثلُها (`SeasonAccordion`). */
+    const later: { s: number; e: number }[] = [];
+    for (const k of watched) {
+      const [ks, ke] = k.split(":").map(Number);
+      if (!Number.isFinite(ks) || !Number.isFinite(ke)) continue;
+      if ((ks === season && ke >= ep.episode_number) || (season !== 0 && ks > season)) later.push({ s: ks, e: ke });
+    }
     const beforeUnmark = watched;
     setWatched((prev) => {
       const s = new Set(prev);
       s.delete(key);
+      for (const o of later) s.delete(episodeKey(o.s, o.e));
       return s;
     });
     start(async () => {
       try {
+        if (later.length > 1) {
+          await runOrQueue("unmarkEpisodes", { showTmdbId, episodes: later });
+          return;
+        }
         await runOrQueue("toggleEpisode", {
           showTmdbId,
           season,
