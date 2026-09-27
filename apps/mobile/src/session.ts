@@ -217,18 +217,12 @@ export const session = {
         };
       });
     }
-    /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك).
-       🔴 D-1146 — **والغلافُ لم يُركَّب بعد يصطفّ أيضاً** (كان يُرمى فوراً بـ`noinject`): أوّلُ طلبٍ في
-       الإقلاع يخرج بعد ~٤٠ms من «من أنا» قبل أن تُركَّب `/web` — فكان يموت، ولا أحدَ يعيد السؤالَ والويبُ
-       ظاهر، ثمّ تغطّيه الرئيسيّةُ فلا يُجاب أبداً (صفرُ رموزٍ على جهاز خالد منذ D-1141). الانتظارُ آمن:
-       `ready(true)` لا يأتي إلّا من صفحةٍ مركَّبة، والتحميلُ الفاشلُ يصرف الطابورَ (`abandon`). */
-    if (!inject || !pageReady) {
-      return new Promise<void>((r) => waiters.push(r)).then(() => {
-        if (inject) return session.requestOnce();
-        lastWhy = "noinject";
-        return null;
-      });
+    if (!inject) {
+      lastWhy = "noinject";
+      return Promise.resolve(null);
     }
+    /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك) */
+    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.requestOnce() : null));
     lastWhy = undefined;
     lastSrc = undefined;
     const nonce = bytesToHex(Crypto.getRandomBytes(16));
