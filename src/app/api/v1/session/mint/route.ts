@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { handle, fail, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
+import { sessionCookieParts } from "@/lib/sessionCookie";
 
 /**
  * ====== `POST /api/v1/session/mint` — جلسةٌ مستقلّةٌ للتطبيق (Phase 11-K · K4b) ======
@@ -18,8 +19,13 @@ import { ok } from "@/core/contracts/result";
  * ذلك الحارسُ في مسارات المستخدم (`/magiclink` · `/otp` · `/token`) وحدَها.
  *
  * 🔒 **الحرّاس**:
- * - الهويّةُ من `Authorization: Bearer` وحدَه، **يُتحقَّق منه عند Supabase** (`getUser`) — لا كوكي:
- *   كاشُ OkHttp يشارك كوكيَ الـWebView، ونريد ما سلّمه التطبيقُ صراحةً لا ما التصق بالطلب.
+ * - الهويّةُ من `Authorization: Bearer`، **يُتحقَّق منه عند Supabase** (`getUser`).
+ * - 🆕 **أو من كوكي جلسة الويب نفسِه** حين يغيب `Bearer` (K4b-c): `fetch` في React Native على أندرويد يمرّ
+ *   بمخزن كوكي الـWebView (`ForwardingCookieHandler` ⇢ `CookieManager`)، فالطلبُ يحمل جلسةَ الويب — والجسرُ
+ *   لا يُجاب تحت الشاشات الأصليّة (صفرُ رموزٍ من ستّة إقلاعاتٍ على جهاز خالد بعد D-1147). **يُقرأ رمزُ الوصول
+ *   من الكوكي ولا يُجدَّد أبداً** (لا `Set-Cookie` ولا لمسَ لرمز تجديد الويب — D-932)، ويُتحقَّق منه كالسابق.
+ *   ولهذا البابِ **ترويسةٌ مخصّصةٌ إلزاميّة** (`X-Loopz-App: 1`): متصفّحٌ لا يرسلها من موقعٍ آخر بلا طلبِ
+ *   إذنٍ مسبق (CORS preflight) يُرفض — فلا تزويرَ طلبٍ عبر المواقع.
  * - **المستخدمُ المسكوكُ هو صاحبُ الرمز نفسُه**: المعرّفُ يُطابَق مرّتين (الرابط ثمّ الجلسة) — وإلّا
  *   لا شيء يعود. فرمزٌ صالحٌ لا يفتح إلّا حسابَ صاحبه.
  * - لا يُنشئ حساباً أبداً: بلا بريدٍ ⇒ `forbidden` (رابطُ الدخول لبريدٍ غيرِ موجودٍ يصير تسجيلاً).
@@ -36,7 +42,8 @@ type Minted = { access_token: string; refresh_token: string; expires_at: number;
 export async function POST(req: NextRequest) {
   return handle<Minted>(async () => {
     const auth = req.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    let token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    if (!token && req.headers.get("x-loopz-app") === "1") token = cookieAccess(req);
     if (token.split(".").length !== 3) return fail("unauthenticated");
 
     const admin = await createServiceClient();
@@ -60,4 +67,17 @@ export async function POST(req: NextRequest) {
 
     return ok({ access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at, user_id: user.id }, []);
   });
+}
+
+/** رمزُ الوصول من كوكي `@supabase/ssr` (مقطَّعاً أو لا، وبادئةُ `base64-`) — قراءةٌ فقط، والتحقّقُ بعدها عند Supabase */
+function cookieAccess(req: NextRequest): string {
+  try {
+    let raw = sessionCookieParts(req.cookies.getAll()).join("");
+    if (!raw) return "";
+    if (raw.startsWith("base64-")) raw = Buffer.from(raw.slice(7), "base64").toString("utf8");
+    const t = (JSON.parse(raw) as { access_token?: unknown } | null)?.access_token;
+    return typeof t === "string" ? t : "";
+  } catch {
+    return "";
+  }
 }
