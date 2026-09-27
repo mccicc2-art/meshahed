@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { SHELL_BG } from "../../src/theme";
+import { mark } from "../../src/perfMarks";
 
 /**
  * عنوانُ الرجوع `com.loopztv.app://auth/callback`.
@@ -19,6 +20,8 @@ export default function AuthCallback() {
   const router = useRouter();
   const canBack = router.canGoBack();
   useEffect(() => {
+    /* 🧪 D-1159 — هل فُتحت هذه الشاشةُ أثناء الدخول، وماذا فعلت؟ (قياسٌ مؤقّت) */
+    mark("auth.callback", 0, { result: canBack ? "back" : "redirect" });
     if (canBack) router.back();
   }, [canBack, router]);
   if (!canBack) return <Redirect href="/" />;
