@@ -60,6 +60,9 @@ const NAMES = new Set([
   "token.life",
   /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
   "token.wait",
+  /* 🆕 K4b — سكُّ جلسة التطبيق (ms، `result`/`why`) وتجديدُها بنفسه (ms، `result`/`why`) */
+  "session.mint",
+  "session.renew",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src"]);

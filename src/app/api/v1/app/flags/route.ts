@@ -22,6 +22,17 @@ const FLAGS = {
   k2: true,
 } as const;
 
-export async function GET() {
-  return handle(async () => ok(FLAGS, []), { cacheControl: "public, max-age=60, s-maxage=60" });
+/**
+ * 🆕 K4b — **التطبيقُ يملك جلستَه** (`/api/v1/session/mint`): مطفأٌ للجميع، ويُشغَّل **لأجهزةٍ بأسمائها
+ * أوّلاً** (طرازُ الهاتف كما تحمله علاماتُ الأداء، `?m=`) قبل أن يصير عامّاً. الطرازُ ليس هويّةً ولا
+ * سرّاً — هو مجرّدُ حصرٍ للتجربة. أيُّ عيبٍ ⇒ يُفرَّغ السطرُ برقعة ويب ويعود الجسرُ كما هو.
+ */
+const K4_ALL = false;
+/* 🆕 K4b — جوالُ خالد أوّلاً (أحمد: «جهاز خالد»، ٢٧ سبتمبر) */
+const K4_MODELS: readonly string[] = ["SM-S928B"];
+
+export async function GET(req: Request) {
+  const m = new URL(req.url).searchParams.get("m") ?? "";
+  const k4 = K4_ALL || K4_MODELS.includes(m);
+  return handle(async () => ok({ ...FLAGS, k4 }, []), { cacheControl: "public, max-age=60, s-maxage=60" });
 }

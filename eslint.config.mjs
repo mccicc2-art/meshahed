@@ -38,6 +38,7 @@ const eslintConfig = defineConfig([
       "src/app/api/v1/app/crash/route.ts", // D-974 — سقوطُ شاشةٍ أصليّة ⇢ `runtime_errors` (قراءةُ لوحة الإدارة، مستخدمٌ مسجَّل ومحدود)
       "src/app/api/v1/app/perf/route.ts", // D-1024 — علاماتُ أداء الشاشات الأصليّة ⇢ `runtime_errors` بنوع `perf` (مستخدمٌ مسجَّل ومحدود، صفرُ نصٍّ حرّ)
       "src/app/p/[[]code[]]/route.ts",
+      "src/app/api/v1/session/mint/route.ts", // K4b — سكُّ جلسةٍ مستقلّةٍ للتطبيق من رمز وصولٍ صالح (admin.generateLink + verify)
     ],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
