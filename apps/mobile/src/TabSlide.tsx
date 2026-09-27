@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { jankStart, mark, span } from "./perfMarks";
-import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { Animated, Easing, I18nManager, InteractionManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Reanimated, { cancelAnimation, Easing as REasing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -202,7 +202,7 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
 
   /* تغيّرُ العرض (دوران) أو ترتيبِ التبويبات نفسِه: المسارُ يُثبَّت على النشط بلا حركة.
      ⚠️ يُقاس بالمحتوى لا بالمرجع — `order` مصفوفةٌ جديدةٌ في كلِّ رسمة، وإعادةُ الضبط
-     في أثناء سحبٍ حيٍّ (رسمةُ تسليح الجار) كانت ستقفز بالإصبع. */
+     في أثناء سحبٍ حيٍّ (رسمةُ تسليح الجار) كانت ستقفز بالإصبع. */
   const geom = `${width}|${order.join(",")}`;
   const geomRef = useRef(geom);
   useEffect(() => {
@@ -245,7 +245,7 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
  * (`tab.arm` ~٩٠ms). فاللوحُ يقف حيث يمشي الإصبع.
  *
  * 🔑 **هنا الإيماءةُ والحركةُ كلتاهما على خيط الواجهة** (`Gesture.Pan` + Reanimated): اللوحُ
- * يتبع الإصبعَ ولو انشغل JS بالتركيب كلَّه. **وما يحتاج React وحدَه يعبر إلى JS**: تركيبُ الجار
+ * يتبع الإصبعَ ولو انشغل JS بالتركيب كلّه. **وما يحتاج React وحدَه يعبر إلى JS**: تركيبُ الجار
  * (`arm`) وقلبُ التبويب بعد الطيران (`commit`) — وتأخّرُهما لا يوقف اللوح.
  *
  * 🔑 **والأرقامُ أرقامُ `TabSlideJS` حرفاً** — لا اجتهادَ ثانياً: `FLY_MS` · `SNAP_MS` · المنحنى ·
@@ -269,6 +269,18 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
  */
 const REASE = REasing.bezier(0.32, 0.72, 0, 1);
 const UI_FRAME_MS = 1000 / 60;
+
+/**
+ * 🆕 K2 — **الجاران يُجهَّزان قبل أن يسأل الإصبع** (تسجيلُ خالد ٢٨ سبتمبر: السحبُ إلى «أفلام» في المكتبة يكشف
+ * صناديقَ فارغةً ثمّ تتلاشى الملصقاتُ إليها). التسليحُ عند القفل (D-523) يعني أنّ لوحَ الجار **يُركَّب والإصبعُ
+ * يسحب** — فصورُه تبدأ التحميلَ وهي تدخل الشاشة. الآن بعد أن يستقرّ التبويبُ وتهدأ الحركة يُركَّب الجاران
+ * (السابقُ والتالي) خارجَ الشاشة، فتكون صورُهما جاهزةً قبل السحب. **ومفتاحُ اللوح ثابت**: من سحب إلى جارٍ
+ * لا يُعاد تركيبُ شيء — والتبويبُ الذي غادره صار جاراً فيبقى كما هو.
+ * ⚖️ **الثمنُ معلَن**: ثلاثةُ ألواحٍ مركّبةٌ بعد الاستقرار بدل واحد (والجارُ `active=false` — لا مشغّلَ يحمى،
+ * D-975). التركيبُ بعد `WARM_MS` وبعد التفاعلات، لا مع أوّل رسمٍ للشاشة ولا في أثناء الحركة.
+ * `tab.arm` لجارٍ جاهزٍ يُسجَّل `0` بـ`cached=1` — فتُقرأ نسبةُ السحبات التي وجدت جارَها حاضراً.
+ */
+const WARM_MS = FLY_MS + 180;
 
 function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfScreen }: Props<K>) {
   const { width } = useWindowDimensions();
@@ -308,6 +320,12 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
   }, []);
   const orderRef = useRef(order);
   orderRef.current = order;
+  /* 🆕 K2 — الجاران المجهَّزان (انظر `WARM_MS`) */
+  const [warm, setWarm] = useState<K[]>([]);
+  const warmRef = useRef<K[]>([]);
+  warmRef.current = warm;
+  /* التبويبُ الذي استقرّ عليه اللوحُ آخرَ مرّة — في رسمة القلب هو الذي غادرناه للتوّ */
+  const lastTab = useRef(tab);
   const onTabRef = useRef(onTab);
   onTabRef.current = onTab;
   const perfRef = useRef(perfScreen);
@@ -321,7 +339,11 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
     (i: number) => {
       const k = orderRef.current[i];
       if (!k) return;
-      if (sideRef.current !== k && perfRef.current) armEnd.current = span("tab.arm", { screen: perfRef.current, tab: k, k2: 1 });
+      if (sideRef.current !== k && perfRef.current) {
+        /* 🆕 K2 — جارٌ مجهَّزٌ مسبقاً: لا تركيبَ ينتظره الإصبع */
+        if (warmRef.current.includes(k)) mark("tab.arm", 0, { screen: perfRef.current, tab: k, k2: 1, cached: 1 });
+        else armEnd.current = span("tab.arm", { screen: perfRef.current, tab: k, k2: 1 });
+      }
       mount(k);
     },
     [mount],
@@ -488,8 +510,36 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
     if (side && !order.includes(side)) mount(null);
   }, [geom, order, at, tab, pos, side, mount]);
 
+  /* 🆕 K2 — بعد كلِّ استقرار: يبقى من المجهَّز ما زال جاراً (والتبويبُ الذي غادرناه منه) فلا يُنزع ثمّ يُعاد،
+     ويُركَّب الناقصُ بعد أن تهدأ الحركة. الأبعدُ يُنزع فوراً — ثلاثةُ ألواحٍ حدٌّ أعلى */
+  const ti = order.indexOf(tab);
+  const near = useMemo(() => (ti < 0 ? [] : [order[ti - 1], order[ti + 1]].filter((k): k is K => !!k)), [order, ti]);
+  useLayoutEffect(() => {
+    const left = lastTab.current;
+    lastTab.current = tab;
+    setWarm((w) => {
+      const keep = near.filter((k) => w.includes(k) || k === left);
+      return keep.length === w.length && keep.every((k) => w.includes(k)) ? w : keep;
+    });
+    if (!near.length) return;
+    let cancelled = false;
+    let job: { cancel: () => void } | null = null;
+    const timer = setTimeout(() => {
+      job = InteractionManager.runAfterInteractions(() => {
+        if (!cancelled) setWarm(near);
+      });
+    }, WARM_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      job?.cancel();
+    };
+  }, [tab, near]);
+
   const track = useAnimatedStyle(() => ({ transform: [{ translateX: pos.value }] }));
-  const panes: K[] = side && side !== tab ? [tab, side] : [tab];
+  /* النشطُ · الخارجُ أو المسلَّح · الجاران المجهَّزان — بترتيب المسار، وكلٌّ بمفتاحه فلا يُعاد تركيبُ لوحٍ حاضر */
+  const leaving = lastTab.current !== tab ? lastTab.current : null;
+  const panes: K[] = order.filter((k) => k === tab || k === side || (near.includes(k) && (warm.includes(k) || k === leaving)));
 
   return (
     <GestureHandlerRootView style={[{ flex: 1, overflow: "hidden" }, style]}>
