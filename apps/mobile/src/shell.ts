@@ -28,6 +28,9 @@ export function rootOf(r: ReturnTo | null): NativeRoot | null {
 }
 
 let inject: ((js: string) => void) | null = null;
+/* 🆕 D-1156 — من يرسل نموذجَ POST من الغلاف (`web.tsx`)، وطلبٌ ينتظره إن لم تُركَّب الـWebView بعد */
+let poster: ((path: string) => void) | null = null;
+let pendingPost: string | null = null;
 
 /**
  * 🆕 D-951 — **الشاشةُ الأصليّة لا تُغلق قبل أن تصل الصفحة** (بلاغُ أحمد
@@ -103,10 +106,9 @@ export const shell = {
    * يضيف استعلاماً أو يزيل آخر، والمهمّ أنّ الرئيسيّةَ لم تعد ما يُعرض.
    */
   /**
-   * Phase 11-I — **نموذجُ POST من الصفحة نفسِها** (تسجيلُ الخروج): `/auth/signout` يقبل
-   * `POST` من نطاقنا وحدَه (فحصُ `origin`)، فالغلافُ لا يناديه بـ`fetch` بل يجعل الصفحةَ
-   * تُرسله — ويبقى `onNavigationStateChange` في `web.tsx` هو من يرى `/auth/signout`
-   * ويُنزل الشاشاتِ الأصليّة ويمسح الجلسة (D-1026). **الجلسةُ ما زالت ملكَ الـWebView** (D-932).
+   * Phase 11-I — **تسجيلُ الخروج تنقّلٌ في الـWebView لا `fetch`**: `/auth/signout` يقبل `POST` من نطاقنا
+   * وحدَه (فحصُ `origin`، ومعه `null` من الغلاف — D-1156)، ويبقى `onNavigationStateChange` في `web.tsx` هو
+   * من يرى `/auth/signout` ويُنزل الشاشاتِ الأصليّة ويمسح الجلسة (D-1026). **الجلسةُ ما زالت ملكَ الـWebView** (D-932).
    */
   /** 🆕 D-1102 — العودةُ سُلِّمت من الغلاف لا من الصفحة: يُنزع سلاحُ الصفحة كي لا يُطلق رجوعاً ثانياً */
   disarm() {
@@ -114,9 +116,24 @@ export const shell = {
     shell.doorPath = null;
     inject?.(`try{sessionStorage.removeItem("loopz:armed")}catch(e){};true;`);
   },
+  /**
+   * 🔴 D-1156 — **يُرسله الغلافُ لا الصفحة**: كان نموذجاً يُحقن في الصفحة، والصفحةُ تحت الإعدادات الأصليّة
+   * منزوعةٌ من العرض فيضيع الحقن — الضغطةُ الأولى على «خروج» تُنزل الشاشاتِ وتبقى مسجَّلاً، والثانيةُ تُخرج
+   * (تسجيلُ خالد ٢٧ سبتمبر). الآن `web.tsx` يبدّل المصدرَ إلى POST (`postUrl` أصليّ)؛ وإن لم تُركَّب الـWebView
+   * بعد (`router.replace("/web")`) يُحفظ الطلبُ ويُرسل لحظةَ تركيبها.
+   */
   post(path: string) {
-    if (!inject || !path.startsWith("/")) return;
-    inject(`(function(){var f=document.createElement("form");f.method="post";f.action=${JSON.stringify(CONFIG.apiBase + path)};document.body.appendChild(f);f.submit();})();true;`);
+    if (!path.startsWith("/")) return;
+    if (poster) poster(path);
+    else pendingPost = path;
+  },
+  attachPost(fn: ((path: string) => void) | null) {
+    poster = fn;
+    if (fn && pendingPost) {
+      const p = pendingPost;
+      pendingPost = null;
+      fn(p);
+    }
   },
   arrived(url: string, loading: boolean) {
     if (!waiter || loading) return;

@@ -22,8 +22,8 @@ import { useSettings, useOpenWeb } from "./api";
  * وما بقي ويباً بابٌ يفتح صفحتَه نفسَها** (D-932: الحساب/الحذف · الدعوات ·
  * الاستيراد · الفوترة · التوثيق · تعديلُ الملفّ · تخصيصُ الرئيسيّة — إلى I3).
  *
- * الخروجُ في صفٍّ وحدَه (مواصفةُ أحمد) — والفعلُ نفسُه: نموذجُ `POST /auth/signout`
- * من الصفحة (`shell.post`)؛ `web.tsx` يرى العنوانَ فيمسح الجلسةَ ويُنزل الشاشات.
+ * الخروجُ في صفٍّ وحدَه (مواصفةُ أحمد) — والفعلُ نفسُه: `POST /auth/signout` يرسله الغلافُ
+ * (`shell.post` — D-1156، كان نموذجاً في الصفحة)؛ `web.tsx` يرى العنوانَ فيمسح الجلسةَ ويُنزل الشاشات.
  */
 export function SettingsIndexScreen() {
   const { t, tokens } = useApp();
@@ -107,9 +107,10 @@ export function SettingsIndexScreen() {
           danger
           onPress={() => {
             haptic.pick();
-            shell.post("/auth/signout");
+            /* D-1156 — تُنزل الشاشاتُ أوّلاً ثمّ يُرسل الغلافُ الخروج (لا حقنَ في صفحةٍ منزوعة) */
             if (router.canDismiss()) router.dismissAll();
             else router.replace("/web");
+            shell.post("/auth/signout");
           }}
         />
       </Group>

@@ -30,7 +30,8 @@ import { prefetchDiscover } from "../src/discover/DiscoverScreen";
  * `login` عبر الجسر (`GoogleButton`)، ونفتح متصفّحَ النظام (PKCE، الطريقُ
  * الذي شحن في 1.0)، ثمّ **نسلّم الرمزين في جسم POST** إلى
  * `/api/v1/session/handoff` فيكتب الخادمُ كوكيَ الجلسة نفسَه الذي يكتبه للويب.
- * التسليمُ نموذجٌ يُحقن في الصفحة ويُرسَل — لا تبديلَ لمصدر الـWebView،
+ * 🔴 D-1156 — التسليمُ **تبديلُ مصدرٍ إلى POST يرسله الغلاف** (`formBody`)، لا نموذجٌ يُحقن في
+ * الصفحة: الحقنُ كان يضيع فيحتاج كلُّ دخولٍ محاولتين. المصدرُ حالةٌ تتغيّر بطلبٍ صريحٍ وحدَه،
  * فلا إعادةَ تحميلٍ ثانية حين تتغيّر الجلسةُ الأصليّة بعده.
  *
  * 🔴 **بعد التسليم لا يُنادى `signOut` أبداً — ولا بـ`scope: "local"`**
@@ -116,7 +117,8 @@ const APP_VERSION = Constants.expoConfig?.version ?? "0";
 /** النطاقاتُ التي تُعرض داخل الغلاف — ما عداها للمتصفّح الخارجيّ */
 const INSIDE = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
 
-type Source = { uri: string };
+/* 🆕 D-1156 — المصدرُ قد يكون نموذجَ POST (التسليمُ والخروج) يُرسله الغلافُ نفسُه — انظر `formBody` */
+type Source = { uri: string; method?: "POST"; body?: string };
 
 /**
  * 🆕 **نصُّ شاشة الانقطاع هنا لا في `core/i18n`** — حجّةُ D-907 نفسُها:
@@ -128,12 +130,18 @@ const OFFLINE = {
   en: { title: "No internet connection", hint: "Check your network and try again.", retry: "Try again" },
 } as const;
 
-/** نموذجُ تسليمٍ يُحقن في الصفحة ويُرسَل فوراً — الرمزان في الجسم لا في العنوان */
-function handoffScript(access: string, refresh: string): string {
-  return `(function(){var f=document.createElement('form');f.method='POST';f.action=${JSON.stringify(HANDOFF)};
-var a=document.createElement('input');a.type='hidden';a.name='access_token';a.value=${JSON.stringify(access)};
-var r=document.createElement('input');r.type='hidden';r.name='refresh_token';r.value=${JSON.stringify(refresh)};
-f.appendChild(a);f.appendChild(r);document.body.appendChild(f);f.submit();})();true;`;
+/**
+ * 🔴 D-1156 — **التسليمُ والخروجُ يُرسلهما الغلافُ لا سكربتٌ في الصفحة** (تسجيلُ خالد ٢٧ سبتمبر: كلُّ دخولٍ
+ * وكلُّ خروجٍ احتاج محاولتين — ٨ من ٨ في سجلّ Supabase). كانا نموذجاً يُحقن بـ`injectJavaScript`، **والحقنُ
+ * يضيع** متى لم تكن الصفحةُ حاضرة: تحت شاشةٍ أصليّة تنزعها `react-native-screens` من العرض (D-1144 — الخروجُ من
+ * الإعدادات الأصليّة)، أو لحظةَ العودة من نافذة Google قبل أن تستيقظ (الدخول). المحاولةُ الأولى تُظهر الويبَ فتنجح
+ * الثانية. الآن تبديلُ المصدر ⇐ `WebView.postUrl` في جافا — تنقّلٌ أصليٌّ لا ينتظر جافاسكربت الصفحة.
+ * القاعدةُ نفسُها التي نقضت D-1146: **لا يُعلَّق فعلٌ على طلبٍ قد لا يُجاب.**
+ */
+function formBody(fields: Record<string, string>): string {
+  return Object.entries(fields)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
 }
 
 /** هل عنوانُ الرسالة/الصفحة من نطاقنا؟ — شرطُ قبول أيِّ رسالةٍ ذاتِ أثر */
@@ -416,7 +424,8 @@ export default function Web() {
         session.markSeen();
         /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
         own.fresh(data.session.access_token);
-        ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
+        /* 🆕 D-1156 — الرمزان في جسم POST كما كانا (لا في العنوان) — لكن يرسله الغلافُ لا الصفحة */
+        setSource({ uri: HANDOFF, method: "POST", body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
         /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
         prefetchDiscover();
       } else {
@@ -431,9 +440,13 @@ export default function Web() {
     const fn = (js: string) => ref.current?.injectJavaScript(js);
     session.attach(fn);
     shell.attach(fn);
+    /* 🆕 D-1156 — نموذجُ POST من الغلاف (الخروج): تبديلُ المصدر لا حقن. `n` يجعل كلَّ طلبٍ مصدراً جديداً —
+       مصدرٌ مطابقٌ لسابقه لا يُعاد إرسالُه، فخروجٌ ثانٍ في الجلسة نفسِها كان سيضيع. */
+    shell.attachPost((path) => setSource({ uri: CONFIG.apiBase + path, method: "POST", body: formBody({ n: String(Date.now()) }) }));
     return () => {
       session.attach(null);
       shell.attach(null);
+      shell.attachPost(null);
       session.clear();
     };
   }, []);
