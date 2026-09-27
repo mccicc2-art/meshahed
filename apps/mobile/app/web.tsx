@@ -68,6 +68,8 @@ const HOME = CONFIG.apiBase + "/";
    تُحمَّل بدل `/` **فقط** حين يُرفع الإقلاعُ الأصليّ (جهازٌ رأى جلسةً، بلا رابطٍ من الودجت)، وبعد أوّل
    ردِّ جلسةٍ يبدّلها الغلافُ إلى `/` بـ`location.replace` — فالتاريخُ والرجوعُ كما كانا حرفاً. */
 const BOOT = CONFIG.apiBase + "/app/boot";
+/** 🆕 K6a — مهلةُ إعلان الترحيب بعد وصول التسليم: بعدها يُحكم «وصل» (قياسٌ فقط) */
+const GATE_WAIT_MS = 5_000;
 /**
  * 🆕 D-1148 — **صفحةُ الدخول بلا شريطٍ تحتها** (أحمد، ٢٧ سبتمبر: «إذا نمدي نخفيها أخفيها»): من لم يدخل قطّ يرى
  * البطلَ وزرَّيه — «المتابعة بـGoogle» و«تصفَّح أوّلاً» (D-886 باقٍ) — والشريطُ يظهر حين يتصفّح فعلاً.
@@ -175,6 +177,15 @@ export default function Web() {
   const handing = useRef(false);
   /* 🆕 D-1152 — لحظةُ بدء التسليم إلى الويب (لقياس وصوله أو ارتداده مرّةً واحدة) */
   const handT0 = useRef(0);
+  /* 🆕 K6a — الحكمُ على التسليم ينتظر قليلاً بعد الوصول: الترحيبُ يُعلن نفسَه (`gate`) بعد أن يُرسم لا عند
+     انتهاء التحميل، فحكمٌ عند `onNav` كان يسجّل «وصل» لصفحة الترحيب نفسِها ثمّ يُسكت إعلانَها */
+  const handTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (handTimer.current) clearTimeout(handTimer.current);
+    },
+    [],
+  );
   /**
    * 🆕 D-1101 — **العودةُ إلى الشاشة الأصليّة التي فُتحت منها الصفحة**، في مكانٍ واحدٍ لطريقَيها (رسالةُ
    * `native` من الصفحة، ورجوعُ النظام). الجذورُ كما كانت دفعةً واحدة؛ والإعداداتُ ليست جذراً فتُبنى
@@ -307,9 +318,23 @@ export default function Web() {
        الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
     if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
       handing.current = false;
-      /* D-1152 — التسليمُ وصل (قياسٌ فقط، لا يغيّر شيئاً) */
-      if (handT0.current) mark("auth.handoff", Date.now() - handT0.current, { result: "ok" });
-      handT0.current = 0;
+      /* D-1152 · K6a — الحكمُ على التسليم (قياسٌ فقط، لا يغيّر شيئاً). `HOME` يطابق كلَّ صفحةٍ في النطاق، فالمسارُ
+         يُقرأ: الدخولُ أو ردُّ Google ⇒ ارتداد؛ وغيرُهما ⇒ «وصل» ما لم تُعلن الصفحةُ أنّها الترحيبُ خلال مهلة */
+      if (handT0.current) {
+        const arrivedMs = Date.now() - handT0.current;
+        if (next.startsWith("/login") || next.startsWith("/auth")) {
+          mark("auth.handoff", arrivedMs, { result: "none", why: "login" });
+          handT0.current = 0;
+        } else {
+          if (handTimer.current) clearTimeout(handTimer.current);
+          handTimer.current = setTimeout(() => {
+            handTimer.current = null;
+            if (!handT0.current) return; /* الترحيبُ أعلن نفسَه وحُكم بالارتداد */
+            mark("auth.handoff", arrivedMs, { result: "ok" });
+            handT0.current = 0;
+          }, GATE_WAIT_MS);
+        }
+      }
       flush();
     }
   }, [flush, router]);
@@ -326,7 +351,7 @@ export default function Web() {
       const hostOk = insideUrl(e.nativeEvent.url);
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
       if (session.receive(msg as Record<string, unknown>, hostOk)) {
-        /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
+        /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
         /* D-1143 — «وصلني» ليس ردّاً: الانتقالُ عنده كان يقطع الردَّ الحقيقيَّ قبل أن يصل */
         if (hostOk && e.nativeEvent.url.startsWith(BOOT) && msg.type !== "session:ack") hopHome();
         return;
@@ -339,6 +364,8 @@ export default function Web() {
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
           handT0.current = 0;
+          if (handTimer.current) clearTimeout(handTimer.current);
+          handTimer.current = null;
         }
         return;
       }
