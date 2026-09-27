@@ -71,8 +71,8 @@ const BOOT = CONFIG.apiBase + "/app/boot";
  * البطلَ وزرَّيه — «المتابعة بـGoogle» و«تصفَّح أوّلاً» (D-886 باقٍ) — والشريطُ يظهر حين يتصفّح فعلاً.
  * `/` عتبةٌ للزائر وحدَه؛ للمسجَّل هي الرئيسيّة (وهي أصليّةٌ أصلاً).
  */
-function atGate(p: string): boolean {
-  return p === "/login" || p.startsWith("/auth/") || (p === "/" && !session.seen());
+function atGate(p: string, landing: boolean): boolean {
+  return p === "/login" || p.startsWith("/auth/") || landing;
 }
 /**
  * 🆕 **إعلانُ القدرة قبل المستند** (٩ سبتمبر — بلاغُ أحمد «لا أستطيع الدخول إلى
@@ -156,6 +156,10 @@ export default function Web() {
   const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [path, setPath] = useState("/");
+  /* 🔴 D-1150 — **الصفحةُ تقول إنّها العتبة، لا التطبيقُ يخمّن** (تسجيلُ أحمد: بعد الدخول رئيسيّةٌ بلا شريط —
+     D-1148 حكم بـ`session.seen()` ساعةَ الرسم، والأثرُ يُكتب بعد أوّل رمز). `AppGateSignal` في بطل الترحيب يرسل
+     `gate` عند التركيب والفكّ، ويُصفَّر مع كلِّ تحميل مستندٍ جديد (فكُّ المكوّن لا يجري عند مغادرة المستند). */
+  const [landing, setLanding] = useState(false);
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
@@ -278,6 +282,7 @@ export default function Web() {
     if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
     /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
     shell.arrived(nav.url, nav.loading);
+    if (nav.loading) setLanding(false);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
     if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) {
@@ -297,7 +302,7 @@ export default function Web() {
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
-      let msg: { type?: string; items?: unknown[]; mark?: string; path?: string; images?: number; sincePathChange?: number; route?: string } = {};
+      let msg: { type?: string; items?: unknown[]; mark?: string; path?: string; images?: number; sincePathChange?: number; route?: string; on?: boolean } = {};
       try {
         msg = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -314,6 +319,10 @@ export default function Web() {
       }
       /* 🆕 D-1083 — `SessionBridge` علّق سامعَ الطلب: يُصرف طابورُ الرمز الآن لا بعد آخر صورةٍ في
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
+      if (msg.type === "gate") {
+        if (hostOk) setLanding(msg.on === true);
+        return;
+      }
       if (msg.type === "bridge:ready") {
         if (hostOk) {
           session.ready(true);
@@ -547,7 +556,7 @@ export default function Web() {
       {/* D-1103 — الدرعُ فوق الصفحة وحدَها لحظةَ انكشافها؛ لا يُرى ولا يغطّي الشريطَ الأصليّ */}
       {shielded ? <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="auto" /> : null}
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
-      {ready && !failed && !atGate(path) ? (
+      {ready && !failed && !atGate(path, landing) ? (
         <BottomNav
           active={navKey}
           onGo={(k) => {

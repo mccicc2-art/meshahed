@@ -7,6 +7,7 @@ import { railGuard } from "@/lib/topChart";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { GoogleButton } from "@/components/GoogleButton";
 import { buttonClass } from "@/components/ui/Button";
+import { AppGateSignal } from "@/components/AppGateSignal";
 
 /**
  * بطل صفحة الهبوط — الشاشة الأولى، حرفاً بحرف كما صمّمها المالك.
@@ -45,6 +46,8 @@ export async function LandingHero({
 
   return (
     <div className={shell}>
+      {/* D-1150 — العتبةُ تُعلن نفسَها للغلاف فيخفي شريطَه ما دامت ظاهرة */}
+      <AppGateSignal />
       <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4">
         {/* شارة الوعد: نقطة نابضة + السطر الإنجليزي — بلا أيقونات */}
         <div className="flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2">
