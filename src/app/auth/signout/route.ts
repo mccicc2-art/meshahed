@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isLoopzApp } from "@/core/platform";
+import { PROBE_COOKIE, PROBE_SECONDS, cookieShape, logProbe } from "@/lib/authProbe";
 
 export async function POST(request: Request) {
   // حماية CSRF: هذا مسارٌ عادي لا Server Action، فلا يأخذ فحص الأصل
@@ -16,6 +18,15 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL("/", request.url), { status: 302 });
   }
   const supabase = await createClient();
+  /* 🧪 D-1157 — شكلُ الكوكيات قبل الخروج وبعده: هل تُحذف أجزاءُ الجلسة كلُّها؟ (داخل الغلاف وحدَه، مؤقّت) */
+  const app = isLoopzApp(request.headers.get("user-agent"));
+  const store = await cookies();
+  const before = app ? cookieShape(store.getAll()) : "";
   await supabase.auth.signOut();
-  return NextResponse.redirect(new URL("/login", request.url), { status: 302 });
+  const res = NextResponse.redirect(new URL("/login", request.url), { status: 302 });
+  if (app) {
+    await logProbe("signout", `before=${before} after=${cookieShape(store.getAll())} origin=${origin ?? "absent"}`);
+    res.cookies.set(PROBE_COOKIE, "1", { maxAge: PROBE_SECONDS, path: "/", sameSite: "lax", secure: true });
+  }
+  return res;
 }

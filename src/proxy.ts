@@ -1,4 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
+import { PROBE_COOKIE, cookieShape, logProbe, sessionRead } from "@/lib/authProbe";
+import { isLoopzApp } from "@/core/platform";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   decodeSessionCookie,
@@ -108,6 +110,13 @@ export async function proxy(request: NextRequest) {
   const owner = await ownerLabel(request);
   response.headers.set(OWNER_HEADER, owner);
   response.headers.set(BUILD_HEADER, BUILD_ID);
+
+  /* 🧪 D-1157 — ستّون ثانيةً بعد تسليمٍ أو خروجٍ داخل الغلاف: ماذا تحمل الصفحةُ التالية من كوكي؟ (مؤقّت) */
+  const pp = request.nextUrl.pathname;
+  if ((pp === "/" || pp === "/login") && request.cookies.has(PROBE_COOKIE) && isLoopzApp(request.headers.get("user-agent"))) {
+    const all = request.cookies.getAll();
+    await logProbe("page", `path=${pp} cookies=${cookieShape(all)} read=${sessionRead(all)} mode=${request.headers.get("sec-fetch-mode") ?? "?"} prefetch=${request.headers.get("next-router-prefetch") ? 1 : 0}`);
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

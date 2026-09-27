@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isLoopzApp } from "@/core/platform";
+import { PROBE_COOKIE, PROBE_SECONDS, cookieShape, logProbe, sessionRead } from "@/lib/authProbe";
 
 /**
  * `POST /api/v1/session/handoff` — تسليمُ جلسة التطبيق إلى الـWebView (D-922).
@@ -57,6 +58,13 @@ export async function POST(req: NextRequest) {
     },
   );
   const { error } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+  /* 🧪 D-1157 — شكلُ الكوكيات قبل التسليم وما كتبه (الحذفُ `del`) — قياسٌ مؤقّت، انظر `authProbe.ts` */
+  const set = res.cookies
+    .getAll()
+    .map((c) => ({ name: c.name, value: c.value === "" || c.maxAge === 0 ? "" : c.value }))
+    .map((c) => (c.value ? c : { name: c.name + "~del", value: "" }));
+  await logProbe("handoff", `result=${error ? "error" : "ok"} before=${cookieShape(req.cookies.getAll())} beforeRead=${sessionRead(req.cookies.getAll())} set=${cookieShape(set)}`);
   if (error) return NextResponse.redirect(login, { status: 303 });
+  res.cookies.set(PROBE_COOKIE, "1", { maxAge: PROBE_SECONDS, path: "/", sameSite: "lax", secure: true });
   return res;
 }
