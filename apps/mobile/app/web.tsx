@@ -12,6 +12,7 @@ import { currentLocale, webLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
+import { mark } from "../src/perfMarks";
 import { session } from "../src/session";
 import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
@@ -164,6 +165,8 @@ export default function Web() {
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
   const handing = useRef(false);
+  /* 🆕 D-1152 — لحظةُ بدء التسليم إلى الويب (لقياس وصوله أو ارتداده مرّةً واحدة) */
+  const handT0 = useRef(0);
   /**
    * 🆕 D-1101 — **العودةُ إلى الشاشة الأصليّة التي فُتحت منها الصفحة**، في مكانٍ واحدٍ لطريقَيها (رسالةُ
    * `native` من الصفحة، ورجوعُ النظام). الجذورُ كما كانت دفعةً واحدة؛ والإعداداتُ ليست جذراً فتُبنى
@@ -296,6 +299,9 @@ export default function Web() {
        الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
     if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
       handing.current = false;
+      /* D-1152 — التسليمُ وصل (قياسٌ فقط، لا يغيّر شيئاً) */
+      if (handT0.current) mark("auth.handoff", Date.now() - handT0.current, { result: "ok" });
+      handT0.current = 0;
       flush();
     }
   }, [flush, router]);
@@ -321,6 +327,11 @@ export default function Web() {
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
+        /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّةً) */
+        if (hostOk && msg.on === true && handT0.current) {
+          mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
+          handT0.current = 0;
+        }
         return;
       }
       if (msg.type === "bridge:ready") {
@@ -392,12 +403,19 @@ export default function Web() {
         return;
       }
       if (msg.type !== "login") return;
+      const loginT0 = Date.now();
       const r = await signInWithGoogle();
       const { data } = await supabase.auth.getSession();
+      /* 🆕 D-1152 — نتيجةُ الدخول بسببها (رسالةُ الخطأ مختصرةً كلمةً — لا بريدَ ولا رمز) */
+      const why = r.ok ? (data.session ? "ok" : "nosession") : String(r.message ?? "unknown").toLowerCase().replace(/[^\w.-]+/g, "_").slice(0, 16) || "unknown";
+      mark("auth.login", Date.now() - loginT0, { result: r.ok && data.session ? "ok" : "none", why });
       if (r.ok && data.session) {
         handing.current = true;
+        handT0.current = Date.now();
         /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
         session.markSeen();
+        /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
+        own.fresh(data.session.access_token);
         ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
         /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
         prefetchDiscover();

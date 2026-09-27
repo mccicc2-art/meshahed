@@ -46,7 +46,11 @@ export type PerfName =
   | "token.wait"
   /* 🆕 K4b — سكُّ جلسة التطبيق وتجديدُها بنفسه: المدّةُ ونتيجتُها (`result`/`why`) */
   | "session.mint"
-  | "session.renew";
+  | "session.renew"
+  /* 🆕 D-1152 — مراحلُ الدخول: نتيجةُ Google وتبادلِ الرمز (`auth.login`)، ثمّ وصولُ التسليم إلى الويب أو ارتدادُه
+     إلى الترحيب (`auth.handoff`) — لتشخيص «أوّلُ محاولةٍ ترجع للترحيب» (ثلاثُ مرّاتٍ في تسجيلات ٢٧ سبتمبر) */
+  | "auth.login"
+  | "auth.handoff";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
