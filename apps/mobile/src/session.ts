@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
+import { own } from "./ownSession";
 
 /**
  * ====== رمزُ الوصول للشاشات الأصليّة — ذاكرةٌ فقط، وطلبٌ بـnonce ======
@@ -68,14 +69,14 @@ let lastLife: number | null = null;
  * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
  */
 type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject";
-type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" }) => void;
+type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own" }) => void;
 /**
  * 🆕 D-1143 — **لماذا انتهى الطلبُ الأخير** (يُقرأ مرّةً عند التبليغ): `noack` لم يصل الحدثُ الصفحةَ أصلاً ·
  * `slow` وصل ولم يُجب في ٨ث · `stall` الصفحةُ قالت إنّ مكتبتَها علقت · `host`/`jwt`/`exp` ردٌّ رُفض ·
  * `clear` الصفحةُ بلا جلسة. ومع النجاح: `src` من الكوكي أم من المكتبة.
  */
 let lastWhy: WaitWhy | undefined;
-let lastSrc: "cookie" | "lib" | undefined;
+let lastSrc: "cookie" | "lib" | "own" | undefined;
 const waitListeners = new Set<WaitReport>();
 /** 🆕 D-1141 — طلبٌ واحدٌ في الطريق لكلِّ من يسأل — كان كلُّ نداءٍ في الطابور يرسل طلبَه بعد التحميل */
 let inflight: Promise<string | null> | null = null;
@@ -94,10 +95,15 @@ const signOutListeners = new Set<() => void>();
 function emit() {
   for (const l of listeners) l();
 }
+/* 🆕 K4b — رمزٌ مملوكٌ وصل أو سقط ⇒ يُبلَغ من ينتظر الرمز (`useGuestUpgrade`…) كما يُبلَغ برمز الجسر */
+own.onChange(emit);
 
 export const session = {
   /** الرمزُ الحاليُّ إن كان صالحاً لثلاثين ثانيةً أخرى على الأقلّ */
   get(): string | null {
+    /* 🆕 K4b — الجلسةُ المملوكةُ أوّلاً (والمفتاحُ مطفأٌ ⇒ `null` دائماً فيبقى كلُّ شيءٍ كما كان) */
+    const mine = own.get();
+    if (mine) return mine;
     if (!access) return null;
     if (exp * 1000 - Date.now() < 30_000) return null;
     return access;
@@ -153,6 +159,8 @@ export const session = {
    */
   signOut() {
     session.clear();
+    /* 🆕 K4b — الخروجُ يمسح الجلسةَ المملوكةَ أيضاً — محلّيّاً؛ الويبُ خرج بـ`global` فأبطلها عند الخادم */
+    own.clear();
     const hadSeen = seenMem !== false;
     seenMem = false;
     try {
@@ -176,6 +184,8 @@ export const session = {
     pendingTimer = null;
     /* D-1141 — مسحٌ يليه طلبٌ جديدٌ فوراً (إعادةُ المحاولة عند 401): لا يعود الطلبُ الملغى نفسُه */
     inflight = null;
+    /* 🆕 K4b — `401`: رمزُ الوصول المملوك يسقط أيضاً، ورمزُ تجديده يبقى فيُجدَّد في الطلب التالي */
+    own.dropAccess();
     if (had) emit();
   },
   /**
@@ -206,8 +216,22 @@ export const session = {
     waitListeners.add(l);
     return () => waitListeners.delete(l);
   },
-  /** المحاولةُ نفسُها كما كانت (D-1075) — `request()` يغلّفها بطلبٍ واحدٍ في الطريق وبالقياس */
+  /**
+   * 🆕 K4b — **الجلسةُ المملوكةُ أوّلاً** (رمزٌ في الذاكرة أو تجديدٌ بنفسه)، والجسرُ بعدها كما كان. المفتاحُ
+   * مطفأٌ ⇒ `ensure()` يعود `null` فوراً ⇒ الجسرُ وحدَه، حرفيّاً كما قبل K4b.
+   */
   requestOnce(): Promise<string | null> {
+    if (!own.enabled()) return session.bridgeOnce();
+    return own.ensure().then((t) => {
+      if (t) {
+        lastSrc = "own";
+        return t;
+      }
+      return session.bridgeOnce();
+    });
+  },
+  /** المحاولةُ نفسُها كما كانت (D-1075) — `request()` يغلّفها بطلبٍ واحدٍ في الطريق وبالقياس */
+  bridgeOnce(): Promise<string | null> {
     if (pending) {
       return new Promise((resolve) => {
         const prev = pending!.resolve;
@@ -222,7 +246,7 @@ export const session = {
       return Promise.resolve(null);
     }
     /* D-1075 — الصفحةُ لم تُحمَّل بعد: اصطفّ، ثمّ أعد المحاولةَ من أوّلها (قد يكون غيرُك سبقك) */
-    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.requestOnce() : null));
+    if (!pageReady) return new Promise<void>((r) => waiters.push(r)).then(() => (inject ? session.bridgeOnce() : null));
     lastWhy = undefined;
     lastSrc = undefined;
     const nonce = bytesToHex(Crypto.getRandomBytes(16));
@@ -303,6 +327,8 @@ export const session = {
     pending = null;
     p!.resolve(access);
     emit();
+    /* 🆕 K4b — أوّلُ رمزٍ عبر الجسر ⇒ تُسكّ منه جلسةٌ مملوكة (مرّةً؛ لا شيء إن كانت لصاحبه، أو والمفتاحُ مطفأ) */
+    own.adopt(access);
     return true;
   },
 };

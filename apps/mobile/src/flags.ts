@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { AppState } from "react-native";
 import { CONFIG } from "./config";
+import { MODEL } from "./device";
 
 /**
  * ====== مفاتيحُ التطبيق من الخادم — D-1140 (Phase 11-K · K2) ======
@@ -16,10 +17,11 @@ import { CONFIG } from "./config";
  * ⚖️ **بلا رمز**: النداءُ عامٌّ لا يحمل هويّة (`fetch` مباشرةً لا `api()`) — كي لا يطلب رمزاً
  * من الـWebView لأجل مفتاح.
  */
-export type AppFlags = { k2: boolean };
+/** 🆕 K4b — `k4`: التطبيقُ يملك جلستَه (`ownSession.ts`). مطفأٌ ويُشغَّل من الخادم لطرازاتٍ بأسمائها أوّلاً */
+export type AppFlags = { k2: boolean; k4: boolean };
 
 const KEY = "loopz.flags";
-const OFF: AppFlags = { k2: false };
+const OFF: AppFlags = { k2: false, k4: false };
 const MIN_GAP_MS = 60_000;
 
 function read(): AppFlags {
@@ -27,7 +29,7 @@ function read(): AppFlags {
     const raw = SecureStore.getItem(KEY);
     if (!raw) return OFF;
     const p = JSON.parse(raw) as Partial<AppFlags> | null;
-    return { k2: p?.k2 === true };
+    return { k2: p?.k2 === true, k4: p?.k4 === true };
   } catch {
     return OFF;
   }
@@ -46,11 +48,11 @@ async function refresh() {
   inflight = true;
   last = Date.now();
   try {
-    const res = await fetch(`${CONFIG.apiBase}/api/v1/app/flags`);
+    const res = await fetch(`${CONFIG.apiBase}/api/v1/app/flags?m=${encodeURIComponent(MODEL)}`);
     if (!res.ok) return;
     const j = (await res.json()) as { data?: Partial<AppFlags> } | null;
-    const next: AppFlags = { k2: j?.data?.k2 === true };
-    if (next.k2 === current.k2) return;
+    const next: AppFlags = { k2: j?.data?.k2 === true, k4: j?.data?.k4 === true };
+    if (next.k2 === current.k2 && next.k4 === current.k4) return;
     current = next;
     SecureStore.setItem(KEY, JSON.stringify(next));
   } catch {

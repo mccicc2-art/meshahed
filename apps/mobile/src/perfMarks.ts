@@ -1,8 +1,10 @@
-import { AppState, Platform } from "react-native";
+import { AppState } from "react-native";
 import { launchT0 } from "./perf";
 import { api, queryClient } from "./api";
 import { session } from "./session";
 import { BUILD_TAG } from "./ota";
+import { MODEL } from "./device";
+import { own } from "./ownSession";
 
 /**
  * ====== علاماتُ الأداء في الشاشات الأصليّة — Phase 11-F · F0 (D-1024) ======
@@ -41,14 +43,16 @@ export type PerfName =
   | "gesture.jank"
   | "token.life"
   /* 🆕 D-1141 — انتظارُ الرمز من الصفحة: مدّتُه ونتيجتُه (`result=ok|none`) وجاهزيّةُ الصفحة (`ready=0|1`) */
-  | "token.wait";
+  | "token.wait"
+  /* 🆕 K4b — سكُّ جلسة التطبيق وتجديدُها بنفسه: المدّةُ ونتيجتُها (`result`/`why`) */
+  | "session.mint"
+  | "session.renew";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
 
 const FLUSH_MS = 30_000;
 const MAX_BUFFER = 40;
-const MODEL = Platform.OS === "android" ? String((Platform.constants as { Model?: string }).Model ?? "android") : Platform.OS;
 
 let buffer: Mark[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -115,6 +119,8 @@ session.subscribe(() => {
 });
 /* 🆕 D-1141 — كلُّ طلبِ رمزٍ مرّةً: كم انتظر، وهل وصل، وهل كانت الصفحةُ جاهزة */
 session.onWait((ms, extra) => mark("token.wait", ms, extra));
+/* 🆕 K4b — الجلسةُ المملوكة: كلُّ سكٍّ وكلُّ تجديدٍ مرّةً (بلا رمزٍ في العلامة — مدّةٌ ونتيجةٌ وسبب) */
+own.onEvent((name, ms, extra) => mark(name, ms, extra));
 
 /**
  * ====== إطاراتُ السحب الضائعة (`gesture.jank`) — D-1128، «قبل» K2 ======
