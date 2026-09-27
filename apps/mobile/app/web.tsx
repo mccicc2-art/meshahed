@@ -153,6 +153,9 @@ function insideUrl(url: string | undefined): boolean {
   }
 }
 
+/* 🧪 D-1159 — كم شاشةَ ويبٍ مركَّبةٌ الآن؟ (قياسٌ مؤقّت: هل يركّب الدخولُ WebView ثانية؟) */
+let webMounted = 0;
+
 /* D-1035 — مساراتٌ لها خانتُها في الشريط: بلوغُ أحدها يُنهي «من أين جئت» */
 const ROOTS = ["/library", "/news", "/discover", "/people", "/community", "/search"];
 
@@ -221,10 +224,19 @@ export default function Web() {
   /* المصدرُ يُحسب مرّةً: الرئيسيّةُ دائماً — كوكي الـWebView تحمل الجلسةَ إن
      كانت. (تسليمٌ عند الإقلاع من جلسةٍ مخزونة لم يعد له مصدر: لا مخزن.) */
   const [source, setSource] = useState<Source | null>(null);
+  /* 🧪 D-1159 — العدّادُ قبل أثر المصدر (الآثارُ تجري بترتيب تعريفها) فيشمل هذه الشاشةَ نفسَها */
+  useEffect(() => {
+    webMounted += 1;
+    return () => {
+      webMounted -= 1;
+    };
+  }, []);
   useEffect(() => {
     if (loading || source) return;
     /* D-1090 — مع الإقلاع الأصليّ (الشرطُ نفسُه أدناه) تُسأل الصفحةُ الخفيفةُ أوّلاً؛ وإلّا `/` كما كان */
     const lightBoot = !(typeof u === "string" && u) && session.seen();
+    /* 🧪 D-1159 — أوّلُ ما تحمّله هذه الشاشة، ومعها كم شاشةَ ويبٍ مركَّبة (قياسٌ مؤقّت) */
+    mark("web.mount", 0, { count: webMounted, why: lightBoot ? "boot" : "home" });
     setSource({ uri: lightBoot ? BOOT : HOME });
   }, [loading, source, u]);
   /* D-1090 — بعد أوّل ردِّ جلسة (رمزٌ أو `session:clear`) من صفحة الإقلاع الخفيفة تُبدَّل إلى `/`:
