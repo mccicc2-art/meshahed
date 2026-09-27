@@ -67,6 +67,14 @@ const HOME = CONFIG.apiBase + "/";
    ردِّ جلسةٍ يبدّلها الغلافُ إلى `/` بـ`location.replace` — فالتاريخُ والرجوعُ كما كانا حرفاً. */
 const BOOT = CONFIG.apiBase + "/app/boot";
 /**
+ * 🆕 D-1148 — **صفحةُ الدخول بلا شريطٍ تحتها** (أحمد، ٢٧ سبتمبر: «إذا نمدي نخفيها أخفيها»): من لم يدخل قطّ يرى
+ * البطلَ وزرَّيه — «المتابعة بـGoogle» و«تصفَّح أوّلاً» (D-886 باقٍ) — والشريطُ يظهر حين يتصفّح فعلاً.
+ * `/` عتبةٌ للزائر وحدَه؛ للمسجَّل هي الرئيسيّة (وهي أصليّةٌ أصلاً).
+ */
+function atGate(p: string): boolean {
+  return p === "/login" || p.startsWith("/auth/") || (p === "/" && !session.seen());
+}
+/**
  * 🆕 **إعلانُ القدرة قبل المستند** (٩ سبتمبر — بلاغُ أحمد «لا أستطيع الدخول إلى
  * المكتبة»): الويبُ كان يبتلع ضغطةَ «المكتبة» لكلِّ غلافٍ يحمل الوسم، والمثبَّتُ
  * 1.2.3 لا يعرف `native`. **فالغلافُ الذي يعرف الشاشةَ يقولها** بحقن
@@ -98,7 +106,9 @@ const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,
  * حقنُ «بعد التحميل» يجري على كلِّ `onLoadEnd` بما فيه الاستعادةُ، **وهو احتياطٌ
  * لا بديل**: الأوّلُ يسبق كودَ الصفحة، والثاني يلحقه لكنّه يسبق أوّلَ ضغطة.
  */
-const CAPABILITIES_LATE = "if(!window.LoopzNative){" + CAPABILITIES + "}" + SHARE_BRIDGE + ";true;";
+/* D-1148 — والحزامُ الثاني لإخفاء شريط الويب بعد التحميل: لو فات الحقنُ المبكّرُ سطرَ الترويسة (`layout.tsx`) */
+const CAPABILITIES_LATE =
+  "if(!window.LoopzNative){" + CAPABILITIES + "}" + SHARE_BRIDGE + ";try{document.documentElement.setAttribute('data-native-nav','1')}catch(e){};true;";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
 const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
@@ -537,7 +547,7 @@ export default function Web() {
       {/* D-1103 — الدرعُ فوق الصفحة وحدَها لحظةَ انكشافها؛ لا يُرى ولا يغطّي الشريطَ الأصليّ */}
       {shielded ? <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="auto" /> : null}
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
-      {ready && !failed ? (
+      {ready && !failed && !atGate(path) ? (
         <BottomNav
           active={navKey}
           onGo={(k) => {

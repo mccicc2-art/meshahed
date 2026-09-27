@@ -217,7 +217,12 @@ export default async function RootLayout({
             __html:
               "try{var m=function(q){return window.matchMedia&&window.matchMedia(q).matches};" +
               "if(navigator.standalone||m('(display-mode: standalone)')||m('(display-mode: fullscreen)')||m('(display-mode: minimal-ui)'))" +
-              "document.documentElement.setAttribute('data-standalone','1')}catch(e){}",
+              "document.documentElement.setAttribute('data-standalone','1');" +
+              /* 🔴 🆕 D-1148 — **شريطٌ واحدٌ لا اثنان** (تسجيلُ أحمد، ٢٧ سبتمبر: زائرُ التطبيق يرى شريطَ الويب
+                 وشريطَ التطبيق معاً). إخفاءُ شريطنا كان في `NativeLibraryFlag` وحدَه (D-1012)، وهو لا يُركَّب إلّا
+                 لمن معه جلسة — فالزائرُ نجا منه. هنا يُقرأ عَلَمُ الغلاف نفسُه (`LoopzNative.nav`، يُحقن قبل الصفحة)
+                 قبل أوّل رسمة، لكلِّ من في الغلاف: من رسم شريطَه لا يرى شريطَنا. غلافٌ قديمٌ بلا العَلَم ⇒ لا تغيير. */
+              "if(window.LoopzNative&&window.LoopzNative.nav===true)document.documentElement.setAttribute('data-native-nav','1')}catch(e){}",
           }}
         />
         {/* 🆕 D-1116 — محرّكٌ أقدمُ من Chrome 111 يُسقط تنسيقَ Tailwind v4 كلَّه: السطرُ يسأله قبل أوّل
