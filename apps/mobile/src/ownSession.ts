@@ -247,6 +247,10 @@ export const own = {
       minting = null;
     });
   },
+  /** 🆕 D-1151 — جلسةٌ مملوكةٌ محفوظةٌ على الجهاز (رمزُ تجديدٍ لم يُرفض بعد) — دليلُ دخولٍ لـ`session.seen()` */
+  hasStored(): boolean {
+    return readStored() !== null;
+  },
   /** `401` من الخادم: رمزُ الوصول وحدَه يسقط؛ رمزُ التجديد يبقى فيُجدَّد في الطلب التالي */
   dropAccess() {
     access = null;

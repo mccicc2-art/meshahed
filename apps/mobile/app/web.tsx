@@ -396,6 +396,8 @@ export default function Web() {
       const { data } = await supabase.auth.getSession();
       if (r.ok && data.session) {
         handing.current = true;
+        /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
+        session.markSeen();
         ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
         /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
         prefetchDiscover();
