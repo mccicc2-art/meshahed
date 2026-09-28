@@ -1,4 +1,5 @@
 import React from "react";
+import { useRouter } from "expo-router";
 import { tabPressed } from "./perfMarks";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -48,8 +49,9 @@ export function navHeight(insetBottom: number) {
   return 66 + Math.max(6, insetBottom * 0.5);
 }
 
-export function BottomNav({ active, onGo }: { active: NavKey; onGo: (key: NavKey) => void }) {
+export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onGo: (key: NavKey) => void; /** 🆕 11-M · M1 — شريطُ الغلاف فوق الويب: «المجتمع» يمرّ بـ`onGo` (نزعُ الباب قبل الانتقال) */ shell?: boolean }) {
   const { t, tokens } = useApp();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const label: Record<NavKey, string> = {
     home: t.navHome,
@@ -80,6 +82,12 @@ export function BottomNav({ active, onGo }: { active: NavKey; onGo: (key: NavKey
             key={tb.key}
             onPress={() => {
               tabPressed(tb.key);
+              /* 🆕 11-M · M1 — «المجتمع» جذرٌ أصليٌّ خامس (D-1171): من أيِّ جذرٍ تبديلٌ إلى تبويبه الحيّ كأخواته،
+                 في مكانٍ واحدٍ لا في كلِّ جذر. الغلافُ (`shell`) يمرّره لأنّ عليه نزعَ الباب قبل الانتقال */
+              if (tb.key === "people" && !shell && active !== "people") {
+                router.navigate("/community");
+                return;
+              }
               onGo(tb.key);
             }}
             accessibilityRole="tab"
