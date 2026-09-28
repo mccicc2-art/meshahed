@@ -137,4 +137,14 @@ export type {
   CommunityListCard,
   CommunityPeopleAllPayload,
   CommunityLibState,
+  CommunityPrefs,
 } from "@/core/contracts/community";
+/* 🆕 11-M · M2 — أفعالُ «المجتمع» (`/api/v1/community/{like,reply,follow,pin,views}`) */
+export type {
+  LikeBody,
+  ReplyBody,
+  FollowUserBody,
+  FollowUserResult,
+  RoomPinBody,
+  PostViewsBody,
+} from "@/core/communityActs";
