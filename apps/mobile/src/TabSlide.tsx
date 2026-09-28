@@ -281,6 +281,9 @@ const UI_FRAME_MS = 1000 / 60;
  * `tab.arm` لجارٍ جاهزٍ يُسجَّل `0` بـ`cached=1` — فتُقرأ نسبةُ السحبات التي وجدت جارَها حاضراً.
  */
 const WARM_MS = FLY_MS + 180;
+/** 🆕 K2 — بعد **سحبٍ** اكتمل: التبويبُ يتبدّل بعد الطيران لا قبله، فلا حركةَ تُنتظر — الهامشُ وحدَه. قياسُ خالد
+    (٢٨ سبتمبر): السحباتُ المتتالية كانت تسبق مهلةَ `WARM_MS` فتجد الجارَ بارداً — وهي وحدَها التي بقي فيها تقطيع */
+const WARM_AFTER_SWIPE_MS = 180;
 
 function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfScreen }: Props<K>) {
   const { width } = useWindowDimensions();
@@ -331,6 +334,8 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
   const perfRef = useRef(perfScreen);
   perfRef.current = perfScreen;
   const settled = useRef<K | null>(null);
+  /* آخرُ تبدّلٍ للتبويب جاء من سحبٍ مكتمل (لا من ضغطة) — يقصّر مهلةَ التجهيز */
+  const bySwipe = useRef(false);
   const armEnd = useRef<(() => void) | null>(null);
   const jsJank = useRef<(() => void) | null>(null);
 
@@ -479,6 +484,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
     if (prev.current === tab) return;
     const old = prev.current;
     prev.current = tab;
+    bySwipe.current = settled.current === tab;
     if (settled.current === tab) {
       settled.current = null;
       mount(null);
@@ -522,13 +528,15 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
       return keep.length === w.length && keep.every((k) => w.includes(k)) ? w : keep;
     });
     if (!near.length) return;
+    const wait = bySwipe.current && left !== tab ? WARM_AFTER_SWIPE_MS : WARM_MS;
+    bySwipe.current = false;
     let cancelled = false;
     let job: { cancel: () => void } | null = null;
     const timer = setTimeout(() => {
       job = InteractionManager.runAfterInteractions(() => {
         if (!cancelled) setWarm(near);
       });
-    }, WARM_MS);
+    }, wait);
     return () => {
       cancelled = true;
       clearTimeout(timer);
