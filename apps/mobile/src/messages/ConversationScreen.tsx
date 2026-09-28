@@ -68,7 +68,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     return () => sub.remove();
   }, [back]);
   /* خيطٌ زال (أُخفي · حُظر صاحبه · رابطٌ قديم) ⇐ الصندوقُ لا شاشةٌ فارغة — كما يسقط `?with=` الميّت إلى القائمة في الويب */
-  const gone = !!d && !conv;
+  /* M4-fix — الحكمُ على جلبٍ حيٍّ لا على الصندوق المحفوظ من فتحةٍ سابقة (محادثةٌ جديدةٌ لا تكون فيه بعد) */
+  const gone = !!d && !conv && q.isFetchedAfterMount;
   /* الإخفاءُ والحظرُ يغادران بأنفسهما — وزوالُ الخيط بعدهما لا يُطلق مغادرةً ثانية */
   const closing = useRef(false);
   useEffect(() => {

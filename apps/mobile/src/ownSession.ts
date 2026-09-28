@@ -29,6 +29,9 @@ const KEY = "loopz.own.v1";
 /** قبل انتهاء الرمز بهذا يُعدّ شائخاً (كـ`session.get()`) */
 const SKEW_MS = 30_000;
 const TIMEOUT_MS = 8_000;
+/* 🆕 M4-fix — مهلتا التجديد: الأولى قصيرة (اتّصالٌ عالق بعد الإقلاع)، والثانيةُ على اتّصالٍ جديد */
+const RENEW_FIRST_MS = 3_500;
+const RENEW_RETRY_MS = 6_000;
 /** سكٌّ فشل لا يُعاد قبل هذا — الخادمُ يحدّ بستٍّ في الساعة، والفشلُ غالباً لا يزول في دقيقة */
 const MINT_BACKOFF_MS = 10 * 60_000;
 
@@ -115,9 +118,9 @@ export function subOf(jwt: string): string | null {
   }
 }
 
-async function post(url: string, headers: Record<string, string>, body?: unknown): Promise<{ status: number; json: unknown }> {
+async function post(url: string, headers: Record<string, string>, body?: unknown, timeoutMs = TIMEOUT_MS): Promise<{ status: number; json: unknown }> {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -141,12 +144,23 @@ function adoptTokens(a: string, e: number, rt: string, uid: string) {
 /** التجديدُ بنفسه — رمزٌ رُفض (4xx) يعني جلسةً انتهت (خروجٌ من الويب، إيقاف…) ⇒ تُمسح، والجسرُ يعود */
 async function renew(s: Stored): Promise<string | null> {
   const t0 = Date.now();
+  /* 🔴 M4-fix — **محاولةٌ قصيرةٌ ثمّ ثانيةٌ على اتّصالٍ جديد، لا انتظارُ ثماني ثوانٍ** (تسجيلُ أحمد ٢٨ سبتمبر: التطبيقُ
+     مغلق ⇐ رسالةٌ من الويب ⇐ الفتح: لا شارةَ على الظرف، و«الرسائل» تدور ستَّ ثوانٍ). العلاماتُ من جوال خالد في تلك
+     الدقائق: التجديدُ الأوّلُ بعد الإقلاع إمّا ٣٠٠–١١٠٠ms **أو يعلق حتى المهلة** (`8011 why=net` ثلاثَ مرّات، و`7932`
+     مرّةً نجحت على حافّتها) — اتّصالٌ أوّلُ عالق لا خادمٌ بطيء. فالمهلةُ الأولى ٣٫٥ث ثمّ محاولةٌ ثانية (٦ث): أسوأُ
+     الحالات ~٩٫٥ث بدل ١٦ث (٨ للتجديد ثمّ ٨ للجسر)، والمعتادُ بعد التعليق ~٤ث بدل ٨. **وإعادةُ رمز التجديد نفسِه آمنة**:
+     إن كانت الأولى وصلت ودوّرته فـSupabase يقبل القديمَ في نافذة إعادة الاستعمال (عشرُ ثوانٍ افتراضاً) ويعيد الجلسةَ نفسَها. */
+  let retried = false;
   try {
-    const r = await post(
-      `${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
-      { apikey: CONFIG.supabasePublishableKey },
-      { refresh_token: s.rt },
-    );
+    const call = (ms: number) =>
+      post(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, { apikey: CONFIG.supabasePublishableKey }, { refresh_token: s.rt }, ms);
+    let r: Awaited<ReturnType<typeof call>>;
+    try {
+      r = await call(RENEW_FIRST_MS);
+    } catch {
+      retried = true;
+      r = await call(RENEW_RETRY_MS);
+    }
     const j = r.json as { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown; user?: { id?: unknown }; error_code?: unknown } | null;
     if (r.status >= 200 && r.status < 300 && j && typeof j.access_token === "string" && typeof j.refresh_token === "string" && typeof j.expires_at === "number") {
       if (j.user?.id !== s.uid) {
@@ -155,7 +169,7 @@ async function renew(s: Stored): Promise<string | null> {
         return null;
       }
       adoptTokens(j.access_token, j.expires_at, j.refresh_token, s.uid);
-      report("session.renew", t0, { result: "ok" });
+      report("session.renew", t0, retried ? { result: "ok", why: "retry" } : { result: "ok" });
       return j.access_token;
     }
     if (r.status >= 400 && r.status < 500 && r.status !== 429) {
@@ -167,7 +181,7 @@ async function renew(s: Stored): Promise<string | null> {
     report("session.renew", t0, { result: "none", why: `h${r.status}` });
     return null;
   } catch {
-    report("session.renew", t0, { result: "none", why: "net" });
+    report("session.renew", t0, { result: "none", why: retried ? "net2" : "net" });
     return null;
   }
 }

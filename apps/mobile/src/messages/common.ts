@@ -28,7 +28,22 @@ async function fetchMessages() {
 /** الصندوقُ مع فوريّته — الشاشةُ التي تستعمله تحجز القناةَ ما دامت مركَّبة */
 export function useMessages() {
   useEffect(() => retainLive(), []);
-  return useQuery({ queryKey: MESSAGES_KEY, queryFn: fetchMessages, staleTime: 15_000 });
+  const q = useQuery({ queryKey: MESSAGES_KEY, queryFn: fetchMessages, staleTime: 15_000 });
+  /* 🆕 M4-fix — **الرقمُ الأحدثُ من الخادم يصل الظرفَ والجرسَ في الرئيسيّة أيضاً** (تسجيلُ أحمد: بعد إقلاعٍ بارد رسمت
+     الرئيسيّةُ رأسَها من الكاش المحفوظ بلا شارة، والرسالةُ في الصندوق). جلبٌ حيٌّ للصندوق (لا نسخةٌ محفوظة) هو قيمةُ
+     الخادم لحظتَها — فيُكتب في رأس الرئيسيّة؛ والعكسُ يأتي حين تتجدّد الرئيسيّةُ نفسُها. */
+  const at = q.dataUpdatedAt;
+  const live = q.data && !q.isStale ? q.data.unread : null;
+  useEffect(() => {
+    if (!live) return;
+    queryClient.setQueryData<HomePayload>(HOME_KEY, (p) =>
+      p && (p.header.unread_shares !== live.messages || p.header.unread_signals !== live.signals)
+        ? { ...p, header: { ...p.header, unread_shares: live.messages, unread_signals: live.signals } }
+        : p,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [at]);
+  return q;
 }
 
 export function prefetchMessages(): void {

@@ -35,12 +35,14 @@ import { currentLocale, webLocale } from "./i18n";
 /* 🆕 D-1083 — و`home` و`home:extras`: الرئيسيّةُ الأصليّة صارت شاشةَ الإقلاع (D-1075)، فتُرسم من
    آخر حمولةٍ محفوظة فورَ الفتح ثمّ تتجدّد حين يصل الرمز — بدل هيكلٍ فارغٍ ينتظر الجلسة. الملكيّةُ
    والعمرُ والإصدارُ واللغةُ تُفحص كما لأخواتها، والخروجُ يمسحها معها */
-const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists", "community"]);
+const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists", "community", "me:messages"]);
 /* D-1091 — **سبعةُ أيام لا يوم، ونسخةُ العقد لا نسخةُ التطبيق** (أحمد: الفتحُ الأوّل بعد كلِّ تحديثٍ
    يعود دوّامةً): كان الملفُّ يُرفض إن اختلف `app.json` أو مضى يوم — فكلُّ إصدارٍ (وهي شبهُ يوميّة) يعيد
    الهيكلَ الفارغ. الهيكلُ لا يتغيّر بتغيّر الإصدار بل بتغيّر **عقود** الحمولات المحفوظة؛ فالمفتاحُ
    الآن `CACHE_SCHEMA` **ويُرفع باليد** مع أيِّ تغييرٍ في عقود `home` · `home:extras` · `me:library` ·
    `discover:*` (`src/core/contracts`). والبياناتُ تعود «قديمة» بطابعها فتُجلب من جديد فوراً كما كانت. */
+/* 🆕 M4-fix — و`me:messages`: «الرسائل» تُرسم من آخر صندوقٍ محفوظ فورَ الفتح ثمّ تتجدّد حين يصل الرمز (تسجيلُ أحمد:
+   ستُّ ثوانٍ دوّامةً بعد إقلاعٍ بارد) — عائلةٌ جديدةٌ لا عقدٌ تغيّر، فلا يُرفع `CACHE_SCHEMA` */
 const CACHE_SCHEMA = "2026-09-24";
 const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 /* ⚖️ مراجعةُ ما قبل الرفع (D-1026): الكتابةُ `dehydrate` + `JSON.stringify` لمكتبةٍ كاملة + كتابةُ ملفٍّ
