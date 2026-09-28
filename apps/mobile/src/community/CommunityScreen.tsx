@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, queryClient } from "../api";
+import { api, queryClient, write } from "../api";
+import { CONFIG } from "../config";
+import { haptic } from "../haptics";
+import { ToastHost, type ToastHostRef } from "../HoldHost";
+import { Composer } from "../thread/Composer";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text } from "../ui";
@@ -18,9 +22,13 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import { ListCard } from "../library/ListCard";
-import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardDoors } from "./CommunityCards";
-import type { BoardSection, CommunityPagerTab } from "@/core/communityParams";
-import type { CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload } from "../contracts";
+import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
+import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
+import { CommunityTools, toolsOnFor } from "./CommunityTools";
+import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
+import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
+import { displayNameOf } from "@/core/people";
+import type { CommunityFeedRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
 
 /**
  * ====== «المجتمع» أصليّاً — Phase 11-M · M1 (D-1168 · D-1171) ======
@@ -31,7 +39,11 @@ import type { CommunityLeaderRow, CommunityListCard, CommunityPayload, Community
  * تفضيلاتك (D-1171). والانزلاقُ `TabSlide` نفسُه (الجارُ مسخَّنٌ، K2)، والكسوةُ الذكيّةُ كأخواتها (D-966).
  *
  * ⚖️ **قراءةٌ وحدَها في M1** (خطّة §٣): العملُ والقائمةُ ⇐ صفحتاهما الأصليّتان؛ الشخصُ والرأيُ والنشرةُ والغرفة ⇐ بابٌ
- * ويبيٌّ يعود رجوعُه إلى هنا (`returnTo: "community"`). الإعجابُ والتعليقُ والمتابعةُ والتثبيتُ وورقةُ الأدوات في **M2**.
+ * ويبيٌّ يعود رجوعُه إلى هنا (`returnTo: "community"`).
+ *
+ * 🆕 **M2 — التفاعل**: القلبُ · «تعليق» بصندوق الردّ الواحد (`thread/Composer`) · المشاهداتُ تُعدّ (`PostViews`) · المشاركةُ بورقة
+ * النظام · دبّوسُ الغرف · زاويةُ المتابعة في «عرض الكل» · **ورقةُ الأدوات** (`CommunityTools`) بزرّها في طرف الترويسة كالويب.
+ * الحالةُ في الكاش (`communityActs`)، والرسالةُ العابرةُ من المضيف الواحد (`ToastHost`).
  */
 type Tab = CommunityPagerTab;
 const HEADER_H = 64;
@@ -73,6 +85,22 @@ export function CommunityScreen() {
   }, [d, endOpen]);
   useFocusEffect(useCallback(() => tabLanded("people"), []));
   useRefetchOnFocus(["community"]);
+
+  /* ——— M2: الأفعال ——— */
+  const toastHost = useRef<ToastHostRef>(null);
+  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  const acts = useCommunityActs(d, t, say);
+  const [composing, setComposing] = useState<CommunityFeedRow | null>(null);
+  const [tools, setTools] = useState(false);
+  const share = useCallback((path: string, title: string) => {
+    const url = `${CONFIG.apiBase}${path}`;
+    /* إغلاقُ ورقة النظام ليس خطأً (`ShareTitleButton`) */
+    void Share.share({ message: title ? `${title} — ${url}` : url, url }).catch(() => {});
+  }, []);
+  const cardActs: CardActs = useMemo(
+    () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share }),
+    [acts.like, acts.signedIn, acts.meId, share],
+  );
 
   /* التبويباتُ الظاهرةُ بترتيبك، والمفتوحُ أوّلاً من تفضيلك (D-1171) — ما لم يكن للشاشة تبويبٌ تذكره */
   const order: Tab[] = useMemo(() => {
@@ -154,6 +182,71 @@ export function CommunityScreen() {
 
   const label = (k: Tab) => (k === "activity" ? t.communityTabMine : k === "talk" ? t.communityTabWorks : t.communityTabPeople);
 
+  /* ——— M2: ورقةُ الأدوات — تفاؤليّةٌ في الكاش ثمّ `me/prefs/*` (كوكيزُ الويب نفسُها)، ثمّ يُعاد الخطّ كـ`router.refresh()` ——— */
+  const patchPrefs = useCallback(
+    (fn: (p: CommunityPrefs) => CommunityPrefs, extra?: (d: CommunityPayload, p: CommunityPrefs) => Partial<CommunityPayload>) =>
+      qc.setQueryData<CommunityPayload>(COMMUNITY_KEY, (prev) => {
+        if (!prev?.prefs) return prev;
+        const p = fn(prev.prefs);
+        return { ...prev, prefs: p, ...(extra ? extra(prev, p) : {}) };
+      }),
+    [qc],
+  );
+  const savePrefs = useCallback(
+    async (path: string, body: unknown, undo: CommunityPrefs | null, refetch: boolean) => {
+      try {
+        const r = await write<{ ok?: boolean; needsPlus?: true }>(path, body);
+        if (r && r.needsPlus) {
+          if (undo) patchPrefs(() => undo);
+          doors.onWeb("/plus");
+          return;
+        }
+        if (refetch) void qc.invalidateQueries({ queryKey: COMMUNITY_KEY, exact: true });
+      } catch (e) {
+        if (undo) patchPrefs(() => undo);
+        say(errorText(t, e));
+      }
+    },
+    [qc, patchPrefs, doors, say, t],
+  );
+  const onPrefs = useCallback(
+    (patch: CommunityPrefsBody) => {
+      haptic.pick();
+      const undo = d?.prefs ?? null;
+      patchPrefs((p) => ({ ...p, ...patch }));
+      void savePrefs("/api/v1/me/prefs/community", patch, undo, true);
+    },
+    [d, patchPrefs, savePrefs],
+  );
+  const onTabs = useCallback(
+    (next: TabPref[]) => {
+      const clean = guardLastVisible(next);
+      const undo = d?.prefs ?? null;
+      /* الشريطُ يتبع الترتيبَ فوراً — `visible` هي ما يرسمه الرأس (D-1171) */
+      patchPrefs(
+        (p) => ({ ...p, tabs: clean }),
+        (x) => ({
+          tabs: {
+            ...x.tabs,
+            visible: clean.filter((c) => !c.hidden).map((c) => c.key).filter((k): k is Tab => (COMMUNITY_PAGER_TABS as readonly string[]).includes(k)),
+          },
+        }),
+      );
+      void savePrefs("/api/v1/me/prefs/tabs", { surface: "community", prefs: clean }, undo, false);
+    },
+    [d, patchPrefs, savePrefs],
+  );
+  const onRails = useCallback(
+    (keys: string[]) => {
+      const undo = d?.prefs ?? null;
+      patchPrefs((p) => ({ ...p, hidden_rails: keys }));
+      /* الأقسامُ تُقصّ على الخادم (`null` = مطفأ، D-874) — فاللوحةُ تُعاد لا تُحسب هنا */
+      void savePrefs("/api/v1/me/prefs/hidden-rails", { keys } satisfies HiddenRailsBody, undo, true);
+    },
+    [d, patchPrefs, savePrefs],
+  );
+  const toolsOn = toolsOnFor(lit, d?.prefs ?? null);
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <Animated.View
@@ -165,6 +258,18 @@ export function CommunityScreen() {
           <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <Logo size={28} />
           </View>
+          {d?.prefs ? (
+            /* زرُّ الأدوات (`FilterIconButton`) — **بلا رقمٍ ولا نقطة** في المجتمع (D-554/D-592)، والحالةُ في لون الرمز وحدَه */
+            <Pressable
+              onPress={() => setTools(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t.communityToolsTitle}
+              accessibilityState={{ expanded: tools }}
+              style={{ position: "absolute", end: PAGE_PAD, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}
+            >
+              <Icon name="sliders" size={16} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
+            </Pressable>
+          ) : null}
         </View>
         <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
           {order.map((k) => {
@@ -196,7 +301,7 @@ export function CommunityScreen() {
           onTab={goTab}
           onAim={setAim}
           render={(k) => (
-            <Pane k={k} d={d} doors={doors} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} />
+            <Pane k={k} d={d} doors={doors} acts={acts} cardActs={cardActs} live={tab === k} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} />
           )}
         />
       )}
@@ -221,6 +326,31 @@ export function CommunityScreen() {
           <ActivityIndicator color={tokens.accent} />
         </View>
       ) : null}
+      {composing ? (
+        <Composer
+          title={t.actionComment}
+          hint={composing.kind === "news" ? `Loopz · ${composing.item.title}` : `${displayNameOf(composing.item.person, t.anonymousUser)} · ${composing.item.title ?? ""}`}
+          onSend={(body) => acts.reply(composing, body)}
+          onClose={() => setComposing(null)}
+        />
+      ) : null}
+      {tools && d?.prefs ? (
+        <CommunityTools
+          tab={lit}
+          tabTitle={label(lit)}
+          prefs={d.prefs}
+          tabLabels={{ activity: t.communityTabMine, talk: t.communityTabWorks, people: t.communityTabPeople }}
+          onPrefs={onPrefs}
+          onTabs={onTabs}
+          onRails={onRails}
+          onMessage={() => {
+            setTools(false);
+            doors.onWeb("/messages");
+          }}
+          onClose={() => setTools(false)}
+        />
+      ) : null}
+      <ToastHost hostRef={toastHost} bottom={navH + 16} />
     </View>
   );
 }
@@ -229,6 +359,10 @@ type PaneProps = {
   k: Tab;
   d: CommunityPayload;
   doors: CardDoors;
+  acts: CommunityActs;
+  cardActs: CardActs;
+  /** اللوحُ المفتوح — المشاهداتُ تُعدّ فيه وحدَه (الجارُ المسخَّن خارج الشاشة) */
+  live: boolean;
   topPad: number;
   bottomPad: number;
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -237,9 +371,11 @@ type PaneProps = {
 };
 
 /** لوحُ تبويب — كلُّ ما يخصّ تبويباً واحداً هنا ليرسم `TabSlide` لوحين جنباً إلى جنب في أثناء السحب */
-function Pane({ k, d, doors, topPad, bottomPad, onScroll, all, onAll }: PaneProps) {
+function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, all, onAll }: PaneProps) {
   const { t, tokens } = useApp();
   const refresh = usePullRefresh([COMMUNITY_KEY], topPad);
+  const views = useViewCounter(live && k === "activity" && acts.signedIn);
+  const roomPin: RoomPin = useMemo(() => ({ admin: acts.admin, readOnly: !acts.signedIn, onPin: acts.pin }), [acts.admin, acts.signedIn, acts.pin]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -251,7 +387,9 @@ function Pane({ k, d, doors, topPad, bottomPad, onScroll, all, onAll }: PaneProp
       <FlatList
         data={d.feed.rows}
         keyExtractor={(r) => r.key}
-        renderItem={({ item }) => <FeedCard row={item} doors={doors} />}
+        renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
+        onViewableItemsChanged={views.onViewableItemsChanged}
+        viewabilityConfig={views.viewabilityConfig}
         ListEmptyComponent={empty(d.feed.empty_text)}
         contentContainerStyle={{ paddingTop: topPad + 4, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}
@@ -269,7 +407,7 @@ function Pane({ k, d, doors, topPad, bottomPad, onScroll, all, onAll }: PaneProp
       <FlatList
         data={d.rooms}
         keyExtractor={(r) => `${r.mediaType}-${r.tmdbId}`}
-        renderItem={({ item }) => <RoomCard room={item} doors={doors} />}
+        renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={empty(t.talkRoomsEmpty)}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
@@ -289,7 +427,7 @@ function Pane({ k, d, doors, topPad, bottomPad, onScroll, all, onAll }: PaneProp
       scrollEventThrottle={16}
       refreshControl={refresh}
     >
-      {all ? <BoardAll section={all} doors={doors} onBack={() => onAll(null)} /> : d.board.empty ? empty(t.peopleTabEmpty) : <Board d={d} doors={doors} onAll={onAll} />}
+      {all ? <BoardAll section={all} doors={doors} acts={acts} onBack={() => onAll(null)} /> : d.board.empty ? empty(t.peopleTabEmpty) : <Board d={d} doors={doors} onAll={onAll} />}
     </ScrollView>
   );
 }
@@ -312,14 +450,27 @@ function SectionHead({ icon, color, title, onAll }: { icon: IconName; color: str
   );
 }
 
-function Grid({ rows, mode, doors }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors }) {
+function Grid({ rows, mode, doors, follow }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors; follow?: { acts: CommunityActs; ids: ReadonlySet<string> } }) {
   const lines: CommunityLeaderRow[][] = [];
   for (let i = 0; i < rows.length; i += 3) lines.push(rows.slice(i, i + 3));
   return (
     <View style={{ gap: 10 }}>
       {lines.map((line, li) => (
         <View key={li} style={{ flexDirection: "row", gap: 10 }}>
-          {line.map((p, i) => <LeaderCard key={p.id} p={p} mode={mode} rank={li * 3 + i + 1} doors={doors} />)}
+          {line.map((p, i) => (
+            <LeaderCard
+              key={p.id}
+              p={p}
+              mode={mode}
+              rank={li * 3 + i + 1}
+              doors={doors}
+              follow={
+                follow && follow.acts.signedIn && follow.acts.meId && p.id !== follow.acts.meId
+                  ? { state: follow.acts.followState(p.id, follow.ids.has(p.id)), onPress: () => follow.acts.follow(p.id, follow.ids.has(p.id)) }
+                  : null
+              }
+            />
+          ))}
           {/* خاناتٌ فارغةٌ تُبقي العرضَ ثلاثاً (شبكةُ `grid-cols-3`) */}
           {Array.from({ length: 3 - line.length }, (_, j) => <View key={`x${j}`} style={{ flex: 1 }} />)}
         </View>
@@ -416,7 +567,7 @@ function Board({ d, doors, onAll }: { d: CommunityPayload; doors: CardDoors; onA
 }
 
 /** «عرض الكل» — قسمٌ واحدٌ بعشرة (D-264)، وبابُ رجوعٍ نصّيٌّ فوقه كالويب */
-function BoardAll({ section, doors, onBack }: { section: BoardSection; doors: CardDoors; onBack: () => void }) {
+function BoardAll({ section, doors, acts, onBack }: { section: BoardSection; doors: CardDoors; acts: CommunityActs; onBack: () => void }) {
   const { t, tokens } = useApp();
   const q = useQuery({
     queryKey: ["community", "people", section] as const,
@@ -424,6 +575,7 @@ function BoardAll({ section, doors, onBack }: { section: BoardSection; doors: Ca
     staleTime: 60_000,
   });
   const x = q.data;
+  const ids = useMemo(() => new Set(x?.following_ids ?? []), [x]);
   const title =
     section === "featured" ? t.peopleBoardFeatured
     : section === "top" ? t.peopleBoardTop
@@ -439,7 +591,7 @@ function BoardAll({ section, doors, onBack }: { section: BoardSection; doors: Ca
       {!x ? (
         <ActivityIndicator color={tokens.accent} style={{ marginTop: 24 }} />
       ) : x.leaders && x.leaders.length ? (
-        <Grid rows={x.leaders} mode={section === "featured" ? "featured" : section === "rising" ? "rising" : "top"} doors={doors} />
+        <Grid rows={x.leaders} mode={section === "featured" ? "featured" : section === "rising" ? "rising" : "top"} doors={doors} follow={{ acts, ids }} />
       ) : x.reviews && x.reviews.length ? (
         <View style={{ gap: 10 }}>{x.reviews.map((r) => <TopReviewCard key={`${r.id}-${r.mediaType}-${r.tmdbId}`} r={r} doors={doors} />)}</View>
       ) : x.lists && x.lists.length ? (
