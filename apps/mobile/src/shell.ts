@@ -1,4 +1,5 @@
 import { CONFIG } from "./config";
+import { doorOpened, navTrace } from "./perfMarks";
 
 /**
  * بابُ الشاشات الأصليّة إلى الـWebView (Phase 11 · B1): الشاشةُ الأصليّةُ لا
@@ -41,7 +42,7 @@ let pendingPost: string | null = null;
  * في شاشةٍ لا تستجيب؛ وميضٌ عند البطء الشديد أهونُ من انتظارٍ بلا نهاية.
  */
 const ARRIVAL_TIMEOUT_MS = 4000;
-let waiter: { path: string; settle: () => void } | null = null;
+let waiter: { path: string; settle: (how?: string) => void } | null = null;
 
 export const shell = {
   attach(fn: ((js: string) => void) | null) {
@@ -80,15 +81,20 @@ export const shell = {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
+    /* K3a-diag — البابُ فُتح: من أين وإلى أين (والساعةُ تبدأ منه) */
+    doorOpened();
+    navTrace("nav.enter", { screen: "door", why: "open", tab: shell.returnTo, src: shell.doorPath ?? path });
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
     /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل
        في الدورة نفسِها على الأجهزة السريعة، فلا يجد من ينتظره. */
     const done = new Promise<void>((resolve) => {
-      waiter?.settle();
-      const timer = setTimeout(() => waiter?.settle(), ARRIVAL_TIMEOUT_MS);
+      waiter?.settle("replaced");
+      const timer = setTimeout(() => waiter?.settle("timeout"), ARRIVAL_TIMEOUT_MS);
       waiter = {
         path,
-        settle() {
+        settle(how = "url") {
+          /* K3a-diag — وصل البابُ أم انتهت مهلتُه أم أزاحه بابٌ آخر؟ الوصولُ الباكرُ يكشف ما تحته قبل أن يُحمَّل */
+          navTrace("nav.enter", { screen: "door", why: "arrive", result: how, tab: shell.returnTo });
           clearTimeout(timer);
           waiter = null;
           shell.onArrive?.();

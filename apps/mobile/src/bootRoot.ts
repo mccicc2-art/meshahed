@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { BackHandler } from "react-native";
 import { useRouter } from "expo-router";
+import { navTrace } from "./perfMarks";
 
 /**
  * ====== D-1078 — علامةُ الإقلاع تسافر بين الجذور الأربعة ======
@@ -31,6 +32,8 @@ export function rootsBorn(boot: boolean) {
 /** `(tabs)/_layout` عند تركيب مجموعةٍ جديدة — لم تُزر رئيسيّتُها بعد */
 export function rootsMounted() {
   roots.homeSeen = false;
+  /* K3a-diag — وُلدت مجموعةٌ جديدة: من الإقلاع أم من الويب */
+  navTrace("nav.enter", { screen: "tabs", why: "mount", src: roots.boot ? "boot" : "web" });
 }
 /** الرئيسيّةُ ظهرت في هذه المجموعة — صار للتبويبات رئيسيّةٌ يرجعن إليها */
 export function homeSeen() {
@@ -49,12 +52,23 @@ export function useBootRoot() {
    */
   const bootBack = useCallback(
     (self: RootPath) => {
+      /* K3a-diag — جذرٌ استلم الرجوع: ماذا قرّر، وبأيّ حالةٍ للمجموعة */
+      const trace = (why: string) =>
+        navTrace("nav.back", { screen: self, why, src: roots.boot ? "boot" : "web", ready: roots.homeSeen });
       if (self === "/home") {
-        if (!roots.boot) return false;
+        if (!roots.boot) {
+          trace("pass");
+          return false;
+        }
+        trace("exit");
         BackHandler.exitApp();
         return true;
       }
-      if (!roots.boot && !roots.homeSeen) return false;
+      if (!roots.boot && !roots.homeSeen) {
+        trace("pass");
+        return false;
+      }
+      trace("home");
       router.navigate("/home");
       return true;
     },
