@@ -101,7 +101,7 @@ function atGate(p: string, landing: boolean): boolean {
  */
 const SHARE_BRIDGE =
   "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true};" + SHARE_BRIDGE + ";true;";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -432,6 +432,14 @@ export default function Web() {
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
            `from=web`: الرجوعُ يعود إلى الصفحة الويبيّة نفسِها، وأبوابُ الشاشة تفتح بلا `returnTo`. */
+        /* 🆕 11-M · M4 — «الرسائل» من رابطٍ في الويب (الظرف · خيطٌ `?with=` · `?tab=alerts`) ⇐ الشاشةُ الأصليّة فوق الصفحة،
+           والرجوعُ إليها (`from=web`). المعرّفُ يُفحص قبل أن يُدفع — ما ليس معرّفاً يفتح الصندوقَ لا خيطاً */
+        if (hostOk && msg.route === "messages") {
+          const m = msg as { tab?: unknown; with?: unknown };
+          const peer = typeof m.with === "string" && /^[0-9a-f-]{36}$/i.test(m.with) ? m.with : null;
+          if (peer) router.push({ pathname: "/messages/[peer]", params: { peer, from: "web" } });
+          else router.push({ pathname: "/messages", params: { tab: m.tab === "alerts" ? "alerts" : "inbox", from: "web" } });
+        }
         if (hostOk && msg.route === "title") {
           const m = msg as { kind?: unknown; id?: unknown };
           const kind = m.kind === "movie" ? "movie" : m.kind === "tv" ? "tv" : null;

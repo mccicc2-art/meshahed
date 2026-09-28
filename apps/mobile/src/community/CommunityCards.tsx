@@ -44,7 +44,7 @@ export type CardDoors = {
   onWeb: (path: string) => void;
 };
 
-function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: number }) {
+export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: number }) {
   const { tokens } = useApp();
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>

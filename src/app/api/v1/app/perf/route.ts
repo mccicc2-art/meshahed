@@ -73,6 +73,9 @@ const NAMES = new Set([
   "gif.open",
   /* 🆕 M3-fix — رفعُ صورة النقاش (`result` · `src` المرحلة · `why` · `count` حالةُ HTTP) */
   "thread.image",
+  /* 🆕 11-M · M4 — فتحُ «الرسائل» الأصليّة (ms، `cached` · `tab`) · وقناةُ Realtime حتى الاشتراك (ms، `result` · `why`) */
+  "messages.open",
+  "messages.live",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src"]);

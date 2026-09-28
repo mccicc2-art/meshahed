@@ -41,6 +41,21 @@ export function NativeLibraryFlag() {
         return;
       }
       if (url.origin !== window.location.origin) return;
+      /* 🆕 11-M · M4 — **«الرسائل» و«الإشعارات» أصليّتان** من أيِّ رابطٍ في الويب (الظرفُ في الترويسة · روابطُ الخيوط
+         `/people?tab=inbox&with=` · `?tab=alerts`) — بقدرة الغلاف نفسِها (`LoopzNative.messages`، غلافٌ أقدم يبقى رابطاً).
+         `?start=` بابُ ورقة «ابدأ محادثة» الويبيّة حتى M5 — يُترك. */
+      const inbox = url.pathname === "/messages" || (url.pathname === "/people" && url.searchParams.get("tab") === "inbox");
+      if (inbox && window.LoopzNative?.messages === true && !url.searchParams.has("start") && !url.hash) {
+        const peer = url.searchParams.get("with");
+        const tab = url.pathname === "/messages" && url.searchParams.get("tab") === "alerts" && !peer ? "alerts" : "inbox";
+        try {
+          window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route: "messages", tab, with: peer }));
+          e.preventDefault();
+        } catch {
+          /* الجسرُ غاب — الرابطُ يمضي */
+        }
+        return;
+      }
       const m = /^\/(show|movie)\/(\d+)(?:\/)?$/.exec(url.pathname);
       if (!m || url.search || url.hash) return;
       try {
@@ -70,7 +85,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean; /** D-1104 — `navigator.share` تفتح ورقةَ النظام */ share?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean; /** D-1104 — `navigator.share` تفتح ورقةَ النظام */ share?: boolean; /** 🆕 11-M · M4 — الرسائلُ والإشعاراتُ شاشةٌ أصليّة */ messages?: boolean };
     /** D-1012 — الغلافُ ينادي موجِّهَ الصفحة بدل تحميل مستندٍ جديد */
     __loopzGo?: (path: string) => void;
   }

@@ -40,6 +40,7 @@ export function Inbox({
   conversations,
   startable,
   openWith,
+  openStart = null,
   locale,
   lastSeen = null,
 }: {
@@ -47,12 +48,17 @@ export function Inbox({
   /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
   startable: PersonLite[];
   openWith: string | null;
+  /** 🆕 11-M · M4 — `?start=<id>`: ورقةُ «ابدأ محادثة» مفتوحةٌ لذلك الشخص (بابُ «ابدأ محادثة» من التطبيق الأصليّ حتى M5) */
+  openStart?: string | null;
   locale: Locale;
   /** 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — يُجلب مع الصفحة (`last_seen_of`) */
   lastSeen?: string | null;
 }) {
   const t = getDict(locale);
-  const [startWith, setStartWith] = useState<PersonLite | null>(null);
+  /* 🆕 11-M · M4 — الورقةُ تُفتح للشخص المطلوب إن كان ممّن يُبدأ معهم فعلاً؛ غيرُه يسقط إلى القائمة بلا ورقة */
+  const [startWith, setStartWith] = useState<PersonLite | null>(() =>
+    openStart ? startable.find((p) => p.id === openStart) ?? null : null,
+  );
 
   /* **الاسمُ من `displayNameOf` لا من سطرٍ محليّ** (D-193): كان هنا تعريفٌ
      ثانٍ لـ«اسمُ من أخفى اسمه» — نسخةٌ وُلدت لأن الدالّة الأصلية كانت في

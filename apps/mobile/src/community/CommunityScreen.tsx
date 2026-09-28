@@ -348,7 +348,8 @@ export function CommunityScreen() {
           onRails={onRails}
           onMessage={() => {
             setTools(false);
-            doors.onWeb("/messages");
+            /* 🆕 11-M · M4 — «راسل صديقاً» يفتح «الرسائل» الأصليّة فوق المجتمع، والرجوعُ إليه */
+            router.push({ pathname: "/messages", params: { from: "community" } });
           }}
           onClose={() => setTools(false)}
         />

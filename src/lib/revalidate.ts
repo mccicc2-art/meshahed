@@ -26,6 +26,7 @@ const STATIC: Record<string, readonly string[]> = {
   "me:diary": ["/diary"],
   "me:reports": ["/reports"],
   "me:invites": ["/profile/settings/invites"],
+  "me:messages": ["/messages"],
   people: ["/people"],
   news: ["/news"],
   admin: [

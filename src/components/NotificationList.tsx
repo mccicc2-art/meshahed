@@ -4,7 +4,7 @@ import { Avatar } from "./Avatar";
 import type { Signal } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
-import { profileHref } from "@/core/people";
+import { signalHref, signalParts } from "@/core/signals";
 import { timeAgo } from "@/core/when";
 
 /**
@@ -51,48 +51,8 @@ export function NotificationList({
   const listName = (s: Signal) =>
     curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar");
 
-  /**
-   * 🆕 **علامةٌ مؤقّتةٌ مكانَ الاسم، ثمّ تُشقُّ الجملةُ عندها** (D-775).
-   *
-   * 🔴 **والمشكلةُ التي حلّتها**: الشارةُ كانت تقف في **آخر السطر** لا
-   * بجانب الاسم، **لأنّ `line()` تُعيد نصّاً والاسمُ كلمةٌ في وسطه.**
-   * **والقاموسُ يبني الجملةَ بالاسم أوّلاً** (`${who} بدأ متابعتك`) —
-   * فلا موضعَ في نصٍّ تُغرس فيه عقدة.
-   *
-   * ⚖️ **والبديلُ الحدسيُّ كان تغييرَ توقيع ستَّ عشرةَ دالّةَ صياغةٍ
-   * لتعيد أجزاءً** — **ستَّ عشرةَ فرصةَ خطأٍ في لغتين لأجل ٤px.**
-   * 🔑 **وهذه تناديها كما هي**: تمرّر محرفاً لا يظهر في أيِّ ترجمة
-   * (`U+0000`) مكانَ الاسم، **فتعود الجملةُ مشقوقةً عند موضعه بالضبط**
-   * — **وما قبلَه وما بعدَه هما ما يُرسم حولَ الاسم.**
-   * ⚠️ **وإن لم يوجد المحرفُ** (ترجمةٌ أسقطت `who`): يُرسم النصُّ كما
-   * هو والاسمُ بعده — **فلا سطرَ يضيع لأنّ حيلةً لم تنجح.**
-   */
-  const NAME_SLOT = "\u0000";
-
-  function parts(s: Signal): { pre: string; who: string; post: string } {
-    const who = s.person.hide_name
-      ? t.anonymousUser
-      : s.person.nickname || s.person.username || t.anonymousUser;
-    const text =
-      s.kind === "follow"
-        ? t.notifFollow(NAME_SLOT)
-        : s.kind === "request"
-          ? t.notifRequest(NAME_SLOT)
-          : s.kind === "reply"
-            ? t.notifReply(NAME_SLOT, s.title ?? "")
-            : s.kind === "talk_reply"
-              ? t.notifTalkReply(NAME_SLOT, s.title ?? "")
-              : s.kind === "list_review"
-                ? t.notifListReview(NAME_SLOT, listName(s))
-                : s.kind === "like_list_review"
-                  ? t.notifListReviewLike(NAME_SLOT, listName(s))
-                  : s.kind === "list_reply"
-                    ? t.notifListReply(NAME_SLOT, listName(s))
-                    : t.notifLike(NAME_SLOT, s.title ?? "");
-    const at = text.indexOf(NAME_SLOT);
-    if (at < 0) return { pre: text, who, post: "" };
-    return { pre: text.slice(0, at), who, post: text.slice(at + NAME_SLOT.length) };
-  }
+  /* 🆕 11-M · M4 — **الجملةُ المشقوقةُ عند الاسم (D-775) والوجهةُ (D-218/D-899) انتقلتا إلى `core/signals.ts`** بحرفهما:
+     التطبيقُ الأصليُّ يرسم الإشعاراتِ منهما أيضاً، فلا وجهتان تفترقان لإشعارٍ واحد. */
 
   if (rows.length === 0) {
     return <p className="text-sm text-muted text-center py-16">{t.notifEmpty}</p>;
@@ -101,29 +61,12 @@ export function NotificationList({
   return (
     <ul className="divide-y divide-[color:var(--divider)]">
       {rows.map((s, i) => {
-        /* 🔑 **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218) — منقولةٌ
-           بحرفها من الجرس: القائمةُ أوّلاً (لا `tmdb_id` لها أصلاً)،
-           ثم الغرفةُ، ثم صفحةُ تعليقك، ثم ملفُّ الفاعل. */
-        const titleHref = s.tmdbId
-          ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
-          : null;
-        const href =
-          (s.kind === "list_review" ||
-            s.kind === "like_list_review" ||
-            s.kind === "list_reply") &&
-          s.listId
-            ? `/lists/${s.listId}`
-            : s.kind === "talk_reply" && s.tmdbId
-              ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
-              : s.kind === "reply" && s.tmdbId
-                ? myId
-                  ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myId}`
-                  : titleHref
-                : (profileHref(s.person) ?? titleHref);
+        /* 🔑 **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218) — `core/signals.ts` */
+        const href = signalHref(s, myId);
 
         /* **وتُحسب مرّةً لا ثلاثاً**: نداءٌ لكلِّ جزءٍ يبني الجملةَ
            ثلاثَ مرّاتٍ لكلِّ إشعار. */
-        const p = parts(s);
+        const p = signalParts(s, t, listName(s));
         const sentence = (
           <>
             {p.pre}

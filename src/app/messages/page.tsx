@@ -1,14 +1,7 @@
 import { redirect } from "next/navigation";
-import {
-  getUser,
-  getConversations,
-  getUnreadShares,
-  getUnreadSignals,
-  getLastSeenOf,
-} from "@/lib/data";
-import { myMutualFollows, mySignals } from "@/lib/actions";
-import type { PersonLite, ConvShareEvent } from "@/lib/data";
-import { localizeRows } from "@/lib/localize";
+import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf } from "@/lib/data";
+import { mySignals } from "@/lib/actions";
+import { buildInbox } from "@/lib/messagesCore";
 import { getT } from "@/lib/locale";
 import { Inbox } from "@/components/Inbox";
 import { NotificationList } from "@/components/NotificationList";
@@ -41,13 +34,13 @@ export const dynamic = "force-dynamic";
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ with?: string; tab?: string }>;
+  searchParams: Promise<{ with?: string; tab?: string; start?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const { with: withParam, tab } = await searchParams;
+  const { with: withParam, tab, start } = await searchParams;
   /* **الخيطُ المطلوبُ يفرض تبويبَه**: رابطُ `?with=` يصل من إشعارٍ أو
      مشاركة — **وفتحُه على تبويب الإشعارات يُخفي ما جاء الزائرُ لأجله.** */
   const alerts = tab === "alerts" && !withParam;
@@ -101,7 +94,7 @@ export default async function MessagesPage({
           <AlertsPane locale={locale} myId={user.id} />
         </>
       ) : (
-        <InboxPane locale={locale} withParam={withParam ?? null} header={header} />
+        <InboxPane locale={locale} withParam={withParam ?? null} startParam={start ?? null} header={header} />
       )}
     </div>
   );
@@ -132,35 +125,22 @@ async function AlertsPane({
 async function InboxPane({
   locale,
   withParam,
+  startParam,
   header,
 }: {
   locale: Awaited<ReturnType<typeof getT>>["locale"];
   withParam: string | null;
+  /** 🆕 11-M · M4 — `?start=<id>` يفتح ورقةَ «ابدأ محادثة» لذلك الشخص: بابُ التطبيق الأصليّ إليها حتى M5 */
+  startParam: string | null;
   header: React.ReactNode;
 }) {
   /* 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — مع المحادثات في موجةٍ
      واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
-  const [convRows, lastSeen] = await Promise.all([
-    getConversations(),
+  /* 🆕 11-M · M4 — المحادثاتُ و«ابدأ محادثة» من النواة الواحدة (`lib/messagesCore.ts`) التي يقرؤها التطبيقُ أيضاً */
+  const [{ conversations, startable }, lastSeen] = await Promise.all([
+    buildInbox(locale),
     withParam ? getLastSeenOf(withParam) : Promise.resolve(null),
   ]);
-  let conversations = convRows;
-  if (conversations.length) {
-    const shareEvents = conversations.flatMap((c) =>
-      c.events.filter((e): e is ConvShareEvent => e.kind === "share"),
-    );
-    const localized = await localizeRows(shareEvents, locale);
-    const byId = new Map(localized.map((s) => [s.id, s]));
-    conversations = conversations.map((c) => ({
-      ...c,
-      events: c.events.map((e) => (e.kind === "share" ? byId.get(e.id) ?? e : e)),
-    }));
-  }
-
-  const withConv = new Set(conversations.map((c) => c.personId));
-  const startable: PersonLite[] = (await myMutualFollows()).filter(
-    (p: PersonLite) => !withConv.has(p.id),
-  );
 
   /* داخل خيطٍ مفتوحٍ تسقط الترويسة — «نكتفي بزر الرجوع» (D-767) */
   const threadOpen = !!withParam && conversations.some((c) => c.personId === withParam);
@@ -172,6 +152,7 @@ async function InboxPane({
         conversations={conversations}
         startable={startable}
         openWith={withParam}
+        openStart={startParam}
         locale={locale}
         lastSeen={lastSeen}
       />

@@ -166,3 +166,17 @@ export type {
   GifHitLite,
   GifPayload,
 } from "@/core/contracts/thread";
+/* 🆕 11-M · M4 — «الرسائل والإشعارات» (`/api/v1/me/messages*` · `/api/v1/me/signals*`) */
+export type {
+  MessagesPayload,
+  MsgConversation,
+  MsgEvent,
+  MsgShareEvent,
+  MsgListEvent,
+  MsgReplyEvent,
+  LastSeenPayload,
+  MsgReplyBody,
+  MsgPeerBody,
+  SignalsPayload,
+} from "@/core/contracts/messages";
+export type { SignalRow } from "@/core/signals";

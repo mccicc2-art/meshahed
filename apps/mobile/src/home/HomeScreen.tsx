@@ -609,7 +609,7 @@ export function HomeScreen() {
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: pastCover ? tokens.bg : "transparent", borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
-        <HomeTopBar onArt={onArt && !pastCover} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => openWeb("/messages")} onSignals={() => openWeb("/messages?tab=alerts")} onSettings={() => router.push("/settings")} />
+        <HomeTopBar onArt={onArt && !pastCover} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
       </Animated.View>
       {!d ? (
         home.isError ? (

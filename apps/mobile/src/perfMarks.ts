@@ -57,7 +57,11 @@ export type PerfName =
   | "thread.open"
   | "gif.open"
   /* 🆕 M3-fix — رفعُ صورة النقاش: المدّةُ والنتيجةُ ومرحلةُ الفشل (بلاغُ خالد: السببُ كان يضيع) */
-  | "thread.image";
+  | "thread.image"
+  /* 🆕 11-M · M4 — «الرسائل» الأصليّة: من التركيب إلى أوّل رسمٍ فيه حمولة (`cached` · `tab`)، وقناةُ Realtime من الطلب
+     إلى `SUBSCRIBED` أو سقوطِها (`result` · `why` حالُ القناة) — «تظهر خلال ثانيتين» يُقاس لا يُصدَّق (خطّة §٩) */
+  | "messages.open"
+  | "messages.live";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
