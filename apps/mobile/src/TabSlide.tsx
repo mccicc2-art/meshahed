@@ -44,7 +44,7 @@ import { flag } from "./flags";
  * الحركة إلى موضع اللوح التالي، وتبدّلُ `tab` بعدها لا يحرّك شيئاً. **ما لا
  * يُعاد ضبطُه لا يرمش.**
  *
- * 🔴 **D-972 — المسارُ بعرض كلِّ الألواح، لا بعرض الشاشة** (بلاغُ أحمد بتسجيل على
+ * 🔴 **D-972 — المسارُ بعرض كلِّ الألواح، لا بعرض الشاشة** (بلاغُ أحمد بتسجيل على
  * 1.8.5: «الأنمي والأفلام والقوائم ما أقدر أتصفّح فيها، كأنّها صورة»): D-970 وضع
  * لوحَ التبويب الثاني عند `width` والثالثَ عند `2×width` **داخل مسارٍ عرضُه عرضُ
  * الشاشة** — فكلُّ لوحٍ غيرِ الأوّل يقع **خارج حدود أبيه**، وأندرويد لا يوصل
@@ -74,6 +74,12 @@ type Props<K extends string> = {
   style?: ViewStyle;
   /** F0 (D-1024) — اسمُ الشاشة لعلامة `tab.arm`؛ بلا اسمٍ لا قياس */
   perfScreen?: "library" | "discover";
+  /**
+   * 🆕 11-M · M1-fix — **الوجهةُ لحظةَ رفع الإصبع** (تسجيلُ أحمد ٢٨ سبتمبر: خطُّ التبويب يلحق اللوحَ بنصف ثانية —
+   * اللوحُ استقرّ على «الناس» والخطُّ ما زال تحت «الأعمال»). القلبُ نفسُه (`onTab`) يبقى بعد الطيران (D-526: لا إطارَ
+   * وسيطاً)، لكنّ الشريطَ يعرف الوجهةَ الآن فيُضيئها مع بدء الطيران كما في الويب. سحبٌ ارتدّ لا يُعلن شيئاً.
+   */
+  onAim?: (next: K) => void;
 };
 
 /**
@@ -87,7 +93,7 @@ export function TabSlide<K extends string>(props: Props<K>) {
 }
 
 /** المسارُ القائمُ منذ D-970/D-972: `PanResponder` على خيط JS — يبقى كما هو حتى تثبت K2 */
-function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfScreen }: Props<K>) {
+function TabSlideJS<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen }: Props<K>) {
   const { width } = useWindowDimensions();
   /* الاتّجاهُ فيزيائيٌّ لا لغويّ: «التالي» في جهة النهاية — يساراً في LTR ويميناً في RTL */
   const phys = I18nManager.isRTL ? -1 : 1;
@@ -109,6 +115,8 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
   st.current = { order, tab, width, phys };
   const onTabRef = useRef(onTab);
   onTabRef.current = onTab;
+  const onAimRef = useRef(onAim);
+  onAimRef.current = onAim;
   /* F0 (D-1024) — `tab.arm`: من تسليح الجار عند قفل الإيماءة إلى أوّل تخطيطٍ للوحه. هذا
      أثقلُ تركيبٍ في الشاشة ويقع والإصبعُ يتحرّك — رقمُه يحسم F6 (نُبقي `TabSlide` أم نبدّله). */
   const armEnd = useRef<(() => void) | null>(null);
@@ -159,6 +167,7 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
           if (next && (Math.abs(g.dx) >= COMMIT_DX || Math.abs(g.vx) >= COMMIT_VX)) {
             /* الطيرانُ إلى موضع الجار ثمّ القلب (درسُ D-526): تبدّلُ `tab` بعدها يجد
                المسارَ في مكانه فلا يحرّكه — ولا إطارَ وسيطاً (D-970). */
+            onAimRef.current?.(next);
             glide(base - dir * s.phys * s.width, FLY_MS, () => {
               settled.current = next;
               onTabRef.current(next);
@@ -216,7 +225,7 @@ function TabSlideJS<K extends string>({ order, tab, onTab, render, style, perfSc
 
   return (
     <View style={[{ flex: 1, overflow: "hidden" }, style]} {...pan.panHandlers}>
-      {/* D-972 — المسارُ يتّسع لكلِّ الألواح فتبقى داخل حدوده؛ `start` لا `left` كي
+      {/* D-972 — المسارُ يتّسع لكلِّ الألواح فتبقى داخل حدوده؛ `start` لا `left` كي
           يعمل الاتّجاهان بالرقم نفسِه (في RTL يمتدّ المسارُ يساراً من حافّة البداية) */}
       <Animated.View style={{ position: "absolute", top: 0, bottom: 0, start: 0, width: Math.max(1, order.length) * width, transform: [{ translateX: pos }] }}>
         {panes.map((k) => {
@@ -285,7 +294,7 @@ const WARM_MS = FLY_MS + 180;
     (٢٨ سبتمبر): السحباتُ المتتالية كانت تسبق مهلةَ `WARM_MS` فتجد الجارَ بارداً — وهي وحدَها التي بقي فيها تقطيع */
 const WARM_AFTER_SWIPE_MS = 180;
 
-function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfScreen }: Props<K>) {
+function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen }: Props<K>) {
   const { width } = useWindowDimensions();
   const phys = I18nManager.isRTL ? -1 : 1;
   const at = useCallback((k: K, w = width) => -Math.max(0, order.indexOf(k)) * w * phys, [order, width, phys]);
@@ -331,6 +340,8 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
   const lastTab = useRef(tab);
   const onTabRef = useRef(onTab);
   onTabRef.current = onTab;
+  const onAimRef = useRef(onAim);
+  onAimRef.current = onAim;
   const perfRef = useRef(perfScreen);
   perfRef.current = perfScreen;
   const settled = useRef<K | null>(null);
@@ -354,6 +365,10 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
     [mount],
   );
   const unmountSide = useCallback(() => mount(null), [mount]);
+  const aim = useCallback((i: number) => {
+    const k = orderRef.current[i];
+    if (k) onAimRef.current?.(k);
+  }, []);
   const commit = useCallback((i: number) => {
     const k = orderRef.current[i];
     if (!k) return;
@@ -451,6 +466,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
           if (success && has && (Math.abs(e.translationX) >= COMMIT_DX || Math.abs(e.velocityX) >= COMMIT_VX * 1000)) {
             /* الطيرانُ ثمّ القلب (D-526/D-970): النشطُ يُحدَّث على خيط الواجهة أوّلاً — سحبةٌ تالية
                قبل أن يرسم React تقرأ الموضعَ الصحيح */
+            scheduleOnRN(aim, ni);
             pos.value = withTiming(base - dir * P * W, { duration: FLY_MS, easing: REASE }, (fin) => {
               busy.value = 0;
               armed.value = -1;
@@ -475,7 +491,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, render, style, perfSc
           }
           scheduleOnRN(jsJankOff);
         }),
-    [x0, y0, busy, idx, w, ph, count, armed, pos, jLive, jT0, jLast, jDrop, arm, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
+    [x0, y0, busy, idx, w, ph, count, armed, pos, jLive, jT0, jLast, jDrop, arm, aim, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
   );
 
   /* تبدّلُ `tab` — كما في `TabSlideJS`: من سحبٍ مكتمل ⇒ يُنزع الجار؛ من ضغطة ⇒ ينزلق القديمُ والجديدُ معاً */

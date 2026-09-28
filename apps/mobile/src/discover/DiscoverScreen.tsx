@@ -43,7 +43,7 @@ import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, Libra
  *
  * 🔑 **الشكلُ شكلُ الصفحة** (`news/page.tsx`): ترويسةٌ ٦٤ وشريطُ تبويباتٍ
  * (segmented) ثمّ صفوفٌ منسَّقةٌ تُقرأ بالتمرير — في السينما · الأكثرُ شعبيّة ·
- * أفضلُ ١٠ · أفضلُ ٢٥ هذي السنة · القادمُ قريباً — **كلُّ صفٍّ نداءٌ مستقلٌّ
+ * أفضلُ ١٠ · أفضلُ ٢٥ هذي السنة · القادمُ قريباً — **كلُّ صفٍّ نداءٌ مستقلٌّ
  * يُرسم حين يصل** (`/api/v1/discover/rail`)، وهو ما تفعله الصفحةُ بـ`Suspense`.
  * **والوصفةُ وصفةُ الصفحة حرفاً** (`src/lib/discoverRails.ts` — مصدرٌ واحد).
  *
@@ -133,7 +133,7 @@ export function DiscoverScreen() {
   useEffect(() => {
     memory.tab = tab;
   }, [tab]);
-  /* F0 (D-1024) — `discover.open`: من تركيب الشاشة إلى وصول آخر صفٍّ منسَّقٍ في تبويب الفتح.
+  /* F0 (D-1024) — `discover.open`: من تركيب الشاشة إلى وصول آخر صفٍّ منسَّقٍ في تبويب الفتح.
      و«اكتشف» فُتحت أوّلاً ⇒ الإقلاعُ البارد ليس «إلى المكتبة» فلا يُسجَّل باسمها. */
   const [openTab] = useState<Tab>(memory.tab);
   /* K3 — «وصلتُ» عند كلِّ ظهورٍ للتبويب الثابت، والشائخُ من صفوفه يُجدَّد */
@@ -361,6 +361,10 @@ export function DiscoverScreen() {
     [qc, leaveTo, onError],
   );
   const goTab = useCallback((next: Tab) => setTab(next), []);
+  /* 11-M · M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`TabSlide.onAim`)، والقلبُ بعد الطيران */
+  const [aim, setAim] = useState<Tab | null>(null);
+  useEffect(() => setAim(null), [tab]);
+  const lit = aim ?? tab;
 
   /* D-966 — الكسوةُ الذكيّة كما في المكتبة: الورقةُ (رأسٌ + ألواح) تصعد بارتفاع الرأس
      وتمتدّ تحته، والشريطُ يهبط؛ وقلبُ التبويب يُعيدها (`reveal`). */
@@ -410,7 +414,7 @@ export function DiscoverScreen() {
           كما في المكتبة لا في الرأس (طلبُ أحمد بلقطتين: «مكان الفلتر خلّه جنب كلمة ليست») */}
       <View style={{ flexDirection: "row", alignItems: "stretch", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
         {tabsOrder.map((k) => {
-          const on = k === tab;
+          const on = k === lit;
           return (
             <Pressable key={k} onPress={() => goTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
               <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{tabLabel(k)}</Text>
@@ -435,6 +439,7 @@ export function DiscoverScreen() {
         order={tabsOrder}
         tab={tab}
         onTab={goTab}
+        onAim={setAim}
         perfScreen="discover"
         render={(k, active) => (
           <DiscoverPane
@@ -513,7 +518,7 @@ export function DiscoverScreen() {
  * لوحُ تبويبٍ — D-965. **كلُّ ما يخصّ تبويباً واحداً يعيش هنا** (الصفوفُ الشخصيّة
  * والمنسَّقة وموضعُ التمرير) ليستطيع `TabSlide` رسمَ لوحين جنباً إلى جنب في أثناء
  * السحب. **نداءاتُ الجار تُطلق لحظةَ تركيبه** (قفلُ الإيماءة — تسليحُ D-523)،
- * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
+ * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
  * و`staleTime` يجعل الزيارةَ التالية فوريّة.
  */
 /** «مقترحٌ لك»: عشرةٌ في المرّة — `PAGE` في `PickedForYou` الويب */
@@ -564,12 +569,12 @@ function DiscoverPane({
   onToast: (text: string) => void;
   /** D-1047 — فعلٌ يُرى فوراً وتُؤجَّل كتابتُه بإشعار «تراجع» */
   onUndoable: (text: string, commit: () => void, undo: () => void) => void;
-  /** D-994 — «الكلّ» لصفٍّ: العنوانُ ومسارُ `see_all` */
+  /** D-994 — «الكلّ» لصفّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
 }) {
   const { t } = useApp();
   const router = useRouter();
-  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
+  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
   const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
   const personal = useQuery({
     queryKey: ["discover:personal", railTab, bq] as const,
@@ -735,7 +740,7 @@ function DiscoverPane({
       {naming ? (
         <NameSheet
           title={naming === "filter" ? (ar ? "احفظ الفلتر" : "Save filter") : t.smartListLabel}
-          placeholder={naming === "filter" ? (ar ? "سمِّ الفلتر" : "Name this filter") : ar ? "سمِّ القائمة الذكيّة" : "Name this smart list"}
+          placeholder={naming === "filter" ? (ar ? "سمِّ الفلتر" : "Name this filter") : ar ? "سمِّ القائمة الذكيّة" : "Name this smart list"}
           busy={savingName}
           onSubmit={(n) => void saveNamed(n)}
           onClose={() => setNaming(null)}
@@ -775,9 +780,9 @@ function DiscoverPane({
  * F0 (D-1024) — مراقبُ `discover.open`: **لا يرسم شيئاً ولا يجلب شيئاً**. يعدّ ما يُجلب
  * الآن تحت `discover:rail/<tab>` (`useIsFetching` قراءةٌ للكاش لا مشترِكٌ فيه)، وينادي
  * `onDone` حين لا يبقى جلبٌ وفي الكاش صفٌّ واحدٌ ناجحٌ على الأقلّ. **لماذا لا `useQueries`
- * بمفاتيح الصفوف**: مشترِكٌ بمفتاح صفٍّ مخفيّ (D-997) أو بلا فلترٍ والشاشةُ مفلترة كان
+ * بمفاتيح الصفوف**: مشترِكٌ بمفتاح صفٍّ مخفيّ (D-997) أو بلا فلترٍ والشاشةُ مفلترة كان
  * سيجلب ما لا تعرضه الشاشة — قياسٌ يثقل ما يقيسه قياسٌ فاسد. ومكوّنٌ مستقلّ كي لا
- * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
+ * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
  */
 function OpenMark({ tab, onDone }: { tab: CuratedTab; onDone: () => void }) {
   const qc = useQueryClient();
@@ -796,7 +801,7 @@ type RailShared = {
   onOpen: (c: CuratedCard) => void;
 };
 
-/* D-1028 (F4) — `memo`: خاصّيّاتُه كلُّها ثابتةُ المرجع الآن، فرسمةُ اللوح لا تعيد رسمَ صفٍّ لم يتغيّر */
+/* D-1028 (F4) — `memo`: خاصّيّاتُه كلُّها ثابتةُ المرجع الآن، فرسمةُ اللوح لا تعيد رسمَ صفٍّ لم يتغيّر */
 const Rail = memo(function Rail({
   tab,
   railKey,
@@ -895,7 +900,7 @@ const CardsRail = memo(function CardsRail({
   onSeeAll?: (path: string, title: string) => void;
   /** «مقترحٌ لك»: سطرُ السبب تحت كلِّ بطاقة */
   notes?: boolean;
-  /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
+  /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
   action?: { label: string; aria: string; icon: Parameters<typeof Icon>[0]["name"]; onPress: () => void } | null;
 }) {
   const { t, tokens } = useApp();

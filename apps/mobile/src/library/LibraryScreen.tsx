@@ -136,6 +136,10 @@ export function LibraryScreen() {
 
   const [tab, setTab] = useState<Tab | null>(memory.tab);
   const activeTab: Tab = tab ?? data.data?.default_tab ?? "shows";
+  /* 11-M · M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`TabSlide.onAim`)، والقلبُ بعد الطيران */
+  const [aim, setAim] = useState<Tab | null>(null);
+  useEffect(() => setAim(null), [activeTab]);
+  const lit = aim ?? activeTab;
   const [open, setOpen] = useState<Set<string>>(() => new Set(memory.open));
   useEffect(() => {
     memory.tab = tab;
@@ -436,7 +440,7 @@ export function LibraryScreen() {
       <View style={{ flexDirection: "row", alignItems: "stretch", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, alignItems: "stretch" }}>
         {tabs.map((tb) => {
-          const on = tb.key === activeTab;
+          const on = tb.key === lit;
           return (
             <Pressable
               key={tb.key}
@@ -534,6 +538,7 @@ export function LibraryScreen() {
         order={tabsOrder}
         tab={activeTab}
         onTab={setTab}
+        onAim={setAim}
         perfScreen="library"
         render={(k, on) =>
           k === "artists" ? (
@@ -761,7 +766,7 @@ function LibraryPane({
      عند أوّل تحميل، **واللوحُ شفّافٌ حتّى يستقرّ** فلا تُرى القفزةُ من الصفر. والموضعُ يُقرأ
      مرّةً عند التركيب: أحداثُ التمرير الأولى تكتب في `memory` قبل الاستعادة.
      ⚖️ الثمن معلَن: القائمةُ الافتراضيّة تقدّر ارتفاعَ ما لم تقسه بعد، فموضعٌ عميقٌ قد يرسو
-     بفارق صفٍّ — يُراجَع على الجهاز. وأحداثُ ما قبل الاستعادة لا تصل الكسوةَ الذكيّة: قفزةُ
+     بفارق صفّ — يُراجَع على الجهاز. وأحداثُ ما قبل الاستعادة لا تصل الكسوةَ الذكيّة: قفزةُ
      الاستعادة ليست «نزولاً» فلا تُخفي الرأس. */
   const listRef = useRef<FlashListRef<Row>>(null);
   const [startY] = useState(() => memory.y[tab] ?? 0);
@@ -807,7 +812,7 @@ function LibraryPane({
     [hintSeen, t],
   );
 
-  /* F0 — بعد كلِّ التزامٍ لشبكةٍ مسطّحة يُخبَر الأبُ؛ هو يعرف إن كان ينتظر قياساً */
+  /* F0 — بعد كلِّ التزامٍ لشبكةٍ مسطّحةٍ يُخبَر الأبُ؛ هو يعرف إن كان ينتظر قياساً */
   useEffect(() => {
     if (!grouped && list.length > 0) onFlatPainted?.(list.length);
   }, [grouped, list, onFlatPainted]);
@@ -874,7 +879,7 @@ function LibraryPane({
  * 🔑 **يتبدّل ما يحمل القائمة لا ما تعرضه** (التصميمُ مجمَّد): الفواصلُ نفسُها بالبكسل —
  * ٢٨ بين الرفوف، ٦ بين رأس الرفّ وجسمه (`mb 2` + فاصل ٤)، ١٢ بين صفوف الشبكة — لكنّها
  * صارت `mt` على الصفّ لأنّ القائمة الافتراضيّة لا تعرف `gap`. وحشوةُ الصفحة ١٦ انتقلت
- * من الحاوية إلى كلِّ صفٍّ، **إلّا الرفَّ الأفقيّ** الذي كان يُلغيها بـ`-mx-4` ليلامس الحافّة.
+ * من الحاوية إلى كلِّ صفّ، **إلّا الرفَّ الأفقيّ** الذي كان يُلغيها بـ`-mx-4` ليلامس الحافّة.
  * والرفُّ المطويُّ `FlatList` الأفقيُّ نفسُه بلا تغيير.
  */
 type Row =
@@ -918,7 +923,7 @@ const GridRow = memo(function GridRow({ row, cellW, sight, onOpen, onHold }: { r
     <View style={{ flexDirection: "row", gap: GAP, paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
       {/* ⚖️ مراجعةُ ما قبل الرفع (D-1025): **المفتاحُ موضعُ الخانة لا هويّةُ العمل.** القائمةُ تعيد
           استعمالَ الصفّ لبياناتٍ أخرى؛ بمفتاح العمل كان React ينزع بطاقاتِ الصفّ الأربع ويركّبها من
-          جديد مع كلِّ صفٍّ يدخل الشاشة — وهو عينُ الكلفة التي جاءت الافتراضيّةُ لإزالتها. بالموضع
+          جديد مع كلِّ صفٍّ يدخل الشاشة — وهو عينُ الكلفة التي جاءت الافتراضيّةُ لإزالتها. بالموضع
           تُحدَّث البطاقةُ في مكانها، والصورةُ تتبدّل بـ`recyclingKey`. */}
       {row.items.map((it, i) => (
         <PosterCard key={i} item={it} width={cellW} onPress={onOpen} onHold={onHold} marquee={seen} />
@@ -946,7 +951,7 @@ const RailRow = memo(function RailRow({ row, sight, onOpen, onHold }: { row: Ext
   );
   return (
     <FlatList
-      /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
+      /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
       key={row.key}
       horizontal
       data={row.items}
@@ -1016,7 +1021,7 @@ function statusLabel(s: LibraryStatus, t: ReturnType<typeof useApp>["t"]): strin
 
 /** الهيكلُ أثناء التحميل — `aspect-[2/3] rounded-poster bg-surface border animate-pulse` (G6).
     D-1092 (تسجيلُ أحمد على 1.11.9: المكتبةُ «سوداء» ثلاثَ ثوانٍ): `surface` بشفافيّة ٠٫٧ على الأسود
-    لا يُرى — بقي منه خطُّ الإطار العلويّ وحده. الآن رأسُ رفٍّ وخلايا `surface2` كهيكل «اكتشف» حرفاً
+    لا يُرى — بقي منه خطُّ الإطار العلويّ وحده. الآن رأسُ رفٍّ وخلايا `surface2` كهيكل «اكتشف» حرفاً
     (`DiscoverScreen` صفٌّ بلا بيانات) — هيكلٌ واحد للعائلتين. */
 function Skeleton({ cols, cellW }: { cols: number; cellW: number }) {
   const { tokens } = useApp();

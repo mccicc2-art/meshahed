@@ -312,6 +312,10 @@ export default function Web() {
     }
     setPath(next);
     if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
+    /* 🆕 11-M · M1-fix — **البابُ من جذرٍ يُضيء خانةَ جذره** (تسجيلُ أحمد ٢٨ سبتمبر: غرفةُ نقاشٍ فُتحت من «المجتمع»
+       والشريطُ يُضيء «الرئيسيّة»). D-1035 وعد بأن يُؤخذ الأصلُ من `shell.returnTo` لحظةَ الفتح، لكنّه لم يُكتب إلّا
+       لرابط الودجت (`u`) — فكلُّ بابٍ من جذرٍ بلا خانةٍ لمساره كان يسقط على «الرئيسيّة». */
+    else if (shell.returnTo) setOrigin(rootOf(shell.returnTo));
     /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
     shell.arrived(nav.url, nav.loading);
     if (nav.loading) setLanding(false);
