@@ -1,0 +1,131 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { orderCommunityFeed, boardRows, FEED_LIKE_MS, FEED_REPLY_MS } from "./communityFeed.ts";
+import { commentViewKey } from "./postKeys.ts";
+import {
+  asCommunityTab,
+  asBoardSection,
+  parseCommunityPrefsBody,
+  BOARD_SECTIONS,
+} from "./communityParams.ts";
+
+/**
+ * ====== Phase 11-M · M0 — ترتيبُ خطّ «مجتمعي» الذي يقرؤه الويبُ والبابُ معاً ======
+ * القواعدُ المختبَرة منقولةٌ من `ActivityFeed` حرفاً: D-283 (الصيغة) · D-306 (الأحدث) ·
+ * D-629 (الأفضل للزائر) · D-900 (مفتاحُ الغرباء هو الحكم).
+ */
+
+const T0 = Date.parse("2026-09-01T00:00:00Z");
+const iso = (ms: number) => new Date(T0 + ms).toISOString();
+const c = (id: string, at: number, extra: Partial<{ likes: number; review: string | null; tmdb: number }> = {}) => ({
+  person: { id },
+  media_type: "tv" as const,
+  tmdb_id: extra.tmdb ?? 1,
+  review: extra.review === undefined ? "رأي" : extra.review,
+  updated_at: iso(at),
+  likes: extra.likes ?? 0,
+});
+const n = (key: string, at: number) => ({ key, media_type: "movie" as const, tmdb_id: 9, published_at: iso(at) });
+const ids = (rows: { kind: string; item: { key?: string; person?: { id: string } } }[]) =>
+  rows.map((r) => (r.kind === "news" ? `n:${r.item.key}` : `c:${r.item.person!.id}`));
+
+test("الأحدث: زمنٌ خالص، والرأيُ بلا نصٍّ لا يدخل", () => {
+  const out = orderCommunityFeed({
+    comments: [c("a", 1000), c("b", 3000), c("silent", 5000, { review: "  " })],
+    news: [n("x", 2000)],
+    meId: "me",
+    showStrangers: true,
+    sort: "latest",
+  });
+  assert.deepEqual(ids(out), ["c:b", "n:x", "c:a"]);
+});
+
+test("الذكيّ: كلُّ إعجابٍ نصفُ ساعة وكلُّ ردٍّ ساعة (D-283)", () => {
+  const older = c("old", 0, { likes: 3, tmdb: 7 }); // +90د
+  const newer = c("new", 60 * 60 * 1000); // +60د بلا تفاعل
+  const out = orderCommunityFeed({ comments: [newer, older], news: [], meId: "me", showStrangers: true, sort: "smart" });
+  assert.deepEqual(ids(out), ["c:old", "c:new"]);
+  assert.equal(3 * FEED_LIKE_MS, 90 * 60 * 1000);
+
+  /* ردٌّ واحدٌ على الأقدم = ساعة ⇒ يعادل الجديد ثمّ يتخطّاه بإعجابٍ واحد */
+  const replies = new Map([[commentViewKey("old2", "tv", 7), 1]]);
+  const out2 = orderCommunityFeed({
+    comments: [c("new2", FEED_REPLY_MS - 1), c("old2", 0, { tmdb: 7 })],
+    news: [],
+    meId: "me",
+    showStrangers: true,
+    sort: "smart",
+    reviewReplies: replies,
+  });
+  assert.deepEqual(ids(out2), ["c:old2", "c:new2"]);
+});
+
+test("الذكيّ: إعجاباتُ الخبر وردودُه بمفتاحيهما", () => {
+  const out = orderCommunityFeed({
+    comments: [c("a", 2 * 60 * 60 * 1000)],
+    news: [n("x", 0)],
+    meId: "me",
+    showStrangers: true,
+    sort: "smart",
+    newsLikes: { "movie-9": 2 }, // +60د
+    newsReplies: new Map([["x", 2]]), // +120د ⇒ ١٨٠د > ١٢٠د
+  });
+  assert.deepEqual(ids(out), ["n:x", "c:a"]);
+});
+
+test("الغرباءُ مطفأون ⇒ كلامي ومن أتابع والأخبار وحدَها (D-900)", () => {
+  const out = orderCommunityFeed({
+    comments: [c("me", 1), c("friend", 2), c("stranger", 3)],
+    news: [n("x", 4)],
+    meId: "me",
+    followingIds: new Set(["friend"]),
+    showStrangers: false,
+    sort: "latest",
+  });
+  assert.deepEqual(ids(out), ["n:x", "c:friend", "c:me"]);
+});
+
+test("الزائرُ خارج الترشيح ولو أُطفئ المفتاح (D-629)", () => {
+  const out = orderCommunityFeed({ comments: [c("stranger", 1)], news: [], meId: "", showStrangers: false, sort: "latest" });
+  assert.deepEqual(ids(out), ["c:stranger"]);
+});
+
+test("الأفضل: عدٌّ خالص والأحدثُ يفصل التعادل (D-629)", () => {
+  const out = orderCommunityFeed({
+    comments: [c("a", 1, { likes: 1 }), c("b", 5, { likes: 1, tmdb: 2 }), c("z", 9)],
+    news: [],
+    meId: "",
+    showStrangers: true,
+    sort: "top",
+  });
+  assert.deepEqual(ids(out), ["c:b", "c:a", "c:z"]);
+});
+
+test("لوحةُ الناس: الصاعدون بالفرق ومن لم يصعد لا يظهر؛ الأكثرُ بالمجموع", () => {
+  const rows = [
+    { id: "a", total: 10, prevTotal: 9 },
+    { id: "b", total: 5, prevTotal: 0 },
+    { id: "c", total: 8, prevTotal: 8 },
+    { id: "d", total: 1, prevTotal: 3 },
+  ];
+  assert.deepEqual(boardRows(rows, "rising", 10).map((r) => r.id), ["b", "a"]);
+  assert.deepEqual(boardRows(rows, "top", 3).map((r) => r.id), ["a", "c", "b"]);
+  assert.deepEqual(boardRows(rows, "featured", 1).map((r) => r.id), ["a"]);
+});
+
+test("المعاملات: القارئُ المتسامحُ للصفحة والباب", () => {
+  assert.equal(asCommunityTab("comments"), "activity");
+  assert.equal(asCommunityTab("works"), "talk");
+  assert.equal(asCommunityTab(undefined), "talk");
+  assert.equal(asCommunityTab("people"), "people");
+  assert.equal(asBoardSection("watching"), null);
+  for (const s of BOARD_SECTIONS) assert.equal(asBoardSection(s), s);
+});
+
+test("جسمُ تفضيلات الأدوات: الجزئيُّ يمرّ والمجهولُ يسقط", () => {
+  assert.deepEqual(parseCommunityPrefsBody({ sort: "latest", strangers: false, x: 1 }), { sort: "latest", strangers: false });
+  assert.equal(parseCommunityPrefsBody({ sort: "top" }), null);
+  assert.equal(parseCommunityPrefsBody([]), null);
+  assert.equal(parseCommunityPrefsBody(null), null);
+  assert.deepEqual(parseCommunityPrefsBody({ talk_followed: true, translate: false }), { talk_followed: true, translate: false });
+});

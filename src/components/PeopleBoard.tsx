@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { boardRows } from "@/core/communityFeed";
 import Image from "next/image";
 import { posterUrl, backdropUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/core/i18n";
@@ -258,15 +259,8 @@ export function PeopleLeaderboard({
      صعوداً، **و«زاد ٠» تحت عنوانٍ يقول «صاعدون» تكذب** (D-216).
      **و«المميّزون» يُفرزون بالمجموع كـ«الأكثر»** — والفرقُ نافذتُهما
      لا قاعدةُ فرزهما، **و`prevTotal` تصل صفراً فيهم دائماً.** */
-  const list =
-    mode === "rising"
-      ? rows
-          .map((r) => ({ r, delta: r.total - r.prevTotal }))
-          .filter((x) => x.delta > 0)
-          .sort((a, b) => b.delta - a.delta)
-          .slice(0, limit)
-          .map((x) => x.r)
-      : [...rows].sort((a, b) => b.total - a.total).slice(0, limit);
+  /* 🆕 النصُّ في `core/communityFeed.ts` (M0) — البابُ يقصّ القسمَ بالدالّة نفسِها */
+  const list = boardRows(rows, mode, limit);
 
   if (!list.length) return null;
 
@@ -423,7 +417,7 @@ export function TopSavedLists({
    * تقييم بعددهم»).
    *
    * **وكانت تُبنى هنا باليد من عائد `top_saved_lists`** — بلا وجهِ صاحبٍ
-   * ولا ♥ ولا ★ ولا زرِّ حفظ، **ومكانَها سطرُ «N save» نصّاً** —
+   * ولا ♥ ولا ★ ولا زرِّ حفظ، **ومكانَها سطرُ «N save» نصّاً** —
    * **فبطاقةٌ واحدةٌ تُقرأ بشكلين في بابين** (القاعدة ٦/D-068).
    * **والآن `shapeListCards` تشكّلها كما تشكّل بطاقةَ اكتشف والمكتبة
    * وصفحةِ الشخص** — **مكانٌ واحدٌ تُبنى فيه البطاقة.**
@@ -434,7 +428,7 @@ export function TopSavedLists({
   seeAllHref?: string;
 }) {
   const t = getDict(locale);
-  /* **ومن لا شيءَ له لا يُعرض في لوحة** (D-181) — والقسمُ يغيب كلَّه */
+  /* **ومن لا شيءَ له لا يُعرض في لوحة** (D-181) — والقسمُ يغيب كلُّه */
   if (!cards.length) return null;
 
   return (
@@ -508,7 +502,7 @@ export function TalkedAboutWork({
 }) {
   const t = getDict(locale);
   /* **ولا حالةَ فارغةً تُرسم**: قسمٌ يقول «لا أحدَ يتكلّم» يجعل اللوحةَ
-     تبدو معطوبةً لا ناقصة (D-181) — **والقسمُ يغيب كلَّه.** */
+     تبدو معطوبةً لا ناقصة (D-181) — **والقسمُ يغيب كلُّه.** */
   if (!room) return null;
 
   return (

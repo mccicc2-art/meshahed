@@ -1,35 +1,14 @@
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import Link from "next/link";
 import {
   getUser,
-  getLoopzNews,
-  getNewsGenStale,
-  refreshLoopzNews,
-  getTalkBulletinStale,
-  refreshTalkBulletins,
-  getCommunityFeed,
   getMyCommunities,
   getMyCommunityInvites,
   getCommunityRoom,
   getTitleRooms,
-  getTalkRooms,
-  getMyRoomPins,
-  getGlobalRoomPins,
-  getAmAdmin,
-  pickTalkedAboutRoom,
-  getFollows,
-  getReactions,
-  getFollowingIds,
-  getNewsReplyCounts,
-  getReviewReplyCounts,
-  getPostViewCounts,
-  getListReviewSocial,
-  getPeopleFeatured,
-  getPeopleLeaderboard,
-  getPeopleTopReviews,
-  getTopSavedListCards,
 } from "@/lib/data";
+import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
+import { asCommunityTab as asTab, asBoardSection as asAll } from "@/core/communityParams";
 import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
 import { WorksTalk } from "@/components/WorksTalk";
@@ -40,10 +19,8 @@ import {
   TalkedAboutWork,
 } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { getLibState } from "@/lib/libState";
-import { commentViewKey, newsViewKey } from "@/core/postKeys";
 import { applyTabPrefs, defaultTab } from "@/core/tabPrefs";
-import { localizeRows, localizeTitleRooms, localizeTalkRooms } from "@/lib/localize";
+import { localizeTitleRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
@@ -51,7 +28,6 @@ import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { TabPager } from "@/components/TabPager";
 import { CommunityPagerProvider, CommunityTabs } from "@/components/CommunityPager";
-import { getBatchTranslations } from "@/lib/translate";
 import { OneTimeHint } from "@/components/OneTimeHint";
 
 
@@ -87,16 +63,7 @@ import { OneTimeHint } from "@/components/OneTimeHint";
  * يكسر رابطاً حيّاً في سطحٍ آخر** — **يُفحص المستهلك قبل الحذف** (D-214).
  * فالغرفةُ تُفتح بالرابط، **ولا شريحةَ لها في الصفّ.**
  */
-type Tab = "activity" | "talk" | "people" | "news" | "all";
-function asTab(v: string | undefined): Tab {
-  /* **`comments` وريثُه `activity` حرفاً** — نفسُ التعليقات ومعها الأخبار.
-     ورابطٌ محفوظٌ أو مشاركٌ في محادثةٍ لا يجوز أن يموت بتغييرِ اسم. */
-  if (v === "activity" || v === "comments") return "activity";
-  /* المفاتيحُ القديمة (`works` · `mine` · `reviews`) تسقط إلى «نقاش» —
-     **وهو وريثُها حرفاً**: نفسُ `WorksTalk` ونفسُ التجميع. **وروابطُ
-     محفوظةٌ ومشاركةٌ في محادثات لا يجوز أن تموت بتغييرِ تبويب** (D-187). */
-  return v === "news" || v === "all" || v === "people" ? v : "talk";
-}
+/* 🆕 `Tab`/`asTab` في `core/communityParams.ts` (M0) — الصفحةُ والبابُ يقرآن معاملاً واحداً. */
 
 /**
  * **«عرض الكل» — قسمٌ واحدٌ بعشرة صفوف** (D-264، طلبُ أحمد).
@@ -104,16 +71,7 @@ function asTab(v: string | undefined): Tab {
  * **ومفتاحٌ مجهولٌ يسقط إلى اللوحة كاملةً** لا إلى شاشة خطأ: الرابطُ
  * قد يُكتب بيد، **وقارئٌ متسامح خيرٌ من `404` على معاملٍ زائد** (D-179).
  */
-type BoardAll = "featured" | "top" | "reviews" | "lists" | "rising";
-function asAll(v: string | undefined): BoardAll | null {
-  /* ⚠️ **و`people` و`watching` سقطتا مع قسميهما** (D-270) — **ورابطٌ
-     قديمٌ بهما يهبط على اللوحة كاملةً لا على `404`**: هو نفسُ القارئ
-     المتسامح أعلاه، **والقسمُ الذي كان يُفتح لم يعد موجوداً فلا بديلَ
-     له يُحوَّل إليه.** */
-  return v === "featured" || v === "top" || v === "reviews" || v === "lists" || v === "rising"
-    ? v
-    : null;
-}
+/* 🆕 `asAll` في `core/communityParams.ts` (M0) — القارئُ نفسُه للباب. */
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
    سقوط خطّ البطاقات في D-187: أوزانُ الأنواع وتناقصُ العمر وسقفُ
@@ -224,7 +182,7 @@ export default async function PeoplePage({
    * أتابعهم» (D-255) باقٍ في أدوات المجتمع — **إعدادٌ يُضبط مرّةً، لا
    * رقاقةٌ تسرق رأسَ الشاشة في كلّ فتحة.**
    */
-  /* **وسقطا قبلهما مع خطّ البطاقات (D-187):** مرشِّحُ نوع الحدث (`?k=`) —
+  /* **وسقطا قبلهما مع خطّ البطاقات (D-187):** مرشِّحُ نوع الحدث (`?k=`) —
      صار «الأعمال» مراجعاتٍ كلَّها فلا نوعَ يُرشَّح — وترتيبُ «الأكثر
      إعجاباً» (`?sort=top`): الصفُّ عملٌ لا حدثٌ، وإعجاباتُ الأعمال ليست
      مجموعَ إعجابات آرائها. **يعودان يوم يكون لهما معنًى، لا قبله.** */
@@ -249,7 +207,12 @@ export default async function PeoplePage({
      تعني «هذا تبويبٌ من الصفّ» — **والثلاثةُ تُرسم معاً فتُقرأ معاً.**
      **وهو نقضٌ مسجَّلٌ لـD-194 باختيار أحمد بعد أن قُرئ عليه الثمن.** */
   const pagerTab = tab === "activity" || tab === "talk" || tab === "people";
-  const followingFeed = pagerTab ? await getCommunityFeed(scope) : [];
+  /* 🆕 **موجاتُ التبويبات الثلاثة في `lib/communityCore.ts`** (Phase 11-M · M0): انتقلت
+     من هنا كما هي — الشروطُ والتوازي والسقوف — كي يقرأها `/api/v1/community` أيضاً بلا
+     نسخةٍ ثانية (نهجُ `homeCore` في 11-H). الحججُ الكاملةُ لكلِّ نداءٍ في تاريخ هذا الملفّ. */
+  const core = pagerTab
+    ? await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly })
+    : null;
   const [myCommunities, myInvites] =
     tab === "all"
       ? await Promise.all([
@@ -263,364 +226,45 @@ export default async function PeoplePage({
   const openCommunityRaw =
     tab === "all" && cParam ? await getCommunityRoom(cParam) : null;
 
-  /* غرف الأعمال الحيّة (D-140) — لتبويب الدليل وحده وحين لا غرفة مفتوحة:
-     نداءٌ لا يُدفع في تبويبٍ لا يعرضه */
+  /* غرف الأعمال الحيّة (D-140) — لتبويب الدليل وحده وحين لا غرفة مفتوحة */
   const titleRoomsRaw =
     tab === "all" && !openCommunityRaw ? await getTitleRooms(12) : [];
 
-  /* اسمُ غرفة العمل بلغة القارئ لا بلغة أوّل من ولّدها (D-147).
-     الصفحة هي من يملك `locale` لا طبقةُ البيانات — قاعدة D-048 نفسها. */
+  /* اسمُ غرفة العمل بلغة القارئ (D-147) */
   const titleRooms = await localizeTitleRooms(titleRoomsRaw, locale);
   const openCommunity = openCommunityRaw
     ? (await localizeTitleRooms([openCommunityRaw], locale))[0]
     : null;
 
-  /* **الرسائل غادرت هذه الصفحة إلى `/messages`** (D-187) — ومعها
-     `getConversations` و`myMutualFollows` وترجمةُ أحداث المشاركة، **نقلاً
-     لا نسخاً**. والرابط القديم `?tab=inbox` يُحوَّل أعلاه. */
+  const localized = core?.localized ?? [];
+  const feedTranslations = core?.feedTranslations ?? {};
+  const rooms = core?.rooms ?? [];
+  const roomsShown = core?.roomsShown ?? [];
+  const pins = core?.pins ?? null;
+  const globalPins = core?.globalPins ?? null;
+  const amAdmin = core?.amAdmin ?? false;
+  const featured = core?.featured ?? [];
+  const board = core?.board ?? [];
+  const topReviews = core?.topReviews ?? [];
+  const savedLists = core?.savedLists ?? [];
+  const boardFollowing = core?.boardFollowing ?? new Set<string>();
+  const talkedAbout = core?.talkedAbout ?? null;
+  const peopleEmpty = core?.peopleEmpty ?? true;
 
-  /* **وخطُّ الآراء لتبويب «النشاط» وحده الآن** (D-257): كان يخدم «نقاش»
-     معه بعد تجميعه بالعمل (`groupByWork`) — **وذلك هو اللبسُ الذي صحّحه
-     أحمد**: «النقاش ليس الريفيو، يختلف». **فغرفُ النقاش صار لها مصدرُها**
-     (`title_talk_rooms`)، وسقط التجميعُ ومعه `getTalkStats`. */
-  const localized = pagerTab ? await localizeRows(followingFeed, locale) : [];
-
-  /* 🆕 **ترجمةُ مراجعات الخطّ بلغة القارئ** (D-307) — بمفتاح
-     `commentViewKey` نفسِه الذي يقرؤه الصفّ، **وسقفُ الدفعة في
-     `getBatchTranslations` هو حدُّ الخطّ** (D-164). **وبلا مفتاحِ
-     `DEEPL_API_KEY` تعود فارغةً ولا يتغيّر شيء** (D-077). */
-  const feedTranslations = pagerTab && translateOn
-    ? await getBatchTranslations(
-        localized
-          /* 🆕 **ولا تُترجَم المحجوبات** (D-315): نصٌّ حجبه كاتبُه لا
-             يُرسَل لخدمةٍ خارجية ولا يُعرض مترجَماً فوق حاجبه */
-          .filter((a) => a.review?.trim() && !a.hasSpoiler)
-          .map((a) => ({
-            id: commentViewKey(a.person.id, a.media_type, a.tmdb_id),
-            text: a.review ?? "",
-          })),
-        locale === "ar" ? "ar" : "en",
-      )
-    : {};
-
-  /* **غرفُ النقاش الحيّة** (الهجرة ٧٨) — نداءٌ واحد للتبويب كلِّه، ولا
-     يُدفع في غيره. **والعنوانُ والملصقُ يأتيان مع الصفّ** فلا نداءَ
-     TMDB لكل بطاقة (D-164).
-
-     ⚠️ **ورقاقتا «الكل / من أتابع» سقطتا** (D-259، سؤالُ أحمد: «احذف
-     الفلاتر في النقاش، ما أعتقد يحتاجها — ولا وش رأيك؟» — **ورأيي أنه
-     محقّ، بثلاثة أسباب تُقال**):
-     **(١) الغرفةُ ليست شخصاً.** «من أتابع» سؤالٌ عن صاحب الكلام، **وللغرفة
-     خمسةُ أصحاب** — فكان الترشيحُ يقول «غرفةٌ تكلّم فيها من أتابع»، وهي
-     جملةٌ لا يسألها أحد.
-     **(٢) والقائمةُ قصيرة.** الغرفُ عشراتٌ لا آلاف، **ومرشِّحٌ على قائمةٍ
-     تُمسَح بنظرةٍ يزيد ضغطةً ولا يوفّر بحثاً** — وهو نفسُ سببِ إسقاط
-     مرشِّح نوع الحدث في D-187.
-     **(٣) وأكثرُ نتائجه فراغ.** دائرةُ المتابعة عندنا صغيرة، **فرقاقةٌ
-     أغلبُ ضغطاتها تُنتج شاشةً فارغة تُقرأ عطلاً لا ترشيحاً** (D-181).
-     **والبديلُ قائمٌ ولم يُحذف:** الترتيبُ بأحدث مشاركة يرفع الحيَّ
-     تلقائياً. */
-  /* **واسمُ الغرفة بلغة القارئ** (D-273، بلاغُ أحمد «كيف طلع الاسم
-     بالعربي؟»): `title_posts.title` يُكتب مرّةً بلغة أوّل من فتح الغرفة،
-     **والغرفةُ صفٌّ واحدٌ يراه كل الناس** — **وهي حجّةُ D-147 نفسُها،
-     وقد نُسي هذا السطحُ يومَها.** والصفحةُ هي من تملك `locale` لا طبقةُ
-     البيانات (D-048). */
-  /* 🆕 **والموجاتُ الثلاث صارت واحدة**: الغرفُ والتثبيتاتُ ولوحاتُ الناس
-     لا تحتاج إحداها نتيجةَ الأخرى (التثبيتُ يرتّب في الذاكرة واللوحاتُ
-     تُقرأ من دوالَّ مستقلّة) — **فتسلسلُها كان يجمع أزمنتَها بلا سبب**
-     (نفسُ درس D-164/D-263). والترجمةُ وحدَها تتبع غرفَها فتُسلسل معها. */
-  const wantAll = allView !== null;
-  const need = (k: BoardAll) => !wantAll || allView === k;
-  const [roomsRaw, pinsWave, peopleTab, boardFollowing] = await Promise.all([
-    pagerTab
-      ? getTalkRooms(40).then((r) => localizeTalkRooms(r, locale))
-      : Promise.resolve([] as Awaited<ReturnType<typeof getTalkRooms>>),
-
-  /* 🆕 **غرفي المثبَّتة، والترتيبُ يتبعها** (D-301، الهجرة ٩٢).
-     **ولا نداءَ لزائر**: لا صفوفَ له أصلاً، **وسياسةُ «صفوفي أنا» كانت
-     ستُعيد فراغاً — ونداءٌ يُعرف جوابُه سلفاً ثمنٌ بلا سبب** (D-194).
-     **والفرزُ في الذاكرة** (D-283/D-291): أربعون صفّاً، **وعمودُ ترتيبٍ
-     في القاعدة لهذا كان سيوجب `drop` لدالّةٍ قائمة.**
-     ⚠️ **و`sort` مستقرٌّ في JS الحديثة**، **فترتيبُ الأحدثِ داخل كلِّ
-     مجموعةٍ يبقى كما جاء من القاعدة** — **والتثبيتُ يرفع ولا يخلط.** */
-  /* 🆕 **والمثبَّتُ إداريّاً فوق الجميع** (D-314، الهجرة ٩٩):
-     درجتان لا درجة — **تثبيتُ لوبز ثم تثبيتي ثم البقية**، والفرزُ
-     مستقرٌّ فيبقى الأحدثُ أوّلَ كلِّ طبقة. **ونداءان متوازيان**
-     (D-164)، والعالميُّ يُقرأ حتى بلا `user`؟ لا — كلا السطحين خلف
-     تسجيل الدخول (الدالّةُ تشترط `auth.uid()`). */
-    pagerTab && user
-      ? Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
-      : Promise.resolve([null, null, false] as const),
-
-  /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
-     `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
-     الأخرى** — **فتسلسلُها كان يجمع زمنَها أربعَ مرّات بلا سبب** (نفسُ
-     درس `Promise.all` في D-164). **ولا نداءَ TMDB في القسم كلِّه**:
-     العنوانُ والملصقُ على الصفوف (D-048).
-
-     **🆕 و«عرض الكل» فرعٌ في التبويب نفسِه لا صفحةٌ جديدة** (D-264، طلبُ
-     أحمد «عرض الكل تظهر لي ١٠ من كل شيء»): **الرأسُ اللاصق والتبويباتُ
-     هي هي**، فلا رأسَ ثانٍ يُخترع (D-136) **ولا شاشةَ تُعاد بناءً**.
-     **والحالةُ في الرابط** فتُشارَك ويعود منها الظهر (D-051/D-054).
-
-     ⚠️ **ولا يُدفع إلا نداءُ القسم المفتوح**: في «عرض الكل» الأقسامُ
-     الأربعةُ الباقية لا تُرسم، **فنداؤها ثمنٌ بلا قارئ** (D-194).
-     **ولوحةُ النشاط استثناءٌ مقصود**: نداؤها الواحد يخدم «الأكثر»
-     و«الصاعدين» معاً (D-198). */
-    pagerTab
-      ? Promise.all([
-          /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
-             **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس تمييزاً بل دليل.** */
-          need("featured") ? getPeopleFeatured(90, wantAll ? 10 : 3) : [],
-          /* **نداءٌ واحدٌ يخدم قسمَي الأسبوع** (D-198) — الدالّةُ تُرجع
-             النافذتين معاً، **والواجهةُ تطرح.**
-             🆕 **و«عرض الكل» يغرف من خمسين لا عشرين** (D-311، دَينُ
-             «عرض الكل يعد بعشرة»): الدالّةُ ترتّب بالمجموع، **وصاعدٌ
-             كبيرُ الفرقِ صغيرُ المجموعِ قد يسكن خارج العشرين** — فحوضٌ
-             ضحلٌ يجعل وعدَ العشرة في «الصاعدين» وعداً مكسوراً (D-217).
-             **والمعاينةُ على عشرين كما كانت** (D-152). */
-          need("top") || need("rising") ? getPeopleLeaderboard(wantAll ? 50 : 20) : [],
-          /* **ثلاثةٌ لا واحد** (D-264، الهجرة ٨٢) */
-          need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
-          /* 🆕 **أكثرُ القوائم حفظاً** (D-289، الهجرة ٩٠): **آخر ٧ أيام
-             وأعلى ٣** كما طلب أحمد بالحرف — **وعشرةٌ في «عرض الكل»**
-             كبقيّة الأقسام. */
-          need("lists") ? getTopSavedListCards(7, wantAll ? 10 : 3) : [],
-        ])
-      : Promise.resolve(null),
-    /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
-       الناسَ كلَّهم لا الغرباءَ وحدهم، **و«متابعة» تحت اسمِ من تتابعه كذبةٌ
-       يراها صاحبُها في الحال** (D-216). **ولا يُدفع في تبويبٍ آخر.**
-       و`getFollowingIds` مخزَّنةٌ (`cache`) ويقرؤها تبويبُ «النشاط» أيضاً،
-       **فالنداءُ واحدٌ للصفحة لا نداءان** (D-205/D-223) — داخلَ الموجة أو
-       خارجَها سواء. */
-    pagerTab ? getFollowingIds() : Promise.resolve(new Set<string>()),
-  ]);
-  const [pins, globalPins, amAdmin] = pinsWave;
-
-  /* الترتيبُ بالتثبيت — في الذاكرة بعد وصول الموجة (انظر تعليقَي D-301
-     وD-314 أعلاه). */
-  const rooms =
-    pins || globalPins
-      ? [...roomsRaw].sort((a, b) => {
-          const rank = (r: (typeof roomsRaw)[number]) => {
-            const key = `${r.mediaType}-${r.tmdbId}`;
-            if (globalPins?.has(key)) return 2;
-            if (pins?.has(key)) return 1;
-            return 0;
-          };
-          return rank(b) - rank(a);
-        })
-      : roomsRaw;
-
-  const featured = peopleTab?.[0] ?? [];
-  const board = peopleTab?.[1] ?? [];
-  const topReviews = peopleTab?.[2] ?? [];
-  const savedLists = peopleTab?.[3] ?? [];
-
-  /* 🆕 **العملُ الذي يدور حوله الكلام — بطاقةٌ واحدةٌ في اللوحة** (D-291).
-     **وبلا نداءٍ جديدٍ ولا هجرة:** `rooms` مجلوبةٌ فوق لهذا التبويب نفسِه
-     (`pagerTab` تشمل `people`)، **فهذه قراءةٌ ثانيةٌ لصفوفٍ مدفوعةٍ مرّةً**
-     (D-194/D-198: نداءٌ واحدٌ يخدم سطحين).
-
-     **والاختيارُ شرطان، وكلاهما مكتوبٌ لأن أحدَهما وحدَه يكذب:**
-     **١) حيّةٌ خلال سبعة أيام** — الدالّةُ ترتّب بـ`last_at` **وتُرجع
-     عدَّ المشاركات كلَّه**، **فغرفةٌ ماتت في مارس ولها أربعون مشاركةً
-     كانت ستتصدّر لوحةً تقول «يدور حوله الكلام» الآن** (D-219).
-     **٢) ثم الأعلى مشاركاتٍ بين الحيّات** — لأن اللوحةَ كلَّها ترتيبٌ،
-     **وأحدثُ غرفةٍ ليست أكثرَها كلاماً** (وهي ما يعرضه تبويبُ «نقاش»
-     أصلاً، **فسطحان يقولان الشيءَ نفسَه أحدُهما زائد** — D-244).
-
-     **وعند التساوي تفوز الأحدث** لأن `reduce` تُبقي الأولى والصفوفُ
-     واصلةٌ مرتّبةً بـ`last_at` تنازليّاً — **تعادلٌ يُحسم بمعنًى لا
-     بالصدفة.**
-
-     ⚠️ **ولا تُحسب في «عرض الكل»**: القسمُ لا يُرسم هناك أصلاً،
-     **وحسابٌ بلا قارئ ثمنٌ بلا سبب** (D-194).
-
-     ⚠️⚠️ **والاختيارُ في `lib` لا هنا، وليس ترتيباً معماريّاً:**
-     **`eslint` ردّ `Date.now()` داخل الرسم** (`react-hooks/purity`) —
-     **ودالّةٌ تقرأ الساعةَ ليست خالصةً فلا تُستدعى في `render`.**
-     **وهو ردٌّ صحيح**: نفسُ الصفحة تُرسم مرّتين فتعطي نتيجتين.
-     **والقاعدةُ التي تبقى: كلُّ ما يقرأ «الآن» يعيش خارج المكوّن** —
-     **وهذا ما لا يمسكه `tsc` ويمسكه `eslint`** (D-289 بالعكس). */
-  /* 🆕 **وللزائر البطاقةُ لا تغيب** (D-630، طلبُ أحمد: «أكثر مناقشة
-     فيها حركة»): قاعدةُ D-291 أسبوعيّةٌ — وأسبوعٌ هادئ يُخفيها عن
-     الجميع، **والغريبُ عن لوبز يستحقّ أنشطَ غرفةٍ إجمالاً حين يصمت
-     الأسبوع** — والعضوُ على القاعدة الأسبوعيّة كما كُتبت. */
-  const talkedAboutWeekly = wantAll ? null : pickTalkedAboutRoom(rooms);
-  const talkedAbout =
-    talkedAboutWeekly ??
-    (!user && !wantAll && rooms.length
-      ? rooms.reduce((best, r) => (r.posts > best.posts ? r : best))
-      : null);
-  /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
-     تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
-     بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
-     **يُقاس القسمُ بما يعرضه هو، لا بما نُودي له** (D-181). */
-  const peopleEmpty =
-    allView === "rising"
-      ? board.every((r) => r.total - r.prevTotal <= 0)
-      : featured.length === 0 && board.length === 0 && topReviews.length === 0;
-
-  /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
-     وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
-     الأولى لا تُظهر حالةً فارغة فتبدو الصفحة معطوبة لا ناقصة.
-     ونداءٌ ثانٍ مشروط لا يدخل `Promise.all`: أكثر الحسابات دائرتُها
-     نشطة، فلا يُدفع ثمنُه إلا من يحتاجه. والمرشِّح يُلغيه — فراغُ
-     مرشِّحٍ ليس فراغ دائرة (نفس تفريق D-106). */
-  /* الأخبار للتبويب الرابع وحده: قسم «جديد فنّانيك» فيها يكلّف نداءات
-     TMDB، ودفعُها في كل فتحةٍ للمجتمع ثمنٌ يدفعه من لم يفتح التبويب */
+  /* الأخبار للتبويب الرابع وحده: قسم «جديد فنّانيك» يكلّف نداءات TMDB */
   const news = tab === "news" ? await getTitleNews() : [];
-  /* **أخبارُنا نحن** (D-211): حقائقُ نرصدها ونكتبها، بلا رابطٍ خارجيّ
-     ولا مصدرٍ يُخفى — **والعناوينُ المجمَّعة رُفعت من الواجهة بطلب أحمد**
-     (الجدولُ والمسار باقيان للفحص، انظر `05`)
+  /* التجديدُ بحركة المرور (D-210/D-261) — بعد إرسال الصفحة */
+  await refreshCommunityAfter(pagerTab);
 
-     **وسقفُها اثنا عشر لا ثلاثون** بعد الدمج: الخبرُ يُولَّد ذاتياً كلَّ
-     دورةٍ والتعليقُ يُكتب بيد إنسان، **فسقفٌ واسعٌ يدفن كلامَ الناس تحت
-     رصدنا نحن** — والتبويب اسمُه «النشاط» لا «الأخبار».
-     ⚠️ **وكان يسقط في «من أتابع»** بحجّة أن خبرَنا ليس كلامَ من تتابع.
-     **والرقاقاتُ الثلاث نقضت الحجّة** (D-240): «لك» ليست «كلامُ مَن»
-     بل **«ما يخصّك»**، **ونشرتُنا تخصّك بحكم فتحك التطبيق**. فيُدفع
-     للتبويب كلِّه، **والترشيحُ في `ActivityFeed` يقرّر بقاءَه.** */
-  const genNews = pagerTab ? await getLoopzNews(12) : [];
-  /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
-     التبويب بعد عشر دقائق يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
-     ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة.
-     **والبوّابةُ زمنٌ لا حركة**: انتقالُها إلى التبويب الافتراضيّ يزيد
-     عددَ من يمرّ بها ولا يزيد عددَ الدورات — أوّلُ مارٍّ بعد العشر
-     دقائق يُطلقها، ومن بعده يجدها غيرَ مستحقّة. */
-  if (pagerTab && (await getNewsGenStale(10))) {
-    after(() => refreshLoopzNews());
-  }
-
-  /* **ونشرةُ الغرفة على البوّابة نفسِها** (D-261) — **وفي التبويبين معاً
-     لا في «نقاش» وحده**: الغرفةُ التي يفتحها Loopz لا توجد بعد،
-     **وبوّابةٌ لا تُطرق إلا من التبويب الذي تملؤه هي حلقةٌ لا تبدأ.**
-     **والثمنُ نداءُ بوّابةٍ واحدٌ** يُرجع منطقياً، والدورةُ كلُّها
-     `after` فلا ينتظرها قارئ (D-215). */
-  if (await getTalkBulletinStale(180)) {
-    after(() => refreshTalkBulletins());
-  }
-
-  /* **حالةُ «+ للمشاهدة» الابتدائية** (D-205/D-223): **نداءٌ واحدٌ
-     مخزَّنٌ (`cache`) للصفحة كلِّها**، لا سؤالٌ من كل بطاقة — ثلاثون بطاقةً
-     تسأل عن نفسها ثلاثون استعلاماً. **ولا يُدفع إلا في تبويبه.** */
-  const followed = pagerTab
-    ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
-    : new Set<string>();
-  /* ✅ 🆕 **وحالةُ مكتبتك الكاملةُ معها** (D-850): **`followed` تجيب
-     «عندك أم لا» وحدَها** — **والخيطُ تحت الملصق يقول أربعةَ أشياء**
-     (D-322) — **فكان يرسم سماويَّ «لم يبدأ» فوق مراجعةٍ لعملٍ انتهيتَ
-     منه.** ⚠️ **ولا نداءَ رابعٌ يُضاف**: `getLibState` ثلاثةٌ مغلَّفةٌ
-     بـ`cache`، **و`getFollows` أوّلُها ومدفوعةٌ في السطر فوقه أصلاً**
-     (D-194/D-291: نداءٌ قائمٌ يحمل الجواب). */
-  const libState = pagerTab ? await getLibState().catch(() => undefined) : undefined;
-
-  /* 🆕 **«النقاشات»: أعمالي المتابَعة فقط** (D-306، نصُّ أحمد: «إخفاء
-     النقاشات اللي ما يتابعها»). **الترشيحُ على مجموعةٍ مدفوعةٍ أصلاً**
-     (`followed` فوقه — D-194/D-291: نداءٌ قائمٌ يحمل الجواب)، **ويخصّ
-     قائمةَ التبويب وحدَها**: بطاقةُ لوحة الأعضاء ترتيبٌ عامٌّ فلا
-     يرشَّح، **ومفتاحُ الورقة يقول ما يفعله في صفحته لا في غيرها.** */
-  const roomsFiltered =
-    talkFollowedOnly && user
-      ? rooms.filter((r) => followed.has(`${r.mediaType}-${r.tmdbId}`))
-      : rooms;
-  /* 🆕 **والزائرُ يرى أفضلَ خمسِ نقاشاتٍ لا الأربعين** (D-628، طلبُ أحمد
-     بالحرف: «يقدر يشوف أفضل ٥ نقاشات»): «الأفضل» بالنشاط — أسبوعُ
-     السبتِ الجاري أوّلاً ثم الإجمالُ — **فأوّلُ ما يراه غريبٌ عن لوبز
-     أحياها لا أرشيفَها.** والعضوُ على قائمته الكاملة كما كان. */
-  const roomsShown = user
-    ? roomsFiltered
-    : [...roomsFiltered]
-        .sort((a, b) => b.postsWeek - a.postsWeek || b.posts - a.posts)
-        .slice(0, 5);
-
-  /* **إعجاباتُ أخبارِنا** (D-224): `post_reactions` القائم منذ `news.sql`،
-     **بنداءٍ واحدٍ للقائمة كلِّها** (`reaction_counts` — دالّة definer
-     تعدّ في Postgres ولا تكشف معرّف من تفاعل). ولا يُدفع لخطٍّ بلا أخبار. */
-  const postLikes = genNews.length
-    ? await getReactions(genNews.map((n) => n.tmdb_id))
-    : { counts: {}, mine: new Set<string>() };
-
-  /* مَن أتابعهم — لصفّ المتابعة في قائمة نقاط كل صفّ (D-225) */
-  const followingIds = pagerTab ? await getFollowingIds() : new Set<string>();
-
-  /* 🔴 🆕 **نشرةُ لوبز تصل من يهمّه خبرُها وحدَه** (D-360، طلبُ أحمد:
-     «نشرات لوبز ما ابغاها كلها تصلني، احتاج فقط الأشياء الي أنا مهتم
-     فيها — لوبز مايكون مزعج، يكون مساعد ذكي»).
-
-     ================= أيُّ إشارةٍ تقول «هذا يهمُّني»؟ =================
-
-     **اختيارُ أحمد: مكتبتي ومَن أتابعهم.** وكلتاهما **محمولةٌ في هذه
-     الصفحة أصلاً**: `followed` مجموعةُ مكتبتي (`getFollows` المخبّأة)
-     و`localized` خطُّ المجتمع الذي يحمل صاحبَ كلِّ صفّ — **فالسؤالُ
-     «أثمّة نداءٌ في هذه الصفحة يحمل الجواب؟» جوابُه نعم** (D-291)،
-     **ولا هجرةَ ولا جدولَ ولا استعلامَ جديد** (D-013).
-
-     ⚠️ **والترشيحُ في الصفحة لا في `loopz_news`**: الدالّةُ يقرؤها
-     تبويبُ أخبار العمل وصفحةُ النشرة أيضاً — **وهناك الخبرُ هو المطلوب
-     بعينه، فمن فتح صفحةَ عملٍ يريد أخبارَه** (D-326/D-348: المنعُ يوضع
-     في الجهة التي تخسر أقلّ).
-
-     🔴 **ومن لا إشارةَ له لا يُرشَّح له**: حسابٌ جديد بلا مكتبةٍ ولا
-     متابَعين **كلُّ الأخبار عنده سواء** — **وترشيحٌ يُفرِغ الخطَّ لمن لم
-     يبنِ ذوقَه بعدُ عقوبةٌ لا مساعدة** (D-181)، **والافتراضُ يبقى
-     السلوكَ القائم حتى توجد إشارة** (D-152). */
-  const talkedByFriends = new Set(
-    localized
-      .filter((a) => a.tmdb_id && a.person?.id && followingIds.has(a.person.id))
-      .map((a) => `${a.media_type}-${a.tmdb_id}`),
-  );
-  const hasTasteSignal = followed.size > 0 || talkedByFriends.size > 0;
-  const newsForMe = hasTasteSignal
-    ? genNews.filter((n) => {
-        const key = `${n.media_type}-${n.tmdb_id}`;
-        return followed.has(key) || talkedByFriends.has(key);
-      })
-    : genNews;
-
-  /* **ردودُ نشراتنا** (D-236): نداءٌ واحد لمفاتيح الخطّ كلِّها، **وسقوطُه
-     صامتٌ قبل الهجرة ٧٣** فتُخفى الأرقام ويبقى الخطُّ مقروءاً. */
-  const newsReplies = genNews.length
-    ? await getNewsReplyCounts(genNews.map((n) => n.key))
-    : new Map<string, number>();
-
-  /* 🆕 **وردودُ آراءِ الناس** (D-289، الهجرة ٨٩): **النصفُ الذي أعلنتُه
-     ناقصاً في D-283 واكتمل اليوم.** نداءٌ واحدٌ لمفاتيح الخطّ كلِّها،
-     **وسقوطُه صامت** فيبقى الترتيبُ بالإعجابات وحدَها. */
-  const reviewReplies = pagerTab
-    ? await getReviewReplyCounts(
-        localized
-          .filter((a) => a.review?.trim())
-          .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
-      )
-    : new Map<string, number>();
-
-  /* 🆕 **قلوبُ آراء القوائم وعددُ ردودها** (D-370، الهجرة ١١٣): **نداءٌ
-     واحدٌ لقوائم الخطّ كلِّها** لا رحلةٌ لكلِّ صفّ (D-205) — **وهذا ما كان
-     محجوزاً عليه ذيلُ صفِّ القائمة** منذ ١٠٦ («لا `list_review_likes`
-     اليوم، **وزرٌّ لا يكتب شيئاً أسوأُ من غيابه**» — D-123).
-     **وسقوطُه صامتٌ قبل الهجرة**: خريطةٌ فارغة، **فيُقرأ الذيلُ صفراً
-     ويبقى الخطُّ** (D-063). */
-  const listSocial = pagerTab
-    ? await getListReviewSocial(
-        [...new Set(localized.map((a) => a.listId).filter(Boolean) as string[])],
-      )
-    : new Map();
-
-  /* **مشاهداتُ منشورات الخطّ** (D-237): نداءٌ واحد لمفاتيح النوعين معاً
-     — **والمفاتيحُ تُبنى هنا بنفس دالّتَي `postKeys`** التي تكتبها
-     الواجهةُ في `data-post-key`، فلا صيغتان تفترقان.
-     **وسقوطُه صامتٌ قبل الهجرة ٧٤**: تُخفى الخانةُ ويبقى الخطُّ. */
-  const viewCounts = pagerTab
-      ? await getPostViewCounts([
-          ...localized
-            .filter((a) => a.review?.trim())
-            .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
-          ...genNews.map((n) => newsViewKey(n.key)),
-        ])
-      : new Map<string, number>();
+  const followed = core?.followed ?? new Set<string>();
+  const libState = core?.libState;
+  const postLikes = core?.postLikes ?? { counts: {}, mine: new Set<string>() };
+  const followingIds = core?.followingIds ?? new Set<string>();
+  const newsForMe = core?.newsForMe ?? [];
+  const newsReplies = core?.newsReplies ?? new Map<string, number>();
+  const reviewReplies = core?.reviewReplies ?? new Map<string, number>();
+  const listSocial = core?.listSocial ?? new Map();
+  const viewCounts = core?.viewCounts ?? new Map<string, number>();
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
@@ -947,7 +591,7 @@ export default async function PeoplePage({
 
       {/* ===== رأس التبويبات =====
           `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
-          واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
+          واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
           تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
       {/* 🆕 **والفهرسُ يملكه العميلُ من هنا** (D-522): الشريطُ واللوحاتُ
           يقرآن رقماً واحداً، **فتبديلُ التبويبات الثلاثة لا يمسّ الخادمَ
