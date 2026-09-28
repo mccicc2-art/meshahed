@@ -12,7 +12,7 @@ import { currentLocale, webLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
-import { mark, navTrace } from "../src/perfMarks";
+import { mark } from "../src/perfMarks";
 import { session } from "../src/session";
 import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
@@ -198,7 +198,6 @@ export default function Web() {
       /* 🆕 K3a-fix — عودةٌ من باب: المجموعةُ تُكمل التي فتحته (إقلاعُها ورئيسيّتُها) لا تُولد «من الويب» —
          وإلّا كشف رجوعٌ منها الصفحةَ الويبيّةَ التي عاد منها للتوّ (`rootsState.ts`) */
       doorBack();
-      navTrace("nav.enter", { screen: "web", why: "gonative", tab: r });
       if (r === "library") router.push("/library");
       else if (r === "discover") router.push("/discover");
       else if (r === "search") router.push("/search");
@@ -280,14 +279,9 @@ export default function Web() {
     if (session.seen()) {
       /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
       rootsBorn(true);
-      navTrace("nav.enter", { screen: "web", why: "boot", tab: "home" });
       router.push("/home");
     }
   }, [loading, u, router]);
-  /* K3a-diag — شاشةُ الويب رُكّبت: مرّةً في الإقلاع؛ ثانيةٌ تعني `replace("/web")` أو نشاطاً أُعيد بناؤه */
-  useEffect(() => {
-    navTrace("nav.enter", { screen: "web", why: "mount" });
-  }, []);
 
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
@@ -414,8 +408,6 @@ export default function Web() {
         return;
       }
       if (msg.type === "native") {
-        /* K3a-diag — الصفحةُ طلبت العودة (رجوعٌ تجاوز صفحةَ الوصول) — وهذه الرسالةُ تمسح `shell.returnTo` */
-        navTrace("nav.enter", { screen: "web", why: "msg", tab: typeof msg.route === "string" ? msg.route : null, ready: hostOk, result: shell.returnTo });
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
         if (hostOk) {
           shell.returnTo = null; /* D-998 — العودةُ سُلِّمت */
@@ -424,7 +416,7 @@ export default function Web() {
         /* library (D-949) · discover (D-955) · search (11-G) · home (11-H) · 🆕 settings[/قسم] (D-1101) —
            كلُّها من `goNative`؛ والقيمةُ تُفحص قبل أن تُدفع بها شاشة */
         if (hostOk && isReturnTo(msg.route)) goNative(msg.route);
-        /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّةٍ يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
+        /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
            `from=web`: الرجوعُ يعود إلى الصفحة الويبيّة نفسِها، وأبوابُ الشاشة تفتح بلا `returnTo`. */
@@ -531,30 +523,23 @@ export default function Web() {
          `goBack()` يحمّل ما قبلها في تاريخ الـWebView — ملفَّه من زيارةٍ سابقة — فيُرسم هيكلُ تحميله ربعَ
          ثانية ثمّ سوادٌ ثمّ تُسلِّم الصفحةُ العودة. الوجهةُ واحدةٌ في الحالين؛ الفرقُ ألّا نمرّ بصفحةٍ لم تُطلب.
          وإن تنقّل داخل الويب بعد الوصول (المسارُ تغيّر) فالرجوعُ رجوعُ الويب حتى يعود إليها. */
-      /* K3a-diag — أيُّ فرعٍ أخذ الضغطة، وبأيّ حالٍ للباب: `tab` وجهةُ العودة، `result` مسارُ الباب، `src` المسارُ الآن */
-      const trace = (why: string) =>
-        navTrace("nav.back", { screen: "web", why, tab: shell.returnTo, result: shell.doorPath, src: path, ready: canGoBack });
       if (shell.returnTo && shell.doorPath === path) {
-        trace("door");
         const route = shell.returnTo;
         shell.disarm();
         goNative(route);
         return true;
       }
       if (canGoBack) {
-        trace("webback");
         ref.current?.goBack();
         return true;
       }
       /* D-998 — لا رجوعَ في الـWebView لكنّ الصفحةَ فُتحت من شاشةٍ أصليّة: نعود إليها لا نخرج */
       if (shell.returnTo) {
-        trace("ret");
         const route = shell.returnTo;
         shell.disarm();
         goNative(route);
         return true;
       }
-      trace("exit");
       return false;
     });
     return () => sub.remove();
@@ -652,8 +637,6 @@ export default function Web() {
               ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(guestTo)}):(location.href=${JSON.stringify(CONFIG.apiBase + guestTo)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + guestTo)};}})();true;`);
               return;
             }
-            /* K3a-diag — ضغطةُ الشريط على صفحةٍ ويبيّة، ومعها ما بقي من الباب */
-            navTrace("nav.enter", { screen: "web", why: "bar", tab: k, result: shell.returnTo, src: path });
             /* 🆕 K3a-fix — ضغطةُ الشريط على صفحةٍ فُتحت من جذر = عودةٌ من الباب: تُكمل المجموعةَ التي فتحته، ويُنزع
                السلاحُ (كان يبقى `returnTo` قديماً — `result=search` في علامات خالد — فيوجّه رجوعاً لاحقاً إلى غير أهله).
                وصفحةٌ لم تُفتح من جذر ⇐ مجموعةٌ من الويب كما كانت (K3). */
@@ -669,7 +652,7 @@ export default function Web() {
               router.push("/discover");
               return;
             }
-            /* Phase 11-G — «بحث» شاشةٌ أصليّةٌ كأختيها */
+            /* Phase 11-G — «بحث» شاشةٌ أصليّة كأختيها */
             if (k === "search") {
               router.push("/search");
               return;

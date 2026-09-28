@@ -50,10 +50,7 @@ export type PerfName =
   /* 🆕 D-1152 — مراحلُ الدخول: نتيجةُ Google وتبادلِ الرمز (`auth.login`)، ثمّ وصولُ التسليم إلى الويب أو ارتدادُه
      إلى الترحيب (`auth.handoff`) — لتشخيص «أوّلُ محاولةٍ ترجع للترحيب» (ثلاثُ مرّاتٍ في تسجيلات ٢٧ سبتمبر) */
   | "auth.login"
-  | "auth.handoff"
-  /* 🆕 K3a-diag — مسارُ الرجوع من الأبواب الويبيّة وكيف وُلدت مجموعةُ الجذور (انظر `navTrace`) */
-  | "nav.back"
-  | "nav.enter";
+  | "auth.handoff";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -161,37 +158,6 @@ export function jankStart(extra: Extra): () => void {
     /* نقرةٌ قُفلت ثمّ رُفعت فوراً لا تقول شيئاً عن السحب */
     if (dur >= 120) mark("gesture.jank", dropped, { ...extra, dur: Math.round(dur) });
   };
-}
-
-/**
- * ====== K3a-diag — أين ذهب زرُّ الرجوع؟ (`nav.back` · `nav.enter`) ======
- *
- * **لماذا**: تسجيلُ خالد على K3a (٢٨ سبتمبر): الرجوعُ من «المجتمع» المفتوح من «اكتشف» هبط على الرئيسيّة، ومن
- * الرئيسيّة كانت الضغطةُ الأولى بلا أثرٍ والثانيةُ خرجت من التطبيق. محاكاةُ الموجِّه (expo-router + jest) تقول إنّ
- * الطريقَ المكتوب صحيح — فالعطبُ في حالةٍ لا تُرى من الكود: مَن استلم الضغطة، وهل كان `shell.returnTo` حيّاً، وهل
- * طابق `doorPath` المسار، وهل وصل الباب أم انتهت مهلتُه. **لا نصلح ما لم نره.** كلُّ حدثٍ علامةٌ بلا هويّة، وقيمتُها
- * زمنُه منذ آخر بابٍ فُتح (فالترتيبُ يُقرأ من الرقم)، والحقولُ كلماتٌ من الكود لا نصٌّ حرّ. تُزال مع الإصلاح.
- */
-let doorT0 = 0;
-/** `shell.open` — صفرُ الساعة لما بعده */
-export function doorOpened() {
-  doorT0 = performance.now();
-}
-/* الخادمُ يقبل كلمةً من ١٦ حرفاً (`WORD`): المسارُ بلا شَرطته الأولى، وما سوى الحروف `_` */
-const word = (s: string | null | undefined) =>
-  s == null || s === "" ? "none" : s.replace(/^\//, "").replace(/[^\w.-]/g, "_").slice(0, 16) || "root";
-export function navTrace(
-  name: "nav.back" | "nav.enter",
-  f: { screen: string; why: string; tab?: string | null; result?: string | null; ready?: boolean; src?: string | null },
-) {
-  mark(name, doorT0 ? performance.now() - doorT0 : 0, {
-    screen: word(f.screen),
-    why: word(f.why),
-    tab: word(f.tab),
-    result: word(f.result),
-    ready: f.ready ? 1 : 0,
-    src: word(f.src),
-  });
 }
 
 /**

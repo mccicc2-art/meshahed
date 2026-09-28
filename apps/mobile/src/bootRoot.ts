@@ -1,10 +1,9 @@
 import { useCallback } from "react";
 import { BackHandler } from "react-native";
 import { useRouter } from "expo-router";
-import { navTrace } from "./perfMarks";
 /* 🆕 K3a-fix — الحالةُ وقواعدُها في `rootsState.ts` (بلا اعتماديّات، مختبَرة في `npm test`) */
-import { backFrom, rootsMounted as mounted, rootsState } from "./rootsState";
-export { rootsBorn, doorLeft, doorBack, homeSeen } from "./rootsState";
+import { backFrom } from "./rootsState";
+export { rootsBorn, rootsMounted, doorLeft, doorBack, homeSeen } from "./rootsState";
 
 /**
  * ====== D-1078 — علامةُ الإقلاع تسافر بين الجذور الأربعة ======
@@ -26,14 +25,6 @@ export { rootsBorn, doorLeft, doorBack, homeSeen } from "./rootsState";
  */
 export type RootPath = "/home" | "/library" | "/discover" | "/search";
 
-/** `(tabs)/_layout` عند تركيب مجموعةٍ جديدة */
-export function rootsMounted() {
-  mounted();
-  /* K3a-diag — وُلدت مجموعةٌ جديدة: من الإقلاع أم من الويب (و`ready` = هل ورثت رئيسيّةً من باب) */
-  const r = rootsState();
-  navTrace("nav.enter", { screen: "tabs", why: "mount", src: r.boot ? "boot" : "web", ready: r.homeSeen });
-}
-
 export function useBootRoot() {
   const router = useRouter();
 
@@ -47,9 +38,6 @@ export function useBootRoot() {
   const bootBack = useCallback(
     (self: RootPath) => {
       const d = backFrom(self);
-      /* K3a-diag — جذرٌ استلم الرجوع: ماذا قرّر، وبأيّ حالةٍ للمجموعة */
-      const r = rootsState();
-      navTrace("nav.back", { screen: self, why: d, src: r.boot ? "boot" : "web", ready: r.homeSeen });
       if (d === "pass") return false;
       if (d === "exit") BackHandler.exitApp();
       else router.navigate("/home");
