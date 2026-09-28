@@ -1,7 +1,8 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useIsFocused, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
+import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBootRoot } from "../bootRoot";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
@@ -118,7 +119,9 @@ export function LibraryScreen() {
   /* F0 (D-1024) — `library.open`: من تركيب الشاشة إلى أوّل تخطيطٍ للوحٍ فيه بيانات. و`cached`
      يقول إن كانت البياناتُ في الكاش لحظةَ التركيب — فيُقرأ أثرُ F2 من الرقم نفسِه. */
   const [endOpen] = useState(() => span("library.open", { cached: queryClient.getQueryData(qk.tag("me:library")) ? 1 : 0 }));
-  useEffect(() => tabLanded("library"), []);
+  /* K3 — «وصلتُ» عند كلِّ ظهورٍ للتبويب الثابت، والشائخُ من بياناته يُجدَّد */
+  useFocusEffect(useCallback(() => tabLanded("library"), []));
+  useRefetchOnFocus(["me:library"]);
   const onPaneReady = useCallback(() => {
     endOpen();
     coldStartOnce("coldstart.library");
@@ -156,15 +159,18 @@ export function LibraryScreen() {
 
   /* D-1078 — جذرٌ وُلد من الإقلاع: رجوعُ النظام إلى الرئيسيّة الأصليّة، لا يكشف رئيسيّةَ الويب تحته */
   const { switchTo, bootBack } = useBootRoot();
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (bootBack("/library")) return true;
-      back();
-      return true;
-    });
-    return () => sub.remove();
-  }, [back, bootBack]);
+  /* K3 — الرجوعُ للتبويب الظاهر وحدَه (الجذورُ مركَّبةٌ معاً) */
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") return;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (bootBack("/library")) return true;
+        back();
+        return true;
+      });
+      return () => sub.remove();
+    }, [back, bootBack]),
+  );
 
   /* 🆕 D-951 — **الخروجُ إلى صفحةٍ ويبيّة يُغلق الشاشةَ بعد وصولها لا قبله**:
      `shell.open` تعِد بالوصول (أو بمهلة)، والشاشةُ تبقى فوق الـWebView حتّى
@@ -755,7 +761,7 @@ function LibraryPane({
      عند أوّل تحميل، **واللوحُ شفّافٌ حتّى يستقرّ** فلا تُرى القفزةُ من الصفر. والموضعُ يُقرأ
      مرّةً عند التركيب: أحداثُ التمرير الأولى تكتب في `memory` قبل الاستعادة.
      ⚖️ الثمن معلَن: القائمةُ الافتراضيّة تقدّر ارتفاعَ ما لم تقسه بعد، فموضعٌ عميقٌ قد يرسو
-     بفارق صفٍّ — يُراجَع على الجهاز. وأحداثُ ما قبل الاستعادة لا تصل الكسوةَ الذكيّة: قفزةُ
+     بفارق صفٍّ — يُراجَع على الجهاز. وأحداثُ ما قبل الاستعادة لا تصل الكسوةَ الذكيّة: قفزةُ
      الاستعادة ليست «نزولاً» فلا تُخفي الرأس. */
   const listRef = useRef<FlashListRef<Row>>(null);
   const [startY] = useState(() => memory.y[tab] ?? 0);
@@ -868,7 +874,7 @@ function LibraryPane({
  * 🔑 **يتبدّل ما يحمل القائمة لا ما تعرضه** (التصميمُ مجمَّد): الفواصلُ نفسُها بالبكسل —
  * ٢٨ بين الرفوف، ٦ بين رأس الرفّ وجسمه (`mb 2` + فاصل ٤)، ١٢ بين صفوف الشبكة — لكنّها
  * صارت `mt` على الصفّ لأنّ القائمة الافتراضيّة لا تعرف `gap`. وحشوةُ الصفحة ١٦ انتقلت
- * من الحاوية إلى كلِّ صفٍّ، **إلّا الرفَّ الأفقيّ** الذي كان يُلغيها بـ`-mx-4` ليلامس الحافّة.
+ * من الحاوية إلى كلِّ صفٍّ، **إلّا الرفَّ الأفقيّ** الذي كان يُلغيها بـ`-mx-4` ليلامس الحافّة.
  * والرفُّ المطويُّ `FlatList` الأفقيُّ نفسُه بلا تغيير.
  */
 type Row =
@@ -912,7 +918,7 @@ const GridRow = memo(function GridRow({ row, cellW, sight, onOpen, onHold }: { r
     <View style={{ flexDirection: "row", gap: GAP, paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
       {/* ⚖️ مراجعةُ ما قبل الرفع (D-1025): **المفتاحُ موضعُ الخانة لا هويّةُ العمل.** القائمةُ تعيد
           استعمالَ الصفّ لبياناتٍ أخرى؛ بمفتاح العمل كان React ينزع بطاقاتِ الصفّ الأربع ويركّبها من
-          جديد مع كلِّ صفٍّ يدخل الشاشة — وهو عينُ الكلفة التي جاءت الافتراضيّةُ لإزالتها. بالموضع
+          جديد مع كلِّ صفٍّ يدخل الشاشة — وهو عينُ الكلفة التي جاءت الافتراضيّةُ لإزالتها. بالموضع
           تُحدَّث البطاقةُ في مكانها، والصورةُ تتبدّل بـ`recyclingKey`. */}
       {row.items.map((it, i) => (
         <PosterCard key={i} item={it} width={cellW} onPress={onOpen} onHold={onHold} marquee={seen} />
@@ -940,7 +946,7 @@ const RailRow = memo(function RailRow({ row, sight, onOpen, onHold }: { row: Ext
   );
   return (
     <FlatList
-      /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
+      /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
       key={row.key}
       horizontal
       data={row.items}
@@ -1010,7 +1016,7 @@ function statusLabel(s: LibraryStatus, t: ReturnType<typeof useApp>["t"]): strin
 
 /** الهيكلُ أثناء التحميل — `aspect-[2/3] rounded-poster bg-surface border animate-pulse` (G6).
     D-1092 (تسجيلُ أحمد على 1.11.9: المكتبةُ «سوداء» ثلاثَ ثوانٍ): `surface` بشفافيّة ٠٫٧ على الأسود
-    لا يُرى — بقي منه خطُّ الإطار العلويّ وحده. الآن رأسُ رفٍّ وخلايا `surface2` كهيكل «اكتشف» حرفاً
+    لا يُرى — بقي منه خطُّ الإطار العلويّ وحده. الآن رأسُ رفٍّ وخلايا `surface2` كهيكل «اكتشف» حرفاً
     (`DiscoverScreen` صفٌّ بلا بيانات) — هيكلٌ واحد للعائلتين. */
 function Skeleton({ cols, cellW }: { cols: number; cellW: number }) {
   const { tokens } = useApp();
