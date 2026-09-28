@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useNavigationContainerRef, useRouter } from "expo-router";
+import { stackAboveRoots } from "../nativeStack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
@@ -63,6 +64,7 @@ const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, of
 export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
+  const nav = useNavigationContainerRef();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
 
@@ -111,8 +113,9 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   /* بابُ الويب لما لم يُنقل بعد — الرجوعُ منه يعيد الشاشةَ التي فُتحت منها القائمة (D-949) */
   /* 🔴 M3-fix — `dismissAll` لا `back()`: القائمةُ من جذرٍ فوق مجموعة التبويبات، فالرجوعُ خطوةً يكشف الجذرَ لا الصفحة */
   const openWeb = useCallback(
-    (path: string) => void shell.open(path, { returnTo: from }).then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
-    [from, router],
+    (path: string) =>
+      void shell.open(path, { returnTo: from, resume: stackAboveRoots(nav.getRootState()) }).then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+    [from, router, nav],
   );
 
   const holdHost = useRef<HoldHostRef<CuratedCard>>(null);

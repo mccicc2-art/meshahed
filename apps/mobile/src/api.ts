@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
+import { File } from "expo-file-system";
 import { CONFIG } from "./config";
 import { accessToken } from "./auth";
 import { session } from "./session";
@@ -134,6 +135,19 @@ export function useGuestUpgrade(guest: boolean, refetch: () => unknown): { faile
     });
   }, [guest, refetch, ask]);
   return { failed: guest && failed, retry: ask };
+}
+
+/**
+ * 🔴 M3-fix — **جزءُ ملفٍّ في النموذج من ملفٍّ على القرص** — الشكلُ الوحيدُ الذي يقبله `fetch` في Expo 57.
+ *
+ * `fetch` العامُّ صار `expo/fetch` (يثبّته `expo/src/winter`)، و`convertFormData` فيه **لا يقبل جزءَ `{uri,name,type}`**
+ * الذي كان RN يقرأ ملفَّه بنفسه: يرمي «Unsupported FormDataPart implementation» قبل أن يخرج الطلب — فلا أثرَ في
+ * الخادم ولا في المخزن (بلاغُ خالد بلقطة ٢٨ سبتمبر بعد أن سمّت M3-fix السبب). يقبل ما له `bytes()`، ويأخذ اسمَ
+ * الملفّ ونوعَه من `name`/`type` — فهذا كائنٌ بالثلاثة، والبايتاتُ تُقرأ من القرص حين يُبنى الجسم (ومحاولةُ `401`
+ * الثانية تقرؤها ثانيةً). **وصورةُ الملفّ والغلاف كانتا على الشكل القديم نفسِه** فتمرّان من هنا أيضاً.
+ */
+export function filePart(uri: string, name: string, type: string): Blob {
+  return { name, type, bytes: async () => new Uint8Array(await new File(uri).arrayBuffer()) } as unknown as Blob;
 }
 
 /**

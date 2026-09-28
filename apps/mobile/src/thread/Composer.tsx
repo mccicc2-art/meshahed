@@ -8,7 +8,7 @@ import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
-import { ApiError, postForm } from "../api";
+import { ApiError, filePart, postForm } from "../api";
 import { Sheet } from "../library/Sheet";
 import { Chip } from "../library/Chip";
 import { GifImage, GifPicker } from "./GifPicker";
@@ -99,8 +99,7 @@ export function Composer({
       const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.82, format: SaveFormat.JPEG });
       stage = "send";
       const form = new FormData();
-      /* RN يقبل `{uri,name,type}` جزءاً في النموذج — يقرأ الملفَّ من القرص بنفسه */
-      form.append("file", { uri: img.uri, name: "talk.jpg", type: "image/jpeg" } as unknown as Blob);
+      form.append("file", filePart(img.uri, "talk.jpg", "image/jpeg"));
       const out = await postForm<ThreadImagePayload>("/api/v1/thread/image", form);
       setImage(out.url);
       haptic.pick();

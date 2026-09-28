@@ -168,6 +168,8 @@ export default function Web() {
   const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [path, setPath] = useState("/");
+  /* 🆕 M3-fix — المسارُ لـ`goNative` (يُنادى من مستمعاتٍ لا تُعاد مع كلِّ تنقّل) */
+  const pathRef = useRef("/");
   /* 🔴 D-1150 — **الصفحةُ تقول إنّها العتبة، لا التطبيقُ يخمّن** (تسجيلُ أحمد: بعد الدخول رئيسيّةٌ بلا شريط —
      D-1148 حكم بـ`session.seen()` ساعةَ الرسم، والأثرُ يُكتب بعد أوّل رمز). `AppGateSignal` في بطل الترحيب يرسل
      `gate` عند التركيب والفكّ، ويُصفَّر مع كلِّ تحميل مستندٍ جديد (فكُّ المكوّن لا يجري عند مغادرة المستند). */
@@ -210,6 +212,9 @@ export default function Web() {
         router.push("/settings");
         if (section) router.push({ pathname: "/settings/[section]", params: { section } });
       }
+      /* 🆕 M3-fix — **ثمّ ما كان فوق الجذر** (غرفةٌ، عملٌ تحتها…) بترتيبه: العودةُ إلى المكان نفسِه لا إلى الجذر
+         (`nativeStack.ts`). من صفحة الباب وحدَها — من تنقّل في الويب بعدها ثمّ عاد بالشريط يعود إلى الجذر كما كان */
+      for (const e of shell.takeResume(r, pathRef.current)) router.push({ pathname: e.pathname as never, params: e.params });
     },
     [router],
   );
@@ -311,6 +316,7 @@ export default function Web() {
       /* عنوانٌ لا يُقرأ ⇒ الرئيسيّة */
     }
     setPath(next);
+    pathRef.current = next;
     if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
     /* 🆕 11-M · M1-fix — **البابُ من جذرٍ يُضيء خانةَ جذره** (تسجيلُ أحمد ٢٨ سبتمبر: غرفةُ نقاشٍ فُتحت من «المجتمع»
        والشريطُ يُضيء «الرئيسيّة»). D-1035 وعد بأن يُؤخذ الأصلُ من `shell.returnTo` لحظةَ الفتح، لكنّه لم يُكتب إلّا

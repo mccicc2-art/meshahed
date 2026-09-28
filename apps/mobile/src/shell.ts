@@ -1,5 +1,6 @@
 import { CONFIG } from "./config";
 import { doorLeft } from "./rootsState";
+import type { StackEntry } from "./nativeStack";
 
 /**
  * بابُ الشاشات الأصليّة إلى الـWebView (Phase 11 · B1): الشاشةُ الأصليّةُ لا
@@ -76,12 +77,24 @@ export const shell = {
    * ثمّ يُسلِّم. يُمحى مع `returnTo`.
    */
   doorPath: null as string | null,
+  /**
+   * 🆕 M3-fix — **الشاشاتُ الأصليّةُ فوق الجذر لحظةَ الخروج** (`nativeStack.ts`): العودةُ من صفحة الباب تدفعها ثانيةً بعد
+   * الجذر فيعود المستخدمُ إلى الغرفة لا إلى «المجتمع». تُستهلك مرّةً، وتُمحى مع كلِّ بابٍ جديد.
+   */
+  resume: null as { root: ReturnTo; path: string; stack: StackEntry[] } | null,
+  /** يُنادى من `goNative` بعد دفع الجذر: ما يُعاد فوقه — **إن كانت العودةُ من صفحة الباب نفسِها** إلى جذرها نفسِه */
+  takeResume(root: ReturnTo, path: string): StackEntry[] {
+    const r = shell.resume;
+    shell.resume = null;
+    return r && r.root === root && r.path === path ? r.stack : [];
+  },
   /** 🆕 D-1103 — يُنادى لحظةَ وصول الصفحة المطلوبة (قبل نزول الشاشة الأصليّة) — `web.tsx` يرفع درعَ اللمس */
   onArrive: null as (() => void) | null,
-  open(path: string, opts?: { returnTo?: ReturnTo }): Promise<void> {
+  open(path: string, opts?: { returnTo?: ReturnTo; resume?: StackEntry[] }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
+    shell.resume = opts?.returnTo && opts.resume?.length ? { root: opts.returnTo, path: path.split("?")[0], stack: opts.resume } : null;
     /* 🆕 K3a-fix — جذرٌ يخرج إلى الويب ويعود: تُحفظ حالةُ مجموعته لتُكملها العودة (`rootsState.doorBack`) */
     if (opts?.returnTo) doorLeft();
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";

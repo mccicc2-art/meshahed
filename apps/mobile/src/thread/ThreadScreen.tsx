@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Platform, Pressable, Share, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, write } from "../api";
 import { CONFIG } from "../config";
@@ -24,6 +24,7 @@ import { ReplyItem, TEMP } from "./ReplyItem";
 import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { displayNameOf, profileHref } from "@/core/people";
+import { stackAboveRoots } from "../nativeStack";
 import { orderThread, buildTree, countUnder, canReplyTo, PEEK } from "@/core/threadOrder";
 import type { ThreadPayload, ThreadRow, ThreadTarget, ThreadReplyResult, LikeBody } from "../contracts";
 
@@ -67,9 +68,18 @@ type Item =
   | { type: "row"; row: ThreadRow; depth: number; indented: boolean; toName: string | null }
   | { type: "more"; rootId: string; rest: number };
 
+/**
+ * 🆕 M3-fix — **ذاكرةُ الغرفة عند الخروج إلى بابٍ ويبيّ** (أحمد: «المفترض يرجعني مكان ما كنت بالضبط»): الشاشةُ تُنزَل
+ * لتظهر الصفحة ثمّ تُدفع ثانيةً عند العودة (`nativeStack.ts`)، فحالتُها تُحفظ هنا لا في الشاشة. تُكتب عند الخروج
+ * وتُستهلك في التركيب التالي، **وتشيخ بعد عشر دقائق** — فتحٌ لاحقٌ للغرفة نفسِها من مكانٍ آخر يبدأ من أعلاها.
+ */
+const threadView = new Map<string, { y: number; toggled: string[]; expanded: string[]; at: number }>();
+const VIEW_TTL_MS = 10 * 60_000;
+
 export function ThreadScreen({ route, from }: { route: ThreadRoute; from: NativeRoot | "web" }) {
   const { t, tokens } = useApp();
   const router = useRouter();
+  const nav = useNavigationContainerRef();
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
   const key = useMemo(() => threadKey(route), [route]);
@@ -111,7 +121,10 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
     (path: string) => {
       if (leaving) return;
       setLeaving(true);
-      void shell.open(path, from === "web" ? undefined : { returnTo: from }).then(() => {
+      /* M3-fix — موضعُ القراءة والشجرةُ المفتوحة تُحفظ، وما فوق الجذر يُلتقط، فالرجوعُ من الصفحة يعيد الغرفةَ كما تُركت */
+      threadView.set(JSON.stringify(key), { y: scrollY.current, toggled: [...openNow.current.toggled], expanded: [...openNow.current.expanded], at: Date.now() });
+      const resume = from === "web" ? undefined : stackAboveRoots(nav.getRootState());
+      void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then(() => {
         setLeaving(false);
         /* 🔴 M3-fix — **تُنزَل الشاشاتُ كلُّها لا هذه وحدَها** (بلاغُ خالد بتسجيل ٢٨ سبتمبر: صورةُ الشخص في غرفةٍ فُتحت
            من «المجتمع» أعادته إلى «المجتمع» لا إلى ملفّه). الـWebView جذرُ المكدّس (D-1075)، والغرفةُ من جذرٍ فوق
@@ -120,7 +133,7 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
         leave();
       });
     },
-    [leaving, from, leave],
+    [leaving, from, leave, key, nav],
   );
   const openTitle = useCallback(() => {
     if (!d) return;
@@ -138,8 +151,27 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
   const busy = useRef(new Set<string>());
 
   /* ——— الشجرة ——— */
-  const [toggled, setToggled] = useState<ReadonlySet<string>>(() => new Set());
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  /* 🆕 M3-fix — عودةٌ من بابٍ ويبيّ (ملفُّ شخص): الشجرةُ كما تُركت وموضعُ القراءة نفسُه — تُستهلك الذاكرةُ مرّةً */
+  const [restored] = useState(() => {
+    const k = JSON.stringify(key);
+    const v = threadView.get(k);
+    threadView.delete(k);
+    return v && Date.now() - v.at < VIEW_TTL_MS ? v : null;
+  });
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(() => new Set(restored?.toggled));
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(restored?.expanded));
+  /* يقرؤه `openWeb` (معرَّفٌ فوق) لحظةَ الخروج — مرجعٌ لا تبعيّة، فلا يُعاد بناءُ الباب مع كلِّ طيّ */
+  const openNow = useRef({ toggled, expanded });
+  openNow.current = { toggled, expanded };
+  const listRef = useRef<FlatList<Item>>(null);
+  const scrollY = useRef(0);
+  const pendingY = useRef(restored && restored.y > 0 ? restored.y : null);
+  const restoreTo = useCallback((contentH: number) => {
+    const y = pendingY.current;
+    if (y == null || contentH < y) return;
+    pendingY.current = null;
+    listRef.current?.scrollToOffset({ offset: y, animated: false });
+  }, []);
   const nested = !!d?.nested;
   const { items, tree, nameOf } = useMemo(() => {
     const rows = d ? orderThread(d.rows, { votes: d.has_votes, plusFirst: !d.has_votes && d.head.kind === "review" }) : [];
@@ -416,6 +448,12 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
         </View>
       ) : (
         <FlatList
+          ref={listRef}
+          onScroll={(e) => {
+            scrollY.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={64}
+          onContentSizeChange={(_, h) => restoreTo(h)}
           data={items}
           keyExtractor={(it) => (it.type === "row" ? it.row.id : `more:${it.rootId}`)}
           renderItem={renderItem}

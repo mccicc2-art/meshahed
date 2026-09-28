@@ -13,7 +13,7 @@ import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
-import { api, postForm, queryClient, write, ApiError } from "../api";
+import { api, filePart, postForm, queryClient, write, ApiError } from "../api";
 import { Sheet } from "../library/Sheet";
 import type { ToastHostRef } from "../HoldHost";
 import type { ProfileEditPayload, ProfileImagePayload, ProfileSaveBody } from "../contracts";
@@ -96,8 +96,8 @@ export function ProfileScreen() {
       form.append("kind", kind);
       const prev = pendingUpload.current[kind];
       if (prev) form.append("replaces", prev);
-      /* RN يقبل `{uri,name,type}` جزءاً في النموذج — يقرأ الملفَّ من القرص بنفسه */
-      form.append("file", { uri: img.uri, name: `${kind}.jpg`, type: "image/jpeg" } as unknown as Blob);
+      /* 🔴 M3-fix — `filePart` لا `{uri,name,type}`: `expo/fetch` يرفض الشكلَ القديم (رأسُ `filePart`) */
+      form.append("file", filePart(img.uri, `${kind}.jpg`, "image/jpeg"));
       const out = await postForm<ProfileImagePayload>("/api/v1/me/profile/image", form);
       pendingUpload.current[kind] = out.url;
       set(kind === "avatar" ? "avatarUrl" : "coverUrl", out.url);

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useNavigationContainerRef, useRouter } from "expo-router";
+import { stackAboveRoots } from "../nativeStack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, write, ApiError, softGet, isGuest, useGuestUpgrade } from "../api";
@@ -67,6 +68,7 @@ const PAGE_PAD = 16;
 export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
+  const nav = useNavigationContainerRef();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const { width } = useWindowDimensions();
@@ -249,8 +251,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     /* 🔴 M3-fix — تُنزَل الشاشاتُ كلُّها (`dismissAll`) لا هذه وحدَها: من جذرٍ نحن فوق مجموعة التبويبات، و`back()` كان يكشف
        الجذرَ والصفحةُ فُتحت تحته في الـWebView لا تُرى (العلّةُ نفسُها التي ظهرت في صورة الشخص بالغرفة) */
     (suffix = "", absolute?: string) =>
-      void shell.open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from }).then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
-    [webPath, router, from],
+      void shell
+        .open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from, resume: stackAboveRoots(nav.getRootState()) })
+        .then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+    [webPath, router, from, nav],
   );
   const openTitle = useCallback((k: "tv" | "movie", tid: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: k, id: String(tid), from } }), [router, from]);
 
