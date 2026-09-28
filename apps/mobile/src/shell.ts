@@ -1,5 +1,6 @@
 import { CONFIG } from "./config";
 import { doorOpened, navTrace } from "./perfMarks";
+import { doorLeft } from "./rootsState";
 
 /**
  * بابُ الشاشات الأصليّة إلى الـWebView (Phase 11 · B1): الشاشةُ الأصليّةُ لا
@@ -81,6 +82,8 @@ export const shell = {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
+    /* 🆕 K3a-fix — جذرٌ يخرج إلى الويب ويعود: تُحفظ حالةُ مجموعته لتُكملها العودة (`rootsState.doorBack`) */
+    if (opts?.returnTo) doorLeft();
     /* K3a-diag — البابُ فُتح: من أين وإلى أين (والساعةُ تبدأ منه) */
     doorOpened();
     navTrace("nav.enter", { screen: "door", why: "open", tab: shell.returnTo, src: shell.doorPath ?? path });
