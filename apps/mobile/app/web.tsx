@@ -16,7 +16,7 @@ import { mark, navTrace } from "../src/perfMarks";
 import { session } from "../src/session";
 import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
-import { rootsBorn } from "../src/bootRoot";
+import { doorBack, rootsBorn } from "../src/bootRoot";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
@@ -95,7 +95,8 @@ function atGate(p: string, landing: boolean): boolean {
  * و«تم النسخ» معاً): WebView أندرويد بلا `navigator.share`، فكلُّ زرِّ مشاركةٍ في الويب كان يسقط إلى
  * الحافظة — أيقونةُ مشاركةٍ تنسخ، وأندرويد 13+ يؤكّد النسخَ بنفسه فوق توستنا. الآن الدالّةُ تُعرَّف
  * قبل المستند وتطلب ورقةَ النظام من الغلاف (`share` في `onMessage`)، فأزرارُ المشاركة كلُّها
- * (`ShareTitleButton` · `DetailTopBar` · `ShareListSheet` · الدعوات) تفتح واتساب/X دون أن تُمسّ. الإطارُ الأعلى وحدَه (لا مشغّلُ يوتيوب)، ولا تُستبدل دالّةٌ موجودة. الوعدُ يُرفض `AbortError`
+ * (`ShareTitleButton` · `DetailTopBar` · `ShareListSheet` · الدعوات) تفتح واتساب/X دون أن تُمسّ.
+ * الإطارُ الأعلى وحدَه (لا مشغّلُ يوتيوب)، ولا تُستبدل دالّةٌ موجودة. الوعدُ يُرفض `AbortError`
  * حين يُغلق المستخدمُ الورقة (iOS) — وهو ما يعدّه الويبُ «ليس خطأً» فلا ينسخ بعده.
  */
 const SHARE_BRIDGE =
@@ -194,8 +195,9 @@ export default function Web() {
    */
   const goNative = useCallback(
     (r: ReturnTo) => {
-      /* K3 — المجموعةُ تُدفع من الويب: رجوعُها إلى الصفحة التي جاءت منها (`bootRoot`) */
-      rootsBorn(false);
+      /* 🆕 K3a-fix — عودةٌ من باب: المجموعةُ تُكمل التي فتحته (إقلاعُها ورئيسيّتُها) لا تُولد «من الويب» —
+         وإلّا كشف رجوعٌ منها الصفحةَ الويبيّةَ التي عاد منها للتوّ (`rootsState.ts`) */
+      doorBack();
       navTrace("nav.enter", { screen: "web", why: "gonative", tab: r });
       if (r === "library") router.push("/library");
       else if (r === "discover") router.push("/discover");
@@ -650,10 +652,15 @@ export default function Web() {
               ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(guestTo)}):(location.href=${JSON.stringify(CONFIG.apiBase + guestTo)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + guestTo)};}})();true;`);
               return;
             }
-            /* K3 — المجموعةُ تُدفع من الويب (`bootRoot`) */
-            rootsBorn(false);
-            /* K3a-diag — ضغطةُ الشريط على صفحةٍ ويبيّة لا تنزع سلاحَ الباب: تُسجَّل ومعها ما بقي منه */
+            /* K3a-diag — ضغطةُ الشريط على صفحةٍ ويبيّة، ومعها ما بقي من الباب */
             navTrace("nav.enter", { screen: "web", why: "bar", tab: k, result: shell.returnTo, src: path });
+            /* 🆕 K3a-fix — ضغطةُ الشريط على صفحةٍ فُتحت من جذر = عودةٌ من الباب: تُكمل المجموعةَ التي فتحته، ويُنزع
+               السلاحُ (كان يبقى `returnTo` قديماً — `result=search` في علامات خالد — فيوجّه رجوعاً لاحقاً إلى غير أهله).
+               وصفحةٌ لم تُفتح من جذر ⇐ مجموعةٌ من الويب كما كانت (K3). */
+            if (shell.returnTo) {
+              shell.disarm();
+              doorBack();
+            } else rootsBorn(false);
             if (k === "library") {
               router.push("/library");
               return;
