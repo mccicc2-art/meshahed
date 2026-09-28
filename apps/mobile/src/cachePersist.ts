@@ -26,7 +26,7 @@ import { currentLocale, webLocale } from "./i18n";
  *      أيٍّ منها عند القراءة ⇒ يُحذف ولا يُقرأ.
  *  ٢ · الخروجُ (`session.signOut`: رسالةُ `session:clear` من الصفحة، أو عنوانُ `/auth/signout`
  *      أو `/login` في الـWebView) ⇒ `queryClient.clear()` وحذفُ الملف **قبل** أن يدخل أحد —
- *      والدخولُ Google وحدَه ويمرّ بـ`/login` حتماً.
+ *      والدخولُ Google وحدَه ويمرُّ بـ`/login` حتماً.
  *  ٣ · وأوّلُ رمزٍ يصل بـ`sub` غيرِ صاحب الملف ⇒ المسحُ نفسُه (حزامٌ ثانٍ).
  *  ⚖️ **`session.clear()` العاديّةُ لا تمسح**: الرمزُ يشيخ كلَّ ساعة ويُمسح بعد خمس دقائق في
  *  الخلفيّة — وهذا ليس خروجاً؛ لو مسحنا معه لما عاش الكاشُ يوماً.
@@ -35,7 +35,7 @@ import { currentLocale, webLocale } from "./i18n";
 /* 🆕 D-1083 — و`home` و`home:extras`: الرئيسيّةُ الأصليّة صارت شاشةَ الإقلاع (D-1075)، فتُرسم من
    آخر حمولةٍ محفوظة فورَ الفتح ثمّ تتجدّد حين يصل الرمز — بدل هيكلٍ فارغٍ ينتظر الجلسة. الملكيّةُ
    والعمرُ والإصدارُ واللغةُ تُفحص كما لأخواتها، والخروجُ يمسحها معها */
-const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists"]);
+const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists", "community"]);
 /* D-1091 — **سبعةُ أيام لا يوم، ونسخةُ العقد لا نسخةُ التطبيق** (أحمد: الفتحُ الأوّل بعد كلِّ تحديثٍ
    يعود دوّامةً): كان الملفُّ يُرفض إن اختلف `app.json` أو مضى يوم — فكلُّ إصدارٍ (وهي شبهُ يوميّة) يعيد
    الهيكلَ الفارغ. الهيكلُ لا يتغيّر بتغيّر الإصدار بل بتغيّر **عقود** الحمولات المحفوظة؛ فالمفتاحُ
