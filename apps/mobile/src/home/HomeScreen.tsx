@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useBootRoot } from "../bootRoot";
+import { useFocusEffect, useRouter } from "expo-router";
+import { homeSeen, useBootRoot } from "../bootRoot";
+import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { warmDiscoverOnce } from "../discover/DiscoverScreen";
 import { useQueryClient } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
@@ -74,7 +75,14 @@ export function HomeScreen() {
       coldStartOnce("coldstart.home");
     });
   }, [d, endOpen]);
-  useEffect(() => tabLanded("home"), []);
+  /* K3 — التبويبُ ثابت: «وصلتُ» عند كلِّ ظهورٍ لا عند التركيب وحدَه — ومعه أنّ للمجموعة رئيسيّةً يُرجع إليها */
+  useFocusEffect(
+    useCallback(() => {
+      homeSeen();
+      tabLanded("home");
+    }, []),
+  );
+  useRefetchOnFocus(["home"]);
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
     if (d) warmDiscoverOnce();
@@ -98,15 +106,18 @@ export function HomeScreen() {
   /* D-1075 — رئيسيّةٌ رُفعت عند الإقلاع (`boot=1`): زرُّ الرجوع يخرج من التطبيق كما كان يفعل من
      الويب، لا يكشف رئيسيّةَ الويب المحمَّلةَ تحتها */
   const { switchTo, bootBack } = useBootRoot();
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (bootBack("/home")) return true;
-      back();
-      return true;
-    });
-    return () => sub.remove();
-  }, [back, bootBack]);
+  /* K3 — الرجوعُ للتبويب الظاهر وحدَه: الجذورُ الأربعة مركَّبةٌ معاً، ومستمعٌ في تبويبٍ مخفيّ كان سيسبق الظاهر */
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") return;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (bootBack("/home")) return true;
+        back();
+        return true;
+      });
+      return () => sub.remove();
+    }, [back, bootBack]),
+  );
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
@@ -125,11 +136,12 @@ export function HomeScreen() {
     (href: string) => {
       const m = /^\/(show|movie)\/(\d+)/.exec(href);
       if (m) return openTitle(m[1] === "show" ? "tv" : "movie", Number(m[2]));
-      if (href.startsWith("/library")) return router.push("/library");
-      if (href === "/search" || href.startsWith("/search?")) return router.push("/search");
+      /* K3 — المكتبةُ والبحثُ تبويبان: انتقالٌ إليهما لا دفعٌ فوق الرئيسيّة */
+      if (href.startsWith("/library")) return switchTo("/library");
+      if (href === "/search" || href.startsWith("/search?")) return switchTo("/search");
       openWeb(href);
     },
-    [openTitle, openWeb, router],
+    [openTitle, openWeb, switchTo],
   );
 
   /* ——— وضعُ العرض: تبديلٌ محلّيٌّ فوريّ ثمّ حفظٌ (وصفةُ `HomeViewSwitch`) ——— */
@@ -316,7 +328,7 @@ export function HomeScreen() {
   const asItemSame = useCallback((item: CardItem) => item, []);
   const inListOf = useCallback((item: CardItem) => !!store.mark(`${item.kind}-${item.id}`), [store]);
 
-  /* ——— الأوراق: ترتيبُ الأقسام · أولويّةُ صفٍّ · «الكلّ» ——— */
+  /* ——— الأوراق: ترتيبُ الأقسام · أولويّةُ صفٍّ · «الكلّ» ——— */
   const [orderSheet, setOrderSheet] = useState(false);
   const [queueRow, setQueueRow] = useState<QueueOrderBody["row"] | null>(null);
   const [allSheet, setAllSheet] = useState<"shows" | "movies" | null>(null);
@@ -468,7 +480,7 @@ export function HomeScreen() {
       continue:
         s.continue.length > 0 ? (
           <View key="continue">
-            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => router.push("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
+            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => switchTo("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
             {view === "compact" ? (
               <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} />)}</Column>
             ) : (
@@ -480,14 +492,14 @@ export function HomeScreen() {
       towatch:
         s.towatch.items.length > 0 ? (
           <View key="towatch">
-            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => router.push("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
+            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => switchTo("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
             {view === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress })))}
           </View>
         ) : null,
       upcoming:
         s.upcoming.length > 0 ? (
           <View key="upcoming">
-            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => router.push("/library")} action={arrange} />
+            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => switchTo("/library")} action={arrange} />
             <Column>
               {s.upcoming.slice(0, cap(s.upcoming.length)).map((x) => {
                 const ep = extras.data?.upcoming_eps[x.key] ?? x.ep;
@@ -503,14 +515,14 @@ export function HomeScreen() {
       shows:
         s.shows.items.length > 0 ? (
           <View key="shows">
-            <SectionHeader title={t.myShows} icon="tv" onTitle={() => router.push("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
+            <SectionHeader title={t.myShows} icon="tv" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
             {posterRow(s.shows.items.slice(0, cap(s.shows.items.length)).map((i) => asItem({ key: `ms-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, count: i.count, watched: i.badge_tone === "watched" })))}
           </View>
         ) : null,
       movies:
         s.movies.items.length > 0 ? (
           <View key="movies">
-            <SectionHeader title={t.myMovies} icon="film" onTitle={() => router.push("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
+            <SectionHeader title={t.myMovies} icon="film" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
             {posterRow(s.movies.items.slice(0, cap(s.movies.items.length)).map((m) => asItem({ key: `mm-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress })))}
           </View>
         ) : null,
@@ -542,7 +554,7 @@ export function HomeScreen() {
       lists:
         s.lists.cards.length > 0 || s.lists.towatch_card ? (
           <View key="lists">
-            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => router.push("/library")} seeAll={d.queues.lists.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("lists")} />
+            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => switchTo("/library")} seeAll={d.queues.lists.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("lists")} />
             <Rail>
               {s.lists.cards.map((c, i) => (
                 <React.Fragment key={c.id}>
@@ -591,7 +603,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, router, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen]);
+  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, switchTo]);
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -661,7 +673,7 @@ export function HomeScreen() {
               ))}
             </View>
             {(allSheet === "shows" ? d.sections.shows.total : d.sections.movies.total) > 50 ? (
-              <Pressable onPress={() => { setAllSheet(null); router.push("/library"); }} accessibilityRole="link" style={{ marginTop: 16, alignItems: "center" }}>
+              <Pressable onPress={() => { setAllSheet(null); switchTo("/library"); }} accessibilityRole="link" style={{ marginTop: 16, alignItems: "center" }}>
                 <Text size={12} weight="500" color={tokens.accent}>{t.seeAll}</Text>
               </Pressable>
             ) : null}
