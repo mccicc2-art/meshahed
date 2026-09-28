@@ -6,7 +6,7 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "./Sheet";
 import { moveTab, toggleTab, type TabPref } from "@/core/tabPrefs";
-import { railsOf, railToken } from "@/core/railPrefs";
+import { railsOf, railToken, type RailTab } from "@/core/railPrefs";
 
 /**
  * ====== أدواتُ المكتبة — نسخةُ `LibraryToolsSheet.tsx` (الويب) ======
@@ -58,10 +58,6 @@ export function ToolsSheet({
     { id: "title", label: t.sortTitle },
     { id: "progress", label: t.sortProgress },
   ];
-  const shownCount = tabs.filter((x) => !x.hidden).length;
-  const rails = railsOf("library");
-  const hidden = new Set(hiddenRails);
-
   return (
     <Sheet title={t.libraryToolsTitle} onClose={onClose}>
       {showFilters ? (
@@ -120,58 +116,100 @@ export function ToolsSheet({
             </View>
           </View>
         ) : (
-          <View style={{ gap: 20 }}>
-            <View>
-              <Text size={12} weight="700" muted style={{ marginBottom: 4 }}>{t.tabsPrefsGroup}</Text>
-              {tabs.map((pref, i) => {
-                const label = tabLabels[pref.key] ?? pref.key;
-                const lastVisible = !pref.hidden && shownCount <= 1;
-                return (
-                  <View key={pref.key} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <Pressable
-                      accessibilityRole="switch"
-                      accessibilityState={{ checked: !pref.hidden }}
-                      disabled={lastVisible}
-                      onPress={() => onTabs(toggleTab(tabs, pref.key))}
-                      style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8, opacity: lastVisible ? 0.45 : 1 }}
-                    >
-                      <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
-                      <Switch on={!pref.hidden} />
-                    </Pressable>
-                    <Arrow up disabled={i === 0} label={t.tabsPrefsMoveUp(label)} onPress={() => onTabs(moveTab(tabs, pref.key, -1))} />
-                    <Arrow disabled={i === tabs.length - 1} label={t.tabsPrefsMoveDown(label)} onPress={() => onTabs(moveTab(tabs, pref.key, 1))} />
-                  </View>
-                );
-              })}
-            </View>
-            <View>
-              <Text size={12} weight="700" muted style={{ marginBottom: 4 }}>{locale === "en" ? "This page's rows" : "صفوف هذه الصفحة"}</Text>
-              {rails.map((r) => {
-                const tok = railToken("library", r.key);
-                const off = hidden.has(tok);
-                return (
-                  <Pressable
-                    key={r.key}
-                    accessibilityRole="switch"
-                    accessibilityState={{ checked: !off }}
-                    onPress={() => {
-                      const next = new Set(hidden);
-                      if (off) next.delete(tok);
-                      else next.add(tok);
-                      onRails([...next]);
-                    }}
-                    style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8 }}
-                  >
-                    <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{r.label(t, "library")}</Text>
-                    <Switch on={!off} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <ViewPrefsPane
+            tab="library"
+            tabs={tabs}
+            tabLabels={tabLabels}
+            onTabs={onTabs}
+            hiddenRails={hiddenRails}
+            onRails={onRails}
+            railsTitle={locale === "en" ? "This page's rows" : "صفوف هذه الصفحة"}
+          />
         )}
       </ScrollView>
     </Sheet>
+  );
+}
+
+/**
+ * ====== تبويبُ «عرض» — ترتيبُ التبويبات وإخفاؤها وصفوفُ الصفحة (`TabsPrefs` + `RailsPrefs` في الويب) ======
+ * 🆕 11-M · M2 — **خرج من ورقة المكتبة لأن «المجتمع» قارئُه الثاني** (D-376: الاستخراجُ عند القارئ الثاني) —
+ * الويبُ يرسم المكوّنين أنفسَهما في الورقتين. `tab` نطاقُ الصفوف (`library:` · `community:`، D-874)،
+ * والكتابةُ بيد المستدعي (الحارسُ — بلس — في الخادم).
+ */
+export function ViewPrefsPane({
+  tab,
+  tabs,
+  tabLabels,
+  onTabs,
+  hiddenRails,
+  onRails,
+  railsTitle,
+}: {
+  tab: RailTab;
+  tabs: TabPref[];
+  tabLabels: Record<string, string>;
+  onTabs: (next: TabPref[]) => void;
+  hiddenRails: string[];
+  onRails: (next: string[]) => void;
+  railsTitle: string;
+}) {
+  const { t } = useApp();
+  const shownCount = tabs.filter((x) => !x.hidden).length;
+  const rails = railsOf(tab);
+  const hidden = new Set(hiddenRails);
+  return (
+    <View style={{ gap: 20 }}>
+      <View>
+        <Text size={12} weight="700" muted style={{ marginBottom: 4 }}>{t.tabsPrefsGroup}</Text>
+        {tabs.map((pref, i) => {
+          const label = tabLabels[pref.key] ?? pref.key;
+          const lastVisible = !pref.hidden && shownCount <= 1;
+          return (
+            <View key={pref.key} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: !pref.hidden }}
+                disabled={lastVisible}
+                onPress={() => onTabs(toggleTab(tabs, pref.key))}
+                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8, opacity: lastVisible ? 0.45 : 1 }}
+              >
+                <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
+                <Switch on={!pref.hidden} />
+              </Pressable>
+              <Arrow up disabled={i === 0} label={t.tabsPrefsMoveUp(label)} onPress={() => onTabs(moveTab(tabs, pref.key, -1))} />
+              <Arrow disabled={i === tabs.length - 1} label={t.tabsPrefsMoveDown(label)} onPress={() => onTabs(moveTab(tabs, pref.key, 1))} />
+            </View>
+          );
+        })}
+      </View>
+      {rails.length ? (
+        <View>
+          <Text size={12} weight="700" muted style={{ marginBottom: 4 }}>{railsTitle}</Text>
+          {rails.map((r) => {
+            const tok = railToken(tab, r.key);
+            const off = hidden.has(tok);
+            return (
+              <Pressable
+                key={r.key}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: !off }}
+                onPress={() => {
+                  const next = new Set(hidden);
+                  if (off) next.delete(tok);
+                  else next.add(tok);
+                  onRails([...next]);
+                }}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8 }}
+              >
+                <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{r.label(t, tab)}</Text>
+                <Switch on={!off} />
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
