@@ -8,7 +8,8 @@ import { doorLeft } from "./rootsState";
  * تبديلُ المصدر يُعيد التركيبَ ويفقد تاريخَ الرجوع).
  */
 /** جذورُ الشاشات الأصليّة التي يعود إليها الرجوعُ من صفحةٍ ويبيّة (D-949 · D-998) — Phase 11-H أضافت `home` */
-export type NativeRoot = "library" | "discover" | "search" | "home";
+/* 🆕 11-M · M1 — و`community`: بابٌ ويبيٌّ فُتح من «المجتمع» الأصليّ يعود رجوعُه إليه */
+export type NativeRoot = "library" | "discover" | "search" | "home" | "community";
 /**
  * 🆕 D-1101 — **ما يعود إليه الرجوعُ: جذرٌ أو الإعداداتُ بقسمها** (بلاغُ أحمد بتسجيل على 1.11.11:
  * «تعديل الملف» ← رجوع ← الرئيسيّة). الإعداداتُ ليست جذراً (لا خانةَ لها)، لكنّ الويبَ يعيد
@@ -19,7 +20,7 @@ export type ReturnTo = NativeRoot | "settings" | `settings/${string}`;
 
 /** قيمةُ رجوعٍ صالحة؟ — تُفحص كلُّ قيمةٍ تأتي من الصفحة قبل أن تُدفع بها شاشة */
 export function isReturnTo(v: unknown): v is ReturnTo {
-  return typeof v === "string" && (v === "library" || v === "discover" || v === "search" || v === "home" || /^settings(\/[a-z-]+)?$/.test(v));
+  return typeof v === "string" && (v === "library" || v === "discover" || v === "search" || v === "home" || v === "community" || /^settings(\/[a-z-]+)?$/.test(v));
 }
 
 /** الخانةُ المضيئةُ للصفحة المفتوحة: الإعداداتُ بلا خانة فتضيء الرئيسيّةُ التي فُتحت منها */

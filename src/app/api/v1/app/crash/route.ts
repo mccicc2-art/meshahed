@@ -21,7 +21,7 @@ import { APP_UA_TAG } from "@/core/platform";
  */
 const MAX_MESSAGE = 600;
 /* الرئيسيّةُ والبحثُ والإعداداتُ أصليّةٌ منذ 11-G/H/I وكانت أعطالُها تُسجَّل «unknown» */
-const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings"]);
+const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings", "community"]);
 
 export async function POST(req: NextRequest) {
   return handle(async () => {

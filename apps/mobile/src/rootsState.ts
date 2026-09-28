@@ -56,7 +56,8 @@ export function homeSeen() {
 
 export type BackDecision = "exit" | "home" | "pass";
 /** قرارُ رجوع النظام في جذر: `exit` خروج · `home` إلى الرئيسيّة · `pass` نزعُ المجموعة إلى ما تحتها */
-export function backFrom(self: "/home" | "/library" | "/discover" | "/search"): BackDecision {
+/* 🆕 11-M · M1 — «المجتمع» جذرٌ خامس بقاعدة أخواته: رجوعُه إلى الرئيسيّة إن كان في المجموعة رئيسيّة، وإلّا إلى ما تحتها */
+export function backFrom(self: "/home" | "/library" | "/discover" | "/search" | "/community"): BackDecision {
   if (self === "/home") return roots.boot ? "exit" : "pass";
   return roots.boot || roots.homeSeen ? "home" : "pass";
 }

@@ -36,6 +36,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="library" />
       <Tabs.Screen name="discover" />
       <Tabs.Screen name="search" />
+      {/* 🆕 11-M · M1 — الجذرُ الخامس (D-1168) */}
+      <Tabs.Screen name="community" />
     </Tabs>
   );
 }

@@ -50,7 +50,9 @@ export type PerfName =
   /* 🆕 D-1152 — مراحلُ الدخول: نتيجةُ Google وتبادلِ الرمز (`auth.login`)، ثمّ وصولُ التسليم إلى الويب أو ارتدادُه
      إلى الترحيب (`auth.handoff`) — لتشخيص «أوّلُ محاولةٍ ترجع للترحيب» (ثلاثُ مرّاتٍ في تسجيلات ٢٧ سبتمبر) */
   | "auth.login"
-  | "auth.handoff";
+  | "auth.handoff"
+  /* 🆕 11-M · M1 — من تركيب «المجتمع» إلى أوّل رسمٍ فيه حمولة (`cached` كالرئيسيّة) */
+  | "community.open";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

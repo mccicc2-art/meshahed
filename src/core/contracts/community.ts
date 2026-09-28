@@ -19,6 +19,7 @@
 import type { TabPref } from "../tabPrefs.ts";
 import type { PersonLite } from "../people.ts";
 import type { BoardSection, CommunityPagerTab } from "../communityParams.ts";
+import type { LibraryListCard } from "./library.ts";
 
 /** حالةُ مكتبتي لعمل البطاقة — خيطُ الملصق الأربعيّ (D-322/D-850) */
 export type CommunityLibState = { added: boolean; watched: boolean; progress: number; dropped: boolean };
@@ -122,8 +123,8 @@ export type CommunityTopReview = PersonLite & {
   createdAt: string;
   hasSpoiler: boolean;
 };
-/** بطاقةُ قائمة — `PublicListCard` بحقولها كما هي، والاسمُ مترجَمٌ للمنسَّقة (D-328) */
-export type CommunityListCard = { id: string; name: string } & Record<string, unknown>;
+/** بطاقةُ قائمة — شكلُ بطاقة المكتبة نفسُه (`toLibraryListCard`، D-068) فترسمها `ListCard` الأصليّةُ كما في «اكتشف» */
+export type CommunityListCard = LibraryListCard;
 
 /** لوحةُ «الناس» — كلُّ قسمٍ مقصوصٌ كما يُرسم (`boardRows`)، و`null` = مطفأٌ بـ«الصفوف المخفيّة» (D-874) */
 export type CommunityBoard = {

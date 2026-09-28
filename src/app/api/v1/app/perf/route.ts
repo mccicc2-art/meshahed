@@ -66,6 +66,8 @@ const NAMES = new Set([
   /* 🆕 D-1152 — مراحلُ الدخول في التطبيق (ms، `result`/`why`) */
   "auth.login",
   "auth.handoff",
+  /* 🆕 11-M · M1 — فتحُ «المجتمع» الأصليّ (ms، `cached`) */
+  "community.open",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src"]);

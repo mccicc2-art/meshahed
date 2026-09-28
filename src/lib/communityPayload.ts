@@ -1,10 +1,10 @@
 import "server-only";
-import { listReviewKey, type FeedItem, type LoopzNewsItem, type TalkRoom } from "@/lib/data";
+import { listReviewKey, type FeedItem, type LoopzNewsItem, type PublicListCard, type TalkRoom } from "@/lib/data";
 import type { Dict, Locale } from "@/core/i18n";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { bulletinLine } from "@/core/bulletinLine";
-import { curatedName } from "@/core/universes";
+import { toLibraryListCard } from "@/lib/listCard";
 import { orderCommunityFeed, type FeedSort } from "@/core/communityFeed";
 import { LOOPZ_ID } from "@/core/loopz";
 import type { CommunityData } from "@/lib/communityCore";
@@ -93,11 +93,9 @@ export function roomOut(core: CommunityData, r: TalkRoom, t: Dict, locale: Local
   };
 }
 
-export function listOut<C extends { id: string; name: string; source_slug?: string | null }>(
-  c: C,
-  locale: Locale,
-): CommunityListCard {
-  return { ...c, name: curatedName(c.source_slug, c.name, locale) };
+/** بطاقةُ القائمة بالمشكِّل الواحد (D-068) — الاسمُ المنسَّقُ بلغة القارئ داخلَه */
+export function listOut(c: PublicListCard, locale: Locale): CommunityListCard {
+  return toLibraryListCard(c, locale);
 }
 
 export const followsLoopz = (core: CommunityData) => core.followingIds.has(LOOPZ_ID);
