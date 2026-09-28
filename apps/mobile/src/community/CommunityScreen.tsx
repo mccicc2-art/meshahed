@@ -94,6 +94,10 @@ export function CommunityScreen() {
     memory.tab = next;
     setTab(next);
   }, []);
+  /* M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`onAim`)، والقلبُ بعد الطيران */
+  const [aim, setAim] = useState<Tab | null>(null);
+  useEffect(() => setAim(null), [tab]);
+  const lit = aim ?? tab;
   const [all, setAllState] = useState<BoardSection | null>(memory.all);
   const setAll = useCallback((s: BoardSection | null) => {
     memory.all = s;
@@ -164,7 +168,7 @@ export function CommunityScreen() {
         </View>
         <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
           {order.map((k) => {
-            const on = k === tab;
+            const on = k === lit;
             return (
               <Pressable key={k} onPress={() => goTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
                 <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{label(k)}</Text>
@@ -190,6 +194,7 @@ export function CommunityScreen() {
           order={order}
           tab={tab}
           onTab={goTab}
+          onAim={setAim}
           render={(k) => (
             <Pane k={k} d={d} doors={doors} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} />
           )}
