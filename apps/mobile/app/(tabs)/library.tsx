@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { LibraryScreen } from "../src/library/LibraryScreen";
-import { ErrorBoundary } from "../src/ErrorBoundary";
+import { LibraryScreen } from "../../src/library/LibraryScreen";
+import { ErrorBoundary } from "../../src/ErrorBoundary";
 
 /**
  * `/library` — الشاشةُ الأصليّةُ الأولى (Phase 11 · B1، D-936). تُدفع فوق `/web`

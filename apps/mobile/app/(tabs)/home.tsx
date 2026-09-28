@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { HomeScreen } from "../src/home/HomeScreen";
-import { ErrorBoundary } from "../src/ErrorBoundary";
+import { HomeScreen } from "../../src/home/HomeScreen";
+import { ErrorBoundary } from "../../src/ErrorBoundary";
 
 /**
  * `/home` — الرئيسيةُ الأصليّة (Phase 11-H، D-1066). تُدفع فوق `/web` من خانة

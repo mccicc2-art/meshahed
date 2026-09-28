@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { SearchScreen } from "../src/search/SearchScreen";
-import { ErrorBoundary } from "../src/ErrorBoundary";
+import { SearchScreen } from "../../src/search/SearchScreen";
+import { ErrorBoundary } from "../../src/ErrorBoundary";
 
 /**
  * `/search` — البحثُ أصليّاً (Phase 11-G · G1). يُدفع فوق `/web` من خانة «بحث» في الشريط

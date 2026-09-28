@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
@@ -52,9 +52,10 @@ export function SearchScreen() {
   /* K1 — `search.open`: البحثُ يُفتح على حقلٍ لا بيانات، فالمقياسُ من التركيب إلى أوّل رسم */
   useEffect(() => {
     coldStartVoid();
-    tabLanded("search");
     afterPaint(span("search.open"));
   }, []);
+  /* K3 — «وصلتُ» عند كلِّ ظهورٍ للتبويب الثابت */
+  useFocusEffect(useCallback(() => tabLanded("search"), []));
 
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<SearchScope>("all");
@@ -84,7 +85,9 @@ export function SearchScreen() {
     else router.replace("/web");
   }, [router]);
   const { switchTo, bootBack } = useBootRoot();
-  useEffect(() => {
+  /* K3 — الرجوعُ للتبويب الظاهر وحدَه (الجذورُ مركَّبةٌ معاً) */
+  useFocusEffect(
+    useCallback(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       /* رجوعُ النظام في وضع الوصف يعود إلى البحث بالاسم — كزرّ «رجوع» أعلى النموذج في الويب */
@@ -98,7 +101,8 @@ export function SearchScreen() {
       return true;
     });
     return () => sub.remove();
-  }, [back, desc, bootBack]);
+    }, [back, desc, bootBack]),
+  );
 
   /* الخروجُ إلى صفحةٍ ويبيّة — الشاشةُ تبقى حتى تصل (D-951) وتعود إليها (D-949/D-998) */
   const [leaving, setLeaving] = useState(false);

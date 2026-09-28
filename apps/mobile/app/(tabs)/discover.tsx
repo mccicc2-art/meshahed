@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { DiscoverScreen } from "../src/discover/DiscoverScreen";
-import { ErrorBoundary } from "../src/ErrorBoundary";
+import { DiscoverScreen } from "../../src/discover/DiscoverScreen";
+import { ErrorBoundary } from "../../src/ErrorBoundary";
 
 /**
  * `/discover` — الشاشةُ الأصليّةُ الثانية (Phase 11-C · C1، D-955). تُدفع فوق

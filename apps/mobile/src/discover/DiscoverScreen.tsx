@@ -2,7 +2,8 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBootRoot } from "../bootRoot";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
@@ -42,7 +43,7 @@ import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, Libra
  *
  * 🔑 **الشكلُ شكلُ الصفحة** (`news/page.tsx`): ترويسةٌ ٦٤ وشريطُ تبويباتٍ
  * (segmented) ثمّ صفوفٌ منسَّقةٌ تُقرأ بالتمرير — في السينما · الأكثرُ شعبيّة ·
- * أفضلُ ١٠ · أفضلُ ٢٥ هذي السنة · القادمُ قريباً — **كلُّ صفٍّ نداءٌ مستقلٌّ
+ * أفضلُ ١٠ · أفضلُ ٢٥ هذي السنة · القادمُ قريباً — **كلُّ صفٍّ نداءٌ مستقلٌّ
  * يُرسم حين يصل** (`/api/v1/discover/rail`)، وهو ما تفعله الصفحةُ بـ`Suspense`.
  * **والوصفةُ وصفةُ الصفحة حرفاً** (`src/lib/discoverRails.ts` — مصدرٌ واحد).
  *
@@ -132,10 +133,12 @@ export function DiscoverScreen() {
   useEffect(() => {
     memory.tab = tab;
   }, [tab]);
-  /* F0 (D-1024) — `discover.open`: من تركيب الشاشة إلى وصول آخر صفٍّ منسَّقٍ في تبويب الفتح.
+  /* F0 (D-1024) — `discover.open`: من تركيب الشاشة إلى وصول آخر صفٍّ منسَّقٍ في تبويب الفتح.
      و«اكتشف» فُتحت أوّلاً ⇒ الإقلاعُ البارد ليس «إلى المكتبة» فلا يُسجَّل باسمها. */
   const [openTab] = useState<Tab>(memory.tab);
-  useEffect(() => tabLanded("news"), []);
+  /* K3 — «وصلتُ» عند كلِّ ظهورٍ للتبويب الثابت، والشائخُ من صفوفه يُجدَّد */
+  useFocusEffect(useCallback(() => tabLanded("news"), []));
+  useRefetchOnFocus(["discover:"]);
   const [endOpen] = useState(() => {
     coldStartVoid();
     return span("discover.open", { tab: memory.tab });
@@ -147,15 +150,18 @@ export function DiscoverScreen() {
   }, [router]);
   /* D-1078 — جذرٌ وُلد من الإقلاع: رجوعُ النظام إلى الرئيسيّة الأصليّة، لا يكشف رئيسيّةَ الويب تحته */
   const { switchTo, bootBack } = useBootRoot();
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (bootBack("/discover")) return true;
-      back();
-      return true;
-    });
-    return () => sub.remove();
-  }, [back, bootBack]);
+  /* K3 — الرجوعُ للتبويب الظاهر وحدَه (الجذورُ مركَّبةٌ معاً) */
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") return;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (bootBack("/discover")) return true;
+        back();
+        return true;
+      });
+      return () => sub.remove();
+    }, [back, bootBack]),
+  );
 
   /* الخروجُ إلى صفحةٍ ويبيّة — الشاشةُ تبقى حتّى تصل (D-951) وتعود إليها (D-949) */
   const [leaving, setLeaving] = useState(false);
@@ -507,7 +513,7 @@ export function DiscoverScreen() {
  * لوحُ تبويبٍ — D-965. **كلُّ ما يخصّ تبويباً واحداً يعيش هنا** (الصفوفُ الشخصيّة
  * والمنسَّقة وموضعُ التمرير) ليستطيع `TabSlide` رسمَ لوحين جنباً إلى جنب في أثناء
  * السحب. **نداءاتُ الجار تُطلق لحظةَ تركيبه** (قفلُ الإيماءة — تسليحُ D-523)،
- * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
+ * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
  * و`staleTime` يجعل الزيارةَ التالية فوريّة.
  */
 /** «مقترحٌ لك»: عشرةٌ في المرّة — `PAGE` في `PickedForYou` الويب */
@@ -558,12 +564,12 @@ function DiscoverPane({
   onToast: (text: string) => void;
   /** D-1047 — فعلٌ يُرى فوراً وتُؤجَّل كتابتُه بإشعار «تراجع» */
   onUndoable: (text: string, commit: () => void, undo: () => void) => void;
-  /** D-994 — «الكلّ» لصفٍّ: العنوانُ ومسارُ `see_all` */
+  /** D-994 — «الكلّ» لصفٍّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
 }) {
   const { t } = useApp();
   const router = useRouter();
-  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
+  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
   const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
   const personal = useQuery({
     queryKey: ["discover:personal", railTab, bq] as const,
@@ -769,7 +775,7 @@ function DiscoverPane({
  * F0 (D-1024) — مراقبُ `discover.open`: **لا يرسم شيئاً ولا يجلب شيئاً**. يعدّ ما يُجلب
  * الآن تحت `discover:rail/<tab>` (`useIsFetching` قراءةٌ للكاش لا مشترِكٌ فيه)، وينادي
  * `onDone` حين لا يبقى جلبٌ وفي الكاش صفٌّ واحدٌ ناجحٌ على الأقلّ. **لماذا لا `useQueries`
- * بمفاتيح الصفوف**: مشترِكٌ بمفتاح صفٍّ مخفيّ (D-997) أو بلا فلترٍ والشاشةُ مفلترة كان
+ * بمفاتيح الصفوف**: مشترِكٌ بمفتاح صفٍّ مخفيّ (D-997) أو بلا فلترٍ والشاشةُ مفلترة كان
  * سيجلب ما لا تعرضه الشاشة — قياسٌ يثقل ما يقيسه قياسٌ فاسد. ومكوّنٌ مستقلّ كي لا
  * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
  */
@@ -790,7 +796,7 @@ type RailShared = {
   onOpen: (c: CuratedCard) => void;
 };
 
-/* D-1028 (F4) — `memo`: خاصّيّاتُه كلُّها ثابتةُ المرجع الآن، فرسمةُ اللوح لا تعيد رسمَ صفٍّ لم يتغيّر */
+/* D-1028 (F4) — `memo`: خاصّيّاتُه كلُّها ثابتةُ المرجع الآن، فرسمةُ اللوح لا تعيد رسمَ صفٍّ لم يتغيّر */
 const Rail = memo(function Rail({
   tab,
   railKey,
@@ -889,7 +895,7 @@ const CardsRail = memo(function CardsRail({
   onSeeAll?: (path: string, title: string) => void;
   /** «مقترحٌ لك»: سطرُ السبب تحت كلِّ بطاقة */
   notes?: boolean;
-  /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
+  /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
   action?: { label: string; aria: string; icon: Parameters<typeof Icon>[0]["name"]; onPress: () => void } | null;
 }) {
   const { t, tokens } = useApp();

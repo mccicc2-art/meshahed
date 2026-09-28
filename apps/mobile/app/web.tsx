@@ -16,6 +16,7 @@ import { mark } from "../src/perfMarks";
 import { session } from "../src/session";
 import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
+import { rootsBorn } from "../src/bootRoot";
 import { BottomNav, type NavKey } from "../src/BottomNav";
 import { prefetchDiscover } from "../src/discover/DiscoverScreen";
 
@@ -135,7 +136,7 @@ const OFFLINE = {
 /**
  * 🔴 D-1156 — **التسليمُ والخروجُ يُرسلهما الغلافُ لا سكربتٌ في الصفحة** (تسجيلُ خالد ٢٧ سبتمبر: كلُّ دخولٍ
  * وكلُّ خروجٍ احتاج محاولتين — ٨ من ٨ في سجلّ Supabase). كانا نموذجاً يُحقن بـ`injectJavaScript`، **والحقنُ
- * يضيع** متى لم تكن الصفحةُ حاضرة: تحت شاشةٍ أصليّة تنزعها `react-native-screens` من العرض (D-1144 — الخروجُ من
+ * يضيع** متى لم تكن الصفحةُ حاضرة: تحت شاشةٍ أصليّةٍ تنزعها `react-native-screens` من العرض (D-1144 — الخروجُ من
  * الإعدادات الأصليّة)، أو لحظةَ العودة من نافذة Google قبل أن تستيقظ (الدخول). المحاولةُ الأولى تُظهر الويبَ فتنجح
  * الثانية. الآن تبديلُ المصدر ⇐ `WebView.postUrl` في جافا — تنقّلٌ أصليٌّ لا ينتظر جافاسكربت الصفحة.
  * القاعدةُ نفسُها التي نقضت D-1146: **لا يُعلَّق فعلٌ على طلبٍ قد لا يُجاب.**
@@ -194,6 +195,8 @@ export default function Web() {
    */
   const goNative = useCallback(
     (r: ReturnTo) => {
+      /* K3 — المجموعةُ تُدفع من الويب: رجوعُها إلى الصفحة التي جاءت منها (`bootRoot`) */
+      rootsBorn(false);
       if (r === "library") router.push("/library");
       else if (r === "discover") router.push("/discover");
       else if (r === "search") router.push("/search");
@@ -251,7 +254,7 @@ export default function Web() {
      هي النافذةُ الوحيدةُ التي قد يُجاب فيها الحقنُ قبل أن تغطّي الرئيسيّةُ هذه الشاشة (D-1144). كان يُؤخذ
      مصادفةً — دفعُ القياسات كان يطلب رمزاً (D-1141 أوقفه). ⚖️ **وD-1146 نُقض**: جعل كلَّ طلبٍ قبل التركيب
      يصطفّ، فانتظرت الرئيسيّةُ حتى ١٠ث (`boot.fresh`). هنا الطلبُ الأوّلُ يُرمى كما كان (`noinject` فوراً) ويسأل
-     هذا وحدَه في الخلفيّة — وصل الرمزُ في إقلاعٍ من اثنين على جهاز خالد (٢٧ سبتمبر). K4b تُنهي هذا كلَّه. */
+     هذا وحدَه في الخلفيّة. وصل الرمزُ في إقلاعٍ من اثنين على جهاز خالد (٢٧ سبتمبر). K4b تُنهي هذا كلَّه. */
   const bootAsked = useRef(false);
   const bootAsk = useCallback(() => {
     if (bootAsked.current) return;
@@ -272,7 +275,11 @@ export default function Web() {
     if (loading || booted.current) return;
     booted.current = true;
     if (typeof u === "string" && u) return;
-    if (session.seen()) router.push({ pathname: "/home", params: { boot: "1" } });
+    if (session.seen()) {
+      /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
+      rootsBorn(true);
+      router.push("/home");
+    }
   }, [loading, u, router]);
 
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
@@ -360,7 +367,7 @@ export default function Web() {
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
-        /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّةً) */
+        /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّة) */
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
           handT0.current = 0;
@@ -629,6 +636,8 @@ export default function Web() {
               ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(guestTo)}):(location.href=${JSON.stringify(CONFIG.apiBase + guestTo)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + guestTo)};}})();true;`);
               return;
             }
+            /* K3 — المجموعةُ تُدفع من الويب (`bootRoot`) */
+            rootsBorn(false);
             if (k === "library") {
               router.push("/library");
               return;
