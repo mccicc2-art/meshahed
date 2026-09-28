@@ -126,3 +126,15 @@ export type {
   CustomizeSaveResult,
   TemplatesBody,
 } from "@/core/contracts/settings";
+/* 🆕 11-M · M1 — «المجتمع» (`GET /api/v1/community` · `/community/people`) */
+export type {
+  CommunityPayload,
+  CommunityFeedRow,
+  CommunityRoom,
+  CommunityBoard,
+  CommunityLeaderRow,
+  CommunityTopReview,
+  CommunityListCard,
+  CommunityPeopleAllPayload,
+  CommunityLibState,
+} from "@/core/contracts/community";
