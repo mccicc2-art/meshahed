@@ -52,7 +52,10 @@ export type PerfName =
   | "auth.login"
   | "auth.handoff"
   /* 🆕 11-M · M1 — من تركيب «المجتمع» إلى أوّل رسمٍ فيه حمولة (`cached` كالرئيسيّة) */
-  | "community.open";
+  | "community.open"
+  /* 🆕 11-M · M3 — شاشةُ النقاش ومنتقي الـGIF (خطّة §٥) */
+  | "thread.open"
+  | "gif.open";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

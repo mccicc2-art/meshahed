@@ -3662,7 +3662,9 @@ export async function togglePostLike(postId: string, liked: boolean) {
  */
 export async function findGifs(query: string): Promise<GifHit[]> {
   await requireUser("gif", 40, 60_000);
-  return searchGifs(String(query ?? "").slice(0, 60));
+  /* 🆕 11-M · M3 — بلغة القارئ (خطّة §٣-أ): الويبُ يتحسّن مع التطبيق لأنّ الحكمَ في الخادم */
+  const { getLocale } = await import("@/lib/locale");
+  return searchGifs(String(query ?? "").slice(0, 60), 24, { lang: (await getLocale()) === "ar" ? "ar" : "en" });
 }
 
 export async function votePost(postId: string, vote: -1 | 0 | 1, path?: string) {

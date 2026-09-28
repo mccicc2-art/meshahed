@@ -404,6 +404,17 @@ const ar = {
   gifOff: "خدمةُ الـGIF غير مفعّلة الآن",
   gifLoading: "جارٍ الجلب…",
   gifCredit: "مدعوم بـGIPHY",
+  /* 🆕 11-M · M3 — منتقي الـGIF الأصليّ: «استعملته مؤخّراً» (على الجهاز وحدَه) والتصنيفاتُ السريعة (خطّة §٣-أ).
+     **النصُّ هنا والمصطلحُ المرسَلُ ثابتٌ في الكود** (`GIF_CATS`) — فتبقى «ضحك» تجد ضحكاً بأيِّ لغة. */
+  gifRecent: "استعملته مؤخّراً",
+  gifCatLaugh: "ضحك",
+  gifCatShock: "صدمة",
+  gifCatSad: "حزن",
+  gifCatClap: "تصفيق",
+  gifCatLove: "حب",
+  gifCatAngry: "غضب",
+  gifCatCongrats: "مبروك",
+  gifCatNo: "لا",
   /* 🆕 **تثبيتُ الغرفة** (D-301، طلبُ أحمد: «إذا ضغطت عليها يتثبّت»).
      **وفعلان مختلفان كلمتان مختلفتان** (D-223/D-224)، **والمعنى في
      `aria-label` لأن الرمزَ وحدَه هو الزرّ** (D-177). */
@@ -2615,6 +2626,15 @@ const en: Dict = {
   gifOff: "GIFs are not enabled right now",
   gifLoading: "Loading…",
   gifCredit: "Powered by GIPHY",
+  gifRecent: "Recently used",
+  gifCatLaugh: "LOL",
+  gifCatShock: "Shocked",
+  gifCatSad: "Sad",
+  gifCatClap: "Applause",
+  gifCatLove: "Love",
+  gifCatAngry: "Angry",
+  gifCatCongrats: "Congrats",
+  gifCatNo: "Nope",
   talkPin: "Pin this room",
   talkUnpin: "Unpin",
   talkPinAll: "Pin for everyone",

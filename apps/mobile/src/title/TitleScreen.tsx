@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, write, ApiError, softGet, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
+import { openThreadPath } from "../thread/route";
 import { shell, type NativeRoot } from "../shell";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
@@ -433,7 +434,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
             {tab === "community" ? (
-              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => openWeb("", p)} />
+              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => openThreadPath(router, p, from) || openWeb("", p)} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} />
             ) : tab === "episodes" && d.kind === "tv" ? (
               <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (

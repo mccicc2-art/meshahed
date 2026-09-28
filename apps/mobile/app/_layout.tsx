@@ -74,6 +74,10 @@ function Shell() {
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
+        {/* 🆕 11-M · M3 — «النقاش» أصليّاً: ثلاثةُ أبوابٍ إلى شاشةٍ واحدة، تُدفع فوق من فتحها (المجتمع · صفحةُ العمل) */}
+        <Stack.Screen name="talk/[kind]/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="post/[key]" options={{ headerShown: false }} />
+        <Stack.Screen name="review/[kind]/[id]/[user]" options={{ headerShown: false }} />
         {/* D-1046 — «الكلّ ←» شاشةٌ كاملة فوق «اكتشف» */}
         <Stack.Screen name="section" options={{ headerShown: false }} />
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}

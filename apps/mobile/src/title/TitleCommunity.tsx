@@ -39,11 +39,14 @@ export function CommunityTab({
   myRating,
   onEditReview,
   onOpenTalk,
+  onOpenReview,
 }: {
   data: TitleCommunityPayload | undefined;
   myRating: number | null;
   onEditReview: () => void;
   onOpenTalk: (path: string) => void;
+  /** 🆕 11-M · M3 — الرأيُ يُضغط فيفتح خيطَه أصليّاً (`/review/…` في الويب) */
+  onOpenReview?: (userId: string) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
@@ -76,7 +79,7 @@ export function CommunityTab({
       </View>
 
       {data.reviews.map((r) => (
-        <ReviewRow key={r.user_id} r={r} />
+        <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} />
       ))}
 
       {data.bulletins.length ? (
@@ -103,11 +106,12 @@ export function CommunityTab({
 }
 
 /** D-1036 — مُصدَّرٌ: صفحةُ القائمة الأصليّة ترسم آراءَ الناس بالصفِّ نفسِه (شكلٌ واحدٌ للرأي) */
-export function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }) {
+export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(!r.has_spoiler);
+  /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (
-    <View style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+    <Pressable disabled={!onOpen} onPress={onOpen} accessibilityRole={onOpen ? "link" : undefined} style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 28, height: 28, borderRadius: 14, overflow: "hidden", backgroundColor: tokens.surface2 }}>
           {r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
@@ -143,7 +147,7 @@ export function ReviewRow({ r }: { r: TitleCommunityPayload["reviews"][number] }
         ) : null}
         <Text size={11} muted>{r.updated_at.slice(0, 10)}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

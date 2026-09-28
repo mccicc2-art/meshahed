@@ -198,7 +198,12 @@ export function genreName(g: { ar: string; en: string }, locale: "ar" | "en") {
  */
 export const GIF_ID_RE = /^[A-Za-z0-9]{1,64}$/;
 
-export function gifUrl(id: string | null | undefined, size: "small" | "full" = "full"): string | null {
+export function gifUrl(
+  id: string | null | undefined,
+  size: "small" | "full" = "full",
+  /** 🆕 11-M · M3 — **`webp` للتطبيق** (أخفُّ بكثيرٍ من `.gif` وأنعمُ حركة، و`expo-image` يحرّكه)؛ والويبُ يبقى `gif` */
+  format: "gif" | "webp" = "gif",
+): string | null {
   if (!id || !GIF_ID_RE.test(id)) return null;
-  return `https://media.giphy.com/media/${id}/${size === "small" ? "200w.gif" : "giphy.gif"}`;
+  return `https://media.giphy.com/media/${id}/${size === "small" ? "200w" : "giphy"}.${format}`;
 }

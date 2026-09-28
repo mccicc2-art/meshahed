@@ -85,12 +85,28 @@ async function call(path: string, params: Record<string, string>): Promise<GifHi
 }
 
 /** الرائجُ حين لا يكتب القارئُ شيئاً — **ورقةٌ فارغةٌ ليست بابَ بحث** */
-export function trendingGifs(limit = 24): Promise<GifHit[]> {
-  return call("trending", { limit: String(limit) });
+/**
+ * 🆕 11-M · M3 — **سقفُ الترقيم في الخادم** (خطّة §٧): التطبيقُ يمرّر بلا نهاية، **ومفتاحٌ يُستنزف بتمريرٍ لا يتوقّف
+ * هو ما يُحرق به** — فالإزاحةُ تقف عند ٤٨٠ (عشرون صفحة) مهما طلب العميل.
+ */
+export const GIF_MAX_OFFSET = 480;
+
+export function trendingGifs(limit = 24, offset = 0): Promise<GifHit[]> {
+  return call("trending", { limit: String(limit), offset: String(Math.min(Math.max(0, offset), GIF_MAX_OFFSET)) });
 }
 
-export function searchGifs(query: string, limit = 24): Promise<GifHit[]> {
+/**
+ * 🆕 11-M · M3 — **البحثُ بلغة القارئ لا `"en"` الثابتة** (خطّة §٣-أ: «ضحك»/«مبروك» تجد نتائجَ أفضل بلغتها) —
+ * والويبُ يتحسّن معه لأنّ `findGifs` يمرّر لغتَه أيضاً. **والإنجليزيّةُ الافتراضُ** لمن لم يمرّر شيئاً (السلوكُ القديم حرفاً).
+ */
+export function searchGifs(query: string, limit = 24, opts: { offset?: number; lang?: "ar" | "en" } = {}): Promise<GifHit[]> {
   const q = query.trim().slice(0, 60);
-  if (!q) return trendingGifs(limit);
-  return call("search", { q, limit: String(limit), lang: "en" });
+  const offset = opts.offset ?? 0;
+  if (!q) return trendingGifs(limit, offset);
+  return call("search", {
+    q,
+    limit: String(limit),
+    offset: String(Math.min(Math.max(0, offset), GIF_MAX_OFFSET)),
+    lang: opts.lang ?? "en",
+  });
 }

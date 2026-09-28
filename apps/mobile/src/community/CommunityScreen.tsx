@@ -8,6 +8,7 @@ import { CONFIG } from "../config";
 import { haptic } from "../haptics";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { Composer } from "../thread/Composer";
+import { openThreadPath } from "../thread/route";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text } from "../ui";
@@ -160,6 +161,8 @@ export function CommunityScreen() {
       onTitle: (kind, id) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "community" } }),
       onList: (id) => router.push({ pathname: "/list/[id]", params: { id, from: "community" } }),
       onWeb: (path) => {
+        /* 🆕 M3 — الغرفةُ والمنشورُ والرأيُ أصليّةٌ الآن؛ الملفُّ `/u/…` وحدَه يبقى باباً ويبيّاً */
+        if (openThreadPath(router, path, "community")) return;
         if (leaving) return;
         setLeaving(true);
         void shell.open(path, { returnTo: "community" }).then(() => {
@@ -330,7 +333,7 @@ export function CommunityScreen() {
         <Composer
           title={t.actionComment}
           hint={composing.kind === "news" ? `Loopz · ${composing.item.title}` : `${displayNameOf(composing.item.person, t.anonymousUser)} · ${composing.item.title ?? ""}`}
-          onSend={(body) => acts.reply(composing, body)}
+          onSend={(draft) => acts.reply(composing, draft.body)}
           onClose={() => setComposing(null)}
         />
       ) : null}

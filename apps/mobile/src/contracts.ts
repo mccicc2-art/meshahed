@@ -148,3 +148,21 @@ export type {
   RoomPinBody,
   PostViewsBody,
 } from "@/core/communityActs";
+/* 🆕 11-M · M3 — «النقاش» (`GET /api/v1/thread` وأفعالُه) ومنتقي الـGIF (`GET /api/v1/gif`) */
+export type {
+  ThreadKind,
+  ThreadRow,
+  ThreadHead,
+  ThreadWork,
+  ThreadPayload,
+  ThreadTarget,
+  ThreadReplyBody,
+  ThreadReplyResult,
+  ThreadRowBody,
+  ThreadReportBody,
+  ThreadLikeBody,
+  ThreadVoteBody,
+  ThreadImagePayload,
+  GifHitLite,
+  GifPayload,
+} from "@/core/contracts/thread";
