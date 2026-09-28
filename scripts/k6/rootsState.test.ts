@@ -74,3 +74,19 @@ test("مجموعةٌ مولودةٌ من الإقلاع لم تُزر رئيسي
   rootsMounted();
   assert.equal(backFrom("/library"), "home");
 });
+
+/* 🆕 11-M · M1 — «المجتمع» جذرٌ خامس بقاعدة أخواته */
+test("«المجتمع» يرجع إلى الرئيسيّة في مجموعةٍ لها رئيسيّة، ويعود من بابه كأخواته", () => {
+  boot();
+  assert.equal(backFrom("/community"), "home");
+  doorLeft(); /* المجتمع ← ملفُّ عضو (`shell.open` بـ returnTo=community) */
+  doorBack(); /* رجوع ⇐ `goNative("community")` */
+  rootsMounted();
+  assert.equal(backFrom("/community"), "home");
+});
+
+test("«المجتمع» في مجموعةٍ مولودةٍ من الويب بلا رئيسيّة: رجوعُه يكشف ما تحته", () => {
+  rootsBorn(false);
+  rootsMounted();
+  assert.equal(backFrom("/community"), "pass");
+});

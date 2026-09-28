@@ -23,7 +23,7 @@ export { rootsBorn, rootsMounted, doorLeft, doorBack, homeSeen } from "./rootsSt
  * ⚠️ **الخروجُ إلى صفحةٍ ويبيّة** (المجتمع، الإعدادات…) لا يتغيّر: `shell.open` ثمّ `back()` — `router.back()` من
  * تبويبٍ ينزع المجموعةَ كلَّها (`backBehavior: "none"`) فيكشف الويبَ الذي صار يعرض الصفحةَ المطلوبة.
  */
-export type RootPath = "/home" | "/library" | "/discover" | "/search";
+export type RootPath = "/home" | "/library" | "/discover" | "/search" | "/community";
 
 export function useBootRoot() {
   const router = useRouter();
