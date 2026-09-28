@@ -124,7 +124,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   });
   const openTitle = useCallback((w: PersonWork) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: w.kind, id: String(w.id), from } }), [router, from]);
   /* فشلُ التحميل: «ابحث» كما في الصفحة — أصليٌّ منذ Phase 11-G (يحلّ محلَّ هذه الشاشة فلا تبقى صفحةٌ ساقطةٌ في المكدّس) */
-  const openSearch = useCallback(() => router.replace("/search"), [router]);
+  /* K3 — البحثُ تبويبٌ ثابت: انتقالٌ إليه (يعود إلى المجموعة إن كانت تحت هذه الصفحة) لا استبدالٌ يبني نسخةً ثانية */
+  const openSearch = useCallback(() => router.navigate("/search"), [router]);
 
   const works = useMemo(() => (d ? (tab === "all" ? d.works : d.works.filter((w) => w.group === tab)) : []), [d, tab]);
   const counts = useMemo(() => {
