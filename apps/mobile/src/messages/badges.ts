@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, queryClient } from "../api";
 import { HOME_KEY } from "../home/useHome";
 import { MESSAGES_KEY } from "./live";
+import { patchKeep } from "./common";
 import type { BadgesPayload, HomePayload, MessagesPayload } from "../contracts";
 
 /**
@@ -21,14 +22,17 @@ import type { BadgesPayload, HomePayload, MessagesPayload } from "../contracts";
 const BADGES_KEY = ["me:badges"] as const;
 
 function write(b: BadgesPayload) {
-  queryClient.setQueryData<HomePayload>(HOME_KEY, (p) =>
-    p && (p.header.unread_shares !== b.messages || p.header.unread_signals !== b.signals)
+  patchKeep<HomePayload>(HOME_KEY, (p) =>
+    p.header.unread_shares !== b.messages || p.header.unread_signals !== b.signals
       ? { ...p, header: { ...p.header, unread_shares: b.messages, unread_signals: b.signals } }
       : p,
   );
-  queryClient.setQueryData<MessagesPayload>(MESSAGES_KEY, (p) =>
-    p && (p.unread.messages !== b.messages || p.unread.signals !== b.signals) ? { ...p, unread: { messages: b.messages, signals: b.signals } } : p,
-  );
+  /* 🔴 M4-fix3 — **الصندوقُ لا يُرقَّع برقمٍ بل يُعلَّم قديماً**: رقمٌ مختلفٌ يعني أنّ فيه ما لم يصل (رسالةٌ جديدة) — فيُعاد
+     جلبُه (أو عند فتحه) بمحادثاته، لا شارةٌ تقول «١» فوق قائمةٍ ليس فيها ما تعدّه */
+  const inbox = queryClient.getQueryData<MessagesPayload>(MESSAGES_KEY);
+  if (inbox && (inbox.unread.messages !== b.messages || inbox.unread.signals !== b.signals)) {
+    void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY, exact: true });
+  }
 }
 
 /** في الرئيسيّة: يسأل عند الظهور وعند العودة من الخلفيّة، ويكتب الرقمَ حيث يُرسم */

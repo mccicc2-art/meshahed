@@ -17,6 +17,17 @@ import type { HomePayload, MessagesPayload, MsgConversation } from "../contracts
  */
 export type Origin = NativeRoot | "web";
 
+/**
+ * 🔴 M4-fix3 — **تعديلُ الكاش لا يجعله «طازجاً»** (بلاغُ أحمد: الشارةُ ظهرت والرسالةُ ليست في الصندوق حتى وصلت ثانية):
+ * `setQueryData` يختم البياناتِ بوقت الآن، فرقمُ الشارة المكتوبُ فوق صندوقٍ محفوظٍ من فتحةٍ سابقة جعله يبدو جُلب للتوّ —
+ * فلم يُعَد جلبُه عند فتح «الرسائل» (١٥ ثانيةً طزاجة)، ولا جُلبت الرئيسيّةُ عند ظهورها. هنا يُعدَّل المحتوى ويبقى ختمُه
+ * الأصليّ، فما كان شائخاً يبقى شائخاً ويُجلب في موعده.
+ */
+export function patchKeep<T>(key: readonly unknown[], fn: (p: T) => T) {
+  const at = queryClient.getQueryState(key)?.dataUpdatedAt;
+  queryClient.setQueryData<T>(key, (p) => (p ? fn(p) : p), at ? { updatedAt: at } : undefined);
+}
+
 export function originOf(from: string | undefined): Origin {
   return from === "discover" || from === "search" || from === "home" || from === "community" || from === "library" ? from : "web";
 }
@@ -36,8 +47,8 @@ export function useMessages() {
   const live = q.data && !q.isStale ? q.data.unread : null;
   useEffect(() => {
     if (!live) return;
-    queryClient.setQueryData<HomePayload>(HOME_KEY, (p) =>
-      p && (p.header.unread_shares !== live.messages || p.header.unread_signals !== live.signals)
+    patchKeep<HomePayload>(HOME_KEY, (p) =>
+      p.header.unread_shares !== live.messages || p.header.unread_signals !== live.signals
         ? { ...p, header: { ...p.header, unread_shares: live.messages, unread_signals: live.signals } }
         : p,
     );
@@ -56,18 +67,12 @@ export function prefetchMessages(): void {
  */
 export function dropBadges(d: { messages?: number; signals?: true }) {
   const sub = (n: number) => Math.max(0, n - (d.messages ?? 0));
-  queryClient.setQueryData<MessagesPayload>(MESSAGES_KEY, (p) =>
-    p ? { ...p, unread: { messages: sub(p.unread.messages), signals: d.signals ? 0 : p.unread.signals } } : p,
-  );
-  queryClient.setQueryData<HomePayload>(HOME_KEY, (p) =>
-    p ? { ...p, header: { ...p.header, unread_shares: sub(p.header.unread_shares), unread_signals: d.signals ? 0 : p.header.unread_signals } } : p,
-  );
+  patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({ ...p, unread: { messages: sub(p.unread.messages), signals: d.signals ? 0 : p.unread.signals } }));
+  patchKeep<HomePayload>(HOME_KEY, (p) => ({ ...p, header: { ...p.header, unread_shares: sub(p.header.unread_shares), unread_signals: d.signals ? 0 : p.header.unread_signals } }));
 }
 
 export function patchConversation(peer: string, fn: (c: MsgConversation) => MsgConversation) {
-  queryClient.setQueryData<MessagesPayload>(MESSAGES_KEY, (p) =>
-    p ? { ...p, conversations: p.conversations.map((c) => (c.person_id === peer ? fn(c) : c)) } : p,
-  );
+  patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({ ...p, conversations: p.conversations.map((c) => (c.person_id === peer ? fn(c) : c)) }));
 }
 
 /**
