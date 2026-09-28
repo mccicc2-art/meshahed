@@ -29,7 +29,7 @@ startCachePersist();
 
 
 export default function RootLayout() {
-  /* Phase 11 · B2 — الخطوطُ تُحمَّل في الجذر ولا تحبس الستارَ: الـWebView لا
+  /* Phase 11 · B2 — الخطوطُ تُحمّل في الجذر ولا تحبس الستارَ: الـWebView لا
      تحتاجها، والشاشةُ الأصليّةُ ترسم بخطّ النظام حتى تصل (`ui.tsx`). */
   const fontsReady = useAppFonts();
   return (
@@ -68,12 +68,9 @@ function Shell() {
         {/* Phase 11 · B1 (D-936) — الشاشةُ الأصليّةُ الوحيدة، فوق الـWebView لا
             بدلَها: `Stack` يُبقي `web` مركَّبةً تحتها، فالرجوعُ يعود إليها
             بلا إعادة تحميل (عقدُ المالك: الحالةُ محفوظة). */}
-        <Stack.Screen name="library" options={{ headerShown: false, animation: "none" }} />
-        <Stack.Screen name="discover" options={{ headerShown: false, animation: "none" }} />
-        {/* Phase 11-G — تبويبٌ ثالثٌ أصليّ؛ بلا حركةٍ كأخويه: تبديلُ تبويبٍ لا دفعُ صفحة */}
-        <Stack.Screen name="search" options={{ headerShown: false, animation: "none" }} />
-        {/* Phase 11-H — الرئيسيةُ الأصليّة جذرٌ رابع؛ بلا هذا السطر يرسم `Stack` ترويسته الافتراضيّة بعنوان «home» فوق الشاشة (رُئي على 1.11.6 بالعربيّة) */}
-        <Stack.Screen name="home" options={{ headerShown: false, animation: "none" }} />
+        {/* 🆕 K3 — الجذورُ الأربعة (الرئيسيّة · المكتبة · اكتشف · البحث) مجموعةُ تبويباتٍ ثابتة (`(tabs)/_layout.tsx`):
+            تُدفع فوق الـWebView كما كانت، وبلا حركة — لكنّ التبديلَ بينها لم يعد يهدم شيئاً */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
