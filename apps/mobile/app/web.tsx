@@ -12,7 +12,7 @@ import { currentLocale, webLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
-import { mark } from "../src/perfMarks";
+import { mark, navTrace } from "../src/perfMarks";
 import { session } from "../src/session";
 import { own } from "../src/ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "../src/shell";
@@ -36,7 +36,7 @@ import { prefetchDiscover } from "../src/discover/DiscoverScreen";
  * فلا إعادةَ تحميلٍ ثانية حين تتغيّر الجلسةُ الأصليّة بعده.
  *
  * 🔴 **بعد التسليم لا يُنادى `signOut` أبداً — ولا بـ`scope: "local"`**
- * (٧ سبتمبر): هذا النداءُ يصل إلى الخادم ويُلغي الجلسةَ التي سُلِّمت للتوّ،
+ * (٧ سبتمبر): هذا النداءُ يصل إلى الخادم ويُلغي الجلسةَ التي سُلِّمت للتوّ،
  * فكان كلُّ دخولٍ من التطبيق يُطرد بعد ثانيتين (`session_not_found`).
  * الجلسةُ الأصليّةُ الآن في الذاكرة فقط بلا تجديدٍ (`src/auth.tsx`)، وصاحبُ
  * الجلسة هو كوكي الـWebView — ونبضةُ الحضور تأتي منه بوسم
@@ -95,8 +95,7 @@ function atGate(p: string, landing: boolean): boolean {
  * و«تم النسخ» معاً): WebView أندرويد بلا `navigator.share`، فكلُّ زرِّ مشاركةٍ في الويب كان يسقط إلى
  * الحافظة — أيقونةُ مشاركةٍ تنسخ، وأندرويد 13+ يؤكّد النسخَ بنفسه فوق توستنا. الآن الدالّةُ تُعرَّف
  * قبل المستند وتطلب ورقةَ النظام من الغلاف (`share` في `onMessage`)، فأزرارُ المشاركة كلُّها
- * (`ShareTitleButton` · `DetailTopBar` · `ShareListSheet` · الدعوات) تفتح واتساب/X دون أن تُمسّ.
- * الإطارُ الأعلى وحدَه (لا مشغّلُ يوتيوب)، ولا تُستبدل دالّةٌ موجودة. الوعدُ يُرفض `AbortError`
+ * (`ShareTitleButton` · `DetailTopBar` · `ShareListSheet` · الدعوات) تفتح واتساب/X دون أن تُمسّ. الإطارُ الأعلى وحدَه (لا مشغّلُ يوتيوب)، ولا تُستبدل دالّةٌ موجودة. الوعدُ يُرفض `AbortError`
  * حين يُغلق المستخدمُ الورقة (iOS) — وهو ما يعدّه الويبُ «ليس خطأً» فلا ينسخ بعده.
  */
 const SHARE_BRIDGE =
@@ -197,6 +196,7 @@ export default function Web() {
     (r: ReturnTo) => {
       /* K3 — المجموعةُ تُدفع من الويب: رجوعُها إلى الصفحة التي جاءت منها (`bootRoot`) */
       rootsBorn(false);
+      navTrace("nav.enter", { screen: "web", why: "gonative", tab: r });
       if (r === "library") router.push("/library");
       else if (r === "discover") router.push("/discover");
       else if (r === "search") router.push("/search");
@@ -278,9 +278,14 @@ export default function Web() {
     if (session.seen()) {
       /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
       rootsBorn(true);
+      navTrace("nav.enter", { screen: "web", why: "boot", tab: "home" });
       router.push("/home");
     }
   }, [loading, u, router]);
+  /* K3a-diag — شاشةُ الويب رُكّبت: مرّةً في الإقلاع؛ ثانيةٌ تعني `replace("/web")` أو نشاطاً أُعيد بناؤه */
+  useEffect(() => {
+    navTrace("nav.enter", { screen: "web", why: "mount" });
+  }, []);
 
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
@@ -358,7 +363,7 @@ export default function Web() {
       const hostOk = insideUrl(e.nativeEvent.url);
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
       if (session.receive(msg as Record<string, unknown>, hostOk)) {
-        /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
+        /* D-1090 — أوّلُ ردٍّ من صفحة الإقلاع الخفيفة ⇒ إلى `/` (المضيفُ والمسارُ من العنوان الفعليّ) */
         /* D-1143 — «وصلني» ليس ردّاً: الانتقالُ عنده كان يقطع الردَّ الحقيقيَّ قبل أن يصل */
         if (hostOk && e.nativeEvent.url.startsWith(BOOT) && msg.type !== "session:ack") hopHome();
         return;
@@ -407,6 +412,8 @@ export default function Web() {
         return;
       }
       if (msg.type === "native") {
+        /* K3a-diag — الصفحةُ طلبت العودة (رجوعٌ تجاوز صفحةَ الوصول) — وهذه الرسالةُ تمسح `shell.returnTo` */
+        navTrace("nav.enter", { screen: "web", why: "msg", tab: typeof msg.route === "string" ? msg.route : null, ready: hostOk, result: shell.returnTo });
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
         if (hostOk) {
           shell.returnTo = null; /* D-998 — العودةُ سُلِّمت */
@@ -415,7 +422,7 @@ export default function Web() {
         /* library (D-949) · discover (D-955) · search (11-G) · home (11-H) · 🆕 settings[/قسم] (D-1101) —
            كلُّها من `goNative`؛ والقيمةُ تُفحص قبل أن تُدفع بها شاشة */
         if (hostOk && isReturnTo(msg.route)) goNative(msg.route);
-        /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
+        /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّةٍ يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
            «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
            (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
            `from=web`: الرجوعُ يعود إلى الصفحة الويبيّة نفسِها، وأبوابُ الشاشة تفتح بلا `returnTo`. */
@@ -507,7 +514,7 @@ export default function Web() {
   }, []);
 
   /** إعادةُ المحاولة: تُخفي الشاشةَ ثمّ تُعيد التحميل — **لا تبدّل المصدر**
-      فلا يُعاد تسليمُ جلسةٍ سُلِّمت أصلاً. */
+      فلا يُعاد تسليمُ جلسةٍ سُلِّمت أصلاً. */
   const retry = useCallback(() => {
     setFailed(false);
     setReady(false);
@@ -522,23 +529,30 @@ export default function Web() {
          `goBack()` يحمّل ما قبلها في تاريخ الـWebView — ملفَّه من زيارةٍ سابقة — فيُرسم هيكلُ تحميله ربعَ
          ثانية ثمّ سوادٌ ثمّ تُسلِّم الصفحةُ العودة. الوجهةُ واحدةٌ في الحالين؛ الفرقُ ألّا نمرّ بصفحةٍ لم تُطلب.
          وإن تنقّل داخل الويب بعد الوصول (المسارُ تغيّر) فالرجوعُ رجوعُ الويب حتى يعود إليها. */
+      /* K3a-diag — أيُّ فرعٍ أخذ الضغطة، وبأيّ حالٍ للباب: `tab` وجهةُ العودة، `result` مسارُ الباب، `src` المسارُ الآن */
+      const trace = (why: string) =>
+        navTrace("nav.back", { screen: "web", why, tab: shell.returnTo, result: shell.doorPath, src: path, ready: canGoBack });
       if (shell.returnTo && shell.doorPath === path) {
+        trace("door");
         const route = shell.returnTo;
         shell.disarm();
         goNative(route);
         return true;
       }
       if (canGoBack) {
+        trace("webback");
         ref.current?.goBack();
         return true;
       }
       /* D-998 — لا رجوعَ في الـWebView لكنّ الصفحةَ فُتحت من شاشةٍ أصليّة: نعود إليها لا نخرج */
       if (shell.returnTo) {
+        trace("ret");
         const route = shell.returnTo;
         shell.disarm();
         goNative(route);
         return true;
       }
+      trace("exit");
       return false;
     });
     return () => sub.remove();
@@ -638,6 +652,8 @@ export default function Web() {
             }
             /* K3 — المجموعةُ تُدفع من الويب (`bootRoot`) */
             rootsBorn(false);
+            /* K3a-diag — ضغطةُ الشريط على صفحةٍ ويبيّة لا تنزع سلاحَ الباب: تُسجَّل ومعها ما بقي منه */
+            navTrace("nav.enter", { screen: "web", why: "bar", tab: k, result: shell.returnTo, src: path });
             if (k === "library") {
               router.push("/library");
               return;
@@ -646,7 +662,7 @@ export default function Web() {
               router.push("/discover");
               return;
             }
-            /* Phase 11-G — «بحث» شاشةٌ أصليّة كأختيها */
+            /* Phase 11-G — «بحث» شاشةٌ أصليّةٌ كأختيها */
             if (k === "search") {
               router.push("/search");
               return;
