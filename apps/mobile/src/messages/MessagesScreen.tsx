@@ -129,6 +129,7 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
         tab={tab}
         onTab={goTab}
         onAim={setLit}
+        perfScreen="messages"
         render={(k, active) =>
           k === "inbox" ? (
             <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onStart={setStartWith} />

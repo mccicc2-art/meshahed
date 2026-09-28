@@ -126,9 +126,10 @@ export function HomeScreen() {
     (path: string) => {
       if (leaving) return;
       setLeaving(true);
-      void shell.open(path, { returnTo: "home" }).then(() => {
+      void shell.open(path, { returnTo: "home" }).then((layered) => {
         setLeaving(false);
-        back();
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (!layered) back();
       });
     },
     [leaving, back],

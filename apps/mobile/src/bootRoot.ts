@@ -3,7 +3,7 @@ import { BackHandler } from "react-native";
 import { useRouter } from "expo-router";
 /* 🆕 K3a-fix — الحالةُ وقواعدُها في `rootsState.ts` (بلا اعتماديّات، مختبَرة في `npm test`) */
 import { backFrom } from "./rootsState";
-export { rootsBorn, rootsMounted, doorLeft, doorBack, homeSeen } from "./rootsState";
+export { rootsBorn, rootsMounted, doorLeft, doorBack, doorKept, homeSeen } from "./rootsState";
 
 /**
  * ====== D-1078 — علامةُ الإقلاع تسافر بين الجذور الأربعة ======

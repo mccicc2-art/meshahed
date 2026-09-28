@@ -165,9 +165,10 @@ export function CommunityScreen() {
         if (openThreadPath(router, path, "community")) return;
         if (leaving) return;
         setLeaving(true);
-        void shell.open(path, { returnTo: "community" }).then(() => {
+        void shell.open(path, { returnTo: "community" }).then((layered) => {
           setLeaving(false);
-          back();
+          /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+          if (!layered) back();
         });
       },
     }),
@@ -303,6 +304,7 @@ export function CommunityScreen() {
           tab={tab}
           onTab={goTab}
           onAim={setAim}
+          perfScreen="community"
           render={(k) => (
             <Pane k={k} d={d} doors={doors} acts={acts} cardActs={cardActs} live={tab === k} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} />
           )}

@@ -44,6 +44,13 @@ export function doorBack() {
   nextSeen = door.homeSeen;
   door = null;
 }
+/**
+ * 🆕 K3b — عودةٌ من بابٍ ظهر طبقةً: المجموعةُ لم تُنزع أصلاً فحالتُها كما هي — يُرمى المحفوظُ وحدَه
+ * (وإلّا ورثته مجموعةٌ تُبنى لاحقاً لا صلةَ لها بهذا الباب)
+ */
+export function doorKept() {
+  door = null;
+}
 /** `(tabs)/_layout` عند التركيب */
 export function rootsMounted() {
   roots.homeSeen = nextSeen;

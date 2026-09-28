@@ -1,6 +1,7 @@
 import { CONFIG } from "./config";
 import { doorLeft } from "./rootsState";
 import type { StackEntry } from "./nativeStack";
+import { webLayer } from "./webDoor";
 
 /**
  * بابُ الشاشات الأصليّة إلى الـWebView (Phase 11 · B1): الشاشةُ الأصليّةُ لا
@@ -30,6 +31,16 @@ export function rootOf(r: ReturnTo | null): NativeRoot | null {
   return r.startsWith("settings") ? "home" : (r as NativeRoot);
 }
 
+/** 🆕 K3b — المسارُ كما يقرؤه الغلافُ من عنوان الصفحة (`new URL().pathname`: الحروفُ العربيّة مرمَّزة) — كي تطابق مرساةُ الباب
+    صفحتَه حين يعود منها (`/u/أحمد` في الطلب و`/u/%D8%A3…` في العنوان) */
+function pathnameOf(path: string): string {
+  try {
+    return new URL(CONFIG.apiBase + path).pathname;
+  } catch {
+    return path.split("?")[0];
+  }
+}
+
 let inject: ((js: string) => void) | null = null;
 /* 🆕 D-1156 — من يرسل نموذجَ POST من الغلاف (`web.tsx`)، وطلبٌ ينتظره إن لم تُركَّب الـWebView بعد */
 let poster: ((path: string) => void) | null = null;
@@ -44,7 +55,7 @@ let pendingPost: string | null = null;
  * في شاشةٍ لا تستجيب؛ وميضٌ عند البطء الشديد أهونُ من انتظارٍ بلا نهاية.
  */
 const ARRIVAL_TIMEOUT_MS = 4000;
-let waiter: { path: string; settle: () => void } | null = null;
+let waiter: { path: string; settle: (own?: boolean) => void } | null = null;
 
 export const shell = {
   attach(fn: ((js: string) => void) | null) {
@@ -90,8 +101,13 @@ export const shell = {
   },
   /** 🆕 D-1103 — يُنادى لحظةَ وصول الصفحة المطلوبة (قبل نزول الشاشة الأصليّة) — `web.tsx` يرفع درعَ اللمس */
   onArrive: null as (() => void) | null,
-  open(path: string, opts?: { returnTo?: ReturnTo; resume?: StackEntry[] }): Promise<void> {
-    if (!inject || !path.startsWith("/")) return Promise.resolve();
+  /**
+   * 🆕 K3b — **الوعدُ يقول إن ظهرت الصفحةُ طبقةً** (`true`): بابٌ بوجهة عودة، والطبقةُ مركَّبة ⇒ تظهر فوق الشاشة التي
+   * فتحته **ولا يُنزل المستدعي شيئاً** — العودةُ تُخفيها فتبقى الشاشةُ كما تُركت (`webDoor.ts`). `false` ⇒ الطريقُ القديم
+   * (`dismissAll` لتنكشف الصفحةُ تحت المكدّس) — بابٌ بلا وجهة عودة (صفحةٌ فُتحت من الويب) أو طبقةٌ لم تُركَّب.
+   */
+  open(path: string, opts?: { returnTo?: ReturnTo; resume?: StackEntry[] }): Promise<boolean> {
+    if (!inject || !path.startsWith("/")) return Promise.resolve(false);
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
     shell.resume = opts?.returnTo && opts.resume?.length ? { root: opts.returnTo, path: path.split("?")[0], stack: opts.resume } : null;
@@ -100,16 +116,18 @@ export const shell = {
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
     /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل
        في الدورة نفسِها على الأجهزة السريعة، فلا يجد من ينتظره. */
-    const done = new Promise<void>((resolve) => {
-      waiter?.settle();
+    const returnTo = opts?.returnTo;
+    const done = new Promise<boolean>((resolve) => {
+      waiter?.settle(false);
       const timer = setTimeout(() => waiter?.settle(), ARRIVAL_TIMEOUT_MS);
       waiter = {
         path,
-        settle() {
+        /* `own=false`: بابٌ أحدثُ حلّ محلَّه — لا يُرسى هذا (صفحتُه لن تصل) */
+        settle(own = true) {
           clearTimeout(timer);
           waiter = null;
           shell.onArrive?.();
-          resolve();
+          resolve(own && !!returnTo && webLayer.canLayer() && webLayer.openDoor(returnTo, pathnameOf(path)));
         },
       };
     });

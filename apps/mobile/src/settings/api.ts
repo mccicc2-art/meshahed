@@ -81,8 +81,10 @@ export function useOpenWeb() {
       if (busy) return;
       setBusy(path);
       const returnTo = typeof section === "string" && /^[a-z-]+$/.test(section) ? (`settings/${section}` as const) : ("settings" as const);
-      void shell.open(path, { returnTo }).then(() => {
+      void shell.open(path, { returnTo }).then((layered) => {
         setBusy(null);
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (layered) return;
         if (router.canDismiss()) router.dismissAll();
         else router.replace("/web");
       });

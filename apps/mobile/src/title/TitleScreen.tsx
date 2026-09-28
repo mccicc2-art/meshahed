@@ -254,7 +254,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     (suffix = "", absolute?: string) =>
       void shell
         .open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from, resume: stackAboveRoots(nav.getRootState()) })
-        .then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+        /* 🆕 K3b — ظهرت طبقةً ⇒ صفحةُ العمل تبقى تحتها (والمواسمُ المفتوحة) */
+        .then((layered) => (layered ? undefined : router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
     [webPath, router, from, nav],
   );
   const openTitle = useCallback((k: "tv" | "movie", tid: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: k, id: String(tid), from } }), [router, from]);

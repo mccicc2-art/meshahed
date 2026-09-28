@@ -176,7 +176,11 @@ export function DiscoverScreen() {
         return;
       }
       setLeaving(true);
-      void shell.open(path, { returnTo: "discover" }).then(back);
+      void shell.open(path, { returnTo: "discover" }).then((layered) => {
+        setLeaving(false);
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (!layered) back();
+      });
     },
     [leaving, back, router],
   );

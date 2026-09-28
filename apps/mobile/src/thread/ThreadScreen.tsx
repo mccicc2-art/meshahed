@@ -124,8 +124,10 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
       /* M3-fix — موضعُ القراءة والشجرةُ المفتوحة تُحفظ، وما فوق الجذر يُلتقط، فالرجوعُ من الصفحة يعيد الغرفةَ كما تُركت */
       threadView.set(JSON.stringify(key), { y: scrollY.current, toggled: [...openNow.current.toggled], expanded: [...openNow.current.expanded], at: Date.now() });
       const resume = from === "web" ? undefined : stackAboveRoots(nav.getRootState());
-      void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then(() => {
+      void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then((layered) => {
         setLeaving(false);
+        /* 🆕 K3b — ظهرت طبقةً فوق الغرفة ⇒ الغرفةُ تبقى تحتها (موضعُ القراءة حيٌّ لا يُستعاد) */
+        if (layered) return;
         /* 🔴 M3-fix — **تُنزَل الشاشاتُ كلُّها لا هذه وحدَها** (بلاغُ خالد بتسجيل ٢٨ سبتمبر: صورةُ الشخص في غرفةٍ فُتحت
            من «المجتمع» أعادته إلى «المجتمع» لا إلى ملفّه). الـWebView جذرُ المكدّس (D-1075)، والغرفةُ من جذرٍ فوق
            مجموعة التبويبات لا فوق الويب — `back()` كان يكشف «المجتمع» والصفحةُ فُتحت تحته لا تُرى. والعودةُ من الملفّ

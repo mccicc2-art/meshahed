@@ -11,6 +11,7 @@ import { applyDirection, currentLocale } from "../src/i18n";
 import { useAppFonts } from "../src/fonts";
 import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
+import { WebLayer } from "../src/WebLayer";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/perfMarks";
@@ -89,6 +90,9 @@ function Shell() {
         {/* D-1158 — بلا حركة: شاشةٌ تُدفع وتُسحب في اللحظة نفسِها لا يجب أن تُرى */}
         <Stack.Screen name="auth/callback" options={{ headerShown: false, animation: "none" }} />
       </Stack>
+      {/* 🆕 K3b — الـWebView طبقةٌ فوق المكدّس لا جذرٌ تحته (`src/webDoor.ts`): تظهر للزائر وللباب، وتختفي فوق الشاشات
+          الأصليّة وهي مركَّبة — فالبابُ لا يهدم ما تحته، والعودةُ لا تبني شيئاً */}
+      <WebLayer />
     </>
   );
 }

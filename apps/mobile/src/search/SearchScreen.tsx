@@ -115,7 +115,11 @@ export function SearchScreen() {
         return;
       }
       setLeaving(true);
-      void shell.open(path, { returnTo: "search" }).then(back);
+      void shell.open(path, { returnTo: "search" }).then((layered) => {
+        setLeaving(false);
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (!layered) back();
+      });
     },
     [leaving, back, router],
   );

@@ -73,7 +73,9 @@ type Props<K extends string> = {
   render: (key: K, active: boolean) => React.ReactNode;
   style?: ViewStyle;
   /** F0 (D-1024) — اسمُ الشاشة لعلامة `tab.arm`؛ بلا اسمٍ لا قياس */
-  perfScreen?: "library" | "discover";
+  /* 🆕 K3b — «المجتمع» و«الرسائل» يُسمَّيان: سحبُهما كان بلا رقم (`gesture.jank`/`tab.arm`)، فلم يُعرف إن أسقطا إطاراتٍ
+     كأخواتهما. الخادمُ يقبل الاسمَ كما هو (`screen` كلمةٌ من `[\w.-]`) — لا تغييرَ هناك */
+  perfScreen?: "library" | "discover" | "community" | "messages";
   /**
    * 🆕 11-M · M1-fix — **الوجهةُ لحظةَ رفع الإصبع** (تسجيلُ أحمد ٢٨ سبتمبر: خطُّ التبويب يلحق اللوحَ بنصف ثانية —
    * اللوحُ استقرّ على «الناس» والخطُّ ما زال تحت «الأعمال»). القلبُ نفسُه (`onTab`) يبقى بعد الطيران (D-526: لا إطارَ

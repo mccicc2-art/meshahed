@@ -214,7 +214,11 @@ export function LibraryScreen() {
         return;
       }
       setLeaving(true);
-      void shell.open(path, { returnTo: "library" }).then(back);
+      void shell.open(path, { returnTo: "library" }).then((layered) => {
+        setLeaving(false);
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (!layered) back();
+      });
     },
     [leaving, back, router, switchTo],
   );

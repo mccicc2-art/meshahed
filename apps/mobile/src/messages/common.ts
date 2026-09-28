@@ -88,8 +88,10 @@ export function useDoors(from: Origin) {
       if (leaving) return;
       setLeaving(true);
       const resume = from === "web" ? undefined : stackAboveRoots(nav.getRootState());
-      void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then(() => {
+      void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then((layered) => {
         setLeaving(false);
+        /* 🆕 K3b — ظهرت طبقةً ⇒ هذه الشاشةُ تبقى تحتها كما هي (لا نزعَ ولا بناء) */
+        if (layered) return;
         if (router.canDismiss()) router.dismissAll();
         else router.replace("/web");
       });
