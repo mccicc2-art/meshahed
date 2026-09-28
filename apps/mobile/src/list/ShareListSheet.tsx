@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, Share, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Share, View } from "react-native";
 import { Image } from "expo-image";
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
@@ -8,12 +8,11 @@ import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
-import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
 import { haptic } from "../haptics";
-import { displayNameOf } from "@/core/people";
+import { FriendPicker } from "../messages/FriendPicker";
 import { num } from "@/core/i18n";
-import type { CommunitiesPayload, CommunityPostBody, FriendsPayload, ListUpdateBody, ShareFriendBody } from "../contracts";
+import type { CommunitiesPayload, CommunityPostBody, ListUpdateBody, ShareFriendBody } from "../contracts";
 
 /**
  * ====== ورقةُ مشاركة القائمة — `ShareListSheet` (الويب) بالبكسل (Phase 11-G · G6) ======
@@ -113,92 +112,19 @@ export function ShareListSheet({
           )}
         </View>
       ) : view === "friend" ? (
-        <FriendPicker listId={listId} onDone={onClose} onToast={onToast} onError={onError} />
+        /* 🆕 M5 — المنتقي نفسُه صار مشتركاً (`messages/FriendPicker`) — «أرسِله لـ…» في صفحة العمل يرسم منه أيضاً */
+        <FriendPicker
+          onSend={async (recipientId, note) => {
+            await write<{ done: true }>("/api/v1/lists/share-friend", { listId, recipientId, note } satisfies ShareFriendBody);
+            onToast(t.shareSentToast);
+            onClose();
+          }}
+          onError={onError}
+        />
       ) : (
         <CommunityPicker listUrl={url} onDone={onClose} onToast={onToast} onError={onError} />
       )}
     </Sheet>
-  );
-}
-
-/** اختيارٌ واحدٌ من المتابعة المتبادلة + ملاحظةٌ حتّى ٢٨٠ حرفاً ثمّ «أرسل» — `FriendPicker` الويب */
-function FriendPicker({ listId, onDone, onToast, onError }: { listId: string; onDone: () => void; onToast: (s: string) => void; onError: (e: unknown) => void }) {
-  const { t, tokens } = useApp();
-  const q = useQuery({
-    queryKey: qk.tag("me:friends"),
-    queryFn: async () => (await api<FriendsPayload>("/api/v1/me/friends")).data.people,
-    staleTime: 5 * 60_000,
-  });
-  const [selected, setSelected] = useState<string | null>(null);
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const send = async () => {
-    if (!selected || busy) return;
-    setBusy(true);
-    try {
-      await write<{ done: true }>("/api/v1/lists/share-friend", { listId, recipientId: selected, note: note.trim() || null } satisfies ShareFriendBody);
-      haptic.success();
-      onToast(t.shareSentToast);
-      onDone();
-    } catch (e) {
-      onError(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const people = q.data;
-  return (
-    <View style={{ gap: 12 }}>
-      {!people ? (
-        <Text size={13} muted style={{ textAlign: "center", paddingVertical: 24 }}>{q.isError ? t.apiInternal : t.shareLoadingPeople}</Text>
-      ) : people.length === 0 ? (
-        <Text size={13} muted style={{ textAlign: "center", paddingVertical: 24 }}>{t.shareNoMutual}</Text>
-      ) : (
-        <>
-          <Text size={12} muted>{t.shareSendPickHint}</Text>
-          <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {people.map((p, i) => {
-              const on = selected === p.id;
-              const label = displayNameOf(p, t.anonymousUser);
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    haptic.pick();
-                    setSelected(on ? null : p.id);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider }}
-                >
-                  <View style={{ width: 36, height: 36, borderRadius: 18, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                    {!p.hide_name && p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Icon name="people" size={16} color={tokens.muted} />}
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text size={14} weight="600" numberOfLines={1}>{label}</Text>
-                    {p.username && !p.hide_name ? <Text size={12} muted numberOfLines={1}>@{p.username}</Text> : null}
-                  </View>
-                  {/* الاختيارُ: دائرةٌ بحدٍّ تمتلئ بلون التمييز — نمطُ الـradio في الويب */}
-                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: on ? tokens.accent : tokens.border, backgroundColor: on ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
-                    {on ? <Icon name="check-line" size={12} color={tokens.onAccent} /> : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          <TextInput
-            value={note}
-            onChangeText={(v) => setNote(v.slice(0, 280))}
-            placeholder={t.shareSendNotePlaceholder}
-            placeholderTextColor={tokens.muted}
-            multiline
-            textAlignVertical="top"
-            style={{ minHeight: 72, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tokens.fg, textAlign: "left" }}
-          />
-          <Button label={t.shareSendButton} busy={busy} disabled={!selected} onPress={() => void send()} />
-        </>
-      )}
-    </View>
   );
 }
 

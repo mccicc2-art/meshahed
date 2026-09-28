@@ -73,6 +73,22 @@ export type MsgPeerBody = { person_id: string };
 /** `GET /api/v1/me/signals` — أسطرُ الجرس كما تعيدها `mySignals`، والجملةُ والوجهةُ من `core/signals.ts` في الطرفين */
 export type SignalsPayload = { me_id: string; rows: SignalRow[] };
 
+/**
+ * `POST /api/v1/me/messages/share` — «أرسِله لـ…» (M5): عملٌ إلى صديقٍ من المتابعة المتبادلة، ومعه سطرٌ اختياريّ — `sendShare`
+ * نفسُه (`SendShareSheet` · `StartConversationSheet` في الويب). الاسمُ والملصقُ لحظةَ الإرسال كما يرسلهما الويب (D-048).
+ */
+export type MsgShareBody = {
+  recipient_id: string;
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  note: string | null;
+};
+
+/** أقصى طول الملاحظة — حدُّ `sendShare` نفسُه */
+export const MSG_NOTE_MAX = 280;
+
 /** أقصى طول الردّ — حدُّ `replyToShare` نفسُه */
 export const MSG_REPLY_MAX = 500;
 
@@ -93,4 +109,17 @@ export function parseMsgPeerBody(raw: unknown): MsgPeerBody | null {
   if (!raw || typeof raw !== "object") return null;
   const id = (raw as Record<string, unknown>).person_id;
   return typeof id === "string" && UUID.test(id) ? { person_id: id } : null;
+}
+
+export function parseMsgShareBody(raw: unknown): MsgShareBody | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Record<string, unknown>;
+  if (typeof b.recipient_id !== "string" || !UUID.test(b.recipient_id)) return null;
+  const id = Number(b.tmdb_id);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  if (b.media_type !== "tv" && b.media_type !== "movie") return null;
+  const title = typeof b.title === "string" && b.title.trim() ? b.title.trim().slice(0, 300) : null;
+  const poster = typeof b.poster_path === "string" && b.poster_path ? b.poster_path : null;
+  const note = typeof b.note === "string" ? b.note.replace(/\s+/g, " ").trim().slice(0, MSG_NOTE_MAX) || null : null;
+  return { recipient_id: b.recipient_id, tmdb_id: id, media_type: b.media_type, title, poster_path: poster, note };
 }

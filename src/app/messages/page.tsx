@@ -130,7 +130,7 @@ async function InboxPane({
 }: {
   locale: Awaited<ReturnType<typeof getT>>["locale"];
   withParam: string | null;
-  /** 🆕 11-M · M4 — `?start=<id>` يفتح ورقةَ «ابدأ محادثة» لذلك الشخص: بابُ التطبيق الأصليّ إليها حتى M5 */
+  /** 🆕 11-M · M4 — `?start=<id>` يفتح ورقةَ «ابدأ محادثة» لذلك الشخص: بابُ التطبيق قبل M5 (يبقى لنسخةٍ لم يصلها التحديث) */
   startParam: string | null;
   header: React.ReactNode;
 }) {

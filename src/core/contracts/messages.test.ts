@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMsgPeerBody, parseMsgReplyBody, MSG_REPLY_MAX } from "./messages.ts";
+import { parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, MSG_REPLY_MAX, MSG_NOTE_MAX } from "./messages.ts";
 
 /** Phase 11-M · M4 — أجسامُ أفعال «الرسائل»: متسامحٌ مع الزائد، صارمٌ مع الناقص، والفراغُ يُرفض قبل الرحلة */
 
@@ -18,4 +18,15 @@ test("الشخص: معرّفٌ صالحٌ وحدَه", () => {
   assert.deepEqual(parseMsgPeerBody({ person_id: U }), { person_id: U });
   assert.equal(parseMsgPeerBody({ person_id: "u1" }), null);
   assert.equal(parseMsgPeerBody({}), null);
+});
+
+test("الإرسال (M5): عملٌ صالحٌ لصديق، والملاحظةُ تُطوى وتُقصّ", () => {
+  assert.deepEqual(parseMsgShareBody({ recipient_id: U, tmdb_id: 7, media_type: "tv", title: " Lost ", poster_path: "/a.jpg", note: "  شوف\n  هذا " }), {
+    recipient_id: U, tmdb_id: 7, media_type: "tv", title: "Lost", poster_path: "/a.jpg", note: "شوف هذا",
+  });
+  assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 7, media_type: "tv", title: "x", poster_path: null, note: "   " })?.note, null);
+  assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 7, media_type: "tv", note: "y".repeat(400) })?.note?.length, MSG_NOTE_MAX);
+  assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 0, media_type: "tv" }), null);
+  assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 7, media_type: "anime" }), null);
+  assert.equal(parseMsgShareBody({ recipient_id: "x", tmdb_id: 7, media_type: "movie" }), null);
 });

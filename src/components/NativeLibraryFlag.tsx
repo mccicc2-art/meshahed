@@ -43,7 +43,7 @@ export function NativeLibraryFlag() {
       if (url.origin !== window.location.origin) return;
       /* 🆕 11-M · M4 — **«الرسائل» و«الإشعارات» أصليّتان** من أيِّ رابطٍ في الويب (الظرفُ في الترويسة · روابطُ الخيوط
          `/people?tab=inbox&with=` · `?tab=alerts`) — بقدرة الغلاف نفسِها (`LoopzNative.messages`، غلافٌ أقدم يبقى رابطاً).
-         `?start=` بابُ ورقة «ابدأ محادثة» الويبيّة حتى M5 — يُترك. */
+         `?start=` بابُ ورقة «ابدأ محادثة» الويبيّة (للتطبيق قبل M5) — يُترك. */
       const inbox = url.pathname === "/messages" || (url.pathname === "/people" && url.searchParams.get("tab") === "inbox");
       if (inbox && window.LoopzNative?.messages === true && !url.searchParams.has("start") && !url.hash) {
         const peer = url.searchParams.get("with");

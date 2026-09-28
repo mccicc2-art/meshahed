@@ -21,6 +21,7 @@ import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
 import { Sheet } from "../library/Sheet";
+import { SendTitleSheet } from "../messages/SendSheets";
 import { ArtSheet } from "./ArtSheet";
 import { Logo } from "../Logo";
 import { Clipboard } from "react-native";
@@ -281,6 +282,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const [listOpen, setListOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [art, setArt] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [redCard, setRedCard] = useState(false);
   const favorite = useMutation({
     mutationFn: () => write<{ favorite: boolean }>("/api/v1/track/favorite", { tmdbId: id, mediaType: kind, title: d?.name ?? "", posterPath: d?.poster_path ?? null } satisfies FavoriteBody),
@@ -524,7 +526,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         <Sheet title={t.moreMenuTitle} onClose={() => setMenuOpen(false)}>
           {(
             [
-              { icon: "send", label: t.shareSendTitle, color: tokens.accent, run: () => openWeb("", `/people?send=${kind}-${id}`) },
+              /* 🆕 11-M · M5 — «أرسِله لـ…» ورقةٌ أصليّة (`SendTitleSheet`) لا بابُ `/people?send=` */
+              { icon: "send", label: t.shareSendTitle, color: tokens.accent, run: () => setSendOpen(true) },
               { icon: "link", label: t.shareCopyLink, color: tokens.fg, run: () => { Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast(t.linkCopied); } },
               { icon: "share", label: t.shareTitle, color: tokens.fg, run: () => void share() },
               { icon: "palette", label: t.artTitle, color: tokens.fg, run: () => setArt(true) },
@@ -545,6 +548,18 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             </>
           ) : null}
         </Sheet>
+      ) : null}
+      {sendOpen && d ? (
+        <SendTitleSheet
+          share={{ tmdb_id: id, media_type: kind, title: d.name, poster_path: d.poster_path }}
+          onClose={() => setSendOpen(false)}
+          onToast={setToast}
+          onError={(e) => {
+            const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
+            const msg = (t as unknown as Record<string, unknown>)[key];
+            setToast(typeof msg === "string" ? msg : t.apiInternal);
+          }}
+        />
       ) : null}
       {art && d ? (
         <ArtSheet kind={kind} id={id} current={{ poster: d.poster_path, backdrop: d.backdrop_path }} onPlus={() => { setArt(false); openWeb("", "/plus"); }} onClose={() => setArt(false)} />

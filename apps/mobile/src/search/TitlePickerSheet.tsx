@@ -20,6 +20,19 @@ import type { SearchTitle } from "../contracts";
  * 🔑 **ورقةٌ سفليّة** لا وسطيّة (قاعدةُ D-1032): يفتحها صاحبُها بنفسه، وهي أداة.
  */
 export function TitlePickerSheet({ onPick, onClose }: { onPick: (t: SearchTitle) => void; onClose: () => void }) {
+  const { t } = useApp();
+  return (
+    <Sheet title={t.listAddTitles} onClose={onClose}>
+      <TitlePicker onPick={onPick} />
+    </Sheet>
+  );
+}
+
+/**
+ * 🆕 M5 — **جسمُ المنتقي بلا ورقته**: «ابدأ محادثة» (الرسائل) يضعه داخل ورقتها بعنوانها وصاحبِ المحادثة فوقه — منتقٍ واحدٌ
+ * في ورقتين لا ورقتان متراكبتان ولا حقلُ بحثٍ ثانٍ (القاعدة ٣). `placeholder` يغيّر نصَّ الحقل وحدَه.
+ */
+export function TitlePicker({ onPick, placeholder }: { onPick: (t: SearchTitle) => void; placeholder?: string }) {
   const { t, tokens } = useApp();
   const [q, setQ] = useState("");
   const term = useDebounced(q);
@@ -28,42 +41,40 @@ export function TitlePickerSheet({ onPick, onClose }: { onPick: (t: SearchTitle)
   const data = search.data;
 
   return (
-    <Sheet title={t.listAddTitles} onClose={onClose}>
-      <View style={{ gap: 12 }}>
-        <View style={{ position: "relative", justifyContent: "center" }}>
-          <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
-            <Icon name="search" size={18} color={tokens.muted} />
-          </View>
-          <TextInput
-            value={q}
-            onChangeText={setQ}
-            placeholder={t.searchPlaceholder}
-            placeholderTextColor={tokens.muted}
-            returnKeyType="search"
-            autoFocus
-            autoCorrect={false}
-            autoCapitalize="none"
-            style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 12, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
-          />
+    <View style={{ gap: 12 }}>
+      <View style={{ position: "relative", justifyContent: "center" }}>
+        <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
+          <Icon name="search" size={18} color={tokens.muted} />
         </View>
-        <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {short ? (
-            <Text size={13} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.searchStart}</Text>
-          ) : !data ? (
-            <RowsSkeleton rows={4} />
-          ) : data.titles.length === 0 ? (
-            <Text size={13} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.searchNoResults}</Text>
-          ) : (
-            <View style={{ opacity: search.isPlaceholderData ? 0.6 : 1 }}>
-              <Divided>
-                {data.titles.map((r) => (
-                  <TitleRow key={`${r.mediaType}-${r.id}`} r={r} onPress={() => onPick(r)} />
-                ))}
-              </Divided>
-            </View>
-          )}
-        </ScrollView>
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder={placeholder ?? t.searchPlaceholder}
+          placeholderTextColor={tokens.muted}
+          returnKeyType="search"
+          autoFocus
+          autoCorrect={false}
+          autoCapitalize="none"
+          style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 12, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
+        />
       </View>
-    </Sheet>
+      <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {short ? (
+          <Text size={13} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.searchStart}</Text>
+        ) : !data ? (
+          <RowsSkeleton rows={4} />
+        ) : data.titles.length === 0 ? (
+          <Text size={13} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.searchNoResults}</Text>
+        ) : (
+          <View style={{ opacity: search.isPlaceholderData ? 0.6 : 1 }}>
+            <Divided>
+              {data.titles.map((r) => (
+                <TitleRow key={`${r.mediaType}-${r.id}`} r={r} onPress={() => onPick(r)} />
+              ))}
+            </Divided>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
