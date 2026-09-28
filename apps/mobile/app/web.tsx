@@ -36,7 +36,7 @@ import { prefetchDiscover } from "../src/discover/DiscoverScreen";
  * فلا إعادةَ تحميلٍ ثانية حين تتغيّر الجلسةُ الأصليّة بعده.
  *
  * 🔴 **بعد التسليم لا يُنادى `signOut` أبداً — ولا بـ`scope: "local"`**
- * (٧ سبتمبر): هذا النداءُ يصل إلى الخادم ويُلغي الجلسةَ التي سُلِّمت للتوّ،
+ * (٧ سبتمبر): هذا النداءُ يصل إلى الخادم ويُلغي الجلسةَ التي سُلِّمت للتوّ،
  * فكان كلُّ دخولٍ من التطبيق يُطرد بعد ثانيتين (`session_not_found`).
  * الجلسةُ الأصليّةُ الآن في الذاكرة فقط بلا تجديدٍ (`src/auth.tsx`)، وصاحبُ
  * الجلسة هو كوكي الـWebView — ونبضةُ الحضور تأتي منه بوسم
@@ -84,7 +84,7 @@ function atGate(p: string, landing: boolean): boolean {
  * المكتبة»): الويبُ كان يبتلع ضغطةَ «المكتبة» لكلِّ غلافٍ يحمل الوسم، والمثبَّتُ
  * 1.2.3 لا يعرف `native`. **فالغلافُ الذي يعرف الشاشةَ يقولها** بحقن
  * `window.LoopzNative` قبل تحميل الصفحة، والويبُ لا يبتلع الضغطةَ بدونها.
- * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
+ * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
  */
 /* D-1000 — `title`: الغلافُ يفتح صفحةَ العمل أصليّةً من أيّ رابط عملٍ في الويب */
 /* D-1012 — `nav`: الشريطُ السفليُّ أصليٌّ فوق كلِّ صفحةٍ ويبيّة، والويبُ يخفي شريطَه */
@@ -101,7 +101,7 @@ function atGate(p: string, landing: boolean): boolean {
  */
 const SHARE_BRIDGE =
   "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,share:true};" + SHARE_BRIDGE + ";true;";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -202,6 +202,8 @@ export default function Web() {
       else if (r === "discover") router.push("/discover");
       else if (r === "search") router.push("/search");
       else if (r === "home") router.push("/home");
+      /* 🆕 11-M · M1 */
+      else if (r === "community") router.push("/community");
       else {
         const section = r.split("/")[1];
         router.push("/home");
@@ -508,7 +510,7 @@ export default function Web() {
   }, []);
 
   /** إعادةُ المحاولة: تُخفي الشاشةَ ثمّ تُعيد التحميل — **لا تبدّل المصدر**
-      فلا يُعاد تسليمُ جلسةٍ سُلِّمت أصلاً. */
+      فلا يُعاد تسليمُ جلسةٍ سُلِّمت أصلاً. */
   const retry = useCallback(() => {
     setFailed(false);
     setReady(false);
@@ -571,6 +573,7 @@ export default function Web() {
     : origin === "discover" ? "news"
     : origin === "search" ? "search"
     : origin === "home" ? "home"
+    : origin === "community" ? "people"
     : path.startsWith("/list") ? "library"
     : "home";
   return (
@@ -626,6 +629,7 @@ export default function Web() {
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
       {ready && !failed && !atGate(path, landing) ? (
         <BottomNav
+          shell
           active={navKey}
           onGo={(k) => {
             /* 🔴 🆕 D-1115 — **الزائرُ يتصفّح الويبَ لا الشاشاتِ الأصليّة** (فيديو مختبِرٍ نزّل التطبيقَ للتوّ:
@@ -662,9 +666,8 @@ export default function Web() {
               router.push("/home");
               return;
             }
-            const to = "/people";
-            /* الملاحةُ في الصفحة نفسِها (تاريخُ الـWebView محفوظ) — لا تحميلَ مستندٍ جديد */
-            ref.current?.injectJavaScript(`(function(){try{window.__loopzGo?window.__loopzGo(${JSON.stringify(to)}):(location.href=${JSON.stringify(CONFIG.apiBase + to)});}catch(e){location.href=${JSON.stringify(CONFIG.apiBase + to)};}})();true;`);
+            /* 🆕 11-M · M1 — «المجتمع» شاشةٌ أصليّة كأخواتها (D-1171: الخانةُ في مكانها) */
+            router.push("/community");
           }}
         />
       ) : null}
