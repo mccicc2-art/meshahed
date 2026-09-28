@@ -178,5 +178,6 @@ export type {
   MsgReplyBody,
   MsgPeerBody,
   SignalsPayload,
+  BadgesPayload,
 } from "@/core/contracts/messages";
 export type { SignalRow } from "@/core/signals";

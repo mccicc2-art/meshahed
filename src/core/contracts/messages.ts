@@ -59,6 +59,9 @@ export type MessagesPayload = {
   unread: { messages: number; signals: number };
 };
 
+/** `GET /api/v1/me/badges` — شارتا الظرف والجرس وحدَهما (M4-fix2) */
+export type BadgesPayload = { messages: number; signals: number };
+
 /** `GET /api/v1/me/messages/seen?with=<id>` — آخرُ ظهورِ صاحب الخيط (D-765)، `null` صامتة */
 export type LastSeenPayload = { last_seen: string | null };
 

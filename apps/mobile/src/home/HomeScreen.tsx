@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { homeSeen, useBootRoot } from "../bootRoot";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
+import { useBadges } from "../messages/badges";
 import { warmDiscoverOnce } from "../discover/DiscoverScreen";
 import { useQueryClient } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
@@ -83,6 +84,8 @@ export function HomeScreen() {
     }, []),
   );
   useRefetchOnFocus(["home"]);
+  /* 🆕 M4-fix2 — شارتا الظرف والجرس تُسألان وحدَهما (طلبٌ خفيف) عند الظهور والعودة من الخلفيّة — لا تنتظران الحمولةَ كلَّها */
+  useBadges(!!d);
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
     if (d) warmDiscoverOnce();
