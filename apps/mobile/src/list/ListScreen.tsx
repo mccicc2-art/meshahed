@@ -109,7 +109,11 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
 
   const openCard = useCallback((c: { kind: "tv" | "movie"; id: number }) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from } }), [router, from]);
   /* بابُ الويب لما لم يُنقل بعد — الرجوعُ منه يعيد الشاشةَ التي فُتحت منها القائمة (D-949) */
-  const openWeb = useCallback((path: string) => void shell.open(path, { returnTo: from }).then(back), [from, back]);
+  /* 🔴 M3-fix — `dismissAll` لا `back()`: القائمةُ من جذرٍ فوق مجموعة التبويبات، فالرجوعُ خطوةً يكشف الجذرَ لا الصفحة */
+  const openWeb = useCallback(
+    (path: string) => void shell.open(path, { returnTo: from }).then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+    [from, router],
+  );
 
   const holdHost = useRef<HoldHostRef<CuratedCard>>(null);
   const hold = useCallback((c: CuratedCard, anchor: CardAnchor) => holdHost.current?.open(c, anchor), []);

@@ -246,8 +246,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   }, [d?.name, webPath]);
   /* «المزيد في الويب» — الصفحةُ نفسُها؛ الرجوعُ منها يعود إلى الشاشة الأصليّة التي سبقتنا (D-949) */
   const openWeb = useCallback(
-    (suffix = "", absolute?: string) => void shell.open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from }).then(back),
-    [webPath, back, from],
+    /* 🔴 M3-fix — تُنزَل الشاشاتُ كلُّها (`dismissAll`) لا هذه وحدَها: من جذرٍ نحن فوق مجموعة التبويبات، و`back()` كان يكشف
+       الجذرَ والصفحةُ فُتحت تحته في الـWebView لا تُرى (العلّةُ نفسُها التي ظهرت في صورة الشخص بالغرفة) */
+    (suffix = "", absolute?: string) =>
+      void shell.open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from }).then(() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+    [webPath, router, from],
   );
   const openTitle = useCallback((k: "tv" | "movie", tid: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: k, id: String(tid), from } }), [router, from]);
 

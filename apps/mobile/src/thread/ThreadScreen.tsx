@@ -102,6 +102,10 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
     });
     return () => sub.remove();
   }, [back]);
+  const leave = useCallback(() => {
+    if (router.canDismiss()) router.dismissAll();
+    else router.replace("/web");
+  }, [router]);
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
@@ -109,10 +113,14 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
       setLeaving(true);
       void shell.open(path, from === "web" ? undefined : { returnTo: from }).then(() => {
         setLeaving(false);
-        back();
+        /* 🔴 M3-fix — **تُنزَل الشاشاتُ كلُّها لا هذه وحدَها** (بلاغُ خالد بتسجيل ٢٨ سبتمبر: صورةُ الشخص في غرفةٍ فُتحت
+           من «المجتمع» أعادته إلى «المجتمع» لا إلى ملفّه). الـWebView جذرُ المكدّس (D-1075)، والغرفةُ من جذرٍ فوق
+           مجموعة التبويبات لا فوق الويب — `back()` كان يكشف «المجتمع» والصفحةُ فُتحت تحته لا تُرى. والعودةُ من الملفّ
+           إلى الجذر بـ`returnTo` كما في كلِّ باب. */
+        leave();
       });
     },
-    [leaving, from, back],
+    [leaving, from, leave],
   );
   const openTitle = useCallback(() => {
     if (!d) return;

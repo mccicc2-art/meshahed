@@ -12,6 +12,7 @@ import { ApiError, postForm } from "../api";
 import { Sheet } from "../library/Sheet";
 import { Chip } from "../library/Chip";
 import { GifImage, GifPicker } from "./GifPicker";
+import { span } from "../perfMarks";
 import { REPLY_MAX } from "@/core/communityActs";
 import type { ThreadImagePayload } from "../contracts";
 
@@ -83,20 +84,34 @@ export function Composer({
     const a = r.assets[0];
     if (a.mimeType && !a.mimeType.startsWith("image/")) return setErr(t.errPickImage);
     setUploading(true);
+    /* 🆕 M3-fix — **كلُّ محاولةٍ تُقاس ومرحلتُها تُسمّى** (بلاغُ خالد ٢٨ سبتمبر: «تعذّر رفع الصورة:» بلا سبب، ولا أثرَ
+       للطلب في المخزن ولا في السجلّ). الرسالةُ كانت تبتلع السببَ فلا يُعرف: تصغيرٌ على الجهاز؟ شبكة؟ رفضٌ من الخادم؟
+       الآن السببُ يُكتب بعد النقطتين (`errUpload` صُمّم لذلك) ويصل القياسَ (`src` المرحلة · `why` الرمز · `count` الحالة). */
+    const done = span("thread.image");
+    let stage = "shrink";
     try {
-      const long = Math.max(a.width || 0, a.height || 0);
-      const ctx = ImageManipulator.manipulate(a.uri);
-      if (long > MAX_EDGE) ctx.resize(a.width >= a.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
-      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+      /* 🔑 الأبعادُ من الصورة المرسومة لا من المنتقي: منتقي أندرويد قد يعيد `width/height` صفراً، فتُرفع الصورةُ بحجمها
+         الأصليّ (١٢–٥٠ ميجابكسل) فيتجاوز حدَّ الخادم (٢ ميجابايت) أو حدَّ المنصّة (٤٫٥) فيعود جوابٌ ليس JSON */
+      const raw = await ImageManipulator.manipulate(a.uri).renderAsync();
+      const long = Math.max(raw.width, raw.height);
+      const ctx = ImageManipulator.manipulate(raw);
+      if (long > MAX_EDGE) ctx.resize(raw.width >= raw.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
+      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.82, format: SaveFormat.JPEG });
+      stage = "send";
       const form = new FormData();
       /* RN يقبل `{uri,name,type}` جزءاً في النموذج — يقرأ الملفَّ من القرص بنفسه */
       form.append("file", { uri: img.uri, name: "talk.jpg", type: "image/jpeg" } as unknown as Blob);
       const out = await postForm<ThreadImagePayload>("/api/v1/thread/image", form);
       setImage(out.url);
       haptic.pick();
+      done({ result: "ok" });
     } catch (e) {
-      const key = e instanceof ApiError ? e.error.message_key : null;
-      setErr(key === "apiImageTooLarge" ? t.errTooLarge : t.errUpload);
+      const api = e instanceof ApiError ? e : null;
+      const known = api ? (t as unknown as Record<string, unknown>)[api.error.message_key] : null;
+      const why = api ? api.error.code : stage === "send" ? "net" : "local";
+      done({ result: "fail", src: stage, why, ...(api ? { count: api.status } : {}) });
+      const reason = typeof known === "string" ? known : api ? `${api.error.code} ${api.status}` : e instanceof Error ? e.message.slice(0, 80) : why;
+      setErr(api?.error.message_key === "apiImageTooLarge" ? t.errTooLarge : `${t.errUpload}${reason}`);
     } finally {
       setUploading(false);
     }

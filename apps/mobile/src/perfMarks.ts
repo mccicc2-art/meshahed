@@ -55,7 +55,9 @@ export type PerfName =
   | "community.open"
   /* 🆕 11-M · M3 — شاشةُ النقاش ومنتقي الـGIF (خطّة §٥) */
   | "thread.open"
-  | "gif.open";
+  | "gif.open"
+  /* 🆕 M3-fix — رفعُ صورة النقاش: المدّةُ والنتيجةُ ومرحلةُ الفشل (بلاغُ خالد: السببُ كان يضيع) */
+  | "thread.image";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
