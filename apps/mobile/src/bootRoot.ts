@@ -2,6 +2,9 @@ import { useCallback } from "react";
 import { BackHandler } from "react-native";
 import { useRouter } from "expo-router";
 import { navTrace } from "./perfMarks";
+/* 🆕 K3a-fix — الحالةُ وقواعدُها في `rootsState.ts` (بلا اعتماديّات، مختبَرة في `npm test`) */
+import { backFrom, rootsMounted as mounted, rootsState } from "./rootsState";
+export { rootsBorn, doorLeft, doorBack, homeSeen } from "./rootsState";
 
 /**
  * ====== D-1078 — علامةُ الإقلاع تسافر بين الجذور الأربعة ======
@@ -23,21 +26,12 @@ import { navTrace } from "./perfMarks";
  */
 export type RootPath = "/home" | "/library" | "/discover" | "/search";
 
-const roots = { boot: false, homeSeen: false };
-
-/** `web.tsx` قبل أن يدفع المجموعة: من الإقلاع أم من الويب */
-export function rootsBorn(boot: boolean) {
-  roots.boot = boot;
-}
-/** `(tabs)/_layout` عند تركيب مجموعةٍ جديدة — لم تُزر رئيسيّتُها بعد */
+/** `(tabs)/_layout` عند تركيب مجموعةٍ جديدة */
 export function rootsMounted() {
-  roots.homeSeen = false;
-  /* K3a-diag — وُلدت مجموعةٌ جديدة: من الإقلاع أم من الويب */
-  navTrace("nav.enter", { screen: "tabs", why: "mount", src: roots.boot ? "boot" : "web" });
-}
-/** الرئيسيّةُ ظهرت في هذه المجموعة — صار للتبويبات رئيسيّةٌ يرجعن إليها */
-export function homeSeen() {
-  roots.homeSeen = true;
+  mounted();
+  /* K3a-diag — وُلدت مجموعةٌ جديدة: من الإقلاع أم من الويب (و`ready` = هل ورثت رئيسيّةً من باب) */
+  const r = rootsState();
+  navTrace("nav.enter", { screen: "tabs", why: "mount", src: r.boot ? "boot" : "web", ready: r.homeSeen });
 }
 
 export function useBootRoot() {
@@ -52,24 +46,13 @@ export function useBootRoot() {
    */
   const bootBack = useCallback(
     (self: RootPath) => {
+      const d = backFrom(self);
       /* K3a-diag — جذرٌ استلم الرجوع: ماذا قرّر، وبأيّ حالةٍ للمجموعة */
-      const trace = (why: string) =>
-        navTrace("nav.back", { screen: self, why, src: roots.boot ? "boot" : "web", ready: roots.homeSeen });
-      if (self === "/home") {
-        if (!roots.boot) {
-          trace("pass");
-          return false;
-        }
-        trace("exit");
-        BackHandler.exitApp();
-        return true;
-      }
-      if (!roots.boot && !roots.homeSeen) {
-        trace("pass");
-        return false;
-      }
-      trace("home");
-      router.navigate("/home");
+      const r = rootsState();
+      navTrace("nav.back", { screen: self, why: d, src: r.boot ? "boot" : "web", ready: r.homeSeen });
+      if (d === "pass") return false;
+      if (d === "exit") BackHandler.exitApp();
+      else router.navigate("/home");
       return true;
     },
     [router],
