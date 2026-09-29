@@ -79,7 +79,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const nav = useNavigationContainerRef();
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const key = profileKey(username);
 
   const q = useQuery({
@@ -280,6 +280,15 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
    * فالعتباتُ عتباتُه (أعلاه) والاتّجاهُ فيزيائيٌّ مثله (RTL: التالي يساراً)، والتمريرُ الرأسيُّ يُفشل السحبَ (`failOffsetY`).
    */
   const slide = useRef(new Animated.Value(0)).current;
+  /**
+   * 🔴 N1-fix2 — **موضعُ التمرير عند تبديل التبويب** (تسجيلُ أحمد ٢٩ سبتمبر، البند ١: من «النشاط» إلى «نظرة عامّة» ظهر الشريطُ
+   * ملتصقاً بلا رأسٍ ثمّ قفزت الصفحةُ إلى أعلاها — المحتوى «متشابك» ومكانُه خطأ). كان التمريرُ يُترك على ما كان عليه في التبويب
+   * السابق، والتبويبُ الجديدُ بطولٍ آخر فيقصّه `ScrollView` ويقفز. الآن **وصفةُ ملفّات الشبكات الاجتماعيّة**: من كان تحت الرأس
+   * يبقى حيث هو (لا حركة)، ومن نزل تحته يبدأ التبويبُ الجديدُ من أوّله والشريطُ ملتصقٌ فوقه — لا وسطَ تبويبٍ لم يقرأه.
+   */
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const tabsY = useRef(0);
   const go = useCallback(
     (k: ProfileTabKey, from?: 1 | -1) => {
       if (k === active) return;
@@ -287,7 +296,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       const dir = from ?? (shown.indexOf(k) > shown.indexOf(active ?? k) ? 1 : -1);
       const phys = I18nManager.isRTL ? -1 : 1;
       slide.setValue(dir * phys * Math.min(80, width * 0.2));
+      const land = Math.min(scrollY.current, tabsY.current);
       setTab(k);
+      requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: land, animated: false }));
       Animated.timing(slide, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     },
     [active, shown, slide, width],
@@ -339,7 +350,16 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           </View>
         )
       ) : (
-        <ScrollView stickyHeaderIndices={[1]} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          stickyHeaderIndices={[1]}
+          onScroll={(e) => {
+            scrollY.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* ——— الرأس ——— */}
           <View>
             <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -387,9 +407,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           </View>
 
           {/* ——— شريطُ التبويبات (يلتصق) ——— */}
-          <View style={{ backgroundColor: tokens.bg }}>
+          <View
+            style={{ backgroundColor: tokens.bg }}
+            onLayout={(e) => {
+              tabsY.current = e.nativeEvent.layout.y;
+            }}
+          >
             {!d.locked && shown.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 18 }} style={{ borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 14 }}>
+              /* 🔴 N1-fix3 — **التبويباتُ تملأ العرضَ حتى الحافّة** (أحمد بلقطة ٢٩ سبتمبر: «أماكنها لاصقة في بعض.. المفترض مالية المكان لين
+                 أقصى اليمين»): كانت متلاصقةً في البداية وفراغٌ بعدها. الآن كلُّ تبويبٍ يأخذ نصيبَه من العرض (`flexGrow`) والخطُّ تحت
+                 نصيبه كلِّه — ويبقى الصفُّ قابلاً للتمرير إن ضاق العرضُ عن خمسةٍ بأعدادها (خطٌّ كبير · شاشةٌ صغيرة). */
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8 }} style={{ borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 14 }}>
                 {shown.map((k) => {
                   const on = k === active;
                   const count = k === "activity" ? d.activity.length : k === "reviews" ? d.reviews.length : k === "lists" ? d.lists.public.length + d.lists.saved.length : null;
@@ -402,7 +430,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                       }}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: on }}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 11, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
+                      style={{ flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 11, paddingHorizontal: 8, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
                     >
                       <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{tabMeta[k].label}</Text>
                       {count ? <Text size={11} color={tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(count, locale)}</Text> : null}
@@ -416,7 +444,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           {/* ——— جسمُ التبويب — يُسحب أفقيّاً إلى الجار (N1-fix) ——— */}
           <GestureHandlerRootView>
           <GestureDetector gesture={swipe}>
-          <Animated.View collapsable={false} style={{ transform: [{ translateX: slide }] }}>
+          {/* الجسمُ بطول الشاشة على الأقلّ: تبويبٌ قصيرٌ (مراجعتان) لا يُقصّ التمريرُ عنده فيقفز الرأسُ — الشريطُ يلتصق أيّاً كان الطول */}
+          <Animated.View collapsable={false} style={{ minHeight: height, transform: [{ translateX: slide }] }}>
           {d.locked ? null : shown.length === 0 ? (
             <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text>
           ) : active === "favorites" ? (
