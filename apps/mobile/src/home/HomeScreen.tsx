@@ -635,7 +635,7 @@ export function HomeScreen() {
           <HomeCover url={d.header.cover_url} pos={d.header.cover_pos} />
           {/* صفُّ الترحيب وبطاقةُ الأرقام يقفان على الغلاف (D-836: الغلافُ يكبر بمقدارهما لا أكثر) */}
           <View style={{ minHeight: Math.max(0, COVER_SOLID - HEADER_H - 10) }}>
-            <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => openWeb(d.header.username ? `/u/${d.header.username}` : "/profile")} onFollowers={() => setFollows("followers")} onFollowing={() => setFollows("following")} />
+            <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} onFollowers={() => setFollows("followers")} onFollowing={() => setFollows("following")} />
           </View>
           <HomeStats h={d.header} onStat={openHref} />
           {!d.hints.includes("home-customize") ? (

@@ -112,9 +112,19 @@ export type ProfilePayload = {
   activity: ProfileActivity[];
   reviews: ProfileReview[];
   lists: { public: ProfileList[]; saved: ProfileList[] };
-  /** أدواتُ صاحب الملفّ (N3) — `null` لغيره */
-  owner: { fav_list_id: string | null; fav_keys: string[]; section_order: Record<string, string[]> } | null;
+  /** أدواتُ صاحب الملفّ (N3) — `null` لغيره.
+   *  🆕 N3 — `saved_lists` رايةُ قسم «القوائم المحفوظة» (D-594، `profile_prefs.savedLists`) · `plus` لأنّ الرايةَ من البلس (D-791) */
+  owner: { fav_list_id: string | null; fav_keys: string[]; section_order: Record<string, string[]>; saved_lists: boolean; plus: boolean } | null;
 };
+
+/**
+ * 🆕 N3 — كتاباتُ صاحب الملفّ من الشاشة الأصليّة، كلٌّ فوق دالّة الويب نفسِها:
+ * ترتيبُ صفوف قسمٍ (`saveProfileSectionOrder` ⇐ `profile_prefs.sectionOrder` — D-581) · رايةُ المحفوظات
+ * (`setProfileSavedLists` — D-594). ترتيبُ المفضّلة يمرّ من `POST /api/v1/lists/reorder` القائم (D-567: قائمةٌ حقيقيّة).
+ * المفاتيحُ بصيغة `sectionKeyOf` (`tv-1` · `movie-1` · `p-1` · `l-<uuid>`) — والتنقيةُ في الفعل لا هنا.
+ */
+export type ProfileSectionOrderBody = { section: "shows" | "movies" | "anime" | "artists" | "lists"; keys: string[] };
+export type ProfileSavedListsBody = { on: boolean };
 
 /**
  * اسمُ المستخدم من المسار: يُفكّ ترميزُه ويُطوى — ما لا يطابق شكلَ الاسم (أو معرّفاً) يُرفض قبل أيّ قراءة.

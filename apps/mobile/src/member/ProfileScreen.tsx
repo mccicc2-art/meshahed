@@ -19,13 +19,14 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { HomeCover, StatsCard, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
-import { ListCard } from "../library/ListCard";
+import { ListCard, PlayPill } from "../library/ListCard";
+import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { Chip } from "../library/Chip";
 import { openProfile } from "./open";
 import { displayNameOf } from "@/core/people";
 import { num } from "@/core/i18n";
-import { profileSectionMeta, profileTabMeta } from "@/core/profilePrefs";
+import { PROFILE_SECTIONS, profileSectionMeta, profileTabMeta, sectionKeyOf } from "@/core/profilePrefs";
 import { profileUrl } from "@/core/media";
 import { browseGenreName, groupByGenre } from "@/core/browse";
 import { SCOPES, clock, dayKey, episodeOf, groupDays, keep, label as scopeLabel, shiftDay, verbOf, type ActivityItem, type Scope } from "@/core/activityDays";
@@ -40,7 +41,8 @@ import type {
   ProfileTitle,
 } from "@/core/contracts/profile";
 import type { FollowUserResult, LikeBody } from "@/core/communityActs";
-import { REPORT_REASON_MAX, type ProfileReportBody } from "@/core/contracts/profile";
+import { REPORT_REASON_MAX, type ProfileReportBody, type ProfileSavedListsBody, type ProfileSectionOrderBody } from "@/core/contracts/profile";
+import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -56,6 +58,15 @@ import { REPORT_REASON_MAX, type ProfileReportBody } from "@/core/contracts/prof
  * 🔑 **لا ويبَ إلّا ما لم يُنقل**: الأعمالُ والقوائمُ وملفّاتُ الناس أصليّة؛ «الإحصاءات» بابٌ ويبيٌّ حتى N4 — يظهر فوق الشاشة
  * طبقةً (K3b) فتبقى هذه تحتها كما تُركت.
  * ⏭️ **N2**: قائمةُ ⋯ (رسالة · بلاغ · حظر) وقلوبُ المراجعات وردودُها · **N3**: أدواتُ المالك (الترتيب · راية المحفوظات).
+ *
+ * 🆕 **N3 — أدواتُ صاحب الملفّ** (ما يرسمه الويبُ لـ`isMe` حرفاً، بلا شكلٍ جديد):
+ * - **مقبضُ الترتيب** على عنوان كلِّ صفٍّ فيه عملان فأكثر — صفوفُ «المفضّلة» (`FavoritesRail`: قائمةٌ حقيقيّة ⇐
+ *   `POST /api/v1/lists/reorder`، والدمجُ في خانات النوع نفسِه — D-567) · وأقسامُ «نظرة عامّة» الخمسة (`SectionReorderButton`
+ *   ⇐ `profile_prefs.sectionOrder` — D-581). **ورقةُ `ReorderSheet` نفسُها** التي ترتّب طوابيرَ الرئيسيّة والقائمة.
+ * - **رايةُ «القوائم المحفوظة»** On/Off على عنوان قسمها في «قوائم» (`SavedListsToggle` — D-594؛ من البلس — D-791).
+ * - **ما أخفيتَه تراه أنت وحدك** في «نظرة عامّة» (D-152) · **وبابُ «التخصيص»** حين تُطفأ التبويباتُ كلُّها (D-672).
+ * - **صورتي تفتح «تعديل الملفّ»** الأصليّة (D-571) · **و«الإحصاءات» صفحتي أنا** (`/stats` — D-650).
+ * الترتيبُ يُرسم فوراً في الكاش (نهجُ D-1094) ثمّ يُكتب؛ الفشلُ يعيد الجلبَ ويقول سببه (D-1179).
  */
 const HEADER_H = 56;
 const PAGE_PAD = 16;
@@ -107,6 +118,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [menu, setMenu] = useState<null | "menu" | "report" | "block">(null);
   const [reason, setReason] = useState("");
   const [reported, setReported] = useState(false);
+  /* 🆕 N3 — ورقةُ الترتيب: صفٌّ من «المفضّلة» أو قسمٌ من «نظرة عامّة» */
+  const [sorting, setSorting] = useState<null | { fav: FavRow } | { sec: SortSec }>(null);
   useEffect(() => {
     if (!toast) return;
     const h = setTimeout(() => setToast(null), 2600);
@@ -275,6 +288,93 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     onError: (e) => setToast(failText(e)),
   });
 
+  /* ——— 🆕 N3 — أدواتُ صاحب الملفّ ——— */
+  const own = d?.viewer.is_me ? d.owner : null;
+  const patch = useCallback((f: (p: ProfilePayload) => ProfilePayload) => qc.setQueryData<ProfilePayload>(key, (p) => (p ? f(p) : p)), [qc, key]);
+  /** صفوفُ المفضّلة: الورقةُ ترتّب نوعاً واحداً، والقائمةُ واحدةٌ للأنواع — خاناتُ النوع تُملأ بترتيبه الجديد وما سواه يثبت (D-567) */
+  const saveFav = useCallback(
+    (row: FavRow, keys: string[]) => {
+      setSorting(null);
+      if (!d?.owner?.fav_list_id) return;
+      const listId = d.owner.fav_list_id;
+      const mine = new Set(d.favorites[row].map(favKey));
+      let i = 0;
+      const merged = d.owner.fav_keys.map((k) => (mine.has(k) ? (keys[i++] ?? k) : k));
+      haptic.pick();
+      patch((p) => ({ ...p, favorites: { ...p.favorites, [row]: byKeys(p.favorites[row], favKey, keys) }, owner: p.owner ? { ...p.owner, fav_keys: merged } : p.owner }));
+      void write<{ done: true }>("/api/v1/lists/reorder", { listId, keys: merged } satisfies ListReorderBody).catch((e) => {
+        setToast(failText(e));
+        void q.refetch();
+      });
+    },
+    [d, patch, failText, q],
+  );
+  /** قسمُ «نظرة عامّة»: `profile_prefs.sectionOrder` — والقوائمُ مصفوفةٌ واحدةٌ للقسم وللتبويب (`listsOrdered` — D-152) */
+  const saveSec = useCallback(
+    (sec: SortSec, keys: string[]) => {
+      setSorting(null);
+      if (!d?.owner) return;
+      haptic.pick();
+      patch((p) => {
+        const o = p.overview;
+        const ov =
+          sec === "shows" ? { ...o, shows: byKeys(o.shows, showKey, keys) }
+          : sec === "anime" ? { ...o, anime: byKeys(o.anime, showKey, keys) }
+          : sec === "movies" ? { ...o, movies: byKeys(o.movies, (x) => sectionKeyOf.movie(x.tmdb_id), keys) }
+          : sec === "artists" ? { ...o, artists: byKeys(o.artists, (a) => sectionKeyOf.artist(a.person_id), keys) }
+          : { ...o, lists: byKeys(o.lists, listKey, keys) };
+        return {
+          ...p,
+          overview: ov,
+          lists: sec === "lists" ? { ...p.lists, public: byKeys(p.lists.public, listKey, keys) } : p.lists,
+          owner: p.owner ? { ...p.owner, section_order: { ...p.owner.section_order, [sec]: keys } } : p.owner,
+        };
+      });
+      void write<{ done: true }>("/api/v1/me/prefs/profile-order", { section: sec, keys } satisfies ProfileSectionOrderBody).catch((e) => {
+        setToast(failText(e));
+        void q.refetch();
+      });
+    },
+    [d, patch, failText, q],
+  );
+  /** رايةُ المحفوظات — متفائلةٌ بارتداد (`SavedListsToggle`)؛ غيرُ المشترك يُعاد ويُفتح له «بلس» (نهجُ ترتيب الرئيسيّة) */
+  const setSaved = useCallback(
+    (on: boolean) => {
+      haptic.pick();
+      const flip = (v: boolean) => patch((p) => (p.owner ? { ...p, owner: { ...p.owner, saved_lists: v } } : p));
+      flip(on);
+      void write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/profile-saved-lists", { on } satisfies ProfileSavedListsBody)
+        .then((r) => {
+          if (!r.needsPlus) return;
+          flip(!on);
+          openWeb("/plus");
+        })
+        .catch((e) => {
+          flip(!on);
+          setToast(failText(e));
+        });
+    },
+    [patch, failText, openWeb],
+  );
+  const sortItems: QueueItem[] = useMemo(() => {
+    if (!d || !sorting) return [];
+    if ("fav" in sorting) return d.favorites[sorting.fav].map((x) => ({ key: favKey(x), title: x.title, poster_path: x.poster_path, media_type: x.media_type }));
+    const o = d.overview;
+    switch (sorting.sec) {
+      case "shows":
+        return o.shows.map((x) => ({ key: showKey(x), title: x.title, poster_path: x.poster_path, media_type: "tv" }));
+      case "anime":
+        return o.anime.map((x) => ({ key: showKey(x), title: x.title, poster_path: x.poster_path, media_type: "tv" }));
+      case "movies":
+        return o.movies.map((x) => ({ key: sectionKeyOf.movie(x.tmdb_id), title: x.title, poster_path: x.poster_path, media_type: "movie" }));
+      /* الورقةُ لا تقرأ `media_type` (مفتاحٌ وملصقٌ واسم) — الفنّانُ والقائمةُ يحملانه لأنّ النوعَ يطلبه */
+      case "artists":
+        return o.artists.map((a) => ({ key: sectionKeyOf.artist(a.person_id), title: a.name ?? "—", poster_path: a.profile_path, media_type: "movie" }));
+      case "lists":
+        return o.lists.map((l) => ({ key: listKey(l), title: l.name, poster_path: l.posters[0] ?? null, media_type: "movie" }));
+    }
+  }, [d, sorting]);
+
   const posterW = DENSITY_W[d?.viewer.density ?? "comfortable"];
   const onArt = !!d?.person.cover_url;
   const name = d ? displayNameOf(d.person, t.anonymousUser) : "";
@@ -286,7 +386,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       { key: "movies", icon: "film", value: num(d.counts.movies, locale), label: t.shortMovies, href: "#movies" },
     ];
     if (d.counts.anime > 0) cells.push({ key: "anime", icon: "sparkles", value: num(d.counts.anime, locale), label: t.discoverTabAnime, href: "#anime" });
-    if (d.display.stats_link && d.person.username) cells.push({ key: "stats", icon: "chart", value: "", label: t.statsPageTitle, href: `/u/${d.person.username}/stats` });
+    /* 🆕 N3 — بابي أنا `/stats` بمداها الكامل، ولزائري سطحُ العضو (D-650: `/stats` تقرأ صاحبَ الجلسة) */
+    if (d.display.stats_link && (d.viewer.is_me || d.person.username))
+      cells.push({ key: "stats", icon: "chart", value: "", label: t.statsPageTitle, href: d.viewer.is_me ? "/stats" : `/u/${d.person.username}/stats` });
     return cells;
   }, [d, t, locale]);
   const onStat = useCallback((href: string) => (href.startsWith("#") ? setGrid(href.slice(1) as Grid) : openWeb(href)), [openWeb]);
@@ -379,15 +481,15 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         onSettle={syncOthers}
       >
         {k === "favorites" ? (
-          <Favorites d={d} posterW={posterW} onTitle={openTitle} />
+          <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={own?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />
         ) : k === "overview" ? (
-          <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} />
+          <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={own ? (sec) => setSorting({ sec }) : undefined} />
         ) : k === "activity" ? (
           <ActivityPane rows={d.activity} onTitle={openTitle} />
         ) : k === "reviews" ? (
           <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />
         ) : (
-          <ListsPane d={d} onList={openList} onMember={openMember} />
+          <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={own ? { on: own.saved_lists, onToggle: setSaved } : undefined} />
         )}
       </ProfilePane>
     ) : null;
@@ -428,7 +530,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" warmAll render={(k) => renderPane(k)} />
           ) : headH > 0 ? (
             <ScrollView contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
-              {!d.locked && shown.length === 0 ? <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text> : null}
+              {!d.locked && shown.length === 0 ? (
+                <View style={{ alignItems: "center", gap: 8, paddingVertical: 40 }}>
+                  <Text muted style={{ textAlign: "center" }}>{t.profileNoTabs}</Text>
+                  {/* 🆕 N3 — من أطفأ تبويباتِه كلَّها يجد بابَ مفاتيحها هنا (D-672) — «التخصيص» الأصليّة (D-1112) */}
+                  {d.viewer.is_me ? (
+                    <Pressable onPress={() => router.push("/settings/home")} accessibilityRole="link" hitSlop={8}>
+                      <Text size={14} weight="700" color={tokens.accent} style={{ textDecorationLine: "underline" }}>{t.custTitle}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </ScrollView>
           ) : null}
           {/* ——— الرأسُ طبقةٌ فوق اللوحات: يُطوى مع التمرير حتى يلتصق شريطُه، ولا يحبس اللمسَ إلّا على أزراره ——— */}
@@ -439,13 +551,22 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           >
             <View pointerEvents="box-none">
             <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View pointerEvents="none" style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+              {/* 🆕 N3 — صورةُ ملفّي بابُ تعديله (D-571) — «تعديل الملفّ» أصليّة (D-1106)؛ ولزائري لا رابط */}
+              <Pressable
+                /* لزائري الصورةُ صورة: لا تحبس اللمس فيصل التمريرُ من فوقها إلى اللوح (كما كانت) */
+                pointerEvents={d.viewer.is_me ? "auto" : "none"}
+                disabled={!d.viewer.is_me}
+                onPress={() => router.push("/settings/profile")}
+                accessibilityRole={d.viewer.is_me ? "button" : undefined}
+                accessibilityLabel={d.viewer.is_me ? t.headerSettings : undefined}
+                style={({ pressed }) => ({ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}
+              >
                 {!d.person.hide_name && d.person.avatar_url ? (
                   <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" />
                 ) : (
                   <Icon name="people" size={24} color={tokens.muted} />
                 )}
-              </View>
+              </Pressable>
               <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
                 <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {/* D-1134 — فوق الغلاف أبيضُ بظلٍّ كتحيّة الرئيسيّة (`HomeGreeting.onArt`) — يصحّ في «النهاري» أيضاً */}
@@ -541,6 +662,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       ) : null}
       {grid && d ? <GridSheet d={d} which={grid} posterW={posterW} width={width} onClose={() => setGrid(null)} onTitle={(k, id) => { setGrid(null); openTitle(k, id); }} /> : null}
       {ranks && d ? <RanksSheet d={d} onClose={() => setRanks(false)} /> : null}
+      {sorting && d && sortItems.length > 1 ? (
+        <ReorderSheet items={sortItems} onClose={() => setSorting(null)} onDone={(keys) => ("fav" in sorting ? saveFav(sorting.fav, keys) : saveSec(sorting.sec, keys))} />
+      ) : null}
       {menu === "menu" && d ? (
         <Sheet title={name} onClose={() => setMenu(null)}>
           {d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
@@ -720,12 +844,49 @@ const asItem = (x: ProfileTitle | ProfileShow): CardItem => ({
   dropped: false,
 });
 
-function SectionHead({ icon, label }: { icon: string; label: string }) {
-  const { tokens } = useApp();
+/* 🆕 N3 — مفاتيحُ الترتيب بصيغة الويب (`sectionKeyOf` · `listItemKey`) — ما تكتبه الورقةُ هو ما يقرؤه الخادمُ بحرفه */
+type FavRow = "shows" | "movies" | "anime";
+type SortSec = ProfileSectionOrderBody["section"];
+const favKey = (x: ProfileTitle) => `${x.media_type}-${x.tmdb_id}`;
+const showKey = (x: ProfileShow) => sectionKeyOf.show(x.tmdb_id);
+const listKey = (l: ProfileList) => sectionKeyOf.list(l.id);
+/** يرتّب بالمفاتيح، وما لم تذكره يُذيَّل بترتيبه (`applySectionOrder` نفسُها) — فالتفاؤلُ والجلبُ اللاحقُ يتّفقان */
+function byKeys<T>(xs: T[], keyOf: (x: T) => string, keys: string[]): T[] {
+  const at = new Map(keys.map((k, i) => [k, i] as const));
+  const ranked = xs.filter((x) => at.has(keyOf(x))).sort((a, b) => at.get(keyOf(a))! - at.get(keyOf(b))!);
+  return [...ranked, ...xs.filter((x) => !at.has(keyOf(x)))];
+}
+
+/**
+ * عنوانُ صفّ — 🆕 N3: **ومقبضُ الترتيب في طرفه لصاحب الملفّ** (`onSort` — الويب: زرُّ `grip` ١٨ في خانة `action`)، أو ما يُمرَّر
+ * مكانَه (`action` — رايةُ المحفوظات). المقبضُ لا يرفع الصفّ: هامشُه السالبُ يُبقي العنوانَ على ارتفاعه.
+ */
+function SectionHead({ icon, label, onSort, action }: { icon: string; label: string; onSort?: () => void; action?: React.ReactNode }) {
+  const { t, tokens } = useApp();
+  const sort = onSort
+    ? () => {
+        haptic.pick();
+        onSort();
+      }
+    : undefined;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, marginTop: 22, marginBottom: 10 }}>
-      <Icon name={iconOr(icon, "list")} size={16} color={tokens.accent} />
-      <Text size={17} weight="700">{label}</Text>
+      <Pressable onPress={sort} disabled={!sort} style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Icon name={iconOr(icon, "list")} size={16} color={tokens.accent} />
+        <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
+      </Pressable>
+      {action ??
+        (sort ? (
+          <Pressable
+            onPress={sort}
+            accessibilityRole="button"
+            accessibilityLabel={t.listReorder}
+            hitSlop={4}
+            style={({ pressed }) => ({ width: 36, height: 36, marginVertical: -9, marginEnd: -8, borderRadius: 18, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+          >
+            <Icon name="grip" size={18} color={tokens.muted} />
+          </Pressable>
+        ) : null)}
     </View>
   );
 }
@@ -745,19 +906,20 @@ function Empty({ text }: { text: string }) {
 }
 
 /** المفضّلة: مسلسلاتُه وأفلامُه بترتيبه (`favorites.order` — D-564) ثمّ الأنمي يذيّلهما (D-941) */
-function Favorites({ d, posterW, onTitle }: { d: ProfilePayload; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void }) {
+function Favorites({ d, posterW, onTitle, onSort }: { d: ProfilePayload; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void; onSort?: (row: FavRow) => void }) {
   const { t } = useApp();
   const f = d.favorites;
   if (!f.shows.length && !f.movies.length && !f.anime.length) return <Empty text={t.profileEmptyFavorites} />;
-  const rows: { key: string; icon: string; label: string; items: ProfileTitle[] }[] = [
+  const rows: { key: FavRow; icon: string; label: string; items: ProfileTitle[] }[] = [
     ...f.order.map((k) => (k === "shows" ? { key: k, icon: "tv", label: t.shortShows, items: f.shows } : { key: k, icon: "film", label: t.shortMovies, items: f.movies })),
-    { key: "anime", icon: "sparkles", label: t.discoverTabAnime, items: f.anime },
+    { key: "anime" as const, icon: "sparkles", label: t.discoverTabAnime, items: f.anime },
   ];
   return (
     <View>
       {rows.filter((r) => r.items.length).map((r) => (
         <View key={r.key}>
-          <SectionHead icon={r.icon} label={r.label} />
+          {/* 🆕 N3 — «صفُّ مفضّلةٍ يُرتَّب من عنوانه» (`FavoritesRail` — D-567): العنوانُ والمقبضُ يفتحان الورقة */}
+          <SectionHead icon={r.icon} label={r.label} onSort={onSort && r.items.length > 1 ? () => onSort(r.key) : undefined} />
           <Rail items={r.items} posterW={posterW} onTitle={onTitle} />
         </View>
       ))}
@@ -772,12 +934,15 @@ function Overview({
   onTitle,
   onList,
   onPerson,
+  onSort,
 }: {
   d: ProfilePayload;
   posterW: number;
   onTitle: (k: "tv" | "movie", id: number) => void;
   onList: (id: string) => void;
   onPerson: (id: number) => void;
+  /** 🆕 N3 — لصاحب الملفّ: مقبضُ ترتيب الأقسام الخمسة (`SectionReorderButton` — «التقييمات» لا تُرتَّب في الويب) */
+  onSort?: (sec: SortSec) => void;
 }) {
   const { t, tokens } = useApp();
   const meta = profileSectionMeta(t);
@@ -835,15 +1000,43 @@ function Overview({
     }
   };
   const blocks = d.sections.map((s) => ({ s, node: body(s) })).filter((b) => b.node);
-  if (!blocks.length) return <Empty text={t.profileEmptyOverview} />;
+  const countOf = (s: ProfileSectionKey) => (s === "ratings" ? 0 : o[s].length);
+  /* 🆕 N3 — ما أخفيتَه تراه أنت وحدك (D-152): ما ليس في ترتيبك يُرسم صفّاً منقّطاً بشارته — الويبُ تحت الأقسام */
+  const hidden = d.viewer.is_me ? PROFILE_SECTIONS.filter((s) => !d.sections.includes(s)) : [];
   return (
     <View>
-      {blocks.map(({ s, node }) => (
-        <View key={s}>
-          <SectionHead icon={meta[s].icon} label={s === "ratings" ? t.profileTopRated : meta[s].label} />
-          {node}
+      {blocks.length ? (
+        blocks.map(({ s, node }) => (
+          <View key={s}>
+            <SectionHead
+              icon={meta[s].icon}
+              label={s === "ratings" ? t.profileTopRated : meta[s].label}
+              onSort={onSort && s !== "ratings" && countOf(s) > 1 ? () => onSort(s as SortSec) : undefined}
+            />
+            {node}
+          </View>
+        ))
+      ) : (
+        <Empty text={t.profileEmptyOverview} />
+      )}
+      {hidden.length ? (
+        <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 20, gap: 10 }}>
+          {hidden.map((s) => (
+            <View key={s} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Icon name={iconOr(meta[s].icon, "list")} size={16} color={tokens.muted} />
+                  <Text size={14} weight="700" muted numberOfLines={1} style={{ flexShrink: 1 }}>{meta[s].label}</Text>
+                </View>
+                <Text size={12} muted>{t.profileHiddenHint}</Text>
+              </View>
+              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border }}>
+                <Text size={12} muted>{t.profileHiddenBadge}</Text>
+              </View>
+            </View>
+          ))}
         </View>
-      ))}
+      ) : null}
     </View>
   );
 }
@@ -1019,15 +1212,26 @@ function ReviewsPane({
 }
 
 /** القوائم: المعلنةُ ثمّ المحفوظة (رايتُها لصاحبها — D-594؛ فراغُها يُسقط قسمَها) */
-function ListsPane({ d, onList, onMember }: { d: ProfilePayload; onList: (id: string) => void; onMember: (name: string) => void }) {
+function ListsPane({
+  d,
+  onList,
+  onMember,
+  savedFlag,
+}: {
+  d: ProfilePayload;
+  onList: (id: string) => void;
+  onMember: (name: string) => void;
+  /** 🆕 N3 — لصاحب الملفّ: رايةُ قسم المحفوظات (`SavedListsToggle` — D-594): هو يراه دائماً وعليه الرقاقة، والزائرُ حين «تعمل» */
+  savedFlag?: { on: boolean; onToggle: (on: boolean) => void };
+}) {
   const { t } = useApp();
   void onMember;
   const { public: pub, saved } = d.lists;
   if (!pub.length && !saved.length) return <Empty text={t.profileEmptyLists} />;
-  const block = (label: string, icon: string, ls: ProfileList[]) =>
+  const block = (label: string, icon: string, ls: ProfileList[], action?: React.ReactNode) =>
     ls.length ? (
       <View>
-        <SectionHead icon={icon} label={label} />
+        <SectionHead icon={icon} label={label} action={action} />
         <View style={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
           {ls.map((l) => (
             <ListCard key={l.id} card={listCardOf(l, t)} onPress={() => onList(l.id)} />
@@ -1038,7 +1242,7 @@ function ListsPane({ d, onList, onMember }: { d: ProfilePayload; onList: (id: st
   return (
     <View>
       {block(t.profileListsRail, "list", pub)}
-      {block(t.savedListsSection, "bookmark", saved)}
+      {block(t.savedListsSection, "bookmark", saved, savedFlag ? <PlayPill on={savedFlag.on} label={t.savedListsSection} onToggle={savedFlag.onToggle} /> : undefined)}
     </View>
   );
 }

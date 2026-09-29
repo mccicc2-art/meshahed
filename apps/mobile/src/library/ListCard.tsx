@@ -92,31 +92,7 @@ export function ListCard({
   const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
   const play =
     card.playlist === null ? null : (
-      <Pressable
-        onPress={() => onPlaylist?.(!card.playlist)}
-        disabled={busy || !onPlaylist}
-        hitSlop={6}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: !!card.playlist }}
-        accessibilityLabel={t.listPlaylist}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          height: 28,
-          paddingStart: 12,
-          paddingEnd: 6,
-          borderRadius: radius.pill,
-          borderWidth: 1,
-          borderColor: card.playlist ? tokens.accent + "99" : tokens.border,
-          backgroundColor: tokens.surface2,
-        }}
-      >
-        <Text size={12} weight="700" color={card.playlist ? tokens.accent : tokens.muted}>
-          {card.playlist ? t.toWatchOn : t.toWatchOff}
-        </Text>
-        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: card.playlist ? tokens.accent : tokens.divider }} />
-      </Pressable>
+      <PlayPill on={!!card.playlist} label={t.listPlaylist} disabled={busy || !onPlaylist} onToggle={(on) => onPlaylist?.(on)} />
     );
 
   const stats = card.stats;
@@ -255,6 +231,41 @@ export function ListCard({
           </View>
         ) : null}
       </View>
+    </Pressable>
+  );
+}
+
+/**
+ * 🆕 N3 — **رقاقةُ On/Off واحدةٌ للتطبيق** (`PlayPill` الويب، D-677): كانت مكتوبةً داخل هذه البطاقة وحدَها، ورايةُ «القوائم
+ * المحفوظة» في ملفّي (D-594) تلبسها في الويب أيضاً — فخرجت مكوّناً يُستورد لا نسخةً ثانية (القاعدة ٣). المقاساتُ كما كانت حرفاً.
+ */
+export function PlayPill({ on, label, disabled, onToggle }: { on: boolean; label: string; disabled?: boolean; onToggle: (on: boolean) => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <Pressable
+      onPress={() => onToggle(!on)}
+      disabled={disabled}
+      hitSlop={6}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={label}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        height: 28,
+        paddingStart: 12,
+        paddingEnd: 6,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: on ? tokens.accent + "99" : tokens.border,
+        backgroundColor: tokens.surface2,
+      }}
+    >
+      <Text size={12} weight="700" color={on ? tokens.accent : tokens.muted}>
+        {on ? t.toWatchOn : t.toWatchOff}
+      </Text>
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: on ? tokens.accent : tokens.divider }} />
     </Pressable>
   );
 }

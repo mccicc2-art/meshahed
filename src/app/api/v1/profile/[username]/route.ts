@@ -186,7 +186,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
             })),
         reviews: locked ? [] : c.reviewsNewest.map(review),
         lists: locked ? { public: [], saved: [] } : { public: c.listsOrdered.map(listOut), saved: c.savedLists.map(listOut) },
-        owner: c.isMe ? { fav_list_id: c.favListId, fav_keys: c.favKeys, section_order: { ...prefs.sectionOrder } as Record<string, string[]> } : null,
+        owner: c.isMe
+          ? {
+              fav_list_id: c.favListId,
+              fav_keys: c.favKeys,
+              section_order: { ...prefs.sectionOrder } as Record<string, string[]>,
+              /* 🆕 N3 — رايةُ المحفوظات ومفتاحُها من البلس (الفعلُ يصمت لغير المشترك — D-791) */
+              saved_lists: prefs.savedLists,
+              plus: isPlus(profile),
+            }
+          : null,
       };
       return ok(payload);
     },
