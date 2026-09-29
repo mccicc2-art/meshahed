@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, BackHandler, I18nManager, Platform, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, BackHandler, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -15,6 +15,7 @@ import { haptic } from "../haptics";
 import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
 import { span, afterPaint } from "../perfMarks";
+import { usePullRefresh } from "../pullRefresh";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { HomeCover, StatsCard, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
@@ -459,6 +460,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     syncOthers();
   }, [active, maxC, panes, collapse, syncOthers]);
   const viewportH = height - insets.top - HEADER_H;
+  /* 🆕 N3-fix — **اسحب للتحديث** (أحمد ٣٠ سبتمبر: «خليه فيه ريفريش اذا سحبته على تحت») — `usePullRefresh` نفسُه الذي في المكتبة
+     واكتشف والمجتمع؛ كلُّ الألواح من حمولةٍ واحدة فمفتاحٌ واحد. الدوّارُ تحت الرأس (`headH`) لا خلفه. */
+  const refresh = usePullRefresh([key], headH);
   const renderPane = (k: ProfileTabKey) =>
     d ? (
       <ProfilePane
@@ -479,6 +483,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         }}
         onScroll={(y) => onPaneScroll(k, y)}
         onSettle={syncOthers}
+        refreshControl={refresh}
       >
         {k === "favorites" ? (
           <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={own?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />
@@ -529,7 +534,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           {headH > 0 && !d.locked && shown.length > 0 && active ? (
             <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" warmAll render={(k) => renderPane(k)} />
           ) : headH > 0 ? (
-            <ScrollView contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
+            <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
               {!d.locked && shown.length === 0 ? (
                 <View style={{ alignItems: "center", gap: 8, paddingVertical: 40 }}>
                   <Text muted style={{ textAlign: "center" }}>{t.profileNoTabs}</Text>
@@ -735,6 +740,7 @@ function ProfilePane({
   register,
   onScroll,
   onSettle,
+  refreshControl,
   children,
 }: {
   k: ProfileTabKey;
@@ -744,11 +750,13 @@ function ProfilePane({
   register: (ref: ScrollView | null) => void;
   onScroll: (y: number) => void;
   onSettle: () => void;
+  refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   children: React.ReactNode;
 }) {
   return (
     <ScrollView
       ref={register}
+      refreshControl={refreshControl}
       onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
       scrollEventThrottle={16}
       onScrollEndDrag={onSettle}

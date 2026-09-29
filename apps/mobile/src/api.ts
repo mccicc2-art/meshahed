@@ -49,6 +49,12 @@ export const qk = {
 
 export function invalidateTags(tags: Tag[]) {
   for (const tag of tags) void queryClient.invalidateQueries({ queryKey: [tag] });
+  /* 🆕 N3-fix — **وسمُ ملفّي يُبطل شاشةَ الملفّ الأصليّة** (تسجيلُ أحمد ٣٠ سبتمبر: رتّب التبويبات في «التخصيص» وحفظ، فبقي ملفُّه
+     بترتيبه القديم نحو عشرين ثانية): الخادمُ يقول `user:me:profile` بعد التخصيص وتعديل الملفّ والسمة والخصوصيّة، ومفتاحُ الشاشة
+     `profile:<اسم>` (N1) — فلم يكن الوسمُ يجده، وانتظرت الشاشةُ `staleTime`. المطابقةُ بالبادئة: `me` لا يعرف اسمَ المستخدم، والملفّاتُ
+     المفتوحةُ غيرُ ملفّي تُعلَّم شائخةً فقط (لا جلبَ لما لا يُرى). */
+  if (tags.some((t) => t.startsWith("user:") && t.endsWith(":profile")))
+    void queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("profile:") });
 }
 
 export async function api<T>(
