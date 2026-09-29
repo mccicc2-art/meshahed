@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
 import { getUserId, getProfileByUsername, getIncomingFollowRequests } from "@/lib/data";
+import { createClient } from "@/lib/supabase/server";
 import { loadProfile } from "@/lib/profileCore";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -63,7 +64,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       const c = await loadProfile(h, locale);
       if (!c) return fail("not_found");
       const { profile, prefs } = c;
-      const locked = !c.canView;
+      /* 🆕 N2-fix2 — **الحظرُ يُرى في الملفّ** (أحمد ٢٩ سبتمبر: «المفترض إذا دخل حسابي يبان إنّه محظور»): من حظرتُه يُعرض له رفعُ
+         الحظر، ومن حظرني يرى «غير متاح» — وفي الحالين لا محتوى. `is_blocked` (definer) يعرف الاتّجاهين، و`blocks` بسياستها
+         «read own blocks» يقول إن كنتُ أنا الحاظر. */
+      let blockedByMe = false;
+      let blockedEither = false;
+      if (c.me && !c.isMe) {
+        const sb = await createClient();
+        const [either, mine] = await Promise.all([
+          sb.rpc("is_blocked", { a: c.me.id, b: profile.id }),
+          sb.from("blocks").select("blocked_id").eq("blocker_id", c.me.id).eq("blocked_id", profile.id).maybeSingle(),
+        ]);
+        blockedEither = either.data === true;
+        blockedByMe = !!mine.data;
+      }
+      const locked = !c.canView || blockedEither;
       const hidden = (k: string) => (prefs.hiddenTabs as readonly string[]).includes(k);
       const cardCap = capCards(999, prefs.cards);
 
@@ -129,7 +144,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           x: xHandle,
         },
         locked,
-        relation: { following: c.relation.following, requested: c.relation.requested, follows_me: c.relation.followsMe, requested_me: requestedMe },
+        relation: { following: c.relation.following, requested: c.relation.requested, follows_me: c.relation.followsMe, requested_me: requestedMe && !blockedEither, blocked_by_me: blockedByMe, blocked_me: blockedEither && !blockedByMe },
         counts: {
           followers: c.stats.followers,
           following: c.stats.following,

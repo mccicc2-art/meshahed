@@ -214,11 +214,24 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /* الحظرُ فعلُ M4 نفسُه (`/me/messages/block`: يفكّ المتابعة ويُخفي المحادثة) — ثمّ يُغادَر الملفّ: لا شيءَ فيه يخصّك بعده */
   const block = useMutation({
     mutationFn: async () => (d ? write<{ done: true }>("/api/v1/me/messages/block", { person_id: d.person.id }) : null),
+    /* 🆕 N2-fix2 — بعد الحظر يبقى الملفُّ مفتوحاً ويقول إنّه محظور (ومعه رفعُ الحظر) — كان يُغلق فلا يُعرف أين يُرفع */
     onSuccess: () => {
       setMenu(null);
       haptic.pick();
-      qc.removeQueries({ queryKey: key });
-      back();
+      setToast(t.blockedToast);
+      void q.refetch();
+    },
+    onError: (e) => setToast(failText(e)),
+  });
+  /* 🆕 N2-fix2 — رفعُ الحظر من الملفّ نفسِه (فعلُ الإعدادات ← الخصوصيّة ← المحظورون نفسُه) */
+  const unblock = useMutation({
+    mutationFn: async () => (d ? write<{ done: true }>("/api/v1/me/settings/blocked", { user_id: d.person.id }) : null),
+    onSuccess: () => {
+      setMenu(null);
+      haptic.pick();
+      setToast(t.unblockedToast);
+      void qc.invalidateQueries({ queryKey: ["me:settings"] });
+      void q.refetch();
     },
     onError: (e) => setToast(failText(e)),
   });
@@ -446,7 +459,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                   <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => setFollows("following")} />
                 </View>
               </View>
-              {d.viewer.is_me || !d.viewer.signed_in || d.person.system ? null : (
+              {d.viewer.is_me || !d.viewer.signed_in || d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
                 <Button
                   size="sm"
                   variant={d.relation.following || d.relation.requested ? "ghost" : "primary"}
@@ -469,7 +482,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             <Facts d={d} onRanks={() => setRanks(true)} />
             <StatsCard stats={stats} onStat={onStat} />
 
-            {d.locked ? (
+            {/* 🆕 N2-fix2 — الحظرُ يُقال صريحاً: من حظرتُه (ومعه رفعُ الحظر) · ومن حظرني «غير متاح» */}
+            {d.relation.blocked_by_me || d.relation.blocked_me ? (
+              <View pointerEvents="box-none" style={{ margin: PAGE_PAD, marginTop: 20, padding: 20, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, alignItems: "center", gap: 10 }}>
+                <Icon name="shield" size={24} color={d.relation.blocked_by_me ? tokens.error : tokens.muted} />
+                <Text size={14} style={{ textAlign: "center", lineHeight: 20 }}>{d.relation.blocked_by_me ? t.profileBlockedByMe : t.profileBlockedMe}</Text>
+                {d.relation.blocked_by_me ? <Button size="sm" variant="ghost" label={t.unblockButton} busy={unblock.isPending} onPress={() => unblock.mutate()} /> : null}
+              </View>
+            ) : d.locked ? (
               <View pointerEvents="none" style={{ margin: PAGE_PAD, marginTop: 20, padding: 20, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, alignItems: "center", gap: 8 }}>
                 <Icon name="shield" size={24} color={tokens.muted} />
                 <Text size={15} weight="700">{t.privateCoverTitle}</Text>
@@ -523,13 +543,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       {ranks && d ? <RanksSheet d={d} onClose={() => setRanks(false)} /> : null}
       {menu === "menu" && d ? (
         <Sheet title={name} onClose={() => setMenu(null)}>
-          {d.person.system ? null : (
+          {d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
             <MenuRow icon="comment" label={t.msgUserOption} dim={!(d.relation.following && d.relation.follows_me)} onPress={message} />
           )}
           {d.person.system ? null : (
             <MenuRow icon="shield" label={reported ? t.reportDone : t.reportUserOption} dim={reported} onPress={() => (reported ? setMenu(null) : setMenu("report"))} />
           )}
-          <MenuRow icon="close" label={t.blockOption} danger onPress={() => setMenu("block")} />
+          {d.relation.blocked_by_me ? (
+            <MenuRow icon="shield" label={t.unblockButton} onPress={() => unblock.mutate()} />
+          ) : (
+            <MenuRow icon="close" label={t.blockOption} danger onPress={() => setMenu("block")} />
+          )}
         </Sheet>
       ) : null}
       {menu === "report" && d ? (

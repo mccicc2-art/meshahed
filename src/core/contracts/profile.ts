@@ -90,7 +90,8 @@ export type ProfilePayload = {
   };
   locked: boolean;
   /** 🆕 N2-fix — `requested_me`: طلب متابعتي وطلبُه قائم ⇐ الملفُّ يعرض قبولاً ورفضاً */
-  relation: { following: boolean; requested: boolean; follows_me: boolean; requested_me: boolean };
+  /** 🆕 N2-fix2 — الحظر: `blocked_by_me` حظرتُه (يُعرض رفعُ الحظر) · `blocked_me` حظرني — وأيُّهما ⇒ `locked` والمحتوى فارغ */
+  relation: { following: boolean; requested: boolean; follows_me: boolean; requested_me: boolean; blocked_by_me: boolean; blocked_me: boolean };
   counts: { followers: number; following: number; shows: number; movies: number; anime: number };
   weekly_ranks: { week: string; rank: number; total: number }[];
   /** ما يعرضه صاحبُ الملفّ من صفّ الأرقام، وسقفُ البطاقات في الصفوف (D-152) */

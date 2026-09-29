@@ -560,6 +560,9 @@ const ar = {
   blockedEmpty: "لم تحظر أحداً",
   unblockButton: "رفع الحظر",
   unblockedToast: "رُفع الحظر",
+  /* 🆕 N2-fix2 — ملفٌّ بينك وبينه حظر (الملفُّ الأصليّ) */
+  profileBlockedByMe: "حظرتَ هذا الحساب — لا يرى نشاطك ولا يتابعك، ولا تراه.",
+  profileBlockedMe: "هذا الحساب غير متاح.",
   privateCoverTitle: "حساب خاص",
   privateCoverHint: "تابِعه ليقبل طلبك وترى مكتبته وتقييماته.",
   // متابعة الفنانين
@@ -2755,6 +2758,8 @@ const en: Dict = {
   blockedEmpty: "You haven't blocked anyone",
   unblockButton: "Unblock",
   unblockedToast: "Unblocked",
+  profileBlockedByMe: "You blocked this account — they can’t see your activity or follow you, and you won’t see theirs.",
+  profileBlockedMe: "This account isn’t available.",
   privateCoverTitle: "Private account",
   privateCoverHint:
     "Follow them — once they accept, you'll see their library and ratings.",

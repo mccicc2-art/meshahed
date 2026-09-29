@@ -40,6 +40,10 @@ function wake(delay = COALESCE_MS) {
   wakeTimer = setTimeout(() => {
     wakeTimer = null;
     void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+    /* 🆕 N2-fix2 — **والإشعاراتُ معه** (أحمد ٢٩ سبتمبر: طلبُ متابعةٍ ثانٍ وصل القاعدةَ ولم يظهر): تبويبُ «الإشعارات» كان يُجلب عند
+       فتحه وحدَه، فطلبٌ يصل وهو مفتوحٌ لا يظهر حتى سحبِ التحديث. الاستطلاعُ (٢٠ث) وإيقاظُ Realtime يُحدّثانه الآن — `invalidate`
+       لا يطلب إلّا ما هو معروضٌ (مشترَكٌ فيه). */
+    void queryClient.invalidateQueries({ queryKey: ["me:signals"] });
   }, delay);
 }
 

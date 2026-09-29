@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
     if (!b) return fail("invalid_input");
     if (b.on) {
       const got = await requestOrFollowUser(b.user_id);
-      return ok({ state: got === "requested" ? "requested" : "following" }, ["home", "me:friends"]);
+      /* 🆕 N2-fix2 — `noop` (بينهما حظرٌ منذ ٢٩ سبتمبر، أو نفسُه) لم يُنشئ شيئاً — لا يُقال «تتابعه» */
+      return ok({ state: got === "requested" ? "requested" : got === "following" ? "following" : "none" }, ["home", "me:friends"]);
     }
     await Promise.all([unfollowUser(b.user_id), cancelFollowRequest(b.user_id)]);
     return ok({ state: "none" }, ["home", "me:friends"]);
