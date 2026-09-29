@@ -132,3 +132,14 @@ export function parseProfileHandle(raw: string | null | undefined): string | nul
   v = v.toLowerCase();
   return /^[a-z0-9_]{1,24}$/.test(v) ? v : null;
 }
+
+/** 🆕 N2 — بلاغٌ عن حساب (`POST /api/v1/profile/report`): المعرّفُ ولماذا (اختياريٌّ، يُطوى ويُقصّ حدَّ الويب ٣٠٠) */
+export type ProfileReportBody = { user_id: string; reason: string | null };
+export const REPORT_REASON_MAX = 300;
+export function parseProfileReportBody(raw: unknown): ProfileReportBody | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.user_id !== "string" || !UUID.test(o.user_id)) return null;
+  const reason = typeof o.reason === "string" ? o.reason.replace(/\s+/g, " ").trim().slice(0, REPORT_REASON_MAX) : "";
+  return { user_id: o.user_id, reason: reason || null };
+}

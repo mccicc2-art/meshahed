@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, Share, View, useWindowDimensions } from "react-native";
+import { Animated, BackHandler, Easing, I18nManager, Platform, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -38,7 +39,8 @@ import type {
   ProfileTabKey,
   ProfileTitle,
 } from "@/core/contracts/profile";
-import type { FollowUserResult } from "@/core/communityActs";
+import type { FollowUserResult, LikeBody } from "@/core/communityActs";
+import { REPORT_REASON_MAX, type ProfileReportBody } from "@/core/contracts/profile";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -59,6 +61,10 @@ const HEADER_H = 56;
 const PAGE_PAD = 16;
 const GAP = 10;
 const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
+/* 🆕 N1-fix — عتباتُ سحب التبويبات أرقامُ `TabSlide` نفسُها (D-953): قفلٌ عند ٢٠، وقلبٌ عند ٥٦ أو ٠٫٤px/ms */
+const LOCK_DX = 20;
+const COMMIT_DX = 56;
+const COMMIT_VX = 400;
 /* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
 const ART_MUTED = "rgba(255,255,255,0.7)";
 const ART_SHADOW = { textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 };
@@ -93,13 +99,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   }, [d, endOpen]);
 
   const [tab, setTab] = useState<ProfileTabKey | null>(null);
-  const shown = d?.tabs ?? [];
+  const shown = useMemo(() => d?.tabs ?? [], [d?.tabs]);
   const active: ProfileTabKey | null = tab && shown.includes(tab) ? tab : (shown[0] ?? null);
   const [follows, setFollows] = useState<"followers" | "following" | null>(null);
   const [grid, setGrid] = useState<Grid | null>(null);
   const [ranks, setRanks] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  /* 🆕 N2 — ورقةُ ⋯ ثمّ ورقتا البلاغ وتأكيد الحظر (الويبُ: قائمةٌ ثمّ ورقتان — `ProfileMenu`) */
+  const [menu, setMenu] = useState<null | "menu" | "report" | "block">(null);
+  const [reason, setReason] = useState("");
+  const [reported, setReported] = useState(false);
   useEffect(() => {
     if (!toast) return;
     const h = setTimeout(() => setToast(null), 2600);
@@ -179,6 +189,72 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     },
   });
 
+  const failText = useCallback(
+    (e: unknown) => {
+      const k = e instanceof ApiError ? e.error.message_key : "apiInternal";
+      const msg = (t as unknown as Record<string, unknown>)[k];
+      return typeof msg === "string" ? msg : t.apiInternal;
+    },
+    [t],
+  );
+  /* 🆕 N2 — «رسالة» للمتبادلَين وحدَهم (D-051) ⇐ خيطُ M4 أصليّاً؛ ولغيرهم التلميحُ نفسُه الذي يقوله الويب */
+  const message = useCallback(() => {
+    if (!d) return;
+    setMenu(null);
+    if (!(d.relation.following && d.relation.follows_me)) return setToast(t.msgNeedsMutual);
+    router.push({ pathname: "/messages/[peer]", params: { peer: d.person.id, from: fromOut } });
+  }, [d, router, fromOut, t]);
+  const report = useMutation({
+    mutationFn: async () => (d ? write<{ done: true }>("/api/v1/profile/report", { user_id: d.person.id, reason: reason.trim() || null } satisfies ProfileReportBody) : null),
+    onSuccess: () => {
+      setMenu(null);
+      setReason("");
+      setReported(true);
+      setToast(t.reportDone);
+    },
+    onError: (e) => setToast(failText(e)),
+  });
+  /* الحظرُ فعلُ M4 نفسُه (`/me/messages/block`: يفكّ المتابعة ويُخفي المحادثة) — ثمّ يُغادَر الملفّ: لا شيءَ فيه يخصّك بعده */
+  const block = useMutation({
+    mutationFn: async () => (d ? write<{ done: true }>("/api/v1/me/messages/block", { person_id: d.person.id }) : null),
+    onSuccess: () => {
+      setMenu(null);
+      haptic.pick();
+      qc.removeQueries({ queryKey: key });
+      back();
+    },
+    onError: (e) => setToast(failText(e)),
+  });
+  /* 🆕 N2 — قلبُ المراجعة (`LikeButton` الويب): تفاؤليٌّ في كاش الملفّ، ويعود إن رفض الخادم */
+  const likeReview = useCallback(
+    (r: ProfileReview) => {
+      if (!d || !d.viewer.signed_in) return;
+      haptic.pick();
+      const on = !r.liked_by_me;
+      const flip = (want: boolean) =>
+        qc.setQueryData<ProfilePayload>(key, (p) => {
+          if (!p) return p;
+          const patch = (x: ProfileReview) =>
+            x.tmdb_id === r.tmdb_id && x.media_type === r.media_type && x.liked_by_me !== want ? { ...x, liked_by_me: want, likes: Math.max(0, x.likes + (want ? 1 : -1)) } : x;
+          return { ...p, reviews: p.reviews.map(patch), overview: { ...p.overview, ratings: p.overview.ratings.map(patch) } };
+        });
+      flip(on);
+      void write<unknown>("/api/v1/community/like", { target: "review", user_id: d.person.id, tmdb_id: r.tmdb_id, media_type: r.media_type, on } satisfies LikeBody).catch((e) => {
+        flip(!on);
+        setToast(failText(e));
+      });
+    },
+    [d, qc, key, failText],
+  );
+  /* «تعليق» ⇐ خيطُ الرأي أصليّاً (M3: `/review/[kind]/[id]/[user]`) — الردودُ تُكتب هناك كما في الويب */
+  const openReview = useCallback(
+    (r: ProfileReview) => {
+      if (!d) return;
+      router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: r.media_type, id: String(r.tmdb_id), user: d.person.id, from: fromOut } });
+    },
+    [d, router, fromOut],
+  );
+
   const posterW = DENSITY_W[d?.viewer.density ?? "comfortable"];
   const onArt = !!d?.person.cover_url;
   const name = d ? displayNameOf(d.person, t.anonymousUser) : "";
@@ -197,6 +273,41 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
   const tabMeta = profileTabMeta(t);
 
+  /**
+   * 🆕 N1-fix — **السحبُ بين التبويبات** (أحمد بعد التجربة: «فقط اضيف ايماءات للحركة»): كأخواتها الأصليّة (المكتبة · اكتشف ·
+   * المجتمع) — سحبةٌ أفقيّةٌ على جسم التبويب تنتقل إلى الجار، والجسمُ يدخل من جهته. ⚖️ **لا `TabSlide` هنا**: رأسُ الملفّ
+   * (الغلاف والأرقام) فوق التبويبات ويمرّ معها في تمريرٍ واحدٍ وشريطُها يلتصق — ولوحاتُ `TabSlide` تملأ الشاشة وتملك تمريرَها.
+   * فالعتباتُ عتباتُه (أعلاه) والاتّجاهُ فيزيائيٌّ مثله (RTL: التالي يساراً)، والتمريرُ الرأسيُّ يُفشل السحبَ (`failOffsetY`).
+   */
+  const slide = useRef(new Animated.Value(0)).current;
+  const go = useCallback(
+    (k: ProfileTabKey, from?: 1 | -1) => {
+      if (k === active) return;
+      haptic.pick();
+      const dir = from ?? (shown.indexOf(k) > shown.indexOf(active ?? k) ? 1 : -1);
+      const phys = I18nManager.isRTL ? -1 : 1;
+      slide.setValue(dir * phys * Math.min(80, width * 0.2));
+      setTab(k);
+      Animated.timing(slide, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    },
+    [active, shown, slide, width],
+  );
+  const swipe = useMemo(
+    () =>
+      Gesture.Pan()
+        .runOnJS(true)
+        .activeOffsetX([-LOCK_DX, LOCK_DX])
+        .failOffsetY([-12, 12])
+        .onEnd((e) => {
+          if (!active || (Math.abs(e.translationX) < COMMIT_DX && Math.abs(e.velocityX) < COMMIT_VX)) return;
+          const phys = I18nManager.isRTL ? -1 : 1;
+          const step: 1 | -1 = e.translationX * phys < 0 ? 1 : -1;
+          const next = shown[shown.indexOf(active) + step];
+          if (next) go(next, step);
+        }),
+    [active, shown, go],
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} /> : null}
@@ -205,6 +316,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         <View style={{ flex: 1 }} />
         {d?.person.username ? <RoundBtn icon="share" label={t.shareLinkLabel} onPress={share} onArt={!!d.person.cover_url} /> : null}
         {d?.viewer.is_me ? <RoundBtn icon="settings" label={t.headerSettings} onPress={() => router.push("/settings")} onArt={!!d.person.cover_url} /> : null}
+        {/* 🆕 N2 — ⋯ ملفّ غيرك (`ProfileMenu`): رسالة · بلاغ · حظر */}
+        {d && !d.viewer.is_me && d.viewer.signed_in ? <RoundBtn icon="dots" label={t.profileMenuAria} onPress={() => setMenu("menu")} onArt={!!d.person.cover_url} /> : null}
       </View>
 
       {!d ? (
@@ -285,8 +398,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                       key={k}
                       onPress={() => {
                         if (on) return;
-                        haptic.pick();
-                        setTab(k);
+                        go(k);
                       }}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: on }}
@@ -301,7 +413,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             ) : null}
           </View>
 
-          {/* ——— جسمُ التبويب ——— */}
+          {/* ——— جسمُ التبويب — يُسحب أفقيّاً إلى الجار (N1-fix) ——— */}
+          <GestureHandlerRootView>
+          <GestureDetector gesture={swipe}>
+          <Animated.View collapsable={false} style={{ transform: [{ translateX: slide }] }}>
           {d.locked ? null : shown.length === 0 ? (
             <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text>
           ) : active === "favorites" ? (
@@ -311,10 +426,13 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           ) : active === "activity" ? (
             <ActivityPane rows={d.activity} onTitle={openTitle} />
           ) : active === "reviews" ? (
-            <ReviewsPane rows={d.reviews} onTitle={openTitle} />
+            <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />
           ) : active === "lists" ? (
             <ListsPane d={d} onList={openList} onMember={openMember} />
           ) : null}
+          </Animated.View>
+          </GestureDetector>
+          </GestureHandlerRootView>
         </ScrollView>
       )}
 
@@ -328,6 +446,43 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       ) : null}
       {grid && d ? <GridSheet d={d} which={grid} posterW={posterW} width={width} onClose={() => setGrid(null)} onTitle={(k, id) => { setGrid(null); openTitle(k, id); }} /> : null}
       {ranks && d ? <RanksSheet d={d} onClose={() => setRanks(false)} /> : null}
+      {menu === "menu" && d ? (
+        <Sheet title={name} onClose={() => setMenu(null)}>
+          {d.person.system ? null : (
+            <MenuRow icon="comment" label={t.msgUserOption} dim={!(d.relation.following && d.relation.follows_me)} onPress={message} />
+          )}
+          {d.person.system ? null : (
+            <MenuRow icon="shield" label={reported ? t.reportDone : t.reportUserOption} dim={reported} onPress={() => (reported ? setMenu(null) : setMenu("report"))} />
+          )}
+          <MenuRow icon="close" label={t.blockOption} danger onPress={() => setMenu("block")} />
+        </Sheet>
+      ) : null}
+      {menu === "report" && d ? (
+        <Sheet title={t.reportUserTitle} onClose={() => setMenu(null)}>
+          <Text size={12} muted style={{ lineHeight: 18, marginBottom: 10 }}>{t.reportUserBody}</Text>
+          <TextInput
+            value={reason}
+            onChangeText={(v) => setReason(v.slice(0, REPORT_REASON_MAX))}
+            placeholder={t.reportReasonPlaceholder}
+            accessibilityLabel={t.reportReasonPlaceholder}
+            placeholderTextColor={tokens.muted}
+            multiline
+            maxLength={REPORT_REASON_MAX}
+            textAlignVertical="top"
+            style={{ minHeight: 80, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tokens.fg, textAlign: I18nManager.isRTL ? "right" : "left" }}
+          />
+          <Button style={{ marginTop: 12 }} label={t.reportSend} busy={report.isPending} onPress={() => report.mutate()} />
+        </Sheet>
+      ) : null}
+      {menu === "block" && d ? (
+        <Sheet title={t.blockConfirmTitle} onClose={() => setMenu(null)}>
+          <Text size={13} muted style={{ lineHeight: 19, marginBottom: 14 }}>{t.blockConfirmBody}</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button style={{ flex: 1 }} variant="ghost" label={t.cancelLabel} onPress={() => setMenu(null)} />
+            <Button style={{ flex: 1 }} variant="danger" label={t.blockConfirmButton} busy={block.isPending} onPress={() => block.mutate()} />
+          </View>
+        </Sheet>
+      ) : null}
       {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
     </View>
   );
@@ -335,7 +490,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
 /* ——————————————————— أجزاءُ الرأس ——————————————————— */
 
-function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "settings"; label: string; onPress: () => void; onArt: boolean }) {
+function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "settings" | "dots"; label: string; onPress: () => void; onArt: boolean }) {
   const { tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   return (
@@ -345,6 +500,17 @@ function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "s
       ) : (
         <Icon name={icon} size={20} color={fg} />
       )}
+    </Pressable>
+  );
+}
+
+function MenuRow({ icon, label, onPress, dim = false, danger = false }: { icon: "comment" | "shield" | "close"; label: string; onPress: () => void; dim?: boolean; danger?: boolean }) {
+  const { tokens } = useApp();
+  const c = danger ? tokens.error : dim ? tokens.muted : tokens.fg;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, opacity: pressed ? 0.7 : 1 }]}>
+      <Icon name={icon} size={18} color={danger ? tokens.error : dim ? tokens.muted : tokens.accent} />
+      <Text size={15} color={c}>{label}</Text>
     </Pressable>
   );
 }
@@ -654,7 +820,17 @@ function ActivityPane({ rows, onTitle }: { rows: ProfileActivity[]; onTitle: (k:
 }
 
 /** المراجعات: الأحدثُ أوّلاً، والتقييمُ بلا متنٍ صفٌّ أيضاً (D-583)؛ الحرقُ مغطّى حتى يُكشف. قلوبُها تُرى — والضغطُ في N2 */
-function ReviewsPane({ rows, onTitle }: { rows: ProfileReview[]; onTitle: (k: "tv" | "movie", id: number) => void }) {
+function ReviewsPane({
+  rows,
+  onTitle,
+  onLike,
+  onComment,
+}: {
+  rows: ProfileReview[];
+  onTitle: (k: "tv" | "movie", id: number) => void;
+  onLike?: (r: ProfileReview) => void;
+  onComment: (r: ProfileReview) => void;
+}) {
   const { t, tokens, locale } = useApp();
   const [shown, setShown] = useState<ReadonlySet<string>>(() => new Set());
   if (!rows.length) return <Empty text={t.profileEmptyReviews} />;
@@ -684,9 +860,16 @@ function ReviewsPane({ rows, onTitle }: { rows: ProfileReview[]; onTitle: (k: "t
                   <Text size={13} style={{ lineHeight: 19 }}>{r.review}</Text>
                 )
               ) : null}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Icon name="heart" size={13} color={r.liked_by_me ? tokens.accent : tokens.muted} />
-                {r.likes > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(r.likes, locale)}</Text> : null}
+              {/* 🆕 N2 — القلبُ فعلٌ و«تعليق» يفتح خيطَ الرأي (`LikeButton` · `RowComment` في الويب) */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+                <Pressable onPress={onLike ? () => onLike(r) : undefined} disabled={!onLike} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: r.liked_by_me }} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="heart" size={14} color={r.liked_by_me ? tokens.accent : tokens.muted} />
+                  {r.likes > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(r.likes, locale)}</Text> : null}
+                </Pressable>
+                <Pressable onPress={() => onComment(r)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.actionComment} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="comment" size={14} color={tokens.muted} />
+                  <Text size={12} muted>{t.actionComment}</Text>
+                </Pressable>
               </View>
             </View>
             <PosterCard

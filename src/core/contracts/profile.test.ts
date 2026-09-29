@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseProfileHandle } from "./profile.ts";
+import { parseProfileHandle, parseProfileReportBody, REPORT_REASON_MAX } from "./profile.ts";
 
 /** Phase 11-N · N0 — اسمُ الملفّ من المسار: يُطوى ويُفحص قبل أيّ قراءة */
 
@@ -24,3 +24,13 @@ test("المعرّفُ يمرّ كما هو", () => {
   assert.equal(parseProfileHandle(id), id);
 });
 
+
+test("البلاغ (N2): معرّفٌ صالح، والسببُ يُطوى ويُقصّ، والفراغُ «بلا سبب»", () => {
+  const u = "5b7c2a9e-1111-4a2b-9c3d-000000000001";
+  assert.deepEqual(parseProfileReportBody({ user_id: u, reason: "  سبام \n  متكرر " }), { user_id: u, reason: "سبام متكرر" });
+  assert.equal(parseProfileReportBody({ user_id: u, reason: "   " })?.reason, null);
+  assert.equal(parseProfileReportBody({ user_id: u })?.reason, null);
+  assert.equal(parseProfileReportBody({ user_id: u, reason: "x".repeat(400) })?.reason?.length, REPORT_REASON_MAX);
+  assert.equal(parseProfileReportBody({ user_id: "khld" }), null);
+  assert.equal(parseProfileReportBody(null), null);
+});
