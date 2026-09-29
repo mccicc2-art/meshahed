@@ -71,7 +71,16 @@ export type MsgReplyBody = { share_id: string; body: string };
 export type MsgPeerBody = { person_id: string };
 
 /** `GET /api/v1/me/signals` — أسطرُ الجرس كما تعيدها `mySignals`، والجملةُ والوجهةُ من `core/signals.ts` في الطرفين */
-export type SignalsPayload = { me_id: string; rows: SignalRow[] };
+/** 🆕 N2-fix — `pending_requests`: معرّفاتُ من طلبوا متابعتي وما زال طلبُهم قائماً — صفُّ «طلب المتابعة» يُرسم بزرَّي قبولٍ ورفضٍ لهم وحدَهم */
+export type SignalsPayload = { me_id: string; rows: SignalRow[]; pending_requests: string[] };
+
+/** 🆕 N2-fix — `POST /api/v1/me/follow-requests`: قبولُ طلب متابعةٍ واردٍ أو رفضُه */
+export type FollowRequestBody = { person_id: string; accept: boolean };
+export function parseFollowRequestBody(raw: unknown): FollowRequestBody | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  return typeof o.person_id === "string" && UUID.test(o.person_id) && typeof o.accept === "boolean" ? { person_id: o.person_id, accept: o.accept } : null;
+}
 
 /**
  * `POST /api/v1/me/messages/share` — «أرسِله لـ…» (M5): عملٌ إلى صديقٍ من المتابعة المتبادلة، ومعه سطرٌ اختياريّ — `sendShare`

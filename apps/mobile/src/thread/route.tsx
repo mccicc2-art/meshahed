@@ -19,12 +19,12 @@ function webPathOf(r: ThreadRoute): string {
  * الأبوابُ الثلاثة إلى شاشةٍ واحدة (Phase 11-M · M3) — **والبديلُ عند الانهيار صفحتُها الويبيّةُ نفسُها** (نهجُ
  * `title`/`list`، D-974/D-981): يُطوى المكدّسُ الأصليُّ حتى `/web` فيُرى البديل، والرجوعُ منه يعيد من فتح.
  */
-export function ThreadRouteScreen({ route, from }: { route: ThreadRoute; from: string | undefined }) {
+export function ThreadRouteScreen({ route, from, compose = false }: { route: ThreadRoute; from: string | undefined; compose?: boolean }) {
   const router = useRouter();
   const origin = originOf(from);
   return (
     <ErrorBoundary screen="thread" webPath={webPathOf(route)} returnTo={origin === "web" ? undefined : origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
-      <ThreadScreen route={route} from={origin} />
+      <ThreadScreen route={route} from={origin} compose={compose} />
     </ErrorBoundary>
   );
 }

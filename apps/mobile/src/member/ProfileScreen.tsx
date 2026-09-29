@@ -247,10 +247,20 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const openReview = useCallback(
     (r: ProfileReview) => {
       if (!d) return;
-      router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: r.media_type, id: String(r.tmdb_id), user: d.person.id, from: fromOut } });
+      router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: r.media_type, id: String(r.tmdb_id), user: d.person.id, from: fromOut, compose: "1" } });
     },
     [d, router, fromOut],
   );
+
+  /* 🆕 N2-fix — قبولُ طلب متابعته أو رفضُه (الفعلُ نفسُه الذي في صفّ الإشعار) */
+  const request = useMutation({
+    mutationFn: async (accept: boolean) => (d ? write<{ done: true }>("/api/v1/me/follow-requests", { person_id: d.person.id, accept }) : null),
+    onSuccess: () => {
+      haptic.pick();
+      void q.refetch();
+    },
+    onError: (e) => setToast(failText(e)),
+  });
 
   const posterW = DENSITY_W[d?.viewer.density ?? "comfortable"];
   const onArt = !!d?.person.cover_url;
@@ -447,6 +457,15 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               )}
             </View>
             {d.person.bio ? <Text pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
+            {/* 🆕 N2-fix — طلب متابعتي وطلبُه قائم: القرارُ هنا أيضاً (الإشعارُ يفتح هذا الملفّ) */}
+            {d.relation.requested_me ? (
+              <View style={{ marginHorizontal: PAGE_PAD, marginTop: 12, padding: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Icon name="people" size={18} color={tokens.accent} />
+                <Text size={13} style={{ flex: 1 }} numberOfLines={2}>{t.notifRequest(name)}</Text>
+                <Button size="sm" label={t.requestAccept} busy={request.isPending && request.variables === true} onPress={() => request.mutate(true)} />
+                <Button size="sm" variant="ghost" label={t.requestReject} busy={request.isPending && request.variables === false} onPress={() => request.mutate(false)} />
+              </View>
+            ) : null}
             <Facts d={d} onRanks={() => setRanks(true)} />
             <StatsCard stats={stats} onStat={onStat} />
 

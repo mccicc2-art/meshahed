@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
-import { getUserId, getProfileByUsername } from "@/lib/data";
+import { getUserId, getProfileByUsername, getIncomingFollowRequests } from "@/lib/data";
 import { loadProfile } from "@/lib/profileCore";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -103,6 +103,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         : c.me
           ? sanitizeProfilePrefs((await getProfileByUsername(c.me.id))?.profile_prefs).density
           : sanitizeProfilePrefs(null).density;
+      /* 🆕 N2-fix — هل طلب صاحبُ الملفّ متابعتي؟ (قائمةُ طلباتي الواردة — قصيرةٌ، للمسجَّل وحدَه) */
+      const requestedMe = c.me && !c.isMe ? (await getIncomingFollowRequests()).some((p) => p.id === profile.id) : false;
       const xHandle = c.xHandle && c.xUrl ? { handle: c.xHandle, url: c.xUrl } : null;
 
       const payload: ProfilePayload = {
@@ -127,7 +129,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           x: xHandle,
         },
         locked,
-        relation: { following: c.relation.following, requested: c.relation.requested, follows_me: c.relation.followsMe },
+        relation: { following: c.relation.following, requested: c.relation.requested, follows_me: c.relation.followsMe, requested_me: requestedMe },
         counts: {
           followers: c.stats.followers,
           following: c.stats.following,

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, MSG_REPLY_MAX, MSG_NOTE_MAX } from "./messages.ts";
+import { parseFollowRequestBody, parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, MSG_REPLY_MAX, MSG_NOTE_MAX } from "./messages.ts";
 
 /** Phase 11-M · M4 — أجسامُ أفعال «الرسائل»: متسامحٌ مع الزائد، صارمٌ مع الناقص، والفراغُ يُرفض قبل الرحلة */
 
@@ -29,4 +29,11 @@ test("الإرسال (M5): عملٌ صالحٌ لصديق، والملاحظةُ
   assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 0, media_type: "tv" }), null);
   assert.equal(parseMsgShareBody({ recipient_id: U, tmdb_id: 7, media_type: "anime" }), null);
   assert.equal(parseMsgShareBody({ recipient_id: "x", tmdb_id: 7, media_type: "movie" }), null);
+});
+
+test("طلب المتابعة (N2-fix): معرّفٌ صالحٌ وقرارٌ صريح", () => {
+  assert.deepEqual(parseFollowRequestBody({ person_id: U, accept: true }), { person_id: U, accept: true });
+  assert.deepEqual(parseFollowRequestBody({ person_id: U, accept: false }), { person_id: U, accept: false });
+  assert.equal(parseFollowRequestBody({ person_id: U }), null);
+  assert.equal(parseFollowRequestBody({ person_id: "x", accept: true }), null);
 });

@@ -347,7 +347,7 @@ function AlertsPane({ live, onOpen }: { live: boolean; onOpen: (path: string) =>
     <FlatList
       data={d.rows}
       keyExtractor={(s, i) => `${s.kind}-${s.person.id}-${s.at}-${i}`}
-      renderItem={({ item }) => <SignalItem s={item} meId={d.me_id} onOpen={onOpen} />}
+      renderItem={({ item }) => <SignalItem s={item} meId={d.me_id} onOpen={onOpen} pending={item.kind === "request" && (d.pending_requests ?? []).includes(item.person.id)} />}
       ListEmptyComponent={<Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 20, lineHeight: 21 }}>{t.notifEmpty}</Text>}
       contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: 40 }}
       refreshControl={refresh}
@@ -357,8 +357,26 @@ function AlertsPane({ live, onOpen }: { live: boolean; onOpen: (path: string) =>
   );
 }
 
-function SignalItem({ s, meId, onOpen }: { s: SignalRow; meId: string; onOpen: (path: string) => void }) {
+function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; onOpen: (path: string) => void; pending: boolean }) {
   const { t, tokens, locale } = useApp();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
+  /**
+   * 🆕 N2-fix — **قبولُ طلب المتابعة ورفضُه من الإشعار نفسِه** (أحمد ٢٩ سبتمبر: «جاني طلب إضافة لأني مقفل.. الإشعار وصل بس يدخلني
+   * عالحساب ليش ما يخليني أقبل؟»). الزرّان لطلبٍ قائمٍ وحدَه (`pending_requests`)، وبعد القرار يسقطان من الكاش فوراً.
+   */
+  const decide = (accept: boolean) => {
+    if (busy) return;
+    haptic.pick();
+    setBusy(accept ? "accept" : "reject");
+    write<{ done: true }>("/api/v1/me/follow-requests", { person_id: s.person.id, accept })
+      .then(() => {
+        qc.setQueryData<SignalsPayload>(SIGNALS_KEY, (x) => (x ? { ...x, pending_requests: (x.pending_requests ?? []).filter((id) => id !== s.person.id) } : x));
+        void qc.invalidateQueries({ queryKey: [`profile:${(s.person.username ?? s.person.id).toLowerCase()}`] });
+      })
+      .catch(() => {})
+      .finally(() => setBusy(null));
+  };
   const listName = curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar");
   const p = signalParts(s, t, listName);
   const href = signalHref(s, meId);
@@ -385,7 +403,14 @@ function SignalItem({ s, meId, onOpen }: { s: SignalRow; meId: string; onOpen: (
         <Text size={12} muted>{timeAgo(s.at, t)}</Text>
       </View>
       {/* النقطةُ تقول «وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
-      {s.isNew ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
+      {pending ? (
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          <Button size="sm" label={t.requestAccept} busy={busy === "accept"} onPress={() => decide(true)} />
+          <Button size="sm" variant="ghost" label={t.requestReject} busy={busy === "reject"} onPress={() => decide(false)} />
+        </View>
+      ) : s.isNew ? (
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} />
+      ) : null}
     </Pressable>
   );
 }

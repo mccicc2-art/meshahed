@@ -77,7 +77,7 @@ type Item =
 const threadView = new Map<string, { y: number; toggled: string[]; expanded: string[]; at: number }>();
 const VIEW_TTL_MS = 10 * 60_000;
 
-export function ThreadScreen({ route, from }: { route: ThreadRoute; from: NativeRoot | "web" }) {
+export function ThreadScreen({ route, from, compose = false }: { route: ThreadRoute; from: NativeRoot | "web"; compose?: boolean }) {
   const { t, tokens } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
@@ -255,6 +255,11 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
 
   /* ——— الكتابة ——— */
   const [composing, setComposing] = useState<{ parent: ThreadRow | null } | null>(null);
+  /**
+   * 🆕 N2-fix — **«تعليق» يفتح حقلَ الكتابة لا الخيطَ وحدَه** (أحمد ٢٩ سبتمبر: «ضغطت كومنت.. وداني صفحة ولا أعتقد أقدر أكتب فيها»):
+   * زرُّ ✎ العائم كان البابَ الوحيد، ولا يُرى أنّه للكتابة. من جاء بـ`compose` يجد الحقلَ مفتوحاً مرّةً حين يصل الخيط.
+   */
+  const composeOnce = useRef(compose);
   const send = useCallback(
     async (parent: ThreadRow | null, draft: Draft): Promise<boolean> => {
       if (!d) return false;
@@ -364,6 +369,11 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
 
   /* ——— الرسم ——— */
   const signedIn = !!d?.viewer.signed_in;
+  useEffect(() => {
+    if (!composeOnce.current || !d || !signedIn) return;
+    composeOnce.current = false;
+    setComposing({ parent: null });
+  }, [d, signedIn]);
   const renderItem = useCallback(
     ({ item }: { item: Item }) => {
       if (item.type === "more") {

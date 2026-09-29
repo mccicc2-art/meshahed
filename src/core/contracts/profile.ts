@@ -89,7 +89,8 @@ export type ProfilePayload = {
     x: { handle: string; url: string } | null;
   };
   locked: boolean;
-  relation: { following: boolean; requested: boolean; follows_me: boolean };
+  /** 🆕 N2-fix — `requested_me`: طلب متابعتي وطلبُه قائم ⇐ الملفُّ يعرض قبولاً ورفضاً */
+  relation: { following: boolean; requested: boolean; follows_me: boolean; requested_me: boolean };
   counts: { followers: number; following: number; shows: number; movies: number; anime: number };
   weekly_ranks: { week: string; rank: number; total: number }[];
   /** ما يعرضه صاحبُ الملفّ من صفّ الأرقام، وسقفُ البطاقات في الصفوف (D-152) */
