@@ -148,9 +148,15 @@ export function HomeGreeting({
 }
 
 export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: string) => void }) {
+  if (!h.show_stats) return null;
+  return <StatsCard stats={h.stats} onStat={onStat} />;
+}
+
+/** 🆕 11-N · N1 — بطاقةُ الأرقام نفسُها لملفّ الشخص الأصليّ (الويبُ يرسمها للرئيسيّة وللملفّ بوصفةٍ واحدة — D-561/D-650) */
+export type StatCell = { key: string; icon: string; value: string | number; label: string; href: string };
+export function StatsCard({ stats, onStat }: { stats: readonly StatCell[]; onStat: (href: string) => void }) {
   const { tokens } = useApp();
-  const stats = h.stats;
-  if (!h.show_stats || stats.length === 0) return null;
+  if (stats.length === 0) return null;
   /* 🆕 D-1129 — **أربعةٌ في صفٍّ واحد** (أحمد بلقطة: «إذا كانت ٤ أبغاها خط واحد»؛ كانت عمودين ×
      سطرين — D-620). ربعُ العرض (~٨٧) لا يتّسع لأيقونةٍ ورقمٍ واسمٍ في سطر («120d Time» يُقصّ)، فالخانةُ
      عند الأربعة **عموديّة**: الأيقونةُ والرقمُ فوق والاسمُ تحته — بالأحجام نفسِها. الاثنان والثلاثة كما هي. */

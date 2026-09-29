@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { shell } from "../shell";
 import type { SettingsPayload } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== طبقةُ بيانات الإعدادات (Phase 11-I) ======
@@ -78,6 +79,8 @@ export function useOpenWeb() {
   const [busy, setBusy] = useState<string | null>(null);
   const open = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, "home"); }
       if (busy) return;
       setBusy(path);
       const returnTo = typeof section === "string" && /^[a-z-]+$/.test(section) ? (`settings/${section}` as const) : ("settings" as const);

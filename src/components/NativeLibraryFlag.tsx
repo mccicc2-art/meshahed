@@ -56,6 +56,18 @@ export function NativeLibraryFlag() {
         }
         return;
       }
+      /* 🆕 11-N · N1 — **ملفُّ الشخص أصليٌّ** من أيِّ رابطٍ في الويب (`/u/<اسم>` بلا تبويبٍ فرعيّ ولا `/stats`) — بقدرة الغلاف
+         (`LoopzNative.profile`، غلافٌ أقدم يبقى رابطاً). `?tab=` يُترك رابطاً: وجهةٌ داخل الصفحة لا تعرفها الشاشةُ بعد. */
+      const u = /^\/u\/([^/]+)\/?$/.exec(url.pathname);
+      if (u && window.LoopzNative?.profile === true && !url.search && !url.hash) {
+        try {
+          window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route: "profile", username: decodeURIComponent(u[1]) }));
+          e.preventDefault();
+        } catch {
+          /* الجسرُ غاب — الرابطُ يمضي */
+        }
+        return;
+      }
       const m = /^\/(show|movie)\/(\d+)(?:\/)?$/.exec(url.pathname);
       if (!m || url.search || url.hash) return;
       try {
@@ -85,7 +97,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean; /** D-1104 — `navigator.share` تفتح ورقةَ النظام */ share?: boolean; /** 🆕 11-M · M4 — الرسائلُ والإشعاراتُ شاشةٌ أصليّة */ messages?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean; /** D-1012 — الغلافُ يرسم الشريطَ السفليَّ بنفسه */ nav?: boolean; /** Phase 11-G — البحثُ شاشةٌ أصليّة */ search?: boolean; /** Phase 11-H — الرئيسيةُ شاشةٌ أصليّة (D-1066) */ home?: boolean; /** D-1104 — `navigator.share` تفتح ورقةَ النظام */ share?: boolean; /** 🆕 11-M · M4 — الرسائلُ والإشعاراتُ شاشةٌ أصليّة */ messages?: boolean; /** 🆕 11-N · N1 — ملفُّ الشخص شاشةٌ أصليّة */ profile?: boolean };
     /** D-1012 — الغلافُ ينادي موجِّهَ الصفحة بدل تحميل مستندٍ جديد */
     __loopzGo?: (path: string) => void;
   }

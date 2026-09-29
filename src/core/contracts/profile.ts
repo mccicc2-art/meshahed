@@ -12,6 +12,7 @@
  * 🔒 **الحسابُ الخاصّ**: الحارسُ في SQL (`can_view_profile`)؛ و`locked` هنا للرسم وحدَه (قفلٌ صريحٌ لا أصفارٌ تبدو عطلاً)، والمحتوى فارغ.
  */
 import type { PersonLite } from "../people.ts";
+import type { Density } from "../density.ts";
 
 export const PROFILE_TAB_KEYS = ["favorites", "overview", "activity", "reviews", "lists"] as const;
 export type ProfileTabKey = (typeof PROFILE_TAB_KEYS)[number];
@@ -70,7 +71,8 @@ export type ProfileActivity = {
 };
 
 export type ProfilePayload = {
-  viewer: { signed_in: boolean; is_me: boolean };
+  /** 🆕 N1 — `density` **حجمُ ملصقات القارئ** (تفضيلُ ملفّه هو) لا صاحبِ الملفّ — قرارُ أحمد ٢٩ سبتمبر */
+  viewer: { signed_in: boolean; is_me: boolean; density: Density };
   person: PersonLite & {
     cover_url: string | null;
     cover_pos: number | null;

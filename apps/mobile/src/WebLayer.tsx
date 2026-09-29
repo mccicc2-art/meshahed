@@ -102,7 +102,7 @@ function atGate(p: string, landing: boolean): boolean {
  */
 const SHARE_BRIDGE =
   "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true};" + SHARE_BRIDGE + ";true;";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true,profile:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -515,6 +515,12 @@ export function WebLayer() {
           const peer = typeof m.with === "string" && /^[0-9a-f-]{36}$/i.test(m.with) ? m.with : null;
           if (peer) router.push({ pathname: "/messages/[peer]", params: { peer, from: "web" } });
           else router.push({ pathname: "/messages", params: { tab: m.tab === "alerts" ? "alerts" : "inbox", from: "web" } });
+        }
+        /* 🆕 11-N · N1 — ملفُّ الشخص من رابطٍ في الويب ⇐ الشاشةُ الأصليّةُ فوق الصفحة، والرجوعُ إليها (`from=web`).
+           الاسمُ يُفحص بشكله قبل أن يُدفع (الخادمُ يعيد فحصَه — `parseProfileHandle`) */
+        if (hostOk && msg.route === "profile") {
+          const name = (msg as { username?: unknown }).username;
+          if (typeof name === "string" && /^[\w.-]{1,40}$/.test(name)) router.push({ pathname: "/u/[username]", params: { username: name, from: "web" } });
         }
         if (hostOk && msg.route === "title") {
           const m = msg as { kind?: unknown; id?: unknown };

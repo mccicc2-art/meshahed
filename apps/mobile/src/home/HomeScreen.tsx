@@ -26,6 +26,7 @@ import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { SectionOrderSheet } from "./SectionOrderSheet";
 import { FollowsSheet } from "./FollowsSheet";
+import { openProfile, profileHandleOf } from "../member/open";
 import { CelebrateSheet } from "./CelebrateSheet";
 import { BottomNav, navHeight } from "../BottomNav";
 import { useChromeHide } from "../ChromeHide";
@@ -124,6 +125,8 @@ export function HomeScreen() {
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, "home"); }
       if (leaving) return;
       setLeaving(true);
       void shell.open(path, { returnTo: "home" }).then((layered) => {
@@ -132,7 +135,7 @@ export function HomeScreen() {
         if (!layered) back();
       });
     },
-    [leaving, back],
+    [leaving, back, router],
   );
   const openTitle = useCallback((kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "home" } }), [router]);
   const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: "home" } }), [router]);
@@ -685,7 +688,7 @@ export function HomeScreen() {
         </Sheet>
       ) : null}
       {celebrate ? <CelebrateSheet {...celebrate} onClose={() => setCelebrate(null)} onError={onError} /> : null}
-      {follows ? <FollowsSheet dir={follows} onClose={() => setFollows(null)} onOpenWeb={openWeb} /> : null}
+      {follows ? <FollowsSheet dir={follows} onClose={() => setFollows(null)} onOpen={(u) => openProfile(router, u, "home")} /> : null}
       <ToastHost hostRef={toastHost} bottom={navH} />
       <BottomNav
         active="home"

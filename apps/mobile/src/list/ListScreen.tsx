@@ -33,6 +33,7 @@ import type {
   LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
   ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody,
 } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== صفحةُ القائمة — شاشةٌ أصليّة (D-1036 · الشريحةُ الأولى: القراءة) ======
@@ -114,10 +115,14 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   /* 🔴 M3-fix — `dismissAll` لا `back()`: القائمةُ من جذرٍ فوق مجموعة التبويبات، فالرجوعُ خطوةً يكشف الجذرَ لا الصفحة */
   /* 🆕 K3b — ظهرت طبقةً ⇒ القائمةُ تبقى تحتها (والطريقُ القديمُ إن لم تظهر) */
   const openWeb = useCallback(
-    (path: string) =>
+    (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص (صاحبُ القائمة) أصليٌّ (`member/open.ts`) */
+      const who = profileHandleOf(path);
+      if (who) return openProfile(router, who, from);
       void shell
         .open(path, { returnTo: from, resume: stackAboveRoots(nav.getRootState()) })
-        .then((layered) => (layered ? undefined : router.canDismiss() ? router.dismissAll() : router.replace("/web"))),
+        .then((layered) => (layered ? undefined : router.canDismiss() ? router.dismissAll() : router.replace("/web")));
+    },
     [from, router, nav],
   );
 

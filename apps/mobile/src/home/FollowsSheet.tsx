@@ -14,15 +14,16 @@ import type { FollowsPayload } from "../contracts";
 /**
  * ورقةُ «يتابعونني / أتابعهم» — `FollowCountButton` الويب (Phase 11-H، تقفل D-1066 §10).
  * **الصفُّ صفُّ `FriendPicker` نفسُه** (الأفاتار ٣٦ + الاسم + `@username`) لأنّ الويب يرسم
- * القائمتين بـ`PersonRowLink` واحد (D-565) — لا صفَّ ثانياً. النقرُ يفتح ملفَّ الشخص في الويب
- * كما في الويب؛ والمخفي الاسمُ بلا رابط (قاعدةُ `displayNameOf`).
+ * القائمتين بـ`PersonRowLink` واحد (D-565) — لا صفَّ ثانياً. النقرُ يفتح ملفَّ الشخص (🆕 11-N · N1: أصليّاً — `onOpen`
+ * باسمه)؛ والمخفي الاسمُ بلا رابط (قاعدةُ `displayNameOf`).
+ * 🆕 N1 — `userId`: قائمتا شخصٍ آخر (عدّادا ملفّه) — القفلُ والخصوصيّةُ في القاعدة (`follow_people`)، والمفتاحُ يحمله.
  */
-export function FollowsSheet({ dir, onClose, onOpenWeb }: { dir: "followers" | "following"; onClose: () => void; onOpenWeb: (path: string) => void }) {
+export function FollowsSheet({ dir, userId, onClose, onOpen }: { dir: "followers" | "following"; userId?: string; onClose: () => void; onOpen: (username: string) => void }) {
   const { t, tokens } = useApp();
   const q = useQuery({
     /* مفتاحٌ بلا وسمٍ من `tags.ts`: لا كتابةَ في التطبيق تُبطل هذه القائمة، و`staleTime` دقيقةٌ تكفي */
-    queryKey: ["me:follows", dir],
-    queryFn: async () => (await api<FollowsPayload>(`/api/v1/me/follows?dir=${dir}`)).data.people,
+    queryKey: ["me:follows", dir, userId ?? "me"],
+    queryFn: async () => (await api<FollowsPayload>(`/api/v1/me/follows?dir=${dir}${userId ? `&user=${userId}` : ""}`)).data.people,
     staleTime: 60_000,
   });
   const people = q.data;
@@ -36,7 +37,7 @@ export function FollowsSheet({ dir, onClose, onOpenWeb }: { dir: "followers" | "
         <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
           {people.map((p, i) => {
             const label = displayNameOf(p, t.anonymousUser);
-            const href = !p.hide_name && p.username ? `/u/${p.username}` : null;
+            const href = !p.hide_name && p.username ? p.username : null;
             return (
               <Pressable
                 key={p.id}
@@ -45,7 +46,7 @@ export function FollowsSheet({ dir, onClose, onOpenWeb }: { dir: "followers" | "
                   if (!href) return;
                   haptic.pick();
                   onClose();
-                  onOpenWeb(href);
+                  onOpen(href);
                 }}
                 accessibilityRole={href ? "link" : undefined}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider, opacity: pressed ? 0.7 : 1 }]}

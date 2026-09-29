@@ -19,6 +19,7 @@ import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, Tail, TitleRow } 
 import { MIN_QUERY, useDebounced, useSearch } from "./useSearch";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== شاشةُ البحث أصليّةً — Phase 11-G · G1–G3 (٢٢ سبتمبر ٢٠٢٦) ======
@@ -108,6 +109,8 @@ export function SearchScreen() {
   const [leaving, setLeaving] = useState(false);
   const leaveTo = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, "search"); }
       if (leaving) return;
       const listId = nativeListId(path);
       if (listId) {

@@ -82,6 +82,8 @@ function Shell() {
         {/* 🆕 11-M · M4 — «الرسائل والإشعارات» وخيطُ المحادثة: شاشتان مدفوعتان فوق الجذور لا تبويب */}
         <Stack.Screen name="messages/index" options={{ headerShown: false }} />
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
+        {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
+        <Stack.Screen name="u/[username]" options={{ headerShown: false }} />
         {/* D-1046 — «الكلّ ←» شاشةٌ كاملة فوق «اكتشف» */}
         <Stack.Screen name="section" options={{ headerShown: false }} />
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}

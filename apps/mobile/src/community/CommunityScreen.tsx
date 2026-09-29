@@ -30,6 +30,7 @@ import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type C
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import { displayNameOf } from "@/core/people";
 import type { CommunityFeedRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== «المجتمع» أصليّاً — Phase 11-M · M1 (D-1168 · D-1171) ======
@@ -161,6 +162,8 @@ export function CommunityScreen() {
       onTitle: (kind, id) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "community" } }),
       onList: (id) => router.push({ pathname: "/list/[id]", params: { id, from: "community" } }),
       onWeb: (path) => {
+        /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+        { const who = profileHandleOf(path); if (who) return openProfile(router, who, "community"); }
         /* 🆕 M3 — الغرفةُ والمنشورُ والرأيُ أصليّةٌ الآن؛ الملفُّ `/u/…` وحدَه يبقى باباً ويبيّاً */
         if (openThreadPath(router, path, "community")) return;
         if (leaving) return;

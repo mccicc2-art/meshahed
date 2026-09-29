@@ -8,6 +8,7 @@ import { openThreadPath } from "../thread/route";
 import { HOME_KEY } from "../home/useHome";
 import { MESSAGES_KEY, retainLive } from "./live";
 import type { HomePayload, MessagesPayload, MsgConversation } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== «الرسائل» أصليّةً — ما تتشاركه شاشتا الصندوق والمحادثة (Phase 11-M · M4) ======
@@ -85,6 +86,8 @@ export function useDoors(from: Origin) {
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, from); }
       if (leaving) return;
       setLeaving(true);
       const resume = from === "web" ? undefined : stackAboveRoots(nav.getRootState());
@@ -108,6 +111,9 @@ export function useDoors(from: Origin) {
     (path: string) => {
       const list = /^\/lists\/([^/?#]+)\/?$/.exec(path);
       if (list) return openList(decodeURIComponent(list[1]));
+      /* 🆕 11-N · N1 — إشعارُ متابعةٍ أو إعجاب ⇐ ملفُّ صاحبه أصليّاً */
+      const who = profileHandleOf(path);
+      if (who) return openProfile(router, who, from);
       const title = /^\/(show|movie)\/(\d+)\/?$/.exec(path);
       if (title) return openTitle(title[1] === "show" ? "tv" : "movie", Number(title[2]));
       if (openThreadPath(router, path, from)) return;

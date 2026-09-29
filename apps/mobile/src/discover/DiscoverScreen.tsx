@@ -37,6 +37,7 @@ import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
 import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== «اكتشف» أصليّةً — Phase 11-C · C1 (D-955) ======
@@ -167,6 +168,8 @@ export function DiscoverScreen() {
   const [leaving, setLeaving] = useState(false);
   const leaveTo = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, "discover"); }
       if (leaving) return;
       /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
          القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */

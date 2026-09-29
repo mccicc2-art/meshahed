@@ -30,6 +30,7 @@ import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBody, SetDroppedBody, ToggleMovieBody, HiddenRailsBody } from "../contracts";
+import { openProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== المكتبةُ أصليّةً — تجربةُ المقارنة (Phase 11 · B2، D-936) ======
@@ -183,6 +184,8 @@ export function LibraryScreen() {
   const [leaving, setLeaving] = useState(false);
   const leaveTo = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return openProfile(router, who, "library"); }
       if (leaving) return;
       /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
          القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */

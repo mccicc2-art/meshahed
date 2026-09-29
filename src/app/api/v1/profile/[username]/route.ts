@@ -1,13 +1,13 @@
 import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
-import { getUserId } from "@/lib/data";
+import { getUserId, getProfileByUsername } from "@/lib/data";
 import { loadProfile } from "@/lib/profileCore";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus } from "@/core/plan";
 import { isLoopz } from "@/core/loopz";
 import { capCards } from "@/core/cardCount";
-import { HIDEABLE_PROFILE_TABS, orderedProfileTabs } from "@/core/profilePrefs";
+import { HIDEABLE_PROFILE_TABS, orderedProfileTabs, sanitizeProfilePrefs } from "@/core/profilePrefs";
 import {
   parseProfileHandle,
   type ProfileList,
@@ -94,10 +94,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           },
         };
       };
+      /* 🆕 N1 — حجمُ الملصق حجمُ القارئ: ملفُّه هو إن كان هذا ملفَّ غيره (نداءٌ واحدٌ خفيفٌ للمسجَّل وحدَه) */
+      const density = c.isMe
+        ? prefs.density
+        : c.me
+          ? sanitizeProfilePrefs((await getProfileByUsername(c.me.id))?.profile_prefs).density
+          : sanitizeProfilePrefs(null).density;
       const xHandle = c.xHandle && c.xUrl ? { handle: c.xHandle, url: c.xUrl } : null;
 
       const payload: ProfilePayload = {
-        viewer: { signed_in: !!c.me, is_me: c.isMe },
+        viewer: { signed_in: !!c.me, is_me: c.isMe, density },
         person: {
           id: profile.id,
           nickname: profile.nickname,

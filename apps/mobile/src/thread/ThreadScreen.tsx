@@ -27,6 +27,7 @@ import { displayNameOf, profileHref } from "@/core/people";
 import { stackAboveRoots } from "../nativeStack";
 import { orderThread, buildTree, countUnder, canReplyTo, PEEK } from "@/core/threadOrder";
 import type { ThreadPayload, ThreadRow, ThreadTarget, ThreadReplyResult, LikeBody } from "../contracts";
+import { openProfile as pushProfile, profileHandleOf } from "../member/open";
 
 /**
  * ====== «النقاش» أصليّاً — شاشةٌ واحدةٌ لثلاثة أبواب · Phase 11-M · M3 (خطّة §٣) ======
@@ -119,6 +120,8 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
   const [leaving, setLeaving] = useState(false);
   const openWeb = useCallback(
     (path: string) => {
+      /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
+      { const who = profileHandleOf(path); if (who) return pushProfile(router, who, from); }
       if (leaving) return;
       setLeaving(true);
       /* M3-fix — موضعُ القراءة والشجرةُ المفتوحة تُحفظ، وما فوق الجذر يُلتقط، فالرجوعُ من الصفحة يعيد الغرفةَ كما تُركت */
@@ -135,7 +138,7 @@ export function ThreadScreen({ route, from }: { route: ThreadRoute; from: Native
         leave();
       });
     },
-    [leaving, from, leave, key, nav],
+    [leaving, from, leave, key, nav, router],
   );
   const openTitle = useCallback(() => {
     if (!d) return;
