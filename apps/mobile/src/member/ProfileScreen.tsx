@@ -425,7 +425,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       ) : (
         <View style={{ flex: 1, overflow: "hidden" }}>
           {headH > 0 && !d.locked && shown.length > 0 && active ? (
-            <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" render={(k) => renderPane(k)} />
+            <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" warmAll render={(k) => renderPane(k)} />
           ) : headH > 0 ? (
             <ScrollView contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
               {!d.locked && shown.length === 0 ? <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text> : null}

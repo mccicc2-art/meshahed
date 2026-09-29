@@ -82,6 +82,13 @@ type Props<K extends string> = {
    * وسيطاً)، لكنّ الشريطَ يعرف الوجهةَ الآن فيُضيئها مع بدء الطيران كما في الويب. سحبٌ ارتدّ لا يُعلن شيئاً.
    */
   onAim?: (next: K) => void;
+  /**
+   * 🆕 11-N · N1-fix5 — **كلُّ التبويبات مجهَّزةٌ لا الجاران وحدَهما** (ملفُّ الشخص؛ أحمد ٢٩ سبتمبر: «الإيماءات ممتازة.. لكن ضغط الزر
+   * لا»). ضغطةٌ على تبويبٍ بعيدٍ كانت تطير فوق ألواحٍ غير مركّبة وتصل لوحاً بارداً — فراغٌ أسودُ حتى يُرسم. ألواحُ الملفّ من حمولةٍ
+   * واحدةٍ محمّلةٍ أصلاً وعددُها خمسةٌ على الأكثر، فتُركَّب كلُّها بعد أن تهدأ الحركة الأولى (المهلةُ نفسُها `WARM_MS`) ولا يُنزع منها
+   * شيء. **لا يُستعمل حيث تجلب الألواحُ بياناتِها بنفسها** (المكتبة · اكتشف) — هناك «ثلاثةُ ألواحٍ حدٌّ أعلى» (K2) تبقى. مسارُ K2 وحدَه.
+   */
+  warmAll?: boolean;
 };
 
 /**
@@ -296,7 +303,7 @@ const WARM_MS = FLY_MS + 180;
     (٢٨ سبتمبر): السحباتُ المتتالية كانت تسبق مهلةَ `WARM_MS` فتجد الجارَ بارداً — وهي وحدَها التي بقي فيها تقطيع */
 const WARM_AFTER_SWIPE_MS = 180;
 
-function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen }: Props<K>) {
+function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false }: Props<K>) {
   const { width } = useWindowDimensions();
   const phys = I18nManager.isRTL ? -1 : 1;
   const at = useCallback((k: K, w = width) => -Math.max(0, order.indexOf(k)) * w * phys, [order, width, phys]);
@@ -537,7 +544,10 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   /* 🆕 K2 — بعد كلِّ استقرار: يبقى من المجهَّز ما زال جاراً (والتبويبُ الذي غادرناه منه) فلا يُنزع ثمّ يُعاد،
      ويُركَّب الناقصُ بعد أن تهدأ الحركة. الأبعدُ يُنزع فوراً — ثلاثةُ ألواحٍ حدٌّ أعلى */
   const ti = order.indexOf(tab);
-  const near = useMemo(() => (ti < 0 ? [] : [order[ti - 1], order[ti + 1]].filter((k): k is K => !!k)), [order, ti]);
+  const near = useMemo(
+    () => (ti < 0 ? [] : warmAll ? order.filter((k) => k !== tab) : [order[ti - 1], order[ti + 1]].filter((k): k is K => !!k)),
+    [order, ti, tab, warmAll],
+  );
   useLayoutEffect(() => {
     const left = lastTab.current;
     lastTab.current = tab;
