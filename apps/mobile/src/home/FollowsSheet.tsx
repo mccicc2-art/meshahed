@@ -37,7 +37,9 @@ export function FollowsSheet({ dir, userId, onClose, onOpen }: { dir: "followers
         <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
           {people.map((p, i) => {
             const label = displayNameOf(p, t.anonymousUser);
-            const href = !p.hide_name && p.username ? p.username : null;
+            /* 🔴 N1-fix4 — **من لا اسمَ مستخدمٍ له يُفتح بمعرّفه** (أحمد ٢٩ سبتمبر: «فيه كم شخص ما أقدر أدخل البروفايل حقه»): قاعدةُ الويب
+               نفسُها (`PeopleFollowList`: `username ?? id` — و`profileHref`): نصفُ الأعضاء بلا اسم مستخدم، فكان صفُّهم ميّتاً هنا وحدَه */
+            const href = p.username?.trim() || p.id || null;
             return (
               <Pressable
                 key={p.id}

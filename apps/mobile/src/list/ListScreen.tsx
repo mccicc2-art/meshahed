@@ -34,6 +34,7 @@ import type {
   ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody,
 } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
+import { profileHref } from "@/core/people";
 
 /**
  * ====== صفحةُ القائمة — شاشةٌ أصليّة (D-1036 · الشريحةُ الأولى: القراءة) ======
@@ -369,7 +370,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               <Text size={22} weight="700" style={{ lineHeight: 28 }}>{d.name}</Text>
               {d.subtitle ? <Text size={14} muted style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
               {d.owner ? (
-                <Pressable disabled={!d.owner.username} onPress={() => openWeb(`/u/${d.owner?.username}`)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, alignSelf: "flex-start" }}>
+                <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, alignSelf: "flex-start" }}>
                   <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
                     {d.owner.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
                   </View>

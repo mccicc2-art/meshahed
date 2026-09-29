@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, BackHandler, Easing, I18nManager, Platform, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Animated, BackHandler, I18nManager, Platform, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -61,10 +61,7 @@ const HEADER_H = 56;
 const PAGE_PAD = 16;
 const GAP = 10;
 const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
-/* 🆕 N1-fix — عتباتُ سحب التبويبات أرقامُ `TabSlide` نفسُها (D-953): قفلٌ عند ٢٠، وقلبٌ عند ٥٦ أو ٠٫٤px/ms */
-const LOCK_DX = 20;
-const COMMIT_DX = 56;
-const COMMIT_VX = 400;
+
 /* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
 const ART_MUTED = "rgba(255,255,255,0.7)";
 const ART_SHADOW = { textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 };
@@ -274,50 +271,103 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const tabMeta = profileTabMeta(t);
 
   /**
-   * 🆕 N1-fix — **السحبُ بين التبويبات** (أحمد بعد التجربة: «فقط اضيف ايماءات للحركة»): كأخواتها الأصليّة (المكتبة · اكتشف ·
-   * المجتمع) — سحبةٌ أفقيّةٌ على جسم التبويب تنتقل إلى الجار، والجسمُ يدخل من جهته. ⚖️ **لا `TabSlide` هنا**: رأسُ الملفّ
-   * (الغلاف والأرقام) فوق التبويبات ويمرّ معها في تمريرٍ واحدٍ وشريطُها يلتصق — ولوحاتُ `TabSlide` تملأ الشاشة وتملك تمريرَها.
-   * فالعتباتُ عتباتُه (أعلاه) والاتّجاهُ فيزيائيٌّ مثله (RTL: التالي يساراً)، والتمريرُ الرأسيُّ يُفشل السحبَ (`failOffsetY`).
+   * 🔴 N1-fix4 — **السحبُ بنظام المكتبة واكتشف والمجتمع** (أحمد ٢٩ سبتمبر: «خلي الايماءات نفس نظامها فالمكتبة و اكتشف و المجتمع»):
+   * كانت سحبةً تُقلب عند الرفع والجسمُ يدخل بعدها — الآن **`TabSlide` نفسُه**: اللوحُ يتبع الإصبع، والجارُ حاضرٌ مسخَّنٌ (K2)، والطيرانُ
+   * والعتباتُ والاهتزازُ أرقامُه. ولكي يبقى رأسُ الملفّ فوق التبويبات **وصفةُ الملفّات الاجتماعيّة**: الرأسُ طبقةٌ فوق اللوحات تُطوى مع
+   * تمرير اللوح النشط حتى يلتصق شريطُها أعلى الشاشة، وكلُّ لوحٍ يبدأ بفراغٍ بطول الرأس. والرأسُ **لا يحبس اللمس** إلّا على أزراره
+   * (`box-none`): السحبُ والتمريرُ من فوقه يصلان اللوحَ تحته. تبديلُ التبويب يُبقي الرأسَ حيث هو (الجارُ يُزامَن قبل أن يُرى) —
+   * فلا قفزةَ (يحلّ محلَّ N1-fix2).
    */
-  const slide = useRef(new Animated.Value(0)).current;
-  /**
-   * 🔴 N1-fix2 — **موضعُ التمرير عند تبديل التبويب** (تسجيلُ أحمد ٢٩ سبتمبر، البند ١: من «النشاط» إلى «نظرة عامّة» ظهر الشريطُ
-   * ملتصقاً بلا رأسٍ ثمّ قفزت الصفحةُ إلى أعلاها — المحتوى «متشابك» ومكانُه خطأ). كان التمريرُ يُترك على ما كان عليه في التبويب
-   * السابق، والتبويبُ الجديدُ بطولٍ آخر فيقصّه `ScrollView` ويقفز. الآن **وصفةُ ملفّات الشبكات الاجتماعيّة**: من كان تحت الرأس
-   * يبقى حيث هو (لا حركة)، ومن نزل تحته يبدأ التبويبُ الجديدُ من أوّله والشريطُ ملتصقٌ فوقه — لا وسطَ تبويبٍ لم يقرأه.
-   */
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(0);
-  const tabsY = useRef(0);
-  const go = useCallback(
-    (k: ProfileTabKey, from?: 1 | -1) => {
-      if (k === active) return;
-      haptic.pick();
-      const dir = from ?? (shown.indexOf(k) > shown.indexOf(active ?? k) ? 1 : -1);
-      const phys = I18nManager.isRTL ? -1 : 1;
-      slide.setValue(dir * phys * Math.min(80, width * 0.2));
-      const land = Math.min(scrollY.current, tabsY.current);
-      setTab(k);
-      requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: land, animated: false }));
-      Animated.timing(slide, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  const collapse = useRef(new Animated.Value(0)).current;
+  const collapseNow = useRef(0);
+  const [headH, setHeadH] = useState(0);
+  const [barH, setBarH] = useState(0);
+  const maxC = Math.max(0, headH - barH);
+  const maxCRef = useRef(0);
+  maxCRef.current = maxC;
+  const [aim, setAim] = useState<ProfileTabKey | null>(null);
+  const activeRef = useRef<ProfileTabKey | null>(active);
+  activeRef.current = active;
+  const panes = useRef(new Map<ProfileTabKey, { ref: ScrollView | null; y: number }>()).current;
+  /* لوحٌ يُرى الآن أو يُسلَّح: يبدأ حيث الرأسُ الآن — مطويٌّ جزئيّاً ⇐ الموضعُ نفسُه؛ ملتصقٌ ⇐ موضعُه هو إن نزل أبعد، وإلّا حدُّ الالتصاق */
+  const syncPane = useCallback(
+    (k: ProfileTabKey) => {
+      const p = panes.get(k);
+      if (!p?.ref || k === activeRef.current) return;
+      const c = collapseNow.current;
+      const target = c < maxCRef.current ? c : Math.max(p.y, maxCRef.current);
+      if (Math.abs(target - p.y) < 1) return;
+      p.y = target;
+      p.ref.scrollTo({ y: target, animated: false });
     },
-    [active, shown, slide, width],
+    [panes],
   );
-  const swipe = useMemo(
-    () =>
-      Gesture.Pan()
-        .runOnJS(true)
-        .activeOffsetX([-LOCK_DX, LOCK_DX])
-        .failOffsetY([-12, 12])
-        .onEnd((e) => {
-          if (!active || (Math.abs(e.translationX) < COMMIT_DX && Math.abs(e.velocityX) < COMMIT_VX)) return;
-          const phys = I18nManager.isRTL ? -1 : 1;
-          const step: 1 | -1 = e.translationX * phys < 0 ? 1 : -1;
-          const next = shown[shown.indexOf(active) + step];
-          if (next) go(next, step);
-        }),
-    [active, shown, go],
+  const syncOthers = useCallback(() => {
+    for (const k of panes.keys()) syncPane(k);
+  }, [panes, syncPane]);
+  const pick = useCallback(
+    (k: ProfileTabKey) => {
+      syncPane(k);
+      setAim(null);
+      setTab(k);
+    },
+    [syncPane],
   );
+  const onPaneScroll = useCallback(
+    (k: ProfileTabKey, y: number) => {
+      const p = panes.get(k);
+      if (p) p.y = y;
+      if (k !== activeRef.current) return;
+      const c = Math.max(0, Math.min(y, maxCRef.current));
+      collapseNow.current = c;
+      collapse.setValue(c);
+    },
+    [panes, collapse],
+  );
+  /* التبويبُ النشطُ تغيّر (سحبٌ أو ضغطة): الرأسُ يأخذ موضعَ لوحه الجديد، وسائرُ اللوحات تُزامَن معه */
+  useEffect(() => {
+    if (!active) return;
+    const p = panes.get(active);
+    const c = Math.max(0, Math.min(p?.y ?? collapseNow.current, maxC));
+    collapseNow.current = c;
+    collapse.setValue(c);
+    syncOthers();
+  }, [active, maxC, panes, collapse, syncOthers]);
+  const viewportH = height - insets.top - HEADER_H;
+  const renderPane = (k: ProfileTabKey) =>
+    d ? (
+      <ProfilePane
+        k={k}
+        topPad={headH}
+        minH={viewportH + maxC}
+        bottomPad={insets.bottom + 40}
+        register={(ref) => {
+          /* المرجعُ يُعاد مع كلِّ رسم (`null` ثمّ العقدة) — الموضعُ المحفوظُ لا يُمحى معه، والمزامنةُ لعقدةٍ جديدةٍ وحدَها */
+          const cur = panes.get(k);
+          if (!ref) {
+            if (cur) cur.ref = null;
+            return;
+          }
+          const fresh = cur?.ref !== ref;
+          panes.set(k, { ref, y: cur?.y ?? 0 });
+          if (fresh && !cur) syncPane(k);
+        }}
+        onScroll={(y) => onPaneScroll(k, y)}
+        onSettle={syncOthers}
+      >
+        {k === "favorites" ? (
+          <Favorites d={d} posterW={posterW} onTitle={openTitle} />
+        ) : k === "overview" ? (
+          <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} />
+        ) : k === "activity" ? (
+          <ActivityPane rows={d.activity} onTitle={openTitle} />
+        ) : k === "reviews" ? (
+          <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />
+        ) : (
+          <ListsPane d={d} onList={openList} onMember={openMember} />
+        )}
+      </ProfilePane>
+    ) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -350,33 +400,36 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           </View>
         )
       ) : (
-        <ScrollView
-          ref={scrollRef}
-          stickyHeaderIndices={[1]}
-          onScroll={(e) => {
-            scrollY.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={32}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ——— الرأس ——— */}
-          <View>
-            <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ flex: 1, overflow: "hidden" }}>
+          {headH > 0 && !d.locked && shown.length > 0 && active ? (
+            <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" render={(k) => renderPane(k)} />
+          ) : headH > 0 ? (
+            <ScrollView contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
+              {!d.locked && shown.length === 0 ? <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text> : null}
+            </ScrollView>
+          ) : null}
+          {/* ——— الرأسُ طبقةٌ فوق اللوحات: يُطوى مع التمرير حتى يلتصق شريطُه، ولا يحبس اللمسَ إلّا على أزراره ——— */}
+          <Animated.View
+            pointerEvents="box-none"
+            onLayout={(e) => setHeadH(Math.round(e.nativeEvent.layout.height))}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, transform: [{ translateY: Animated.multiply(collapse, -1) }] }}
+          >
+            <View pointerEvents="box-none">
+            <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View pointerEvents="none" style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                 {!d.person.hide_name && d.person.avatar_url ? (
                   <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" />
                 ) : (
                   <Icon name="people" size={24} color={tokens.muted} />
                 )}
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
+                <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {/* D-1134 — فوق الغلاف أبيضُ بظلٍّ كتحيّة الرئيسيّة (`HomeGreeting.onArt`) — يصحّ في «النهاري» أيضاً */}
                   <Text size={20} weight="700" color={onArt ? "#fff" : tokens.fg} numberOfLines={1} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? ART_SHADOW : null]}>{name}</Text>
                   {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
                   {d.person.username && !d.person.hide_name ? <Text size={12} color={onArt ? ART_MUTED : tokens.muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{d.person.username}</Text> : null}
                   {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
                   <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => setFollows("followers")} />
@@ -393,12 +446,12 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 />
               )}
             </View>
-            {d.person.bio ? <Text size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
+            {d.person.bio ? <Text pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
             <Facts d={d} onRanks={() => setRanks(true)} />
             <StatsCard stats={stats} onStat={onStat} />
 
             {d.locked ? (
-              <View style={{ margin: PAGE_PAD, marginTop: 20, padding: 20, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, alignItems: "center", gap: 8 }}>
+              <View pointerEvents="none" style={{ margin: PAGE_PAD, marginTop: 20, padding: 20, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, alignItems: "center", gap: 8 }}>
                 <Icon name="shield" size={24} color={tokens.muted} />
                 <Text size={15} weight="700">{t.privateCoverTitle}</Text>
                 <Text size={13} muted style={{ textAlign: "center" }}>{t.privateCoverHint}</Text>
@@ -406,27 +459,22 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             ) : null}
           </View>
 
-          {/* ——— شريطُ التبويبات (يلتصق) ——— */}
-          <View
-            style={{ backgroundColor: tokens.bg }}
-            onLayout={(e) => {
-              tabsY.current = e.nativeEvent.layout.y;
-            }}
-          >
+            <View style={{ backgroundColor: tokens.bg }} onLayout={(e) => setBarH(Math.round(e.nativeEvent.layout.height))}>
             {!d.locked && shown.length > 0 ? (
               /* 🔴 N1-fix3 — **التبويباتُ تملأ العرضَ حتى الحافّة** (أحمد بلقطة ٢٩ سبتمبر: «أماكنها لاصقة في بعض.. المفترض مالية المكان لين
                  أقصى اليمين»): كانت متلاصقةً في البداية وفراغٌ بعدها. الآن كلُّ تبويبٍ يأخذ نصيبَه من العرض (`flexGrow`) والخطُّ تحت
                  نصيبه كلِّه — ويبقى الصفُّ قابلاً للتمرير إن ضاق العرضُ عن خمسةٍ بأعدادها (خطٌّ كبير · شاشةٌ صغيرة). */
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8 }} style={{ borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 14 }}>
                 {shown.map((k) => {
-                  const on = k === active;
+                  const on = k === (aim ?? active);
                   const count = k === "activity" ? d.activity.length : k === "reviews" ? d.reviews.length : k === "lists" ? d.lists.public.length + d.lists.saved.length : null;
                   return (
                     <Pressable
                       key={k}
                       onPress={() => {
-                        if (on) return;
-                        go(k);
+                        if (k === active) return;
+                        haptic.pick();
+                        pick(k);
                       }}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: on }}
@@ -439,30 +487,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 })}
               </ScrollView>
             ) : null}
-          </View>
-
-          {/* ——— جسمُ التبويب — يُسحب أفقيّاً إلى الجار (N1-fix) ——— */}
-          <GestureHandlerRootView>
-          <GestureDetector gesture={swipe}>
-          {/* الجسمُ بطول الشاشة على الأقلّ: تبويبٌ قصيرٌ (مراجعتان) لا يُقصّ التمريرُ عنده فيقفز الرأسُ — الشريطُ يلتصق أيّاً كان الطول */}
-          <Animated.View collapsable={false} style={{ minHeight: height, transform: [{ translateX: slide }] }}>
-          {d.locked ? null : shown.length === 0 ? (
-            <Text muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.profileNoTabs}</Text>
-          ) : active === "favorites" ? (
-            <Favorites d={d} posterW={posterW} onTitle={openTitle} />
-          ) : active === "overview" ? (
-            <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} />
-          ) : active === "activity" ? (
-            <ActivityPane rows={d.activity} onTitle={openTitle} />
-          ) : active === "reviews" ? (
-            <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />
-          ) : active === "lists" ? (
-            <ListsPane d={d} onList={openList} onMember={openMember} />
-          ) : null}
+            </View>
           </Animated.View>
-          </GestureDetector>
-          </GestureHandlerRootView>
-        </ScrollView>
+        </View>
       )}
 
       {follows && d ? (
@@ -533,6 +560,40 @@ function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "s
   );
 }
 
+/** لوحُ تبويبٍ في `TabSlide`: تمريرٌ رأسيٌّ خاصٌّ به، يبدأ بفراغٍ بطول الرأس، وطولُه يكفي ليلتصق الشريطُ أيّاً كان محتواه */
+function ProfilePane({
+  topPad,
+  minH,
+  bottomPad,
+  register,
+  onScroll,
+  onSettle,
+  children,
+}: {
+  k: ProfileTabKey;
+  topPad: number;
+  minH: number;
+  bottomPad: number;
+  register: (ref: ScrollView | null) => void;
+  onScroll: (y: number) => void;
+  onSettle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <ScrollView
+      ref={register}
+      onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={16}
+      onScrollEndDrag={onSettle}
+      onMomentumScrollEnd={onSettle}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingTop: topPad, paddingBottom: bottomPad, minHeight: minH + bottomPad }}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 function MenuRow({ icon, label, onPress, dim = false, danger = false }: { icon: "comment" | "shield" | "close"; label: string; onPress: () => void; dim?: boolean; danger?: boolean }) {
   const { tokens } = useApp();
   const c = danger ? tokens.error : dim ? tokens.muted : tokens.fg;
@@ -563,7 +624,7 @@ function Facts({ d, onRanks }: { d: ProfilePayload; onRanks: () => void }) {
     : null;
   if (!d.weekly_ranks.length && !d.person.x && !since) return null;
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: 10 }}>
+    <View pointerEvents="box-none" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: 10 }}>
       {d.weekly_ranks.length ? (
         <Pressable onPress={onRanks} accessibilityRole="button" accessibilityLabel={t.weeklyRanksTimes(d.weekly_ranks.length)} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: tokens.accent }}>
           <Icon name="star" size={11} color={tokens.accent} />
