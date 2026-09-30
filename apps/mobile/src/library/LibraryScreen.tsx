@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBootRoot } from "../bootRoot";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
@@ -113,7 +113,6 @@ export function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
   const navH = navHeight(insets.bottom);
-  const focused = useIsFocused();
 
   const data = useQuery(libraryQuery);
 
@@ -573,7 +572,6 @@ export function LibraryScreen() {
               onLeave={leaveTo}
               onReady={on ? onPaneReady : undefined}
               onFlatPainted={on ? onFlatPainted : undefined}
-              focused={focused}
             />
           )
         }
@@ -663,7 +661,6 @@ function LibraryPane({
   onLeave,
   onReady,
   onFlatPainted,
-  focused,
 }: {
   tab: Tab;
   data: { data?: LibraryPayload; isLoading: boolean; isError: boolean; refetch: () => unknown };
@@ -689,8 +686,6 @@ function LibraryPane({
   onReady?: () => void;
   /** F0 — الشبكةُ المسطّحة التزمت بهذا العدد؛ للنشط وحدَه */
   onFlatPainted?: (count: number) => void;
-  /** F1 — الشاشةُ ظاهرةٌ لا مغطّاةٌ بصفحة عمل؛ تُطفأ الأسماءُ الماشيةُ حين تُغطّى */
-  focused: boolean;
 }) {
   const { t, locale } = useApp();
   /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
@@ -738,7 +733,17 @@ function LibraryPane({
   /* D-1025 (F1) — الصفوفُ المسطّحة للقائمة الافتراضيّة */
   const rows = useMemo(() => buildRows(grouped, list, groups, open, cols), [grouped, list, groups, open, cols]);
   const [sight] = useState(createRowSight);
-  useEffect(() => sight.setFocused(focused), [sight, focused]);
+  /* F1 — الأسماءُ الماشيةُ تنطفئ حين تُغطّى الشاشةُ (صفحةُ عمل، أو تبويبٌ آخر) وتعود بظهورها.
+     🆕 D-1209 — **يُبلَّغ المخزنُ مباشرةً من الظهور، بلا حالة React**: كان `useIsFocused()` في رأس الشاشة، فكلُّ دخولٍ
+     إلى المكتبة وكلُّ خروجٍ منها يعيد رسمَ الشاشة كلِّها بألواحها — لأجل سطرٍ يمشي. قياسُ D-1208 (جوال خالد): المكتبةُ
+     أثقلُ التبويبات (وسيطُ ١٩٠ms، منها ١٤٢ بعد الظهور و~١٠ إطاراتٍ ضائعة). الآن لا يُعاد رسمُ إلّا الصفِّ الذي تبدّلت
+     رؤيتُه (`useSyncExternalStore` في `rowSight`)، والمعنى نفسُه: الظهورُ هنا هو ظهورُ التنقّل كما كان `useIsFocused`. */
+  useFocusEffect(
+    useCallback(() => {
+      sight.setFocused(true);
+      return () => sight.setFocused(false);
+    }, [sight]),
+  );
   const onViewable = useCallback(({ viewableItems }: { viewableItems: { item: Row }[] }) => sight.set(viewableItems.map((v) => v.item.key)), [sight]);
 
   const onToggle = useCallback(
