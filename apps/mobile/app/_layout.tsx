@@ -88,6 +88,8 @@ function Shell() {
         <Stack.Screen name="member-stats/[username]" options={{ headerShown: false }} />
         {/* 🆕 D-1213 — «النشاط» أصليّاً: يُدفع فوق المكتبة أو الرئيسيّة */}
         <Stack.Screen name="activity" options={{ headerShown: false }} />
+        {/* 🆕 D-1214 — «الإحصائيات» (إحصائياتي أنا) أصليّةً: تُدفع فوق المكتبة أو الرئيسيّة أو ملفّي */}
+        <Stack.Screen name="stats" options={{ headerShown: false }} />
         {/* D-1046 — «الكلّ ←» شاشةٌ كاملة فوق «اكتشف» */}
         <Stack.Screen name="section" options={{ headerShown: false }} />
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}
