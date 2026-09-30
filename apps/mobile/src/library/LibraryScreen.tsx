@@ -185,6 +185,8 @@ export function LibraryScreen() {
     (path: string) => {
       /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
       { const who = profileHandleOf(path); if (who) return openProfile(router, who, "library"); }
+      /* 🆕 D-1213 — «النشاط» أصليّ: دفعٌ فوق هذه الشاشة لا بابٌ ويبيّ */
+      if (path === "/activity") return void router.push({ pathname: "/activity", params: { from: "library" } });
       if (leaving) return;
       /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
          القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */
