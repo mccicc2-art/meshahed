@@ -390,10 +390,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       cells.push({ key: "stats", icon: "chart", value: "", label: t.statsPageTitle, href: d.viewer.is_me ? "/stats" : `/u/${d.person.username}/stats` });
     return cells;
   }, [d, t, locale]);
-  /* 🆕 N4 — «الإحصائيات» في ملفّ غيري شاشةٌ أصليّة (D-1192)؛ وإحصاءاتي أنا (`/stats` بمداها الكامل) تبقى صفحتَها طبقةً (K3b) */
+  /* 🆕 N4 — «الإحصائيات» في ملفّ غيري شاشةٌ أصليّة (D-1192)؛ 🆕 D-1214 — وإحصائياتي أنا (`/stats` بمداها الكامل) أصليّةٌ أيضاً */
   const onStat = useCallback(
     (href: string) => {
       if (href.startsWith("#")) return setGrid(href.slice(1) as Grid);
+      if (href === "/stats") return router.push({ pathname: "/stats", params: { from: fromOut } });
       const m = /^\/u\/([^/]+)\/stats$/.exec(href);
       if (m) return router.push({ pathname: "/member-stats/[username]", params: { username: decodeURIComponent(m[1]), from: fromOut } });
       openWeb(href);

@@ -47,3 +47,11 @@ export type MemberStatsPayload = {
     plus: boolean;
   } | null;
 };
+
+/**
+ * 🆕 D-1214 — **إحصائياتي أنا** (`GET /api/v1/me/stats?range=all|year|month`): **شكلُ إحصاءات العضو نفسُه** لأنّ الوجهَ واحد
+ * (`AnalysisView` في الويب · `StatsScreen` في التطبيق — القاعدة ٣)، وتزيد عليه **المدى** (D-438/D-682: كلُّ العمر · السنة · الشهر)
+ * واسمَه جاهزاً للبطاقة («كل الأوقات» · «2026» · «أكتوبر»). `match` دائماً `null`: لا مقارنةَ بيني وبيني.
+ */
+export type MyStatsRange = "all" | "year" | "month";
+export type MyStatsPayload = MemberStatsPayload & { range: MyStatsRange; range_label: string };

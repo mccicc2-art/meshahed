@@ -129,6 +129,8 @@ export function HomeScreen() {
       { const who = profileHandleOf(path); if (who) return openProfile(router, who, "home"); }
       /* 🆕 D-1213 — «النشاط» أصليّ: دفعٌ فوق هذه الشاشة لا بابٌ ويبيّ */
       if (path === "/activity") return void router.push({ pathname: "/activity", params: { from: "home" } });
+      /* 🆕 D-1214 — و«الإحصائيات» (خاناتُ بطاقة الأرقام) كذلك */
+      if (path === "/stats") return void router.push({ pathname: "/stats", params: { from: "home" } });
       if (leaving) return;
       setLeaving(true);
       void shell.open(path, { returnTo: "home" }).then((layered) => {
