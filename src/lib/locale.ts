@@ -14,6 +14,8 @@ import {
   parseFeedSort,
   TALK_FOLLOWED_COOKIE,
   parseTalkFollowed,
+  TALK_SORT_COOKIE,
+  parseTalkSort,
   TRANSLATE_COOKIE,
   parseTranslate,
 } from "@/core/tabPrefs";
@@ -97,6 +99,16 @@ export async function getTalkFollowedOnly(): Promise<boolean> {
     return parseTalkFollowed(store.get(TALK_FOLLOWED_COOKIE)?.value);
   } catch {
     return false;
+  }
+}
+
+/** 🆕 D-1201 — **ترتيبُ «النقاشات»: الأحدث أم الأكثر تفاعلاً؟** */
+export async function getTalkSort(): Promise<"latest" | "active"> {
+  try {
+    const store = await cookies();
+    return parseTalkSort(store.get(TALK_SORT_COOKIE)?.value);
+  } catch {
+    return "latest";
   }
 }
 

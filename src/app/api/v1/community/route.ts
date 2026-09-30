@@ -6,6 +6,7 @@ import {
   getFeedStrangers,
   getFeedSort,
   getTalkFollowedOnly,
+  getTalkSort,
   getTranslateEnabled,
   getHiddenRails,
 } from "@/lib/locale";
@@ -36,18 +37,21 @@ export async function GET(req: NextRequest) {
     if (lim) return lim;
 
     const { locale, t } = await getT();
-    const [tabPrefs, hiddenAll, showStrangers, feedSort, talkFollowedOnly, translateOn] = await Promise.all([
+    const [tabPrefs, hiddenAll, showStrangers, feedSort, talkFollowedOnly, talkSort, translateOn] = await Promise.all([
       getTabPrefs("community"),
       getHiddenRails(),
       getFeedStrangers(),
       getFeedSort(),
       getTalkFollowedOnly(),
+      getTalkSort(),
       getTranslateEnabled(),
     ]);
     const scope: "all" | "following" =
       user && req.nextUrl.searchParams.get("scope") === "following" ? "following" : "all";
 
-    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly });
+    /* 🆕 D-1201 — **الغرفُ كلُّها تُرسل وكلٌّ يحمل `mine`**: شريحتا «الكل · أعمالي» تُرشِّحان في يد التطبيق بلا جلب
+       (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
+    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort });
     await refreshCommunityAfter(true);
 
     /* التبويبُ الأوّلُ بترتيب صاحبه (جوابُ أحمد ٢٨ سبتمبر: `defaultTab(tabPrefs, "activity")`) */
@@ -71,6 +75,7 @@ export async function GET(req: NextRequest) {
             strangers: showStrangers,
             sort: feedSort,
             talk_followed: talkFollowedOnly,
+            talk_sort: talkSort,
             translate: translateOn,
             tabs: tabPrefs,
             hidden_rails: [...hiddenAll],

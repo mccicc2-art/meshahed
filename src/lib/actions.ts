@@ -40,6 +40,7 @@ import {
   FEED_STRANGERS_COOKIE,
   FEED_SORT_COOKIE,
   TALK_FOLLOWED_COOKIE,
+  TALK_SORT_COOKIE,
   TRANSLATE_COOKIE,
   isTabSurface,
   parseTabPrefs,
@@ -1034,6 +1035,16 @@ export async function setFeedSort(sort: "smart" | "latest") {
 export async function setTalkFollowedOnly(on: boolean) {
   const store = await cookies();
   store.set(TALK_FOLLOWED_COOKIE, on ? "1" : "0", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/** 🆕 D-1201 — **ترتيبُ «النقاشات»** (الأحدث · الأكثر تفاعلاً) — كوكي كأخيه `setFeedSort` */
+export async function setTalkSort(sort: "latest" | "active") {
+  const store = await cookies();
+  store.set(TALK_SORT_COOKIE, sort === "active" ? "active" : "latest", {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

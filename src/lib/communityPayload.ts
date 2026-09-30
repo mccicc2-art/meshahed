@@ -90,6 +90,8 @@ export function roomOut(core: CommunityData, r: TalkRoom, t: Dict, locale: Local
     ...r,
     bulletin_line: r.bulletin ? bulletinLine("episode", r.bulletin, t, locale) : null,
     pin: core.globalPins?.has(key) ? 2 : core.pins?.has(key) ? 1 : 0,
+    /* 🆕 D-1201 — شريحةُ «أعمالي»: مكتبةُ القارئ (`followed` — المجموعةُ نفسُها التي كان يُرشِّح بها D-306) */
+    mine: core.followed.has(key),
   };
 }
 

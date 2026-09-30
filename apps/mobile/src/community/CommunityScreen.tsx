@@ -26,6 +26,8 @@ import { ListCard } from "../library/ListCard";
 import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
+import { Chip } from "../library/Chip";
+import { sortTalkRooms, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import { displayNameOf } from "@/core/people";
@@ -309,7 +311,7 @@ export function CommunityScreen() {
           onAim={setAim}
           perfScreen="community"
           render={(k) => (
-            <Pane k={k} d={d} doors={doors} acts={acts} cardActs={cardActs} live={tab === k} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} />
+            <Pane k={k} d={d} doors={doors} acts={acts} cardActs={cardActs} live={tab === k} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} onPrefs={onPrefs} />
           )}
         />
       )}
@@ -364,6 +366,43 @@ export function CommunityScreen() {
   );
 }
 
+/**
+ * 🆕 D-1201 — **رأسُ «النقاشات»** (أحمد ٣٠ سبتمبر: التصميمُ B): «الكل · أعمالي» بشرائح ملفّ الشخص نفسِها (`Chip`)، وتحتها سطرٌ
+ * هادئٌ بمقاسات سطر «هذا الأسبوع» في نشاط الملفّ: العددُ، ثمّ «الأحدث · الأكثر تفاعلاً» خياران ظاهران (الخطُّ تحت المختار).
+ * «أعمالي» تكتب الكوكيَ نفسَه الذي كان مفتاحَ الأدوات (D-306) — فمن كان مفعّلاً يجدها مختارة.
+ */
+function TalkHead({ mine, sort, count, onPrefs }: { mine: boolean; sort: TalkSort; count: number; onPrefs: (patch: CommunityPrefsBody) => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Chip label={t.allWord} active={!mine} onPress={() => (mine ? onPrefs({ talk_followed: false }) : undefined)} />
+        <Chip label={t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : onPrefs({ talk_followed: true }))} />
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 10 }}>
+        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{t.talkRoomsCount(count)}</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel={t.talkSortAria} style={{ flexDirection: "row", gap: 14 }}>
+          {(["latest", "active"] as const).map((k) => {
+            const on = sort === k;
+            return (
+              <Pressable
+                key={k}
+                onPress={() => (on ? undefined : onPrefs({ talk_sort: k }))}
+                hitSlop={8}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                style={{ paddingBottom: 2, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
+              >
+                <Text size={13} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted}>{k === "latest" ? t.talkSortLatest : t.talkSortActive}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 type PaneProps = {
   k: Tab;
   d: CommunityPayload;
@@ -377,14 +416,24 @@ type PaneProps = {
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   all: BoardSection | null;
   onAll: (s: BoardSection | null) => void;
+  /** 🆕 D-1201 — شريحتا «النقاشات» وترتيبُها تفضيلاتٌ تُكتب كأخواتها (`/me/prefs/community`) */
+  onPrefs: (patch: CommunityPrefsBody) => void;
 };
 
 /** لوحُ تبويب — كلُّ ما يخصّ تبويباً واحداً هنا ليرسم `TabSlide` لوحين جنباً إلى جنب في أثناء السحب */
-function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, all, onAll }: PaneProps) {
+function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, all, onAll, onPrefs }: PaneProps) {
   const { t, tokens } = useApp();
   const refresh = usePullRefresh([COMMUNITY_KEY], topPad);
   const views = useViewCounter(live && k === "activity" && acts.signedIn);
   const roomPin: RoomPin = useMemo(() => ({ admin: acts.admin, readOnly: !acts.signedIn, onPin: acts.pin }), [acts.admin, acts.signedIn, acts.pin]);
+  /* 🆕 D-1201 — **الشريحةُ والترتيبُ في اليد** (بلا جلب): الخادمُ يرسل الغرفَ كلَّها وكلٌّ يحمل `mine`، والترتيبُ `sortTalkRooms`
+     نفسُها التي يرتّب بها الويب — فالضغطةُ تُرى في الإطار نفسِه، والكتابةُ تلحقها. الزائرُ بلا تفضيلات: الغرفُ كما أرسلها الخادم. */
+  const talkPrefs = d.prefs;
+  const talkRooms = useMemo(() => {
+    if (!talkPrefs) return d.rooms;
+    const pool = talkPrefs.talk_followed ? d.rooms.filter((r) => r.mine) : d.rooms;
+    return sortTalkRooms(pool, talkPrefs.talk_sort ?? "latest", (r) => r.pin);
+  }, [d.rooms, talkPrefs]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -414,11 +463,12 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
   if (k === "talk") {
     return (
       <FlatList
-        data={d.rooms}
+        data={talkRooms}
         keyExtractor={(r) => `${r.mediaType}-${r.tmdbId}`}
-        renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} />}
+        renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} activity={talkPrefs?.talk_sort === "active"} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListEmptyComponent={empty(t.talkRoomsEmpty)}
+        ListHeaderComponent={talkPrefs && d.rooms.length ? <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} count={talkRooms.length} onPrefs={onPrefs} /> : null}
+        ListEmptyComponent={empty(d.rooms.length ? t.talkMineEmpty : t.talkRoomsEmpty)}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}
         scrollEventThrottle={16}

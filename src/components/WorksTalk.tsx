@@ -6,6 +6,7 @@ import { timeAgo } from "@/core/when";
 import { displayNameOf } from "@/core/people";
 import type { TalkRoom } from "@/lib/data";
 import { bulletinLine } from "@/core/bulletinLine";
+import { talkActivity } from "@/core/talkSort";
 import { Avatar } from "./Avatar";
 import { RoomPinButton } from "./RoomPinButton";
 import { Icon } from "./Icon";
@@ -88,6 +89,7 @@ export function TalkRoomCard({
   locale,
   hero = false,
   weekly = false,
+  activity = false,
   pinned,
   globalPinned,
   admin,
@@ -103,6 +105,8 @@ export function TalkRoomCard({
    * (القاعدة ٣)، **وهذا معنى الرقم** — علَمان لهمّين مختلفين.
    */
   weekly?: boolean;
+  /** 🆕 D-1201 — **ترتيبُ «الأكثر تفاعلاً»**: الرقمُ رقمُ الترتيب (تفاعلُ الأسبوع) — وإلّا بدا الترتيبُ عشوائيّاً (D-219) */
+  activity?: boolean;
   /**
    * 🆕 **حالةُ التثبيت** (D-301) — **وغيابُها يعني «لا دبّوس هنا»** لا
    * «غيرُ مثبَّتة»: **بطاقةُ لوحة الأعضاء ليست قائمةً تُرتَّب** (D-291)،
@@ -252,7 +256,7 @@ export function TalkRoomCard({
             </div>
             <div className="ms-auto shrink-0 text-12 text-muted text-end leading-tight">
               <span className="tabular-nums">
-                {weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
+                {activity ? t.talkRoomActivityWeek(talkActivity(r)) : weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
               </span>
               <span className="block">{t.talkRoomLastAt(timeAgo(r.lastAt, t))}</span>
             </div>
@@ -329,8 +333,11 @@ export function WorksTalk({
   pins,
   globalPins,
   admin = false,
+  activity = false,
 }: {
   rooms: TalkRoom[];
+  /** 🆕 D-1201 — «الأكثر تفاعلاً»: البطاقاتُ تقول رقمَ الترتيب */
+  activity?: boolean;
   locale: Locale;
   /**
    * 🆕 **مفاتيحُ غرفي المثبَّتة** (D-301) — **مجموعةٌ لا خريطة**:
@@ -357,6 +364,7 @@ export function WorksTalk({
           pinned={pins ? pins.has(`${r.mediaType}-${r.tmdbId}`) : undefined}
           globalPinned={globalPins?.has(`${r.mediaType}-${r.tmdbId}`) ?? false}
           admin={admin}
+          activity={activity}
         />
       ))}
     </div>

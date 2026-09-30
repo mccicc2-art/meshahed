@@ -3451,6 +3451,8 @@ export interface TalkRoom {
   posts: number;
   /** 🆕 **مشاركاتُ أسبوعِ السبت الجاري** (D-311) — لسطح D-291 الصادق */
   postsWeek: number;
+  /** 🆕 D-1201 — **إعجاباتُ الأسبوع على مشاركات الغرفة** («الأكثر تفاعلاً») — صفرٌ قبل الهجرة ١٩٢ */
+  likesWeek: number;
   lastAt: string;
   /** أحدثُ خمسةِ متكلّمين — **أشخاصٌ لا مشاركات** */
   faces: PersonLite[];
@@ -3599,6 +3601,7 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
         backdrop_path: string | null;
         posts: number;
         posts_week?: number;
+        likes_week?: number;
         last_at: string;
         faces: PersonLite[] | null;
         bulletin?: Record<string, unknown> | null;
@@ -3612,6 +3615,8 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       posts: Number(r.posts),
       /* **قارئٌ متسامح** (D-179): قبل الهجرة ٩٦ لا عمودَ له فيصل صفراً */
       postsWeek: Number(r.posts_week ?? 0),
+      /* **قارئٌ متسامح** (D-179): قبل الهجرة ١٩٢ لا عمودَ له فيصل صفراً — والترتيبُ بالمشاركات وحدَها */
+      likesWeek: Number(r.likes_week ?? 0),
       lastAt: String(r.last_at),
       faces: Array.isArray(r.faces) ? r.faces.slice(0, 5) : [],
       /* **قارئٌ متسامح** (D-179): قبل الهجرة ٨٧ لا عمودَ لها فتصل

@@ -1,4 +1,5 @@
 import "server-only";
+import { sortTalkRooms, type TalkSort } from "@/core/talkSort";
 import { after } from "next/server";
 import type { Locale } from "@/core/i18n";
 import {
@@ -60,6 +61,8 @@ export async function buildCommunity(o: {
   allView: BoardSection | null;
   translateOn: boolean;
   talkFollowedOnly: boolean;
+  /** 🆕 D-1201 — ترتيبُ «النقاشات» (الغيابُ «الأحدث») */
+  talkSort?: TalkSort;
 }) {
   const { user, locale, allView } = o;
 
@@ -96,19 +99,15 @@ export async function buildCommunity(o: {
   ]);
   const [pins, globalPins, amAdmin] = pinsWave;
 
-  /* درجتان (D-301/D-314): تثبيتُ لوبز ثمّ تثبيتي ثمّ البقية — والفرزُ مستقرّ */
-  const rooms: TalkRoom[] =
-    pins || globalPins
-      ? [...roomsRaw].sort((a, b) => {
-          const rank = (r: TalkRoom) => {
-            const key = `${r.mediaType}-${r.tmdbId}`;
-            if (globalPins?.has(key)) return 2;
-            if (pins?.has(key)) return 1;
-            return 0;
-          };
-          return rank(b) - rank(a);
-        })
-      : roomsRaw;
+  /* درجتان (D-301/D-314): تثبيتُ لوبز ثمّ تثبيتي ثمّ البقية — 🆕 D-1201: وداخلَ كلِّ درجةٍ بترتيب صاحبها
+     (الأحدث · الأكثر تفاعلاً) — `sortTalkRooms` نفسُها التي يرتّب بها التطبيق في يده */
+  const pinRank = (r: TalkRoom) => {
+    const key = `${r.mediaType}-${r.tmdbId}`;
+    if (globalPins?.has(key)) return 2;
+    if (pins?.has(key)) return 1;
+    return 0;
+  };
+  const rooms: TalkRoom[] = sortTalkRooms(roomsRaw, o.talkSort ?? "latest", pinRank);
 
   const [featured, board, topReviews, savedLists] = peopleTab;
 

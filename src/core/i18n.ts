@@ -996,6 +996,14 @@ const ar = {
      أحدٌ رأياً بعد») — **اسمٌ بقي بعد أن تغيّر ما يسمّيه.**
      **ويدلّ على الباب** لأن الغرفة لا تُفتح من هنا: تُفتح من صفحة العمل. */
   talkRoomsEmpty: "لا نقاشات بعد — افتح أوّلَ غرفةٍ من صفحة أيّ عمل",
+  /* 🆕 D-1201 — شريحتا «النقاشات» وسطرُ ترتيبها (التصميمُ B) */
+  talkScopeMine: "أعمالي",
+  talkSortLatest: "الأحدث",
+  talkSortActive: "الأكثر تفاعلاً",
+  talkSortAria: "ترتيب النقاشات",
+  talkRoomsCount: (n: number) => (n === 1 ? "نقاشٌ واحد" : n === 2 ? "نقاشان" : `${num(n, "ar")} ${n >= 3 && n <= 10 ? "نقاشات" : "نقاشاً"}`),
+  talkRoomActivityWeek: (n: number) => (n === 0 ? "لا تفاعل هذا الأسبوع" : n === 1 ? "تفاعلٌ واحد هذا الأسبوع" : `${num(n, "ar")} تفاعلاً هذا الأسبوع`),
+  talkMineEmpty: "لا نقاش في أعمال مكتبتك بعد — جرّب «الكل»",
   /* **نشرةُ Loopz في الغرفة** (D-261، طلبُ أحمد: «نزول حلقة كذا بعنوان
      كذا وأخذت تقييم كذا، ويذكر أبرز ما فيها»).
      **والجملةُ تُركَّب هنا ولا تُخزَّن** (D-211/`newsLine`): الصفُّ يحمل
@@ -3012,6 +3020,13 @@ const en: Dict = {
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
   talkRoomsEmpty:
     "No discussions yet — start the first one from any title's page",
+  talkScopeMine: "My titles",
+  talkSortLatest: "Latest",
+  talkSortActive: "Most active",
+  talkSortAria: "Sort discussions",
+  talkRoomsCount: (n: number) => (n === 1 ? "1 discussion" : `${num(n, "en")} discussions`),
+  talkRoomActivityWeek: (n: number) => (n === 0 ? "No activity this week" : n === 1 ? "1 interaction this week" : `${num(n, "en")} interactions this week`),
+  talkMineEmpty: "No discussions on your titles yet — try All",
   bulletinEpisode: (season: number, episode: number, name?: string | null) =>
     name
       ? `Episode ${num(episode, "en")} of season ${num(season, "en")} is out — “⁨${name}⁩”`

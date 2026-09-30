@@ -43,6 +43,8 @@ export type CommunityPrefsBody = {
   strangers?: boolean;
   sort?: "smart" | "latest";
   talk_followed?: boolean;
+  /** 🆕 D-1201 — ترتيبُ «النقاشات» */
+  talk_sort?: "latest" | "active";
   translate?: boolean;
 };
 
@@ -53,6 +55,7 @@ export function parseCommunityPrefsBody(b: unknown): CommunityPrefsBody | null {
   if (typeof o.strangers === "boolean") out.strangers = o.strangers;
   if (o.sort === "smart" || o.sort === "latest") out.sort = o.sort;
   if (typeof o.talk_followed === "boolean") out.talk_followed = o.talk_followed;
+  if (o.talk_sort === "latest" || o.talk_sort === "active") out.talk_sort = o.talk_sort;
   if (typeof o.translate === "boolean") out.translate = o.translate;
   return Object.keys(out).length ? out : null;
 }

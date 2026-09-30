@@ -173,6 +173,17 @@ export function parseFeedSort(v: string | undefined): "smart" | "latest" {
  */
 export const TALK_FOLLOWED_COOKIE = "loopz_talk_followed";
 
+/**
+ * 🆕 D-1201 — **ترتيبُ «النقاشات»: الأحدث · الأكثر تفاعلاً** (أحمد ٣٠ سبتمبر: التصميمُ B — سطرٌ هادئٌ تحت الشرائح).
+ * كوكي كأخيه `FEED_SORT_COOKIE`: تفضيلُ عرضٍ يُقرأ على الخادم قبل أوّل رسمة، وجرّتُه مشتركةٌ مع التطبيق.
+ */
+export const TALK_SORT_COOKIE = "loopz_talk_sort";
+
+/** **والغيابُ «الأحدث»** (D-152): هو ترتيبُ الغرف منذ D-291 — آخرُ مشاركةٍ أوّلاً */
+export function parseTalkSort(v: string | undefined): "latest" | "active" {
+  return v === "active" ? "active" : "latest";
+}
+
 /** **والغيابُ إظهارُ الكلّ** (D-152) */
 export function parseTalkFollowed(v: string | undefined): boolean {
   return v === "1";

@@ -1,4 +1,5 @@
 import React, { memo, useState } from "react";
+import { talkActivity } from "@/core/talkSort";
 import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -273,7 +274,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
 /** `readOnly` = الزائر: لا دبّوسَ له، وتبقى علامةُ لوبز وحدَها (`globalPinned` في `Wrap`) */
 export type RoomPin = { admin: boolean; readOnly: boolean; onPin: (room: CommunityRoom) => void } | null;
 
-export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin = null }: { room: CommunityRoom; doors: CardDoors; hero?: boolean; pin?: RoomPin }) {
+export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin = null, activity = false }: { room: CommunityRoom; doors: CardDoors; hero?: boolean; pin?: RoomPin; activity?: boolean }) {
   const { t, tokens, locale } = useApp();
   const poster = posterFor(room.posterPath, hero ? 78 : 64);
   const bg = backdropUrl(room.backdropPath, "w780");
@@ -284,7 +285,14 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
       accessibilityRole="link"
       style={({ pressed }) => ({ flexDirection: "row", gap: 14, padding: hero ? 16 : 14, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
     >
-      {bg ? <Image source={{ uri: bg }} style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, opacity: 0.35 }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+      {/* 🔴 D-1201-fix — **الخلفيّةُ داخل قاطعٍ بحوافّ البطاقة نفسِها** (لقطةُ أحمد ٣٠ سبتمبر: بطاقةُ Ted Lasso مقصوصةٌ وشريطٌ من
+          خلفيّتها خارجها): على أندرويد `overflow: hidden` في عنصرٍ يحمل `transform` (ضغطةُ `scale`) لا يقصّ ابنَه المطلقَ دائماً —
+          فصارت الصورةُ ابنةَ `View` مستقلٍّ بـ`borderRadius` نفسِه وقصّه. الشكلُ كما هو. */}
+      {bg ? (
+        <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.card, overflow: "hidden" }}>
+          <Image source={{ uri: bg }} style={{ width: "100%", height: "100%", opacity: 0.35 }} contentFit="cover" cachePolicy="memory-disk" />
+        </View>
+      ) : null}
       <View style={{ width: hero ? 78 : 64, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
         {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
       </View>
@@ -294,7 +302,8 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
         </View>
         {room.bulletin_line ? <Text size={12} color={tokens.accent} numberOfLines={1}>{room.bulletin_line}</Text> : null}
         <Text size={12} muted numberOfLines={1}>
-          {hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)} · {t.talkRoomLastAt(timeAgoShort(room.lastAt, t))}
+          {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الأسبوع) — وإلّا بدا الترتيبُ عشوائيّاً */}
+          {activity ? t.talkRoomActivityWeek(talkActivity(room)) : hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)} · {t.talkRoomLastAt(timeAgoShort(room.lastAt, t))}
         </Text>
         {room.faces.length ? (
           <View style={{ flexDirection: "row", marginTop: "auto", paddingTop: 6 }}>

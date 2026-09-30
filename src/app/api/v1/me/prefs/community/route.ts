@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
+import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTalkSort, setTranslateEnabled } from "@/lib/actions";
 import { parseCommunityPrefsBody } from "@/core/communityParams";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       b.strangers !== undefined ? setFeedStrangers(b.strangers) : null,
       b.sort !== undefined ? setFeedSort(b.sort) : null,
       b.talk_followed !== undefined ? setTalkFollowedOnly(b.talk_followed) : null,
+      b.talk_sort !== undefined ? setTalkSort(b.talk_sort) : null,
       b.translate !== undefined ? setTranslateEnabled(b.translate) : null,
     ]);
     return ok({ ok: true as const }, ["people"]);

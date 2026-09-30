@@ -42,10 +42,10 @@ function SwitchRow({ icon, label, on, onToggle }: { icon: IconName; label: strin
   );
 }
 
-/** ما يخالف افتراضَه في التبويب المفتوح — الغرباءُ ظاهرون · «ذكيّ» · «من أتابع» مطفأة · الترجمةُ تعمل */
+/** ما يخالف افتراضَه في التبويب المفتوح — الغرباءُ ظاهرون · «ذكيّ» · الترجمةُ تعمل (شريحتا «النقاشات» فوق الغرف لا هنا — D-1201) */
 export function toolsOnFor(tab: CommunityPagerTab, p: CommunityPrefs | null): number {
   if (!p) return 0;
-  const axes = tab === "activity" ? [!p.strangers, p.sort !== "smart", !p.translate] : tab === "talk" ? [p.talk_followed, !p.translate] : [];
+  const axes = tab === "activity" ? [!p.strangers, p.sort !== "smart", !p.translate] : tab === "talk" ? [!p.translate] : [];
   return axes.filter(Boolean).length;
 }
 
@@ -82,7 +82,6 @@ export function CommunityTools({
       if (prefs.sort !== "smart") patch.sort = "smart";
       if (!prefs.translate) patch.translate = true;
     } else if (tab === "talk") {
-      if (prefs.talk_followed) patch.talk_followed = false;
       if (!prefs.translate) patch.translate = true;
     }
     if (Object.keys(patch).length) onPrefs(patch);
@@ -124,7 +123,7 @@ export function CommunityTools({
             ) : tab === "talk" ? (
               <View>
                 {head(tabTitle)}
-                <SwitchRow icon="bookmark" label={t.talkFollowedOnly} on={prefs.talk_followed} onToggle={() => onPrefs({ talk_followed: !prefs.talk_followed })} />
+                {/* 🗑️ D-1201 — «أعمالي المتابَعة فقط» صار شريحةَ «أعمالي» فوق الغرف (أحمد: «احذفها ما نحتاجها») — بابان لفعلٍ واحدٍ خلل */}
                 <SwitchRow icon="sparkles" label={t.autoTranslate} on={prefs.translate} onToggle={() => onPrefs({ translate: !prefs.translate })} />
               </View>
             ) : null}

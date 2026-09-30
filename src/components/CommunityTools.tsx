@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
-import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
+import { setFeedStrangers, setFeedSort, setTranslateEnabled } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/core/tabPrefs";
@@ -115,7 +115,6 @@ export function CommunityTools({
   activeTab: activeTabProp = "activity",
   strangers: strangersInitial,
   feedSort: feedSortInitial = "smart",
-  talkFollowedOnly: followedInitial = false,
   translate: translateInitial = true,
 }: {
   locale: Locale;
@@ -133,8 +132,6 @@ export function CommunityTools({
   strangers: boolean;
   /** 🆕 ترتيبُ الخطّ (D-306) — اختياريٌّ بنفس حجّة `activeTab` */
   feedSort?: "smart" | "latest";
-  /** 🆕 «النقاشات»: أعمالي المتابَعة فقط (D-306) — اختياريٌّ كذلك */
-  talkFollowedOnly?: boolean;
   /** 🆕 **الترجمةُ التلقائيّة** (D-309) — تفضيلٌ واحدٌ يظهر في أدوات
    * السطحين اللذين يترجمان (النشاط والنقاشات): **بابان لمفتاحٍ واحد
    * أهونُ من مفتاحٍ في صفحةٍ لا تعرضه** (D-217). اختياريٌّ (D-028). */
@@ -149,7 +146,6 @@ export function CommunityTools({
      على مفتاحٍ في ورقةٍ مفتوحة يومض أكثر ممّا يُصلح** */
   const [strangers, setStrangers] = useState(strangersInitial);
   const [feedSort, setFeedSortLocal] = useState(feedSortInitial);
-  const [followedOnly, setFollowedOnly] = useState(followedInitial);
   const [translate, setTranslate] = useState(translateInitial);
   const [saving, save] = useTransition();
 
@@ -206,7 +202,7 @@ export function CommunityTools({
     activeTab === "activity"
       ? [!strangers, feedSort !== "smart", !translate]
       : activeTab === "talk"
-        ? [followedOnly, !translate]
+        ? [!translate]
         : [];
   const toolsOn = axes.filter(Boolean).length;
 
@@ -228,7 +224,6 @@ export function CommunityTools({
       if (feedSort !== "smart") { setFeedSortLocal("smart"); jobs.push(setFeedSort("smart")); }
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
     } else if (activeTab === "talk") {
-      if (followedOnly) { setFollowedOnly(false); jobs.push(setTalkFollowedOnly(false)); }
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
     }
     if (!jobs.length) return;
@@ -379,25 +374,8 @@ export function CommunityTools({
                     <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">
                       {sectionTitle}
                     </p>
-                    {/* **«أعمالي المتابَعة فقط»** (D-306، نصُّ أحمد:
-                        «إخفاء النقاشات اللي ما يتابعها») — **والصياغةُ
-                        إيجابيّةٌ كعُرف الكوكي**: مفتاحٌ اسمُه «أخفِ»
-                        بقيمة «لا» يحتاج قراءتين. */}
-                    <SwitchRow
-                      icon="bookmark"
-                      label={t.talkFollowedOnly}
-                      on={followedOnly}
-                      busy={saving}
-                      onToggle={() => {
-                        tap(8);
-                        const next = !followedOnly;
-                        setFollowedOnly(next);
-                        save(async () => {
-                          await setTalkFollowedOnly(next);
-                          router.refresh();
-                        });
-                      }}
-                    />
+                    {/* 🗑️ D-1201 — **«أعمالي المتابَعة فقط» غادر الأدوات** (أحمد ٣٠ سبتمبر: «احذفها ما نحتاجها»): صار شريحةَ
+                        «أعمالي» فوق الغرف نفسِها (`TalkFilters`) — الكوكيُ نفسُه، وبابان لفعلٍ واحدٍ خلل (القاعدة ٣). */}
                     {/* 🆕 **مفتاحُ الترجمة التلقائيّة** (D-309، طلبُ أحمد:
                         «ضيف خيار بالتولز لإلغاء الترجمة التلقائية») —
                         **كوكي واحدٌ يظهر في أدوات السطحين اللذين

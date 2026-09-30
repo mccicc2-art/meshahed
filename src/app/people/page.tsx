@@ -9,8 +9,9 @@ import {
 } from "@/lib/data";
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { asCommunityTab as asTab, asBoardSection as asAll } from "@/core/communityParams";
-import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTalkSort, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
+import { TalkFilters } from "@/components/TalkFilters";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -123,6 +124,8 @@ export default async function PeoplePage({
   /* 🆕 **تفضيلا D-306** — كوكيان يُقرآن على الخادم قبل أوّل رسمة */
   const feedSort = await getFeedSort();
   const talkFollowedOnly = await getTalkFollowedOnly();
+  /* 🆕 D-1201 — ترتيبُ «النقاشات» (الأحدث · الأكثر تفاعلاً) */
+  const talkSort = await getTalkSort();
   const translateOn = await getTranslateEnabled();
 
   const {
@@ -211,7 +214,7 @@ export default async function PeoplePage({
      من هنا كما هي — الشروطُ والتوازي والسقوف — كي يقرأها `/api/v1/community` أيضاً بلا
      نسخةٍ ثانية (نهجُ `homeCore` في 11-H). الحججُ الكاملةُ لكلِّ نداءٍ في تاريخ هذا الملفّ. */
   const core = pagerTab
-    ? await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly })
+    ? await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort })
     : null;
   const [myCommunities, myInvites] =
     tab === "all"
@@ -548,7 +551,15 @@ export default async function PeoplePage({
 
   const talkBody = (
     <section className={READING}>
-      {rooms.length === 0 ? (
+      {/* 🆕 D-1201 — «الكل · أعمالي» وسطرُ الترتيب (التصميمُ B) — للعضو وحدَه: تفضيلاتُ حسابٍ لا معنى لها عند الزائر (D-629) */}
+      {user && rooms.length > 0 ? (
+        <TalkFilters locale={locale} mine={talkFollowedOnly} sort={talkSort} count={roomsShown.length} />
+      ) : null}
+      {rooms.length > 0 && roomsShown.length === 0 ? (
+        <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
+          {t.talkMineEmpty}
+        </p>
+      ) : rooms.length === 0 ? (
             /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
                «لم يكتب أحدٌ بعد» و«دائرتُك صامتة». **وبسقوط الرقاقتين
                سقطت الثانية**: لا نطاقَ يُدلّ عليه، **والجملةُ الباقية هي
@@ -563,6 +574,7 @@ export default async function PeoplePage({
               pins={pins ?? undefined}
               globalPins={globalPins ?? undefined}
               admin={amAdmin}
+              activity={!!user && talkSort === "active"}
             />
         )}
     </section>
@@ -616,7 +628,6 @@ export default async function PeoplePage({
               activeTab={tab}
               strangers={showStrangers}
               feedSort={feedSort}
-              talkFollowedOnly={talkFollowedOnly}
               translate={translateOn}
             />
           ) : undefined

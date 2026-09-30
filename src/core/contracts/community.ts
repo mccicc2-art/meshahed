@@ -101,6 +101,10 @@ export type CommunityRoom = {
   backdropPath: string | null;
   posts: number;
   postsWeek: number;
+  /** 🆕 D-1201 — إعجاباتُ الأسبوع على مشاركات الغرفة («الأكثر تفاعلاً» — صفرٌ قبل الهجرة ١٩٢) */
+  likesWeek: number;
+  /** 🆕 D-1201 — العملُ في مكتبتي (شريحةُ «أعمالي») — الشاشةُ تُرشِّح في يدها بلا جلب */
+  mine: boolean;
   lastAt: string;
   faces: PersonLite[];
   bulletin: Record<string, unknown> | null;
@@ -142,7 +146,10 @@ export type CommunityBoard = {
 export type CommunityPrefs = {
   strangers: boolean;
   sort: "smart" | "latest";
+  /** شريحةُ «أعمالي» في «النقاشات» (كانت مفتاحَ الأدوات «أعمالي المتابَعة فقط» — D-306 ⇐ D-1201) */
   talk_followed: boolean;
+  /** 🆕 D-1201 — ترتيبُ «النقاشات» */
+  talk_sort: "latest" | "active";
   translate: boolean;
   /** ترتيبُ التبويبات وإخفاؤها (سطح `community`) */
   tabs: TabPref[];
