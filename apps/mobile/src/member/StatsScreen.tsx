@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,6 +10,8 @@ import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { shell, type NativeRoot } from "../shell";
+import { CONFIG } from "../config";
+import { haptic } from "../haptics";
 import { posterFor } from "../poster";
 import { span, afterPaint } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
@@ -18,7 +20,7 @@ import { Sheet } from "../library/Sheet";
 import { PosterCard } from "../library/PosterCard";
 import { displayNameOf } from "@/core/people";
 import { num, worksParts } from "@/core/i18n";
-import type { MemberStatsPayload, MemberTaste, MemberTasteEntry, MemberTasteList, MemberTasteWork } from "@/core/contracts/memberStats";
+import type { MemberStatsPayload, MemberTaste, MemberTasteEntry, MemberTasteList, MemberTasteWork, MyStatsPayload, MyStatsRange } from "@/core/contracts/memberStats";
 
 /**
  * ====== إحصاءاتُ العضو أصليّةً — Phase 11-N · N4 (٣٠ سبتمبر ٢٠٢٦) ======
@@ -34,20 +36,33 @@ import type { MemberStatsPayload, MemberTaste, MemberTasteEntry, MemberTasteList
  * - **«أنت وهو»** (D-829) زرٌّ في طرف عنوان الذوق: النسبةُ مفتوحة، والتفصيلُ (تجتمعان · تفترقان · في مكتبته وليست عندك) للبلس
  *   (`PlusPreview`) — لغير المشترك يُرى باهتاً تحت بوّابته.
  * 🔒 الحسابُ الخاصُّ والحظرُ يقولان القفلَ صريحاً (الحارسُ SQL).
+ *
+ * 🆕 **D-1214 — وإحصائياتي أنا بالشاشة نفسِها** (طلبُ أحمد: «نفّذ الإحصائيات»): كانت `/stats` آخرَ بابٍ ويبيٍّ في «المكتبة»
+ * والرئيسيّة وملفّي. **الوجهُ واحدٌ في الويب** (`AnalysisView` — «المختلفُ القارئُ لا الرسم»، D-145) **فهو واحدٌ هنا**: بلا
+ * `username` تقرأ الشاشةُ `GET /api/v1/me/stats` وتزيد ما تزيده صفحتُها — **المدى في قائمة ⋯** (D-682: الكلّ · السنة · الشهر)
+ * واسمُه تحت وقت المشاهدة، **وبابُ «تقاريرك» في الذيل** (D-796، ويفتح صفحتَه الويبيّة طبقةً)، **و«ذوقك»** بضمير صاحبها.
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
 
 export const memberStatsKey = (handle: string) => [`profile:${handle.toLowerCase()}:stats`] as const;
 
-export function StatsScreen({ username, from }: { username: string; from: NativeRoot | "web" }) {
+export const myStatsKey = (range: MyStatsRange) => ["me:stats", range] as const;
+
+/** بلا `username` ⇐ إحصائياتي أنا (`/stats`)؛ ومعه ⇐ إحصاءاتُ العضو (`/u/{username}/stats`) */
+export function StatsScreen({ username, from }: { username?: string; from: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const key = memberStatsKey(username);
+  const mine = username == null;
+  /* المدى حالةٌ في الشاشة لا في الرابط: التطبيقُ لا يشارك روابطَ شاشاته، ولكلِّ مدًى مفتاحُه فالعودةُ إليه فوريّة من الكاش */
+  const [range, setRange] = useState<MyStatsRange>("all");
+  const [rangeSheet, setRangeSheet] = useState(false);
+  const key = mine ? myStatsKey(range) : memberStatsKey(username ?? "");
   const q = useQuery({
     queryKey: key,
-    queryFn: async () => (await api<MemberStatsPayload>(`/api/v1/profile/${encodeURIComponent(username)}/stats`)).data,
+    queryFn: async () =>
+      (await api<MemberStatsPayload & Partial<Pick<MyStatsPayload, "range_label">>>(mine ? `/api/v1/me/stats?range=${range}` : `/api/v1/profile/${encodeURIComponent(username ?? "")}/stats`)).data,
     staleTime: 5 * 60_000,
   });
   const d = q.data ?? null;
@@ -80,6 +95,14 @@ export function StatsScreen({ username, from }: { username: string; from: Native
     [router, from],
   );
   const openWeb = useCallback((path: string) => void shell.open(path, from === "web" ? undefined : { returnTo: from }), [from]);
+  /* 🆕 D-1214 — مشاركتي: **رابطُ صفحة إحصاءاتي العامّة** (`/u/{username}/stats`). صورةُ البطاقة (`/api/share`) تحتاج وحدةً
+     أصليّة (`expo-sharing`) لا تصل بتحديثٍ هوائيّ — تأتي مع أوّل بناءٍ أصليٍّ قادم؛ وبلا اسم مستخدمٍ لا رابطَ يُشارك فلا زرّ */
+  const shareMine = useCallback(() => {
+    const u = q.data?.person.username;
+    if (!u) return;
+    const url = `${CONFIG.apiBase}/u/${u}/stats`;
+    void Share.share({ message: url, url }).catch(() => {});
+  }, [q.data]);
 
   const [sheet, setSheet] = useState<null | { kind: "works"; title: string; works: MemberTasteWork[]; total: number } | { kind: "all"; title: string; all: MemberTasteList } | { kind: "match" }>(null);
 
@@ -89,7 +112,19 @@ export function StatsScreen({ username, from }: { username: string; from: Native
         <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
           <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
         </Pressable>
-        <Text size={17} weight="700">{t.statsPageTitle}</Text>
+        <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{t.statsPageTitle}</Text>
+        {/* 🆕 D-1214 — ترويسةُ `/stats`: مشاركةٌ ثمّ ⋯ المدى (`StatsRangeMenu`) — لإحصاءاتي وحدَها (لا مدى للزائر) */}
+        {mine && d?.person.username ? <HeadBtn icon="share" label={t.shareLinkLabel} onPress={shareMine} /> : null}
+        {mine ? (
+          <HeadBtn
+            icon="dots"
+            label={t.statsRangeMenu}
+            onPress={() => {
+              haptic.pick();
+              setRangeSheet(true);
+            }}
+          />
+        ) : null}
       </View>
 
       {!d ? (
@@ -113,16 +148,46 @@ export function StatsScreen({ username, from }: { username: string; from: Native
               <Text size={13} muted style={{ textAlign: "center" }}>{t.privateCoverHint}</Text>
             </View>
           ) : d.empty ? (
-            <Text size={14} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.analysisEmptyOther}</Text>
+            <Text size={14} muted style={{ textAlign: "center", paddingVertical: 40 }}>{mine ? t.analysisEmpty : t.analysisEmptyOther}</Text>
           ) : (
             <>
-              <HeroCard d={d} />
-              {d.taste ? <TasteCard d={d} onMatch={() => setSheet({ kind: "match" })} onAll={(title, all) => setSheet({ kind: "all", title, all })} onWorks={(title, works, total) => setSheet({ kind: "works", title, works, total })} /> : null}
+              <HeroCard d={d} rangeLabel={d.range_label || t.statsAllTime} />
+              {d.taste ? <TasteCard d={d} mine={mine} onMatch={() => setSheet({ kind: "match" })} onAll={(title, all) => setSheet({ kind: "all", title, all })} onWorks={(title, works, total) => setSheet({ kind: "works", title, works, total })} /> : null}
             </>
           )}
+          {/* 🆕 D-1214 — بابُ «تقاريرك» صفٌّ في الذيل لا رمزٌ ثالثٌ في الترويسة (D-796)، ورقاقةُ PLUS تقول ما يقوله الويب (D-803) */}
+          {mine && !d.empty ? <ReportsDoor onPress={() => openWeb("/reports")} /> : null}
         </ScrollView>
       )}
 
+      {rangeSheet ? (
+        <Sheet title={t.statsRangeMenu} onClose={() => setRangeSheet(false)}>
+          {(
+            [
+              { key: "all", label: t.statsRangeAll },
+              { key: "year", label: String(new Date().getUTCFullYear()) },
+              { key: "month", label: t.statsRangeMonth },
+            ] as const
+          ).map((it, i) => (
+            <Pressable
+              key={it.key}
+              onPress={() => {
+                setRangeSheet(false);
+                if (it.key !== range) {
+                  haptic.pick();
+                  setRange(it.key);
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: range === it.key }}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderTopColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
+            >
+              <Text size={14} weight="600" style={{ flex: 1 }} numberOfLines={1}>{it.label}</Text>
+              {range === it.key ? <Icon name="check-line" size={18} color={tokens.accent} /> : null}
+            </Pressable>
+          ))}
+        </Sheet>
+      ) : null}
       {sheet?.kind === "all" ? (
         <Sheet title={sheet.title} onClose={() => setSheet(null)}>
           <Text size={12} muted style={{ marginBottom: 10 }}>
@@ -173,7 +238,36 @@ function fmtWatchTime(minutes: number, t: ReturnType<typeof useApp>["t"]) {
 
 /* ——————————————————— بطاقةُ صاحبها ——————————————————— */
 
-function HeroCard({ d }: { d: MemberStatsPayload }) {
+/** زرٌّ في ترويسة الشاشة — مقاسُ زرِّ الرجوع نفسِه (٤٠) */
+function HeadBtn({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  const { tokens } = useApp();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+      <Icon name={icon} size={20} color={tokens.fg} />
+    </Pressable>
+  );
+}
+
+/** بابُ «تقاريرك» — `Link` ذيل `/stats` في الويب بنصّه (D-796/D-803): أيقونةٌ · سطران · رقاقةُ PLUS */
+function ReportsDoor({ onPress }: { onPress: () => void }) {
+  const { tokens, locale } = useApp();
+  const en = locale === "en";
+  return (
+    <Pressable onPress={onPress} accessibilityRole="link" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, opacity: pressed ? 0.7 : 1 })}>
+      <Icon name="chart" size={18} color={tokens.accent} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text size={14} weight="700">{en ? "Your reports" : "تقاريرك"}</Text>
+        <Text size={12} muted style={{ marginTop: 2 }}>{en ? "Your week, month and year." : "أسبوعك وشهرك وسنتك."}</Text>
+      </View>
+      {/* `PlusPill` الويب: «PLUS» علامةٌ لا تُترجم، بلون التمييز على أرضيّته الشفيفة */}
+      <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: tokens.accent + "26" }}>
+        <Text size={12} weight="700" color={tokens.accent} style={{ writingDirection: "ltr", letterSpacing: 0.5 }}>PLUS</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function HeroCard({ d, rangeLabel }: { d: MemberStatsPayload; rangeLabel: string }) {
   const { t, tokens, locale } = useApp();
   const name = displayNameOf(d.person, t.anonymousUser);
   const cells: { icon: IconName; value: number; label: string }[] = [
@@ -224,7 +318,7 @@ function HeroCard({ d }: { d: MemberStatsPayload }) {
         {/* وقتُ المشاهدة في الزاوية المقابلة (D-721/D-724) */}
         <View style={{ marginTop: 28, alignItems: "flex-end" }}>
           <Text size={30} weight="600" style={{ lineHeight: 34, fontVariant: ["tabular-nums"] }}>{fmtWatchTime(d.totals.minutes, t)}</Text>
-          <Text size={12} muted style={{ marginTop: 4 }}>{`${t.statWatchTime} · ${t.statsAllTime}`}</Text>
+          <Text size={12} muted style={{ marginTop: 4 }}>{`${t.statWatchTime} · ${rangeLabel}`}</Text>
         </View>
       </View>
       <View style={{ height: 1, backgroundColor: tokens.accent }} />
@@ -249,11 +343,14 @@ type CellRow = { name: string; value: string; unit?: string; ltr?: boolean; work
 
 function TasteCard({
   d,
+  mine,
   onMatch,
   onAll,
   onWorks,
 }: {
   d: MemberStatsPayload;
+  /** صاحبُ الأرقام يقرؤها ⇐ «ذوقك» (ضميرُ `AnalysisView.mine` — D-649) */
+  mine: boolean;
   onMatch: () => void;
   onAll: (title: string, all: MemberTasteList) => void;
   onWorks: (title: string, works: MemberTasteWork[], total: number) => void;
@@ -275,7 +372,7 @@ function TasteCard({
     <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 16, paddingVertical: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <Icon name="sparkles" size={20} color={tokens.accent} />
-        <Text size={17} weight="700" numberOfLines={1} style={{ flex: 1 }}>{t.analysisTasteOther}</Text>
+        <Text size={17} weight="700" numberOfLines={1} style={{ flex: 1 }}>{mine ? t.analysisTaste : t.analysisTasteOther}</Text>
         {d.match ? (
           <Pressable onPress={onMatch} accessibilityRole="button" hitSlop={6} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 5, height: 28, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, opacity: pressed ? 0.7 : 1 })}>
             <Text size={12} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{`${num(d.match.pct, locale)}%`}</Text>
