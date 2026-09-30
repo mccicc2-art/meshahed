@@ -6,6 +6,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
 import { signalHref, signalParts } from "@/core/signals";
 import { timeAgo } from "@/core/when";
+import { FollowRequestActions } from "./FollowRequestActions";
 
 /**
  * قائمةُ الإشعارات — **لوحٌ في صفحةٍ لا ورقةٌ منبثقة** (D-463، طلبُ
@@ -30,8 +31,11 @@ export function NotificationList({
   rows,
   myId,
   locale,
+  pending = [],
 }: {
   rows: Signal[];
+  /** 🆕 11-N دَين — من طلب متابعتي وطلبُه قائم: صفُّه يحمل قبولاً ورفضاً (D-1197) */
+  pending?: readonly string[];
   /**
    * **معرّفُك لا اسمُك** — وجهةُ إشعار الردّ صفحةُ تعليقك (D-257).
    *
@@ -101,14 +105,17 @@ export function NotificationList({
         );
 
         return (
-          <li key={`${s.kind}-${s.person.id}-${s.at}-${i}`}>
-            {href ? (
-              <Link href={href} prefetch={false} className="block">
-                {body}
-              </Link>
-            ) : (
-              body
-            )}
+          <li key={`${s.kind}-${s.person.id}-${s.at}-${i}`} className="flex items-center gap-3">
+            <span className="min-w-0 flex-1">
+              {href ? (
+                <Link href={href} prefetch={false} className="block">
+                  {body}
+                </Link>
+              ) : (
+                body
+              )}
+            </span>
+            {s.kind === "request" && pending.includes(s.person.id) ? <FollowRequestActions personId={s.person.id} locale={locale} /> : null}
           </li>
         );
       })}

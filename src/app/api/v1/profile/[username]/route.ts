@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
 import { getUserId, getProfileByUsername, getIncomingFollowRequests } from "@/lib/data";
-import { createClient } from "@/lib/supabase/server";
 import { loadProfile } from "@/lib/profileCore";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -67,17 +66,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       /* 🆕 N2-fix2 — **الحظرُ يُرى في الملفّ** (أحمد ٢٩ سبتمبر: «المفترض إذا دخل حسابي يبان إنّه محظور»): من حظرتُه يُعرض له رفعُ
          الحظر، ومن حظرني يرى «غير متاح» — وفي الحالين لا محتوى. `is_blocked` (definer) يعرف الاتّجاهين، و`blocks` بسياستها
          «read own blocks» يقول إن كنتُ أنا الحاظر. */
-      let blockedByMe = false;
-      let blockedEither = false;
-      if (c.me && !c.isMe) {
-        const sb = await createClient();
-        const [either, mine] = await Promise.all([
-          sb.rpc("is_blocked", { a: c.me.id, b: profile.id }),
-          sb.from("blocks").select("blocked_id").eq("blocker_id", c.me.id).eq("blocked_id", profile.id).maybeSingle(),
-        ]);
-        blockedEither = either.data === true;
-        blockedByMe = !!mine.data;
-      }
+      /* الحظرُ من النواة الآن (`c.blocked`) — صفحةُ الويب تقرؤه أيضاً (دَينُ N2-fix2 سُدّ) */
+      const blockedByMe = c.blocked.byMe;
+      const blockedEither = c.blocked.byMe || c.blocked.me;
       const locked = !c.canView || blockedEither;
       const hidden = (k: string) => (prefs.hiddenTabs as readonly string[]).includes(k);
       const cardCap = capCards(999, prefs.cards);

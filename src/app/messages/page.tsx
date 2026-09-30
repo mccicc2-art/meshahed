@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf } from "@/lib/data";
+import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf, getIncomingFollowRequests } from "@/lib/data";
 import { mySignals } from "@/lib/actions";
 import { buildInbox } from "@/lib/messagesCore";
 import { getT } from "@/lib/locale";
@@ -109,12 +109,13 @@ async function AlertsPane({
   /** معرّفُ القارئ من الصفحة — **لا نداءَ ملفٍّ لأجل اسمٍ لم يعد يُستعمل** (D-899) */
   myId: string;
 }) {
-  const rows = await mySignals();
+  /* 🆕 11-N دَين — الطلباتُ القائمةُ مع الإشعارات في موجةٍ واحدة (كما يقرؤها `GET /api/v1/me/signals`) */
+  const [rows, requests] = await Promise.all([mySignals(), getIncomingFollowRequests()]);
   return (
     <>
       {/* الختمُ بعد العرض — والشارةُ تسقط بالإنعاش الذي يليه */}
       <MarkSignalsSeen enabled={rows.some((r) => r.isNew)} />
-      <NotificationList rows={rows} myId={myId} locale={locale} />
+      <NotificationList rows={rows} myId={myId} locale={locale} pending={requests.map((p) => p.id)} />
     </>
   );
 }

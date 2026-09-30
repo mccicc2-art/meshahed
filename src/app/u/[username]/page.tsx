@@ -40,6 +40,7 @@ import {
 } from "@/core/profilePrefs";
 import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
+import { ProfileUnblockButton } from "@/components/ProfileUnblockButton";
 import { capCards } from "@/core/cardCount";
 import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
 import { browseGenreName, groupByGenre } from "@/core/browse";
@@ -102,6 +103,7 @@ export default async function PublicProfilePage({
     isMe,
     prefs,
     canView,
+    blocked,
     myLibKeys,
     myState,
     activityItems,
@@ -962,7 +964,8 @@ export default async function PublicProfilePage({
                     الشارة، **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
                 <AccountBadges profile={profile} t={t} />
               </div>
-              {!isMe && (
+              {/* 🆕 11-N دَين — لا متابعةَ بين طرفين بينهما حظر (القاعدةُ ترفضها — D-1198)، فالزرُّ لا يُرسم */}
+              {!isMe && !blocked.byMe && !blocked.me && (
                 <span className="shrink-0">
                   {/* 🆕 **ومقاسُه `xs` لا `sm`** (D-634): **جارُ كلمةٍ لا
                       فعلُ شاشة** — و`sm` كانت تجعله أطولَ من الاسم الذي
@@ -1174,7 +1177,20 @@ export default async function PublicProfilePage({
             مفتاحٌ في JSON — **يُهمَل ولا يُمسّ** (D-063: ما لا يُقرأ لا
             يُتلف). */}
         {/* ===== غلاف «حساب خاص» ===== */}
-        {!canView && (
+        {/* 🆕 11-N دَين — **الحظرُ يُقال صريحاً** كما في الشاشة الأصليّة (D-1198): من حظرتُه ومعه رفعُ الحظر · ومن حظرني «غير متاح» */}
+        {!canView && (blocked.byMe || blocked.me) ? (
+          <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
+            <Icon name="shield" size={28} className={`mx-auto ${blocked.byMe ? "text-[color:var(--error)]" : "text-muted"}`} />
+            <p className="text-14 leading-relaxed mt-3 max-w-[40ch] mx-auto">
+              {blocked.byMe ? t.profileBlockedByMe : t.profileBlockedMe}
+            </p>
+            {blocked.byMe && (
+              <div className="mt-4">
+                <ProfileUnblockButton targetId={profile.id} locale={locale} />
+              </div>
+            )}
+          </div>
+        ) : !canView ? (
           <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
             <Icon name="eye-off" size={28} className="mx-auto text-muted" />
             <p className="font-bold text-15 mt-3">{t.privateCoverTitle}</p>
@@ -1182,7 +1198,7 @@ export default async function PublicProfilePage({
               {t.privateCoverHint}
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* ⚖️ 🆕 **البطاقةُ صارت إطاراً حقيقيّاً بثلاث خانات**
             (D-561، تصميمُ أحمد).

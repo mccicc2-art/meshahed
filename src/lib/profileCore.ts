@@ -36,6 +36,7 @@ import type { ActivityItem } from "@/components/ActivityScreen";
 import { getProfileActivity } from "@/lib/myActivity";
 import { posterUrl } from "@/core/media";
 import { getLibState } from "@/lib/libState";
+import { createClient } from "@/lib/supabase/server";
 import { applySectionOrder, sanitizeProfilePrefs, sectionKeyOf, type ProfileSection } from "@/core/profilePrefs";
 
 /**
@@ -48,6 +49,20 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   if (!profile) return null;
 
   const isMe = profile.id === me?.id;
+
+  /* 🆕 11-N دَين — **الحظرُ يقفل صفحةَ الويب كما يقفل التطبيق** (D-1198؛ كانت الصفحةُ تعرض المحتوى لمن بينه وبين صاحبها حظر).
+     `is_blocked` (definer) يعرف الاتّجاهين، و`blocks` بسياستها «read own blocks» تقول إن كنتُ أنا الحاظر — القراءتان اللتان كان
+     `GET /api/v1/profile/{username}` يجريهما وحدَه، صارتا هنا فيقرؤهما السطحان. تُطلقان مع الموجة لا قبلها. */
+  const blockP: Promise<{ byMe: boolean; either: boolean }> =
+    me && !isMe
+      ? createClient().then(async (sb) => {
+          const [either, mine] = await Promise.all([
+            sb.rpc("is_blocked", { a: me.id, b: profile.id }),
+            sb.from("blocks").select("blocked_id").eq("blocker_id", me.id).eq("blocked_id", profile.id).maybeSingle(),
+          ]);
+          return { byMe: !!mine.data, either: either.data === true };
+        })
+      : Promise.resolve({ byMe: false, either: false });
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
@@ -160,7 +175,10 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   /* غلاف «حساب خاص»: الحارس الحقيقي في SQL (can_view_profile يفرغ الدوال
      لغير المتابِع — profile_visibility.sql)، وهذا الشرط للعرض فقط: نرسم
      قفلاً صريحاً بدل أصفارٍ تبدو عطلاً. طلبُ متابعةٍ معلّق لا يفتح شيئاً. */
-  const canView = isMe || !profile.is_private || relation.following;
+  const block = await blockP;
+  /* 🆕 والحظرُ في أيِّ اتّجاهٍ يقفل كالحساب الخاصّ — و`blocked` يقول للرسم أيَّ قفلٍ يُكتب */
+  const canView = (isMe || !profile.is_private || relation.following) && !block.either;
+  const blocked = { byMe: block.byMe, me: block.either && !block.byMe };
 
   /* «عندك» على ملصق المراجعة — مفاتيحُ مكتبة **القارئ** لا صاحبِ الصفحة */
   const myLibKeys = new Set(
@@ -348,6 +366,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     prefs,
     wants,
     canView,
+    blocked,
     myLibKeys,
     myState,
     actMeta,
