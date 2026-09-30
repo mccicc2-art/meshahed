@@ -127,6 +127,8 @@ export function HomeScreen() {
     (path: string) => {
       /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
       { const who = profileHandleOf(path); if (who) return openProfile(router, who, "home"); }
+      /* 🆕 D-1213 — «النشاط» أصليّ: دفعٌ فوق هذه الشاشة لا بابٌ ويبيّ */
+      if (path === "/activity") return void router.push({ pathname: "/activity", params: { from: "home" } });
       if (leaving) return;
       setLeaving(true);
       void shell.open(path, { returnTo: "home" }).then((layered) => {
@@ -356,8 +358,8 @@ export function HomeScreen() {
     },
     [qc, invalidateHome, openWeb, onError],
   );
-  /* D-1094 — «تمّ» يرتّب الصفَّ **فوراً** ثمّ يكتب (تسجيلُ أحمد على 1.11.9: رتّب «للمشاهدة» وضغط «تمّ»
-     فبقي الصفُّ كما كان — الترتيبُ حُفظ فعلاً في `home_prefs` لكنّ الصفَّ ينتظر إعادةَ جلب الرئيسيّة كاملةً).
+  /* D-1094 — «تمّ» يرتّب الصفَّ **فوراً** ثمّ يكتب (تسجيلُ أحمد على 1.11.9: رتّب «للمشاهدة» وضغط «تمّ»
+     فبقي الصفُّ كما كان — الترتيبُ حُفظ فعلاً في `home_prefs` لكنّ الصفَّ ينتظر إعادةَ جلب الرئيسيّة كاملةً).
      الترتيبُ هنا `applyQueueOrder` نفسُها التي يرتّب بها الخادم — فالتفاؤلُ والجلبُ اللاحقُ يتّفقان حرفاً؛
      والفشلُ يعيد الحمولةَ السابقة ويقول سببَه. `towatchlist` لا يُرسم ترتيبُه في الرئيسيّة فيكفيه الجلب. */
   const saveQueue = useCallback(
@@ -448,7 +450,7 @@ export function HomeScreen() {
   const posterW = d ? ({ compact: 96, comfortable: 118, large: 148 } as const)[d.prefs.density] : 118;
   const cap = useCallback((n: number) => (d ? capCards(n, d.prefs.cards) : n), [d]);
   /* فوق الغلاف الشريطُ شفّافٌ وأيقوناتُه بيضاء؛ وبعد تجاوز الغلاف يأخذ خلفيّةَ الصفحة ولونَها — الويبُ يتركه شفّافاً فوق المحتوى
-     (تعليقُ D-479 يعترف بذلك)، وهذا تحسينٌ للتطبيق وحدَه بقاعدة أحمد (٢٢ سبتمبر): الشكلُ بما يناسب التطبيق، والوظائفُ من الويب */
+     (تعليقُ D-479 يعترف بذلك)، وهذا تحسينٌ للتطبيق وحده بقاعدة أحمد (٢٢ سبتمبر): الشكلُ بما يناسب التطبيق، والوظائفُ من الويب */
   const onArt = !!d?.header.cover_url;
 
   useEffect(() => {

@@ -70,6 +70,9 @@ export type ProfileActivity = {
   list_name: string | null;
 };
 
+/** 🆕 D-1213 — `GET /api/v1/me/activity`: سجلُّك أنت كاملاً (شاشةُ `/activity`) بصفِّ ملفِّ الشخص نفسِه — مكوّنٌ واحدٌ يرسمهما */
+export type MyActivityPayload = { items: ProfileActivity[] };
+
 export type ProfilePayload = {
   /** 🆕 N1 — `density` **حجمُ ملصقات القارئ** (تفضيلُ ملفّه هو) لا صاحبِ الملفّ — قرارُ أحمد ٢٩ سبتمبر */
   viewer: { signed_in: boolean; is_me: boolean; density: Density };
@@ -89,7 +92,7 @@ export type ProfilePayload = {
     x: { handle: string; url: string } | null;
   };
   locked: boolean;
-  /** 🆕 N2-fix — `requested_me`: طلب متابعتي وطلبُه قائم ⇐ الملفُّ يعرض قبولاً ورفضاً */
+  /** 🆕 N2-fix — `requested_me`: طلب متابعتي وطلبُه قائم ⇐ الملفُّ يعرض قبولاً ورفضاً */
   /** 🆕 N2-fix2 — الحظر: `blocked_by_me` حظرتُه (يُعرض رفعُ الحظر) · `blocked_me` حظرني — وأيُّهما ⇒ `locked` والمحتوى فارغ */
   relation: { following: boolean; requested: boolean; follows_me: boolean; requested_me: boolean; blocked_by_me: boolean; blocked_me: boolean };
   counts: { followers: number; following: number; shows: number; movies: number; anime: number };

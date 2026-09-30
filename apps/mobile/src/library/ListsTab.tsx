@@ -32,7 +32,7 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  * **رأيي في قائمةٍ** (`ListReviewSheet`) · **ترتيبُ طابور «للمشاهدة» بالسحب**
  * (`ReorderSheet`) · **قائمةٌ ذكيّةٌ بشروطها** (`SmartListSheet`) — ⚖️ نقضٌ
  * لحكم D-947 («الأشكالُ الثقيلة أبوابٌ في الويب») بأمر أحمد: «ابنِ الثلاثة».
- * D-952 — كان البابان الأخيران ويبيَّين مباشرين (`/lists/:id?share=1` و`/library?edit=<id>`).
+ * D-952 — كان البابان الأخيران ويبيَّين مباشرين (`/lists/:id?share=1` و`/library?edit=<id>`).
  * 🆕 Phase 11-G (G5/G6) — **أُقفلا**: المشاركةُ ورقةٌ أصليّة (`ShareListSheet`: إعلانٌ · صديقٌ · مجتمعٌ · رابط) للمعلنة
  * والخاصّة معاً، وتحريرُ شرطِ ذكيّةِ المكتبة في `SmartListSheet` بوضع `editing`. **ذكيّةُ الكتالوج** وحدَها تُعدَّل في
  * اكتشف من صفحتها كما في الويب (شرطُها شريطُ الفلاتر، D-145).
@@ -162,21 +162,23 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
-        {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014) */}
+        {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014)
+            🆕 D-1212 — **بمقاس خانة «الإحصائيات · النشاط» حرفاً** (طلبُ أحمد بلقطة، ١ أكتوبر: «ابغاه نفس حجم اكتفتي وستات»):
+            صار الإطاران متجاورَين أثناء السحب بعد D-1210 فبان فرقُ الارتفاع. `py 9` · أيقونة ١٦ · كلمة ١٣ · فجوة ٨ (D-1076). */}
         <View style={{ flexDirection: "row", marginBottom: 16, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
           <Pressable
             onPress={() => setCreating(true)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
           >
-            <Icon name="plus" size={14} color={tokens.fg} />
-            <Text size={14} weight="700">{t.listNewGroup}</Text>
+            <Icon name="plus" size={16} color={tokens.fg} />
+            <Text size={13} weight="700">{t.listNewGroup}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSmart(true)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
           >
-            <Icon name="sparkle-star" size={14} color={tokens.accent} />
-            <Text size={14} weight="700">{t.smartListLabel}</Text>
+            <Icon name="sparkle-star" size={16} color={tokens.accent} />
+            <Text size={13} weight="700">{t.smartListLabel}</Text>
           </Pressable>
         </View>
         {!p.has_smart ? (
