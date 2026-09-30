@@ -35,7 +35,7 @@ import { currentLocale, webLocale } from "./i18n";
 /* 🆕 D-1083 — و`home` و`home:extras`: الرئيسيّةُ الأصليّة صارت شاشةَ الإقلاع (D-1075)، فتُرسم من
    آخر حمولةٍ محفوظة فورَ الفتح ثمّ تتجدّد حين يصل الرمز — بدل هيكلٍ فارغٍ ينتظر الجلسة. الملكيّةُ
    والعمرُ والإصدارُ واللغةُ تُفحص كما لأخواتها، والخروجُ يمسحها معها */
-const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists", "community", "me:messages", "me:stats"]);
+const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "discover:personal", "home", "home:extras", "discover:trailers", "discover:lists", "community", "me:messages", "me:stats", "me:activity"]);
 /* D-1091 — **سبعةُ أيام لا يوم، ونسخةُ العقد لا نسخةُ التطبيق** (أحمد: الفتحُ الأوّل بعد كلِّ تحديثٍ
    يعود دوّامةً): كان الملفُّ يُرفض إن اختلف `app.json` أو مضى يوم — فكلُّ إصدارٍ (وهي شبهُ يوميّة) يعيد
    الهيكلَ الفارغ. الهيكلُ لا يتغيّر بتغيّر الإصدار بل بتغيّر **عقود** الحمولات المحفوظة؛ فالمفتاحُ
@@ -45,6 +45,8 @@ const FAMILIES = new Set(["me:library", "discover:view", "discover:rail", "disco
    ستُّ ثوانٍ دوّامةً بعد إقلاعٍ بارد) — عائلةٌ جديدةٌ لا عقدٌ تغيّر، فلا يُرفع `CACHE_SCHEMA` */
 /* 🆕 D-1215 — و`me:stats` (المدياتُ الثلاثة): أوّلُ فتحٍ لـ«الإحصائيات» بعد إقلاعٍ بارد كان ينتظر الخادمَ يحسب المكتبةَ كلَّها
    (قياسُ جوال خالد: ٥٦١–١٠٢٠ms، والمحفوظُ ١٠٨–١٣١) — الآن يُرسم من آخر أرقامٍ ثمّ يتجدّد. عائلةٌ جديدةٌ لا عقدٌ تغيّر، فلا يُرفع `CACHE_SCHEMA` */
+/* 🆕 D-1216 — و`me:activity` للسبب نفسِه (طلبُ أحمد: «سوّ نفس الشيء في النشاط»): السجلُّ كلُّه بلا سقف (D-710) يُحسب في الخادم
+   عند كلِّ فتحٍ بارد — الآن يُرسم من آخر سجلٍّ محفوظ ثمّ يتجدّد. عائلةٌ جديدةٌ لا عقدٌ تغيّر، فلا يُرفع `CACHE_SCHEMA` */
 const CACHE_SCHEMA = "2026-09-24";
 const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 /* ⚖️ مراجعةُ ما قبل الرفع (D-1026): الكتابةُ `dehydrate` + `JSON.stringify` لمكتبةٍ كاملة + كتابةُ ملفٍّ
