@@ -2,11 +2,9 @@ import { PosterCard } from "@/components/PosterCard";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { buttonClass } from "@/components/ui/Button";
-import { tallyGenres } from "@/components/LibraryAnalysis";
-import { tasteMatch, onlyTheirs } from "@/core/tasteMatch";
-import { getFollows, getFollowsOf, getFollowGenresOf, getProfile } from "@/lib/data";
+import { getProfile } from "@/lib/data";
+import { loadTasteMatch, genreLabel } from "@/lib/memberStatsCore";
 import { isPlus } from "@/core/plan";
-import { browseGenreForId, browseGenreName } from "@/core/browse";
 import { getDict, num, type Locale } from "@/core/i18n";
 
 /**
@@ -58,31 +56,11 @@ export async function TasteMatchDoor({
   /* **الزائرُ وصاحبُ الملفّ لا يُرسم لهما** — والغيابُ صمتٌ لا رسالة */
   if (!me || me.id === targetId) return null;
 
-  const [mine, theirs, theirGenres] = await Promise.all([
-    getFollows(),
-    getFollowsOf(targetId),
-    getFollowGenresOf(targetId),
-  ]);
-  if (!mine.length || !theirs.length) return null;
-
-  /* 🔑 **والعدُّ بالدالّة نفسِها التي تعدّ لصفحة الإحصائيات** (D-145):
-     **مقياسان لذوقٍ واحدٍ يفترقان عند أوّل تعديل.** ⚠️ **ومكتبتي
-     تحمل تصنيفَها في الصفّ، ومكتبتُه في خريطةٍ ثانية** — **وهو فرقُ
-     مصدرٍ لا فرقُ قاعدة** (D-182). */
-  const { bySlug: myTally } = tallyGenres(
-    mine.map((f) => f.genres ?? null),
-    locale,
-  );
-  const { bySlug: theirTally } = tallyGenres(
-    theirs.map((f) => theirGenres.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
-    locale,
-  );
-
-  const match = tasteMatch(myTally, theirTally);
-  /* **وبياناتٌ أقلُّ من أن تُقارَن تغيب ولا تُملأ برقم** (D-063/D-217) */
-  if (match.thin) return null;
-
-  const picks = onlyTheirs(mine, theirs, 12);
+  /* 🆕 11-N · N4 — القراءةُ والتطابقُ في `lib/memberStatsCore.ts` بحرفهما (العدُّ بـ`tallyGenres` نفسِها — D-145)، لتقرأهما
+     شاشةُ التطبيق أيضاً. الغيابُ كما كان: مكتبةٌ فارغةٌ أو بياناتٌ أقلُّ من أن تُقارَن ⇒ لا باب (D-063/D-217). */
+  const got = await loadTasteMatch(me.id, targetId, locale);
+  if (!got) return null;
+  const { match, picks } = got;
 
   /* ⚠️ **ولا عنوانَ داخلَ الورقة**: **الورقةُ تحمل اسمَها في ترويستها**
      (`ProfileStatSheet`) — **وعنوانٌ ثانٍ تحته يقول الشيءَ مرّتين**
@@ -242,27 +220,3 @@ function Bar({ pct, tone }: { pct: number; tone: "accent" | "muted" }) {
     </span>
   );
 }
-
-/**
- * **اسمُ النوع من مفتاحه** — **وسجلُّ `browse` هو المصدرُ الوحيد**
- * (D-145): `tallyGenres` تعرف الاسمَ ولا تصدّره إلّا مع القمّة،
- * **وعكسُ المفتاحِ إلى اسمِه مكتوبٌ مرّةً هنا.**
- */
-function genreLabel(slug: string, locale: Locale): string {
-  const g = GENRE_BY_SLUG.get(slug);
-  return g ? browseGenreName(g, locale) : slug;
-}
-
-const GENRE_BY_SLUG = (() => {
-  const m = new Map<string, NonNullable<ReturnType<typeof browseGenreForId>>>();
-  /* **معرّفاتُ TMDB المعروفة** — والسجلُّ يترجمها إلى مفاهيمه */
-  const IDS = [
-    28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878,
-    10770, 53, 10752, 37, 10759, 10762, 10763, 10764, 10765, 10766, 10767, 10768,
-  ];
-  for (const id of IDS) {
-    const g = browseGenreForId(id);
-    if (g && !m.has(g.slug)) m.set(g.slug, g);
-  }
-  return m;
-})();

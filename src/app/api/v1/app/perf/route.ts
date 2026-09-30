@@ -78,6 +78,8 @@ const NAMES = new Set([
   "messages.live",
   /* 🆕 11-N · N1 — فتحُ ملفّ الشخص الأصليّ (ms، `cached`) */
   "profile.open",
+  /* 🆕 11-N · N4 — فتحُ إحصاءات العضو الأصليّة (ms، `cached`) */
+  "stats.open",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src"]);

@@ -1,24 +1,6 @@
-import {
-  getFollowsOf,
-  getFollowGenresOf,
-  getRatingsOf,
-  getWatchStatsOf,
-  getMovieStatsOf,
-  getWatchedOf,
-  getProfileArt,
-  getProfileByUsername,
-  getFollowStats,
-  getProfileFavorites,
-  getProfileAnimeFlags,
-  getTitleMetaFor,
-  displayNameOf,
-  artKey,
-} from "@/lib/data";
-import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/core/i18n";
-import { isComplete } from "@/core/progress";
-import { AnalysisView, tallyGenres, pickTasteTrioSlots, buildTaste, type TrioCandidate } from "./LibraryAnalysis";
-import { trioPosterPaths } from "@/core/heroPosters";
+import { AnalysisView } from "./LibraryAnalysis";
+import { loadMemberAnalysis } from "@/lib/memberStatsCore";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد
@@ -48,156 +30,13 @@ export async function MemberAnalysis({
 }: {
   userId: string;
   locale: Locale;
-  /**
-   * 🆕 **بابُ المقارنة في طرف عنوان بطاقة الذوق** (D-829) —
-   * **يُمرَّر ولا يُبنى هنا**: **هذه تقرأ أرقامَه، وتلك تقارن ذوقين**،
-   * **ودمجُهما يجعل قراءةَ صفحةٍ تنتظر قراءتَي مكتبتين.**
-   */
   tasteAction?: React.ReactNode;
 }) {
   const t = getDict(locale);
-
-  const [rawFollows, genres, ratings, epStats, mvStats, watched, art, pub, followStats] = await Promise.all([
-    getFollowsOf(userId),
-    getFollowGenresOf(userId),
-    getRatingsOf(userId),
-    getWatchStatsOf(userId),
-    getMovieStatsOf(userId),
-    getWatchedOf(userId),
-    /* 🔴 **وأغلفتُه تُقرأ هنا كما تُقرأ في ملفّه** (D-131): **صفُّ
-       المتابعة قد يكون بلا ملصقٍ أصلاً والغلافُ المختارُ هو الملصق** —
-       **و«الأكثر مشاهدة» بمربّعاتٍ سوداء كان أوّلَ ما ظهر في الفحص
-       الحيّ.** **ومصدرُ الصورة واحدٌ في السطحين** (D-145). */
-    getProfileArt(userId),
-    /* 🆕 **الهويّةُ للترويسة** (D-679) — العرضُ العامُّ نفسُه (فرعُ UUID
-       من D-655) ودالّةُ العدّادين المحروسة (١٣٨). */
-    getProfileByUsername(userId),
-    getFollowStats(userId).catch(() => null),
-  ]);
-
-  /* العناوين بلغة القارئ لا بلغة يوم المتابعة (D-048) */
-  const follows = await localizeRows(rawFollows, locale);
-  if (art.size) {
-    for (const f of follows) {
-      const a = art.get(artKey(f.media_type, f.tmdb_id));
-      if (a?.poster_path) f.poster_path = a.poster_path;
-    }
-  }
-
-  if (!follows.length) {
+  /* 🆕 11-N · N4 — القراءةُ والاشتقاقُ في `lib/memberStatsCore.ts` بحرفهما (تقرؤهما شاشةُ التطبيق أيضاً — D-1192) */
+  const data = await loadMemberAnalysis(userId, locale);
+  if (!data) {
     return <p className="text-sm text-muted text-center py-10">{t.analysisEmptyOther}</p>;
   }
-
-  const tvFollows = follows.filter((f) => f.media_type === "tv");
-
-  const { topGenres, allGenres, genreTags, bySlug } = tallyGenres(
-    follows.map((f) => genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
-    locale,
-  );
-
-  /* ===== 🆕 عقدُ D-679 — نفسُ تركيب `LibraryAnalysis` بقارئه العامّ ===== */
-  const hero = pub
-    ? {
-        name: displayNameOf(pub, t.anonymousUser),
-        avatarUrl: pub.avatar_url,
-        /* **النبذةُ تتبع الاسمَ في الإخفاء** — والقطعُ في SQL أصلاً */
-        bio: pub.hide_name ? null : (pub.bio ?? null),
-        followers: followStats ? followStats.followers : null,
-        /* 🆕 **وشارةُ العضو من صفِّه العامّ** (D-780) — `public_profiles`
-           يحمل `plan`/`founder`/`verified_at` منذ الهجرة ١٥٦. */
-        identity: pub,
-      }
-    : null;
-
-  /* ⚖️ **الثلاثيةُ فئويّةٌ هنا أيضاً** (D-682) — **المُنتقي واحدٌ
-     والقارئان يطعمانه** (D-145): «جارٍ» للأفلام لا يُقرأ عند الزائر
-     فالفيلمُ «شوهد» أو لا (تعليقُ الرأس) — والمعيارُ لا يحتاجه */
-  const ratingByKey = new Map<string, number>();
-  for (const r of ratings) {
-    const key = `${r.media_type}-${r.tmdb_id}`;
-    if (!ratingByKey.has(key)) ratingByKey.set(key, r.rating);
-  }
-  const trioCands: TrioCandidate[] = follows.map((f) => {
-    const key = `${f.media_type}-${f.tmdb_id}`;
-    const genreIds = genres.get(key) ?? [];
-    const watchedEp = f.media_type === "tv" ? (epStats.byShow.get(f.tmdb_id)?.watched ?? 0) : 0;
-    return {
-      key,
-      category:
-        f.media_type === "movie" ? "movie" : genreIds.includes(16) ? "anime" : "series",
-      title: f.title,
-      posterPath: f.poster_path,
-      href: f.media_type === "movie" ? `/movie/${f.tmdb_id}` : `/show/${f.tmdb_id}`,
-      completed:
-        f.media_type === "movie"
-          ? watched.movies.has(f.tmdb_id)
-          : isComplete(watchedEp, f.aired_episodes ?? f.total_episodes ?? 0),
-      rating: ratingByKey.get(key) ?? null,
-      watched: f.media_type === "movie" ? (watched.movies.has(f.tmdb_id) ? 1 : 0) : watchedEp,
-    };
-  });
-
-  /* 🆕 D-700: خلفيّةُ الترويسة أوّلُ مفضّلاته في كلِّ قائمة (المُنتقي
-     الفئويُّ سدُّ الفراغ)، وبطاقةُ ذوقه من كتالوج `title_meta` نفسِه */
-  const [favs, animeFlags, metas] = await Promise.all([
-    getProfileFavorites(userId),
-    getProfileAnimeFlags(userId),
-    getTitleMetaFor(follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id }))),
-  ]);
-  const slots = pickTasteTrioSlots(trioCands);
-  const isAnimeFav = (f: { media_type: string; tmdb_id: number }) =>
-    animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true;
-  const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
-  const favAnime = favs.find((f) => isAnimeFav(f));
-  const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
-  /* 🆕 **والاختيارُ من `lib/heroPosters`** (D-717 — سدادُ نسخةٍ ثانية):
-     D-715 أخرج القاعدةَ لبطاقة المشاركة **وترك هذه النسخةَ قائمة**،
-     **ونسختان لقاعدةٍ واحدةٍ تفترقان عند أوّل تعديل** (D-145).
-     وترتيبُ D-704 (فيلم · أنمي · مسلسل) داخلَها. */
-  const heroPosters = trioPosterPaths(
-    { movie: favMovie, anime: favAnime, series: favSeries },
-    slots,
-  );
-
-  const taste = buildTaste({
-    /* 🆕 **والصفُّ يحمل ملصقَه وأنواعَه هنا كذلك** (D-717): **وجهٌ
-       واحدٌ للإحصائيات، فخلفيّاتُ خاناته لا تظهر لصاحب الحساب وتغيب
-       عن زائره** (D-649/القاعدة ٦). */
-    keys: follows.map((f) => ({
-      media_type: f.media_type,
-      tmdb_id: f.tmdb_id,
-      title: f.title,
-      poster: f.poster_path,
-      genreIds: genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null,
-    })),
-    metas,
-    bySlug,
-    genreTags,
-    topGenres,
-    allGenres,
-    t,
-    locale,
-  });
-
-  return (
-    <AnalysisView
-      locale={locale}
-      tasteAction={tasteAction}
-      data={{
-        minutes: epStats.minutes + mvStats.minutes,
-        episodes: epStats.episodes,
-        movies: mvStats.watched,
-        /* 🆕 D-698: مسلسلاتُ مكتبته، وتعليقاتُه ما كُتب فيه نصٌّ فعلاً */
-        shows: tvFollows.length,
-        /* D-708: تعدّ ما قيّمه كلَّه — بنصٍّ أو بلا نصّ */
-        reviews: ratings.length,
-        /* **لا مدى للزائر** (تعليقُ الرأس) — فالصادقُ «كل الأوقات» */
-        rangeLabel: t.statsAllTime,
-        heroPosters,
-        taste,
-        mine: false,
-        hero,
-      }}
-    />
-  );
+  return <AnalysisView locale={locale} tasteAction={tasteAction} data={data} />;
 }
