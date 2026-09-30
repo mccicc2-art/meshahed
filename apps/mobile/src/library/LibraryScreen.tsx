@@ -364,8 +364,9 @@ export function LibraryScreen() {
      يقفز المحتوى؛ وذيلُ التمرير يزيد بالمقدار نفسِه. وقلبُ التبويب يُعيد الكسوةَ
      (بابُ `reveal` — درسُ D-524). */
   const chrome = useChromeHide();
-  /* تقديرٌ أوّليٌّ قبل القياس (ترويسة + تبويبات + صفُّ الأدوات) — فلا يقفز المحتوى في أوّل إطار */
-  const [topH, setTopH] = useState(insets.top + HEADER_H + 46 + 60);
+  /* تقديرٌ أوّليٌّ قبل القياس (ترويسة + تبويبات) — فلا يقفز المحتوى في أوّل إطار.
+     🆕 D-1210 — بلا صفِّ الأدوات: خانةُ «الإحصائيات · النشاط» والرقاقاتُ نزلت إلى رأس اللوح */
+  const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
   const bottomPad = navH + 24;
   const { reveal } = chrome;
   useEffect(() => {
@@ -401,6 +402,20 @@ export function LibraryScreen() {
       .catch(() => null)
       .finally(() => setClassifying(false));
   }, [activeTab, animeUnknown]);
+
+  /* 🆕 D-1210 — **خانةُ «الإحصائيات · النشاط» (والرقاقاتُ فوقها) رأسُ اللوح لا رأسُ الشاشة** (بلاغُ أحمد بتسجيل،
+     ١ أكتوبر: «إذا لفّيت لليست تروح فوق سمارت ثم تختفي، شكلها مو حلو»). كانت في الرأس الثابت وتغيب في «قوائم» (D-832):
+     أثناء السحب تبقى فوق لوح القوائم، ثمّ تختفي عند الوصول فيقصر الرأسُ ويقفز المحتوى — وعند الرجوع العكس. الآن
+     تعيش أوّلَ محتوى الألواح التي تحتاجها (مسلسلات · أفلام · أنمي · فنّانون) فتنزلق مع لوحها، و«قوائم» تنزلق بدونها،
+     والرأسُ بارتفاعٍ واحدٍ في كلِّ تبويب. ⚖️ الثمن المعلَن: تتمرّر مع المحتوى بدل أن تختبئ مع الرأس عند النزول.
+     القلبُ والرقاقاتُ للألواح الأساسيّة وحدَها كما كانت (`coreTab`). */
+  const clearTools = useCallback(() => {
+    setQ("");
+    setSort("smart");
+  }, []);
+  const toggleFav = useCallback(() => setFav((v) => !v), []);
+  const coreHead = <PaneHead chips={chips} onClearAll={clearTools} fav={fav} onFav={hasFav ? toggleFav : undefined} onLeave={leaveTo} />;
+  const artistsHead = <PaneHead chips={[]} onClearAll={clearTools} fav={false} onLeave={leaveTo} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -479,63 +494,6 @@ export function LibraryScreen() {
         </Pressable>
       </View>
 
-      {/* رقاقاتُ «ما اخترتَه» (`ActiveFilterChips`، عائلةُ chip): بحث · مفضّلة · ترتيب — قابلةٌ للإزالة، و«مسح الكل» */}
-      {coreTab && chips.length > 0 ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: 8 }}>
-          {chips.map((c) => (
-            <Pressable
-              key={c.key}
-              onPress={c.remove}
-              accessibilityLabel={t.browseRemoveFilter(c.label)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent + "66", backgroundColor: tokens.accent + "1A" }}
-            >
-              <Text size={14} weight="600" color={tokens.accent} numberOfLines={1} style={{ maxWidth: 224 }}>{c.label}</Text>
-              <Icon name="close" size={12} color={tokens.accent} />
-            </Pressable>
-          ))}
-          <Pressable onPress={() => { setQ(""); setSort("smart"); }} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border }}>
-            <Text size={12} weight="600" muted>{t.browseClearAll}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* خانةٌ تحت الشريط (D-453/D-671): «الإحصائيات» و«النشاط» بابان إلى الويب، والقلبُ مِصفاةٌ لمن له مفضّلة — **وتغيب في تبويب القوائم** (D-832) */}
-      {/* 🆕 D-1018 — **الثلاثةُ في إطارٍ واحدٍ بخلفيّةٍ سوداء والقلبُ أحمر** (تصميمُ أحمد،
-          ١٨ سبتمبر): كانت ثلاثةَ أزرارٍ بخلفيّة `surface` وفواصلَ بينها والقلبُ أصفر. الآن
-          إطارٌ واحدٌ كصفِّ أفعال صفحة العمل (D-1014): بلا فواصلَ ولا خلفيّةٍ للخانة النشطة،
-          والقلبُ يمتلئ حمرةً حين يُضغط فتُعرض المفضّلةُ وحدَها. */}
-      {activeTab !== "lists" ? (
-      <View style={{ flexDirection: "row", marginHorizontal: PAGE_PAD, marginTop: 12, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
-        {(
-          [
-            { path: "/stats", icon: "chart", label: t.statsPageTitle },
-            { path: "/activity", icon: "clock", label: t.activityTitle },
-          ] as const
-        ).map((b) => (
-          <Pressable
-            key={b.path}
-            onPress={() => leaveTo(b.path)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
-          >
-            {/* D-1076 — أضيقُ قليلاً (py 12 ⇐ 9) وأصغرُ كلمةً (14 ⇐ 13، الأيقونة 17 ⇐ 16): الخانةُ بابان لا
-                عنوانٌ، فلا توازن التبويباتِ وزناً — طلبُ أحمد بلقطة ٢٢ سبتمبر بعد رفضِ بديل الرقاقات */}
-            <Icon name={b.icon} size={16} color={tokens.accent} />
-            <Text size={13} weight="700">{b.label}</Text>
-          </Pressable>
-        ))}
-        {hasFav && coreTab ? (
-          <Pressable
-            onPress={() => setFav((v) => !v)}
-            accessibilityRole="togglebutton"
-            accessibilityState={{ checked: fav }}
-            accessibilityLabel={t.profileFavoritesRail}
-            style={({ pressed }) => ({ width: 58, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
-          >
-            <Icon name={fav ? "heart-filled" : "heart"} size={19} color={tokens.error} />
-          </Pressable>
-        ) : null}
-      </View>
-      ) : null}
     </View>
     </Animated.View>
 
@@ -548,7 +506,7 @@ export function LibraryScreen() {
         perfScreen="library"
         render={(k, on) =>
           k === "artists" ? (
-            <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
+            <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} head={artistsHead} />
           ) : k === "lists" ? (
             <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={say} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : (
@@ -572,6 +530,7 @@ export function LibraryScreen() {
               onLeave={leaveTo}
               onReady={on ? onPaneReady : undefined}
               onFlatPainted={on ? onFlatPainted : undefined}
+              head={coreHead}
             />
           )
         }
@@ -661,6 +620,7 @@ function LibraryPane({
   onLeave,
   onReady,
   onFlatPainted,
+  head,
 }: {
   tab: Tab;
   data: { data?: LibraryPayload; isLoading: boolean; isError: boolean; refetch: () => unknown };
@@ -686,6 +646,8 @@ function LibraryPane({
   onReady?: () => void;
   /** F0 — الشبكةُ المسطّحة التزمت بهذا العدد؛ للنشط وحدَه */
   onFlatPainted?: (count: number) => void;
+  /** 🆕 D-1210 — رأسُ اللوح (الرقاقات · «الإحصائيات · النشاط» · القلب): أوّلُ المحتوى فينزلق مع لوحه */
+  head: React.ReactNode;
 }) {
   const { t, locale } = useApp();
   /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
@@ -815,13 +777,17 @@ function LibraryPane({
      يبتعد، والتلميحُ يعلن قراءتَه عند نزعه — فكان التمريرُ وحدَه سيُعلنه مقروءاً. */
   const hintSeen = (data.data?.hints ?? []).includes("library-hold");
   const hint = useMemo(
-    () =>
-      hintSeen ? null : (
-        <View style={{ paddingHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }}>
-          <OneTimeHint id="library-hold" text={t.longPressHint} />
-        </View>
-      ),
-    [hintSeen, t],
+    () => (
+      <>
+        <View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View>
+        {hintSeen ? null : (
+          <View style={{ paddingHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }}>
+            <OneTimeHint id="library-hold" text={t.longPressHint} />
+          </View>
+        )}
+      </>
+    ),
+    [hintSeen, t, head],
   );
 
   /* F0 — بعد كلِّ التزامٍ لشبكةٍ مسطّحةٍ يُخبَر الأبُ؛ هو يعرف إن كان ينتظر قياساً */
@@ -836,6 +802,8 @@ function LibraryPane({
   const wrap = (body: React.ReactNode, scrolls = false) => (
     <View style={{ flex: 1, paddingTop: scrolls ? 0 : topPad }}>
       {note}
+      {/* D-1210 — الرأسُ في مكانه نفسِه والبياناتُ تُحمَّل أو القائمةُ فارغة: لا قفزةَ حين تصل */}
+      {scrolls ? null : <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12 }}>{head}</View>}
       {body}
     </View>
   );
@@ -877,6 +845,78 @@ function LibraryPane({
       />
     </View>,
     true,
+  );
+}
+
+/**
+ * 🆕 D-1210 — رأسُ اللوح: رقاقاتُ «ما اخترتَه» ثمّ خانةُ «الإحصائيات · النشاط» والقلب — هي نفسُها التي كانت في
+ * رأس الشاشة (D-453/D-671/D-1018/D-1076) بلا تغييرٍ في شكلها، نُقلت فقط. بلا حشوةٍ أفقيّة: مضيفُها يحشوها.
+ * `onFav` غائبٌ ⇒ لا قلب (لا مفضّلةَ لصاحبها، أو لوحُ الفنّانين).
+ */
+function PaneHead({
+  chips,
+  onClearAll,
+  fav,
+  onFav,
+  onLeave,
+}: {
+  chips: { key: string; label: string; remove: () => void }[];
+  onClearAll: () => void;
+  fav: boolean;
+  onFav?: () => void;
+  onLeave: (path: string) => void;
+}) {
+  const { t, tokens } = useApp();
+  return (
+    <View style={{ marginBottom: 12 }}>
+      {chips.length > 0 ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingBottom: 8, marginBottom: 12 }}>
+          {chips.map((c) => (
+            <Pressable
+              key={c.key}
+              onPress={c.remove}
+              accessibilityLabel={t.browseRemoveFilter(c.label)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent + "66", backgroundColor: tokens.accent + "1A" }}
+            >
+              <Text size={14} weight="600" color={tokens.accent} numberOfLines={1} style={{ maxWidth: 224 }}>{c.label}</Text>
+              <Icon name="close" size={12} color={tokens.accent} />
+            </Pressable>
+          ))}
+          <Pressable onPress={onClearAll} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border }}>
+            <Text size={12} weight="600" muted>{t.browseClearAll}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
+        {(
+          [
+            { path: "/stats", icon: "chart", label: t.statsPageTitle },
+            { path: "/activity", icon: "clock", label: t.activityTitle },
+          ] as const
+        ).map((b) => (
+          <Pressable
+            key={b.path}
+            onPress={() => onLeave(b.path)}
+            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
+          >
+            {/* D-1076 — أضيقُ قليلاً (py 12 ⇐ 9) وأصغرُ كلمةً (14 ⇐ 13، الأيقونة 17 ⇐ 16): الخانةُ بابان لا عنوان */}
+            <Icon name={b.icon} size={16} color={tokens.accent} />
+            <Text size={13} weight="700">{b.label}</Text>
+          </Pressable>
+        ))}
+        {onFav ? (
+          <Pressable
+            onPress={onFav}
+            accessibilityRole="togglebutton"
+            accessibilityState={{ checked: fav }}
+            accessibilityLabel={t.profileFavoritesRail}
+            style={({ pressed }) => ({ width: 58, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+          >
+            <Icon name={fav ? "heart-filled" : "heart"} size={19} color={tokens.error} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 

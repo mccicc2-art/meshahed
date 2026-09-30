@@ -47,6 +47,9 @@ function StillLine({ text, size, weight, color, style }: LineProps) {
   );
 }
 
+/* D-1211 — مسارُ الانزلاق: أعرضُ من أيِّ اسمٍ يُكتب على بطاقة */
+const TRACK_W = 4000;
+
 /* مكوّنان لا فرعٌ داخل واحد: خطّافاتُ القياس والحركة لا تُركَّب أصلاً للساكن */
 function MovingLine({ text, size, weight, color, style }: LineProps) {
   const [boxW, setBoxW] = useState(0);
@@ -73,7 +76,12 @@ function MovingLine({ text, size, weight, color, style }: LineProps) {
 
   return (
     <View style={{ overflow: "hidden" }} onLayout={(e) => setBoxW(e.nativeEvent.layout.width)}>
-      <Animated.View style={{ flexDirection: "row", transform: [{ translateX: x }] }}>
+      {/* 🆕 D-1211 — **السطرُ يُقاس بعرضه الطبيعيّ لا بعرض البطاقة** (بلاغُ أحمد بتسجيل، ١ أكتوبر: «اسم الفلم الطويل ما
+          يتحرّك»). كان هذا الصفُّ بلا عرض، فيأخذ عرضَ الصندوق، والنصُّ ذو السطر الواحد يُحصر فيه ويُبتر بـ«…» — فيُقاس
+          بعرض الصندوق نفسِه، والفرقُ صفرٌ فلا حركةَ أبداً (النقاطُ في التسجيل دليلُه: الساكنُ يقصّ بلا نقاط). عرضٌ واسعٌ
+          ثابت يترك النصَّ بطولِه فيُقاس حقّاً، والصندوقُ (`overflow: hidden`) يقصّه كما يقصّه الساكن. الصفُّ يبدأ من جهة
+          البداية في الاتّجاهين، فالنصُّ يلتصق بطرفه الصحيح والانزلاقُ بالمسافة نفسِها كما كان. */}
+      <Animated.View style={{ flexDirection: "row", width: TRACK_W, transform: [{ translateX: x }] }}>
         <Text
           size={size}
           weight={weight}

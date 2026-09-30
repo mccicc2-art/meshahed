@@ -29,7 +29,8 @@ const PAGE_PAD = 16;
 const GAP = 12;
 const MIN_COL = 96;
 
-export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll }: { onOpenWeb: (path: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
+/* 🆕 D-1210 — `head`: رأسُ اللوح («الإحصائيات · النشاط») نزل من رأس الشاشة إلى أوّل المحتوى، فينزلق مع لوحه */
+export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll, head = null }: { onOpenWeb: (path: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"]; head?: React.ReactNode }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
   const refreshControl = usePullRefresh([qk.tag("people")], topPad);
@@ -43,19 +44,23 @@ export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll }: 
 
   if (data.isLoading)
     return (
-      <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-        {Array.from({ length: 6 }, (_, i) => (
-          <View key={i} style={{ width: cellW, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, opacity: 0.7 }} />
-        ))}
+      <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12 }}>
+        {head}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <View key={i} style={{ width: cellW, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, opacity: 0.7 }} />
+          ))}
+        </View>
       </View>
     );
   if (data.isError || !data.data)
-    return <View style={{ paddingTop: topPad }}><Empty text={t.apiInternal} cta={t.errorRetry} onCta={() => void data.refetch()} /></View>;
+    return <View style={{ paddingTop: topPad + 12 }}><View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View><Empty text={t.apiInternal} cta={t.errorRetry} onCta={() => void data.refetch()} /></View>;
   const items = data.data.items;
-  if (items.length === 0) return <View style={{ paddingTop: topPad }}><Empty text={t.artistsEmpty} cta={t.artistsEmptyCta} onCta={() => onOpenWeb("/search")} /></View>;
+  if (items.length === 0) return <View style={{ paddingTop: topPad + 12 }}><View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View><Empty text={t.artistsEmpty} cta={t.artistsEmptyCta} onCta={() => onOpenWeb("/search")} /></View>;
 
   return (
     <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+      {head}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
         {items.map((a) => (
           <ArtistCard key={a.person_id} a={a} width={cellW} onPress={() => onOpenWeb(`/person/${a.person_id}`)} />
