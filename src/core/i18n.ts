@@ -1006,6 +1006,7 @@ const ar = {
   /* 🆕 D-1207 — «الأكثر تفاعلاً» في شهرٍ صامت (النشاط والنقاشات) · وشريحةُ النشاط */
   activeQuietHint: "لا تفاعل هذا الشهر — مرتّبة بالأحدث",
   feedScopeFollowing: "من أتابعهم",
+  feedRowsCount: (n: number) => (n === 1 ? "منشورٌ واحد" : n === 2 ? "منشوران" : `${num(n, "ar")} ${n >= 3 && n <= 10 ? "منشورات" : "منشوراً"}`),
   talkMineEmpty: "لا نقاش في أعمال مكتبتك بعد — جرّب «الكل»",
   /* **نشرةُ Loopz في الغرفة** (D-261، طلبُ أحمد: «نزول حلقة كذا بعنوان
      كذا وأخذت تقييم كذا، ويذكر أبرز ما فيها»).
@@ -3031,6 +3032,7 @@ const en: Dict = {
   talkRoomActivityMonth: (n: number) => (n === 0 ? "No activity this month" : n === 1 ? "1 interaction this month" : `${num(n, "en")} interactions this month`),
   activeQuietHint: "No activity this month — showing latest first",
   feedScopeFollowing: "People I follow",
+  feedRowsCount: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
   talkMineEmpty: "No discussions on your titles yet — try All",
   bulletinEpisode: (season: number, episode: number, name?: string | null) =>
     name

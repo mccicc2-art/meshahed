@@ -397,7 +397,7 @@ function TalkHead({
         <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 10 }}>
-        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{count === undefined ? "" : t.talkRoomsCount(count)}</Text>
+        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{count === undefined ? "" : kind === "feed" ? t.feedRowsCount(count) : t.talkRoomsCount(count)}</Text>
         <View accessibilityRole="radiogroup" accessibilityLabel={t.talkSortAria} style={{ flexDirection: "row", gap: 14 }}>
           {(["latest", "active"] as const).map((k) => {
             const on = sort === k;
@@ -476,13 +476,15 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
         /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرشّح ويرتّب فيُعاد الجلب */
         ListHeaderComponent={
           d.prefs ? (
-            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && !!d.feed.quiet} onPrefs={onPrefs} />
+            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} count={d.feed.rows.length} quiet={d.prefs.sort === "smart" && !!d.feed.quiet} onPrefs={onPrefs} />
           ) : null
         }
         onViewableItemsChanged={views.onViewableItemsChanged}
         viewabilityConfig={views.viewabilityConfig}
         ListEmptyComponent={empty(d.feed.empty_text)}
-        contentContainerStyle={{ paddingTop: topPad + 4, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
+        /* 🔴 D-1207-fix — **رأسُ النشاط على شطر النقاشات حرفاً** (لقطتا أحمد: الشرائحُ أعلى بـ٨ والسطرُ بلا عدد): الحشوةُ العليا
+           `topPad + 12` كالنقاشات (كانت `+ 4` قبل أن يكون للخطّ رأس)، والعددُ على يسار السطر */
+        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={refresh}
