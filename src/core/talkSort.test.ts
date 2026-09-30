@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sortTalkRooms, talkActivity } from "./talkSort.ts";
+import { sortTalkRooms, talkActivity, talkQuiet } from "./talkSort.ts";
 
-/** D-1201 — ترتيبُ «النقاشات»: المثبَّتُ أوّلاً في الترتيبين · «الأكثر تفاعلاً» بتفاعل الأسبوع · التعادلُ بالأحدث */
-const r = (id: string, postsWeek: number, likesWeek: number, lastAt: string, pin = 0) => ({ id, postsWeek, likesWeek, lastAt, pin });
+/** D-1201/D-1207 — ترتيبُ «النقاشات»: المثبَّتُ أوّلاً في الترتيبين · «الأكثر تفاعلاً» بتفاعل الشهر · التعادلُ بالأحدث */
+const r = (id: string, postsMonth: number, likesMonth: number, lastAt: string, pin = 0) => ({ id, postsMonth, likesMonth, lastAt, pin });
 const rooms = [
   r("old-big", 0, 0, "2026-09-01T00:00:00Z"),
   r("fresh", 1, 0, "2026-09-29T00:00:00Z"),
@@ -21,8 +21,13 @@ test("active: pinned first, then this week's posts + likes, ties by newest", () 
 });
 
 test("activity counts likes; missing likes (before migration 192) count as zero", () => {
-  assert.equal(talkActivity({ postsWeek: 3, likesWeek: 9, lastAt: "" }), 12);
-  assert.equal(talkActivity({ postsWeek: 3, lastAt: "" }), 3);
+  assert.equal(talkActivity({ postsMonth: 3, likesMonth: 9, lastAt: "" }), 12);
+  assert.equal(talkActivity({ postsMonth: 3, lastAt: "" }), 3);
+});
+
+test("quiet: a month with no activity anywhere", () => {
+  assert.equal(talkQuiet([r("a", 0, 0, "2026-09-01T00:00:00Z"), r("b", 0, 0, "2026-09-02T00:00:00Z")]), true);
+  assert.equal(talkQuiet([r("a", 0, 1, "2026-09-01T00:00:00Z")]), false);
 });
 
 test("input is not mutated", () => {

@@ -32,7 +32,7 @@ export function libOf(core: CommunityData, tmdbId: number, mediaType: "tv" | "mo
 
 export function feedRows(
   core: CommunityData,
-  o: { meId: string; showStrangers: boolean; sort: FeedSort; t: Dict; locale: Locale },
+  o: { meId: string; showStrangers: boolean; sort: FeedSort; t: Dict; locale: Locale; report?: { quiet: boolean } },
 ): CommunityFeedRow[] {
   const ordered = orderCommunityFeed<FeedItem, LoopzNewsItem>({
     comments: core.localized,
@@ -44,6 +44,7 @@ export function feedRows(
     reviewReplies: core.reviewReplies,
     newsLikes: core.postLikes.counts,
     newsReplies: core.newsReplies,
+    report: o.report,
   });
   return ordered.map((r): CommunityFeedRow => {
     const mk = `${r.item.media_type}-${r.item.tmdb_id}`;

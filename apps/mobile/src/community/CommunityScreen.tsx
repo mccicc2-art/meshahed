@@ -27,7 +27,7 @@ import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type Card
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
 import { Chip } from "../library/Chip";
-import { sortTalkRooms, type TalkSort } from "@/core/talkSort";
+import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import { displayNameOf } from "@/core/people";
@@ -371,23 +371,40 @@ export function CommunityScreen() {
  * هادئٌ بمقاسات سطر «هذا الأسبوع» في نشاط الملفّ: العددُ، ثمّ «الأحدث · الأكثر تفاعلاً» خياران ظاهران (الخطُّ تحت المختار).
  * «أعمالي» تكتب الكوكيَ نفسَه الذي كان مفتاحَ الأدوات (D-306) — فمن كان مفعّلاً يجدها مختارة.
  */
-function TalkHead({ mine, sort, count, onPrefs }: { mine: boolean; sort: TalkSort; count: number; onPrefs: (patch: CommunityPrefsBody) => void }) {
+function TalkHead({
+  kind = "talk",
+  mine,
+  sort,
+  count,
+  quiet = false,
+  onPrefs,
+}: {
+  /** 🆕 D-1207 — `feed`: «الكل · من أتابعهم» ومفتاحا النشاط (الغرباء · `smart`) */
+  kind?: "talk" | "feed";
+  mine: boolean;
+  sort: TalkSort;
+  count?: number;
+  quiet?: boolean;
+  onPrefs: (patch: CommunityPrefsBody) => void;
+}) {
   const { t, tokens } = useApp();
+  const scope = (next: boolean) => (kind === "feed" ? onPrefs({ strangers: !next }) : onPrefs({ talk_followed: next }));
+  const order = (k: TalkSort) => (kind === "feed" ? onPrefs({ sort: k === "active" ? "smart" : "latest" }) : onPrefs({ talk_sort: k }));
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <Chip label={t.allWord} active={!mine} onPress={() => (mine ? onPrefs({ talk_followed: false }) : undefined)} />
-        <Chip label={t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : onPrefs({ talk_followed: true }))} />
+        <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
+        <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 10 }}>
-        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{t.talkRoomsCount(count)}</Text>
+        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{count === undefined ? "" : t.talkRoomsCount(count)}</Text>
         <View accessibilityRole="radiogroup" accessibilityLabel={t.talkSortAria} style={{ flexDirection: "row", gap: 14 }}>
           {(["latest", "active"] as const).map((k) => {
             const on = sort === k;
             return (
               <Pressable
                 key={k}
-                onPress={() => (on ? undefined : onPrefs({ talk_sort: k }))}
+                onPress={() => (on ? undefined : order(k))}
                 hitSlop={8}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
@@ -399,6 +416,13 @@ function TalkHead({ mine, sort, count, onPrefs }: { mine: boolean; sort: TalkSor
           })}
         </View>
       </View>
+      {/* 🆕 D-1207 — شهرٌ بلا تفاعل: «الأكثر تفاعلاً» صار «الأحدث» ويُقال ذلك (يختفي بأوّل تفاعل) */}
+      {quiet ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 8 }}>
+          <Icon name="info" size={14} color={tokens.muted} />
+          <Text size={12} muted style={{ flex: 1 }}>{t.activeQuietHint}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -434,6 +458,9 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
     const pool = talkPrefs.talk_followed ? d.rooms.filter((r) => r.mine) : d.rooms;
     return sortTalkRooms(pool, talkPrefs.talk_sort ?? "latest", (r) => r.pin);
   }, [d.rooms, talkPrefs]);
+  /* 🆕 D-1207 — شهرٌ بلا تفاعلٍ في كلِّ ما يُعرض: البطاقاتُ بسطرها العادي والسطرُ الخافتُ يقول لماذا */
+  const talkActive = talkPrefs?.talk_sort === "active";
+  const talkIsQuiet = talkActive && talkQuiet(talkRooms);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -446,6 +473,12 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
         data={d.feed.rows}
         keyExtractor={(r) => r.key}
         renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
+        /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرشّح ويرتّب فيُعاد الجلب */
+        ListHeaderComponent={
+          d.prefs ? (
+            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && !!d.feed.quiet} onPrefs={onPrefs} />
+          ) : null
+        }
         onViewableItemsChanged={views.onViewableItemsChanged}
         viewabilityConfig={views.viewabilityConfig}
         ListEmptyComponent={empty(d.feed.empty_text)}
@@ -465,9 +498,9 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
       <FlatList
         data={talkRooms}
         keyExtractor={(r) => `${r.mediaType}-${r.tmdbId}`}
-        renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} activity={talkPrefs?.talk_sort === "active"} />}
+        renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} activity={talkActive && !talkIsQuiet} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListHeaderComponent={talkPrefs && d.rooms.length ? <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} count={talkRooms.length} onPrefs={onPrefs} /> : null}
+        ListHeaderComponent={talkPrefs && d.rooms.length ? <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} count={talkRooms.length} quiet={talkIsQuiet} onPrefs={onPrefs} /> : null}
         ListEmptyComponent={empty(d.rooms.length ? t.talkMineEmpty : t.talkRoomsEmpty)}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}

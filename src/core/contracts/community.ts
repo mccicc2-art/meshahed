@@ -101,8 +101,11 @@ export type CommunityRoom = {
   backdropPath: string | null;
   posts: number;
   postsWeek: number;
-  /** 🆕 D-1201 — إعجاباتُ الأسبوع على مشاركات الغرفة («الأكثر تفاعلاً» — صفرٌ قبل الهجرة ١٩٢) */
-  likesWeek: number;
+  /** 🆕 D-1207 — مشاركاتُ آخر ٣٠ يوماً وإعجاباتُها («الأكثر تفاعلاً») */
+  postsMonth: number;
+  likesMonth: number;
+  /** 🆕 D-1207 — آخرُ مشاركةٍ من عضو (لا إشعارُ الحلقة) — `null` بلا مشاركة */
+  lastPostAt: string | null;
   /** 🆕 D-1201 — العملُ في مكتبتي (شريحةُ «أعمالي») — الشاشةُ تُرشِّح في يدها بلا جلب */
   mine: boolean;
   lastAt: string;
@@ -167,6 +170,8 @@ export type CommunityPayload = {
     rows: CommunityFeedRow[];
     /** «الأفضل» للزائر · تفضيلُ العضو له (D-629) */
     sort: "smart" | "latest" | "top";
+    /** 🆕 D-1207 — «الأكثر تفاعلاً» (`smart`) في شهرٍ بلا تفاعل: الخطُّ بالأحدث، والسطرُ الخافتُ يقول ذلك */
+    quiet: boolean;
     empty_text: string;
     /** أتابع حسابَ لوبز؟ — لصفّ المتابعة في بطاقة الخبر */
     follow_loopz: boolean;

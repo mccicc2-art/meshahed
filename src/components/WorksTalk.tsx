@@ -256,9 +256,10 @@ export function TalkRoomCard({
             </div>
             <div className="ms-auto shrink-0 text-12 text-muted text-end leading-tight">
               <span className="tabular-nums">
-                {activity ? t.talkRoomActivityWeek(talkActivity(r)) : weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
+                {activity ? t.talkRoomActivityMonth(talkActivity(r)) : weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
               </span>
-              <span className="block">{t.talkRoomLastAt(timeAgo(r.lastAt, t))}</span>
+              {/* 🔴 D-1207 — «آخر مشاركة» من مشاركات الأعضاء لا من إشعار الحلقة (لقطةُ أحمد: «1d» على غرفةٍ صامتةٍ منذ أغسطس) */}
+              {r.lastPostAt ? <span className="block">{t.talkRoomLastAt(timeAgo(r.lastPostAt, t))}</span> : null}
             </div>
           </div>
         </div>

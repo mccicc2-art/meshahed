@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { orderCommunityFeed, boardRows, FEED_LIKE_MS, FEED_REPLY_MS } from "./communityFeed.ts";
+import { orderCommunityFeed, boardRows } from "./communityFeed.ts";
 import { commentViewKey } from "./postKeys.ts";
 import {
   asCommunityTab,
@@ -40,37 +40,47 @@ test("الأحدث: زمنٌ خالص، والرأيُ بلا نصٍّ لا يد
   assert.deepEqual(ids(out), ["c:b", "n:x", "c:a"]);
 });
 
-test("الذكيّ: كلُّ إعجابٍ نصفُ ساعة وكلُّ ردٍّ ساعة (D-283)", () => {
-  const older = c("old", 0, { likes: 3, tmdb: 7 }); // +90د
-  const newer = c("new", 60 * 60 * 1000); // +60د بلا تفاعل
-  const out = orderCommunityFeed({ comments: [newer, older], news: [], meId: "me", showStrangers: true, sort: "smart" });
-  assert.deepEqual(ids(out), ["c:old", "c:new"]);
-  assert.equal(3 * FEED_LIKE_MS, 90 * 60 * 1000);
+/* 🆕 D-1207 — «الأكثر تفاعلاً» (`smart`): عدٌّ خالصٌ داخل نافذة ٣٠ يوماً، والأقدمُ تحته بالأحدث؛ ولا تفاعلَ ⇒ الأحدثُ و`quiet` */
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = T0 + 40 * DAY;
 
-  /* ردٌّ واحدٌ على الأقدم = ساعة ⇒ يعادل الجديد ثمّ يتخطّاه بإعجابٍ واحد */
-  const replies = new Map([[commentViewKey("old2", "tv", 7), 1]]);
-  const out2 = orderCommunityFeed({
-    comments: [c("new2", FEED_REPLY_MS - 1), c("old2", 0, { tmdb: 7 })],
+test("الأكثر تفاعلاً: داخل الشهر بالعدّ، والتعادلُ بالأحدث", () => {
+  const replies = new Map([[commentViewKey("b", "tv", 2), 2]]);
+  const out = orderCommunityFeed({
+    comments: [c("a", 39 * DAY, { likes: 1, tmdb: 1 }), c("b", 20 * DAY, { tmdb: 2 }), c("z", 38 * DAY, { tmdb: 3 })],
     news: [],
     meId: "me",
     showStrangers: true,
     sort: "smart",
     reviewReplies: replies,
+    now: NOW,
   });
-  assert.deepEqual(ids(out2), ["c:old2", "c:new2"]);
+  assert.deepEqual(ids(out), ["c:b", "c:a", "c:z"]);
 });
 
-test("الذكيّ: إعجاباتُ الخبر وردودُه بمفتاحيهما", () => {
+test("الأكثر تفاعلاً: ما هو أقدمُ من الشهر تحتَ النافذة بالأحدث مهما تفاعلوا معه", () => {
+  const report = { quiet: true };
   const out = orderCommunityFeed({
-    comments: [c("a", 2 * 60 * 60 * 1000)],
-    news: [n("x", 0)],
+    comments: [c("old", 1 * DAY, { likes: 50, tmdb: 1 }), c("fresh", 35 * DAY, { likes: 1, tmdb: 2 }), c("mid", 30 * DAY, { tmdb: 3 })],
+    news: [n("x", 36 * DAY)],
     meId: "me",
     showStrangers: true,
     sort: "smart",
-    newsLikes: { "movie-9": 2 }, // +60د
-    newsReplies: new Map([["x", 2]]), // +120د ⇒ ١٨٠د > ١٢٠د
+    newsLikes: { "movie-9": 0 },
+    now: NOW,
+    report,
   });
-  assert.deepEqual(ids(out), ["n:x", "c:a"]);
+  assert.deepEqual(ids(out), ["c:fresh", "n:x", "c:mid", "c:old"]);
+  assert.equal(report.quiet, false);
+});
+
+test("الأكثر تفاعلاً: شهرٌ بلا تفاعل ⇒ الأحدثُ نفسُه و`quiet`", () => {
+  const report = { quiet: false };
+  const rows = [c("a", 30 * DAY, { tmdb: 1 }), c("b", 39 * DAY, { tmdb: 2 }), c("old", 1 * DAY, { likes: 9, tmdb: 3 })];
+  const smart = orderCommunityFeed({ comments: rows, news: [], meId: "me", showStrangers: true, sort: "smart", now: NOW, report });
+  const latest = orderCommunityFeed({ comments: rows, news: [], meId: "me", showStrangers: true, sort: "latest" });
+  assert.deepEqual(ids(smart), ids(latest));
+  assert.equal(report.quiet, true);
 });
 
 test("الغرباءُ مطفأون ⇒ كلامي ومن أتابع والأخبار وحدَها (D-900)", () => {

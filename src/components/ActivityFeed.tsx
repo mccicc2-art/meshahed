@@ -18,6 +18,7 @@ import { backdropUrl } from "@/core/media";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { QuietHint } from "./QuietHint";
 import { LikeButton } from "./LikeButton";
 import { PosterCard } from "./PosterCard";
 import type { LibState, TitleState } from "@/lib/libState";
@@ -221,6 +222,8 @@ export function ActivityFeed({
      حرفاً كي يقرأهما `/api/v1/community` — صيغةُ أحمد (D-283) ومفتاحُ الغرباء (D-900)
      وترتيبا D-306/D-629 نصٌّ واحدٌ لسطحين. **وحججُها الكاملةُ في تاريخ هذا الملفّ.**
      وخبرٌ بلا صيغةٍ يسقط هنا لا عند الرسم (D-181) — `newsLine` يحتاج القاموس. */
+  /* 🆕 D-1207 — «الأكثر تفاعلاً» يقول إن كان شهرُه صامتاً (فالخطُّ بالأحدث) */
+  const report = { quiet: false };
   let shown: Row[] = orderCommunityFeed({
     comments,
     news: news.filter((n) => newsLine(n, t, locale) !== null),
@@ -231,6 +234,7 @@ export function ActivityFeed({
     reviewReplies,
     newsLikes: postLikes?.counts,
     newsReplies,
+    report,
   });
 
   if (shown.length === 0) {
@@ -247,6 +251,8 @@ export function ActivityFeed({
   if (hidden) shown = shown.slice(0, limit);
 
   return (
+    <>
+    {sort === "smart" && report.quiet ? <QuietHint text={t.activeQuietHint} /> : null}
     <div className="divide-y divide-[color:var(--divider)]">
       {shown.map((row) => {
         const key = `${row.item.media_type}-${row.item.tmdb_id}`;
@@ -303,6 +309,7 @@ export function ActivityFeed({
         </Link>
       ) : null}
     </div>
+    </>
   );
 }
 
@@ -942,3 +949,4 @@ function NewsRow({
     </article>
   );
 }
+

@@ -12,6 +12,7 @@ import { asCommunityTab as asTab, asBoardSection as asAll } from "@/core/communi
 import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTalkSort, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
 import { TalkFilters } from "@/components/TalkFilters";
+import { talkQuiet } from "@/core/talkSort";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -361,6 +362,8 @@ export default async function PeoplePage({
 
   const activityBody = (
     <section className={READING}>
+            {/* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» خرجا من الأدوات إلى فوق الخطّ — للعضو وحدَه (D-629) */}
+            {user ? <TalkFilters locale={locale} kind="feed" mine={!showStrangers} sort={feedSort === "smart" ? "active" : "latest"} /> : null}
             <ActivityFeed
               comments={localized}
               /* 🆕 **المرشَّحةُ لا الخام** (D-360) — والخبرُ الذي لا يخصّك
@@ -553,7 +556,7 @@ export default async function PeoplePage({
     <section className={READING}>
       {/* 🆕 D-1201 — «الكل · أعمالي» وسطرُ الترتيب (التصميمُ B) — للعضو وحدَه: تفضيلاتُ حسابٍ لا معنى لها عند الزائر (D-629) */}
       {user && rooms.length > 0 ? (
-        <TalkFilters locale={locale} mine={talkFollowedOnly} sort={talkSort} count={roomsShown.length} />
+        <TalkFilters locale={locale} mine={talkFollowedOnly} sort={talkSort} count={roomsShown.length} quiet={talkSort === "active" && talkQuiet(roomsShown)} />
       ) : null}
       {rooms.length > 0 && roomsShown.length === 0 ? (
         <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
@@ -574,7 +577,7 @@ export default async function PeoplePage({
               pins={pins ?? undefined}
               globalPins={globalPins ?? undefined}
               admin={amAdmin}
-              activity={!!user && talkSort === "active"}
+              activity={!!user && talkSort === "active" && !talkQuiet(roomsShown)}
             />
         )}
     </section>

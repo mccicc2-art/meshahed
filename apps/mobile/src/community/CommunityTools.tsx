@@ -45,7 +45,7 @@ function SwitchRow({ icon, label, on, onToggle }: { icon: IconName; label: strin
 /** ما يخالف افتراضَه في التبويب المفتوح — الغرباءُ ظاهرون · «ذكيّ» · الترجمةُ تعمل (شريحتا «النقاشات» فوق الغرف لا هنا — D-1201) */
 export function toolsOnFor(tab: CommunityPagerTab, p: CommunityPrefs | null): number {
   if (!p) return 0;
-  const axes = tab === "activity" ? [!p.strangers, p.sort !== "smart", !p.translate] : tab === "talk" ? [!p.translate] : [];
+  const axes = tab === "activity" ? [!p.translate] : tab === "talk" ? [!p.translate] : [];
   return axes.filter(Boolean).length;
 }
 
@@ -78,8 +78,6 @@ export function CommunityTools({
   const clearAll = () => {
     const patch: CommunityPrefsBody = {};
     if (tab === "activity") {
-      if (!prefs.strangers) patch.strangers = true;
-      if (prefs.sort !== "smart") patch.sort = "smart";
       if (!prefs.translate) patch.translate = true;
     } else if (tab === "talk") {
       if (!prefs.translate) patch.translate = true;
@@ -107,17 +105,7 @@ export function CommunityTools({
             {tab === "activity" ? (
               <View>
                 {head(tabTitle)}
-                <SwitchRow icon={prefs.strangers ? "eye" : "eye-off"} label={t.feedShowStrangers} on={prefs.strangers} onToggle={() => onPrefs({ strangers: !prefs.strangers })} />
-                <Text size={12} muted style={{ lineHeight: 18, marginBottom: 12 }}>{t.feedShowStrangersHint}</Text>
-                <Segmented
-                  items={[
-                    { id: "smart", label: t.feedSortSmart },
-                    { id: "latest", label: t.feedSortLatest },
-                  ]}
-                  value={prefs.sort}
-                  onChange={(v) => v !== prefs.sort && onPrefs({ sort: v as "smart" | "latest" })}
-                />
-                <View style={{ height: 8 }} />
+                {/* 🗑️ D-1207 — «من يظهر» والترتيبُ صارا فوق الخطّ («الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً») — بابان لفعلٍ واحدٍ خلل */}
                 <SwitchRow icon="sparkles" label={t.autoTranslate} on={prefs.translate} onToggle={() => onPrefs({ translate: !prefs.translate })} />
               </View>
             ) : tab === "talk" ? (

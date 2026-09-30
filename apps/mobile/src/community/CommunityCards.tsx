@@ -303,7 +303,9 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
         {room.bulletin_line ? <Text size={12} color={tokens.accent} numberOfLines={1}>{room.bulletin_line}</Text> : null}
         <Text size={12} muted numberOfLines={1}>
           {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الأسبوع) — وإلّا بدا الترتيبُ عشوائيّاً */}
-          {activity ? t.talkRoomActivityWeek(talkActivity(room)) : hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)} · {t.talkRoomLastAt(timeAgoShort(room.lastAt, t))}
+          {activity ? t.talkRoomActivityMonth(talkActivity(room)) : hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)}
+          {/* 🔴 D-1207 — «آخر مشاركة» من مشاركات الأعضاء لا من إشعار الحلقة؛ غرفةٌ بلا مشاركةٍ لا تقول وقتاً */}
+          {room.lastPostAt ? ` · ${t.talkRoomLastAt(timeAgoShort(room.lastPostAt, t))}` : null}
         </Text>
         {room.faces.length ? (
           <View style={{ flexDirection: "row", marginTop: "auto", paddingTop: 6 }}>

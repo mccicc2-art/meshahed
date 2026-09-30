@@ -66,6 +66,9 @@ export async function GET(req: NextRequest) {
     const off = (k: Parameters<typeof railOff>[1]) => railOff(hiddenRails, k);
     const meId = user?.id ?? "";
     const sort = user ? feedSort : "top";
+    /* 🆕 D-1207 — المرتِّبُ يقول إن كان شهرُ «الأكثر تفاعلاً» صامتاً */
+    const feedReport = { quiet: false };
+    const feedOut = feedRows(core, { meId, showStrangers, sort, t, locale, report: feedReport });
 
     const payload: CommunityPayload = {
       viewer: { signed_in: !!user, me_id: user?.id ?? null, admin: core.amAdmin },
@@ -82,8 +85,10 @@ export async function GET(req: NextRequest) {
           }
         : null,
       feed: {
-        rows: feedRows(core, { meId, showStrangers, sort, t, locale }),
+        rows: feedOut,
         sort,
+        /* 🆕 D-1207 — «الأكثر تفاعلاً» في شهرٍ بلا تفاعل */
+        quiet: sort === "smart" && feedReport.quiet,
         empty_text: t.feedEmptyForYou,
         follow_loopz: followsLoopz(core),
       },

@@ -3451,8 +3451,12 @@ export interface TalkRoom {
   posts: number;
   /** 🆕 **مشاركاتُ أسبوعِ السبت الجاري** (D-311) — لسطح D-291 الصادق */
   postsWeek: number;
-  /** 🆕 D-1201 — **إعجاباتُ الأسبوع على مشاركات الغرفة** («الأكثر تفاعلاً») — صفرٌ قبل الهجرة ١٩٢ */
-  likesWeek: number;
+  /** 🆕 D-1207 — **مشاركاتُ آخر ٣٠ يوماً** (والردودُ منها) — «الأكثر تفاعلاً»؛ قبل الهجرة ١٩٢ = مشاركاتُ الأسبوع */
+  postsMonth: number;
+  /** 🆕 D-1207 — **إعجاباتُ آخر ٣٠ يوماً على مشاركات الغرفة** — صفرٌ قبل الهجرة ١٩٢ */
+  likesMonth: number;
+  /** 🆕 D-1207 — **آخرُ مشاركةٍ من عضو** (لا إشعارُ الحلقة) — `null` بلا مشاركة؛ قبل الهجرة ١٩٢ = `lastAt` */
+  lastPostAt: string | null;
   lastAt: string;
   /** أحدثُ خمسةِ متكلّمين — **أشخاصٌ لا مشاركات** */
   faces: PersonLite[];
@@ -3601,8 +3605,10 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
         backdrop_path: string | null;
         posts: number;
         posts_week?: number;
-        likes_week?: number;
+        posts_month?: number;
+        likes_month?: number;
         last_at: string;
+        last_post_at?: string | null;
         faces: PersonLite[] | null;
         bulletin?: Record<string, unknown> | null;
       }[]
@@ -3615,9 +3621,11 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       posts: Number(r.posts),
       /* **قارئٌ متسامح** (D-179): قبل الهجرة ٩٦ لا عمودَ له فيصل صفراً */
       postsWeek: Number(r.posts_week ?? 0),
-      /* **قارئٌ متسامح** (D-179): قبل الهجرة ١٩٢ لا عمودَ له فيصل صفراً — والترتيبُ بالمشاركات وحدَها */
-      likesWeek: Number(r.likes_week ?? 0),
+      /* **قارئٌ متسامح** (D-179): قبل الهجرة ١٩٢ لا أعمدةَ لها — الشهرُ يُقرأ من الأسبوع، والإعجاباتُ صفر، وآخرُ مشاركةٍ من `last_at` */
+      postsMonth: Number(r.posts_month ?? r.posts_week ?? 0),
+      likesMonth: Number(r.likes_month ?? 0),
       lastAt: String(r.last_at),
+      lastPostAt: r.last_post_at === undefined ? String(r.last_at) : r.last_post_at === null ? null : String(r.last_post_at),
       faces: Array.isArray(r.faces) ? r.faces.slice(0, 5) : [],
       /* **قارئٌ متسامح** (D-179): قبل الهجرة ٨٧ لا عمودَ لها فتصل
          `undefined` — **والبطاقةُ تُرسم بلا سطر ولا شاشةَ خطأ.** */

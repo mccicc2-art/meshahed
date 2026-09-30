@@ -37,9 +37,19 @@ export type OrderedFeedRow<C, N> =
   | { at: number; kind: "comment"; item: C }
   | { at: number; kind: "news"; item: N };
 
-/** «كل لايك ينقص من وقته نص ساعة وكل رد ساعة» (D-283) */
+/** «كل لايك ينقص من وقته نص ساعة وكل رد ساعة» (D-283) — ⚠️ متروكٌ منذ D-1207 (لا قارئَ له) ويبقى لتاريخ D-283 */
 export const FEED_LIKE_MS = 30 * 60 * 1000;
 export const FEED_REPLY_MS = 60 * 60 * 1000;
+
+/**
+ * 🆕 D-1207 — **نافذةُ «الأكثر تفاعلاً»: آخرُ ٣٠ يوماً** (أحمد ٣٠ سبتمبر: «خليها موست اكتف لاخر شهر … حتى النقاش»).
+ * كانت `smart` «الأحدث مع دفعةٍ لكلِّ إعجابٍ وردّ» (D-283) — صارت **عدّاً خالصاً داخل النافذة**: ما نُشر في آخر ٣٠ يوماً يُرتَّب
+ * بإعجاباته وردوده (والتعادلُ بالأحدث)، وما هو أقدمُ يأتي تحته بالأحدث — **فلا يفرغ الخطّ**. وإن لم يتفاعل أحدٌ داخل النافذة كلِّها
+ * فالخطُّ بالأحدث **ويُقال ذلك** (`report.quiet` ⇐ سطرٌ خافت) — لا ترتيبٌ يتطابق مع «الأحدث» فيبدو معطّلاً.
+ * القيمةُ المخزّنة تبقى `smart` (الكوكي `loopz_feed_sort`) — الاسمُ على الشاشة «الأكثر تفاعلاً».
+ * ⚖️ النافذةُ هنا **بتاريخ المنشور** (الإعجاباتُ مجموعٌ لا تواريخ) — وفي «النقاشات» بتاريخ التفاعل نفسِه (الهجرة ١٩٢).
+ */
+export const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNewsLike>(o: {
   comments: readonly C[];
@@ -56,6 +66,10 @@ export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNews
   newsLikes?: Readonly<Record<string, number>>;
   /** ردودُ الأخبار بمفتاح المنشور */
   newsReplies?: ReadonlyMap<string, number>;
+  /** 🆕 D-1207 — «الآن» للنافذة (الاختباراتُ تثبّته) */
+  now?: number;
+  /** 🆕 D-1207 — يُملأ مع `smart`: `quiet` ⇐ لا تفاعلَ في النافذة كلِّها فالخطُّ بالأحدث */
+  report?: { quiet: boolean };
 }): OrderedFeedRow<C, N>[] {
   /* المكتوبُ وحدَه يدخل — «شاهد» و«قيّم بلا نصّ» أحداثٌ بلا كلام */
   const rows: OrderedFeedRow<C, N>[] = [
@@ -81,19 +95,25 @@ export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNews
   const cKey = (c: FeedCommentLike) => commentViewKey(c.person.id, c.media_type, c.tmdb_id);
   const nKey = (n: FeedNewsLike) => `${n.media_type}-${n.tmdb_id}`;
 
+  /* العدُّ الخالص: إعجاباتٌ + ردود — «الأكثر تفاعلاً» للعضو و«الأفضل» للزائر يعدّان به */
+  const heat = (r: OrderedFeedRow<C, N>): number =>
+    r.kind === "comment"
+      ? (r.item.likes ?? 0) + (o.reviewReplies?.get(cKey(r.item)) ?? 0)
+      : (o.newsLikes?.[nKey(r.item)] ?? 0) + (o.newsReplies?.get(r.item.key) ?? 0);
+
+  /* 🆕 D-1207 — «الأكثر تفاعلاً»: عدٌّ داخل نافذة الشهر، والأقدمُ تحته بالأحدث (`shown` مرتّبٌ بالأحدث سلفاً) */
   if (o.sort === "smart") {
-    const effAt = (r: OrderedFeedRow<C, N>): number =>
-      r.kind === "comment"
-        ? r.at + (r.item.likes ?? 0) * FEED_LIKE_MS + (o.reviewReplies?.get(cKey(r.item)) ?? 0) * FEED_REPLY_MS
-        : r.at + (o.newsLikes?.[nKey(r.item)] ?? 0) * FEED_LIKE_MS + (o.newsReplies?.get(r.item.key) ?? 0) * FEED_REPLY_MS;
-    shown = [...shown].sort((a, b) => effAt(b) - effAt(a));
+    const since = (o.now ?? Date.now()) - ACTIVE_WINDOW_MS;
+    const inWin = shown.filter((r) => r.at >= since);
+    const hot = inWin.some((r) => heat(r) > 0);
+    if (o.report) o.report.quiet = !hot;
+    if (hot) {
+      const older = shown.filter((r) => r.at < since);
+      shown = [...inWin.sort((a, b) => heat(b) - heat(a) || b.at - a.at), ...older];
+    }
   }
   /* «الأفضل» للزائر (D-629): عدٌّ خالصٌ والأحدثُ يفصل التعادل */
   if (o.sort === "top") {
-    const heat = (r: OrderedFeedRow<C, N>): number =>
-      r.kind === "comment"
-        ? (r.item.likes ?? 0) + (o.reviewReplies?.get(cKey(r.item)) ?? 0)
-        : (o.newsLikes?.[nKey(r.item)] ?? 0) + (o.newsReplies?.get(r.item.key) ?? 0);
     shown = [...shown].sort((a, b) => heat(b) - heat(a) || b.at - a.at);
   }
   return shown;

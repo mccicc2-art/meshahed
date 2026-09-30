@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
-import { setFeedStrangers, setFeedSort, setTranslateEnabled } from "@/lib/actions";
+import { setTranslateEnabled } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/core/tabPrefs";
@@ -13,8 +13,6 @@ import {
   sheetScroll,
   sheetMenuItem,
   sheetMenuDivider,
-  segmentedTrackFull,
-  segmentedItem,
 } from "./ui/controls";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { buttonClass } from "./ui/Button";
@@ -113,8 +111,6 @@ export function CommunityTools({
   hiddenRails = [],
   labels,
   activeTab: activeTabProp = "activity",
-  strangers: strangersInitial,
-  feedSort: feedSortInitial = "smart",
   translate: translateInitial = true,
 }: {
   locale: Locale;
@@ -128,9 +124,8 @@ export function CommunityTools({
    * ⚠️ **اختياريٌّ لأن المكوّن يسبق مستهلكَه بدفعة** (D-028) —
    * والافتراضُ تبويبُ الفتح الافتراضيّ. */
   activeTab?: string;
-  /** **هل يُظهر الخطُّ من لا يتابعهم؟** (D-255) — من الخادم كأخواتها */
-  strangers: boolean;
-  /** 🆕 ترتيبُ الخطّ (D-306) — اختياريٌّ بنفس حجّة `activeTab` */
+  /** 🗑️ D-1207 — «من يظهر» والترتيبُ صارا فوق الخطّ (`TalkFilters`) — الخاصّيّتان تُقبلان ولا تُقرآن (D-028) */
+  strangers?: boolean;
   feedSort?: "smart" | "latest";
   /** 🆕 **الترجمةُ التلقائيّة** (D-309) — تفضيلٌ واحدٌ يظهر في أدوات
    * السطحين اللذين يترجمان (النشاط والنقاشات): **بابان لمفتاحٍ واحد
@@ -144,8 +139,6 @@ export function CommunityTools({
   const [tab, setTab] = useState<ToolsTab>("do");
   /* **تفاؤليٌّ بلا ارتداد**: كتابةُ كوكي لا تفشل عملياً، **والارتدادُ
      على مفتاحٍ في ورقةٍ مفتوحة يومض أكثر ممّا يُصلح** */
-  const [strangers, setStrangers] = useState(strangersInitial);
-  const [feedSort, setFeedSortLocal] = useState(feedSortInitial);
   const [translate, setTranslate] = useState(translateInitial);
   const [saving, save] = useTransition();
 
@@ -200,7 +193,7 @@ export function CommunityTools({
      **فالمحاورُ تُجمع لهذا التبويب**، والمسحُ يقع عليها وحدَها. */
   const axes: boolean[] =
     activeTab === "activity"
-      ? [!strangers, feedSort !== "smart", !translate]
+      ? [!translate]
       : activeTab === "talk"
         ? [!translate]
         : [];
@@ -220,8 +213,6 @@ export function CommunityTools({
     tap(8);
     const jobs: Promise<unknown>[] = [];
     if (activeTab === "activity") {
-      if (!strangers) { setStrangers(true); jobs.push(setFeedStrangers(true)); }
-      if (feedSort !== "smart") { setFeedSortLocal("smart"); jobs.push(setFeedSort("smart")); }
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
     } else if (activeTab === "talk") {
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
@@ -298,55 +289,8 @@ export function CommunityTools({
                     <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">
                       {sectionTitle}
                     </p>
-                    <SwitchRow
-                      icon={strangers ? "eye" : "eye-off"}
-                      label={t.feedShowStrangers}
-                      on={strangers}
-                      busy={saving}
-                      onToggle={() => {
-                        tap(8);
-                        const next = !strangers;
-                        setStrangers(next);
-                        save(async () => {
-                          await setFeedStrangers(next);
-                          router.refresh();
-                        });
-                      }}
-                    />
-                    <p className="px-5 pb-3 text-12 text-muted leading-relaxed">
-                      {t.feedShowStrangersHint}
-                    </p>
-                    {/* **والترتيبُ مقسّمٌ من عائلتنا لا مفتاحان** (D-016):
-                        خياران يتنافيان يركبان مقسّماً — **ومفتاحان
-                        منفصلان يسمحان بحالةٍ رابعةٍ تكذب.** */}
-                    <div className="px-5 pb-3">
-                      <div
-                        className={segmentedTrackFull}
-                        role="group"
-                        aria-label={sectionTitle}
-                      >
-                        {(["smart", "latest"] as const).map((k) => (
-                          <button
-                            key={k}
-                            type="button"
-                            aria-pressed={feedSort === k}
-                            disabled={saving}
-                            onClick={() => {
-                              if (feedSort === k) return;
-                              tap(6);
-                              setFeedSortLocal(k);
-                              save(async () => {
-                                await setFeedSort(k);
-                                router.refresh();
-                              });
-                            }}
-                            className={segmentedItem(feedSort === k, "flex-1")}
-                          >
-                            {k === "smart" ? t.feedSortSmart : t.feedSortLatest}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    {/* 🗑️ D-1207 — **«من يظهر» والترتيبُ غادرا الأدوات** إلى فوق الخطّ (`TalkFilters kind="feed"`، أحمد: «الكل وناس
+                        اتابعهم ولاتيست و موست اكتيف») — الكوكيزُ نفسُها؛ وبابان لفعلٍ واحدٍ خلل (القاعدة ٣). */}
                     {/* 🆕 **مفتاحُ الترجمة التلقائيّة** (D-309، طلبُ أحمد:
                         «ضيف خيار بالتولز لإلغاء الترجمة التلقائية») —
                         **كوكي واحدٌ يظهر في أدوات السطحين اللذين

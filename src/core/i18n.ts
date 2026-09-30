@@ -1002,7 +1002,10 @@ const ar = {
   talkSortActive: "الأكثر تفاعلاً",
   talkSortAria: "ترتيب النقاشات",
   talkRoomsCount: (n: number) => (n === 1 ? "نقاشٌ واحد" : n === 2 ? "نقاشان" : `${num(n, "ar")} ${n >= 3 && n <= 10 ? "نقاشات" : "نقاشاً"}`),
-  talkRoomActivityWeek: (n: number) => (n === 0 ? "لا تفاعل هذا الأسبوع" : n === 1 ? "تفاعلٌ واحد هذا الأسبوع" : `${num(n, "ar")} تفاعلاً هذا الأسبوع`),
+  talkRoomActivityMonth: (n: number) => (n === 0 ? "لا تفاعل هذا الشهر" : n === 1 ? "تفاعلٌ واحد هذا الشهر" : `${num(n, "ar")} تفاعلاً هذا الشهر`),
+  /* 🆕 D-1207 — «الأكثر تفاعلاً» في شهرٍ صامت (النشاط والنقاشات) · وشريحةُ النشاط */
+  activeQuietHint: "لا تفاعل هذا الشهر — مرتّبة بالأحدث",
+  feedScopeFollowing: "من أتابعهم",
   talkMineEmpty: "لا نقاش في أعمال مكتبتك بعد — جرّب «الكل»",
   /* **نشرةُ Loopz في الغرفة** (D-261، طلبُ أحمد: «نزول حلقة كذا بعنوان
      كذا وأخذت تقييم كذا، ويذكر أبرز ما فيها»).
@@ -3025,7 +3028,9 @@ const en: Dict = {
   talkSortActive: "Most active",
   talkSortAria: "Sort discussions",
   talkRoomsCount: (n: number) => (n === 1 ? "1 discussion" : `${num(n, "en")} discussions`),
-  talkRoomActivityWeek: (n: number) => (n === 0 ? "No activity this week" : n === 1 ? "1 interaction this week" : `${num(n, "en")} interactions this week`),
+  talkRoomActivityMonth: (n: number) => (n === 0 ? "No activity this month" : n === 1 ? "1 interaction this month" : `${num(n, "en")} interactions this month`),
+  activeQuietHint: "No activity this month — showing latest first",
+  feedScopeFollowing: "People I follow",
   talkMineEmpty: "No discussions on your titles yet — try All",
   bulletinEpisode: (season: number, episode: number, name?: string | null) =>
     name
