@@ -179,20 +179,89 @@ export function jankStart(extra: Extra): () => void {
  * ====== ضغطةُ تبويب ⇒ الشاشةُ مرسومة (`tab.switch`) ======
  * الشريطُ يسجّل الوجهةَ ووقتَها، والشاشةُ الجذرُ تعلن وصولَها بعد أوّل رسم. وصولٌ لا
  * يطابق الوجهة (رجوعٌ، أو بابٌ ويبيّ) لا يُكتب — ولا ضغطةٌ أقدمُ من ١٠ ثوانٍ.
+ *
+ * 🆕 D-1208 — **الرقمُ مقسومٌ على مراحله** (قياسٌ لا يغيّر سلوكاً): بعد K3a بقي الوسيطُ ١٢٠–٢٥٠ms بدل ~٢٠
+ * المتوقَّعة، وحتى «البحث» — أخفُّ الجذور — لا ينزل عن ~١٠٠. كلفةٌ ثابتةٌ في كلِّ تبديل لا نعرف مكانَها،
+ * وإصلاحٌ قبل معرفته تخمين (D-152). فالعلامةُ نفسُها تحمل الآن:
+ * - `from` — التبويبُ المتروك: تجميدُه وآثارُ مغادرته جزءٌ من الثمن، وقد يكون «من اكتشف» هو الثقيل لا «إلى اكتشف».
+ * - `go` — من الضغطة إلى عودة نداء التنقّل: عملُ JS المتزامن في الضغطة نفسِها.
+ * - `focus` — من الضغطة إلى تأثير الظهور في الوجهة: فكُّ التجميد ورسمُ ما تراكم وهو مخفيّ والالتزام.
+ *   والباقي (`ms − focus`) إطارا الرسم بعد الظهور ومعهما ما أطلقه الظهورُ نفسُه (التجديدُ عند العودة).
+ * - `drop` — إطاراتٌ ضاعت على خيط JS في النافذة كلِّها (ميزانيّةُ 60Hz كـ`gesture.jank`): رقمٌ كبير = الخيطُ
+ *   مشغول، وصفرٌ مع زمنٍ طويل = الانتظارُ خارج JS (الجسر أو خيطُ الواجهة) — والعلاجان مختلفان.
+ * - `cached` — ١ إن سبق أن وصل هذا التبويبُ في عمر العمليّة (يُفكّ تجميدُه)، و٠ لأوّل وصول (يُركَّب من الصفر
+ *   بـ`lazy`) — كي لا يختلط التركيبُ الأوّل بكلفة التبديل. (مجموعةٌ أُعيد تركيبُها تحت بابٍ ويبيّ تُقرأ `1` خطأً — نادرةٌ بعد K3b.)
+ * الساعةُ تبدأ من `onPress` (رفعُ الإصبع) كما كانت، فالأرقامُ تُقارن بما قبلها.
  */
-let pendingTab: { to: string; t0: number } | null = null;
-export function tabPressed(to: string) {
-  pendingTab = { to, t0: performance.now() };
+let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; stopFrames: () => number } | null = null;
+
+/** عدّادُ إطاراتٍ ضائعة يعمل حتى يُطلب رقمُه — نسخةُ `jankStart` بلا حدِّ مدّةٍ ولا علامة */
+function frameCounter(): () => number {
+  let raf = 0;
+  let last = performance.now();
+  let dropped = 0;
+  let live = true;
+  const tick = (now: number) => {
+    if (!live) return;
+    const gap = now - last;
+    last = now;
+    if (gap > FRAME_MS * 1.5) dropped += Math.round(gap / FRAME_MS) - 1;
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+  return () => {
+    if (live) {
+      live = false;
+      cancelAnimationFrame(raf);
+    }
+    return dropped;
+  };
 }
+
+export function tabPressed(to: string, from: string) {
+  pendingTab?.stopFrames();
+  /* ضغطةُ التبويب الظاهر لا تنقل ولا تُعلن وصولاً — لا شيءَ يُقاس، ولا عدّادٌ يدور بلا نهاية */
+  if (to === from) {
+    pendingTab = null;
+    return;
+  }
+  pendingTab = { to, from, t0: performance.now(), stopFrames: frameCounter() };
+}
+/** نداءُ التنقّل عاد (الشريطُ يستدعيها بعد `onGo`/`navigate`) */
+export function tabGone() {
+  const p = pendingTab;
+  if (p && p.go === undefined) p.go = performance.now() - p.t0;
+}
+const landedOnce = new Set<string>();
 export function tabLanded(key: string) {
   const p = pendingTab;
+  const seen = landedOnce.has(key);
+  landedOnce.add(key);
   if (!p || p.to !== key) return;
   pendingTab = null;
+  p.focus = performance.now() - p.t0;
   afterPaint(() => {
     const ms = performance.now() - p.t0;
-    if (ms < 10_000) mark("tab.switch", ms, { tab: key });
+    const drop = p.stopFrames();
+    if (ms < 10_000)
+      mark("tab.switch", ms, {
+        tab: key,
+        from: p.from,
+        ...(p.go !== undefined ? { go: Math.round(p.go) } : {}),
+        focus: Math.round(p.focus ?? ms),
+        drop,
+        cached: seen ? 1 : 0,
+      });
   });
 }
+/* ضغطةٌ لم تصل (بابٌ ويبيّ اعترضها، أو رجوع) لا تُبقي عدّادَ الإطارات حيّاً: يُطفأ بعد ١٠ ثوانٍ كحدِّ العلامة */
+setInterval(() => {
+  const p = pendingTab;
+  if (p && performance.now() - p.t0 > 10_000) {
+    p.stopFrames();
+    pendingTab = null;
+  }
+}, 10_000);
 
 /**
  * ====== من الإقلاع إلى أوّل بياناتٍ حيّة (`boot.fresh`) ======

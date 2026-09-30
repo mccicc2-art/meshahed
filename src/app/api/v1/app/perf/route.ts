@@ -82,7 +82,8 @@ const NAMES = new Set([
   "stats.open",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src"]);
+/* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS) */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

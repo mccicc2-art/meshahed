@@ -1,6 +1,6 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { tabPressed } from "./perfMarks";
+import { tabGone, tabPressed } from "./perfMarks";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
@@ -81,14 +81,17 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
           <Pressable
             key={tb.key}
             onPress={() => {
-              tabPressed(tb.key);
+              tabPressed(tb.key, active);
               /* 🆕 11-M · M1 — «المجتمع» جذرٌ أصليٌّ خامس (D-1171): من أيِّ جذرٍ تبديلٌ إلى تبويبه الحيّ كأخواته،
                  في مكانٍ واحدٍ لا في كلِّ جذر. الغلافُ (`shell`) يمرّره لأنّ عليه نزعَ الباب قبل الانتقال */
               if (tb.key === "people" && !shell && active !== "people") {
                 router.navigate("/community");
+                tabGone();
                 return;
               }
               onGo(tb.key);
+              /* D-1208 — مرحلةُ `go`: كم أخذ نداءُ التنقّل نفسُه قبل أن يعود */
+              tabGone();
             }}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
