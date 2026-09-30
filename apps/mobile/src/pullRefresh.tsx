@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useApp } from "./state";
@@ -30,5 +30,9 @@ export function usePullRefresh(keys: readonly QueryKey[], offset: number) {
     /* المفاتيحُ مصفوفةٌ يبنيها المنادي كلَّ رسمة؛ هويّتُها نصُّها */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qc, JSON.stringify(keys)]);
-  return <RefreshControl refreshing={on} onRefresh={() => void run()} tintColor={tokens.accent} colors={[tokens.accent]} progressBackgroundColor={tokens.surface} progressViewOffset={offset} />;
+  /* 🆕 N3-fix2 — عنصرٌ ثابتُ الهويّة ما لم تتغيّر حالُه: لوحٌ مذكَّرٌ (`memo` — ملفُّ الشخص) لا يُعاد رسمُه لأنّ الدوّارَ وُلد من جديد */
+  return useMemo(
+    () => <RefreshControl refreshing={on} onRefresh={() => void run()} tintColor={tokens.accent} colors={[tokens.accent]} progressBackgroundColor={tokens.surface} progressViewOffset={offset} />,
+    [on, run, tokens.accent, tokens.surface, offset],
+  );
 }

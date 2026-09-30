@@ -89,7 +89,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const key = profileKey(username);
+  /* 🆕 N3-fix2 — مفتاحٌ ثابتُ الهويّة: كان مصفوفةً جديدةً كلَّ رسمة فيُبطل كلَّ `useCallback`/`useMemo` يعتمد عليه */
+  const key = useMemo(() => profileKey(username), [username]);
 
   const q = useQuery({
     queryKey: key,
@@ -290,7 +291,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   });
 
   /* ——— 🆕 N3 — أدواتُ صاحب الملفّ ——— */
-  const own = d?.viewer.is_me ? d.owner : null;
   const patch = useCallback((f: (p: ProfilePayload) => ProfilePayload) => qc.setQueryData<ProfilePayload>(key, (p) => (p ? f(p) : p)), [qc, key]);
   /** صفوفُ المفضّلة: الورقةُ ترتّب نوعاً واحداً، والقائمةُ واحدةٌ للأنواع — خاناتُ النوع تُملأ بترتيبه الجديد وما سواه يثبت (D-567) */
   const saveFav = useCallback(
@@ -463,14 +463,32 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /* 🆕 N3-fix — **اسحب للتحديث** (أحمد ٣٠ سبتمبر: «خليه فيه ريفريش اذا سحبته على تحت») — `usePullRefresh` نفسُه الذي في المكتبة
      واكتشف والمجتمع؛ كلُّ الألواح من حمولةٍ واحدة فمفتاحٌ واحد. الدوّارُ تحت الرأس (`headH`) لا خلفه. */
   const refresh = usePullRefresh([key], headH);
-  const renderPane = (k: ProfileTabKey) =>
-    d ? (
-      <ProfilePane
-        k={k}
-        topPad={headH}
-        minH={viewportH + maxC}
-        bottomPad={insets.bottom + 40}
-        register={(ref) => {
+  /**
+   * 🔴 N3-fix2 — **الضغطُ على تبويبٍ كان أبطأَ من «اكتشف»** (تسجيلُ أحمد ٣٠ سبتمبر: «اكتشف اسلس واسرع»): الخطُّ ينتقل والجسمُ يتبعه
+   * بعد ٠٫٥–٠٫٨ث، وفي «اكتشف» ٠٫٣ث. **العلّة**: كلُّ ضغطةٍ (`setTab`) كانت تعيد رسمَ الألواح الخمسة كلِّها — `warmAll` يُبقيها
+   * مركّبةً، وأجسامُها (سجلُّ النشاط · المراجعات · الصفوف) تُبنى من جديد لأنّ كلَّ خاصّيّةٍ فيها دالّةٌ أو عنصرٌ يولد مع الرسمة.
+   * «اكتشف» ألواحُه مكوّناتٌ مستقلّةٌ لا تتغيّر خصائصُها بالضغط. **الآن مثلُه**: الأجسامُ تُبنى مرّةً لكلِّ حمولة (`useMemo` على `d`)،
+   * والغلافُ `ProfilePane` مذكَّرٌ (`memo`) بخصائصَ ثابتةِ الهويّة (دوالُّ لكلِّ مفتاحٍ تُحفظ مرّةً) — فالضغطةُ تحرّك الخطَّ واللوحَ
+   * ولا تمسّ ما في داخلهما. الشكلُ والحركةُ والأرقامُ كما هي.
+   */
+  const bodies = useMemo(() => {
+    if (!d) return null;
+    const o = d.viewer.is_me ? d.owner : null;
+    return {
+      favorites: <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
+      overview: <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
+      activity: <ActivityPane rows={d.activity} onTitle={openTitle} />,
+      reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />,
+      lists: <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={o ? { on: o.saved_lists, onToggle: setSaved } : undefined} />,
+    } satisfies Record<ProfileTabKey, React.ReactNode>;
+  }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved]);
+  /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
+  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (y: number) => void }>()).current;
+  const fnsOf = (k: ProfileTabKey) => {
+    let f = paneFns.get(k);
+    if (!f) {
+      f = {
+        register: (ref) => {
           /* المرجعُ يُعاد مع كلِّ رسم (`null` ثمّ العقدة) — الموضعُ المحفوظُ لا يُمحى معه، والمزامنةُ لعقدةٍ جديدةٍ وحدَها */
           const cur = panes.get(k);
           if (!ref) {
@@ -480,22 +498,26 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           const fresh = cur?.ref !== ref;
           panes.set(k, { ref, y: cur?.y ?? 0 });
           if (fresh && !cur) syncPane(k);
-        }}
-        onScroll={(y) => onPaneScroll(k, y)}
+        },
+        onScroll: (y) => onPaneScroll(k, y),
+      };
+      paneFns.set(k, f);
+    }
+    return f;
+  };
+  const renderPane = (k: ProfileTabKey) =>
+    bodies ? (
+      <ProfilePane
+        k={k}
+        topPad={headH}
+        minH={viewportH + maxC}
+        bottomPad={insets.bottom + 40}
+        register={fnsOf(k).register}
+        onScroll={fnsOf(k).onScroll}
         onSettle={syncOthers}
         refreshControl={refresh}
       >
-        {k === "favorites" ? (
-          <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={own?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />
-        ) : k === "overview" ? (
-          <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={own ? (sec) => setSorting({ sec }) : undefined} />
-        ) : k === "activity" ? (
-          <ActivityPane rows={d.activity} onTitle={openTitle} />
-        ) : k === "reviews" ? (
-          <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />
-        ) : (
-          <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={own ? { on: own.saved_lists, onToggle: setSaved } : undefined} />
-        )}
+        {bodies[k]}
       </ProfilePane>
     ) : null;
 
@@ -638,7 +660,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                       key={k}
                       onPress={() => {
                         if (k === active) return;
-                        haptic.pick();
+                        /* 🔴 N3-fix2 — بلا اهتزاز (أحمد ٣٠ سبتمبر: «فيها ثقل حتى فالاحساس .. مع اهتزاز»): شريطُ «اكتشف» والمكتبة
+                           والمجتمع لا يهتزّ عند الضغط — كان هذا الشريطُ وحدَه يهتزّ، فتُحسّ الضغطةُ أثقلَ من أخواتها */
                         pick(k);
                       }}
                       accessibilityRole="tab"
@@ -733,7 +756,7 @@ function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "s
 }
 
 /** لوحُ تبويبٍ في `TabSlide`: تمريرٌ رأسيٌّ خاصٌّ به، يبدأ بفراغٍ بطول الرأس، وطولُه يكفي ليلتصق الشريطُ أيّاً كان محتواه */
-function ProfilePane({
+const ProfilePane = React.memo(function ProfilePane({
   topPad,
   minH,
   bottomPad,
@@ -767,7 +790,7 @@ function ProfilePane({
       {children}
     </ScrollView>
   );
-}
+});
 
 function MenuRow({ icon, label, onPress, dim = false, danger = false }: { icon: "comment" | "shield" | "close"; label: string; onPress: () => void; dim?: boolean; danger?: boolean }) {
   const { tokens } = useApp();
