@@ -47,7 +47,8 @@ function patchPayload(fn: (d: CommunityPayload) => CommunityPayload): void {
 }
 
 function patchRow(key: string, fn: (r: CommunityFeedRow) => CommunityFeedRow): void {
-  patchPayload((d) => ({ ...d, feed: { ...d.feed, rows: d.feed.rows.map((r) => (r.key === key ? fn(r) : r)) } }));
+  /* D-1228 — الصفُّ قد يكون في شريحةٍ أخرى (`extra`) — يُرقَّع حيث كان */
+  patchPayload((d) => ({ ...d, feed: { ...d.feed, rows: d.feed.rows.map((r) => (r.key === key ? fn(r) : r)), ...(d.feed.extra ? { extra: d.feed.extra.map((r) => (r.key === key ? fn(r) : r)) } : {}) } }));
 }
 
 /** القلبُ في الحقل الذي يرسمه ذيلُ هذا الصفّ — رأيُ العمل · رأيُ القائمة (D-370) · خبرُنا */

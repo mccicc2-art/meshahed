@@ -223,7 +223,10 @@ export function CommunityScreen() {
       haptic.pick();
       const undo = d?.prefs ?? null;
       patchPrefs((p) => ({ ...p, ...patch }));
-      void savePrefs("/api/v1/me/prefs/community", patch, undo, true);
+      /* 🆕 D-1228 — الشرائحُ والترتيبُ (الخطّ والنقاشات) تُرسم في اليد: الكتابةُ تحفظ التفضيلَ ولا تعيد الجلب — إلّا الترجمة
+         (نصوصٌ من الخادم)، أو ردٌّ بلا شرائح الخطّ */
+      const local = !("translate" in patch) && (("strangers" in patch || "sort" in patch) ? !!d?.feed.variants : true);
+      void savePrefs("/api/v1/me/prefs/community", patch, undo, !local);
     },
     [d, patchPrefs, savePrefs],
   );
@@ -461,6 +464,23 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
   /* 🆕 D-1207 — شهرٌ بلا تفاعلٍ في كلِّ ما يُعرض: البطاقاتُ بسطرها العادي والسطرُ الخافتُ يقول لماذا */
   const talkActive = talkPrefs?.talk_sort === "active";
   const talkIsQuiet = talkActive && talkQuiet(talkRooms);
+  /* 🆕 D-1228 — **شريحةُ الخطّ في اليد**: الخادمُ يرسل الشرائحَ الأربع مرتّبةً بمفاتيح الصفوف (`feed.variants`) والصفوفَ كلَّها مرّةً
+     (`rows` + `extra`)، فـ«الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» تُرى في الإطار نفسِه — كانت تكتب ثمّ تعيد جلبَ المجتمع (~٢ث).
+     ردٌّ بلا شرائح (زائرٌ أو خادمٌ أقدم) يُرسم كما كان. */
+  const feedView = useMemo(() => {
+    const p = d.prefs;
+    const v = p ? d.feed.variants?.find((x) => x.strangers === p.strangers && x.sort === p.sort) : undefined;
+    if (!v) return { rows: d.feed.rows, quiet: !!d.feed.quiet };
+    const byKey = new Map<string, CommunityFeedRow>();
+    for (const r of d.feed.rows) byKey.set(r.key, r);
+    for (const r of d.feed.extra ?? []) byKey.set(r.key, r);
+    const rows: CommunityFeedRow[] = [];
+    for (const k of v.keys) {
+      const r = byKey.get(k);
+      if (r) rows.push(r);
+    }
+    return { rows, quiet: v.quiet };
+  }, [d.feed, d.prefs]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -470,13 +490,13 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
   if (k === "activity") {
     return (
       <FlatList
-        data={d.feed.rows}
+        data={feedView.rows}
         keyExtractor={(r) => r.key}
         renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
-        /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرشّح ويرتّب فيُعاد الجلب */
+        /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
         ListHeaderComponent={
           d.prefs ? (
-            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} count={d.feed.rows.length} quiet={d.prefs.sort === "smart" && !!d.feed.quiet} onPrefs={onPrefs} />
+            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} count={feedView.rows.length} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
           ) : null
         }
         onViewableItemsChanged={views.onViewableItemsChanged}

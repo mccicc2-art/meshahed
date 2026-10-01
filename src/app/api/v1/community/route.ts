@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
     const scope: "all" | "following" =
       user && req.nextUrl.searchParams.get("scope") === "following" ? "following" : "all";
 
-    /* 🆕 D-1201 — **الغرفُ كلُّها تُرسل وكلٌّ يحمل `mine`**: شريحتا «الكل · أعمالي» تُرشِّحان في يد التطبيق بلا جلب
-       (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
+    /* 🆕 D-1201 — **الغرفُ كلُّها تُرسل وكلٌّ يحمل `mine`**: شريحتا «الكل · أعمالي» تُرشِّحان في يد التطبيق بلا جلب
+       (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
     const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort });
     await refreshCommunityAfter(true);
 
@@ -66,9 +66,29 @@ export async function GET(req: NextRequest) {
     const off = (k: Parameters<typeof railOff>[1]) => railOff(hiddenRails, k);
     const meId = user?.id ?? "";
     const sort = user ? feedSort : "top";
-    /* 🆕 D-1207 — المرتِّبُ يقول إن كان شهرُ «الأكثر تفاعلاً» صامتاً */
+    /* 🆕 D-1207 — المرتِّبُ يقول إن كان شهرُ «الأكثر تفاعلاً» صامتاً */
     const feedReport = { quiet: false };
     const feedOut = feedRows(core, { meId, showStrangers, sort, t, locale, report: feedReport });
+    /* 🆕 D-1228 — **الشرائحُ الأربع في الردّ نفسِه** (تسجيلُ أحمد: «من أتابعهم» تتأخّر ~٢ث): كانت كلُّ ضغطةٍ تكتب التفضيلَ ثمّ تعيد
+       جلبَ المجتمع كلِّه — نداءان متتاليان والخطُّ القديمُ ظاهرٌ بينهما. الترتيبُ دالّةٌ نقيّةٌ على البيانات نفسِها (`orderCommunityFeed`)،
+       فتُحسب الأربعُ هنا ويبدّل التطبيقُ بينها في يده؛ الويبُ يبقى يرشّح على الخادم. */
+    const variants: NonNullable<CommunityPayload["feed"]["variants"]> = [];
+    const extra: CommunityPayload["feed"]["rows"] = [];
+    if (user) {
+      const seen = new Set(feedOut.map((r) => r.key));
+      for (const strangers of [true, false])
+        for (const vs of ["smart", "latest"] as const) {
+          const same = strangers === showStrangers && vs === feedSort;
+          const rep = { quiet: false };
+          const rows = same ? feedOut : feedRows(core, { meId, showStrangers: strangers, sort: vs, t, locale, report: rep });
+          for (const r of rows)
+            if (!seen.has(r.key)) {
+              seen.add(r.key);
+              extra.push(r);
+            }
+          variants.push({ strangers, sort: vs, keys: rows.map((r) => r.key), quiet: vs === "smart" && (same ? feedReport.quiet : rep.quiet) });
+        }
+    }
 
     const payload: CommunityPayload = {
       viewer: { signed_in: !!user, me_id: user?.id ?? null, admin: core.amAdmin },
@@ -91,6 +111,7 @@ export async function GET(req: NextRequest) {
         quiet: sort === "smart" && feedReport.quiet,
         empty_text: t.feedEmptyForYou,
         follow_loopz: followsLoopz(core),
+        ...(user ? { variants, extra } : {}),
       },
       rooms: core.roomsShown.map((r) => roomOut(core, r, t, locale)),
       board: {

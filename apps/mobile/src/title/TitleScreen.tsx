@@ -314,6 +314,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
      قليلاً عن الحافّة حيث لا تتّسع بدل أن يصطدم بالزرّ. */
   const POSTER_H = 168;
   const lift = Math.min(POSTER_H, heroH - 52);
+  /* D-1227 — البطلُ والملصقُ من البذرة حتى يصل العمل، ثمّ منه — العنصران نفسُهما فلا يُعاد تحميلُهما */
+  const heroBd = d ? d.backdrop_path : (seed?.backdrop_path ?? null);
+  const heroPoster = d ? d.poster_path : (seed?.poster_path ?? null);
   const watchedSet = useMemo(() => new Set(d?.kind === "tv" ? d.me.watched : []), [d]);
 
   return (
@@ -329,32 +332,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         </View>
       </View>
 
-      {!d && seed ? (
-        /* 🆕 D-1221 — الرأسُ من البطاقة بهندسة الصفحة نفسِها (البطلُ · الملصقُ يعلوه بـ`lift` · الاسمُ في أعلاه) فلا يقفز شيءٌ حين يصل
-           العمل: تُضاف الخلفيّةُ والتفاصيلُ في أماكنها. وتحته هيكلُ صفّ الأفعال والتبويبات كما كان */
-        <View>
-          <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
-            {/* 🆕 D-1226 — الخلفيّةُ من البطاقة إن حملتها (تُحمَّل منذ اللمس — `primeTitle`)، ورابطُها رابطُ الصفحة نفسُه فلا وميضَ حين تصل */}
-            {seed.backdrop_path ? <Image source={{ uri: backdropUrl(seed.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
-            {seed.backdrop_path ? <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" /> : null}
-            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
-              <Chevron color="#fff" />
-            </Pressable>
-          </View>
-          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
-            <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-              {seed.poster_path ? <Image source={{ uri: posterUrl(seed.poster_path, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-            </View>
-            <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-              <Text size={22} weight="700" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed.name}</Text>
-            </View>
-          </View>
-          <View style={{ padding: PAGE_PAD, gap: 12 }}>
-            <View style={{ height: 44, borderRadius: radius.control, backgroundColor: tokens.surface2 }} />
-            <View style={{ height: 22, width: 200, borderRadius: 6, backgroundColor: tokens.surface2 }} />
-          </View>
-        </View>
-      ) : !d ? (
+      {/* 🔴 D-1227 — **شجرةٌ واحدةٌ للبذرة وللعمل** (تسجيلُ أحمد: «رمشة إذا دخلت صفحة الفلم»): كانت البذرةُ (D-1221) شجرةً مستقلّةً
+          تُستبدل كلُّها حين يصل العمل، فتُركَّب صورتا الخلفيّة والملصق من جديد ويبقى مكانُهما فارغاً إطاراً أو اثنين ثمّ يعودان.
+          الآن صفحةٌ واحدة: البطلُ والملصقُ عنصران ثابتان مصدرُهما البذرةُ ثمّ العمل، وما يحتاج العملَ يُرسم هيكلاً في مكانه
+          حتى يصل — فلا شيءَ يُعاد تركيبه. */}
+      {!d && !seed ? (
         <View style={{ padding: PAGE_PAD, gap: 12 }}>
           <View style={{ height: heroH, borderRadius: radius.card, backgroundColor: tokens.surface2 }} />
           <View style={{ height: 22, width: 200, borderRadius: 6, backgroundColor: tokens.surface2 }} />
@@ -368,16 +350,18 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
             {/* D-1226 — بلا تلاشٍ إن رسمتها البذرةُ قبلُ: الصورةُ نفسُها حاضرةٌ في الذاكرة، والتلاشي كان يضيف ٢٠٠ms */}
-            {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === d.backdrop_path ? 0 : 200} /> : null}
+            {heroBd ? <Image source={{ uri: backdropUrl(heroBd, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === heroBd ? 0 : 200} /> : null}
             {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
             {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
-            <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="dots" size={20} color="#fff" />
-            </Pressable>
+            {d ? (
+              <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="dots" size={20} color="#fff" />
+              </Pressable>
+            ) : null}
           </View>
           {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
               كان يهبط ٥٦ تحتها فتطول الترويسةُ بلا سبب؛ الآن يرتفع بقدر ارتفاعه تقريباً
@@ -392,8 +376,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               وبدونه يُقرأ على الصورة العارية فيضيع على خلفيّةٍ فاتحة. */}
           <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
             <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-              {d.poster_path ? <Image source={{ uri: posterUrl(d.poster_path, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+              {heroPoster ? <Image source={{ uri: posterUrl(heroPoster, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
             </View>
+            {d ? (
             <View style={{ flex: 1, minWidth: 0, gap: 4, paddingTop: 2, alignSelf: "stretch", justifyContent: "space-between" }}>
               <View style={{ gap: 4 }}>
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
@@ -416,9 +401,15 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 <WatchWhere x={x} icon />
               </View>
             </View>
+            ) : (
+            <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <Text size={22} weight="700" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed?.name ?? ""}</Text>
+            </View>
+            )}
           </View>
 
           {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
+          {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16, gap: 10 }}>
             {/* D-1141 — حالتي لم تصل: الصفُّ يُرسم خافتاً ولا يُضغط (لا فعلَ على حالٍ لا نعرفها) */}
             <View pointerEvents={pending ? "none" : "auto"} style={{ opacity: pending ? 0.4 : 1 }}>
@@ -455,6 +446,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {/* ⚖️ D-1034 — صفُّ «قيّم هذا العمل» (D-1006) **حُذف من هنا**: التقييمُ يصعد انبثاقاً بعد «شاهدته»
                 وآخر حلقة، وبابُه الدائم نجمةُ سطر الاسم. الويبُ لم يحمل هذا الصفَّ أصلاً. */}
           </View>
+          ) : (
+          /* D-1227 — هيكلُ صفّ الأفعال حتى يصل العمل — مكانُه نفسُه فلا يقفز ما تحته */
+          <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16 }}>
+            <View style={{ height: 64, borderRadius: radius.card, backgroundColor: tokens.surface2 }} />
+          </View>
+          )}
 
           {/* التبويبات — segmented: الحلقات (مسلسل) · المعلومات · المزيد في الويب */}
           {/* D-1133 — لاصقٌ فخلفيّتُه لونُ الصفحة (وإلّا مرّت الحلقاتُ تحته ظاهرة)؛ ومسافةُ الـ١٦ فوقه انتقلت
@@ -463,6 +460,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               `ScrollViewStickyHeader` في RN **ينقل نمطَ الابن اللاصق إلى غلافه ويستنسخ الابنَ بـ`{ flex: 1 }` وحدَه**
               (`cloneElement(child, { style: styles.fill })`) — فضاع `flexDirection: "row"` واصطفّت الخاناتُ عموداً.
               الابنُ اللاصقُ الآن غلافٌ خلفيّتُه لونُ الصفحة، والصفُّ داخله بنمطه كاملاً. */}
+          {d ? (
           <View style={{ backgroundColor: tokens.bg }}>
           <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD, backgroundColor: tokens.bg }}>
             {(d.kind === "tv" ? (["episodes", "info", "community"] as const) : (["info", "community"] as const)).map((k) => {
@@ -477,7 +475,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             })}
           </View>
           </View>
+          ) : (
+          <View style={{ backgroundColor: tokens.bg, height: 46, borderBottomWidth: 1, borderBottomColor: tokens.divider }} />
+          )}
 
+          {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
             {tab === "community" ? (
               <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} />
@@ -541,6 +543,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               </>
             )}
           </View>
+          ) : null}
         </ScrollView>
       )}
 
