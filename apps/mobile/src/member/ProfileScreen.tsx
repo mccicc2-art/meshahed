@@ -68,6 +68,8 @@ import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
  * الترتيبُ يُرسم فوراً في الكاش (نهجُ D-1094) ثمّ يُكتب؛ الفشلُ يعيد الجلبَ ويقول سببه (D-1179).
  */
 const HEADER_H = 56;
+/** D-1222 — طولا الرأس وشريطِه المقيسان لكلِّ ملفٍّ في هذه الجلسة (انظر `headH`) */
+const headMemo = new Map<string, { head: number; bar: number }>();
 const PAGE_PAD = 16;
 const GAP = 10;
 const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
@@ -414,8 +416,16 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
    */
   const collapse = useRef(new Animated.Value(0)).current;
   const collapseNow = useRef(0);
-  const [headH, setHeadH] = useState(0);
-  const [barH, setBarH] = useState(0);
+  /* 🆕 D-1222 — **الألواحُ تُرسم مع الرأس لا بعده** (تسجيلُ أحمد ١ أكتوبر: الرأسُ يظهر ثمّ الصفوفُ بعده بنحو ٤٠٠ms): الألواحُ تنتظر
+     `headH > 0`، والرقمُ لا يُعرف إلّا بعد أن يُرسم الرأسُ ويُقاس — فالرسمُ الثقيل (الصفوفُ وملصقاتُها) يقع في التزامٍ ثانٍ بعد الأوّل.
+     الآن الطولان المقيسان يُحفظان لكلِّ ملفٍّ في الذاكرة (`headMemo`)، والزيارةُ التالية تبدأ بهما فتُرسم الألواحُ في التزام الرأس
+     نفسِه؛ والقياسُ يصحّحهما إن تغيّرا (سيرةٌ عُدّلت). الزيارةُ الأولى في الجلسة كما كانت. */
+  const memo0 = headMemo.get(username);
+  const [headH, setHeadH] = useState(memo0?.head ?? 0);
+  const [barH, setBarH] = useState(memo0?.bar ?? 0);
+  useEffect(() => {
+    if (headH > 0 && barH > 0) headMemo.set(username, { head: headH, bar: barH });
+  }, [username, headH, barH]);
   const maxC = Math.max(0, headH - barH);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;

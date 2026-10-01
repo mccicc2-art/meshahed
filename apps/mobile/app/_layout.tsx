@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Stack } from "expo-router";
+import { I18nManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -62,12 +63,14 @@ function Shell() {
           headerTintColor: tokens.fg,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: tokens.bg },
-          /* 🆕 D-1220 — **حركةُ الدخول والخروج ظهورٌ تدريجيٌّ بـ١٥٠ms** (تسجيلُ أحمد ١ أكتوبر: «الخروج من البروفايل فيه بطء
-             واضح»): بلا قيمةٍ هنا يأخذ أندرويد ١٣+ حركتَه الافتراضيّة من `react-native-screens` (`rns_default_exit_*`):
-             انزلاقٌ مع تلاشٍ مدّتُه **٤٥٠ms** — قِيس في التسجيل ~٣٧٠ms من بدء الرجوع حتى تسكن الرئيسيّة، والشاشتان فوق بعضهما
-             طوالَها. ودليلُ الحركة (`08`): «لا شيءَ يتحرّك أطولَ من ~٣٥٠ms». `fade` = `rns_fade_in/out` (١٥٠ms) ولا اتّجاهَ
-             فيه فيصحّ في RTL وLTR معاً. ما حدّد حركتَه بنفسه (`none`) يبقى كما هو. */
-          animation: "fade",
+          /* 🆕 D-1220 — **حركةُ الدفع والرجوع قصيرة** (تسجيلُ أحمد ١ أكتوبر: «الخروج من البروفايل فيه بطء واضح»): بلا قيمةٍ هنا يأخذ
+             أندرويد ١٣+ حركتَه الافتراضيّة من `react-native-screens` (`rns_default_exit_*`) — **٤٥٠ms** والشاشتان فوق بعضهما.
+             ⚖️ D-1223 — **انزلاقٌ لا تلاشٍ** (حكمُ أحمد: «أبغاه انزلاق مو تلاشي في كل الشاشات»): `ios_from_*` = الصفحةُ تنزلق
+             كاملةً والتي تحتها تتحرّك ٣٠٪ معها، بمدّة `config_shortAnimTime` (٢٠٠ms) — داخل دليل الحركة (`08`: الدخولُ والخروج
+             ٢٠٠–٢٨٠). **والجهةُ من اتّجاه الواجهة**: `translate` في أندرويد لا ينقلب مع RTL، فالعربيّةُ تدخل من اليسار (جهةُ
+             «التالي» فيها) والإنجليزيّةُ من اليمين. `I18nManager.isRTL` قرارُ إقلاعٍ (`applyDirection`) فلا يتبدّل والشاشةُ حيّة.
+             و`slide_from_*` مدّتُه `config_mediumAnimTime` (٤٠٠ms) فاستُبعد. ما حدّد `none` بنفسه (`(tabs)` · `auth/callback`) كما هو. */
+          animation: I18nManager.isRTL ? "ios_from_left" : "ios_from_right",
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
