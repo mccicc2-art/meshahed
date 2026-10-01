@@ -209,7 +209,7 @@ let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: num
  * **عدٌّ في جسم الرسم بلا حالةٍ ولا أثر** — زيادةُ رقمٍ في كائن.
  */
 let counting: { tally: Record<string, number>; first?: number; t0: number; to: string } | null = null;
-export function tabTick(k: "roots" | "panes" | "rails" | "cards", screen?: string) {
+export function tabTick(k: "roots" | "panes" | "rails" | "cards" | "marq", screen?: string) {
   const c = counting;
   if (!c) return;
   if (k === "roots" && screen === c.to && c.first === undefined) c.first = performance.now() - c.t0;
@@ -243,8 +243,19 @@ function frameCounter(): () => number {
   };
 }
 
+/**
+ * 🆕 D-1230 — **آخرُ تبويبٍ غادره الشريط** (لا يُمسح عند الوصول كـ`pendingTab`): غيابُ الشاشة بتبديل تبويبٍ غيرُ غيابها
+ * تحت صفحةٍ مدفوعة — الأوّلُ يجمّدها المتنقّلُ بنفسه (`freezeOnBlur`)، والثاني لا. `rowSight` يسأل هنا كي لا يُطفئ ويُشعل
+ * أسماءَ المكتبة الماشية مع كلِّ تبديل.
+ */
+let lastLeft: { from: string; at: number } | null = null;
+export function tabLeaving(key: string): boolean {
+  return !!lastLeft && lastLeft.from === key && performance.now() - lastLeft.at < 1000;
+}
+
 export function tabPressed(to: string, from: string) {
   pendingTab?.stopFrames();
+  if (to !== from) lastLeft = { from, at: performance.now() };
   /* ضغطةُ التبويب الظاهر لا تنقل ولا تُعلن وصولاً — لا شيءَ يُقاس، ولا عدّادٌ يدور بلا نهاية */
   if (to === from) {
     pendingTab = null;

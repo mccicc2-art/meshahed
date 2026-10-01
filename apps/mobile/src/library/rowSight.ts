@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { tabLeaving, tabTick } from "../perfMarks";
 
 /**
  * ====== «أيُّ صفٍّ يُرى الآن» — مخزنٌ صغيرٌ خارج React (D-1025 · Phase 11-F · F1) ======
@@ -29,6 +30,12 @@ export function createRowSight(): RowSight {
       tell();
     },
     setFocused(on) {
+      /* 🆕 D-1230 — **مغادرةُ التبويب لا تُطفئ الأسماء**. أرقامُ ١ أكتوبر: المكتبةُ أبطأُ التبويبات (١٣٨–١٦٣ms دافئةً،
+         والباردةُ ١٥١ = مثلُها ⇒ الكلفةُ ليست تركيباً) و~١٠٠–١٣٠ms منها **بعد** الظهور. السبب: الإطفاءُ عند المغادرة يُرسم
+         لحظةَ فكِّ التجميد ثمّ الإشعالُ عند الظهور — فكلُّ بطاقةٍ ظاهرةٍ تُرسم مرّتين و`MarqueeText` يبدّل مكوّنَه ويقيس
+         من جديد، في نافذة اللمس بالضبط. التبويبُ المغادَر يجمّده المتنقّل، والحلقةُ على السائق الأصليّ كأسماء الرئيسيّة
+         (لا تُطفأ هناك أصلاً). **والصفحةُ المدفوعة فوقها** (عملٌ، قائمة) تبقى تُطفئها كما أراد D-1025. */
+      if (!on && tabLeaving("library")) return;
       if (focused === on) return;
       focused = on;
       tell();
@@ -42,5 +49,7 @@ export function createRowSight(): RowSight {
 }
 
 export function useRowSeen(sight: RowSight, key: string): boolean {
+  /* 🆕 D-1230 — عدّادُ التشخيص: رسماتُ صفوف المكتبة في نافذة التبديل (`marq` في `tab.switch`) */
+  tabTick("marq");
   return useSyncExternalStore(sight.subscribe, () => sight.sees(key));
 }
