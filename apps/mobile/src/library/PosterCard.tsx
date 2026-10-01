@@ -6,6 +6,8 @@ import { Text } from "../ui";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { MarqueeText } from "./MarqueeText";
+import { queryClient } from "../api";
+import { primeTitle, unprimeTitle } from "../title/seed";
 
 /**
  * ====== بطاقةُ الملصق — نسخةُ `PosterCard.tsx` (الويب) بالبكسل ======
@@ -66,6 +68,13 @@ export const PosterCard = memo(function PosterCard({
     <Pressable
       ref={ref}
       onPress={() => onPress(item)}
+      /* 🆕 D-1224 — اللمسُ يجهّز صفحةَ العمل قبل رفع الإصبع (بذرةُ الرأس · جلبُ العمل) — `title/seed.ts` */
+      onPressIn={() => primeTitle(queryClient, { kind: item.kind, id: item.id, title: item.title, poster_path: item.posterPath })}
+      onPressOut={unprimeTitle}
+      /* 🆕 D-1225 — **لا تأخذ تركيزَ الإدخال**: في تسجيل أحمد (١ أكتوبر) انزلق صفُّ «مقترح لك» بطاقةً ونصفاً بعد الرجوع بـ~٣٠٠ms
+         بلا لمس. أندرويد يعيد التركيزَ عند العودة إلى آخر ما ضُغط، و`ScrollView` الأفقيُّ في RN يمرّر إلى العنصر المركَّز
+         (`requestChildFocus` ⇒ `scrollToChild`). البطاقةُ تُضغط ولا يُكتب فيها — وقارئُ الشاشة يعمل بتركيز الإتاحة لا بهذا. */
+      focusable={false}
       onLongPress={hold}
       /* 🆕 D-1048 (Phase 11-F · F5) — **قارئُ الشاشة يقرأ البطاقةَ ويصل قائمتَها**: كانت بلا دورٍ ولا اسم (TalkBack
          يقرأ ما تحتها قطعاً)، وقائمةُ الضغط المطوّل لا يبلغها من لا يضغط مطوّلاً. الاسمُ = العنوانُ وحالُه؛ وفعلٌ
@@ -78,7 +87,8 @@ export const PosterCard = memo(function PosterCard({
         if (e.nativeEvent.actionName === "menu") hold?.();
       }}
       delayLongPress={350}
-      style={{ width }}
+      /* 🆕 D-1224 — الضغطةُ تُرى تحت الإصبع؛ خفوتُ بطاقة «اكتشف» نفسُه */
+      style={({ pressed }) => ({ width, opacity: pressed ? 0.8 : 1 })}
     >
       <View
         style={{
