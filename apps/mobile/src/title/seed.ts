@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { qk, softGet } from "../api";
+import { ApiError, qk, softGet } from "../api";
 import { seasonQuery } from "./SeasonAccordion";
 import { backdropUrl } from "@/core/media";
 import type { LibraryPayload, TitlePayload } from "../contracts";
@@ -26,12 +26,41 @@ export type TitleSeed = { name: string; poster_path: string | null; backdrop_pat
 const MAX_NODES = 20_000;
 const MAX_DEPTH = 7;
 
+/**
+ * 🆕 D-1232 — **طلبٌ معلَّقٌ لا يُترك بلا نهاية** (تسجيلُ أحمد مساء ١ أكتوبر: ثلاثةُ أفلامٍ متتالية بقيت صفحتُها على الهيكل
+ * ٨ ثوانٍ وأكثر، بعد أفلامٍ فُتحت فوراً). `fetch` في RN بلا مهلة، وطلبٌ علق في الشبكة يُبقي الاستعلامَ «يجلب» إلى الأبد —
+ * فلا خطأَ يظهر ولا إعادةَ محاولة. بعد المهلة **يُقطع الطلبُ** (`AbortController`) ويُرمى خطأٌ فيعيد `react-query` المحاولةَ مرّةً (`retry: 1`)
+ * بطلبٍ جديدٍ بعد ٣٠٠ms، وإن فشلت ظهر «حاول مجدداً» (`TitleFailure`). ⚖️ ٨ث: الباردُ ~٨٠٠ms وسيطاً — عشرةُ أضعافه طلبٌ
+ * علق لا طلبٌ بطيء، وأسوأُ انتظارٍ قبل الزرّ ~١٦ث بدل «إلى الأبد».
+ */
+const TITLE_TIMEOUT_MS = 8_000;
+function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, outer?: AbortSignal): Promise<T> {
+  const ctl = new AbortController();
+  /* استعلامٌ أُلغي (غادر صاحبُه قبل الردّ) يقطع الطلبَ أيضاً */
+  const onOuter = () => ctl.abort();
+  outer?.addEventListener("abort", onOuter);
+  return new Promise<T>((resolve, reject) => {
+    /* المهلةُ ترفض بنفسها ولا تنتظر الطلب: ما قبل `fetch` (الرمزُ من الجلسة) قد يعلق أيضاً، والقطعُ لا يبلغه */
+    const t = setTimeout(() => {
+      ctl.abort();
+      reject(new ApiError({ code: "upstream", message_key: "apiUpstream" }, 0));
+    }, TITLE_TIMEOUT_MS);
+    run(ctl.signal)
+      .then(resolve, reject)
+      .finally(() => {
+        clearTimeout(t);
+        outer?.removeEventListener("abort", onOuter);
+      });
+  });
+}
+
 /** الجالبُ الواحدُ لصفحة العمل — `TitleScreen` واللمسةُ المسبقة يتشاركانه فلا يفترق مفتاحٌ ولا عنوان */
 export const titleQuery = (kind: "tv" | "movie", id: number) => ({
   queryKey: qk.title(kind, id),
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
-  queryFn: () => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`),
+  queryFn: ({ signal }: { signal?: AbortSignal }) => withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s), signal),
   staleTime: 60_000,
+  retryDelay: 300,
 });
 
 /** بذورٌ سلّمتها بطاقاتٌ لُمست — قليلةٌ ومقصوصة (آخرُ ٣٠)، فلا تكبر مع الجلسة */
@@ -45,7 +74,7 @@ const HANDOFF_MAX = 30;
  */
 type PrimeCard = { kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; backdrop_path?: string | null };
 let primeTimer: ReturnType<typeof setTimeout> | null = null;
-/** إصبعٌ ثبت هذه المدّة على البطاقة ضغطةٌ لا بدايةُ تمرير (التمريرُ يسحب اللمسَ قبلها) — فلا نداءَ لكلِّ بطاقةٍ مرّ عليها الإصبع */
+/** إصبعٌ ثبت هذه المدّةَ على البطاقة ضغطةٌ لا بدايةُ تمرير (التمريرُ يسحب اللمسَ قبلها) — فلا نداءَ لكلِّ بطاقةٍ مرّ عليها الإصبع */
 const PRIME_HOLD_MS = 90;
 
 /** 🆕 D-1224 — لحظةُ آخر لمسةٍ لبطاقة (لقياس `title.tap`) */
