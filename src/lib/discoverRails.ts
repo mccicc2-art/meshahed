@@ -14,7 +14,7 @@ import {
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { railGuard, topChartRail, animeMovieRail, looksAnime } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
-import { getSuggestions } from "@/lib/suggest";
+import { getSuggestions, animePool } from "@/lib/suggest";
 import { getLibState } from "@/lib/libState";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, seasonRange, type BrowseQuery } from "@/core/browse";
 import type { MyRow } from "@/core/myRows";
@@ -290,9 +290,10 @@ export async function personalRails(
     wantMovies && !anime ? buildSection("from-artists", { media: "movie", base: {}, active: false }, 20).catch(() => []) : Promise.resolve([] as SearchResult[]),
     getLibState(),
   ]);
-  const suggested = pool.filter((s) =>
-    anime ? looksAnime(s.result) : (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") && !looksAnime(s.result),
-  );
+  /* D-1217 — الأنمي بِركتُه `animePool`: بذورُ الأنمي تكمّل ما تقصر عنه البِركةُ العامّة */
+  const suggested = anime
+    ? await animePool(pool, locale)
+    : pool.filter((s) => (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") && !looksAnime(s.result));
   for (let i = suggested.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [suggested[i], suggested[j]] = [suggested[j], suggested[i]];

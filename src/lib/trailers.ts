@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { getSuggestions } from "@/lib/suggest";
+import { getSuggestions, animePool } from "@/lib/suggest";
 import { getDismissedTitles, getFollows, getWatchedMovieIds } from "@/lib/data";
 import {
   getTrailerKeys,
@@ -493,12 +493,13 @@ export async function getTrailerFeed(
   /* **والاقتراحاتُ تُطلب واسعةً ثمّ تُقصّ**: `getSuggestions` تخلط
      وتُصفّي المصروفَ والمُشاهَد، **وسقفُها الداخليُّ هو ما نمرّره.** */
   const all = await getSuggestions(POOL, locale).catch(() => []);
-  if (!all.length) return [];
-  const inScope = scope
+  /* D-1217 — الأنمي يكمل بِركتَه ببذور الأنمي (`animePool`)، فلا يصمت صفُّه لمكتبةٍ أغلبُها مسلسلات */
+  if (!all.length && scope !== "anime") return [];
+  const inScope = scope === "anime"
+    ? await animePool(all, locale)
+    : scope
     ? all.filter((s) =>
-        scope === "anime"
-          ? looksAnime(s.result)
-          : (scope === "movies"
+        (scope === "movies"
               ? s.result.media_type === "movie"
               : s.result.media_type === "tv") && !looksAnime(s.result),
       )
@@ -524,7 +525,8 @@ export async function getTrailerFeed(
           (suggestion.result.media_type === "movie" ? "movie" : "tv") === pin.mediaType,
       )
     : undefined;
-  const probe = probeFor(limit);
+  /* D-1217 — مسبارُ الأنمي الأوسع (D-739) هنا أيضاً: معدنُه فقيرُ المقاطع في «لك» كما في الكتالوج */
+  const probe = scope === "anime" ? PROBE_ANIME : probeFor(limit);
   /* 🆕 **والدفعةُ التالية نافذةٌ أبعدُ في البِركة نفسِها** (D-772):
      **ثلاثمئةُ اقتراحٍ مقروءةٌ أصلاً** — **والدفعةُ الثانية قصٌّ منها
      لا نداءٌ جديد**، **والقرعةُ داخل النافذة كما كانت** (D-740).

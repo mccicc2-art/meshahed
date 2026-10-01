@@ -7,8 +7,8 @@ import {
   getWatchSummary,
   getDismissedTitles,
 } from "@/lib/data";
-import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/tmdb";
-import { railGuard } from "@/lib/topChart";
+import { discoverByGenres, recommendationsFor, topByFilter, ANIME_KEYWORD, type SearchResult } from "@/lib/tmdb";
+import { railGuard, looksAnime } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import { cache } from "react";
 import type { Locale } from "@/core/i18n";
@@ -142,3 +142,64 @@ export const getSuggestions = cache(async function getSuggestions(
     prefs: await getContentPrefs(),
   });
 });
+
+/**
+ * 🆕 D-1217 — **بذورُ الأنمي** (بلاغُ أحمد بلقطة، ١ أكتوبر: «مقترح لك» والتريلراتُ
+ * غائبان عن تبويب الأنمي وهما مفعّلان في «الطريقة»).
+ * 🔑 **السببُ في البذور لا في الصفّ**: `getSuggestions` تبذر من أوّل ثمانِ متابعاتٍ
+ * وأحدثِ أربعٍ وما قُيِّم عالياً — **فمكتبةٌ أغلبُها مسلسلاتٌ لا تُخرج أنمي واحداً**،
+ * ويُصفّي التبويبُ (`looksAnime`) البِركةَ إلى صفر فيصمت الصفّ (D-219). فهنا البذورُ
+ * من متابعاته التي نوعُها «رسوم متحرّكة» (16) — **حقلُ `genres` في صفِّ المتابعة
+ * نفسِه، بلا نداء** — والناتجُ يُحرس بـ`looksAnime` كالتبويب.
+ * ⚠️ **ومن لا أنمي في مكتبته يأخذ الأكثرَ أصواتاً ممّا لم يضفه** (مفتاحُ الأنمي) —
+ * صفٌّ «لك» بلا بذرةٍ أصدقُ من صفٍّ غائبٍ في تبويبٍ فتحه ليكتشف.
+ * **مخبَّأةٌ للطلب** كأختها: «مقترح لك» والتريلراتُ يقرآنها في الطلب نفسِه.
+ */
+const ANIMATION_GENRE_ID = 16;
+export const getAnimeSuggestions = cache(async function getAnimeSuggestions(
+  locale: Locale = "ar",
+): Promise<Recommendation[]> {
+  const [rawFollows, rawRatings, watchedMovieIds, dismissed] = await Promise.all([
+    getFollows(),
+    getMyRatings(),
+    getWatchedMovieIds(),
+    getDismissedTitles(),
+  ]);
+  const excluded = new Set<number>([
+    ...rawFollows.map((f) => f.tmdb_id),
+    ...watchedMovieIds,
+    ...rawRatings.filter((r) => r.rating <= 4).map((r) => r.tmdb_id),
+    ...dismissed,
+  ]);
+  const seedRows = rawFollows.filter((f) => (f.genres ?? []).includes(ANIMATION_GENRE_ID) && !f.dropped).slice(0, 8);
+  const candidates: Candidate[] = [];
+  if (seedRows.length) {
+    const seeds = await localizeRows(seedRows, locale);
+    const recs = await Promise.all(
+      seeds.map((f) =>
+        recommendationsFor(f.media_type, f.tmdb_id, 2)
+          .then((rs) => ({ seed: f.title, rs }))
+          .catch(() => ({ seed: f.title, rs: [] as SearchResult[] })),
+      ),
+    );
+    for (const { seed, rs } of recs)
+      rs.filter(looksAnime).forEach((r, i) => candidates.push({ result: r, source: "follows", seedTitle: seed, rank: i }));
+  }
+  if (candidates.length < 10) {
+    const rows = await topByFilter("tv", { keywords: [ANIME_KEYWORD] }, 40, "vote_count.desc").catch(() => [] as SearchResult[]);
+    rows
+      .map((r) => ({ ...r, media_type: r.media_type ?? ("tv" as const) }))
+      .filter(looksAnime)
+      .forEach((r, i) => candidates.push({ result: r, source: "genres", rank: i }));
+  }
+  return blendRecommendations(candidates, { exclude: excluded, limit: 120, prefs: await getContentPrefs() });
+});
+
+/** بِركةُ تبويب الأنمي: أنميُ البِركة العامّة أوّلاً ثمّ بذورُ الأنمي، بلا تكرار */
+export async function animePool(general: Recommendation[], locale: Locale): Promise<Recommendation[]> {
+  const head = general.filter((s) => looksAnime(s.result));
+  if (head.length >= 20) return head;
+  const extra = await getAnimeSuggestions(locale).catch(() => [] as Recommendation[]);
+  const seen = new Set(head.map((s) => `${s.result.media_type}-${s.result.id}`));
+  return [...head, ...extra.filter((s) => !seen.has(`${s.result.media_type}-${s.result.id}`))];
+}
