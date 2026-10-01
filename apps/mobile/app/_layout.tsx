@@ -62,6 +62,12 @@ function Shell() {
           headerTintColor: tokens.fg,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: tokens.bg },
+          /* 🆕 D-1220 — **حركةُ الدخول والخروج ظهورٌ تدريجيٌّ بـ١٥٠ms** (تسجيلُ أحمد ١ أكتوبر: «الخروج من البروفايل فيه بطء
+             واضح»): بلا قيمةٍ هنا يأخذ أندرويد ١٣+ حركتَه الافتراضيّة من `react-native-screens` (`rns_default_exit_*`):
+             انزلاقٌ مع تلاشٍ مدّتُه **٤٥٠ms** — قِيس في التسجيل ~٣٧٠ms من بدء الرجوع حتى تسكن الرئيسيّة، والشاشتان فوق بعضهما
+             طوالَها. ودليلُ الحركة (`08`): «لا شيءَ يتحرّك أطولَ من ~٣٥٠ms». `fade` = `rns_fade_in/out` (١٥٠ms) ولا اتّجاهَ
+             فيه فيصحّ في RTL وLTR معاً. ما حدّد حركتَه بنفسه (`none`) يبقى كما هو. */
+          animation: "fade",
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -82,7 +88,7 @@ function Shell() {
         {/* 🆕 11-M · M4 — «الرسائل والإشعارات» وخيطُ المحادثة: شاشتان مدفوعتان فوق الجذور لا تبويب */}
         <Stack.Screen name="messages/index" options={{ headerShown: false }} />
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
-        {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
+        {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
         <Stack.Screen name="u/[username]" options={{ headerShown: false }} />
         {/* 🆕 11-N · N4 — إحصاءاتُ العضو أصليّةً: تُدفع فوق ملفّه */}
         <Stack.Screen name="member-stats/[username]" options={{ headerShown: false }} />
