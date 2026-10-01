@@ -49,7 +49,7 @@ export const qk = {
 
 export function invalidateTags(tags: Tag[]) {
   for (const tag of tags) void queryClient.invalidateQueries({ queryKey: [tag] });
-  /* 🆕 N3-fix — **وسمُ ملفّي يُبطل شاشةَ الملفّ الأصليّة** (تسجيلُ أحمد ٣٠ سبتمبر: رتّب التبويبات في «التخصيص» وحفظ، فبقي ملفُّه
+  /* 🆕 N3-fix — **وسمُ ملفّي يُبطل شاشةَ الملفّ الأصليّة** (تسجيلُ أحمد ٣٠ سبتمبر: رتّب التبويبات في «التخصيص» وحفظ، فبقي ملفُّه
      بترتيبه القديم نحو عشرين ثانية): الخادمُ يقول `user:me:profile` بعد التخصيص وتعديل الملفّ والسمة والخصوصيّة، ومفتاحُ الشاشة
      `profile:<اسم>` (N1) — فلم يكن الوسمُ يجده، وانتظرت الشاشةُ `staleTime`. المطابقةُ بالبادئة: `me` لا يعرف اسمَ المستخدم، والملفّاتُ
      المفتوحةُ غيرُ ملفّي تُعلَّم شائخةً فقط (لا جلبَ لما لا يُرى). */
@@ -59,7 +59,8 @@ export function invalidateTags(tags: Tag[]) {
 
 export async function api<T>(
   path: string,
-  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean },
+  /* 🆕 D-1232 — `signal`: من يملك مهلةً يقطع الطلبَ نفسَه فيُفرغ مكانَه في الشبكة (لا يبقى معلّقاً خلف ردٍّ لن يُقرأ) */
+  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal },
 ): Promise<{ data: T; invalidates: Tag[] }> {
   const auth = init?.auth !== false;
   /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
@@ -71,6 +72,7 @@ export async function api<T>(
       method: init?.method ?? "GET",
       headers,
       body: init?.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: init?.signal,
     });
     const json = (await res.json().catch(() => null)) as Envelope<T> | null;
     if (!json || "error" in json) {
@@ -95,15 +97,15 @@ export async function api<T>(
  * كان الطلبُ يمضي زائراً **فتُرسم حلقاتٌ «غيرُ مشاهَدة» وقد شوهدت**.
  *
  * 🔑 **الرمزُ حاضرٌ ⇒ الطلبُ كما كان. غائبٌ ⇒ يُطلب العملُ زائراً فوراً ويُوسم `_guest`، ويُطلب الرمزُ في
- * الخلفيّة**، و`useGuestUpgrade` يعيد الجلبَ لحظةَ يصل. **والشاشةُ لا ترسم حالتي من ردِّ زائر** —
- * أفعالُها وعلاماتُها هيكلٌ معطَّلٌ حتى الترقية: لا «غير مشاهَد» كاذب، ولا فعلَ على حالٍ لا نعرفها.
+ * الخلفيّة**، و`useGuestUpgrade` يعيد الجلبَ لحظةَ يصل. **والشاشةُ لا ترسم حالتي من ردِّ زائر** —
+ * أفعالُها وعلاماتُها هيكلٌ معطَّلٌ حتى الترقية: لا «غير مشاهَد» كاذب، ولا فعلَ على حالٍ لا نعرفها.
  */
 export type Soft<T> = T & { _guest?: true };
 
-export async function softGet<T extends object>(path: string): Promise<Soft<T>> {
-  if (session.has()) return (await api<T>(path)).data;
+export async function softGet<T extends object>(path: string, signal?: AbortSignal): Promise<Soft<T>> {
+  if (session.has()) return (await api<T>(path, { signal })).data;
   void session.request();
-  const r = await api<T>(path, { auth: false });
+  const r = await api<T>(path, { auth: false, signal });
   return { ...r.data, _guest: true };
 }
 
@@ -144,10 +146,10 @@ export function useGuestUpgrade(guest: boolean, refetch: () => unknown): { faile
 }
 
 /**
- * 🔴 M3-fix — **جزءُ ملفٍّ في النموذج من ملفٍّ على القرص** — الشكلُ الوحيدُ الذي يقبله `fetch` في Expo 57.
+ * 🔴 M3-fix — **جزءُ ملفٍّ في النموذج من ملفٍّ على القرص** — الشكلُ الوحيدُ الذي يقبله `fetch` في Expo 57.
  *
  * `fetch` العامُّ صار `expo/fetch` (يثبّته `expo/src/winter`)، و`convertFormData` فيه **لا يقبل جزءَ `{uri,name,type}`**
- * الذي كان RN يقرأ ملفَّه بنفسه: يرمي «Unsupported FormDataPart implementation» قبل أن يخرج الطلب — فلا أثرَ في
+ * الذي كان RN يقرأ ملفَّه بنفسه: يرمي «Unsupported FormDataPart implementation» قبل أن يخرج الطلب — فلا أثرَ في
  * الخادم ولا في المخزن (بلاغُ خالد بلقطة ٢٨ سبتمبر بعد أن سمّت M3-fix السبب). يقبل ما له `bytes()`، ويأخذ اسمَ
  * الملفّ ونوعَه من `name`/`type` — فهذا كائنٌ بالثلاثة، والبايتاتُ تُقرأ من القرص حين يُبنى الجسم (ومحاولةُ `401`
  * الثانية تقرؤها ثانيةً). **وصورةُ الملفّ والغلاف كانتا على الشكل القديم نفسِه** فتمرّان من هنا أيضاً.
@@ -157,7 +159,7 @@ export function filePart(uri: string, name: string, type: string): Blob {
 }
 
 /**
- * 🆕 D-1106 — **رفعُ ملفٍّ** (`multipart/form-data`): صورةُ الملفّ والغلاف. الترويساتُ نفسُها وإعادةُ
+ * 🆕 D-1106 — **رفعُ ملفٍّ** (`multipart/form-data`): صورةُ الملفّ والغلاف. الترويساتُ نفسُها وإعادةُ
  * المحاولة عند `401` نفسُها كـ`api` — ولا `Content-Type` يدويّاً: `fetch` يكتب الحدَّ (`boundary`) بنفسه.
  */
 export async function postForm<T>(path: string, form: FormData): Promise<T> {
