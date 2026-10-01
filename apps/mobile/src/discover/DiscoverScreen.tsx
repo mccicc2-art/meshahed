@@ -24,7 +24,7 @@ import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
-import { coldStartVoid, span, tabLanded } from "../perfMarks";
+import { coldStartVoid, span, tabLanded, tabTick } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
@@ -119,11 +119,13 @@ export function warmDiscoverOnce(): void {
 const RAILS: Record<CuratedTab, CuratedRailKey[]> = {
   movies: ["cinemas", "popular", "top10-movie", "top50-movie", "soon"],
   shows: ["popular", "top10-tv", "top50-tv", "soon"],
-  /* ترتيبُ `AnimeRails` حرفاً */
-  anime: ["cinemas", "airing", "popular", "top10-movie", "top10-tv", "soon", "top50-movie", "top50-tv"],
+  /* ترتيبُ `AnimeRails` حرفاً — و«يُعرض الآن» خرج منه (D-1217) */
+  anime: ["cinemas", "popular", "top10-movie", "top10-tv", "soon", "top50-movie", "top50-tv"],
 };
 
 export function DiscoverScreen() {
+  /* D-1218 — عدّادُ التشخيص: رسماتُ الجذر في نافذة التبديل (وأوّلُها = لحظةُ فكّ التجميد) */
+  tabTick("roots", "news");
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const qc = useQueryClient();
@@ -579,6 +581,7 @@ function DiscoverPane({
   /** D-994 — «الكلّ» لصفّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
 }) {
+  tabTick("panes");
   const { t } = useApp();
   const router = useRouter();
   /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
@@ -789,7 +792,7 @@ function DiscoverPane({
  * `onDone` حين لا يبقى جلبٌ وفي الكاش صفٌّ واحدٌ ناجحٌ على الأقلّ. **لماذا لا `useQueries`
  * بمفاتيح الصفوف**: مشترِكٌ بمفتاح صفٍّ مخفيّ (D-997) أو بلا فلترٍ والشاشةُ مفلترة كان
  * سيجلب ما لا تعرضه الشاشة — قياسٌ يثقل ما يقيسه قياسٌ فاسد. ومكوّنٌ مستقلّ كي لا
- * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
+ * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
  */
 function OpenMark({ tab, onDone }: { tab: CuratedTab; onDone: () => void }) {
   const qc = useQueryClient();
@@ -824,6 +827,7 @@ const Rail = memo(function Rail({
   onSeeAll: (path: string, title: string) => void;
   ar: boolean;
 }) {
+  tabTick("rails");
   const { t, tokens } = useApp();
   const q = useQuery({
     queryKey: ["discover:rail", tab, railKey, bq] as const,
@@ -910,6 +914,7 @@ const CardsRail = memo(function CardsRail({
   /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
   action?: { label: string; aria: string; icon: Parameters<typeof Icon>[0]["name"]; onPress: () => void } | null;
 }) {
+  tabTick("rails");
   const { t, tokens } = useApp();
   const shown = useMemo(() => (hidden.size === 0 ? items : items.filter((c) => !hidden.has(`${c.kind}-${c.id}`))), [items, hidden]);
   /* D-1028 (F4) — `renderItem` ثابتة، وبلا `extraData`: الإطارُ والخيطُ تقرؤهما البطاقةُ من

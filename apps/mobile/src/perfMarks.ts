@@ -193,7 +193,28 @@ export function jankStart(extra: Extra): () => void {
  *   بـ`lazy`) — كي لا يختلط التركيبُ الأوّل بكلفة التبديل. (مجموعةٌ أُعيد تركيبُها تحت بابٍ ويبيّ تُقرأ `1` خطأً — نادرةٌ بعد K3b.)
  * الساعةُ تبدأ من `onPress` (رفعُ الإصبع) كما كانت، فالأرقامُ تُقارن بما قبلها.
  */
-let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; stopFrames: () => number } | null = null;
+let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; tally: Record<string, number>; stopFrames: () => number } | null = null;
+/**
+ * 🆕 D-1218 — **عدّاداتُ الرسم في نافذة التبديل** (تشخيصُ «⇐ اكتشف»: `focus` ٨٥–١٠٠ بارداً ومدفّأً معاً — ضعفُ
+ * المكتبة، ولا `useIsFocused` فيها). السؤالُ الذي تجيبه: **هل الوقتُ قبل أوّل رسمٍ للشاشة (فكُّ التجميد والتنقّل)
+ * أم في الرسم نفسِه؟ وكم مكوّناً يُعاد رسمُه؟**
+ * - `first` — ms من الضغطة إلى أوّل رسمٍ لجذر الوجهة.
+ * - `roots` · `panes` · `rails` · `cards` — كم مرّةً رُسم الجذرُ واللوحُ والصفُّ والبطاقةُ من الضغطة إلى ما بعد
+ *   الإطارين (لا إلى `focus` وحدَه: التجديدُ عند العودة يقع بعده).
+ * - `live` — بطاقاتُ الصفوف المركَّبةُ لحظةَ الوصول («اكتشف» وحدَها): حجمُ الشجرة التي فُكّ تجميدُها.
+ * **عدٌّ في جسم الرسم بلا حالةٍ ولا أثر** — زيادةُ رقمٍ في كائن.
+ */
+let counting: { tally: Record<string, number>; first?: number; t0: number; to: string } | null = null;
+export function tabTick(k: "roots" | "panes" | "rails" | "cards", screen?: string) {
+  const c = counting;
+  if (!c) return;
+  if (k === "roots" && screen === c.to && c.first === undefined) c.first = performance.now() - c.t0;
+  c.tally[k] = (c.tally[k] ?? 0) + 1;
+}
+let liveCards = 0;
+export function cardLive(d: 1 | -1) {
+  liveCards += d;
+}
 
 /** عدّادُ إطاراتٍ ضائعة يعمل حتى يُطلب رقمُه — نسخةُ `jankStart` بلا حدِّ مدّةٍ ولا علامة */
 function frameCounter(): () => number {
@@ -223,9 +244,13 @@ export function tabPressed(to: string, from: string) {
   /* ضغطةُ التبويب الظاهر لا تنقل ولا تُعلن وصولاً — لا شيءَ يُقاس، ولا عدّادٌ يدور بلا نهاية */
   if (to === from) {
     pendingTab = null;
+    counting = null;
     return;
   }
-  pendingTab = { to, from, t0: performance.now(), stopFrames: frameCounter() };
+  const t0 = performance.now();
+  const tally: Record<string, number> = {};
+  pendingTab = { to, from, t0, tally, stopFrames: frameCounter() };
+  counting = { tally, t0, to };
 }
 /** نداءُ التنقّل عاد (الشريطُ يستدعيها بعد `onGo`/`navigate`) */
 export function tabGone() {
@@ -240,9 +265,12 @@ export function tabLanded(key: string) {
   if (!p || p.to !== key) return;
   pendingTab = null;
   p.focus = performance.now() - p.t0;
+  const c = counting;
+  const live = key === "news" ? liveCards : undefined;
   afterPaint(() => {
     const ms = performance.now() - p.t0;
     const drop = p.stopFrames();
+    if (counting === c) counting = null;
     if (ms < 10_000)
       mark("tab.switch", ms, {
         tab: key,
@@ -251,6 +279,9 @@ export function tabLanded(key: string) {
         focus: Math.round(p.focus ?? ms),
         drop,
         cached: seen ? 1 : 0,
+        ...(c?.first !== undefined ? { first: Math.round(c.first) } : {}),
+        ...(c?.tally ?? {}),
+        ...(live !== undefined ? { live } : {}),
       });
   });
 }
@@ -260,6 +291,7 @@ setInterval(() => {
   if (p && performance.now() - p.t0 > 10_000) {
     p.stopFrames();
     pendingTab = null;
+    counting = null;
   }
 }, 10_000);
 
