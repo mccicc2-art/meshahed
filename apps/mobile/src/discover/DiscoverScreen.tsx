@@ -533,7 +533,12 @@ export function DiscoverScreen() {
 /** «مقترحٌ لك»: عشرةٌ في المرّة — `PAGE` في `PickedForYou` الويب */
 const PICKED_PAGE = 10;
 
-function DiscoverPane({
+/**
+ * 🆕 D-1219 — **`memo`** (قياسُ D-1218a على جوال خالد: كلُّ عودةٍ إلى «اكتشف» تعيد رسمَ الجذر مرّةً — المتنقّلُ
+ * يرسم شاشاته عند كلِّ تبديل — **فيُعاد رسمُ اللوحين وكلُّ صفوفهما: `rails=20` في كلِّ تبديل**، والبطاقاتُ وحدَها
+ * تنجو (`cards=0`). خاصّيّاتُ اللوح من الجذر ثابتةُ المرجع كلُّها (حالةٌ أو `useCallback`)، فالرسمةُ تقف هنا.
+ */
+const DiscoverPane = memo(function DiscoverPane({
   tab,
   active,
   browse,
@@ -699,7 +704,9 @@ function DiscoverPane({
   /* D-1028 (F4) — كائنٌ محفوظ: كان جديداً في كلِّ رسمة فيكسر `memo` كلِّ صفّ */
   const railProps = useMemo(() => ({ hidden, onHold, onOpen }), [hidden, onHold, onOpen]);
   /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
-  const seeAll = (path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path));
+  /* 🆕 D-1219 — ثابتةُ المرجع: كانت دالّةً جديدةً في كلِّ رسمةٍ فتكسر `memo` كلِّ `Rail` و`CardsRail` يحملها */
+  const seeAll = useCallback((path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path)), [onSeeAll, onLeave]);
+  const openTitle = useCallback((c: { kind: "tv" | "movie"; id: number }) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } }), [router]);
   /* D-1044 (F5) — السحبُ يعيد جلبَ صفوف **هذا التبويب وحدَه** (المفاتيحُ تبدأ بالتبويب)؛ «قوائم» لها مفتاحُها */
   const refreshControl = usePullRefresh(
     lists ? [["discover:lists"]] : [["discover:rail", tab], ["discover:personal", tab], ["discover:trailers", tab]],
@@ -757,7 +764,7 @@ function DiscoverPane({
         />
       ) : null}
       {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ ويصمت بفلترٍ نشط كما في الصفحة */}
-      {!lists && !filtering && !off.has("trailers") ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
+      {!lists && !filtering && !off.has("trailers") ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={openTitle} onError={onError} /> : null}
       {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
       {!lists && foryou.length > 0 && !off.has("foryou") ? (
         <CardsRail
@@ -784,7 +791,7 @@ function DiscoverPane({
       )) : null}
     </ScrollView>
   );
-}
+});
 
 /**
  * F0 (D-1024) — مراقبُ `discover.open`: **لا يرسم شيئاً ولا يجلب شيئاً**. يعدّ ما يُجلب
@@ -955,7 +962,10 @@ const CardsRail = memo(function CardsRail({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}
         initialNumToRender={5}
-        windowSize={5}
+        /* 🆕 D-1219 — نافذةُ ثلاث شاشاتٍ لا خمس: الصفُّ الأفقيُّ كان يركّب ~١٥ بطاقةً لا يُرى منها إلّا ثلاث، و«اكتشف»
+           تحمل ~١١٠ بطاقةً مركّبةً في لوحين (`live` في D-1218a) — وفكُّ التجميد يمرّ عليها كلِّها. العرضُ ثابت
+           (`getItemLayout`) فما يقترب من الحافّة يُركَّب قبل أن يُرى. */
+        windowSize={3}
       />
     </View>
   );
