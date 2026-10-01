@@ -2,13 +2,14 @@ import React from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { TitleScreen } from "../../../src/title/TitleScreen";
 import { ErrorBoundary } from "../../../src/ErrorBoundary";
+import { TitleFailure } from "../../../src/title/TitleFailure";
 
 /**
  * `/title/[kind]/[id]` — صفحةُ العمل أصليّةً (Phase 11-D · D1، D-956). تُدفع في
  * المكدّس من المكتبة و«اكتشف» الأصليّتين (`from` يقرّر إلى أين يعود بابُ الويب)،
  * والرجوعُ يعود إليهما بلا جسر.
  * D-974 — وإن سقطت فصفحةُ العمل الويبيّةُ (`/show/123` · `/movie/123`) بديلُها،
- * بالعودة إلى الشاشة التي فُتحت منها — لا شاشةٌ سوداء تُخرج من التطبيق.
+ * بالعودة إلى الشاشة التي فُتح منها — لا شاشةٌ سوداء تُخرج من التطبيق.
  */
 export default function Title() {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function Title() {
   return (
     <ErrorBoundary screen="title" webPath={`/${k === "tv" ? "show" : "movie"}/${Number(id)}`} returnTo={origin === "web" ? undefined : origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
       <TitleScreen kind={k} id={Number(id)} from={origin} />
+      {/* 🆕 D-1232 — فشلُ الجلب يُقال بزرّ «حاول مجدداً» بدل هيكلٍ لا ينتهي (`TitleFailure`) */}
+      <TitleFailure kind={k} id={Number(id)} onClose={() => (router.canGoBack() ? router.back() : router.replace("/web"))} />
     </ErrorBoundary>
   );
 }
