@@ -9,6 +9,8 @@ import { posterFor } from "../poster";
 import { useCardState } from "../cardStore";
 import type { CuratedCard } from "../contracts";
 import { cardLive, tabTick } from "../perfMarks";
+import { queryClient } from "../api";
+import { primeTitle, unprimeTitle } from "../title/seed";
 
 /**
  * ====== بطاقةُ صفٍّ في «اكتشف» — نسخةُ بطاقة `RankedRail` (الويب) ======
@@ -69,6 +71,13 @@ export const RailCard = memo(function RailCard({
   return (
     <Pressable
       onPress={() => onPress(card)}
+      /* 🆕 D-1224/D-1226 — اللمسُ يجهّز صفحةَ العمل قبل رفع الإصبع: بذرةُ الرأس بلا مسحٍ للكاش، وجلبُ العمل والخلفيّة يبدآن الآن */
+      onPressIn={() => primeTitle(queryClient, card)}
+      onPressOut={unprimeTitle}
+      /* 🆕 D-1225 — **لا تأخذ تركيزَ الإدخال**: في تسجيل أحمد (١ أكتوبر) انزلق صفُّ «مقترح لك» بطاقةً ونصفاً بعد الرجوع بـ~٣٠٠ms
+         بلا لمس. أندرويد يعيد التركيزَ عند العودة إلى آخر ما ضُغط، و`ScrollView` الأفقيُّ في RN يمرّر إلى العنصر المركَّز
+         (`requestChildFocus` ⇒ `scrollToChild`). البطاقةُ تُضغط ولا يُكتب فيها — وقارئُ الشاشة يعمل بتركيز الإتاحة لا بهذا. */
+      focusable={false}
       onLongPress={hold}
       /* 🆕 D-1048 (Phase 11-F · F5) — **قارئُ الشاشة يقرأ البطاقةَ ويصل قائمتَها**: كانت بلا دورٍ ولا اسم (TalkBack
          يقرأ ما تحتها قطعاً)، وقائمةُ الضغط المطوّل لا يبلغها من لا يضغط مطوّلاً. الاسمُ = العنوانُ وحالُه؛ وفعلٌ
@@ -81,7 +90,8 @@ export const RailCard = memo(function RailCard({
         if (e.nativeEvent.actionName === "menu") hold?.();
       }}
       delayLongPress={350}
-      style={{ width: RAIL_CARD_W }}
+      /* 🆕 D-1224 — الضغطةُ تُرى تحت الإصبع (كانت البطاقةُ لا تتغيّر حتى تبدأ الحركة) — خفوتُ بطاقة المكتبة نفسُه */
+      style={({ pressed }) => ({ width: RAIL_CARD_W, opacity: pressed ? 0.8 : 1 })}
     >
       <View
         ref={ref}

@@ -76,6 +76,7 @@ export async function GET(req: NextRequest) {
       year: dateOfResult(x).slice(0, 4) || null,
       imdb_rating: typeof x.imdb_rating === "number" ? x.imdb_rating : null,
       date: dateOfResult(x) || null,
+      backdrop_path: x.backdrop_path ?? null,
     });
     const payload: PersonalRailsPayload = {
       tab,

@@ -47,6 +47,8 @@ const NAMES = new Set([
   "discover.open",
   "coldstart.library",
   "title.open",
+  /* 🆕 D-1224 — من لمس البطاقة إلى أوّل التزامٍ لصفحة العمل (`src` = hand · scan · none: من أين جاءت البذرة) */
+  "title.tap",
   "season.open",
   "home.open",
   "coldstart.home",

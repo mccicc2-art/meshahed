@@ -32,6 +32,8 @@ export type PerfName =
   | "coldstart.library"
   /* 🆕 D-1118 — بطءُ صفحة العمل والمواسم يُقاس لا يُخمَّن */
   | "title.open"
+  /* 🆕 D-1224 — من لمس البطاقة إلى أوّل التزامٍ لصفحة العمل */
+  | "title.tap"
   | "season.open"
   /* Phase 11-K · K1 — خطُّ الأساس قبل نقل الإيماءات والتبويبات */
   | "home.open"

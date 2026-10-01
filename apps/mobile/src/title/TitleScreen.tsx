@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { qk, write, ApiError, softGet, isGuest, useGuestUpgrade } from "../api";
+import { qk, write, ApiError, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { openThreadPath } from "../thread/route";
 import { shell, type NativeRoot } from "../shell";
@@ -17,7 +17,7 @@ import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
-import { titleSeed, prefetchFirstSeason } from "./seed";
+import { titleSeed, prefetchFirstSeason, titleQuery, takePress, seedSrc } from "./seed";
 import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
@@ -88,16 +88,18 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const [trailerWant, setTrailerWant] = useState(true);
   const [trailerMuted, setTrailerMuted] = useState(false);
 
-  const q = useQuery({
-    queryKey: qk.title(kind, id),
-    /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد)؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
-    queryFn: () => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`),
-    staleTime: 60_000,
-  });
+  /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد). 🆕 D-1224 — الجالبُ في `seed.ts` لأنّ لمسَ البطاقة يبدؤه قبل الصفحة */
+  const q = useQuery(titleQuery(kind, id));
   const d = q.data;
   /* 🆕 D-1221 — الاسمُ والملصقُ من البطاقة التي فُتحت منها الصفحة (كاشُ `react-query`)، يُرسمان فوراً بدل الهيكل الفارغ حتى يصل
      العمل؛ ويُحسب مرّةً عند الفتح وحده (`seed.ts`). ومسلسلٌ لم يُشاهَد منه شيءٌ يطلب حلقاتِ موسمه الأوّل الآن لا بعد الردّ. */
   const [seed] = useState(() => (q.data ? null : titleSeed(qc, kind, id)));
+  /* 🆕 D-1224 — `title.tap`: من لمس البطاقة إلى أوّل التزامٍ للصفحة — هذا ما ينتظره النظامُ قبل أن يبدأ الانزلاق */
+  useLayoutEffect(() => {
+    const at = takePress(kind, id);
+    if (at !== null) mark("title.tap", performance.now() - at, { screen: kind, src: seed ? seedSrc() : q.data ? "cached" : "none" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (kind === "tv" && !qc.getQueryData(qk.title(kind, id))) prefetchFirstSeason(qc, id);
   }, [qc, kind, id]);
@@ -332,6 +334,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
            العمل: تُضاف الخلفيّةُ والتفاصيلُ في أماكنها. وتحته هيكلُ صفّ الأفعال والتبويبات كما كان */
         <View>
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
+            {/* 🆕 D-1226 — الخلفيّةُ من البطاقة إن حملتها (تُحمَّل منذ اللمس — `primeTitle`)، ورابطُها رابطُ الصفحة نفسُه فلا وميضَ حين تصل */}
+            {seed.backdrop_path ? <Image source={{ uri: backdropUrl(seed.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            {seed.backdrop_path ? <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" /> : null}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
@@ -362,10 +367,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false} stickyHeaderIndices={[3]}>
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
           <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
-            {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
+            {/* D-1226 — بلا تلاشٍ إن رسمتها البذرةُ قبلُ: الصورةُ نفسُها حاضرةٌ في الذاكرة، والتلاشي كان يضيف ٢٠٠ms */}
+            {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === d.backdrop_path ? 0 : 200} /> : null}
             {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
-            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
+            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>

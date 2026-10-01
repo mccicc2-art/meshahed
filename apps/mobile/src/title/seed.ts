@@ -1,25 +1,92 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { qk } from "../api";
+import { Image } from "expo-image";
+import { qk, softGet } from "../api";
 import { seasonQuery } from "./SeasonAccordion";
-import type { LibraryPayload } from "../contracts";
+import { backdropUrl } from "@/core/media";
+import type { LibraryPayload, TitlePayload } from "../contracts";
 
 /**
  * 🆕 D-1221 — **رأسُ صفحة العمل من البطاقة التي فُتح منها** (تسجيلُ أحمد ١ أكتوبر: «الدخول لأيّ صفحة فلم فيه تأخير خفيف»).
  *
  * 🔑 **المشكلة**: صفحةُ العمل الباردة تنتظر `/api/v1/title` (~٨٠٠ms وسيطاً، `title.open` cached=0) وتعرض هيكلاً رماديّاً
- * فارغاً — **والاسمُ والملصقُ معروفان قبل أيِّ نداء**: البطاقةُ التي ضُغطت كانت ترسمهما من كاش `react-query` نفسِه.
+ * فارغاً — **والاسمُ والملصقُ معروفان قبل أيِّ نداء**: البطاقةُ التي ضُغطت كانت ترسمهما من كاش `react-query` نفسِه.
  * 🔑 **لماذا بحثٌ في الكاش لا معاملٌ في الرابط**: الأبوابُ إلى صفحة العمل ١٩ (اكتشف · المكتبة · الرئيسيّة · البحث · الملفّ ·
  * القائمة · النقاش · الرسائل…) — **ومعاملٌ يُمرَّر في كلٍّ منها يُنسى في العشرين**. الكاشُ يحمل كلَّ بطاقةٍ رُسمت، بالحقول نفسِها
  * (`kind`/`media_type` · `id` · `title`/`name` · `poster_path`)، فالبحثُ مرّةً عند فتح الصفحة يكفي الأبوابَ كلَّها.
  * ⚠️ **الجهةُ شرطٌ لا تخمين**: معرّفاتُ TMDB تتكرّر بين الأفلام والمسلسلات — كائنٌ بلا `kind`/`media_type` لا يُؤخذ.
  * ⚠️ **سقفٌ للمسح** (عمقٌ ٧ · ٢٠٠٠٠ عقدة): الكاشُ قد يكبر، والبحثُ مرّةً عند الفتح لا يجوز أن يكلّف إطاراً.
+ *
+ * 🆕 D-1224 — **البطاقتان تسلّمان بذرتَهما لحظةَ اللمس** (`primeTitle` من `onPressIn`): تسجيلُ أحمد بعد #39 أظهر ~٢٩٠ms بين
+ * الضغطة وبدء الانزلاق — وفيها المسحُ أعلاه يجري على خيط JS قبل أوّل رسمٍ للصفحة، والنظامُ لا يبدأ الحركةَ قبله. البذرةُ المسلَّمة
+ * تُقرأ من خريطةٍ بلا مسح، **والمسحُ يبقى احتياطاً** للأبواب التي لا تمرّ بالبطاقتين. وإصبعٌ يثبت ٩٠ms يبدأ جلبَ العمل والخلفيّة
+ * (D-1226) قبل رفعه؛ وفي الضغطة الأقصر تبدأ الخلفيّةُ مع أوّل رسمٍ للصفحة من البذرة — لا بعد وصول العمل كما كانت.
  */
-export type TitleSeed = { name: string; poster_path: string | null };
+export type TitleSeed = { name: string; poster_path: string | null; backdrop_path: string | null };
 
 const MAX_NODES = 20_000;
 const MAX_DEPTH = 7;
 
+/** الجالبُ الواحدُ لصفحة العمل — `TitleScreen` واللمسةُ المسبقة يتشاركانه فلا يفترق مفتاحٌ ولا عنوان */
+export const titleQuery = (kind: "tv" | "movie", id: number) => ({
+  queryKey: qk.title(kind, id),
+  /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
+  queryFn: () => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`),
+  staleTime: 60_000,
+});
+
+/** بذورٌ سلّمتها بطاقاتٌ لُمست — قليلةٌ ومقصوصة (آخرُ ٣٠)، فلا تكبر مع الجلسة */
+const handoff = new Map<string, TitleSeed>();
+const HANDOFF_MAX = 30;
+
+/**
+ * 🆕 D-1224/D-1226 — **لمسُ بطاقةٍ يجهّز صفحتَها**: يسلّم الاسمَ والملصقَ والخلفيّة، ويبدأ جلبَ العمل (إن لم يكن طازجاً في
+ * الكاش) وتحميلَ الخلفيّة. ⚖️ اللمسُ قد يكون بدايةَ تمريرٍ لا ضغطة — فالنداءُ ينتظر أن يثبت الإصبع
+ * (`PRIME_HOLD_MS`)، و`staleTime` يمنع تكرارَه للبطاقة نفسِها، والخلفيّةُ تُحمَّل مرّةً (`memory-disk`).
+ */
+type PrimeCard = { kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; backdrop_path?: string | null };
+let primeTimer: ReturnType<typeof setTimeout> | null = null;
+/** إصبعٌ ثبت هذه المدّة على البطاقة ضغطةٌ لا بدايةُ تمرير (التمريرُ يسحب اللمسَ قبلها) — فلا نداءَ لكلِّ بطاقةٍ مرّ عليها الإصبع */
+const PRIME_HOLD_MS = 90;
+
+/** 🆕 D-1224 — لحظةُ آخر لمسةٍ لبطاقة (لقياس `title.tap`) */
+let lastPress: { key: string; at: number } | null = null;
+export function takePress(kind: "tv" | "movie", id: number): number | null {
+  const p = lastPress;
+  lastPress = null;
+  return p && p.key === `${kind}-${id}` && performance.now() - p.at < 3000 ? p.at : null;
+}
+
+export function primeTitle(qc: QueryClient, c: PrimeCard) {
+  const key = `${c.kind}-${c.id}`;
+  lastPress = { key, at: performance.now() };
+  /* البذرةُ فوراً: قراءةُ خريطةٍ لا نداء */
+  if (!handoff.has(key)) {
+    handoff.set(key, { name: c.title, poster_path: c.poster_path, backdrop_path: c.backdrop_path ?? null });
+    if (handoff.size > HANDOFF_MAX) handoff.delete(handoff.keys().next().value as string);
+  }
+  if (primeTimer) clearTimeout(primeTimer);
+  primeTimer = setTimeout(() => {
+    primeTimer = null;
+    void qc.prefetchQuery(titleQuery(c.kind, c.id));
+    const bd = c.backdrop_path ? backdropUrl(c.backdrop_path, "w780") : null;
+    if (bd) void Image.prefetch(bd, "memory-disk");
+  }, PRIME_HOLD_MS);
+}
+
+/** رفعُ الإصبع أو سحبُ التمرير للّمس: ما لم يبدأ لا يبدأ — الضغطةُ القصيرة تفتح الصفحةَ وهي تجلب بنفسها */
+export function unprimeTitle() {
+  if (primeTimer) clearTimeout(primeTimer);
+  primeTimer = null;
+}
+
+/** مصدرُ آخر بذرة — يُكتب مع `title.tap` ليُعرف أيُّ الطريقين كلّف */
+let lastSeedSrc: "hand" | "scan" | "none" = "none";
+export const seedSrc = () => lastSeedSrc;
+
 export function titleSeed(qc: QueryClient, kind: "tv" | "movie", id: number): TitleSeed | null {
+  const handed = handoff.get(`${kind}-${id}`);
+  lastSeedSrc = handed ? "hand" : "scan";
+  if (handed) return handed;
   let seen = 0;
   const hit = (o: Record<string, unknown>): TitleSeed | null => {
     if (o.id !== id) return null;
@@ -27,7 +94,11 @@ export function titleSeed(qc: QueryClient, kind: "tv" | "movie", id: number): Ti
     if (k !== kind) return null;
     const name = [o.display_title, o.title, o.name].find((v): v is string => typeof v === "string" && v.length > 0);
     if (!name) return null;
-    return { name, poster_path: typeof o.poster_path === "string" ? o.poster_path : null };
+    return {
+      name,
+      poster_path: typeof o.poster_path === "string" ? o.poster_path : null,
+      backdrop_path: typeof o.backdrop_path === "string" ? o.backdrop_path : null,
+    };
   };
   const walk = (v: unknown, depth: number): TitleSeed | null => {
     if (!v || typeof v !== "object" || depth > MAX_DEPTH || seen > MAX_NODES) return null;
@@ -52,6 +123,7 @@ export function titleSeed(qc: QueryClient, kind: "tv" | "movie", id: number): Ti
     const r = walk(q.state.data, 0);
     if (r) return r;
   }
+  lastSeedSrc = "none";
   return null;
 }
 

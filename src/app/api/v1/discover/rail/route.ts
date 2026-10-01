@@ -97,6 +97,7 @@ export async function GET(req: NextRequest) {
           year: dateOfResult(r).slice(0, 4) || null,
           imdb_rating: typeof r.imdb_rating === "number" ? r.imdb_rating : null,
           date: dateOfResult(r) || null,
+          backdrop_path: r.backdrop_path ?? null,
         }));
       /* أبوابُ «عرض الكلّ» كما تضعها الصفحة: للأنمي `airing-now`/`most-popular`/`upcoming` وحدَها */
       const sectionKey =
