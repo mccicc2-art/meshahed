@@ -106,7 +106,7 @@ export type CommunityRoom = {
   likesMonth: number;
   /** 🆕 D-1207 — آخرُ مشاركةٍ من عضو (لا إشعارُ الحلقة) — `null` بلا مشاركة */
   lastPostAt: string | null;
-  /** 🆕 D-1201 — العملُ في مكتبتي (شريحةُ «أعمالي») — الشاشةُ تُرشِّح في يدها بلا جلب */
+  /** 🆕 D-1201 — العملُ في مكتبتي (شريحةُ «أعمالي») — الشاشةُ تُرشِّح في يدها بلا جلب */
   mine: boolean;
   lastAt: string;
   faces: PersonLite[];
@@ -175,6 +175,13 @@ export type CommunityPayload = {
     empty_text: string;
     /** أتابع حسابَ لوبز؟ — لصفّ المتابعة في بطاقة الخبر */
     follow_loopz: boolean;
+    /**
+     * 🆕 D-1228 — **الشرائحُ الأربع مرتّبةً سلفاً** (الكل/من أتابعهم × الأحدث/الأكثر تفاعلاً) بمفاتيح الصفوف: التطبيقُ يبدّل
+     * بينها في يده بلا جلب (نهجُ D-1201 للنقاشات). للعضو وحدَه؛ غيابُه = `rows` وحدَها كما كانت.
+     */
+    variants?: { strangers: boolean; sort: "smart" | "latest"; keys: string[]; quiet: boolean }[];
+    /** 🆕 D-1228 — صفوفُ الشرائح الأخرى التي ليست في `rows` (الشريحةُ الحاليّة) — كلُّ صفٍّ مرّةً واحدة */
+    extra?: CommunityFeedRow[];
   };
   rooms: CommunityRoom[];
   board: CommunityBoard;
