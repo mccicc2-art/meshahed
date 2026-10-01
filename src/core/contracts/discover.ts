@@ -15,6 +15,9 @@ export type CuratedCard = DiscoverCard & {
   imdb_rating: number | null;
   /** تاريخُ الصدور الكامل — لصفّ «قريباً» (العدّ التنازليّ يُحسب في الشاشة) */
   date: string | null;
+  /** 🆕 D-1226 — خلفيّةُ العمل من ردّ TMDB نفسِه: التطبيقُ يبدأ تحميلَها لحظةَ لمس البطاقة لا بعد وصول صفحة العمل
+      (كانت تظهر ~٢٫٣ث بعد الضغطة). اختياريٌّ: ردٌّ قديمٌ في الكاش أو بابٌ لا يملكها يعمل كما كان */
+  backdrop_path?: string | null;
 };
 
 export type CuratedRailPayload = {
