@@ -55,7 +55,7 @@ const NAMES = new Set([
   "boot.fresh",
   /* 🆕 D-1128 — «قبل» K2: `gesture.jank` قيمتُه **عددُ إطاراتٍ** ضائعةٍ في سحب التبويبات (`dur` مدّتُه)،
      و`token.life` قيمتُه **ثوانٍ** باقيةٌ في رمز الوصول لحظةَ يستلمه التطبيق. الخانةُ واحدةٌ والوحدةُ
-     من الاسم — استعلامُ النِّسب أعلاه يعمل عليهما كما هو، ويُقرأ رقمُهما بوحدته. */
+     من الاسم — استعلامُ النِّسب أعلاه يعمل عليهما كما هو، ويُقرأ رقمُهما بوحدته. */
   "gesture.jank",
   "token.life",
   /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
@@ -82,8 +82,9 @@ const NAMES = new Set([
   "stats.open",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
-/* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop"]);
+/* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)
+   🆕 D-1218 — وعدّاداتُ الرسم: `first` (ms إلى أوّل رسمٍ للجذر) · `roots` · `panes` · `rails` · `cards` · `live` */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "first", "roots", "panes", "rails", "cards", "live"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
