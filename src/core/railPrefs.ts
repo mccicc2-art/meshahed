@@ -114,11 +114,8 @@ export const RAILS: RailSpec[] = [
     tabs: ["movies", "anime"],
     label: (t, tab) => (tab === "anime" ? t.animeInCinemas : t.inCinemas),
   },
-  {
-    key: "airing",
-    tabs: ["anime"],
-    label: (t) => t.airingNowAnime,
-  },
+  /* D-1217 — «يُعرض الآن» خرج من تبويب الأنمي (أمرُ أحمد)؛ المفتاحُ باقٍ في `RailKey`
+     كي لا ينكسر تفضيلٌ مخزَّن يحمله — صفٌّ لا يُرسم لا يُعرض للإطفاء */
   {
     key: "popular",
     tabs: ["movies", "shows", "anime"],
@@ -230,11 +227,19 @@ export function railToken(tab: RailTab, key: string): string {
  * تُمرَّر إلى الصفوف**: **فالصفُّ لا يعرف تبويبَه ولا يحتاج أن يعرفه.**
  */
 export function railsHiddenFor(all: ReadonlySet<string>, tab: RailTab): Set<string> {
-  const out = new Set<string>();
+  /* D-1217 — **المتقاعدُ مطفأٌ دائماً**: صفٌّ خرج من التبويب لا يُرسم وإن لم يطفئه أحد */
+  const out = new Set<string>(RETIRED[tab] ?? []);
   const pre = `${tab}:`;
   for (const tok of all) if (tok.startsWith(pre)) out.add(tok.slice(pre.length));
   return out;
 }
+
+/**
+ * 🆕 D-1217 — **صفوفٌ أُخرجت من تبويبها** (أمرُ أحمد، ١ أكتوبر: «احذف Airing now» من الأنمي).
+ * 🔑 **الإخراجُ هنا لا في كلِّ قارئ**: `railsHiddenFor` يقرؤها الويبُ (`news/page.tsx`) والشاشةُ
+ * الأصليّة معاً — فسطرٌ واحدٌ يُسكت الصفَّ في الاثنين، ويغيب عن «الطريقة» لأنّه خرج من `RAILS`.
+ */
+const RETIRED: Partial<Record<RailTab, readonly RailKey[]>> = { anime: ["airing"] };
 
 /** **صفوفُ تبويبٍ بترتيب ظهورها** */
 export function railsOf(tab: RailTab): RailSpec[] {
