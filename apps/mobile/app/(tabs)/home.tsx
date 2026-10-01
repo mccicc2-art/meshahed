@@ -2,6 +2,7 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { HomeScreen } from "../../src/home/HomeScreen";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
+import { CommitProbe } from "../../src/CommitProbe";
 
 /**
  * `/home` — الرئيسيةُ الأصليّة (Phase 11-H، D-1066). تُدفع فوق `/web` من خانة
@@ -12,7 +13,10 @@ export default function Home() {
   const router = useRouter();
   return (
     <ErrorBoundary screen="home" webPath="/" onLeave={() => (router.canGoBack() ? router.back() : router.replace("/web"))}>
+      {/* 🆕 D-1231 — حدودُ مرحلة الالتزام في نافذة التبديل (`perfMarks.tabCommit`) */}
+      <CommitProbe edge="cs" screen="home" />
       <HomeScreen />
+      <CommitProbe edge="ce" screen="home" />
     </ErrorBoundary>
   );
 }
