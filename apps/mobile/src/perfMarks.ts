@@ -215,6 +215,23 @@ export function tabTick(k: "roots" | "panes" | "rails" | "cards" | "marq", scree
   if (k === "roots" && screen === c.to && c.first === undefined) c.first = performance.now() - c.t0;
   c.tally[k] = (c.tally[k] ?? 0) + 1;
 }
+/**
+ * 🆕 D-1231 — **حدودُ مرحلة الالتزام في نافذة التبديل** (`CommitProbe` في ملفّات المسارات): بعد D-1230 بقيت «اكتشف» أبطأَ
+ * الجذور (~١١٥ms) وعدّاداتُ الرسم فيها صفر — فالوقتُ ليس رسماً. فكُّ التجميد يعيد تركيبَ **تأثيرات التخطيط** لكلِّ مكوّنٍ في
+ * الشجرة المكشوفة (React يعامل الكشفَ كظهورٍ جديد) ولو لم يُرسم شيء. مسبارٌ قبل الشاشة وآخرُ بعدها بين إخوتها:
+ * - `cs` — ms من الضغطة إلى بدء مرحلة التخطيط (الرسمُ والتعديلاتُ انتهت).
+ * - `ce` — ms إلى نهايتها: `ce − cs` = كلفةُ تأثيرات التخطيط التي أُعيد تركيبُها في الشجرة كلِّها.
+ * - `qc` — تحديثاتُ كاش الاستعلامات في النافذة (تجديدٌ وصل، أو كتابة).
+ */
+export function tabCommit(edge: "cs" | "ce", screen: string) {
+  const c = counting;
+  if (!c || c.to !== screen || c.tally[edge] !== undefined) return;
+  c.tally[edge] = Math.round(performance.now() - c.t0);
+}
+queryClient.getQueryCache().subscribe((e) => {
+  const c = counting;
+  if (c && e.type === "updated") c.tally.qc = (c.tally.qc ?? 0) + 1;
+});
 let liveCards = 0;
 export function cardLive(d: 1 | -1) {
   liveCards += d;
