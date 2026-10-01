@@ -17,6 +17,7 @@ import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
+import { titleSeed, prefetchFirstSeason } from "./seed";
 import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
@@ -82,18 +83,24 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   /* D-959 — التريلرُ يعمل في الصفحة: تشغيلٌ صريحٌ بضغطة، **ومغادرةُ التبويب توقفه**
      فلا يعود صوتٌ من نفسه حين يرجع القارئُ إلى «المعلومات».
      🆕 D-964 — **والرغبةُ والكتمُ هنا لا في المشغّل**: حالةٌ داخلَه تموت مع إعادة
-     التركيب فيستأنف ما أوقفه صاحبُه (حجّةُ الصفِّ نفسُها، `TrailersRail`). */
+     التركيب فيستأنف ما أوقفه صاحبُه (حجّةُ الصفِّ نفسُها، `TrailersRail`). */
   const [trailerOn, setTrailerOn] = useState(false);
   const [trailerWant, setTrailerWant] = useState(true);
   const [trailerMuted, setTrailerMuted] = useState(false);
 
   const q = useQuery({
     queryKey: qk.title(kind, id),
-    /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد)؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
+    /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد)؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
     queryFn: () => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`),
     staleTime: 60_000,
   });
   const d = q.data;
+  /* 🆕 D-1221 — الاسمُ والملصقُ من البطاقة التي فُتحت منها الصفحة (كاشُ `react-query`)، يُرسمان فوراً بدل الهيكل الفارغ حتى يصل
+     العمل؛ ويُحسب مرّةً عند الفتح وحده (`seed.ts`). ومسلسلٌ لم يُشاهَد منه شيءٌ يطلب حلقاتِ موسمه الأوّل الآن لا بعد الردّ. */
+  const [seed] = useState(() => (q.data ? null : titleSeed(qc, kind, id)));
+  useEffect(() => {
+    if (kind === "tv" && !qc.getQueryData(qk.title(kind, id))) prefetchFirstSeason(qc, id);
+  }, [qc, kind, id]);
   /** 🆕 D-1141 — ردُّ زائر: حالتي مجهولة — الأفعالُ والعدّاداتُ هيكلٌ معطَّل حتى الترقية */
   const guest = isGuest(d);
   const up = useGuestUpgrade(guest, q.refetch);
@@ -268,7 +275,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
    * الويب منذ D-158. القواعدُ قواعدُه: **الفعلُ يقع أوّلاً** وإغلاقُ الانبثاق لا يتراجع عنه · **من قيّم
    * لا يُسأل** · إلغاءُ المشاهدة لا يفتح شيئاً.
    * 🔑 **للمسلسل يُراقَب الانتقالُ «غير منتهٍ ⇒ منتهٍ» لا الزرّ**: فيغطّي «شاهدته» و«الموسم كامل» و«حتّى
-   * هنا» **وآخرَ حلقةٍ تُعلَّم باليد** بمسارٍ واحد. والمرجعُ يُهيَّأ عند وصول البيانات: مسلسلٌ فُتح منتهياً
+   * هنا» **وآخرَ حلقةٍ تُعلَّم باليد** بمسارٍ واحد. والمرجعُ يُهيَّأ عند وصول البيانات: مسلسلٌ فُتح منتهياً
    * لا يسأل. ⚖️ «شاهدته» قلّاب فلا يصلح باباً للتعديل — بابُه الدائم نجمةُ سطر الاسم وبطاقةُ تبويب المجتمع.
    */
   const wasDone = useRef<boolean | null>(null);
@@ -297,7 +304,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   });
   const year = (d?.kind === "tv" ? d.first_air_date : d?.release_date)?.slice(0, 4) ?? "";
   const heroH = Math.round(width * 9 / 16);
-  /* 🔴 D-1040 — **أسفلُ الملصق = أسفلُ الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة 1.11.0: «اجعل أسفل البوستر = أسفل
+  /* 🔴 D-1040 — **أسفلُ الملصق = أسفلُ الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة 1.11.0: «اجعل أسفل البوستر = أسفل
      الهيدر، ولا تنسَ ترفع البقيّة معها، اسمُ الفلم = أعلى البوستر»): الصفُّ كلُّه يصعد بارتفاع الملصق (١٦٨)، فيجلس
      الملصقُ والاسمُ والتفاصيلُ والرقاقاتُ **داخل** الصورة، وصفُّ الأفعال يبدأ تحتها مباشرة.
      ⚖️ **سقفٌ واحد**: على شاشةٍ ضيّقة (٣٦٠dp ⇒ خلفيّةٌ ٢٠٢) كان الملصقُ سيصعد تحت زرّ الرجوع (ينتهي عند ٤٤)؛
@@ -314,13 +321,35 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           (قرارُ أحمد: يُترك حتى تُنقل الرئيسيّةُ والإعداداتُ فيُوضع فيه بابُ الإعدادات). السهمُ
           و⋯ على الخلفيّة (D-1020). */}
       <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-        <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
+        <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? seed?.name ?? ""}</Text>
         <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
           <Logo size={28} />
         </View>
       </View>
 
-      {!d ? (
+      {!d && seed ? (
+        /* 🆕 D-1221 — الرأسُ من البطاقة بهندسة الصفحة نفسِها (البطلُ · الملصقُ يعلوه بـ`lift` · الاسمُ في أعلاه) فلا يقفز شيءٌ حين يصل
+           العمل: تُضاف الخلفيّةُ والتفاصيلُ في أماكنها. وتحته هيكلُ صفّ الأفعال والتبويبات كما كان */
+        <View>
+          <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
+            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+              <Chevron color="#fff" />
+            </Pressable>
+          </View>
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
+            <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
+              {seed.poster_path ? <Image source={{ uri: posterUrl(seed.poster_path, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+            </View>
+            <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <Text size={22} weight="700" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed.name}</Text>
+            </View>
+          </View>
+          <View style={{ padding: PAGE_PAD, gap: 12 }}>
+            <View style={{ height: 44, borderRadius: radius.control, backgroundColor: tokens.surface2 }} />
+            <View style={{ height: 22, width: 200, borderRadius: 6, backgroundColor: tokens.surface2 }} />
+          </View>
+        </View>
+      ) : !d ? (
         <View style={{ padding: PAGE_PAD, gap: 12 }}>
           <View style={{ height: heroH, borderRadius: radius.card, backgroundColor: tokens.surface2 }} />
           <View style={{ height: 22, width: 200, borderRadius: 6, backgroundColor: tokens.surface2 }} />
@@ -336,7 +365,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {d.backdrop_path ? <Image source={{ uri: backdropUrl(d.backdrop_path, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
             {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
-            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
+            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
@@ -344,15 +373,15 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               <Icon name="dots" size={20} color="#fff" />
             </Pressable>
           </View>
-          {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
+          {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
               كان يهبط ٥٦ تحتها فتطول الترويسةُ بلا سبب؛ الآن يرتفع بقدر ارتفاعه تقريباً
               (`-96`) فينتهي طرفُه العلويّ عند الخطّ، ويصعد ما تحته معه. */}
           {/* 🔴 D-1020 — **الترويسةُ بترتيب الويب** (طلبُ أحمد بثلاث لقطات): الملصقُ والاسمُ يبدآن من
               السطر نفسِه (لا الاسمُ في أسفل الملصق)، تحت الاسم سطرُ التفاصيل ثمّ IMDb، وفي أسفل
               الملصق يمينَ العمود رقاقاتُ التصنيف والنوع، **وشعارُ المنصّة أيقونةً** في أقصى اليمين
               بدل زرّ «أين تشاهد». الملصقُ يعلو إلى حافّة الخلفيّة (D-1014). */}
-          {/* 🔴 D-1031 — **الملصقُ والاسمُ يعلوان ٣٦ أخرى معاً** (طلبُ أحمد بخطٍّ أحمر على لقطة 1.10.0، ثمّ
-              حكمُه على المسودّة: «ارفعها نفس سطر البوستر» — كنتُ رفعتُ الملصقَ وحدَه فسبق الاسمَ): السطرُ
+          {/* 🔴 D-1031 — **الملصقُ والاسمُ يعلوان ٣٦ أخرى معاً** (طلبُ أحمد بخطٍّ أحمر على لقطة 1.10.0، ثمّ
+              حكمُه على المسوّدة: «ارفعها نفس سطر البوستر» — كنتُ رفعتُ الملصقَ وحدَه فسبق الاسمَ): السطرُ
               الواحد عقدُ D-1020 ويبقى. **والحجابُ يطول معهما** (٩٦ ⇒ ١٤٤): الاسمُ صار أعلى من الحجاب القديم،
               وبدونه يُقرأ على الصورة العارية فيضيع على خلفيّةٍ فاتحة. */}
           <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
@@ -383,7 +412,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             </View>
           </View>
 
-          {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
+          {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
           <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16, gap: 10 }}>
             {/* D-1141 — حالتي لم تصل: الصفُّ يُرسم خافتاً ولا يُضغط (لا فعلَ على حالٍ لا نعرفها) */}
             <View pointerEvents={pending ? "none" : "auto"} style={{ opacity: pending ? 0.4 : 1 }}>
@@ -423,7 +452,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 
           {/* التبويبات — segmented: الحلقات (مسلسل) · المعلومات · المزيد في الويب */}
           {/* D-1133 — لاصقٌ فخلفيّتُه لونُ الصفحة (وإلّا مرّت الحلقاتُ تحته ظاهرة)؛ ومسافةُ الـ١٦ فوقه انتقلت
-              إلى ذيل صفِّ الأفعال — لو بقيت فيه لالتصق ومعه شريطٌ أسودُ فارغ، وهو ما طُلب ألّا يكون */}
+              إلى ذيل صفِّ الأفعال — لو بقيت فيه لالتصق ومعه شريطٌ أسودُ فارغ، وهو ما طُلب ألّا يكون */}
           {/* 🔴 D-1138 — **غلافٌ بلا نمط حول الشريط** (أحمد بلقطة: «وش بها جايه فوق بعض!!!» — الثلاثةُ عموديّة):
               `ScrollViewStickyHeader` في RN **ينقل نمطَ الابن اللاصق إلى غلافه ويستنسخ الابنَ بـ`{ flex: 1 }` وحدَه**
               (`cloneElement(child, { style: styles.fill })`) — فضاع `flexDirection: "row"` واصطفّت الخاناتُ عموداً.
