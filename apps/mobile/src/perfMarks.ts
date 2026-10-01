@@ -97,6 +97,8 @@ function flush() {
 
 export function mark(name: PerfName, ms: number, extra?: Extra) {
   if (!Number.isFinite(ms) || ms < 0) return;
+  /* 🆕 D-1229 — «اكتشف» المركَّبةُ مخفيّةً تقيس `discover.open` بلا عينٍ تنتظر: تُعلَّم كي لا تُخلط بفتحٍ ظاهر */
+  if (name === "discover.open" && preloaded.has("news") && !landedOnce.has("news")) extra = { ...extra, pre: 1 };
   if (buffer.length >= MAX_BUFFER) buffer.shift();
   buffer.push({ name, ms: Math.round(ms), ...(extra ? { extra } : {}) });
   if (!timer) timer = setTimeout(flush, Math.max(2_000, FLUSH_MS - (Date.now() - lastFlush)));
@@ -260,6 +262,13 @@ export function tabGone() {
   if (p && p.go === undefined) p.go = performance.now() - p.t0;
 }
 const landedOnce = new Set<string>();
+/** 🆕 D-1229 — تبويباتٌ رُكّبت مسبقاً في الخلفيّة قبل أوّل زيارة: أوّلُ وصولٍ لها يُعلَّم `pre:1` ليُقارَن بالبارد الحقيقيّ */
+const preloaded = new Set<string>();
+export function tabPreloaded(key: string) {
+  preloaded.add(key);
+}
+/** التبويبُ زِيرَ في هذه الجلسة؟ (لا معنى لتركيبٍ مسبقٍ لشاشةٍ رُكّبت) */
+export const tabSeen = (key: string) => landedOnce.has(key);
 export function tabLanded(key: string) {
   const p = pendingTab;
   const seen = landedOnce.has(key);
@@ -281,6 +290,7 @@ export function tabLanded(key: string) {
         focus: Math.round(p.focus ?? ms),
         drop,
         cached: seen ? 1 : 0,
+        ...(!seen && preloaded.has(key) ? { pre: 1 } : {}),
         ...(c?.first !== undefined ? { first: Math.round(c.first) } : {}),
         ...(c?.tally ?? {}),
         ...(live !== undefined ? { live } : {}),
