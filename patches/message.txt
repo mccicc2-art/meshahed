@@ -1,0 +1,9 @@
+[deploy] D-1233 — native Home header is one row: avatar, name, plan pill, view switch
+
+The app Home no longer draws the cover, the @username/followers line or the
+verified seal (they stay on the profile). The stats card stays, unchanged,
+for whoever enables it. The view switch icon sits on the same trailing edge
+as the section "All" links. Avatar 32, name 22.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01GuwvjCuLvtwjKTKKEH4Uoy
