@@ -11,7 +11,9 @@ import type { HomeHeaderPayload } from "../contracts";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 
 /**
- * ترويسةُ الرئيسية — `HomeHeader.tsx` الويبيّة بأرقامها (Phase 11-H · H2):
+ * ترويسةُ الرئيسية — `HomeHeader.tsx` الويبيّة بأرقامها (Phase 11-H · H2).
+ * ⚖️ D-1233: الرئيسيّةُ نفسُها لم تعد ترسم الغلافَ — `HomeCover` باقٍ لأنّ `ProfileScreen` يقرؤه؛ وبطاقةُ الأرقام
+ *   باقيةٌ في الاثنين. الوصفُ أدناه وصفُ الأصل:
  * - **الغلافُ** يخرج عن الهوامش، ارتفاعُه `safe-top + 164` وصلبٌ حتى `safe-top +
  *   135` ثمّ يذوب (D-836/D-853)، وفوقه حجابٌ واحدٌ مسطّح **٠٫٣٠** (D-616 → D-661 →
  *   قيمةُ اليوم في `COVER_SCRIM`) — لونٌ واحدٌ بلا تدرّج.
@@ -82,66 +84,52 @@ export function HomeTopBar({
   );
 }
 
+/**
+ * 🆕 D-1233 — **صفُّ الترحيب صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر ٢٠٢٦): الصورةُ ٣٢ · الاسمُ ٢٢/٧٠٠ (حجمُ عنوان القسم تحته — قياسُ لقطته) · شارةُ
+ * الاشتراك (`PARTNER`/`PLUS`، ولا شيء لغير المشترك) · مبدّلُ العرض في الطرف.
+ * - **خرج منه**: سطرُ `@username • المتابعون`، وختمُ التوثيق (قرارُه: «يُحذف من الهوم» — يبقى في الملفّ والإعدادات)،
+ *   وألوانُ «فوق الغلاف» (`onArt`) لأنّ الغلافَ نفسَه خرج من الرئيسيّة.
+ * - **المبدّلُ على خطِّ «الكلّ»** («خلّ تغيير الوضع متساوي على نفس الخط مع all اللي تحت»): هدفُ اللمس ما زال ٤٠،
+ *   لكنّ الرمزَ يُسنَد إلى طرفه لا إلى وسطه؛ و`ICON_INSET` يعوّض هامشَ الرسمة الشفّاف (٩ من ٧٢ في `list.png`
+ *   و`grid.png`) — بدونه يقف الرمزُ المرئيُّ ٢٫٢٥ قبل حافّة «الكلّ».
+ */
+const AVATAR = 32;
+const SWITCH_ICON = 18;
+const ICON_INSET = (9 / 72) * SWITCH_ICON;
+/* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
+const PILL_NAME_SIZE = 20;
+
 export function HomeGreeting({
   h,
-  onArt,
   view,
   onToggleView,
   onAvatar,
-  onFollowers,
-  onFollowing,
 }: {
   h: HomeHeaderPayload;
-  onArt: boolean;
   view: "visual" | "compact";
   onToggleView: () => void;
   onAvatar: () => void;
-  onFollowers: () => void;
-  onFollowing: () => void;
 }) {
   const { t, tokens } = useApp();
   const next = view === "visual" ? "compact" : "visual";
-  const muted = onArt ? "rgba(255,255,255,0.7)" : tokens.muted;
-  const fg = onArt ? "#fff" : tokens.fg;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
-      {/* 🆕 D-1134 — **حلقةُ الصورة بلون الأرضيّة لا بيضاء** (أحمد بدوائر حمراء: «خلّه مثل الويب»): `HomeAvatarLink`
-          في الويب حشوةٌ ٢ بلون الصفحة حول صورة ٥٦ — حلقةٌ داكنةٌ تفصل الوجهَ عن الغلاف ولا تلمع فوقه. */}
-      <Pressable onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-        {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={24} color={tokens.muted} />}
+    <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Pressable onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+        {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
       </Pressable>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text size={20} weight="700" color={fg} numberOfLines={1} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? styles.shadow : null]}>{h.display_name}</Text>
-          {/* 🆕 D-1134 — **شاراتُ الويب نفسُها** (`AccountIdentity`: `PlanPill` ثمّ `VerifiedBadge`) بقاعدة الطبقة
-              نفسِها (`identityOf` ⇐ `@/core/plan`): قرصٌ «PARTNER»/«PLUS»/«FOUNDER» ثمّ ختمُ التوثيق الذهبيّ. كان هنا
-              خطُّ ✓ رفيعٌ وقرصُ «+» — شكلان لا يعرفهما الويب. */}
-          {/* D-1142 — المكوّنُ صار مشتركاً (`IdentityBadges`) تقرؤه بطاقةُ الإعدادات أيضاً */}
-          <IdentityBadges flags={identityFlags(h)} nameSize={20} />
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-          {h.username ? <Text size={12} color={muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{h.username}</Text> : null}
-          {h.username ? <Text size={12} color={muted} style={{ opacity: 0.6 }}>•</Text> : null}
-          {/* القفلُ كالويب (`locked` في `FollowCountButton`): العددُ يُرى والورقةُ لا تُفتح */}
-          <Pressable onPress={onFollowers} disabled={h.hide_follow_lists} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.followers} ${t.followersLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-            <Icon name="people" size={12} color={muted} />
-            <Text size={12} weight="600" color={muted} style={{ fontVariant: ["tabular-nums"] }}>{String(h.followers)}</Text>
-          </Pressable>
-          <Pressable onPress={onFollowing} disabled={h.hide_follow_lists} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${h.following} ${t.followingLabel}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-            <Icon name="heart" size={12} color={muted} />
-            <Text size={12} weight="600" color={muted} style={{ fontVariant: ["tabular-nums"] }}>{String(h.following)}</Text>
-          </Pressable>
-        </View>
+      {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والمبدّلُ يُدفع إلى الطرف */}
+      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 28 }}>{h.display_name}</Text>
+        <IdentityBadges flags={{ ...identityFlags(h), verified: false }} nameSize={PILL_NAME_SIZE} />
       </View>
       <Pressable
         onPress={onToggleView}
         accessibilityRole="button"
         accessibilityLabel={`${t.viewSwitchAria} — ${next === "compact" ? t.viewCompact : t.viewVisual}`}
         hitSlop={6}
-        /* 🆕 D-1134 — **بلا حلّةٍ ولا إطار، والرمزُ ذهبيّ** كـ`HomeViewSwitch` في الويب (D-618/D-620): دائرةُ ٤٠، رمزُ ١٨ */
-        style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
+        style={({ pressed }) => [{ width: 40, height: 40, alignItems: "flex-end", justifyContent: "center", marginEnd: -ICON_INSET, opacity: pressed ? 0.7 : 1 }]}
       >
-        <Icon name={next === "compact" ? "list" : "grid"} size={18} color={tokens.accent} />
+        <Icon name={next === "compact" ? "list" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
       </Pressable>
     </View>
   );
@@ -188,7 +176,3 @@ export function StatsCard({ stats, onStat }: { stats: readonly StatCell[]; onSta
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  shadow: { textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 },
-});

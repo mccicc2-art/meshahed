@@ -25,7 +25,6 @@ import type { HoldAction } from "../library/HoldMenu";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { SectionOrderSheet } from "./SectionOrderSheet";
-import { FollowsSheet } from "./FollowsSheet";
 import { openProfile, profileHandleOf } from "../member/open";
 import { CelebrateSheet } from "./CelebrateSheet";
 import { BottomNav, navHeight } from "../BottomNav";
@@ -35,7 +34,7 @@ import { haptic } from "../haptics";
 import { capCards } from "@/core/cardCount";
 import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
-import { HomeCover, HomeTopBar, HomeGreeting, HomeStats, COVER_SOLID } from "./HomeHeader";
+import { HomeTopBar, HomeGreeting, HomeStats } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
@@ -143,6 +142,7 @@ export function HomeScreen() {
   );
   const openTitle = useCallback((kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "home" } }), [router]);
   const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: "home" } }), [router]);
+
   const openHref = useCallback(
     (href: string) => {
       const m = /^\/(show|movie)\/(\d+)/.exec(href);
@@ -166,8 +166,6 @@ export function HomeScreen() {
     write<{ view: "visual" | "compact" }>("/api/v1/me/prefs/home-view", { view: next } satisfies HomeViewBody).catch(() => toastHost.current?.say(t.errViewSave));
   }, [view, qc, t]);
 
-  /* ——— ورقةُ عدّادَي المتابعة — `FollowCountButton` الويب؛ القفلُ (`hide_follow_lists`) يُحترم في `HomeGreeting` ——— */
-  const [follows, setFollows] = useState<"followers" | "following" | null>(null);
 
   /* ——— «شاهدتُها» على بطاقة «أكمل المشاهدة» (D-437) — **تفاؤلٌ ثمّ كتابةٌ ثمّ إعادةُ جلب، بهذا الترتيب** ———
      D-1088 (بلاغُ أحمد على 1.11.9 بتسجيل: «الصحّ لا يعمل»): كانت الضغطةُ تكتب ثمّ **تنتظر إعادةَ جلب الرئيسيّة
@@ -438,8 +436,9 @@ export function HomeScreen() {
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       chrome.onScroll(e);
-      /* حدُّ العتبة حيث يذوب الغلاف (`COVER_SOLID`) مطروحاً منه ارتفاعُ الشريط — حالةٌ واحدةٌ لا تصييرَ مع كلّ بكسل */
-      const past = e.nativeEvent.contentOffset.y > COVER_SOLID - HEADER_H;
+      /* D-1233 — لا غلافَ في الرئيسيّة بعد اليوم، فالعتبةُ أوّلُ التمرير: الخطُّ الرفيعُ تحت الشريط يظهر حين يمرّ تحته
+         محتوى، لا قبل ذلك — حالةٌ واحدةٌ لا تصييرَ مع كلّ بكسل */
+      const past = e.nativeEvent.contentOffset.y > 4;
       if (past !== pastRef.current) {
         pastRef.current = past;
         setPastCover(past);
@@ -451,9 +450,6 @@ export function HomeScreen() {
 
   const posterW = d ? ({ compact: 96, comfortable: 118, large: 148 } as const)[d.prefs.density] : 118;
   const cap = useCallback((n: number) => (d ? capCards(n, d.prefs.cards) : n), [d]);
-  /* فوق الغلاف الشريطُ شفّافٌ وأيقوناتُه بيضاء؛ وبعد تجاوز الغلاف يأخذ خلفيّةَ الصفحة ولونَها — الويبُ يتركه شفّافاً فوق المحتوى
-     (تعليقُ D-479 يعترف بذلك)، وهذا تحسينٌ للتطبيق وحده بقاعدة أحمد (٢٢ سبتمبر): الشكلُ بما يناسب التطبيق، والوظائفُ من الويب */
-  const onArt = !!d?.header.cover_url;
 
   useEffect(() => {
     if (!d) return;
@@ -619,8 +615,8 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: pastCover ? tokens.bg : "transparent", borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
-        <HomeTopBar onArt={onArt && !pastCover} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
+      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg, borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
+        <HomeTopBar onArt={false} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
       </Animated.View>
       {!d ? (
         home.isError ? (
@@ -631,16 +627,12 @@ export function HomeScreen() {
           <Loading />
         )
       ) : (
-        <ScrollView ref={scroll} refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 10, paddingBottom: bottomPad }}>
-          {/* 🔴 D-1128 — **الغلافُ يمرّ مع المحتوى** لا ثابتٌ خلفه (تسجيلُ أحمد على «النهاري»، 1.12.0):
-              كان مطلقاً فوق الشاشة، فبقيت صورتُه الداكنةُ تحت خاناتِ «أسبوعك» الشفّافة بعد التمرير —
-              شريطٌ أسودُ على الفاتح، ويخفى على الداكن. داخلَ المحتوى يصعد معه كما في الويب؛
-              وهو أوّلُ ابنٍ فيُرسم كلُّ ما بعده فوقه. */}
-          <HomeCover url={d.header.cover_url} pos={d.header.cover_pos} />
-          {/* صفُّ الترحيب وبطاقةُ الأرقام يقفان على الغلاف (D-836: الغلافُ يكبر بمقدارهما لا أكثر) */}
-          <View style={{ minHeight: Math.max(0, COVER_SOLID - HEADER_H - 10) }}>
-            <HomeGreeting h={d.header} onArt={onArt} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} onFollowers={() => setFollows("followers")} onFollowing={() => setFollows("following")} />
-          </View>
+        <ScrollView ref={scroll} refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 2, paddingBottom: bottomPad }}>
+          {/* 🆕 D-1233 — **رأسُ الرئيسيّة صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر: شريك · بلس · غير مشترك): الصورةُ والاسمُ
+              وشارةُ الاشتراك ومبدّلُ العرض. الغلافُ وسطرُ `@username • المتابعون` خرجا من هنا للجميع — مكانُهما الملفُّ
+              الشخصيّ. **وبطاقةُ الأرقام باقيةٌ بشكلها لمن يريدها** («ابغاها ظاهره بنفس الشكل للي يبيها»): `show_stats`
+              من تخصيص الرئيسيّة هو الذي يقرّر، كما كان. */}
+          <HomeGreeting h={d.header} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} />
           <HomeStats h={d.header} onStat={openHref} />
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
@@ -692,7 +684,6 @@ export function HomeScreen() {
         </Sheet>
       ) : null}
       {celebrate ? <CelebrateSheet {...celebrate} onClose={() => setCelebrate(null)} onError={onError} /> : null}
-      {follows ? <FollowsSheet dir={follows} onClose={() => setFollows(null)} onOpen={(u) => openProfile(router, u, "home")} /> : null}
       <ToastHost hostRef={toastHost} bottom={navH} />
       <BottomNav
         active="home"
