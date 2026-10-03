@@ -40,7 +40,7 @@ export function HomeCover({ url, pos }: { url: string | null; pos: number | null
   const solid = insets.top + COVER_SOLID;
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, height: h, overflow: "hidden" }}>
-      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${pos ?? 30}%`, left: "50%" }} transition={200} cachePolicy="memory-disk" priority="high" />
+      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${pos ?? 30}%`, left: "50%" }} /* D-1244 — بلا تلاشٍ: الغلافُ مسخَّنٌ مع الحمولة، والتلاشي كان يُظهر الرأسَ قبل غلافه */ transition={0} cachePolicy="memory-disk" priority="high" />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: COVER_SCRIM }]} />
       {/* الذوبانُ إلى خلفيّة الصفحة من الخطّ الصلب إلى القاع */}
       <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: solid, height: h - solid }} contentFit="fill" />

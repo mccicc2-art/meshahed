@@ -948,7 +948,7 @@ function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
       {items.map((x) => (
-        <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={posterW} onPress={(it) => onTitle(it.kind, it.id)} />
+        <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={posterW} fade={false} onPress={(it) => onTitle(it.kind, it.id)} />
       ))}
     </ScrollView>
   );
@@ -1043,6 +1043,7 @@ function Overview({
                 <PosterCard
                   item={{ key: `${r.media_type}-${r.tmdb_id}`, kind: r.media_type, id: r.tmdb_id, title: r.title ?? "", posterPath: r.poster_path, progress: 0, completed: false, dropped: false }}
                   width={posterW}
+                  fade={false}
                   onPress={(it) => onTitle(it.kind, it.id)}
                 />
                 {r.rating != null ? <RatingPill value={r.rating} /> : null}

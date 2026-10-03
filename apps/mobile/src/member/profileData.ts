@@ -80,15 +80,22 @@ export function profileFirstImages(d: ProfilePayload): string[] {
   const rows: { poster_path: string | null }[][] = [];
   const first = d.tabs[0];
   if (first === "overview") {
+    /* 🔴 D-1244 — **الصفوفُ المرسومةُ وحدَها تُعدّ** (كما في `Overview`: قسمٌ فارغٌ لا يُرسم). كان القسمُ الفارغ يأخذ
+       خانةً من الثلاث، فخرج صفُّ الأنمي عند أحمد من التسخين وبقي آخرَ ما يظهر في كلِّ دخول. */
     for (const s of d.sections) {
-      if (s === "shows" || s === "movies" || s === "anime") rows.push(d.overview[s]);
-      else if (s === "ratings") rows.push(d.overview.ratings);
-      /* القوائمُ والفنّانون صفّان بلا ملصقاتِ أعمال — يأخذان مكانهما في الشاشة ولا صورَ تُسخَّن هنا */ else rows.push([]);
+      if (s === "shows" || s === "movies" || s === "anime") {
+        if (d.overview[s].length) rows.push(d.overview[s]);
+      } else if (s === "ratings") {
+        if (d.overview.ratings.length) rows.push(d.overview.ratings);
+      } else if (d.overview[s].length) rows.push([]); /* القوائمُ والفنّانون: صفٌّ يأخذ مكانَه في الشاشة بلا ملصقاتِ أعمال */
     }
   } else if (first === "favorites") {
     const f = d.favorites;
-    for (const k of f.order) rows.push(k === "shows" ? f.shows : f.movies);
-    rows.push(f.anime);
+    for (const k of f.order) {
+      const r = k === "shows" ? f.shows : f.movies;
+      if (r.length) rows.push(r);
+    }
+    if (f.anime.length) rows.push(f.anime);
   }
   for (const r of rows.slice(0, ROWS))
     for (const x of r.slice(0, PER_ROW)) {

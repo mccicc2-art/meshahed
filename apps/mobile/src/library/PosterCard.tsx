@@ -49,6 +49,7 @@ export const PosterCard = memo(function PosterCard({
   onPress,
   onHold,
   marquee = true,
+  fade = true,
 }: {
   item: CardItem;
   width: number;
@@ -57,6 +58,9 @@ export const PosterCard = memo(function PosterCard({
   onHold?: (item: CardItem, anchor: CardAnchor) => void;
   /** D-1025 (F1) — الاسمُ يمشي فقط حين يُرى صفُّ البطاقة؛ الافتراضيُّ `true` لمن لا يعرف */
   marquee?: boolean;
+  /** 🆕 D-1244 — `false`: الملصقُ يظهر جاهزاً بلا تلاشٍ (ملفُّ الشخص: صورُه مسخَّنةٌ قبل الفتح، والتلاشي يجعل الشاشةَ
+      «تتحمّض» صفّاً بعد صفّ — تسجيلُ أحمد ٣ أكتوبر). الافتراضيُّ `true` فكلُّ منادٍ قديمٍ على حاله. */
+  fade?: boolean;
 }) {
   const { t, tokens } = useApp();
   /* D-1027 (F3) — كان `w185` لكلِّ عرضٍ ≤ ١٢٠: باهتٌ على شاشات ٣× */
@@ -106,7 +110,7 @@ export const PosterCard = memo(function PosterCard({
             source={{ uri }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            transition={150}
+            transition={fade ? 150 : 0}
             cachePolicy="memory-disk"
             recyclingKey={item.key}
           />
