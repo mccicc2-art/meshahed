@@ -1163,8 +1163,25 @@ export async function altTitles(
   }
 }
 
-export function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
-  return tmdb<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
+/**
+ * 🔴 🆕 **قائمةٌ فارغةٌ بلغة القارئ تُجلب باللغة الأخرى** (D-1254، بلاغُ أحمد بلقطة على Black Clover،
+ * ٣ أكتوبر ٢٠٢٦: «لكن الحلقة مهي ظاهرة؟»).
+ *
+ * **المقيس من متصفّحه في اللحظة نفسِها**: `/tv/73223/season/2` بـ`en-US` يعيد `episodes: []` وبـ`ar-SA`
+ * يعيد الحلقةَ الأولى بتاريخها — لكلِّ لغةٍ نسخةٌ مستقلّةٌ عند TMDB (وفي خبيئتنا)، وقد تتأخّر إحداهما
+ * ساعات. فالموسمُ كان يُفتح فارغاً لمن واجهتُه إنجليزيّة.
+ *
+ * **والأصلُ لغةُ القارئ دائماً**: البديلةُ تُسأل حين تخلو قائمتُه وحدَه، ولا يُحفظ منها شيء — فمتى
+ * عادت نسختُه عادت أسماؤها (أحمد: «وإذا جاء بالإنجليزي ترجع إنجليزي صح؟»). والتأشيرُ برقم الموسم
+ * والحلقة لا بالاسم، فما عُلِّم والاسمُ بلغةٍ أخرى يبقى معلَّماً. فشلُ البديلة يعيد الأصلَ كما هو.
+ */
+export async function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
+  const path = `/tv/${tvId}/season/${seasonNumber}`;
+  const season = await tmdb<SeasonDetails>(path);
+  if (season.episodes?.length) return season;
+  const other = (await tmdbLanguage()) === "en-US" ? "ar-SA" : "en-US";
+  const alt = await tmdb<SeasonDetails>(path, { language: other }).catch(() => null);
+  return alt?.episodes?.length ? { ...season, episodes: alt.episodes } : season;
 }
 
 /**

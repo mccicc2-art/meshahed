@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getSeason, tvImdbId } from "@/lib/tmdb";
+import { tvImdbId } from "@/lib/tmdb";
+import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
 import { getEpisodeRatings, getWatchedForShow, getUserId } from "@/lib/data";
 import { episodeKey } from "@/core/keys";
@@ -37,7 +38,8 @@ export async function GET(
       /* D-1011 — `?r=1`: تقييماتُ IMDb للحلقات وتقييماتي — كما `/api/season?r=1` في الويب */
       const withRatings = req.nextUrl.searchParams.get("r") === "1";
       const [season, watched, imdb, mine] = await Promise.all([
-        getSeason(tvId, seasonNumber),
+        /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد */
+        getSeasonForView(tvId, seasonNumber),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
         withRatings ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => ({}) as Record<number, number>) : Promise.resolve({} as Record<number, number>),
         withRatings && uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, { rating: number; review: string | null }>()) : Promise.resolve(new Map<string, { rating: number; review: string | null }>()),

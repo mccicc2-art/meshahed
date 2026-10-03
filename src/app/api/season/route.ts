@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
-import { getSeason, tvImdbId } from "@/lib/tmdb";
+import { tvImdbId } from "@/lib/tmdb";
+import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
 import { allow, retryAfter } from "@/core/ratelimit";
 
@@ -35,7 +36,8 @@ export async function GET(request: Request) {
 
   try {
     const [season, ratings] = await Promise.all([
-      getSeason(tvId, seasonNumber),
+      /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد (دالّةُ مسار التطبيق نفسُها) */
+      getSeasonForView(tvId, seasonNumber),
       withRatings
         ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber))
         : Promise.resolve({} as Record<number, number>),

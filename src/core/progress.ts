@@ -144,6 +144,46 @@ export function firstEpisodeOf(tv: TvDetails): Map<number, number> {
   return out;
 }
 
+/** أقصى ما يُرسم من صفوفٍ عامّة — فوقه العطلُ أكبرُ من حلقةٍ تأخّرت، وصفوفٌ بلا أسماءٍ بالعشرات ضجيج */
+const MAX_PADDED = 3;
+
+/**
+ * 🆕 **حلقاتٌ حُسبت معروضةً ولا صفَّ لها في قائمة الموسم** (D-1254).
+ *
+ * منذ D-1253 العدُّ يقرأ التاريخ، وقائمةُ الموسم تأتي من TMDB — وقد تتأخّر عنه (الحلقاتُ يُدخلها
+ * متطوّعون). فيقول رأسُ الموسم «٠/١» ولا حلقةَ تحته. هذه تعيد **أرقامَ الناقص وتاريخَه** ليُرسم له صفٌّ
+ * عامٌّ يُعلَّم؛ الاسمُ يضعه القارئ بلغته (`episodeNo`).
+ *
+ * 🔑 **الحارسان**: (١) لا يُضاف شيءٌ ما دام في القائمة من المعروض ما يساوي العدَّ — فاختلافُ ترقيمٍ بين
+ * القائمة والحاسب (مطلقٌ/نسبيّ) لا يولّد صفوفاً وهميّة. (٢) العجزُ فوق `MAX_PADDED` لا يُرقَّع.
+ * والناقصُ يُؤخذ من **آخر** الأرقام المتوقَّعة: القائمةُ تتأخّر عن الجديد لا عن القديم.
+ * الخاصّاتُ (الموسم ٠) خارجَ العدّ فلا تُرقَّع.
+ */
+export function missingAiredEpisodes(
+  tv: TvDetails,
+  season: number,
+  listed: { episode_number: number; air_date: string | null }[],
+  today: string = todayIso(),
+): { episode_number: number; air_date: string }[] {
+  if (season < 1) return [];
+  const aired = airedPerSeason(tv, today).get(season) ?? 0;
+  const have = listed.filter((e) => e.air_date && e.air_date <= today).length;
+  const deficit = aired - have;
+  if (deficit <= 0 || deficit > MAX_PADDED) return [];
+
+  const first = firstEpisodeOf(tv).get(season) ?? 1;
+  const known = new Set(listed.map((e) => e.episode_number));
+  const last = lastAiredOf(tv, today);
+  /* تاريخُ الصفّ: تاريخُ آخر ما عُرض — ما قبله عُرض قبله أو معه، فلا يُرسم «مستقبلاً» */
+  const date = last?.air_date && last.air_date <= today ? last.air_date : today;
+
+  const out: { episode_number: number; air_date: string }[] = [];
+  for (let n = first + aired - 1; n >= first && out.length < deficit; n--) {
+    if (!known.has(n)) out.push({ episode_number: n, air_date: date });
+  }
+  return out.reverse();
+}
+
 /** النسبة المئوية الموحّدة: مشاهَد ÷ معروض */
 export function percentOf(watched: number, aired: number): number {
   if (!aired || aired <= 0) return 0;

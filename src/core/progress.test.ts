@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering, lastAiredOf } from "./progress.ts";
+import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering, lastAiredOf, missingAiredEpisodes } from "./progress.ts";
 
 /**
  * D-1253 — الحلقةُ تُحسب معروضةً متى حلّ تاريخُها، لا حين ينقلها TMDB من `next` إلى `last`.
@@ -63,4 +63,41 @@ test("الترقيمُ المطلق (D-603) يقرأ القادمةَ التي �
   assert.equal(airedEpisodeCount(tv, "2026-10-02"), 1160);
   assert.equal(airedEpisodeCount(tv, "2026-10-03"), 1161);
   assert.deepEqual([...airedPerSeason(tv, "2026-10-03")], [[1, 1155], [2, 6]]);
+});
+
+/** D-1254 — حلقةٌ حُسبت معروضةً ولا صفَّ لها في قائمة الموسم تُرقَّع بصفٍّ عامّ */
+const row = (episode_number: number, air_date: string | null) => ({ episode_number, air_date });
+
+test("قائمةٌ فارغةٌ والمعروضُ واحد: يُرقَّع بالحلقة ١ بتاريخها", () => {
+  assert.deepEqual(missingAiredEpisodes(show({}), 2, [], "2026-10-03"), [{ episode_number: 1, air_date: "2026-10-03" }]);
+});
+
+test("القائمةُ تحمل الحلقة: لا ترقيع", () => {
+  assert.deepEqual(missingAiredEpisodes(show({}), 2, [row(1, "2026-10-03")], "2026-10-03"), []);
+});
+
+test("قبل يوم العرض، والخاصّات، وموسمٌ مكتملُ القائمة: لا ترقيع", () => {
+  assert.deepEqual(missingAiredEpisodes(show({}), 2, [], "2026-10-02"), []);
+  assert.deepEqual(missingAiredEpisodes(show({}), 0, [], "2026-10-03"), []);
+});
+
+test("حلقاتُ المستقبل في القائمة لا تُحسب: الناقصُ آخرُ المعروض وحدَه", () => {
+  const tv = show({ last_episode_to_air: ep(2, 4, "2026-10-24"), next_episode_to_air: ep(2, 5, "2026-10-31") });
+  const listed = [row(1, "2026-10-03"), row(2, "2026-10-10"), row(3, "2026-10-17"), row(5, "2026-10-31")];
+  assert.deepEqual(missingAiredEpisodes(tv, 2, listed, "2026-10-25"), [{ episode_number: 4, air_date: "2026-10-24" }]);
+});
+
+test("عجزٌ كبيرٌ (قائمةٌ منهارة) لا يُرقَّع بعشرات الصفوف العامّة", () => {
+  assert.deepEqual(missingAiredEpisodes(show({}), 1, [], "2026-10-03"), []);
+});
+
+test("ترقيمٌ مختلفٌ بين القائمة والحاسب لا يولّد صفوفاً وهميّة", () => {
+  const tv = show({
+    number_of_episodes: 1181,
+    seasons: [{ season_number: 1, episode_count: 1155 }, { season_number: 2, episode_count: 26 }],
+    last_episode_to_air: ep(2, 1157, "2026-09-26"),
+    next_episode_to_air: null,
+  });
+  /* الحاسبُ يتوقّع ١١٥٦–١١٥٧ والقائمةُ مرقّمةٌ ١–٢: فيها من المعروض ما يساوي العدّ ⇒ لا شيء يُضاف */
+  assert.deepEqual(missingAiredEpisodes(tv, 2, [row(1, "2026-09-19"), row(2, "2026-09-26")], "2026-10-03"), []);
 });
