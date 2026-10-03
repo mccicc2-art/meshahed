@@ -270,20 +270,10 @@ export function CommunityScreen() {
           <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <Logo size={28} />
           </View>
-          {d?.prefs ? (
-            /* زرُّ الأدوات (`FilterIconButton`) — **بلا رقمٍ ولا نقطة** في المجتمع (D-554/D-592)، والحالةُ في لون الرمز وحدَه */
-            <Pressable
-              onPress={() => setTools(true)}
-              accessibilityRole="button"
-              accessibilityLabel={t.communityToolsTitle}
-              accessibilityState={{ expanded: tools }}
-              style={{ position: "absolute", end: PAGE_PAD, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}
-            >
-              <Icon name="sliders" size={16} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
-            </Pressable>
-          ) : null}
         </View>
-        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
+        {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
+            بلقطتين، ٣ أكتوبر): ثلاثةُ جذورٍ بمكانين للزرّ نفسِه عيبٌ (القاعدة ٣). الهندسةُ هندسةُ المكتبة حرفاً. */}
+        <View style={{ flexDirection: "row", alignItems: "stretch", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
           {order.map((k) => {
             const on = k === lit;
             return (
@@ -292,6 +282,22 @@ export function CommunityScreen() {
               </Pressable>
             );
           })}
+          {d?.prefs ? (
+            /* زرُّ الأدوات (`FilterIconButton`) — **بلا رقمٍ ولا نقطة** في المجتمع (D-554/D-592)، والحالةُ في لون الرمز وحدَه */
+            <Pressable
+              onPress={() => setTools(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t.communityToolsTitle}
+              accessibilityState={{ expanded: tools }}
+              style={{ alignSelf: "center", marginBottom: 4, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
+            >
+              <Icon name="sliders" size={16} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
+            </Pressable>
+          ) : (
+            /* مكانُ الزرّ محجوزٌ قبل وصول التفضيلات: التبويباتُ لا تقفز حين يظهر */
+            <View style={{ width: 36, marginStart: 8 }} />
+          )}
         </View>
       </Animated.View>
 

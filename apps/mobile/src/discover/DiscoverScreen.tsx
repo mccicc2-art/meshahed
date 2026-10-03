@@ -715,6 +715,13 @@ const DiscoverPane = memo(function DiscoverPane({
   return (
     <ScrollView
       refreshControl={refreshControl}
+      /* 🆕 D-1236 — **الصفوفُ التي تحت الشاشة تُفصل عن أندرويد وهي لا تُرى**. مسبارُ D-1235 (٣ أكتوبر، SM-S928B): كلُّ
+         عودةٍ إلى «اكتشف» توقف خيطَ الواجهة ٣٣–٥٠ms عند الظهور (`ud` ١–٢ في ٦ من ٦) وبقيّةُ الجذور صفر — العمودُ يحمل
+         ~١٠ صفوف يُرى منها اثنان أو ثلاثة، وأندرويد يُلصق الشجرةَ كلَّها بالنافذة عند فكّ التجميد. المفصولُ يبقى
+         مركَّباً في React (بياناتُه وموضعُ تمريره) ويُلصق حين يقترب من الشاشة.
+         ⚖️ **العمودُ وحدَه**: القصُّ الرأسيُّ لا يتعلّق باتّجاه اللغة (أخطاءُ هذه الخاصيّة المعروفةُ في الأفقيّ مع RTL)،
+         والصفوفُ الأفقيّةُ عليها أصلاً افتراضُ `FlatList` في أندرويد. تجربةٌ تُحكم بالرقم: إن لم ينزل `ud` تُحذف. */
+      removeClippedSubviews
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
