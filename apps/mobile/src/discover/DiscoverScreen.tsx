@@ -14,6 +14,7 @@ import { nativeListId } from "../list/route";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
+import { posterFor } from "../poster";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { useCardActs } from "../cardActs";
@@ -74,11 +75,20 @@ const memory: { tab: Tab; y: Partial<Record<Tab, number>> } = { tab: "shows", y:
 export function prefetchDiscover(): void {
   const tab = memory.tab === "lists" ? "shows" : memory.tab;
   void queryClient.prefetchQuery({ queryKey: ["discover:view"] as const, queryFn: async () => (await api<DiscoverViewPayload>("/api/v1/discover/view")).data, staleTime: 5 * 60_000 });
-  void queryClient.prefetchQuery({
-    queryKey: ["discover:personal", tab, ""] as const,
-    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${tab}`)).data,
-    staleTime: 5 * 60_000,
-  });
+  /* 🆕 D-1248 — **وملصقاتُ «مقترحٌ لك» الأولى مع حمولتها** (تسجيلُ أحمد ٣ أكتوبر، بعد انتظار ١١ث: «اكتشف» كاملةٌ من أوّل
+     إطار إلّا هذا الصفّ — صناديقُ فارغةٌ إطاراً ثمّ تمتلئ؛ ومصغّرةُ التريلر المسخَّنةُ أدناه حاضرة). الصورُ لا تُحمَّل
+     والشاشةُ مركَّبةٌ مخفيّة، فتُجلب إلى الكاش هنا بالرابط الذي ترسمه البطاقةُ حرفاً (`posterFor` بعرض `RAIL_CARD_W`). */
+  void queryClient
+    .fetchQuery({
+      queryKey: ["discover:personal", tab, ""] as const,
+      queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${tab}`)).data,
+      staleTime: 5 * 60_000,
+    })
+    .then((d) => {
+      const urls = (d?.foryou ?? []).slice(0, 4).map((c) => posterFor(c.poster_path, RAIL_CARD_W)).filter((u): u is string => !!u);
+      if (urls.length) void Image.prefetch(urls, "memory-disk");
+    })
+    .catch(() => {});
   for (const key of RAILS[tab]) {
     void queryClient.prefetchQuery({
       queryKey: ["discover:rail", tab, key, ""] as const,
