@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  I18nManager,
   Text as RNText,
   View,
   type PressableProps,
@@ -81,12 +82,22 @@ function splitRuns(text: string): { s: string; ar: boolean }[] {
   return out;
 }
 
+/** أوّلُ حرفٍ قويّ: `true` عربيّ · `false` لاتينيّ · `null` لا حروف (أرقامٌ · رموز · فارغ) */
+function firstStrongRtl(text: string): boolean | null {
+  for (const ch of text) {
+    if (ARABIC_RE.test(ch) && !/[\u0660-\u0669\u06F0-\u06F9\u060C\u061B\u061F\u066A-\u066D]/.test(ch)) return true;
+    if (/[A-Za-z\u00C0-\u024F]/.test(ch)) return false;
+  }
+  return null;
+}
+
 export function Text({
   muted,
   size = 15,
   weight = "400",
   color,
   content,
+  autoDir,
   children,
   style: rawStyle,
   ...rest
@@ -97,6 +108,8 @@ export function Text({
   color?: string;
   /** 🆕 D-1105 — كلامُ الناس (مراجعة · ردّ · منشور): يتبع «خطَّ المحتوى» لا «خطَّ الواجهة» */
   content?: boolean;
+  /** 🆕 D-1234 — النصُّ يبدأ من جهة لغته هو (`dir="auto"` الويب). `content` يتضمّنه؛ يُكتب وحدَه لكلام الناس الذي لا يتبع «خطَّ المحتوى» (النبذة) */
+  autoDir?: boolean;
 }) {
   const { tokens, fontsReady } = useApp();
   /* 🆕 D-1105 — حجمُ الخطّ: المقاسُ وارتفاعُ السطر يُضربان معاً (سطرٌ ثابتٌ تحت خطٍّ أكبر يقصّ الحروف)،
@@ -116,8 +129,21 @@ export function Text({
     color: color ?? (muted ? tokens.muted : tokens.fg),
     fontSize: size * k,
     fontWeight: weight,
-    textAlign: "left" as const,
+    textAlign: "left" as "left" | "right",
+    writingDirection: undefined as "rtl" | "ltr" | undefined,
   };
+  /* 🆕 D-1234 — **كلامُ الناس يبدأ من جهة لغته لا من جهة الواجهة** (أحمد، ٣ أكتوبر: «العربية تبدأ من اليمين،
+     الإنجليزي من اليسار» — مراجعةٌ عربيّةٌ في واجهةٍ إنجليزيّة كان سطرُها الأخير يقف يساراً). الجهةُ من **أوّل
+     حرفٍ قويّ** (عربيّ أو لاتينيّ؛ الأرقامُ والرموزُ لا تقرّر — قاعدةُ `dir="auto"`)، ونصٌّ بلا حروفٍ يبقى على الواجهة.
+     ⚠️ `"left"` في RN هي **بدايةُ اتجاه الواجهة** و`"right"` نهايتُه (تُقلبان في RTL)، فالمكتوبُ «عكسُ الواجهة أم لا»
+     لا «يمين أم يسار». و`style` الصريح (توسيط) ما زال يغلب لأنّه يأتي بعد `base`. */
+  if ((content || autoDir) && typeof children === "string") {
+    const rtl = firstStrongRtl(children);
+    if (rtl !== null) {
+      base.textAlign = rtl === I18nManager.isRTL ? "left" : "right";
+      base.writingDirection = rtl ? "rtl" : "ltr";
+    }
+  }
   if (!fontsReady || typeof children !== "string") {
     return <RNText {...rest} style={[base, style]}>{children}</RNText>;
   }

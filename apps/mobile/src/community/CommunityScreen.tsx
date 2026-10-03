@@ -370,15 +370,14 @@ export function CommunityScreen() {
 }
 
 /**
- * 🆕 D-1201 — **رأسُ «النقاشات»** (أحمد ٣٠ سبتمبر: التصميمُ B): «الكل · أعمالي» بشرائح ملفّ الشخص نفسِها (`Chip`)، وتحتها سطرٌ
- * هادئٌ بمقاسات سطر «هذا الأسبوع» في نشاط الملفّ: العددُ، ثمّ «الأحدث · الأكثر تفاعلاً» خياران ظاهران (الخطُّ تحت المختار).
+ * 🆕 D-1201 — **رأسُ «النقاشات»** (أحمد ٣٠ سبتمبر: التصميمُ B): «الكل · أعمالي» بشرائح ملفّ الشخص نفسِها (`Chip`)، وفي طرف
+ * الصفِّ نفسِه «الأحدث · الأكثر تفاعلاً» خياران ظاهران (الخطُّ تحت المختار) — D-1234؛ كانا سطراً ثانياً مع العدد.
  * «أعمالي» تكتب الكوكيَ نفسَه الذي كان مفتاحَ الأدوات (D-306) — فمن كان مفعّلاً يجدها مختارة.
  */
 function TalkHead({
   kind = "talk",
   mine,
   sort,
-  count,
   quiet = false,
   onPrefs,
 }: {
@@ -386,7 +385,6 @@ function TalkHead({
   kind?: "talk" | "feed";
   mine: boolean;
   sort: TalkSort;
-  count?: number;
   quiet?: boolean;
   onPrefs: (patch: CommunityPrefsBody) => void;
 }) {
@@ -395,12 +393,15 @@ function TalkHead({
   const order = (k: TalkSort) => (kind === "feed" ? onPrefs({ sort: k === "active" ? "smart" : "latest" }) : onPrefs({ talk_sort: k }));
   return (
     <View style={{ marginBottom: 12 }}>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
-        <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 10 }}>
-        <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{count === undefined ? "" : kind === "feed" ? t.feedRowsCount(count) : t.talkRoomsCount(count)}</Text>
+      {/* 🆕 D-1234 — **صفٌّ واحد** (أحمد بلقطة، ٣ أكتوبر: «ارفع موست اكتيف وريسنت على نفس خط الكل وناس اتابعهم، واحذف
+          عدد البوست وارفع الكتابات»): الشرائحُ في البداية والترتيبُ في الطرف، والخطُّ تحتهما. العددُ خرج — كان يحجز
+          صفّاً كاملاً لرقمٍ لا يُفعل به شيء. ⚖️ ينقض «السطرَ الثاني الهادئ» من التصميم B (D-1201) بيد صاحبه.
+          `flexWrap`: إن ضاق الصفُّ (خطٌّ مكبَّر · شاشةٌ ضيّقة) ينزل الترتيبُ سطراً بدل أن يُقصّ. */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 8, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
+          <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
+        </View>
         <View accessibilityRole="radiogroup" accessibilityLabel={t.talkSortAria} style={{ flexDirection: "row", gap: 14 }}>
           {(["latest", "active"] as const).map((k) => {
             const on = sort === k;
@@ -496,7 +497,7 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
         /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
         ListHeaderComponent={
           d.prefs ? (
-            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} count={feedView.rows.length} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
+            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
           ) : null
         }
         onViewableItemsChanged={views.onViewableItemsChanged}
@@ -522,7 +523,7 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
         keyExtractor={(r) => `${r.mediaType}-${r.tmdbId}`}
         renderItem={({ item }) => <RoomCard room={item} doors={doors} pin={roomPin} activity={talkActive && !talkIsQuiet} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListHeaderComponent={talkPrefs && d.rooms.length ? <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} count={talkRooms.length} quiet={talkIsQuiet} onPrefs={onPrefs} /> : null}
+        ListHeaderComponent={talkPrefs && d.rooms.length ? <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} quiet={talkIsQuiet} onPrefs={onPrefs} /> : null}
         ListEmptyComponent={empty(d.rooms.length ? t.talkMineEmpty : t.talkRoomsEmpty)}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}

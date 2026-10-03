@@ -313,7 +313,7 @@ function HeroCard({ d, rangeLabel }: { d: MemberStatsPayload; rangeLabel: string
           </View>
         </View>
         {d.person.bio ? (
-          <Text size={13} numberOfLines={2} style={{ marginTop: 8, lineHeight: 18, maxWidth: "62%" }}>{d.person.bio}</Text>
+          <Text autoDir size={13} numberOfLines={2} style={{ marginTop: 8, lineHeight: 18, maxWidth: "62%" }}>{d.person.bio}</Text>
         ) : null}
         {/* وقتُ المشاهدة في الزاوية المقابلة (D-721/D-724) */}
         <View style={{ marginTop: 28, alignItems: "flex-end" }}>

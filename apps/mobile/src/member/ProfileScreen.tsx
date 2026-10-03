@@ -635,7 +635,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 />
               )}
             </View>
-            {d.person.bio ? <Text pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
+            {d.person.bio ? <Text autoDir pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
             {/* 🆕 N2-fix — طلب متابعتي وطلبُه قائم: القرارُ هنا أيضاً (الإشعارُ يفتح هذا الملفّ) */}
             {d.relation.requested_me ? (
               <View style={{ marginHorizontal: PAGE_PAD, marginTop: 12, padding: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -1150,7 +1150,7 @@ function ReviewsPane({
                     <Text size={12} muted>{`${t.spoilerMark} · ${t.spoilerShow}`}</Text>
                   </Pressable>
                 ) : (
-                  <Text size={13} style={{ lineHeight: 19 }}>{r.review}</Text>
+                  <Text autoDir size={13} style={{ lineHeight: 19 }}>{r.review}</Text>
                 )
               ) : null}
               {/* 🆕 N2 — القلبُ فعلٌ و«تعليق» يفتح خيطَ الرأي (`LikeButton` · `RowComment` في الويب) */}
