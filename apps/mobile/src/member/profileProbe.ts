@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { afterPaint, mark } from "../perfMarks";
 import { uiFramesStart, type UiWindow } from "../uiFrames";
 
@@ -14,33 +14,59 @@ import { uiFramesStart, type UiWindow } from "../uiFrames";
  *   `ce − cs` = ثمنُ الالتزام الثاني حين لا يُعرف طولُ الرأس.
  * - `ready` — ١ إن عُرف طولُ الرأس عند التركيب (زيارةٌ سابقةٌ في الجلسة ⇒ التزامٌ واحد).
  * - `roots` — رسماتُ جذر الشاشة حتى اكتمالها · `from` — من فتحها.
- * - `ud` · `ug` · `ut` · `uf` — خيطُ الواجهة في النافذة نفسِها (`uiFrames.ts`).
+ * - `ud` · `ug` · `ut` · `uf` — خيطُ الواجهة (`uiFrames.ts`)، **من الضغطة** إلى اكتمال الشاشة (D-1240).
+ * - `dur` — ms من التركيب إلى أن رُسمت المرحلةُ الأخيرة (D-1240: الجسمُ يُرسم على مراحل).
  *
  * 🔑 **`ms` لم يتغيّر تعريفُه** (من التركيب إلى إطارين بعد أوّل التزامٍ فيه حمولة) فالأرقامُ تُقارن بما قبلها؛ العلامةُ
  * فقط تُكتب متأخّرةً — بعد أن يُرسم الجسمُ — لتحمل `ce` ورقمَ خيط الواجهة. شاشةٌ أُغلقت قبل ذلك لا تكتب شيئاً، كما كانت.
  */
 let tappedAt = 0;
+/* 🆕 D-1240 — **نافذةُ خيط الواجهة تبدأ من الضغطة لا من التركيب**: في قراءة D-1239 بدأت بعد أن أنهى JS بناءَ الشاشة
+   (العبورُ إلى خيط الواجهة يُفرَّغ حين يتنفّس JS)، ففاتها لصقُ العروض — وهو ما نقيسه. الضغطةُ معالجُ حدثٍ يعود فوراً. */
+let tapUi: UiWindow | null = null;
+let tapUiTimer: ReturnType<typeof setTimeout> | null = null;
+function dropTapUi() {
+  if (tapUiTimer) clearTimeout(tapUiTimer);
+  tapUiTimer = null;
+  tapUi?.cancel();
+  tapUi = null;
+}
 /** الضغطةُ التي تفتح ملفّاً (`openProfile`) — تُقرأ مرّةً عند تركيب الشاشة التالية */
 export function profileTapped() {
+  dropTapUi();
   tappedAt = performance.now();
+  tapUi = uiFramesStart();
+  /* ضغطةٌ لم تُركَّب شاشتُها (تنقّلٌ اعتُرض): الحلقةُ لا تبقى دائرة */
+  tapUiTimer = setTimeout(dropTapUi, 3000);
 }
 
-type Probe = { t0: number; go?: number; first?: number; cs?: number; ce?: number; ms?: number; painted: boolean; roots: number; done: boolean; ui: UiWindow };
+type Probe = { t0: number; go?: number; first?: number; cs?: number; ce?: number; ms?: number; dur?: number; painted: boolean; roots: number; done: boolean; ui: UiWindow };
 
-export function useProfileProbe({ cached, hasData, hasBody, headKnown, from }: { cached: boolean; hasData: boolean; hasBody: boolean; headKnown: boolean; from: string }) {
+export function useProfileProbe({ cached, hasData, hasBody, full, headKnown, from }: { cached: boolean; hasData: boolean; hasBody: boolean; full: boolean; headKnown: boolean; from: string }) {
   const [p] = useState<Probe & { ready: number }>(() => {
     const t0 = performance.now();
     const go = tappedAt > 0 && t0 - tappedAt < 3000 ? t0 - tappedAt : undefined;
     tappedAt = 0;
-    return { t0, go, painted: false, roots: 0, done: false, ui: uiFramesStart(), ready: headKnown ? 1 : 0 };
+    /* نافذةُ الضغطة إن وُجدت (`ut` يُقرأ منها)، وإلّا نافذةٌ من التركيب (فتحٌ من رابطٍ ويبيّ) */
+    let ui = tapUi;
+    if (ui && go !== undefined) {
+      if (tapUiTimer) clearTimeout(tapUiTimer);
+      tapUiTimer = null;
+      tapUi = null;
+    } else {
+      dropTapUi();
+      ui = uiFramesStart();
+    }
+    return { t0, go, painted: false, roots: 0, done: false, ui, ready: headKnown ? 1 : 0 };
   });
   if (!p.done) p.roots += 1;
+  const fullAsked = useRef(false);
   useLayoutEffect(() => {
     if (p.done) return;
     const at = performance.now() - p.t0;
     if (p.first === undefined) p.first = at;
     const finish = () => {
-      if (p.done || p.ms === undefined || !p.painted) return;
+      if (p.done || p.ms === undefined || !p.painted || p.dur === undefined) return;
       p.done = true;
       const ms = p.ms;
       const extra = {
@@ -50,6 +76,7 @@ export function useProfileProbe({ cached, hasData, hasBody, headKnown, from }: {
         first: Math.round(p.first ?? 0),
         cs: Math.round(p.cs ?? 0),
         ce: Math.round(p.ce ?? 0),
+        dur: Math.round(p.dur),
         ready: p.ready,
         roots: p.roots,
       };
@@ -59,6 +86,14 @@ export function useProfileProbe({ cached, hasData, hasBody, headKnown, from }: {
       p.cs = at;
       afterPaint(() => {
         p.ms = performance.now() - p.t0;
+        finish();
+      });
+    }
+    /* 🆕 D-1240 — `dur`: ms من التركيب إلى أن رُسمت المرحلةُ الأخيرة (الشاشةُ كاملة) — `ms` يبقى «متى ظهر شيء» */
+    if (full && p.dur === undefined && !fullAsked.current) {
+      fullAsked.current = true;
+      afterPaint(() => {
+        p.dur = performance.now() - p.t0;
         finish();
       });
     }
