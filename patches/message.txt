@@ -1,0 +1,4 @@
+[deploy] D-1250 — Search shows today's trending ten before typing; no keyboard on entry, second tap on Search opens it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
