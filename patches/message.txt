@@ -1,0 +1,10 @@
+[deploy] D-1248 — Discover is pre-mounted sooner and its first picks posters are preloaded
+
+Entering Discover ~7s after launch caught its hidden pre-mount half built (25
+of 77 cards, no logo or icons for ~200ms); after 11s it was complete. The wait
+after discover:view lands drops from 1200ms to 400ms, and the first four
+'Picked for you' posters are prefetched with the personal payload.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
