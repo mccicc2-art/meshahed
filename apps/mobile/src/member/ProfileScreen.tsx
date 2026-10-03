@@ -25,7 +25,6 @@ import { Sheet } from "../library/Sheet";
 import { openProfile } from "./open";
 import { fetchProfile, profileKey } from "./profileData";
 import { useProfileProbe } from "./profileProbe";
-import { afterPaint } from "../perfMarks";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
 import { num } from "@/core/i18n";
@@ -74,8 +73,6 @@ const HEADER_H = 56;
 const headMemo = new Map<string, { head: number; bar: number }>();
 const PAGE_PAD = 16;
 const GAP = 10;
-/** D-1240 — مهلةُ المرحلة الثانية: انزلاقُ الشاشة المدفوعة (٢٠٠ms، D-1223) وهامش */
-const STAGE_WAIT_MS = 260;
 const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
 
 /* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
@@ -426,32 +423,12 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   useEffect(() => {
     if (headH > 0 && barH > 0) headMemo.set(username, { head: headH, bar: barH });
   }, [username, headH, barH]);
-  /**
-   * 🆕 D-1240 — **الجسمُ يُرسم على مراحل** (تجربةٌ تُحكم بالرقم). عدّاداتُ D-1239 (٣ أكتوبر، SM-S928B): الفتحةُ من الكاش ~٦١٥ms —
-   * JS يبني الشاشةَ كلَّها في التزامٍ واحد (١٥٦–٢١٧ms) ثمّ أندرويد ينشئ عروضَها ويلصقها (~٢٨٠ms وخيطُ الواجهة واقف)، ولا يُرى
-   * شيءٌ قبل أن ينتهي الاثنان. والعينُ لا ترى من «نظرة عامّة» إلّا قسمين وبضعَ بطاقات.
-   * - `0` — الرأسُ + أوّلُ قسمين ببطاقاتِ عرض الشاشة وحدَها: ما يُرى، ولا شيءَ غيرُه.
-   * - `1` — بعد `STAGE_WAIT_MS` (انزلاقُ الدفع ٢٠٠ms انتهى — لصقٌ ثقيلٌ في أثنائه يقطّعه): بقيّةُ بطاقات القسمين.
-   * - `2` — بعد أن يُرسم ذلك: بقيّةُ الأقسام.
-   * المفاتيحُ ثابتةٌ فكلُّ مرحلةٍ **تضيف** ولا تعيد تركيبَ ما سبق. ⚖️ الثمن: من مرّر فوراً يرى أسفلَ اللوح فارغاً لحظة.
-   */
+  /* 🔴 D-1241 — **الجسمُ يُرسم دفعةً واحدة** (أحمد بعد تجربة D-1240، ٣ أكتوبر: «حلو إنه يفكّ على طول بس ما أقدر أتحكّم على
+     طول… ابغاها تنفكّ سوى»). الرسمُ على مراحل أنزل أوّلَ ظهورٍ من ~٦١٥ إلى ~٩٥ms، لكنّه أجّل العملَ الثقيل إلى ما بعد الظهور:
+     اكتمالُ الشاشة صار ٨٣٠–١٥٧٠ms وخيطُ الواجهة يقف والإصبعُ على الشاشة. **انتظارٌ قصيرٌ قبل الظهور خيرٌ من شاشةٍ ظهرت ولا
+     تستجيب.** بقي من D-1240 فصلُ ما تحت الشاشة عن أندرويد وعدّادُ خيط الواجهة من الضغطة. */
   const bodyUp = !!d && headH > 0;
-  const [stage, setStage] = useState<0 | 1 | 2>(0);
-  useEffect(() => {
-    if (!bodyUp || stage >= 2) return;
-    if (stage === 0) {
-      const h = setTimeout(() => setStage(1), STAGE_WAIT_MS);
-      return () => clearTimeout(h);
-    }
-    let live = true;
-    afterPaint(() => {
-      if (live) setStage(2);
-    });
-    return () => {
-      live = false;
-    };
-  }, [bodyUp, stage]);
-  useProfileProbe({ cached: cachedAtMount, hasData: !!d, hasBody: bodyUp, full: bodyUp && stage === 2, headKnown: !!memo0, from });
+  useProfileProbe({ cached: cachedAtMount, hasData: !!d, hasBody: bodyUp, full: bodyUp, headKnown: !!memo0, from });
   const maxC = Math.max(0, headH - barH);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
@@ -519,13 +496,13 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     if (!d) return null;
     const o = d.viewer.is_me ? d.owner : null;
     return {
-      favorites: <Favorites d={d} stage={stage} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
-      overview: <Overview d={d} stage={stage} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
+      favorites: <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
+      overview: <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
       activity: <ActivityList rows={d.activity} onTitle={openTitle} emptyText={t.profileEmptyActivity} />,
       reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />,
       lists: <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={o ? { on: o.saved_lists, onToggle: setSaved } : undefined} />,
     } satisfies Record<ProfileTabKey, React.ReactNode>;
-  }, [d, stage, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
+  }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
   /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
   const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (y: number) => void }>()).current;
   const fnsOf = (k: ProfileTabKey) => {
@@ -969,15 +946,10 @@ function SectionHead({ icon, label, onSort, action }: { icon: string; label: str
   );
 }
 
-/** D-1240 — كم بطاقةً بعرض `w` تملأ الشاشة (وواحدةٌ يظهر طرفُها): ما يُركَّب في المرحلة الأولى */
-const fitCount = (winW: number, w: number, gap: number) => Math.ceil(winW / (w + gap)) + 1;
-
-function Rail({ items, posterW, onTitle, lite = false }: { items: (ProfileTitle | ProfileShow)[]; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void; lite?: boolean }) {
-  const { width } = useWindowDimensions();
-  const shown = lite ? items.slice(0, fitCount(width, posterW, GAP)) : items;
+function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)[]; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
-      {shown.map((x) => (
+      {items.map((x) => (
         <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={posterW} onPress={(it) => onTitle(it.kind, it.id)} />
       ))}
     </ScrollView>
@@ -989,7 +961,7 @@ function Empty({ text }: { text: string }) {
 }
 
 /** المفضّلة: مسلسلاتُه وأفلامُه بترتيبه (`favorites.order` — D-564) ثمّ الأنمي يذيّلهما (D-941) */
-function Favorites({ d, stage, posterW, onTitle, onSort }: { d: ProfilePayload; stage: 0 | 1 | 2; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void; onSort?: (row: FavRow) => void }) {
+function Favorites({ d, posterW, onTitle, onSort }: { d: ProfilePayload; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void; onSort?: (row: FavRow) => void }) {
   const { t } = useApp();
   const f = d.favorites;
   if (!f.shows.length && !f.movies.length && !f.anime.length) return <Empty text={t.profileEmptyFavorites} />;
@@ -997,14 +969,13 @@ function Favorites({ d, stage, posterW, onTitle, onSort }: { d: ProfilePayload; 
     ...f.order.map((k) => (k === "shows" ? { key: k, icon: "tv", label: t.shortShows, items: f.shows } : { key: k, icon: "film", label: t.shortMovies, items: f.movies })),
     { key: "anime" as const, icon: "sparkles", label: t.discoverTabAnime, items: f.anime },
   ];
-  const live = rows.filter((r) => r.items.length);
   return (
     <View removeClippedSubviews>
-      {(stage < 2 ? live.slice(0, 2) : live).map((r) => (
+      {rows.filter((r) => r.items.length).map((r) => (
         <View key={r.key}>
           {/* 🆕 N3 — «صفُّ مفضّلةٍ يُرتَّب من عنوانه» (`FavoritesRail` — D-567): العنوانُ والمقبضُ يفتحان الورقة */}
           <SectionHead icon={r.icon} label={r.label} onSort={onSort && r.items.length > 1 ? () => onSort(r.key) : undefined} />
-          <Rail items={r.items} posterW={posterW} onTitle={onTitle} lite={stage === 0} />
+          <Rail items={r.items} posterW={posterW} onTitle={onTitle} />
         </View>
       ))}
     </View>
@@ -1014,7 +985,6 @@ function Favorites({ d, stage, posterW, onTitle, onSort }: { d: ProfilePayload; 
 /** نظرةٌ عامّة: أقسامُه بترتيبه (`sections` — D-581)، وسقفُ البطاقات في الصفّ تفضيلُه (`display.cards` — D-152) */
 function Overview({
   d,
-  stage,
   posterW,
   onTitle,
   onList,
@@ -1022,8 +992,6 @@ function Overview({
   onSort,
 }: {
   d: ProfilePayload;
-  /** D-1240 — مرحلةُ الرسم (انظر `stage` في الشاشة): ٠ ما يُرى · ١ بطاقاتُ القسمين كاملةً · ٢ الكلّ */
-  stage: 0 | 1 | 2;
   posterW: number;
   onTitle: (k: "tv" | "movie", id: number) => void;
   onList: (id: string) => void;
@@ -1032,25 +1000,21 @@ function Overview({
   onSort?: (sec: SortSec) => void;
 }) {
   const { t, tokens } = useApp();
-  const { width } = useWindowDimensions();
   const meta = profileSectionMeta(t);
   const cap = <T,>(xs: T[]) => (d.display.cards == null ? xs : xs.slice(0, d.display.cards));
-  const lite = stage === 0;
-  /* D-1240 — في المرحلة الأولى: بطاقاتُ عرض الشاشة وحدَها (بعرض بطاقة ذلك الصفّ وفجوته) */
-  const first = <T,>(xs: T[], w: number, gap: number) => (lite ? xs.slice(0, fitCount(width, w, gap)) : xs);
   const o = d.overview;
   const body = (s: ProfileSectionKey): React.ReactNode => {
     switch (s) {
       case "shows":
-        return o.shows.length ? <Rail items={cap(o.shows)} posterW={posterW} onTitle={onTitle} lite={lite} /> : null;
+        return o.shows.length ? <Rail items={cap(o.shows)} posterW={posterW} onTitle={onTitle} /> : null;
       case "movies":
-        return o.movies.length ? <Rail items={cap(o.movies)} posterW={posterW} onTitle={onTitle} lite={lite} /> : null;
+        return o.movies.length ? <Rail items={cap(o.movies)} posterW={posterW} onTitle={onTitle} /> : null;
       case "anime":
-        return o.anime.length ? <Rail items={cap(o.anime)} posterW={posterW} onTitle={onTitle} lite={lite} /> : null;
+        return o.anime.length ? <Rail items={cap(o.anime)} posterW={posterW} onTitle={onTitle} /> : null;
       case "artists":
         return o.artists.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 14 }}>
-            {first(cap(o.artists), 78, 14).map((a) => {
+            {cap(o.artists).map((a) => {
               const img = profileUrl(a.profile_path, "w185");
               return (
                 <Pressable key={a.person_id} onPress={() => onPerson(a.person_id)} accessibilityRole="link" style={{ width: 78, alignItems: "center", gap: 6 }}>
@@ -1066,7 +1030,7 @@ function Overview({
       case "lists":
         return o.lists.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
-            {first(cap(o.lists), 280, GAP).map((l) => (
+            {cap(o.lists).map((l) => (
               <View key={l.id} style={{ width: 280 }}>
                 <ListCard card={listCardOf(l, t)} onPress={() => onList(l.id)} />
               </View>
@@ -1076,7 +1040,7 @@ function Overview({
       case "ratings":
         return o.ratings.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
-            {first(cap(o.ratings), posterW, GAP).map((r) => (
+            {cap(o.ratings).map((r) => (
               <View key={`${r.media_type}-${r.tmdb_id}`} style={{ width: posterW }}>
                 <PosterCard
                   item={{ key: `${r.media_type}-${r.tmdb_id}`, kind: r.media_type, id: r.tmdb_id, title: r.title ?? "", posterPath: r.poster_path, progress: 0, completed: false, dropped: false }}
@@ -1090,11 +1054,10 @@ function Overview({
         ) : null;
     }
   };
-  const all = d.sections.map((s) => ({ s, node: body(s) })).filter((b) => b.node);
-  const blocks = stage < 2 ? all.slice(0, 2) : all;
+  const blocks = d.sections.map((s) => ({ s, node: body(s) })).filter((b) => b.node);
   const countOf = (s: ProfileSectionKey) => (s === "ratings" ? 0 : o[s].length);
   /* 🆕 N3 — ما أخفيتَه تراه أنت وحدك (D-152): ما ليس في ترتيبك يُرسم صفّاً منقّطاً بشارته — الويبُ تحت الأقسام */
-  const hidden = d.viewer.is_me && stage === 2 ? PROFILE_SECTIONS.filter((s) => !d.sections.includes(s)) : [];
+  const hidden = d.viewer.is_me ? PROFILE_SECTIONS.filter((s) => !d.sections.includes(s)) : [];
   return (
     <View removeClippedSubviews>
       {blocks.length ? (

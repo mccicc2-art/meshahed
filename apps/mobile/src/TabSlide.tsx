@@ -302,6 +302,10 @@ const WARM_MS = FLY_MS + 180;
 /** 🆕 K2 — بعد **سحبٍ** اكتمل: التبويبُ يتبدّل بعد الطيران لا قبله، فلا حركةَ تُنتظر — الهامشُ وحدَه. قياسُ خالد
     (٢٨ سبتمبر): السحباتُ المتتالية كانت تسبق مهلةَ `WARM_MS` فتجد الجارَ بارداً — وهي وحدَها التي بقي فيها تقطيع */
 const WARM_AFTER_SWIPE_MS = 180;
+/* 🆕 D-1241 — `warmAll`: الألواحُ البعيدةُ تُركَّب **واحداً واحداً** بهذه الفاصلة لا دفعةً. عدّادُ D-1240 على ملفّ الشخص
+   (SM-S928B): تركيبُ أربعة ألواحٍ معاً يوقف خيطَ الواجهة ٢٠٠–٣١٦ms بعد الظهور بنحو ثانية — واللمسُ في تلك اللحظة لا يُجاب
+   («ما أقدر أتحكّم على طول»). لوحٌ في كلِّ مرّة يقسم الوقفةَ إلى قصيراتٍ بينها إطاراتٌ تجيب الإصبع. */
+const WARM_STEP_MS = 320;
 
 function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false }: Props<K>) {
   const { width } = useWindowDimensions();
@@ -560,17 +564,34 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
     bySwipe.current = false;
     let cancelled = false;
     let job: { cancel: () => void } | null = null;
-    const timer = setTimeout(() => {
-      job = InteractionManager.runAfterInteractions(() => {
-        if (!cancelled) setWarm(near);
-      });
-    }, wait);
+    let timer: ReturnType<typeof setTimeout>;
+    if (warmAll) {
+      /* D-1241 — الأقربُ فالأبعد (الجاران أوّلاً كما في غير `warmAll`)، وما هو مجهَّزٌ أصلاً لا يأخذ دوراً */
+      const queue = near.filter((k) => !warmRef.current.includes(k)).sort((a, b) => Math.abs(order.indexOf(a) - ti) - Math.abs(order.indexOf(b) - ti));
+      let i = 0;
+      const step = () => {
+        job = InteractionManager.runAfterInteractions(() => {
+          if (cancelled) return;
+          const k = queue[i];
+          i += 1;
+          if (k) setWarm((w) => (w.includes(k) ? w : [...w, k]));
+          if (i < queue.length) timer = setTimeout(step, WARM_STEP_MS);
+        });
+      };
+      timer = setTimeout(step, wait);
+    } else {
+      timer = setTimeout(() => {
+        job = InteractionManager.runAfterInteractions(() => {
+          if (!cancelled) setWarm(near);
+        });
+      }, wait);
+    }
     return () => {
       cancelled = true;
       clearTimeout(timer);
       job?.cancel();
     };
-  }, [tab, near]);
+  }, [tab, near, warmAll, order, ti]);
 
   const track = useAnimatedStyle(() => ({ transform: [{ translateX: pos.value }] }));
   /* النشطُ · الخارجُ أو المسلَّح · الجاران المجهَّزان — بترتيب المسار، وكلٌّ بمفتاحه فلا يُعاد تركيبُ لوحٍ حاضر */
