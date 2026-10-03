@@ -239,8 +239,13 @@ export function SearchScreen({
       ) : (
         /* ================= البحثُ بالاسم ================= */
         <div className="space-y-4">
-          <form onSubmit={(e) => e.preventDefault()}>
-            <div className="relative">
+          {/* ⚖️ 🆕 D-1252 — **بابُ «بحث بالوصف» صار زرّاً بجانب الحقل** (أحمد: «أحسّه ماخذ مساحة كبيرة»، اختار
+              «ب» من صورتين). كان بطاقةً بسطرين تحت الرقاقات تأخذ صفّاً كاملاً من «رائج اليوم». الوصفُ طريقةٌ
+              ثانيةٌ للبحث فمكانُها بجانب حقله؛ **وما زال باباً لا رقاقة** (D-534: رقاقةٌ بين أنواعٍ تعِد بترشيح).
+              ⚠️ **الثمن**: نجمةٌ بلا كلمة — اسمُها في `aria-label`/`title`، وتلميحُ المرّة الواحدة مؤجَّلٌ مع
+              تفعيل مفتاح Gemini (لا يُصرف على ميزةٍ نتائجُها ضعيفةٌ اليوم). */}
+          <form onSubmit={(e) => e.preventDefault()} className="flex items-stretch gap-2">
+            <div className="relative flex-1 min-w-0">
               <span className="absolute inset-y-0 start-3.5 grid place-items-center text-muted pointer-events-none">
                 <Icon name="search" size={18} />
               </span>
@@ -276,6 +281,18 @@ export function SearchScreen({
                 </button>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                tap(8);
+                setDesc(true);
+              }}
+              aria-label={t.searchByDesc}
+              title={t.searchByDesc}
+              className="shrink-0 w-12 grid place-items-center rounded-xl border border-border bg-surface-2 text-accent hover:border-accent/50 transition"
+            >
+              <Icon name="sparkles" size={18} />
+            </button>
           </form>
 
           <div className={chipRow}>
@@ -297,24 +314,6 @@ export function SearchScreen({
               ))}
             </div>
           </div>
-
-          {/* **بابُ الوصف فوق النتائج دائماً** — من لا يعرف الاسمَ لا
-              يجده أسفلَ قائمةِ من يعرفونه. */}
-          <button
-            type="button"
-            onClick={() => {
-              tap(8);
-              setDesc(true);
-            }}
-            className="w-full flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-start hover:border-accent/50 transition"
-          >
-            <Icon name="sparkles" size={18} className="shrink-0 text-accent" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold truncate">{t.searchByDesc}</span>
-              <span className="block text-12 text-muted truncate">{t.searchByDescSub}</span>
-            </span>
-            <Tail />
-          </button>
 
           {short ? (
             /* 🆕 **الفراغُ قبل الكتابة صار «رائج اليوم»** (قرارُ أحمد ٣ أكتوبر ٢٠٢٦ — ينقض «لا رائج» في

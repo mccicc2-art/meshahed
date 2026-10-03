@@ -29,7 +29,7 @@ import { openProfile, profileHandleOf } from "../member/open";
  *
  * 🔑 **الوصفةُ وصفةُ `src/components/SearchScreen.tsx` حرفاً** (القاعدة ٣): حقلٌ واحدٌ بتركيزٍ فوريّ ومسحٍ
  * لا يُرسم على فراغ (D-222)، **خمسُ رقاقاتٍ** من العائلة الواحدة (D-948)، بابُ «ابحث بالوصف» فوق النتائج
- * دائماً (من لا يعرف الاسمَ لا يجده أسفلَ قائمةِ من يعرفونه)، ثمّ الأقسامُ الأربعة — **قسمٌ فارغٌ لا يُرسم**
+ * دائماً (من لا يعرف الاسمَ لا يجده أسفلَ قائمةِ من يعرفونه — ومنذ D-1252 زرٌّ بجانب الحقل)، ثمّ الأقسامُ الأربعة — **قسمٌ فارغٌ لا يُرسم**
  * و«عرض الكل» لا يُرسم إلّا وخلفه مزيد. الحالاتُ الثلاث: ابدأ · هيكل · لا نتائج.
  *
  * 🔑 **الأبواب**: عملٌ ⇒ `TitleScreen` · فنّانٌ ⇒ `PersonScreen` · قائمةٌ ⇒ `ListScreen` — أصليّةٌ كلُّها
@@ -213,7 +213,12 @@ export function SearchScreen() {
         ) : (
           <>
             {/* الحقل: `rounded-xl bg-surface-2 border ps-10 pe-11 py-3 text-base` — ولا حدَّ ذهبيّاً عند التركيز (D-539) */}
-            <View style={{ position: "relative", justifyContent: "center" }}>
+            {/* ⚖️ 🆕 D-1252 — **بابُ «بحث بالوصف» زرٌّ بجانب الحقل** لا بطاقةٌ بسطرين تحت الرقاقات (أحمد: «أحسّه ماخذ
+                مساحة كبيرة»، اختار «ب» من صورتين): صفٌّ كاملٌ عاد لـ«رائج اليوم». ما زال باباً لا رقاقة (D-534).
+                الزرُّ بارتفاع الحقل (`stretch`) فيكبران معاً مع حجم الخطّ. ⚠️ نجمةٌ بلا كلمة: اسمُها لقارئ الشاشة،
+                وتلميحُ المرّة الواحدة (`OneTimeHint`) مؤجَّلٌ مع تفعيل مفتاح Gemini. */}
+            <View style={{ flexDirection: "row", alignItems: "stretch", gap: 8 }}>
+            <View style={{ position: "relative", justifyContent: "center", flex: 1, minWidth: 0 }}>
               <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
                 <Icon name="search" size={18} color={tokens.muted} />
               </View>
@@ -242,6 +247,18 @@ export function SearchScreen() {
                 </Pressable>
               ) : null}
             </View>
+            <Pressable
+              onPress={() => {
+                haptic.pick();
+                setDesc(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t.searchByDesc}
+              style={({ pressed }) => ({ width: 48, minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: radius.md, borderWidth: 1, borderColor: pressed ? tokens.accent : tokens.border, backgroundColor: tokens.surface2 })}
+            >
+              <Icon name="sparkles" size={18} color={tokens.accent} />
+            </Pressable>
+            </View>
 
             {/* الرقاقاتُ الخمس — `chipRow`: تتمرّر أفقيّاً حتى حافّة الشاشة (`-mx-4 px-4`) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }} keyboardShouldPersistTaps="handled">
@@ -259,23 +276,6 @@ export function SearchScreen() {
                 />
               ))}
             </ScrollView>
-
-            {/* بابُ الوصف فوق النتائج دائماً: `rounded-2xl border bg-surface px-4 py-3` */}
-            <Pressable
-              onPress={() => {
-                haptic.pick();
-                setDesc(true);
-              }}
-              accessibilityRole="button"
-              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: radius.card, borderWidth: 1, borderColor: pressed ? tokens.accent : tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 16, paddingVertical: 12 })}
-            >
-              <Icon name="sparkles" size={18} color={tokens.accent} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text size={14} weight="700" numberOfLines={1}>{t.searchByDesc}</Text>
-                <Text size={12} muted numberOfLines={1}>{t.searchByDescSub}</Text>
-              </View>
-              <Tail color={tokens.muted} />
-            </Pressable>
 
             {short ? (
               /* 🆕 الفراغُ قبل الكتابة = «رائج اليوم». الهيكلُ بإيقاع الصفّ ريثما تصل، ونصُّ «ابدأ» إن لم تصل */
