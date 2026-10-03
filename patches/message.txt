@@ -1,0 +1,4 @@
+[deploy] D-1252 — Search by description becomes a button beside the field
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
