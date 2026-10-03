@@ -1,6 +1,7 @@
 import "server-only";
 import { searchPeople as searchMembers, searchPublicLists } from "@/lib/data";
-import { searchMulti, searchPeople, yearOf, getTv, getMovie } from "@/lib/tmdb";
+import { searchMulti, searchPeople, yearOf, getTv, getMovie, trendingToday } from "@/lib/tmdb";
+import { looksAnime } from "@/lib/topChart";
 import { resolveTmdbTitle } from "@/core/media";
 import { posterUrl, profileUrl } from "@/core/media";
 import { getT, getTitleMode } from "@/lib/locale";
@@ -8,7 +9,7 @@ import { roleName } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
 import { getTranslits, searchTranslits } from "@/lib/titleAliases";
 import { needsTranslit } from "@/core/titleMode";
-import type { SearchPayload, SearchScope } from "@/core/searchTypes";
+import type { SearchPayload, SearchScope, SearchTrendingItem } from "@/core/searchTypes";
 
 /**
  * ====== نواةُ البحث — منطقٌ واحدٌ لبابين (Phase 11-G · G0) ======
@@ -142,4 +143,44 @@ async function byTranslit(q: string, limit: number) {
     }),
   );
   return rows.filter((r): r is NonNullable<typeof r> => r !== null);
+}
+
+/** عشرةٌ لا أكثر — قرارُ أحمد («١٠ أفلام ومسلسلات تكون الترند حالياً») */
+export const TRENDING_LIMIT = 10;
+
+/**
+ * ====== «رائج اليوم» — ما تعرضه شاشةُ البحث قبل الكتابة (٣ أكتوبر ٢٠٢٦) ======
+ *
+ * 🔑 **دالّةٌ واحدةٌ لبابين** كالبحث نفسِه: صفحةُ الويب تناديها في الخادم، والتطبيقُ يقرؤها من
+ * `/api/v1/search/trending` — فلا يفترق ترتيبٌ بين المنصّتين (القاعدة ٦).
+ * 🔑 **والصفُّ صفُّ نتيجةِ البحث**: الاسمُ يمرّ بوضع العرض والكتابةِ الصوتيّة كما تمرّ النتائج (D-544)،
+ * فلا يتبدّل اسمُ العمل حين يكتب القارئُ حرفَه الأوّل.
+ * لا ترمي: فشلُ TMDB يعود قائمةً فارغة، والشاشةُ تعود لنصّ «ابدأ» القديم.
+ */
+export async function trendingSearch(): Promise<SearchTrendingItem[]> {
+  try {
+    const rows = (await trendingToday()).slice(0, TRENDING_LIMIT);
+    const mode = await getTitleMode();
+    const translits = needsTranslit(mode)
+      ? await getTranslits(
+          rows.map((r) => ({ tmdb_id: r.id, media_type: r.media_type === "tv" ? "tv" : "movie" })),
+        )
+      : new Map<string, string>();
+    return rows.map((r) => {
+      const mediaType = r.media_type === "tv" ? "tv" : "movie";
+      const name = resolveTmdbTitle(r, mode, translits.get(`${mediaType}-${r.id}`) ?? null);
+      return {
+        id: r.id,
+        mediaType,
+        title: name.primary,
+        titleSecondary: name.secondary,
+        year: yearOf(r) ?? null,
+        poster: posterUrl(r.poster_path ?? null, "w185"),
+        posterPath: r.poster_path ?? null,
+        anime: looksAnime(r),
+      };
+    });
+  } catch {
+    return [];
+  }
 }

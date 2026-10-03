@@ -7,6 +7,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { aiStorySearch } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
+import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
 import { chipClass, chipRow } from "./ui/controls";
 import { Icon, type IconName } from "./Icon";
 import { PersonName } from "./PersonRow";
@@ -18,6 +19,7 @@ import type {
   SearchPayload,
   SearchScope,
   SearchTitle,
+  SearchTrendingItem,
 } from "@/core/searchTypes";
 
 /**
@@ -61,11 +63,14 @@ export function SearchScreen({
   locale,
   initialQ = "",
   initialScope = "all",
+  trending = [],
 }: {
   locale: Locale;
   /** نصُّ رابطٍ عميق (`?q=`) — والصفحةُ تُفتح به مكتوباً ومبحوثاً */
   initialQ?: string;
   initialScope?: SearchScope;
+  /** 🆕 «رائج اليوم» — عشرةٌ من الخادم، تُرسم قبل أن يُكتب حرف وتغيب عند الحرف الثاني */
+  trending?: SearchTrendingItem[];
 }) {
   const t = getDict(locale);
   const [q, setQ] = useState(initialQ);
@@ -79,23 +84,23 @@ export function SearchScreen({
   const [descPending, startDesc] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* **من فتح البحث جاء ليكتب** — **ومن جاء برابطٍ فيه نصٌّ لا يُركَّز
-     له**: الكيبوردُ يغطّي نتائجَه التي جاء يقرؤها.
+  /* ⚖️ 🆕 **لا لوحةَ مفاتيحٍ عند الدخول** (D-1250، قرارُ أحمد ٣ أكتوبر ٢٠٢٦: «بلا لوحة في الويب أيضاً» —
+     ينقض «من فتح البحث جاء ليكتب» وتركيزَ D-711 الفوريّ). الصفحةُ تُفتح اليومَ على «رائج اليوم»،
+     واللوحةُ كانت تغطّيها. **الحقلُ يُركَّز بلمسه، أو بضغطةٍ ثانيةٍ على «بحث» في الشريط السفليّ**
+     (`SEARCH_FOCUS_EVENT` — يُطلَق داخل `click` فيقع التركيزُ داخل الإيماءة ويفتح iOS لوحتَه).
 
-     🔴 🆕 **والتركيزُ صار فوريّاً لا بعد ٦٠م.ث** (D-711، بلاغُ أحمد
-     الثاني: «الكيبورد في البحث ما يطلع مباشرة»). **الحقلُ الشاعل في
-     الشريط السفليّ يمسك الكيبوردَ حتّى تركّبَ هذه الصفحة** (D-710) —
-     **وستّون ملّي ثانيةٍ بينهما نافذةٌ يغلق فيها iOS الكيبوردَ فوق حقلٍ
-     لا يراه**، فيضيع كلُّ ما بُني له. **والتأخيرُ كان يحرس من سلبِ
-     التركيز أثناء التركيب**، **وحارسُه الآن إطارٌ ثانٍ لا انتظارٌ
-     أوّل**: نداءان على العنصر نفسِه لا يضرّان، **وأوّلُهما هو الذي يمسك
-     الكيبورد.** */
+     **وسطحُ المكتب باقٍ على تركيزه**: لا لوحةَ هناك تغطّي شيئاً، ومن فتح الصفحةَ بفأرٍ يكتب فوراً —
+     والحارسُ نوعُ المؤشّر (`hover` + `fine`) لا عرضُ الشاشة. */
   useEffect(() => {
     if (initialQ) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     inputRef.current?.focus({ preventScroll: true });
-    const id = requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
-    return () => cancelAnimationFrame(id);
   }, [initialQ]);
+  useEffect(() => {
+    const onFocus = () => inputRef.current?.focus({ preventScroll: true });
+    window.addEventListener(SEARCH_FOCUS_EVENT, onFocus);
+    return () => window.removeEventListener(SEARCH_FOCUS_EVENT, onFocus);
+  }, []);
 
   /* **والتفريغُ عند الكتابة لا في جسد المؤثّر** (D-434، وسابقةُ
      `SearchBox`): ضبطُ الحالة داخل المؤثّر يُطلق تصييراً متتالياً. */
@@ -312,7 +317,24 @@ export function SearchScreen({
           </button>
 
           {short ? (
-            <p className="text-center text-muted py-16">{t.searchStart}</p>
+            /* 🆕 **الفراغُ قبل الكتابة صار «رائج اليوم»** (قرارُ أحمد ٣ أكتوبر ٢٠٢٦ — ينقض «لا رائج» في
+               خطّة 11-G): الصفُّ صفُّ النتيجة نفسُه برقم ترتيبه، فلا تقفز الشاشةُ حين تحلّ النتائجُ محلَّه.
+               **وبلا علامةِ «عندك»** («ما يحتاج تقله عندك، هذا ترند»). وإن غابت القائمةُ عاد النصُّ القديم. */
+            trending.length ? (
+              <Section title={t.searchTrendingToday} show seeAll={null} t={t}>
+                {trending.map((r, i) => (
+                  <TitleRow
+                    key={`${r.mediaType}-${r.id}`}
+                    r={r}
+                    t={t}
+                    rank={i + 1}
+                    kind={r.anime ? t.animeBadge : undefined}
+                  />
+                ))}
+              </Section>
+            ) : (
+              <p className="text-center text-muted py-16">{t.searchStart}</p>
+            )
           ) : loading && !data ? (
             <Skeleton />
           ) : nothing ? (
@@ -492,9 +514,30 @@ function Row({
   );
 }
 
-function TitleRow({ r, t, note }: { r: SearchTitle; t: Dict; note?: string }) {
+function TitleRow({
+  r,
+  t,
+  note,
+  rank,
+  kind,
+}: {
+  r: SearchTitle;
+  t: Dict;
+  note?: string;
+  /** 🆕 رقمُ الترتيب في «رائج اليوم» — يسبق الملصق؛ الثلاثةُ الأولى بلون الهويّة */
+  rank?: number;
+  /** 🆕 كلمةُ النوع حين لا تكفي «مسلسل/فيلم» (الأنمي) — الصفُّ نفسُه لا صفٌّ ثانٍ */
+  kind?: string;
+}) {
   return (
     <Row href={`/${r.mediaType === "tv" ? "show" : "movie"}/${r.id}`}>
+      {rank !== undefined && (
+        <span
+          className={`w-5 shrink-0 text-center text-15 font-bold tabular-nums ${rank <= 3 ? "text-accent" : "text-muted"}`}
+        >
+          {rank}
+        </span>
+      )}
       <Thumb src={r.poster} shape="poster" icon={r.mediaType === "tv" ? "tv" : "film"} />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold truncate" dir="auto">
@@ -509,7 +552,7 @@ function TitleRow({ r, t, note }: { r: SearchTitle; t: Dict; note?: string }) {
         )}
         <span className="block text-12 text-muted truncate">
           {note ??
-            `${r.year ? `${r.year} · ` : ""}${r.mediaType === "tv" ? t.typeSeries : t.typeMovie}`}
+            `${r.year ? `${r.year} · ` : ""}${kind ?? (r.mediaType === "tv" ? t.typeSeries : t.typeMovie)}`}
         </span>
       </span>
     </Row>

@@ -59,16 +59,35 @@ export function Row({ onPress, children, disabled }: { onPress?: () => void; chi
 }
 
 /** صفُّ العمل — و`note` (سببُ الترشيح في بحث الوصف) يحلّ محلَّ سطرِ السنة والنوع كما في الويب */
-export function TitleRow({ r, note, onPress }: { r: SearchTitle; note?: string | null; onPress: () => void }) {
-  const { t } = useApp();
+export function TitleRow({
+  r,
+  note,
+  onPress,
+  rank,
+  kind,
+}: {
+  r: SearchTitle;
+  note?: string | null;
+  onPress: () => void;
+  /** 🆕 رقمُ الترتيب في «رائج اليوم» — يسبق الملصق؛ الثلاثةُ الأولى بلون الهويّة (كصفّ الويب حرفاً) */
+  rank?: number;
+  /** 🆕 كلمةُ النوع حين لا تكفي «مسلسل/فيلم» (الأنمي) — الصفُّ نفسُه لا صفٌّ ثانٍ */
+  kind?: string;
+}) {
+  const { t, tokens } = useApp();
   return (
     <Row onPress={onPress}>
+      {rank !== undefined ? (
+        <Text size={15} weight="700" color={rank <= 3 ? tokens.accent : tokens.muted} style={{ width: 20, textAlign: "center", fontVariant: ["tabular-nums"] }}>
+          {String(rank)}
+        </Text>
+      ) : null}
       <Thumb src={r.poster} shape="poster" icon={r.mediaType === "tv" ? "tv" : "film"} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text size={14} weight="600" numberOfLines={1}>{r.title}</Text>
         {/* الاسمُ الأصليُّ تحته (D-544) — قبل سطرِ السنة والنوع لأنّه اسمٌ لا وصف */}
         {r.titleSecondary ? <Text size={10} muted numberOfLines={1}>{r.titleSecondary}</Text> : null}
-        <Text size={12} muted numberOfLines={1}>{note ?? `${r.year ? `${r.year} · ` : ""}${r.mediaType === "tv" ? t.typeSeries : t.typeMovie}`}</Text>
+        <Text size={12} muted numberOfLines={1}>{note ?? `${r.year ? `${r.year} · ` : ""}${kind ?? (r.mediaType === "tv" ? t.typeSeries : t.typeMovie)}`}</Text>
       </View>
     </Row>
   );

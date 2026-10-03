@@ -6,7 +6,7 @@
  * فلا يفترق صفُّ نتيجةٍ بين المنصّتين (القاعدة ٦). هذا الملفُّ ممرٌّ + عقدُ
  * بابِ الوصف الذي لم يكن له شكلٌ مشتركٌ قبل اليوم (كان server action).
  */
-export type { SearchScope, SearchTitle, SearchArtist, SearchList, SearchPayload } from "../searchTypes";
+export type { SearchScope, SearchTitle, SearchArtist, SearchList, SearchPayload, SearchTrendingItem, SearchTrendingPayload } from "../searchTypes";
 
 /** جسمُ `POST /api/v1/search/story` — وصفٌ حرٌّ من ٨ إلى ٦٠٠ حرف (حدودُ `aiStorySearch`) */
 export interface SearchStoryBody {

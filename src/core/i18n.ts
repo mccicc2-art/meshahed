@@ -335,6 +335,7 @@ const ar = {
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
   searchNoResults: "لا توجد نتائج.",
   searchStart: "ابحث عن مسلسل أو فيلم للبدء.",
+  searchTrendingToday: "رائج اليوم",
   // بحث الذكاء (D-076)
   aiSearchBack: "البحث بالاسم",
   aiSearchPlaceholder:
@@ -2580,6 +2581,7 @@ const en: Dict = {
   searchAllResults: (q: string) => `See all results for “${q}” →`,
   searchNoResults: "No results.",
   searchStart: "Search for a show or a movie to get started.",
+  searchTrendingToday: "Trending today",
   aiSearchBack: "Search by name",
   aiSearchPlaceholder:
     "Describe the plot or what you remember — Arabic or English…",

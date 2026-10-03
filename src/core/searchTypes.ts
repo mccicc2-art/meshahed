@@ -62,3 +62,18 @@ export interface SearchPayload {
   /** هل خلف كلِّ قسمٍ مزيد؟ — بها وحدها يُرسم «عرض الكل» */
   more: Record<Exclude<SearchScope, "all">, boolean>;
 }
+
+/**
+ * 🆕 **صفُّ «رائج اليوم»** — ما تعرضه شاشةُ البحث قبل أن يُكتب حرف (قرارُ أحمد ٣ أكتوبر ٢٠٢٦).
+ *
+ * **شكلُ `SearchTitle` نفسُه زائدَ `anime`**: الصفُّ هو صفُّ نتيجةِ البحث حرفاً، والترتيبُ ترتيبُ
+ * المصفوفة (الأوّلُ = ١). و`anime` حقلٌ لا نوعٌ ثالثٌ في `mediaType` — البابُ الذي يفتحه الصفُّ ما زال
+ * `/tv` أو `/movie`، والكلمةُ تحت الاسم وحدَها التي تتبدّل.
+ */
+export interface SearchTrendingItem extends SearchTitle {
+  anime: boolean;
+}
+
+export interface SearchTrendingPayload {
+  items: SearchTrendingItem[];
+}

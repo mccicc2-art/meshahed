@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { getDict, type Locale } from "@/core/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
 import { openNative } from "./NativeLibraryFlag";
+import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
 
 /* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
    كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
@@ -84,9 +84,8 @@ const TABS: {
   { href: "/news", key: "news", icon: "compass", iconOn: "compass-filled" },
   { href: "/people", key: "people", icon: "people", iconOn: "people-filled" },
   /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام.
-     ولأنه فعل، لا يُنقل المستخدم إلى صفحة: ضغطُه يفتح ورقةً بحقلٍ مركَّز
-     فتظهر لوحة المفاتيح فوراً. الرابط يبقى مكتوباً لمن فتح `/search`
-     برابطٍ مباشر أو بلا جافاسكربت. */
+     (كان «فعلاً يفتح ورقةً بحقلٍ مركَّز» حتى D-534، ثمّ صفحةً تفتح لوحتَها حتى D-1250 —
+     واليومَ صفحةٌ تُفتح على «رائج اليوم» بلا لوحة، وضغطةٌ ثانيةٌ عليه تركّز الحقل.) */
   { href: "/search", key: "search", icon: "search", iconOn: "search-filled" },
 ];
 
@@ -146,59 +145,13 @@ export function BottomNav({
      الكيبورد بلا رحلةٍ ولا إعادةِ رسمٍ للصفحة.** */
   const kbOpen = useKeyboardOpen();
 
-  /* ============ 🆕 **الكيبوردُ يفتح مع ضغطة البحث** (D-710) ============
+  /* ⚖️ 🆕 **الكيبوردُ لا يفتح مع ضغطة البحث** (D-1250، ٣ أكتوبر ٢٠٢٦ — نقضٌ بكلمة صاحبه لـD-710/D-711).
 
-     **بلاغُ أحمد: «إذا ضغطت على البحث مباشرة يطلع لي الكيبورد، ما يحتاج
-     أضغط على المربّع العلويّ».**
-
-     🔴 **والعلّةُ قانونُ iOS لا خطأٌ في `SearchScreen`**: صفحةُ البحث
-     تنادي `focus()` عند تركيبها منذ يومها — **وiOS لا يفتح الكيبورد
-     إلّا لتركيزٍ يقع داخل إيماءة المستخدم نفسِها**، **وتركيبُ صفحةٍ بعد
-     ملاحةٍ ليس إيماءة.** فيصل القارئُ إلى حقلٍ مركَّزٍ بلا كيبورد.
-
-     🔑 **والحيلةُ نقلُ التركيز لا تكراره**: حقلٌ صغيرٌ شفّافٌ **يسكن
-     القشرةَ الدائمة** يُركَّز في `pointerdown` — **داخل الإيماءة** —
-     فيفتح الكيبوردُ فوراً، **ثمّ يرثه حقلُ الصفحة عند تركيبها**:
-     **ونقلُ التركيز بين حقلين والكيبوردُ مفتوحٌ لا يغلقه.**
-
-     ⚠️ **وهو للّمس وحدَه**: على الفأر لا كيبوردَ يُفتح، **وحقلٌ خفيٌّ
-     يخطف التركيزَ من الرابط يكسر الكيبوردَ الحقيقيّ** (Tab).
-
-     ⚠️ **و`priming` تمنع سباقاً حقيقيّاً**: الشريطُ يُخفي نفسَه بفتح
-     الكيبورد (D-359 أعلاه) — **وإخفاءٌ يقع بين `pointerdown` و`click`
-     يبتلع الضغطةَ فلا ملاحة.** فيبقى مرسوماً حتّى تُطلَق الضغطة. */
-  const primerRef = useRef<HTMLInputElement>(null);
-  const [priming, setPriming] = useState(false);
-  const primeTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (primeTimer.current) clearTimeout(primeTimer.current);
-    },
-    [],
-  );
-
-  /**
-   * 🆕 **الإشعالُ نفسُه** (D-711) — **دالّةٌ واحدةٌ ينادِيها حدثان**:
-   * `touchstart` **وهو إيماءةُ iOS المعياريّة**، و`pointerdown` لبقيّة
-   * أجهزة اللمس. **ونداءان على الحقل نفسِه لا يضرّان** (الحارسُ أدناه
-   * يخرج إن كان مركَّزاً أصلاً) — **والحدثُ الذي يصل أوّلاً هو الذي
-   * يفتح الكيبورد.**
-   */
-  const primeSearch = (pathnameNow: string) => {
-    if (pathnameNow.startsWith("/search")) return;
-    const el = primerRef.current;
-    if (!el || document.activeElement === el) return;
-    el.focus({ preventScroll: true });
-    setPriming(true);
-    if (primeTimer.current) clearTimeout(primeTimer.current);
-    /* **صمّامُ أمان**: لو تعثّرت الملاحةُ بقي كيبوردٌ فوق حقلٍ خفيٍّ
-       يبتلع ما يُكتب — **وإغلاقُه أصدقُ من ذلك.** وإن ورثه حقلُ الصفحة
-       فالشرطُ لا يتحقّق أصلاً. */
-    primeTimer.current = window.setTimeout(() => {
-      setPriming(false);
-      if (document.activeElement === el) el.blur();
-    }, 2500);
-  };
+     **قرارُ أحمد: «بلا لوحة في الويب أيضاً».** يومَ D-710 كانت صفحةُ البحث حقلاً فوق فراغ، فمن فتحها جاء
+     ليكتب. **واليومَ تحت الحقل «رائج اليوم»** — عشرةُ أعمالٍ تغطّيها اللوحةُ فلا يُرى منها إلّا صفّان.
+     فذهب «حقلُ الإشعال» الخفيُّ وحالتُه ومؤقّتُه وحدثا اللمس كلُّها، **ولم يبقَ منها إلّا البابُ السريع**:
+     **ضغطةٌ ثانيةٌ على «بحث» وأنت فيه تركّز حقلَ الصفحة** — بحدثِ نافذةٍ يُطلَق داخل `click` نفسِه،
+     فالتركيزُ يقع داخل إيماءة المستخدم ويفتح iOS لوحتَه (قانونُه الذي أنجب D-710 أصلاً). */
 
   /* ⚖️ 🆕 والزائرُ صار له شريطُه (D-627 — نقضُ D-122 بموت حجّتها،
      انظر `GUEST_TABS` أعلاه) */
@@ -266,7 +219,7 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
            ⚠️ **والأرضيةُ تبقى** (`0.375rem`) للمتصفّح حيث `env` صفر —
            **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
         className={`${
-          kbOpen && !priming ? "hidden" : "grid"
+          kbOpen ? "hidden" : "grid"
         } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 ${
           signedIn ? "grid-cols-5" : "grid-cols-4"
         } rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)*0.5))]`}
@@ -404,24 +357,7 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                 if (e.pointerType !== "touch") prewarm(href);
               }}
               onFocus={() => prewarm(href)}
-              /* 🆕 **إشعالُ الكيبورد داخل الإيماءة** (D-710) — الحجّةُ
-                 كاملةً عند `primerRef` أعلاه. **ومن كان في البحث أصلاً
-                 لا يُشعَل له**: لا صفحةَ تُركَّب فترث التركيز، **فيبقى
-                 كيبوردٌ فوق حقلٍ لا يُرى.** */
-              /* 🆕 **الحدثان معاً** (D-711): `touchstart` أوّلاً لأنه
-                 إيماءةُ WebKit المعياريّة، و`pointerdown` لمن لا
-                 يرسله — **والدالّةُ واحدةٌ والنداءُ الثاني يخرج
-                 بحارسِه.** */
-              onTouchStart={() => {
-                if (key === "search") primeSearch(pathname);
-              }}
-              onPointerDown={(e) => {
-                if (key !== "search") return;
-                if (e.pointerType !== "touch") return;
-                primeSearch(pathname);
-              }}
               onClick={(e) => {
-                if (key === "search") setPriming(false);
                 /* 🆕 Phase 11 · B1 (D-936) — **داخل الغلاف وللإدارة وحدَها**
                    تفتح خانةُ المكتبة الشاشةَ الأصليّة بدل الصفحة: العلَمُ
                    سمةٌ على `<html>` يضعها `NativeLibraryGate` خادميّاً، **فمن
@@ -431,7 +367,14 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                 /* 🆕 Phase 11-C (D-955) — «اكتشف» أصليّةً بالبوّابة نفسِها */
                 if (key === "news" && openNative("discover")) e.preventDefault();
                 /* Phase 11-G — «بحث» أصليّةً بالبوّابة نفسِها (لغلافٍ يعرفها ولا يرسم شريطَه بنفسه) */
-                if (key === "search" && openNative("search")) e.preventDefault();
+                if (key === "search") {
+                  if (openNative("search")) e.preventDefault();
+                  /* 🆕 D-1250 — وأنت في البحث أصلاً: الضغطةُ الثانيةُ تركّز حقلَه بدل ملاحةٍ إلى الصفحة نفسِها */
+                  else if (pathname.startsWith("/search")) {
+                    e.preventDefault();
+                    window.dispatchEvent(new Event(SEARCH_FOCUS_EVENT));
+                  }
+                }
                 /* Phase 11-H — «الرئيسيّة» أصليّةً بالبوّابة نفسِها (D-1066) */
                 if (key === "home" && openNative("home")) e.preventDefault();
               }}
@@ -441,32 +384,6 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
           );
         })}
       </nav>
-
-      {/* 🆕 **حقلُ الإشعال** (D-710) — **خارجَ `<nav>` عمداً**: الشريطُ
-          يختفي بفتح الكيبورد (D-359)، **وحقلٌ مركَّزٌ داخل عنصرٍ يُخفى
-          يفقد تركيزَه فينغلق الكيبوردُ في اللحظة التي فُتح فيها.**
-
-          ⚠️ **ولا `hidden` ولا `display:none` ولا `readOnly`**: iOS لا
-          يركّز ما لا يُرسم ولا يفتح كيبورداً لحقلٍ للقراءة — **فالشفافيّةُ
-          هي الإخفاءُ الوحيدُ الذي يبقيه قابلاً للتركيز.** و`16px` تمنع
-          تكبيرَ الصفحة تلقائيّاً عند التركيز، و`pointer-events-none`
-          تمنع أن يُضغط بالخطأ، و`tabIndex={-1}` تُخرجه من رحلة الـTab. */}
-      <input
-        ref={primerRef}
-        type="text"
-        tabIndex={-1}
-        aria-hidden
-        inputMode="search"
-        autoComplete="off"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-        /* 🆕 **وموضعُه داخل الشاشة لا في زاويةٍ منسيّة** (D-711): iOS
-           يمرّر الحقلَ المركَّز إلى الرؤية، **وحقلٌ يجلس تحت الكيبورد
-           نفسِه يدعو المتصفّحَ إلى تمريرٍ لا معنى له.** فوق الشريط
-           بقليل، بعرضِ بكسلٍ وشفافيّةٍ كاملة. */
-        className="md:hidden fixed bottom-[84px] start-1/2 w-px h-px p-0 border-0 bg-transparent opacity-0 pointer-events-none text-[16px]"
-      />
     </>
   );
 }

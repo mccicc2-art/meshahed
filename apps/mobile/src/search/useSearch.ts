@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api";
-import type { SearchPayload, SearchScope } from "../contracts";
+import type { SearchPayload, SearchScope, SearchTrendingPayload } from "../contracts";
 
 /** حرفان كالويب (`MIN = 2` في `SearchScreen.tsx`) — «IT» و«٢٤» و«لو» أعمالٌ حقيقيّة */
 export const MIN_QUERY = 2;
@@ -38,6 +38,22 @@ export function useSearch(term: string, scope: SearchScope) {
     /* الويبُ يخزّن دقيقةً في المتصفّح (`max-age=60`) — الرقمُ نفسُه هنا */
     staleTime: 60_000,
     placeholderData: keepPreviousData,
+    retry: 0,
+  });
+}
+
+/**
+ * 🆕 «رائج اليوم» — ما تعرضه الشاشةُ قبل أن يُكتب حرف (قرارُ أحمد ٣ أكتوبر ٢٠٢٦).
+ *
+ * عشرةٌ بترتيب الخادم (`/api/v1/search/trending`، نواةُ صفحة الويب نفسُها). **عشرُ دقائقَ طازجةً** كعمر
+ * ردِّ الخادم في الجهاز: الترتيبُ يوميٌّ فلا يُسأل عنه مع كلِّ عودةٍ للتبويب. وبلا إعادةِ محاولة —
+ * إن فشل عادت الشاشةُ لنصّ «ابدأ» القديم، ولا تُعلَّق على هيكل.
+ */
+export function useTrending() {
+  return useQuery({
+    queryKey: ["search:trending"] as const,
+    queryFn: async () => (await api<SearchTrendingPayload>("/api/v1/search/trending")).data.items,
+    staleTime: 600_000,
     retry: 0,
   });
 }

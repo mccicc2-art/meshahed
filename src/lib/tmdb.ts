@@ -383,6 +383,20 @@ export const trending = cache(async function trending(): Promise<SearchResult[]>
   );
 });
 
+/**
+ * 🆕 **رائجُ اليوم** — `/trending/all/day`: أفلامٌ ومسلسلاتٌ (والأنمي منها) في ترتيبٍ واحد.
+ *
+ * **ولماذا دالّةٌ ثانيةٌ بجانب `trending()`**: تلك نافذتُها أسبوعٌ ولها قرّاؤها (الرئيسيّةُ وصفحةُ
+ * الهبوط)، وهذه نافذتُها يومٌ بقرار أحمد لشاشة البحث — نافذتان لسؤالين، لا علَمٌ يقلب معنى الأولى.
+ * **وبلا تفضيلاتِ المحتوى عمداً** («لا، لأنه ترند»): الرائجُ يُعرض كما هو، لا كما يفضّله القارئ.
+ */
+export async function trendingToday(): Promise<SearchResult[]> {
+  const data = await railTmdb<{ results: SearchResult[] }>("/trending/all/day");
+  return (data.results ?? []).filter(
+    (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path,
+  );
+}
+
 // أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
 /**
  * أدنى ما يليق بصفّ «قادم قريباً».

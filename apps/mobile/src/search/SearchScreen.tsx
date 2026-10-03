@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +16,7 @@ import { haptic } from "../haptics";
 import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, Tail, TitleRow } from "./SearchRows";
-import { MIN_QUERY, useDebounced, useSearch } from "./useSearch";
+import { MIN_QUERY, useDebounced, useSearch, useTrending } from "./useSearch";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
@@ -35,7 +35,13 @@ import { openProfile, profileHandleOf } from "../member/open";
  * 🔑 **الأبواب**: عملٌ ⇒ `TitleScreen` · فنّانٌ ⇒ `PersonScreen` · قائمةٌ ⇒ `ListScreen` — أصليّةٌ كلُّها
  * بـ`from: "search"` فيعود الرجوعُ إلى هنا. **والعضوُ وحدَه ويبيّ** (صفحةُ `/u/` لم تُنقل — بابٌ معلَن).
  *
- * 🔑 **لا ميزةَ ليست في الويب**: لا بحثاتٌ أخيرة ولا رائج — التكافؤُ أوّلاً، والإضافةُ قرارٌ لاحق.
+ * 🔑 **لا ميزةَ ليست في الويب**: لا بحثاتٌ أخيرة — التكافؤُ أوّلاً، والإضافةُ قرارٌ لاحق.
+ *
+ * 🆕 ⚖️ **«رائج اليوم» قبل الكتابة — نقضٌ بكلمة أحمد لـ«لا رائج» أعلاه (٣ أكتوبر ٢٠٢٦)**: عشرةُ أعمالٍ
+ * (أفلامٌ ومسلسلاتٌ وأنمي) تملأ الفراغَ الذي كان نصَّ «ابدأ»، بصفّ النتيجة نفسِه مرقَّماً، وفي الويب مثلُها.
+ * 🆕 ⚖️ **ولا لوحةَ مفاتيحٍ عند الدخول** («أوّل ما أدخل يطلع الكيبورد .. ما أبغاه يطلع»): كانت تغطّي
+ * القائمةَ فلا يُرى منها إلّا صفّان. الحقلُ يُركَّز بلمسه، **أو بضغطةٍ ثانيةٍ على «بحث» في الشريط السفليّ**
+ * (اختيارُ أحمد بدل فقاعةٍ عائمة: لا عنصرَ جديداً ولا شيءَ يغطّي القائمة).
  */
 const PAGE_PAD = 16;
 const HEADER_H = 64;
@@ -62,6 +68,7 @@ export function SearchScreen() {
   const [scope, setScope] = useState<SearchScope>("all");
   const term = useDebounced(q);
   const search = useSearch(term, scope);
+  const trend = useTrending();
 
   /* ================= وضعُ الوصف (G3) ================= */
   const [desc, setDesc] = useState(false);
@@ -80,6 +87,16 @@ export function SearchScreen() {
     const h = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(h);
   }, [toast]);
+
+  /* 🆕 ضغطةٌ ثانيةٌ على «بحث» ⇒ اكتب. **إن كانت اللوحةُ ظاهرةً فلا شيء**؛ وإلّا `blur` ثمّ `focus`:
+     أندرويد يُبقي التركيزَ على الحقل بعد إغلاق اللوحة بزرّ الرجوع، و`focus()` على حقلٍ مركَّزٍ لا يفتحها. */
+  const focusField = useCallback(() => {
+    if (Keyboard.isVisible()) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.blur();
+    requestAnimationFrame(() => el.focus());
+  }, []);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -207,7 +224,6 @@ export function SearchScreen() {
                 placeholder={t.searchPlaceholder}
                 placeholderTextColor={tokens.muted}
                 returnKeyType="search"
-                autoFocus
                 autoCorrect={false}
                 autoCapitalize="none"
                 style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 44, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
@@ -262,7 +278,18 @@ export function SearchScreen() {
             </Pressable>
 
             {short ? (
-              <Text muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.searchStart}</Text>
+              /* 🆕 الفراغُ قبل الكتابة = «رائج اليوم». الهيكلُ بإيقاع الصفّ ريثما تصل، ونصُّ «ابدأ» إن لم تصل */
+              trend.data?.length ? (
+                <Section title={t.searchTrendingToday} show seeAll={null} seeAllLabel={t.searchSeeAll}>
+                  {trend.data.map((r, i) => (
+                    <TitleRow key={`${r.mediaType}-${r.id}`} r={r} rank={i + 1} kind={r.anime ? t.animeBadge : undefined} onPress={() => openTitle(r.mediaType, r.id)} />
+                  ))}
+                </Section>
+              ) : trend.isPending ? (
+                <RowsSkeleton />
+              ) : (
+                <Text muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.searchStart}</Text>
+              )
             ) : search.isError ? (
               <Text muted style={{ textAlign: "center", paddingVertical: 64 }}>{search.error instanceof ApiError && search.error.error.code === "rate_limited" ? t.apiRateLimited : t.apiUpstream}</Text>
             ) : !data ? (
@@ -303,7 +330,11 @@ export function SearchScreen() {
         <BottomNav
           active="search"
           onGo={(k) => {
-            if (k === "search") return;
+            /* 🆕 ضغطةٌ ثانيةٌ على الخانة المضيئة تفتح اللوحة (في وضع الوصف لا شيء: حقلُه مركَّزٌ أصلاً) */
+            if (k === "search") {
+              if (!desc) focusField();
+              return;
+            }
             if (k === "library") {
               switchTo("/library");
               return;

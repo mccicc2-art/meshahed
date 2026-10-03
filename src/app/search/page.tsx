@@ -1,5 +1,6 @@
 import { getT } from "@/lib/locale";
 import { SearchScreen } from "@/components/SearchScreen";
+import { trendingSearch } from "@/lib/searchCore";
 import type { SearchScope } from "@/core/searchTypes";
 
 /**
@@ -30,5 +31,9 @@ export default async function SearchPage({
       ? type
       : "all";
 
-  return <SearchScreen locale={locale} initialQ={q} initialScope={scope} />;
+  /* 🆕 «رائج اليوم» (٣ أكتوبر ٢٠٢٦): تُقرأ هنا لا من العميل — الصفحةُ تصل وقائمتُها فيها، بلا وميضِ
+     نصّ «ابدأ» ثمّ قفزة. ومن جاء برابطٍ فيه نصٌّ لا يراها أصلاً فلا تُطلب له. لا ترمي (قائمةٌ فارغة). */
+  const trending = q.trim() ? [] : await trendingSearch();
+
+  return <SearchScreen locale={locale} initialQ={q} initialScope={scope} trending={trending} />;
 }
