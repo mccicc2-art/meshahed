@@ -1,0 +1,10 @@
+[deploy] D-1246 — Library tab is pre-mounted in the background (first-visit flash)
+
+The first visit to Library drew text and empty poster boxes, then icons, then
+posters row by row (~250ms). Like Discover (D-1229), the tab is now prefetched
+once Home's and the library's payloads are both in cache, before Discover.
+library.open carries pre=1 when measured on the hidden pre-mount.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
