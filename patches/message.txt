@@ -1,0 +1,10 @@
+[deploy] D-1240 — profile body renders in stages; off-screen sections detach; UI probe starts at the tap
+
+Stage 0 draws the header plus the first two sections with one screen of cards,
+stage 1 (after the push slide) the rest of their cards, stage 2 the remaining
+sections. Panes and their section roots use removeClippedSubviews.
+profile.open: UI-thread window starts at the tap; dur = ms to the full screen.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
