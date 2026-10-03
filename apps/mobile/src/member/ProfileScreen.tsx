@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, write } from "../api";
+import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text, Toast } from "../ui";
 import { Icon, iconOr } from "../icons";
@@ -14,7 +14,6 @@ import { CONFIG } from "../config";
 import { haptic } from "../haptics";
 import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
-import { span, afterPaint } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { HomeCover, StatsCard, type StatCell } from "../home/HomeHeader";
@@ -24,6 +23,8 @@ import { ListCard, PlayPill } from "../library/ListCard";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { openProfile } from "./open";
+import { fetchProfile, profileKey } from "./profileData";
+import { useProfileProbe } from "./profileProbe";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
 import { num } from "@/core/i18n";
@@ -78,7 +79,8 @@ const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
 const ART_MUTED = "rgba(255,255,255,0.7)";
 const ART_SHADOW = { textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 };
 
-export const profileKey = (username: string) => [`profile:${username.toLowerCase()}`] as const;
+/* 🆕 D-1238 — المفتاحُ في `profileData.ts` (الرئيسيّةُ تسخّن به ملفَّ صاحبها)؛ يُعاد تصديرُه لمن يستورده من هنا */
+export { profileKey };
 
 type Grid = "shows" | "movies" | "anime";
 
@@ -94,19 +96,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
   const q = useQuery({
     queryKey: key,
-    queryFn: async () => (await api<ProfilePayload>(`/api/v1/profile/${encodeURIComponent(username)}`)).data,
+    queryFn: () => fetchProfile(username),
     staleTime: 60_000,
   });
   const d = q.data ?? null;
 
   /* `profile.open`: من التركيب إلى أوّل رسمٍ فيه حمولة — `cached` يفصل الكاشَ عن الشبكة (نهجُ «المجتمع») */
-  const [endOpen] = useState(() => span("profile.open", { cached: qc.getQueryData(key) ? 1 : 0 }));
-  const opened = useRef(false);
-  useEffect(() => {
-    if (!d || opened.current) return;
-    opened.current = true;
-    afterPaint(() => endOpen());
-  }, [d, endOpen]);
+  /* 🆕 D-1239 — العلامةُ تحمل مراحلَها (`profileProbe.ts`)؛ يُنادى بعد أن يُعرف `headH` أدناه */
+  const [cachedAtMount] = useState(() => !!qc.getQueryData(key));
 
   const [tab, setTab] = useState<ProfileTabKey | null>(null);
   const shown = useMemo(() => d?.tabs ?? [], [d?.tabs]);
@@ -426,6 +423,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   useEffect(() => {
     if (headH > 0 && barH > 0) headMemo.set(username, { head: headH, bar: barH });
   }, [username, headH, barH]);
+  useProfileProbe({ cached: cachedAtMount, hasData: !!d, hasBody: !!d && headH > 0, headKnown: !!memo0, from });
   const maxC = Math.max(0, headH - barH);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;

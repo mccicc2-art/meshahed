@@ -26,6 +26,7 @@ import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { SectionOrderSheet } from "./SectionOrderSheet";
 import { openProfile, profileHandleOf } from "../member/open";
+import { warmOwnProfile } from "../member/profileData";
 import { CelebrateSheet } from "./CelebrateSheet";
 import { BottomNav, navHeight } from "../BottomNav";
 import { useChromeHide } from "../ChromeHide";
@@ -89,6 +90,10 @@ export function HomeScreen() {
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
     if (d) warmDiscoverOnce();
+  }, [d]);
+  /* 🆕 D-1238 — وملفُّ صاحب الحساب: صورتُه في رأس هذه الشاشة بابُه، فيُجلب قبل الضغطة (`profileData.ts`) */
+  useEffect(() => {
+    if (d) warmOwnProfile(d.header.username);
   }, [d]);
   const toastHost = useRef<ToastHostRef>(null);
   const scroll = useRef<ScrollView>(null);
@@ -627,7 +632,10 @@ export function HomeScreen() {
           <Loading />
         )
       ) : (
-        <ScrollView ref={scroll} refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 2, paddingBottom: bottomPad }}>
+        /* 🆕 D-1238 — **الأقسامُ التي تحت الشاشة تُفصل عن أندرويد وهي لا تُرى** (نهجُ D-1236 في «اكتشف»: نزل وسيطُها
+           ~١١٦ → ~٩١ms). مسبارُ D-1235 بعدها: الرئيسيّةُ صارت الأثقل — وقفةُ ٥٠–٨٣ms على خيط الواجهة في ٣ من ٣ عودات.
+           العمودُ يحمل كلَّ الأقسام ملصوقةً، وصفوفُها تركّب كلَّ بطاقاتها (صورتان واسمٌ ماشٍ لكلٍّ). تجربةٌ تُحكم بالرقم. */
+        <ScrollView ref={scroll} removeClippedSubviews refreshControl={refresh} onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingTop: topH + 2, paddingBottom: bottomPad }}>
           {/* 🆕 D-1233 — **رأسُ الرئيسيّة صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر: شريك · بلس · غير مشترك): الصورةُ والاسمُ
               وشارةُ الاشتراك ومبدّلُ العرض. الغلافُ وسطرُ `@username • المتابعون` خرجا من هنا للجميع — مكانُهما الملفُّ
               الشخصيّ. **وبطاقةُ الأرقام باقيةٌ بشكلها لمن يريدها** («ابغاها ظاهره بنفس الشكل للي يبيها»): `show_stats`
