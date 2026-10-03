@@ -1,0 +1,4 @@
+[deploy] D-1255 — Generic episode names are written in words up to 20; an episode without a still wears the show backdrop, dimmed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
