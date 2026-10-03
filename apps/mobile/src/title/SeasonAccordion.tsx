@@ -375,7 +375,14 @@ function SeasonBody({
             </View>
             {/* صورةُ الحلقة — `w300` تكفي مربّعاً ٧٢×٤٠ (D-895: لا نجلب أكبر ممّا نرسم) */}
             <View style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-              {e.still_path ? <Image source={{ uri: backdropUrl(e.still_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={120} recyclingKey={`${season}-${e.episode_number}`} /> : null}
+              {e.still_path ? (
+                <Image source={{ uri: backdropUrl(e.still_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={120} recyclingKey={`${season}-${e.episode_number}`} />
+              ) : show.backdrop_path ? (
+                /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد: «يظهر صورة الغلاف حقّ العمل»،
+                   واختار الباهتة): العريضةُ لا الملصق (الخانةُ ١٦:٩)، ونصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة» —
+                   فصفوفٌ متتاليةٌ بالصورة نفسِها لا تُقرأ عطلاً. بلا خلفيّةٍ يبقى المربّعُ الرماديّ. */
+                <Image source={{ uri: backdropUrl(show.backdrop_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%", opacity: 0.5 }} contentFit="cover" transition={120} recyclingKey={`${season}-bd`} />
+              ) : null}
             </View>
             <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
               <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>

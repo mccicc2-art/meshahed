@@ -515,6 +515,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                    تملكه أصلاً** — فلا نداءَ إضافيٌّ لأجله. */
                 showTitle={tv.name}
                 showPosterPath={tv.poster_path ?? null}
+                showBackdropPath={tv.backdrop_path ?? null}
                 initialFollowing={following}
                 summaries={summaries}
                 initialSeason={openSeason}

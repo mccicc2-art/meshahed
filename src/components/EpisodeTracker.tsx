@@ -65,6 +65,7 @@ export function EpisodeTracker({
   showTmdbId,
   showTitle,
   showPosterPath = null,
+  showBackdropPath = null,
   initialFollowing = false,
   summaries,
   initialSeason,
@@ -86,6 +87,8 @@ export function EpisodeTracker({
      في كلِّ ضغطةٍ ثمنٌ يُدفع ألفَ مرّةٍ لأجل مرّة. */
   showTitle?: string;
   showPosterPath?: string | null;
+  /** 🆕 D-1255 — خلفيّةُ العمل: بديلُ صورةِ حلقةٍ لم تُرفع بعد (باهتةً) */
+  showBackdropPath?: string | null;
   initialFollowing?: boolean;
   summaries: SeasonSummary[];
   /** الموسم الذي جاء محمّلاً مع الصفحة (فيه أول حلقة غير مشاهَدة) */
@@ -739,6 +742,16 @@ export function EpisodeTracker({
                                   fill
                                   sizes="(max-width: 640px) 56px, 80px"
                                   className="object-cover"
+                                />
+                              ) : showBackdropPath ? (
+                                /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد واختيارُه):
+                                   نصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة». بلا خلفيّةٍ يبقى رمزُ الفيلم. */
+                                <Image
+                                  src={`${IMG}/w185${showBackdropPath}`}
+                                  alt=""
+                                  fill
+                                  sizes="(max-width: 640px) 56px, 80px"
+                                  className="object-cover opacity-50"
                                 />
                               ) : (
                                 <span
