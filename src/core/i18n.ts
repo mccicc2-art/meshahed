@@ -661,6 +661,8 @@ const ar = {
   markWatchedBtn: "تمّت مشاهدته",
   // رسائل الفعل الفوري — كل واحدة تسمّي ما حدث بلسانه، فالضغطة تشرح نفسها
   watchedMarked: "أُشّر كمُشاهَد",
+  /** D-1251 — ضغطةُ «للمشاهدة» على عملٍ مكتمل: لا فعلَ، وهذه الكلمةُ تقول لماذا */
+  toWatchDone: "شاهدته بالكامل",
   watchedMarkedCount: (n: number) => `أُشّرت ${n} حلقة كمُشاهَدة`,
   // مسلسلٌ اكتمل: الدائرة لا تمحو سجلّه — تدلّ على مكان الإلغاء
   seriesWatchedHint: "مُشاهَد بالكامل — ألغِ أي موسم من تبويب الحلقات",
@@ -2854,6 +2856,7 @@ const en: Dict = {
   doneLabel: "Done",
   markWatchedBtn: "Mark as watched",
   watchedMarked: "Marked as watched",
+  toWatchDone: "You've finished it",
   watchedMarkedCount: (n: number) => `Marked ${n} episodes watched`,
   seriesWatchedHint: "All watched — clear a season from the episodes tab",
   unwatchShowDone: "Watched cleared",

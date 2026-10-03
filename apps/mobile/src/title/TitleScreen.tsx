@@ -414,7 +414,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {/* D-1141 — حالتي لم تصل: الصفُّ يُرسم خافتاً ولا يُضغط (لا فعلَ على حالٍ لا نعرفها) */}
             <View pointerEvents={pending ? "none" : "auto"} style={{ opacity: pending ? 0.4 : 1 }}>
             <ActionRow
-              inWatch={d.me.following}
+              /* ⚖️ D-1251 — «للمشاهدة» = أريد مشاهدتَه ولم أُنهِه (أحمد: «يبقى في المكتبة بس ما يبقى في تو واتش»).
+                 كانت تضيء بـ`following` وحدَه فتبقى مضيئةً بجانب «شاهدته». العملُ باقٍ في المكتبة (المتابعةُ لا تُمسّ)،
+                 فموسمٌ جديدٌ يعيد الإضاءةَ من نفسه: `done` يسقط حين يزيد المبثوثُ عن المُشاهَد. */
+              inWatch={d.me.following && !done}
               inList={(x?.containing.length ?? 0) > 0}
               favorite={!!x?.favorite}
               watched={done}
@@ -424,7 +427,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 : null
               }
               onPress={(k) => {
-                if (k === "watch") follow.mutate(!d.me.following);
+                /* D-1251 — المكتملُ: الخانةُ مطفأةٌ وضغطتُها لا تحذف من المكتبة (كانت تفعل) — تقول لماذا وتقف.
+                   من أراد إخراجَه يلغي «شاهدته» أوّلاً. */
+                if (k === "watch") {
+                  if (done) setToast(t.toWatchDone);
+                  else follow.mutate(!d.me.following);
+                }
                 else if (k === "list") setListOpen(true);
                 else if (k === "favorite") favorite.mutate();
                 else if (d.kind === "movie") movieWatched.mutate(!d.me.watched);

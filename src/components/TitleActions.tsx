@@ -137,7 +137,10 @@ export function TitleActions({
       });
   }
 
-  const badge = inLists.size + (following ? 1 : 0);
+  /* ⚖️ D-1251 — «للمشاهدة» = أريد مشاهدتَه ولم أُنهِه (أحمد: «يبقى في المكتبة بس ما يبقى في تو واتش»).
+     المتابعةُ نفسُها لا تُمسّ (العملُ باقٍ في المكتبة، وموسمٌ جديدٌ يعيده)؛ الذي يتبدّل ما يُعرض ويُعدّ. */
+  const wantsWatch = following && !done;
+  const badge = inLists.size + (wantsWatch ? 1 : 0);
 
   /**
    * «للمشاهدة» — صفُّ ورقة القوائم وحده.
@@ -438,14 +441,20 @@ export function TitleActions({
           {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة. صامتة هنا: المربّع
               يمتلئ أمام العين، ورسالةٌ خلف الورقة لا تُقرأ */}
           <button
-            onClick={() => setToWatch(!following)}
-            className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
+            /* D-1251 — المكتملُ: المربّعُ فارغٌ وضغطتُه لا تحذف من المكتبة. **والسببُ مكتوبٌ في الصفّ نفسِه
+               لا في إشعار**: رسالةٌ خلف الورقة لا تُقرأ (الحجّةُ أعلاه)، وصفٌّ خافتٌ بلا كلمةٍ يُقرأ عطلاً (D-142). */
+            onClick={() => {
+              if (!done) setToWatch(!following);
+            }}
+            aria-disabled={done}
+            className={`w-full flex items-center gap-3 px-5 py-3 text-start transition ${done ? "cursor-default" : "hover:bg-surface-2"}`}
           >
-            <CheckBox on={following} />
-            <span className="text-14 font-semibold flex items-center gap-2">
+            <CheckBox on={wantsWatch} />
+            <span className={`text-14 font-semibold flex items-center gap-2 ${done ? "text-muted" : ""}`}>
               <Icon name="bookmark" size={16} className="text-muted" />
               {t.libToWatch}
             </span>
+            {done && <span className="ms-auto text-12 text-muted">{t.toWatchDone}</span>}
           </button>
 
           <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />

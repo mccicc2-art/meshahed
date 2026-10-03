@@ -662,17 +662,8 @@ export function EpisodeTracker({
                 )}
               </div>
 
-              {/* شريط تقدّم الموسم: خيط بثلاث بكسلات يغني عن قراءة الأرقام */}
-              {s.aired_count > 0 && (
-                <div className="h-[3px] bg-surface-2">
-                  <div
-                    className="h-full w-full bg-accent/80 origin-left rtl:origin-right transition-transform duration-500"
-                    style={{
-                      transform: `scaleX(${Math.min(1, seasonWatched / s.aired_count)})`,
-                    }}
-                  />
-                </div>
-              )}
+              {/* ⚖️ D-1251 — خيطُ تقدّم الموسم حُذف بكلمة أحمد («الخط الأصفر على كل سيزون ما أبغاه»، التطبيقُ
+                  والويبُ معاً): العدُّ بجانب الاسم والصحُّ الأخضرُ يقولان ما كان يقوله، وشريطُ التقدّم الكلّيِّ فوق باقٍ. */}
 
               {isOpen && (
                 <div className="acc-in">
