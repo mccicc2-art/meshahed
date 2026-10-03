@@ -1,0 +1,10 @@
+[deploy] D-1238 + D-1239 — Home detaches off-screen sections; own profile is warmed; profile.open carries its phases
+
+D-1238: removeClippedSubviews on the Home column (as D-1236 on Discover) and
+the signed-in user's profile is prefetched once Home settles.
+D-1239: profile.open now reports go/first/cs/ce/ready/roots/from and the
+UI-thread frame counters (measurement only; ms keeps its definition).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
