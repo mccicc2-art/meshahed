@@ -1,0 +1,10 @@
+[deploy] D-1245 — profile panes no longer detach off-screen sections (experiment: bottom row arrived late)
+
+The row cut by the bottom edge of the screen showed empty cards and no header
+icon for ~4 frames on every open. removeClippedSubviews (D-1240) is removed
+from the profile pane and its Overview/Favorites roots only; Home and Discover
+keep it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
