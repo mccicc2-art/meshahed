@@ -5,6 +5,7 @@ import { session } from "./session";
 import { BUILD_TAG } from "./ota";
 import { MODEL } from "./device";
 import { own } from "./ownSession";
+import { uiFramesStart, type UiWindow } from "./uiFrames";
 
 /**
  * ====== علاماتُ الأداء في الشاشات الأصليّة — Phase 11-F · F0 (D-1024) ======
@@ -195,9 +196,11 @@ export function jankStart(extra: Extra): () => void {
  *   مشغول، وصفرٌ مع زمنٍ طويل = الانتظارُ خارج JS (الجسر أو خيطُ الواجهة) — والعلاجان مختلفان.
  * - `cached` — ١ إن سبق أن وصل هذا التبويبُ في عمر العمليّة (يُفكّ تجميدُه)، و٠ لأوّل وصول (يُركَّب من الصفر
  *   بـ`lazy`) — كي لا يختلط التركيبُ الأوّل بكلفة التبديل. (مجموعةٌ أُعيد تركيبُها تحت بابٍ ويبيّ تُقرأ `1` خطأً — نادرةٌ بعد K3b.)
+ * - 🆕 D-1235 — `ud` · `ug` · `ut` · `uf`: الشيءُ نفسُه على **خيط الواجهة** (`uiFrames.ts`) — `drop` صفرٌ و`ud` كبير =
+ *   الانتظارُ في لصق العروض الأصليّة لا في كودنا. العلامةُ تُكتب حين يعود رقمُ ذلك الخيط (أو بعد مهلته)، و`ms` محسوبٌ قبله.
  * الساعةُ تبدأ من `onPress` (رفعُ الإصبع) كما كانت، فالأرقامُ تُقارن بما قبلها.
  */
-let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; tally: Record<string, number>; stopFrames: () => number } | null = null;
+let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; tally: Record<string, number>; stopFrames: () => number; ui: UiWindow } | null = null;
 /**
  * 🆕 D-1218 — **عدّاداتُ الرسم في نافذة التبديل** (تشخيصُ «⇐ اكتشف»: `focus` ٨٥–١٠٠ بارداً ومدفّأً معاً — ضعفُ
  * المكتبة، ولا `useIsFocused` فيها). السؤالُ الذي تجيبه: **هل الوقتُ قبل أوّل رسمٍ للشاشة (فكُّ التجميد والتنقّل)
@@ -272,6 +275,7 @@ export function tabLeaving(key: string): boolean {
 
 export function tabPressed(to: string, from: string) {
   pendingTab?.stopFrames();
+  pendingTab?.ui.cancel();
   if (to !== from) lastLeft = { from, at: performance.now() };
   /* ضغطةُ التبويب الظاهر لا تنقل ولا تُعلن وصولاً — لا شيءَ يُقاس، ولا عدّادٌ يدور بلا نهاية */
   if (to === from) {
@@ -281,7 +285,7 @@ export function tabPressed(to: string, from: string) {
   }
   const t0 = performance.now();
   const tally: Record<string, number> = {};
-  pendingTab = { to, from, t0, tally, stopFrames: frameCounter() };
+  pendingTab = { to, from, t0, tally, stopFrames: frameCounter(), ui: uiFramesStart() };
   counting = { tally, t0, to };
 }
 /** نداءُ التنقّل عاد (الشريطُ يستدعيها بعد `onGo`/`navigate`) */
@@ -310,19 +314,21 @@ export function tabLanded(key: string) {
     const ms = performance.now() - p.t0;
     const drop = p.stopFrames();
     if (counting === c) counting = null;
-    if (ms < 10_000)
-      mark("tab.switch", ms, {
-        tab: key,
-        from: p.from,
-        ...(p.go !== undefined ? { go: Math.round(p.go) } : {}),
-        focus: Math.round(p.focus ?? ms),
-        drop,
-        cached: seen ? 1 : 0,
-        ...(!seen && preloaded.has(key) ? { pre: 1 } : {}),
-        ...(c?.first !== undefined ? { first: Math.round(c.first) } : {}),
-        ...(c?.tally ?? {}),
-        ...(live !== undefined ? { live } : {}),
-      });
+    if (ms >= 10_000) return p.ui.cancel();
+    const extra: Extra = {
+      tab: key,
+      from: p.from,
+      ...(p.go !== undefined ? { go: Math.round(p.go) } : {}),
+      focus: Math.round(p.focus ?? ms),
+      drop,
+      cached: seen ? 1 : 0,
+      ...(!seen && preloaded.has(key) ? { pre: 1 } : {}),
+      ...(c?.first !== undefined ? { first: Math.round(c.first) } : {}),
+      ...(c?.tally ?? {}),
+      ...(live !== undefined ? { live } : {}),
+    };
+    /* 🆕 D-1235 — رقمُ خيط الواجهة يعود بعد إطارٍ منه: العلامةُ تنتظره (أو مهلتَه) و`ms` لا يتغيّر */
+    p.ui.stop((u) => mark("tab.switch", ms, u ? { ...extra, ...u } : extra));
   });
 }
 /* ضغطةٌ لم تصل (بابٌ ويبيّ اعترضها، أو رجوع) لا تُبقي عدّادَ الإطارات حيّاً: يُطفأ بعد ١٠ ثوانٍ كحدِّ العلامة */
@@ -330,6 +336,7 @@ setInterval(() => {
   const p = pendingTab;
   if (p && performance.now() - p.t0 > 10_000) {
     p.stopFrames();
+    p.ui.cancel();
     pendingTab = null;
     counting = null;
   }
