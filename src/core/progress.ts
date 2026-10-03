@@ -6,13 +6,41 @@
 
 import type { TvDetails } from "@/lib/tmdb";
 
+/** اليومُ بصيغة `YYYY-MM-DD` (UTC) — صيغةُ `air_date` نفسُها، فالمقارنةُ نصّيّة */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * 🔴 🆕 **آخرُ حلقةٍ عُرضت — بتاريخها لا بتصنيف TMDB** (D-1253، بلاغُ أحمد بلقطة على Black Clover، ٣ أكتوبر
+ * ٢٠٢٦: «حلقة السيزون الثاني نزلت .. ليش ماهي موجودة؟ في IMDb موجودة»).
+ *
+ * **العلّة**: TMDB يُبقي الحلقةَ في `next_episode_to_air` طوال يوم عرضها، ولا ينقلها إلى
+ * `last_episode_to_air` إلّا في تحديثه بعد انقضاء اليوم. وحاسباتُ هذا الملفّ كانت تقرأ `last` وحدَه —
+ * فحلقةٌ نزلت اليومَ تبقى «قادمةً» يوماً كاملاً: موسمُها صفر، والعملُ «مكتمل ١٠٠٪»، ولا تُعلَّم.
+ *
+ * **القاعدة**: «القادمةُ» التي حلّ تاريخُها (`air_date <= اليوم`) هي آخرُ ما عُرض. وقائمةُ الحلقات في
+ * التطبيق تقرأ التاريخَ أصلاً (`SeasonAccordion`: `air_date <= today()`) — فالعدُّ الآن يوافق القائمة.
+ *
+ * ⚠️ **الثمنُ يُقال**: TMDB يعطي تاريخاً بلا ساعة، فالحلقةُ تُحسب من أوّل يومها — قبل بثّها الفعليّ
+ * بساعات (ومسلسلٌ أمريكيٌّ يُبثّ ليلاً قد يسبق بنحو يوم). اختيارُ أحمد بعد أن عُرض عليه: حلقةٌ تسبق
+ * موعدَها بساعاتٍ أهونُ من حلقةٍ نزلت ولا تُعلَّم. ⚠️ **ودفعةٌ تنزل في يومٍ واحد** (موسمٌ كامل) تُحسب
+ * حلقتُها الأولى وحدَها حتى يلحق TMDB — `next` حلقةٌ واحدة.
+ * الخاصّاتُ (الموسم ٠) لا تُحتسب هنا كما لا تُحتسب في العدّ كلِّه.
+ */
+export function lastAiredOf(tv: TvDetails, today: string = todayIso()): TvDetails["last_episode_to_air"] {
+  const next = tv.next_episode_to_air;
+  if (next?.air_date && next.season_number >= 1 && next.air_date <= today) return next;
+  return tv.last_episode_to_air;
+}
+
 /**
  * عدد الحلقات التي عُرضت فعلاً، مشتقّ من `last_episode_to_air` بلا أي طلب إضافي:
  * كل مواسم ما قبل آخر حلقة مُذاعة + رقم تلك الحلقة داخل موسمها.
  * الموسم صفر (الحلقات الخاصة) لا يُحتسب لأن TMDB لا يحتسبه في number_of_episodes.
  */
-export function airedEpisodeCount(tv: TvDetails): number {
-  const last = tv.last_episode_to_air;
+export function airedEpisodeCount(tv: TvDetails, today?: string): number {
+  const last = lastAiredOf(tv, today);
   const total = tv.number_of_episodes ?? 0;
 
   if (!last || !last.season_number || last.season_number < 1) {
@@ -46,8 +74,8 @@ export function airedEpisodeCount(tv: TvDetails): number {
  * المواسم قبل موسم آخر حلقة مُذاعة مكتملة، والموسم الجاري حتى رقم تلك الحلقة،
  * وما بعده صفر.
  */
-export function airedPerSeason(tv: TvDetails): Map<number, number> {
-  const last = tv.last_episode_to_air;
+export function airedPerSeason(tv: TvDetails, today?: string): Map<number, number> {
+  const last = lastAiredOf(tv, today);
   const out = new Map<number, number>();
 
   /* الفرزُ لازمٌ لتجميع «ما قبل موسمِ آخر حلقة» — كشفُ الترقيم المطلق
@@ -86,8 +114,8 @@ export function airedPerSeason(tv: TvDetails): Map<number, number> {
  * كلِّه لا الموسم. **كاشفٌ واحدٌ يقرؤه الحاسبان والمتتبّعُ والصفحة**
  * (D-145) — نسختان منه تفترقان عند أوّل تعديل.
  */
-export function isAbsoluteNumbering(tv: TvDetails): boolean {
-  const last = tv.last_episode_to_air;
+export function isAbsoluteNumbering(tv: TvDetails, today?: string): boolean {
+  const last = lastAiredOf(tv, today);
   if (!last?.season_number || last.season_number < 1) return false;
   const cap =
     (tv.seasons ?? []).find((s) => s.season_number === last.season_number)
