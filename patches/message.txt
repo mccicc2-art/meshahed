@@ -1,0 +1,7 @@
+[deploy] D-1235 — UI-thread frame probe for tab switches (measurement only)
+
+tab.switch now carries ud/ug/ut/uf: dropped frames, longest gap, its offset
+and frame count on the UI thread over the same window as the JS drop counter.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
