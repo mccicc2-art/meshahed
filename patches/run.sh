@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# D-1247 — Library list draws its first screen of rows in one batch.
+# Payload: xz-compressed `git diff --binary` against main, checked by sha256 before it is applied.
+set -euo pipefail
+base64 -d > /tmp/d1247.diff.xz <<'B64'
+/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM4AfSA/9dADIaSQnC/BF9UN4KT0fVpPOShzt7Im9k+s0o
+guJ1mQSe1AGBhXpvsMh3lwOJdUqjwVIPQQ3qhttAR+f9hiVa8aVszFlO3FLNI9HyN+kH48aAzLsQ
+bdyLKMA9Y3Kpn58AIw5yiShPBx7U7q1R+P7fTXtUT7ne/bP01HNjR0cdLgBn87DXu4Axs2Ii3fUw
+eu8hxrT//3ooLVAsmk55gde05mEvNhpHT+TCi/ocyreaT6cW9DdzS18vBaa7rdsQ3IuAGjZpC0RX
+3dDumB8fVIBjdTuX7X+DMxB3xLdR45K5yw4gkxlsNKI+BcrTTk42tijTtFrf0atkZICbmiqs58Cu
+fPnazJmjqng0X6nTv62Lq/ixnSahNYshY86H9IEsXEBEKaB6HiuR/UOauTRuPoFW4I4jIolEPagB
+kOU7jaq/7VDyAWXvfOT3SdED9a7FQh/k7AYEvsS4fLPTuqF837WD0O+C4A+Oa4hwYKHZKBLBYWKU
+YkXzvc60fUoiUrAwDOyxKHAGrH6ex53lk2UViaMdHYjChfbkC9JMRDDJWgMXXaHp9jFr17U6c6pD
+bAFM/FBg1d2gPpOBVv3yoqLOTxqLlV1RVjvbPkkZY/br29dmcK2pFARCqpRFskbHZ5EVMjZY6jey
+6dnMoJg1U+usWLcMmpW3thQbVKte7iWyqHvCQI931uzesUWmsJrDv1sx0TPb3e45FdOSyNeTNugU
+T3MiM+EkMu7FApoaLwVxoetYnai08fiqPChXC3lJIFARFGEf4InfVsl1VH6+38GTRt+p+IS0J2sk
+HurmL3WTtt6gC+aMfQClGu9ED2g7O3j4Mx+PtvoXu8TOAHJawj5ivrrb+gv6+lFI/ZZTICh15N8Q
+n1D65jCmjkyLwd/tgOm5HUErBtlMWi9rnAoO6AKAFNO8Pn75UMygQsiJV08/H++boVO6Q4AbLNcO
+B/zRv9Wjhn0xLFCCpjIvJlwVGw4rq/MZE00dYX2u41GH6yO9DaHQ8OZerFYot46SDVWUaeEIskDg
+jwW8qa2dHsrz05Dg7TIIsOg/60n2jwX3/VExIGYcC19Z/rkxdiV99JSZJtHC4yCxRXCckPencPEG
+LpR0uGEXq8QGpf85LqjNdQo0ISfjp91li5rjoBH/eRH1Gl9wPcOHnH/a0AXdUUX59WNi8a8JFSoS
+mFB+DQalRoJJJ+q4f71/EOTyTzHTAM53rqmuTSWyiMoxTRcIdNHQaLOB5xpcdKM52FvqZBDBUtX8
+q9YKxnhbn9rpQmFbxh0cGjEGnFPqMTwltFr9fOGhWPrXQH7YQ9FG9LAHprO9vG6ckwQo5Y0j35mc
+kU29hpovgT6Sc83A2qq3gU02KzakExNkQiE8IAAApbOAKpBendMAAZsI0w8AANYoObuxxGf7AgAA
+AAAEWVo=
+B64
+xz -d -f /tmp/d1247.diff.xz
+echo "218b33d7c8f8fa0c09bf95f97d20c8dae9b9228c801f5815e551eddabb21d35c  /tmp/d1247.diff" | sha256sum -c -
+git apply --whitespace=nowarn /tmp/d1247.diff

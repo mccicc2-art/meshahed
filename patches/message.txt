@@ -1,0 +1,9 @@
+[deploy] D-1247 — Library list draws its first screen of rows in one batch
+
+FlashList renders its first rows two at a time; on the pre-mounted Library the
+third shelf's batch was only drawn at reveal, so its posters loaded late.
+overrideProps.initialDrawBatchSize is raised from 2 to 8 (visible rows only).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
