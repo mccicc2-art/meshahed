@@ -1,0 +1,11 @@
+[deploy] D-1243 — own profile opens in one piece: warm-up starts with Home, first-screen images preload, header height survives restarts
+
+The profile request now fires as soon as Home's payload lands (was 2.5s later);
+avatar, cover and the first rows' posters are prefetched with it; the measured
+header and tab-bar heights are kept in a small file so the first open after a
+restart also draws header and body in one commit. Avatar and cover load with
+high priority.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
