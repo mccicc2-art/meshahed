@@ -3,7 +3,7 @@ import { I18nManager, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
-import { radius } from "../theme";
+import { radius, tokensOf, type Tokens } from "../theme";
 import { Icon } from "../icons";
 import { posterFor } from "../poster";
 import { num } from "@/core/i18n";
@@ -37,8 +37,13 @@ import { themeById, themeScheme } from "@/core/themes";
    • الفاتح: **الملصقاتُ على البطاقة كلِّها**، والحجابُ أبيضُ ٧٥٪ لا صلب (٠–٣٠٪) · ٤٠٪ عند ٤٥٪ · صفرٌ عند ٦٠٪ — شيءٌ
      تحت الكلام يكسر سطوعَ الأبيض، وهو ما طلبه («الأبيض ساطع جدّاً، خلّه أخفّ»).
    كلاهما ألفا تُلوَّن بـ`tokens.bg` كما كان (D-1081)، ويُقلبان في RTL. */
+/* ⚖️ 🆕 D-1257 — **البطاقةُ داكنةٌ في «النهاري» أيضاً** (أحمد بلقطة، ٣ أكتوبر ٢٠٢٦: «الأبيض وهو مغطّي عالعمل مزعج شوي»؛
+   عُرض عليه تخفيفُ الحجاب إلى ٦٠٪ بصورة فاختار الثالث: «نفّذ 3») — ينقض شطرَ «الفاتح» من D-1135 بكلمة صاحبه.
+   الحجابُ الأبيضُ فوق صورةٍ يبقى ضباباً مهما خُفِّف، وتخفيفُه يُضعف سطرَ العدّ. **فبطاقةُ الثيم الداكن نفسُها تُرسم
+   داخل الصفحة الفاتحة**: أرضيّةٌ داكنة، عمودُ كلامٍ صلب، ملصقاتٌ بألوانها في ٧٢٪، ونصٌّ أبيض — كبطاقات «أكمل
+   المشاهدة» فوقها، وهي داكنةٌ في «النهاري» أصلاً. **اللوحةُ لوحةُ الثيم الرسميّ** (`tokensOf(null)`) لا أرقامٌ صمّاء،
+   ويلبسها ما في داخل البطاقة كلُّه (الرقاقةُ والفاصلُ معها)؛ الحدُّ وحدَه من ثيم الصفحة. حجابٌ واحدٌ بقي. */
 const VEIL_DARK = require("../../assets/list-veil-dark.png");
-const VEIL_LIGHT = require("../../assets/list-veil-light.png");
 const MIN_H = 168;
 const PAD = 14;
 
@@ -86,13 +91,15 @@ export function ListCard({
 }) {
   const { t, tokens, locale, themeId } = useApp();
   const light = themeScheme(themeById(themeId)) === "light";
+  /* D-1257 — داخلُ البطاقة يلبس لوحةَ الثيم الداكن الرسميّ حين تكون الصفحةُ فاتحة */
+  const c: Tokens = light ? tokensOf(null) : tokens;
   /* D-1135 — الكلامُ صار فوق صورةٍ نصفِ مغطّاة: سطرُ العدّ من لون المتن مخفّفاً لا الباهت (عدّ الملصقات يبقى مقروءاً) */
-  const sub2 = tokens.fg + "CC";
+  const sub2 = c.fg + "CC";
   /* D-1027 (F3) — شريحةُ الغلاف ~٩٦dp: المقاسُ من القاعدة الواحدة فيطابق رابطَ بطاقة المكتبة */
   const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
   const play =
     card.playlist === null ? null : (
-      <PlayPill on={!!card.playlist} label={t.listPlaylist} disabled={busy || !onPlaylist} onToggle={(on) => onPlaylist?.(on)} />
+      <PlayPill palette={c} on={!!card.playlist} label={t.listPlaylist} disabled={busy || !onPlaylist} onToggle={(on) => onPlaylist?.(on)} />
     );
 
   const stats = card.stats;
@@ -110,7 +117,7 @@ export function ListCard({
         /* D-1081 — أرضيّةُ البطاقة لونُ الصفحة (`bg`) لا السطح: بلاغُ أحمد «خلّ خلفيّتها سوداء» —
            في الرئيسيّة والمكتبة واكتشف معاً، لأنّها بطاقةٌ واحدة. الحجابُ والهالةُ يتبعانها فلا
            يظهر السطحُ الرماديّ شريطاً عند حافّة الملصقات؛ و`daylight` يبقى صحيحاً من الرمز */
-        backgroundColor: tokens.bg,
+        backgroundColor: c.bg,
         overflow: "hidden",
         opacity: pressed ? 0.85 : 1,
       })}
@@ -119,7 +126,7 @@ export function ListCard({
       {card.cover ? (
         <Image source={{ uri: card.cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : posters.length > 0 ? (
-        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: light ? "100%" : "72%", flexDirection: "row", justifyContent: "flex-end" }}>
+        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
           {posters.slice(0, 3).map((uri, i) => (
             <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
           ))}
@@ -127,8 +134,8 @@ export function ListCard({
       ) : null}
       {/* الحجابُ بلون الأرضيّة، من جهة البداية — يُقلب في RTL (D-1135: واحدٌ لكلِّ ثيم) */}
       <Image
-        source={light ? VEIL_LIGHT : VEIL_DARK}
-        tintColor={tokens.bg}
+        source={VEIL_DARK}
+        tintColor={c.bg}
         contentFit="fill"
         style={[StyleSheet.absoluteFill, { transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }]}
       />
@@ -137,10 +144,10 @@ export function ListCard({
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
           {card.icon ? (
             <View style={{ marginTop: 2 }}>
-              <Icon name={card.icon} size={15} color={tokens.accent} />
+              <Icon name={card.icon} size={15} color={c.accent} />
             </View>
           ) : null}
-          <Text size={15} weight="700" numberOfLines={2} style={{ flex: 1, maxWidth: "58%", lineHeight: 20 }}>
+          <Text size={15} weight="700" color={c.fg} numberOfLines={2} style={{ flex: 1, maxWidth: "58%", lineHeight: 20 }}>
             {card.name}
           </Text>
           {/* 🆕 D-952 — رمزُ الفلاتر (`sliders`) قبل المشاركة: الويبُ يضع «عدّل الشرط»
@@ -153,7 +160,7 @@ export function ListCard({
               accessibilityLabel={onEdit.label}
               style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6 }}
             >
-              <Icon name="sliders" size={16} color={tokens.muted} />
+              <Icon name="sliders" size={16} color={c.muted} />
             </Pressable>
           ) : null}
           {onShare ? (
@@ -163,7 +170,7 @@ export function ListCard({
               accessibilityLabel={t.listShare}
               style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6, marginEnd: -6 }}
             >
-              <Icon name="share" size={16} color={tokens.muted} />
+              <Icon name="share" size={16} color={c.muted} />
             </Pressable>
           ) : null}
         </View>
@@ -172,11 +179,11 @@ export function ListCard({
             {card.owner_avatar ? (
               <Image source={{ uri: card.owner_avatar }} style={{ width: 14, height: 14, borderRadius: 7 }} contentFit="cover" />
             ) : (
-              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                <Text size={8} weight="700" muted>{card.owner.slice(0, 1)}</Text>
+              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.surface2, alignItems: "center", justifyContent: "center" }}>
+                <Text size={8} weight="700" color={c.muted}>{card.owner.slice(0, 1)}</Text>
               </View>
             )}
-            <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{card.owner}</Text>
+            <Text size={12} color={c.muted} numberOfLines={1} style={{ flexShrink: 1 }}>{card.owner}</Text>
           </View>
         ) : null}
         <Text size={12} color={sub2} numberOfLines={1} style={{ marginTop: 4, maxWidth: "58%" }}>
@@ -191,7 +198,7 @@ export function ListCard({
                   flexDirection: "row",
                   alignItems: "center",
                   borderRadius: radius.pill,
-                  backgroundColor: tokens.bg + "B3",
+                  backgroundColor: c.bg + "B3",
                   marginStart: -6,
                   paddingHorizontal: 8,
                   paddingVertical: 4,
@@ -205,15 +212,15 @@ export function ListCard({
                   accessibilityLabel={card.savedByMe ? t.listUnsaveLabel : t.listSaveBtn}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
-                  <Icon name={card.canSave && !card.savedByMe ? "heart" : "heart-filled"} size={15} color={tokens.accent} />
-                  <Text size={12} muted style={styles.nums}>{num(stats.saves, locale)}</Text>
+                  <Icon name={card.canSave && !card.savedByMe ? "heart" : "heart-filled"} size={15} color={c.accent} />
+                  <Text size={12} color={c.muted} style={styles.nums}>{num(stats.saves, locale)}</Text>
                 </Pressable>
-                <Sep />
+                <Sep palette={c} />
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="comment" size={15} color={tokens.accent} />
-                  <Text size={12} muted style={styles.nums}>{num(stats.reviews, locale)}</Text>
+                  <Icon name="comment" size={15} color={c.accent} />
+                  <Text size={12} color={c.muted} style={styles.nums}>{num(stats.reviews, locale)}</Text>
                 </View>
-                <Sep />
+                <Sep palette={c} />
                 {/* ★ — فعلٌ يفتح ورقةَ الرأي لقائمة غيري (D-948)، رقمٌ ساكنٌ لقائمتي */}
                 <Pressable
                   disabled={!card.canReview || !onRate}
@@ -222,8 +229,8 @@ export function ListCard({
                   accessibilityLabel={t.listReviewsTitle}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
-                  <Icon name={card.hasMyReview ? "star-filled" : "star"} size={15} color={card.canReview && !card.hasMyReview ? tokens.muted : tokens.accent} />
-                  <Text size={12} weight="700" color={card.canReview && !card.hasMyReview ? tokens.muted : tokens.accent} style={styles.nums}>{num(stats.rating ?? 0, locale)}</Text>
+                  <Icon name={card.hasMyReview ? "star-filled" : "star"} size={15} color={card.canReview && !card.hasMyReview ? c.muted : c.accent} />
+                  <Text size={12} weight="700" color={card.canReview && !card.hasMyReview ? c.muted : c.accent} style={styles.nums}>{num(stats.rating ?? 0, locale)}</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -239,8 +246,10 @@ export function ListCard({
  * 🆕 N3 — **رقاقةُ On/Off واحدةٌ للتطبيق** (`PlayPill` الويب، D-677): كانت مكتوبةً داخل هذه البطاقة وحدَها، ورايةُ «القوائم
  * المحفوظة» في ملفّي (D-594) تلبسها في الويب أيضاً — فخرجت مكوّناً يُستورد لا نسخةً ثانية (القاعدة ٣). المقاساتُ كما كانت حرفاً.
  */
-export function PlayPill({ on, label, disabled, onToggle }: { on: boolean; label: string; disabled?: boolean; onToggle: (on: boolean) => void }) {
-  const { t, tokens } = useApp();
+export function PlayPill({ on, label, disabled, onToggle, palette }: { on: boolean; label: string; disabled?: boolean; onToggle: (on: boolean) => void; /** D-1257 — لوحةُ البطاقة التي تجلس عليها (داكنةٌ في «النهاري»)؛ غيابُها = ثيمُ الصفحة */ palette?: Tokens }) {
+  const app = useApp();
+  const t = app.t;
+  const tokens = palette ?? app.tokens;
   return (
     <Pressable
       onPress={() => onToggle(!on)}
@@ -270,8 +279,9 @@ export function PlayPill({ on, label, disabled, onToggle }: { on: boolean; label
   );
 }
 
-function Sep() {
-  const { tokens } = useApp();
+function Sep({ palette }: { palette?: Tokens }) {
+  const app = useApp();
+  const tokens = palette ?? app.tokens;
   return <View style={{ width: 1, height: 16, backgroundColor: tokens.divider, marginHorizontal: 10 }} />;
 }
 
