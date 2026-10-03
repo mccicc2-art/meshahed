@@ -23,7 +23,7 @@ import { ListCard, PlayPill } from "../library/ListCard";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { openProfile } from "./open";
-import { fetchProfile, profileKey } from "./profileData";
+import { DENSITY_W, fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { useProfileProbe } from "./profileProbe";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
@@ -69,11 +69,8 @@ import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
  * الترتيبُ يُرسم فوراً في الكاش (نهجُ D-1094) ثمّ يُكتب؛ الفشلُ يعيد الجلبَ ويقول سببه (D-1179).
  */
 const HEADER_H = 56;
-/** D-1222 — طولا الرأس وشريطِه المقيسان لكلِّ ملفٍّ في هذه الجلسة (انظر `headH`) */
-const headMemo = new Map<string, { head: number; bar: number }>();
 const PAGE_PAD = 16;
 const GAP = 10;
-const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
 
 /* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
 const ART_MUTED = "rgba(255,255,255,0.7)";
@@ -421,7 +418,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [headH, setHeadH] = useState(memo0?.head ?? 0);
   const [barH, setBarH] = useState(memo0?.bar ?? 0);
   useEffect(() => {
-    if (headH > 0 && barH > 0) headMemo.set(username, { head: headH, bar: barH });
+    /* 🆕 D-1243 — ويُحفظان بين الجلسات (`profileData.ts`): أوّلُ دخولٍ بعد التشغيل يُرسم في التزامٍ واحد أيضاً */
+    if (headH > 0 && barH > 0) rememberHead(username, headH, barH);
   }, [username, headH, barH]);
   /* 🔴 D-1241 — **الجسمُ يُرسم دفعةً واحدة** (أحمد بعد تجربة D-1240، ٣ أكتوبر: «حلو إنه يفكّ على طول بس ما أقدر أتحكّم على
      طول… ابغاها تنفكّ سوى»). الرسمُ على مراحل أنزل أوّلَ ظهورٍ من ~٦١٥ إلى ~٩٥ms، لكنّه أجّل العملَ الثقيل إلى ما بعد الظهور:
@@ -610,7 +608,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 style={({ pressed }) => ({ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}
               >
                 {!d.person.hide_name && d.person.avatar_url ? (
-                  <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" />
+                  <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /* D-1243 — قبل ملصقات الصفوف: كانت تنتظر دورَها خلف ~٢٠ ملصقاً فتظهر دائرةً رماديّةً ~٠٫٣ث */ priority="high" />
                 ) : (
                   <Icon name="people" size={24} color={tokens.muted} />
                 )}
