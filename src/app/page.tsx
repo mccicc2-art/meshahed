@@ -18,7 +18,6 @@ import {
   getMyRatings,
   getUnreadSignals,
   getUnreadShares,
-  getFollowStats,
 } from "@/lib/data";
 import {
   titleOf,
@@ -210,15 +209,8 @@ export default async function HomePage() {
   /* **والعدّادان يُقرآن هنا أيضاً بلا ثمن**: كلاهما مغلَّفٌ بـ`cache()`
      (D-470) **والشريطُ العلويُّ قرأهما في الطلب نفسِه** — فالنداءُ
      محفوظٌ لا مُكرَّر. */
-  const [unreadSignals, unreadShares, followStats] = await Promise.all([
-    getUnreadSignals(),
-    getUnreadShares(),
-    /* 🆕 **عدّادا المتابعة في الترويسة** (D-572) — **في الموجة القائمة
-       لا في موجةٍ ثالثة**: **رقمان يُرسمان فوق الطيّة**، **وعدّان
-       بـ`head: true` لا يجلبان صفّاً واحداً.** **والفشلُ يعني صفرين لا
-       صفحةً مكسورة.** */
-    getFollowStats(user.id).catch(() => ({ followers: 0, following: 0 })),
-  ]);
+  /* D-1258 — عدّادا المتابعة خرجا من رأس الرئيسيّة (مكانُهما الملفّ)، فسقط عدُّهما من هذه الموجة (D-572) */
+  const [unreadSignals, unreadShares] = await Promise.all([getUnreadSignals(), getUnreadShares()]);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
@@ -248,31 +240,17 @@ export default async function HomePage() {
             الوجهات تُسخَّن لحظةَ النيّة (لمسة/حومان/تركيز عبر
             `usePrefetchOnIntent`) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها.
             و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
+        {/* ⚖️ 🆕 D-1258 — الرأسُ صفٌّ واحد كالتطبيق (D-1233): لا غلافَ ولا `@username` ولا عدّادا متابعة ولا ختمُ
+            توثيق يُمرَّر — مكانُها الملفُّ الشخصيّ. والأرقامُ كلُّها من جلب الصفحة نفسِه (D-470). */}
         <HomeHeader
           displayName={displayName}
-          /* 🆕 سطرُ «@ahmed» تحت الاسم (D-618) — من صفِّ الملفّ المقروء أصلاً */
-          username={profile?.username ?? null}
-          /* 🆕 شارةُ Loopz+ (D-633) — والقراءةُ من نداء البروفايل القائم */
           plan={profile?.plan ?? null}
           founder={profile?.founder ?? false}
           plusUntil={profile?.plus_until ?? null}
-          verifiedAt={profile?.verified_at ?? null}
-          /* ⚖️ 🆕 **الصورةُ والهلالُ والعدّادان عادوا** (D-536): كانت
-             الثلاثةُ معاملاتٍ تُقبل ولا تُقرأ منذ D-502 — **وقد سقطت
-             من المستدعي في D-503** — **فتعود من بابها الأوّل.**
-             **والأرقامُ كلُّها من جلبِ الصفحة نفسِه** (D-470): لا نداءَ
-             خامسٌ لأجل ترويسة. */
           avatarUrl={profile?.avatar_url ?? null}
           avatarPos={profile?.avatar_pos ?? null}
-          /* 🆕 **والغلافُ من الصفِّ نفسِه** (D-540) — لا نداءَ خامس */
-          coverUrl={profile?.cover_url ?? null}
-          coverPos={profile?.cover_pos ?? null}
           unreadSignals={unreadSignals}
           unreadShares={unreadShares}
-          userId={user.id}
-          followers={followStats.followers}
-          following={followStats.following}
-          hideFollowLists={!!profile?.hide_follow_lists}
           stats={headerStats}
           showStats={prefs.stats}
           locale={locale}

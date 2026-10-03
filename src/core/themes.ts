@@ -415,7 +415,8 @@ export function themeName(t: Theme, locale: "ar" | "en") {
  * اللوحات، ودرجتُه تتبدّل حيث لا تُقرأ الافتراضية (النهاري — م٤): الغياب
  * يعني قيمة globals.css فلا يُكتب المتغير أصلاً.
  */
-export function themeCss(t: Theme) {
+/** تصريحاتُ لوحةٍ واحدة — يقرؤها `:root` وجزيرةُ الحبر الداكن (D-1258) فلا تُكتب القائمةُ مرّتين */
+function themeDecls(t: Theme) {
   const v = t.vars;
   // تدرّج الشعار يتبع الهوية لا الثيم: الثيمات تغيّر لون الواجهة، أما
   // العلامة فتبقى كما هي في كل مكان تُرى فيه
@@ -436,6 +437,15 @@ export function themeCss(t: Theme) {
     (v["art-shadow-color"] ? `--art-shadow-color:${v["art-shadow-color"]};` : "") +
     /* 🆕 **وحجابُ الفنِّ كأخيه** (D-738): النهاريُّ وحدَه يرفعه */
     (v["art-veil"] ? `--art-veil:${v["art-veil"]};` : "");
+  return `--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--progress-1:${pg[0]};--progress-2:${pg[1]};--progress-3:${pg[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}`;
+}
+
+/* 🆕 D-1258 — ما يعلنه «النهاري» وحدَه من الدلاليّات: الجزيرةُ الداكنةُ داخله تردّها إلى افتراض `globals.css`
+   (الثيمُ الرسميُّ لا يعلنها فلا يكتبها `themeDecls`) — وإلّا ورثت أخضرَ النهار وهالتَه البيضاء على أرضٍ سوداء */
+const INK_RESETS =
+  "--success:#22c55e;--error:#ef4444;--logo-invert:0;--art-shadow-color:rgba(0, 0, 0, 0.7);--art-veil:40%;";
+
+export function themeCss(t: Theme) {
   /* 🔴 🆕 **`color-scheme` — قماشُ المتصفّح نفسُه** (D-532، برقُ الإقلاع
      والدخول الأبيض): iOS يرسم «قماشَ الوكيل» — لا صفحتَنا — في الفجوات
      التي لا HTML مرسوماً فيها: بين انقضاء splash النظام وأوّل رسم، وبين
@@ -446,5 +456,11 @@ export function themeCss(t: Theme) {
      المخصَّصةُ لهذا القماش بالذات** — فيصير داكناً مع الثيمات الداكنة
      وفاتحاً مع النهاريّ. */
   const scheme = themeScheme(t);
-  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--progress-1:${pg[0]};--progress-2:${pg[1]};--progress-3:${pg[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
+  /* ⚖️ 🆕 D-1258 — **جزيرةُ حبرٍ داكن داخل الثيم الفاتح** (`data-ink="dark"`): ما بداخلها يلبس لوحةَ الثيم الرسميّ
+     كاملةً — بطاقةُ القائمة داكنةٌ في «النهاري» كما في التطبيق (D-1257: «الأبيض وهو مغطّي عالعمل مزعج»). تُكتب
+     للفاتح وحدَه: في الثيمات الداكنة السِّمةُ بلا أثر والبطاقةُ بألوان ثيم صاحبها كما كانت. والمتغيّراتُ تُقرأ في
+     موضع الاستعمال، فكلُّ ما يُمرَّر إلى البطاقة من أبنائها يتبعها بلا لمس. */
+  const ink = scheme === "light" ? `[data-ink="dark"]{color-scheme:dark;${INK_RESETS}${themeDecls(DEFAULT_THEME)}}` : "";
+  return `:root{color-scheme:${scheme};${themeDecls(t)}}${ink}`;
 }
+

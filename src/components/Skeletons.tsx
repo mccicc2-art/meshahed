@@ -123,20 +123,15 @@ export function TrailerRailSkeleton() {
 
 /** ترويسة الرئيسية: غلافٌ عريض وصفّ أرقام — بنفس ارتفاع `HomeHeader` */
 export function HomeHeaderSkeleton() {
+  /* D-1258 — هيكلٌ بتخطيط الرأس الجديد: صفٌّ واحد (صورة ٣٢ + اسم) ثمّ بطاقةُ الأرقام — كان غلافاً عريضاً
+     وصورةً ٨٦ فتقفز الصفحةُ كلُّها عند الوصول بعد أن خرج الغلافُ من الرئيسيّة */
   return (
-    <section aria-hidden>
-      <div className="skeleton -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl h-[14.2rem] sm:h-[18.2rem]" />
-      {/* كتلة الهوية الحقيقية تعتلي الغلاف بهذا القدر وبنفس التراصف —
-          صورة بجانب الاسم لا فوقه، وإلا قفز صفّ الأرقام عند وصول المحتوى */}
-      <div className="flex items-end gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative">
-        <div className="skeleton w-[86px] h-[86px] rounded-full shrink-0" />
-        <div className="skeleton h-6 w-40 rounded mb-2" />
+    <section aria-hidden className="space-y-2.5">
+      <div className="flex items-center gap-2.5">
+        <div className="skeleton w-8 h-8 rounded-full shrink-0" />
+        <div className="skeleton h-6 w-40 rounded" />
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="skeleton h-14 rounded-xl" />
-        ))}
-      </div>
+      <div className="skeleton h-[42px] rounded-2xl" />
     </section>
   );
 }
