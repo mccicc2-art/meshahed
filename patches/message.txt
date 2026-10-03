@@ -1,0 +1,9 @@
+[deploy] D-1242 — background-warmed panes mount hidden, then reveal (profile tab flash)
+
+A pane warmed off-screen drew its content in the wrong place for a frame or
+two (Ahmed's recording, 3 Oct). It now mounts at opacity 0 and is revealed
+150ms after its layout; the active and the armed pane are never veiled.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
