@@ -40,6 +40,7 @@ test("كلُّ مفتاحٍ في `extra` يرسله التطبيقُ مقبول�
   const files = [
     "apps/mobile/src/perfMarks.ts",
     "apps/mobile/app/web.tsx",
+    "apps/mobile/src/WebLayer.tsx",
     "apps/mobile/src/TabSlide.tsx",
     "apps/mobile/src/title/TitleScreen.tsx",
     "apps/mobile/src/title/SeasonAccordion.tsx",

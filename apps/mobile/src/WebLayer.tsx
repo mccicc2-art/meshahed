@@ -16,7 +16,7 @@ import { mark } from "./perfMarks";
 import { session } from "./session";
 import { own } from "./ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "./shell";
-import { doorBack, doorKept, rootsBorn } from "./bootRoot";
+import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
 import { rootStack, topOf, webLayer, type State } from "./webDoor";
 import { BottomNav, type NavKey } from "./BottomNav";
 import { prefetchDiscover } from "./discover/DiscoverScreen";
@@ -363,8 +363,23 @@ export function WebLayer() {
       /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
       rootsBorn(true);
       router.push("/home");
+    } else {
+      /* 🩺 D-1256 — إقلاعٌ لم يرفع الرئيسيّةَ الأصليّة: إمّا زائرٌ حقّاً، وإمّا `seen()` أخطأ (قراءةُ SecureStore
+         ترمي فيُحفظ `false` للجلسة كلِّها — الفرضيّةُ الأولى لبلاغ أحمد). العلامةُ تفرّق بينهما بعدد مرّاتها. */
+      mark("web.home", 0, { why: "boot.unseen" });
     }
   }, [loading, u, router]);
+
+  /* 🩺 D-1256 — بعد الإقلاع: الطبقةُ صارت هي الشاشة وهي على رئيسيّة الويب، والتطبيقُ يعرف صاحبَه ⇒ انكشافٌ لا يُفترض.
+     يُسجَّل من أين: المجموعةُ وآخرُ قرارِ رجوع. تشخيصٌ فقط — لا يغيّر ما يُعرض. */
+  const homeDiagWas = useRef(visible);
+  useEffect(() => {
+    const was = homeDiagWas.current;
+    homeDiagWas.current = visible;
+    if (!visible || was || !booted.current || pathRef.current !== "/" || !session.seen()) return;
+    const r = rootsState();
+    mark("web.home", 0, { why: lastBack(), src: r.boot ? "boot" : "web", ready: r.homeSeen ? 1 : 0 });
+  }, [visible]);
 
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */

@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { BackHandler } from "react-native";
 import { useRouter } from "expo-router";
 /* 🆕 K3a-fix — الحالةُ وقواعدُها في `rootsState.ts` (بلا اعتماديّات، مختبَرة في `npm test`) */
-import { backFrom } from "./rootsState";
-export { rootsBorn, rootsMounted, doorLeft, doorBack, doorKept, homeSeen } from "./rootsState";
+import { backFrom, noteBack } from "./rootsState";
+export { rootsBorn, rootsMounted, doorLeft, doorBack, doorKept, homeSeen, rootsState, lastBack } from "./rootsState";
 
 /**
  * ====== D-1078 — علامةُ الإقلاع تسافر بين الجذور الأربعة ======
@@ -38,6 +38,7 @@ export function useBootRoot() {
   const bootBack = useCallback(
     (self: RootPath) => {
       const d = backFrom(self);
+      noteBack(self, d);
       if (d === "pass") return false;
       if (d === "exit") BackHandler.exitApp();
       else router.navigate("/home");

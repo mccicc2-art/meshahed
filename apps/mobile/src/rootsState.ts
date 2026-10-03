@@ -70,7 +70,20 @@ export function backFrom(self: "/home" | "/library" | "/discover" | "/search" | 
 }
 
 /** للاختبار وحدَه */
+/**
+ * 🩺 D-1256 — **آخرُ قرارِ رجوعٍ من جذر** (`search.pass` · `library.home` …): يُقرأ في علامة `web.home` حين تنكشف
+ * رئيسيّةُ الويب، ليُعرف أيُّ رجوعٍ كشفها. تشخيصٌ لا منطق — لا يقرؤه قرار.
+ */
+let lastBackTag = "none";
+export function noteBack(self: string, d: BackDecision) {
+  lastBackTag = `${self.replace("/", "")}.${d}`.slice(0, 16);
+}
+export function lastBack(): string {
+  return lastBackTag;
+}
+
 export function resetRootsForTest() {
+  lastBackTag = "none";
   roots.boot = false;
   roots.homeSeen = false;
   door = null;
