@@ -1,0 +1,10 @@
+[deploy] D-1244 — profile posters and cover appear without a fade; image warm-up counts only rendered rows
+
+PosterCard gets an optional fade prop (default on); the profile passes
+fade={false}, and the cover drops its 200ms transition. The first-screen image
+prefetch skipped the third visible row when an empty section sat earlier in the
+order; it now counts rows as the screen draws them.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
