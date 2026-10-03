@@ -1,0 +1,4 @@
+[deploy] D-1256 — Diagnostic mark when the web Home is revealed under the native app
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
