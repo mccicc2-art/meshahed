@@ -307,6 +307,38 @@ const WARM_AFTER_SWIPE_MS = 180;
    («ما أقدر أتحكّم على طول»). لوحٌ في كلِّ مرّة يقسم الوقفةَ إلى قصيراتٍ بينها إطاراتٌ تجيب الإصبع. */
 const WARM_STEP_MS = 320;
 
+/**
+ * 🆕 D-1242 — **لوحٌ يُجهَّز في الخلفيّة يُركَّب مخفيّاً ثمّ يُكشف** (تسجيلُ أحمد ٣ أكتوبر على ملفّ الشخص: بعد نحو نصف ثانيةٍ
+ * من الاستقرار على «النشاط» تظهر عناوينُ من تبويبٍ آخر فوق القائمة إطارين ثمّ تختفي). السببُ تدريجُ D-1241: كلُّ لوحٍ
+ * يُركَّب الآن والعينُ على الشاشة، ومحتواه يُرسم أوّلَ إطارٍ أو اثنين في غير موضعه قبل أن يستقرّ خارجها — وكان ذلك
+ * يقع مرّةً واحدةً داخل وقفة التركيب القديمة فلا يُرى. **لماذا يُرسم في غير موضعه لم يُحدَّد** — فالعلاجُ لا يتّكل عليه:
+ * شفافيّةُ صفرٍ حتى يُقاس اللوحُ وتمرَّ مهلة، وأندرويد لا يرسم ما شفافيّتُه صفر.
+ * الحالةُ في هذا الغلاف وحدَه: كشفُه لا يعيد رسمَ ما بداخله (الأبناءُ عنصرٌ ثابتُ الهويّة من رسمة الأب).
+ */
+const VEIL_MS = 150;
+function PaneBox({ veil, onLaid, style, children }: { veil: boolean; onLaid?: () => void; style: ViewStyle; children: React.ReactNode }) {
+  /* لوحٌ رُكّب ظاهراً (النشط) لا يُخفى أبداً ولو صار جاراً بعدها */
+  const [settled, setSettled] = useState(!veil);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+  return (
+    <View
+      onLayout={() => {
+        onLaid?.();
+        if (!settled && !timer.current) timer.current = setTimeout(() => setSettled(true), VEIL_MS);
+      }}
+      style={veil && !settled ? [style, { opacity: 0 }] : style}
+    >
+      {children}
+    </View>
+  );
+}
+
 function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false }: Props<K>) {
   const { width } = useWindowDimensions();
   const phys = I18nManager.isRTL ? -1 : 1;
@@ -606,13 +638,15 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
             {panes.map((k) => {
               const on = k === tab;
               return (
-                <View
+                <PaneBox
                   key={k}
-                  onLayout={on ? undefined : () => { armEnd.current?.(); armEnd.current = null; }}
+                  /* D-1242 — المجهَّزُ في الخلفيّة وحدَه يُخفى؛ النشطُ والمسلَّحُ تحت الإصبع ظاهران دائماً */
+                  veil={warmAll && !on && k !== side}
+                  onLaid={on ? undefined : () => { armEnd.current?.(); armEnd.current = null; }}
                   style={{ position: "absolute", top: 0, bottom: 0, width, start: Math.max(0, order.indexOf(k)) * width, pointerEvents: on ? "auto" : "none" }}
                 >
                   {render(k, on)}
-                </View>
+                </PaneBox>
               );
             })}
           </Reanimated.View>
