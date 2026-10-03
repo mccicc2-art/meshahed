@@ -804,9 +804,10 @@ const ProfilePane = React.memo(function ProfilePane({
       onScrollEndDrag={onSettle}
       onMomentumScrollEnd={onSettle}
       showsVerticalScrollIndicator={false}
-      /* 🆕 D-1240 — ما تحت الشاشة من اللوح يُفصل عن أندرويد (نهجُ D-1236/D-1238). القصُّ يعمل على الأبناء المباشرين، وجسمُ
-         اللوح ابنٌ واحد — فـ«نظرة عامّة» و«المفضّلة» يحملانه على جذريهما أيضاً فيُقصّ كلُّ قسمٍ وحدَه (القصُّ المتداخلُ يرث مستطيلَ أبيه). */
-      removeClippedSubviews
+      /* 🔴 D-1245 — **بلا فصلِ ما تحت الشاشة هنا** (تجربةٌ تُحكم بالتسجيل): D-1240 أضافه لهذا اللوح ولجذرَي «نظرة عامّة»
+         و«المفضّلة»، وتسجيلُ أحمد ٣ أكتوبر (بعد D-1244) يُظهر الصفَّ الذي يقطعه طرفُ الشاشة السفليّ — وحدَه — بصناديقَ فارغةٍ
+         وبلا أيقونة عنوانه ٤ إطارات في كلِّ دخول، والصفّان فوقه حاضران من أوّل إطار. الظنّ: أندرويد يعدّه خارج الشاشة في
+         الرسمة الأولى ويلصقه في التالية. الفصلُ باقٍ في الرئيسيّة و«اكتشف» (D-1236/D-1238) حيث قيس نفعُه. */
       contentContainerStyle={{ paddingTop: topPad, paddingBottom: bottomPad, minHeight: minH + bottomPad }}
     >
       {children}
@@ -968,7 +969,7 @@ function Favorites({ d, posterW, onTitle, onSort }: { d: ProfilePayload; posterW
     { key: "anime" as const, icon: "sparkles", label: t.discoverTabAnime, items: f.anime },
   ];
   return (
-    <View removeClippedSubviews>
+    <View>
       {rows.filter((r) => r.items.length).map((r) => (
         <View key={r.key}>
           {/* 🆕 N3 — «صفُّ مفضّلةٍ يُرتَّب من عنوانه» (`FavoritesRail` — D-567): العنوانُ والمقبضُ يفتحان الورقة */}
@@ -1058,7 +1059,7 @@ function Overview({
   /* 🆕 N3 — ما أخفيتَه تراه أنت وحدك (D-152): ما ليس في ترتيبك يُرسم صفّاً منقّطاً بشارته — الويبُ تحت الأقسام */
   const hidden = d.viewer.is_me ? PROFILE_SECTIONS.filter((s) => !d.sections.includes(s)) : [];
   return (
-    <View removeClippedSubviews>
+    <View>
       {blocks.length ? (
         blocks.map(({ s, node }) => (
           <View key={s}>
