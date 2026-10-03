@@ -1,0 +1,10 @@
+[deploy] D-1241 — profile body draws in one pass again; other tabs warm one at a time
+
+Staged rendering (D-1240) is removed at Ahmed's request: it showed the screen
+early but froze touch while the rest mounted. Off-screen clipping and the
+tap-started UI probe stay. TabSlide warmAll now mounts the remaining panes one
+by one (nearest first, 320ms apart) instead of all at once.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
+
