@@ -1,0 +1,9 @@
+[deploy] D-1236 + D-1237 — Discover detaches off-screen rails; Community tools button joins the tabs row
+
+D-1236: removeClippedSubviews on the Discover page column (experiment, judged
+by the D-1235 UI-thread probe).
+D-1237: the Community tools button sits at the end of the tabs row, same
+geometry as Library and Discover, instead of the header.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016vkzhgf1ksuDEnK6jPsqpe
