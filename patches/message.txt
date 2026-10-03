@@ -1,0 +1,4 @@
+[deploy] D-1258 — Web Home wears the app's one-row header; list cards are dark in the light theme on the web too
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
