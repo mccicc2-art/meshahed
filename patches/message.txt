@@ -1,0 +1,10 @@
+[deploy] D-1234 — Community head is one row; people's text starts from its own language side
+
+Community (Activity and Discussions): the Latest / Most active sort sits at
+the end of the chips row, the post/room count is removed, content moves up.
+People's text (reviews, posts, replies, list reviews, messages, bio) aligns
+by its first strong character: Arabic from the right, Latin from the left,
+whatever the interface language.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01GuwvjCuLvtwjKTKKEH4Uoy
