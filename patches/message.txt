@@ -1,0 +1,4 @@
+[deploy] D-1251 — Season cards lose the yellow line; To watch goes off once a title is finished
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
