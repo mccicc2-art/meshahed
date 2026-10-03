@@ -1,0 +1,4 @@
+[deploy] D-1254 — A season never opens empty: other-language fallback and a generic row for an aired episode TMDB has not listed yet
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
