@@ -1,0 +1,4 @@
+[deploy] D-1253 — An episode counts as aired once its air date arrives, not when TMDB moves it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KUPFXntkYMmzm2xC8sS7he
