@@ -846,6 +846,12 @@ function LibraryPane({
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewable}
         viewabilityConfig={VIEWABILITY}
+        /* 🆕 D-1247 — **صفوفُ الشاشة الأولى في دفعةٍ واحدة**. القائمةُ ترسم أوّلَ بنائها على دفعاتٍ من عنصرين
+           (`initialDrawBatchSize = 2` في مصدرها): ترسم وتقيس ثمّ تزيد. تسجيلُ أحمد ٣ أكتوبر بعد التركيب المسبق (D-1246):
+           الشاشةُ كاملةٌ من أوّل إطار **إلّا الرفَّ الثالث** — صناديقُ فارغةٌ إطارين ثمّ تتحمّض — فدفعتُه لم تُرسم والشاشةُ
+           مخفيّة، ورُسمت لحظةَ الظهور فبدأت صورُه التحميلَ حينها. ٨ تغطّي عناصرَ الشاشة الأولى (ثلاثةُ رؤوسٍ وثلاثةُ
+           رفوف)، والقائمةُ لا ترسم بها إلّا **الظاهرَ** مهما كبر الرقم. تجربةٌ تُحكم بالتسجيل. */
+        overrideProps={LIST_OVERRIDES}
       />
     </View>,
     true,
@@ -947,6 +953,8 @@ type Row =
 const SHELF_GAP = 28;
 /* نصفُ الصفّ ظاهراً يكفي ليمشي اسمُه — وأقلُّ منه تحت الرأس أو الشريط فلا يُقرأ أصلاً */
 const VIEWABILITY = { itemVisiblePercentThreshold: 50, minimumViewTime: 120 } as const;
+/* D-1247 — كائنٌ ثابتُ الهويّة: خاصيّةٌ جديدةٌ في كلِّ رسمةٍ تعيد تهيئةَ القائمة */
+const LIST_OVERRIDES = { initialDrawBatchSize: 8 } as const;
 const rowKey = (r: Row) => r.key;
 const rowType = (r: Row) => r.t;
 
