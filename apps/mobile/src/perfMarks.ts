@@ -100,6 +100,8 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
   if (!Number.isFinite(ms) || ms < 0) return;
   /* 🆕 D-1229 — «اكتشف» المركَّبةُ مخفيّةً تقيس `discover.open` بلا عينٍ تنتظر: تُعلَّم كي لا تُخلط بفتحٍ ظاهر */
   if (name === "discover.open" && preloaded.has("news") && !landedOnce.has("news")) extra = { ...extra, pre: 1 };
+  /* 🆕 D-1246 — و«المكتبة» المركَّبةُ مسبقاً كذلك */
+  if (name === "library.open" && preloaded.has("library") && !landedOnce.has("library")) extra = { ...extra, pre: 1 };
   if (buffer.length >= MAX_BUFFER) buffer.shift();
   buffer.push({ name, ms: Math.round(ms), ...(extra ? { extra } : {}) });
   if (!timer) timer = setTimeout(flush, Math.max(2_000, FLUSH_MS - (Date.now() - lastFlush)));

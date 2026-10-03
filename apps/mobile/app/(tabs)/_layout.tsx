@@ -51,6 +51,48 @@ function usePreloadDiscover() {
 }
 
 /**
+ * 🆕 D-1246 — **و«المكتبة» تُركَّب مسبقاً كذلك** (تسجيلُ أحمد ٣ أكتوبر: «أوّل دخول عالمكتبة فيه رمشة»). أوّلُ إطارٍ لها
+ * يرسم النصوصَ وصناديقَ الملصقات وحدَها — بلا شعارٍ ولا أيقونات — ثمّ تلحق الأيقوناتُ بعد إطارٍ أو اثنين وتتحمّض الملصقاتُ
+ * صفّاً بعد صفّ في ~٢٠٠ms؛ والزيارةُ الثانيةُ كاملةٌ من أوّل إطار. أرقامُ اليوم: أوّلُ زيارة ١٢٩–٢٢٥ms والدافئةُ ~٧٥.
+ * 🔑 **حين تحضر حمولتا الرئيسيّة والمكتبة معاً** (الثانيةُ تُستعاد من الكاش المحفوظ غالباً، أو يجلبها `warmDiscoverOnce`):
+ * الرئيسيّةُ رسمت وأخذت `coldstart.home` قبل أن تُبنى شاشةٌ أخرى، والمكتبةُ تُبنى ببياناتها لا بهيكل.
+ * 🔑 **قبل «اكتشف»**: أقربُ خانةٍ للإبهام أوّلاً (حجّةُ D-1092)، و«اكتشف» ينتظر صفوفَه من الشبكة فيأتي بعدها.
+ * ⚖️ الكلفةُ ~١٥٠–٢٠٠ms على خيط JS مرّةً بعد `runAfterInteractions`. ومن ضغط المكتبةَ قبل أن تُبنى يراها كما كانت.
+ */
+const LIBRARY_PRELOAD_MS = 1200;
+let libraryArmed = false;
+function usePreloadLibrary() {
+  useEffect(() => {
+    if (libraryArmed) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const ready = () => !!queryClient.getQueryData(["home"]) && !!queryClient.getQueryData(["me:library"]);
+    const fire = () => {
+      if (libraryArmed || !ready()) return;
+      libraryArmed = true;
+      unsub();
+      timer = setTimeout(() => {
+        InteractionManager.runAfterInteractions(() => {
+          if (tabSeen("library")) return;
+          tabPreloaded("library");
+          router.prefetch("/library");
+        });
+      }, LIBRARY_PRELOAD_MS);
+    };
+    const unsub = queryClient.getQueryCache().subscribe((e) => {
+      if (e.type !== "updated") return;
+      const head = e.query.queryKey[0];
+      if (head === "home" || head === "me:library") fire();
+    });
+    /* الحمولتان قد تكونان حاضرتين من الكاش المحفوظ قبل أن يُركَّب هذا التخطيط — لا حدثَ يصل */
+    fire();
+    return () => {
+      unsub();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+}
+
+/**
  * ====== K3 — الجذورُ الأربعة تبويباتٌ ثابتة (Phase 11-K) ======
  *
  * **لماذا**: كان التبديلُ بين الرئيسيّة والمكتبة واكتشف والبحث `router.replace` (D-1074) — الشاشةُ القديمة تُهدم
@@ -67,6 +109,7 @@ export default function TabsLayout() {
   const { tokens } = useApp();
   /* مجموعةٌ جديدةٌ فوق الويب ⇒ لم تُزر الرئيسيّةُ فيها بعد (انظر `bootBack`) */
   useEffect(() => rootsMounted(), []);
+  usePreloadLibrary();
   usePreloadDiscover();
   return (
     <Tabs
