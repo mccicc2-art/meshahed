@@ -1,0 +1,10 @@
+[deploy] D-1274 — web compact rows and the trailer card sit on the page colour
+
+The compact "Continue watching" row, the other compact Home rows and the
+trailer rail card read the page colour instead of surface: the web
+counterparts of D-1089 and D-1081 in the app. After D-1270 the web Home mixed
+page-coloured and grey elements on one screen. The activity card stays on
+surface, as in the app.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
