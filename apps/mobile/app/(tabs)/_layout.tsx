@@ -5,6 +5,7 @@ import { useApp } from "../../src/state";
 import { rootsMounted } from "../../src/bootRoot";
 import { queryClient } from "../../src/api";
 import { tabPreloaded, tabSeen } from "../../src/perfMarks";
+import { warmTrendingOnce } from "../../src/search/useSearch";
 
 /** مهلةٌ بعد وصول بيانات «اكتشف» المسخَّنة: بقيّةُ الصفوف تصل غالباً، فيُركَّب التبويبُ ببياناتٍ لا بهياكل.
     🔴 D-1248 — ٤٠٠ لا ١٢٠٠: تسجيلا أحمد ٣ أكتوبر — من دخل «اكتشف» بعد ~٧ث من التشغيل وجده **نصفَ مبنيّ** (٢٥ بطاقةً
@@ -112,6 +113,12 @@ export default function TabsLayout() {
   const { tokens } = useApp();
   /* مجموعةٌ جديدةٌ فوق الويب ⇒ لم تُزر الرئيسيّةُ فيها بعد (انظر `bootBack`) */
   useEffect(() => rootsMounted(), []);
+  /* 🆕 D-1264 — «رائج اليوم» يُطلب مع الإقلاع لا بعد هدوء الرئيسيّة: قياسُ D-1263 (أربعُ فتحاتٍ للبحث بعد الإقلاع
+     بثوانٍ) وجده غيرَ جاهزٍ في الأربع — التسخينُ كان يبدأ بعد حمولة الرئيسيّة بـ١٫٥ث. طلبٌ واحدٌ خفيف، ينتظر رمزَ
+     الجلسة كغيره (الترتيبُ عامٌّ لكنّ صيغةَ الأسماء تفضيلُ صاحبها)؛ والنداءُ من تسخين الرئيسيّة باقٍ ولا يكرّره. */
+  useEffect(() => {
+    warmTrendingOnce();
+  }, []);
   usePreloadLibrary();
   usePreloadDiscover();
   return (
