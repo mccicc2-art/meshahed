@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyLoopzNames, collectEnglish, missingEnglish } from "./loopzNames.ts";
+import { applyLoopzNames, applyOriginalNames, collectEnglish, missingEnglish } from "./loopzNames.ts";
 import { parseTitleMode, resolveMediaTitle, sampleNames, TITLE_MODES, TITLE_SAMPLES } from "./titleMode.ts";
 
 const arList = {
@@ -99,3 +99,20 @@ test("the other modes are unchanged", () => {
   assert.equal(resolveMediaTitle(n, "original").primary, "Game of Thrones");
   assert.equal(resolveMediaTitle(n, "translit").primary, "جيم أوف ثرونز");
 });
+
+test("original mode at the source: every work row takes its original name; other rows and the input are untouched", () => {
+  const res = {
+    results: [
+      { id: 1429, original_language: "ja", name: "هجوم العمالقة", original_name: "進撃の巨人" },
+      { id: 1399, original_language: "en", name: "صراع العروش", original_name: "Game of Thrones" },
+      { id: 27205, original_language: "en", title: "استهلال", original_title: "Inception" },
+      { id: 5, original_language: "ko", name: "اسمٌ بلا أصل", original_name: "" },
+    ],
+    seasons: [{ id: 9, name: "الموسم 1" }],
+  };
+  const out = applyOriginalNames(res);
+  assert.deepEqual(out.results.map((r) => ("title" in r ? r.title : r.name)), ["進撃の巨人", "Game of Thrones", "Inception", "اسمٌ بلا أصل"]);
+  assert.equal(out.seasons[0].name, "الموسم 1");
+  assert.equal(res.results[0].name, "هجوم العمالقة");
+});
+

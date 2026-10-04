@@ -2,7 +2,7 @@
 // Server-only: never expose the key to the browser.
 
 import { cache } from "react";
-import { applyLoopzNames, collectEnglish, missingEnglish } from "@/core/loopzNames";
+import { applyLoopzNames, collectEnglish, missingEnglish, applyOriginalNames } from "@/core/loopzNames";
 import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
@@ -130,7 +130,8 @@ const NO_WORKS =
  * - **الواجهةُ عربيّة** ⇒ النداءُ نفسُه بـ`en-US` **بالتوازي** (لا يزيد الانتظار) وتؤخذ منه الأسماء؛ الوصفُ
  *   والمواسمُ والحلقاتُ تبقى عربيّة. النداءان مخبَّآن ساعةً ومشتركان بين كلِّ القرّاء. وإن سقط الإنجليزيُّ
  *   بقي الردُّ العربيُّ كما هو — اسمٌ بلغةٍ أخرى أهونُ من قسمٍ فارغ (D-063).
- * - **الأوضاعُ الثلاثةُ الأخرى** ⇒ كما كانت حرفاً.
+ * - 🆕 D-1275 — **«الاسم الأصلي»** ⇒ الأصلُ من الصفِّ نفسِه (`applyOriginalNames`)، بلا نداءٍ ثانٍ.
+ * - **«حسب لغة التطبيق» و«الكتابة الصوتيّة»** ⇒ كما كانتا حرفاً.
  */
 /** أقصى ما يُسأل عنه فرادى في ردٍّ واحد (D-1267) */
 const LOOPZ_FILL_LIMIT = 20;
@@ -140,7 +141,10 @@ async function tmdb<T>(
   params: Record<string, string> = {},
   rail = false,
 ): Promise<T> {
-  if (params.language || NO_WORKS.test(path) || (await titleModeNow()) !== "loopz") return tmdbRaw<T>(path, params, rail);
+  if (params.language || NO_WORKS.test(path)) return tmdbRaw<T>(path, params, rail);
+  const mode = await titleModeNow();
+  if (mode === "original") return applyOriginalNames(await tmdbRaw<T>(path, params, rail));
+  if (mode !== "loopz") return tmdbRaw<T>(path, params, rail);
   if ((await tmdbLanguage()) === "en-US") return applyLoopzNames(await tmdbRaw<T>(path, params, rail), null);
   const [own, en] = await Promise.all([
     tmdbRaw<T>(path, params, rail),

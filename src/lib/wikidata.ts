@@ -205,11 +205,15 @@ export function prefetchWorkTitle(
     .catch(() => new Map<string, string>());
 }
 
-/** وضعُ الأسماء «Loopz»؟ — يُقرأ من الطلب؛ وخارجَ طلبٍ هو الافتراض */
+/**
+ * وضعٌ يُصحَّح اسمُه عند باب TMDB («Loopz» · 🆕 D-1275 «الاسم الأصلي»)؟ — يُقرأ من الطلب؛ وخارجَ طلبٍ هو الافتراض.
+ * في كليهما الاسمُ العربيُّ من ويكي‌بيانات نقيضُ الاختيار، فلا يُسأل عنه ولا يُعرض.
+ */
 async function loopzMode(): Promise<boolean> {
   try {
     const { getTitleMode } = await import("@/lib/locale");
-    return (await getTitleMode()) === "loopz";
+    const mode = await getTitleMode();
+    return mode === "loopz" || mode === "original";
   } catch {
     return true;
   }

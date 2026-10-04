@@ -96,3 +96,22 @@ export function applyLoopzNames<T>(json: T, english: Map<string, string> | null)
   });
   return copy;
 }
+
+/**
+ * 🆕 D-1275 — **وضعُ «الاسم الأصلي» عند المصدر أيضاً**: نسخةٌ من `json` وكلُّ صفِّ عملٍ فيها باسمه الأصليّ.
+ *
+ * الوضعُ كان يُطبَّق على المكتبة والقوائم والبحث وحدَها (حيث يمرّ الاسمُ بـ`resolveMediaTitle`)؛ صفوفُ «اكتشف»
+ * والمقترحاتُ وأعمالُ الشخص والتريلراتُ وعنوانُ صفحة العمل تأخذ اسمَ TMDB بلغة الواجهة — فمن اختاره رأى
+ * «هجوم العمالقة» في رفٍّ و«進撃の巨人» في مكتبته. العطلُ نفسُه الذي أغلقته D-1266 لوضع «Loopz»، بالعلاج نفسِه.
+ * **وهو مجّانيّ**: الأصلُ في الصفِّ نفسِه (`original_title`/`original_name`) — لا نداءَ ثانياً ولا خريطة.
+ * صفٌّ أصلُه فارغٌ يبقى باسمه. («الكتابةُ الصوتيّة» ليست هنا: أسماؤها في قاعدتنا لا في ردِّ TMDB.)
+ */
+export function applyOriginalNames<T>(json: T): T {
+  if (!json || typeof json !== "object") return json;
+  const copy = structuredClone(json);
+  walk(copy, (o, kind) => {
+    const original = (kind === "m" ? o.original_title : o.original_name) as string;
+    if (original && original.trim()) o[kind === "m" ? "title" : "name"] = original;
+  });
+  return copy;
+}
