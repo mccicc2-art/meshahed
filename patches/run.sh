@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# D-1264 — رقعةٌ مضغوطة (xz + base64) تُفحص ببصمتها قبل التطبيق
+set -euo pipefail
+base64 -d > /tmp/d1264.diff.xz <<'B64'
+/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM4AdJA8VdADIaSQnC/BF9UN4KT0fVpPOShzt7Im9k+vuY
+5F688ItOIDcCQFsdhoX1PcauOvTo4PlIkSNb4r389vVUbx0QPfOfdjwTHQUlwTyBv/UksFkzq6p3
+NGXJbgwlyxDty3Nbq3rbbTF3KSj3RKV0p+aS4gpj53aFQQrlO9SyMrnzmiBHtKFDsp0W7DGrtEYp
+t1cJagkWO21QxRBRou6LVvlfRu+3qdSdfa/xB/Q5TGodGUOpxfIeorLFkC4HY8iM+l8Z/cpFpc4B
+bEh+m8sG39ApUyk7ZiAundsReXYRw5oXaa7R1egRPMEuZIhxiyrcMAHxeVPj5tUOmTNJ0Bkvhb0C
+Z3eYx00UcaQ+uujCJXpIHAK7+TWTarPkgInzvHMzliWuL+xrzARs5fwckWJv7bu8GxlzTlRCY2My
+8rQx1rj3C131ceRkOVBmjzcR8KxDmzwSxiIyCYsXtEjTs5Hl9U2SXrsaICqsuKh/TRJ5c+Nrmmpy
+Xabe6ZVAZ4YfGppYp9YiSP28L5o/8UgZB2KCVsxLrwDlWdXSh0oDM862SwkbCWGTqW+R51Ha0N2S
+4oa2vUqNbKqU5DuWD/VscSxoZ3Jx7sW1dOglD16QEdHP6FGWPAAvBCUHspQQj+cPm24nh5Sp7t71
+RuDyJUAWfq2njCYNonCLFI+LhIv8UchyiJggBZec7wbijAbGUKuIqcIc20WRAFTFcVav26FoeVkR
+qbfHGORfe8to4QI6i0M7qyB8Uqyt+Mv1pXoAkNsEsfJw6pMs6TOBFmHWhfa+ix4LFHnn6al9pB9V
+wwPpawL3dRqdDC2NsZ1PHT30ROPdmTL1uTUbTesUoz+fy/bT8qPsH7issGOQea8KwUeU1KcvgOSc
+Ebzttg4FUKaaNDDwRiFWiynnzTU2syzo0T51enem6BSQYN/0CyOd/F32HSnynOKBR+wLJxPV/kZm
+HgFf8+zwunmqX9hPja39+HdG7aOs/E+KTBWDZ1IMTi/cQweMjKq8fEww5r5puyaS/TLC8hDdnl8F
+dedNoyv/VBJ3HpToAPc9o+i1kzgG8kfRumBrUjf6zuWUEc+ghAR1OqZwT7aKLMgmPHdhFJVVsm84
+5UOXKkBuMJK8zC7U+rH3F1pe7eePHIf9wNPW/op7JnDE5C3FufdhCe5BPoRyTW7IHq6sTPOQm3Zi
+aDbrnsdQaLtaBAzxzAFInOUKhp1LHVXUHKG0R4EjkRHnjTAQ9X+Mi1kSb+pNT/GPn8BnthKBwHVC
+Xay1vXdS9AEG5dERuTsPIhI6J02mqQEZ2z8rAAAAAApI6Onbd0qSAAHhB8oOAACC4wO/scRn+wIA
+AAAABFla
+B64
+xz -d -f /tmp/d1264.diff.xz
+echo "93a29d0a1e481e16b549af1e3abe944b80ec5209005230d831e9ef811296c797  /tmp/d1264.diff" | sha256sum -c -
+git apply --whitespace=nowarn /tmp/d1264.diff

@@ -1,0 +1,6 @@
+[deploy] D-1264 — Search: «trending today» is requested at boot, not after Home settles
+
+D-1263's first reading: four Search opens a few seconds after launch, none found the list ready. The warm-up now starts when the tabs mount.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
