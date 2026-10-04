@@ -1,0 +1,10 @@
+[deploy] D-1273 — tell members once that the privacy policy changed
+
+The policy promises "we will tell you inside the app" on a material change,
+and D-1268 changed it without a notice. A one-time hint on Home (web and app,
+the existing OneTimeHint, stored on the account) says what changed and where
+to read it. Shown after the customize hint, never together with it. Text
+only, by Ahmed's choice.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
