@@ -5347,7 +5347,7 @@ export async function aiStorySearch(
 
   const candidates = await aiSuggestTitles(desc, { loved, genres, exclude, locale: loc });
 
-  const { searchByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
+  const { groundByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
     await import("@/lib/tmdb");
   const { originalTitleOf } = await import("@/core/media");
 
@@ -5410,7 +5410,8 @@ export async function aiStorySearch(
   if (candidates && candidates.length) {
     const grounded = await Promise.all(
       candidates.map((c) =>
-        searchByName(c.title, c.type, c.year)
+        /* 🆕 D-1260 — `groundByName` لا `searchByName`: ما لا يثبت اسمُه يسقط، فلا ملصقَ تحته سببُ عملٍ آخر */
+        groundByName({ title: c.title, original: c.original, year: c.year }, c.type)
           .then((r) => (r ? { row: r, reason: c.reason } : null))
           .catch(() => null),
       ),

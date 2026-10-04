@@ -35,8 +35,10 @@
  */
 
 export interface AiCandidate {
-  /** الاسم الأصلي أو الإنجليزي — ما يُبحث به في TMDB */
+  /** الاسم الإنجليزي كما في TMDB — ما يُبحث به */
   title: string;
+  /** 🆕 D-1260 — الاسمُ بلغته الأصليّة إن اختلف: فرصةٌ ثانيةٌ للمطابقة (`core/aiGround.ts`) */
+  original?: string;
   year?: number;
   type: "movie" | "tv";
   /** لماذا هذا العمل — سطرٌ قصير بلغة المستخدم */
@@ -129,7 +131,15 @@ export async function aiSuggestTitles(
     "Return the 10 REAL titles that genuinely best answer them, ordered by how well they fit.",
     "Rules that matter:",
     "- Prefer precision over popularity: an obscure perfect match beats a famous near-miss.",
-    "- If the user names a title, do NOT return that title; return what a fan of it would love next.",
+    /* 🆕 D-1260 — **نيّتان لا واحدة** (بلاغُ أحمد: «Anime has guy name luffy» أعاد أشباهَ ون بيس بلا ون بيس).
+       القاعدةُ القديمة («إن سمّى عملاً فلا تُرجعه») صحيحةٌ للترشيح وخاطئةٌ للتعرّف، والنموذجُ عدّ اسمَ
+       الشخصيّة تسميةً للعمل. حكمُ أحمد: «دامه بحث عنه لازم يطلع أوّل» — ولو كان في مكتبته أو شاهده. */
+    "- First decide what the user wants:",
+    "  (A) IDENTIFY — they describe ONE specific work to find out which it is: its plot, a scene, a character's name, an actor in a role, a half-remembered detail.",
+    "  (B) RECOMMEND — they ask for something like a title they name, or describe a mood, a genre or a wish.",
+    "- In case A the work they mean MUST be item 1, even if it is in their library or among the titles they rated. If two or three works plausibly fit, list them first by likelihood. Fill the rest with the closest matches.",
+    "- In case B do NOT return the title they named; return what a fan of it would love next.",
+    "- When unsure between A and B, treat it as A.",
     "- Mix eras and countries when it serves the request; never fill the list with sequels of one franchise.",
     "- Never invent a title. If unsure it exists on TMDB, drop it.",
   ];
@@ -144,12 +154,12 @@ export async function aiSuggestTitles(
   }
   if (taste.exclude?.length) {
     lines.push(
-      `Already in their library — do NOT suggest these: ${taste.exclude.slice(0, 40).join(", ")}.`,
+      `Already in their library — do NOT suggest these as recommendations (this never removes the work identified in case A): ${taste.exclude.slice(0, 40).join(", ")}.`,
     );
   }
 
   lines.push(
-    'Reply with a JSON array only (no commentary). Each item: {"title": "<title as known on TMDB, original or English>", "year": <first release year>, "type": "movie" | "tv", "reason": "<one short sentence, max 12 words, in ' +
+    'Reply with a JSON array only (no commentary). Each item: {"title": "<English title as listed on TMDB>", "original": "<title in its original language and script, only if different>", "year": <first release year>, "type": "movie" | "tv" (anime series are "tv"), "reason": "<one short sentence, max 12 words, in ' +
       (ar ? "Arabic" : "English") +
       '>"}.',
     "",
@@ -194,7 +204,8 @@ function parseCandidates(text: string): AiCandidate[] {
     const yearNum = Number(o.year);
     const year = Number.isInteger(yearNum) && yearNum > 1870 && yearNum < 2200 ? yearNum : undefined;
     const reason = typeof o.reason === "string" ? o.reason.trim().slice(0, 140) : undefined;
-    out.push({ title, year, type, reason: reason || undefined });
+    const original = typeof o.original === "string" ? o.original.trim().slice(0, 200) : "";
+    out.push({ title, original: original && original !== title ? original : undefined, year, type, reason: reason || undefined });
   }
   return out;
 }

@@ -2336,3 +2336,67 @@ export async function searchByName(
     return null;
   }
 }
+
+/**
+ * 🆕 **تثبيتُ ترشيحِ النموذج** (D-1260) — أختُ `searchByName` لبابِ الوصف وحدَه.
+ *
+ * 🔑 **لماذا لا تُشدَّد `searchByName` نفسُها**: قرّاؤها الآخرون (الاستيراد، الجوائز) يريدون
+ * «أشهرَ عملٍ بهذا الاسم» — وهنا السؤالُ «هل هذا هو العملُ الذي كُتب له السبب؟». قاعدتان
+ * لسؤالين، والحكمُ في `core/aiGround.ts` (نقيٌّ ومختبَر).
+ *
+ * 🔑 **المطابقةُ بالإنجليزيّة والعرضُ بلغة القارئ**: النموذجُ يكتب الاسمَ إنجليزيّاً أو أصليّاً،
+ * وصفُّ TMDB بالعربيّة يحمل اسماً معرَّباً لا يطابق شيئاً. فيُبحث بـ`en-US` (مقيَّداً بالسنة
+ * وحرّاً، معاً) ويُختار المعرّف، ثمّ يُجلب الصفُّ نفسُه بلغة الواجهة — نداءٌ ثالثٌ للعربيّ وحدَه.
+ */
+export async function groundByName(
+  wanted: { title: string; original?: string; year?: number },
+  media: "tv" | "movie",
+): Promise<SearchResult | null> {
+  const q = wanted.title.trim();
+  if (!q) return null;
+  const { pickGrounded } = await import("@/core/aiGround");
+  const base: Record<string, string> = { query: q, include_adult: "false" };
+  const hasYear = !!wanted.year && wanted.year > 1870 && wanted.year < 2200;
+  const yearKey = media === "tv" ? "first_air_date_year" : "year";
+  const yearParams = hasYear ? { ...base, [yearKey]: String(wanted.year) } : null;
+  const run = async (params: Record<string, string>) => {
+    const data = await tmdb<{ results: SearchResult[] }>(`/search/${media}`, params);
+    return (data.results ?? []).map((r) => ({ ...r, media_type: media }));
+  };
+  const yearOf = (r: SearchResult) => Number((r.release_date || r.first_air_date || "").slice(0, 4)) || 0;
+
+  try {
+    const en = { language: "en-US" };
+    const [inYear, free] = await Promise.all([
+      yearParams ? run({ ...yearParams, ...en }).catch(() => []) : Promise.resolve([] as SearchResult[]),
+      run({ ...base, ...en }).catch(() => []),
+    ]);
+    const seen = new Set<number>();
+    const rows: SearchResult[] = [];
+    for (const r of [...inYear, ...free]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push(r);
+    }
+    const id = pickGrounded(
+      wanted,
+      rows.map((r) => ({
+        id: r.id,
+        names: [r.title, r.name, r.original_title, r.original_name].filter((x): x is string => !!x),
+        year: yearOf(r),
+        poster: !!r.poster_path,
+        yearRank: inYear.findIndex((x) => x.id === r.id),
+      })),
+    );
+    if (id === null) return null;
+    const enRow = rows.find((r) => r.id === id)!;
+    if ((await tmdbLanguage()).startsWith("en")) return enRow;
+    /* الصفُّ نفسُه بلغة الواجهة: السؤالُ نفسُه بلا `language` (فيأخذ لغةَ القارئ)؛
+       إن غاب المعرّفُ عن صفحته الأولى فالإنجليزيُّ أصدقُ من لا شيء */
+    const fromYear = inYear.some((r) => r.id === id);
+    const local = await run(fromYear && yearParams ? yearParams : base).catch(() => []);
+    return local.find((r) => r.id === id) ?? enRow;
+  } catch {
+    return null;
+  }
+}
