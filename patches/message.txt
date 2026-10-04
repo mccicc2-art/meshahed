@@ -1,0 +1,6 @@
+[deploy] D-1263 — Search: «trending today» is fetched before the tab is opened and never swaps while it is on screen
+
+The list was requested when the screen mounted, so the skeleton showed until the server answered. It is now warmed after Home settles, refreshed only while the tab is not visible (return from background, leaving the tab), and not persisted to disk.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
