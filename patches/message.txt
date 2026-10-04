@@ -1,0 +1,6 @@
+[deploy] D-1265 — remove the measurement probes and the dormant trailer trial
+
+Removed: CommitProbe (cs/ce/qc), the UI-thread frame probe (ud/ug/ut/uf), the profile.open phases, the title-page server phases (X-Loopz-T, rq/sv/sa/st/sr/sd), the search trending mark, and D-1262 (the /trailer route, ?t=0, the tx flag). The base marks stay; profile.open is ms + cached again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
