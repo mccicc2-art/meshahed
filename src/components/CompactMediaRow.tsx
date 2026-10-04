@@ -56,10 +56,11 @@ export function CompactMediaRow({
   const url = posterUrl(posterPath ?? null, "w185");
 
   return (
+    /* ⚖️ 🆕 D-1274 — على لون الصفحة كأخيه صفِّ «أكمل المشاهدة» (عائلةُ الصفوف واحدة — نظيرُ D-1089 في التطبيق) */
     <Link
       href={href}
       prefetch={false}
-      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 ps-2 pe-2.5 transition hover:border-accent/40 active:scale-[0.99]"
+      className="flex items-center gap-3 rounded-2xl border border-border bg-background p-2 ps-2 pe-2.5 transition hover:border-accent/40 active:scale-[0.99]"
     >
       {chip != null ? (
         <span className="grid place-items-center shrink-0 w-14 h-14 rounded-xl border border-border bg-surface-2 px-1">

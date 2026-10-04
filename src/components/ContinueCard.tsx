@@ -250,10 +250,13 @@ export function ContinueCard({
     <div className="relative">
       <div className={`relative ${slideCls}`}>
       {variant === "row" ? (
+      /* ⚖️ 🆕 D-1274 — الصفُّ على لون الصفحة لا `surface`: نظيرُ D-1089 في التطبيق (أحمد هناك بلقطة: «الخلفيّة
+         الرصاصيّة أبغاها سوداء»)، وأُذن به للويب في ٤ أكتوبر ٢٠٢٦ بعد D-1270. الإطارُ وحده يحدّه، و`background`
+         لا لونٌ أصمّ كي تصحّ `daylight`. */
       <Link
         href={href}
         prefetch={false}
-        className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 pe-16 active:scale-[0.99] transition"
+        className="group flex items-center gap-3 rounded-2xl border border-border bg-background p-2 pe-16 active:scale-[0.99] transition"
       >
         {/* 🆕 **والصورةُ كبرت إلى ١٤٤** (D-439، بلاغُ أحمد: «كبّر بوستر
             أكمل المشاهدة، شكله صغير غير متناسق»): **١٠٤×٦٥ كانت أقصرَ من

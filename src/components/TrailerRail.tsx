@@ -112,8 +112,9 @@ export function TrailerRail({
                  ⚖️ **والجذرُ الأعمق كلمةٌ واحدةٌ في `TrailerCardMedia`**
                  (حيث تسكن `z-40`/`z-50`)، **وهنا يكفي لهذا الصفّ.**
                  مُثبَتٌ في متصفّحٍ حقيقيّ بـ`elementFromPoint` عند مركز
-                 السهم: قبلها الغلاف، وبعدها السهم. */
-              className="snap-start shrink-0 isolate rounded-2xl border border-border bg-surface overflow-hidden"
+                 السهم: قبلها الغلاف، وبعدها السهم.
+                 ⚖️ 🆕 D-1274 — وأرضيّةُ بطاقة التريلر لونُ الصفحة لا `surface` — نظيرُ D-1081 في التطبيق. */
+              className="snap-start shrink-0 isolate rounded-2xl border border-border bg-background overflow-hidden"
               style={{ width: "min(92vw, calc(45dvh * 16 / 9), 760px)" }}
             >
               <TrailerCardMedia
