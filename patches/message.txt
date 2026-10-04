@@ -1,0 +1,13 @@
+[deploy] D-1271 — a followed show learns about its new episode on Home
+
+Library and Home decide "finished" from the aired count stored on the follow
+row. It was refreshed only by opening the title page on the web, so a show
+that was finished and then aired a new episode stayed "finished" for anyone
+using the app alone (29 of 393 follows had a stored next date in the past).
+
+Home now re-reads, before it is built, the follows whose stored next air date
+has arrived and were not read since; and, inside its existing wave, the ones
+with no next date that were not read for a week. Cap 12 per load.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
