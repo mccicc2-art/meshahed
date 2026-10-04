@@ -1,0 +1,11 @@
+[deploy] D-1276 — bottom-bar icons are loaded into memory at start
+
+Ahmed's recording: on the first visit to a tab in a session the five bar
+icons vanish and the labels stay (93 ms at Community, 235 ms at Discover).
+Each root draws its own bar, so a first visit mounts five new images, and
+expo-image loads them after the mount while the thread is busy mounting the
+screen. The ten faces are now loaded once with Image.loadAsync and Icon hands
+the loaded reference to the image. Not tried on a device before the push.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
