@@ -1,0 +1,6 @@
+[deploy] D-1262 off — tx: false, the title page asks for the trailer in the same request again
+
+The trial showed no gain: server time stayed at ~300ms median, ~590ms p90, because any uncached TMDB call takes that long, not the trailer in particular.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
