@@ -380,13 +380,18 @@ export function ListCardShell({
        حجابٌ أبيضُ فوق الملصقات يبقى ضباباً مهما خُفِّف — فبطاقةُ الثيم الرسميّ نفسُها تُرسم داخل الصفحة الفاتحة:
        `data-ink="dark"` جزيرةٌ يعرّفها `themeCss` للفاتح وحدَه (في الثيمات الداكنة بلا أثر)، **والهيكلُ يحمل أرضيّتَه
        ولونَ نصِّه بنفسه** لأنّ أغلفتَه الخمسة خارج الجزيرة — الأرضيّةُ `surface` نفسُها التي تلبسها الأغلفة فلا يتبدّل
-       شيءٌ في الداكن؛ و`color` موروثةٌ محسوبةً من `body` فتُعاد هنا صراحةً. الحدُّ يبقى للغلاف: من ثيم الصفحة. */
+       شيءٌ في الداكن؛ و`color` موروثةٌ محسوبةً من `body` فتُعاد هنا صراحةً. الحدُّ يبقى للغلاف: من ثيم الصفحة.
+       ⚖️ 🆕 D-1270 — **والأرضيّةُ لونُ الصفحة لا `surface`** (أحمد، ٤ أكتوبر، بعد صورةٍ بثلاثة ثيمات: «الأرضيّة
+       فقط») — كبطاقة التطبيق (`bg` منذ D-1081): البطاقةُ تذوب في الصفحة وإطارُها يحدّها. ينقض حدَّ D-1258
+       («تبقى على وصفة الويب») في اللون وحدَه؛ **وتدرّجُ الحجاب الناعمُ باقٍ** (D-686): وقفاتُ التطبيق (D-1135)
+       عُرضت عليه في الصورة نفسِها ورُدّت — عمودُ النصّ هنا ٥٨٪ فيخرج الاسمُ عن جزئها الصلب، وحدُّها يُقرأ قصّاً.
+       والحجابُ والهالةُ يتبعان الأرضيّةَ لأنّهما لونُها. */
     <span
       data-ink="dark"
-      className="relative block h-full min-h-[10.5rem] isolate bg-[color:var(--surface)] text-foreground"
+      className="relative block h-full min-h-[10.5rem] isolate bg-[color:var(--background)] text-foreground"
     >
       {/* **الأرضيّة**: الغلافُ المختارُ كاملاً، وإلّا الملصقاتُ الثلاثة
-          من جهة النهاية — **والفراغُ أرضيّةُ السطح وحدَها** (D-063:
+          من جهة النهاية — **والفراغُ أرضيّةُ البطاقة وحدَها** (D-063:
           الغيابُ لا يُزخرف). */}
       {/* 🆕 **واللونُ في مرتبة الغلاف لا فوقه ولا تحته** (D-824):
           **غلافٌ واحدٌ لا اثنان** — **والصورةُ تسبقه لأنّها الأخصّ**
@@ -413,7 +418,7 @@ export function ListCardShell({
           </span>
         )
       )}
-      {/* **الحجابُ بلون السطح نفسِه** — فيصحّ في `daylight` بلا رقمٍ
+      {/* **الحجابُ بلون أرضيّة البطاقة نفسِه** (لونُ الصفحة منذ D-1270) — فيصحّ في `daylight` بلا رقمٍ
           أصمّ (رمزُ الثيم لا لونٌ مكتوب)، **واتّجاهُه اتّجاهُ القراءة**
           (القاعدة ١٧).
           ⚖️ 🆕 **وانحسر عن الملصقات** (D-678، حكمُ أحمد على المنشور:
@@ -429,7 +434,7 @@ export function ListCardShell({
           المحلّيّة** — العتمةُ تتبع الكلامَ لا تفترش البطاقة. */}
       <span
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[32%] via-[color:var(--surface)]/60 via-[44%] to-transparent to-[60%]"
+        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--background)] from-[32%] via-[color:var(--background)]/60 via-[44%] to-transparent to-[60%]"
       />
 
       <span className="relative flex h-full min-h-[10.5rem] flex-col p-3.5">
@@ -457,7 +462,7 @@ export function ListCardShell({
               /* **هالةُ العنقود المحلّيّة** (D-686): أرضيّةٌ بعرض محتواه
                  لا حزامٌ بعرض البطاقة (نقضُ الحزامِ في D-678 باقٍ) —
                  فالملصقاتُ بين العنقود والمفتاح صافية. */
-              <span className="flex items-center rounded-full bg-[color:var(--surface)]/70 -ms-1.5 px-2 py-1">
+              <span className="flex items-center rounded-full bg-[color:var(--background)]/70 -ms-1.5 px-2 py-1">
                 {stats.map((node, i) => (
                   <span key={i} className="flex items-center shrink-0">
                     {i > 0 && (
