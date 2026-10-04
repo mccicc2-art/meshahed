@@ -71,6 +71,8 @@ import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
 import { OneTimeHint } from "@/components/OneTimeHint";
+import { sanitizeUiState } from "@/lib/uiState";
+import { PRIVACY_HINT } from "@/core/privacyNotice";
 /* 🆕 D-1066: نواةُ الرئيسية — الحسابُ هناك، الرسمُ هنا */
 import {
   buildHomeHeader,
@@ -188,6 +190,8 @@ export default async function HomePage() {
   /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء (`freshenFollows`) — الترويسةُ
      و«أكمل المشاهدة» تُحسبان من هذا الرقم. */
   const { followRows, freshStats } = await freshenFollows(storedFollows);
+  /* التلميحاتُ المقروءةُ في الحساب — تقرّر أيَّ تلميحٍ يُركَّب (D-1273) */
+  const seenHints = sanitizeUiState(profile?.ui_state).hints;
 
   /* 🆕 D-1066: أرقامُ الترويسة وخرائطُ الموجة الأولى تُحسب في
      `lib/homeCore.ts` — **الحسابُ نفسُه** الذي يقرؤه `GET /api/v1/me/home`. */
@@ -265,6 +269,12 @@ export default async function HomePage() {
           text={t.hintHome}
           closeLabel={t.closeLabel}
         />
+        {/* 🆕 D-1273 — **السياسةُ تَعِد: «نُعلمك داخل التطبيق»**، وتغيّرت في D-1268 بلا إعلام. التلميحُ القائمُ نفسُه
+            — مرّةً ثمّ يصمت، ومحفوظٌ في الحساب. **وبعد تلميح التخصيص لا معه**: يُركَّب لمن قرأ الأوّلَ في حسابه
+            وحدَه، فلا يرى عضوٌ جديدٌ تلميحين فوق بعض. نصٌّ بلا رابط (حكمُ أحمد: «نصّ أفضل»). */}
+        {seenHints.includes("home-customize") && !seenHints.includes(PRIVACY_HINT) && (
+          <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} closeLabel={t.closeLabel} />
+        )}
         <Suspense
           fallback={
             <div className="space-y-8" aria-hidden>

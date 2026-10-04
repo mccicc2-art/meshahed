@@ -18,6 +18,7 @@ import { posterFor } from "../poster";
 import { PosterCard, type CardAnchor, type CardItem } from "../library/PosterCard";
 import { ListCard } from "../library/ListCard";
 import { OneTimeHint } from "../library/OneTimeHint";
+import { PRIVACY_HINT } from "@/core/privacyNotice";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { useCardActs } from "../cardActs";
@@ -645,6 +646,14 @@ export function HomeScreen() {
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
               <OneTimeHint id="home-customize" text={t.hintHome} />
+            </View>
+          ) : !d.hints.includes(PRIVACY_HINT) ? (
+            /* 🆕 D-1273 — **السياسةُ تَعِد: «نُعلمك داخل التطبيق»** (فقرةُ «التغييرات والتواصل»)، وتغيّرت في D-1268 بلا
+               إعلام. التلميحُ القائمُ نفسُه — مرّةً ثمّ يصمت، ومحفوظٌ في الحساب فلا يعود على جهازٍ ثانٍ. **وبعد تلميح
+               التخصيص لا معه**: تلميحان فوق بعضٍ يُقرآن ضجيجاً، والأوّلُ للعضو الجديد. نصٌّ بلا رابط (حكمُ أحمد:
+               «نصّ أفضل») — السياسةُ صفحةُ ويب، والضغطةُ تُخرج من الرئيسيّة لأجل سطر. */
+            <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
+              <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} />
             </View>
           ) : null}
           <Gap />

@@ -113,6 +113,9 @@ const ar = {
   hintStats:
     "تحت الأرقام: تقاريرُ المدّة، وأوقاتُ مشاهدتك، وبطاقةُ ذوقٍ تشاركها بصورة.",
   hintHome: "رتّب أقسام الرئيسية وبدّل وضع العرض من زرّ التخصيص أعلى الصفحة.",
+  /* 🆕 D-1273 — إعلامُ تغيّر سياسة الخصوصيّة (D-1268)؛ نصٌّ يُقرأ ولا يُضغط — المكانُ في الجملة نفسِها */
+  hintPrivacy:
+    "حدّثنا سياسة الخصوصية: البحث بالوصف يستعمل Gemini من Google. التفاصيل في الإعدادات ← سياسة الخصوصية.",
   hintLists: "اجمع أعمالك حول فكرة: أنشئ قائمتك، أو احفظ قوائم الآخرين بالقلب.",
   hintPeople:
     "تابع أصدقاءك لترى نشاطهم هنا — وتابع الفنانين لتصلك أعمالهم الجديدة.",
@@ -2419,6 +2422,8 @@ const en: Dict = {
     "Under the numbers: period reports, your viewing times, and a taste card you can share as an image.",
   hintHome:
     "Reorder home sections and switch the view mode from the customize button up top.",
+  hintPrivacy:
+    "We updated the privacy policy: search by description uses Google's Gemini. Details in Settings → Privacy policy.",
   hintLists:
     "Gather titles around an idea: create your own list, or heart other people\u2019s lists to keep them.",
   hintPeople:
