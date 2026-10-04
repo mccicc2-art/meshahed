@@ -18,8 +18,8 @@ import { haptic } from "../haptics";
 import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, Tail, TitleRow } from "./SearchRows";
-import { MIN_QUERY, useDebounced, useSearch, useTrending } from "./useSearch";
-import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
+import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useSearch, useTrending } from "./useSearch";
+import { afterPaint, coldStartVoid, mark, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
@@ -71,6 +71,37 @@ export function SearchScreen() {
   const term = useDebounced(q);
   const search = useSearch(term, scope);
   const trend = useTrending();
+  /* 🆕 D-1263 — **المعروضُ لا يتبدّل والتبويبُ ظاهر**: `shown` يأخذ القائمةَ حين لا شيءَ معروضاً، أو حين تصل
+     والتبويبُ غيرُ ظاهر (الشاشةُ ثابتةٌ مركّبة فالتحديثُ لا يُرى). ما وصل وهو ظاهرٌ ينتظر المغادرة. والمغادرةُ
+     تطلب التجديدَ إن مضت عشرُ دقائق — فالعودةُ تجد الجديدَ مرسوماً لا يتبدّل أمام العين. */
+  const [shown, setShown] = useState(trend.data);
+  const focused = useRef(false);
+  const latest = useRef(trend.data);
+  latest.current = trend.data;
+  useEffect(() => {
+    if (trend.data && (!focused.current || !shown?.length)) setShown(trend.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trend.data]);
+  useFocusEffect(
+    useCallback(() => {
+      focused.current = true;
+      trendingShown(true);
+      return () => {
+        focused.current = false;
+        trendingShown(false);
+        if (latest.current) setShown(latest.current);
+        refreshTrending();
+      };
+    }, []),
+  );
+  /* 🩺 D-1263 — متى ظهر «رائج اليوم»: ms من تركيب الشاشة (`screen=trend`؛ `cached=1` إن كان جاهزاً عند التركيب).
+     على اسم `search.open` نفسِه كي لا يحتاج القياسُ رقعةَ ويب — يُميَّز بـ`screen`. */
+  const trendMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: trend.data?.length ? 1 : 0 });
+  useEffect(() => {
+    if (!shown?.length || !trendMark.current) return;
+    mark("search.open", performance.now() - trendMark.current.t0, { screen: "trend", cached: trendMark.current.cached });
+    trendMark.current = null;
+  }, [shown]);
 
   /* ================= وضعُ الوصف (G3) ================= */
   const [desc, setDesc] = useState(false);
@@ -292,9 +323,9 @@ export function SearchScreen() {
 
             {short ? (
               /* 🆕 الفراغُ قبل الكتابة = «رائج اليوم». الهيكلُ بإيقاع الصفّ ريثما تصل، ونصُّ «ابدأ» إن لم تصل */
-              trend.data?.length ? (
+              shown?.length ? (
                 <Section title={t.searchTrendingToday} show seeAll={null} seeAllLabel={t.searchSeeAll}>
-                  {trend.data.map((r, i) => (
+                  {shown.map((r, i) => (
                     <TitleRow key={`${r.mediaType}-${r.id}`} r={r} rank={i + 1} kind={r.anime ? t.animeBadge : undefined} onPress={() => openTitle(r.mediaType, r.id)} />
                   ))}
                 </Section>

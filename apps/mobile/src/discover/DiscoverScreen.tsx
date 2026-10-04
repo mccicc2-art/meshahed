@@ -22,6 +22,7 @@ import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
 import { ListsRails, listsQuery } from "./ListsRails";
 import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
+import { warmTrendingOnce } from "../search/useSearch";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
@@ -121,6 +122,8 @@ export function warmDiscoverOnce(): void {
     setTimeout(() => {
       prefetchLibrary();
       prefetchDiscover();
+      /* 🆕 D-1263 — و«رائج اليوم» في البحث: طلبٌ واحدٌ خفيف، فيجده التبويبُ جاهزاً من أوّل إطار */
+      warmTrendingOnce();
     }, 1500);
   });
 }
