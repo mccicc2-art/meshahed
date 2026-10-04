@@ -1,0 +1,4 @@
+[deploy] D-1260 — Search by description: the title you mean comes first, and a suggestion is shown only when TMDB confirms it is that title
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CixAuemthtCEqXMBiXNJrc
