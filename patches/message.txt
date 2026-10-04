@@ -1,0 +1,9 @@
+[deploy] D-1270 — web list card sits on the page colour, like the app
+
+The card ground, its veil and the stats halo read the page colour instead of
+surface, so the card melts into the page and its border frames it. The soft
+web veil stays: the app stops were shown to Ahmed in a three-theme image and
+declined (the web text column is wider than their solid part).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
