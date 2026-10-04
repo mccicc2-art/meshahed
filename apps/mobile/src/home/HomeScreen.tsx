@@ -29,7 +29,8 @@ import { SectionOrderSheet } from "./SectionOrderSheet";
 import { openProfile, profileHandleOf } from "../member/open";
 import { warmOwnProfile } from "../member/profileData";
 import { CelebrateSheet } from "./CelebrateSheet";
-import { BottomNav, navHeight } from "../BottomNav";
+import { navHeight } from "../BottomNav";
+import { DockLink } from "../navDock";
 import { useChromeHide } from "../ChromeHide";
 import { usePullRefresh } from "../pullRefresh";
 import { haptic } from "../haptics";
@@ -702,8 +703,8 @@ export function HomeScreen() {
       ) : null}
       {celebrate ? <CelebrateSheet {...celebrate} onClose={() => setCelebrate(null)} onError={onError} /> : null}
       <ToastHost hostRef={toastHost} bottom={navH} />
-      <BottomNav
-        active="home"
+      <DockLink
+        k="home"
         onGo={(k) => {
           if (k === "home") {
             scroll.current?.scrollTo({ y: 0, animated: true });
@@ -717,6 +718,9 @@ export function HomeScreen() {
           openWeb("/people");
         }}
       />
+      {/* D-1277 — مقعدُ الشريط: كان `BottomNav` آخرَ عنصرٍ في العمود فيأخذ ارتفاعَه؛ الشريطُ الواحدُ مطلقُ الموضع،
+          والمقعدُ يُبقي التخطيطَ بحرفه */}
+      <View style={{ height: navH }} />
     </View>
     </CardStoreContext.Provider>
   );

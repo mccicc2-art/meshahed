@@ -13,7 +13,8 @@ import { radius } from "../theme";
 import { Chip } from "../library/Chip";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { libraryQuery } from "../library/LibraryScreen";
-import { BottomNav, navHeight } from "../BottomNav";
+import { navHeight } from "../BottomNav";
+import { DockLink } from "../navDock";
 import { haptic } from "../haptics";
 import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
@@ -362,32 +363,31 @@ export function SearchScreen() {
       </ScrollView>
 
       {/* D-1012 — الشريطُ الخماسيُّ أصليٌّ؛ «بحث» الخانةُ المضيئة. المكتبةُ و«اكتشف» تبديلٌ لا تكديس (نهجُ المكتبة) */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-        <BottomNav
-          active="search"
-          onGo={(k) => {
-            /* 🆕 ضغطةٌ ثانيةٌ على الخانة المضيئة تفتح اللوحة (في وضع الوصف لا شيء: حقلُه مركَّزٌ أصلاً) */
-            if (k === "search") {
-              if (!desc) focusField();
-              return;
-            }
-            if (k === "library") {
-              switchTo("/library");
-              return;
-            }
-            if (k === "news") {
-              switchTo("/discover");
-              return;
-            }
-            /* D-1074 — الرئيسيّةُ أصليّة (11-H): تبديلٌ بين الجذور كأخويها، لا رحلةٌ إلى `/` الويبيّة ثمّ ارتداد */
-            if (k === "home") {
-              switchTo("/home");
-              return;
-            }
-            leaveTo("/people");
-          }}
-        />
-      </View>
+      <DockLink
+        k="search"
+        locked={leaving}
+        onGo={(k) => {
+          /* 🆕 ضغطةٌ ثانيةٌ على الخانة المضيئة تفتح اللوحة (في وضع الوصف لا شيء: حقلُه مركَّزٌ أصلاً) */
+          if (k === "search") {
+            if (!desc) focusField();
+            return;
+          }
+          if (k === "library") {
+            switchTo("/library");
+            return;
+          }
+          if (k === "news") {
+            switchTo("/discover");
+            return;
+          }
+          /* D-1074 — الرئيسيّةُ أصليّة (11-H): تبديلٌ بين الجذور كأخويها، لا رحلةٌ إلى `/` الويبيّة ثمّ ارتداد */
+          if (k === "home") {
+            switchTo("/home");
+            return;
+          }
+          leaveTo("/people");
+        }}
+      />
       {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
     </View>
   );

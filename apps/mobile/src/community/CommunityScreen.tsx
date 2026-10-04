@@ -17,7 +17,8 @@ import { radius } from "../theme";
 import { Logo } from "../Logo";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
-import { BottomNav, navHeight } from "../BottomNav";
+import { navHeight } from "../BottomNav";
+import { DockLink } from "../navDock";
 import { useBootRoot } from "../bootRoot";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
@@ -325,21 +326,21 @@ export function CommunityScreen() {
         />
       )}
 
-      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
-        <BottomNav
-          active="people"
-          onGo={(k) => {
-            if (k === "people") {
-              if (tab === "people" && all) setAll(null);
-              return;
-            }
-            if (k === "library") return switchTo("/library");
-            if (k === "news") return switchTo("/discover");
-            if (k === "search") return switchTo("/search");
-            switchTo("/home");
-          }}
-        />
-      </Animated.View>
+      <DockLink
+        k="people"
+        hidden={chrome.hidden}
+        locked={!!leaving}
+        onGo={(k) => {
+          if (k === "people") {
+            if (tab === "people" && all) setAll(null);
+            return;
+          }
+          if (k === "library") return switchTo("/library");
+          if (k === "news") return switchTo("/discover");
+          if (k === "search") return switchTo("/search");
+          switchTo("/home");
+        }}
+      />
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />

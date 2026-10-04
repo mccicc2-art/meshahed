@@ -36,7 +36,8 @@ import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
-import { BottomNav, navHeight } from "../BottomNav";
+import { navHeight } from "../BottomNav";
+import { DockLink } from "../navDock";
 import { regionName } from "@/core/region";
 import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
@@ -485,9 +486,10 @@ export function DiscoverScreen() {
         )}
       />
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
-      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
-      <BottomNav
-        active="news"
+      <DockLink
+        k="news"
+        hidden={chrome.hidden}
+        locked={!!leaving}
         onGo={(k) => {
           if (k === "news") return;
           if (k === "library") {
@@ -507,7 +509,6 @@ export function DiscoverScreen() {
           leaveTo("/people");
         }}
       />
-      </Animated.View>
       <ToastHost hostRef={toastHost} bottom={navH + 16} />
       {sheet ? (
         <FilterSheet

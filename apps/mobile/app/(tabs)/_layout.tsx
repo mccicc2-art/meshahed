@@ -6,6 +6,7 @@ import { rootsMounted } from "../../src/bootRoot";
 import { queryClient } from "../../src/api";
 import { tabPreloaded, tabSeen } from "../../src/perfMarks";
 import { warmTrendingOnce } from "../../src/search/useSearch";
+import { TabDock, type NavKey } from "../../src/BottomNav";
 
 /** مهلةٌ بعد وصول بيانات «اكتشف» المسخَّنة: بقيّةُ الصفوف تصل غالباً، فيُركَّب التبويبُ ببياناتٍ لا بهياكل.
     🔴 D-1248 — ٤٠٠ لا ١٢٠٠: تسجيلا أحمد ٣ أكتوبر — من دخل «اكتشف» بعد ~٧ث من التشغيل وجده **نصفَ مبنيّ** (٢٥ بطاقةً
@@ -104,11 +105,15 @@ function usePreloadLibrary() {
  * ويضيع موضعُ التمرير والتبويبُ الفرعيّ. الآن كلُّ جذرٍ يُبنى أوّلَ ما يُفتح (`lazy`) ثمّ **يبقى مركَّباً ومجمَّداً**
  * وهو مخفيّ (`freezeOnBlur` — لا يرسم ولا يستهلك)، والضغطةُ انتقالٌ إلى تبويبٍ حيّ.
  *
- * 🔑 **الشريطُ هو `BottomNav` نفسُه** كما يرسمه كلُّ جذرٍ اليوم — لا شريطَ ثانياً (القاعدة ٣): شريطُ هذا المتنقّل
- * مخفيّ (`tabBar` لا شيء) وهو هنا للإبقاء على الشاشات لا لرسمها.
+ * 🔑 **الشريطُ هو `BottomNav` نفسُه** — لا شريطَ ثانياً (القاعدة ٣). ⚖️ 🆕 D-1277: كان كلُّ جذرٍ يرسمه و`tabBar`
+ * هنا لا شيء؛ صار المتنقّلُ يرسمه مرّةً (`TabDock`) والجذورُ تسجّل له سلوكَها (`DockLink`) — شريطٌ يُركَّب مع كلِّ
+ * جذرٍ جديدٍ كان يُظهر كلماتِه قبل رموزه (رمشةُ الدوك في تسجيل أحمد).
  * 🔑 **الرجوعُ ليس للمتنقّل** (`backBehavior: "none"`): كلُّ جذرٍ يملك زرَّ الرجوع وهو ظاهر (`useBootRoot`) —
  * و`router.back()` منه ينزع المجموعةَ كلَّها فيكشف ما تحتها (الويبَ) كما كان.
  */
+/** اسمُ الشاشة في المجموعة ⇐ خانتُها في الشريط */
+const NAV_OF: Record<string, NavKey> = { home: "home", library: "library", discover: "news", search: "search", community: "people" };
+
 export default function TabsLayout() {
   const { tokens } = useApp();
   /* مجموعةٌ جديدةٌ فوق الويب ⇒ لم تُزر الرئيسيّةُ فيها بعد (انظر `bootBack`) */
@@ -124,7 +129,8 @@ export default function TabsLayout() {
   return (
     <Tabs
       backBehavior="none"
-      tabBar={() => null}
+      /* 🆕 D-1277 — الشريطُ الواحد: يُرسم هنا مرّةً ولا يُعاد تركيبُه عند التبديل (`TabDock`) */
+      tabBar={({ state }) => <TabDock active={NAV_OF[state.routes[state.index]?.name ?? "home"] ?? "home"} />}
       screenOptions={{
         headerShown: false,
         lazy: true,

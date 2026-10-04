@@ -1,12 +1,13 @@
 import React from "react";
 import { useRouter } from "expo-router";
 import { tabGone, tabPressed } from "./perfMarks";
-import { Pressable, View } from "react-native";
+import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { Text } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { radius } from "./theme";
+import { dockOf, useDockVersion } from "./navDock";
 
 /**
  * ====== الشريطُ السفليُّ في الشاشات الأصليّة — D-961 (١٤ سبتمبر ٢٠٢٦) ======
@@ -105,5 +106,46 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
         );
       })}
     </View>
+  );
+}
+
+/** مسارُ كلِّ خانةٍ في مجموعة التبويبات — احتياطُ `TabDock` حين لم يسجّل الجذرُ سلوكَه بعد */
+const ROOT_PATH = { home: "/home", library: "/library", news: "/discover", people: "/community", search: "/search" } as const;
+
+/**
+ * 🆕 D-1277 — **الشريطُ الواحد فوق التبويبات** (الحجّةُ والقياسُ في `navDock.tsx`): يرسمه المتنقّلُ في `tabBar`
+ * مرّةً، والخانةُ المضيئةُ من حالته — فلا يُعاد تركيبُ الشريط ولا رموزه عند التبديل.
+ *
+ * - **مطلقُ الموضع** كما كان في كلِّ جذر: المشهدُ يبقى بطول الشاشة والمحتوى يمرّ تحته بذيله (`navHeight`).
+ * - **`hidden`** قيمةُ الكسوة الذكيّة للجذر الظاهر (D-966) — يهبط الشريطُ بارتفاعه كما كان يهبط شريطُ الجذر.
+ * - **`locked`** الجذرُ يغادر إلى باب (D-951): الشريطُ لا يستقبل ضغطة.
+ * - **الضغطُ** يقرأ `onGo` الجذرِ الظاهر لحظتَها؛ وإن لم يُسجَّل (حالةُ تحميلٍ بلا شريطٍ سابقاً) فتبديلٌ عامّ.
+ */
+export function TabDock({ active }: { active: NavKey }) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  useDockVersion();
+  const dock = dockOf(active);
+  const navH = navHeight(insets.bottom);
+  return (
+    <Animated.View
+      pointerEvents={dock?.locked ? "none" : "box-none"}
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        transform: dock?.hidden ? [{ translateY: Animated.multiply(dock.hidden, navH) }] : undefined,
+      }}
+    >
+      <BottomNav
+        active={active}
+        onGo={(k) => {
+          const own = dockOf(active)?.onGo;
+          if (own) return own(k);
+          if (k !== active) router.navigate(ROOT_PATH[k]);
+        }}
+      />
+    </Animated.View>
   );
 }

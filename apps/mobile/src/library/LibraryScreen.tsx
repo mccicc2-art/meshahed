@@ -23,7 +23,8 @@ import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
-import { BottomNav, navHeight } from "../BottomNav";
+import { navHeight } from "../BottomNav";
+import { DockLink } from "../navDock";
 import { OneTimeHint } from "./OneTimeHint";
 import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
 import { Icon } from "../icons";
@@ -540,9 +541,10 @@ export function LibraryScreen() {
         }
       />
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
-      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
-      <BottomNav
-        active="library"
+      <DockLink
+        k="library"
+        hidden={chrome.hidden}
+        locked={!!leaving}
         onGo={(k) => {
           if (k === "library") return;
           if (k === "news") {
@@ -557,7 +559,6 @@ export function LibraryScreen() {
           leaveTo(k === "home" ? "/" : "/people");
         }}
       />
-      </Animated.View>
       {tools ? (
         <ToolsSheet
           q={q}
