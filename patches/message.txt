@@ -1,0 +1,4 @@
+[deploy] D-1259 — Search by description goes live on Gemini: model chain, header key, failure log, fallback note, one-time hint
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CixAuemthtCEqXMBiXNJrc
