@@ -2,7 +2,6 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { DiscoverScreen } from "../../src/discover/DiscoverScreen";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
-import { CommitProbe } from "../../src/CommitProbe";
 
 /**
  * `/discover` — الشاشةُ الأصليّةُ الثانية (Phase 11-C · C1، D-955). تُدفع فوق
@@ -14,10 +13,7 @@ export default function Discover() {
   const router = useRouter();
   return (
     <ErrorBoundary screen="discover" webPath="/news" onLeave={() => (router.canGoBack() ? router.back() : router.replace("/web"))}>
-      {/* 🆕 D-1231 — حدودُ مرحلة الالتزام في نافذة التبديل (`perfMarks.tabCommit`) */}
-      <CommitProbe edge="cs" screen="news" />
       <DiscoverScreen />
-      <CommitProbe edge="ce" screen="news" />
     </ErrorBoundary>
   );
 }

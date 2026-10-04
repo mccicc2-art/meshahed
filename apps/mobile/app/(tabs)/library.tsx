@@ -2,7 +2,6 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { LibraryScreen } from "../../src/library/LibraryScreen";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
-import { CommitProbe } from "../../src/CommitProbe";
 
 /**
  * `/library` — الشاشةُ الأصليّةُ الأولى (Phase 11 · B1، D-936). تُدفع فوق `/web`
@@ -13,10 +12,7 @@ export default function Library() {
   const router = useRouter();
   return (
     <ErrorBoundary screen="library" webPath="/library" onLeave={() => (router.canGoBack() ? router.back() : router.replace("/web"))}>
-      {/* 🆕 D-1231 — حدودُ مرحلة الالتزام في نافذة التبديل (`perfMarks.tabCommit`) */}
-      <CommitProbe edge="cs" screen="library" />
       <LibraryScreen />
-      <CommitProbe edge="ce" screen="library" />
     </ErrorBoundary>
   );
 }

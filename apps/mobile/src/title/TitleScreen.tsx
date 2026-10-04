@@ -17,8 +17,7 @@ import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
-import { titleSeed, prefetchFirstSeason, titleQuery, trailerQuery, takePress, seedSrc, takeTiming } from "./seed";
-import { flag } from "../flags";
+import { titleSeed, prefetchFirstSeason, titleQuery, takePress, seedSrc } from "./seed";
 import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
@@ -92,11 +91,6 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز (كان ٦ث في تسجيل خالد). 🆕 D-1224 — الجالبُ في `seed.ts` لأنّ لمسَ البطاقة يبدؤه قبل الصفحة */
   const q = useQuery(titleQuery(kind, id));
   const d = q.data;
-  /* 🆕 D-1262 — خلف `tx` الإعلانُ يُطلب وحدَه (الصفحةُ لا تنتظره)؛ المفتاحُ يُقرأ مرّةً عند التركيب كي لا يتبدّل المسارُ والشاشةُ مفتوحة.
-     وما حمله ردُّ الصفحة (المسارُ القديم، أو كاشٌ من قبل التشغيل) يتقدّم — فلا تختفي بطاقةٌ كانت ظاهرة. */
-  const [tx] = useState(() => flag("tx"));
-  const tr = useQuery({ ...trailerQuery(kind, id), enabled: tx });
-  const trailerKey = d?.trailer_key ?? (tx ? (tr.data?.trailer_key ?? null) : null);
   /* 🆕 D-1221 — الاسمُ والملصقُ من البطاقة التي فُتحت منها الصفحة (كاشُ `react-query`)، يُرسمان فوراً بدل الهيكل الفارغ حتى يصل
      العمل؛ ويُحسب مرّةً عند الفتح وحده (`seed.ts`). ومسلسلٌ لم يُشاهَد منه شيءٌ يطلب حلقاتِ موسمه الأوّل الآن لا بعد الردّ. */
   const [seed] = useState(() => (q.data ? null : titleSeed(qc, kind, id)));
@@ -116,16 +110,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
   useEffect(() => {
     if (!d || !openMark.current) return;
-    /* 🩺 D-1261 — الفتحُ الباردُ يحمل مراحلَ الخادم ومدّةَ الطلب (`seed.ts`)؛ المحفوظُ يُفرغها ولا يكتبها */
-    const timing = takeTiming(kind, id);
-    mark("title.open", performance.now() - openMark.current.t0, {
-      cached: openMark.current.cached,
-      screen: kind,
-      guest: isGuest(d) ? 1 : 0,
-      ...(openMark.current.cached === 0 && timing ? timing : {}),
-    });
+    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind, guest: isGuest(d) ? 1 : 0 });
     openMark.current = null;
-  }, [d, kind, id]);
+  }, [d, kind]);
   /* 🆕 D-1118 — **الموسمُ المفتوحُ يُجلب مع الصفحة لا بعد رسم قائمتها**: ما إن تُعرف الصفحةُ (من الكاش أو
      الشبكة) يبدأ جلبُ حلقات أوّل موسمٍ لم يكتمل — والقائمةُ حين تُرسم تجده في الطريق أو واصلاً (المفتاحُ واحد). */
   useEffect(() => {
@@ -535,10 +522,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                     مركّبةٌ خاملةً بصورتها وثقب ▶، اللمسةُ فيه تصل الإطارَ فيشغّل يوتيوب بنفسه،
                     والمرفوضُ لا يفتح باباً إلا بلمسة (D-984) — وبابُه صفحةُ التريلرات لا صفحةُ
                     العمل. */}
-                {trailerKey ? (
+                {d.trailer_key ? (
                   <View style={{ borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface2 }}>
                     <TrailerPlayer
-                      videoKeys={[trailerKey]}
+                      videoKeys={[d.trailer_key]}
                       width={width - PAGE_PAD * 2}
                       poster={backdropUrl(d.backdrop_path, "w780")}
                       label={d.name}

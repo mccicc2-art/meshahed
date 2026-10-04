@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, BackHandler, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
@@ -6,6 +6,7 @@ import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
+import { afterPaint, mark } from "../perfMarks";
 import { useApp } from "../state";
 import { Button, Text, Toast } from "../ui";
 import { Icon, iconOr } from "../icons";
@@ -24,7 +25,6 @@ import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { openProfile } from "./open";
 import { DENSITY_W, fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
-import { useProfileProbe } from "./profileProbe";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
 import { num } from "@/core/i18n";
@@ -99,8 +99,19 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const d = q.data ?? null;
 
   /* `profile.open`: من التركيب إلى أوّل رسمٍ فيه حمولة — `cached` يفصل الكاشَ عن الشبكة (نهجُ «المجتمع») */
-  /* 🆕 D-1239 — العلامةُ تحمل مراحلَها (`profileProbe.ts`)؛ يُنادى بعد أن يُعرف `headH` أدناه */
   const [cachedAtMount] = useState(() => !!qc.getQueryData(key));
+  const openMark = useRef<{ t0: number } | null>({ t0: performance.now() });
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
+  useLayoutEffect(() => {
+    if (!d || !openMark.current) return;
+    const { t0 } = openMark.current;
+    openMark.current = null;
+    /* شاشةٌ أُغلقت قبل الإطارين لا تكتب شيئاً */
+    afterPaint(() => {
+      if (alive.current) mark("profile.open", performance.now() - t0, { cached: cachedAtMount ? 1 : 0 });
+    });
+  }, [d, cachedAtMount]);
 
   const [tab, setTab] = useState<ProfileTabKey | null>(null);
   const shown = useMemo(() => d?.tabs ?? [], [d?.tabs]);
@@ -424,9 +435,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /* 🔴 D-1241 — **الجسمُ يُرسم دفعةً واحدة** (أحمد بعد تجربة D-1240، ٣ أكتوبر: «حلو إنه يفكّ على طول بس ما أقدر أتحكّم على
      طول… ابغاها تنفكّ سوى»). الرسمُ على مراحل أنزل أوّلَ ظهورٍ من ~٦١٥ إلى ~٩٥ms، لكنّه أجّل العملَ الثقيل إلى ما بعد الظهور:
      اكتمالُ الشاشة صار ٨٣٠–١٥٧٠ms وخيطُ الواجهة يقف والإصبعُ على الشاشة. **انتظارٌ قصيرٌ قبل الظهور خيرٌ من شاشةٍ ظهرت ولا
-     تستجيب.** بقي من D-1240 فصلُ ما تحت الشاشة عن أندرويد وعدّادُ خيط الواجهة من الضغطة. */
-  const bodyUp = !!d && headH > 0;
-  useProfileProbe({ cached: cachedAtMount, hasData: !!d, hasBody: bodyUp, full: bodyUp, headKnown: !!memo0, from });
+     تستجيب.** بقي من D-1240 فصلُ ما تحت الشاشة عن أندرويد (عدّادُ خيط الواجهة أُزيل مع المسابير، D-1265). */
   const maxC = Math.max(0, headH - barH);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;

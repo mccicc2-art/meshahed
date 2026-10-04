@@ -2,7 +2,6 @@ import type { useRouter } from "expo-router";
 
 type Router = ReturnType<typeof useRouter>;
 import type { NativeRoot } from "../shell";
-import { profileTapped } from "./profileProbe";
 
 /**
  * ====== بابُ ملفّ الشخص الأصليّ — مكانٌ واحدٌ لكلِّ من يفتحه (🆕 Phase 11-N · N1) ======
@@ -22,7 +21,5 @@ export function profileHandleOf(path: string): string | null {
 }
 
 export function openProfile(router: Router, username: string, from: NativeRoot | "web") {
-  /* D-1239 — لحظةُ الضغطة: `go` في `profile.open` = من هنا إلى تركيب الشاشة */
-  profileTapped();
   router.push({ pathname: "/u/[username]", params: { username, from } });
 }

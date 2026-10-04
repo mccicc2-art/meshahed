@@ -89,12 +89,8 @@ const NAMES = new Set([
 /* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)
    🆕 D-1218 — وعدّاداتُ الرسم: `first` (ms إلى أوّل رسمٍ للجذر) · `roots` · `panes` · `rails` · `cards` · `live`
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
-   🆕 D-1230 — `marq` (رسماتُ صفوف المكتبة في نافذة التبديل)
-   🆕 D-1231 — `cs` · `ce` (ms إلى بدء مرحلة التخطيط ونهايتها) · `qc` (تحديثاتُ كاش الاستعلامات في النافذة)
-   🆕 D-1235 — خيطُ الواجهة في النافذة نفسِها: `ud` (إطاراتٌ ضائعة) · `ug` (أطولُ فجوة ms) · `ut` (ms إلى بدايتها) · `uf` (إطاراتٌ وصلت) */
-/* 🩺 D-1261 — مراحلُ `/api/v1/title` على `title.open` البارد: `rq` (ms الطلبِ كلِّه من الجهاز) · `sv` (الخادمُ كلُّه) ·
-   `sa` (الهويّة) · `st` (تفاصيلُ TMDB) · `sr` (الإعلان) · `sd` (أبطأُ قراءةٍ لحالتي). الشبكةُ = `rq − sv`. */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "first", "roots", "panes", "rails", "cards", "live", "pre", "marq", "cs", "ce", "qc", "ud", "ug", "ut", "uf", "rq", "sv", "sa", "st", "sr", "sd"]);
+   🆕 D-1230 — `marq` (رسماتُ صفوف المكتبة في نافذة التبديل) */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "first", "roots", "panes", "rails", "cards", "live", "pre", "marq"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

@@ -1,10 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { ApiError, api, qk, softGet } from "../api";
-import { flag } from "../flags";
+import { ApiError, qk, softGet } from "../api";
 import { seasonQuery } from "./SeasonAccordion";
 import { backdropUrl } from "@/core/media";
-import type { LibraryPayload, TitlePayload, TitleTrailerPayload } from "../contracts";
+import type { LibraryPayload, TitlePayload } from "../contracts";
 
 /**
  * 🆕 D-1221 — **رأسُ صفحة العمل من البطاقة التي فُتح منها** (تسجيلُ أحمد ١ أكتوبر: «الدخول لأيّ صفحة فلم فيه تأخير خفيف»).
@@ -55,56 +54,13 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, outer?: AbortS
   });
 }
 
-/**
- * 🩺 D-1261 — مراحلُ الخادم لآخر جلبٍ لكلِّ عمل (ترويسة `X-Loopz-T`) مع مدّة الطلب من الجهاز، تُلصق بعلامة
- * `title.open` الباردة فيُقرأ الطرفان معاً: الشبكةُ = `rq − sv`. قياسٌ فقط؛ الخريطةُ تُفرغ عند القراءة ولا تكبر.
- */
-export type ServerTiming = { rq: number; sv?: number; sa?: number; st?: number; sr?: number; sd?: number };
-const timings = new Map<string, ServerTiming>();
-const T_KEYS: Record<string, "sv" | "sa" | "st" | "sr" | "sd"> = { all: "sv", a: "sa", t: "st", r: "sr", d: "sd" };
-
-function keepTiming(kind: "tv" | "movie", id: number, t0: number, res: Response) {
-  const out: ServerTiming = { rq: Math.round(performance.now() - t0) };
-  for (const part of (res.headers.get("x-loopz-t") ?? "").split(",")) {
-    const [k, v] = part.split("=");
-    const key = T_KEYS[k];
-    const n = Number(v);
-    if (key && v !== undefined && v !== "" && Number.isFinite(n) && n >= 0) out[key] = n;
-  }
-  if (timings.size >= 30) timings.clear();
-  timings.set(`${kind}:${id}`, out);
-}
-
-/** يأخذ القياسَ مرّةً واحدة — الفتحةُ التالية للعمل نفسِه من الكاش لا تحمل أرقامَ جلبٍ قديم */
-export function takeTiming(kind: "tv" | "movie", id: number): ServerTiming | null {
-  const k = `${kind}:${id}`;
-  const t = timings.get(k) ?? null;
-  timings.delete(k);
-  return t;
-}
-
 /** الجالبُ الواحدُ لصفحة العمل — `TitleScreen` واللمسةُ المسبقة يتشاركانه فلا يفترق مفتاحٌ ولا عنوان */
 export const titleQuery = (kind: "tv" | "movie", id: number) => ({
   queryKey: qk.title(kind, id),
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
-  queryFn: ({ signal }: { signal?: AbortSignal }) => {
-    const t0 = performance.now();
-    return withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}${flag("tx") ? "?t=0" : ""}`, s, (res) => keepTiming(kind, id, t0, res)), signal);
-  },
+  queryFn: ({ signal }: { signal?: AbortSignal }) => withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s), signal),
   staleTime: 60_000,
   retryDelay: 300,
-});
-
-/**
- * 🆕 D-1262 — **الإعلانُ يُطلب وحدَه بالتوازي مع الصفحة** (خلف `tx`): القياسُ (D-1261) أظهر أنّ ردَّ الصفحة كان ينتظره
- * ١١٥–٥٥٠ms فوق التفاصيل في نحو ثلث الفتحات الباردة. عامٌّ بلا هويّة (`auth: false`) فلا ينتظر رمزاً، وفشلُه صمتٌ —
- * الصفحةُ بلا بطاقة إعلانٍ كما لو لم يكن للعمل إعلان. واللمسةُ المسبقةُ تبدؤه مع العمل (`primeTitle`).
- */
-export const trailerQuery = (kind: "tv" | "movie", id: number) => ({
-  queryKey: ["title:trailer", kind, id] as const,
-  queryFn: async ({ signal }: { signal?: AbortSignal }) => (await api<TitleTrailerPayload>(`/api/v1/title/${kind}/${id}/trailer`, { auth: false, signal })).data,
-  staleTime: 5 * 60_000,
-  retry: 1,
 });
 
 /** بذورٌ سلّمتها بطاقاتٌ لُمست — قليلةٌ ومقصوصة (آخرُ ٣٠)، فلا تكبر مع الجلسة */
@@ -141,7 +97,6 @@ export function primeTitle(qc: QueryClient, c: PrimeCard) {
   primeTimer = setTimeout(() => {
     primeTimer = null;
     void qc.prefetchQuery(titleQuery(c.kind, c.id));
-    if (flag("tx")) void qc.prefetchQuery(trailerQuery(c.kind, c.id));
     const bd = c.backdrop_path ? backdropUrl(c.backdrop_path, "w780") : null;
     if (bd) void Image.prefetch(bd, "memory-disk");
   }, PRIME_HOLD_MS);

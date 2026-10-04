@@ -19,7 +19,7 @@ import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, Tail, TitleRow } from "./SearchRows";
 import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useSearch, useTrending } from "./useSearch";
-import { afterPaint, coldStartVoid, mark, span, tabLanded } from "../perfMarks";
+import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
@@ -94,14 +94,6 @@ export function SearchScreen() {
       };
     }, []),
   );
-  /* 🩺 D-1263 — متى ظهر «رائج اليوم»: ms من تركيب الشاشة (`screen=trend`؛ `cached=1` إن كان جاهزاً عند التركيب).
-     على اسم `search.open` نفسِه كي لا يحتاج القياسُ رقعةَ ويب — يُميَّز بـ`screen`. */
-  const trendMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: trend.data?.length ? 1 : 0 });
-  useEffect(() => {
-    if (!shown?.length || !trendMark.current) return;
-    mark("search.open", performance.now() - trendMark.current.t0, { screen: "trend", cached: trendMark.current.cached });
-    trendMark.current = null;
-  }, [shown]);
 
   /* ================= وضعُ الوصف (G3) ================= */
   const [desc, setDesc] = useState(false);
