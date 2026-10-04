@@ -1,0 +1,6 @@
+[deploy] D-1262 — the title page no longer waits for the trailer; the app asks for it on its own, behind the tx flag
+
+The trailer alone set the server time in about a third of cold opens (D-1261). With tx on, the app requests the title with ?t=0 and the trailer from /api/v1/title/{kind}/{id}/trailer in parallel. tx: false restores the single request.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
