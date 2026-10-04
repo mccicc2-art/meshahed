@@ -1,0 +1,13 @@
+[deploy] D-1277 — one bottom bar above the tabs instead of one per root
+
+After D-1276 the bar icons still vanished for one or two frames on the first
+visit to a tab (16 ms at Community, 33 ms at Discover, from 93 and 235):
+each root drew its own bar, so a first visit mounted a new one and the images
+arrive a frame after the mount. The tabs navigator now draws the bar once
+(TabDock in tabBar) and each root registers what it used to pass to its bar
+(DockLink): its press behaviour, its scroll-hide value and its leaving lock.
+Same BottomNav, same look. Home keeps a seat of the bar height in its column.
+Not tried on a device before the push.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
