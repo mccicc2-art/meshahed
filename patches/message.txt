@@ -1,0 +1,11 @@
+[deploy] D-1272 — remove the render counters from the tab-switch mark
+
+first, roots, panes, rails, cards, live and marq (D-1218, D-1230) answered
+their question: 88 of 103 warm returns to Library redraw no row. Ahmed closed
+the item on 4 Oct and asked for the counters to go. The mark keeps its time
+and phases (from, go, focus, drop, cached, pre); the D-1230 behaviour stays.
+The perf route stops accepting the seven keys; an older app build that still
+sends them loses the keys silently and keeps the mark.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
