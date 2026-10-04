@@ -1,0 +1,6 @@
+[deploy] D-1267 — Loopz names: a title missing from the English list is asked for on its own
+
+Seen on production after D-1266: two of ten trending rows kept their Arabic / Japanese name. The Arabic and English list responses are cached separately, so a changing list can hold a title in one and not in the other.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
