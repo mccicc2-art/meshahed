@@ -1,0 +1,9 @@
+[deploy] D-1268 — privacy policy names Gemini for search by description
+
+Search by description sends the typed text plus titles from the library and
+ratings to Google Gemini (free tier, so Google may use the text). The policy
+did not name it. One sentence added to "Who processes data with us" in both
+languages, and the "Last updated" date moved to 4 October 2026.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
