@@ -1,0 +1,11 @@
+[deploy] D-1275 — the «Original name» mode applies on every surface
+
+The mode reached the Library, lists and search only; Discover rails,
+recommendations, a person's works, trailers and the title heading showed the
+interface-language name. It is now applied where TMDB is read, like the
+Loopz mode: each work row takes original_title / original_name from the same
+response, with no second request. The title heading no longer swaps in the
+Wikidata Arabic name in this mode. «Arabic transliteration» is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
