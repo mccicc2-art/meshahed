@@ -1,0 +1,11 @@
+[deploy] D-1269 — the title-names choice is saved to the account
+
+The choice lived in a cookie only, so it belonged to the device. It is now
+written to profiles.title_mode (migration 193) as well, and the account value
+is copied down to the device cookie at app boot, when Settings opens and on
+the first web page (TitleModeSync, twin of ThemeCookieSync). The server keeps
+reading the cookie, so no request gains a database trip. An empty column
+means the member has not chosen and the device keeps what it shows.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
