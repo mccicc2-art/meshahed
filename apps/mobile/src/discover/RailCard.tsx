@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from "react";
+import React, { memo, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -8,7 +8,6 @@ import { StatusThread, type CardAnchor } from "../library/PosterCard";
 import { posterFor } from "../poster";
 import { useCardState } from "../cardStore";
 import type { CuratedCard } from "../contracts";
-import { cardLive, tabTick } from "../perfMarks";
 import { queryClient } from "../api";
 import { primeTitle, unprimeTitle } from "../title/seed";
 
@@ -53,12 +52,6 @@ export const RailCard = memo(function RailCard({
   rankTone?: "accent";
 }) {
   const { t, tokens } = useApp();
-  /* D-1218 — عدّادا التشخيص (`perfMarks.tabTick`): رسماتُ البطاقة في نافذة التبديل، والمركَّبُ منها */
-  tabTick("cards");
-  useEffect(() => {
-    cardLive(1);
-    return () => cardLive(-1);
-  }, []);
   /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
      وبلا مخزن (صفحةُ الشخص) الخاصّيّتان كما كانتا */
   const cs = useCardState(`${card.kind}-${card.id}`);

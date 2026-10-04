@@ -26,7 +26,7 @@ import { warmTrendingOnce } from "../search/useSearch";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
-import { coldStartVoid, span, tabLanded, tabTick } from "../perfMarks";
+import { coldStartVoid, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
@@ -137,8 +137,6 @@ const RAILS: Record<CuratedTab, CuratedRailKey[]> = {
 };
 
 export function DiscoverScreen() {
-  /* D-1218 — عدّادُ التشخيص: رسماتُ الجذر في نافذة التبديل (وأوّلُها = لحظةُ فكّ التجميد) */
-  tabTick("roots", "news");
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const qc = useQueryClient();
@@ -599,7 +597,6 @@ const DiscoverPane = memo(function DiscoverPane({
   /** D-994 — «الكلّ» لصفّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
 }) {
-  tabTick("panes");
   const { t } = useApp();
   const router = useRouter();
   /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
@@ -854,7 +851,6 @@ const Rail = memo(function Rail({
   onSeeAll: (path: string, title: string) => void;
   ar: boolean;
 }) {
-  tabTick("rails");
   const { t, tokens } = useApp();
   const q = useQuery({
     queryKey: ["discover:rail", tab, railKey, bq] as const,
@@ -941,7 +937,6 @@ const CardsRail = memo(function CardsRail({
   /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
   action?: { label: string; aria: string; icon: Parameters<typeof Icon>[0]["name"]; onPress: () => void } | null;
 }) {
-  tabTick("rails");
   const { t, tokens } = useApp();
   const shown = useMemo(() => (hidden.size === 0 ? items : items.filter((c) => !hidden.has(`${c.kind}-${c.id}`))), [items, hidden]);
   /* D-1028 (F4) — `renderItem` ثابتة، وبلا `extraData`: الإطارُ والخيطُ تقرؤهما البطاقةُ من

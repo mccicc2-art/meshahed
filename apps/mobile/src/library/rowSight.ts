@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { tabLeaving, tabTick } from "../perfMarks";
+import { tabLeaving } from "../perfMarks";
 
 /**
  * ====== «أيُّ صفٍّ يُرى الآن» — مخزنٌ صغيرٌ خارج React (D-1025 · Phase 11-F · F1) ======
@@ -49,7 +49,5 @@ export function createRowSight(): RowSight {
 }
 
 export function useRowSeen(sight: RowSight, key: string): boolean {
-  /* 🆕 D-1230 — عدّادُ التشخيص: رسماتُ صفوف المكتبة في نافذة التبديل (`marq` في `tab.switch`) */
-  tabTick("marq");
   return useSyncExternalStore(sight.subscribe, () => sight.sees(key));
 }
