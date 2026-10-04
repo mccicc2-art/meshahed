@@ -2,6 +2,7 @@
 // Server-only: never expose the key to the browser.
 
 import { cache } from "react";
+import { applyLoopzNames, collectEnglish } from "@/core/loopzNames";
 import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
@@ -105,7 +106,47 @@ function retryable(status: number | null): boolean {
   return status === null || status === 429 || status >= 500;
 }
 
+/** وضعُ الأسماء يُقرأ كما تُقرأ اللغة أعلاه: من الطلب نفسِه، وخارجَ طلبٍ يسقط إلى الافتراض */
+async function titleModeNow(): Promise<string> {
+  try {
+    const { getTitleMode } = await import("@/lib/locale");
+    return await getTitleMode();
+  } catch {
+    return "loopz";
+  }
+}
+
+/* مساراتٌ لا صفوفَ أعمالٍ في ردِّها — لا تُسأل مرّتين ولا تُنسخ (D-1266). ما لم يُذكر هنا يُعامل كأنّ
+   فيه أعمالاً: نداءٌ زائدٌ مخبَّأ ساعةً أهونُ من اسمٍ فات تصحيحُه. `combined_credits` ليست منها عمداً. */
+const NO_WORKS =
+  /\/(videos|images|credits|external_ids|release_dates|content_ratings|alternative_titles|translations|keywords|watch\/providers)$|\/season\/|^\/person\/\d+$|^\/search\/(person|keyword)$|^\/genre\/|^\/configuration/;
+
+/**
+ * 🆕 D-1266 — **بابُ TMDB يصحّح أسماءَ الأعمال في وضع «Loopz»** (الافتراض): كلُّ عملٍ بالإنجليزيّة والعربيُّ
+ * بأصله. الحجّةُ في `core/loopzNames.ts`.
+ *
+ * - **لغةٌ مطلوبةٌ صراحةً** (`params.language`: النشرةُ بلغتين، الملصقُ الاحتياطيّ، السيرة) ⇒ لا يُمسّ الردّ.
+ * - **الواجهةُ إنجليزيّة** ⇒ الردُّ إنجليزيٌّ أصلاً؛ يُردّ العملُ العربيُّ إلى أصله وحدَه، بلا نداءٍ ثانٍ.
+ * - **الواجهةُ عربيّة** ⇒ النداءُ نفسُه بـ`en-US` **بالتوازي** (لا يزيد الانتظار) وتؤخذ منه الأسماء؛ الوصفُ
+ *   والمواسمُ والحلقاتُ تبقى عربيّة. النداءان مخبَّآن ساعةً ومشتركان بين كلِّ القرّاء. وإن سقط الإنجليزيُّ
+ *   بقي الردُّ العربيُّ كما هو — اسمٌ بلغةٍ أخرى أهونُ من قسمٍ فارغ (D-063).
+ * - **الأوضاعُ الثلاثةُ الأخرى** ⇒ كما كانت حرفاً.
+ */
 async function tmdb<T>(
+  path: string,
+  params: Record<string, string> = {},
+  rail = false,
+): Promise<T> {
+  if (params.language || NO_WORKS.test(path) || (await titleModeNow()) !== "loopz") return tmdbRaw<T>(path, params, rail);
+  if ((await tmdbLanguage()) === "en-US") return applyLoopzNames(await tmdbRaw<T>(path, params, rail), null);
+  const [own, en] = await Promise.all([
+    tmdbRaw<T>(path, params, rail),
+    tmdbRaw<unknown>(path, { ...params, language: "en-US" }, rail).catch(() => null),
+  ]);
+  return applyLoopzNames(own, en ? collectEnglish(en) : new Map());
+}
+
+async function tmdbRaw<T>(
   path: string,
   params: Record<string, string> = {},
   /** نداءُ رفٍّ اختياريّ؟ سقفٌ قصيرٌ بلا محاولةٍ ثانية (الحجّة عند الثوابت) */

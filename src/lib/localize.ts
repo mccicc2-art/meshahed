@@ -48,6 +48,17 @@ const FOREIGN = /[぀-ヿ㐀-鿿가-힯Ѐ-ӿ]/;
 /** سقف الطلبات في النداء الواحد: ما بعده يبقى باسمه المخزّن */
 const LIMIT = 24;
 
+/**
+ * 🆕 D-1266 — **سقفُ وضع «Loopz» أعلى**: هو افتراضُ الجميع، وصاحبُ الواجهة العربيّة مكتبتُه مخزَّنةٌ
+ * بأسماءٍ عربيّة كلُّها تحتاج اسمَها الإنجليزيّ — وسقفُ ٢٤ يترك الباقي عربيّاً **في كلِّ فتح** (الصفوفُ
+ * نفسُها تُختار أوّلاً كلَّ مرّة)، فتبقى المكتبةُ نصفين إلى الأبد. قِيس يومَ القرار: أكبرُ مكتبةٍ فيها ٩٠
+ * صفّاً يحتاج التصحيح، و٢٠٦ أعمالٍ متمايزةٍ في القاعدة كلِّها. والتفصيلُ مخبَّأ ساعةً ومشتركٌ بين
+ * القرّاء، فالثمنُ يُدفع مرّةً لكلِّ عمل؛ والدفعاتُ أدناه تُبقي النداءاتِ المتزامنة تحت حدِّ TMDB.
+ */
+const LOOPZ_LIMIT = 120;
+/** نداءاتُ التفاصيل تخرج دفعاتٍ بهذا الحجم — ٢٤ فما دون دفعةٌ واحدة كما كانت */
+const BATCH = 24;
+
 /** أقلّ ما يحتاجه المُترجِم من أي صفّ — الحقول الأربعة وحدها */
 export interface LocalizableRow {
   tmdb_id: number;
@@ -67,9 +78,14 @@ async function localizeCore<T extends LocalizableRow>(
   rows: T[],
   locale: Locale,
   limit = LIMIT,
+  /** 🆕 D-1266 — وضعُ «Loopz»: الاسمُ المطلوبُ إنجليزيٌّ (والعربيُّ بأصله) أيّاً كانت لغةُ الواجهة */
+  loopz = false,
 ): Promise<T[]> {
   if (rows.length === 0) return rows;
-  const wantsArabic = locale !== "en";
+  /* في «Loopz» الاسمُ المخزَّنُ بحروفٍ لاتينيّة يُعدّ صحيحاً (هو الإنجليزيُّ غالباً)، والعربيُّ يُسأل عنه:
+     قد يكون ترجمةَ عملٍ أجنبيّ (فيُستبدل) أو عملاً عربيّاً (فيعود اسمُه كما هو). `getTv`/`getMovie` تعيدان
+     اسمَ Loopz نفسَه — `tmdb()` صحّحه عند المصدر. */
+  const wantsArabic = loopz ? false : locale !== "en";
   const keyOf = (r: LocalizableRow) => `${r.media_type}-${r.tmdb_id}`;
 
   // عملٌ يحتاج ترجمةً: خطّ اسمه يخالف لغة الواجهة، أو لا اسم له أصلاً
@@ -84,28 +100,29 @@ async function localizeCore<T extends LocalizableRow>(
   }
   if (wanted.size === 0) return rows;
 
-  const fetched = await Promise.all(
-    [...wanted.values()].map(async (r) => {
-      try {
-        const d = (await (r.media_type === "tv"
-          ? getTv(r.tmdb_id)
-          : getMovie(r.tmdb_id))) as {
-          name?: string;
-          title?: string;
-          poster_path: string | null;
-        };
-        const name = d.name ?? d.title;
-        if (!name) return null;
-        return {
-          key: keyOf(r),
-          title: name,
-          poster_path: d.poster_path ?? r.poster_path,
-        };
-      } catch {
-        return null;
-      }
-    }),
-  );
+  const fetchOne = async (r: LocalizableRow) => {
+    try {
+      const d = (await (r.media_type === "tv"
+        ? getTv(r.tmdb_id)
+        : getMovie(r.tmdb_id))) as {
+        name?: string;
+        title?: string;
+        poster_path: string | null;
+      };
+      const name = d.name ?? d.title;
+      if (!name) return null;
+      return {
+        key: keyOf(r),
+        title: name,
+        poster_path: d.poster_path ?? r.poster_path,
+      };
+    } catch {
+      return null;
+    }
+  };
+  const list = [...wanted.values()];
+  const fetched: Awaited<ReturnType<typeof fetchOne>>[] = [];
+  for (let i = 0; i < list.length; i += BATCH) fetched.push(...(await Promise.all(list.slice(i, i + BATCH).map(fetchOne))));
 
   const byKey = new Map(
     fetched.filter((f): f is NonNullable<typeof f> => f !== null).map((f) => [f.key, f]),
@@ -249,9 +266,10 @@ export async function resolveRows<T extends LocalizableRow>(
   mode: TitleMode,
   limit = LIMIT,
 ): Promise<ResolvedRow<T>[]> {
-  const localized = await localizeCore(rows, locale, limit);
+  const loopz = mode === "loopz";
+  const localized = await localizeCore(rows, locale, loopz ? Math.max(limit, LOOPZ_LIMIT) : limit, loopz);
 
-  /* **الافتراضُ يخرج من هنا** — بلا نداءٍ ولا خريطةٍ ولا حلقةِ حلّ */
+  /* **«Loopz» (الافتراض) و«حسب لغة التطبيق» يخرجان من هنا** — بلا خريطةٍ ولا حلقةِ حلّ */
   if (!needsOriginal(mode)) {
     return localized.map((r) => ({ ...r, title_secondary: null }));
   }

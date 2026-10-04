@@ -169,6 +169,7 @@ export async function getTitleMode(): Promise<TitleMode> {
     const store = await cookies();
     return parseTitleMode(store.get(TITLE_MODE_COOKIE)?.value);
   } catch {
-    return "localized";
+    /* خارج طلبٍ (مهمّةٌ مجدولة، صورةُ مشاركة): الافتراضُ نفسُه الذي يراه من لم يختر — D-1266 */
+    return parseTitleMode(undefined);
   }
 }

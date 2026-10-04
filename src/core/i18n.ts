@@ -750,7 +750,9 @@ const ar = {
   titleModeLocalized: "حسب لغة التطبيق",
   titleModeOriginal: "الاسم الأصلي",
   titleModeTranslit: "الكتابة الصوتيّة بالعربية",
-  titleModeBoth: "الاسم المحلّي + الأصلي",
+  /* 🆕 D-1266 — «Loopz» حلّ محلَّ «المحلّي + الأصلي»: اسمُ الخيار اسمُ التطبيق (أحمد)، والسطرُ الشارحُ في المعاينة */
+  titleModeLoopz: "Loopz",
+  titleModeLoopzNote: "كلّ الأعمال بأسمائها الإنجليزيّة، والعربيّة منها باسمها العربيّ",
   // 🆕 تفضيلات المحتوى (D-545)
   /* 🆕 D-555 — القوائمُ خرجت إلى أوراق */
   cpSelected: "المختار",
@@ -2920,7 +2922,8 @@ const en: Dict = {
   titleModeLocalized: "Follow the app language",
   titleModeOriginal: "Original name",
   titleModeTranslit: "Arabic transliteration",
-  titleModeBoth: "Local name + original",
+  titleModeLoopz: "Loopz",
+  titleModeLoopzNote: "Every title in English. Arabic titles stay in Arabic.",
   cpSelected: "Selected",
   cpClear: "Clear",
   cpAllCategories: "All categories",

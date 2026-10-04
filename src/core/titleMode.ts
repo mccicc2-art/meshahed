@@ -16,21 +16,33 @@
  * (D-205).
  */
 
-/** **مفتاحُ الكوكي** — نفسُ عائلةِ بقيّةِ التفضيلات (`loopz_*`) */
-export const TITLE_MODE_COOKIE = "loopz_title_mode";
+/**
+ * **مفتاحُ الكوكي** — نفسُ عائلةِ بقيّةِ التفضيلات (`loopz_*`).
+ *
+ * 🔴 🆕 D-1266 — **اسمٌ جديدٌ عمداً** (كان `loopz_title_mode`): أحمد قرّر أنّ وضعَ «Loopz» هو الأصلُ
+ * **عند الجميع، ومن اختار بيده قبلها يُنقل إليه أيضاً** («الجميع ينقل له»، ٤ أكتوبر ٢٠٢٦). الاختيارُ
+ * يعيش في الكوكي وحدَه — لا عمودَ له في القاعدة — فنقلُ الجميع = ألّا يُقرأ الكوكي القديم. من يختار
+ * بعد اليوم يُكتب اختيارُه بالاسم الجديد ويبقى.
+ */
+export const TITLE_MODE_COOKIE = "loopz_names";
 
 /**
  * **أربعُ طرقٍ لا أكثر:**
- * - `localized` — **حسب لغة التطبيق، وهو الافتراض** (D-152: افتراضُ أيِّ
- *   تفضيلٍ جديد هو السلوكُ القائم — **فمن لم يفتح الإعدادات لا يتغيّر
- *   عنده حرف**).
+ * - `loopz` — 🆕 D-1266، **وهو الافتراض**: كلُّ عملٍ باسمه الإنجليزيّ، والعملُ العربيُّ باسمه العربيّ،
+ *   سطراً واحداً. (قرارُ أحمد بعد أن عرض «رائجُ اليوم» أسماءً يابانيّةً لا تُقرأ في وضع «الأصليّ».)
+ *   ⚖️ **نقضٌ مسجَّلٌ لقاعدة D-152** («افتراضُ أيِّ تفضيلٍ جديد هو السلوكُ القائم»): الافتراضُ كان
+ *   `localized` وصار هذا بأمر صاحب المنتج. وحلَّ محلَّ `both` (المحلّيُّ وتحته الأصليّ) فزال السطران.
+ * - `localized` — حسب لغة التطبيق.
  * - `original` — الاسمُ الأصليّ كما سمّاه أهلُه.
  * - `translit` — **الكتابةُ الصوتيّة بالعربية** («جيم أوف ثرونز»).
- * - `both` — المحلّيُّ وتحته الأصليُّ بحجمٍ أصغر.
+ *
+ * **والترتيبُ ترتيبُ العرض في الإعدادات** — «Loopz» الأوّل (أمرُ أحمد).
  */
-export type TitleMode = "localized" | "original" | "translit" | "both";
+export type TitleMode = "loopz" | "localized" | "original" | "translit";
 
-export const TITLE_MODES: readonly TitleMode[] = ["localized", "original", "translit", "both"];
+export const TITLE_MODES: readonly TitleMode[] = ["loopz", "localized", "original", "translit"];
+
+export const DEFAULT_TITLE_MODE: TitleMode = "loopz";
 
 /**
  * **قارئٌ متسامح** — كوكيٌّ مجهولٌ أو محرَّرٌ بيدٍ يسقط إلى الافتراض.
@@ -43,7 +55,7 @@ export const TITLE_MODES: readonly TitleMode[] = ["localized", "original", "tran
  * **والدالّةُ حُذفت لا عُطِّلت**: حارسٌ يعيد `true` دائماً كذبةٌ باقية.
  */
 export function parseTitleMode(v: string | undefined): TitleMode {
-  return TITLE_MODES.find((x) => x === v) ?? "localized";
+  return TITLE_MODES.find((x) => x === v) ?? DEFAULT_TITLE_MODE;
 }
 
 /** الأسماءُ الثلاثةُ لعملٍ واحد — **وكلُّها قد تغيب** */
@@ -54,6 +66,11 @@ export interface TitleNames {
   original?: string | null;
   /** الكتابةُ الصوتيّةُ العربية — من Supabase وحدَها، لا من ترجمة TMDB */
   translit?: string | null;
+  /** 🆕 D-1266 — الاسمُ الإنجليزيّ (ردُّ TMDB بـ`en-US`). **يُعطى في المعاينة وحدَها**: صفوفُ TMDB
+      الحيّة تصل وقد صحّحها `applyLoopzNames` عند المصدر، فـ`localized` فيها هو الجواب */
+  english?: string | null;
+  /** 🆕 D-1266 — `original_language` من TMDB (`ar` · `en` · `ja` …) */
+  originalLanguage?: string | null;
 }
 
 /** ما يُرسم: سطرٌ رئيسٌ، وسطرٌ ثانٍ اختياريٌّ تحته بحجمٍ أصغر */
@@ -69,16 +86,6 @@ export function isArabicTitle(s: string | null | undefined): boolean {
   return !!s && ARABIC.test(s);
 }
 
-/**
- * **مفتاحُ مقارنةٍ يُبنى ويُرمى** — **ولا يُعرض أبداً** (قاعدةُ
- * `arabic.ts` نفسُها): «Dune» و«dune » و«Dune  » اسمٌ واحد، **فلا
- * يتكرّر السطرُ لفارقِ حالةٍ أو مسافة.**
- */
-function same(a: string, b: string): boolean {
-  const k = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  return k(a) === k(b);
-}
-
 /** أوّلُ اسمٍ غيرِ فارغٍ في الترتيب المعطى — **والفراغُ ليس اسماً** */
 function first(...xs: (string | null | undefined)[]): string | null {
   for (const x of xs) if (x && x.trim()) return x.trim();
@@ -92,8 +99,8 @@ function first(...xs: (string | null | undefined)[]): string | null {
  * ```
  * localized : localizedTitle → originalTitle
  * original  : originalTitle  → localizedTitle
+ * loopz     : لغتُه عربيّة؟ الأصليّ · وإلّا الإنجليزيّ → الأصليّ (D-1266)
  * translit  : الأصليُّ عربيٌّ؟ اعرضه كما هو · وإلّا الصوتيّةُ → الأصليّ
- * both      : المحلّيُّ + الأصليُّ، ولا يُعاد الثاني إن طابق الأوّل
  * ```
  *
  * ⚠️ **وما من حالةٍ تعيد فراغاً**: آخرُ ملاذٍ هو `fallback` (الاسمُ
@@ -111,6 +118,18 @@ export function resolveMediaTitle(
   const any = first(localized, original, fallback) ?? fallback;
 
   switch (mode) {
+    case "loopz": {
+      /* 🆕 D-1266 — العربيُّ بأصله، وما سواه بالإنجليزيّة؛ وعملٌ لا اسمَ إنجليزيّاً له يبقى بأصله.
+         **صفٌّ حيٌّ يصل بلا `english` ولا لغة**: `tmdb()` صحّح اسمَه عند المصدر (`applyLoopzNames`)،
+         فـ`localized` هو اسمُ Loopz نفسُه ولا يُعاد الحكمُ هنا. المعاينةُ وحدَها تعطي الاثنين. */
+      const lang = names.originalLanguage ?? null;
+      const english = first(names.english);
+      if (lang === null && english === null) return { primary: first(localized, original, fallback) ?? any, secondary: null };
+      const arabic = lang === "ar" || (lang === null && isArabicTitle(original));
+      if (arabic && original) return { primary: original, secondary: null };
+      return { primary: first(lang === "en" ? original : null, english, original, localized, fallback) ?? any, secondary: null };
+    }
+
     case "original":
       return { primary: first(original, localized, fallback) ?? any, secondary: null };
 
@@ -121,12 +140,6 @@ export function resolveMediaTitle(
       /* **ولا ترجمةَ آليّةً بديلاً** (بنصِّ المواصفة): **غيابُ الصوتيّة
          يعني الاسمَ الأصليّ**، لا اسماً مترجَماً يُقدَّم على أنه صوتيّ. */
       return { primary: first(translit, original, localized, fallback) ?? any, secondary: null };
-    }
-
-    case "both": {
-      const primary = first(localized, original, fallback) ?? any;
-      const second = first(original);
-      return { primary, secondary: second && !same(second, primary) ? second : null };
     }
 
     case "localized":
@@ -141,10 +154,27 @@ export function resolveMediaTitle(
  * يراه). **والافتراضُ لا يحتاجه، فلا يدفع أحدٌ شيئاً حتى يختار.**
  */
 export function needsOriginal(mode: TitleMode): boolean {
-  return mode !== "localized";
+  /* 🆕 D-1266 — `loopz` لا يحتاجه هنا: اسمُه يُصحَّح عند مصدر TMDB (`applyLoopzNames`) */
+  return mode === "original" || mode === "translit";
 }
 
 /** **وهل تحتاج جدولَ البدائل؟** — الصوتيّةُ وحدَها تُقرأ من Supabase */
 export function needsTranslit(mode: TitleMode): boolean {
   return mode === "translit";
+}
+
+/**
+ * 🆕 D-1266 — **أمثلةُ المعاينة في مكانٍ واحد** (كانت جدولاً منسوخاً في الويب والتطبيق — D-145:
+ * جدولُ أمثلةٍ يُكتب مرّتين يفترق مرّةً). الثلاثةُ أمثلةُ أحمد بعينها: عملٌ إنجليزيّ، وعربيّ، ويابانيّ —
+ * **والثالثُ هو ما يُري الفرقَ** بين «Loopz» و«الأصليّ».
+ */
+export const TITLE_SAMPLES: readonly { ar: string; en: string; original: string; translit: string; lang: string }[] = [
+  { ar: "صراع العروش", en: "Game of Thrones", original: "Game of Thrones", translit: "جيم أوف ثرونز", lang: "en" },
+  { ar: "عوالم خفية", en: "Hidden Secret", original: "عوالم خفية", translit: "عوالم خفية", lang: "ar" },
+  { ar: "هجوم العمالقة", en: "Attack on Titan", original: "進撃の巨人", translit: "أتاك أون تايتان", lang: "ja" },
+];
+
+/** مثالٌ كما يراه محرّكُ الأسماء في لغة الواجهة المعطاة — المعاينةُ تمرّ بـ`resolveMediaTitle` نفسِها */
+export function sampleNames(s: (typeof TITLE_SAMPLES)[number], locale: "ar" | "en"): TitleNames {
+  return { localized: locale === "en" ? s.en : s.ar, original: s.original, translit: s.translit, english: s.en, originalLanguage: s.lang };
 }

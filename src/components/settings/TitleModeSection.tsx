@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { setTitleMode } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import {
+  DEFAULT_TITLE_MODE,
   TITLE_MODES,
+  TITLE_SAMPLES,
   resolveMediaTitle,
+  sampleNames,
   type TitleMode,
 } from "@/core/titleMode";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
@@ -38,11 +41,7 @@ import { SettingsExpandRow } from "./SettingsExpandRow";
  * (حجّةُ `RegionSwitch`).
  */
 
-/** مثالان من مواصفة أحمد بعينها — عملٌ أجنبيٌّ وعملٌ عربيّ */
-const SAMPLES: { localized: string; original: string; translit: string }[] = [
-  { localized: "صراع العروش", original: "Game of Thrones", translit: "جيم أوف ثرونز" },
-  { localized: "Hidden Secret", original: "عوالم خفية", translit: "عوالم خفية" },
-];
+/* 🆕 D-1266 — الأمثلةُ الثلاثةُ في `core/titleMode.ts` (`TITLE_SAMPLES`) يقرؤها الويبُ والتطبيقُ معاً */
 
 export function TitleModeSection({
   locale,
@@ -58,10 +57,10 @@ export function TitleModeSection({
   const [pending, start] = useTransition();
 
   const label: Record<TitleMode, string> = {
+    loopz: t.titleModeLoopz,
     localized: t.titleModeLocalized,
     original: t.titleModeOriginal,
     translit: t.titleModeTranslit,
-    both: t.titleModeBoth,
   };
   /* ⚖️ 🆕 **الصوتيّةُ صارت للواجهتين** (D-593، حكمُ أحمد بلقطةٍ للورقة
      الإنجليزيّة: «هنا قلنا فيه خيار رابع الكتابة الصوتية») — **نقضٌ
@@ -103,7 +102,7 @@ export function TitleModeSection({
               key={m}
               selected={m === mode}
               title={label[m]}
-              subtitle={m === "localized" ? t.titleModeRecommended : undefined}
+              subtitle={m === DEFAULT_TITLE_MODE ? t.titleModeRecommended : undefined}
               onSelect={() => pick(m)}
               disabled={pending}
             />
@@ -112,17 +111,10 @@ export function TitleModeSection({
 
         <div className="mt-3 rounded-lg bg-surface-2 p-3 space-y-2">
           <p className="text-12 text-muted">{t.cpPreview}</p>
-          {SAMPLES.map((sample, index) => {
-            const result = resolveMediaTitle(
-              locale === "en"
-                ? {
-                    localized: index === 0 ? sample.original : sample.localized,
-                    original: sample.original,
-                    translit: sample.translit,
-                  }
-                : sample,
-              mode,
-            );
+          {/* 🆕 D-1266 — اسمُ «Loopz» لا يشرح نفسَه، فسطرُه الشارحُ فوق الأمثلة حين يُختار (نصُّ أحمد) */}
+          {mode === "loopz" ? <p className="text-12 text-muted leading-snug">{t.titleModeLoopzNote}</p> : null}
+          {TITLE_SAMPLES.map((sample) => {
+            const result = resolveMediaTitle(sampleNames(sample, locale === "en" ? "en" : "ar"), mode);
             return (
               <div key={sample.original}>
                 <p className="text-14 font-semibold leading-tight" dir="auto">

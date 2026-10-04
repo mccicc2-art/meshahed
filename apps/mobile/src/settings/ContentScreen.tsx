@@ -11,7 +11,7 @@ import { SettingsScreen, Group, ExpandRow, OptionRow, OptionList, RowsSkeleton }
 import { useSettings, saveSetting, patchSettings } from "./api";
 import { ALL_LANGS, BROWSE_GENRES, browseGenreName, langName, type BrowseGenre } from "@/core/browse";
 import { WATCH_REGIONS, regionName, regionFlag } from "@/core/region";
-import { TITLE_MODES, resolveMediaTitle, type TitleMode } from "@/core/titleMode";
+import { DEFAULT_TITLE_MODE, TITLE_MODES, TITLE_SAMPLES, resolveMediaTitle, sampleNames, type TitleMode } from "@/core/titleMode";
 import { normalizeSearch } from "@/core/arabic";
 import type { ContentPrefs } from "@/core/contentPrefs";
 import type { ContentPrefsBody, RegionBody, TitleModeBody } from "../contracts";
@@ -29,10 +29,6 @@ import type { ContentPrefsBody, RegionBody, TitleModeBody } from "../contracts";
  * كامل؛ هنا الردُّ يرقّع الحمولةَ وحدَها فلا داعيَ للانتظار — **والتعارضُ يحسمه الخادمُ**
  * (`sanitizeContentPrefs`: المفضَّلُ يغلب) ويعود ما حُفظ فعلاً.
  */
-const SAMPLES: { localized: string; original: string; translit: string }[] = [
-  { localized: "صراع العروش", original: "Game of Thrones", translit: "جيم أوف ثرونز" },
-  { localized: "Hidden Secret", original: "عوالم خفية", translit: "عوالم خفية" },
-];
 const idOf = (g: BrowseGenre) => (g.movie[0] ?? g.tv[0])!;
 
 export function ContentScreen() {
@@ -50,7 +46,7 @@ export function ContentScreen() {
     return g ? browseGenreName(g, loc) : String(id);
   };
   const short = (items: string[]) => (items.length === 0 ? t.cpNone : items.length === 1 ? items[0] : `${items[0]} · +${items.length - 1}`);
-  const titleLabel: Record<TitleMode, string> = { localized: t.titleModeLocalized, original: t.titleModeOriginal, translit: t.titleModeTranslit, both: t.titleModeBoth };
+  const titleLabel: Record<TitleMode, string> = { loopz: t.titleModeLoopz, localized: t.titleModeLocalized, original: t.titleModeOriginal, translit: t.titleModeTranslit };
 
   async function savePrefs(patch: Partial<ContentPrefs>) {
     if (!s) return;
@@ -126,14 +122,15 @@ export function ContentScreen() {
         <ExpandRow icon="film" title={t.titleNamesTitle} value={titleLabel[s.content.title_mode]} open={open === "titles"} onToggle={() => toggle("titles")}>
           <OptionList>
             {TITLE_MODES.map((m) => (
-              <OptionRow key={m} selected={m === s.content.title_mode} title={titleLabel[m]} subtitle={m === "localized" ? t.titleModeRecommended : undefined} onSelect={() => void pickTitleMode(m)} />
+              <OptionRow key={m} selected={m === s.content.title_mode} title={titleLabel[m]} subtitle={m === DEFAULT_TITLE_MODE ? t.titleModeRecommended : undefined} onSelect={() => void pickTitleMode(m)} />
             ))}
           </OptionList>
-          {/* المعاينةُ كما في الويب: عيّنتان تُحلّان بالوضع المختار */}
+          {/* المعاينةُ كما في الويب: الأمثلةُ الثلاثة (`TITLE_SAMPLES`) تُحلّ بالوضع المختار؛ و«Loopz» يسبقها سطرُه الشارح (D-1266) */}
           <View style={{ marginTop: 12, borderRadius: radius.md, backgroundColor: tokens.surface2, padding: 12, gap: 8 }}>
             <Text size={12} muted>{t.cpPreview}</Text>
-            {SAMPLES.map((sample, i) => {
-              const r = resolveMediaTitle(locale === "en" ? { localized: i === 0 ? sample.original : sample.localized, original: sample.original, translit: sample.translit } : sample, s.content.title_mode);
+            {s.content.title_mode === "loopz" ? <Text size={12} muted>{t.titleModeLoopzNote}</Text> : null}
+            {TITLE_SAMPLES.map((sample) => {
+              const r = resolveMediaTitle(sampleNames(sample, locale === "en" ? "en" : "ar"), s.content.title_mode);
               return (
                 <View key={sample.original}>
                   <Text size={14} weight="600">{r.primary}</Text>

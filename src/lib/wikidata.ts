@@ -199,7 +199,34 @@ export function prefetchWorkTitle(
   locale: string,
 ): Promise<Map<string, string>> | null {
   if (locale === "en") return null;
-  return arabicWorkTitles([{ id: tmdbId, media }]).catch(() => new Map<string, string>());
+  /* 🆕 D-1266 — في وضع «Loopz» لا اسمَ عربيّاً يُطلب لعملٍ أجنبيّ: لا يُسأل ويكي‌بيانات أصلاً */
+  return loopzMode()
+    .then((on) => (on ? new Map<string, string>() : arabicWorkTitles([{ id: tmdbId, media }])))
+    .catch(() => new Map<string, string>());
+}
+
+/** وضعُ الأسماء «Loopz»؟ — يُقرأ من الطلب؛ وخارجَ طلبٍ هو الافتراض */
+async function loopzMode(): Promise<boolean> {
+  try {
+    const { getTitleMode } = await import("@/lib/locale");
+    return (await getTitleMode()) === "loopz";
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * 🆕 D-1266 — اسمُ «Loopz» لعملٍ واحد: تفصيلُ TMDB المخبَّأ نفسُه (والاسمُ فيه مصحَّحٌ عند المصدر).
+ * يُحتاج لأنّ `raw` هنا قد يكون اسماً مخزَّناً في قاعدتنا بلغة من كتبه، لا ردَّ TMDB الحيّ.
+ */
+async function loopzWorkTitle(tmdbId: number, media: "tv" | "movie", raw: string): Promise<string> {
+  try {
+    const { getTv, getMovie } = await import("@/lib/tmdb");
+    const name = media === "tv" ? (await getTv(tmdbId)).name : (await getMovie(tmdbId)).title;
+    return name && name.trim() ? name : raw;
+  } catch {
+    return raw;
+  }
 }
 
 /** هل في النصّ حرفٌ عربيّ؟ — نفس محدِّد `localize.ts` حرفاً بحرف */
@@ -227,6 +254,9 @@ export async function displayWorkTitle(
       غيابُه يُبقي السلوكَ القديم حرفاً (D-152). */
   pending?: Promise<Map<string, string>> | null,
 ): Promise<string> {
+  /* 🆕 D-1266 — «Loopz» يسبق كلَّ شيء: الاسمُ العربيُّ من ويكي‌بيانات نقيضُه (العملُ الأجنبيُّ بالإنجليزيّة).
+     وإلّا لصار لصفحة العمل اسمٌ ولبطاقته في الرفّ اسمٌ آخر. */
+  if (await loopzMode()) return loopzWorkTitle(tmdbId, media, tmdbTitle);
   if (locale === "en") return tmdbTitle;
   if (ARABIC.test(tmdbTitle)) return tmdbTitle;
   const found = await (pending ?? arabicWorkTitles([{ id: tmdbId, media }]));
