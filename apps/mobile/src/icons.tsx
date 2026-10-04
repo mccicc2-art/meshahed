@@ -1,5 +1,5 @@
 import React from "react";
-import { Image } from "expo-image";
+import { Image, type ImageRef } from "expo-image";
 
 /**
  * ====== مجموعةُ الأيقونات الواحدة — مساراتُ `Icon.tsx` (الويب) مرسومةً مرّةً ======
@@ -101,6 +101,38 @@ export function iconOr(name: string, fallback: IconName): IconName {
   return name in ICONS ? (name as IconName) : fallback;
 }
 
+/**
+ * 🆕 D-1276 — **رموزُ الشريط السفليّ تُحمَّل إلى الذاكرة عند الإقلاع** (بلاغُ أحمد بتسجيل، ٤ أكتوبر ٢٠٢٦: «ليش
+ * تسير خضخضة ورمشة على الدوك إذا كنت تو داخل التطبيق»).
+ *
+ * **المقيسُ من التسجيل إطاراً بإطار**: أوّلُ دخولٍ لتبويبٍ في الجلسة تختفي فيه الرموزُ الخمسةُ وتبقى الكلمات — ٩٣ms
+ * عند «المجتمع» و٢٣٥ms عند «اكتشف»؛ والرجوعُ إلى تبويبٍ سبق فتحُه بلا اختفاء. **السبب**: كلُّ جذرٍ يرسم شريطَه
+ * (`BottomNav`)، فأوّلُ دخولٍ يركّب شريطاً جديداً بخمس صورٍ جديدة، و`expo-image` يحمّل الصورةَ بعد التركيب لا معه —
+ * والخيطُ مشغولٌ بتركيب الشاشة نفسِها، فتتأخّر الصورُ بقدر ثقلها. الكلماتُ نصٌّ فتُرسم فوراً.
+ *
+ * **العلاج**: الوجوهُ العشرةُ تُحمَّل مرّةً (`Image.loadAsync`) وتبقى مراجعُها حيّة؛ و`Icon` يعطي الصورةَ المرجعَ
+ * المحمَّل بدل رقم الملفّ، فالشريطُ الجديدُ يرسم من صورةٍ مفكوكةٍ في الذاكرة لا من ملفٍّ يُقرأ. عشرُ صورٍ ٧٢px —
+ * لا ثمنَ يُذكر. وما لم يُحمَّل بعد (أو سقط تحميلُه) يُرسم بالطريق القديم حرفاً.
+ * ⚠️ **لم يُجرَّب على جهاز قبل الرفع** — الحَكَمُ تسجيلٌ بعده؛ وإن بقي أثرٌ فالعلاجُ الأكبر شريطٌ واحدٌ فوق
+ * التبويبات لا يُعاد تركيبُه.
+ */
+const NAV_ICONS: IconName[] = [
+  "home", "home-filled", "library", "library-filled", "compass", "compass-filled",
+  "people", "people-filled", "search", "search-filled",
+];
+const warm = new Map<IconName, ImageRef>();
+for (const name of NAV_ICONS) {
+  try {
+    void Image.loadAsync(ICONS[name] as number)
+      .then((ref) => {
+        warm.set(name, ref);
+      })
+      .catch(() => {});
+  } catch {
+    /* وحدةٌ أصليّةٌ غائبة (اختبار، ويب): الطريقُ القديم */
+  }
+}
+
 export function Icon({ name, size = 18, color }: { name: IconName; size?: number; color: string }) {
-  return <Image source={ICONS[name]} style={{ width: size, height: size }} tintColor={color} contentFit="contain" />;
+  return <Image source={warm.get(name) ?? ICONS[name]} style={{ width: size, height: size }} tintColor={color} contentFit="contain" />;
 }
