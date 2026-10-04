@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { platformFromUA } from "@/core/platform";
@@ -6,6 +6,7 @@ import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
 import { sanitizeFontSize } from "@/core/fontPrefs";
+import { TITLE_MODE_COOKIE, accountTitleMode, parseTitleMode } from "@/core/titleMode";
 
 /**
  * `GET /api/v1/me` — من أنا، بما يكفي لرسم الترويسة والإعدادات.
@@ -38,6 +39,16 @@ export async function GET() {
       })(),
     ]);
     if (!p) return ok(null);
+    /* 🆕 D-1269 — **إقلاعُ التطبيق يسوّي كوكيَّ «أسماء العناوين» باختيار الحساب**: الخادمُ يقرأ الكوكي في
+       كلِّ حمولة، والحسابُ مرجعُه — فجهازٌ دخله صاحبُه للتوّ، أو غُيّر اختيارُه في مكانٍ آخر، يلحق من
+       هنا. الملفُّ مقروءٌ أصلاً فلا استعلامَ يُضاف، ومن لم يختر (العمودُ فارغ) لا يُمسّ كوكيُّه. */
+    const ownMode = accountTitleMode(p.title_mode);
+    if (ownMode) {
+      const store = await cookies();
+      if (parseTitleMode(store.get(TITLE_MODE_COOKIE)?.value) !== ownMode) {
+        store.set(TITLE_MODE_COOKIE, ownMode, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+      }
+    }
     return ok({
       id: p.id,
       username: p.username,

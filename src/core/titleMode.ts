@@ -58,6 +58,15 @@ export function parseTitleMode(v: string | undefined): TitleMode {
   return TITLE_MODES.find((x) => x === v) ?? DEFAULT_TITLE_MODE;
 }
 
+/**
+ * 🆕 D-1269 — **اختيارُ الحساب** (`profiles.title_mode`): `null` حين لم يختر صاحبُه بعد أو حملت الخانةُ
+ * قيمةً سقطت من القائمة. **والفرقُ عن `parseTitleMode` مقصود**: تلك تُسقط المجهولَ إلى الافتراض،
+ * وهنا الافتراضُ يمحو اختيارَ الجهاز — فالفارغُ يبقى فارغاً والجهازُ على ما هو عليه.
+ */
+export function accountTitleMode(v: unknown): TitleMode | null {
+  return TITLE_MODES.find((x) => x === v) ?? null;
+}
+
 /** الأسماءُ الثلاثةُ لعملٍ واحد — **وكلُّها قد تغيب** */
 export interface TitleNames {
   /** `movie.title` أو `tv.name` بلغة الواجهة */

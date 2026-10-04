@@ -9,6 +9,7 @@ import { isPlus, isPartner, isVerified, isFounder, planNameOf } from "@/core/pla
 import { DEFAULT_THEME } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/core/fontPrefs";
 import { TOUR_IDS, TOUR_META } from "@/lib/tour";
+import { TITLE_MODE_COOKIE, accountTitleMode } from "@/core/titleMode";
 import type { SettingsPayload } from "@/core/contracts/settings";
 
 /** بريدُ الدعم كما في `profile/settings/help` — سطرٌ واحدٌ لا يُكتب مرّتين */
@@ -43,6 +44,12 @@ export async function GET() {
       supabase.from("library_grants").select("grantee_id", { count: "exact", head: true }).eq("owner_id", auth.user.id),
       myBlocksList().catch(() => []),
     ]);
+    /* 🆕 D-1269 — الحسابُ مرجعُ «أسماء العناوين»: ما يُعرض هنا اختيارُه، والكوكي (ما يقرؤه الخادم في
+       كلِّ حمولة) يُسوّى به إن خالفه — جهازٌ جديد أو تغييرٌ جرى في مكانٍ آخر. */
+    const ownMode = accountTitleMode(p?.title_mode);
+    if (ownMode && ownMode !== titleMode) {
+      store.set(TITLE_MODE_COOKIE, ownMode, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+    }
     const fontUi = sanitizeFontSize(store.get(FONT_UI_COOKIE)?.value ?? p?.font_ui ?? undefined);
     const fontContent = sanitizeFontSize(store.get(FONT_CONTENT_COOKIE)?.value ?? p?.font_content ?? undefined);
     return ok({
@@ -64,7 +71,7 @@ export async function GET() {
         font_ui: fontUi,
         font_content: fontContent,
       },
-      content: { title_mode: titleMode, region, prefs },
+      content: { title_mode: ownMode ?? titleMode, region, prefs },
       privacy: {
         hide_name: !!p?.hide_name,
         is_private: !!p?.is_private,

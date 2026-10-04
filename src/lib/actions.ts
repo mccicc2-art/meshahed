@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/core/region";
-import { TITLE_MODE_COOKIE, parseTitleMode } from "@/core/titleMode";
+import { TITLE_MODE_COOKIE, parseTitleMode, accountTitleMode } from "@/core/titleMode";
 import {
   CONTENT_PREFS_COOKIE,
   hasAnyPrefs,
@@ -793,6 +793,39 @@ export async function setHiddenRails(
  */
 export async function setTitleMode(value: string) {
   const mode = parseTitleMode(value);
+  const store = await cookies();
+  store.set(TITLE_MODE_COOKIE, mode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+
+  /* 🆕 D-1269 — **والحسابُ يحفظه أيضاً** (طلبُ أحمد: «إذا دخل بحسابه في أيّ مكان يلقاه نفس ما هو
+     حاطّه»). الكوكي يبقى ما يقرؤه الخادمُ في كلِّ طلب — عمودٌ يُقرأ هناك رحلةُ قاعدةٍ على كلِّ مسارٍ
+     يحمل اسمَ عمل — والحسابُ هو المرجع الذي يُنزَّل إلى كلِّ جهازٍ يدخله صاحبُه (`TitleModeSync`).
+     ⚠️ **وسقوطُ الكتابة لا يُسقط الاختيار**: الجهازُ اختار واختيارُه نافذٌ عليه، والسطرُ في السجلّ
+     يقول إنّ الحسابَ لم يلحق — لا فشلٌ صامت ولا زرٌّ يُرفض. والزائرُ بلا حسابٍ لا يمرّ من هنا. */
+  try {
+    const supabase = await createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: auth.user.id, title_mode: mode }, { onConflict: "id" });
+    if (error) console.error("[title-mode] account write failed:", error.message);
+  } catch (e) {
+    console.error("[title-mode] account write failed:", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * 🆕 D-1269 — **اختيارُ الحساب ينزل إلى كوكي هذا الجهاز** — توأمُ `syncThemeCookie` حرفاً، يُنادى من
+ * `TitleModeSync` حين يخالف كوكيُّ الجهاز ما في الحساب (جهازٌ جديد، أو تغييرٌ جرى على جهازٍ آخر).
+ * ⚠️ **ولا يكتب في الحساب**: القيمةُ جاءت منه، وكتابتُها إليه دورةٌ بلا معنى. والمجهولُ لا يُكتب.
+ */
+export async function syncTitleModeCookie(value: string) {
+  const mode = accountTitleMode(value);
+  if (!mode) return;
   const store = await cookies();
   store.set(TITLE_MODE_COOKIE, mode, {
     path: "/",

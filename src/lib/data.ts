@@ -148,6 +148,8 @@ export interface Profile {
   font_content?: string | null;
   /** التلميحات المقروءة وتقدّم الجولة (هجرة 121) — `null` قبلها */
   ui_state?: unknown;
+  /** 🆕 D-1269 (الهجرة ١٩٣) — طريقةُ عرض أسماء الأعمال كما اختارها صاحبُ الحساب؛ `null` = لم يختر */
+  title_mode?: string | null;
   /** 🆕 **لونُ التمييز الشخصيّ** (D-825 · هجرة ١٦٣) — رمزٌ لا لون */
   theme_accent?: string | null;
   /* 🆕 **الخطّة** (D-633، الهجرة ١٤٠) — والحكمُ عليها في `lib/plan.ts`
@@ -271,7 +273,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone, title_mode",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -323,6 +325,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
              وهو سلوكُ ما قبلها (D-063/D-179: القارئُ المتسامحُ يبني
              حرفيّاً، **فحقلٌ جديدٌ يجب أن يُكتب في كلِّ درجةِ تراجع**). */
           timezone: null,
+          /* 🆕 D-1269 — وأسماءُ العناوين تسقط إلى «لم يختر»: الجهازُ يبقى على كوكيّه */
+          title_mode: null,
         };
       } else {
         const legacy = await supabase
@@ -360,6 +364,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             founder: false,
             verified_at: null,
             timezone: null,
+            title_mode: null,
           };
         }
       }

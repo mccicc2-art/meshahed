@@ -3,6 +3,8 @@ import { ThemeCookieSync } from "./ThemeCookieSync";
 import { FontPrefsSync } from "./FontPrefsSync";
 import { UiStateSync } from "./UiStateSync";
 import { TimezoneSync } from "./TimezoneSync";
+import { TitleModeSync } from "./TitleModeSync";
+import { accountTitleMode } from "@/core/titleMode";
 
 /**
  * 🆕 **مزامنةُ الحساب — مضيفٌ لا يُلغى في الإعدادات** (D-498).
@@ -32,6 +34,7 @@ import { TimezoneSync } from "./TimezoneSync";
 export async function AccountSync() {
   const profile = await getProfile().catch(() => null);
   if (!profile) return null;
+  const titleMode = accountTitleMode(profile.title_mode);
 
   return (
     <>
@@ -53,6 +56,9 @@ export async function AccountSync() {
           هو بالضبط ما جاء هذا المكوّنُ ليملأه** (ومن قبل الهجرة ١٦٠
           يفشل النداءُ صامتاً). */}
       <TimezoneSync saved={profile.timezone ?? null} />
+      {/* 🆕 D-1269 — **وأسماءُ العناوين تنزل من الحساب** — ولا يُركَّب لمن لم يختر (العمودُ فارغ)،
+          فجهازُه يبقى على كوكيّه. */}
+      {titleMode && <TitleModeSync mode={titleMode} />}
     </>
   );
 }
