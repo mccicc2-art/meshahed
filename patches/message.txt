@@ -1,0 +1,6 @@
+[deploy] D-1266 — title names: the «Loopz» mode (every title in English, Arabic titles in Arabic) replaces «local + original», is listed first, recommended, and the default for everyone
+
+Names are corrected where TMDB is read, so every surface follows. The choice cookie is renamed so earlier choices no longer apply. The preview gains a third sample and a note for the Loopz mode.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
