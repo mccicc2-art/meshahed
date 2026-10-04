@@ -26,23 +26,43 @@ import type { MovieTitlePayload, TitlePayload, TvTitlePayload } from "@/core/con
  * ⚠️ **الطاقمُ والأعمالُ المرتبطة ليست هنا عمداً**: تحت الطيّة في الويب
  * (Suspense) وتُطلب في التطبيق حين تُفتح — لا يدفع أحدٌ كلفةَ ما لن يراه (D-510).
  */
+/**
+ * 🩺 D-1261 — **أين تذهب الـ~٧٥٠ms؟** `title.open` البارد يقيس من الجهاز رقماً واحداً، وسجلّاتُ Vercel
+ * لا تحمل مدّةَ الطلب — فلا يُعرف كم منه شبكةُ الجوال وكم هويّةٌ وكم TMDB وكم قاعدة. المسارُ يقيس
+ * مراحلَه ويعيدها في ترويسة `X-Loopz-T` (أرقامٌ وحدَها، بلا هويّة)، والتطبيقُ يلصقها بعلامة
+ * `title.open` نفسِها فيُقرأ الطرفان في صفٍّ واحد. **قياسٌ فقط — يُحذف مع بقيّة المسابير.**
+ */
+type Phases = { a: number; t: number; r: number; d: number };
+
+/** مدّةُ وعدٍ واحدٍ من لحظة إنشائه — النداءاتُ متوازية، فكلٌّ يُقاس وحدَه لا بالطرح */
+async function timed<T>(p: Promise<T> | T, set: (ms: number) => void): Promise<T> {
+  const t0 = performance.now();
+  try {
+    return await p;
+  } finally {
+    set(performance.now() - t0);
+  }
+}
+
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ kind: string; id: string }> },
 ) {
-  return handle(
+  const t0 = performance.now();
+  const ph: Phases = { a: 0, t: 0, r: 0, d: 0 };
+  const res = await handle(
     async () => {
       const { kind, id } = await ctx.params;
       const tmdbId = positiveInt(id);
       if ((kind !== "tv" && kind !== "movie") || !tmdbId) return fail("invalid_input");
 
-      const uid = await getUserId();
+      const uid = await timed(getUserId(), (ms) => (ph.a = ms));
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:title:${uid ?? ip}`, 120, 60_000);
       if (lim) return lim;
 
       const payload: TitlePayload =
-        kind === "tv" ? await tvPayload(tmdbId, !!uid) : await moviePayload(tmdbId, !!uid);
+        kind === "tv" ? await tvPayload(tmdbId, !!uid, ph) : await moviePayload(tmdbId, !!uid, ph);
       return ok(payload);
     },
     // العملُ عامٌّ وثابتٌ لدقائق؛ **لكنّ الردَّ يحمل حالتي** — فالكاشُ خاصٌّ
@@ -52,16 +72,21 @@ export async function GET(
        1.8.7). الكتابةُ نجحت، والقراءةُ بعدها كذبت. */
     { cacheControl: "private, no-store" },
   );
+  const n = (ms: number) => Math.round(ms);
+  res.headers.set("X-Loopz-T", `a=${n(ph.a)},t=${n(ph.t)},r=${n(ph.r)},d=${n(ph.d)},all=${n(performance.now() - t0)}`);
+  return res;
 }
 
-async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayload> {
+async function tvPayload(tvId: number, signedIn: boolean, ph: Phases): Promise<TvTitlePayload> {
+  /* 🩺 D-1261 — `t` تفاصيلُ TMDB · `r` الإعلان · `d` أبطأُ قراءةٍ لحالتي (الثلاثُ متوازية) */
+  const db = (ms: number) => (ph.d = Math.max(ph.d, ms));
   const [tv, trailer, following, watched, rating] = await Promise.all([
-    getTv(tvId),
-    getTrailer("tv", tvId).catch(() => null),
-    signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
-    signedIn ? getWatchedForShow(tvId) : new Set<string>(),
+    timed(getTv(tvId), (ms) => (ph.t = ms)),
+    timed(getTrailer("tv", tvId).catch(() => null), (ms) => (ph.r = ms)),
+    signedIn ? timed(getFollowState(tvId, "tv"), db) : { following: false, dropped: false },
+    signedIn ? timed(getWatchedForShow(tvId), db) : new Set<string>(),
     // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
-    signedIn ? getMyRating(tvId, "tv") : null,
+    signedIn ? timed(getMyRating(tvId, "tv"), db) : null,
   ]);
   const aired = airedPerSeason(tv);
   const first = firstEpisodeOf(tv);
@@ -109,14 +134,15 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
   };
 }
 
-async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTitlePayload> {
+async function moviePayload(movieId: number, signedIn: boolean, ph: Phases): Promise<MovieTitlePayload> {
+  const db = (ms: number) => (ph.d = Math.max(ph.d, ms));
   const [movie, trailer, following, watched, progress, rating] = await Promise.all([
-    getMovie(movieId),
-    getTrailer("movie", movieId).catch(() => null),
-    signedIn ? getFollowState(movieId, "movie") : { following: false, dropped: false },
-    signedIn ? isMovieWatched(movieId) : false,
-    signedIn ? getMovieProgress(movieId).catch(() => null) : null,
-    signedIn ? getMyRating(movieId, "movie") : null,
+    timed(getMovie(movieId), (ms) => (ph.t = ms)),
+    timed(getTrailer("movie", movieId).catch(() => null), (ms) => (ph.r = ms)),
+    signedIn ? timed(getFollowState(movieId, "movie"), db) : { following: false, dropped: false },
+    signedIn ? timed(isMovieWatched(movieId), db) : false,
+    signedIn ? timed(getMovieProgress(movieId).catch(() => null), db) : null,
+    signedIn ? timed(getMyRating(movieId, "movie"), db) : null,
   ]);
   return {
     kind: "movie",

@@ -60,7 +60,8 @@ export function invalidateTags(tags: Tag[]) {
 export async function api<T>(
   path: string,
   /* 🆕 D-1232 — `signal`: من يملك مهلةً يقطع الطلبَ نفسَه فيُفرغ مكانَه في الشبكة (لا يبقى معلّقاً خلف ردٍّ لن يُقرأ) */
-  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal },
+  /* 🩺 D-1261 — `onRes`: من يقيس يقرأ ترويساتِ الردّ الناجح (مراحلُ الخادم) — لا أثرَ على غيره */
+  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal; onRes?: (res: Response) => void },
 ): Promise<{ data: T; invalidates: Tag[] }> {
   const auth = init?.auth !== false;
   /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
@@ -84,6 +85,7 @@ export async function api<T>(
       const error: AppError = json?.error ?? { code: "internal", message_key: "apiInternal" };
       throw new ApiError(error, res.status);
     }
+    init?.onRes?.(res);
     return json;
   }
 }
@@ -102,10 +104,10 @@ export async function api<T>(
  */
 export type Soft<T> = T & { _guest?: true };
 
-export async function softGet<T extends object>(path: string, signal?: AbortSignal): Promise<Soft<T>> {
-  if (session.has()) return (await api<T>(path, { signal })).data;
+export async function softGet<T extends object>(path: string, signal?: AbortSignal, onRes?: (res: Response) => void): Promise<Soft<T>> {
+  if (session.has()) return (await api<T>(path, { signal, onRes })).data;
   void session.request();
-  const r = await api<T>(path, { auth: false, signal });
+  const r = await api<T>(path, { auth: false, signal, onRes });
   return { ...r.data, _guest: true };
 }
 

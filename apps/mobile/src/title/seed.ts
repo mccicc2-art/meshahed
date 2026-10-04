@@ -54,11 +54,42 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, outer?: AbortS
   });
 }
 
+/**
+ * 🩺 D-1261 — مراحلُ الخادم لآخر جلبٍ لكلِّ عمل (ترويسة `X-Loopz-T`) مع مدّة الطلب من الجهاز، تُلصق بعلامة
+ * `title.open` الباردة فيُقرأ الطرفان معاً: الشبكةُ = `rq − sv`. قياسٌ فقط؛ الخريطةُ تُفرغ عند القراءة ولا تكبر.
+ */
+export type ServerTiming = { rq: number; sv?: number; sa?: number; st?: number; sr?: number; sd?: number };
+const timings = new Map<string, ServerTiming>();
+const T_KEYS: Record<string, "sv" | "sa" | "st" | "sr" | "sd"> = { all: "sv", a: "sa", t: "st", r: "sr", d: "sd" };
+
+function keepTiming(kind: "tv" | "movie", id: number, t0: number, res: Response) {
+  const out: ServerTiming = { rq: Math.round(performance.now() - t0) };
+  for (const part of (res.headers.get("x-loopz-t") ?? "").split(",")) {
+    const [k, v] = part.split("=");
+    const key = T_KEYS[k];
+    const n = Number(v);
+    if (key && v !== undefined && v !== "" && Number.isFinite(n) && n >= 0) out[key] = n;
+  }
+  if (timings.size >= 30) timings.clear();
+  timings.set(`${kind}:${id}`, out);
+}
+
+/** يأخذ القياسَ مرّةً واحدة — الفتحةُ التالية للعمل نفسِه من الكاش لا تحمل أرقامَ جلبٍ قديم */
+export function takeTiming(kind: "tv" | "movie", id: number): ServerTiming | null {
+  const k = `${kind}:${id}`;
+  const t = timings.get(k) ?? null;
+  timings.delete(k);
+  return t;
+}
+
 /** الجالبُ الواحدُ لصفحة العمل — `TitleScreen` واللمسةُ المسبقة يتشاركانه فلا يفترق مفتاحٌ ولا عنوان */
 export const titleQuery = (kind: "tv" | "movie", id: number) => ({
   queryKey: qk.title(kind, id),
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
-  queryFn: ({ signal }: { signal?: AbortSignal }) => withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s), signal),
+  queryFn: ({ signal }: { signal?: AbortSignal }) => {
+    const t0 = performance.now();
+    return withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s, (res) => keepTiming(kind, id, t0, res)), signal);
+  },
   staleTime: 60_000,
   retryDelay: 300,
 });
