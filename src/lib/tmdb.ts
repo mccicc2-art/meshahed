@@ -2,7 +2,7 @@
 // Server-only: never expose the key to the browser.
 
 import { cache } from "react";
-import { applyLoopzNames, collectEnglish } from "@/core/loopzNames";
+import { applyLoopzNames, collectEnglish, missingEnglish } from "@/core/loopzNames";
 import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
@@ -132,6 +132,9 @@ const NO_WORKS =
  *   بقي الردُّ العربيُّ كما هو — اسمٌ بلغةٍ أخرى أهونُ من قسمٍ فارغ (D-063).
  * - **الأوضاعُ الثلاثةُ الأخرى** ⇒ كما كانت حرفاً.
  */
+/** أقصى ما يُسأل عنه فرادى في ردٍّ واحد (D-1267) */
+const LOOPZ_FILL_LIMIT = 20;
+
 async function tmdb<T>(
   path: string,
   params: Record<string, string> = {},
@@ -143,7 +146,23 @@ async function tmdb<T>(
     tmdbRaw<T>(path, params, rail),
     tmdbRaw<unknown>(path, { ...params, language: "en-US" }, rail).catch(() => null),
   ]);
-  return applyLoopzNames(own, en ? collectEnglish(en) : new Map());
+  const english = en ? collectEnglish(en) : new Map<string, string>();
+  /* 🔴 D-1267 — الردّان مخبَّآن كلٌّ على حدة، فقد يحمل العربيُّ عملاً ليس في الإنجليزيّ (قائمةٌ تغيّرت بين
+     التخبئتين): يُسأل عنه وحدَه. السقفُ يحمي حين يسقط النداءُ الإنجليزيُّ كلُّه؛ ما بعده يبقى باسمه. */
+  const missing = missingEnglish(own, english).slice(0, LOOPZ_FILL_LIMIT);
+  if (missing.length)
+    await Promise.all(
+      missing.map(async (w) => {
+        try {
+          const d = await tmdbRaw<{ title?: string; name?: string }>(`/${w.kind === "m" ? "movie" : "tv"}/${w.id}`, { language: "en-US" }, rail);
+          const name = w.kind === "m" ? d.title : d.name;
+          if (name && name.trim()) english.set(w.key, name);
+        } catch {
+          /* يبقى باسمه في الردّ — اسمٌ بلغةٍ أخرى أهونُ من قسمٍ فارغ */
+        }
+      }),
+    );
+  return applyLoopzNames(own, english);
 }
 
 async function tmdbRaw<T>(

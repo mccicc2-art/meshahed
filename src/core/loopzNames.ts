@@ -54,6 +54,26 @@ export function collectEnglish(json: Json): Map<string, string> {
 }
 
 /**
+ * 🔴 D-1267 — **أعمالٌ في الردِّ تحتاج اسماً إنجليزيّاً وليس لها واحدٌ في `english`**.
+ *
+ * رُصد على الإنتاج بعد D-1266 بدقائق: «رائجُ اليوم» أعاد صفّين من عشرةٍ بلا تصحيح («الملكة الحمراء» وهو
+ * Red Queen، و«ロメリア戦記» وهو Romelia War Chronicle) وصفحتاهما صحيحتان. السبب: القائمةُ تُسأل بلغتين
+ * وكلُّ ردٍّ يُخبَّأ ساعةً **على حدة**، فقائمةٌ متغيّرةٌ يكون ردُّها العربيُّ أقدمَ من الإنجليزيِّ بدقائق —
+ * وما دخلها أو خرج منها بينهما لا اسمَ له في الخريطة. فهذه يُسأل عن كلٍّ منها وحدَه (تفصيلُه بـ`en-US`،
+ * وهو نداءُ صفحةِ العمل نفسُه فيتشاركان التخبئة).
+ */
+export function missingEnglish(json: Json, english: Map<string, string>): { kind: "m" | "t"; id: number; key: string }[] {
+  const out = new Map<string, { kind: "m" | "t"; id: number; key: string }>();
+  walk(json, (o, kind) => {
+    const lang = o.original_language as string;
+    if (lang === "ar" || lang === "en") return;
+    const key = keyOf(kind, o.id);
+    if (!english.has(key) && !out.has(key)) out.set(key, { kind, id: o.id as number, key });
+  });
+  return [...out.values()];
+}
+
+/**
  * يعيد نسخةً من `json` بأسماء Loopz.
  * - لغةُ العمل `ar` أو `en` ⇒ اسمُه الأصليّ (وهو ما في الصفّ نفسِه — بلا نداء).
  * - غيرُهما ⇒ الاسمُ الإنجليزيُّ من `english` إن وُجد؛ وإلّا يبقى ما في الصفّ: هو الإنجليزيُّ أصلاً حين

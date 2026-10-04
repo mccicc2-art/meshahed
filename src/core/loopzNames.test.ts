@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyLoopzNames, collectEnglish } from "./loopzNames.ts";
+import { applyLoopzNames, collectEnglish, missingEnglish } from "./loopzNames.ts";
 import { parseTitleMode, resolveMediaTitle, sampleNames, TITLE_MODES, TITLE_SAMPLES } from "./titleMode.ts";
 
 const arList = {
@@ -48,6 +48,16 @@ test("the English call failed: English-language works still get their original, 
   const out = applyLoopzNames(arList, new Map());
   assert.equal(out.results[0].name, "Game of Thrones");
   assert.equal(out.results[2].name, "هجوم العمالقة");
+});
+
+test("rows absent from the English response are reported once each, and only the ones that need English", () => {
+  const english = collectEnglish({ results: [enList.results[0], enList.results[1]] });
+  const twice = { results: [...arList.results, arList.results[2]] };
+  assert.deepEqual(missingEnglish(twice, english), [
+    { kind: "t", id: 3, key: "t:3" },
+    { kind: "m", id: 3, key: "m:3" },
+  ]);
+  assert.deepEqual(missingEnglish(arList, collectEnglish(enList)), []);
 });
 
 test("works nested in a details response are corrected too; seasons are untouched", () => {
