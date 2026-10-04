@@ -1,9 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { ApiError, qk, softGet } from "../api";
+import { ApiError, api, qk, softGet } from "../api";
+import { flag } from "../flags";
 import { seasonQuery } from "./SeasonAccordion";
 import { backdropUrl } from "@/core/media";
-import type { LibraryPayload, TitlePayload } from "../contracts";
+import type { LibraryPayload, TitlePayload, TitleTrailerPayload } from "../contracts";
 
 /**
  * 🆕 D-1221 — **رأسُ صفحة العمل من البطاقة التي فُتح منها** (تسجيلُ أحمد ١ أكتوبر: «الدخول لأيّ صفحة فلم فيه تأخير خفيف»).
@@ -88,10 +89,22 @@ export const titleQuery = (kind: "tv" | "movie", id: number) => ({
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
   queryFn: ({ signal }: { signal?: AbortSignal }) => {
     const t0 = performance.now();
-    return withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s, (res) => keepTiming(kind, id, t0, res)), signal);
+    return withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}${flag("tx") ? "?t=0" : ""}`, s, (res) => keepTiming(kind, id, t0, res)), signal);
   },
   staleTime: 60_000,
   retryDelay: 300,
+});
+
+/**
+ * 🆕 D-1262 — **الإعلانُ يُطلب وحدَه بالتوازي مع الصفحة** (خلف `tx`): القياسُ (D-1261) أظهر أنّ ردَّ الصفحة كان ينتظره
+ * ١١٥–٥٥٠ms فوق التفاصيل في نحو ثلث الفتحات الباردة. عامٌّ بلا هويّة (`auth: false`) فلا ينتظر رمزاً، وفشلُه صمتٌ —
+ * الصفحةُ بلا بطاقة إعلانٍ كما لو لم يكن للعمل إعلان. واللمسةُ المسبقةُ تبدؤه مع العمل (`primeTitle`).
+ */
+export const trailerQuery = (kind: "tv" | "movie", id: number) => ({
+  queryKey: ["title:trailer", kind, id] as const,
+  queryFn: async ({ signal }: { signal?: AbortSignal }) => (await api<TitleTrailerPayload>(`/api/v1/title/${kind}/${id}/trailer`, { auth: false, signal })).data,
+  staleTime: 5 * 60_000,
+  retry: 1,
 });
 
 /** بذورٌ سلّمتها بطاقاتٌ لُمست — قليلةٌ ومقصوصة (آخرُ ٣٠)، فلا تكبر مع الجلسة */
@@ -128,6 +141,7 @@ export function primeTitle(qc: QueryClient, c: PrimeCard) {
   primeTimer = setTimeout(() => {
     primeTimer = null;
     void qc.prefetchQuery(titleQuery(c.kind, c.id));
+    if (flag("tx")) void qc.prefetchQuery(trailerQuery(c.kind, c.id));
     const bd = c.backdrop_path ? backdropUrl(c.backdrop_path, "w780") : null;
     if (bd) void Image.prefetch(bd, "memory-disk");
   }, PRIME_HOLD_MS);

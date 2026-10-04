@@ -61,8 +61,12 @@ export async function GET(
       const lim = limited(`v1:title:${uid ?? ip}`, 120, 60_000);
       if (lim) return lim;
 
+      /* 🆕 D-1262 — `?t=0`: الردُّ لا ينتظر الإعلان (`trailer_key: null`) والتطبيقُ يطلبه وحدَه من `…/trailer`.
+         القياسُ (D-1261): الإعلانُ وحدَه حدّد زمنَ الخادم في ~٣٠٪ من الفتحات الباردة (١١٥–٥٥٠ms فوق التفاصيل).
+         بلا الوسيط السلوكُ كما كان حرفاً — والتطبيقُ يرسله خلف مفتاح `tx` وحدَه. */
+      const withTrailer = req.nextUrl.searchParams.get("t") !== "0";
       const payload: TitlePayload =
-        kind === "tv" ? await tvPayload(tmdbId, !!uid, ph) : await moviePayload(tmdbId, !!uid, ph);
+        kind === "tv" ? await tvPayload(tmdbId, !!uid, ph, withTrailer) : await moviePayload(tmdbId, !!uid, ph, withTrailer);
       return ok(payload);
     },
     // العملُ عامٌّ وثابتٌ لدقائق؛ **لكنّ الردَّ يحمل حالتي** — فالكاشُ خاصٌّ
@@ -77,12 +81,12 @@ export async function GET(
   return res;
 }
 
-async function tvPayload(tvId: number, signedIn: boolean, ph: Phases): Promise<TvTitlePayload> {
+async function tvPayload(tvId: number, signedIn: boolean, ph: Phases, withTrailer: boolean): Promise<TvTitlePayload> {
   /* 🩺 D-1261 — `t` تفاصيلُ TMDB · `r` الإعلان · `d` أبطأُ قراءةٍ لحالتي (الثلاثُ متوازية) */
   const db = (ms: number) => (ph.d = Math.max(ph.d, ms));
   const [tv, trailer, following, watched, rating] = await Promise.all([
     timed(getTv(tvId), (ms) => (ph.t = ms)),
-    timed(getTrailer("tv", tvId).catch(() => null), (ms) => (ph.r = ms)),
+    withTrailer ? timed(getTrailer("tv", tvId).catch(() => null), (ms) => (ph.r = ms)) : null,
     signedIn ? timed(getFollowState(tvId, "tv"), db) : { following: false, dropped: false },
     signedIn ? timed(getWatchedForShow(tvId), db) : new Set<string>(),
     // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
@@ -134,11 +138,11 @@ async function tvPayload(tvId: number, signedIn: boolean, ph: Phases): Promise<T
   };
 }
 
-async function moviePayload(movieId: number, signedIn: boolean, ph: Phases): Promise<MovieTitlePayload> {
+async function moviePayload(movieId: number, signedIn: boolean, ph: Phases, withTrailer: boolean): Promise<MovieTitlePayload> {
   const db = (ms: number) => (ph.d = Math.max(ph.d, ms));
   const [movie, trailer, following, watched, progress, rating] = await Promise.all([
     timed(getMovie(movieId), (ms) => (ph.t = ms)),
-    timed(getTrailer("movie", movieId).catch(() => null), (ms) => (ph.r = ms)),
+    withTrailer ? timed(getTrailer("movie", movieId).catch(() => null), (ms) => (ph.r = ms)) : null,
     signedIn ? timed(getFollowState(movieId, "movie"), db) : { following: false, dropped: false },
     signedIn ? timed(isMovieWatched(movieId), db) : false,
     signedIn ? timed(getMovieProgress(movieId).catch(() => null), db) : null,

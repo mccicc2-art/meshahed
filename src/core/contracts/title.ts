@@ -108,6 +108,9 @@ export type SeasonPayload = {
 
 /* ====== ملحقاتُ صفحة العمل — Phase 11-D · D2/D3 (D-956) ====== */
 
+/** `GET /api/v1/title/{kind}/{id}/trailer` — مفتاحُ الإعلان وحدَه، يُطلب بالتوازي مع الصفحة (D-1262) */
+export type TitleTrailerPayload = { trailer_key: string | null };
+
 /** `GET /api/v1/title/{kind}/{id}/extras` — كلُّ ما حول البطل في ردٍّ ثانٍ خفيف */
 export type TitleExtrasPayload = {
   ratings: { imdb: string | null; rt: string | null; rated: string | null } | null;
