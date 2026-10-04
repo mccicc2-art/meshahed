@@ -1,0 +1,6 @@
+[deploy] D-1261 — title.open carries the server's phases (identity, TMDB, trailer, own state) and the request time, to see where the cold open goes
+
+Measurement only: the title route returns its phase timings in an X-Loopz-T header and the app attaches them to the cold title.open mark.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X64rnwF6vsvwwbp5eTsP2n
