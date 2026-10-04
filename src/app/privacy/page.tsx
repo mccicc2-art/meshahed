@@ -34,8 +34,12 @@ export default async function PrivacyPage() {
             جوهري — **وD-221 أجوهرُ ما وقع**: «الآخرون» في هذه الوثيقة
             كانوا المسجَّلين، وصاروا الإنترنتَ حين فُتحت غرفةُ الكلام
             وصفحاتُ الخيوط للقراءة بلا حساب. **ووعدٌ لم يعد صادقاً أسوأُ
-            من وعدٍ لم يُكتب.** */}
-        {ar ? "آخر تحديث: ١٤ أغسطس ٢٠٢٦" : "Last updated: 14 August 2026"}
+            من وعدٍ لم يُكتب.**
+            D-1268: والبحثُ بالوصف طرفٌ جديدٌ يستلم نصّاً من المستخدم
+            (Gemini، المفتاحُ على الخطّة المجّانيّة فيجوز لـGoogle أن تستعمل
+            النصّ) — فذُكر في «من يشغّل الخدمة معنا» وتقدّم التاريخ. إن
+            انتقل المفتاحُ إلى خطّةٍ مدفوعة فالجملةُ الأخيرةُ هناك تُحذف. */}
+        {ar ? "آخر تحديث: ٤ أكتوبر ٢٠٢٦" : "Last updated: 4 October 2026"}
       </p>
 
       <div className="mt-7 space-y-7 text-15 leading-relaxed">
@@ -70,8 +74,8 @@ export default async function PrivacyPage() {
           title={ar ? "من يشغّل الخدمة معنا" : "Who processes data with us"}
           body={
             ar
-              ? "Supabase تستضيف قاعدة البيانات وتسجيل الدخول والصور. Vercel تستضيف الموقع وتُسجّل سجلّات طلبات معتادة. Google تُدير تسجيل الدخول. TMDB مصدر بيانات الأفلام والمسلسلات والملصقات — نرسل إليها ما تبحث عنه لا هويتك. ونستعمل Vercel Speed Insights لقياس سرعة الصفحات؛ يرسل أرقام أداءٍ إلى نطاقنا نفسه ولا يضع كوكيز تتبّعٍ ولا يبني ملفاً إعلانياً عنك. لا توجد أي أداة تتبّعٍ إعلانية في Loopz."
-              : "Supabase hosts the database, the sign-in and the uploaded images. Vercel hosts the site and keeps ordinary request logs. Google handles sign-in. TMDB supplies film and series data and posters — we send it what you search for, not who you are. We use Vercel Speed Insights to measure page speed; it reports performance numbers to our own domain, sets no tracking cookies and builds no advertising profile. Loopz contains no advertising trackers of any kind."
+              ? "Supabase تستضيف قاعدة البيانات وتسجيل الدخول والصور. Vercel تستضيف الموقع وتُسجّل سجلّات طلبات معتادة. Google تُدير تسجيل الدخول. TMDB مصدر بيانات الأفلام والمسلسلات والملصقات — نرسل إليها ما تبحث عنه لا هويتك. ونستعمل Vercel Speed Insights لقياس سرعة الصفحات؛ يرسل أرقام أداءٍ إلى نطاقنا نفسه ولا يضع كوكيز تتبّعٍ ولا يبني ملفاً إعلانياً عنك. لا توجد أي أداة تتبّعٍ إعلانية في Loopz. البحث بالوصف يستعمل Gemini من Google: نرسل إليه ما كتبته وعناوين من مكتبتك وتقييماتك ليقترح أعمالاً، بلا اسمك ولا بريدك. وقد تستعمل Google هذا النصّ لتحسين خدماتها."
+              : "Supabase hosts the database, the sign-in and the uploaded images. Vercel hosts the site and keeps ordinary request logs. Google handles sign-in. TMDB supplies film and series data and posters — we send it what you search for, not who you are. We use Vercel Speed Insights to measure page speed; it reports performance numbers to our own domain, sets no tracking cookies and builds no advertising profile. Loopz contains no advertising trackers of any kind. Search by description uses Google's Gemini: we send it what you typed and titles from your library and ratings so it can suggest works, without your name or email. Google may use that text to improve its services."
           }
         />
 
