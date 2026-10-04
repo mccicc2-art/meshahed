@@ -52,6 +52,7 @@ import type { HeaderStat } from "@/components/HomeHeader";
 import type { WeekEntry } from "@/components/WeekStrip";
 import type { ReorderItem } from "@/components/ReorderSheet";
 import type { ShowStat } from "@/components/ShowStatsSync";
+import { airedSinceStored, staleStored, FRESHEN_CAP } from "@/core/followStats";
 import {
   sanitizeHomePrefs,
   applyQueueOrder,
@@ -141,6 +142,49 @@ export type ToWatchQueueCard = {
  * ما جلبته الصفحةُ (أو الباب) في موجتها الأولى** — لا نداءَ هنا إلّا
  * احتياطُ ما قبل `performance.sql`.
  */
+/**
+ * 🆕 D-1271 — **صفوفُ المتابعة التي نزلت لها حلقةٌ ولم يعلم بها رقمُها المخزَّن تُقرأ قبل بناء الرئيسيّة**.
+ *
+ * `aired_episodes` على صفِّ المتابعة يحكم «انتهى» في الرئيسيّة والمكتبة، وكان لا يُجدَّد إلّا بفتح صفحة العمل في
+ * الويب — فمسلسلٌ خُتم ثمّ نزلت له حلقةٌ بقي «انتهى» عند من يستعمل التطبيق وحده (القياسُ والقاعدةُ في
+ * `core/followStats.ts`). **هنا لا في الموجة**: مرشّحو «أكمل المشاهدة» وأرقامُ الترويسة تُحسب من هذا الرقم قبل
+ * أن تبدأ الموجة، فقراءتُه فيها تُخرج هذا الردَّ قديماً وتُصحّح الذي بعده — وأحمد لا يريد قديماً ثمّ جديداً.
+ * الثمنُ يُقال: رحلةُ TMDB واحدةٌ (متوازية، ≤ `FRESHEN_CAP`، مخبّأةٌ ساعة) تسبق الرئيسيّةَ **في الفتحة التي فيها
+ * صفٌّ فات موعدُه وحدَها** — مرّةً لكلِّ حلقةٍ جديدة، ثمّ يُكتب الرقمُ فلا تعود.
+ *
+ * يعيد الصفوفَ مصحَّحةً في الذاكرة و`freshStats` ليكتبها المنادي حيث يكتب `statsToCache` (الويبُ بـ`ShowStatsSync`
+ * و`me/home` بعد الردّ). سقوطُ قراءةٍ يُبقي صفَّها كما هو — تحسينُ قراءةٍ لا شرطُ الرئيسيّة.
+ */
+export async function freshenFollows<R extends Awaited<ReturnType<typeof getFollows>>[number]>(
+  followRows: R[],
+): Promise<{ followRows: R[]; freshStats: ShowStat[] }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const ids = airedSinceStored(followRows, today);
+  if (!ids.length) return { followRows, freshStats: [] };
+  const details = await Promise.all(ids.map((id) => getTv(id).catch(() => null)));
+  const now = new Date().toISOString();
+  const fresh = new Map<number, ShowStat>();
+  for (const tv of details) {
+    if (!tv) continue;
+    fresh.set(tv.id, {
+      tmdbId: tv.id,
+      total: tv.number_of_episodes ?? 0,
+      aired: airedEpisodeCount(tv),
+      nextAirDate: tv.next_episode_to_air?.air_date ?? null,
+    });
+  }
+  if (!fresh.size) return { followRows, freshStats: [] };
+  return {
+    followRows: followRows.map((r) => {
+      const f = r.media_type === "tv" ? fresh.get(r.tmdb_id) : undefined;
+      return f
+        ? { ...r, total_episodes: f.total, aired_episodes: f.aired, next_air_date: f.nextAirDate, stats_updated_at: now }
+        : r;
+    }),
+    freshStats: [...fresh.values()],
+  };
+}
+
 export async function buildHomeHeader({
   followRows,
   summary,
@@ -384,7 +428,10 @@ export async function buildHomeBody({
   locale,
   t,
   today,
+  freshStats,
 }: {
+  /** 🆕 D-1271 — ما قرأته `freshenFollows` قبل البناء: يُكتب مع `statsToCache` */
+  freshStats?: ShowStat[];
   followRows: Awaited<ReturnType<typeof getFollows>>;
   summary: Awaited<ReturnType<typeof getWatchSummary>>;
   watchedMovieIds: Set<number>;
@@ -405,10 +452,12 @@ export async function buildHomeBody({
   const rawMovies = rawActive.filter((f) => f.media_type === "movie");
 
   // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
-  const bootstrapIds = rawTv
-    .filter((f) => f.aired_episodes == null)
-    .slice(0, 12)
-    .map((f) => f.tmdb_id);
+  /* 🆕 D-1271 — **ومعها الصفوفُ القديمةُ بلا موعدٍ قادم** (أسبوعٌ بلا قراءة — موسمٌ أُعلن بعدها): في الموجة نفسِها
+     وبالسقف نفسِه، وأثرُها في الفتحة التالية. صفوفُ التهيئة أوّلاً: هي التي بلا رقمٍ أصلاً. */
+  const bootstrapIds = [
+    ...rawTv.filter((f) => f.aired_episodes == null).map((f) => f.tmdb_id),
+    ...staleStored(rawTv, Date.now()),
+  ].slice(0, FRESHEN_CAP);
 
   // مرشّحو «أكمل المشاهدة» يُعرفون من الملخّص قبل الترجمة — فتنضم
   // تفاصيلهم إلى نفس الموجة بدل موجةٍ خاصة بهم
@@ -739,7 +788,7 @@ export async function buildHomeBody({
 
   const continueWatching = unfinished.filter((i) => i.watched > 0);
 
-  const statsToCache: ShowStat[] = [];
+  const statsToCache: ShowStat[] = [...(freshStats ?? [])];
   for (const tv of bootstrapDetails) {
     if (!tv) continue;
     const row = tvFollows.find((f) => f.tmdb_id === tv.id);

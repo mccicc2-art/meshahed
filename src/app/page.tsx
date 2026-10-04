@@ -75,6 +75,7 @@ import { OneTimeHint } from "@/components/OneTimeHint";
 import {
   buildHomeHeader,
   buildHomeBody,
+  freshenFollows,
   continueBackdrops,
   upcomingWithEpisodes,
   trendingRail,
@@ -128,7 +129,7 @@ export default async function HomePage() {
      رفضاً معلّقاً. **ولو صارت ترمي يوماً، هذا السطرُ هو ما ينكسر.** */
   const movieProgressPromise = getAllMovieProgress();
 
-  const [user, followRows, summary, watchedMovies, profile, myRatings] =
+  const [user, storedFollows, summary, watchedMovies, profile, myRatings] =
     await Promise.all([
       getUser(),
       getFollows(),
@@ -183,7 +184,10 @@ export default async function HomePage() {
   }
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
-  if (followRows.length === 0) redirect("/welcome");
+  if (storedFollows.length === 0) redirect("/welcome");
+  /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء (`freshenFollows`) — الترويسةُ
+     و«أكمل المشاهدة» تُحسبان من هذا الرقم. */
+  const { followRows, freshStats } = await freshenFollows(storedFollows);
 
   /* 🆕 D-1066: أرقامُ الترويسة وخرائطُ الموجة الأولى تُحسب في
      `lib/homeCore.ts` — **الحسابُ نفسُه** الذي يقرؤه `GET /api/v1/me/home`. */
@@ -270,6 +274,7 @@ export default async function HomePage() {
           }
         >
           <HomeBody
+            freshStats={freshStats}
             followRows={followRows}
             summary={summary}
             watchedMovieIds={watchedMovieIds}
@@ -292,6 +297,7 @@ export default async function HomePage() {
 
 /* `T` · `Item` · `MixedItem` صارت في `lib/homeCore.ts` (D-1066) — تُستورد أعلاه */
 async function HomeBody({
+  freshStats,
   followRows,
   summary,
   watchedMovieIds,
@@ -306,6 +312,7 @@ async function HomeBody({
   t,
   today,
 }: {
+  freshStats: Awaited<ReturnType<typeof freshenFollows>>["freshStats"];
   followRows: Awaited<ReturnType<typeof getFollows>>;
   summary: Awaited<ReturnType<typeof getWatchSummary>>;
   watchedMovieIds: Set<number>;
@@ -369,6 +376,7 @@ async function HomeBody({
     locale,
     t,
     today,
+    freshStats,
   });
 
   return (

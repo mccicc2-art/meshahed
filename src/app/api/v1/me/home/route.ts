@@ -19,7 +19,7 @@ import { applyQueueOrder } from "@/core/homePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
 import { toLibraryListCard } from "@/lib/listCard";
 import { cacheShowStats, cacheMovieStats, cacheFollowMeta } from "@/lib/actions";
-import { buildHomeHeader, buildHomeBody } from "@/lib/homeCore";
+import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type {
@@ -58,13 +58,15 @@ export async function GET() {
     const { locale, t } = await getT();
     // وعدٌ يُطلق قبل الموجة الأولى ويُنتظر في الثانية — كالصفحة (جولة ٢٢ أغسطس)
     const movieProgressPromise = getAllMovieProgress();
-    const [followRows, summary, watchedMovies, profile, myRatings] = await Promise.all([
+    const [storedFollows, summary, watchedMovies, profile, myRatings] = await Promise.all([
       getFollows(),
       getWatchSummary(),
       getWatchedMovies(),
       getProfile(),
       getMyRatings(),
     ]);
+    /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء، فالردُّ نفسُه صحيح */
+    const { followRows, freshStats } = await freshenFollows(storedFollows);
 
     const head = await buildHomeHeader({ followRows, summary, watchedMovies, profile, myRatings, t });
     const { watchedMovieIds, prefs, today, watchedByShow, lastWatchedOrder, rewatchSinceMap, headerStats } = head;
@@ -87,6 +89,7 @@ export async function GET() {
         locale,
         t,
         today,
+        freshStats,
       }),
     ]);
 
