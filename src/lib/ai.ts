@@ -19,6 +19,19 @@
  * لها مسارٌ بديل بلا نموذج (كلمات TMDB المفتاحية، انظر actions.ts).
  * والنموذج قابل للتبديل عبر `GEMINI_MODEL` لأن أسماء النماذج تتقادم
  * أسرع من الكود.
+ *
+ * 🆕 D-1259 (٤ أكتوبر ٢٠٢٦ — يومَ أضاف أحمد المفتاح):
+ *  - **سلسلةُ نماذج لا نموذجٌ واحد**: الافتراضيُّ القديم (`gemini-2.5-flash`)
+ *    خرج من قائمة Google ولم يعلم أحد — الفشلُ كان صامتاً. الآن إن ردّ
+ *    النموذجُ الأوّل بـ404 (اسمٌ تقادم) أو 429 (حدُّ الباقة المجّانيّة، وهو
+ *    **لكلِّ نموذجٍ على حدة**) أو 5xx، يُجرَّب التالي.
+ *  - **المفتاحُ في الترويسة `x-goog-api-key` لا في العنوان**: مفاتيحُ AI Studio
+ *    الجديدة (auth keys) موثَّقةٌ بالترويسة وحدَها، والعنوانُ يُكتب في السجلّات.
+ *  - **التفكيرُ منخفض**: نماذجُ 3.x تفكّر قبل الجواب، ورموزُ التفكير تُحسب من
+ *    `maxOutputTokens` — فكان الجوابُ سيُقصّ قبل أن يكتمل الـJSON. إن رفض
+ *    النموذجُ الحقلَ (400) يُعاد الطلبُ بدونه مرّةً.
+ *  - **كلُّ فشلٍ يُكتب سطراً** (`[ai]`) في سجلّ Vercel — بلا المفتاح وبلا
+ *    وصفِ المستخدم: النموذجُ والحالةُ ورسالةُ Google فقط.
  */
 
 export interface AiCandidate {
@@ -42,7 +55,62 @@ export interface AiTaste {
   locale?: "ar" | "en";
 }
 
-const MODEL_FALLBACK = "gemini-2.5-flash";
+/** الأجودُ أوّلاً، ثم الأخفُّ (حدٌّ مجّانيٌّ أوسع) — راجِع القائمة حين يُكتب سطرُ `[ai] … 404` */
+const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+/** مهلةُ النداء الواحد — سلسلةٌ بلا مهلةٍ تُبقي المستخدمَ أمام «جارٍ البحث» */
+const ATTEMPT_MS = 14_000;
+
+type Attempt =
+  | { ok: true; text: string }
+  /** `next`: جرّب النموذجَ التالي · `noThinking`: أعِد بلا حقل التفكير · `stop`: المفتاحُ نفسُه مرفوض */
+  | { ok: false; then: "next" | "noThinking" | "stop" };
+
+async function askModel(model: string, key: string, prompt: string, thinking: boolean): Promise<Attempt> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            /* حرارةٌ أدنى من السابق (0.4): الترشيح مهمّة دقّةٍ لا إنشاء،
+               والارتفاع كان يولّد أسماءً قريبةً من الصحيح لا صحيحة */
+            temperature: 0.25,
+            /* كان 1600 يومَ لم يكن تفكير؛ السقفُ الآن يسع التفكيرَ والجواب معاً */
+            maxOutputTokens: 4096,
+            ...(thinking ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+          },
+        }),
+        /* لا خبيئة: كل وصفٍ سؤالٌ جديد، وأجوبة النموذج ليست حقائق تُخبّأ */
+        cache: "no-store",
+        signal: AbortSignal.timeout(ATTEMPT_MS),
+      },
+    );
+    if (!res.ok) {
+      const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 240);
+      console.error("[ai]", model, res.status, thinking ? "thinking" : "plain", body);
+      if (res.status === 400 && thinking) return { ok: false, then: "noThinking" };
+      if (res.status === 401 || res.status === 403) return { ok: false, then: "stop" };
+      return { ok: false, then: "next" };
+    }
+    const data = (await res.json()) as {
+      candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+    };
+    const cand = data.candidates?.[0];
+    const text = cand?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? "").join("") ?? "";
+    if (!text.trim()) {
+      console.error("[ai]", model, "empty", cand?.finishReason ?? "no-candidate");
+      return { ok: false, then: "next" };
+    }
+    return { ok: true, text };
+  } catch (e) {
+    console.error("[ai]", model, "threw", (e as Error)?.name ?? "error");
+    return { ok: false, then: "next" };
+  }
+}
 
 /** `null` = المفتاح غير موجود (ميزة غير مفعّلة)؛ `[]` = فشل أو لا نتائج */
 export async function aiSuggestTitles(
@@ -51,7 +119,8 @@ export async function aiSuggestTitles(
 ): Promise<AiCandidate[] | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const model = process.env.GEMINI_MODEL || MODEL_FALLBACK;
+  const custom = process.env.GEMINI_MODEL?.trim();
+  const models = [...new Set([...(custom ? [custom] : []), ...MODEL_CHAIN])];
 
   const ar = taste.locale !== "en";
   const lines: string[] = [
@@ -88,35 +157,20 @@ export async function aiSuggestTitles(
     description,
   );
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: lines.join("\n") }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            /* حرارةٌ أدنى من السابق (0.4): الترشيح مهمّة دقّةٍ لا إنشاء،
-               والارتفاع كان يولّد أسماءً قريبةً من الصحيح لا صحيحة */
-            temperature: 0.25,
-            maxOutputTokens: 1600,
-          },
-        }),
-        /* لا خبيئة: كل وصفٍ سؤالٌ جديد، وأجوبة النموذج ليست حقائق تُخبّأ */
-        cache: "no-store",
-      },
-    );
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    return parseCandidates(text);
-  } catch {
-    return [];
+  const prompt = lines.join("\n");
+  for (const model of models) {
+    let got = await askModel(model, key, prompt, true);
+    if (!got.ok && got.then === "noThinking") got = await askModel(model, key, prompt, false);
+    if (got.ok) {
+      const parsed = parseCandidates(got.text);
+      if (parsed.length) return parsed;
+      /* جوابٌ وصل ولم يُقرأ (JSON مقصوص أو قائمةٌ فارغة) — يُكتب ويُجرَّب التالي */
+      console.error("[ai]", model, "unparsed", got.text.length);
+      continue;
+    }
+    if (got.then === "stop") break;
   }
+  return [];
 }
 
 /** قراءةٌ متسامحة: النموذج قد يلفّ الـJSON بأسوار كود رغم التعليمات */

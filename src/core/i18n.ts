@@ -344,6 +344,10 @@ const ar = {
   aiSearchHint:
     "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
   aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
+  /* 🆕 D-1259 — **المسارُ البديل يُسمّى**: نتائجُ الكلمات المفتاحيّة أضعفُ من
+     النموذج، وعرضُها بلا كلمةٍ يجعل الذكاءَ يبدو رديئاً وهو غائب. */
+  aiSearchFallback: "البحث الذكي غير متاح الآن — هذه نتائج تقريبية بالكلمات.",
+  hintSearchDesc: "اضغط النجمة للبحث بوصف القصة أو الجو",
 
   // صفحة المسلسل
   showLoadFailed:
@@ -2591,6 +2595,8 @@ const en: Dict = {
   aiSearchHint:
     "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
   aiSearchEmpty: "No matches found — try a broader description or add details.",
+  aiSearchFallback: "Smart search isn't available right now — these are rough keyword matches.",
+  hintSearchDesc: "Tap the star to search by describing the story or the mood",
 
   showLoadFailed:
     "Couldn't load this show right now. Please try again shortly.",

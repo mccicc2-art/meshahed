@@ -113,6 +113,8 @@ export function TitleSearchSheet({
   const [aiText, setAiText] = useState("");
   const [aiItems, setAiItems] = useState<Suggestion[] | null>(null);
   const [aiPending, startAi] = useTransition();
+  /* 🆕 D-1259 — المسارُ البديل يُسمّى هنا كما في صفحة البحث (قارئان لفعلٍ واحد) */
+  const [aiFallback, setAiFallback] = useState(false);
 
   function runAi() {
     const desc = aiText.trim();
@@ -125,8 +127,10 @@ export function TitleSearchSheet({
           // «غير مفعّل» سقطت: غياب مفتاح النموذج له الآن مسارٌ بديل
           // يُجيب بما يملكه التطبيق (إصلاح 9 Aug)
           setAiItems([]);
+          setAiFallback(false);
           return;
         }
+        setAiFallback(!!res.fallback);
         /* سبب الترشيح يسكن `subtitle` — الصفّ الواحد يعرضه بلا فرعٍ
            جديد في هندسته (نفس خانة مهنة الشخص) */
         setAiItems(
@@ -346,7 +350,10 @@ export function TitleSearchSheet({
           ) : aiItems.length === 0 ? (
             <p className="text-sm text-muted text-center py-8 px-5">{t.aiSearchEmpty}</p>
           ) : (
-            aiItems.map((s) => <ResultRow key={`${s.kind}-${s.id}`} s={s} t={t} onGo={go} />)
+            <>
+              {aiFallback && <p className="text-xs text-muted py-2 px-5">{t.aiSearchFallback}</p>}
+              {aiItems.map((s) => <ResultRow key={`${s.kind}-${s.id}`} s={s} t={t} onGo={go} />)}
+            </>
           )
         ) : loading ? (
           <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>

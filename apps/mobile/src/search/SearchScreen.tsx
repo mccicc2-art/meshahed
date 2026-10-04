@@ -3,7 +3,7 @@ import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View
 import { useFocusEffect, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
@@ -11,6 +11,8 @@ import { Button, Text, Toast } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Chip } from "../library/Chip";
+import { OneTimeHint } from "../library/OneTimeHint";
+import { libraryQuery } from "../library/LibraryScreen";
 import { BottomNav, navHeight } from "../BottomNav";
 import { haptic } from "../haptics";
 import { nativeListId } from "../list/route";
@@ -164,6 +166,10 @@ export function SearchScreen() {
     story.mutate(text);
   };
   const descItems: SearchStoryItem[] | null = story.data ? story.data.items : null;
+  /* 🆕 D-1259 — **تلميحُ النجمة لمرّةٍ واحدة**. المقروءُ في الحساب يصل مع `me:library` (D-954) — يُقرأ من
+     الكاش **بلا نداء** (`enabled: false`): الرئيسيّةُ تسخّنه، وإن غاب فلا تلميح (أهونُ من تلميحٍ يعود). */
+  const lib = useQuery({ ...libraryQuery, enabled: false });
+  const hintDue = !!lib.data && !(lib.data.hints ?? []).includes("search-desc");
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
@@ -203,11 +209,15 @@ export function SearchScreen() {
             ) : descItems.length === 0 ? (
               <Text size={14} muted style={{ textAlign: "center", paddingVertical: 32 }}>{t.aiSearchEmpty}</Text>
             ) : (
-              <Divided>
-                {descItems.map((r) => (
-                  <TitleRow key={`${r.mediaType}-${r.id}`} r={r} note={r.reason} onPress={() => openTitle(r.mediaType, r.id)} />
-                ))}
-              </Divided>
+              <>
+                {/* 🆕 D-1259 — المسارُ البديل (بلا نموذج) يُسمّى: نتائجُه أضعف، وعرضُها بلا كلمةٍ يُحسب على الذكاء */}
+                {story.data?.fallback ? <Text size={12} muted>{t.aiSearchFallback}</Text> : null}
+                <Divided>
+                  {descItems.map((r) => (
+                    <TitleRow key={`${r.mediaType}-${r.id}`} r={r} note={r.reason} onPress={() => openTitle(r.mediaType, r.id)} />
+                  ))}
+                </Divided>
+              </>
             )}
           </>
         ) : (
@@ -216,7 +226,7 @@ export function SearchScreen() {
             {/* ⚖️ 🆕 D-1252 — **بابُ «بحث بالوصف» زرٌّ بجانب الحقل** لا بطاقةٌ بسطرين تحت الرقاقات (أحمد: «أحسّه ماخذ
                 مساحة كبيرة»، اختار «ب» من صورتين): صفٌّ كاملٌ عاد لـ«رائج اليوم». ما زال باباً لا رقاقة (D-534).
                 الزرُّ بارتفاع الحقل (`stretch`) فيكبران معاً مع حجم الخطّ. ⚠️ نجمةٌ بلا كلمة: اسمُها لقارئ الشاشة،
-                وتلميحُ المرّة الواحدة (`OneTimeHint`) مؤجَّلٌ مع تفعيل مفتاح Gemini. */}
+                وتلميحُ المرّة الواحدة (`OneTimeHint`) تحتها منذ D-1259. */}
             <View style={{ flexDirection: "row", alignItems: "stretch", gap: 8 }}>
             <View style={{ position: "relative", justifyContent: "center", flex: 1, minWidth: 0 }}>
               <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
@@ -259,6 +269,9 @@ export function SearchScreen() {
               <Icon name="sparkles" size={18} color={tokens.accent} />
             </Pressable>
             </View>
+
+            {/* 🆕 D-1259 — يُعلن قراءتَه عند الإغلاق أو عند دخول وضع الوصف (هذا الفرعُ يُنزع حينها) */}
+            {hintDue ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} /> : null}
 
             {/* الرقاقاتُ الخمس — `chipRow`: تتمرّر أفقيّاً حتى حافّة الشاشة (`-mx-4 px-4`) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }} keyboardShouldPersistTaps="handled">

@@ -10,6 +10,7 @@ import { tap } from "@/lib/haptics";
 import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
 import { chipClass, chipRow } from "./ui/controls";
 import { Icon, type IconName } from "./Icon";
+import { OneTimeHint } from "./OneTimeHint";
 import { PersonName } from "./PersonRow";
 import { SettingsHeader } from "./settings/SettingsHeader";
 import { buttonClass } from "./ui/Button";
@@ -81,6 +82,8 @@ export function SearchScreen({
   const [desc, setDesc] = useState(false);
   const [descText, setDescText] = useState("");
   const [descItems, setDescItems] = useState<DescHit[] | null>(null);
+  /* 🆕 D-1259 — النتائجُ من المسار البديل (بلا نموذج) تُسمّى فوقها */
+  const [descFallback, setDescFallback] = useState(false);
   const [descPending, startDesc] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -160,8 +163,10 @@ export function SearchScreen({
         const res = await aiStorySearch(text);
         if (!res.ok) {
           setDescItems([]);
+          setDescFallback(false);
           return;
         }
+        setDescFallback(!!res.fallback);
         setDescItems(
           res.results.map((r) => ({
             id: r.id,
@@ -230,9 +235,12 @@ export function SearchScreen({
             ) : descItems.length === 0 ? (
               <p className="text-sm text-muted text-center py-8">{t.aiSearchEmpty}</p>
             ) : (
-              descItems.map((r) => (
-                <TitleRow key={`${r.mediaType}-${r.id}`} r={r} t={t} note={r.reason} />
-              ))
+              <>
+                {descFallback && <p className="text-xs text-muted py-2">{t.aiSearchFallback}</p>}
+                {descItems.map((r) => (
+                  <TitleRow key={`${r.mediaType}-${r.id}`} r={r} t={t} note={r.reason} />
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -242,8 +250,8 @@ export function SearchScreen({
           {/* ⚖️ 🆕 D-1252 — **بابُ «بحث بالوصف» صار زرّاً بجانب الحقل** (أحمد: «أحسّه ماخذ مساحة كبيرة»، اختار
               «ب» من صورتين). كان بطاقةً بسطرين تحت الرقاقات تأخذ صفّاً كاملاً من «رائج اليوم». الوصفُ طريقةٌ
               ثانيةٌ للبحث فمكانُها بجانب حقله؛ **وما زال باباً لا رقاقة** (D-534: رقاقةٌ بين أنواعٍ تعِد بترشيح).
-              ⚠️ **الثمن**: نجمةٌ بلا كلمة — اسمُها في `aria-label`/`title`، وتلميحُ المرّة الواحدة مؤجَّلٌ مع
-              تفعيل مفتاح Gemini (لا يُصرف على ميزةٍ نتائجُها ضعيفةٌ اليوم). */}
+              ⚠️ **الثمن**: نجمةٌ بلا كلمة — اسمُها في `aria-label`/`title`، وتلميحُ المرّة الواحدة تحتها
+              (D-1259، بعد تفعيل مفتاح Gemini). */}
           <form onSubmit={(e) => e.preventDefault()} className="flex items-stretch gap-2">
             <div className="relative flex-1 min-w-0">
               <span className="absolute inset-y-0 start-3.5 grid place-items-center text-muted pointer-events-none">
@@ -294,6 +302,10 @@ export function SearchScreen({
               <Icon name="sparkles" size={18} />
             </button>
           </form>
+
+          {/* 🆕 D-1259 — **تلميحُ المرّة الواحدة للنجمة** (كان مؤجَّلاً مع المفتاح، D-1252): زرٌّ بلا كلمةٍ
+              يحتاج من يسمّيه مرّةً. `OneTimeHint` القائم — يُقرأ عند الإغلاق أو عند دخول وضع الوصف. */}
+          <OneTimeHint id="search-desc" text={t.hintSearchDesc} closeLabel={t.closeLabel} />
 
           <div className={chipRow}>
             <div className="flex items-center gap-2">
