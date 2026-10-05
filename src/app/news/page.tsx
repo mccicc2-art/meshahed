@@ -56,7 +56,7 @@ import {
   posterUrl,
   type SearchResult,
   type DiscoverFilter,
-  kidsAllowed,
+  dropLittleKids,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { looksAnime, railGuard } from "@/lib/topChart";
@@ -758,13 +758,14 @@ async function MyRowsRails({
       /* 🆕 **والكتمُ يسقط بلغةٍ أو بلد** (D-194 حرفاً): من اختار «كوريّ»
          طلبه بنفسه، **وحارسٌ يكتم ما طُلب صراحةً يُفرغ الصفَّ ويكذب** */
       /* D-1286 — ١٢ من البِركة بقرعة النافذة (`drawMyRow` — نفسُها في `/api/v1/discover/personal`) */
+      /* D-1288 — والموجَّهُ للصغار وحدَهم يسقط قبل القرعة (`dropLittleKids`) */
       const guarded = drawMyRow(
-        railGuard(items, {
-          anime: anime ? "only" : "drop",
-          unmute: !!browse?.lang || !!browse?.country,
-          /* D-1287 — برامجُ الأطفال تسقط، إلّا من صفٍّ نوعُه «عائلي»/«رسوم متحرّكة» */
-          kids: kidsAllowed(ids) ? "keep" : "drop",
-        }),
+        await dropLittleKids(
+          railGuard(items, {
+            anime: anime ? "only" : "drop",
+            unmute: !!browse?.lang || !!browse?.country,
+          }),
+        ),
         `${tab}:${r.genre}.${r.tag ?? ""}`,
       );
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
@@ -1800,6 +1801,7 @@ async function AnimeRails({
       .catch(() => [] as SearchResult[]),
     animeTop("tv", genre?.tv, rails.a)
       .then((rows) => railGuard(rows, { anime: "only" }))
+      .then(dropLittleKids)
       .then(withImdbRatings)
       .catch(() => [] as SearchResult[]),
     /* **ثلاثةُ صفوفٍ جديدة في تبويب الأنمي (D-195، مواصفةُ أحمد):**
@@ -1843,6 +1845,7 @@ async function AnimeRails({
     /* «أنميٌ قادم» — `upcomingByFilter` يقبل المفتاح فيطيع الفلتر كاملاً */
     upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
       .then((rows) => railGuard(rows, { anime: "only" }))
+      .then(dropLittleKids)
       .catch(() => [] as SearchResult[]),
     /* «في السينما» يعود بالمنطقة كاملةً ثم يُصفّى هنا: TMDB لا يقبل
        تصنيفاً ولا لغةً على `/now_playing`، والصفّ عشرون عملاً لا أكثر —

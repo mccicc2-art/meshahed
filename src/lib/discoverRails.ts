@@ -10,7 +10,7 @@ import {
   type SearchResult,
   type DiscoverFilter,
   companyId,
-  kidsAllowed,
+  dropLittleKids,
 } from "@/lib/tmdb";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { railGuard, topChartRail, animeMovieRail, looksAnime } from "@/lib/topChart";
@@ -244,11 +244,12 @@ async function animeRail(
       return {
         items: await animeTop("tv")
           .then((rows) => railGuard(rows, { anime: "only" }))
+          .then(dropLittleKids)
           .then(withImdbRatings)
           .catch(() => []),
       };
     case "soon":
-      return { items: await upcomingByFilter("tv", base).then((rows) => railGuard(rows, { anime: "only" })).catch(() => []) };
+      return { items: await upcomingByFilter("tv", base).then((rows) => railGuard(rows, { anime: "only" })).then(dropLittleKids).catch(() => []) };
     case "top50-movie":
       return {
         items: await topChartRail("anime", 50, locale, "movie")
@@ -344,7 +345,7 @@ export async function personalRails(
       const tagId = tagDef ? await keywordId(tagDef.q).catch(() => null) : null;
       const keywords = [...(anime ? [ANIME_KEYWORD] : []), ...(tagId ? [tagId] : [])];
       const items = await topByFilter(media, { watchRegion: region, genreIds: ids, ...(keywords.length ? { keywords } : {}) }, MY_ROW_POOL, "popularity.desc").catch(() => []);
-      const guarded = drawMyRow(railGuard(items, { anime: anime ? "only" : "drop", kids: kidsAllowed(ids) ? "keep" : "drop" }), `${tab}:${r.genre}.${r.tag ?? ""}`);
+      const guarded = drawMyRow(await dropLittleKids(railGuard(items, { anime: anime ? "only" : "drop" })), `${tab}:${r.genre}.${r.tag ?? ""}`);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const p = new URLSearchParams();
