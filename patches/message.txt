@@ -1,0 +1,12 @@
+[deploy] D-1279 — Continue Watching card: explicit line heights and height 124 (app only)
+
+After D-1278 reached his phone Ahmed asked whether the card text had been
+changed and lowered at all. It had, but Text without a lineHeight takes
+Poppins' wide default line (about 20 for a 13 font), so the three lines stayed
+apart and the block sat about 13 above the progress bar. The lines now carry
+explicit heights (list label 13, title 17, counters 14), the gaps are 2 and
+the bottom padding is 8 (was 12). The card is 124 high at a 118 poster (was
+122). Same fonts, same width. Not tried on a device before the push.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HzzikFKBWMvhxeiwpWrNFV
