@@ -182,6 +182,45 @@ export function TrailerFeed({
         seek: t.trailerSeek,
         volume: t.trailerVolume,
       }}
+      /* 🆕 D-1295: **اسمُ العمل وسطرُه ونبذتُه تحت المقطع المكبَّر، وزرُّ «مكتبتي» بجوار الاسم** (طلبُه:
+         «ابغى زر اضافة ل ليست» · «خل اعلى نقطة له متساوية مع اسم الفلم وصغره درجه»). **الفعلُ فعلُ
+         البطاقة نفسُه** (`addToList`) لا نسخةٌ ثانية — فما أُضيف هنا يظهر مضافاً في بطاقته عند التصغير.
+         ⚠️ **والألوانُ بيضاءُ ثابتةٌ لا رموزُ السمة**: الستارةُ سوداءُ في النهار أيضاً، ورمزُ النصِّ في
+         `daylight` داكنٌ فوقها. **والنبذةُ أربعةُ أسطرٍ هنا** — للنصِّ مكانٌ لا تملكه البطاقة (D-1291). */
+      expandedInfo={(activeId) => {
+        const i = shown.find((x) => trailerClipKeyOf(x) === activeId);
+        if (!i) return null;
+        const isAdded = added.has(trailerKeyOf(i));
+        return (
+          <>
+            <div className="flex items-start gap-3">
+              <h2 className="min-w-0 flex-1 truncate text-22 font-bold text-white">{i.title}</h2>
+              <button
+                type="button"
+                onClick={() => addToList(i)}
+                disabled={isAdded}
+                /* **والحافّةُ العليا عند أعلى حروف الاسم** — نصفُ فراغ السطر فوقها. **والمرئيُّ ٢٨
+                   واللمسُ ٤٤** (`before`): زرٌّ صغّره صاحبُه لا يُصغَّر هدفُه (D-033). */
+                style={{ marginTop: "calc(var(--text-22) * 0.3)" }}
+                className={`pointer-events-auto relative flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-12 font-medium whitespace-nowrap transition active:opacity-70 before:absolute before:-inset-2 before:content-[''] ${
+                  isAdded ? "border-accent text-accent" : "border-white/40 text-white"
+                }`}
+              >
+                <Icon name={isAdded ? "check" : "plus"} size={14} />
+                {t.trailerMyList}
+              </button>
+            </div>
+            <p className="mt-0.5 truncate text-14 text-white/65">
+              {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
+            </p>
+            {i.overview && (
+              <p className="mt-2.5 text-14 leading-relaxed text-white/85 line-clamp-4" dir="auto">
+                {i.overview}
+              </p>
+            )}
+          </>
+        );
+      }}
     >
     <div>
       {shown.map((i, index) => {

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import { Icon } from "../Icon";
 import { readTrailerVolume, writeTrailerSound, writeTrailerVolume } from "@/lib/trailerPrefs";
@@ -1604,12 +1605,15 @@ export function TrailerPlayback({
   children,
   soundPref,
   expandedLabels,
+  expandedInfo,
 }: {
   children: React.ReactNode;
   /** آخرُ اختيارٍ محفوظٍ للصوت — **يُحاوَل بعد أوّل تفاعلٍ حقيقيٍّ فقط** */
   soundPref: boolean;
   /** 🆕 D-762: سطحٌ بلا هذه النصوص لا يعرض زرَّ تكبيرٍ أصلاً (الرايل) */
   expandedLabels?: TrailerExpandedLabels;
+  /** 🆕 D-1295: ما يُكتب تحت المقطع المكبَّر — يرسمه السطحُ الذي يملك بياناتِ البطاقة وأفعالَها */
+  expandedInfo?: (activeId: string) => ReactNode;
 }) {
   const snapRef = useRef<ControllerSnapshot>({
     activeId: null,
@@ -1805,7 +1809,7 @@ export function TrailerPlayback({
           className="absolute inset-0 h-full w-full object-cover"
         />
       </div>
-      {expandedLabels ? <ExpandedUi api={api} labels={expandedLabels} /> : null}
+      {expandedLabels ? <ExpandedUi api={api} labels={expandedLabels} info={expandedInfo} /> : null}
     </Ctx.Provider>
   );
 }
@@ -2050,7 +2054,15 @@ export function TrailerVolume({
  * iPhone في WebKit** — فهذا يملأ الشاشةَ داخل التطبيق، والتدويرُ يعطي
  * العرضيّ.
  */
-function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpandedLabels }) {
+function ExpandedUi({
+  api,
+  labels,
+  info,
+}: {
+  api: ControllerApi;
+  labels: TrailerExpandedLabels;
+  info?: (activeId: string) => ReactNode;
+}) {
   const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
   /* 🆕 D-934: الضغطةُ المزدوجة تقفز — على سطح التكبير كما على البطاقة.
      (قبل الخروج المبكّر: قاعدةُ الخطّافات) */
@@ -2135,6 +2147,19 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
         <SeekBadge side={dbl.badge} />
       </button>
       <TrailerSpinner active={snap.phase === "loading"} />
+      {/* 🆕 D-1295 (فكرةُ أحمد بلقطة التكبير: «افكر ادخل نص عن الفلم تحت الفيديو»): **منذ صار السحبُ ينقل بين
+          المقاطع (D-1293) والمكبَّرُ لا يقول أيَّ عملٍ تشاهد** — وتحت صندوق 16:9 خُمسا الشاشة سوادٌ فارغ.
+          **يبدأ عند حافّة الصندوق السفلى** (الحسابُ حسابُ `alignOverlay`) وينتهي فوق شريط التقديم.
+          🔑 **لا يُلمس إلّا زرُّه**: اللمسةُ على النصِّ تسقط إلى السطح تحته فتبقى سحبةً أو كشفاً — **وطبقةٌ
+          تبتلع اللمسَ فوق سطحِ إيماءةٍ تقتل الإيماءة.** **وفي العرضيّ يغيب**: الفيديو يملأ الشاشة ولا مكانَ تحته. */}
+      {info && snap.activeId ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-10 overflow-hidden px-4 pt-5 landscape:hidden"
+          style={{ top: "calc(50% + min(100vw, 100vh * 16 / 9) * 9 / 32)", bottom: "5.5rem" }}
+        >
+          {info(snap.activeId)}
+        </div>
+      ) : null}
       <button
         type="button"
         aria-label={labels.collapse}
