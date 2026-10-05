@@ -292,7 +292,7 @@ export async function buildSection(
   const guard = async (rows: SearchResult[]) => {
     /* D-1289 — نوعُ Kids يسقط من كلِّ أقسام «اكتشف» إلّا المُبقى بالاسم؛ وأقسامُ الأنمي مستثناة */
     const guarded = railGuard(rows, { anime, unmute });
-    const kept = media === "anime" ? guarded : dropKids(guarded);
+    const kept = media === "anime" ? guarded : dropKids(guarded, media === "movie" ? "movie" : "tv");
     const prefs = await prefsP;
     return (
       prefs.excludedLanguages.length > 0

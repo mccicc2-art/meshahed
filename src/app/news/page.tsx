@@ -763,7 +763,7 @@ async function MyRowsRails({
         anime: anime ? "only" : "drop",
         unmute: !!browse?.lang || !!browse?.country,
       });
-      const guarded = drawMyRow(anime ? safe : dropKids(safe), `${tab}:${r.genre}.${r.tag ?? ""}`);
+      const guarded = drawMyRow(anime ? safe : dropKids(safe, media), `${tab}:${r.genre}.${r.tag ?? ""}`);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const title =

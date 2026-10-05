@@ -726,13 +726,45 @@ const KIDS_KEEP: { id: number; name: string; why: string }[] = [
   { id: 2098, name: "Batman: The Animated Series", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «الثانية ويبقى باتمان»" },
 ];
 const KIDS_KEEP_IDS: ReadonlySet<number> = new Set(KIDS_KEEP.map((k) => k.id));
-/** هل يُسقَط؟ — يحمل نوعَ Kids وليس في قائمة الإبقاء */
+/**
+ * 🆕 D-1290 — **مسلسلاتٌ تُسقَط من رفوف «اكتشف» بالاسم** (قائمةُ الإسقاط، أختُ قائمة الإبقاء).
+ * D-1289 أسقطت نوعَ Kids — **وقِيس على المنشور فبقيت هذه**: TMDB لا يسجّلها بنوع Kids أصلاً
+ * (Adventure Time: رسومٌ وكوميديا فقط). **فلا نوعَ ولا تصنيفَ عمريّاً يحمل ذوقَه فيها؛ الاسمُ وحدَه.**
+ * الأربعةُ الأولى سمّاها بنفسه («شيلها»)، والأربعةُ التالية عُرضت عليه فقال: «واستبعد الاربع اللي لم
+ * اسمها». **ولا يُضاف إليها إلّا بطلبٍ صريحٍ منه** — وإلّا صارت ذوقَ من كتب الشيفرة (شرطُ D-170).
+ * المعرّفاتُ من روابط `/show/<id>` في الصفحة المنشورة (٥ أكتوبر). تبقى في البحث وفي مكتبة من أضافها.
+ */
+const DISCOVER_DROP_TV: { id: number; name: string; why: string }[] = [
+  { id: 15260, name: "Adventure Time", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «شيلها»" },
+  { id: 4229, name: "Dexter's Laboratory", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «شيلها»" },
+  { id: 31132, name: "Regular Show", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «شيلها»" },
+  { id: 40075, name: "Gravity Falls", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «شيلها»" },
+  { id: 45140, name: "Teen Titans Go!", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «استبعد الاربع اللي لم اسمها»" },
+  { id: 1877, name: "Phineas and Ferb", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «استبعد الاربع اللي لم اسمها»" },
+  { id: 37606, name: "The Amazing World of Gumball", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «استبعد الاربع اللي لم اسمها»" },
+  { id: 61175, name: "Steven Universe", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «استبعد الاربع اللي لم اسمها»" },
+];
+const DISCOVER_DROP_TV_IDS: ReadonlySet<number> = new Set(DISCOVER_DROP_TV.map((k) => k.id));
+/** هل يُسقَط **مسلسلٌ**؟ — مسمّىً في قائمة الإسقاط، أو يحمل نوعَ Kids وليس في قائمة الإبقاء */
 export function isDroppedKidsTv(id: number, genreIds?: readonly number[] | null): boolean {
+  if (DISCOVER_DROP_TV_IDS.has(id)) return true;
   return (genreIds ?? []).includes(KIDS_TV_GENRE) && !KIDS_KEEP_IDS.has(id);
 }
-/** **حارسُ الأطفال لرفٍّ كامل** — لرفوف «اكتشف» في تبويبَي المسلسلات والأفلام (المعرّفُ تلفزيونيٌّ فلا يطابق فيلماً) */
-export function dropKids<T extends { id: number; genre_ids?: number[] }>(rows: T[]): T[] {
-  return rows.filter((r) => !isDroppedKidsTv(r.id, r.genre_ids));
+/**
+ * **حارسُ الأطفال لرفٍّ كامل** — لرفوف «اكتشف» خارج تبويب الأنمي.
+ * ⚠️ **`media` لازمةٌ لقائمة الإسقاط**: المعرّفُ `15260` مسلسلٌ هنا وقد يكون فيلماً آخر عند TMDB —
+ * فالإسقاطُ بالاسم للمسلسل وحدَه (`media_type` الصفِّ إن وُجد، وإلّا جهةُ الرفّ). نوعُ Kids تلفزيونيٌّ
+ * بطبعه فلا يحتاج الجهة.
+ */
+export function dropKids<T extends { id: number; genre_ids?: number[]; media_type?: string }>(
+  rows: T[],
+  media: "tv" | "movie",
+): T[] {
+  return rows.filter((r) =>
+    (r.media_type ?? media) === "tv"
+      ? !isDroppedKidsTv(r.id, r.genre_ids)
+      : !(r.genre_ids ?? []).includes(KIDS_TV_GENRE),
+  );
 }
 
 /**

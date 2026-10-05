@@ -346,7 +346,7 @@ export async function personalRails(
       const items = await topByFilter(media, { watchRegion: region, genreIds: ids, ...(keywords.length ? { keywords } : {}) }, MY_ROW_POOL, "popularity.desc").catch(() => []);
       /* D-1289 — نوعُ Kids يسقط قبل القرعة، إلّا في تبويب الأنمي */
       const safe = railGuard(items, { anime: anime ? "only" : "drop" });
-      const guarded = drawMyRow(anime ? safe : dropKids(safe), `${tab}:${r.genre}.${r.tag ?? ""}`);
+      const guarded = drawMyRow(anime ? safe : dropKids(safe, media), `${tab}:${r.genre}.${r.tag ?? ""}`);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const p = new URLSearchParams();
