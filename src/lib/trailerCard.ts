@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { follow } from "@/lib/actions";
+import { follow, unfollow } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import type { TrailerItem } from "@/lib/trailers";
 
@@ -68,7 +68,22 @@ export function useTrailerFollow() {
       flashError((error as Error).message);
     });
   }, []);
-  return { added, addToList };
+  /* 🆕 D-1297 (سؤالُ أحمد بتسجيل: «ما اقدر اشيله من الليست؟») — **التراجعُ عن إضافةٍ وقعت للتوّ**: كان الزرُّ
+     يتعطّل بعد الإضافة، فمن أضاف خطأً خرج إلى صفحة العمل ليزيل. **ولا يطال إلّا ما في `added`** — ما أُضيف
+     في هذه الزيارة: متابعةٌ قديمةٌ بتقدّمها لا تُحذف بضغطةٍ عابرةٍ على مقطع. والفشلُ يعيد العلامة. */
+  const removeFromList = useCallback((item: TrailerItem) => {
+    const key = trailerKeyOf(item);
+    setAdded((previous) => {
+      const next = new Set(previous);
+      next.delete(key);
+      return next;
+    });
+    unfollow({ tmdbId: item.tmdbId, mediaType: item.mediaType }).catch((error) => {
+      setAdded((previous) => new Set(previous).add(key));
+      flashError((error as Error).message);
+    });
+  }, []);
+  return { added, addToList, removeFromList };
 }
 
 /**

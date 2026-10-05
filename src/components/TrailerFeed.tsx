@@ -72,7 +72,7 @@ export function TrailerFeed({
      يُقرأ اهتزازاً. فالحمولةُ الأولى هي العلفُ ما عاش المكوّن، والمُضافُ يبقى بعلامته ويخرج في الزيارة
      التالية. **وتبديلُ التبويب لا يتأثّر**: مفتاحُ `Suspense` في الصفحة يبني مكوّناً جديداً بحمولته. */
   const [items] = useState(served);
-  const { added, addToList } = useTrailerFollow();
+  const { added, addToList, removeFromList } = useTrailerFollow();
   /**
    * 🆕 **الدفعاتُ التاليةُ تُلحق بالأولى** (D-772) — **والخانةُ تُحسب
    * على المجموع**: `useTrailerSlots` يقصّ عند `count`، **فسقفٌ ثابتٌ
@@ -204,8 +204,9 @@ export function TrailerFeed({
               <h2 className="min-w-0 flex-1 truncate text-22 font-bold text-white">{i.title}</h2>
               <button
                 type="button"
-                onClick={() => addToList(i)}
-                disabled={isAdded}
+                /* D-1297: **قلّابٌ لا بابٌ باتّجاهٍ واحد** — ✓ تُزيل ما أضافته هذه الزيارة */
+                onClick={() => (isAdded ? removeFromList(i) : addToList(i))}
+                aria-pressed={isAdded}
                 /* **والحافّةُ العليا عند أعلى حروف الاسم** — نصفُ فراغ السطر فوقها. **والمرئيُّ ٢٨
                    واللمسُ ٤٤** (`before`): زرٌّ صغّره صاحبُه لا يُصغَّر هدفُه (D-033). */
                 style={{ marginTop: "calc(var(--text-22) * 0.3)" }}
@@ -308,8 +309,8 @@ export function TrailerFeed({
                 </Link>
                 <button
                   type="button"
-                  onClick={() => addToList(i)}
-                  disabled={isAdded}
+                  onClick={() => (isAdded ? removeFromList(i) : addToList(i))}
+                  aria-pressed={isAdded}
                   className={`flex items-center justify-center gap-2 py-3 text-12 whitespace-nowrap active:opacity-70 transition ${
                     isAdded ? "text-accent" : "text-muted"
                   }`}
