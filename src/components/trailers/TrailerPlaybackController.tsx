@@ -165,6 +165,10 @@ interface ControllerApi {
   /** ⚖️ D-762: التقديمُ عاد بطلب صاحبه — بثوانٍ مطلقةٍ على النشطة */
   seekTo(seconds: number): void;
   toggleExpand(): void;
+  /** 🆕 D-1293: في التكبير — المقطعُ التالي (`1`) أو السابق (`-1`) بترتيب السطح؛ `false` عند الطرف */
+  stepExpanded(dir: 1 | -1): boolean;
+  /** 🆕 D-1293: غلافُ البطاقة النشطة — سِترُ التكبير ريثما يُقلع مقطعُها */
+  activeCover(): string | null;
   /** 🆕 D-764: لمسةُ إظهارِ الأزرار المتوارية — تعيد عدَّ الثواني الخمس */
   pokeControls(): void;
   /**
@@ -1185,6 +1189,18 @@ function createEngine(
     el.style.height = `${r.height}px`;
   };
 
+  /* 🆕 D-1293 (سؤالُ أحمد بتسجيل: «الدوكس ليش ظاهر اذا كبرت الفيديو؟»): **الدوكُ أصليٌّ خارجَ
+     المستند** (D-1012) فلا تغطّيه طبقةٌ مهما علت — **التكبيرُ بُني للمتصفّح قبل أن يصير الدوكُ
+     أصليّاً ولم يُربط به.** فالصفحةُ تُخبر الغلافَ بالحالين عبر الجسر القائم، وهو يطوي دوكَه
+     ويعيده. **وخارجَ الغلاف لا جسرَ فلا شيءَ يُرسَل.** */
+  const tellShell = (on: boolean) => {
+    try {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "immersive", on }));
+    } catch {
+      /* جسرٌ سقط — الدوكُ يبقى ظاهراً، وهو الحالُ قبل هذا السطر */
+    }
+  };
+
   /* التكبيرُ المسرحيّ (D-762): الطبقةُ فوق ترويسةِ الصفحة وتحت أزرارِ
      التوسعة، والتمريرُ خلفها مقفول — والتصغيرُ يعيد كلَّ شيءٍ لمكانه */
   setExpanded = (on: boolean) => {
@@ -1196,6 +1212,7 @@ function createEngine(
     /* D-763: ستارةُ السواد حول صندوق 16:9 — تحت الطبقة وفوق الصفحة */
     dom.scrim.style.display = on ? "block" : "none";
     publish({ expanded: on });
+    tellShell(on);
     alignOverlay();
   };
   const syncOverlay = () => {
@@ -1485,9 +1502,45 @@ function createEngine(
       pokeControls();
     },
 
+    /* 🆕 D-1293 (طلبُ أحمد بتسجيل: «اذا كبرت الفيديو ابغى بالايماء اروح للفيديو الاخر — انزل تحت
+       للفيديو اللي تحت واقدر ارجع فوق»): كان التكبيرُ يقفل التمريرَ ولا يعطي بديلاً، فالمخرجُ تصغيرٌ
+       ثمّ تمريرٌ ثمّ تكبير. **الترتيبُ ترتيبُ السطح مقيساً لحظتَها** لا ترتيبُ التسجيل: خانةٌ استُبدل
+       مقطعُها (D-756) تُسجَّل آخراً وهي في وسط الصفحة.
+       🔑 **والصفحةُ خلف الستارة تتبع**: تُمرَّر إلى البطاقة الجديدة فيجدها صاحبُها تحته حين يصغّر —
+       **والنسبُ تُكتب قبل أن يصل المراقب**: بينهما لحظةٌ يرى فيها `reconcile` النشطةَ خارجَ العين
+       فيطفئها، و`clearActive` تُسقط التكبيرَ معها. */
+    stepExpanded(dir: 1 | -1) {
+      if (!expandedFlag || !activeId) return false;
+      const order = [...slots.entries()]
+        .filter(([id]) => id === activeId || !exhausted.has(id))
+        .map(([id, s]) => ({ id, top: s.area.getBoundingClientRect().top }))
+        .sort((a, b) => a.top - b.top);
+      const next = order[order.findIndex((o) => o.id === activeId) + dir];
+      const slot = next ? slots.get(next.id) : undefined;
+      if (!next || !slot) return false;
+      const r = slot.area.getBoundingClientRect();
+      window.scrollTo(0, Math.max(0, window.scrollY + r.top - (window.innerHeight - r.height) / 2));
+      ratios.set(activeId, 0);
+      ratios.set(next.id, 1);
+      /* **والسحبُ إليها فسخُ إيقافِها** — كضغطة تشغيلها (D-964) */
+      userPaused.delete(next.id);
+      activate(next.id, true);
+      return true;
+    },
+
+    activeCover() {
+      const img = activeId ? slots.get(activeId)?.area.querySelector("img") : null;
+      return img ? img.currentSrc || img.src || null : null;
+    },
+
     /* 🆕 D-764: لمسةُ سطحٍ والأزرارُ متواريةٌ = أظهِرها ولا توقف */
     pokeControls() {
       pokeControls();
+    },
+
+    /* 🆕 D-1293: زرُّ الرجوع في الغلاف يصغّر قبل أن يغادر — يناديه `WebLayer` */
+    collapse() {
+      setExpanded(false);
     },
 
     destroy() {
@@ -1495,6 +1548,8 @@ function createEngine(
          والستارةُ يُفكّان مهما كانت الحال (D-762/D-763) */
       document.documentElement.style.overflow = "";
       dom.scrim.style.display = "none";
+      /* D-1293: **ومحرّكٌ يموت مكبَّراً يعيد الدوك** — دوكٌ يغيب ولا يعود أسوأُ من دوكٍ ظاهر */
+      if (expandedFlag) tellShell(false);
       destroyed = true;
       if (verifyTimer !== null) {
         window.clearTimeout(verifyTimer);
@@ -1618,8 +1673,12 @@ export function TrailerPlayback({
     }
     for (const [id, cb] of earlyUnavailable.current) engine.registerUnavailable(id, cb);
     engine.start();
+    /* D-1293: بابُ الغلاف إلى التصغير — اسمٌ واحدٌ على النافذة، يُنزع مع المحرّك */
+    const hook = window as { __loopzTrailerCollapse?: () => void };
+    hook.__loopzTrailerCollapse = () => engine.collapse();
 
     return () => {
+      delete hook.__loopzTrailerCollapse;
       engineRef.current = null;
       engine.destroy();
       LIVE_CONTROLLERS -= 1;
@@ -1659,6 +1718,8 @@ export function TrailerPlayback({
   const pokeControls = useCallback(() => {
     engineRef.current?.pokeControls();
   }, []);
+  const stepExpanded = useCallback((dir: 1 | -1) => engineRef.current?.stepExpanded(dir) ?? false, []);
+  const activeCover = useCallback(() => engineRef.current?.activeCover() ?? null, []);
   const togglePlay = useCallback(() => {
     engineRef.current?.togglePlay();
   }, []);
@@ -1687,6 +1748,8 @@ export function TrailerPlayback({
       tapSound,
       seekTo,
       toggleExpand,
+      stepExpanded,
+      activeCover,
       pokeControls,
       togglePlay,
       setRate,
@@ -1702,6 +1765,8 @@ export function TrailerPlayback({
       tapSound,
       seekTo,
       toggleExpand,
+      stepExpanded,
+      activeCover,
       pokeControls,
       togglePlay,
       setRate,
@@ -1988,15 +2053,30 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
   /* 🆕 D-934: الضغطةُ المزدوجة تقفز — على سطح التكبير كما على البطاقة.
      (قبل الخروج المبكّر: قاعدةُ الخطّافات) */
   const dbl = useDoubleTapSeek(api);
+  /* 🆕 D-1293: **سحبةٌ رأسيّةٌ تنقل** — للأعلى التالي وللأسفل السابق (المحتوى يتبع الإصبع). تُحسب عند
+     رفع الإصبع: مسافةٌ واضحةٌ (٥٦px) والرأسيُّ غالبٌ، فلا تختلط بلمسةٍ ولا بضغطتَي القفز.
+     **وعلى السطح وحدَه**: شريطُ التقديم والصوتُ إخوةٌ له فلا تصله لمساتُهما. */
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const swipedAt = useRef(0);
   if (!snap.expanded) return null;
   const playing = snap.phase === "playing";
   const controls = snap.controlsVisible;
+  /* **والغلافُ سِترُ الانتقال**: في التكبير غلافُ البطاقة خلف الستارة، فمقطعٌ يُقلع كان سواداً
+     ودوّارة. يُعرض هنا في صندوق 16:9 نفسِه **ويُنزع نزعاً لا تلاشياً** (درسُ D-879). */
+  const cover = playing || snap.phase === "paused" ? null : api.activeCover();
   /* D-764: أزرارٌ تتوارى بعد ٥ ثوانِ تشغيل — والفئةُ واحدةٌ للثلاثة والشريط */
   const fade = `transition-opacity duration-300 ${controls ? "opacity-100" : "pointer-events-none opacity-0"}`;
   const showsPlay =
     snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled";
   return (
     <div className="fixed inset-0 z-[60]">
+      {cover ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 aspect-video -translate-x-1/2 -translate-y-1/2 bg-cover bg-center"
+          style={{ width: "min(100vw, calc(100vh * 16 / 9))", backgroundImage: `url(${JSON.stringify(cover)})` }}
+        />
+      ) : null}
       {/* ⚖️ D-771 (حكمه: «خله دائماً شغال»): السطحُ يُظهر الأزرارَ فقط —
           الإيقافُ أُلغي، والتشغيلُ لواقفةِ النظام وحدَها */}
       <button
@@ -2004,7 +2084,29 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
         aria-label={labels.play}
         aria-hidden={playing && !showsPlay}
         tabIndex={showsPlay ? 0 : -1}
+        /* D-1293: **السطحُ يملك إيماءتَه** — بلا هذه يقرأ المتصفّحُ السحبةَ تمريراً أو سحبَ تحديث */
+        style={{ touchAction: "none" }}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          swipe.current = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+        }}
+        onTouchCancel={() => {
+          swipe.current = null;
+        }}
+        onTouchEnd={(e) => {
+          const from = swipe.current;
+          const t = e.changedTouches[0];
+          swipe.current = null;
+          if (!from || !t) return;
+          const dx = t.clientX - from.x;
+          const dy = t.clientY - from.y;
+          if (Math.abs(dy) < 56 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
+          swipedAt.current = e.timeStamp;
+          api.stepExpanded(dy < 0 ? 1 : -1);
+        }}
         onClick={(e) => {
+          /* **وسحبةٌ نقلت لا تُحسب لمسة** */
+          if (e.timeStamp - swipedAt.current < 400) return;
           if (playing) {
             if (dbl.tap(e)) return;
             api.pokeControls();

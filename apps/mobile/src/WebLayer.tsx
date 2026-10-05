@@ -212,6 +212,11 @@ export function WebLayer() {
      D-1148 حكم بـ`session.seen()` ساعةَ الرسم، والأثرُ يُكتب بعد أوّل رمز). `AppGateSignal` في بطل الترحيب يرسل
      `gate` عند التركيب والفكّ، ويُصفَّر مع كلِّ تحميل مستندٍ جديد (فكُّ المكوّن لا يجري عند مغادرة المستند). */
   const [landing, setLanding] = useState(false);
+  /* 🆕 D-1293 (سؤالُ أحمد بتسجيل: «الدوكس ليش ظاهر اذا كبرت الفيديو؟») — **الصفحةُ في تكبيرٍ مسرحيّ**: التكبيرُ يملأ
+     المستندَ والدوكُ أصليٌّ خارجَه (D-1012) فكان يبقى تحت الفيديو. الصفحةُ تُعلن الحالين (`immersive`) والغلافُ يطوي
+     دوكَه لهما. **والعلمُ لا يعيش بعد صفحته**: يسقط بتبدّل المسار وبالتحميل وباختفاء الطبقة — دوكٌ يغيب ولا يعود
+     أسوأُ من دوكٍ ظاهر. */
+  const [immersive, setImmersive] = useState(false);
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
@@ -406,6 +411,8 @@ export function WebLayer() {
     } catch {
       /* عنوانٌ لا يُقرأ ⇒ الرئيسيّة */
     }
+    /* D-1293 — مسارٌ تبدّل أو مستندٌ يُحمَّل ⇒ لا تكبيرَ قائماً فيه */
+    if (next !== pathRef.current || nav.loading) setImmersive(false);
     setPath(next);
     pathRef.current = next;
     if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
@@ -478,6 +485,11 @@ export function WebLayer() {
           if (handTimer.current) clearTimeout(handTimer.current);
           handTimer.current = null;
         }
+        return;
+      }
+      /* 🆕 D-1293 — تكبيرُ التريلر: من نطاقنا وحدَه */
+      if (msg.type === "immersive") {
+        if (hostOk) setImmersive(msg.on === true);
         return;
       }
       if (msg.type === "bridge:ready") {
@@ -637,11 +649,20 @@ export function WebLayer() {
      شاشةٍ دُفعت من الصفحة يُعيد المرساةَ إلى التركيز فتسجّل مستمعَها (`useFocusEffect`) في الدورة نفسِها — والأحدثُ يُسأل
      أوّلاً (`BackHandler`)، فالطبقةُ تسجّل بعدها كي تبقى الأولى ما دامت فوق. (يحلّ بندَ 05 (ب): مستمعُ الويب كان يسبق الأصليّ.) */
   const topKey = top?.key ?? "";
+  /* D-1293 — التكبيرُ يُحسب للطبقة الظاهرة وحدَها */
+  const immersed = immersive && visible;
   useEffect(() => {
     if (Platform.OS !== "android" || !visible) return;
     let sub: { remove: () => void } | null = null;
     const timer = setTimeout(() => {
       sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1293 — **الرجوعُ والفيديو مكبَّرٌ يصغّره ولا يغادر**: مغادرةٌ من تحت التكبير تترك صاحبَها في صفحةٍ
+         أخرى لم يرَ أنّه خرج إليها. والعلمُ يسقط هنا لا بانتظار ردِّ الصفحة — فإن لم تُجب عاد الدوكُ على أيِّ حال. */
+      if (immersed) {
+        ref.current?.injectJavaScript("try{window.__loopzTrailerCollapse&&window.__loopzTrailerCollapse()}catch(e){};true;");
+        setImmersive(false);
+        return true;
+      }
       /* 🆕 D-1102 — **على صفحة الوصول نفسِها الرجوعُ عودةٌ مباشرة** (بلاغُ أحمد بتسجيل على 1.11.11): كان
          `goBack()` يحمّل ما قبلها في تاريخ الـWebView — ملفَّه من زيارةٍ سابقة — فيُرسم هيكلُ تحميله ربعَ
          ثانية ثمّ سوادٌ ثمّ تُسلِّم الصفحةُ العودة. الوجهةُ واحدةٌ في الحالين؛ الفرقُ ألّا نمرّ بصفحةٍ لم تُطلب.
@@ -670,7 +691,7 @@ export function WebLayer() {
       clearTimeout(timer);
       sub?.remove();
     };
-  }, [canGoBack, router, path, goNative, visible, topKey]);
+  }, [canGoBack, router, path, goNative, visible, topKey, immersed]);
 
   /* 🆕 K3b — **الطبقةُ تختفي ⇒ ما يُشغَّل فيها يتوقّف** (تريلرُ صفحةِ بابٍ عاد منها المستخدم، أو عملٌ دُفع فوقها). كانت
      الصفحةُ تُنزع من العرض فلا تُرى؛ الآن هي مركَّبةٌ شفّافةٌ فوق الشاشات — والصوتُ لا تحجبه الشفافيّة. */
@@ -772,7 +793,7 @@ export function WebLayer() {
       {/* D-1103 — الدرعُ فوق الصفحة وحدَها لحظةَ انكشافها؛ لا يُرى ولا يغطّي الشريطَ الأصليّ */}
       {shielded ? <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="auto" /> : null}
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
-      {ready && !failed && !atGate(path, landing) ? (
+      {ready && !failed && !atGate(path, landing) && !immersed ? (
         <BottomNav
           shell
           active={navKey}
