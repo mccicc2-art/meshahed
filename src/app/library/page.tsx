@@ -269,12 +269,15 @@ export default async function LibraryPage({
            أخضر مكتمل، بنفسجي قيد المشاهدة، أحمر موقوف، ولا شيء لِما لم يبدأ */
         count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
         dropped,
+        /* D-1280 — موقوفٌ مؤقّتاً: علامةٌ على الملصق و«كمّل» في قائمته */
+        paused: !dropped && !done && f.watch_state === "paused",
         /* الحالة اسمَ رقاقةٍ لا رقماً: الترتيب الذكي كان يحسبها أصلاً
            (rank)، ورقائق التقسيم (طلب المالك) تحتاجها بالاسم */
         /* **من الوصفة الواحدة** (D-876): **قائمةُ المكتبة الذكيّة تقرأ الحالةَ
            نفسَها** — فاستُخرجت لا نُسخت (D-376). */
         status: showStatusOf(f, watchedByShow.get(f.tmdb_id) ?? 0),
-        rank: dropped ? 3 : watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
+        /* D-1280 — «ابدأ» بلا حلقةٍ يرتَّب مع ما يُتابَع، كما تقول حالتُه */
+        rank: dropped ? 3 : !done && (watched > 0 || !!f.watch_state) ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,
       };
     })

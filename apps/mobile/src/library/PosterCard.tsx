@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
+import { Icon } from "../icons";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { MarqueeText } from "./MarqueeText";
@@ -36,6 +37,12 @@ export type CardItem = {
   count?: number;
   completed: boolean;
   dropped: boolean;
+  /** 🆕 D-1280 — لم يبدأ: لا حلقةَ شوهدت ولا «ابدأ» ضُغط. القائمةُ تعرض «ابدأ» و«إزالة» بدل البطاقة الحمراء */
+  unstarted?: boolean;
+  /** 🆕 D-1280 — موقوفٌ مؤقّتاً: علامةٌ على الملصق، و«كمّل» في القائمة */
+  paused?: boolean;
+  /** 🆕 D-1280 — البطاقةُ نفسُها تحمل دائرةَ الصحّ (بطاقةُ «تابِع المشاهدة») فلا يتكرّر «الحلقة التالية» في قائمتها */
+  tick?: boolean;
 };
 
 /** الحجابُ `from-black/90 via-black/60 to-transparent` صورةٌ ١×٤٨ تُمدّ — بلا حزمةِ تدرّجٍ جديدة */
@@ -67,7 +74,7 @@ export const PosterCard = memo(function PosterCard({
   const uri = posterFor(item.posterPath, width);
   const ref = useRef<View>(null);
   const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(item, { x, y, width: w, height: h })) : undefined;
-  const a11y = [item.title, item.dropped ? t.libStatusDropped : item.completed ? t.libStatusCompleted : item.progress > 0 ? `${t.libStatusWatching} ${item.progress}%` : null].filter(Boolean).join("، ");
+  const a11y = [item.title, item.dropped ? t.libStatusDropped : item.completed ? t.libStatusCompleted : item.paused ? t.pausedBadge : item.progress > 0 ? `${t.libStatusWatching} ${item.progress}%` : null].filter(Boolean).join("، ");
   return (
     <Pressable
       ref={ref}
@@ -133,6 +140,13 @@ export const PosterCard = memo(function PosterCard({
             <Text size={12} weight="700" color={tokens.onAccent} style={{ fontVariant: ["tabular-nums"] }}>
               {String(item.count)}
             </Text>
+          </View>
+        ) : null}
+        {/* 🆕 D-1280 — **علامةُ الإيقاف المؤقّت** في الطرف المقابل لشارة العدد: دائرةُ الصحّ نفسُها مصغَّرةً (زجاجٌ
+            أسودُ بحدٍّ أبيضَ خافت) فلا شكلَ ثالثٌ فوق الملصق. تقول لماذا غاب العملُ من «تابِع المشاهدة» */}
+        {item.paused && !item.dropped ? (
+          <View style={{ position: "absolute", top: 8, start: 8, width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
+            <Icon name="pause" size={12} color="#fff" />
           </View>
         ) : null}
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 8, paddingBottom: 8, paddingTop: 28 }}>

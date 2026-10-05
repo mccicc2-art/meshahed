@@ -265,6 +265,11 @@ export async function GET() {
       },
       widget: body.widgetItems,
       pick_genres_hint: body.favGenres.length === 0,
+      watch_states: Object.fromEntries(
+        followRows
+          .filter((f) => f.media_type === "tv" && !f.dropped && (f.watch_state === "started" || f.watch_state === "paused"))
+          .map((f) => [String(f.tmdb_id), f.watch_state as "started" | "paused"]),
+      ),
       hints: sanitizeUiState(profile?.ui_state).hints,
     };
     return ok(payload);

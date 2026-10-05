@@ -1,4 +1,4 @@
-import React, { memo, useState } from "react";
+import React, { memo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -37,6 +37,7 @@ export const ContinueCard = memo(function ContinueCard({
   onPress,
   onCheck,
   busy,
+  onHold,
 }: {
   card: HomeContinueCard;
   posterW: number;
@@ -47,8 +48,13 @@ export const ContinueCard = memo(function ContinueCard({
   /** زرُّ «شاهدتُها» — العملُ يختم حلقتَه (D-437)، والقائمةُ تختم «التالي» فيها (D-604/D-1079) */
   onCheck?: () => void;
   busy?: boolean;
+  /** 🆕 D-1280 — الضغطُ المطوّل على بطاقة مسلسل: يمرّر موضعَها لتُرسى القائمةُ عليه (وصفةُ `PosterCard`).
+      «إيقاف مؤقّت» يُخرج العملَ من هذا الصفّ، فبابُه هنا لا في المكتبة وحدَها */
+  onHold?: (anchor: { x: number; y: number; width: number; height: number }) => void;
 }) {
   const { t, tokens } = useApp();
+  const holdRef = useRef<View>(null);
+  const hold = onHold ? () => holdRef.current?.measureInWindow((x, y, width, height) => onHold({ x, y, width, height })) : undefined;
   const isShow = card.type === "show";
   const title = isShow ? card.title : card.list_name;
   const poster = isShow ? card.poster_path : card.next.poster_path;
@@ -93,7 +99,7 @@ export const ContinueCard = memo(function ContinueCard({
       <View>
         {/* D-1089 — الصفُّ على لون الصفحة (`bg`) لا `surface` (أحمد بلقطة: «الخلفيّة الرصاصيّة أبغاها سوداء») —
             كبطاقة القائمة والتريلر (D-1081): الحدُّ الإطارُ الرفيع وحده، و`bg` لا `#000` كي تصحّ `daylight` */}
-        <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}، ${sub}`} style={({ pressed }) => [styles.row, { borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
+        <Pressable ref={holdRef} onPress={onPress} onLongPress={hold} delayLongPress={350} accessibilityRole="button" accessibilityLabel={`${title}، ${sub}`} style={({ pressed }) => [styles.row, { borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
           <View style={{ width: 144, aspectRatio: 16 / 10, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
             {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={20} color={tokens.muted} /></View>}
           </View>
@@ -121,7 +127,10 @@ export const ContinueCard = memo(function ContinueCard({
   return (
     <View style={{ width: BACKDROP_W }}>
       <Pressable
+        ref={variant === "card" ? holdRef : undefined}
         onPress={onPress}
+        onLongPress={hold}
+        delayLongPress={350}
         accessibilityRole="button"
         accessibilityLabel={`${title}، ${sub}`}
         style={({ pressed }) => [

@@ -28,7 +28,7 @@ import type { CardItem } from "./PosterCard";
  * الويب؛ وإن لم تسع الشاشةُ تحتها تُرفع فوقها. **`Modal` شفّاف** لا عنصرٌ
  * داخل الصفّ: الصفُّ الأفقيُّ يقصّ ما يخرج عنه.
  */
-export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop" | "towatch" | "dismiss" | "remove";
+export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop" | "towatch" | "dismiss" | "remove" | "start" | "pause" | "unpause";
 
 /**
  * 🆕 D-978 — **القائمةُ نفسُها لبطاقات «اكتشف»** (بلاغُ أحمد بلقطة: «في الويب إذا
@@ -37,6 +37,39 @@ export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "dro
  * «شاهدته كلّه» · «تعليقك» · «غير مهتمّ» — **ولا «بطاقة حمراء»** (الإيقافُ فعلُ من
  * يتابع، ومن يتابع في المكتبة). **لوحٌ واحد لا ثانٍ**: `variant` يقرّر الصفوف.
  */
+/**
+ * 🆕 D-1280 — **صفوفُ «مكتبتي» حسب حال العمل** (أحمد، ٥ أكتوبر، بلقطة القائمة فوق عملٍ في «للمشاهدة»):
+ * - **لم يبدأ**: لا «بطاقة حمراء» — الإيقافُ فعلُ من بدأ — وبدلَها «إزالة» من المكتبة. والمسلسلُ صفُّه الأوّل
+ *   «ابدأ»؛ والفيلمُ بلا بدءٍ ولا إيقاف («الأفلام مافيها حلقات»).
+ * - **يتابعه**: «إيقاف مؤقّت» أوّلاً. و«الحلقة التالية» **حيث لا دائرةَ صحٍّ على البطاقة** (`tick`): على بطاقة
+ *   «تابِع المشاهدة» الدائرةُ تفعلها بضغطة، فالصفُّ تكرار.
+ * - **موقوفٌ مؤقّتاً**: «كمّل» — وبلا «الحلقة التالية»: تعليمُ حلقةٍ ينقض الإيقافَ نفسَه.
+ * الموقوفُ بالبطاقة الحمراء والمكتملُ على حالهما. دالّةٌ خارج المكوّن: الشروطُ تُقرأ جدولاً لا سطراً واحداً.
+ */
+type Row = { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" };
+function libraryRows(item: CardItem, t: ReturnType<typeof useApp>["t"]): Row[] {
+  const review: Row = { key: "review", icon: "star", label: t.reviewSectionTitle };
+  const all: Row = { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" };
+  const drop: Row = { key: "drop", icon: "card", label: t.dropTitle, tone: "danger" };
+  const remove: Row = { key: "remove", icon: "close", label: t.holdRemove, tone: "danger" };
+  /* `unstarted` يُعلنه من يعرف حالَ العمل (المكتبة · «للمشاهدة» · «مسلسلاتي/أفلامي»). صفٌّ لا يعرفها («تقييماتي»)
+     يبقى على صفوفه القديمة: «إزالة» فوق عملٍ مُشاهَدٍ ظُنَّ جديداً حذفٌ من المكتبة بضغطة */
+  if (item.kind === "movie") {
+    if (item.unstarted) return [{ ...all, label: t.holdWatchedMovie }, review, remove];
+    return [all, review, drop];
+  }
+  if (item.completed) return [{ key: "rewatch", icon: "repeat", label: t.rewatchBtn }, all, review, drop];
+  if (item.unstarted) return [{ key: "start", icon: "play", label: t.holdStart }, all, review, remove];
+  if (item.paused) return [{ key: "unpause", icon: "play", label: t.holdResume }, all, review, drop];
+  return [
+    { key: "pause", icon: "pause", label: t.holdPause },
+    ...(item.tick ? [] : [{ key: "next" as const, icon: "play" as const, label: t.markNextEp }]),
+    all,
+    review,
+    drop,
+  ];
+}
+
 export type HoldVariant = "library" | "discover" | "list" | "mylist";
 
 export type Anchor = { x: number; y: number; width: number; height: number };
@@ -68,7 +101,7 @@ export function HoldMenu({
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  const rows: { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" }[] =
+  const rows: Row[] =
     variant === "discover" || variant === "list" || variant === "mylist"
       ? [
           { key: "towatch", icon: inList ? "check-line" : "plus", label: inList ? t.quickAddRemove : t.quickAddLabel },
@@ -82,13 +115,7 @@ export function HoldMenu({
         ]
       : item.dropped
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]
-      : [
-          ...(item.kind === "tv" && !item.completed ? [{ key: "next" as const, icon: "play" as const, label: t.markNextEp }] : []),
-          ...(item.kind === "tv" && item.completed ? [{ key: "rewatch" as const, icon: "repeat" as const, label: t.rewatchBtn }] : []),
-          { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
-          { key: "review", icon: "star", label: t.reviewSectionTitle },
-          { key: "drop", icon: "card", label: t.dropTitle, tone: "danger" },
-        ];
+      : libraryRows(item, t);
 
   const panelH = rows.length * ROW_H + 8;
   /* 🔴 D-977 — **أرضيّةُ القائمة فوق الشريط السفليّ، وعرضُها على قدر سطرها** (بلاغُ

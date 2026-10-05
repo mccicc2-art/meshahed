@@ -8,6 +8,8 @@ export type StatusSource = {
   aired_episodes?: number | null;
   total_episodes?: number | null;
   dropped?: boolean | null;
+  /** 🆕 D-1280 — `started`: ضغط «ابدأ» ولم يشاهد حلقةً بعد · `paused`: أوقفه مؤقّتاً (هجرة ١٩٤) */
+  watch_state?: string | null;
 };
 
 /**
@@ -49,6 +51,10 @@ export function showStatusOf(f: StatusSource, watchedRaw: number): LibraryStatus
   if (f.dropped) return "dropped";
   if (done) return "completed";
   if (watched > 0) return "watching";
+  /* 🆕 D-1280 — **«ابدأ» قرارٌ يُحترم بلا حلقة**: من ضغطه نقل العملَ من «للمشاهدة» إلى ما يتابعه،
+     فرفُّه «أتابعه» بصفر. و`paused` بلا حلقةٍ (بدأ ثمّ أوقف) يبقى فيه كذلك — الإيقافُ المؤقّت لا يردّ
+     العملَ إلى «لم يبدأ». الوصفةُ هنا وحدَها، فالمكتبةُ والقوائمُ الذكيّةُ والعدّاداتُ تقرؤها معاً. */
+  if (f.watch_state === "started" || f.watch_state === "paused") return "watching";
   return "unstarted";
 }
 

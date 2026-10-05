@@ -89,6 +89,9 @@ export type UnfollowBody = { tmdbId: number; mediaType: TitleKind };
 /** `POST /track/dropped` — البطاقةُ الحمراء أو رفعُها؛ يبقى في المكتبة */
 export type SetDroppedBody = { tmdbId: number; mediaType: TitleKind; dropped: boolean };
 
+/** 🆕 D-1280 — `POST /track/watch-state`: «ابدأ» (`started`) · «إيقاف مؤقّت» (`paused`) · «كمّل» (`null`). مسلسلاتٌ وحدَها */
+export type WatchStateBody = { showTmdbId: number; state: "started" | "paused" | null };
+
 /** `POST /api/v1/track/dismiss` — «غير مهتمّ» (D-978): يكتب في `dismissed_titles` كما `dismissTitle` */
 export type DismissBody = { tmdbId: number; mediaType: TitleKind };
 

@@ -222,6 +222,12 @@ export type HomePayload = {
   widget: { t: string; s: string | null; h: string }[];
   /** «اختر أنواعك المفضّلة» يظهر لمن لم يختر (رابطٌ إلى تعديل الملفّ) */
   pick_genres_hint: boolean;
+  /**
+   * 🆕 D-1280 — مسلسلاتٌ قرّر فيها صاحبُها (`follows.watch_state`)، بمعرّف TMDB نصّاً. قائمةُ الضغط المطوّل
+   * تقرؤها لتعرف «ابدأ» من «إيقاف مؤقّت» من «كمّل» في أيِّ صفّ — خريطةٌ واحدة لا حقلٌ على كلِّ نوع بطاقة.
+   * اختياريٌّ: حمولةٌ محفوظةٌ من قبل لا تحمله.
+   */
+  watch_states?: Record<string, "started" | "paused">;
   /** التلميحاتُ المقروءة (D-954) — `home-customize` يظهر مرّةً */
   hints: string[];
 };

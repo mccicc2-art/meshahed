@@ -30,7 +30,7 @@ import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
-import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBody, SetDroppedBody, ToggleMovieBody, HiddenRailsBody } from "../contracts";
+import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBody, SetDroppedBody, ToggleMovieBody, HiddenRailsBody, WatchStateBody, FollowBody, UnfollowBody } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
 /**
@@ -150,7 +150,7 @@ export function LibraryScreen() {
      `ToastHost`): ضغطةٌ مطوّلةٌ أو إشعارٌ لا يعيدان رسمَ الألواح. و`say`/`hold` ثابتتا المرجع. */
   const holdHost = useRef<HoldHostRef<CardItem>>(null);
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  const say = useCallback((text: string, action?: { label: string; onPress: () => void }, ms?: number) => toastHost.current?.say(text, action, ms), []);
   /* B4 — أدواتُ الصفحة: بحثٌ وترتيبٌ ومفضّلة (حالةُ الشاشة كما في `LibraryGrid`) */
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<LibrarySort>("smart");
@@ -265,19 +265,47 @@ export function LibraryScreen() {
         return w > 0 ? "watching" : "unstarted";
       };
       try {
-        if (a === "drop" || a === "resume") {
+        if (a === "start" || a === "pause" || a === "unpause") {
+          /* 🆕 D-1280 — «ابدأ» ينقله إلى «أتابعه» بصفر (وصفةُ `showStatusOf`: القرارُ يُحترم بلا حلقة)؛ و«إيقاف
+             مؤقّت/كمّل» علَمٌ على الملصق لا يبدّل رفَّه */
+          patch(item.key, (x) => (a === "start" ? { ...x, status: "watching", paused: false } : { ...x, paused: a === "pause" }));
+          await write<unknown>("/api/v1/track/watch-state", { showTmdbId: item.id, state: a === "start" ? "started" : a === "pause" ? "paused" : null } satisfies WatchStateBody);
+        } else if (a === "remove") {
+          /* «إزالة» لِما لم يبدأ: يخرج من الشبكة فوراً، و«تراجع» يعيد متابعتَه ثمّ يقرأ المكتبةَ من الخادم
+             (الصفُّ الجديد يولد بتاريخ إضافةٍ جديد، فموضعُه يُقرأ ولا يُخمَّن) */
+          queryClient.setQueryData<LibraryPayload>(qk.tag("me:library"), (prev) => {
+            if (!prev) return prev;
+            const items = prev.items.filter((x) => `${x.kind === "tv" ? "tv" : "mv"}-${x.id}` !== item.key);
+            const counts = { watching: 0, unstarted: 0, completed: 0, dropped: 0 } as LibraryPayload["counts"];
+            for (const x of items) counts[x.status] += 1;
+            return { ...prev, items, counts };
+          });
+          await write<unknown>("/api/v1/track/unfollow", { tmdbId: item.id, mediaType: item.kind } satisfies UnfollowBody);
+          say(
+            t.holdRemoved,
+            {
+              label: t.undoWatched,
+              onPress: () =>
+                void write<unknown>("/api/v1/track/follow", { tmdbId: item.id, mediaType: item.kind, title: item.title, posterPath: item.posterPath } satisfies FollowBody)
+                  .catch(() => say(t.apiInternal))
+                  .finally(() => void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") })),
+            },
+            6000,
+          );
+        } else if (a === "drop" || a === "resume") {
           const dropped = a === "drop";
-          patch(item.key, (x) => ({ ...x, status: statusOf(x, x.watched, dropped) }));
+          /* D-1280 — البطاقةُ الحمراء ورفعُها يمسحان الإيقافَ المؤقّت كما يفعل الخادم (`setDropped`) */
+          patch(item.key, (x) => ({ ...x, paused: false, status: statusOf(x, x.watched, dropped) }));
           await write<unknown>("/api/v1/track/dropped", { tmdbId: item.id, mediaType: item.kind, dropped } satisfies SetDroppedBody);
         } else if (a === "next") {
-          patch(item.key, (x) => ({ ...x, watched: x.watched + 1, status: statusOf(x, x.watched + 1, false) }));
+          patch(item.key, (x) => ({ ...x, paused: false, watched: x.watched + 1, status: statusOf(x, x.watched + 1, false) }));
           await write<unknown>("/api/v1/track/next-episode", { showTmdbId: item.id } satisfies ShowRefBody);
         } else if (a === "rewatch") {
           patch(item.key, (x) => ({ ...x, watched: 0, rewatch_count: x.rewatch_count + 1, status: statusOf(x, 0, false) }));
           await write<unknown>("/api/v1/track/rewatch", { showTmdbId: item.id } satisfies ShowRefBody);
         } else if (a === "all") {
           if (isTv) {
-            patch(item.key, (x) => ({ ...x, watched: x.aired, status: statusOf(x, x.aired, false) }));
+            patch(item.key, (x) => ({ ...x, paused: false, watched: x.aired, status: statusOf(x, x.aired, false) }));
             await write<unknown>("/api/v1/track/show-watched", { showTmdbId: item.id } satisfies ShowRefBody);
           } else {
             patch(item.key, (x) => ({ ...x, watched: 1, status: "completed" }));
@@ -1071,6 +1099,9 @@ function toCard(x: LibraryItem): CardItem {
     count: isTv && !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
     completed: done,
     dropped,
+    /* D-1280 — حالُ القائمة: «لم يبدأ» من الوصفة الواحدة، و«موقوفٌ مؤقّتاً» لِما يُتابَع وحدَه */
+    unstarted: x.status === "unstarted",
+    paused: x.paused === true && x.status === "watching",
   };
 }
 

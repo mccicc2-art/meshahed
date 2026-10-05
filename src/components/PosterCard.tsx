@@ -31,6 +31,7 @@ export function PosterCard({
   note,
   badgeTone = "neutral",
   dropped = false,
+  paused = false,
   posterSize = "w342",
   fallbackIcon = "film",
   hideTitle = false,
@@ -63,6 +64,8 @@ export function PosterCard({
   badgeTone?: BadgeTone;
   /** موقوف ببطاقة حمراء: الشريط كله أحمر مهما كان التقدّم */
   dropped?: boolean;
+  /** 🆕 D-1280 — موقوفٌ مؤقّتاً: دائرةٌ صغيرة برمز الإيقاف في زاوية البداية (كالتطبيق) */
+  paused?: boolean;
   /**
    * مقاس صورة TMDB. الأشخاص لهم دِلاء مقاساتٍ غير دِلاء الملصقات — و`w342`
    * ليس منها، فصورة الممثل تعود مكسورة. `w185` صالحٌ للنوعين.
@@ -194,6 +197,11 @@ export function PosterCard({
             added={quickAdd.added}
             locale={quickAdd.locale}
           />
+        )}
+        {paused && !dropped && !badge && (
+          <span className="absolute top-2 start-2 grid place-items-center w-6 h-6 rounded-full border border-white/35 bg-black/55 text-white">
+            <Icon name="pause" size={12} />
+          </span>
         )}
         {badge && (
           <span

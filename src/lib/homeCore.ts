@@ -75,7 +75,26 @@ export type Item = {
   watched: number;
   aired: number;
   progress: number;
+  /** 🆕 D-1280 — `started` · `paused` · فارغ (هجرة ١٩٤): قرارُ صاحبه فوق الوقائع */
+  state?: "started" | "paused" | null;
 };
+
+/**
+ * 🆕 D-1280 — **من يدخل «تابِع المشاهدة»**: ما شوهدت منه حلقةٌ، أو ما ضغط صاحبُه «ابدأ» عليه —
+ * **إلّا الموقوفَ مؤقّتاً**. دالّةٌ واحدة يقرؤها الاستطلاعُ المبكّر والصفُّ معاً: شرطان يفترقان يعنيان
+ * بطاقةً تُرسم بلا حلقتها التالية.
+ */
+function inContinue(i: { watched: number; state?: string | null }): boolean {
+  if (i.state === "paused") return false;
+  return i.watched > 0 || i.state === "started";
+}
+
+/** ترتيبُ الصفّ: الأحدثُ مشاهدةً أوّلاً — والمبدوءُ للتوّ بلا حلقةٍ يتقدّمهم: ضُغط الآن ليُرى الآن */
+function continueRank(i: { id: number; watched: number; state?: string | null }, order: number[]): number {
+  if (i.watched === 0 && i.state === "started") return -1;
+  const at = order.indexOf(i.id);
+  return at < 0 ? 9999 : at;
+}
 
 /* نوعُ عناصر «للمشاهدة» و«القادم» — على مستوى الملفّ لأن قسم «القادم»
    صار مكوّناً مستقلاً (جولة ٢٠ أغسطس) ويشاركه النوع */
@@ -477,14 +496,12 @@ export async function buildHomeBody({
             watchedByShow.get(row.tmdb_id) ?? 0,
             aired || Infinity,
           );
-          return { id: row.tmdb_id, watched, aired };
+          return { id: row.tmdb_id, watched, aired, state: row.watch_state ?? null };
         })
-        .filter((i) => i.watched > 0 && (i.aired === 0 || i.watched < i.aired))
-        .sort((a, b) => {
-          const ai = lastWatchedOrder.indexOf(a.id);
-          const bi = lastWatchedOrder.indexOf(b.id);
-          return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
-        })
+        /* D-1280 — الشرطُ نفسُه الذي يرسم الصفَّ أدناه (`inContinue`): المبدوءُ بلا حلقةٍ يُستطلع فتُعرف
+           حلقتُه الأولى، والموقوفُ مؤقّتاً لا يُستطلع لأنّه لا يُرسم */
+        .filter((i) => inContinue(i) && (i.aired === 0 || i.watched < i.aired))
+        .sort((a, b) => continueRank(a, lastWatchedOrder) - continueRank(b, lastWatchedOrder))
         .slice(0, CONTINUE_PROBE)
         .map((i) => i.id)
     : [];
@@ -763,6 +780,7 @@ export async function buildHomeBody({
       watched,
       aired,
       progress: percentOf(watched, aired),
+      state: row.watch_state === "started" || row.watch_state === "paused" ? row.watch_state : null,
     });
 
     if (row.next_air_date && row.next_air_date >= today) {
@@ -786,7 +804,7 @@ export async function buildHomeBody({
       return b.progress - a.progress;
     });
 
-  const continueWatching = unfinished.filter((i) => i.watched > 0);
+  const continueWatching = unfinished.filter(inContinue);
 
   const statsToCache: ShowStat[] = [...(freshStats ?? [])];
   for (const tv of bootstrapDetails) {
@@ -809,11 +827,7 @@ export async function buildHomeBody({
      الصفِّ يتقدّم بترتيبه، **قبل القصّ** — فعملٌ قدّمه وهو خارج أحدث
      المشاهدات يدخل البطاقات، وما لم يرتّبه يبقى بالأحدث كما كان. */
   const continueRow = applyQueueOrder(
-    [...continueWatching].sort((a, b) => {
-      const ai = lastWatchedOrder.indexOf(a.id);
-      const bi = lastWatchedOrder.indexOf(b.id);
-      return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
-    }),
+    [...continueWatching].sort((a, b) => continueRank(a, lastWatchedOrder) - continueRank(b, lastWatchedOrder)),
     (i) => `c-${i.id}`,
     prefs.continueOrder,
   );
@@ -1099,8 +1113,11 @@ export async function buildHomeBody({
          و«للمشاهدة» لِما لم يبدأ — عملٌ جديد، أو موسمٌ جديد ينتظر أوّل
          حلقةٍ منه. كان الصفّان يعرضان الشيء نفسه فيقرأ المستخدم مكتبته
          مرّتين ويظنّ أن أحدهما معطّل. قرارُ المالك. */
+      /* 🆕 D-1280 — **وما قرّر فيه صاحبُه يخرج من هنا**: «ابدأ» نقله إلى «تابِع المشاهدة»، و«إيقاف مؤقّت»
+         أخفاه من الرئيسيّة — وموسمٌ جديد ينتظر لا يعيد الموقوفَ إلى هذا الصفّ */
       .filter(
         (i) =>
+          !i.state &&
           (i.aired === 0 || i.watched < i.aired) &&
           (i.watched === 0 || newSeasonWaiting.has(i.id)),
       )

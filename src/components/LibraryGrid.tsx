@@ -1,12 +1,12 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { flashError } from "@/lib/toast";
+import { flashError, toast } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { coalescedRefresh } from "@/core/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/core/i18n";
-import { startRewatch, classifyMyFollows } from "@/lib/actions";
+import { startRewatch, classifyMyFollows, setWatchState, follow, unfollow } from "@/lib/actions";
 import { tap } from "@/lib/haptics";
 import type { UserList } from "@/lib/data";
 import type { ArtistShelfItem } from "@/lib/artists";
@@ -42,6 +42,8 @@ export interface GridItem {
   badgeTone?: "neutral" | "progress" | "watched" | "rating" | "dropped";
   count?: number;
   dropped?: boolean;
+  /** 🆕 D-1280 — موقوفٌ مؤقّتاً (`follows.watch_state`): علامةٌ على الملصق و«كمّل» في القائمة */
+  paused?: boolean;
   /** مكتملٌ — يفتح خيار «أشاهده من جديد» */
   completed?: boolean;
   /** حالة المشاهدة — تغذّي رقائق التقسيم (طلب المالك)؛ الصفحة تحسبها */
@@ -803,6 +805,7 @@ function LibraryCell({
           badgeTone={x.badgeTone}
           count={x.count}
           dropped={x.dropped}
+          paused={x.paused}
         />
       </LongPressable>
       {held && <HoldMenu item={x} t={t} onClose={onClose} onDone={onDone} />}
@@ -881,6 +884,12 @@ function HoldMenu({
   }
 
   const isTv = item.mediaType === "tv";
+  /* 🆕 D-1280 — **الصفوفُ حسب حال العمل، كالتطبيق حرفاً** (`libraryRows` في `HoldMenu.tsx`):
+     لم يبدأ ⇒ «ابدأ» للمسلسل و«إزالة» بدل البطاقة الحمراء (الإيقافُ فعلُ من بدأ) · يتابعه ⇒ «إيقاف مؤقّت»
+     أوّلاً · موقوفٌ مؤقّتاً ⇒ «كمّل» بلا «الحلقة التالية» (تعليمُ حلقةٍ ينقض الإيقاف). والفيلمُ بلا بدءٍ ولا إيقاف. */
+  const unstarted = item.status === "unstarted";
+  const paused = isTv && !!item.paused && !item.completed;
+  const watching = isTv && !item.completed && !unstarted;
 
   return (
     <Dropdown open onClose={onClose} align="end" caret>
@@ -900,7 +909,24 @@ function HoldMenu({
         />
       ) : (
         <>
-          {isTv && !item.completed && (
+          {isTv && unstarted && (
+            <DropdownRow
+              icon="play"
+              label={t.holdStart}
+              disabled={pending}
+              onClick={() => run(() => setWatchState(item.tmdbId!, "started"))}
+            />
+          )}
+          {watching && (
+            <DropdownRow
+              icon={paused ? "play" : "pause"}
+              label={paused ? t.holdResume : t.holdPause}
+              disabled={pending}
+              onClick={() => run(() => setWatchState(item.tmdbId!, paused ? null : "paused"))}
+            />
+          )}
+
+          {watching && !paused && (
             <DropdownRow
               icon="play"
               label={t.markNextEp}
@@ -922,7 +948,7 @@ function HoldMenu({
           {/* **`check-line` كالمنسدلة لا `check`** (D-353) */}
           <DropdownRow
             icon="check-line"
-            label={t.markAllWatched}
+            label={!isTv && unstarted ? t.holdWatchedMovie : t.markAllWatched}
             tone="success"
             disabled={pending}
             onClick={() =>
@@ -949,16 +975,41 @@ function HoldMenu({
             }}
           />
 
-          {/* **وما لا رجعةَ سهلةَ فيه آخِراً** (D-322/D-353) */}
-          <DropdownRow
-            icon="card"
-            label={t.dropTitle}
-            tone="danger"
-            disabled={pending}
-            onClick={() =>
-              run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
-            }
-          />
+          {/* **وما لا رجعةَ سهلةَ فيه آخِراً** (D-322/D-353). 🆕 D-1280 — لِما لم يبدأ «إزالة» من المكتبة،
+              ورجعتُها متابعةٌ من جديد (لا تقدّمَ يضيع: لم يبدأ)؛ والبطاقةُ الحمراء لمن بدأ */}
+          {unstarted ? (
+            <DropdownRow
+              icon="close"
+              label={t.holdRemove}
+              tone="danger"
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const ref = { tmdbId: item.tmdbId!, mediaType: item.mediaType! };
+                  await unfollow(ref);
+                  toast(t.holdRemoved, {
+                    action: {
+                      label: t.undoWatched,
+                      run: () =>
+                        void follow({ ...ref, title: item.title, posterPath: item.posterPath })
+                          .then(onDone)
+                          .catch((e) => flashError((e as Error).message)),
+                    },
+                  });
+                })
+              }
+            />
+          ) : (
+            <DropdownRow
+              icon="card"
+              label={t.dropTitle}
+              tone="danger"
+              disabled={pending}
+              onClick={() =>
+                run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
+              }
+            />
+          )}
         </>
       )}
     </Dropdown>

@@ -41,7 +41,7 @@ import { HomeTopBar, HomeGreeting, HomeStats } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
-import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody } from "../contracts";
+import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
 import { applyQueueOrder, type HomeSection } from "@/core/homePrefs";
 
 /**
@@ -317,6 +317,24 @@ export function HomeScreen() {
       try {
         if (a === "drop" || a === "resume") await write<unknown>("/api/v1/track/dropped", { tmdbId: item.id, mediaType: item.kind, dropped: a === "drop" } satisfies SetDroppedBody);
         else if (a === "next") await write<unknown>("/api/v1/track/next-episode", { showTmdbId: item.id } satisfies ShowRefBody);
+        /* 🆕 D-1280 — «ابدأ» · «إيقاف مؤقّت» · «كمّل»: كتابةٌ ثمّ قراءةُ الرئيسيّة من جديد — العملُ ينتقل بين صفَّين،
+           والخادمُ وحدَه يعرف موضعَه وحلقتَه التالية */
+        else if (a === "start" || a === "pause" || a === "unpause") await write<unknown>("/api/v1/track/watch-state", { showTmdbId: item.id, state: a === "start" ? "started" : a === "pause" ? "paused" : null } satisfies WatchStateBody);
+        else if (a === "remove") {
+          /* «إزالة» لِما لم يبدأ — حذفٌ من المكتبة، ورجعتُه متابعةٌ من جديد (لا تقدّمَ يضيع: لم يبدأ) */
+          await write<unknown>("/api/v1/track/unfollow", { tmdbId: item.id, mediaType: item.kind } satisfies UnfollowBody);
+          toastHost.current?.say(
+            t.holdRemoved,
+            {
+              label: t.undoWatched,
+              onPress: () =>
+                void write<unknown>("/api/v1/track/follow", { tmdbId: item.id, mediaType: item.kind, title: item.title, posterPath: item.posterPath } satisfies FollowBody)
+                  .then(invalidateHome)
+                  .catch(onError),
+            },
+            6000,
+          );
+        }
         else if (a === "rewatch") await write<unknown>("/api/v1/track/rewatch", { showTmdbId: item.id } satisfies ShowRefBody);
         else if (a === "all") {
           if (item.kind === "tv") await write<unknown>("/api/v1/track/show-watched", { showTmdbId: item.id } satisfies ShowRefBody);
@@ -328,7 +346,7 @@ export function HomeScreen() {
         return false;
       }
     },
-    [openTitle, invalidateHome, onError],
+    [openTitle, invalidateHome, onError, t],
   );
   const actDiscBase = useCardActs<CardItem & { poster_path: string | null }>(store, { onReview: (c) => openTitle(c.kind, c.id), onError });
   const actDisc = useCallback(
@@ -467,19 +485,29 @@ export function HomeScreen() {
     }
     store.setBase(m);
   }, [d, extras.data, store]);
+  const watchStates = d?.watch_states;
   const asItem = useCallback(
-    (c: { key: string; kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; progress?: number | null; count?: number | null; watched?: boolean }): CardItem => ({
-      key: c.key,
-      kind: c.kind,
-      id: c.id,
-      title: c.title,
-      posterPath: c.poster_path,
-      progress: c.progress ?? 0,
-      count: c.count ?? undefined,
-      completed: c.watched === true || (c.progress ?? 0) >= 100,
-      dropped: false,
-    }),
-    [],
+    /* 🆕 D-1280 — `known`: الصفُّ يعرف تقدّمَ العمل حقّاً («للمشاهدة» · «مسلسلاتي» · «أفلامي»)، فيُعلن «لم يبدأ».
+       صفٌّ بلا تقدّم («تقييماتي») لا يعلنه — وإلّا عرضت القائمةُ «إزالة» فوق عملٍ مُشاهَد. و`watchStates` خريطةُ
+       الخادم: «ابدأ» ضُغط أو «إيقاف مؤقّت»، في أيِّ صفٍّ ظهر العمل */
+    (c: { key: string; kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; progress?: number | null; count?: number | null; watched?: boolean; known?: boolean }): CardItem => {
+      const completed = c.watched === true || (c.progress ?? 0) >= 100;
+      const state = c.kind === "tv" ? watchStates?.[String(c.id)] : undefined;
+      return {
+        key: c.key,
+        kind: c.kind,
+        id: c.id,
+        title: c.title,
+        posterPath: c.poster_path,
+        progress: c.progress ?? 0,
+        count: c.count ?? undefined,
+        completed,
+        dropped: false,
+        unstarted: c.known === true && !completed && !state && (c.kind === "movie" || (c.progress ?? 0) === 0),
+        paused: state === "paused" && !completed,
+      };
+    },
+    [watchStates],
   );
   const pressItem = useCallback((it: CardItem) => openTitle(it.kind, it.id), [openTitle]);
 
@@ -496,9 +524,9 @@ export function HomeScreen() {
           <View key="continue">
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => switchTo("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
             {view === "compact" ? (
-              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} />)}</Column>
+              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, tick: true }, anchor) : undefined} />)}</Column>
             ) : (
-              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} />)}</Rail>
+              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, tick: true }, anchor) : undefined} />)}</Rail>
             )}
           </View>
         ) : null,
@@ -507,7 +535,7 @@ export function HomeScreen() {
         s.towatch.items.length > 0 ? (
           <View key="towatch">
             <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => switchTo("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
-            {view === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress })))}
+            {view === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress, known: true })))}
           </View>
         ) : null,
       upcoming:
@@ -530,14 +558,14 @@ export function HomeScreen() {
         s.shows.items.length > 0 ? (
           <View key="shows">
             <SectionHeader title={t.myShows} icon="tv" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
-            {posterRow(s.shows.items.slice(0, cap(s.shows.items.length)).map((i) => asItem({ key: `ms-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, count: i.count, watched: i.badge_tone === "watched" })))}
+            {posterRow(s.shows.items.slice(0, cap(s.shows.items.length)).map((i) => asItem({ key: `ms-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, count: i.count, watched: i.badge_tone === "watched", known: true })))}
           </View>
         ) : null,
       movies:
         s.movies.items.length > 0 ? (
           <View key="movies">
             <SectionHeader title={t.myMovies} icon="film" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
-            {posterRow(s.movies.items.slice(0, cap(s.movies.items.length)).map((m) => asItem({ key: `mm-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress })))}
+            {posterRow(s.movies.items.slice(0, cap(s.movies.items.length)).map((m) => asItem({ key: `mm-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress, known: true })))}
           </View>
         ) : null,
       recap: s.recap ? (
@@ -687,8 +715,8 @@ export function HomeScreen() {
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: 16 }}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
               {(allSheet === "shows"
-                ? d.sections.shows.items.slice(0, 50).map((i) => asItem({ key: `as-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, watched: i.badge_tone === "watched" }))
-                : d.sections.movies.items.slice(0, 50).map((m) => asItem({ key: `am-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress }))
+                ? d.sections.shows.items.slice(0, 50).map((i) => asItem({ key: `as-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, watched: i.badge_tone === "watched", known: true }))
+                : d.sections.movies.items.slice(0, 50).map((m) => asItem({ key: `am-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress, known: true }))
               ).map((it) => (
                 <PosterCard key={it.key} item={it} width={posterW} onPress={(x) => { setAllSheet(null); pressItem(x); }} marquee={false} />
               ))}

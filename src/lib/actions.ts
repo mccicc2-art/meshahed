@@ -4781,13 +4781,35 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   const { supabase, user } = await requireUser();
   const { error } = await supabase
     .from("follows")
-    .update({ dropped: !!dropped })
+    /* D-1280 — البطاقةُ الحمراء ورفعُها يمسحان «بدأ/موقوف مؤقّتاً»: من رفعها قال «أعود إليه»، وعملٌ يعود
+       وهو مخفيٌّ من «تابِع المشاهدة» بإيقافٍ قديم يُقرأ عطلاً */
+    .update({ dropped: !!dropped, watch_state: null })
     .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
   if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/library");
   // 🆕 D-916: صفحةُ العمل تحمل `me.dropped` — والوسمُ في `/api/v1` يطابق هذا السطر
   revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
+}
+
+/**
+ * 🆕 D-1280 — «ابدأ» · «إيقاف مؤقّت» · «كمّل» من قائمة الضغط المطوّل (هجرة ١٩٤).
+ *
+ * `started` يُدخل مسلسلاً لم تُشاهَد منه حلقةٌ إلى «تابِع المشاهدة»؛ `paused` يُخرج ما يُتابَع منه؛
+ * `null` يردّ الحكمَ إلى الوقائع («كمّل»). **للمسلسلات وحدَها** — قرارُ أحمد: الفيلمُ بلا حلقات فلا
+ * بدءَ له ولا إيقاف. والصفُّ يجب أن يكون في المكتبة: لا يُنشأ هنا (القائمةُ لا تظهر إلّا على ما فيها).
+ */
+export async function setWatchState(showTmdbId: number, state: "started" | "paused" | null) {
+  showTmdbId = intId(showTmdbId);
+  if (state !== "started" && state !== "paused" && state !== null) throw new Error("مدخل غير صالح");
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("follows")
+    .update({ watch_state: state })
+    .match({ user_id: user.id, tmdb_id: showTmdbId, media_type: "tv" });
+  if (error) fail(error);
+  revalidatePath("/");
+  revalidatePath("/library");
 }
 
 /**

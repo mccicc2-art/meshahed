@@ -26,6 +26,8 @@ export interface FollowRow {
   next_air_date?: string | null;
   /** بطاقة حمراء: موقوفٌ عند صاحبه — يبقى بالمكتبة ويغيب عن الرئيسية */
   dropped?: boolean | null;
+  /** 🆕 D-1280 (هجرة ١٩٤) — `started` · `paused` · فارغ: الوقائعُ وحدَها تحكم. للمسلسلات */
+  watch_state?: string | null;
   /** إعادة المشاهدة: عدد الدورات، ولحظة بدء الدورة الحالية */
   rewatch_count?: number | null;
   rewatch_started_at?: string | null;
@@ -419,7 +421,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
       supabase
         .from("follows")
         .select(
-          "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at, genres",
+          "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, watch_state, rewatch_count, rewatch_started_at, stats_updated_at, genres",
         )
         .eq("user_id", uid)
         .order("added_at", { ascending: false })

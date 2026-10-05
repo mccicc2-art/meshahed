@@ -37,6 +37,8 @@ export type LibraryItem = {
   /** `null` = لم يُصنَّف بعد (الويبُ يسأل عنه عند أوّل فتحٍ لتبويب «أنمي») */
   is_anime?: boolean | null;
   is_favorite?: boolean;
+  /** 🆕 D-1280 — موقوفٌ مؤقّتاً (`follows.watch_state = 'paused'`): علامةٌ على الملصق و«كمّل» في القائمة */
+  paused?: boolean;
 };
 
 /**

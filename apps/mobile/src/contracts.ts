@@ -67,6 +67,7 @@ export type {
   FollowBody,
   UnfollowBody,
   SetDroppedBody,
+  WatchStateBody,
   DismissBody,
   EpisodeRateBody,
   ShowRefBody,
