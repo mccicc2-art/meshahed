@@ -1,4 +1,4 @@
-[deploy] D-1288 — only shows aimed at small children (TV-Y) leave Discover rows; the Kids genre stays
+[deploy] D-1289 — the Kids genre leaves Discover rows again, with a keep-by-name list (Batman TAS); Anime tab exempt
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_014hAzmhFXvvkfHpU1mx7XL1
