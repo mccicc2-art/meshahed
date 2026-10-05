@@ -703,36 +703,36 @@ export function isTalkOrNews(r: { genre_ids?: number[] }): boolean {
 }
 
 /**
- * 🆕 D-1287 → ⚖️ D-1288 — **الموجَّهُ للصغار وحدَهم خارج رفوف «اكتشف»، لا نوعُ Kids كلُّه.**
+ * 🆕 D-1287 → D-1288 → ⚖️ D-1289 — **نوعُ Kids كلُّه خارج رفوف «اكتشف»، وما يبقى يُسمّى بالاسم.**
  * بلاغُ أحمد (٥ أكتوبر): «في كوميدي فيه للاطفال .. ماي لتل بوني و روقراتس سيسيم ستريت .. ما ابغاها».
- * D-1287 أسقطت نوعَ Kids كلَّه — **فأسقطت معه ما لم يُطلب** (Avatar · Gravity Falls · Adventure Time)،
- * وتصحيحُه بنصّه: «الاعمال اللي عطيتني اياها ك امثله ممتازة عادي تبقى .. فيه اعمال موجهة فقط للاطفال
- * هي اللي ما ابغاها». والنوعُ لا يفرّق بينهما؛ **التصنيفُ العمريُّ يفرّق**: `TV-Y` (لكلِّ الأطفال —
- * برامجُ الصغار) يسقط، و`TV-Y7` فما فوق يبقى.
- * 🔑 **والسؤالُ لحاملِ نوع Kids وحدَه** — نداءٌ لكلِّ عملٍ في كلِّ رفٍّ إسراف؛ النوعُ مرشِّحٌ أوّل
- * والتصنيفُ حَكَم. **وبلا تصنيفٍ أمريكيٍّ يسقط** (قرارُه: «يستبعد») — حاملُ Kids بلا تصنيفٍ برنامجُ
- * صغارٍ محلّيٌّ غالباً. **وفشلُ النداء يُسقط أيضاً**: الشكوى ظهورُها، فالشكُّ عليها لا لها.
- * ⚖️ **وسقط استثناءا D-1287** («عائلي»/«رسوم متحرّكة») واستثناءُ الأنمي المطلوب بعده: القاعدةُ صارت
- * أدقَّ من أن تحتاجهما — أنميُ الصغار يخرج والباقي يبقى.
+ * **ثلاثُ محاولاتٍ في يومٍ واحد، وتُكتب كي لا تُعاد**:
+ * ١) D-1287 أسقطت النوعَ كلَّه — فاعترض على أمثلةٍ (Avatar · Gravity Falls · Adventure Time): «عادي تبقى».
+ * ٢) D-1288 حكّمت التصنيفَ العمريَّ (`TV-Y` يسقط) — فبقي Rugrats، ثمّ طلب إسقاطَ خمسةٍ بالاسم
+ *    (Adventure Time · Dexter's Laboratory · Ninjago · Regular Show · Gravity Falls) **ومنها ما قال إنّه يبقى**.
+ * ٣) فعُرض عليه: قائمةُ إسقاطٍ تُلاحق عملاً عملاً، أو النوعُ كلُّه يسقط وقائمةُ إبقاء — فاختار:
+ *    «الثانية ويبقى باتمان».
+ * 🔑 **والدرسُ**: ذوقٌ لا تحمله بياناتُ TMDB (لا النوعُ ولا التصنيفُ العمريّ) — فالقاعدةُ الواسعةُ
+ * مع استثناءٍ مسمّىً أصدقُ من قاعدةٍ دقيقةٍ تدّعي أنّها تعرف الفرق (حجّةُ `RAIL_EXCLUDED` — D-170).
+ * ⚠️ **ولا استبعادَ عند المصدر** (`without_genres`): كان سيُسقط المُبقى معه؛ الحارسُ وحدَه يحكم.
+ * ⚠️ **وتبويبُ الأنمي مستثنىً** (قرارُه: «استثني انمي») — المستدعي لا ينادي هذا الحارسَ هناك.
+ * ⚠️ **ولا استثناءَ لصفٍّ نوعُه «عائلي»/«رسوم متحرّكة»** (سقط مع D-1288 ولم يُطلب ردُّه).
  */
 export const KIDS_TV_GENRE = 10762;
-export function isKidsTv(r: { genre_ids?: number[] }): boolean {
-  return (r.genre_ids ?? []).includes(KIDS_TV_GENRE);
+/**
+ * **ما يبقى من حاملي نوع Kids** — بالمعرّف، وكلُّ سطرٍ يحمل اسمَه ومن طلبه (شرطُ `RAIL_EXCLUDED`).
+ * **ولا يُضاف إليها إلّا بطلبٍ صريحٍ من أحمد.**
+ */
+const KIDS_KEEP: { id: number; name: string; why: string }[] = [
+  { id: 2098, name: "Batman: The Animated Series", why: "أحمد، ٥ أكتوبر ٢٠٢٦: «الثانية ويبقى باتمان»" },
+];
+const KIDS_KEEP_IDS: ReadonlySet<number> = new Set(KIDS_KEEP.map((k) => k.id));
+/** هل يُسقَط؟ — يحمل نوعَ Kids وليس في قائمة الإبقاء */
+export function isDroppedKidsTv(id: number, genreIds?: readonly number[] | null): boolean {
+  return (genreIds ?? []).includes(KIDS_TV_GENRE) && !KIDS_KEEP_IDS.has(id);
 }
-export async function tvIsLittleKids(id: number): Promise<boolean> {
-  try {
-    const d = await tmdb<{ results?: { iso_3166_1?: string; rating?: string }[] }>(`/tv/${id}/content_ratings`);
-    const us = (d.results ?? []).find((x) => x.iso_3166_1 === "US")?.rating?.trim();
-    return !us || us === "TV-Y";
-  } catch {
-    return true;
-  }
-}
-/** **حارسُ الصغار لرفٍّ كامل** — يسأل عن حاملي نوع Kids وحدَهم، بالتوازي، ويُبقي الترتيب */
-export async function dropLittleKids<T extends { id: number; genre_ids?: number[] }>(rows: T[]): Promise<T[]> {
-  if (!rows.some(isKidsTv)) return rows;
-  const drop = await Promise.all(rows.map((r) => (isKidsTv(r) ? tvIsLittleKids(r.id) : false)));
-  return rows.filter((_, i) => !drop[i]);
+/** **حارسُ الأطفال لرفٍّ كامل** — لرفوف «اكتشف» في تبويبَي المسلسلات والأفلام (المعرّفُ تلفزيونيٌّ فلا يطابق فيلماً) */
+export function dropKids<T extends { id: number; genre_ids?: number[] }>(rows: T[]): T[] {
+  return rows.filter((r) => !isDroppedKidsTv(r.id, r.genre_ids));
 }
 
 /**
@@ -2071,7 +2071,7 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.companies?.length) p.with_companies = f.companies.join("|");
   /* D-1285 — التوك شو والأخبار تُستبعد عند المصدر كي يبقى الرفُّ ممتلئاً (الحارسُ `railGuard`
      يُسقطها أيضاً، وهو الضمان؛ هذا السطرُ يمنع رفّاً ناقصاً فقط). للتلفزيون وحدَه. */
-  /* D-1288 — نوعُ Kids لا يُستبعد عند المصدر (كان في D-1287): حارسُ الصغار يحكم بالتصنيف العمريّ */
+  /* نوعُ Kids لا يُستبعد عند المصدر (كان في D-1287): قائمةُ الإبقاء تحتاجه — الحارسُ `dropKids` يحكم (D-1289) */
   if (mediaType === "tv") p.without_genres = TALK_NEWS_GENRES.join(",");
   return p;
 }

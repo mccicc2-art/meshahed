@@ -15,7 +15,7 @@ import {
   upcomingMovies,
   worksByPeople,
   type DiscoverFilter,
-  dropLittleKids,
+  dropKids,
 } from "./tmdb";
 import { getFollowedArtists } from "./data";
 import { railGuard, topChartRail } from "./topChart";
@@ -290,8 +290,9 @@ export async function buildSection(
   const prefsP = getContentPrefs().catch(() => EMPTY_CONTENT_PREFS);
 
   const guard = async (rows: SearchResult[]) => {
-    /* D-1288 — الموجَّهُ للصغار وحدَهم يسقط من كلِّ أقسام «اكتشف» (بالتصنيف العمريّ لا بالنوع) */
-    const kept = await dropLittleKids(railGuard(rows, { anime, unmute }));
+    /* D-1289 — نوعُ Kids يسقط من كلِّ أقسام «اكتشف» إلّا المُبقى بالاسم؛ وأقسامُ الأنمي مستثناة */
+    const guarded = railGuard(rows, { anime, unmute });
+    const kept = media === "anime" ? guarded : dropKids(guarded);
     const prefs = await prefsP;
     return (
       prefs.excludedLanguages.length > 0

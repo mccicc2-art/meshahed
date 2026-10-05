@@ -3,7 +3,7 @@ import { localizeRows } from "./localize";
 import type { Locale } from "@/core/i18n";
 import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
-import { getMovie, getTv, topRatedRows, isTalkOrNews, tvIsLittleKids, KIDS_TV_GENRE } from "./tmdb";
+import { getMovie, getTv, topRatedRows, isTalkOrNews, isDroppedKidsTv } from "./tmdb";
 import { MIN_CHART_VOTES, minChartVotes } from "@/core/chartFloor";
 
 /**
@@ -278,8 +278,8 @@ export function railGuard<T extends { genre_ids?: number[]; original_language?: 
   return rows.filter((r) => {
     /* D-1285 — التوك شو والأخبار ليست مسلسلاتٍ تُتابع: تسقط من كلِّ رفٍّ يمرّ بهذا الحارس */
     if (isTalkOrNews(r)) return false;
-    /* برامجُ الصغار ليست هنا: حكمُها تصنيفٌ عمريٌّ يُسأل عنه (`dropLittleKids` — D-1288)،
-       ورفوفُ «اكتشف» تناديه بعد هذا الحارس */
+    /* برامجُ الأطفال ليست هنا: حارسُها `dropKids` (D-1289) تناديه رفوفُ «اكتشف» بعد هذا الحارس —
+       فأسطحُ الرئيسيّة والهبوط لا يمسّها، وتبويبُ الأنمي مستثنىً */
     const isAnime = looksAnime(r);
     if (anime === "drop" && isAnime) return false;
     if (anime === "only" && !isAnime) return false;
@@ -397,8 +397,8 @@ async function filterRail(
                 });
           const genres = d.genres ?? [];
           if (docByFlag === null && genres.some((g) => g.id === DOCUMENTARY_GENRE)) return true;
-          /* D-1288 — الموجَّهُ للصغار وحدَهم (`TV-Y`) خارج كلاسيكيّات «الأكثر شهرة»؛ Avatar وأمثالُه باقية */
-          if (r.media_type === "tv" && genres.some((g) => g.id === KIDS_TV_GENRE) && (await tvIsLittleKids(r.id))) return true;
+          /* D-1289 — حاملُ نوع Kids خارج كلاسيكيّات «الأكثر شهرة» إلّا المُبقى بالاسم؛ ورفُّ الأنمي مستثنىً */
+          if (kind !== "anime" && r.media_type === "tv" && isDroppedKidsTv(r.id, genres.map((g) => g.id))) return true;
           /* 🆕 **والحكمُ هنا يُبنى من `genres` لا من `genre_ids`** (D-321):
              `looksMutedLang` تقرأ حقلَ القوائم، وهذه صفوفُ **تفاصيل** —
              فتُترجَم الشكلُ إلى الشكل، **ولا تُكتب قاعدةٌ ثانية**. */

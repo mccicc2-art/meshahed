@@ -56,7 +56,7 @@ import {
   posterUrl,
   type SearchResult,
   type DiscoverFilter,
-  dropLittleKids,
+  dropKids,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { looksAnime, railGuard } from "@/lib/topChart";
@@ -758,16 +758,12 @@ async function MyRowsRails({
       /* 🆕 **والكتمُ يسقط بلغةٍ أو بلد** (D-194 حرفاً): من اختار «كوريّ»
          طلبه بنفسه، **وحارسٌ يكتم ما طُلب صراحةً يُفرغ الصفَّ ويكذب** */
       /* D-1286 — ١٢ من البِركة بقرعة النافذة (`drawMyRow` — نفسُها في `/api/v1/discover/personal`) */
-      /* D-1288 — والموجَّهُ للصغار وحدَهم يسقط قبل القرعة (`dropLittleKids`) */
-      const guarded = drawMyRow(
-        await dropLittleKids(
-          railGuard(items, {
-            anime: anime ? "only" : "drop",
-            unmute: !!browse?.lang || !!browse?.country,
-          }),
-        ),
-        `${tab}:${r.genre}.${r.tag ?? ""}`,
-      );
+      /* D-1289 — ونوعُ Kids يسقط قبل القرعة (`dropKids`)، إلّا في تبويب الأنمي */
+      const safe = railGuard(items, {
+        anime: anime ? "only" : "drop",
+        unmute: !!browse?.lang || !!browse?.country,
+      });
+      const guarded = drawMyRow(anime ? safe : dropKids(safe), `${tab}:${r.genre}.${r.tag ?? ""}`);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const title =
@@ -1801,7 +1797,6 @@ async function AnimeRails({
       .catch(() => [] as SearchResult[]),
     animeTop("tv", genre?.tv, rails.a)
       .then((rows) => railGuard(rows, { anime: "only" }))
-      .then(dropLittleKids)
       .then(withImdbRatings)
       .catch(() => [] as SearchResult[]),
     /* **ثلاثةُ صفوفٍ جديدة في تبويب الأنمي (D-195، مواصفةُ أحمد):**
@@ -1845,7 +1840,6 @@ async function AnimeRails({
     /* «أنميٌ قادم» — `upcomingByFilter` يقبل المفتاح فيطيع الفلتر كاملاً */
     upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
       .then((rows) => railGuard(rows, { anime: "only" }))
-      .then(dropLittleKids)
       .catch(() => [] as SearchResult[]),
     /* «في السينما» يعود بالمنطقة كاملةً ثم يُصفّى هنا: TMDB لا يقبل
        تصنيفاً ولا لغةً على `/now_playing`، والصفّ عشرون عملاً لا أكثر —
