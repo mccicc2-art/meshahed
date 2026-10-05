@@ -3,7 +3,7 @@ import { localizeRows } from "./localize";
 import type { Locale } from "@/core/i18n";
 import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
-import { getMovie, getTv, topRatedRows } from "./tmdb";
+import { getMovie, getTv, topRatedRows, isTalkOrNews } from "./tmdb";
 import { MIN_CHART_VOTES, minChartVotes } from "@/core/chartFloor";
 
 /**
@@ -276,6 +276,8 @@ export function railGuard<T extends { genre_ids?: number[]; original_language?: 
 ): T[] {
   const anime = opts.anime ?? "drop";
   return rows.filter((r) => {
+    /* D-1285 — التوك شو والأخبار ليست مسلسلاتٍ تُتابع: تسقط من كلِّ رفٍّ يمرّ بهذا الحارس */
+    if (isTalkOrNews(r)) return false;
     const isAnime = looksAnime(r);
     if (anime === "drop" && isAnime) return false;
     if (anime === "only" && !isAnime) return false;

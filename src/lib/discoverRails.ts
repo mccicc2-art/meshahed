@@ -259,6 +259,42 @@ async function animeRail(
   }
 }
 
+/* ====== 🆕 D-1286 — قرعةُ «صفوفك»: ١٢ من أشهر ٦٠، تتبدّل كلَّ ٦ ساعات ======
+   بلاغُ أحمد (٥ أكتوبر): «اشوفه ثابت اكثر من اللازم» — الصفُّ كان أوّلَ ١٢ بالشهرة، وشهرةُ TMDB
+   تتحرّك ببطء. فالبِركةُ اتّسعت إلى ٦٠ والمعروضُ قرعةٌ منها ببذرةٍ = مفتاحُ الصفّ + نافذةُ الوقت.
+   🔑 **بذرةٌ لا `Math.random`**: التطبيقُ يعرض المحفوظَ ثمّ يستبدله بالجديد — قرعةٌ لكلِّ طلبٍ
+   كانت تبدّل الملصقاتِ أمام العين عند كلِّ فتح. بالبذرة يتبدّل الصفُّ عند حدِّ النافذة وحدَه،
+   والويبُ والتطبيقُ يعرضان التشكيلةَ نفسَها (دالّةٌ واحدةٌ للبابين).
+   🔑 **والمختارُ بترتيب شهرته**: القرعةُ تختار مَن يظهر لا مَن يتصدّر.
+   «عرض الكلّ» لا يتغيّر: القائمةُ كاملةً بالشهرة. */
+export const MY_ROW_POOL = 60;
+export const MY_ROW_SHOWN = 12;
+const MY_ROW_WINDOW_MS = 6 * 60 * 60_000;
+
+export function drawMyRow<T>(rows: T[], key: string, now: number = Date.now()): T[] {
+  if (rows.length <= MY_ROW_SHOWN) return rows;
+  /* FNV-1a على المفتاح والنافذة، ثمّ mulberry32 — حتميٌّ وبلا تبعيّة */
+  const text = `${key}:${Math.floor(now / MY_ROW_WINDOW_MS)}`;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  let a = h >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let x = Math.imul(a ^ (a >>> 15), a | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const idx = rows.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return idx.slice(0, MY_ROW_SHOWN).sort((x, y) => x - y).map((i) => rows[i]);
+}
+
 /* ====== الصفوفُ الشخصيّة — وصفةُ `PersonalRails` + `MyRowsRails` (C2 · D-955) ====== */
 export type PersonalTab = "shows" | "movies" | "anime";
 export type PersonalRailsResult = {
@@ -306,8 +342,8 @@ export async function personalRails(
       const tagDef = r.tag ? BROWSE_TAGS.find((x) => x.slug === r.tag) : null;
       const tagId = tagDef ? await keywordId(tagDef.q).catch(() => null) : null;
       const keywords = [...(anime ? [ANIME_KEYWORD] : []), ...(tagId ? [tagId] : [])];
-      const items = await topByFilter(media, { watchRegion: region, genreIds: ids, ...(keywords.length ? { keywords } : {}) }, 18, "popularity.desc").catch(() => []);
-      const guarded = railGuard(items, { anime: anime ? "only" : "drop" }).slice(0, 12);
+      const items = await topByFilter(media, { watchRegion: region, genreIds: ids, ...(keywords.length ? { keywords } : {}) }, MY_ROW_POOL, "popularity.desc").catch(() => []);
+      const guarded = drawMyRow(railGuard(items, { anime: anime ? "only" : "drop" }), `${tab}:${r.genre}.${r.tag ?? ""}`);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const p = new URLSearchParams();

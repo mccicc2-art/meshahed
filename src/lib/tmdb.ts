@@ -456,8 +456,10 @@ export const trending = cache(async function trending(): Promise<SearchResult[]>
  */
 export async function trendingToday(): Promise<SearchResult[]> {
   const data = await railTmdb<{ results: SearchResult[] }>("/trending/all/day");
+  /* D-1285 — والتوك شو والأخبار تسقط هنا أيضاً (قرارُه: «رائج ايه يشمله») — تعديلٌ على «بلا
+     تفضيلاتٍ» أعلاه في هذه النقطة وحدَها: تفضيلاتُ القارئ ما زالت لا تمسّ الرائج. */
   return (data.results ?? []).filter(
-    (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path,
+    (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path && !isTalkOrNews(r),
   );
 }
 
@@ -686,6 +688,19 @@ export async function getPerson(id: number): Promise<PersonDetails | null> {
 
 /** أنواع «البرامج» عند TMDB: أخبار، واقع، توك شو — ليست دراما تُتابع */
 const PROGRAM_TV_GENRES = new Set([10763, 10764, 10767]);
+
+/**
+ * 🆕 D-1285 — **التوك شو والأخبار خارج رفوف «اكتشف» و«رائج اليوم»** (بلاغُ أحمد، ٥ أكتوبر:
+ * «كونان و دايلي شو و ذا تونايت شو و ذا ليت شو .. ليش تجي فالمسلسلات؟»). TMDB يسجّلها `tv`
+ * بنوعَين معاً (Talk + Comedy) ولها حلقةٌ كلَّ يوم فشهرتُها عاليةٌ دائماً — فتتصدّر أيَّ صفٍّ
+ * مرتَّبٍ بالشهرة. ⚖️ **وبرامجُ الواقع باقية** (قرارُه: «برامج الواقع لا»): لها نوعٌ في الفلتر
+ * وفي «صفوفك»، فهي أضيقُ من `PROGRAM_TV_GENRES` أعلاه (تلك لتقسيم صفحة الممثّل).
+ * المعرّفان خاصّان بالتلفزيون عند TMDB، فلا يطابقان فيلماً.
+ */
+export const TALK_NEWS_GENRES: readonly number[] = [10767, 10763];
+export function isTalkOrNews(r: { genre_ids?: number[] }): boolean {
+  return (r.genre_ids ?? []).some((g) => TALK_NEWS_GENRES.includes(g));
+}
 
 /**
  * هل هذا الظهور برنامجٌ تلفزيوني لا عملاً درامياً؟ (دفعة أحمد الثالثة)
@@ -2021,6 +2036,9 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.status && mediaType === "tv") p.with_status = f.status;
   /* الشركاتُ بـ«أو»: من اختار «MAPPA» لا يقصد «MAPPA **و** يوفوتيبل» */
   if (f.companies?.length) p.with_companies = f.companies.join("|");
+  /* D-1285 — التوك شو والأخبار تُستبعد عند المصدر كي يبقى الرفُّ ممتلئاً (الحارسُ `railGuard`
+     يُسقطها أيضاً، وهو الضمان؛ هذا السطرُ يمنع رفّاً ناقصاً فقط). للتلفزيون وحدَه. */
+  if (mediaType === "tv") p.without_genres = TALK_NEWS_GENRES.join(",");
   return p;
 }
 

@@ -63,7 +63,7 @@ import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
-import { bestOfYear, matchesBrowse } from "@/lib/discoverRails";
+import { bestOfYear, matchesBrowse, drawMyRow, MY_ROW_POOL } from "@/lib/discoverRails";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab } from "@/core/tabPrefs";
 import { regionName } from "@/core/region";
@@ -748,7 +748,7 @@ async function MyRowsRails({
       const items = await topByFilter(
         media,
         { ...filterBase, genreIds: ids, ...(keywords.length ? { keywords } : {}) },
-        18,
+        MY_ROW_POOL,
         "popularity.desc",
       ).catch(() => []);
       /* الأنمي «فقط» في تبويبه و«يسقط» خارجه — نصُّ D-321 */
@@ -756,10 +756,14 @@ async function MyRowsRails({
          نفسُها التي تخدم «الأكثر شهرةً»، مخبّأةً في مخزن OMDb المتدرّج */
       /* 🆕 **والكتمُ يسقط بلغةٍ أو بلد** (D-194 حرفاً): من اختار «كوريّ»
          طلبه بنفسه، **وحارسٌ يكتم ما طُلب صراحةً يُفرغ الصفَّ ويكذب** */
-      const guarded = railGuard(items, {
-        anime: anime ? "only" : "drop",
-        unmute: !!browse?.lang || !!browse?.country,
-      }).slice(0, 12);
+      /* D-1286 — ١٢ من البِركة بقرعة النافذة (`drawMyRow` — نفسُها في `/api/v1/discover/personal`) */
+      const guarded = drawMyRow(
+        railGuard(items, {
+          anime: anime ? "only" : "drop",
+          unmute: !!browse?.lang || !!browse?.country,
+        }),
+        `${tab}:${r.genre}.${r.tag ?? ""}`,
+      );
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const title =
