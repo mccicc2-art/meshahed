@@ -1,19 +1,11 @@
-[deploy] D-1281 — Pause moves a series to To watch instead of hiding it from Home
+[deploy] D-1282 — no "next episode" row in the menu of To watch titles (app only)
 
-Ahmed tried D-1280 on Ted Lasso: Pause took it out of To watch as well. He
-wants Pause to take a series out of Continue Watching only, and to see it in
-To watch until Resume. D-1280 hid a paused series from both rows.
-
-- To watch now lists every paused, unfinished series (with its pause mark and
-  Resume in its menu), next to what is not started and what has a new season
-  waiting. Start still moves a series to Continue Watching.
-- Pause on a series with no episode watched is an undo of Start: the state is
-  written empty, and watchStateOf() reads a stored 'paused' with no episode
-  the same way, so its menu says Start again. One reader for Home, the
-  library, the web library and the map sent to the app.
-- The app's optimistic library patch follows the same rule.
-
-No migration. Not tried on a device before the push.
+Ahmed: remove "Watched the next episode +1" from the long-press menu in To
+watch. It showed there for one case only, a series with a new season waiting.
+To watch is for what has not been started; whoever wants an episode starts
+the series or opens it. The row stays in the library and in My shows. The
+card flag is renamed tick -> noNext since it now has two reasons.
+Not tried on a device before the push.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HzzikFKBWMvhxeiwpWrNFV
