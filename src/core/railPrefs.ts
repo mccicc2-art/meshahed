@@ -109,6 +109,12 @@ export const RAILS: RailSpec[] = [
     tabs: ["movies", "anime"],
     label: (t, tab) => (tab === "anime" ? t.animeInCinemas : t.inCinemas),
   },
+  /* D-1284 — «من فنّانيك» بعد «السينما» وقبل «الأكثر شهرة»: القائمةُ تُقرأ كما تُرى */
+  {
+    key: "artists",
+    tabs: ["movies", "shows"],
+    label: (t) => t.artistsRail,
+  },
   /* D-1217 — «يُعرض الآن» خرج من تبويب الأنمي (أمرُ أحمد)؛ المفتاحُ باقٍ في `RailKey`
      كي لا ينكسر تفضيلٌ مخزَّن يحمله — صفٌّ لا يُرسم لا يُعرض للإطفاء */
   {
@@ -120,12 +126,6 @@ export const RAILS: RailSpec[] = [
         : tab === "shows"
           ? t.mostPopularSeries
           : t.mostPopularMovies,
-  },
-  /* D-1283 — «من فنّانيك» نزل تحت «الأكثر شهرة» وصفوفِك؛ فموضعُه هنا كي تُقرأ القائمةُ كما تُرى */
-  {
-    key: "artists",
-    tabs: ["movies", "shows"],
-    label: (t) => t.artistsRail,
   },
   {
     key: "top10",

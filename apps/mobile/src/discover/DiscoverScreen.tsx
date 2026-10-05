@@ -141,6 +141,8 @@ const RAILS: Record<CuratedTab, CuratedRailKey[]> = {
  * ٥ أكتوبر: اخترناه لك · [السينما] · الأكثر شهرة · Row 1–3 · ثمّ الباقي). الباقي ما سواهما.
  */
 const HEAD: readonly CuratedRailKey[] = ["cinemas", "popular"];
+/** D-1284 — وما يسبق «من فنّانيك» من الرأس: «السينما» وحدَها (حكمُ D-735 عاد بنصّه) */
+const BEFORE_ARTISTS: readonly CuratedRailKey[] = ["cinemas"];
 
 export function DiscoverScreen() {
   const { t, tokens, locale } = useApp();
@@ -788,7 +790,8 @@ const DiscoverPane = memo(function DiscoverPane({
       ) : null}
       {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ ويصمت بفلترٍ نشط كما في الصفحة */}
       {!lists && !filtering && !off.has("trailers") ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={openTitle} onError={onError} /> : null}
-      {/* D-1283 — الترتيب: مقترحٌ لك · (السينما) · الأكثر شهرة · صفوفي · من فنّانيك · ثمّ الباقي */}
+      {/* D-1283 → D-1284 — الترتيب: مقترحٌ لك · (السينما) · من فنّانيك · الأكثر شهرة · صفوفي · ثمّ الباقي
+          (تصحيحُ أحمد، ٥ أكتوبر: «من فنانيك يكون بعد اخترناه لك .. وبعد السينما فالافلام والانمي») */}
       {!lists && foryou.length > 0 && !off.has("foryou") ? (
         <CardsRail
           title={t.suggestedForYou}
@@ -801,15 +804,18 @@ const DiscoverPane = memo(function DiscoverPane({
           action={foryouPool.length > PICKED_PAGE ? { label: t.pickedRefresh, aria: t.pickedRefreshAria, icon: "repeat", onPress: morePicks } : null}
         />
       ) : null}
-      {!lists ? RAILS[tab].filter((key) => HEAD.includes(key) && !railOff(key)).map((key) => (
+      {!lists ? RAILS[tab].filter((key) => BEFORE_ARTISTS.includes(key) && !railOff(key)).map((key) => (
+        <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
+      )) : null}
+      {!lists && ps && ps.artists.length > 0 && !off.has("artists") ? (
+        <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={seeAll} />
+      ) : null}
+      {!lists ? RAILS[tab].filter((key) => HEAD.includes(key) && !BEFORE_ARTISTS.includes(key) && !railOff(key)).map((key) => (
         <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
       )) : null}
       {!lists ? ps?.myrows.map((m) => (
         <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} {...railProps} seeAll={m.see_all} onSeeAll={seeAll} />
       )) : null}
-      {!lists && ps && ps.artists.length > 0 && !off.has("artists") ? (
-        <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={seeAll} />
-      ) : null}
       {!lists ? RAILS[tab].filter((key) => !HEAD.includes(key) && !railOff(key)).map((key) => (
         <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
       )) : null}

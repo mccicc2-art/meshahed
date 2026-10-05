@@ -1269,9 +1269,9 @@ async function CuratedRails({
      البِركةَ وحدَها والذيلُ يجلب «من فنّانيك» وحدَه — لا نداءَ مشتركٌ بينهما إلّا
      `getLibState` وهي مغلَّفةٌ بـ`cache`.
      ⚠️ **وهيكلُ الذيل لمن عنده صفوفٌ فقط**: هيكلٌ يظهر ثمّ يذوب إلى لا شيء قفزة (D-515). */
-  const personal = (part: "head" | "tail") =>
+  const personal = (part: "head" | "artists" | "tail") =>
     (!active || localAxesOnly(browse)) ? (
-      <Suspense fallback={part === "head" || myRows.length > 0 ? <RailSkeleton count={6} /> : null}>
+      <Suspense fallback={part === "head" || (part === "tail" && myRows.length > 0) ? <RailSkeleton count={6} /> : null}>
         {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
         <PersonalRails part={part} locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} hidden={hidden} />
       </Suspense>
@@ -1310,6 +1310,7 @@ async function CuratedRails({
       <div className="space-y-6">
         {personal("head")}
         {!railOff(hidden, "cinemas") && <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />}
+        {personal("artists")}
         {!railOff(hidden, "popular") && <PopularView popular={popular} lib={lib} ctx={ctx} />}
         {personal("tail")}
         {!railOff(hidden, "top10") && <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />}
@@ -1341,6 +1342,7 @@ async function CuratedRails({
           <CinemasRail promises={promises} ctx={ctx} />
         </Suspense>
       )}
+      {personal("artists")}
       {!railOff(hidden, "popular") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <PopularRail promises={promises} ctx={ctx} />
@@ -1855,9 +1857,9 @@ async function AnimeRails({
   ]);
 
   /* D-1283 — الشخصيُّ شطران حول «السينما» و«الأكثر شهرة» (الحجّةُ في `CuratedRails`) */
-  const personal = (part: "head" | "tail") =>
+  const personal = (part: "head" | "artists" | "tail") =>
     (!active || localAxesOnly(browse)) ? (
-      <Suspense fallback={part === "head" || myRows.length > 0 ? <RailSkeleton count={6} /> : null}>
+      <Suspense fallback={part === "head" || (part === "tail" && myRows.length > 0) ? <RailSkeleton count={6} /> : null}>
         <PersonalRails
           part={part}
           locale={locale}
@@ -2012,10 +2014,11 @@ async function PersonalRails({
   hidden = new Set<string>(),
 }: {
   /**
-   * 🆕 D-1283 — **أيُّ الشطرين**: `head` = «مقترحٌ لك» · `tail` = صفوفُك ثمّ «من فنّانيك».
-   * بينهما في الصفحة «السينما» و«الأكثر شهرة» — وكلُّ شطرٍ يجلب ما يرسمه وحدَه.
+   * 🆕 D-1283 → D-1284 — **أيُّ القطع**: `head` = «مقترحٌ لك» · `artists` = «من فنّانيك» ·
+   * `tail` = صفوفُك. وترتيبُها في الصفحة: الرأس · [السينما] · الفنّانون · «الأكثر شهرة» ·
+   * صفوفُك (تصحيحُ أحمد، ٥ أكتوبر) — وكلُّ قطعةٍ تجلب ما ترسمه وحدَه.
    */
-  part: "head" | "tail";
+  part: "head" | "artists" | "tail";
   locale: Locale;
   t: T;
   /** جهة التبويب — أفلام أو مسلسلات (D-141) */
@@ -2050,7 +2053,7 @@ async function PersonalRails({
        (D-062)، ووضعُه تحت عنوان أنمي وعدٌ يُخلَف (D-141) */
     /* **ومنه إلى السجلّ (D-199)** — فما يفتحه ضغطُ العنوان هو نفسُ ما
        يعرضه الصفّ. **وهذا القسمُ لا يُكتم** (انظر تعليقه في `sections.ts`). */
-    part === "tail" && wantMovies && !anime
+    part === "artists" && wantMovies && !anime
       ? buildSection("from-artists", { media: "movie", base: {}, active: false }, 20)
       : Promise.resolve([] as SearchResult[]),
     getLibState(),
@@ -2136,7 +2139,7 @@ async function PersonalRails({
         </Suspense>
       )}
 
-      {/* «من فنّانيك» بعد صفوفك (D-1283): غير مرقّم — هذه أحدث أعمال
+      {/* «من فنّانيك» (قطعةُ `artists` — D-1284): غير مرقّم — هذه أحدث أعمال
           فنّانيك لا ترتيبها */}
       {!railOff(hidden, "artists") && artistRows.length > 0 && (
         <RankedRail
