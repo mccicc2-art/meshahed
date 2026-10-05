@@ -1,0 +1,12 @@
+[deploy] D-1278 — smaller Continue Watching card and a larger Home avatar (app only)
+
+Ahmed, 5 Oct, from a screenshot and four mockups: the Continue Watching card
+is 184 wide (was 220) and 80% of its old height (122 at a 118 poster, was
+153). The tick circle on the card is 36 with a 44 touch target (the compact
+row keeps 44). Inner padding 10, the counters line sits 12 above the progress
+bar (was 20), title 13 and counters 11 (were 14 and 12), and the title no
+longer reserves 40 at its end. The Home avatar is 38 (was 32). Web untouched.
+Not tried on a device before the push.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HzzikFKBWMvhxeiwpWrNFV
