@@ -1,4 +1,4 @@
-[deploy] D-1293 — expanded trailer: swipe to next/previous clip, native dock hides while expanded
+[deploy] D-1294 — expanded trailer: centre tap pauses, gesture area stays black
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01WTgbkZ41iNeQWZ1twhpCbw
