@@ -1,3 +1,4 @@
+import { watchStateOf } from "@/core/libraryStatus";
 import { after } from "next/server";
 import {
   getFollows,
@@ -266,9 +267,11 @@ export async function GET() {
       widget: body.widgetItems,
       pick_genres_hint: body.favGenres.length === 0,
       watch_states: Object.fromEntries(
+        /* D-1281 — بعد التنقية (`watchStateOf`): «إيقاف مؤقّت» بلا حلقةٍ لا يصل، فقائمتُه «ابدأ» */
         followRows
-          .filter((f) => f.media_type === "tv" && !f.dropped && (f.watch_state === "started" || f.watch_state === "paused"))
-          .map((f) => [String(f.tmdb_id), f.watch_state as "started" | "paused"]),
+          .filter((f) => f.media_type === "tv")
+          .map((f) => [String(f.tmdb_id), watchStateOf(f, watchedByShow.get(f.tmdb_id) ?? 0)] as const)
+          .filter((e): e is readonly [string, "started" | "paused"] => e[1] !== null),
       ),
       hints: sanitizeUiState(profile?.ui_state).hints,
     };

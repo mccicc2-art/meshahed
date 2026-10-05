@@ -45,6 +45,7 @@ import { getTv, getMovie, trending, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
 import { nextUnwatchedEpisode, airedEpisodeCount, percentOf } from "@/core/progress";
 import { whenLabel } from "@/core/when";
+import { watchStateOf } from "@/core/libraryStatus";
 import { localizeFollows, localizeRows } from "@/lib/localize";
 import { curatedName } from "@/core/universes";
 import type { getT } from "@/lib/locale";
@@ -496,7 +497,7 @@ export async function buildHomeBody({
             watchedByShow.get(row.tmdb_id) ?? 0,
             aired || Infinity,
           );
-          return { id: row.tmdb_id, watched, aired, state: row.watch_state ?? null };
+          return { id: row.tmdb_id, watched, aired, state: watchStateOf(row, watched) };
         })
         /* D-1280 — الشرطُ نفسُه الذي يرسم الصفَّ أدناه (`inContinue`): المبدوءُ بلا حلقةٍ يُستطلع فتُعرف
            حلقتُه الأولى، والموقوفُ مؤقّتاً لا يُستطلع لأنّه لا يُرسم */
@@ -780,7 +781,7 @@ export async function buildHomeBody({
       watched,
       aired,
       progress: percentOf(watched, aired),
-      state: row.watch_state === "started" || row.watch_state === "paused" ? row.watch_state : null,
+      state: watchStateOf(row, watched),
     });
 
     if (row.next_air_date && row.next_air_date >= today) {
@@ -1113,13 +1114,16 @@ export async function buildHomeBody({
          و«للمشاهدة» لِما لم يبدأ — عملٌ جديد، أو موسمٌ جديد ينتظر أوّل
          حلقةٍ منه. كان الصفّان يعرضان الشيء نفسه فيقرأ المستخدم مكتبته
          مرّتين ويظنّ أن أحدهما معطّل. قرارُ المالك. */
-      /* 🆕 D-1280 — **وما قرّر فيه صاحبُه يخرج من هنا**: «ابدأ» نقله إلى «تابِع المشاهدة»، و«إيقاف مؤقّت»
-         أخفاه من الرئيسيّة — وموسمٌ جديد ينتظر لا يعيد الموقوفَ إلى هذا الصفّ */
+      /* 🆕 D-1280 — «ابدأ» نقله إلى «تابِع المشاهدة» فيخرج من هنا.
+         ⚖️ D-1281 — **و«إيقاف مؤقّت» يأتي به إلى هنا** (أحمد بعد أن جرّبه على Ted Lasso: «ابغاه يطلع فقط من
+         كنتنيو واتش.. اما تو واتش يبقى فيه»، ثمّ: «ينتقل الى تو واتش حتى تضغط ريسيوم»). D-1280 كانت تخفي
+         الموقوفَ من الصفَّين فيغيب عن الرئيسيّة كلِّها — و«مؤجَّلٌ وسأعود» مكانُه ما ينوي مشاهدتَه، لا الغياب.
+         فالموقوفُ استثناءٌ ثانٍ من «ما بدأته مكانُه تابِع المشاهدة وحدَها»، بجوار الموسم الجديد المنتظر. */
       .filter(
         (i) =>
-          !i.state &&
+          i.state !== "started" &&
           (i.aired === 0 || i.watched < i.aired) &&
-          (i.watched === 0 || newSeasonWaiting.has(i.id)),
+          (i.state === "paused" || i.watched === 0 || newSeasonWaiting.has(i.id)),
       )
       .map((i) => ({
         key: `tw-tv-${i.id}`,

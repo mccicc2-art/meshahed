@@ -4803,6 +4803,16 @@ export async function setWatchState(showTmdbId: number, state: "started" | "paus
   showTmdbId = intId(showTmdbId);
   if (state !== "started" && state !== "paused" && state !== null) throw new Error("مدخل غير صالح");
   const { supabase, user } = await requireUser();
+  /* D-1281 — **«إيقاف مؤقّت» بلا حلقةٍ تراجعٌ عن «ابدأ»**: يُكتب فراغاً لا `paused`. القراءةُ تنقّيه كذلك
+     (`watchStateOf`)، لكنّ صفّاً يحمل `paused` بلا حلقةٍ يصير موقوفاً فعلاً عند أوّل حلقةٍ تُعلَّم من غير
+     القادح (استيراد) — فلا يُكتب أصلاً. فشلُ العدِّ لا يمنع الكتابة: التنقيةُ تحرس القراءة. */
+  if (state === "paused") {
+    const { count } = await supabase
+      .from("watched_episodes")
+      .select("id", { count: "exact", head: true })
+      .match({ user_id: user.id, show_tmdb_id: showTmdbId });
+    if (count === 0) state = null;
+  }
   const { error } = await supabase
     .from("follows")
     .update({ watch_state: state })

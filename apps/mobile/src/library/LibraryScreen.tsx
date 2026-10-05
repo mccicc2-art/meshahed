@@ -268,7 +268,10 @@ export function LibraryScreen() {
         if (a === "start" || a === "pause" || a === "unpause") {
           /* 🆕 D-1280 — «ابدأ» ينقله إلى «أتابعه» بصفر (وصفةُ `showStatusOf`: القرارُ يُحترم بلا حلقة)؛ و«إيقاف
              مؤقّت/كمّل» علَمٌ على الملصق لا يبدّل رفَّه */
-          patch(item.key, (x) => (a === "start" ? { ...x, status: "watching", paused: false } : { ...x, paused: a === "pause" }));
+          /* D-1281 — «إيقاف مؤقّت» بلا حلقةٍ تراجعٌ عن «ابدأ»: يعود «لم يبدأ» كما يكتبه الخادم (`setWatchState`) */
+          patch(item.key, (x) =>
+            a === "start" ? { ...x, status: "watching", paused: false } : a === "pause" && x.watched === 0 ? { ...x, status: "unstarted", paused: false } : { ...x, paused: a === "pause" },
+          );
           await write<unknown>("/api/v1/track/watch-state", { showTmdbId: item.id, state: a === "start" ? "started" : a === "pause" ? "paused" : null } satisfies WatchStateBody);
         } else if (a === "remove") {
           /* «إزالة» لِما لم يبدأ: يخرج من الشبكة فوراً، و«تراجع» يعيد متابعتَه ثمّ يقرأ المكتبةَ من الخادم

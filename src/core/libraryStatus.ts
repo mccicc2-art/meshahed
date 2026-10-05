@@ -52,10 +52,25 @@ export function showStatusOf(f: StatusSource, watchedRaw: number): LibraryStatus
   if (done) return "completed";
   if (watched > 0) return "watching";
   /* 🆕 D-1280 — **«ابدأ» قرارٌ يُحترم بلا حلقة**: من ضغطه نقل العملَ من «للمشاهدة» إلى ما يتابعه،
-     فرفُّه «أتابعه» بصفر. و`paused` بلا حلقةٍ (بدأ ثمّ أوقف) يبقى فيه كذلك — الإيقافُ المؤقّت لا يردّ
-     العملَ إلى «لم يبدأ». الوصفةُ هنا وحدَها، فالمكتبةُ والقوائمُ الذكيّةُ والعدّاداتُ تقرؤها معاً. */
-  if (f.watch_state === "started" || f.watch_state === "paused") return "watching";
+     فرفُّه «أتابعه» بصفر. الوصفةُ هنا وحدَها، فالمكتبةُ والقوائمُ الذكيّةُ والعدّاداتُ تقرؤها معاً.
+     ⚖️ D-1281 — و«إيقاف مؤقّت» بلا حلقةٍ **ليس حالاً**: بدأ ثمّ أوقف ولم يشاهد شيئاً = لم يبدأ
+     (`watchStateOf` تُسقطه)، فقائمتُه تعود «ابدأ» لا «كمّل». */
+  if (watchStateOf(f, watched) === "started") return "watching";
   return "unstarted";
+}
+
+/**
+ * 🆕 D-1281 — **قرارُ صاحب المسلسل كما يُعمل به** (`follows.watch_state` بعد تنقيته) — قارئٌ واحد للرئيسيّة
+ * والمكتبة والخريطة التي تصل التطبيق، فلا يفترق سطحان في معنى صفٍّ واحد:
+ * - `started` لا يعني شيئاً بعد أوّل حلقة: الوقائعُ تحكم (فلا يُعاد).
+ * - `paused` لا يعني شيئاً قبل أوّل حلقة: إيقافُ ما لم يُشاهَد منه شيءٌ تراجعٌ عن «ابدأ».
+ * - والموقوفُ بالبطاقة الحمراء لا حالَ له: «تركتُه» تعلو الاثنين.
+ */
+export function watchStateOf(f: StatusSource, watchedRaw: number): "started" | "paused" | null {
+  if (f.dropped) return null;
+  if (f.watch_state === "started") return watchedRaw > 0 ? null : "started";
+  if (f.watch_state === "paused") return watchedRaw > 0 ? "paused" : null;
+  return null;
 }
 
 /** **حالةُ فيلم** — **لا «قيد المشاهدة» للفيلم**: يُرى أو لا يُرى */

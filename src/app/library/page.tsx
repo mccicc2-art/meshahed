@@ -25,7 +25,7 @@ import {
 import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/core/homePrefs";
 import { getT, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
-import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
+import { showStatusOf, movieStatusOf, watchStateOf } from "@/core/libraryStatus";
 import { isUuid } from "@/core/validate";
 import { defaultTab } from "@/core/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
@@ -270,14 +270,14 @@ export default async function LibraryPage({
         count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
         dropped,
         /* D-1280 — موقوفٌ مؤقّتاً: علامةٌ على الملصق و«كمّل» في قائمته */
-        paused: !dropped && !done && f.watch_state === "paused",
+        paused: !done && watchStateOf(f, watched) === "paused",
         /* الحالة اسمَ رقاقةٍ لا رقماً: الترتيب الذكي كان يحسبها أصلاً
            (rank)، ورقائق التقسيم (طلب المالك) تحتاجها بالاسم */
         /* **من الوصفة الواحدة** (D-876): **قائمةُ المكتبة الذكيّة تقرأ الحالةَ
            نفسَها** — فاستُخرجت لا نُسخت (D-376). */
         status: showStatusOf(f, watchedByShow.get(f.tmdb_id) ?? 0),
         /* D-1280 — «ابدأ» بلا حلقةٍ يرتَّب مع ما يُتابَع، كما تقول حالتُه */
-        rank: dropped ? 3 : !done && (watched > 0 || !!f.watch_state) ? 0 : watched === 0 ? 1 : 2,
+        rank: dropped ? 3 : !done && (watched > 0 || watchStateOf(f, watched) === "started") ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,
       };
     })

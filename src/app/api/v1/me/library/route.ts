@@ -12,7 +12,7 @@ import {
   getFollowedArtists,
   artKey,
 } from "@/lib/data";
-import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
+import { showStatusOf, movieStatusOf, watchStateOf } from "@/core/libraryStatus";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { getLocale, getTabPrefs, getHiddenRails } from "@/lib/locale";
@@ -125,7 +125,7 @@ export async function GET() {
         display_poster_path: art?.poster_path ?? loc?.poster_path ?? f.poster_path,
         is_anime: animeFlags.get(key) ?? null,
         is_favorite: favorites.has(key),
-        paused: isTv && !f.dropped && f.watch_state === "paused",
+        paused: isTv && status === "watching" && watchStateOf(f, w?.watched ?? 0) === "paused",
       };
     });
     const dt = defaultTab(tabPrefs, "shows");
