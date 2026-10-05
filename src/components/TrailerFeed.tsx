@@ -210,7 +210,7 @@ export function TrailerFeed({
                 onUnavailable={() => retire(k)}
               />
 
-              <div className="px-4 pt-3.5 pb-2">
+              <div className="px-4 pt-3 pb-1.5">
                 {/* 🆕 **ووسمُ المقطع بجوار الاسم** (D-772): **عملٌ يملك
                     أربعَ بطاقاتٍ في العلف** — **وبطاقتان بلا وسمٍ تُقرآن
                     تكراراً لا تنويعاً.** **والأولى بلا وسمٍ عمداً**: هي
@@ -226,30 +226,36 @@ export function TrailerFeed({
                 {/* 🆕 **والنسبةُ بجوار التصنيف** (D-729، حكمُه) — سطرٌ
                     واحدٌ يجمع السنةَ والنوعَ والنسبة، **ولا سطرَ ثالثٌ
                     لكلمةٍ واحدة.** */}
-                <p className="mt-1 text-14 text-muted truncate">
+                <p className="mt-0.5 text-14 text-muted truncate">
                   {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                 </p>
-                {/* 🆕 **والنبذةُ ثلاثةُ أسطرٍ في الصفحة الكاملة وحدَها**
-                    (D-729): **هنا البطاقةُ وحدَها في الشاشة فللنصِّ مكان**
-                    — **وفي صفِّ اكتشف تُطيل البطاقةَ بلا أن تُقرأ**
-                    (D-510). ⚠️ **و`line-clamp-3` لا قصٌّ بالحروف**:
-                    القصُّ الحسابيُّ يقطع الكلمةَ ويكذب على مقاسات الخطوط. */}
+                {/* **والنبذةُ في الصفحة الكاملة وحدَها** (D-729) — **وفي صفِّ
+                    اكتشف تُطيل البطاقةَ بلا أن تُقرأ** (D-510).
+                    ⚖️ 🆕 **وثلاثةُ أسطرها صارت سطرين** (D-1291، بلاغُ أحمد:
+                    «التفاصيل تحت المقطع ماخذه حجم اكبر من المقطع نفسه»):
+                    **السطرُ الثالثُ كان ينتهي بـ«…» أصلاً والكاملُ خلف
+                    «التفاصيل»** — **والمقطعُ هو سببُ الصفحة فلا يصغر عمّا
+                    تحته.** ⚠️ **و`line-clamp` لا قصٌّ بالحروف**: القصُّ
+                    الحسابيُّ يقطع الكلمةَ ويكذب على مقاسات الخطوط. */}
                 {i.overview && (
-                  <p className="mt-2.5 text-14 leading-relaxed line-clamp-3" dir="auto">
+                  <p className="mt-2 text-14 leading-relaxed line-clamp-2" dir="auto">
                     {i.overview}
                   </p>
                 )}
                 {/* **وسببُ الترشيح آخرَ الكتلة** — هو أضعفُها رتبةً */}
-                {i.note && <p className="mt-2.5 text-14 text-muted truncate">{i.note}</p>}
+                {i.note && <p className="mt-2 text-14 text-muted truncate">{i.note}</p>}
               </div>
 
-              {/* **ثلاثةُ أفعالٍ بوصفةٍ واحدة** — رمزٌ فوق كلمةٍ بعرضٍ
-                  متساوٍ، **وفاصلٌ فوقها كفاصل بطاقة الملفّ** (D-687). */}
+              {/* **ثلاثةُ أفعالٍ بوصفةٍ واحدة** — بعرضٍ متساوٍ، **وفاصلٌ
+                  فوقها كفاصل بطاقة الملفّ** (D-687).
+                  ⚖️ 🆕 **والرمزُ بجوار كلمته لا فوقها** (D-1291): **الصفُّ
+                  كان ثلثَ ارتفاع التفاصيل ليحمل ثلاثَ كلمات** — **وسطرٌ
+                  واحدٌ يحمل الأفعالَ نفسَها بثلثَي ارتفاعه.** */}
               <div className="mt-1 grid grid-cols-3 border-t border-[color:var(--divider)]">
                 <Link
                   href={trailerTitleHref(i)}
                   prefetch={false}
-                  className="flex flex-col items-center gap-1.5 py-3 text-12 text-muted active:opacity-70 transition"
+                  className="flex items-center justify-center gap-2 py-3 text-12 text-muted whitespace-nowrap active:opacity-70 transition"
                 >
                   <Icon name="info" size={21} />
                   {t.trailerDetails}
@@ -258,7 +264,7 @@ export function TrailerFeed({
                   type="button"
                   onClick={() => addToList(i)}
                   disabled={isAdded}
-                  className={`flex flex-col items-center gap-1.5 py-3 text-12 active:opacity-70 transition ${
+                  className={`flex items-center justify-center gap-2 py-3 text-12 whitespace-nowrap active:opacity-70 transition ${
                     isAdded ? "text-accent" : "text-muted"
                   }`}
                 >
@@ -268,7 +274,7 @@ export function TrailerFeed({
                 <button
                   type="button"
                   onClick={() => notForMe(i)}
-                  className="flex flex-col items-center gap-1.5 py-3 text-12 text-muted active:opacity-70 transition"
+                  className="flex items-center justify-center gap-2 py-3 text-12 text-muted whitespace-nowrap active:opacity-70 transition"
                 >
                   <Icon name="eye-off" size={21} />
                   {t.trailerNotForMe}

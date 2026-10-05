@@ -31,7 +31,11 @@ export default async function TrailersPage({
   const scope = active === "for-you" ? asTrailerScope(params.scope) : undefined;
 
   return (
-    <div className="space-y-3">
+    /* 🆕 **والترويسةُ تصعد ٢٠px نحو خطِّ الشريط** (D-1291، بلاغُ أحمد: «فيه
+       مساحة بين trailer for you والخط اللي فوقها نبي نرفع شوي»): **الفراغُ
+       فوق العنوان كان أوسعَ ممّا تحته فقُرئ العنوانُ معلّقاً** — **وهو
+       `pt-6` القشرةِ المشتركة، فيُستردّ هنا وحدَه ولا تُمسّ صفحةٌ أخرى.** */
+    <div className="-mt-5 space-y-3">
       <header className="flex items-center gap-3 py-1">
         <TrailerBackButton label={t.backAria} fallback={safeReturnPath(params.from)} />
         <h1 className="flex-1 text-center text-15 font-bold">
@@ -109,7 +113,7 @@ function TrailerFeedSkeleton() {
       <div className="space-y-3 p-4">
         <div className="h-5 w-2/5 animate-pulse rounded bg-surface-2" />
         <div className="h-4 w-3/5 animate-pulse rounded bg-surface-2" />
-        <div className="h-14 animate-pulse rounded bg-surface-2" />
+        <div className="h-10 animate-pulse rounded bg-surface-2" />
       </div>
     </div>
   );
