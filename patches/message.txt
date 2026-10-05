@@ -1,4 +1,4 @@
-[deploy] D-1294 — expanded trailer: centre tap pauses, gesture area stays black
+[deploy] D-1295 — expanded trailer: title, meta, overview and My List under the video
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01WTgbkZ41iNeQWZ1twhpCbw
