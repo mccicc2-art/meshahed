@@ -1,11 +1,4 @@
-[deploy] D-1282 — no "next episode" row in the menu of To watch titles (app only)
-
-Ahmed: remove "Watched the next episode +1" from the long-press menu in To
-watch. It showed there for one case only, a series with a new season waiting.
-To watch is for what has not been started; whoever wants an episode starts
-the series or opens it. The row stays in the library and in My shows. The
-card flag is renamed tick -> noNext since it now has two reasons.
-Not tried on a device before the push.
+[deploy] D-1283 — Discover: third personal row, rows after Most popular, anime Top 50 removed
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01HzzikFKBWMvhxeiwpWrNFV
+Claude-Session: https://claude.ai/code/session_014hAzmhFXvvkfHpU1mx7XL1
