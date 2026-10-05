@@ -1,4 +1,4 @@
-[deploy] D-1296 — trailers feed stays as opened: a title added to My List no longer vanishes
+[deploy] D-1297 — trailers: My List toggles (a second tap removes what this visit added)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01WTgbkZ41iNeQWZ1twhpCbw
