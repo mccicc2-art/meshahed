@@ -1,4 +1,4 @@
-[deploy] D-1287 — kids programmes out of Discover rows (family and animation rows keep them)
+[deploy] D-1288 — only shows aimed at small children (TV-Y) leave Discover rows; the Kids genre stays
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_014hAzmhFXvvkfHpU1mx7XL1
