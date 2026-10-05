@@ -3,7 +3,7 @@ import { localizeRows } from "./localize";
 import type { Locale } from "@/core/i18n";
 import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
-import { getMovie, getTv, topRatedRows, isTalkOrNews } from "./tmdb";
+import { getMovie, getTv, topRatedRows, isTalkOrNews, isKidsTv, KIDS_TV_GENRE } from "./tmdb";
 import { MIN_CHART_VOTES, minChartVotes } from "@/core/chartFloor";
 
 /**
@@ -272,12 +272,15 @@ export function looksMutedLang(r: {
  */
 export function railGuard<T extends { genre_ids?: number[]; original_language?: string }>(
   rows: T[],
-  opts: { anime?: "drop" | "keep" | "only"; unmute?: boolean } = {},
+  opts: { anime?: "drop" | "keep" | "only"; unmute?: boolean; kids?: "drop" | "keep" } = {},
 ): T[] {
   const anime = opts.anime ?? "drop";
   return rows.filter((r) => {
     /* D-1285 — التوك شو والأخبار ليست مسلسلاتٍ تُتابع: تسقط من كلِّ رفٍّ يمرّ بهذا الحارس */
     if (isTalkOrNews(r)) return false;
+    /* D-1287 — برامجُ الأطفال تسقط من رفوف «اكتشف» وحدَها: المستدعي يطلبها بـ`kids: "drop"`
+       (الافتراضُ إبقاء — أسطحُ الرئيسيّة والهبوط لم يُطلب فيها شيء) */
+    if (opts.kids === "drop" && isKidsTv(r)) return false;
     const isAnime = looksAnime(r);
     if (anime === "drop" && isAnime) return false;
     if (anime === "only" && !isAnime) return false;
@@ -395,6 +398,8 @@ async function filterRail(
                 });
           const genres = d.genres ?? [];
           if (docByFlag === null && genres.some((g) => g.id === DOCUMENTARY_GENRE)) return true;
+          /* D-1287 — برامجُ الأطفال خارج رفوف القوائم («أفضل ٢٥» وكلاسيكيّاتُ «الأكثر شهرة») */
+          if (r.media_type === "tv" && genres.some((g) => g.id === KIDS_TV_GENRE)) return true;
           /* 🆕 **والحكمُ هنا يُبنى من `genres` لا من `genre_ids`** (D-321):
              `looksMutedLang` تقرأ حقلَ القوائم، وهذه صفوفُ **تفاصيل** —
              فتُترجَم الشكلُ إلى الشكل، **ولا تُكتب قاعدةٌ ثانية**. */

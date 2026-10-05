@@ -56,6 +56,7 @@ import {
   posterUrl,
   type SearchResult,
   type DiscoverFilter,
+  kidsAllowed,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { looksAnime, railGuard } from "@/lib/topChart";
@@ -761,6 +762,8 @@ async function MyRowsRails({
         railGuard(items, {
           anime: anime ? "only" : "drop",
           unmute: !!browse?.lang || !!browse?.country,
+          /* D-1287 — برامجُ الأطفال تسقط، إلّا من صفٍّ نوعُه «عائلي»/«رسوم متحرّكة» */
+          kids: kidsAllowed(ids) ? "keep" : "drop",
         }),
         `${tab}:${r.genre}.${r.tag ?? ""}`,
       );

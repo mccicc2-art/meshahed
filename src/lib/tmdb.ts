@@ -703,6 +703,22 @@ export function isTalkOrNews(r: { genre_ids?: number[] }): boolean {
 }
 
 /**
+ * 🆕 D-1287 — **برامجُ الأطفال خارج رفوف «اكتشف»** (بلاغُ أحمد، ٥ أكتوبر: «في كوميدي فيه للاطفال ..
+ * مثل ماي لتل بوني و روقراتس سيسيم ستريت .. ما ابغاها»، ثمّ: «كل صفوف اكتشف»). النوعُ Kids عند
+ * TMDB (للتلفزيون وحدَه — لا نظيرَ له في الأفلام). ⚖️ **وليس «عائلي»**: ذاك واسعٌ يحمله ما لم
+ * يُطلب حذفُه. 🔑 **والاستثناءُ لمن طلبه بنفسه**: صفٌّ أو فلترٌ نوعُه «عائلي» أو «رسوم متحرّكة»
+ * يبقى كاملاً — حارسٌ يكتم ما طُلب صراحةً يكذب (حجّةُ D-194).
+ */
+export const KIDS_TV_GENRE = 10762;
+const KIDS_OK_GENRES: readonly number[] = [16, 10751, KIDS_TV_GENRE];
+export function kidsAllowed(genreIds?: readonly number[] | null): boolean {
+  return (genreIds ?? []).some((g) => KIDS_OK_GENRES.includes(g));
+}
+export function isKidsTv(r: { genre_ids?: number[] }): boolean {
+  return (r.genre_ids ?? []).includes(KIDS_TV_GENRE);
+}
+
+/**
  * هل هذا الظهور برنامجٌ تلفزيوني لا عملاً درامياً؟ (دفعة أحمد الثالثة)
  * ظهورات الممثلين في التوك شو تُغرق سيرتهم وقوائمهم (قائمة توم هانكس
  * كانت أغلبها برامج) — التصنيف بأنواع TMDB الثابتة لا بالاسم.
@@ -2038,7 +2054,9 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.companies?.length) p.with_companies = f.companies.join("|");
   /* D-1285 — التوك شو والأخبار تُستبعد عند المصدر كي يبقى الرفُّ ممتلئاً (الحارسُ `railGuard`
      يُسقطها أيضاً، وهو الضمان؛ هذا السطرُ يمنع رفّاً ناقصاً فقط). للتلفزيون وحدَه. */
-  if (mediaType === "tv") p.without_genres = TALK_NEWS_GENRES.join(",");
+  /* D-1287 — ومعها برامجُ الأطفال، إلّا لمن طلب «عائلي» أو «رسوم متحرّكة» بنفسه */
+  if (mediaType === "tv")
+    p.without_genres = [...TALK_NEWS_GENRES, ...(kidsAllowed(f.genreIds) ? [] : [KIDS_TV_GENRE])].join(",");
   return p;
 }
 
