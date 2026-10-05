@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { BackHandler, Linking, Platform, Share, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
@@ -217,6 +217,7 @@ export function WebLayer() {
      دوكَه لهما. **والعلمُ لا يعيش بعد صفحته**: يسقط بتبدّل المسار وبالتحميل وباختفاء الطبقة — دوكٌ يغيب ولا يعود
      أسوأُ من دوكٍ ظاهر. */
   const [immersive, setImmersive] = useState(false);
+  const insets = useSafeAreaInsets();
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
@@ -793,6 +794,10 @@ export function WebLayer() {
       {/* D-1103 — الدرعُ فوق الصفحة وحدَها لحظةَ انكشافها؛ لا يُرى ولا يغطّي الشريطَ الأصليّ */}
       {shielded ? <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="auto" /> : null}
       {/* D-1012 — الشريطُ الأصليّ فوق الصفحة (لا يُرسم قبل أن تجهز الصفحة ولا فوق شاشة الخطأ) */}
+      {/* 🔴 D-1294 — **منطقةُ الإيماءات سوداءُ والفيديو مكبَّر** (بلاغُ أحمد بتسجيل: «اللي تحت فالطرف تشوفه»):
+          D-1293 طوت الدوكَ فامتدّت الصفحةُ تحت شريط الإيماءات لأوّل مرّة — وستارةُ التكبير تقف عند الحافّة
+          الآمنة، فأطلّت البطاقةُ التي خلفها شريطاً ~١٠dp. الدوكُ كان يملأ تلك المنطقةَ بحشوته؛ فمن طواه يملؤها. */}
+      {immersed ? <View style={{ height: insets.bottom, backgroundColor: "#000" }} /> : null}
       {ready && !failed && !atGate(path, landing) && !immersed ? (
         <BottomNav
           shell

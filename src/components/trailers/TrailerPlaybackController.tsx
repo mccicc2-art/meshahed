@@ -1780,8 +1780,10 @@ export function TrailerPlayback({
   return (
     <Ctx.Provider value={api}>
       {children}
-      {/* D-763: ستارةُ سوادِ التكبير — تحت الطبقة (55) وفوق الصفحة */}
-      <div ref={scrim} className="fixed inset-0 z-[51] hidden bg-black" aria-hidden />
+      {/* D-763: ستارةُ سوادِ التكبير — تحت الطبقة (55) وفوق الصفحة.
+          🔴 D-1294: **وتمتدّ تحت الحافّة** — متصفّحٌ يرسم الصفحةَ تحت شريط الإيماءات يقف بـ`bottom: 0` عند
+          الحافّة الآمنة فتطلّ البطاقةُ التي خلف الستارة؛ والزائدُ خارجَ الشاشة لا يُرى. */}
+      <div ref={scrim} className="fixed inset-x-0 top-0 -bottom-24 z-[51] hidden bg-black" aria-hidden />
       {/* الطبقةُ الواحدة: مشغّلُ يوتيوب + عنصرُ الملفّ — لمسُها معطَّلٌ
           بالكامل فلا يبتلع الإطارُ تمريرَ الصفحة (المواصفة ١١/٦) */}
       <div
@@ -2108,6 +2110,15 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
           /* **وسحبةٌ نقلت لا تُحسب لمسة** */
           if (e.timeStamp - swipedAt.current < 400) return;
           if (playing) {
+            /* ⚖️ 🆕 D-1294 (طلبُ أحمد بتسجيل: «اذا لمست المنتصف علامة ايقاف الفيديو يوقف») — **نقضُ D-771 في
+               التكبير بعد أن نُقض في البطاقة (D-878).** يوتيوب يرسم ⏸ في وسط إطاره، والإطارُ لا يُلمس عندنا —
+               فكانت علامةً تُرى ولا تستجيب. **ولا نرسم ثانيةً فوقها** (سؤالُه: «ما راح يتعارض… ويسير شيئين
+               متداخلين؟» — بلى: ظهورُها ومقاسُها بيد يوتيوب)، **بل الوسطُ نفسُه يوقف**: دائرةٌ نصفُ قطرها ٥٢px
+               حول مركز الشاشة. والثمنُ معلَن: لمسةُ الوسط توقف وإن غابت العلامة — وتُستأنف بلمسة. */
+            if (Math.hypot(e.clientX - window.innerWidth / 2, e.clientY - window.innerHeight / 2) <= 52) {
+              api.togglePlay();
+              return;
+            }
             if (dbl.tap(e)) return;
             api.pokeControls();
           } else if (snap.activeId) {
