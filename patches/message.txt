@@ -1,0 +1,25 @@
+[deploy] D-1280 — Start / Pause / Resume and Remove in the long-press menu (migration 194)
+
+Ahmed, 5 Oct, from a screenshot of the menu over a To watch title. The menu
+rows now follow the title's state, in the app and in the web library:
+- series not started: Start, Watched it all, Your comment, Remove
+- series being watched: Pause, next episode (only where the card has no
+  tick), Watched it all, Your comment, Red card
+- series paused: Resume, Watched it all, Your comment, Red card
+- movie not watched: Watched it, Your comment, Remove
+Start puts a series in Continue Watching without marking an episode and takes
+it out of To watch; Pause hides it from Continue Watching and keeps it on its
+library shelf with a pause mark. Series only. Red card is for what was
+started; Remove (with Undo) replaces it for what was not.
+
+follows.watch_state ('started' | 'paused', migration 194, already applied)
+carries the decision; a statement-level trigger on watched_episodes clears
+'paused' when an episode is marked, and setDropped clears the state. The
+status recipe (showStatusOf) reads it, so the library, smart lists and counts
+agree. Continue Watching cards in the app now open the menu on long press.
+
+Not in this batch: web Home posters and the web Continue card keep their old
+menus. Not tried on a device before the push.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HzzikFKBWMvhxeiwpWrNFV
