@@ -85,7 +85,7 @@ export function HomeTopBar({
 }
 
 /**
- * 🆕 D-1233 — **صفُّ الترحيب صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر ٢٠٢٦): الصورةُ ٣٢ · الاسمُ ٢٢/٧٠٠ (حجمُ عنوان القسم تحته — قياسُ لقطته) · شارةُ
+ * 🆕 D-1233 — **صفُّ الترحيب صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر ٢٠٢٦): الصورةُ ٣٢ (اليوم ٣٨ — D-1278) · الاسمُ ٢٢/٧٠٠ (حجمُ عنوان القسم تحته — قياسُ لقطته) · شارةُ
  * الاشتراك (`PARTNER`/`PLUS`، ولا شيء لغير المشترك) · مبدّلُ العرض في الطرف.
  * - **خرج منه**: سطرُ `@username • المتابعون`، وختمُ التوثيق (قرارُه: «يُحذف من الهوم» — يبقى في الملفّ والإعدادات)،
  *   وألوانُ «فوق الغلاف» (`onArt`) لأنّ الغلافَ نفسَه خرج من الرئيسيّة.
@@ -93,7 +93,9 @@ export function HomeTopBar({
  *   لكنّ الرمزَ يُسنَد إلى طرفه لا إلى وسطه؛ و`ICON_INSET` يعوّض هامشَ الرسمة الشفّاف (٩ من ٧٢ في `list.png`
  *   و`grid.png`) — بدونه يقف الرمزُ المرئيُّ ٢٫٢٥ قبل حافّة «الكلّ».
  */
-const AVATAR = 32;
+/* 🆕 D-1278 — ٣٨ (كانت ٣٢): أحمد «أحسّ اسم KHLD كبير على الأفتار» واختار ٣٨ من صورةٍ بثلاثة مقاسات. الاسمُ ٢٢
+   بسطرٍ ٢٨ كان يكاد يساوي الصورة؛ و٣٨ دون هدف المبدّل (٤٠) فلا يطول الصفّ. */
+const AVATAR = 38;
 const SWITCH_ICON = 18;
 const ICON_INSET = (9 / 72) * SWITCH_ICON;
 /* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
@@ -115,7 +117,7 @@ export function HomeGreeting({
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Pressable onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-        {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
+        {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={19} color={tokens.muted} />}
       </Pressable>
       {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والمبدّلُ يُدفع إلى الطرف */}
       <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>

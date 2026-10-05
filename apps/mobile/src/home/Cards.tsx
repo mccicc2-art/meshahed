@@ -14,14 +14,19 @@ const VEIL = require("../../assets/poster-veil.png");
 
 /**
  * بطاقاتُ الرئيسية التي لا نظيرَ لها في المكتبة (Phase 11-H · H2) — **بقيم
- * الويب حرفاً**: `ContinueCard`/`ListContinueCard` (بطاقةٌ عريضة ٢٢٠ × ملصق×١٫٥
+ * الويب حرفاً**: `ContinueCard`/`ListContinueCard` (بطاقةٌ عريضة — مقاسُها اليوم في D-1278؛ كانت ٢٢٠ × ملصق×١٫٥
  * بمشهدٍ وخيطِ تقدّم — D-437/D-507) و`CompactMediaRow` (صفُّ المختصر و«القادم»).
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» = عرضُ الملصق × ١٫٣ كالويب (`continueCardBox`) — مشتقٌّ من الملصق فيتبع
-    الكثافة. والعرضُ `BACKDROP_W` ٢٢٠ مثله: مقاسٌ واحدٌ للسطحين طولاً وعرضاً. */
-export const continueCardH = (posterW: number) => Math.round(posterW * 1.3);
+/** ارتفاعُ بطاقة «تابِع المشاهدة» مشتقٌّ من الملصق فيتبع الكثافة. 🆕 D-1278 — المعاملُ ١٫٠٣٥ (كان ١٫٣ كالويب):
+    ٨٠٪ من الارتفاع القديم — ١٢٢ عند ملصق ١١٨ حيث كان ١٥٣، وهو ما اعتمده أحمد في الصورة. التطبيقُ وحدَه. */
+export const continueCardH = (posterW: number) => Math.round(posterW * 1.035);
+
+/** D-1278 — دائرةُ الصحّ على البطاقة ٣٦ (في الصفّ باقيةٌ ٤٤): ٤٤ فوق بطاقةٍ ارتفاعُها ١٢٢ تأكل ثلثَها.
+    و`hitSlop` ٤ يُبقي هدفَ اللمس ٤٤. */
+const CARD_CHECK = 36;
+const ROW_CHECK = 44;
 
 export const ContinueCard = memo(function ContinueCard({
   card,
@@ -65,11 +70,12 @@ export const ContinueCard = memo(function ContinueCard({
       <Pressable
         onPress={onCheck}
         disabled={busy || !canCheck}
-        hitSlop={6}
+        hitSlop={variant === "row" ? 6 : 4}
         accessibilityRole="button"
         accessibilityLabel={t.markWatchedAria}
         style={({ pressed }) => [
           styles.check,
+          variant === "row" ? styles.checkRow : styles.checkCard,
           /* D-1080 — في الصفّ: أعلى الدائرة على مستوى أعلى الاسم (يُقاس من عمود النصّ لا رقمٌ أصمّ —
              فيصحّ لبطاقة العمل ذات السطرين ولبطاقة القائمة ذات السطر الواحد)، وأرضيّتُها سوداءُ صلبة
              لا زجاجٌ رماديّ فوق سطح البطاقة — بلاغُ أحمد على 1.11.8: «الصحّ يلامس النسبة» */
@@ -77,7 +83,7 @@ export const ContinueCard = memo(function ContinueCard({
           { borderColor: "rgba(255,255,255,0.35)", opacity: pressed ? 0.7 : canCheck ? 1 : 0.35 },
         ]}
       >
-        <Icon name="check" size={20} color="#fff" />
+        <Icon name="check" size={variant === "row" ? 20 : 18} color="#fff" />
       </Pressable>
     ) : null;
 
@@ -125,18 +131,21 @@ export const ContinueCard = memo(function ContinueCard({
         {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name="film" size={26} color={tokens.muted} /></View>}
         {/* `from-black/85 via-black/25` — حجابُ الملصق نفسُه ممدوداً على نصف البطاقة */}
         <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "60%" }} contentFit="fill" />
-        {/* السطرُ الثاني باقٍ (أيُّ حلقةٍ تالية لا يقولها الشريط)، والكتلةُ أعلى بـ٦ عن الشريط كـ`pb-5` في الويب */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 20 }}>
+        {/* السطرُ الثاني باقٍ (أيُّ حلقةٍ تالية لا يقولها الشريط). D-1278 — الحشوةُ ١٠ والقاعُ ١٢ (كانا ١٢ و٢٠):
+            أحمد «النسبة وعدد الحلقات الباقية نزلها تحت» واختار «داخل البطاقة» — السطرُ يجاور الشريطَ الذي يشرحه.
+            والخطّان ١٣ و١١ (كانا ١٤ و١٢: «صغّر الخط شوي»)؛ سطرُ القائمة باقٍ ١٠ فهو عند حدِّ القراءة. */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 10, paddingBottom: 12 }}>
           {!isShow ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
               <Icon name="list" size={11} color={tokens.accent} />
               <Text size={10} weight="600" color={tokens.accent} numberOfLines={1} style={{ flexShrink: 1 }}>{title}</Text>
             </View>
           ) : null}
-          <Text size={14} weight="600" color="#fff" numberOfLines={1} style={[styles.shadow, { paddingEnd: 40 }]}>{isShow ? title : (card.next.title ?? "—")}</Text>
+          {/* بلا `paddingEnd`: الدائرةُ في الأعلى (قاعُها ٤٦) والعنوانُ تحتها — والمقعدُ المحجوز كان يقصّ العنوانَ بلا سبب */}
+          <Text size={13} weight="600" color="#fff" numberOfLines={1} style={styles.shadow}>{isShow ? title : (card.next.title ?? "—")}</Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-            <Text size={12} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1 }}>{isShow ? sub : counter}</Text>
-            <Text size={12} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"] }}>{isShow ? counter : `${pct}%`}</Text>
+            <Text size={11} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1 }}>{isShow ? sub : counter}</Text>
+            <Text size={11} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"] }}>{isShow ? counter : `${pct}%`}</Text>
           </View>
         </View>
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: tokens.divider }}>
@@ -208,5 +217,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 16, borderWidth: 1, padding: 8 },
   center: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" },
   shadow: { textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  check: { position: "absolute", width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  check: { position: "absolute", borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  checkRow: { width: ROW_CHECK, height: ROW_CHECK, borderRadius: ROW_CHECK / 2 },
+  checkCard: { width: CARD_CHECK, height: CARD_CHECK, borderRadius: CARD_CHECK / 2 },
 });
