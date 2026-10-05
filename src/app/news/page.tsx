@@ -16,7 +16,7 @@ import {
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
-import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
+import { parseMyRows, uniqueMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/core/browse";
 import { LOOPZ_PERSON } from "@/core/loopz";
 import { Avatar } from "@/components/Avatar";
@@ -58,7 +58,7 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
+import { looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
@@ -734,7 +734,7 @@ async function MyRowsRails({
   const qs = browse ? filterQs(browse) : "";
 
   const built = await Promise.all(
-    rows.map(async (r) => {
+    uniqueMyRows(rows).map(async (r) => {
       const g = BROWSE_GENRES.find((x) => x.slug === r.genre);
       const ids = g ? (media === "movie" ? g.movie : g.tv) : [];
       if (!g || !ids.length) return null;
@@ -1260,24 +1260,22 @@ async function CuratedRails({
   const ctx: CuratedCtx = { locale, t, browse, eraR, qs, rails, today, unmute, wantMovies, wantSeries };
 
   /* الصفّان الشخصيّان — Suspense مستقلّ منذ م٧/D-071، بشرطَي D-197 */
-  /* ⚖️ 🆕 **وصفُّ السينما يسبق صفَّ الفنّانين** (D-735، حكمُه بلقطةٍ
-     محوَّطة: «في السينما خلّها قبل الفنانين») — **نقضٌ لترتيبٍ كُتب في
-     D-338**: «الشخصيُّ يسبق العامّ».
-     🔑 **وحجّةُ النقض أن «الآن في السينما» ليس عامّاً**: **هو أضيقُ
-     الصفوف زمناً** — يسقط بعد أسابيع، **وصفٌّ له تاريخُ انتهاءٍ يسبق
-     صفّاً لا ينتهي** مهما كان الثاني أقربَ إلى صاحبه.
-     ⚠️ **والحقنُ بفتحةٍ لا بشطرِ المكوّن**: `PersonalRails` تجلب
-     بياناتِها وتقرّر فراغَها بنفسها — **وشطرُها لأجل ترتيبٍ يضاعف
-     النداءات**، **وفتحةٌ تُمرَّر عقدةً جاهزةً لا تكلّف شيئاً.**
-     ⚠️ **وحين يغيب الشخصيُّ كلُّه تُرسم الفتحةُ وحدَها** — **وترتيبٌ
-     يُنفَّذ بإخفاء صفٍّ ليس ترتيباً.** */
-  const personalWith = (slot: React.ReactNode) =>
+  /* ⚖️ **وصفُّ السينما يسبق صفَّ الفنّانين** (D-735، حكمُه: «في السينما خلّها قبل
+     الفنانين») — باقٍ، وطريقتُه تبدّلت في D-1283 أدناه (شطران لا فتحة). */
+  /* ⚖️ 🆕 D-1283 — **الشخصيُّ شطران حول «السينما» و«الأكثر شهرة»** (ترتيبُ أحمد، ٥ أكتوبر:
+     اخترناه لك · [السينما] · الأكثر شهرة · Row 1–3 · ثمّ الباقي) — **نقضٌ لفتحة D-735**:
+     الفتحةُ كانت ترهن صفَّ السينما ببِركة المقترحات (أبطأُ طلبٍ في الصفحة)، ولو حملت
+     «الأكثر شهرة» أيضاً لتأخّر أوّلُ صفٍّ عامّ. **والشطرُ لا يضاعف النداءات**: الرأسُ يجلب
+     البِركةَ وحدَها والذيلُ يجلب «من فنّانيك» وحدَه — لا نداءَ مشتركٌ بينهما إلّا
+     `getLibState` وهي مغلَّفةٌ بـ`cache`.
+     ⚠️ **وهيكلُ الذيل لمن عنده صفوفٌ فقط**: هيكلٌ يظهر ثمّ يذوب إلى لا شيء قفزة (D-515). */
+  const personal = (part: "head" | "tail") =>
     (!active || localAxesOnly(browse)) ? (
-      <Suspense fallback={<RailSkeleton count={6} />}>
+      <Suspense fallback={part === "head" || myRows.length > 0 ? <RailSkeleton count={6} /> : null}>
         {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} slot={slot} hidden={hidden} />
+        <PersonalRails part={part} locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} hidden={hidden} />
       </Suspense>
-    ) : slot;
+    ) : null;
 
   if (active) {
     /* ===== الفلترُ مفعَّل: الحاجزُ القديم كما هو حرفاً (D-515) =====
@@ -1310,10 +1308,10 @@ async function CuratedRails({
 
     return (
       <div className="space-y-6">
-        {personalWith(
-          railOff(hidden, "cinemas") ? null : <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />,
-        )}
+        {personal("head")}
+        {!railOff(hidden, "cinemas") && <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />}
         {!railOff(hidden, "popular") && <PopularView popular={popular} lib={lib} ctx={ctx} />}
+        {personal("tail")}
         {!railOff(hidden, "top10") && <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />}
         {!railOff(hidden, "top10") && <TopTenView mt="tv" rows={topSeries} lib={lib} ctx={ctx} />}
         {!railOff(hidden, "top50") && <Top25View mt="movie" rows={top25Movies} lib={lib} ctx={ctx} />}
@@ -1337,18 +1335,18 @@ async function CuratedRails({
      **بلا نداءٍ ثانٍ: يعيد انتظارَ المواعيد نفسِها.** */
   return (
     <div className="space-y-6">
-      {personalWith(
-        wantMovies && !railOff(hidden, "cinemas") ? (
-          <Suspense fallback={<RailSkeleton count={6} />}>
-            <CinemasRail promises={promises} ctx={ctx} />
-          </Suspense>
-        ) : null,
+      {personal("head")}
+      {wantMovies && !railOff(hidden, "cinemas") && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <CinemasRail promises={promises} ctx={ctx} />
+        </Suspense>
       )}
       {!railOff(hidden, "popular") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <PopularRail promises={promises} ctx={ctx} />
         </Suspense>
       )}
+      {personal("tail")}
       {wantMovies && !railOff(hidden, "top10") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <TopTenRail mt="movie" promises={promises} ctx={ctx} />
@@ -1781,7 +1779,8 @@ async function AnimeRails({
     );
   };
 
-  const [topMovies, topSeries, popular, airing, soon, cinemas, top50Movies, top50Series] =
+  /* D-1283 — «أفضل ٥٠» بصفَّيه خرج من التبويب (أمرُ أحمد، ٥ أكتوبر) — وخرج نداءاه معه */
+  const [topMovies, topSeries, popular, airing, soon, cinemas] =
     await Promise.all([
     animeTop("movie", genre?.movie, rails.am)
       /* **ورفوفُ الأنمي تُصفّى بـ`anime:"only"`** (D-194): بِركتُها من
@@ -1853,46 +1852,33 @@ async function AnimeRails({
               : null;
           })
           .catch(() => null),
-    /* ذيلا «أفضل ٥٠» من `imdb_chart` لا من `/discover` — لا نوعَ فيهما
-       ولا حقبةَ ولا منصّة. فيغيبان ما دام الفلتر مفعّلاً (اختيار أحمد)
-       بدل أن يعرضا ما لم يُطلب تحت رأسٍ يقول إن الفلتر مُطبَّق */
-    /* **رفُّ أفلام الأنمي: القائمةُ الحقيقية أوّلاً، وذيلُ D-132 احتياطاً.**
-       صنفُ `anime` صار يحمل أفلاماً ومسلسلاتٍ معاً بعد الهجرة ٦٠، فالرفّ
-       يقرأ منه جهةَ الأفلام. **وإن عاد فارغاً فالبِركةُ لم تُملأ بعد** —
-       فيرجع إلى بِركة `/discover` كما كان، بلا رفٍّ فارغٍ في الطريق
-       (D-169: «أضعفُ لا مكسور» — واليوم صار «صحيحٌ متى أمكن»). */
-    active
-      ? Promise.resolve([] as SearchResult[])
-      : topChartRail("anime", 50, locale, "movie")
-          .then((r) => (r.length > 0 ? r : animeMovieRail(50, locale)))
-          .catch(() => [] as SearchResult[]),
-    /* ورفُّ المسلسلات صار يطلب جهته صراحةً: كان صنفُ الأنمي مسلسلاتٍ
-       حصراً فاستغنى عن ذلك، ولو بقي بلا جهةٍ بعد الهجرة لاختلط الرفّان. */
-    active
-      ? Promise.resolve([] as SearchResult[])
-      : topChartRail("anime", 50, locale, "tv").catch(() => [] as SearchResult[]),
   ]);
+
+  /* D-1283 — الشخصيُّ شطران حول «السينما» و«الأكثر شهرة» (الحجّةُ في `CuratedRails`) */
+  const personal = (part: "head" | "tail") =>
+    (!active || localAxesOnly(browse)) ? (
+      <Suspense fallback={part === "head" || myRows.length > 0 ? <RailSkeleton count={6} /> : null}>
+        <PersonalRails
+          part={part}
+          locale={locale}
+          t={t}
+          type="movie"
+          anime
+          browse={active ? browse : undefined}
+          myRows={myRows}
+          tab="anime"
+          region={region}
+          hidden={hidden}
+        />
+      </Suspense>
+    ) : null;
 
   return (
     <div className="space-y-6">
       {/* الشخصيّ أوّلاً كما في تبويبَي الأعمال، وخلف Suspense خاصّته
           (D-071): بِركة المقترحات أبطأ طلبٍ في الصفحة، فلا تُرهن به
           الصفوف الخمسة الباقية. ويغيب مع الفلتر كما يغيب هناك */}
-      {(!active || localAxesOnly(browse)) && (
-        <Suspense fallback={<RailSkeleton count={6} />}>
-          <PersonalRails
-            locale={locale}
-            t={t}
-            type="movie"
-            anime
-            browse={active ? browse : undefined}
-            myRows={myRows}
-            tab="anime"
-            region={region}
-            hidden={hidden}
-          />
-        </Suspense>
-      )}
+      {personal("head")}
 
       {!railOff(hidden, "cinemas") && cinemas && cinemas.results.length > 0 && (
         <RankedRail
@@ -1932,6 +1918,9 @@ async function AnimeRails({
         />
       )}
 
+      {/* D-1283 — صفوفُك بعد «الأكثر شهرة» كما في التبويبين الآخرين */}
+      {personal("tail")}
+
       {/* 🆕 **ورفّا الأنمي أخذا المبدِّلَ نفسَه** (D-445): نوافذُهما
           (`wa`/`wam`) كانت تُقرأ من الرابط منذ D-099 **ولا بابَ إليها في
           الواجهة** — أي محورٌ حيٌّ في الخادم لا يعرف به أحد. */}
@@ -1952,8 +1941,7 @@ async function AnimeRails({
         />
       )}
 
-      {/* «أنميٌ قادم» — بعد المرتَّب بالجودة وقبل مراجع «أفضل ٥٠»:
-          القادمُ آخرُ الحاضر، والخمسون مرجعٌ ثابتٌ لا حاضر. */}
+      {/* «أنميٌ قادم» — بعد المرتَّب بالجودة، وهو آخرُ التبويب منذ D-1283 */}
       {!railOff(hidden, "soon") && soon.length > 0 && (
         <RankedRail
           title={t.upcomingAnime}
@@ -1964,13 +1952,6 @@ async function AnimeRails({
           href={sectionHref("upcoming", "anime", qs)}
           seeAllLabel={t.seeAll}
         />
-      )}
-
-      {!railOff(hidden, "top50a-movies") && top50Movies.length > 0 && (
-        <RankedRail title={t.top50AnimeMovies} icon="film" items={top50Movies} />
-      )}
-      {!railOff(hidden, "top50a-shows") && top50Series.length > 0 && (
-        <RankedRail title={t.top50AnimeSeries} icon="sparkle-star" items={top50Series} />
       )}
 
       {/* **صفحةٌ خالية تقول لماذا:** بعد أن صار للتبويب فلتر، صار ممكناً
@@ -2019,6 +2000,7 @@ async function TrailersSection({ locale, scope }: { locale: Locale; scope: Trail
 }
 
 async function PersonalRails({
+  part,
   locale,
   t,
   type,
@@ -2027,9 +2009,13 @@ async function PersonalRails({
   myRows = [],
   tab = "",
   region,
-  slot,
   hidden = new Set<string>(),
 }: {
+  /**
+   * 🆕 D-1283 — **أيُّ الشطرين**: `head` = «مقترحٌ لك» · `tail` = صفوفُك ثمّ «من فنّانيك».
+   * بينهما في الصفحة «السينما» و«الأكثر شهرة» — وكلُّ شطرٍ يجلب ما يرسمه وحدَه.
+   */
+  part: "head" | "tail";
   locale: Locale;
   t: T;
   /** جهة التبويب — أفلام أو مسلسلات (D-141) */
@@ -2042,13 +2028,6 @@ async function PersonalRails({
    * تُبنى كلٌّ وحدها، وغيابُه = «لا فلتر» — وهو السلوكُ القائم حرفاً بحرف.
    */
   browse?: BrowseQuery;
-  /**
-   * 🆕 **فتحةٌ تُرسم قبل صفِّ الفنّانين** (D-735) — **صفُّ «الآن في
-   * السينما» يُمرَّر عقدةً جاهزة.**
-   * 🔑 **ولماذا فتحةٌ لا شطرُ المكوّن**: هذا المكوّنُ يجلب بياناتِه
-   * **ويقرّر فراغَه بنفسه** — **وشطرُه لأجل ترتيبٍ يضاعف النداءات.**
-   */
-  slot?: React.ReactNode;
   /** 🆕 **مفاتيحُ الصفوف المطفأة** (D-826) */
   hidden?: Set<string>;
   /** 🆕 صفوفُك الخاصة (D-337→D-338، تصحيحُ أحمد: «تكون بعد picked for you») */
@@ -2062,7 +2041,8 @@ async function PersonalRails({
      بـ`cache` **فهي مجّانيّةٌ بعد قراءة الصفحة**، وتمريرُها معاملاً عبر
      `Suspense` كان سيربط رسمَ هذا الصفّ برسمِ الصفحة فيُفقده استقلالَه. */
   const [pool, artistWorks, libState] = await Promise.all([
-    getSuggestions(300, locale).catch(() => []),
+    /* D-1283 — كلُّ شطرٍ يجلب ما يرسمه: البِركةُ للرأس وحدَه */
+    part === "head" ? getSuggestions(300, locale).catch(() => []) : Promise.resolve([]),
     /* «من فنّانيك» أفلامٌ فقط — TMDB لا يدعم `with_people` في
        `/discover/tv`. فصفٌّ من الأفلام تحت تبويب «مسلسلات» هو الخطأ
        نفسه مقلوباً، والصمتُ أصدق من صفٍّ في غير بابه */
@@ -2070,7 +2050,7 @@ async function PersonalRails({
        (D-062)، ووضعُه تحت عنوان أنمي وعدٌ يُخلَف (D-141) */
     /* **ومنه إلى السجلّ (D-199)** — فما يفتحه ضغطُ العنوان هو نفسُ ما
        يعرضه الصفّ. **وهذا القسمُ لا يُكتم** (انظر تعليقه في `sections.ts`). */
-    wantMovies && !anime
+    part === "tail" && wantMovies && !anime
       ? buildSection("from-artists", { media: "movie", base: {}, active: false }, 20)
       : Promise.resolve([] as SearchResult[]),
     getLibState(),
@@ -2112,14 +2092,13 @@ async function PersonalRails({
      شخصيّ يُقرأ «لا أحد يعرفك» لا «لا نتيجةَ لهذا الفلتر». */
   /* ⚖️ **وصفوفُك تبقى مع الفلتر** (D-378، نقضُ تطبيق D-075 عليها):
      **الصفُّ يستطيع الطاعة فيطيع** — والذي يُخفيه فراغُه لا وجودُ فلتر. */
-  const showMyRows = myRows.length > 0;
-  /* ⚠️ **والفتحةُ تنجو من الخروج المبكر** (D-735): **صفُّ السينما لا
-     يخصّ هذا المكوّنَ ولا يسقط بسقوط بياناته** — **وترتيبٌ يُنفَّذ
-     بإخفاء صفٍّ ليس ترتيباً.** */
-  if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return slot ?? null;
+  const showMyRows = part === "tail" && myRows.length > 0;
+  if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return null;
 
+  /* D-1283 — **قطعةٌ لا حاويةٌ**: الشطران إخوةٌ لصفوف الصفحة في `space-y-6` نفسِها،
+     وحاويةٌ فارغةٌ (صفٌّ مطفأ) كانت تترك فراغَ صفٍّ بلا صفّ. */
   return (
-    <div className="space-y-6">
+    <>
       {!railOff(hidden, "foryou") && suggested.length > 0 && (
         /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
         <PickedForYou
@@ -2142,9 +2121,8 @@ async function PersonalRails({
         />
       )}
 
-      {/* 🆕 **صفوفُك الخاصة بعد «مختار لك» مباشرةً** (D-338، تصحيحُ أحمد
-          على D-337): كلاهما شخصيٌّ، **والمقترَحُ المحسوبُ لك يسبق
-          المُعرَّفَ منك** — وتغيب مع فلترٍ مفعّل (D-075). */}
+      {/* ⚖️ 🆕 **صفوفُك بعد «الأكثر شهرة»** (D-1283، حكمُ أحمد ٥ أكتوبر) — **نقضٌ لـD-338**
+          («بعد مختار لك مباشرةً»): صارت ثلاثةً، وثلاثةٌ شخصيّةٌ فوق كلِّ عامٍّ تدفنه. */}
       {showMyRows && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <MyRowsRails
@@ -2158,12 +2136,7 @@ async function PersonalRails({
         </Suspense>
       )}
 
-      {/* ⚖️ 🆕 **وصفُّ السينما هنا** (D-735، حكمُه) — **نقضُ «الشخصيُّ
-          يسبق العامّ» في هذا الموضع وحدَه**: «الآن في السينما» صفٌّ له
-          تاريخُ انتهاء، **وما ينتهي يسبق ما لا ينتهي.** */}
-      {slot}
-
-      {/* «من فنّانيك» بعد المقترحات: غير مرقّم — هذه أحدث أعمال
+      {/* «من فنّانيك» بعد صفوفك (D-1283): غير مرقّم — هذه أحدث أعمال
           فنّانيك لا ترتيبها */}
       {!railOff(hidden, "artists") && artistRows.length > 0 && (
         <RankedRail
@@ -2176,7 +2149,7 @@ async function PersonalRails({
           seeAllLabel={t.seeAll}
         />
       )}
-    </div>
+    </>
   );
 }
 

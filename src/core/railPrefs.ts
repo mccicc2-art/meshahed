@@ -105,11 +105,6 @@ export const RAILS: RailSpec[] = [
     label: (t) => t.suggestedForYou,
   },
   {
-    key: "artists",
-    tabs: ["movies", "shows"],
-    label: (t) => t.artistsRail,
-  },
-  {
     key: "cinemas",
     tabs: ["movies", "anime"],
     label: (t, tab) => (tab === "anime" ? t.animeInCinemas : t.inCinemas),
@@ -125,6 +120,12 @@ export const RAILS: RailSpec[] = [
         : tab === "shows"
           ? t.mostPopularSeries
           : t.mostPopularMovies,
+  },
+  /* D-1283 — «من فنّانيك» نزل تحت «الأكثر شهرة» وصفوفِك؛ فموضعُه هنا كي تُقرأ القائمةُ كما تُرى */
+  {
+    key: "artists",
+    tabs: ["movies", "shows"],
+    label: (t) => t.artistsRail,
   },
   {
     key: "top10",
@@ -151,16 +152,8 @@ export const RAILS: RailSpec[] = [
     tabs: ["movies", "shows", "anime"],
     label: (t, tab) => (tab === "anime" ? t.upcomingAnime : t.comingSoon),
   },
-  {
-    key: "top50a-movies",
-    tabs: ["anime"],
-    label: (t) => t.top50AnimeMovies,
-  },
-  {
-    key: "top50a-shows",
-    tabs: ["anime"],
-    label: (t) => t.top50AnimeSeries,
-  },
+  /* D-1283 — «أفضل ٥٠» بصفَّيه خرج من تبويب الأنمي (أمرُ أحمد، ٥ أكتوبر: «من الانمي احذف
+     top 50»)؛ المفتاحان باقيان في `RailKey` كما بقي `airing` (D-1217) */
   /* ===== D-874 · المكتبة — تبويبُ «قوائمي» بترتيب ظهوره ===== */
   {
     key: "autogroups",
@@ -239,7 +232,7 @@ export function railsHiddenFor(all: ReadonlySet<string>, tab: RailTab): Set<stri
  * 🔑 **الإخراجُ هنا لا في كلِّ قارئ**: `railsHiddenFor` يقرؤها الويبُ (`news/page.tsx`) والشاشةُ
  * الأصليّة معاً — فسطرٌ واحدٌ يُسكت الصفَّ في الاثنين، ويغيب عن «الطريقة» لأنّه خرج من `RAILS`.
  */
-const RETIRED: Partial<Record<RailTab, readonly RailKey[]>> = { anime: ["airing"] };
+const RETIRED: Partial<Record<RailTab, readonly RailKey[]>> = { anime: ["airing", "top50a-movies", "top50a-shows"] };
 
 /** **صفوفُ تبويبٍ بترتيب ظهورها** */
 export function railsOf(tab: RailTab): RailSpec[] {

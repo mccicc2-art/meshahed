@@ -17,7 +17,7 @@ import { localizeRows } from "@/lib/localize";
 import { getSuggestions, animePool } from "@/lib/suggest";
 import { getLibState } from "@/lib/libState";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, seasonRange, type BrowseQuery } from "@/core/browse";
-import type { MyRow } from "@/core/myRows";
+import { uniqueMyRows, type MyRow } from "@/core/myRows";
 import type { Locale } from "@/core/i18n";
 import type { RailWin } from "@/core/browse";
 
@@ -299,7 +299,7 @@ export async function personalRails(
     [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
   }
   const built = await Promise.all(
-    myRows.map(async (r) => {
+    uniqueMyRows(myRows).map(async (r) => {
       const g = BROWSE_GENRES.find((x) => x.slug === r.genre);
       const ids = g ? (media === "movie" ? g.movie : g.tv) : [];
       if (!g || !ids.length) return null;
