@@ -1,4 +1,4 @@
-[deploy] D-1285 + D-1286 — talk shows and news out of Discover rows; personal rows draw 12 of 60 every 6 hours
+[deploy] D-1287 — kids programmes out of Discover rows (family and animation rows keep them)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_014hAzmhFXvvkfHpU1mx7XL1
