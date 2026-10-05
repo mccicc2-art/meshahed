@@ -1,4 +1,4 @@
-[deploy] D-1292 — Discover trailer: a tap toggles the controls (sound button stays)
+[deploy] D-1293 — expanded trailer: swipe to next/previous clip, native dock hides while expanded
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01WTgbkZ41iNeQWZ1twhpCbw
