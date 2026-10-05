@@ -1,4 +1,4 @@
-[deploy] D-1283 — Discover: third personal row, rows after Most popular, anime Top 50 removed
+[deploy] D-1284 — Discover: artists row back above Most popular
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_014hAzmhFXvvkfHpU1mx7XL1
