@@ -1,4 +1,4 @@
-[deploy] D-1291 — trailers page: header rises 20px, card details shrink (2-line overview, inline actions)
+[deploy] D-1292 — Discover trailer: a tap toggles the controls (sound button stays)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01WTgbkZ41iNeQWZ1twhpCbw
