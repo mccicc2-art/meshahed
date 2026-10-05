@@ -19,9 +19,10 @@ const VEIL = require("../../assets/poster-veil.png");
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» مشتقٌّ من الملصق فيتبع الكثافة. 🆕 D-1278 — المعاملُ ١٫٠٣٥ (كان ١٫٣ كالويب):
-    ٨٠٪ من الارتفاع القديم — ١٢٢ عند ملصق ١١٨ حيث كان ١٥٣، وهو ما اعتمده أحمد في الصورة. التطبيقُ وحدَه. */
-export const continueCardH = (posterW: number) => Math.round(posterW * 1.035);
+/** ارتفاعُ بطاقة «تابِع المشاهدة» مشتقٌّ من الملصق فيتبع الكثافة. D-1278 — كان ١٫٣ كالويب فصار ١٫٠٣٥ (١٢٢ عند
+    ملصق ١١٨ حيث كان ١٥٣). 🆕 D-1279 — ١٫٠٥ ⇐ ١٢٤: أحمد بعد أن رآها على جهازه «أكبر بشكل خفيف من تحت»، ثمّ
+    «ارتفاع +2». التطبيقُ وحدَه. */
+export const continueCardH = (posterW: number) => Math.round(posterW * 1.05);
 
 /** D-1278 — دائرةُ الصحّ على البطاقة ٣٦ (في الصفّ باقيةٌ ٤٤): ٤٤ فوق بطاقةٍ ارتفاعُها ١٢٢ تأكل ثلثَها.
     و`hitSlop` ٤ يُبقي هدفَ اللمس ٤٤. */
@@ -134,18 +135,22 @@ export const ContinueCard = memo(function ContinueCard({
         {/* السطرُ الثاني باقٍ (أيُّ حلقةٍ تالية لا يقولها الشريط). D-1278 — الحشوةُ ١٠ والقاعُ ١٢ (كانا ١٢ و٢٠):
             أحمد «النسبة وعدد الحلقات الباقية نزلها تحت» واختار «داخل البطاقة» — السطرُ يجاور الشريطَ الذي يشرحه.
             والخطّان ١٣ و١١ (كانا ١٤ و١٢: «صغّر الخط شوي»)؛ سطرُ القائمة باقٍ ١٠ فهو عند حدِّ القراءة. */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 10, paddingBottom: 12 }}>
+        {/* 🆕 D-1279 — **ارتفاعُ السطر صريح** (١٣ · ١٧ · ١٤) والقاعُ ٨ والفواصلُ ٢: D-1278 أنزلت القاعَ وصغّرت الخطَّ،
+            لكنّ `Text` بلا `lineHeight` يأخذ سطرَ Poppins الواسع (~٢٠ لخطّ ١٣) — فبقيت الأسطرُ متباعدةً والكتلةُ
+            عاليةً عن الشريط، وسأل أحمد بلقطة: «نص التبويب ما عدلت فيه ونزلته؟». الصورةُ التي اعتمدها رُسمت
+            بهذه الأرقام نفسِها. النسبةُ ~١٫٣ هي نسبةُ اسم الرئيسيّة (٢٢/٢٨) فلا تقصّ العربيَّ. */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 10, paddingBottom: 8 }}>
           {!isShow ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 }}>
               <Icon name="list" size={11} color={tokens.accent} />
-              <Text size={10} weight="600" color={tokens.accent} numberOfLines={1} style={{ flexShrink: 1 }}>{title}</Text>
+              <Text size={10} weight="600" color={tokens.accent} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 13 }}>{title}</Text>
             </View>
           ) : null}
           {/* بلا `paddingEnd`: الدائرةُ في الأعلى (قاعُها ٤٦) والعنوانُ تحتها — والمقعدُ المحجوز كان يقصّ العنوانَ بلا سبب */}
-          <Text size={13} weight="600" color="#fff" numberOfLines={1} style={styles.shadow}>{isShow ? title : (card.next.title ?? "—")}</Text>
-          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-            <Text size={11} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1 }}>{isShow ? sub : counter}</Text>
-            <Text size={11} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"] }}>{isShow ? counter : `${pct}%`}</Text>
+          <Text size={13} weight="600" color="#fff" numberOfLines={1} style={[styles.shadow, { lineHeight: 17 }]}>{isShow ? title : (card.next.title ?? "—")}</Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+            <Text size={11} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{isShow ? sub : counter}</Text>
+            <Text size={11} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"], lineHeight: 14 }}>{isShow ? counter : `${pct}%`}</Text>
           </View>
         </View>
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: tokens.divider }}>
