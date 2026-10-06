@@ -102,6 +102,7 @@ async function TrailerFeedSection({
       emptyLabel={emptyLabel}
       tab={active}
       scope={scope}
+      pinKey={pin ? `${pin.mediaType}-${pin.tmdbId}` : undefined}
     />
   );
 }

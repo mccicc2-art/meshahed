@@ -190,6 +190,23 @@ export function SearchScreen() {
     story.mutate(text);
   };
   const descItems: SearchStoryItem[] | null = story.data ? story.data.items : null;
+
+  /* 🆕 D-1309 (طلبُ خالد بلقطة، ٦ أكتوبر) — «لا نتائج» تدلّ على البحث بالوصف (الشرحُ في `SearchScreen` الويب، والسلوكُ
+     واحد): النجمةُ تُحاط وتحتها تلميحٌ خمسَ ثوانٍ، وتحت الفراغ سطرٌ ينتهي برابط؛ والثلاثةُ تفتح وضعَ الوصف حاملةً ما كُتب
+     ولا تشغّل البحث. وتلميحُ المرّة الواحدة (D-1259) يتنحّى ما دام هذا ظاهراً — تلميحان للنجمة نفسِها ضجيج. */
+  const empty = !short && nothing && !search.isError;
+  const [tipFor, setTipFor] = useState<string | null>(null);
+  const tip = empty && tipFor !== term;
+  useEffect(() => {
+    if (!tip) return;
+    const id = setTimeout(() => setTipFor(term), 5000);
+    return () => clearTimeout(id);
+  }, [tip, term]);
+  const openDesc = () => {
+    haptic.pick();
+    if (empty && !descText.trim()) setDescText(term.trim());
+    setDesc(true);
+  };
   /* 🆕 D-1259 — **تلميحُ النجمة لمرّةٍ واحدة**. المقروءُ في الحساب يصل مع `me:library` (D-954) — يُقرأ من
      الكاش **بلا نداء** (`enabled: false`): الرئيسيّةُ تسخّنه، وإن غاب فلا تلميح (أهونُ من تلميحٍ يعود). */
   const lib = useQuery({ ...libraryQuery, enabled: false });
@@ -251,7 +268,7 @@ export function SearchScreen() {
                 مساحة كبيرة»، اختار «ب» من صورتين): صفٌّ كاملٌ عاد لـ«رائج اليوم». ما زال باباً لا رقاقة (D-534).
                 الزرُّ بارتفاع الحقل (`stretch`) فيكبران معاً مع حجم الخطّ. ⚠️ نجمةٌ بلا كلمة: اسمُها لقارئ الشاشة،
                 وتلميحُ المرّة الواحدة (`OneTimeHint`) تحتها منذ D-1259. */}
-            <View style={{ flexDirection: "row", alignItems: "stretch", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "stretch", gap: 8, zIndex: tip ? 5 : 0 }}>
             <View style={{ position: "relative", justifyContent: "center", flex: 1, minWidth: 0 }}>
               <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
                 <Icon name="search" size={18} color={tokens.muted} />
@@ -281,21 +298,33 @@ export function SearchScreen() {
                 </Pressable>
               ) : null}
             </View>
-            <Pressable
-              onPress={() => {
-                haptic.pick();
-                setDesc(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t.searchByDesc}
-              style={({ pressed }) => ({ width: 48, minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: radius.md, borderWidth: 1, borderColor: pressed ? tokens.accent : tokens.border, backgroundColor: tokens.surface2 })}
-            >
-              <Icon name="sparkles" size={18} color={tokens.accent} />
-            </Pressable>
+            <View>
+              <Pressable
+                onPress={openDesc}
+                accessibilityRole="button"
+                accessibilityLabel={t.searchByDesc}
+                style={({ pressed }) => ({ flex: 1, width: 48, minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: radius.md, borderWidth: empty ? 2 : 1, borderColor: pressed || empty ? tokens.accent : tokens.border, backgroundColor: tokens.surface2 })}
+              >
+                <Icon name="sparkles" size={18} color={tokens.accent} />
+              </Pressable>
+              {tip ? (
+                <Pressable
+                  onPress={openDesc}
+                  accessibilityRole="button"
+                  accessibilityLabel={t.searchTryDesc}
+                  style={{ position: "absolute", end: 0, top: "100%", marginTop: 10, width: 220, alignItems: "flex-end" }}
+                >
+                  <View style={{ position: "absolute", top: -4, end: 19, width: 10, height: 10, backgroundColor: tokens.accent, transform: [{ rotate: "45deg" }] }} />
+                  <View style={{ backgroundColor: tokens.accent, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 9 }}>
+                    <Text size={12} weight="700" color={tokens.onAccent} numberOfLines={1}>{t.searchTryDesc}</Text>
+                  </View>
+                </Pressable>
+              ) : null}
+            </View>
             </View>
 
             {/* 🆕 D-1259 — يُعلن قراءتَه عند الإغلاق أو عند دخول وضع الوصف (هذا الفرعُ يُنزع حينها) */}
-            {hintDue ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} /> : null}
+            {hintDue && !empty ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} /> : null}
 
             {/* الرقاقاتُ الخمس — `chipRow`: تتمرّر أفقيّاً حتى حافّة الشاشة (`-mx-4 px-4`) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }} keyboardShouldPersistTaps="handled">
@@ -332,7 +361,14 @@ export function SearchScreen() {
             ) : !data ? (
               <RowsSkeleton />
             ) : nothing ? (
-              <Text muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.searchNoResults}</Text>
+              <View style={{ alignItems: "center", paddingVertical: 64, gap: 10 }}>
+                <Text muted>{t.searchNoResults}</Text>
+                <Pressable onPress={openDesc} accessibilityRole="button" accessibilityLabel={t.searchByDesc} hitSlop={10}>
+                  <Text size={13} muted style={{ textAlign: "center" }}>
+                    {t.searchNoName} <Text size={13} weight="600" color={tokens.accent} style={{ textDecorationLine: "underline" }}>{t.searchByDesc}</Text>
+                  </Text>
+                </Pressable>
+              </View>
             ) : (
               <View style={{ gap: 24, opacity: search.isPlaceholderData ? 0.6 : 1 }}>
                 <Section title={t.searchModeTitles} show={data.titles.length > 0} seeAll={seeAll("titles")} seeAllLabel={t.searchSeeAll}>

@@ -55,6 +55,7 @@ export function TrailerCardMedia({
   expandLabel,
   volumeLabel,
   onUnavailable,
+  unavailableLabel,
 }: {
   id: string;
   item: TrailerSlotItem;
@@ -73,6 +74,8 @@ export function TrailerCardMedia({
   /** 🆕 D-933: شريطُ مستوى الصوت — يظهر مع الأدوات، والزرُّ وحدَه يبقى دائماً */
   volumeLabel?: string;
   onUnavailable?: () => void;
+  /** 🆕 D-1308: بطاقةٌ بقيت في مكانها ومقطعُها لا يعمل (المطلوبةُ بعينها في العلف) — وسمٌ يقول ذلك بدل زرٍّ يَعِد */
+  unavailableLabel?: string | null;
 }) {
   const api = useTrailerPlayback();
   const snap = useTrailerSnapshot();
@@ -248,6 +251,11 @@ export function TrailerCardMedia({
       {/* ⚖️ 🆕 **والسطحُ حاضرٌ دائماً** (D-861): كان يغيب في الرايل أثناء
           التشغيل لأن الرابطَ يعتليه — **وقد سقط الرابط، فاللمسةُ صارت
           له**: تكشف الأدواتِ إن كان يعمل، وتُشغّل إن كان واقفاً. */}
+      {unavailableLabel ? (
+        <span className="pointer-events-none absolute bottom-3 start-3 z-[55] rounded-full bg-black/65 px-3 py-1 text-12 font-semibold text-white">
+          {unavailableLabel}
+        </span>
+      ) : null}
       {true ? (
         <button
           type="button"

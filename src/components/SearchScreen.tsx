@@ -192,6 +192,23 @@ export function SearchScreen({
     !data.artists.length &&
     !data.members.length &&
     !data.lists.length;
+  /* 🆕 D-1309 (طلبُ خالد بلقطة، ٦ أكتوبر: «اذا ما جات نتائج يجيه جرب البحث بالوصف مع ضغط يودي عليه»): الفراغُ كان
+     طريقاً مسدوداً والبابُ الآخر نجمةٌ بلا كلمة. عند «لا نتائج»: النجمةُ تُحاط وتحتها تلميحٌ يسمّيها، وتحت الفراغ سطرٌ
+     ينتهي برابط — والثلاثةُ تفتح وضعَ الوصف **حاملةً ما كُتب** (لا يُعاد كتابتُه) ولا تشغّل البحثَ: كلمتان اسمٌ لا
+     وصف، وصاحبُهما يزيد عليهما ثمّ يضغط. التلميحُ يغيب بعد خمس ثوانٍ (يغطّي آخرَ الرقاقات) والإطارُ والرابطُ باقيان. */
+  const empty = !short && nothing && !(loading && !data);
+  const [tipFor, setTipFor] = useState<string | null>(null);
+  const tip = empty && tipFor !== term;
+  useEffect(() => {
+    if (!tip) return;
+    const id = window.setTimeout(() => setTipFor(term), 5000);
+    return () => window.clearTimeout(id);
+  }, [tip, term]);
+  const openDesc = () => {
+    tap(8);
+    if (empty && !descText.trim()) setDescText(term.slice(0, 600));
+    setDesc(true);
+  };
 
   return (
     <div>
@@ -289,18 +306,29 @@ export function SearchScreen({
                 </button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                tap(8);
-                setDesc(true);
-              }}
-              aria-label={t.searchByDesc}
-              title={t.searchByDesc}
-              className="shrink-0 w-12 grid place-items-center rounded-xl border border-border bg-surface-2 text-accent hover:border-accent/50 transition"
-            >
-              <Icon name="sparkles" size={18} />
-            </button>
+            <div className="relative shrink-0 flex">
+              <button
+                type="button"
+                onClick={openDesc}
+                aria-label={t.searchByDesc}
+                title={t.searchByDesc}
+                className={`w-12 grid place-items-center rounded-xl border bg-surface-2 text-accent transition ${
+                  empty ? "border-accent ring-4 ring-accent/20" : "border-border hover:border-accent/50"
+                }`}
+              >
+                <Icon name="sparkles" size={18} />
+              </button>
+              {tip ? (
+                <button
+                  type="button"
+                  onClick={openDesc}
+                  className="absolute end-0 top-[calc(100%+10px)] z-20 whitespace-nowrap rounded-xl bg-accent px-3.5 py-2 text-12 font-bold text-[color:var(--on-accent)] shadow-lg"
+                >
+                  <span aria-hidden className="absolute -top-1 end-[18px] h-2.5 w-2.5 rotate-45 bg-accent" />
+                  {t.searchTryDesc}
+                </button>
+              ) : null}
+            </div>
           </form>
 
           {/* 🆕 D-1259 — **تلميحُ المرّة الواحدة للنجمة** (كان مؤجَّلاً مع المفتاح، D-1252): زرٌّ بلا كلمةٍ
@@ -349,7 +377,15 @@ export function SearchScreen({
           ) : loading && !data ? (
             <Skeleton />
           ) : nothing ? (
-            <p className="text-center text-muted py-16">{t.searchNoResults}</p>
+            <div className="py-16 text-center">
+              <p className="text-muted">{t.searchNoResults}</p>
+              <p className="mt-2 text-14 text-muted">
+                {t.searchNoName}{" "}
+                <button type="button" onClick={openDesc} className="font-semibold text-accent underline underline-offset-4">
+                  {t.searchByDesc}
+                </button>
+              </p>
+            </div>
           ) : data ? (
             <div className="space-y-6">
               <Section

@@ -52,6 +52,7 @@ export function TrailerFeed({
   emptyLabel,
   tab,
   scope,
+  pinKey,
 }: {
   items: TrailerItem[];
   locale: Locale;
@@ -63,6 +64,8 @@ export function TrailerFeed({
       تتابع، وفراغُ تبويبِ كتالوجٍ عطلُ مصدرٍ لا حيلةَ للقارئ فيه** —
       **ونصٌّ واحدٌ للحالتين يُرشد إحداهما ويكذب على الأخرى.** */
   emptyLabel?: string;
+  /** 🆕 D-1308: العملُ الذي فُتحت الصفحةُ عليه (`?at=`) — بطاقتُه لا تُستبدل */
+  pinKey?: string;
 }) {
   const t = getDict(locale);
   /* 🔴 D-1296 — **العلفُ يثبت على ما فُتح به** (بلاغُ أحمد بتسجيل على التكبير: «ما ابغاه يروح بعد ما اضيفه
@@ -82,6 +85,11 @@ export function TrailerFeed({
   const all = extra.length ? [...items, ...extra] : items;
   const { slots, retire } = useTrailerSlots(all, FEED_SLOTS + extra.length);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
+  /* 🔴 D-1308 (تسجيلُ مشعل، ٦ أكتوبر: ضغط Greenleaf في «اكتشف» ففُتحت الصفحةُ عليه ثمّ صارت بطاقتُه Troppo بعد
+     أقلَّ من نصف ثانية): استبدالُ D-756 صحيحٌ لبطاقةٍ عابرة — **وخطأٌ في البطاقة التي طلبها صاحبُها بعينها**: من طلب
+     عملاً لا يُعطى غيرَه بصمت. فمقطعُ المطلوب الذي يرفضه يوتيوب يبقى في خانته بصورته واسمه وزرِّ تفاصيله، بوسمٍ
+     يقول إنّ مقطعَه غير متاح؛ والمتحكّمُ أقصاه من الدور أصلاً (`exhausted`) فيشتغل ما بعده. */
+  const [dead, setDead] = useState<ReadonlySet<string>>(new Set());
 
   function notForMe(i: TrailerItem) {
     const k = trailerKeyOf(i);
@@ -320,7 +328,11 @@ export function TrailerFeed({
                 seekLabel={t.trailerSeek}
                 volumeLabel={t.trailerVolume}
                 expandLabel={t.trailerExpand}
-                onUnavailable={() => retire(k)}
+                onUnavailable={() => {
+                  if (pinKey && trailerKeyOf(i) === pinKey) setDead((previous) => new Set(previous).add(k));
+                  else retire(k);
+                }}
+                unavailableLabel={dead.has(k) ? t.trailerUnavailable : null}
               />
 
               <div className="px-4 pt-3 pb-1.5">

@@ -1122,6 +1122,13 @@ function createEngine(
   /* ---- اختيارُ البطاقة النشطة (المواصفة ثالثًا) ---- */
   reconcile = () => {
     if (readSnap().manualOnly) return;
+    /* 🔴 D-1308 (تسجيلا خالد ومشعل، ٦ أكتوبر: «بعض التريلرات يفكّ التكبير»): الصفحةُ خلف الستارة تبقى مقيسة،
+       وتدويرُ الجوّال يغيّر قياسَها وموضعَ تمريرها — فترى هذه الدالّةُ البطاقةَ المكبَّرة «خرجت عن العين» فتطفئها
+       (`clearActive` تُسقط التكبيرَ معها)، أو ترى جارتَها أوضحَ فتنقل التشغيلَ إليها دون طلب. **والمكبَّرُ لا يراه
+       صاحبُه في الصفحة أصلاً، فنِسَبُ الصفحة لا تحكمه**: ما دام التكبيرُ قائماً لا يغيّره إلا صاحبُه (سحبٌ أو
+       إغلاق) أو نهايةُ مصدره (خطأُ المشغّل وزوالُ البطاقة — مساران لا يمرّان من هنا). والنِّسبُ تبقى تُكتب،
+       فالتصغيرُ يجد قياساً طازجاً. */
+    if (expandedFlag && activeId) return;
     let bestId: string | null = null;
     let bestRatio = 0;
     for (const [id, ratio] of ratios) {
@@ -1214,6 +1221,19 @@ function createEngine(
     dom.scrim.style.display = on ? "block" : "none";
     publish({ expanded: on });
     tellShell(on);
+    /* D-1308: **والتصغيرُ يعيد صاحبَه إلى بطاقته** — تدويرٌ أثناء التكبير قد أزاح الصفحةَ عنها، وبطاقةٌ خارج العين
+       تُطفأ في أوّل قياسٍ بعد التصغير. تُمرَّر إليها إن خرجت عن المنطقة المرئيّة (بين الترويسة والدوك)، وتُكتب
+       نسبتُها قبل أن يصل المراقب (وصفةُ `stepExpanded`). */
+    if (!on && activeId) {
+      const slot = slots.get(activeId);
+      if (slot) {
+        const r = slot.area.getBoundingClientRect();
+        if (r.top < 56 || r.bottom > window.innerHeight - 84) {
+          window.scrollTo(0, Math.max(0, window.scrollY + r.top - (window.innerHeight - r.height) / 2));
+          ratios.set(activeId, 1);
+        }
+      }
+    }
     alignOverlay();
   };
   const syncOverlay = () => {

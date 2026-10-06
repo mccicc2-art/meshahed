@@ -337,6 +337,9 @@ const ar = {
   searchClear: "مسح البحث",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
   searchNoResults: "لا توجد نتائج.",
+  /* D-1309 — «لا نتائج» تدلّ على البحث بالوصف: تلميحٌ عند النجمة، وسطرٌ تحت الفراغ ينتهي برابط `searchByDesc` */
+  searchTryDesc: "جرّب البحث بالوصف",
+  searchNoName: "ما تعرف الاسم؟",
   searchStart: "ابحث عن مسلسل أو فيلم للبدء.",
   searchTrendingToday: "رائج اليوم",
   // بحث الذكاء (D-076)
@@ -2238,6 +2241,7 @@ const ar = {
 
   trailerTitle: "الترايلر",
   trailerPlay: "شغّل الترايلر",
+  trailerUnavailable: "الترايلر غير متاح",
   /* 🆕 D-878: الإيقافُ يعود إلى البطاقة بحكمه — نقضُ D-771 */
   trailerPause: "أوقف الترايلر",
   trailerFastForward: "تقديمٌ سريع",
@@ -2626,6 +2630,8 @@ const en: Dict = {
   searchClear: "Clear search",
   searchAllResults: (q: string) => `See all results for “${q}” →`,
   searchNoResults: "No results.",
+  searchTryDesc: "Try search by description",
+  searchNoName: "Don't know the name?",
   searchStart: "Search for a show or a movie to get started.",
   searchTrendingToday: "Trending today",
   aiSearchBack: "Search by name",
@@ -3944,6 +3950,7 @@ const en: Dict = {
 
   trailerTitle: "Trailer",
   trailerPlay: "Play trailer",
+  trailerUnavailable: "Trailer unavailable",
   trailerPause: "Pause trailer",
   trailerFastForward: "Fast forward",
   trailerRewind: "Rewind",
