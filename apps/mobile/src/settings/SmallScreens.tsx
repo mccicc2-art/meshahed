@@ -1,12 +1,15 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useSyncExternalStore } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
-import { write } from "../api";
+import { api, write } from "../api";
+import { push } from "../push";
+import type { PushGroup, PushPrefsPayload } from "@/core/push";
 import type { ToastHostRef } from "../HoldHost";
-import { SettingsScreen, Group, Row, RowsSkeleton } from "./ui";
+import { SettingsScreen, Group, Row, RowsSkeleton, Toggle } from "./ui";
 import { useRouter } from "expo-router";
 import { useSettings, useOpenWeb } from "./api";
 import type { HintsResetBody } from "../contracts";
@@ -16,16 +19,74 @@ import type { HintsResetBody } from "../contracts";
  * كلٌّ منها ترجمةُ صفحتها صفّاً بصفّ؛ جُمعت في ملفٍّ لأنّ كلَّ واحدةٍ أسطرٌ لا شاشة.
  */
 
-/** `notifications/page.tsx` — ثلاثةُ صفوفٍ بلا أبواب: داخل التطبيق فعّالة، والجهازُ والبريدُ «قريباً» */
+/**
+ * `notifications/page.tsx` — وفوقها ما لا يملكه الويب: **إشعاراتُ الجهاز** (D-1305). خمسةُ مفاتيحَ بنيّة المستخدم
+ * (`PUSH_GROUPS`) لا بأنواع الجرس الأحدَ عشر، تُحفظ في الحساب (`me/prefs/push`) فيقرؤها الخادمُ وهو يُرسل.
+ * الإذنُ مرفوضٌ ⇒ صفٌّ واحدٌ يفتح إعداداتِ النظام (أندرويد لا يعرض النافذةَ ثانيةً)، والمفاتيحُ معطَّلةٌ تحته.
+ */
+const PUSH_PREFS_KEY = ["me:push-prefs"] as const;
+const PUSH_ROWS: { group: PushGroup; icon: "mail" | "person-check" | "heart" | "comment" | "tv"; label: "pushMessages" | "pushFollows" | "pushLikes" | "pushReplies" | "pushEpisodes"; hint: "pushMessagesSub" | "pushFollowsSub" | "pushLikesSub" | "pushRepliesSub" | "pushEpisodesSub" }[] = [
+  { group: "messages", icon: "mail", label: "pushMessages", hint: "pushMessagesSub" },
+  { group: "follows", icon: "person-check", label: "pushFollows", hint: "pushFollowsSub" },
+  { group: "likes", icon: "heart", label: "pushLikes", hint: "pushLikesSub" },
+  { group: "replies", icon: "comment", label: "pushReplies", hint: "pushRepliesSub" },
+  { group: "episodes", icon: "tv", label: "pushEpisodes", hint: "pushEpisodesSub" },
+];
+
 export function NotificationsScreen() {
   const { t } = useApp();
+  const toast = useRef<ToastHostRef>(null);
+  const qc = useQueryClient();
+  const perm = useSyncExternalStore(push.subscribe, push.state);
+  const q = useQuery({ queryKey: PUSH_PREFS_KEY, queryFn: async () => (await api<PushPrefsPayload>("/api/v1/me/prefs/push")).data, staleTime: 0 });
+  const muted = q.data?.muted ?? [];
+  /* العودةُ من إعدادات النظام: الإذنُ يُقرأ ثانيةً (`push.ts` يسمع `AppState`) — وهنا عند الفتح */
+  useEffect(() => {
+    void push.refresh(false);
+  }, []);
+  const flip = (g: PushGroup) => {
+    if (!q.data) return;
+    haptic.pick();
+    const prev = q.data;
+    const next: PushPrefsPayload = { muted: muted.includes(g) ? muted.filter((x) => x !== g) : [...muted, g] };
+    qc.setQueryData(PUSH_PREFS_KEY, next);
+    write<PushPrefsPayload>("/api/v1/me/prefs/push", next).catch(() => {
+      qc.setQueryData(PUSH_PREFS_KEY, prev);
+      toast.current?.say(t.apiInternal);
+    });
+  };
+  const off = perm === "denied" || perm === "undetermined";
   return (
-    <SettingsScreen title={t.setNotifications}>
+    <SettingsScreen title={t.setNotifications} toast={toast}>
       <Group>
         <Row icon="bell" title={t.setNotifInApp} subtitle={t.setNotifInAppSub} value={t.setPlanActive} />
-        <Row icon="bell" title={t.setNotifPush} value={t.settingsSoonShort} />
         <Row icon="mail" title={t.setNotifEmail} value={t.settingsSoonShort} />
       </Group>
+      {perm === "unavailable" ? null : (
+        <Group label={t.pushGroupLabel}>
+          {[
+            ...(off
+              ? [
+                  <Row
+                    key="perm"
+                    icon="bell"
+                    title={perm === "undetermined" ? t.pushAllow : t.pushOffTitle}
+                    subtitle={perm === "undetermined" ? t.setNotifPushSub : t.pushOffSub}
+                    value={perm === "undetermined" ? undefined : t.pushOpenSystem}
+                    onPress={() => {
+                      haptic.pick();
+                      if (perm === "undetermined") void push.refresh(true);
+                      else void Linking.openSettings().catch(() => {});
+                    }}
+                  />,
+                ]
+              : []),
+            ...(!q.data
+              ? [<RowsSkeleton key="sk" rows={5} />]
+              : PUSH_ROWS.map((r) => <Toggle key={r.group} icon={r.icon} label={t[r.label]} hint={t[r.hint]} checked={!muted.includes(r.group)} onChange={() => flip(r.group)} disabled={off} />)),
+          ]}
+        </Group>
+      )}
     </SettingsScreen>
   );
 }

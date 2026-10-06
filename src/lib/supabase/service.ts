@@ -36,3 +36,11 @@ export async function createServiceClient(): Promise<SupabaseClient> {
   });
   return service;
 }
+
+/**
+ * 🆕 D-1305 — **هل المفتاحُ حاضر؟** الارتدادُ أعلاه (عميلُ الجلسة) صحيحٌ لمن يكتب بدالّةٍ ممنوحة، وخطأٌ صامتٌ لمن
+ * يقرأ صفوفَ غيره: إشعارُ الدفع يقرأ رموزَ أجهزة المستلم — وبجلسة المرسل يعود فراغاً. من يحتاج الخدمةَ حقّاً يسأل أوّلاً.
+ */
+export function hasServiceKey(): boolean {
+  return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+}

@@ -7,6 +7,7 @@ import { PERSON_COLS } from "@/core/people";
 import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { notifyMessage, notifyReply, notifyShareReply, notifySignal } from "@/lib/push";
 import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/core/region";
 import { TITLE_MODE_COOKIE, parseTitleMode, accountTitleMode } from "@/core/titleMode";
@@ -2345,6 +2346,11 @@ export async function requestOrFollowUser(
   if (targetId === user.id) throw new Error("لا يمكنك متابعة نفسك / You can't follow yourself");
   const { data, error } = await supabase.rpc("request_or_follow", { target: targetId });
   if (error) fail(error);
+  /* 🆕 D-1305 — دفعٌ لمن تُوبع أو طُلب؛ مفتاحُ السجلّ يمنع رنّةً ثانيةً لمتابعةٍ تُلغى وتُعاد */
+  if (data === "following" || data === "requested") {
+    const kind = data === "following" ? "follow" : "request";
+    notifySignal({ to: targetId, kind, actorId: user.id, dedupe: `${kind}:${user.id}:${targetId}` });
+  }
   revalidatePath("/");
   revalidatePath("/u/[username]", "page");
   return (data as "requested" | "following" | "noop") ?? "noop";
@@ -2824,6 +2830,7 @@ export async function followUser(targetId: string) {
     .from("user_follows")
     .upsert({ follower_id: user.id, following_id: targetId }, { onConflict: "follower_id,following_id" });
   if (error) fail(error);
+  notifySignal({ to: targetId, kind: "follow", actorId: user.id, dedupe: `follow:${user.id}:${targetId}` });
   // عدّادات المتابعة تظهر في الرئيسية وصفحات المستخدمين فقط
   revalidatePath("/");
   revalidatePath("/u/[username]", "page");
@@ -3772,6 +3779,8 @@ export async function toggleReviewLike(
     : await supabase.from("review_likes").insert(key);
 
   if (error) fail(error);
+  if (!liked)
+    notifySignal({ to: reviewUserId, kind: "like_review", actorId: user.id, tmdbId, mediaType, dedupe: `like_review:${user.id}:${reviewUserId}:${mediaType}:${tmdbId}` });
   // لا تجديد للرئيسية: الإعجاب يُنقر من صفحات العمل والناس، وكلاهما لا
   // يرسم بيانات الرئيسية — تجديدُ أغلى صفحةٍ مع كل قلب كان هدراً صافياً
   revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
@@ -3817,6 +3826,8 @@ export async function toggleActivityLike(
     : await supabase.from("activity_likes").insert(key);
 
   if (error) fail(error);
+  if (!liked)
+    notifySignal({ to: actorId, kind: "like_activity", actorId: user.id, tmdbId, mediaType, dedupe: `like_activity:${user.id}:${actorId}:${mediaType}:${tmdbId}:${day}` });
 }
 
 /**
@@ -4082,6 +4093,7 @@ export async function sendShare(input: {
     note,
   });
   if (error) fail(error);
+  notifyMessage({ to: recipientId, actorId: user.id, text: note, sharedTitle: title });
   revalidatePath("/people");
 }
 
@@ -4131,6 +4143,7 @@ export async function sendListShare(input: {
     note,
   });
   if (error) fail(error);
+  notifyMessage({ to: recipientId, actorId: user.id, text: note, sharedTitle: String(list.name ?? "").slice(0, 300) || null, isList: true });
   revalidatePath("/people");
 }
 
@@ -4360,6 +4373,12 @@ export async function saveListReview(input: {
     { onConflict: "user_id,list_id" },
   );
   if (error) fail(error);
+  /* 🆕 D-1305 — صاحبُ القائمة يُبلَّغ مرّةً: التعديلُ `upsert` والمفتاحُ يمنع رنّةً لكلِّ حفظ */
+  {
+    const { data: owner } = await supabase.from("user_lists").select("user_id").eq("id", listId).maybeSingle();
+    const to = (owner as { user_id?: string } | null)?.user_id;
+    if (to) notifySignal({ to, kind: "list_review", actorId: user.id, listId, dedupe: `list_review:${user.id}:${listId}` });
+  }
   revalidatePath(`/lists/${listId}`);
 }
 
@@ -4419,6 +4438,8 @@ export async function toggleListReviewLike(
     : await supabase.from("list_review_likes").insert(key);
 
   if (error) fail(error);
+  if (!liked)
+    notifySignal({ to: reviewUserId, kind: "like_list_review", actorId: user.id, listId, dedupe: `like_list_review:${user.id}:${reviewUserId}:${listId}` });
   revalidatePath(`/lists/${listId}`);
 }
 
@@ -4456,6 +4477,7 @@ export async function addListReviewReply(input: {
     .select("id, created_at")
     .single();
   if (error) fail(error);
+  notifyReply({ kind: "list_reply", table: "list_review_replies", actorId: user.id, ownerId: reviewUserId, parentId, listId });
 
   revalidatePath(`/lists/${listId}`);
 
@@ -4526,6 +4548,7 @@ export async function replyToShare(shareId: string, body: string) {
     body: clean,
   });
   if (error) fail(error);
+  notifyShareReply({ shareId, actorId: user.id, text: clean });
   revalidatePath("/people");
 }
 
@@ -5805,6 +5828,7 @@ export async function addReviewReply(input: {
     .select("id, created_at")
     .single();
   if (error) fail(error);
+  notifyReply({ kind: "reply", table: "review_replies", actorId: user.id, ownerId: reviewUserId, parentId, tmdbId, mediaType });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
 
@@ -6037,6 +6061,9 @@ export async function addTalkPost(input: {
     .select("id, created_at")
     .single();
   if (error) fail(error);
+
+  /* 🆕 D-1305 — ردٌّ داخل الغرفة ⇢ صاحبُ المشاركة الأب وحدَه (`talk_reply`)؛ مشاركةٌ جديدةٌ لا تُبلِّغ أحداً */
+  if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId, mediaType, title: input.title?.slice(0, 200) || null });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
   /* **وتبويبُ «نقاش» يُبطَل معها**: البطاقةُ تحمل عدّاداً ووقتَ آخر

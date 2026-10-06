@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { runEpisodePush } from "@/lib/push";
 import { getUnreadShares, getUnreadSignals } from "@/lib/data";
 import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -16,6 +18,9 @@ export async function GET() {
     const lim = limited(`v1:badges:${auth.user.id}`, 30, 60_000);
     if (lim) return lim;
     const [messages, signals] = await Promise.all([getUnreadShares(), getUnreadSignals()]);
+    /* 🆕 D-1305 — «حلقةٌ جديدة اليوم» بحركة المرور (نمطُ D-210، بلا cron): هذا أكثرُ مسارٍ يُسأل من التطبيق، والدورةُ
+       تحرس نفسَها (عشرُ دقائق في الذاكرة ثمّ نافذةُ ساعتين في القاعدة) — فأغلبُ النداءات مقارنةُ رقمين */
+    after(() => runEpisodePush().then(() => undefined).catch(() => undefined));
     return ok({ messages, signals });
   });
 }

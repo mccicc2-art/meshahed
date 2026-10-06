@@ -28,7 +28,8 @@ export default async function Page() {
           subtitle={t.setNotifInAppSub}
           value={t.setPlanActive}
         />
-        <SettingsRow icon="bell" title={t.setNotifPush} value={t.settingsSoonShort} />
+        {/* D-1305 — إشعاراتُ الدفع تعمل من تطبيق أندرويد ومفاتيحُها في إعداداته؛ المتصفّحُ لا جهازَ له يُسجَّل */}
+        <SettingsRow icon="bell" title={t.setNotifPush} subtitle={t.setNotifPushSub} value={t.setNotifPushOnApp} />
         <SettingsRow icon="mail" title={t.setNotifEmail} value={t.settingsSoonShort} />
       </SettingsGroup>
     </SettingsPageLayout>
