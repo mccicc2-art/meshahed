@@ -130,8 +130,27 @@ function forget() {
   void fetch(`${CONFIG.apiBase}/api/v1/app/push/forget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
 }
 
+/**
+ * 🆕 D-1307 (تسجيلُ خالد، ٦ أكتوبر): شريطُ الإشعار كان ينزل فوق المحادثة نفسِها مع كلِّ رسالةٍ من صاحبها — والرسالةُ
+ * أمامه. **الخيطُ المفتوحُ الآن** تعلنه شاشةُ المحادثة عند تركيزها وتمسحه عند مغادرتها، ورسالةٌ منه والتطبيقُ في الواجهة
+ * تمرّ بلا شريطٍ ولا صوتٍ ولا سطرٍ في القائمة. رسالةٌ من غيره، وكلُّ نوعٍ آخر، كما كان.
+ */
+let openPeer: string | null = null;
+const PEER_URL = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+function inOpenThread(n: Notifications.Notification): boolean {
+  if (!openPeer || AppState.currentState !== "active") return false;
+  const url = (n.request.content.data as { url?: unknown } | undefined)?.url;
+  const m = typeof url === "string" ? PEER_URL.exec(url) : null;
+  return !!m && m[1].toLowerCase() === openPeer.toLowerCase();
+}
+
 export const push = {
   state: (): State => state,
+  /** شاشةُ المحادثة: `peer` عند التركيز، و`null` عند المغادرة (تمسح ما أعلنته هي وحدَها) */
+  setOpenPeer(peer: string | null, only?: string) {
+    if (peer === null && only && openPeer !== only) return;
+    openPeer = peer;
+  },
   subscribe(f: () => void) {
     subs.add(f);
     return () => {
@@ -146,7 +165,10 @@ export const push = {
 try {
   /* التطبيقُ في الواجهة: الإشعارُ يظهر شريطاً ويُدرج — والشاراتُ تُجدَّد (الظرفُ والجرسُ لا ينتظران الاستطلاع) */
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+    handleNotification: async (n) => {
+      const show = !inOpenThread(n);
+      return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
+    },
   });
   Notifications.addNotificationReceivedListener(() => {
     void queryClient.invalidateQueries({ queryKey: ["me:messages"] });

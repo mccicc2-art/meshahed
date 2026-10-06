@@ -4094,6 +4094,7 @@ export async function sendShare(input: {
   });
   if (error) fail(error);
   notifyMessage({ to: recipientId, actorId: user.id, text: note, sharedTitle: title });
+  await presenceOnSend(supabase);
   revalidatePath("/people");
 }
 
@@ -4144,6 +4145,7 @@ export async function sendListShare(input: {
   });
   if (error) fail(error);
   notifyMessage({ to: recipientId, actorId: user.id, text: note, sharedTitle: String(list.name ?? "").slice(0, 300) || null, isList: true });
+  await presenceOnSend(supabase);
   revalidatePath("/people");
 }
 
@@ -4549,6 +4551,7 @@ export async function replyToShare(shareId: string, body: string) {
   });
   if (error) fail(error);
   notifyShareReply({ shareId, actorId: user.id, text: clean });
+  await presenceOnSend(supabase);
   revalidatePath("/people");
 }
 
@@ -4637,6 +4640,22 @@ export async function claimReferralFromCookie() {
   const { supabase } = await requireUser("ref", 5, 60_000);
   const { data } = await supabase.rpc("claim_referral", { ref_code: code });
   if (data === true) revalidatePath("/");
+}
+
+/**
+ * 🆕 D-1307 (بلاغُ خالد، ٦ أكتوبر: «آخر ظهور قبل ٧ دقائق وهو قاعد يسولف معي») — **من أرسل للتوّ حاضرٌ الآن**:
+ * الإرسالُ أصدقُ دليلِ حضورٍ عندنا ولم يكن يُحتسب. تُنادى بعد كتابةٍ ناجحة، وفشلُها صمت (النبضةُ ليست حَمْلَ الإرسال).
+ * عميلُ التطبيق الأصليّ (`okhttp`/`CFNetwork`) يُحتسب تطبيقاً كما في `/api/v1/me` — وإلّا كُتب له صفُّ جهازٍ «متصفّح» كاذب.
+ * الخنقُ في جسم `touch_presence` نفسِها (٦٠ث للظهور · ٣ دقائق لليوم · ٥ للجهاز)، فلا كتابةَ زائدة لمن يكتب سريعاً.
+ */
+async function presenceOnSend(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"]) {
+  try {
+    const ua = (await headers()).get("user-agent");
+    const native = /okhttp|cfnetwork/i.test(ua ?? "");
+    await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: native || isLoopzApp(ua) });
+  } catch {
+    /* لا شيء */
+  }
 }
 
 /**

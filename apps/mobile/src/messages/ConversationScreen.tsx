@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
+import { push } from "../push";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
@@ -45,17 +46,42 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const d = q.data ?? null;
   const conv = d?.conversations.find((c) => c.person_id === peer) ?? null;
   const doors = useDoors(from);
+  /* 🆕 D-1307 — **الشاشةُ في العين؟** يعلن الخيطَ المفتوح لـ`push` (لا شريطَ إشعارٍ فوق محادثةٍ أقرؤها) ويشغّل تجديدَ
+     سطر الحضور. بالتركيز لا بالتركيب: شاشةٌ مدفونةٌ تحت أخرى ليست «مفتوحة»، وكتمُ رسائل صاحبها هناك يُضيّعها. */
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      push.setOpenPeer(peer);
+      return () => {
+        setFocused(false);
+        push.setOpenPeer(null, peer);
+      };
+    }, [peer]),
+  );
+  /* 🆕 D-1307 (تسجيلُ خالد: «آخر ظهور قبل ٧ دقائق» وصاحبُه يكتب له): السطرُ كان يُقرأ مرّةً عند الفتح ثمّ يشيخ على
+     الشاشة. يتجدّد كلَّ ٢٠ث والشاشةُ في العين (إيقاعُ الويب، D-765)، وفورَ وصول رسالةٍ منه (أسفل). */
   const seen = useQuery({
     queryKey: [...MESSAGES_KEY, "seen", peer],
     queryFn: async () => (await api<LastSeenPayload>(`/api/v1/me/messages/seen?with=${peer}`)).data,
     staleTime: 15_000,
+    refetchInterval: focused ? 20_000 : false,
   });
+  const incoming = conv ? conv.events.reduce((n, e) => n + (e.mine ? 0 : 1), 0) : 0;
+  const refetchSeen = seen.refetch;
+  const incomingRef = useRef(incoming);
+  useEffect(() => {
+    if (incoming > incomingRef.current) void refetchSeen();
+    incomingRef.current = incoming;
+  }, [incoming, refetchSeen]);
 
   const toastHost = useRef<ToastHostRef>(null);
   const say = useCallback((text: string) => toastHost.current?.say(text), []);
 
   /* ——— الملاحة ——— */
   const back = useCallback(() => {
+    /* 🆕 D-1307 (تسجيلُ خالد، ٦ أكتوبر): الرجوعُ كان يترك لوحةَ المفاتيح مفتوحةً فوق قائمة الرسائل — تُغلق قبل الانتقال */
+    Keyboard.dismiss();
     if (router.canGoBack()) router.back();
     else router.replace({ pathname: "/messages", params: { from } });
   }, [router, from]);

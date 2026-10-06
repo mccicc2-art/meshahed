@@ -16,6 +16,7 @@ import { WebLayer } from "../src/WebLayer";
 import { PushGate } from "../src/PushGate";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
+import "../src/presence";
 import "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
