@@ -1,0 +1,5 @@
+[deploy] D-1305 fix — push: the permission prompt shows on Android (canAskAgain decides, not the status label), and a notification tap reaches its destination (navigation timer no longer cancelled by its own effect)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
+
