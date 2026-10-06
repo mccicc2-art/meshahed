@@ -1,7 +1,4 @@
-[deploy] D-1302 — expanded trailer: rotate button turns the screen to landscape (app 1.12.1)
-
-Web: rotate button on the duration line (right), shown only when the shell announces LoopzNative.rotate; in landscape the title's actions are icons under the sound button (My List · Details · Not for me).
-App: expo-screen-orientation; WebLayer answers the `orient` message, hides the status bar in landscape and returns to portrait when the expanded view ends or a native screen covers it. New native module ⇒ new binary, version 1.12.1.
+[deploy] D-1303 — description search: an Arabic work keeps its Arabic name in an English interface (Loopz names on the grounded row, with a fallback)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_019fkAxMeB2PXzKw4iaxektt
