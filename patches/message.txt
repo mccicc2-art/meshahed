@@ -1,5 +1,4 @@
-[deploy] D-1307 — presence and the open conversation: a send counts as presence, the app beats every four minutes, the thread header re-reads last-seen; no notification banner inside the thread it belongs to; back closes the keyboard
+[deploy] D-1308 + D-1309 — trailers: the zoomed trailer survives rotation and the trailer you opened the page on is never swapped; search: «No results» points to search by description (web and app)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
-
