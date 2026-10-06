@@ -31,6 +31,18 @@ export function PushGate() {
   const [pending, setPending] = useState<{ url: string; at: number } | null>(null);
   const open = useRef(openPath);
   open.current = openPath;
+  /**
+   * 🔴 إصلاح ٦ أكتوبر (بلاغُ خالد): مؤقّتُ الانتقال كان يُنظَّف بتنظيف الأثر — و`setPending(null)` قبله يعيد تشغيلَ
+   * الأثر نفسِه فيُلغى المؤقّتُ قبل أن ينتهي: **كلُّ ضغطةٍ فتحت التطبيقَ ولم تذهب لوجهتها.** المؤقّتُ الآن في مرجعٍ
+   * يعيش بعمر المكوِّن لا بعمر دورة الأثر.
+   */
+  const nav = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (nav.current) clearTimeout(nav.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     try {
@@ -64,13 +76,15 @@ export function PushGate() {
     }
     const { url } = pending;
     setPending(null);
-    const t = setTimeout(() => {
+    if (nav.current) clearTimeout(nav.current);
+    nav.current = setTimeout(() => {
+      nav.current = null;
       const peer = PEER.exec(url);
       if (peer) router.push({ pathname: "/messages/[peer]", params: { peer: peer[1], from: "home" } });
       else if (url === "/") return;
       else open.current(url);
     }, 250);
-    return () => clearTimeout(t);
+    return undefined;
   }, [pending, top, router]);
 
   return null;

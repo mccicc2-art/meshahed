@@ -61,9 +61,15 @@ function askedBefore(): boolean {
   }
 }
 
+/**
+ * 🔴 إصلاح ٦ أكتوبر (بلاغُ خالد، S24): الشرطُ كان يستثني `status === "denied"` — وأندرويد لا يعرف «لم يُسأل»:
+ * قبل أوّل سؤالٍ يردّ `denied` مع `canAskAgain: true`، فلم تُعرض النافذةُ لأحد. **المرجعُ `canAskAgain` وحدَه**
+ * لا اسمُ الحالة. وللسبب نفسِه `undetermined` هنا معناها «السؤالُ ما زال ممكناً» (صفُّ الإعدادات يسأل مباشرةً)،
+ * و`denied` «رفضٌ نهائيّ» (لا طريقَ إلّا إعداداتُ النظام).
+ */
 async function readPermission(ask: boolean | "user"): Promise<State> {
   let p = await Notifications.getPermissionsAsync();
-  if (!p.granted && ask && p.canAskAgain && p.status !== "denied" && (ask === "user" || !askedBefore())) {
+  if (!p.granted && ask && p.canAskAgain && (ask === "user" || !askedBefore())) {
     try {
       SecureStore.setItem(ASKED_KEY, "1");
     } catch {
@@ -71,7 +77,7 @@ async function readPermission(ask: boolean | "user"): Promise<State> {
     }
     p = await Notifications.requestPermissionsAsync();
   }
-  return p.granted ? "granted" : p.status === "undetermined" ? "undetermined" : "denied";
+  return p.granted ? "granted" : p.canAskAgain ? "undetermined" : "denied";
 }
 
 async function sync(ask: boolean | "user") {
