@@ -16,6 +16,7 @@ import { coalescedRefresh } from "@/core/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import { FeedEmptyCta } from "./FeedEmptyCta";
 import { Sheet } from "./ui/Sheet";
+import { KeyboardDock } from "./ui/KeyboardDock";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
@@ -279,6 +280,23 @@ function ConversationView({
      `DetailTopBar` و`ProfileMenu` بلا عائلةٍ ثانية (D-018). */
   const [menu, setMenu] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
+
+  /* 🆕 ٦ أكتوبر ٢٠٢٦ (بلاغُ خالد: «لازم أنزل تحت لين يظهر مكان الإرسال»): المحادثةُ تُفتح على **آخرها** لا أوّلها —
+     عُرفُ كلِّ محادثة، وبدونه يبقى الحقلُ المثبَّت ظاهراً والقارئُ عند أقدم ما قيل. وبعدها ينزل عند كلِّ حدثٍ جديد
+     **إن كان منّي أو كنتُ قرب القاع أصلاً**: من صعد يقرأ قديماً لا يُسحب من تحت عينه (الاستطلاعُ يبدّل المصفوفةَ
+     كلَّ مرّة، فالمرجعُ عددُ الأحداث لا هويّتُها). */
+  const count = events.length;
+  const lastMine = events[count - 1]?.mine === true;
+  const seenCount = useRef(0);
+  useEffect(() => {
+    const first = seenCount.current === 0;
+    const grew = count > seenCount.current;
+    seenCount.current = count;
+    if (!grew) return;
+    const doc = document.documentElement;
+    const near = doc.scrollHeight - window.innerHeight - window.scrollY < 240;
+    if (first || near || lastMine) window.scrollTo({ top: doc.scrollHeight, behavior: first ? "auto" : "smooth" });
+  }, [count, lastMine]);
   const username = conv.person?.username ?? null;
 
   function doHide() {
@@ -444,6 +462,8 @@ function ConversationView({
       {/* الردّ معلَّقٌ بآخر عملٍ شورك (D-051) — محادثةٌ بدأت بقائمةٍ وحدها
           لا وجهة لردّها بعد، فبدل حقلٍ يفشل بصمت: سطرٌ يشرح الطريق */}
       {conv.latestShareId ? (
+        /* 🆕 الحقلُ على حافّة الشاشة (مرسى النقاش نفسُه — D-320) لا في آخر المستند: خيطٌ طويلٌ كان يدفنه تحت كلِّ ما قيل */
+        <KeyboardDock spacer="h-20">
         <ReplyBox
           shareId={conv.latestShareId}
           locale={locale}
@@ -460,6 +480,7 @@ function ConversationView({
             ])
           }
         />
+        </KeyboardDock>
       ) : (
         <p className="pt-3 border-t border-[color:var(--divider)] text-xs text-muted text-center">
           {t.convReplyNeedsTitle}
@@ -618,7 +639,8 @@ function ReplyBox({
 
   return (
     /* items-end لا items-center: زرُّ الإرسال يلزم قاعَ الحقل وهو ينمو */
-    <div className="flex items-end gap-2 pt-3 border-t border-[color:var(--divider)]">
+    /* الفاصلُ العلويُّ والحشوُ صارا للمرسى (`KeyboardDock`) */
+    <div className="flex items-end gap-2">
       <textarea
         ref={box}
         value={value}
