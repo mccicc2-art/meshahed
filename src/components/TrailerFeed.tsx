@@ -188,6 +188,45 @@ export function TrailerFeed({
         collapse: t.trailerCollapse,
         seek: t.trailerSeek,
         volume: t.trailerVolume,
+        rotate: t.trailerRotate,
+      }}
+      /* 🆕 D-1302 — **في العرضيّ الأفعالُ رموزٌ تحت الصوت** (طلبُ أحمد بصورة: «تحت السوت تحط علامة زايد لاضافة
+         ليست وعلامة نوت فور مي وعلامة ديتيل»): النصُّ وصفُّه يغيبان هناك فلا يبقى بابٌ لأفعال العمل. **والترتيبُ
+         إضافةٌ · تفاصيل · ليس لي** (قبِل الاقتراح): ما يُخفي العملَ آخِراً، لا ملاصقاً لما يُبقيه (D-322). الأفعالُ
+         أفعالُ صفِّ الطوليّ بأعيانها — و«ليس لي» ينقل إلى مقطعٍ مجاورٍ أوّلاً (D-1301). وصفةُ الزرِّ وصفةُ زرِّ الصوت. */
+      expandedSide={(activeId, ctl) => {
+        const i = shown.find((x) => trailerClipKeyOf(x) === activeId);
+        if (!i) return null;
+        const isAdded = added.has(trailerKeyOf(i));
+        const round =
+          "grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70";
+        return (
+          <>
+            <button
+              type="button"
+              aria-label={t.trailerMyList}
+              aria-pressed={isAdded}
+              onClick={() => (isAdded ? removeFromList(i) : addToList(i))}
+              className={`${round} ${isAdded ? "!text-accent" : ""}`}
+            >
+              <Icon name={isAdded ? "check" : "plus"} size={19} />
+            </button>
+            <Link href={trailerTitleHref(i)} prefetch={false} aria-label={t.trailerDetails} className={round}>
+              <Icon name="info" size={19} />
+            </Link>
+            <button
+              type="button"
+              aria-label={t.trailerNotForMe}
+              onClick={() => {
+                if (!ctl.step(1) && !ctl.step(-1)) ctl.collapse();
+                notForMe(i);
+              }}
+              className={round}
+            >
+              <Icon name="eye-off" size={19} />
+            </button>
+          </>
+        );
       }}
       /* 🆕 D-1295: **اسمُ العمل وسطرُه ونبذتُه تحت المقطع المكبَّر، وزرُّ «مكتبتي» بجوار الاسم** (طلبُه:
          «ابغى زر اضافة ل ليست» · «خل اعلى نقطة له متساوية مع اسم الفلم وصغره درجه»). **الفعلُ فعلُ

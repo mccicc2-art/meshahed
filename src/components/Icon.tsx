@@ -251,6 +251,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="m4.5 17 4.8-4.5 4 3.6 2.7-2.4 4 3.8" />
     </>
   ),
+  /* 🆕 D-1302 — تدويرُ الشاشة: جوّالٌ مائلٌ وسهمُ دوران — لزرِّ العرض في التريلر المكبَّر */
+  rotate: (
+    <>
+      <rect x="8" y="3.5" width="8" height="13" rx="1.6" transform="rotate(-35 12 10)" />
+      <path d="M4.5 15.5a8 8 0 0 0 7.5 5" />
+      <path d="m10 22.3 2.2-1.8-2-2" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="8.5" />

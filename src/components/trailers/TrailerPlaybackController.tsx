@@ -1599,7 +1599,18 @@ export interface TrailerExpandedLabels {
   seek: string;
   /** 🆕 D-933: شريطُ مستوى الصوت — اختياريٌّ حتى يصل من السطح (D-028) */
   volume?: string;
+  /** 🆕 D-1302: زرُّ تدوير الشاشة — يُرسم لغلافٍ يعلن القدرةَ وحدَه */
+  rotate?: string;
 }
+
+/* D-1302 — هل الشاشةُ بالعرض الآن؟ يُقرأ من المتصفّح لا من آخر ما طلبناه: الغلافُ قد يرفض أو يعيد الطوليَّ بنفسه */
+const WIDE_QUERY = "(orientation: landscape)";
+function subscribeWide(cb: () => void) {
+  const mq = window.matchMedia(WIDE_QUERY);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+const readWide = () => window.matchMedia(WIDE_QUERY).matches;
 
 /** 🆕 D-1301 — ما يملكه سطحُ النصِّ تحت المكبَّر من المشغّل: نقلةٌ إلى مقطعٍ مجاور، أو تصغير. فعلٌ يُزيل
     البطاقةَ النشطة («ليس لي») ينقل أوّلاً — البطاقةُ تحمل المشغّل، وإزالتُها تحته تُسقط التكبير (درسُ D-1296). */
@@ -1610,6 +1621,7 @@ export function TrailerPlayback({
   soundPref,
   expandedLabels,
   expandedInfo,
+  expandedSide,
 }: {
   children: React.ReactNode;
   /** آخرُ اختيارٍ محفوظٍ للصوت — **يُحاوَل بعد أوّل تفاعلٍ حقيقيٍّ فقط** */
@@ -1618,6 +1630,8 @@ export function TrailerPlayback({
   expandedLabels?: TrailerExpandedLabels;
   /** 🆕 D-1295: ما يُكتب تحت المقطع المكبَّر — يرسمه السطحُ الذي يملك بياناتِ البطاقة وأفعالَها */
   expandedInfo?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
+  /** 🆕 D-1302: أفعالُ العمل رموزاً تحت زرِّ الصوت — للعرضيّ وحدَه، حيث يغيب النصُّ وصفُّ أفعاله */
+  expandedSide?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
 }) {
   const snapRef = useRef<ControllerSnapshot>({
     activeId: null,
@@ -1813,7 +1827,7 @@ export function TrailerPlayback({
           className="absolute inset-0 h-full w-full object-cover"
         />
       </div>
-      {expandedLabels ? <ExpandedUi api={api} labels={expandedLabels} info={expandedInfo} /> : null}
+      {expandedLabels ? <ExpandedUi api={api} labels={expandedLabels} info={expandedInfo} side={expandedSide} /> : null}
     </Ctx.Provider>
   );
 }
@@ -2062,10 +2076,12 @@ function ExpandedUi({
   api,
   labels,
   info,
+  side,
 }: {
   api: ControllerApi;
   labels: TrailerExpandedLabels;
   info?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
+  side?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
 }) {
   const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
   /* 🆕 D-934: الضغطةُ المزدوجة تقفز — على سطح التكبير كما على البطاقة.
@@ -2076,7 +2092,15 @@ function ExpandedUi({
      **وعلى السطح وحدَه**: شريطُ التقديم والصوتُ إخوةٌ له فلا تصله لمساتُهما. */
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const swipedAt = useRef(0);
+  /* 🆕 D-1302 (فكرةُ أحمد بلقطة التكبير: «بضيف زر اذا ضغطته تنلف الشاشة بالعرض») — **التطبيقُ مقفولٌ على الطوليّ**،
+     فتدويرُ الجوّال باليد لا يفعل شيئاً والفيديو ربعُ الشاشة. الصفحةُ تطلب من الغلاف (`orient`) وهو يدوّر النظامَ
+     نفسَه — اختيارُه «حقيقي» على رسمٍ مقلوبٍ داخل الصفحة. **والزرُّ لغلافٍ يعلن القدرةَ وحدَه** (`LoopzNative.rotate`):
+     غلافٌ أقدم يتجاهل الرسالةَ فيكون زرّاً لا يفعل شيئاً. **والعودةُ إلى الطوليّ للغلاف**: يسقط العرضيُّ مع سقوط
+     `immersive` (تصغير · رجوع · مغادرة) — فلا تبقى شاشةٌ مقلوبةٌ بعد صفحتها. */
+  const wide = useSyncExternalStore(subscribeWide, readWide, () => false);
   if (!snap.expanded) return null;
+  const canRotate = typeof window !== "undefined" && window.LoopzNative?.rotate === true;
+  const ctl: TrailerExpandedCtl = { step: api.stepExpanded, collapse: api.toggleExpand };
   const playing = snap.phase === "playing";
   const controls = snap.controlsVisible;
   /* **والغلافُ سِترُ الانتقال**: في التكبير غلافُ البطاقة خلف الستارة، فمقطعٌ يُقلع كان سواداً
@@ -2161,7 +2185,7 @@ function ExpandedUi({
           className="pointer-events-none absolute inset-x-0 z-10 flex flex-col overflow-hidden px-4 pt-5 landscape:hidden"
           style={{ top: "calc(50% + min(100vw, 100vh * 16 / 9) * 9 / 32)", bottom: "5.5rem" }}
         >
-          {info(snap.activeId, { step: api.stepExpanded, collapse: api.toggleExpand })}
+          {info(snap.activeId, ctl)}
         </div>
       ) : null}
       <button
@@ -2190,19 +2214,52 @@ function ExpandedUi({
           <Icon name={snap.soundOn ? "volume" : "volume-off"} size={18} />
         </button>
       </div>
-      {snap.time ? (
+      {/* D-1302 — رموزُ العمل تحت الصوت: للعرضيّ وحدَه، وتتوارى مع الأزرار */}
+      {side && snap.activeId ? (
+        <div
+          className={`absolute end-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] z-10 hidden flex-col gap-2 landscape:flex ${fade}`}
+        >
+          {side(snap.activeId, ctl)}
+        </div>
+      ) : null}
+      {snap.time || canRotate ? (
         <div
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8 ${fade}`}
         >
-          <TrailerScrubber
-            time={snap.time}
-            onSeek={api.seekTo}
-            label={labels.seek}
-            active={controls}
-          />
-          <span dir="ltr" className="block text-12 tabular-nums text-white/90">
-            {clockText(snap.time.now)} / {clockText(snap.time.total)}
-          </span>
+          {snap.time ? (
+            <TrailerScrubber
+              time={snap.time}
+              onSeek={api.seekTo}
+              label={labels.seek}
+              active={controls}
+            />
+          ) : null}
+          {/* 🆕 D-1302 — **زرُّ التدوير على خطِّ المدّة، في اليمين** (اختيارُ أحمد على اقتراح الأعلى: «تحت يمين على
+              نفس خط مدة الفيديو» — موضعُ زرِّ التكبير في كلِّ مشغّل). السطرُ `ltr` دائماً فاليمينُ يمينٌ في العربيّة
+              أيضاً. **والسطرُ صار بارتفاع الزرّ** فارتفع شريطُ التقديم عنه — زرٌّ ملاصقٌ للشريط يحرّكه بضغطةٍ مائلة. */}
+          <div dir="ltr" className="flex min-h-9 items-center justify-between">
+            <span className="text-12 tabular-nums text-white/90">
+              {snap.time ? `${clockText(snap.time.now)} / ${clockText(snap.time.total)}` : ""}
+            </span>
+            {canRotate ? (
+              <button
+                type="button"
+                aria-label={labels.rotate ?? "Rotate"}
+                aria-pressed={wide}
+                onClick={() => {
+                  try {
+                    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "orient", landscape: !wide }));
+                  } catch {
+                    /* جسرٌ سقط — الشاشةُ تبقى كما هي */
+                  }
+                  api.pokeControls();
+                }}
+                className={`relative -me-2 grid h-9 w-9 place-items-center text-white active:opacity-70 before:absolute before:-inset-x-1 before:inset-y-0 before:content-[''] ${controls ? "pointer-events-auto" : ""}`}
+              >
+                <Icon name="rotate" size={20} />
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

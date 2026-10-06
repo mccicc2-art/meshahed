@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { BackHandler, Linking, Platform, Share, View } from "react-native";
+import { BackHandler, Linking, Platform, Share, StatusBar, View } from "react-native";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
@@ -102,7 +103,7 @@ function atGate(p: string, landing: boolean): boolean {
  */
 const SHARE_BRIDGE =
   "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true,profile:true};" + SHARE_BRIDGE + ";true;";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true,profile:true,rotate:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -217,6 +218,11 @@ export function WebLayer() {
      دوكَه لهما. **والعلمُ لا يعيش بعد صفحته**: يسقط بتبدّل المسار وبالتحميل وباختفاء الطبقة — دوكٌ يغيب ولا يعود
      أسوأُ من دوكٍ ظاهر. */
   const [immersive, setImmersive] = useState(false);
+  /* 🆕 D-1302 (فكرةُ أحمد: «بضيف زر اذا ضغطته تنلف الشاشة بالعرض»؛ اختار التدويرَ الحقيقيَّ على رسمٍ مقلوب) —
+     **التريلرُ المكبَّرُ يطلب العرضيّ** (`orient`). التطبيقُ مقفولٌ على الطوليّ (`app.json`)، فالقفلُ يُفكّ هنا لهذه الشاشة
+     وحدَها ويعود. **والعرضيُّ لا يعيش بعد تكبيره**: يسقط مع `immersive` حيث سقط — وشاشةٌ أصليّةٌ تعلو الطبقةَ تعود
+     طوليّةً (`immersed`) ويرجع العرضيُّ حين تنكشف الصفحةُ وهي ما زالت مكبَّرة. */
+  const [landscape, setLandscape] = useState(false);
   const insets = useSafeAreaInsets();
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
@@ -413,7 +419,10 @@ export function WebLayer() {
       /* عنوانٌ لا يُقرأ ⇒ الرئيسيّة */
     }
     /* D-1293 — مسارٌ تبدّل أو مستندٌ يُحمَّل ⇒ لا تكبيرَ قائماً فيه */
-    if (next !== pathRef.current || nav.loading) setImmersive(false);
+    if (next !== pathRef.current || nav.loading) {
+      setImmersive(false);
+      setLandscape(false);
+    }
     setPath(next);
     pathRef.current = next;
     if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
@@ -490,7 +499,15 @@ export function WebLayer() {
       }
       /* 🆕 D-1293 — تكبيرُ التريلر: من نطاقنا وحدَه */
       if (msg.type === "immersive") {
-        if (hostOk) setImmersive(msg.on === true);
+        if (hostOk) {
+          setImmersive(msg.on === true);
+          if (msg.on !== true) setLandscape(false);
+        }
+        return;
+      }
+      /* 🆕 D-1302 — تدويرُ التريلر المكبَّر: من نطاقنا وحدَه */
+      if (msg.type === "orient") {
+        if (hostOk) setLandscape((msg as { landscape?: unknown }).landscape === true);
         return;
       }
       if (msg.type === "bridge:ready") {
@@ -652,6 +669,16 @@ export function WebLayer() {
   const topKey = top?.key ?? "";
   /* D-1293 — التكبيرُ يُحسب للطبقة الظاهرة وحدَها */
   const immersed = immersive && visible;
+  /* D-1302 — العرضيُّ للتكبير الظاهر وحدَه. شريطُ الحالة يُطوى معه: في العرضيّ يأكل من ارتفاع الفيديو. لا يُنفَّذ عند
+     التركيب (الشاشةُ طوليّةٌ أصلاً)، والفشلُ يُبقي الشاشةَ كما هي */
+  const wide = landscape && immersed;
+  const wideWas = useRef(false);
+  useEffect(() => {
+    if (wide === wideWas.current) return;
+    wideWas.current = wide;
+    StatusBar.setHidden(wide, "fade");
+    void ScreenOrientation.lockAsync(wide ? ScreenOrientation.OrientationLock.LANDSCAPE : ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+  }, [wide]);
   useEffect(() => {
     if (Platform.OS !== "android" || !visible) return;
     let sub: { remove: () => void } | null = null;
@@ -662,6 +689,7 @@ export function WebLayer() {
       if (immersed) {
         ref.current?.injectJavaScript("try{window.__loopzTrailerCollapse&&window.__loopzTrailerCollapse()}catch(e){};true;");
         setImmersive(false);
+        setLandscape(false);
         return true;
       }
       /* 🆕 D-1102 — **على صفحة الوصول نفسِها الرجوعُ عودةٌ مباشرة** (بلاغُ أحمد بتسجيل على 1.11.11): كان

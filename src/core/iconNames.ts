@@ -36,6 +36,7 @@ export type IconName =
   | "newspaper"
   | "image"
   | "info"
+  | "rotate"
   | "comment"
   | "list"
   | "grip"
