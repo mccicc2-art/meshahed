@@ -19,6 +19,8 @@ import { coalescedRefresh } from "@/core/refresh";
 import { Sheet } from "./ui/Sheet";
 import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
+import { LongPressable } from "./LongPressable";
+import { LibraryHoldMenu } from "./LibraryHoldMenu";
 
 /**
  * بطاقة «الحلقة التالية».
@@ -79,6 +81,9 @@ export function ContinueCard({
   const t = getDict(locale);
   const router = useRouter();
   const [, start] = useTransition();
+  /* 🆕 D-1299 — الضغطُ المطوّل بقائمة التطبيق: «إيقاف مؤقّت · شاهدته كلّه · تعليقك · بطاقة حمراء»،
+     وبلا «الحلقة التالية» (دائرةُ الصحّ تفعلها بضغطة — D-1282) */
+  const [held, setHeld] = useState(false);
 
   // التفاؤل محلّي: العدّاد والشريط والحلقة نفسها تتقدّم قبل ردّ الخادم —
   // البطاقة لا تغادر مكانها: تنزلق يساراً وتدخل الحلقة التالية من اليمين
@@ -249,6 +254,7 @@ export function ContinueCard({
   return (
     <div className="relative">
       <div className={`relative ${slideCls}`}>
+      <LongPressable onLongPress={() => setHeld(true)}>
       {variant === "row" ? (
       /* ⚖️ 🆕 D-1274 — الصفُّ على لون الصفحة لا `surface`: نظيرُ D-1089 في التطبيق (أحمد هناك بلقطة: «الخلفيّة
          الرصاصيّة أبغاها سوداء»)، وأُذن به للويب في ٤ أكتوبر ٢٠٢٦ بعد D-1270. الإطارُ وحده يحدّه، و`background`
@@ -389,6 +395,15 @@ export function ContinueCard({
           </span>
         </div>
       </Link>
+      )}
+      </LongPressable>
+      {held && (
+        <LibraryHoldMenu
+          item={{ tmdbId, mediaType: "tv", title, posterPath, noNext: true }}
+          t={t}
+          onClose={() => setHeld(false)}
+          onDone={() => router.refresh()}
+        />
       )}
 
       {/* دائرة ✓ الزجاجية — شقيقة الرابط لا ابنته، فلا ضغطة تفتح الصفحة خطأً.

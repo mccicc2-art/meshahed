@@ -11,6 +11,8 @@ import { type IconName } from "./Icon";
 import { LongPressable } from "./LongPressable";
 import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { StatusThread } from "./StatusThread";
+import { LibraryHoldMenu } from "./LibraryHoldMenu";
+import { coalescedRefresh } from "@/core/refresh";
 
 /**
  * **الضغطُ المطوَّل على أيّ ملصق** (D-229، طلبُ أحمد: «أيّ أحد يضغط HOLD
@@ -85,6 +87,7 @@ export function PosterHold({
   titleBelow = false,
   savedMark = true,
   extra,
+  lib,
   locale,
   children,
 }: {
@@ -121,6 +124,12 @@ export function PosterHold({
    * يصل في الدفعة نفسِها.
    */
   extra?: { icon: IconName; label: string; run: () => void };
+  /**
+   * 🆕 D-1299 — **صفوفُ «مكتبتي» بدل صفوف «اكتشف»** (طلبُ أحمد ٦ أكتوبر: قائمةُ التطبيق في رئيسيّة الويب):
+   * صفٌّ كلُّه في المكتبة («للمشاهدة») أفعالُه «ابدأ · إيقاف مؤقّت · كمّل · إزالة» لا «أضف للمشاهدة».
+   * يُمرَّر من يعرف حالَ العمل — وغيابُه يُبقي القائمةَ كما كانت في كلِّ سطحٍ آخر.
+   */
+  lib?: { unstarted: boolean; paused: boolean; noNext?: boolean };
   locale: Locale;
   children: React.ReactNode;
 }) {
@@ -349,7 +358,26 @@ export function PosterHold({
         dropped={isDropped}
       />
 
-      <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
+      {/* D-1299 — القائمةُ المشتركة تكتب ثمّ تُجدَّد الصفحة: العملُ ينتقل بين صفَّين والخادمُ وحدَه يعرف موضعَه */}
+      {lib && open && (
+        <LibraryHoldMenu
+          item={{
+            tmdbId,
+            mediaType,
+            title,
+            posterPath,
+            dropped: isDropped,
+            paused: lib.paused,
+            completed: seen,
+            unstarted: lib.unstarted,
+            noNext: lib.noNext,
+          }}
+          t={t}
+          onClose={() => setOpen(false)}
+          onDone={() => coalescedRefresh(router)}
+        />
+      )}
+      <Dropdown open={open && !lib} onClose={() => setOpen(false)} align="end" caret>
         <DropdownRow
           icon={inList ? "check" : "plus"}
           label={inList ? t.quickAddRemove : t.quickAddLabel}

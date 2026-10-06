@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PosterRail } from "./PosterRail";
@@ -52,8 +53,14 @@ export function TrailerRail({
   const t = getDict(locale);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { added, addToList } = useTrailerFollow();
-  const { slots, retire } = useTrailerSlots(items, RAIL_SLOTS);
+  const { added, addToList, removeFromList } = useTrailerFollow();
+  /* 🆕 D-1300 — **الصفُّ يثبت منذ أوّل إضافة** (نظيرُ D-1296 في صفحة التريلرات): `follow` تُبطل مسارات فيُعاد رسمُ
+     «اكتشف»، والعلفُ يُسقط المتابَعَ — فتزول البطاقةُ التي أُضيفت للتوّ ومعها ✓ التي تُزيلها. ما قبل الإضافة الصفُّ
+     يتبع الخادمَ كما كان؛ وتبديلُ التبويب (`scope`) يفكّ التثبيت فيأخذ التبويبُ الجديدُ حمولتَه. */
+  const [pin, setPin] = useState<{ scope: TrailerScope; items: TrailerItem[] } | null>(null);
+  if (pin && pin.scope !== scope) setPin(null);
+  const shown = pin && pin.scope === scope ? pin.items : items;
+  const { slots, retire } = useTrailerSlots(shown, RAIL_SLOTS);
 
   if (!slots.length) return null;
   const origin = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
@@ -164,8 +171,13 @@ export function TrailerRail({
                 </Link>
                 <button
                   type="button"
-                  onClick={() => addToList(i)}
-                  disabled={isAdded}
+                  /* D-1300: **قلّابٌ كصفحة التريلرات** (D-1297) — ✓ تُزيل ما أضافته هذه الزيارة وحدَها */
+                  onClick={() => {
+                    if (isAdded) return removeFromList(i);
+                    setPin((p) => p ?? { scope, items });
+                    addToList(i);
+                  }}
+                  aria-pressed={isAdded}
                   className={`shrink-0 flex flex-col items-center gap-1 text-12 active:opacity-70 transition ${
                     isAdded ? "text-accent" : "text-muted"
                   }`}

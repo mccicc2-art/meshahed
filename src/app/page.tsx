@@ -561,6 +561,14 @@ async function HomeBody({
                     added: true,
                     watched: false,
                     progress: x.progress,
+                    /* 🆕 D-1299 — قائمةُ التطبيق نفسُها (`asItem` + `noNext` في `HomeScreen`): الفيلمُ هنا لم يبدأ
+                       دائماً، والمسلسلُ لم يبدأ ما لم يُوقَف مؤقّتاً أو يُشاهَد منه شيء (موسمٌ جديد ينتظر) */
+                    lib: {
+                      unstarted:
+                        !x.paused && (x.mediaType === "movie" || (x.progress ?? 0) === 0),
+                      paused: !!x.paused,
+                      noNext: true,
+                    },
                     locale,
                   }}
                 />

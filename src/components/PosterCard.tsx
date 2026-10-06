@@ -136,6 +136,8 @@ export function PosterCard({
     /** 🆕 D-322: التقدّمُ والإيقافُ يعبران معه — الخيطُ هناك لا هنا */
     progress?: number;
     dropped?: boolean;
+    /** 🆕 D-1299 — صفوفُ «مكتبتي» (ابدأ · إيقاف مؤقّت · كمّل · إزالة) لصفٍّ كلُّه في المكتبة */
+    lib?: { unstarted: boolean; paused: boolean; noNext?: boolean };
     locale: Locale;
   };
   /**
@@ -324,6 +326,7 @@ export function PosterCard({
       titleBelow={titleBelow}
       savedMark={savedMark}
       extra={holdExtra}
+      lib={hold.lib}
       locale={hold.locale}
     >
       {card}

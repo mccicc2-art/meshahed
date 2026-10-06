@@ -1,20 +1,16 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { flashError, toast } from "@/lib/toast";
-import { runOrQueue } from "@/lib/offline";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { coalescedRefresh } from "@/core/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/core/i18n";
-import { startRewatch, classifyMyFollows, setWatchState, follow, unfollow } from "@/lib/actions";
-import { tap } from "@/lib/haptics";
+import { classifyMyFollows } from "@/lib/actions";
 import type { UserList } from "@/lib/data";
 import type { ArtistShelfItem } from "@/lib/artists";
 import { ArtistsGrid } from "./ArtistsGrid";
 import { PosterCard } from "./PosterCard";
 import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
-import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { posterGrid } from "./ui/controls";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PageTabs } from "./ui/PageTabs";
@@ -31,6 +27,7 @@ import { normalizeSearch, byTitle } from "@/core/arabic";
 import { applyTabPrefs, type TabPref } from "@/core/tabPrefs";
 import type { LibraryStatus } from "@/core/libraryStatus";
 import { buttonClass } from "./ui/Button";
+import { LibraryHoldMenu } from "./LibraryHoldMenu";
 
 export interface GridItem {
   key: string;
@@ -808,7 +805,23 @@ function LibraryCell({
           paused={x.paused}
         />
       </LongPressable>
-      {held && <HoldMenu item={x} t={t} onClose={onClose} onDone={onDone} />}
+      {held && x.tmdbId != null && x.mediaType && (
+        <LibraryHoldMenu
+          item={{
+            tmdbId: x.tmdbId,
+            mediaType: x.mediaType,
+            title: x.title,
+            posterPath: x.posterPath,
+            dropped: x.dropped,
+            paused: x.paused,
+            completed: x.completed,
+            unstarted: x.status === "unstarted",
+          }}
+          t={t}
+          onClose={onClose}
+          onDone={onDone}
+        />
+      )}
     </div>
   );
 }
@@ -821,197 +834,4 @@ function statusLabel(s: LibraryStatus, t: Dict): string {
       : s === "unstarted"
         ? t.libStatusUnstarted
         : t.libStatusDropped;
-}
-
-/**
- * 🆕 **قائمةُ الضغط المطوَّل في المكتبة — منسدلةٌ لا ورقة** (D-376، طلبُ
- * أحمد: «القائمة بعد ما اعمل hold ما هي واضحة… في المكتبة ما أبغى هذي
- * المنبثقة، أبغى نفس تبع الاكسبلورر»).
- *
- * ⚖️ **وهو نقضٌ مسجَّلٌ لشطرٍ من D-229/D-353** — «ورقةُ المكتبة تبقى
- * ورقةً لأن أفعالَها ستّةٌ ولا تسع في منسدلة». **والحجّةُ سقطت بالقياس
- * لا بالرأي**: الأفعالُ المعروضةُ في أيّ لحظةٍ **ثلاثةٌ أو أربعة** (حلقةٌ
- * تالية *أو* إعادةُ مشاهدة، ثم «شاهدته»، ثم «ريفيو»، ثم «بطاقة حمراء») —
- * **والستّةُ كانت مجموعَ الحالات كلِّها لا ما يُرسم معاً.**
- * **والثمنُ الذي دفعناه بالورقة حقيقيّ**: تغطّي الشبكةَ فتُخفي الملصقَ
- * الذي ضغطتَه، **فتحتاج عنواناً يذكّرك بما ضغطت** — وهو نصُّ D-229 في
- * وصف الورقة، **ولقطةُ أحمد أرَت العنوان «Room» وحدَه فوق شاشةٍ مطموسة.**
- *
- * **والمعنى لم يتغيّر بحرف** (D-353): البنودُ نفسُها وترتيبُها نفسُه
- * وأيقوناتُها نفسُها والاهتزازةُ نفسُها — **والذي تغيّر السطحُ وحدَه.**
- *
- * **والصفُّ `DropdownRow` المشترك** (D-376/D-002) لا نسخةٌ من صفوف الورقة.
- */
-function HoldMenu({
-  item,
-  t,
-  onClose,
-  onDone,
-}: {
-  item: GridItem;
-  t: Dict;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [pending, start] = useTransition();
-  const router = useRouter();
-
-  /**
-   * القائمةُ تُغلق فوراً والخادم يلحق في الخلفية. **والفشلُ توستٌ،
-   * ولا سطرَ نجاحٍ داخل القائمة**: المنسدلةُ تُغلق عند الفعل
-   * (`PosterHold` حرفاً)، **ورسالةٌ في قائمةٍ مغلقةٍ لا يقرؤها أحد.**
-   *
-   * 🔴 🆕 D-769: **التجديدُ بعد الكتابة لا قبلها** — كان `onDone()` يسبق
-   * `fn()` فتنطلق نافذةُ الـ800م.ث **قبل أن يكتب الخادمُ حرفاً**، وفعلٌ
-   * يتجاوزها («شفته كله» لمسلسلٍ طويل) يجعل التجديدَ يقرأ بياناتِ ما
-   * قبل الكتابة: شبكةٌ تُعاد رسمتها كاملةً **بلا أثرٍ للفعل**، ثم يصحّح
-   * تجديدُ الضغطة التالية — وهو نصفُ «الريفرش» الذي صوّره أحمد (ونصفُه
-   * الآخر هويّةُ `LibraryCell` أعلاه). الآن الكتابةُ أوّلاً والتجديدُ
-   * على حقيقتها، **والفشلُ لا يجدّد شيئاً** — لا شيءَ تغيّر ليُقرأ.
-   */
-  function run(fn: () => Promise<unknown>) {
-    /* **والاهتزازةُ نفسُها في السطحين** (D-353) */
-    tap([12, 30]);
-    onClose();
-    start(async () => {
-      try {
-        await fn();
-        onDone();
-      } catch (e) {
-        flashError((e as Error).message);
-      }
-    });
-  }
-
-  const isTv = item.mediaType === "tv";
-  /* 🆕 D-1280 — **الصفوفُ حسب حال العمل، كالتطبيق حرفاً** (`libraryRows` في `HoldMenu.tsx`):
-     لم يبدأ ⇒ «ابدأ» للمسلسل و«إزالة» بدل البطاقة الحمراء (الإيقافُ فعلُ من بدأ) · يتابعه ⇒ «إيقاف مؤقّت»
-     أوّلاً · موقوفٌ مؤقّتاً ⇒ «كمّل» بلا «الحلقة التالية» (تعليمُ حلقةٍ ينقض الإيقاف). والفيلمُ بلا بدءٍ ولا إيقاف. */
-  const unstarted = item.status === "unstarted";
-  const paused = isTv && !!item.paused && !item.completed;
-  const watching = isTv && !item.completed && !unstarted;
-
-  return (
-    <Dropdown open onClose={onClose} align="end" caret>
-      {item.dropped ? (
-        /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف.
-           🆕 **والكلمةُ صارت «تابع من جديد» لا «تراجع»** (D-636): الصفُّ
-           يستأنف متابعةً، **و«تراجع» كلمةٌ عامّةٌ تصف آلةً لا فعلاً** —
-           **والمفتاحُ قائمٌ ويقرؤه شريطُ صفحة العمل لنفس الفعل**، فصار
-           السطحان يقولان الشيءَ بكلمةٍ واحدة (D-145). */
-        <DropdownRow
-          icon="play"
-          label={t.resumeWatching}
-          disabled={pending}
-          onClick={() =>
-            run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, false))
-          }
-        />
-      ) : (
-        <>
-          {isTv && unstarted && (
-            <DropdownRow
-              icon="play"
-              label={t.holdStart}
-              disabled={pending}
-              onClick={() => run(() => setWatchState(item.tmdbId!, "started"))}
-            />
-          )}
-          {watching && (
-            <DropdownRow
-              icon={paused ? "play" : "pause"}
-              label={paused ? t.holdResume : t.holdPause}
-              disabled={pending}
-              onClick={() => run(() => setWatchState(item.tmdbId!, paused ? null : "paused"))}
-            />
-          )}
-
-          {watching && !paused && (
-            <DropdownRow
-              icon="play"
-              label={t.markNextEp}
-              disabled={pending}
-              onClick={() => run(() => runOrQueue("markNextEpisode", item.tmdbId!))}
-            />
-          )}
-
-          {/* عملٌ مكتمل: بابه «أشاهده من جديد» — دورةٌ جديدة واليوميات سليمة */}
-          {isTv && item.completed && (
-            <DropdownRow
-              icon="repeat"
-              label={t.rewatchBtn}
-              disabled={pending}
-              onClick={() => run(() => startRewatch(item.tmdbId!))}
-            />
-          )}
-
-          {/* **`check-line` كالمنسدلة لا `check`** (D-353) */}
-          <DropdownRow
-            icon="check-line"
-            label={!isTv && unstarted ? t.holdWatchedMovie : t.markAllWatched}
-            tone="success"
-            disabled={pending}
-            onClick={() =>
-              run(() =>
-                isTv
-                  ? runOrQueue("markShowWatched", item.tmdbId!)
-                  : runOrQueue("toggleMovieWatched", {
-                      movieTmdbId: item.tmdbId!,
-                      runtime: null,
-                      watched: true,
-                    }),
-              )
-            }
-          />
-
-          {/* **«ريفيو» ينتقل ولا يفتح** — ما يستحقّ صفحةً يأخذها (D-353) */}
-          <DropdownRow
-            icon="star"
-            label={t.reviewSectionTitle}
-            onClick={() => {
-              tap(8);
-              onClose();
-              router.push(`/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`);
-            }}
-          />
-
-          {/* **وما لا رجعةَ سهلةَ فيه آخِراً** (D-322/D-353). 🆕 D-1280 — لِما لم يبدأ «إزالة» من المكتبة،
-              ورجعتُها متابعةٌ من جديد (لا تقدّمَ يضيع: لم يبدأ)؛ والبطاقةُ الحمراء لمن بدأ */}
-          {unstarted ? (
-            <DropdownRow
-              icon="close"
-              label={t.holdRemove}
-              tone="danger"
-              disabled={pending}
-              onClick={() =>
-                run(async () => {
-                  const ref = { tmdbId: item.tmdbId!, mediaType: item.mediaType! };
-                  await unfollow(ref);
-                  toast(t.holdRemoved, {
-                    action: {
-                      label: t.undoWatched,
-                      run: () =>
-                        void follow({ ...ref, title: item.title, posterPath: item.posterPath })
-                          .then(onDone)
-                          .catch((e) => flashError((e as Error).message)),
-                    },
-                  });
-                })
-              }
-            />
-          ) : (
-            <DropdownRow
-              icon="card"
-              label={t.dropTitle}
-              tone="danger"
-              disabled={pending}
-              onClick={() =>
-                run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
-              }
-            />
-          )}
-        </>
-      )}
-    </Dropdown>
-  );
 }

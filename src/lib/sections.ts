@@ -25,6 +25,9 @@ import { withImdbRatings, rankByImdb } from "./omdb";
 import type { Locale } from "@/core/i18n";
 import type { RailWin } from "@/core/browse";
 
+/** D-1298 — حاجزُ أصوات IMDb لرفِّ «أفضل ٢٥ مسلسلاً هذي السنة» وحدَه؛ ما عداه على `IMDB_MIN_VOTES` (D-323) */
+const YEAR_TV_MIN_VOTES = 10_000;
+
 /**
  * خلطٌ عشوائيّ — **قرعةُ خادمٍ لا دالّةُ عرض** (نمط D-073 حرفياً).
  *
@@ -543,7 +546,13 @@ export async function buildSection(
            عيّنةً من قائمةٍ أطول** — **وصفحةٌ تعرض ستّين تحت عنوانٍ يقول
            خمسةً وعشرين تكذب** (D-141). **والصفحةُ تعطي ما يعطيه الرفُّ
            شبكةً لا رفّاً أفقيّاً**، وهو الفرقُ الذي فتحه البابُ. */
-        return guard(rankByImdb(rated, { want: Math.min(limit, 25) }));
+        /* D-1298 — **مسلسلاتُ السنة بحاجز عشرة آلاف لا عشرين** (قرارُ أحمد ٦ أكتوبر:
+           «نفذ 1»): حاجزُ D-323 وُضع لقوائم «الأفضل على الإطلاق»، **ومسلسلٌ عمرُه
+           أشهرٌ لم يأخذ وقتَه ليجمع عشرين ألفاً** — فكان الرفُّ يقف عند خمسةَ عشرَ
+           تحت عنوانٍ يقول خمسةً وعشرين (أضعفُ المعروض ٢٠٬١٠٥ صوتاً: الحاجزُ هو القاطع).
+           **وهذا الرفُّ وحدَه**: الأفلامُ وكلُّ قائمةٍ أخرى على عشرين ألفاً كما هي. */
+        const minVotes = media === "tv" ? YEAR_TV_MIN_VOTES : undefined;
+        return guard(rankByImdb(rated, { want: Math.min(limit, 25), minVotes }));
       }
 
       case "my-row": {

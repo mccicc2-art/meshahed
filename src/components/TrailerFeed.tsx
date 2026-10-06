@@ -194,7 +194,7 @@ export function TrailerFeed({
          البطاقة نفسُه** (`addToList`) لا نسخةٌ ثانية — فما أُضيف هنا يظهر مضافاً في بطاقته عند التصغير.
          ⚠️ **والألوانُ بيضاءُ ثابتةٌ لا رموزُ السمة**: الستارةُ سوداءُ في النهار أيضاً، ورمزُ النصِّ في
          `daylight` داكنٌ فوقها. **والنبذةُ أربعةُ أسطرٍ هنا** — للنصِّ مكانٌ لا تملكه البطاقة (D-1291). */
-      expandedInfo={(activeId) => {
+      expandedInfo={(activeId, ctl) => {
         const i = shown.find((x) => trailerClipKeyOf(x) === activeId);
         if (!i) return null;
         const isAdded = added.has(trailerKeyOf(i));
@@ -222,10 +222,37 @@ export function TrailerFeed({
               {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
             </p>
             {i.overview && (
-              <p className="mt-2.5 text-14 leading-relaxed text-white/85 line-clamp-4" dir="auto">
+              /* D-1301 — **ثلاثةُ أسطرٍ على الشاشة القصيرة**: صفُّ الأفعال تحتها يأخذ سطراً، وما بين الصندوق وشريط
+                 التقديم لا يسع الاثنين دون ٨٨٠ ارتفاعاً. و`min-h-0` يجعلها هي ما ينكمش لا الصفّ (`shrink-0`). */
+              <p className="mt-2.5 min-h-0 text-14 leading-relaxed text-white/85 line-clamp-4 [@media(max-height:880px)]:line-clamp-3" dir="auto">
                 {i.overview}
               </p>
             )}
+            {/* 🆕 D-1301 (اختيارُ أحمد من صورتين: «نفذ أ») — **«التفاصيل» و«ليس لي» صفّاً تحت النبذة**، بوصفة صفِّ
+                أفعال البطاقة (الرمزُ بجوار كلمته — D-1291) لا دائرتين بجوار «مكتبتي»: فعلٌ يُخفي العملَ لا يجاور
+                فعلاً يُبقيه (D-322). **و«ليس لي» ينقل إلى المقطع التالي أوّلاً** (أو السابق، أو يصغّر إن كان وحيداً)
+                ثمّ يطوي بطاقتَه — وتراجعُه في التوست كما في البطاقة. */}
+            <div className="mt-2 grid shrink-0 grid-cols-2 border-t border-white/15">
+              <Link
+                href={trailerTitleHref(i)}
+                prefetch={false}
+                className="pointer-events-auto flex items-center justify-center gap-2 py-3 text-12 text-white/65 whitespace-nowrap active:opacity-70 transition"
+              >
+                <Icon name="info" size={21} />
+                {t.trailerDetails}
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!ctl.step(1) && !ctl.step(-1)) ctl.collapse();
+                  notForMe(i);
+                }}
+                className="pointer-events-auto flex items-center justify-center gap-2 py-3 text-12 text-white/65 whitespace-nowrap active:opacity-70 transition"
+              >
+                <Icon name="eye-off" size={21} />
+                {t.trailerNotForMe}
+              </button>
+            </div>
           </>
         );
       }}

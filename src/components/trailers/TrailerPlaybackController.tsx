@@ -1601,6 +1601,10 @@ export interface TrailerExpandedLabels {
   volume?: string;
 }
 
+/** 🆕 D-1301 — ما يملكه سطحُ النصِّ تحت المكبَّر من المشغّل: نقلةٌ إلى مقطعٍ مجاور، أو تصغير. فعلٌ يُزيل
+    البطاقةَ النشطة («ليس لي») ينقل أوّلاً — البطاقةُ تحمل المشغّل، وإزالتُها تحته تُسقط التكبير (درسُ D-1296). */
+export type TrailerExpandedCtl = { step: (dir: 1 | -1) => boolean; collapse: () => void };
+
 export function TrailerPlayback({
   children,
   soundPref,
@@ -1613,7 +1617,7 @@ export function TrailerPlayback({
   /** 🆕 D-762: سطحٌ بلا هذه النصوص لا يعرض زرَّ تكبيرٍ أصلاً (الرايل) */
   expandedLabels?: TrailerExpandedLabels;
   /** 🆕 D-1295: ما يُكتب تحت المقطع المكبَّر — يرسمه السطحُ الذي يملك بياناتِ البطاقة وأفعالَها */
-  expandedInfo?: (activeId: string) => ReactNode;
+  expandedInfo?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
 }) {
   const snapRef = useRef<ControllerSnapshot>({
     activeId: null,
@@ -2061,7 +2065,7 @@ function ExpandedUi({
 }: {
   api: ControllerApi;
   labels: TrailerExpandedLabels;
-  info?: (activeId: string) => ReactNode;
+  info?: (activeId: string, ctl: TrailerExpandedCtl) => ReactNode;
 }) {
   const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
   /* 🆕 D-934: الضغطةُ المزدوجة تقفز — على سطح التكبير كما على البطاقة.
@@ -2154,10 +2158,10 @@ function ExpandedUi({
           تبتلع اللمسَ فوق سطحِ إيماءةٍ تقتل الإيماءة.** **وفي العرضيّ يغيب**: الفيديو يملأ الشاشة ولا مكانَ تحته. */}
       {info && snap.activeId ? (
         <div
-          className="pointer-events-none absolute inset-x-0 z-10 overflow-hidden px-4 pt-5 landscape:hidden"
+          className="pointer-events-none absolute inset-x-0 z-10 flex flex-col overflow-hidden px-4 pt-5 landscape:hidden"
           style={{ top: "calc(50% + min(100vw, 100vh * 16 / 9) * 9 / 32)", bottom: "5.5rem" }}
         >
-          {info(snap.activeId)}
+          {info(snap.activeId, { step: api.stepExpanded, collapse: api.toggleExpand })}
         </div>
       ) : null}
       <button

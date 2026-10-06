@@ -114,6 +114,8 @@ export type MixedItem = {
   subtitle?: string;
   /** «الحلقة ٥» — للقادم وحدَه، ويغيب إن لم يعرفه TMDB */
   ep?: string;
+  /** 🆕 D-1299 — موقوفٌ مؤقّتاً في «للمشاهدة» (D-1281): قائمةُ الضغط المطوّل في الويب تقول «كمّل» */
+  paused?: boolean;
 };
 
 /**
@@ -1133,6 +1135,7 @@ export async function buildHomeBody({
         title: i.name,
         posterPath: i.posterPath,
         progress: i.progress,
+        paused: i.state === "paused",
         /* ⚖️ 🆕 **وشارةُ «ما بدأته» سقطت من هذا الصفّ** (D-434، طلبُ
            أحمد بنصّه: «لا تعرض Not started داخل قسم معروف مسبقاً بأنه To
            Watch»). **وهو محقّ: القسمُ كلُّه ما لم يُبدأ**، **وشارةٌ تعيد
