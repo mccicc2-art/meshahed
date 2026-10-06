@@ -1,5 +1,7 @@
-[deploy] Revert D-1310 — description search back to the single model call and its own order (the re-rank did not surface the expected title and made the search slower)
+[deploy] D-1311 — trailers page: filter button at the end of the title line, with a sheet for genre, release and language
+
+The filter lives in the link (g, rel, lang): it survives a tab switch and is gone on leaving the page.
+For You and Trending are filtered before the probe; the catalogue tabs send the filter to the source.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
-
+Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
