@@ -1,0 +1,24 @@
+D-895 — LOOPZ-AUD-0082 (new, P2 images): w342 rail posters are served as w185 when the browser asks with the 1x candidate (DPR 1 screens)
+=======================================================================================================================================
+
+owner decision (chat, after the §15 diagnosis and before 54bb5fd): "execute — w185 when it suffices, else w342" (three options offered: execute / keep D-841 as is / stop for today).
+
+commit (main, git log, UTC):
+  54bb5fd  2026-09-02 18:03:47  src/lib/media.ts — POSTER_INTRINSIC.w342 = {176, 264} (was {342, 513}; aspect hint + srcset widths only) · src/lib/imageLoader.ts — in the /i/ passthrough branch: `if (size === "w342" && width <= 256) return /i/w185/<file>`; never upward (no w500)  [deploy]
+rollback point: f428584 (two files)
+why the intrinsic change: with width/height and no `sizes`, Next emits x-descriptors — 1x = smallest allowed size ≥ width, 2x = ≥ 2×width. At 342 the 1x candidate was 384 (> 256) so the loader could not tell a DPR-1 request from a DPR-2 one; at 176 (the real card box: 137–176 css px in rails, 155 in the discover grid at 1280) the 1x candidate is 256 → w185, and the 2x candidate is 384 → w342 as before. Boxes larger than ~200 css px at DPR 1 would get a ≤ 1.3× upscale (ReportView 240 px: noted, not measured).
+scope: two files in src/lib; the /i/ route, the optimizer split (w780/w1280/original), cache headers and D-841's cost model are unchanged. Declared cost: two edge-cache entries per w342 poster instead of one (edge requests per view unchanged).
+
+gates on 54bb5fd, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == 54bb5fd read from the Claude pane at 18:05:33 UTC
+
+Before/After
+  markup (/discover/most-popular?m=tv, ar HTML): BEFORE srcSet="/i/w342/… 1x, /i/w342/… 2x" (60 cards, all w342) → AFTER srcSet="/i/w185/… 1x, /i/w342/… 2x" (60 × w185 + 120 × w342 occurrences = the 2x + poster-hero uses)
+  owner's browser (Edge/Windows, DPR 1, viewport 843, same page): BEFORE (§15, title page) the six largest resources were /i/w342/ at 40–58 KB each → AFTER the discover grid requests /i/w185/ only: 7 posters = 47 KB total (13–20 KB each), boxes 174 css px, currentSrc = w185 on all sampled cards
+  Claude pane (DPR 1.5, 1280): AFTER chosen w342 on 56/56 cards (boxes 155 css px) — unchanged by design
+  per-poster bytes (pane, /i/): w185 17–20 KB vs w342 44–58 KB (four files) → −25…−38 KB per visible poster on DPR-1 screens; first visible discover row (7) ≈ −200 KB
+caveat on the owner's-browser timings: the automation opens pages in a BACKGROUND Edge tab (Edge throttles/sleeps background tabs) — its document responseEnd was 8,855 ms for a page the Claude pane on the same machine and network (rtt 200, 6–10 Mbps) received in 541 ms. Edge numbers from automation are therefore usable for request inventory (which URLs/sizes were requested), NOT for timing. The owner's felt slowness in the foreground remains unmeasured from here.
+smoke: discover grid renders 60 cards ✓ · title page rails render ✓ · light theme and RTL not affected (markup-only size change) · not measured: first paint · foreground timing on the owner's machine.
