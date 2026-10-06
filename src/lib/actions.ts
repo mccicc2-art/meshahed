@@ -5427,7 +5427,7 @@ export async function aiStorySearch(
   const desc = String(description ?? "").trim().slice(0, 600);
   if (desc.length < 8) return { ok: false, reason: "short" };
 
-  const [{ aiSuggestTitles, aiRankByOverview }, { getLocale }] = await Promise.all([
+  const [{ aiSuggestTitles }, { getLocale }] = await Promise.all([
     import("@/lib/ai"),
     import("@/lib/locale"),
   ]);
@@ -5467,8 +5467,6 @@ export async function aiStorySearch(
   const results: AiSearchResult[] = [];
   /** الاسمُ الأصليُّ لكلِّ نتيجة — يُلتقط عند الدفع ويُقرأ عند الخروج (D-544) */
   const originals = new Map<string, string | null>();
-  /** 🆕 D-1310 — نبذةُ TMDB لكلِّ نتيجة: بها يُعاد الترتيب (`aiRankByOverview`) ولا تُرسل للشاشة */
-  const overviews = new Map<string, string>();
 
   /**
    * 🆕 **حلُّ الأسماء مرّةً واحدةً قبل الخروج** (D-544).
@@ -5509,7 +5507,6 @@ export async function aiStorySearch(
        حلقةِ دفعٍ هو استعلامٌ لكلِّ نتيجة**، وهو ما تمنعه المواصفة.
        **فتُجمع الأصولُ هنا، ويُحلُّ الكلُّ مرّةً واحدةً في `finish`.** */
     originals.set(key, originalTitleOf(r));
-    overviews.set(key, typeof r.overview === "string" ? r.overview : "");
     results.push({
       kind,
       id: r.id,
@@ -5532,16 +5529,7 @@ export async function aiStorySearch(
       ),
     );
     for (const g of grounded) if (g) push(g.row, g.reason);
-    if (results.length) {
-      /* 🆕 D-1310 — **الترتيبُ الأخيرُ للنبذة لا للذاكرة**: طلبٌ ثانٍ قصيرٌ يرتّب المثبَّتين بنصوصهم الحقيقيّة.
-         فشلُه أو تأخّرُه (٦ث) يُبقي ترتيبَ النموذج الأوّل — البحثُ لا ينكسر بتحسينه. */
-      const order = await aiRankByOverview(
-        desc,
-        results.map((r) => ({ title: r.title, year: r.year, overview: overviews.get(`${r.kind}-${r.id}`) ?? "" })),
-      ).catch(() => null);
-      const ranked = order ? order.map((i) => results[i]) : results;
-      return { ok: true, results: await finish(ranked) };
-    }
+    if (results.length) return { ok: true, results: await finish(results) };
   }
 
   /* ===== المسار البديل — بلا نموذج (إصلاح 9 Aug) =====
