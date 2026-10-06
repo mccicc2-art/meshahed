@@ -1,4 +1,4 @@
-[deploy] D-1310 — description search: results are re-ranked against their real TMDB synopses (a second short model call; the first order stays if it fails), and the prompt ranks by the most distinctive detail
+[deploy] Revert D-1310 — description search back to the single model call and its own order (the re-rank did not surface the expected title and made the search slower)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
