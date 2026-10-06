@@ -112,7 +112,11 @@ export type DiscoverViewPayload = {
   tabs: { key: string; hidden: boolean }[];
   /** رموزٌ بشكل `tab:key` (`railToken`) */
   hidden_rails: string[];
+  /** صفوفُ «المسلسلات» — لغلافٍ أقدم يقرأ قائمةً واحدة (قبل D-1304) */
   my_rows: { genre: string; tag: string | null }[];
+  /** 🆕 D-1304 — صفوفُك لكلِّ تبويب. اختياريٌّ: حمولةٌ محفوظةٌ من قبل لا تحمله */
+  my_rows_by_tab?: Record<"shows" | "movies" | "anime", { genre: string; tag: string | null }[]>;
 };
 /** `POST /api/v1/me/prefs/my-rows` */
-export type MyRowsBody = { rows: { genre: string; tag: string | null }[] };
+/** `tab` (D-1304): التبويبُ الذي تُكتب صفوفُه؛ غيابُه = الثلاثةُ معاً (غلافٌ أقدم) */
+export type MyRowsBody = { rows: { genre: string; tag: string | null }[]; tab?: "shows" | "movies" | "anime" };

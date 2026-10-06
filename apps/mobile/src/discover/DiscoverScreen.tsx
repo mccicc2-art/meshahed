@@ -366,15 +366,16 @@ export function DiscoverScreen() {
     if (!tabsOrder.includes(tab)) setTab(tabsOrder[0]);
   }, [tabsOrder, tab]);
   const onView = useCallback(
-    async (patch: { tabs?: TabPref[]; hidden?: string[]; rows?: MyRow[] }) => {
+    async (patch: { tabs?: TabPref[]; hidden?: string[]; rows?: MyRow[]; rowsTab?: "shows" | "movies" | "anime" }) => {
       /* تفاؤلٌ محلّيّ ثمّ الكتابة — و`needsPlus` يفتح بابَ بلس كما في المكتبة */
-      qc.setQueryData<DiscoverViewPayload>(["discover:view"], (prev) => (prev ? { ...prev, ...(patch.tabs ? { tabs: patch.tabs } : {}), ...(patch.hidden ? { hidden_rails: patch.hidden } : {}), ...(patch.rows ? { my_rows: patch.rows } : {}) } : prev));
+      qc.setQueryData<DiscoverViewPayload>(["discover:view"], (prev) => (prev ? { ...prev, ...(patch.tabs ? { tabs: patch.tabs } : {}), ...(patch.hidden ? { hidden_rails: patch.hidden } : {}), ...(patch.rows ? (patch.rowsTab ? { my_rows_by_tab: { shows: prev.my_rows_by_tab?.shows ?? prev.my_rows, movies: prev.my_rows_by_tab?.movies ?? prev.my_rows, anime: prev.my_rows_by_tab?.anime ?? prev.my_rows, [patch.rowsTab]: patch.rows } } : { my_rows: patch.rows }) : {}) } : prev));
       try {
         let r: { ok: boolean; needsPlus?: true } = { ok: true };
         if (patch.tabs) r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/tabs", { surface: "discover", prefs: patch.tabs });
         if (patch.hidden) r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/hidden-rails", { keys: patch.hidden });
         if (patch.rows) {
-          await write<{ ok: boolean }>("/api/v1/me/prefs/my-rows", { rows: patch.rows } satisfies MyRowsBody);
+          /* D-1304 — صفوفُ تبويبٍ بعينه: الخادمُ يستبدله وحدَه */
+          await write<{ ok: boolean }>("/api/v1/me/prefs/my-rows", { rows: patch.rows, ...(patch.rowsTab ? { tab: patch.rowsTab } : {}) } satisfies MyRowsBody);
           void qc.invalidateQueries({ queryKey: ["discover:personal"] });
         }
         if (r.needsPlus) {

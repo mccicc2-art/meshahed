@@ -497,6 +497,7 @@ export function DiscoverFilters({
           tabPrefs={tabPrefs}
           hiddenRails={hiddenRails}
           myRows={myRows}
+          rowsTab={tab === "shows" || tab === "movies" || tab === "anime" ? tab : null}
           tabLabels={tabLabels}
           onClose={() => setSheet(false)}
           onApply={(next) => {

@@ -1023,10 +1023,15 @@ export async function setTabPrefs(
    (`trailerPrefs.writeTrailerSound`). ⚠️ **ولم يُترك ميّتاً**: **فعلٌ
    لا يُنادى يُقرأ باباً قائماً فيُبنى عليه.** */
 
-export async function setMyRows(raw: string) {
-  const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/core/myRows");
+/* 🆕 D-1304 — **صفوفُ تبويبٍ بعينه**: يُقرأ الكوكيُّ كلُّه ويُستبدل تبويبٌ واحد. **بلا تبويبٍ ⇒ الثلاثةُ معاً** —
+   غلافٌ أقدم (ثنائيُّ 1.12.0 لم يُحدَّث من المتجر) ما زال يرسل قائمةً واحدة، وهذا سلوكُه القديمُ بحرفه. */
+export async function setMyRows(raw: string, tab?: string) {
+  const { parseMyRows, parseMyRowsByTab, serializeMyRowsByTab, isMyRowsTab, MY_ROWS_TABS, MY_ROWS_COOKIE } = await import("@/core/myRows");
   const store = await cookies();
-  store.set(MY_ROWS_COOKIE, serializeMyRows(parseMyRows(raw)), {
+  const all = parseMyRowsByTab(store.get(MY_ROWS_COOKIE)?.value);
+  const rows = parseMyRows(raw);
+  for (const k of isMyRowsTab(tab) ? [tab] : MY_ROWS_TABS) all[k] = rows;
+  store.set(MY_ROWS_COOKIE, serializeMyRowsByTab(all), {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

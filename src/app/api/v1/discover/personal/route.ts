@@ -6,7 +6,7 @@ import { getProfile } from "@/lib/data";
 import { sanitizeUiState } from "@/lib/uiState";
 import { filtersOf } from "@/core/savedFilters";
 import { parseBrowse, localAxesOnly } from "@/core/browse";
-import { parseMyRows, MY_ROWS_COOKIE } from "@/core/myRows";
+import { parseMyRowsByTab, MY_ROWS_COOKIE } from "@/core/myRows";
 import { getLocale, getWatchRegion } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -35,7 +35,8 @@ export async function GET(req: NextRequest) {
     const tab = tabRaw === "movies" ? "movies" : tabRaw === "anime" ? "anime" : "shows";
     const [locale, region, store, profile] = await Promise.all([getLocale(), getWatchRegion(), cookies(), getProfile().catch(() => null)]);
     const t = getDict(locale);
-    const myRows = parseMyRows(store.get(MY_ROWS_COOKIE)?.value);
+    /* D-1304 — صفوفُ هذا التبويب وحدَه */
+    const myRows = parseMyRowsByTab(store.get(MY_ROWS_COOKIE)?.value)[tab];
     const r = await personalRails(tab, { locale, region, myRows });
     /* 🆕 D-992 — الفلترُ النشط يرشّح الصفوفَ الشخصيّةَ في مكانها (كما `PersonalRails` في الصفحة):
        بمحاور محلّيّة فقط؛ وسمٌ أو جائزةٌ أو حالةٌ أو موسمٌ تُسكتها كلَّها */

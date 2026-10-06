@@ -23,8 +23,33 @@ export interface MyRow {
   tag: string | null;
 }
 
-export const MY_ROWS_COOKIE = "loopz-myrows";
+/* 🔴 🆕 D-1304 — **اسمٌ جديدٌ عمداً** (كان `loopz-myrows`): الصفوفُ صارت **لكلِّ تبويبٍ** وافتراضُها قائمةٌ حدّدها
+   أحمد لـ«الكلّ»، ومن اختار من قبلُ مشمول («يشملهم»). الكوكيُّ القديمُ لا يُقرأ فيسقط صاحبُه إلى الافتراض —
+   وصفةُ D-1266 في اسم كوكيِّ طريقة الأسماء. */
+export const MY_ROWS_COOKIE = "loopz-rows";
 export const MY_ROWS_MAX = 3;
+
+/** تبويباتُ «اكتشف» التي تحمل صفوفاً خاصّة — «القوائم» بلا صفوف */
+export type MyRowsTab = "shows" | "movies" | "anime";
+export const MY_ROWS_TABS: readonly MyRowsTab[] = ["shows", "movies", "anime"];
+export type MyRowsByTab = Record<MyRowsTab, MyRow[]>;
+export function isMyRowsTab(v: unknown): v is MyRowsTab {
+  return v === "shows" || v === "movies" || v === "anime";
+}
+
+/**
+ * 🆕 D-1304 — **الافتراضُ عند الجميع** (أحمد، ٦ أكتوبر، بعد لقطتَي «عرض» للأنمي والأفلام: «الانمي فيه اشياء غير عن
+ * الفلم .. ابغى حتى الرو منفصله عن بعض» ثمّ القائمةُ بنصّه، «وهو يمدي يغير او يشيل»). ⚖️ ينقض شطرَ D-337: كانت
+ * قائمةً واحدةً للتبويبات الثلاثة ولا صفَّ لمن لم يختر. **والرعبُ للأفلام وحدَها**: TMDB بلا نوع رعبٍ للمسلسلات.
+ */
+const DEFAULT_SLUGS: Record<MyRowsTab, string[]> = {
+  shows: ["drama", "action", "comedy"],
+  movies: ["drama", "action", "horror"],
+  anime: ["drama", "action", "crime"],
+};
+export function defaultMyRows(tab: MyRowsTab): MyRow[] {
+  return DEFAULT_SLUGS[tab].map((genre) => ({ genre, tag: null }));
+}
 
 /** «drama.zombie,scifi» → صفوفٌ مُتحقَّقةٌ ضدّ القاموسَين — والغريبُ يسقط صامتاً */
 export function parseMyRows(raw: string | undefined | null): MyRow[] {
@@ -40,6 +65,30 @@ export function parseMyRows(raw: string | undefined | null): MyRow[] {
 }
 
 /** مفتاحُ الصفّ — النوعُ وموضوعُه معاً (D-1283) */
+/**
+ * كوكيٌّ واحدٌ للتبويبات الثلاثة: `shows:drama,action|movies:…|anime:`.
+ * **تبويبٌ غائبٌ عن الكوكي ⇒ افتراضُه** (لم يمسّه صاحبُه). **تبويبٌ حاضرٌ فارغ ⇒ فارغ**: من شال صفوفَه
+ * كلَّها لا تعود إليه — «يمدي يغير او يشيل».
+ */
+export function parseMyRowsByTab(raw: string | undefined | null): MyRowsByTab {
+  const seen = new Map<MyRowsTab, MyRow[]>();
+  for (const part of String(raw ?? "").split("|")) {
+    const at = part.indexOf(":");
+    if (at < 0) continue;
+    const tab = part.slice(0, at).trim();
+    if (isMyRowsTab(tab) && !seen.has(tab)) seen.set(tab, parseMyRows(part.slice(at + 1)));
+  }
+  return {
+    shows: seen.get("shows") ?? defaultMyRows("shows"),
+    movies: seen.get("movies") ?? defaultMyRows("movies"),
+    anime: seen.get("anime") ?? defaultMyRows("anime"),
+  };
+}
+
+export function serializeMyRowsByTab(all: MyRowsByTab): string {
+  return MY_ROWS_TABS.map((tab) => `${tab}:${serializeMyRows(all[tab] ?? [])}`).join("|");
+}
+
 export function myRowKey(r: MyRow): string {
   return r.genre + (r.tag ? `.${r.tag}` : "");
 }

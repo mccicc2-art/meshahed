@@ -7,7 +7,7 @@ import type { MyRowsBody } from "@/core/contracts/discover";
 export const POST = bodyRoute<MyRowsBody, { ok: boolean }>(
   async (b) => {
     const rows = Array.isArray(b.rows) ? b.rows.map((r) => ({ genre: String(r.genre), tag: r.tag ? String(r.tag) : null })) : [];
-    await setMyRows(serializeMyRows(rows));
+    await setMyRows(serializeMyRows(rows), typeof b.tab === "string" ? b.tab : undefined);
     return { ok: true };
   },
   () => ["news"],

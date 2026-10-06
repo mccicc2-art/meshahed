@@ -38,7 +38,7 @@ import type { TabPref } from "@/core/tabPrefs";
 import { RailsPrefs } from "./RailsPrefs";
 import { type RailTab } from "@/core/railPrefs";
 import { setMyRows } from "@/lib/actions";
-import { serializeMyRows, MY_ROWS_MAX, type MyRow } from "@/core/myRows";
+import { serializeMyRows, MY_ROWS_MAX, type MyRow, type MyRowsTab } from "@/core/myRows";
 
 export interface FilterDraft {
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).
@@ -92,6 +92,7 @@ export function DiscoverFilterSheet({
   tabPrefs,
   hiddenRails = [],
   myRows: initialMyRows = [],
+  rowsTab = null,
   tabLabels,
   onApply,
   onClose,
@@ -126,6 +127,8 @@ export function DiscoverFilterSheet({
   hiddenRails?: string[];
   /** 🆕 صفوفُك الخاصة (D-337) — القيمةُ الحاليّة من الكوكيز */
   myRows?: MyRow[];
+  /** 🆕 D-1304 — التبويبُ الذي تُعرض صفوفُه وتُحفظ له؛ `null` («القوائم») يُخفي القسم */
+  rowsTab?: MyRowsTab | null;
   tabLabels: Record<string, string>;
   onApply: (next: FilterDraft) => void;
   onClose: () => void;
@@ -166,7 +169,7 @@ export function DiscoverFilterSheet({
     const clean = next.filter(Boolean).slice(0, MY_ROWS_MAX);
     setMyRowsState(clean);
     startRows(async () => {
-      await setMyRows(serializeMyRows(clean)).catch(() => {});
+      await setMyRows(serializeMyRows(clean), rowsTab ?? undefined).catch(() => {});
       router.refresh();
     });
   }
@@ -493,8 +496,11 @@ export function DiscoverFilterSheet({
             اختياريّاً فيطلع عنوان مثل Drama zombies»).
             **القاموسان قاموسا الفلتر نفسُهما** (D-145) والحفظُ عند اللمس
             كتفضيلات التبويبات — لا زرَّ تطبيق. */}
+        {/* 🆕 D-1304 — **صفوفُ التبويب المفتوح وحدَه** (أحمد: «ابغى حتى الرو منفصله عن بعض») — كقسم «صفوف هذا
+            التبويب» تحته. والأنواعُ المعروضةُ ما يملك هذا التبويبُ منه شيئاً: نوعٌ بلا أعمالٍ هنا صفٌّ لا يظهر. */}
+        {rowsTab && (
         <section className="px-5 pb-5">
-          <h3 className="text-xs font-bold text-muted mb-1">{t.myRowsTitle}</h3>
+          <h3 className="text-xs font-bold text-muted mb-1">{`${t.myRowsTitle} · ${tabLabels[rowsTab] ?? ""}`}</h3>
           <p className="text-12 text-muted mb-3">{t.myRowsHint}</p>
           <div className="space-y-3">
             {Array.from({ length: MY_ROWS_MAX }, (_, i) => {
@@ -509,7 +515,7 @@ export function DiscoverFilterSheet({
                     onChange={(v) => saveMyRow(i, v || null, row?.tag ?? null)}
                   >
                     <option value="">{t.myRowsGenreOff}</option>
-                    {BROWSE_GENRES.map((g) => (
+                    {BROWSE_GENRES.filter((g) => (rowsTab === "movies" ? g.movie.length > 0 : g.tv.length > 0) || g.slug === row?.genre).map((g) => (
                       <option key={g.slug} value={g.slug}>
                         {browseGenreName(g, lang)}
                       </option>
@@ -534,6 +540,7 @@ export function DiscoverFilterSheet({
             })}
           </div>
         </section>
+        )}
         <TabsPrefs
           locale={locale}
           surface="discover"

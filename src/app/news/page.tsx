@@ -16,7 +16,7 @@ import {
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
-import { parseMyRows, uniqueMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
+import { parseMyRowsByTab, isMyRowsTab, uniqueMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/core/browse";
 import { LOOPZ_PERSON } from "@/core/loopz";
 import { Avatar } from "@/components/Avatar";
@@ -166,13 +166,15 @@ export default async function NewsPage({
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
   const tabPrefs = await getTabPrefs("discover");
   /* 🆕 صفوفُك الخاصة (D-337) — كوكيزٌ كتفضيلات التبويبات */
-  const myRows = parseMyRows((await cookies()).get(MY_ROWS_COOKIE)?.value);
+  const rowsByTab = parseMyRowsByTab((await cookies()).get(MY_ROWS_COOKIE)?.value);
   /* الرابط الأعزل يعني «افتح على تبويبي الأوّل» لا «افتح على الأفلام»
      (D-179): الافتراضُ صار يخصّ صاحبه، فيُقرأ من الكوكي لا من الشيفرة */
   const tab =
     sp.tab || sp.type
       ? parseDiscoverTab(sp.tab, sp.type)
       : parseDiscoverTab(defaultTab(tabPrefs, "shows"));
+  /* 🆕 D-1304 — صفوفُ التبويب المفتوح وحدَه؛ «القوائم» بلا صفوف */
+  const myRows: MyRow[] = isMyRowsTab(tab) ? rowsByTab[tab] : [];
   /* 🆕 **والفلترُ الافتراضيُّ يُطبَّق هنا — لا في العميل** (D-817،
      تمامُ البند الثاني من خطّة الـ٢٤): **فلترٌ يُطبَّق بعد الرسم يُري
      القارئَ صفحةً ثمّ يستبدلها**، **والخادمُ يعرف قبل أن يرسم.**

@@ -76,7 +76,7 @@ export function FilterSheet({
   /** D-997 — تفضيلاتُ «عرض» الحاليّة (تصل من `/api/v1/discover/view`) */
   view: DiscoverViewPayload | null;
   /** كتابةٌ واحدة لكلِّ تغيير — الشاشةُ تحفظ وتحدّث */
-  onView: (patch: { tabs?: TabPref[]; hidden?: string[]; rows?: MyRow[] }) => void;
+  onView: (patch: { tabs?: TabPref[]; hidden?: string[]; rows?: MyRow[]; rowsTab?: "shows" | "movies" | "anime" }) => void;
   initialPane?: "tools" | "view";
   /** من تبويب «القوائم»: لا فلاترَ ولا صفوفَ أعمال — «عرض» وحدَه (D-826) */
   viewOnly?: boolean;
@@ -143,12 +143,17 @@ export function FilterSheet({
   const set = (key: AxisKey, v: string | number | null) => setDraft((d) => ({ ...d, [key]: v }) as BrowseState);
   const valueOf = (key: AxisKey) => draft[key];
 
+  /* 🆕 D-1304 — **صفوفُ التبويب المفتوح وحدَه** (أحمد: «ابغى حتى الرو منفصله عن بعض»): تُقرأ وتُكتب لتبويبها.
+     حمولةٌ محفوظةٌ من قبل بلا `my_rows_by_tab` تسقط إلى القائمة القديمة حتى يصل الردُّ الجديد */
+  const myRows: MyRow[] = view?.my_rows_by_tab?.[tab] ?? view?.my_rows ?? [];
+
   if (rowPick) {
-    const rows = view?.my_rows ?? [];
+    const rows = myRows;
     const row = rows[rowPick.i] ?? null;
     const isGenre = rowPick.field === "genre";
     const list = isGenre
-      ? BROWSE_GENRES.map((g) => ({ value: g.slug, label: browseGenreName(g, lang) }))
+      ? /* D-1304 — ما يملك هذا التبويبُ منه شيئاً: نوعٌ بلا أعمالٍ هنا صفٌّ لا يظهر (الرعبُ للأفلام وحدَها) */
+        BROWSE_GENRES.filter((g) => (tab === "movies" ? g.movie.length > 0 : g.tv.length > 0) || g.slug === row?.genre).map((g) => ({ value: g.slug, label: browseGenreName(g, lang) }))
       : BROWSE_TAGS.map((x) => ({ value: x.slug, label: browseTagName(x, lang) }));
     const current = isGenre ? (row?.genre ?? null) : (row?.tag ?? null);
     const pick = (v: string | null) => {
@@ -157,7 +162,7 @@ export function FilterSheet({
         if (!v) next.splice(rowPick.i, 1);
         else next[rowPick.i] = { genre: v, tag: row?.tag ?? null };
       } else if (row) next[rowPick.i] = { genre: row.genre, tag: v };
-      onView({ rows: next.filter(Boolean).slice(0, MY_ROWS_MAX) });
+      onView({ rows: next.filter(Boolean).slice(0, MY_ROWS_MAX), rowsTab: tab });
       setRowPick(null);
     };
     return (
@@ -231,7 +236,7 @@ export function FilterSheet({
     const hiddenAll = new Set(view?.hidden_rails ?? []);
     const hiddenHere = railTab ? railsHiddenFor(hiddenAll, railTab) : new Set<string>();
     const shownCount = tabs.filter((p) => !p.hidden).length;
-    const rows = view?.my_rows ?? [];
+    const rows = myRows;
     const rowLabel = (r: MyRow | null, field: "genre" | "tag") => {
       if (!r) return field === "genre" ? t.myRowsGenreOff : t.myRowsTagAny;
       if (field === "genre") {
@@ -245,9 +250,10 @@ export function FilterSheet({
       <Sheet title={t.discoverToolsTitle} onClose={onClose}>
         {seg}
         <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 18 }}>
-          {/* صفوفُك — نوعٌ وموضوعٌ لكلِّ صفّ (D-822/D-997) */}
+          {/* صفوفُك — نوعٌ وموضوعٌ لكلِّ صفّ (D-822/D-997)؛ 🆕 D-1304: لهذا التبويب وحدَه، وتغيب في «القوائم» */}
+          {viewOnly ? null : (
           <View style={{ gap: 8 }}>
-            <Text size={12} weight="700" muted>{t.myRowsTitle}</Text>
+            <Text size={12} weight="700" muted>{`${t.myRowsTitle} · ${tabLabel(tab)}`}</Text>
             <Text size={12} muted>{t.myRowsHint}</Text>
             {Array.from({ length: MY_ROWS_MAX }, (_, i) => {
               const row = rows[i] ?? null;
@@ -265,6 +271,7 @@ export function FilterSheet({
               );
             })}
           </View>
+          )}
           {/* التبويبات — الترتيبُ والإظهار (`ToolsSheet` المكتبة حرفاً، بلس في الخادم) */}
           <View style={{ gap: 6 }}>
             <Text size={12} weight="700" muted>{t.tabsPrefsGroup}</Text>
