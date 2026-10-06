@@ -1,4 +1,4 @@
-[deploy] Web conversation: the reply box is docked at the bottom of the screen and the thread opens at its latest message (KeyboardDock moved to ui/ and shared with the discussion composer)
+[deploy] D-1307 — presence and the open conversation: a send counts as presence, the app beats every four minutes, the thread header re-reads last-seen; no notification banner inside the thread it belongs to; back closes the keyboard
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
