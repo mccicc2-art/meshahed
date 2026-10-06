@@ -1,6 +1,4 @@
-[deploy] D-1304 — Discover: «Your rows» are per tab, with Ahmed's default for everyone (Shows drama·action·comedy · Movies drama·action·horror · Anime drama·action·crime)
-
-New cookie name (loopz-rows): earlier choices are replaced by the default, as he ruled. Web sheet and app sheet show and save the open tab's rows; a save without a tab (older shell) still writes all three.
+[deploy] D-1305 — push notifications: device tokens and prefs (migration 195), server senders over follows / likes / replies / messages, new-episode job, app registration and tap routing, settings toggles, privacy text (app 1.12.2)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_019fkAxMeB2PXzKw4iaxektt
+Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
