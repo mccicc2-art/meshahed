@@ -1,9 +1,7 @@
-[deploy] D-1298…D-1301 — year TV row floor 10k · web Home long-press menu · Discover «My List» toggles · expanded trailer: Details / Not for me
+[deploy] D-1302 — expanded trailer: rotate button turns the screen to landscape (app 1.12.1)
 
-D-1298: «Top 25 shows this year» ranks with a 10,000 IMDb-vote floor (that row only; D-323 stays at 20,000 elsewhere).
-D-1299: web Home — To watch posters and the Continue card get the app's menu (Start / Pause / Resume / Remove); the library menu moves to LibraryHoldMenu.tsx, one menu for both.
-D-1300: Discover trailer rail — «My List» toggles (what this visit added); the rail stays put after an add.
-D-1301: expanded trailer — Details and Not for me in a row under the overview; Not for me steps to the next clip first; overview 3 lines under 880px height.
+Web: rotate button on the duration line (right), shown only when the shell announces LoopzNative.rotate; in landscape the title's actions are icons under the sound button (My List · Details · Not for me).
+App: expo-screen-orientation; WebLayer answers the `orient` message, hides the status bar in landscape and returns to portrait when the expanded view ends or a native screen covers it. New native module ⇒ new binary, version 1.12.1.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_019fkAxMeB2PXzKw4iaxektt
