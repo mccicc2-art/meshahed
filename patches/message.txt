@@ -1,4 +1,5 @@
-[deploy] D-1308 + D-1309 — trailers: the zoomed trailer survives rotation and the trailer you opened the page on is never swapped; search: «No results» points to search by description (web and app)
+[deploy] D-1310 — description search: results are re-ranked against their real TMDB synopses (a second short model call; the first order stays if it fails), and the prompt ranks by the most distinctive detail
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
+
