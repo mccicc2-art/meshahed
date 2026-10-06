@@ -2281,6 +2281,15 @@ const ar = {
   /* **وفراغُ تبويبِ الكتالوج غيرُ فراغِ «لك»** (D-222): ذاك يُصلحه أن
      تتابع، وهذا عطلُ مصدرٍ لا حيلةَ للقارئ فيه. */
   trailersTabEmpty: "لا ترايلرات في هذا التبويب الآن.",
+  /* 🆕 **فلترُ صفحة الترايلرات** (D-1311) — والنوعُ واللغةُ و«مسح الكل» من مفاتيح «اكتشف» القائمة.
+     **وفراغُ الفلتر غيرُ الفراغين فوقه**: هذا يُصلحه القارئُ بضغطة، فيُقال له كيف. */
+  trailerFilterTitle: "تصفية الترايلرات",
+  trailerFilterApply: "عرض الترايلرات",
+  trailerReleaseGroup: "الإصدار",
+  trailerReleaseSoon: "قريباً",
+  trailerReleaseOut: "صدر",
+  trailersFilterEmpty: "لا ترايلرات تطابق هذا الفلتر.",
+  trailersFilterClear: "امسح الفلتر",
   panelRatings: "تقييماتي",
   reviewSectionTitle: "تعليقك",
   saveReview: "احفظ التعليق",
@@ -3979,6 +3988,13 @@ const en: Dict = {
   trailerTabShows: "Shows",
   trailerTabAnime: "Anime",
   trailersTabEmpty: "No trailers in this tab right now.",
+  trailerFilterTitle: "Filter trailers",
+  trailerFilterApply: "Show trailers",
+  trailerReleaseGroup: "Release",
+  trailerReleaseSoon: "Coming soon",
+  trailerReleaseOut: "Out now",
+  trailersFilterEmpty: "No trailers match this filter.",
+  trailersFilterClear: "Clear filter",
   panelRatings: "My ratings",
   reviewSectionTitle: "Your comment",
   saveReview: "Save comment",

@@ -57,6 +57,7 @@ import {
   getTrailerTabFeed,
   type TrailerItem,
 } from "@/lib/trailers";
+import { parseTrailerFilter } from "@/core/trailerFilter";
 import { getT } from "@/lib/locale";
 import {
   FONT_UI_COOKIE,
@@ -4929,6 +4930,8 @@ export async function moreTrailerClips(input: {
   page: number;
   perTitle?: number;
   limit?: number;
+  /** 🆕 D-1311: فلترُ الصفحة كما يحمله الرابط — يُقرأ هنا بالحارس نفسِه ولا يُصدَّق */
+  filter?: { g?: string; rel?: string; lang?: string };
 }): Promise<TrailerItem[]> {
   const page = intIn(input.page, 1, 6);
   const head = await headers();
@@ -4939,7 +4942,12 @@ export async function moreTrailerClips(input: {
   const scope = asTrailerScope(input.scope);
   const limit = intIn(input.limit ?? 40, 1, 60);
   const perTitle = intIn(input.perTitle ?? 1, 1, 8);
-  return getTrailerTabFeed(tab, limit, locale, { page, perTitle, scope }).catch(() => []);
+  const filter = parseTrailerFilter({
+    g: typeof input.filter?.g === "string" ? input.filter.g.slice(0, 200) : null,
+    rel: typeof input.filter?.rel === "string" ? input.filter.rel : null,
+    lang: typeof input.filter?.lang === "string" ? input.filter.lang.slice(0, 60) : null,
+  });
+  return getTrailerTabFeed(tab, limit, locale, { page, perTitle, scope, filter }).catch(() => []);
 }
 
 export async function stopWatching(input: {

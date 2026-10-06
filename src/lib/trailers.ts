@@ -20,6 +20,12 @@ import { browseGenreForId, browseGenreName } from "@/core/browse";
 import { originAdjectives } from "@/core/region";
 import { looksAnime } from "@/lib/topChart";
 import type { TrailerTab } from "@/core/trailerTabs";
+import {
+  matchesTrailerFilter,
+  trailerFilterActive,
+  trailerGenreIds,
+  type TrailerFilter,
+} from "@/core/trailerFilter";
 export { asTrailerTab, TRAILER_TABS, type TrailerTab } from "@/core/trailerTabs";
 
 /**
@@ -361,6 +367,63 @@ export interface TrailerFeedOpts {
   perTitle?: number;
   /** نطاقُ «لك» وحدَه — والتبويباتُ الأربعةُ نطاقُها اسمُها */
   scope?: TrailerScope;
+  /** 🆕 D-1311: فلترُ الصفحة (نوع · إصدار · لغة) — غيابُه العلفُ كما كان حرفاً */
+  filter?: TrailerFilter;
+}
+
+const sideOf = (r: SearchResult): "movie" | "tv" => (r.media_type === "movie" ? "movie" : "tv");
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * 🆕 **بِركةُ تبويبِ كتالوجٍ تحت فلتر** (D-1311).
+ *
+ * 🔴 **والفلترُ شرطُ المصدر لا حارسٌ بعده** — درسُ D-739 في هذا الملفّ بحرفه: «الأكثرُ شعبيّةً» أربعةٌ
+ * وعشرون صفّاً، ومن صفّاها بـ«رعب · كوري» بعد سحبها لم يبقَ له ما يُسبر. فالنوعُ واللغةُ والتاريخُ تُرسل
+ * إلى `/discover` نفسِه.
+ * 🔑 **ومصدران قائمان لا ثالثٌ يُكتب** (القاعدة ٣/D-731): `my-row` (الصادرُ بالشعبيّة) و`upcoming`
+ * (القادم) من `buildSection` — **بحرّاسهما**: الأنمي والأطفالُ والتوك شو واللغاتُ المستبعدة.
+ * ⚠️ **و«الكلّ» مصدران معاً**: `my-row` يشترط حدّاً أدنى من الأصوات فيُسقط ما لم يصدر — وصفحةُ
+ * ترايلراتٍ بلا القادم تُسقط نصفَ سببها.
+ * ⚠️ **واللغةُ نداءٌ لكلِّ لغة**: `with_original_language` يقبل واحدة. والثمنُ قائمةٌ أو قائمتان لكلِّ
+ * لغةٍ مختارة، مخبَّأةٌ ساعة — **ونداءاتُ الفيديو لا تزيد**: المسبارُ هو هو.
+ */
+async function filteredCatalogue(
+  media: "movie" | "tv" | "anime",
+  f: TrailerFilter,
+  need: number,
+): Promise<SearchResult[]> {
+  const side = media === "movie" ? "movie" : "tv";
+  const genreIds = f.genres.length ? trailerGenreIds(f.genres, side) : undefined;
+  /* نوعٌ بلا مقابلٍ في هذه الجهة — الفراغُ أصدقُ من قائمةٍ لم تُصفَّ (D-075) */
+  if (genreIds && !genreIds.length) return [];
+  const today = todayIso();
+  const pulls: Promise<SearchResult[]>[] = [];
+  for (const lang of f.langs.length ? f.langs : [null]) {
+    const base = {
+      lang,
+      ...(media === "anime" ? { keywords: [ANIME_KEYWORD] } : {}),
+    };
+    if (f.release !== "soon") {
+      pulls.push(
+        buildSection("my-row", { media, base: { ...base, to: today }, genreIds, active: true }, need).catch(() => []),
+      );
+    }
+    if (f.release !== "out") {
+      pulls.push(buildSection("upcoming", { media, base, genreIds, active: true }, need).catch(() => []));
+    }
+  }
+  const seen = new Set<string>();
+  return (await Promise.all(pulls))
+    .flat()
+    .filter((r) => {
+      const k = `${sideOf(r)}-${r.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      /* **والقاعدةُ تُعاد على ما عاد**: `upcoming` يسحب جهتَي الأنمي معاً، ورقمُ نوعِ جهةٍ لا يقرؤه
+         نداءُ الأخرى كما قُصد */
+      return matchesTrailerFilter(r, f, sideOf(r), today);
+    });
 }
 
 /**
@@ -432,8 +495,13 @@ export async function getTrailerTabFeed(
   const perTitle = opts.perTitle ?? 1;
   if (tab === "for-you") return getTrailerFeed(limit, locale, opts.scope, undefined, opts);
   const seen = await seenByMedia();
+  const filter = opts.filter && trailerFilterActive(opts.filter) ? opts.filter : undefined;
   if (tab === "trending") {
-    const rows = unseen(await trending().catch(() => []), seen, "tv");
+    const today = todayIso();
+    /* D-1311 — **«الرائج» بِركةٌ واحدةٌ فيُصفّى بعد سحبه**: لا مصدرَ أعمقَ له يُرسل إليه الفلتر */
+    const rows = unseen(await trending().catch(() => []), seen, "tv").filter(
+      (r) => !filter || matchesTrailerFilter(r, filter, sideOf(r), today),
+    );
     /* **و«الرائج» بِركةٌ واحدةٌ لا تُعمَّق**: مصدرُه صفحةُ اليوم عند
        TMDB — **والدفعةُ التالية تنزل فيها لا تطلب صفحةً لا وجودَ لها.** */
     return shape(rows.slice(page * probeFor(limit)), locale, limit, probeFor(limit), perTitle);
@@ -442,6 +510,16 @@ export async function getTrailerTabFeed(
   /* 🆕 **والأنمي يُسحب أوسعَ ويُسبر أوسع** (D-739): **توسيعُ المسبار
      بلا توسيع السحب لا يجد ما يسبره** — الرقمُ الواحدُ يخدم الطرفين. */
   const probe = tab === "anime" ? PROBE_ANIME : probeFor(limit);
+  if (filter) {
+    const rows = await filteredCatalogue(media, filter, probe * (page + 1));
+    return shape(
+      shuffleSeeded(unseen(rows, seen, media === "movie" ? "movie" : "tv"), drawKey()).slice(page * probe),
+      locale,
+      limit,
+      probe,
+      perTitle,
+    );
+  }
   /* 🔴 🆕 **ومفتاحُ الأنمي شرطُ المصدر لا حارسٌ بعده** (D-739، بعد قياسٍ
      حيٍّ أثبت أن توسيع المسبار وحدَه لم يرفع الأربعةَ صفّاً واحداً):
      **كنتُ أطلب «الأكثرَ شعبيّةً» عامّاً ثمّ أُسقط ما ليس أنمي** —
@@ -495,7 +573,7 @@ export async function getTrailerFeed(
   const all = await getSuggestions(POOL, locale).catch(() => []);
   /* D-1217 — الأنمي يكمل بِركتَه ببذور الأنمي (`animePool`)، فلا يصمت صفُّه لمكتبةٍ أغلبُها مسلسلات */
   if (!all.length && scope !== "anime") return [];
-  const inScope = scope === "anime"
+  const scoped = scope === "anime"
     ? await animePool(all, locale)
     : scope
     ? all.filter((s) =>
@@ -504,6 +582,13 @@ export async function getTrailerFeed(
               : s.result.media_type === "tv") && !looksAnime(s.result),
       )
     : all;
+  /* 🆕 D-1311 — **والفلترُ قبل النافذة والسَّبر لا بعدهما** (قاعدةُ D-731 في هذا الملفّ): ثلاثمئةُ اقتراحٍ
+     مقروءةٌ أصلاً، فالتصفيةُ فيها بصفر نداء — ولو صُفّي ما سُبر لخرج العلفُ فارغاً في بِركةٍ مليئة. */
+  const filter = opts.filter && trailerFilterActive(opts.filter) ? opts.filter : undefined;
+  const today = todayIso();
+  const inScope = filter
+    ? scoped.filter((s) => matchesTrailerFilter(s.result, filter, sideOf(s.result), today))
+    : scoped;
   /* 🔴 🆕 **قرعةٌ لكلِّ طلب — وإلّا فرأسُ ترتيبٍ ثابتٍ ثابت** (D-740،
      بلاغُ أحمد بلقطة: «المقاطع ما فيه جديدة، مكرّرة»): **كنتُ آخذ
      أوّلَ أربعةَ عشرَ من `getSuggestions` بترتيبها** — **وهي دالّةٌ

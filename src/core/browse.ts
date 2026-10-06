@@ -1,4 +1,4 @@
-import { AWARDS } from "./awards";
+import { AWARDS } from "./awards.ts";
 
 // تصنيف التصفّح — آمن للاستخدام في الخادم والمتصفح معاً (لا next/headers).
 //

@@ -17,6 +17,8 @@ import {
 import { getDict, type Locale } from "@/core/i18n";
 import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/core/trailerTabs";
 import type { TrailerItem } from "@/lib/trailers";
+import type { TrailerFilterParams } from "@/core/trailerFilter";
+import { buttonClass } from "./ui/Button";
 
 /**
  * 🆕 **علفُ الترايلرات الرأسيّ** (D-726) — صفحةُ `/trailers`.
@@ -50,8 +52,10 @@ export function TrailerFeed({
   locale,
   soundOn,
   emptyLabel,
+  emptyAction,
   tab,
   scope,
+  filter,
   pinKey,
 }: {
   items: TrailerItem[];
@@ -60,6 +64,11 @@ export function TrailerFeed({
   /** 🆕 D-772: هويّةُ العلف — بها يطلب دفعتَه التالية من الخادم */
   tab?: string;
   scope?: string;
+  /** 🆕 D-1311: فلترُ الصفحة كما يحمله الرابط — الدفعاتُ التاليةُ تُطلب به، وإلّا لحقت بالعلف المصفّى
+      دفعةٌ لم تُصفَّ */
+  filter?: TrailerFilterParams;
+  /** 🆕 D-1311: فعلُ الفراغ — «امسح الفلتر» حين يكون الفلترُ هو سببَ الفراغ */
+  emptyAction?: { label: string; href: string };
   /** 🆕 **ونصُّ الفراغ يأتي من فوق** (D-734): **فراغُ «لك» يُصلحه أن
       تتابع، وفراغُ تبويبِ كتالوجٍ عطلُ مصدرٍ لا حيلةَ للقارئ فيه** —
       **ونصٌّ واحدٌ للحالتين يُرشد إحداهما ويكذب على الأخرى.** */
@@ -138,6 +147,7 @@ export function TrailerFeed({
       const next = await moreTrailerClips({
         tab,
         scope,
+        filter,
         page: page + 1,
         perTitle: TRAILER_PER_TITLE,
         limit: TRAILER_FEED_LIMIT,
@@ -158,7 +168,7 @@ export function TrailerFeed({
     } finally {
       busy.current = false;
     }
-  }, [done, items, page, scope, tab]);
+  }, [done, filter, items, page, scope, tab]);
 
   useEffect(() => {
     const el = tail.current;
@@ -177,7 +187,23 @@ export function TrailerFeed({
 
   const shown = slots.filter((i) => !gone.has(trailerKeyOf(i)));
   if (!shown.length) {
-    return <p className="px-4 py-16 text-center text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>;
+    return (
+      <div className="px-4 py-16 text-center">
+        <p className="text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>
+        {emptyAction && (
+          /* **وزرٌّ هادئٌ لا أساسيّ**: المخرجُ من فراغٍ صنعه القارئُ بيده، لا دعوةٌ إلى فعلٍ جديد */
+          <Link
+            href={emptyAction.href}
+            replace
+            scroll={false}
+            prefetch={false}
+            className={buttonClass({ variant: "surface", size: "sm", className: "mt-4" })}
+          >
+            {emptyAction.label}
+          </Link>
+        )}
+      </div>
+    );
   }
 
   return (
