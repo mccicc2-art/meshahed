@@ -1,4 +1,6 @@
-[deploy] D-1303 — description search: an Arabic work keeps its Arabic name in an English interface (Loopz names on the grounded row, with a fallback)
+[deploy] D-1304 — Discover: «Your rows» are per tab, with Ahmed's default for everyone (Shows drama·action·comedy · Movies drama·action·horror · Anime drama·action·crime)
+
+New cookie name (loopz-rows): earlier choices are replaced by the default, as he ruled. Web sheet and app sheet show and save the open tab's rows; a save without a tab (older shell) still writes all three.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_019fkAxMeB2PXzKw4iaxektt
