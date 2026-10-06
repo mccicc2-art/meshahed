@@ -1,4 +1,0 @@
-[deploy] D-1305 — push notifications: device tokens and prefs (migration 195), server senders over follows / likes / replies / messages, new-episode job, app registration and tap routing, settings toggles, privacy text (app 1.12.2)
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VWMMUbUvQB8FCvKXCu4KKG
