@@ -1,7 +1,7 @@
-[deploy] D-1311 — trailers page: filter button at the end of the title line, with a sheet for genre, release and language
+[deploy] D-1312, D-1313 — trailers page: swipe between tabs; For You and Trending top up from the catalogue under a filter
 
-The filter lives in the link (g, rel, lang): it survives a tab switch and is gone on leaving the page.
-For You and Trending are filtered before the probe; the catalogue tabs send the filter to the source.
+D-1312: a horizontal swipe outside the video, the tab chips and the enlarged player moves to the next / previous tab.
+D-1313: with a filter on, For You and Trending show their own matches first, then the most popular matching titles.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
