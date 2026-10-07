@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Sheet, SheetGrabHandle, SheetHeader, useSheetDragToDismiss } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { chipClass, sheetScroll } from "./ui/controls";
 import { tap } from "@/lib/haptics";
@@ -26,6 +26,13 @@ import {
  *
  * ⚠️ **والرقائقُ هنا لا منسدلات «اكتشف»**: هناك عشرةُ محاورَ في عمودين، وهنا ثلاثةٌ قصيرةٌ يُجمع
  * في اثنين منها أكثرُ من اختيار — ومنسدلةٌ لا تجمع.
+ *
+ * ⚖️ 🆕 **ومن القاع، لا من الأعلى** (D-1314، طلبُ أحمد بلقطتين: «فلتر التريلرات خليه من تحت زي
+ * اكتشف»). **صفحةُ الترايلرات صفحةُ ويبٍ تعيش داخل التطبيق الأصليّ**، وورقةُ «اكتشف» التي
+ * تجاورها هناك أصليّةٌ تصعد من القاع بمقبض — **فورقتان لسؤالٍ واحدٍ («بماذا أصفّي؟») في شاشتين
+ * متجاورتين بموضعين عادتان تُتعلَّمان لشيءٍ واحد**، وهي حجّةُ D-177 نفسُها وقد انقلبت على موضعه.
+ * **والحدُّ يُقال**: هذه الورقةُ وحدها؛ أوراقُ الويب الأخرى تبقى من الأعلى. **ولا شكلَ جديداً**:
+ * `anchor="bottom"` والمقبضُ والسحبُ للإغلاق هي أدواتُ D-558 بقارئٍ رابع.
  */
 export function TrailerFilterSheet({
   locale,
@@ -43,6 +50,8 @@ export function TrailerFilterSheet({
   const t = getDict(locale);
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<TrailerFilter>(value);
+  /* **السحبُ يُغلق ولا يطبّق** — المخرجُ نفسُه للحجاب و× و Escape: المسودّةُ تُرمى */
+  const { handleProps, panelProps } = useSheetDragToDismiss(onClose);
 
   /* **والمختارُ يبقى ظاهراً ولو لم يكن من أنواع هذا التبويب**: «رعب» اختيرت في «أفلام» ثمّ فُتحت
      الورقةُ في «مسلسلات» — رقاقةٌ مفعَّلةٌ لا تُرى لا تُطفأ (سابقةُ «صفوفك» في ورقة اكتشف). */
@@ -67,7 +76,18 @@ export function TrailerFilterSheet({
   const chips = "mt-2 flex flex-wrap gap-2";
 
   return (
-    <Sheet open variant="bottom" onClose={onClose} closeLabel={t.closeLabel} labelledBy="trailer-filter-title">
+    <Sheet
+      open
+      variant="bottom"
+      anchor="bottom"
+      onClose={onClose}
+      closeLabel={t.closeLabel}
+      labelledBy="trailer-filter-title"
+      className={panelProps.className}
+      panelStyle={panelProps.panelStyle}
+    >
+      <SheetGrabHandle {...handleProps} />
+
       <SheetHeader id="trailer-filter-title" title={t.trailerFilterTitle} closeLabel={t.closeLabel} onClose={onClose} />
 
       <div className={`${sheetScroll} px-5 py-4 space-y-5`}>
@@ -143,8 +163,9 @@ export function TrailerFilterSheet({
         </section>
       </div>
 
-      {/* **شريطُ الأفعال شريطُ ورقة «اكتشف» حرفاً** — هادئٌ يمسح وأساسيٌّ واحدٌ يعرض */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-3 border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
+      {/* **شريطُ الأفعال شريطُ ورقة «اكتشف» الأصليّة** (D-1314) — «مسح الكل» بحدٍّ وأساسيٌّ واحدٌ
+          يعرض؛ **والحشوةُ السفليّةُ تحسب المنطقةَ الآمنة** لأن الشريطَ صار آخرَ ما في الشاشة */}
+      <div className="shrink-0 flex items-center gap-3 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
         <button
           type="button"
           disabled={!trailerFilterActive(draft)}
@@ -152,7 +173,7 @@ export function TrailerFilterSheet({
             tap(6);
             setDraft(EMPTY_TRAILER_FILTER);
           }}
-          className={buttonClass({ variant: "ghost", size: "md" })}
+          className={buttonClass({ variant: "surface", size: "md" })}
         >
           {t.browseClearAll}
         </button>
