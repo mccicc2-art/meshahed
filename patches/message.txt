@@ -1,7 +1,7 @@
-[deploy] D-1315, D-1316 — trailers: filter sheet in the Discover sheet's colours; the neighbouring tabs are preloaded
+[deploy] D-1317 — the calendar is a native screen in the app
 
-D-1315: the filter sheet uses the page background with surface chips, and pill-shaped footer buttons (this sheet only).
-D-1316: 1.5s after the page settles, the next and previous tabs are fetched in full, so the first swipe is as fast as the second.
+The week strip heading on Home pushes a native /calendar: month grid, tap a day to reach its list, month arrows,
+the same Plus rule as the web. Data from GET /api/v1/me/calendar, built with the web page's own core/calendar.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
