@@ -2131,7 +2131,8 @@ function ExpandedUi({
   const showsPlay =
     snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled";
   return (
-    <div className="fixed inset-0 z-[60]">
+    /* D-1312: `data-no-tab-swipe` — في التكبير السحبُ رأسيٌّ بين المقاطع وحدَه، ولا تبديلَ تبويبٍ من تحته */
+    <div data-no-tab-swipe className="fixed inset-0 z-[60]">
       {cover ? (
         <div
           aria-hidden

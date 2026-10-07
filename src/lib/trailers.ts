@@ -485,6 +485,37 @@ function unseen(
   });
 }
 
+/**
+ * 🆕 **تكملةُ «لك» و«رائج» من الكتالوج تحت فلتر** (D-1313، بلاغُ أحمد بتسجيلين: «ليش ما يظهر رعب ف فور يو؟
+ * حتى ان كان فلم» · «نفس الشيء فالعربي»).
+ *
+ * 🔴 **العطلُ فقرُ البِركة لا خطأُ الفلتر**: «لك» ثلاثمئةُ اقتراحٍ من مكتبته، و«رائج» عشرون عملاً من يومِ
+ * TMDB — ومن صفّاهما بـ«رعب» أو «عربي» قد لا يجد فيهما واحداً، والتبويبان المجاوران يعرضان العشرات.
+ * 🔑 **فالمطابقُ من البِركة أوّلاً ثمّ الأشهرُ المطابقُ من الكتالوج**: صاحبُ الفلتر طلب نوعاً، وصفحةٌ فارغةٌ
+ * بجوار تبويبٍ مليءٍ تُقرأ عطلاً. **والمكمِّلُ بلا سطرِ «لأنك…»** — لا بذرةَ له في مكتبته (D-734).
+ * ⚠️ **وبلا فلترٍ لا يُنادى**: التبويبان كما كانا حرفاً. **والثمنُ** قوائمُ `filteredCatalogue` للجهتين،
+ * مخبَّأةٌ ساعة، ولا نداءَ فيديو زائد.
+ */
+async function catalogueFill(
+  medias: ("movie" | "tv" | "anime")[],
+  f: TrailerFilter,
+  need: number,
+  seen: { tv: Set<number>; movie: Set<number> },
+  have: SearchResult[],
+): Promise<SearchResult[]> {
+  const taken = new Set(have.map((r) => `${sideOf(r)}-${r.id}`));
+  const pulled = await Promise.all(medias.map((m) => filteredCatalogue(m, f, need).catch(() => [])));
+  return pulled
+    .flat()
+    .filter((r) => {
+      const k = `${sideOf(r)}-${r.id}`;
+      if (taken.has(k) || seen[sideOf(r)].has(r.id)) return false;
+      taken.add(k);
+      return true;
+    })
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+}
+
 export async function getTrailerTabFeed(
   tab: TrailerTab,
   limit: number,
@@ -499,9 +530,13 @@ export async function getTrailerTabFeed(
   if (tab === "trending") {
     const today = todayIso();
     /* D-1311 — **«الرائج» بِركةٌ واحدةٌ فيُصفّى بعد سحبه**: لا مصدرَ أعمقَ له يُرسل إليه الفلتر */
-    const rows = unseen(await trending().catch(() => []), seen, "tv").filter(
+    const matched = unseen(await trending().catch(() => []), seen, "tv").filter(
       (r) => !filter || matchesTrailerFilter(r, filter, sideOf(r), today),
     );
+    /* D-1313 — والرائجُ المطابقُ أوّلاً ثمّ تكملةُ الكتالوج (انظر `catalogueFill`) */
+    const rows = filter
+      ? [...matched, ...(await catalogueFill(["movie", "tv"], filter, probeFor(limit) * (page + 1), seen, matched))]
+      : matched;
     /* **و«الرائج» بِركةٌ واحدةٌ لا تُعمَّق**: مصدرُه صفحةُ اليوم عند
        TMDB — **والدفعةُ التالية تنزل فيها لا تطلب صفحةً لا وجودَ لها.** */
     return shape(rows.slice(page * probeFor(limit)), locale, limit, probeFor(limit), perTitle);
@@ -572,7 +607,7 @@ export async function getTrailerFeed(
      وتُصفّي المصروفَ والمُشاهَد، **وسقفُها الداخليُّ هو ما نمرّره.** */
   const all = await getSuggestions(POOL, locale).catch(() => []);
   /* D-1217 — الأنمي يكمل بِركتَه ببذور الأنمي (`animePool`)، فلا يصمت صفُّه لمكتبةٍ أغلبُها مسلسلات */
-  if (!all.length && scope !== "anime") return [];
+  if (!all.length && scope !== "anime" && !(opts.filter && trailerFilterActive(opts.filter))) return [];
   const scoped = scope === "anime"
     ? await animePool(all, locale)
     : scope
@@ -622,8 +657,30 @@ export async function getTrailerFeed(
     inScope.slice(page * window, (page + 1) * window),
     drawKey() + page,
   ).filter((suggestion) => suggestion !== pinned);
-  const pool = (pinned && page === 0 ? [pinned, ...shuffled] : shuffled).slice(0, probe);
-  if (!pool.length) return [];
+  const personal = (pinned && page === 0 ? [pinned, ...shuffled] : shuffled).slice(0, probe);
+  /* 🆕 D-1313 — **وتحت فلترٍ تُكمَّل الدفعةُ من الكتالوج** (انظر `catalogueFill`): اقتراحاتُه المطابقةُ أوّلاً،
+     وما نقص عن المسبار يملؤه الأشهرُ المطابقُ ممّا لم يره. **والنافذةُ في التكملة بعدد ما سبقها**: دفعاتُ
+     «لك» السابقةُ أخذت من التكملة ما لم تجده في اقتراحاته، فتبدأ هذه بعده ولا تكرّره. */
+  let fill: SearchResult[] = [];
+  if (filter && personal.length < probe) {
+    const medias: ("movie" | "tv" | "anime")[] =
+      scope === "anime" ? ["anime"] : scope === "movies" ? ["movie"] : scope === "shows" ? ["tv"] : ["movie", "tv"];
+    let usedBefore = 0;
+    for (let p = 0; p < page; p++) {
+      const had = Math.max(0, Math.min(inScope.length, (p + 1) * window) - p * window);
+      usedBefore += probe - Math.min(probe, had);
+    }
+    const rows = await catalogueFill(
+      medias,
+      filter,
+      probe * (page + 1),
+      await seenByMedia(),
+      inScope.map((s) => s.result),
+    );
+    fill = rows.slice(usedBefore, usedBefore + probe - personal.length);
+  }
+  const pool = personal;
+  if (!pool.length && !fill.length) return [];
 
   /**
    * 🔴 🆕 **ووصفةُ البطاقة واحدةٌ للتبويبات الخمسة** (D-756، القاعدة ٣):
@@ -643,7 +700,7 @@ export async function getTrailerFeed(
   );
 
   return shape(
-    pool.map((s) => s.result),
+    [...pool.map((s) => s.result), ...fill],
     locale,
     limit,
     probe,

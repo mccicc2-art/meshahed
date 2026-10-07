@@ -215,7 +215,8 @@ export function TrailerCardMedia({
   };
 
   return (
-    <div ref={area} className="relative aspect-video w-full overflow-hidden bg-surface-2">
+    /* D-1312: `data-no-tab-swipe` — السحبُ الأفقيُّ فوق المقطع للتقديم والصوت، فلا يبدّل التبويب */
+    <div ref={area} data-no-tab-swipe className="relative aspect-video w-full overflow-hidden bg-surface-2">
       {/* 🔴 ⚖️ الغلافُ هو السِّترُ نفسُه بعد فشل iPhone (بلاغ ٢٨ أغسطس):
           طبقةُ المشغّل تحته ظاهرةٌ من أوّل لحظة (فلا يحاول iOS تشغيلَ
           فيديو في طبقةٍ غير مرسومة)، وهو **فوقَها** (z-40) يتلاشى فقط

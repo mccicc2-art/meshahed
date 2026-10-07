@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { claimGesture, releaseGesture } from "@/core/tabDrag";
+import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/core/i18n";
 import { TRAILER_TABS, type TrailerTab } from "@/core/trailerTabs";
 
@@ -41,10 +44,93 @@ export function TrailerTabs({ active, locale }: { active: TrailerTab; locale: Lo
     return q ? `${pathname}?${q}` : pathname;
   }
 
+  /**
+   * 🆕 **السحبُ الأفقيُّ يبدّل التبويب** (D-1312، طلبُ أحمد: «ليش ما نضيف ايماءات» — وشرطُه: «اذا ما ناسب
+   * نشيله»، فهو كتلةٌ واحدةٌ هنا تُحذف بلا أثرٍ في غيرها).
+   *
+   * 🔑 **سحبةٌ تنقل لا لوحاتٌ تنزلق**: كلُّ تبويبٍ علفٌ يُسبر من الخادم، ولا لوحةَ مجاورةً جاهزةً تُجرّ تحت
+   * الإصبع كما في `TabPager` — فالسحبةُ تفعل ما تفعله الرقاقةُ حرفاً (الرابطُ نفسُه)، والهيكلُ الرماديُّ
+   * يظهر كما يظهر بعد اللمسة.
+   * ⚠️ **وثلاثُ مناطقَ لا تسمع** (`data-no-tab-swipe` · `role="dialog"`): المقطعُ (أفقيُّه تقديمٌ وصوت)،
+   * والتكبير (سحبُه رأسيٌّ بين المقاطع)، وورقةُ الفلتر. وصفُّ الرقائق نفسُه يُمرَّر أفقيّاً فلا يسمع.
+   * ⚠️ **ومالكٌ واحدٌ للّمسة** (`claimGesture`، D-277): السحبُ للتحديث يقرأ الإصبعَ نفسَه.
+   * ⚠️ **والتالي ترتيبيٌّ لا جغرافيّ**: المحتوى يتبع الإصبع — يسارٌ بالإنجليزيّة ويمينٌ بالعربيّة.
+   */
+  const router = useRouter();
+  const row = useRef<HTMLDivElement>(null);
+  const go = useRef<(dir: 1 | -1) => void>(() => {});
+  useEffect(() => {
+    go.current = (dir) => {
+      const target = TRAILER_TABS[TRAILER_TABS.indexOf(active) + dir];
+      if (!target) return;
+      tap(8);
+      router.push(href(target), { scroll: false });
+    };
+  });
+
+  useEffect(() => {
+    let start: { x: number; y: number; t: number } | null = null;
+    let mine = false;
+    const end = () => {
+      if (mine) releaseGesture("x");
+      mine = false;
+      start = null;
+    };
+    const down = (e: TouchEvent) => {
+      end();
+      if (e.touches.length !== 1) return;
+      const el = e.target as Element | null;
+      if (el?.closest?.('[data-no-tab-swipe],[role="dialog"]')) return;
+      start = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp };
+    };
+    const move = (e: TouchEvent) => {
+      if (!start || mine) return;
+      const dx = e.touches[0].clientX - start.x;
+      const dy = e.touches[0].clientY - start.y;
+      /* **الرأسيُّ يسبق فيُترك له الإصبع** — الصفحةُ علفٌ يُمرَّر، وهو أصلُها */
+      if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) start = null;
+      else if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (claimGesture("x")) mine = true;
+        else start = null;
+      }
+    };
+    const up = (e: TouchEvent) => {
+      const s = start;
+      const owned = mine;
+      end();
+      if (!s || !owned) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - s.x;
+      const dy = touch.clientY - s.y;
+      /* **سحبةٌ مقصودةٌ لا انحرافُ تمرير**: مسافةٌ وميلٌ وزمن */
+      if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 2 || e.timeStamp - s.t > 700) return;
+      const rtl = document.documentElement.dir === "rtl";
+      go.current((dx < 0) !== rtl ? 1 : -1);
+    };
+    document.addEventListener("touchstart", down, { passive: true });
+    document.addEventListener("touchmove", move, { passive: true });
+    document.addEventListener("touchend", up, { passive: true });
+    document.addEventListener("touchcancel", end, { passive: true });
+    return () => {
+      end();
+      document.removeEventListener("touchstart", down);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", up);
+      document.removeEventListener("touchcancel", end);
+    };
+  }, []);
+
+  /* **والرقاقةُ المختارةُ تدخل المشهد**: السحبُ يبلغ «أنمي» وهي خارج الشاشة — ومختارٌ لا يُرى يُقرأ ضياعاً */
+  useEffect(() => {
+    row.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [active]);
+
   return (
     /* **والشريطُ يُمرَّر أفقيّاً على الضيّق** — خمسُ رقائقَ لا تسع
        ٣٩٠px، **ورقاقةٌ تُقصّ تُقرأ عطلاً.** */
-    <div className="-mx-4 px-4 flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div ref={row} data-no-tab-swipe className="-mx-4 px-4 flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {TRAILER_TABS.map((tab) => {
         const on = tab === active;
         return (
