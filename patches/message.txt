@@ -1,7 +1,7 @@
-[deploy] D-1312, D-1313 — trailers page: swipe between tabs; For You and Trending top up from the catalogue under a filter
+[deploy] D-1314 — trailers filter opens from the bottom, like the Discover tools sheet
 
-D-1312: a horizontal swipe outside the video, the tab chips and the enlarged player moves to the next / previous tab.
-D-1313: with a filter on, For You and Trending show their own matches first, then the most popular matching titles.
+The trailers filter sheet now rises from the bottom edge with a grab handle and drag-to-dismiss;
+«Clear all» is the bordered button. Same sheet component (`anchor="bottom"`), no new modal shape.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
+Claude-Session: https://claude.ai/code/session_01VYqmdomCME1aEx59SUXyuG
