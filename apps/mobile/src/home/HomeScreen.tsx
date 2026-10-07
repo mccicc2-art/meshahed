@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Animated, BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,8 @@ import { posterFor } from "../poster";
 import { PosterCard, type CardAnchor, type CardItem } from "../library/PosterCard";
 import { ListCard } from "../library/ListCard";
 import { OneTimeHint } from "../library/OneTimeHint";
+import { useTourAnchor } from "../tour/anchors";
+import { tourStore } from "../tour/store";
 import { PRIVACY_HINT } from "@/core/privacyNotice";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -99,6 +101,17 @@ export function HomeScreen() {
   }, [d]);
   const toastHost = useRef<ToastHostRef>(null);
   const scroll = useRef<ScrollView>(null);
+  /* D-1318 — خطوةُ «ملفك» في الجولة تشير إلى الصورة، والصورةُ في رأس العمود: تُصعَد الصفحةُ قبل أن تُقاس */
+  const avatarAnchor = useTourAnchor("home-avatar", () => scroll.current?.scrollTo({ y: 0, animated: true }));
+  /* والجولةُ على الشاشة (عرضاً أو خطوةً) تُخفي تلميحَي الرئيسيّة — مخفيّان لا منزوعان، فلا يُحسبان مقروءَين */
+  const tourBusy = useSyncExternalStore(tourStore.subscribe, tourStore.busy);
+  /* وعرضُ الجولة يظهر على الرئيسيّة وحدَها — فتقول هي إنّها الظاهرة (`store.ts`: لماذا لا تكفي حالةُ التبويبات) */
+  useFocusEffect(
+    useCallback(() => {
+      tourStore.setHome(true);
+      return () => tourStore.setHome(false);
+    }, []),
+  );
   const onError = useCallback(
     (e: unknown) => {
       const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
@@ -672,11 +685,11 @@ export function HomeScreen() {
               وشارةُ الاشتراك ومبدّلُ العرض. الغلافُ وسطرُ `@username • المتابعون` خرجا من هنا للجميع — مكانُهما الملفُّ
               الشخصيّ. **وبطاقةُ الأرقام باقيةٌ بشكلها لمن يريدها** («ابغاها ظاهره بنفس الشكل للي يبيها»): `show_stats`
               من تخصيص الرئيسيّة هو الذي يقرّر، كما كان. */}
-          <HomeGreeting h={d.header} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} />
+          <HomeGreeting avatarRef={avatarAnchor} h={d.header} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} />
           <HomeStats h={d.header} onStat={openHref} />
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
-              <OneTimeHint id="home-customize" text={t.hintHome} />
+              <OneTimeHint id="home-customize" text={t.hintHome} hidden={tourBusy} />
             </View>
           ) : !d.hints.includes(PRIVACY_HINT) ? (
             /* 🆕 D-1273 — **السياسةُ تَعِد: «نُعلمك داخل التطبيق»** (فقرةُ «التغييرات والتواصل»)، وتغيّرت في D-1268 بلا
@@ -684,7 +697,7 @@ export function HomeScreen() {
                التخصيص لا معه**: تلميحان فوق بعضٍ يُقرآن ضجيجاً، والأوّلُ للعضو الجديد. نصٌّ بلا رابط (حكمُ أحمد:
                «نصّ أفضل») — السياسةُ صفحةُ ويب، والضغطةُ تُخرج من الرئيسيّة لأجل سطر. */
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
-              <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} />
+              <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} hidden={tourBusy} />
             </View>
           ) : null}
           <Gap />

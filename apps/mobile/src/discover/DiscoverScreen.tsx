@@ -36,6 +36,11 @@ import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
+import { useTourAnchor } from "../tour/anchors";
+import { tourStore } from "../tour/store";
+import { OneTimeHint } from "../library/OneTimeHint";
+import { useHintTurn } from "../library/useHintTurn";
+import { libraryQuery } from "../library/LibraryScreen";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { regionName } from "@/core/region";
@@ -64,6 +69,8 @@ import { openProfile, profileHandleOf } from "../member/open";
 type Tab = "shows" | "movies" | "anime" | "lists";
 const HEADER_H = 64;
 const PAGE_PAD = 16;
+/** تلميحاتُ «اكتشف» بترتيب ظهورها — واحدةٌ في الزيارة (`useHintTurn`) */
+const DISCOVER_HINTS = ["library-hold", "swipe-tabs"] as const;
 const GAP = 12;
 /* D-965 — موضعُ التمرير لكلِّ تبويب: الجارُ المسلَّح يُرسم بموضعه هو */
 const memory: { tab: Tab; y: Partial<Record<Tab, number>> } = { tab: "shows", y: {} };
@@ -402,6 +409,12 @@ export function DiscoverScreen() {
   const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
   const bottomPad = navH + 24;
   const { reveal } = chrome;
+  /* D-1318 — أوّلُ خطوةٍ في الجولة تشير إلى زرّ الفلتر، والزرُّ في رأسٍ يختفي مع التمرير: يُعاد الرأسُ قبل القياس */
+  const filterAnchor = useTourAnchor("discover-filter", reveal);
+  /* 🆕 D-1318 (T2) — **تلميحتا «اكتشف»، واحدةٌ في الزيارة** (حكمُ أحمد: الضغطُ المطوّل أوّلاً ثمّ السحب). `library-hold`
+     معرّفُ المكتبة نفسُه: من قرأه هناك لا يقرؤه هنا. المقروءُ من كاش المكتبة **بلا نداء** (نهجُ البحث — D-1259). */
+  const hintsRead = useQuery({ ...libraryQuery, enabled: false }).data?.hints;
+  const hintTurn = useHintTurn(DISCOVER_HINTS, hintsRead);
   useEffect(() => {
     reveal();
   }, [tab, reveal]);
@@ -451,6 +464,7 @@ export function DiscoverScreen() {
           );
         })}
         <Pressable
+          ref={filterAnchor}
           onPress={() => setSheet(true)}
           hitSlop={8}
           accessibilityLabel={t.browseFilters}
@@ -459,6 +473,15 @@ export function DiscoverScreen() {
           <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
         </Pressable>
       </View>
+      {/* تحت شريط التبويبات وفوق أوّل صفّ (موضعُ تلميح المكتبة) — داخل الرأس، فارتفاعُه يُقاس والألواحُ تُحشى به */}
+      {hintTurn ? (
+        <OneTimeHint
+          key={hintTurn}
+          id={hintTurn}
+          text={hintTurn === "swipe-tabs" ? t.hintSwipeTabs : t.longPressHint}
+          style={{ marginHorizontal: PAGE_PAD, marginTop: 10, marginBottom: 6 }}
+        />
+      ) : null}
     </View>
     </Animated.View>
 
@@ -522,6 +545,8 @@ export function DiscoverScreen() {
         <FilterSheet
           tab={tab === "lists" ? "shows" : tab}
           viewOnly={tab === "lists"}
+          /* تُقرأ عند الفتح: والجولةُ على الشاشة (خطوتُها الأولى تشير إلى هذا الزرّ) لا تلميحَ معها */
+          rowsHint={!!hintsRead && !hintsRead.includes("discover-rows") && !tourStore.busy()}
           value={browse}
           view={view}
           onView={(patch) => void onView(patch)}

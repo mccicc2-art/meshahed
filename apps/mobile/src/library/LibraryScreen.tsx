@@ -26,6 +26,7 @@ import { usePullRefresh } from "../pullRefresh";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { OneTimeHint } from "./OneTimeHint";
+import { useHintTurn } from "./useHintTurn";
 import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
@@ -84,6 +85,10 @@ import { openProfile, profileHandleOf } from "../member/open";
  */
 const HEADER_H = 64;
 const PAGE_PAD = 16;
+/** تلميحاتُ المكتبة بحسب ما تعرضه — قوائمُ ثابتةُ المرجع (`useHintTurn` يقرؤها عند الزيارة) */
+const HOLD_HINT = ["library-hold"] as const;
+const LISTS_HINT = ["lists-tab"] as const;
+const NO_HINT = [] as const;
 const GAP = 12;
 const MIN_COL = 96;
 const RAIL_W = 118;
@@ -378,6 +383,9 @@ export function LibraryScreen() {
     .map((p) => ({ key: p.key as Tab, label: labelOf(p.key as Tab), n: data.data ? nOf(p.key as Tab) : null }));
   const tabLabels = Object.fromEntries(tabPrefs.map((p) => [p.key, labelOf(p.key as Tab)]));
   const coreTab = activeTab === "shows" || activeTab === "movies" || activeTab === "anime";
+  /* 🆕 D-1318 (T2) — **تلميحُ المكتبة بدوره** (`useHintTurn`): الضغطُ المطوّل في الألواح الثلاثة (معرّفُه معرّفُ «اكتشف»
+     — أيُّهما وصله أوّلاً)، وتلميحُ القوائم عند أوّل فتحٍ لتبويبها. والتبديلُ بينهما زيارةٌ جديدة (`scope`). */
+  const hintTurn = useHintTurn(coreTab ? HOLD_HINT : activeTab === "lists" ? LISTS_HINT : NO_HINT, data.data?.hints, coreTab ? "core" : activeTab);
   const hiddenRails = data.data?.hidden_rails ?? [];
 
   /* 🆕 D-953 — **السحبُ الأفقيُّ في الفراغ ينقل التبويب** (فكرةُ أحمد بتسجيل:
@@ -544,10 +552,11 @@ export function LibraryScreen() {
           k === "artists" ? (
             <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} head={artistsHead} />
           ) : k === "lists" ? (
-            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={say} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={say} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} hint={hintTurn === "lists-tab"} />
           ) : (
             <LibraryPane
               tab={k}
+              holdHint={hintTurn === "library-hold"}
               data={data}
               q={q}
               sort={sort}
@@ -638,6 +647,7 @@ export function LibraryScreen() {
  */
 function LibraryPane({
   tab,
+  holdHint,
   data,
   q,
   sort,
@@ -659,6 +669,8 @@ function LibraryPane({
   head,
 }: {
   tab: Tab;
+  /** D-1318 — دورُ تلميح الضغط المطوّل في هذه الزيارة (يحسبه الأبُ — `useHintTurn`)، لا «لم يُقرأ بعد» وحدَها */
+  holdHint: boolean;
   data: { data?: LibraryPayload; isLoading: boolean; isError: boolean; refetch: () => unknown };
   q: string;
   sort: LibrarySort;
@@ -811,19 +823,14 @@ function LibraryPane({
   /* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت الأدوات)، **ولا يُرسم
      إن قُرئ في الحساب** — على أيِّ جهاز. **رأسُ قائمةٍ لا صفٌّ فيها** (F1): الصفُّ يُنزع حين
      يبتعد، والتلميحُ يعلن قراءتَه عند نزعه — فكان التمريرُ وحدَه سيُعلنه مقروءاً. */
-  const hintSeen = (data.data?.hints ?? []).includes("library-hold");
   const hint = useMemo(
     () => (
       <>
         <View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View>
-        {hintSeen ? null : (
-          <View style={{ paddingHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }}>
-            <OneTimeHint id="library-hold" text={t.longPressHint} />
-          </View>
-        )}
+        {holdHint ? <OneTimeHint id="library-hold" text={t.longPressHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }} /> : null}
       </>
     ),
-    [hintSeen, t, head],
+    [holdHint, t, head],
   );
 
   /* F0 — بعد كلِّ التزامٍ لشبكةٍ مسطّحةٍ يُخبَر الأبُ؛ هو يعرف إن كان ينتظر قياساً */

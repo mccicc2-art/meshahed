@@ -14,6 +14,7 @@ import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
 import { PushGate } from "../src/PushGate";
+import { TourHost } from "../src/tour/TourHost";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
@@ -116,6 +117,8 @@ function Shell() {
       <WebLayer />
       {/* 🆕 D-1305 — إشعاراتُ الدفع: الإذنُ والرمزُ عند الإقلاع (`src/push.ts`)، وضغطةُ الإشعار تفتح وجهتَه الأصليّة */}
       <PushGate />
+      {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
+      <TourHost />
     </>
   );
 }

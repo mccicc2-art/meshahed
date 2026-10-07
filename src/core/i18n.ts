@@ -121,6 +121,13 @@ const ar = {
     "تابع أصدقاءك لترى نشاطهم هنا — وتابع الفنانين لتصلك أعمالهم الجديدة.",
   hintMessages:
     "الرسائل والإشعارات في تبويبين — والشارة على التبويب تقول أين الجديد.",
+  /* 🆕 D-1318 (T2) — **ما خرج من الجولة يُشرح في مكانه**: ثلاثُ تلميحاتٍ لمرّةٍ واحدة (حكمُ أحمد ٨ أكتوبر).
+     «كل شاشة فيها تبويبات» لا «كل التطبيق»: السحبُ يعمل في اكتشف والمكتبة والمجتمع والملفّ، لا في البحث ولا الإعدادات. */
+  hintSwipeTabs: "اسحب يميناً ويساراً للتنقل بين التبويبات. والسحب نفسه يعمل في كل شاشة فيها تبويبات.",
+  /* `hintLists` (ويب `/lists`) جملةٌ أخرى لصفحةٍ أخرى: هناك قوائمُ الآخرين في الصفحة نفسِها، وهنا في «اكتشف» */
+  hintListsTab: "قوائمك هنا: خاصة وعامة وذكية. وقوائم الآخرين في تبويب «القوائم» في اكتشف.",
+  /* في لوح «الأدوات» من ورقة اكتشف — والصفوفُ في لوح «عرض» المجاور، لا في آخر الورقة */
+  hintMyRows: "في تبويب «عرض» أعلاه: «صفوفك الخاصة» تضيف صفوفاً باسمك إلى اكتشف.",
 
   // الجولة التعريفية — الخطوات في core/tour.ts، والنصوص هنا
   /* D-1318 — **العرضُ يقول طولَها**: يُعرَض الآن على الجميع لا على الجديد وحدَه، فـ«جديد هنا؟» لم
@@ -2453,6 +2460,9 @@ const en: Dict = {
     "Follow friends to see their activity here \u2014 and follow artists to catch their new work.",
   hintMessages:
     "Messages and notifications live in two tabs \u2014 the badge on each tab shows where the news is.",
+  hintSwipeTabs: "Swipe left and right to move between tabs. The same swipe works on every screen with tabs.",
+  hintListsTab: "Your lists live here: private, public and smart. Other people\u2019s lists are in the \u201cLists\u201d tab in Discover.",
+  hintMyRows: "Under \u201cView\u201d above: \u201cYour rows\u201d adds rows of your own to Discover.",
 
   // Site tour — steps live in core/tour.ts, copy lives here
   tourSuggestTitle: "A quick tour of Loopz \u2014 7 cards, one minute.",

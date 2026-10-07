@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, View, type ViewStyle } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -21,7 +21,22 @@ import type { LibraryPayload, UiStateBody } from "../contracts";
  * **التفاؤلُ في الكاش**: يُدرج المعرّفُ في `hints` فوراً فلا يعود التلميحُ
  * إن أُعيد الرسم قبل ردّ الخادم.
  */
-export function OneTimeHint({ id, text }: { id: string; text: string }) {
+export function OneTimeHint({
+  id,
+  text,
+  style,
+  hidden = false,
+}: {
+  id: string;
+  text: string;
+  /**
+   * 🆕 D-1318 — **مخفيٌّ لا منزوع**: الجولةُ على الشاشة فلا يُقرأ شيئان معاً. والنزعُ يُعلن التلميحَ مقروءاً (أثرُ
+   * التنظيف أدناه) — فإخفاؤه بنزعه كان سيحسبه مقروءاً ولم يُقرأ.
+   */
+  hidden?: boolean;
+  /** هوامشُ الموضع على التلميح نفسِه لا على غلافٍ حوله — غلافٌ بحشوٍ يبقى فراغاً بعد أن يُغلق التلميح */
+  style?: ViewStyle;
+}) {
   const { t, tokens } = useApp();
   const [gone, setGone] = useState(false);
   const marked = useRef(false);
@@ -39,10 +54,10 @@ export function OneTimeHint({ id, text }: { id: string; text: string }) {
   /* مغادرةُ الشاشة بعد أوّل عرضٍ تكفي إعلاناً بالقراءة */
   useEffect(() => () => markSeen(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (gone) return null;
+  if (gone || hidden) return null;
   return (
     <View
-      style={{
+      style={[{
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
@@ -53,7 +68,7 @@ export function OneTimeHint({ id, text }: { id: string; text: string }) {
         paddingStart: 12,
         paddingEnd: 4,
         paddingVertical: 6,
-      }}
+      }, style]}
     >
       <Icon name="sparkle-star" size={14} color={tokens.accent} />
       <Text size={12} muted style={{ flex: 1, lineHeight: 18 }}>{text}</Text>

@@ -13,6 +13,7 @@ import { SettingsScreen, Group, Row, RowsSkeleton, Toggle } from "./ui";
 import { useRouter } from "expo-router";
 import { useSettings, useOpenWeb } from "./api";
 import type { HintsResetBody } from "../contracts";
+import { tourStore } from "../tour/store";
 
 /**
  * ====== الشاشاتُ الصغيرة — الإشعارات · المساعدة · عن Loopz · الحساب (Phase 11-I · I2) ======
@@ -92,9 +93,8 @@ export function NotificationsScreen() {
 }
 
 /**
- * `help/page.tsx` — الجولاتُ من سجلّها (تُعاد من الخادم بعناوينها)، وإعادةُ التلميحات،
- * ثمّ بريدُ الدعم. الجولةُ رحلةٌ عبر صفحات الويب فتُفتح الصفحةُ بـ`?tour=<id>`
- * (`TourMount` يترجمها إلى الحدث نفسِه). إعادةُ التلميحات تفرّغ الحساب — والتطبيقُ
+ * `help/page.tsx` — الجولةُ من سجلّها (تُعاد من الخادم بعنوانها)، وإعادةُ التلميحات،
+ * ثمّ بريدُ الدعم. الجولةُ تُرسم أصليّةً فوق الشاشات (D-1318). إعادةُ التلميحات تفرّغ الحساب — والتطبيقُ
  * يقرأ تلميحاتِه من `me:library` فيعيدها البابُ بإبطاله.
  */
 export function HelpScreen() {
@@ -102,14 +102,26 @@ export function HelpScreen() {
   const q = useSettings();
   const s = q.data;
   const toast = useRef<ToastHostRef>(null);
-  const openWeb = useOpenWeb();
   return (
     <SettingsScreen title={t.setHelp} toast={toast}>
       <Group label={t.helpLearnGroup}>
         {!s
           ? [<RowsSkeleton key="sk" rows={2} />]
           : [
-              ...s.help.tours.map((tour) => <Row key={tour.id} icon="sparkles" title={tour.title} subtitle={tour.sub} onPress={() => openWeb(`/?tour=${encodeURIComponent(tour.id)}`)} busy={openWeb.busy === `/?tour=${encodeURIComponent(tour.id)}`} />),
+              /* 🆕 D-1318 — الجولةُ أصليّة: الصفُّ يبدأها، ومضيفُها (`TourHost`) يُنزل الإعداداتِ ويُبحر إلى خطوتها
+                 الأولى. كان يفتح صفحةَ ويبٍ (`/?tour=`) تمشي على نسخٍ ويبيّةٍ لشاشاتٍ أصليّة. */
+              ...s.help.tours.map((tour) => (
+                <Row
+                  key={tour.id}
+                  icon="sparkles"
+                  title={tour.title}
+                  subtitle={tour.sub}
+                  onPress={() => {
+                    haptic.pick();
+                    tourStore.start();
+                  }}
+                />
+              )),
               <Row
                 key="hints"
                 icon="eye"

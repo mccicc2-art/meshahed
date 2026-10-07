@@ -17,6 +17,7 @@ import { ShareListSheet } from "../list/ShareListSheet";
 import { profileUrl } from "@/core/media";
 import { posterFor } from "../poster";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
+import { OneTimeHint } from "./OneTimeHint";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
 
 /**
@@ -42,7 +43,7 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  */
 const PAGE_PAD = 16;
 
-export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
+export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll, hint = false }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"]; /** D-1318 (T2) — تلميحُ «قوائمك هنا» لمرّةٍ واحدة، بدوره (`useHintTurn` في المكتبة) */ hint?: boolean }) {
   const { t, tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
@@ -160,6 +161,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
 
   return (
     <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+      {/* فوق الزرّين: أوّلُ ما يُرى عند فتح التبويب — وقوائمُ الآخرين ليست هنا فيقول أين هي */}
+      {hint ? <OneTimeHint id="lists-tab" text={t.hintListsTab} style={{ marginBottom: -16 }} /> : null}
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
         {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014)

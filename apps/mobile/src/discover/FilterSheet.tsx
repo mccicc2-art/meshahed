@@ -34,6 +34,7 @@ import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
+import { OneTimeHint } from "../library/OneTimeHint";
 import { axesForTab, axisValueLabel, browseActive, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import type { CuratedTab, ProvidersPayload, DiscoverViewPayload } from "../contracts";
 
@@ -68,6 +69,7 @@ export function FilterSheet({
   onView,
   initialPane = "tools",
   viewOnly = false,
+  rowsHint = false,
 }: {
   tab: CuratedTab;
   value: BrowseState;
@@ -80,6 +82,12 @@ export function FilterSheet({
   initialPane?: "tools" | "view";
   /** من تبويب «القوائم»: لا فلاترَ ولا صفوفَ أعمال — «عرض» وحدَه (D-826) */
   viewOnly?: boolean;
+  /**
+   * 🆕 D-1318 (T2) — تلميحُ «صفوفك الخاصة» لمرّةٍ واحدة (حكمُ أحمد: «تلميحه»، وموضعُه أعلى الورقة: «نعم»). **في لوح
+   * «الأدوات»** لأنّ الورقةَ تفتح عليه والصفوفُ في لوح «عرض» المجاور — ومن لم يقلب اللوحَ لا يعرف أنّها موجودة.
+   * تحت عنوانها هناك سطرُ شرحٍ دائم (`myRowsHint`)؛ هذا يدلّ على الباب لا يكرّر الشرح.
+   */
+  rowsHint?: boolean;
 }) {
   const [pane, setPane] = useState<"tools" | "view">(viewOnly ? "view" : initialPane);
   const { t, tokens, locale } = useApp();
@@ -334,6 +342,7 @@ export function FilterSheet({
   return (
     <Sheet title={t.discoverToolsTitle} onClose={onClose}>
       {seg}
+      {rowsHint && !viewOnly ? <OneTimeHint id="discover-rows" text={t.hintMyRows} style={{ marginBottom: 12 }} /> : null}
       <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         <Text size={12} muted style={{ marginBottom: 4 }}>{t.browseFilters}</Text>
         {axes.map((key) => {

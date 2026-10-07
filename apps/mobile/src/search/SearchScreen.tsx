@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
@@ -23,6 +23,8 @@ import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useSearch, use
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
+import { useTourAnchor } from "../tour/anchors";
+import { tourStore } from "../tour/store";
 
 /**
  * ====== شاشةُ البحث أصليّةً — Phase 11-G · G1–G3 (٢٢ سبتمبر ٢٠٢٦) ======
@@ -210,6 +212,10 @@ export function SearchScreen() {
   /* 🆕 D-1259 — **تلميحُ النجمة لمرّةٍ واحدة**. المقروءُ في الحساب يصل مع `me:library` (D-954) — يُقرأ من
      الكاش **بلا نداء** (`enabled: false`): الرئيسيّةُ تسخّنه، وإن غاب فلا تلميح (أهونُ من تلميحٍ يعود). */
   const lib = useQuery({ ...libraryQuery, enabled: false });
+  /* D-1318 — خطوةُ البحث في الجولة تحيط النجمةَ بحلقة */
+  const starAnchor = useTourAnchor("search-describe");
+  /* والبطاقةُ تشرح النجمةَ نفسَها في خطوتها — فالتلميحُ يُخفى (لا يُنزع) ما دامت الجولةُ على الشاشة */
+  const tourBusy = useSyncExternalStore(tourStore.subscribe, tourStore.busy);
   const hintDue = !!lib.data && !(lib.data.hints ?? []).includes("search-desc");
 
   return (
@@ -300,6 +306,7 @@ export function SearchScreen() {
             </View>
             <View>
               <Pressable
+                ref={starAnchor}
                 onPress={openDesc}
                 accessibilityRole="button"
                 accessibilityLabel={t.searchByDesc}
@@ -324,7 +331,7 @@ export function SearchScreen() {
             </View>
 
             {/* 🆕 D-1259 — يُعلن قراءتَه عند الإغلاق أو عند دخول وضع الوصف (هذا الفرعُ يُنزع حينها) */}
-            {hintDue && !empty ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} /> : null}
+            {hintDue && !empty ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} hidden={tourBusy} /> : null}
 
             {/* الرقاقاتُ الخمس — `chipRow`: تتمرّر أفقيّاً حتى حافّة الشاشة (`-mx-4 px-4`) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }} keyboardShouldPersistTaps="handled">

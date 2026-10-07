@@ -38,13 +38,16 @@ const TourGuide = dynamic(() => import("./TourGuide").then((m) => m.TourGuide), 
 export function TourMount({
   locale,
   signedIn,
-  offer = true,
+  auto = true,
 }: {
   locale: Locale;
   signedIn: boolean;
-  /** هل يُعرَض الاقتراحُ التلقائيّ هنا؟ — `false` داخل التطبيق: الاقتراحُ هناك أصليٌّ (T1). الجولةُ
-   *  نفسُها تبقى تعمل (استئنافٌ، أو بدءٌ من «المساعدة»). */
-  offer?: boolean;
+  /**
+   * هل تبدأ الجولةُ هنا من تلقاء نفسها (عرضاً أو استئنافاً)؟ — `false` داخل التطبيق: الجولةُ هناك تُرسم أصليّةً
+   * (`TourHost`) وحالتُها حالةُ الحساب نفسُها، فاستئنافٌ من صفحة الويب تحتها يشغّل جولتين معاً. والبدءُ الصريح
+   * (`?tour=` من تطبيقٍ لم يأخذ تحديثَه) يبقى يعمل.
+   */
+  auto?: boolean;
 }) {
   const t = getDict(locale);
   const pathname = usePathname();
@@ -60,6 +63,7 @@ export function TourMount({
     /* إظهارٌ في إطارٍ لاحق لا في جسد الـeffect — قاعدة D-434 نفسها
        (نفس وصفة OneTimeHint): لا رسم متتالٍ متزامن */
     const raf = requestAnimationFrame(() => {
+      if (!auto) return;
       const state = readTourState();
       if (state?.s === "active") {
         setStartIndex(state.i);
@@ -67,7 +71,7 @@ export function TourMount({
         setMode("active");
         return;
       }
-      if (!state && offer && pathname === "/") {
+      if (!state && pathname === "/") {
         /* «يظهر مرة واحدة» بنصّ أحمد: يُسجَّل «اقتُرح» لحظةَ عرضه —
            في الجهاز والحساب معاً — فلا يعود ولو أُهمل بلا ضغطة. والجولة
            تبقى متاحةً دائماً من الإعدادات → المساعدة. */
