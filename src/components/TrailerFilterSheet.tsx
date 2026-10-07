@@ -83,7 +83,12 @@ export function TrailerFilterSheet({
       onClose={onClose}
       closeLabel={t.closeLabel}
       labelledBy="trailer-filter-title"
-      className={panelProps.className}
+      /* D-1315 (طلبُ أحمد بلقطتين متجاورتين: «خل الالوان مثل فلتر اكتشف .. الخلفة سوداء و الكلمات اللي وراها
+         رصاصي»، واختار «هذه الورقة فقط»): **الورقةُ بلون الصفحة لا بلون `elevated`** — فتطابق ورقةَ «اكتشف»
+         الأصليّةَ التي تُفتح بجوارها في التطبيق، والرقائقُ (`surface`) تبرز فوقها رصاصيّةً. **رموزُ السمة لا
+         ألوانٌ مكتوبة**: في `daylight` الورقةُ بيضاءُ والرقائقُ رماديّةٌ فاتحة. ⚠️ وبقيّةُ أوراق الويب على
+         `elevated` كما هي — استثناءٌ محصورٌ بحكمه لا لونٌ ثانٍ للأوراق. */
+      className={`${panelProps.className ?? ""} !bg-[color:var(--background)]`}
       panelStyle={panelProps.panelStyle}
     >
       <SheetGrabHandle {...handleProps} />
@@ -165,7 +170,7 @@ export function TrailerFilterSheet({
 
       {/* **شريطُ الأفعال شريطُ ورقة «اكتشف» الأصليّة** (D-1314) — «مسح الكل» بحدٍّ وأساسيٌّ واحدٌ
           يعرض؛ **والحشوةُ السفليّةُ تحسب المنطقةَ الآمنة** لأن الشريطَ صار آخرَ ما في الشاشة */}
-      <div className="shrink-0 flex items-center gap-3 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
+      <div className="shrink-0 flex items-center gap-3 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] border-t border-[color:var(--divider)] bg-[color:var(--background)]">
         <button
           type="button"
           disabled={!trailerFilterActive(draft)}
@@ -173,7 +178,10 @@ export function TrailerFilterSheet({
             tap(6);
             setDraft(EMPTY_TRAILER_FILTER);
           }}
-          className={buttonClass({ variant: "surface", size: "md" })}
+          /* D-1315 — **الزرّان بهيئة زرَّي ورقة «اكتشف»** (اختيارُه «B» من صورتين): أطرافٌ دائريّةٌ و«مسح الكل»
+             حدٌّ بلا سطح. ⚠️ **استثناءٌ من `rounded-control` في هذه الورقة وحدَها** — قيل له قبل أن يختار إنّ
+             بقيّةَ أزرار الويب على الزوايا الأخرى. */
+          className={buttonClass({ variant: "surface", size: "md", className: "!rounded-full !bg-transparent" })}
         >
           {t.browseClearAll}
         </button>
@@ -183,7 +191,7 @@ export function TrailerFilterSheet({
             tap(10);
             onApply(draft);
           }}
-          className={buttonClass({ variant: "primary", size: "md", className: "flex-1" })}
+          className={buttonClass({ variant: "primary", size: "md", className: "flex-1 !rounded-full" })}
         >
           {t.trailerFilterApply}
         </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { claimGesture, releaseGesture } from "@/core/tabDrag";
 import { tap } from "@/lib/haptics";
@@ -56,6 +56,29 @@ export function TrailerTabs({ active, locale }: { active: TrailerTab; locale: Lo
    * ⚠️ **ومالكٌ واحدٌ للّمسة** (`claimGesture`، D-277): السحبُ للتحديث يقرأ الإصبعَ نفسَه.
    * ⚠️ **والتالي ترتيبيٌّ لا جغرافيّ**: المحتوى يتبع الإصبع — يسارٌ بالإنجليزيّة ويمينٌ بالعربيّة.
    */
+  /**
+   * 🆕 **الجاران يُجلبان كاملَين بعد أن تستقرّ الصفحة** (D-1316، بلاغُ أحمد بتسجيل: «اداء الايماء يكون افضل
+   * فالمره الثانية · المره الاولى التحميل يتأخر شوي»).
+   *
+   * 📏 **المقيسُ من تسجيله**: أوّلُ دخولٍ لتبويبٍ هيكلٌ رماديٌّ ربعَ ثانيةٍ إلى ثانيةٍ وربع (رحلةُ الخادم
+   * وسَبرُ المقاطع)، والدخولُ الثاني فوريّ — خبيئةُ الموجِّه تحمل ما زِير ثلاثَ دقائق (`staleTimes`).
+   * 🔑 **فالعلاجُ أن يصير الجارُ «مَزوراً» قبل أن يُسحب إليه**: `prefetch={true}` على رابطَي التالي والسابق
+   * وحدَهما — وهو طريقُ الجلب الكامل الذي يعمل (`BottomNav`: `router.prefetch` اليدويُّ لا يجلب الحمولة).
+   * ⚠️ **وبعد ثانيةٍ ونصف لا مع الفتح**: التبويبُ المفتوحُ يسبُر مقاطعَه في تلك اللحظة، والجاران لا يزاحمانه.
+   * ⚠️ **والثمنُ قيل له قبل «نفذ»**: طلبان للخادم في كلِّ زيارةٍ للصفحة ولو لم يُسحب (نقضٌ محصورٌ لـD-510)؛
+   * الصورُ لا تُطلب قبل الفتح، وردودُ TMDB مخبَّأةٌ ساعة. **وموفّرُ البيانات و2G يوقفانه** كما في الشريط.
+   */
+  const [warmFor, setWarmFor] = useState<TrailerTab | null>(null);
+  useEffect(() => {
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+      .connection;
+    if (conn?.saveData || (conn?.effectiveType ?? "").includes("2g")) return;
+    const id = window.setTimeout(() => setWarmFor(active), 1500);
+    return () => window.clearTimeout(id);
+  }, [active]);
+  const at = TRAILER_TABS.indexOf(active);
+  const warm = (tab: TrailerTab) => warmFor === active && Math.abs(TRAILER_TABS.indexOf(tab) - at) === 1;
+
   const router = useRouter();
   const row = useRef<HTMLDivElement>(null);
   const go = useRef<(dir: 1 | -1) => void>(() => {});
@@ -137,7 +160,7 @@ export function TrailerTabs({ active, locale }: { active: TrailerTab; locale: Lo
           <Link
             key={tab}
             href={href(tab)}
-            prefetch={false}
+            prefetch={warm(tab)}
             scroll={false}
             aria-current={on ? "page" : undefined}
             /* **والمختارُ يلبس لونَ الهويّة والباقي حدٌّ هادئ** — رتبةٌ
