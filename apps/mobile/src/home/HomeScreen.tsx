@@ -137,6 +137,8 @@ export function HomeScreen() {
       if (path === "/activity") return void router.push({ pathname: "/activity", params: { from: "home" } });
       /* 🆕 D-1214 — و«الإحصائيات» (خاناتُ بطاقة الأرقام) كذلك */
       if (path === "/stats") return void router.push({ pathname: "/stats", params: { from: "home" } });
+      /* 🆕 D-1317 — و«تقويم أعمالك» (عنوانُ شريط الأسبوع) شاشةٌ أصليّةٌ كذلك */
+      if (path === "/calendar") return void router.push({ pathname: "/calendar", params: { from: "home" } });
       if (leaving) return;
       setLeaving(true);
       void shell.open(path, { returnTo: "home" }).then((layered) => {
