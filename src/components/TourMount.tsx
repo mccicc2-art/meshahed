@@ -24,6 +24,9 @@ const TourGuide = dynamic(() => import("./TourGuide").then((m) => m.TourGuide), 
 /**
  * بوّابة الجولة — تُركَّب في التخطيط وتصمت في الحالة الشائعة.
  *
+ * 🆕 D-1318 — **«لا حالة» تشمل حالةَ إصدارٍ أقدم** (`readTourState` → `liveTour`): من أنهى الجولةَ
+ * القديمة يُعرَض عليه الاقتراحُ مرّةً، ثمّ تُكتب حالةُ الإصدار الجديد فلا يعود.
+ *
  * ثلاث حالات: لا شيء (الأغلب) · اقتراحٌ صغير للمستخدم الجديد («ابدأ
  * الجولة» / «لاحقاً») لا يبدأ شيئاً إجبارياً · والجولة نفسها إن كانت
  * نشطة أو بُدئت من الإعدادات (حدث `loopz:tour-start`).
@@ -32,14 +35,22 @@ const TourGuide = dynamic(() => import("./TourGuide").then((m) => m.TourGuide), 
  * في كل صفحة إزعاجٌ لا تعريف. ويُعرض مرةً واحدة — «لاحقاً» تُسجَّل،
  * والجولة تبقى متاحةً من الإعدادات → المساعدة.
  */
-export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: boolean }) {
+export function TourMount({
+  locale,
+  signedIn,
+  offer = true,
+}: {
+  locale: Locale;
+  signedIn: boolean;
+  /** هل يُعرَض الاقتراحُ التلقائيّ هنا؟ — `false` داخل التطبيق: الاقتراحُ هناك أصليٌّ (T1). الجولةُ
+   *  نفسُها تبقى تعمل (استئنافٌ، أو بدءٌ من «المساعدة»). */
+  offer?: boolean;
+}) {
   const t = getDict(locale);
   const pathname = usePathname();
   const [mode, setMode] = useState<"idle" | "suggest" | "active">("idle");
   const [startIndex, setStartIndex] = useState(0);
-  /* 🆕 **وأيُّ جولةٍ تجري** (D-852) — **والاقتراحُ التلقائيُّ للأساسيّات
-     وحدَها**: **من يفتح التطبيقَ أوّلَ مرّةٍ يحتاج «كيف أستعمله» لا
-     «ما الذي لا تعرف أنّه موجود»** — **والثانيةُ بابُها الإعدادات.** */
+  /* المعرّفُ يبقى حالةً — الجولةُ اليوم واحدة (D-1318)، والحدثُ والعنوانُ ما زالا يحملانه */
   const [tourId, setTourId] = useState<TourId>("basics");
 
   /* القراءة في effect لا أثناء الرسم: الخادم لا يعرف localStorage،
@@ -56,7 +67,7 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
         setMode("active");
         return;
       }
-      if (!state && pathname === "/") {
+      if (!state && offer && pathname === "/") {
         /* «يظهر مرة واحدة» بنصّ أحمد: يُسجَّل «اقتُرح» لحظةَ عرضه —
            في الجهاز والحساب معاً — فلا يعود ولو أُهمل بلا ضغطة. والجولة
            تبقى متاحةً دائماً من الإعدادات → المساعدة. */
@@ -71,8 +82,8 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
 
   /* «ابدأ الجولة» من الإعدادات — حدثٌ لا خيطُ props عبر الشجرة كلها */
   useEffect(() => {
-    /* 🆕 **والحدثُ يحمل رمزَ الجولة** (D-852) — **والقديمُ بلا حمولةٍ
-       يُقرأ «الأساسيّات»** فلا ينكسر مستدعٍ لم يلحق (D-152). */
+    /* **والمجهولُ يُقرأ `basics`**: تطبيقٌ لم يأخذ تحديثَه ما زال يفتح `/?tour=details` — فتبدأ
+       الجولةُ الواحدة بدل أن يُهمَل طلبُه (D-152). */
     const onStart = (e: Event) => {
       const asked = (e as CustomEvent<{ id?: TourId }>).detail?.id;
       const id: TourId = asked && TOUR_IDS.includes(asked) ? asked : "basics";

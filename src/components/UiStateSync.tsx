@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { updateUiState } from "@/lib/actions";
 import { readTourState, writeTourState } from "@/lib/tour";
 import { furtherTour, sameTour, sanitizeUiState } from "@/lib/uiState";
+import { liveTour } from "@/core/tour";
 
 /**
  * مزامنة حالة الواجهة التعليمية عند الدخول — توأم `ThemeCookieSync`
@@ -55,7 +56,9 @@ export function UiStateSync({ uiState }: { uiState: unknown }) {
 
     // الجولة: الأبعدُ يفوز ويُكتب في الجانب المتأخر
     const localTour = readTourState();
-    const resolved = furtherTour(localTour, account.tour);
+    /* D-1318 — **حالةُ إصدارٍ أقدمَ في الحساب تُقرأ «لا شيء»** (`liveTour`): وإلا نزلت `done` القديمةُ
+       إلى الجهاز عند كلِّ دخول، وهي لا تُقرأ هناك أصلاً. */
+    const resolved = furtherTour(localTour, liveTour(account.tour));
     if (resolved && !sameTour(resolved, localTour)) writeTourState(resolved);
 
     // من الجهاز إلى الحساب — كتابةٌ واحدة إن وُجد فرقٌ فقط

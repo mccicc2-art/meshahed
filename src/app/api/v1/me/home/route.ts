@@ -18,6 +18,7 @@ import { isPlus } from "@/core/plan";
 import { curatedName } from "@/core/universes";
 import { applyQueueOrder } from "@/core/homePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
+import { liveTour } from "@/core/tour";
 import { toLibraryListCard } from "@/lib/listCard";
 import { cacheShowStats, cacheMovieStats, cacheFollowMeta } from "@/lib/actions";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
@@ -274,6 +275,7 @@ export async function GET() {
           .filter((e): e is readonly [string, "started" | "paused"] => e[1] !== null),
       ),
       hints: sanitizeUiState(profile?.ui_state).hints,
+      tour: liveTour(sanitizeUiState(profile?.ui_state).tour),
     };
     return ok(payload);
   });

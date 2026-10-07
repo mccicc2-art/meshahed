@@ -71,6 +71,7 @@ import {
   type TourState,
   type UiState,
 } from "@/lib/uiState";
+import { tourWrite } from "@/core/tour";
 import { sanitizeSavedFilters, type SavedFilter } from "@/core/savedFilters";
 import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 import { isViewKey } from "@/core/postKeys";
@@ -730,7 +731,9 @@ export async function updateUiState(patch: {
         : patch.addHints
           ? mergeHints(current.hints, sanitizeUiState({ hints: patch.addHints }).hints)
           : current.hints,
-      tour: patch.tour !== undefined ? sanitizeTourState(patch.tour) : current.tour,
+      /* D-1318 — **إصدارٌ أقدمُ لا يكتب فوق أحدث** (`tourWrite`): حزمةٌ عتيقةٌ على جهازٍ آخر لا تمحو
+         عرضَ الجولة الجديدة ولا تقدّمَها */
+      tour: patch.tour !== undefined ? tourWrite(current.tour, sanitizeTourState(patch.tour)) : current.tour,
       filters:
         patch.filters !== undefined ? sanitizeSavedFilters(patch.filters) : current.filters,
       tpl: patch.tpl !== undefined ? sanitizePrefTemplates(patch.tpl) : current.tpl,

@@ -19,6 +19,7 @@ import { getLocale, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab, applyTabPrefs } from "@/core/tabPrefs";
 import { viewerIsPlus } from "@/lib/actions";
 import { sanitizeUiState } from "@/lib/uiState";
+import { liveTour } from "@/core/tour";
 import { localizeFollows } from "@/lib/localize";
 import type {
   LibraryItem,
@@ -147,6 +148,7 @@ export async function GET() {
       hidden_rails: [...hiddenRails],
       plus,
       hints: sanitizeUiState(profileRow?.ui_state).hints,
+      tour: liveTour(sanitizeUiState(profileRow?.ui_state).tour),
     };
     return ok(payload);
   });

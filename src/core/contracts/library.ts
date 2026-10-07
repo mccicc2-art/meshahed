@@ -14,6 +14,7 @@
  */
 
 import type { TitleKind } from "./tags.ts";
+import type { TourState } from "../tour.ts";
 
 export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
 
@@ -71,10 +72,19 @@ export type LibraryPayload = {
   /** 🆕 D-954 — التلميحاتُ المقروءةُ في الحساب (`profiles.ui_state.hints`): الشاشةُ
    *  تُخفي ما قُرئ على أيِّ جهاز (حكمُ أحمد ١٩ أغسطس: التلميحُ شأنُ حسابٍ لا جهاز) */
   hints?: string[];
+  /**
+   * 🆕 D-1318 — حالةُ الجولة في الحساب (`profiles.ui_state.tour`) **بعد `liveTour`**: `null` = لم
+   * تُعرَض عليه جولةُ هذا الإصدار. التطبيقُ يقرؤها ليعرض الاقتراحَ ويستأنف (T1). اختياريٌّ:
+   * حمولةٌ محفوظةٌ من قبل لا تحمله — وغيابُه «لا أعرف» لا «لم تُعرَض».
+   */
+  tour?: TourState | null;
 };
 
-/** `POST /api/v1/me/prefs/ui-state` — تعليمُ تلميحاتٍ مقروءةً (اتّحادٌ في الخادم) */
-export type UiStateBody = { addHints: string[] };
+/**
+ * `POST /api/v1/me/prefs/ui-state` — تعليمُ تلميحاتٍ مقروءةً (اتّحادٌ في الخادم)، **و🆕 تقدّمُ الجولة**
+ * (D-1318). كلاهما اختياريٌّ: طلبٌ يحمل أحدَهما لا يمسّ الآخر.
+ */
+export type UiStateBody = { addHints?: string[]; tour?: TourState };
 
 /** 🆕 D-947 — `GET /api/v1/me/library/artists`: رفُّ الفنّانين (`getArtistShelf(60)`) */
 export type LibraryArtist = {

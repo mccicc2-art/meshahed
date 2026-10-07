@@ -22,6 +22,7 @@ import type { TitleKind } from "./tags.ts";
 import type { HomePrefs, HeaderStatKey } from "../homePrefs.ts";
 import type { IconName } from "../iconNames.ts";
 import type { LibraryListCard } from "./library.ts";
+import type { TourState } from "../tour.ts";
 
 /** خانةٌ في بطاقة الأرقام — القيمةُ نصٌّ لأنّ «الوقت» يقول «٣ أيّام» لا رقماً */
 export type HomeStat = {
@@ -230,6 +231,8 @@ export type HomePayload = {
   watch_states?: Record<string, "started" | "paused">;
   /** التلميحاتُ المقروءة (D-954) — `home-customize` يظهر مرّةً */
   hints: string[];
+  /** 🆕 D-1318 — حالةُ الجولة بعد `liveTour` (انظر `LibraryPayload.tour`): الرئيسيةُ الأصليّة هي موضعُ الاقتراح */
+  tour?: TourState | null;
 };
 
 /** ما كان الويبُ يبثّه بعد الرفوف — يُطلب بعد `me/home` ويُركَّب عليه */

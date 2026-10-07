@@ -122,44 +122,41 @@ const ar = {
   hintMessages:
     "الرسائل والإشعارات في تبويبين — والشارة على التبويب تقول أين الجديد.",
 
-  // الجولة التعريفية (١٩ أغسطس) — الخطوات في lib/tour.ts، والنصوص هنا
-  tourSuggestTitle: "جديد هنا؟ جولة سريعة تعرّفك على Loopz.",
+  // الجولة التعريفية — الخطوات في core/tour.ts، والنصوص هنا
+  /* D-1318 — **العرضُ يقول طولَها**: يُعرَض الآن على الجميع لا على الجديد وحدَه، فـ«جديد هنا؟» لم
+     تعد صادقة — ومن يعرف أنّها دقيقةٌ يقرّر عن علم */
+  tourSuggestTitle: "جولة سريعة في Loopz — ٧ بطاقات، دقيقة واحدة.",
   tourStart: "ابدأ الجولة",
   tourLater: "لاحقاً",
   tourNext: "التالي",
   tourPrev: "السابق",
   tourSkip: "تخطّي الجولة",
   tourFinish: "إنهاء",
-  /* 🆕 **جولتان** (D-852) — **الأولى تعلّم أفعالاً، والثانية تكشف ما
-     لا يُرى** */
-  tourBasicsRow: "جولة الأساسيات",
-  tourBasicsRowSub: "كيف تضيف عملاً وتؤشّر حلقاتك — ستّ خطوات",
-  tourDetailsRow: "جولة التفاصيل والمميّزات",
-  tourDetailsRowSub: "ما لا تعرف أنّه موجود: التخصيص، القوائم الذكيّة، التقويم، الإحصاءات، وLoopz+",
-  tourAddTitle: "كيف تضيف عملاً",
-  tourAddBody:
-    "ابحث باسم المسلسل أو الفيلم بأيّ لغة، افتحه، ثمّ اضغط «أضِف» — يدخل مكتبتك فوراً ويبدأ تتبّعه.",
-  tourTrackTitle: "كيف تؤشّر ما شاهدتَه",
+  /* 🆕 D-1318 — **جولةٌ واحدةٌ من سبع**، ونصوصُها رُوجعت على شاشاتها (أسماءُ التبويبات والأزرار
+     والصفوف كما هي في التطبيق) واعتمدها أحمد ٨ أكتوبر. ⚠️ **تغييرُ اسمِ تبويبٍ أو صفٍّ هناك يُكذّب
+     جملةً هنا** — فيُراجَعان معاً. */
+  tourDiscoverTitle: "اكتشف، وزر الفلتر",
+  tourDiscoverBody:
+    "صفوف لما تشاهده في أربعة تبويبات. وزر الفلتر يصفّي بالتصنيف واللغة وسنة الإصدار وغيرها.",
+  tourSearchTitle: "ابحث، ولو نسيت الاسم",
+  tourSearchBody:
+    "ابحث باسم العمل بأي لغة. نسيت الاسم؟ اضغط النجمة واكتب ما تتذكره من القصة.",
+  tourTrackTitle: "أشّر ما شاهدته",
   tourTrackBody:
-    "افتح العمل من مكتبتك وأشِّر الحلقة — أو موسماً كاملاً، أو «شاهدتُ حتى هنا» فتُؤشَّر كلُّ ما قبلها. والفيلم ضغطةٌ واحدة.",
-  tourCustomizeTitle: "رئيسيّتك أنت",
-  tourCustomizeBody:
-    "من زرّ التخصيص في الرئيسية: أخفِ الأقسام التي لا تهمّك، رتّبها بالسحب، واختر أرقام ترويستك.",
-  tourHoldTitle: "الضغط المطوّل",
-  tourHoldBody:
-    "اضغط مطوّلاً على أيّ ملصق في التطبيق: تؤشّره مشاهَداً، تحفظه، أو تفتح خياراته — بلا فتح صفحته.",
-  tourFiltersTitle: "الفلاتر والقوائم الذكيّة",
-  tourFiltersBody:
-    "صفِّ «اكتشف» بالنوع والحقبة والتقييم، ثمّ احفظ الفلتر باسمه — أو اجعله «قائمة ذكيّة» تُحدَّث نفسَها كلّما ظهر عملٌ يطابق شرطك.",
-  tourCalendarTitle: "تقويم أعمالك",
-  tourCalendarBody:
-    "شهراً شهراً: متى تنزل حلقاتُ ما تتابعه — وبابُه عنوان شريط الأسبوع في رئيسيّتك.",
-  tourStatsTitle: "إحصاءاتك",
-  tourStatsBody:
-    "ساعاتُك وأنواعك وأوقات مشاهدتك، وتقاريرُ المدّة، وبطاقةُ ذوقٍ تشاركها — كلُّها هنا.",
-  tourPlusTitle: "Loopz+",
-  tourPlusBody:
-    "الثيمات الملوّنة، وتخصيص صفحاتك، وملصقٌ وخلفيّةٌ لكلّ عمل، وشارةٌ بجانب اسمك — وصفحةُ الاشتراك تقول لك ما تملكه ومتى ينتهي.",
+    "أعمالك التي اخترتها هنا. افتح واحداً وأشّر حلقة أو موسماً كاملاً، والفيلم ضغطة واحدة.",
+  tourHomeTitle: "رئيسيتك: ماذا بعد؟",
+  tourHomeBody:
+    "«أكمل المشاهدة» لما بدأته و«للمشاهدة» لما تنويه. والرسائل والإشعارات والإعدادات من الأزرار أعلى الشاشة.",
+  tourProfileTitle: "ملفك",
+  /* `Lead` للتطبيق: البطاقةُ على الرئيسية والحلقةُ على صورته، ويضغطها بنفسه — ثمّ `Body` تصف ما فتحه */
+  tourProfileLead: "اضغط صورتك لتفتح ملفك.",
+  tourProfileBody: "أعمالك ومراجعاتك ومفضّلتك وقوائمك، وإحصاءاتك ومن يتابعك.",
+  tourTapHere: "اضغط هنا",
+  tourShapeTitle: "خصّصه كما تريد",
+  tourShapeBody:
+    "اختر ما يظهر في رئيسيتك وملفك: الأقسام والتبويبات وترتيبها، وعناصر الترويسة، وحجم الملصق. واللغة في «المظهر واللغة».",
+  tourCommunityTitle: "المجتمع",
+  tourCommunityBody: "ثلاثة تبويبات: نشاط من تتابعهم، نقاشات الأعمال، والأعضاء.",
   tourRow: "الجولة التعريفية",
   tourRowSub: "تعرّف على أقسام Loopz خطوة خطوة — في أي وقت",
   hintsResetRow: "إعادة عرض التلميحات",
@@ -167,26 +164,6 @@ const ar = {
   hintsResetDone: "ستظهر التلميحات من جديد",
   helpLearnGroup: "تعرّف على التطبيق",
   helpSupportGroup: "الدعم",
-  tourHomeTitle: "الرئيسية",
-  tourHomeBody:
-    "كل ما تتابعه في لمحة: أكمل المشاهدة، حلقات الأسبوع، والقادم — والأقسام كلها قابلة للترتيب والإخفاء من زرّ التخصيص.",
-  tourDiscoverTitle: "اكتشف",
-  tourDiscoverBody:
-    "الرائج والقادم وقوائم أفضل الأعمال والأنمي — مع فلاتر بالنوع والحقبة والمنصة.",
-  tourLibraryTitle: "مكتبتي",
-  tourLibraryBody:
-    "مسلسلاتك وأفلامك بحالاتها: أتابعه، مكتمل، متروك — وأدوات الفرز والتصدير من زرّ الأدوات.",
-  tourListsTitle: "القوائم",
-  tourListsBody:
-    "أنشئ قوائم خاصة أو عامة، واحفظ قوائم الآخرين بالقلب لتعود إليها من هنا.",
-  tourPeopleTitle: "الأشخاص",
-  tourPeopleBody:
-    "تابع أصدقاءك وشاهد نشاطهم وآراءهم — وتابع الفنانين لتصلك أعمالهم.",
-  tourMessagesTitle: "البريد",
-  tourMessagesBody: "رسائلك وإشعاراتك في سطحٍ واحد بتبويبين — ولكل نوعٍ شارته.",
-  tourSettingsTitle: "الإعدادات",
-  tourSettingsBody:
-    "الثيم واللغة وحجم الخط والخصوصية كلها هنا — ويمكنك إعادة هذه الجولة في أي وقت من «المساعدة».",
   pickGenresHint:
     "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
   headerSettings: "الإعدادات",
@@ -2477,42 +2454,35 @@ const en: Dict = {
   hintMessages:
     "Messages and notifications live in two tabs \u2014 the badge on each tab shows where the news is.",
 
-  // Site tour (19 Aug) — steps live in lib/tour.ts, copy lives here
-  tourSuggestTitle: "New here? A quick tour of Loopz.",
+  // Site tour — steps live in core/tour.ts, copy lives here
+  tourSuggestTitle: "A quick tour of Loopz \u2014 7 cards, one minute.",
   tourStart: "Start tour",
   tourLater: "Later",
   tourNext: "Next",
   tourPrev: "Back",
   tourSkip: "Skip tour",
   tourFinish: "Done",
-  tourBasicsRow: "Tour: the basics",
-  tourBasicsRowSub: "How to add a title and tick your episodes \u2014 six steps",
-  tourDetailsRow: "Tour: details & extras",
-  tourDetailsRowSub: "What you may not know is there: customising, smart lists, the calendar, stats and Loopz+",
-  tourAddTitle: "Adding a title",
-  tourAddBody:
-    "Search by name in any language, open it, then press \u201cAdd\u201d \u2014 it lands in your library and tracking starts.",
-  tourTrackTitle: "Marking what you watched",
+  tourDiscoverTitle: "Discover, and the filter",
+  tourDiscoverBody:
+    "Rows of what to watch across four tabs. The filter button narrows by genre, language, release year and more.",
+  tourSearchTitle: "Search, even without the name",
+  tourSearchBody:
+    "Search a title in any language. Forgot the name? Tap the star and describe what you remember.",
+  tourTrackTitle: "Mark what you\u2019ve watched",
   tourTrackBody:
-    "Open a title from your library and tick the episode \u2014 or a whole season, or \u201cwatched up to here\u201d to tick everything before it. A film is one tap.",
-  tourCustomizeTitle: "Your home, your way",
-  tourCustomizeBody:
-    "From the customise button on Home: hide the sections you don\u2019t care about, drag to reorder, and pick the numbers in your header.",
-  tourHoldTitle: "Press and hold",
-  tourHoldBody:
-    "Hold any poster anywhere in the app: mark it watched, save it, or open its options \u2014 without leaving the page.",
-  tourFiltersTitle: "Filters & smart lists",
-  tourFiltersBody:
-    "Filter Discover by genre, era and rating, then save the filter by name \u2014 or make it a smart list that refreshes itself whenever a new title matches.",
-  tourCalendarTitle: "Your calendar",
-  tourCalendarBody:
-    "Month by month: when the episodes you follow air \u2014 reached from the week strip heading on your home page.",
-  tourStatsTitle: "Your statistics",
-  tourStatsBody:
-    "Your hours, genres and viewing times, period reports, and a taste card you can share \u2014 all here.",
-  tourPlusTitle: "Loopz+",
-  tourPlusBody:
-    "Colour themes, shaping your pages, a poster and backdrop per title, and a badge beside your name \u2014 and the subscription page tells you what you have and when it ends.",
+    "The titles you picked are here. Open one and mark an episode or a whole season; a movie takes one tap.",
+  tourHomeTitle: "Your Home: what\u2019s next?",
+  tourHomeBody:
+    "\u201cContinue Watching\u201d for what you started, \u201cTo watch\u201d for what you plan. Messages, notifications and settings are the buttons at the top.",
+  tourProfileTitle: "Your profile",
+  tourProfileLead: "Tap your picture to open it.",
+  tourProfileBody: "Your titles, reviews, favorites and lists, plus your stats and followers.",
+  tourTapHere: "Tap here",
+  tourShapeTitle: "Make it yours",
+  tourShapeBody:
+    "Choose what shows on your Home and profile: sections, tabs and their order, header elements, poster size. Language is under \u201cAppearance & language\u201d.",
+  tourCommunityTitle: "Community",
+  tourCommunityBody: "Three tabs: activity from people you follow, title discussions, and members.",
   tourRow: "Take the tour",
   tourRowSub: "Walk through Loopz step by step \u2014 any time",
   hintsResetRow: "Show hints again",
@@ -2520,27 +2490,6 @@ const en: Dict = {
   hintsResetDone: "Hints will show again",
   helpLearnGroup: "Learn the app",
   helpSupportGroup: "Support",
-  tourHomeTitle: "Home",
-  tourHomeBody:
-    "Everything you follow at a glance: continue watching, this week\u2019s episodes and what\u2019s next \u2014 all sections reorder and hide from the customize button.",
-  tourDiscoverTitle: "Discover",
-  tourDiscoverBody:
-    "Trending, upcoming and top charts for shows, movies and anime \u2014 with genre, era and platform filters.",
-  tourLibraryTitle: "Library",
-  tourLibraryBody:
-    "Your shows and movies by status: watching, completed, dropped \u2014 with sorting and export in the tools button.",
-  tourListsTitle: "Lists",
-  tourListsBody:
-    "Create private or public lists, and heart other people\u2019s lists to keep them here.",
-  tourPeopleTitle: "People",
-  tourPeopleBody:
-    "Follow friends to see their activity and reviews \u2014 and follow artists to catch their work.",
-  tourMessagesTitle: "Inbox",
-  tourMessagesBody:
-    "Messages and notifications on one surface, two tabs \u2014 each with its own badge.",
-  tourSettingsTitle: "Settings",
-  tourSettingsBody:
-    "Theme, language, text size and privacy all live here \u2014 and you can replay this tour any time from Help.",
   pickGenresHint:
     "Pick your favourite genres in your profile to get suggestions you'll like →",
   headerSettings: "Settings",

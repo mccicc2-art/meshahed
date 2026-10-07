@@ -379,7 +379,9 @@ export default async function RootLayout({
         <PlusGateHost locale={locale} />
         {/* بوّابة الجولة التعريفية — تصمت في الحالة الشائعة، والمحرّك
             يُحمَّل عند الحاجة وحدها (D-469) */}
-        <TourMount locale={locale} signedIn={signedIn} />
+        {/* D-1318 — **داخل الغلاف لا يُعرَض الاقتراحُ من هنا**: عرضُه هناك على الرئيسية الأصليّة (T1)،
+            وعرضٌ يُسجَّل من صفحة ويبٍ تحت الشاشات الأصليّة يستهلك «المرّةَ الواحدة» بلا أن يُرى */}
+        <TourMount locale={locale} signedIn={signedIn} offer={!inShell} />
         {/* بصمة البناء تُخبز في الصفحة: بها يعرف التبويب المُستأنَف أنه
             عتيق فيُبدّل نفسه فوراً (علاج وميض «تسجيل الدخول القديم») */}
         <SwRegister build={process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"} />

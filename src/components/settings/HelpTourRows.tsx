@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/core/i18n";
 import { TOUR_META, TOUR_IDS, TOUR_START_EVENT } from "@/lib/tour";
 import { updateUiState } from "@/lib/actions";
@@ -12,23 +11,19 @@ import { SettingsRow } from "./SettingsRow";
  *
  * جزيرةُ عميلٍ صغيرة داخل صفحة المساعدة الخادمية (D-152: الحالة تسكن
  * أصغرَ جزيرةٍ تكفيها). الجولةُ تُبثّ حدثاً يسمعه `TourMount` في
- * التخطيط ثم نعود للرئيسية حيث تبدأ خطوتُها الأولى؛ والتلميحاتُ تُمحى
+ * التخطيط، والمحرّكُ يُبحر إلى خطوتها الأولى؛ والتلميحاتُ تُمحى
  * مفاتيحُها (`loopz-hint:*`) فتظهر من جديد في صفحاتها — وهذان سطحان
  * مختلفان عمداً: الجولة تقدّم Loopz كلَّه والتلميح يشرح صفحتَه.
  */
 export function HelpTourRows({ locale }: { locale: Locale }) {
   const t = getDict(locale);
-  const router = useRouter();
 
   return (
     <>
-      {/* ⚖️ 🆕 **صفٌّ لكلِّ جولة** (D-852، طلبُ أحمد: «يقدر يشغّلهم بأي
-          وقت من الإعدادات»): **والصفّان يُشتقّان من `TOUR_IDS` لا
-          يُكتبان بيد** — **فجولةٌ ثالثةٌ غداً صفٌّ في السجلّ لا سطرٌ
-          هنا** (D-826/D-827: اتّحادٌ يُشتقّ من سجلّه).
-          🔑 **والوجهةُ أوّلُ خطوةٍ في الجولة نفسِها لا `/` دائماً**:
-          **جولةُ التفاصيل تبدأ من الرئيسية أيضاً**، لكنّ الاشتقاقَ
-          يحمي من جولةٍ تبدأ من غيرها غداً. */}
+      {/* **الصفُّ يُشتقّ من `TOUR_IDS` لا يُكتب بيد** (D-826/D-827) — وهو اليوم صفٌّ واحد: الجولتان
+          صارتا واحدة (D-1318).
+          🔑 **ولا `router.push` هنا**: المحرّكُ يُبحر إلى أوّل خطوةٍ بنفسه، وأوّلُها صار «اكتشف» لا
+          الرئيسية — فدفعٌ إلى `/` من هنا كان يضع الرئيسيةَ في السجلّ قبل أن تبدأ الجولة. */}
       {TOUR_IDS.map((id) => (
         <SettingsRow
           key={id}
@@ -39,7 +34,6 @@ export function HelpTourRows({ locale }: { locale: Locale }) {
             window.dispatchEvent(
               new CustomEvent(TOUR_START_EVENT, { detail: { id } }),
             );
-            router.push("/");
           }}
         />
       ))}

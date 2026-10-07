@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/core/i18n";
-import { TOUR_META, TOUR_VERSION, persistTourState, stepsOf, type TourId } from "@/lib/tour";
+import { TOUR_VERSION, persistTourState, stepsOf, type TourId } from "@/lib/tour";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 
@@ -38,9 +38,7 @@ export function TourGuide({
   const t = getDict(locale);
   const router = useRouter();
   const pathname = usePathname();
-  /* 🆕 **الخطواتُ تُقرأ من الجولة المطلوبة** (D-852) — **ومحرّكٌ واحدٌ
-     يقودهما**: **جولتان بمحرّكين نسختان تفترقان عند أوّل إصلاح**
-     (القاعدة ٣). */
+  /* الخطواتُ من السجلّ الواحد (`core/tour.ts`) — يقرؤه التطبيقُ أيضاً (D-1318) */
   const steps = stepsOf(tourId);
   const [index, setIndex] = useState(
     Math.min(Math.max(initialIndex, 0), steps.length - 1),

@@ -53,7 +53,7 @@ export type SettingsPayload = {
     blocked: number;
   };
   help: {
-    /** الجولاتُ من سجلّها (`TOUR_IDS`) بعناوينها المترجَمة — فجولةٌ ثالثةٌ غداً صفٌّ لا سطر */
+    /** الجولاتُ من سجلّها (`TOUR_IDS`) بعناوينها المترجَمة — صفٌّ واحدٌ اليوم (D-1318)، وجولةٌ ثانيةٌ غداً صفٌّ لا سطر */
     tours: { id: string; title: string; sub: string }[];
     contact_email: string;
   };
