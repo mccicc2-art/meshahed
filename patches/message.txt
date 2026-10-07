@@ -1,7 +1,7 @@
-[deploy] D-1314 — trailers filter opens from the bottom, like the Discover tools sheet
+[deploy] D-1315, D-1316 — trailers: filter sheet in the Discover sheet's colours; the neighbouring tabs are preloaded
 
-The trailers filter sheet now rises from the bottom edge with a grab handle and drag-to-dismiss;
-«Clear all» is the bordered button. Same sheet component (`anchor="bottom"`), no new modal shape.
+D-1315: the filter sheet uses the page background with surface chips, and pill-shaped footer buttons (this sheet only).
+D-1316: 1.5s after the page settles, the next and previous tabs are fetched in full, so the first swipe is as fast as the second.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VYqmdomCME1aEx59SUXyuG
+Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
