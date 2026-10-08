@@ -173,10 +173,12 @@ function ProfileMini({ who, prefs }: { who: PreviewWho; prefs: ProfilePrefs }) {
           />
         ) : null}
         {tabs.length > 0 ? (
-          <View style={{ flexDirection: "row", gap: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, overflow: "hidden" }}>
+          <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, overflow: "hidden" }}>
             {tabs.map((k, i) => (
-              /* الصفحةُ تفتح على أوّل تبويبٍ ظاهر (`custTabsHint`) — فهو المضاء هنا */
-              <View key={k} style={{ paddingBottom: 4, borderBottomWidth: 2, borderBottomColor: i === 0 ? tokens.accent : "transparent" }}>
+              /* الصفحةُ تفتح على أوّل تبويبٍ ظاهر (`custTabsHint`) — فهو المضاء هنا.
+                 D-1324 (بلاغُ أحمد بلقطة: «جاي كله في زاوية وحدة عكس الواقع»): التبويباتُ تتقاسم العرضَ كشريط الملفّ
+                 نفسِه (`flexGrow: 1` · النصُّ في الوسط) — كانت متلاصقةً من البداية بفجوةٍ ثابتة. */
+              <View key={k} style={{ flexGrow: 1, alignItems: "center", paddingHorizontal: 4, paddingBottom: 4, borderBottomWidth: 2, borderBottomColor: i === 0 ? tokens.accent : "transparent" }}>
                 <Text size={9} weight={i === 0 ? "700" : "500"} color={i === 0 ? tokens.fg : tokens.muted} numberOfLines={1}>{tabMeta[k].label}</Text>
               </View>
             ))}

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
 import { api, queryClient, write } from "../api";
@@ -86,6 +86,16 @@ export function CustomizeScreen() {
   const toast = useRef<ToastHostRef>(null);
   const { height: winH } = useWindowDimensions();
   const [previewOpen, setPreviewOpen] = useState(() => previewChoice ?? winH >= SHORT_SCREEN);
+  /* D-1324 — المعاينةُ مثبّتةٌ فوق التمرير؛ ولوحةُ المفاتيح تأخذ النصفَ الآخر فلا يبقى لحقل الاسم مكان — تُطوى ما دامت مفتوحة */
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setTyping(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setTyping(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<CustomizePayload>("/api/v1/me/customize")).data, staleTime: 0 });
   const d = q.data;
 
@@ -230,7 +240,7 @@ export function CustomizeScreen() {
             value={tab}
             onChange={(v) => setTab(v as Tab)}
           />
-          <CustomizePreview kind={tab} who={who} home={home} profile={profile} open={previewOpen} onToggle={togglePreview} />
+          <CustomizePreview kind={tab} who={who} home={home} profile={profile} open={previewOpen && !typing} onToggle={togglePreview} />
         </>
       }
       overlay={
@@ -270,6 +280,7 @@ export function CustomizeScreen() {
         plus={d.plus}
         ar={locale !== "en"}
         onPlus={() => openWeb("/plus")}
+        say={(text, tone) => toast.current?.say(text, undefined, undefined, tone)}
       />
 
       {error ? <Text size={13} color={tokens.error}>{error}</Text> : null}
@@ -354,7 +365,9 @@ function Templates({
   plus,
   ar,
   onPlus,
+  say,
 }: {
+  say: (text: string, tone: ToastTone) => void;
   surface: TemplateSurface;
   list: PrefTemplate[];
   setList: (l: PrefTemplate[]) => void;
@@ -364,31 +377,39 @@ function Templates({
   ar: boolean;
   onPlus: () => void;
 }) {
-  const { tokens } = useApp();
+  const { t, tokens } = useApp();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const mine = templatesOf(list, surface);
   const full = mine.length >= TEMPLATES_CAP;
 
-  function persist(next: PrefTemplate[]) {
+  /* D-1324 (بلاغُ أحمد: «احفظ هذا الشكل لا يعمل»): الفشلُ كان صامتاً — `ok:false` من الخادم يُبقي الرقاقةَ حتى إعادة
+     الفتح ثمّ تختفي، وسقوطُ النداء يعيدها بلا كلمة. الآن يُقال ما حدث في الحالين، والنجاحُ يُعلَن. */
+  function persist(next: PrefTemplate[], done?: string) {
     const before = list;
+    const fail = () => {
+      setList(before);
+      say(t.errSaveShort, "error");
+    };
     setList(next);
     write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/customize/templates", { tpl: next } satisfies TemplatesBody)
       .then((r) => {
         if (r.needsPlus) {
           setList(before);
           onPlus();
-        }
+        } else if (!r.ok) fail();
+        else if (done) say(done, "success");
       })
-      .catch(() => setList(before));
+      .catch(fail);
   }
   function saveTpl() {
     if (!plus) return onPlus();
     const clean = sanitizeTemplateName(name);
     if (!clean) return;
     const next = upsertTemplate(list, { id: newTemplateId(), name: clean, s: surface, p: current });
-    if (next !== list) persist(next);
+    if (next !== list) persist(next, t.savedToast);
+    Keyboard.dismiss();
     setName("");
     setNaming(false);
   }
@@ -413,7 +434,8 @@ function Templates({
       </ScrollView>
       {naming ? (
         <View style={{ borderRadius: 16, backgroundColor: tokens.surface }}>
-          <Field label={ar ? "سمِّ التنسيق" : "Name this look"} value={name} onChange={setName} maxLength={TEMPLATE_NAME_MAX} counter />
+          {/* D-1324 — الحقلُ كان مساحةً فارغةً بلا إرشادٍ ولا تركيز: لوحةُ المفاتيح تصعد معه ونصٌّ يقول أين يُكتب */}
+          <Field label={ar ? "سمِّ التنسيق" : "Name this look"} value={name} onChange={setName} maxLength={TEMPLATE_NAME_MAX} counter autoFocus placeholder={ar ? "اكتب اسماً" : "Type a name"} />
           <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: 12 }}>
             <Button label={ar ? "إلغاء" : "Cancel"} size="sm" variant="ghost" style={{ flex: 1 }} onPress={() => { setNaming(false); setName(""); }} />
             <Button label={ar ? "حفظ" : "Save"} size="sm" style={{ flex: 1 }} disabled={!sanitizeTemplateName(name)} onPress={saveTpl} />

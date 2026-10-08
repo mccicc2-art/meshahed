@@ -195,7 +195,8 @@ export function Button({
         {
           backgroundColor: bg,
           borderColor: variant === "ghost" ? tokens.border : bg,
-          opacity: pressed || busy ? 0.7 : 1,
+          /* D-1324 — المعطَّلُ يبهت كالويب (`disabled:opacity-60`): كان يبدو فعّالاً فيُضغط ولا يحدث شيء */
+          opacity: rest.disabled && !busy ? 0.6 : pressed || busy ? 0.7 : 1,
         },
         typeof style === "function" ? undefined : style,
       ]}

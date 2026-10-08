@@ -256,6 +256,7 @@ export function Field({
   counter,
   hint,
   editable = true,
+  autoFocus,
 }: {
   label: string;
   value: string;
@@ -269,6 +270,8 @@ export function Field({
   counter?: boolean;
   hint?: string;
   editable?: boolean;
+  /** D-1324 — حقلٌ يُفتح لأجله اللوح (اسمُ التنسيق): لوحةُ المفاتيح تصعد معه */
+  autoFocus?: boolean;
 }) {
   const { tokens } = useApp();
   const full = maxLength !== undefined && value.length >= maxLength;
@@ -290,6 +293,7 @@ export function Field({
           maxLength={maxLength}
           multiline={multiline}
           editable={editable}
+          autoFocus={autoFocus}
           autoCapitalize={ltr ? "none" : "sentences"}
           autoCorrect={!ltr}
           style={{

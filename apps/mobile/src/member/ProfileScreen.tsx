@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Animated, BackHandler, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -1229,7 +1229,18 @@ function ListsPane({
   );
 }
 
-/** ورقةُ خانةِ الأرقام: الصفُّ كاملاً مجمَّعاً بالتصنيف كالويب (`ProfileStatSheet` · D-645 — أبجديٌّ داخل التصنيف) */
+/**
+ * ورقةُ خانةِ الأرقام: الصفُّ كاملاً مجمَّعاً بالتصنيف كالويب (`ProfileStatSheet` · D-645 — أبجديٌّ داخل التصنيف).
+ *
+ * 🆕 D-1324 (تسجيلُ أحمد ٨ أكتوبر على ملفِّ عضو: فتحُ «مسلسلات · ٧٩» و«أفلام · ٦٤» بطيءٌ ومتقطّع): كانت الورقةُ
+ * `ScrollView` تركّب **كلَّ البطاقات دفعةً** — ٧٩ بطاقةً بصورها أثناء حركة الصعود نفسِها، فالورقةُ تظهر فارغةً
+ * وتكبر على مراحل ثمّ تمتلئ، والتمريرُ يتعثّر والصورُ تُفكّ معاً. **الآن قائمةٌ افتراضيّة بصفوف** (رأسُ تصنيفٍ ·
+ * صفُّ ملصقات): تُركَّب أربعةُ صفوفٍ أوّلاً والباقي عند الاقتراب، **والارتفاعُ يُحسب قبل الرسم** فلا تقفز الورقة.
+ * الترتيبُ والتجميعُ والمقاسُ كما كانت حرفاً. ⚠️ لم يُقَس على جهاز — الحَكَمُ تسجيلٌ بعده.
+ */
+const GRID_HEAD_H = 34;
+type GridRow = { t: "head"; key: string; label: string } | { t: "row"; key: string; items: (ProfileTitle | ProfileShow)[] };
+
 function GridSheet({
   d,
   which,
@@ -1246,33 +1257,68 @@ function GridSheet({
   onTitle: (k: "tv" | "movie", id: number) => void;
 }) {
   const { t, locale } = useApp();
+  const { height: winH } = useWindowDimensions();
   const rows: (ProfileTitle | ProfileShow)[] = which === "shows" ? d.overview.shows : which === "movies" ? d.overview.movies : d.overview.anime;
-  const collator = useMemo(() => new Intl.Collator(locale === "ar" ? "ar" : "en", { sensitivity: "base", numeric: true }), [locale]);
-  const sortKey = (s: string) => s.trim().replace(/^(the|a|an)\s+/i, "");
-  const byTitle = (a: ProfileTitle, b: ProfileTitle) => collator.compare(sortKey(a.title), sortKey(b.title));
-  const groups = groupByGenre(rows, (r) => r.genres, byTitle);
   const cols = Math.max(3, Math.floor((width - PAGE_PAD * 2 + GAP) / (posterW + GAP)));
   const w = Math.floor((width - PAGE_PAD * 2 - GAP * (cols - 1)) / cols);
+  const rowH = w * 1.5 + GAP;
   const title = which === "shows" ? t.shortShows : which === "movies" ? t.shortMovies : t.discoverTabAnime;
-  const gridOf = (xs: (ProfileTitle | ProfileShow)[]) => (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-      {xs.map((x) => (
-        <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={w} marquee={false} onPress={(it) => onTitle(it.kind, it.id)} />
-      ))}
-    </View>
+  const { data, offsets, total } = useMemo(() => {
+    const collator = new Intl.Collator(locale === "ar" ? "ar" : "en", { sensitivity: "base", numeric: true });
+    const sortKey = (s: string) => s.trim().replace(/^(the|a|an)\s+/i, "");
+    const byTitle = (a: ProfileTitle, b: ProfileTitle) => collator.compare(sortKey(a.title), sortKey(b.title));
+    const groups = groupByGenre(rows, (r) => r.genres, byTitle);
+    const out: GridRow[] = [];
+    const chunk = (id: string, xs: (ProfileTitle | ProfileShow)[]) => {
+      for (let i = 0; i < xs.length; i += cols) out.push({ t: "row", key: `${id}:${i}`, items: xs.slice(i, i + cols) });
+    };
+    if (groups.length <= 1) chunk("all", [...rows].sort(byTitle));
+    else
+      for (const g of groups) {
+        const id = g.genre?.slug ?? "other";
+        out.push({ t: "head", key: `h:${id}`, label: g.genre ? browseGenreName(g.genre, locale) : t.genreOther });
+        chunk(id, g.rows);
+      }
+    const offs: number[] = [];
+    let y = 0;
+    for (const r of out) {
+      offs.push(y);
+      y += r.t === "head" ? GRID_HEAD_H : rowH;
+    }
+    return { data: out, offsets: offs, total: y };
+  }, [rows, cols, rowH, locale, t]);
+  const press = useCallback((it: CardItem) => onTitle(it.kind, it.id), [onTitle]);
+  const renderRow = useCallback(
+    ({ item }: { item: GridRow }) =>
+      item.t === "head" ? (
+        <View style={{ height: GRID_HEAD_H, justifyContent: "center" }}>
+          <Text size={14} weight="700" muted numberOfLines={1}>{item.label}</Text>
+        </View>
+      ) : (
+        <View style={{ height: rowH, flexDirection: "row", gap: GAP }}>
+          {item.items.map((x) => (
+            <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={w} marquee={false} onPress={press} />
+          ))}
+        </View>
+      ),
+    [rowH, w, press],
   );
+  /* سقفُ الورقة ٨٨٪ من الشاشة (`Sheet`) — والقائمةُ تأخذ ما يبقى تحت رأسها، وحدُّها ٥٦٠ كما كان */
+  const maxH = Math.max(240, Math.min(560, Math.round(winH * 0.88) - 150));
   return (
     <Sheet title={`${title} · ${num(rows.length, locale)}`} onClose={onClose}>
-      <ScrollView style={{ maxHeight: 560 }} showsVerticalScrollIndicator={false}>
-        {groups.length <= 1
-          ? gridOf([...rows].sort(byTitle))
-          : groups.map((g) => (
-              <View key={g.genre?.slug ?? "other"} style={{ marginBottom: 16 }}>
-                <Text size={14} weight="700" muted style={{ marginBottom: 8 }}>{g.genre ? browseGenreName(g.genre, locale) : t.genreOther}</Text>
-                {gridOf(g.rows)}
-              </View>
-            ))}
-      </ScrollView>
+      <FlatList
+        data={data}
+        renderItem={renderRow}
+        keyExtractor={(r) => r.key}
+        getItemLayout={(_, index) => ({ length: data[index]?.t === "head" ? GRID_HEAD_H : rowH, offset: offsets[index] ?? 0, index })}
+        style={{ height: Math.min(maxH, total) }}
+        initialNumToRender={5}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews
+        showsVerticalScrollIndicator={false}
+      />
     </Sheet>
   );
 }
