@@ -110,7 +110,8 @@ export function TourGuide({
             <span
               key={s.id}
               className={`rounded-full transition-all ${
-                i === index ? "w-4 h-1.5 bg-accent" : "w-1.5 h-1.5 bg-surface-2"
+                /* D-1319 — الخاملةُ `muted` شفيفاً لا `surface-2`: هو لونُ البطاقة (`elevated`) فلم تكن تُرى */
+                i === index ? "w-4 h-1.5 bg-accent" : "w-1.5 h-1.5 bg-[color:var(--muted)] opacity-30"
               }`}
             />
           ))}

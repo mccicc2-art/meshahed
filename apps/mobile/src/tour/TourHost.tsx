@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, Pressable, View, useWindowDimensions } from "react-native";
+import { BackHandler, Keyboard, Pressable, View, useWindowDimensions } from "react-native";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TOUR_STEPS, type TourScreen, type TourState } from "@/core/tour";
@@ -86,7 +86,7 @@ export function TourHost() {
   const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width: W } = useWindowDimensions();
+  const { width: W, height: H } = useWindowDimensions();
   const nav = useNavigationContainerRef();
 
   /* أعلى المكدّس الجذر والتبويبُ الظاهر — منهما: هل تُرى البطاقة، وهل الزرُّ المقصودُ أمامه */
@@ -229,6 +229,25 @@ export function TourHost() {
     };
   }, [facing, step.anchor, index]);
 
+  /**
+   * 🔴 D-1319 — **البطاقةُ تصعد فوق لوحة المفاتيح** (بلاغُ أحمد بتسجيل، ٨ أكتوبر: «الكيبورد يغطي عليها» — في خطوة
+   * البحث ضغط النجمةَ ثمّ الحقل، فغطّت اللوحةُ البطاقةَ بزرَّيها). اللوحةُ في التطبيق تعلو المحتوى ولا تدفعه، والبطاقةُ
+   * مثبّتةٌ بأسفل الشاشة. حكمُه «الحل 1»: تصعد ولا تختفي — جولةٌ تفقد «التالي» و«السابق» وهو يكتب تُقرأ منتهية.
+   * الارتفاعُ من حافّة اللوحة العليا إلى أسفل النافذة، وإلّا فارتفاعُها كما يبلّغه النظام — أيُّهما أكبر.
+   */
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      const fromTop = e.endCoordinates.screenY > 0 ? H - e.endCoordinates.screenY : 0;
+      setKeyboard(Math.max(0, Math.round(Math.max(e.endCoordinates.height, fromTop))));
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboard(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [H]);
+
   /* ——— زرُّ الرجوع: الخطوةُ السابقة، وفي الأولى خروجٌ من الجولة (حكمُ أحمد «اقتراحك») ——— */
   const shown = active && native;
   /* الشاشةُ التي تقف عليها الخطوة: جذرٌ من التبويبات، أو «التخصيص» في خطوتها */
@@ -259,8 +278,9 @@ export function TourHost() {
   if (!native) return null;
   if (!shown && !(prompt && onHome)) return null;
 
-  /* فوق الشريط السفليّ في الجذور (قاعدةُ مضيف الإشعار)، وفوق منطقة الأمان في الشاشات المدفوعة */
-  const bottom = top?.name === "(tabs)" ? navHeight(insets.bottom) + 12 : insets.bottom + 16;
+  /* فوق الشريط السفليّ في الجذور (قاعدةُ مضيف الإشعار)، وفوق منطقة الأمان في الشاشات المدفوعة — **وفوق لوحة
+     المفاتيح حين تُفتح** (D-1319) */
+  const bottom = keyboard > 0 ? keyboard + 12 : top?.name === "(tabs)" ? navHeight(insets.bottom) + 12 : insets.bottom + 16;
   const card = {
     width: "100%" as const,
     maxWidth: 448,
@@ -346,7 +366,8 @@ export function TourHost() {
           <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               {TOUR_STEPS.map((s, i) => (
-                <View key={s.id} style={{ width: i === index ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === index ? tokens.accent : tokens.surface2 }} />
+                /* D-1319 — الخاملةُ بلون النصّ الخافت شفيفاً لا `surface2`: هو لونُ البطاقة نفسُه (`elevated`) فلم تكن تُرى */
+                <View key={s.id} style={{ width: i === index ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === index ? tokens.accent : tokens.muted + "55" }} />
               ))}
             </View>
             {/* العدُّ نصّاً — النقاطُ لا يقرؤها قارئُ الشاشة */}
