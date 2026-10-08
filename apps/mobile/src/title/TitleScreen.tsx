@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -9,7 +9,7 @@ import { qk, write, ApiError, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { openThreadPath } from "../thread/route";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text } from "../ui";
+import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { radius } from "../theme";
@@ -76,7 +76,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const qc = useQueryClient();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<"episodes" | "info" | "community">(kind === "tv" ? "episodes" : "info");
-  const [toast, setToast] = useState<string | null>(null);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const [toast, setToast] = useReducer(toastReducer, null);
   const [more, setMore] = useState(false);
   /* D-1034 — انبثاقُ التقييم بحالتين: `edit` فتحه صاحبُه · `prompt` صعد بعد «شاهدته»/آخر حلقة */
   const [reviewOpen, setReviewOpen] = useState<false | "edit" | "prompt">(false);
@@ -190,7 +191,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     onSuccess: (_r, watched) => {
       /* D-1034 — الانبثاقُ يقول «أُشّر كمُشاهَد» بنفسه، فلا إشعارَ تحته يكرّره */
       if (watched && d?.me.rating == null) setReviewOpen("prompt");
-      else setToast(t.watchedMarked);
+      else setToast({ text: t.watchedMarked, tone: "success" });
       settle();
     },
     onError: fail,
@@ -217,7 +218,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     onMutate: () => patchMe((me) => (d?.kind === "tv" && "watched_count" in me ? { watched_count: d.aired_total } : {}) as Partial<TitlePayload["me"]>),
     onSuccess: (r) => {
       /* D-1034 — من لم يقيّم يرى الانبثاقَ (وفيه «أُشّر كمُشاهَد»)؛ الإشعارُ لمن قيّم فلا انبثاقَ له */
-      if (d?.me.rating != null) setToast(Array.isArray(r?.added) && r.added.length ? t.watchedMarkedCount(r.added.length) : t.watchedMarked);
+      if (d?.me.rating != null) setToast({ text: Array.isArray(r?.added) && r.added.length ? t.watchedMarkedCount(r.added.length) : t.watchedMarked, tone: "success" });
       settle();
     },
     onError: (e) => {
@@ -430,7 +431,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 /* D-1251 — المكتملُ: الخانةُ مطفأةٌ وضغطتُها لا تحذف من المكتبة (كانت تفعل) — تقول لماذا وتقف.
                    من أراد إخراجَه يلغي «شاهدته» أوّلاً. */
                 if (k === "watch") {
-                  if (done) setToast(t.toWatchDone);
+                  if (done) setToast({ text: t.toWatchDone, tone: "success" });
                   else follow.mutate(!d.me.following);
                 }
                 else if (k === "list") setListOpen(true);
@@ -576,7 +577,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             [
               /* 🆕 11-M · M5 — «أرسِله لـ…» ورقةٌ أصليّة (`SendTitleSheet`) لا بابُ `/people?send=` */
               { icon: "send", label: t.shareSendTitle, color: tokens.accent, run: () => setSendOpen(true) },
-              { icon: "link", label: t.shareCopyLink, color: tokens.fg, run: () => { Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast(t.linkCopied); } },
+              { icon: "link", label: t.shareCopyLink, color: tokens.fg, run: () => { Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast({ text: t.linkCopied, tone: "success" }); } },
               { icon: "share", label: t.shareTitle, color: tokens.fg, run: () => void share() },
               { icon: "palette", label: t.artTitle, color: tokens.fg, run: () => setArt(true) },
             ] as const
@@ -601,7 +602,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         <SendTitleSheet
           share={{ tmdb_id: id, media_type: kind, title: d.name, poster_path: d.poster_path }}
           onClose={() => setSendOpen(false)}
-          onToast={setToast}
+          onToast={(s) => setToast({ text: s, tone: "success" })}
           onError={(e) => {
             const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
             const msg = (t as unknown as Record<string, unknown>)[key];
@@ -630,13 +631,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           </Pressable>
         </Sheet>
       ) : null}
-      {toast ? (
-        <View pointerEvents="none" style={{ position: "absolute", bottom: insets.bottom + 24, left: PAGE_PAD, right: PAGE_PAD, alignItems: "center" }}>
-          <View style={{ backgroundColor: tokens.fg, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.pill }}>
-            <Text size={13} weight="600" color={tokens.bg}>{toast}</Text>
-          </View>
-        </View>
-      ) : null}
+      {/* D-1326 — **الإشعارُ الواحد** (القاعدة ٣): كانت هذه الشاشةُ ترسم حبّةً بيضاءَ خاصّةً بها لكلِّ رسالةٍ نجاحاً أو خطأً —
+          شكلٌ ثانٍ للإشعار. الآن `Toast` المشترك بنغماته، وعلى ارتفاع ملفّ الشخص وصفحة الفنّان. */}
+      {toast ? <Toast text={toast.text} tone={toast.tone} bottom={insets.bottom + 16} /> : null}
     </View>
   );
 }

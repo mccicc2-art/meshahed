@@ -242,6 +242,12 @@ const styles = StyleSheet.create({
  * فكلُّ منادٍ قائمٍ يرسم كما كان حرفاً، والنجاحُ يُعلَن صراحةً حيث يُعرف (`success` · `info`).
  */
 export type ToastTone = "error" | "success" | "info";
+/** إشعارُ شاشةٍ تحمله في حالتها (ملفّ الشخص · الفنّان · البحث · صفحة العمل) — `useReducer(toastReducer, null)`:
+ *  نصٌّ وحدَه خطأ (كما كان)، و`{ text, tone }` لما يُعلن نغمتَه، و`null` يمحو. `dispatch` ثابتُ الهويّة فلا يدخل قوائمَ الاعتماد. */
+export type ToastNote = { text: string; tone: ToastTone };
+export function toastReducer(_: ToastNote | null, next: string | ToastNote | null): ToastNote | null {
+  return next == null ? null : typeof next === "string" ? { text: next, tone: "error" } : next;
+}
 export function Toast({ text, bottom, action, tone = "error" }: { text: string; bottom: number; action?: { label: string; onPress: () => void }; tone?: ToastTone }) {
   const { tokens } = useApp();
   const ink = tone === "success" ? tokens.success : tone === "info" ? tokens.fg : tokens.error;

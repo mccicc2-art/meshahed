@@ -63,7 +63,7 @@ export function VerifyScreen() {
       queryClient.setQueryData(KEY, out);
       void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
       haptic.success();
-      toast.current?.say(t.verifyStatusPending);
+      toast.current?.say(t.verifyStatusPending, undefined, undefined, "success");
     } catch (e) {
       toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort));
     } finally {

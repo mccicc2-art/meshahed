@@ -11,7 +11,7 @@ import { Composer } from "../thread/Composer";
 import { openThreadPath } from "../thread/route";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { Logo } from "../Logo";
@@ -93,7 +93,8 @@ export function CommunityScreen() {
 
   /* ——— M2: الأفعال ——— */
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const acts = useCommunityActs(d, t, say);
   const [composing, setComposing] = useState<CommunityFeedRow | null>(null);
   const [tools, setTools] = useState(false);

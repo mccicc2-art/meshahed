@@ -10,7 +10,7 @@ import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { nativeListId, nativePersonId, nativeTitle } from "../list/route";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
 import type { HoldAction } from "./HoldMenu";
@@ -155,7 +155,9 @@ export function LibraryScreen() {
      `ToastHost`): ضغطةٌ مطوّلةٌ أو إشعارٌ لا يعيدان رسمَ الألواح. و`say`/`hold` ثابتتا المرجع. */
   const holdHost = useRef<HoldHostRef<CardItem>>(null);
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string, action?: { label: string; onPress: () => void }, ms?: number) => toastHost.current?.say(text, action, ms), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, action?: { label: string; onPress: () => void }, ms?: number, tone?: ToastTone) => toastHost.current?.say(text, action, ms, tone), []);
+  const sayTone = useCallback((text: string, tone?: ToastTone) => say(text, undefined, undefined, tone), [say]);
   /* B4 — أدواتُ الصفحة: بحثٌ وترتيبٌ ومفضّلة (حالةُ الشاشة كما في `LibraryGrid`) */
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<LibrarySort>("smart");
@@ -299,6 +301,7 @@ export function LibraryScreen() {
                   .finally(() => void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") })),
             },
             6000,
+            "info",
           );
         } else if (a === "drop" || a === "resume") {
           const dropped = a === "drop";
@@ -552,7 +555,7 @@ export function LibraryScreen() {
           k === "artists" ? (
             <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} head={artistsHead} />
           ) : k === "lists" ? (
-            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={say} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} hint={hintTurn === "lists-tab"} />
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={sayTone} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} hint={hintTurn === "lists-tab"} />
           ) : (
             <LibraryPane
               tab={k}

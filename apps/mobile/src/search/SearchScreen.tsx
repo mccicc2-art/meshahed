@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, useReducer } from "react";
 import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text, Toast } from "../ui";
+import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Chip } from "../library/Chip";
@@ -101,7 +101,8 @@ export function SearchScreen() {
   /* ================= وضعُ الوصف (G3) ================= */
   const [desc, setDesc] = useState(false);
   const [descText, setDescText] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const [toast, setToast] = useReducer(toastReducer, null);
   const story = useMutation({
     mutationFn: async (description: string) => write<SearchStoryPayload>("/api/v1/search/story", { description } satisfies SearchStoryBody),
     onError: (e: unknown) => {
@@ -431,7 +432,7 @@ export function SearchScreen() {
           leaveTo("/people");
         }}
       />
-      {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
+      {toast ? <Toast text={toast.text} tone={toast.tone} bottom={navH + 16} /> : null}
     </View>
   );
 }

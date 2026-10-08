@@ -11,7 +11,7 @@ import { prefetchLibrary } from "../library/LibraryScreen";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { nativeListId } from "../list/route";
-import { Text } from "../ui";
+import { Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import { posterFor } from "../poster";
@@ -218,7 +218,8 @@ export function DiscoverScreen() {
   /* D-958 — خطأُ «مكتبتي» من صفّ التريلرات: مضيفُ الإشعار الواحد كما في المكتبة */
   /* ⚖️ D-1028 (F4) — الإشعارُ في مضيفه (`ToastHost`) لا في حالة الشاشة؛ و`setToast` ثابتةُ المرجع */
   const toastHost = useRef<ToastHostRef>(null);
-  const setToast = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const setToast = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   /**
    * 🆕 D-1047 (Phase 11-F · F5) — **حذفٌ بلا تأكيدٍ يحتاج «تراجع»** (دَينٌ معلَنٌ في `05`: «حذفُ فلترٍ محفوظ بضغطةٍ
    * مطوّلة بلا تأكيدٍ ولا تراجع»). الحذفُ يُرى فوراً، **والكتابةُ تُؤجَّل أربعَ ثوانٍ** يعرض فيها الإشعارُ «تراجع»:
@@ -250,6 +251,7 @@ export function DiscoverScreen() {
           },
         },
         4000,
+        "info",
       );
     },
     [flushPending, t],
@@ -330,7 +332,7 @@ export function DiscoverScreen() {
     (key: string, hide: boolean) => {
       if (hide) dismissed.add(key);
       else dismissed.restore(key);
-      if (hide) setToast(t.dismissedToast);
+      if (hide) setToast(t.dismissedToast, "info");
     },
     [t, setToast],
   );
@@ -510,7 +512,7 @@ export function DiscoverScreen() {
             onOpen={openCard}
             onLeave={leaveTo}
             onError={onError}
-            onToast={setToast}
+            onToast={(s) => setToast(s, "success")}
             onUndoable={undoable}
             onSeeAll={openAll}
           />

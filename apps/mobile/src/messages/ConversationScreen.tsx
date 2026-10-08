@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
 import { push } from "../push";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -76,7 +76,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   }, [incoming, refetchSeen]);
 
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
 
   /* ——— الملاحة ——— */
   const back = useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { afterPaint, mark } from "../perfMarks";
 import { useApp } from "../state";
-import { Button, Text, Toast } from "../ui";
+import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon, iconOr } from "../icons";
 import { radius } from "../theme";
 import { CONFIG } from "../config";
@@ -136,7 +136,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   );
   const [grid, setGrid] = useState<Grid | null>(null);
   const [ranks, setRanks] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const [toast, setToast] = useReducer(toastReducer, null);
   const [leaving, setLeaving] = useState(false);
   /* 🆕 N2 — ورقةُ ⋯ ثمّ ورقتا البلاغ وتأكيد الحظر (الويبُ: قائمةٌ ثمّ ورقتان — `ProfileMenu`) */
   const [menu, setMenu] = useState<null | "menu" | "report" | "block">(null);
@@ -211,7 +212,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             }
           : p,
       );
-      if (r.state === "requested") setToast(t.followRequestSent);
+      if (r.state === "requested") setToast({ text: t.followRequestSent, tone: "success" });
       /* المتابعةُ تفتح المحتوى (أو تغلقه) — الحمولةُ من الخادم لا تخمين */
       void q.refetch();
     },
@@ -235,7 +236,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const message = useCallback(() => {
     if (!d) return;
     setMenu(null);
-    if (!(d.relation.following && d.relation.follows_me)) return setToast(t.msgNeedsMutual);
+    if (!(d.relation.following && d.relation.follows_me)) return setToast({ text: t.msgNeedsMutual, tone: "info" });
     router.push({ pathname: "/messages/[peer]", params: { peer: d.person.id, from: fromOut } });
   }, [d, router, fromOut, t]);
   const report = useMutation({
@@ -244,7 +245,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       setMenu(null);
       setReason("");
       setReported(true);
-      setToast(t.reportDone);
+      setToast({ text: t.reportDone, tone: "success" });
     },
     onError: (e) => setToast(failText(e)),
   });
@@ -255,7 +256,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     onSuccess: () => {
       setMenu(null);
       haptic.pick();
-      setToast(t.blockedToast);
+      setToast({ text: t.blockedToast, tone: "info" });
       void q.refetch();
     },
     onError: (e) => setToast(failText(e)),
@@ -266,7 +267,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     onSuccess: () => {
       setMenu(null);
       haptic.pick();
-      setToast(t.unblockedToast);
+      setToast({ text: t.unblockedToast, tone: "info" });
       void qc.invalidateQueries({ queryKey: ["me:settings"] });
       void q.refetch();
     },
@@ -785,7 +786,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           </View>
         </Sheet>
       ) : null}
-      {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
+      {toast ? <Toast text={toast.text} tone={toast.tone} bottom={insets.bottom + 16} /> : null}
     </View>
   );
 }

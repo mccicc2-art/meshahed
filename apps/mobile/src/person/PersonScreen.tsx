@@ -1,5 +1,5 @@
 import type { NativeRoot } from "../shell";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useReducer } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
-import { Button, Text, Toast } from "../ui";
+import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { RailCard, RAIL_CARD_W, type LibMark } from "../discover/RailCard";
@@ -50,7 +50,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<WorksTab>("all");
   const [more, setMore] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const [toast, setToast] = useReducer(toastReducer, null);
 
   const q = useQuery({
     queryKey: qk.person(id),
@@ -119,7 +120,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   /* «أضِف أعماله إلى قائمة» — فعلٌ واحد لا ورقة (`AddWorksToList`): أصليٌّ بالردّ نفسِه */
   const toList = useMutation({
     mutationFn: async () => write<ListFromPersonResult>("/api/v1/lists/from-person", { personId: id } satisfies ListFromPersonBody),
-    onSuccess: (res) => setToast(res.created ? t.listMadeToast(res.name) : res.added > 0 ? t.listGrewToast(res.added) : t.listHadAllToast),
+    onSuccess: (res) => (res.created ? setToast({ text: t.listMadeToast(res.name), tone: "success" }) : res.added > 0 ? setToast({ text: t.listGrewToast(res.added), tone: "success" }) : setToast({ text: t.listHadAllToast, tone: "info" })),
     onError: fail,
   });
   const openTitle = useCallback((w: PersonWork) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: w.kind, id: String(w.id), from } }), [router, from]);
@@ -244,7 +245,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
           </View>
         </ScrollView>
       )}
-      {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
+      {toast ? <Toast text={toast.text} tone={toast.tone} bottom={insets.bottom + 16} /> : null}
     </View>
   );
 }

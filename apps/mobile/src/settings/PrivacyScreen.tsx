@@ -4,7 +4,7 @@ import { IdentityBadges } from "../IdentityBadges";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
-import { Text, Button } from "../ui";
+import { Text, Button, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -58,8 +58,8 @@ export function PrivacyScreen() {
           </Group>
         </>
       )}
-      {sheet === "grants" ? <GrantsSheet onClose={() => setSheet(null)} say={(m) => toast.current?.say(m)} /> : null}
-      {sheet === "blocked" ? <BlockedSheet onClose={() => setSheet(null)} say={(m) => toast.current?.say(m)} /> : null}
+      {sheet === "grants" ? <GrantsSheet onClose={() => setSheet(null)} say={(m, tone) => toast.current?.say(m, undefined, undefined, tone)} /> : null}
+      {sheet === "blocked" ? <BlockedSheet onClose={() => setSheet(null)} say={(m, tone) => toast.current?.say(m, undefined, undefined, tone)} /> : null}
     </SettingsScreen>
   );
 }
@@ -92,7 +92,7 @@ function PersonRow({ p, action, i, onOpen }: { p: PersonLite; action: React.Reac
 }
 
 /** الممنوحون — `LibraryAccessList`: المنتقي (متابِعيّ ممّن لم يُمنحوا) يلتفّ داخل الورقة لا ورقةً فوق ورقة */
-function GrantsSheet({ onClose, say }: { onClose: () => void; say: (m: string) => void }) {
+function GrantsSheet({ onClose, say }: { onClose: () => void; say: (m: string, tone?: ToastTone) => void }) {
   const { t, tokens } = useApp();
   const openWeb = useOpenWeb();
   const list = useQuery({ queryKey: GRANTS_KEY, queryFn: async () => (await api<PeoplePayload>("/api/v1/me/settings/library-access")).data.people, staleTime: 0 });
@@ -112,7 +112,8 @@ function GrantsSheet({ onClose, say }: { onClose: () => void; say: (m: string) =
     try {
       await write<{ done: true }>("/api/v1/me/settings/library-access", { user_id: p.id, grant } satisfies LibraryGrantBody);
       if (grant) haptic.success();
-      say(grant ? t.libraryGrantedToast : t.libraryRevokedToast);
+      if (grant) say(t.libraryGrantedToast, "success");
+      else say(t.libraryRevokedToast, "info");
     } catch (e) {
       queryClient.setQueryData(GRANTS_KEY, prev);
       patchSettings((x) => ({ ...x, privacy: { ...x.privacy, library_grants: prev.length } }));
@@ -153,7 +154,7 @@ function GrantsSheet({ onClose, say }: { onClose: () => void; say: (m: string) =
 }
 
 /** المحظورون — `BlockedList`: رفعُ الحظر فقط؛ الحظرُ من صفحة الشخص */
-function BlockedSheet({ onClose, say }: { onClose: () => void; say: (m: string) => void }) {
+function BlockedSheet({ onClose, say }: { onClose: () => void; say: (m: string, tone?: ToastTone) => void }) {
   const { t } = useApp();
   const list = useQuery({ queryKey: BLOCKED_KEY, queryFn: async () => (await api<PeoplePayload>("/api/v1/me/settings/blocked")).data.people, staleTime: 0 });
   const items = list.data;
@@ -165,7 +166,7 @@ function BlockedSheet({ onClose, say }: { onClose: () => void; say: (m: string) 
     patchSettings((x) => ({ ...x, privacy: { ...x.privacy, blocked: Math.max(0, x.privacy.blocked - 1) } }));
     try {
       await write<{ done: true }>("/api/v1/me/settings/blocked", { user_id: p.id } satisfies UnblockBody);
-      say(t.unblockedToast);
+      say(t.unblockedToast, "info");
     } catch (e) {
       queryClient.setQueryData(BLOCKED_KEY, prev);
       patchSettings((x) => ({ ...x, privacy: { ...x.privacy, blocked: prev.length } }));

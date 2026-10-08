@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { radius } from "../theme";
 import { Icon } from "../icons";
 import { usePullRefresh } from "../pullRefresh";
@@ -43,7 +43,7 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  */
 const PAGE_PAD = 16;
 
-export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll, hint = false }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"]; /** D-1318 (T2) — تلميحُ «قوائمك هنا» لمرّةٍ واحدة، بدوره (`useHintTurn` في المكتبة) */ hint?: boolean }) {
+export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll, hint = false }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string, tone?: ToastTone) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"]; /** D-1318 (T2) — تلميحُ «قوائمك هنا» لمرّةٍ واحدة، بدوره (`useHintTurn` في المكتبة) */ hint?: boolean }) {
   const { t, tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
@@ -82,7 +82,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
       patch((p) => ({ ...p, lists: p.lists.map(flip), saved: p.saved.map(flip) }));
       try {
         await write<{ on: boolean }>("/api/v1/lists/playlist", { listId: l.id, on } satisfies ListPlaylistBody);
-        say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast);
+        if (on) say(t.listPlaylistOnToast, "success");
+        else say(t.listPlaylistOffToast, "info");
       } catch (e) {
         fail(e);
       } finally {
@@ -97,7 +98,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
       patch((p) => (p.to_watch ? { ...p, to_watch: { ...p.to_watch, on } } : p));
       try {
         await write<{ on: boolean }>("/api/v1/me/prefs/to-watch", { on } satisfies ToWatchBody);
-        say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast);
+        if (on) say(t.listPlaylistOnToast, "success");
+        else say(t.listPlaylistOffToast, "info");
       } catch (e) {
         fail(e);
       } finally {
@@ -115,7 +117,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
       }));
       try {
         await write<{ saved: boolean }>("/api/v1/lists/save", { listId: l.id, save } satisfies SaveListBody);
-        say(save ? t.listSavedToast : t.listUnsavedToast);
+        if (save) say(t.listSavedToast, "success");
+        else say(t.listUnsavedToast, "info");
       } catch (e) {
         fail(e);
       } finally {
@@ -291,7 +294,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           onClose={() => setCreating(false)}
           onCreated={(id, name) => {
             setCreating(false);
-            say(t.listMadeToast(name));
+            say(t.listMadeToast(name), "success");
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
             if (id) onOpenWeb(`/lists/${id}`);
           }}
@@ -309,7 +312,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
             setSharing(null);
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
           }}
-          onToast={say}
+          onToast={(s) => say(s, "success")}
           onError={fail}
         />
       ) : null}
@@ -324,7 +327,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           onCreated={() => setEditing(null)}
           onUpdated={(id) => {
             setEditing(null);
-            say(t.smartListUpdated);
+            say(t.smartListUpdated, "success");
             void queryClient.invalidateQueries({ queryKey: qk.list(id) });
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
           }}
@@ -340,7 +343,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           }}
           onCreated={(id) => {
             setSmart(false);
-            say(t.librarySmartCreated);
+            say(t.librarySmartCreated, "success");
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
             if (id) onOpenWeb(`/lists/${id}`);
@@ -374,7 +377,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           onSaved={(next: MyReview | null) => {
             const id = rating.id;
             setRating(null);
-            say(next ? t.listReviewSave : t.listReviewDelete);
+            if (next) say(t.listReviewSave, "success");
+            else say(t.listReviewDelete, "info");
             /* تفاؤلٌ على رأيي وحدَه؛ المتوسّطُ والعدُّ يأتيان مع إعادة الجلب */
             patch((prev) => ({ ...prev, saved: prev.saved.map((x) => (x.id === id ? { ...x, my_review: next } : x)) }));
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });

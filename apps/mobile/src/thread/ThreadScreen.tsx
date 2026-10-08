@@ -8,7 +8,7 @@ import { api, write } from "../api";
 import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -97,7 +97,8 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   }, [d, endOpen]);
 
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const fail = useCallback((e: unknown) => say(errorText(t, e)), [say, t]);
 
   /* ——— الملاحة ——— */
@@ -329,7 +330,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
     (body: { reply_id?: string; what?: "reply" | "review" }, mark: string) => {
       setReported((s) => new Set(s).add(mark));
       write("/api/v1/thread/report", { target: targetOf(route), ...body })
-        .then(() => say(t.reportDone))
+        .then(() => say(t.reportDone, "success"))
         .catch(fail);
     },
     [route, say, t.reportDone, fail],

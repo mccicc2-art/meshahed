@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
@@ -100,7 +100,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   }, [back]);
 
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const fail = useCallback(
     (e: unknown) => {
       const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
@@ -197,7 +198,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
         () => write<{ done: true }>("/api/v1/lists/cover", { listId: id, ...v } satisfies ListCoverBody),
         () => {
           setSheet(null);
-          say(t.savedToast);
+          say(t.savedToast, "success");
         },
       ),
     [run, id, say, t],
@@ -210,14 +211,14 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     (p: SearchTitle) => {
       const key = `${p.mediaType}-${p.id}`;
       if (q.data?.items.some((x) => keyOf(x) === key)) {
-        say(t.listAlreadyIn);
+        say(t.listAlreadyIn, "info");
         return;
       }
       haptic.success();
       void run(
         (prev) => ({ ...prev, items: [...prev.items, { kind: p.mediaType, id: p.id, title: p.title, poster_path: p.posterPath ?? null, badge: null }] }),
         () => write<{ done: true }>("/api/v1/lists/toggle-item", { listId: id, tmdbId: p.id, mediaType: p.mediaType, title: p.title, posterPath: p.posterPath ?? null, add: true } satisfies ListToggleItemBody),
-        () => say(t.listAddedToast(p.title)),
+        () => say(t.listAddedToast(p.title), "success"),
       );
     },
     [q.data, run, id, say, t],
@@ -235,7 +236,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
       void run(
         (p) => ({ ...p, playlist: on }),
         () => write<{ on: boolean }>("/api/v1/lists/playlist", { listId: id, on } satisfies ListPlaylistBody),
-        () => say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast),
+        () => (on ? say(t.listPlaylistOnToast, "success") : say(t.listPlaylistOffToast, "info")),
       ),
     [run, id, say, t],
   );
@@ -253,7 +254,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     (reviewUserId: string, body: string, parentId: string | null) =>
       /* الردُّ **لا يُخمَّن**: اسمي وصورتي ومعرّفُ الردّ عند الخادم — يُجلب بعد الكتابة */
       run(null, () => write<{ reply_id: string | null }>("/api/v1/lists/review-reply", { listId: id, reviewUserId, body, parentId } satisfies ListReviewReplyBody), () => {
-        say(t.replySentToast);
+        say(t.replySentToast, "success");
         void q.refetch();
       }),
     [run, id, say, t, q],
@@ -286,7 +287,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, saved_by_me: want, saves: Math.max(0, p.saves + (want ? 1 : -1)) } : p));
     try {
       await write<{ saved: boolean }>("/api/v1/lists/save", { listId: id, save: want } satisfies SaveListBody);
-      say(want ? t.listSavedToast : t.listUnsavedToast);
+      if (want) say(t.listSavedToast, "success");
+      else say(t.listUnsavedToast, "info");
     } catch (e) {
       fail(e);
     } finally {
@@ -472,7 +474,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               void q.refetch();
               void qc.invalidateQueries({ queryKey: ["me:lists"] });
             }}
-            onToast={say}
+            onToast={(s) => say(s, "success")}
             onError={fail}
           />
         ) : null}
@@ -487,7 +489,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
             onCreated={() => setSheet(null)}
             onUpdated={() => {
               setSheet(null);
-              say(t.smartListUpdated);
+              say(t.smartListUpdated, "success");
               void q.refetch();
             }}
             onError={fail}

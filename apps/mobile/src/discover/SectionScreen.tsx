@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FlashList } from "@shopify/flash-list";
 import { api, ApiError, qk } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, type ToastTone } from "../ui";
 import { RailCard, RAIL_CARD_W } from "./RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -86,7 +86,8 @@ export function SectionScreen({ title, query }: { title: string; query: string }
   }, [back]);
 
   const toastHost = useRef<ToastHostRef>(null);
-  const say = useCallback((text: string) => toastHost.current?.say(text), []);
+  /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
+  const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const fail = useCallback(
     (e: unknown) => {
       const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
@@ -103,7 +104,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
     (key: string, hide: boolean) => {
       if (hide) dismissed.add(key);
       else dismissed.restore(key);
-      if (hide) say(t.dismissedToast);
+      if (hide) say(t.dismissedToast, "info");
     },
     [say, t],
   );

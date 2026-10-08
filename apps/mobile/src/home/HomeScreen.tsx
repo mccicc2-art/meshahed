@@ -273,6 +273,7 @@ export function HomeScreen() {
           },
         },
         6000,
+        "success",
       );
     },
     [busyKeys, lock, patchCard, qc, onError, t],
@@ -331,6 +332,7 @@ export function HomeScreen() {
           },
         },
         6000,
+        "success",
       );
     },
     [busyKeys, lock, patchCard, qc, onError, t],
@@ -366,6 +368,7 @@ export function HomeScreen() {
                   .catch(onError),
             },
             6000,
+            "info",
           );
         }
         else if (a === "rewatch") await write<unknown>("/api/v1/track/rewatch", { showTmdbId: item.id } satisfies ShowRefBody);
@@ -464,7 +467,7 @@ export function HomeScreen() {
       try {
         await write<{ on: boolean }>("/api/v1/me/prefs/to-watch", { on } satisfies ToWatchBody);
         await qc.invalidateQueries({ queryKey: HOME_KEY });
-        toastHost.current?.say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast);
+        toastHost.current?.say(on ? t.listPlaylistOnToast : t.listPlaylistOffToast, undefined, undefined, on ? "success" : "info");
       } catch (e) {
         onError(e);
       } finally {
