@@ -949,6 +949,11 @@ const ar = {
      استعمالاً: **نصٌّ واحد لمعنًى واحد** — ونسختان تفترقان عند أوّل تعديل. */
   quickAddLabel: "أضِفه إلى «للمشاهدة»",
   quickAddRemove: "أزِله من «للمشاهدة»",
+  /* D-1328 — إشعارا «للمشاهدة» وحالتا الضغط المطوّل: ما بدأته أو أكملته حالٌ تُقرأ لا فعلٌ يُضغط */
+  toWatchAdded: "أُضيف إلى «للمشاهدة»",
+  toWatchRemoved: "أُزيل من «للمشاهدة»",
+  holdWatchingNow: "تشاهده الآن",
+  holdWatchedAll: "شاهدته كاملاً",
   quickAddDone: "أُضيف إلى «للمشاهدة»",
   /* ================= عنوانُ النقاش — مولَّدٌ بحت (D-254) =================
      **اختيارُ أحمد الصريح: «تلقائيّ بحت لكل عمل/حلقة»** — لا يكتبه أحد.
@@ -3049,6 +3054,10 @@ const en: Dict = {
   // Talk page and replies (D-193)
   quickAddLabel: "Add to To watch",
   quickAddRemove: "Remove from To watch",
+  toWatchAdded: "Added to To watch",
+  toWatchRemoved: "Removed from To watch",
+  holdWatchingNow: "Watching now",
+  holdWatchedAll: "Watched it all",
   quickAddDone: "Added to To watch",
   talkRoomTitle: (title: string, isTv: boolean) =>
     `Discussing the ${isTv ? "series" : "film"} ${title}`,

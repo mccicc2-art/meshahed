@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { write } from "./api";
-import type { CardStore } from "./cardStore";
+import type { CardMark, CardStore } from "./cardStore";
+import { useApp } from "./state";
+import type { ToastTone } from "./ui";
 import type { HoldAction } from "./library/HoldMenu";
 import type { DismissBody, FollowBody, ShowRefBody, ToggleMovieBody, UnfollowBody } from "./contracts";
 
@@ -12,6 +14,20 @@ import type { DismissBody, FollowBody, ShowRefBody, ToggleMovieBody, UnfollowBod
  * تفاؤلٍ واحد تفترقان عند أوّل إصلاح. المنطقُ منطقُ D-978/D-1028 حرفاً: الطبقةُ التفاؤليّةُ في
  * `cardStore`، ثمّ الكتابة، ثمّ **التراجعُ عند الفشل**.
  */
+/**
+ * D-1328 — **حالُ العمل من «للمشاهدة» كما يراها الضغطُ المطوّل**: كانت قيمةً واحدة («أفي المكتبة؟») فظهر
+ * «أزِله من للمشاهدة» فوق مسلسلٍ أُكمل وخرج منها (بلاغُ أحمد: «بريكنغ باد» بعد الإكمال). الآن أربعُ حالات:
+ * `none` لم يُضَف · `saved` في «للمشاهدة» ولم يبدأ (الإزالةُ له وحدَه) · `watching` بدأه (أو أوقفه) — لا إزالةَ
+ * من هنا، المكتبةُ وحدها تملكها · `completed` أكمله — لا يعود إلى «للمشاهدة» بضغطة.
+ */
+export type ToWatchState = "none" | "saved" | "watching" | "completed";
+export function toWatchState(m: CardMark): ToWatchState {
+  if (!m) return "none";
+  if (m.completed) return "completed";
+  if (m.saved) return "saved";
+  return "watching";
+}
+
 export type ActCard = { kind: "tv" | "movie"; id: number; title: string; poster_path: string | null };
 
 export function useCardActs<C extends ActCard>(
@@ -21,9 +37,12 @@ export function useCardActs<C extends ActCard>(
     onError: (e: unknown) => void;
     /** «غير مهتمّ» — لمن يعرضه وحدَه («اكتشف»): يخفي البطاقةَ ويعيدها عند الفشل */
     onDismiss?: (key: string, hidden: boolean) => void;
+    /** D-1328 — إشعارُ «للمشاهدة»: أُضيف (أخضر) · أُزيل (محايد) · أكملتَه (محايد بلا كتابة) */
+    say?: (text: string, tone: ToastTone) => void;
   },
 ) {
-  const { onReview, onError, onDismiss } = o;
+  const { onReview, onError, onDismiss, say } = o;
+  const { t } = useApp();
   return useCallback(
     async (a: HoldAction, c: C): Promise<boolean> => {
       const key = `${c.kind}-${c.id}`;
@@ -34,10 +53,19 @@ export function useCardActs<C extends ActCard>(
       const before = store.override(key);
       try {
         if (a === "towatch") {
-          const inList = !!store.mark(key);
-          store.setOverride(key, inList ? null : { saved: true, progress: 0, completed: false, dropped: false });
-          if (inList) await write<unknown>("/api/v1/track/unfollow", { tmdbId: c.id, mediaType: c.kind } satisfies UnfollowBody);
+          const state = toWatchState(store.mark(key));
+          /* أكملتَه: الصفُّ مطفأٌ ويقول السببَ فقط — لا كتابة. بدأتَه: لا صفَّ إزالةٍ أصلاً، والحارسُ هنا
+             كي لا يمحو نداءٌ متأخّرٌ متابعةَ عملٍ بدأته */
+          if (state === "completed") {
+            say?.(t.toWatchDone, "info");
+            return false; // لا كتابةَ فلا اهتزازَ نجاح
+          }
+          if (state === "watching") return false;
+          const remove = state === "saved";
+          store.setOverride(key, remove ? null : { saved: true, progress: 0, completed: false, dropped: false });
+          if (remove) await write<unknown>("/api/v1/track/unfollow", { tmdbId: c.id, mediaType: c.kind } satisfies UnfollowBody);
           else await write<unknown>("/api/v1/track/follow", { tmdbId: c.id, mediaType: c.kind, title: c.title, posterPath: c.poster_path } satisfies FollowBody);
+          say?.(remove ? t.toWatchRemoved : t.toWatchAdded, remove ? "info" : "success");
         } else if (a === "all") {
           store.setOverride(key, { saved: false, progress: 100, completed: true, dropped: false });
           if (c.kind === "tv") await write<unknown>("/api/v1/track/show-watched", { showTmdbId: c.id } satisfies ShowRefBody);
@@ -55,7 +83,7 @@ export function useCardActs<C extends ActCard>(
       }
       return true;
     },
-    [store, onReview, onError, onDismiss],
+    [store, onReview, onError, onDismiss, say, t],
   );
 }
 

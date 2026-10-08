@@ -3,6 +3,7 @@ import { HoldMenu, type HoldAction, type HoldVariant } from "./library/HoldMenu"
 import type { CardAnchor, CardItem } from "./library/PosterCard";
 import { Toast, type ToastTone } from "./ui";
 import { haptic } from "./haptics";
+import type { ToWatchState } from "./cardActs";
 
 /**
  * ====== مضيفا القائمة والإشعار — D-1028 (Phase 11-F · F4) ======
@@ -21,7 +22,7 @@ export function HoldHost<P>({
   hostRef,
   variant,
   toItem,
-  inListOf,
+  toWatchOf,
   onAction,
   onHeld,
 }: {
@@ -29,14 +30,15 @@ export function HoldHost<P>({
   variant: HoldVariant;
   /** بطاقةُ القائمة بشكل `CardItem` — تُحسب عند الفتح من حال تلك اللحظة */
   toItem: (payload: P) => CardItem;
-  inListOf?: (payload: P) => boolean;
+  /** D-1328 — حالُ العمل من «للمشاهدة» لحظةَ الضغط (كانت `inListOf` قيمةً واحدة) */
+  toWatchOf?: (payload: P) => ToWatchState;
   /** الفعلُ نفسُه بوعده — القائمةُ تُغلق فوراً، و`busy` يحجب فعلاً ثانياً حتّى يعود */
   /** `false` = الكتابةُ فشلت (فلا اهتزازَ نجاح — D-1043)؛ غيرُ ذلك نجاح */
   onAction: (a: HoldAction, payload: P) => Promise<void | boolean> | void | boolean;
   /** من يريد أن يعرف أيُّ بطاقةٍ مضغوطةٌ الآن (الإطارُ الذهبيّ في «اكتشف») */
   onHeld?: (payload: P | null) => void;
 }) {
-  const [held, setHeld] = useState<{ payload: P; anchor: CardAnchor; item: CardItem; inList: boolean } | null>(null);
+  const [held, setHeld] = useState<{ payload: P; anchor: CardAnchor; item: CardItem; toWatch: ToWatchState } | null>(null);
   const [busy, setBusy] = useState(false);
   const close = useCallback(() => {
     setHeld(null);
@@ -47,12 +49,12 @@ export function HoldHost<P>({
     () => ({
       open(payload, anchor) {
         haptic.pick();
-        setHeld({ payload, anchor, item: toItem(payload), inList: inListOf ? inListOf(payload) : false });
+        setHeld({ payload, anchor, item: toItem(payload), toWatch: toWatchOf ? toWatchOf(payload) : "none" });
         onHeld?.(payload);
       },
       close,
     }),
-    [toItem, inListOf, onHeld, close],
+    [toItem, toWatchOf, onHeld, close],
   );
   if (!held) return null;
   return (
@@ -61,7 +63,7 @@ export function HoldHost<P>({
       item={held.item}
       anchor={held.anchor}
       busy={busy}
-      inList={held.inList}
+      toWatch={held.toWatch}
       onAction={(a) => {
         const { payload } = held;
         close();

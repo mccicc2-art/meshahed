@@ -10,7 +10,7 @@ import { Button, Text, type ToastTone } from "../ui";
 import { RailCard, RAIL_CARD_W } from "./RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
-import { marksOf, useCardActs } from "../cardActs";
+import { marksOf, toWatchState, useCardActs } from "../cardActs";
 import { usePullRefresh } from "../pullRefresh";
 import { dismissed, useDismissed } from "./dismissed";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
@@ -108,7 +108,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
     },
     [say, t],
   );
-  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail, onDismiss });
+  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail, onDismiss, say });
   const heldItemOf = useCallback(
     (c: CuratedCard): CardItem => {
       const m = store.mark(keyOf(c));
@@ -116,7 +116,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
     },
     [store],
   );
-  const inListOf = useCallback((c: CuratedCard) => !!store.mark(keyOf(c)), [store]);
+  const toWatchOf = useCallback((c: CuratedCard) => toWatchState(store.mark(keyOf(c))), [store]);
 
   const renderItem = useCallback(
     ({ item }: { item: CuratedCard }) => (
@@ -163,7 +163,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
             ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 20 }} /> : null}
           />
         )}
-        <HoldHost hostRef={holdHost} variant="discover" toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
+        <HoldHost hostRef={holdHost} variant="discover" toItem={heldItemOf} toWatchOf={toWatchOf} onAction={act} onHeld={onHeld} />
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 16} />
       </View>
     </CardStoreContext.Provider>

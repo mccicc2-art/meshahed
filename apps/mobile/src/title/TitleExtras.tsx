@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FlatList, Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -229,6 +229,11 @@ export function FavoriteButton({ kind, id, name, posterPath, x }: { kind: "tv" |
 export function ListSheet({ kind, id, name, posterPath, x, onClose }: { kind: "tv" | "movie"; id: number; name: string; posterPath: string | null; x: TitleExtrasPayload | undefined; onClose: () => void }) {
   const { t, tokens } = useApp();
   const qc = useQueryClient();
+  /* D-1328 — بلاغُ أحمد (قائمة «nn» حُذفت من المكتبة وبقيت هنا): القوائمُ تُحذف وتُسمّى من صفحاتٍ أخرى — وفي
+     الويب — وكاشُ الإضافات يعيش خمسَ دقائق. فتحُ الورقة يجلبها بهدوء: ما في الكاش يُرسم فوراً ثمّ يُصحَّح */
+  useEffect(() => {
+    void qc.invalidateQueries({ queryKey: extrasKey(kind, id) });
+  }, [qc, kind, id]);
   const m = useMutation({
     mutationFn: ({ listId, add }: { listId: string; add: boolean }) =>
       write<{ done: true }>("/api/v1/lists/toggle-item", { listId, tmdbId: id, mediaType: kind, title: name, posterPath, add } satisfies ListToggleItemBody),

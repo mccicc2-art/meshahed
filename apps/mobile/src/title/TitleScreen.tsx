@@ -175,7 +175,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         ? write<TrackResult>("/api/v1/track/follow", { tmdbId: id, mediaType: kind, title: d?.name ?? "", posterPath: d?.poster_path ?? null } satisfies FollowBody)
         : write<TrackResult>("/api/v1/track/unfollow", { tmdbId: id, mediaType: kind } satisfies UnfollowBody),
     onMutate: (following) => patchMe(() => ({ following, dropped: false })),
-    onSuccess: settle,
+    /* D-1328 — الإضافةُ نجاحٌ أخضر، والإزالةُ خبرٌ محايد (التقدّمُ محفوظٌ، لا شيءَ ضاع) */
+    onSuccess: (_r, following) => {
+      setToast(following ? { text: t.toWatchAdded, tone: "success" } : { text: t.toWatchRemoved, tone: "info" });
+      settle();
+    },
     onError: fail,
   });
   const drop = useMutation({
@@ -431,7 +435,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 /* D-1251 — المكتملُ: الخانةُ مطفأةٌ وضغطتُها لا تحذف من المكتبة (كانت تفعل) — تقول لماذا وتقف.
                    من أراد إخراجَه يلغي «شاهدته» أوّلاً. */
                 if (k === "watch") {
-                  if (done) setToast({ text: t.toWatchDone, tone: "success" });
+                  if (done) setToast({ text: t.toWatchDone, tone: "info" }); // D-1328 — خبرٌ لا نجاح
                   else follow.mutate(!d.me.following);
                 }
                 else if (k === "list") setListOpen(true);

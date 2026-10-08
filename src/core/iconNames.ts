@@ -96,6 +96,7 @@ export type IconName =
   | "library-filled"
   | "person-check"
   | "plus"
+  | "minus"
   | "book"
   | "check-line"
   | "chevron-down"

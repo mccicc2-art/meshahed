@@ -7,6 +7,7 @@ import { Icon, type IconName } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import type { CardItem } from "./PosterCard";
+import type { ToWatchState } from "../cardActs";
 
 /**
  * ====== قائمةُ الضغط المطوَّل — نسخةُ `HoldMenu` في `LibraryGrid.tsx` ======
@@ -46,7 +47,8 @@ export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "dro
  * - **موقوفٌ مؤقّتاً**: «كمّل» — وبلا «الحلقة التالية»: تعليمُ حلقةٍ ينقض الإيقافَ نفسَه.
  * الموقوفُ بالبطاقة الحمراء والمكتملُ على حالهما. دالّةٌ خارج المكوّن: الشروطُ تُقرأ جدولاً لا سطراً واحداً.
  */
-type Row = { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" };
+/** D-1328 — `state`: صفُّ حالٍ لا فعل (لا يُضغط ولا يُظلَّل) · `dim`: فعلٌ مطفأٌ يُضغط ليقول سببَه */
+type Row = { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" | "accent"; state?: boolean; dim?: boolean };
 function libraryRows(item: CardItem, t: ReturnType<typeof useApp>["t"]): Row[] {
   const review: Row = { key: "review", icon: "star", label: t.reviewSectionTitle };
   const all: Row = { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" };
@@ -85,7 +87,7 @@ export function HoldMenu({
   onAction,
   onClose,
   variant = "library",
-  inList = false,
+  toWatch = "none",
 }: {
   item: CardItem;
   anchor: Anchor;
@@ -94,8 +96,8 @@ export function HoldMenu({
   onClose: () => void;
   /** D-978 — صفوفُ المكتبة (الافتراض) أم صفوفُ «اكتشف» */
   variant?: HoldVariant;
-  /** «اكتشف» وحدَه: هل العملُ في «للمشاهدة» الآن؟ يقلب الصفَّ الأوّل */
-  inList?: boolean;
+  /** «اكتشف» وأخواتُها: حالُ العمل من «للمشاهدة» — تقلب الصفّين الأوّلين (D-1328) */
+  toWatch?: ToWatchState;
 }) {
   const { t, tokens } = useApp();
   const { width: W, height: H } = useWindowDimensions();
@@ -104,8 +106,17 @@ export function HoldMenu({
   const rows: Row[] =
     variant === "discover" || variant === "list" || variant === "mylist"
       ? [
-          { key: "towatch", icon: inList ? "check-line" : "plus", label: inList ? t.quickAddRemove : t.quickAddLabel },
-          { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
+          /* D-1328 — الصفُّ الأوّل حالُ العمل: لم يُضَف «＋ أضف» · في «للمشاهدة» «− أزِل» (لا ✓ — الإزالةُ طرح) ·
+             بدأته «▶ تشاهده الآن» حالاً لا فعلاً (إزالتُه من المكتبة وحدها) · أكملته «أضف» مطفأً يقول سببَه.
+             والثاني «شاهدته كلّه» يصير حالاً خضراءَ بعد الإكمال — لا فعلَ يُعاد */
+          toWatch === "saved"
+            ? { key: "towatch", icon: "minus", label: t.quickAddRemove }
+            : toWatch === "watching"
+            ? { key: "towatch", icon: "play", label: t.holdWatchingNow, tone: "accent", state: true }
+            : { key: "towatch", icon: "plus", label: t.quickAddLabel, dim: toWatch === "completed" },
+          toWatch === "completed"
+            ? { key: "all", icon: "check-line", label: t.holdWatchedAll, tone: "success", state: true }
+            : { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
           { key: "review", icon: "star", label: t.reviewSectionTitle },
           /* D-1036 — `list`: صفوفُ «اكتشف» **بلا «غير مهتمّ»** — صاحبُ القائمة اختار العملَ، وإخفاؤه من
              قائمة غيري ليس لي */
@@ -164,8 +175,9 @@ export function HoldMenu({
         }}
       >
         {rows.map((r) => {
-          const color = r.tone === "success" ? tokens.success : r.tone === "danger" ? tokens.error : tokens.muted;
-          const disabled = busy && r.key !== "review";
+          const color =
+            r.tone === "success" ? tokens.success : r.tone === "danger" ? tokens.error : r.tone === "accent" ? tokens.accent : tokens.muted;
+          const disabled = r.state || (busy && r.key !== "review");
           return (
             <Pressable
               key={r.key}
@@ -179,12 +191,12 @@ export function HoldMenu({
                 paddingVertical: 10,
                 minHeight: ROW_H,
                 backgroundColor: pressed ? tokens.surface2 : "transparent",
-                opacity: disabled ? 0.5 : 1,
+                opacity: r.dim || (disabled && !r.state) ? 0.5 : 1,
                 borderRadius: radius.sm,
               })}
             >
               <Icon name={r.icon} size={18} color={color} />
-              <Text size={14} numberOfLines={1}>{r.label}</Text>
+              <Text size={14} numberOfLines={1} color={r.state ? color : undefined}>{r.label}</Text>
             </Pressable>
           );
         })}

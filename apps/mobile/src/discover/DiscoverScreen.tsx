@@ -17,7 +17,7 @@ import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import { posterFor } from "../poster";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
-import { useCardActs } from "../cardActs";
+import { toWatchState, useCardActs } from "../cardActs";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
 import { ListsRails, listsQuery } from "./ListsRails";
@@ -336,7 +336,7 @@ export function DiscoverScreen() {
     },
     [t, setToast],
   );
-  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError, onDismiss });
+  const act = useCardActs<CuratedCard>(store, { onReview: openCard, onError, onDismiss, say: setToast });
   /** بطاقةُ القائمة بشكل `CardItem` — الحقولُ التي تقرؤها `HoldMenu` وحدَها؛ تُحسب لحظةَ الفتح */
   const heldItemOf = useCallback(
     (c: CuratedCard): CardItem => {
@@ -345,7 +345,7 @@ export function DiscoverScreen() {
     },
     [store],
   );
-  const inListOf = useCallback((c: CuratedCard) => !!store.mark(`${c.kind}-${c.id}`), [store]);
+  const toWatchOf = useCallback((c: CuratedCard) => toWatchState(store.mark(`${c.kind}-${c.id}`)), [store]);
 
   /* D-953 → ⚖️ D-961: السحبُ صار انزلاقاً — الإيماءةُ والعتباتُ انتقلت إلى
      `TabSlide` (مصنعٌ واحدٌ تقرؤه المكتبةُ و«اكتشف»)، **والترتيبُ هنا لأنّه
@@ -559,7 +559,7 @@ export function DiscoverScreen() {
           onClose={() => setSheet(false)}
         />
       ) : null}
-      <HoldHost hostRef={holdHost} variant="discover" toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
+      <HoldHost hostRef={holdHost} variant="discover" toItem={heldItemOf} toWatchOf={toWatchOf} onAction={act} onHeld={onHeld} />
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />

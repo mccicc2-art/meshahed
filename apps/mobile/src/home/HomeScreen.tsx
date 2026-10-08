@@ -12,7 +12,7 @@ import { File, Paths } from "expo-file-system";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Loading, Text } from "../ui";
+import { Loading, Text, type ToastTone } from "../ui";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { PosterCard, type CardAnchor, type CardItem } from "../library/PosterCard";
@@ -23,7 +23,7 @@ import { tourStore } from "../tour/store";
 import { PRIVACY_HINT } from "@/core/privacyNotice";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
-import { useCardActs } from "../cardActs";
+import { toWatchState, useCardActs } from "../cardActs";
 import type { HoldAction } from "../library/HoldMenu";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
@@ -384,7 +384,9 @@ export function HomeScreen() {
     },
     [openTitle, invalidateHome, onError, t],
   );
-  const actDiscBase = useCardActs<CardItem & { poster_path: string | null }>(store, { onReview: (c) => openTitle(c.kind, c.id), onError });
+  /* D-1328 — إشعارُ «للمشاهدة» من الضغط المطوّل يمرّ بمضيف الرئيسيّة نفسِه */
+  const sayHome = useCallback((text: string, tone: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
+  const actDiscBase = useCardActs<CardItem & { poster_path: string | null }>(store, { onReview: (c) => openTitle(c.kind, c.id), onError, say: sayHome });
   const actDisc = useCallback(
     async (a: HoldAction, item: CardItem) => {
       const ok = await actDiscBase(a, { ...item, poster_path: item.posterPath });
@@ -396,7 +398,7 @@ export function HomeScreen() {
   const holdLibOpen = useCallback((item: CardItem, anchor: CardAnchor) => holdLib.current?.open(item, anchor), []);
   const holdDiscOpen = useCallback((item: CardItem, anchor: CardAnchor) => holdDisc.current?.open(item, anchor), []);
   const asItemSame = useCallback((item: CardItem) => item, []);
-  const inListOf = useCallback((item: CardItem) => !!store.mark(`${item.kind}-${item.id}`), [store]);
+  const toWatchOf = useCallback((item: CardItem) => toWatchState(store.mark(`${item.kind}-${item.id}`)), [store]);
 
   /* ——— الأوراق: ترتيبُ الأقسام · أولويّةُ صفٍّ · «الكلّ» ——— */
   const [orderSheet, setOrderSheet] = useState(false);
@@ -740,7 +742,7 @@ export function HomeScreen() {
         </ScrollView>
       )}
       <HoldHost hostRef={holdLib} variant="library" toItem={asItemSame} onAction={actLib} />
-      <HoldHost hostRef={holdDisc} variant="discover" toItem={asItemSame} inListOf={inListOf} onAction={actDisc} />
+      <HoldHost hostRef={holdDisc} variant="discover" toItem={asItemSame} toWatchOf={toWatchOf} onAction={actDisc} />
       {orderSheet && d ? <SectionOrderSheet order={d.prefs.order} onClose={() => setOrderSheet(false)} onDone={(next) => void saveOrder(next)} /> : null}
       {queueRow && d ? (
         <ReorderSheet

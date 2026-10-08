@@ -15,7 +15,7 @@ import { num } from "@/core/i18n";
 import { RailCard, RAIL_CARD_W } from "../discover/RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
-import { marksOf, useCardActs } from "../cardActs";
+import { marksOf, toWatchState, useCardActs } from "../cardActs";
 import { ListReviewSheet, type MyReview } from "../library/ListReviewSheet";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Chip } from "../library/Chip";
@@ -131,7 +131,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   const holdHost = useRef<HoldHostRef<CuratedCard>>(null);
   const hold = useCallback((c: CuratedCard, anchor: CardAnchor) => holdHost.current?.open(c, anchor), []);
   const onHeld = useCallback((c: CuratedCard | null) => store.setHeld(c ? `${c.kind}-${c.id}` : null), [store]);
-  const cardAct = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail });
+  const cardAct = useCardActs<CuratedCard>(store, { onReview: openCard, onError: fail, say });
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
@@ -174,9 +174,11 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
           setSheet(null);
           /* الإعلانُ يفتح شريطَ الحال والآراء — وأعدادُها عند الخادم */
           void q.refetch();
+          /* D-1328 — الاسمُ الجديد يظهر في ورقة «إضافة إلى قائمة» بكلِّ صفحة عملٍ مفتوحة */
+          void qc.invalidateQueries({ queryKey: ["title:extras"] });
         },
       ),
-    [run, id, q],
+    [run, id, q, qc],
   );
   const saveOrder = useCallback(
     (keys: string[]) =>
@@ -227,6 +229,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     () =>
       void run(null, () => write<{ done: true }>("/api/v1/lists/delete", { listId: id } satisfies ListDeleteBody), () => {
         qc.removeQueries({ queryKey: qk.list(id) });
+        /* D-1328 — القائمةُ المحذوفة لا تبقى صفّاً في ورقة «إضافة إلى قائمة» */
+        void qc.invalidateQueries({ queryKey: ["title:extras"] });
         back();
       }),
     [run, id, qc, back],
@@ -276,7 +280,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     },
     [store],
   );
-  const inListOf = useCallback((c: CuratedCard) => !!store.mark(`${c.kind}-${c.id}`), [store]);
+  const toWatchOf = useCallback((c: CuratedCard) => toWatchState(store.mark(`${c.kind}-${c.id}`)), [store]);
 
   /* الحفظُ تفاؤليّاً في كاش الصفحة — القلبُ هو الحفظ (D-324) وعدُّه يتبع الضغطة في مكانه */
   const [saving, setSaving] = useState(false);
@@ -496,7 +500,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
           />
         ) : null}
         {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet("edit")} /> : null}
-        <HoldHost hostRef={holdHost} variant={d?.mine && !d.smart ? "mylist" : "list"} toItem={heldItemOf} inListOf={inListOf} onAction={act} onHeld={onHeld} />
+        <HoldHost hostRef={holdHost} variant={d?.mine && !d.smart ? "mylist" : "list"} toItem={heldItemOf} toWatchOf={toWatchOf} onAction={act} onHeld={onHeld} />
         {reviewOpen && d ? <ListReviewSheet listId={id} listName={d.name} mine={d.my_review ? { rating: d.my_review.rating, body: d.my_review.body, has_spoiler: d.my_review.has_spoiler } : null} onClose={() => setReviewOpen(false)} onSaved={onReviewSaved} onError={fail} /> : null}
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 16} />
       </View>
