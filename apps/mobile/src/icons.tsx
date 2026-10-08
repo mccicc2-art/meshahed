@@ -87,6 +87,8 @@ const ICONS = {
   /* 🆕 D-1134 — مبدّلُ العرض في الرئيسيّة كالويب (`HomeViewSwitch`: `grid` ⇄ `list`)، cairosvg · ٧٢px · أبيض،
      خطٌّ ٢ كما يمرّره الويب */
   grid: require("../assets/icons/grid.png"),
+  /* 🆕 D-1321 — «مزدوج» من `Icon.tsx` بالطريقة نفسِها */
+  "view-mixed": require("../assets/icons/view-mixed.png"),
   /* 🆕 11-M · M2 — دبّوسُ غرفة «الأعمال» (`RoomPinButton`: خطٌّ ٢٫٢ كما يمرّره الويب)، cairosvg · ٧٢px · أبيض.
      ⚠️ **صورةُ بياناتٍ لا ملفّ** — والحجّةُ سببُ الطريق لا الذوق: الدفعُ عبر `push_files` نصٌّ وحده، فملفٌّ ثنائيٌّ
      لا يعبر؛ و`expo-image` يقرأ `data:` ويلوّنها بـ`tintColor` كأخواتها — الرسمُ نفسُه والحجمُ ١٫٥KB. */

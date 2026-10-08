@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
@@ -12,7 +12,9 @@ import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
 import { ArrangeSheet } from "../home/SectionOrderSheet";
 import type { ToastHostRef } from "../HoldHost";
-import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult, TemplatesBody } from "../contracts";
+import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult, HomePayload, SettingsPayload, TemplatesBody } from "../contracts";
+import { HOME_KEY } from "../home/useHome";
+import { CustomizePreview, type PreviewWho } from "./CustomizePreview";
 import { SettingsScreen, Group, Row, Toggle, Field, RowsSkeleton } from "./ui";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 import {
@@ -25,7 +27,9 @@ import {
   headerStatMeta,
   homeSectionMeta,
   sanitizeHomePrefs,
+  touchesPaidHomePrefs,
   type HomePrefs,
+  type HomeView,
 } from "@/core/homePrefs";
 import {
   DEFAULT_PROFILE_PREFS,
@@ -35,6 +39,7 @@ import {
   profileSectionMeta,
   profileTabMeta,
   sanitizeProfilePrefs,
+  touchesPaidProfilePrefs,
   type HideableProfileTab,
   type ProfilePrefs,
 } from "@/core/profilePrefs";
@@ -62,19 +67,25 @@ import {
  *    هنا كلُّ تبويبٍ يحفظ مسودّتَه، و«حفظ» في الترويسة يرسل ما تغيّر منهما في نداءٍ واحد.
  * ٢) **«حفظ» في الترويسة وورقةُ «تعديلاتٌ لم تُحفظ» عند الرجوع** — نمطُ «تعديل الملفّ» الأصليّ (D-1106)
  *    بدل شريط الحفظ العائم.
- * ⚠️ **والمعاينةُ المصغّرة (`CustomizePreview`) لم تُنقل**: رسمٌ مصغّرٌ للرئيسيّة بلا فعل — الترتيبُ يُرى في
- * ورقته، والنتيجةُ في الرئيسيّة نفسِها بعد الحفظ. **دَينٌ معلَنٌ لا منسيّ.**
- * 🔒 **بلس** يحكمه الخادم (`plus` في الحمولة و`needsPlus` في الردّ) — غيرُ المشترك يجرّب ويرى، و«حفظ» يفتح
- * صفحةَ بلس كما تفعل ورقةُ الترتيب في الرئيسيّة.
+ * 🆕 D-1322 — **والمعاينةُ الحيّة نُقلت** (`CustomizePreview` الأصليّة، دَينُ D-1112 يُسدَّد بطلب أحمد ٨ أكتوبر):
+ * مثبّتةٌ تحت التبويبين فوق التمرير — في الويب تنزلق مع الصفحة، وهنا كانت ستغيب والإصبعُ على «حجم الملصق» —
+ * وتُطوى بضغطة، وتبدأ مطويّةً على الشاشات القصيرة.
+ * 🔒 **بلس** يحكمه الخادم (`plus` في الحمولة و`needsPlus` في الردّ) — **غيرُ المشترك يجرّب ويرى في المعاينة**،
+ * و«حفظ» يفتح صفحةَ بلس **حين يمسّ خياراً مدفوعاً فقط**: وضعُ العرض مجّانيٌّ (D-791) فيُحفظ له (حكمُ أحمد ٨ أكتوبر).
  */
 const KEY = ["me:customize"] as const;
 type Tab = "home" | "profile";
+/** طيُّ المعاينة اختيارُ جلسةٍ — يبقى بين فتحتَين للشاشة ولا يُكتب في مكان */
+let previewChoice: boolean | null = null;
+const SHORT_SCREEN = 640;
 
 export function CustomizeScreen() {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
+  const { height: winH } = useWindowDimensions();
+  const [previewOpen, setPreviewOpen] = useState(() => previewChoice ?? winH >= SHORT_SCREEN);
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<CustomizePayload>("/api/v1/me/customize")).data, staleTime: 0 });
   const d = q.data;
 
@@ -102,8 +113,10 @@ export function CustomizeScreen() {
   const dirty = homeDirty || profileDirty;
 
   async function save() {
-    if (!d || !home || !profile || !dirty || saving) return;
-    if (!d.plus) return openWeb("/plus");
+    if (!d || !home || !profile || !base || !dirty || saving) return;
+    /* D-1322 — البوّابةُ على الحقل المدفوع لا على الحفظ كلِّه؛ والخادمُ يحكم بالقاعدة نفسِها (`touchesPaid*`) */
+    const paid = (homeDirty && touchesPaidHomePrefs(base.home, home)) || (profileDirty && touchesPaidProfilePrefs(base.profile, profile));
+    if (!d.plus && paid) return openWeb("/plus");
     setError(null);
     setSaving(true);
     try {
@@ -115,8 +128,11 @@ export function CustomizeScreen() {
       setBase({ home: out.data.home, profile: out.data.profile });
       setHome(out.data.home);
       setProfile(out.data.profile);
+      /* D-1323 — الرئيسيّةُ ترسم المحفوظَ فوراً (وسمُ `home` يعيد جلبَها بعده): العائدُ منها يرى ما اختار بلا انتظار */
+      const saved = out.data.home;
+      queryClient.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: saved } : prev));
       haptic.success();
-      toast.current?.say(t.setSaved);
+      toast.current?.say(t.setSaved, undefined, undefined, "success");
     } catch (e) {
       setError(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort));
     } finally {
@@ -176,11 +192,48 @@ export function CustomizeScreen() {
     </View>
   );
 
+  const viewLabel: Record<HomeView, string> = { visual: t.viewVisual, compact: t.viewCompact, mixed: t.viewMixed };
+  /* وجهُ المعاينة من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — لا نداءَ لأجل رسمٍ مصغّر */
+  const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
+  const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;
+  const who: PreviewWho = {
+    name: head?.display_name ?? account?.nickname ?? account?.username ?? "",
+    username: head?.username ?? account?.username ?? null,
+    avatarUrl: head?.avatar_url ?? account?.avatar_url ?? null,
+    avatarPos: head?.avatar_pos ?? account?.avatar_pos ?? null,
+    coverUrl: head?.cover_url ?? null,
+    coverPos: head?.cover_pos ?? null,
+    followers: head && !head.hide_follow_lists ? head.followers : null,
+    following: head && !head.hide_follow_lists ? head.following : null,
+  };
+  const togglePreview = () => {
+    haptic.pick();
+    previewChoice = !previewOpen;
+    setPreviewOpen(previewChoice);
+  };
   const statMeta = headerStatMeta(t);
   const visibleTabs = orderedProfileTabs(profile).filter((k) => !profile.hiddenTabs.includes(k));
 
   return (
-    <SettingsScreen title={t.custTitle} toast={toast} onBack={back} action={saveAction} overlay={
+    <SettingsScreen
+      title={t.custTitle}
+      toast={toast}
+      onBack={back}
+      action={saveAction}
+      pinned={
+        <>
+          <Segmented
+            items={[
+              { id: "home", label: t.custTabHome },
+              { id: "profile", label: t.custTabProfile },
+            ]}
+            value={tab}
+            onChange={(v) => setTab(v as Tab)}
+          />
+          <CustomizePreview kind={tab} who={who} home={home} profile={profile} open={previewOpen} onToggle={togglePreview} />
+        </>
+      }
+      overlay={
       <>
         {overlay}
         {sheet === "sections" ? (
@@ -207,15 +260,6 @@ export function CustomizeScreen() {
         ) : null}
       </>
     }>
-      <Segmented
-        items={[
-          { id: "home", label: t.custTabHome },
-          { id: "profile", label: t.custTabProfile },
-        ]}
-        value={tab}
-        onChange={(v) => setTab(v as Tab)}
-      />
-
       <Templates
         key={tab}
         surface={tab}
@@ -234,13 +278,14 @@ export function CustomizeScreen() {
         <>
           <Group label={t.custHeaderSection}>
             <Toggle icon="chart" label={t.custStatsShort} checked={home.stats} onChange={() => setHome({ ...home, stats: !home.stats })} />
-            <Row icon="chart" title={t.custStatsCard} value={t.custShownN(home.statsPick.length)} onPress={() => setSheet("stats")} />
+            {/* D-1323 — خاناتُ البطاقة لا تُعرض والبطاقةُ مخفيّة — كما يفعل تبويبُ «الملفّ» بـ«زرّ الإحصائيات» (D-1130) */}
+            {home.stats ? <Row icon="chart" title={t.custStatsCard} value={t.custShownN(home.statsPick.length)} onPress={() => setSheet("stats")} /> : null}
           </Group>
           <Group label={t.custSectionsTitle}>
             <Row icon="grip" title={t.custArrange} subtitle={t.custSectionsHint} value={t.custShownN(home.order.length)} onPress={() => setSheet("sections")} />
           </Group>
           <Group label={t.custDisplay}>
-            {choice(t.custHomeView, HOME_VIEWS, home.view, { visual: t.viewVisual, compact: t.viewCompact }, (view) => setHome({ ...home, view }))}
+            {choice(t.custHomeView, HOME_VIEWS, home.view, viewLabel, (view) => setHome({ ...home, view }))}
             {choice(t.custLayout, CARD_COUNTS, home.cards, cardsLabel, (cards) => setHome({ ...home, cards }))}
             {choice(t.custPosterSize, DENSITIES, home.density, posterLabel, (density) => setHome({ ...home, density }))}
           </Group>
@@ -253,7 +298,8 @@ export function CustomizeScreen() {
             {profile.stats ? <Toggle icon="chart" label={t.custStatsLink} hint={t.custStatsLinkHint} checked={profile.statsLink} onChange={() => setProfile({ ...profile, statsLink: !profile.statsLink })} /> : null}
           </Group>
           <Group label={t.custTabsTitle}>
-            <Row icon="grip" title={t.custArrange} subtitle={t.custSectionsHint} value={t.custShownN(visibleTabs.length)} onPress={() => setSheet("tabs")} />
+            {/* D-1323 — «رتّب التبويبات»: الصفُّ تحته يحمل «رتّب الأقسام» لفعلٍ آخر */}
+            <Row icon="grip" title={t.custArrangeTabs} subtitle={t.custSectionsHint} value={t.custShownN(visibleTabs.length)} onPress={() => setSheet("tabs")} />
           </Group>
           <View style={{ gap: 6 }}>
             <Group label={t.custOverviewTab}>
@@ -280,7 +326,14 @@ export function CustomizeScreen() {
           icon="repeat"
           title={t.custResetShort}
           subtitle={t.custResetHint}
-          onPress={() => (tab === "home" ? setHome({ ...DEFAULT_HOME_PREFS }) : setProfile({ ...DEFAULT_PROFILE_PREFS }))}
+          /* D-1323 — فعلٌ فوريٌّ لا باب: بلا سهم، وإشعارٌ يقول ما حدث (كان «حفظ» يصفرّ وحدَه دليلاً) */
+          trailing={null}
+          onPress={() => {
+            haptic.pick();
+            if (tab === "home") setHome({ ...DEFAULT_HOME_PREFS });
+            else setProfile({ ...DEFAULT_PROFILE_PREFS });
+            toast.current?.say(t.custResetDraft, undefined, undefined, "info");
+          }}
         />
       </Group>
     </SettingsScreen>

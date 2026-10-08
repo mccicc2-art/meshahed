@@ -83,7 +83,7 @@ export function ContentScreen() {
     const out = await saveSetting<ContentPrefs>("/api/v1/me/settings/content-prefs", empty satisfies ContentPrefsBody, (x) => ({ ...x, content: { ...x.content, prefs: empty } }));
     if (!out) return fail();
     haptic.success();
-    toast.current?.say(t.cpResetDone);
+    toast.current?.say(t.cpResetDone, undefined, undefined, "success");
   }
 
   const genreOptions = (exclude: number[]) => BROWSE_GENRES.filter((g) => !exclude.includes(idOf(g))).map((g) => ({ key: String(idOf(g)), label: browseGenreName(g, loc) }));

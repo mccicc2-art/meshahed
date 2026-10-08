@@ -33,9 +33,12 @@ export function SettingsScreen({
   toast,
   action,
   overlay,
+  pinned,
 }: {
   title: string;
   children: React.ReactNode;
+  /** 🆕 D-1322 — ما يثبت تحت الترويسة فوق التمرير (تبويبا «التخصيص» ومعاينتُه): الخياراتُ تمرّ تحته وهو تحت العين */
+  pinned?: React.ReactNode;
   onBack?: () => void;
   toast?: React.Ref<ToastHostRef>;
   /** 🆕 D-1106 — فعلُ الترويسة في طرفها الآخر («حفظ» في تعديل الملف — `SettingsPageLayout action`) */
@@ -71,6 +74,7 @@ export function SettingsScreen({
         </Pressable>
         {action ? <View style={{ position: "absolute", end: PAGE_PAD - 4, top: 0, bottom: 0, justifyContent: "center" }}>{action}</View> : null}
       </View>
+      {pinned ? <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 10, gap: 10 }}>{pinned}</View> : null}
       <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: insets.bottom + 24, gap: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>

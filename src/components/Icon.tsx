@@ -294,6 +294,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="15.8" cy="10.2" r="1.1" />
     </>
   ),
+  /* 🆕 D-1321 — «مزدوج»: سطرٌ من `list` فوق ومربّعان من `grid` تحت (رسمُ أحمد: «من تحت مربّعين وفوق خطّ»، بنقطته) */
+  "view-mixed": (
+    <>
+      <path d="M8 6.5h12M4 6.5h.01" />
+      <rect x="4" y="11.5" width="7" height="8.5" rx="1.8" />
+      <rect x="13" y="11.5" width="7" height="8.5" rx="1.8" />
+    </>
+  ),
   grid: (
     <>
       <rect x="4" y="4" width="7" height="7" rx="1.8" />

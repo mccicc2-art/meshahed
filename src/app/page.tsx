@@ -622,6 +622,7 @@ async function HomeBody({
             toWatchRow.length > 0 ? (
               <ByHomeView
                 key="towatch"
+                section="towatch"
                 visual={toWatchSection("visual")}
                 compact={toWatchSection("compact")}
               />
@@ -1233,7 +1234,7 @@ async function ContinueSection({
     );
   };
 
-  return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
+  return <ByHomeView section="continue" visual={rail("visual")} compact={rail("compact")} />;
 }
 
 /**
@@ -1341,7 +1342,7 @@ async function UpcomingSection({
     </Section>
   );
 
-  return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
+  return <ByHomeView section="upcoming" visual={rail("visual")} compact={rail("compact")} />;
 }
 
 /**

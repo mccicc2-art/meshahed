@@ -2,8 +2,8 @@ import type { NextRequest } from "next/server";
 import { getProfile } from "@/lib/data";
 import { updateProfile } from "@/lib/actions";
 import { isPlus } from "@/core/plan";
-import { sanitizeHomePrefs } from "@/core/homePrefs";
-import { sanitizeProfilePrefs } from "@/core/profilePrefs";
+import { sanitizeHomePrefs, touchesPaidHomePrefs } from "@/core/homePrefs";
+import { sanitizeProfilePrefs, touchesPaidProfilePrefs } from "@/core/profilePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -49,7 +49,15 @@ export async function POST(req: NextRequest) {
     }
     if (!b || typeof b !== "object" || (b.home === undefined && b.profile === undefined)) return fail("invalid_input");
     const p = await getProfile();
-    if (!isPlus(p)) return ok({ data: null, needsPlus: true });
+    /* 🆕 D-1322 — **البوّابةُ على الحقل المدفوع لا على الطلب كلِّه** (حكمُ أحمد ٨ أكتوبر): غيرُ المشترك يجرّب في
+       المعاينة، وما هو مجّانيٌّ (وضعُ العرض) يُحفظ له؛ و`needsPlus` يعود **قبل الكتابة** حين يمسّ الوارِدُ حقلاً
+       يبيعه بلس — فلا يُعلَن نجاحٌ وقد أُسقط نصفُ ما اختير (D-217). `keepPaid*` في `updateProfile` حارسٌ ثانٍ. */
+    if (!isPlus(p)) {
+      const paid =
+        (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs), sanitizeHomePrefs(b.home))) ||
+        (b.profile !== undefined && touchesPaidProfilePrefs(sanitizeProfilePrefs(p?.profile_prefs), sanitizeProfilePrefs(b.profile)));
+      if (paid) return ok({ data: null, needsPlus: true });
+    }
     await updateProfile({
       nickname: p?.nickname ?? "",
       avatarUrl: p?.avatar_url ?? null,

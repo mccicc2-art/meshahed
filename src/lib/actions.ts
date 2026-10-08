@@ -28,6 +28,7 @@ import { RAILS_COOKIE, serializeHiddenRails } from "@/core/railPrefs";
 import {
   keepPaidHomePrefs,
   sanitizeHomePrefs,
+  sanitizeHomeView,
   type HomePrefs,
   type HomeView,
 } from "@/core/homePrefs";
@@ -414,7 +415,8 @@ export async function updateProfile(input: {
  */
 export async function setHomeView(value: string) {
   const { supabase, user } = await requireUser("homeview", 20, 10_000);
-  const view: HomeView = value === "compact" ? "compact" : "visual";
+  /* 🆕 D-1321 — ثلاثةُ أوضاعٍ لا اثنان: كان كلُّ ما ليس «مختصراً» يُحفظ «بصريّاً» فيبتلع «مزدوج» */
+  const view: HomeView = sanitizeHomeView(value);
 
   const { data } = await supabase
     .from("profiles")

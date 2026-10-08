@@ -179,6 +179,8 @@ const ar = {
   greetNeutral: "أهلاً",
   viewVisual: "بصري",
   viewCompact: "مختصر",
+  /* 🆕 D-1321 — الوضعُ الثالث: «أكمل المشاهدة» مختصرٌ وما عداه بصريّ */
+  viewMixed: "مزدوج",
   viewSwitchAria: "طريقة عرض الرئيسية",
   epsCount: (n: number) => `${n} حلقة`,
   episodeNo: (n: number) => `الحلقة ${n}`,
@@ -1427,9 +1429,12 @@ const ar = {
   custProfileEmpty: "أخفيتَ كل الأقسام — لن يرى الزائر إلا ترويستك.",
   /* عددُ البطاقات (D-152) — «كامل» أوّلاً في الذهن وإن كان آخر الخانات:
      هو الافتراضي، والدرجتان الأخريان **تقصّان** منه */
-  cardsCompact: "مختصر",
-  cardsMedium: "متوسط",
-  cardsFull: "كامل",
+  /* ⚖️ 🆕 D-1323 — **الأسماءُ صارت الأرقامَ نفسَها** (مراجعةُ «التخصيص» ٨ أكتوبر، تسجيلُ أحمد: بدّل «مختصر» و«متوسط»
+     فلم يرَ فرقاً): الخيارُ سقفُ بطاقات الصفّ، و«مختصر» كانت تتكرّر تحت «عرض الرئيسية» بمعنًى آخر.
+     ⚠️ الرقمان هما `CAP` في `cardCount.ts` — من غيّر أحدَهما غيّر الآخر. */
+  cardsCompact: "10",
+  cardsMedium: "16",
+  cardsFull: "الكل",
   /* «مفضّلاتي» قسماً في البروفايل (D-152) */
   profileFavoritesRail: "مفضّلاتي",
 
@@ -1457,17 +1462,24 @@ const ar = {
   /* 🆕 صفوفُ الترتيب (D-555) — السجلُّ خرج إلى ورقةٍ فصار له صفٌّ يفتحه */
   custArrange: "رتّب الأقسام",
   custArrangeStats: "رتّب الأرقام",
+  /* D-1323 — صفُّ ترتيب التبويبات كان يحمل «رتّب الأقسام» فيظهر الاسمُ مرّتين لفعلين */
+  custArrangeTabs: "رتّب التبويبات",
+  /* D-1322 — المعاينةُ الحيّة في التطبيق */
+  custPreviewVisitor: "كما يراها زائرك",
+  custPerRow: (n: number) => `${n} في الصف`,
+  custResetDraft: "أُعيد إلى الافتراضيّ — لم يُحفظ بعد",
   custShownN: (n: number) => `${n} ظاهرة`,
   custDisplay: "العرض",
-  custLayout: "التنسيق",
+  custLayout: "عدد البطاقات في الصف",
   custPosterSize: "حجم الملصق",
   custStatsShort: "الأرقام",
   /* D-1130 */
   custStatsLink: "زر الإحصائيات",
   custStatsLinkHint: "يظهر في آخر بطاقة الأرقام",
-  custPosterS: "ملصقٌ صغير",
-  custPosterM: "ملصقٌ متوسّط",
-  custPosterL: "ملصقٌ كبير",
+  /* D-1323 — العنوانُ فوقها يقول «حجم الملصق»؛ تكرارُ الكلمة في كلِّ رقاقةٍ حشو */
+  custPosterS: "صغير",
+  custPosterM: "متوسّط",
+  custPosterL: "كبير",
 
   profileTabOverview: "نظرة عامة",
   /* 🆕 تصميمُ البروفايل (D-561) */
@@ -2507,6 +2519,7 @@ const en: Dict = {
   greetNeutral: "Welcome",
   viewVisual: "Visual",
   viewCompact: "Compact",
+  viewMixed: "Mixed",
   viewSwitchAria: "Home layout",
   epsCount: (n: number) => `${n} episodes`,
   episodeNo: (n: number) => `Episode ${n}`,
@@ -3311,9 +3324,9 @@ const en: Dict = {
   custProfileHeader: "Top of the profile",
   custProfileEmpty:
     "You've hidden every section — visitors will see your header only.",
-  cardsCompact: "Compact",
-  cardsMedium: "Medium",
-  cardsFull: "Full",
+  cardsCompact: "10",
+  cardsMedium: "16",
+  cardsFull: "All",
   profileFavoritesRail: "My favourites",
 
   custReorder: "Drag to reorder",
@@ -3333,16 +3346,20 @@ const en: Dict = {
   custListsTab: "Inside the Lists tab",
   custArrange: "Arrange sections",
   custArrangeStats: "Arrange statistics",
+  custArrangeTabs: "Arrange tabs",
+  custPreviewVisitor: "As visitors see it",
+  custPerRow: (n: number) => `${n} per row`,
+  custResetDraft: "Back to defaults — not saved yet",
   custShownN: (n: number) => `${n} shown`,
   custDisplay: "Display",
-  custLayout: "Layout",
+  custLayout: "Cards per row",
   custPosterSize: "Poster size",
   custStatsShort: "Statistics",
   custStatsLink: "Stats button",
   custStatsLinkHint: "Shown at the end of the statistics card",
-  custPosterS: "Small poster",
-  custPosterM: "Medium poster",
-  custPosterL: "Large poster",
+  custPosterS: "Small",
+  custPosterM: "Medium",
+  custPosterL: "Large",
 
   profileTabOverview: "Overview",
   profileTabFavorites: "Favorites",

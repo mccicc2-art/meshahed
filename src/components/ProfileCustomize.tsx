@@ -15,6 +15,7 @@ import {
   sanitizeProfilePrefs,
   type HideableProfileTab,
   type ProfilePrefs,
+  touchesPaidProfilePrefs,
 } from "@/core/profilePrefs";
 import { Alert } from "./ui/Alert";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
@@ -112,7 +113,9 @@ export function ProfileCustomize({
     /* ⚖️ **القفلُ عند الحفظ لا عند الرسم** (D-633) — الحجّةُ كاملةً في
        `HomeCustomize`: المعاينةُ تُباع، والمنعُ من رؤيتها يُخرج الزائرَ
        بلا معرفةِ ما فاته. */
-    if (!plus) {
+    /* 🆕 D-1322 — **والبوّابةُ على الحقل المدفوع لا على الحفظ كلِّه** (حكمُ أحمد ٨ أكتوبر): ما هو مجّانيٌّ في
+       اللوح يُحفظ لغير المشترك، وتُفتح البوّابةُ حين يمسّ ما يبيعه بلس — والخادمُ يحكم بالدالّة نفسِها. */
+    if (!plus && touchesPaidProfilePrefs(base, prefs)) {
       openPlusGate();
       return;
     }
@@ -227,7 +230,8 @@ export function ProfileCustomize({
             المفاتيح — **ومن أخفى الكلَّ صفحتُه بلا صفٍّ ونصُّها صريح** (D-667). */}
         <SettingsRow
           icon="grip"
-          title={t.custArrange}
+          /* D-1323 — «رتّب التبويبات» لا «رتّب الأقسام»: الصفُّ تحته يحمل ذاك الاسم لفعلٍ آخر */
+          title={t.custArrangeTabs}
           subtitle={t.custSectionsHint}
           value={t.custShownN(visibleTabs.length)}
           onClick={() => setArrangeTabs(true)}

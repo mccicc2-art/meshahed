@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { HomeView } from "@/core/homePrefs";
+import { sectionView, type HomeView, type ViewSection } from "@/core/homePrefs";
 
 /**
  * **وضعُ العرض حالةُ عميلٍ لا رحلةُ خادم** (D-434 يُنفَّذ أخيراً بحرفه).
@@ -99,12 +99,15 @@ export function useHomeView(): HomeViewState {
  * يختار. **والفرعُ غيرُ المختار لا يُركَّب** فلا صورةَ تُجلب له.
  */
 export function ByHomeView({
+  section,
   visual,
   compact,
 }: {
+  /** 🆕 D-1321 — القسمُ يسمّي نفسَه: «مزدوج» يرسم كلَّ قسمٍ بشكله، و`sectionView` وحدَها تعرف أيَّهما */
+  section: ViewSection;
   visual: ReactNode;
   compact: ReactNode;
 }) {
   const { view } = useHomeView();
-  return <>{view === "compact" ? compact : visual}</>;
+  return <>{sectionView(view, section) === "compact" ? compact : visual}</>;
 }

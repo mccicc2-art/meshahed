@@ -235,8 +235,16 @@ const styles = StyleSheet.create({
  * 🆕 D-1047 (F5) — `action` اختياريّ: **«تراجع» داخل الإشعار الواحد** لا إشعارٌ ثانٍ (مضيفُ الإشعار واحد). بلا فعلٍ
  * يبقى كما كان حرفاً ولا يلتقط لمساً؛ وبفعلٍ تصير حبّتُه وحدَها قابلةً للضغط (`box-none` حولها).
  */
-export function Toast({ text, bottom, action }: { text: string; bottom: number; action?: { label: string; onPress: () => void } }) {
+/**
+ * 🆕 D-1323 — **`tone` كنغمات `ToastHost` (الويب) الثلاث** (مراجعةُ «التخصيص» ٨ أكتوبر: «حُفظت التغييرات» كانت تُرسم
+ * بلون الخطأ). الإشعارُ نُقل إلى التطبيق بنغمة الخطأ وحدَها فلبستها رسائلُ النجاح. **الافتراضيُّ يبقى `error`** —
+ * فكلُّ منادٍ قائمٍ يرسم كما كان حرفاً، والنجاحُ يُعلَن صراحةً حيث يُعرف (`success` · `info`).
+ */
+export type ToastTone = "error" | "success" | "info";
+export function Toast({ text, bottom, action, tone = "error" }: { text: string; bottom: number; action?: { label: string; onPress: () => void }; tone?: ToastTone }) {
   const { tokens } = useApp();
+  const ink = tone === "success" ? tokens.success : tone === "info" ? tokens.fg : tokens.error;
+  const edge = tone === "info" ? tokens.border : ink + "66";
   return (
     <View pointerEvents={action ? "box-none" : "none"} style={{ position: "absolute", left: 16, right: 16, bottom: bottom + 72, alignItems: "center" }}>
       <View
@@ -248,7 +256,7 @@ export function Toast({ text, bottom, action }: { text: string; bottom: number; 
           borderRadius: radius.pill,
           backgroundColor: tokens.elevated,
           borderWidth: 1,
-          borderColor: tokens.error + "66",
+          borderColor: edge,
           shadowColor: "#000",
           shadowOpacity: 0.45,
           shadowRadius: 24,
@@ -258,13 +266,13 @@ export function Toast({ text, bottom, action }: { text: string; bottom: number; 
       >
         {action ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <Text size={14} color={tokens.error} numberOfLines={1} style={{ flexShrink: 1 }}>{text}</Text>
+            <Text size={14} color={ink} numberOfLines={1} style={{ flexShrink: 1 }}>{text}</Text>
             <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
               <Text size={14} weight="700" color={tokens.accent}>{action.label}</Text>
             </Pressable>
           </View>
         ) : (
-          <Text size={14} color={tokens.error}>{text}</Text>
+          <Text size={14} color={ink}>{text}</Text>
         )}
       </View>
     </View>

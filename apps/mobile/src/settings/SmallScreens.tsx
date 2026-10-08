@@ -130,7 +130,7 @@ export function HelpScreen() {
                 onPress={() => {
                   haptic.pick();
                   void write<{ ok: boolean }>("/api/v1/me/settings/hints-reset", { reset: true } satisfies HintsResetBody).catch(() => {});
-                  toast.current?.say(t.hintsResetDone);
+                  toast.current?.say(t.hintsResetDone, undefined, undefined, "success");
                 }}
               />,
             ]}

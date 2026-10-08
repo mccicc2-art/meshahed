@@ -44,7 +44,7 @@ import { WeekStrip } from "./WeekStrip";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
-import { applyQueueOrder, type HomeSection } from "@/core/homePrefs";
+import { applyQueueOrder, nextHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -177,15 +177,33 @@ export function HomeScreen() {
     [openTitle, openWeb, switchTo],
   );
 
-  /* ——— وضعُ العرض: تبديلٌ محلّيٌّ فوريّ ثمّ حفظٌ (وصفةُ `HomeViewSwitch`) ——— */
-  const [viewLocal, setViewLocal] = useState<"visual" | "compact" | null>(null);
-  const view = viewLocal ?? d?.prefs.view ?? "visual";
+  /* ——— وضعُ العرض: الكاشُ مصدرُه، وما في الطريق يسبقه مؤقّتاً (وصفةُ `HomeViewSwitch`) ———
+     🆕 D-1323 (تسجيلُ أحمد ٨ أكتوبر: حفظ «بصري» ثمّ «مختصر» من «التخصيص» والرئيسيّةُ لم تتبدّل): كان هنا
+     `viewLocal` يُكتب عند أوّل ضغطةٍ على المبدّل **ولا يُمحى أبداً**، فيحجب كلَّ ما يحفظه «التخصيص» (والأجهزةُ الأخرى)
+     حتى إغلاق التطبيق — التبويبُ ثابتٌ لا يُفكّ (K3). الآن القيمةُ من `prefs.view` في الكاش، و`viewPending` يسبقها
+     **ما دامت كتابةٌ في الطريق فقط**: ضغطتان متلاحقتان لا تومضان بردِّ الأولى، ثمّ يعود الحكمُ إلى الخادم.
+     🆕 D-1321 — والدورةُ ثلاثةُ أوضاع (بصريّ ← مختصر ← مزدوج)، والكتاباتُ طابورٌ لا تتسابق على العمود (كالويب). */
+  const [viewPending, setViewPending] = useState<HomeView | null>(null);
+  const view: HomeView = viewPending ?? d?.prefs.view ?? "visual";
+  const viewQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const viewWanted = useRef<HomeView | null>(null);
   const toggleView = useCallback(() => {
-    const next = view === "visual" ? "compact" : "visual";
+    const next = nextHomeView(view);
     haptic.pick();
-    setViewLocal(next);
-    qc.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: { ...prev.prefs, view: next } } : prev));
-    write<{ view: "visual" | "compact" }>("/api/v1/me/prefs/home-view", { view: next } satisfies HomeViewBody).catch(() => toastHost.current?.say(t.errViewSave));
+    viewWanted.current = next;
+    setViewPending(next);
+    const stamp = (v: HomeView) => qc.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: { ...prev.prefs, view: v } } : prev));
+    stamp(next);
+    viewQueue.current = viewQueue.current
+      .catch(() => {})
+      .then(() => write<{ view: HomeView }>("/api/v1/me/prefs/home-view", { view: next } satisfies HomeViewBody))
+      .catch(() => toastHost.current?.say(t.errViewSave))
+      .finally(() => {
+        /* آخرُ ما طُلب وحدَه يُنهي الانتظار — وردُّ جلبٍ أقدمَ وصل في الأثناء يُصحَّح قبل رفع الحجاب */
+        if (viewWanted.current !== next) return;
+        stamp(next);
+        setViewPending(null);
+      });
   }, [view, qc, t]);
 
 
@@ -538,7 +556,7 @@ export function HomeScreen() {
         s.continue.length > 0 ? (
           <View key="continue">
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => switchTo("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
-            {view === "compact" ? (
+            {sectionView(view, "continue") === "compact" ? (
               <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
             ) : (
               <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Rail>
@@ -550,7 +568,7 @@ export function HomeScreen() {
         s.towatch.items.length > 0 ? (
           <View key="towatch">
             <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => switchTo("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
-            {view === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => ({ ...asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress, known: true }), noNext: true })))}
+            {sectionView(view, "towatch") === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => ({ ...asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress, known: true }), noNext: true })))}
           </View>
         ) : null,
       upcoming:
@@ -560,10 +578,14 @@ export function HomeScreen() {
             <Column>
               {s.upcoming.slice(0, cap(s.upcoming.length)).map((x) => {
                 const ep = extras.data?.upcoming_eps[x.key] ?? x.ep;
-                return view === "compact" ? (
-                  <MediaRow key={x.key} chip={x.badge} title={x.title} subtitle={ep ?? x.subtitle} onPress={() => openTitle(x.kind, x.id)} />
+                /* 🆕 D-1323 (بلاغُ أحمد ٨ أكتوبر: «الصورة تجي، وإذا غيّرت الوضع ورجعت للبصري تصير رصاصيّة»): الشكلان كانا
+                   بمفتاحٍ واحد، فيبقى الصفُّ حيّاً عند التبديل ويُستبدل جوفُه — وصورةٌ تُنشأ داخل صفٍّ قائمٍ تبقى بلا رسم.
+                   «أكمل المشاهدة» و«للمشاهدة» يُهدمان ويُبنيان عند التبديل ولا يصيبهما ذلك؛ **فمفتاحٌ لكلِّ شكلٍ يجعل
+                   «القادم» مثلَهما.** ⚠️ السببُ في مكتبة الصور غيرُ مثبتٍ من الحاوية — إن بقي الرماديّ فالتشخيصُ يُعاد. */
+                return sectionView(view, "upcoming") === "compact" ? (
+                  <MediaRow key={`c:${x.key}`} chip={x.badge} title={x.title} subtitle={ep ?? x.subtitle} onPress={() => openTitle(x.kind, x.id)} />
                 ) : (
-                  <MediaRow key={x.key} title={[x.badge, ep].filter(Boolean).join(" · ")} subtitle={x.title} posterPath={x.poster_path} onPress={() => openTitle(x.kind, x.id)} />
+                  <MediaRow key={`v:${x.key}`} title={[x.badge, ep].filter(Boolean).join(" · ")} subtitle={x.title} posterPath={x.poster_path} onPress={() => openTitle(x.kind, x.id)} />
                 );
               })}
             </Column>

@@ -16,6 +16,7 @@ import {
   homeSectionMeta,
   headerStatMeta,
   type HomePrefs,
+  touchesPaidHomePrefs,
 } from "@/core/homePrefs";
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
@@ -135,7 +136,9 @@ export function HomeCustomize({
        **اللوحُ كلُّه يبقى مفتوحاً يُجرَّب ويُعايَن** — من يرى صفحتَه
        كما ستصير يشتريها، **ومن يُمنع من التجربة يخرج ولا يعرف ما فاته.**
        **والحارسُ الحقيقيُّ في الخادم**: `updateProfile` هو من يرفض. */
-    if (!plus) {
+    /* 🆕 D-1322 — **والبوّابةُ على الحقل المدفوع لا على الحفظ كلِّه** (حكمُ أحمد ٨ أكتوبر): ما هو مجّانيٌّ في
+       اللوح يُحفظ لغير المشترك، وتُفتح البوّابةُ حين يمسّ ما يبيعه بلس — والخادمُ يحكم بالدالّة نفسِها. */
+    if (!plus && touchesPaidHomePrefs(base, prefs)) {
       openPlusGate();
       return;
     }
@@ -251,7 +254,7 @@ export function HomeCustomize({
                   onClick={() => set({ ...prefs, view: k })}
                   className={chipClass(prefs.view === k, "sm", "flex-1 basis-0 min-w-0 h-8")}
                 >
-                  {k === "visual" ? t.viewVisual : t.viewCompact}
+                  {k === "visual" ? t.viewVisual : k === "mixed" ? t.viewMixed : t.viewCompact}
                 </button>
               ))}
             </span>

@@ -244,7 +244,7 @@ export type HomeExtrasPayload = {
   trending: HomeTrendCard[];
 };
 
-export type HomeViewBody = { view: "visual" | "compact" };
+export type HomeViewBody = { view: "visual" | "compact" | "mixed" };
 export type HomeOrderBody = { order: string[] };
 
 /* ——— اكتشف (D-905 — بقيت هنا لأنّ `contracts/discover.ts` و`api/v1/discover` يقرآنها) ——— */

@@ -1,7 +1,7 @@
 import React, { useCallback, useImperativeHandle, useState } from "react";
 import { HoldMenu, type HoldAction, type HoldVariant } from "./library/HoldMenu";
 import type { CardAnchor, CardItem } from "./library/PosterCard";
-import { Toast } from "./ui";
+import { Toast, type ToastTone } from "./ui";
 import { haptic } from "./haptics";
 
 /**
@@ -79,13 +79,14 @@ export function HoldHost<P>({
 }
 
 export type ToastAction = { label: string; onPress: () => void };
-/** D-1047 — `say(text, action, ms)`: فعلٌ اختياريّ («تراجع») ومدّةٌ له؛ بلا فعلٍ المدّةُ ٣٫٢ث كما كانت */
-export type ToastHostRef = { say: (text: string, action?: ToastAction, ms?: number) => void };
+/** D-1047 — `say(text, action, ms)`: فعلٌ اختياريّ («تراجع») ومدّةٌ له؛ بلا فعلٍ المدّةُ ٣٫٢ث كما كانت.
+ *  D-1323 — و`tone` رابعاً: النجاحُ يُعلَن صراحةً، والغائبُ `error` كما كان. */
+export type ToastHostRef = { say: (text: string, action?: ToastAction, ms?: number, tone?: ToastTone) => void };
 
 /** الإشعارُ الواحد بمؤقّته (٣٫٢ث كما كان) — `say` ثابتةُ المرجع فتمرّ إلى الألواح بلا إعادة رسم */
 export function ToastHost({ hostRef, bottom }: { hostRef: React.Ref<ToastHostRef>; bottom: number }) {
-  const [toast, setToast] = useState<{ text: string; action?: ToastAction; ms: number } | null>(null);
-  useImperativeHandle(hostRef, () => ({ say: (text, action, ms) => setToast({ text, action, ms: ms ?? 3200 }) }), []);
+  const [toast, setToast] = useState<{ text: string; action?: ToastAction; ms: number; tone?: ToastTone } | null>(null);
+  useImperativeHandle(hostRef, () => ({ say: (text, action, ms, tone) => setToast({ text, action, ms: ms ?? 3200, tone }) }), []);
   React.useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(null), toast.ms);
@@ -96,6 +97,7 @@ export function ToastHost({ hostRef, bottom }: { hostRef: React.Ref<ToastHostRef
   return (
     <Toast
       text={toast.text}
+      tone={toast.tone}
       bottom={bottom}
       action={action ? { label: action.label, onPress: () => { setToast(null); action.onPress(); } } : undefined}
     />

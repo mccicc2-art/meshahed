@@ -139,7 +139,7 @@ export function ProfileScreen() {
       setBase(snapOf(out));
       setV(snapOf(out));
       haptic.success();
-      toast.current?.say(t.setSaved);
+      toast.current?.say(t.setSaved, undefined, undefined, "success");
     } catch (e) {
       setError(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort));
     } finally {

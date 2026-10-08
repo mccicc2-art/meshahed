@@ -101,8 +101,34 @@ export function headerStatMeta(
  * رآها، ومن أراد أكبرَ قدرٍ من مكتبته في شاشةٍ واحدة ضغطها. **وصفحتان
  * لبياناتٍ واحدة كانتا ستفترقان عند أوّل تعديل** (قاعدة ٦).
  */
-export const HOME_VIEWS = ["visual", "compact"] as const;
+export const HOME_VIEWS = ["visual", "compact", "mixed"] as const;
 export type HomeView = (typeof HOME_VIEWS)[number];
+
+/**
+ * 🆕 D-1321 — **«مزدوج» وضعٌ ثالثٌ جاهز لا إعدادٌ لكلِّ قسم** (حكمُ أحمد ٨ أكتوبر: «نضيف خيار ثالث اسمه
+ * مزدوج يكون أكمل المشاهدة مختصر وللمشاهدة بصري»، و«القادم» فيه «بصري»).
+ *
+ * 🔑 **الأقسامُ التي يتبدّل رسمُها بالوضع ثلاثةٌ لا غير** — وهذه الدالّةُ هي المكانُ الواحد الذي يقول أيُّ قسمٍ
+ * يُرسم بأيِّ شكل: الويبُ والتطبيقُ والمعاينةُ يسألونها، فلا يُكتب «مزدوج» مرّتين فيفترق.
+ */
+export const VIEW_SECTIONS = ["continue", "towatch", "upcoming"] as const;
+export type ViewSection = (typeof VIEW_SECTIONS)[number];
+export type SectionView = "visual" | "compact";
+
+export function sectionView(view: HomeView, section: ViewSection): SectionView {
+  if (view === "mixed") return section === "continue" ? "compact" : "visual";
+  return view;
+}
+
+/** دورةُ زرِّ الترويسة: بصريّ ← مختصر ← مزدوج ← بصريّ */
+export function nextHomeView(view: HomeView): HomeView {
+  return HOME_VIEWS[(HOME_VIEWS.indexOf(view) + 1) % HOME_VIEWS.length];
+}
+
+/** ما جاء من عميلٍ أو عمودٍ حرّ — يسقط إلى «بصريّ» */
+export function sanitizeHomeView(raw: unknown): HomeView {
+  return typeof raw === "string" && (HOME_VIEWS as readonly string[]).includes(raw) ? (raw as HomeView) : "visual";
+}
 
 /**
  * 🔴 🆕 **حقولُ التنسيق التي يبيعها لوحُ البلس** (D-791، حكمُ أحمد:
@@ -135,6 +161,15 @@ export const PLUS_HOME_FIELDS = [
  * النموذجُ يرسل الاسمَ والنبذةَ والتنسيقَ في نداءٍ واحد، **ورفضُ
  * النداء كلِّه كان سيمنع مجّانيّاً من حفظ نبذته** (D-217).
  */
+/**
+ * 🆕 D-1322 — **هل مسّ الوارِدُ حقلاً يبيعه بلس؟** — سؤالُ بوّابة الحفظ في «التخصيص»: غيرُ المشترك يجرّب في
+ * المعاينة كلَّ شيء، **والمجّانيُّ (وضعُ العرض) يُحفظ له**، وصفحةُ بلس تُفتح حين يمسّ مدفوعاً فقط
+ * (حكمُ أحمد ٨ أكتوبر). المقارنةُ بـJSON: الحقولُ قيمٌ بسيطةٌ ومصفوفاتٌ مرتّبة.
+ */
+export function touchesPaidHomePrefs(stored: HomePrefs, incoming: HomePrefs): boolean {
+  return PLUS_HOME_FIELDS.some((k) => JSON.stringify(stored[k]) !== JSON.stringify(incoming[k]));
+}
+
 export function keepPaidHomePrefs(stored: HomePrefs, incoming: HomePrefs): HomePrefs {
   const out: HomePrefs = { ...incoming };
   /* **نسخٌ محفوظُ النوع لا `Record<string, unknown>`**: المفتاحُ من

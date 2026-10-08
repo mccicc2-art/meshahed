@@ -20,8 +20,9 @@ export type CardCount = (typeof CARD_COUNTS)[number];
 
 export const DEFAULT_CARD_COUNT: CardCount = "full";
 
-/** سقفُ كل درجة — و`full` بلا سقفٍ فوق سقف الصفّ نفسه */
-const CAP: Record<CardCount, number> = {
+/** سقفُ كل درجة — و`full` بلا سقفٍ فوق سقف الصفّ نفسه.
+ *  ⚠️ D-1323: الرقمان اسما الخيارين في الواجهة (`cardsCompact` · `cardsMedium` في `i18n.ts`) — يتغيّران معاً. */
+export const CAP: Record<CardCount, number> = {
   compact: 10,
   medium: 16,
   full: Number.POSITIVE_INFINITY,

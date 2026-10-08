@@ -5,7 +5,7 @@ import { setHomeView } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
-import type { HomeView } from "@/core/homePrefs";
+import { nextHomeView, type HomeView } from "@/core/homePrefs";
 import { useHomeView } from "./HomeViewProvider";
 import { Icon } from "./Icon";
 
@@ -47,13 +47,18 @@ export function HomeViewSwitch({
      نفسَه، **والمتوازيتان قد تصلان مقلوبتين فيُحفظ غيرُ ما يُرى.** */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
-  const next: HomeView = current === "visual" ? "compact" : "visual";
+  /* 🆕 D-1321 — ثلاثةُ أوضاعٍ تدور: بصريّ ← مختصر ← مزدوج */
+  const next: HomeView = nextHomeView(current);
+  const nameOf = (v: HomeView) => (v === "compact" ? t.viewCompact : v === "mixed" ? t.viewMixed : t.viewVisual);
   /* ⚖️ 🆕 **والكلمةُ سقطت وبقي الرمز** (D-589، بلاغُ أحمد بلقطة: «هذي
      خلّها رمز فقط بدون نص») — **نقضُ شطرِ «الزرُّ يحمل اسمَ الوجهة» من
      D-434 بيد صاحبه**: **الرمزُ ما زال يحمل الوجهةَ لا الحال** (شبكةٌ
      للبصريّ وقائمةٌ للمختصر)، **والاسمُ الكامل في `aria-label`
      و`title`** — فالعُرفُ باقٍ والكلمةُ وحدَها غادرت. */
-  const label = next === "compact" ? t.viewCompact : t.viewVisual;
+  /* ⚖️ 🆕 D-1321 — **والرمزُ صار يصف الحالَ لا الوجهة** (حكمُ أحمد ٨ أكتوبر: «الحالي») — نقضُ شطر D-589/D-618
+     بيد صاحبه: بوضعين كانت الوجهةُ تُفهم من نقيضها؛ **وبثلاثةٍ لا يعرف الناظرُ أين هو من رمز ما سيأتي.**
+     والوجهةُ باقيةٌ في `aria-label` و`title`. */
+  const label = nameOf(next);
 
   function switchTo() {
     tap(8);
@@ -117,10 +122,10 @@ export function HomeViewSwitch({
           رمزٌ عارٍ في ٤٤ — **وحلّةُ سطحٍ وحيدةٌ بينهم كانت ستقرأ
           زرّاً من عائلةٍ ثانية** (القاعدة ٣). **والرمزُ ٢٤ كمقاسهم
           حرفاً** (عقدُ D-543)، **ولونُ الهوية باقٍ يقول إنه مبدّلُك
-          لا باباً عامّاً.** والرمزُ ما زال يصف الوجهةَ لا الحال. */}
+          لا باباً عامّاً.** والرمزُ كان يصف الوجهةَ — ومنذ D-1321 يصف الحال. */}
       {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ مع الصفِّ كلِّه (D-620) */}
       <Icon
-        name={next === "compact" ? "list" : "grid"}
+        name={current === "compact" ? "list" : current === "mixed" ? "view-mixed" : "grid"}
         size={18}
         strokeWidth={2}
         style={{ color: "var(--accent)" }}

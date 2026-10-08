@@ -195,7 +195,10 @@ export const MediaRow = memo(function MediaRow({
   onPress: () => void;
 }) {
   const { tokens } = useApp();
-  const uri = posterPath ? posterFor(posterPath, 40) : null;
+  /* 🆕 D-1323 — صورةٌ فشلت لا تترك مربّعاً رماديّاً أخرس: رمزُ النوع يحلّ محلَّها (وهو ما يُرسم لمن لا ملصقَ له أصلاً).
+     والعلمُ يُصفَّر إن تبدّل المسار — نمطُ «تعديل الحالة أثناء الرسم» لا `useEffect`. */
+  const [failedPath, setFailedPath] = useState<string | null>(null);
+  const uri = posterPath && failedPath !== posterPath ? posterFor(posterPath, 40) : null;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={[title, subtitle].filter(Boolean).join("، ")} style={({ pressed }) => [styles.row, { paddingEnd: 10, borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
       {chip ? (
@@ -204,7 +207,7 @@ export const MediaRow = memo(function MediaRow({
         </View>
       ) : (
         <View style={{ width: 40, height: 60, borderRadius: radius.sm, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-          {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" /> : <View style={styles.center}><Icon name={fallbackIcon} size={16} color={tokens.muted} /></View>}
+          {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} cachePolicy="memory-disk" onError={() => setFailedPath(posterPath ?? null)} /> : <View style={styles.center}><Icon name={fallbackIcon} size={16} color={tokens.muted} /></View>}
         </View>
       )}
       <View style={{ flex: 1, minWidth: 0 }}>

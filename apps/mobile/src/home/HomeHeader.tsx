@@ -9,6 +9,7 @@ import { Logo } from "../Logo";
 import { PAGE_PAD } from "./Section";
 import type { HomeHeaderPayload } from "../contracts";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
+import { nextHomeView, type HomeView } from "@/core/homePrefs";
 
 /**
  * ترويسةُ الرئيسية — `HomeHeader.tsx` الويبيّة بأرقامها (Phase 11-H · H2).
@@ -109,14 +110,17 @@ export function HomeGreeting({
   avatarRef,
 }: {
   h: HomeHeaderPayload;
-  view: "visual" | "compact";
+  view: HomeView;
   onToggleView: () => void;
   onAvatar: () => void;
   /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
   avatarRef?: React.Ref<View>;
 }) {
   const { t, tokens } = useApp();
-  const next = view === "visual" ? "compact" : "visual";
+  /* 🆕 D-1321 — ثلاثةُ أوضاعٍ تدور، **والرمزُ يصف الحالَ لا الوجهة** (حكمُ أحمد ٨ أكتوبر: «الحالي»): بثلاثةٍ لا يعرف
+     الناظرُ أين هو من رمز ما سيأتي. والوجهةُ باقيةٌ في الاسم المنطوق. */
+  const next = nextHomeView(view);
+  const nameOf = (v: HomeView) => (v === "compact" ? t.viewCompact : v === "mixed" ? t.viewMixed : t.viewVisual);
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Pressable ref={avatarRef} onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
@@ -130,11 +134,11 @@ export function HomeGreeting({
       <Pressable
         onPress={onToggleView}
         accessibilityRole="button"
-        accessibilityLabel={`${t.viewSwitchAria} — ${next === "compact" ? t.viewCompact : t.viewVisual}`}
+        accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`}
         hitSlop={6}
         style={({ pressed }) => [{ width: 40, height: 40, alignItems: "flex-end", justifyContent: "center", marginEnd: -ICON_INSET, opacity: pressed ? 0.7 : 1 }]}
       >
-        <Icon name={next === "compact" ? "list" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
+        <Icon name={view === "compact" ? "list" : view === "mixed" ? "view-mixed" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
       </Pressable>
     </View>
   );

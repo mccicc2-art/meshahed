@@ -73,6 +73,11 @@ export const PLUS_PROFILE_FIELDS = [
   "tabOrder",
 ] as const satisfies readonly (keyof ProfilePrefs)[];
 
+/** 🆕 D-1322 — نظيرُ `touchesPaidHomePrefs`: هل مسّ الوارِدُ حقلاً يبيعه بلس؟ */
+export function touchesPaidProfilePrefs(stored: ProfilePrefs, incoming: ProfilePrefs): boolean {
+  return PLUS_PROFILE_FIELDS.some((k) => JSON.stringify(stored[k]) !== JSON.stringify(incoming[k]));
+}
+
 /** **يردّ حقولَ البلس إلى المحفوظ ويقبل ما سواها** — بلا رفضِ النداء */
 export function keepPaidProfilePrefs(
   stored: ProfilePrefs,
