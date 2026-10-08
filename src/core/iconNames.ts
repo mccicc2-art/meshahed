@@ -97,6 +97,7 @@ export type IconName =
   | "person-check"
   | "plus"
   | "minus"
+  | "red-card"
   | "book"
   | "check-line"
   | "chevron-down"

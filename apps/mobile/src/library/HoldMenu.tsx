@@ -52,7 +52,7 @@ type Row = { key: HoldAction; icon: IconName; label: string; tone?: "success" | 
 function libraryRows(item: CardItem, t: ReturnType<typeof useApp>["t"]): Row[] {
   const review: Row = { key: "review", icon: "star", label: t.reviewSectionTitle };
   const all: Row = { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" };
-  const drop: Row = { key: "drop", icon: "card", label: t.dropTitle, tone: "danger" };
+  const drop: Row = { key: "drop", icon: "red-card", label: t.dropTitle, tone: "danger" };
   const remove: Row = { key: "remove", icon: "close", label: t.holdRemove, tone: "danger" };
   /* `unstarted` يُعلنه من يعرف حالَ العمل (المكتبة · «للمشاهدة» · «مسلسلاتي/أفلامي»). صفٌّ لا يعرفها («تقييماتي»)
      يبقى على صفوفه القديمة: «إزالة» فوق عملٍ مُشاهَدٍ ظُنَّ جديداً حذفٌ من المكتبة بضغطة */
@@ -107,12 +107,14 @@ export function HoldMenu({
     variant === "discover" || variant === "list" || variant === "mylist"
       ? [
           /* D-1328 — الصفُّ الأوّل حالُ العمل: لم يُضَف «＋ أضف» · في «للمشاهدة» «− أزِل» (لا ✓ — الإزالةُ طرح) ·
-             بدأته «▶ تشاهده الآن» حالاً لا فعلاً (إزالتُه من المكتبة وحدها) · أكملته «أضف» مطفأً يقول سببَه.
+             بدأته «▶ تشاهده الآن» حالاً لا فعلاً (إزالتُه من المكتبة وحدها) · أوقفته «موقوف» بالبطاقة الحمراء حالاً · أكملته «أضف» مطفأً يقول سببَه.
              والثاني «شاهدته كلّه» يصير حالاً خضراءَ بعد الإكمال — لا فعلَ يُعاد */
           toWatch === "saved"
             ? { key: "towatch", icon: "minus", label: t.quickAddRemove }
             : toWatch === "watching"
             ? { key: "towatch", icon: "play", label: t.holdWatchingNow, tone: "accent", state: true }
+            : toWatch === "dropped"
+            ? { key: "towatch", icon: "red-card", label: t.droppedBadge, tone: "danger", state: true }
             : { key: "towatch", icon: "plus", label: t.quickAddLabel, dim: toWatch === "completed" },
           toWatch === "completed"
             ? { key: "all", icon: "check-line", label: t.holdWatchedAll, tone: "success", state: true }

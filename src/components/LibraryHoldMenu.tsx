@@ -211,7 +211,7 @@ export function LibraryHoldMenu({
             />
           ) : (
             <DropdownRow
-              icon="card"
+              icon="red-card"
               label={t.dropTitle}
               tone="danger"
               disabled={pending}

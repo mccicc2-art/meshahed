@@ -17,13 +17,15 @@ import type { DismissBody, FollowBody, ShowRefBody, ToggleMovieBody, UnfollowBod
 /**
  * D-1328 — **حالُ العمل من «للمشاهدة» كما يراها الضغطُ المطوّل**: كانت قيمةً واحدة («أفي المكتبة؟») فظهر
  * «أزِله من للمشاهدة» فوق مسلسلٍ أُكمل وخرج منها (بلاغُ أحمد: «بريكنغ باد» بعد الإكمال). الآن أربعُ حالات:
- * `none` لم يُضَف · `saved` في «للمشاهدة» ولم يبدأ (الإزالةُ له وحدَه) · `watching` بدأه (أو أوقفه) — لا إزالةَ
- * من هنا، المكتبةُ وحدها تملكها · `completed` أكمله — لا يعود إلى «للمشاهدة» بضغطة.
+ * `none` لم يُضَف · `saved` في «للمشاهدة» ولم يبدأ (الإزالةُ له وحدَه) · `watching` بدأه — لا إزالةَ من هنا،
+ * المكتبةُ وحدها تملكها · `dropped` أوقفه (بطاقةٌ حمراء) — حالٌ تُقرأ، واستئنافُه من المكتبة · `completed` أكمله —
+ * لا يعود إلى «للمشاهدة» بضغطة (ويغلب الإيقاف).
  */
-export type ToWatchState = "none" | "saved" | "watching" | "completed";
+export type ToWatchState = "none" | "saved" | "watching" | "dropped" | "completed";
 export function toWatchState(m: CardMark): ToWatchState {
   if (!m) return "none";
   if (m.completed) return "completed";
+  if (m.dropped) return "dropped";
   if (m.saved) return "saved";
   return "watching";
 }
@@ -60,12 +62,12 @@ export function useCardActs<C extends ActCard>(
             say?.(t.toWatchDone, "info");
             return false; // لا كتابةَ فلا اهتزازَ نجاح
           }
-          if (state === "watching") return false;
+          if (state === "watching" || state === "dropped") return false;
           const remove = state === "saved";
           store.setOverride(key, remove ? null : { saved: true, progress: 0, completed: false, dropped: false });
           if (remove) await write<unknown>("/api/v1/track/unfollow", { tmdbId: c.id, mediaType: c.kind } satisfies UnfollowBody);
           else await write<unknown>("/api/v1/track/follow", { tmdbId: c.id, mediaType: c.kind, title: c.title, posterPath: c.poster_path } satisfies FollowBody);
-          say?.(remove ? t.toWatchRemoved : t.toWatchAdded, remove ? "info" : "success");
+          say?.(remove ? t.toWatchRemoved : t.quickAddDone, remove ? "info" : "success");
         } else if (a === "all") {
           store.setOverride(key, { saved: false, progress: 100, completed: true, dropped: false });
           if (c.kind === "tv") await write<unknown>("/api/v1/track/show-watched", { showTmdbId: c.id } satisfies ShowRefBody);

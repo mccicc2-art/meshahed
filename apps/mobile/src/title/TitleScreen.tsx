@@ -177,7 +177,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     onMutate: (following) => patchMe(() => ({ following, dropped: false })),
     /* D-1328 — الإضافةُ نجاحٌ أخضر، والإزالةُ خبرٌ محايد (التقدّمُ محفوظٌ، لا شيءَ ضاع) */
     onSuccess: (_r, following) => {
-      setToast(following ? { text: t.toWatchAdded, tone: "success" } : { text: t.toWatchRemoved, tone: "info" });
+      setToast(following ? { text: t.quickAddDone, tone: "success" } : { text: t.toWatchRemoved, tone: "info" });
       settle();
     },
     onError: fail,
@@ -595,7 +595,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             <>
               <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
               <Pressable onPress={() => { setMenuOpen(false); drop.mutate(!d.me.dropped); }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
-                <Icon name="card" size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
+                <Icon name={d.me.dropped ? "play" : "red-card"} size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
                 <Text size={14} color={d.me.dropped ? tokens.fg : tokens.error}>{d.me.dropped ? t.resumeWatching : t.redCardAction}</Text>
               </Pressable>
             </>
@@ -627,7 +627,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             }}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}
           >
-            <Icon name="card" size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
+            <Icon name={d.me.dropped ? "play" : "red-card"} size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
             <View style={{ flex: 1 }}>
               <Text size={14} color={d.me.dropped ? tokens.fg : tokens.error}>{d.me.dropped ? t.resumeWatching : t.redCardAction}</Text>
               <Text size={11} muted>{t.redCardHint}</Text>

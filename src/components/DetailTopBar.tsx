@@ -197,7 +197,7 @@ export function DetailTopBar({
           <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
           <button onClick={toggleStop} disabled={pending} className={sheetMenuItem}>
             <Icon
-              name="card"
+              name={dropped ? "play" : "red-card"}
               size={18}
               className={dropped ? "text-muted" : "text-[color:var(--error)]"}
             />

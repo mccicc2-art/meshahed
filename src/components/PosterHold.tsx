@@ -180,6 +180,11 @@ export function PosterHold({
    */
   const canUndo = seen && (mediaType === "movie" || undoEps !== null);
 
+  /* D-1328 — حالُ العمل من «للمشاهدة» (قواعدُ التطبيق نفسُها، `toWatchState`): `added` تعني «في المكتبة»
+     لا «في للمشاهدة» — فمسلسلٌ أُكمل وخرج منها كان يُعرض «✓ أزِله» (بلاغُ أحمد: «بريكنغ باد»). الإزالةُ لما
+     لم يبدأ وحدَه؛ ما بدأته أو أوقفته حالٌ تُقرأ وإدارتُه في المكتبة؛ والمكتملُ لا يعود بضغطة */
+  const stage = !inList ? "none" : seen ? "completed" : isDropped ? "dropped" : progress > 0 ? "watching" : "saved";
+
   function toWatch() {
     const was = inList;
     tap(was ? 8 : [12, 30]);
@@ -187,8 +192,11 @@ export function PosterHold({
     setOpen(false);
     start(async () => {
       try {
-        if (was) await unfollow({ tmdbId, mediaType });
-        else {
+        if (was) {
+          await unfollow({ tmdbId, mediaType });
+          /* D-1328 — الإزالةُ خبرٌ محايد: التقدّمُ محفوظ، لا شيءَ ضاع */
+          toast(t.toWatchRemoved, { tone: "info" });
+        } else {
           await follow({ tmdbId, mediaType, title, posterPath });
           toast(t.quickAddDone);
         }
@@ -378,12 +386,27 @@ export function PosterHold({
         />
       )}
       <Dropdown open={open && !lib} onClose={() => setOpen(false)} align="end" caret>
-        <DropdownRow
-          icon={inList ? "check" : "plus"}
-          label={inList ? t.quickAddRemove : t.quickAddLabel}
-          active={inList}
-          onClick={toWatch}
-        />
+        {stage === "watching" ? (
+          <DropdownRow state icon="play" tone="accent" label={t.holdWatchingNow} />
+        ) : stage === "dropped" ? (
+          <DropdownRow state icon="red-card" tone="danger" label={t.droppedBadge} />
+        ) : stage === "completed" ? (
+          <DropdownRow
+            dim
+            icon="plus"
+            label={t.quickAddLabel}
+            onClick={() => {
+              setOpen(false);
+              toast(t.toWatchDone, { tone: "info" });
+            }}
+          />
+        ) : (
+          <DropdownRow
+            icon={stage === "saved" ? "minus" : "plus"}
+            label={stage === "saved" ? t.quickAddRemove : t.quickAddLabel}
+            onClick={toWatch}
+          />
+        )}
         {/* **صفٌّ واحد بثلاث حالات لا ثلاثةُ صفوف** (D-238): «شاهدته»
             و«لم أشاهده» **فعلٌ واحد باتّجاهين**، وصفّان لهما يجعلان
             أحدَهما دائماً بلا معنى — **وخيارٌ لا ينطبق أسوأ من غيابه**
@@ -404,7 +427,7 @@ export function PosterHold({
             بضغطة، **فلا يسبق ما يُبقي البطاقةَ ولا يزاحم ما يُخفيها.** */}
         {inList && (
           <DropdownRow
-            icon={isDropped ? "play" : "card"}
+            icon={isDropped ? "play" : "red-card"}
             label={isDropped ? t.resumeWatching : t.dropTitle}
             tone={isDropped ? undefined : "danger"}
             onClick={toggleDropped}

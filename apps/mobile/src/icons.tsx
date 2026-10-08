@@ -46,6 +46,7 @@ const ICONS = {
   sparkles: require("../assets/icons/sparkles.png"),
   plus: require("../assets/icons/plus.png"),
   minus: require("../assets/icons/minus.png"),
+  "red-card": require("../assets/icons/red-card.png"),
   bookmark: require("../assets/icons/bookmark.png"),
   "chevron-down": require("../assets/icons/chevron-down.png"),
   /* D-948 — مقبضُ الترتيب، وعينُ الحرق، والنجمةُ الممتلئة (`fill-current` في الويب) */

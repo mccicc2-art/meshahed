@@ -267,6 +267,8 @@ export function Dropdown({
 export const dropdownItem =
   "w-full flex items-center gap-3 px-4 py-2.5 text-start text-14 text-foreground " +
   "hover:bg-surface-2 active:bg-surface-2 disabled:opacity-50 transition";
+/** صفُّ الحال: مقاسُ الصفّ نفسُه بلا ظلّ ضغط */
+const dropdownState = "w-full flex items-center gap-3 px-4 py-2.5 text-start text-14 cursor-default select-none";
 
 export const dropdownDivider = "my-1 h-px bg-[color:var(--divider)]";
 
@@ -291,6 +293,8 @@ export function DropdownRow({
   active = false,
   disabled = false,
   tone,
+  state = false,
+  dim = false,
   onClick,
 }: {
   icon: IconName;
@@ -298,18 +302,29 @@ export function DropdownRow({
   /** الفعلُ قائمٌ الآن — فيلبس لون التمييز */
   active?: boolean;
   disabled?: boolean;
-  /** لونُ الرمز حين يحمل حالةً بعينها (نجاحٌ أو خطر) — **والافتراضُ محايد** */
-  tone?: "success" | "danger";
-  onClick: () => void;
+  /** لونُ الرمز حين يحمل حالةً بعينها (نجاحٌ أو خطر أو جارٍ) — **والافتراضُ محايد** */
+  tone?: "success" | "danger" | "accent";
+  /** D-1328 — صفُّ حالٍ لا فعل («تشاهده الآن» · «موقوف»): يُقرأ ولا يُضغط، ونصُّه بلون رمزه */
+  state?: boolean;
+  /** D-1328 — فعلٌ مطفأٌ يُضغط ليقول سببَه (لا `disabled` — ذاك يبتلع الضغطة) */
+  dim?: boolean;
+  onClick?: () => void;
 }) {
   const color =
     tone === "success"
       ? "text-[color:var(--success)]"
       : tone === "danger"
         ? "text-[color:var(--error)]"
-        : active
+        : tone === "accent" || active
           ? "text-accent"
           : "text-muted";
+  if (state)
+    return (
+      <div role="menuitem" aria-disabled="true" className={dropdownState}>
+        <Icon name={icon} size={18} className={`${color} shrink-0`} />
+        <span className={color}>{label}</span>
+      </div>
+    );
   return (
     <button
       type="button"
@@ -318,9 +333,9 @@ export function DropdownRow({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onClick();
+        onClick?.();
       }}
-      className={dropdownItem}
+      className={dim ? `${dropdownItem} opacity-50` : dropdownItem}
     >
       <Icon name={icon} size={18} className={`${color} shrink-0`} />
       <span className={active ? "text-accent" : undefined}>{label}</span>
