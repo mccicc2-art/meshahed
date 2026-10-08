@@ -1,0 +1,69 @@
+# مسارُ iOS إلى TestFlight — توأمُ `android-alpha.yml` بالبصمة نفسها.
+#
+# 🔑 بياناتُ الاعتماد كلُّها عند Expo لا في المستودع (٧ أكتوبر ٢٠٢٦): شهادةُ التوزيع
+#    وملفُّ التزويد ومفتاحُ APNs ومفتاحُ App Store Connect للرفع «[Expo] EAS Submit».
+#    وُلِّدت مرّةً من جهاز أحمد بـ`eas credentials`، ولا يمرّ منها شيءٌ على الوكيل.
+#
+# ✋ **تشغيلٌ يدويٌّ فقط حتى تنجح أوّلُ نسخة** (Actions ← Run): بناءُ iOS أغلى من
+#    أندرويد على رصيد Starter، ومسارٌ لم يُجرَّب لا يُربط بكلِّ دفعةٍ إلى main
+#    (D-938/D-944). بعد أوّل نسخةٍ تصل TestFlight يُضاف مُشغِّلُ `push` بحرف أندرويد.
+#
+# 🧷 **لا لمسَ لـ`eas.json` ولا لـ`app.json`**: كلاهما داخلٌ في البصمة، وأيُّ تعديلٍ
+#    فيهما يغيّر بصمةَ أندرويد أيضاً ⇒ بناءٌ وإرسالٌ إلى Play، ومن لم يحدّث من Play
+#    ينقطع عنه التحديثُ عبر الهواء. فرقمُ التطبيق في App Store Connect يُربط من لوحة
+#    Expo (Project settings ← General ← Connections)، و`usesNonExemptEncryption`
+#    ينتظر أوّلَ تغييرٍ أصليٍّ قادمٍ يغيّر البصمةَ على أيِّ حال.
+#
+# 📁 الملفُّ تحت `.eas/` ⇒ دفعُه لا يُشغّل مسارَ أندرويد (مستثنىً هناك).
+name: iOS → TestFlight
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+    environment: production
+
+  get_build:
+    name: Existing build for this fingerprint?
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+
+  # لا ثنائيَّ مطابق ⇒ بناءٌ ورفعٌ إلى TestFlight
+  build:
+    name: Build iOS (production)
+    needs: [get_build]
+    if: ${{ !needs.get_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit:
+    name: Submit to TestFlight
+    needs: [build]
+    type: submit
+    params:
+      build_id: ${{ needs.build.outputs.build_id }}
+      profile: production
+
+  # ثنائيٌّ مطابقٌ على الأجهزة ⇒ JS وحدَه يكفي
+  update:
+    name: OTA update (channel production)
+    needs: [get_build]
+    if: ${{ needs.get_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      platform: ios
+      channel: production
