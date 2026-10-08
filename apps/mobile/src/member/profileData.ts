@@ -121,6 +121,10 @@ function warmImages(d: ProfilePayload) {
  * ⚖️ فشلُه صامت (`prefetchQuery` لا يرمي)، والشاشةُ تجلب بنفسها كما كانت.
  */
 const imagesWarmed = new Set<string>();
+/** 🆕 D-1325 — البابُ نفسُه لأيِّ ملفٍّ يُفتح: `openProfile` يناديه لحظةَ الضغط (والطلبُ يشاركه `useQuery` الشاشة) */
+export function warmProfile(username: string | null | undefined): void {
+  warmOwnProfile(username);
+}
 export function warmOwnProfile(username: string | null | undefined): void {
   if (!username) return;
   const key = profileKey(username);

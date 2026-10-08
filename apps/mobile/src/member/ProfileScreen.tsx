@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
-import { useNavigationContainerRef, useRouter } from "expo-router";
+import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
@@ -117,6 +117,23 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const shown = useMemo(() => d?.tabs ?? [], [d?.tabs]);
   const active: ProfileTabKey | null = tab && shown.includes(tab) ? tab : (shown[0] ?? null);
   const [follows, setFollows] = useState<"followers" | "following" | null>(null);
+  /* 🆕 D-1325 — **ورقةُ المتابعين تعود حيث كانت** (تسجيلُ أحمد ٨ أكتوبر: أعاد فتحَها والتمريرَ فيها أربعَ مرّاتٍ في ٢٤ ثانية
+     وهو يتنقّل بين متابعيه). الورقةُ `Modal` فوق المكدّس فلا بدّ أن تُغلق عند الدفع؛ فيُحفظ اتّجاهُها وموضعُ تمريرها، وحين
+     يعود التركيزُ إلى هذا الملفّ تُفتح عليهما — **بعد حركة الرجوع** لا معها، فلا تزيد ثقلاً على لحظة الكشف. */
+  const followsBack = useRef<{ dir: "followers" | "following"; y: number } | null>(null);
+  const [followsY, setFollowsY] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      const keep = followsBack.current;
+      if (!keep) return;
+      followsBack.current = null;
+      const id = setTimeout(() => {
+        setFollowsY(keep.y);
+        setFollows(keep.dir);
+      }, REOPEN_AFTER_BACK_MS);
+      return () => clearTimeout(id);
+    }, []),
+  );
   const [grid, setGrid] = useState<Grid | null>(null);
   const [ranks, setRanks] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -631,8 +648,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
                   {d.person.username && !d.person.hide_name ? <Text size={12} color={onArt ? ART_MUTED : tokens.muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{d.person.username}</Text> : null}
                   {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
-                  <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => setFollows("followers")} />
-                  <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => setFollows("following")} />
+                  <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
+                  <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => { setFollowsY(0); setFollows("following"); }} />
                 </View>
               </View>
               {d.viewer.is_me || !d.viewer.signed_in || d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
@@ -712,8 +729,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         <FollowsSheet
           dir={follows}
           userId={d.viewer.is_me ? undefined : d.person.id}
+          count={follows === "followers" ? d.counts.followers : d.counts.following}
+          startY={followsY}
           onClose={() => setFollows(null)}
-          onOpen={(u) => (u.toLowerCase() === username.toLowerCase() ? undefined : openMember(u))}
+          onOpen={(u, y) => {
+            if (u.toLowerCase() === username.toLowerCase()) return;
+            followsBack.current = { dir: follows, y };
+            openMember(u);
+          }}
         />
       ) : null}
       {grid && d ? <GridSheet d={d} which={grid} posterW={posterW} width={width} onClose={() => setGrid(null)} onTitle={(k, id) => { setGrid(null); openTitle(k, id); }} /> : null}
@@ -954,15 +977,56 @@ function SectionHead({ icon, label, onSort, action }: { icon: string; label: str
   );
 }
 
+/**
+ * 🆕 D-1325 — **صفُّ الملفّ يبني ما يظهر منه لا كلَّه** (تسجيلان من أحمد ٨ أكتوبر على ملفّات الأعضاء: ثِقلٌ عند الدخول،
+ * والخروجُ «سريعٌ مزعج»). المقيسُ إطاراً بإطار: الرجوعُ يقف ٢٢٠–٢٥٠ms ثمّ يُرسم من حركة الـ٢٠٠ms إطارٌ واحد (الخروجُ
+ * من الإعدادات: ١٢ إطاراً بلا توقّف)؛ والدخولُ يقف ٢٠٠ms ويُرسم من انزلاقه إطاران.
+ *
+ * **السبب في العدّ**: كان الصفُّ `ScrollView` يركّب بطاقاتِه كلَّها — وسقفُ البطاقات الافتراضيُّ «الكلّ» — فملفٌّ فيه ٧٩
+ * مسلسلاً و٦٤ فيلماً يركّب فوق ١٥٠ بطاقةً بصورها والظاهرُ منها ثلاثٌ ونصفٌ في كلِّ صفّ؛ وهي نفسُها ما يعيد أندرويد
+ * وصلَه حين يُكشف الملفُّ الذي تحت. **الآن قائمةٌ أفقيّةٌ افتراضيّة**: ما يملأ العرضَ وواحدة، والباقي عند السحب.
+ *
+ * ⚖️ **لا ينقض «تنفكّ سوى»** (D-1240/D-1241): المؤجَّلُ خارج الشاشة أفقيّاً، والشاشةُ الأولى تُرسم كاملةً في التزامٍ
+ * واحد كما كانت. ولا فصلَ رأسيّاً (D-1245 باقٍ). ⚠️ مبنيٌّ على العدّ لا على قياسِ جهاز — الحَكَمُ تسجيلٌ بعده.
+ */
+function useRailLayout(posterW: number) {
+  const { width } = useWindowDimensions();
+  const step = posterW + GAP;
+  return {
+    first: Math.ceil(width / step) + 1,
+    getItemLayout: (_: unknown, index: number) => ({ length: step, offset: PAGE_PAD + step * index, index }),
+  };
+}
+/* كلُّ خانةٍ تحمل فجوتَها بعدها (ليطابق `getItemLayout` حرفاً) — فالطرفُ الأخيرُ ينقص فجوة */
+const RAIL_PAD = { paddingStart: PAGE_PAD, paddingEnd: PAGE_PAD - GAP } as const;
+
 function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)[]; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void }) {
+  const { first, getItemLayout } = useRailLayout(posterW);
+  const press = useCallback((it: CardItem) => onTitle(it.kind, it.id), [onTitle]);
+  const renderItem = useCallback(
+    ({ item }: { item: ProfileTitle | ProfileShow }) => (
+      <View style={{ width: posterW + GAP }}>
+        <PosterCard item={asItem(item)} width={posterW} fade={false} onPress={press} />
+      </View>
+    ),
+    [posterW, press],
+  );
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
-      {items.map((x) => (
-        <PosterCard key={`${x.media_type}-${x.tmdb_id}`} item={asItem(x)} width={posterW} fade={false} onPress={(it) => onTitle(it.kind, it.id)} />
-      ))}
-    </ScrollView>
+    <FlatList
+      horizontal
+      data={items}
+      renderItem={renderItem}
+      keyExtractor={railKey}
+      getItemLayout={getItemLayout}
+      initialNumToRender={first}
+      maxToRenderPerBatch={first}
+      windowSize={3}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={RAIL_PAD}
+    />
   );
 }
+const railKey = (x: { media_type: string; tmdb_id: number }) => `${x.media_type}-${x.tmdb_id}`;
 
 function Empty({ text }: { text: string }) {
   return <Text muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: PAGE_PAD }}>{text}</Text>;
@@ -1009,6 +1073,7 @@ function Overview({
 }) {
   const { t, tokens } = useApp();
   const meta = profileSectionMeta(t);
+  const rail = useRailLayout(posterW);
   const cap = <T,>(xs: T[]) => (d.display.cards == null ? xs : xs.slice(0, d.display.cards));
   const o = d.overview;
   const body = (s: ProfileSectionKey): React.ReactNode => {
@@ -1047,19 +1112,31 @@ function Overview({
         ) : null;
       case "ratings":
         return o.ratings.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
-            {cap(o.ratings).map((r) => (
-              <View key={`${r.media_type}-${r.tmdb_id}`} style={{ width: posterW }}>
-                <PosterCard
-                  item={{ key: `${r.media_type}-${r.tmdb_id}`, kind: r.media_type, id: r.tmdb_id, title: r.title ?? "", posterPath: r.poster_path, progress: 0, completed: false, dropped: false }}
-                  width={posterW}
-                  fade={false}
-                  onPress={(it) => onTitle(it.kind, it.id)}
-                />
-                {r.rating != null ? <RatingPill value={r.rating} /> : null}
+          /* D-1325 — صفُّ التقييمات بالقائمة الأفقيّة نفسِها */
+          <FlatList
+            horizontal
+            data={cap(o.ratings)}
+            keyExtractor={railKey}
+            getItemLayout={rail.getItemLayout}
+            initialNumToRender={rail.first}
+            maxToRenderPerBatch={rail.first}
+            windowSize={3}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={RAIL_PAD}
+            renderItem={({ item: r }) => (
+              <View style={{ width: posterW + GAP }}>
+                <View style={{ width: posterW }}>
+                  <PosterCard
+                    item={{ key: `${r.media_type}-${r.tmdb_id}`, kind: r.media_type, id: r.tmdb_id, title: r.title ?? "", posterPath: r.poster_path, progress: 0, completed: false, dropped: false }}
+                    width={posterW}
+                    fade={false}
+                    onPress={(it) => onTitle(it.kind, it.id)}
+                  />
+                  {r.rating != null ? <RatingPill value={r.rating} /> : null}
+                </View>
               </View>
-            ))}
-          </ScrollView>
+            )}
+          />
         ) : null;
     }
   };
@@ -1238,6 +1315,8 @@ function ListsPane({
  * صفُّ ملصقات): تُركَّب أربعةُ صفوفٍ أوّلاً والباقي عند الاقتراب، **والارتفاعُ يُحسب قبل الرسم** فلا تقفز الورقة.
  * الترتيبُ والتجميعُ والمقاسُ كما كانت حرفاً. ⚠️ لم يُقَس على جهاز — الحَكَمُ تسجيلٌ بعده.
  */
+/** حركةُ الرجوع ٢٠٠ms (`_layout.tsx`) — الورقةُ تُفتح بعدها بهامش */
+const REOPEN_AFTER_BACK_MS = 260;
 const GRID_HEAD_H = 34;
 type GridRow = { t: "head"; key: string; label: string } | { t: "row"; key: string; items: (ProfileTitle | ProfileShow)[] };
 

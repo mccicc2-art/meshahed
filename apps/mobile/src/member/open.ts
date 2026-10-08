@@ -2,6 +2,7 @@ import type { useRouter } from "expo-router";
 
 type Router = ReturnType<typeof useRouter>;
 import type { NativeRoot } from "../shell";
+import { warmProfile } from "./profileData";
 
 /**
  * ====== بابُ ملفّ الشخص الأصليّ — مكانٌ واحدٌ لكلِّ من يفتحه (🆕 Phase 11-N · N1) ======
@@ -21,5 +22,8 @@ export function profileHandleOf(path: string): string | null {
 }
 
 export function openProfile(router: Router, username: string, from: NativeRoot | "web") {
+  /* 🆕 D-1325 — صورُ الشاشة الأولى تبدأ مع الضغطة لا بعد التركيب (تسجيلُ أحمد ٨ أكتوبر: ملصقاتُ صفٍّ وأيقوناتُ الأرقام
+     تظهر بعد وصول الملفّ بإطارات — «لقلقة»). كان ذلك لملفّ صاحب الحساب وحدَه (D-1243). */
+  warmProfile(username);
   router.push({ pathname: "/u/[username]", params: { username, from } });
 }

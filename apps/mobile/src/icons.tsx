@@ -122,8 +122,11 @@ const NAV_ICONS: IconName[] = [
   "home", "home-filled", "library", "library-filled", "compass", "compass-filled",
   "people", "people-filled", "search", "search-filled",
 ];
+/* 🆕 D-1325 — ورموزُ رأس الملفّ معها (بطاقةُ الأرقام وسطرُ العدّادات): كانت تظهر بعد وصول الملفّ بنحو ١٧٠ms في تسجيل
+   أحمد ٨ أكتوبر — السببُ نفسُه (صورةٌ تُحمَّل بعد التركيب). سبعُ صورٍ ٧٢px. */
+const PROFILE_ICONS: IconName[] = ["tv", "film", "sparkles", "chart", "calendar", "star", "heart"];
 const warm = new Map<IconName, ImageRef>();
-for (const name of NAV_ICONS) {
+for (const name of [...NAV_ICONS, ...PROFILE_ICONS]) {
   try {
     void Image.loadAsync(ICONS[name] as number)
       .then((ref) => {
