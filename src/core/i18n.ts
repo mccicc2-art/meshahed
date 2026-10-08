@@ -1891,6 +1891,8 @@ const ar = {
   listsTitle: "القوائم",
   listNamePlaceholder: "اسم قائمة جديدة…",
   listCreate: "أنشئ",
+  /* D-1327 — ورقةُ «إضافة إلى قائمة»: تُنشئ القائمةَ وتضع العملَ فيها في ضغطةٍ واحدة */
+  listCreateAdd: "إنشاء وإضافة",
   /* تُقال حين يُضغط «أنشئ» والحقل فارغ (D-168): الزرّ لم يعد
      معطّلاً، فلا بدّ أن يقول سببَ عدم حدوث شيء. */
   listNameRequired: "اكتب اسم القائمة أولاً",
@@ -3699,6 +3701,7 @@ const en: Dict = {
   listsTitle: "Lists",
   listNamePlaceholder: "New list name\u2026",
   listCreate: "Create",
+  listCreateAdd: "Create & add",
   listNameRequired: "Type a list name first",
   listsEmpty: "No lists yet \u2014 type a name above to start.",
   listCount: (n: number) =>

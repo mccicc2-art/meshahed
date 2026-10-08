@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FlatList, Linking, Pressable, ScrollView, View } from "react-native";
+import { FlatList, Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { softGet, write } from "../api";
@@ -11,7 +11,8 @@ import { Sheet } from "../library/Sheet";
 import { radius } from "../theme";
 import { posterUrl, profileUrl } from "@/core/media";
 import { num } from "@/core/i18n";
-import type { FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
+import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
+import { haptic } from "../haptics";
 
 /**
  * ====== ملحقاتُ صفحة العمل أصليّةً — Phase 11-D · D2 (D-956) ======
@@ -218,8 +219,14 @@ export function FavoriteButton({ kind, id, name, posterPath, x }: { kind: "tv" |
 /**
  * D-1014 — ورقةُ «إلى قائمة» وحدَها: صفُّ الأفعال الجديد يفتحها مباشرةً بلا زرٍّ وسيط،
  * و`AddToListButton` تبقى لمن ينادي الزرَّ (لا مستدعيَ لها في صفحة العمل بعد اليوم).
+ *
+ * 🆕 D-1327 (تسجيلُ أحمد ٨ أكتوبر: «حتى إذا أزلته من قائمة وسوّيت حفظ يوديني لليست»): كلُّ ضغطةٍ على قائمةٍ تحفظ
+ * فوراً، **والزرُّ السفليُّ لم يكن «حفظاً»** — كان بابَ «قائمة جديدة» يحمل اسمَ الورقة («إضافة إلى قائمة») فيُضغط
+ * تأكيداً ويُغلق الورقةَ ويأخذ إلى تبويب القوائم. سقط الزرّ؛ و«＋ قائمة جديدة» صفٌّ آخرَ القوائم **ينفتح في مكانه**
+ * حقلَ اسمٍ و«إنشاء وإضافة» (حكمُ أحمد: لا انبثاق، «يكون في القائمة نفسها»): تُنشأ القائمة ويوضع العملُ فيها
+ * وتبقى الورقةُ مفتوحةً في صفحة العمل. والخطأُ يُقال تحت الحقل — الإشعارُ يُرسم تحت الورقة فلا يُرى.
  */
-export function ListSheet({ kind, id, name, posterPath, x, onNewList, onClose }: { kind: "tv" | "movie"; id: number; name: string; posterPath: string | null; x: TitleExtrasPayload | undefined; onNewList: () => void; onClose: () => void }) {
+export function ListSheet({ kind, id, name, posterPath, x, onClose }: { kind: "tv" | "movie"; id: number; name: string; posterPath: string | null; x: TitleExtrasPayload | undefined; onClose: () => void }) {
   const { t, tokens } = useApp();
   const qc = useQueryClient();
   const m = useMutation({
@@ -234,11 +241,40 @@ export function ListSheet({ kind, id, name, posterPath, x, onNewList, onClose }:
         prev ? { ...prev, containing: add ? prev.containing.filter((v) => v !== listId) : [...prev.containing, listId] } : prev,
       ),
   });
+  const [naming, setNaming] = useState(false);
+  const [listName, setListName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const create = async () => {
+    const clean = listName.trim();
+    if (!clean) return setErr(t.listNameRequired);
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await write<{ id: string | null }>("/api/v1/lists/create", { name: clean } satisfies CreateListBody);
+      if (!r.id) throw new Error("no id");
+      const listId = r.id;
+      await write<{ done: true }>("/api/v1/lists/toggle-item", { listId, tmdbId: id, mediaType: kind, title: name, posterPath, add: true } satisfies ListToggleItemBody);
+      qc.setQueryData<TitleExtrasPayload>(extrasKey(kind, id), (prev) =>
+        prev ? { ...prev, my_lists: [...prev.my_lists, { id: listId, name: clean }], containing: [...new Set([...prev.containing, listId])] } : prev,
+      );
+      haptic.success();
+      setListName("");
+      setNaming(false);
+    } catch {
+      /* ما كُتب يبقى في الحقل — تُعاد المحاولةُ بلا كتابةٍ ثانية؛ وقائمةٌ أُنشئت ولم يُضف إليها تظهر بإعادة الجلب */
+      setErr(t.errSaveShort);
+      void qc.invalidateQueries({ queryKey: extrasKey(kind, id) });
+    } finally {
+      setBusy(false);
+    }
+  };
   if (!x) return null;
   return (
     <Sheet title={t.listAddTo} onClose={onClose}>
       <View style={{ gap: 4 }}>
-        {x.my_lists.length === 0 ? <Text size={13} muted>{t.listNoLists}</Text> : null}
+        {x.my_lists.length === 0 && !naming ? <Text size={13} muted>{t.listNoLists}</Text> : null}
         {x.my_lists.map((l) => {
           const on = x.containing.includes(l.id);
           return (
@@ -250,7 +286,47 @@ export function ListSheet({ kind, id, name, posterPath, x, onNewList, onClose }:
             </Pressable>
           );
         })}
-        <Button label={t.listAddTo} variant="ghost" style={{ marginTop: 8 }} onPress={onNewList} />
+        {naming ? (
+          <View style={{ marginTop: 4, padding: 10, gap: 10, borderRadius: radius.lg, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
+            <TextInput
+              value={listName}
+              onChangeText={(v) => {
+                setListName(v);
+                if (err) setErr(null);
+              }}
+              placeholder={t.listNamePlaceholder}
+              placeholderTextColor={tokens.muted}
+              autoFocus
+              maxLength={60}
+              returnKeyType="done"
+              onSubmitEditing={() => void create()}
+              style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: radius.control, borderWidth: 1, borderColor: err ? tokens.error : tokens.border, backgroundColor: tokens.surface2, color: tokens.fg, fontSize: 15 }}
+            />
+            {err ? <Text size={12} color={tokens.error}>{err}</Text> : null}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Button
+                label={t.cancelLabel}
+                variant="ghost"
+                size="sm"
+                style={{ flex: 1 }}
+                disabled={busy}
+                onPress={() => {
+                  setNaming(false);
+                  setListName("");
+                  setErr(null);
+                }}
+              />
+              <Button label={t.listCreateAdd} size="sm" style={{ flex: 1 }} busy={busy} onPress={() => void create()} />
+            </View>
+          </View>
+        ) : (
+          <Pressable onPress={() => setNaming(true)} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderStyle: "dashed", borderColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="plus" size={12} color={tokens.accent} />
+            </View>
+            <Text size={14} weight="700" color={tokens.accent} style={{ flex: 1 }} numberOfLines={1}>{t.listNewGroup}</Text>
+          </Pressable>
+        )}
       </View>
     </Sheet>
   );

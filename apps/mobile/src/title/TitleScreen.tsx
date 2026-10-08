@@ -568,7 +568,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         />
       ) : null}
       {listOpen && d ? (
-        <ListSheet kind={kind} id={id} name={d.name} posterPath={d.poster_path} x={x} onNewList={() => { setListOpen(false); openWeb("", "/lists"); }} onClose={() => setListOpen(false)} />
+        <ListSheet kind={kind} id={id} name={d.name} posterPath={d.poster_path} x={x} onClose={() => setListOpen(false)} />
       ) : null}
       {/* D-1020 — ورقةُ «المزيد» كـ`DetailTopBar` الويب */}
       {menuOpen && d ? (
