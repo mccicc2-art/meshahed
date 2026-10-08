@@ -29,10 +29,15 @@ export async function POST(req: NextRequest) {
   }
   let access = "";
   let refresh = "";
+  /* 🔴 D-1330 — **الجسمُ يُقرأ نصّاً لا `formData()`** (أوّلُ نسخة iOS، ٨ أكتوبر: الدخولُ ينجح عند Google ثمّ
+     يرتدّ إلى `/login` كلَّ مرّة — `auth.login=ok` ثمّ `auth.handoff=none·why=login` ستَّ محاولات). `formData()`
+     يشترط ترويسةَ `Content-Type`، و`WKWebView` يرسل جسمَ POST بلا ترويسة ما لم تُمرَّر صراحةً (`RCTConvert`
+     لا يضيفها)، بينما `postUrl` في أندرويد يضيفها بنفسه — فالعلّةُ في iOS وحدَه. الصيغةُ واحدةٌ في الحالين
+     (`a=b&c=d`)، فقراءتُها نصّاً تقبل الطلبَ بترويسةٍ وبلا ترويسة، والغلافُ يرسلها الآن أيضاً حزاماً ثانياً. */
   try {
-    const form = await req.formData();
-    access = String(form.get("access_token") ?? "");
-    refresh = String(form.get("refresh_token") ?? "");
+    const form = new URLSearchParams(await req.text());
+    access = form.get("access_token") ?? "";
+    refresh = form.get("refresh_token") ?? "";
   } catch {
     return NextResponse.redirect(login, { status: 303 });
   }

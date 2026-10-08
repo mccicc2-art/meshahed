@@ -131,7 +131,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? "0";
 const INSIDE = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
 
 /* 🆕 D-1156 — المصدرُ قد يكون نموذجَ POST (التسليمُ والخروج) يُرسله الغلافُ نفسُه — انظر `formBody` */
-type Source = { uri: string; method?: "POST"; body?: string };
+type Source = { uri: string; method?: "POST"; headers?: Record<string, string>; body?: string };
 
 /**
  * 🆕 **نصُّ شاشة الانقطاع هنا لا في `core/i18n`** — حجّةُ D-907 نفسُها:
@@ -151,6 +151,13 @@ const OFFLINE = {
  * الثانية. الآن تبديلُ المصدر ⇐ `WebView.postUrl` في جافا — تنقّلٌ أصليٌّ لا ينتظر جافاسكربت الصفحة.
  * القاعدةُ نفسُها التي نقضت D-1146: **لا يُعلَّق فعلٌ على طلبٍ قد لا يُجاب.**
  */
+/**
+ * 🔴 D-1330 — **ترويسةُ النموذج صريحة**: `postUrl` في أندرويد يضيفها بنفسه (ويتجاهل ما نمرّره)، أمّا
+ * `WKWebView` في iOS فيرسل الجسمَ عارياً — فكان الخادمُ يعجز عن قراءة التسليم ويردّ `/login` (أوّلُ نسخة iOS،
+ * ٨ أكتوبر). الخادمُ صار يقرأ الجسمَ بلا ترويسةٍ أيضاً؛ هذه تجعل الطلبَ صحيحاً من مصدره.
+ */
+const FORM_HEADERS = { "Content-Type": "application/x-www-form-urlencoded" };
+
 function formBody(fields: Record<string, string>): string {
   return Object.entries(fields)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
@@ -607,7 +614,7 @@ export function WebLayer() {
         /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
         own.fresh(data.session.access_token);
         /* 🆕 D-1156 — الرمزان في جسم POST كما كانا (لا في العنوان) — لكن يرسله الغلافُ لا الصفحة */
-        setSource({ uri: HANDOFF, method: "POST", body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
+        setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
         /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
         prefetchDiscover();
       } else {
@@ -624,7 +631,7 @@ export function WebLayer() {
     shell.attach(fn);
     /* 🆕 D-1156 — نموذجُ POST من الغلاف (الخروج): تبديلُ المصدر لا حقن. `n` يجعل كلَّ طلبٍ مصدراً جديداً —
        مصدرٌ مطابقٌ لسابقه لا يُعاد إرسالُه، فخروجٌ ثانٍ في الجلسة نفسِها كان سيضيع. */
-    shell.attachPost((path) => setSource({ uri: CONFIG.apiBase + path, method: "POST", body: formBody({ n: String(Date.now()) }) }));
+    shell.attachPost((path) => setSource({ uri: CONFIG.apiBase + path, method: "POST", headers: FORM_HEADERS, body: formBody({ n: String(Date.now()) }) }));
     return () => {
       session.attach(null);
       shell.attach(null);
