@@ -649,6 +649,11 @@ export function WebLayer() {
      يمسحه فوراً (`session:clear`) — وK4b تنهي الحاجةَ إلى هذا كلِّه (التطبيقُ يجدّد رمزَه بنفسه). */
 
   const onShouldStart = useCallback((req: ShouldStartLoadRequest) => {
+    /* 🔴 D-1331 — **الإطارُ المضمَّن ليس تنقّلاً** (أوّلُ نسخة iOS، تسجيلُ أحمد ٨ أكتوبر: «التريلرات يوديني يوتيوب» —
+       كروم على `youtube-nocookie.com` ثمّ «Error 153»). أندرويد لا يسأل هذا الباب إلّا عن المستند الرئيسيّ، أمّا
+       `WKWebView` فيسأله عن كلِّ إطار — فكان مشغّلُ يوتيوب في صفحة التريلرات يُمنع ويُرمى إلى المتصفّح، ويرفضه يوتيوب
+       هناك بلا محيل. الحارسُ للمستند وحدَه؛ الإطارُ يُحمَّل في مكانه كما في أندرويد. */
+    if (req.isTopFrame === false) return true;
     let host = "";
     try {
       host = new URL(req.url).hostname;

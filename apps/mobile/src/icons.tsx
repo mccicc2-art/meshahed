@@ -1,4 +1,5 @@
 import React from "react";
+import { Platform } from "react-native";
 import { Image, type ImageRef } from "expo-image";
 
 /**
@@ -128,7 +129,7 @@ const NAV_ICONS: IconName[] = [
    أحمد ٨ أكتوبر — السببُ نفسُه (صورةٌ تُحمَّل بعد التركيب). سبعُ صورٍ ٧٢px. */
 const PROFILE_ICONS: IconName[] = ["tv", "film", "sparkles", "chart", "calendar", "star", "heart"];
 const warm = new Map<IconName, ImageRef>();
-for (const name of [...NAV_ICONS, ...PROFILE_ICONS]) {
+for (const name of Platform.OS === "ios" ? [] : [...NAV_ICONS, ...PROFILE_ICONS]) {
   try {
     void Image.loadAsync(ICONS[name] as number)
       .then((ref) => {
@@ -140,6 +141,18 @@ for (const name of [...NAV_ICONS, ...PROFILE_ICONS]) {
   }
 }
 
+/**
+ * 🔴 D-1333 — **في iOS الأيقونةُ من ملفّها، وتُركَّب من جديد إذا تغيّر لونها** (أوّلُ نسخة iOS، تسجيلُ أحمد ٨ أكتوبر:
+ * «الدوك فيه خلل فالاضاءه» — الكلمةُ تتلوّن صحيحاً والأيقونةُ تبقى بلونها السابق أو بيضاء، والأبيضُ لونُ الصورة قبل
+ * التلوين). `expo-image` في iOS لا يطبّق `tintColor` بثباتٍ على المرجع المحمَّل مسبقاً (D-1276)، ولا يعيده حين يتغيّر
+ * اللونُ وحدَه والمصدرُ ثابت. **أندرويد كما هو** — المرجعُ المحمَّل يمنع رمشةَ أوّل دخول (D-1276) ولا عيبَ فيه هناك.
+ * ⚠️ مستنتَجٌ من التسجيل والكود لا من جهاز — الحَكَمُ تسجيلٌ بعد التحديث.
+ */
+const IOS = Platform.OS === "ios";
+
 export function Icon({ name, size = 18, color }: { name: IconName; size?: number; color: string }) {
+  if (IOS) {
+    return <Image key={`${name}|${color}`} source={ICONS[name]} style={{ width: size, height: size }} tintColor={color} contentFit="contain" />;
+  }
   return <Image source={warm.get(name) ?? ICONS[name]} style={{ width: size, height: size }} tintColor={color} contentFit="contain" />;
 }

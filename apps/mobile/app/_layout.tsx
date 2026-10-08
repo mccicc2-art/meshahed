@@ -77,13 +77,17 @@ function Shell() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="web" options={{ headerShown: false }} />
+        <Stack.Screen name="web" options={{ headerShown: false, gestureEnabled: false }} />
         {/* Phase 11 · B1 (D-936) — الشاشةُ الأصليّةُ الوحيدة، فوق الـWebView لا
             بدلَها: `Stack` يُبقي `web` مركَّبةً تحتها، فالرجوعُ يعود إليها
             بلا إعادة تحميل (عقدُ المالك: الحالةُ محفوظة). */}
         {/* 🆕 K3 — الجذورُ الأربعة (الرئيسيّة · المكتبة · اكتشف · البحث) مجموعةُ تبويباتٍ ثابتة (`(tabs)/_layout.tsx`):
             تُدفع فوق الـWebView كما كانت، وبلا حركة — لكنّ التبديلَ بينها لم يعد يهدم شيئاً */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+        {/* 🔴 D-1332 — **لا سحبَ للرجوع على الجذور** (أوّلُ نسخة iOS، تسجيلُ أحمد ٨ أكتوبر: «اذا لفيت يسار فجأه يوديني
+            للرئيسية»): iOS يفعّل سحبَ الحافّة لكلِّ شاشةٍ مدفوعة، فكان السحبُ يُغلق مجموعةَ التبويبات كلَّها ويكشف شاشةَ الويب
+            تحتها برئيسيّة الويب. الجذورُ لا «خلف» لها؛ والسحبُ باقٍ في الشاشات الداخليّة (العمل · القائمة · النقاش · الملفّات)
+            لأنّه الرجوعُ الذي ينتظره مستخدمُ iOS. أندرويد بلا هذه الإيماءة أصلاً فلا يتغيّر. */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none", gestureEnabled: false }} />
         <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         {/* D-1036 — صفحةُ القائمة الأصليّة: تُدفع فوق «المكتبة»/«اكتشف» كصفحة العمل */}
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
