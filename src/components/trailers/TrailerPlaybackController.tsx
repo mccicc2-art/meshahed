@@ -607,6 +607,19 @@ function createEngine(
     }, STALL_MS);
   };
 
+  /**
+   * 🔴 D-1320 — **صفحةٌ مخفيّةٌ لا تشغّل** (بلاغُ أحمد، ٨ أكتوبر: «أضغط هوم أو مكتبة… يبقى معي صوت التريلر — صوتُ
+   * تريلر جديد مو قديم — ولازم أرجع صفحة التريلرات عشان يروح. مو دايم»). الصفحةُ في التطبيق تُخفى تحت الشاشات
+   * الأصليّة ولا تُغلق (`WebLayer`)، ويصلها `visibilitychange` فتوقف المقطع — **مرّةً، لحظةَ الإخفاء**. ومقطعٌ
+   * جديدٌ في منتصف تحميله يفلت: `pauseCurrent` لا يجد مشغّلاً جاهزاً (`act.ready`) فلا يفعل شيئاً، ثمّ يجهز المشغّلُ
+   * فيشتغل، وحدثُ PLAYING يفكّ كتمَه (D-771). سباقُ توقيتٍ — ولذلك «أحياناً»، ولذلك الصوتُ صوتُ الجديد دائماً.
+   *
+   * 🔑 **فالفحصُ عند المصبّ لا عند الإخفاء**: كلُّ طريقٍ إلى التشغيل (إقلاعٌ ذاتيّ · `loadVideoById` · بديلُ الخطأ ·
+   * إعادةُ المحاولة · المصالحة) ينتهي بحدثِ PLAYING أو بـ`playing` على عنصر الملفّ — وهناك يُسأل «هل تُرى الصفحة؟».
+   * طريقٌ يُضاف غداً يمرّ من الحارس نفسِه. والعودةُ (`onVisibility`) تستأنف كما كانت.
+   */
+  const pageHidden = () => document.visibilityState === "hidden";
+
   /* ---- المصدران ---- */
   const pauseCurrent = () => {
     if (activeIsFile()) dom.video.pause();
@@ -680,6 +693,15 @@ function createEngine(
     const yts = window.YT?.PlayerState;
     if (!yts) return;
     if (e.data === yts.PLAYING) {
+      if (pageHidden()) {
+        /* D-1320 — اشتغل والصفحةُ مخفيّة: يُكتم ويوقف قبل أن يُفكّ كتمُه. صدى الإيقاف يُستهلك (`expectPause`)،
+           ومهلةُ التعثّر تسكن — لا «تعثّرٌ» يُسجَّل على مقطعٍ أوقفناه نحن */
+        expectPause = true;
+        clearStall();
+        act?.p?.mute();
+        act?.p?.pauseVideo();
+        return;
+      }
       expectPause = false;
       startTick();
       startVeilProbe();
@@ -1122,6 +1144,9 @@ function createEngine(
   /* ---- اختيارُ البطاقة النشطة (المواصفة ثالثًا) ---- */
   reconcile = () => {
     if (readSnap().manualOnly) return;
+    /* D-1320 — ولا تُنشَّط بطاقةٌ والصفحةُ مخفيّة: المراقبُ يبلّغ حين يتبدّل قياسُ الصفحة تحت الشاشات الأصليّة.
+       ما فات يُصالَح عند العودة (`onVisibility`) */
+    if (pageHidden()) return;
     /* 🔴 D-1308 (تسجيلا خالد ومشعل، ٦ أكتوبر: «بعض التريلرات يفكّ التكبير»): الصفحةُ خلف الستارة تبقى مقيسة،
        وتدويرُ الجوّال يغيّر قياسَها وموضعَ تمريرها — فترى هذه الدالّةُ البطاقةَ المكبَّرة «خرجت عن العين» فتطفئها
        (`clearActive` تُسقط التكبيرَ معها)، أو ترى جارتَها أوضحَ فتنقل التشغيلَ إليها دون طلب. **والمكبَّرُ لا يراه
@@ -1247,6 +1272,11 @@ function createEngine(
     raf = window.requestAnimationFrame(syncOverlay);
   };
 
+  /* D-1320 — الحارسُ نفسُه لعنصر الملفّ: `play()` طُلب قبل الإخفاء ووصلت بياناتُه بعده */
+  const onFilePlaying = () => {
+    if (pageHidden()) dom.video.pause();
+  };
+
   const onVisibility = () => {
     if (document.visibilityState === "hidden") {
       /* الخلفيّة: إيقافٌ فوريٌّ وعدّادٌ ساكن (ثالثًا/٦، سادسًا/٦) —
@@ -1255,6 +1285,8 @@ function createEngine(
       rememberPosition();
       pauseCurrent();
       stopTick();
+      /* D-1320 — ومهلةُ التعثّر تسكن معه: مقطعٌ يحمّل لحظةَ الإخفاء كان يُختم «متعثّراً» بعد ثوانٍ وهو موقوفٌ عمداً */
+      clearStall();
       if (sby?.p && sby.preload === "loading") {
         sby.p.pauseVideo();
         sby.preload = "idle";
@@ -1267,7 +1299,13 @@ function createEngine(
        الذي كان جذرَ «كل شوي أحصل المقطع صامت»): الملفُّ يحمل النيّةَ
        بنفسه ويرتدّ صامتاً عند الرفض، ويوتيوبُ يستأنف صامتاً وحدثُ
        PLAYING يفكّه بمساره الموحَّد. */
-    if (!activeId) return;
+    /* D-1320 — بلا نشطة: ما حجبته المصالحةُ وهي مخفيّةٌ يُصالَح الآن */
+    if (!activeId) {
+      reconcile();
+      return;
+    }
+    /* ومقطعٌ أُوقف في منتصف تحميله يعود «يحمّل» بمهلته — وإلّا بقي غلافُه بلا نهاية إن لم يشتغل */
+    if (phase === "loading") armStall();
     if (activeIsFile()) {
       const carry = wantSound && !soundBlocked;
       dom.video.muted = !carry;
@@ -1321,6 +1359,7 @@ function createEngine(
         for (const [, s] of slots) io.observe(s.area);
       }
       document.addEventListener("visibilitychange", onVisibility);
+      dom.video.addEventListener("playing", onFilePlaying);
       /* محاذاةٌ فوريّةٌ عند كلِّ ما يحرّك البطاقةَ تحت الطبقة (فقرة A):
          لفُّ أيِّ حاويةٍ (`capture` لأنّ scroll لا يفقع) والتدويرُ
          وviewport الحقيقيُّ في iOS — وحلقةُ rAF تبقى شبكةَ الأمان */
@@ -1579,6 +1618,7 @@ function createEngine(
       stopVeilProbe();
       clearControlsTimer();
       document.removeEventListener("visibilitychange", onVisibility);
+      dom.video.removeEventListener("playing", onFilePlaying);
       window.removeEventListener("scroll", alignOverlay, { capture: true });
       window.removeEventListener("resize", alignOverlay);
       window.removeEventListener("orientationchange", alignOverlay);
