@@ -59,6 +59,11 @@ const NAMES = new Set([
      و`token.life` قيمتُه **ثوانٍ** باقيةٌ في رمز الوصول لحظةَ يستلمه التطبيق. الخانةُ واحدةٌ والوحدةُ
      من الاسم — استعلامُ النِّسب أعلاه يعمل عليهما كما هو، ويُقرأ رقمُهما بوحدته. */
   "gesture.jank",
+  /* 🆕 D-1334 — `scroll.jank` قيمتُه **عددُ إطاراتٍ** ضائعةٍ على خيط الواجهة في تمرير «اكتشف» و«المكتبة»، **مجموعاً
+     لكلِّ دفعة** (`count` تمريرة · `dur` مدّتُها كلُّها · `src` = v عمود / h صفٌّ أفقيّ · `drop` ما ضاع على JS ·
+     `worst` أطولُ فجوةٍ ms · `fps` الإطاراتُ المرسومةُ في الثانية). النسبةُ تُحسب من المجموع لا من وسيط الصفوف:
+       sum(ms) / (sum(dur) / 16.7) */
+  "scroll.jank",
   "token.life",
   /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
   "token.wait",
@@ -89,8 +94,9 @@ const NAMES = new Set([
 /* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)
    🗑️ D-1272 — عدّاداتُ الرسم (`first` · `roots` · `panes` · `rails` · `cards` · `live` · `marq`، D-1218/D-1230) سقطت مع
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
-   🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre"]);
+   🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
+   🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

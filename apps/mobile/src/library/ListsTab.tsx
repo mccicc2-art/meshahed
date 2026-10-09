@@ -19,6 +19,7 @@ import { posterFor } from "../poster";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import { OneTimeHint } from "./OneTimeHint";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
+import { scrollJank } from "../scrollJank";
 
 /**
  * ====== تبويبُ «قوائم» أصليّاً — نسخةُ `ListManager` + `listsExtra` (D-947) ======
@@ -163,7 +164,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
   const savedTitle = p.saved_count > 0 ? `${t.savedListsSection} · ${p.saved_count}` : t.savedListsSection;
 
   return (
-    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} {...scrollJank("library", "v", "lists")}>
       {/* فوق الزرّين: أوّلُ ما يُرى عند فتح التبويب — وقوائمُ الآخرين ليست هنا فيقول أين هي */}
       {hint ? <OneTimeHint id="lists-tab" text={t.hintListsTab} style={{ marginBottom: -16 }} /> : null}
       <View>
@@ -245,6 +246,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           </Text>
           <FlatList
             horizontal
+            {...scrollJank("library", "h")}
             data={p.auto_groups}
             keyExtractor={(g) => `${g.kind}:${g.name}`}
             showsHorizontalScrollIndicator={false}

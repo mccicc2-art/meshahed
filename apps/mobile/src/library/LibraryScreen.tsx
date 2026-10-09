@@ -23,6 +23,7 @@ import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
+import { scrollJank } from "../scrollJank";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { OneTimeHint } from "./OneTimeHint";
@@ -886,6 +887,8 @@ function LibraryPane({
         onLoad={restore}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        /* 🆕 D-1334 — إطاراتُ تمرير العمود تُعدّ (`scroll.jank`، قياسٌ لا يغيّر سلوكاً) */
+        {...scrollJank("library", "v", tab)}
         onViewableItemsChanged={onViewable}
         viewabilityConfig={VIEWABILITY}
         /* 🆕 D-1247 — **صفوفُ الشاشة الأولى في دفعةٍ واحدة**. القائمةُ ترسم أوّلَ بنائها على دفعاتٍ من عنصرين
@@ -1071,6 +1074,8 @@ const RailRow = memo(function RailRow({ row, sight, onOpen, onHold }: { row: Ext
       getItemLayout={railLayout}
       initialNumToRender={6}
       windowSize={5}
+      /* 🆕 D-1334 — وتمريرُ الرفِّ الأفقيّ كذلك */
+      {...scrollJank("library", "h")}
     />
   );
 });

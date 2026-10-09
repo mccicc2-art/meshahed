@@ -9,6 +9,7 @@ import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
+import { scrollJank } from "../scrollJank";
 
 /**
  * ====== تبويبُ «القوائم» في «اكتشف» — نسخةُ `ListsDiscovery` (الويب) ======
@@ -58,6 +59,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
         </View>
         <FlatList
           horizontal
+          {...scrollJank("discover", "h")}
           data={lists}
           keyExtractor={(l) => l.id}
           renderItem={({ item }) => (

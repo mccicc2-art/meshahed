@@ -28,6 +28,7 @@ import { Logo } from "../Logo";
 import { NameSheet } from "./NameSheet";
 import { coldStartVoid, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
+import { scrollJank } from "../scrollJank";
 import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
 import type { TabPref } from "@/core/tabPrefs";
@@ -773,6 +774,8 @@ const DiscoverPane = memo(function DiscoverPane({
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
       onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}
       scrollEventThrottle={16}
+      /* 🆕 D-1334 — إطاراتُ تمرير العمود تُعدّ (`scroll.jank`، قياسٌ لا يغيّر سلوكاً) */
+      {...scrollJank("discover", "v", tab)}
     >
       {lists ? <ListsRails onOpenWeb={onLeave} /> : null}
       {/* رقاقاتُ الفلاتر المحفوظة — D-992: تطبّق `q` هنا (كانت تفتح `/news?<q>` باباً) */}
@@ -1022,6 +1025,8 @@ const CardsRail = memo(function CardsRail({
            تحمل ~١١٠ بطاقةً مركّبةً في لوحين (`live` في D-1218a) — وفكُّ التجميد يمرّ عليها كلِّها. العرضُ ثابت
            (`getItemLayout`) فما يقترب من الحافّة يُركَّب قبل أن يُرى. */
         windowSize={3}
+        /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك */
+        {...scrollJank("discover", "h")}
       />
     </View>
   );

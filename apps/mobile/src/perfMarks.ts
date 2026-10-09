@@ -43,6 +43,8 @@ export type PerfName =
   | "boot.fresh"
   /* 🆕 D-1128 — «قبل» K2: إطاراتُ السحب الضائعة · وعمرُ الرمز لحظةَ استلامه (ثوانٍ) */
   | "gesture.jank"
+  /* 🆕 D-1334 — إطاراتُ التمرير الضائعة في «اكتشف» و«المكتبة» (العمودُ والصفوفُ الأفقيّة) — انظر `scrollSample` */
+  | "scroll.jank"
   | "token.life"
   /* 🆕 D-1141 — انتظارُ الرمز من الصفحة: مدّتُه ونتيجتُه (`result=ok|none`) وجاهزيّةُ الصفحة (`ready=0|1`) */
   | "token.wait"
@@ -85,6 +87,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let lastFlush = 0;
 
 function flush() {
+  /* مجاميعُ التمرير تنزل إلى الدفعة قبل إرسالها (D-1334) — قبل مسح المؤقّت، فما يضبطه `mark` هنا يُمسح معه */
+  drainScroll();
   if (timer) {
     clearTimeout(timer);
     timer = null;
@@ -108,7 +112,62 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
   if (name === "library.open" && preloaded.has("library") && !landedOnce.has("library")) extra = { ...extra, pre: 1 };
   if (buffer.length >= MAX_BUFFER) buffer.shift();
   buffer.push({ name, ms: Math.round(ms), ...(extra ? { extra } : {}) });
+  arm();
+}
+/** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
+function arm() {
   if (!timer) timer = setTimeout(flush, Math.max(2_000, FLUSH_MS - (Date.now() - lastFlush)));
+}
+
+/**
+ * ====== إطاراتُ التمرير الضائعة (`scroll.jank`) — D-1334 ======
+ * **لماذا**: بلاغُ أحمد ٩ أكتوبر ٢٠٢٦: «الإيماءاتُ على سامسونج أفضلُ جدّاً من آيفون» — و`gesture.jank` لا يقيس إلّا
+ * السحبَ بين التبويبات. التمريرُ نفسُه (عمودُ الصفحة والصفوفُ الأفقيّة) هو أكثرُ ما تلمسه اليد، ولا رقمَ عنه.
+ *
+ * 🔑 **مجموعٌ لا علامةٌ لكلِّ تمريرة**: المستخدمُ يمرّر عشراتِ المرّات في الدقيقة والدفعةُ ٤٠ علامة — علامةٌ لكلِّ
+ * تمريرةٍ كانت ستطرد كلَّ قياسٍ آخر من الذاكرة. فكلُّ (شاشة · تبويب · اتّجاه) يجمع تمريراتِه ويخرج **علامةً واحدةً
+ * مع كلِّ دفعة**.
+ *
+ * القيمةُ في خانة `ms` **عددُ الإطارات الضائعة على خيط الواجهة** (الخيطُ الذي يحرّك التمرير) بميزانيّة 60Hz نفسِها
+ * التي يعدّ بها `gesture.jank` — فالرقمان يُقارنان، والجهازان يُقارنان مهما اختلف معدّلُ شاشتيهما. ومعها:
+ * - `src` — `v` عمودُ الصفحة · `h` صفٌّ أفقيّ.
+ * - `count` — كم تمريرةً في المجموع · `dur` — مدّتُها كلُّها (ms، من لمس الإصبع إلى وقوف الانزلاق).
+ * - `drop` — إطاراتٌ ضاعت على خيط JS في المدّة نفسِها: كبيرٌ مع `ms` صغير = JS مشغولٌ والعينُ لا ترى.
+ * - `worst` — أطولُ فجوةٍ بين إطارين (ms): وقفةٌ واحدةٌ طويلةٌ تُرى أكثرَ من إطاراتٍ متفرّقة.
+ * - `fps` — الإطاراتُ المرسومةُ فعلاً في الثانية: ~١٢٠ على شاشة 120Hz و~٦٠ على 60Hz — يقول معدّلَ الشاشة
+ *   الفعليَّ للتطبيق بلا سؤالٍ عن الطراز.
+ */
+type ScrollAcc = { screen: string; src: "v" | "h"; tab?: string; ui: number; js: number; dur: number; n: number; worst: number; frames: number };
+const scrollAcc = new Map<string, ScrollAcc>();
+export function scrollSample(s: { screen: string; src: "v" | "h"; tab?: string; ui: number; js: number; dur: number; worst: number; frames: number }) {
+  if (!Number.isFinite(s.dur) || s.dur < 120) return;
+  const key = `${s.screen}|${s.tab ?? ""}|${s.src}`;
+  const a = scrollAcc.get(key);
+  if (a) {
+    a.ui += s.ui;
+    a.js += s.js;
+    a.dur += s.dur;
+    a.n += 1;
+    a.frames += s.frames;
+    if (s.worst > a.worst) a.worst = s.worst;
+  } else scrollAcc.set(key, { screen: s.screen, src: s.src, tab: s.tab, ui: s.ui, js: s.js, dur: s.dur, n: 1, worst: s.worst, frames: s.frames });
+  arm();
+}
+function drainScroll() {
+  if (scrollAcc.size === 0) return;
+  const all = [...scrollAcc.values()];
+  scrollAcc.clear();
+  for (const a of all)
+    mark("scroll.jank", a.ui, {
+      screen: a.screen,
+      ...(a.tab ? { tab: a.tab } : {}),
+      src: a.src,
+      count: a.n,
+      dur: Math.round(a.dur),
+      drop: a.js,
+      worst: Math.round(a.worst),
+      fps: Math.round((a.frames * 1000) / a.dur),
+    });
 }
 
 /** علامةٌ بطرفين: تُفتح الآن وتُغلق مرّةً واحدة — نداءٌ ثانٍ للإغلاق لا يكتب شيئاً */
@@ -210,7 +269,7 @@ export function jankStart(extra: Extra): () => void {
    `cached` · `pre`). */
 let pendingTab: { to: string; from: string; t0: number; go?: number; focus?: number; stopFrames: () => number } | null = null;
 /** عدّادُ إطاراتٍ ضائعة يعمل حتى يُطلب رقمُه — نسخةُ `jankStart` بلا حدِّ مدّةٍ ولا علامة */
-function frameCounter(): () => number {
+export function frameCounter(): () => number {
   let raf = 0;
   let last = performance.now();
   let dropped = 0;

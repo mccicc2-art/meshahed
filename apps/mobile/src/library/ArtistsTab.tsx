@@ -11,6 +11,7 @@ import { Icon } from "../icons";
 import { MarqueeText } from "./MarqueeText";
 import { profileUrl } from "@/core/media";
 import type { LibraryArtistsPayload, LibraryArtist } from "../contracts";
+import { scrollJank } from "../scrollJank";
 
 /**
  * ====== تبويبُ «فنّانون» أصليّاً — نسخةُ `ArtistsGrid` (D-128) ======
@@ -59,7 +60,7 @@ export function ArtistsTab({ onOpenWeb, topPad = 0, bottomPad = 40, onScroll, he
   if (items.length === 0) return <View style={{ paddingTop: topPad + 12 }}><View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View><Empty text={t.artistsEmpty} cta={t.artistsEmptyCta} onCta={() => onOpenWeb("/search")} /></View>;
 
   return (
-    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+    <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} {...scrollJank("library", "v", "artists")}>
       {head}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
         {items.map((a) => (

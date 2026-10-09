@@ -10,6 +10,10 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import type { CuratedTab, FollowBody, TrackResult, TrailerCard, TrailersRailPayload } from "../contracts";
+import { scrollJank } from "../scrollJank";
+
+/* 🆕 D-1334 — صفُّ التريلرات يُعدّ مع الصفوف الأفقيّة في «اكتشف» (`scroll.jank`) */
+const jank = scrollJank("discover", "h");
 
 /**
  * ====== صفُّ التريلرات في «اكتشف» الأصليّة — D-958 (١٤ سبتمبر ٢٠٢٦) ======
@@ -134,6 +138,8 @@ export function TrailersRail({
       const x = e.nativeEvent.contentOffset.x;
       if (axis.current === null && atRef.current === 0) axis.current = x > (cardW + GAP) / 2 ? -1 : 1;
       base.current = { x, i: atRef.current };
+      /* 🆕 D-1334 — بدءُ السحب يفتح عدَّ إطارات التمرير أيضاً (`scroll.jank`) */
+      jank.onScrollBeginDrag();
     },
     [cardW],
   );
@@ -213,6 +219,9 @@ export function TrailersRail({
         snapToInterval={cardW + GAP}
         decelerationRate="fast"
         onScrollBeginDrag={onDragStart}
+        onScrollEndDrag={jank.onScrollEndDrag}
+        onMomentumScrollBegin={jank.onMomentumScrollBegin}
+        onMomentumScrollEnd={jank.onMomentumScrollEnd}
         onScroll={onScroll}
         scrollEventThrottle={32}
       >
