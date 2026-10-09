@@ -306,6 +306,8 @@ const WARM_AFTER_SWIPE_MS = 180;
    (SM-S928B): تركيبُ أربعة ألواحٍ معاً يوقف خيطَ الواجهة ٢٠٠–٣١٦ms بعد الظهور بنحو ثانية — واللمسُ في تلك اللحظة لا يُجاب
    («ما أقدر أتحكّم على طول»). لوحٌ في كلِّ مرّة يقسم الوقفةَ إلى قصيراتٍ بينها إطاراتٌ تجيب الإصبع. */
 const WARM_STEP_MS = 320;
+/* D-1335 — عمرُ حسمِ سحبٍ ينتظر رسمتَه (انظر `pending`) */
+const PENDING_MS = 1000;
 
 /**
  * 🆕 D-1242 — **لوحٌ يُجهَّز في الخلفيّة يُركَّب مخفيّاً ثمّ يُكشف** (تسجيلُ أحمد ٣ أكتوبر على ملفّ الشخص: بعد نحو نصف ثانيةٍ
@@ -354,19 +356,18 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   const armed = useSharedValue(-1);
   const x0 = useSharedValue(0);
   const y0 = useSharedValue(0);
+  /* 🆕 D-1335 — السحبةُ تقطع الطيران (الشرحُ عند `gesture`): وجهةُ الطيران الجاري (`-1` = لا طيران)، ورقمُه (ردُّ طيرانٍ
+     قُطع لا يمسّ ما بعده)، وموضعُ اللوح لحظةَ التقاطه منسوباً إلى مستقرِّ وجهته، وإزاحةُ الإصبع التي تُبقيه هناك */
+  const fly = useSharedValue(-1);
+  const gen = useSharedValue(0);
+  const grab = useSharedValue(0);
+  const grabRel = useSharedValue(0);
+  const carry = useSharedValue(0);
   /* عدّادُ إطارات خيط الواجهة */
   const jLive = useSharedValue(0);
   const jT0 = useSharedValue(-1);
   const jLast = useSharedValue(-1);
   const jDrop = useSharedValue(0);
-
-  /* الهندسةُ والنشطُ تصل خيطَ الواجهة قبل الرسم — سحبةٌ تبدأ بعد القلب تقرأ التبويبَ الجديد */
-  useLayoutEffect(() => {
-    idx.value = order.indexOf(tab);
-    count.value = order.length;
-    w.value = width;
-    ph.value = phys;
-  }, [order, tab, width, phys, idx, count, w, ph]);
 
   const [side, setSide] = useState<K | null>(null);
   const sideRef = useRef<K | null>(null);
@@ -389,7 +390,27 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   onAimRef.current = onAim;
   const perfRef = useRef(perfScreen);
   perfRef.current = perfScreen;
-  const settled = useRef<K | null>(null);
+  /* تبويباتٌ حسمها السحبُ على خيط الواجهة ولم يرسمها React بعد — بالترتيب (كانت واحداً؛ قطعُ الطيران يجعلها أكثر) */
+  const pending = useRef<{ k: K; at: number }[]>([]);
+  /* حسمٌ لم تأتِ رسمتُه خلال ثانيةٍ لن تأتي (React جمع تبديلين عادا إلى التبويب نفسِه) — يُرمى كي لا يُقرأ لاحقاً سبقاً */
+  const livePending = useCallback(() => {
+    const now = performance.now();
+    const p = pending.current;
+    if (p.length > 0 && now - p[0]!.at >= PENDING_MS) pending.current = p.filter((e) => now - e.at < PENDING_MS);
+    return pending.current;
+  }, []);
+  /* الهندسةُ والنشطُ تصل خيطَ الواجهة قبل الرسم — سحبةٌ تبدأ بعد القلب تقرأ التبويبَ الجديد */
+  useLayoutEffect(() => {
+    /* 🆕 D-1335 — **خيطُ الواجهة قد يسبق React**: سحبةٌ قطعت الطيران حسمت تبويباً لم تُرسم رسمتُه بعد (`pending`)، وهذا
+       التأثيرُ يعمل مع كلِّ رسمة (`order` مصفوفةٌ جديدةٌ كلَّ مرّة) — فكتابةُ التبويب المرسوم الآن فوق المحسوم تُرجع
+       الموضعَ لوحاً كاملاً تحت الإصبع. يُكتب حين لا حسمَ ينتظر، أو حين هذه رسمةُ آخرِ ما حُسم. */
+    const pend = livePending();
+    if (pend.length === 0 || pend[pend.length - 1]!.k === tab) idx.value = order.indexOf(tab);
+    count.value = order.length;
+    w.value = width;
+    ph.value = phys;
+  }, [order, tab, width, phys, idx, count, w, ph, livePending]);
+
   /* آخرُ تبدّلٍ للتبويب جاء من سحبٍ مكتمل (لا من ضغطة) — يقصّر مهلةَ التجهيز */
   const bySwipe = useRef(false);
   const armEnd = useRef<(() => void) | null>(null);
@@ -417,7 +438,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   const commit = useCallback((i: number) => {
     const k = orderRef.current[i];
     if (!k) return;
-    settled.current = k;
+    pending.current.push({ k, at: performance.now() });
     onTabRef.current(k);
   }, []);
   const jsJankOn = useCallback(() => {
@@ -451,10 +472,13 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
             x0.value = t.absoluteX;
             y0.value = t.absoluteY;
           }
-          if (busy.value) m.fail();
+          grab.value = 0;
+          carry.value = 0;
+          /* طيرانُ ضغطةِ تبويبٍ (٢) لا يُقطع: لوحان يتبادلان الموضعَ ولا «وجهةَ» يُكمل منها الإصبع */
+          if (busy.value === 2) m.fail();
         })
         .onTouchesMove((e, m) => {
-          if (busy.value) {
+          if (busy.value === 2) {
             m.fail();
             return;
           }
@@ -463,7 +487,32 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
           const dx = t.absoluteX - x0.value;
           const dy = t.absoluteY - y0.value;
           /* عتباتُ D-953 حرفاً: لا نسأل قبل ٢٠px، والأفقُ يغلب العمودَ بـ١٫٦ */
-          if (Math.abs(dx) > LOCK_DX && Math.abs(dx) > TILT * Math.abs(dy)) m.activate();
+          if (!(Math.abs(dx) > LOCK_DX && Math.abs(dx) > TILT * Math.abs(dy))) return;
+          if (busy.value === 1) {
+            /* 🆕 D-1335 — **السحبةُ التاليةُ تقطع الطيران** (بلاغُ أحمد بتسجيل، ٩ أكتوبر ٢٠٢٦: «إذا كنت في المسلسلات وبروح
+               للأنمي، ليش لازم يوقف في الفلم لثانية؟»). كان كلُّ لمسٍ يُرفض ما دام اللوحُ يطير (٥٢٠ms)، والمنحنى يُبطئ
+               بقوّةٍ في آخره: العينُ ترى اللوحَ واقفاً منذ ~٢٥٠ms والسحبُ ما زال مرفوضاً.
+               الآن سحبةٌ قُفلت واللوحُ يطير **تلتقطه حيث هو**: وجهتُه تُحسم نشطةً فوراً (على خيط الواجهة، وReact يلحق)،
+               والإصبعُ يكمل من موضع اللوح نفسِه بلا قفزة — كأيِّ مصفّحِ تبويباتٍ أصليّ. القفلُ بالعتبات نفسِها، فالتمريرُ
+               العموديُّ والصفوفُ الأفقيّةُ يكسبان إن تحرّكا أوّلاً كما كانا. */
+            const target = fly.value;
+            const W = w.value;
+            const P = ph.value;
+            const cur = pos.value;
+            gen.value += 1;
+            cancelAnimation(pos);
+            pos.value = cur;
+            grabRel.value = cur - -Math.max(0, target) * W * P;
+            grab.value = 1;
+            busy.value = 0;
+            armed.value = -1;
+            fly.value = -1;
+            if (target >= 0 && target !== idx.value) {
+              idx.value = target;
+              scheduleOnRN(commit, target);
+            }
+          }
+          m.activate();
         })
         .onStart(() => {
           /* عدّادُ إطارات خيط الواجهة: حلقةٌ على وقت تشغيل Reanimated، تُعدّ الفجواتُ فوق ١٫٥ إطار */
@@ -497,7 +546,13 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
             armed.value = ni;
             scheduleOnRN(arm, ni);
           }
-          pos.value = base + (has ? Math.max(-W, Math.min(W, e.translationX)) : e.translationX * RUBBER);
+          /* D-1335 — لوحٌ التُقط طائراً: أوّلُ حركةٍ تحسب الإزاحةَ التي تُبقيه حيث التُقط (`carry` صفرٌ في السحب العاديّ) */
+          if (grab.value) {
+            grab.value = 0;
+            carry.value = grabRel.value - (has ? e.translationX : e.translationX * RUBBER);
+          }
+          const c = carry.value;
+          pos.value = base + (has ? Math.max(-W, Math.min(W, c + e.translationX)) : c + e.translationX * RUBBER);
         })
         .onEnd((e, success) => {
           const i = idx.value;
@@ -508,13 +563,20 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
           const ni = i >= 0 ? i + dir : -1;
           const has = ni >= 0 && ni < count.value;
           busy.value = 1;
+          grab.value = 0;
+          /* D-1335 — رقمُ هذا الطيران: ردُّه لا يعمل إن قُطع (السحبةُ التي قطعته حسمت كلَّ شيءٍ بنفسها) */
+          gen.value += 1;
+          const g = gen.value;
           if (success && has && (Math.abs(e.translationX) >= COMMIT_DX || Math.abs(e.velocityX) >= COMMIT_VX * 1000)) {
             /* الطيرانُ ثمّ القلب (D-526/D-970): النشطُ يُحدَّث على خيط الواجهة أوّلاً — سحبةٌ تالية
                قبل أن يرسم React تقرأ الموضعَ الصحيح */
             scheduleOnRN(aim, ni);
+            fly.value = ni;
             pos.value = withTiming(base - dir * P * W, { duration: FLY_MS, easing: REASE }, (fin) => {
-              busy.value = 0;
+              if (gen.value !== g) return;
+              if (busy.value === 1) busy.value = 0;
               armed.value = -1;
+              fly.value = -1;
               if (fin) {
                 idx.value = ni;
                 scheduleOnRN(commit, ni);
@@ -522,9 +584,13 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
             });
             return;
           }
+          /* عودةٌ إلى النشط — تُقطع هي أيضاً (وجهتُها النشطُ نفسُه فلا حسمَ جديد) */
+          fly.value = i;
           pos.value = withTiming(base, { duration: SNAP_MS, easing: REASE }, (fin) => {
-            busy.value = 0;
+            if (gen.value !== g) return;
+            if (busy.value === 1) busy.value = 0;
             armed.value = -1;
+            fly.value = -1;
             if (fin) scheduleOnRN(unmountSide);
           });
         })
@@ -536,7 +602,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
           }
           scheduleOnRN(jsJankOff);
         }),
-    [x0, y0, busy, idx, w, ph, count, armed, pos, jLive, jT0, jLast, jDrop, arm, aim, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
+    [x0, y0, busy, idx, w, ph, count, armed, pos, fly, gen, grab, grabRel, carry, jLive, jT0, jLast, jDrop, arm, aim, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
   );
 
   /* تبدّلُ `tab` — كما في `TabSlideJS`: من سحبٍ مكتمل ⇒ يُنزع الجار؛ من ضغطة ⇒ ينزلق القديمُ والجديدُ معاً */
@@ -545,12 +611,19 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
     if (prev.current === tab) return;
     const old = prev.current;
     prev.current = tab;
-    bySwipe.current = settled.current === tab;
-    if (settled.current === tab) {
-      settled.current = null;
-      mount(null);
+    /* D-1335 — تبويبٌ حسمه السحب (هو وما سبقه في الطابور يخرجان). الجارُ يُنزع **إن كان هو الذي صار نشطاً**: سحبةٌ
+       قطعت الطيران قد سلّحت جاراً جديداً قبل أن تصل هذه الرسمة — ونزعُه هنا يُفرغ ما تحت الإصبع */
+    const pend = livePending();
+    let at0 = -1;
+    for (let n = pend.length - 1; n >= 0 && at0 < 0; n -= 1) if (pend[n]!.k === tab) at0 = n;
+    bySwipe.current = at0 >= 0;
+    if (at0 >= 0) {
+      pending.current = pend.slice(at0 + 1);
+      if (sideRef.current === tab) mount(null);
       return;
     }
+    /* ضغطةُ تبويبٍ (أو تبديلٌ من الخارج) تُبطل ما لم يُرسم من حسم السحب */
+    pending.current = [];
     const to = order.indexOf(tab);
     if (order.indexOf(old) < 0 || to < 0) {
       cancelAnimation(pos);
@@ -559,12 +632,14 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
       return;
     }
     mount(old);
-    busy.value = 1;
+    /* ٢ = طيرانُ ضغطة — لا يُقطع (D-1335) */
+    busy.value = 2;
+    fly.value = -1;
     pos.value = withTiming(at(tab), { duration: FLY_MS, easing: REASE }, (fin) => {
       busy.value = 0;
       if (fin) scheduleOnRN(unmountSide);
     });
-  }, [tab, order, at, pos, busy, mount, unmountSide]);
+  }, [tab, order, at, pos, busy, fly, mount, unmountSide, livePending]);
 
   /* دورانٌ أو ترتيبٌ جديد: المسارُ يُثبَّت على النشط بلا حركة (مقيسٌ بالمحتوى — كما في `TabSlideJS`) */
   const geom = `${width}|${order.join(",")}`;
