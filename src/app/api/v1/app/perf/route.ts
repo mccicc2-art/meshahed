@@ -64,6 +64,10 @@ const NAMES = new Set([
      `worst` أطولُ فجوةٍ ms · `fps` الإطاراتُ المرسومةُ في الثانية). النسبةُ تُحسب من المجموع لا من وسيط الصفوف:
        sum(ms) / (sum(dur) / 16.7) */
   "scroll.jank",
+  /* 🩺 D-1337 — `rail.state`: حالُ صفٍّ أفقيٍّ في «اكتشف» بعد ظهور لوحه. القيمةُ **عرضُ الصفّ** (px) · `y` موضعُه في العمود ·
+     `x` آخرُ موضعٍ أعلنه النظام (غائبٌ = لا حدثَ تمرير) · `cw` عرضُ المحتوى · `jx` موضعُ القائمة في JS · `first`/`last`
+     نافذةُ البطاقات المركّبة · `ev` أحداثُ تمريرٍ بلا إصبع · `drag` سحبه المستخدم. تشخيصٌ يُحذف مع الإصلاح. */
+  "rail.state",
   "token.life",
   /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
   "token.wait",
@@ -95,8 +99,9 @@ const NAMES = new Set([
    🗑️ D-1272 — عدّاداتُ الرسم (`first` · `roots` · `panes` · `rails` · `cards` · `live` · `marq`، D-1218/D-1230) سقطت مع
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
-   🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps"]);
+   🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank`
+   🩺 D-1337 — `y` · `x` · `jx` · `cw` · `first` · `last` · `ev` · `drag` لـ`rail.state` (قد يكون `x`/`jx` سالباً) */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "y", "x", "jx", "cw", "first", "last", "ev", "drag"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
