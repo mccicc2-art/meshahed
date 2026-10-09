@@ -16,6 +16,7 @@
 import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
 import { createClient } from "./supabase/server";
 import { createServiceClient } from "./supabase/service";
+import { tracedFetch } from "@/lib/reqTrace";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -66,7 +67,7 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
   const key = process.env.OMDB_API_KEY;
   if (!key || !imdbId || !/^tt\d+$/.test(imdbId)) return null;
   try {
-    const res = await fetch(
+    const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}`,
       { next: { revalidate: 86400 } },
     );
@@ -152,7 +153,7 @@ async function searchOmdb(
   kind: "series" | "movie",
 ): Promise<{ Title: string; Year: string; imdbID: string; Type: string }[]> {
   try {
-    const res = await fetch(
+    const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&s=${encodeURIComponent(q)}&type=${kind}`,
       { next: { revalidate: 86400 } },
     );
@@ -228,7 +229,7 @@ export async function seasonImdbRatings(
   const key = process.env.OMDB_API_KEY;
   if (!key || !imdbId || !/^tt\d+$/.test(imdbId)) return {};
   try {
-    const res = await fetch(
+    const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}&Season=${season}`,
       { next: { revalidate: 86400 } },
     );

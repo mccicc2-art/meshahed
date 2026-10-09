@@ -1,4 +1,5 @@
 import { createServiceClient } from "./supabase/service";
+import { tracedFetch } from "@/lib/reqTrace";
 
 /**
  * قائمة IMDb الحقيقية — من ملفّاتها المفتوحة لا من بِركة TMDB (D-135).
@@ -67,7 +68,7 @@ export interface Candidate {
  * تسعةُ ملايين سطر: بلا بثٍّ لا يُقرأ أصلاً.
  */
 async function streamTsv(url: string, onLine: (line: string) => void): Promise<void> {
-  const res = await fetch(url, {
+  const res = await tracedFetch(url, {
     // يومٌ كامل: IMDb تحدّثه مرّةً يومياً، وإعادة تنزيله بين الدفعات هدر
     next: { revalidate: 86_400 },
   });
@@ -206,7 +207,7 @@ export async function resolveOne(c: Candidate): Promise<ResolvedRow | null> {
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
   try {
-    const r = await fetch(
+    const r = await tracedFetch(
       `https://api.themoviedb.org/3/find/${c.tconst}?api_key=${key}&external_source=imdb_id`,
       { next: { revalidate: 604_800 } },
     );

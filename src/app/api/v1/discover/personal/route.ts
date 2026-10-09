@@ -9,6 +9,7 @@ import { parseBrowse, localAxesOnly } from "@/core/browse";
 import { parseMyRowsByTab, MY_ROWS_COOKIE } from "@/core/myRows";
 import { getLocale, getWatchRegion } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import { getDict } from "@/core/i18n";
 import { titleOf } from "@/core/media";
@@ -27,6 +28,7 @@ import type { PersonalRailsPayload, CuratedCard } from "@/core/contracts/discove
  */
 export async function GET(req: NextRequest) {
   return handle(async () => {
+    routeName("discover/personal");
     const auth = await requireUser();
     if (!auth.ok) return auth;
     const lim = limited(`v1:discover:personal:${auth.user.id}`, 30, 60_000);

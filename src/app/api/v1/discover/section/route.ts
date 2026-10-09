@@ -5,6 +5,7 @@ import { parseBrowse, parseRailWin } from "@/core/browse";
 import { getLocale, getWatchRegion } from "@/lib/locale";
 import { dateOfResult } from "@/lib/discoverRails";
 import { handle, limited, fail } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import { titleOf } from "@/core/media";
 import type { CuratedCard, SectionPayload } from "@/core/contracts/discover";
@@ -22,6 +23,7 @@ const MAX_PAGES = 5;
 export async function GET(req: NextRequest) {
   return handle(
     async () => {
+      routeName("discover/section");
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:discover:section:${ip}`, 60, 60_000);
       if (lim) return lim;

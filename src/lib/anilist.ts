@@ -1,3 +1,4 @@
+import { tracedFetch } from "@/lib/reqTrace";
 /**
  * AniList — ما لا تعرفه TMDB عن الأنمي (D-173).
  *
@@ -53,7 +54,7 @@ export interface AnimeExtras {
 /** معرّف AniList من معرّف TMDB — أو `null` */
 async function anilistIdFor(tmdbId: number, mediaType: "tv" | "movie"): Promise<number | null> {
   try {
-    const res = await fetch(
+    const res = await tracedFetch(
       `${ARM}?id=${tmdbId}&type=${mediaType === "tv" ? "show" : "movie"}&include=anilist`,
       {
         headers: { Accept: "application/json", "User-Agent": UA },
@@ -98,7 +99,7 @@ async function anilistIdFor(tmdbId: number, mediaType: "tv" | "movie"): Promise<
 async function extrasFor(anilistId: number): Promise<AnimeExtras | null> {
   const query = `query($id:Int){Media(id:$id,type:ANIME){source studios(isMain:true){nodes{name}}}}`;
   try {
-    const res = await fetch(ANILIST, {
+    const res = await tracedFetch(ANILIST, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

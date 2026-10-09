@@ -23,6 +23,7 @@ import { toLibraryListCard } from "@/lib/listCard";
 import { cacheShowStats, cacheMovieStats, cacheFollowMeta } from "@/lib/actions";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
 import { handle, requireUser, limited } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import type {
   HomePayload,
@@ -51,6 +52,7 @@ import type {
  */
 export async function GET() {
   return handle(async () => {
+    routeName("me/home");
     const auth = await requireUser();
     if (!auth.ok) return auth;
     const lim = limited(`v1:home:${auth.user.id}`, 30, 60_000);

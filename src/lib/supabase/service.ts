@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./server";
+import { tracedFetch } from "@/lib/reqTrace";
 
 /**
  * ====== عميلُ الخدمة (service_role) — للخادم وحده (D-898 · `LOOPZ-AUD-0040`) ======
@@ -33,6 +34,8 @@ export async function createServiceClient(): Promise<SupabaseClient> {
 
   service ??= createSupabaseClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    /* D-1336 — `fetch` نفسُها، ونداؤها مسجَّلٌ في أثر الطلب البطيء */
+    global: { fetch: tracedFetch },
   });
   return service;
 }

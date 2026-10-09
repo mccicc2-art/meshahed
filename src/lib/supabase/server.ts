@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies, headers } from "next/headers";
+import { tracedFetch } from "@/lib/reqTrace";
 
 /**
  * عميل Supabase للخادم.
@@ -27,7 +28,8 @@ export const createClient = cache(async () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        global: { headers: { Authorization: `Bearer ${bearer}` } },
+        /* D-1336 — `fetch` نفسُها، ونداؤها مسجَّلٌ في أثر الطلب البطيء */
+        global: { headers: { Authorization: `Bearer ${bearer}` }, fetch: tracedFetch },
         cookies: {
           getAll() {
             return [];
@@ -49,6 +51,7 @@ export const createClient = cache(async () => {
       // كوكيز الجلسة بخيارات صريحة لا افتراضات المكتبة:
       // lax يمنع إرسالها مع طلبات مواقع أخرى، وsecure يمنعها عن HTTP
       cookieOptions: { sameSite: "lax", secure: true, path: "/" },
+      global: { fetch: tracedFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

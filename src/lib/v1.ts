@@ -10,6 +10,7 @@ import {
   type Result,
 } from "@/core/contracts/result";
 import type { Dict } from "@/core/i18n";
+import { traced } from "@/lib/reqTrace";
 
 /**
  * ====== غلافُ `/api/v1` — رقيقٌ عمداً (Phase 9 §4.3) ======
@@ -81,7 +82,8 @@ export async function handle<T>(
   init?: { cacheControl?: string },
 ): Promise<NextResponse> {
   try {
-    return respond(await fn(), init);
+    /* D-1336 — المعالجُ يجري تحت أثر الطلب البطيء (`reqTrace.ts`): قياسٌ لا يغيّر ردّاً */
+    return respond(await traced(fn), init);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     /* الأفعالُ القائمة (`actions.ts`) ترمي نصوصاً عربيّةً ثابتةً لثلاثِ

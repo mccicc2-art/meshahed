@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { parseMyRowsByTab, MY_ROWS_COOKIE } from "@/core/myRows";
 import { handle, limited } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import type { DiscoverViewPayload } from "@/core/contracts/discover";
 
@@ -15,6 +16,7 @@ import type { DiscoverViewPayload } from "@/core/contracts/discover";
 export async function GET(req: NextRequest) {
   return handle(
     async () => {
+      routeName("discover/view");
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:discover:view:${ip}`, 120, 60_000);
       if (lim) return lim;

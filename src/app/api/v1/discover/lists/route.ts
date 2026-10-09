@@ -20,6 +20,7 @@ import { getLocale } from "@/lib/locale";
 import { SITE_URL } from "@/lib/site";
 import { getDict } from "@/core/i18n";
 import { handle, requireUser, limited } from "@/lib/v1";
+import { routeName, stage } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import type { LibraryListCard } from "@/core/contracts/library";
 import type { DiscoverListsPayload } from "@/core/contracts/discover";
@@ -38,6 +39,7 @@ import type { DiscoverListsPayload } from "@/core/contracts/discover";
  */
 export async function GET() {
   return handle(async () => {
+    routeName("discover/lists");
     const auth = await requireUser();
     if (!auth.ok) return auth;
     const lim = limited(`v1:discover:lists:${auth.user.id}`, 20, 60_000);
@@ -46,7 +48,10 @@ export async function GET() {
     const t = getDict(locale);
     const loc = locale === "en" ? ("en" as const) : ("ar" as const);
 
+    /* D-1336 — المراحلُ تُعلَّم لأثر الطلب البطيء: التعليقُ المرصودُ يقع بعد مرحلة القاعدة */
+    stage("db-feed");
     const community = (await getPublicListsFeed(25).catch(() => [] as PublicListCard[])).slice(0, 15);
+    stage("db-lists");
     const [forYouRows, savedIds, curated, trending] = await Promise.all([
       getForYouLists(12).catch(() => []),
       getMySavedListIds().catch(() => new Set<string>()),
@@ -55,6 +60,7 @@ export async function GET() {
     ]);
     const shown = new Set(trending.map((c) => c.id));
     const forYou = await getListCardsByIds(forYouRows.map((r) => r.listId).filter((id) => !shown.has(id))).catch(() => [] as PublicListCard[]);
+    stage("db-stats");
     const ids = [...curated.values()];
     const [stats, counts, mine] = await Promise.all([
       getListCardStats(ids).catch(() => new Map<string, { saves: number; reviews: number; rating: number | null }>()),
@@ -97,6 +103,7 @@ export async function GET() {
         my_review: my ? { rating: my.rating, body: my.body, has_spoiler: my.hasSpoiler } : null,
       };
     };
+    stage("franchises");
     const franchises = (
       await Promise.all(
         FRANCHISES.map(async (f) => {
@@ -106,6 +113,7 @@ export async function GET() {
       )
     ).filter((f): f is NonNullable<typeof f> => !!f);
 
+    stage("payload");
     const payload: DiscoverListsPayload = {
       for_you: forYou.map((l) => toLibraryListCard(l, locale)),
       trending: trending.map((l) => toLibraryListCard(l, locale)),

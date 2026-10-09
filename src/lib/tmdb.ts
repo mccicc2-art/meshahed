@@ -6,6 +6,7 @@ import { applyLoopzNames, collectEnglish, missingEnglish, applyOriginalNames } f
 import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
+import { gauge, op } from "@/lib/reqTrace";
 
 export {
   IMG,
@@ -90,6 +91,15 @@ const TMDB_RAIL_TIMEOUT_MS = 2000;
 const LAST_GOOD_LIMIT = 400;
 const lastGood = new Map<string, unknown>();
 const inFlight = new Map<string, Promise<unknown>>();
+/* D-1336 — متى بدأ كلُّ نداءٍ مشترك: عددُها وعمرُ أقدمها يُكتبان مع سطر الطلب البطيء. نداءٌ مشتركٌ لا ينتهي يحبس
+   كلَّ طلبٍ يسأل السؤالَ نفسَه في هذه النسخة — والرقمُ يقول هل هذا ما يحدث. */
+const inFlightSince = new Map<string, number>();
+gauge("tmdbShared", () => {
+  let oldest = 0;
+  const now = Date.now();
+  for (const t of inFlightSince.values()) oldest = Math.max(oldest, now - t);
+  return `${inFlight.size}/${oldest}`;
+});
 
 function rememberGood(key: string, value: unknown) {
   // الأقدم يخرج أولاً — إعادة الإدخال تجدّد الموضع
@@ -182,16 +192,24 @@ async function tmdbRaw<T>(
   url.searchParams.set("language", await tmdbLanguage());
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const href = url.toString();
+  /* D-1336 — تسميةُ النداء في أثر الطلب: المسارُ واللغةُ وحدَهما (الاستعلامُ فيه المفتاحُ ونصُّ البحث) */
+  const tag = `${path} ${url.searchParams.get("language")}`;
 
   // نفس السؤال وهو في الطريق؟ انتظر جوابه بدل رحلةٍ ثانية
   const pending = inFlight.get(href);
-  if (pending) return pending as Promise<T>;
+  if (pending) {
+    const endJoin = op(`tmdb join ${tag}`);
+    return (pending as Promise<T>).finally(endJoin);
+  }
 
   const run = (async (): Promise<T> => {
     let lastError: unknown = null;
     const attempts = rail ? 1 : 2;
     for (let attempt = 0; attempt < attempts; attempt++) {
       let status: number | null = null;
+      /* D-1336 — مرحلتان تُسجَّلان: من الإرسال إلى الرأس (وفيها طبقةُ التخبئة)، ثمّ قراءةُ الجسم */
+      const endFetch = op(`tmdb fetch ${tag} #${attempt + 1}`);
+      let endBody: (() => void) | null = null;
       try {
         const res = await fetch(href, {
           // Cache TMDB responses for an hour; content changes slowly.
@@ -204,15 +222,20 @@ async function tmdbRaw<T>(
                 : TMDB_RETRY_TIMEOUT_MS,
           ),
         });
+        endFetch();
         status = res.status;
         if (res.ok) {
+          endBody = op(`tmdb body ${tag} #${attempt + 1}`);
           const json = (await res.json()) as T;
+          endBody();
           rememberGood(href, json);
           return json;
         }
         lastError = new Error(`TMDB ${path} failed: ${res.status}`);
         if (!retryable(status)) throw lastError;
       } catch (e) {
+        endFetch();
+        endBody?.();
         lastError = e;
         // خطأٌ لا تنفع معه الإعادة (4xx) يخرج فوراً
         if (status !== null && !retryable(status)) throw e;
@@ -226,10 +249,12 @@ async function tmdbRaw<T>(
   })();
 
   inFlight.set(href, run);
+  inFlightSince.set(href, Date.now());
   try {
     return await run;
   } finally {
     inFlight.delete(href);
+    inFlightSince.delete(href);
   }
 }
 

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getTrailerFeed } from "@/lib/trailers";
 import { getLocale } from "@/lib/locale";
 import { handle, limited } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import type { TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";
 
@@ -20,6 +21,7 @@ import type { TrailerCard, TrailersRailPayload } from "@/core/contracts/discover
 export async function GET(req: NextRequest) {
   return handle(
     async () => {
+      routeName("discover/trailers");
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:discover:trailers:${ip}`, 60, 60_000);
       if (lim) return lim;

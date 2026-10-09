@@ -6,6 +6,7 @@ import { curatedRail, isCuratedKey, dateOfResult, type CuratedKey } from "@/lib/
 import { sectionHref } from "@/lib/sections";
 import { getLocale, getWatchRegion } from "@/lib/locale";
 import { handle, limited } from "@/lib/v1";
+import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import { fail } from "@/lib/v1";
 import { titleOf } from "@/core/media";
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   const filtered = ["g", "lang", "co", "p", "era", "rate", "tag", "award", "st", "se", "std"].some((k) => req.nextUrl.searchParams.has(k));
   return handle(
     async () => {
+      routeName("discover/rail");
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:discover:rail:${ip}`, 120, 60_000);
       if (lim) return lim;
