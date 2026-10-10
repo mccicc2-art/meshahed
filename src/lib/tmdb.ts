@@ -88,6 +88,34 @@ const TMDB_RETRY_TIMEOUT_MS = 8000;
    **وصفحةُ العمل تبقى على ٥٠٠٠/٨٠٠٠** (صارت ٢٥٠٠/٨٠٠٠ — D-1118) — بياناتُها هي الصفحة،
    والانتظارُ هناك أصدقُ من صفحةٍ فارغة. */
 const TMDB_RAIL_TIMEOUT_MS = 2000;
+/* 🆕 D-1338 — **قراءةُ الجسم بمهلتها هي، لا بمهلة `fetch` وحدَها.** ١٠ أكتوبر ٢٠٢٦: `/api/v1/discover/lists` علّق
+   ٣٠٠ث وأثرُ D-1336 سمّى النداء — `res.json()` بعد رأسٍ ناجحٍ لا يعود أبداً، و`AbortSignal.timeout` لا يقطعه.
+   أُعيد محلّيّاً بلا كودنا: في Node 22 (undici 6) جسمٌ **مضغوطٌ** تنتهي قراءتُه عند لحظة المهلة يترك الوعدَ معلّقاً
+   — لا ينجح ولا يفشل (١٤–٢١ من ٤٠ في كلِّ تشغيل؛ صفرٌ من ١٦٠ في Node 24؛ صفرٌ بلا ضغط). الإصلاحُ من أصله نقلُ
+   المشروع إلى Node 24 (`engines`). **وهذا الحارسُ لِما بعده**: نداءٌ لا ينتهي يحبس — عبر `inFlight` المشتركة — كلَّ
+   طلبٍ يسأل السؤالَ نفسَه في النسخة حتى يقطعها Vercel، فـ«النداءُ ينتهي دائماً» شرطٌ نضمنه نحن لا المنصّة.
+   ⚖️ **المهلةُ نفسُها زائدَ سماح**: إشارةُ `fetch` تسبق في الحال السليمة فيبقى السلوكُ (والخطأ) كما كان؛ هذا
+   المؤقّتُ لا يتكلّم إلّا حين تسكت هي. */
+const TMDB_BODY_GRACE_MS = 250;
+function readJson<T>(res: Response, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const h = setTimeout(() => {
+      reject(new DOMException("TMDB body read timed out", "TimeoutError"));
+      /* الجسمُ مقفولٌ بقارئ `json()` فالإلغاءُ قد يُرفض — لا يهمّ، الوعدُ الذي ينتظره الطلبُ انتهى */
+      res.body?.cancel().catch(() => {});
+    }, ms);
+    res.json().then(
+      (v) => {
+        clearTimeout(h);
+        resolve(v as T);
+      },
+      (e) => {
+        clearTimeout(h);
+        reject(e);
+      },
+    );
+  });
+}
 const LAST_GOOD_LIMIT = 400;
 const lastGood = new Map<string, unknown>();
 const inFlight = new Map<string, Promise<unknown>>();
@@ -211,22 +239,19 @@ async function tmdbRaw<T>(
       const endFetch = op(`tmdb fetch ${tag} #${attempt + 1}`);
       let endBody: (() => void) | null = null;
       try {
+        const budget = rail ? TMDB_RAIL_TIMEOUT_MS : attempt === 0 ? TMDB_TIMEOUT_MS : TMDB_RETRY_TIMEOUT_MS;
+        const started = Date.now();
         const res = await fetch(href, {
           // Cache TMDB responses for an hour; content changes slowly.
           next: { revalidate: 3600 },
-          signal: AbortSignal.timeout(
-            rail
-              ? TMDB_RAIL_TIMEOUT_MS
-              : attempt === 0
-                ? TMDB_TIMEOUT_MS
-                : TMDB_RETRY_TIMEOUT_MS,
-          ),
+          signal: AbortSignal.timeout(budget),
         });
         endFetch();
         status = res.status;
         if (res.ok) {
           endBody = op(`tmdb body ${tag} #${attempt + 1}`);
-          const json = (await res.json()) as T;
+          /* D-1338 — ما بقي من مهلة النداء + السماح (لا مهلةٌ جديدةٌ كاملة: الانتظارُ الكلّيُّ لا يطول) */
+          const json = await readJson<T>(res, Math.max(0, budget - (Date.now() - started)) + TMDB_BODY_GRACE_MS);
           endBody();
           rememberGood(href, json);
           return json;
