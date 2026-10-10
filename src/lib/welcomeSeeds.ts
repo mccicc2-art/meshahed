@@ -1,20 +1,30 @@
 import "server-only";
-import { mostVoted, type SearchResult } from "@/lib/tmdb";
-import { railGuard } from "@/lib/topChart";
+import { getMovie, getTv } from "@/lib/tmdb";
 
 /**
- * ====== بذورُ الترحيب — الأكثرُ شهرةً، ١٢ مسلسلاً · ٨ أفلام · ٤ أنمي (D-1341) ======
+ * ====== بذورُ الترحيب — ٢٤ عملاً مثبَّتةً بالاسم: ١٢ مسلسلاً · ٨ أفلام · ٤ أنمي (D-1344) ======
  *
- * قرارُ أحمد ٧: «ابغاها تكون الاعمال الاكثر شهرة .. قيم اوف ثرونز بريكينق باد وكذا» — كانت ٢٤ من
- * «رائج هذا الأسبوع»، ورائجُ الأسبوع أعمالٌ نزلت للتوّ قد لا يعرف الوافدُ منها واحداً.
+ * قرارُ أحمد ٧ (١٠ أكتوبر): «ابغاها تكون الاعمال الاكثر شهرة .. قيم اوف ثرونز بريكينق باد وكذا».
  *
- * 🔑 **والخطوةُ مقفولةٌ على عملٍ واحدٍ على الأقلّ** (القراران ٨ و١٧) — فشبكةٌ فارغةٌ هنا تحبس
- * عضواً جديداً بلا مخرج. ولهذا **قائمةٌ ثابتةٌ في الشيفرة تسدّ كلَّ خانةٍ يعجز عنها TMDB**:
- * معرّفاتُها مُتحقَّقٌ منها (themoviedb.org، ١٠ أكتوبر ٢٠٢٦)، وبلا مسار ملصقٍ عمداً — مسارٌ يُحفظ
- * هنا يشيخ بصمت، والبطاقةُ ترسم اسمَ العمل وأيقونةً بدل صورةٍ مكسورة.
+ * ⚖️ **كانت تُختار آليّاً بعدد الأصوات عند TMDB (D-1341) وصارت قائمةً مكتوبة** — بعد أوّل تجربةٍ له:
+ *  - **الأنمي**: الترتيبُ بالأصوات أخرج «ناروتو» و«قاتل الشياطين» وأسقط «ون بيس» وهو الأشهر — عددُ الأصوات
+ *    لا يساوي الشهرةَ في الأنمي. قرارُه: «ون بيس و اتاك و ناروتو شيبودن و ديث نوت خلها هي الاربع».
+ *  - **المسلسلات**: خرج فيها «ريفرديل» و«الطبيب الجيد» و«لوسيفر»؛ قرارُه أن تُبدَّل بأسماءٍ سمّاها، فاختير منها
+ *    Better Call Saul · Vikings · Lost.
+ *  - **والبقيّةُ ثُبّتت معها**: قائمةٌ نصفُها آليٌّ يعيد «ريفرديل» غداً أو يكرّر عملاً. الآن القائمةُ قائمتُه،
+ *    ولا تتبدّل إلّا بكلمته.
  *
- * ⚠️ **والحارسُ نفسُه** (`railGuard`، D-321): الضغطةُ هنا تكتب المكتبة، فبذرةٌ مكتومةٌ تُختار تصير
- * ذوقاً يولّد أمثالَه في «مقترح لك».
+ * 🔑 **المعرّفاتُ مُتحقَّقٌ منها** (themoviedb.org وبياناتُ المشروع، ١٠ أكتوبر ٢٠٢٦). ⚠️ «ون بيس» الأنمي `37854`؛
+ * `111110` مسلسلُ نتفلكس الحيّ بالاسم العربيّ نفسِه — ليس المقصود.
+ *
+ * 🔑 **الاسمُ والملصقُ يُجلبان حيَّين** (بلغة القارئ، ومسارُ ملصقٍ يُحفظ هنا يشيخ بصمت)؛ والاسمُ المكتوبُ هنا
+ * سدٌّ: الخطوةُ مقفولةٌ على عملٍ واحدٍ على الأقلّ (القراران ٨ و١٧)، فعملٌ تعذّر جلبُه يُرسم باسمه وأيقونةٍ ولا
+ * يسقط — شبكةٌ فارغةٌ تحبس عضواً جديداً بلا مخرج.
+ *
+ * ⚖️ **وبلا `railGuard` هنا** (كان في D-1341): الحارسُ يُسقط ما كُتم من لغةٍ ونوعٍ عن رفوفٍ آليّة؛ وهذه قائمةٌ
+ * اختارها صاحبُ المنتج عملاً عملاً — حارسٌ يُسقط منها شيئاً ينقض قرارَه.
+ *
+ * قارئاها: صفحةُ الترحيب (الخطوة الثانية) وجدارُ الملصقات خلف شاشة الدخول الأصليّة (`/api/v1/welcome/posters`).
  */
 export interface WelcomeSeed {
   id: number;
@@ -23,68 +33,59 @@ export interface WelcomeSeed {
   posterPath: string | null;
 }
 
-const WANT = { tv: 12, movie: 8, anime: 4 } as const;
+const SHOWS: readonly (readonly [number, string])[] = [
+  [1399, "Game of Thrones"],
+  [1396, "Breaking Bad"],
+  [66732, "Stranger Things"],
+  [71446, "Money Heist"],
+  [1402, "The Walking Dead"],
+  [76479, "The Boys"],
+  [60059, "Better Call Saul"],
+  [44217, "Vikings"],
+  [4607, "Lost"],
+  [85271, "WandaVision"],
+  [1418, "The Big Bang Theory"],
+  [84958, "Loki"],
+];
 
-const FALLBACK: { tv: WelcomeSeed[]; movie: WelcomeSeed[]; anime: WelcomeSeed[] } = {
-  tv: [
-    [1399, "Game of Thrones"],
-    [1396, "Breaking Bad"],
-    [66732, "Stranger Things"],
-    [1402, "The Walking Dead"],
-    [93405, "Squid Game"],
-    [71446, "Money Heist"],
-    [76479, "The Boys"],
-    [100088, "The Last of Us"],
-    [119051, "Wednesday"],
-    [71912, "The Witcher"],
-    [60574, "Peaky Blinders"],
-    [87108, "Chernobyl"],
-  ].map(([id, title]) => ({ id: id as number, mediaType: "tv" as const, title: title as string, posterPath: null })),
-  movie: [
-    [27205, "Inception"],
-    [157336, "Interstellar"],
-    [155, "The Dark Knight"],
-    [19995, "Avatar"],
-    [24428, "The Avengers"],
-    [550, "Fight Club"],
-    [475557, "Joker"],
-    [597, "Titanic"],
-  ].map(([id, title]) => ({ id: id as number, mediaType: "movie" as const, title: title as string, posterPath: null })),
-  anime: [
-    [1429, "Attack on Titan"],
-    [13916, "Death Note"],
-    [37854, "One Piece"],
-    [85937, "Demon Slayer: Kimetsu no Yaiba"],
-  ].map(([id, title]) => ({ id: id as number, mediaType: "tv" as const, title: title as string, posterPath: null })),
-};
+const MOVIES: readonly (readonly [number, string])[] = [
+  [157336, "Interstellar"],
+  [27205, "Inception"],
+  [155, "The Dark Knight"],
+  [24428, "The Avengers"],
+  [299536, "Avengers: Infinity War"],
+  [19995, "Avatar"],
+  [293660, "Deadpool"],
+  [550, "Fight Club"],
+];
 
-function toSeeds(rows: SearchResult[], mediaType: "tv" | "movie"): WelcomeSeed[] {
-  return rows
-    .filter((r) => r.poster_path)
-    .map((r) => ({ id: r.id, mediaType, title: r.title ?? r.name ?? "—", posterPath: r.poster_path }));
+const ANIME: readonly (readonly [number, string])[] = [
+  [37854, "One Piece"],
+  [1429, "Attack on Titan"],
+  [31910, "Naruto Shippuden"],
+  [13916, "Death Note"],
+];
+
+async function show([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
+  try {
+    const tv = await getTv(id);
+    return { id, mediaType: "tv", title: tv.name || name, posterPath: tv.poster_path ?? null };
+  } catch {
+    return { id, mediaType: "tv", title: name, posterPath: null };
+  }
 }
 
-/** حصّةٌ واحدة: ما أعاده TMDB أوّلاً، وما نقص يُكمَل من الثابتة — بلا تكرار */
-function fill(live: WelcomeSeed[], fallback: WelcomeSeed[], want: number): WelcomeSeed[] {
-  const out = live.slice(0, want);
-  for (const f of fallback) {
-    if (out.length >= want) break;
-    if (!out.some((s) => s.id === f.id)) out.push(f);
+async function movie([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
+  try {
+    const m = await getMovie(id);
+    return { id, mediaType: "movie", title: m.title || name, posterPath: m.poster_path ?? null };
+  } catch {
+    return { id, mediaType: "movie", title: name, posterPath: null };
   }
-  return out;
 }
 
 export async function welcomeSeeds(): Promise<WelcomeSeed[]> {
-  const [tv, movie, anime] = await Promise.all([
-    mostVoted("tv").then((r) => toSeeds(railGuard(r, { anime: "drop" }), "tv")).catch(() => []),
-    mostVoted("movie").then((r) => toSeeds(railGuard(r, { anime: "drop" }), "movie")).catch(() => []),
-    mostVoted("tv", true).then((r) => toSeeds(railGuard(r, { anime: "only" }), "tv")).catch(() => []),
-  ]);
-  const all = [
-    ...fill(tv, FALLBACK.tv, WANT.tv),
-    ...fill(movie, FALLBACK.movie, WANT.movie),
-    ...fill(anime, FALLBACK.anime, WANT.anime),
-  ];
+  const all = await Promise.all([...SHOWS.map(show), ...MOVIES.map(movie), ...ANIME.map(show)]);
   /* الشاشةُ تعرف العملَ برقمه وحدَه (`picked`) — ورقمُ مسلسلٍ قد يطابق رقمَ فيلمٍ عند TMDB: الثاني يسقط */
   const seen = new Set<number>();
   return all.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));

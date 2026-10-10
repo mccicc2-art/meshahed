@@ -17,7 +17,7 @@ import { mark } from "./perfMarks";
 import { session } from "./session";
 import { api } from "./api";
 import { own } from "./ownSession";
-import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "./shell";
+import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo, type SignInResult } from "./shell";
 import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
 import { rootStack, topOf, webLayer, type State } from "./webDoor";
 import { BottomNav, type NavKey } from "./BottomNav";
@@ -334,6 +334,20 @@ export function WebLayer() {
       if (timer) clearTimeout(timer);
     };
   }, []);
+  /**
+   * 🆕 D-1344 — **من لم يدخل يرى شاشةَ الدخول الأصليّة** (القراران ١ و٦). تُنزَل ما فوق الطبقة ثمّ تُدفع الشاشة —
+   * مرّةً: نداءاتٌ متلاحقة (حدثا تحميلٍ لصفحة الدخول، ثمّ إعلانُ العتبة) لا تدفعها مرّتين.
+   */
+  const signInAt = useRef(0);
+  const showSignIn = useCallback(() => {
+    const top = topOf((navContainer.isReady() ? navContainer.getRootState() : undefined) as unknown as State);
+    if (top?.name === "sign-in") return;
+    if (Date.now() - signInAt.current < 800) return;
+    signInAt.current = Date.now();
+    if (router.canDismiss()) router.dismissAll();
+    router.push("/sign-in");
+  }, [router, navContainer]);
+
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
   /* K3b — الطبقةُ خارج المسار: رابطُ الودجت (`/web?u=`) يُقرأ من العنوان المعروض (هو `/web` لحظةَ وصول الرابط) */
@@ -381,7 +395,8 @@ export function WebLayer() {
   useEffect(() => {
     if (loading || booted.current) return;
     booted.current = true;
-    if (typeof u === "string" && u) return;
+    /* D-1344 — رابطُ الودجت لمن لا أثرَ لجلسته يمرّ بالدخول أوّلاً كغيره (القرار ٦: لا تصفّحَ قبل الدخول) */
+    if (typeof u === "string" && u && session.seen()) return;
     if (session.seen() && session.welcomePending()) {
       /* 🆕 D-1341 — **الإقلاعُ لا يرفع الرئيسيّةَ الأصليّةَ لمن لم يُتمّ الترحيب** (البابُ الثاني في تسجيل أحمد: أغلق
          التطبيقَ وفتحه فهبط على الرئيسيّة). الويبُ يبقى فوق ويعرض الترحيب. **ويُسأل الخادمُ مرّةً**: إن كان أتمّه في
@@ -403,8 +418,10 @@ export function WebLayer() {
       /* 🩺 D-1256 — إقلاعٌ لم يرفع الرئيسيّةَ الأصليّة: إمّا زائرٌ حقّاً، وإمّا `seen()` أخطأ (قراءةُ SecureStore
          ترمي فيُحفظ `false` للجلسة كلِّها — الفرضيّةُ الأولى لبلاغ أحمد). العلامةُ تفرّق بينهما بعدد مرّاتها. */
       mark("web.home", 0, { why: "boot.unseen" });
+      /* 🆕 D-1344 — لا أثرَ لجلسة ⇒ شاشةُ الدخول الأصليّة فوق الطبقة من أوّل رسمة (صفحةُ دخول الويب لا تُرى) */
+      showSignIn();
     }
-  }, [loading, u, router]);
+  }, [loading, u, router, showSignIn]);
 
   /* 🆕 D-1341 — **العلامةُ كُتبت والشاشاتُ الأصليّةُ فوق** (حسابٌ بلا علامةٍ بعدُ رُفعت له الرئيسيّة، فرفض الخادمُ
      أوّلَ نداء): تُنزَل كلُّها فيُرى الويب، ويُوجَّه إلى الترحيب إن لم يكن عليه. التوجيهُ مرّتان — الحقنُ في WebView
@@ -415,7 +432,8 @@ export function WebLayer() {
         if (!on) return;
         if (router.canDismiss()) router.dismissAll();
         const steer = () => {
-          if (pathRef.current === "/welcome" || !session.welcomePending()) return;
+          /* D-1344 — والتسليمُ جارٍ لا يُقاطَع: توجيهٌ الآن يقطع POST الجلسة فيهبط الويبُ زائراً */
+          if (pathRef.current === "/welcome" || !session.welcomePending() || handing.current) return;
           ref.current?.injectJavaScript(`location.replace(${JSON.stringify(CONFIG.apiBase + "/welcome")});true;`);
         };
         steer();
@@ -484,6 +502,8 @@ export function WebLayer() {
       /* D-1075 — صفحةُ الدخول تحت شاشةٍ أصليّةٍ مرفوعةٍ عند الإقلاع (كوكي شاخت مثلاً): تُنزَل الشاشاتُ
          كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
       if (router.canDismiss()) router.dismissAll();
+      /* 🆕 D-1344 — وصفحةُ دخول الويب لا تُرى: فوقها شاشةُ الدخول الأصليّة (خروجٌ · حذفُ حساب · جلسةٌ شاخت) */
+      showSignIn();
     }
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
@@ -509,7 +529,38 @@ export function WebLayer() {
       }
       flush();
     }
-  }, [flush, router]);
+  }, [flush, router, showSignIn]);
+
+  /**
+   * 🆕 D-1344 — **الدخولُ في مكانٍ واحدٍ لبابَيه**: رسالةُ `login` من صفحة الويب، وشاشةُ الدخول الأصليّة
+   * (`shell.signIn`). الجسمُ هو ما كان في `onMessage` حرفاً (D-1151 · D-1152 · D-1156) — لم يُمسّ ترتيبُه:
+   * Google ⇒ الأثر ⇒ الجلسةُ المملوكة ⇒ التسليمُ للويب بـPOST يرسله الغلاف. ما أُضيف هو ما يعود به:
+   * رمزُ الوصول (لتسأل به الشاشةُ «أتمّ الترحيب؟») و`cancelled` (أغلق نافذةَ Google بنفسه — لا رسالةَ خطأ).
+   */
+  const doLogin = useCallback(async (): Promise<SignInResult> => {
+    const loginT0 = Date.now();
+    const r = await signInWithGoogle();
+    const { data } = await supabase.auth.getSession();
+    /* 🆕 D-1152 — نتيجةُ الدخول بسببها (رسالةُ الخطأ مختصرةً كلمةً — لا بريدَ ولا رمز) */
+    const why = r.ok ? (data.session ? "ok" : "nosession") : String(r.message ?? "unknown").toLowerCase().replace(/[^\w.-]+/g, "_").slice(0, 16) || "unknown";
+    mark("auth.login", Date.now() - loginT0, { result: r.ok && data.session ? "ok" : "none", why });
+    if (!(r.ok && data.session)) return { ok: false, cancelled: !r.ok && (r.message === "cancel" || r.message === "dismiss") };
+    handing.current = true;
+    handT0.current = Date.now();
+    /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
+    session.markSeen();
+    /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
+    own.fresh(data.session.access_token);
+    /* 🆕 D-1156 — الرمزان في جسم POST كما كانا (لا في العنوان) — لكن يرسله الغلافُ لا الصفحة */
+    setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
+    /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
+    prefetchDiscover();
+    return { ok: true, access: data.session.access_token };
+  }, [signInWithGoogle]);
+  useEffect(() => {
+    shell.attachSignIn(doLogin);
+    return () => shell.attachSignIn(null);
+  }, [doLogin]);
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
@@ -532,6 +583,8 @@ export function WebLayer() {
          الصفحة (`onLoadEnd` يبقى احتياطاً لصفحةٍ قديمة لا ترسل هذا) — من نطاقنا وحدَه */
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
+        /* 🆕 D-1344 — صفحةُ الهبوط ظهرت (زائرٌ، أو جلسةٌ شاخت والتطبيقُ يظنّها حيّة) ⇒ شاشةُ الدخول الأصليّة فوقها */
+        if (hostOk && msg.on === true && !handing.current) showSignIn();
         /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّة) */
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
@@ -654,28 +707,11 @@ export function WebLayer() {
         return;
       }
       if (msg.type !== "login") return;
-      const loginT0 = Date.now();
-      const r = await signInWithGoogle();
-      const { data } = await supabase.auth.getSession();
-      /* 🆕 D-1152 — نتيجةُ الدخول بسببها (رسالةُ الخطأ مختصرةً كلمةً — لا بريدَ ولا رمز) */
-      const why = r.ok ? (data.session ? "ok" : "nosession") : String(r.message ?? "unknown").toLowerCase().replace(/[^\w.-]+/g, "_").slice(0, 16) || "unknown";
-      mark("auth.login", Date.now() - loginT0, { result: r.ok && data.session ? "ok" : "none", why });
-      if (r.ok && data.session) {
-        handing.current = true;
-        handT0.current = Date.now();
-        /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
-        session.markSeen();
-        /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
-        own.fresh(data.session.access_token);
-        /* 🆕 D-1156 — الرمزان في جسم POST كما كانا (لا في العنوان) — لكن يرسله الغلافُ لا الصفحة */
-        setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
-        /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
-        prefetchDiscover();
-      } else {
-        ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
-      }
+      /* 🆕 D-1344 — الدخولُ نفسُه في `doLogin` (تناديه شاشةُ الدخول الأصليّة أيضاً)؛ هنا ما يخصّ الصفحةَ وحدَها */
+      const r = await doLogin();
+      if (!r.ok) ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
     },
-    [signInWithGoogle, router, hopHome, goNative, bootAsk],
+    [doLogin, router, hopHome, goNative, bootAsk, showSignIn],
   );
 
   /* Phase 11 · B1 — الجسرُ يعرف كيف يحقن في هذه الـWebView ما دامت مركَّبة */

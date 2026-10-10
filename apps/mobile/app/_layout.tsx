@@ -115,6 +115,9 @@ function Shell() {
         <Stack.Screen name="settings/[section]" options={{ headerShown: false }} />
         {/* D-1158 — بلا حركة: شاشةٌ تُدفع وتُسحب في اللحظة نفسِها لا يجب أن تُرى */}
         <Stack.Screen name="auth/callback" options={{ headerShown: false, animation: "none" }} />
+        {/* 🆕 D-1344 — شاشةُ الدخول الأصليّة (Phase 11-U · U1): تُدفع فوق طبقة الويب لمن لم يدخل. بلا حركة (تُرى من أوّل
+            رسمةٍ عند الإقلاع) وبلا سحبٍ للرجوع (لا شيءَ خلفها يُرجَع إليه). */}
+        <Stack.Screen name="sign-in" options={{ headerShown: false, animation: "none", gestureEnabled: false }} />
       </Stack>
       {/* 🆕 K3b — الـWebView طبقةٌ فوق المكدّس لا جذرٌ تحته (`src/webDoor.ts`): تظهر للزائر وللباب، وتختفي فوق الشاشات
           الأصليّة وهي مركَّبة — فالبابُ لا يهدم ما تحته، والعودةُ لا تبني شيئاً */}

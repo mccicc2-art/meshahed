@@ -54,12 +54,31 @@ let pendingPost: string | null = null;
  * وصولَ العنوان (`arrived`) **أو بعد مهلةٍ** — شبكةٌ بطيئةٌ لا تحبس المستخدم
  * في شاشةٍ لا تستجيب؛ وميضٌ عند البطء الشديد أهونُ من انتظارٍ بلا نهاية.
  */
+/* 🆕 D-1344 — الدخولُ يملكه `WebLayer` (يحمل مصدرَ الـWebView والتسليم)؛ شاشةُ الدخول الأصليّة تناديه من هنا */
+export type SignInResult = { ok: true; access: string } | { ok: false; cancelled: boolean };
+let signer: (() => Promise<SignInResult>) | null = null;
 const ARRIVAL_TIMEOUT_MS = 4000;
 let waiter: { path: string; settle: (own?: boolean) => void } | null = null;
 
 export const shell = {
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
+  },
+  /** 🆕 D-1344 — `WebLayer` يسجّل دالّةَ دخوله (`doLogin`) ما دام مركَّباً */
+  attachSignIn(fn: (() => Promise<SignInResult>) | null) {
+    signer = fn;
+  },
+  /** 🆕 D-1344 — دخولُ Google ثمّ التسليمُ للويب — الطريقُ نفسُه الذي كانت تسلكه رسالةُ `login` من الصفحة */
+  signIn(): Promise<SignInResult> {
+    return signer ? signer() : Promise.resolve({ ok: false, cancelled: false });
+  },
+  /**
+   * 🆕 D-1344 — لغةُ الويب تتبع ما اختير في شاشة الدخول الأصليّة: كوكي `lang` (اسمُه في `core/i18n`) يُكتب في
+   * الصفحة قبل أن يُعاد تحميلُ التطبيق. حقنٌ قد لا يُنفَّذ والطبقةُ مخفيّة (D-1144) — عندها يبقى الويبُ على لغته
+   * حتى يدخل صاحبُه، ولغةُ الحساب تسوّيها بعد الدخول.
+   */
+  setWebLang(lang: "ar" | "en") {
+    inject?.(`try{document.cookie="lang=${lang};path=/;max-age=31536000;samesite=lax"}catch(e){};true;`);
   },
   /**
    * مسارٌ نسبيٌّ على نطاق Loopz (`/show/123`) — ما سواه يُهمل.
