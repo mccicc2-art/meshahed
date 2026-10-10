@@ -76,7 +76,11 @@ export type PerfName =
      للشكل القديم» — مرّةً واحدةً وسط أربع إقلاعاتٍ في ٢٥ث، ولم تتكرّر): تشخيصٌ لا قياس (`ms=0`). `why` = إقلاعٌ لم
      يرفع الرئيسيّة (`boot.unseen`) أو آخرُ قرارِ رجوع (`search.pass`…) · `src` = مجموعةٌ من الإقلاع أم من الويب ·
      `ready` = هل زيرت الرئيسيّةُ الأصليّة. تُحذف مع الإصلاح. */
-  | "web.home";
+  | "web.home"
+  /* 🩺 D-1346 — شاشةُ الدخول الأصليّة: رفعُها وسببُه (`why` = boot · signout · login · gate، `ms=0`) وكم بقيت
+     مرفوعةً قبل أن تُنزَل (`signin.hide`، ms). تشخيصٌ لعطل «خرجتُ فظهرت صفحةُ الويب»؛ تُحذف حين يثبت الإصلاح. */
+  | "signin.show"
+  | "signin.hide";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

@@ -9,6 +9,7 @@ import { api } from "../api";
 import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
 import { webLocale } from "../i18n";
+import { mark } from "../perfMarks";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
 import { posterFor } from "../poster";
@@ -123,6 +124,11 @@ export function SignInScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
+  /* 🩺 D-1346 — كم بقيت الشاشةُ مرفوعة: إنزالٌ في جزءٍ من الثانية بلا دخولٍ هو العطلُ نفسُه (الخروجُ كان يُنزلها) */
+  useEffect(() => {
+    const t0 = Date.now();
+    return () => mark("signin.hide", Date.now() - t0);
+  }, []);
   const [failed, setFailed] = useState(false);
 
   /* الجدارُ زينة: يُطلب بعد أن تُرسم الشاشة، ولا رمزَ معه (لا جلسةَ بعد)، وسقوطُه يتركها بلا خلفيّة */

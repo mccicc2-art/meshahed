@@ -339,14 +339,25 @@ export function WebLayer() {
    * مرّةً: نداءاتٌ متلاحقة (حدثا تحميلٍ لصفحة الدخول، ثمّ إعلانُ العتبة) لا تدفعها مرّتين.
    */
   const signInAt = useRef(0);
-  const showSignIn = useCallback(() => {
+  /**
+   * 🔴 D-1346 — **هل شاشةُ الدخول مرفوعة؟** بالحالة لا بالتوقيت وحدَه. العطل (تسجيلُ أحمد ١٠ أكتوبر، خروجٌ من
+   * الإعدادات على `01a12563`): الخروجُ يمرّ بعنوانين — `/auth/signout` ثمّ تحويلُ الخادم إلى `/login` — والأوّلُ
+   * رفع الشاشةَ، والثاني نادى `dismissAll` (سطرُ D-1075) **فأنزلها هي** ثمّ طلب رفعَها فردّه حارسُ التكرار
+   * (٨٠٠ ملّي ثانية) — فبقيت صفحةُ الويب مكشوفة. النافذةُ الزمنيّة تبقى لسببٍ واحد: حالةُ المكدّس لا تُقرأ
+   * محدَّثةً في اللحظة نفسِها التي دُفعت فيها الشاشة؛ وبعدها الحكمُ للمكدّس وحدَه.
+   */
+  const signInUp = useCallback(() => {
     const top = topOf((navContainer.isReady() ? navContainer.getRootState() : undefined) as unknown as State);
-    if (top?.name === "sign-in") return;
-    if (Date.now() - signInAt.current < 800) return;
+    return top?.name === "sign-in" || Date.now() - signInAt.current < 1500;
+  }, [navContainer]);
+  const showSignIn = useCallback((why: string) => {
+    if (signInUp()) return;
     signInAt.current = Date.now();
+    /* 🩺 قياسٌ لكلِّ رفعٍ وسببِه — والإنزالُ تسجّله الشاشةُ نفسُها (`signin.hide`): الحكمُ بعد التجربة بالأرقام */
+    mark("signin.show", 0, { why });
     if (router.canDismiss()) router.dismissAll();
     router.push("/sign-in");
-  }, [router, navContainer]);
+  }, [router, signInUp]);
 
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
@@ -419,7 +430,7 @@ export function WebLayer() {
          ترمي فيُحفظ `false` للجلسة كلِّها — الفرضيّةُ الأولى لبلاغ أحمد). العلامةُ تفرّق بينهما بعدد مرّاتها. */
       mark("web.home", 0, { why: "boot.unseen" });
       /* 🆕 D-1344 — لا أثرَ لجلسة ⇒ شاشةُ الدخول الأصليّة فوق الطبقة من أوّل رسمة (صفحةُ دخول الويب لا تُرى) */
-      showSignIn();
+      showSignIn("boot");
     }
   }, [loading, u, router, showSignIn]);
 
@@ -501,9 +512,11 @@ export function WebLayer() {
       session.signOut(); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
       /* D-1075 — صفحةُ الدخول تحت شاشةٍ أصليّةٍ مرفوعةٍ عند الإقلاع (كوكي شاخت مثلاً): تُنزَل الشاشاتُ
          كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
-      if (router.canDismiss()) router.dismissAll();
+      /* 🔴 D-1346 — **إلّا شاشةَ الدخول**: هذا السطرُ يجري مع كلِّ حدثِ تنقّلٍ على العنوانين، والحدثُ الثاني كان يُنزل
+         الشاشةَ التي رفعها الأوّل. الشاشاتُ الأخرى تُنزَل كما كانت (جلسةٌ شاخت تحت شاشةٍ أصليّة). */
+      if (!signInUp() && router.canDismiss()) router.dismissAll();
       /* 🆕 D-1344 — وصفحةُ دخول الويب لا تُرى: فوقها شاشةُ الدخول الأصليّة (خروجٌ · حذفُ حساب · جلسةٌ شاخت) */
-      showSignIn();
+      showSignIn(nav.url.includes("/auth/signout") ? "signout" : "login");
     }
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
@@ -529,7 +542,7 @@ export function WebLayer() {
       }
       flush();
     }
-  }, [flush, router, showSignIn]);
+  }, [flush, router, showSignIn, signInUp]);
 
   /**
    * 🆕 D-1344 — **الدخولُ في مكانٍ واحدٍ لبابَيه**: رسالةُ `login` من صفحة الويب، وشاشةُ الدخول الأصليّة
@@ -584,7 +597,7 @@ export function WebLayer() {
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
         /* 🆕 D-1344 — صفحةُ الهبوط ظهرت (زائرٌ، أو جلسةٌ شاخت والتطبيقُ يظنّها حيّة) ⇒ شاشةُ الدخول الأصليّة فوقها */
-        if (hostOk && msg.on === true && !handing.current) showSignIn();
+        if (hostOk && msg.on === true && !handing.current) showSignIn("gate");
         /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّة) */
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
