@@ -96,18 +96,22 @@ const TMDB_RAIL_TIMEOUT_MS = 2000;
    طلبٍ يسأل السؤالَ نفسَه في النسخة حتى يقطعها Vercel، فـ«النداءُ ينتهي دائماً» شرطٌ نضمنه نحن لا المنصّة.
    ⚖️ **المهلةُ نفسُها زائدَ سماح**: إشارةُ `fetch` تسبق في الحال السليمة فيبقى السلوكُ (والخطأ) كما كان؛ هذا
    المؤقّتُ لا يتكلّم إلّا حين تسكت هي. */
-const TMDB_BODY_GRACE_MS = 250;
-function readJson<T>(res: Response, ms: number): Promise<T> {
+const TMDB_GRACE_MS = 250;
+/** الوعدُ نفسُه بسقفٍ زمنيّ: إن لم ينتهِ في `ms` رُفض بـ`TimeoutError` ونودي `onLate` (لتحرير ما يمكن تحريرُه) */
+function deadline<T>(p: Promise<T>, ms: number, what: string, onLate?: () => void): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const h = setTimeout(() => {
-      reject(new DOMException("TMDB body read timed out", "TimeoutError"));
-      /* الجسمُ مقفولٌ بقارئ `json()` فالإلغاءُ قد يُرفض — لا يهمّ، الوعدُ الذي ينتظره الطلبُ انتهى */
-      res.body?.cancel().catch(() => {});
+      reject(new DOMException(`TMDB ${what} timed out`, "TimeoutError"));
+      try {
+        onLate?.();
+      } catch {
+        /* لا شيء */
+      }
     }, ms);
-    res.json().then(
+    p.then(
       (v) => {
         clearTimeout(h);
-        resolve(v as T);
+        resolve(v);
       },
       (e) => {
         clearTimeout(h);
@@ -116,6 +120,7 @@ function readJson<T>(res: Response, ms: number): Promise<T> {
     );
   });
 }
+
 const LAST_GOOD_LIMIT = 400;
 const lastGood = new Map<string, unknown>();
 const inFlight = new Map<string, Promise<unknown>>();
@@ -241,17 +246,31 @@ async function tmdbRaw<T>(
       try {
         const budget = rail ? TMDB_RAIL_TIMEOUT_MS : attempt === 0 ? TMDB_TIMEOUT_MS : TMDB_RETRY_TIMEOUT_MS;
         const started = Date.now();
-        const res = await fetch(href, {
-          // Cache TMDB responses for an hour; content changes slowly.
-          next: { revalidate: 3600 },
-          signal: AbortSignal.timeout(budget),
-        });
+        /* D-1338 — والرأسُ كذلك بسقفه: `fetch` هنا تمرّ بطبقة تخبئة Next قبل الشبكة (قفلٌ لكلِّ مفتاح)، والإشارةُ لا
+           تغطّي الانتظارَ على ذلك القفل — رُصد محلّيّاً (Node 22) محاولةٌ ثانيةٌ تنتظره بلا نهاية خلف جسمٍ عالق. */
+        const res = await deadline(
+          fetch(href, {
+            // Cache TMDB responses for an hour; content changes slowly.
+            next: { revalidate: 3600 },
+            signal: AbortSignal.timeout(budget),
+          }),
+          budget + TMDB_GRACE_MS,
+          "fetch",
+        );
         endFetch();
         status = res.status;
         if (res.ok) {
           endBody = op(`tmdb body ${tag} #${attempt + 1}`);
+          /* 🆕 D-1339 — **جسمٌ لم يُقرأ عطلُ شبكةٍ لا حكمُ خادم**: الرأسُ قال 200 ثمّ انقطعت القراءة (مهلة، اتّصالٌ
+             سقط، نصٌّ مبتور). كان `status` يبقى 200 فيعامَل الفشلُ كـ4xx — يخرج فوراً بلا محاولةٍ ثانية ولا «آخر
+             جوابٍ صالح»، فتغيب سلسلةٌ من «القوائم» لأنّ نداءها صادف المهلة. من هنا الفشلُ بلا حالة ⇒ يسلك طريقَ
+             فشل الشبكة نفسَه (محاولةٌ ثانيةٌ لغير الرفوف، ثمّ المحفوظ). */
+          status = null;
           /* D-1338 — ما بقي من مهلة النداء + السماح (لا مهلةٌ جديدةٌ كاملة: الانتظارُ الكلّيُّ لا يطول) */
-          const json = await readJson<T>(res, Math.max(0, budget - (Date.now() - started)) + TMDB_BODY_GRACE_MS);
+          const json = await deadline(res.json() as Promise<T>, Math.max(0, budget - (Date.now() - started)) + TMDB_GRACE_MS, "body", () => {
+            /* الجسمُ مقفولٌ بقارئ `json()` فالإلغاءُ قد يُرفض — لا يهمّ، الوعدُ الذي ينتظره الطلبُ انتهى */
+            res.body?.cancel().catch(() => {});
+          });
           endBody();
           rememberGood(href, json);
           return json;
