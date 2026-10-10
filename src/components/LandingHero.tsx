@@ -2,11 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getT } from "@/lib/locale";
-import { trending, type SearchResult } from "@/lib/tmdb";
-import { railGuard } from "@/lib/topChart";
+import { welcomeSeeds } from "@/lib/welcomeSeeds";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { GoogleButton } from "@/components/GoogleButton";
-import { buttonClass } from "@/components/ui/Button";
+import { Icon, type IconName } from "@/components/Icon";
 import { AppGateSignal } from "@/components/AppGateSignal";
 
 /**
@@ -23,12 +22,17 @@ import { AppGateSignal } from "@/components/AppGateSignal";
  *  - `flow`: نفس الشاشة الأولى تماماً، لكنها تجري في مسار الصفحة فيمكن
  *    أن يليها محتوى يُقرأ ويُفهرَس (الجذر).
  */
+/** 🆕 D-1349 — النقاطُ الثلاث التي تقولها شاشةُ الدخول الأصليّة (قرارُ أحمد ١٣) — النصُّ نفسُه والأيقوناتُ نفسُها */
+const POINTS: { icon: IconName; key: "signInPoint1" | "signInPoint2" | "signInPoint3" }[] = [
+  { icon: "check-line", key: "signInPoint1" },
+  { icon: "calendar", key: "signInPoint2" },
+  { icon: "people", key: "signInPoint3" },
+];
+
 export async function LandingHero({
   variant = "screen",
-  showWordmark = true,
 }: {
   variant?: "screen" | "flow";
-  showWordmark?: boolean;
 }) {
   const { locale, t } = await getT();
 
@@ -48,7 +52,8 @@ export async function LandingHero({
     <div className={shell}>
       {/* D-1150 — العتبةُ تُعلن نفسَها للغلاف فيخفي شريطَه ما دامت ظاهرة */}
       <AppGateSignal />
-      <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4">
+      {/* D-1349 — والجدارُ غائبٌ (تحت ٦٠٠ ارتفاعاً) لا يبقى ما يجلس تحت الشريط السفليّ للجوّال: البطلُ يحجز مكانَه */}
+      <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4 max-md:[@media(max-height:600px)]:pb-20">
         {/* شارة الوعد: نقطة نابضة + السطر الإنجليزي — بلا أيقونات */}
         <div className="flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2">
           <span
@@ -64,7 +69,16 @@ export async function LandingHero({
         {/* الوعد — يكبر ويصغر مع الشاشة لا مع نقاط قطعٍ ثابتة.
             وهو `h1` الصفحة الوحيد: عنوانٌ واحد في المستند قاعدةُ بنيةٍ
             دلالية، وما تحته من أقسام يبدأ من `h2`. */}
-        <h1 className="mt-[clamp(14px,2.6vh,30px)] text-[clamp(28px,min(3.4vw,5.4vh),62px)] font-extrabold leading-[1.16] tracking-tight px-4">
+        {/* 🆕 D-1349 — **الإنجليزيّةُ سطرٌ لكلِّ جملة** (حكمُ أحمد على المعاينة: «جاي سطرين سطرين مو حلو اوزنها»): الجملةُ
+            الإنجليزيّةُ أطولُ من العربيّة فكانت تنكسر على الجوّال إلى أربعة أسطر. الحدُّ الأدنى فيها يتبع عرضَ
+            الشاشة (٥٫٥vw ≈ ٢١px على ٣٩٠) ولا ينكسر السطر؛ العربيّةُ كما كانت حرفاً. */}
+        <h1
+          className={`mt-[clamp(14px,2.6vh,30px)] font-extrabold leading-[1.16] tracking-tight ${
+            locale === "en"
+              ? "text-[clamp(17px,min(5.5vw,5.4vh),62px)] whitespace-nowrap px-2"
+              : "text-[clamp(28px,min(3.4vw,5.4vh),62px)] px-4"
+          }`}
+        >
           {t.landingH1a}
           <br />
           {/* 🔴 🆕 **تدرّجُ الواجهة لا تدرّجُ الهويّة** (D-846):
@@ -90,9 +104,26 @@ export async function LandingHero({
           </span>
         </h1>
 
-        <p className="mt-[clamp(10px,1.8vh,20px)] max-w-lg text-[clamp(13px,1.05vw,17px)] text-muted leading-relaxed px-6">
-          {t.tagline}
-        </p>
+        {/* 🆕 D-1349 (Phase 11-U · U2) — **النقاطُ الثلاثُ مكانَ الجملة الوصفيّة** (قرارُ أحمد ١٣، وحكمُه على المعاينة: «صغّر
+            حجم الاضافة الجديدة بشكل بسيط»): ما تقوله شاشةُ الدخول الأصليّة يقوله الويب — وعدٌ يُعدّ لا جملةٌ تُقرأ.
+            أصغرُ من بطاقات التطبيق درجةً (نصٌّ ١٣ · أيقونةٌ ٢٦): الشارةُ فوق العنوان باقيةٌ هنا فالمساحةُ أضيق. */}
+        <ul className="mt-[clamp(12px,2.2vh,24px)] w-full max-w-[360px] px-6 space-y-2 text-start">
+          {POINTS.map((p) => (
+            <li
+              key={p.key}
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 text-[13px] font-medium"
+            >
+              <span
+                className="grid place-items-center w-[26px] h-[26px] rounded-lg shrink-0 text-accent"
+                style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
+                aria-hidden
+              >
+                <Icon name={p.icon} size={14} />
+              </span>
+              {t[p.key]}
+            </li>
+          ))}
+        </ul>
 
         {/* الدخول: زرٌّ أبيض واحد لا نموذج — أقل قرارٍ ممكن قبل البدء */}
         <div className="mt-[clamp(16px,3.2vh,36px)] w-full max-w-[360px] px-6">
@@ -101,46 +132,20 @@ export async function LandingHero({
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}
-          {/* 🆕 **«تصفَّح أوّلاً» — للمثبَّت وحدَه** (D-886، حكمُ أحمد على
-              سؤال D-843 المفتوح): من نزّل التطبيقَ ولم يسجّل كان بابُه
-              الشريطَ السفليَّ وحدَه؛ صار له رابطٌ صريحٌ تحت الدخول إلى
-              الاكتشاف. **يُرسم دائماً ويُظهره وضعُ العرض في ورقة الأنماط**
-              (`data-standalone-only` — نظيرُ `data-landing-seo` بالعكس:
-              الخادمُ لا يعرف `display-mode`، القاعدةُ الثانية في D-843).
-              **رابطٌ بشكل الزرّ من المصنع، ورتبتُه `ghost`**: الفعلُ
-              الأوّلُ في الشاشة يبقى الدخول. */}
-          <Link
-            href="/news"
-            data-standalone-only
-            className={buttonClass({ variant: "ghost", size: "md", full: true, className: "mt-2.5" })}
-          >
-            {t.browseFirst}
-          </Link>
-          {/* الشعار ملتصقٌ بالزرّ لا في قاع الصفحة: التذييل العام كان
-              يهبط تحت جدار الملصقات فيبتعد — والموضع هنا قرارُ المالك.
-              🔴 🆕 **وكان يُخفى في الجذر «لأن التذييل العام يظهر هناك في
-              آخر الصفحة» — والتذييلُ العامُّ حُذف** (صفرُ `<footer>` في
-              `src/` اليوم): **فلم يكن السطرُ يتكرّر، كان يغيب.**
-              **وحُجّةٌ ماتت لا تُبقي أثرَها** (D-842/D-843). */}
-          {showWordmark && (
-            <p className="mt-3.5 text-12 tracking-wide text-muted/70" dir="ltr">
-              {t.footer}
-            </p>
-          )}
-
-          {/* الوثيقتان تحت زرّ الدخول لا في الإعدادات: هذا هو الموضع الذي
-              يبحث فيه من لم يسجّل بعد، وهو الرابط الذي تطلبه شاشة موافقة
-              Google ويفتحه المراجع بلا حساب. */}
-          <p className="mt-2.5 text-12 text-muted/50 flex items-center justify-center gap-2">
-            {/* 🆕 D-893 (`LOOPZ-AUD-0077`): رابطا التذييل كانا يُجلبان مسبقاً
-                مرّتين لكلٍّ (بمفتاحَي راوتر) على صفحة الزائر ويُلغى أحدُهما
-                بالمغادرة — صفحتان لا تُنقران إلا نادراً. */}
-            <Link href="/privacy" prefetch={false} className="hover:text-muted transition">
-              {locale === "ar" ? "الخصوصية" : "Privacy"}
+          {/* 🆕 D-1349 — **جملةُ الموافقة مكانَ الرابطين** (قرارُ أحمد ١٤): ما يوافق عليه الداخلُ يُقال له عند الزرّ الذي
+              يضغطه، بالنصِّ الذي وافق عليه أحمد لشاشة التطبيق. والرابطان باقيان فيها — شاشةُ موافقة Google تطلبهما
+              ويفتحهما المراجعُ بلا حساب. `prefetch={false}` كما كانا (D-893).
+              ⚖️ **«تصفَّح أوّلاً» حُذف** (حكمُه ١٠ أكتوبر: «احذف تصفح اولا حتى من الويب») ومعه سطرُ الشعار
+              «Every story matters». الشريطُ السفليُّ للزائر باقٍ: تصفّحُ الويب بلا حسابٍ لم يُمسّ (الفهرسةُ وروابطُ
+              المشاركة تقومان عليه). */}
+          <p className="mt-3.5 text-12 text-muted leading-relaxed text-balance">
+            {t.signInConsentLead}
+            <Link href="/terms" prefetch={false} className="text-foreground underline underline-offset-2 hover:text-accent transition">
+              {t.signInConsentTerms}
             </Link>
-            <span aria-hidden>·</span>
-            <Link href="/terms" prefetch={false} className="hover:text-muted transition">
-              {locale === "ar" ? "الشروط" : "Terms"}
+            {t.signInConsentAnd}
+            <Link href="/privacy" prefetch={false} className="text-foreground underline underline-offset-2 hover:text-accent transition">
+              {t.signInConsentPrivacy}
             </Link>
           </p>
         </div>
@@ -151,38 +156,37 @@ export async function LandingHero({
 
           والبديل صندوقٌ فارغ بارتفاع الجدار لا `null`: بـ`null` كان البطل
           يتوسّط الشاشة كلّها ثم يقفز للأعلى لحظة وصول الملصقات. */}
-      <Suspense fallback={<div className="shrink-0 h-[34vh] md:h-[46vh]" aria-hidden />}>
+      {/* 🆕 D-1349 — **الشاشةُ القصيرةُ تأخذ من الجدار لا من البطل**: النقاطُ الثلاثُ أطالت البطلَ ~١١٠px، ومتصفّحُ الجوّال
+          بشريطَيه يترك ~٦٦٠px من ٨٤٤ — فكان البطلُ يُقصّ من أعلاه (الشارةُ تحت الترويسة، مقيسٌ محلّيّاً على ٣٩٠×٦٦٤
+          و٣٦٠×٥٦٠). الجدارُ زينة: يقصر تحت ٧٢٠ ارتفاعاً ويغيب تحت ٦٠٠، والوعدُ والزرُّ لا يُمسّان. */}
+      <Suspense fallback={<div className="shrink-0 h-[34vh] md:h-[46vh] [@media(max-height:720px)]:h-[20vh] [@media(max-height:600px)]:hidden" aria-hidden />}>
         <PosterWall />
       </Suspense>
     </div>
   );
 }
 
-/** جدار الرائج — يجلب ملصقاته بنفسه بعد رسم البطل */
+/** جدار الملصقات — يجلب ملصقاته بنفسه بعد رسم البطل */
 async function PosterWall() {
-  // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
-  /* 🆕 **وجدارُ الهبوط محروسٌ كسائر الرفوف** (D-321): **هذه أوّلُ اثنَي عشرَ
-     ملصقاً يراها من لا يعرف لوبز بعد** — وهي وعدُ الكتالوج قبل أن يُقرأ
-     سطرٌ واحد. **والقاعدةُ التي تحكم الرفَّ الداخليَّ تحكم واجهةَ المتجر
-     من بابٍ أولى.** */
-  const trend = await trending()
-    .then((rows) => railGuard(rows, { anime: "keep" }))
-    .catch(() => [] as SearchResult[]);
+  /* 🆕 D-1349 — **الأعمالُ الأربعةُ والعشرون المثبتةُ لا رائجُ الأسبوع** (قرارُ أحمد للجدار الأصليّ: «اشهر الاعمال»):
+     ما يراه الزائرُ في الويب هو ما يراه في شاشة الدخول الأصليّة وما سيختار منه في الترحيب — قائمةٌ واحدةٌ
+     (`welcomeSeeds`، D-1344) لا واجهتان تفترقان كلَّ أسبوع. اثنا عشر لكلِّ صفّ. */
+  const seeds = await welcomeSeeds().catch(() => []);
   // w185 تكفي: الملصق يُعرض بأقل من ١١٠ بكسل — كانت w342 تُحمِّل ضعف اللازم
-  const posters = trend
-    .filter((r) => r.poster_path)
-    .slice(0, 12)
-    .map((r) => posterUrl(r.poster_path, "w185"))
+  const posters = seeds
+    .map((r) => posterUrl(r.posterPath, "w185"))
     .filter((p): p is string => !!p);
-  const rowA = posters.slice(0, 6);
-  const rowB = posters.slice(6, 12);
+  const half = Math.ceil(posters.length / 2);
+  const rowA = posters.slice(0, half);
+  const rowB = posters.slice(half);
 
   /* أربع نسخٍ من الصفّ لا واحدة.
      الحلقة تعمل بإزاحة نصف المسار، فشرطُ ألّا يظهر فراغ أن يكون النصف
      الواحد أعرضَ من الشاشة. ستّة ملصقات ≈ ٩٠٠ بكسل: تكفي جوالاً ولا تكفي
      شاشة مكتبٍ عريضة. والملصقات هنا ستّ صورٍ مكرّرة لا أكثر، فالتكرار
      يكلّف عقداً في الصفحة ولا يكلّف طلب شبكةٍ واحداً. */
-  const tile = (row: string[]) => [...row, ...row, ...row, ...row];
+  /* D-1349 — الصفُّ صار اثنَي عشر ملصقاً (كان ستّة) فنسختان تكفيان ما كانت تكفيه أربع: العقدُ في الصفحة كما كانت */
+  const tile = (row: string[]) => [...row, ...row];
 
   return (
     <>
@@ -191,7 +195,7 @@ async function PosterWall() {
           فلا يزحف فوق زرّ الدخول مهما ضاقت الشاشة */}
       {posters.length >= 8 && (
         <div
-          className="relative shrink-0 max-h-[34vh] md:max-h-[46vh] overflow-hidden pt-6 pb-1"
+          className="relative shrink-0 max-h-[34vh] md:max-h-[46vh] [@media(max-height:720px)]:max-h-[20vh] [@media(max-height:600px)]:hidden overflow-hidden pt-6 pb-1"
           dir="ltr"
           aria-hidden
         >

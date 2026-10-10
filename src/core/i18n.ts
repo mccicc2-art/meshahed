@@ -36,18 +36,12 @@ const ar = {
   code: "ar" as Locale,
   dir: "rtl",
   brand: "Loopz",
-  /* سطرُ الهبوط قصيرٌ عمداً — يُقرأ تحت عنوانٍ عريض لا في نتيجة بحث.
-     ولهذا `metaDescription` بقي وصفياً بكلماته المفتاحية: هو ما يقرؤه
-     محرّك البحث ومعاينة الرابط، وهما يحتاجان «أفلام ومسلسلات وأنمي». */
-  tagline: "كل ما تشاهده، مرتّباً كما يليق.",
+  /* D-1349 — سطرُ الهبوط (`tagline`) حُذف مع الجملة الوصفيّة تحت العنوان (النقاطُ الثلاث مكانَها). `metaDescription`
+     لم يُمسّ: هو ما يقرؤه محرّكُ البحث ومعاينةُ الرابط، وهما يحتاجان «أفلام ومسلسلات وأنمي». */
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
   metaDescription:
     "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
-  /* شعارٌ لا نسبةُ بيانات: التذييل يظهر تحت كل شاشة في التطبيق، وسطرٌ
-     تقنيّ في ذلك الموضع يُهدر آخر ما تقع عليه العين. النسبة إلى TMDB
-     انتقلت إلى قسم اللغة في الإعدادات. قرارُ المالك. */
-  footer: "Every story matters",
   tmdbAttribution:
     "يستخدم هذا المنتج واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB.",
 
@@ -2245,10 +2239,6 @@ const ar = {
      المشترك — **وسطرٌ ينتظر بالنيابة عن مالكٍ عطلٌ في الصدق** (D-217). */
   plusIncludes: "ما الذي يشمله اشتراكك",
   plusLocked: "ميزة Loopz+",
-  /* 🆕 **«تصفَّح أوّلاً»** (D-886، حكمُ أحمد على سؤال D-843): للتطبيق
-     المثبَّت وحدَه — من نزّل التطبيق ولم يسجّل يجد باباً صريحاً إلى
-     الاكتشاف تحت زرّ الدخول، لا الشريطَ السفليَّ وحدَه. */
-  browseFirst: "تصفَّح أوّلاً",
   loginNeedsKeys:
     "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
@@ -2461,12 +2451,10 @@ const en: Dict = {
   code: "en",
   dir: "ltr",
   brand: "Loopz",
-  tagline: "Everything you watch. Organized beautifully.",
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz \u2014 track your shows & movies",
   metaDescription:
     "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
-  footer: "Every story matters",
   tmdbAttribution:
     "This product uses the TMDB API but is not endorsed or certified by TMDB.",
 
@@ -3986,7 +3974,6 @@ const en: Dict = {
     "This account has been confirmed to represent the stated person or organisation.",
   plusIncludes: "What your membership includes",
   plusLocked: "Loopz+ feature",
-  browseFirst: "Browse first",
   loginNeedsKeys:
     "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",
