@@ -2987,6 +2987,25 @@ export async function applyOnboardingProgress(
 
   const done = items.filter((it) => it.progress === "done");
 
+  /* 🆕 D-1342 — **«بدأته» يكتب «ابدأ»** (تسجيلُ أحمد ١٠ أكتوبر: اختار «بدأته» لـBreaking Bad فهبط في «للمشاهدة»؛
+     وقرارُه: «يدخل اكمل المشاهدة»). كان الخيارُ يُعرض ولا يكتب شيئاً — هذه الدالّةُ لم تعرف إلّا «شاهدته كاملاً».
+     الحالةُ القائمةُ نفسُها التي يكتبها زرُّ «ابدأ» (`setWatchState`، D-1280): مسلسلٌ بلا حلقةٍ مشاهَدة يدخل
+     «تابِع المشاهدة» — **ولا حلقةَ تُعلَّم**: لم يقل أيَّها شاهد. **للمسلسلات وحدَها** (قرارُ D-1280: الفيلمُ بلا
+     حلقات فلا بدءَ له). والصفوفُ في المكتبة قبل هذا النداء (`follow` يسبقه في الترحيب)؛ ما ليس فيها لا يُنشأ. */
+  const started = items.filter((it) => it.progress === "some" && it.mediaType === "tv").map((it) => it.tmdbId);
+  if (started.length) {
+    try {
+      await supabase
+        .from("follows")
+        .update({ watch_state: "started" })
+        .eq("user_id", user.id)
+        .eq("media_type", "tv")
+        .in("tmdb_id", started);
+    } catch {
+      // التقدّمُ اختياريّ — المتابعةُ نفسُها نجحت
+    }
+  }
+
   /* الأفلام كلُّها upsert واحد لا رحلةً لكلِّ فيلم: الصفوفُ مستقلّة
      والمفتاحُ فريد، فالدفعةُ تكافئ الأفراد أثراً وتوفّر الرحلات. */
   const movieRows = done

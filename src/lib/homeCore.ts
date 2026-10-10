@@ -53,7 +53,7 @@ import type { HeaderStat } from "@/components/HomeHeader";
 import type { WeekEntry } from "@/components/WeekStrip";
 import type { ReorderItem } from "@/components/ReorderSheet";
 import type { ShowStat } from "@/components/ShowStatsSync";
-import { airedSinceStored, staleStored, FRESHEN_CAP } from "@/core/followStats";
+import { airedSinceStored, staleStored, watchedUncounted, FRESHEN_CAP } from "@/core/followStats";
 import {
   sanitizeHomePrefs,
   applyQueueOrder,
@@ -179,9 +179,16 @@ export type ToWatchQueueCard = {
  */
 export async function freshenFollows<R extends Awaited<ReturnType<typeof getFollows>>[number]>(
   followRows: R[],
+  /* 🆕 D-1342 — ملخّصُ المشاهدة (مقروءٌ في الموجة الأولى أصلاً): به يُعرف الصفُّ الذي بلا رقمٍ وقد شوهد منه */
+  summary?: readonly { show_tmdb_id: number; watched: number }[] | null,
 ): Promise<{ followRows: R[]; freshStats: ShowStat[] }> {
   const today = new Date().toISOString().slice(0, 10);
-  const ids = airedSinceStored(followRows, today);
+  const watchedIds = new Set((summary ?? []).filter((s) => s.watched > 0).map((s) => s.show_tmdb_id));
+  /* الصنفان معاً بالسقف الواحد: ما بلا رقمٍ وشوهد منه أوّلاً (خطؤه «انتهى يُعرض غيرَ منتهٍ» أمام صاحبه الآن) */
+  const ids = [...new Set([...watchedUncounted(followRows, watchedIds), ...airedSinceStored(followRows, today)])].slice(
+    0,
+    FRESHEN_CAP,
+  );
   if (!ids.length) return { followRows, freshStats: [] };
   const details = await Promise.all(ids.map((id) => getTv(id).catch(() => null)));
   const now = new Date().toISOString();

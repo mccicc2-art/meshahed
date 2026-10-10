@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airedSinceStored, staleStored, type FollowStatsRow } from "./followStats.ts";
+import { airedSinceStored, staleStored, watchedUncounted, type FollowStatsRow } from "./followStats.ts";
 
 const row = (o: Partial<FollowStatsRow> & { tmdb_id: number }): FollowStatsRow => ({ media_type: "tv", aired_episodes: 10, ...o });
 const TODAY = "2026-10-04";
@@ -56,4 +56,29 @@ test("بلا رقمٍ مخزَّن صفُّ تهيئةٍ لا صفٌّ قديم�
     row({ tmdb_id: 2, next_air_date: "2026-09-01", stats_updated_at: "2026-08-01T00:00:00Z" }),
   ];
   assert.deepEqual(staleStored(rows, NOW), []);
+});
+
+/* D-1342 — الصنفُ الثالث: بلا رقمٍ مخزَّن وقد شوهد منه (Game of Thrones بعد الترحيب: ٧٣ مشاهَدة من «٠ معروضة») */
+test("بلا رقمٍ وقد شوهد منه ⇒ يُقرأ قبل البناء", () => {
+  const rows = [row({ tmdb_id: 1399, aired_episodes: null })];
+  assert.deepEqual(watchedUncounted(rows, new Set([1399])), [1399]);
+});
+
+test("بلا رقمٍ وبلا مشاهدة ⇒ لا رحلةَ تسبق الرئيسيّة (يُرسم «للمشاهدة» صحيحاً)", () => {
+  const rows = [row({ tmdb_id: 1396, aired_episodes: null })];
+  assert.deepEqual(watchedUncounted(rows, new Set([1399])), []);
+  assert.deepEqual(watchedUncounted(rows, new Set()), []);
+});
+
+test("له رقمٌ مخزَّن، أو فيلم، أو موقوف ⇒ لا شيء؛ وبالسقف", () => {
+  const seen = new Set([1, 2, 3, 4, 5]);
+  const rows = [
+    row({ tmdb_id: 1 }),
+    row({ tmdb_id: 2, aired_episodes: null, media_type: "movie" }),
+    row({ tmdb_id: 3, aired_episodes: null, dropped: true }),
+    row({ tmdb_id: 4, aired_episodes: null }),
+    row({ tmdb_id: 5, aired_episodes: null }),
+  ];
+  assert.deepEqual(watchedUncounted(rows, seen), [4, 5]);
+  assert.deepEqual(watchedUncounted(rows, seen, 1), [4]);
 });

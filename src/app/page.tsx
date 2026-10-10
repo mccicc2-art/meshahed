@@ -193,7 +193,7 @@ export default async function HomePage() {
   if (storedFollows.length === 0 && (await getOnboardState()) !== "done") redirect("/welcome");
   /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء (`freshenFollows`) — الترويسةُ
      و«أكمل المشاهدة» تُحسبان من هذا الرقم. */
-  const { followRows, freshStats } = await freshenFollows(storedFollows);
+  const { followRows, freshStats } = await freshenFollows(storedFollows, summary);
   /* التلميحاتُ المقروءةُ في الحساب — تقرّر أيَّ تلميحٍ يُركَّب (D-1273) */
   const seenHints = sanitizeUiState(profile?.ui_state).hints;
 

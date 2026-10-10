@@ -70,7 +70,7 @@ export async function GET() {
       getMyRatings(),
     ]);
     /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء، فالردُّ نفسُه صحيح */
-    const { followRows, freshStats } = await freshenFollows(storedFollows);
+    const { followRows, freshStats } = await freshenFollows(storedFollows, summary);
 
     const head = await buildHomeHeader({ followRows, summary, watchedMovies, profile, myRatings, t });
     const { watchedMovieIds, prefs, today, watchedByShow, lastWatchedOrder, rewatchSinceMap, headerStats } = head;
