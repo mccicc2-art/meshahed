@@ -71,7 +71,14 @@ export function PrivacyData({
     if (disarm.current) clearTimeout(disarm.current);
     startDelete(async () => {
       try {
-        await deleteMyAccount();
+        /* 🆕 D-1340 — الفعلُ يُعيد سببَه ولا يرميه: المرميُّ يصل هنا
+           «Minified React error #441» لا جملةً يفهمها صاحبُ الحساب */
+        const res = await deleteMyAccount();
+        if (res.error) {
+          setArmed(false);
+          setError(res.error === "busy" ? t.deleteAccountBusyGate : t.deleteAccountFailed);
+          return;
+        }
         /* 🆕 **تحميلٌ كاملٌ لا تنقّلُ موجِّه** (D-869، قاعدةٌ جديدةٌ في
            `eslint-config-next@16.3.0`): **الحسابُ حُذف للتوّ** —
            **و`router.push` يُبقي شجرةَ العميل ومخبأَ الموجِّه لحسابٍ لم
@@ -81,7 +88,8 @@ export function PrivacyData({
         window.location.href = "/login";
       } catch (e) {
         setArmed(false);
-        setError((e as Error).message);
+        console.error(e);
+        setError(t.deleteAccountFailed);
       }
     });
   }

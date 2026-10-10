@@ -1770,6 +1770,9 @@ const ar = {
   deleteAccountBtn: "حذف الحساب نهائياً",
   deleteAccountConfirm: "متأكد؟ اضغط مرة أخرى — لا رجوع بعدها",
   deleteAccountBusy: "يحذف…",
+  deleteAccountFailed:
+    "تعذّر حذف الحساب — حسابك ما زال قائماً. جرّب مرة أخرى، وإن تكرّر راسلنا.",
+  deleteAccountBusyGate: "محاولات كثيرة متتالية — انتظر دقيقة ثم جرّب.",
   ratingsListTitle: "التقييمات — من الأعلى",
   inCinemas: "يُعرض الآن في السينما",
   inCinemasRegion: (c: string) => `في ${c}`,
@@ -3628,6 +3631,9 @@ const en: Dict = {
   deleteAccountBtn: "Delete account permanently",
   deleteAccountConfirm: "Sure? Tap again — this cannot be undone",
   deleteAccountBusy: "Deleting…",
+  deleteAccountFailed:
+    "Couldn't delete the account — your account is still there. Try again, and contact us if it keeps happening.",
+  deleteAccountBusyGate: "Too many attempts — wait a minute, then try again.",
   ratingsListTitle: "Ratings — highest first",
   inCinemas: "Now in cinemas",
   inCinemasRegion: (c: string) => `in ${c}`,

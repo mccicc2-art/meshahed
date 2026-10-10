@@ -205,9 +205,10 @@ export default async function AdminHealthPage() {
         </div>
         <p className="text-12 text-muted leading-relaxed">
           وخارجَ هذا الجدول: بريدُ الحساب وصورتُه في <code dir="ltr">auth.users</code> و
-          <code dir="ltr">avatars</code> (يمحوهما <code dir="ltr">delete_my_account</code> فوراً بلا نسخةِ
-          ثلاثين يوماً — <b>وهو ما تعلنه صفحةُ /account/delete</b>)، ووثيقةُ هويّةِ الشريك في
-          الدلو الخاصّ <code dir="ltr">partner-ids</code>. <b>ولا يُخزَّن وكيلُ متصفّحٍ كامل ولا IP
+          <code dir="ltr">avatars</code>، ووثيقةُ هويّةِ الشريك في الدلو الخاصّ{" "}
+          <code dir="ltr">partner-ids</code> — يمحوها كلَّها حذفُ الحساب فوراً بلا نسخةِ ثلاثين يوماً
+          (الملفّاتُ عبر Storage API ثمّ <code dir="ltr">delete_my_account</code>، D-1340) —{" "}
+          <b>وهو ما تعلنه صفحةُ /account/delete</b>. <b>ولا يُخزَّن وكيلُ متصفّحٍ كامل ولا IP
           ولا موقعٌ جغرافيّ</b> (D-666).
         </p>
       </section>

@@ -432,11 +432,9 @@ begin
     raise exception 'not authenticated';
   end if;
 
-  -- الصور أوّلاً: `storage.objects` لا يشير إلى `auth.users` فلا يجرّه
-  -- الشلّال؛ وهي أوّلاً كي تسقط داخل نفس المعاملة إن فشل ما بعدها.
-  delete from storage.objects
-  where bucket_id = 'avatars'
-    and (storage.foldername(name))[1] = uid::text;
+  -- 🆕 الهجرة ١٩٦ (D-1340): الصورُ لا تُحذف من هنا — Supabase ترفض
+  -- `delete from storage.objects` بتريغر `protect_objects_delete`. يحذفها
+  -- فعلُ الخادم `deleteMyAccount` عبر Storage API قبل هذا النداء.
 
   delete from auth.users where id = uid;
   get diagnostics gone = row_count;

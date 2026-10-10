@@ -5132,15 +5132,90 @@ export async function exportMyData(): Promise<string> {
   );
 }
 
+/** مخازنُ الملفّات التي يملك العضوُ فيها مجلّداً باسم معرّفه (`<uid>/…`) */
+const OWN_BUCKETS = ["avatars", "partner-ids"] as const;
+
 /**
- * حذف الحساب: كل الصفوف والصور تُمحى في نداءٍ واحد على دالة SQL
- * definer (انظر supabase/security.sql) ثم تُنهى الجلسة.
+ * كلُّ ملفّات العضو في مخزنٍ واحد — مجلّدُه وما تحته.
+ *
+ * `list` تعيد مستوىً واحداً، والمجلّدُ فيها صفٌّ بلا `id`؛ والإنتاجُ فيه
+ * عمقان اليوم (`<uid>/x` و`<uid>/y/x`)، فالنزولُ محدودٌ بأربعة لا مفتوح.
  */
-export async function deleteMyAccount(): Promise<void> {
-  const { supabase } = await requireUser("delete", 3, 60_000);
-  const { error } = await supabase.rpc("delete_my_account");
-  if (error) fail(error);
+async function ownStoragePaths(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bucket: string,
+  uid: string,
+): Promise<string[]> {
+  const files: string[] = [];
+  const walk = async (prefix: string, depth: number): Promise<void> => {
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .list(prefix, { limit: 1000, offset });
+      if (error) throw error;
+      for (const entry of data ?? []) {
+        const path = `${prefix}/${entry.name}`;
+        if (entry.id) files.push(path);
+        else if (depth < 4) await walk(path, depth + 1);
+      }
+      if ((data?.length ?? 0) < 1000) return;
+    }
+  };
+  await walk(uid, 1);
+  return files;
+}
+
+/**
+ * حذف الحساب (D-1340) — **الملفّاتُ عبر Storage API ثمّ صفُّ الحساب.**
+ *
+ * 🔴 **العطلُ الذي وُلد منه** (١٠ أكتوبر ٢٠٢٦، من سجلّ القاعدة): الدالّةُ
+ * `delete_my_account` كانت تحذف الصورَ بـ`delete from storage.objects`،
+ * وSupabase أضافت تريغر `protect_objects_delete` يرفض ذلك بـ42501 —
+ * فارتدّت المعاملةُ كلُّها **ولم يُحذف حسابٌ واحد**، والعضوُ يرى
+ * «Minified React error #441» (Next تُخفي رسالةَ خطأ فعل الخادم).
+ *
+ * ✅ **فانقسم العملُ على صاحبَيه**: الملفّاتُ من هنا بجلسة العضو (سياستا
+ * `avatars` و`partner-ids` تسمحان له بمجلّده وحدَه)، والدالّةُ (الهجرة ١٩٦)
+ * تحذف صفَّ `auth.users` فيجرّ الباقي. **والتحايلُ على التريغر مرفوض**:
+ * يمحو الصفَّ ويُبقي الملفَّ نفسَه في المخزن يتيماً.
+ *
+ * ⚠️ **ولم يعد معاملةً واحدة**: إن حُذفت الملفّاتُ ثمّ فشل الحساب بقي حسابٌ
+ * بلا صورة — وعكسُه (حسابٌ محذوفٌ وصورُه عامّةٌ باقية) أسوأ، فهذا الترتيب.
+ *
+ * **ويُعيد ولا يرمي** (نمطُ `syncXIdentity`): رسالةٌ لا تصل القارئ ليست
+ * رسالة. والسببُ الحقيقيُّ في سجلّ الخادم لا على شاشة العضو.
+ */
+export async function deleteMyAccount(): Promise<{ error?: "busy" | "failed" }> {
+  let session: Awaited<ReturnType<typeof requireUser>>;
+  try {
+    session = await requireUser("delete", 3, 60_000);
+  } catch (e) {
+    console.error("[action] deleteMyAccount: gate", e);
+    return { error: "busy" };
+  }
+  const { supabase, user } = session;
+
+  try {
+    for (const bucket of OWN_BUCKETS) {
+      const paths = await ownStoragePaths(supabase, bucket, user.id);
+      for (let i = 0; i < paths.length; i += 100) {
+        const { error } = await supabase.storage.from(bucket).remove(paths.slice(i, i + 100));
+        if (error) throw error;
+      }
+      /* `remove` تسكت عمّا منعته السياسة — فالإثباتُ قراءةٌ ثانية لا ثقة */
+      const left = await ownStoragePaths(supabase, bucket, user.id);
+      if (left.length) throw new Error(`${bucket}: ${left.length} file(s) survived removal`);
+    }
+
+    const { error } = await supabase.rpc("delete_my_account");
+    if (error) throw error;
+  } catch (e) {
+    console.error("[action] deleteMyAccount", e);
+    return { error: "failed" };
+  }
+
   await supabase.auth.signOut();
+  return {};
 }
 
 // ============================================================
