@@ -517,6 +517,23 @@ export const trending = cache(async function trending(): Promise<SearchResult[]>
 });
 
 /**
+ * 🆕 D-1341 — **الأكثرُ شهرةً على الإطلاق** (قرارُ أحمد ٧ للترحيب: «ابغاها تكون الاعمال الاكثر شهرة ..
+ * قيم اوف ثرونز بريكينق باد وكذا»): `discover` مرتَّباً بعدد الأصوات — من قيّمه أكثرُ الناس هو ما
+ * يعرفه أكثرُ الناس. **ليس «رائج هذا الأسبوع»** (`trending`): ذاك يتبدّل كلَّ يوم، والوافدُ الجديدُ
+ * يحتاج أعمالاً يعرفها ليختار منها بضغطة.
+ * `anime`: أنمي يابانيّ وحدَه (نوعُ الرسوم ١٦ + اللغة) — له حصّتُه في الشبكة، والحارسُ يُسقطه من الأخريين.
+ * `discover` لا يعيد `media_type` فيُكتب هنا.
+ */
+export async function mostVoted(mediaType: MediaType, anime = false): Promise<SearchResult[]> {
+  const data = await railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+    sort_by: "vote_count.desc",
+    include_adult: "false",
+    ...(anime ? { with_genres: "16", with_original_language: "ja" } : {}),
+  });
+  return (data.results ?? []).map((r) => ({ ...r, media_type: mediaType }));
+}
+
+/**
  * 🆕 **رائجُ اليوم** — `/trending/all/day`: أفلامٌ ومسلسلاتٌ (والأنمي منها) في ترتيبٍ واحد.
  *
  * **ولماذا دالّةٌ ثانيةٌ بجانب `trending()`**: تلك نافذتُها أسبوعٌ ولها قرّاؤها (الرئيسيّةُ وصفحةُ

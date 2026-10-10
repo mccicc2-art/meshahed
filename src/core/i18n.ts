@@ -2341,6 +2341,8 @@ const ar = {
   apiConflict: "تعذّر التنفيذ: هناك تعارض",
   /* D-1106/D-1107 — أخطاءُ تعديل الملف والتوثيق في الـAPI (الأفعالُ ترمي نصّاً؛ المسارُ يترجمه إلى مفتاح) */
   apiUsernameTaken: "اسم المستخدم محجوز، جرّب غيره.",
+  /* 🆕 D-1341 — ردُّ `/api/v1` لجلسةٍ لم تُتمّ الترحيب: التطبيقُ يقرأ المفتاحَ ويعود بصاحبه إليه */
+  apiFinishWelcome: "أكمل خطوات الترحيب أولاً.",
   apiImageInvalid: "الرجاء اختيار ملف صورة.",
   apiImageTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   apiVerifyNotEligible: "لم تكتمل الشروط بعد.",
@@ -2372,6 +2374,14 @@ const ar = {
   navPeople: "المجتمع",
   viewProfileOf: (name: string) => `عرض صفحة ${name}`,
   obStep: (a: number, b: number) => `الخطوة ${a} من ${b}`,
+  /* 🆕 D-1341 — خطوةُ «هذا أنت» (القرارات ١٠ · ١٥): يرى اسمَه وصورتَه قبل أن يدخل بهما، ويختار اسمَ مستخدم */
+  obMeTitle: "هذا أنت",
+  obMeHint: "هذا اسمك وصورتك كما يراهما الناس — عدّلهما إن حبّيت، واختر اسم مستخدم.",
+  obUserRule: "أحرف إنجليزية صغيرة وأرقام و _ — من ٣ إلى ٢٤ حرفاً.",
+  obUserChecking: "نتحقّق من الاسم…",
+  obUserFree: (u: string) => `@${u} متاح ✓`,
+  obBack: "رجوع",
+  obFinishFailed: "تعذّر إكمال التجهيز — حاول مرة ثانية.",
   obPickTitle: "ماذا شاهدت من هذه؟",
   obPickHint: "اختر ما شاهدته — نبني مكتبتك ونتعرّف على ذوقك من هنا.",
   obPickedN: (n: number) =>
@@ -2388,8 +2398,9 @@ const ar = {
   obNext: "كمّل ←",
   obSkip: "تخطّي",
   obSaving: "جارٍ التجهيز…",
-  /* خطوة «تابع ٣ أشخاص» (D-126): الحساب الجديد يدخل ودائرته ليست صفراً */
-  obPeopleTitle: "تابع ٣ أشخاص",
+  /* خطوة الأشخاص (D-126): الحساب الجديد يدخل ودائرته ليست صفراً.
+     🆕 D-1341 — العنوانُ قرارُ أحمد ١٢: كان «تابع ٣ أشخاص» — أمرٌ برقمٍ على خطوةٍ اختياريّة */
+  obPeopleTitle: "أشخاص قد ترغب بمتابعتهم",
   obPeopleHint: "ذوقهم قريب من ذوقك — ما يشاهدونه يظهر لك في «مجتمعي».",
   obPeopleNone: "ما فيه أحد نقترحه عليك الحين — تقدر تبحث عن أصدقائك بعدين.",
   /* الخطوة اختيارية عمداً: «تابع ٣» دعوةٌ لا بوّابة — من لا يريد أحداً
@@ -4023,6 +4034,7 @@ const en: Dict = {
   apiRateLimited: "Too many requests — wait a moment",
   apiConflict: "Couldn't complete: there's a conflict",
   apiUsernameTaken: "Username is taken, try another.",
+  apiFinishWelcome: "Finish the welcome steps first.",
   apiImageInvalid: "Please choose an image file.",
   apiImageTooLarge: "Image too large — 2 MB maximum.",
   apiVerifyNotEligible: "Requirements not met yet.",
@@ -4050,6 +4062,13 @@ const en: Dict = {
   navPeople: "Community",
   viewProfileOf: (name: string) => `View ${name}'s page`,
   obStep: (a: number, b: number) => `Step ${a} of ${b}`,
+  obMeTitle: "This is you",
+  obMeHint: "This is the name and photo people will see — change them if you like, and pick a username.",
+  obUserRule: "Lowercase letters, digits and _ — 3 to 24 characters.",
+  obUserChecking: "Checking the name…",
+  obUserFree: (u: string) => `@${u} is available ✓`,
+  obBack: "Back",
+  obFinishFailed: "Couldn't finish setting up — try again.",
   obPickTitle: "Which of these have you watched?",
   obPickHint:
     "Tap the ones you've seen — we'll build your library and learn your taste from this.",
@@ -4066,7 +4085,7 @@ const en: Dict = {
   obNext: "Continue →",
   obSkip: "Skip",
   obSaving: "Setting things up…",
-  obPeopleTitle: "Follow 3 people",
+  obPeopleTitle: "People you may want to follow",
   obPeopleHint:
     "Their taste is close to yours — what they watch shows up in your circle.",
   obPeopleNone:

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  decodeAccessToken,
   decodeSessionCookie,
   ownerHash,
   sessionCookieParts,
@@ -97,11 +98,126 @@ function needsRefresh(cookieValue: string | undefined): boolean {
 const BLOCKED_UA =
   /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy|meta-webindexer|meta-externalfetcher/i;
 
+/**
+ * ====== 🆕 D-1341 — بوّابةُ الترحيب على الويب (Phase 11-U · U0) ======
+ *
+ * قرارُ أحمد ١٧ (١٠ أكتوبر، بتسجيلٍ تجاوز فيه الترحيبَ بحسابٍ جديد): «الخطوات اجبارية .. محد يقدر يتصفح
+ * الا اذا خلصها». كان الحارسُ في `/` وحدَها (`page.tsx`) — فكلُّ مسارٍ آخرَ بابٌ مفتوح.
+ *
+ * 🔑 **هنا لأنّه المكانُ الوحيدُ الذي يمرّ به كلُّ طلبِ صفحة** — تحميلُ مستندٍ وتنقّلُ راوترٍ (RSC) معاً؛
+ * التخطيطُ لا يُعاد رسمُه في التنقّل الناعم فلا يصلح حارساً.
+ *
+ * 🔑 **والثمنُ قراءةٌ واحدةٌ لكلِّ عضوٍ لكلِّ نسخةِ خادم، لا لكلِّ طلب** — هذا الملفُّ يتجنّب رحلةَ الشبكة
+ * عمداً (انظر `needsRefresh`). الختمُ يُكتب مرّةً ولا يُمحى، فمن ثبت أنّه أتمّ يُحفظ معرّفُه في ذاكرة
+ * النسخة ولا يُسأل عنه ثانيةً (الوصفةُ نفسُها في `lib/v1.ts`). لا يُحفظ «لم يُتمّ» — ذاك يتبدّل.
+ * ⚖️ **ولا كوكي «أتمّ»**: كوكي بلا توقيعٍ يكتبه العضوُ بيده فيفتح البوّابة (الحارسُ لا يسكن المتصفّح —
+ * D-821)، والتوقيعُ يحتاج سرّاً في البيئة — ومفتاحُ الخدمة مسيَّجٌ عن هذا الملفّ (D-898).
+ *
+ * ⚠️ **يفتح عند الشكّ**: خطأُ قاعدةٍ، مهلة، عمودٌ غائب (شيفرةٌ سبقت هجرتَها)، صفٌّ لم يُقرأ ⇒ يمرّ.
+ * حارسٌ لا يعرف لا يقفل عضواً خارج حسابه. والزائرُ (بلا جلسة) يمرّ كما كان — ذاك شأنُ U2.
+ */
+const OB_READ_TIMEOUT_MS = 2500;
+const OB_DONE = new Set<string>();
+const OB_DONE_MAX = 20_000;
+
+/**
+ * ما يبقى مفتوحاً لمن دخل ولم يُتمّ: الترحيبُ نفسُه · الدخولُ والخروجُ و«بدّل الحساب» (`/auth/*`) ·
+ * الصفحاتُ العامّةُ التي تفتحها Google وApple والمتجران بلا حساب (`18_Project_Context.md`) · حذفُ الحساب ·
+ * مساراتُ الـAPI (حارسُها في `lib/v1.ts`، والترحيبُ نفسُه ينادي بعضَها) · صفحةُ إقلاع التطبيق (تسلّم
+ * الرمزَ للغلاف ثمّ تنتقل إلى `/` فتُحرس هناك) · وكلُّ ملفٍّ بامتداد (`sw.js` · `manifest` · الأيقونات).
+ */
+function welcomeExempt(pathname: string): boolean {
+  return (
+    pathname === "/welcome" ||
+    pathname === "/login" ||
+    pathname === "/features" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/account/delete" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/app/") ||
+    pathname.startsWith("/_next/") ||
+    /\.[a-z0-9]+$/i.test(pathname)
+  );
+}
+
+/** رمزُ الوصول من كوكي الجلسة كما هي الآن في الطلب (بعد التجديد إن وقع) */
+function sessionAccessToken(request: NextRequest): string | null {
+  try {
+    let raw = sessionCookieParts(request.cookies.getAll()).join("");
+    if (!raw) return null;
+    if (raw.startsWith("base64-")) {
+      const b64 = raw.slice(7).replace(/-/g, "+").replace(/_/g, "/");
+      const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+      raw = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+    }
+    const token = (JSON.parse(raw) as { access_token?: unknown } | null)?.access_token;
+    return typeof token === "string" && token.split(".").length === 3 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `done` أتمّ · `pending` لم يُتمّ · `unknown` لا يُعرف (يُفتح) */
+async function readOnboarded(sub: string, token: string): Promise<"done" | "pending" | "unknown"> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return "unknown";
+  try {
+    const res = await fetch(`${url}/rest/v1/profiles?select=onboarded_at&id=eq.${encodeURIComponent(sub)}&limit=1`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}`, Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(OB_READ_TIMEOUT_MS),
+    });
+    if (!res.ok) return "unknown";
+    const rows: unknown = await res.json();
+    if (!Array.isArray(rows) || rows.length !== 1) return "unknown";
+    return (rows[0] as { onboarded_at?: unknown }).onboarded_at ? "done" : "pending";
+  } catch {
+    return "unknown";
+  }
+}
+
+async function welcomeGate(request: NextRequest, response: NextResponse): Promise<NextResponse> {
+  try {
+    const pathname = request.nextUrl.pathname;
+    if (welcomeExempt(pathname)) return response;
+    const token = sessionAccessToken(request);
+    if (!token) return response; // زائر — أو كوكي لا يُفكّ: `getUser` في الصفحة يحكم
+    const claims = decodeAccessToken(token);
+    // رمزٌ منتهٍ ترفضه القاعدةُ فلا يُقرأ به شيء — يمرّ، والطلبُ التالي يحمل المجدَّد
+    if (!claims || (claims.exp !== null && claims.exp * 1000 <= Date.now())) return response;
+
+    if (OB_DONE.has(claims.sub)) return response;
+
+    const state = await readOnboarded(claims.sub, token);
+    if (state === "pending") {
+      const to = NextResponse.redirect(new URL("/welcome", request.url), { status: 307 });
+      to.headers.set("cache-control", "private, no-store");
+      // تجديدُ الجلسة الذي وقع في هذا الطلب يسافر مع التحويل — وإلّا ضاع الرمزُ المدوَّر
+      for (const c of response.cookies.getAll()) to.cookies.set(c);
+      return to;
+    }
+    if (state === "done") {
+      if (OB_DONE.size >= OB_DONE_MAX) OB_DONE.clear();
+      OB_DONE.add(claims.sub);
+    }
+    return response;
+  } catch {
+    return response;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   if (BLOCKED_UA.test(request.headers.get("user-agent") ?? "")) {
     return new NextResponse(null, { status: 403, headers: { "cache-control": "no-store" } });
   }
+  return welcomeGate(request, await sessionProxy(request));
+}
 
+/** ما كان `proxy` كلَّه قبل D-1341: تسميتا المالك والبناء، وتجديدُ كوكي الجلسة عند اقتراب انتهائها */
+async function sessionProxy(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
   /* تسميةُ المالك على كلِّ ردٍّ يمرّ بالوسيط — انظر D-514 أعلاه.
      تُكتب هنا وعلى نسخة الردّ التي قد يعيد التجديدُ إنشاءها أدناه. */

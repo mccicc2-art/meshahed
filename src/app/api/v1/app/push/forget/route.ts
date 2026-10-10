@@ -27,5 +27,6 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     await supabase.rpc("forget_push_token", { p_token: token });
     return ok({ done: true as const });
-  });
+    /* D-1341 — يحتاجه من لم يُتمّ الترحيب: لا يُسأل عن الختم */
+  }, { open: true });
 }

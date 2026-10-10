@@ -35,5 +35,5 @@ const K4_MODELS: readonly string[] = ["SM-S928B"];
 export async function GET(req: Request) {
   const m = new URL(req.url).searchParams.get("m") ?? "";
   const k4 = K4_ALL || K4_MODELS.includes(m);
-  return handle(async () => ok({ ...FLAGS, k4 }, []), { cacheControl: "public, max-age=60, s-maxage=60" });
+  return handle(async () => ok({ ...FLAGS, k4 }, []), { cacheControl: "public, max-age=60, s-maxage=60", open: true });
 }

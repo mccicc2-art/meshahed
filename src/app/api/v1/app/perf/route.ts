@@ -163,5 +163,6 @@ export async function POST(req: NextRequest) {
       /* السجلُّ ليس شرطاً للردّ */
     }
     return ok({ done: true }, []);
-  });
+    /* D-1341 — يحتاجه من لم يُتمّ الترحيب: لا يُسأل عن الختم */
+  }, { open: true });
 }

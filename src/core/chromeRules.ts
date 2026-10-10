@@ -100,6 +100,10 @@ export function hidesAppHeaderOnMobile(pathname: string): boolean {
 
 export function hidesAppHeader(pathname: string): boolean {
   return (
+    /* 🆕 D-1341 — **الترحيبُ بوّابةٌ بلا أبوابٍ جانبيّة** (قرارُ أحمد ١٧): شريطُ التطبيق يحمل الظرفَ
+       والجرسَ والإعدادات — ثلاثةُ مخارجَ فوق شاشةٍ لا يُخرج منها إلّا بإتمامها. الحارسُ (`proxy`) يردّ من
+       يضغطها، وزرٌّ يُضغط فيعيدك إلى حيث كنت عطلٌ في عين صاحبه. الخروجُ الوحيدُ «بدّل الحساب». */
+    pathname === "/welcome" ||
     pathname === "/profile/edit" ||
     pathname === "/stats" ||
     /* 🔴 🆕 **وابنتا `/stats`** (D-804، لقطتا أحمد المحوَّطتان): «صلّح

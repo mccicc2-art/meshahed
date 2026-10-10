@@ -66,7 +66,8 @@ export async function POST(req: NextRequest) {
     if (v.error || !s || s.user.id !== user.id || !s.refresh_token || !s.expires_at) return fail("internal");
 
     return ok({ access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at, user_id: user.id }, []);
-  });
+    /* D-1341 — يحتاجه من لم يُتمّ الترحيب: لا يُسأل عن الختم */
+  }, { open: true });
 }
 
 /** رمزُ الوصول من كوكي `@supabase/ssr` (مقطَّعاً أو لا، وبادئةُ `base64-`) — قراءةٌ فقط، والتحقّقُ بعدها عند Supabase */

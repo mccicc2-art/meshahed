@@ -261,6 +261,34 @@ export async function withIdentitiesOn<T>(rows: T[], idOf: (r: T) => string): Pr
   });
 }
 
+
+/**
+ * 🆕 D-1341 — **هل أتمّ الترحيب؟** (ختمُ `profiles.onboarded_at`، الهجرة ١٩٧).
+ *
+ * 🔑 **قارئٌ صغيرٌ مستقلٌّ لا عمودٌ في `getProfile`**: قائمةُ أعمدة `getProfile` تسقط كلُّها درجةً
+ * حين يغيب عمودٌ واحد (شيفرةٌ نُشرت قبل هجرتها — وقع ذلك عياناً)، وهذا السؤالُ لا يستحقّ أن
+ * يُفقد الغلافَ والثيمَ معه. **و`unknown` غيرُ `pending`**: خطأٌ أو عمودٌ غائبٌ أو صفٌّ لم يُقرأ ⇒
+ * «لا أعرف»، والمستدعي **يفتح** عندها — حارسٌ لا يعرف لا يقفل عضواً خارج حسابه.
+ */
+export type OnboardState = "done" | "pending" | "unknown";
+
+export const getOnboardState = cache(async (): Promise<OnboardState> => {
+  try {
+    const uid = await getUserId();
+    if (!uid) return "unknown";
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error || !data) return "unknown";
+    return (data as { onboarded_at: string | null }).onboarded_at ? "done" : "pending";
+  } catch {
+    return "unknown";
+  }
+});
+
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
 export const getProfile = cache(async (): Promise<Profile | null> => {
   try {

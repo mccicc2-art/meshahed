@@ -23,6 +23,7 @@ import { GENRES, type MediaType } from "@/core/media";
 import { isPlus, themeNeedsPlus } from "@/core/plan";
 import { BROWSE_GENRES } from "@/core/browse";
 import { cleanHandle } from "@/core/socials";
+import { cleanUsername, isReservedUsername, usernameIssue } from "@/core/username";
 import { DEFAULT_THEME, THEMES } from "@/core/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/core/railPrefs";
 import {
@@ -234,11 +235,8 @@ export async function updateProfile(input: {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
   const nickname = input.nickname.trim().slice(0, 40);
-  const username = (input.username ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "")
-    .slice(0, 24);
+  /* D-1341 — التنظيفُ نفسُه حرفاً، من `core/username` (تقرؤه خطوةُ «هذا أنت» أيضاً) */
+  const username = cleanUsername(input.username ?? "");
 
   /* الأنواع تُقصر على المعرّفات المعروفة، والصور على مخزن المشروع.
      ⚖️ 🆕 **والمعروفُ صار أوسع** (D-546، إصلاحُ أثرٍ جانبيٍّ لـD-545):
@@ -341,9 +339,15 @@ export async function updateProfile(input: {
      يثبت الحفظ** — كاتبٌ واحدٌ للويب والتطبيق (`/api/v1/me/profile` يمرّ من هنا). */
   const { data: before } = await supabase
     .from("profiles")
-    .select("avatar_url, cover_url")
+    .select("avatar_url, cover_url, username")
     .eq("id", user.id)
     .maybeSingle();
+
+  /* 🆕 D-1341 — **الاسمُ المحجوز يُرفض هنا لا في الشاشة وحدَها** (قرارُ أحمد ١٦): الحارسُ يسكن الفعل (D-821).
+     **ومن يحمل اسماً من القائمة يبقى له** (`loopz` لحساب النظام): المنعُ لأخذٍ جديدٍ لا لإعادة حفظِ المحفوظ —
+     وإلّا انكسر كلُّ حفظٍ لملفّه. والرسالةُ رسالةُ «مأخوذ» نفسُها: للعضو المعنى واحد. */
+  if (input.username !== undefined && username && isReservedUsername(username) && username !== before?.username)
+    throw new Error("اسم المستخدم محجوز، جرّب غيره. / Username is taken, try another.");
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
@@ -2861,6 +2865,89 @@ export async function findPeople(q: string) {
   await requireUser("search", 15, 10_000);
   const { searchPeople } = await import("@/lib/data");
   return searchPeople(String(q ?? "").slice(0, 50));
+}
+
+/**
+ * ====== 🆕 D-1341 — خطوةُ «هذا أنت» وختمُ الترحيب (Phase 11-U · U0) ======
+ *
+ * 🔑 **الثلاثةُ تُعيد نتيجتَها ولا ترمي**: نصُّ خطأٍ يُرمى من فعل خادمٍ يُحجب في الإنتاج
+ * («Minified React error #441» — درسُ D-1340)، والشاشةُ هنا تحتاج أن تعرف **أيَّ** علّةٍ وقعت
+ * (مأخوذ · محجوز · قصير) لتقولها تحت الحقل.
+ */
+export type UsernameState = "free" | "taken" | "reserved" | "short" | "unknown";
+
+/**
+ * فحصُ الاسم وهو يُكتب — **مجاملةٌ لا حكم**: القاضي الفهرسُ الفريد عند الحفظ.
+ * `unknown` (شبكةٌ سقطت · الدالّةُ لم تُنشأ بعد · حدُّ المعدّل) لا يقفل الزرّ: الحفظُ يحسم.
+ */
+export async function checkUsername(raw: string): Promise<UsernameState> {
+  const name = cleanUsername(String(raw ?? ""));
+  const issue = usernameIssue(name);
+  try {
+    const { supabase, user } = await requireUser("uname", 40, 60_000);
+    if (issue === "short") return "short";
+    if (issue === "reserved") {
+      /* من يحمل اسماً محجوزاً أصلاً (حسابُ النظام) يُعاد له كما هو */
+      const { data } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
+      return data?.username === name ? "free" : "reserved";
+    }
+    const { data, error } = await supabase.rpc("username_available", { p_username: name });
+    if (error) return "unknown";
+    return data === true ? "free" : "taken";
+  } catch {
+    return "unknown";
+  }
+}
+
+/** حفظُ الاسم والصورة واسم المستخدم والأنواع من الترحيب — أوّلُ كتابةٍ في «يالله نبدأ» */
+export async function saveWelcomeIdentity(input: {
+  nickname: string;
+  username: string;
+  avatarUrl: string | null;
+  favoriteGenres: number[];
+}): Promise<{ ok: true } | { ok: false; reason: "short" | "reserved" | "taken" | "failed" }> {
+  const name = cleanUsername(String(input?.username ?? ""));
+  if (name.length < 3) return { ok: false, reason: "short" };
+  try {
+    await updateProfile({
+      nickname: String(input?.nickname ?? ""),
+      username: name,
+      avatarUrl: input?.avatarUrl ?? null,
+      favoriteGenres: Array.isArray(input?.favoriteGenres) ? input.favoriteGenres : [],
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    /* `updateProfile` يقول الجملةَ نفسَها للمحجوز وللمأخوذ (23505) — وللعضو المعنى واحد */
+    if (msg.includes("Username is taken")) return { ok: false, reason: isReservedUsername(name) ? "reserved" : "taken" };
+    console.error("[action] saveWelcomeIdentity", msg || "unknown");
+    return { ok: false, reason: "failed" };
+  }
+}
+
+/**
+ * ختمُ «أتمّ الترحيب» — **آخرُ سطرٍ في الترحيب، والقاعدةُ تتحقّق بنفسها** (`complete_onboarding`،
+ * الهجرة ١٩٧): اسمُ مستخدمٍ مختار وعملٌ واحدٌ على الأقلّ. فشلُها يُقال للعضو ولا يُبتلع — من لم
+ * يُختم يعيده الحارسُ إلى الترحيب، وشاشةٌ تقول «تمّ» ثمّ تعود بصاحبها كذبةٌ.
+ */
+export async function completeOnboarding(): Promise<
+  { ok: true } | { ok: false; reason: "username" | "titles" | "failed" }
+> {
+  try {
+    const { supabase } = await requireUser("profile", 10, 60_000);
+    const { error } = await supabase.rpc("complete_onboarding");
+    if (error) {
+      if (error.message?.includes("welcome_username_missing")) return { ok: false, reason: "username" };
+      if (error.message?.includes("welcome_titles_missing")) return { ok: false, reason: "titles" };
+      console.error("[action] completeOnboarding", error.code, error.message);
+      return { ok: false, reason: "failed" };
+    }
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    console.error("[action] completeOnboarding: gate", e instanceof Error ? e.message : "unknown");
+    return { ok: false, reason: "failed" };
+  }
 }
 
 /**

@@ -15,6 +15,7 @@ import { SHELL_BG, space } from "./theme";
 import { perfMs } from "./perf";
 import { mark } from "./perfMarks";
 import { session } from "./session";
+import { api } from "./api";
 import { own } from "./ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo } from "./shell";
 import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
@@ -78,8 +79,10 @@ const GATE_WAIT_MS = 5_000;
  * البطلَ وزرَّيه — «المتابعة بـGoogle» و«تصفَّح أوّلاً» (D-886 باقٍ) — والشريطُ يظهر حين يتصفّح فعلاً.
  * `/` عتبةٌ للزائر وحدَه؛ للمسجَّل هي الرئيسيّة (وهي أصليّةٌ أصلاً).
  */
+/* 🆕 D-1341 — **و`/welcome` عتبةٌ كذلك** (قرارُ أحمد ١٧، بتسجيلٍ ضغط فيه «المكتبة» و«اكتشف» من الشريط والترحيبُ
+   على الشاشة): الترحيبُ بوّابةٌ لا يُخرج منها إلّا بإتمامها — وشريطٌ بخمسة أبوابٍ فوقها خمسةُ مخارج. */
 function atGate(p: string, landing: boolean): boolean {
-  return p === "/login" || p.startsWith("/auth/") || landing;
+  return p === "/login" || p === "/welcome" || p.startsWith("/auth/") || landing;
 }
 /**
  * 🆕 **إعلانُ القدرة قبل المستند** (٩ سبتمبر — بلاغُ أحمد «لا أستطيع الدخول إلى
@@ -341,7 +344,8 @@ export function WebLayer() {
   useEffect(() => {
     if (loading || source) return;
     /* D-1090 — مع الإقلاع الأصليّ (الشرطُ نفسُه أدناه) تُسأل الصفحةُ الخفيفةُ أوّلاً؛ وإلّا `/` كما كان */
-    const lightBoot = !(typeof u === "string" && u) && session.seen();
+    /* D-1341 — من لم يُتمّ الترحيب لا تُرفع له الرئيسيّةُ الأصليّة (أدناه)، فيُحمَّل `/` مباشرةً: الحارسُ يحوّله إلى `/welcome` */
+    const lightBoot = !(typeof u === "string" && u) && session.seen() && !session.welcomePending();
     setSource({ uri: lightBoot ? BOOT : HOME });
   }, [loading, source, u]);
   /* D-1090 — بعد أوّل ردِّ جلسة (رمزٌ أو `session:clear`) من صفحة الإقلاع الخفيفة تُبدَّل إلى `/`:
@@ -378,7 +382,20 @@ export function WebLayer() {
     if (loading || booted.current) return;
     booted.current = true;
     if (typeof u === "string" && u) return;
-    if (session.seen()) {
+    if (session.seen() && session.welcomePending()) {
+      /* 🆕 D-1341 — **الإقلاعُ لا يرفع الرئيسيّةَ الأصليّةَ لمن لم يُتمّ الترحيب** (البابُ الثاني في تسجيل أحمد: أغلق
+         التطبيقَ وفتحه فهبط على الرئيسيّة). الويبُ يبقى فوق ويعرض الترحيب. **ويُسأل الخادمُ مرّةً**: إن كان أتمّه في
+         مكانٍ آخر تُمحى العلامةُ وتُرفع الرئيسيّةُ كما في أيِّ إقلاع. فشلُ السؤال ⇒ يبقى الويبُ (وهو يحكم بنفسه). */
+      mark("web.home", 0, { why: "boot.welcome" });
+      void api<{ onboarded?: boolean } | null>("/api/v1/me")
+        .then((r) => {
+          if (!r.data || r.data.onboarded === false || !session.welcomePending()) return;
+          session.setWelcomePending(false);
+          rootsBorn(true);
+          router.push("/home");
+        })
+        .catch(() => {});
+    } else if (session.seen()) {
       /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
       rootsBorn(true);
       router.push("/home");
@@ -388,6 +405,24 @@ export function WebLayer() {
       mark("web.home", 0, { why: "boot.unseen" });
     }
   }, [loading, u, router]);
+
+  /* 🆕 D-1341 — **العلامةُ كُتبت والشاشاتُ الأصليّةُ فوق** (حسابٌ بلا علامةٍ بعدُ رُفعت له الرئيسيّة، فرفض الخادمُ
+     أوّلَ نداء): تُنزَل كلُّها فيُرى الويب، ويُوجَّه إلى الترحيب إن لم يكن عليه. التوجيهُ مرّتان — الحقنُ في WebView
+     كانت منزوعةً تحت شاشةٍ أصليّةٍ لا يُنفَّذ حتى تعود إلى العرض (D-1144). */
+  useEffect(
+    () =>
+      session.onWelcome((on) => {
+        if (!on) return;
+        if (router.canDismiss()) router.dismissAll();
+        const steer = () => {
+          if (pathRef.current === "/welcome" || !session.welcomePending()) return;
+          ref.current?.injectJavaScript(`location.replace(${JSON.stringify(CONFIG.apiBase + "/welcome")});true;`);
+        };
+        steer();
+        setTimeout(steer, 700);
+      }),
+    [router],
+  );
 
   /* 🩺 D-1256 — بعد الإقلاع: الطبقةُ صارت هي الشاشة وهي على رئيسيّة الويب، والتطبيقُ يعرف صاحبَه ⇒ انكشافٌ لا يُفترض.
      يُسجَّل من أين: المجموعةُ وآخرُ قرارِ رجوع. تشخيصٌ فقط — لا يغيّر ما يُعرض. */
@@ -440,6 +475,8 @@ export function WebLayer() {
     /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
     shell.arrived(nav.url, nav.loading);
     if (nav.loading) setLanding(false);
+    /* 🆕 D-1341 — الصفحةُ على الترحيب (الحارسُ في الخادم حوّلها): العلامةُ تُكتب، ومستمعُها يُنزل ما فوقها */
+    if (next === "/welcome" && insideUrl(nav.url)) session.setWelcomePending(true);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
     if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) {
@@ -502,6 +539,12 @@ export function WebLayer() {
           if (handTimer.current) clearTimeout(handTimer.current);
           handTimer.current = null;
         }
+        return;
+      }
+      /* 🆕 D-1341 — «انتهى الترحيب» من صفحته (بعد أن ختمه الخادم): من نطاقنا وحدَه. العلامةُ تُمحى فيعود الإقلاعُ
+         أصليّاً؛ والصفحةُ تنتقل بعدها إلى `/` فيعود الشريط. رسالةٌ كاذبةٌ لا تفتح شيئاً — الخادمُ يرفض فتُكتب ثانيةً. */
+      if (msg.type === "welcome") {
+        if (hostOk && (msg as { done?: unknown }).done === true) session.setWelcomePending(false);
         return;
       }
       /* 🆕 D-1293 — تكبيرُ التريلر: من نطاقنا وحدَه */

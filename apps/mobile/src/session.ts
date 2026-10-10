@@ -63,6 +63,22 @@ let seenMem: boolean | null = null;
 let lastLife: number | null = null;
 
 /**
+ * 🆕 D-1341 (Phase 11-U · U0) — **«لم يُتمّ الترحيب»: علامةٌ على الجهاز** (لا سرّ — «١» أو لا شيء).
+ *
+ * قرارُ أحمد ١٧ (بتسجيلٍ تجاوز فيه الترحيبَ بحسابٍ جديد): «الخطوات اجبارية .. محد يقدر يتصفح الا اذا خلصها».
+ * بابان في التطبيق: الشريطُ الأصليُّ فوق `/welcome`، والإقلاعُ الذي يرفع الرئيسيّةَ الأصليّةَ لكلِّ جهازٍ رأى
+ * جلسة (D-1075) **قبل أيِّ شبكة** — فلا يُسأل الخادمُ ساعتَها، ولا بدّ من شيءٍ محفوظٍ يُقرأ.
+ *
+ * 🔑 **تُكتب من مصدرين لا يخطئان**: صفحةُ الويب وصلت `/welcome` (الحارسُ في الخادم هو من حوّلها)، أو
+ * `/api/v1` ردّ `apiFinishWelcome`. **وتُمحى من ثلاثة**: رسالةُ «انتهى الترحيب» من الصفحة · `/api/v1/me`
+ * يقول `onboarded` (أتمّه على جهازٍ آخر) · الخروج. **وغيابُها يعني «كما كان»**: العضوُ القائمُ لا يتغيّر
+ * عليه شيء، ومن لم يُتمّ ولا علامةَ له بعدُ يرفضه الخادمُ عند أوّل نداء فتُكتب.
+ */
+const WELCOME_KEY = "loopz.welcome.pending";
+let welcomeMem: boolean | null = null;
+const welcomeListeners = new Set<(pending: boolean) => void>();
+
+/**
  * 🆕 D-1141 — **كم انتظرنا الرمزَ، وبأيِّ نتيجة** (`token.wait`): صفحةُ العمل انتظرت ٦ث والحلقاتُ ١٠ث
  * أخرى في تسجيل خالد (٢٦ سبتمبر)، ولم يصل من جهازه قياسٌ واحدٌ ١٣ ساعة — **والسببُ المرجَّح صفحةٌ لا تردّ**.
  * كلُّ طلبٍ يُبلَّغ مرّةً: مدّتُه، ونتيجتُه (`ok` · `none`)، وهل كانت الصفحةُ جاهزةً لحظةَ الطلب (`ready`).
@@ -165,6 +181,33 @@ export const session = {
     }
     emit();
   },
+  /** 🆕 D-1341 — هل على هذا الجهاز حسابٌ دخل ولم يُتمّ الترحيب؟ (تُقرأ مرّةً من القرص ثمّ من الذاكرة) */
+  welcomePending(): boolean {
+    if (welcomeMem === null) {
+      try {
+        welcomeMem = SecureStore.getItem(WELCOME_KEY) === "1";
+      } catch {
+        welcomeMem = false;
+      }
+    }
+    return welcomeMem;
+  },
+  /** 🆕 D-1341 — تُكتب/تُمحى، ويُبلَّغ من يسمع **عند التبدّل وحدَه** (الغلافُ يُنزل الشاشاتِ الأصليّةَ عندها) */
+  setWelcomePending(on: boolean) {
+    if (session.welcomePending() === on) return;
+    welcomeMem = on;
+    try {
+      if (on) SecureStore.setItem(WELCOME_KEY, "1");
+      else SecureStore.deleteItemAsync(WELCOME_KEY).catch(() => {});
+    } catch {
+      /* لا شيء — الذاكرةُ تكفي لهذه الجلسة، والخادمُ يرفض في التالية فتُكتب */
+    }
+    for (const l of welcomeListeners) l(on);
+  },
+  onWelcome(l: (pending: boolean) => void): () => void {
+    welcomeListeners.add(l);
+    return () => welcomeListeners.delete(l);
+  },
   /** D-1128 — عمرُ آخر رمزٍ استُلم (ثوانٍ) — يُؤخذ مرّةً ثمّ يُمحى */
   takeLife(): number | null {
     const v = lastLife;
@@ -190,6 +233,8 @@ export const session = {
     } catch {
       /* لا شيء */
     }
+    /* 🆕 D-1341 — العلامةُ لصاحب الجلسة: تخرج معه، والداخلُ بعده يحكم له الخادم */
+    session.setWelcomePending(false);
     for (const l of signOutListeners) l();
     /* D-1128 — «من أنا» يُفعَّل بالأثر: يُبلَغ بزواله فيتوقّف */
     if (hadSeen) emit();

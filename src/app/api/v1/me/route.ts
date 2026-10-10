@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { getProfile } from "@/lib/data";
+import { getProfile, getOnboardState } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { platformFromUA } from "@/core/platform";
 import { handle, requireUser } from "@/lib/v1";
@@ -27,8 +27,10 @@ export async function GET() {
        يمرّ من هنا. **بالتوازي لا بالتسلسل** فلا تُضاف إليه ملّي ثانية،
        **وفشلُه صمتٌ** — إحصاءٌ يكسر إقلاعَ تطبيقٍ أسوأُ صفقةٍ ممكنة. */
     const ua = (await headers()).get("user-agent");
-    const [p] = await Promise.all([
+    const [p, welcome] = await Promise.all([
       getProfile(),
+      /* 🆕 D-1341 — هل أتمّ الترحيب؟ التطبيقُ يسأل هنا عند الإقلاع ليعرف أيرفع الرئيسيّةَ الأصليّة أم يترك الويب */
+      getOnboardState(),
       (async () => {
         try {
           const supabase = await createClient();
@@ -68,6 +70,9 @@ export async function GET() {
       /* 🆕 D-1105 — حجما الخطّ: الشاشاتُ الأصليّةُ تكبر بهما كالويب (إضافةٌ لا تكسر غلافاً قديماً) */
       font_ui: sanitizeFontSize(p.font_ui),
       font_content: sanitizeFontSize(p.font_content),
+      /* 🆕 D-1341 — `false` لمن ثبت أنّه لم يُتمّ وحدَه؛ «لا أعرف» ⇒ `true` (لا يُحبس أحدٌ على شكّ). إضافةٌ لا تكسر غلافاً قديماً */
+      onboarded: welcome !== "pending",
     });
-  });
+    /* D-1341 — يحتاجه من لم يُتمّ الترحيب: لا يُسأل عن الختم */
+  }, { open: true });
 }

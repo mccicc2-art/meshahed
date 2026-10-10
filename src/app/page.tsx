@@ -14,6 +14,7 @@ import {
   getWatchSummary,
   getWatchedMovies,
   getProfile,
+  getOnboardState,
   getAllMovieProgress,
   getMyRatings,
   getUnreadSignals,
@@ -185,8 +186,11 @@ export default async function HomePage() {
     );
   }
 
-  // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
-  if (storedFollows.length === 0) redirect("/welcome");
+  /* 🆕 D-1341 — **الختمُ يحكم لا المكتبة** (`onboarded_at`): من أتمّ الترحيبَ ثمّ أفرغ مكتبتَه يبقى في
+     رئيسيّته (كان يُرمى في الترحيب ثانيةً). الحارسُ الأوّلُ في `proxy.ts` لكلِّ المسارات؛ وهذا حزامٌ ثانٍ
+     **لا يُدفع ثمنُه إلّا لمكتبةٍ فارغة** — الرئيسيّةُ أكثرُ الصفحات زيارةً فلا يُضاف لها استعلام.
+     `unknown` ⇒ الحكمُ القديمُ (شيفرةٌ سبقت هجرتَها لا تُعلق وافداً في رئيسيّةٍ فارغة). */
+  if (storedFollows.length === 0 && (await getOnboardState()) !== "done") redirect("/welcome");
   /* 🆕 D-1271 — ما نزلت له حلقةٌ ولم يعلم رقمُه المخزَّن يُقرأ قبل البناء (`freshenFollows`) — الترويسةُ
      و«أكمل المشاهدة» تُحسبان من هذا الرقم. */
   const { followRows, freshStats } = await freshenFollows(storedFollows);

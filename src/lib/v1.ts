@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { getUser } from "@/lib/data";
+import { getUser, getUserId } from "@/lib/data";
+import { createClient } from "@/lib/supabase/server";
 import { allow, retryAfter } from "@/core/ratelimit";
 import {
   err,
@@ -76,12 +77,56 @@ export function respond<T>(
   return NextResponse.json({ data: r.data, invalidates: r.invalidates }, { headers });
 }
 
+/**
+ * ====== 🆕 D-1341 — بوّابةُ الترحيب على `/api/v1` (Phase 11-U · U0) ======
+ *
+ * قرارُ أحمد ١٧: «الخطوات اجبارية .. محد يقدر يتصفح الا اذا خلصها». الشاشاتُ الأصليّةُ تقرأ من هنا،
+ * فتطبيقٌ لم يأخذ تحديثَه — أو نداءٌ مباشر — **بابٌ خلفيٌّ** ما لم يرفض الخادمُ نفسُه (D-821).
+ *
+ * 🔑 **في `handle` لا في `requireUser`**: مساراتُ القراءة (اكتشف · العمل · البحث) تقبل الزائرَ ولا
+ * تنادي `requireUser` — والحارسُ هناك كان سيتركها مفتوحةً لمن دخل ولم يُتمّ. الزائرُ (بلا رمز) يمرّ
+ * كما كان؛ المسؤولُ عنه «الدخول أوّلاً» (U1/U2) لا هذا.
+ *
+ * 🔑 **والثمنُ قراءةٌ واحدةٌ لكلِّ عضوٍ لكلِّ نسخةِ خادم**: الختمُ يُكتب مرّةً ولا يُمحى، فمن ثبت أنّه
+ * أتمّ يُحفظ معرّفُه في ذاكرة النسخة ولا يُسأل عنه ثانيةً. لا يُحفظ «لم يُتمّ» — ذاك يتبدّل.
+ *
+ * ⚠️ **يفتح عند الشكّ**: خطأُ قاعدةٍ، عمودٌ غائب (شيفرةٌ سبقت هجرتَها)، صفٌّ لم يُقرأ ⇒ يمرّ.
+ * حارسٌ لا يعرف لا يقفل عضواً خارج حسابه.
+ */
+const WELCOME_DONE = new Set<string>();
+const WELCOME_DONE_MAX = 20_000;
+
+async function welcomePending(): Promise<boolean> {
+  try {
+    const uid = await getUserId();
+    if (!uid || WELCOME_DONE.has(uid)) return false;
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error || !data) return false;
+    if ((data as { onboarded_at: string | null }).onboarded_at) {
+      if (WELCOME_DONE.size >= WELCOME_DONE_MAX) WELCOME_DONE.clear();
+      WELCOME_DONE.add(uid);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** يلتقط أيَّ استثناءٍ في المسار ويردّه شكلاً واحداً — **بلا تسريبِ نصّه**. */
 export async function handle<T>(
   fn: () => Promise<Result<T>>,
-  init?: { cacheControl?: string },
+  /* `open`: مسارٌ يحتاجه من لم يُتمّ الترحيب (الجلسة · «من أنا» · قياساتُ التطبيق) — لا يُسأل عن الختم */
+  init?: { cacheControl?: string; open?: boolean },
 ): Promise<NextResponse> {
   try {
+    if (!init?.open && (await welcomePending()))
+      return respond(fail("forbidden", { message_key: "apiFinishWelcome" }));
     /* D-1336 — المعالجُ يجري تحت أثر الطلب البطيء (`reqTrace.ts`): قياسٌ لا يغيّر ردّاً */
     return respond(await traced(fn), init);
   } catch (e) {

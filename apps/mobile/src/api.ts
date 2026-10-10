@@ -82,6 +82,8 @@ export async function api<T>(
         if (fresh) continue;
       }
       const error: AppError = json?.error ?? { code: "internal", message_key: "apiInternal" };
+      /* 🆕 D-1341 — الخادمُ يقول «أكمل الترحيب»: تُكتب العلامةُ فيُنزل الغلافُ الشاشاتِ الأصليّةَ ويعود بصاحبها إليه */
+      if (error.message_key === "apiFinishWelcome") session.setWelcomePending(true);
       throw new ApiError(error, res.status);
     }
     return json;
@@ -174,6 +176,7 @@ export async function postForm<T>(path: string, form: FormData): Promise<T> {
         const fresh = await session.request();
         if (fresh) continue;
       }
+      if (json?.error?.message_key === "apiFinishWelcome") session.setWelcomePending(true); /* D-1341 */
       throw new ApiError(json?.error ?? { code: "internal", message_key: "apiInternal" }, res.status);
     }
     invalidateTags(json.invalidates);
