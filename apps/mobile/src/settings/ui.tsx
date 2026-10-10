@@ -289,7 +289,9 @@ export function Field({
           value={value}
           onChangeText={onChange}
           placeholder={placeholder}
-          placeholderTextColor={tokens.muted}
+          /* D-1348 — المثالُ أبهتُ من النصّ المكتوب (`--disabled` كالويب): بلون `muted` كان «ahmed_92» في الترحيب يُقرأ
+             اسماً مُدخلاً (ملاحظةُ ١٠ أكتوبر، وقرارُ أحمد: «يبهت» في كلِّ الحقول — حقلٌ واحدٌ بلونين للمثال عيب) */
+          placeholderTextColor={tokens.disabled}
           maxLength={maxLength}
           multiline={multiline}
           editable={editable}

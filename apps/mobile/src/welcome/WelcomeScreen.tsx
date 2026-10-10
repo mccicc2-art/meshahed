@@ -36,6 +36,8 @@ import { useApp } from "../state";
 import { radius, space } from "../theme";
 import { Button, Loading, Text } from "../ui";
 import { EpisodeSheet } from "./EpisodeSheet";
+import { Preparing } from "./Preparing";
+import { homeReady } from "../home/useHome";
 
 /**
  * ====== الترحيبُ أصليّاً (D-1347 · Phase 11-U · U1 المرحلة ٢ = 11-V · V2) ======
@@ -268,12 +270,17 @@ export function WelcomeScreen() {
    * بلا مكتبةٍ فيُرمى — ثمّ الرئيسيّةُ الأصليّة كما يرفعها الإقلاع (`rootsBorn(true)`: رجوعُها يخرج من التطبيق).
    */
   const left = useRef(false);
-  const leave = useCallback(() => {
+  const leave = useCallback(async () => {
     if (left.current) return;
     left.current = true;
     session.welcomeDone();
     shell.webReplace("/");
     void queryClient.invalidateQueries();
+    /* 🆕 D-1348 — **الرئيسيّةُ تُجلب ونحن خلف شاشة التجهيز** (أوّلُ فتحٍ بعد الترحيب كان دوّارةً على شاشةٍ فارغة ٣٫٩ث):
+       تُفتح ممتلئة. بسقف ٥ث — من تأخّر عليه الجلبُ يمضي كما كان. والقياسُ يفصل زمنَ هذا الجلب عن زمن الختم. */
+    const t0 = Date.now();
+    const got = await homeReady(5000);
+    mark("welcome.home", Date.now() - t0, { result: got ? "ok" : "none" });
     if (router.canDismiss()) router.dismissAll();
     rootsBorn(true);
     router.push("/home");
@@ -282,13 +289,14 @@ export function WelcomeScreen() {
   /* أتمّه على جهازٍ آخر (أو علامةٌ قديمةٌ على هذا الجهاز): لا خطوةَ تُعرض */
   const already = data?.onboarded === true;
   useEffect(() => {
-    if (already) leave();
+    if (already) void leave();
   }, [already, leave]);
 
   const finish = useCallback(async () => {
     if (pending) return;
     setError(null);
     setPending(true);
+    let stay = false;
     try {
       const body: WelcomeFinishBody = {
         nickname: name,
@@ -298,10 +306,14 @@ export function WelcomeScreen() {
         titles: chosen.map((c) => ({ id: c.id, progress: progress[c.id] ?? "none", upTo: upTo[c.id] ?? null })),
         people: [...toFollow],
       };
+      const t0 = Date.now();
       const r = (await api<WelcomeFinishPayload>("/api/v1/welcome/finish", { method: "POST", body })).data;
+      mark("welcome.finish", Date.now() - t0, { result: r.done ? "ok" : "none" });
       if (r.done) {
         haptic.success();
-        leave();
+        /* `pending` يبقى مرفوعاً: شاشةُ التجهيز تبقى حتى تُفتح الرئيسيّة (لا عودةَ لحظةً إلى الخطوة الخامسة) */
+        stay = true;
+        await leave();
         return;
       }
       /* 🔑 فشلٌ يُقال ويعيد إلى خطوته: من لم يُختم يعيده الحارسُ إلى هنا، وشاشةٌ تمضي به ثمّ تعيده تكذب عليه */
@@ -316,7 +328,7 @@ export function WelcomeScreen() {
     } catch {
       setError(t.obFinishFailed);
     } finally {
-      setPending(false);
+      if (!stay) setPending(false);
     }
   }, [pending, name, cleanHandle, photo, genres, chosen, progress, upTo, toFollow, leave, t]);
 
@@ -339,7 +351,10 @@ export function WelcomeScreen() {
 
   const tile = Math.floor((width - PAD * 2 - GRID_GAP * (COLS - 1)) / COLS);
 
-  if (!data || already) {
+  /* 🆕 D-1348 — «يالله نبدأ» ضُغطت (أو أتمّه في مكانٍ آخر وننتظر الرئيسيّة): الشاشةُ كلُّها شعارٌ يُرسم، لا زرٌّ يدور */
+  if (pending || already) return <Preparing label={t.obSaving} />;
+
+  if (!data) {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         {boot.isError ? (
@@ -432,7 +447,7 @@ export function WelcomeScreen() {
             </View>
             <Field label={t.displayNameSection} value={name} onChange={setName} maxLength={40} placeholder={t.displayNamePlaceholder} />
             <View>
-              <Field label={t.usernameSection} value={handle} onChange={setHandle} maxLength={USERNAME_MAX} placeholder="ahmed_92" ltr prefix="@" />
+              <Field label={t.usernameSection} value={handle} onChange={setHandle} maxLength={USERNAME_MAX} placeholder="username" ltr prefix="@" />
               {/* سطرٌ واحدٌ تحت الحقل يقول حالَه: القاعدةُ، ثمّ ما سيُحفظ إن اختلف عمّا كُتب، ثمّ الحكم */}
               <Text size={12} color={nameColor} accessibilityLiveRegion="polite" style={{ paddingHorizontal: 14, paddingBottom: 12, marginTop: -6, lineHeight: 20 }}>{nameLine}</Text>
             </View>

@@ -19,6 +19,16 @@ export function prefetchHome(): void {
   void queryClient.prefetchQuery({ queryKey: HOME_KEY, queryFn: fetchHome, staleTime: 60_000 });
 }
 
+/**
+ * 🆕 D-1348 — **الرئيسيّةُ تُجلب قبل أن تُفتح، بسقف**: الترحيبُ الأصليُّ ينتظرها خلف شاشة تجهيزه فتُفتح ممتلئةً
+ * (تسجيلُ أحمد ١٠ أكتوبر: أوّلُ رئيسيّةٍ بعد الترحيب دوّارةٌ على شاشةٍ فارغة ٣٫٩ث). تعود `true` إن وصلت قبل السقف؛
+ * وإن لم تصل يمضي المنادي والجلبُ يكمل في الخلفيّة — الرئيسيّةُ تنتظره كما كانت.
+ */
+export function homeReady(capMs: number): Promise<boolean> {
+  const got = queryClient.fetchQuery({ queryKey: HOME_KEY, queryFn: fetchHome, staleTime: 0 }).then(() => true, () => false);
+  return Promise.race([got, new Promise<boolean>((r) => setTimeout(() => r(false), capMs))]);
+}
+
 async function fetchHome() {
   return (await api<HomePayload>("/api/v1/me/home")).data;
 }

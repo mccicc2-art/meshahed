@@ -402,7 +402,7 @@ export function Onboarding({
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
                 maxLength={USERNAME_MAX}
-                placeholder="ahmed_92"
+                placeholder="username"
                 dir="ltr"
                 autoCapitalize="none"
                 autoCorrect="off"

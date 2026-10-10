@@ -84,7 +84,11 @@ export type PerfName =
   /* 🩺 D-1347 — الترحيبُ الأصليّ: رُفع (`welcome.show`، ms=0) / أُنزل (`welcome.hide`: ms مرفوعاً، `count` الخطوةُ التي
      كان عليها). إنزالٌ في الخطوة ١ بعد لحظةٍ عطل؛ في الخامسة بعد دقيقةٍ إتمام. */
   | "welcome.show"
-  | "welcome.hide";
+  | "welcome.hide"
+  /* 🩺 D-1348 — آخرُ الترحيب بزمنَيه: الختمُ في الخادم (`welcome.finish`) وجلبُ الرئيسيّة بعده (`welcome.home`، `result=none`
+     = تجاوز السقف). يفصلان سببَ الثواني الثلاث في أوّل رئيسيّة. */
+  | "welcome.finish"
+  | "welcome.home";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
