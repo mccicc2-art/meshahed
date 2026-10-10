@@ -37,7 +37,7 @@ const FALLBACK = {
 
 type Props = {
   /** اسمُ الشاشة كما يُسجَّل (`library` · `discover` · `title`) */
-  screen: "library" | "discover" | "title" | "person" | "list" | "search" | "home" | "settings" | "community" | "thread" | "messages" | "profile";
+  screen: "library" | "discover" | "title" | "person" | "list" | "search" | "home" | "settings" | "community" | "thread" | "messages" | "profile" | "welcome";
   /** مسارُ الصفحة الويبيّة البديلة (`/library` · `/news` · `/show/123`) */
   webPath: string;
   /** الشاشةُ الأصليّة التي يعود إليها الرجوعُ من البديل (D-949) — لصفحة العمل */

@@ -57,6 +57,8 @@ let pendingPost: string | null = null;
 /* 🆕 D-1344 — الدخولُ يملكه `WebLayer` (يحمل مصدرَ الـWebView والتسليم)؛ شاشةُ الدخول الأصليّة تناديه من هنا */
 export type SignInResult = { ok: true; access: string } | { ok: false; cancelled: boolean };
 let signer: (() => Promise<SignInResult>) | null = null;
+/* 🆕 D-1347 — من يرفع الترحيبَ الأصليّ (`WebLayer.showWelcome`) ما دام مركَّباً */
+let welcomer: (() => void) | null = null;
 const ARRIVAL_TIMEOUT_MS = 4000;
 let waiter: { path: string; settle: (own?: boolean) => void } | null = null;
 
@@ -79,6 +81,25 @@ export const shell = {
    */
   setWebLang(lang: "ar" | "en") {
     inject?.(`try{document.cookie="lang=${lang};path=/;max-age=31536000;samesite=lax"}catch(e){};true;`);
+  },
+  attachWelcome(fn: (() => void) | null) {
+    welcomer = fn;
+  },
+  /**
+   * 🆕 D-1347 — ارفع الترحيبَ الأصليّ. العلامةُ (`session.setWelcomePending`) ترفعه **عند تبدّلها وحدَه**؛ من يعرف أنّ
+   * صاحبَ الجلسة لم يُتمّ (شاشةُ الدخول سألت الخادم) ينادي هذه فلا يعتمد على أنّ العلامةَ لم تكن مكتوبةً من قبل.
+   */
+  showWelcome() {
+    welcomer?.();
+  },
+  /**
+   * 🆕 D-1347 — **الصفحةُ تحت الشاشات الأصليّة تُنقل بلا أن تُفتح**: الترحيبُ الأصليُّ ختم، وصفحةُ ترحيب الويب ما
+   * زالت محمَّلةً تحته — تُبدَّل إلى الرئيسيّة (`replace`: لا تدخل التاريخ) كي لا يجدها أوّلُ بابٍ يكشف الطبقة.
+   * حقنٌ والطبقةُ مخفيّةٌ قد يتأخّر حتى تعود إلى العرض (D-1144) — والخادمُ عندها يحوّل من أتمّ عن `/welcome` بنفسه.
+   */
+  webReplace(path: string) {
+    if (!path.startsWith("/")) return;
+    inject?.(`location.replace(${JSON.stringify(CONFIG.apiBase + path)});true;`);
   },
   /**
    * مسارٌ نسبيٌّ على نطاق Loopz (`/show/123`) — ما سواه يُهمل.

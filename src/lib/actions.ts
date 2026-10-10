@@ -2974,13 +2974,26 @@ export async function suggestPeople(seedIds: number[], want = 6) {
  * حلقاته المعروضة فعلاً — وإلا كانت الخطوة الثانية زينة بلا أثر.
  */
 export async function applyOnboardingProgress(
-  items: { tmdbId: number; mediaType: MediaType; progress: "none" | "some" | "done" }[],
+  items: {
+    tmdbId: number;
+    mediaType: MediaType;
+    progress: "none" | "some" | "done";
+    /** 🆕 D-1347 — «بدأته» مع موضع: آخرُ حلقةٍ شاهدها (ورقةُ المواسم في الترحيب الأصليّ). غيابُه = «بدأته فقط» */
+    upTo?: { season: number; episode: number } | null;
+  }[],
 ) {
-  items = (items ?? []).slice(0, 24).map((it) => ({
-    tmdbId: intId(it.tmdbId),
-    mediaType: asMediaType(it.mediaType),
-    progress: it.progress === "done" ? "done" : it.progress === "some" ? "some" : "none",
-  }));
+  items = (items ?? []).slice(0, 24).map((it) => {
+    const progress = it.progress === "done" ? "done" : it.progress === "some" ? "some" : "none";
+    return {
+      tmdbId: intId(it.tmdbId),
+      mediaType: asMediaType(it.mediaType),
+      progress,
+      upTo:
+        progress === "some" && it.upTo && asMediaType(it.mediaType) === "tv"
+          ? { season: intIn(it.upTo.season, 1, 1000), episode: intIn(it.upTo.episode, 1, 20_000) }
+          : null,
+    };
+  });
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv, getSeason } = await import("@/lib/tmdb");
   const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
@@ -3022,7 +3035,11 @@ export async function applyOnboardingProgress(
      شاشةَ الانضمام تنتظر دقائق. الآن مواسمُ المسلسل تُجلب معاً،
      والمسلسلاتُ خمسةً خمسة (سقفُ تهذيبٍ لنقطة TMDB لا سقفُ صحّة —
      الأفعال upsert مستقلّة). وفشلُ الواحد لا يوقف البقيّة كما كان. */
-  const shows = done.filter((it) => it.mediaType === "tv");
+  /* 🆕 D-1347 — **«بدأته» مع موضعٍ يكتب حلقاتِه** (قرارُ أحمد ١٠ أكتوبر: «يظهر له المواسم والحلقات»): ما قبل موسمِ
+     الموضع كاملاً، وموسمُه حتى حلقتِه. **الطريقُ نفسُه الذي يكتب «شاهدته كاملاً»** — القاعدتان (`airedPerSeason` ·
+     `firstEpisodeOf`) والدفعاتُ ومدّةُ الحلقة — بسقفٍ يُقصّ عنده؛ لا كاتبَ ثانٍ يفترق عنه. والحالةُ `started` كُتبت
+     أعلاه فيبقى العملُ في «تابِع المشاهدة» ولو لم تُكتب حلقة (موضعٌ خارج ما عُرض ⇒ يُقصّ على ما عُرض). */
+  const shows = items.filter((it) => it.mediaType === "tv" && (it.progress === "done" || it.upTo));
   const SHOWS_AT_ONCE = 5;
   for (let s = 0; s < shows.length; s += SHOWS_AT_ONCE) {
     await Promise.all(
@@ -3034,7 +3051,8 @@ export async function applyOnboardingProgress(
              كان يكتب من ١ في كلِّ موسم — ففي العمل المطلق كان سيزرع
              أشباحاً نسبيّةً بسلالة صفوف خالد بعينها */
           const firstOf = firstEpisodeOf(tv);
-          const seasons = [...aired].filter(([, count]) => count > 0);
+          const cap = it.upTo;
+          const seasons = [...aired].filter(([season, count]) => count > 0 && (!cap || season <= cap.season));
           const details = await Promise.all(
             seasons.map(([season]) => getSeason(it.tmdbId, season).catch(() => null)),
           );
@@ -3053,6 +3071,7 @@ export async function applyOnboardingProgress(
               /* رقمُ النافذة الحقيقيّ — وتفاصيلُ الموسم في TMDB تحمل
                  الأرقامَ نفسَها فبحثُ مدّة الحلقة يصيب في الحالين */
               const e = first + k;
+              if (cap && season === cap.season && e > cap.episode) break;
               const ep = detail?.episodes.find((x) => x.episode_number === e);
               rows.push({
                 user_id: user.id,

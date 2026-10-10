@@ -162,38 +162,49 @@ export function SignInScreen() {
       }
       /* «أتمّ الترحيب؟» برمز الدخول نفسِه — لا ننتظر جلسةً مملوكةً تُسكّ ولا صفحةً تُحمَّل.
          `true` وحدَها تفتح الرئيسيّة: جوابٌ غائبٌ أو فاشلٌ يترك القرارَ للويب (حارسُه يعرف) لا يخمّنه. */
-      let onboarded = false;
+      let onboarded: boolean | null = null;
       try {
         const res = await fetch(`${CONFIG.apiBase}/api/v1/me`, { headers: { Accept: "application/json", Authorization: `Bearer ${r.access}`, "Cache-Control": "no-cache" } });
         const json = (await res.json().catch(() => null)) as { data?: { onboarded?: boolean } | null } | null;
-        onboarded = json?.data?.onboarded === true;
+        onboarded = typeof json?.data?.onboarded === "boolean" ? json.data.onboarded : null;
       } catch {
-        onboarded = false;
+        onboarded = null;
       }
-      if (onboarded) {
+      if (onboarded === true) {
         /* كما يرفعها الإقلاع (`rootsBorn(true)`: رجوعُها يخرج من التطبيق) — والويبُ يُكمل تسليمَه تحتها */
         if (router.canDismiss()) router.dismissAll();
         rootsBorn(true);
         router.push("/home");
         return;
       }
-      /* لم يُتمّ (أو لم يُعرف) ⇒ الترحيبُ ما زال ويباً: الشاشةُ تبقى (والزرُّ يدور) حتى تصل صفحةُ الترحيب تحتها —
-         لو نزلت الآن لظهرت صفحةُ دخول الويب لحظةً والتسليمُ في الطريق. وصولُها يكتب العلامة (`WebLayer.onNav`)،
-         ومستمعُها هناك يُنزل ما فوق الطبقة؛ والمهلةُ حزامٌ لمن لم تصله (شبكةٌ بطيئة، أو حسابٌ أتمّ ولم يُعرف). */
-      await new Promise<void>((done) => {
-        if (session.welcomePending()) return done();
+      /* 🆕 D-1347 — **لم يُتمّ ⇒ الترحيبُ الأصليّ**: العلامةُ تُكتب فيرفعه مستمعُها في الغلاف (`WebLayer.showWelcome` —
+         يُنزل هذه الشاشةَ ويدفعه مكانَها). لا ننتظر صفحةَ ترحيب الويب: كان الانتظارُ لأجلها يوم كانت هي الترحيب. */
+      if (onboarded === false) {
+        session.setWelcomePending(true);
+        /* وإن كانت العلامةُ مكتوبةً من قبل فلم يتبدّل شيءٌ يسمعه أحد — يُرفع صراحةً (`showWelcome` لا يدفع مرّتين) */
+        shell.showWelcome();
+        return;
+      }
+      /* لم يُعرف (الجوابُ غاب) ⇒ الحكمُ للويب: الشاشةُ تبقى (والزرُّ يدور) حتى تصل صفحتُه تحتها. إن حوّله حارسُه إلى
+         `/welcome` كُتبت العلامةُ (`WebLayer.onNav`) فرُفع الترحيبُ الأصليُّ ونزلت هذه معه؛ وإلّا تنزل بعد المهلة على ما
+         وصل إليه الويب. ⚠️ **لا `dismissAll` بعد العلامة**: كان سيُنزل الترحيبَ الذي رُفع للتوّ. */
+      const raised = await new Promise<boolean>((done) => {
+        if (session.welcomePending()) {
+          shell.showWelcome();
+          return done(true);
+        }
         const timer = setTimeout(() => {
           off();
-          done();
+          done(false);
         }, 8000);
         const off = session.onWelcome((on) => {
           if (!on) return;
           clearTimeout(timer);
           off();
-          done();
+          done(true);
         });
       });
-      if (router.canDismiss()) router.dismissAll();
+      if (!raised && router.canDismiss()) router.dismissAll();
     } finally {
       setBusy(false);
     }

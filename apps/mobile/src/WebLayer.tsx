@@ -15,7 +15,6 @@ import { SHELL_BG, space } from "./theme";
 import { perfMs } from "./perf";
 import { mark } from "./perfMarks";
 import { session } from "./session";
-import { api } from "./api";
 import { own } from "./ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo, type SignInResult } from "./shell";
 import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
@@ -359,6 +358,22 @@ export function WebLayer() {
     router.push("/sign-in");
   }, [router, signInUp]);
 
+  /**
+   * 🆕 D-1347 — **من دخل ولم يُتمّ يرى الترحيبَ الأصليّ** لا صفحةَ الويب. الوصفةُ وصفةُ `showSignIn`: تُنزَل ما فوق
+   * الطبقة (ومنها شاشةُ الدخول التي أتى منها) ثمّ تُدفع الشاشة — مرّةً، بسؤال المكدّس (D-1346).
+   */
+  const welcomeAt = useRef(0);
+  const welcomeUp = useCallback(() => {
+    const top = topOf((navContainer.isReady() ? navContainer.getRootState() : undefined) as unknown as State);
+    return top?.name === "welcome" || Date.now() - welcomeAt.current < 1500;
+  }, [navContainer]);
+  const showWelcome = useCallback(() => {
+    if (welcomeUp()) return;
+    welcomeAt.current = Date.now();
+    if (router.canDismiss()) router.dismissAll();
+    router.push("/welcome");
+  }, [router, welcomeUp]);
+
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
   /* K3b — الطبقةُ خارج المسار: رابطُ الودجت (`/web?u=`) يُقرأ من العنوان المعروض (هو `/web` لحظةَ وصول الرابط) */
@@ -410,17 +425,11 @@ export function WebLayer() {
     if (typeof u === "string" && u && session.seen()) return;
     if (session.seen() && session.welcomePending()) {
       /* 🆕 D-1341 — **الإقلاعُ لا يرفع الرئيسيّةَ الأصليّةَ لمن لم يُتمّ الترحيب** (البابُ الثاني في تسجيل أحمد: أغلق
-         التطبيقَ وفتحه فهبط على الرئيسيّة). الويبُ يبقى فوق ويعرض الترحيب. **ويُسأل الخادمُ مرّةً**: إن كان أتمّه في
-         مكانٍ آخر تُمحى العلامةُ وتُرفع الرئيسيّةُ كما في أيِّ إقلاع. فشلُ السؤال ⇒ يبقى الويبُ (وهو يحكم بنفسه). */
-      mark("web.home", 0, { why: "boot.welcome" });
-      void api<{ onboarded?: boolean } | null>("/api/v1/me")
-        .then((r) => {
-          if (!r.data || r.data.onboarded === false || !session.welcomePending()) return;
-          session.setWelcomePending(false);
-          rootsBorn(true);
-          router.push("/home");
-        })
-        .catch(() => {});
+         التطبيقَ وفتحه فهبط على الرئيسيّة). */
+      /* 🆕 D-1347 — **والترحيبُ الأصليُّ يُرفع من أوّل رسمة** (كان يُترك الويبُ ظاهراً بترحيبه). «أتمّه في مكانٍ آخر»
+         تسأل عنه الشاشةُ نفسُها (`GET /api/v1/welcome` ⇒ `onboarded`) فتمحو العلامةَ وترفع الرئيسيّة — سؤالٌ واحدٌ
+         لا سؤالان يتسابقان على المكدّس. */
+      showWelcome();
     } else if (session.seen()) {
       /* K3 — العلامةُ حالةُ المجموعة لا معاملٌ في العنوان (`bootRoot`) */
       rootsBorn(true);
@@ -432,7 +441,7 @@ export function WebLayer() {
       /* 🆕 D-1344 — لا أثرَ لجلسة ⇒ شاشةُ الدخول الأصليّة فوق الطبقة من أوّل رسمة (صفحةُ دخول الويب لا تُرى) */
       showSignIn("boot");
     }
-  }, [loading, u, router, showSignIn]);
+  }, [loading, u, router, showSignIn, showWelcome]);
 
   /* 🆕 D-1341 — **العلامةُ كُتبت والشاشاتُ الأصليّةُ فوق** (حسابٌ بلا علامةٍ بعدُ رُفعت له الرئيسيّة، فرفض الخادمُ
      أوّلَ نداء): تُنزَل كلُّها فيُرى الويب، ويُوجَّه إلى الترحيب إن لم يكن عليه. التوجيهُ مرّتان — الحقنُ في WebView
@@ -441,7 +450,8 @@ export function WebLayer() {
     () =>
       session.onWelcome((on) => {
         if (!on) return;
-        if (router.canDismiss()) router.dismissAll();
+        /* 🆕 D-1347 — الترحيبُ الأصليُّ فوق، وترحيبُ الويب تحته (التوجيهُ أدناه باقٍ): بديلٌ إن سقطت الشاشة */
+        showWelcome();
         const steer = () => {
           /* D-1344 — والتسليمُ جارٍ لا يُقاطَع: توجيهٌ الآن يقطع POST الجلسة فيهبط الويبُ زائراً */
           if (pathRef.current === "/welcome" || !session.welcomePending() || handing.current) return;
@@ -450,7 +460,7 @@ export function WebLayer() {
         steer();
         setTimeout(steer, 700);
       }),
-    [router],
+    [showWelcome],
   );
 
   /* 🩺 D-1256 — بعد الإقلاع: الطبقةُ صارت هي الشاشة وهي على رئيسيّة الويب، والتطبيقُ يعرف صاحبَه ⇒ انكشافٌ لا يُفترض.
@@ -505,7 +515,9 @@ export function WebLayer() {
     shell.arrived(nav.url, nav.loading);
     if (nav.loading) setLanding(false);
     /* 🆕 D-1341 — الصفحةُ على الترحيب (الحارسُ في الخادم حوّلها): العلامةُ تُكتب، ومستمعُها يُنزل ما فوقها */
-    if (next === "/welcome" && insideUrl(nav.url)) session.setWelcomePending(true);
+    /* 🆕 D-1347 — **إلّا من أتمّه في هذه الجلسة**: صفحةُ ترحيب الويب تبقى تحت الشاشات لحظةً بعد الختم، وحدثُ تنقّلٍ
+       متأخّرٌ لها كان يكتب العلامةَ ثانيةً فيُرفع الترحيبُ فوق الرئيسيّة. جوابُ الخادم (`apiFinishWelcome`) ما زال يكتبها. */
+    if (next === "/welcome" && insideUrl(nav.url) && !session.welcomeFinished()) session.setWelcomePending(true);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
     if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) {
@@ -574,6 +586,10 @@ export function WebLayer() {
     shell.attachSignIn(doLogin);
     return () => shell.attachSignIn(null);
   }, [doLogin]);
+  useEffect(() => {
+    shell.attachWelcome(showWelcome);
+    return () => shell.attachWelcome(null);
+  }, [showWelcome]);
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {

@@ -66,6 +66,11 @@ const ANIME: readonly (readonly [number, string])[] = [
   [13916, "Death Note"],
 ];
 
+/** 🆕 D-1347 — هل الرقمُ مسلسلٌ من أعمال الترحيب؟ (مسارُ المواسم المفتوحُ لمن لم يُتمّ لا يخدم غيرَها) */
+export function isWelcomeShow(id: number): boolean {
+  return SHOWS.some(([n]) => n === id) || ANIME.some(([n]) => n === id);
+}
+
 async function show([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
   try {
     const tv = await getTv(id);

@@ -77,6 +77,9 @@ let lastLife: number | null = null;
 const WELCOME_KEY = "loopz.welcome.pending";
 let welcomeMem: boolean | null = null;
 const welcomeListeners = new Set<(pending: boolean) => void>();
+/* 🆕 D-1347 — «أتمّ الترحيبَ في هذه الجلسة» (ذاكرةٌ فقط): صفحةُ ترحيب الويب قد تبقى محمَّلةً تحت الشاشات الأصليّة
+   لحظةً بعد الختم، وحدثُ تنقّلٍ متأخّرٌ لها كان سيكتب العلامةَ ثانيةً فيُرفع الترحيبُ فوق الرئيسيّة. الخروجُ يمحوها. */
+let welcomeDoneMem = false;
 
 /**
  * 🆕 D-1141 — **كم انتظرنا الرمزَ، وبأيِّ نتيجة** (`token.wait`): صفحةُ العمل انتظرت ٦ث والحلقاتُ ١٠ث
@@ -194,6 +197,9 @@ export const session = {
   },
   /** 🆕 D-1341 — تُكتب/تُمحى، ويُبلَّغ من يسمع **عند التبدّل وحدَه** (الغلافُ يُنزل الشاشاتِ الأصليّةَ عندها) */
   setWelcomePending(on: boolean) {
+    /* 🆕 D-1347 — من خُتم له في هذه الجلسة لا تُكتب له العلامةُ ثانيةً: الختمُ لا يُمحى في الخادم، وما يطلب كتابتَها
+       بعده أثرٌ متأخّرٌ (ردٌّ خرج قبل الختم · حدثُ تنقّلٍ لصفحة ترحيب الويب تحت الشاشات) لا حكمٌ جديد */
+    if (on && welcomeDoneMem) return;
     if (session.welcomePending() === on) return;
     welcomeMem = on;
     try {
@@ -203,6 +209,15 @@ export const session = {
       /* لا شيء — الذاكرةُ تكفي لهذه الجلسة، والخادمُ يرفض في التالية فتُكتب */
     }
     for (const l of welcomeListeners) l(on);
+  },
+  /** 🆕 D-1347 — الخادمُ قال «خُتم»: العلامةُ تُمحى، ويُحفظ لهذه الجلسة أنّه أتمّ (`welcomeFinished`) */
+  welcomeDone() {
+    welcomeDoneMem = true;
+    session.setWelcomePending(false);
+  },
+  /** 🆕 D-1347 — هل أتمّ الترحيبَ في هذه الجلسة؟ (يقرؤه من يكتب العلامةَ من عنوان صفحةٍ لا من جواب خادم) */
+  welcomeFinished(): boolean {
+    return welcomeDoneMem;
   },
   onWelcome(l: (pending: boolean) => void): () => void {
     welcomeListeners.add(l);
@@ -235,6 +250,7 @@ export const session = {
     }
     /* 🆕 D-1341 — العلامةُ لصاحب الجلسة: تخرج معه، والداخلُ بعده يحكم له الخادم */
     session.setWelcomePending(false);
+    welcomeDoneMem = false;
     for (const l of signOutListeners) l();
     /* D-1128 — «من أنا» يُفعَّل بالأثر: يُبلَغ بزواله فيتوقّف */
     if (hadSeen) emit();

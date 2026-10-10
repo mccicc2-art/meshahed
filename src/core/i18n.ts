@@ -2418,6 +2418,19 @@ const ar = {
      يكمل، وإلا صارت آخر خطوةٍ قبل الدخول جداراً */
   obPeopleSkip: "أكمل بدون متابعة",
   obPeopleNext: (n: number) => `تتابع ${n} — يالله نبدأ ✓`,
+  /* 🆕 D-1347 — الترحيبُ الأصليّ: ورقةُ «أين وصلت» لمسلسلٍ اختير له «بدأته» (قرارُ أحمد ١٠ أكتوبر) */
+  obUpToHint: "اضغط آخر حلقة شاهدتها",
+  obUpToSeason: "الموسم",
+  obUpToEpisodesOf: (n: number) => `حلقات الموسم ${n}`,
+  obUpToCount: (n: number) =>
+    n === 1 ? "تُعلَّم حلقة واحدة مشاهَدة" : n === 2 ? "تُعلَّم حلقتان مشاهَدتان" : n <= 10 ? `تُعلَّم ${n} حلقات مشاهَدة` : `تُعلَّم ${n} حلقة مشاهَدة`,
+  obUpToPick: "ما اخترت حلقة بعد",
+  obUpToDone: "تم",
+  obUpToForgot: "ما أتذكر — بدأته فقط",
+  obUpToReached: (s: number, e: number) => `وصلت إلى الموسم ${s} · الحلقة ${e}`,
+  obUpToEdit: "تعديل",
+  obUpToSet: "حدّد آخر حلقة",
+  obLoadFailed: "تعذّر تحميل التجهيز — تأكّد من اتصالك وحاول مجدداً.",
 
   /* **سببُ الاقتراح** — وبقي لشاشة التهيئة وحدَها بعد D-270 (انظر
      التذييلَ عند `peopleBoardTopReview`) */
@@ -4112,6 +4125,17 @@ const en: Dict = {
     "No one to suggest just yet — you can search for friends later.",
   obPeopleSkip: "Continue without following",
   obPeopleNext: (n: number) => `Following ${n} — let's go ✓`,
+  obUpToHint: "Tap the last episode you watched",
+  obUpToSeason: "Season",
+  obUpToEpisodesOf: (n: number) => `Season ${n} episodes`,
+  obUpToCount: (n: number) => (n === 1 ? "1 episode will be marked watched" : `${n} episodes will be marked watched`),
+  obUpToPick: "No episode picked yet",
+  obUpToDone: "Done",
+  obUpToForgot: "I don't remember — just started",
+  obUpToReached: (s: number, e: number) => `Reached season ${s} · episode ${e}`,
+  obUpToEdit: "Edit",
+  obUpToSet: "Set last episode",
+  obLoadFailed: "Couldn't load the setup — check your connection and try again.",
 
   // suggestPeopleTitle / suggestPeopleHint deleted with their section (D-270);
   // the two below stay — Onboarding reads them

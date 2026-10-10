@@ -80,7 +80,11 @@ export type PerfName =
   /* 🩺 D-1346 — شاشةُ الدخول الأصليّة: رفعُها وسببُه (`why` = boot · signout · login · gate، `ms=0`) وكم بقيت
      مرفوعةً قبل أن تُنزَل (`signin.hide`، ms). تشخيصٌ لعطل «خرجتُ فظهرت صفحةُ الويب»؛ تُحذف حين يثبت الإصلاح. */
   | "signin.show"
-  | "signin.hide";
+  | "signin.hide"
+  /* 🩺 D-1347 — الترحيبُ الأصليّ: رُفع (`welcome.show`، ms=0) / أُنزل (`welcome.hide`: ms مرفوعاً، `count` الخطوةُ التي
+     كان عليها). إنزالٌ في الخطوة ١ بعد لحظةٍ عطل؛ في الخامسة بعد دقيقةٍ إتمام. */
+  | "welcome.show"
+  | "welcome.hide";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
