@@ -690,7 +690,8 @@ async function HomeBody({
                         : undefined
                     }
                     badge={
-                      i.watched === 0
+                      /* D-1343 — من ضغط «ابدأ» (أو اختار «بدأته» في الترحيب) ليس «ما بدأته»: بلا شارةٍ كأيِّ عملٍ جارٍ */
+                      i.watched === 0 && i.state !== "started"
                         ? t.notStartedBadge
                         : i.aired > 0 && i.watched >= i.aired
                           ? t.watchedBadge

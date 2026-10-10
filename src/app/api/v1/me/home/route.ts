@@ -236,7 +236,8 @@ export async function GET() {
             watched: i.watched,
             aired: i.aired,
             count: i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : null,
-            badge: i.watched === 0 ? t.notStartedBadge : i.aired > 0 && i.watched >= i.aired ? t.watchedBadge : null,
+            /* D-1343 — «ابدأ» بلا حلقةٍ ليس «ما بدأته» (الرفُّ يطابق «تابِع المشاهدة» والمكتبة) */
+            badge: i.watched === 0 && i.state !== "started" ? t.notStartedBadge : i.aired > 0 && i.watched >= i.aired ? t.watchedBadge : null,
             badge_tone: i.aired > 0 && i.watched >= i.aired && i.watched > 0 ? "watched" : "neutral",
           })),
           total: body.myShows.length,
