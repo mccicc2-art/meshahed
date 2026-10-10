@@ -8,6 +8,7 @@ import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
 import { openNative } from "./NativeLibraryFlag";
 import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
+import { isBareDoc } from "@/core/chromeRules";
 
 /* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
    كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
@@ -168,6 +169,8 @@ export function BottomNav({
        **وماتت يومَ صار «دخول» تبويباً في شريط الزائر**: تبويبٌ يبتلع
        شريطَه فخٌّ بلا مخرج. والمسجَّلُ لا يصلها أصلاً (`redirect("/")`). */
     pathname === "/welcome" ||
+    /* 🆕 D-1345 — الوثيقتان العاريتان: نصٌّ يُقرأ ثمّ يُغلق، بلا بابٍ إلى الموقع (`isBareDoc`) */
+    isBareDoc(pathname) ||
     pathname === "/profile/edit" ||
     /* 🆕 **وملفُّ العضو** (D-643، بحكمه): **زيارةُ ملفٍّ رحلةٌ لها بدايةٌ
        ونهاية** كالإعدادات — دخلتَ لتقرأ عن شخصٍ ثمّ تخرج — **وبابُ

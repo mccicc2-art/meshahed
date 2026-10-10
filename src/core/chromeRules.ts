@@ -98,8 +98,19 @@ export function hidesAppHeaderOnMobile(pathname: string): boolean {
   return pathname === "/";
 }
 
+/**
+ * 🆕 D-1345 — **الوثيقتان العاريتان** (`/app/terms` · `/app/privacy`): تفتحهما شاشةُ الدخول الأصليّة في
+ * متصفّحٍ مصغَّرٍ ليقرأ نصّاً ثمّ يغلق. شريطُ التطبيق والشريطُ السفليّ فوقهما أبوابٌ إلى موقعٍ لم يسجّل
+ * فيه بعد (بلاغُ أحمد بتسجيل: «المفترض ما يكون ظاهر فيها الدوك ولا يقدر يتصفح في التطبيق»).
+ * سؤالٌ واحدٌ هنا يسأله `HeaderShell` و`BottomNav` معاً — فلا يفترقان.
+ */
+export function isBareDoc(pathname: string): boolean {
+  return pathname === "/app/terms" || pathname === "/app/privacy";
+}
+
 export function hidesAppHeader(pathname: string): boolean {
   return (
+    isBareDoc(pathname) ||
     /* 🆕 D-1341 — **الترحيبُ بوّابةٌ بلا أبوابٍ جانبيّة** (قرارُ أحمد ١٧): شريطُ التطبيق يحمل الظرفَ
        والجرسَ والإعدادات — ثلاثةُ مخارجَ فوق شاشةٍ لا يُخرج منها إلّا بإتمامها. الحارسُ (`proxy`) يردّ من
        يضغطها، وزرٌّ يُضغط فيعيدك إلى حيث كنت عطلٌ في عين صاحبه. الخروجُ الوحيدُ «بدّل الحساب». */

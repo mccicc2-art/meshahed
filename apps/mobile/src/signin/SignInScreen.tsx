@@ -194,9 +194,12 @@ export function SignInScreen() {
   }, [busy, router]);
 
   const openDoc = useCallback((path: "/terms" | "/privacy") => {
-    /* الصفحتان القانونيّتان تبقيان ويباً (قرارُه ١٠ أكتوبر) — تُفتحان في متصفّح التطبيق المصغَّر: لا جلسةَ تلزمهما */
-    void WebBrowser.openBrowserAsync(`${CONFIG.apiBase}${path}`).catch(() => {});
-  }, []);
+    /* الصفحتان القانونيّتان تبقيان ويباً (قرارُه ١٠ أكتوبر) — تُفتحان في متصفّح التطبيق المصغَّر: لا جلسةَ تلزمهما.
+       🆕 D-1345 — **النسخةُ العارية `/app/…`** لا صفحةُ الموقع: تلك تحمل شريطَه السفليَّ ورابطَ «‹ Loopz»
+       فتصفّح منها الموقعَ كلَّه قبل أن يسجّل (تسجيلُه ١٠ أكتوبر). واللغةُ في العنوان: المتصفّحُ المصغَّر
+       لا يرى كعكةَ الـWebView، فلا يعرف ما اختاره هنا. */
+    void WebBrowser.openBrowserAsync(`${CONFIG.apiBase}/app${path}?lang=${locale}`).catch(() => {});
+  }, [locale]);
 
   const flipLang = useCallback(() => {
     const next = locale === "ar" ? "en" : "ar";
