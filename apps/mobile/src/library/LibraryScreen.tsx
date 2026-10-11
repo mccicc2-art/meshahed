@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
+import { aimDiscoverTab } from "../discover/aim";
 import { useBootRoot } from "../bootRoot";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
@@ -226,6 +227,13 @@ export function LibraryScreen() {
       }
       if (path === "/" || path === "") {
         switchTo("/home");
+        return;
+      }
+      /* 🆕 D-1352 (V-A) — «اكتشف» أصليٌّ منذ 11-F، وزرُّ المكتبة الفارغة كان ما زال يطلبه مسارَ ويب (`/news`)
+         فتُفتح صفحةُ الويب ولها توأم. الصيغتان اللتان يُنتجهما الزرّ فقط؛ ما عداهما (`/news?tab=lists&fr=…`) يبقى باباً. */
+      if (path === "/news" || path === "/news?tab=anime") {
+        if (path !== "/news") aimDiscoverTab("anime");
+        switchTo("/discover");
         return;
       }
       setLeaving(true);

@@ -158,6 +158,9 @@ export function HomeScreen() {
       if (path === "/stats") return void router.push({ pathname: "/stats", params: { from: "home" } });
       /* 🆕 D-1317 — و«تقويم أعمالك» (عنوانُ شريط الأسبوع) شاشةٌ أصليّةٌ كذلك */
       if (path === "/calendar") return void router.push({ pathname: "/calendar", params: { from: "home" } });
+      /* 🆕 D-1352 (V-A) — «المجتمع» جذرٌ أصليٌّ خامس (D-1171) والشريطُ ينتقل إليه أصليّاً؛ عنوانُ «أصدقاؤك الآن» و«عرض
+         الكلّ» كانا ما زالا يفتحان صفحةَ الويب. `/people` وحدَه — بلا استعلام — هو ما يُطلب من هذه الشاشة. */
+      if (path === "/people") return void switchTo("/community");
       if (leaving) return;
       setLeaving(true);
       void shell.open(path, { returnTo: "home" }).then((layered) => {
@@ -166,7 +169,7 @@ export function HomeScreen() {
         if (!layered) back();
       });
     },
-    [leaving, back, router],
+    [leaving, back, router, switchTo],
   );
   const openTitle = useCallback((kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "home" } }), [router]);
   const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: "home" } }), [router]);
@@ -741,7 +744,7 @@ export function HomeScreen() {
             </React.Fragment>
           ))}
           {d.pick_genres_hint ? (
-            <Pressable onPress={() => openWeb("/profile/edit")} accessibilityRole="link" style={{ marginHorizontal: PAGE_PAD, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, alignItems: "center" }}>
+            <Pressable onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "content" } })} accessibilityRole="link" style={{ marginHorizontal: PAGE_PAD, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, alignItems: "center" }}>
               <Text size={14} muted>{t.pickGenresHint}</Text>
             </Pressable>
           ) : null}

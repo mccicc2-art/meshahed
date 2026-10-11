@@ -166,7 +166,7 @@ const ar = {
   helpLearnGroup: "تعرّف على التطبيق",
   helpSupportGroup: "الدعم",
   pickGenresHint:
-    "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
+    "حدّد أنواعك المفضّلة لتظهر لك اقتراحات تناسب ذائقتك ←",
   headerSettings: "الإعدادات",
 
   /* ترويسةُ الرئيسية الجديدة (D-434): تحيّةٌ بالوقت، ومبدّلُ وضع العرض */
@@ -2552,7 +2552,7 @@ const en: Dict = {
   helpLearnGroup: "Learn the app",
   helpSupportGroup: "Support",
   pickGenresHint:
-    "Pick your favourite genres in your profile to get suggestions you'll like →",
+    "Pick your favourite genres to get suggestions that match your taste →",
   headerSettings: "Settings",
 
   greetNeutral: "Welcome",

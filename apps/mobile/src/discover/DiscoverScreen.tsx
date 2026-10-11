@@ -7,6 +7,7 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBootRoot } from "../bootRoot";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
+import { takeDiscoverAim } from "./aim";
 import { prefetchLibrary } from "../library/LibraryScreen";
 import { useApp } from "../state";
 import { shell } from "../shell";
@@ -169,6 +170,13 @@ export function DiscoverScreen() {
   const [openTab] = useState<Tab>(memory.tab);
   /* K3 — «وصلتُ» عند كلِّ ظهورٍ للتبويب الثابت، والشائخُ من صفوفه يُجدَّد */
   useFocusEffect(useCallback(() => tabLanded("news"), []));
+  /* 🆕 D-1352 — تبويبٌ طُلب من خارج الشاشة (`aimDiscoverTab`) يُؤخذ عند الظهور، مرّةً */
+  useFocusEffect(
+    useCallback(() => {
+      const next = takeDiscoverAim();
+      if (next) setTab(next);
+    }, []),
+  );
   useRefetchOnFocus(["discover:"]);
   const [endOpen] = useState(() => {
     coldStartVoid();
