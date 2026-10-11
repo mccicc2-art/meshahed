@@ -91,8 +91,32 @@ export type MyInvitesPayload = {
   /** رابطُ الدعوة كاملاً (`siteUrl`) — أو `null` إن تعذّر توليدُ الكود (الزيارةُ التاليةُ تولّده) */
   url: string | null;
   stats: { joined: number; qualified: number; subscribed: number; reward_days: number };
+
   items: MyInvite[];
 };
+
+/**
+ * 🆕 D-1361 (V-C · C7 · الدفعة ١) — `GET /api/v1/me/partner`: حالُ الشريك وشرطا التقديم وحقولُ طلبه (لتعبئة النموذج عند
+ * التعديل وبعد الرفض). لوحةُ الشريك الموافَق عليه (الأرباحُ · بياناتُ التحويل · الهويّة) ليست هنا — الدفعةُ الثانية.
+ */
+export type PartnerApplicationFields = {
+  channelUrl: string;
+  contentType: string;
+  platforms: string;
+  followersRange: string;
+  country: string;
+  contentLanguage: string;
+  reason: string;
+};
+export type MyPartnerPayload = {
+  status: "pending" | "approved" | "rejected" | null;
+  applied_at: string | null;
+  /** للرسم وحدَه — الحارسُ في جسم `apply_partner` (D-855) */
+  requirements: { x: boolean; plus: boolean };
+  application: PartnerApplicationFields | null;
+};
+/** `POST /api/v1/me/partner/apply` — حقولُ الطلب و**الموافقةُ على الشروط شرط** (كما في نموذج الويب) */
+export type PartnerApplyBody = PartnerApplicationFields & { terms: boolean };
 
 export type ProfilePayload = {
   /** 🆕 N1 — `density` **حجمُ ملصقات القارئ** (تفضيلُ ملفّه هو) لا صاحبِ الملفّ — قرارُ أحمد ٢٩ سبتمبر */

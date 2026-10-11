@@ -1,7 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Clipboard, Pressable, Share, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
@@ -16,7 +16,8 @@ import { SettingsScreen, RowsSkeleton } from "./ui";
 import { useOpenWeb } from "./api";
 import { displayNameOf } from "@/core/people";
 import { timeAgo } from "@/core/when";
-import type { MyInvite, MyInvitesPayload } from "@/core/contracts/profile";
+import { PartnersTab } from "./PartnersTab";
+import type { MyInvite, MyInvitesPayload, MyPartnerPayload } from "@/core/contracts/profile";
 
 /**
  * ====== «الدعوات والمكافآت» أصليّاً — تبويبُ الأصدقاء (🆕 D-1360 · Phase 11-V · V-C · C4 — ١١ أكتوبر ٢٠٢٦) ======
@@ -24,8 +25,10 @@ import type { MyInvite, MyInvitesPayload } from "@/core/contracts/profile";
  * **قرارُ أحمد بعد صورةٍ للشاشة: «نفذ وارفع»**. الأقسامُ أقسامُ `/profile/settings/invites` بترتيبها (نموذجُه، D-770b):
  * «N من ٥» بخمس درجات · الرابطُ بزرَّي نسخٍ ومشاركة · العدّاداتُ الأربعة · آخرُ الدعوات · «كيف تعمل المكافآت» ·
  * «الشروط والأهلية» مطويّةً · بابُ الشركاء.
- *  - ⚖️ **بلا الحبّتين** («1 أ»): تبويبُ الشركاء موقوف (قرار ٨)، وحبّتان إحداهما تخرج إلى الويب تجعل الانتقالَ بينهما يبدو عطلاً.
- *    بابُه البطاقةُ السفليّة «اعرف أكثر» — تفتح تبويبَه في الويب.
+ *  - 🆕 D-1361 (C7 · الدفعة ١) — **الحبّتان رجعتا** (نموذجُه الأصليّ): رُفع إيقافُ الشركاء («الشركاء الآن»)، فصار التبويبان أصليَّين
+ *    (`PartnersTab`) — نقضٌ معلَنٌ لـ«1 أ» في C4 (بلا حبّتين: كانت إحداهما ستخرج إلى الويب). والبطاقةُ السفليّة «اعرف أكثر»
+ *    تبدّل إلى الحبّة الثانية.
+ *  - ⚖️ **الشريكُ الموافَقُ عليه تُفتح له لوحةُ الويب** من الحبّة والبطاقة — إلى الدفعة ٢ (الأرباحُ · بياناتُ التحويل · الهويّة).
  *  - **«عرض الكل» يمدّ القائمةَ في مكانها** (الويبُ يعيد تحميلَ الصفحة بـ`?all=1`)، و«الشروط» تنفتح وتنطوي في مكانها.
  *  - **النسخُ والمشاركةُ فعلان** (حجّةُ `InviteLinkCard`): المشاركةُ ورقةُ النظام، والنسخُ حافظة.
  *  - الأرقامُ لاتينيّةٌ كالويب (`num` → `en-US`)؛ والنصوصُ كما في القاموس.
@@ -33,6 +36,8 @@ import type { MyInvite, MyInvitesPayload } from "@/core/contracts/profile";
 const STEPS = 5;
 const FIRST = 6;
 export const myInvitesKey = ["me:invites"] as const;
+export const myPartnerKey = ["me:partner"] as const;
+const WEB_PARTNERS = "/profile/settings/invites?tab=partners";
 
 function Card({ children, style }: { children: React.ReactNode; style?: object }) {
   const { tokens } = useApp();
@@ -41,9 +46,69 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 
 export function InvitesScreen() {
   const { t, tokens } = useApp();
-  const router = useRouter();
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
+  const [tab, setTab] = useState<"friends" | "partners">("friends");
+  /* نموذجُ التقديم مفتوحٌ بيد صاحبه (تقديمٌ أوّل · تعديل) — هنا لا في التبويب كي يُغلقه رجوعُ الشاشة قبل أن يغادرها */
+  const [form, setForm] = useState(false);
+  /* حالُ الشريك تُقرأ مع الشاشة لا مع الحبّة: الحبّةُ تعرف لحظةَ الضغط أهي تبويبٌ أم بابُ لوحة */
+  const partner = useQuery({
+    queryKey: myPartnerKey,
+    queryFn: async () => (await api<MyPartnerPayload>("/api/v1/me/partner")).data,
+    staleTime: 60_000,
+  });
+  const approved = partner.data?.status === "approved";
+  /* العودةُ إلى الشاشة تسأل عن الحال من جديد (من الظهور الثاني): شرطا التقديم يُستكملان خارجها — توثيقُ X في شاشته، وبلس في
+     صفحته — ومن عاد وقد استوفى أحدَهما يجب أن يراه مستوفى لا بعد دقيقة (`staleTime`) */
+  const seen = useRef(false);
+  const refetchPartner = partner.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      if (!seen.current) {
+        seen.current = true;
+        return;
+      }
+      void refetchPartner();
+    }, [refetchPartner]),
+  );
+  const goPartners = () => {
+    haptic.pick();
+    if (approved) return openWeb(WEB_PARTNERS);
+    setTab("partners");
+  };
+  /* من ضغط الحبّةَ قبل أن تصل حالُه ثمّ تبيّن أنّه شريك: لوحتُه في الويب، والشاشةُ تعود إلى «الأصدقاء» تحتها */
+  const openRef = useRef(openWeb);
+  openRef.current = openWeb;
+  useEffect(() => {
+    if (tab !== "partners" || !approved) return;
+    setTab("friends");
+    openRef.current(WEB_PARTNERS);
+  }, [tab, approved]);
+  const pills: ["friends" | "partners", string][] = [
+    ["friends", t.invTabFriends],
+    ["partners", t.invTabPartners],
+  ];
+  return (
+    <SettingsScreen title={t.setInvites} toast={toast} onBack={tab === "partners" && form ? () => setForm(false) : undefined}>
+      {/* تبويبان حبّتان — عائلةُ الرقاقة ممدودةً على عرض الصفّ (نموذجه، D-770b) */}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {pills.map(([key, label]) => {
+          const on = tab === key;
+          return (
+            <Pressable key={key} onPress={key === "partners" ? goPartners : () => { haptic.pick(); setTab("friends"); setForm(false); }} accessibilityRole="tab" accessibilityState={{ selected: on }} style={({ pressed }) => ({ flex: 1, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, paddingVertical: 10, backgroundColor: on ? tokens.accent : tokens.surface, opacity: pressed ? 0.8 : 1 })}>
+              <Text size={14} weight="700" color={on ? tokens.onAccent : tokens.muted} numberOfLines={1}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {tab === "friends" ? <FriendsTab toast={toast} onPartners={goPartners} /> : <PartnersTab q={partner} form={form} setForm={setForm} />}
+    </SettingsScreen>
+  );
+}
+
+function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef | null>; onPartners: () => void }) {
+  const { t, tokens } = useApp();
+  const router = useRouter();
   const [all, setAll] = useState(false);
   const [terms, setTerms] = useState(false);
   const q = useQuery({
@@ -55,7 +120,7 @@ export function InvitesScreen() {
 
   if (!d) {
     return (
-      <SettingsScreen title={t.setInvites}>
+      <>
         {q.isError ? (
           <View style={{ alignItems: "center", gap: 12, paddingTop: 48 }}>
             <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
@@ -68,7 +133,7 @@ export function InvitesScreen() {
             <RowsSkeleton rows={3} />
           </>
         )}
-      </SettingsScreen>
+      </>
     );
   }
 
@@ -108,7 +173,7 @@ export function InvitesScreen() {
   ];
 
   return (
-    <SettingsScreen title={t.setInvites} toast={toast}>
+    <>
       {/* «N من ٥» — الدرجاتُ الخمس تُرسم لا تُشرح (نموذجه حرفاً) */}
       <Card style={{ padding: 16 }}>
         <Text size={12} weight="600" muted>{t.invNextReward}</Text>
@@ -240,17 +305,17 @@ export function InvitesScreen() {
         {terms ? <Card style={{ padding: 14 }}><Text size={14} muted style={{ lineHeight: 22 }}>{t.invFinePrint}</Text></Card> : null}
       </View>
 
-      {/* بابُ الشركاء — تبويبُه في الويب (موقوفٌ عن الأصليّة بقرار ٨): «اعرف أكثر» كنموذجه */}
+      {/* بابُ الشركاء من تبويب الأصدقاء — «اعرف أكثر» كنموذجه: يبدّل إلى الحبّة الثانية (ولوحةُ الشريك القائم في الويب) */}
       <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }}>
         <Icon name="people" size={22} color={tokens.accent} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text size={14} weight="700">{t.prtEntryTitle}</Text>
           <Text size={12} muted style={{ marginTop: 2 }}>{t.prtEntryBody}</Text>
         </View>
-        <Pressable onPress={() => openWeb("/profile/settings/invites?tab=partners")} disabled={!!openWeb.busy} style={({ pressed }) => ({ borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent, paddingHorizontal: 14, paddingVertical: 6, opacity: pressed || openWeb.busy ? 0.6 : 1 })}>
+        <Pressable onPress={onPartners} style={({ pressed }) => ({ borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent, paddingHorizontal: 14, paddingVertical: 6, opacity: pressed ? 0.6 : 1 })}>
           <Text size={12} weight="700" color={tokens.accent}>{t.prtLearnMore}</Text>
         </Pressable>
       </Card>
-    </SettingsScreen>
+    </>
   );
 }
