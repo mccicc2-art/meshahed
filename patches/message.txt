@@ -1,8 +1,11 @@
-[deploy] D-1363 — partner payout details are read for the signed-in member only
+[deploy] D-1364 — the partner setup no longer asks for an ID document
 
-- getMyPartnerDetails() filtered nothing and relied on RLS alone; the table also lets an admin read every row (to pay out), so an admin partner with no row of his own was shown another partner's IBAN, bank, holder, phone and «ID uploaded» flag — and «Save» would have written them into his own row
-- the gap dates from D-858 on the web partner page; the native dashboard (D-1362) reads the same reader and surfaced it
-- one line: .eq("user_id", uid). Server only — no app update needed
+- Ahmed's decision («1 أ») after asking whether an ID photo is excessive: no guard ever required it (apply_partner does not, request_payout checks IBAN and holder name only) and payouts are not open, so it was the riskiest data in the product collected with no purpose. Overturns the ID half of D-858; revisited when payments open
+- app: PartnerDashboard loses the ID row, the choice sheet and the upload flow; setup is X · bank details · phone
+- web: the partner page loses the upload row (PartnerIdUpload deleted); setup complete without it
+- routes /api/v1/me/partner/id and …/id/confirm (added in D-1362) are removed; `details.id_uploaded` leaves the payload
+- «شروط العمولة»: the minimum-payout line no longer says «after identity verification»
+- kept as they are («2 ب»): the one file already stored, the id_file column and the partner-ids bucket
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
