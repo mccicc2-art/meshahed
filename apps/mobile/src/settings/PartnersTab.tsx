@@ -10,6 +10,8 @@ import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Group, Row, Field, RowsSkeleton, Chevron } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
+import { PartnerDashboard } from "./PartnerDashboard";
+import type { ToastHostRef } from "../HoldHost";
 import { formatDate } from "@/core/when";
 import type { MyPartnerPayload, PartnerApplicationFields, PartnerApplyBody } from "@/core/contracts/profile";
 
@@ -21,8 +23,8 @@ import type { MyPartnerPayload, PartnerApplicationFields, PartnerApplyBody } fro
  * (تقديمٌ أوّل · تعديلُ طلبٍ قيد المراجعة · إعادةُ تقديمٍ بعد الرفض) · **قيد المراجعة** (تعديلٌ وسحب).
  *  - 🔑 **شرطا التقديم يُعرضان مكانَ النموذج لمن لم يستوفِهما** (حجّةُ الصفحة: نموذجٌ يُملأ ثمّ يُرفض عند الباب إهدار)، وكلُّ شرطٍ
  *    ناقصٍ بابٌ إلى إكماله: توثيقُ X شاشةٌ أصليّة (`settings/verify`)، وبلس صفحتُه الويبيّة (باقيةٌ بقرار ٤ في خطّة 11-V).
- *  - ⚖️ **لوحةُ الموافَق عليه ليست هنا** (الأرباحُ · بياناتُ التحويل · الهويّة — الدفعةُ ٢): شاشةُ الدعوات تفتح له لوحةَ الويب
- *    كما كانت (`InvitesScreen`)، فهذا المكوّنُ لا يُرسم له.
+ *  - 🆕 D-1362 (الدفعة ٢) — **ولوحةُ الموافَق عليه أصليّة** (`PartnerDashboard`: الأرباحُ · بياناتُ التحويل · الهويّة) — كانت الحبّةُ
+ *    تفتح له لوحةَ الويب، وهي آخرُ ما بقي من هذا التبويب خارج التطبيق.
  *  - الموافقةُ على الشروط تُعاد مع كلِّ إرسال (خانةُ الويب لا تُحفظ)، والزرُّ معطَّلٌ حتى تُملأ الحقولُ المطلوبة وتُؤشَّر.
  */
 const EMPTY: PartnerApplicationFields = { channelUrl: "", contentType: "", platforms: "", followersRange: "", country: "", contentLanguage: "", reason: "" };
@@ -91,7 +93,7 @@ function Requirements({ x, plus }: { x: boolean; plus: boolean }) {
   );
 }
 
-export function PartnersTab({ q, form, setForm }: { q: UseQueryResult<MyPartnerPayload>; form: boolean; setForm: (v: boolean) => void }) {
+export function PartnersTab({ q, form, setForm, toast }: { q: UseQueryResult<MyPartnerPayload>; form: boolean; setForm: (v: boolean) => void; toast: React.RefObject<ToastHostRef | null> }) {
   const { t, tokens } = useApp();
   const d = q.data;
   const [f, setF] = useState<PartnerApplicationFields>(EMPTY);
@@ -122,8 +124,24 @@ export function PartnersTab({ q, form, setForm }: { q: UseQueryResult<MyPartnerP
       </>
     );
   }
-  /* الموافَقُ عليه: لوحتُه في الويب إلى الدفعة ٢ — `InvitesScreen` يفتحها ولا يرسم هذا المكوّن له */
-  if (d.status === "approved") return null;
+  /* الموافَقُ عليه: لوحتُه (D-1362). `dashboard` غائبٌ = خادمٌ أقدمُ من هذه النسخة (دقائقُ النشر) أو موافَقٌ بلا كود — يُعاد السؤال */
+  if (d.status === "approved") {
+    return d.dashboard ? (
+      <PartnerDashboard
+        d={d.dashboard}
+        xDone={d.requirements.x}
+        refetch={q.refetch}
+        toast={toast}
+        disclosure={(label, children) => <Disclosure label={label}>{children}</Disclosure>}
+        terms={<TermsCard />}
+      />
+    ) : (
+      <View style={{ alignItems: "center", gap: 12, paddingTop: 48 }}>
+        <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
+        <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
+      </View>
+    );
+  }
 
   const eligible = d.requirements.x && d.requirements.plus;
   const dict = t as unknown as Record<string, unknown>;

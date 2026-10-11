@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Clipboard, Pressable, Share, StyleSheet, View } from "react-native";
+import React, { useCallback, useRef, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +13,7 @@ import { IdentityBadges } from "../IdentityBadges";
 import { openProfile } from "../member/open";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, RowsSkeleton } from "./ui";
-import { useOpenWeb } from "./api";
+import { LinkCard } from "./LinkCard";
 import { displayNameOf } from "@/core/people";
 import { timeAgo } from "@/core/when";
 import { PartnersTab } from "./PartnersTab";
@@ -28,7 +28,8 @@ import type { MyInvite, MyInvitesPayload, MyPartnerPayload } from "@/core/contra
  *  - 🆕 D-1361 (C7 · الدفعة ١) — **الحبّتان رجعتا** (نموذجُه الأصليّ): رُفع إيقافُ الشركاء («الشركاء الآن»)، فصار التبويبان أصليَّين
  *    (`PartnersTab`) — نقضٌ معلَنٌ لـ«1 أ» في C4 (بلا حبّتين: كانت إحداهما ستخرج إلى الويب). والبطاقةُ السفليّة «اعرف أكثر»
  *    تبدّل إلى الحبّة الثانية.
- *  - ⚖️ **الشريكُ الموافَقُ عليه تُفتح له لوحةُ الويب** من الحبّة والبطاقة — إلى الدفعة ٢ (الأرباحُ · بياناتُ التحويل · الهويّة).
+ *  - 🆕 D-1362 (C7 · الدفعة ٢) — **ولوحةُ الشريك الموافَق عليه أصليّة** (`PartnerDashboard`): الحبّةُ والبطاقةُ تبويبٌ للجميع، ولا
+ *    بابَ ويبٍ في هذه الشاشة بعدها. وبطاقةُ الرابط خرجت إلى `LinkCard` (قارئان: رابطُ الدعوة ورابطُ الشريك).
  *  - **«عرض الكل» يمدّ القائمةَ في مكانها** (الويبُ يعيد تحميلَ الصفحة بـ`?all=1`)، و«الشروط» تنفتح وتنطوي في مكانها.
  *  - **النسخُ والمشاركةُ فعلان** (حجّةُ `InviteLinkCard`): المشاركةُ ورقةُ النظام، والنسخُ حافظة.
  *  - الأرقامُ لاتينيّةٌ كالويب (`num` → `en-US`)؛ والنصوصُ كما في القاموس.
@@ -37,7 +38,6 @@ const STEPS = 5;
 const FIRST = 6;
 export const myInvitesKey = ["me:invites"] as const;
 export const myPartnerKey = ["me:partner"] as const;
-const WEB_PARTNERS = "/profile/settings/invites?tab=partners";
 
 function Card({ children, style }: { children: React.ReactNode; style?: object }) {
   const { tokens } = useApp();
@@ -46,18 +46,16 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 
 export function InvitesScreen() {
   const { t, tokens } = useApp();
-  const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
   const [tab, setTab] = useState<"friends" | "partners">("friends");
   /* نموذجُ التقديم مفتوحٌ بيد صاحبه (تقديمٌ أوّل · تعديل) — هنا لا في التبويب كي يُغلقه رجوعُ الشاشة قبل أن يغادرها */
   const [form, setForm] = useState(false);
-  /* حالُ الشريك تُقرأ مع الشاشة لا مع الحبّة: الحبّةُ تعرف لحظةَ الضغط أهي تبويبٌ أم بابُ لوحة */
+  /* حالُ الشريك تُقرأ مع الشاشة لا مع الحبّة: التبويبُ يُفتح على وجهه لا على هيكل */
   const partner = useQuery({
     queryKey: myPartnerKey,
     queryFn: async () => (await api<MyPartnerPayload>("/api/v1/me/partner")).data,
     staleTime: 60_000,
   });
-  const approved = partner.data?.status === "approved";
   /* العودةُ إلى الشاشة تسأل عن الحال من جديد (من الظهور الثاني): شرطا التقديم يُستكملان خارجها — توثيقُ X في شاشته، وبلس في
      صفحته — ومن عاد وقد استوفى أحدَهما يجب أن يراه مستوفى لا بعد دقيقة (`staleTime`) */
   const seen = useRef(false);
@@ -73,17 +71,8 @@ export function InvitesScreen() {
   );
   const goPartners = () => {
     haptic.pick();
-    if (approved) return openWeb(WEB_PARTNERS);
     setTab("partners");
   };
-  /* من ضغط الحبّةَ قبل أن تصل حالُه ثمّ تبيّن أنّه شريك: لوحتُه في الويب، والشاشةُ تعود إلى «الأصدقاء» تحتها */
-  const openRef = useRef(openWeb);
-  openRef.current = openWeb;
-  useEffect(() => {
-    if (tab !== "partners" || !approved) return;
-    setTab("friends");
-    openRef.current(WEB_PARTNERS);
-  }, [tab, approved]);
   const pills: ["friends" | "partners", string][] = [
     ["friends", t.invTabFriends],
     ["partners", t.invTabPartners],
@@ -101,7 +90,7 @@ export function InvitesScreen() {
           );
         })}
       </View>
-      {tab === "friends" ? <FriendsTab toast={toast} onPartners={goPartners} /> : <PartnersTab q={partner} form={form} setForm={setForm} />}
+      {tab === "friends" ? <FriendsTab toast={toast} onPartners={goPartners} /> : <PartnersTab q={partner} form={form} setForm={setForm} toast={toast} />}
     </SettingsScreen>
   );
 }
@@ -140,18 +129,6 @@ function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef
   const toward = d.stats.qualified % STEPS;
   const url = d.url;
   const shown = all ? d.items : d.items.slice(0, FIRST);
-  const copy = () => {
-    if (!url) return;
-    haptic.pick();
-    Clipboard.setString(url);
-    toast.current?.say(t.linkCopied, undefined, undefined, "success");
-  };
-  const share = () => {
-    if (!url) return;
-    haptic.pick();
-    /* إغلاقُ ورقة النظام ليس خطأً — لا يُتبع بنسخٍ لم يُطلب (حجّةُ `InviteLinkCard`) */
-    void Share.share({ message: url, url }).catch(() => {});
-  };
   const statusOf = (s: MyInvite["status"]): { label: string; bg: string; fg: string } =>
     s === "qualified" || s === "subscribed"
       ? { label: s === "qualified" ? t.invStQualified : t.invStSubscribed, bg: `${tokens.success}26`, fg: tokens.success }
@@ -207,19 +184,7 @@ function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef
       <View style={{ gap: 10 }}>
         <Text size={12} weight="600" muted style={{ paddingHorizontal: 4, marginBottom: -4 }}>{t.invYourLink}</Text>
         {url ? (
-          <>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, borderRadius: radius.md, backgroundColor: tokens.surface, padding: 8 }}>
-              {/* الرابطُ لاتينيٌّ يُقرأ من اليسار في اللغتين، وزرُّ النسخ بعده */}
-              <Text size={14} numberOfLines={1} style={{ flex: 1, minWidth: 0, paddingHorizontal: 8 }}>{url.replace(/^https?:\/\//, "")}</Text>
-              <Pressable onPress={copy} accessibilityRole="button" accessibilityLabel={t.invCopy} hitSlop={6} style={({ pressed }) => ({ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-                <Icon name="copy" size={16} color={tokens.fg} />
-              </Pressable>
-            </View>
-            <Pressable onPress={share} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: radius.md, backgroundColor: tokens.accent, paddingVertical: 14, opacity: pressed ? 0.8 : 1 })}>
-              <Icon name="share" size={16} color={tokens.onAccent} />
-              <Text size={15} weight="700" color={tokens.onAccent}>{t.invShare}</Text>
-            </Pressable>
-          </>
+          <LinkCard url={url} toast={toast} />
         ) : (
           /* بلا كودٍ (عطلُ قاعدةٍ عارض): لا بطاقةَ ميتةً — الزيارةُ التاليةُ تولّده */
           <Card style={{ padding: 14 }}><Text size={12} muted>{t.invEmpty}</Text></Card>
@@ -305,7 +270,7 @@ function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef
         {terms ? <Card style={{ padding: 14 }}><Text size={14} muted style={{ lineHeight: 22 }}>{t.invFinePrint}</Text></Card> : null}
       </View>
 
-      {/* بابُ الشركاء من تبويب الأصدقاء — «اعرف أكثر» كنموذجه: يبدّل إلى الحبّة الثانية (ولوحةُ الشريك القائم في الويب) */}
+      {/* بابُ الشركاء من تبويب الأصدقاء — «اعرف أكثر» كنموذجه: يبدّل إلى الحبّة الثانية */}
       <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }}>
         <Icon name="people" size={22} color={tokens.accent} />
         <View style={{ flex: 1, minWidth: 0 }}>

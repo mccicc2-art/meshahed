@@ -114,7 +114,36 @@ export type MyPartnerPayload = {
   /** للرسم وحدَه — الحارسُ في جسم `apply_partner` (D-855) */
   requirements: { x: boolean; plus: boolean };
   application: PartnerApplicationFields | null;
+  /** 🆕 D-1362 — لوحةُ الموافَق عليه؛ `null` لغيره */
+  dashboard: PartnerDashboard | null;
 };
+/** طلبُ تحويلٍ كما يراه صاحبُه (`my_payout_requests`) */
+export type PartnerPayout = {
+  id: string;
+  amount: number;
+  status: "pending" | "approved" | "paid" | "rejected";
+  requested_at: string | null;
+  note: string | null;
+};
+/**
+ * 🆕 D-1362 — **لوحةُ الشريك**: ما تقرؤه لوحةُ الويب حرفاً. `available` من `partner_balance` (صفرٌ بالواقع حتى يُفتح الدفع، D-901)،
+ * و`pending` مجموعُ الطلبات المعلّقة والموافَق عليها. **`id_uploaded` علمٌ لا مسار**: مسارُ الوثيقة لا يغادر الخادم.
+ */
+export type PartnerDashboard = {
+  url: string;
+  clicks: number;
+  joined: number;
+  available: number;
+  pending: number;
+  has_pending_payout: boolean;
+  payouts: PartnerPayout[];
+  details: { iban: string; bank_name: string; account_name: string; phone: string; id_uploaded: boolean };
+};
+/** `POST /api/v1/me/partner/details` — حقولُ `savePartnerDetails` */
+export type PartnerDetailsBody = { iban: string; bankName: string; accountName: string; phone: string };
+/** `POST /api/v1/me/partner/id` — يعيد رابطَ رفعٍ موقَّعاً؛ و`…/id/confirm` يثبّت المسار بعد وصول الملفّ */
+export type PartnerIdStartBody = { type: string; size: number };
+export type PartnerIdStartPayload = { upload_url: string; path: string };
 /** `POST /api/v1/me/partner/apply` — حقولُ الطلب و**الموافقةُ على الشروط شرط** (كما في نموذج الويب) */
 export type PartnerApplyBody = PartnerApplicationFields & { terms: boolean };
 
