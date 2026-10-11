@@ -80,7 +80,7 @@ export function SettingsIndexScreen() {
         <Row icon="edit" title={t.setEditProfile} onPress={() => go("profile")} />
         <Row icon="person-check" title={t.setAccount} onPress={() => go("account")} />
         <Row icon="card" title={t.setBilling} value={s?.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
-        <Row icon="share" title={t.setInvites} onPress={() => openWeb("/profile/settings/invites")} busy={openWeb.busy === "/profile/settings/invites"} />
+        <Row icon="share" title={t.setInvites} onPress={() => go("invites")} />
       </Group>
 
       <Group label={t.setGroupPersonalize}>

@@ -8,6 +8,7 @@ import { NotificationsScreen, HelpScreen, AboutScreen, AccountScreen } from "../
 import { ProfileScreen } from "../../src/settings/ProfileScreen";
 import { VerifyScreen } from "../../src/settings/VerifyScreen";
 import { CustomizeScreen } from "../../src/settings/CustomizeScreen";
+import { InvitesScreen } from "../../src/settings/InvitesScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -26,6 +27,8 @@ const SCREENS = {
   verify: VerifyScreen,
   /* 🆕 D-1112 — «الرئيسيّة والملفّ» صارت أصليّة */
   home: CustomizeScreen,
+  /* 🆕 D-1360 (V-C · C4) — «الدعوات والمكافآت»: تبويبُ الأصدقاء أصليّ؛ الشركاءُ بابٌ ويبيٌّ من داخله */
+  invites: InvitesScreen,
 } as const;
 
 export default function SettingsSection() {

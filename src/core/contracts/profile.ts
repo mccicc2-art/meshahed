@@ -77,6 +77,23 @@ export type MyActivityPayload = { items: ProfileActivity[] };
 export type MyRating = { kind: "tv" | "movie"; id: number; title: string | null; poster_path: string | null; rating: number; review: string | null };
 export type MyRatingsPayload = { items: MyRating[] };
 
+/**
+ * 🆕 D-1360 (V-C · C4) — `GET /api/v1/me/invites`: تبويبُ «دعوة الأصدقاء» كما ترسمه `/profile/settings/invites`.
+ * `person` **فارغٌ لمن أخفى اسمَه** (الخادمُ يحجبه — لا يصل الجهازَ ما لا يُرسم)، ولحسابٍ حُذف.
+ */
+export type MyInvite = {
+  id: string;
+  person: { nickname: string | null; username: string | null; avatar_url: string | null; verified: boolean } | null;
+  joined_at: string;
+  status: "joined" | "in_progress" | "qualified" | "subscribed" | "rejected";
+};
+export type MyInvitesPayload = {
+  /** رابطُ الدعوة كاملاً (`siteUrl`) — أو `null` إن تعذّر توليدُ الكود (الزيارةُ التاليةُ تولّده) */
+  url: string | null;
+  stats: { joined: number; qualified: number; subscribed: number; reward_days: number };
+  items: MyInvite[];
+};
+
 export type ProfilePayload = {
   /** 🆕 N1 — `density` **حجمُ ملصقات القارئ** (تفضيلُ ملفّه هو) لا صاحبِ الملفّ — قرارُ أحمد ٢٩ سبتمبر */
   viewer: { signed_in: boolean; is_me: boolean; density: Density };

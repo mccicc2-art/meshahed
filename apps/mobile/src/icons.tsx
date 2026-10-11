@@ -87,6 +87,8 @@ const ICONS = {
   /* D-1106 — تعديلُ الملفّ أصليّاً: الصورةُ وحذفُها، من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */
   image: require("../assets/icons/image.png"),
   trash: require("../assets/icons/trash.png"),
+  /* 🆕 D-1360 — «نسخ» (رابطُ الدعوة): مسارُ الويب نفسُه (`Icon.tsx` → `copy`) مرسوماً ٧٢px بسماكة ١٫٧ كأخواته */
+  copy: require("../assets/icons/copy.png"),
   /* 🆕 D-1134 — مبدّلُ العرض في الرئيسيّة كالويب (`HomeViewSwitch`: `grid` ⇄ `list`)، cairosvg · ٧٢px · أبيض،
      خطٌّ ٢ كما يمرّره الويب */
   grid: require("../assets/icons/grid.png"),
