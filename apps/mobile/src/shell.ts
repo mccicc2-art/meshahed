@@ -62,6 +62,8 @@ export type SignInResult = { ok: true; access: string } | { ok: false; cancelled
 export type SignInProvider = "google" | "apple";
 type Signer = (provider?: SignInProvider, onReturn?: () => void) => Promise<SignInResult>;
 let signer: Signer | null = null;
+/* 🆕 D-1371 — من يرفع شاشةَ الدخول الأصليّة (`WebLayer.showSignIn`) — تناديه شاشةُ الخروج حين يكتمل رسمُها */
+let raiser: ((why: string) => void) | null = null;
 /* 🆕 D-1347 — من يرفع الترحيبَ الأصليّ (`WebLayer.showWelcome`) ما دام مركَّباً */
 let welcomer: (() => void) | null = null;
 const ARRIVAL_TIMEOUT_MS = 4000;
@@ -95,6 +97,19 @@ export const shell = {
   },
   attachWelcome(fn: (() => void) | null) {
     welcomer = fn;
+  },
+  attachRaise(fn: ((why: string) => void) | null) {
+    raiser = fn;
+  },
+  /**
+   * 🆕 D-1371 — **شاشةُ الخروج مرفوعة** (`app/signing-out.tsx`): أحداثُ المتصفّح (عنوانُ الخروج · صفحةُ الدخول · إعلانُ العتبة)
+   * تمسح الجلسةَ كما كانت **ولا ترفع شاشةَ الدخول** — ترفعها `leaveDone` حين يكتمل رسمُ الشعار.
+   */
+  leaveHold: false,
+  leaveDone() {
+    if (!shell.leaveHold) return;
+    shell.leaveHold = false;
+    raiser?.("signout");
   },
   /**
    * 🆕 D-1347 — ارفع الترحيبَ الأصليّ. العلامةُ (`session.setWelcomePending`) ترفعه **عند تبدّلها وحدَه**؛ من يعرف أنّ

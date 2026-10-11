@@ -627,9 +627,12 @@ export function WebLayer() {
          كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
       /* 🔴 D-1346 — **إلّا شاشةَ الدخول**: هذا السطرُ يجري مع كلِّ حدثِ تنقّلٍ على العنوانين، والحدثُ الثاني كان يُنزل
          الشاشةَ التي رفعها الأوّل. الشاشاتُ الأخرى تُنزَل كما كانت (جلسةٌ شاخت تحت شاشةٍ أصليّة). */
-      if (!signInUp() && router.canDismiss()) router.dismissAll();
-      /* 🆕 D-1344 — وصفحةُ دخول الويب لا تُرى: فوقها شاشةُ الدخول الأصليّة (خروجٌ · حذفُ حساب · جلسةٌ شاخت) */
-      showSignIn(outUrl ? "signout" : "login");
+      /* 🆕 D-1371 — شاشةُ الخروج مرفوعة ⇒ هي من ترفع شاشةَ الدخول حين يكتمل رسمُها (`shell.leaveDone`)؛ هنا المسحُ وحدَه */
+      if (!shell.leaveHold) {
+        if (!signInUp() && router.canDismiss()) router.dismissAll();
+        /* 🆕 D-1344 — وصفحةُ دخول الويب لا تُرى: فوقها شاشةُ الدخول الأصليّة (خروجٌ · حذفُ حساب · جلسةٌ شاخت) */
+        showSignIn(outUrl ? "signout" : "login");
+      }
     }
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
@@ -710,6 +713,10 @@ export function WebLayer() {
     shell.attachWelcome(showWelcome);
     return () => shell.attachWelcome(null);
   }, [showWelcome]);
+  useEffect(() => {
+    shell.attachRaise(showSignIn);
+    return () => shell.attachRaise(null);
+  }, [showSignIn]);
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
@@ -733,7 +740,7 @@ export function WebLayer() {
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
         /* 🆕 D-1344 — صفحةُ الهبوط ظهرت (زائرٌ، أو جلسةٌ شاخت والتطبيقُ يظنّها حيّة) ⇒ شاشةُ الدخول الأصليّة فوقها */
-        if (hostOk && msg.on === true && !handing.current && !rescuing.current) showSignIn("gate");
+        if (hostOk && msg.on === true && !handing.current && !rescuing.current && !shell.leaveHold) showSignIn("gate");
         /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّة) */
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });

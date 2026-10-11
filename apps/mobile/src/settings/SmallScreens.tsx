@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import { Sheet } from "../library/Sheet";
-import { shell } from "../shell";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { radius } from "../theme";
@@ -210,10 +209,10 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
       setError(e instanceof ApiError && e.error.code === "rate_limited" ? t.deleteAccountBusyGate : t.deleteAccountFailed);
       return;
     }
-    /* الحسابُ ذهب: لا شاشةَ من شاشاته تبقى فوق الغلاف، ثمّ الخروجُ بطريقه (انظر أعلى) */
-    if (router.canDismiss()) router.dismissAll();
-    else router.replace("/web");
-    shell.post("/auth/signout");
+    /* الحسابُ ذهب: الخروجُ بطريقه (انظر أعلى). 🆕 D-1371 — عبر شاشة الخروج؛ **والورقةُ تُغلق أوّلاً**: هي `Modal` يعلو كلَّ
+       شاشةٍ ما دامت شاشتُه مركَّبة، وشاشةُ الخروج تُدفع فوقها لا بدلَها */
+    onClose();
+    router.push("/signing-out");
   };
   return (
     <Sheet title={t.deleteAccountTitle} onClose={() => { if (!busy) onClose(); }}>

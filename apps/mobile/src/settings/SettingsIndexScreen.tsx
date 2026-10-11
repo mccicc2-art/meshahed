@@ -9,7 +9,6 @@ import type { HomePayload } from "../contracts";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { shell } from "../shell";
 import { haptic } from "../haptics";
 import { SettingsScreen, Group, Row, Chevron, RowsSkeleton } from "./ui";
 import { useSettings, useOpenWeb } from "./api";
@@ -107,10 +106,8 @@ export function SettingsIndexScreen() {
           danger
           onPress={() => {
             haptic.pick();
-            /* D-1156 — تُنزل الشاشاتُ أوّلاً ثمّ يُرسل الغلافُ الخروج (لا حقنَ في صفحةٍ منزوعة) */
-            if (router.canDismiss()) router.dismissAll();
-            else router.replace("/web");
-            shell.post("/auth/signout");
+            /* 🆕 D-1371 — شاشةُ الخروج تُدفع فوق هذه (فلا تنكشف الرئيسيّة)، وهي من يرسل الطلبَ ويرفع شاشةَ الدخول حين يكتمل رسمُها */
+            router.push("/signing-out");
           }}
         />
       </Group>
