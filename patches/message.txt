@@ -1,10 +1,9 @@
-[deploy] D-1356 — V-B: a crashed native screen shows «حاول مجدداً» and remounts; it no longer opens its web twin
+[deploy] D-1357 — V-C · C1: «تقييماتي» is a native screen in the app
 
-- ErrorBoundary: themed message + retry (remount by key); roots keep the system-back rule; pushed screens get «إغلاق»
-- second crash => next retry drops the saved query cache once (dropAfterCrash)
-- welcome keeps its web fallback until V-D (Ahmed's exception)
-- 20 route files: webPath/returnTo/onLeave removed
-- /api/v1/app/crash: messages + profile are named screens
+- GET /api/v1/me/ratings: what the web /ratings page draws (getMyRatings + localizeRows, cap 200)
+- app: RatingsScreen (two chips, «★ 9/10», review preview), pushed from the Home ratings section title and «All»
+- track/rate and track/unrate now return the me:ratings tag so the screen refreshes after a rating
+- web /ratings: «★ 9/10» instead of a star row that assumed a scale of 5
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
