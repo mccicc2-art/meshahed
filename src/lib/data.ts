@@ -2381,11 +2381,17 @@ export interface PartnerDetails {
 
 export async function getMyPartnerDetails(): Promise<PartnerDetails | null> {
   try {
-    if (!(await getUserId())) return null;
+    const uid = await getUserId();
+    if (!uid) return null;
     const supabase = await createClient();
+    /* 🔴 D-1363 — **«صفّي أنا» شرطٌ في الاستعلام لا في RLS وحدَها** (بلاغُ أحمد بلقطة ١١ أكتوبر: «جايه بيانات مشعل»).
+       كانت القراءةُ بلا `user_id` اتّكالاً على سياسة «صفُّ صاحبه» — **وللجدول سياسةٌ ثانية: الإداريُّ يقرأ الكلَّ ليصرف
+       التحويلات**. فإداريٌّ شريكٌ بلا صفٍّ كان يرى صفَّ غيره (والجدولُ فيه صفٌّ واحد)، و«احفظ» كانت ستكتب آيبانَ غيره
+       في صفّه. الخللُ من D-858 في لوحة الويب، وأظهرته لوحةُ التطبيق (D-1362) لأنّها تقرأ القارئَ نفسَه. */
     const { data } = await supabase
       .from("partner_details")
       .select("iban, bank_name, account_name, phone, id_file")
+      .eq("user_id", uid)
       .maybeSingle();
     return (data as PartnerDetails | null) ?? null;
   } catch {
