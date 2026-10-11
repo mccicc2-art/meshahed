@@ -1,8 +1,11 @@
-[deploy] D-1365 — a web page opened from Settings has no dock (Android)
+[deploy] D-1366 — V-C · C5 (a): «تقريرك» is a native screen in the app
 
-- Ahmed's report by recording («ليش الدوك يجي فيها موجود»), his choice «3 أ», then «نفذ»: Settings is a pushed screen without the dock, so a web page opened from it is its continuation, not one of the five roots. Overturns part of D-1012 (the dock under every web page)
-- WebLayer: `fromSettings` is read from shell.returnTo on every navigation and every time the layer appears; the gesture area stays reserved in the shell colour
-- Android only: system back always returns to Settings. On iOS /plus, the legal pages and /profile/edit carry no back control, so the dock is the only way out there — it stays until an exit is decided
+- GET /api/v1/me/report?p=&o= returns buildPeriodStats — the computation both /reports and /statistics draw from (one route for the report now and full statistics next); month by default; `plus` comes back as a flag (the lock is a display lock, as on the page)
+- POST /api/v1/me/report/repair → repairImpossibleDays (the «impossible day» card)
+- app: member/ReportScreen as route `reports` — period tabs (week · month · year), big time + days ring, opening sentence, bars, most watched, glance, taste, insight; numbers and sentences from core/statsFormat, the functions the page reads
+- non-subscriber: the lower part is drawn dimmed and clipped under a fade to the page colour with the price card (Ahmed «1 أ» — no blur module in the binary)
+- first use of react-native-svg in the app (ring, fade): both sit behind a small guard that falls back to plain views
+- the «تقاريرك» row in the stats screen pushes the native screen; «الإحصائيات الكاملة» is still a web door until part (b); «شارك تقريرك» comes in part (c)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
