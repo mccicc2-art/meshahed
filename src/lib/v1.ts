@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { getUser, getUserId } from "@/lib/data";
+import { headers } from "next/headers";
+import { getUser, getUserId, getOnboardInfo, type OnboardState } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { allow, retryAfter } from "@/core/ratelimit";
 import {
@@ -95,24 +96,55 @@ export function respond<T>(
  */
 const WELCOME_DONE = new Set<string>();
 const WELCOME_DONE_MAX = 20_000;
+/* 🆕 D-1354 — من خُتم له ولم يُسمَّ بعد: يكفي تطبيقاً قديماً (يُحكم له بالختم وحدَه) ولا يكفي غيرَه */
+const WELCOME_STAMPED = new Set<string>();
+
+/**
+ * 🆕 D-1354 — **هل يفهم السائلُ بوّابةَ «اسم المستخدم»؟** التطبيقُ الذي أخذ تحديثَها يقول ذلك بترويسة
+ * `x-loopz-gate: 2` (`apps/mobile/src/api.ts`). من لا يقولها — تطبيقٌ على تحديثٍ أقدم، أو بناءٌ أصليٌّ لا تصله
+ * التحديثاتُ بعد اليوم — لا يملك إلّا الترحيبَ بخطواته الخمس، **فيُحكم له بالختم وحدَه كما كان**: رفضُه هنا كان
+ * سيرفع ذلك الترحيبَ فوق مكتبةٍ قائمة (يضيف أعمالاً ويكتب حلقات). صفحاتُ الويب حارسُها `proxy.ts`.
+ */
+export const GATE_HEADER = "x-loopz-gate";
+export async function gateAware(): Promise<boolean> {
+  try {
+    return Number((await headers()).get(GATE_HEADER)) >= 2;
+  } catch {
+    return false;
+  }
+}
+
+/** حالُ البوّابة كما يفهمها هذا السائل — لـ`/me` و`/welcome` (التطبيقُ يقرّر بها أيرفع الترحيب) */
+export async function clientOnboard(): Promise<{ state: OnboardState; mode: "full" | "username" }> {
+  const [i, aware] = await Promise.all([getOnboardInfo(), gateAware()]);
+  if (!i) return { state: "unknown", mode: "full" };
+  if (!i.stamped) return { state: "pending", mode: "full" };
+  if (aware && !i.named) return { state: "pending", mode: "username" };
+  return { state: "done", mode: "full" };
+}
 
 async function welcomePending(): Promise<boolean> {
   try {
     const uid = await getUserId();
     if (!uid || WELCOME_DONE.has(uid)) return false;
+    const aware = await gateAware();
+    if (!aware && WELCOME_STAMPED.has(uid)) return false;
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select("onboarded_at")
+      .select("onboarded_at, username")
       .eq("id", uid)
       .maybeSingle();
     if (error || !data) return false;
-    if ((data as { onboarded_at: string | null }).onboarded_at) {
-      if (WELCOME_DONE.size >= WELCOME_DONE_MAX) WELCOME_DONE.clear();
-      WELCOME_DONE.add(uid);
-      return false;
+    const row = data as { onboarded_at: string | null; username: string | null };
+    const stamped = !!row.onboarded_at;
+    const named = !!(row.username ?? "").trim();
+    if (stamped) {
+      const set = named ? WELCOME_DONE : WELCOME_STAMPED;
+      if (set.size >= WELCOME_DONE_MAX) set.clear();
+      set.add(uid);
     }
-    return true;
+    return aware ? !(stamped && named) : !stamped;
   } catch {
     return false;
   }

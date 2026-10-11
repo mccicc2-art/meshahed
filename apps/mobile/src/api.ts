@@ -196,9 +196,18 @@ export async function write<T>(path: string, body: unknown): Promise<T> {
  * (D-946: لغةُ الويب تغلب لغةَ الجهاز) — فالمساراتُ التي تسقط إليها بلا كوكي
  * (`getLocale`) تعيد العنوانَ والعدَّ بلغة ما يراه المستخدم في الصفحة.
  */
+/**
+ * 🆕 D-1354 — **«أفهم بوّابةَ اسم المستخدم»**: الخادمُ يحبس عضواً قائماً بلا اسم مستخدم عند شاشة «هذا أنت» —
+ * **لمن يملك تلك الشاشةَ وحدَه**. تطبيقٌ على تحديثٍ أقدم لا يرسل هذه الترويسة فيُحكم له بالختم وحدَه كما كان
+ * (`lib/v1.ts` → `gateAware`)، وإلّا رُفع له الترحيبُ بخطواته الخمس فوق مكتبةٍ قائمة. كلُّ نداءٍ لـ`/api/v1` يحملها،
+ * ومنه النداءاتُ الخامُ برمز الدخول (`prime` · سؤالُ `/me` في شاشة الدخول). ووسمُ الـWebView توأمُها (`WebLayer`).
+ */
+export const GATE_HEADERS = { "X-Loopz-Gate": "2" } as const;
+
 async function baseHeaders(auth: boolean, path = ""): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     Accept: "application/json",
+    ...GATE_HEADERS,
     "Accept-Language": currentLocale(),
     /* D-986 — حزامٌ ثانٍ من جهة الهاتف: OkHttp يملك كاشاً قرصيّاً يحترم `max-age`، فقراءةٌ بعد
        كتابةٍ كانت تعود قديمة (تابع ثمّ يرتدّ). `no-cache` يجبره على سؤال الخادم كلَّ مرّة.

@@ -1,4 +1,4 @@
-import { queryClient } from "./api";
+import { GATE_HEADERS, queryClient } from "./api";
 import { CONFIG } from "./config";
 import { currentLocale } from "./i18n";
 
@@ -18,7 +18,7 @@ export function prime(access: string, path: string, key: readonly unknown[], cap
   const ctl = new AbortController();
   const got = (async () => {
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
-      headers: { Accept: "application/json", "Accept-Language": currentLocale(), Authorization: `Bearer ${access}`, "Cache-Control": "no-cache" },
+      headers: { Accept: "application/json", ...GATE_HEADERS, "Accept-Language": currentLocale(), Authorization: `Bearer ${access}`, "Cache-Control": "no-cache" },
       signal: ctl.signal,
     });
     const json = (await res.json().catch(() => null)) as { data?: unknown; error?: unknown } | null;

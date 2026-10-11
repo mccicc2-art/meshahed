@@ -11,6 +11,8 @@ import { cleanUsername, usernameIssue, USERNAME_MAX } from "@/core/username";
 import type {
   WelcomeFinishBody,
   WelcomeFinishPayload,
+  WelcomeIdentityBody,
+  WelcomeIdentityPayload,
   WelcomePayload,
   WelcomePeoplePayload,
   WelcomePerson,
@@ -340,6 +342,35 @@ export function WelcomeScreen() {
     }
   }, [pending, name, cleanHandle, photo, genres, chosen, progress, upTo, toFollow, leave, t]);
 
+  /**
+   * 🆕 D-1354 — **عضوٌ قائمٌ بلا اسم مستخدم** (`mode: "username"`؛ حكمُ أحمد ١١ أكتوبر: «أيّ شخص ما عنده يوزر إذا
+   * دخل اجبره يحطّ يوزر»، واختار خطوةَ «هذا أنت» كاملةً): تُعرض الخطوةُ الأولى وحدَها، وزرُّها يحفظ الهويّةَ وحدَها
+   * (`welcome/identity` — لا أعمالَ ولا ختم، مكتبتُه كما هي) ثمّ الخروجُ نفسُه إلى الرئيسيّة.
+   */
+  const nameOnly = data?.mode === "username";
+  const saveIdentity = useCallback(async () => {
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    let stay = false;
+    try {
+      const body: WelcomeIdentityBody = { nickname: name, username: cleanHandle, avatarUrl: photo };
+      const r = (await api<WelcomeIdentityPayload>("/api/v1/welcome/identity", { method: "POST", body })).data;
+      if (r.done) {
+        haptic.success();
+        stay = true;
+        await leave();
+        return;
+      }
+      if (r.reason === "failed") setError(t.obFinishFailed);
+      else setVerdict({ name: cleanHandle, state: r.reason });
+    } catch {
+      setError(t.obFinishFailed);
+    } finally {
+      if (!stay) setPending(false);
+    }
+  }, [pending, name, cleanHandle, photo, leave, t]);
+
   /* رجوعُ النظام: خطوةٌ إلى الخلف، ومن الأولى يخرج من التطبيق — لا شيءَ خلف البوّابة يُرجَع إليه */
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -381,7 +412,7 @@ export function WelcomeScreen() {
   }
 
   const title = step === ME ? t.obMeTitle : step === PICK ? t.obPickTitle : step === PROGRESS ? t.obProgressTitle : step === TASTE ? t.obGenresTitle : t.obPeopleTitle;
-  const hint = step === ME ? t.obMeHint : step === PICK ? t.obPickHint : step === PROGRESS ? t.obProgressHint : step === TASTE ? t.obGenresHint : t.obPeopleHint;
+  const hint = nameOnly ? t.obNameOnlyHint : step === ME ? t.obMeHint : step === PICK ? t.obPickHint : step === PROGRESS ? t.obProgressHint : step === TASTE ? t.obGenresHint : t.obPeopleHint;
   const nameColor = check === "free" ? tokens.success : check === "taken" || check === "reserved" || check === "short" ? tokens.error : tokens.muted;
   const nameLine =
     check === "free"
@@ -397,7 +428,9 @@ export function WelcomeScreen() {
               : t.obUserRule;
   const cta = pending
     ? t.obSaving
-    : step === PICK
+    : nameOnly
+      ? t.setSave
+      : step === PICK
       ? t.obPickedN(picked.size)
       : step === PEOPLE
         ? toFollow.size > 0
@@ -424,7 +457,7 @@ export function WelcomeScreen() {
         ) : null}
 
         <View style={{ alignItems: "center", marginBottom: space.xl }}>
-          <Text size={12} weight="700" color={tokens.accent}>{t.obStep(step, STEPS)}</Text>
+          {nameOnly ? null : <Text size={12} weight="700" color={tokens.accent}>{t.obStep(step, STEPS)}</Text>}
           <Text size={24} weight="800" style={{ textAlign: "center", marginTop: space.sm, lineHeight: 34 }}>{title}</Text>
           <Text size={14} muted style={{ textAlign: "center", marginTop: space.sm, lineHeight: 22 }}>{hint}</Text>
         </View>
@@ -593,7 +626,7 @@ export function WelcomeScreen() {
       {/* شريطُ الإجراء الثابت. الصفُّ الثاني: رجوعٌ (بعد الأولى) و«تخطّي» (في الاختياريّتين وحدَهما). الخطوتان المقفولتان
           بلا «تخطّي»، والأخيرةُ زرُّها نفسُه يقول «أكمل بدون متابعة». لا بابَ هنا يخرج من الترحيب. */}
       <View style={{ paddingHorizontal: PAD + 4, paddingTop: space.md, paddingBottom: Math.max(insets.bottom, space.lg) + space.sm, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}>
-        <Button label={cta} busy={pending} disabled={locked} onPress={() => (step < PEOPLE ? go(step + 1) : void finish())} style={{ minHeight: 52 }} />
+        <Button label={cta} busy={pending} disabled={locked} onPress={() => (nameOnly ? void saveIdentity() : step < PEOPLE ? go(step + 1) : void finish())} style={{ minHeight: 52 }} />
         {step > ME ? (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space.md }}>
             <Pressable onPress={() => go(step - 1)} disabled={pending} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.obBack} style={{ paddingHorizontal: space.md, paddingVertical: 4 }}>

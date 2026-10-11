@@ -272,21 +272,42 @@ export async function withIdentitiesOn<T>(rows: T[], idOf: (r: T) => string): Pr
  */
 export type OnboardState = "done" | "pending" | "unknown";
 
-export const getOnboardState = cache(async (): Promise<OnboardState> => {
+/**
+ * 🆕 D-1354 — **البوّابةُ شرطان لا واحد**: الختمُ (`stamped`) واسمُ المستخدم (`named`).
+ *
+ * حكمُ أحمد ١١ أكتوبر (بتسجيلٍ ضغط فيه اسمَ صديقٍ فلم يُفتح ملفُّه): «أيّ شخص ما عنده يوزر إذا دخل اجبره يحطّ
+ * يوزر». ٢٣ حساباً من ٤٠ بلا اسم مستخدم يومَها — أعضاءُ ما قبل D-1341 خُتموا بالتعبئة الأولى ولم يُسألوا عن اسم،
+ * والملفُّ لا يُفتح إلّا به. ينقض استثناءَ خطّة 11-U («لا يُجبر العضوُ القائم»).
+ *
+ * 🔑 **القراءةُ واحدةٌ والحكمُ عند السائل**: من يفهم الشرطَ الثاني (الويب · تطبيقٌ أخذ تحديثَه) يُحكم له بالاثنين؛
+ * تطبيقٌ قديمٌ لا يملك شاشةَ «اسم المستخدم وحدَه» يُحكم له بالختم وحدَه كما كان (`lib/v1.ts` · `proxy.ts`) —
+ * وإلّا رُفع له الترحيبُ بخطواته الخمس فوق مكتبةٍ قائمة. `null` = «لا أعرف» (خطأ · عمودٌ غائب) ⇒ يُفتح.
+ */
+export type OnboardInfo = { stamped: boolean; named: boolean };
+
+export const getOnboardInfo = cache(async (): Promise<OnboardInfo | null> => {
   try {
     const uid = await getUserId();
-    if (!uid) return "unknown";
+    if (!uid) return null;
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select("onboarded_at")
+      .select("onboarded_at, username")
       .eq("id", uid)
       .maybeSingle();
-    if (error || !data) return "unknown";
-    return (data as { onboarded_at: string | null }).onboarded_at ? "done" : "pending";
+    if (error || !data) return null;
+    const row = data as { onboarded_at: string | null; username: string | null };
+    return { stamped: !!row.onboarded_at, named: !!(row.username ?? "").trim() };
   } catch {
-    return "unknown";
+    return null;
   }
+});
+
+/** الحكمُ الكامل (الشرطان) — لصفحات الويب. مساراتُ `/api/v1` تسأل `clientOnboard` (حسب ما يفهمه السائل). */
+export const getOnboardState = cache(async (): Promise<OnboardState> => {
+  const i = await getOnboardInfo();
+  if (!i) return "unknown";
+  return i.stamped && i.named ? "done" : "pending";
 });
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */

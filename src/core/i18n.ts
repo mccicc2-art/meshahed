@@ -2390,6 +2390,8 @@ const ar = {
   /* 🆕 D-1341 — خطوةُ «هذا أنت» (القرارات ١٠ · ١٥): يرى اسمَه وصورتَه قبل أن يدخل بهما، ويختار اسمَ مستخدم */
   obMeTitle: "هذا أنت",
   obMeHint: "هذا اسمك وصورتك كما يراهما الناس — عدّلهما إن حبّيت، واختر اسم مستخدم.",
+  /* D-1354 — عضوٌ قائمٌ بلا اسم مستخدم: الخطوةُ وحدَها */
+  obNameOnlyHint: "اختر اسم مستخدم ليقدر الناس يفتحون ملفّك — وعدّل اسمك وصورتك إن حبّيت.",
   obUserRule: "أحرف إنجليزية صغيرة وأرقام و _ — من ٣ إلى ٢٤ حرفاً.",
   obUserChecking: "نتحقّق من الاسم…",
   obUserFree: (u: string) => `@${u} متاح ✓`,
@@ -4104,6 +4106,7 @@ const en: Dict = {
   obStep: (a: number, b: number) => `Step ${a} of ${b}`,
   obMeTitle: "This is you",
   obMeHint: "This is the name and photo people will see — change them if you like, and pick a username.",
+  obNameOnlyHint: "Pick a username so people can open your profile — and change your name and photo if you like.",
   obUserRule: "Lowercase letters, digits and _ — 3 to 24 characters.",
   obUserChecking: "Checking the name…",
   obUserFree: (u: string) => `@${u} is available ✓`,

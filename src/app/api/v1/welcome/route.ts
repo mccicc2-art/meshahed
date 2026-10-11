@@ -1,6 +1,6 @@
-import { getProfile, getOnboardState } from "@/lib/data";
+import { getProfile } from "@/lib/data";
 import { welcomeSeeds } from "@/lib/welcomeSeeds";
-import { handle, requireUser } from "@/lib/v1";
+import { handle, requireUser, clientOnboard } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { WelcomePayload } from "@/core/contracts/welcome";
 
@@ -16,7 +16,7 @@ export async function GET() {
     async () => {
       const auth = await requireUser();
       if (!auth.ok) return auth;
-      const [profile, state, seeds] = await Promise.all([getProfile(), getOnboardState(), welcomeSeeds()]);
+      const [profile, gate, seeds] = await Promise.all([getProfile(), clientOnboard(), welcomeSeeds()]);
       return ok({
         email: auth.user.email ?? null,
         nickname: profile?.nickname ?? "",
@@ -24,7 +24,9 @@ export async function GET() {
         avatar_url: profile?.avatar_url ?? null,
         genres: profile?.favorite_genres ?? [],
         seeds,
-        onboarded: state === "done",
+        onboarded: gate.state === "done",
+        /* 🆕 D-1354 — عضوٌ قائمٌ بلا اسم مستخدم: خطوةُ «هذا أنت» وحدَها ثمّ `welcome/identity` */
+        mode: gate.mode,
       });
     },
     { open: true },

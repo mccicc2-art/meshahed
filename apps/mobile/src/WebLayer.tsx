@@ -931,7 +931,9 @@ export function WebLayer() {
           ref={ref}
           source={source}
           style={{ flex: 1, backgroundColor: SHELL_BG }}
-          applicationNameForUserAgent={`LoopzApp/${APP_VERSION}`}
+          /* 🆕 D-1354 — `LoopzGate/2`: «هذا الغلافُ يملك شاشةَ اسم المستخدم» — حارسُ الويب (`proxy.ts`) لا يحوّل إلى
+             `/welcome` عضواً قائماً بلا اسم مستخدم إلّا لمن يقولها؛ غلافٌ أقدمُ كان سيرفع الترحيبَ بخطواته الخمس */
+          applicationNameForUserAgent={`LoopzApp/${APP_VERSION} LoopzGate/2`}
           injectedJavaScriptBeforeContentLoaded={CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
           injectedJavaScript={CAPABILITIES_LATE}

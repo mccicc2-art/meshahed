@@ -79,6 +79,7 @@ export function Onboarding({
   avatarUrl,
   username,
   emptyHint,
+  nameOnly = false,
 }: {
   locale: Locale;
   /** مجلّدُ صاحب الصورة في المخزن (`avatars/<id>/…`) */
@@ -89,6 +90,11 @@ export function Onboarding({
   avatarUrl: string | null;
   username: string;
   emptyHint: string;
+  /**
+   * 🆕 D-1354 — **عضوٌ قائمٌ بلا اسم مستخدم** (حكمُ أحمد ١١ أكتوبر: «أيّ شخص ما عنده يوزر إذا دخل اجبره يحطّ
+   * يوزر»، واختار أن يرى خطوةَ «هذا أنت» كاملةً): الخطوةُ الأولى وحدَها ثمّ الحفظ — لا أعمالَ ولا ختم، مكتبتُه كما هي.
+   */
+  nameOnly?: boolean;
 }) {
   const t = getDict(locale);
 
@@ -225,6 +231,33 @@ export function Onboarding({
     go(step + 1);
   }
 
+  /** D-1354 — حفظُ الهويّة وحدَها: الأنواعُ تُعاد كما جاءت (`updateProfile` يكتبها في كلِّ حفظ) */
+  function saveIdentity() {
+    setError(null);
+    start(async () => {
+      const id = await saveWelcomeIdentity({
+        nickname: name,
+        username: cleanHandle,
+        avatarUrl: photo,
+        favoriteGenres: initialGenres,
+      }).catch(() => ({ ok: false as const, reason: "failed" as const }));
+      if (!id.ok) {
+        if (id.reason === "failed") setError(t.obFinishFailed);
+        else setVerdict({ name: cleanHandle, state: id.reason });
+        return;
+      }
+      try {
+        (window as unknown as { ReactNativeWebView?: { postMessage: (m: string) => void } }).ReactNativeWebView?.postMessage(
+          JSON.stringify({ type: "welcome", done: true }),
+        );
+      } catch {
+        /* خارج الغلاف — لا شيء */
+      }
+      /* تحميلُ مستند: الحارسُ في `proxy` يقرأ الاسمَ الجديد */
+      window.location.replace("/");
+    });
+  }
+
   function finish() {
     setError(null);
     start(async () => {
@@ -315,7 +348,7 @@ export function Onboarding({
   return (
     <div className="max-w-2xl mx-auto pb-32">
       <header className="text-center mb-6">
-        <p className="text-xs font-bold text-accent">{t.obStep(step, STEPS)}</p>
+        {nameOnly ? null : <p className="text-xs font-bold text-accent">{t.obStep(step, STEPS)}</p>}
         <h1 className="text-2xl font-extrabold mt-2">
           {step === ME
             ? t.obMeTitle
@@ -328,7 +361,9 @@ export function Onboarding({
                   : t.obPeopleTitle}
         </h1>
         <p className="text-sm text-muted mt-2 leading-relaxed">
-          {step === ME
+          {nameOnly
+            ? t.obNameOnlyHint
+            : step === ME
             ? t.obMeHint
             : step === PICK
               ? t.obPickHint
@@ -637,12 +672,14 @@ export function Onboarding({
               (step === ME && (!cleanHandle || !handleOk)) ||
               (step === PICK && picked.size === 0)
             }
-            onClick={() => (step < PEOPLE ? go(step + 1) : finish())}
+            onClick={() => (nameOnly ? saveIdentity() : step < PEOPLE ? go(step + 1) : finish())}
             className={buttonClass({ size: "lg", full: true })}
           >
             {pending
               ? t.obSaving
-              : step === PICK
+              : nameOnly
+                ? t.setSave
+                : step === PICK
                 ? t.obPickedN(picked.size)
                 : step === PEOPLE
                   ? toFollow.size > 0

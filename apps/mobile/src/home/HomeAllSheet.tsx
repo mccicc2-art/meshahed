@@ -76,7 +76,12 @@ export function HomeAllSheet({
   const [mode, setMode] = useState<"grid" | "reorder">("grid");
   const [who, setWho] = useState<HomeFriendCard | null>(null);
   const s = d.sections;
-  const cell = Math.floor((width - SHEET_PAD * 2 - GAP * 2) / 3);
+  /* 🔴 D-1354 — **عرضُ الشبكة يُقاس ولا يُفترض** (تسجيلُ أحمد ١١ أكتوبر: «العرض فيه فلمين، ابغاه ثلاثة ما يكون فيه
+     مكان فاضي»). كان يُحسب من عرض الشاشة ناقصَ حشوة الورقة — وللورقة إطارٌ بكسلٌ من كلِّ جهة، فزاد مجموعُ ثلاثة
+     ملصقاتٍ على المتاح ببكسلٍ واحد (٣٧٨ من ٣٧٧ على شاشته) ونزل الثالثُ إلى السطر التالي. التقديرُ الأوّلُ يطرح
+     الإطار، والقياسُ (`onLayout`) يصحّحه إن اختلف. */
+  const [boxW, setBoxW] = useState(width - SHEET_PAD * 2 - 2);
+  const cell = Math.floor((boxW - GAP * 2) / 3);
   const posterH = Math.round(cell * 1.5);
   /* صفّان وإطلالةُ الثالث — وعلى شاشةٍ قصيرةٍ لا تتجاوز الورقةُ ثلثَي الارتفاع */
   const rowH = posterH + (section === "friends" ? WHO_H : 0);
@@ -174,7 +179,15 @@ export function HomeAllSheet({
               </Pressable>
             ) : null}
           </View>
-          <ScrollView style={{ maxHeight: bodyMax }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          <ScrollView
+            style={{ maxHeight: bodyMax }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 8 }}
+            onLayout={(e) => {
+              const w = Math.floor(e.nativeEvent.layout.width);
+              if (w > 0 && w !== boxW) setBoxW(w);
+            }}
+          >
             {posters ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
                 {posters.map((p) => (

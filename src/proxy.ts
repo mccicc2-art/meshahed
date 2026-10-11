@@ -119,6 +119,21 @@ const BLOCKED_UA =
 const OB_READ_TIMEOUT_MS = 2500;
 const OB_DONE = new Set<string>();
 const OB_DONE_MAX = 20_000;
+/* 🆕 D-1354 — خُتم له ولم يُسمَّ: يكفي غلافاً قديماً (يُحكم له بالختم وحدَه) ولا يكفي غيرَه */
+const OB_STAMPED = new Set<string>();
+
+/**
+ * 🆕 D-1354 — **اسمُ المستخدم شرطٌ ثانٍ في البوّابة** (حكمُ أحمد ١١ أكتوبر: «أيّ شخص ما عنده يوزر إذا دخل اجبره
+ * يحطّ يوزر» — `lib/data.ts` → `getOnboardInfo`). **والغلافُ القديمُ يُستثنى**: صفحةُ الويب داخل تطبيقٍ لم يأخذ
+ * التحديثَ لو حُوّلت إلى `/welcome` لرفع غلافُها الترحيبَ الأصليَّ بخطواته الخمس فوق مكتبةٍ قائمة. الغلافُ الذي
+ * يفهم الشرطَ يزيد على وسمه `LoopzGate/2` (`apps/mobile/src/WebLayer.tsx`)؛ ما سواه من داخل التطبيق يُحكم له
+ * بالختم وحدَه كما كان. المتصفّحُ (بلا وسم `LoopzApp/`) يُحكم له بالشرطين.
+ */
+function gateAware(ua: string): boolean {
+  if (!ua.includes("LoopzApp/")) return true;
+  const m = /LoopzGate\/(\d+)/.exec(ua);
+  return !!m && Number(m[1]) >= 2;
+}
 
 /**
  * ما يبقى مفتوحاً لمن دخل ولم يُتمّ: الترحيبُ نفسُه · الدخولُ والخروجُ و«بدّل الحساب» (`/auth/*`) ·
@@ -159,23 +174,24 @@ function sessionAccessToken(request: NextRequest): string | null {
   }
 }
 
-/** `done` أتمّ · `pending` لم يُتمّ · `unknown` لا يُعرف (يُفتح) */
-async function readOnboarded(sub: string, token: string): Promise<"done" | "pending" | "unknown"> {
+/** الشرطان كما في القاعدة — أو `null`: لا يُعرف (يُفتح) */
+async function readOnboarded(sub: string, token: string): Promise<{ stamped: boolean; named: boolean } | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return "unknown";
+  if (!url || !anonKey) return null;
   try {
-    const res = await fetch(`${url}/rest/v1/profiles?select=onboarded_at&id=eq.${encodeURIComponent(sub)}&limit=1`, {
+    const res = await fetch(`${url}/rest/v1/profiles?select=onboarded_at,username&id=eq.${encodeURIComponent(sub)}&limit=1`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${token}`, Accept: "application/json" },
       cache: "no-store",
       signal: AbortSignal.timeout(OB_READ_TIMEOUT_MS),
     });
-    if (!res.ok) return "unknown";
+    if (!res.ok) return null;
     const rows: unknown = await res.json();
-    if (!Array.isArray(rows) || rows.length !== 1) return "unknown";
-    return (rows[0] as { onboarded_at?: unknown }).onboarded_at ? "done" : "pending";
+    if (!Array.isArray(rows) || rows.length !== 1) return null;
+    const row = rows[0] as { onboarded_at?: unknown; username?: unknown };
+    return { stamped: !!row.onboarded_at, named: typeof row.username === "string" && !!row.username.trim() };
   } catch {
-    return "unknown";
+    return null;
   }
 }
 
@@ -190,18 +206,22 @@ async function welcomeGate(request: NextRequest, response: NextResponse): Promis
     if (!claims || (claims.exp !== null && claims.exp * 1000 <= Date.now())) return response;
 
     if (OB_DONE.has(claims.sub)) return response;
+    const aware = gateAware(request.headers.get("user-agent") ?? "");
+    if (!aware && OB_STAMPED.has(claims.sub)) return response;
 
-    const state = await readOnboarded(claims.sub, token);
-    if (state === "pending") {
+    const info = await readOnboarded(claims.sub, token);
+    if (!info) return response;
+    if (info.stamped) {
+      const set = info.named ? OB_DONE : OB_STAMPED;
+      if (set.size >= OB_DONE_MAX) set.clear();
+      set.add(claims.sub);
+    }
+    if (aware ? !(info.stamped && info.named) : !info.stamped) {
       const to = NextResponse.redirect(new URL("/welcome", request.url), { status: 307 });
       to.headers.set("cache-control", "private, no-store");
       // تجديدُ الجلسة الذي وقع في هذا الطلب يسافر مع التحويل — وإلّا ضاع الرمزُ المدوَّر
       for (const c of response.cookies.getAll()) to.cookies.set(c);
       return to;
-    }
-    if (state === "done") {
-      if (OB_DONE.size >= OB_DONE_MAX) OB_DONE.clear();
-      OB_DONE.add(claims.sub);
     }
     return response;
   } catch {

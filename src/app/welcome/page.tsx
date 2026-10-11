@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUser, getFollows, getProfile, getOnboardState } from "@/lib/data";
+import { getUser, getFollows, getProfile, getOnboardState, getOnboardInfo } from "@/lib/data";
 import { welcomeSeeds } from "@/lib/welcomeSeeds";
 import { getT } from "@/lib/locale";
 import { Onboarding } from "@/components/Onboarding";
@@ -20,7 +20,9 @@ export default async function WelcomePage() {
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const [follows, profile, state] = await Promise.all([getFollows(), getProfile(), getOnboardState()]);
+  const [follows, profile, state, info] = await Promise.all([getFollows(), getProfile(), getOnboardState(), getOnboardInfo()]);
+  /* 🆕 D-1354 — عضوٌ قائمٌ (مختوم) ينقصه اسمُ المستخدم وحدَه: خطوةُ «هذا أنت» وحدَها، لا الترحيبُ كلُّه */
+  const nameOnly = !!info && info.stamped && !info.named;
 
   /* من أتمّ لا يعود إليها — **ولو أفرغ مكتبتَه بعدها** (كان يُرمى فيها ثانيةً).
      `unknown` (الختمُ لم يُقرأ: خطأٌ أو شيفرةٌ سبقت هجرتَها) ⇒ الحكمُ القديمُ حرفاً، لا قفل. */
@@ -44,6 +46,7 @@ export default async function WelcomePage() {
         avatarUrl={profile?.avatar_url ?? null}
         username={profile?.username ?? ""}
         emptyHint={t.emptyStart}
+        nameOnly={nameOnly}
       />
     </div>
   );

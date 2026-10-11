@@ -1,8 +1,8 @@
 import { cookies, headers } from "next/headers";
-import { getProfile, getOnboardState } from "@/lib/data";
+import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { platformFromUA } from "@/core/platform";
-import { handle, requireUser } from "@/lib/v1";
+import { handle, requireUser, clientOnboard } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
 import { sanitizeFontSize } from "@/core/fontPrefs";
@@ -30,7 +30,8 @@ export async function GET() {
     const [p, welcome] = await Promise.all([
       getProfile(),
       /* 🆕 D-1341 — هل أتمّ الترحيب؟ التطبيقُ يسأل هنا عند الإقلاع ليعرف أيرفع الرئيسيّةَ الأصليّة أم يترك الويب */
-      getOnboardState(),
+      /* D-1354 — بما يفهمه السائل: تطبيقٌ قديمٌ يُحكم له بالختم وحدَه، فلا يُرفع له ترحيبٌ لا يملك شاشتَه */
+      clientOnboard().then((c) => c.state),
       (async () => {
         try {
           const supabase = await createClient();

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "../api";
+import { api, GATE_HEADERS } from "../api";
 import { APPLE_SIGN_IN } from "../auth";
 import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
@@ -219,7 +219,7 @@ export function SignInScreen() {
          `true` وحدَها تفتح الرئيسيّة: جوابٌ غائبٌ أو فاشلٌ يترك القرارَ للويب (حارسُه يعرف) لا يخمّنه. */
       let onboarded: boolean | null = null;
       try {
-        const res = await fetch(`${CONFIG.apiBase}/api/v1/me`, { headers: { Accept: "application/json", Authorization: `Bearer ${r.access}`, "Cache-Control": "no-cache" } });
+        const res = await fetch(`${CONFIG.apiBase}/api/v1/me`, { headers: { Accept: "application/json", ...GATE_HEADERS, Authorization: `Bearer ${r.access}`, "Cache-Control": "no-cache" } });
         const json = (await res.json().catch(() => null)) as { data?: { onboarded?: boolean } | null } | null;
         onboarded = typeof json?.data?.onboarded === "boolean" ? json.data.onboarded : null;
       } catch {

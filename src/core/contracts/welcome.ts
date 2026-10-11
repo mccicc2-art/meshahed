@@ -18,7 +18,15 @@ export type WelcomePayload = {
   seeds: WelcomeSeedItem[];
   /** أتمّ الترحيبَ من قبل (جهازٌ آخر): الشاشةُ تنصرف ولا تعرض خطوة */
   onboarded: boolean;
+  /**
+   * 🆕 D-1354 — `username`: عضوٌ قائمٌ (مكتبتُه وختمُه كما هما) ينقصه اسمُ المستخدم وحدَه — تُعرض خطوةُ «هذا أنت»
+   * وحدَها وتُحفظ بـ`welcome/identity`. اختياريّ: ردٌّ محفوظٌ من قبل لا يحمله (= `full`).
+   */
+  mode?: "full" | "username";
 };
+
+export type WelcomeIdentityBody = { nickname: string; username: string; avatarUrl: string | null };
+export type WelcomeIdentityPayload = { done: true } | { done: false; reason: "short" | "reserved" | "taken" | "failed" };
 
 export type WelcomeUsernamePayload = { state: "free" | "taken" | "reserved" | "short" | "unknown" };
 
