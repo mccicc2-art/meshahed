@@ -1,10 +1,8 @@
-[deploy] D-1362 — V-C · C7 (2/2): the partner dashboard is native in the app — earnings, payout details, ID document
+[deploy] D-1363 — partner payout details are read for the signed-in member only
 
-- GET /api/v1/me/partner now carries `dashboard` for an approved partner (link, clicks, joined, balance, payout requests, payout details; the ID file path never leaves the server — a flag only)
-- POST …/partner/details (savePartnerDetails) · POST …/partner/payout (requestPayout) — the web actions themselves; their reasons arrive by key (apiPartner* · apiPayout*)
-- POST …/partner/id returns a signed upload URL for one path in the member's own folder, POST …/partner/id/confirm writes it to partner_details after checking the object exists and removes the previous file — the file goes straight to storage as on the web (the 8MB limit and four types are the bucket's)
-- app: PartnerDashboard (setup block on top until complete, then folded behind «Transfer details»; earnings card; payout requests; partner link; four counters; commission; activity; terms); ID from Photos (always re-encoded to JPEG) or from Files (image or PDF)
-- the invites screen has no web door left: the pill and the card are a tab for everyone; the link card moved to LinkCard (two readers)
+- getMyPartnerDetails() filtered nothing and relied on RLS alone; the table also lets an admin read every row (to pay out), so an admin partner with no row of his own was shown another partner's IBAN, bank, holder, phone and «ID uploaded» flag — and «Save» would have written them into his own row
+- the gap dates from D-858 on the web partner page; the native dashboard (D-1362) reads the same reader and surfaced it
+- one line: .eq("user_id", uid). Server only — no app update needed
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
