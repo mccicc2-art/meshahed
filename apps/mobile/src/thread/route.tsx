@@ -1,5 +1,5 @@
 import React from "react";
-import { useRouter } from "expo-router";
+import type { useRouter } from "expo-router";
 import { ThreadScreen, type ThreadRoute } from "./ThreadScreen";
 import { ErrorBoundary } from "../ErrorBoundary";
 import type { NativeRoot } from "../shell";
@@ -9,21 +9,13 @@ export function originOf(from: string | undefined): NativeRoot | "web" {
   return from === "discover" || from === "search" || from === "home" || from === "community" || from === "library" ? from : "web";
 }
 
-function webPathOf(r: ThreadRoute): string {
-  if (r.t === "post") return `/post/${encodeURIComponent(r.key)}`;
-  if (r.t === "talk") return `/talk/${r.kind}/${r.id}`;
-  return `/review/${r.kind}/${r.id}/${r.user}`;
-}
-
 /**
- * الأبوابُ الثلاثة إلى شاشةٍ واحدة (Phase 11-M · M3) — **والبديلُ عند الانهيار صفحتُها الويبيّةُ نفسُها** (نهجُ
- * `title`/`list`، D-974/D-981): يُطوى المكدّسُ الأصليُّ حتى `/web` فيُرى البديل، والرجوعُ منه يعيد من فتح.
+ * الأبوابُ الثلاثة إلى شاشةٍ واحدة (Phase 11-M · M3). V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة.
  */
 export function ThreadRouteScreen({ route, from, compose = false }: { route: ThreadRoute; from: string | undefined; compose?: boolean }) {
-  const router = useRouter();
   const origin = originOf(from);
   return (
-    <ErrorBoundary screen="thread" webPath={webPathOf(route)} returnTo={origin === "web" ? undefined : origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
+    <ErrorBoundary screen="thread">
       <ThreadScreen route={route} from={origin} compose={compose} />
     </ErrorBoundary>
   );

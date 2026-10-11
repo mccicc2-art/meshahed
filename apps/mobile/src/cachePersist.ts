@@ -128,6 +128,21 @@ export function forgetCache() {
   dropFile();
 }
 
+/**
+ * 🆕 V-B (D-1356) — **شاشةٌ سقطت مرّتين: الحمولاتُ نفسُها مشتبهٌ بها** (`ErrorBoundary.retry`). الملفُّ يُحذف كي لا يعيدها
+ * الإقلاعُ القادم، والاستعلاماتُ تعود إلى أوّلها فتُجلب من جديد — وما يُجلب يُكتب ملفّاً جديداً كعادته.
+ * ⚖️ **`resetQueries` لا `forgetCache`**: `clear()` ينزع الاستعلاماتِ من تحت شاشاتٍ ما زالت مركَّبة (بقيّةُ التبويبات) فلا
+ * تُبلَّغ ولا تُجلب؛ ذاك طريقُ الخروج حيث لا شاشةَ تبقى. والصاحبُ (`owner`) لم يتبدّل فلا يُمسّ.
+ * ⚖️ **و«من أنا» خارجه**: ليس في الملفّ أصلاً، وتصفيرُه يرمش الثيمَ والترويسةَ في كلِّ شاشة.
+ */
+export function dropAfterCrash() {
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = null;
+  dirtySince = 0;
+  dropFile();
+  void queryClient.resetQueries({ predicate: (q) => q.queryKey[0] !== "user:me:profile" });
+}
+
 function writeNow() {
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = null;

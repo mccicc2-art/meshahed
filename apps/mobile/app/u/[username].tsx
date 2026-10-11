@@ -1,25 +1,19 @@
 import React from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ProfileScreen } from "../../src/member/ProfileScreen";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
 import { originOf } from "../../src/thread/route";
 
 /**
  * `/u/[username]` — ملفُّ الشخص أصليّاً (Phase 11-N · N1). يُدفع من كلِّ صورةِ شخصٍ واسمِه في التطبيق (`member/open.ts`) ومن
- * روابط `/u/…` في الويب (`from=web`). والحارسُ (D-974) يفتح الصفحةَ الويبيّةَ إن سقطت الشاشة.
+ * روابط `/u/…` في الويب (`from=web`). V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة.
  */
 export default function Member() {
-  const router = useRouter();
   const { username, from } = useLocalSearchParams<{ username: string; from?: string }>();
   const origin = originOf(from);
   const handle = String(username ?? "");
   return (
-    <ErrorBoundary
-      screen="profile"
-      webPath={`/u/${encodeURIComponent(handle)}`}
-      returnTo={origin === "web" ? undefined : origin}
-      onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}
-    >
+    <ErrorBoundary screen="profile">
       <ProfileScreen username={handle} from={origin} />
     </ErrorBoundary>
   );

@@ -1,14 +1,13 @@
 import React from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { SectionScreen } from "../src/discover/SectionScreen";
 import { ErrorBoundary } from "../src/ErrorBoundary";
 
-/** D-1046 — «الكلّ ←» شاشةٌ كاملة؛ بديلُها الويبيُّ عند الانهيار صفحةُ القسم نفسُها */
+/** D-1046 — «الكلّ ←» شاشةٌ كاملة. V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة */
 export default function Section() {
-  const router = useRouter();
-  const { title, query, path } = useLocalSearchParams<{ title: string; query: string; path?: string }>();
+  const { title, query } = useLocalSearchParams<{ title: string; query: string }>();
   return (
-    <ErrorBoundary screen="discover" webPath={String(path ?? "/news")} returnTo="discover" onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
+    <ErrorBoundary screen="discover">
       <SectionScreen title={String(title ?? "")} query={String(query ?? "")} />
     </ErrorBoundary>
   );

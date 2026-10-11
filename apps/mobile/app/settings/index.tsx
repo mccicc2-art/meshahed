@@ -1,13 +1,11 @@
 import React from "react";
-import { useRouter } from "expo-router";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
 import { SettingsIndexScreen } from "../../src/settings/SettingsIndexScreen";
 
-/** `/settings` — فهرسُ الإعدادات أصليّاً (Phase 11-I)؛ البديلُ عند الانهيار صفحتُه الويبيّة */
+/** `/settings` — فهرسُ الإعدادات أصليّاً (Phase 11-I). V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة */
 export default function Settings() {
-  const router = useRouter();
   return (
-    <ErrorBoundary screen="settings" webPath="/profile/settings" returnTo="home" onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
+    <ErrorBoundary screen="settings">
       <SettingsIndexScreen />
     </ErrorBoundary>
   );

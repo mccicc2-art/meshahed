@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ErrorBoundary } from "../../src/ErrorBoundary";
 import { AppearanceScreen } from "../../src/settings/AppearanceScreen";
 import { ContentScreen } from "../../src/settings/ContentScreen";
@@ -11,7 +11,7 @@ import { CustomizeScreen } from "../../src/settings/CustomizeScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
- * والرجوعُ يعني الرجوع). القسمُ المجهولُ يسقط إلى الويب على صفحته.
+ * والرجوعُ يعني الرجوع). V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة.
  */
 const SCREENS = {
   appearance: AppearanceScreen,
@@ -24,20 +24,16 @@ const SCREENS = {
   /* 🆕 Phase 11-I · I3 — تعديلُ الملفّ (D-1106) والتوثيقُ (D-1107) صارا أصليّين */
   profile: ProfileScreen,
   verify: VerifyScreen,
-  /* 🆕 D-1112 — «الرئيسيّة والملفّ» صارت أصليّة؛ الانهيارُ يسقط إلى `/profile/settings/home` */
+  /* 🆕 D-1112 — «الرئيسيّة والملفّ» صارت أصليّة */
   home: CustomizeScreen,
 } as const;
 
-/** صفحةُ الويب البديلة عند الانهيار — «تعديل الملف» مسارُه `/profile/edit` لا تحت `settings` */
-const WEB_OF: Partial<Record<keyof typeof SCREENS, string>> = { profile: "/profile/edit" };
-
 export default function SettingsSection() {
-  const router = useRouter();
   const { section } = useLocalSearchParams<{ section: string }>();
   const key = String(section) as keyof typeof SCREENS;
   const Screen = SCREENS[key] ?? AppearanceScreen;
   return (
-    <ErrorBoundary screen="settings" webPath={WEB_OF[key] ?? `/profile/settings/${String(section)}`} returnTo="home" onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
+    <ErrorBoundary screen="settings">
       <Screen />
     </ErrorBoundary>
   );

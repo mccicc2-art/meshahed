@@ -21,7 +21,9 @@ import { APP_UA_TAG } from "@/core/platform";
  */
 const MAX_MESSAGE = 600;
 /* الرئيسيّةُ والبحثُ والإعداداتُ أصليّةٌ منذ 11-G/H/I وكانت أعطالُها تُسجَّل «unknown» */
-const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings", "community", "thread", "welcome"]);
+/* 🆕 V-B (D-1356) — و`messages` و`profile`: الحارسُ يرسلهما منذ 11-M/N وكانا يُكتبان «unknown» — والسجلُّ صار يُقرأ يوميّاً
+   بعد أن لم يعد للشاشة الساقطة بديلٌ ويبيّ */
+const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings", "community", "thread", "welcome", "messages", "profile"]);
 
 export async function POST(req: NextRequest) {
   return handle(async () => {
