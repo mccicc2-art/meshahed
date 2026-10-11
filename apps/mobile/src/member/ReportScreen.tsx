@@ -28,8 +28,9 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *  - 🔑 **الأرقامُ والجملُ من `core/statsFormat`** — الدوالُّ التي تقرؤها الصفحة: لا صياغةَ ثانيةً لرقمٍ واحد.
  *  - ⚖️ **قفلُ غير المشترك تلاشٍ لا ضباب** (قرارُه «1 أ»): لا وحدةَ ضبابٍ في النسخة ولا بناءَ لأجلها. ما تحت الافتتاح يُرسم
  *    خافتاً مقصوصاً، وفوقه حجابٌ متدرّجٌ إلى لون الصفحة (`react-native-svg`، في النسخة) ثمّ بطاقةُ الثمن — نصوصُ `PlusPreview`.
- *  - ⚖️ **«الإحصائيات الكاملة» بابُ ويبٍ مؤقّت** (الدفعةُ ب تجعلها شاشة)، **و«شارك تقريرك» ليس هنا** (الدفعةُ ج): صفٌّ
- *    لا يعمل وعدٌ يُخلَف، فلا يُرسم قبل أن يعمل.
+ *  - 🆕 D-1367 (الدفعة ب) — **«الإحصائيات الكاملة» شاشةٌ أصليّة** (`FullStatsScreen`) تفتح على مدّة التقرير، والقطعُ المشتركةُ
+ *    (`PlusPill` · `PlusLock` · `SvgGuard` · `H2`) تُصدَّر من هنا لها. ⚖️ **«شارك تقريرك» ليس هنا بعد** (الدفعةُ ج): صفٌّ لا يعمل
+ *    وعدٌ يُخلَف، فلا يُرسم قبل أن يعمل.
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
@@ -122,7 +123,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
               {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
             </Text>
           ) : (
-            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onRepaired={() => void q.refetch()} />
+            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} onRepaired={() => void q.refetch()} />
           )}
         </ScrollView>
       )}
@@ -131,7 +132,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
 }
 
 /** `PlusPill` الويب: «PLUS» علامةٌ لا تُترجم، بلون التمييز على أرضيّته الشفيفة */
-function PlusPill() {
+export function PlusPill() {
   const { tokens } = useApp();
   return (
     <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: tokens.accent + "26" }}>
@@ -145,15 +146,17 @@ function ReportBody({
   plus,
   onTitle,
   onWeb,
+  onFull,
   onRepaired,
 }: {
   s: ReportStats;
   plus: boolean;
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onWeb: (path: string) => void;
+  onFull: (period: ReportPeriod) => void;
   onRepaired: () => void;
 }) {
-  const { t, tokens, locale } = useApp();
+  const { tokens, locale } = useApp();
   const en = locale === "en";
   const lead = reportLead(s, locale);
   const insight = s.taste.shift[0];
@@ -259,8 +262,8 @@ function ReportBody({
         </View>
       ) : null}
 
-      {/* بابُ «الإحصائيات الكاملة» — صفٌّ يُرى لا سطرٌ رماديٌّ في الذيل (D-805). صفحةُ ويبٍ إلى الدفعة ب */}
-      <Pressable onPress={() => { haptic.pick(); onWeb(`/statistics?p=${s.period}`); }} accessibilityRole="link" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, marginTop: 30, opacity: pressed ? 0.7 : 1 })}>
+      {/* بابُ «الإحصائيات الكاملة» — صفٌّ يُرى لا سطرٌ رماديٌّ في الذيل (D-805). 🆕 D-1367 — شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
+      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, marginTop: 30, opacity: pressed ? 0.7 : 1 })}>
         <Icon name="chart" size={18} color={tokens.accent} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text size={14} weight="700">{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
@@ -281,43 +284,55 @@ function ReportBody({
   return (
     <>
       {openPart}
-      <View style={{ marginTop: 24 }}>
-        {/* المعاينة: مقصوصةٌ خافتةٌ لا تُلمس ولا يقرؤها القارئُ الآليّ (`aria-hidden` في الصفحة) */}
-        <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ maxHeight: 330, overflow: "hidden", opacity: 0.7 }}>
-          {lockedPart}
-        </View>
-        {/* الحجابُ يضمن قراءةَ البطاقة مهما كان تحته (D-809): شفّافٌ ← لونُ الصفحة */}
-        <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-          <SvgGuard fallback={<View style={{ flex: 1, marginTop: 110, backgroundColor: tokens.bg, opacity: 0.94 }} />}>
-            <Svg width="100%" height="100%">
-              <Defs>
-                <LinearGradient id="lock" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={tokens.bg} stopOpacity={0} />
-                  <Stop offset="0.38" stopColor={tokens.bg} stopOpacity={0.8} />
-                  <Stop offset="0.72" stopColor={tokens.bg} stopOpacity={1} />
-                </LinearGradient>
-              </Defs>
-              <Rect x="0" y="0" width="100%" height="100%" fill="url(#lock)" />
-            </Svg>
-          </SvgGuard>
-        </View>
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
-          <Icon name="sparkle-star" size={26} color={tokens.accent} />
-          <Text size={15} weight="700" style={{ textAlign: "center" }}>{t.plusGateTitle}</Text>
-          <Text size={12} muted style={{ textAlign: "center", lineHeight: 20 }}>
-            {en ? "Your full report — the chart, what you watched most, your taste and your habits. Your stats page stays free exactly as it is." : "تقريرك كاملاً — الأعمدة وأكثر ما شاهدت وذوقك وعاداتك. وإحصاءاتك في صفحة الإحصائيات تبقى مجّاناً كما هي."}
-          </Text>
-          <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", gap: 5 }}>
-            <Text size={15} weight="700">{t.plusPrice}</Text>
-            <Text size={12} muted>{t.plusPriceRenew}</Text>
-            <Text size={12} muted>{t.plusSoon}</Text>
-          </View>
-          <Pressable onPress={() => { haptic.pick(); onWeb("/plus"); }} accessibilityRole="link" hitSlop={8}>
-            <Text size={12} weight="700" color={tokens.accent}>{t.plusLearnMore}</Text>
-          </Pressable>
-        </View>
-      </View>
+      <PlusLock onPlus={() => onWeb("/plus")}>{lockedPart}</PlusLock>
     </>
+  );
+}
+
+/**
+ * قفلُ غير المشترك — **معاينةٌ خلف حجاب** (`PlusPreview` الويب، D-809): ما تحته يُرسم خافتاً مقصوصاً لا يُلمس، وفوقه تدرّجٌ إلى
+ * لون الصفحة ثمّ بطاقةُ الثمن. قطعةٌ واحدةٌ لموضعيها («تقريرك» و«الإحصائيات الكاملة» — D-1367): نسخةٌ ثانيةٌ منها عطل.
+ */
+export function PlusLock({ children, onPlus }: { children: React.ReactNode; onPlus: () => void }) {
+  const { t, tokens, locale } = useApp();
+  const en = locale === "en";
+  return (
+    <View style={{ marginTop: 24 }}>
+      {/* المعاينة: مقصوصةٌ خافتةٌ لا تُلمس ولا يقرؤها القارئُ الآليّ (`aria-hidden` في الصفحة) */}
+      <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ height: 330, overflow: "hidden", opacity: 0.7 }}>
+        {children}
+      </View>
+      {/* الحجابُ يضمن قراءةَ البطاقة مهما كان تحته (D-809): شفّافٌ ← لونُ الصفحة */}
+      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <SvgGuard fallback={<View style={{ flex: 1, marginTop: 110, backgroundColor: tokens.bg, opacity: 0.94 }} />}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="lock" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={tokens.bg} stopOpacity={0} />
+                <Stop offset="0.38" stopColor={tokens.bg} stopOpacity={0.8} />
+                <Stop offset="0.72" stopColor={tokens.bg} stopOpacity={1} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#lock)" />
+          </Svg>
+        </SvgGuard>
+      </View>
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
+        <Icon name="sparkle-star" size={26} color={tokens.accent} />
+        <Text size={15} weight="700" style={{ textAlign: "center" }}>{t.plusGateTitle}</Text>
+        <Text size={12} muted style={{ textAlign: "center", lineHeight: 20 }}>
+          {en ? "Your full report — the chart, what you watched most, your taste and your habits. Your stats page stays free exactly as it is." : "تقريرك كاملاً — الأعمدة وأكثر ما شاهدت وذوقك وعاداتك. وإحصاءاتك في صفحة الإحصائيات تبقى مجّاناً كما هي."}
+        </Text>
+        <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", gap: 5 }}>
+          <Text size={15} weight="700">{t.plusPrice}</Text>
+          <Text size={12} muted>{t.plusPriceRenew}</Text>
+          <Text size={12} muted>{t.plusSoon}</Text>
+        </View>
+        <Pressable onPress={() => { haptic.pick(); onPlus(); }} accessibilityRole="link" hitSlop={8}>
+          <Text size={12} weight="700" color={tokens.accent}>{t.plusLearnMore}</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -325,7 +340,7 @@ function ReportBody({
  * 🔑 **أوّلُ رسمٍ بـ`react-native-svg` في التطبيق** (الوحدةُ في نسخة 1.12.5 منذ D-1350 ولم يستعملها شيء): الحلقةُ والحجابُ
  * وحدَهما متّجهان — فإن سقط رسمُهما على جهازٍ لا يسقط التقريرُ كلُّه إلى «حاول مجدداً»: يُرسم بديلُهما من عروضٍ عاديّة.
  */
-class SvgGuard extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
+export class SvgGuard extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
@@ -335,7 +350,7 @@ class SvgGuard extends React.Component<{ fallback: React.ReactNode; children: Re
   }
 }
 
-function H2({ children }: { children: string }) {
+export function H2({ children }: { children: string }) {
   return <Text size={20} weight="700" style={{ marginTop: 30, marginBottom: 12 }}>{children}</Text>;
 }
 

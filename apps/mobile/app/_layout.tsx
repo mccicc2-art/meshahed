@@ -118,6 +118,8 @@ function Shell() {
         <Stack.Screen name="ratings" options={{ headerShown: false }} />
         {/* 🆕 D-1366 — «تقريرك» أصليّاً (V-C · C5) */}
         <Stack.Screen name="reports" options={{ headerShown: false }} />
+        {/* 🆕 D-1367 — «الإحصائيات الكاملة» أصليّةً (V-C · C5 · ب) */}
+        <Stack.Screen name="statistics" options={{ headerShown: false }} />
         {/* D-1046 — «الكلّ ←» شاشةٌ كاملة فوق «اكتشف» */}
         <Stack.Screen name="section" options={{ headerShown: false }} />
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}
