@@ -238,6 +238,18 @@ export function WebLayer() {
   /* D-1035 — من أيِّ شاشةٍ أصليّةٍ فُتحت الصفحةُ الحاليّة؛ يُمسح عند أوّل صفحةٍ لها خانتُها، فلا يلاحق
      صاحبَه إلى صفحاتٍ فتحها بعد ذلك من «الرئيسيّة» */
   const [origin, setOrigin] = useState<NativeRoot | null>(null);
+  /* 🆕 D-1365 — **صفحةٌ فُتحت من الإعدادات بلا دوك** (بلاغُ أحمد بتسجيل ١١ أكتوبر: «ليش الدوك يجي فيها موجود»، ثمّ «3 أ»
+     و«نفذ»): الإعداداتُ نفسُها شاشةٌ مدفوعةٌ بلا شريط، فصفحةُ الويب التي تُفتح منها امتدادٌ لها لا جذرٌ من الجذور الخمسة —
+     والشريطُ تحتها يقول «أنت في قسمٍ» وهو ليس فيه. نقضٌ معلَنٌ لشطرٍ من D-1012 (الشريطُ تحت كلِّ صفحة ويب).
+     ⚖️ **أندرويد وحدَه**: رجوعُ النظام يعيد إلى الإعدادات دائماً (المستمعُ تحت). في iOS لا رجوعَ نظامٍ، و`/plus` والصفحاتُ
+     القانونيّةُ و`/profile/edit` بلا زرِّ رجوعٍ فيها — فالدوكُ هناك المخرجُ الوحيد، ونزعُه حبسٌ. يبقى حتى يُقرَّر مخرجُها. */
+  const [fromSettings, setFromSettings] = useState(false);
+  /* وعند كلِّ ظهورٍ للطبقة: بابٌ يُفتح على صفحةٍ محمَّلةٍ أصلاً لا يُطلق حدثَ تنقّل — فلا تبقى قيمةُ الباب السابق */
+  useEffect(() => {
+    if (!visible) return;
+    const at = pathRef.current;
+    setFromSettings(!(at === "/" || ROOTS.some((r) => at.startsWith(r))) && !!shell.returnTo && shell.returnTo.startsWith("settings"));
+  }, [visible]);
   const handing = useRef(false);
   /* 🆕 D-1152 — لحظةُ بدء التسليم إلى الويب (لقياس وصوله أو ارتداده مرّةً واحدة) */
   const handT0 = useRef(0);
@@ -489,6 +501,7 @@ export function WebLayer() {
     if (typeof u !== "string" || !u || !u.startsWith("/")) return;
     pending.current = CONFIG.apiBase + u;
     setOrigin(rootOf(shell.returnTo));
+    setFromSettings(!!shell.returnTo && shell.returnTo.startsWith("settings"));
     if (ready && !handing.current) flush();
   }, [u, ready, flush]);
 
@@ -508,7 +521,10 @@ export function WebLayer() {
     }
     setPath(next);
     pathRef.current = next;
-    if (next === "/" || ROOTS.some((r) => next.startsWith(r))) setOrigin(null);
+    const atRoot = next === "/" || ROOTS.some((r) => next.startsWith(r));
+    /* D-1365 — يُقرأ مع كلِّ تنقّل: بابٌ من الإعدادات ما دام مسلَّحاً، ويسقط عند أوّل جذرٍ أو حين تُسلَّم العودة */
+    setFromSettings(!atRoot && !!shell.returnTo && shell.returnTo.startsWith("settings"));
+    if (atRoot) setOrigin(null);
     /* 🆕 11-M · M1-fix — **البابُ من جذرٍ يُضيء خانةَ جذره** (تسجيلُ أحمد ٢٨ سبتمبر: غرفةُ نقاشٍ فُتحت من «المجتمع»
        والشريطُ يُضيء «الرئيسيّة»). D-1035 وعد بأن يُؤخذ الأصلُ من `shell.returnTo` لحظةَ الفتح، لكنّه لم يُكتب إلّا
        لرابط الودجت (`u`) — فكلُّ بابٍ من جذرٍ بلا خانةٍ لمساره كان يسقط على «الرئيسيّة». */
@@ -911,6 +927,7 @@ export function WebLayer() {
     : origin === "community" ? "people"
     : path.startsWith("/list") ? "library"
     : "home";
+  const bare = fromSettings && Platform.OS === "android";
   return (
     /* 🆕 D-1136 — **بلا الحافّة السفليّة** (أحمد بتسجيل: «الدكس اللي تحت مقاسه فالبروفايل غير عن الهوم والمكتبة»):
        الشريطُ الأصليُّ (`BottomNav`، D-1012) يُرسم هنا تحت الصفحة، و`SafeAreaView` بكلِّ الحوافّ كان يرفعه فوق شريط
@@ -976,7 +993,9 @@ export function WebLayer() {
           D-1293 طوت الدوكَ فامتدّت الصفحةُ تحت شريط الإيماءات لأوّل مرّة — وستارةُ التكبير تقف عند الحافّة
           الآمنة، فأطلّت البطاقةُ التي خلفها شريطاً ~١٠dp. الدوكُ كان يملأ تلك المنطقةَ بحشوته؛ فمن طواه يملؤها. */}
       {immersed ? <View style={{ height: insets.bottom, backgroundColor: "#000" }} /> : null}
-      {ready && !failed && !atGate(path, landing) && !immersed ? (
+      {/* D-1365 — بلا دوك: منطقةُ الإيماءات تبقى محجوزةً بلون الغلاف (الدوكُ كان يملؤها بحشوته — درسُ D-1294) */}
+      {bare && !immersed ? <View style={{ height: insets.bottom, backgroundColor: SHELL_BG }} /> : null}
+      {ready && !failed && !atGate(path, landing) && !immersed && !bare ? (
         <BottomNav
           shell
           active={navKey}
