@@ -1,9 +1,9 @@
-[deploy] D-1360 — V-C · C4: «الدعوات والمكافآت» (Friends tab) is native in the app
+[deploy] D-1361 — V-C · C7 (1/2): the Partners tab is native in the app — before applying, the form, under review
 
-- GET /api/v1/me/invites: link, the four counters and the invite list from the web page's own readers; a member who hides his name arrives as person: null
-- app: InvitesScreen as settings/invites — «N of 5» steps, link with copy + share, counters, recent invites (expand in place), how it works, terms (folds in place)
-- no two pills: the Partners tab stays web behind the «Learn more» card (paused)
-- new icon: copy (the web path at 72px, stroke 1.7)
+- GET /api/v1/me/partner (state, the two requirements, the application fields) · POST …/apply (applyPartner, terms required) · POST …/withdraw (cancelPartnerApplication)
+- app: the two pills are back on the invites screen (overturns «no pills» of C4); PartnersTab draws the hero, facts, how it works, who can apply, requirements, the form (apply · edit · after rejection) and the review card
+- an approved partner still gets the web dashboard from the pill and the card until part 2 (earnings, payout details, ID)
+- three error strings from applyPartner's own wording (apiPartner*)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
