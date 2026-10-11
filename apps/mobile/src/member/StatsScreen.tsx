@@ -155,8 +155,9 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
               {d.taste ? <TasteCard d={d} mine={mine} onMatch={() => setSheet({ kind: "match" })} onAll={(title, all) => setSheet({ kind: "all", title, all })} onWorks={(title, works, total) => setSheet({ kind: "works", title, works, total })} /> : null}
             </>
           )}
+          {/* 🆕 D-1366 — والبابُ شاشةٌ أصليّة (`ReportScreen`) لا صفحةُ ويب */}
           {/* 🆕 D-1214 — بابُ «تقاريرك» صفٌّ في الذيل لا رمزٌ ثالثٌ في الترويسة (D-796)، ورقاقةُ PLUS تقول ما يقوله الويب (D-803) */}
-          {mine && !d.empty ? <ReportsDoor onPress={() => openWeb("/reports")} /> : null}
+          {mine && !d.empty ? <ReportsDoor onPress={() => router.push({ pathname: "/reports", params: { from } })} /> : null}
         </ScrollView>
       )}
 
