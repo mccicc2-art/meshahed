@@ -90,6 +90,7 @@ export type {
   HomeMovieCard,
   HomeRatedCard,
   HomeFriendCard,
+  HomeFriendWho,
   HomeTrendCard,
   HomeWeekDay,
   HomeWeekEntry,

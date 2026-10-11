@@ -162,6 +162,14 @@ export type HomeRatedCard = {
   rating: number;
 };
 
+/** 🆕 D-1353 — صاحبُ نشاطٍ على عملٍ في صفّ «يشاهده أصدقاؤك» */
+export type HomeFriendWho = {
+  name: string;
+  /** بابُ ملفّه — `null` لمن لا اسمَ مستخدمٍ له (يُسمّى ولا يُفتح) */
+  username: string | null;
+  avatar_url: string | null;
+};
+
 export type HomeFriendCard = {
   kind: TitleKind;
   id: number;
@@ -169,6 +177,10 @@ export type HomeFriendCard = {
   poster_path: string | null;
   saved: boolean;
   watched: boolean;
+  /** 🆕 D-1353 — الأحدثُ نشاطاً أوّلاً. اختياريّان: حمولةٌ محفوظةٌ من قبل لا تحملهما */
+  people?: HomeFriendWho[];
+  /** من تحرّكوا عليه وأخفوا أسماءهم — يُعدّون ولا يُسمَّون */
+  others?: number;
 };
 
 export type HomeTrendCard = {

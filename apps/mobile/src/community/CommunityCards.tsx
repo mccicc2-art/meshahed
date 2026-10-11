@@ -1,6 +1,6 @@
 import React, { memo, useState } from "react";
 import { talkActivity } from "@/core/talkSort";
-import { Pressable, View } from "react-native";
+import { I18nManager, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -34,6 +34,39 @@ import type { CommunityFeedRow, CommunityLeaderRow, CommunityRoom, CommunityTopR
  * المشاركةُ بورقة النظام. **ودبّوسُ الغرفة** (`RoomPinButton`) **وزاويةُ المتابعة** في «عرض الكل» (`FollowUserButton
  * variant="corner"`). **والحالةُ في الكاش** (`communityActs`) — البطاقةُ ترسمها ولا تحملها.
  */
+
+/**
+ * 🆕 D-1353 — **«المزيد / أقل» تحت النصّ الطويل** (أحمد بلقطتين ١١ أكتوبر، الويبُ والتطبيق: «الويب يظهر التعليق كامل،
+ * التطبيق لا — ابغى تضيف مزيد والشخص يضغط عليها لإظهار النصّ كامل»، ثمّ اعتمد صورتَي قبل/بعد). النصُّ كان يُقصّ عند
+ * أربعة أسطرٍ بلا بابٍ لباقيه إلّا فتحُ الخيط. الضغطُ على النصّ نفسِه يفتح الخيطَ كما كان؛ الكلمةُ وحدَها تبسط وتطوي.
+ *
+ * 🔑 **الكلمةُ تظهر فقط حين يُقصّ شيءٌ فعلاً**: نسخةٌ غيرُ مرئيّةٍ من النصّ تُقاس مرّةً بلا قصّ (عددُ أسطرها) ثمّ تُنزع —
+ * `onTextLayout` على النصّ المقصوص لا يقول كم كان سيبلغ. **وجهتُها جهةُ النصّ** لا جهةُ الواجهة: مراجعةٌ عربيّةٌ في
+ * واجهةٍ إنجليزيّةٍ كلمتُها تحت بداية سطورها (اليمين)، كما في الصورة المعتمدة.
+ */
+const CLAMP_LINES = 4;
+function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
+  const { t } = useApp();
+  const [long, setLong] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
+  const strong = /[A-Za-z\u0590-\u08FF]/.exec(text)?.[0] ?? "";
+  const rtl = strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
+  return (
+    <View style={{ marginTop: 8 }}>
+      <Pressable onPress={onPress}>
+        <Text size={14} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: 21 }}>{text}</Text>
+      </Pressable>
+      {long === null ? (
+        <Text size={14} content pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" onTextLayout={(e) => setLong(e.nativeEvent.lines.length > CLAMP_LINES)} style={{ lineHeight: 21, position: "absolute", left: 0, right: 0, top: 0, opacity: 0 }}>{text}</Text>
+      ) : null}
+      {long ? (
+        <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: rtl === I18nManager.isRTL ? "flex-start" : "flex-end", marginTop: 4 }}>
+          <Text size={13} weight="700" muted>{open ? t.showLess : t.showMore}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 const POSTER_W = 72;
 const AVATAR = 40;
@@ -237,9 +270,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
           </Pressable>
         ) : (
           <>
-            <Pressable onPress={openText} style={{ marginTop: 8 }}>
-              <Text size={14} content numberOfLines={4} style={{ lineHeight: 21 }}>{text}</Text>
-            </Pressable>
+            <ClampedText key={text} text={text} onPress={openText} />
             {translated ? (
               <Pressable onPress={() => setOriginal((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: 4 }}>
                 <Text size={12} weight="700" muted>{original ? t.showTranslation : t.showOriginalText}</Text>

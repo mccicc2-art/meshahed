@@ -44,8 +44,11 @@ import { WeekStrip } from "./WeekStrip";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
-import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
-import { applyQueueOrder, nextHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
+import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
+import { nextHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
+import { reorderHomePayload } from "./queueOrder";
+import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
+import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -412,7 +415,9 @@ export function HomeScreen() {
   /* ——— الأوراق: ترتيبُ الأقسام · أولويّةُ صفٍّ · «الكلّ» ——— */
   const [orderSheet, setOrderSheet] = useState(false);
   const [queueRow, setQueueRow] = useState<QueueOrderBody["row"] | null>(null);
-  const [allSheet, setAllSheet] = useState<"shows" | "movies" | null>(null);
+  /* 🆕 D-1353 — «الكلّ» والعنوانُ في كلِّ قسمٍ يفتحان ورقةَ القسم نفسِه (`HomeAllSheet`)؛ و`who`: أسماءُ أصدقاء عملٍ من الصفّ */
+  const [allSheet, setAllSheet] = useState<AllSection | null>(null);
+  const [who, setWho] = useState<HomeFriendCard | null>(null);
   const saveOrder = useCallback(
     async (next: HomeSection[]) => {
       setOrderSheet(false);
@@ -438,27 +443,7 @@ export function HomeScreen() {
     (row: QueueOrderBody["row"], keys: string[]) => {
       setQueueRow(null);
       const prev = qc.getQueryData<HomePayload>(HOME_KEY);
-      if (prev && row !== "towatchlist") {
-        const byKey = <T,>(arr: T[], keyOf: (x: T) => string) => applyQueueOrder(arr, keyOf, keys);
-        const s = prev.sections;
-        const q = prev.queues;
-        const next: HomePayload =
-          row === "continue"
-            ? { ...prev, sections: { ...s, continue: byKey(s.continue, (c) => c.key) }, queues: { ...q, continue: byKey(q.continue, (x) => x.key) } }
-            : row === "towatch"
-              ? (() => {
-                  const all = byKey(s.towatch.all, (x) => x.key);
-                  return { ...prev, sections: { ...s, towatch: { all, items: all.slice(0, s.towatch.items.length) } }, queues: { ...q, towatch: byKey(q.towatch, (x) => x.key) } };
-                })()
-              : (() => {
-                  /* صفُّ القوائم: البطاقاتُ بمعرّفها، وبطاقةُ الطابور موضعُها بين البطاقات = موضعُ مفتاحها الذي لا يطابق بطاقة */
-                  const cards = byKey(s.lists.cards, (c) => c.id);
-                  const ids = new Set(cards.map((c) => c.id));
-                  const at = s.lists.towatch_card ? keys.findIndex((k) => !ids.has(k)) : -1;
-                  return { ...prev, sections: { ...s, lists: { ...s.lists, cards, towatch_at: at } }, queues: { ...q, lists: byKey(q.lists, (x) => x.key) } };
-                })();
-        qc.setQueryData<HomePayload>(HOME_KEY, next);
-      }
+      if (prev && row !== "towatchlist") qc.setQueryData<HomePayload>(HOME_KEY, reorderHomePayload(prev, row, keys));
       write<{ done: true }>("/api/v1/me/prefs/queue-order", { row, keys } satisfies QueueOrderBody)
         .then(invalidateHome)
         .catch((e) => {
@@ -569,7 +554,7 @@ export function HomeScreen() {
       continue:
         s.continue.length > 0 ? (
           <View key="continue">
-            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => switchTo("/library")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("continue")} />
+            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => setAllSheet("continue")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("continue")} />
             {sectionView(view, "continue") === "compact" ? (
               <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
             ) : (
@@ -581,14 +566,14 @@ export function HomeScreen() {
       towatch:
         s.towatch.items.length > 0 ? (
           <View key="towatch">
-            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => switchTo("/library")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("towatch")} />
+            <SectionHeader title={t.libToWatch} icon="bookmark" onTitle={() => setAllSheet("towatch")} seeAll={s.towatch.all.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("towatch")} />
             {sectionView(view, "towatch") === "compact" ? <Column>{s.towatch.items.slice(0, cap(s.towatch.items.length)).map(mixedRow)}</Column> : posterRow(s.towatch.items.slice(0, cap(s.towatch.items.length)).map((x) => ({ ...asItem({ key: x.key, kind: x.kind, id: x.id, title: x.title, poster_path: x.poster_path, progress: x.progress, known: true }), noNext: true })))}
           </View>
         ) : null,
       upcoming:
         s.upcoming.length > 0 ? (
           <View key="upcoming">
-            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => switchTo("/library")} action={arrange} />
+            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => setAllSheet("upcoming")} action={arrange} seeAll={s.upcoming.length > cap(s.upcoming.length) ? t.allWord : undefined} onSeeAll={() => setAllSheet("upcoming")} />
             <Column>
               {s.upcoming.slice(0, cap(s.upcoming.length)).map((x) => {
                 const ep = extras.data?.upcoming_eps[x.key] ?? x.ep;
@@ -608,14 +593,14 @@ export function HomeScreen() {
       shows:
         s.shows.items.length > 0 ? (
           <View key="shows">
-            <SectionHeader title={t.myShows} icon="tv" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
+            <SectionHeader title={t.myShows} icon="tv" onTitle={() => setAllSheet("shows")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
             {posterRow(s.shows.items.slice(0, cap(s.shows.items.length)).map((i) => asItem({ key: `ms-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, count: i.count, watched: i.badge_tone === "watched", known: true })))}
           </View>
         ) : null,
       movies:
         s.movies.items.length > 0 ? (
           <View key="movies">
-            <SectionHeader title={t.myMovies} icon="film" onTitle={() => switchTo("/library")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
+            <SectionHeader title={t.myMovies} icon="film" onTitle={() => setAllSheet("movies")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
             {posterRow(s.movies.items.slice(0, cap(s.movies.items.length)).map((m) => asItem({ key: `mm-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress, known: true })))}
           </View>
         ) : null,
@@ -647,7 +632,7 @@ export function HomeScreen() {
       lists:
         s.lists.cards.length > 0 || s.lists.towatch_card ? (
           <View key="lists">
-            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => switchTo("/library")} seeAll={d.queues.lists.length > 1 ? t.allWord : undefined} seeAllLabel={t.listReorder} onSeeAll={() => setQueueRow("lists")} />
+            <SectionHeader title={t.listsTitle} icon="list" onTitle={() => setAllSheet("lists")} seeAll={d.queues.lists.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("lists")} />
             <Rail>
               {s.lists.cards.map((c, i) => (
                 <React.Fragment key={c.id}>
@@ -683,8 +668,19 @@ export function HomeScreen() {
       friends:
         s.friends.length > 0 ? (
           <View key="friends">
-            <SectionHeader title={t.railFriendsNow} icon="people" onTitle={() => openWeb("/people")} seeAll={t.seeAll} onSeeAll={() => openWeb("/people")} />
-            {posterRow(s.friends.slice(0, cap(12)).map((r) => asItem({ key: `fw-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched })), holdDiscOpen)}
+            <SectionHeader title={t.railFriendsNow} icon="people" onTitle={() => setAllSheet("friends")} seeAll={s.friends.length > cap(12) ? t.allWord : undefined} onSeeAll={() => setAllSheet("friends")} />
+            {/* 🆕 D-1353 — تحت كلِّ ملصقٍ سطرُ «مَن» (`Friends.tsx`): الملصقُ يفتح العمل، والسطرُ يفتح صاحبَه أو قائمةَ الأسماء */}
+            <Rail>
+              {s.friends.slice(0, cap(12)).map((r) => {
+                const it = asItem({ key: `fw-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched });
+                return (
+                  <View key={it.key} style={{ width: posterW }}>
+                    <PosterCard item={it} width={posterW} onPress={pressItem} onHold={holdDiscOpen} />
+                    <FriendsWhoLine card={r} onProfile={(u) => openProfile(router, u, "home")} onNames={setWho} />
+                  </View>
+                );
+              })}
+            </Rail>
           </View>
         ) : null,
       trending:
@@ -696,7 +692,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, switchTo]);
+  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -761,23 +757,29 @@ export function HomeScreen() {
         />
       ) : null}
       {allSheet && d ? (
-        <Sheet title={`${allSheet === "shows" ? t.myShows : t.myMovies} · ${t.listCount(allSheet === "shows" ? d.sections.shows.total : d.sections.movies.total)}`} onClose={() => setAllSheet(null)}>
-          {/* سقفُ ٥٠ بطاقةً (D-733) — والباقي في المكتبة بسهمه في الذيل (D-030) */}
-          <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: 16 }}>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-              {(allSheet === "shows"
-                ? d.sections.shows.items.slice(0, 50).map((i) => asItem({ key: `as-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, watched: i.badge_tone === "watched", known: true }))
-                : d.sections.movies.items.slice(0, 50).map((m) => asItem({ key: `am-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress, known: true }))
-              ).map((it) => (
-                <PosterCard key={it.key} item={it} width={posterW} onPress={(x) => { setAllSheet(null); pressItem(x); }} marquee={false} />
-              ))}
-            </View>
-            {(allSheet === "shows" ? d.sections.shows.total : d.sections.movies.total) > 50 ? (
-              <Pressable onPress={() => { setAllSheet(null); switchTo("/library"); }} accessibilityRole="link" style={{ marginTop: 16, alignItems: "center" }}>
-                <Text size={12} weight="500" color={tokens.accent}>{t.seeAll}</Text>
-              </Pressable>
-            ) : null}
-          </ScrollView>
+        <HomeAllSheet
+          section={allSheet}
+          d={d}
+          extras={extras.data ?? null}
+          asItem={asItem}
+          queueItemsOf={queueItemsOf}
+          toWatchBusy={toWatchBusy}
+          onClose={() => setAllSheet(null)}
+          onTitle={openTitle}
+          onList={openList}
+          onProfile={(u) => openProfile(router, u, "home")}
+          onReorder={saveQueue}
+          onToWatchToggle={(on) => void setToWatch(on)}
+          onToWatchList={() => {
+            haptic.pick();
+            setAllSheet(null);
+            setQueueRow("towatchlist");
+          }}
+        />
+      ) : null}
+      {who ? (
+        <Sheet title={who.title} onClose={() => setWho(null)}>
+          <FriendsNames {...whoOf(who)} onProfile={(u) => { setWho(null); openProfile(router, u, "home"); }} />
         </Sheet>
       ) : null}
       {celebrate ? <CelebrateSheet {...celebrate} onClose={() => setCelebrate(null)} onError={onError} /> : null}

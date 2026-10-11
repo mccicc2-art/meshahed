@@ -260,6 +260,8 @@ export async function GET() {
           poster_path: r.poster_path,
           saved: body.followedKeys.has(`${r.media_type}-${r.tmdb_id}`),
           watched: r.media_type === "movie" ? watchedMovieIds.has(r.tmdb_id) : body.doneShowIds.has(r.tmdb_id),
+          people: r.people,
+          others: r.others,
         })),
       },
       queues: {

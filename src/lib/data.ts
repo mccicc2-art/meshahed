@@ -1762,12 +1762,27 @@ export async function getCommunityFeed(
  * البطاقةُ نفسُها ثلاث مرّات يُقرأ عطلاً** (D-299). **وبلا ملصقٍ لا
  * بطاقة** (D-063)، **وأنا لستُ صديقَ نفسي** فصفّي يسقط.
  */
+/**
+ * 🆕 D-1353 — **مَن** تحرّك على العمل (طلبُ أحمد ١١ أكتوبر بلقطة الصفّ: «ليش ما نضيف مين الشخص اللي يتابع
+ * العمل هذا؟»). الدالّةُ كانت ترمي صاحبَ السطر وتُبقي العمل؛ الآن تجمع أصحابَ كلِّ عمل. **ومن أخفى اسمَه
+ * (`hide_name`) يصل من قاعدة البيانات بلا اسمٍ ولا صورة** — فيُعدّ في `others` ولا يُسمّى.
+ */
+export interface FriendWho {
+  name: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
 export interface FriendWatchRow {
   tmdb_id: number;
   media_type: "tv" | "movie";
   title: string;
   poster_path: string | null;
   at: string;
+  /** الأحدثُ نشاطاً أوّلاً، وكلُّ شخصٍ مرّة */
+  people: FriendWho[];
+  /** من تحرّكوا عليه وأخفوا أسماءهم */
+  others: number;
 }
 
 export async function getFriendsWatching(
@@ -1780,9 +1795,15 @@ export async function getFriendsWatching(
     const { data, error } = await supabase.rpc("following_activity_v2");
     if (error || !data) return [];
     const out: FriendWatchRow[] = [];
-    const seen = new Set<string>();
+    /* العملُ مرّةً واحدة (D-299) — وأصحابُه يتجمّعون عليه: السطورُ كلُّها تُقرأ (الدالّةُ تعيد ٦٠ على الأكثر)
+       ثمّ يُقصّ العددُ، وإلّا فاتنا صاحبٌ ثانٍ سطرُه بعد الحدّ */
+    const byKey = new Map<string, { row: FriendWatchRow; ids: Set<string> }>();
     for (const r of data as {
       id: string;
+      nickname?: string | null;
+      username?: string | null;
+      avatar_url?: string | null;
+      hide_name?: boolean | null;
       tmdb_id: number;
       media_type: "tv" | "movie";
       title: string | null;
@@ -1793,18 +1814,30 @@ export async function getFriendsWatching(
       if (r.id === uid) continue;
       if (!r.tmdb_id || !r.title || !r.poster_path) continue;
       const key = `${r.media_type}-${r.tmdb_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({
-        tmdb_id: r.tmdb_id,
-        media_type: r.media_type === "tv" ? "tv" : "movie",
-        title: r.title,
-        poster_path: r.poster_path,
-        at: r.at ?? r.updated_at ?? "",
-      });
-      if (out.length >= limit) break;
+      let e = byKey.get(key);
+      if (!e) {
+        e = {
+          row: {
+            tmdb_id: r.tmdb_id,
+            media_type: r.media_type === "tv" ? "tv" : "movie",
+            title: r.title,
+            poster_path: r.poster_path,
+            at: r.at ?? r.updated_at ?? "",
+            people: [],
+            others: 0,
+          },
+          ids: new Set(),
+        };
+        byKey.set(key, e);
+        out.push(e.row);
+      }
+      if (e.ids.has(r.id)) continue;
+      e.ids.add(r.id);
+      const name = (r.nickname ?? "").trim() || (r.username ?? "").trim();
+      if (r.hide_name || !name) e.row.others += 1;
+      else e.row.people.push({ name, username: r.username ?? null, avatar_url: r.avatar_url ?? null });
     }
-    return out;
+    return out.slice(0, limit);
   } catch {
     return [];
   }

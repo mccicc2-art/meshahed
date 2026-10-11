@@ -1942,6 +1942,11 @@ const ar = {
      تتابعهم هذا الأسبوع — **العملُ لا الجملة**: خطُّ النشاط يحكي، وهذا
      الصفُّ يعرض ما يُشاهَد الآن ليُفتَح لا ليُقرأ (D-224: معنيان فسطحان). */
   railFriendsNow: "أعمالُ أصدقائك الآن",
+  /* D-1353 — سطرُ «مَن» تحت ملصق الصفّ وورقتُه */
+  friendsCount: (n: number) =>
+    n === 1 ? "صديق واحد" : n === 2 ? "صديقان" : n <= 10 ? `${n} أصدقاء` : `${n} صديقاً`,
+  andOthers: (n: number) =>
+    n === 1 ? "وشخص آخر" : n === 2 ? "وشخصان آخران" : n <= 10 ? `و${n} آخرين` : `و${n} آخر`,
   /* 🆕 **صفُّ قائمة الأسبوع** (D-349): **تحريريٌّ لا حسابيّ** — الاختيارُ
      يحمل معرفةً سابقةً للبيانات (فيلمٌ يُعرض بعد شهرٍ يجعل قائمتَه مهمّةً
      قبل أن يحفظها أحد). **والاسمُ يقول من اختار**: «رائجة» تَعِد عدّاً،
@@ -3786,6 +3791,8 @@ const en: Dict = {
   libraryRevokedToast: "Grant revoked",
   libraryRevokeButton: "Revoke",
   railFriendsNow: "What your friends are watching",
+  friendsCount: (n: number) => `${n} friend${n === 1 ? "" : "s"}`,
+  andOthers: (n: number) => `and ${n} other${n === 1 ? "" : "s"}`,
   listsTrending: "Trending lists",
   railNew: "New",
   railNewAria: "This row changed since your last visit",

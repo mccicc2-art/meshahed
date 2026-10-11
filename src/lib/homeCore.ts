@@ -613,7 +613,7 @@ export async function buildHomeBody({
        أظهره** (قاعدةُ «recap» و«قوائمي» نفسُها)، **وهو نداءُ الخطّ نفسِه
        بلا إعجاباتٍ ولا ترجمة** (D-205). */
     prefs.order.includes("friends")
-      ? getFriendsWatching(12).catch(() => [])
+      ? getFriendsWatching(60).catch(() => [])
       : Promise.resolve([]),
     /* أغلفتي المختارة (D-131) — كانت `await` منفرداً بعد الموجة رغم أنها
        لا تعتمد على شيءٍ منها: رحلةُ قاعدةٍ كاملة تُدفع وحدَها على أسخن

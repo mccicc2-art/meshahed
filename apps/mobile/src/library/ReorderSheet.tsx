@@ -52,6 +52,20 @@ export function ReorderSheet({
   onClose: () => void;
   onDone: (keys: string[]) => void;
 }) {
+  const { t } = useApp();
+  return (
+    <Sheet title={t.listReorder} onClose={onClose}>
+      <ReorderBody items={items} onDone={onDone} />
+    </Sheet>
+  );
+}
+
+/**
+ * 🆕 D-1353 — **جسدُ الترتيب وحدَه** (التلميحُ · «تمّ» · الصفوفُ المسحوبة): ورقةُ «الكلّ» في الرئيسيّة تتحوّل إليه في
+ * مكانها (حكمُ أحمد ١١ أكتوبر بالصور: زرُّ «أعد الترتيب» داخل ورقة «الكلّ»، والورقةُ نفسُها تتبدّل) — ورقةٌ فوق ورقةٍ
+ * ليست من لغتنا. `ReorderSheet` باقيةٌ بحرفها لمن يفتح الترتيبَ مباشرةً (بطاقةُ «للمشاهدة»).
+ */
+export function ReorderBody({ items, onDone, maxHeight = 460 }: { items: QueueItem[]; onDone: (keys: string[]) => void; maxHeight?: number }) {
   const { t, tokens } = useApp();
   /* الترتيبُ لـReact (الرقمُ و«تمّ»)؛ والصفوفُ تُرسم بترتيبها الأوّل وتقف حيث تقول `slots` */
   const [order, setOrder] = useState<QueueItem[]>(items);
@@ -160,12 +174,12 @@ export function ReorderSheet({
   }, [body, bodyTop, bodyH, dragKey, dy, startScroll, scrollY, edge, slots, count, onGrab, onDrop]);
 
   return (
-    <Sheet title={t.listReorder} onClose={onClose}>
+    <>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: -14 }}>
         <Text size={12} muted style={{ flex: 1 }}>{t.listReorderHint}</Text>
         <Button label={t.listDone} onPress={() => onDone(order.map((x) => x.key))} style={{ paddingVertical: 8, paddingHorizontal: 14 }} />
       </View>
-      <View ref={body} collapsable={false} style={{ maxHeight: 460 }}>
+      <View ref={body} collapsable={false} style={{ maxHeight }}>
         <Reanimated.ScrollView
           ref={scroll}
           scrollEnabled={dragging === null}
@@ -194,7 +208,7 @@ export function ReorderSheet({
           })}
         </Reanimated.ScrollView>
       </View>
-    </Sheet>
+    </>
   );
 }
 

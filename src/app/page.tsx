@@ -881,7 +881,9 @@ async function HomeBody({
                   <>
                     <RailNewBadge
                       id="friends"
+                      /* D-1353 — الصفوفُ صارت حتى ٦٠ (صفحةُ «الكلّ»)؛ البصمةُ مما يُعرض هنا فقط */
                       sig={friendsRows
+                        .slice(0, 12)
                         .map((r) => `${r.media_type}${r.tmdb_id}`)
                         .join(",")}
                       locale={locale}
