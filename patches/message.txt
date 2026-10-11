@@ -1,11 +1,8 @@
-[deploy] D-1367 — V-C · C5 (b): «الإحصائيات الكاملة» is a native screen in the app
+[deploy] D-1368 — V-C · C5 (c): «شارك تقريرك» from the native report
 
-- Ahmed: «الاحصائيات الكاملة نبي نحوله تطبيق», then the four-section image, «اعتمد», «نفذ وارفع» — lifts what was left of the Statistics pause (plan decision 8)
-- app: member/FullStatsScreen as route `statistics` — four periods (week · month · year · all time) with previous/next in the header for subscribers, four sections (overview · content · taste · habits); a port of /statistics and FullStatsTabs
-- same route and cache key as the report (/api/v1/me/report with p and o), so a period opened in the report draws at once; no server change
-- charts with react-native-svg (trend line, completion ring, content donut, taste radar), each behind SvgGuard; the heatmap and bars are plain views; the trend line follows the reading direction so it matches its labels
-- the report's «الإحصائيات الكاملة» row pushes this screen on the report's period; PlusPill, PlusLock, SvgGuard and H2 are exported from ReportScreen and shared
-- no first-time hint (web OneTimeHint) here
+- GET /api/v1/me/report/image?p= — the app's door to the web's own renderer (/api/share?kind=report): session and an 8-per-minute limit here, then the same handler draws; Plus (403) and the empty period (409) are judged there
+- app: useShareReport in ReportScreen — the image is written to the cache and handed to the system share sheet (the C3 recipe); a share icon in the header and a «شارك تقريرك» row under the statistics door, both sharing the period on screen; shown for subscribers on a non-empty period only
+- the row's second line says its state (building · failed)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
