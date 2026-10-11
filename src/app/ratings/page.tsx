@@ -89,9 +89,10 @@ export default async function RatingsPage({
                     <span className="block text-sm font-bold truncate">
                       {r.title ?? `#${r.tmdb_id}`}
                     </span>
-                    <span className="block text-accent text-xs mt-0.5" dir="ltr">
-                      {"★".repeat(r.rating)}
-                      <span className="text-muted">{"★".repeat(Math.max(0, 5 - r.rating))}</span>
+                    {/* 🔴 D-1357 — «★ 9/10» لا صفُّ نجوم: السلّمُ من ١٠ والصفُّ كان يفترضه من ٥ فيرسم تسعَ نجماتٍ
+                        متتالية (قرارُ أحمد ١١ أكتوبر «2 أ») — وهو شكلُ شريط الرئيسيّة وشاشةِ التطبيق */}
+                    <span className="block text-xs font-semibold tabular-nums mt-0.5" dir="ltr">
+                      <span className="text-accent">★</span> {r.rating}/10
                     </span>
                     {r.review?.trim() && (
                       <span className="block text-12 text-muted mt-1 line-clamp-3 leading-relaxed">

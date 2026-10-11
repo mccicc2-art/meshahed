@@ -161,6 +161,8 @@ export function HomeScreen() {
       if (path === "/stats") return void router.push({ pathname: "/stats", params: { from: "home" } });
       /* 🆕 D-1317 — و«تقويم أعمالك» (عنوانُ شريط الأسبوع) شاشةٌ أصليّةٌ كذلك */
       if (path === "/calendar") return void router.push({ pathname: "/calendar", params: { from: "home" } });
+      /* 🆕 D-1357 (V-C · C1) — و«تقييماتي» (عنوانُ قسم التقييمات و«الكلّ»): آخرُ بابٍ ويبيٍّ في أقسام الرئيسيّة */
+      if (path === "/ratings") return void router.push({ pathname: "/ratings", params: { from: "home" } });
       /* 🆕 D-1352 (V-A) — «المجتمع» جذرٌ أصليٌّ خامس (D-1171) والشريطُ ينتقل إليه أصليّاً؛ عنوانُ «أصدقاؤك الآن» و«عرض
          الكلّ» كانا ما زالا يفتحان صفحةَ الويب. `/people` وحدَه — بلا استعلام — هو ما يُطلب من هذه الشاشة. */
       if (path === "/people") return void switchTo("/community");
