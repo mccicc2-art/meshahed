@@ -92,7 +92,7 @@ export function SettingsIndexScreen() {
       <Group label={t.setGroupData}>
         <Row icon="shield" title={t.setPrivacy} onPress={() => go("privacy")} />
         <Row icon="bell" title={t.setNotifications} onPress={() => go("notifications")} />
-        <Row icon="download" title={t.setImport} onPress={() => openWeb("/profile/settings/import")} busy={openWeb.busy === "/profile/settings/import"} />
+        <Row icon="download" title={t.setImport} onPress={() => go("import")} />
       </Group>
 
       <Group label={t.setGroupSupport}>

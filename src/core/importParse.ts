@@ -63,7 +63,19 @@ interface ZipEntry {
   bytes: Uint8Array;
 }
 
+/**
+ * 🆕 D-1369 (V-C · C6) — **الفكُّ يُحقَن حيث لا يحمله المحرّك**: `DecompressionStream` في كلِّ متصفّحٍ حديث،
+ * **وليست في محرّك التطبيق** (لا أثرَ لها في React Native ولا في Expo — قُرئ مصدرُهما). فالتطبيقُ يسجّل
+ * فاكَّه (`fflate`، جافاسكربت خالص) قبل أوّل قراءة، والويبُ لا يسجّل شيئاً فيبقى على أداة المتصفّح:
+ * لا مكتبةَ ضغطٍ تدخل حزمةَ الويب لأجل التطبيق.
+ */
+let customInflate: ((data: Uint8Array) => Uint8Array | Promise<Uint8Array>) | null = null;
+export function setInflateRaw(fn: typeof customInflate) {
+  customInflate = fn;
+}
+
 async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
+  if (customInflate) return customInflate(data);
   const ds = new DecompressionStream("deflate-raw");
   const stream = new Blob([data as BlobPart]).stream().pipeThrough(ds);
   return new Uint8Array(await new Response(stream).arrayBuffer());
