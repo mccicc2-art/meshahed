@@ -15,14 +15,18 @@ import { opening } from "./opening";
  * سوداءُ فارغة (`app.json`) كي لا يظهر الشعارُ ثمّ يختفي ثمّ يُرسم.
  *
  * **المراحل** (أزمنةُ المعاينة المعتمدة): سوادٌ ٠٫١ث ← الشعارُ يُرسم على مساره ٠٫٨٦ث ← يثبت ثلثَ ثانيةٍ على الأقلّ وحتى
- * تقول الشاشةُ تحته إنّها جاهزة (`opening.ready`) ← ينكمش إلى ٠٫٩ في ٠٫١٦ث ← يكبر إلى ١١ ضعفاً في ٠٫٤٢ث والستارُ كلُّه
- * يبهت فتنكشف الشاشة.
+ * تقول الشاشةُ تحته إنّها جاهزة (`opening.ready`) ← ينكمش إلى ٠٫٩ في ٠٫١٦ث ← يكبر إلى ١١ ضعفاً في ٠٫٤٢ث ويبهت **هو
+ * وحده** على السواد ← ثمّ يبهت السوادُ في ٠٫١٥ث فتنكشف الشاشة.
+ *
+ * 🔴 D-1351 — **الشعارُ والشاشةُ لا يجتمعان في إطار** (تسجيلُ أحمد ١١ أكتوبر على 1.12.5: «ما عجبني تظهر الرئيسية
+ * والشعار لسى ما راح»). كان الستارُ كلُّه — السوادُ والشعارُ معاً — يبهت في أثناء التكبير، وأغلبُ التكبير في آخره،
+ * فرُئيت الرئيسيّةُ كاملةً وفوقها شعارٌ رماديٌّ بثلاثة أضعافٍ يذوب. الآن السوادُ معتمٌ حتى يغيب الشعار، ثمّ يبهت
+ * وحده؛ ومنحنى التكبير أقلُّ تأخّراً (أُسّ ١٫٨ لا ٢٫٤) كي يُرى الشعارُ يكبر قبل أن يبهت.
  *
  * 🔑 **طبقتان لا رسمٌ حيّ**: الرسمُ صورةٌ متحرّكةٌ جاهزة (`loopz-open-draw.webp` — وصفةُ شاشة التجهيز D-1348 التي
  * ثبتت على الجهاز)، والتكبيرُ تحريكُ صورةٍ ثابتةٍ بضعف الدقّة (`loopz-mark-xl.png`) على خيط الواجهة. الطبقةُ الثابتةُ
  * تحلّ محلَّ المتحرّكة والشعارُ كاملٌ في الاثنتين (الملفّان من كِفافٍ واحد — `scripts/logo-draw/open.py`)، فلا يُرى
- * التبديل. ⚖️ بضعف الدقّة لا أكثر: تصغيرُ ٢:١ بالعتاد نظيفٌ والشعارُ ثابت، وما فوق الضعفين يلين وقد بهت الستارُ إلى
- * أقلَّ من ثلثه — ورسمُه متّجهاً في كلِّ إطار (`react-native-svg`) غيرُ مجرَّبٍ على المنصّتين.
+ * التبديل. ⚖️ بضعف الدقّة لا أكثر: تصغيرُ ٢:١ بالعتاد نظيفٌ والشعارُ ثابت، وما فوق الضعفين يلين وهو يبهت — ورسمُه متّجهاً في كلِّ إطار (`react-native-svg`) غيرُ مجرَّبٍ على المنصّتين.
  *
  * 🔑 **الساعةُ تبدأ من ظهور الصورة المتحرّكة لا من تركيبها** (`onDisplay`): تفكيكُها قد يتأخّر، ومؤقّتٌ يسبقها
  * يقطع الرسمَ قبل أن يكتمل. لم تُعلن ظهورَها في ٠٫٧ث (مفكِّكٌ تعثّر) ⇒ الشعارُ الثابتُ مباشرةً ويمضي.
@@ -41,6 +45,8 @@ const SWAP_AFTER_MS = 140;
 const HOLD_MS = 190;
 const DIP_MS = 160;
 const ZOOM_MS = 420;
+/** السوادُ يبهت وحده بعد أن يغيب الشعار (D-1351) */
+const REVEAL_MS = 150;
 const CAP_MS = 5000;
 const DISPLAY_WAIT_MS = 700;
 const DIP = 0.9;
@@ -98,13 +104,17 @@ export function Opening({ start }: { start: boolean }) {
       zoom.value = withDelay(
         DIP_MS,
         withTiming(1, { duration: ZOOM_MS, easing: Easing.linear }, (done) => {
-          if (done) runOnJS(gone)(why);
+          if (!done) return;
+          /* الشعارُ غاب والسوادُ معتم ⇒ الآن فقط تنكشف الشاشة */
+          fade.value = withTiming(0, { duration: REVEAL_MS, easing: Easing.out(Easing.quad) }, (ok) => {
+            if (ok) runOnJS(gone)(why);
+          });
         }),
       );
       /* حزام: إن لم يُبلَّغ انتهاءُ الحركة (التطبيقُ ذهب للخلفيّة في أثنائها) لا يبقى الستار */
       later(() => {
         if (phaseRef.current !== "gone") gone(why);
-      }, DIP_MS + ZOOM_MS + 400);
+      }, DIP_MS + ZOOM_MS + REVEAL_MS + 400);
     },
     [dip, zoom, fade, gone, later],
   );
@@ -160,13 +170,16 @@ export function Opening({ start }: { start: boolean }) {
     later(settle, DRAW_MS + SWAP_AFTER_MS);
   }, [later, settle]);
 
-  const sheet = useAnimatedStyle(() => {
+  /* السوادُ: معتمٌ طوال التكبير، ويبهت بعده (`fade`) */
+  const sheet = useAnimatedStyle(() => ({ opacity: fade.value }));
+  /* الشعار: يكبر، ومن منتصف التكبير يبهت هو وحده حتى يغيب عند نهايته */
+  const big = useAnimatedStyle(() => {
     const p = zoom.value;
-    return { opacity: fade.value * (p < 0.22 ? 1 : Math.pow(Math.max(0, 1 - (p - 0.22) / 0.78), 1.6)) };
+    return {
+      opacity: p < 0.45 ? 1 : Math.pow(Math.max(0, 1 - (p - 0.45) / 0.55), 1.3),
+      transform: [{ scale: 0.5 * dip.value * Math.exp(GROW * Math.pow(p, 1.8)) }],
+    };
   });
-  const big = useAnimatedStyle(() => ({
-    transform: [{ scale: 0.5 * dip.value * Math.exp(GROW * Math.pow(zoom.value, 2.4)) }],
-  }));
 
   if (phase === "gone") return null;
   /* صندوقُ اللوحة: حبرُ الشعار بثلث العرض؛ والطبقةُ الثابتةُ ضعفُه مصغَّرةً إلى النصف */
@@ -180,8 +193,10 @@ export function Opening({ start }: { start: boolean }) {
       ) : null}
       {/* الثابتةُ تُركَّب مع الرسم (تُفكَّك صورتُها في أثنائه) وتُرى حين يكتمل */}
       {phase === "draw" || still ? (
-        <Reanimated.View style={[{ position: "absolute", width: box * 2, height: box * 2, left: (width - box * 2) / 2, top: (height - box * 2) / 2, opacity: still ? 1 : 0 }, big]}>
-          <Image source={XL} style={{ width: box * 2, height: box * 2 }} contentFit="contain" />
+        <Reanimated.View style={{ position: "absolute", width: box * 2, height: box * 2, left: (width - box * 2) / 2, top: (height - box * 2) / 2, opacity: still ? 1 : 0 }}>
+          <Reanimated.View style={[{ width: box * 2, height: box * 2 }, big]}>
+            <Image source={XL} style={{ width: box * 2, height: box * 2 }} contentFit="contain" />
+          </Reanimated.View>
         </Reanimated.View>
       ) : null}
     </Reanimated.View>
