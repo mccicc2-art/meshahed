@@ -1,9 +1,9 @@
-[deploy] D-1359 — V-C · C3: «تصدير بياناتك» is native in the app
+[deploy] D-1360 — V-C · C4: «الدعوات والمكافآت» (Friends tab) is native in the app
 
-- GET /api/v1/me/export: the web action itself (exportMyData, 3 per minute); success is the file itself, failures use the usual error envelope
-- app: a row in Privacy & security writes the file to the cache folder (native download, not through JS memory) and opens the system share sheet
-- expo-sharing is loaded on demand (first use of the module shipped in 1.12.5)
-- new string dataExportFailed (ar, en)
+- GET /api/v1/me/invites: link, the four counters and the invite list from the web page's own readers; a member who hides his name arrives as person: null
+- app: InvitesScreen as settings/invites — «N of 5» steps, link with copy + share, counters, recent invites (expand in place), how it works, terms (folds in place)
+- no two pills: the Partners tab stays web behind the «Learn more» card (paused)
+- new icon: copy (the web path at 72px, stroke 1.7)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
