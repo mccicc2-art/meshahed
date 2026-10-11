@@ -161,6 +161,29 @@ export function filePart(uri: string, name: string, type: string): Blob {
 }
 
 /**
+ * 🆕 D-1359 — **تنزيلُ ردٍّ خامٍ إلى ملف** (تصديرُ البيانات): الجسمُ يُكتب من الشبكة إلى القرص في الطبقة الأصليّة فلا يمرّ نصّاً
+ * بذاكرة JS. الترويساتُ نفسُها وإعادةُ المحاولة عند `401` نفسُها كـ`api`. `downloadFileAsync` يرمي عند غير 2xx خطأً رسالتُه
+ * تحمل رقمَ الحالة ولا يترك ملفّاً — يُقرأ الرقمُ منها؛ وما لا يُقرأ «خللٌ» عامّ (الشاشةُ تقول «جرّب مرة أخرى»).
+ */
+export async function downloadTo(path: string, dest: File): Promise<File> {
+  if (!session.has()) await session.request();
+  for (let attempt = 0; ; attempt++) {
+    const headers = await baseHeaders(true, path);
+    try {
+      return await File.downloadFileAsync(`${CONFIG.apiBase}${path}`, dest, { headers, idempotent: true });
+    } catch (e) {
+      const status = Number(/\b([45]\d\d)\b/.exec(e instanceof Error ? e.message : "")?.[1] ?? 0);
+      if (status === 401 && attempt < 2) {
+        session.clear();
+        const fresh = await session.request();
+        if (fresh) continue;
+      }
+      throw new ApiError(status === 429 ? { code: "rate_limited", message_key: "apiRateLimited" } : { code: "internal", message_key: "apiInternal" }, status);
+    }
+  }
+}
+
+/**
  * 🆕 D-1106 — **رفعُ ملفٍّ** (`multipart/form-data`): صورةُ الملفّ والغلاف. الترويساتُ نفسُها وإعادةُ
  * المحاولة عند `401` نفسُها كـ`api` — ولا `Content-Type` يدويّاً: `fetch` يكتب الحدَّ (`boundary`) بنفسه.
  */

@@ -1758,6 +1758,8 @@ const ar = {
   settingsSoonTitle: "قيد التطوير",
   dataExportTitle: "تصدير بياناتك",
   dataExportBusy: "يجهّز الملف…",
+  /* 🆕 D-1359 — التصديرُ الأصليّ في التطبيق: الفشلُ يُقال */
+  dataExportFailed: "تعذّر تجهيز الملف — جرّب مرة أخرى.",
   deleteAccountTitle: "حذف الحساب",
   deleteAccountDesc:
     "يمحو كل بياناتك نهائياً: المتابعات والمشاهدات والتقييمات والقوائم والرسائل والمجتمعات والصور — وحسابك نفسه. لا رجوع بعدها. (تستطيع التسجيل من جديد، لكنه حسابٌ جديدٌ تماماً لا صلة له بالقديم.)",
@@ -3662,6 +3664,7 @@ const en: Dict = {
   settingsSoonTitle: "Not built yet",
   dataExportTitle: "Export your data",
   dataExportBusy: "Preparing the file…",
+  dataExportFailed: "Couldn't prepare the file — try again.",
   deleteAccountTitle: "Delete account",
   deleteAccountDesc:
     "Permanently erases all your data: follows, watch history, ratings, lists, messages, communities and images — and the account itself. There is no undo. (You can sign up again, but it will be a brand-new account with no link to the old one.)",

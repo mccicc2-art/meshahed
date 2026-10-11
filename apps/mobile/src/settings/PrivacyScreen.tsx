@@ -9,7 +9,8 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
-import { api, queryClient, write } from "../api";
+import { api, queryClient, write, downloadTo, ApiError } from "../api";
+import { File, Paths } from "expo-file-system";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row, Toggle, RowsSkeleton } from "./ui";
 import { useSettings, saveSetting, patchSettings, messageOf, useOpenWeb } from "./api";
@@ -40,6 +41,33 @@ export function PrivacyScreen() {
     setBusy(false);
     if (!out) toast.current?.say(t.errSaveShort);
   }
+  /**
+   * 🆕 D-1359 — **الملفُّ يُكتب في مجلّد الكاش ثمّ تُفتح ورقةُ المشاركة في النظام** («2 أ»: حفظٌ في الملفّات · Drive · إرسال).
+   * ⚖️ **لا يُحذف بعد المشاركة**: على أندرويد قد تعود `shareAsync` قبل أن يقرأ التطبيقُ المستقبِلُ الملفّ، وحذفُه حينها ملفٌّ
+   * فارغٌ عند صاحبه. يبقى في كاش التطبيق الخاصّ (لا يصله تطبيقٌ آخر بلا إذن المشاركة)، **وتصديرٌ جديدٌ يمسح ما قبله**.
+   */
+  const [exporting, setExporting] = useState(false);
+  async function exportData() {
+    if (exporting) return;
+    haptic.pick();
+    setExporting(true);
+    try {
+      for (const f of Paths.cache.list()) {
+        if (f instanceof File && f.name.startsWith("loopz-export-")) f.delete();
+      }
+      const file = new File(Paths.cache, `loopz-export-${new Date().toISOString().slice(0, 10)}.json`);
+      await downloadTo("/api/v1/me/export", file);
+      /* تُحمَّل عند الحاجة لا مع الشاشة: هذا أوّلُ استعمالٍ لوحدة المشاركة (في البناء منذ 1.12.5، D-1350) — وإن غابت في ثنائيٍّ ما
+         فالنتيجةُ «تعذّر تجهيز الملف» في هذا الصفّ، لا سقوطُ شاشة الخصوصيّة عند تحميلها */
+      const Sharing = await import("expo-sharing");
+      if (!(await Sharing.isAvailableAsync())) throw new Error("sharing unavailable");
+      await Sharing.shareAsync(file.uri, { mimeType: "application/json", UTI: "public.json", dialogTitle: t.dataExportTitle });
+    } catch (e) {
+      toast.current?.say(e instanceof ApiError && e.error.code === "rate_limited" ? t.deleteAccountBusyGate : t.dataExportFailed);
+    } finally {
+      setExporting(false);
+    }
+  }
   const pv = s?.privacy;
   return (
     <SettingsScreen title={t.setPrivacy} toast={toast}>
@@ -55,6 +83,10 @@ export function PrivacyScreen() {
           <Group label={t.setGroupPeople}>
             <Row icon="library" title={t.libraryAccessTitle} value={String(pv.library_grants)} onPress={() => setSheet("grants")} />
             <Row icon="shield" title={t.blockedListTitle} value={String(pv.blocked)} onPress={() => setSheet("blocked")} />
+          </Group>
+          {/* 🆕 D-1359 (V-C · C3) — «تصدير بياناتك» هنا («1 أ»): في الويب صفٌّ داخل صفحة الاستيراد، وهي بابٌ ويبيٌّ والاستيرادُ موقوف */}
+          <Group>
+            <Row icon="download" title={t.dataExportTitle} value={exporting ? t.dataExportBusy : undefined} busy={exporting} onPress={() => void exportData()} />
           </Group>
         </>
       )}
