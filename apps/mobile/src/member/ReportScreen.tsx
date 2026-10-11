@@ -5,7 +5,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { api, write } from "../api";
+import { File, Paths } from "expo-file-system";
+import { api, downloadTo, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -29,8 +30,9 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *  - ⚖️ **قفلُ غير المشترك تلاشٍ لا ضباب** (قرارُه «1 أ»): لا وحدةَ ضبابٍ في النسخة ولا بناءَ لأجلها. ما تحت الافتتاح يُرسم
  *    خافتاً مقصوصاً، وفوقه حجابٌ متدرّجٌ إلى لون الصفحة (`react-native-svg`، في النسخة) ثمّ بطاقةُ الثمن — نصوصُ `PlusPreview`.
  *  - 🆕 D-1367 (الدفعة ب) — **«الإحصائيات الكاملة» شاشةٌ أصليّة** (`FullStatsScreen`) تفتح على مدّة التقرير، والقطعُ المشتركةُ
- *    (`PlusPill` · `PlusLock` · `SvgGuard` · `H2`) تُصدَّر من هنا لها. ⚖️ **«شارك تقريرك» ليس هنا بعد** (الدفعةُ ج): صفٌّ لا يعمل
- *    وعدٌ يُخلَف، فلا يُرسم قبل أن يعمل.
+ *    (`PlusPill` · `PlusLock` · `SvgGuard` · `H2`) تُصدَّر من هنا لها.
+ *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): صفٌّ تحت باب الإحصائيات ورمزٌ في الترويسة، كلاهما يشارك **صورةَ المدّة
+ *    المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
@@ -42,6 +44,40 @@ const DOWN = "#E5484D";
 const PERIODS: ReportPeriod[] = ["week", "month", "year"];
 
 export const myReportKey = (period: ReportPeriod, offset = 0) => ["me:reports", period, offset] as const;
+
+/**
+ * مشاركةُ صورة التقرير — **صورةُ مدّةٍ بعينها** (رمزٌ يشارك «الشهر» وأنت في «السنة» عطلٌ بحجمٍ أصغر — حجّةُ D-810).
+ * الملفُّ في الكاش باسمٍ موقوت، والسابقُ يُمسح قبل الجديد لا بعد المشاركة (ورقةُ أندرويد قد تعود قبل أن يقرأه التطبيقُ الآخر).
+ * وحدةُ المشاركة تُحمَّل عند الحاجة (حجّةُ `PrivacyScreen`): إن غابت في ثنائيٍّ ما فالنتيجةُ سطرُ خطأٍ هنا لا سقوطُ الشاشة.
+ */
+function useShareReport(period: ReportPeriod) {
+  const { t } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  /* المدّةُ تبدّلت ⇒ خطأُ المدّة السابقة ليس خطأَها */
+  useEffect(() => setError(null), [period]);
+  const share = useCallback(async () => {
+    if (busy) return;
+    haptic.pick();
+    setBusy(true);
+    setError(null);
+    try {
+      for (const f of Paths.cache.list()) {
+        if (f instanceof File && f.name.startsWith("loopz-report-")) f.delete();
+      }
+      const file = new File(Paths.cache, `loopz-report-${period}-${Date.now()}.png`);
+      await downloadTo(`/api/v1/me/report/image?p=${period}`, file);
+      const Sharing = await import("expo-sharing");
+      if (!(await Sharing.isAvailableAsync())) throw new Error("sharing unavailable");
+      await Sharing.shareAsync(file.uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: t.shareReportTitle });
+    } catch {
+      setError(t.shareFailed);
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, period, t]);
+  return { busy, error, share };
+}
 
 export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
@@ -57,6 +93,9 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
   });
   const d = q.data ?? null;
   const refresh = usePullRefresh([key], 0);
+  const sharing = useShareReport(period);
+  /* الرمزُ والصفُّ للمشترك وعلى مدّةٍ فيها ما يُشارك: الخادمُ يرفض غيرَ ذلك (403 · 409)، وزرٌّ يُضغط ليُرفض فخّ */
+  const canShare = !!d?.plus && !d.stats.empty;
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -93,6 +132,11 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
           <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{d ? `${title} · ${d.stats.range.label}` : title}</Text>
           {d?.plus ? <PlusPill /> : null}
         </View>
+        {canShare ? (
+          <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
+            <Icon name="share" size={20} color={tokens.fg} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* تبويباتُ المدّة — خطٌّ تحت النشط لا رقاقةٌ مطوَّقة (الصورة) */}
@@ -123,7 +167,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
               {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
             </Text>
           ) : (
-            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} onRepaired={() => void q.refetch()} />
+            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} sharing={sharing} onRepaired={() => void q.refetch()} />
           )}
         </ScrollView>
       )}
@@ -147,6 +191,7 @@ function ReportBody({
   onTitle,
   onWeb,
   onFull,
+  sharing,
   onRepaired,
 }: {
   s: ReportStats;
@@ -154,9 +199,10 @@ function ReportBody({
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onWeb: (path: string) => void;
   onFull: (period: ReportPeriod) => void;
+  sharing: { busy: boolean; error: string | null; share: () => Promise<void> };
   onRepaired: () => void;
 }) {
-  const { tokens, locale } = useApp();
+  const { t, tokens, locale } = useApp();
   const en = locale === "en";
   const lead = reportLead(s, locale);
   const insight = s.taste.shift[0];
@@ -268,6 +314,16 @@ function ReportBody({
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text size={14} weight="700">{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
           <Text size={12} muted style={{ marginTop: 2 }}>{en ? "Content, taste and habits in full" : "المحتوى والذوق والعادات بتفصيلها"}</Text>
+        </View>
+      </Pressable>
+
+      {/* 🆕 D-1368 — «شارك تقريرك» (D-810) تحت باب الإحصائيات لا فوقه، وبشكله (بابان في ذيلٍ بشكلين يُقرآن رتبتين). بلا سهم:
+          السهمُ يَعِد بصفحةٍ تُفتح، وهذا يفعل في مكانه — وسطرُه الثاني يقول حالَه (يُجهَّز · تعذّر) */}
+      <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, marginTop: 12, opacity: pressed ? 0.7 : 1 })}>
+        <Icon name="share" size={18} color={tokens.accent} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text size={14} weight="700">{t.shareReportTitle}</Text>
+          <Text size={12} color={sharing.error ? tokens.error : tokens.muted} style={{ marginTop: 2 }}>{sharing.error ?? (sharing.busy ? t.shareBusy : t.shareReportSub)}</Text>
         </View>
       </Pressable>
     </>
