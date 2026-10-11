@@ -56,7 +56,10 @@ let pendingPost: string | null = null;
  */
 /* 🆕 D-1344 — الدخولُ يملكه `WebLayer` (يحمل مصدرَ الـWebView والتسليم)؛ شاشةُ الدخول الأصليّة تناديه من هنا */
 export type SignInResult = { ok: true; access: string } | { ok: false; cancelled: boolean };
-let signer: (() => Promise<SignInResult>) | null = null;
+/** 🆕 D-1350 — المزوّدان (القرار ٢: «فقط قوقل وابل»)؛ أبل على iOS وحدَه */
+export type SignInProvider = "google" | "apple";
+type Signer = (provider?: SignInProvider, onReturn?: () => void) => Promise<SignInResult>;
+let signer: Signer | null = null;
 /* 🆕 D-1347 — من يرفع الترحيبَ الأصليّ (`WebLayer.showWelcome`) ما دام مركَّباً */
 let welcomer: (() => void) | null = null;
 const ARRIVAL_TIMEOUT_MS = 4000;
@@ -67,12 +70,15 @@ export const shell = {
     inject = fn;
   },
   /** 🆕 D-1344 — `WebLayer` يسجّل دالّةَ دخوله (`doLogin`) ما دام مركَّباً */
-  attachSignIn(fn: (() => Promise<SignInResult>) | null) {
+  attachSignIn(fn: Signer | null) {
     signer = fn;
   },
-  /** 🆕 D-1344 — دخولُ Google ثمّ التسليمُ للويب — الطريقُ نفسُه الذي كانت تسلكه رسالةُ `login` من الصفحة */
-  signIn(): Promise<SignInResult> {
-    return signer ? signer() : Promise.resolve({ ok: false, cancelled: false });
+  /**
+   * 🆕 D-1344 — دخولُ Google ثمّ التسليمُ للويب — الطريقُ نفسُه الذي كانت تسلكه رسالةُ `login` من الصفحة.
+   * 🆕 D-1350 — `provider`: أبل تسلك الطريقَ نفسَه بعد جلستها. `onReturn`: عاد من نافذة المزوّد ومعه ما يكفي للدخول.
+   */
+  signIn(provider: SignInProvider = "google", onReturn?: () => void): Promise<SignInResult> {
+    return signer ? signer(provider, onReturn) : Promise.resolve({ ok: false, cancelled: false });
   },
   /**
    * 🆕 D-1344 — لغةُ الويب تتبع ما اختير في شاشة الدخول الأصليّة: كوكي `lang` (اسمُه في `core/i18n`) يُكتب في

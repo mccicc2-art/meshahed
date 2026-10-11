@@ -63,6 +63,10 @@ def islands(S):
     return fixed
 for _ in range(3):
     if not islands(S): break
+# 🔴 D-1350 — **كلُّ بكسل حافّةٍ يتبع أقربَ حبرٍ معتمٍ إليه**: بكسلاتٌ نصفُ شفّافةٍ عند طرف المدسوس (قرب ٣١٥،٢٧٨)
+# كانت منسوبةً للبارز، فتضيء معه وتبقى نقطةً معزولةً حتى يصلها شريطُها (نحو ٤٠٪ من مدّة الرسم عند العرض بدقّةٍ
+# أعلى، ومرحلتان من ١٩٧ بدقّة هذا الملفّ). الفحصُ السابق (`islands`) يقرأ الحبرَ فوق ٠٫٢ فلم يرَها.
+_,(iy,ix)=ndi.distance_transform_edt(~(A>0.5),return_indices=True); S=S[iy,ix]
 np.save('S.npy',S); np.save('A.npy',A)
 chk=Image.fromarray((np.dstack([S*255,(pick*60),A*255*0+80,A*255])).astype(np.uint8),'RGBA'); chk.save('param-check.png')
 print('lengths: line %.1f arc %.1f; breakpoints %.3f %.3f %.3f'%(linLen,arcLen,s1,s2,s3))

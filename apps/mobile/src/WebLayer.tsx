@@ -16,8 +16,10 @@ import { perfMs } from "./perf";
 import { mark } from "./perfMarks";
 import { session } from "./session";
 import { own } from "./ownSession";
-import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo, type SignInResult } from "./shell";
+import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo, type SignInProvider, type SignInResult } from "./shell";
 import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
+/* D-1350 — الطبقةُ هي الشاشة (رابطُ الودجت) وانتهى تحميلُها ⇒ أنميشنُ الفتح ينزل عنها */
+import { opening } from "./opening/opening";
 import { rootStack, topOf, webLayer, type State } from "./webDoor";
 import { BottomNav, type NavKey } from "./BottomNav";
 import { prefetchDiscover } from "./discover/DiscoverScreen";
@@ -185,7 +187,7 @@ const ROOTS = ["/library", "/news", "/discover", "/people", "/community", "/sear
  * الحيّ تحتها. وصار `app/web.tsx` مساراً فارغاً: مكانُ الطبقة في المكدّس (قاعدتُه وما يرجع إليه الرجوعُ الأخير).
  */
 export function WebLayer() {
-  const { loading, signInWithGoogle } = useAuth();
+  const { loading, signInWithGoogle, signInWithApple } = useAuth();
   const router = useRouter();
   const t = OFFLINE[currentLocale() === "ar" ? "ar" : "en"];
   const ref = useRef<WebView>(null);
@@ -562,13 +564,14 @@ export function WebLayer() {
    * Google ⇒ الأثر ⇒ الجلسةُ المملوكة ⇒ التسليمُ للويب بـPOST يرسله الغلاف. ما أُضيف هو ما يعود به:
    * رمزُ الوصول (لتسأل به الشاشةُ «أتمّ الترحيب؟») و`cancelled` (أغلق نافذةَ Google بنفسه — لا رسالةَ خطأ).
    */
-  const doLogin = useCallback(async (): Promise<SignInResult> => {
+  const doLogin = useCallback(async (provider: SignInProvider = "google", onReturn?: () => void): Promise<SignInResult> => {
     const loginT0 = Date.now();
-    const r = await signInWithGoogle();
+    /* 🆕 D-1350 — أبل (iOS) بورقة النظام، وما بعد الجلسة واحدٌ للمزوّدَين */
+    const r = provider === "apple" ? await signInWithApple({ onReturn }) : await signInWithGoogle({ onReturn });
     const { data } = await supabase.auth.getSession();
     /* 🆕 D-1152 — نتيجةُ الدخول بسببها (رسالةُ الخطأ مختصرةً كلمةً — لا بريدَ ولا رمز) */
     const why = r.ok ? (data.session ? "ok" : "nosession") : String(r.message ?? "unknown").toLowerCase().replace(/[^\w.-]+/g, "_").slice(0, 16) || "unknown";
-    mark("auth.login", Date.now() - loginT0, { result: r.ok && data.session ? "ok" : "none", why });
+    mark("auth.login", Date.now() - loginT0, { result: r.ok && data.session ? "ok" : "none", why, src: provider });
     if (!(r.ok && data.session)) return { ok: false, cancelled: !r.ok && (r.message === "cancel" || r.message === "dismiss") };
     handing.current = true;
     handT0.current = Date.now();
@@ -580,8 +583,22 @@ export function WebLayer() {
     setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }) });
     /* D-1003 — الجلسةُ جاهزة: نسخّن «اكتشف» بينما الويبُ يحمّل الرئيسيّة */
     prefetchDiscover();
+    /* 🆕 D-1350 — **ما أعطته أبل مرّةً يُسلَّم للخادم قبل أن تعود الدالّة** (والتسليمُ للويب والسكُّ جاريان كما كانا، بترتيبهما): الاسمُ (ليُكتب في الملفّ قبل أن يقرأه الترحيب —
+       بلاه يصير اسمُ العضو مقطعَ بريدٍ مخفيّ) ورمزُ التفويض (يبدّله الخادمُ برمز تجديدٍ يُلغى به الإذنُ عند حذف
+       الحساب؛ صالحٌ خمسَ دقائق ولا يُعطى ثانيةً). يُنتظر بمهلة: فشلُه لا يمنع الدخول. */
+    if (r.apple && (r.apple.code || r.apple.name)) {
+      const ctl = new AbortController();
+      const cut = setTimeout(() => ctl.abort(), 3500);
+      await fetch(`${CONFIG.apiBase}/api/v1/session/apple`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ code: r.apple.code, name: r.apple.name }),
+        signal: ctl.signal,
+      }).catch(() => {});
+      clearTimeout(cut);
+    }
     return { ok: true, access: data.session.access_token };
-  }, [signInWithGoogle]);
+  }, [signInWithGoogle, signInWithApple]);
   useEffect(() => {
     shell.attachSignIn(doLogin);
     return () => shell.attachSignIn(null);
@@ -922,11 +939,11 @@ export function WebLayer() {
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
           onLoadStart={() => console.log(`[perf] onLoadStart t=${perfMs()}ms`)}
-          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); if (!visibleRef.current) ref.current?.injectJavaScript(coverJs(true)); setReady(true); session.ready(true); bootAsk(); if (!handing.current) flush(); }}
+          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); if (!visibleRef.current) ref.current?.injectJavaScript(coverJs(true)); setReady(true); session.ready(true); if (visibleRef.current) opening.ready(); bootAsk(); if (!handing.current) flush(); }}
           /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
              (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */
-          onError={() => { setFailed(true); setReady(true); session.abandon(); }}
+          onError={() => { setFailed(true); setReady(true); session.abandon(); if (visibleRef.current) opening.ready(); }}
           /* ولا تُحسب أخطاءُ HTTP انقطاعاً: صفحةُ 404 من موقعنا صفحتُنا. */
           onRenderProcessGone={() => { setReady(false); session.ready(false); ref.current?.reload(); }}
           /* السحبُ للتحديث: غلافٌ بلا تحديثٍ يُجبر على قتل التطبيق لإعادة الفتح.

@@ -39,6 +39,7 @@ const eslintConfig = defineConfig([
       "src/app/api/v1/app/perf/route.ts", // D-1024 — علاماتُ أداء الشاشات الأصليّة ⇢ `runtime_errors` بنوع `perf` (مستخدمٌ مسجَّل ومحدود، صفرُ نصٍّ حرّ)
       "src/app/p/[[]code[]]/route.ts",
       "src/lib/push.ts", // D-1305 — إشعاراتُ الدفع: رموزُ أجهزة المستلم وسجلُّ ما أُرسل لا يقرؤهما إلّا الخادم
+      "src/lib/apple.ts", // D-1350 — رمزُ تجديد أبل: يُحفظ عند الدخول ويُقرأ ليُلغى عند حذف الحساب؛ جدولُه بلا سياسةٍ ولا منحٍ للعميل
       "src/app/api/v1/session/mint/route.ts", // K4b — سكُّ جلسةٍ مستقلّةٍ للتطبيق من رمز وصولٍ صالح (admin.generateLink + verify)
     ],
     rules: {

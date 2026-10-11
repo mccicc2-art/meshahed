@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { I18nManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -15,6 +15,7 @@ import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
 import { PushGate } from "../src/PushGate";
 import { TourHost } from "../src/tour/TourHost";
+import { Opening } from "../src/opening/Opening";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
@@ -53,8 +54,13 @@ export default function RootLayout() {
 function Shell() {
   const { loading } = useAuth();
   const { tokens, themeId } = useApp();
+  /* 🆕 D-1350 — أنميشنُ الفتح يبدأ حين تزول صورةُ النظام لا قبلها: ما يُرسم خلفها لا يُرى */
+  const [splashGone, setSplashGone] = useState(false);
   useEffect(() => {
-    if (!loading) SplashScreen.hideAsync().catch(() => {});
+    if (loading) return;
+    SplashScreen.hideAsync()
+      .catch(() => {})
+      .finally(() => setSplashGone(true));
   }, [loading]);
   return (
     <>
@@ -129,6 +135,8 @@ function Shell() {
       <PushGate />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
       <TourHost />
+      {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}
+      <Opening start={splashGone} />
     </>
   );
 }

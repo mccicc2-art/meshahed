@@ -1,23 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, BackHandler, Easing, Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, BackHandler, Easing, Platform, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../api";
+import { APPLE_SIGN_IN } from "../auth";
 import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
+import { HOME_KEY } from "../home/useHome";
 import { webLocale } from "../i18n";
 import { mark } from "../perfMarks";
+import { opening } from "../opening/opening";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
 import { posterFor } from "../poster";
+import { prime, WELCOME_KEY } from "../prime";
 import { session } from "../session";
-import { shell } from "../shell";
+import { shell, type SignInProvider } from "../shell";
 import { useApp } from "../state";
-import { radius, space } from "../theme";
+import { radius, space, statusBarStyleOf } from "../theme";
 import { Button, Text } from "../ui";
+import { Preparing } from "../welcome/Preparing";
 
 /**
  * ====== شاشةُ الدخول الأصليّة (D-1344 · Phase 11-U · U1) ======
@@ -33,6 +39,15 @@ import { Button, Text } from "../ui";
  *
  * ⚖️ ما سقط عن شاشة الويب بقراره: الشارةُ الإنجليزيّة (القرار ١٣ — النقاطُ الثلاثُ مكانها) و«تصفّح أوّلاً»
  * (القرار ٦). وما بقي: العنوانُ بسطرَيه، وجدارُ الملصقات المتحرّك («متحركة ببطئ مثل الويب») بأشهر الأعمال.
+ *
+ * 🆕 D-1350 (Phase 11-U · U3) — **زرُّ أبل على iOS وحدَه** (القرار ٣)، تحت زرّ Google وبقياسه: زرُّ أبل الرسميّ
+ * (`AppleAuthenticationButton` — شرطُ إرشاداتها أن يكون بشكلها وألّا يصغر عن غيره). Google أوّلاً: حساباتُ Loopz
+ * القائمةُ كلُّها به، ومن يدخل بأبل وقد أخفى بريدَه يولد له حسابٌ ثانٍ (مخرجُه «ربط حساب Google» في الإعدادات).
+ *
+ * 🆕 D-1350 — **بعد العودة من المزوّد: شاشةُ الشعار لا دائرةُ الزرّ** (تسجيلُ أحمد ١١ أكتوبر: دائرةٌ في الزرّ نصفَ
+ * ثانية ثمّ شاشةٌ سوداءُ بدائرةٍ نصفَ ثانية؛ قرارُه «شاشة جاري الانتظار القديمة اضيفها هنا» و«يكمل رسمه دائماً ثم
+ * يدخل»). تُرفع لحظةَ يعود ومعه ما يكفي للدخول (`onReturn` — فمن أغلق النافذةَ لا يراها)، وتبقى حتى يكتمل الرسمُ
+ * **وتجهز الشاشةُ التالية** (`prime`: الرئيسيّةُ أو أوّلُ الترحيب، برمز الدخول نفسِه) — فتُفتح ممتلئة.
  */
 
 /* ===== جدارُ الملصقات =====
@@ -120,13 +135,51 @@ const POINTS = [
 ] as const;
 
 export function SignInScreen() {
-  const { t, tokens, locale } = useApp();
+  const { t, tokens, locale, themeId } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<SignInProvider | null>(null);
+  /* 🆕 D-1350 — أبل متاحةٌ على هذا الجهاز؟ (iOS ١٣+؛ المحاكي القديم وأندرويد لا) */
+  const [apple, setApple] = useState(false);
+  useEffect(() => {
+    if (!APPLE_SIGN_IN) return;
+    let alive = true;
+    AppleAuthentication.isAvailableAsync()
+      .then((on) => {
+        if (alive) setApple(on);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  /* 🆕 D-1350 — شاشةُ الشعار بعد العودة من المزوّد، ووعدُ اكتمال رسمها (بسقفٍ إن لم تُعلنه) */
+  const [entering, setEntering] = useState(false);
+  const drawn = useRef<{ p: Promise<void>; done: () => void } | null>(null);
+  const raise = useCallback(() => {
+    if (!drawn.current) {
+      let done = () => {};
+      const p = new Promise<void>((r) => {
+        done = r;
+      });
+      drawn.current = { p, done };
+    }
+    setEntering(true);
+  }, []);
+  const lower = useCallback(() => {
+    drawn.current = null;
+    setEntering(false);
+  }, []);
+  /** اكتمل الرسمُ **و** انتهى التجهيز — أيُّهما تأخّر يُنتظر؛ والرسمُ لا يحبس أكثر من أربع ثوانٍ إن لم يُعلن */
+  const settled = useCallback(async (ready: Promise<unknown>) => {
+    const d = drawn.current?.p ?? Promise.resolve();
+    await Promise.all([Promise.race([d, new Promise<void>((r) => setTimeout(r, 4000))]), ready.catch(() => {})]);
+  }, []);
   /* 🩺 D-1346 — كم بقيت الشاشةُ مرفوعة: إنزالٌ في جزءٍ من الثانية بلا دخولٍ هو العطلُ نفسُه (الخروجُ كان يُنزلها) */
   useEffect(() => {
     const t0 = Date.now();
+    /* D-1350 — شاشةُ الدخول لا تنتظر شبكة: أنميشنُ الفتح ينزل عنها متى اكتمل */
+    opening.ready();
     return () => mark("signin.hide", Date.now() - t0);
   }, []);
   const [failed, setFailed] = useState(false);
@@ -149,17 +202,19 @@ export function SignInScreen() {
     return () => sub.remove();
   }, []);
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (provider: SignInProvider) => {
     if (busy) return;
     setFailed(false);
-    setBusy(true);
+    setBusy(provider);
     try {
-      const r = await shell.signIn();
+      const r = await shell.signIn(provider, raise);
       if (!r.ok) {
-        /* أغلق نافذةَ Google بنفسه ⇒ لا رسالة؛ غيرُه خطأٌ يُقال */
+        /* أغلق نافذةَ المزوّد بنفسه ⇒ لا رسالة؛ غيرُه خطأٌ يُقال (والشاشةُ تعود إن كانت رُفعت) */
+        lower();
         if (!r.cancelled) setFailed(true);
         return;
       }
+      raise();
       /* «أتمّ الترحيب؟» برمز الدخول نفسِه — لا ننتظر جلسةً مملوكةً تُسكّ ولا صفحةً تُحمَّل.
          `true` وحدَها تفتح الرئيسيّة: جوابٌ غائبٌ أو فاشلٌ يترك القرارَ للويب (حارسُه يعرف) لا يخمّنه. */
       let onboarded: boolean | null = null;
@@ -171,6 +226,8 @@ export function SignInScreen() {
         onboarded = null;
       }
       if (onboarded === true) {
+        /* 🆕 D-1350 — الرئيسيّةُ تُجلب خلف شاشة الشعار (سقفٌ خمسُ ثوانٍ) فتُفتح ممتلئة */
+        await settled(prime(r.access, "/api/v1/me/home", HOME_KEY, 5000));
         /* كما يرفعها الإقلاع (`rootsBorn(true)`: رجوعُها يخرج من التطبيق) — والويبُ يُكمل تسليمَه تحتها */
         if (router.canDismiss()) router.dismissAll();
         rootsBorn(true);
@@ -180,6 +237,8 @@ export function SignInScreen() {
       /* 🆕 D-1347 — **لم يُتمّ ⇒ الترحيبُ الأصليّ**: العلامةُ تُكتب فيرفعه مستمعُها في الغلاف (`WebLayer.showWelcome` —
          يُنزل هذه الشاشةَ ويدفعه مكانَها). لا ننتظر صفحةَ ترحيب الويب: كان الانتظارُ لأجلها يوم كانت هي الترحيب. */
       if (onboarded === false) {
+        /* 🆕 D-1350 — وأوّلُ الترحيب كذلك: حمولتُه في الكاش قبل أن يُرفع (كان يُفتح على دائرةٍ فوق شاشةٍ سوداء) */
+        await settled(prime(r.access, "/api/v1/welcome", WELCOME_KEY, 5000));
         session.setWelcomePending(true);
         /* وإن كانت العلامةُ مكتوبةً من قبل فلم يتبدّل شيءٌ يسمعه أحد — يُرفع صراحةً (`showWelcome` لا يدفع مرّتين) */
         shell.showWelcome();
@@ -204,11 +263,14 @@ export function SignInScreen() {
           done(true);
         });
       });
-      if (!raised && router.canDismiss()) router.dismissAll();
+      if (!raised) {
+        await settled(Promise.resolve());
+        if (router.canDismiss()) router.dismissAll();
+      }
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
-  }, [busy, router]);
+  }, [busy, router, raise, lower, settled]);
 
   const openDoc = useCallback((path: "/terms" | "/privacy") => {
     /* الصفحتان القانونيّتان تبقيان ويباً (قرارُه ١٠ أكتوبر) — تُفتحان في متصفّح التطبيق المصغَّر: لا جلسةَ تلزمهما.
@@ -233,7 +295,7 @@ export function SignInScreen() {
       <View style={{ flexDirection: "row", paddingHorizontal: space.lg, paddingTop: space.md }}>
         <Pressable
           onPress={flipLang}
-          disabled={busy}
+          disabled={!!busy}
           hitSlop={8}
           accessibilityRole="button"
           style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6, backgroundColor: tokens.surface }}
@@ -266,7 +328,18 @@ export function SignInScreen() {
         {failed ? (
           <Text size={13} color={tokens.error} style={{ textAlign: "center", marginBottom: space.md }}>{t.signInFailed}</Text>
         ) : null}
-        <Button label={t.loginContinueGoogle} busy={busy} onPress={() => void signIn()} style={{ minHeight: 52 }} />
+        <Button label={t.loginContinueGoogle} busy={busy === "google"} disabled={!!busy} onPress={() => void signIn("google")} style={{ minHeight: 52 }} />
+        {apple ? (
+          <View pointerEvents={busy ? "none" : "auto"} style={{ marginTop: space.md, opacity: busy ? 0.6 : 1 }}>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={statusBarStyleOf(themeId) === "dark" ? AppleAuthentication.AppleAuthenticationButtonStyle.BLACK : AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={26}
+              style={{ height: 52 }}
+              onPress={() => void signIn("apple")}
+            />
+          </View>
+        ) : null}
         {/* كلُّ قطعةٍ `Text` بنصِّها: المكوّنُ يختار الخطَّ لنصٍّ صِرف، وأبٌ فيه نصٌّ وعناصرُ معاً يسقط إلى خطّ النظام */}
         <Text size={12} style={{ textAlign: "center", marginTop: space.md + 2, lineHeight: 20 }}>
           <Text size={12} muted>{t.signInConsentLead}</Text>
@@ -275,6 +348,11 @@ export function SignInScreen() {
           <Text size={12} style={{ textDecorationLine: "underline" }} onPress={() => openDoc("/privacy")}>{t.signInConsentPrivacy}</Text>
         </Text>
       </View>
+      {entering ? (
+        <View style={StyleSheet.absoluteFill}>
+          <Preparing label={t.obSaving} once onDrawn={() => drawn.current?.done()} />
+        </View>
+      ) : null}
     </View>
   );
 }

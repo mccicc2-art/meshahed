@@ -41,6 +41,7 @@ import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { HomeTopBar, HomeGreeting, HomeStats } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
+import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
@@ -74,6 +75,11 @@ export function HomeScreen() {
      والإقلاعُ صار إلى الرئيسيّة ⇒ `coldstart.home` هنا، وهو يُسكت `coldstart.library` الذي صار يقيس «متى
      فُتحت المكتبةُ أوّلَ مرّة» لا الإقلاع */
   const [endOpen] = useState(() => span("home.open", { cached: qc.getQueryData(HOME_KEY) ? 1 : 0 }));
+  /* 🆕 D-1350 — أنميشنُ الفتح ينتظر هذه: الرئيسيّةُ معها حمولتُها (أو عرفت أنّها لن تصل) */
+  const openReady = !!home.data || home.isError;
+  useEffect(() => {
+    if (openReady) opening.ready();
+  }, [openReady]);
   useEffect(() => {
     if (!d) return;
     afterPaint(() => {

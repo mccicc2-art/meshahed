@@ -59,6 +59,8 @@ export async function GET() {
         avatar_url: p?.avatar_url ?? null,
         avatar_pos: p?.avatar_pos ?? 50,
         email: auth.user.email ?? null,
+        /* D-1350 — من الهويّات نفسِها (جوابُ `getUser` من خادم المصادقة، لا من رمزٍ قد يسبق الربط) */
+        providers: [...new Set((auth.user.identities ?? []).map((i) => i.provider))],
         plan_label: planNameOf(p, t),
         plus: isPlus(p),
         partner: isPartner(p),

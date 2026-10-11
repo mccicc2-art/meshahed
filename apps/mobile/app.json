@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loopz",
     "slug": "mesh",
-    "version": "1.12.2",
+    "version": "1.12.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "com.loopztv.app",
@@ -10,13 +10,17 @@
     "newArchEnabled": true,
     "backgroundColor": "#050505",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-blank.png",
       "resizeMode": "contain",
       "backgroundColor": "#050505"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.loopztv.app"
+      "bundleIdentifier": "com.loopztv.app",
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.loopztv.app",
@@ -33,11 +37,12 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-localization",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#050505",
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/splash-blank.png",
           "imageWidth": 160
         }
       ],

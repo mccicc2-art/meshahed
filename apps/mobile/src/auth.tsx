@@ -1,5 +1,8 @@
 import "react-native-url-polyfill/auto";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
@@ -71,13 +74,34 @@ export async function forgetLegacySession(): Promise<void> {
   ]).catch(() => {});
 }
 
+/**
+ * 🆕 D-1350 — ما تعود به أبل مرّةً واحدة ولا يُسأل عنه ثانيةً: رمزُ التفويض (صالحٌ خمسَ دقائق، يبدّله الخادمُ برمز
+ * تجديدٍ يُلغى به الإذنُ عند حذف الحساب) والاسمُ (لا تعطيه أبل إلّا في أوّل دخولٍ للتطبيق، وليس في رمز الهويّة).
+ */
+export type AppleExtra = { code: string | null; name: string | null };
+export type SignInOutcome = { ok: true; apple?: AppleExtra } | { ok: false; message: string };
+/** `onReturn`: عاد من نافذة المزوّد بما يكفي للدخول (قبل تبادله بجلسة) — الشاشةُ ترفع ستارَها من هذه اللحظة */
+type SignInOpts = { onReturn?: () => void };
+
 type AuthState = {
   session: Session | null;
   /** `true` حتى تُقرأ الجلسةُ من المخزن أوّلَ مرّة — لا وميضَ شاشةِ دخولٍ لمن هو داخلٌ أصلاً */
   loading: boolean;
-  signInWithGoogle: () => Promise<{ ok: true } | { ok: false; message: string }>;
+  signInWithGoogle: (opts?: SignInOpts) => Promise<SignInOutcome>;
+  /** 🆕 D-1350 — دخولُ أبل الأصليّ: على iOS وحدَه (القرار ٣) */
+  signInWithApple: (opts?: SignInOpts) => Promise<SignInOutcome>;
   signOut: () => Promise<void>;
 };
+
+/** أبل تعرض زرَّها على iOS ١٣+ — وعلى أندرويد والويب لا شيء (القرار ٣: «تسجيل الدخول عن طريق ابل فقط ف ابل») */
+export const APPLE_SIGN_IN = Platform.OS === "ios";
+
+const HEX = "0123456789abcdef";
+function randomHex(bytes: number): string {
+  let out = "";
+  for (const b of Crypto.getRandomBytes(bytes)) out += HEX[b >> 4] + HEX[b & 15];
+  return out;
+}
 
 const AuthContext = createContext<AuthState | null>(null);
 
@@ -97,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       loading,
-      async signInWithGoogle() {
+      async signInWithGoogle(opts) {
         try {
           const redirectTo = Linking.createURL("auth/callback");
           const { data, error } = await supabase.auth.signInWithOAuth({
@@ -111,10 +135,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const code = new URL(res.url).searchParams.get("code");
           if (!code) return { ok: false, message: "no code" };
+          opts?.onReturn?.();
           const ex = await supabase.auth.exchangeCodeForSession(code);
           if (ex.error) return { ok: false, message: ex.error.message };
           return { ok: true };
         } catch (e) {
+          return { ok: false, message: e instanceof Error ? e.message : "unknown" };
+        }
+      },
+      /**
+       * 🆕 D-1350 — **أبل بلا متصفّح**: ورقةُ النظام تعيد رمزَ هويّةٍ موقَّعاً، وSupabase يتحقّق منه ويصدر الجلسة
+       * (`signInWithIdToken` — مزوّدُ أبل هناك بمعرّف الحزمة عميلاً، بلا سرّ). ما بعد الجلسة طريقُ Google نفسُه.
+       *
+       * 🔑 **الرقمُ العشوائيّ (nonce)**: أبل تضع في الرمز بصمتَه (SHA-256) وSupabase يطابقها بالأصل الذي نرسله له —
+       * فرمزٌ سُرق من دخولٍ آخر لا يُقبل هنا. الأصلُ لا يغادر الجهازَ إلّا إلى Supabase.
+       */
+      async signInWithApple(opts) {
+        try {
+          const raw = randomHex(16);
+          const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
+          const cred = await AppleAuthentication.signInAsync({
+            requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+            nonce: hashed,
+          });
+          if (!cred.identityToken) return { ok: false, message: "no token" };
+          opts?.onReturn?.();
+          const { error } = await supabase.auth.signInWithIdToken({ provider: "apple", token: cred.identityToken, nonce: raw });
+          if (error) return { ok: false, message: error.message };
+          const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter((x): x is string => !!x && !!x.trim()).join(" ").trim();
+          return { ok: true, apple: { code: cred.authorizationCode ?? null, name: name || null } };
+        } catch (e) {
+          /* أغلق الورقةَ بنفسه ⇒ «cancel» كما يقولها متصفّحُ Google (فلا رسالةَ خطأ) */
+          const code = (e as { code?: unknown } | null)?.code;
+          if (code === "ERR_REQUEST_CANCELED") return { ok: false, message: "cancel" };
           return { ok: false, message: e instanceof Error ? e.message : "unknown" };
         }
       },

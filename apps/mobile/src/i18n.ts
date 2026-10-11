@@ -3,6 +3,7 @@ import { I18nManager } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Updates from "expo-updates";
 import { getDict, normalizeLocale, isRtl, type Dict, type Locale } from "@/core/i18n";
+import { opening } from "./opening/opening";
 
 /**
  * ====== اللغةُ — من الجهاز، والقاموسُ من النواة ======
@@ -58,6 +59,8 @@ export const webLocale = {
            اللغة أصلاً — فإعادةٌ واحدةٌ أهونُ من شاشاتٍ أصليّةٍ مقلوبةٍ حتى يُغلق التطبيق. الفشلُ صمت (بيئةُ التطوير) */
         if (I18nManager.isRTL === isRtl(v)) return;
         applyDirection(v);
+        /* D-1350 — إعادةُ تحميلٍ نطلبها نحن ليست فتحةً جديدة: الإقلاعُ التالي بلا أنميشن الفتح */
+        opening.skipNext();
         return Updates.reloadAsync().catch(() => {});
       })
       .catch(() => {});

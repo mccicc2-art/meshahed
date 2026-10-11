@@ -26,6 +26,8 @@ export type SettingsPayload = {
     avatar_url: string | null;
     avatar_pos: number;
     email: string | null;
+    /** 🆕 D-1350 — مزوّدو الدخول المرتبطون بالحساب (`google` · `apple` · `x`…) — لصفِّ «ربط حساب Google». خادمٌ أقدمُ لا يرسله */
+    providers?: string[];
     /** اسمُ الخطّة كما يكتبه `planNameOf` — بلغة الطلب */
     plan_label: string;
     plus: boolean;

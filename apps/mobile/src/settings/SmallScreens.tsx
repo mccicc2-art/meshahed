@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import { useApp } from "../state";
@@ -11,7 +11,8 @@ import type { PushGroup, PushPrefsPayload } from "@/core/push";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row, RowsSkeleton, Toggle } from "./ui";
 import { useRouter } from "expo-router";
-import { useSettings, useOpenWeb } from "./api";
+import { useSettings, useOpenWeb, invalidateSettings } from "./api";
+import { linkGoogle } from "../linkGoogle";
 import type { HintsResetBody } from "../contracts";
 import { tourStore } from "../tour/store";
 
@@ -182,8 +183,27 @@ export function AccountScreen() {
   const router = useRouter();
   /* D-1106/D-1107 — الاسمُ والتوثيقُ صارا شاشتين أصليّتين؛ الفوترةُ والحذفُ بابان (D-1096) */
   const go = (section: "profile" | "verify") => router.push({ pathname: "/settings/[section]", params: { section } });
+  /* 🆕 D-1350 — «ربط حساب Google» لمن دخل بأبل (القرار ٥): صفٌّ يفتح Google في متصفّح النظام، وبعد الربط يقول «مرتبط» */
+  const toast = useRef<ToastHostRef>(null);
+  const [linking, setLinking] = useState(false);
+  const providers = s?.account.providers ?? [];
+  const hasGoogle = providers.includes("google");
+  const link = async () => {
+    if (linking) return;
+    setLinking(true);
+    try {
+      const out = await linkGoogle();
+      if (out === "linked") {
+        toast.current?.say(t.linkGoogleDone, undefined, undefined, "success");
+        invalidateSettings();
+      } else if (out === "taken") toast.current?.say(t.linkGoogleTaken);
+      else if (out === "failed") toast.current?.say(t.linkGoogleFailed);
+    } finally {
+      setLinking(false);
+    }
+  };
   return (
-    <SettingsScreen title={t.setAccount}>
+    <SettingsScreen title={t.setAccount} toast={toast}>
       {!s ? (
         <RowsSkeleton rows={4} />
       ) : (
@@ -191,6 +211,13 @@ export function AccountScreen() {
           <Group>
             <Row icon="edit" title={t.setNameHandle} value={s.account.username ? `@${s.account.username}` : undefined} onPress={() => go("profile")} />
             <Row icon="mail" title={t.emailSection} subtitle={s.account.email ?? ""} />
+            {providers.includes("apple") ? (
+              hasGoogle ? (
+                <Row icon="link" title={t.linkGoogleTitle} value={t.linkGoogleLinked} />
+              ) : (
+                <Row icon="link" title={t.linkGoogleTitle} subtitle={t.linkGoogleSub} onPress={() => void link()} busy={linking} />
+              )
+            ) : null}
             <Row icon="shield" title={t.verifyTitle} subtitle={t.verifySub} onPress={() => go("verify")} />
             <Row icon="card" title={t.setBilling} value={s.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
           </Group>

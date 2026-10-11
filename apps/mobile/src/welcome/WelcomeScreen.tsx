@@ -38,6 +38,8 @@ import { Button, Loading, Text } from "../ui";
 import { EpisodeSheet } from "./EpisodeSheet";
 import { Preparing } from "./Preparing";
 import { homeReady } from "../home/useHome";
+import { WELCOME_KEY } from "../prime";
+import { opening } from "../opening/opening";
 
 /**
  * ====== الترحيبُ أصليّاً (D-1347 · Phase 11-U · U1 المرحلة ٢ = 11-V · V2) ======
@@ -66,7 +68,8 @@ const PAD = space.lg;
 const GRID_GAP = space.md;
 const COLS = 3;
 const MAX_EDGE = 1920;
-const KEY = ["welcome"] as const;
+/* 🆕 D-1350 — المفتاحُ في `prime.ts`: شاشةُ الدخول تملأ به الكاشَ قبل أن تُرفع هذه */
+const KEY = WELCOME_KEY;
 
 /**
  * الرمزُ قبل أوّل نداء: الشاشةُ تُرفع لحظةَ الدخول، والجلسةُ المملوكةُ ما زالت تُسكّ (`own.fresh` — نحو نصف ثانية).
@@ -118,6 +121,11 @@ export function WelcomeScreen() {
     retry: 1,
   });
   const data = boot.data;
+  /* D-1350 — أنميشنُ الفتح ينزل حين تُعرف حمولةُ الترحيب (أو تعذّرها) */
+  const openReady = !!data || boot.isError;
+  useEffect(() => {
+    if (openReady) opening.ready();
+  }, [openReady]);
 
   const [step, setStep] = useState(ME);
   stepRef.current = step;

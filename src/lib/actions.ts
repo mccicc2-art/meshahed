@@ -5309,6 +5309,8 @@ async function ownStoragePaths(
  *
  * **ويُعيد ولا يرمي** (نمطُ `syncXIdentity`): رسالةٌ لا تصل القارئ ليست
  * رسالة. والسببُ الحقيقيُّ في سجلّ الخادم لا على شاشة العضو.
+ *
+ * 🆕 D-1350 — **ومن دخل بأبل يُلغى إذنُه عندها** قبل حذف الصفّ (`lib/apple.ts`).
  */
 export async function deleteMyAccount(): Promise<{ error?: "busy" | "failed" }> {
   let session: Awaited<ReturnType<typeof requireUser>>;
@@ -5331,6 +5333,12 @@ export async function deleteMyAccount(): Promise<{ error?: "busy" | "failed" }> 
       const left = await ownStoragePaths(supabase, bucket, user.id);
       if (left.length) throw new Error(`${bucket}: ${left.length} file(s) survived removal`);
     }
+
+    /* 🆕 D-1350 — **إذنُ «الدخول بأبل» يُلغى عندها قبل أن يذهب الحساب** (شرطُ أبل): بعد الحذف يذهب الرمزُ المحفوظُ
+       مع صفِّه فلا يبقى ما يُلغى به. لا يرمي ولا يُنتظر عليه — أبل لا تحبس حذفَ حساب؛ والنتيجةُ في السجلّ. */
+    const { revokeAppleFor } = await import("@/lib/apple");
+    const apple = await revokeAppleFor(user.id);
+    if (apple !== "none") console.warn(`[action] deleteMyAccount: apple ${apple}`);
 
     const { error } = await supabase.rpc("delete_my_account");
     if (error) throw error;
