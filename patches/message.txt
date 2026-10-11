@@ -1,11 +1,8 @@
-[deploy] D-1364 — the partner setup no longer asks for an ID document
+[deploy] D-1365 — a web page opened from Settings has no dock (Android)
 
-- Ahmed's decision («1 أ») after asking whether an ID photo is excessive: no guard ever required it (apply_partner does not, request_payout checks IBAN and holder name only) and payouts are not open, so it was the riskiest data in the product collected with no purpose. Overturns the ID half of D-858; revisited when payments open
-- app: PartnerDashboard loses the ID row, the choice sheet and the upload flow; setup is X · bank details · phone
-- web: the partner page loses the upload row (PartnerIdUpload deleted); setup complete without it
-- routes /api/v1/me/partner/id and …/id/confirm (added in D-1362) are removed; `details.id_uploaded` leaves the payload
-- «شروط العمولة»: the minimum-payout line no longer says «after identity verification»
-- kept as they are («2 ب»): the one file already stored, the id_file column and the partner-ids bucket
+- Ahmed's report by recording («ليش الدوك يجي فيها موجود»), his choice «3 أ», then «نفذ»: Settings is a pushed screen without the dock, so a web page opened from it is its continuation, not one of the five roots. Overturns part of D-1012 (the dock under every web page)
+- WebLayer: `fromSettings` is read from shell.returnTo on every navigation and every time the layer appears; the gesture area stays reserved in the shell colour
+- Android only: system back always returns to Settings. On iOS /plus, the legal pages and /profile/edit carry no back control, so the dock is the only way out there — it stays until an exit is decided
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
