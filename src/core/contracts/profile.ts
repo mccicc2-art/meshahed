@@ -127,7 +127,7 @@ export type PartnerPayout = {
 };
 /**
  * 🆕 D-1362 — **لوحةُ الشريك**: ما تقرؤه لوحةُ الويب حرفاً. `available` من `partner_balance` (صفرٌ بالواقع حتى يُفتح الدفع، D-901)،
- * و`pending` مجموعُ الطلبات المعلّقة والموافَق عليها. **`id_uploaded` علمٌ لا مسار**: مسارُ الوثيقة لا يغادر الخادم.
+ * و`pending` مجموعُ الطلبات المعلّقة والموافَق عليها. 🗑️ D-1364 — لا هويّةَ في الاستكمال ولا في هذه الحمولة (قرارُ أحمد «1 أ»).
  */
 export type PartnerDashboard = {
   url: string;
@@ -137,13 +137,10 @@ export type PartnerDashboard = {
   pending: number;
   has_pending_payout: boolean;
   payouts: PartnerPayout[];
-  details: { iban: string; bank_name: string; account_name: string; phone: string; id_uploaded: boolean };
+  details: { iban: string; bank_name: string; account_name: string; phone: string };
 };
 /** `POST /api/v1/me/partner/details` — حقولُ `savePartnerDetails` */
 export type PartnerDetailsBody = { iban: string; bankName: string; accountName: string; phone: string };
-/** `POST /api/v1/me/partner/id` — يعيد رابطَ رفعٍ موقَّعاً؛ و`…/id/confirm` يثبّت المسار بعد وصول الملفّ */
-export type PartnerIdStartBody = { type: string; size: number };
-export type PartnerIdStartPayload = { upload_url: string; path: string };
 /** `POST /api/v1/me/partner/apply` — حقولُ الطلب و**الموافقةُ على الشروط شرط** (كما في نموذج الويب) */
 export type PartnerApplyBody = PartnerApplicationFields & { terms: boolean };
 

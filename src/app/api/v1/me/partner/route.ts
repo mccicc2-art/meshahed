@@ -20,7 +20,7 @@ import type { MyPartnerPayload, PartnerDashboard } from "@/core/contracts/profil
  *
  * 🆕 D-1362 (الدفعة ٢) — **ولوحةُ الموافَق عليه** (`dashboard`): الرابطُ والعدّادان والرصيدُ وطلباتُ التحويل وبياناتُ التحويل —
  * قراءاتُ لوحة الويب نفسُها (`getMyPartnerDetails` · `partner_balance` · `my_payout_requests`)، **وكلُّها لصاحبها وحدَه بحكم RLS
- * والدوالّ** لا بحكم هذا الملفّ (لا معرّفَ في الطلب). ⚖️ **مسارُ وثيقة الهويّة لا يخرج**: علمٌ «مرفوعة» يكفي الرسم.
+ * والدوالّ** لا بحكم هذا الملفّ (لا معرّفَ في الطلب). 🗑️ D-1364 — **ولا شيءَ عن وثيقة الهويّة**: لم تعد تُطلب (قرارُ أحمد «1 أ»).
  */
 export async function GET() {
   return handle<MyPartnerPayload>(async () => {
@@ -50,7 +50,6 @@ export async function GET() {
           bank_name: details?.bank_name ?? "",
           account_name: details?.account_name ?? "",
           phone: details?.phone ?? "",
-          id_uploaded: !!details?.id_file,
         },
       };
     }

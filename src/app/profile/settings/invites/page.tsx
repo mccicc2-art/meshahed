@@ -29,7 +29,6 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup, settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { InviteLinkCard } from "@/components/settings/InviteLinkCard";
-import { PartnerIdUpload } from "@/components/PartnerIdUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -526,16 +525,6 @@ function PartnerSetupBlock({
           href={xDone ? undefined : "/profile/settings/verify"}
           trailing={xDone ? doneMark : undefined}
         />
-        <PartnerIdUpload
-          title={t.prtRowId}
-          pickHint={t.prtIdPick}
-          doneHint={t.prtIdDone}
-          busyHint={t.prtIdBusy}
-          errTooLarge={t.prtIdErrSize}
-          errType={t.prtIdErrType}
-          errUpload={t.prtIdErrUp}
-          idFile={details?.id_file ?? null}
-        />
       </div>
       <form action={saveDetails}>
         <div className={settingsCardRows}>
@@ -594,8 +583,11 @@ async function PartnersTab({
     const xDone = !!me?.x_verified_at;
     const bankDone = !!(details?.iban && details?.bank_name && details?.account_name);
     const phoneDone = !!details?.phone;
-    const idDone = !!details?.id_file;
-    const setupDone = xDone && bankDone && phoneDone && idDone;
+    /* 🗑️ D-1364 (١١ أكتوبر ٢٠٢٦، قرارُ أحمد «1 أ» بعد سؤاله «ما تشوف مبالغة طلب صورة هوية؟») — **الهويّةُ خرجت من الاستكمال**
+       — نقضٌ معلَنٌ لشطرها في D-858 («إرفاق الـID تبعه»). لم يكن يشترطها حارسٌ واحد: لا `apply_partner` ولا `request_payout`
+       (آيبانٌ واسمُ حسابٍ وحدَهما)، والتحويلاتُ لم تُفتح — **فكانت أخطرَ بياناتٍ في المنتج تُجمع بلا غرض**. يُعاد بحثُها مع فتح
+       الدفع (والمرجَّحُ رقمٌ لا صورة). ⚖️ الملفُّ المرفوعُ سابقاً والعمودُ `id_file` والمخزنُ `partner-ids` باقيةٌ كما هي («2 ب»). */
+    const setupDone = xDone && bankDone && phoneDone;
     const url = siteUrl(`/p/${state.code}`);
     /* 🆕 D-901: الرصيدُ يُقرأ لا يُثبَّت — `partner_balance` صفرٌ اليوم
        **بالواقع** (لا قناةَ دفع)، وهي الموضعُ الوحيد الذي يتغيّر يومَ الفتح.

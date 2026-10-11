@@ -1,23 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { File } from "expo-file-system";
 import { api } from "../api";
-import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
-import { Sheet } from "../library/Sheet";
 import type { ToastHostRef } from "../HoldHost";
 import { Group, Row, Field } from "./ui";
 import { messageOf } from "./api";
 import { LinkCard } from "./LinkCard";
 import { formatDate } from "@/core/when";
-import type { PartnerDashboard as Dash, PartnerDetailsBody, PartnerIdStartBody, PartnerIdStartPayload, PartnerPayout } from "@/core/contracts/profile";
+import type { PartnerDashboard as Dash, PartnerDetailsBody, PartnerPayout } from "@/core/contracts/profile";
 
 /**
  * ====== لوحةُ الشريك أصليّةً — الدفعةُ ٢ (🆕 D-1362 · Phase 11-V · V-C · C7 — ١١ أكتوبر ٢٠٢٦) ======
@@ -27,15 +22,12 @@ import type { PartnerDashboard as Dash, PartnerDetailsBody, PartnerIdStartBody, 
  * الأرباح · «بيانات التحويل» مطويّةً بعد الاكتمال · «شروط الشركاء».
  *  - 🔑 **الأرقامُ تُقرأ ولا تُثبَّت**: الرصيدُ صفرٌ **بالواقع** حتى يُفتح الدفع، والزرُّ يقول «بانتظار الربط» ما دام صفراً ويصير
  *    طلباً حقيقيّاً من نفسه حين يبلغ الحدّ (D-901) — والحارسُ في جسم `request_payout` لا هنا.
- *  - 🔑 **وثيقةُ الهويّة تصعد إلى المخزن مباشرةً** برابطٍ موقَّعٍ من الخادم (`…/partner/id`) ثمّ تُثبَّت (`…/id/confirm`): جسمُ الخادم
- *    يقف عند ٤٫٥MB والحدُّ ٨. **من الصور** تُحوَّل JPEG (صورُ iOS بصيغة HEIC يرفضها المخزن)، **ومن الملفات** صورةٌ أو PDF كما هي.
+ *  - 🗑️ D-1364 — **لا وثيقةَ هويّة** (قرارُ أحمد «1 أ»، نقضُ شطرها في D-858): لم يشترطها حارسٌ ولا تحويل، فكانت تُجمع بلا
+ *    غرض. الاستكمالُ ثلاثة: توثيقُ X · بياناتُ البنك · الجوال. يُعاد بحثُها مع فتح الدفع.
  *  - ⚖️ **«اشتركوا» صفرٌ حقيقيّ**: `subscribed_at` لا يكتبه شيءٌ قبل قناة الاشتراك (حجّةُ الصفحة).
  *  - الأرقامُ لاتينيّةٌ كبقيّة الشاشة؛ والمبلغُ بخانتين.
  */
 const MIN_PAYOUT = 100;
-const ID_MAX_BYTES = 8 * 1024 * 1024;
-const ID_MAX_EDGE = 2400;
-const ID_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const money = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function Card({ children, style }: { children: React.ReactNode; style?: object }) {
@@ -51,10 +43,6 @@ function Done() {
     </View>
   );
 }
-
-type Picked = { uri: string; type: string };
-/* iOS لا يعرض منتقياً فوق ورقةٍ ما زالت تنزل (العرضُ الثاني يُهمَل بصمت) — يُنتظر نزولُها. أندرويد لا يحتاج */
-const sheetGone = () => (Platform.OS === "ios" ? new Promise<void>((r) => setTimeout(r, 450)) : Promise.resolve());
 
 export function PartnerDashboard({
   d,
@@ -76,19 +64,17 @@ export function PartnerDashboard({
   const router = useRouter();
   const dict = t as unknown as Record<string, unknown>;
   const [f, setF] = useState<PartnerDetailsBody>({ iban: d.details.iban, bankName: d.details.bank_name, accountName: d.details.account_name, phone: d.details.phone });
-  const [busy, setBusy] = useState<"save" | "payout" | "id" | null>(null);
+  const [busy, setBusy] = useState<"save" | "payout" | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [idError, setIdError] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
-  const [picking, setPicking] = useState(false);
   /* المحفوظُ يعود من الخادم مطبَّعاً (آيبانٌ بلا فراغات · جوالٌ دوليّ) — الحقولُ تأخذه بعد كلِّ حفظٍ ناجح */
   useEffect(() => {
     setF({ iban: d.details.iban, bankName: d.details.bank_name, accountName: d.details.account_name, phone: d.details.phone });
   }, [d.details.iban, d.details.bank_name, d.details.account_name, d.details.phone]);
 
   const bankDone = !!(d.details.iban && d.details.bank_name && d.details.account_name);
-  const setupDone = xDone && bankDone && !!d.details.phone && d.details.id_uploaded;
+  const setupDone = xDone && bankDone && !!d.details.phone;
   const canRequest = d.available >= MIN_PAYOUT && !d.has_pending_payout;
   const conv = d.clicks > 0 ? Math.round((d.joined / d.clicks) * 100) : 0;
   const ready = !!(f.iban.trim() && f.bankName.trim() && f.accountName.trim() && f.phone.trim());
@@ -127,68 +113,6 @@ export function PartnerDashboard({
     }
   };
 
-  /** الملفُّ ← رابطٌ موقَّع ← المخزن ← تثبيتُ المسار. أيُّ حلقةٍ تنقطع تُبقي الوثيقةَ السابقة كما هي */
-  const upload = async (picked: Picked) => {
-    setBusy("id");
-    setIdError(null);
-    try {
-      if (!ID_TYPES.includes(picked.type)) return setIdError(t.prtIdErrType);
-      const file = new File(picked.uri);
-      const size = file.size ?? 0;
-      if (size > ID_MAX_BYTES) return setIdError(t.prtIdErrSize);
-      const start = (await api<PartnerIdStartPayload>("/api/v1/me/partner/id", { method: "POST", body: { type: picked.type, size } satisfies PartnerIdStartBody })).data;
-      /* الرابطُ الموقَّعُ إذنُه في رمزه؛ والمفتاحُ المنشورُ (عامٌّ بطبيعته — رأسُ `config.ts`) يُرفق لمخزن المشروع وحدَه احتياطاً لبوّابته */
-      const headers: Record<string, string> = { "content-type": picked.type };
-      if (CONFIG.supabaseUrl && CONFIG.supabasePublishableKey && start.upload_url.startsWith(CONFIG.supabaseUrl)) headers.apikey = CONFIG.supabasePublishableKey;
-      const res = await fetch(start.upload_url, { method: "PUT", headers, body: new Uint8Array(await file.arrayBuffer()) });
-      if (!res.ok) return setIdError(res.status === 413 ? t.prtIdErrSize : t.apiPartnerIdUpload);
-      await api<{ done: boolean }>("/api/v1/me/partner/id/confirm", { method: "POST", body: { path: start.path } });
-      await refetch();
-    } catch (e) {
-      setIdError(messageOf(e, dict, t.apiPartnerIdUpload));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const fromPhotos = async () => {
-    setPicking(false);
-    if (busy) return;
-    try {
-      await sheetGone();
-      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
-      const a = r.canceled ? null : r.assets[0];
-      if (!a) return;
-      setBusy("id");
-      setIdError(null);
-      /* دائماً JPEG: يوحّد صيغَ الهاتف (HEIC) على ما يقبله المخزن، ويُبقي الوثيقةَ مقروءةً (حافّةٌ ٢٤٠٠) تحت الحدّ بكثير */
-      const ctx = ImageManipulator.manipulate(a.uri);
-      if (Math.max(a.width || 0, a.height || 0) > ID_MAX_EDGE) ctx.resize(a.width >= a.height ? { width: ID_MAX_EDGE } : { height: ID_MAX_EDGE });
-      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
-      await upload({ uri: img.uri, type: "image/jpeg" });
-    } catch {
-      setBusy(null);
-      setIdError(t.apiPartnerIdUpload);
-    }
-  };
-
-  const fromFiles = async () => {
-    setPicking(false);
-    if (busy) return;
-    try {
-      await sheetGone();
-      /* تحميلٌ عند الحاجة: منتقي الملفّات لا يُحمَّل مع الشاشة لمن لا يرفع وثيقة */
-      const DocumentPicker = await import("expo-document-picker");
-      const r = await DocumentPicker.getDocumentAsync({ type: ID_TYPES, copyToCacheDirectory: true, multiple: false });
-      const a = r.canceled ? null : r.assets[0];
-      if (!a) return;
-      await upload({ uri: a.uri, type: a.mimeType ?? "" });
-    } catch {
-      setBusy(null);
-      setIdError(t.apiPartnerIdUpload);
-    }
-  };
-
   const payoutChip = (s: PartnerPayout["status"]): { label: string; bg: string; fg: string } =>
     s === "paid"
       ? { label: t.prtPayoutStPaid, bg: `${tokens.success}26`, fg: tokens.success }
@@ -201,14 +125,6 @@ export function PartnerDashboard({
     <View style={{ gap: 12 }}>
       <Group>
         <Row icon="person-check" title={t.prtReqX} onPress={xDone ? undefined : () => router.push({ pathname: "/settings/[section]", params: { section: "verify" } })} trailing={xDone ? <Done /> : undefined} />
-        <Row
-          icon="shield"
-          title={t.prtRowId}
-          subtitle={idError ?? (busy === "id" ? t.prtIdBusy : d.details.id_uploaded ? t.prtIdDone : t.prtIdPick)}
-          onPress={busy ? undefined : () => { haptic.pick(); setPicking(true); }}
-          busy={busy === "id"}
-          trailing={d.details.id_uploaded && busy !== "id" && !idError ? <Done /> : undefined}
-        />
       </Group>
       <Group>
         <Field label={t.prtBankIban} value={f.iban} onChange={set("iban")} maxLength={34} ltr placeholder="SA0380000000608010167519" />
@@ -343,14 +259,6 @@ export function PartnerDashboard({
       {setupDone ? disclosure(t.prtDetailsTitle, setup) : null}
       {disclosure(t.prtTermsLink, terms)}
 
-      {picking ? (
-        <Sheet title={t.prtRowId} onClose={() => setPicking(false)}>
-          <Group>
-            <Row icon="image" title={t.prtIdFromPhotos} onPress={() => void fromPhotos()} />
-            <Row icon="list" title={t.prtIdFromFiles} subtitle={t.prtIdPick} onPress={() => void fromFiles()} />
-          </Group>
-        </Sheet>
-      ) : null}
     </>
   );
 }
