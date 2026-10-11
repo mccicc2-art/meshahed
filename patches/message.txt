@@ -1,9 +1,9 @@
-[deploy] D-1357 — V-C · C1: «تقييماتي» is a native screen in the app
+[deploy] D-1358 — V-C · C2: deleting the account is native in the app
 
-- GET /api/v1/me/ratings: what the web /ratings page draws (getMyRatings + localizeRows, cap 200)
-- app: RatingsScreen (two chips, «★ 9/10», review preview), pushed from the Home ratings section title and «All»
-- track/rate and track/unrate now return the me:ratings tag so the screen refreshes after a rating
-- web /ratings: «★ 9/10» instead of a star row that assumed a scale of 5
+- POST /api/v1/me/delete: the web action itself (deleteMyAccount — files, Apple revoke, the row; 3 per minute), needs confirm: "delete"
+- app: the «حذف الحساب» row opens a native two-tap sheet over the Account screen instead of the web account page; trash icon
+- after success the app leaves by the sign-out button's own path (/auth/signout through the shell)
+- the description no longer names Google (Apple sign-in exists)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
