@@ -23,6 +23,7 @@ import { opening } from "./opening/opening";
 import { rootStack, topOf, webLayer, type State } from "./webDoor";
 import { BottomNav, type NavKey } from "./BottomNav";
 import { prefetchDiscover } from "./discover/DiscoverScreen";
+import { WEB_LAZY } from "./webLazy";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -395,8 +396,22 @@ export function WebLayer() {
   /* المصدرُ يُحسب مرّةً: الرئيسيّةُ دائماً — كوكي الـWebView تحمل الجلسةَ إن
      كانت. (تسليمٌ عند الإقلاع من جلسةٍ مخزونة لم يعد له مصدر: لا مخزن.) */
   const [source, setSource] = useState<Source | null>(null);
+  /* 🆕 D-1370 (V-D) — المصدرُ كما هو الآن، لمن يُنادى من مستمعاتٍ لا تُعاد مع كلِّ رسمة */
+  const sourceRef = useRef<Source | null>(null);
+  sourceRef.current = source;
+  /**
+   * 🆕 D-1370 (V-D) — **الإقلاعُ بلا صفحة**: القرارُ مرّةٌ واحدة (`webLazy.ts`). بلا صفحةٍ لمن جلستُه المملوكةُ محفوظة،
+   * ولمن لا أثرَ لدخوله (شاشةُ الدخول الأصليّةُ فوق، والتسليمُ يُنشئ الطبقةَ حين يدخل). **ومن له أثرٌ بلا جلسةٍ مملوكة
+   * يسلك الطريقَ القديمَ بحرفه** — صفحتُه تسكّ له الجلسة (`bootAsk`) — وكذلك رابطُ الودجت.
+   */
+  const lazyBoot = useRef<boolean | null>(null);
   useEffect(() => {
     if (loading || source) return;
+    if (lazyBoot.current === null) {
+      lazyBoot.current = WEB_LAZY && !(typeof u === "string" && u) && (own.hasStored() || !session.seen());
+      if (WEB_LAZY && !lazyBoot.current) mark("web.mount", 0, { why: typeof u === "string" && u ? "widget" : "boot" });
+    }
+    if (lazyBoot.current) return;
     /* D-1090 — مع الإقلاع الأصليّ (الشرطُ نفسُه أدناه) تُسأل الصفحةُ الخفيفةُ أوّلاً؛ وإلّا `/` كما كان */
     /* D-1341 — من لم يُتمّ الترحيب لا تُرفع له الرئيسيّةُ الأصليّة (أدناه)، فيُحمَّل `/` مباشرةً: الحارسُ يحوّله إلى `/welcome` */
     const lightBoot = !(typeof u === "string" && u) && session.seen() && !session.welcomePending();
@@ -432,11 +447,8 @@ export function WebLayer() {
      ⚖️ **لا رفعَ مع رابطٍ من الودجت** (`u`): هدفُه صفحةٌ ويبيّة تُنفَّذ بعد أوّل تحميل، والرئيسيّةُ
      فوقها تخفيها. ⚖️ **ولا رفعَ بلا أثر**: أوّلُ تثبيتٍ أو بعد خروجٍ ⇒ الويبُ يعرض الدخولَ كما كان. */
   const booted = useRef(false);
-  useEffect(() => {
-    if (loading || booted.current) return;
-    booted.current = true;
-    /* D-1344 — رابطُ الودجت لمن لا أثرَ لجلسته يمرّ بالدخول أوّلاً كغيره (القرار ٦: لا تصفّحَ قبل الدخول) */
-    if (typeof u === "string" && u && session.seen()) return;
+  /* 🆕 D-1370 (V-D) — القرارُ دالّةٌ لا جسمُ أثر: يناديها الإقلاعُ، ويناديها حارسُ القاعدة أدناه بسببه (`why`) */
+  const raise = useCallback((why: string) => {
     if (session.seen() && session.welcomePending()) {
       /* 🆕 D-1341 — **الإقلاعُ لا يرفع الرئيسيّةَ الأصليّةَ لمن لم يُتمّ الترحيب** (البابُ الثاني في تسجيل أحمد: أغلق
          التطبيقَ وفتحه فهبط على الرئيسيّة). */
@@ -451,11 +463,32 @@ export function WebLayer() {
     } else {
       /* 🩺 D-1256 — إقلاعٌ لم يرفع الرئيسيّةَ الأصليّة: إمّا زائرٌ حقّاً، وإمّا `seen()` أخطأ (قراءةُ SecureStore
          ترمي فيُحفظ `false` للجلسة كلِّها — الفرضيّةُ الأولى لبلاغ أحمد). العلامةُ تفرّق بينهما بعدد مرّاتها. */
-      mark("web.home", 0, { why: "boot.unseen" });
+      if (why === "boot") mark("web.home", 0, { why: "boot.unseen" });
       /* 🆕 D-1344 — لا أثرَ لجلسة ⇒ شاشةُ الدخول الأصليّة فوق الطبقة من أوّل رسمة (صفحةُ دخول الويب لا تُرى) */
-      showSignIn("boot");
+      showSignIn(why);
     }
-  }, [loading, u, router, showSignIn, showWelcome]);
+  }, [router, showSignIn, showWelcome]);
+  useEffect(() => {
+    if (loading || booted.current) return;
+    booted.current = true;
+    /* D-1344 — رابطُ الودجت لمن لا أثرَ لجلسته يمرّ بالدخول أوّلاً كغيره (القرار ٦: لا تصفّحَ قبل الدخول) */
+    if (typeof u === "string" && u && session.seen()) return;
+    raise("boot");
+  }, [loading, u, raise]);
+  /**
+   * 🆕 D-1370 (V-D) — **حارسُ القاعدة**: أعلى المكدّس `web` يعني «الطبقةُ هي الشاشة» — وبلا صفحةٍ هي شاشةُ تحميلٍ لا تنتهي.
+   * لا طريقَ معروفاً يوصل إليها (الجذورُ تخرج من التطبيق، والخروجُ يرفع شاشةَ الدخول)، فإن وصل أحدٌ بطريقٍ فاتنا يُعاد
+   * قرارُ الإقلاع بعد لحظةٍ ويُسجَّل (`web.home` · `why=lazy.base`) — العلامةُ تقول إنّ هناك طريقاً يُغلق.
+   */
+  const topName = top?.name ?? "";
+  useEffect(() => {
+    if (!WEB_LAZY || !visible || source || !booted.current || topName !== "web") return;
+    const timer = setTimeout(() => {
+      mark("web.home", 0, { why: "lazy.base" });
+      raise("base");
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [visible, source, topName, raise]);
 
   /* 🆕 D-1341 — **العلامةُ كُتبت والشاشاتُ الأصليّةُ فوق** (حسابٌ بلا علامةٍ بعدُ رُفعت له الرئيسيّة، فرفض الخادمُ
      أوّلَ نداء): تُنزَل كلُّها فيُرى الويب، ويُوجَّه إلى الترحيب إن لم يكن عليه. التوجيهُ مرّتان — الحقنُ في WebView
@@ -499,11 +532,44 @@ export function WebLayer() {
 
   useEffect(() => {
     if (typeof u !== "string" || !u || !u.startsWith("/")) return;
-    pending.current = CONFIG.apiBase + u;
     setOrigin(rootOf(shell.returnTo));
     setFromSettings(!!shell.returnTo && shell.returnTo.startsWith("settings"));
+    /* 🆕 D-1370 (V-D) — رابطٌ وصل والتطبيقُ مفتوحٌ بلا صفحة: الطبقةُ تُنشأ على هدفه مباشرةً (لا شيءَ يُنتظر تحميلُه قبله) */
+    if (lazyBoot.current && !sourceRef.current) {
+      mark("web.mount", 0, { why: "widget" });
+      setSource({ uri: CONFIG.apiBase + u });
+      return;
+    }
+    pending.current = CONFIG.apiBase + u;
     if (ready && !handing.current) flush();
   }, [u, ready, flush]);
+
+  /* 🆕 D-1370 (V-D) — الخروجُ طُلب من الغلاف · أُنقذت الصفحةُ مرّةً · الإنقاذُ جارٍ (صفحةُ الدخول تحته لا ترفع شاشةَ الدخول) */
+  const leaving = useRef(false);
+  const rescued = useRef(false);
+  const rescuing = useRef(false);
+  const rescueSent = useRef(false);
+  /* صفحةُ دخول الويب لا تُرى والإنقاذُ جارٍ: شاشةُ التحميل فوقها حتى يصل التسليم */
+  const [rescueUp, setRescueUp] = useState(false);
+  const rescueWeb = useCallback(async () => {
+    /* الوجهةُ صفحةُ الباب إن كان باباً (بلا استعلامها — يكفي لصفحاتنا الباقية)؛ وإلّا تبقى على الرئيسيّة بعد التسليم */
+    const back = shell.doorPath;
+    const pair = await own.webPair();
+    if (!pair) {
+      rescuing.current = false;
+      setRescueUp(false);
+      mark("web.mount", 0, { why: "rescue", result: "none" });
+      /* لا جلسةَ تُسلَّم ⇒ الحكمُ القديم: خروجٌ وشاشةُ الدخول */
+      session.signOut();
+      if (!signInUp() && router.canDismiss()) router.dismissAll();
+      showSignIn("login");
+      return;
+    }
+    mark("web.mount", 0, { why: "rescue", result: "ok" });
+    pending.current = back ? CONFIG.apiBase + back : null;
+    handing.current = true;
+    setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: pair.access, refresh_token: pair.refresh }) });
+  }, [router, showSignIn, signInUp]);
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
@@ -538,7 +604,24 @@ export function WebLayer() {
     if (next === "/welcome" && insideUrl(nav.url) && !session.welcomeFinished()) session.setWelcomePending(true);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
-    if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) {
+    const outUrl = nav.url.includes("/auth/signout");
+    /* 🆕 D-1370 (V-D) — **كوكي الويب مات والتطبيقُ داخل ⇒ يُسلَّم الويبُ جلسةً جديدة، لا يُطرد صاحبُه** (مرّةً في التشغيلة):
+       الصفحةُ صارت تُفتح بعد غيابٍ قد يطول، وكان بلوغُها `/login` يمسح جلسةَ التطبيق كلَّها. الخروجُ الحقيقيُّ يمرّ
+       بـ`/auth/signout` أوّلاً فيمسح الجلسةَ المملوكة قبل أن يصل `/login` — فلا يلتبس به؛ و`leaving` حزامٌ ثانٍ. */
+    const loginUrl = nav.url.startsWith(CONFIG.apiBase + "/login");
+    /* التسليمُ خرج فعلاً: ما يصل `/login` بعده فشلٌ للإنقاذ لا بقيّةُ أحداث الصفحة التي أطلقته */
+    if (rescuing.current && nav.url.includes("/session/handoff")) rescueSent.current = true;
+    if (rescuing.current && loginUrl && !outUrl && !rescueSent.current) {
+      /* الإنقاذُ جارٍ وهذه أحداثُ صفحة الدخول نفسِها (بدءُ التحميل ثمّ نهايتُه) — لا حكمَ بها */
+    } else if (WEB_LAZY && !outUrl && loginUrl && !leaving.current && !handing.current && !rescued.current && own.hasStored()) {
+      rescued.current = true;
+      rescuing.current = true;
+      rescueSent.current = false;
+      setRescueUp(true);
+      void rescueWeb();
+    } else if (outUrl || loginUrl) {
+      rescuing.current = false;
+      setRescueUp(false);
       session.signOut(); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
       /* D-1075 — صفحةُ الدخول تحت شاشةٍ أصليّةٍ مرفوعةٍ عند الإقلاع (كوكي شاخت مثلاً): تُنزَل الشاشاتُ
          كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
@@ -546,13 +629,15 @@ export function WebLayer() {
          الشاشةَ التي رفعها الأوّل. الشاشاتُ الأخرى تُنزَل كما كانت (جلسةٌ شاخت تحت شاشةٍ أصليّة). */
       if (!signInUp() && router.canDismiss()) router.dismissAll();
       /* 🆕 D-1344 — وصفحةُ دخول الويب لا تُرى: فوقها شاشةُ الدخول الأصليّة (خروجٌ · حذفُ حساب · جلسةٌ شاخت) */
-      showSignIn(nav.url.includes("/auth/signout") ? "signout" : "login");
+      showSignIn(outUrl ? "signout" : "login");
     }
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
        الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
     if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
       handing.current = false;
+      rescuing.current = false;
+      setRescueUp(false);
       /* D-1152 · K6a — الحكمُ على التسليم (قياسٌ فقط، لا يغيّر شيئاً). `HOME` يطابق كلَّ صفحةٍ في النطاق، فالمسارُ
          يُقرأ: الدخولُ أو ردُّ Google ⇒ ارتداد؛ وغيرُهما ⇒ «وصل» ما لم تُعلن الصفحةُ أنّها الترحيبُ خلال مهلة */
       if (handT0.current) {
@@ -572,7 +657,7 @@ export function WebLayer() {
       }
       flush();
     }
-  }, [flush, router, showSignIn, signInUp]);
+  }, [flush, router, showSignIn, signInUp, rescueWeb]);
 
   /**
    * 🆕 D-1344 — **الدخولُ في مكانٍ واحدٍ لبابَيه**: رسالةُ `login` من صفحة الويب، وشاشةُ الدخول الأصليّة
@@ -591,6 +676,8 @@ export function WebLayer() {
     if (!(r.ok && data.session)) return { ok: false, cancelled: !r.ok && (r.message === "cancel" || r.message === "dismiss") };
     handing.current = true;
     handT0.current = Date.now();
+    leaving.current = false;
+    if (WEB_LAZY && !sourceRef.current) mark("web.mount", 0, { why: "login" });
     /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
     session.markSeen();
     /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
@@ -646,7 +733,7 @@ export function WebLayer() {
       if (msg.type === "gate") {
         if (hostOk) setLanding(msg.on === true);
         /* 🆕 D-1344 — صفحةُ الهبوط ظهرت (زائرٌ، أو جلسةٌ شاخت والتطبيقُ يظنّها حيّة) ⇒ شاشةُ الدخول الأصليّة فوقها */
-        if (hostOk && msg.on === true && !handing.current) showSignIn("gate");
+        if (hostOk && msg.on === true && !handing.current && !rescuing.current) showSignIn("gate");
         /* D-1152 — صفحةُ الترحيب ظهرت والتسليمُ جارٍ ⇒ ارتدّ الدخولُ إليها (قياسٌ فقط، مرّة) */
         if (hostOk && msg.on === true && handT0.current) {
           mark("auth.handoff", Date.now() - handT0.current, { result: "none", why: "landing" });
@@ -783,13 +870,58 @@ export function WebLayer() {
     shell.attach(fn);
     /* 🆕 D-1156 — نموذجُ POST من الغلاف (الخروج): تبديلُ المصدر لا حقن. `n` يجعل كلَّ طلبٍ مصدراً جديداً —
        مصدرٌ مطابقٌ لسابقه لا يُعاد إرسالُه، فخروجٌ ثانٍ في الجلسة نفسِها كان سيضيع. */
-    shell.attachPost((path) => setSource({ uri: CONFIG.apiBase + path, method: "POST", headers: FORM_HEADERS, body: formBody({ n: String(Date.now()) }) }));
+    shell.attachPost((path) => {
+      /* 🆕 D-1370 (V-D) — بلا صفحةٍ قائمة يُنشئ هذا المصدرُ الطبقةَ على طلب الخروج نفسِه (الطريقُ المجرَّب، D-1156) */
+      if (path.includes("/auth/signout")) leaving.current = true;
+      if (WEB_LAZY && !sourceRef.current) mark("web.mount", 0, { why: "signout" });
+      setSource({ uri: CONFIG.apiBase + path, method: "POST", headers: FORM_HEADERS, body: formBody({ n: String(Date.now()) }) });
+    });
     return () => {
       session.attach(null);
       shell.attach(null);
       shell.attachPost(null);
       session.clear();
     };
+  }, []);
+  /**
+   * 🆕 D-1370 (V-D) — **الحقنُ لمن له صفحة**: بلا WebView لا يُسجَّل حاقن — فطلبُ الرمز من الجسر يعود `null` فوراً
+   * (`noinject`) بدل أن يصطفّ خلف صفحةٍ لن تُحمَّل (هياكلُ بلا نهاية)، و`shell.open` يعرف أنّ عليه أن يُنشئ الطبقة.
+   * يجري بعد الأثر أعلاه (ترتيبُ التعريف) فيغلبه عند التركيب.
+   */
+  const hasWeb = !!source;
+  useEffect(() => {
+    if (!WEB_LAZY) return;
+    const fn = hasWeb ? (js: string) => ref.current?.injectJavaScript(js) : null;
+    session.attach(fn);
+    shell.attach(fn);
+  }, [hasWeb]);
+  /**
+   * 🆕 D-1370 (V-D) — **البابُ يُنشئ الطبقةَ على صفحته**. ما كان يُحقن قبل التنقّل (`loopz:return` — يقرؤه `SessionBridge` عند
+   * وصول الصفحة) يُحقن قبل مستندها الأوّل، **مرّةً**: خاصّيّةُ «قبل المستند» تُعاد مع كلِّ مستندٍ لاحق، والأبوابُ التاليةُ
+   * تسلّح بنفسها (الحقنُ المعتاد) — فلا يُعاد سلاحُ البابِ الأوّل فوقها.
+   */
+  const [coldArm, setColdArm] = useState("");
+  useEffect(() => {
+    if (!WEB_LAZY) return;
+    shell.attachLoader((path, arm) => {
+      mark("web.mount", 0, { why: "door" });
+      setColdArm(arm ? `try{if(!sessionStorage.getItem("loopz:cold")){sessionStorage.setItem("loopz:cold","1");${arm}}}catch(e){};` : "");
+      setSource({ uri: CONFIG.apiBase + path });
+    });
+    return () => shell.attachLoader(null);
+  }, []);
+  /**
+   * 🆕 D-1370 (V-D) — **الجلسةُ المملوكةُ سقطت ولا صفحةَ تحتنا** (تجديدٌ رُفض: خروجٌ من جهازٍ آخر · جلسةٌ أُبطلت): كان الجسرُ
+   * يكمل من كوكي الويب. فتُنشأ الصفحةُ الآن ويجري الطريقُ القديمُ بحرفه — تسكّ من كوكيها إن كان حيّاً، وإلّا تبلغ صفحةَ
+   * الدخول فتُرفع شاشتُه. الخروجُ من التطبيق نفسِه يُنشئ الطبقةَ قبل أن يمسح (`attachPost`) فلا يمرّ من هنا.
+   */
+  useEffect(() => {
+    if (!WEB_LAZY) return;
+    return own.onChange(() => {
+      if (own.hasStored() || sourceRef.current || handing.current || leaving.current || !session.seen()) return;
+      mark("web.mount", 0, { why: "lost" });
+      setSource({ uri: BOOT });
+    });
   }, []);
 
   /* 🔴 D-1144 — **زال مسحُ الرمز بعد خمس دقائق في الخلفيّة** (كان Phase 11 · B1 §٦-ج).
@@ -951,7 +1083,7 @@ export function WebLayer() {
           /* 🆕 D-1354 — `LoopzGate/2`: «هذا الغلافُ يملك شاشةَ اسم المستخدم» — حارسُ الويب (`proxy.ts`) لا يحوّل إلى
              `/welcome` عضواً قائماً بلا اسم مستخدم إلّا لمن يقولها؛ غلافٌ أقدمُ كان سيرفع الترحيبَ بخطواته الخمس */
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION} LoopzGate/2`}
-          injectedJavaScriptBeforeContentLoaded={CAPABILITIES}
+          injectedJavaScriptBeforeContentLoaded={coldArm + CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
           injectedJavaScript={CAPABILITIES_LATE}
           onMessage={onMessage}
@@ -1059,7 +1191,7 @@ export function WebLayer() {
           <Text muted style={{ textAlign: "center" }}>{t.hint}</Text>
           <Button label={t.retry} onPress={retry} style={{ minWidth: 180 }} />
         </View>
-      ) : !ready ? (
+      ) : !ready || rescueUp ? (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: SHELL_BG }}>
           <Loading />
         </View>

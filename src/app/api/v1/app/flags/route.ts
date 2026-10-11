@@ -32,8 +32,17 @@ const K4_ALL = true;
 /* 🆕 K4b — جوالُ خالد أوّلاً (أحمد: «جهاز خالد»، ٢٧ سبتمبر) */
 const K4_MODELS: readonly string[] = ["SM-S928B"];
 
+/**
+ * 🆕 D-1370 (V-D) — **`vd`: الإقلاعُ بلا صفحة الويب المخفيّة** (`apps/mobile/src/webLazy.ts`). مطفأٌ للجميع، و**جوالُ خالد أوّلاً**
+ * (قرارُ أحمد «10 أ» · «جهاز خالد s24 ultra»، ١١ أكتوبر) — وصفةُ K4b نفسُها. يُقرأ عند الإقلاع من آخر قيمةٍ محفوظة، فالتبديلُ
+ * يعمل من **الفتح الثاني** للتطبيق. أيُّ عيبٍ ⇒ يُفرَّغ السطرُ برقعة ويب ويعود الإقلاعُ القديمُ بحرفه.
+ */
+const VD_ALL = false;
+const VD_MODELS: readonly string[] = ["SM-S928B"];
+
 export async function GET(req: Request) {
   const m = new URL(req.url).searchParams.get("m") ?? "";
   const k4 = K4_ALL || K4_MODELS.includes(m);
-  return handle(async () => ok({ ...FLAGS, k4 }, []), { cacheControl: "public, max-age=60, s-maxage=60", open: true });
+  const vd = VD_ALL || VD_MODELS.includes(m);
+  return handle(async () => ok({ ...FLAGS, k4, vd }, []), { cacheControl: "public, max-age=60, s-maxage=60", open: true });
 }

@@ -93,6 +93,8 @@ const NAMES = new Set([
   "stats.open",
   /* 🩺 D-1256 — رئيسيّةُ الويب انكشفت وللتطبيق رئيسيّةٌ أصليّة (تشخيص؛ يُحذف مع الإصلاح) */
   "web.home",
+  /* 🩺 D-1370 (V-D) — طبقةُ الويب أُنشئت و`vd` مشغَّل (`why`: boot · door · login · signout · widget · lost · rescue) */
+  "web.mount",
   /* 🩺 D-1346 — شاشةُ الدخول الأصليّة رُفعت (`why`) / أُنزلت (ms مرفوعةً) — تشخيص؛ يُحذف حين يثبت الإصلاح */
   "signin.show",
   "signin.hide",

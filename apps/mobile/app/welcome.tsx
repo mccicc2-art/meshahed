@@ -2,6 +2,7 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { ErrorBoundary } from "../src/ErrorBoundary";
 import { WelcomeScreen } from "../src/welcome/WelcomeScreen";
+import { WEB_LAZY } from "../src/webLazy";
 
 /**
  * `/welcome` — الترحيبُ الأصليّ (🆕 D-1347 · Phase 11-U · U1 المرحلة ٢). يُدفع فوق طبقة الويب لمن دخل ولم يُتمّ
@@ -12,7 +13,7 @@ import { WelcomeScreen } from "../src/welcome/WelcomeScreen";
 export default function Welcome() {
   const router = useRouter();
   return (
-    <ErrorBoundary screen="welcome" web={{ path: "/welcome", leave: () => (router.canDismiss() ? router.dismissAll() : router.replace("/web")) }}>
+    <ErrorBoundary screen="welcome" web={WEB_LAZY ? undefined : { path: "/welcome", leave: () => (router.canDismiss() ? router.dismissAll() : router.replace("/web")) }}>
       <WelcomeScreen />
     </ErrorBoundary>
   );

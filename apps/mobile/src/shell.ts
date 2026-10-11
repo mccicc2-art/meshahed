@@ -42,6 +42,8 @@ function pathnameOf(path: string): string {
 }
 
 let inject: ((js: string) => void) | null = null;
+/* 🆕 D-1370 (V-D) — من يُنشئ الطبقةَ على صفحةٍ بعينها حين لا WebView قائمة (`WebLayer`): `arm` ما كان يُحقن قبل التنقّل */
+let loader: ((path: string, arm: string) => void) | null = null;
 /* 🆕 D-1156 — من يرسل نموذجَ POST من الغلاف (`web.tsx`)، وطلبٌ ينتظره إن لم تُركَّب الـWebView بعد */
 let poster: ((path: string) => void) | null = null;
 let pendingPost: string | null = null;
@@ -68,6 +70,9 @@ let waiter: { path: string; settle: (own?: boolean) => void } | null = null;
 export const shell = {
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
+  },
+  attachLoader(fn: ((path: string, arm: string) => void) | null) {
+    loader = fn;
   },
   /** 🆕 D-1344 — `WebLayer` يسجّل دالّةَ دخوله (`doLogin`) ما دام مركَّباً */
   attachSignIn(fn: Signer | null) {
@@ -153,7 +158,8 @@ export const shell = {
    * (`dismissAll` لتنكشف الصفحةُ تحت المكدّس) — بابٌ بلا وجهة عودة (صفحةٌ فُتحت من الويب) أو طبقةٌ لم تُركَّب.
    */
   open(path: string, opts?: { returnTo?: ReturnTo; resume?: StackEntry[] }): Promise<boolean> {
-    if (!inject || !path.startsWith("/")) return Promise.resolve(false);
+    /* 🆕 D-1370 (V-D) — بلا WebView قائمة: البابُ يُنشئها على صفحته (`loader`)؛ وبلا الاثنين كما كان — `false` */
+    if ((!inject && !loader) || !path.startsWith("/")) return Promise.resolve(false);
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
     shell.resume = opts?.returnTo && opts.resume?.length ? { root: opts.returnTo, path: path.split("?")[0], stack: opts.resume } : null;
@@ -177,7 +183,8 @@ export const shell = {
         },
       };
     });
-    inject(`${arm}location.href=${JSON.stringify(CONFIG.apiBase + path)};true;`);
+    if (inject) inject(`${arm}location.href=${JSON.stringify(CONFIG.apiBase + path)};true;`);
+    else loader?.(path, arm);
     return done;
   },
   /**

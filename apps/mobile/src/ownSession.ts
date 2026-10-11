@@ -273,6 +273,24 @@ export const own = {
     mintFailedAt = 0;
     own.adopt(access, "login");
   },
+  /**
+   * 🆕 D-1370 (V-D) — **جلسةٌ جديدةٌ للويب تُسكّ من جلسة التطبيق** (عكسُ `mintFromCookie`): صفحةُ ويبٍ فُتحت بعد غيابٍ
+   * فوجدت كوكيَها ميتاً والتطبيقُ داخل. الزوجُ يُعاد لمن يسلّمه (`WebLayer` — POST التسليم نفسُه) **ولا يُحفظ هنا ولا يمسّ
+   * جلستَنا**: عائلتان لا تلتقيان (D-932). `null` ⇒ لا جلسةَ لنا، أو السكُّ فشل، أو صاحبٌ آخر.
+   */
+  async webPair(): Promise<{ access: string; refresh: string } | null> {
+    const s = readStored();
+    const t = await own.ensure();
+    if (!s || !t) return null;
+    try {
+      const r = await post(`${CONFIG.apiBase}/api/v1/session/mint`, { Authorization: `Bearer ${t}` });
+      const m = (r.json as { data?: { access_token?: unknown; refresh_token?: unknown; user_id?: unknown } } | null)?.data;
+      if (r.status === 200 && m && m.user_id === s.uid && typeof m.access_token === "string" && typeof m.refresh_token === "string") return { access: m.access_token, refresh: m.refresh_token };
+    } catch {
+      /* شبكة — يُعامَل كفشل */
+    }
+    return null;
+  },
   /** 🆕 D-1151 — جلسةٌ مملوكةٌ محفوظةٌ على الجهاز (رمزُ تجديدٍ لم يُرفض بعد) — دليلُ دخولٍ لـ`session.seen()` */
   hasStored(): boolean {
     return readStored() !== null;

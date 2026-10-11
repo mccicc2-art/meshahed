@@ -18,10 +18,11 @@ import { MODEL } from "./device";
  * من الـWebView لأجل مفتاح.
  */
 /** 🆕 K4b — `k4`: التطبيقُ يملك جلستَه (`ownSession.ts`). مطفأٌ ويُشغَّل من الخادم لطرازاتٍ بأسمائها أوّلاً */
-export type AppFlags = { k2: boolean; k4: boolean };
+/** 🆕 D-1370 (V-D) — `vd`: الإقلاعُ بلا صفحة الويب المخفيّة (`webLazy.ts`) */
+export type AppFlags = { k2: boolean; k4: boolean; vd: boolean };
 
 const KEY = "loopz.flags";
-const OFF: AppFlags = { k2: false, k4: false };
+const OFF: AppFlags = { k2: false, k4: false, vd: false };
 const MIN_GAP_MS = 60_000;
 
 function read(): AppFlags {
@@ -29,7 +30,7 @@ function read(): AppFlags {
     const raw = SecureStore.getItem(KEY);
     if (!raw) return OFF;
     const p = JSON.parse(raw) as Partial<AppFlags> | null;
-    return { k2: p?.k2 === true, k4: p?.k4 === true };
+    return { k2: p?.k2 === true, k4: p?.k4 === true, vd: p?.vd === true };
   } catch {
     return OFF;
   }
@@ -51,8 +52,8 @@ async function refresh() {
     const res = await fetch(`${CONFIG.apiBase}/api/v1/app/flags?m=${encodeURIComponent(MODEL)}`);
     if (!res.ok) return;
     const j = (await res.json()) as { data?: Partial<AppFlags> } | null;
-    const next: AppFlags = { k2: j?.data?.k2 === true, k4: j?.data?.k4 === true };
-    if (next.k2 === current.k2 && next.k4 === current.k4) return;
+    const next: AppFlags = { k2: j?.data?.k2 === true, k4: j?.data?.k4 === true, vd: j?.data?.vd === true };
+    if (next.k2 === current.k2 && next.k4 === current.k4 && next.vd === current.vd) return;
     current = next;
     SecureStore.setItem(KEY, JSON.stringify(next));
   } catch {
