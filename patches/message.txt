@@ -1,11 +1,11 @@
-[deploy] D-1366 — V-C · C5 (a): «تقريرك» is a native screen in the app
+[deploy] D-1367 — V-C · C5 (b): «الإحصائيات الكاملة» is a native screen in the app
 
-- GET /api/v1/me/report?p=&o= returns buildPeriodStats — the computation both /reports and /statistics draw from (one route for the report now and full statistics next); month by default; `plus` comes back as a flag (the lock is a display lock, as on the page)
-- POST /api/v1/me/report/repair → repairImpossibleDays (the «impossible day» card)
-- app: member/ReportScreen as route `reports` — period tabs (week · month · year), big time + days ring, opening sentence, bars, most watched, glance, taste, insight; numbers and sentences from core/statsFormat, the functions the page reads
-- non-subscriber: the lower part is drawn dimmed and clipped under a fade to the page colour with the price card (Ahmed «1 أ» — no blur module in the binary)
-- first use of react-native-svg in the app (ring, fade): both sit behind a small guard that falls back to plain views
-- the «تقاريرك» row in the stats screen pushes the native screen; «الإحصائيات الكاملة» is still a web door until part (b); «شارك تقريرك» comes in part (c)
+- Ahmed: «الاحصائيات الكاملة نبي نحوله تطبيق», then the four-section image, «اعتمد», «نفذ وارفع» — lifts what was left of the Statistics pause (plan decision 8)
+- app: member/FullStatsScreen as route `statistics` — four periods (week · month · year · all time) with previous/next in the header for subscribers, four sections (overview · content · taste · habits); a port of /statistics and FullStatsTabs
+- same route and cache key as the report (/api/v1/me/report with p and o), so a period opened in the report draws at once; no server change
+- charts with react-native-svg (trend line, completion ring, content donut, taste radar), each behind SvgGuard; the heatmap and bars are plain views; the trend line follows the reading direction so it matches its labels
+- the report's «الإحصائيات الكاملة» row pushes this screen on the report's period; PlusPill, PlusLock, SvgGuard and H2 are exported from ReportScreen and shared
+- no first-time hint (web OneTimeHint) here
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
