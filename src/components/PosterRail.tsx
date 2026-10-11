@@ -22,6 +22,7 @@ export function PosterRail({
   iconColor,
   href,
   onTitle,
+  titleDoor,
   seeAllLabel,
   seeAllDoor,
   subtitle,
@@ -42,6 +43,8 @@ export function PosterRail({
    * الوجهةُ فتحَ الصفِّ نفسِه.** **ولا يجتمعان**: `href` أوّلاً.
    */
   onTitle?: () => void;
+  /** 🆕 D-1355 — العنوانُ بابٌ مرسومٌ من المستدعي (زرُّ عميلٍ يفتح ورقةَ القسم) — يسبق `href` و`onTitle` */
+  titleDoor?: React.ReactNode;
   seeAllLabel?: string;
   /**
    * 🔴 🆕 **بابٌ يفتح ورقةً بدل أن ينقل** (D-868، حكمُ أحمد: «وخيار all
@@ -92,7 +95,9 @@ export function PosterRail({
             />
           )}
           {/* العنوان نفسه بابٌ حين توجد وجهة (طلب أحمد: «أقدر أضغط على الاسم») */}
-          {href ? (
+          {titleDoor ? (
+            titleDoor
+          ) : href ? (
             /* 🆕 **بابا الرفّ لا يُجلبان مسبقاً** (D-893، `LOOPZ-AUD-0077`):
                كلُّ رفٍّ يحمل الرابطَ مرّتين (العنوان و«الكلّ») ⇢ Next تجلب
                RSC وجهتِه بالافتراضيّ حين يدخل الشاشة — قِيس في Discover:

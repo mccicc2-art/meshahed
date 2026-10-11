@@ -38,8 +38,8 @@ import { ToWatchListCard } from "@/components/ToWatchListCard";
 import { curatedName } from "@/core/universes";
 import { PosterRail, RailItem, seeAllClass } from "@/components/PosterRail";
 import { PosterGrid } from "@/components/PosterGrid";
-import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { RailNewBadge } from "@/components/RailNewBadge";
+import { HomeAllSheet, HomeAllTitle, type HomeAllSection } from "@/components/HomeAll";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/core/media";
@@ -61,7 +61,7 @@ import {
   HomeOrderSheetHost,
 } from "@/components/HomeSectionsOrder";
 import {
-  QueueOrderButton,
+  type QueueRow,
   HomeQueueSheetHost,
 } from "@/components/HomeQueueOrder";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
@@ -450,35 +450,28 @@ async function HomeBody({
            **ويُقال ولا يُخفى**: العددُ الحقيقيُّ في رأس الورقة، **ورابطُ
            المكتبة بسهمه في ذيلها حين يُقصّ** (D-030: لا وعدَ بلا باب). */
         const ALL_SHEET_CAP = 50;
+        /* 🔴 🆕 ===== D-1355: ورقةُ «الكلّ» الواحدةُ لكلِّ الأقسام =====
+           حكمُ أحمد ١١ أكتوبر «آليّةٌ تعمَّم على جميع أقسام الرئيسيّة · التطبيق والويب»: **العنوانُ و«الكلّ» بابان لورقةٍ
+           واحدةٍ من الأسفل**، والترتيبُ زرٌّ داخلها. ينقض D-605/D-624/D-863 (الكلمةُ كانت زرَّ الترتيب في ثلاثة صفوف)
+           و D-378 (العنوانُ بابُ المكتبة) — والمكتبةُ يبقى بابُها التبويبَ السفليَّ ورابطَ الذيل حين يُقصّ. */
+        const allDoors = (
+          section: HomeAllSection,
+          label: string,
+          total: number,
+          body: React.ReactNode,
+          opts: { href?: string; cut?: boolean; word?: boolean; reorder?: QueueRow } = {},
+        ) => homeAllDoors(t, section, label, total, body, opts);
         const allSheetDoor = (
+          section: HomeAllSection,
           label: string,
           total: number,
           href: string,
           cards: React.ReactNode[],
         ) =>
-          total > 0 ? (
-            <ProfileStatSheet
-              title={`${label} · ${t.listCount(total)}`}
-              closeLabel={t.closeLabel}
-              className={seeAllClass}
-              content={
-                <>
-                  <PosterGrid>{cards}</PosterGrid>
-                  {total > ALL_SHEET_CAP && (
-                    <Link
-                      href={href}
-                      prefetch={false}
-                      className="mt-4 block text-center text-12 font-medium text-accent"
-                    >
-                      {t.seeAll}
-                    </Link>
-                  )}
-                </>
-              }
-            >
-              {t.allWord}
-            </ProfileStatSheet>
-          ) : undefined;
+          allDoors(section, label, total, <PosterGrid sheet>{cards}</PosterGrid>, {
+            href,
+            cut: total > ALL_SHEET_CAP,
+          });
 
         /* **وضعُ العرض يُقرأ مرّةً هنا** (D-434) — **والبياناتُ أعلاه
            واحدةٌ للوضعين**: لا نداءَ ثانٍ ولا فرعَ جلبٍ ثانٍ، **والفرقُ
@@ -506,16 +499,30 @@ async function HomeBody({
             title={t.libToWatch}
             icon="bookmark"
             iconColor="var(--accent)"
-            href="/library"
-            action={
-              toWatchOrdered.length > 1 ? (
-                <QueueOrderButton
-                  row="towatch"
-                  label={t.listReorder}
-                  word={t.allWord}
-                />
-              ) : undefined
-            }
+            {...allDoors(
+              "towatch",
+              t.libToWatch,
+              toWatchOrdered.length,
+              <PosterGrid sheet>
+                {toWatchOrdered.slice(0, ALL_SHEET_CAP).map((x) => (
+                  <PosterCard
+                    key={`at-${x.key}`}
+                    href={x.href}
+                    title={x.title}
+                    posterPath={x.posterPath}
+                    progress={x.progress}
+                    badge={x.badge}
+                  />
+                ))}
+              </PosterGrid>,
+              {
+                href: "/library",
+                cut: toWatchOrdered.length > ALL_SHEET_CAP,
+                /* «الكلّ» حيث يوجد ما يُرى أو يُرتَّب — وعنصرٌ واحدٌ لا يُرتَّب (D-217) */
+                word: toWatchOrdered.length > 1,
+                reorder: toWatchOrdered.length > 1 ? "towatch" : undefined,
+              },
+            )}
             view={view}
           >
             {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
@@ -661,8 +668,8 @@ async function HomeBody({
                 title={t.myShows}
                 icon="tv"
                 iconColor="var(--accent)"
-                href="/library?filter=tv"
-                seeAllDoor={allSheetDoor(
+                {...allSheetDoor(
+                  "shows",
                   t.myShows,
                   myShows.length,
                   "/library?filter=tv",
@@ -714,8 +721,8 @@ async function HomeBody({
                 title={t.myMovies}
                 icon="film"
                 iconColor="var(--accent)"
-                href="/library?filter=movie"
-                seeAllDoor={allSheetDoor(
+                {...allSheetDoor(
+                  "movies",
                   t.myMovies,
                   myMovies.length,
                   "/library?filter=movie",
@@ -849,17 +856,35 @@ async function HomeBody({
                   /* 🆕 مقبضُ الصفِّ يرتّب **بطاقاتِه** (D-615) لا الأقسام —
                      نقضُ D-595 المحصورُ نفسُه الذي مضى في الصفَّين (D-605)،
                      وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
-                  action={
-                    /* 🆕 **والعدُّ عدُّ ما يُرتَّب** (D-866): قائمةٌ
-                       واحدةٌ مع «للمشاهدة» صفَّان يُرتَّبان */
-                    listsQueueItems.length > 1 ? (
-                      <QueueOrderButton
-                        row="lists"
-                        label={t.listReorder}
-                        word={t.allWord}
-                      />
-                    ) : undefined
-                  }
+                  {...(() => {
+                    /* 🆕 D-1355 — جسدُ الورقة البطاقاتُ نفسُها شبكةً (`headless`)، والعدُّ عدُّ ما يُرتَّب (D-866) */
+                    const d = allDoors(
+                      "lists",
+                      t.listsTitle,
+                      listsQueueItems.length,
+                      <PublicListsRail
+                        lists={listsRowCards}
+                        locale={locale}
+                        headless
+                        leading={
+                          toWatchQueueCard ? (
+                            <ToWatchListCard
+                              locale={locale}
+                              initialOn={toWatchQueueCard.on}
+                              count={toWatchQueueCard.count}
+                              posters={toWatchQueueCard.posters}
+                            />
+                          ) : undefined
+                        }
+                        leadingIndex={toWatchListAt}
+                      />,
+                      {
+                        word: listsQueueItems.length > 1,
+                        reorder: listsQueueItems.length > 1 ? "lists" : undefined,
+                      },
+                    );
+                    return { titleDoor: d.titleDoor, action: d.seeAllDoor };
+                  })()}
                 />
               </div>
             ) : null,
@@ -875,8 +900,30 @@ async function HomeBody({
                 key="friends"
                 title={t.railFriendsNow}
                 icon="people"
-                href="/people"
-                seeAllLabel={t.seeAll}
+                /* 🆕 D-1355 — «الكلّ» ورقةٌ فيها كلُّ ما يشاهده أصدقاؤك (حتى ٦٠) لا انتقالٌ إلى `/people`؛ الملصقُ وحدَه
+                   هنا — أسماءُ الأصدقاء تحته في التطبيق فقط بقرار صاحبها («3 ب»، D-1353) */
+                {...allDoors(
+                  "friends",
+                  t.railFriendsNow,
+                  friendsRows.length,
+                  <PosterGrid sheet>
+                    {friendsRows.map((r) => (
+                      <PosterCard
+                        key={`af-${r.media_type}-${r.tmdb_id}`}
+                        href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                        title={r.title}
+                        posterPath={r.poster_path}
+                        saved={followedKeys.has(`${r.media_type}-${r.tmdb_id}`)}
+                        watched={
+                          r.media_type === "movie"
+                            ? watchedMovieIds.has(r.tmdb_id)
+                            : doneShowIds.has(r.tmdb_id)
+                        }
+                      />
+                    ))}
+                  </PosterGrid>,
+                  { word: friendsRows.length > cap(12) },
+                )}
                 action={
                   <>
                     <RailNewBadge
@@ -946,6 +993,48 @@ async function HomeBody({
 }
 
 /**
+ * 🆕 D-1355 — بابا القسم إلى ورقته: العنوانُ و«الكلّ». يُنشران في رأس القسم (`{...homeAllDoors(…)}`) فلا يُكتب
+ * الاثنان في كلِّ قسمٍ على حدة ثم يفترقان (القاعدة ٦).
+ *
+ * `cut` ⇒ رابطُ المكتبة بسهمه في الذيل (D-030: لا وعدَ بلا باب، والسقفُ يُقال — D-868).
+ * `word: false` ⇒ الكلمةُ لا تُرسم والعنوانُ يبقى باباً (قسمٌ يُرى كلُّه في صفّه).
+ */
+function homeAllDoors(
+  t: T,
+  section: HomeAllSection,
+  label: string,
+  total: number,
+  body: React.ReactNode,
+  opts: { href?: string; cut?: boolean; word?: boolean; reorder?: QueueRow } = {},
+): { titleDoor?: React.ReactNode; seeAllDoor?: React.ReactNode } {
+  if (total <= 0) return {};
+  return {
+    titleDoor: <HomeAllTitle section={section}>{label}</HomeAllTitle>,
+    seeAllDoor: (
+      <HomeAllSheet
+        section={section}
+        title={label}
+        count={t.listCount(total)}
+        word={opts.word === false ? undefined : t.allWord}
+        className={seeAllClass}
+        closeLabel={t.closeLabel}
+        reorder={opts.reorder ? { row: opts.reorder, label: t.listReorder } : undefined}
+        content={
+          <>
+            {body}
+            {opts.cut && opts.href ? (
+              <Link href={opts.href} prefetch={false} className="mt-4 block text-center text-12 font-medium text-accent">
+                {t.seeAll}
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+    ),
+  };
+}
+
+/**
  * كل الأقسام صفوف أفقية.
  *
  * كانت الأقسام الصغيرة تُرسم شبكةً ببطاقات أكبر — فيختلف حجم البطاقة بين
@@ -960,6 +1049,7 @@ function Section({
   href,
   seeAll,
   seeAllDoor,
+  titleDoor,
   action,
   wide = false,
   view = "visual",
@@ -974,6 +1064,8 @@ function Section({
   seeAll?: string;
   /** 🆕 **بابُ الورقة بدل رابط الانتقال** (D-868) — يُمرَّر كما هو */
   seeAllDoor?: React.ReactNode;
+  /** 🆕 D-1355 — العنوانُ بابُ ورقة القسم نفسِها */
+  titleDoor?: React.ReactNode;
   /** 🆕 مقبضُ ترتيب الأقسام (D-595) — يجلس بجوار «الكلّ» لا مكانه */
   action?: React.ReactNode;
   /** بطاقات عريضة بصورة المشهد بدل الملصق */
@@ -1031,6 +1123,7 @@ function Section({
       href={href}
       seeAllLabel={seeAll}
       seeAllDoor={seeAllDoor}
+      titleDoor={titleDoor}
       action={action}
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact" || solo}
@@ -1116,6 +1209,22 @@ async function ContinueSection({
      فأعمال) — **وصارت قائمةً واحدةً يفرزها `applyQueueOrder`
      بالمفاتيح نفسِها التي تعرضها ورقةُ الترتيب**، فما يسحبه فيها
      هو ما يتقدّم هنا، عبر الأنواع لا داخل كلِّ نوع. */
+  /* 🆕 D-1355 — جسدُ ورقة «الكلّ»: ملصقٌ لكلِّ بطاقةٍ في الصفّ بالمفاتيح والترتيب نفسِهما. بطاقةُ القائمة ملصقُ
+     «التالي» فيها باسم القائمة، وضغطتُها ضغطةُ بطاقتها في الصفّ (العملُ التالي) — كما في ورقة التطبيق. */
+  const nextHref = (n: { tmdb_id: number; media_type: string }) =>
+    `/${n.media_type === "movie" ? "movie" : "show"}/${n.tmdb_id}`;
+  const allCards = applyQueueOrder(
+    [
+      ...(toWatchCard
+        ? [{ key: "lc-towatch", href: nextHref(toWatchCard.next), title: toWatchCard.name, poster: toWatchCard.next.poster_path, progress: undefined as number | undefined }]
+        : []),
+      ...playlistCards.map((c) => ({ key: `pl-${c.list.id}`, href: nextHref(c.next!), title: curatedName(c.list.sourceSlug, c.list.name, locale), poster: c.next!.poster_path, progress: undefined as number | undefined })),
+      ...listCards.map((c) => ({ key: `lc-${c.list.id}`, href: nextHref(c.next!), title: curatedName(c.list.sourceSlug, c.list.name, locale), poster: c.next!.poster_path, progress: undefined as number | undefined })),
+      ...continueTop.map((i) => ({ key: `c-${i.id}`, href: `/show/${i.id}`, title: i.name, poster: i.posterPath, progress: i.progress as number | undefined })),
+    ],
+    (x) => x.key,
+    order,
+  ).map((x) => <PosterCard key={`ac-${x.key}`} href={x.href} title={x.title} posterPath={x.poster} progress={x.progress} />);
   const rail = (view: HomeView) => {
     const nodes: { key: string; node: React.ReactNode }[] = [];
     return (
@@ -1124,16 +1233,10 @@ async function ContinueSection({
         title={t.continueWatching}
         icon="play"
         iconColor="var(--accent)"
-        href="/library"
-        action={
-          canReorder ? (
-            <QueueOrderButton
-              row="continue"
-              label={t.listReorder}
-              word={t.allWord}
-            />
-          ) : undefined
-        }
+        {...homeAllDoors(t, "continue", t.continueWatching, allCards.length, <PosterGrid sheet>{allCards}</PosterGrid>, {
+          word: canReorder,
+          reorder: canReorder ? "continue" : undefined,
+        })}
         view={view}
         wide
       >
@@ -1278,45 +1381,23 @@ async function UpcomingSection({
       title={t.libUpcoming}
       icon="hourglass"
       iconColor="var(--accent)"
-      href="/library"
       /* 🆕 **و«القادم» ثالثةُ الأقسام التي كانت تنقل إلى المكتبة**
          (D-868) — **والقاعدةُ لا تُطبَّق في اثنين من ثلاثة** (D-863).
          **وجسدُ الورقة صفوفُ الصفِّ نفسُها** (`CompactMediaRow`) لا
          شبكةَ ملصقاتٍ: **القادمُ موعدٌ قبل أن يكون عملاً** (D-434)،
          **وشكلٌ ثانٍ للشيء نفسِه في ورقته يُقرأ قسماً ثانياً.** */
-      seeAllDoor={
-        <ProfileStatSheet
-          title={`${t.libUpcoming} · ${t.listCount(rows.length)}`}
-          closeLabel={t.closeLabel}
-          className={seeAllClass}
-          content={
-            <>
-              <div className="flex flex-col">
-                {rows.slice(0, 50).map((x) => (
-                  <CompactMediaRow
-                    key={`ua-${x.key}`}
-                    href={x.href}
-                    chip={x.badge}
-                    title={x.title}
-                    subtitle={x.ep ?? x.subtitle}
-                  />
-                ))}
-              </div>
-              {rows.length > 50 && (
-                <Link
-                  href="/library"
-                  prefetch={false}
-                  className="mt-4 block text-center text-12 font-medium text-accent"
-                >
-                  {t.seeAll}
-                </Link>
-              )}
-            </>
-          }
-        >
-          {t.allWord}
-        </ProfileStatSheet>
-      }
+      {...homeAllDoors(
+        t,
+        "upcoming",
+        t.libUpcoming,
+        rows.length,
+        <div className="flex flex-col">
+          {rows.slice(0, 50).map((x) => (
+            <CompactMediaRow key={`ua-${x.key}`} href={x.href} chip={x.badge} title={x.title} subtitle={x.ep ?? x.subtitle} />
+          ))}
+        </div>,
+        { href: "/library", cut: rows.length > 50, word: rows.length > cap(rows.length) },
+      )}
       view={view}
       soloFull
       wide

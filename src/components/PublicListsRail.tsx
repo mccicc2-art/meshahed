@@ -46,6 +46,8 @@ export function PublicListsRail({
   title,
   grid = false,
   action,
+  titleDoor,
+  headless = false,
   leading,
   leadingIndex = 0,
 }: {
@@ -72,6 +74,10 @@ export function PublicListsRail({
    * واحدة هو العطلُ بعينه** (القاعدة ٦).
    */
   grid?: boolean;
+  /** 🆕 D-1355 — العنوانُ بابُ ورقة «الكلّ» (يُمرَّر إلى `PosterRail` كما هو) */
+  titleDoor?: React.ReactNode;
+  /** 🆕 D-1355 — الشبكةُ وحدَها بلا رأس: جسدُ ورقة «الكلّ» في الرئيسيّة (البطاقةُ نفسُها، لا نسخةٌ ثانية) */
+  headless?: boolean;
   /**
    * 🆕 **بطاقةٌ أولى ليست قائمةً** (D-703) — طابورُ «للمشاهدة» في صفِّ
    * الرئيسية: **مكانُه بين القوائم لأنه يُقرأ قائمةً** (عرفُ
@@ -96,6 +102,22 @@ export function PublicListsRail({
     <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" />
   ));
 
+  if (headless) {
+    return (
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {slots(
+          lists.map((l, i) => (
+            <li key={l.id} className="min-w-0">
+              {cards[i]}
+            </li>
+          )),
+          leading ? <li key="lead" className="min-w-0">{leading}</li> : null,
+          leadingIndex,
+        )}
+      </ul>
+    );
+  }
+
   if (grid) {
     return (
       <PosterRail
@@ -103,6 +125,7 @@ export function PublicListsRail({
         icon="list"
         iconColor="var(--accent-2)"
         action={action}
+        titleDoor={titleDoor}
         bare
       >
         {/* 🆕 ⚖️ **عمودٌ واحدٌ على الجوّال** (D-461، حكمُ أحمد: «أحجام
@@ -144,6 +167,7 @@ export function PublicListsRail({
       icon="list"
       iconColor="var(--accent-2)"
       action={action}
+      titleDoor={titleDoor}
     >
       {slots(
         lists.map((l, i) => (
