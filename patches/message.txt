@@ -1,7 +1,10 @@
-[deploy] D-1317 — the calendar is a native screen in the app
+[deploy] D-1356 — V-B: a crashed native screen shows «حاول مجدداً» and remounts; it no longer opens its web twin
 
-The week strip heading on Home pushes a native /calendar: month grid, tap a day to reach its list, month arrows,
-the same Plus rule as the web. Data from GET /api/v1/me/calendar, built with the web page's own core/calendar.
+- ErrorBoundary: themed message + retry (remount by key); roots keep the system-back rule; pushed screens get «إغلاق»
+- second crash => next retry drops the saved query cache once (dropAfterCrash)
+- welcome keeps its web fallback until V-D (Ahmed's exception)
+- 20 route files: webPath/returnTo/onLeave removed
+- /api/v1/app/crash: messages + profile are named screens
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01AxGsuJ3N4eDpmKZNWCKxs7
+Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
