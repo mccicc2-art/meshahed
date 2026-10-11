@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
+import { Sheet } from "../library/Sheet";
+import { shell } from "../shell";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Button, Text } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
-import { api, write } from "../api";
+import { api, write, ApiError } from "../api";
 import { push } from "../push";
 import type { PushGroup, PushPrefsPayload } from "@/core/push";
 import type { ToastHostRef } from "../HoldHost";
@@ -171,9 +173,62 @@ export function AboutScreen() {
 }
 
 /**
+ * ====== ورقةُ حذف الحساب (🆕 D-1358 · Phase 11-V · V-C · C2 — ١١ أكتوبر ٢٠٢٦) ======
+ *
+ * **قرارُ أحمد «1 أ»: ضغطتان كما في الويب** (`PrivacyData.onDelete`) — الأولى تسلّح الزرَّ («متأكد؟ اضغط مرة أخرى»، ويعود
+ * بعد خمس ثوانٍ)، والثانيةُ تحذف. الفعلُ `POST /api/v1/me/delete` (فعلُ الويب نفسُه)، ورسالتا الفشل رسالتاه.
+ * 🔑 **بعد النجاح: طريقُ زرِّ «تسجيل الخروج» حرفاً** (D-1156) — تُنزل الشاشاتُ ثمّ يُرسل الغلافُ `/auth/signout`: كوكيزُ الطبقة
+ * تُمسح هناك، والغلافُ يرى العنوانَ فيمسح الجلسةَ والكاشَ ويرفع شاشةَ الدخول الأصليّة. **لا طريقَ خروجٍ ثانياً** — الدخولُ والخروجُ
+ * انكسرا كلَّ مرّةٍ مُسّا فيها (خطّة 11-V · V-D).
+ * ⚖️ **والورقةُ لا تُغلق والحذفُ جارٍ**: إغلاقُها لا يوقف طلباً خرج، فيُحذف الحسابُ والشاشةُ تقول إنّه قائم.
+ * ⚖️ **بلا «تم» في الرأس** (في الويب «إلغاء» و«تم» معاً وكلاهما يُغلق فقط): `Sheet` الواحدة لها إغلاقُها وسحبُها.
+ */
+function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
+  const { t, tokens } = useApp();
+  const router = useRouter();
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (disarm.current) clearTimeout(disarm.current); }, []);
+  const press = async () => {
+    if (busy) return;
+    setError(null);
+    if (disarm.current) clearTimeout(disarm.current);
+    if (!armed) {
+      haptic.pick();
+      setArmed(true);
+      disarm.current = setTimeout(() => setArmed(false), 5000);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api<{ done: boolean }>("/api/v1/me/delete", { method: "POST", body: { confirm: "delete" } });
+    } catch (e) {
+      setBusy(false);
+      setArmed(false);
+      setError(e instanceof ApiError && e.error.code === "rate_limited" ? t.deleteAccountBusyGate : t.deleteAccountFailed);
+      return;
+    }
+    /* الحسابُ ذهب: لا شاشةَ من شاشاته تبقى فوق الغلاف، ثمّ الخروجُ بطريقه (انظر أعلى) */
+    if (router.canDismiss()) router.dismissAll();
+    else router.replace("/web");
+    shell.post("/auth/signout");
+  };
+  return (
+    <Sheet title={t.deleteAccountTitle} onClose={() => { if (!busy) onClose(); }}>
+      {/* `Sheet` تفصل أبناءها بفجوتها (٢٠) — لا هوامشَ هنا */}
+      <Text size={12} muted style={{ lineHeight: 20 }}>{t.deleteAccountDesc}</Text>
+      <Button label={busy ? t.deleteAccountBusy : armed ? t.deleteAccountConfirm : t.deleteAccountBtn} variant={armed || busy ? "danger" : "ghost"} disabled={busy} onPress={() => void press()} />
+      {error ? <Text size={12} color={tokens.error} style={{ lineHeight: 19 }}>{error}</Text> : null}
+    </Sheet>
+  );
+}
+
+/**
  * `account/page.tsx` — الاسمُ والمعرّف (باب تعديل الملفّ)، البريدُ، طلبُ التوثيق،
- * الاشتراكُ، ثمّ حذفُ الحساب في منطقة خطرٍ وحدَه. **الأربعةُ الأخيرةُ أبوابٌ للويب**
- * (D-932): هويّةٌ وجلسةٌ ودفع.
+ * الاشتراكُ، ثمّ حذفُ الحساب في منطقة خطرٍ وحدَه. **الاشتراكُ بابٌ للويب** (D-932: دفع — وباقٍ بقرار ٧ في خطّة 11-V)؛
+ * 🆕 D-1358 (V-C · C2) — **والحذفُ صار أصليّاً** (`DeleteAccountSheet`).
  */
 export function AccountScreen() {
   const { t } = useApp();
@@ -181,7 +236,8 @@ export function AccountScreen() {
   const s = q.data;
   const openWeb = useOpenWeb();
   const router = useRouter();
-  /* D-1106/D-1107 — الاسمُ والتوثيقُ صارا شاشتين أصليّتين؛ الفوترةُ والحذفُ بابان (D-1096) */
+  /* D-1106/D-1107 — الاسمُ والتوثيقُ صارا شاشتين أصليّتين؛ الفوترةُ بابٌ (D-1096)، والحذفُ ورقةٌ أصليّة (D-1358) */
+  const [deleting, setDeleting] = useState(false);
   const go = (section: "profile" | "verify") => router.push({ pathname: "/settings/[section]", params: { section } });
   /* 🆕 D-1350 — «ربط حساب Google» لمن دخل بأبل (القرار ٥): صفٌّ يفتح Google في متصفّح النظام، وبعد الربط يقول «مرتبط» */
   const toast = useRef<ToastHostRef>(null);
@@ -221,12 +277,14 @@ export function AccountScreen() {
             <Row icon="shield" title={t.verifyTitle} subtitle={t.verifySub} onPress={() => go("verify")} />
             <Row icon="card" title={t.setBilling} value={s.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
           </Group>
-          {/* الحذفُ ورقةٌ مسلَّحة (ضغطتان) في صفحة الحساب الويبيّة — البابُ يفتحها نفسَها */}
+          {/* 🆕 D-1358 — الحذفُ ورقةٌ مسلَّحة (ضغطتان) كما في الويب، تُفتح فوق هذه الشاشة لا في صفحة الحساب الويبيّة.
+              والأيقونةُ سلّةٌ كالويب: ✕ أيقونةُ «تسجيل الخروج» كذلك، وخطِران بشكلٍ واحدٍ يُخلطان */}
           <Group label={t.setDangerZone}>
-            <Row icon="close" title={t.deleteAccountTitle} danger onPress={() => openWeb("/profile/settings/account")} busy={openWeb.busy === "/profile/settings/account"} />
+            <Row icon="trash" title={t.deleteAccountTitle} danger onPress={() => { haptic.pick(); setDeleting(true); }} />
           </Group>
         </>
       )}
+      {deleting ? <DeleteAccountSheet onClose={() => setDeleting(false)} /> : null}
     </SettingsScreen>
   );
 }
