@@ -13,11 +13,7 @@ import { posterUrl } from "@/core/media";
 import { themeById, themeScheme } from "@/core/themes";
 import {
   CHAT_BG_DOODLE_OPACITY,
-  CHAT_BG_TAIL_BLUR,
-  CHAT_BG_TAIL_SIZE,
-  CHAT_BG_TAIL_SLICE,
   CHAT_BG_TITLE_SIZE,
-  POSTER_RATIO,
   CHAT_BG_TITLE_VEIL,
   DEFAULT_CHAT_BG,
   sameChatBg,
@@ -31,7 +27,7 @@ import type { ChatBgBody, ChatBgChoice, ChatBgPayload, ChatBgPostersPayload, Cha
  * • `useChatBg` — ما يُرسم تحت الخيط (`shown`)؛ قراءةٌ خفيفةٌ بلا مفضّلات، تُخبَّأ طويلاً لأنّ لا كاتبَ لها
  *   إلّا صاحبُها من هذه الورقة نفسِها (أو من الويب — فتُعاد عند العودة إلى التطبيق).
  * • `ChatBackdrop` — الطبقةُ نفسُها: الرسومُ مكرَّرةً (صورتان: بيضاءُ للداكن وسوداءُ للنهاريّ — بلا `tintColor` على
- *   صورةٍ مكرّرة، فسلوكُه على أندرويد غيرُ مضمون)، أو **ملصقُ العمل** كاملاً حادّاً تحت غشاءٍ بلون خلفيّة الثيم (D-1385).
+ *   صورةٍ مكرّرة، فسلوكُه على أندرويد غيرُ مضمون)، أو **ملصقُ العمل** ممطوطاً لمقاس منطقة المحادثة تحت غشاءٍ بلون الثيم (D-1386).
  * • `ChatBgSheet` — المنتقي: Loopz · بلا رسوم · «من مفضّلاتك» بشارة Loopz+. 🆕 D-1384 — **خطوتان**: لمسُ عملٍ يفتح
  *   ملصقاتِه (ملصقُك · بلا كتابة · مع العنوان) ولمسُ ملصقٍ يطبّقه — فما يُختار هو ما يُرى بالضبط. يُطبَّق لحظةَ اللمس ولا
  *   تُغلق الورقة؛ وغيرُ المشترك يرى أعمالَه باهتةً بقفلٍ وزرّاً إلى البلس. **والحارسُ في الخادم.**
@@ -52,14 +48,11 @@ export function useChatBg(): ChatBg {
 }
 
 /**
- * 🆕 D-1385 — `top`: أعلى منطقة المحادثة (تحت الترويسة) — **الملصقُ يلتصق به** فلا فراغَ فوق («ما ابغى فيه فراغ فوق»).
- * الملصقُ بعرض الشاشة ونسبته ٢:٣ بلا تكبيرٍ ولا قصٍّ ولا تضبيب، **وما تحته تكملةٌ**: الصورةُ نفسُها مضبّبةً وممدودةً عموديّاً
- * بحيث لا يظهر منها إلّا آخرُ ١٠٪ — فلونُ الحافّة يمتدّ إلى القاع بدل شريطٍ فارغ (الخيارُ «ب» من صور أحمد).
+ * 🆕 D-1385/D-1386 — منطقةُ المحادثة وحدَها: `top` أسفلُ الترويسة و`bottom` ارتفاعُ خانة الكتابة — **فالملصقُ يملؤها بالضبط**
+ * ممطوطاً للمقاس (`contentFit="fill"`): كاملاً بلا قصٍّ ولا تكبيرٍ ولا تضبيبٍ ولا فراغ («مطّ للمقاس» بحكم أحمد).
  */
-export function ChatBackdrop({ bg, top = 0 }: { bg: ChatBg; top?: number }) {
+export function ChatBackdrop({ bg, top = 0, bottom = 0 }: { bg: ChatBg; top?: number; bottom?: number }) {
   const { tokens, themeId } = useApp();
-  const { width } = useWindowDimensions();
-  const [tailH, setTailH] = useState(0);
   if (bg.k === "plain") return null;
   if (bg.k === "loopz") {
     const light = themeScheme(themeById(themeId)) === "light";
@@ -69,23 +62,9 @@ export function ChatBackdrop({ bg, top = 0 }: { bg: ChatBg; top?: number }) {
       </View>
     );
   }
-  const posterH = Math.round(width * POSTER_RATIO);
-  const stretchedH = tailH > 0 ? tailH / CHAT_BG_TAIL_SLICE : 0;
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { top, overflow: "hidden" }]}>
-      {/* التكملة: من حافّة الملصق السفلى إلى القاع — الطبقةُ الممدودةُ مقيسةٌ بارتفاع منطقتها */}
-      <View onLayout={(e) => setTailH(Math.round(e.nativeEvent.layout.height))} style={{ position: "absolute", top: posterH - 1, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
-        {stretchedH > 0 ? (
-          <Image
-            source={{ uri: posterUrl(bg.path, CHAT_BG_TAIL_SIZE) ?? undefined }}
-            blurRadius={CHAT_BG_TAIL_BLUR}
-            contentFit="fill"
-            style={{ position: "absolute", left: 0, right: 0, height: stretchedH, top: tailH - stretchedH }}
-          />
-        ) : null}
-      </View>
-      {/* الملصقُ كاملاً وحادّاً بحجمه الأصليّ */}
-      <Image source={{ uri: posterUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined }} contentFit="fill" cachePolicy="memory-disk" style={{ position: "absolute", top: 0, left: 0, width, height: posterH }} />
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { top, bottom, overflow: "hidden" }]}>
+      <Image source={{ uri: posterUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined }} contentFit="fill" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.bg, opacity: CHAT_BG_TITLE_VEIL }]} />
     </View>
   );
