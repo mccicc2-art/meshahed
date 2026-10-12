@@ -119,6 +119,7 @@ export type {
   ChatBgChoice,
   ChatBgPayload,
   ChatBgResult,
+  ChatBgPostersPayload,
   LibraryGrantBody,
   UnblockBody,
   HintsResetBody,

@@ -7,7 +7,9 @@ test("خلفية المحادثات: الافتراضي Loopz والفاسد ي�
   assert.deepEqual(sanitizeChatBg(null), DEFAULT_CHAT_BG);
   assert.deepEqual(sanitizeChatBg({ k: "x" }), DEFAULT_CHAT_BG);
   assert.deepEqual(sanitizeChatBg({ k: "plain" }), { k: "plain" });
-  const ok = { k: "title", type: "tv", id: 1398, path: "/aBc_12-x.jpg" };
+  /* D-1384 — الخلفيّةُ العريضة القديمة تسقط إلى Loopz */
+  assert.deepEqual(sanitizeChatBg({ k: "title", type: "tv", id: 1, path: "/a.jpg" }), DEFAULT_CHAT_BG);
+  const ok = { k: "poster", type: "tv", id: 1398, path: "/aBc_12-x.jpg" };
   assert.deepEqual(sanitizeChatBg(ok), ok);
   /* المسارُ يدخل رابطاً — لا نطاقَ ولا صعودَ ولا امتدادَ غريب */
   assert.deepEqual(sanitizeChatBg({ ...ok, path: "https://evil.example/a.jpg" }), DEFAULT_CHAT_BG);
@@ -17,7 +19,7 @@ test("خلفية المحادثات: الافتراضي Loopz والفاسد ي�
 });
 
 test("خلفية المحادثات: العمل للمشترك، وغيره يرى Loopz واختياره محفوظ", () => {
-  const title = sanitizeChatBg({ k: "title", type: "movie", id: 242, path: "/g.jpg" });
+  const title = sanitizeChatBg({ k: "poster", type: "movie", id: 242, path: "/g.jpg" });
   assert.equal(chatBgNeedsPlus(title), true);
   assert.equal(chatBgNeedsPlus({ k: "plain" }), false);
   assert.deepEqual(effectiveChatBg(title, true), title);

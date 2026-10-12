@@ -1,4 +1,4 @@
-import { backdropUrl } from "@/core/media";
+import { posterUrl } from "@/core/media";
 import { CHAT_BG_DOODLE_OPACITY, CHAT_BG_TITLE_BLUR, CHAT_BG_TITLE_SIZE, CHAT_BG_TITLE_VEIL, type ChatBg } from "@/core/chatBg";
 
 /**
@@ -8,7 +8,7 @@ import { CHAT_BG_DOODLE_OPACITY, CHAT_BG_TITLE_BLUR, CHAT_BG_TITLE_SIZE, CHAT_BG
  * تحت الفقاعات أينما نزل القارئ، **ولا تمسّ بقيّةَ الصفحات**. لا تُلمس (`pointer-events-none`) ولا تُقرأ (`aria-hidden`).
  *
  * • Loopz — الرسومُ **قناعٌ** يُلوَّن بلون النصّ: صورةٌ واحدةٌ تتبع كلَّ ثيمٍ والوضعَ النهاريّ.
- * • العمل — خلفيّتُه العريضة مضبّبةً، فوقها غشاءٌ بلون خلفيّة الثيم: تعتيمٌ في الداكن وغسلٌ في النهاريّ.
+ * • العمل — 🆕 ملصقُه المختار (D-1384) خفيفَ التضبيب، فوقه غشاءٌ بلون خلفيّة الثيم: تعتيمٌ في الداكن وغسلٌ في النهاريّ.
  * • السوداء — لا شيء: خلفيّةُ الصفحة كما كانت.
  */
 export function ChatBackground({ bg }: { bg: ChatBg }) {
@@ -33,7 +33,7 @@ export function ChatBackground({ bg }: { bg: ChatBg }) {
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- صورةٌ مضبّبةٌ خلف المحادثة: لا تحسينَ يُرى ولا مقاسَ يُختار */}
           <img
-            src={backdropUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined}
+            src={posterUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             style={{ filter: `blur(${CHAT_BG_TITLE_BLUR}px)`, transform: "scale(1.04)" }}

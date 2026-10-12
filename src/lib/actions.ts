@@ -80,7 +80,7 @@ import { isViewKey } from "@/core/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
 import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, type ChatBg } from "@/core/chatBg";
-import type { ChatBgChoice, ChatBgPayload } from "@/core/contracts/settings";
+import type { ChatBgChoice, ChatBgPayload, ChatBgPostersPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
 import { getTv, getMovie } from "@/lib/tmdb";
@@ -4749,28 +4749,46 @@ export async function getChatBgState(withChoices = false): Promise<ChatBgPayload
   const bg = sanitizeUiState(p?.ui_state).chatBg;
   let choices: ChatBgChoice[] | null = null;
   if (withChoices && p) {
+    /* 🆕 D-1384 — الشبكةُ ملصقاتُ المفضّلات كما هي (`profile_favorites`) — بلا نداءٍ لـTMDB لكلِّ عمل */
     const favs = (await getProfileFavorites(p.id)).slice(0, CHAT_BG_CHOICES_MAX);
-    const rows = await Promise.all(
-      favs.map(async (f): Promise<ChatBgChoice | null> => {
-        try {
-          const d = (f.media_type === "tv" ? await getTv(f.tmdb_id) : await getMovie(f.tmdb_id)) as {
-            backdrop_path?: string | null;
-            name?: string;
-            title?: string;
-          };
-          const path = d.backdrop_path ?? null;
-          if (!path) return null;
-          const ok = sanitizeChatBg({ k: "title", type: f.media_type, id: f.tmdb_id, path });
-          if (ok.k !== "title") return null;
-          return { type: f.media_type, id: f.tmdb_id, path: ok.path, title: f.title ?? d.name ?? d.title ?? "" };
-        } catch {
-          return null;
-        }
-      }),
-    );
-    choices = rows.filter((r): r is ChatBgChoice => r !== null);
+    choices = favs
+      .filter((f) => !!f.poster_path)
+      .map((f) => ({ type: f.media_type, id: f.tmdb_id, path: f.poster_path as string, title: f.title ?? "" }));
   }
   return { bg, shown: effectiveChatBg(bg, plus), plus, choices };
+}
+
+/**
+ * 🆕 D-1384 — **ملصقاتُ عملٍ واحد للمنتقي**: كلُّ ما في TMDB (`titleImages` — مرتّبةً بلغة القارئ ثمّ الإنجليزيّة ثمّ بلا
+ * نصّ)، **مقسومةً نظيفاً بلا كتابة (`iso_639_1 = null`) ثمّ ما عليه العنوان** — النظيفُ خلف المحادثة لا يزاحم الكلام
+ * باسمٍ كبير. و`mine` ملصقُه في مكتبته (`title_art`) إن اختاره: يُعرض أوّلاً لأنّه ما يعرفه به.
+ * السقفُ ١٢ لكلِّ قسم — ورقةٌ لا معرض.
+ */
+export async function getChatBgPosters(type: "tv" | "movie", id: number): Promise<ChatBgPostersPayload> {
+  await requireUser("chatbg", 40, 60_000);
+  const media = type === "movie" ? "movie" : "tv";
+  const tmdbId = intId(id);
+  const [{ titleImages }, { getMyArtFor }, { getLocale }] = await Promise.all([
+    import("@/lib/tmdb"),
+    import("@/lib/data"),
+    import("@/lib/locale"),
+  ]);
+  const locale = await getLocale();
+  const [imgs, art] = await Promise.all([
+    titleImages(media, tmdbId, locale === "en" ? "en" : "ar"),
+    getMyArtFor(tmdbId, media).catch(() => null),
+  ]);
+  const ok = (path: string) => sanitizeChatBg({ k: "poster", type: media, id: tmdbId, path }).k === "poster";
+  const clean: string[] = [];
+  const titled: string[] = [];
+  for (const im of imgs.posters) {
+    if (!ok(im.file_path)) continue;
+    if (!im.iso_639_1) {
+      if (clean.length < 12) clean.push(im.file_path);
+    } else if (titled.length < 12) titled.push(im.file_path);
+  }
+  const mine = art?.poster_path && ok(art.poster_path) ? art.poster_path : null;
+  return { clean, titled, mine };
 }
 
 /** 🆕 D-1382 — **كاتبٌ واحد**: يمرّ من `updateUiState` (التطهيرُ وحارسُ البلس هناك) — الويبُ والتطبيقُ معاً */

@@ -62,7 +62,7 @@ export const BACKDROP_INTRINSIC = {
   w780: { width: 780, height: 439 },
 } as const;
 
-export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342") {
+export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" | "w780" = "w342") {
   return tmdbImage(path, size);
 }
 

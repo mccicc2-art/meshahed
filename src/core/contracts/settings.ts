@@ -83,10 +83,14 @@ export type DmPolicyBody = { dm_policy: DmPolicy };
 /* ===== 🆕 D-1382 — خلفيّةُ المحادثات (`/api/v1/me/prefs/chat-bg`) =====
    `bg` المحفوظ · `shown` ما يُرسم (غيرُ المشترك يرى Loopz بدل العمل) · `choices` مفضّلاتٌ لها خلفيّة —
    `null` ما لم يُطلب `?choices=1` (الخيطُ لا يحتاجها). */
+/** 🆕 D-1384 — `path` ملصقُ العمل كما في المفضّلات (لا خلفيّتُه العريضة) — يُرسم في الشبكة ويفتح ملصقاتِه */
 export type ChatBgChoice = { type: "tv" | "movie"; id: number; path: string; title: string };
 export type ChatBgPayload = { bg: ChatBg; shown: ChatBg; plus: boolean; choices: ChatBgChoice[] | null };
 export type ChatBgBody = { bg: ChatBg };
 export type ChatBgResult = { ok: boolean; needsPlus?: true; bg: ChatBg };
+/** 🆕 D-1384 — ملصقاتُ عملٍ واحد للمنتقي (`/api/v1/me/prefs/chat-bg/posters?type=&id=`): النظيفُ بلا كتابة أوّلاً،
+    ثمّ ما عليه العنوان؛ و`mine` ملصقُ صاحبِ الحساب لهذا العمل إن اختاره في مكتبته (`title_art`). مساراتُ TMDB وحدها. */
+export type ChatBgPostersPayload = { clean: string[]; titled: string[]; mine: string | null };
 export type LibraryGrantBody = { user_id: string; grant: boolean };
 export type UnblockBody = { user_id: string };
 export type HintsResetBody = { reset: true };

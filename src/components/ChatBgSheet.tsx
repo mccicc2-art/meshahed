@@ -6,10 +6,10 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
 import { Button } from "./ui/Button";
 import { getDict, type Locale } from "@/core/i18n";
-import { backdropUrl } from "@/core/media";
+import { posterUrl } from "@/core/media";
 import { CHAT_BG_DOODLE_OPACITY, sameChatBg, type ChatBg } from "@/core/chatBg";
-import type { ChatBgChoice } from "@/core/contracts/settings";
-import { getChatBgState, setChatBg } from "@/lib/actions";
+import type { ChatBgChoice, ChatBgPostersPayload } from "@/core/contracts/settings";
+import { getChatBgPosters, getChatBgState, setChatBg } from "@/lib/actions";
 import { coalescedRefresh } from "@/core/refresh";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
@@ -22,6 +22,8 @@ import { tap } from "@/lib/haptics";
  * • **غيرُ المشترك يرى المفضّلاتِ باهتةً بقفل** وزرّاً إلى `/plus`: رؤيةُ أعماله نفسِها هي ما يبيع الميزة —
  *   وقسمٌ مخفيٌّ لا يُشتهى. والحارسُ في الخادم (`updateUiState`) لا هنا.
  * • المفضّلاتُ تُجلب عند الفتح وحدَه (`getChatBgState(true)`).
+ * • 🆕 D-1384 — **خطوتان**: لمسُ عملٍ يفتح ملصقاتِه (`getChatBgPosters` — ملصقُك · بلا كتابة · مع العنوان)، ولمسُ ملصقٍ
+ *   يطبّقه — فما يُختار هو ما يُرى خلف المحادثة بالضبط (توأمُ `ChatBgSheet` في التطبيق).
  */
 export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose: () => void; locale: Locale }) {
   const t = getDict(locale);
@@ -33,6 +35,18 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [, start] = useTransition();
+  /* 🆕 D-1384 — العملُ المفتوح وملصقاتُه (`undefined` = يُحمَّل · `null` = فشل) */
+  const [title, setTitle] = useState<ChatBgChoice | null>(null);
+  const [posters, setPosters] = useState<ChatBgPostersPayload | null | undefined>(undefined);
+
+  function openTitle(c: ChatBgChoice) {
+    tap(6);
+    setTitle(c);
+    setPosters(undefined);
+    getChatBgPosters(c.type, c.id)
+      .then((d) => setPosters(d))
+      .catch(() => setPosters(null));
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -104,6 +118,59 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
       <SheetHeader id="chat-bg-title" title={t.chatBgTitle} closeLabel={t.closeLabel} onClose={onClose} divider={false}>
         <p className="text-12 text-muted">{t.chatBgSub}</p>
       </SheetHeader>
+      {title ? (
+        <div className="px-5 pb-5 space-y-4">
+          <button
+            type="button"
+            onClick={() => setTitle(null)}
+            aria-label={t.chatBgBackAria}
+            className="flex items-center gap-2 text-start active:opacity-70"
+          >
+            <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
+            <span className="min-w-0">
+              <span className="block truncate text-15 font-bold">{title.title}</span>
+              <span className="block text-12 text-muted">{t.chatBgPickPoster}</span>
+            </span>
+          </button>
+          {posters === undefined ? (
+            <div className="grid grid-cols-3 gap-2.5">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="aspect-[2/3] rounded-xl bg-surface-2 animate-pulse" />
+              ))}
+            </div>
+          ) : posters === null ? (
+            <div className="flex items-center gap-3">
+              <p className="text-12 text-muted">{t.apiInternal}</p>
+              <Button variant="ghost" size="sm" onClick={() => openTitle(title)}>
+                {t.errorRetry}
+              </Button>
+            </div>
+          ) : (
+            (() => {
+              const mine = posters.mine;
+              const groups: [string, string[]][] = [
+                [t.chatBgMine, mine ? [mine] : []],
+                [t.chatBgClean, posters.clean.filter((p) => p !== mine)],
+                [t.chatBgTitled, posters.titled.filter((p) => p !== mine)],
+              ];
+              if (groups.every(([, ps]) => ps.length === 0)) return <p className="text-12 text-muted">{t.chatBgNoPosters}</p>;
+              return groups.map(([label, ps]) =>
+                ps.length === 0 ? null : (
+                  <div key={label} className="space-y-2" role="radiogroup" aria-label={label}>
+                    <p className="text-14 font-bold">{label}</p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {ps.map((path) => {
+                        const value: ChatBg = { k: "poster", type: title.type, id: title.id, path };
+                        return <PosterTile key={path} path={path} on={!!bg && sameChatBg(bg, value)} onClick={() => pick(value)} />;
+                      })}
+                    </div>
+                  </div>
+                ),
+              );
+            })()
+          )}
+        </div>
+      ) : (
       <div className="px-5 pb-5 space-y-2.5" role="radiogroup" aria-labelledby="chat-bg-title">
         {row(
           { k: "loopz" },
@@ -127,6 +194,7 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
           <p className="text-15 font-bold">{t.chatBgFavs}</p>
           <span className="rounded-full border border-accent px-2 text-[10px] font-bold leading-5 text-accent">{t.plusName}</span>
         </div>
+        {plus && choices && choices.length > 0 ? <p className="-mt-1.5 text-12 text-muted">{t.chatBgFavsHint}</p> : null}
 
         {failed && choices === null ? (
           <div className="flex items-center gap-3">
@@ -141,61 +209,55 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
         ) : choices === null ? (
           <div className="grid grid-cols-3 gap-2.5">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="aspect-[16/10] rounded-xl bg-surface-2 animate-pulse" />
+              <span key={i} className="aspect-[2/3] rounded-xl bg-surface-2 animate-pulse" />
             ))}
           </div>
         ) : choices.length === 0 ? (
           <p className="text-12 text-muted">{t.chatBgFavsEmpty}</p>
         ) : (
           <div className="grid grid-cols-3 gap-2.5">
-            {choices.map((c) => {
-              const value: ChatBg = { k: "title", type: c.type, id: c.id, path: c.path };
-              const on = !!bg && sameChatBg(bg, value);
-              return (
-                <button
-                  key={`${c.type}-${c.id}`}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  aria-label={c.title}
-                  onClick={() => (plus ? pick(value) : router.push("/plus"))}
-                  className="min-w-0 text-start"
-                >
-                  <span
-                    className={`relative block aspect-[16/10] overflow-hidden rounded-xl border-2 ${on ? "border-accent" : "border-transparent"}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- مصغّرةٌ في ورقة: `w300` من TMDB مباشرةً */}
-                    <img
-                      src={backdropUrl(c.path, "w300") ?? undefined}
-                      alt=""
-                      loading="lazy"
-                      className={`h-full w-full object-cover ${plus ? "" : "opacity-45"}`}
-                    />
-                    {on ? (
-                      <span className="absolute top-1.5 end-1.5 grid h-5 w-5 place-items-center rounded-full bg-accent text-[color:var(--on-accent)]">
-                        <Icon name="check" size={12} />
-                      </span>
-                    ) : !plus ? (
-                      <span className="absolute top-1.5 end-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white">
-                        <Icon name="lock" size={11} />
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className={`mt-1 block truncate text-12 ${plus ? "" : "text-muted"}`}>{c.title}</span>
-                </button>
-              );
-            })}
+            {choices.map((c) => (
+              <PosterTile
+                key={`${c.type}-${c.id}`}
+                path={c.path}
+                label={c.title}
+                on={!!bg && bg.k === "poster" && bg.type === c.type && bg.id === c.id}
+                locked={!plus}
+                onClick={() => (plus ? openTitle(c) : router.push("/plus"))}
+              />
+            ))}
           </div>
         )}
 
-        {choices === null ? null : plus ? (
-          choices && choices.length > 0 ? <p className="pt-1 text-12 text-muted">{t.chatBgFavsHint}</p> : null
-        ) : (
+        {choices === null || plus ? null : (
           <Button variant="primary" size="lg" full className="mt-2" onClick={() => router.push("/plus")}>
             {t.chatBgUnlock}
           </Button>
         )}
       </div>
+      )}
     </Sheet>
+  );
+}
+
+/** ملصقٌ في الشبكة (٢:٣) — علامةُ الاختيار أو القفل في زاويته */
+function PosterTile({ path, label, on, locked = false, onClick }: { path: string; label?: string; on: boolean; locked?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" role="radio" aria-checked={on} aria-label={label} onClick={onClick} className="min-w-0 text-start">
+      <span className={`relative block aspect-[2/3] overflow-hidden rounded-xl border-2 bg-surface-2 ${on ? "border-accent" : "border-transparent"}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- مصغّرةٌ في ورقة: `w342` من TMDB مباشرةً */}
+        <img src={posterUrl(path, "w342") ?? undefined} alt="" loading="lazy" className={`h-full w-full object-cover ${locked ? "opacity-45" : ""}`} />
+        {on ? (
+          <span className="absolute top-1.5 end-1.5 grid h-5 w-5 place-items-center rounded-full bg-accent text-[color:var(--on-accent)]">
+            <Icon name="check" size={12} />
+          </span>
+        ) : locked ? (
+          <span className="absolute top-1.5 end-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white">
+            <Icon name="lock" size={11} />
+          </span>
+        ) : null}
+      </span>
+      {label ? <span className={`mt-1 block truncate text-12 ${locked ? "text-muted" : ""}`}>{label}</span> : null}
+    </button>
   );
 }
