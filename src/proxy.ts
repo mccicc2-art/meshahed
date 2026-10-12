@@ -229,10 +229,65 @@ async function welcomeGate(request: NextRequest, response: NextResponse): Promis
   }
 }
 
+/**
+ * ====== 🆕 D-1373 (Phase 11-U · U2) — الدخولُ أوّلاً على الويب ======
+ *
+ * قرارُ أحمد ٦ (١٠ أكتوبر): «فالتطبيق والويب سجل دخول اول»، ثمّ (١٢ أكتوبر): «يهمني ان اي شخص ما عنده حساب ما يقدر
+ * يتصفح». الزائرُ بلا جلسة يُحوَّل إلى `/login?next=<ما طلبه>` من **كلِّ** صفحة — الحارسُ هنا لا في الصفحات، فصفحةٌ
+ * جديدةٌ تُحرس بلا سطرٍ يُنسى.
+ *
+ * **ما يبقى مفتوحاً** (`guestOpen`): `/` (بابُ الدخول نفسُه) · الصفحاتُ التي تفتحها Google وApple والمتجران بلا حساب ·
+ * الدخولُ والخروج · الـAPI (حرّاسُه في `lib/v1.ts` والمسارات) · صفحاتُ التطبيق (`/app/*`) · الملفّاتُ والصورُ وصورُ
+ * المعاينة · **وروابطُ الدعوة والشراكة** (`/join/*` · `/p/*`، قرارُ أحمد «17 أ»): مكتوبةٌ لمن لا حساب له، تكتب كوكي
+ * النَسَب ثمّ تحوّل إلى `/` — وحراستُها كانت ستُضيع النَسَب قبل أن يُكتب.
+ * **وبرامجُ معاينة الروابط** تمرّ («16 أ»): واتساب وX وتيليجرام… تقرأ العنوانَ والصورة. **Google ليس منها** — خروجُ
+ * صفحات الأعمال من البحث ثمنٌ قُبل في الخطّة.
+ *
+ * ⚖️ **«زائر» = لا كوكي جلسةٍ أصلاً**: كوكي موجودٌ ورمزُه شاخ يمرّ، والصفحةُ تحكم (`getUser`) — عطلٌ عابرٌ في التجديد لا
+ * يُخرج عضواً إلى صفحة الدخول. والتطبيقُ لا يتأثّر: الويبُ فيه يحمل جلسةً دائماً، وصفحتُه الأولى `/app/*`.
+ */
+const PREVIEW_UA =
+  /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview|redditbot|Pinterestbot|vkShare|Embedly|SnapchatAds/i;
+
+function guestOpen(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/features" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/account/delete" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/app/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/join/") ||
+    pathname.startsWith("/p/") ||
+    pathname.startsWith("/i/") ||
+    pathname.includes("opengraph-image") ||
+    pathname.includes("twitter-image") ||
+    /\.[a-z0-9]+$/i.test(pathname)
+  );
+}
+
+function guestGate(request: NextRequest): NextResponse | null {
+  const { pathname, search } = request.nextUrl;
+  if (guestOpen(pathname)) return null;
+  if (PREVIEW_UA.test(request.headers.get("user-agent") ?? "")) return null;
+  if (sessionCookieParts(request.cookies.getAll()).length > 0) return null;
+  const to = new URL("/login", request.url);
+  to.searchParams.set("next", pathname + search);
+  const res = NextResponse.redirect(to, { status: 307 });
+  res.headers.set("cache-control", "private, no-store");
+  return res;
+}
+
 export async function proxy(request: NextRequest) {
   if (BLOCKED_UA.test(request.headers.get("user-agent") ?? "")) {
     return new NextResponse(null, { status: 403, headers: { "cache-control": "no-store" } });
   }
+  const guest = guestGate(request);
+  if (guest) return guest;
   return welcomeGate(request, await sessionProxy(request));
 }
 

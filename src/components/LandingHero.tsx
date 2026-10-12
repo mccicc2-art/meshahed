@@ -31,8 +31,11 @@ const POINTS: { icon: IconName; key: "signInPoint1" | "signInPoint2" | "signInPo
 
 export async function LandingHero({
   variant = "screen",
+  next = "/",
 }: {
   variant?: "screen" | "flow";
+  /** 🆕 D-1373 — الصفحةُ التي حُوّل منها الزائر: يعود إليها بعد الدخول (مفحوصةٌ في الصفحة بـ`safeNext`) */
+  next?: string;
 }) {
   const { locale, t } = await getT();
 
@@ -128,7 +131,7 @@ export async function LandingHero({
         {/* الدخول: زرٌّ أبيض واحد لا نموذج — أقل قرارٍ ممكن قبل البدء */}
         <div className="mt-[clamp(16px,3.2vh,36px)] w-full max-w-[360px] px-6">
           {configured ? (
-            <GoogleButton locale={locale} />
+            <GoogleButton locale={locale} next={next} />
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}

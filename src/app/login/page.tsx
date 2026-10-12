@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { LandingHero } from "@/components/LandingHero";
+import { safeNext } from "@/lib/safeNext";
 
 /**
  * صفحة الدخول — شاشةٌ واحدة لا تُمرَّر، كما هي منذ v3.
@@ -19,9 +20,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default async function LoginPage() {
+/**
+ * 🆕 D-1373 — `?next=`: الحارسُ (`proxy.ts`) يحوّل الزائرَ إلى هنا من الصفحة التي طلبها، فيعود إليها بعد الدخول —
+ * ومن دخل أصلاً يذهب إليها مباشرةً. القيمةُ تُفحص (`safeNext`): داخليّةٌ فقط.
+ */
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const raw = (await searchParams).next;
+  const next = safeNext(Array.isArray(raw) ? raw[0] : raw);
   const user = await getUser();
-  if (user) redirect("/");
+  if (user) redirect(next);
 
-  return <LandingHero variant="screen" />;
+  return <LandingHero variant="screen" next={next} />;
 }
