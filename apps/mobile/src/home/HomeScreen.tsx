@@ -490,21 +490,8 @@ export function HomeScreen() {
   const chrome = useChromeHide();
   const topH = insets.top + HEADER_H;
   const refresh = usePullRefresh([HOME_KEY, HOME_EXTRAS_KEY], topH);
-  const [pastCover, setPastCover] = useState(false);
-  const pastRef = useRef(false);
-  const onScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      chrome.onScroll(e);
-      /* D-1233 — لا غلافَ في الرئيسيّة بعد اليوم، فالعتبةُ أوّلُ التمرير: الخطُّ الرفيعُ تحت الشريط يظهر حين يمرّ تحته
-         محتوى، لا قبل ذلك — حالةٌ واحدةٌ لا تصييرَ مع كلّ بكسل */
-      const past = e.nativeEvent.contentOffset.y > 4;
-      if (past !== pastRef.current) {
-        pastRef.current = past;
-        setPastCover(past);
-      }
-    },
-    [chrome],
-  );
+  /* 🆕 D-1376 — الخطُّ تحت الرأس ثابتٌ كالمكتبة و«اكتشف» (كان يظهر بعد أوّل تمرير — D-1233)، فلا حالةَ تُتابَع هنا */
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => chrome.onScroll(e), [chrome]);
   const bottomPad = navH + 24;
 
   const posterW = d ? ({ compact: 96, comfortable: 118, large: 148 } as const)[d.prefs.density] : 118;
@@ -699,7 +686,7 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg, borderBottomWidth: pastCover ? StyleSheet.hairlineWidth : 0, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
+      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg, borderBottomWidth: 1, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
         <HomeTopBar onArt={false} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
       </Animated.View>
       {!d ? (

@@ -7,6 +7,7 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
 import { PAGE_PAD } from "./Section";
+import { controlSize } from "../theme";
 import type { HomeHeaderPayload } from "../contracts";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { nextHomeView, type HomeView } from "@/core/homePrefs";
@@ -68,15 +69,20 @@ export function HomeTopBar({
   const { t, tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
-      <Icon name={name} size={22} color={fg} />
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+      <Icon name={name} size={controlSize.headerIcon} color={fg} />
       {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
     </Pressable>
   );
   return (
     <View style={{ height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD }}>
-      {/* الكلمةُ لا الرمز — قرارُ أحمد ٢٢ سبتمبر: «loopz مثل الويب للهوم، باقي الأقسام شعار لوبز» */}
-      <Logo size={30} variant="wordmark" onArt={onArt} />
+      {/* 🆕 D-1376 — **رأسُ الرئيسيّة على وصفة المكتبة و«اكتشف»** (أحمد ١٢ أكتوبر): الرمزُ ∞ لا الكلمة، والعنوانُ في المنتصف.
+          ⚖️ ينقض قرارَ ٢٢ سبتمبر («loopz مثل الويب للهوم») — الرؤوسُ الخمسةُ صارت شكلاً واحداً. العنوانُ مطلقٌ في المنتصف
+          لا داخل الصفّ: الرموزُ الثلاثة في طرفٍ والشعارُ وحده في الآخر، ولو دخل الصفَّ لانزاح عن الوسط. */}
+      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+        <Text size={15} weight="700" color={fg}>{t.navHome}</Text>
+      </View>
+      <Logo size={28} onArt={onArt} />
       <View style={{ flex: 1 }} />
       {btn("mail", t.communityTabInbox, onInbox, unreadShares)}
       {btn("bell", t.notifTitle, onSignals, unreadSignals)}

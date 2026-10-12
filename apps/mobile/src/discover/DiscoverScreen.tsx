@@ -26,6 +26,7 @@ import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { warmTrendingOnce } from "../search/useSearch";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
+import { controlSize } from "../theme";
 import { NameSheet } from "./NameSheet";
 import { coldStartVoid, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
@@ -478,11 +479,11 @@ export function DiscoverScreen() {
         <Pressable
           ref={filterAnchor}
           onPress={() => setSheet(true)}
-          hitSlop={8}
+          hitSlop={controlSize.filterSlop}
           accessibilityLabel={t.browseFilters}
-          style={{ alignSelf: "center", marginBottom: 4, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: browseActive(browse) ? tokens.accent : tokens.border, backgroundColor: browseActive(browse) ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center", marginStart: 8 }}
+          style={{ alignSelf: "center", marginBottom: 4, width: controlSize.filterBtn, height: controlSize.filterBtn, borderRadius: controlSize.filterBtn / 2, borderWidth: 1, borderColor: browseActive(browse) ? tokens.accent : tokens.border, backgroundColor: browseActive(browse) ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center", marginStart: 8 }}
         >
-          <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
+          <Icon name="sliders" size={controlSize.filterIcon} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
         </Pressable>
       </View>
       {/* تحت شريط التبويبات وفوق أوّل صفّ (موضعُ تلميح المكتبة) — داخل الرأس، فارتفاعُه يُقاس والألواحُ تُحشى به */}

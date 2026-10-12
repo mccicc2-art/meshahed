@@ -12,7 +12,7 @@ import { useApp } from "../state";
 import { shell } from "../shell";
 import { nativeListId, nativePersonId, nativeTitle } from "../list/route";
 import { Button, Text, type ToastTone } from "../ui";
-import { radius, space } from "../theme";
+import { controlSize, radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
 import type { HoldAction } from "./HoldMenu";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
@@ -539,9 +539,11 @@ export function LibraryScreen() {
         <Pressable
           onPress={() => setTools(true)}
           accessibilityLabel={t.libraryToolsTitle}
-          style={{ alignSelf: "center", marginBottom: 4, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
+          /* D-1376 — الدائرةُ صغرت إلى ٣٢ فصار للزرّ هامشُ لمسٍ كأخويه في «اكتشف» والمجتمع */
+          hitSlop={controlSize.filterSlop}
+          style={{ alignSelf: "center", marginBottom: 4, width: controlSize.filterBtn, height: controlSize.filterBtn, borderRadius: controlSize.filterBtn / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
         >
-          <Icon name="sliders" size={16} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
+          <Icon name="sliders" size={controlSize.filterIcon} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
           {toolsOn > 0 ? (
             <View style={{ position: "absolute", top: -4, end: -4, minWidth: 17, height: 17, paddingHorizontal: 4, borderRadius: 9, backgroundColor: tokens.elevated, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
               <Text size={10} weight="800">{String(toolsOn)}</Text>

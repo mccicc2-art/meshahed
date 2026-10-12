@@ -5,7 +5,7 @@ import { HEADER_ICON, headerIconControl } from "./ui/controls";
 import { HomeAvatarLink } from "./HomeAvatarLink";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
-import { LogoWordmark } from "./Logo";
+import { Logo } from "./Logo";
 import { AccountIdentity } from "./AccountIdentity";
 import { isPlus } from "@/core/plan";
 /**
@@ -84,22 +84,25 @@ export function HomeHeader({
         (`hidesAppHeaderOnMobile` في `chromeRules`). `chrome-top` يُخفيه مع النزول (D-479)، وحشوةُ `--safe-top` لأنه
         أوّلُ ما تحت ساعة النظام (D-040). ارتفاعُه `10 + 44 + 10 = 64` — `h-16` في `Navbar` حرفاً (D-543) فلا يقفز
         شيءٌ رأسيّاً في الانتقال. ===== */}
-      <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 bg-[color:var(--background)]">
-        <div className="flex items-center gap-1">
+      {/* 🆕 D-1376 — **رأسُ الرئيسيّة على وصفة `Navbar`** (أحمد ١٢ أكتوبر): الرمزُ لا الكلمة، واسمُ الصفحة في المنتصف،
+        وخطٌّ ثابتٌ تحته — الرؤوسُ الخمسةُ شكلٌ واحد في الويب والتطبيق. ⚖️ ينقض D-224 («الرئيسيّة بلا اسم»: سببُه
+        الغلافُ واسمُك عليه، والغلافُ خرج في D-1258) وقرارَ الكلمة للرئيسيّة (٢٢ سبتمبر). */}
+      <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 border-b border-border bg-[color:var(--background)]">
+        <div className="relative flex items-center gap-1">
           <Link
             href="/"
             prefetch={false}
             aria-label={t.brand}
             className="shrink-0 -ms-0.5"
           >
-            {/* **الكلمةُ المرسومة لا الرمز** — علامةُ الرئيسية في تصميم أحمد؛ وصاحبُ البلس يرى `Loopz+` (D-773)،
-              والحكمُ من `plan.ts` لا من شرطٍ مكتوبٍ هنا (D-145). */}
-            <LogoWordmark
-              size={30}
-              on="surface"
-              plus={isPlus({ plan, founder, plus_until: plusUntil })}
-            />
+            {/* الرمزُ بمقاس `Navbar` (٤٤ — D-258)؛ وزائدةُ البلس من `plan.ts` لا من شرطٍ مكتوبٍ هنا (D-145، D-773) */}
+            <Logo size={44} plus={isPlus({ plan, founder, plus_until: plusUntil })} />
           </Link>
+
+          {/* اسمُ الصفحة بوصفة `NavTitle` حرفاً: مطلقٌ في المنتصف لأنّ الطرفين غيرُ متساويين (ثلاثةُ رموزٍ مقابل شعار) */}
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-28" aria-hidden>
+            <span className="truncate text-15 font-bold leading-none">{t.navHome}</span>
+          </span>
 
           {/* **الطرفُ صفٌّ واحدٌ مشترك** (D-541): المسافةُ والمقاسُ في `HeaderTrailing` مرّةً، يقرؤها هذا الشريطُ
             و`Navbar` — فلا يقفز الجرسُ ولا الظرفُ في الانتقال. والترسُ في خانته الأخيرة (D-774)، بوصفة

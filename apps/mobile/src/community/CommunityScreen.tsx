@@ -13,7 +13,7 @@ import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
-import { radius } from "../theme";
+import { controlSize, radius } from "../theme";
 import { Logo } from "../Logo";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
@@ -288,17 +288,17 @@ export function CommunityScreen() {
             /* زرُّ الأدوات (`FilterIconButton`) — **بلا رقمٍ ولا نقطة** في المجتمع (D-554/D-592)، والحالةُ في لون الرمز وحدَه */
             <Pressable
               onPress={() => setTools(true)}
-              hitSlop={8}
+              hitSlop={controlSize.filterSlop}
               accessibilityRole="button"
               accessibilityLabel={t.communityToolsTitle}
               accessibilityState={{ expanded: tools }}
-              style={{ alignSelf: "center", marginBottom: 4, width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
+              style={{ alignSelf: "center", marginBottom: 4, width: controlSize.filterBtn, height: controlSize.filterBtn, borderRadius: controlSize.filterBtn / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
             >
-              <Icon name="sliders" size={16} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
+              <Icon name="sliders" size={controlSize.filterIcon} color={toolsOn > 0 ? tokens.fg : tokens.muted} />
             </Pressable>
           ) : (
             /* مكانُ الزرّ محجوزٌ قبل وصول التفضيلات: التبويباتُ لا تقفز حين يظهر */
-            <View style={{ width: 36, marginStart: 8 }} />
+            <View style={{ width: controlSize.filterBtn, marginStart: 8 }} />
           )}
         </View>
       </Animated.View>

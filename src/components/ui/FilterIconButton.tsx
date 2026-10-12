@@ -89,15 +89,17 @@ export function FilterIconButton({
          العين** — وهي شكواه بعينها.
          **والمعلومةُ لم تسقط**: العدّادُ باقٍ (D-447) **بلونٍ هادئ** —
          **يُقرأ حين يُنظر إليه ولا يصيح حين لا يُنظر.** */
-      className={`relative shrink-0 self-center mb-1 grid place-items-center h-9 w-9 rounded-full border transition border-border ${
+      className={`relative shrink-0 self-center mb-1 grid place-items-center h-8 w-8 rounded-full border transition before:absolute before:-inset-1.5 before:content-[''] border-border ${
         active ? "text-foreground" : "text-muted"
       } hover:text-foreground hover:border-accent/50${className ? ` ${className}` : ""}`}
     >
-      <Icon name="sliders" size={16} strokeWidth={1.9} />
+      {/* 🆕 D-1376 — ٣٢ بأيقونة ١٤ (كانت ٣٦ و١٦ — أحمد: «ودي اصغره»)؛ الأرقامُ نفسُها في التطبيق (`controlSize`)، ولمسُ
+          الجوّال يبقى ٤٤ بطبقةٍ خفيّة (`before:-inset-1.5`) لا بحجم الدائرة */}
+      <Icon name="sliders" size={14} strokeWidth={1.9} />
       {active &&
         (count ? (
           /* خارجَ حدّ الزرّ قليلاً (`-top-1 -end-1`) لا داخلَه: **شارةٌ
-             داخل دائرةٍ قطرُها ٣٦ تلامس الأيقونة**، وهذه تجلس على الحافّة
+             داخل دائرةٍ قطرُها ٣٢ تلامس الأيقونة**، وهذه تجلس على الحافّة
              كشارات الإشعارات في كل التطبيق — **ولا لغةَ ثانيةً لعدّاد**. */
           <span
             aria-hidden
