@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { getUnreadShares, getUnreadSignals } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { buildInbox } from "@/lib/messagesCore";
@@ -10,15 +11,16 @@ import type { MessagesPayload } from "@/core/contracts/messages";
  * مع شارتَي التبويبين. **يُطلب ثانيةً عند كلِّ إشارة Realtime وكلَّ ٢٠ ثانية** (D-069) — فالحدُّ ستّون في الدقيقة:
  * دفقةُ رسائلَ في محادثةٍ حيّة لا تُحبس، وحلقةٌ هاربةٌ في التطبيق لا تُغرق القاعدة.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   return handle<MessagesPayload>(async () => {
     const auth = await requireUser();
     if (!auth.ok) return auth;
     const lim = limited(`v1:messages:${auth.user.id}`, 60, 60_000);
     if (lim) return lim;
     const { locale } = await getT();
-    const [{ conversations, startable }, messages, signals] = await Promise.all([
-      buildInbox(locale),
+    const withId = req.nextUrl.searchParams.get("with");
+    const [{ conversations, startable, peer, canMessage }, messages, signals] = await Promise.all([
+      buildInbox(locale, withId),
       getUnreadShares(),
       getUnreadSignals(),
     ]);
@@ -41,6 +43,9 @@ export async function GET() {
       })),
       startable,
       unread: { messages, signals },
+      /* 🆕 D-1380 — خيطٌ لم يبدأ بعد (`?with=`): هويّتُه وحكمُ البوّاب */
+      peer,
+      can_message: canMessage,
     });
   });
 }

@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { getUser, getProfile } from "@/lib/data";
+import { getUser, getProfile, getMyDmPolicy } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { AccountSettings } from "@/components/AccountSettings";
 import { LibraryAccessList } from "@/components/LibraryAccessList";
 import { BlockedList } from "@/components/BlockedList";
+import { DmPolicySection } from "@/components/settings/DmPolicySection";
 
 /**
  * الخصوصيةُ والأمان — **من يراك وماذا يرى** (D-462).
@@ -22,7 +23,7 @@ export default async function Page() {
   const user = await getUser();
   if (!user) redirect("/login");
   const { locale, t } = await getT();
-  const p = await getProfile();
+  const [p, dmPolicy] = await Promise.all([getProfile(), getMyDmPolicy()]);
 
   return (
     <SettingsPageLayout title={t.setPrivacy}>
@@ -42,6 +43,8 @@ export default async function Page() {
       />
 
       <SettingsGroup label={t.setGroupPeople}>
+        {/* 🆕 D-1380 — «من يقدر يراسلني» أوّلَ مجموعة الناس: سؤالٌ عن الناس لا عن الملفّ */}
+        <DmPolicySection locale={locale} initial={dmPolicy} />
         <LibraryAccessList locale={locale} />
         <BlockedList locale={locale} />
       </SettingsGroup>

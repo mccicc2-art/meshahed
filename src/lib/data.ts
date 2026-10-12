@@ -11,6 +11,7 @@ import {
   sanitizeContentPrefs,
   type ContentPrefs,
 } from "@/core/contentPrefs";
+import { DEFAULT_DM_POLICY, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 
 export { episodeKey };
 
@@ -311,6 +312,21 @@ export const getOnboardState = cache(async (): Promise<OnboardState> => {
 });
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
+/** 🆕 D-1380 — «من يقدر يراسلني» لصاحب الجلسة. قراءةٌ مستقلّة لا عمودٌ في `getProfile`: قبل الهجرة ٢٠٠ يغيب العمود
+ *  فيسقط الافتراضيّ هنا وحده، ولا يمرّ `getProfile` بتراجعه. */
+export const getMyDmPolicy = cache(async (): Promise<DmPolicy> => {
+  try {
+    const uid = await getUserId();
+    if (!uid) return DEFAULT_DM_POLICY;
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("profiles").select("dm_policy").eq("id", uid).maybeSingle();
+    if (error || !data) return DEFAULT_DM_POLICY;
+    return sanitizeDmPolicy((data as { dm_policy?: unknown }).dm_policy);
+  } catch {
+    return DEFAULT_DM_POLICY;
+  }
+});
+
 export const getProfile = cache(async (): Promise<Profile | null> => {
   try {
     const supabase = await createClient();
@@ -1948,8 +1964,9 @@ export const getUnreadSignals = cache(async (): Promise<number> => {
 //
 //  الجداول نفسها (title_shares + share_replies) بلا تغيير في SQL؛ التجميع
 //  هنا: كل مشاركاتِ عملٍ مع شخصٍ وردودُها تُدمَج في محادثةٍ واحدة مرتّبة
-//  زمنياً — كالرسائل الخاصة. والردّ الجديد يُعلَّق بآخر عملٍ شورك في
-//  المحادثة، فيبقى شرط «الردّ معلَّقٌ بعمل» قائماً (D-051).
+//  زمنياً — كالرسائل الخاصة. 🆕 D-1380 (ينقض D-051): والرسائلُ النصّيّةُ
+//  المباشرة (`direct_messages`، الهجرة ٢٠٠) أحداثُ «ردٍّ» في الخيط نفسه —
+//  محادثةٌ قد تقوم عليها وحدها بلا عملٍ شورك.
 // ============================================================
 
 export interface ConvShareEvent {
@@ -2002,8 +2019,8 @@ export async function getConversations(): Promise<Conversation[]> {
     const me = await getUser();
     if (!me) return [];
 
-    /* الجدولان معاً: مشاركات الأعمال ومشاركات القوائم خيطٌ واحد مع الشخص */
-    const [{ data: rows, error }, { data: listRows }] = await Promise.all([
+    /* الجداولُ الثلاثة معاً: الأعمالُ والقوائمُ والنصُّ المباشر خيطٌ واحد مع الشخص */
+    const [{ data: rows, error }, { data: listRows }, { data: dmData }] = await Promise.all([
       supabase
         .from("title_shares")
         .select(
@@ -2018,9 +2035,17 @@ export async function getConversations(): Promise<Conversation[]> {
         )
         .order("created_at", { ascending: true })
         .limit(300),
+      /* قبل الهجرة ٢٠٠ الجدولُ غائب: الخطأُ يُبتلع فيبقى الوارد كما كان */
+      supabase
+        .from("direct_messages")
+        .select("id, sender_id, recipient_id, body, created_at, read_at")
+        .order("created_at", { ascending: false })
+        .limit(2000),
     ]);
-    if (error && !listRows?.length) return [];
-    if (!rows?.length && !listRows?.length) return [];
+    type DmRow = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string; read_at: string | null };
+    const dmRows = ((dmData ?? []) as DmRow[]).reverse();
+    if (error && !listRows?.length && !dmRows.length) return [];
+    if (!rows?.length && !listRows?.length && !dmRows.length) return [];
 
     type ShareRow = {
       id: string;
@@ -2061,6 +2086,7 @@ export async function getConversations(): Promise<Conversation[]> {
     for (const s of shareRows) ids.add(otherOf.get(s.id)!);
     for (const s of listShareRows)
       ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
+    for (const m of dmRows) ids.add(m.sender_id === me.id ? m.recipient_id : m.sender_id);
     const [{ data: replyRows }, { data: people }] = await Promise.all([
       shareIds.length
         ? supabase
@@ -2136,8 +2162,14 @@ export async function getConversations(): Promise<Conversation[]> {
          والعدُّ هنا يطابق عدَّ `unread_shares` الحيّ */
       if (r.author_id !== me.id && !r.read_at) c.unread++;
     }
-    /* مشاركات القوائم — أحداثٌ في الخيط نفسه؛ الردود تبقى معلَّقةً
-       بالأعمال وحدها (D-051) فلا otherOf لها */
+    /* 🆕 D-1380 — الرسائلُ النصّيّةُ المباشرة: «ردٌّ» في خيط الشخص بلا عمل */
+    for (const m of dmRows) {
+      const c = ensure(m.sender_id === me.id ? m.recipient_id : m.sender_id);
+      c.events.push({ kind: "reply", id: m.id, mine: m.sender_id === me.id, body: m.body, created_at: m.created_at });
+      if (m.recipient_id === me.id && !m.read_at) c.unread++;
+    }
+    /* مشاركات القوائم — أحداثٌ في الخيط نفسه؛ ردودُ `share_replies` القديمة
+       معلَّقةٌ بالأعمال وحدها فلا otherOf لها */
     for (const s of listShareRows) {
       const c = ensure(s.sender_id === me.id ? s.recipient_id : s.sender_id);
       c.events.push({

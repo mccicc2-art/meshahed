@@ -138,13 +138,14 @@ async function InboxPane({
   /* 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — مع المحادثات في موجةٍ
      واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
   /* 🆕 11-M · M4 — المحادثاتُ و«ابدأ محادثة» من النواة الواحدة (`lib/messagesCore.ts`) التي يقرؤها التطبيقُ أيضاً */
-  const [{ conversations, startable }, lastSeen] = await Promise.all([
-    buildInbox(locale),
+  const [{ conversations, startable, peer, canMessage }, lastSeen] = await Promise.all([
+    buildInbox(locale, withParam),
     withParam ? getLastSeenOf(withParam) : Promise.resolve(null),
   ]);
 
   /* داخل خيطٍ مفتوحٍ تسقط الترويسة — «نكتفي بزر الرجوع» (D-767) */
-  const threadOpen = !!withParam && conversations.some((c) => c.personId === withParam);
+  /* 🆕 D-1380 — وخيطٌ لم يبدأ بعد (`peer`) خيطٌ مفتوحٌ أيضاً: يُرسم فارغاً بخانة كتابة */
+  const threadOpen = !!withParam && (conversations.some((c) => c.personId === withParam) || !!peer);
 
   return (
     <>
@@ -156,6 +157,8 @@ async function InboxPane({
         openStart={startParam}
         locale={locale}
         lastSeen={lastSeen}
+        peer={peer}
+        canMessage={canMessage}
       />
     </>
   );

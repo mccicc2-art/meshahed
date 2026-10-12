@@ -82,6 +82,9 @@ const ICONS = {
   /* Phase 11-I — رموزُ فهرس الإعدادات، من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */
   edit: require("../assets/icons/edit.png"),
   "person-check": require("../assets/icons/person-check.png"),
+  /* 🆕 D-1380 — دائرتا الملفّ (قبل المتابعة) وقفلُ الرسائل، من `Icon.tsx` بالطريقة نفسِها (٧٢px · ١٫٧ · أبيض) */
+  "person-plus": require("../assets/icons/person-plus.png"),
+  lock: require("../assets/icons/lock.png"),
   shield: require("../assets/icons/shield.png"),
   download: require("../assets/icons/download.png"),
   /* D-1106 — تعديلُ الملفّ أصليّاً: الصورةُ وحذفُها، من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض) */

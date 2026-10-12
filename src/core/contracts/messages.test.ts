@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFollowRequestBody, parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, MSG_REPLY_MAX, MSG_NOTE_MAX } from "./messages.ts";
+import { parseFollowRequestBody, parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, parseMsgTextBody, MSG_REPLY_MAX, MSG_NOTE_MAX, MSG_TEXT_MAX } from "./messages.ts";
 
 /** Phase 11-M · M4 — أجسامُ أفعال «الرسائل»: متسامحٌ مع الزائد، صارمٌ مع الناقص، والفراغُ يُرفض قبل الرحلة */
 
@@ -36,4 +36,14 @@ test("طلب المتابعة (N2-fix): معرّفٌ صالحٌ وقرارٌ ص�
   assert.deepEqual(parseFollowRequestBody({ person_id: U, accept: false }), { person_id: U, accept: false });
   assert.equal(parseFollowRequestBody({ person_id: U }), null);
   assert.equal(parseFollowRequestBody({ person_id: "x", accept: true }), null);
+});
+
+/* 🆕 D-1380 — الرسالةُ النصّيّةُ المباشرة وإعدادُ «من يقدر يراسلني» */
+test("النصّ المباشر: مستلمٌ صالحٌ ونصٌّ غيرُ فارغٍ حتى ألف حرف", () => {
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "  هلا ", x: 1 }), { recipient_id: U, body: "هلا" });
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "   " }), null);
+  assert.equal(parseMsgTextBody({ recipient_id: "abc", body: "hi" }), null);
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: 5 }), null);
+  assert.ok(parseMsgTextBody({ recipient_id: U, body: "a".repeat(MSG_TEXT_MAX) }));
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "a".repeat(MSG_TEXT_MAX + 1) }), null);
 });

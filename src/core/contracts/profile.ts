@@ -146,7 +146,8 @@ export type PartnerApplyBody = PartnerApplicationFields & { terms: boolean };
 
 export type ProfilePayload = {
   /** 🆕 N1 — `density` **حجمُ ملصقات القارئ** (تفضيلُ ملفّه هو) لا صاحبِ الملفّ — قرارُ أحمد ٢٩ سبتمبر */
-  viewer: { signed_in: boolean; is_me: boolean; density: Density };
+  /** 🆕 D-1380 — `can_message`: حكمُ البوّاب (`can_message`) على دائرة الرسائل — `null` لملفّي وللزائر وقبل الهجرة ٢٠٠ */
+  viewer: { signed_in: boolean; is_me: boolean; density: Density; can_message?: boolean | null };
   person: PersonLite & {
     cover_url: string | null;
     cover_pos: number | null;

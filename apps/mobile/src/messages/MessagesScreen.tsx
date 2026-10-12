@@ -14,9 +14,7 @@ import { useBootRoot } from "../bootRoot";
 import { afterPaint, span } from "../perfMarks";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Avatar } from "../community/CommunityCards";
-import { errorText } from "../community/communityActs";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
-import { StartConversationSheet } from "./SendSheets";
 import { MESSAGES_KEY } from "./live";
 import { dropBadges, useDoors, useMessages, type Origin } from "./common";
 import { num, type Dict } from "@/core/i18n";
@@ -53,7 +51,6 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
   const doors = useDoors(from);
 
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [startWith, setStartWith] = useState<PersonLite | null>(null);
   const toastHost = useRef<ToastHostRef>(null);
   const [lit, setLit] = useState<Tab>(initialTab);
   const goTab = useCallback((k: Tab) => {
@@ -132,26 +129,14 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
         perfScreen="messages"
         render={(k, active) =>
           k === "inbox" ? (
-            <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onStart={setStartWith} />
+            /* 🆕 D-1380 — «ابدأ محادثة» يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */
+            <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onStart={(p) => openConv(p.id)} />
           ) : (
             <AlertsPane live={active} onOpen={doors.openPath} />
           )
         }
       />
 
-      {/* 🆕 M5 — «ابدأ محادثة» ورقةٌ أصليّة (كانت بابَ `/messages?start=`): عملٌ يُختار ثمّ يُرسَل ثمّ الخيطُ الجديد */}
-      {startWith ? (
-        <StartConversationSheet
-          person={startWith}
-          onClose={() => setStartWith(null)}
-          onSent={() => {
-            const peer = startWith.id;
-            setStartWith(null);
-            router.push({ pathname: "/messages/[peer]", params: { peer, from } });
-          }}
-          onError={(e) => toastHost.current?.say(errorText(t, e))}
-        />
-      ) : null}
       <ToastHost hostRef={toastHost} bottom={insets.bottom + 24} />
       {doors.leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
@@ -305,7 +290,7 @@ function StartRow({ p, onPress }: { p: PersonLite; onPress: () => void }) {
         <Text size={12} muted numberOfLines={1}>{t.convStartRowHint}</Text>
       </View>
       <View style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
-        <Icon name="share" size={16} color={tokens.muted} />
+        <Icon name="mail" size={16} color={tokens.muted} />
       </View>
     </Pressable>
   );

@@ -19,7 +19,8 @@ import { mark } from "../perfMarks";
  * ثمّ تعيد الاشتراك. **قناةٌ واحدةٌ للتطبيق كلِّه**: الصندوقُ والمحادثةُ فوقه يحجزانها بعدّاد (`retainLive`) — شاشتان
  * مفتوحتان لا تعنيان قناتين ولا استطلاعين.
  */
-const TABLES = ["title_shares", "list_shares", "share_replies"] as const;
+/* 🆕 D-1380 — والرسائلُ النصّيّةُ المباشرة (الهجرة ٢٠٠) */
+const TABLES = ["title_shares", "list_shares", "share_replies", "direct_messages"] as const;
 const POLL_MS = 20_000;
 const COALESCE_MS = 150;
 /** مفتاحُ الكاش — وسمُ الخادم نفسُه (`me:messages`)، فكتاباتُه تُبطله بلا قاعدةٍ ثانية */

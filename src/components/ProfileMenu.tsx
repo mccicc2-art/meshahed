@@ -7,17 +7,13 @@ import { Sheet } from "./ui/Sheet";
 import { Dropdown, dropdownItem, dropdownDivider } from "./ui/Dropdown";
 import { buttonClass } from "./ui/Button";
 import { sheetMenuItem, sheetMenuDivider, coverBareControl, HEADER_ICON } from "./ui/controls";
-import dynamic from "next/dynamic";
-/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
-   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
-   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
-const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { reportUser, requestOrFollowUser, unfollowUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/core/i18n";
 import type { PersonLite } from "@/lib/data";
+import { displayNameOf } from "@/core/people";
 
 /**
  * قائمة «المزيد» في ملفّ شخصٍ آخر — رسالة / بلاغ / حظر.
@@ -30,16 +26,16 @@ import type { PersonLite } from "@/lib/data";
  * متابعةٍ بجانب النقاط — تكرارها هنا يخلق حالتين للفعل الواحد قد
  * تتعارضان على الشاشة نفسها، والزرّ الظاهر أولى من صفٍّ مطويّ.
  *
- * «رسالة» تحترم D-051: للمتبادلَين تفتح ورقة بدء المحادثة (عملٌ ثم
- * إرسال)، ولغيرهم توستُ تلميحٍ لا صفٌّ مخفيّ — الخيار الظاهر المعطَّل
- * بتفسيرٍ خيرٌ من خيارٍ يظهر ويختفي بلا سبب مرئيّ.
+ * 🆕 D-1380 (ينقض D-051): «رسالة» تفتح الخيطَ نفسَه بخانة كتابة لأيِّ شخص؛ ومن قفل الخاص توستٌ يقول ذلك لا صفٌّ
+ * مخفيّ — الخيار الظاهر المعطَّل بتفسيرٍ خيرٌ من خيارٍ يظهر ويختفي بلا سبب مرئيّ. ولا يُعرف الحكمُ (`null`)؟ الخيطُ
+ * نفسُه يقول «لا يستقبل رسائل» إن كان كذلك.
  *
  * والحظر بورقة تأكيدٍ كالبلاغ (استثناء D-047 نفسه): فعلٌ يمسّ طرفاً
  * آخر ولا يُتراجع عنه بضغطة — رفعُ الحظر لا يعيد المتابعة المفكوكة.
  */
 export function ProfileMenu({
   person,
-  mutual,
+  canMessage = null,
   follow,
   variant = "cover",
   system = false,
@@ -47,8 +43,8 @@ export function ProfileMenu({
   locale,
 }: {
   person: PersonLite;
-  /** متابعةٌ متبادلة؟ — بوّاب خيار «رسالة» (D-051) */
-  mutual: boolean;
+  /** 🆕 D-1380 — حكمُ البوّاب (`can_message`) على «رسالة»: `false` توست، و`true`/`null` يفتح الخيط */
+  canMessage?: boolean | null;
   /**
    * **صفُّ المتابعة داخل القائمة** (D-225) — يُمرَّر حيث **لا زرَّ متابعة
    * بجانب النقاط**، أي في صفوف خطّ النشاط.
@@ -92,18 +88,17 @@ export function ProfileMenu({
   const [following, setFollowing] = useState(follow?.following ?? false);
   const [report, setReport] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
-  const [message, setMessage] = useState(false);
   const [reason, setReason] = useState("");
   const [reported, setReported] = useState(false);
   const [pending, start] = useTransition();
 
   function openMessage() {
     setMenu(false);
-    if (!mutual) {
-      toast(t.msgNeedsMutual, { tone: "info" });
+    if (canMessage === false) {
+      toast(t.msgNotAcceptingOf(displayNameOf(person, t.anonymousUser)), { tone: "info" });
       return;
     }
-    setMessage(true);
+    router.push(`/people?tab=inbox&with=${person.id}`);
   }
 
   /** متابعةٌ تفاؤلية بارتداد — نفسُ عقد `FollowUserButton` بلا زرِّه */
@@ -169,8 +164,8 @@ export function ProfileMenu({
 
       {!system && (
         <button onClick={openMessage} role="menuitem" className={itemClass}>
-          <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
-          <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
+          <Icon name="comment" size={18} className={canMessage !== false ? "text-accent" : "text-muted"} />
+          <span className={canMessage !== false ? "" : "text-muted"}>{t.msgUserOption}</span>
         </button>
       )}
 
@@ -232,7 +227,7 @@ export function ProfileMenu({
           onClick={openMessage}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-12 font-bold transition hover:border-accent/50 active:scale-95"
         >
-          <Icon name="comment" size={15} className={mutual ? "text-accent" : "text-muted"} />
+          <Icon name="comment" size={15} className={canMessage !== false ? "text-accent" : "text-muted"} />
           {t.msgUserOption}
         </button>
       )}
@@ -344,10 +339,6 @@ export function ProfileMenu({
           /* الصفحة تُنعش: زرّ المتابعة يعود «تابِع» لأن الحظر فكّها */
           onBlocked={() => router.refresh()}
         />
-      )}
-
-      {message && (
-        <StartConversationSheet person={person} locale={locale} onClose={() => setMessage(false)} />
       )}
     </>
   );

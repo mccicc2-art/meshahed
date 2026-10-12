@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
 import { getUserId, getProfileByUsername, getIncomingFollowRequests } from "@/lib/data";
 import { loadProfile } from "@/lib/profileCore";
+import { canMessage } from "@/lib/actions";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus } from "@/core/plan";
@@ -112,9 +113,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       /* 🆕 N2-fix — هل طلب صاحبُ الملفّ متابعتي؟ (قائمةُ طلباتي الواردة — قصيرةٌ، للمسجَّل وحدَه) */
       const requestedMe = c.me && !c.isMe ? (await getIncomingFollowRequests()).some((p) => p.id === profile.id) : false;
       const xHandle = c.xHandle && c.xUrl ? { handle: c.xHandle, url: c.xUrl } : null;
+      /* 🆕 D-1380 — دائرةُ الرسائل في ملفّ غيري: حكمُ البوّاب، للمسجَّل وحدَه */
+      const canMsg = c.me && !c.isMe ? await canMessage(profile.id) : null;
 
       const payload: ProfilePayload = {
-        viewer: { signed_in: !!c.me, is_me: c.isMe, density },
+        viewer: { signed_in: !!c.me, is_me: c.isMe, density, can_message: canMsg },
         person: {
           id: profile.id,
           nickname: profile.nickname,

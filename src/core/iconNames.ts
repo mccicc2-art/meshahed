@@ -95,6 +95,8 @@ export type IconName =
   | "search-filled"
   | "library-filled"
   | "person-check"
+  | "person-plus"
+  | "lock"
   | "plus"
   | "minus"
   | "red-card"

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getProfile, getContentPrefs } from "@/lib/data";
+import { getProfile, getContentPrefs, getMyDmPolicy } from "@/lib/data";
 import { getT, getWatchRegion, getTitleMode } from "@/lib/locale";
 import { myBlocksList } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -78,6 +78,7 @@ export async function GET() {
         hide_name: !!p?.hide_name,
         is_private: !!p?.is_private,
         hide_follow_lists: !!p?.hide_follow_lists,
+        dm_policy: await getMyDmPolicy(),
         library_grants: grants.count ?? 0,
         blocked: blocked.length,
       },

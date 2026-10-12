@@ -23,7 +23,7 @@ export type MsgShareEvent = {
   note: string | null;
   created_at: string;
 };
-/** ردٌّ نصّيّ — معلَّقٌ بآخر عملٍ شورك (D-051) */
+/** ردٌّ نصّيّ — ردٌّ قديمٌ في خيط عمل، أو 🆕 رسالةٌ مباشرةٌ بلا عمل (D-1380) */
 export type MsgReplyEvent = { kind: "reply"; id: string; mine: boolean; body: string; created_at: string };
 /** قائمةٌ مُشارَكة — الاسمُ والعدّةُ لحظةَ الإرسال */
 export type MsgListEvent = {
@@ -57,6 +57,10 @@ export type MessagesPayload = {
   startable: PersonLite[];
   /** شارتا التبويبين — من الخادم وحدَه (`unread_shares` · `unread_signals`) */
   unread: { messages: number; signals: number };
+  /** 🆕 D-1380 — `?with=<id>`: هويّةُ صاحب خيطٍ لم يبدأ بعد (`null` إن كانت له محادثةٌ أو لم يُطلب) */
+  peer?: PersonLite | null;
+  /** 🆕 D-1380 — هل أقدر أن أراسل `with` الآن؟ `null` = لم يُطلب أو تعذّر الحكم */
+  can_message?: boolean | null;
 };
 
 /** `GET /api/v1/me/badges` — شارتا الظرف والجرس وحدَهما (M4-fix2) */
@@ -67,6 +71,8 @@ export type LastSeenPayload = { last_seen: string | null };
 
 /** `POST /api/v1/me/messages/reply` */
 export type MsgReplyBody = { share_id: string; body: string };
+/** 🆕 D-1380 — `POST /api/v1/me/messages/text`: رسالةٌ نصّيّةٌ مباشرة (`sendDirectMessage`) */
+export type MsgTextBody = { recipient_id: string; body: string };
 /** `POST /api/v1/me/messages/{read,hide,block}` */
 export type MsgPeerBody = { person_id: string };
 
@@ -98,6 +104,9 @@ export type MsgShareBody = {
 /** أقصى طول الملاحظة — حدُّ `sendShare` نفسُه */
 export const MSG_NOTE_MAX = 280;
 
+/** 🆕 D-1380 — أقصى طول الرسالة النصّيّة — قيدُ `direct_messages.body` في الهجرة ٢٠٠ (`core/dmPolicy` يقرؤه من هنا) */
+export const MSG_TEXT_MAX = 1000;
+
 /** أقصى طول الردّ — حدُّ `replyToShare` نفسُه */
 export const MSG_REPLY_MAX = 500;
 
@@ -112,6 +121,16 @@ export function parseMsgReplyBody(raw: unknown): MsgReplyBody | null {
   const body = b.body.trim();
   if (!body || body.length > MSG_REPLY_MAX) return null;
   return { share_id: b.share_id, body };
+}
+
+export function parseMsgTextBody(raw: unknown): MsgTextBody | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Record<string, unknown>;
+  if (typeof b.recipient_id !== "string" || !UUID.test(b.recipient_id)) return null;
+  if (typeof b.body !== "string") return null;
+  const body = b.body.trim();
+  if (!body || body.length > MSG_TEXT_MAX) return null;
+  return { recipient_id: b.recipient_id, body };
 }
 
 export function parseMsgPeerBody(raw: unknown): MsgPeerBody | null {

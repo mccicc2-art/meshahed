@@ -10,7 +10,7 @@ import { afterPaint, mark } from "../perfMarks";
 import { useApp } from "../state";
 import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon, iconOr } from "../icons";
-import { radius } from "../theme";
+import { controlSize, radius } from "../theme";
 import { CONFIG } from "../config";
 import { haptic } from "../haptics";
 import { shell, type NativeRoot } from "../shell";
@@ -142,7 +142,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [toast, setToast] = useReducer(toastReducer, null);
   const [leaving, setLeaving] = useState(false);
   /* 🆕 N2 — ورقةُ ⋯ ثمّ ورقتا البلاغ وتأكيد الحظر (الويبُ: قائمةٌ ثمّ ورقتان — `ProfileMenu`) */
-  const [menu, setMenu] = useState<null | "menu" | "report" | "block">(null);
+  const [menu, setMenu] = useState<null | "menu" | "report" | "block" | "unfollow">(null);
   const [reason, setReason] = useState("");
   const [reported, setReported] = useState(false);
   /* 🆕 N3 — ورقةُ الترتيب: صفٌّ من «المفضّلة» أو قسمٌ من «نظرة عامّة» */
@@ -234,11 +234,13 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     },
     [t],
   );
-  /* 🆕 N2 — «رسالة» للمتبادلَين وحدَهم (D-051) ⇐ خيطُ M4 أصليّاً؛ ولغيرهم التلميحُ نفسُه الذي يقوله الويب */
+  /* 🆕 D-1380 (ينقض D-051 وشرطَ المتابعة المتبادلة) — «رسالة» تفتح الخيطَ لأيِّ شخص؛ ومن قفل الخاص (`can_message: false`)
+     توستٌ يقول ذلك قبل الرحلة. لا يُعرف الحكمُ؟ الخيطُ نفسُه يقوله */
   const message = useCallback(() => {
     if (!d) return;
     setMenu(null);
-    if (!(d.relation.following && d.relation.follows_me)) return setToast({ text: t.msgNeedsMutual, tone: "info" });
+    if (d.viewer.can_message === false) return setToast({ text: t.msgNotAcceptingOf(displayNameOf(d.person, t.anonymousUser)), tone: "info" });
+    haptic.pick();
     router.push({ pathname: "/messages/[peer]", params: { peer: d.person.id, from: fromOut } });
   }, [d, router, fromOut, t]);
   const report = useMutation({
@@ -655,14 +657,28 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                   <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => { setFollowsY(0); setFollows("following"); }} />
                 </View>
               </View>
+              {/* 🆕 D-1380 — **دائرتان على خطّ الصورة والاسم** (أحمد ١٢ أكتوبر، من صورٍ على لقطة سعود، واختار ٣٢): الرسائلُ ثمّ المتابعة،
+                  بمقاس زرّ الفلتر (`controlSize.filterBtn`) فلا مقاسَ جديد. قبل المتابعة دائرةٌ صفراءُ بـ+ هي الدعوةُ الوحيدة في الصفّ،
+                  وبعدها إطارٌ بصحّ — وإلغاؤها يُسأل عنه (رمزٌ بلا كلمةٍ قد يُضغط ولا يُعرف أنّه يلغي). والخاصُّ المقفل دائرةٌ باهتةٌ بقفل */}
               {d.viewer.is_me || !d.viewer.signed_in || d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
-                <Button
-                  size="sm"
-                  variant={d.relation.following || d.relation.requested ? "ghost" : "primary"}
-                  label={d.relation.following ? t.followingUser : d.relation.requested ? t.followRequested : t.followUser}
-                  busy={follow.isPending}
-                  onPress={() => follow.mutate(!(d.relation.following || d.relation.requested))}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <CircleBtn
+                    icon="mail"
+                    label={t.msgOpenAria(name)}
+                    dim={d.viewer.can_message === false}
+                    locked={d.viewer.can_message === false}
+                    onArt={onArt}
+                    onPress={message}
+                  />
+                  <CircleBtn
+                    icon={d.relation.following ? "person-check" : d.relation.requested ? "clock" : "person-plus"}
+                    label={d.relation.following ? t.unfollowAria(name) : d.relation.requested ? t.followRequested : t.followAria(name)}
+                    filled={!d.relation.following && !d.relation.requested}
+                    onArt={onArt}
+                    busy={follow.isPending}
+                    onPress={() => (d.relation.following ? setMenu("unfollow") : follow.mutate(!d.relation.requested))}
+                  />
+                </View>
               )}
             </View>
             {d.person.bio ? <Text autoDir pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
@@ -747,11 +763,21 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       {sorting && d && sortItems.length > 1 ? (
         <ReorderSheet items={sortItems} onClose={() => setSorting(null)} onDone={(keys) => ("fav" in sorting ? saveFav(sorting.fav, keys) : saveSec(sorting.sec, keys))} />
       ) : null}
+      {menu === "unfollow" && d ? (
+        <Sheet title={t.unfollowConfirm(name)} onClose={() => setMenu(null)}>
+          <Button
+            label={t.unfollowConfirmGo}
+            variant="ghost"
+            onPress={() => {
+              setMenu(null);
+              follow.mutate(false);
+            }}
+          />
+        </Sheet>
+      ) : null}
       {menu === "menu" && d ? (
         <Sheet title={name} onClose={() => setMenu(null)}>
-          {d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
-            <MenuRow icon="comment" label={t.msgUserOption} dim={!(d.relation.following && d.relation.follows_me)} onPress={message} />
-          )}
+          {/* «رسالة» خرجت من القائمة إلى دائرتها في صفِّ الهويّة (D-1380) — بابان لفعلٍ واحدٍ زيادة */}
           {d.person.system ? null : (
             <MenuRow icon="shield" label={reported ? t.reportDone : t.reportUserOption} dim={reported} onPress={() => (reported ? setMenu(null) : setMenu("report"))} />
           )}
@@ -849,6 +875,30 @@ const ProfilePane = React.memo(function ProfilePane({
     </ScrollView>
   );
 });
+
+/** 🆕 D-1380 — دائرةُ فعلٍ في صفِّ الهويّة: ٣٢ (`controlSize.filterBtn`) برمزٍ ١٤، ولمسُها ٤٤ بالهامش */
+function CircleBtn({ icon, label, onPress, filled = false, dim = false, locked = false, busy = false, onArt }: { icon: "mail" | "person-plus" | "person-check" | "clock"; label: string; onPress: () => void; filled?: boolean; dim?: boolean; locked?: boolean; busy?: boolean; onArt: boolean }) {
+  const { tokens } = useApp();
+  const D = controlSize.filterBtn;
+  const fg = filled ? tokens.onAccent : dim ? tokens.muted : onArt ? "#fff" : tokens.fg;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={busy}
+      hitSlop={(44 - D) / 2}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({ width: D, height: D, borderRadius: D / 2, alignItems: "center", justifyContent: "center", backgroundColor: filled ? tokens.accent : "transparent", borderWidth: filled ? 0 : 1, borderColor: onArt ? "rgba(255,255,255,0.45)" : tokens.border, opacity: busy ? 0.6 : pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] })}
+    >
+      <Icon name={icon} size={controlSize.filterIcon} color={fg} />
+      {locked ? (
+        <View style={{ position: "absolute", bottom: 4, end: 4, width: 11, height: 11, borderRadius: 6, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="lock" size={8} color={tokens.muted} />
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
 
 function MenuRow({ icon, label, onPress, dim = false, danger = false }: { icon: "comment" | "shield" | "close"; label: string; onPress: () => void; dim?: boolean; danger?: boolean }) {
   const { tokens } = useApp();

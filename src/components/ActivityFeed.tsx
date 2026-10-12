@@ -547,7 +547,6 @@ function CommentRow({
                 <span className="shrink-0 flex items-center">
                   <ProfileMenu
                     person={a.person}
-                    mutual={false}
                     follow={{ following: iFollowThem }}
                     variant="plain"
                     locale={locale}
@@ -820,7 +819,6 @@ function NewsRow({
               <span className="shrink-0 flex items-center">
                 <ProfileMenu
                   person={LOOPZ_PERSON}
-                  mutual={false}
                   follow={{ following: followLoopz }}
                   variant="plain"
                   system

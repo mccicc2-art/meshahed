@@ -5,6 +5,7 @@ import type { PersonLite } from "@/core/people";
 import type { HomePrefs } from "@/core/homePrefs";
 import type { ProfilePrefs } from "@/core/profilePrefs";
 import type { PrefTemplate } from "@/core/prefTemplates";
+import type { DmPolicy } from "../dmPolicy.ts";
 
 /**
  * ====== عقودُ الإعدادات — Phase 11-I (I0) ======
@@ -50,6 +51,8 @@ export type SettingsPayload = {
     hide_name: boolean;
     is_private: boolean;
     hide_follow_lists: boolean;
+    /** 🆕 D-1380 — «من يقدر يراسلني» */
+    dm_policy: DmPolicy;
     /** عددُ من مُنحوا المكتبةَ وعددُ المحظورين — للقيمة على صفِّ الفهرس؛ القوائمُ باباها */
     library_grants: number;
     blocked: number;
@@ -73,6 +76,8 @@ export type RegionBody = { region: string };
 export type ContentPrefsBody = Partial<ContentPrefs>;
 /** الحقولُ الثلاثةُ معاً كما يرسلها `AccountSettings` في الويب — كتابةٌ واحدةٌ للثلاثة */
 export type PrivacyBody = { hide_name: boolean; is_private: boolean; hide_follow_lists: boolean };
+/** 🆕 D-1380 — `POST /api/v1/me/settings/messages` */
+export type DmPolicyBody = { dm_policy: DmPolicy };
 export type LibraryGrantBody = { user_id: string; grant: boolean };
 export type UnblockBody = { user_id: string };
 export type HintsResetBody = { reset: true };

@@ -18,11 +18,11 @@ import { Sheet } from "../library/Sheet";
 import { Avatar } from "../community/CommunityCards";
 import { errorText } from "../community/communityActs";
 import { MESSAGES_KEY } from "./live";
-import { dropBadges, patchConversation, presenceOf, useDoors, useMessages, type Origin } from "./common";
+import { dropBadges, patchConversation, patchKeep, presenceOf, useDoors, useMessages, type Origin } from "./common";
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
-import { MSG_REPLY_MAX } from "@/core/contracts/messages";
-import type { LastSeenPayload, MsgEvent, MsgPeerBody, MsgReplyBody } from "../contracts";
+import { MSG_TEXT_MAX } from "@/core/contracts/messages";
+import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgPeerBody, MsgTextBody } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
@@ -30,8 +30,11 @@ import { SYSTEM_FONT_CAP } from "../fontScale";
  *
  * 🔑 **`ConversationView` الويب بأفعاله كلِّها**: الفقاعاتُ (عملٌ مُشارَك · قائمة · ردّ) مصطفّةً بجهة المرسِل · الترويسةُ كلُّها
  * بابُ الملفّ مع سطر الحضور (D-765/D-767) · ⋯ ورقةٌ فيها الملفُّ ثمّ الإخفاءُ ثمّ الحظر، الأخطرُ أخيراً (D-018) · الواردُ
- * يُعلَّم مقروءاً عند الفتح وكلّما وصل جديدٌ والخيطُ مفتوح · الردُّ معلَّقٌ بآخر عملٍ شورك (D-051)، ومحادثةٌ بدأت بقائمةٍ
- * وحدها لها سطرٌ يشرح الطريق بدل حقلٍ يفشل بصمت.
+ * يُعلَّم مقروءاً عند الفتح وكلّما وصل جديدٌ والخيطُ مفتوح.
+ *
+ * 🆕 D-1380 (ينقض D-051) — **الرسالةُ نصٌّ مباشرٌ في كلِّ محادثة** (`/api/v1/me/messages/text`)، والخيطُ يُفتح لشخصٍ لا
+ * محادثةَ معه بعد (من ملفّه أو من «ابدأ محادثة»): هويّتُه وحكمُ البوّاب من `?with=`، فيُرسم فارغاً بـ«قل هلا» أو بسطر
+ * «لا يستقبل رسائل».
  *
  * ⚖️ **الحقلُ مثبَّتٌ أسفل الشاشة لا ورقةٌ وسطى** (خلافاً لـ`Composer`، D-1175): حجّةُ الورقة كانت حقلاً داخل قائمةٍ افتراضيّة
  * يُدوَّر وتغطّيه اللوحة — **وهنا الحقلُ خارج القائمة**، والدردشةُ تُكتب وأنت ترى آخرَ ما قيل. يمتدّ مع الكتابة حتى أربعة
@@ -46,6 +49,15 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const q = useMessages();
   const d = q.data ?? null;
   const conv = d?.conversations.find((c) => c.person_id === peer) ?? null;
+  /* 🆕 D-1380 — خيطٌ لم يبدأ: هويّةُ صاحبه وحكمُ البوّاب (`can_message`) من الحمولة نفسِها بـ`?with=` */
+  const fresh = useQuery({
+    queryKey: [...MESSAGES_KEY, "with", peer],
+    queryFn: async () => (await api<MessagesPayload>(`/api/v1/me/messages?with=${peer}`)).data,
+    enabled: !!d && !conv,
+    staleTime: 15_000,
+  });
+  const person = conv?.person ?? fresh.data?.peer ?? null;
+  const canMsg = fresh.data?.can_message ?? null;
   const doors = useDoors(from);
   /* 🆕 D-1307 — **الشاشةُ في العين؟** يعلن الخيطَ المفتوح لـ`push` (لا شريطَ إشعارٍ فوق محادثةٍ أقرؤها) ويشغّل تجديدَ
      سطر الحضور. بالتركيز لا بالتركيب: شاشةٌ مدفونةٌ تحت أخرى ليست «مفتوحة»، وكتمُ رسائل صاحبها هناك يُضيّعها. */
@@ -97,7 +109,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   }, [back]);
   /* خيطٌ زال (أُخفي · حُظر صاحبه · رابطٌ قديم) ⇐ الصندوقُ لا شاشةٌ فارغة — كما يسقط `?with=` الميّت إلى القائمة في الويب */
   /* M4-fix — الحكمُ على جلبٍ حيٍّ لا على الصندوق المحفوظ من فتحةٍ سابقة (محادثةٌ جديدةٌ لا تكون فيه بعد) */
-  const gone = !!d && !conv && q.isFetchedAfterMount;
+  /* 🆕 D-1380 — ولا خيطٌ يبدأ: لا محادثةَ ولا هويّةَ لصاحبها (حسابٌ زال · حظر · رابطٌ ميّت) */
+  const gone = !!d && !conv && q.isFetchedAfterMount && fresh.isFetched && !fresh.data?.peer;
   /* الإخفاءُ والحظرُ يغادران بأنفسهما — وزوالُ الخيط بعدهما لا يُطلق مغادرةً ثانية */
   const closing = useRef(false);
   useEffect(() => {
@@ -119,16 +132,24 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const tmp = useRef(0);
   const send = useCallback(() => {
     const body = text.trim();
-    if (!body || sending || !conv?.latest_share_id) return;
+    if (!body || sending || (!conv && !person)) return;
     haptic.pick();
     const id = `tmp-${tmp.current++}`;
     const ev: MsgEvent = { kind: "reply", id, mine: true, body, created_at: new Date().toISOString() };
     /* جلبٌ في الطريق بدأ قبل الردّ لا يمحو الفقاعةَ المتفائلة حين يصل */
     void queryClient.cancelQueries({ queryKey: MESSAGES_KEY });
-    patchConversation(peer, (c) => ({ ...c, events: [...c.events, ev], last_at: ev.created_at }));
+    if (conv) patchConversation(peer, (c) => ({ ...c, events: [...c.events, ev], last_at: ev.created_at }));
+    else
+      /* 🆕 D-1380 — أوّلُ رسالةٍ تصنع المحادثةَ في الكاش (ويخرج صاحبُها من «ابدأ محادثة») — الخيطُ لا ينتظر جلباً */
+      patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({
+        ...p,
+        conversations: [{ person_id: peer, person, events: [ev], last_at: ev.created_at, unread: 0, latest_share_id: "" }, ...p.conversations],
+        startable: p.startable.filter((s) => s.id !== peer),
+      }));
     setText("");
     setSending(true);
-    write("/api/v1/me/messages/reply", { share_id: conv.latest_share_id, body } satisfies MsgReplyBody)
+    write("/api/v1/me/messages/text", { recipient_id: peer, body } satisfies MsgTextBody)
+      .then(() => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }))
       .catch((e: unknown) => {
         /* الفشلُ يُرجع: الفقاعةُ تُسحب والنصُّ يعود إلى الحقل، والسببُ يُقال (D-1179) */
         patchConversation(peer, (c) => ({ ...c, events: c.events.filter((x) => x.id !== id) }));
@@ -136,14 +157,14 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         say(errorText(t, e));
       })
       .finally(() => setSending(false));
-  }, [text, sending, conv?.latest_share_id, peer, say, t]);
+  }, [text, sending, conv, person, peer, say, t]);
 
   /* ——— ⋯: الملفّ · الإخفاء · الحظر ——— */
   const [menu, setMenu] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [busy, setBusy] = useState(false);
-  const name = displayNameOf(conv?.person ?? null, t.anonymousUser);
-  const profile = conv?.person && !conv.person.hide_name ? profileHref(conv.person) : null;
+  const name = displayNameOf(person, t.anonymousUser);
+  const profile = person && !person.hide_name ? profileHref(person) : null;
   const leaveToInbox = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace({ pathname: "/messages", params: { from } });
@@ -218,14 +239,14 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
               accessibilityLabel={profile ? t.viewProfileOf(name) : name}
               style={({ pressed }) => ({ flexShrink: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4, paddingHorizontal: 4, borderRadius: radius.md, opacity: pressed ? 0.7 : 1 })}
             >
-              <Avatar uri={conv?.person?.hide_name ? null : conv?.person?.avatar_url ?? null} size={34} />
+              <Avatar uri={person?.hide_name ? null : person?.avatar_url ?? null} size={34} />
               <View style={{ flexShrink: 1, minWidth: 0 }}>
-                <Text size={14} weight="700" numberOfLines={1}>{conv ? name : ""}</Text>
+                <Text size={14} weight="700" numberOfLines={1}>{person ? name : ""}</Text>
                 {presence ? <Text size={12} muted numberOfLines={1}>{presence}</Text> : null}
               </View>
             </Pressable>
             {/* الشارةُ أختٌ للباب لا ابنةٌ له (D-773ب) */}
-            {conv?.person && !conv.person.hide_name ? <IdentityBadges flags={identityFlags(conv.person)} nameSize={14} /> : null}
+            {person && !person.hide_name ? <IdentityBadges flags={identityFlags(person)} nameSize={14} /> : null}
           </View>
           <Pressable
             onPress={() => {
@@ -243,9 +264,16 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         </View>
       </View>
 
-      {!conv ? (
+      {!conv && person ? (
+        /* 🆕 D-1380 — خيطٌ لم يبدأ: دعوةٌ لا فراغ، أو سطرُ الإغلاق حين لا يقبل صاحبُه رسائل */
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6, padding: 24 }}>
+          <Icon name={canMsg === false ? "lock" : "comment"} size={26} color={tokens.muted} />
+          <Text size={14} weight="700" style={{ textAlign: "center" }}>{canMsg === false ? t.msgNotAcceptingOf(name) : t.convSayHi(name)}</Text>
+          {canMsg === false ? null : <Text size={12} muted style={{ textAlign: "center" }}>{t.convSayHiSub}</Text>}
+        </View>
+      ) : !conv ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 }}>
-          {q.isError ? (
+          {q.isError || fresh.isError ? (
             <>
               <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
               <Button label={t.errorRetry} onPress={() => void q.refetch()} />
@@ -268,15 +296,15 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         />
       )}
 
-      {conv ? (
-        conv.latest_share_id ? (
+      {/* 🆕 D-1380 — الحقلُ في كلِّ محادثة، وفي خيطٍ لم يبدأ ما لم يقفل صاحبُه الخاص */}
+      {conv || (person && canMsg !== false) ? (
           /* يلزم الزرُّ قاعَ الحقل وهو ينمو (`items-end`) */
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 10, paddingBottom: (kb > 0 ? kb : insets.bottom) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}>
             <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={text}
-              onChangeText={(v) => setText(v.slice(0, MSG_REPLY_MAX))}
+              onChangeText={(v) => setText(v.slice(0, MSG_TEXT_MAX))}
               multiline
-              maxLength={MSG_REPLY_MAX}
+              maxLength={MSG_TEXT_MAX}
               placeholder={t.shareReplyPlaceholder}
               placeholderTextColor={tokens.muted}
               accessibilityLabel={t.shareReplyPlaceholder}
@@ -293,11 +321,6 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
               <Text size={12} weight="700" color={tokens.onAccent}>{t.shareReplySend}</Text>
             </Pressable>
           </View>
-        ) : (
-          <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: tokens.divider }}>
-            <Text size={12} muted style={{ textAlign: "center" }}>{t.convReplyNeedsTitle}</Text>
-          </View>
-        )
       ) : null}
 
       {menu ? (

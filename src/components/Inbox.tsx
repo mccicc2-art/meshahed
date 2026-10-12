@@ -19,7 +19,8 @@ import { Sheet } from "./ui/Sheet";
 import { KeyboardDock } from "./ui/KeyboardDock";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
-import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
+import { sendDirectMessage, markConversationRead, hideConversation } from "@/lib/actions";
+import { DM_MAX } from "@/core/dmPolicy";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -44,6 +45,8 @@ export function Inbox({
   openStart = null,
   locale,
   lastSeen = null,
+  peer = null,
+  canMessage = null,
 }: {
   conversations: Conversation[];
   /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
@@ -54,6 +57,10 @@ export function Inbox({
   locale: Locale;
   /** 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — يُجلب مع الصفحة (`last_seen_of`) */
   lastSeen?: string | null;
+  /** 🆕 D-1380 — صاحبُ خيطٍ لم يبدأ بعد (`?with=` بلا محادثة) */
+  peer?: PersonLite | null;
+  /** 🆕 D-1380 — حكمُ البوّاب على `openWith` (`null` = لم يُحكم) */
+  canMessage?: boolean | null;
 }) {
   const t = getDict(locale);
   /* 🆕 11-M · M4 — الورقةُ تُفتح للشخص المطلوب إن كان ممّن يُبدأ معهم فعلاً؛ غيرُه يسقط إلى القائمة بلا ورقة */
@@ -68,10 +75,14 @@ export function Inbox({
      يُرسم «—» وصار «مستخدم» — نفسُ ما تقوله بقيةُ الشاشات عنه. */
   const nameOf = (p: PersonLite | null) => displayNameOf(p, t.anonymousUser);
 
-  const open = openWith ? conversations.find((c) => c.personId === openWith) : null;
+  /* 🆕 D-1380 — خيطٌ لشخصٍ لا محادثةَ معه بعد: محادثةٌ فارغة تُرسم بخانة كتابة (من ملفّه أو من «ابدأ محادثة») */
+  const fresh = openWith ? (peer ?? startable.find((p) => p.id === openWith) ?? null) : null;
+  const open =
+    (openWith ? conversations.find((c) => c.personId === openWith) : null) ??
+    (fresh ? { personId: fresh.id, person: fresh, events: [], lastAt: "", unread: 0, latestShareId: "" } : null);
   if (open) {
     return (
-      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} />
+      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} canMessage={canMessage} />
     );
   }
 
@@ -157,7 +168,7 @@ export function Inbox({
 
       {/* ابدأ محادثة — كلُّ متابَعٍ متبادلٍ لا خيط معه بعد، **ظاهراً دائماً**
           بعد أن ذهب صفُّ البحث الذي كان يكشفهم.
-          الضغط يفتح ورقةَ اختيار عمل، فتبدأ المحادثة بمشاركةٍ (D-051 قائمة) */}
+          🆕 D-1380 — الضغطُ يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */}
       {startShown.length > 0 && (
         <section className="mt-5">
           <p className="text-12 font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">
@@ -168,12 +179,9 @@ export function Inbox({
               const name = nameOf(p);
               return (
                 <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      tap(6);
-                      setStartWith(p);
-                    }}
+                  <Link
+                    href={`/people?tab=inbox&with=${p.id}`}
+                    onClick={() => tap(6)}
                     aria-label={t.convStartRowAria(name)}
                     className="w-full flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition text-start"
                   >
@@ -193,9 +201,9 @@ export function Inbox({
                       </span>
                     </span>
                     <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted" aria-hidden>
-                      <Icon name="share" size={16} />
+                      <Icon name="mail" size={16} />
                     </span>
-                  </button>
+                  </Link>
                 </li>
               );
             })}
@@ -243,11 +251,13 @@ function ConversationView({
   name,
   locale,
   lastSeen,
+  canMessage = null,
 }: {
   conv: Conversation;
   name: string;
   locale: Locale;
   lastSeen: string | null;
+  canMessage?: boolean | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -259,7 +269,7 @@ function ConversationView({
      تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك.
      ⚖️ 🆕 D-765: حالُ القناة لم يعد يُعرض — «live» قُرئت حالاً للشخص
      وهي ليست كذلك (بلاغ ٢٨ أغسطس)، والصادقُ عن الشخص سطرُ آخرِ ظهوره */
-  useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
+  useChatPoll(true, ["title_shares", "list_shares", "share_replies", "direct_messages"]);
 
   /* «متصل الآن» لنشاطٍ خلال خمس دقائق (نبضةُ الحضور كلَّ أربع) — وإلا
      «آخر ظهور قبل ساعة/قبل يوم». لا نبضةَ له بعدُ؟ لا سطرَ أصلاً —
@@ -457,15 +467,27 @@ function ConversationView({
         {events.map((e) => (
           <ConvBubble key={`${e.kind}-${e.id}`} event={e} locale={locale} />
         ))}
+        {/* 🆕 D-1380 — خيطٌ لم يبدأ بعد: دعوةٌ لا فراغ */}
+        {events.length === 0 && canMessage !== false ? (
+          <div className="py-16 flex flex-col items-center gap-1.5 text-center">
+            <Icon name="comment" size={26} className="text-muted" />
+            <p className="text-sm font-semibold">{t.convSayHi(name)}</p>
+            <p className="text-12 text-muted">{t.convSayHiSub}</p>
+          </div>
+        ) : null}
       </div>
 
-      {/* الردّ معلَّقٌ بآخر عملٍ شورك (D-051) — محادثةٌ بدأت بقائمةٍ وحدها
-          لا وجهة لردّها بعد، فبدل حقلٍ يفشل بصمت: سطرٌ يشرح الطريق */}
-      {conv.latestShareId ? (
+      {/* 🆕 D-1380 — الحقلُ في كلِّ محادثة: الرسالةُ نصٌّ مباشرٌ لا ردٌّ معلَّقٌ بعمل (D-051 المنقوضة). وحين لا يقبل الشخصُ
+          رسائلَ ولا محادثةَ قائمة: سطرٌ يقول ذلك بدل حقلٍ يفشل */}
+      {events.length === 0 && canMessage === false ? (
+        <p className="pt-3 border-t border-[color:var(--divider)] text-xs text-muted text-center">
+          {t.msgNotAcceptingOf(name)}
+        </p>
+      ) : (
         /* 🆕 الحقلُ على حافّة الشاشة (مرسى النقاش نفسُه — D-320) لا في آخر المستند: خيطٌ طويلٌ كان يدفنه تحت كلِّ ما قيل */
         <KeyboardDock spacer="h-20">
         <ReplyBox
-          shareId={conv.latestShareId}
+          recipientId={conv.personId}
           locale={locale}
           onReplied={(body) =>
             setEvents((prev) => [
@@ -481,10 +503,6 @@ function ConversationView({
           }
         />
         </KeyboardDock>
-      ) : (
-        <p className="pt-3 border-t border-[color:var(--divider)] text-xs text-muted text-center">
-          {t.convReplyNeedsTitle}
-        </p>
       )}
     </div>
   );
@@ -592,7 +610,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
   );
 }
 
-/** حقلُ الردّ — يُعلَّق بآخر عملٍ شورك في المحادثة.
+/** حقلُ الرسالة — 🆕 D-1380: نصٌّ مباشرٌ إلى صاحب الخيط (`sendDirectMessage`)، كان ردّاً معلَّقاً بآخر عملٍ شورك.
  *  ⚖️ 🆕 D-765 (بلاغ ٢٨ أغسطس: «ماتشوف وش كتبت»): كان `<input>` سطراً
  *  واحداً لا يلتفّ — الكتابةُ الطويلة تهرب أفقيّاً خارج النظر. صار
  *  `textarea` ينمو مع المحتوى: الارتفاعُ يُقاس من `scrollHeight` بعد
@@ -600,11 +618,11 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
  *  تمريرٌ داخليّ. وEnter يُرسل كما كان (وShift+Enter سطرٌ جديد) —
  *  فسلوكُ الإرسال لم يتغيّر على أحد. */
 function ReplyBox({
-  shareId,
+  recipientId,
   locale,
   onReplied,
 }: {
-  shareId: string;
+  recipientId: string;
   locale: Locale;
   onReplied: (body: string) => void;
 }) {
@@ -630,7 +648,7 @@ function ReplyBox({
     setValue("");
     start(async () => {
       try {
-        await replyToShare(shareId, body);
+        await sendDirectMessage(recipientId, body);
       } catch (e) {
         flashError((e as Error).message);
       }
@@ -653,7 +671,7 @@ function ReplyBox({
         }}
         placeholder={t.shareReplyPlaceholder}
         aria-label={t.shareReplyPlaceholder}
-        maxLength={500}
+        maxLength={DM_MAX}
         rows={1}
         className="flex-1 min-w-0 resize-none overflow-y-auto rounded-2xl bg-surface-2 border border-border px-4 py-2 text-base leading-relaxed outline-none focus:border-accent transition"
       />

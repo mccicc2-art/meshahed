@@ -11,10 +11,11 @@ import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
 import { api, queryClient, write } from "../api";
 import type { ToastHostRef } from "../HoldHost";
-import { SettingsScreen, Group, Row, Toggle, RowsSkeleton } from "./ui";
+import { SettingsScreen, Group, Row, Toggle, RowsSkeleton, ExpandRow, OptionRow } from "./ui";
+import { DM_POLICIES, type DmPolicy } from "@/core/dmPolicy";
 import { useSettings, saveSetting, patchSettings, messageOf, useOpenWeb } from "./api";
 import { displayNameOf, type PersonLite } from "@/core/people";
-import type { FollowsPayload, PeoplePayload, PrivacyBody, LibraryGrantBody, UnblockBody } from "../contracts";
+import type { DmPolicyBody, FollowsPayload, PeoplePayload, PrivacyBody, LibraryGrantBody, UnblockBody } from "../contracts";
 
 /**
  * ====== الخصوصيّة (Phase 11-I · I2) — `privacy/page.tsx` ======
@@ -31,6 +32,7 @@ export function PrivacyScreen() {
   const toast = useRef<ToastHostRef>(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<"grants" | "blocked" | null>(null);
+  const [dmOpen, setDmOpen] = useState(false);
 
   async function commit(next: PrivacyBody) {
     if (!s || busy) return;
@@ -40,6 +42,16 @@ export function PrivacyScreen() {
     setBusy(false);
     if (!out) toast.current?.say(t.errSaveShort);
   }
+  /* 🆕 D-1380 — «من يقدر يراسلني»: وصفةُ «حجم الواجهة» (صفٌّ يتوسّع بخياراته)، والحفظُ لحظةَ اللمس، والفشلُ يعيد القيمة */
+  async function pickDm(next: DmPolicy) {
+    if (!s || busy || s.privacy.dm_policy === next) return;
+    haptic.pick();
+    setBusy(true);
+    const out = await saveSetting<DmPolicyBody>("/api/v1/me/settings/messages", { dm_policy: next }, (x) => ({ ...x, privacy: { ...x.privacy, dm_policy: next } }));
+    setBusy(false);
+    if (!out) toast.current?.say(t.errSaveShort);
+  }
+  const dmLabel: Record<DmPolicy, string> = { everyone: t.dmPolicyEveryone, mutual: t.dmPolicyMutual, none: t.dmPolicyNone };
   const pv = s?.privacy;
   return (
     <SettingsScreen title={t.setPrivacy} toast={toast}>
@@ -53,6 +65,12 @@ export function PrivacyScreen() {
             <Toggle icon="people" label={t.followListsSection} hint={t.followListsHint} checked={pv.hide_follow_lists} disabled={busy} onChange={() => void commit({ hide_name: pv.hide_name, is_private: pv.is_private, hide_follow_lists: !pv.hide_follow_lists })} />
           </Group>
           <Group label={t.setGroupPeople}>
+            <ExpandRow icon="mail" title={t.dmPolicyLabel} value={dmLabel[pv.dm_policy ?? "everyone"]} open={dmOpen} onToggle={() => setDmOpen((v) => !v)}>
+              {DM_POLICIES.map((p) => (
+                <OptionRow key={p} selected={(pv.dm_policy ?? "everyone") === p} title={dmLabel[p]} disabled={busy} onSelect={() => void pickDm(p)} />
+              ))}
+              <Text size={12} muted style={{ marginTop: 8 }}>{t.dmPolicyHint}</Text>
+            </ExpandRow>
             <Row icon="library" title={t.libraryAccessTitle} value={String(pv.library_grants)} onPress={() => setSheet("grants")} />
             <Row icon="shield" title={t.blockedListTitle} value={String(pv.blocked)} onPress={() => setSheet("blocked")} />
           </Group>

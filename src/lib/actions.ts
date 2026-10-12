@@ -78,6 +78,7 @@ import { sanitizeSavedFilters, type SavedFilter } from "@/core/savedFilters";
 import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 import { isViewKey } from "@/core/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
+import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
 import { getTv, getMovie } from "@/lib/tmdb";
@@ -4667,6 +4668,60 @@ export async function myCommunitiesList(): Promise<CommunityLite[]> {
   }));
 }
 
+/**
+ * 🆕 D-1380 — **رسالةٌ نصّيّةٌ مباشرة** (ينقض D-051: أحمد ١٢ أكتوبر «ج» ثمّ «ب»). أيُّ مستخدمٍ يراسل أيَّ مستخدم،
+ * والبوّابُ واحدٌ في القاعدة (`can_message`، الهجرة ٢٠٠): الحظرُ أوّلاً، ثمّ المحادثةُ القائمة، ثمّ إعدادُ المستلم
+ * («الكلّ» · «المتبادلون» · «لا أحد»). المحادثةُ القائمة تستمرّ ولو قفل الخاص («أ»).
+ */
+export async function sendDirectMessage(recipientId: string, body: string) {
+  recipientId = uuid(recipientId);
+  const clean = String(body ?? "").trim();
+  if (clean.length < 1 || clean.length > DM_MAX) {
+    throw new Error("مدخل غير صالح / Invalid input");
+  }
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  if (user.id === recipientId) {
+    throw new Error("لا يمكنك مراسلة نفسك / You can't message yourself");
+  }
+  const { error } = await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: recipientId, body: clean });
+  if (error) {
+    /* رفضُ البوّاب (`42501`) ليس عطلاً: المستلمُ قفل الخاص أو بينهما حظر — رسالةٌ تُقرأ لا «جرّب مرّة أخرى» */
+    if (error.code === "42501") throw new Error("هذا الشخص لا يستقبل رسائل / This person isn't accepting messages");
+    fail(error);
+  }
+  notifyMessage({ to: recipientId, actorId: user.id, text: clean });
+  await presenceOnSend(supabase);
+  revalidatePath("/people");
+}
+
+/** 🆕 D-1380 — هل أقدر أن أراسل هذا الشخص الآن؟ (`can_message` نفسُه) — يرسم الملفُّ القفلَ منه. قبل الهجرة: المتابعةُ المتبادلة */
+export async function canMessage(personId: string): Promise<boolean | null> {
+  try {
+    personId = uuid(personId);
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null; /* الزائرُ لا يُحكم له — بابُ الدخول يسبق الرسالة */
+    const { data, error } = await supabase.rpc("can_message", { a: user.id, b: personId });
+    if (!error) return data === true;
+    const { data: mutual } = await supabase.rpc("are_mutual", { a: user.id, b: personId });
+    return mutual === true;
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 D-1380 — «من يقدر يراسلني» */
+export async function setDmPolicy(policy: DmPolicy) {
+  const next = sanitizeDmPolicy(policy);
+  const { supabase, user } = await requireUser("settings", 20, 60_000);
+  const { error } = await supabase.from("profiles").update({ dm_policy: next }).eq("id", user.id);
+  if (error) fail(error);
+  revalidatePath("/profile/settings/privacy");
+  return next;
+}
+
 /** ردٌّ قصير على خيط مشاركة — القاعدة تشترط بقاء المتابعة المتبادلة */
 export async function replyToShare(shareId: string, body: string) {
   shareId = uuid(shareId);
@@ -4746,6 +4801,13 @@ export async function markConversationRead(personId: string) {
     // وقوائم الشخص نفسه — الخيط واحد (D-066)
     await supabase
       .from("list_shares")
+      .update({ read_at: now })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", personId)
+      .is("read_at", null);
+    // 🆕 D-1380 — والرسائلُ النصّيّة (عمودُ القراءة ممنوحٌ لطرفها)
+    await supabase
+      .from("direct_messages")
       .update({ read_at: now })
       .eq("recipient_id", user.id)
       .eq("sender_id", personId)
@@ -4942,6 +5004,15 @@ export async function hideConversation(personId: string) {
     .match({ sender_id: user.id, recipient_id: personId });
   await supabase
     .from("list_shares")
+    .update({ recipient_hid: true })
+    .match({ recipient_id: user.id, sender_id: personId });
+  // 🆕 D-1380 — والرسائلُ النصّيّة من جهتي وحدها
+  await supabase
+    .from("direct_messages")
+    .update({ sender_hid: true })
+    .match({ sender_id: user.id, recipient_id: personId });
+  await supabase
+    .from("direct_messages")
     .update({ recipient_hid: true })
     .match({ recipient_id: user.id, sender_id: personId });
   revalidatePath("/people");

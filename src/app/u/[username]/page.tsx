@@ -2,6 +2,7 @@ import Link from "next/link";
 import { displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { loadProfile } from "@/lib/profileCore";
+import { canMessage } from "@/lib/actions";
 import { Avatar } from "@/components/Avatar";
 import { CoverImage } from "@/components/CoverImage";
 import { Icon } from "@/components/Icon";
@@ -135,6 +136,8 @@ export default async function PublicProfilePage({
     favorites,
   } = core;
   const displayName = displayNameOf(profile, t.anonymousUser);
+  /* 🆕 D-1380 — «رسالة» تتبع البوّابَ (`can_message`) لا المتابعةَ المتبادلة: لغيري وحدي، وللمسجَّل وحده */
+  const canMsg = isMe ? null : await canMessage(profile.id);
 
   /* ⚖️ 🆕 **البطاقةُ صارت ثلاثَ خاناتٍ داخل إطار** (D-561، تصميمُ
      أحمد: «Movies · Shows · Full statistics ›»، ونقضٌ مُعلَنٌ لأربعةِ
@@ -823,7 +826,7 @@ export default async function PublicProfilePage({
                   avatar_url: profile.avatar_url,
                   hide_name: profile.hide_name ?? false,
                 }}
-                mutual={relation.following && relation.followsMe}
+                canMessage={canMsg}
                 system={isLoopz(profile.id)}
                 locale={locale}
               />
