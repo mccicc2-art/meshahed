@@ -4,6 +4,7 @@ import { File, Paths } from "expo-file-system";
 import { api, queryClient } from "../api";
 import { posterFor } from "../poster";
 import type { ProfilePayload } from "@/core/contracts/profile";
+import { posterWidthFor } from "../posterSizes";
 
 /**
  * ====== بياناتُ ملفّ الشخص — المفتاحُ والجلبُ في ملفٍّ صغير (🆕 D-1238) ======
@@ -17,8 +18,6 @@ export async function fetchProfile(username: string) {
   return (await api<ProfilePayload>(`/api/v1/profile/${encodeURIComponent(username)}`)).data;
 }
 
-/** عرضُ الملصق لكلِّ كثافة (D-441) — هنا لأنّ تسخينَ الصور يبني الروابطَ نفسَها التي ترسمها الشاشة */
-export const DENSITY_W = { compact: 96, comfortable: 118, large: 148 } as const;
 
 /**
  * ====== طولا رأس الملفّ وشريطِه — يعيشان بين الجلسات (🆕 D-1243) ======
@@ -76,7 +75,8 @@ export function profileFirstImages(d: ProfilePayload): string[] {
   if (!d.person.hide_name && d.person.avatar_url) out.push(d.person.avatar_url);
   if (d.person.cover_url) out.push(d.person.cover_url);
   if (d.locked) return out;
-  const w = DENSITY_W[d.viewer.density ?? "comfortable"];
+  /* التسخينُ يبني الروابطَ من العرض نفسِه الذي ترسمه الشاشة (D-1379: بنسبة الشاشة) */
+  const w = posterWidthFor(d.viewer.density ?? "comfortable");
   const rows: { poster_path: string | null }[][] = [];
   const first = d.tabs[0];
   if (first === "overview") {

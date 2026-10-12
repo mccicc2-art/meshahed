@@ -274,7 +274,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
 
       {!railOff(offRails, "savedlists") && p.saved.length > 0 ? (
         <View>
-          <Text size={18} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
+          <Text size={20} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {p.saved.map((l) => (
               <View key={l.id} style={{ width: cardW }}>

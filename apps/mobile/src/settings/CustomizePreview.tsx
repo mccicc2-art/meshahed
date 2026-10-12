@@ -30,7 +30,8 @@ import { orderedProfileTabs, profileSectionMeta, profileTabMeta, type ProfilePre
  */
 const RICH_HOME = 3;
 const RICH_PROFILE = 2;
-const POSTER_W: Record<Density, number> = { compact: 18, comfortable: 22, large: 28 };
+/* D-1379 — المصغّراتُ بنسب الملصقات الجديدة (١٠٠ · ١١٨ · ١٤٠) */
+const POSTER_W: Record<Density, number> = { compact: 19, comfortable: 22, large: 26 };
 
 export type PreviewWho = {
   name: string;

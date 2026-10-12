@@ -49,6 +49,7 @@ import { nextHomeView, sectionView, type HomeSection, type HomeView } from "@/co
 import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
+import { usePosterSizes } from "../posterSizes";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -494,7 +495,10 @@ export function HomeScreen() {
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => chrome.onScroll(e), [chrome]);
   const bottomPad = navH + 24;
 
-  const posterW = d ? ({ compact: 96, comfortable: 118, large: 148 } as const)[d.prefs.density] : 118;
+  /* 🆕 D-1379 — المقاساتُ من مصدرٍ واحد وبنسبة عرض الشاشة (المرجعُ جهازُ خالد ٤١٢) */
+  const sizes = usePosterSizes(d?.prefs.density ?? "comfortable");
+  const posterW = sizes.posterW;
+  const contSize = useMemo(() => ({ w: sizes.continueW, h: sizes.continueH }), [sizes.continueW, sizes.continueH]);
   const cap = useCallback((n: number) => (d ? capCards(n, d.prefs.cards) : n), [d]);
 
   useEffect(() => {
@@ -545,9 +549,9 @@ export function HomeScreen() {
           <View key="continue">
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => setAllSheet("continue")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("continue")} />
             {sectionView(view, "continue") === "compact" ? (
-              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
+              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
             ) : (
-              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} posterW={posterW} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Rail>
+              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Rail>
             )}
           </View>
         ) : null,
@@ -681,7 +685,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
+  }, [d, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
 
   return (
     <CardStoreContext.Provider value={store}>

@@ -7,7 +7,6 @@ import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { backdropUrl } from "@/core/media";
-import { BACKDROP_W } from "./Section";
 import type { HomeContinueCard, HomeMixedCard } from "../contracts";
 
 const VEIL = require("../../assets/poster-veil.png");
@@ -19,11 +18,8 @@ const VEIL = require("../../assets/poster-veil.png");
  * الملصقاتُ نفسُها في `library/PosterCard` — لا بطاقةَ ملصقٍ ثانية (القاعدة ٣).
  */
 
-/** ارتفاعُ بطاقة «تابِع المشاهدة» مشتقٌّ من الملصق فيتبع الكثافة. D-1278 — كان ١٫٣ كالويب فصار ١٫٠٣٥ (١٢٢ عند
-    ملصق ١١٨ حيث كان ١٥٣). 🆕 D-1279 — ١٫٠٥ ⇐ ١٢٤: أحمد بعد أن رآها على جهازه «أكبر بشكل خفيف من تحت»، ثمّ
-    «ارتفاع +2». التطبيقُ وحدَه. 🆕 D-1377 — ١٫٠٨٥ ⇐ ١٢٨ (أحمد ١٢ أكتوبر: «أكبره فقط من تحت»، اختار ١٢٨ من صورتين
-    ١٢٨/١٣٢ على لقطته). العرضُ ثابتٌ والارتفاعُ يزيد، والاسمُ وشريطُ التقدّم مسندان إلى القاع فينزلان معه. */
-export const continueCardH = (posterW: number) => Math.round(posterW * 1.085);
+/** 🆕 D-1379 — مقاسُ بطاقة «تابِع المشاهدة» يأتي من `posterSizes.ts` (الكثافةُ ونسبةُ الشاشة)؛ كان مشتقّاً من عرض الملصق هنا
+    (D-1278 · D-1279 · D-1377) فكبرت مع «الكبير» حتى صارت شبهَ مربّعة. */
 
 /** D-1278 — دائرةُ الصحّ على البطاقة ٣٦ (في الصفّ باقيةٌ ٤٤): ٤٤ فوق بطاقةٍ ارتفاعُها ١٢٢ تأكل ثلثَها.
     و`hitSlop` ٤ يُبقي هدفَ اللمس ٤٤. */
@@ -32,7 +28,7 @@ const ROW_CHECK = 44;
 
 export const ContinueCard = memo(function ContinueCard({
   card,
-  posterW,
+  size,
   variant,
   backdropPath,
   onPress,
@@ -41,7 +37,8 @@ export const ContinueCard = memo(function ContinueCard({
   onHold,
 }: {
   card: HomeContinueCard;
-  posterW: number;
+  /** عرضُ البطاقة وارتفاعُها — `usePosterSizes` */
+  size: { w: number; h: number };
   variant: "card" | "row";
   /** مشهدُ «التالي» لبطاقات القوائم — من `extras`، وبطاقةُ العمل تحمل مشهدَها */
   backdropPath: string | null;
@@ -60,7 +57,7 @@ export const ContinueCard = memo(function ContinueCard({
   const title = isShow ? card.title : card.list_name;
   const poster = isShow ? card.poster_path : card.next.poster_path;
   const backdrop = isShow ? card.backdrop_path : backdropPath;
-  const uri = backdropUrl(backdrop, "w780") ?? posterFor(poster, BACKDROP_W);
+  const uri = backdropUrl(backdrop, "w780") ?? posterFor(poster, size.w);
   const watched = card.watched;
   const total = isShow ? card.aired : card.total;
   const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((watched / total) * 100))) : 0;
@@ -126,7 +123,7 @@ export const ContinueCard = memo(function ContinueCard({
     );
   }
   return (
-    <View style={{ width: BACKDROP_W }}>
+    <View style={{ width: size.w }}>
       <Pressable
         ref={variant === "card" ? holdRef : undefined}
         onPress={onPress}
@@ -135,7 +132,7 @@ export const ContinueCard = memo(function ContinueCard({
         accessibilityRole="button"
         accessibilityLabel={`${title}، ${sub}`}
         style={({ pressed }) => [
-          { width: BACKDROP_W, height: continueCardH(posterW), borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.98 : 1 }] },
+          { width: size.w, height: size.h, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.98 : 1 }] },
         ]}
       >
         {/* `top`: الصورةُ الأطولُ من البطاقة تُقصّ من أسفلها تحت الحجاب، لا من رأسها */}

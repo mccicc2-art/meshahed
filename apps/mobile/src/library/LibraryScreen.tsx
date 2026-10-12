@@ -1097,8 +1097,8 @@ const HeaderRow = memo(function HeaderRow({ row, onToggle }: { row: Extract<Row,
     <View style={{ paddingHorizontal: PAGE_PAD, marginTop: row.mt }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
         <Pressable onPress={toggle} hitSlop={6}>
-          {/* D-1378 — ١٨ كعناوين أقسام الرئيسيّة (`SectionHeader`) */}
-          <Text size={18} weight="700">{statusLabel(row.status, t)}</Text>
+          {/* D-1378/D-1379 — ٢٠ كعناوين أقسام الرئيسيّة (`SectionHeader`) */}
+          <Text size={20} weight="700">{statusLabel(row.status, t)}</Text>
         </Pressable>
         <Pressable onPress={toggle} hitSlop={8}>
           <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>

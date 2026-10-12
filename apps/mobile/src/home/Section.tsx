@@ -15,10 +15,7 @@ import { Icon, type IconName } from "../icons";
  */
 export const PAGE_PAD = 16;
 export const RAIL_GAP = 12;
-/** 🆕 D-1278 — عرضُ بطاقة «تابِع المشاهدة» **١٨٤** في التطبيق (كان ٢٢٠ كالويب): أحمد بلقطة ٥ أكتوبر
-    «ودي أصغر حجم التبويب حقها»، ثمّ اختار من ثلاث صور «أعرض +٨» فوق الـ١٧٦ المتناسبة — فالعرضُ قرارُه لا
-    حاصلُ نسبة. بطاقتان كاملتان في شاشة ٤١١؛ والويبُ باقٍ على ٢٢٠ («نفذ التطبيق»). */
-export const BACKDROP_W = 184;
+/* عرضُ بطاقة «تابِع المشاهدة» (١٨٤ — D-1278) انتقل إلى `posterSizes.ts` مع مقاسات الملصق (D-1379) */
 
 export function SectionHeader({
   title,
@@ -46,9 +43,9 @@ export function SectionHeader({
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, paddingHorizontal: PAGE_PAD }}>
       <Pressable onPress={onTitle} disabled={!onTitle} accessibilityRole={onTitle ? "link" : undefined} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
         {icon ? <Icon name={icon} size={20} color={accent ? tokens.accent : tokens.muted} /> : null}
-        {/* D-1378 — عنوانُ القسم ٢٢ ⇐ ١٨ (أحمد ١٢ أكتوبر، بلقطتين على جهاز خالد): كان أكبرَ ما في الصفحة فطغى على البطاقات تحته.
-            الرقمُ نفسُه في «أسبوعك» (`WeekStrip`) وعناوين حالات المكتبة وقوائمها */}
-        <Text size={18} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {/* D-1378 — عنوانُ القسم ٢٢ ⇐ ٢٠ (أحمد ١٢ أكتوبر، بلقطتين على جهاز خالد): كان أكبرَ ما في الصفحة فطغى على البطاقات تحته.
+            (١٨ أوّلاً ثمّ ٢٠ بعد جدول الدرجات — أحمد «اعتمد ٢٠»). الرقمُ نفسُه في «أسبوعك» (`WeekStrip`) وعناوين حالات المكتبة وقوائمها */}
+        <Text size={20} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>
           {title}
         </Text>
       </Pressable>

@@ -24,7 +24,7 @@ import { ListCard, PlayPill } from "../library/ListCard";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { openProfile } from "./open";
-import { DENSITY_W, fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
+import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
 import { num } from "@/core/i18n";
@@ -44,6 +44,7 @@ import type { FollowUserResult, LikeBody } from "@/core/communityActs";
 import { REPORT_REASON_MAX, type ProfileReportBody, type ProfileSavedListsBody, type ProfileSectionOrderBody } from "@/core/contracts/profile";
 import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { usePosterSizes } from "../posterSizes";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -400,7 +401,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     }
   }, [d, sorting]);
 
-  const posterW = DENSITY_W[d?.viewer.density ?? "comfortable"];
+  const posterW = usePosterSizes(d?.viewer.density ?? "comfortable").posterW; /* D-1379 — مصدرُ الرئيسيّة نفسُه */
   const onArt = !!d?.person.cover_url;
   const name = d ? displayNameOf(d.person, t.anonymousUser) : "";
 
