@@ -14,6 +14,7 @@ import { span } from "../perfMarks";
 import { gifUrl, GIF_ID_RE } from "@/core/media";
 import type { Dict } from "@/core/i18n";
 import type { GifHitLite, GifPayload } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== منتقي الـGIF الأصليّ — `GifPicker.tsx` (الويب) مُحسَّناً · Phase 11-M · M3 (خطّة §٣-أ) ======
@@ -135,7 +136,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; o
   return (
     <Sheet title={t.gifTitle} onClose={onClose}>
       <View style={{ gap: 10 }}>
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={q}
           onChangeText={(v) => {
             setCat(null);

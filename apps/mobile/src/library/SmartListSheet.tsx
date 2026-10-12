@@ -13,6 +13,7 @@ import { LIBRARY_STATUSES, type LibraryStatus } from "@/core/libraryStatus";
 import { MY_RATING_MIN } from "@/core/smartListKeys";
 import { FILTER_NAME_MAX, sanitizeFilterName } from "@/core/savedFilters";
 import type { ListDetailPayload, SmartListBody, SmartRuleBody } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== قائمةٌ ذكيّةٌ من مكتبتك — نسخةُ `LibrarySmartForm` (الويب، D-876/D-877) ======
@@ -209,7 +210,7 @@ export function SmartListSheet({
             <Button label={t.smartListUpdate(editing.name)} busy={busy} disabled={!hasRule} onPress={() => void update()} />
           ) : naming ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <TextInput
+              <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
                 autoFocus
                 value={name}
                 onChangeText={setName}

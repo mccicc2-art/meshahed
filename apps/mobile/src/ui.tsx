@@ -16,7 +16,7 @@ import { radius, space } from "./theme";
 import { ARABIC_RE, familyOf, type Weight } from "./fonts";
 import { deviceLocale } from "./i18n";
 import { isRtl } from "@/core/i18n";
-import { useFontScale } from "./fontScale";
+import { SYSTEM_FONT_CAP, useFontScale } from "./fontScale";
 
 /**
  * ====== العائلاتُ الأساسيّة — مصنعُ زرٍّ واحد، نصٌّ واحد، ملصقٌ واحد ======
@@ -145,7 +145,7 @@ export function Text({
     }
   }
   if (!fontsReady || typeof children !== "string") {
-    return <RNText {...rest} style={[base, style]}>{children}</RNText>;
+    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, style]}>{children}</RNText>;
   }
   const runs = runsOf(children);
   const family = (ar: boolean) => ({ fontFamily: familyOf(ar, weight), fontWeight: undefined });
@@ -153,13 +153,13 @@ export function Text({
      (أوّلُ `AppCrash` في السجلّ، D-974: «Cannot read property 'ar' of undefined» في
      `TitleScreen` — الشاشةُ السوداء عند فتح فيلم بلا شعارٍ أو وصف). الفارغُ يُرسم فارغاً. */
   if (runs.length === 0) {
-    return <RNText {...rest} style={[base, style]}>{children}</RNText>;
+    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, style]}>{children}</RNText>;
   }
   if (runs.length === 1) {
-    return <RNText {...rest} style={[base, family(runs[0].ar), style]}>{children}</RNText>;
+    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style]}>{children}</RNText>;
   }
   return (
-    <RNText {...rest} style={[base, family(runs[0].ar), style]}>
+    <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style]}>
       {runs.map((r, i) => (
         <RNText key={i} style={family(r.ar)}>{r.s}</RNText>
       ))}
@@ -201,7 +201,7 @@ export function Button({
         typeof style === "function" ? undefined : style,
       ]}
     >
-      {busy ? <ActivityIndicator color={fg} /> : <RNText style={{ color: fg, fontWeight: "600", fontSize: (sm ? 12 : 15) * k }}>{label}</RNText>}
+      {busy ? <ActivityIndicator color={fg} /> : <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} style={{ color: fg, fontWeight: "600", fontSize: (sm ? 12 : 15) * k }}>{label}</RNText>}
     </Pressable>
   );
 }

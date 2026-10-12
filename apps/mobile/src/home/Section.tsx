@@ -46,7 +46,9 @@ export function SectionHeader({
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, paddingHorizontal: PAGE_PAD }}>
       <Pressable onPress={onTitle} disabled={!onTitle} accessibilityRole={onTitle ? "link" : undefined} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
         {icon ? <Icon name={icon} size={20} color={accent ? tokens.accent : tokens.muted} /> : null}
-        <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {/* D-1378 — عنوانُ القسم ٢٢ ⇐ ١٨ (أحمد ١٢ أكتوبر، بلقطتين على جهاز خالد): كان أكبرَ ما في الصفحة فطغى على البطاقات تحته.
+            الرقمُ نفسُه في «أسبوعك» (`WeekStrip`) وعناوين حالات المكتبة وقوائمها */}
+        <Text size={18} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>
           {title}
         </Text>
       </Pressable>

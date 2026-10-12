@@ -13,6 +13,7 @@ import { radius } from "../theme";
 import { num } from "@/core/i18n";
 import { posterFor } from "../poster";
 import type { TitleCommunityPayload } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== تبويبُ المجتمع — نسخةُ `TitleCommunityTab` للقراءة (Phase 11-D · D3 · D-956) ======
@@ -230,7 +231,7 @@ export function ReviewSheet({
           </View>
         </View>
         <StarRow spread size={22} value={rating || null} onChange={(n) => setRating(n ?? 0)} />
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={body}
           onChangeText={setBody}
           multiline

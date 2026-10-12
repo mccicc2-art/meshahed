@@ -7,6 +7,7 @@ import { radius } from "../theme";
 import { num } from "@/core/i18n";
 import { ReviewRow } from "../title/TitleCommunity";
 import type { ListDetailPayload, ListReplyRow } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== آراءُ الناس في قائمة، بقلوبها وردودها — D-1038 (L2) ======
@@ -113,7 +114,7 @@ export function ListReviews({
               <View style={{ gap: 6 }}>
                 <Text size={12} muted numberOfLines={1}>{t.talkReplyingTo(to.name)}</Text>
                 <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-                  <TextInput
+                  <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
                     autoFocus
                     value={draft}
                     onChangeText={setDraft}

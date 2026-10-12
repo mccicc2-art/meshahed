@@ -15,6 +15,7 @@ import { GifImage, GifPicker } from "./GifPicker";
 import { span } from "../perfMarks";
 import { REPLY_MAX } from "@/core/communityActs";
 import type { ThreadImagePayload } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== صندوقُ الردّ الأصليّ الواحد — نسخةُ `Composer.tsx` (الويب) · Phase 11-M · M2 ⇐ M3 ======
@@ -135,7 +136,7 @@ export function Composer({
       <Sheet title={title} onClose={onClose} placement="center">
         <View style={{ gap: 12 }}>
           {hint ? <Text size={12} muted numberOfLines={1}>{hint}</Text> : null}
-          <TextInput
+          <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
             value={body}
             onChangeText={(v) => setBody(v.slice(0, REPLY_MAX))}
             multiline

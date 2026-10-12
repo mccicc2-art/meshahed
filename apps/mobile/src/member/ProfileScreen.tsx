@@ -43,6 +43,7 @@ import type {
 import type { FollowUserResult, LikeBody } from "@/core/communityActs";
 import { REPORT_REASON_MAX, type ProfileReportBody, type ProfileSavedListsBody, type ProfileSectionOrderBody } from "@/core/contracts/profile";
 import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -763,7 +764,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       {menu === "report" && d ? (
         <Sheet title={t.reportUserTitle} onClose={() => setMenu(null)}>
           <Text size={12} muted style={{ lineHeight: 18, marginBottom: 10 }}>{t.reportUserBody}</Text>
-          <TextInput
+          <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
             value={reason}
             onChangeText={(v) => setReason(v.slice(0, REPORT_REASON_MAX))}
             placeholder={t.reportReasonPlaceholder}

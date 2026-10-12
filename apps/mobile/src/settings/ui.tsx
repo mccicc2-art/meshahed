@@ -9,6 +9,7 @@ import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { PAGE_PAD } from "../home/Section";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== الإعداداتُ أصليّاً — العائلاتُ الأربع (Phase 11-I) ======
@@ -285,7 +286,7 @@ export function Field({
       </View>
       <View style={{ flexDirection: ltr ? "row" : undefined, alignItems: "center", gap: 4, direction: ltr ? "ltr" : undefined }}>
         {prefix ? <Text size={16} muted>{prefix}</Text> : null}
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={value}
           onChangeText={onChange}
           placeholder={placeholder}

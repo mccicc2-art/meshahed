@@ -23,6 +23,7 @@ import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
 import { MSG_REPLY_MAX } from "@/core/contracts/messages";
 import type { LastSeenPayload, MsgEvent, MsgPeerBody, MsgReplyBody } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -271,7 +272,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         conv.latest_share_id ? (
           /* يلزم الزرُّ قاعَ الحقل وهو ينمو (`items-end`) */
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 10, paddingBottom: (kb > 0 ? kb : insets.bottom) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}>
-            <TextInput
+            <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={text}
               onChangeText={(v) => setText(v.slice(0, MSG_REPLY_MAX))}
               multiline

@@ -25,6 +25,7 @@ import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload 
 import { openProfile, profileHandleOf } from "../member/open";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== شاشةُ البحث أصليّةً — Phase 11-G · G1–G3 (٢٢ سبتمبر ٢٠٢٦) ======
@@ -239,7 +240,7 @@ export function SearchScreen() {
               <Text size={12} weight="600" muted>{t.aiSearchBack}</Text>
             </Pressable>
             {/* textarea ٣ أسطر: `rounded-xl bg-surface-2 border px-4 py-3 text-base` — ١٦ بكسلاً لا أصغر */}
-            <TextInput
+            <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={descText}
               onChangeText={(v) => setDescText(v.slice(0, DESC_MAX))}
               placeholder={t.aiSearchPlaceholder}
@@ -280,7 +281,7 @@ export function SearchScreen() {
               <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
                 <Icon name="search" size={18} color={tokens.muted} />
               </View>
-              <TextInput
+              <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
                 ref={inputRef}
                 value={q}
                 onChangeText={setQ}

@@ -29,7 +29,7 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
       <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: entries.length === 0 ? 2 : 12 }}>
         <Pressable onPress={onCalendar} accessibilityRole="link" style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
           <Icon name="calendar" size={18} color={tokens.muted} />
-          <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekTitle}</Text>
+          <Text size={18} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekTitle}</Text>
           <Text size={16} muted>›</Text>
         </Pressable>
       </View>

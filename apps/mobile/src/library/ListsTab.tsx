@@ -20,6 +20,7 @@ import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import { OneTimeHint } from "./OneTimeHint";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
 import { scrollJank } from "../scrollJank";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== تبويبُ «قوائم» أصليّاً — نسخةُ `ListManager` + `listsExtra` (D-947) ======
@@ -273,7 +274,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
 
       {!railOff(offRails, "savedlists") && p.saved.length > 0 ? (
         <View>
-          <Text size={22} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
+          <Text size={18} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {p.saved.map((l) => (
               <View key={l.id} style={{ width: cardW }}>
@@ -441,7 +442,7 @@ function NewListSheet({ onClose, onCreated, onError }: { onClose: () => void; on
   return (
     <Sheet title={t.listNewGroup} onClose={onClose}>
       <View>
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={name}
           onChangeText={(v) => {
             setName(v);

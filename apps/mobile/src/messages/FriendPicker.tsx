@@ -12,6 +12,7 @@ import { Avatar } from "../community/CommunityCards";
 import { displayNameOf } from "@/core/people";
 import { MSG_NOTE_MAX } from "@/core/contracts/messages";
 import type { FriendsPayload } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== منتقي صديقٍ للإرسال — `FriendPicker` الواحد (G6 ثمّ Phase 11-M · M5) ======
@@ -96,7 +97,7 @@ export function FriendPicker({ onSend, onError }: { onSend: (recipientId: string
 export function NoteField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t, tokens } = useApp();
   return (
-    <TextInput
+    <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
       value={value}
       onChangeText={(v) => onChange(v.slice(0, MSG_NOTE_MAX))}
       placeholder={t.shareSendNotePlaceholder}

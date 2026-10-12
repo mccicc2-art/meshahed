@@ -7,6 +7,7 @@ import { radius } from "../theme";
 import { Sheet } from "./Sheet";
 import { moveTab, toggleTab, type TabPref } from "@/core/tabPrefs";
 import { railsOf, railToken, type RailTab } from "@/core/railPrefs";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== أدواتُ المكتبة — نسخةُ `LibraryToolsSheet.tsx` (الويب) ======
@@ -79,7 +80,7 @@ export function ToolsSheet({
                 <View pointerEvents="none" style={{ position: "absolute", start: 12, zIndex: 1 }}>
                   <Icon name="search" size={16} color={tokens.muted} />
                 </View>
-                <TextInput
+                <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
                   value={q}
                   onChangeText={onQ}
                   onSubmitEditing={onClose}

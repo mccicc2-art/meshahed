@@ -13,6 +13,7 @@ import { posterUrl, profileUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
 import { haptic } from "../haptics";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== ملحقاتُ صفحة العمل أصليّةً — Phase 11-D · D2 (D-956) ======
@@ -293,7 +294,7 @@ export function ListSheet({ kind, id, name, posterPath, x, onClose }: { kind: "t
         })}
         {naming ? (
           <View style={{ marginTop: 4, padding: 10, gap: 10, borderRadius: radius.lg, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
-            <TextInput
+            <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={listName}
               onChangeText={(v) => {
                 setListName(v);

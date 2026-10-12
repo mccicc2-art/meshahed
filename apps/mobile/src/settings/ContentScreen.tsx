@@ -15,6 +15,7 @@ import { DEFAULT_TITLE_MODE, TITLE_MODES, TITLE_SAMPLES, resolveMediaTitle, samp
 import { normalizeSearch } from "@/core/arabic";
 import type { ContentPrefs } from "@/core/contentPrefs";
 import type { ContentPrefsBody, RegionBody, TitleModeBody } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== المحتوى — التفضيلاتُ الأربع · أسماءُ الأعمال · بلدُ المشاهدة (Phase 11-I · I2) ======
@@ -186,7 +187,7 @@ function Picker({ options, value, onChange, search, max, ordered, single }: { op
     <View style={{ gap: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, borderRadius: radius.control, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, paddingHorizontal: 12 }}>
         <Icon name="search" size={18} color={tokens.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder={search} placeholderTextColor={tokens.muted} style={{ flex: 1, fontSize: 14, color: tokens.fg, textAlign: "left", paddingVertical: 0 }} />
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP} value={q} onChangeText={setQ} placeholder={search} placeholderTextColor={tokens.muted} style={{ flex: 1, fontSize: 14, color: tokens.fg, textAlign: "left", paddingVertical: 0 }} />
       </View>
       {!single ? (
         <View style={{ gap: 8 }}>

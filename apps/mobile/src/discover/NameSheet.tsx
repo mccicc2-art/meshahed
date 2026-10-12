@@ -5,6 +5,7 @@ import { Button } from "../ui";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
 import { FILTER_NAME_MAX, sanitizeFilterName } from "@/core/savedFilters";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * تسميةُ فلترٍ محفوظ أو قائمةٍ ذكيّة من فلتر «اكتشف» (D-993) — الورقةُ المشتركة وحقلٌ
@@ -19,7 +20,7 @@ export function NameSheet({ title, placeholder, busy, onSubmit, onClose }: { tit
   return (
     <Sheet title={title} onClose={onClose}>
       <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           autoFocus
           value={name}
           onChangeText={setName}

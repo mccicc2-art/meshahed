@@ -7,6 +7,7 @@ import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
 import { radius } from "../theme";
 import type { ListDetailPayload, ListUpdateBody } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== ورقةُ تحرير قائمتي — D-1037 (L2) ======
@@ -51,11 +52,11 @@ export function ListEditSheet({
     <Sheet title={t.listEditTitle} onClose={onClose}>
       <View style={{ gap: 6 }}>
         <Text size={12} weight="600" muted>{t.listNameLabel}</Text>
-        <TextInput value={name} onChangeText={setName} maxLength={60} placeholder={t.listNamePlaceholder} placeholderTextColor={tokens.muted} style={field} />
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP} value={name} onChangeText={setName} maxLength={60} placeholder={t.listNamePlaceholder} placeholderTextColor={tokens.muted} style={field} />
       </View>
       <View style={{ gap: 6 }}>
         <Text size={12} weight="600" muted>{t.listSubtitleLabel}</Text>
-        <TextInput value={subtitle} onChangeText={setSubtitle} maxLength={160} multiline placeholder={t.listSubtitlePlaceholder} placeholderTextColor={tokens.muted} textAlignVertical="top" style={[field, { minHeight: 66, paddingVertical: 10 }]} />
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP} value={subtitle} onChangeText={setSubtitle} maxLength={160} multiline placeholder={t.listSubtitlePlaceholder} placeholderTextColor={tokens.muted} textAlignVertical="top" style={[field, { minHeight: 66, paddingVertical: 10 }]} />
       </View>
       <View style={{ gap: 6 }}>
         <Segmented items={[{ id: "private", label: t.listPrivate }, { id: "public", label: t.listPublic }]} value={pub ? "public" : "private"} onChange={(v) => setPub(v === "public")} />

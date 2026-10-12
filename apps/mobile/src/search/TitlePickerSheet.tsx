@@ -8,6 +8,7 @@ import { Sheet } from "../library/Sheet";
 import { Divided, RowsSkeleton, TitleRow } from "./SearchRows";
 import { MIN_QUERY, useDebounced, useSearch } from "./useSearch";
 import type { SearchTitle } from "../contracts";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== منتقي عملٍ — `TitleSearchSheet` (الويب) بوضع `onPick` (Phase 11-G · G4) ======
@@ -46,7 +47,7 @@ export function TitlePicker({ onPick, placeholder }: { onPick: (t: SearchTitle) 
         <View pointerEvents="none" style={{ position: "absolute", start: 14, zIndex: 1 }}>
           <Icon name="search" size={18} color={tokens.muted} />
         </View>
-        <TextInput
+        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={q}
           onChangeText={setQ}
           placeholder={placeholder ?? t.searchPlaceholder}
