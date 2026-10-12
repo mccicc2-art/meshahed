@@ -24,6 +24,7 @@ import { timeAgo } from "@/core/when";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
 import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgPeerBody, MsgTextBody } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -162,6 +163,9 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* ——— ⋯: الملفّ · الإخفاء · الحظر ——— */
   const [menu, setMenu] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  /* 🆕 D-1382 — خلفيّةٌ واحدةٌ لكلِّ المحادثات، ومنتقيها من ⋯ */
+  const chatBg = useChatBg();
+  const [bgSheet, setBgSheet] = useState(false);
   const [busy, setBusy] = useState(false);
   const name = displayNameOf(person, t.anonymousUser);
   const profile = person && !person.hide_name ? profileHref(person) : null;
@@ -223,6 +227,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
 
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
+      {/* 🆕 D-1382 — الخلفيّةُ تحت كلِّ شيء؛ الترويسةُ والحقلُ بسطحهما فوقها، والخيطُ شفّافٌ عليها */}
+      <ChatBackdrop bg={chatBg} />
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
@@ -337,6 +343,16 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
               <Text size={15}>{t.viewProfileOf(name)}</Text>
             </Pressable>
           ) : null}
+          <Pressable
+            onPress={() => {
+              setMenu(false);
+              setBgSheet(true);
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
+          >
+            <Icon name="palette" size={18} color={tokens.accent} />
+            <Text size={15}>{t.chatBgTitle}</Text>
+          </Pressable>
           <Pressable onPress={hide} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
             <Icon name="eye-off" size={18} color={tokens.muted} />
             <Text size={15}>{t.convHide}</Text>
@@ -353,6 +369,16 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
             <Text size={15} color={tokens.error}>{t.blockOption}</Text>
           </Pressable>
         </Sheet>
+      ) : null}
+
+      {bgSheet ? (
+        <ChatBgSheet
+          onClose={() => setBgSheet(false)}
+          onPlus={() => {
+            setBgSheet(false);
+            doors.openWeb("/plus");
+          }}
+        />
       ) : null}
 
       {confirmBlock ? (

@@ -79,6 +79,8 @@ import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 import { isViewKey } from "@/core/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
 import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
+import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, type ChatBg } from "@/core/chatBg";
+import type { ChatBgChoice, ChatBgPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
 import { getTv, getMovie } from "@/lib/tmdb";
@@ -710,6 +712,8 @@ export async function updateUiState(patch: {
    * عند المستدعي**، **والبلسُ شرطُ الكتابة.**
    */
   tpl?: PrefTemplate[];
+  /** 🆕 **خلفيّةُ المحادثات** (D-1382) — تستبدل المخزَّنة؛ تُطهَّر هنا، **وخلفيّةُ العمل شرطُها البلس** */
+  chatBg?: ChatBg;
 }): Promise<{ ok: boolean; needsPlus?: true }> {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
@@ -730,6 +734,11 @@ export async function updateUiState(patch: {
     if ((patch.filters !== undefined || patch.tpl !== undefined) && !isPlus(data)) {
       return { ok: false, needsPlus: true };
     }
+    /* 🆕 D-1382 — **وخلفيّةُ العمل وحدَها محروسة**: Loopz والسوداء لكلِّ أحد */
+    const chatBg = patch.chatBg !== undefined ? sanitizeChatBg(patch.chatBg) : undefined;
+    if (chatBg && chatBgNeedsPlus(chatBg) && !isPlus(data)) {
+      return { ok: false, needsPlus: true };
+    }
 
     const current = sanitizeUiState(data?.ui_state);
     const next: UiState = {
@@ -744,6 +753,7 @@ export async function updateUiState(patch: {
       filters:
         patch.filters !== undefined ? sanitizeSavedFilters(patch.filters) : current.filters,
       tpl: patch.tpl !== undefined ? sanitizePrefTemplates(patch.tpl) : current.tpl,
+      chatBg: chatBg ?? current.chatBg,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
     return { ok: true };
@@ -4720,6 +4730,55 @@ export async function setDmPolicy(policy: DmPolicy) {
   if (error) fail(error);
   revalidatePath("/profile/settings/privacy");
   return next;
+}
+
+/**
+ * 🆕 D-1382 — **خلفيّةُ المحادثات كما يقرؤها السطحان** (الويبُ من الخيط، والتطبيقُ من `GET /api/v1/me/prefs/chat-bg`).
+ *
+ * `bg` المحفوظ و`shown` ما يُرسم فعلاً (`effectiveChatBg`) — منفصلان لأنّ من انتهى اشتراكُه يرى Loopz **ويبقى
+ * اختيارُه محفوظاً**. **والمفضّلاتُ لا تُجلب إلّا حين يُفتح المنتقي** (`withChoices`): الخيطُ يحتاج الخلفيّةَ وحدَها،
+ * وجلبُ تفاصيل ثمانية عشر عملاً من TMDB في كلِّ فتحِ محادثةٍ هدرٌ صرف.
+ *
+ * 🖼 **وصورةُ العمل خلفيّتُه العريضة (`backdrop_path`) لا ملصقُه**: الملصقُ طوليٌّ تملؤه الكتابة، والخلفيّةُ مشهدٌ
+ * بلا عنوانٍ يتمدّد على الشاشة. **والعملُ بلا خلفيّةٍ في TMDB يغيب من الشبكة** بدل مربّعٍ فارغ.
+ */
+export async function getChatBgState(withChoices = false): Promise<ChatBgPayload> {
+  const { getProfile, getProfileFavorites } = await import("@/lib/data");
+  const p = await getProfile();
+  const plus = isPlus(p);
+  const bg = sanitizeUiState(p?.ui_state).chatBg;
+  let choices: ChatBgChoice[] | null = null;
+  if (withChoices && p) {
+    const favs = (await getProfileFavorites(p.id)).slice(0, CHAT_BG_CHOICES_MAX);
+    const rows = await Promise.all(
+      favs.map(async (f): Promise<ChatBgChoice | null> => {
+        try {
+          const d = (f.media_type === "tv" ? await getTv(f.tmdb_id) : await getMovie(f.tmdb_id)) as {
+            backdrop_path?: string | null;
+            name?: string;
+            title?: string;
+          };
+          const path = d.backdrop_path ?? null;
+          if (!path) return null;
+          const ok = sanitizeChatBg({ k: "title", type: f.media_type, id: f.tmdb_id, path });
+          if (ok.k !== "title") return null;
+          return { type: f.media_type, id: f.tmdb_id, path: ok.path, title: f.title ?? d.name ?? d.title ?? "" };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    choices = rows.filter((r): r is ChatBgChoice => r !== null);
+  }
+  return { bg, shown: effectiveChatBg(bg, plus), plus, choices };
+}
+
+/** 🆕 D-1382 — **كاتبٌ واحد**: يمرّ من `updateUiState` (التطهيرُ وحارسُ البلس هناك) — الويبُ والتطبيقُ معاً */
+export async function setChatBg(raw: ChatBg): Promise<{ ok: boolean; needsPlus?: true; bg: ChatBg }> {
+  const bg = sanitizeChatBg(raw);
+  const r = await updateUiState({ chatBg: bg });
+  if (r.ok) revalidatePath("/messages");
+  return { ok: r.ok, needsPlus: r.needsPlus, bg };
 }
 
 /** ردٌّ قصير على خيط مشاركة — القاعدة تشترط بقاء المتابعة المتبادلة */

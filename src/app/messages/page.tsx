@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf, getIncomingFollowRequests } from "@/lib/data";
-import { mySignals } from "@/lib/actions";
+import { mySignals, getChatBgState } from "@/lib/actions";
 import { buildInbox } from "@/lib/messagesCore";
 import { getT } from "@/lib/locale";
 import { Inbox } from "@/components/Inbox";
@@ -138,9 +138,11 @@ async function InboxPane({
   /* 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — مع المحادثات في موجةٍ
      واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
   /* 🆕 11-M · M4 — المحادثاتُ و«ابدأ محادثة» من النواة الواحدة (`lib/messagesCore.ts`) التي يقرؤها التطبيقُ أيضاً */
-  const [{ conversations, startable, peer, canMessage }, lastSeen] = await Promise.all([
+  /* 🆕 D-1382 — الخلفيّةُ تُقرأ مع الخيط المفتوح وحدَه (قراءةُ الملفّ مخبّأةٌ في الطلب — `getProfile`) */
+  const [{ conversations, startable, peer, canMessage }, lastSeen, bgState] = await Promise.all([
     buildInbox(locale, withParam),
     withParam ? getLastSeenOf(withParam) : Promise.resolve(null),
+    withParam ? getChatBgState().catch(() => null) : Promise.resolve(null),
   ]);
 
   /* داخل خيطٍ مفتوحٍ تسقط الترويسة — «نكتفي بزر الرجوع» (D-767) */
@@ -159,6 +161,7 @@ async function InboxPane({
         lastSeen={lastSeen}
         peer={peer}
         canMessage={canMessage}
+        chatBg={bgState?.shown}
       />
     </>
   );

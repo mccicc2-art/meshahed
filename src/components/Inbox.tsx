@@ -21,10 +21,14 @@ import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { sendDirectMessage, markConversationRead, hideConversation } from "@/lib/actions";
 import { DM_MAX } from "@/core/dmPolicy";
+import { DEFAULT_CHAT_BG, type ChatBg } from "@/core/chatBg";
+import { ChatBackground } from "./ChatBackground";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+/* 🆕 D-1382 — منتقي الخلفيّة كذلك: لا يُرسم إلا من ⋯ */
+const ChatBgSheet = dynamic(() => import("./ChatBgSheet").then((m) => m.ChatBgSheet), { ssr: false });
 const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
 import type { Conversation, ConvEvent } from "@/lib/data";
 import { displayNameOf, type PersonLite } from "@/core/people";
@@ -47,6 +51,7 @@ export function Inbox({
   lastSeen = null,
   peer = null,
   canMessage = null,
+  chatBg = DEFAULT_CHAT_BG,
 }: {
   conversations: Conversation[];
   /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
@@ -61,6 +66,8 @@ export function Inbox({
   peer?: PersonLite | null;
   /** 🆕 D-1380 — حكمُ البوّاب على `openWith` (`null` = لم يُحكم) */
   canMessage?: boolean | null;
+  /** 🆕 D-1382 — خلفيّةُ الخيط كما تُرسم (`effectiveChatBg`) — واحدةٌ لكلِّ المحادثات */
+  chatBg?: ChatBg;
 }) {
   const t = getDict(locale);
   /* 🆕 11-M · M4 — الورقةُ تُفتح للشخص المطلوب إن كان ممّن يُبدأ معهم فعلاً؛ غيرُه يسقط إلى القائمة بلا ورقة */
@@ -82,7 +89,7 @@ export function Inbox({
     (fresh ? { personId: fresh.id, person: fresh, events: [], lastAt: "", unread: 0, latestShareId: "" } : null);
   if (open) {
     return (
-      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} canMessage={canMessage} />
+      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} canMessage={canMessage} chatBg={chatBg} />
     );
   }
 
@@ -252,12 +259,14 @@ function ConversationView({
   locale,
   lastSeen,
   canMessage = null,
+  chatBg,
 }: {
   conv: Conversation;
   name: string;
   locale: Locale;
   lastSeen: string | null;
   canMessage?: boolean | null;
+  chatBg: ChatBg;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -290,6 +299,8 @@ function ConversationView({
      `DetailTopBar` و`ProfileMenu` بلا عائلةٍ ثانية (D-018). */
   const [menu, setMenu] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  /* 🆕 D-1382 — منتقي الخلفيّة؛ يُحمَّل أوّلَ فتحٍ ويبقى مركَّباً بعده لتعمل حركةُ الإغلاق */
+  const [bgSheet, setBgSheet] = useState<boolean | null>(null);
 
   /* 🆕 ٦ أكتوبر ٢٠٢٦ (بلاغُ خالد: «لازم أنزل تحت لين يظهر مكان الإرسال»): المحادثةُ تُفتح على **آخرها** لا أوّلها —
      عُرفُ كلِّ محادثة، وبدونه يبقى الحقلُ المثبَّت ظاهراً والقارئُ عند أقدم ما قيل. وبعدها ينزل عند كلِّ حدثٍ جديد
@@ -328,7 +339,10 @@ function ConversationView({
   }, [conv.unread]);
 
   return (
-    <div className="flex flex-col">
+    <>
+    {/* 🆕 D-1382 — الخلفيّةُ طبقةٌ ثابتةٌ تحت الخيط، والخيطُ فوقها (`z-[1]`) */}
+    <ChatBackground bg={chatBg} />
+    <div className="relative z-[1] flex flex-col">
       {/* ترويسة: رجوع، صاحب المحادثة، إخفاء */}
       <div className="flex items-center gap-2.5 pb-3 border-b border-[color:var(--divider)]">
         <Link
@@ -425,6 +439,19 @@ function ConversationView({
             </Link>
           )}
 
+          {/* 🆕 D-1382 — الخلفيّةُ تُختار من داخل المحادثة: هناك يُفكَّر فيها، لا في الإعدادات */}
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false);
+              setBgSheet(true);
+            }}
+            className={sheetMenuItem}
+          >
+            <Icon name="palette" size={18} className="text-accent" />
+            {t.chatBgTitle}
+          </button>
+
           <button type="button" onClick={doHide} className={sheetMenuItem}>
             <Icon name="eye-off" size={18} className="text-muted" />
             {t.convHide}
@@ -505,6 +532,8 @@ function ConversationView({
         </KeyboardDock>
       )}
     </div>
+    {bgSheet !== null ? <ChatBgSheet open={bgSheet} onClose={() => setBgSheet(false)} locale={locale} /> : null}
+    </>
   );
 }
 

@@ -6,6 +6,7 @@ import type { HomePrefs } from "@/core/homePrefs";
 import type { ProfilePrefs } from "@/core/profilePrefs";
 import type { PrefTemplate } from "@/core/prefTemplates";
 import type { DmPolicy } from "../dmPolicy.ts";
+import type { ChatBg } from "../chatBg.ts";
 
 /**
  * ====== عقودُ الإعدادات — Phase 11-I (I0) ======
@@ -78,6 +79,14 @@ export type ContentPrefsBody = Partial<ContentPrefs>;
 export type PrivacyBody = { hide_name: boolean; is_private: boolean; hide_follow_lists: boolean };
 /** 🆕 D-1380 — `POST /api/v1/me/settings/messages` */
 export type DmPolicyBody = { dm_policy: DmPolicy };
+
+/* ===== 🆕 D-1382 — خلفيّةُ المحادثات (`/api/v1/me/prefs/chat-bg`) =====
+   `bg` المحفوظ · `shown` ما يُرسم (غيرُ المشترك يرى Loopz بدل العمل) · `choices` مفضّلاتٌ لها خلفيّة —
+   `null` ما لم يُطلب `?choices=1` (الخيطُ لا يحتاجها). */
+export type ChatBgChoice = { type: "tv" | "movie"; id: number; path: string; title: string };
+export type ChatBgPayload = { bg: ChatBg; shown: ChatBg; plus: boolean; choices: ChatBgChoice[] | null };
+export type ChatBgBody = { bg: ChatBg };
+export type ChatBgResult = { ok: boolean; needsPlus?: true; bg: ChatBg };
 export type LibraryGrantBody = { user_id: string; grant: boolean };
 export type UnblockBody = { user_id: string };
 export type HintsResetBody = { reset: true };

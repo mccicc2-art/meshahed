@@ -8,7 +8,8 @@ import { radius, themePref } from "../theme";
 import { haptic } from "../haptics";
 import { webLocale } from "../i18n";
 import type { ToastHostRef } from "../HoldHost";
-import { SettingsScreen, Group, ExpandRow, OptionRow, OptionList, RowsSkeleton } from "./ui";
+import { SettingsScreen, Group, ExpandRow, OptionRow, OptionList, RowsSkeleton, Row } from "./ui";
+import { ChatBgSheet, useChatBg } from "../messages/chatBg";
 import { useSettings, saveSetting, invalidateMe, useOpenWeb, patchSettings } from "./api";
 import { fontPrefs } from "../fontScale";
 import { THEMES, themeName } from "@/core/themes";
@@ -38,6 +39,9 @@ export function AppearanceScreen() {
   const openWeb = useOpenWeb();
   const [open, setOpen] = useState<"lang" | "theme" | "ui" | "content" | null>(null);
   const [busy, setBusy] = useState(false);
+  /* 🆕 D-1382 — خلفيّةُ المحادثات: بابُها الثاني هنا (الأوّلُ ⋯ داخل المحادثة) — المنتقي نفسُه */
+  const chatBg = useChatBg();
+  const [bgSheet, setBgSheet] = useState(false);
   const fail = () => toast.current?.say(t.errSaveShort);
   const toggle = (k: typeof open) => setOpen((v) => (v === k ? null : k));
 
@@ -151,6 +155,13 @@ export function AppearanceScreen() {
             </View>
           </ExpandRow>
 
+          <Row
+            icon="mail"
+            title={t.chatBgTitle}
+            value={chatBg.k === "loopz" ? t.chatBgLoopz : chatBg.k === "plain" ? t.chatBgPlain : t.chatBgFavs}
+            onPress={() => setBgSheet(true)}
+          />
+
           <ExpandRow icon="sliders" title={t.fontUiLabel} value={fontLabel[s.appearance.font_ui]} open={open === "ui"} onToggle={() => toggle("ui")}>
             <OptionList>
               {FONT_SIZES.map((f) => (
@@ -167,6 +178,15 @@ export function AppearanceScreen() {
           </ExpandRow>
         </Group>
       )}
+      {bgSheet ? (
+        <ChatBgSheet
+          onClose={() => setBgSheet(false)}
+          onPlus={() => {
+            setBgSheet(false);
+            openWeb("/plus");
+          }}
+        />
+      ) : null}
     </SettingsScreen>
   );
 }
