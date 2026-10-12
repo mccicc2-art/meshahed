@@ -1,9 +1,9 @@
-[deploy] D-1373 — U2: الدخولُ أوّلاً على الويب
+[deploy] D-1374 — U2 تكملة: المعاينات تمرّ، بطاقةٌ لكل عمل بالبوستر، ولا شريطَ للزائر
 
-- proxy: الزائرُ بلا كوكي جلسة يُحوَّل إلى /login?next=<ما طلبه> من كلِّ صفحة
-- مفتوح: / · features · privacy · terms · account/delete · login · auth · api · app · الملفّات وصورُ المعاينة · /join و/p (17 أ)
-- برامجُ معاينة الروابط تمرّ (16 أ)؛ Googlebot ليس منها
-- صفحةُ الدخول تقرأ next وتعيد إليه بعد الدخول؛ safeNext في وحدةٍ واحدة مع اختبار
+- proxy: يُحوَّل الطلبُ الذي يحمل Sec-Fetch-Mode (متصفّح) أو محرّكُ بحث؛ ما سواه يمرّ — معاينةُ واتساب الحقيقيّة لم تحمل اسماً معروفاً (21 أ)
+- صفحتا المسلسل والفيلم: generateMetadata — الاسمُ والسنةُ وسطرٌ عنه، والبوستر من /i/w500 (20 أ)؛ src/lib/titleMeta.ts مع اختبارات
+- BottomNav: لا شريطَ لمن لا حساب له (18 أ — نقضُ D-627/D-628)
+- زرُّ «دخول» في ترويسة الزائر يغيب على /login (19 أ)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
