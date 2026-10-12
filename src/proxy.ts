@@ -270,10 +270,22 @@ function guestOpen(pathname: string): boolean {
   );
 }
 
+/**
+ * 🆕 D-1374 — **برامجُ المعاينة تُعرف بغياب علامة المتصفّح، لا باسمها** (قرارُ أحمد «21 أ»). تجربتُه (١٢ أكتوبر): رابطُ
+ * `/privacy` ظهرت معاينتُه، و`/search` و`/show/4607` لا — طلبُ واتساب الحقيقيُّ لم يحمل أيَّ اسمٍ في `PREVIEW_UA`
+ * فحُوِّل، وواتساب لا يتبع التحويل. **المتصفّحاتُ الحديثةُ ترسل `Sec-Fetch-Mode` مع كلِّ طلب** (تنقّلٌ، أو جلبُ Next لصفحةٍ
+ * داخل الموقع)، وبرامجُ المعاينة لا ترسلها — فيُحوَّل الطلبُ الذي يحملها، ويمرّ ما لا يحملها. **إلّا محرّكاتُ البحث**
+ * (`SEARCH_UA`) فتُحوَّل كما قُبل في الخطّة. ⚠️ الثمنُ يُقال: متصفّحٌ قديمٌ جدّاً بلا هذه العلامة (Safari قبل 16.4) يرى
+ * الصفحاتِ بلا حساب — ثغرةٌ صغيرةٌ قُبلت مقابل معاينةٍ تعمل. و`BLOCKED_UA` (كاشطاتُ الذكاء الاصطناعيّ) يسبق هذا كلَّه.
+ */
+const SEARCH_UA =
+  /Googlebot|Google-InspectionTool|AdsBot-Google|Mediapartners-Google|Storebot-Google|bingbot|BingPreview|DuckDuckBot|YandexBot|Baiduspider|Applebot|Slurp|Sogou|SeznamBot|Exabot|Qwantify|Yeti/i;
+
 function guestGate(request: NextRequest): NextResponse | null {
   const { pathname, search } = request.nextUrl;
   if (guestOpen(pathname)) return null;
-  if (PREVIEW_UA.test(request.headers.get("user-agent") ?? "")) return null;
+  const ua = request.headers.get("user-agent") ?? "";
+  if (!SEARCH_UA.test(ua) && (PREVIEW_UA.test(ua) || !request.headers.get("sec-fetch-mode"))) return null;
   if (sessionCookieParts(request.cookies.getAll()).length > 0) return null;
   const to = new URL("/login", request.url);
   to.searchParams.set("next", pathname + search);

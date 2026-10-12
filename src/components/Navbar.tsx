@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { GuestSignInLink } from "./GuestSignInLink";
 import Link from "next/link";
 import {
   getUser,
@@ -60,13 +61,8 @@ export async function Navbar() {
           </Link>
           <span className="flex items-center gap-2.5">
             <LangMenu locale={locale} />
-            <Link
-              href="/login"
-              prefetch={false}
-              className={buttonClass({ size: "sm" })}
-            >
-              {t.login}
-            </Link>
+            {/* 🆕 D-1374 — يغيب على `/login` نفسِها («19 أ») */}
+            <GuestSignInLink label={t.login} />
           </span>
         </div>
       </header>

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { titleMetadata } from "@/lib/titleMeta";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -45,6 +47,29 @@ import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
+
+/** 🆕 D-1374 — بطاقةُ معاينة الفيلم (`titleMetadata`): الاسمُ والسنةُ وسطرٌ عنه والبوستر. نداءُ TMDB نفسُه المخزَّن الذي ترسم به الصفحة */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const movieId = Number((await params).id);
+  if (!Number.isFinite(movieId)) return {};
+  try {
+    const [{ locale }, mv] = await Promise.all([getT(), getMovie(movieId)]);
+    return titleMetadata({
+      kind: "movie",
+      name: mv.title,
+      date: mv.release_date,
+      genres: (mv.genres ?? []).map((g) => g.name),
+      extent: mv.runtime ?? null,
+      overview: mv.overview ?? "",
+      posterPath: mv.poster_path,
+      path: `/movie/${movieId}`,
+      locale: locale === "ar" ? "ar" : "en",
+    });
+  } catch {
+    /* TMDB تعثّر: بطاقةُ Loopz العامّة كما كانت — الصفحةُ لا تسقط لأجل معاينة */
+    return {};
+  }
+}
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   /* 🆕 **صفحةُ العمل مفتوحةٌ للزائر** (D-627): البوّابةُ سقطت —

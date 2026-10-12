@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { titleMetadata } from "@/lib/titleMeta";
 import Link from "next/link";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { Fragment, Suspense } from "react";
@@ -48,6 +50,29 @@ import { ShowStatsSync } from "@/components/ShowStatsSync";
 import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering } from "@/core/progress";
 import { episodeKey } from "@/core/keys";
 import { buttonClass } from "@/components/ui/Button";
+
+/** 🆕 D-1374 — بطاقةُ معاينة المسلسل (`titleMetadata`): الاسمُ والسنةُ وسطرٌ عنه والبوستر. نداءُ TMDB نفسُه المخزَّن الذي ترسم به الصفحة */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const tvId = Number((await params).id);
+  if (!Number.isFinite(tvId)) return {};
+  try {
+    const [{ locale }, tv] = await Promise.all([getT(), getTv(tvId)]);
+    return titleMetadata({
+      kind: "tv",
+      name: tv.name,
+      date: tv.first_air_date,
+      genres: (tv.genres ?? []).map((g) => g.name),
+      extent: tv.number_of_seasons ?? null,
+      overview: tv.overview ?? "",
+      posterPath: tv.poster_path,
+      path: `/show/${tvId}`,
+      locale: locale === "ar" ? "ar" : "en",
+    });
+  } catch {
+    /* TMDB تعثّر: بطاقةُ Loopz العامّة كما كانت — الصفحةُ لا تسقط لأجل معاينة */
+    return {};
+  }
+}
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   /* 🆕 **صفحةُ العمل مفتوحةٌ للزائر** (D-627): البوّابةُ سقطت —
