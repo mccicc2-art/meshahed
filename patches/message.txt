@@ -1,6 +1,9 @@
-[deploy] D-1372 — V-D للجميع: المفتاح vd مشغَّل (VD_ALL)
+[deploy] D-1373 — U2: الدخولُ أوّلاً على الويب
 
-بعد حكم جوال خالد على البنود الثمانية (أحمد: «نفذ تشغيل V-D للجميع»). الإطفاء: false ثمّ رقعة ويب.
+- proxy: الزائرُ بلا كوكي جلسة يُحوَّل إلى /login?next=<ما طلبه> من كلِّ صفحة
+- مفتوح: / · features · privacy · terms · account/delete · login · auth · api · app · الملفّات وصورُ المعاينة · /join و/p (17 أ)
+- برامجُ معاينة الروابط تمرّ (16 أ)؛ Googlebot ليس منها
+- صفحةُ الدخول تقرأ next وتعيد إليه بعد الدخول؛ safeNext في وحدةٍ واحدة مع اختبار
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
