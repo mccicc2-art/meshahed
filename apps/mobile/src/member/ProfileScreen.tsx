@@ -647,7 +647,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
                 <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {/* D-1134 — فوق الغلاف أبيضُ بظلٍّ كتحيّة الرئيسيّة (`HomeGreeting.onArt`) — يصحّ في «النهاري» أيضاً */}
-                  <Text size={20} weight="700" color={onArt ? "#fff" : tokens.fg} numberOfLines={1} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? ART_SHADOW : null]}>{name}</Text>
+                  {/* 🆕 D-1381 — **الاسمُ الطويلُ يصغر ليظهر كاملاً** (أحمد ١٢ أكتوبر، «ج» من ثلاث صورٍ على ملفّ «Abdulrhman Aldossari»):
+                      كان يُقصّ «Abdulrhman Ald…» قبل الشارة. يصغر حتى ٠٫٦٥ من ٢٠ (≈١٣) في سطرٍ واحدٍ مع الشارة، والاسمُ القصيرُ باقٍ ٢٠؛
+                      وما زاد بعد ذلك يُقصّ في آخره */}
+                  <Text size={20} weight="700" color={onArt ? "#fff" : tokens.fg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? ART_SHADOW : null]}>{name}</Text>
                   {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
                 </View>
                 <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
