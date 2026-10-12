@@ -166,6 +166,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* 🆕 D-1382 — خلفيّةٌ واحدةٌ لكلِّ المحادثات، ومنتقيها من ⋯ */
   const chatBg = useChatBg();
   const [bgSheet, setBgSheet] = useState(false);
+  /* 🆕 D-1385 — ارتفاعُ الترويسة: الملصقُ يبدأ تحتها مباشرةً (لا فراغ فوق ولا جزءَ مخفيٌّ خلفها) */
+  const [headH, setHeadH] = useState(0);
   const [busy, setBusy] = useState(false);
   const name = displayNameOf(person, t.anonymousUser);
   const profile = person && !person.hide_name ? profileHref(person) : null;
@@ -228,8 +230,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
       {/* 🆕 D-1382 — الخلفيّةُ تحت كلِّ شيء؛ الترويسةُ والحقلُ بسطحهما فوقها، والخيطُ شفّافٌ عليها */}
-      <ChatBackdrop bg={chatBg} />
-      <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
+      <ChatBackdrop bg={chatBg} top={headH} />
+      <View onLayout={(e) => setHeadH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>

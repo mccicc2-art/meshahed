@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { I18nManager, Image as RNImage, Pressable, StyleSheet, View } from "react-native";
+import { I18nManager, Image as RNImage, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
@@ -13,8 +13,11 @@ import { posterUrl } from "@/core/media";
 import { themeById, themeScheme } from "@/core/themes";
 import {
   CHAT_BG_DOODLE_OPACITY,
-  CHAT_BG_TITLE_BLUR,
+  CHAT_BG_TAIL_BLUR,
+  CHAT_BG_TAIL_SIZE,
+  CHAT_BG_TAIL_SLICE,
   CHAT_BG_TITLE_SIZE,
+  POSTER_RATIO,
   CHAT_BG_TITLE_VEIL,
   DEFAULT_CHAT_BG,
   sameChatBg,
@@ -28,7 +31,7 @@ import type { ChatBgBody, ChatBgChoice, ChatBgPayload, ChatBgPostersPayload, Cha
  * • `useChatBg` — ما يُرسم تحت الخيط (`shown`)؛ قراءةٌ خفيفةٌ بلا مفضّلات، تُخبَّأ طويلاً لأنّ لا كاتبَ لها
  *   إلّا صاحبُها من هذه الورقة نفسِها (أو من الويب — فتُعاد عند العودة إلى التطبيق).
  * • `ChatBackdrop` — الطبقةُ نفسُها: الرسومُ مكرَّرةً (صورتان: بيضاءُ للداكن وسوداءُ للنهاريّ — بلا `tintColor` على
- *   صورةٍ مكرّرة، فسلوكُه على أندرويد غيرُ مضمون)، أو **ملصقُ العمل** خفيفَ التضبيب تحت غشاءٍ بلون خلفيّة الثيم (D-1384).
+ *   صورةٍ مكرّرة، فسلوكُه على أندرويد غيرُ مضمون)، أو **ملصقُ العمل** كاملاً حادّاً تحت غشاءٍ بلون خلفيّة الثيم (D-1385).
  * • `ChatBgSheet` — المنتقي: Loopz · بلا رسوم · «من مفضّلاتك» بشارة Loopz+. 🆕 D-1384 — **خطوتان**: لمسُ عملٍ يفتح
  *   ملصقاتِه (ملصقُك · بلا كتابة · مع العنوان) ولمسُ ملصقٍ يطبّقه — فما يُختار هو ما يُرى بالضبط. يُطبَّق لحظةَ اللمس ولا
  *   تُغلق الورقة؛ وغيرُ المشترك يرى أعمالَه باهتةً بقفلٍ وزرّاً إلى البلس. **والحارسُ في الخادم.**
@@ -48,8 +51,15 @@ export function useChatBg(): ChatBg {
   return q.data?.shown ?? DEFAULT_CHAT_BG;
 }
 
-export function ChatBackdrop({ bg }: { bg: ChatBg }) {
+/**
+ * 🆕 D-1385 — `top`: أعلى منطقة المحادثة (تحت الترويسة) — **الملصقُ يلتصق به** فلا فراغَ فوق («ما ابغى فيه فراغ فوق»).
+ * الملصقُ بعرض الشاشة ونسبته ٢:٣ بلا تكبيرٍ ولا قصٍّ ولا تضبيب، **وما تحته تكملةٌ**: الصورةُ نفسُها مضبّبةً وممدودةً عموديّاً
+ * بحيث لا يظهر منها إلّا آخرُ ١٠٪ — فلونُ الحافّة يمتدّ إلى القاع بدل شريطٍ فارغ (الخيارُ «ب» من صور أحمد).
+ */
+export function ChatBackdrop({ bg, top = 0 }: { bg: ChatBg; top?: number }) {
   const { tokens, themeId } = useApp();
+  const { width } = useWindowDimensions();
+  const [tailH, setTailH] = useState(0);
   if (bg.k === "plain") return null;
   if (bg.k === "loopz") {
     const light = themeScheme(themeById(themeId)) === "light";
@@ -59,9 +69,23 @@ export function ChatBackdrop({ bg }: { bg: ChatBg }) {
       </View>
     );
   }
+  const posterH = Math.round(width * POSTER_RATIO);
+  const stretchedH = tailH > 0 ? tailH / CHAT_BG_TAIL_SLICE : 0;
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
-      <Image source={{ uri: posterUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined }} blurRadius={CHAT_BG_TITLE_BLUR} contentFit="cover" style={StyleSheet.absoluteFill} />
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { top, overflow: "hidden" }]}>
+      {/* التكملة: من حافّة الملصق السفلى إلى القاع — الطبقةُ الممدودةُ مقيسةٌ بارتفاع منطقتها */}
+      <View onLayout={(e) => setTailH(Math.round(e.nativeEvent.layout.height))} style={{ position: "absolute", top: posterH - 1, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
+        {stretchedH > 0 ? (
+          <Image
+            source={{ uri: posterUrl(bg.path, CHAT_BG_TAIL_SIZE) ?? undefined }}
+            blurRadius={CHAT_BG_TAIL_BLUR}
+            contentFit="fill"
+            style={{ position: "absolute", left: 0, right: 0, height: stretchedH, top: tailH - stretchedH }}
+          />
+        ) : null}
+      </View>
+      {/* الملصقُ كاملاً وحادّاً بحجمه الأصليّ */}
+      <Image source={{ uri: posterUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined }} contentFit="fill" cachePolicy="memory-disk" style={{ position: "absolute", top: 0, left: 0, width, height: posterH }} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.bg, opacity: CHAT_BG_TITLE_VEIL }]} />
     </View>
   );
@@ -69,6 +93,7 @@ export function ChatBackdrop({ bg }: { bg: ChatBg }) {
 
 export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: () => void }) {
   const { t, tokens, themeId, me } = useApp();
+  const { height: winH } = useWindowDimensions();
   const q = useQuery({
     queryKey: CHOICES_KEY,
     queryFn: async () => (await api<ChatBgPayload>("/api/v1/me/prefs/chat-bg?choices=1")).data,
@@ -127,16 +152,23 @@ export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: 
     );
   };
 
+  /* 🆕 D-1385 — الورقةُ السفليّة لا تمرِّر بنفسها (`Sheet`): المحتوى في منطقة تمريرٍ بسقفٍ من ارتفاع الشاشة — وصفةُ
+     `FilterSheet` و`SmartListSheet` — فلا يُقصّ آخرُ صفٍّ من المفضّلات أو الملصقات (تسجيلُ أحمد: «ما ينزل تحت») */
+  const scrollMax = Math.round(winH * 0.68);
+
   if (title) {
     return (
       <Sheet title={t.chatBgTitle} onClose={onClose}>
-        <PosterStep title={title} bg={bg} onBack={() => setTitle(null)} onPick={pick} />
+        <ScrollView style={{ maxHeight: scrollMax }} showsVerticalScrollIndicator={false}>
+          <PosterStep title={title} bg={bg} onBack={() => setTitle(null)} onPick={pick} />
+        </ScrollView>
       </Sheet>
     );
   }
 
   return (
     <Sheet title={t.chatBgTitle} onClose={onClose}>
+      <ScrollView style={{ maxHeight: scrollMax }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 20 }}>
       <View style={{ gap: 10 }} accessibilityRole="radiogroup">
         <Text size={12} muted>{t.chatBgSub}</Text>
         {row(
@@ -196,6 +228,7 @@ export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: 
         {!plus && q.data ? <Button label={t.chatBgUnlock} onPress={onPlus} /> : null}
       </View>
       <View style={{ height: 8 }} />
+      </ScrollView>
     </Sheet>
   );
 }

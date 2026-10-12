@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
 import { Button } from "./ui/Button";
+import { sheetScroll } from "./ui/controls";
 import { getDict, type Locale } from "@/core/i18n";
 import { posterUrl } from "@/core/media";
 import { CHAT_BG_DOODLE_OPACITY, sameChatBg, type ChatBg } from "@/core/chatBg";
@@ -119,7 +120,7 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
         <p className="text-12 text-muted">{t.chatBgSub}</p>
       </SheetHeader>
       {title ? (
-        <div className="px-5 pb-5 space-y-4">
+        <div className={`${sheetScroll} px-5 pb-5 space-y-4`}>
           <button
             type="button"
             onClick={() => setTitle(null)}
@@ -171,7 +172,7 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
           )}
         </div>
       ) : (
-      <div className="px-5 pb-5 space-y-2.5" role="radiogroup" aria-labelledby="chat-bg-title">
+      <div className={`${sheetScroll} px-5 pb-5 space-y-2.5`} role="radiogroup" aria-labelledby="chat-bg-title">
         {row(
           { k: "loopz" },
           t.chatBgLoopz,
