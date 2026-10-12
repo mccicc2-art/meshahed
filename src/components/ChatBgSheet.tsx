@@ -29,6 +29,9 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
   const [bg, setBg] = useState<ChatBg | null>(null);
   const [plus, setPlus] = useState(false);
   const [choices, setChoices] = useState<ChatBgChoice[] | null>(null);
+  /* 🆕 D-1383 — فشلُ الجلب حالةٌ تُقال («أعد المحاولة») لا «لا مفضّلات» ولا قفلٌ على مشترك */
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [, start] = useTransition();
 
   useEffect(() => {
@@ -41,11 +44,11 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
         setPlus(s.plus);
         setChoices(s.choices ?? []);
       })
-      .catch(() => live && setChoices([]));
+      .catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
-  }, [open]);
+  }, [open, attempt]);
 
   function pick(next: ChatBg) {
     if (bg && sameChatBg(bg, next)) return;
@@ -125,7 +128,17 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
           <span className="rounded-full border border-accent px-2 text-[10px] font-bold leading-5 text-accent">{t.plusName}</span>
         </div>
 
-        {choices === null ? (
+        {failed && choices === null ? (
+          <div className="flex items-center gap-3">
+            <p className="text-12 text-muted">{t.apiInternal}</p>
+            <Button variant="ghost" size="sm" onClick={() => {
+                setFailed(false);
+                setAttempt((n) => n + 1);
+              }}>
+              {t.errorRetry}
+            </Button>
+          </div>
+        ) : choices === null ? (
           <div className="grid grid-cols-3 gap-2.5">
             {[0, 1, 2].map((i) => (
               <span key={i} className="aspect-[16/10] rounded-xl bg-surface-2 animate-pulse" />
@@ -175,7 +188,7 @@ export function ChatBgSheet({ open, onClose, locale }: { open: boolean; onClose:
           </div>
         )}
 
-        {plus ? (
+        {choices === null ? null : plus ? (
           choices && choices.length > 0 ? <p className="pt-1 text-12 text-muted">{t.chatBgFavsHint}</p> : null
         ) : (
           <Button variant="primary" size="lg" full className="mt-2" onClick={() => router.push("/plus")}>

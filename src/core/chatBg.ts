@@ -64,8 +64,13 @@ export function sameChatBg(a: ChatBg, b: ChatBg): boolean {
  *   فيبقى نصُّ الوقت والفواصل (بلون النصّ الخافت) مقروءاً فوقها في الثيمين.
  */
 export const CHAT_BG_DOODLE_OPACITY = 0.07;
-export const CHAT_BG_TITLE_VEIL = 0.72;
-export const CHAT_BG_TITLE_BLUR = 24;
+/* 🆕 D-1383 (تسجيلُ أحمد ١٢ أكتوبر: «فيها مشاكل» — الخلفيّةُ لطخةٌ بنّيّة لا يُعرف عملُها): الصورةُ العرضيّة تُكبَّر لتغطّي
+   شاشةً طوليّة، **والتضبيبُ يقع على الصورة قبل تكبيرها فيتضخّم معها** — ٢٤ على `w780` صارت ~١١٥px على الشاشة، وفوقها
+   غشاءٌ ٧٢٪. الآن `w1280` (تكبيرٌ ~٢٫٥× بدل ~٤٫٨×) وتضبيبٌ ٦ وغشاءٌ ٥٥٪: الوجوهُ تُعرف والفقاعاتُ المعتمة تحفظ القراءة. */
+export const CHAT_BG_TITLE_VEIL = 0.55;
+export const CHAT_BG_TITLE_BLUR = 6;
+/** مقاسُ صورة العمل خلف المحادثة — أكبرُ ما يلزم كي لا يتضخّم التضبيبُ مع التكبير */
+export const CHAT_BG_TITLE_SIZE = "w1280" as const;
 
 /** أقصى عددٍ من المفضّلات يُعرض في المنتقي — ورقةٌ لا مكتبة */
 export const CHAT_BG_CHOICES_MAX = 18;

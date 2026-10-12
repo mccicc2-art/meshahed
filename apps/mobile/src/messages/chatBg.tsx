@@ -14,6 +14,7 @@ import { themeById, themeScheme } from "@/core/themes";
 import {
   CHAT_BG_DOODLE_OPACITY,
   CHAT_BG_TITLE_BLUR,
+  CHAT_BG_TITLE_SIZE,
   CHAT_BG_TITLE_VEIL,
   DEFAULT_CHAT_BG,
   sameChatBg,
@@ -59,21 +60,22 @@ export function ChatBackdrop({ bg }: { bg: ChatBg }) {
   }
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
-      <Image source={{ uri: backdropUrl(bg.path, "w780") ?? undefined }} blurRadius={CHAT_BG_TITLE_BLUR} contentFit="cover" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.15 }] }]} />
+      <Image source={{ uri: backdropUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined }} blurRadius={CHAT_BG_TITLE_BLUR} contentFit="cover" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.04 }] }]} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.bg, opacity: CHAT_BG_TITLE_VEIL }]} />
     </View>
   );
 }
 
 export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: () => void }) {
-  const { t, tokens, themeId } = useApp();
+  const { t, tokens, themeId, me } = useApp();
   const q = useQuery({
     queryKey: CHOICES_KEY,
     queryFn: async () => (await api<ChatBgPayload>("/api/v1/me/prefs/chat-bg?choices=1")).data,
   });
   const [local, setLocal] = useState<ChatBg | null>(null);
   const bg = local ?? q.data?.bg ?? null;
-  const plus = q.data?.plus ?? false;
+  /* 🆕 D-1383 (تسجيلُ أحمد: مشتركٌ رأى القفلَ وزرَّ الاشتراك حين فشل الطلب) — الحكمُ من الردّ، وإلّا من الحساب المحمَّل */
+  const plus = q.data?.plus ?? me?.plus ?? false;
   const choices = q.data?.choices ?? null;
   const light = themeScheme(themeById(themeId)) === "light";
 
@@ -145,7 +147,12 @@ export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: 
           </View>
         </View>
 
-        {choices === null ? (
+        {q.isError && !q.data ? (
+          <View style={{ gap: 8, alignItems: "flex-start" }}>
+            <Text size={12} muted>{t.apiInternal}</Text>
+            <Button label={t.errorRetry} size="sm" variant="ghost" onPress={() => void q.refetch()} />
+          </View>
+        ) : choices === null ? (
           <View style={{ flexDirection: "row", gap: 10 }}>
             {[0, 1, 2].map((i) => (
               <View key={i} style={{ flex: 1, aspectRatio: 16 / 10, borderRadius: radius.md, backgroundColor: tokens.surface2 }} />
@@ -184,9 +191,9 @@ export function ChatBgSheet({ onClose, onPlus }: { onClose: () => void; onPlus: 
 
         {plus ? (
           choices && choices.length > 0 ? <Text size={12} muted>{t.chatBgFavsHint}</Text> : null
-        ) : (
+        ) : q.data ? (
           <Button label={t.chatBgUnlock} onPress={onPlus} />
-        )}
+        ) : null}
       </View>
       <View style={{ height: 8 }} />
     </Sheet>

@@ -1,5 +1,5 @@
 import { backdropUrl } from "@/core/media";
-import { CHAT_BG_DOODLE_OPACITY, CHAT_BG_TITLE_BLUR, CHAT_BG_TITLE_VEIL, type ChatBg } from "@/core/chatBg";
+import { CHAT_BG_DOODLE_OPACITY, CHAT_BG_TITLE_BLUR, CHAT_BG_TITLE_SIZE, CHAT_BG_TITLE_VEIL, type ChatBg } from "@/core/chatBg";
 
 /**
  * 🆕 D-1382 — خلفيّةُ الخيط المفتوح (الويب).
@@ -33,10 +33,10 @@ export function ChatBackground({ bg }: { bg: ChatBg }) {
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- صورةٌ مضبّبةٌ خلف المحادثة: لا تحسينَ يُرى ولا مقاسَ يُختار */}
           <img
-            src={backdropUrl(bg.path, "w780") ?? undefined}
+            src={backdropUrl(bg.path, CHAT_BG_TITLE_SIZE) ?? undefined}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ filter: `blur(${CHAT_BG_TITLE_BLUR}px)`, transform: "scale(1.15)" }}
+            style={{ filter: `blur(${CHAT_BG_TITLE_BLUR}px)`, transform: "scale(1.04)" }}
           />
           <div className="absolute inset-0" style={{ backgroundColor: "var(--background)", opacity: CHAT_BG_TITLE_VEIL }} />
         </>
