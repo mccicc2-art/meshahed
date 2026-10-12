@@ -26,7 +26,9 @@ import type { PeriodStats } from "@/lib/periodStats";
  */
 
 /** ألوانُ شريط الذوق — **فئاتٌ لا تدرّج**، وأربعةٌ كما في الصورة */
-const TASTE_COLORS = ["#7C4DFF", "#3DBE6B", "#E5484D", "#6B6B6B"];
+/* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` — درجتان غيرُ `--success`/`--error`، وعلى «النهاري»
+   تباينُ الأخضر ٢٫١٩. المتغيّران يعرفان درجتَهما في كلِّ ثيم (توأمُ `ReportScreen` في التطبيق). */
+const TASTE_COLORS = ["#7C4DFF", "var(--success)", "var(--error)", "#6B6B6B"];
 
 export function ReportView({
   stats,
@@ -110,7 +112,7 @@ export function ReportView({
                 <span
                   className="flex items-center gap-1 tracking-normal font-bold tabular-nums"
                   dir="ltr"
-                  style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
+                  style={{ color: stats.deltaPct >= 0 ? "var(--success)" : "var(--error)" }}
                 >
                   <Icon name={stats.deltaPct >= 0 ? "trending" : "pause"} size={14} />
                   {stats.deltaPct >= 0 ? "+" : ""}

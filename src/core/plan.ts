@@ -109,7 +109,8 @@ export function isFounder(p: PlanBearer | null | undefined): boolean {
  * مشترياً محتملاً بل قارئٌ محبوس (D-633، بموافقته). وما عداها ألوانٌ خالصة —
  * وهي البلس بحقّ.
  */
-export const FREE_THEMES: readonly string[] = ["loopz", "amber", "daylight"] as const;
+/* 🆕 D-1387 — «الفحمي» مجّانيٌّ كأخيه الرسميّ (قرارُه «٢ مجاني»): الفرقُ بينهما أرضٌ وأسطح، لا زينةٌ تُشترى */
+export const FREE_THEMES: readonly string[] = ["loopz", "charcoal", "amber", "daylight"] as const;
 
 export function themeNeedsPlus(themeId: string): boolean {
   return !FREE_THEMES.includes(themeId);

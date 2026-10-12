@@ -13,6 +13,7 @@ import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
+import type { Tokens } from "../theme";
 import { H2, PlusLock, PlusPill, SvgGuard, myReportKey } from "./ReportScreen";
 import { hm, primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
@@ -37,8 +38,6 @@ import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contract
 const PAGE_PAD = 16;
 const HEADER_H = 56;
 const CHART_H = 132;
-const UP = "#3DBE6B";
-const DOWN = "#E5484D";
 const PREV = "#7A7A7A";
 const PERIODS: ReportPeriod[] = ["week", "month", "year", "all"];
 type Tab = "overview" | "content" | "taste" | "habits";
@@ -212,7 +211,7 @@ function OverviewTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "m
 
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginTop: 30, marginBottom: 12 }}>
         <Text size={20} weight="700" style={{ flexShrink: 1 }}>{en ? "Watch-time trend" : "اتجاه وقت المشاهدة"}</Text>
-        {s.deltaPct !== null ? <Text size={14} weight="700" color={s.deltaPct >= 0 ? UP : DOWN} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${s.deltaPct >= 0 ? "+" : ""}${n(s.deltaPct)}%`}</Text> : null}
+        {s.deltaPct !== null ? <Text size={14} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.error} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${s.deltaPct >= 0 ? "+" : ""}${n(s.deltaPct)}%`}</Text> : null}
       </View>
       <TrendChart s={s} />
 
@@ -222,7 +221,7 @@ function OverviewTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "m
           <View key={m.key} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Icon name={mixIcon(m.key)} size={18} color={tokens.muted} />
             <Text size={14} style={{ width: "22%", maxWidth: 96 }}>{mixLabel(m.key, en)}</Text>
-            <Track pct={m.pct} color={mixColor(m.key, tokens.accent)} />
+            <Track pct={m.pct} color={mixColor(m.key, tokens)} />
             <Text size={14} style={{ width: 64, textAlign: "right", fontVariant: ["tabular-nums"] }}>{hm(m.minutes, locale)}</Text>
             <Text size={14} weight="700" color={tokens.accent} style={{ width: 40, textAlign: "right", fontVariant: ["tabular-nums"] }}>{`${n(m.pct)}%`}</Text>
           </View>
@@ -266,7 +265,7 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
         <View style={{ flex: 1, gap: 10, minWidth: 0 }}>
           {s.mix.map((m) => (
             <View key={m.key} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: mixColor(m.key, tokens.accent) }} />
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: mixColor(m.key, tokens) }} />
               <Text size={14} numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>{mixLabel(m.key, en)}</Text>
               <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{`${n(m.pct)}%`}</Text>
               <Text size={14} muted style={{ fontVariant: ["tabular-nums"] }}>{`· ${hm(m.minutes, locale)}`}</Text>
@@ -474,8 +473,10 @@ function rhythmLabel(r: ReportStats["habits"]["rhythm"], en: boolean): string {
 type Mix = "shows" | "movies" | "anime";
 const mixIcon = (k: Mix): IconName => (k === "movies" ? "film" : k === "anime" ? "sparkles" : "tv");
 const mixLabel = (k: Mix, en: boolean) => (k === "movies" ? (en ? "Movies" : "أفلام") : k === "anime" ? (en ? "Anime" : "أنمي") : en ? "Shows" : "مسلسلات");
-/* ألوانُ الصفحة: التمييزُ للمسلسلات، وأبيضُ ورماديٌّ ثابتان للأفلام والأنمي */
-const mixColor = (k: Mix, accent: string) => (k === "shows" ? accent : k === "movies" ? "#EDEDED" : "#8A8A8A");
+/* ألوانُ الصفحة: التمييزُ للمسلسلات، والنصُّ ثمّ الخافتُ للأفلام والأنمي.
+   🆕 D-1390 — كانا رقمين ثابتين (`#EDEDED` · `#8A8A8A`): الأبيضُ على «النهاري» تباينُه ١٫٠٧ — شريحةُ الأفلام لا تُرى أصلاً.
+   الرمزان ينقلبان مع الثيم فيبقى الترتيبُ نفسُه: الأقوى ثمّ الأوسط ثمّ الأخفّ. */
+const mixColor = (k: Mix, tk: Tokens) => (k === "shows" ? tk.accent : k === "movies" ? tk.fg : tk.muted);
 
 /** شريطُ نسبةٍ — قامةٌ بلون السطح وداخلها الممتلئ من بداية السطر */
 function Track({ pct, color, opacity = 1, thin }: { pct: number; color: string; opacity?: number; thin?: boolean }) {
@@ -552,7 +553,7 @@ function Donut({ mix, total, label }: { mix: ReportStats["mix"]; total: string; 
         <Svg width={132} height={132} viewBox="0 0 132 132" style={{ transform: [{ rotate: "-90deg" }] }}>
           <Circle cx={66} cy={66} r={r} fill="none" stroke={tokens.surface2} strokeWidth={10} />
           {arcs.map((a) => (
-            <Circle key={a.key} cx={66} cy={66} r={r} fill="none" stroke={mixColor(a.key, tokens.accent)} strokeWidth={10} strokeDasharray={`${a.len} ${c - a.len}`} strokeDashoffset={-a.offset} />
+            <Circle key={a.key} cx={66} cy={66} r={r} fill="none" stroke={mixColor(a.key, tokens)} strokeWidth={10} strokeDasharray={`${a.len} ${c - a.len}`} strokeDashoffset={-a.offset} />
           ))}
         </Svg>
       </SvgGuard>
@@ -675,7 +676,7 @@ function PctList({ title, rows }: { title: string; rows: { code: string; name: s
               <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{`${n(x.pct)}%`}</Text>
             </View>
             <View style={{ flexDirection: "row", marginTop: 4 }}>
-              <Track thin pct={x.pct} color={i === 0 ? tokens.accent : "#8A8A8A"} />
+              <Track thin pct={x.pct} color={i === 0 ? tokens.accent : tokens.muted} />
             </View>
           </View>
         ))}

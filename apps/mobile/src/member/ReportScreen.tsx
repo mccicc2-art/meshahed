@@ -10,7 +10,7 @@ import { api, downloadTo, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
-import { radius } from "../theme";
+import { radius, type Tokens } from "../theme";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
@@ -38,9 +38,9 @@ const PAGE_PAD = 16;
 const HEADER_H = 56;
 const BAR_H = 112;
 const RING = 104;
-const TASTE_COLORS = ["#7C4DFF", "#3DBE6B", "#E5484D", "#6B6B6B"];
-const UP = "#3DBE6B";
-const DOWN = "#E5484D";
+/* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` مكتوبين هنا — درجتان غيرُ `success`/`error`
+   (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
+const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
 const PERIODS: ReportPeriod[] = ["week", "month", "year"];
 
 export const myReportKey = (period: ReportPeriod, offset = 0) => ["me:reports", period, offset] as const;
@@ -220,8 +220,8 @@ function ReportBody({
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: tokens.muted, opacity: 0.5 }} />
                 {/* الفرقُ عن المدّة السابقة على سطر الاسم (D-805) — لاتينيٌّ يُقرأ من اليسار */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, direction: "ltr" }}>
-                  <Icon name={s.deltaPct >= 0 ? "trending" : "pause"} size={14} color={s.deltaPct >= 0 ? UP : DOWN} />
-                  <Text size={12} weight="700" color={s.deltaPct >= 0 ? UP : DOWN} style={{ fontVariant: ["tabular-nums"] }}>{`${s.deltaPct >= 0 ? "+" : ""}${s.deltaPct.toLocaleString("en-US")}%`}</Text>
+                  <Icon name={s.deltaPct >= 0 ? "trending" : "pause"} size={14} color={s.deltaPct >= 0 ? tokens.success : tokens.error} />
+                  <Text size={12} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.error} style={{ fontVariant: ["tabular-nums"] }}>{`${s.deltaPct >= 0 ? "+" : ""}${s.deltaPct.toLocaleString("en-US")}%`}</Text>
                 </View>
               </>
             ) : null}
@@ -279,7 +279,7 @@ function ReportBody({
           <H2>{en ? "Your taste this period" : "ذوقك في هذه المدّة"}</H2>
           <View style={{ flexDirection: "row", height: 36, borderRadius: 8, overflow: "hidden" }}>
             {s.taste.genres.slice(0, 4).map((g, i) => (
-              <View key={g.slug} style={{ flexGrow: Math.max(1, g.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: TASTE_COLORS[i] }}>
+              <View key={g.slug} style={{ flexGrow: Math.max(1, g.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: tasteColors(tokens)[i] }}>
                 {g.pct >= 10 ? <Text size={12} weight="700" color="#fff">{`${g.pct.toLocaleString("en-US")}%`}</Text> : null}
               </View>
             ))}
@@ -288,7 +288,7 @@ function ReportBody({
           <View style={{ flexDirection: "row", marginTop: 8 }}>
             {s.taste.genres.slice(0, 4).map((g, i) => (
               <View key={g.slug} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: TASTE_COLORS[i] }} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tasteColors(tokens)[i] }} />
                 <Text size={12} muted numberOfLines={2} style={{ flexShrink: 1, textAlign: "center" }}>{g.name}</Text>
               </View>
             ))}

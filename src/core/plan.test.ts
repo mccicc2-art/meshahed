@@ -89,7 +89,8 @@ test("isFounder: صفةٌ لا خطّة — وتبقى بعد أيِّ تبدّ�
 test("الثيماتُ المجّانيّة ثلاث: الرسميُّ الافتراضيُّ والعنبرُ السابق ووضعُ النهار", () => {
   // **`daylight` إتاحةٌ لا زينة** — من يقرأ في الشمس قارئٌ محبوس لا مشترٍ محتمل.
   // **و`loopz` هويّةُ العلامة والافتراضيُّ الجديد** (D-939) — لا يُقفل.
-  assert.deepEqual([...FREE_THEMES].sort(), ["amber", "daylight", "loopz"]);
+  assert.deepEqual([...FREE_THEMES].sort(), ["amber", "charcoal", "daylight", "loopz"]);
+  assert.equal(themeNeedsPlus("charcoal"), false);
   assert.equal(themeNeedsPlus("loopz"), false);
   assert.equal(themeNeedsPlus("amber"), false);
   assert.equal(themeNeedsPlus("daylight"), false);
