@@ -76,12 +76,9 @@ export function HomeTopBar({
   );
   return (
     <View style={{ height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD }}>
-      {/* 🆕 D-1376 — **رأسُ الرئيسيّة على وصفة المكتبة و«اكتشف»** (أحمد ١٢ أكتوبر): الرمزُ ∞ لا الكلمة، والعنوانُ في المنتصف.
-          ⚖️ ينقض قرارَ ٢٢ سبتمبر («loopz مثل الويب للهوم») — الرؤوسُ الخمسةُ صارت شكلاً واحداً. العنوانُ مطلقٌ في المنتصف
-          لا داخل الصفّ: الرموزُ الثلاثة في طرفٍ والشعارُ وحده في الآخر، ولو دخل الصفَّ لانزاح عن الوسط. */}
-      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-        <Text size={15} weight="700" color={fg}>{t.navHome}</Text>
-      </View>
+      {/* 🆕 D-1376 — الرمزُ ∞ لا الكلمة (أحمد ١٢ أكتوبر؛ ينقض قرارَ ٢٢ سبتمبر «loopz مثل الويب للهوم»).
+          🆕 D-1377 — **بلا عنوانٍ ولا خطّ** (أحمد بعد أن رآهما على جهازه: «شيل كلمة هوم .. وشيل الخط»): الرئيسيّةُ تُعرف
+          بأيقونتها الصفراء في الشريط السفليّ وباسمك تحت الشعار، فالعنوانُ كان تكراراً — وهي وحدها بلا عنوانٍ بين الخمسة. */}
       <Logo size={28} onArt={onArt} />
       <View style={{ flex: 1 }} />
       {btn("mail", t.communityTabInbox, onInbox, unreadShares)}

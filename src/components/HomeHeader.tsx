@@ -85,9 +85,9 @@ export function HomeHeader({
         أوّلُ ما تحت ساعة النظام (D-040). ارتفاعُه `10 + 44 + 10 = 64` — `h-16` في `Navbar` حرفاً (D-543) فلا يقفز
         شيءٌ رأسيّاً في الانتقال. ===== */}
       {/* 🆕 D-1376 — **رأسُ الرئيسيّة على وصفة `Navbar`** (أحمد ١٢ أكتوبر): الرمزُ لا الكلمة، واسمُ الصفحة في المنتصف،
-        وخطٌّ ثابتٌ تحته — الرؤوسُ الخمسةُ شكلٌ واحد في الويب والتطبيق. ⚖️ ينقض D-224 («الرئيسيّة بلا اسم»: سببُه
-        الغلافُ واسمُك عليه، والغلافُ خرج في D-1258) وقرارَ الكلمة للرئيسيّة (٢٢ سبتمبر). */}
-      <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 border-b border-border bg-[color:var(--background)]">
+        وخطٌّ ثابتٌ تحته. ⚖️ ينقض قرارَ الكلمة للرئيسيّة (٢٢ سبتمبر). 🆕 D-1377 — **وسقط العنوانُ والخطّ** (أحمد على جهازه:
+        «شيل كلمة هوم .. وشيل الخط») — فعاد D-224 قائماً: الرئيسيّةُ بلا اسم. */}
+      <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 bg-[color:var(--background)]">
         <div className="relative flex items-center gap-1">
           <Link
             href="/"
@@ -98,11 +98,6 @@ export function HomeHeader({
             {/* الرمزُ بمقاس `Navbar` (٤٤ — D-258)؛ وزائدةُ البلس من `plan.ts` لا من شرطٍ مكتوبٍ هنا (D-145، D-773) */}
             <Logo size={44} plus={isPlus({ plan, founder, plus_until: plusUntil })} />
           </Link>
-
-          {/* اسمُ الصفحة بوصفة `NavTitle` حرفاً: مطلقٌ في المنتصف لأنّ الطرفين غيرُ متساويين (ثلاثةُ رموزٍ مقابل شعار) */}
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-28" aria-hidden>
-            <span className="truncate text-15 font-bold leading-none">{t.navHome}</span>
-          </span>
 
           {/* **الطرفُ صفٌّ واحدٌ مشترك** (D-541): المسافةُ والمقاسُ في `HeaderTrailing` مرّةً، يقرؤها هذا الشريطُ
             و`Navbar` — فلا يقفز الجرسُ ولا الظرفُ في الانتقال. والترسُ في خانته الأخيرة (D-774)، بوصفة

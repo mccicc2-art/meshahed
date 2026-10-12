@@ -490,7 +490,7 @@ export function HomeScreen() {
   const chrome = useChromeHide();
   const topH = insets.top + HEADER_H;
   const refresh = usePullRefresh([HOME_KEY, HOME_EXTRAS_KEY], topH);
-  /* 🆕 D-1376 — الخطُّ تحت الرأس ثابتٌ كالمكتبة و«اكتشف» (كان يظهر بعد أوّل تمرير — D-1233)، فلا حالةَ تُتابَع هنا */
+  /* 🆕 D-1377 — لا خطَّ تحت رأس الرئيسيّة أبداً (أحمد: «شيل الخط»؛ كان يظهر بعد أوّل تمرير — D-1233)، فلا حالةَ تُتابَع هنا */
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => chrome.onScroll(e), [chrome]);
   const bottomPad = navH + 24;
 
@@ -686,7 +686,7 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg, borderBottomWidth: 1, borderBottomColor: tokens.border, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
+      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg,  transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
         <HomeTopBar onArt={false} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
       </Animated.View>
       {!d ? (
