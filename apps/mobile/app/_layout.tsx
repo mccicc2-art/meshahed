@@ -18,6 +18,7 @@ import { WidgetGate } from "../src/WidgetGate";
 import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
 import { Opening } from "../src/opening/Opening";
+import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
@@ -42,6 +43,13 @@ export default function RootLayout() {
   /* Phase 11 · B2 — الخطوطُ تُحمّل في الجذر ولا تحبس الستارَ: الـWebView لا
      تحتاجها، والشاشةُ الأصليّةُ ترسم بخطّ النظام حتى تصل (`ui.tsx`). */
   const fontsReady = useAppFonts();
+  /* 🔴 أوّلُ إقلاعٍ بعد تحديثٍ من المتجر: لا رسمَ حتّى تُمسح ذاكرةُ الصور (`imageCacheGuard.ts`) — وصورةُ النظام
+     باقيةٌ فوقه (`preventAutoHideAsync`)، فالانتظارُ لا يُرى. في كلِّ إقلاعٍ آخر القيمةُ `true` من أوّل رسمة. */
+  const [imagesReady, setImagesReady] = useState(imageCacheClean);
+  useEffect(() => {
+    if (!imagesReady) void imageCacheReady.then(() => setImagesReady(true));
+  }, [imagesReady]);
+  if (!imagesReady) return null;
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Platform } from "react-native";
 import { Image, type ImageRef } from "expo-image";
+import { imageCacheReady } from "./imageCacheGuard";
 
 /**
  * ====== مجموعةُ الأيقونات الواحدة — مساراتُ `Icon.tsx` (الويب) مرسومةً مرّةً ======
@@ -134,17 +135,20 @@ const NAV_ICONS: IconName[] = [
    أحمد ٨ أكتوبر — السببُ نفسُه (صورةٌ تُحمَّل بعد التركيب). سبعُ صورٍ ٧٢px. */
 const PROFILE_ICONS: IconName[] = ["tv", "film", "sparkles", "chart", "calendar", "star", "heart"];
 const warm = new Map<IconName, ImageRef>();
-for (const name of Platform.OS === "ios" ? [] : [...NAV_ICONS, ...PROFILE_ICONS]) {
-  try {
-    void Image.loadAsync(ICONS[name] as number)
-      .then((ref) => {
-        warm.set(name, ref);
-      })
-      .catch(() => {});
-  } catch {
-    /* وحدةٌ أصليّةٌ غائبة (اختبار، ويب): الطريقُ القديم */
+/* 🔴 بعد مسح ذاكرة الصور لا قبله (`imageCacheGuard.ts`): التحميلُ المسبقُ قبل المسح يقرأ الصورةَ القديمةَ لرقمٍ تغيّر */
+void imageCacheReady.then(() => {
+  for (const name of Platform.OS === "ios" ? [] : [...NAV_ICONS, ...PROFILE_ICONS]) {
+    try {
+      void Image.loadAsync(ICONS[name] as number)
+        .then((ref) => {
+          warm.set(name, ref);
+        })
+        .catch(() => {});
+    } catch {
+      /* وحدةٌ أصليّةٌ غائبة (اختبار، ويب): الطريقُ القديم */
+    }
   }
-}
+});
 
 /**
  * 🔴 D-1333 — **في iOS الأيقونةُ من ملفّها، وتُركَّب من جديد إذا تغيّر لونها** (أوّلُ نسخة iOS، تسجيلُ أحمد ٨ أكتوبر:
