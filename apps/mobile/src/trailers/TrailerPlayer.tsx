@@ -9,6 +9,7 @@ import { CONFIG } from "../config";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
+import { mark } from "../perfMarks";
 
 /**
  * ====== المشغّلُ الأصليُّ الواحد — D-959 (١٤ سبتمبر ٢٠٢٦) ======
@@ -181,6 +182,11 @@ export function TrailerPlayer({
   const [at, setAt] = useState(0);
   const [dur, setDur] = useState(0);
   const [controls, setControls] = useState(true);
+  /* 🩺 D-1392 — **قياسٌ مؤقّتٌ للمس المقطع على آيفون** (خطّةُ `PLAN-ios-discover-trailer-taps`): أيُّ طبقةٍ تلقّت اللمسة
+     وحالُ المشغّل لحظتَها — آيفون يوقف من الجانبين ولا يستجيب في الوسط، وأندرويد سليم بالكود نفسِه. لا يغيّر سلوكاً،
+     ويُحذف مع الإصلاح. `layer` = side (السطحُ الحيّ) · centre (زرُّ ⏸) · wake (أطرافُ الخامل) */
+  const probe = (name: "trailer.tap" | "trailer.state" | "trailer.wake", extra: Record<string, number | string>) =>
+    mark(name, 0, { ...extra, idle: idle ? 1 : 0, playing: playing ? 1 : 0, controls: controls ? 1 : 0, want: wantPlay ? 1 : 0 });
   const [poke, setPoke] = useState(0);
   const [badge, setBadge] = useState<"ff" | "rw" | null>(null);
   /* عدّادُ القفزات — الشارةُ تعيش ٧٠٠ م.ث لكلِّ قفزةٍ **وإن تكرّرت الجهةُ نفسُها** */
@@ -426,7 +432,11 @@ export function TrailerPlayer({
         onError={fail}
         onChangeState={(s: PlayerState) => {
           /* D-982 — يوتيوب بدأ من لمسةٍ وصلته وهو خامل: البطاقةُ استيقظت */
-          if (idle && (s === "playing" || s === "buffering")) onWake?.();
+          probe("trailer.state", { src: String(s).replace(/\s+/g, "_").slice(0, 16) });
+          if (idle && (s === "playing" || s === "buffering")) {
+            probe("trailer.wake", { why: "yt" });
+            onWake?.();
+          }
           if (s === "playing") {
             setPlaying(true);
             /* أوّلُ `playing` يفكّ الكتمَ من نفسه — لا ضغطةَ على الصوت (D-771) */
@@ -471,14 +481,21 @@ export function TrailerPlayer({
             const tp = Math.max(0, (height - hole) / 2);
             const a11y = `${t.trailerPlay} — ${label}`;
             /* الميتُ يفتح البابَ بلمسةٍ — لا من نفسه (D-984) */
-            const wake = () => (dead ? onExhausted() : onWake?.());
+            const wake = (part: string) => () => {
+              probe("trailer.tap", { layer: "wake", src: part });
+              if (dead) onExhausted();
+              else {
+                probe("trailer.wake", { why: "tap" });
+                onWake?.();
+              }
+            };
             return (
               <>
-                <Pressable style={{ position: "absolute", left: 0, right: 0, top: 0, height: tp }} onPress={wake} accessibilityLabel={a11y} />
-                <Pressable style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(0, height - tp - hole) }} onPress={wake} accessibilityLabel={a11y} />
-                <Pressable style={{ position: "absolute", left: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
-                <Pressable style={{ position: "absolute", right: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
-                {dead ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake} accessibilityLabel={a11y} /> : null}
+                <Pressable style={{ position: "absolute", left: 0, right: 0, top: 0, height: tp }} onPress={wake("top")} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(0, height - tp - hole) }} onPress={wake("bottom")} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", left: 0, top: tp, width: l, height: hole }} onPress={wake("left")} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", right: 0, top: tp, width: l, height: hole }} onPress={wake("right")} accessibilityLabel={a11y} />
+                {dead ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake("hole")} accessibilityLabel={a11y} /> : null}
               </>
             );
           })()}
@@ -487,7 +504,10 @@ export function TrailerPlayer({
         <Pressable
           style={[StyleSheet.absoluteFill, { elevation: 6, zIndex: 6 }]}
           accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
-          onPress={(e) => onSurface(e.nativeEvent.locationX)}
+          onPress={(e) => {
+            probe("trailer.tap", { layer: "side", x: Math.round((e.nativeEvent.locationX / Math.max(1, width)) * 100) });
+            onSurface(e.nativeEvent.locationX);
+          }}
         />
       )}
       {idle ? null : (
@@ -532,6 +552,7 @@ export function TrailerPlayer({
         <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
           <Pressable
             onPress={() => {
+              probe("trailer.tap", { layer: "centre" });
               onWantPlay(!wantPlay);
               show();
             }}

@@ -91,7 +91,12 @@ export type PerfName =
   /* 🩺 D-1348 — آخرُ الترحيب بزمنَيه: الختمُ في الخادم (`welcome.finish`) وجلبُ الرئيسيّة بعده (`welcome.home`، `result=none`
      = تجاوز السقف). يفصلان سببَ الثواني الثلاث في أوّل رئيسيّة. */
   | "welcome.finish"
-  | "welcome.home";
+  | "welcome.home"
+  /* 🩺 D-1392 — مؤقّت: لمسُ المقطع في «اكتشف» (`trailer.tap` بطبقته) · حالُ يوتيوب (`trailer.state`) · ومتى تحيا
+     البطاقةُ أو تخمد (`trailer.wake` بسببه) — لتشخيص لمس آيفون من صفوفٍ لا من تخمين. تُحذف مع الإصلاح. */
+  | "trailer.tap"
+  | "trailer.state"
+  | "trailer.wake";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

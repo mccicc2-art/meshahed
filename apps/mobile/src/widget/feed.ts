@@ -22,6 +22,10 @@ import type { WidgetFeed } from "@/core/contracts/widget";
  */
 
 const FEED = "feed.json";
+/** 🆕 W14 — رمزُ ✓ الخاصّ: يقرؤه الودجتُ (`CheckReceiver.kt` · `Intents.swift`) ولا يقدر إلّا على تعليم حلقة */
+const TOKEN = "token";
+/** طلبُ رمزٍ فشل (الجدولُ لم يُنشأ بعد، أو لا شبكة) لا يُعاد مع كلِّ جلب — مرّةً كلَّ نصف ساعةٍ تكفي */
+const TOKEN_RETRY_MS = 30 * 60_000;
 const TASK = "loopz-widget-refresh";
 /** أقلُّ فاصلٍ بين كتابتين — الرئيسيّةُ تُبطَل كثيراً، والملصقاتُ لا تتغيّر كلَّ ثانية */
 const MIN_GAP_MS = 45_000;
@@ -29,6 +33,7 @@ const MIN_GAP_MS = 45_000;
 const BG_MINUTES = 180;
 
 let last = 0;
+let tokenTried = 0;
 let running: Promise<void> | null = null;
 
 /** اسمُ ملفِّ الملصق في المجلّد المشترك — من مسار TMDB نفسِه، فالملصقُ لا يُنزَّل مرّتين */
@@ -88,6 +93,23 @@ async function ensureArt(path: string, kind: Art): Promise<string | null> {
   }
 }
 
+/**
+ * 🆕 W14 — رمزُ ✓ لهذا الجهاز، يُطلب **بالجلسة** مرّةً ويُكتب ملفّاً في مجلّد الودجت. نسخةُ الجلسة لا تخرج من التطبيق
+ * (D-929) — والرمزُ لا يقدر إلّا على «علّم حلقة». يُطلب قبل الخلاصة: الخادمُ يكتب `check: true` حين يجد للعضو رمزاً،
+ * فأوّلُ خلاصةٍ بعد التحديث ترسم ✓ ومعها الرمزُ الذي يشغّله. وعند الخروج يمحوه `prune` مع غيره.
+ */
+async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
+  if (w.exists(TOKEN)) return;
+  if (Date.now() - tokenTried < TOKEN_RETRY_MS) return;
+  tokenTried = Date.now();
+  try {
+    const { data } = await api<{ token: string }>("/api/v1/widget/token", { method: "POST", body: {} });
+    if (typeof data?.token === "string" && data.token.startsWith("lw_")) w.writeText(TOKEN, data.token);
+  } catch {
+    /* بلا رمزٍ يبقى ✓ مخفيّاً (`check: false`) — لا شيءَ آخرُ يتغيّر */
+  }
+}
+
 /** يكتب ودجتاً فارغاً «سجّل الدخول» — عند الخروج وحين لا جلسة */
 export function clearWidgets() {
   const w = LoopzWidget;
@@ -117,6 +139,7 @@ async function run(): Promise<void> {
     lists = [];
   }
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
+  await ensureToken(w);
   const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query);
   const art = [...collectArt(data)];
   const names = new Map<string, string>();
@@ -133,7 +156,7 @@ async function run(): Promise<void> {
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
   const out = { ...data, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
-  w.prune([FEED, ...names.values()]);
+  w.prune([FEED, TOKEN, ...names.values()]);
   w.reload();
 }
 
