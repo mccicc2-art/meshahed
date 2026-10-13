@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { WebViewProps } from "react-native-webview";
@@ -495,7 +495,10 @@ export function TrailerPlayer({
                 <Pressable style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(0, height - tp - hole) }} onPress={wake("bottom")} accessibilityLabel={a11y} />
                 <Pressable style={{ position: "absolute", left: 0, top: tp, width: l, height: hole }} onPress={wake("left")} accessibilityLabel={a11y} />
                 <Pressable style={{ position: "absolute", right: 0, top: tp, width: l, height: hole }} onPress={wake("right")} accessibilityLabel={a11y} />
-                {dead ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake("hole")} accessibilityLabel={a11y} /> : null}
+                {/* 🔴 D-1393 — **الآيفون بلا ثقب** (بلاغُ أحمد، ١٣ أكتوبر: «لمسُ النصّ ما يشغّل، لازم يمين ويسار»؛ والقياسُ
+                    D-1392 يؤكّده: أربعةُ تشغيلاتٍ كلُّها من الأطراف، وصفرٌ من الثقب). يوتيوب في iOS يستلم اللمسةَ ولا يبدأ،
+                    والتشغيلُ بأمرنا ينجح هناك كلَّ مرّة — فالوسطُ زرُّنا كالأطراف. أندرويد يبقى بثقبه (D-982) كما هو. */}
+                {dead || Platform.OS === "ios" ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake("hole")} accessibilityLabel={a11y} /> : null}
               </>
             );
           })()}
