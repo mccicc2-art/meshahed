@@ -647,6 +647,51 @@ export async function discoverByGenres(
 }
 
 
+/**
+ * 🆕 **أفلامٌ قويّةٌ ومعروفة** — مصدرُ «فيلم الليلة» حين تخلو «للمشاهدة» (خطّةُ الودجتات W12).
+ *
+ * 🔑 **الحاجزان معاً لا التقييمُ وحدَه** (أحمد: «ابغى تجيه اشياء جامدة وتكون شهيرة ومعروفه»):
+ * تقييمُ فيلمٍ مجهولٍ قيّمه عشرةٌ قد يبلغ ٩، **فالشهرةُ عددُ المقيّمين** — ٥٠٠٠ صوتٍ يُبقي ما يعرفه الناس.
+ * ⚖️ **ولا سلّمَ نزولٍ هنا** بخلاف `popularWellKnown` (D-378): الحاجزُ هو الطلبُ نفسُه؛ والبِركةُ الضيّقة
+ * يُكملها المستدعي من كلِّ الأنواع بالحاجزين نفسيهما (قرارُه «٢ أ»)، لا بخفضهما.
+ */
+export async function wellKnownMovies({
+  genres,
+  withoutGenres,
+  minRate = 7.5,
+  minVotes = 5000,
+  pages = 2,
+}: {
+  genres: number[];
+  withoutGenres: number[];
+  minRate?: number;
+  minVotes?: number;
+  pages?: number;
+}): Promise<SearchResult[]> {
+  const fetched = await Promise.all(
+    Array.from({ length: Math.max(1, Math.min(pages, 3)) }, (_, i) =>
+      railTmdb<{ results: SearchResult[] }>("/discover/movie", {
+        ...(genres.length ? { with_genres: genres.join("|") } : {}),
+        ...(withoutGenres.length ? { without_genres: withoutGenres.join(",") } : {}),
+        "vote_average.gte": String(minRate),
+        "vote_count.gte": String(minVotes),
+        sort_by: "popularity.desc",
+        include_adult: "false",
+        page: String(i + 1),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const d of fetched)
+    for (const r of d.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: "movie" });
+    }
+  return rows;
+}
+
 // ترشيحات TMDB المبنية على عمل معيّن (تُستخدم كبذور لمحرّك الاقتراحات)
 export async function recommendationsFor(
   mediaType: MediaType,
