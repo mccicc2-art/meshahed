@@ -21,6 +21,7 @@ import { titleOf } from "@/core/media";
 import { isRtl } from "@/core/i18n";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { routeName } from "@/lib/reqTrace";
+import { noteWidgetLang } from "@/lib/widgetToken";
 import { ok } from "@/core/contracts/result";
 import {
   WIDGET_FEED_VERSION,
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
       if (lim) return lim;
 
       const { locale, t } = await getT();
+      /* 🆕 W14 — ✓ يُرسم حيث يعمل فقط: للعضو رمزُ ودجتٍ صادر (والجدولُ موجود). ويُحفظ معه لغةُ سطر الردّ */
+      const checkPromise = noteWidgetLang(auth.user.id, locale);
       const movieProgressPromise = getAllMovieProgress();
       const [storedFollows, summary, watchedMovies, profile, myRatings] = await Promise.all([
         getFollows(),
@@ -101,9 +104,12 @@ export async function GET(req: NextRequest) {
           poster_path: i.posterPath,
           season: ex?.season ?? null,
           episode: ex?.episode ?? null,
-          label: ex?.season != null && ex?.episode != null ? t.epLabel(ex.season, ex.episode) : null,
+          /* 🆕 W14 — سطرُ البطاقة في `label` و`sub` فارغ: بعد ✓ يكتب الودجتُ (أندرويد وiOS) `next.label` من الردّ
+             مكانَ `label` وحدَه — فلو بقي السطرُ في `sub` لبقي «الحلقة · باقي N» القديمُ حتى يُفتح التطبيق.
+             الردُّ يبني السطرَ بالشكل نفسِه (`widgetMark`)، والنسبةُ تتجدّد في الجلب التالي (البناءُ العامّ يصلحها) */
+          label: sub ?? (ex?.season != null && ex?.episode != null ? t.epLabel(ex.season, ex.episode) : null),
           backdrop_path: ex?.backdropPath ?? null,
-          sub,
+          sub: null,
           pct,
         };
       });
@@ -314,7 +320,7 @@ export async function GET(req: NextRequest) {
         upcoming: { items: upcomingItems, total: tvEntries.length },
         tonight,
         lists,
-        check: false,
+        check: await checkPromise,
         strings: {
           continueTitle: t.widgetContinue,
           comingUpTitle: t.widgetComingUp,

@@ -104,6 +104,12 @@ const NAMES = new Set([
   /* 🩺 D-1348 — زمنُ الختم وزمنُ جلب الرئيسيّة بعده (`result`) */
   "welcome.finish",
   "welcome.home",
+  /* 🩺 D-1392 — مؤقّت: لمسُ مقطع «اكتشف» على آيفون — الطبقةُ التي تلقّت اللمسة (`layer` = side · centre · wake، `x` نسبةٌ
+     مئويّة من العرض) وحالُ المشغّل لحظتَها (`idle` · `playing` · `controls` · `want`)، وحالُ يوتيوب (`src`)، وسببُ
+     الإحياء والإخماد (`why` = yt · tap · open · refused). القيمةُ صفرٌ دائماً. تُحذف مع الإصلاح. */
+  "trailer.tap",
+  "trailer.state",
+  "trailer.wake",
   /* 🆕 D-1350 — كم بقي ستارُ أنميشن الفتح ولماذا نزل (`why` = ready · cap) */
   "open.hide",
 ]);
@@ -114,7 +120,7 @@ const NAMES = new Set([
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
    🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank`
    🩺 D-1337 — `y` · `x` · `jx` · `cw` · `first` · `last` · `ev` · `drag` لـ`rail.state` (قد يكون `x`/`jx` سالباً) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "y", "x", "jx", "cw", "first", "last", "ev", "drag"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "y", "x", "jx", "cw", "first", "last", "ev", "drag", "layer", "idle", "playing", "controls", "want"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
