@@ -136,6 +136,20 @@ export function YtMarkTest({ videoKey }: { videoKey: string }) {
   return (
     <div dir="rtl" className="mx-auto max-w-xl space-y-4">
       <h1 className="text-xl font-bold">تجربة علامة يوتيوب (مؤقتة)</h1>
+      {/* 🆕 الفتحُ داخل التطبيق (أحمد: «ابغى اجربها عالتطبيق») — **بابُ الودجت نفسُه** (`com.loopztv.app://web?u=`، يقرؤه
+          `WebLayer`): الصفحةُ تُفتح في WebView التطبيق، بيئةُ صفحة التريلرات الحقيقيّة، **بلا سطرٍ واحدٍ في التطبيق**.
+          أندرويد بصيغة `intent://` (كروم لا يفتح المخطّطَ المخصّصَ من رابطٍ عاديّ دائماً)، وآيفون بالمخطّط مباشرة. */}
+      <div className="flex flex-wrap gap-2">
+        <a
+          href="intent://web?u=%2Fzz-yt-test#Intent;scheme=com.loopztv.app;package=com.loopztv.app;end"
+          className="rounded-control bg-accent px-4 py-2 text-sm font-semibold text-[color:var(--on-accent)]"
+        >
+          افتح في التطبيق (أندرويد)
+        </a>
+        <a href="com.loopztv.app://web?u=%2Fzz-yt-test" className="rounded-control border border-border px-4 py-2 text-sm font-semibold">
+          افتح في التطبيق (آيفون)
+        </a>
+      </div>
       <p className="text-sm text-muted">
         اختر طريقة، وانتظر حتى يبدأ المقطع. هل تظهر ⏸ العريضة في الوسط؟ ثم اضغط «إيقاف» ثم «تشغيل»: هل تظهر مع الاستئناف؟
       </p>
