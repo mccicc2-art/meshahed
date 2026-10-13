@@ -27,6 +27,10 @@ struct WContinue: Codable, Hashable {
   let season: Int?
   let episode: Int?
   let label: String?
+  /** 🆕 W17 — بطاقةُ الرئيسيّة: الصورةُ العريضة، والسطرُ الثاني كما في التطبيق، والنسبة (اختياريّةٌ: ملفٌّ قديمٌ بلا الحقول يُقرأ) */
+  let backdrop_path: String?
+  let sub: String?
+  let pct: Int?
   var asTitle: WTitle { WTitle(kind: kind, id: id, title: title, poster_path: poster_path) }
 }
 

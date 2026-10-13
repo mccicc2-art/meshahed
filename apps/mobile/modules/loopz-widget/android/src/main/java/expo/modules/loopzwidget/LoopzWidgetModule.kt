@@ -98,7 +98,6 @@ class LoopzWidgetModule : Module() {
       "com.loopztv.app.widget.ContinueLargeWidget",
       "com.loopztv.app.widget.ComingUpWidget",
       "com.loopztv.app.widget.TonightSmallWidget",
-      "com.loopztv.app.widget.TonightMediumWidget",
     )
   }
 }

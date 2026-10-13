@@ -5,9 +5,11 @@ import WidgetKit
 /**
  * ====== 🆕 ودجتاتُ لوبز في iOS (خطّةُ الودجتات W1 … W13) ======
  *
- * «أكمل المشاهدة» (صغير · متوسط · كبير · مستطيلُ شاشة القفل) · «القادم» (صغير · سطرٌ فوق الساعة · مستطيل) ·
- * «فيلم الليلة» (صغير · متوسط). **التصميمُ هو تصميمُ أندرويد** — الحالاتُ والنصوصُ والروابطُ واحدة (W1).
- * الأسودُ دائماً (W2)، لا شريطَ تقدّم (W3)، ولا ✓ على شاشة القفل (الجوالُ مقفول: أيُّ أحدٍ يمسكه يعلّم).
+ * «أكمل المشاهدة» (صغير · متوسط · مستطيلُ شاشة القفل) · «القادم» (صغير · سطرٌ فوق الساعة · مستطيل) · «فيلم الليلة» (صغير).
+ * **التصميمُ هو تصميمُ أندرويد** — الحالاتُ والنصوصُ والروابطُ واحدة (W1). الأسودُ دائماً (W2)، ولا ✓ على شاشة القفل.
+ * 🆕 W17 — **بطاقةُ «أكمل المشاهدة» بطاقةُ الرئيسيّة نفسُها** (الصورةُ العريضة والنسبةُ والشريط — نقضُ W3).
+ * 🆕 W24 — **لا كبيرَ في iOS ولا «فيلم الليلة» متوسط** (قرارُ أحمد: «الغيه» · «متوسط فلم الليلة احذفه»)؛ ومتوسطُ iOS
+ * أقصرُ من 4×2 أندرويد (المقاسُ من آبل)، فالبطاقتان فيه أعرضُ قليلاً ومعهما سطرُ «القادم» («متوسط مع السطر»).
  */
 @main
 struct LoopzWidgetsBundle: WidgetBundle {
@@ -59,7 +61,7 @@ struct ContinueWidget: Widget {
     }
     .configurationDisplayName(LocalizedStringResource("continue.name"))
     .description(LocalizedStringResource("continue.desc"))
-    .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+    .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
     .contentMarginsDisabled()
   }
 }
@@ -88,7 +90,7 @@ func sourceOf(_ f: WFeed, _ src: String, max: Int = 3) -> Source {
     return Source(title: l.name, all: nil, header: WLink.list(l.id),
                   slots: l.items.prefix(max).map { .item($0, sub: type($0), link: WLink.title($0), check: nil) })
   }
-  var slots: [Slot] = f.continue.items.prefix(max).map { .item($0.asTitle, sub: $0.label, link: WLink.title($0.asTitle), check: $0) }
+  var slots: [Slot] = f.continue.items.prefix(max).map { .item($0.asTitle, sub: $0.sub ?? $0.label, link: WLink.title($0.asTitle), check: $0) }
   var seen = Set(f.continue.items.prefix(max).map(\.id))
   for w in f.towatch_series where slots.count < max && !seen.contains(w.id) {
     seen.insert(w.id)
@@ -120,16 +122,13 @@ struct ContinueView: View {
   @ViewBuilder func content(_ f: WFeed) -> some View {
     switch family {
     case .systemSmall: SmallContinue(feed: f, source: sourceOf(f, entry.source, max: 1))
-    case .systemLarge:
-      VStack(alignment: .leading, spacing: 0) {
-        SlotRow(feed: f, source: sourceOf(f, entry.source))
-        Divider().overlay(Color.white.opacity(0.08)).padding(.top, 13).padding(.bottom, 11)
-        UpcomingList(feed: f, now: entry.date)
-        Spacer(minLength: 0)
-      }
-      .padding(13)
     case .accessoryRectangular: LockContinue(feed: f, source: sourceOf(f, entry.source, max: 1))
-    default: SlotRow(feed: f, source: sourceOf(f, entry.source)).padding(13)
+    default:
+      VStack(alignment: .leading, spacing: 0) {
+        CardsRow(feed: f, source: sourceOf(f, entry.source, max: 2))
+        UpLine(feed: f, now: entry.date)
+      }
+      .padding(.horizontal, 12).padding(.top, 11).padding(.bottom, 4)
     }
   }
 }
@@ -142,87 +141,126 @@ struct EmptyNote: View {
   }
 }
 
-struct Poster: View {
-  let feed: WFeed
-  let path: String?
-  let maxPixel: CGFloat
-  var radius: CGFloat = 8
-  var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: radius).fill(WColor.surface)
-      if let img = FeedStore.image(path, in: feed, maxPixel: maxPixel) {
-        Image(uiImage: img).resizable().scaledToFill()
-      }
-    }
-    .clipShape(RoundedRectangle(cornerRadius: radius))
-  }
-}
-
 struct Header: View {
   let title: String
   let link: URL?
   let all: (String, URL)?
   var body: some View {
-    HStack {
+    HStack(spacing: 6) {
+      Image(systemName: "play.circle").font(.system(size: 14, weight: .semibold)).foregroundStyle(WColor.accent)
       if let link { Link(destination: link) { titleText } } else { titleText }
       Spacer(minLength: 8)
       if let all { Link(destination: all.1) { Text(all.0).font(.system(size: 11)).foregroundStyle(WColor.muted) } }
     }
-    .padding(.bottom, 9)
+    .padding(.bottom, 8)
   }
-  var titleText: some View { Text(title).font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1) }
+  var titleText: some View { Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1) }
 }
 
-struct SlotRow: View {
+struct CardsRow: View {
   let feed: WFeed
   let source: Source
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       Header(title: source.title, link: source.header, all: source.all)
-      HStack(alignment: .top, spacing: 10) {
-        ForEach(0..<3, id: \.self) { i in
-          if i < source.slots.count { SlotView(feed: feed, slot: source.slots[i]) } else { Color.clear.frame(maxWidth: .infinity) }
+      HStack(spacing: 9) {
+        ForEach(0..<2, id: \.self) { i in
+          if i < source.slots.count { CardView(feed: feed, slot: source.slots[i]) } else { Color.clear.frame(maxWidth: .infinity) }
         }
       }
     }
   }
 }
 
-struct SlotView: View {
+/**
+ * 🆕 W17 · W18 — **بطاقةُ «أكمل المشاهدة» كما في الرئيسيّة** (`Cards.tsx`): الصورةُ تملأ البطاقة ويبقى أعلاها، وحجابُ
+ * `poster-veil` على ستّين بالمئة من أسفلها، والاسمُ ١٣ والسطرُ الثاني ١١ والنسبةُ في طرفه، وشريطُ ٤ من جهة البداية.
+ */
+struct CardView: View {
   let feed: WFeed
   let slot: Slot
+  var radius: CGFloat = 12
   var body: some View {
     switch slot {
     case .item(let t, let sub, let link, let check):
-      Link(destination: link) {
-        VStack(alignment: .leading, spacing: 0) {
-          Poster(feed: feed, path: t.poster_path, maxPixel: 300).frame(height: 62)
-            .overlay(alignment: .topTrailing) { CheckButton(feed: feed, item: check, size: 26).padding(4) }
-          Text(t.title).font(.system(size: 12)).foregroundStyle(WColor.fg).lineLimit(1).padding(.top, 5)
-          Text(sub ?? " ").font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
-        }
-      }
-      .frame(maxWidth: .infinity)
+      Link(destination: link) { card(t, sub: sub, item: check, faded: false, subColor: Color.white.opacity(0.75)) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .faded(let t, let sub, let link):
-      Link(destination: link) {
-        VStack(alignment: .leading, spacing: 0) {
-          Poster(feed: feed, path: t.poster_path, maxPixel: 300).frame(height: 62).opacity(0.55)
-          Text(t.title).font(.system(size: 12)).foregroundStyle(WColor.fg.opacity(0.55)).lineLimit(1).padding(.top, 5)
-          Text(sub).font(.system(size: 11)).foregroundStyle(WColor.accent).lineLimit(1)
-        }
-      }
-      .frame(maxWidth: .infinity)
+      Link(destination: link) { card(t, sub: sub, item: nil, faded: true, subColor: WColor.accent) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .start(let text):
       Link(destination: WLink.discover) {
-        VStack(alignment: .leading, spacing: 0) {
-          RoundedRectangle(cornerRadius: 8).strokeBorder(WColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            .overlay(Text("+").font(.system(size: 18)).foregroundStyle(WColor.muted)).frame(height: 62)
-          Text(text).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1).padding(.top, 5)
-          Text(" ").font(.system(size: 11))
+        RoundedRectangle(cornerRadius: radius).strokeBorder(WColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+          .overlay(Text("+  " + text).font(.system(size: 11)).foregroundStyle(WColor.muted).padding(8))
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
+
+  func card(_ t: WTitle, sub: String?, item: WContinue?, faded: Bool, subColor: Color) -> some View {
+    ZStack(alignment: .bottom) {
+      WColor.surface
+      if let img = FeedStore.image(item?.backdrop_path ?? t.poster_path, in: feed, maxPixel: 640) {
+        Image(uiImage: img).resizable().scaledToFill()
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          .clipped()
+          .opacity(faded ? 0.55 : 1)
+      }
+      GeometryReader { g in
+        LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: Color.black.opacity(0.25), location: 0.5), .init(color: Color.black.opacity(0.85), location: 1)], startPoint: .top, endPoint: .bottom)
+          .frame(height: g.size.height * 0.6)
+          .frame(maxHeight: .infinity, alignment: .bottom)
+      }
+      VStack(alignment: .leading, spacing: 2) {
+        Text(t.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(faded ? Color.white.opacity(0.55) : Color.white).lineLimit(1)
+        HStack(spacing: 8) {
+          Text(sub ?? " ").font(.system(size: 11, weight: .semibold)).foregroundStyle(subColor).lineLimit(1)
+          Spacer(minLength: 0)
+          if let p = item?.pct { Text("\(p)%").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white.opacity(0.7)) }
         }
       }
-      .frame(maxWidth: .infinity)
+      .padding(.horizontal, 10).padding(.bottom, 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      if let p = item?.pct {
+        GeometryReader { g in
+          ZStack(alignment: .leading) {
+            Rectangle().fill(Color.white.opacity(0.12))
+            Rectangle().fill(p >= 100 ? WColor.success : WColor.accent).frame(width: g.size.width * CGFloat(min(max(p, 0), 100)) / 100)
+          }
+        }
+        .frame(height: 4)
+      }
     }
+    .overlay(alignment: .topTrailing) { CheckButton(feed: feed, item: item, size: 28).padding(6) }
+    .clipShape(RoundedRectangle(cornerRadius: radius))
+    .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+  }
+}
+
+/** سطرُ «القادم» تحت البطاقتين — أقربُ موعدٍ لمسلسلٍ يتابعه، ولمستُه التقويم */
+struct UpLine: View {
+  let feed: WFeed
+  let now: Date
+  var body: some View {
+    let u = feed.upcomingNow(now).first
+    Link(destination: WLink.calendar) {
+      HStack(spacing: 8) {
+        if let u {
+          if let d = u.date { Text(WDates.label(d, feed: feed, now: now)).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1) }
+          if let img = FeedStore.image(u.poster_path, in: feed, maxPixel: 90) {
+            Image(uiImage: img).resizable().frame(width: 14, height: 21).clipShape(RoundedRectangle(cornerRadius: 3))
+          }
+          Text(u.title).font(.system(size: 11)).foregroundStyle(WColor.fg).lineLimit(1)
+          if let l = u.behind_label ?? u.label { Text("· " + l).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1) }
+        } else {
+          Text(feed.s("noUpcoming")).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
+        }
+        Spacer(minLength: 0)
+      }
+      .frame(height: 24)
+    }
+    .padding(.top, 6)
+    .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.09)).frame(height: 1).padding(.top, 2) }
   }
 }
 
@@ -244,70 +282,58 @@ struct CheckButton: View {
   }
 }
 
-/** الصغير = ص١: عملٌ واحدٌ ثابتٌ بملصقٍ كامل (W8) */
+/** الصغير = ص١: بطاقةُ «أكمل المشاهدة» واحدةٌ تملأ الودجت (W22) */
 struct SmallContinue: View {
   let feed: WFeed
   let source: Source
   var body: some View {
-    switch source.slots.first ?? .start(feed.s("startSomething")) {
-    case .item(let t, let sub, let link, let check):
-      FullPoster(feed: feed, path: t.poster_path, faded: false) {
-        VStack(alignment: .leading, spacing: 0) {
-          HStack(alignment: .top) {
-            if let undo = UndoInfo.current(), feed.check, check != nil {
-              Button(intent: UnmarkEpisodeIntent(show: undo.show, season: undo.season, episode: undo.episode)) {
-                Text("✓ \(undo.label) · \(feed.s("undo").isEmpty ? "↶" : feed.s("undo"))").font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.success)
-              }
-              .buttonStyle(.plain)
-            } else {
-              Text(check != nil ? feed.s("next") : source.title).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent)
-            }
-            Spacer()
-            CheckButton(feed: feed, item: check, size: 34)
-          }
-          Spacer()
-          Text(t.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-          Text(sub ?? "").font(.system(size: 11)).foregroundStyle(Color(white: 0.87)).lineLimit(2).padding(.top, 2)
-        }
-      }
-      .widgetURL(link)
-    case .faded(let t, _, let link):
-      FullPoster(feed: feed, path: t.poster_path, faded: true) {
-        VStack(alignment: .leading, spacing: 0) {
-          Text(feed.s("towatchTitle")).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.muted)
-          Spacer()
-          Text(t.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg.opacity(0.75)).lineLimit(2)
-          Text(feed.s("start") + " ›").font(.system(size: 11)).foregroundStyle(WColor.accent).padding(.top, 2)
-        }
-      }
-      .widgetURL(link)
-    case .start(let text):
-      VStack(spacing: 10) {
-        RoundedRectangle(cornerRadius: 7).strokeBorder(WColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-          .overlay(Text("+").font(.system(size: 18)).foregroundStyle(WColor.muted)).frame(width: 46, height: 62)
-        Text(text).font(.system(size: 12)).foregroundStyle(WColor.muted)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .widgetURL(WLink.discover)
+    let slot = source.slots.first ?? .start(feed.s("startSomething"))
+    CardView(feed: feed, slot: slot, radius: 0)
+      .widgetURL(link(slot))
+  }
+  func link(_ s: Slot) -> URL {
+    switch s {
+    case .item(_, _, let l, _): return l
+    case .faded(_, _, let l): return l
+    default: return WLink.discover
     }
   }
 }
 
-/** ملصقٌ يملأ الودجت وحجابٌ أثقلُ أسفلَ حيث الحروف (`art-veil`) */
-struct FullPoster<Content: View>: View {
+/**
+ * 🆕 W21 — **الصغيرُ بالملصق كبطاقة «To watch»**: الملصقُ كلُّه بمقاس الودجت (يُمَطّ ولا يُقصّ — «الصورة كاملة … عادي تمطها»)،
+ * والتظليلُ خلف الكلام فقط فوق وتحت بالدرجة الوسط («اعتمد ب»)، ووسطُ الملصق صافٍ. الشارةُ فوق، والاسمُ على الحافة السفلى.
+ */
+struct PosterCard<Top: View>: View {
   let feed: WFeed
   let path: String?
-  let faded: Bool
-  @ViewBuilder let content: () -> Content
+  let title: String
+  let sub: String
+  @ViewBuilder let top: () -> Top
   var body: some View {
     ZStack {
-      if let img = FeedStore.image(path, in: feed, maxPixel: 520) {
-        Image(uiImage: img).resizable().scaledToFill().opacity(faded ? 0.55 : 1)
+      if let img = FeedStore.image(path, in: feed, maxPixel: 600) {
+        Image(uiImage: img).resizable()
       } else {
         WColor.surface
       }
-      LinearGradient(colors: [Color.black.opacity(0.2), Color.black.opacity(0.4), Color.black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
-      content().padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      GeometryReader { g in
+        VStack(spacing: 0) {
+          LinearGradient(colors: [Color.black.opacity(0.5), Color.clear], startPoint: .top, endPoint: .bottom)
+            .frame(height: g.size.height * 0.21)
+          Spacer(minLength: 0)
+          LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: Color.black.opacity(0.42), location: 0.53), .init(color: Color.black.opacity(0.75), location: 1)], startPoint: .top, endPoint: .bottom)
+            .frame(height: g.size.height * 0.38)
+        }
+      }
+      VStack(alignment: .leading, spacing: 1) {
+        top()
+        Spacer(minLength: 0)
+        if !sub.isEmpty { Text(sub).font(.system(size: 10)).foregroundStyle(Color(white: 0.84)).lineLimit(1) }
+        Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+      }
+      .padding(.horizontal, 10).padding(.top, 9).padding(.bottom, 9)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
   }
 }
@@ -342,37 +368,6 @@ struct LockContinue: View {
 }
 
 /* ============ «القادم» ============ */
-
-struct UpcomingList: View {
-  let feed: WFeed
-  let now: Date
-  var body: some View {
-    let up = feed.upcomingNow(now)
-    VStack(alignment: .leading, spacing: 9) {
-      HStack {
-        Link(destination: WLink.calendar) { Text(feed.s("comingUpTitle")).font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.accent) }
-        Spacer()
-        if feed.upcoming.total > 3 { Link(destination: WLink.calendar) { Text(feed.s("all")).font(.system(size: 11)).foregroundStyle(WColor.muted) } }
-      }
-      if up.isEmpty {
-        Text(feed.s("noUpcoming")).font(.system(size: 12)).foregroundStyle(WColor.muted).frame(maxWidth: .infinity, minHeight: 60)
-      }
-      ForEach(Array(up.prefix(3).enumerated()), id: \.offset) { _, u in
-        Link(destination: WLink.title(u.asTitle)) {
-          HStack(spacing: 10) {
-            Poster(feed: feed, path: u.poster_path, maxPixel: 120, radius: 6).frame(width: 28, height: 40)
-            VStack(alignment: .leading, spacing: 0) {
-              Text(u.title).font(.system(size: 12)).foregroundStyle(WColor.fg).lineLimit(1)
-              Text(u.behind_label ?? u.label ?? " ").font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            if let d = u.date { DayChip(text: WDates.label(d, feed: feed, now: now), today: WDates.isToday(d, now: now)) }
-          }
-        }
-      }
-    }
-  }
-}
 
 struct DayChip: View {
   let text: String
@@ -438,15 +433,10 @@ struct ComingUpView: View {
     default:
       if let u {
         let same = up.dropFirst().filter { $0.date == u.date && u.date != nil }.count
-        FullPoster(feed: f, path: u.poster_path, faded: false) {
-          VStack(alignment: .leading, spacing: 0) {
-            if let d = u.date {
-              DayChip(text: WDates.label(d, feed: f, now: entry.date) + (same > 0 ? "  +\(same)" : ""), today: WDates.isToday(d, now: entry.date), glass: true)
-            }
-            Spacer()
-            Text(u.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-            Text(u.behind_label ?? u.label ?? "").font(.system(size: 11)).foregroundStyle(Color(white: 0.87)).lineLimit(2).padding(.top, 2)
-          }
+        let day = u.date.map { WDates.label($0, feed: f, now: entry.date) }
+        PosterCard(feed: f, path: u.poster_path, title: u.title, sub: u.behind_label ?? u.label ?? "") {
+          Text(([f.s("comingUpTitle"), day].compactMap { $0 }.joined(separator: " · ")) + (same > 0 ? "  +\(same)" : ""))
+            .font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
         }
         .widgetURL(same > 0 ? WLink.calendar : WLink.title(u.asTitle))
       } else {
@@ -469,7 +459,7 @@ struct TonightWidget: Widget {
     StaticConfiguration(kind: "LoopzTonight", provider: SimpleProvider()) { entry in TonightView(entry: entry) }
       .configurationDisplayName(LocalizedStringResource("tonight.name"))
       .description(LocalizedStringResource("tonight.desc"))
-      .supportedFamilies([.systemSmall, .systemMedium])
+      .supportedFamilies([.systemSmall])
       .contentMarginsDisabled()
   }
 }
@@ -497,58 +487,28 @@ struct TonightView: View {
 
   func sub(_ m: WMovie, _ f: WFeed) -> String {
     var parts: [String] = []
+    if let rating = m.rating { parts.append("★ " + String(format: "%.1f", rating)) }
     if let r = WDates.runtime(m.runtime, feed: f) { parts.append(r) }
-    if m.source == "suggested", let rating = m.rating { parts.append("★ " + String(format: "%.1f", rating)) }
     return parts.joined(separator: " · ")
   }
 
   @ViewBuilder func content(_ f: WFeed) -> some View {
     if let m = current(f) {
-      if family == .systemMedium {
-        HStack(spacing: 12) {
-          Link(destination: WLink.title(m.asTitle)) { Poster(feed: f, path: m.poster_path, maxPixel: 360).frame(width: 82) }
-          VStack(alignment: .leading, spacing: 0) {
-            Text(f.s("tonightTitle")).font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.accent)
-            Spacer()
-            Link(destination: WLink.title(m.asTitle)) {
-              Text(m.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
+      PosterCard(feed: f, path: m.poster_path, title: m.title, sub: sub(m, f)) {
+        HStack(alignment: .top) {
+          Text(f.s("tonightTitle")).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
+          Spacer(minLength: 4)
+          if f.tonight.count > 1 {
+            Button(intent: CycleTonightIntent()) {
+              Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.fg)
+                .frame(width: 26, height: 26).background(Circle().fill(Color.black.opacity(0.55)))
             }
-            Text([sub(m, f), m.source == "suggested" ? "" : f.s("fromTowatch")].filter { !$0.isEmpty }.joined(separator: " · "))
-              .font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1).padding(.top, 3)
-            if m.source == "suggested" { Text(f.s("suggested")).font(.system(size: 11)).foregroundStyle(WColor.accent) }
-            Spacer()
-            if f.tonight.count > 1 {
-              Button(intent: CycleTonightIntent()) {
-                Text(f.s("anotherMovie")).font(.system(size: 11)).foregroundStyle(WColor.fg)
-                  .padding(.horizontal, 10).padding(.vertical, 4).background(Capsule().fill(WColor.surface2))
-              }
-              .buttonStyle(.plain)
-            }
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(13)
-      } else {
-        FullPoster(feed: f, path: m.poster_path, faded: false) {
-          VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-              Text(f.s("tonightTitle")).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent)
-              Spacer()
-              if f.tonight.count > 1 {
-                Button(intent: CycleTonightIntent()) {
-                  Image(systemName: "arrow.clockwise").font(.system(size: 13, weight: .bold)).foregroundStyle(WColor.fg)
-                    .frame(width: 30, height: 30).background(Circle().fill(Color.black.opacity(0.55)))
-                }
-                .buttonStyle(.plain)
-              }
-            }
-            Spacer()
-            Text(m.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-            Text(sub(m, f)).font(.system(size: 11)).foregroundStyle(Color(white: 0.87)).lineLimit(1).padding(.top, 2)
+            .buttonStyle(.plain)
+            .padding(.top, -3)
           }
         }
-        .widgetURL(WLink.title(m.asTitle))
       }
+      .widgetURL(WLink.title(m.asTitle))
     } else {
       EmptyNote(text: f.s("noTowatchMovies")).widgetURL(WLink.discover)
     }

@@ -6,7 +6,7 @@ import { LoopzWidget } from "../../modules/loopz-widget";
 import { api } from "../api";
 import { session } from "../session";
 import { own } from "../ownSession";
-import { posterUrl } from "@/core/media";
+import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
 
 /**
@@ -37,26 +37,38 @@ function posterName(path: string): string | null {
   return base ? `p_${base}` : null;
 }
 
-function collectPosters(feed: WidgetFeed): string[] {
-  const out = new Set<string>();
-  const add = (p: string | null | undefined) => {
-    if (p) out.add(p);
+/**
+ * 🆕 W17/W18 — **صورُ الرسم بجودة التطبيق**: الصورةُ العريضة لبطاقة «أكمل المشاهدة» `w780` كبطاقة الرئيسيّة نفسِها،
+ * والملصقُ `w500` — الودجتُ الصغيرُ على S24 Ultra نحو ٣٥٠px عرضاً، و`w342` أصغرُ منه فيُمَطّ ويَغبَش.
+ * المفتاحُ مسارُ TMDB والقيمةُ نوعُه؛ ومسارٌ واحدٌ لا يُنزَّل مرّتين.
+ */
+type Art = "poster" | "backdrop";
+
+function collectArt(feed: WidgetFeed): Map<string, Art> {
+  const out = new Map<string, Art>();
+  const add = (p: string | null | undefined, kind: Art = "poster") => {
+    if (p && !out.has(p)) out.set(p, kind);
   };
-  feed.continue.items.forEach((x) => add(x.poster_path));
+  feed.continue.items.forEach((x) => {
+    add(x.backdrop_path, "backdrop");
+    add(x.poster_path);
+  });
   feed.towatch_series.forEach((x) => add(x.poster_path));
   feed.towatch_all.forEach((x) => add(x.poster_path));
   feed.upcoming.items.forEach((x) => add(x.poster_path));
   feed.tonight.forEach((x) => add(x.poster_path));
   feed.lists.forEach((l) => l.items.forEach((x) => add(x.poster_path)));
-  return [...out];
+  return out;
 }
 
-async function ensurePoster(path: string): Promise<string | null> {
+async function ensureArt(path: string, kind: Art): Promise<string | null> {
   const w = LoopzWidget;
-  const name = posterName(path);
+  const base = posterName(path);
+  /* الاسمُ يحمل المقاسَ — ملفّاتُ `w342` القديمةُ من البناء الأوّل لا تُعاد على أنّها الجديدة */
+  const name = base ? `${kind === "backdrop" ? "b780" : "p500"}_${base}` : null;
   if (!w || !name) return null;
   if (w.exists(name)) return name;
-  const url = posterUrl(path, "w342");
+  const url = kind === "backdrop" ? backdropUrl(path, "w780") : posterUrl(path, "w500");
   if (!url) return null;
   const tmp = new File(Paths.cache, `wp-${name}`);
   try {
@@ -106,12 +118,13 @@ async function run(): Promise<void> {
   }
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
   const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query);
-  const posters = collectPosters(data);
+  const art = [...collectArt(data)];
   const names = new Map<string, string>();
   /* أربعةٌ أربعة — لا عشرون طلباً في لحظةٍ واحدة على شبكةٍ قد تكون ضعيفة */
-  for (let i = 0; i < posters.length; i += 4) {
-    const chunk = posters.slice(i, i + 4);
-    const got = await Promise.all(chunk.map((p) => ensurePoster(p)));
+  for (let i = 0; i < art.length; i += 4) {
+    const batch = art.slice(i, i + 4);
+    const chunk = batch.map(([p]) => p);
+    const got = await Promise.all(batch.map(([p, kind]) => ensureArt(p, kind)));
     chunk.forEach((p, n) => {
       const name = got[n];
       if (name) names.set(p, name);

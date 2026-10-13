@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 🆕 خطّةُ الودجتات. ٣٠ دقيقةً أدنى ما يقبله أندرويد: إعادةُ رسمٍ من الملفّ نفسِه — «اليوم» تُحسب وقتَ الرسم -->
+<!-- 🆕 W20 — الطوليّ 2×4 (حلّ محلَّ الكبير 4×4 بالصنف نفسِه: من وضع الكبيرَ يجده طوليّاً). خطّةُ الودجتات. ٣٠ دقيقةً أدنى ما يقبله أندرويد: إعادةُ رسمٍ من الملفّ نفسِه — «اليوم» تُحسب وقتَ الرسم -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="250dp"
+    android:minWidth="110dp"
     android:minHeight="250dp"
-    android:targetCellWidth="4"
+    android:targetCellWidth="2"
     android:targetCellHeight="4"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/loopz_w_continue_l"

@@ -15,15 +15,15 @@ const path = require("path");
 const PKG_DIR = path.join("com", "loopztv", "app", "widget");
 
 /** الأيقوناتُ من مجموعة التطبيق الواحدة (`assets/icons`) لا رسمٌ ثانٍ لها (القاعدة ٣) */
-const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png" };
+const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png", widget_ic_play: "play.png" };
 
+/* 🆕 W24 — «فيلم الليلة» المتوسط أُلغي (قرارُ أحمد ١٣ أكتوبر)، و`ContinueLargeWidget` صار الطوليَّ 2×4 */
 const PROVIDERS = [
   { name: ".widget.LoopzWidget", label: "@string/w_continue_name", info: "@xml/loopz_widget_info" },
   { name: ".widget.ContinueSmallWidget", label: "@string/w_continue_name", info: "@xml/loopz_w_continue_s_info" },
   { name: ".widget.ContinueLargeWidget", label: "@string/w_continue_name", info: "@xml/loopz_w_continue_l_info" },
   { name: ".widget.ComingUpWidget", label: "@string/w_comingup_name", info: "@xml/loopz_w_comingup_info" },
   { name: ".widget.TonightSmallWidget", label: "@string/w_tonight_name", info: "@xml/loopz_w_tonight_s_info" },
-  { name: ".widget.TonightMediumWidget", label: "@string/w_tonight_name", info: "@xml/loopz_w_tonight_m_info" },
 ];
 
 function copyDir(from, to) {

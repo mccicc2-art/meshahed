@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 🆕 خطّةُ الودجتات — الصغير: ملصقٌ كاملٌ وحجابٌ يجعل الحرفَ الأبيضَ مقروءاً فوق أيِّ صورة -->
+<!-- 🆕 خطّةُ الودجتات W21 — الصغيرُ بالملصق كبطاقة «To watch»: الملصقُ كلُّه بمقاس الودجت (الصورةُ تُرسم بمقاسه في
+     كوتلن ومعها التظليلُ فوق وتحت، فـ`fitXY` هنا لا يمطّ شيئاً)، والاسمُ على الحافة السفلى والسطرُ الثاني فوقه -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -9,7 +10,7 @@
         android:id="@+id/full_img"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop" />
+        android:scaleType="fitXY" />
     <FrameLayout
         android:id="@+id/full_scrim"
         android:layout_width="match_parent"
@@ -20,19 +21,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:layout_margin="11dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="9dp"
+        android:layout_marginEnd="40dp"
         android:textColor="#FFD400"
         android:textSize="11sp"
         android:textStyle="bold"
         android:maxLines="1" />
     <ImageView
         android:id="@+id/full_action"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:layout_gravity="top|end"
-        android:layout_margin="8dp"
+        android:layout_margin="7dp"
         android:background="@drawable/widget_check"
-        android:padding="8dp"
+        android:padding="6dp"
         android:visibility="gone" />
     <TextView
         android:id="@+id/full_plus"
@@ -50,26 +53,28 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_margin="12dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="9dp"
         android:orientation="vertical">
+        <TextView
+            android:id="@+id/full_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="1dp"
+            android:textColor="#D6D6D6"
+            android:textSize="10sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textAlignment="viewStart" />
         <TextView
             android:id="@+id/full_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#F7F7F7"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:textAlignment="viewStart" />
-        <TextView
-            android:id="@+id/full_sub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textColor="#DDDDDD"
-            android:textSize="11sp"
-            android:maxLines="2"
+            android:maxLines="1"
             android:ellipsize="end"
             android:textAlignment="viewStart" />
     </LinearLayout>
