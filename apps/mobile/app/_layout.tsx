@@ -14,6 +14,8 @@ import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
 import { PushGate } from "../src/PushGate";
+import { WidgetGate } from "../src/WidgetGate";
+import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
 import { Opening } from "../src/opening/Opening";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
@@ -32,6 +34,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 applyDirection(currentLocale());
 /* D-1026 (F2) — الكاشُ المحفوظ يُعاد قبل أوّل شاشة: «المكتبة» تفتح على ما عُرض آخرَ مرّة */
 startCachePersist();
+/* 🆕 الودجتات — الخلفيّةُ والخروجُ والمهمّةُ الخلفيّة تُسجَّل من الإقلاع (`widget/feed.ts`) */
+startWidgetFeed();
 
 
 export default function RootLayout() {
@@ -141,6 +145,7 @@ function Shell() {
       <WebLayer />
       {/* 🆕 D-1305 — إشعاراتُ الدفع: الإذنُ والرمزُ عند الإقلاع (`src/push.ts`)، وضغطةُ الإشعار تفتح وجهتَه الأصليّة */}
       <PushGate />
+      <WidgetGate />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
       <TourHost />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}

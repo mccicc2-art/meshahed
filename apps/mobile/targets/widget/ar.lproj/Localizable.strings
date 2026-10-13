@@ -1,0 +1,15 @@
+"continue.name" = "أكمل المشاهدة";
+"continue.desc" = "حلقتك التالية في كل ما تتابعه";
+"comingup.name" = "القادم";
+"comingup.desc" = "أقرب مواعيد مسلسلاتك";
+"tonight.name" = "فيلم الليلة";
+"tonight.desc" = "فيلم من «للمشاهدة» أو اختيار معروف";
+"open.app" = "افتح لوبز ليتحدّث الودجت";
+"signed.out" = "سجّل الدخول إلى لوبز";
+"source.title" = "ماذا يعرض الودجت؟";
+"source.param" = "يعرض";
+"source.continue" = "أكمل المشاهدة";
+"source.towatch" = "للمشاهدة";
+"intent.cycle" = "فيلم آخر";
+"intent.mark" = "تمت المشاهدة";
+"intent.unmark" = "تراجع";

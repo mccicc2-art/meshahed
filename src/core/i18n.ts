@@ -2501,6 +2501,26 @@ const ar = {
 
   seeAll: "الكل ←",
   seasonToggleAria: (n: number) => `فتح أو طي الموسم ${n}`,
+
+  /* 🆕 الودجتات (خطّةُ ١٣ أكتوبر) — تُرسل في ردِّ `me/widget` لأنّ الودجتَ لا يحمل قاموساً */
+  widgetContinue: "أكمل المشاهدة",
+  widgetComingUp: "القادم",
+  widgetTonight: "فيلم الليلة",
+  widgetAllCount: "الكل %d ←",
+  widgetNext: "التالية",
+  widgetStart: "ابدأ",
+  widgetTowatchStart: "للمشاهدة · ابدأ",
+  widgetStartSomething: "ابدأ عملاً",
+  widgetNoUpcoming: "لا مواعيد قادمة لمسلسلاتك",
+  widgetNoTowatchMovies: "أضف أفلاماً إلى «للمشاهدة»",
+  widgetAnotherMovie: "فيلم آخر ↻",
+  widgetSuggested: "مقترح لذائقتك",
+  widgetFromTowatch: "من «للمشاهدة»",
+  widgetYouAreAt: "أنت عند %s",
+  widgetPremiere: (s: number) => `الموسم ${s} · الحلقة الأولى`,
+  widgetSeasonNoDate: (s: number) => `الموسم ${s} · لم يُحدَّد موعد`,
+  widgetSignedOut: "سجّل الدخول إلى لوبز",
+  widgetStartedToast: (title: string) => `بدأت ${title}`,
 };
 
 export type Dict = typeof ar;
@@ -4239,6 +4259,25 @@ const en: Dict = {
 
   seeAll: "All →",
   seasonToggleAria: (n: number) => `Expand or collapse season ${n}`,
+
+  widgetContinue: "Continue watching",
+  widgetComingUp: "Coming up",
+  widgetTonight: "Tonight's movie",
+  widgetAllCount: "All %d →",
+  widgetNext: "Up next",
+  widgetStart: "Start",
+  widgetTowatchStart: "To watch · Start",
+  widgetStartSomething: "Start something",
+  widgetNoUpcoming: "No upcoming dates for your shows",
+  widgetNoTowatchMovies: "Add movies to To watch",
+  widgetAnotherMovie: "Another movie ↻",
+  widgetSuggested: "Picked for your taste",
+  widgetFromTowatch: "From To watch",
+  widgetYouAreAt: "You're at %s",
+  widgetPremiere: (s: number) => `Season ${s} · Episode 1`,
+  widgetSeasonNoDate: (s: number) => `Season ${s} · Date not set`,
+  widgetSignedOut: "Sign in to Loopz",
+  widgetStartedToast: (title: string) => `Started ${title}`,
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

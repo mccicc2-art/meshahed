@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🆕 خطّةُ الودجتات. ٣٠ دقيقةً أدنى ما يقبله أندرويد: إعادةُ رسمٍ من الملفّ نفسِه — «اليوم» تُحسب وقتَ الرسم -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/loopz_w_small"
+    android:previewLayout="@layout/loopz_w_small"
+    android:description="@string/w_comingup_desc"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

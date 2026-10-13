@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- شارةُ «اليوم»: أصفرُ الهويّة وحرفُه أسود (`accent` / `on-accent` في themes.ts) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFD400" />
+    <corners android:radius="10dp" />
+</shape>

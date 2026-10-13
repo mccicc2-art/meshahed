@@ -8,7 +8,6 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBadges } from "../messages/badges";
 import { warmDiscoverOnce } from "../discover/DiscoverScreen";
 import { useQueryClient } from "@tanstack/react-query";
-import { File, Paths } from "expo-file-system";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
@@ -50,6 +49,8 @@ import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
+import { refreshWidgets } from "../widget/feed";
+import { widgetBus } from "../widget/bus";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -477,15 +478,34 @@ export function HomeScreen() {
   );
   const queueItemsOf = useCallback((items: HomeQueueItem[]) => items.map((q) => ({ key: q.key, title: q.title ?? "", poster_path: q.poster_path, media_type: q.media_type ?? ("movie" as const) })), []);
 
-  /* ——— الودجت (D-929): ما كان `WidgetSync` الويبيّ يكتبه — يُكتب من هنا ——— */
+  /* ——— 🆕 الودجتات: كلُّ تحميلٍ للرئيسيّة يجدّدها (وكلُّ فعلٍ يبطل الرئيسيّة يعيد تحميلها) — `widget/feed.ts` ——— */
   useEffect(() => {
-    if (!d) return;
-    try {
-      new File(Paths.document, "widget.json").write(JSON.stringify(d.widget.slice(0, 3)));
-    } catch {
-      /* ودجتٌ قديمةٌ خيرٌ من شاشةٍ تسقط */
-    }
+    if (d) void refreshWidgets();
   }, [d]);
+
+  /* ——— 🆕 ما يصل من الودجت: «الكل» يفتح ورقةَ القسم، و«ابدأ» من الخانة الباهتة يترك هنا توستَ «تراجع» ——— */
+  useEffect(
+    () =>
+      widgetBus.subscribe((e) => {
+        if (e.type === "all") {
+          setAllSheet(e.section);
+          return;
+        }
+        toastHost.current?.say(
+          t.widgetStartedToast(e.title),
+          {
+            label: t.undoWatched,
+            onPress: () =>
+              void write<unknown>("/api/v1/track/watch-state", { showTmdbId: e.id, state: e.action === "start" ? null : "paused" } satisfies WatchStateBody)
+                .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+                .catch(onError),
+          },
+          6000,
+          "success",
+        );
+      }),
+    [t, qc, onError],
+  );
 
   /* ——— الرأسُ يختفي بالتمرير كالويب (`chrome-top`)، والغلافُ ثابتٌ خلفه ——— */
   const chrome = useChromeHide();

@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ٣٠ دقيقةً هو الحدُّ الأدنى الذي يقبله أندرويد؛ ما دونه يُتجاهل بصمت. -->
+<!-- 🆕 خطّةُ الودجتات. ٣٠ دقيقةً أدنى ما يقبله أندرويد: إعادةُ رسمٍ من الملفّ نفسِه — «اليوم» تُحسب وقتَ الرسم -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
-    android:initialLayout="@layout/loopz_widget"
+    android:initialLayout="@layout/loopz_w_continue_m"
+    android:previewLayout="@layout/loopz_w_continue_m"
+    android:description="@string/w_continue_desc"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:configure="com.loopztv.app.widget.WidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

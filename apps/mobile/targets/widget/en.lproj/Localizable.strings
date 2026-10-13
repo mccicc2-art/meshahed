@@ -1,0 +1,15 @@
+"continue.name" = "Continue watching";
+"continue.desc" = "Your next episode in everything you follow";
+"comingup.name" = "Coming up";
+"comingup.desc" = "The nearest dates of your shows";
+"tonight.name" = "Tonight's movie";
+"tonight.desc" = "A movie from To watch, or a well-known pick";
+"open.app" = "Open Loopz to update the widget";
+"signed.out" = "Sign in to Loopz";
+"source.title" = "What does the widget show?";
+"source.param" = "Show";
+"source.continue" = "Continue watching";
+"source.towatch" = "To watch";
+"intent.cycle" = "Another movie";
+"intent.mark" = "Mark watched";
+"intent.unmark" = "Undo";
