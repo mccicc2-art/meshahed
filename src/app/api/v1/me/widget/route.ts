@@ -89,6 +89,11 @@ export async function GET(req: NextRequest) {
       /* ——— «أكمل المشاهدة»: المسلسلاتُ وحدَها، بترتيب الرئيسيّة ——— */
       const continueItems: WidgetContinueItem[] = body.continueTop.slice(0, 3).map((i, n) => {
         const ex = body.continueExtra[n];
+        /* 🆕 W17 — **حسابُ بطاقة الرئيسيّة نفسُه** (`apps/mobile/src/home/Cards.tsx`): النسبةُ من المشاهَد والمعروض،
+           والسطرُ الثاني «الحلقة · باقي N» — فالبطاقتان لا تختلفان في رقم */
+        const left = i.aired > i.watched ? i.aired - i.watched : 0;
+        const pct = i.aired > 0 ? Math.max(0, Math.min(100, Math.round((i.watched / i.aired) * 100))) : 0;
+        const sub = [ex?.episodeLabel ?? null, left > 0 ? t.leftEps(left) : null].filter(Boolean).join(" · ") || null;
         return {
           kind: "tv",
           id: i.id,
@@ -97,6 +102,9 @@ export async function GET(req: NextRequest) {
           season: ex?.season ?? null,
           episode: ex?.episode ?? null,
           label: ex?.season != null && ex?.episode != null ? t.epLabel(ex.season, ex.episode) : null,
+          backdrop_path: ex?.backdropPath ?? null,
+          sub,
+          pct,
         };
       });
       /* العددُ كلُّه لا الظاهرُ — مفاتيحُ `c-` في طابور الصفّ هي المسلسلاتُ نفسُها */
