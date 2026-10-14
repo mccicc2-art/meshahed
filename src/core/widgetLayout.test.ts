@@ -164,3 +164,14 @@ test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل �
   assert.ok(sum(i) <= 376);
   assert.ok(sum(a) <= 440);
 });
+
+/* 🆕 W45 — أكملُ المشاهدة الصغير: «صورة» افتراضاً، و«قائمة» تختاره القائمةَ في المربّع */
+test("أكمل المشاهدة الصغير: صورة افتراضاً، والقائمة اختيار", () => {
+  const def = defaultWidgetConfig();
+  assert.equal(def.opts.cont.small, "image");
+  assert.notEqual(smallWidgetForm(def, "cont", 170, 170), "list");
+  const list = sanitizeWidgetConfig({ opts: { cont: { size: "small", view: "cards", count: 2, small: "list" } } });
+  assert.equal(list.opts.cont.small, "list");
+  assert.equal(smallWidgetForm(list, "cont", 170, 170), "list");
+  assert.equal(sanitizeWidgetConfig({ opts: { cont: { small: "bogus" } } }).opts.cont.small, "image");
+});

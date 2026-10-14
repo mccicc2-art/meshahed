@@ -194,12 +194,14 @@ export function widgetActivity(
   t: Pick<Dict, "widgetActWatched" | "widgetActRated" | "widgetActReviewed" | "widgetActListed" | "epLabel">,
   max = 3,
 ): WidgetActivityItem[] {
-  return [...rows]
+  /* 🆕 عملٌ لا يُعرف اسمُه لا يُرسم «#138843» (تسجيلُ أحمد ١٤ أكتوبر) — يسقط ويأخذ الذي بعده مكانَه */
+  const named = rows.filter((r) => !!(r.title ?? meta.get(`${r.mediaType}-${r.tmdbId}`)?.title));
+  return [...named]
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, max)
     .map((r) => {
       const info = meta.get(`${r.mediaType}-${r.tmdbId}`);
-      const name = r.title ?? info?.title ?? `#${r.tmdbId}`;
+      const name = (r.title ?? info?.title) as string;
       const title: WidgetTitle = { kind: r.mediaType, id: r.tmdbId, title: name, poster_path: r.posterPath ?? info?.poster ?? null };
       const line =
         r.kind === "watch" ? t.widgetActWatched(name)

@@ -25,8 +25,8 @@ export interface WidgetSectionOpts {
   view: string;
   /** عددُ أسطر القائمة في الحجم الكامل — الصغيرُ ثابت (W30) */
   count: 2 | 3;
-  /** فيلم الليلة وحده: شكلُه الصغير (W42) */
-  small?: "poster" | "list";
+  /** شكلُ الحجم الصغير: فيلمُ الليلة «بوستر» أو «قائمة» (W42)؛ و🆕 أكملُ المشاهدة «صورة» أو «قائمة» (W45) */
+  small?: "poster" | "list" | "image";
   /** البحثُ وحده: «الرائج اليوم» تحت الشريط في الشكل الكامل — قائمةٌ مرقّمة افتراضاً، أو بوستراتٌ مرقّمة (W31) */
   trend?: "list" | "posters";
 }
@@ -47,7 +47,8 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
     on: { search: true, cont: true, up: true, tonight: true, friends: true, tw: true, act: true },
     opts: {
       search: { ...full("compact"), trend: "list" },
-      cont: full("cards"),
+      /* 🆕 W45 — أكملُ المشاهدة الصغير صورةٌ افتراضاً (أحمد «١ أ»، ١٤ أكتوبر): نصفُ العرض والمربّعُ كفيلم الليلة */
+      cont: { ...full("cards"), small: "image" },
       up: full("list"),
       /* W42 — العريضُ للكامل، والبوسترُ مع العمود للصغير */
       tonight: { ...full("wide"), small: "poster" },
@@ -245,6 +246,7 @@ export type WidgetSmallForm = "posterFull" | "posterColumn" | "headerFade" | "li
 
 export function smallWidgetForm(cfg: WidgetLayoutConfig, key: WidgetSectionKey, width: number, height: number): WidgetSmallForm {
   if (key === "tonight" && cfg.opts.tonight.small === "list") return "list";
+  if (key === "cont" && cfg.opts.cont.small === "list") return "list";
   if (key !== "cont" && key !== "tonight" && key !== "tw") return "list";
   /* طوليٌّ يقبل البوسترَ بمطٍّ مقبول: البوسترُ يملأ الودجت */
   const fit = fitImage(width, height);
@@ -297,6 +299,7 @@ export function sanitizeWidgetConfig(raw: unknown): WidgetLayoutConfig {
         view: typeof o.view === "string" ? o.view : base.opts[k].view,
         count: o.count === 3 ? 3 : 2,
         ...(k === "tonight" ? { small: o.small === "list" ? "list" : "poster" } : {}),
+        ...(k === "cont" ? { small: o.small === "list" ? "list" : "image" } : {}),
         ...(k === "search" ? { trend: o.trend === "posters" ? "posters" : "list" } : {}),
       };
     }
