@@ -32,9 +32,9 @@ export async function GET(req: NextRequest) {
         /* الأحداثُ بحقولها المنشورة وحدَها — `title_secondary` وما أضافته الترجمةُ لا يعبر */
         events: c.events.map((e) =>
           e.kind === "share"
-            ? { kind: "share" as const, id: e.id, mine: e.mine, tmdb_id: e.tmdb_id, media_type: e.media_type, title: e.title, poster_path: e.poster_path, note: e.note, created_at: e.created_at }
+            ? { kind: "share" as const, id: e.id, mine: e.mine, tmdb_id: e.tmdb_id, media_type: e.media_type, title: e.title, poster_path: e.poster_path, note: e.note, created_at: e.created_at, ...(e.mine && typeof e.read === "boolean" ? { read: e.read } : {}) }
             : e.kind === "list"
-              ? { kind: "list" as const, id: e.id, mine: e.mine, list_id: e.list_id, list_name: e.list_name, item_count: e.item_count, note: e.note, created_at: e.created_at }
+              ? { kind: "list" as const, id: e.id, mine: e.mine, list_id: e.list_id, list_name: e.list_name, item_count: e.item_count, note: e.note, created_at: e.created_at, ...(e.mine && typeof e.read === "boolean" ? { read: e.read } : {}) }
               : /* 🆕 D-1400 — والـGIF والصورةُ معه (D-1387)؛ قبلها كانا يسقطان هنا فتفرغ فقاعتُهما في التطبيق */
                 replyEventOut(e),
         ),

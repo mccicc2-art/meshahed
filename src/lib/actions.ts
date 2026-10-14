@@ -4690,7 +4690,11 @@ export async function myCommunitiesList(): Promise<CommunityLite[]> {
  * والبوّابُ واحدٌ في القاعدة (`can_message`، الهجرة ٢٠٠): الحظرُ أوّلاً، ثمّ المحادثةُ القائمة، ثمّ إعدادُ المستلم
  * («الكلّ» · «المتبادلون» · «لا أحد»). المحادثةُ القائمة تستمرّ ولو قفل الخاص («أ»).
  */
-export async function sendDirectMessage(recipientId: string, body: string, media?: { gif_id?: string | null; image_path?: string | null }) {
+export async function sendDirectMessage(
+  recipientId: string,
+  body: string,
+  media?: { gif_id?: string | null; image_path?: string | null; reply_to?: string | null },
+) {
   recipientId = uuid(recipientId);
   const clean = String(body ?? "").trim();
   /* 🆕 D-1387 — GIF وحدَه أو صورةٌ بتعليقٍ اختياريّ (القيدُ نفسُه في الهجرة ٢٠٢) */
@@ -4711,10 +4715,14 @@ export async function sendDirectMessage(recipientId: string, body: string, media
     body: clean,
     ...(gif ? { gif_id: gif } : {}),
     ...(image ? { image_path: image } : {}),
+    /* 🆕 D-1403 — الاقتباس: معرّفٌ وحدَه، والقاعدةُ ترفض أصلاً من محادثةٍ أخرى (`23514`، الهجرة ٢٠٣) */
+    ...(media?.reply_to ? { reply_to: uuid(media.reply_to) } : {}),
   });
   if (error) {
     /* رفضُ البوّاب (`42501`) ليس عطلاً: المستلمُ قفل الخاص أو بينهما حظر — رسالةٌ تُقرأ لا «جرّب مرّة أخرى» */
     if (error.code === "42501") throw new Error("هذا الشخص لا يستقبل رسائل / This person isn't accepting messages");
+    /* 🆕 D-1403 — المقتبَسُ من محادثةٍ أخرى أو زال قبل الإرسال: مدخلٌ غيرُ صالحٍ لا عطل */
+    if (error.code === "23514" || error.code === "23503") throw new Error("مدخل غير صالح / Invalid input");
     fail(error);
   }
   notifyMessage({ to: recipientId, actorId: user.id, text: clean, media: gif ? "gif" : image ? "image" : null });

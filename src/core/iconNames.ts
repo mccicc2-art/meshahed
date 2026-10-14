@@ -102,6 +102,9 @@ export type IconName =
   | "red-card"
   | "book"
   | "check-line"
+  /* 🆕 D-1401/D-1403 — الدردشة: ✓✓ قرأها، والردُّ على رسالة */
+  | "check-double"
+  | "reply"
   | "chevron-down"
   | "chevron-up"
   | "repeat"

@@ -22,6 +22,8 @@ export type MsgShareEvent = {
   poster_path: string | null;
   note: string | null;
   created_at: string;
+  /** 🆕 D-1401 — على ما أرسلتُه وحدي: قرأه صاحبُه؟ (✓ وصلت · ✓✓ قرأها) — غائبٌ على رسائل الطرف الآخر */
+  read?: boolean;
 };
 /** ردٌّ نصّيّ — ردٌّ قديمٌ في خيط عمل، أو 🆕 رسالةٌ مباشرةٌ بلا عمل (D-1380).
  *  🆕 D-1387 — والمباشرةُ قد تحمل **GIF** (معرّفُه وحدَه، D-362) أو **صورة** (`image`، ومعها تعليقٌ اختياريّ في `body`) */
@@ -33,6 +35,21 @@ export type MsgReplyEvent = {
   created_at: string;
   gif_id?: string | null;
   image?: MsgImage | null;
+  /** 🆕 D-1401 — على ما أرسلتُه وحدي: قرأه صاحبُه؟ */
+  read?: boolean;
+  /** 🆕 D-1403 — الرسالةُ المقتبَسة فوق الردّ (الهجرة ٢٠٣) */
+  reply?: MsgReplyRef | null;
+  /** 🆕 D-1403 — رسالةٌ مباشرة (لا ردٌّ قديمٌ في خيط عمل): وحدها يُردّ عليها باقتباس */
+  dm?: boolean;
+};
+/** 🆕 D-1403 — مختصرُ الرسالة المقتبَسة: صاحبُها ونوعُها وأوّلُ سطرها أو صورتُها؛ `gone` = لم يعد الأصلُ متاحاً */
+export type MsgReplyRef = {
+  id: string;
+  mine: boolean;
+  kind: "text" | "image" | "gif" | "gone";
+  body: string;
+  image?: MsgImage | null;
+  gif_id?: string | null;
 };
 /** 🆕 D-1387 — صورةُ رسالةٍ في المخزن الخاصّ `dm-media`: `url` رابطٌ مؤقّتٌ يصنعه الخادمُ بجلسة القارئ (لا رابطَ عامّ)،
  *  و`key` مسارُها الثابت — مفتاحُ الكاش في التطبيق فلا تُنزَّل الصورةُ ثانيةً كلّما تجدّد الرابط */
@@ -47,6 +64,8 @@ export type MsgListEvent = {
   item_count: number | null;
   note: string | null;
   created_at: string;
+  /** 🆕 D-1401 — على ما أرسلتُه وحدي: قرأه صاحبُه؟ */
+  read?: boolean;
 };
 export type MsgEvent = MsgShareEvent | MsgReplyEvent | MsgListEvent;
 
@@ -85,7 +104,7 @@ export type LastSeenPayload = { last_seen: string | null };
 export type MsgReplyBody = { share_id: string; body: string };
 /** 🆕 D-1380 — `POST /api/v1/me/messages/text`: رسالةٌ نصّيّةٌ مباشرة (`sendDirectMessage`).
  *  🆕 D-1387 — أو GIF وحدَه (`body` فارغ)، أو صورةٌ رُفعت قبلُ (`image_path` من `/api/v1/me/messages/image`) بتعليقٍ اختياريّ */
-export type MsgTextBody = { recipient_id: string; body: string; gif_id?: string | null; image_path?: string | null };
+export type MsgTextBody = { recipient_id: string; body: string; gif_id?: string | null; image_path?: string | null; reply_to?: string | null };
 /** 🆕 D-1387 — `POST /api/v1/me/messages/image` (multipart `file`): الصورةُ في مجلّدك من `dm-media`، والمسارُ يعود ليُرسَل مع الرسالة */
 export type MsgImagePayload = { path: string };
 /** مسارُ صورة الرسالة: `<uid>/<uuid>.<ext>` — قيدُ الهجرة ٢٠٢ نفسُه (والخادمُ يشترط أن يكون المجلّدُ مجلّدَ المرسِل) */
@@ -98,7 +117,17 @@ export const DM_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
  * قبله كان مسارُ `GET /api/v1/me/messages` يختار خمسةَ حقولٍ بيده فيُسقط `gif_id` و`image` (D-1387)،
  * فتصل رسالةُ الصورة إلى الهاتف نصّاً فارغاً وتنكمش فقاعتُها نقطةً — والويبُ سليمٌ لأنّه يقرأ `getConversations` مباشرة.
  */
-export function replyEventOut(e: { id: string; mine: boolean; body: string; created_at: string; gif_id?: string | null; image?: MsgImage | null }): MsgReplyEvent {
+export function replyEventOut(e: {
+  id: string;
+  mine: boolean;
+  body: string;
+  created_at: string;
+  gif_id?: string | null;
+  image?: MsgImage | null;
+  read?: boolean;
+  reply?: MsgReplyRef | null;
+  dm?: boolean;
+}): MsgReplyEvent {
   return {
     kind: "reply",
     id: e.id,
@@ -107,6 +136,23 @@ export function replyEventOut(e: { id: string; mine: boolean; body: string; crea
     created_at: e.created_at,
     ...(e.gif_id ? { gif_id: e.gif_id } : {}),
     ...(e.image ? { image: { url: e.image.url, key: e.image.key } } : {}),
+    /* 🆕 D-1401 — حالةُ القراءة على رسائلي وحدها: رسالةُ الطرف الآخر لا تحمل شيئاً عن قراءتي لها */
+    ...(e.mine && typeof e.read === "boolean" ? { read: e.read } : {}),
+    /* 🆕 D-1403 — الاقتباسُ بحقوله المنشورة وحدها */
+    ...(e.reply ? { reply: replyRefOut(e.reply) } : {}),
+    ...(e.dm ? { dm: true } : {}),
+  };
+}
+
+/** 🆕 D-1403 — مختصرُ الأصل المقتبَس كما يعبر: لا حقلَ زائد، والصورةُ رابطُها المؤقّتُ ومفتاحُها */
+export function replyRefOut(r: MsgReplyRef): MsgReplyRef {
+  return {
+    id: r.id,
+    mine: r.mine,
+    kind: r.kind,
+    body: r.body,
+    ...(r.image ? { image: { url: r.image.url, key: r.image.key } } : {}),
+    ...(r.gif_id ? { gif_id: r.gif_id } : {}),
   };
 }
 /** `POST /api/v1/me/messages/{read,hide,block}` */
@@ -176,7 +222,16 @@ export function parseMsgTextBody(raw: unknown): MsgTextBody | null {
   if (gif && image) return null;
   if (gif && body) return null;
   if (!body && !gif && !image) return null;
-  return { recipient_id: b.recipient_id, body, ...(gif ? { gif_id: gif } : {}), ...(image ? { image_path: image } : {}) };
+  /* 🆕 D-1403 — الردُّ على رسالةٍ بعينها: معرّفُها وحدَه، والقاعدةُ تشترط أن تكون من المحادثة نفسِها (الهجرة ٢٠٣) */
+  const replyTo = typeof b.reply_to === "string" && b.reply_to ? b.reply_to : null;
+  if (replyTo && !UUID.test(replyTo)) return null;
+  return {
+    recipient_id: b.recipient_id,
+    body,
+    ...(gif ? { gif_id: gif } : {}),
+    ...(image ? { image_path: image } : {}),
+    ...(replyTo ? { reply_to: replyTo } : {}),
+  };
 }
 
 export function parseMsgPeerBody(raw: unknown): MsgPeerBody | null {

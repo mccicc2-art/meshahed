@@ -30,7 +30,7 @@ import dynamic from "next/dynamic";
 /* 🆕 D-1382 — منتقي الخلفيّة كذلك: لا يُرسم إلا من ⋯ */
 const ChatBgSheet = dynamic(() => import("./ChatBgSheet").then((m) => m.ChatBgSheet), { ssr: false });
 const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
-import type { Conversation, ConvEvent } from "@/lib/data";
+import type { Conversation, ConvEvent, ConvReplyEvent } from "@/lib/data";
 import { displayNameOf, type PersonLite } from "@/core/people";
 
 /**
@@ -499,7 +499,7 @@ function ConversationView({
       {/* الأحداث */}
       <div className="py-4 space-y-3">
         {events.map((e) => (
-          <ConvBubble key={`${e.kind}-${e.id}`} event={e} locale={locale} />
+          <ConvBubble key={`${e.kind}-${e.id}`} event={e} locale={locale} peerName={name} />
         ))}
         {/* 🆕 D-1380 — خيطٌ لم يبدأ بعد: دعوةٌ لا فراغ */}
         {events.length === 0 && canMessage !== false ? (
@@ -545,9 +545,31 @@ function ConversationView({
 }
 
 /** فقاعةٌ واحدة: عملٌ مُشارَك (بطاقة) أو ردٌّ نصّي */
-function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
+/** 🆕 D-1403 — اقتباسُ الأصل: خطٌّ بلون صاحبه، اسمُه، وأوّلُ سطرٍ أو «📷 صورة»/«GIF» ومصغّرتُها */
+function ReplyQuote({ r, onMine, t, peerName }: { r: NonNullable<ConvReplyEvent["reply"]>; onMine: boolean; t: Dict; peerName: string }) {
+  const who = r.kind === "gone" ? "" : r.mine ? t.convYou : peerName;
+  const line =
+    r.kind === "gone" ? t.msgReplyGone : r.kind === "gif" ? t.msgGifPreview : r.kind === "image" ? (r.body ? `${t.msgImagePreview} · ${r.body}` : t.msgImagePreview) : r.body;
+  const thumb = r.kind === "image" ? r.image?.url ?? null : r.kind === "gif" && r.gif_id ? gifUrl(r.gif_id, "small") : null;
+  return (
+    <span className={`flex items-stretch gap-2 overflow-hidden rounded-xl ${onMine ? "bg-black/10" : "bg-white/5"}`}>
+      <span className={`w-1 shrink-0 ${r.mine ? (onMine ? "bg-[color:var(--on-accent)]" : "bg-accent") : onMine ? "bg-[color:var(--on-accent)] opacity-50" : "bg-muted"}`} />
+      <span className="min-w-0 flex-1 py-1.5 pe-2 text-12 leading-snug">
+        {who ? <span className="block font-bold">{who}</span> : null}
+        <span className="block truncate opacity-80">{line}</span>
+      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- رابطٌ مؤقّتٌ من مخزنٍ خاصّ أو Giphy */}
+      {thumb ? <img src={thumb} alt="" className="h-12 w-12 shrink-0 object-cover" loading="lazy" /> : null}
+    </span>
+  );
+}
+
+function ConvBubble({ event, locale, peerName }: { event: ConvEvent; locale: Locale; peerName: string }) {
   const t = getDict(locale);
   const side = event.mine ? "ms-auto items-end" : "me-auto items-start";
+  /* 🆕 D-1403 — الاقتباسُ فوق الردّ: الويبُ يعرضه (والردُّ نفسُه من التطبيق) — فلا يُقرأ ردٌّ هنا بلا سياقه */
+  const quote =
+    event.kind === "reply" && event.reply ? <ReplyQuote r={event.reply} onMine={event.mine} t={t} peerName={peerName} /> : null;
 
   /* 🆕 D-1387 — GIF أو صورةٌ (وتعليقُها تحتها) في إطارٍ بلون صاحبها، كفقاعة النصّ. الويبُ يعرض ولا يرسل بعدُ */
   if (event.kind === "reply" && (event.gif_id || event.image)) {
@@ -555,6 +577,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
     return (
       <div className={`flex flex-col max-w-[70%] ${side}`}>
         <div className={`rounded-2xl p-[3px] ${event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"}`}>
+          {quote ? <div className="p-1">{quote}</div> : null}
           {src ? (
             <a href={event.image?.url ?? src} target="_blank" rel="noopener noreferrer" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element -- رابطٌ مؤقّتٌ من مخزنٍ خاصّ أو Giphy: لا يمرّ بمحسّن الصور */}
@@ -578,6 +601,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
               : "bg-surface-2 text-foreground"
           }`}
         >
+          {quote ? <span className="block mb-1.5">{quote}</span> : null}
           {event.body}
         </span>
       </div>
