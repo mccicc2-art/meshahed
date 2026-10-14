@@ -66,6 +66,9 @@ struct WMovie: Codable, Hashable {
   let source: String
   /** 🆕 v2 (W42) — هيدرُ بطاقة فيلم الليلة العريضة؛ ملفٌّ أقدمُ بلا الحقل يُقرأ */
   let backdrop_path: String?
+  /** 🆕 W46 — السنةُ والتصنيفُ لشكل «القائمة» الصغير (اختياريّان: خلاصةٌ أقدمُ بلاهما تُقرأ) */
+  let year: Int?
+  let genre: String?
   var asTitle: WTitle { WTitle(kind: kind, id: id, title: title, poster_path: poster_path) }
 }
 

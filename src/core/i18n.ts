@@ -2601,6 +2601,9 @@ const ar = {
   widgetPosterDetails: "بوستر وتفاصيل",
   widgetTonightSmall: "العرض الصغير",
   widgetPoster: "بوستر",
+  /* 🆕 W45 — شكلُ «أكمل المشاهدة» الصغير، وسطرُ المعاينة للأقسام الفاضية */
+  widgetImage: "صورة",
+  widgetEmptyNow: (names: string) => `فاضي الآن فلن يظهر: ${names}`,
   widgetSmallShows: "الحجم الصغير يعرض",
   widgetFirstSection: "أول قسم في ترتيبك",
   widgetDoesntFit: (names: string) => `لا يتّسع: ${names}`,
@@ -4443,6 +4446,8 @@ const en: Dict = {
   widgetPosterDetails: "Poster and details",
   widgetTonightSmall: "Small view",
   widgetPoster: "Poster",
+  widgetImage: "Image",
+  widgetEmptyNow: (names: string) => `Empty right now, so not shown: ${names}`,
   widgetSmallShows: "The small size shows",
   widgetFirstSection: "The first section in your order",
   widgetDoesntFit: (names: string) => `Doesn't fit: ${names}`,

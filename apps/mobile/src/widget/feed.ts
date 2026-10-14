@@ -9,7 +9,7 @@ import { session } from "../session";
 import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
-import { resolveWidget } from "@/core/widgetLayout";
+import { resolveWidget, type WidgetSectionKey } from "@/core/widgetLayout";
 
 /**
  * ====== 🆕 بياناتُ الودجتات — يكتبها التطبيقُ والودجتُ يقرأ (خطّةُ الودجتات §2.1) ======
@@ -44,6 +44,7 @@ const BG_MINUTES = 180;
 let last = 0;
 let tokenTried = 0;
 let running: Promise<void> | null = null;
+let again: Promise<void> | null = null;
 
 /** اسمُ ملفِّ الملصق في المجلّد المشترك — من مسار TMDB نفسِه، فالملصقُ لا يُنزَّل مرّتين */
 function posterName(path: string): string | null {
@@ -87,11 +88,15 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
   return out;
 }
 
+/** اسمُ ملفِّ الصورة على الجهاز — الاسمُ يحمل المقاسَ (ملفّاتُ `w342` القديمةُ من البناء الأوّل لا تُعاد على أنّها الجديدة) */
+function artName(path: string, kind: Art): string | null {
+  const base = posterName(path);
+  return base ? `${kind === "backdrop" ? "b780" : "p500"}_${base}` : null;
+}
+
 async function ensureArt(path: string, kind: Art): Promise<string | null> {
   const w = LoopzWidget;
-  const base = posterName(path);
-  /* الاسمُ يحمل المقاسَ — ملفّاتُ `w342` القديمةُ من البناء الأوّل لا تُعاد على أنّها الجديدة */
-  const name = base ? `${kind === "backdrop" ? "b780" : "p500"}_${base}` : null;
+  const name = artName(path, kind);
   if (!w || !name) return null;
   if (w.exists(name)) return name;
   const url = kind === "backdrop" ? backdropUrl(path, "w780") : posterUrl(path, "w500");
@@ -193,9 +198,19 @@ async function run(): Promise<void> {
   const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query);
   const art = [...collectArt(data)];
   const names = new Map<string, string>();
+  /* 🆕 **الودجتُ أوّلاً ثمّ الصور** (تسجيلُ أحمد ١٤ أكتوبر: «حفظت الإعدادات وأروح لسطح المكتب متأخرة ما تجي»): كان الودجتُ
+     ينتظر تنزيلَ كلِّ الصور (عشراتٌ، أربعٌ أربع) قبل أن يُكتب. الآن يُكتب فوراً بما على الجهاز من صور، ثمّ يُكتب ثانيةً
+     حين تكتمل الناقصة — والإعدادُ الجديدُ يظهر في ثانية */
+  for (const [p, kind] of art) {
+    const name = artName(p, kind);
+    if (name && w.exists(name)) names.set(p, name);
+  }
+  const missing = art.filter(([p]) => !names.has(p));
+  writeFeed(w, data, names, missing.length === 0);
+  if (!missing.length) return;
   /* أربعةٌ أربعة — لا عشرون طلباً في لحظةٍ واحدة على شبكةٍ قد تكون ضعيفة */
-  for (let i = 0; i < art.length; i += 4) {
-    const batch = art.slice(i, i + 4);
+  for (let i = 0; i < missing.length; i += 4) {
+    const batch = missing.slice(i, i + 4);
     const chunk = batch.map(([p]) => p);
     const got = await Promise.all(batch.map(([p, kind]) => ensureArt(p, kind)));
     chunk.forEach((p, n) => {
@@ -203,24 +218,45 @@ async function run(): Promise<void> {
       if (name) names.set(p, name);
     });
   }
+  writeFeed(w, data, names, true);
+}
+
+/**
+ * قرارُ أحمد «ب» (١٤ أكتوبر): القسمُ الذي لا محتوى له الآن يختفي ويأخذ ما بعده مكانَه — يُحسم بالبيانات نفسِها.
+ * 🆕 ومعاينةُ «ودجت لوبز» تقرؤه من الخلاصة المكتوبة نفسِها، فلا ترسم قسماً لن يظهر (تسجيلُ أحمد: «القادم» بثلاثة بوسترات)
+ */
+export function emptySections(data: WidgetFeed): WidgetSectionKey[] {
+  const v2 = data.v2;
+  if (!v2) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    [
+      ["up", v2.upcoming.items.every((u) => u.date != null && u.date < today)],
+      ["friends", v2.friends.length === 0],
+      ["tw", v2.towatch.length === 0],
+      ["act", v2.activity.length === 0],
+      ["tonight", data.tonight.length === 0],
+    ] as const
+  )
+    .filter(([, e]) => e)
+    .map(([k]) => k);
+}
+
+/** ما كُتب للودجت آخرَ مرّة — `null` إن لم يُكتب بعد */
+export function writtenFeed(): WidgetFeed | null {
+  try {
+    const raw = LoopzWidget?.readText?.(FEED);
+    return raw ? (JSON.parse(raw) as WidgetFeed) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: Map<string, string>, prune: boolean): void {
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
   /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
   const v2 = data.v2;
-  /* قرارُ أحمد «ب» (١٤ أكتوبر): القسمُ الذي لا محتوى له الآن يختفي ويأخذ ما بعده مكانَه — يُحسم هنا بالبيانات نفسِها */
-  const today = new Date().toISOString().slice(0, 10);
-  const empty = v2
-    ? (
-        [
-          ["up", v2.upcoming.items.every((u) => u.date != null && u.date < today)],
-          ["friends", v2.friends.length === 0],
-          ["tw", v2.towatch.length === 0],
-          ["act", v2.activity.length === 0],
-          ["tonight", data.tonight.length === 0],
-        ] as const
-      )
-        .filter(([, e]) => e)
-        .map(([k]) => k)
-    : [];
+  const empty = emptySections(data);
   /* 🆕 W40 — أندرويد: الإعدادُ الافتراضيُّ لكلِّ ودجت، و`byId` لما خُصّص لودجتٍ بعينه (`aw-<رقمه>`)؛ والآيفون تخطيطاتُه وحدَها */
   const w2 = v2
     ? {
@@ -237,7 +273,8 @@ async function run(): Promise<void> {
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
-  w.prune([FEED, TOKEN, DIAG, PLACED, ...names.values()]);
+  /* الكتابةُ الأولى (قبل الصور) لا تمحو شيئاً: ملفُّ صورةٍ لم يُذكر بعدُ قد يكون في طريقه */
+  if (prune) w.prune([FEED, TOKEN, DIAG, PLACED, ...names.values()]);
   w.reload();
 }
 
@@ -247,7 +284,15 @@ async function run(): Promise<void> {
  */
 export function refreshWidgets(force = false): Promise<void> {
   if (!LoopzWidget) return Promise.resolve();
-  if (running) return running;
+  /* 🆕 تجديدٌ جارٍ بالإعداد القديم وطُلب تجديدٌ مُلزِم (حفظُ «ودجت لوبز») ⇒ يجري تجديدٌ ثانٍ بعده — كان الحفظُ يعود بالقديم */
+  if (running) {
+    if (!force) return running;
+    if (!again) again = running.then(() => {
+      again = null;
+      return refreshWidgets(true);
+    });
+    return again;
+  }
   if (!force && Date.now() - last < MIN_GAP_MS) return Promise.resolve();
   last = Date.now();
   running = run()

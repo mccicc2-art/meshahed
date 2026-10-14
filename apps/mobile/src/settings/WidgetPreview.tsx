@@ -29,7 +29,26 @@ const GHOST = "#1c1c1c";
 const LINE = "#1a1a1a";
 const WIDTH: Record<WidgetSize, number> = { small: 172, medium: 358, large: 358, xl: 358 };
 
-export function WidgetPreview({ config, size, names, platform, maxHeight = 300, thumb = false }: { config: WidgetLayoutConfig; size: WidgetSize; names: Record<WidgetSectionKey, string>; platform: WidgetPlatform; maxHeight?: number; thumb?: boolean }) {
+export function WidgetPreview({
+  config: given,
+  size,
+  names,
+  platform,
+  maxHeight = 300,
+  thumb = false,
+  empty = [],
+}: {
+  config: WidgetLayoutConfig;
+  size: WidgetSize;
+  names: Record<WidgetSectionKey, string>;
+  platform: WidgetPlatform;
+  maxHeight?: number;
+  thumb?: boolean;
+  /** 🆕 أقسامٌ ظاهرةٌ في الإعداد لا محتوى لها الآن — تُحسم كما يحسمها الودجت (تختفي) ويقولها سطرُ المعاينة */
+  empty?: readonly WidgetSectionKey[];
+}) {
+  const gone = empty.filter((k) => k !== "cont" && k !== "search" && given.on[k]);
+  const config: WidgetLayoutConfig = gone.length ? { ...given, on: { ...given.on, ...Object.fromEntries(gone.map((k) => [k, false])) } } : given;
   const { t, tokens } = useApp();
   /* مقاسُ المنصّة نفسُه الذي يُحسم به الودجت (`widgetSizeHeight`) — الآيفونُ أقصر */
   const H = widgetSizeHeight(platform, size);
@@ -49,10 +68,11 @@ export function WidgetPreview({ config, size, names, platform, maxHeight = 300, 
     body = l.rows.map((r, i) => (
       <View key={i}>
         {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: (WIDGET_HEIGHTS.gap - 1) / 2 }} /> : null}
-        <PreviewRow row={r} names={names} />
+        <PreviewRow row={r} names={names} contImage={config.opts.cont.small !== "list"} />
       </View>
     ));
     note = l.hidden.length ? t.widgetDoesntFit(l.hidden.map((k) => names[k]).join("، ")) : t.widgetAllFit;
+    if (gone.length) note = `${note}\n${t.widgetEmptyNow(gone.map((k) => names[k]).join("، "))}`;
   }
   /* الصغيرُ في أندرويد طوليٌّ (W43)، وفي الآيفون مربّع */
   const h = size === "small" ? (platform === "ios" ? 170 : 246) : H;
@@ -81,7 +101,7 @@ function Title({ text }: { text: string }) {
   return <Text size={13} weight="700" color="#F7F7F7" numberOfLines={1}>{text}</Text>;
 }
 
-function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectionKey, string> }) {
+function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<WidgetSectionKey, string>; contImage: boolean }) {
   const { t } = useApp();
   const h = row.h;
   switch (row.type) {
@@ -195,14 +215,15 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
                 {k ? (
                   <>
                     <Title text={names[k]} />
-                    {k === "tonight" ? (
-                      /* W34 — بوسترٌ كاملٌ وعمودٌ بجانبه */
-                      <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
-                        <View style={{ aspectRatio: 2 / 3, borderRadius: 10, backgroundColor: "#3b2a2a" }} />
-                        <View style={{ flex: 1, justifyContent: "space-between", alignItems: "center" }}>
-                          <View style={{ width: 30, height: 22, borderRadius: 11, backgroundColor: "rgba(22,22,22,0.78)" }} />
-                          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(22,22,22,0.78)" }} />
+                    {k === "tonight" || (k === "cont" && contImage) ? (
+                      /* 🆕 فيلمُ الليلة (ومعه أكملُ المشاهدة «صورة»، W45) في النصف: الصورةُ العريضة تذوب في الأسود و✓ في طرفها */
+                      <View style={{ flex: 1, borderRadius: 10, overflow: "hidden", backgroundColor: BLACK }}>
+                        <View style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: k === "cont" ? "#2f3b46" : "#3b2a2a" }} />
+                        <View style={{ position: "absolute", left: 8, right: 40, bottom: 9, gap: 5 }}>
+                          <Bar w="75%" h={9} />
+                          <Bar w="45%" h={6} />
                         </View>
+                        <View style={{ position: "absolute", right: 7, bottom: 7, width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(22,22,22,0.78)" }} />
                       </View>
                     ) : (
                       Array.from({ length: row.count ?? 3 }, (_, j) => (

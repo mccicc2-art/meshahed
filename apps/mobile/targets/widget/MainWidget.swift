@@ -840,6 +840,9 @@ struct Half: View {
     let o = opts[key] as? [String: Any] ?? [:]
     if key == "tonight" {
       TonightHalf(f: f, now: now)
+    } else if key == "cont" && (o["small"] as? String) != "list" {
+      /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة بأوّل مسلسل */
+      ContHalf(f: f, now: now)
     } else {
       HalfList(f: f, key: key, posters: key != "tonight" && (o["view"] as? String) == "posters", count: count, now: now)
     }
@@ -851,6 +854,137 @@ struct Half: View {
  * النصف كاملاً **يذوب في الأسود حتى أسفل الخانة** — يملؤها بلا قصٍّ ولا زوم (W38). الاسمُ والتقييمُ والمدّةُ عليه،
  * و✓ في طرفه السفليّ و🔁 فوق.
  */
+/** 🆕 W45 — «أكمل المشاهدة» في النصف: الهيدرُ يذوب في الأسود، الاسمُ والحلقة، ✓ (والتراجع) وشريطُ التقدّم */
+struct ContHalf: View {
+  let f: V2Feed
+  let now: Date
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      SecHeader(title: Sections.title(f, "cont"), link: Sections.link("cont"))
+      if let c = f.feed.continue.items.first {
+        GeometryReader { g in
+          let ih = min(g.size.width * 9 / 16, g.size.height)
+          ZStack(alignment: .topLeading) {
+            WColor.bg
+            if let img = FeedStore.image(c.backdrop_path ?? c.poster_path, in: f.feed, maxPixel: 600) {
+              Image(uiImage: img).resizable().frame(width: g.size.width, height: ih)
+                .overlay(LinearGradient(stops: [.init(color: .clear, location: 0.45), .init(color: WColor.bg, location: 1)], startPoint: .top, endPoint: .bottom))
+            }
+            VStack(alignment: .leading, spacing: 0) {
+              Spacer(minLength: 0)
+              HStack(alignment: .bottom, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                  Text(c.title).font(.system(size: 14.5, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  Text(c.sub ?? c.label ?? "").font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                CheckButton(feed: f.feed, item: c, size: 33)
+              }
+              if let p = c.pct {
+                GeometryReader { b in
+                  ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.12))
+                    Capsule().fill(WColor.success).frame(width: b.size.width * CGFloat(min(max(p, 0), 100)) / 100)
+                  }
+                }
+                .frame(height: 3)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 3)
+              }
+            }
+            .padding(.leading, 8)
+          }
+          .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+      } else {
+        Link(destination: WLink.discover) {
+          Text(f.feed.s("startSomething")).font(.system(size: 11)).foregroundStyle(WColor.muted)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 🆕 W46 — فيلمُ الليلة الصغير «قائمة» على الآيفون (الشكل «و»، أحمد «اعتمد» ١٤ أكتوبر): الصورةُ العريضة فوق بعرض الودجت
+ * (١٦:٩ بلا قصّ)، والاسمُ نازلٌ على حافّتها، وتحته التقييمُ والمدّةُ والتصنيفُ والسنة، و🔁 و✓ دائريّان يمين تحت.
+ */
+struct TonightListSmall: View {
+  let f: V2Feed
+  let now: Date
+
+  func circle(_ icon: String) -> some View {
+    Image(systemName: icon).font(.system(size: 12.5, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 31, height: 31)
+      .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
+      .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
+      .frame(width: 38, height: 44)
+      .contentShape(Rectangle())
+  }
+
+  var body: some View {
+    if let m = Sections.tonight(f, now: now) {
+      let undoing = f.feed.check && WState.undoOn("movie", m.id)
+      GeometryReader { g in
+        let ih = g.size.width * 9 / 16
+        VStack(alignment: .leading, spacing: 0) {
+          ZStack(alignment: .topLeading) {
+            if let img = FeedStore.image(m.backdrop_path ?? m.poster_path, in: f.feed, maxPixel: 600) {
+              Image(uiImage: img).resizable().frame(width: g.size.width, height: ih)
+            } else {
+              WColor.surface.frame(width: g.size.width, height: ih)
+            }
+            LinearGradient(stops: [.init(color: .black.opacity(0.45), location: 0), .init(color: .clear, location: 0.3), .init(color: .clear, location: 0.5), .init(color: WColor.bg, location: 1)], startPoint: .top, endPoint: .bottom)
+              .frame(width: g.size.width, height: ih)
+            Text(f.feed.s("tonightTitle").uppercased(with: Locale(identifier: f.feed.lang == "en" ? "en" : "ar")))
+              .font(.system(size: 10.5, weight: .heavy)).foregroundStyle(WColor.accent).lineLimit(1)
+              .padding(.leading, 11).padding(.top, 9)
+          }
+          .frame(width: g.size.width, height: ih)
+          .overlay(alignment: .bottomLeading) {
+            Text(m.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+              .shadow(color: .black.opacity(0.8), radius: 3)
+              .padding(.horizontal, 11).offset(y: 12)
+          }
+          HStack(alignment: .bottom, spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+              if undoing {
+                Text("✓ " + f.s2("watched")).font(.system(size: 11, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1)
+              } else if let r = m.rating {
+                Text("★ " + String(format: "%.1f", r)).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent)
+              }
+              if let rt = WDates.runtime(m.runtime, feed: f.feed) {
+                Text(rt).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
+              }
+              let gy = [m.genre, m.year.map { String($0) }].compactMap { $0 }.joined(separator: " · ")
+              if !gy.isEmpty { Text(gy).font(.system(size: 10)).foregroundStyle(WColor.muted.opacity(0.8)).lineLimit(1) }
+            }
+            Spacer(minLength: 0)
+            if !undoing && f.tonight.count > 1 {
+              Button(intent: CycleTonightIntent()) { circle("repeat") }.buttonStyle(.plain)
+            }
+            if undoing {
+              Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)
+            } else if f.feed.check {
+              Button(intent: MarkMovieIntent(id: m.id, name: m.title, poster: m.poster_path)) { circle("checkmark") }.buttonStyle(.plain)
+            } else {
+              Link(destination: WLink.title(m.asTitle)) { circle("checkmark") }
+            }
+          }
+          .padding(.leading, 11).padding(.trailing, 4).padding(.top, 14).padding(.bottom, 4)
+          .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+      }
+      .background(WColor.bg)
+      .widgetURL(WLink.title(m.asTitle))
+    } else {
+      Text(f.feed.s("noTowatchMovies")).font(.system(size: 12)).foregroundStyle(WColor.muted).padding(12)
+        .widgetURL(WLink.discover)
+    }
+  }
+}
+
 struct TonightHalf: View {
   let f: V2Feed
   let now: Date
@@ -1082,6 +1216,9 @@ struct SmallMain: View {
     case "posterColumn":
       PosterColumn(f: f, key: key, now: now).padding(12)
         .widgetURL(Sections.lines(f, key, now: now).first?.link ?? WLink.discover)
+    case "list" where key == "tonight":
+      /* 🆕 W46 — كان «قائمة» يرسم أسطرَ نصف العرض فلا يظهر شكلُها */
+      TonightListSmall(f: f, now: now)
     default:
       HalfList(f: f, key: key, posters: key != "tonight" && ((opts[key] as? [String: Any])?["view"] as? String) == "posters", now: now).padding(12)
         .widgetURL(Sections.link(key) ?? Sections.lines(f, key, now: now).first?.link ?? WLink.discover)

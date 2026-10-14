@@ -254,8 +254,24 @@ export async function GET(req: NextRequest) {
           source: "towatch",
         }));
       /* 🆕 v2 (W42) — هيدرُ أفلام «للمشاهدة» للبطاقة العريضة: تفاصيلُ TMDB مخزّنةٌ، وفشلُ واحدٍ لا يُسقط الخلاصة */
-      const towatchBackdrops = await Promise.all(towatchMovies.map((m) => getMovie(m.id).then((d) => d.backdrop_path ?? null).catch(() => null)));
-      towatchMovies.forEach((m, n) => (m.backdrop_path = towatchBackdrops[n]));
+      /* 🆕 W46 — والسنةُ والتصنيفُ من التفاصيل نفسِها (طلبٌ واحدٌ مخزَّن لكلِّ فيلم) — اسمُ التصنيف من جدول التصفّح بلغة القارئ */
+      const genreOf = (ids: readonly number[]) => {
+        for (const id of ids) {
+          const g = BROWSE_GENRES.find((x) => x.movie.includes(id));
+          if (g) return locale === "en" ? g.en : g.ar;
+        }
+        return null;
+      };
+      const yearOf = (d: string | null | undefined) => Number((d ?? "").slice(0, 4)) || null;
+      const towatchDetails = await Promise.all(towatchMovies.map((m) => getMovie(m.id).catch(() => null)));
+      towatchMovies.forEach((m, n) => {
+        const d = towatchDetails[n];
+        m.backdrop_path = d?.backdrop_path ?? null;
+        m.year = yearOf(d?.release_date);
+        m.genre = d ? genreOf(d.genres.map((g) => g.id)) : null;
+        /* والتقييمُ يُرسم شارةً على البوستر في الشكلين الجديدين — لفيلمك في «للمشاهدة» أيضاً */
+        if (d && typeof d.vote_average === "number" && d.vote_average > 0) m.rating = Math.round(d.vote_average * 10) / 10;
+      });
       let tonight = towatchMovies;
       if (tonight.length < 10) {
         /* أنواعُه المفضّلةُ مسجّلةٌ بمعرّفات المسلسلات (`GENRES`)، ومقابلُها في الأفلام من جدول التصفّح نفسِه */
@@ -277,9 +293,16 @@ export async function GET(req: NextRequest) {
           const have = new Set(pool.map((r) => r.id));
           pool = [...pool, ...wide.filter((r) => !have.has(r.id))];
         }
-        /* خلطٌ خفيف — والودجتُ يقلّب بينها محلّيّاً */
+        /* خلطٌ خفيف — والودجتُ يقلّب بينها محلّيّاً.
+           🆕 **ثابتٌ طولَ اليوم** (بذرةُ العضو واليوم): كان عشوائيّاً في كلِّ جلب، فكلُّ تحديثٍ يأتي بعشرة أفلامٍ جديدة صورُها لم
+           تُنزَّل بعد — والتحديثُ يجري والتطبيقُ يُغلق والشبكةُ مقيّدة، فيبقى «فيلم الليلة» بلا صورة (تسجيلُ أحمد ١٤ أكتوبر) */
+        const seed = (s: string) => {
+          let h = 2166136261;
+          for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+          return h >>> 0;
+        };
         const shuffled = pool
-          .map((r) => ({ r, k: Math.random() }))
+          .map((r) => ({ r, k: seed(`${auth.user.id}:${today}:${r.id}`) }))
           .sort((a, b) => a.k - b.k)
           .map((x) => x.r);
         tonight = [
@@ -293,6 +316,8 @@ export async function GET(req: NextRequest) {
             rating: typeof r.vote_average === "number" ? Math.round(r.vote_average * 10) / 10 : null,
             source: "suggested",
             backdrop_path: r.backdrop_path ?? null,
+            year: yearOf(r.release_date),
+            genre: genreOf(r.genre_ids ?? []),
           })),
         ];
       }

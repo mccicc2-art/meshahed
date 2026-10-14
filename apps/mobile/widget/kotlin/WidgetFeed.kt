@@ -38,7 +38,7 @@ data class WContinue(val t: WTitle, val label: String?, val season: Int?, val ep
 data class WToWatch(val t: WTitle, val action: String)
 data class WUpcoming(val t: WTitle, val date: String?, val label: String?, val behind: String?)
 /** 🆕 v2 — `backdrop` اسمُ ملفّ الهيدر لبطاقة فيلم الليلة العريضة (W42) */
-data class WMovie(val t: WTitle, val runtime: Int?, val rating: Double?, val suggested: Boolean, val backdrop: String? = null)
+data class WMovie(val t: WTitle, val runtime: Int?, val rating: Double?, val suggested: Boolean, val backdrop: String? = null, val year: Int? = null, val genre: String? = null)
 data class WList(val id: String, val name: String, val items: List<WTitle>)
 
 class WFeed(
@@ -122,7 +122,7 @@ class WFeed(
         upTotal = up?.optInt("total") ?: 0,
         tonight = arr(o.optJSONArray("tonight")).map {
           val bd = str(it, "backdrop_path")
-          WMovie(title(it), int(it, "runtime"), if (it.isNull("rating")) null else it.optDouble("rating"), it.optString("source") == "suggested", if (bd != null) str(posters, bd) else null)
+          WMovie(title(it), int(it, "runtime"), if (it.isNull("rating")) null else it.optDouble("rating"), it.optString("source") == "suggested", if (bd != null) str(posters, bd) else null, int(it, "year"), str(it, "genre"))
         },
         lists = arr(o.optJSONArray("lists")).map { l -> WList(l.optString("id"), l.optString("name"), arr(l.optJSONArray("items")).map { title(it) }) },
         check = o.optBoolean("check", false),

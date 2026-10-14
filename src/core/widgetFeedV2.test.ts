@@ -106,3 +106,16 @@ test("المخزَّن: غير المخصِّص null، ولا يُخزَّن ت�
   assert.equal(s?.layouts.length, 0);
   assert.equal(s?.config.order[0], "tw");
 });
+
+/* 🆕 عملٌ بلا اسم لا يُرسم «#138843» — يسقط ويأخذ الذي بعده مكانَه (تسجيلُ أحمد ١٤ أكتوبر) */
+test("أنشطتك: العملُ الذي لا يُعرف اسمُه يسقط", () => {
+  const out = widgetActivity(
+    [
+      { kind: "watch", at: "2026-10-14T10:00:00Z", mediaType: "tv", tmdbId: 138843, title: null, posterPath: null, season: 1, episode: 1 },
+      { kind: "rate", at: "2026-10-13T10:00:00Z", mediaType: "movie", tmdbId: 2, title: "Dune", posterPath: null, rating: 9 },
+    ],
+    new Map(),
+    t,
+  );
+  assert.deepEqual(out.map((x) => x.line), ["قيّمت Dune"]);
+});

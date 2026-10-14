@@ -636,6 +636,8 @@ object W2Render {
   private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3): RemoteViews {
     /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
     if (key == "tonight") return tonightHalf(d, wDp, bodyDp)
+    /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة نفسُه بأوّل مسلسل؛ و«قائمة» تبقى الأسطرَ الثلاثة */
+    if (key == "cont" && d.opt("cont").optString("small", "image") != "list") return contHalf(d, wDp, bodyDp)
     val v = fresh(d.ctx, R.layout.w2_half_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
@@ -675,6 +677,71 @@ object W2Render {
    * بعرض النصف كاملاً **يذوب في الأسود حتى أسفل الخانة** — يملؤها بلا قصٍّ ولا زوم (W38)، كـ«أكمل المشاهدة» المربّع (W33).
    * الاسمُ والتقييمُ والمدّةُ عليه، و✓ في طرفه السفليّ و🔁 فوق — دائماً، فالبوسترُ الصغيرُ بجانبه فراغٌ كان سببَ البلاغ.
    */
+  /** 🆕 W45 — «أكمل المشاهدة» في النصف بشكل فيلم الليلة: الهيدرُ يذوب في الأسود، الاسمُ والحلقة، ✓ (والتراجعُ ٥ ثوانٍ) وشريطُ التقدّم */
+  private fun contHalf(d: Draw, wDp: Float, bodyDp: Float): RemoteViews {
+    val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_tonight)
+    val f = d.f
+    v.setTextViewText(R.id.hdr_title, f.s("continueTitle"))
+    v.setOnClickPendingIntent(R.id.hdr_title, d.open(WLinks.all("continue")))
+    val c = f.cont.firstOrNull()
+    if (c == null) {
+      v.setTextViewText(R.id.ht_name, f.s("startSomething"))
+      v.setOnClickPendingIntent(R.id.ht_root, d.open(WLinks.discover()))
+      return v
+    }
+    WArt.headerFade(d.ctx, c.backdrop ?: c.t.poster, wDp, bodyDp, 12f)?.let { v.setImageViewBitmap(R.id.ht_img, it) }
+    v.setTextViewText(R.id.ht_name, c.t.title)
+    v.setTextViewText(R.id.ht_meta, c.sub ?: c.label ?: "")
+    v.setOnClickPendingIntent(R.id.ht_root, d.open(WLinks.title(c.t)))
+    v.setViewVisibility(R.id.ht_bar, View.VISIBLE)
+    v.setProgressBar(R.id.ht_bar, 100, c.pct, false)
+    if (f.check && d.undoOn("ep", c.t.id)) {
+      v.setViewVisibility(R.id.ht_check, View.VISIBLE)
+      undoCircle(d, v, R.id.ht_check, R.id.ht_check_v, null, "")
+    } else if (f.check && c.season != null && c.episode != null) {
+      v.setViewVisibility(R.id.ht_check, View.VISIBLE)
+      v.setOnClickPendingIntent(R.id.ht_check, CheckReceiver.intent(d.ctx, d.next(), c))
+    }
+    return v
+  }
+
+  /**
+   * 🆕 W46 — فيلمُ الليلة الصغير «قائمة» (أندرويد «هـ»، أحمد «اعتمد» ١٤ أكتوبر): بوسترٌ ٢:٣ عليه شارةُ التقييم، و🔁 ثمّ ✓
+   * في العمود الفاضي فوق يمينه تحت بعض (بينهما مسافة — «عشان ما يغلط باللمس»)، والمدّةُ والتصنيفُ والسنةُ أسفلَه، والاسمُ تحته.
+   * الطوليُّ بوستر ٩٦×١٤٤ واسمٌ بسطرين، والمربّعُ ٦٤×٩٦ واسمٌ بسطر.
+   */
+  private fun tonightSmallList(d: Draw, tall: Boolean): RemoteViews {
+    val v = RemoteViews(d.ctx.packageName, if (tall) R.layout.w2_small_tonight_list else R.layout.w2_small_tonight_list_sq)
+    v.setTextViewText(R.id.tl_label, d.f.s("tonightTitle"))
+    val m = tonightNow(d)
+    if (m == null) {
+      v.setTextViewText(R.id.tl_name, d.f.s("noTowatchMovies"))
+      v.setViewVisibility(R.id.tl_check, View.GONE)
+      v.setViewVisibility(R.id.tl_another, View.GONE)
+      v.setOnClickPendingIntent(R.id.tl_root, d.open(WLinks.discover()))
+      return v
+    }
+    poster(d, v, R.id.tl_img, m.t.poster, if (tall) 96f else 64f, if (tall) 144f else 96f, 8f)
+    if (m.rating != null) {
+      v.setViewVisibility(R.id.tl_rating, View.VISIBLE)
+      v.setTextViewText(R.id.tl_rating, "★ " + String.format(d.f.locale(), "%.1f", m.rating))
+    }
+    v.setTextViewText(R.id.tl_name, m.t.title)
+    v.setTextViewText(R.id.tl_runtime, d.f.runtime(m.runtime) ?: "")
+    v.setTextViewText(R.id.tl_genre, m.genre ?: "")
+    v.setTextViewText(R.id.tl_year, m.year?.let { String.format(d.f.locale(), "%d", it) } ?: "")
+    v.setOnClickPendingIntent(R.id.tl_root, d.open(WLinks.title(m.t)))
+    val undoing = d.f.check && d.undoOn("movie", m.t.id)
+    when {
+      undoing -> undoCircle(d, v, R.id.tl_check, R.id.tl_check_v, R.id.tl_runtime, "✓ " + d.s2("watched"))
+      d.f.check -> v.setOnClickPendingIntent(R.id.tl_check, CheckReceiver.movieIntent(d.ctx, d.next(), m.t))
+      else -> v.setOnClickPendingIntent(R.id.tl_check, d.open(WLinks.title(m.t)))
+    }
+    if (undoing || d.tonight.size < 2) v.setViewVisibility(R.id.tl_another, View.INVISIBLE)
+    else v.setOnClickPendingIntent(R.id.tl_another, LoopzWidget.cycleIntent(d.ctx, d.id, d.next()))
+    return v
+  }
+
   private fun tonightHalf(d: Draw, wDp: Float, bodyDp: Float): RemoteViews {
     val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_tonight)
     v.setTextViewText(R.id.hdr_title, titleOf(d, "tonight"))
@@ -792,6 +859,9 @@ object W2Render {
       "posterColumn" -> fresh(d.ctx, R.layout.w2_root).also { v ->
         v.addView(R.id.rows, posterColumn(d, key, (h - 24f - 28f).coerceAtLeast(60f)))
       }
+      /* 🆕 W46 — فيلمُ الليلة «قائمة» في الصغير: شكلُه هو (أندرويد «هـ») لا شكلُ نصف العرض — كان يرسم الصورةَ العريضة فلا تظهر القائمة */
+      "list" -> if (key == "tonight") fresh(d.ctx, R.layout.w2_root).also { v -> v.addView(R.id.rows, tonightSmallList(d, h / w > 1.2f)) }
+      else fresh(d.ctx, R.layout.w2_root).also { v -> v.addView(R.id.rows, half(d, key, w - 24f, h - 24f - 28f)) }
       else -> fresh(d.ctx, R.layout.w2_root).also { v ->
         v.addView(R.id.rows, half(d, key, w - 24f, h - 24f - 28f))
       }

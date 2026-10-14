@@ -15,7 +15,7 @@ import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row, Chevron, OptionRow, RowsSkeleton } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
 import { WidgetPreview } from "./WidgetPreview";
-import { refreshWidgets, ANDROID_WIDGET_LAYOUT, isAndroidWidgetLayout } from "../widget/feed";
+import { refreshWidgets, ANDROID_WIDGET_LAYOUT, isAndroidWidgetLayout, emptySections, writtenFeed } from "../widget/feed";
 import { LoopzWidget, type AndroidPlaced, type IosPlaced } from "../../modules/loopz-widget";
 import {
   effectiveWidgetConfig,
@@ -109,6 +109,11 @@ export function WidgetScreen() {
     if (p) setSize(androidSize(p));
   }, [editing, placedA]);
   const [sheet, setSheet] = useState<WidgetSectionKey | "small" | null>(null);
+  /* 🆕 الأقسامُ الفاضيةُ الآن (من الخلاصة المكتوبة للودجت نفسِها) — المعاينةُ لا ترسمها كأنّها ستظهر */
+  const empty = useMemo(() => {
+    const f = writtenFeed();
+    return f ? emptySections(f) : [];
+  }, []);
   const [saving, setSaving] = useState(false);
   const [ask, setAsk] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -202,7 +207,7 @@ export function WidgetScreen() {
   const pinned = (
     <>
       <Segmented items={sizes.map((s) => ({ id: s, label: sizeLabel[s] }))} value={size} onChange={(v) => setSize(v as WidgetSize)} />
-      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} />
+      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} empty={empty} />
     </>
   );
 
@@ -476,6 +481,10 @@ function SectionSheet({ k, name, opts, onPatch, onClose }: { k: WidgetSectionKey
             t.widgetPairHint,
           )
         )}
+        {k === "cont" ? (
+          /* 🆕 W45 — أكملُ المشاهدة الصغير (نصفُ العرض والمربّع): صورةٌ افتراضاً (أحمد «١ أ») أو قائمة */
+          block(t.widgetTonightSmall, seg([{ id: "image", label: t.widgetImage }, { id: "list", label: t.widgetList }], opts.small === "list" ? "list" : "image", (v) => onPatch({ small: v as "image" | "list" })))
+        ) : null}
         {k === "tonight" ? (
           <>
             {block(t.widgetTonightFull, seg([{ id: "wide", label: t.widgetWide }, { id: "poster", label: t.widgetPosterDetails }], opts.view === "poster" ? "poster" : "wide", (v) => onPatch({ view: v })))}
