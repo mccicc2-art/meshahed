@@ -1,1 +1,1 @@
-Widget v2 (web): resolveWidget per platform for the native widgets, tonight backdrops in the feed [deploy]
+Widget actions with the token (web): movie watched, start a series, rate a movie — /api/v1/widget/movie|start|rate; rate/skip/started/undo strings in the widget feed (W35, W37) [deploy]
