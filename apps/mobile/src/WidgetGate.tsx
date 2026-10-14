@@ -126,7 +126,8 @@ export function WidgetGate() {
           router.navigate("/discover");
           return;
         case "search":
-          router.navigate("/search");
+          /* 🆕 واللوحةُ ظاهرة (`focus`، قرارُ أحمد «١ ب») */
+          router.navigate({ pathname: "/search", params: { focus: String(Date.now()) } });
           return;
         case "settings":
           router.push({ pathname: "/settings/[section]", params: { section: "widget" } });

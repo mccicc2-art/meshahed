@@ -87,11 +87,15 @@ private class Row(val o: JSONObject) {
   val full: Boolean = o.optBoolean("full")
   val trend: String = o.optString("trend", "list")
   val upLine: Boolean = o.optBoolean("upLine")
+  /** 🆕 المتوسطُ وأكملُ المشاهدة وحدَه: بطاقتان أطول (`contTall`) */
+  val tall: Boolean = o.optBoolean("tall")
+  /** 🆕 أسطرُ القسمين الصغيرين: ٢ أو ٣ — خلاصةٌ أقدمُ بلا العدد ⇒ ٣ كما كانت */
+  val pairCount: Int = o.optInt("count", 3)
   val keys: List<String> = o.optJSONArray("keys")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
 }
 
 /** سطرٌ في قسم — صورةٌ واسمٌ وسطرٌ ثانٍ ووجهةُ اللمسة */
-private data class Line(val t: WTitle?, val name: String, val sub: String?, val link: String)
+private data class Line(val t: WTitle?, val name: String, val sub: String?, val link: String, val time: String? = null)
 
 /** ما يحتاجه الرسمُ في كلِّ صفّ: الخلاصةُ والقسمُ والمقاسُ وعدّادُ رموز النيّات (كلُّ لمسةٍ برمزها — درسُ D-929) */
 private class Draw(val ctx: Context, val id: Int, val f: WFeed, val v2: JSONObject, val opts: JSONObject, val wDp: Float) {
@@ -292,7 +296,7 @@ object W2Render {
 
   /* W33 — أكمل المشاهدة: بطاقتان، وسطرُ «القادم» حين يقوله المحرّك */
   private fun cont(d: Draw, r: Row): RemoteViews {
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_cont)
+    val v = RemoteViews(d.ctx.packageName, if (r.tall) R.layout.w2_cont_tall else R.layout.w2_cont)
     val f = d.f
     v.setTextViewText(R.id.hdr_title, f.s("continueTitle"))
     v.setOnClickPendingIntent(R.id.hdr_title, d.open(WLinks.all("continue")))
@@ -302,8 +306,9 @@ object W2Render {
       v.setOnClickPendingIntent(R.id.hdr_all, d.open(WLinks.all("continue")))
     }
     val cardW = ((inner(d) - 9f) / 2f).coerceAtLeast(40f)
-    drawCard(d, v, 0, cardW, 93f)
-    drawCard(d, v, 1, cardW, 93f)
+    val cardH = if (r.tall) 120f else 93f
+    drawCard(d, v, 0, cardW, cardH)
+    drawCard(d, v, 1, cardW, cardH)
     if (r.upLine) {
       v.setViewVisibility(R.id.up_block, View.VISIBLE)
       v.setOnClickPendingIntent(R.id.up_line, d.open(WLinks.calendar()))
@@ -408,7 +413,8 @@ object W2Render {
       }
       "friends" -> d.arr("friends").mapNotNull { x ->
         val t = f.titleFrom(x.optJSONObject("title")) ?: return@mapNotNull null
-        Line(t, "${x.optString("name")} ${x.optString("action")} ${t.title}", ago(x.optString("at"), f.locale()), WLinks.title(t))
+        /* 🆕 سطران: الاسمُ فوق و«شاهد …» تحته، ومتى مختصراً في الطرف (تسجيلُ أحمد ١٤ أكتوبر: السطرُ الواحدُ صغّر الخط) */
+        Line(t, x.optString("name"), "${x.optString("action")} ${t.title}", WLinks.title(t), ago(x.optString("at"), f.locale()))
       }
       "tw" -> d.arr("towatch").mapNotNull { x ->
         val t = f.titleFrom(x) ?: return@mapNotNull null
@@ -433,7 +439,11 @@ object W2Render {
     val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
     val t = fmt.parse(iso.take(19))?.time ?: 0L
     if (t <= 0L) null else {
-      val r = android.icu.text.RelativeDateTimeFormatter.getInstance(android.icu.util.ULocale.forLocale(locale))
+      /* 🆕 الشكلُ المختصر («٥٢ د» · «52 min. ago») — الطويلُ يأكل عرضَ السطر */
+      val r = android.icu.text.RelativeDateTimeFormatter.getInstance(
+        android.icu.util.ULocale.forLocale(locale), null,
+        android.icu.text.RelativeDateTimeFormatter.Style.SHORT, android.icu.text.DisplayContext.CAPITALIZATION_NONE,
+      )
       val mins = ((System.currentTimeMillis() - t) / 60_000L).coerceAtLeast(1L)
       val last = android.icu.text.RelativeDateTimeFormatter.Direction.LAST
       when {
@@ -468,12 +478,13 @@ object W2Render {
     val towatch = if (r.key == "tw") d.arr("towatch") else emptyList()
     for (n in 0 until r.count) {
       val it = items.getOrNull(n) ?: break
-      if (n > 0) v.addView(R.id.items, RemoteViews(d.ctx.packageName, R.layout.w2_space))
+      /* الصفوفُ متلاصقةٌ بارتفاع ٥٠ (`rowGap` = ٠) — الصورةُ ٣٢×٤٨ تترك بينها مسافتها */
       val friend = r.key == "friends"
       val row = RemoteViews(d.ctx.packageName, if (friend) R.layout.w2_item_friend else R.layout.w2_item)
-      if (friend) poster(d, row, R.id.it_img, it.t?.poster, 20f, 30f, 3f) else poster(d, row, R.id.it_img, it.t?.poster, 28f, 42f, 4f)
+      poster(d, row, R.id.it_img, it.t?.poster, 32f, 48f, 4f)
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
+      if (friend) row.setTextViewText(R.id.it_time, it.time ?: "")
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
       /* W35 — «▶ ابدأ» للمسلسل والأنمي و«✓ شاهدته» للفيلم بالرقاقة الرماديّة */
       val x = towatch.getOrNull(n)
@@ -533,15 +544,19 @@ object W2Render {
 
   /* W30 — قسمان صغيران */
   private fun pair(d: Draw, r: Row): RemoteViews {
-    val v = fresh(d.ctx, R.layout.w2_pair)
+    /* 🆕 بثلاثة أسطر (١٧٦) أو بسطرين (١٢٦) كما حسم المحرّك — الجسمُ تحت الرأس (٢٤) */
+    val three = r.pairCount >= 3
+    val v = fresh(d.ctx, if (three) R.layout.w2_pair else R.layout.w2_pair_2)
     val half = ((inner(d) - 17f) / 2f).coerceAtLeast(60f)
-    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, 148f)) }
-    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, 148f)) }
+    val body = if (three) 152f else 102f
+    val n = if (three) 3 else 2
+    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, body, n)) }
+    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, body, n)) }
     return v
   }
 
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
-  private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float): RemoteViews {
+  private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3): RemoteViews {
     /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
     if (key == "tonight") return posterColumn(d, key, bodyDp, buttons = d.opt("tonight").optString("small", "poster") != "list")
     val v = fresh(d.ctx, R.layout.w2_half_list)
@@ -552,22 +567,24 @@ object W2Render {
       v.setViewVisibility(R.id.items, View.GONE)
       v.setViewVisibility(R.id.posters, View.VISIBLE)
       val imgs = intArrayOf(R.id.hp_img_1, R.id.hp_img_2)
-      val pw = (wDp - 8f) / 2f
+      /* ٢:٣ داخل الخانة بلا مطّ: الأقصرُ من عرض النصف وارتفاع الجسم يحكم */
+      val ph = minOf((wDp - 8f) / 2f * 1.5f, bodyDp)
+      val pw = ph / 1.5f
       for (n in 0 until 2) {
         val it = items.getOrNull(n)
         if (it == null) { v.setViewVisibility(imgs[n], View.INVISIBLE); continue }
-        poster(d, v, imgs[n], it.t?.poster, pw, pw * 1.5f, 6f)
+        poster(d, v, imgs[n], it.t?.poster, pw, ph, 6f)
         v.setOnClickPendingIntent(imgs[n], d.open(it.link))
       }
       return v
     }
     /* W34 — فيلم الليلة قائمةً: فيلمٌ واحدٌ بلا اقتراحٍ ثانٍ تحته */
-    val max = if (key == "tonight") 1 else 3
+    val max = if (key == "tonight") 1 else count
     for (n in 0 until max) {
       val it = items.getOrNull(n) ?: break
       /* الأسطرُ تتقاسم ارتفاعَ الخانة (وزنٌ في الواجهة) — لا مسافاتٍ ثابتة */
       val row = RemoteViews(d.ctx.packageName, R.layout.w2_item_small)
-      poster(d, row, R.id.it_img, it.t?.poster, 28f, 42f, 4f)
+      poster(d, row, R.id.it_img, it.t?.poster, 30f, 45f, 4f)
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
@@ -581,14 +598,16 @@ object W2Render {
     val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_poster)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
-    val pw = bodyDp * 2f / 3f
+    /* 🆕 البوسترُ ٢:٣ حتّى عرض ٨٠ (`maxWidth` في الواجهة) — فيبقى للاسم عرضٌ في النصف ولا يتداخل مع جاره */
+    val pw = minOf(bodyDp * 2f / 3f, 80f)
+    val ph = pw * 1.5f
     if (key == "tonight") {
       val m = tonightNow(d)
       if (m == null) {
         v.setTextViewText(R.id.pc_meta, d.f.s("noTowatchMovies"))
         return v
       }
-      poster(d, v, R.id.pc_img, m.t.poster, pw, bodyDp, 8f)
+      poster(d, v, R.id.pc_img, m.t.poster, pw, ph, 8f)
       v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(m.t)))
       v.setTextViewText(R.id.pc_name, m.t.title)
       v.setOnClickPendingIntent(R.id.pc_name, d.open(WLinks.title(m.t)))
@@ -611,7 +630,7 @@ object W2Render {
       return v
     }
     if (all.size > 1) v.setTextViewText(R.id.hdr_title, "${titleOf(d, key)} · ${all.size}")
-    poster(d, v, R.id.pc_img, t.poster, pw, bodyDp, 8f)
+    poster(d, v, R.id.pc_img, t.poster, pw, ph, 8f)
     v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(t)))
     val rating = if (x.isNull("rating")) null else "★ " + String.format(d.f.locale(), "%.1f", x.optDouble("rating"))
     v.setTextViewText(R.id.pc_name, t.title)

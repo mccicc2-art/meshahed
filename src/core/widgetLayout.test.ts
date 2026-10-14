@@ -12,7 +12,7 @@ const names = (rows: WidgetRow[]) => rows.map((r) =>
 test("الكبير الافتراضي: البحث، أكمل المشاهدة، القادم، وفيلم الليلة سطراً مختصراً", () => {
   const l = resolveWidgetLayout(defaultWidgetConfig(), "large");
   assert.deepEqual(names(l.rows), ["search", "cont", "up×2", "line:tonight"]);
-  assert.equal(l.used, 420);
+  assert.equal(l.used, 396);
   assert.deepEqual(l.hidden, ["friends", "tw", "act"]);
 });
 
@@ -31,12 +31,13 @@ test("سطر القادم يعود إذا أُخفي قسم القادم", () =>
 });
 
 /* حالةُ أحمد (١٤ أكتوبر ٠٤:٠٥): كان يترك ثلثَ الودجت فارغاً */
-test("لا فراغ كبير: صف صغيرين لا يتسع فيصير سطرين مختصرين", () => {
+test("لا فراغ كبير: صف الصغيرين يدخل بسطرين حين لا يتسع بثلاثة", () => {
   const cfg = defaultWidgetConfig();
   cfg.on.search = false; cfg.on.tw = false; cfg.on.act = false;
   cfg.opts.tonight.size = "small"; cfg.opts.friends.size = "small";
   const l = resolveWidgetLayout(cfg, "large");
-  assert.deepEqual(names(l.rows), ["cont", "up×2", "line:tonight", "line:friends"]);
+  assert.deepEqual(names(l.rows), ["cont", "up×2", "pair:tonight+friends"]);
+  assert.equal((l.rows[2] as { count: number }).count, 2);
   assert.deepEqual(l.hidden, []);
   assert.ok(440 - l.used < WIDGET_HEIGHTS.line + WIDGET_HEIGHTS.gap);
 });
@@ -46,7 +47,7 @@ test("قسم لا يتسع لا يوقف الترتيب: ما بعده يُجر�
   cfg.on.tw = false; cfg.on.act = false;
   cfg.opts.cont.size = "small"; cfg.opts.up.size = "small"; cfg.opts.tonight.size = "small";
   const l = resolveWidgetLayout(cfg, "large");
-  assert.deepEqual(names(l.rows), ["search", "pair:cont+up", "line:tonight", "line:friends"]);
+  assert.deepEqual(names(l.rows), ["search", "pair:cont+up", "pair:tonight", "line:friends"]);
 });
 
 test("فراغ سطر: آخر قائمة بسطرين تصير ثلاثة", () => {
@@ -179,4 +180,26 @@ test("الصفوف لكل ارتفاع حقيقي: أطول يدخل أكثر، 
   /* القادمُ مخفيٌّ فارغاً ⇒ سطرُه يعود تحت البطاقات */
   const c = r.heights["600"].rows.find((x) => x.type === "cont");
   assert.equal(c?.type === "cont" && c.upLine, true);
+});
+
+/* 🆕 تسجيلُ أحمد (١٤ أكتوبر، بناء 75): الفراغُ يعود صفوفاً لا مسافات — مقاسا جوّاله الحقيقيّان */
+test("الفراغ يعود صفوفاً: ٦٠٠ يكبّر الأصدقاء والنصفين، و٥٠٠ يبقيهما بسطرين", () => {
+  const cfg = defaultWidgetConfig();
+  cfg.order = ["search", "cont", "friends", "tonight", "act", "up", "tw"];
+  cfg.on.up = false; cfg.on.tw = false;
+  cfg.opts.tonight.size = "small"; cfg.opts.act.size = "small";
+  const big = resolveWidgetLayout(cfg, "xl", 600);
+  assert.deepEqual(names(big.rows), ["search", "cont+line", "friends×3", "pair:tonight+act"]);
+  assert.equal((big.rows[3] as { count: number }).count, 3);
+  assert.ok(big.used <= 600 && 600 - big.used < WIDGET_HEIGHTS.listRow);
+  const mid = resolveWidgetLayout(cfg, "large", 500);
+  assert.deepEqual(names(mid.rows), ["search", "cont+line", "friends×2", "pair:tonight+act"]);
+  assert.equal((mid.rows[3] as { count: number }).count, 2);
+});
+
+test("المتوسط وأكمل المشاهدة وحده: البطاقتان تكبران حين يتسع", () => {
+  const l = resolveWidgetLayout(defaultWidgetConfig(), "medium", 200);
+  assert.equal(l.rows[0].type === "cont" && l.rows[0].tall, true);
+  const s = resolveWidgetLayout(defaultWidgetConfig(), "medium", 180);
+  assert.equal(s.rows[0].type === "cont" && !!s.rows[0].tall, false);
 });

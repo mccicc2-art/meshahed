@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, useReducer } from "react";
 import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -127,6 +127,15 @@ export function SearchScreen() {
     el.blur();
     requestAnimationFrame(() => el.focus());
   }, []);
+
+  /* 🆕 شريطُ البحث في الودجت (`focus`): الصفحةُ تُفتح واللوحةُ ظاهرةٌ للكتابة مباشرة — قرارُ أحمد «١ ب» (١٤ أكتوبر).
+     كلُّ لمسةٍ رمزٌ جديد فتعمل ولو كان التبويبُ مفتوحاً؛ والمهلةُ حتّى تستقرّ الشاشة (التركيزُ قبلها لا يفتح اللوحة) */
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
+  useEffect(() => {
+    if (!focus || desc) return;
+    const h = setTimeout(focusField, 350);
+    return () => clearTimeout(h);
+  }, [focus, desc, focusField]);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();

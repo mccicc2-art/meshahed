@@ -65,23 +65,28 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
  */
 export const WIDGET_HEIGHTS = {
   pad: 24,
-  gap: 21,
+  /* 🆕 فاصلٌ ثابتٌ صغير (تسجيلُ أحمد ١٤ أكتوبر، بناء 75: «جايه صغار ولا يغطي المساحات») — المساحةُ تروح للمحتوى لا للفراغ */
+  gap: 13,
   searchCompact: 44,
   /** الشريطُ + عنوانُ «الرائج اليوم» + صفٌّ مرقّمٌ (عمودان) — أو شبكةُ البوسترات المرقّمة نفسُها (`posterGrid`) */
   searchFull: 44 + 8 + 16 + 8 + 40,
   searchFullPosters: 44 + 8 + 16 + 8 + 130,
   /** عنوانُ القسم + بطاقتا ١٦:٩ (W33) */
   cont: 121,
+  /** 🆕 المتوسطُ وأكملُ المشاهدة وحدَه: البطاقتان تكبران لتعبّيا الودجت (١٢٠ بدل ٩٣) */
+  contTall: 148,
   /** سطرُ «القادم» تحت أكمل المشاهدة: فاصلٌ + سطر (W33) */
-  upLine: 26,
-  /** صفُّ القسمين الصغيرين (W30) */
+  upLine: 22,
+  /** صفُّ القسمين الصغيرين (W30) بثلاثة أسطر — و`pairRow2` بسطرين حين لا يتّسع */
   pairRow: 176,
+  pairRow2: 126,
   /** السطرُ المختصر لقسمٍ لا يتّسع (W39) */
   line: 44,
-  listHeader: 28,
-  listRow: 44,
-  friendRow: 30,
-  rowGap: 8,
+  /* 🆕 الصفُّ ٥٠ بصورة ٣٢×٤٨ وخط ١٤/١٢، والأصدقاءُ سطران بالمقاس نفسِه (المعتمدُ «أ»، ١٤ أكتوبر) */
+  listHeader: 24,
+  listRow: 50,
+  friendRow: 50,
+  rowGap: 0,
   posterGrid: 130,
   /** فيلم الليلة كاملاً: هيدر ١٦:٩ بعرض الودجت (W34) */
   tonightWide: 188,
@@ -105,10 +110,10 @@ const LIST_KEYS: readonly WidgetSectionKey[] = ["up", "friends", "tw", "act"];
 
 export type WidgetRow =
   | { type: "search"; full: boolean; trend: "list" | "posters"; h: number }
-  | { type: "cont"; upLine: boolean; h: number }
+  | { type: "cont"; upLine: boolean; tall?: boolean; h: number }
   | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; h: number }
   | { type: "tonight"; view: "wide" | "poster"; h: number }
-  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; h: number }
+  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; h: number }
   | { type: "line"; key: WidgetSectionKey; h: number };
 
 export interface WidgetLayout {
@@ -178,7 +183,7 @@ export function resolveWidgetLayout(cfg: WidgetLayoutConfig, size: Exclude<Widge
     for (const b of blocks) {
       const keys = "pair" in b ? b.pair : [b.one];
       const row: WidgetRow = "pair" in b
-        ? { type: "pair", keys: b.pair as [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey], h: H.pairRow }
+        ? { type: "pair", keys: b.pair as [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey], count: 2, h: H.pairRow2 }
         : fullRow(cfg, b.one, upLine);
       if (fits(row.h)) { push(row); keys.forEach((k) => shown.add(k)); continue; }
       /* لا يتّسع بشكله: سطرٌ مختصرٌ لكلِّ قسمٍ فيه بدل أن يختفي — والبحثُ لا سطرَ له */
@@ -188,13 +193,20 @@ export function resolveWidgetLayout(cfg: WidgetLayoutConfig, size: Exclude<Widge
         shown.add(k);
       }
     }
-    /* ما زال فيه فراغُ سطر: آخرُ قائمةٍ بسطرين تصير ثلاثة */
-    for (let i = rows.length - 1; i >= 0; i--) {
+    /* 🆕 ما زال فيه فراغ: كلُّ قائمةٍ بسطرين تصير ثلاثة من الأعلى ما اتّسع، والقسمان الصغيران كذلك —
+       الفراغُ يعود صفوفاً لا مسافاتٍ بين الأقسام (تسجيلُ أحمد ١٤ أكتوبر). وما يبقى أقلُّ من صفّ. */
+    for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (r.type !== "list" || r.view !== "list" || r.count !== 2) continue;
-      const grown = fullRow(cfg, r.key, upLine, 3);
-      if (used - r.h + grown.h <= height) { used += grown.h - r.h; rows[i] = grown; }
-      break;
+      let grown: WidgetRow | null = null;
+      if (r.type === "list" && r.view === "list" && r.count === 2) grown = fullRow(cfg, r.key, upLine, 3);
+      else if (r.type === "pair" && r.count === 2) grown = { ...r, count: 3, h: H.pairRow };
+      if (grown && used - r.h + grown.h <= height) { used += grown.h - r.h; rows[i] = grown; }
+    }
+    /* المتوسطُ وأكملُ المشاهدة وحدَه: البطاقتان تكبران لتعبّيا ما تحتهما */
+    if (size === "medium" && rows.length === 1 && rows[0].type === "cont") {
+      const r = rows[0];
+      const tall = H.contTall + (r.upLine ? H.upLine : 0);
+      if (used - r.h + tall <= height) { used += tall - r.h; rows[0] = { ...r, tall: true, h: tall }; }
     }
     return { rows, hidden: visible.filter((k) => !shown.has(k)), used };
   };

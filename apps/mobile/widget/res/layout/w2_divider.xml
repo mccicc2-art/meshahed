@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- فاصلٌ بين قسمين: `WIDGET_HEIGHTS.gap` = ٢١ (مسافةٌ وخطٌّ ومسافة) -->
+<!-- فاصلٌ بين قسمين: `WIDGET_HEIGHTS.gap` = ١٣ (مسافةٌ وخطٌّ ومسافة) — ثابتٌ صغير، والزائدُ صفوفٌ لا فراغ (١٤ أكتوبر) -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="21dp">
+    android:layout_height="13dp">
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="1dp"

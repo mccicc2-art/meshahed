@@ -47,7 +47,7 @@ export function WidgetPreview({ config, size, names, platform, maxHeight = 300 }
     const l = resolveWidgetLayout(config, size, H);
     body = l.rows.map((r, i) => (
       <View key={i}>
-        {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: 10 }} /> : null}
+        {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: (WIDGET_HEIGHTS.gap - 1) / 2 }} /> : null}
         <PreviewRow row={r} names={names} />
       </View>
     ));
@@ -118,10 +118,10 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
       return (
         <View style={{ height: h, gap: 8 }}>
           <Title text={names.cont} />
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {/* بطاقتا ١٦:٩ — والعلامةُ رصاصيّة (W36) */}
+          <View style={{ flexDirection: "row", gap: 8, height: row.tall ? 120 : 93 }}>
+            {/* بطاقتا ١٦:٩ — والعلامةُ رصاصيّة (W36)؛ وفي المتوسط وحدَه أطول (`tall`) */}
             {[0, 1].map((i) => (
-              <View key={i} style={{ flex: 1, aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#2f3b46" }}>
+              <View key={i} style={{ flex: 1, borderRadius: 12, backgroundColor: "#2f3b46" }}>
                 <View style={{ position: "absolute", top: 6, start: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(22,22,22,0.78)" }} />
               </View>
             ))}
@@ -136,7 +136,7 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
       );
     case "list":
       return (
-        <View style={{ height: h, gap: 8 }}>
+        <View style={{ height: h, gap: 4 }}>
           <Title text={names[row.key]} />
           {row.view === "posters" ? (
             <View style={{ flexDirection: "row", gap: 8, height: WIDGET_HEIGHTS.posterGrid }}>
@@ -145,7 +145,7 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
           ) : (
             Array.from({ length: row.count }, (_, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, height: row.key === "friends" ? WIDGET_HEIGHTS.friendRow : WIDGET_HEIGHTS.listRow }}>
-                <View style={row.key === "friends" ? { width: 28, height: 28, borderRadius: 14, backgroundColor: GHOST } : { width: 28, height: 42, borderRadius: 6, backgroundColor: GHOST }} />
+                <View style={{ width: 32, height: 48, borderRadius: 6, backgroundColor: GHOST }} />
                 <View style={{ flex: 1, gap: 6 }}>
                   <Bar w="55%" />
                   <Bar w="35%" h={6} />
@@ -186,7 +186,7 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
           {[0, 1].map((i) => {
             const k = row.keys[i];
             return (
-              <View key={i} style={{ flex: 1, gap: 8 }}>
+              <View key={i} style={{ flex: 1, gap: 4, overflow: "hidden" }}>
                 {k ? (
                   <>
                     <Title text={names[k]} />
@@ -200,9 +200,9 @@ function PreviewRow({ row, names }: { row: WidgetRow; names: Record<WidgetSectio
                         </View>
                       </View>
                     ) : (
-                      [0, 1, 2].map((j) => (
-                        <View key={j} style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-                          <View style={{ width: 24, height: 36, borderRadius: 5, backgroundColor: GHOST }} />
+                      Array.from({ length: row.count ?? 3 }, (_, j) => (
+                        <View key={j} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View style={{ width: 30, height: 45, borderRadius: 5, backgroundColor: GHOST }} />
                           <Bar w="60%" />
                         </View>
                       ))

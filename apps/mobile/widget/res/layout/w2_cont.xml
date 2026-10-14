@@ -14,7 +14,7 @@
     android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:textColor="#F7F7F7"
-    android:textSize="13sp"
+    android:textSize="14.5sp"
     android:textStyle="bold"
     android:maxLines="1"
     android:ellipsize="end"
@@ -200,13 +200,13 @@
     <LinearLayout
         android:id="@+id/up_block"
         android:layout_width="match_parent"
-        android:layout_height="26dp"
+        android:layout_height="22dp"
         android:orientation="vertical"
         android:visibility="gone">
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="5dp"
             android:background="#1AFFFFFF" />
         <LinearLayout
             android:id="@+id/up_line"
