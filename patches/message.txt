@@ -1,1 +1,1 @@
-Widget actions with the token (web): movie watched, start a series, rate a movie — /api/v1/widget/movie|start|rate; rate/skip/started/undo strings in the widget feed (W35, W37) [deploy]
+Widget tap diagnostics: app crash route accepts the screen «widget» (Ahmed's report: widget buttons do nothing) [deploy]
