@@ -691,7 +691,7 @@ object W2Render {
     v.setViewVisibility(R.id.ht_check, View.VISIBLE)
     val undoing = d.f.check && d.undoOn("movie", m.t.id)
     when {
-      undoing -> undoCircle(d, v, R.id.ht_check, R.id.ht_meta, "✓ " + d.s2("watched"))
+      undoing -> undoCircle(d, v, R.id.ht_check, R.id.ht_check_v, R.id.ht_meta, "✓ " + d.s2("watched"))
       d.f.check -> v.setOnClickPendingIntent(R.id.ht_check, CheckReceiver.movieIntent(d.ctx, d.next(), m.t))
       else -> v.setOnClickPendingIntent(R.id.ht_check, d.open(WLinks.title(m.t)))
     }
@@ -724,7 +724,7 @@ object W2Render {
       if (!buttons) return v
       v.setViewVisibility(R.id.pc_check, View.VISIBLE)
       if (d.f.check && d.undoOn("movie", m.t.id)) {
-        undoCircle(d, v, R.id.pc_check, R.id.pc_meta, "✓ " + d.s2("watched"))
+        undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + d.s2("watched"))
         return v
       }
       v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), m.t) else d.open(WLinks.title(m.t)))
@@ -753,10 +753,10 @@ object W2Render {
     val movie = x.optString("action") == "watched"
     when {
       d.f.check && d.undoOn(if (movie) "movie" else "start", t.id) ->
-        undoCircle(d, v, R.id.pc_check, R.id.pc_meta, "✓ " + if (movie) d.s2("watched") else d.s2or("started", "بدأته", "Started"))
+        undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + if (movie) d.s2("watched") else d.s2or("started", "بدأته", "Started"))
       movie -> v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
       else -> {
-        v.setImageViewResource(R.id.pc_check, R.drawable.widget_ic_play)
+        v.setImageViewResource(R.id.pc_check_v, R.drawable.widget_ic_play)
         v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.startIntent(d.ctx, d.next(), t) else d.open(WLinks.start(t, "start")))
       }
     }
@@ -822,11 +822,11 @@ object W2Render {
         draw(m.t, f.s("tonightTitle"), Tonight.subOf(f, m), WLinks.title(m.t))
         if (d.tonight.size > 1) {
           v.setViewVisibility(R.id.full_action, View.VISIBLE)
-          v.setImageViewResource(R.id.full_action, R.drawable.widget_ic_repeat)
+          v.setImageViewResource(R.id.full_action_v, R.drawable.widget_ic_repeat)
           v.setOnClickPendingIntent(R.id.full_action, LoopzWidget.cycleIntent(d.ctx, d.id, d.next()))
         }
         v.setViewVisibility(R.id.full_check, View.VISIBLE)
-        if (f.check && d.undoOn("movie", m.t.id)) undoCircle(d, v, R.id.full_check, R.id.full_sub, "✓ " + d.s2("watched"))
+        if (f.check && d.undoOn("movie", m.t.id)) undoCircle(d, v, R.id.full_check, R.id.full_check_v, R.id.full_sub, "✓ " + d.s2("watched"))
         else v.setOnClickPendingIntent(R.id.full_check, if (f.check) CheckReceiver.movieIntent(d.ctx, d.next(), m.t) else d.open(WLinks.title(m.t)))
       }
       "tw" -> {
@@ -842,7 +842,7 @@ object W2Render {
         draw(c.t, top, c.sub ?: c.label, WLinks.title(c.t))
         if (f.check && d.undoOn("ep", c.t.id)) {
           v.setViewVisibility(R.id.full_check, View.VISIBLE)
-          undoCircle(d, v, R.id.full_check, null, "")
+          undoCircle(d, v, R.id.full_check, R.id.full_check_v, null, "")
         } else if (f.check && c.season != null && c.episode != null) {
           v.setViewVisibility(R.id.full_check, View.VISIBLE)
           v.setOnClickPendingIntent(R.id.full_check, CheckReceiver.intent(d.ctx, d.next(), c))
@@ -870,7 +870,7 @@ object W2Render {
     v.setOnClickPendingIntent(R.id.root, d.open(WLinks.title(c.t)))
     if (f.check && d.undoOn("ep", c.t.id)) {
       v.setViewVisibility(R.id.full_check, View.VISIBLE)
-      undoCircle(d, v, R.id.full_check, null, "")
+      undoCircle(d, v, R.id.full_check, R.id.full_check_v, null, "")
     } else if (f.check && c.season != null && c.episode != null) {
       v.setViewVisibility(R.id.full_check, View.VISIBLE)
       v.setOnClickPendingIntent(R.id.full_check, CheckReceiver.intent(d.ctx, d.next(), c))
@@ -890,9 +890,10 @@ object W2Render {
   /** «تمّ» بلون النجاح الواحد (`WColor.success` في الآيفون، #22C55E) — لا أخضرَ ثانٍ */
   private const val DONE = 0xFF22C55E.toInt()
 
-  /** W37 — الزرُّ الدائريُّ صار «↶ تراجع» خمسَ ثوانٍ، وسطرُه يقول ما حدث */
-  private fun undoCircle(d: Draw, v: RemoteViews, button: Int, line: Int?, text: String) {
-    v.setImageViewResource(button, R.drawable.widget_ic_undo)
+  /** W37 — الزرُّ الدائريُّ صار «↶ تراجع» خمسَ ثوانٍ، وسطرُه يقول ما حدث.
+   *  W44 — الزرُّ إطارُ لمسٍ شفّاف (`button`) فيه الدائرةُ المرئيّة (`icon`): الضغطُ على الإطار والأيقونةُ على الدائرة */
+  private fun undoCircle(d: Draw, v: RemoteViews, button: Int, icon: Int, line: Int?, text: String) {
+    v.setImageViewResource(icon, R.drawable.widget_ic_undo)
     v.setOnClickPendingIntent(button, CheckReceiver.undoIntent(d.ctx, d.next()))
     if (line != null && text.isNotEmpty()) {
       v.setTextViewText(line, text)

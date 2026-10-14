@@ -58,32 +58,44 @@
         android:textColor="#B5B5B5"
         android:textSize="11sp"
         android:visibility="gone" />
-    <ImageView
+    <FrameLayout
         android:id="@+id/card_check_1"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|end"
-        android:layout_margin="6dp"
-        android:background="@drawable/widget_check"
-        android:padding="7dp"
-        android:src="@drawable/widget_ic_check"
-        android:visibility="gone" />
-    <LinearLayout
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/card_check_1_v"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:background="@drawable/widget_check"
+            android:padding="8dp"
+            android:src="@drawable/widget_ic_check" />
+    </FrameLayout>
+    <FrameLayout
     android:id="@+id/card_undo_1"
     android:layout_width="wrap_content"
-    android:layout_height="26dp"
+    android:layout_height="44dp"
     android:layout_gravity="top|end"
-    android:layout_margin="6dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginEnd="4dp"
     android:visibility="gone"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+    <LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:layout_gravity="center_vertical"
     android:background="@drawable/w2_chip"
     android:gravity="center_vertical"
-    android:paddingStart="10dp"
-    android:paddingEnd="10dp"
+    android:paddingStart="11dp"
+    android:paddingEnd="11dp"
     android:orientation="horizontal">
     <ImageView
         android:id="@+id/card_undo_icon_1"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="13dp"
+        android:layout_height="13dp"
         android:src="@drawable/widget_ic_undo"
         android:tint="#F7F7F7" />
     <TextView
@@ -92,10 +104,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
         android:textColor="#F7F7F7"
-        android:textSize="10.5sp"
+        android:textSize="11.5sp"
         android:textStyle="bold"
         android:maxLines="1" />
 </LinearLayout>
+</FrameLayout>
     <LinearLayout
         android:id="@+id/card_text_1"
         android:layout_width="match_parent"
@@ -165,32 +178,44 @@
         android:textColor="#B5B5B5"
         android:textSize="11sp"
         android:visibility="gone" />
-    <ImageView
+    <FrameLayout
         android:id="@+id/card_check_2"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|end"
-        android:layout_margin="6dp"
-        android:background="@drawable/widget_check"
-        android:padding="7dp"
-        android:src="@drawable/widget_ic_check"
-        android:visibility="gone" />
-    <LinearLayout
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/card_check_2_v"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:background="@drawable/widget_check"
+            android:padding="8dp"
+            android:src="@drawable/widget_ic_check" />
+    </FrameLayout>
+    <FrameLayout
     android:id="@+id/card_undo_2"
     android:layout_width="wrap_content"
-    android:layout_height="26dp"
+    android:layout_height="44dp"
     android:layout_gravity="top|end"
-    android:layout_margin="6dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginEnd="4dp"
     android:visibility="gone"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+    <LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:layout_gravity="center_vertical"
     android:background="@drawable/w2_chip"
     android:gravity="center_vertical"
-    android:paddingStart="10dp"
-    android:paddingEnd="10dp"
+    android:paddingStart="11dp"
+    android:paddingEnd="11dp"
     android:orientation="horizontal">
     <ImageView
         android:id="@+id/card_undo_icon_2"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="13dp"
+        android:layout_height="13dp"
         android:src="@drawable/widget_ic_undo"
         android:tint="#F7F7F7" />
     <TextView
@@ -199,10 +224,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
         android:textColor="#F7F7F7"
-        android:textSize="10.5sp"
+        android:textSize="11.5sp"
         android:textStyle="bold"
         android:maxLines="1" />
 </LinearLayout>
+</FrameLayout>
     <LinearLayout
         android:id="@+id/card_text_2"
         android:layout_width="match_parent"

@@ -52,15 +52,21 @@
             android:layout_marginStart="8dp"
             android:gravity="start"
             android:orientation="vertical">
-            <ImageView
+    <FrameLayout
                 android:id="@+id/pc_another"
-                android:layout_width="30dp"
-                android:layout_height="24dp"
-                android:background="@drawable/w2_chip"
-                android:padding="5dp"
-                android:src="@drawable/widget_ic_repeat"
-                android:tint="#F7F7F7"
-                android:visibility="gone" />
+                android:layout_width="56dp"
+                android:layout_height="30dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/pc_another_v"
+                    android:layout_width="36dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:background="@drawable/w2_chip"
+                    android:padding="7dp"
+                    android:src="@drawable/widget_ic_repeat"
+                    android:tint="#F7F7F7" />
+            </FrameLayout>
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -89,15 +95,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1" />
-            <ImageView
+    <FrameLayout
                 android:id="@+id/pc_check"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:background="@drawable/w2_chip_round"
-                android:padding="7dp"
-                android:src="@drawable/widget_ic_check"
-                android:tint="#F7F7F7"
-                android:visibility="gone" />
+                android:layout_width="56dp"
+                android:layout_height="36dp"
+                android:visibility="gone">
+                <ImageView
+                    android:id="@+id/pc_check_v"
+                    android:layout_width="33dp"
+                    android:layout_height="33dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:background="@drawable/w2_chip_round"
+                    android:padding="8dp"
+                    android:src="@drawable/widget_ic_check"
+                    android:tint="#F7F7F7" />
+            </FrameLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

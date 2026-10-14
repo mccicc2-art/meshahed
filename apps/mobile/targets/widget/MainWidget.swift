@@ -283,16 +283,21 @@ struct LockCard: View {
 struct WChip: View {
   let icon: String?
   let text: String?
+  /** W44 — الرقاقةُ تُرى ٣٠ وتُلمَس بطول `touch` (٤٤ إرشادُ آبل؛ أقلُّ حيث يضيق العمود) — الإطارُ شفّافٌ لا يُرى */
+  var touch: CGFloat = 44
   var body: some View {
     HStack(spacing: 5) {
-      if let icon { Image(systemName: icon).font(.system(size: 10, weight: .bold)) }
-      if let text, !text.isEmpty { Text(text).font(.system(size: 10.5, weight: .semibold)).lineLimit(1) }
+      if let icon { Image(systemName: icon).font(.system(size: 11, weight: .bold)) }
+      if let text, !text.isEmpty { Text(text).font(.system(size: 11.5, weight: .semibold)).lineLimit(1) }
     }
     .foregroundStyle(WColor.fg)
-    .padding(.horizontal, 10)
-    .frame(height: 26)
+    .padding(.horizontal, 11)
+    .frame(height: 30)
     .background(Capsule().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
     .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1))
+    .padding(.horizontal, 3)
+    .frame(minHeight: max(touch, 30))
+    .contentShape(Rectangle())
   }
 }
 
@@ -850,11 +855,14 @@ struct TonightHalf: View {
   let f: V2Feed
   let now: Date
 
+  /** W44 — الدائرةُ ٣٣ تُرى، والإطارُ الشفّافُ ٤٤ يُلمَس (الحشوُ حولها ١ فتبقى على ٧ من الحافة كما كانت) */
   func circle(_ icon: String) -> some View {
-    Image(systemName: icon).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
-      .frame(width: 30, height: 30)
+    Image(systemName: icon).font(.system(size: 12.5, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 33, height: 33)
       .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
       .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+      .frame(width: 44, height: 44)
+      .contentShape(Rectangle())
   }
 
   var body: some View {
@@ -894,7 +902,7 @@ struct TonightHalf: View {
                 }
               }
             }
-            .padding(7)
+            .padding(1)
           }
           .clipShape(RoundedRectangle(cornerRadius: 12))
         }
@@ -963,12 +971,14 @@ struct PosterColumn: View {
   let now: Date
   var buttons: Bool = true
 
-  /** الزرُّ الدائريُّ الرماديّ (W36) */
+  /** الزرُّ الدائريُّ الرماديّ (W36). W44 — ٣٣ تُرى؛ العمودُ ضيّقُ الطول فاللمسُ يتّسع عرضاً (٥٦) والطولُ ٣٦ */
   func circle(_ icon: String) -> some View {
-    Image(systemName: icon).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
-      .frame(width: 28, height: 28)
+    Image(systemName: icon).font(.system(size: 12.5, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 33, height: 33)
       .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
       .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+      .frame(width: 56, height: 36, alignment: .leading)
+      .contentShape(Rectangle())
   }
 
   var body: some View {
@@ -1000,7 +1010,7 @@ struct PosterColumn: View {
         /* البوسترُ بطول الخانة، وبجانبه 🔁 فوق والاسمُ والتفاصيلُ و✓ تحت — بلا فراغٍ وسط العمود */
         VStack(alignment: .leading, spacing: 0) {
           if cycle {
-            Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: nil) }.buttonStyle(.plain)
+            Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: nil, touch: 30) }.buttonStyle(.plain)
           }
           Spacer(minLength: 0)
           Text(t.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
@@ -1105,7 +1115,8 @@ struct SmallFade: View {
                 Text(c.sub ?? c.label ?? "").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.white.opacity(0.75)).lineLimit(1)
               }
               Spacer(minLength: 4)
-              CheckButton(feed: f.feed, item: c, size: 28)
+              /* W44 — ٣٦ تُرى في إطار لمسٍ ٥٢؛ الحشوُ السالبُ يُبقي الدائرةَ على ١١ من الحافة كما كانت */
+              CheckButton(feed: f.feed, item: c, size: 36).padding(.trailing, -8).padding(.bottom, -8)
             }
           } else {
             Text(f.feed.s("startSomething")).font(.system(size: 12)).foregroundStyle(WColor.muted)

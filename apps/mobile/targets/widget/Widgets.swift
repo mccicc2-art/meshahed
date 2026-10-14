@@ -236,7 +236,7 @@ struct CardView: View {
         .frame(height: 4)
       }
     }
-    .overlay(alignment: .topTrailing) { CheckButton(feed: feed, item: item, size: 28).padding(6) }
+    .overlay(alignment: .topTrailing) { CheckButton(feed: feed, item: item, size: 32).padding(2) }
     .clipShape(RoundedRectangle(cornerRadius: radius))
     .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
   }
@@ -274,6 +274,8 @@ struct CheckButton: View {
   let feed: WFeed
   let item: WContinue?
   let size: CGFloat
+  /** W44 — الدائرةُ `size` تُرى والإطارُ الشفّافُ حولها يُلمَس: ٤٤ إرشادُ آبل، و٥٢ للصغير (`size` ٣٦) */
+  var touch: CGFloat { size >= 36 ? 52 : 44 }
   var body: some View {
     if feed.check, let item, WState.undoOn("ep", item.id) {
       /* 🆕 W37 — البطاقةُ على الحلقة التالية، و«↶ تراجع» مكانَ ✓ خمسَ ثوانٍ */
@@ -282,6 +284,8 @@ struct CheckButton: View {
           .frame(width: size, height: size)
           .background(Circle().fill(Color.black.opacity(0.55)))
           .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1))
+          .frame(width: touch, height: touch)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
     } else if feed.check, let item, let s = item.season, let e = item.episode {
@@ -290,6 +294,8 @@ struct CheckButton: View {
           .frame(width: size, height: size)
           .background(Circle().fill(Color.black.opacity(0.55)))
           .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1))
+          .frame(width: touch, height: touch)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
     }

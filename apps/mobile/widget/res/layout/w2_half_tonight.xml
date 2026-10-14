@@ -42,17 +42,22 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="fitXY" />
-        <ImageView
+<FrameLayout
             android:id="@+id/ht_another"
-            android:layout_width="30dp"
-            android:layout_height="28dp"
+            android:layout_width="48dp"
+            android:layout_height="44dp"
             android:layout_gravity="top|end"
-            android:layout_margin="6dp"
-            android:background="@drawable/w2_chip"
-            android:padding="6dp"
-            android:src="@drawable/widget_ic_repeat"
-            android:tint="#F7F7F7"
-            android:visibility="gone" />
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/ht_another_v"
+                android:layout_width="36dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:background="@drawable/w2_chip"
+                android:padding="7dp"
+                android:src="@drawable/widget_ic_repeat"
+                android:tint="#F7F7F7" />
+        </FrameLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -82,16 +87,21 @@
     android:textAlignment="viewStart"
     android:layout_marginTop="1dp" />
         </LinearLayout>
-        <ImageView
+<FrameLayout
             android:id="@+id/ht_check"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="bottom|end"
-            android:layout_margin="7dp"
-            android:background="@drawable/w2_chip_round"
-            android:padding="8dp"
-            android:src="@drawable/widget_ic_check"
-            android:tint="#F7F7F7"
-            android:visibility="gone" />
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/ht_check_v"
+                android:layout_width="33dp"
+                android:layout_height="33dp"
+                android:layout_gravity="center"
+                android:background="@drawable/w2_chip_round"
+                android:padding="9dp"
+                android:src="@drawable/widget_ic_check"
+                android:tint="#F7F7F7" />
+        </FrameLayout>
     </FrameLayout>
 </LinearLayout>

@@ -28,27 +28,37 @@
         android:textSize="11sp"
         android:textStyle="bold"
         android:maxLines="1" />
-    <ImageView
+    <FrameLayout
         android:id="@+id/full_action"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|end"
-        android:layout_margin="7dp"
-        android:background="@drawable/widget_check"
-        android:padding="6dp"
-        android:visibility="gone" />
-    <!-- 🆕 W34 · W43 — ✓ في الطرف السفليّ (فيلم الليلة الصغير، وأكمل المشاهدة الطوليّ) بالرقاقة الرماديّة نفسِها -->
-    <ImageView
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/full_action_v"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:background="@drawable/widget_check"
+            android:padding="7dp" />
+    </FrameLayout>
+    <!-- 🆕 W34 · W43 · W44 — ✓ (٣٦ تُرى و٥٢ تُلمَس) في الطرف السفليّ (فيلم الليلة الصغير، وأكمل المشاهدة الطوليّ) بالرقاقة الرماديّة نفسِها -->
+    <FrameLayout
         android:id="@+id/full_check"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="8dp"
-        android:background="@drawable/w2_chip_round"
-        android:padding="7dp"
-        android:src="@drawable/widget_ic_check"
-        android:tint="#F7F7F7"
-        android:visibility="gone" />
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/full_check_v"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center"
+            android:background="@drawable/w2_chip_round"
+            android:padding="9dp"
+            android:src="@drawable/widget_ic_check"
+            android:tint="#F7F7F7" />
+    </FrameLayout>
     <TextView
         android:id="@+id/full_plus"
         android:layout_width="46dp"

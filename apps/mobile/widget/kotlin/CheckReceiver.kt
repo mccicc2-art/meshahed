@@ -88,7 +88,8 @@ class CheckReceiver : BroadcastReceiver() {
     val id = i.getIntExtra("id", i.getIntExtra("show", 0))
     val p = LoopzWidget.prefs(ctx).edit()
     when (action) {
-      ACTION_MARK -> p.putString(K_UNDO, JSONObject().put("kind", "ep").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      /* W44 — الحلقةُ المعروضةُ قبل اللمسة تُحفظ مع التراجع («prev»): التراجعُ يعيدها فوراً بلا انتظار الخادم */
+      ACTION_MARK -> p.putString(K_UNDO, JSONObject().put("kind", "ep").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).put("prev", contItem(ctx, id)).toString())
       ACTION_MOVIE -> p.putString(K_UNDO, JSONObject().put("kind", "movie").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
       ACTION_START -> p.putString(K_UNDO, JSONObject().put("kind", "start").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
       ACTION_RATE -> {
@@ -100,6 +101,13 @@ class CheckReceiver : BroadcastReceiver() {
       else -> return
     }
     p.apply()
+    /* W44 — كان التراجعُ يرسم ✓ فوراً والبطاقةُ ما زالت على الحلقة **التالية** حتى يردّ الخادم: السطرُ لا يعود،
+       ولمسةُ ✓ في تلك الثانية تؤشّر الحلقةَ التالية لا التي تراجع عنها (سجلُّ ١٤ أكتوبر). الآن تعود البطاقةُ قبل الرسم */
+    if (action == ACTION_UNDO) {
+      val was = LoopzWidget.prefs(ctx).getString(K_UNDO_WAS, null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+      val prev = was?.optJSONObject("prev")
+      if (was?.optString("kind") == "ep" && prev != null) runCatching { applyNext(ctx, was.optInt("id"), prev) }
+    }
     LoopzWidget.redrawAll(ctx)
   }
 
@@ -113,7 +121,13 @@ class CheckReceiver : BroadcastReceiver() {
         if (o?.optBoolean("pending") == true) p.remove(K_UNDO)
       }
       ACTION_RATE -> prefs.getString(K_RATE_WAS, null)?.let { p.putString(K_RATE, it) }
-      ACTION_UNDO -> prefs.getString(K_UNDO_WAS, null)?.let { p.putString(K_UNDO, it) }
+      ACTION_UNDO -> prefs.getString(K_UNDO_WAS, null)?.let {
+        p.putString(K_UNDO, it)
+        /* الخادمُ رفض التراجع: البطاقةُ تعود إلى الحلقة التالية كما كانت بعد ✓ */
+        val was = runCatching { JSONObject(it) }.getOrNull()
+        val next = was?.optJSONObject("next")
+        if (was?.optString("kind") == "ep" && next != null) runCatching { applyNext(ctx, was.optInt("id"), next) }
+      }
     }
     p.remove(K_RATE_WAS).remove(K_UNDO_WAS).apply()
     LoopzWidget.redrawAll(ctx)
@@ -128,8 +142,10 @@ class CheckReceiver : BroadcastReceiver() {
         if (id <= 0 || season <= 0 || episode <= 0) return revert(ctx, action)
         val mark = action == ACTION_MARK
         val data = post(ctx, if (mark) "/api/v1/widget/mark" else "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode)) ?: return revert(ctx, action)
+        val prev = undoNow(ctx)?.takeIf { it.optString("kind") == "ep" && it.optInt("id") == id }?.optJSONObject("prev")
         applyNext(ctx, id, data.optJSONObject("next"))
-        if (mark) undoFor(ctx, JSONObject().put("kind", "ep").put("id", id).put("season", season).put("episode", episode))
+        if (mark) undoFor(ctx, JSONObject().put("kind", "ep").put("id", id).put("season", season).put("episode", episode)
+          .put("prev", prev).put("next", data.optJSONObject("next")))
         else clearUndo(ctx)
       }
       ACTION_MOVIE -> {
@@ -327,6 +343,16 @@ class CheckReceiver : BroadcastReceiver() {
     }
 
     /** الحلقةُ التالية من الردّ تُكتب في الملفّ مكانَ القديمة — `null` = أنهى المتاح، فيخرج من الصفّ */
+    /** سطرُ «أكمل المشاهدة» الحاليّ للمسلسل (الحلقةُ واسمُها) — ما يُعاد إليه عند التراجع */
+    private fun contItem(ctx: Context, show: Int): JSONObject? = runCatching {
+      val items = JSONObject(File(WFeed.dir(ctx), "feed.json").readText()).optJSONObject("continue")?.optJSONArray("items") ?: return null
+      for (n in 0 until items.length()) {
+        val it = items.optJSONObject(n) ?: continue
+        if (it.optInt("id") == show) return JSONObject().put("season", it.optInt("season")).put("episode", it.optInt("episode")).put("label", it.optString("label"))
+      }
+      null
+    }.getOrNull()
+
     private fun applyNext(ctx: Context, show: Int, next: JSONObject?) {
       val f = File(WFeed.dir(ctx), "feed.json")
       if (!f.exists()) return
