@@ -4,7 +4,7 @@ import { getT } from "@/lib/locale";
 import { buildInbox } from "@/lib/messagesCore";
 import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import type { MessagesPayload } from "@/core/contracts/messages";
+import { replyEventOut, type MessagesPayload } from "@/core/contracts/messages";
 
 /**
  * `GET /api/v1/me/messages` — صندوقُ الوارد للتطبيق (Phase 11-M · M4): ما تقرؤه `/messages` حرفاً (`lib/messagesCore.ts`)
@@ -35,7 +35,8 @@ export async function GET(req: NextRequest) {
             ? { kind: "share" as const, id: e.id, mine: e.mine, tmdb_id: e.tmdb_id, media_type: e.media_type, title: e.title, poster_path: e.poster_path, note: e.note, created_at: e.created_at }
             : e.kind === "list"
               ? { kind: "list" as const, id: e.id, mine: e.mine, list_id: e.list_id, list_name: e.list_name, item_count: e.item_count, note: e.note, created_at: e.created_at }
-              : { kind: "reply" as const, id: e.id, mine: e.mine, body: e.body, created_at: e.created_at },
+              : /* 🆕 D-1400 — والـGIF والصورةُ معه (D-1387)؛ قبلها كانا يسقطان هنا فتفرغ فقاعتُهما في التطبيق */
+                replyEventOut(e),
         ),
         last_at: c.lastAt,
         unread: c.unread,

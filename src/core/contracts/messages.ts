@@ -92,6 +92,23 @@ export type MsgImagePayload = { path: string };
 export const DM_IMAGE_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 /** حدُّ صورة الرسالة — حدُّ المخزن `dm-media` في الهجرة ٢٠٢ */
 export const DM_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * 🆕 D-1400 — ردٌّ كما يعبر إلى التطبيق: الحقولُ المنشورةُ وحدَها، **ومعها الـGIF والصورةُ إن وُجدا**.
+ * قبله كان مسارُ `GET /api/v1/me/messages` يختار خمسةَ حقولٍ بيده فيُسقط `gif_id` و`image` (D-1387)،
+ * فتصل رسالةُ الصورة إلى الهاتف نصّاً فارغاً وتنكمش فقاعتُها نقطةً — والويبُ سليمٌ لأنّه يقرأ `getConversations` مباشرة.
+ */
+export function replyEventOut(e: { id: string; mine: boolean; body: string; created_at: string; gif_id?: string | null; image?: MsgImage | null }): MsgReplyEvent {
+  return {
+    kind: "reply",
+    id: e.id,
+    mine: e.mine,
+    body: e.body,
+    created_at: e.created_at,
+    ...(e.gif_id ? { gif_id: e.gif_id } : {}),
+    ...(e.image ? { image: { url: e.image.url, key: e.image.key } } : {}),
+  };
+}
 /** `POST /api/v1/me/messages/{read,hide,block}` */
 export type MsgPeerBody = { person_id: string };
 
