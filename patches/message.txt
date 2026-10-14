@@ -1,8 +1,1 @@
-[deploy] D-1375 — app links (web side): /.well-known files, proxy opens them
-
-- src/lib/appLinks.ts: one source for the app id, Apple team, linked paths (/show/*, /movie/*) and the Android signing fingerprints (Play app-signing key + upload key, from Play Console)
-- /.well-known/apple-app-site-association and /.well-known/assetlinks.json as static JSON routes
-- proxy: /.well-known/ is open to guests; D-1374 comment corrected — the missing WhatsApp card is Vercel's Bot Protection challenge, and Ahmed decided not to weaken the firewall for it
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01XQWC9djjs8eyiUFLcjBJ2y
+Widget v2 (web): shared layout engine, me/widget v2 feed, prefs/widget route, ui_state.widget, strings, trending view [deploy]
