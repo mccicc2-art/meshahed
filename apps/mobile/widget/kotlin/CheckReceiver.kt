@@ -4,6 +4,8 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.BaseBundle
+import android.os.PersistableBundle
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -23,6 +25,10 @@ import java.net.URL
  * - `w_hidden`: فيلمٌ شوهد أو مسلسلٌ بدأ — يُخفى من «للمشاهدة» و«فيلم الليلة» حتى يكتب التطبيقُ خلاصةً جديدة
  *   (الخادمُ لا يعيده فيها أصلاً)، ويسقط وحدَه بعد يوم.
  * - `w_rate`: شريطُ «قيّم الفيلم» تحت البحث بعد ✓ فيلم — **يبقى حتى يقيّم أو يتخطّى**.
+ *
+ * 🆕 **الشبكةُ عبر نظام المهام** (سجلُّ لمسات أحمد ١٤ أكتوبر: `UnknownHostException` على كلِّ ✓ — أندرويد يقطع
+ * الشبكةَ عن مستقبِلٍ في الخلفيّة): اللمسةُ تُرسم فوراً هنا، والنداءُ يُسلَّم مهمّةً مستعجلةً (`WidgetJobService`) تُعطى
+ * الشبكةَ والتطبيقُ مقيّد، وتنتظر الشبكةَ إن غابت فلا تضيع اللمسة. وإعادةُ الرسم مباشرةٌ (`redrawAll`) لا بثٌّ يتأخّر.
  */
 class CheckReceiver : BroadcastReceiver() {
   override fun onReceive(ctx: Context, intent: Intent) {
@@ -42,17 +48,39 @@ class CheckReceiver : BroadcastReceiver() {
     }
     /* 🆕 **اللمسةُ تُرى فوراً** (تسجيلُ أحمد: «ما تنضغط»): حالةُ ما بعد الفعل تُرسم قبل الشبكة، وتُعاد إن فشلت */
     optimistic(ctx, action, intent)
+    val args = PersistableBundle().apply {
+      putString("action", action)
+      putInt("id", intent.getIntExtra("id", intent.getIntExtra("show", 0)))
+      putInt("season", intent.getIntExtra("season", 0))
+      putInt("episode", intent.getIntExtra("episode", 0))
+      putInt("rating", intent.getIntExtra("rating", 0))
+      putString("title", intent.getStringExtra("title") ?: "")
+      putString("poster", intent.getStringExtra("poster") ?: "")
+    }
+    if (WidgetJobService.enqueue(ctx, args)) {
+      diag(ctx, short, "job", null)
+      return
+    }
+    /* النظامُ رفض المهمّة (نادر): النداءُ هنا كما كان */
     val pending = goAsync()
     Thread {
       try {
-        run(ctx, action, intent, token)
-      } catch (e: Exception) {
-        diag(ctx, short, "error", "${e.javaClass.simpleName}: ${e.message?.take(120)}")
-        revert(ctx, action)
+        perform(ctx, args, token)
       } finally {
         pending.finish()
       }
     }.start()
+  }
+
+  /** ينفّذ الفعلَ على الخادم — من المهمّة (`WidgetJobService`) أو من هنا إن رُفضت المهمّة */
+  fun perform(ctx: Context, args: BaseBundle, token: String) {
+    val action = args.getString("action") ?: return
+    try {
+      run(ctx, action, args, token)
+    } catch (e: Exception) {
+      diag(ctx, action.substringAfterLast('.'), "error", "${e.javaClass.simpleName}: ${e.message?.take(120)}")
+      revert(ctx, action)
+    }
   }
 
   /** ما يُرسم لحظةَ اللمس: «↶ تراجع» على الزرّ (معلّقاً حتى يردّ الخادم)، أو شريطُ التقييم يختفي */
@@ -91,12 +119,12 @@ class CheckReceiver : BroadcastReceiver() {
     LoopzWidget.redrawAll(ctx)
   }
 
-  private fun run(ctx: Context, action: String, i: Intent, token: String) {
-    val id = i.getIntExtra("id", i.getIntExtra("show", 0))
+  private fun run(ctx: Context, action: String, i: BaseBundle, token: String) {
+    val id = i.getInt("id", 0)
     when (action) {
       ACTION_MARK, ACTION_UNMARK -> {
-        val season = i.getIntExtra("season", 0)
-        val episode = i.getIntExtra("episode", 0)
+        val season = i.getInt("season", 0)
+        val episode = i.getInt("episode", 0)
         if (id <= 0 || season <= 0 || episode <= 0) return revert(ctx, action)
         val mark = action == ACTION_MARK
         val data = post(ctx, if (mark) "/api/v1/widget/mark" else "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode)) ?: return revert(ctx, action)
@@ -107,7 +135,7 @@ class CheckReceiver : BroadcastReceiver() {
       ACTION_MOVIE -> {
         if (id <= 0) return
         post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", true)) ?: return revert(ctx, action)
-        undoFor(ctx, JSONObject().put("kind", "movie").put("id", id).put("title", i.getStringExtra("title") ?: "").put("poster", i.getStringExtra("poster") ?: ""))
+        undoFor(ctx, JSONObject().put("kind", "movie").put("id", id).put("title", i.getString("title") ?: "").put("poster", i.getString("poster") ?: ""))
       }
       ACTION_START -> {
         if (id <= 0) return
@@ -115,7 +143,7 @@ class CheckReceiver : BroadcastReceiver() {
         undoFor(ctx, JSONObject().put("kind", "start").put("id", id))
       }
       ACTION_RATE -> {
-        val n = i.getIntExtra("rating", 0)
+        val n = i.getInt("rating", 0)
         if (id <= 0 || n !in 1..10) return
         post(ctx, "/api/v1/widget/rate", token, JSONObject().put("movieTmdbId", id).put("rating", n)) ?: return revert(ctx, action)
         LoopzWidget.prefs(ctx).edit().remove(K_RATE).remove(K_RATE_WAS).apply()
@@ -127,7 +155,7 @@ class CheckReceiver : BroadcastReceiver() {
 
   /**
    * الفعلُ نجح: «↶ تراجع» يظهر **٥ ثوانٍ**، ثمّ — ما لم يتراجع — يُخفى الفيلمُ أو المسلسلُ ويظهر شريطُ التقييم للفيلم.
-   * الانتظارُ في الخيط نفسِه (`goAsync` يتّسع له): لا منبّهَ ولا خدمة.
+   * الانتظارُ في خيط المهمّة نفسِه: لا منبّه.
    */
   private fun undoFor(ctx: Context, o: JSONObject) {
     val at = System.currentTimeMillis()
@@ -240,7 +268,7 @@ class CheckReceiver : BroadcastReceiver() {
       }
     }
 
-    private fun token(ctx: Context): String? = try {
+    fun token(ctx: Context): String? = try {
       File(WFeed.dir(ctx), "token").takeIf { it.exists() }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
     } catch (e: Exception) {
       null

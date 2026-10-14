@@ -141,9 +141,30 @@ struct MainProvider: AppIntentTimelineProvider {
     MainEntry(date: Date(), state: FeedStore.loadV2(), layout: configuration.layout?.id)
   }
 
+  /**
+   * 🆕 W40 «١ أ» — ما يُرسم على الشاشة: الحجمُ|التخطيط ⇐ آخرُ رسم، في `placed.json` بالحاوية. التطبيقُ يسرد منه
+   * «على شاشتك الآن» (لا يقرأ نوعَ إعداد الودجت بنفسه)، ويصفّيه بما يعدّه النظامُ موضوعاً.
+   */
+  static func notePlaced(_ family: WidgetFamily, _ layout: String?) {
+    guard let url = FeedStore.dir()?.appendingPathComponent("placed.json") else { return }
+    var d = ((try? Data(contentsOf: url)).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Double]) ?? [:]
+    let fam: String
+    switch family {
+    case .systemSmall: fam = "small"
+    case .systemMedium: fam = "medium"
+    case .systemLarge: fam = "large"
+    default: fam = "other"
+    }
+    let now = Date().timeIntervalSince1970
+    d = d.filter { now - $0.value < 3 * 86400 }
+    d["\(fam)|\(layout ?? "main")"] = now
+    if let out = try? JSONSerialization.data(withJSONObject: d) { try? out.write(to: url, options: .atomic) }
+  }
+
   /** الآن، ثمّ منتصفُ الليل — «اليوم» وفيلمُ اليوم يتبدّلان بلا فتح التطبيق (W42) */
   func timeline(for configuration: LayoutConfigIntent, in context: Context) async -> Timeline<MainEntry> {
     WState.settle()
+    Self.notePlaced(context.family, configuration.layout?.id)
     let now = Date()
     let state = FeedStore.loadV2()
     /* 🆕 W37 — «↶ تراجع» قائم: رسمٌ جديدٌ عند انقضاء الخمس ثوانٍ (قد يتأخّر ثانيةً أو اثنتين في iOS) */

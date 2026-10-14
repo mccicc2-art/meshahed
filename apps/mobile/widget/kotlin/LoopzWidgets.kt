@@ -64,12 +64,20 @@ class LoopzWidget : AppWidgetProvider() {
     const val ACTION_CYCLE = "com.loopztv.app.widget.TONIGHT_CYCLE"
     fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** يعيد رسمَ كلِّ ودجتات لوبز — بعد ✓ */
+    /**
+     * يعيد رسمَ كلِّ ودجتات لوبز — بعد كلِّ لمسة. 🆕 **مباشرةً** (`updateAppWidget`) كـ«فيلم آخر»: البثُّ الذي كان هنا
+     * يؤخّره أندرويد للتطبيق في الخلفيّة، فكانت «↶ تراجع» والحلقةُ التالية تظهران بعد ثوانٍ (تجربةُ أحمد ١٤ أكتوبر).
+     */
     fun redrawAll(ctx: Context) {
       val m = AppWidgetManager.getInstance(ctx)
       val ids = m.getAppWidgetIds(ComponentName(ctx, LoopzWidget::class.java))
-      if (ids.isEmpty()) return
-      ctx.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(ComponentName(ctx, LoopzWidget::class.java)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))
+      ids.forEach { id ->
+        try {
+          m.updateAppWidget(id, W2Render.build(ctx, id))
+        } catch (e: Exception) {
+          /* ودجتٌ واحدٌ لا يمنع الباقي */
+        }
+      }
     }
 
     fun cycleIntent(ctx: Context, id: Int, code: Int): PendingIntent {
@@ -158,7 +166,9 @@ object W2Render {
     val f = WFeed.load(ctx)
     if (f == WFeed.SIGNED_OUT) return empty(ctx, id, ctx.getString(R.string.w_signed_out))
     if (f !is WFeed) return empty(ctx, id, ctx.getString(R.string.w_open_app))
-    val w2 = f.raw.optJSONObject("w2")?.optJSONObject("android")
+    val w2all = f.raw.optJSONObject("w2")?.optJSONObject("android")
+    /* 🆕 W40 — **كلُّ ودجتٍ بإعداده**: ما خُصّص لهذا الودجت (`byId["aw-<id>"]` يحسمه التطبيق)، وإلّا الإعدادُ الافتراضيّ */
+    val w2 = w2all?.optJSONObject("byId")?.optJSONObject("aw-$id") ?: w2all
     val v2 = f.raw.optJSONObject("v2")
     /* خلاصةٌ من تطبيقٍ أقدم (بلا `w2`) ⇒ «افتح لوبز» حتى يكتبها التطبيقُ الجديد */
     if (w2 == null || v2 == null) return empty(ctx, id, ctx.getString(R.string.w_open_app))

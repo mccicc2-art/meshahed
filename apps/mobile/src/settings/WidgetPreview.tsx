@@ -29,12 +29,13 @@ const GHOST = "#1c1c1c";
 const LINE = "#1a1a1a";
 const WIDTH: Record<WidgetSize, number> = { small: 172, medium: 358, large: 358, xl: 358 };
 
-export function WidgetPreview({ config, size, names, platform, maxHeight = 300 }: { config: WidgetLayoutConfig; size: WidgetSize; names: Record<WidgetSectionKey, string>; platform: WidgetPlatform; maxHeight?: number }) {
+export function WidgetPreview({ config, size, names, platform, maxHeight = 300, thumb = false }: { config: WidgetLayoutConfig; size: WidgetSize; names: Record<WidgetSectionKey, string>; platform: WidgetPlatform; maxHeight?: number; thumb?: boolean }) {
   const { t, tokens } = useApp();
   /* مقاسُ المنصّة نفسُه الذي يُحسم به الودجت (`widgetSizeHeight`) — الآيفونُ أقصر */
   const H = widgetSizeHeight(platform, size);
   const W = WIDTH[size];
-  const scale = Math.min(1, maxHeight / H, 320 / W);
+  /* 🆕 W40 — `thumb`: صورةٌ مصغّرةٌ للودجت في «على شاشتك الآن» (عرضٌ ٨٤ بلا إطارٍ ولا سطرِ «يتّسع») */
+  const scale = Math.min(1, maxHeight / H, (thumb ? 84 : 320) / W);
 
   let body: React.ReactNode;
   let note = "";
@@ -56,13 +57,17 @@ export function WidgetPreview({ config, size, names, platform, maxHeight = 300 }
   /* الصغيرُ في أندرويد طوليٌّ (W43)، وفي الآيفون مربّع */
   const h = size === "small" ? (platform === "ios" ? 170 : 246) : H;
 
+  const frame = (
+    <View style={{ width: W * scale, height: h * scale, overflow: "hidden", borderRadius: thumb ? 10 : 0 }}>
+      <View style={{ width: W, height: h, transform: [{ scale }], transformOrigin: "top left", borderRadius: 22, backgroundColor: BLACK, padding: size === "small" ? 0 : WIDGET_HEIGHTS.pad / 2, overflow: "hidden" }}>
+        {body}
+      </View>
+    </View>
+  );
+  if (thumb) return frame;
   return (
     <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface2, alignItems: "center", paddingVertical: 10, gap: 6 }}>
-      <View style={{ width: W * scale, height: h * scale, overflow: "hidden" }}>
-        <View style={{ width: W, height: h, transform: [{ scale }], transformOrigin: "top left", borderRadius: 22, backgroundColor: BLACK, padding: size === "small" ? 0 : WIDGET_HEIGHTS.pad / 2, overflow: "hidden" }}>
-          {body}
-        </View>
-      </View>
+      {frame}
       {note ? <Text size={11} muted>{note}</Text> : null}
     </View>
   );

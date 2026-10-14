@@ -87,6 +87,41 @@ class LoopzWidgetModule : Module() {
         .distinct()
     }
 
+    /**
+     * 🆕 W40 — الودجتاتُ على الشاشة الآن: رقمُ كلٍّ ومقاسُه بالـdp (عرضُ الوضع العموديّ وأطولُ ارتفاعه) — شاشةُ «ودجت لوبز»
+     * تسرد منها «على شاشتك الآن» وتفتح إعدادَ كلِّ واحد. **ولا رقمَ صفحةٍ**: أندرويد لا يعطيه لأحد.
+     */
+    Function("installedWidgets") {
+      val ctx = context
+      val manager = AppWidgetManager.getInstance(ctx)
+      PROVIDERS.flatMap { cls ->
+        val ids = try { manager.getAppWidgetIds(ComponentName(ctx.packageName, cls)) } catch (e: Exception) { IntArray(0) }
+        ids.map { id ->
+          val o = manager.getAppWidgetOptions(id)
+          mapOf(
+            "id" to id,
+            "w" to o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0),
+            "h" to o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0),
+          )
+        }
+      }
+    }
+
+    /**
+     * 🆕 «أضف ودجت للشاشة»: يطلب من المشغِّل وضعَ ودجتٍ جديد (أندرويد 8+ ومشغِّلٌ يدعمه). إن وضعه الشخصُ فتح النظامُ
+     * شاشةَ الضبط ومعها رقمُه (`EXTRA_APPWIDGET_ID` يُضاف للنيّة — فهي قابلةٌ للتعديل) فتفتح شاشةُ تخصيصه مباشرة.
+     */
+    Function("requestPin") {
+      val ctx = context
+      if (android.os.Build.VERSION.SDK_INT < 26) return@Function false
+      val manager = AppWidgetManager.getInstance(ctx)
+      if (!manager.isRequestPinAppWidgetSupported) return@Function false
+      val cfg = Intent().setComponent(ComponentName(ctx.packageName, "com.loopztv.app.widget.WidgetConfigureActivity"))
+      val flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT or (if (android.os.Build.VERSION.SDK_INT >= 31) android.app.PendingIntent.FLAG_MUTABLE else 0)
+      val cb = android.app.PendingIntent.getActivity(ctx, 4711, cfg, flags)
+      manager.requestPinAppWidget(ComponentName(ctx.packageName, PROVIDERS.first()), null, cb)
+    }
+
     Function("installedCount") {
       val ctx = context
       val manager = AppWidgetManager.getInstance(ctx)

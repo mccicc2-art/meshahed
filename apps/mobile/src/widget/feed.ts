@@ -28,6 +28,11 @@ const FEED = "feed.json";
 const TOKEN = "token";
 /** 🆕 سجلُّ لمسات الودجت (`CheckReceiver.kt` · `Intents.swift`): التطبيقُ يرسله للتشخيص ثمّ يفرغه */
 const DIAG = "diag.json";
+/** 🆕 W40 — ما يرسمه ودجتُ الآيفون (الحجمُ|التخطيط)؛ يكتبه الملحقُ ويقرؤه «على شاشتك الآن» — لا يُحذف مع الملصقات */
+const PLACED = "placed.json";
+/** 🆕 W40 — تخطيطُ ودجتِ أندرويد بعينه: `aw-<رقمه>` (لا يظهر في تخطيطات الآيفون) */
+export const ANDROID_WIDGET_LAYOUT = (id: number) => `aw-${id}`;
+export const isAndroidWidgetLayout = (id: string) => /^aw-\d+$/.test(id);
 /** طلبُ رمزٍ فشل (الجدولُ لم يُنشأ بعد، أو لا شبكة) لا يُعاد مع كلِّ جلب — مرّةً كلَّ نصف ساعةٍ تكفي */
 const TOKEN_RETRY_MS = 30 * 60_000;
 const TASK = "loopz-widget-refresh";
@@ -126,7 +131,7 @@ async function sendDiag(w: NonNullable<typeof LoopzWidget>): Promise<void> {
     if (!raw) return;
     const rows = JSON.parse(raw) as unknown[];
     if (!Array.isArray(rows) || rows.length === 0) return;
-    const lines = rows.slice(-12).map((r) => JSON.stringify(r));
+    const lines = rows.slice(-30).map((r) => JSON.stringify(r));
     await api("/api/v1/app/crash", {
       method: "POST",
       body: {
@@ -216,15 +221,23 @@ async function run(): Promise<void> {
         .filter(([, e]) => e)
         .map(([k]) => k)
     : [];
+  /* 🆕 W40 — أندرويد: الإعدادُ الافتراضيُّ لكلِّ ودجت، و`byId` لما خُصّص لودجتٍ بعينه (`aw-<رقمه>`)؛ والآيفون تخطيطاتُه وحدَها */
   const w2 = v2
     ? {
-        android: resolveWidget(v2.config, v2.plus, "android", empty),
-        ios: v2.layouts.map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty) })),
+        android: {
+          ...resolveWidget(v2.config, v2.plus, "android", empty),
+          byId: Object.fromEntries(
+            v2.layouts.filter((l) => isAndroidWidgetLayout(l.id)).map((l) => [l.id, resolveWidget(l.config, v2.plus, "android", empty)]),
+          ),
+        },
+        ios: v2.layouts
+          .filter((l) => !isAndroidWidgetLayout(l.id))
+          .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty) })),
       }
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
-  w.prune([FEED, TOKEN, DIAG, ...names.values()]);
+  w.prune([FEED, TOKEN, DIAG, PLACED, ...names.values()]);
   w.reload();
 }
 

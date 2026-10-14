@@ -27,7 +27,8 @@ type Action =
   | { do: "discover" }
   /* 🆕 الودجت الواحد: شريطُ البحث يفتح البحث (لا كتابةَ في ودجت)، و«الإعدادات»/القفلُ يفتحان «ودجت لوبز» */
   | { do: "search" }
-  | { do: "settings" }
+  /* 🆕 W40 — `widget`: رقمُ ودجتِ أندرويد الذي فُتحت إعداداتُه (الضغطُ المطوّل، أو بعد «أضف ودجت») */
+  | { do: "settings"; widget?: number }
   | { do: "list"; id: string }
   | { do: "start"; id: number; title: string; action: "start" | "unpause" };
 
@@ -54,7 +55,7 @@ export function widgetActionOf(url: string | null): Action | null {
     case "search":
       return { do: "search" };
     case "settings":
-      return { do: "settings" };
+      return Number.isInteger(id) && id > 0 ? { do: "settings", widget: id } : { do: "settings" };
     case "list": {
       const lid = q.get("id") ?? "";
       return /^[0-9a-f-]{36}$/i.test(lid) ? { do: "list", id: lid } : null;
@@ -130,7 +131,7 @@ export function WidgetGate() {
           router.navigate({ pathname: "/search", params: { focus: String(Date.now()) } });
           return;
         case "settings":
-          router.push({ pathname: "/settings/[section]", params: { section: "widget" } });
+          router.push({ pathname: "/settings/[section]", params: action.widget ? { section: "widget", widget: String(action.widget) } : { section: "widget" } });
           return;
         case "all":
           router.navigate("/home");

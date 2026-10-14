@@ -28,6 +28,16 @@ public class LoopzWidgetModule: Module {
     return name
   }
 
+  static func familyName(_ f: WidgetFamily) -> String {
+    switch f {
+    case .systemSmall: return "small"
+    case .systemMedium: return "medium"
+    case .systemLarge: return "large"
+    case .systemExtraLarge: return "xl"
+    default: return "other"
+    }
+  }
+
   public func definition() -> ModuleDefinition {
     Name("LoopzWidget")
 
@@ -52,6 +62,35 @@ public class LoopzWidgetModule: Module {
     Function("readText") { (name: String) -> String? in
       guard let d = try? self.dir(), let n = try? self.safe(name) else { return nil }
       return try? String(contentsOf: d.appendingPathComponent(n), encoding: .utf8)
+    }
+
+    /**
+     * 🆕 W40 «١ أ» — الودجتاتُ على الشاشة الآن: حجمُ كلٍّ والتخطيطُ الذي اختاره. الودجتُ نفسُه يكتب ما يُرسم به
+     * (`placed.json`: الحجمُ|التخطيط ⇐ آخرُ رسم) — والتطبيقُ لا يقرأ نوعَ إعداده — ويُصفّى بما يعدّه النظامُ موضوعاً الآن.
+     */
+    AsyncFunction("installedWidgets") { (promise: Promise) in
+      WidgetCenter.shared.getCurrentConfigurations { result in
+        var families: [String: Int] = [:]
+        if case .success(let infos) = result {
+          for i in infos where i.kind == "LoopzMain" { families[LoopzWidgetModule.familyName(i.family), default: 0] += 1 }
+        }
+        var out: [[String: Any]] = []
+        if let d = try? self.dir(),
+           let data = try? Data(contentsOf: d.appendingPathComponent("placed.json")),
+           let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Double] {
+          let now = Date().timeIntervalSince1970
+          for (key, at) in raw.sorted(by: { $0.value > $1.value }) where now - at < 3 * 86400 {
+            let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
+            guard parts.count == 2, (families[parts[0]] ?? 0) > 0 else { continue }
+            out.append(["family": parts[0], "layout": parts[1]])
+          }
+        }
+        /* حجمٌ موضوعٌ لم يرسم بعدُ بتخطيطٍ معروف: يظهر بالرئيسيّ */
+        for (fam, n) in families where !out.contains(where: { ($0["family"] as? String) == fam }) && n > 0 {
+          out.append(["family": fam, "layout": "main"])
+        }
+        promise.resolve(out)
+      }
     }
 
     Function("prune") { (keep: [String]) in

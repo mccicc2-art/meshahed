@@ -80,6 +80,11 @@ const withWidgetManifest = (config) =>
     app.receiver = app.receiver.filter((r) => r.$?.["android:name"] !== check);
     app.receiver.push({ $: { "android:name": check, "android:exported": "false" } });
 
+    /* 🆕 نداءُ أفعال الودجت مهمّةً مستعجلة (أندرويد يقطع الشبكةَ عن المستقبِل في الخلفيّة) — لا يصلها إلّا النظام */
+    const job = ".widget.WidgetJobService";
+    app.service = (app.service ?? []).filter((x) => x.$?.["android:name"] !== job);
+    app.service.push({ $: { "android:name": job, "android:permission": "android.permission.BIND_JOB_SERVICE", "android:exported": "false" } });
+
     const cfgName = ".widget.WidgetConfigureActivity";
     app.activity = app.activity.filter((a) => a.$?.["android:name"] !== cfgName);
     app.activity.push({
