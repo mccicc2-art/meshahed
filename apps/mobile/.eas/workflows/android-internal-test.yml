@@ -5,7 +5,7 @@ on:
   workflow_dispatch: {}
 jobs:
   submit_internal:
-    name: Submit build 73 to Play internal testing
+    name: Submit build 74 to Play internal testing
     type: submit
     params:
       platform: android

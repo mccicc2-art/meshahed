@@ -109,6 +109,37 @@ object W2Render {
   private const val SETTINGS = "w/settings"
   private const val SEARCH = "w/search"
 
+  /**
+   * 🔴 **تسجيلُ أحمد (١٤ أكتوبر، بناء 73)**: «أكمل المشاهدة» مكرّرٌ أربعَ مرّاتٍ والبحثُ بينها، والحفظُ لا يغيّر شيئاً.
+   * السبب: حين يبقى الجذرُ نفسُه يُعيد المُشغِّلُ تطبيقَ الأوامر على الودجت القائم (`reapply`) لا يرسمه من الصفر —
+   * و`addView` **يُلحق** تحت ما كان، فتتراكم صفوفُ كلِّ رسمةٍ سابقة (أوّلُها بالمقاس المتوسط قبل التمديد). وكذلك
+   * الظهورُ والإخفاء: ما لم يُكتب صراحةً يبقى على حال الرسمة السابقة. فكلُّ واجهةٍ هنا **تبدأ نظيفة**: الحاوياتُ
+   * تُفرَّغ قبل أوّل إضافة، وعناصرُ الجذر تُكتب حالتُها كلُّها في كلِّ رسمة.
+   */
+  private fun fresh(ctx: Context, layout: Int): RemoteViews {
+    val v = RemoteViews(ctx.packageName, layout)
+    when (layout) {
+      R.layout.w2_root -> {
+        v.removeAllViews(R.id.rows)
+        v.setViewVisibility(R.id.rows, View.VISIBLE)
+        v.setViewVisibility(R.id.lock, View.GONE)
+        v.setViewVisibility(R.id.empty, View.GONE)
+      }
+      R.layout.w2_list, R.layout.w2_half_list -> v.removeAllViews(R.id.items)
+      R.layout.w2_pair -> {
+        v.removeAllViews(R.id.half_a)
+        v.removeAllViews(R.id.half_b)
+      }
+      R.layout.loopz_w_small -> {
+        v.setViewVisibility(R.id.full_img, View.VISIBLE)
+        v.setImageViewResource(R.id.full_img, android.R.color.transparent)
+        listOf(R.id.full_scrim, R.id.full_top, R.id.full_name, R.id.full_sub, R.id.full_action, R.id.full_plus, R.id.full_check, R.id.empty)
+          .forEach { v.setViewVisibility(it, View.GONE) }
+      }
+    }
+    return v
+  }
+
   fun build(ctx: Context, id: Int): RemoteViews {
     val f = WFeed.load(ctx)
     if (f == WFeed.SIGNED_OUT) return empty(ctx, id, ctx.getString(R.string.w_signed_out))
@@ -150,7 +181,7 @@ object W2Render {
   }
 
   private fun empty(ctx: Context, id: Int, text: String): RemoteViews {
-    val v = RemoteViews(ctx.packageName, R.layout.w2_root)
+    val v = fresh(ctx, R.layout.w2_root)
     v.setViewVisibility(R.id.rows, View.GONE)
     v.setViewVisibility(R.id.empty, View.VISIBLE)
     v.setTextViewText(R.id.empty, text)
@@ -161,7 +192,7 @@ object W2Render {
   /* ───────── W41 — القفل ───────── */
 
   private fun locked(d: Draw): RemoteViews {
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_root)
+    val v = fresh(d.ctx, R.layout.w2_root)
     val lapsed = d.v2.optBoolean("lapsed")
     v.setViewVisibility(R.id.rows, View.GONE)
     v.setViewVisibility(R.id.lock, View.VISIBLE)
@@ -175,7 +206,7 @@ object W2Render {
   /* ───────── الصفوف ───────── */
 
   private fun rows(d: Draw, list: JSONArray?): RemoteViews {
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_root)
+    val v = fresh(d.ctx, R.layout.w2_root)
     val rows = d.list(list).map { Row(it) }
     if (rows.isEmpty()) {
       v.setViewVisibility(R.id.rows, View.GONE)
@@ -388,7 +419,7 @@ object W2Render {
 
   /* W32 · W35 — قسمُ قائمة كامل */
   private fun section(d: Draw, r: Row): RemoteViews {
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_list)
+    val v = fresh(d.ctx, R.layout.w2_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, r.key))
     headerLink(r.key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
     val items = lines(d, r.key)
@@ -473,7 +504,7 @@ object W2Render {
 
   /* W30 — قسمان صغيران */
   private fun pair(d: Draw, r: Row): RemoteViews {
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_pair)
+    val v = fresh(d.ctx, R.layout.w2_pair)
     val half = ((inner(d) - 17f) / 2f).coerceAtLeast(60f)
     r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, 148f)) }
     r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, 148f)) }
@@ -483,7 +514,7 @@ object W2Render {
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
   private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float): RemoteViews {
     if (key == "tonight" && d.opt("tonight").optString("small", "poster") != "list") return posterColumn(d, key, bodyDp)
-    val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_list)
+    val v = fresh(d.ctx, R.layout.w2_half_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
     val items = lines(d, key)
@@ -587,10 +618,10 @@ object W2Render {
     return when (form) {
       "posterFull" -> posterFull(d, key, w, h)
       "headerFade" -> headerFade(d, w, h)
-      "posterColumn" -> RemoteViews(d.ctx.packageName, R.layout.w2_root).also { v ->
+      "posterColumn" -> fresh(d.ctx, R.layout.w2_root).also { v ->
         v.addView(R.id.rows, posterColumn(d, key, (h - 24f - 28f).coerceAtLeast(60f)))
       }
-      else -> RemoteViews(d.ctx.packageName, R.layout.w2_root).also { v ->
+      else -> fresh(d.ctx, R.layout.w2_root).also { v ->
         v.addView(R.id.rows, half(d, key, w - 24f, h - 24f - 28f))
       }
     }
@@ -599,7 +630,7 @@ object W2Render {
   /** الطوليّ: الملصقُ كلُّه بمقاس الودجت بالشكل المشحون (الشارةُ فوق، والاسمُ تحت) و✓ في الطرف السفليّ */
   private fun posterFull(d: Draw, key: String, w: Float, h: Float): RemoteViews {
     val f = d.f
-    val v = RemoteViews(d.ctx.packageName, R.layout.loopz_w_small)
+    val v = fresh(d.ctx, R.layout.loopz_w_small)
     v.setViewVisibility(R.id.full_scrim, View.GONE)
     v.setInt(R.id.full_top, "setBackgroundResource", 0)
     v.setViewVisibility(R.id.full_top, View.VISIBLE)
@@ -649,7 +680,7 @@ object W2Render {
   /** المربّع لـ«أكمل المشاهدة»: الهيدرُ كلُّه بالعرض يذوب في الأسود والكلامُ تحته (W33) */
   private fun headerFade(d: Draw, w: Float, h: Float): RemoteViews {
     val f = d.f
-    val v = RemoteViews(d.ctx.packageName, R.layout.loopz_w_small)
+    val v = fresh(d.ctx, R.layout.loopz_w_small)
     v.setViewVisibility(R.id.full_scrim, View.GONE)
     v.setInt(R.id.full_top, "setBackgroundResource", 0)
     val c = f.cont.firstOrNull() ?: return emptyText(d, v, f.s("startSomething"), WLinks.discover())
