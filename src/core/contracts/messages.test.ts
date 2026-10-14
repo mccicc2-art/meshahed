@@ -47,3 +47,17 @@ test("النصّ المباشر: مستلمٌ صالحٌ ونصٌّ غيرُ ف�
   assert.ok(parseMsgTextBody({ recipient_id: U, body: "a".repeat(MSG_TEXT_MAX) }));
   assert.equal(parseMsgTextBody({ recipient_id: U, body: "a".repeat(MSG_TEXT_MAX + 1) }), null);
 });
+
+/* 🆕 D-1387 — صورةٌ بتعليقٍ اختياريّ، أو GIF وحدَه — قيدُ الهجرة ٢٠٢ نفسُه */
+test("الصورة والـGIF في الرسالة المباشرة", () => {
+  const img = `${U}/0f0e0d0c-1111-4a2b-9c3d-000000000002.jpg`;
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "", image_path: img }), { recipient_id: U, body: "", image_path: img });
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: " شوف ", image_path: img }), { recipient_id: U, body: "شوف", image_path: img });
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "", gif_id: "abc123XYZ" }), { recipient_id: U, body: "", gif_id: "abc123XYZ" });
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "هلا", gif_id: "abc123XYZ" }), null, "الـGIF وحدَه");
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "", gif_id: "abc", image_path: img }), null, "لا الاثنان معاً");
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "", gif_id: "a/b" }), null);
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "", image_path: "../x.jpg" }), null);
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "", image_path: `${U}/x.gif` }), null);
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "" }), null, "رسالةٌ فارغة");
+});

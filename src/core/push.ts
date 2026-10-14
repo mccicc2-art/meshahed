@@ -56,10 +56,19 @@ export function signalPush(s: SignalRow, t: Dict, listName: string, recipientId:
  * وبلا ملاحظةٍ يقول السطرُ ما أُرسل. الوجهةُ الخيطُ نفسُه (`/messages?with=`).
  */
 export function messagePush(
-  m: { senderId: string; senderName: string; text: string | null; sharedTitle?: string | null; isList?: boolean },
+  m: { senderId: string; senderName: string; text: string | null; sharedTitle?: string | null; isList?: boolean; media?: "image" | "gif" | null },
   t: Dict,
 ): PushText {
-  const what = m.sharedTitle ? (m.isList ? t.pushSharedList(m.sharedTitle) : t.pushSharedTitle(m.sharedTitle)) : "";
+  /* 🆕 D-1387 — صورةٌ أو GIF: «📷 صورة» / «GIF» بلغة المستلم، والتعليقُ بعدها إن وُجد */
+  const what = m.sharedTitle
+    ? m.isList
+      ? t.pushSharedList(m.sharedTitle)
+      : t.pushSharedTitle(m.sharedTitle)
+    : m.media === "image"
+      ? t.msgImagePreview
+      : m.media === "gif"
+        ? t.msgGifPreview
+        : "";
   const text = (m.text ?? "").replace(/\s+/g, " ").trim();
   const body = text && what ? `${what}\n${text}` : text || what || t.pushNewMessage;
   return { title: m.senderName || APP, body: body.slice(0, 240), url: `/messages?with=${m.senderId}` };
