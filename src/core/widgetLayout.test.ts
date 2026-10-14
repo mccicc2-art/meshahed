@@ -156,3 +156,11 @@ test("المحسوم للرسّام: صفوف كل حجم، والقفل لغي�
   assert.deepEqual(Object.keys(free.rows), ["medium"]);
   assert.equal(free.small.key, "cont");
 });
+
+test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل أقل", () => {
+  const a = resolveWidget(defaultWidgetConfig(), true, "android").rows.large ?? [];
+  const i = resolveWidget(defaultWidgetConfig(), true, "ios").rows.large ?? [];
+  const sum = (rows: WidgetRow[]) => rows.reduce((n, r) => n + r.h, 0) + Math.max(0, rows.length - 1) * WIDGET_HEIGHTS.gap + WIDGET_HEIGHTS.pad;
+  assert.ok(sum(i) <= 376);
+  assert.ok(sum(a) <= 440);
+});

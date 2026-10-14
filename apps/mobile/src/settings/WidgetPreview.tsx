@@ -9,8 +9,9 @@ import {
   smallWidgetSection,
   smallWidgetForm,
   WIDGET_HEIGHTS,
-  WIDGET_SIZE_HEIGHT,
+  widgetSizeHeight,
   type WidgetLayoutConfig,
+  type WidgetPlatform,
   type WidgetRow,
   type WidgetSectionKey,
   type WidgetSize,
@@ -26,11 +27,12 @@ import {
 const BLACK = "#050505";
 const GHOST = "#1c1c1c";
 const LINE = "#1a1a1a";
-const WIDTH: Record<WidgetSize, number> = { small: 173, medium: 358, large: 358, xl: 358 };
+const WIDTH: Record<WidgetSize, number> = { small: 172, medium: 358, large: 358, xl: 358 };
 
-export function WidgetPreview({ config, size, names, maxHeight = 300 }: { config: WidgetLayoutConfig; size: WidgetSize; names: Record<WidgetSectionKey, string>; maxHeight?: number }) {
+export function WidgetPreview({ config, size, names, platform, maxHeight = 300 }: { config: WidgetLayoutConfig; size: WidgetSize; names: Record<WidgetSectionKey, string>; platform: WidgetPlatform; maxHeight?: number }) {
   const { t, tokens } = useApp();
-  const H = WIDGET_SIZE_HEIGHT[size];
+  /* مقاسُ المنصّة نفسُه الذي يُحسم به الودجت (`widgetSizeHeight`) — الآيفونُ أقصر */
+  const H = widgetSizeHeight(platform, size);
   const W = WIDTH[size];
   const scale = Math.min(1, maxHeight / H, 320 / W);
 
@@ -39,10 +41,10 @@ export function WidgetPreview({ config, size, names, maxHeight = 300 }: { config
   if (size === "small") {
     const key = smallWidgetSection(config);
     /* الصغيرُ في أغلب الأجهزة طوليّ — والمعاينةُ ترسمه بأبعاد التصميم المعتمد (W43) */
-    const form = smallWidgetForm(config, key, 173, 246);
+    const form = platform === "ios" ? smallWidgetForm(config, key, 170, 170) : smallWidgetForm(config, key, 173, 246);
     body = <SmallTile name={names[key]} form={form} />;
   } else {
-    const l = resolveWidgetLayout(config, size);
+    const l = resolveWidgetLayout(config, size, H);
     body = l.rows.map((r, i) => (
       <View key={i}>
         {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: 10 }} /> : null}
@@ -51,7 +53,8 @@ export function WidgetPreview({ config, size, names, maxHeight = 300 }: { config
     ));
     note = l.hidden.length ? t.widgetDoesntFit(l.hidden.map((k) => names[k]).join("، ")) : t.widgetAllFit;
   }
-  const h = size === "small" ? 246 : H;
+  /* الصغيرُ في أندرويد طوليٌّ (W43)، وفي الآيفون مربّع */
+  const h = size === "small" ? (platform === "ios" ? 170 : 246) : H;
 
   return (
     <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface2, alignItems: "center", paddingVertical: 10, gap: 6 }}>

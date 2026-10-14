@@ -13,3 +13,8 @@
 "intent.cycle" = "فيلم آخر";
 "intent.mark" = "تمت المشاهدة";
 "intent.unmark" = "تراجع";
+"main.name" = "لوبز";
+"main.desc" = "أكمل المشاهدة والقادم وفيلم الليلة وغيرها — بترتيبك في التطبيق";
+"layout.title" = "التخطيط";
+"layout.param" = "التخطيط";
+"layout.main" = "الرئيسي";

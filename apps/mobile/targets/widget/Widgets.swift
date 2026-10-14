@@ -11,12 +11,17 @@ import WidgetKit
  * 🆕 W24 — **لا كبيرَ في iOS ولا «فيلم الليلة» متوسط** (قرارُ أحمد: «الغيه» · «متوسط فلم الليلة احذفه»)؛ ومتوسطُ iOS
  * أقصرُ من 4×2 أندرويد (المقاسُ من آبل)، فالبطاقتان فيه أعرضُ قليلاً ومعهما سطرُ «القادم» («متوسط مع السطر»).
  */
+/**
+ * 🆕 **الودجت الواحد** (W28): الشاشةُ الرئيسيّة كلُّها لـ`LoopzMainWidget` (`MainWidget.swift`)، وودجتاتُ شاشة القفل باقيةٌ
+ * مجّانيّةً كما هي (W41 «٢ ب») — فـ«أكمل المشاهدة» و«القادم» هنا صارا لشاشة القفل وحدَها، و«فيلم الليلة» الصغيرُ صار قسماً
+ * في الودجت الواحد. ودجتٌ قديمٌ على الشاشة الرئيسيّة يختفي ويُوضع الجديدُ باليد («٢ ب»).
+ */
 @main
 struct LoopzWidgetsBundle: WidgetBundle {
   var body: some Widget {
+    LoopzMainWidget()
     ContinueWidget()
     ComingUpWidget()
-    TonightWidget()
   }
 }
 
@@ -61,7 +66,7 @@ struct ContinueWidget: Widget {
     }
     .configurationDisplayName(LocalizedStringResource("continue.name"))
     .description(LocalizedStringResource("continue.desc"))
-    .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+    .supportedFamilies([.accessoryRectangular])
     .contentMarginsDisabled()
   }
 }
@@ -392,7 +397,7 @@ struct ComingUpWidget: Widget {
     StaticConfiguration(kind: "LoopzComingUp", provider: SimpleProvider()) { entry in ComingUpView(entry: entry) }
       .configurationDisplayName(LocalizedStringResource("comingup.name"))
       .description(LocalizedStringResource("comingup.desc"))
-      .supportedFamilies([.systemSmall, .accessoryInline, .accessoryRectangular])
+      .supportedFamilies([.accessoryInline, .accessoryRectangular])
       .contentMarginsDisabled()
   }
 }
@@ -449,68 +454,5 @@ struct ComingUpView: View {
   func inline(_ u: WUpcoming, _ f: WFeed) -> String {
     guard let d = u.date else { return u.title }
     return "\(u.title) · \(WDates.label(d, feed: f, now: entry.date))"
-  }
-}
-
-/* ============ «فيلم الليلة» (W12) ============ */
-
-struct TonightWidget: Widget {
-  var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "LoopzTonight", provider: SimpleProvider()) { entry in TonightView(entry: entry) }
-      .configurationDisplayName(LocalizedStringResource("tonight.name"))
-      .description(LocalizedStringResource("tonight.desc"))
-      .supportedFamilies([.systemSmall])
-      .contentMarginsDisabled()
-  }
-}
-
-struct TonightView: View {
-  let entry: WEntry
-  @Environment(\.widgetFamily) var family
-  var body: some View {
-    Group {
-      switch entry.state {
-      case .ready(let f):
-        content(f).environment(\.layoutDirection, f.rtl ? .rightToLeft : .leftToRight).environment(\.locale, f.locale)
-      case .signedOut: EmptyNote(text: String(localized: "signed.out"))
-      case .none: EmptyNote(text: String(localized: "open.app"))
-      }
-    }
-    .containerBackground(for: .widget) { WColor.bg }
-  }
-
-  func current(_ f: WFeed) -> WMovie? {
-    guard !f.tonight.isEmpty else { return nil }
-    let n = FeedStore.defaults?.integer(forKey: "tonightIndex") ?? 0
-    return f.tonight[((n % f.tonight.count) + f.tonight.count) % f.tonight.count]
-  }
-
-  func sub(_ m: WMovie, _ f: WFeed) -> String {
-    var parts: [String] = []
-    if let rating = m.rating { parts.append("★ " + String(format: "%.1f", rating)) }
-    if let r = WDates.runtime(m.runtime, feed: f) { parts.append(r) }
-    return parts.joined(separator: " · ")
-  }
-
-  @ViewBuilder func content(_ f: WFeed) -> some View {
-    if let m = current(f) {
-      PosterCard(feed: f, path: m.poster_path, title: m.title, sub: sub(m, f)) {
-        HStack(alignment: .top) {
-          Text(f.s("tonightTitle")).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
-          Spacer(minLength: 4)
-          if f.tonight.count > 1 {
-            Button(intent: CycleTonightIntent()) {
-              Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.fg)
-                .frame(width: 26, height: 26).background(Circle().fill(Color.black.opacity(0.55)))
-            }
-            .buttonStyle(.plain)
-            .padding(.top, -3)
-          }
-        }
-      }
-      .widgetURL(WLink.title(m.asTitle))
-    } else {
-      EmptyNote(text: f.s("noTowatchMovies")).widgetURL(WLink.discover)
-    }
   }
 }

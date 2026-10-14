@@ -64,6 +64,8 @@ struct WMovie: Codable, Hashable {
   let runtime: Int?
   let rating: Double?
   let source: String
+  /** 🆕 v2 (W42) — هيدرُ بطاقة فيلم الليلة العريضة؛ ملفٌّ أقدمُ بلا الحقل يُقرأ */
+  let backdrop_path: String?
   var asTitle: WTitle { WTitle(kind: kind, id: id, title: title, poster_path: poster_path) }
 }
 

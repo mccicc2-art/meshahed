@@ -91,6 +91,16 @@ export const WIDGET_HEIGHTS = {
 /** ارتفاعُ كلِّ حجمٍ في التصميم المعتمد — الرسّامُ يقرأ الحقيقيَّ من النظام ويمرّره بدلاً منه */
 export const WIDGET_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 172, medium: 188, large: 440, xl: 720 };
 
+/**
+ * 🆕 **مقاساتُ آبل أقصرُ من أندرويد**: المتوسطُ ١٧٠ والكبيرُ ٣٧٦ على أغلب الآيفونات (الكبيرُ ٣٨٢ في Pro Max) — فالصفوفُ
+ * تُحسم للآيفون بمقاسه وإلّا قُصّ آخرُها. والمعاينةُ في التطبيق تأخذ مقاسَ منصّتها من هنا أيضاً.
+ */
+const IOS_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 170, medium: 170, large: 376, xl: 376 };
+
+export function widgetSizeHeight(platform: WidgetPlatform, size: WidgetSize): number {
+  return platform === "ios" ? IOS_SIZE_HEIGHT[size] : WIDGET_SIZE_HEIGHT[size];
+}
+
 const LIST_KEYS: readonly WidgetSectionKey[] = ["up", "friends", "tw", "act"];
 
 export type WidgetRow =
@@ -328,7 +338,7 @@ export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: 
   for (const size of widgetSizesFor(platform)) {
     if (size === "small") continue;
     if (widgetAccess(plus, size) === "locked") { locked[size] = true; continue; }
-    rows[size] = resolveWidgetLayout(eff, size).rows;
+    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size)).rows;
   }
   return {
     locked,

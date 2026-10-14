@@ -13,3 +13,8 @@
 "intent.cycle" = "Another movie";
 "intent.mark" = "Mark watched";
 "intent.unmark" = "Undo";
+"main.name" = "Loopz";
+"main.desc" = "Continue watching, coming up, tonight's movie and more — arranged in the app";
+"layout.title" = "Layout";
+"layout.param" = "Layout";
+"layout.main" = "Main";

@@ -142,7 +142,7 @@ export function WidgetScreen() {
   const pinned = (
     <>
       <Segmented items={sizes.map((s) => ({ id: s, label: sizeLabel[s] }))} value={size} onChange={(v) => setSize(v as WidgetSize)} />
-      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} maxHeight={size === "xl" ? 300 : 240} />
+      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} />
     </>
   );
 
