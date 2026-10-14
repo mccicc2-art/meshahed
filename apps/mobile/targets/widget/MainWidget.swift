@@ -187,11 +187,31 @@ struct MainView: View {
       } else if sizeName == "small" {
         SmallMain(f: f, small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
       } else {
-        RowsView(f: f, rows: ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date)
+        /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ على هذا الجهاز (أكبرُ مفتاحٍ لا يزيد عليه) */
+        GeometryReader { g in
+          let fit = Self.byHeight(r["heights"] as? [String: Any], g.size.height)
+          let fitLocked = (r["locked"] as? [String: Any])?[(fit?["size"] as? String) ?? sizeName] as? Bool ?? false
+          if fitLocked {
+            LockCard(f: f)
+          } else {
+            RowsView(f: f, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date)
+          }
+        }
       }
     } else {
       EmptyNote(text: String(localized: "open.app"))
     }
+  }
+}
+
+extension MainView {
+  /** أكبرُ ارتفاعٍ محسومٍ لا يزيد على ارتفاع الودجت — وإن قصر عن كلِّها فأصغرُها */
+  static func byHeight(_ all: [String: Any]?, _ h: CGFloat) -> [String: Any]? {
+    guard let all else { return nil }
+    let keys = all.keys.compactMap { Int($0) }.sorted()
+    guard let first = keys.first else { return nil }
+    let k = keys.last { CGFloat($0) <= h } ?? first
+    return all[String(k)] as? [String: Any]
   }
 }
 
@@ -374,15 +394,20 @@ struct RowsView: View {
   let now: Date
 
   var body: some View {
+    /* ما يزيد من الارتفاع يتوزّع على الفواصل — لا كتلةَ سوداءَ تحت آخر قسم */
     VStack(alignment: .leading, spacing: 0) {
       ForEach(Array(rows.enumerated()), id: \.offset) { pair in
         if pair.offset > 0 {
-          Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).padding(.vertical, 10)
+          VStack(spacing: 0) {
+            Spacer(minLength: 10)
+            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+            Spacer(minLength: 10)
+          }
         }
         RowView(f: f, row: pair.element, opts: opts, now: now)
           .frame(height: CGFloat(num(pair.element["h"]) ?? 44), alignment: .top)
       }
-      Spacer(minLength: 0)
+      if rows.count < 2 { Spacer(minLength: 0) }
     }
     .padding(12)
   }
@@ -662,8 +687,8 @@ struct Half: View {
 
   var body: some View {
     let o = opts[key] as? [String: Any] ?? [:]
-    if key == "tonight" && (o["small"] as? String ?? "poster") != "list" {
-      PosterColumn(f: f, key: key, now: now)
+    if key == "tonight" {
+      PosterColumn(f: f, key: key, now: now, buttons: (o["small"] as? String ?? "poster") != "list")
     } else {
       HalfList(f: f, key: key, posters: key != "tonight" && (o["view"] as? String) == "posters", now: now)
     }
@@ -695,23 +720,23 @@ struct HalfList: View {
           }
         }
       } else {
-        VStack(alignment: .leading, spacing: 6) {
+        /* الأسطرُ الثلاثةُ تتقاسم ارتفاعَ الخانة كلَّه */
+        VStack(alignment: .leading, spacing: 0) {
           ForEach(Array(items.prefix(key == "tonight" ? 1 : 3).enumerated()), id: \.offset) { pair in
             Link(destination: pair.element.link) {
-              HStack(spacing: 7) {
-                Poster(f: f, path: pair.element.t?.poster_path, w: 24, h: 36, r: 3)
+              HStack(spacing: 8) {
+                Poster(f: f, path: pair.element.t?.poster_path, w: 28, h: 42, r: 4)
                 VStack(alignment: .leading, spacing: 1) {
                   Text(pair.element.name).font(.system(size: 11, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
                   if let s = pair.element.sub, !s.isEmpty { Text(s).font(.system(size: 10)).foregroundStyle(WColor.muted).lineLimit(1) }
                 }
                 Spacer(minLength: 0)
               }
-              .frame(height: 40)
+              .frame(maxHeight: .infinity)
             }
           }
         }
       }
-      Spacer(minLength: 0)
     }
   }
 }
@@ -721,13 +746,14 @@ struct PosterColumn: View {
   let f: V2Feed
   let key: String
   let now: Date
+  var buttons: Bool = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       if key == "tonight" {
         SecHeader(title: Sections.title(f, key), link: nil)
         if let m = Sections.tonight(f, now: now) {
-          column(t: m.asTitle, meta: Sections.tonightSub(m, f).replacingOccurrences(of: " · ", with: "\n"), cycle: f.feed.tonight.count > 1, action: "watched")
+          column(t: m.asTitle, meta: Sections.tonightSub(m, f), cycle: buttons && f.feed.tonight.count > 1, action: buttons ? "watched" : "")
         } else {
           Text(f.feed.s("noTowatchMovies")).font(.system(size: 11)).foregroundStyle(WColor.muted)
         }
@@ -736,7 +762,7 @@ struct PosterColumn: View {
         SecHeader(title: all.count > 1 ? "\(Sections.title(f, key)) · \(all.count)" : Sections.title(f, key), link: Sections.link(key))
         if let x = all.first, let t = f.title(x) {
           let rating = num(x["rating"]).map { "★ " + String(format: "%.1f", $0) }
-          column(t: t, meta: [x["type_label"] as? String, rating].compactMap { $0 }.joined(separator: "\n"), cycle: false, action: x["action"] as? String ?? "start")
+          column(t: t, meta: [x["type_label"] as? String, rating].compactMap { $0 }.joined(separator: " · "), cycle: false, action: x["action"] as? String ?? "start")
         }
       }
     }
@@ -747,21 +773,25 @@ struct PosterColumn: View {
       let ph = g.size.height
       HStack(alignment: .top, spacing: 6) {
         Link(destination: WLink.title(t)) { Poster(f: f, path: t.poster_path, w: ph * 2 / 3, h: ph, r: 8) }
-        VStack(spacing: 0) {
+        /* البوسترُ بطول الخانة، وبجانبه 🔁 فوق والاسمُ والتفاصيلُ و✓ تحت — بلا فراغٍ وسط العمود */
+        VStack(alignment: .leading, spacing: 0) {
           if cycle {
             Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: nil) }.buttonStyle(.plain)
           }
           Spacer(minLength: 0)
-          Text(meta).font(.system(size: 10)).foregroundStyle(WColor.muted).multilineTextAlignment(.center)
+          Text(t.title).font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(3)
+          if !meta.isEmpty { Text(meta).font(.system(size: 10.5)).foregroundStyle(WColor.muted).lineLimit(2).padding(.top, 3) }
           Spacer(minLength: 0)
+          if !action.isEmpty {
           Link(destination: action == "watched" ? WLink.title(t) : WLink.start(t, action: "start")) {
             Image(systemName: action == "watched" ? "checkmark" : "play.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
               .frame(width: 28, height: 28)
               .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
               .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
           }
+          }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
   }

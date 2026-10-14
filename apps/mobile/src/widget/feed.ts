@@ -169,10 +169,25 @@ async function run(): Promise<void> {
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
   /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
   const v2 = data.v2;
+  /* قرارُ أحمد «ب» (١٤ أكتوبر): القسمُ الذي لا محتوى له الآن يختفي ويأخذ ما بعده مكانَه — يُحسم هنا بالبيانات نفسِها */
+  const today = new Date().toISOString().slice(0, 10);
+  const empty = v2
+    ? (
+        [
+          ["up", v2.upcoming.items.every((u) => u.date != null && u.date < today)],
+          ["friends", v2.friends.length === 0],
+          ["tw", v2.towatch.length === 0],
+          ["act", v2.activity.length === 0],
+          ["tonight", data.tonight.length === 0],
+        ] as const
+      )
+        .filter(([, e]) => e)
+        .map(([k]) => k)
+    : [];
   const w2 = v2
     ? {
-        android: resolveWidget(v2.config, v2.plus, "android"),
-        ios: v2.layouts.map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios") })),
+        android: resolveWidget(v2.config, v2.plus, "android", empty),
+        ios: v2.layouts.map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty) })),
       }
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };

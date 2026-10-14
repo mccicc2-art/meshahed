@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.text.format.DateUtils
 import android.view.View
 import android.widget.RemoteViews
 import com.loopztv.app.R
@@ -152,9 +151,13 @@ object W2Render {
     val size = sizeOf(w, h)
     val v = try {
       val d = Draw(ctx, id, f, v2, w2.optJSONObject("opts") ?: JSONObject(), w)
+      /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ (أكبرُ مفتاحٍ لا يزيد عليه) — تسجيلُ أحمد ١٤ أكتوبر */
+      val fit = byHeight(w2.optJSONObject("heights"), h)
+      val fitSize = fit?.optString("size") ?: size
       when {
         size == "small" -> small(d, w2.optJSONObject("small") ?: JSONObject(), w, h)
-        w2.optJSONObject("locked")?.optBoolean(size) == true -> locked(d)
+        w2.optJSONObject("locked")?.optBoolean(fitSize) == true -> locked(d)
+        fit != null -> rows(d, fit.optJSONArray("rows"))
         else -> rows(d, w2.optJSONObject("rows")?.optJSONArray(size))
       }
     } catch (e: Exception) {
@@ -162,6 +165,15 @@ object W2Render {
     }
     v.setInt(R.id.root, "setLayoutDirection", if (f.rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR)
     return v
+  }
+
+  /** أكبرُ ارتفاعٍ محسومٍ لا يزيد على ارتفاع الودجت — وإن قصر عن كلِّها فأصغرُها */
+  private fun byHeight(all: JSONObject?, h: Float): JSONObject? {
+    if (all == null) return null
+    val keys = all.keys().asSequence().mapNotNull { it.toIntOrNull() }.sorted().toList()
+    if (keys.isEmpty()) return null
+    val k = keys.lastOrNull { it <= h } ?: keys.first()
+    return all.optJSONObject(k.toString())
   }
 
   /** مقاسُ الودجت بالـdp — عرضُ الوضع العمودي (`MIN_WIDTH`) وارتفاعُه (`MAX_HEIGHT`) */
@@ -216,7 +228,12 @@ object W2Render {
       return v
     }
     rows.forEachIndexed { i, r ->
-      if (i > 0) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
+      /* ما يزيد من الارتفاع يتوزّع على الفواصل (قبل الخطّ وبعده) — لا كتلةَ سوداءَ تحت آخر قسم */
+      if (i > 0) {
+        v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
+        v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
+        v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
+      }
       val child = when (r.type) {
         "search" -> search(d, r)
         "cont" -> cont(d, r)
@@ -391,7 +408,7 @@ object W2Render {
       }
       "friends" -> d.arr("friends").mapNotNull { x ->
         val t = f.titleFrom(x.optJSONObject("title")) ?: return@mapNotNull null
-        Line(t, "${x.optString("name")} ${x.optString("action")} ${t.title}", ago(x.optString("at")), WLinks.title(t))
+        Line(t, "${x.optString("name")} ${x.optString("action")} ${t.title}", ago(x.optString("at"), f.locale()), WLinks.title(t))
       }
       "tw" -> d.arr("towatch").mapNotNull { x ->
         val t = f.titleFrom(x) ?: return@mapNotNull null
@@ -408,11 +425,23 @@ object W2Render {
     }
   }
 
-  /** «قبل ساعة» بساعة الجهاز وقتَ الرسم */
-  private fun ago(iso: String): String? = try {
+  /**
+   * «قبل ساعة» بساعة الجهاز وقتَ الرسم — **وبلغة الودجت لا لغة الجهاز** (تسجيلُ أحمد: «أول أمس» في ودجتٍ إنجليزيّ):
+   * `DateUtils` يكتب بلغة النظام، و`RelativeDateTimeFormatter` من ICU يقبل لغةً صريحة.
+   */
+  private fun ago(iso: String, locale: Locale): String? = try {
     val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
     val t = fmt.parse(iso.take(19))?.time ?: 0L
-    if (t <= 0L) null else DateUtils.getRelativeTimeSpanString(t, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE).toString()
+    if (t <= 0L) null else {
+      val r = android.icu.text.RelativeDateTimeFormatter.getInstance(android.icu.util.ULocale.forLocale(locale))
+      val mins = ((System.currentTimeMillis() - t) / 60_000L).coerceAtLeast(1L)
+      val last = android.icu.text.RelativeDateTimeFormatter.Direction.LAST
+      when {
+        mins < 60 -> r.format(mins.toDouble(), last, android.icu.text.RelativeDateTimeFormatter.RelativeUnit.MINUTES)
+        mins < 24 * 60 -> r.format((mins / 60).toDouble(), last, android.icu.text.RelativeDateTimeFormatter.RelativeUnit.HOURS)
+        else -> r.format((mins / (24 * 60)).toDouble(), last, android.icu.text.RelativeDateTimeFormatter.RelativeUnit.DAYS)
+      }
+    }
   } catch (e: Exception) {
     null
   }
@@ -513,7 +542,8 @@ object W2Render {
 
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
   private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float): RemoteViews {
-    if (key == "tonight" && d.opt("tonight").optString("small", "poster") != "list") return posterColumn(d, key, bodyDp)
+    /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
+    if (key == "tonight") return posterColumn(d, key, bodyDp, buttons = d.opt("tonight").optString("small", "poster") != "list")
     val v = fresh(d.ctx, R.layout.w2_half_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
@@ -535,9 +565,9 @@ object W2Render {
     val max = if (key == "tonight") 1 else 3
     for (n in 0 until max) {
       val it = items.getOrNull(n) ?: break
-      if (n > 0) v.addView(R.id.items, RemoteViews(d.ctx.packageName, R.layout.w2_space))
+      /* الأسطرُ تتقاسم ارتفاعَ الخانة (وزنٌ في الواجهة) — لا مسافاتٍ ثابتة */
       val row = RemoteViews(d.ctx.packageName, R.layout.w2_item_small)
-      poster(d, row, R.id.it_img, it.t?.poster, 24f, 36f, 3f)
+      poster(d, row, R.id.it_img, it.t?.poster, 28f, 42f, 4f)
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
@@ -547,7 +577,7 @@ object W2Render {
   }
 
   /** W34 · W35 — بوسترٌ ٢:٣ كاملٌ بطول الخانة وعمودٌ بجانبه: 🔁 فوق (فيلم الليلة)، والتقييمُ والمدّة، و✓ تحت */
-  private fun posterColumn(d: Draw, key: String, bodyDp: Float): RemoteViews {
+  private fun posterColumn(d: Draw, key: String, bodyDp: Float, buttons: Boolean = true): RemoteViews {
     val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_poster)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
@@ -560,7 +590,10 @@ object W2Render {
       }
       poster(d, v, R.id.pc_img, m.t.poster, pw, bodyDp, 8f)
       v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(m.t)))
-      v.setTextViewText(R.id.pc_meta, Tonight.subOf(d.f, m).replace(" · ", "\n"))
+      v.setTextViewText(R.id.pc_name, m.t.title)
+      v.setOnClickPendingIntent(R.id.pc_name, d.open(WLinks.title(m.t)))
+      v.setTextViewText(R.id.pc_meta, Tonight.subOf(d.f, m))
+      if (!buttons) return v
       v.setViewVisibility(R.id.pc_check, View.VISIBLE)
       v.setOnClickPendingIntent(R.id.pc_check, d.open(WLinks.title(m.t)))
       if (d.f.tonight.size > 1) {
@@ -581,7 +614,9 @@ object W2Render {
     poster(d, v, R.id.pc_img, t.poster, pw, bodyDp, 8f)
     v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(t)))
     val rating = if (x.isNull("rating")) null else "★ " + String.format(d.f.locale(), "%.1f", x.optDouble("rating"))
-    v.setTextViewText(R.id.pc_meta, listOfNotNull(x.optString("type_label").takeIf { it.isNotEmpty() }, rating).joinToString("\n"))
+    v.setTextViewText(R.id.pc_name, t.title)
+    v.setOnClickPendingIntent(R.id.pc_name, d.open(WLinks.title(t)))
+    v.setTextViewText(R.id.pc_meta, listOfNotNull(x.optString("type_label").takeIf { it.isNotEmpty() }, rating).joinToString(" · "))
     v.setViewVisibility(R.id.pc_check, View.VISIBLE)
     if (x.optString("action") == "watched") {
       v.setOnClickPendingIntent(R.id.pc_check, d.open(WLinks.title(t)))

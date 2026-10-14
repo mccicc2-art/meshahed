@@ -320,8 +320,14 @@ export interface ResolvedWidget {
   /** W41 — غيرُ المشترك في الكبير والكبير جداً: بطاقةُ قفلٍ لا محتوى */
   locked: Partial<Record<WidgetSize, boolean>>;
   small: ResolvedSmall;
-  /** صفوفُ كلِّ حجمٍ بارتفاع التصميم — الرسّامُ يرسمها بالترتيب ويترك آخرَها يأخذ ما بقي */
+  /** صفوفُ كلِّ حجمٍ بارتفاع التصميم — يقرؤها بناءُ أندرويد 74 وما قبله وحده */
   rows: Partial<Record<Exclude<WidgetSize, "small">, WidgetRow[]>>;
+  /**
+   * 🆕 **الصفوفُ لكلِّ ارتفاعٍ حقيقيّ** (تسجيلُ أحمد ١٤ أكتوبر: فراغٌ أسودُ تحت الودجت حين يطول، وقصٌّ حين يقصر) —
+   * المفتاحُ الارتفاعُ بالنقاط كلَّ ٢٠ (أندرويد) أو ١٠ (آيفون)، والرسّامُ يأخذ أكبرَ مفتاحٍ لا يزيد على مقاسه.
+   * `size` حجمُ ذلك الارتفاع (المتوسطُ قسمٌ واحد، والقفلُ للكبير وما فوقه).
+   */
+  heights: Record<string, { size: Exclude<WidgetSize, "small">; rows: WidgetRow[] }>;
   /** إعداداتُ الأقسام (الحجمُ والعرضُ والعدد) — الرسّامُ يقرأ منها ما لا تقوله الصفوف (شكلُ فيلم الليلة الصغير) */
   opts: WidgetLayoutConfig["opts"];
 }
@@ -330,8 +336,20 @@ export interface ResolvedWidget {
 const SMALL_TALL = { w: 173, h: 246 };
 const SMALL_SQUARE = { w: 170, h: 170 };
 
-export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: WidgetPlatform): ResolvedWidget {
-  const eff = effectiveWidgetConfig(cfg, plus);
+/** الارتفاعاتُ التي تُحسم لها الصفوف، وحجمُ كلٍّ منها — الحدودُ نفسُها في الرسّامَين */
+const HEIGHT_STEPS: Record<WidgetPlatform, { from: number; to: number; step: number; size: (h: number) => Exclude<WidgetSize, "small"> }> = {
+  android: { from: 140, to: 900, step: 20, size: (h) => (h < 260 ? "medium" : h < 600 ? "large" : "xl") },
+  ios: { from: 130, to: 400, step: 10, size: (h) => (h < 250 ? "medium" : "large") },
+};
+
+/**
+ * يحسم الودجتَ للرسّامَين. `empty`: أقسامٌ بلا محتوى الآن — **تختفي ويأخذ ما بعدها مكانَها** (قرارُ أحمد «ب»، ١٤ أكتوبر)؛
+ * وأكملُ المشاهدة والبحثُ لا يُعدّان فارغين (للأوّل «ابدأ عملاً»، والثاني شريط).
+ */
+export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: WidgetPlatform, empty: readonly WidgetSectionKey[] = []): ResolvedWidget {
+  const base = effectiveWidgetConfig(cfg, plus);
+  const eff: WidgetLayoutConfig = { ...base, on: { ...base.on } };
+  for (const k of empty) if (k !== "cont" && k !== "search") eff.on[k] = false;
   const key = smallWidgetSection(eff);
   const rows: ResolvedWidget["rows"] = {};
   const locked: ResolvedWidget["locked"] = {};
@@ -340,10 +358,17 @@ export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: 
     if (widgetAccess(plus, size) === "locked") { locked[size] = true; continue; }
     rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size)).rows;
   }
+  const heights: ResolvedWidget["heights"] = {};
+  const st = HEIGHT_STEPS[platform];
+  for (let h = st.from; h <= st.to; h += st.step) {
+    const size = st.size(h);
+    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h).rows };
+  }
   return {
     locked,
     small: { key, tall: smallWidgetForm(eff, key, SMALL_TALL.w, SMALL_TALL.h), square: smallWidgetForm(eff, key, SMALL_SQUARE.w, SMALL_SQUARE.h) },
     rows,
+    heights,
     opts: eff.opts,
   };
 }

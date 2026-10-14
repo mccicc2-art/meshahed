@@ -164,3 +164,19 @@ test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل �
   assert.ok(sum(i) <= 376);
   assert.ok(sum(a) <= 440);
 });
+
+/* تسجيلُ أحمد ١٤ أكتوبر — الصفوفُ لكلِّ ارتفاعٍ حقيقيّ، والقسمُ الفارغُ يختفي («ب») */
+test("الصفوف لكل ارتفاع حقيقي: أطول يدخل أكثر، ولا يتجاوز المقاس", () => {
+  const cfg = defaultWidgetConfig();
+  for (const k of ["up", "tonight", "friends", "tw", "act"] as const) cfg.opts[k].size = "small";
+  const r = resolveWidget(cfg, true, "android", ["up"]);
+  const sum = (rows: WidgetRow[]) => rows.reduce((n, x) => n + x.h, 0) + Math.max(0, rows.length - 1) * WIDGET_HEIGHTS.gap + WIDGET_HEIGHTS.pad;
+  for (const [h, v] of Object.entries(r.heights)) assert.ok(sum(v.rows) <= Number(h), `h=${h}`);
+  assert.ok(r.heights["600"].rows.length > r.heights["400"].rows.length);
+  assert.equal(r.heights["200"].size, "medium");
+  assert.equal(r.heights["620"].size, "xl");
+  assert.ok(!JSON.stringify(r.heights).includes('"up"'));
+  /* القادمُ مخفيٌّ فارغاً ⇒ سطرُه يعود تحت البطاقات */
+  const c = r.heights["600"].rows.find((x) => x.type === "cont");
+  assert.equal(c?.type === "cont" && c.upLine, true);
+});
