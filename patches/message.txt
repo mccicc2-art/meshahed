@@ -1,1 +1,1 @@
-Messages (web): photo or GIF in a direct message — private bucket dm-media (migration 202), upload route, signed links, bubbles, previews and push say «📷 Photo» / «GIF» (D-1387) [deploy]
+Widget (web): Tonight suggestions stable for the day, year/genre/rating in the feed, unnamed activity rows dropped, Continue small option (W45, W46) [deploy]
