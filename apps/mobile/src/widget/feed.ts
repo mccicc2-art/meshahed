@@ -8,6 +8,7 @@ import { session } from "../session";
 import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
+import { resolveWidget } from "@/core/widgetLayout";
 
 /**
  * ====== 🆕 بياناتُ الودجتات — يكتبها التطبيقُ والودجتُ يقرأ (خطّةُ الودجتات §2.1) ======
@@ -61,8 +62,20 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
   feed.towatch_series.forEach((x) => add(x.poster_path));
   feed.towatch_all.forEach((x) => add(x.poster_path));
   feed.upcoming.items.forEach((x) => add(x.poster_path));
-  feed.tonight.forEach((x) => add(x.poster_path));
+  feed.tonight.forEach((x) => {
+    add(x.poster_path);
+    /* 🆕 v2 — هيدرُ بطاقة فيلم الليلة العريضة */
+    add(x.backdrop_path, "backdrop");
+  });
   feed.lists.forEach((l) => l.items.forEach((x) => add(x.poster_path)));
+  const v2 = feed.v2;
+  if (v2) {
+    v2.trending.forEach((x) => add(x.poster_path));
+    v2.towatch.forEach((x) => add(x.poster_path));
+    v2.upcoming.items.forEach((x) => add(x.poster_path));
+    v2.friends.forEach((x) => add(x.title.poster_path));
+    v2.activity.forEach((x) => add(x.title.poster_path));
+  }
   return out;
 }
 
@@ -154,7 +167,15 @@ async function run(): Promise<void> {
     });
   }
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
-  const out = { ...data, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
+  /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
+  const v2 = data.v2;
+  const w2 = v2
+    ? {
+        android: resolveWidget(v2.config, v2.plus, "android"),
+        ios: v2.layouts.map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios") })),
+      }
+    : null;
+  const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
   w.prune([FEED, TOKEN, ...names.values()]);
   w.reload();

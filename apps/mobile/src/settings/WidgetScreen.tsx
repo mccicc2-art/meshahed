@@ -15,6 +15,7 @@ import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row, Chevron, OptionRow, RowsSkeleton } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
 import { WidgetPreview } from "./WidgetPreview";
+import { refreshWidgets } from "../widget/feed";
 import {
   effectiveWidgetConfig,
   widgetSizesFor,
@@ -112,6 +113,8 @@ export function WidgetScreen() {
       if (!out.ok) throw new Error("save");
       setBase(JSON.stringify(store));
       queryClient.setQueryData<WidgetPrefsPayload>(KEY, (p) => (p ? { ...p, ...store } : p));
+      /* الودجتُ على الشاشة يرسم الإعدادَ الجديدَ الآن لا بعد الجلب التالي */
+      void refreshWidgets(true);
       haptic.success();
       toast.current?.say(t.setSaved, undefined, undefined, "success");
     } catch (e) {

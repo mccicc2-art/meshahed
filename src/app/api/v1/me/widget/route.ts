@@ -13,7 +13,7 @@ import {
 } from "@/lib/data";
 import { getMyActivity } from "@/lib/myActivity";
 import { getT } from "@/lib/locale";
-import { getTv, wellKnownMovies, trendingToday, type TvDetails } from "@/lib/tmdb";
+import { getMovie, getTv, wellKnownMovies, trendingToday, type TvDetails } from "@/lib/tmdb";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
 import { calendarEntries, todayIn } from "@/core/calendar";
 import { asTimeZone } from "@/core/zone";
@@ -253,6 +253,9 @@ export async function GET(req: NextRequest) {
           rating: null,
           source: "towatch",
         }));
+      /* 🆕 v2 (W42) — هيدرُ أفلام «للمشاهدة» للبطاقة العريضة: تفاصيلُ TMDB مخزّنةٌ، وفشلُ واحدٍ لا يُسقط الخلاصة */
+      const towatchBackdrops = await Promise.all(towatchMovies.map((m) => getMovie(m.id).then((d) => d.backdrop_path ?? null).catch(() => null)));
+      towatchMovies.forEach((m, n) => (m.backdrop_path = towatchBackdrops[n]));
       let tonight = towatchMovies;
       if (tonight.length < 10) {
         /* أنواعُه المفضّلةُ مسجّلةٌ بمعرّفات المسلسلات (`GENRES`)، ومقابلُها في الأفلام من جدول التصفّح نفسِه */
@@ -289,6 +292,7 @@ export async function GET(req: NextRequest) {
             runtime: null,
             rating: typeof r.vote_average === "number" ? Math.round(r.vote_average * 10) / 10 : null,
             source: "suggested",
+            backdrop_path: r.backdrop_path ?? null,
           })),
         ];
       }

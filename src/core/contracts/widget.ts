@@ -65,6 +65,8 @@ export interface WidgetMovie extends WidgetTitle {
   /** تقييمُ TMDB للمقترَح وحدَه — فيلمُك في «للمشاهدة» لا يحتاج حجّة */
   rating: number | null;
   source: "towatch" | "suggested";
+  /** 🆕 v2 (W34 · W42) — بطاقةُ فيلم الليلة العريضة ١٦:٩ ترسم الهيدر لا بوستراً مقصوصاً (W38). ودجتُ 1.12.x لا يقرؤه */
+  backdrop_path?: string | null;
 }
 
 /** قائمةٌ محفوظةٌ يختارها الشخصُ مصدراً لـ«أكمل المشاهدة» (W10) */
