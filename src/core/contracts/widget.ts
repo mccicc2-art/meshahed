@@ -173,6 +173,11 @@ export interface WidgetStringsV2 {
   plusLapsedSub: string;
   subscribe: string;
   renew: string;
+  /** 🆕 الدفعةُ الثانية (W37): «قيّم %s» لشريط التقييم، و«تخطَّ»، و«بدأته» بعد «ابدأ»، و«تراجع» — اختياريّةٌ للخلاصات الأقدم */
+  rate?: string;
+  skip?: string;
+  started?: string;
+  undo?: string;
 }
 
 export interface WidgetFeedV2 {
