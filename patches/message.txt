@@ -1,1 +1,1 @@
-Widget tap diagnostics: app crash route accepts the screen «widget» (Ahmed's report: widget buttons do nothing) [deploy]
+Widget tap log: the app crash route writes the widget log in parts — the database keeps 400 characters per row [deploy]
