@@ -175,6 +175,7 @@ enum WState {
 
   /** 🆕 اللمسةُ تُرى فوراً: «↶ تراجع» معلّقاً حتى يردّ الخادم، ويُرسم قبل الشبكة */
   static func setPending(_ kind: String, _ id: Int) {
+    FeedStore.defaults?.removeObject(forKey: "wUndoCancel")
     FeedStore.defaults?.set(["kind": kind, "id": id, "at": Date().timeIntervalSince1970, "pending": true], forKey: "wUndo")
     WidgetCenter.shared.reloadAllTimelines()
   }
@@ -182,6 +183,26 @@ enum WState {
   /** الخادمُ لم يقبل: المعلّقُ يزول */
   static func clearPending() {
     if undoRecord()?["pending"] as? Bool == true { FeedStore.defaults?.removeObject(forKey: "wUndo") }
+    FeedStore.defaults?.removeObject(forKey: "wUndoCancel")
+  }
+
+  /**
+   * W44 — «↶ تراجع» لُمس والفعلُ معلّقٌ لم يردّ عليه الخادم: يُرسم ✓ فوراً، ويُحفظ أنّ صاحبه تراجع
+   * فيعكسه الفعلُ نفسُه حين يصله الردّ (`takeCancel`) — بدل أن يعود «↶» والفعلُ قائم.
+   */
+  static func cancelPending() -> Bool {
+    guard let o = undoRecord(), o["pending"] as? Bool == true else { return false }
+    let c: [String: Any] = ["kind": o["kind"] as? String ?? "", "id": o["id"] as? Int ?? 0]
+    FeedStore.defaults?.set(c, forKey: "wUndoCancel")
+    FeedStore.defaults?.removeObject(forKey: "wUndo")
+    return true
+  }
+
+  /** هل تراجع صاحبُ هذا الفعل وهو معلّق؟ — يُقرأ مرّةً ويُمحى */
+  static func takeCancel(_ kind: String, _ id: Int) -> Bool {
+    guard let c = FeedStore.defaults?.dictionary(forKey: "wUndoCancel") else { return false }
+    FeedStore.defaults?.removeObject(forKey: "wUndoCancel")
+    return c["kind"] as? String == kind && c["id"] as? Int == id
   }
 
   static func setUndo(_ o: [String: Any]) {
@@ -250,7 +271,11 @@ struct MarkEpisodeIntent: AppIntent {
     Diag.add("mark", "tap", nil)
     WState.setPending("ep", show)
     if await MarkAPI.send("/api/v1/widget/mark", show: show, season: season, episode: episode) {
-      WState.setUndo(["kind": "ep", "id": show, "season": season, "episode": episode])
+      if WState.takeCancel("ep", show) {
+        _ = await MarkAPI.send("/api/v1/widget/unmark", show: show, season: season, episode: episode)
+      } else {
+        WState.setUndo(["kind": "ep", "id": show, "season": season, "episode": episode])
+      }
     } else {
       WState.clearPending()
     }
@@ -299,7 +324,11 @@ struct MarkMovieIntent: AppIntent {
     Diag.add("movie", "tap", nil)
     WState.setPending("movie", id)
     if await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": true]) != nil {
-      WState.setUndo(["kind": "movie", "id": id, "title": name, "poster": poster])
+      if WState.takeCancel("movie", id) {
+        _ = await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": false])
+      } else {
+        WState.setUndo(["kind": "movie", "id": id, "title": name, "poster": poster])
+      }
     } else {
       WState.clearPending()
     }
@@ -320,7 +349,11 @@ struct StartShowIntent: AppIntent {
     Diag.add("start", "tap", nil)
     WState.setPending("start", id)
     if await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": true]) != nil {
-      WState.setUndo(["kind": "start", "id": id])
+      if WState.takeCancel("start", id) {
+        _ = await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": false])
+      } else {
+        WState.setUndo(["kind": "start", "id": id])
+      }
     } else {
       WState.clearPending()
     }
@@ -335,6 +368,7 @@ struct UndoActionIntent: AppIntent {
 
   func perform() async throws -> some IntentResult {
     Diag.add("undo", "tap", nil)
+    if WState.cancelPending() { return .result() }
     guard let o = WState.undoRecord(), o["pending"] as? Bool != true, let id = o["id"] as? Int else { return .result() }
     var done = false
     switch o["kind"] as? String {

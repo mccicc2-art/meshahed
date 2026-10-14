@@ -143,6 +143,12 @@ class CheckReceiver : BroadcastReceiver() {
         val mark = action == ACTION_MARK
         val data = post(ctx, if (mark) "/api/v1/widget/mark" else "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode)) ?: return revert(ctx, action)
         val prev = undoNow(ctx)?.takeIf { it.optString("kind") == "ep" && it.optInt("id") == id }?.optJSONObject("prev")
+        if (mark && undoneWhilePending(ctx, "ep", id)) {
+          /* تراجع قبل أن يردّ الخادم: الحلقةُ تُرفع الآن، والبطاقةُ على ردِّ الرفع (الحلقةُ نفسُها من جديد) */
+          val back = post(ctx, "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode))
+          applyNext(ctx, id, back?.optJSONObject("next") ?: prev)
+          return settleEarlyUndo(ctx)
+        }
         applyNext(ctx, id, data.optJSONObject("next"))
         if (mark) undoFor(ctx, JSONObject().put("kind", "ep").put("id", id).put("season", season).put("episode", episode)
           .put("prev", prev).put("next", data.optJSONObject("next")))
@@ -151,11 +157,19 @@ class CheckReceiver : BroadcastReceiver() {
       ACTION_MOVIE -> {
         if (id <= 0) return
         post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", true)) ?: return revert(ctx, action)
+        if (undoneWhilePending(ctx, "movie", id)) {
+          post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false))
+          return settleEarlyUndo(ctx)
+        }
         undoFor(ctx, JSONObject().put("kind", "movie").put("id", id).put("title", i.getString("title") ?: "").put("poster", i.getString("poster") ?: ""))
       }
       ACTION_START -> {
         if (id <= 0) return
         post(ctx, "/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", true)) ?: return revert(ctx, action)
+        if (undoneWhilePending(ctx, "start", id)) {
+          post(ctx, "/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", false))
+          return settleEarlyUndo(ctx)
+        }
         undoFor(ctx, JSONObject().put("kind", "start").put("id", id))
       }
       ACTION_RATE -> {
@@ -213,6 +227,23 @@ class CheckReceiver : BroadcastReceiver() {
       else -> true
     }
     if (!ok) return revert(ctx, ACTION_UNDO)
+    LoopzWidget.prefs(ctx).edit().remove(K_UNDO_WAS).apply()
+    LoopzWidget.redrawAll(ctx)
+  }
+
+  /**
+   * W44 — «↶ تراجع» لُمس والفعلُ ما زال معلّقاً (الخادمُ لم يردّ): `undo()` لا يجد ما يُتراجع عنه على الخادم فيتركه،
+   * فيصل ردُّ الفعل بعده ويُعيد «↶» والفعلُ قائم. الآن: ردُّ الفعل يرى أنّ صاحبه تراجع (لا `w_undo`، و`w_undo_was`
+   * هو السجلُّ المعلّقُ نفسُه) فيعكسه فوراً.
+   */
+  private fun undoneWhilePending(ctx: Context, kind: String, id: Int): Boolean {
+    val prefs = LoopzWidget.prefs(ctx)
+    if (prefs.getString(K_UNDO, null) != null) return false
+    val was = prefs.getString(K_UNDO_WAS, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+    return was.optBoolean("pending") && was.optString("kind") == kind && was.optInt("id") == id
+  }
+
+  private fun settleEarlyUndo(ctx: Context) {
     LoopzWidget.prefs(ctx).edit().remove(K_UNDO_WAS).apply()
     LoopzWidget.redrawAll(ctx)
   }
