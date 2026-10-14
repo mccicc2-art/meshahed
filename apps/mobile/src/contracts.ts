@@ -182,6 +182,8 @@ export type {
   MsgShareEvent,
   MsgListEvent,
   MsgReplyEvent,
+  MsgReplyRef,
+  MsgImage,
   LastSeenPayload,
   MsgReplyBody,
   MsgTextBody,

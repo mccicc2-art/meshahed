@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const gate = await supabase.rpc("can_message", { a: auth.user.id, b: b.recipient_id });
     if (!gate.error && gate.data !== true) return fail("forbidden", { message_key: "apiMsgNotAccepting" });
-    await sendDirectMessage(b.recipient_id, b.body, { gif_id: b.gif_id, image_path: b.image_path });
+    await sendDirectMessage(b.recipient_id, b.body, { gif_id: b.gif_id, image_path: b.image_path, reply_to: b.reply_to });
     return ok({ done: true as const }, ["me:messages"]);
   });
 }

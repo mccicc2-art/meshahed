@@ -70,3 +70,21 @@ test("الردّ المنشور: GIF وصورةٌ لا يسقطان، والنص
   assert.deepEqual(replyEventOut({ ...base, body: "شوف", image }), { kind: "reply", ...base, body: "شوف", image });
   assert.deepEqual(replyEventOut({ ...base, body: "هلا", gif_id: null, image: null }), { kind: "reply", ...base, body: "هلا" });
 });
+
+/* 🆕 D-1401/D-1403 — حالةُ القراءة على رسائلي وحدها، والاقتباسُ بحقوله المنشورة */
+test("الردّ المنشور: القراءةُ لرسائلي وحدها، والاقتباسُ يعبر مختصراً", () => {
+  const base = { id: "m2", body: "هلا", created_at: "2026-10-15T00:00:00Z" };
+  assert.deepEqual(replyEventOut({ ...base, mine: true, read: false }), { kind: "reply", ...base, mine: true, read: false });
+  assert.deepEqual(replyEventOut({ ...base, mine: false, read: true }), { kind: "reply", ...base, mine: false }, "قراءتي لرسالته لا تعبر إليه");
+  const image = { url: "https://x/s", key: `${U}/${U}.jpg` };
+  const out = replyEventOut({ ...base, mine: true, reply: { id: "o1", mine: false, kind: "image", body: "", image, gif_id: null } });
+  assert.deepEqual(out.reply, { id: "o1", mine: false, kind: "image", body: "", image });
+  assert.deepEqual(replyEventOut({ ...base, mine: true, reply: { id: "o2", mine: false, kind: "gone", body: "" } }).reply, { id: "o2", mine: false, kind: "gone", body: "" });
+});
+
+test("النصّ المباشر: الردُّ على رسالةٍ بمعرّفها", () => {
+  const R = "5b7c2a9e-1111-4a2b-9c3d-0000000000ff";
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "تمام", reply_to: R }), { recipient_id: U, body: "تمام", reply_to: R });
+  assert.equal(parseMsgTextBody({ recipient_id: U, body: "تمام", reply_to: "abc" }), null);
+  assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "تمام", reply_to: "" }), { recipient_id: U, body: "تمام" });
+});

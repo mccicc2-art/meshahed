@@ -93,6 +93,9 @@ const ICONS = {
   trash: require("../assets/icons/trash.png"),
   /* 🆕 D-1360 — «نسخ» (رابطُ الدعوة): مسارُ الويب نفسُه (`Icon.tsx` → `copy`) مرسوماً ٧٢px بسماكة ١٫٧ كأخواته */
   copy: require("../assets/icons/copy.png"),
+  /* 🆕 D-1401/D-1403 — ✓✓ «قرأها» و«رد»: مسارا `Icon.tsx` نفسُهما، cairosvg · ٧٢px · أبيض */
+  "check-double": require("../assets/icons/check-double.png"),
+  reply: require("../assets/icons/reply.png"),
   /* 🆕 D-1134 — مبدّلُ العرض في الرئيسيّة كالويب (`HomeViewSwitch`: `grid` ⇄ `list`)، cairosvg · ٧٢px · أبيض،
      خطٌّ ٢ كما يمرّره الويب */
   grid: require("../assets/icons/grid.png"),

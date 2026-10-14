@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,7 @@ import { GifImage, GifPicker, rememberGif } from "../thread/GifPicker";
 import { shrinkForUpload } from "../imageShrink";
 import { useApp } from "../state";
 import { push } from "../push";
-import { Button, Text, type ToastTone } from "../ui";
+import { Button, Text, firstStrongRtl, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -25,9 +26,12 @@ import { dropBadges, patchConversation, patchKeep, presenceOf, useDoors, useMess
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
-import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImagePayload, MsgPeerBody, MsgTextBody } from "../contracts";
+import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImage, MsgImagePayload, MsgPeerBody, MsgReplyRef, MsgTextBody } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
+import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
+import { ReplyQuote, replyRefOf } from "./ReplyQuote";
+import { PhotoViewer } from "./PhotoViewer";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -43,8 +47,16 @@ import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
  * ⚖️ **الحقلُ مثبَّتٌ أسفل الشاشة لا ورقةٌ وسطى** (خلافاً لـ`Composer`، D-1175): حجّةُ الورقة كانت حقلاً داخل قائمةٍ افتراضيّة
  * يُدوَّر وتغطّيه اللوحة — **وهنا الحقلُ خارج القائمة**، والدردشةُ تُكتب وأنت ترى آخرَ ما قيل. يمتدّ مع الكتابة حتى أربعة
  * أسطر ثمّ يمرّر داخله (D-765)، **ويرتفع فوق لوحة المفاتيح بقياس موضعه** (يعمل سواءٌ صغّر النظامُ النافذةَ أم لا).
+ *
+ * 🆕 D-1401/D-1402/D-1403 — **كالواتس** (تسجيلاتُ أحمد ١٥ أكتوبر): الوقتُ في زاوية كلِّ فقاعة ومعه ✓ وصلت · ✓✓ قرأها
+ * على رسائلي، وفاصلُ «اليوم/أمس» بين الأيّام · ضغطةٌ طويلةٌ تحدّد الرسالة فيصير الشريطُ العلويّ أزراراً (رد · نسخ)،
+ * ولمسةٌ على غيرها تضيفها · «رد» يقتبسها فوق خانة الكتابة، والاقتباسُ في الفقاعة ينزل إلى الأصل · الصورةُ تُفتح
+ * بملء الشاشة (`PhotoViewer`).
  */
 const PAGE_PAD = 16;
+/** مفتاحُ الحدث — نوعُه ومعرّفُه، فلا يتصادم ردٌّ ومشاركةٌ بمعرّفٍ واحد */
+const keyOf = (e: MsgEvent) => `${e.kind}-${e.id}`;
+type Row = { type: "day"; key: string; label: string } | { type: "ev"; key: string; e: MsgEvent };
 
 export function ConversationScreen({ peer, from }: { peer: string; from: Origin }) {
   const { t, tokens } = useApp();
@@ -96,6 +108,14 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
 
+  /* ——— 🆕 D-1401 — التحديدُ كالواتس: مفاتيحُ الرسائل المحدَّدة؛ والمرجعُ يقرؤه زرُّ الرجوع بلا إعادة اشتراك ——— */
+  const [selected, setSelected] = useState<string[]>([]);
+  const selectedRef = useRef<string[]>([]);
+  selectedRef.current = selected;
+  /* 🆕 D-1403 — الرسالةُ المقتبَسة فوق خانة الكتابة */
+  const [replyTo, setReplyTo] = useState<MsgEvent | null>(null);
+  const inputRef = useRef<TextInput>(null);
+
   /* ——— الملاحة ——— */
   const back = useCallback(() => {
     /* 🆕 D-1307 (تسجيلُ خالد، ٦ أكتوبر): الرجوعُ كان يترك لوحةَ المفاتيح مفتوحةً فوق قائمة الرسائل — تُغلق قبل الانتقال */
@@ -106,6 +126,11 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1401 — زرُّ الرجوع يلغي التحديدَ أوّلاً ولا يخرج من المحادثة (كالواتس) */
+      if (selectedRef.current.length) {
+        setSelected([]);
+        return true;
+      }
       back();
       return true;
     });
@@ -138,7 +163,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const [pic, setPic] = useState<{ local: string; path: string | null } | null>(null);
   const [attach, setAttach] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
-  const [viewer, setViewer] = useState<{ url: string; key: string } | null>(null);
+  /* 🆕 D-1402 — العارضُ يعرف الرسالةَ كلَّها: صاحبُها ووقتُها وتعليقُها، و«رد…» يقتبسها */
+  const [viewer, setViewer] = useState<{ e: MsgEvent; image: MsgImage } | null>(null);
 
   /** الإرسالُ الواحد — نصٌّ أو صورةٌ بتعليقٍ أو GIF: فقاعةٌ متفائلةٌ فوراً، والفشلُ يسحبها ويُرجع ما كان (`undo`) */
   const deliver = useCallback(
@@ -171,36 +197,67 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     [conv, person, peer, say, t],
   );
 
+  /* 🆕 D-1403 — المقتبَسُ: مختصرُه في الفقاعة المتفائلة (الشكلُ الذي سيعود به من الخادم)، ومعرّفُه للخادم */
+  const quoteOf = useCallback((): { ref: MsgReplyRef | null; id: string | null } => {
+    const r = replyTo ? replyRefOf(replyTo) : null;
+    return { ref: r, id: r ? r.id : null };
+  }, [replyTo]);
+
   const send = useCallback(() => {
     const body = text.trim();
     const image = pic;
     /* الصورةُ ما زالت تُرفع ⇒ «أرسل» ينتظرها (معطّلٌ في الرسم) */
     if ((!body && !image) || (image && !image.path) || sending || (!conv && !person)) return;
     const id = `tmp-${tmp.current++}`;
+    const quote = quoteOf();
+    const quoted = replyTo;
     const ev: MsgEvent = {
       kind: "reply",
       id,
       mine: true,
       body,
       created_at: new Date().toISOString(),
+      dm: true,
       ...(image ? { image: { url: image.local, key: image.local } } : {}),
+      ...(quote.ref ? { reply: quote.ref } : {}),
     };
     setText("");
     setPic(null);
-    deliver(ev, { recipient_id: peer, body, ...(image?.path ? { image_path: image.path } : {}) }, () => {
+    setReplyTo(null);
+    deliver(ev, { recipient_id: peer, body, ...(image?.path ? { image_path: image.path } : {}), ...(quote.id ? { reply_to: quote.id } : {}) }, () => {
       setText((cur) => (cur ? cur : body));
       if (image) setPic((cur) => cur ?? image);
+      if (quoted) setReplyTo((cur) => cur ?? quoted);
     });
-  }, [text, pic, sending, conv, person, peer, deliver]);
+  }, [text, pic, sending, conv, person, peer, deliver, quoteOf, replyTo]);
 
   /* 🆕 D-1387 — الـGIF يُرسَل بضغطته (بلا خطوة تأكيد)، ويدخل «الأخيرة» في المنتقي حين يُقبل */
   const sendGif = useCallback(
     (gif: string) => {
       if (!conv && !person) return;
-      const ev: MsgEvent = { kind: "reply", id: `tmp-${tmp.current++}`, mine: true, body: "", gif_id: gif, created_at: new Date().toISOString() };
-      deliver(ev, { recipient_id: peer, body: "", gif_id: gif }, () => {}, () => rememberGif(gif));
+      const quote = quoteOf();
+      const quoted = replyTo;
+      const ev: MsgEvent = {
+        kind: "reply",
+        id: `tmp-${tmp.current++}`,
+        mine: true,
+        body: "",
+        gif_id: gif,
+        created_at: new Date().toISOString(),
+        dm: true,
+        ...(quote.ref ? { reply: quote.ref } : {}),
+      };
+      setReplyTo(null);
+      deliver(
+        ev,
+        { recipient_id: peer, body: "", gif_id: gif, ...(quote.id ? { reply_to: quote.id } : {}) },
+        () => {
+          if (quoted) setReplyTo((cur) => cur ?? quoted);
+        },
+        () => rememberGif(gif),
+      );
     },
-    [conv, person, peer, deliver],
+    [conv, person, peer, deliver, quoteOf, replyTo],
   );
 
   const pickImage = useCallback(async () => {
@@ -292,8 +349,76 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     };
   }, []);
 
-  /* الأحدثُ أسفل: قائمةٌ مقلوبة — تبدأ من آخر ما قيل ويبقى تحت الإصبع حين يصل جديد */
-  const events = useMemo(() => (conv ? [...conv.events].reverse() : []), [conv]);
+  /* الأحدثُ أسفل: قائمةٌ مقلوبة — تبدأ من آخر ما قيل ويبقى تحت الإصبع حين يصل جديد.
+     🆕 D-1401 — وفاصلُ يومٍ قبل أوّل رسالةٍ من كلِّ يوم («اليوم» · «أمس» · اسمُ اليوم · التاريخ)، بيوم الجهاز */
+  const rows = useMemo<Row[]>(() => {
+    if (!conv) return [];
+    const out: Row[] = [];
+    let day = "";
+    for (const e of conv.events) {
+      const k = dayKeyOf(e.created_at);
+      if (k && k !== day) {
+        day = k;
+        out.push({ type: "day", key: `day-${k}`, label: dayLabelOf(k, t) });
+      }
+      out.push({ type: "ev", key: keyOf(e), e });
+    }
+    return out.reverse();
+  }, [conv, t]);
+
+  /* ——— 🆕 D-1401 — التحديد: الرسالةُ المؤقّتة (لم تصل الخادمَ) لا تُحدَّد ——— */
+  const selecting = selected.length > 0;
+  const startSelect = useCallback((e: MsgEvent) => {
+    if (e.id.startsWith("tmp-")) return;
+    haptic.pick();
+    Keyboard.dismiss();
+    setSelected((cur) => (cur.includes(keyOf(e)) ? cur : [...cur, keyOf(e)]));
+  }, []);
+  const toggleSelect = useCallback((e: MsgEvent) => {
+    if (e.id.startsWith("tmp-")) return;
+    haptic.pick();
+    setSelected((cur) => (cur.includes(keyOf(e)) ? cur.filter((k) => k !== keyOf(e)) : [...cur, keyOf(e)]));
+  }, []);
+  const selectedEvents = useMemo(() => (conv ? conv.events.filter((e) => selected.includes(keyOf(e))) : []), [conv, selected]);
+  /* خيطٌ تغيّر تحت التحديد (رسالةٌ أُخفيت) ⇒ يسقط ما لم يعد موجوداً */
+  useEffect(() => {
+    if (selected.length && selectedEvents.length !== selected.length) setSelected(selectedEvents.map(keyOf));
+  }, [selected, selectedEvents]);
+  const canCopy = selectedEvents.some((e) => !!copyableOf(e));
+  /* الردُّ على رسالةٍ مباشرةٍ واحدة — الردودُ القديمة في خيوط الأعمال والبطاقاتُ لا يُقتبس منها (الهجرة ٢٠٣ على `direct_messages`) */
+  const replyable = selectedEvents.length === 1 && selectedEvents[0].kind === "reply" && !!selectedEvents[0].dm ? selectedEvents[0] : null;
+  const copySelected = useCallback(() => {
+    const text = copyTextOf(selectedEvents, (mine) => (mine ? t.convYou : displayNameOf(person, t.anonymousUser)), t);
+    if (!text) return;
+    void Clipboard.setStringAsync(text)
+      .then(() => {
+        haptic.success();
+        say(t.msgCopied, "success");
+      })
+      .catch(() => say(t.apiInternal));
+    setSelected([]);
+  }, [selectedEvents, person, t, say]);
+  const beginReply = useCallback((e: MsgEvent) => {
+    setSelected([]);
+    setViewer(null);
+    setReplyTo(e);
+    /* الكتابةُ تبدأ فوراً كالواتس — بعد أن يُغلق العارضُ إن كان مفتوحاً */
+    setTimeout(() => inputRef.current?.focus(), 250);
+  }, []);
+
+  /* ——— 🆕 D-1403 — لمسةُ الاقتباس تنزل إلى الأصل وتومضه ——— */
+  const listRef = useRef<FlatList<Row>>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const jumpTo = useCallback(
+    (id: string) => {
+      const index = rows.findIndex((r) => r.type === "ev" && r.e.kind === "reply" && r.e.id === id);
+      if (index < 0) return;
+      listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+      setFlash(`reply-${id}`);
+      setTimeout(() => setFlash((f) => (f === `reply-${id}` ? null : f)), 1400);
+    },
+    [rows],
+  );
   const presence = presenceOf(seen.data?.last_seen, t, (iso) => timeAgo(iso, t));
   /* 🆕 D-1387 — الحقلُ سطرٌ واحدٌ بارتفاع «أرسل» (٤٠) ويكبر ٢٢ مع كلِّ سطرٍ حتى أربعة: النموُّ من الحقل نفسِه (`minHeight`/`maxHeight`)
      لا من `contentSize` — أندرويد يعدّ الحشوَ فيه فكان يُضاف مرّتين فيولد السطرُ الواحدُ بارتفاع ٥٨ (لقطةُ أحمد ١٤ أكتوبر) */
@@ -305,6 +430,25 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
       {/* 🆕 D-1382 — الخلفيّةُ تحت كلِّ شيء؛ الترويسةُ والحقلُ بسطحهما فوقها، والخيطُ شفّافٌ عليها */}
       <ChatBackdrop bg={chatBg} top={headH} bottom={dockH} />
       <View onLayout={(e) => setHeadH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
+        {selecting ? (
+          /* 🆕 D-1401 — شريطُ التحديد مكانَ الترويسة كالواتس: رجوعٌ يلغي، والعدد، ثمّ «رد» و«نسخ» */
+          <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
+            <Pressable onPress={() => setSelected([])} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.msgSelectCancel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
+                <Icon name="chevron-down" size={22} color={tokens.fg} />
+              </View>
+            </Pressable>
+            <Text size={17} weight="700" accessibilityLabel={t.msgSelectedCount(selected.length)} style={{ flex: 1, paddingHorizontal: 4 }}>{String(selected.length)}</Text>
+            {replyable ? (
+              <Pressable onPress={() => beginReply(replyable)} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgReply} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
+                <Icon name="reply" size={21} color={tokens.fg} />
+              </Pressable>
+            ) : null}
+            <Pressable onPress={copySelected} disabled={!canCopy} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgCopy} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", opacity: canCopy ? 1 : 0.35, backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
+              <Icon name="copy" size={20} color={tokens.fg} />
+            </Pressable>
+          </View>
+        ) : (
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
@@ -343,6 +487,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
             <Icon name="dots" size={18} color={tokens.muted} />
           </Pressable>
         </View>
+        )}
       </View>
 
       {!conv && person ? (
@@ -365,10 +510,38 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           inverted
-          data={events}
-          keyExtractor={(e) => `${e.kind}-${e.id}`}
-          renderItem={({ item }) => <Bubble e={item} onTitle={doors.openTitle} onList={doors.openList} onImage={setViewer} />}
+          data={rows}
+          keyExtractor={(r) => r.key}
+          extraData={`${selected.join(",")}|${flash ?? ""}`}
+          renderItem={({ item }) =>
+            item.type === "day" ? (
+              <DayChip label={item.label} />
+            ) : (
+              <Bubble
+                e={item.e}
+                peerName={name}
+                selecting={selecting}
+                selected={selected.includes(item.key)}
+                flash={flash === item.key}
+                onSelect={startSelect}
+                onToggle={toggleSelect}
+                onQuote={jumpTo}
+                onTitle={doors.openTitle}
+                onList={doors.openList}
+                onImage={(e, image) => {
+                  Keyboard.dismiss();
+                  setViewer({ e, image });
+                }}
+              />
+            )
+          }
+          onScrollToIndexFailed={(info) => {
+            /* الأصلُ خارجَ ما رُسم بعد: يُقرَّب بمتوسّط الارتفاع ثمّ يُعاد الطلب */
+            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+            setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewPosition: 0.5, animated: true }), 300);
+          }}
           contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingVertical: 16 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -382,10 +555,14 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           /* يلزم الزرُّ قاعَ الحقل وهو ينمو (`items-end`) */
           <View
             onLayout={(e) => {
-              if (kb === 0 && oneLine && !pic) setDockH(Math.round(e.nativeEvent.layout.height));
+              if (kb === 0 && oneLine && !pic && !replyTo) setDockH(Math.round(e.nativeEvent.layout.height));
             }}
             style={{ gap: 10, paddingHorizontal: PAGE_PAD, paddingTop: 10, paddingBottom: (kb > 0 ? kb : insets.bottom) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
           >
+            {/* 🆕 D-1403 — المقتبَسُ فوق الحقل كالواتس، و✕ يلغيه */}
+            {replyTo && replyRefOf(replyTo) ? (
+              <ReplyQuote r={replyRefOf(replyTo)!} peerName={name} onClear={() => setReplyTo(null)} />
+            ) : null}
             {/* 🆕 D-1387 — الصورةُ قبل الإرسال: مصغّرةٌ فوق الحقل و✕ يلغيها؛ ودائرةُ انتظارٍ عليها وهي تُرفع */}
             {pic ? (
               <View style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2 }}>
@@ -423,6 +600,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
               <Icon name="plus" size={18} color={tokens.fg} />
             </Pressable>
             <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
+              ref={inputRef}
               value={text}
               onChangeText={(v) => setText(v.slice(0, MSG_TEXT_MAX))}
               multiline
@@ -452,7 +630,11 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           <Pressable
             onPress={() => {
               setAttach(false);
-              void pickImage();
+              /* 🔴 D-1404 (مقطعُ مشعل على الآيفون، ١٥ أكتوبر: «صورة» تقفل الورقةَ ولا يفتح الاستوديو، والـGIF يعمل): iOS لا يعرض
+                 نافذةً من النظام والورقةُ (`Modal`) ما زالت تُغلق — يتجاهل الطلبَ بصمت. الاستوديو يُفتح بعد انتهاء
+                 إغلاقها (حركةُ الانزلاق ~٣٠٠ms)؛ والـGIF نافذتُنا نحن فلا يمسّه ذلك، وأندرويد لا قيدَ عليه */
+              if (Platform.OS === "ios") setTimeout(() => void pickImage(), 450);
+              else void pickImage();
             }}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}
           >
@@ -484,9 +666,15 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
       ) : null}
       {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer ? (
-        <Sheet title={t.msgPickImage} onClose={() => setViewer(null)} placement="center">
-          <Image source={{ uri: viewer.url, cacheKey: viewer.key }} style={{ width: "100%", aspectRatio: 3 / 4 }} contentFit="contain" cachePolicy="memory-disk" />
-        </Sheet>
+        <PhotoViewer
+          image={viewer.image}
+          who={viewer.e.mine ? t.convYou : name}
+          at={viewer.e.created_at}
+          caption={viewer.e.kind === "reply" ? viewer.e.body : ""}
+          onClose={() => setViewer(null)}
+          onReply={viewer.e.kind === "reply" && viewer.e.dm && !viewer.e.id.startsWith("tmp-") && (conv || person) ? () => beginReply(viewer.e) : undefined}
+          onError={(m) => say(m)}
+        />
       ) : null}
 
       {menu ? (
@@ -564,102 +752,227 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   );
 }
 
+/** 🆕 D-1401 — فاصلُ اليوم: شارةٌ صغيرةٌ وسطَ الخيط فوق أوّل رسالةٍ منه */
+function DayChip({ label }: { label: string }) {
+  const { tokens } = useApp();
+  return (
+    <View style={{ alignSelf: "center", marginVertical: 8, paddingHorizontal: 11, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: tokens.surface }}>
+      <Text size={12} muted>{label}</Text>
+    </View>
+  );
+}
+
+/** 🆕 D-1401 — حالةُ رسالتي: ساعةٌ وهي تُرسل · ✓ وصلت الخادم · ✓✓ قرأها صاحبُها — ورسالةُ الطرف الآخر بلا علامة */
+function tickOf(e: MsgEvent): "clock" | "check-line" | "check-double" | null {
+  if (!e.mine) return null;
+  if (e.id.startsWith("tmp-")) return "clock";
+  if (typeof e.read !== "boolean") return null;
+  return e.read ? "check-double" : "check-line";
+}
+
+/**
+ * 🆕 D-1401 — الوقتُ في زاوية الفقاعة كالواتس: سطرٌ صغيرٌ باهت (١١ مقابل ١٤ للنصّ) في الزاوية السفلى من جهة نهاية
+ * الكلام، **ويُحجز له مكانٌ في آخر سطرٍ** بمسافاتٍ لا تنكسر (`NBSP`) فلا يركب على النصّ؛ وإن لم يتّسع السطرُ نزلت
+ * الكلمةُ الأخيرةُ ومسافاتُها معاً فصار الوقتُ تحتها.
+ */
+function Meta({ e, onDark, onAccent }: { e: MsgEvent; onDark?: boolean; onAccent: boolean }) {
+  const { t, tokens } = useApp();
+  const tick = tickOf(e);
+  const ink = onDark ? "#fff" : onAccent ? tokens.onAccent : tokens.fg;
+  const label = tick === "check-double" ? t.msgRead : tick === "check-line" ? t.msgDelivered : tick === "clock" ? t.msgSending : undefined;
+  return (
+    <View accessible accessibilityLabel={label ? `${clockOf(e.created_at, t)} · ${label}` : clockOf(e.created_at, t)} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+      <Text size={11} color={ink} style={{ opacity: onDark ? 0.95 : 0.55 }}>{clockOf(e.created_at, t)}</Text>
+      {tick ? (
+        <View style={{ opacity: onDark ? 0.95 : tick === "check-double" ? 1 : 0.55 }}>
+          <Icon name={tick} size={tick === "clock" ? 11 : 14} color={ink} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+/** مكانُ الوقت في آخر السطر: عرضُ الساعة والعلامة بمسافاتٍ لا تنكسر */
+function metaPad(e: MsgEvent, t: ReturnType<typeof useApp>["t"]): string {
+  const n = Math.ceil(clockOf(e.created_at, t).length * 1.6) + (tickOf(e) ? 5 : 0) + 2;
+  return "\u00A0".repeat(n);
+}
+/** جهةُ الوقت: نهايةُ الكلام — يسارُ العربيّ ويمينُ الإنجليزيّ أيّاً كانت لغةُ الواجهة (`start`/`end` منطقيّتان فتُقلبان في RTL) */
+function metaSide(body: string): { end: number } | { start: number } {
+  const rtl = firstStrongRtl(body) ?? I18nManager.isRTL;
+  return rtl === I18nManager.isRTL ? { end: 10 } : { start: 10 };
+}
+
 /** فقاعةٌ واحدة: عملٌ مُشارَك (بطاقة) · قائمة · ردٌّ نصّيّ — والملاحظةُ فقاعةٌ تحت البطاقة (`ConvBubble`) */
 function Bubble({
   e,
+  peerName,
+  selecting,
+  selected,
+  flash,
+  onSelect,
+  onToggle,
+  onQuote,
   onTitle,
   onList,
   onImage,
 }: {
   e: MsgEvent;
+  peerName: string;
+  selecting: boolean;
+  selected: boolean;
+  flash: boolean;
+  onSelect: (e: MsgEvent) => void;
+  onToggle: (e: MsgEvent) => void;
+  onQuote: (id: string) => void;
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onList: (id: string) => void;
-  onImage: (img: { url: string; key: string }) => void;
+  onImage: (e: MsgEvent, img: { url: string; key: string }) => void;
 }) {
   const { t, tokens } = useApp();
   /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
   const [ratio, setRatio] = useState(4 / 3);
-  const side = { alignSelf: e.mine ? ("flex-end" as const) : ("flex-start" as const), maxWidth: "80%" as const, marginVertical: 5 };
-  const textBubble = (body: string) => (
-    <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: e.mine ? tokens.accent : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start" }}>
-      <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21 }}>{body}</Text>
+  const side = { alignSelf: e.mine ? ("flex-end" as const) : ("flex-start" as const), maxWidth: "80%" as const, marginVertical: 3 };
+  /* 🆕 D-1401 — اللمسةُ في وضع التحديد تضيف/تزيل؛ والضغطةُ الطويلةُ تبدأ التحديد — على الفقاعة كلِّها وعلى بطاقاتها */
+  const tap = (open: () => void) => () => (selecting ? onToggle(e) : open());
+  const hold = () => onSelect(e);
+  const quote =
+    e.kind === "reply" && e.reply ? (
+      <View style={{ marginBottom: 6 }}>
+        <ReplyQuote r={e.reply} onAccent={e.mine} peerName={peerName} onPress={tap(() => e.reply && e.reply.kind !== "gone" && onQuote(e.reply.id))} />
+      </View>
+    ) : null;
+  const textBubble = (body: string, withMeta: boolean, withQuote = false) => (
+    <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingTop: withQuote ? 6 : 7, paddingBottom: 7, backgroundColor: e.mine ? tokens.accent : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start", minWidth: withQuote ? 180 : undefined }}>
+      {withQuote ? quote : null}
+      <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21 }}>{withMeta ? body + metaPad(e, t) : body}</Text>
+      {withMeta ? (
+        <View style={[{ position: "absolute", bottom: 6 }, metaSide(body)]}>
+          <Meta e={e} onAccent={e.mine} />
+        </View>
+      ) : null}
     </View>
   );
-  /* 🆕 D-1387 — GIF أو صورةٌ في إطارٍ بلون صاحبها (٣ حول الصورة)، والتعليقُ تحتها داخل الإطار؛ الصورةُ تُفتح بملء الورقة */
+
+  let inner: React.ReactNode;
+  /* 🆕 D-1387 — GIF أو صورةٌ في إطارٍ بلون صاحبها (٣ حول الصورة)، والتعليقُ تحتها داخل الإطار؛ الصورةُ تُفتح بملء الشاشة */
   if (e.kind === "reply" && (e.gif_id || e.image)) {
     const img = e.image ?? null;
     const w = 234;
-    return (
+    inner = (
       <View style={[side, { maxWidth: w + 6 }]}>
         <Pressable
-          disabled={!img}
-          onPress={() => img && onImage(img)}
+          onPress={tap(() => img && onImage(e, img))}
+          onLongPress={hold}
+          delayLongPress={300}
           accessibilityRole={img ? "imagebutton" : undefined}
           accessibilityLabel={img ? t.msgPickImage : "GIF"}
           style={{ padding: 3, borderRadius: 16, backgroundColor: e.mine ? tokens.accent : tokens.surface2 }}
         >
-          {e.gif_id ? (
-            <View style={{ width: 220, height: 165, borderRadius: 13, overflow: "hidden", backgroundColor: tokens.surface }}>
-              <GifImage id={e.gif_id} />
-            </View>
-          ) : img ? (
-            <Image
-              source={{ uri: img.url, cacheKey: img.key }}
-              onLoad={(ev) => {
-                const { width, height } = ev.source;
-                if (width > 0 && height > 0) setRatio(Math.max(0.6, Math.min(2, width / height)));
-              }}
-              style={{ width: w, aspectRatio: ratio, borderRadius: 13, backgroundColor: tokens.surface }}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-          ) : null}
+          {quote ? <View style={{ padding: 3, paddingBottom: 0, maxWidth: w }}>{quote}</View> : null}
+          <View>
+            {e.gif_id ? (
+              <View style={{ width: 220, height: 165, borderRadius: 13, overflow: "hidden", backgroundColor: tokens.surface }}>
+                <GifImage id={e.gif_id} />
+              </View>
+            ) : img ? (
+              <Image
+                source={{ uri: img.url, cacheKey: img.key }}
+                onLoad={(ev) => {
+                  const { width, height } = ev.source;
+                  if (width > 0 && height > 0) setRatio(Math.max(0.6, Math.min(2, width / height)));
+                }}
+                style={{ width: w, aspectRatio: ratio, borderRadius: 13, backgroundColor: tokens.surface }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            ) : null}
+            {/* بلا تعليق: الوقتُ على الصورة نفسِها في شريطٍ غامقٍ صغير — لا يصغّرها سطرٌ تحتها */}
+            {!e.body ? (
+              <View style={{ position: "absolute", bottom: 7, end: 7, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.5)" }}>
+                <Meta e={e} onDark onAccent={false} />
+              </View>
+            ) : null}
+          </View>
           {e.body ? (
-            <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21, paddingHorizontal: 11, paddingTop: 6, paddingBottom: 4, maxWidth: w }}>
-              {e.body}
-            </Text>
+            <View>
+              <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21, paddingHorizontal: 11, paddingTop: 6, paddingBottom: 6, maxWidth: w }}>
+                {e.body + metaPad(e, t)}
+              </Text>
+              <View style={[{ position: "absolute", bottom: 6 }, metaSide(e.body)]}>
+                <Meta e={e} onAccent={e.mine} />
+              </View>
+            </View>
           ) : null}
         </Pressable>
       </View>
     );
-  }
-  if (e.kind === "reply") return <View style={side}>{textBubble(e.body)}</View>;
-
-  const card = (onPress: () => void, art: React.ReactNode, title: string, sub: string) => (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="link"
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, padding: 8, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: pressed ? tokens.surface2 : tokens.surface, minWidth: 180 })}
-    >
-      {art}
-      <View style={{ flexShrink: 1, minWidth: 0 }}>
-        <Text size={14} weight="700" numberOfLines={1}>{title}</Text>
-        <Text size={12} muted>{sub}</Text>
-      </View>
-    </Pressable>
-  );
-  const art = (child: React.ReactNode) => (
-    <View style={{ width: 40, aspectRatio: 2 / 3, borderRadius: radius.sm, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>{child}</View>
-  );
-
-  if (e.kind === "list") {
-    return (
-      <View style={[side, { gap: 4 }]}>
-        {card(() => onList(e.list_id), art(<Icon name="list" size={15} color={tokens.muted} />), e.list_name ?? "—", e.item_count ? `${t.convListBadge} · ${t.personWorksCount(e.item_count)}` : t.convListBadge)}
-        {e.note ? textBubble(e.note) : null}
+  } else if (e.kind === "reply") {
+    inner = (
+      <Pressable onPress={selecting ? () => onToggle(e) : undefined} onLongPress={hold} delayLongPress={300} style={side}>
+        {textBubble(e.body, true, !!e.reply)}
+      </Pressable>
+    );
+  } else {
+    const card = (onPress: () => void, art: React.ReactNode, title: string, sub: string) => (
+      <Pressable
+        onPress={tap(onPress)}
+        onLongPress={hold}
+        delayLongPress={300}
+        accessibilityRole="link"
+        style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, padding: 8, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: pressed ? tokens.surface2 : tokens.surface, minWidth: 180 })}
+      >
+        {art}
+        <View style={{ flexShrink: 1, minWidth: 0 }}>
+          <Text size={14} weight="700" numberOfLines={1}>{title}</Text>
+          <Text size={12} muted>{sub}</Text>
+        </View>
+      </Pressable>
+    );
+    const art = (child: React.ReactNode) => (
+      <View style={{ width: 40, aspectRatio: 2 / 3, borderRadius: radius.sm, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>{child}</View>
+    );
+    /* البطاقةُ بلا ملاحظة: الوقتُ سطرٌ صغيرٌ تحتها من جهة صاحبها */
+    const tail = e.note ? (
+      <Pressable onPress={selecting ? () => onToggle(e) : undefined} onLongPress={hold} delayLongPress={300}>
+        {textBubble(e.note, true)}
+      </Pressable>
+    ) : (
+      <View style={{ alignSelf: e.mine ? "flex-end" : "flex-start", paddingHorizontal: 6 }}>
+        <Meta e={e} onAccent={false} />
       </View>
     );
+    if (e.kind === "list") {
+      inner = (
+        <View style={[side, { gap: 4 }]}>
+          {card(() => onList(e.list_id), art(<Icon name="list" size={15} color={tokens.muted} />), e.list_name ?? "—", e.item_count ? `${t.convListBadge} · ${t.personWorksCount(e.item_count)}` : t.convListBadge)}
+          {tail}
+        </View>
+      );
+    } else {
+      const poster = posterFor(e.poster_path, 40);
+      inner = (
+        <View style={[side, { gap: 4 }]}>
+          {card(
+            () => onTitle(e.media_type, e.tmdb_id),
+            art(poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="film" size={13} color={tokens.muted} />),
+            e.title ?? "—",
+            e.media_type === "tv" ? t.typeSeries : t.typeMovie,
+          )}
+          {tail}
+        </View>
+      );
+    }
   }
-  const poster = posterFor(e.poster_path, 40);
+  /* 🆕 D-1401 — المحدَّدةُ يتلوّن سطرُها كلُّه كالواتس (لونُ التطبيق خفيفاً)؛ والأصلُ الذي نزل إليه الاقتباسُ يومض مثلَه */
   return (
-    <View style={[side, { gap: 4 }]}>
-      {card(
-        () => onTitle(e.media_type, e.tmdb_id),
-        art(poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="film" size={13} color={tokens.muted} />),
-        e.title ?? "—",
-        e.media_type === "tv" ? t.typeSeries : t.typeMovie,
-      )}
-      {e.note ? textBubble(e.note) : null}
-    </View>
+    <Pressable
+      onPress={selecting ? () => onToggle(e) : undefined}
+      onLongPress={hold}
+      delayLongPress={300}
+      accessibilityState={selecting ? { selected } : undefined}
+      style={{ marginHorizontal: -PAGE_PAD, paddingHorizontal: PAGE_PAD, paddingVertical: 2, backgroundColor: selected || flash ? `${tokens.accent}2e` : "transparent" }}
+    >
+      {inner}
+    </Pressable>
   );
 }
