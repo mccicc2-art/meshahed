@@ -5,9 +5,9 @@ on:
   workflow_dispatch: {}
 jobs:
   submit_internal:
-    name: Submit build 78 to Play internal testing
+    name: Submit build 79 to Play internal testing
     type: submit
     params:
       platform: android
-      build_id: 715ef36a-9b42-4392-8915-46232a083d75
+      build_id: 17c7d647-14a3-4cae-ae21-845670252146
       profile: internal
