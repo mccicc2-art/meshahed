@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
-import { getTv } from "@/lib/tmdb";
+import { getMovie, getTv } from "@/lib/tmdb";
 import { airedEpisodeCount, nextUnwatchedEpisode } from "@/core/progress";
 import { episodeKey } from "@/core/keys";
 import { getDict, type Locale } from "@/core/i18n";
@@ -197,6 +197,107 @@ export function widgetMarkRoute(watched: boolean) {
         const r = await widgetMark(who, input, watched);
         if (!r) return fail("not_found");
         return ok(r);
+      },
+      { open: true },
+    );
+}
+
+/* ───────── 🆕 الدفعةُ الثانية (W35 · W37): فيلمٌ شاهدتُه · «ابدأ» · التقييم — وتراجعُ كلٍّ منها ───────── */
+
+/**
+ * ✓ فيلم أو تراجعٌ عنه — `toggleMovieWatched` نفسُه بهويّة الرمز. الفيلمُ يأتي من «للمشاهدة» أو «فيلم الليلة»،
+ * و«فيلم الليلة» قد يكون **اقتراحاً ليس في المكتبة** (W42) — فلا يُشترط أن يكون متابَعاً كالمسلسل؛
+ * ويُتحقّق أنّه فيلمٌ حقيقيٌّ في TMDB (ومنه المدّة)، فلا يُكتب رقمٌ عشوائيّ. أسوأُ ما يفعله رمزٌ مسروقٌ هنا
+ * «شاهدتُ فيلماً» يتراجع عنه صاحبُه بلمسة — بلا قراءةٍ ولا حذفٍ لغير ما يكتبه.
+ */
+export async function widgetMovie(who: { userId: string }, movieTmdbId: number, watched: boolean): Promise<boolean> {
+  const db = await createServiceClient();
+  if (watched) {
+    const m = await getMovie(movieTmdbId).catch(() => null);
+    if (!m) return false;
+    const { error } = await db.from("watched_movies").upsert(
+      { user_id: who.userId, movie_tmdb_id: movieTmdbId, runtime: m.runtime ?? null },
+      { onConflict: "user_id,movie_tmdb_id" },
+    );
+    if (error) throw new Error("widget movie failed");
+  } else {
+    const { error } = await db.from("watched_movies").delete().match({ user_id: who.userId, movie_tmdb_id: movieTmdbId });
+    if (error) throw new Error("widget unmovie failed");
+  }
+  revalidatePath("/");
+  revalidatePath("/stats");
+  revalidatePath(`/movie/${movieTmdbId}`);
+  return true;
+}
+
+/**
+ * «▶ ابدأ» لمسلسلٍ في «للمشاهدة» أو تراجعٌ عنه — `setWatchState` نفسُه: البدءُ `started`، والتراجعُ فراغ
+ * (D-1281: إيقافٌ بلا حلقةٍ تراجعٌ عن «ابدأ»). **المتابَعُ وحدَه** — كالحلقات.
+ */
+export async function widgetStart(who: { userId: string }, showTmdbId: number, start: boolean): Promise<boolean> {
+  const db = await createServiceClient();
+  const { data, error } = await db
+    .from("follows")
+    .update({ watch_state: start ? "started" : null })
+    .match({ user_id: who.userId, tmdb_id: showTmdbId, media_type: "tv" })
+    .select("tmdb_id");
+  if (error) throw new Error("widget start failed");
+  if (!data?.length) return false;
+  revalidatePath("/");
+  revalidatePath("/library");
+  return true;
+}
+
+/**
+ * ★ تقييمُ فيلمٍ من شريط الودجت (W37، قرارُ أحمد «١ ب»: شريطٌ تحت البحث). يكتب الرقمَ والعنوانَ والملصق
+ * **ولا يلمس الريفيو ولا علامةَ الحرق**: حقلٌ غائبٌ لا يُكتب (D-152) — من كتب رأياً في التطبيق لا يمحوه نجمٌ في الودجت.
+ */
+export async function widgetRate(who: { userId: string }, movieTmdbId: number, rating: number): Promise<boolean> {
+  const m = await getMovie(movieTmdbId).catch(() => null);
+  if (!m) return false;
+  const db = await createServiceClient();
+  const { error } = await db.from("ratings").upsert(
+    {
+      user_id: who.userId,
+      tmdb_id: movieTmdbId,
+      media_type: "movie",
+      rating,
+      title: String(m.title ?? "").slice(0, 300),
+      /* من TMDB نفسِه لا من الطلب — فلا تنقيةَ هنا */
+      poster_path: m.poster_path ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,tmdb_id,media_type" },
+  );
+  if (error) throw new Error("widget rate failed");
+  revalidatePath(`/movie/${movieTmdbId}`);
+  revalidatePath("/");
+  return true;
+}
+
+type ActionKind = "movie" | "start" | "rate";
+
+/**
+ * `POST /api/v1/widget/movie|start|rate` — مسارٌ واحدٌ لكلِّ فعل، والهويّةُ من الرمز وحدَه كـ`widgetMarkRoute`،
+ * ودلوُ الحدِّ نفسُه (`wmark`): نقراتُ الودجت كلُّها من جيبٍ واحد.
+ * - `movie` `{ movieTmdbId, watched }` · `start` `{ showTmdbId, start }` · `rate` `{ movieTmdbId, rating: 1..10 }`
+ * - الردُّ `{ done: true }`؛ و`not_found` = ليس فيلماً حقيقيّاً، أو مسلسلاً لا يتابعه صاحبُ الرمز.
+ */
+export function widgetActionRoute(kind: ActionKind) {
+  return (req: NextRequest) =>
+    handle(
+      async () => {
+        const who = await widgetUser(req.headers.get("authorization"));
+        if (!who) return fail("unauthenticated");
+        const rl = limited(`wmark:${who.userId}`, 60, 60_000);
+        if (rl) return rl;
+        const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+        let done = false;
+        if (kind === "movie") done = await widgetMovie(who, intIn(b?.movieTmdbId, 1, 100_000_000), b?.watched !== false);
+        else if (kind === "start") done = await widgetStart(who, intIn(b?.showTmdbId, 1, 100_000_000), b?.start !== false);
+        else done = await widgetRate(who, intIn(b?.movieTmdbId, 1, 100_000_000), intIn(b?.rating, 1, 10));
+        if (!done) return fail("not_found");
+        return ok({ done: true });
       },
       { open: true },
     );

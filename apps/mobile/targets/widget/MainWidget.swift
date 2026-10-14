@@ -16,10 +16,23 @@ import WidgetKit
 struct V2Feed {
   let feed: WFeed
   let raw: [String: Any]
+  /** 🆕 W37 — ما شوهد أو بدأ من الودجت للتوّ (يُخفى حتى تصل خلاصةٌ أحدث)، وشريطُ التقييم القائم */
+  var hidden: Set<Int> = []
+  var rate: [String: Any]? = nil
 
   var v2: [String: Any] { raw["v2"] as? [String: Any] ?? [:] }
   func s2(_ k: String) -> String { (v2["strings"] as? [String: Any])?[k] as? String ?? "" }
-  func arr(_ k: String) -> [[String: Any]] { v2[k] as? [[String: Any]] ?? [] }
+  func arr(_ k: String) -> [[String: Any]] {
+    let a = v2[k] as? [[String: Any]] ?? []
+    return k == "towatch" ? a.filter { !hidden.contains(Int(num($0["id"]) ?? 0)) } : a
+  }
+  /** «فيلم الليلة» بلا ما شوهد للتوّ — فيأتي الفيلمُ التالي */
+  var tonight: [WMovie] { feed.tonight.filter { !hidden.contains($0.id) } }
+  /** نصٌّ من الخلاصة، وبديلُه للخلاصات الأقدم من الدفعة الثانية */
+  func s2or(_ k: String, _ ar: String, _ en: String) -> String {
+    let v = s2(k)
+    return v.isEmpty ? (feed.locale.identifier.hasPrefix("en") ? en : ar) : v
+  }
   var lapsed: Bool { v2["lapsed"] as? Bool ?? false }
   var layouts: [[String: Any]] { ((raw["w2"] as? [String: Any])?["ios"] as? [[String: Any]]) ?? [] }
 
@@ -66,7 +79,7 @@ extension FeedStore {
     guard let feed = try? JSONDecoder().decode(WFeed.self, from: data) else { return .none }
     /* خلاصةٌ من تطبيقٍ أقدم (بلا `w2`) ⇒ «افتح لوبز» حتى يكتبها التطبيقُ الجديد */
     guard raw["w2"] != nil, raw["v2"] != nil else { return .none }
-    return .ready(V2Feed(feed: feed, raw: raw))
+    return .ready(V2Feed(feed: feed, raw: raw, hidden: WState.hidden(), rate: feed.check ? WState.rate() : nil))
   }
 }
 
@@ -130,8 +143,13 @@ struct MainProvider: AppIntentTimelineProvider {
 
   /** الآن، ثمّ منتصفُ الليل — «اليوم» وفيلمُ اليوم يتبدّلان بلا فتح التطبيق (W42) */
   func timeline(for configuration: LayoutConfigIntent, in context: Context) async -> Timeline<MainEntry> {
+    WState.settle()
     let now = Date()
     let state = FeedStore.loadV2()
+    /* 🆕 W37 — «↶ تراجع» قائم: رسمٌ جديدٌ عند انقضاء الخمس ثوانٍ (قد يتأخّر ثانيةً أو اثنتين في iOS) */
+    if let end = WState.undoEnds() {
+      return Timeline(entries: [MainEntry(date: now, state: state, layout: configuration.layout?.id)], policy: .after(end))
+    }
     let id = configuration.layout?.id
     let cal = Calendar.current
     let midnight = cal.startOfDay(for: cal.date(byAdding: .day, value: 1, to: now) ?? now)
@@ -189,12 +207,18 @@ struct MainView: View {
       } else {
         /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ على هذا الجهاز (أكبرُ مفتاحٍ لا يزيد عليه) */
         GeometryReader { g in
-          let fit = Self.byHeight(r["heights"] as? [String: Any], g.size.height)
+          /* 🆕 W37 — شريطُ التقييم يأخذ مكانه (٨٠ وفاصل) فتُحسم الصفوفُ لما بقي؛ وإن لم يبقَ ما يتّسع لصفٍّ فالشريطُ وحدَه */
+          let room = f.rate != nil ? g.size.height - 93 : g.size.height
+          let fit = room < 130 && f.rate != nil ? nil : Self.byHeight(r["heights"] as? [String: Any], room)
           let fitLocked = (r["locked"] as? [String: Any])?[(fit?["size"] as? String) ?? sizeName] as? Bool ?? false
           if fitLocked {
             LockCard(f: f)
           } else {
-            RowsView(f: f, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date)
+            if f.rate != nil && fit == nil {
+              RowsView(f: f, rows: [], opts: opts, now: entry.date, rate: f.rate)
+            } else {
+              RowsView(f: f, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date, rate: f.rate)
+            }
           }
         }
       }
@@ -334,7 +358,7 @@ enum Sections {
 
   /** W42 — فيلمُ اليوم يتبدّل وحدَه كلَّ يوم، و«فيلم آخر» يقلّب فوقه (`tonightIndex`) */
   static func tonight(_ f: V2Feed, now: Date) -> WMovie? {
-    let all = f.feed.tonight
+    let all = f.tonight
     guard !all.isEmpty else { return nil }
     let day = Int((now.timeIntervalSince1970 + Double(TimeZone.current.secondsFromGMT(for: now))) / 86_400)
     let n = day + (FeedStore.defaults?.integer(forKey: "tonightIndex") ?? 0)
@@ -390,16 +414,69 @@ enum Sections {
 
 /* ───────── الصفوف ───────── */
 
+/** 🆕 W37 · «١ ب» — شريطُ «قيّم الفيلم» تحت البحث (٨٠، `rateStrip`): عشرُ نجومٍ كالتطبيق و«تخطَّ»، يبقى حتى يقيّم أو يتخطّى */
+struct RateStrip: View {
+  let f: V2Feed
+  let rate: [String: Any]
+
+  var body: some View {
+    let id = rate["id"] as? Int ?? 0
+    let title = rate["title"] as? String ?? ""
+    let poster = (rate["poster"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    VStack(spacing: 2) {
+      HStack(spacing: 8) {
+        Poster(f: f, path: poster, w: 22, h: 33, r: 3)
+        Text(f.s2or("rate", "قيّم %s", "Rate %s").replacingOccurrences(of: "%s", with: title))
+          .font(.system(size: 13, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+        Spacer(minLength: 0)
+        Button(intent: SkipRateIntent()) { WChip(icon: nil, text: f.s2or("skip", "تخطَّ", "Skip")) }.buttonStyle(.plain)
+      }
+      .frame(height: 34)
+      HStack(spacing: 0) {
+        ForEach(1...10, id: \.self) { n in
+          Button(intent: RateMovieIntent(id: id, rating: n)) {
+            Image(systemName: "star.fill").font(.system(size: 17)).foregroundStyle(Color(white: 0.42))
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+          }
+          .buttonStyle(.plain)
+        }
+      }
+    }
+    .padding(.horizontal, 10).padding(.vertical, 7)
+    .frame(height: 80)
+    .background(RoundedRectangle(cornerRadius: 12).fill(WColor.surface))
+  }
+}
+
 struct RowsView: View {
   let f: V2Feed
   let rows: [[String: Any]]
   let opts: [String: Any]
   let now: Date
+  /** شريطُ التقييم القائم — تحت البحث إن كان أوّلَ صفّ، وإلّا في الأعلى */
+  var rate: [String: Any]? = nil
+
+  var divider: some View {
+    VStack(spacing: 0) {
+      Spacer(minLength: 6)
+      Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+      Spacer(minLength: 6)
+    }
+  }
 
   var body: some View {
     /* ما يزيد من الارتفاع يتوزّع على الفواصل — لا كتلةَ سوداءَ تحت آخر قسم */
+    let afterSearch = (rows.first?["type"] as? String) == "search"
     VStack(alignment: .leading, spacing: 0) {
+      if let rate, !afterSearch {
+        RateStrip(f: f, rate: rate)
+        if !rows.isEmpty { divider.frame(height: 13) }
+      }
       ForEach(Array(rows.enumerated()), id: \.offset) { pair in
+        if pair.offset == 1, afterSearch, let rate {
+          divider.frame(height: 13)
+          RateStrip(f: f, rate: rate)
+        }
         if pair.offset > 0 {
           /* 🆕 فاصلٌ ١٣ (`gap`) — والزائدُ القليلُ (أقلُّ من صفّ، المحرّكُ كبّر الصفوف قبله) يتوزّع هنا */
           VStack(spacing: 0) {
@@ -410,6 +487,10 @@ struct RowsView: View {
         }
         RowView(f: f, row: pair.element, opts: opts, now: now)
           .frame(height: CGFloat(num(pair.element["h"]) ?? 44), alignment: .top)
+      }
+      if rows.count == 1, afterSearch, let rate {
+        divider.frame(height: 13)
+        RateStrip(f: f, rate: rate)
       }
       if rows.count < 2 { Spacer(minLength: 0) }
     }
@@ -598,7 +679,9 @@ struct ItemRow: View {
           Poster(f: f, path: item.t?.poster_path, w: 32, h: 48, r: 4)
           VStack(alignment: .leading, spacing: 1) {
             Text(item.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
-            if let s = item.sub, !s.isEmpty { Text(s).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1) }
+            if let done = doneLine {
+              Text(done).font(.system(size: 12, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1)
+            } else if let s = item.sub, !s.isEmpty { Text(s).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1) }
           }
           Spacer(minLength: 0)
           if let time = item.time { Text(time).font(.system(size: 11.5)).foregroundStyle(WColor.muted).lineLimit(1) }
@@ -606,14 +689,31 @@ struct ItemRow: View {
       }
       /* W35 — «▶ ابدأ» للمسلسل والأنمي و«✓ شاهدته» للفيلم */
       if key == "tw", let t = item.t, let raw = item.raw {
-        if raw["action"] as? String == "watched" {
-          Link(destination: WLink.title(t)) { WChip(icon: "checkmark", text: f.s2("watched")) }
+        let movie = raw["action"] as? String == "watched"
+        if f.feed.check && WState.undoOn(movie ? "movie" : "start", t.id) {
+          Button(intent: UndoActionIntent()) { WChip(icon: "arrow.uturn.backward", text: f.s2or("undo", "تراجع", "Undo")) }.buttonStyle(.plain)
+        } else if movie {
+          if f.feed.check {
+            Button(intent: MarkMovieIntent(id: t.id, name: t.title, poster: t.poster_path)) { WChip(icon: "checkmark", text: f.s2("watched")) }.buttonStyle(.plain)
+          } else {
+            Link(destination: WLink.title(t)) { WChip(icon: "checkmark", text: f.s2("watched")) }
+          }
+        } else if f.feed.check {
+          Button(intent: StartShowIntent(id: t.id)) { WChip(icon: "play.fill", text: f.feed.s("start")) }.buttonStyle(.plain)
         } else {
           Link(destination: WLink.start(t, action: "start")) { WChip(icon: "play.fill", text: f.feed.s("start")) }
         }
       }
     }
     .frame(height: 50)
+  }
+
+  /** W37 — «✓ شاهدته/بدأته» خمسَ ثوانٍ بعد اللمسة */
+  var doneLine: String? {
+    guard key == "tw", f.feed.check, let t = item.t, let raw = item.raw else { return nil }
+    let movie = raw["action"] as? String == "watched"
+    guard WState.undoOn(movie ? "movie" : "start", t.id) else { return nil }
+    return "✓ " + (movie ? f.s2("watched") : f.s2or("started", "بدأته", "Started"))
   }
 }
 
@@ -636,12 +736,30 @@ struct TonightRow: View {
   var chips: some View {
     HStack(spacing: 6) {
       if let m = Sections.tonight(f, now: now) {
-        Link(destination: WLink.title(m.asTitle)) { WChip(icon: "checkmark", text: f.s2("watched")) }
+        if f.feed.check && WState.undoOn("movie", m.id) {
+          /* W37 — «↶ تراجع» مكانَ الرقاقتين خمسَ ثوانٍ، ثمّ فيلمٌ آخر وشريطُ التقييم */
+          Button(intent: UndoActionIntent()) { WChip(icon: "arrow.uturn.backward", text: f.s2or("undo", "تراجع", "Undo")) }.buttonStyle(.plain)
+        } else if f.feed.check {
+          Button(intent: MarkMovieIntent(id: m.id, name: m.title, poster: m.poster_path)) { WChip(icon: "checkmark", text: f.s2("watched")) }.buttonStyle(.plain)
+        } else {
+          Link(destination: WLink.title(m.asTitle)) { WChip(icon: "checkmark", text: f.s2("watched")) }
+        }
       }
-      if f.feed.tonight.count > 1 {
+      if f.tonight.count > 1 && !undoing {
         Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: f.s2("another")) }.buttonStyle(.plain)
       }
     }
+  }
+
+  var undoing: Bool {
+    guard f.feed.check, let m = Sections.tonight(f, now: now) else { return false }
+    return WState.undoOn("movie", m.id)
+  }
+
+  /** سطرُ الفيلم الثاني — أو «✓ شاهدته» بالأخضر الخافت خمسَ ثوانٍ */
+  func subLine(_ m: WMovie, color: Color) -> some View {
+    let done = f.feed.check && WState.undoOn("movie", m.id)
+    return Text(done ? "✓ " + f.s2("watched") : Sections.tonightSub(m, f)).font(.system(size: 11)).foregroundStyle(done ? WColor.success : color).lineLimit(1)
   }
 
   func wideCard(_ m: WMovie) -> some View {
@@ -655,7 +773,7 @@ struct TonightRow: View {
         HStack(alignment: .bottom, spacing: 8) {
           VStack(alignment: .leading, spacing: 2) {
             Text(m.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
-            Text(Sections.tonightSub(m, f)).font(.system(size: 11)).foregroundStyle(Color(white: 0.84)).lineLimit(1)
+            subLine(m, color: Color(white: 0.84))
           }
           Spacer(minLength: 0)
           chips
@@ -675,7 +793,7 @@ struct TonightRow: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(f.feed.s("tonightTitle")).font(.system(size: 10.5, weight: .bold)).foregroundStyle(WColor.accent)
         Text(m.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-        Text(Sections.tonightSub(m, f)).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
+        subLine(m, color: WColor.muted)
         Spacer(minLength: 0)
         chips
       }
@@ -758,12 +876,20 @@ struct PosterColumn: View {
   let now: Date
   var buttons: Bool = true
 
+  /** الزرُّ الدائريُّ الرماديّ (W36) */
+  func circle(_ icon: String) -> some View {
+    Image(systemName: icon).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 28, height: 28)
+      .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
+      .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       if key == "tonight" {
         SecHeader(title: Sections.title(f, key), link: nil)
         if let m = Sections.tonight(f, now: now) {
-          column(t: m.asTitle, meta: Sections.tonightSub(m, f), cycle: buttons && f.feed.tonight.count > 1, action: buttons ? "watched" : "")
+          column(t: m.asTitle, meta: Sections.tonightSub(m, f), cycle: buttons && f.tonight.count > 1 && !(f.feed.check && WState.undoOn("movie", m.id)), action: buttons ? "watched" : "")
         } else {
           Text(f.feed.s("noTowatchMovies")).font(.system(size: 11)).foregroundStyle(WColor.muted)
         }
@@ -791,15 +917,23 @@ struct PosterColumn: View {
           }
           Spacer(minLength: 0)
           Text(t.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-          if !meta.isEmpty { Text(meta).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(2).padding(.top, 3) }
+          let movie = action == "watched"
+          let undoing = !action.isEmpty && f.feed.check && WState.undoOn(movie ? "movie" : "start", t.id)
+          if undoing {
+            /* W37 — «✓ شاهدته/بدأته» و«↶ تراجع» خمسَ ثوانٍ */
+            Text("✓ " + (movie ? f.s2("watched") : f.s2or("started", "بدأته", "Started"))).font(.system(size: 12, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1).padding(.top, 3)
+          } else if !meta.isEmpty { Text(meta).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(2).padding(.top, 3) }
           Spacer(minLength: 0)
-          if !action.isEmpty {
-          Link(destination: action == "watched" ? WLink.title(t) : WLink.start(t, action: "start")) {
-            Image(systemName: action == "watched" ? "checkmark" : "play.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
-              .frame(width: 28, height: 28)
-              .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
-              .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
-          }
+          if undoing {
+            Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)
+          } else if !action.isEmpty && f.feed.check {
+            if movie {
+              Button(intent: MarkMovieIntent(id: t.id, name: t.title, poster: t.poster_path)) { circle("checkmark") }.buttonStyle(.plain)
+            } else {
+              Button(intent: StartShowIntent(id: t.id)) { circle("play.fill") }.buttonStyle(.plain)
+            }
+          } else if !action.isEmpty {
+            Link(destination: movie ? WLink.title(t) : WLink.start(t, action: "start")) { circle(movie ? "checkmark" : "play.fill") }
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

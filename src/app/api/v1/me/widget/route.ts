@@ -382,6 +382,11 @@ export async function GET(req: NextRequest) {
           plusLapsedSub: t.widgetPlusLapsedSub,
           subscribe: t.widgetSubscribe,
           renew: t.widgetRenew,
+          /* 🆕 الدفعةُ الثانية: شريطُ التقييم و«بدأته» و«تراجع» (W37) */
+          rate: t.widgetRate,
+          skip: t.widgetSkip,
+          started: t.widgetStarted,
+          undo: t.undoWatched,
         },
       };
 

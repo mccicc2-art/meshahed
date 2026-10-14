@@ -2544,6 +2544,10 @@ const ar = {
   widgetPlusLapsedSub: "تخصيصك محفوظ — يرجع كما هو أول ما تجدّد",
   widgetSubscribe: "اشترك",
   widgetRenew: "جدّد الاشتراك",
+  /** 🆕 شريطُ التقييم في الودجت بعد «شاهدته» (W37 · «١ ب») — `%s` اسمُ الفيلم */
+  widgetRate: "قيّم %s",
+  widgetSkip: "تخطَّ",
+  widgetStarted: "بدأته",
   widgetLayoutDefault: "الرئيسي",
   /* شاشةُ «ودجت لوبز» في التطبيق */
   widgetScreenTitle: "ودجت لوبز",
@@ -4367,6 +4371,9 @@ const en: Dict = {
   widgetPlusLapsedSub: "Your setup is saved — it comes back when you renew",
   widgetSubscribe: "Subscribe",
   widgetRenew: "Renew",
+  widgetRate: "Rate %s",
+  widgetSkip: "Skip",
+  widgetStarted: "Started",
   widgetLayoutDefault: "Main",
   widgetScreenTitle: "Loopz widget",
   widgetSizeSmall: "Small",

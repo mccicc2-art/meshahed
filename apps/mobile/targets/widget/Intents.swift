@@ -56,9 +56,9 @@ struct CycleTonightIntent: AppIntent {
   }
 }
 
-/* ====== ✓ (W14 — مخفيٌّ حتى الدفعة الثانية) ======
- * 🔑 **رمزٌ خاصٌّ لا جلسة** (`widget/token` في الحاوية): لا يقدر إلّا على «علّم حلقة» و«تراجع عنها».
- * بلا رمزٍ لا شيء — والخادمُ يكتب `check: false` في هذا البناء فالزرُّ لا يُرسم أصلاً. */
+/* ====== أفعالُ الودجت برمزه الخاصّ (W14 · W35 · W37 — الدفعةُ الثانية) ======
+ * 🔑 **رمزٌ خاصٌّ لا جلسة** (`widget/token` في الحاوية): حلقة · فيلم · «ابدأ» · تقييم، وتراجعُ كلٍّ منها — لا قراءة ولا تجديدَ جلسة.
+ * بلا رمزٍ لا شيء: الخادمُ يكتب `check: false` فتبقى اللمسةُ تفتح العمل. */
 
 enum MarkAPI {
   static let base = "https://loopztv.com"
@@ -69,17 +69,22 @@ enum MarkAPI {
     return t.isEmpty ? nil : t
   }
 
-  /** الحلقةُ التالية من الردّ تُكتب في الملفّ مكانَ القديمة — `nil` = أنهى المتاح فيخرج من الصفّ */
-  static func send(_ path: String, show: Int, season: Int, episode: Int) async -> Bool {
-    guard let token = token(), let url = URL(string: base + path) else { return false }
+  /** نداءٌ برمز الودجت — `data` الردّ، أو `nil` لأيِّ فشل */
+  static func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+    guard let token = token(), let url = URL(string: base + path) else { return nil }
     var req = URLRequest(url: url, timeoutInterval: 8)
     req.httpMethod = "POST"
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
     req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    req.httpBody = try? JSONSerialization.data(withJSONObject: ["showTmdbId": show, "season": season, "episode": episode])
-    guard let (data, res) = try? await URLSession.shared.data(for: req), let http = res as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return false }
-    let next = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["data"] as? [String: Any]
-    apply(show: show, next: next?["next"] as? [String: Any])
+    req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    guard let (data, res) = try? await URLSession.shared.data(for: req), let http = res as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+    return ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["data"] as? [String: Any] ?? [:]
+  }
+
+  /** ✓ حلقةٍ أو تراجعٌ عنها، والحلقةُ التالية من الردّ تُكتب في الملفّ مكانَ القديمة */
+  static func send(_ path: String, show: Int, season: Int, episode: Int) async -> Bool {
+    guard let data = await post(path, ["showTmdbId": show, "season": season, "episode": episode]) else { return false }
+    apply(show: show, next: data["next"] as? [String: Any])
     return true
   }
 
@@ -89,6 +94,8 @@ enum MarkAPI {
           var root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
           var cont = root["continue"] as? [String: Any],
           let items = cont["items"] as? [[String: Any]] else { return }
+    /* ⚠️ التعديلُ المحلّيُّ لا يُعدّ «خلاصةً أحدث» — طابعُ الملفّ يُعاد كما كان فلا يُظهر ما أُخفي */
+    let stamp = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
     var out: [[String: Any]] = []
     for var it in items {
       if (it["id"] as? Int) != show { out.append(it); continue }
@@ -101,6 +108,84 @@ enum MarkAPI {
     cont["items"] = out
     root["continue"] = cont
     if let d = try? JSONSerialization.data(withJSONObject: root) { try? d.write(to: url, options: .atomic) }
+    if let stamp { try? FileManager.default.setAttributes([.modificationDate: stamp], ofItemAtPath: url.path) }
+  }
+}
+
+/**
+ * 🆕 **حالةُ ما بعد اللمسة** (W37 · قرارُ أحمد «١ ب»، ١٤ أكتوبر) — في الحاوية، لكلِّ الودجتات معاً:
+ * - `wUndo`: آخرُ فعلٍ و«↶ تراجع» عليه **٥ ثوانٍ**؛ المزوّدُ يطلب خطّاً زمنيّاً جديداً عند انقضائها.
+ * - `wHidden`: فيلمٌ شوهد أو مسلسلٌ بدأ — يُخفى من «للمشاهدة» و«فيلم الليلة» حتى يكتب التطبيقُ خلاصةً أحدث (أو يمضي يوم).
+ * - `wRate`: شريطُ «قيّم الفيلم» تحت البحث بعد ✓ فيلم — **يبقى حتى يقيّم أو يتخطّى**.
+ * ما انقضى من `wUndo` يُعامَل مستقرّاً عند القراءة (`settle`) — فلا يتوقّف شيءٌ على موعد إعادة الرسم.
+ */
+enum WState {
+  static let undoSeconds: TimeInterval = 5
+  static let hiddenSeconds: TimeInterval = 24 * 3600
+
+  static func undoRecord() -> [String: Any]? { FeedStore.defaults?.dictionary(forKey: "wUndo") }
+
+  /** الفعلُ الذي عليه «↶ تراجع» عند `now` */
+  static func undo(_ now: Date = Date()) -> [String: Any]? {
+    guard let o = undoRecord(), let at = o["at"] as? Double else { return nil }
+    return now.timeIntervalSince1970 - at <= undoSeconds + 0.4 ? o : nil
+  }
+
+  static func undoOn(_ kind: String, _ id: Int, _ now: Date = Date()) -> Bool {
+    guard let o = undo(now) else { return false }
+    return o["kind"] as? String == kind && o["id"] as? Int == id
+  }
+
+  /** متى ينقضي «↶ تراجع» القائم — ليطلب المزوّدُ رسماً جديداً حينها */
+  static func undoEnds() -> Date? {
+    guard let o = undoRecord(), let at = o["at"] as? Double else { return nil }
+    let end = Date(timeIntervalSince1970: at + undoSeconds + 0.5)
+    return end > Date() ? end : nil
+  }
+
+  static func setUndo(_ o: [String: Any]) {
+    var o = o
+    o["at"] = Date().timeIntervalSince1970
+    FeedStore.defaults?.set(o, forKey: "wUndo")
+  }
+
+  /** ما انقضى بلا تراجع: الفيلمُ والمسلسلُ يُخفيان، وشريطُ التقييم للفيلم */
+  static func settle() {
+    guard let o = undoRecord(), let at = o["at"] as? Double, Date().timeIntervalSince1970 - at > undoSeconds else { return }
+    let d = FeedStore.defaults
+    d?.removeObject(forKey: "wUndo")
+    guard let id = o["id"] as? Int else { return }
+    switch o["kind"] as? String {
+    case "movie":
+      hide(id)
+      d?.set(["id": id, "title": o["title"] as? String ?? "", "poster": o["poster"] as? String ?? ""], forKey: "wRate")
+    case "start":
+      hide(id)
+    default: break
+    }
+  }
+
+  static func hide(_ id: Int) {
+    let now = Date().timeIntervalSince1970
+    var h = (FeedStore.defaults?.dictionary(forKey: "wHidden") as? [String: Double]) ?? [:]
+    h = h.filter { now - $0.value < hiddenSeconds }
+    h[String(id)] = now
+    FeedStore.defaults?.set(h, forKey: "wHidden")
+  }
+
+  /** المخفيّ الآن: ما أُخفي بعد آخر خلاصةٍ كتبها التطبيق، وما انقضى تراجعُه ولم يُستقرّ بعد */
+  static func hidden() -> Set<Int> {
+    settle()
+    let now = Date().timeIntervalSince1970
+    let url = FeedStore.dir()?.appendingPathComponent("feed.json")
+    let feedAt = (url.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path) }?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+    let h = (FeedStore.defaults?.dictionary(forKey: "wHidden") as? [String: Double]) ?? [:]
+    return Set(h.filter { now - $0.value < hiddenSeconds && $0.value > feedAt }.compactMap { Int($0.key) })
+  }
+
+  static func rate() -> [String: Any]? {
+    settle()
+    return FeedStore.defaults?.dictionary(forKey: "wRate")
   }
 }
 
@@ -122,7 +207,7 @@ struct MarkEpisodeIntent: AppIntent {
 
   func perform() async throws -> some IntentResult {
     if await MarkAPI.send("/api/v1/widget/mark", show: show, season: season, episode: episode) {
-      FeedStore.defaults?.set(["show": show, "season": season, "episode": episode, "label": label, "at": Date().timeIntervalSince1970], forKey: "undoLast")
+      WState.setUndo(["kind": "ep", "id": show, "season": season, "episode": episode])
     }
     return .result()
   }
@@ -144,20 +229,102 @@ struct UnmarkEpisodeIntent: AppIntent {
 
   func perform() async throws -> some IntentResult {
     if await MarkAPI.send("/api/v1/widget/unmark", show: show, season: season, episode: episode) {
-      FeedStore.defaults?.removeObject(forKey: "undoLast")
+      FeedStore.defaults?.removeObject(forKey: "wUndo")
     }
     return .result()
   }
 }
 
-/** «✓ ح٧ · تراجع» — حتى عشر دقائق بعد ✓ */
-struct UndoInfo {
-  let show: Int, season: Int, episode: Int, label: String
+/** 🆕 «✓ شاهدته» لفيلم — العنوانُ والملصقُ لشريط التقييم بعده (W37) */
+struct MarkMovieIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.mark"
+  static let isDiscoverable = false
+  @Parameter(title: "id") var id: Int
+  @Parameter(title: "title") var name: String
+  @Parameter(title: "poster") var poster: String
 
-  static func current() -> UndoInfo? {
-    guard let d = FeedStore.defaults?.dictionary(forKey: "undoLast"),
-          let at = d["at"] as? Double, Date().timeIntervalSince1970 - at < 600,
-          let show = d["show"] as? Int, let s = d["season"] as? Int, let e = d["episode"] as? Int else { return nil }
-    return UndoInfo(show: show, season: s, episode: e, label: d["label"] as? String ?? "")
+  init() {}
+  init(id: Int, name: String, poster: String?) {
+    self.id = id
+    self.name = name
+    self.poster = poster ?? ""
+  }
+
+  func perform() async throws -> some IntentResult {
+    if await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": true]) != nil {
+      WState.setUndo(["kind": "movie", "id": id, "title": name, "poster": poster])
+    }
+    return .result()
+  }
+}
+
+/** 🆕 «▶ ابدأ» لمسلسلٍ في «للمشاهدة» (W35) */
+struct StartShowIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.mark"
+  static let isDiscoverable = false
+  @Parameter(title: "id") var id: Int
+
+  init() {}
+  init(id: Int) { self.id = id }
+
+  func perform() async throws -> some IntentResult {
+    if await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": true]) != nil {
+      WState.setUndo(["kind": "start", "id": id])
+    }
+    return .result()
+  }
+}
+
+/** 🆕 «↶ تراجع» (W37 — ٥ ثوانٍ): الفعلُ المعاكسُ على الخادم، ثمّ الودجتُ كما كان */
+struct UndoActionIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.unmark"
+  static let isDiscoverable = false
+
+  func perform() async throws -> some IntentResult {
+    guard let o = WState.undoRecord(), let id = o["id"] as? Int else { return .result() }
+    var done = false
+    switch o["kind"] as? String {
+    case "ep":
+      done = await MarkAPI.send("/api/v1/widget/unmark", show: id, season: o["season"] as? Int ?? 0, episode: o["episode"] as? Int ?? 0)
+    case "movie":
+      done = await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": false]) != nil
+    case "start":
+      done = await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": false]) != nil
+    default: break
+    }
+    if done { FeedStore.defaults?.removeObject(forKey: "wUndo") }
+    return .result()
+  }
+}
+
+/** 🆕 ★ من شريط التقييم — عشرُ نجومٍ كالتطبيق */
+struct RateMovieIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.mark"
+  static let isDiscoverable = false
+  @Parameter(title: "id") var id: Int
+  @Parameter(title: "rating") var rating: Int
+
+  init() {}
+  init(id: Int, rating: Int) {
+    self.id = id
+    self.rating = rating
+  }
+
+  func perform() async throws -> some IntentResult {
+    if await MarkAPI.post("/api/v1/widget/rate", ["movieTmdbId": id, "rating": rating]) != nil {
+      FeedStore.defaults?.removeObject(forKey: "wRate")
+    }
+    return .result()
+  }
+}
+
+/** 🆕 «تخطَّ» — محلّيٌّ بلا شبكة */
+struct SkipRateIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.unmark"
+  static let isDiscoverable = false
+
+  func perform() async throws -> some IntentResult {
+    FeedStore.defaults?.removeObject(forKey: "wRate")
+    return .result()
   }
 }

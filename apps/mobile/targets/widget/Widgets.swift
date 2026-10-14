@@ -275,7 +275,16 @@ struct CheckButton: View {
   let item: WContinue?
   let size: CGFloat
   var body: some View {
-    if feed.check, let item, let s = item.season, let e = item.episode {
+    if feed.check, let item, WState.undoOn("ep", item.id) {
+      /* 🆕 W37 — البطاقةُ على الحلقة التالية، و«↶ تراجع» مكانَ ✓ خمسَ ثوانٍ */
+      Button(intent: UndoActionIntent()) {
+        Image(systemName: "arrow.uturn.backward").font(.system(size: size * 0.42, weight: .bold)).foregroundStyle(WColor.fg)
+          .frame(width: size, height: size)
+          .background(Circle().fill(Color.black.opacity(0.55)))
+          .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1))
+      }
+      .buttonStyle(.plain)
+    } else if feed.check, let item, let s = item.season, let e = item.episode {
       Button(intent: MarkEpisodeIntent(show: item.id, season: s, episode: e, label: item.label ?? "")) {
         Image(systemName: "checkmark").font(.system(size: size * 0.42, weight: .bold)).foregroundStyle(WColor.fg)
           .frame(width: size, height: size)
