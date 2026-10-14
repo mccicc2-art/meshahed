@@ -27,23 +27,68 @@ import java.net.URL
 class CheckReceiver : BroadcastReceiver() {
   override fun onReceive(ctx: Context, intent: Intent) {
     val action = intent.action ?: return
+    val short = action.substringAfterLast('.')
+    diag(ctx, short, "tap", null)
     if (action == ACTION_SKIP) {
       LoopzWidget.prefs(ctx).edit().remove(K_RATE).apply()
       LoopzWidget.redrawAll(ctx)
       return
     }
     if (action !in ACTIONS) return
-    val token = token(ctx) ?: return
+    val token = token(ctx)
+    if (token == null) {
+      diag(ctx, short, "no_token", null)
+      return
+    }
+    /* 🆕 **اللمسةُ تُرى فوراً** (تسجيلُ أحمد: «ما تنضغط»): حالةُ ما بعد الفعل تُرسم قبل الشبكة، وتُعاد إن فشلت */
+    optimistic(ctx, action, intent)
     val pending = goAsync()
     Thread {
       try {
         run(ctx, action, intent, token)
       } catch (e: Exception) {
-        /* لا شبكة أو رفضٌ: الودجتُ على حاله، والتطبيقُ يصحّح عند الفتح */
+        diag(ctx, short, "error", "${e.javaClass.simpleName}: ${e.message?.take(120)}")
+        revert(ctx, action)
       } finally {
         pending.finish()
       }
     }.start()
+  }
+
+  /** ما يُرسم لحظةَ اللمس: «↶ تراجع» على الزرّ (معلّقاً حتى يردّ الخادم)، أو شريطُ التقييم يختفي */
+  private fun optimistic(ctx: Context, action: String, i: Intent) {
+    val id = i.getIntExtra("id", i.getIntExtra("show", 0))
+    val p = LoopzWidget.prefs(ctx).edit()
+    when (action) {
+      ACTION_MARK -> p.putString(K_UNDO, JSONObject().put("kind", "ep").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      ACTION_MOVIE -> p.putString(K_UNDO, JSONObject().put("kind", "movie").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      ACTION_START -> p.putString(K_UNDO, JSONObject().put("kind", "start").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      ACTION_RATE -> {
+        val r = LoopzWidget.prefs(ctx).getString(K_RATE, null)
+        if (r != null) p.putString(K_RATE_WAS, r)
+        p.remove(K_RATE)
+      }
+      ACTION_UNDO -> undoNow(ctx)?.let { p.putString(K_UNDO_WAS, it.toString()) }.also { p.remove(K_UNDO) }
+      else -> return
+    }
+    p.apply()
+    LoopzWidget.redrawAll(ctx)
+  }
+
+  /** الخادمُ لم يقبل: الودجتُ كما كان قبل اللمسة */
+  private fun revert(ctx: Context, action: String) {
+    val prefs = LoopzWidget.prefs(ctx)
+    val p = prefs.edit()
+    when (action) {
+      ACTION_MARK, ACTION_MOVIE, ACTION_START -> {
+        val o = prefs.getString(K_UNDO, null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+        if (o?.optBoolean("pending") == true) p.remove(K_UNDO)
+      }
+      ACTION_RATE -> prefs.getString(K_RATE_WAS, null)?.let { p.putString(K_RATE, it) }
+      ACTION_UNDO -> prefs.getString(K_UNDO_WAS, null)?.let { p.putString(K_UNDO, it) }
+    }
+    p.remove(K_RATE_WAS).remove(K_UNDO_WAS).apply()
+    LoopzWidget.redrawAll(ctx)
   }
 
   private fun run(ctx: Context, action: String, i: Intent, token: String) {
@@ -52,28 +97,28 @@ class CheckReceiver : BroadcastReceiver() {
       ACTION_MARK, ACTION_UNMARK -> {
         val season = i.getIntExtra("season", 0)
         val episode = i.getIntExtra("episode", 0)
-        if (id <= 0 || season <= 0 || episode <= 0) return
+        if (id <= 0 || season <= 0 || episode <= 0) return revert(ctx, action)
         val mark = action == ACTION_MARK
-        val data = post(if (mark) "/api/v1/widget/mark" else "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode)) ?: return
+        val data = post(ctx, if (mark) "/api/v1/widget/mark" else "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", season).put("episode", episode)) ?: return revert(ctx, action)
         applyNext(ctx, id, data.optJSONObject("next"))
         if (mark) undoFor(ctx, JSONObject().put("kind", "ep").put("id", id).put("season", season).put("episode", episode))
         else clearUndo(ctx)
       }
       ACTION_MOVIE -> {
         if (id <= 0) return
-        post("/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", true)) ?: return
+        post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", true)) ?: return revert(ctx, action)
         undoFor(ctx, JSONObject().put("kind", "movie").put("id", id).put("title", i.getStringExtra("title") ?: "").put("poster", i.getStringExtra("poster") ?: ""))
       }
       ACTION_START -> {
         if (id <= 0) return
-        post("/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", true)) ?: return
+        post(ctx, "/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", true)) ?: return revert(ctx, action)
         undoFor(ctx, JSONObject().put("kind", "start").put("id", id))
       }
       ACTION_RATE -> {
         val n = i.getIntExtra("rating", 0)
         if (id <= 0 || n !in 1..10) return
-        post("/api/v1/widget/rate", token, JSONObject().put("movieTmdbId", id).put("rating", n)) ?: return
-        LoopzWidget.prefs(ctx).edit().remove(K_RATE).apply()
+        post(ctx, "/api/v1/widget/rate", token, JSONObject().put("movieTmdbId", id).put("rating", n)) ?: return revert(ctx, action)
+        LoopzWidget.prefs(ctx).edit().remove(K_RATE).remove(K_RATE_WAS).apply()
         LoopzWidget.redrawAll(ctx)
       }
       ACTION_UNDO -> undo(ctx, token)
@@ -86,6 +131,7 @@ class CheckReceiver : BroadcastReceiver() {
    */
   private fun undoFor(ctx: Context, o: JSONObject) {
     val at = System.currentTimeMillis()
+    /* اللمسةُ رسمت حالةً معلّقة؛ الخادمُ قبل ⇒ تبدأ الثواني الخمس الآن */
     LoopzWidget.prefs(ctx).edit().putString(K_UNDO, o.put("at", at).toString()).apply()
     LoopzWidget.redrawAll(ctx)
     Thread.sleep(UNDO_MS + 200)
@@ -106,18 +152,25 @@ class CheckReceiver : BroadcastReceiver() {
 
   /** «↶ تراجع»: الفعلُ المعاكسُ على الخادم، ثمّ الودجتُ كما كان */
   private fun undo(ctx: Context, token: String) {
-    val o = undoNow(ctx) ?: return
+    val o = LoopzWidget.prefs(ctx).getString(K_UNDO_WAS, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+    /* لم يردّ الخادمُ على الفعل نفسِه بعد — لا شيءَ يُتراجع عنه على الخادم؛ الحالةُ المحلّيّة أُزيلت باللمسة */
+    if (o.optBoolean("pending")) return
+    val ok: Boolean
     val id = o.optInt("id")
-    when (o.optString("kind")) {
+    ok = when (o.optString("kind")) {
       "ep" -> {
-        val data = post("/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", o.optInt("season")).put("episode", o.optInt("episode"))) ?: return
+        val data = post(ctx, "/api/v1/widget/unmark", token, JSONObject().put("showTmdbId", id).put("season", o.optInt("season")).put("episode", o.optInt("episode")))
         /* ردُّ التراجع = الحلقةُ نفسُها التالية من جديد — فتعود البطاقةُ كما كانت */
-        applyNext(ctx, id, data.optJSONObject("next"))
+        if (data != null) applyNext(ctx, id, data.optJSONObject("next"))
+        data != null
       }
-      "movie" -> post("/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false)) ?: return
-      "start" -> post("/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", false)) ?: return
+      "movie" -> post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false)) != null
+      "start" -> post(ctx, "/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", false)) != null
+      else -> true
     }
-    clearUndo(ctx)
+    if (!ok) return revert(ctx, ACTION_UNDO)
+    LoopzWidget.prefs(ctx).edit().remove(K_UNDO_WAS).apply()
+    LoopzWidget.redrawAll(ctx)
   }
 
   private fun clearUndo(ctx: Context) {
@@ -126,7 +179,7 @@ class CheckReceiver : BroadcastReceiver() {
   }
 
   /** نداءٌ برمز الودجت — `data` الردّ، أو `null` لأيِّ فشل */
-  private fun post(path: String, token: String, body: JSONObject): JSONObject? {
+  private fun post(ctx: Context, path: String, token: String, body: JSONObject): JSONObject? {
     val conn = (URL(BASE + path).openConnection() as HttpURLConnection).apply {
       requestMethod = "POST"
       connectTimeout = 8000
@@ -137,7 +190,9 @@ class CheckReceiver : BroadcastReceiver() {
     }
     return try {
       conn.outputStream.use { it.write(body.toString().toByteArray()) }
-      if (conn.responseCode !in 200..299) null
+      val code = conn.responseCode
+      diag(ctx, path.substringAfterLast('/'), "http", code.toString())
+      if (code !in 200..299) null
       else JSONObject(conn.inputStream.bufferedReader().readText()).optJSONObject("data") ?: JSONObject()
     } finally {
       conn.disconnect()
@@ -160,6 +215,30 @@ class CheckReceiver : BroadcastReceiver() {
     private const val K_UNDO = "w_undo"
     private const val K_RATE = "w_rate"
     private const val K_HIDDEN = "w_hidden"
+    private const val K_RATE_WAS = "w_rate_was"
+    private const val K_UNDO_WAS = "w_undo_was"
+    private const val DIAG = "diag.json"
+
+    /**
+     * 🆕 سجلُّ اللمسات للتشخيص (`files/widget/diag.json`، آخرُ ٣٠): ما وصل · لا رمز · ردُّ الخادم · خطأ.
+     * التطبيقُ يرسله إلى `runtime_errors` عند فتحه (`sendDiag` في `feed.ts`) ثمّ يفرغه.
+     */
+    @Synchronized
+    fun diag(ctx: Context, action: String, stage: String, detail: String?) {
+      try {
+        val f = File(WFeed.dir(ctx), DIAG)
+        val arr = if (f.exists()) runCatching { org.json.JSONArray(f.readText()) }.getOrNull() ?: org.json.JSONArray() else org.json.JSONArray()
+        val row = JSONObject().put("t", System.currentTimeMillis() / 1000).put("a", action).put("s", stage)
+        if (detail != null) row.put("d", detail)
+        arr.put(row)
+        val out = org.json.JSONArray()
+        for (n in maxOf(0, arr.length() - 30) until arr.length()) out.put(arr.get(n))
+        f.parentFile?.mkdirs()
+        f.writeText(out.toString())
+      } catch (e: Exception) {
+        /* التشخيصُ لا يُسقط شيئاً */
+      }
+    }
 
     private fun token(ctx: Context): String? = try {
       File(WFeed.dir(ctx), "token").takeIf { it.exists() }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
@@ -192,7 +271,9 @@ class CheckReceiver : BroadcastReceiver() {
     fun undoNow(ctx: Context): JSONObject? {
       val raw = LoopzWidget.prefs(ctx).getString(K_UNDO, null) ?: return null
       val o = runCatching { JSONObject(raw) }.getOrNull() ?: return null
-      return if (System.currentTimeMillis() - o.optLong("at") <= UNDO_MS + 400) o else null
+      val age = System.currentTimeMillis() - o.optLong("at")
+      /* المعلّقُ (الخادمُ لم يردّ) يبقى حتى مهلة الشبكة؛ والمقبولُ خمسَ ثوانٍ */
+      return if (age <= (if (o.optBoolean("pending")) 20_000L else UNDO_MS + 400)) o else null
     }
 
     /** شريطُ التقييم: `{id, title, poster}` حتى يقيّم أو يتخطّى */

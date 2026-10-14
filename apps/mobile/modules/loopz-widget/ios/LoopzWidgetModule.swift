@@ -48,6 +48,12 @@ public class LoopzWidgetModule: Module {
       return FileManager.default.fileExists(atPath: d.appendingPathComponent(n).path)
     }
 
+    /** 🆕 يقرأ ملفّاً نصّيّاً من مجلّد الودجت — سجلُّ لمسات الودجت (`diag.json`) يرسله التطبيقُ للتشخيص؛ `nil` إن غاب */
+    Function("readText") { (name: String) -> String? in
+      guard let d = try? self.dir(), let n = try? self.safe(name) else { return nil }
+      return try? String(contentsOf: d.appendingPathComponent(n), encoding: .utf8)
+    }
+
     Function("prune") { (keep: [String]) in
       let d = try self.dir()
       let set = Set(keep)

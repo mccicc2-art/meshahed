@@ -69,16 +69,29 @@ enum MarkAPI {
     return t.isEmpty ? nil : t
   }
 
-  /** نداءٌ برمز الودجت — `data` الردّ، أو `nil` لأيِّ فشل */
+  /** نداءٌ برمز الودجت — `data` الردّ، أو `nil` لأيِّ فشل. وكلُّ نداءٍ يُكتب في سجلّ التشخيص (`Diag`) */
   static func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
-    guard let token = token(), let url = URL(string: base + path) else { return nil }
+    let name = String(path.split(separator: "/").last ?? "")
+    guard let token = token() else {
+      Diag.add(name, "no_token", nil)
+      return nil
+    }
+    guard let url = URL(string: base + path) else { return nil }
     var req = URLRequest(url: url, timeoutInterval: 8)
     req.httpMethod = "POST"
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
     req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-    guard let (data, res) = try? await URLSession.shared.data(for: req), let http = res as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
-    return ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["data"] as? [String: Any] ?? [:]
+    do {
+      let (data, res) = try await URLSession.shared.data(for: req)
+      let code = (res as? HTTPURLResponse)?.statusCode ?? 0
+      Diag.add(name, "http", String(code))
+      guard (200..<300).contains(code) else { return nil }
+      return ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["data"] as? [String: Any] ?? [:]
+    } catch {
+      Diag.add(name, "error", String(describing: error).prefix(120).description)
+      return nil
+    }
   }
 
   /** ✓ حلقةٍ أو تراجعٌ عنها، والحلقةُ التالية من الردّ تُكتب في الملفّ مكانَ القديمة */
@@ -119,6 +132,22 @@ enum MarkAPI {
  * - `wRate`: شريطُ «قيّم الفيلم» تحت البحث بعد ✓ فيلم — **يبقى حتى يقيّم أو يتخطّى**.
  * ما انقضى من `wUndo` يُعامَل مستقرّاً عند القراءة (`settle`) — فلا يتوقّف شيءٌ على موعد إعادة الرسم.
  */
+/**
+ * 🆕 سجلُّ لمسات الودجت للتشخيص (`widget/diag.json` في الحاوية، آخرُ ٣٠): ما وصل · لا رمز · ردُّ الخادم · خطأ.
+ * التطبيقُ يرسله إلى `runtime_errors` عند فتحه (`sendDiag` في `feed.ts`) ثمّ يفرغه — تسجيلُ أحمد ١٤ أكتوبر.
+ */
+enum Diag {
+  static func add(_ action: String, _ stage: String, _ detail: String?) {
+    guard let url = FeedStore.dir()?.appendingPathComponent("diag.json") else { return }
+    var arr = ((try? Data(contentsOf: url)).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [[String: Any]]) ?? []
+    var row: [String: Any] = ["t": Int(Date().timeIntervalSince1970), "a": action, "s": stage]
+    if let detail { row["d"] = detail }
+    arr.append(row)
+    if arr.count > 30 { arr = Array(arr.suffix(30)) }
+    if let d = try? JSONSerialization.data(withJSONObject: arr) { try? d.write(to: url, options: .atomic) }
+  }
+}
+
 enum WState {
   static let undoSeconds: TimeInterval = 5
   static let hiddenSeconds: TimeInterval = 24 * 3600
@@ -128,7 +157,8 @@ enum WState {
   /** الفعلُ الذي عليه «↶ تراجع» عند `now` */
   static func undo(_ now: Date = Date()) -> [String: Any]? {
     guard let o = undoRecord(), let at = o["at"] as? Double else { return nil }
-    return now.timeIntervalSince1970 - at <= undoSeconds + 0.4 ? o : nil
+    let limit = (o["pending"] as? Bool == true) ? 20 : undoSeconds + 0.4
+    return now.timeIntervalSince1970 - at <= limit ? o : nil
   }
 
   static func undoOn(_ kind: String, _ id: Int, _ now: Date = Date()) -> Bool {
@@ -143,6 +173,17 @@ enum WState {
     return end > Date() ? end : nil
   }
 
+  /** 🆕 اللمسةُ تُرى فوراً: «↶ تراجع» معلّقاً حتى يردّ الخادم، ويُرسم قبل الشبكة */
+  static func setPending(_ kind: String, _ id: Int) {
+    FeedStore.defaults?.set(["kind": kind, "id": id, "at": Date().timeIntervalSince1970, "pending": true], forKey: "wUndo")
+    WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  /** الخادمُ لم يقبل: المعلّقُ يزول */
+  static func clearPending() {
+    if undoRecord()?["pending"] as? Bool == true { FeedStore.defaults?.removeObject(forKey: "wUndo") }
+  }
+
   static func setUndo(_ o: [String: Any]) {
     var o = o
     o["at"] = Date().timeIntervalSince1970
@@ -151,7 +192,7 @@ enum WState {
 
   /** ما انقضى بلا تراجع: الفيلمُ والمسلسلُ يُخفيان، وشريطُ التقييم للفيلم */
   static func settle() {
-    guard let o = undoRecord(), let at = o["at"] as? Double, Date().timeIntervalSince1970 - at > undoSeconds else { return }
+    guard let o = undoRecord(), o["pending"] as? Bool != true, let at = o["at"] as? Double, Date().timeIntervalSince1970 - at > undoSeconds else { return }
     let d = FeedStore.defaults
     d?.removeObject(forKey: "wUndo")
     guard let id = o["id"] as? Int else { return }
@@ -206,8 +247,12 @@ struct MarkEpisodeIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
+    Diag.add("mark", "tap", nil)
+    WState.setPending("ep", show)
     if await MarkAPI.send("/api/v1/widget/mark", show: show, season: season, episode: episode) {
       WState.setUndo(["kind": "ep", "id": show, "season": season, "episode": episode])
+    } else {
+      WState.clearPending()
     }
     return .result()
   }
@@ -251,8 +296,12 @@ struct MarkMovieIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
+    Diag.add("movie", "tap", nil)
+    WState.setPending("movie", id)
     if await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": true]) != nil {
       WState.setUndo(["kind": "movie", "id": id, "title": name, "poster": poster])
+    } else {
+      WState.clearPending()
     }
     return .result()
   }
@@ -268,8 +317,12 @@ struct StartShowIntent: AppIntent {
   init(id: Int) { self.id = id }
 
   func perform() async throws -> some IntentResult {
+    Diag.add("start", "tap", nil)
+    WState.setPending("start", id)
     if await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": true]) != nil {
       WState.setUndo(["kind": "start", "id": id])
+    } else {
+      WState.clearPending()
     }
     return .result()
   }
@@ -281,7 +334,8 @@ struct UndoActionIntent: AppIntent {
   static let isDiscoverable = false
 
   func perform() async throws -> some IntentResult {
-    guard let o = WState.undoRecord(), let id = o["id"] as? Int else { return .result() }
+    Diag.add("undo", "tap", nil)
+    guard let o = WState.undoRecord(), o["pending"] as? Bool != true, let id = o["id"] as? Int else { return .result() }
     var done = false
     switch o["kind"] as? String {
     case "ep":
@@ -311,6 +365,7 @@ struct RateMovieIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
+    Diag.add("rate", "tap", nil)
     if await MarkAPI.post("/api/v1/widget/rate", ["movieTmdbId": id, "rating": rating]) != nil {
       FeedStore.defaults?.removeObject(forKey: "wRate")
     }

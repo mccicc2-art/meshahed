@@ -625,7 +625,7 @@ object W2Render {
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
   private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3): RemoteViews {
     /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
-    if (key == "tonight") return posterColumn(d, key, bodyDp, buttons = d.opt("tonight").optString("small", "poster") != "list")
+    if (key == "tonight") return tonightHalf(d, wDp, bodyDp)
     val v = fresh(d.ctx, R.layout.w2_half_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, key))
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
@@ -656,6 +656,38 @@ object W2Render {
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
       v.addView(R.id.items, row)
+    }
+    return v
+  }
+
+  /**
+   * 🆕 «فيلم الليلة» في النصف (قرارُ أحمد ١٤ أكتوبر «أ»؛ وبثلاثة أسطر «خل الحجم يكبر ويغطي المساحة»): الهيدرُ ١٦:٩
+   * بعرض النصف كاملاً **يذوب في الأسود حتى أسفل الخانة** — يملؤها بلا قصٍّ ولا زوم (W38)، كـ«أكمل المشاهدة» المربّع (W33).
+   * الاسمُ والتقييمُ والمدّةُ عليه، و✓ في طرفه السفليّ و🔁 فوق — دائماً، فالبوسترُ الصغيرُ بجانبه فراغٌ كان سببَ البلاغ.
+   */
+  private fun tonightHalf(d: Draw, wDp: Float, bodyDp: Float): RemoteViews {
+    val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_tonight)
+    v.setTextViewText(R.id.hdr_title, titleOf(d, "tonight"))
+    val m = tonightNow(d)
+    if (m == null) {
+      v.setTextViewText(R.id.ht_name, d.f.s("noTowatchMovies"))
+      v.setOnClickPendingIntent(R.id.ht_root, d.open(WLinks.discover()))
+      return v
+    }
+    WArt.headerFade(d.ctx, m.backdrop ?: m.t.poster, wDp, bodyDp, 12f)?.let { v.setImageViewBitmap(R.id.ht_img, it) }
+    v.setTextViewText(R.id.ht_name, m.t.title)
+    v.setTextViewText(R.id.ht_meta, Tonight.subOf(d.f, m))
+    v.setOnClickPendingIntent(R.id.ht_root, d.open(WLinks.title(m.t)))
+    v.setViewVisibility(R.id.ht_check, View.VISIBLE)
+    val undoing = d.f.check && d.undoOn("movie", m.t.id)
+    when {
+      undoing -> undoCircle(d, v, R.id.ht_check, R.id.ht_meta, "✓ " + d.s2("watched"))
+      d.f.check -> v.setOnClickPendingIntent(R.id.ht_check, CheckReceiver.movieIntent(d.ctx, d.next(), m.t))
+      else -> v.setOnClickPendingIntent(R.id.ht_check, d.open(WLinks.title(m.t)))
+    }
+    if (!undoing && d.tonight.size > 1) {
+      v.setViewVisibility(R.id.ht_another, View.VISIBLE)
+      v.setOnClickPendingIntent(R.id.ht_another, LoopzWidget.cycleIntent(d.ctx, d.id, d.next()))
     }
     return v
   }

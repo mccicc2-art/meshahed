@@ -4,6 +4,7 @@ import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
 import { LoopzWidget } from "../../modules/loopz-widget";
 import { api } from "../api";
+import { BUILD_TAG } from "../ota";
 import { session } from "../session";
 import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
@@ -25,6 +26,8 @@ import { resolveWidget } from "@/core/widgetLayout";
 const FEED = "feed.json";
 /** 🆕 W14 — رمزُ ✓ الخاصّ: يقرؤه الودجتُ (`CheckReceiver.kt` · `Intents.swift`) ولا يقدر إلّا على تعليم حلقة */
 const TOKEN = "token";
+/** 🆕 سجلُّ لمسات الودجت (`CheckReceiver.kt` · `Intents.swift`): التطبيقُ يرسله للتشخيص ثمّ يفرغه */
+const DIAG = "diag.json";
 /** طلبُ رمزٍ فشل (الجدولُ لم يُنشأ بعد، أو لا شبكة) لا يُعاد مع كلِّ جلب — مرّةً كلَّ نصف ساعةٍ تكفي */
 const TOKEN_RETRY_MS = 30 * 60_000;
 const TASK = "loopz-widget-refresh";
@@ -111,6 +114,34 @@ async function ensureArt(path: string, kind: Art): Promise<string | null> {
  * (D-929) — والرمزُ لا يقدر إلّا على «علّم حلقة». يُطلب قبل الخلاصة: الخادمُ يكتب `check: true` حين يجد للعضو رمزاً،
  * فأوّلُ خلاصةٍ بعد التحديث ترسم ✓ ومعها الرمزُ الذي يشغّله. وعند الخروج يمحوه `prune` مع غيره.
  */
+/**
+ * 🆕 **تشخيصُ أزرار الودجت** (تسجيلُ أحمد ١٤ أكتوبر، بناء 77: «الازرار ما تنضغط» — ولا رمزَ استُعمل على الخادم):
+ * كلُّ لمسةٍ يكتب الودجتُ ما جرى لها (وصلت · لا رمز · ردُّ الخادم · خطأ الشبكة) في `diag.json`، والتطبيقُ يرسله هنا
+ * إلى `runtime_errors` بالمسار الذي تُرسَل به أعطالُ الشاشات (`/api/v1/app/crash`، الشاشة `widget`) ثمّ يفرغه.
+ * ومعه هل ملفُّ الرمز موجودٌ على الجهاز — الاحتمالُ الأوّل.
+ */
+async function sendDiag(w: NonNullable<typeof LoopzWidget>): Promise<void> {
+  try {
+    const raw = w.readText?.(DIAG);
+    if (!raw) return;
+    const rows = JSON.parse(raw) as unknown[];
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const lines = rows.slice(-12).map((r) => JSON.stringify(r));
+    await api("/api/v1/app/crash", {
+      method: "POST",
+      body: {
+        screen: "widget",
+        message: `widget taps: ${rows.length} · token file ${w.exists(TOKEN) ? "yes" : "no"}`,
+        stack: lines.join("\n"),
+        version: BUILD_TAG,
+      },
+    });
+    w.writeText(DIAG, "[]");
+  } catch {
+    /* التشخيصُ ليس شرطاً لشيء */
+  }
+}
+
 async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
   if (w.exists(TOKEN)) return;
   if (Date.now() - tokenTried < TOKEN_RETRY_MS) return;
@@ -153,6 +184,7 @@ async function run(): Promise<void> {
   }
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
   await ensureToken(w);
+  await sendDiag(w);
   const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query);
   const art = [...collectArt(data)];
   const names = new Map<string, string>();
@@ -192,7 +224,7 @@ async function run(): Promise<void> {
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
-  w.prune([FEED, TOKEN, ...names.values()]);
+  w.prune([FEED, TOKEN, DIAG, ...names.values()]);
   w.reload();
 }
 

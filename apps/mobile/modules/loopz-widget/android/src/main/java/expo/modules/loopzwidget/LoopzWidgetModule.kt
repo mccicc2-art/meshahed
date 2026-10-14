@@ -53,6 +53,12 @@ class LoopzWidgetModule : Module() {
 
     Function("exists") { name: String -> File(dir(), safe(name)).exists() }
 
+    /** 🆕 يقرأ ملفّاً نصّيّاً من مجلّد الودجت — سجلُّ لمسات الودجت (`diag.json`) يرسله التطبيقُ للتشخيص؛ `null` إن غاب */
+    Function("readText") { name: String ->
+      val f = File(dir(), safe(name))
+      if (f.exists()) f.readText(Charsets.UTF_8) else null
+    }
+
     /** يحذف ما لم يعد في البيانات — فالمجلّدُ لا يكبر بملصقاتِ ما انتهى */
     Function("prune") { keep: List<String> ->
       val set = keep.toSet()

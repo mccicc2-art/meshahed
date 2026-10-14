@@ -23,7 +23,8 @@ const MAX_MESSAGE = 600;
 /* الرئيسيّةُ والبحثُ والإعداداتُ أصليّةٌ منذ 11-G/H/I وكانت أعطالُها تُسجَّل «unknown» */
 /* 🆕 V-B (D-1356) — و`messages` و`profile`: الحارسُ يرسلهما منذ 11-M/N وكانا يُكتبان «unknown» — والسجلُّ صار يُقرأ يوميّاً
    بعد أن لم يعد للشاشة الساقطة بديلٌ ويبيّ */
-const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings", "community", "thread", "welcome", "messages", "profile"]);
+/* 🆕 و`widget`: سجلُّ لمسات الودجت يرسله التطبيقُ للتشخيص (تسجيلُ أحمد ١٤ أكتوبر: الأزرارُ لا تستجيب) */
+const SCREENS = new Set(["library", "discover", "title", "person", "list", "shell", "home", "search", "settings", "community", "thread", "welcome", "messages", "profile", "widget"]);
 
 export async function POST(req: NextRequest) {
   return handle(async () => {

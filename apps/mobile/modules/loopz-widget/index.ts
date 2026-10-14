@@ -10,6 +10,8 @@ type Native = {
   writeText(name: string, text: string): void;
   importFile(fromUri: string, name: string): void;
   exists(name: string): boolean;
+  /** 🆕 بناءٌ أصليٌّ أقدمُ لا يملكها — فهي اختياريّة */
+  readText?(name: string): string | null;
   prune(keep: string[]): void;
   reload(): void;
   configuredLists(): string[];

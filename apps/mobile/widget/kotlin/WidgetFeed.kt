@@ -284,11 +284,11 @@ object WArt {
    * 🆕 W33 · W43 — الصغيرُ المربّع لـ«أكمل المشاهدة»: **الهيدرُ كلُّه بعرض الودجت** (لا قصّ، مطٌّ ≤ ٥٪ حين تختلف النسبةُ قليلاً)
    * أعلى الودجت، يذوب في أسود الودجت تحته — والكلامُ على الأسود. لا زوم (W38).
    */
-  fun headerFade(ctx: Context, backdrop: String?, wDp: Float, hDp: Float): Bitmap? {
+  fun headerFade(ctx: Context, backdrop: String?, wDp: Float, hDp: Float, radiusDp: Float = 16f): Bitmap? {
     return try {
       val w = px(ctx, wDp).toInt().coerceAtLeast(1)
       val h = px(ctx, hDp).toInt().coerceAtLeast(1)
-      val r = px(ctx, 16f)
+      val r = px(ctx, radiusDp)
       val (out, c) = canvasFor(w, h, r)
       c.drawColor(0xFF050505.toInt())
       val ih = (w * 9f / 16f).coerceAtMost(h.toFloat())

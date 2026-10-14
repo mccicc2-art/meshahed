@@ -813,9 +813,75 @@ struct Half: View {
   var body: some View {
     let o = opts[key] as? [String: Any] ?? [:]
     if key == "tonight" {
-      PosterColumn(f: f, key: key, now: now, buttons: (o["small"] as? String ?? "poster") != "list")
+      TonightHalf(f: f, now: now)
     } else {
       HalfList(f: f, key: key, posters: key != "tonight" && (o["view"] as? String) == "posters", count: count, now: now)
+    }
+  }
+}
+
+/**
+ * 🆕 «فيلم الليلة» في النصف (قرارُ أحمد ١٤ أكتوبر «أ»؛ وبثلاثة أسطر «خل الحجم يكبر ويغطي المساحة»): الهيدرُ ١٦:٩ بعرض
+ * النصف كاملاً **يذوب في الأسود حتى أسفل الخانة** — يملؤها بلا قصٍّ ولا زوم (W38). الاسمُ والتقييمُ والمدّةُ عليه،
+ * و✓ في طرفه السفليّ و🔁 فوق.
+ */
+struct TonightHalf: View {
+  let f: V2Feed
+  let now: Date
+
+  func circle(_ icon: String) -> some View {
+    Image(systemName: icon).font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 30, height: 30)
+      .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
+      .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      SecHeader(title: Sections.title(f, "tonight"), link: nil)
+      if let m = Sections.tonight(f, now: now) {
+        let undoing = f.feed.check && WState.undoOn("movie", m.id)
+        GeometryReader { g in
+          let ih = min(g.size.width * 9 / 16, g.size.height)
+          ZStack(alignment: .topLeading) {
+            WColor.bg
+            if let img = FeedStore.image(m.backdrop_path ?? m.poster_path, in: f.feed, maxPixel: 600) {
+              Image(uiImage: img).resizable().frame(width: g.size.width, height: ih)
+                .overlay(LinearGradient(stops: [.init(color: .clear, location: 0.45), .init(color: WColor.bg, location: 1)], startPoint: .top, endPoint: .bottom))
+            }
+            VStack(alignment: .leading, spacing: 0) {
+              HStack {
+                Spacer(minLength: 0)
+                if !undoing && f.tonight.count > 1 {
+                  Button(intent: CycleTonightIntent()) { circle("repeat") }.buttonStyle(.plain)
+                }
+              }
+              Spacer(minLength: 0)
+              HStack(alignment: .bottom, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                  Text(m.title).font(.system(size: 14.5, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  Text(undoing ? "✓ " + f.s2("watched") : Sections.tonightSub(m, f))
+                    .font(.system(size: 12, weight: undoing ? .semibold : .regular)).foregroundStyle(undoing ? WColor.success : WColor.muted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if undoing {
+                  Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)
+                } else if f.feed.check {
+                  Button(intent: MarkMovieIntent(id: m.id, name: m.title, poster: m.poster_path)) { circle("checkmark") }.buttonStyle(.plain)
+                } else {
+                  Link(destination: WLink.title(m.asTitle)) { circle("checkmark") }
+                }
+              }
+            }
+            .padding(7)
+          }
+          .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+      } else {
+        Link(destination: WLink.discover) {
+          Text(f.feed.s("noTowatchMovies")).font(.system(size: 11)).foregroundStyle(WColor.muted)
+        }
+      }
     }
   }
 }
