@@ -80,6 +80,7 @@ import { isViewKey } from "@/core/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
 import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, type ChatBg } from "@/core/chatBg";
+import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
 import type { ChatBgChoice, ChatBgPayload, ChatBgPostersPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
@@ -714,6 +715,8 @@ export async function updateUiState(patch: {
   tpl?: PrefTemplate[];
   /** 🆕 **خلفيّةُ المحادثات** (D-1382) — تستبدل المخزَّنة؛ تُطهَّر هنا، **وخلفيّةُ العمل شرطُها البلس** */
   chatBg?: ChatBg;
+  /** 🆕 **ودجت لوبز** (W40 · W41) — يستبدل المخزَّن؛ يُطهَّر هنا، **وكتابتُه شرطُها البلس** */
+  widget?: unknown;
 }): Promise<{ ok: boolean; needsPlus?: true }> {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
@@ -740,6 +743,9 @@ export async function updateUiState(patch: {
       return { ok: false, needsPlus: true };
     }
 
+    /* 🆕 W41 — **التخصيصُ للمشترك**: والحارسُ هنا لا في الشاشة (درسُ D-819). ومن انتهى اشتراكُه يبقى إعدادُه كما هو */
+    if (patch.widget !== undefined && !isPlus(data)) return { ok: false, needsPlus: true };
+
     const current = sanitizeUiState(data?.ui_state);
     const next: UiState = {
       hints: patch.resetHints
@@ -754,6 +760,7 @@ export async function updateUiState(patch: {
         patch.filters !== undefined ? sanitizeSavedFilters(patch.filters) : current.filters,
       tpl: patch.tpl !== undefined ? sanitizePrefTemplates(patch.tpl) : current.tpl,
       chatBg: chatBg ?? current.chatBg,
+      widget: patch.widget !== undefined ? sanitizeStoredWidget(patch.widget) : current.widget,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
     return { ok: true };
