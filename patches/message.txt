@@ -1,1 +1,1 @@
-Widget v2 (web): shared layout engine, me/widget v2 feed, prefs/widget route, ui_state.widget, strings, trending view [deploy]
+Widget v2 (web): resolveWidget per platform for the native widgets, tonight backdrops in the feed [deploy]
