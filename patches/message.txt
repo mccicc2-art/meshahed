@@ -1,1 +1,1 @@
-Widget tap log: the app crash route writes the widget log in parts — the database keeps 400 characters per row [deploy]
+Messages (web): photo or GIF in a direct message — private bucket dm-media (migration 202), upload route, signed links, bubbles, previews and push say «📷 Photo» / «GIF» (D-1387) [deploy]
