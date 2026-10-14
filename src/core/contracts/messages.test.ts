@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFollowRequestBody, parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, parseMsgTextBody, MSG_REPLY_MAX, MSG_NOTE_MAX, MSG_TEXT_MAX } from "./messages.ts";
+import { parseFollowRequestBody, parseMsgPeerBody, parseMsgReplyBody, parseMsgShareBody, parseMsgTextBody, replyEventOut, MSG_REPLY_MAX, MSG_NOTE_MAX, MSG_TEXT_MAX } from "./messages.ts";
 
 /** Phase 11-M · M4 — أجسامُ أفعال «الرسائل»: متسامحٌ مع الزائد، صارمٌ مع الناقص، والفراغُ يُرفض قبل الرحلة */
 
@@ -60,4 +60,13 @@ test("الصورة والـGIF في الرسالة المباشرة", () => {
   assert.equal(parseMsgTextBody({ recipient_id: U, body: "", image_path: "../x.jpg" }), null);
   assert.equal(parseMsgTextBody({ recipient_id: U, body: "", image_path: `${U}/x.gif` }), null);
   assert.equal(parseMsgTextBody({ recipient_id: U, body: "" }), null, "رسالةٌ فارغة");
+});
+
+/* 🆕 D-1400 — ردُّ الصورة والـGIF يعبر إلى التطبيق بوسائطه، والنصُّ وحدَه بلا حقولٍ زائدة */
+test("الردّ المنشور: GIF وصورةٌ لا يسقطان، والنصُّ كما كان", () => {
+  const base = { id: "m1", mine: true, body: "", created_at: "2026-10-15T00:00:00Z" };
+  assert.deepEqual(replyEventOut({ ...base, gif_id: "abc123" }), { kind: "reply", ...base, gif_id: "abc123" });
+  const image = { url: "https://x/signed", key: `${U}/${U}.jpg` };
+  assert.deepEqual(replyEventOut({ ...base, body: "شوف", image }), { kind: "reply", ...base, body: "شوف", image });
+  assert.deepEqual(replyEventOut({ ...base, body: "هلا", gif_id: null, image: null }), { kind: "reply", ...base, body: "هلا" });
 });
