@@ -10,4 +10,4 @@ jobs:
     params:
       channel: production
       platform: all
-      message: "1.12.6 test: widget check + trailer tap probes"
+      message: "1.12.6 test: widget v2"
