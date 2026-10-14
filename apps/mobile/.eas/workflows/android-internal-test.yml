@@ -9,5 +9,5 @@ jobs:
     type: submit
     params:
       platform: android
-      build_id: 9d3b75dc-7ff1-42f4-bff8-1322fb9918d8
+      build_id: d885d0b5-6881-4d10-a8b3-72f7f406cede
       profile: internal
