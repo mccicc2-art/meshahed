@@ -15,4 +15,7 @@
     <string name="w_cfg_continue" translatable="false">Continue watching</string>
     <string name="w_cfg_towatch" translatable="false">To watch</string>
     <string name="w_cfg_no_lists" translatable="false">Open Loopz once to load your lists</string>
+    <!-- 🆕 الودجت الواحد (W28) -->
+    <string name="w2_name" translatable="false">Loopz</string>
+    <string name="w2_desc" translatable="false">Continue watching, coming up, tonight\'s movie and more — arranged your way</string>
 </resources>

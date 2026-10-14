@@ -14,4 +14,7 @@
     <string name="w_cfg_continue" translatable="false">أكمل المشاهدة</string>
     <string name="w_cfg_towatch" translatable="false">للمشاهدة</string>
     <string name="w_cfg_no_lists" translatable="false">افتح لوبز مرة لتظهر قوائمك</string>
+    <!-- 🆕 الودجت الواحد (W28) -->
+    <string name="w2_name" translatable="false">لوبز</string>
+    <string name="w2_desc" translatable="false">أكمل المشاهدة والقادم وفيلم الليلة وغيرها — بترتيبك</string>
 </resources>

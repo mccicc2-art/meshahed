@@ -37,7 +37,8 @@ data class WTitle(val kind: String, val id: Int, val title: String, val poster: 
 data class WContinue(val t: WTitle, val label: String?, val season: Int?, val episode: Int?, val backdrop: String?, val sub: String?, val pct: Int)
 data class WToWatch(val t: WTitle, val action: String)
 data class WUpcoming(val t: WTitle, val date: String?, val label: String?, val behind: String?)
-data class WMovie(val t: WTitle, val runtime: Int?, val rating: Double?, val suggested: Boolean)
+/** 🆕 v2 — `backdrop` اسمُ ملفّ الهيدر لبطاقة فيلم الليلة العريضة (W42) */
+data class WMovie(val t: WTitle, val runtime: Int?, val rating: Double?, val suggested: Boolean, val backdrop: String? = null)
 data class WList(val id: String, val name: String, val items: List<WTitle>)
 
 class WFeed(
@@ -53,8 +54,21 @@ class WFeed(
   val lists: List<WList>,
   val check: Boolean,
   private val strings: JSONObject,
+  /** 🆕 الودجت الواحد — الملفُّ كما كُتب: `v2` (الأقسام) و`w2` (الصفوفُ المحسومة) يقرؤهما `W2Render` */
+  val raw: JSONObject,
+  private val posters: JSONObject,
 ) {
   fun s(key: String): String = strings.optString(key, "")
+
+  /** اسمُ الملفّ المحلّيّ لمسار TMDB — `null` إن لم يُنزَّل */
+  fun art(path: String?): String? = if (path == null) null else posters.optString(path, "").takeIf { it.isNotEmpty() }
+
+  /** عملٌ من كائنٍ في `v2` — الشكلُ نفسُه (`kind · id · title · poster_path`) */
+  fun titleFrom(x: JSONObject?): WTitle? {
+    if (x == null) return null
+    val path = if (x.isNull("poster_path")) null else x.optString("poster_path").takeIf { it.isNotEmpty() }
+    return WTitle(x.optString("kind", "tv"), x.optInt("id"), x.optString("title", "—"), art(path))
+  }
 
   companion object {
     const val SCHEME = "com.loopztv.app"
@@ -107,11 +121,14 @@ class WFeed(
         upcoming = arr(up?.optJSONArray("items")).map { WUpcoming(title(it), str(it, "date"), str(it, "label"), str(it, "behind_label")) },
         upTotal = up?.optInt("total") ?: 0,
         tonight = arr(o.optJSONArray("tonight")).map {
-          WMovie(title(it), int(it, "runtime"), if (it.isNull("rating")) null else it.optDouble("rating"), it.optString("source") == "suggested")
+          val bd = str(it, "backdrop_path")
+          WMovie(title(it), int(it, "runtime"), if (it.isNull("rating")) null else it.optDouble("rating"), it.optString("source") == "suggested", if (bd != null) str(posters, bd) else null)
         },
         lists = arr(o.optJSONArray("lists")).map { l -> WList(l.optString("id"), l.optString("name"), arr(l.optJSONArray("items")).map { title(it) }) },
         check = o.optBoolean("check", false),
         strings = o.optJSONObject("strings") ?: JSONObject(),
+        raw = o,
+        posters = posters,
       )
     }
   }
@@ -256,6 +273,34 @@ object WArt {
         /* من جهة البداية كما يرسمه التطبيق: يسارٌ في الإنجليزيّة، يمينٌ في العربيّة */
         if (rtl) c.drawRect(w - fw, h - bh, w.toFloat(), h.toFloat(), fill) else c.drawRect(0f, h - bh, fw, h.toFloat(), fill)
       }
+      border(ctx, c, w, h, r)
+      out
+    } catch (e: Exception) {
+      null
+    }
+  }
+
+  /**
+   * 🆕 W33 · W43 — الصغيرُ المربّع لـ«أكمل المشاهدة»: **الهيدرُ كلُّه بعرض الودجت** (لا قصّ، مطٌّ ≤ ٥٪ حين تختلف النسبةُ قليلاً)
+   * أعلى الودجت، يذوب في أسود الودجت تحته — والكلامُ على الأسود. لا زوم (W38).
+   */
+  fun headerFade(ctx: Context, backdrop: String?, wDp: Float, hDp: Float): Bitmap? {
+    return try {
+      val w = px(ctx, wDp).toInt().coerceAtLeast(1)
+      val h = px(ctx, hDp).toInt().coerceAtLeast(1)
+      val r = px(ctx, 16f)
+      val (out, c) = canvasFor(w, h, r)
+      c.drawColor(0xFF050505.toInt())
+      val ih = (w * 9f / 16f).coerceAtMost(h.toFloat())
+      val src = decode(ctx, backdrop, w, ih.toInt())
+      if (src != null) {
+        c.drawBitmap(src, null, RectF(0f, 0f, w.toFloat(), ih), Paint(Paint.FILTER_BITMAP_FLAG))
+        src.recycle()
+      }
+      val fadeTop = ih * 0.45f
+      c.drawRect(0f, fadeTop, w.toFloat(), ih + 1f, Paint().apply {
+        shader = LinearGradient(0f, fadeTop, 0f, ih, Color.TRANSPARENT, 0xFF050505.toInt(), Shader.TileMode.CLAMP)
+      })
       border(ctx, c, w, h, r)
       out
     } catch (e: Exception) {

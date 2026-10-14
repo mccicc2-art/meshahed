@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- سطرُ «أصدقاؤك» (٣٠): ملصقُ العمل وجملةُ «خالد شاهد The Wire» ومتى -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item"
+    android:layout_width="match_parent"
+    android:layout_height="30dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/it_img"
+        android:layout_width="20dp"
+        android:layout_height="30dp"
+        android:scaleType="fitXY" />
+    <TextView
+    android:id="@+id/it_name"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="11.5sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1"
+    android:layout_marginStart="9dp" />
+    <TextView
+    android:id="@+id/it_sub"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="10.5sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="8dp" />
+</LinearLayout>

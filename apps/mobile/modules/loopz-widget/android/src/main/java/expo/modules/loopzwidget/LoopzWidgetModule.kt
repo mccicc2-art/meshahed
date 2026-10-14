@@ -92,12 +92,7 @@ class LoopzWidgetModule : Module() {
 
   companion object {
     const val PREFS = "loopz_widget_cfg"
-    val PROVIDERS = listOf(
-      "com.loopztv.app.widget.LoopzWidget",
-      "com.loopztv.app.widget.ContinueSmallWidget",
-      "com.loopztv.app.widget.ContinueLargeWidget",
-      "com.loopztv.app.widget.ComingUpWidget",
-      "com.loopztv.app.widget.TonightSmallWidget",
-    )
+    /** 🆕 الودجت الواحد (W28) — مزوّدٌ واحد؛ والبيانُ في `withLoopzWidget.js` يطابقه */
+    val PROVIDERS = listOf("com.loopztv.app.widget.LoopzWidget")
   }
 }

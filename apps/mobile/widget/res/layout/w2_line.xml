@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W39 — السطرُ المختصر: قسمٌ لا يتّسع بشكله يظهر سطراً واحداً (أوّلُ عنصرٍ فيه) بدل أن يختفي -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/ln_img"
+        android:layout_width="28dp"
+        android:layout_height="42dp"
+        android:scaleType="fitXY" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+        <TextView
+    android:id="@+id/ln_label"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#FFD400"
+    android:textSize="10sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+        <TextView
+    android:id="@+id/ln_name"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="12sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginTop="1dp" />
+    </LinearLayout>
+</LinearLayout>

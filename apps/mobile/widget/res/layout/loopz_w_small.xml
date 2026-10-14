@@ -37,6 +37,18 @@
         android:background="@drawable/widget_check"
         android:padding="6dp"
         android:visibility="gone" />
+    <!-- 🆕 W34 · W43 — ✓ في الطرف السفليّ (فيلم الليلة الصغير، وأكمل المشاهدة الطوليّ) بالرقاقة الرماديّة نفسِها -->
+    <ImageView
+        android:id="@+id/full_check"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:background="@drawable/w2_chip_round"
+        android:padding="7dp"
+        android:src="@drawable/widget_ic_check"
+        android:tint="#F7F7F7"
+        android:visibility="gone" />
     <TextView
         android:id="@+id/full_plus"
         android:layout_width="46dp"
@@ -54,7 +66,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:paddingStart="10dp"
-        android:paddingEnd="10dp"
+        android:paddingEnd="44dp"
         android:paddingBottom="9dp"
         android:orientation="vertical">
         <TextView

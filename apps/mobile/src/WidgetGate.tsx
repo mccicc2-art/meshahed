@@ -25,6 +25,9 @@ type Action =
   | { do: "all"; section: "continue" | "towatch" | "upcoming" }
   | { do: "calendar" }
   | { do: "discover" }
+  /* 🆕 الودجت الواحد: شريطُ البحث يفتح البحث (لا كتابةَ في ودجت)، و«الإعدادات»/القفلُ يفتحان «ودجت لوبز» */
+  | { do: "search" }
+  | { do: "settings" }
   | { do: "list"; id: string }
   | { do: "start"; id: number; title: string; action: "start" | "unpause" };
 
@@ -48,6 +51,10 @@ export function widgetActionOf(url: string | null): Action | null {
       return { do: "calendar" };
     case "discover":
       return { do: "discover" };
+    case "search":
+      return { do: "search" };
+    case "settings":
+      return { do: "settings" };
     case "list": {
       const lid = q.get("id") ?? "";
       return /^[0-9a-f-]{36}$/i.test(lid) ? { do: "list", id: lid } : null;
@@ -117,6 +124,12 @@ export function WidgetGate() {
           return;
         case "discover":
           router.navigate("/discover");
+          return;
+        case "search":
+          router.navigate("/search");
+          return;
+        case "settings":
+          router.push({ pathname: "/settings/[section]", params: { section: "widget" } });
           return;
         case "all":
           router.navigate("/home");

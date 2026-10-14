@@ -15,16 +15,12 @@ const path = require("path");
 const PKG_DIR = path.join("com", "loopztv", "app", "widget");
 
 /** الأيقوناتُ من مجموعة التطبيق الواحدة (`assets/icons`) لا رسمٌ ثانٍ لها (القاعدة ٣) */
-const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png", widget_ic_play: "play.png" };
+const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png", widget_ic_play: "play.png", widget_ic_search: "search.png", widget_ic_lock: "lock.png" };
 
-/* 🆕 W24 — «فيلم الليلة» المتوسط أُلغي (قرارُ أحمد ١٣ أكتوبر)، و`ContinueLargeWidget` صار الطوليَّ 2×4 */
-const PROVIDERS = [
-  { name: ".widget.LoopzWidget", label: "@string/w_continue_name", info: "@xml/loopz_widget_info" },
-  { name: ".widget.ContinueSmallWidget", label: "@string/w_continue_name", info: "@xml/loopz_w_continue_s_info" },
-  { name: ".widget.ContinueLargeWidget", label: "@string/w_continue_name", info: "@xml/loopz_w_continue_l_info" },
-  { name: ".widget.ComingUpWidget", label: "@string/w_comingup_name", info: "@xml/loopz_w_comingup_info" },
-  { name: ".widget.TonightSmallWidget", label: "@string/w_tonight_name", info: "@xml/loopz_w_tonight_s_info" },
-];
+/* 🆕 الودجت الواحد (W28): مزوّدٌ واحد — `LoopzWidget` باسم المتوسط القديم (D-929)، والبقيّةُ أُزيلت («٢ ب»: تُوضع من جديد) */
+const PROVIDERS = [{ name: ".widget.LoopzWidget", label: "@string/w2_name", info: "@xml/loopz_widget_info" }];
+/* المزوّدون القدامى يُمحَون من البيان إن بقي لهم أثرٌ في بناءٍ سابق */
+const REMOVED = [".widget.ContinueSmallWidget", ".widget.ContinueLargeWidget", ".widget.ComingUpWidget", ".widget.TonightSmallWidget"];
 
 function copyDir(from, to) {
   fs.mkdirSync(to, { recursive: true });
@@ -71,6 +67,7 @@ const withWidgetManifest = (config) =>
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(cfg.modResults);
     app.receiver = app.receiver ?? [];
     app.activity = app.activity ?? [];
+    app.receiver = app.receiver.filter((r) => !REMOVED.includes(r.$?.["android:name"]));
     for (const p of PROVIDERS) {
       app.receiver = app.receiver.filter((r) => r.$?.["android:name"] !== p.name);
       app.receiver.push({

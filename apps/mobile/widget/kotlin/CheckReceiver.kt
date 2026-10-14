@@ -51,12 +51,12 @@ class CheckReceiver : BroadcastReceiver() {
         if (conn.responseCode in 200..299) {
           val data = JSONObject(conn.inputStream.bufferedReader().readText()).optJSONObject("data")
           applyNext(ctx, show, data?.optJSONObject("next"))
-          val p = BaseWidget.prefs(ctx).edit()
+          val p = LoopzWidget.prefs(ctx).edit()
           if (action == ACTION_MARK) {
             p.putString("undo_last", JSONObject().put("show", show).put("season", season).put("episode", episode).put("label", label).put("at", System.currentTimeMillis()).toString())
           } else p.remove("undo_last")
           p.apply()
-          BaseWidget.redrawAll(ctx)
+          LoopzWidget.redrawAll(ctx)
         }
         conn.disconnect()
       } catch (e: Exception) {
@@ -81,7 +81,7 @@ class CheckReceiver : BroadcastReceiver() {
 
     /** «✓ ح٧ · تراجع» بعد ✓ — حتى عشر دقائق، ثمّ يعود السطرُ «التالية» */
     fun undoLabel(ctx: Context, feed: WFeed, code: Int): Pair<String, PendingIntent>? {
-      val raw = BaseWidget.prefs(ctx).getString("undo_last", null) ?: return null
+      val raw = LoopzWidget.prefs(ctx).getString("undo_last", null) ?: return null
       return try {
         val o = JSONObject(raw)
         if (System.currentTimeMillis() - o.optLong("at") > UNDO_MS) return null

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- سطرُ قائمةٍ في القسم الكامل (٤٤): بوسترٌ ٢:٣ واسمٌ وسطرٌ ثانٍ ورقاقةُ «ابدأ/شاهدته» لـ«للمشاهدة» (W35) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/it_img"
+        android:layout_width="28dp"
+        android:layout_height="42dp"
+        android:scaleType="fitXY" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+        <TextView
+    android:id="@+id/it_name"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="12.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+        <TextView
+    android:id="@+id/it_sub"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="11sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginTop="1dp" />
+    </LinearLayout>
+    <LinearLayout
+    android:id="@+id/it_chip"
+    android:layout_width="wrap_content"
+    android:layout_height="26dp"
+    android:layout_marginStart="8dp"
+    android:visibility="gone"
+    android:background="@drawable/w2_chip"
+    android:gravity="center_vertical"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/it_chip_icon"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:src="@drawable/widget_ic_play"
+        android:tint="#F7F7F7" />
+    <TextView
+        android:id="@+id/it_chip_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:textColor="#F7F7F7"
+        android:textSize="10.5sp"
+        android:textStyle="bold"
+        android:maxLines="1" />
+</LinearLayout>
+</LinearLayout>
