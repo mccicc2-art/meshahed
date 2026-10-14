@@ -91,6 +91,16 @@ export const WIDGET_HEIGHTS = {
 /** ارتفاعُ كلِّ حجمٍ في التصميم المعتمد — الرسّامُ يقرأ الحقيقيَّ من النظام ويمرّره بدلاً منه */
 export const WIDGET_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 172, medium: 188, large: 440, xl: 720 };
 
+/**
+ * 🆕 **مقاساتُ آبل أقصرُ من أندرويد**: المتوسطُ ١٧٠ والكبيرُ ٣٧٦ على أغلب الآيفونات (الكبيرُ ٣٨٢ في Pro Max) — فالصفوفُ
+ * تُحسم للآيفون بمقاسه وإلّا قُصّ آخرُها. والمعاينةُ في التطبيق تأخذ مقاسَ منصّتها من هنا أيضاً.
+ */
+const IOS_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 170, medium: 170, large: 376, xl: 376 };
+
+export function widgetSizeHeight(platform: WidgetPlatform, size: WidgetSize): number {
+  return platform === "ios" ? IOS_SIZE_HEIGHT[size] : WIDGET_SIZE_HEIGHT[size];
+}
+
 const LIST_KEYS: readonly WidgetSectionKey[] = ["up", "friends", "tw", "act"];
 
 export type WidgetRow =
@@ -296,3 +306,44 @@ export function sanitizeWidgetConfig(raw: unknown): WidgetLayoutConfig {
 }
 
 export const LIST_SECTION_KEYS = LIST_KEYS;
+
+/* ───────── 🆕 ما يُكتب للرسّامَين الأصليّين (§11.2: «الرسّامُ يرسم ما تقوله الخلاصة») ───────── */
+
+/** الحجمُ الصغيرُ محسوماً: القسمُ وشكلُه في الشكلين اللذين يقع عليهما المشغِّل (طوليٌّ ومربّع، W43) */
+export interface ResolvedSmall {
+  key: WidgetSectionKey;
+  tall: WidgetSmallForm;
+  square: WidgetSmallForm;
+}
+
+export interface ResolvedWidget {
+  /** W41 — غيرُ المشترك في الكبير والكبير جداً: بطاقةُ قفلٍ لا محتوى */
+  locked: Partial<Record<WidgetSize, boolean>>;
+  small: ResolvedSmall;
+  /** صفوفُ كلِّ حجمٍ بارتفاع التصميم — الرسّامُ يرسمها بالترتيب ويترك آخرَها يأخذ ما بقي */
+  rows: Partial<Record<Exclude<WidgetSize, "small">, WidgetRow[]>>;
+  /** إعداداتُ الأقسام (الحجمُ والعرضُ والعدد) — الرسّامُ يقرأ منها ما لا تقوله الصفوف (شكلُ فيلم الليلة الصغير) */
+  opts: WidgetLayoutConfig["opts"];
+}
+
+/** أبعادُ الصغير في التصميم المعتمد: أندرويد الطوليّ (S24 ≈ 0.70) والمربّعُ (آيفون وبعضُ المشغّلات) */
+const SMALL_TALL = { w: 173, h: 246 };
+const SMALL_SQUARE = { w: 170, h: 170 };
+
+export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: WidgetPlatform): ResolvedWidget {
+  const eff = effectiveWidgetConfig(cfg, plus);
+  const key = smallWidgetSection(eff);
+  const rows: ResolvedWidget["rows"] = {};
+  const locked: ResolvedWidget["locked"] = {};
+  for (const size of widgetSizesFor(platform)) {
+    if (size === "small") continue;
+    if (widgetAccess(plus, size) === "locked") { locked[size] = true; continue; }
+    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size)).rows;
+  }
+  return {
+    locked,
+    small: { key, tall: smallWidgetForm(eff, key, SMALL_TALL.w, SMALL_TALL.h), square: smallWidgetForm(eff, key, SMALL_SQUARE.w, SMALL_SQUARE.h) },
+    rows,
+    opts: eff.opts,
+  };
+}

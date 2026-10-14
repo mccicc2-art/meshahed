@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultWidgetConfig, resolveWidgetLayout, smallWidgetSection, smallWidgetForm, fitImage, widgetAccess,
-  effectiveWidgetConfig, sanitizeWidgetConfig, widgetSizesFor, WIDGET_HEIGHTS, type WidgetLayoutConfig, type WidgetRow,
+  effectiveWidgetConfig, sanitizeWidgetConfig, widgetSizesFor, resolveWidget, WIDGET_HEIGHTS, type WidgetLayoutConfig, type WidgetRow,
 } from "./widgetLayout.ts";
 
 const names = (rows: WidgetRow[]) => rows.map((r) =>
@@ -143,4 +143,24 @@ test("البحث الكامل: الرائج قائمة افتراضاً، وال
   assert.equal(resolveWidgetLayout(cfg, "large").rows[0].h, WIDGET_HEIGHTS.searchCompact);
   assert.equal(sanitizeWidgetConfig({ opts: { search: { view: "full", trend: "x" } } }).opts.search.trend, "list");
   assert.equal(sanitizeWidgetConfig({ opts: { up: { trend: "posters" } } }).opts.up.trend, undefined);
+});
+
+/* §11.2 — الخلاصةُ تحمل الصفوفَ محسومةً لكلِّ حجم */
+test("المحسوم للرسّام: صفوف كل حجم، والقفل لغير المشترك، وشكلا الصغير", () => {
+  const plus = resolveWidget(defaultWidgetConfig(), true, "android");
+  assert.deepEqual(Object.keys(plus.rows).sort(), ["large", "medium", "xl"]);
+  assert.deepEqual(plus.locked, {});
+  assert.deepEqual([plus.small.key, plus.small.tall, plus.small.square], ["cont", "posterFull", "headerFade"]);
+  const free = resolveWidget(defaultWidgetConfig(), false, "ios");
+  assert.deepEqual(free.locked, { large: true });
+  assert.deepEqual(Object.keys(free.rows), ["medium"]);
+  assert.equal(free.small.key, "cont");
+});
+
+test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل أقل", () => {
+  const a = resolveWidget(defaultWidgetConfig(), true, "android").rows.large ?? [];
+  const i = resolveWidget(defaultWidgetConfig(), true, "ios").rows.large ?? [];
+  const sum = (rows: WidgetRow[]) => rows.reduce((n, r) => n + r.h, 0) + Math.max(0, rows.length - 1) * WIDGET_HEIGHTS.gap + WIDGET_HEIGHTS.pad;
+  assert.ok(sum(i) <= 376);
+  assert.ok(sum(a) <= 440);
 });
