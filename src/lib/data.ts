@@ -1987,6 +1987,9 @@ export interface ConvReplyEvent {
   mine: boolean;
   body: string;
   created_at: string;
+  /** 🆕 D-1387 — رسالةٌ مباشرةٌ بـGIF (المعرّفُ وحدَه) أو بصورةٍ من المخزن الخاصّ (رابطٌ مؤقّتٌ ومسارُها مفتاحاً) */
+  gif_id?: string | null;
+  image?: { url: string; key: string } | null;
 }
 /** قائمةٌ مُشارَكة — مرفقٌ منظَّم كمشاركة العمل، لا رابطٌ في نصٍّ حر (D-051) */
 export interface ConvListShareEvent {
@@ -2013,6 +2016,28 @@ export interface Conversation {
   latestShareId: string;
 }
 
+type DmRow = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+  gif_id?: string | null;
+  image_path?: string | null;
+};
+/** 🆕 D-1387 — عمرُ رابط صورة الرسالة: ستُّ ساعات — الحمولةُ تُجلب أقلَّ من ذلك بكثير، والتطبيقُ يخزّن الصورةَ بمسارها لا برابطها */
+const DM_IMAGE_URL_TTL = 6 * 3600;
+
+/** الرسائلُ المباشرة — 🆕 D-1387 بعمودَي الهجرة ٢٠٢؛ وقبلها (`42703` عمودٌ غائب) القراءةُ القديمة كما كانت، فلا تختفي الرسائل */
+async function directMessageRows(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const q = (cols: string) =>
+    supabase.from("direct_messages").select(cols).order("created_at", { ascending: false }).limit(2000);
+  const full = await q("id, sender_id, recipient_id, body, created_at, read_at, gif_id, image_path");
+  if (full.error?.code === "42703") return q("id, sender_id, recipient_id, body, created_at, read_at");
+  return full;
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   try {
     const supabase = await createClient();
@@ -2036,14 +2061,17 @@ export async function getConversations(): Promise<Conversation[]> {
         .order("created_at", { ascending: true })
         .limit(300),
       /* قبل الهجرة ٢٠٠ الجدولُ غائب: الخطأُ يُبتلع فيبقى الوارد كما كان */
-      supabase
-        .from("direct_messages")
-        .select("id, sender_id, recipient_id, body, created_at, read_at")
-        .order("created_at", { ascending: false })
-        .limit(2000),
+      directMessageRows(supabase),
     ]);
-    type DmRow = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string; read_at: string | null };
-    const dmRows = ((dmData ?? []) as DmRow[]).reverse();
+    const dmRows = ((dmData ?? []) as unknown as DmRow[]).reverse();
+    /* 🆕 D-1387 — صورُ الرسائل في مخزنٍ خاصّ: رابطٌ مؤقّتٌ لكلٍّ منها بجلسة القارئ (طلبٌ واحد) — السياسةُ لا تعطيه إلّا
+       لطرفَي الرسالة. وتعذُّرُه لا يُسقط المحادثة: الفقاعةُ تُرسم بلا صورتها */
+    const imagePaths = [...new Set(dmRows.map((m) => m.image_path).filter((p): p is string => !!p))];
+    const signed = new Map<string, string>();
+    if (imagePaths.length) {
+      const { data: urls } = await supabase.storage.from("dm-media").createSignedUrls(imagePaths, DM_IMAGE_URL_TTL);
+      for (const u of urls ?? []) if (u.path && u.signedUrl) signed.set(u.path, u.signedUrl);
+    }
     if (error && !listRows?.length && !dmRows.length) return [];
     if (!rows?.length && !listRows?.length && !dmRows.length) return [];
 
@@ -2165,7 +2193,16 @@ export async function getConversations(): Promise<Conversation[]> {
     /* 🆕 D-1380 — الرسائلُ النصّيّةُ المباشرة: «ردٌّ» في خيط الشخص بلا عمل */
     for (const m of dmRows) {
       const c = ensure(m.sender_id === me.id ? m.recipient_id : m.sender_id);
-      c.events.push({ kind: "reply", id: m.id, mine: m.sender_id === me.id, body: m.body, created_at: m.created_at });
+      const url = m.image_path ? signed.get(m.image_path) : undefined;
+      c.events.push({
+        kind: "reply",
+        id: m.id,
+        mine: m.sender_id === me.id,
+        body: m.body,
+        created_at: m.created_at,
+        ...(m.gif_id ? { gif_id: m.gif_id } : {}),
+        ...(m.image_path && url ? { image: { url, key: m.image_path } } : {}),
+      });
       if (m.recipient_id === me.id && !m.read_at) c.unread++;
     }
     /* مشاركات القوائم — أحداثٌ في الخيط نفسه؛ ردودُ `share_replies` القديمة

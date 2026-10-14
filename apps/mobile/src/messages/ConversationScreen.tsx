@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { api, queryClient, write } from "../api";
+import { ApiError, api, filePart, postForm, queryClient, write } from "../api";
+import { GifImage, GifPicker, rememberGif } from "../thread/GifPicker";
+import { shrinkForUpload } from "../imageShrink";
 import { useApp } from "../state";
 import { push } from "../push";
 import { Button, Text, type ToastTone } from "../ui";
@@ -22,7 +25,7 @@ import { dropBadges, patchConversation, patchKeep, presenceOf, useDoors, useMess
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
-import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgPeerBody, MsgTextBody } from "../contracts";
+import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImagePayload, MsgPeerBody, MsgTextBody } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 
@@ -131,34 +134,98 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const tmp = useRef(0);
+  /* 🆕 D-1387 — صورةُ الرسالة: تُصغَّر وتُرفع فورَ اختيارها (`path` حين يعود الخادم)، وتُرى فوق الحقل بـ✕ قبل الإرسال */
+  const [pic, setPic] = useState<{ local: string; path: string | null } | null>(null);
+  const [attach, setAttach] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
+  const [viewer, setViewer] = useState<{ url: string; key: string } | null>(null);
+
+  /** الإرسالُ الواحد — نصٌّ أو صورةٌ بتعليقٍ أو GIF: فقاعةٌ متفائلةٌ فوراً، والفشلُ يسحبها ويُرجع ما كان (`undo`) */
+  const deliver = useCallback(
+    (ev: MsgEvent, payload: MsgTextBody, undo: () => void, onOk?: () => void) => {
+      haptic.pick();
+      /* جلبٌ في الطريق بدأ قبل الردّ لا يمحو الفقاعةَ المتفائلة حين يصل */
+      void queryClient.cancelQueries({ queryKey: MESSAGES_KEY });
+      if (conv) patchConversation(peer, (c) => ({ ...c, events: [...c.events, ev], last_at: ev.created_at }));
+      else
+        /* 🆕 D-1380 — أوّلُ رسالةٍ تصنع المحادثةَ في الكاش (ويخرج صاحبُها من «ابدأ محادثة») — الخيطُ لا ينتظر جلباً */
+        patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({
+          ...p,
+          conversations: [{ person_id: peer, person, events: [ev], last_at: ev.created_at, unread: 0, latest_share_id: "" }, ...p.conversations],
+          startable: p.startable.filter((x) => x.id !== peer),
+        }));
+      setSending(true);
+      write("/api/v1/me/messages/text", payload)
+        .then(() => {
+          onOk?.();
+          void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+        })
+        .catch((e: unknown) => {
+          /* الفشلُ يُرجع: الفقاعةُ تُسحب وما كُتب أو أُرفق يعود، والسببُ يُقال (D-1179) */
+          patchConversation(peer, (c) => ({ ...c, events: c.events.filter((x) => x.id !== ev.id) }));
+          undo();
+          say(errorText(t, e));
+        })
+        .finally(() => setSending(false));
+    },
+    [conv, person, peer, say, t],
+  );
+
   const send = useCallback(() => {
     const body = text.trim();
-    if (!body || sending || (!conv && !person)) return;
-    haptic.pick();
+    const image = pic;
+    /* الصورةُ ما زالت تُرفع ⇒ «أرسل» ينتظرها (معطّلٌ في الرسم) */
+    if ((!body && !image) || (image && !image.path) || sending || (!conv && !person)) return;
     const id = `tmp-${tmp.current++}`;
-    const ev: MsgEvent = { kind: "reply", id, mine: true, body, created_at: new Date().toISOString() };
-    /* جلبٌ في الطريق بدأ قبل الردّ لا يمحو الفقاعةَ المتفائلة حين يصل */
-    void queryClient.cancelQueries({ queryKey: MESSAGES_KEY });
-    if (conv) patchConversation(peer, (c) => ({ ...c, events: [...c.events, ev], last_at: ev.created_at }));
-    else
-      /* 🆕 D-1380 — أوّلُ رسالةٍ تصنع المحادثةَ في الكاش (ويخرج صاحبُها من «ابدأ محادثة») — الخيطُ لا ينتظر جلباً */
-      patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({
-        ...p,
-        conversations: [{ person_id: peer, person, events: [ev], last_at: ev.created_at, unread: 0, latest_share_id: "" }, ...p.conversations],
-        startable: p.startable.filter((s) => s.id !== peer),
-      }));
+    const ev: MsgEvent = {
+      kind: "reply",
+      id,
+      mine: true,
+      body,
+      created_at: new Date().toISOString(),
+      ...(image ? { image: { url: image.local, key: image.local } } : {}),
+    };
     setText("");
-    setSending(true);
-    write("/api/v1/me/messages/text", { recipient_id: peer, body } satisfies MsgTextBody)
-      .then(() => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }))
-      .catch((e: unknown) => {
-        /* الفشلُ يُرجع: الفقاعةُ تُسحب والنصُّ يعود إلى الحقل، والسببُ يُقال (D-1179) */
-        patchConversation(peer, (c) => ({ ...c, events: c.events.filter((x) => x.id !== id) }));
-        setText((cur) => (cur ? cur : body));
-        say(errorText(t, e));
-      })
-      .finally(() => setSending(false));
-  }, [text, sending, conv, person, peer, say, t]);
+    setPic(null);
+    deliver(ev, { recipient_id: peer, body, ...(image?.path ? { image_path: image.path } : {}) }, () => {
+      setText((cur) => (cur ? cur : body));
+      if (image) setPic((cur) => cur ?? image);
+    });
+  }, [text, pic, sending, conv, person, peer, deliver]);
+
+  /* 🆕 D-1387 — الـGIF يُرسَل بضغطته (بلا خطوة تأكيد)، ويدخل «الأخيرة» في المنتقي حين يُقبل */
+  const sendGif = useCallback(
+    (gif: string) => {
+      if (!conv && !person) return;
+      const ev: MsgEvent = { kind: "reply", id: `tmp-${tmp.current++}`, mine: true, body: "", gif_id: gif, created_at: new Date().toISOString() };
+      deliver(ev, { recipient_id: peer, body: "", gif_id: gif }, () => {}, () => rememberGif(gif));
+    },
+    [conv, person, peer, deliver],
+  );
+
+  const pickImage = useCallback(async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
+    if (r.canceled || !r.assets[0]) return;
+    const a = r.assets[0];
+    if (a.mimeType && !a.mimeType.startsWith("image/")) return say(t.errPickImage);
+    let local: string | null = null;
+    try {
+      local = await shrinkForUpload(a.uri);
+      const mine = local;
+      setPic({ local: mine, path: null });
+      const form = new FormData();
+      form.append("file", filePart(mine, "dm.jpg", "image/jpeg"));
+      const out = await postForm<MsgImagePayload>("/api/v1/me/messages/image", form);
+      /* أُزيلت أو استُبدلت وهي تُرفع ⇒ لا تعود */
+      setPic((cur) => (cur && cur.local === mine ? { ...cur, path: out.path } : cur));
+    } catch (e) {
+      setPic((cur) => (cur && cur.local === local ? null : cur));
+      const api = e instanceof ApiError ? e : null;
+      const known = api ? (t as unknown as Record<string, unknown>)[api.error.message_key] : null;
+      const reason = typeof known === "string" ? known : api ? `${api.error.code} ${api.status}` : e instanceof Error ? e.message.slice(0, 80) : "";
+      say(api?.error.message_key === "apiImageTooLarge" ? t.errTooLarge : `${t.errUpload}${reason}`);
+    }
+  }, [say, t]);
 
   /* ——— ⋯: الملفّ · الإخفاء · الحظر ——— */
   const [menu, setMenu] = useState(false);
@@ -228,7 +295,10 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* الأحدثُ أسفل: قائمةٌ مقلوبة — تبدأ من آخر ما قيل ويبقى تحت الإصبع حين يصل جديد */
   const events = useMemo(() => (conv ? [...conv.events].reverse() : []), [conv]);
   const presence = presenceOf(seen.data?.last_seen, t, (iso) => timeAgo(iso, t));
-  const [grow, setGrow] = useState(22);
+  /* 🆕 D-1387 — الحقلُ سطرٌ واحدٌ بارتفاع «أرسل» (٤٠) ويكبر ٢٢ مع كلِّ سطرٍ حتى أربعة: النموُّ من الحقل نفسِه (`minHeight`/`maxHeight`)
+     لا من `contentSize` — أندرويد يعدّ الحشوَ فيه فكان يُضاف مرّتين فيولد السطرُ الواحدُ بارتفاع ٥٨ (لقطةُ أحمد ١٤ أكتوبر) */
+  const [oneLine, setOneLine] = useState(true);
+  const canSend = (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending;
 
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -298,7 +368,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           inverted
           data={events}
           keyExtractor={(e) => `${e.kind}-${e.id}`}
-          renderItem={({ item }) => <Bubble e={item} onTitle={doors.openTitle} onList={doors.openList} />}
+          renderItem={({ item }) => <Bubble e={item} onTitle={doors.openTitle} onList={doors.openList} onImage={setViewer} />}
           contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingVertical: 16 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -312,10 +382,46 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           /* يلزم الزرُّ قاعَ الحقل وهو ينمو (`items-end`) */
           <View
             onLayout={(e) => {
-              if (kb === 0 && grow === 22) setDockH(Math.round(e.nativeEvent.layout.height));
+              if (kb === 0 && oneLine && !pic) setDockH(Math.round(e.nativeEvent.layout.height));
             }}
-            style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 10, paddingBottom: (kb > 0 ? kb : insets.bottom) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
+            style={{ gap: 10, paddingHorizontal: PAGE_PAD, paddingTop: 10, paddingBottom: (kb > 0 ? kb : insets.bottom) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
           >
+            {/* 🆕 D-1387 — الصورةُ قبل الإرسال: مصغّرةٌ فوق الحقل و✕ يلغيها؛ ودائرةُ انتظارٍ عليها وهي تُرفع */}
+            {pic ? (
+              <View style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                <Image source={{ uri: pic.local }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                {!pic.path ? (
+                  <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" }}>
+                    <ActivityIndicator color="#fff" />
+                  </View>
+                ) : null}
+                <Pressable
+                  onPress={() => setPic(null)}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={t.talkRemoveImage}
+                  style={{ position: "absolute", top: 3, end: 3, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Icon name="close" size={11} color="#fff" />
+                </Pressable>
+              </View>
+            ) : null}
+            {/* يلزم الزرّان قاعَ الحقل وهو ينمو (`items-end`) */}
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+            {/* 🆕 D-1387 — زرٌّ واحدٌ «+» (أحمد: «مكان الزر واحد») يفتح ورقةً بخيارين: صورة · GIF */}
+            <Pressable
+              onPress={() => {
+                haptic.pick();
+                setAttach(true);
+              }}
+              disabled={sending}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t.msgAttach}
+              style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+            >
+              <Icon name="plus" size={18} color={tokens.fg} />
+            </Pressable>
             <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={text}
               onChangeText={(v) => setText(v.slice(0, MSG_TEXT_MAX))}
@@ -324,19 +430,63 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
               placeholder={t.shareReplyPlaceholder}
               placeholderTextColor={tokens.muted}
               accessibilityLabel={t.shareReplyPlaceholder}
-              onContentSizeChange={(e) => setGrow(Math.min(4 * 22, Math.max(22, Math.round(e.nativeEvent.contentSize.height))))}
-              style={{ flex: 1, minWidth: 0, height: grow + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left", textAlignVertical: "center" }}
+              onLayout={(e) => setOneLine(e.nativeEvent.layout.height < 50)}
+              style={{ flex: 1, minWidth: 0, minHeight: 22 + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left", textAlignVertical: "center" }}
             />
             <Pressable
               onPress={send}
-              disabled={!text.trim() || sending}
+              disabled={!canSend}
               accessibilityRole="button"
               accessibilityLabel={t.shareReplySend}
-              style={({ pressed }) => ({ height: 40, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: !text.trim() || sending ? 0.4 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] })}
+              style={({ pressed }) => ({ height: 40, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: canSend ? 1 : 0.4, transform: [{ scale: pressed ? 0.95 : 1 }] })}
             >
               <Text size={12} weight="700" color={tokens.onAccent}>{t.shareReplySend}</Text>
             </Pressable>
+            </View>
           </View>
+      ) : null}
+
+      {/* 🆕 D-1387 — ورقةُ «+»: الورقةُ الواحدة بخيارين (لا مكوّنَ جديد) — «صورة» تفتح الاستوديو و«GIF» المنتقي */}
+      {attach ? (
+        <Sheet title={t.msgAttach} onClose={() => setAttach(false)}>
+          <Pressable
+            onPress={() => {
+              setAttach(false);
+              void pickImage();
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="image" size={17} color={tokens.fg} />
+            </View>
+            <View>
+              <Text size={15}>{t.msgPickImage}</Text>
+              <Text size={12} muted>{t.msgPickImageSub}</Text>
+            </View>
+          </Pressable>
+          <View style={{ height: 1, backgroundColor: tokens.divider }} />
+          <Pressable
+            onPress={() => {
+              setAttach(false);
+              setGifOpen(true);
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+              <Text size={11} weight="800">GIF</Text>
+            </View>
+            <View>
+              <Text size={15}>{t.msgPickGif}</Text>
+              <Text size={12} muted>{t.msgPickGifSub}</Text>
+            </View>
+          </Pressable>
+        </Sheet>
+      ) : null}
+      {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
+      {viewer ? (
+        <Sheet title={t.msgPickImage} onClose={() => setViewer(null)} placement="center">
+          <Image source={{ uri: viewer.url, cacheKey: viewer.key }} style={{ width: "100%", aspectRatio: 3 / 4 }} contentFit="contain" cachePolicy="memory-disk" />
+        </Sheet>
       ) : null}
 
       {menu ? (
@@ -415,14 +565,64 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
 }
 
 /** فقاعةٌ واحدة: عملٌ مُشارَك (بطاقة) · قائمة · ردٌّ نصّيّ — والملاحظةُ فقاعةٌ تحت البطاقة (`ConvBubble`) */
-function Bubble({ e, onTitle, onList }: { e: MsgEvent; onTitle: (kind: "tv" | "movie", id: number) => void; onList: (id: string) => void }) {
+function Bubble({
+  e,
+  onTitle,
+  onList,
+  onImage,
+}: {
+  e: MsgEvent;
+  onTitle: (kind: "tv" | "movie", id: number) => void;
+  onList: (id: string) => void;
+  onImage: (img: { url: string; key: string }) => void;
+}) {
   const { t, tokens } = useApp();
+  /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
+  const [ratio, setRatio] = useState(4 / 3);
   const side = { alignSelf: e.mine ? ("flex-end" as const) : ("flex-start" as const), maxWidth: "80%" as const, marginVertical: 5 };
   const textBubble = (body: string) => (
     <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: e.mine ? tokens.accent : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start" }}>
       <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21 }}>{body}</Text>
     </View>
   );
+  /* 🆕 D-1387 — GIF أو صورةٌ في إطارٍ بلون صاحبها (٣ حول الصورة)، والتعليقُ تحتها داخل الإطار؛ الصورةُ تُفتح بملء الورقة */
+  if (e.kind === "reply" && (e.gif_id || e.image)) {
+    const img = e.image ?? null;
+    const w = 234;
+    return (
+      <View style={[side, { maxWidth: w + 6 }]}>
+        <Pressable
+          disabled={!img}
+          onPress={() => img && onImage(img)}
+          accessibilityRole={img ? "imagebutton" : undefined}
+          accessibilityLabel={img ? t.msgPickImage : "GIF"}
+          style={{ padding: 3, borderRadius: 16, backgroundColor: e.mine ? tokens.accent : tokens.surface2 }}
+        >
+          {e.gif_id ? (
+            <View style={{ width: 220, height: 165, borderRadius: 13, overflow: "hidden", backgroundColor: tokens.surface }}>
+              <GifImage id={e.gif_id} />
+            </View>
+          ) : img ? (
+            <Image
+              source={{ uri: img.url, cacheKey: img.key }}
+              onLoad={(ev) => {
+                const { width, height } = ev.source;
+                if (width > 0 && height > 0) setRatio(Math.max(0.6, Math.min(2, width / height)));
+              }}
+              style={{ width: w, aspectRatio: ratio, borderRadius: 13, backgroundColor: tokens.surface }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+          ) : null}
+          {e.body ? (
+            <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21, paddingHorizontal: 11, paddingTop: 6, paddingBottom: 4, maxWidth: w }}>
+              {e.body}
+            </Text>
+          ) : null}
+        </Pressable>
+      </View>
+    );
+  }
   if (e.kind === "reply") return <View style={side}>{textBubble(e.body)}</View>;
 
   const card = (onPress: () => void, art: React.ReactNode, title: string, sub: string) => (

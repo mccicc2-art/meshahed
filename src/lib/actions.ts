@@ -4690,23 +4690,34 @@ export async function myCommunitiesList(): Promise<CommunityLite[]> {
  * والبوّابُ واحدٌ في القاعدة (`can_message`، الهجرة ٢٠٠): الحظرُ أوّلاً، ثمّ المحادثةُ القائمة، ثمّ إعدادُ المستلم
  * («الكلّ» · «المتبادلون» · «لا أحد»). المحادثةُ القائمة تستمرّ ولو قفل الخاص («أ»).
  */
-export async function sendDirectMessage(recipientId: string, body: string) {
+export async function sendDirectMessage(recipientId: string, body: string, media?: { gif_id?: string | null; image_path?: string | null }) {
   recipientId = uuid(recipientId);
   const clean = String(body ?? "").trim();
-  if (clean.length < 1 || clean.length > DM_MAX) {
+  /* 🆕 D-1387 — GIF وحدَه أو صورةٌ بتعليقٍ اختياريّ (القيدُ نفسُه في الهجرة ٢٠٢) */
+  const gif = media?.gif_id || null;
+  const image = media?.image_path || null;
+  if (clean.length > DM_MAX || (!clean && !gif && !image) || (gif && (image || clean))) {
     throw new Error("مدخل غير صالح / Invalid input");
   }
   const { supabase, user } = await requireUser("share", 30, 60_000);
   if (user.id === recipientId) {
     throw new Error("لا يمكنك مراسلة نفسك / You can't message yourself");
   }
-  const { error } = await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: recipientId, body: clean });
+  /* الصورةُ من مجلّد المرسِل وحدَه — لا يُرسَل ملفُّ غيرك (القاعدةُ ترفضه أيضاً) */
+  if (image && !image.startsWith(`${user.id}/`)) throw new Error("مدخل غير صالح / Invalid input");
+  const { error } = await supabase.from("direct_messages").insert({
+    sender_id: user.id,
+    recipient_id: recipientId,
+    body: clean,
+    ...(gif ? { gif_id: gif } : {}),
+    ...(image ? { image_path: image } : {}),
+  });
   if (error) {
     /* رفضُ البوّاب (`42501`) ليس عطلاً: المستلمُ قفل الخاص أو بينهما حظر — رسالةٌ تُقرأ لا «جرّب مرّة أخرى» */
     if (error.code === "42501") throw new Error("هذا الشخص لا يستقبل رسائل / This person isn't accepting messages");
     fail(error);
   }
-  notifyMessage({ to: recipientId, actorId: user.id, text: clean });
+  notifyMessage({ to: recipientId, actorId: user.id, text: clean, media: gif ? "gif" : image ? "image" : null });
   await presenceOnSend(supabase);
   revalidatePath("/people");
 }
@@ -5413,7 +5424,8 @@ export async function exportMyData(): Promise<string> {
 }
 
 /** مخازنُ الملفّات التي يملك العضوُ فيها مجلّداً باسم معرّفه (`<uid>/…`) */
-const OWN_BUCKETS = ["avatars", "partner-ids"] as const;
+/* 🆕 D-1387 — و`dm-media`: صورُ الرسائل الخاصّة (الهجرة ٢٠٢، سياسةُ الحذف لمجلّد صاحبه) */
+const OWN_BUCKETS = ["avatars", "partner-ids", "dm-media"] as const;
 
 /**
  * كلُّ ملفّات العضو في مخزنٍ واحد — مجلّدُه وما تحته.

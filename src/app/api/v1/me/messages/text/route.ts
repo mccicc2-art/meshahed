@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * 🆕 D-1380 — `POST /api/v1/me/messages/text`: رسالةٌ نصّيّةٌ مباشرة (`sendDirectMessage`)، بلا عملٍ ولا شرطِ متابعة —
+ * 🆕 D-1387 — أو GIF، أو صورةٌ رُفعت قبلُ إلى `/image` (بتعليقٍ اختياريّ) —
  * البوّابُ `can_message` في القاعدة. يُسأل قبل الكتابة ليعود الرفضُ مفتاحاً يُقرأ (`apiMsgNotAccepting`) لا «تعذّر».
  */
 export async function POST(req: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const gate = await supabase.rpc("can_message", { a: auth.user.id, b: b.recipient_id });
     if (!gate.error && gate.data !== true) return fail("forbidden", { message_key: "apiMsgNotAccepting" });
-    await sendDirectMessage(b.recipient_id, b.body);
+    await sendDirectMessage(b.recipient_id, b.body, { gif_id: b.gif_id, image_path: b.image_path });
     return ok({ done: true as const }, ["me:messages"]);
   });
 }

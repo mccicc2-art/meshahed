@@ -199,7 +199,7 @@ async function signalNow(input: SignalInput): Promise<void> {
 }
 
 /** رسالةٌ (عملٌ أو قائمةٌ لصديق، أو ردٌّ في خيطها) ⇢ دفع */
-export function notifyMessage(input: { to: string; actorId: string; text: string | null; sharedTitle?: string | null; isList?: boolean }) {
+export function notifyMessage(input: { to: string; actorId: string; text: string | null; sharedTitle?: string | null; isList?: boolean; media?: "image" | "gif" | null }) {
   if (!input.to || input.to === input.actorId) return;
   quiet(async () => {
     if (!hasServiceKey()) return;
@@ -218,6 +218,7 @@ export function notifyMessage(input: { to: string; actorId: string; text: string
             text: input.text,
             sharedTitle: input.sharedTitle,
             isList: input.isList,
+            media: input.media,
           },
           t,
         ),

@@ -185,6 +185,7 @@ export type {
   LastSeenPayload,
   MsgReplyBody,
   MsgTextBody,
+  MsgImagePayload,
   MsgPeerBody,
   SignalsPayload,
   BadgesPayload,

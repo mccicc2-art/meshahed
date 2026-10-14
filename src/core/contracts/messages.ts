@@ -23,8 +23,20 @@ export type MsgShareEvent = {
   note: string | null;
   created_at: string;
 };
-/** ردٌّ نصّيّ — ردٌّ قديمٌ في خيط عمل، أو 🆕 رسالةٌ مباشرةٌ بلا عمل (D-1380) */
-export type MsgReplyEvent = { kind: "reply"; id: string; mine: boolean; body: string; created_at: string };
+/** ردٌّ نصّيّ — ردٌّ قديمٌ في خيط عمل، أو 🆕 رسالةٌ مباشرةٌ بلا عمل (D-1380).
+ *  🆕 D-1387 — والمباشرةُ قد تحمل **GIF** (معرّفُه وحدَه، D-362) أو **صورة** (`image`، ومعها تعليقٌ اختياريّ في `body`) */
+export type MsgReplyEvent = {
+  kind: "reply";
+  id: string;
+  mine: boolean;
+  body: string;
+  created_at: string;
+  gif_id?: string | null;
+  image?: MsgImage | null;
+};
+/** 🆕 D-1387 — صورةُ رسالةٍ في المخزن الخاصّ `dm-media`: `url` رابطٌ مؤقّتٌ يصنعه الخادمُ بجلسة القارئ (لا رابطَ عامّ)،
+ *  و`key` مسارُها الثابت — مفتاحُ الكاش في التطبيق فلا تُنزَّل الصورةُ ثانيةً كلّما تجدّد الرابط */
+export type MsgImage = { url: string; key: string };
 /** قائمةٌ مُشارَكة — الاسمُ والعدّةُ لحظةَ الإرسال */
 export type MsgListEvent = {
   kind: "list";
@@ -71,8 +83,15 @@ export type LastSeenPayload = { last_seen: string | null };
 
 /** `POST /api/v1/me/messages/reply` */
 export type MsgReplyBody = { share_id: string; body: string };
-/** 🆕 D-1380 — `POST /api/v1/me/messages/text`: رسالةٌ نصّيّةٌ مباشرة (`sendDirectMessage`) */
-export type MsgTextBody = { recipient_id: string; body: string };
+/** 🆕 D-1380 — `POST /api/v1/me/messages/text`: رسالةٌ نصّيّةٌ مباشرة (`sendDirectMessage`).
+ *  🆕 D-1387 — أو GIF وحدَه (`body` فارغ)، أو صورةٌ رُفعت قبلُ (`image_path` من `/api/v1/me/messages/image`) بتعليقٍ اختياريّ */
+export type MsgTextBody = { recipient_id: string; body: string; gif_id?: string | null; image_path?: string | null };
+/** 🆕 D-1387 — `POST /api/v1/me/messages/image` (multipart `file`): الصورةُ في مجلّدك من `dm-media`، والمسارُ يعود ليُرسَل مع الرسالة */
+export type MsgImagePayload = { path: string };
+/** مسارُ صورة الرسالة: `<uid>/<uuid>.<ext>` — قيدُ الهجرة ٢٠٢ نفسُه (والخادمُ يشترط أن يكون المجلّدُ مجلّدَ المرسِل) */
+export const DM_IMAGE_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+/** حدُّ صورة الرسالة — حدُّ المخزن `dm-media` في الهجرة ٢٠٢ */
+export const DM_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 /** `POST /api/v1/me/messages/{read,hide,block}` */
 export type MsgPeerBody = { person_id: string };
 
@@ -110,6 +129,8 @@ export const MSG_TEXT_MAX = 1000;
 /** أقصى طول الردّ — حدُّ `replyToShare` نفسُه */
 export const MSG_REPLY_MAX = 500;
 
+/** معرّفُ Giphy — `GIF_ID_RE` في `core/media.ts` (لا يُستورد من هنا: العقدُ يُقرأ في اختباراتٍ بلا أسماء المسارات `@/`) */
+const GIF_RE = /^[A-Za-z0-9]{1,64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** القارئُ متسامحٌ مع الزائد صارمٌ مع الناقص (نهجُ D-947/`communityActs`): الفراغُ يُرفض قبل الرحلة */
@@ -129,8 +150,16 @@ export function parseMsgTextBody(raw: unknown): MsgTextBody | null {
   if (typeof b.recipient_id !== "string" || !UUID.test(b.recipient_id)) return null;
   if (typeof b.body !== "string") return null;
   const body = b.body.trim();
-  if (!body || body.length > MSG_TEXT_MAX) return null;
-  return { recipient_id: b.recipient_id, body };
+  if (body.length > MSG_TEXT_MAX) return null;
+  /* 🆕 D-1387 — GIF وحدَه، أو صورةٌ بتعليقٍ اختياريّ، أو نصّ — لا الاثنان معاً ولا رسالةٌ فارغة (قيدُ الهجرة ٢٠٢) */
+  const gif = typeof b.gif_id === "string" && b.gif_id ? b.gif_id : null;
+  const image = typeof b.image_path === "string" && b.image_path ? b.image_path : null;
+  if (gif && !GIF_RE.test(gif)) return null;
+  if (image && !DM_IMAGE_PATH_RE.test(image)) return null;
+  if (gif && image) return null;
+  if (gif && body) return null;
+  if (!body && !gif && !image) return null;
+  return { recipient_id: b.recipient_id, body, ...(gif ? { gif_id: gif } : {}), ...(image ? { image_path: image } : {}) };
 }
 
 export function parseMsgPeerBody(raw: unknown): MsgPeerBody | null {

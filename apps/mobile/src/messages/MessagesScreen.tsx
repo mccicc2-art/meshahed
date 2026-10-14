@@ -161,7 +161,8 @@ function Badge({ n }: { n: number }) {
 export function previewOf(last: MsgEvent | undefined, t: Dict): string {
   if (!last) return "";
   const mine = last.mine ? `${t.convYou}: ` : "";
-  if (last.kind === "reply") return `${mine}${last.body}`;
+  /* 🆕 D-1387 — «GIF» أو «📷 صورة» (وتعليقُها إن وُجد) */
+  if (last.kind === "reply") return `${mine}${last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.body}`;
   if (last.kind === "list") return `${mine}${t.convSharedListPreview(last.list_name ?? "—")}`;
   return `${mine}${t.convSharedPreview(last.title ?? "—")}`;
 }

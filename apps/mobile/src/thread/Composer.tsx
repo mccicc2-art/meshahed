@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
@@ -16,6 +15,7 @@ import { span } from "../perfMarks";
 import { REPLY_MAX } from "@/core/communityActs";
 import type { ThreadImagePayload } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { shrinkForUpload } from "../imageShrink";
 
 /**
  * ====== صندوقُ الردّ الأصليّ الواحد — نسخةُ `Composer.tsx` (الويب) · Phase 11-M · M2 ⇐ M3 ======
@@ -35,8 +35,6 @@ import { SYSTEM_FONT_CAP } from "../fontScale";
  * محلولةٌ مرّةً (D-1005).
  */
 export type Draft = { body: string; spoiler: boolean; image: string | null; gif: string | null };
-
-const MAX_EDGE = 1920;
 
 export function Composer({
   title,
@@ -91,16 +89,11 @@ export function Composer({
     const done = span("thread.image");
     let stage = "shrink";
     try {
-      /* 🔑 الأبعادُ من الصورة المرسومة لا من المنتقي: منتقي أندرويد قد يعيد `width/height` صفراً، فتُرفع الصورةُ بحجمها
-         الأصليّ (١٢–٥٠ ميجابكسل) فيتجاوز حدَّ الخادم (٢ ميجابايت) أو حدَّ المنصّة (٤٫٥) فيعود جوابٌ ليس JSON */
-      const raw = await ImageManipulator.manipulate(a.uri).renderAsync();
-      const long = Math.max(raw.width, raw.height);
-      const ctx = ImageManipulator.manipulate(raw);
-      if (long > MAX_EDGE) ctx.resize(raw.width >= raw.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
-      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.82, format: SaveFormat.JPEG });
+      /* التصغيرُ الواحد (`imageShrink.ts`) — مشتركٌ مع صورة الرسالة */
+      const small = await shrinkForUpload(a.uri);
       stage = "send";
       const form = new FormData();
-      form.append("file", filePart(img.uri, "talk.jpg", "image/jpeg"));
+      form.append("file", filePart(small, "talk.jpg", "image/jpeg"));
       const out = await postForm<ThreadImagePayload>("/api/v1/thread/image", form);
       setImage(out.url);
       haptic.pick();

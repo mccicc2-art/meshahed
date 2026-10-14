@@ -8,7 +8,7 @@ import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { getDict, num, type Locale } from "@/core/i18n";
-import { posterUrl } from "@/core/media";
+import { gifUrl, posterUrl } from "@/core/media";
 import { formatDateShort, timeAgo } from "@/core/when";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
@@ -247,9 +247,16 @@ function presenceOf(lastSeen: string | null, t: Dict): string | null {
 function previewOf(last: ConvEvent | undefined, t: Dict): string {
   if (!last) return "";
   const mine = last.mine ? `${t.convYou}: ` : "";
-  if (last.kind === "reply") return `${mine}${last.body}`;
+  if (last.kind === "reply") return `${mine}${replyPreview(last, t)}`;
   if (last.kind === "list") return `${mine}${t.convSharedListPreview(last.list_name ?? "—")}`;
   return `${mine}${t.convSharedPreview(last.title ?? "—")}`;
+}
+
+/** 🆕 D-1387 — سطرُ الرسالة في القائمة: «📷 صورة» (وتعليقُها إن وُجد) أو «GIF» أو النصّ */
+function replyPreview(e: Extract<ConvEvent, { kind: "reply" }>, t: Dict): string {
+  if (e.gif_id) return t.msgGifPreview;
+  if (e.image) return e.body ? `${t.msgImagePreview} · ${e.body}` : t.msgImagePreview;
+  return e.body;
 }
 
 /** خيط محادثةٍ واحد — كالدردشة */
@@ -542,6 +549,25 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
   const t = getDict(locale);
   const side = event.mine ? "ms-auto items-end" : "me-auto items-start";
 
+  /* 🆕 D-1387 — GIF أو صورةٌ (وتعليقُها تحتها) في إطارٍ بلون صاحبها، كفقاعة النصّ. الويبُ يعرض ولا يرسل بعدُ */
+  if (event.kind === "reply" && (event.gif_id || event.image)) {
+    const src = event.gif_id ? gifUrl(event.gif_id, "small") : event.image?.url ?? null;
+    return (
+      <div className={`flex flex-col max-w-[70%] ${side}`}>
+        <div className={`rounded-2xl p-[3px] ${event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"}`}>
+          {src ? (
+            <a href={event.image?.url ?? src} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element -- رابطٌ مؤقّتٌ من مخزنٍ خاصّ أو Giphy: لا يمرّ بمحسّن الصور */}
+              <img src={src} alt={event.gif_id ? "GIF" : t.msgPickImage} loading="lazy" className="block max-w-full max-h-80 rounded-[13px] object-cover" />
+            </a>
+          ) : null}
+          {event.body ? (
+            <span className="fs-content block px-3 pt-1.5 pb-1 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">{event.body}</span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
   if (event.kind === "reply") {
     return (
       <div className={`flex flex-col max-w-[80%] ${side}`}>
