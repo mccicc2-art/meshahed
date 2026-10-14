@@ -9,6 +9,8 @@
  * عنده بتقويم الجهاز وقتَ الرسم — ولو كُتبت هنا لبقيت «اليوم» إلى أن يُفتح التطبيق.
  */
 
+import type { WidgetLayoutConfig } from "../widgetLayout.ts";
+
 /** نسخةُ العقد — ودجتٌ أقدمُ من الحقل لا يقرأ ما لا يعرفه */
 export const WIDGET_FEED_VERSION = 1;
 
@@ -103,6 +105,90 @@ export interface WidgetStrings {
   undo: string;
 }
 
+/* ───────────── 🆕 الودجت الواحد (v2، W28–W43) ─────────────
+ * 🔑 **حقلٌ إضافيٌّ لا نسخةٌ جديدة**: `v` يبقى ١ لأنّ ودجتات 1.12.x على الشاشات تقرأ هذا الردَّ نفسَه،
+ * وودجتٌ قديمٌ يتجاهل `v2` ولا يسقط. والودجتُ الجديد يقرأ `v2` وحده. */
+
+/** فيلمٌ أو مسلسلٌ في «القادم» — W32: الأفلامُ داخلةٌ أيضاً */
+export interface WidgetUpcomingAny extends WidgetTitle {
+  date: string | null;
+  /** «م٤ · ح١» للمسلسل، و«عرضٌ أوّل» للفيلم */
+  label: string | null;
+}
+
+/** سطرُ «أصدقاؤك» — من تتابعهم أو من تختارهم (W32) */
+export interface WidgetFriendItem {
+  name: string;
+  avatar_url: string | null;
+  /** «أنهى» · «قيّم ★ 9» · «بدأ» بلغة القارئ — الفعلُ يُبنى في الخادم */
+  action: string;
+  title: WidgetTitle;
+  /** ISO — الرسّامُ يكتب «قبل ساعة» بساعة الجهاز وقتَ الرسم */
+  at: string;
+}
+
+/** سطرُ «أنشطتك» — نشاطُك أنت (W32) */
+export interface WidgetActivityItem {
+  /** «✓ Severance» · «قيّمت Dune» · «أضفت Andor» */
+  line: string;
+  sub: string | null;
+  title: WidgetTitle;
+  at: string;
+}
+
+/** «للمشاهدة» — الأحدثُ إضافةً أوّلاً (W35) */
+export interface WidgetToWatchItem extends WidgetTitle {
+  /** نوعُه كما يُقرأ: مسلسل · فيلم · أنمي */
+  type_label: string;
+  rating: number | null;
+  /** «ابدأ» للمسلسل والأنمي، «شاهدته» للفيلم */
+  action: "start" | "watched";
+  added_at: string;
+}
+
+/** تخطيطٌ محفوظٌ في التطبيق — ورقةُ «تعديل الأداة» في الآيفون تختار واحداً منها (W40، الخيار ب) */
+export interface WidgetLayoutEntry {
+  id: string;
+  name: string;
+  config: WidgetLayoutConfig;
+}
+
+export interface WidgetStringsV2 {
+  searchPlaceholder: string;
+  trendingToday: string;
+  friendsTitle: string;
+  activityTitle: string;
+  watched: string;
+  /** سطرُ «القادم» تحت البطاقات (W33): يُلحق به الموعد */
+  upLinePrefix: string;
+  /** W33 — «لا مواعيد قادمة لأعمالك» (الأفلامُ داخلةٌ الآن، فلا «لمسلسلاتك») */
+  noUpcoming: string;
+  /** رقاقةُ «فيلم آخر» بلا السهم — الأيقونةُ يرسمها الرسّام (W36) */
+  another: string;
+  plusLockedTitle: string;
+  plusLockedSub: string;
+  plusLapsedTitle: string;
+  plusLapsedSub: string;
+  subscribe: string;
+  renew: string;
+}
+
+export interface WidgetFeedV2 {
+  /** W41 — المشتركُ يرى إعدادَه كاملاً؛ غيرُه أكملَ المشاهدة في الصغير والمتوسّط */
+  plus: boolean;
+  /** كان مشتركاً وانتهى — يُقفل عليه ويبقى إعدادُه محفوظاً */
+  lapsed: boolean;
+  /** إعدادُ الودجت الجديد في أندرويد، والتخطيطُ الأوّلُ في الآيفون */
+  config: WidgetLayoutConfig;
+  layouts: WidgetLayoutEntry[];
+  trending: WidgetTitle[];
+  friends: WidgetFriendItem[];
+  activity: WidgetActivityItem[];
+  towatch: WidgetToWatchItem[];
+  upcoming: { items: WidgetUpcomingAny[]; total: number };
+  strings: WidgetStringsV2;
+}
+
 export interface WidgetFeed {
   v: typeof WIDGET_FEED_VERSION;
   lang: "ar" | "en";
@@ -119,4 +205,21 @@ export interface WidgetFeed {
   /** ✓ مخفيٌّ حتّى الدفعة الثانية (W14 · W15) — الخادمُ يكتبه `false` دائماً الآن */
   check: boolean;
   strings: WidgetStrings;
+  /** 🆕 الودجت الواحد — اختياريٌّ حتّى يملأه المسار */
+  v2?: WidgetFeedV2;
+}
+
+/* ───────── 🆕 شاشةُ «ودجت لوبز» (`/api/v1/me/prefs/widget`) ───────── */
+export interface WidgetPrefsPayload {
+  config: WidgetLayoutConfig;
+  layouts: WidgetLayoutEntry[];
+  plus: boolean;
+  lapsed: boolean;
+}
+export interface WidgetPrefsBody {
+  widget: { config: WidgetLayoutConfig; layouts: WidgetLayoutEntry[] };
+}
+export interface WidgetPrefsResult {
+  ok: boolean;
+  needsPlus?: true;
 }

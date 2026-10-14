@@ -19,6 +19,7 @@ import { sanitizeSavedFilters, type SavedFilter } from "@/core/savedFilters";
 import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 import { sanitizeTourState, type TourState } from "@/core/tour";
 import { sanitizeChatBg, type ChatBg } from "@/core/chatBg";
+import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
 
 /* 🆕 D-1318 — **شكلُ حالة الجولة وقواعدُها انتقلت إلى `core/tour.ts`**: التطبيقُ يقرؤها ويكتبها
    (T1) ولا يستورد من `lib`. وتُعاد تصديراً هنا فلا يتغيّر مستدعٍ واحد. */
@@ -56,6 +57,12 @@ export interface UiState {
    * يراها)، وعمودٌ بلا قيدِ شكلٍ فلا هجرة. ⚠️ **والمنطقُ في `core/chatBg.ts`**؛ وخلفيّةُ العمل شرطُ كتابتها البلس.
    */
   chatBg: ChatBg;
+  /**
+   * 🆕 **ودجت لوبز** (خطّةُ v2، W40) — إعدادُ أندرويد وتخطيطاتُ الآيفون. **نفسُ حجّة الفلاتر**: حالةُ صاحبها، وعمودٌ بلا
+   * قيدِ شكلٍ فلا هجرة. 🔴 **ولا بدّ أن يمرّ هنا**: `updateUiState` يكتب الكائنَ كلَّه بعد تطهيره — ومفتاحٌ لا يعرفه
+   * المطهِّرُ يسقط في أوّل كتابةٍ لتلميح. والمنطقُ في `core/widgetFeedV2.ts`؛ وشرطُ كتابته البلس (W41).
+   */
+  widget: ReturnType<typeof sanitizeStoredWidget>;
 }
 
 /** معرّف تلميح صالح — يدخل مفاتيح localStorage وعمودَ jsonb فيُقيَّد شكله */
@@ -65,7 +72,7 @@ const HINTS_CAP = 100;
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
 export function sanitizeUiState(value: unknown): UiState {
-  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null) };
+  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null), widget: null };
   if (!value || typeof value !== "object") return out;
   const v = value as Record<string, unknown>;
   if (Array.isArray(v.hints)) {
@@ -78,6 +85,7 @@ export function sanitizeUiState(value: unknown): UiState {
   out.filters = sanitizeSavedFilters(v.filters);
   out.tpl = sanitizePrefTemplates(v.tpl);
   out.chatBg = sanitizeChatBg(v.chatBg);
+  out.widget = sanitizeStoredWidget(v.widget);
   return out;
 }
 

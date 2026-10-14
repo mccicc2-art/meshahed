@@ -9,9 +9,11 @@ import {
   getMyLists,
   getList,
   listsForDisplay,
+  getFriendsWatching,
 } from "@/lib/data";
+import { getMyActivity } from "@/lib/myActivity";
 import { getT } from "@/lib/locale";
-import { getTv, wellKnownMovies, type TvDetails } from "@/lib/tmdb";
+import { getTv, wellKnownMovies, trendingToday, type TvDetails } from "@/lib/tmdb";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
 import { calendarEntries, todayIn } from "@/core/calendar";
 import { asTimeZone } from "@/core/zone";
@@ -32,7 +34,16 @@ import {
   type WidgetMovie,
   type WidgetListSource,
   type WidgetTitle,
+  type WidgetFeedV2,
 } from "@/core/contracts/widget";
+import {
+  sanitizeWidgetStore,
+  widgetPlanState,
+  widgetToWatch,
+  widgetUpcomingAny,
+  widgetFriends,
+  widgetActivity,
+} from "@/core/widgetFeedV2";
 
 /**
  * 🆕 `GET /api/v1/me/widget?lists=<id,id>` — **بياناتُ الودجتات كلِّها في ردٍّ واحد** (خطّةُ الودجتات).
@@ -309,6 +320,67 @@ export async function GET(req: NextRequest) {
         }),
       );
 
+      /* ——— 🆕 الودجت الواحد (v2، W28–W43) — حقلٌ إضافيٌّ يتجاهله الودجتُ القديم ———
+         ⚡ ثلاثةُ نداءاتٍ جديدة لا أكثر، متوازية، وكلٌّ منها يسقط إلى فراغٍ لا إلى خطأ: الرائجُ (مخبّأٌ في `railTmdb`)،
+         ونشاطُ من تتابعهم (`following_activity_v2` — نداءُ صفّ الرئيسيّة نفسُه)، ونشاطُك (خمسةٌ من كلِّ مصدر) */
+      const [trendRows, friendRows, myActRows] = await Promise.all([
+        trendingToday().catch(() => []),
+        getFriendsWatching(6).catch(() => []),
+        getMyActivity(5).catch(() => []),
+      ]);
+      const store = sanitizeWidgetStore((profile?.ui_state as { widget?: unknown } | null | undefined)?.widget, t.widgetLayoutDefault);
+      const plan = widgetPlanState(profile);
+      const followMeta = new Map(
+        followRows.map((f) => [`${f.media_type}-${f.tmdb_id}`, { title: f.title, poster: f.poster_path }] as const),
+      );
+      const addedAt = new Map(followRows.map((f) => [`${f.media_type}-${f.tmdb_id}`, f.added_at] as const));
+      /* «القادم» بنوعيه (W32) — **وصفةُ التقويم نفسُها** على المتابعات كلِّها؛ رقمُ الحلقة لما حُسب أعلاه وحدَه */
+      const labelById = new Map(upcomingItems.map((u) => [u.id, u.label] as const));
+      const allEntries = calendarEntries(followRows, { today, until: "9999-12-31" });
+      const upcomingAll = widgetUpcomingAny(allEntries, (id) => labelById.get(id) ?? null, t);
+      const v2: WidgetFeedV2 = {
+        plus: plan.plus,
+        lapsed: plan.lapsed,
+        config: store.config,
+        layouts: store.layouts,
+        trending: trendRows.slice(0, 5).map((r) => ({
+          kind: r.media_type === "tv" ? "tv" : "movie",
+          id: r.id,
+          title: titleOf(r),
+          poster_path: r.poster_path,
+        })),
+        friends: widgetFriends(friendRows, t),
+        activity: widgetActivity(myActRows, followMeta, t),
+        /* ⚠️ النوعُ «أنمي» يحتاج بلدَ المنشأ (`isAnime`) ولا تحفظه المتابعة — فلا يُكتب «أنمي» تخميناً من نوع الرسوم وحدَه
+           (كان سيسمّي «عائلة سمبسون» أنمي). والتقييمُ تقييمُ TMDB ولا يُجلب لأجل سطر — يُترك فارغاً فلا يُرسم */
+        towatch: widgetToWatch(
+          body.toWatchOrdered
+            .filter((x) => x.tmdbId != null)
+            .map((x) => ({ mediaType: x.mediaType === "tv" ? ("tv" as const) : ("movie" as const), tmdbId: x.tmdbId!, title: x.title, posterPath: x.posterPath })),
+          addedAt,
+          new Set<number>(),
+          new Map<string, number>(),
+          t,
+        ),
+        upcoming: upcomingAll,
+        strings: {
+          searchPlaceholder: t.widgetSearchPlaceholder,
+          trendingToday: t.widgetTrendingToday,
+          friendsTitle: t.widgetFriends,
+          activityTitle: t.widgetActivity,
+          watched: t.widgetWatched,
+          upLinePrefix: t.widgetUpLine,
+          noUpcoming: t.widgetNoUpcomingAny,
+          another: t.widgetAnother,
+          plusLockedTitle: t.widgetPlusLockedTitle,
+          plusLockedSub: t.widgetPlusLockedSub,
+          plusLapsedTitle: t.widgetPlusLapsedTitle,
+          plusLapsedSub: t.widgetPlusLapsedSub,
+          subscribe: t.widgetSubscribe,
+          renew: t.widgetRenew,
+        },
+      };
+
       const payload: WidgetFeed = {
         v: WIDGET_FEED_VERSION,
         lang: locale,
@@ -345,6 +417,7 @@ export async function GET(req: NextRequest) {
           emptySignedOut: t.widgetSignedOut,
           undo: t.undoWatched,
         },
+        v2,
       };
       return ok(payload);
     },
