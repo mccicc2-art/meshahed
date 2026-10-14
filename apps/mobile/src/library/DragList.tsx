@@ -30,6 +30,7 @@ export function DragList({
   onOrder,
   renderRow,
   handleLabel,
+  onDragChange,
 }: {
   keys: string[];
   rowHeight: number;
@@ -39,6 +40,8 @@ export function DragList({
   /** محتوى الصفّ — والمقبضُ يُرسم في طرفه بيد المحرّك */
   renderRow: (key: string, index: number, dragging: boolean) => React.ReactNode;
   handleLabel: (key: string, index: number) => string;
+  /** 🆕 D-1397 — إمساكٌ وإفلات: صفحةٌ تتمرّر حول القائمة تقفل تمريرَها ما دام صفٌّ ممسوكاً */
+  onDragChange?: (dragging: boolean) => void;
 }) {
   const { tokens } = useApp();
   const [order, setOrder] = useState<string[]>(keys);
@@ -78,14 +81,16 @@ export function DragList({
   const onGrab = useCallback(
     (key: string) => {
       setDragging(key);
+      onDragChange?.(true);
       auto.setActive(true);
     },
-    [auto],
+    [auto, onDragChange],
   );
   const onDrop = useCallback(
     (f: number, to: number) => {
       auto.setActive(false);
       setDragging(null);
+      onDragChange?.(false);
       if (f === to) return;
       const next = [...orderRef.current];
       const [x] = next.splice(f, 1);
@@ -94,7 +99,7 @@ export function DragList({
       setOrder(next);
       onOrder(next);
     },
-    [auto, onOrder],
+    [auto, onOrder, onDragChange],
   );
 
   /* إيماءةٌ واحدةٌ ثابتةٌ لكلِّ صفٍّ بمفتاحه (درسُ D-1094: مستجيبٌ يُنشأ في كلِّ رسمة يفقد ما تراكم من الإزاحة) */

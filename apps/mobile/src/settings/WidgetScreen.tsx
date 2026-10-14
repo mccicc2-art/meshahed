@@ -63,6 +63,7 @@ export function WidgetScreen() {
   const [sheet, setSheet] = useState<WidgetSectionKey | "small" | null>(null);
   const [saving, setSaving] = useState(false);
   const [ask, setAsk] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (d && !store) {
@@ -213,7 +214,7 @@ export function WidgetScreen() {
   ) : null;
 
   return (
-    <SettingsScreen title={t.widgetScreenTitle} toast={toast} onBack={back} action={saveAction} pinned={pinned} overlay={overlay}>
+    <SettingsScreen title={t.widgetScreenTitle} toast={toast} onBack={back} action={saveAction} pinned={pinned} overlay={overlay} gestures={{ locked: dragging }}>
       {ios ? (
         <View style={{ gap: 6 }}>
           <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{t.widgetLayoutsTitle}</Text>
@@ -253,6 +254,7 @@ export function WidgetScreen() {
             onOrder={(keys) => edit((c) => ({ ...c, order: ["search", ...(keys as WidgetSectionKey[])] }))}
             renderRow={(k) => sectionRow(k as WidgetSectionKey, optLabel(k as WidgetSectionKey))}
             handleLabel={(k) => names[k as WidgetSectionKey]}
+            onDragChange={setDragging}
           />
         </View>
         <Text size={12} muted style={{ paddingHorizontal: 4, marginTop: 6 }}>{t.widgetDragHint}</Text>
