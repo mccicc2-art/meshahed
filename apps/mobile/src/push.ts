@@ -7,7 +7,7 @@ import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
 import type { PushForgetBody, PushRegisterBody } from "@/core/push";
-import { defineDmCategory } from "./notifications/dmReply";
+import { defineDmCategory, dmDataCaps } from "./notifications/dmReply";
 
 /**
  * ====== إشعاراتُ الدفع في التطبيق — الإذنُ والرمزُ (D-1305) ======
@@ -98,7 +98,7 @@ async function sync(ask: boolean | "user") {
     if (!id) return;
     const token = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;
     const lang = currentLocale() === "en" ? "en" : "ar";
-    const key = `${token}|${lang}`;
+    const key = `${token}|${lang}|${(await dmDataCaps()).join(",")}`;
     if (registered === key || Date.now() - lastTry < RETRY_MS) return;
     lastTry = Date.now();
     try {
@@ -106,7 +106,9 @@ async function sync(ask: boolean | "user") {
     } catch {
       /* لا شيء */
     }
-    const body: PushRegisterBody = { token, lang, platform: Platform.OS === "ios" ? "ios" : "android" };
+    /* 🆕 D-1408 — ما يقدر عليه هذا الجهاز: يرسم إشعارَ الرسالة بنفسه (أندرويد) ⇒ الخادمُ يرسلها له «بيانات» بزرّيها */
+    const caps = await dmDataCaps();
+    const body: PushRegisterBody = { token, lang, platform: Platform.OS === "ios" ? "ios" : "android", caps };
     const r = await api<{ registered: boolean }>("/api/v1/me/push", { method: "POST", body });
     if (r.data.registered) registered = key;
   } catch {
@@ -169,7 +171,9 @@ try {
   /* التطبيقُ في الواجهة: الإشعارُ يظهر شريطاً ويُدرج — والشاراتُ تُجدَّد (الظرفُ والجرسُ لا ينتظران الاستطلاع) */
   Notifications.setNotificationHandler({
     handleNotification: async (n) => {
-      const show = !inOpenThread(n);
+      /* 🆕 D-1408 — رسالةٌ وصلت «بيانات» بلا عنوانٍ ولا نصّ: لا تُعرض فارغةً — المهمّةُ ترسم إشعارَها بنفسها (`dmReply.ts`) */
+      const empty = !n.request.content.title && !n.request.content.body;
+      const show = !empty && !inOpenThread(n);
       return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
     },
   });

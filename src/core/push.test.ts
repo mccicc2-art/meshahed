@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush } from "./push.ts";
+import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf } from "./push.ts";
 import { getDict } from "./i18n.ts";
 import type { SignalRow } from "./signals.ts";
 
@@ -32,6 +32,9 @@ test("الرسالة: المرسلُ عنوان، والملاحظةُ تحت م
   assert.equal(m.url, `/messages?with=${P.id}`);
   /* D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة وحدَه */
   assert.equal(m.category, "dm");
+  /* D-1408 — للجهاز الذي يرسمه بنفسه: النصُّ كلُّه في البيانات */
+  assert.deepEqual(dmDataOf(m), { kind: "dm", title: "مشعل", body: m.body, url: `/messages?with=${P.id}` });
+  assert.equal(dmDataOf({ title: "Loopz", body: "x", url: "/" }), null);
   assert.equal(messagePush({ senderId: P.id, senderName: "مشعل", text: "هلا" }, t).body, "هلا");
   assert.equal(messagePush({ senderId: P.id, senderName: "", text: null }, t).body, t.pushNewMessage);
 });

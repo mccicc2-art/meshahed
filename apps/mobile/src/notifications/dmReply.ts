@@ -161,6 +161,40 @@ async function handle(raw: unknown): Promise<void> {
   }
 }
 
+/**
+ * 🆕 D-1408 — **الرسالةُ تصل «بيانات» والتطبيقُ يرسم إشعارَها** (أندرويد): إشعارُ Expo العاديُّ يعرضه النظامُ بنفسه والتطبيقُ
+ * في الخلفية فيسقط الزرّان (تجربةُ أحمد ١٥ أكتوبر: «داخل التطبيق تظهر… فالخلفية لا»). الخادمُ يرسل بالبيانات لجهازٍ قال إنّه
+ * يقدر (`caps: ["dm-data"]` — `dmDataCaps`)، والمهمّةُ نفسُها هنا تستلمها في الخلفية والأمام وترسم الإشعارَ بصوته وزرّيه.
+ * والتطبيقُ أمامك ⇒ مُعالجُ العرض في `push.ts` يحجبه إن كانت المحادثةُ نفسُها مفتوحة، كما كان.
+ */
+type DmData = { title: string; body: string; url: string };
+function dmDataOf(raw: unknown): DmData | null {
+  const d = rec(rec(raw).data);
+  let o: Record<string, unknown> = d;
+  if (str(d.kind) !== "dm" && str(d.dataString)) {
+    try {
+      o = rec(JSON.parse(str(d.dataString)));
+    } catch {
+      return null;
+    }
+  }
+  if (str(o.kind) !== "dm" || !targetOf(str(o.url))) return null;
+  return { title: str(o.title).slice(0, 120), body: str(o.body).slice(0, 400), url: str(o.url) };
+}
+
+async function presentDm(m: DmData) {
+  await Notifications.scheduleNotificationAsync({
+    content: { title: m.title, body: m.body, data: { url: m.url }, categoryIdentifier: DM_CATEGORY, sound: "default" },
+    trigger: Platform.OS === "android" ? { channelId: "default" } : null,
+  });
+}
+
+/** المهمّةُ مسجَّلةٌ لإشعارات البيانات ⇒ الجهازُ يقدر يرسم الرسالةَ بنفسه — يقوله التسجيلُ للخادم */
+let taskReady: Promise<boolean> = Promise.resolve(false);
+export function dmDataCaps(): Promise<"dm-data"[]> {
+  return taskReady.then((ok) => (ok && Platform.OS === "android" ? ["dm-data"] : []));
+}
+
 /** هل الضغطةُ زرٌّ من زرّينا؟ — `PushGate` لا يفتح شاشةً لها (الردُّ يُرسل في مكانه) */
 export function isDmAction(r: Notifications.NotificationResponse | null): boolean {
   return !!r && (r.actionIdentifier === ACTION_REPLY || r.actionIdentifier === ACTION_READ);
@@ -217,12 +251,16 @@ void defineDmCategory();
 try {
   TaskManager.defineTask(TASK, async ({ data }) => {
     try {
-      await handle(data);
+      const dm = dmDataOf(data);
+      if (dm) await presentDm(dm);
+      else await handle(data);
     } catch {
       /* لا شيء */
     }
   });
-  void Notifications.registerTaskAsync(TASK).catch(() => {});
+  taskReady = Notifications.registerTaskAsync(TASK)
+    .then(() => true)
+    .catch(() => false);
   Notifications.addNotificationResponseReceivedListener((r) => {
     if (isDmAction(r)) void handle(r).catch(() => {});
   });

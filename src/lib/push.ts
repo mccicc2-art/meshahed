@@ -14,6 +14,7 @@ import {
   messagePush,
   parseMuted,
   signalPush,
+  dmDataOf,
   type PushGroup,
   type PushText,
 } from "@/core/push";
@@ -36,11 +37,20 @@ const EXPO_PUSH = "https://exp.host/--/api/v2/push/send";
 /** قناةُ أندرويد — تُنشأ في التطبيق بالاسم نفسِه (`apps/mobile/src/push.ts`) */
 const CHANNEL = "default";
 
-type Device = { token: string; lang: Locale };
+/** 🆕 D-1408 — `dmData`: الجهازُ يرسم إشعارَ الرسالة بنفسه من بياناتها (أندرويد، الهجرة ٢٠٤) */
+type Device = { token: string; lang: Locale; dmData: boolean };
 
 async function devicesOf(db: SupabaseClient, userId: string): Promise<Device[]> {
-  const { data } = await db.from("device_tokens").select("token, lang").eq("user_id", userId).limit(20);
-  return ((data ?? []) as { token: string; lang: string }[]).map((d) => ({ token: d.token, lang: d.lang === "en" ? "en" : "ar" }));
+  /* قبل الهجرة ٢٠٤ العمودُ غائب ⇒ القراءةُ بلاه — والطريقةُ القديمةُ للجميع، لا صمتٌ لكلِّ إشعار */
+  let rows = (await db.from("device_tokens").select("token, lang, platform, caps").eq("user_id", userId).limit(20)).data as
+    | { token: string; lang: string; platform?: string; caps?: string[] | null }[]
+    | null;
+  if (!rows) rows = (await db.from("device_tokens").select("token, lang").eq("user_id", userId).limit(20)).data as { token: string; lang: string }[] | null;
+  return (rows ?? []).map((d) => ({
+    token: d.token,
+    lang: d.lang === "en" ? "en" : "ar",
+    dmData: d.platform === "android" && Array.isArray(d.caps) && d.caps.includes("dm-data"),
+  }));
 }
 
 async function mutedOf(db: SupabaseClient, userId: string): Promise<PushGroup[]> {
@@ -54,7 +64,27 @@ async function claim(db: SupabaseClient, key: string): Promise<boolean> {
   return !error;
 }
 
-async function send(db: SupabaseClient, batch: { token: string; text: PushText }[]): Promise<number> {
+/**
+ * رسالةُ Expo لجهاز. 🆕 D-1408 — **إشعارُ رسالةٍ لجهازٍ يرسمه بنفسه يُرسل «بيانات»** بلا عنوانٍ ولا نصّ: أندرويد يعرض إشعارَ
+ * Expo العاديَّ بنفسه والتطبيقُ في الخلفية فلا يصل الزرّان؛ البياناتُ توقظ التطبيقَ فيرسمه هو بـ«رد» و«تمييز كمقروءة».
+ */
+function expoMessage(m: { token: string; text: PushText; dmData?: boolean }) {
+  const data = m.dmData ? dmDataOf(m.text) : null;
+  if (data) return { to: m.token, data, priority: "high", _contentAvailable: true };
+  return {
+    to: m.token,
+    title: m.text.title,
+    body: m.text.body,
+    data: m.text.url ? { url: m.text.url } : {},
+    sound: "default",
+    channelId: CHANNEL,
+    priority: "high",
+    /* 🆕 D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة؛ بناءٌ أقدمُ لا يعرّف النوعَ فيظهر بلا أزرار */
+    ...(m.text.category ? { categoryId: m.text.category } : {}),
+  };
+}
+
+async function send(db: SupabaseClient, batch: { token: string; text: PushText; dmData?: boolean }[]): Promise<number> {
   if (!batch.length) return 0;
   let sent = 0;
   /* Expo يقبل مئةً في النداء */
@@ -64,19 +94,7 @@ async function send(db: SupabaseClient, batch: { token: string; text: PushText }
       const res = await fetch(EXPO_PUSH, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify(
-          part.map((m) => ({
-            to: m.token,
-            title: m.text.title,
-            body: m.text.body,
-            data: m.text.url ? { url: m.text.url } : {},
-            sound: "default",
-            channelId: CHANNEL,
-            priority: "high",
-            /* 🆕 D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة؛ بناءٌ أقدمُ لا يعرّف النوعَ فيظهر بلا أزرار */
-            ...(m.text.category ? { categoryId: m.text.category } : {}),
-          })),
-        ),
+        body: JSON.stringify(part.map(expoMessage)),
       });
       const json = (await res.json().catch(() => null)) as { data?: { status?: string; details?: { error?: string } }[] } | null;
       const tickets = Array.isArray(json?.data) ? json.data : [];
@@ -107,10 +125,10 @@ async function deliver(input: { to: string; group: PushGroup; dedupe?: string; a
     if (data) return;
   }
   if (input.dedupe && !(await claim(db, input.dedupe))) return;
-  const batch: { token: string; text: PushText }[] = [];
+  const batch: { token: string; text: PushText; dmData: boolean }[] = [];
   for (const d of devices) {
     const text = input.build(getDict(d.lang), d.lang);
-    if (text) batch.push({ token: d.token, text });
+    if (text) batch.push({ token: d.token, text, dmData: d.dmData });
   }
   await send(db, batch);
 }
