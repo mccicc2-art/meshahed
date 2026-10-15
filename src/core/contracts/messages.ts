@@ -10,6 +10,7 @@
  */
 import type { PersonLite } from "../people.ts";
 import type { SignalRow } from "../signals.ts";
+import type { MsgGroupConversation } from "./groups.ts";
 
 /** عملٌ مُشارَك — بطاقةٌ بملصقه واسمه بلغة القارئ */
 export type MsgShareEvent = {
@@ -92,6 +93,10 @@ export type MessagesPayload = {
   peer?: PersonLite | null;
   /** 🆕 D-1380 — هل أقدر أن أراسل `with` الآن؟ `null` = لم يُطلب أو تعذّر الحكم */
   can_message?: boolean | null;
+  /** 🆕 القروبات (الهجرة ٢٠٥) — غائبٌ قبل الهجرة، والتطبيقُ الأقدمُ يتجاهله */
+  groups?: MsgGroupConversation[];
+  /** 🆕 هل أقدر أن أنشئ قروباً؟ (لوبز+) — «إنشاء قروب» لغيره يفتح صفحةَ لوبز+ */
+  can_create_group?: boolean;
 };
 
 /** `GET /api/v1/me/badges` — شارتا الظرف والجرس وحدَهما (M4-fix2) */

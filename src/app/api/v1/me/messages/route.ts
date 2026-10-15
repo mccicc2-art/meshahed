@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getUnreadShares, getUnreadSignals } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { buildInbox } from "@/lib/messagesCore";
+import { getGroups } from "@/lib/groupsCore";
 import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { replyEventOut, type MessagesPayload } from "@/core/contracts/messages";
@@ -19,10 +20,12 @@ export async function GET(req: NextRequest) {
     if (lim) return lim;
     const { locale } = await getT();
     const withId = req.nextUrl.searchParams.get("with");
-    const [{ conversations, startable, peer, canMessage }, messages, signals] = await Promise.all([
+    const [{ conversations, startable, peer, canMessage }, messages, signals, { groups, canCreate }] = await Promise.all([
       buildInbox(locale, withId),
       getUnreadShares(),
       getUnreadSignals(),
+      /* 🆕 القروبات (الهجرة ٢٠٥) — قبل الهجرة تعود فارغةً فلا يتغيّر الصندوق */
+      getGroups(),
     ]);
     return ok({
       me_id: auth.user.id,
@@ -47,6 +50,8 @@ export async function GET(req: NextRequest) {
       /* 🆕 D-1380 — خيطٌ لم يبدأ بعد (`?with=`): هويّتُه وحكمُ البوّاب */
       peer,
       can_message: canMessage,
+      groups,
+      can_create_group: canCreate,
     });
   });
 }

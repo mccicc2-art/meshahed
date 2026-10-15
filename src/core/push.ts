@@ -92,6 +92,20 @@ export function messagePush(
   return { title: m.senderName || APP, body: body.slice(0, 240), url: `/messages?with=${m.senderId}`, category: "dm" };
 }
 
+/**
+ * 🆕 رسالةٌ في قروب (الهجرة ٢٠٥): العنوانُ اسمُ القروب، والسطرُ «المرسِل: النصّ» — والوجهةُ القروبُ نفسُه.
+ * الفئةُ `dm` نفسُها فالردُّ من الإشعار يعمل، والهدفُ يُقرأ من الرابط (`?group=`).
+ */
+export function groupMessagePush(
+  m: { groupId: string; groupName: string; senderName: string; text: string | null; media?: "image" | "gif" | null },
+  t: Dict,
+): PushText {
+  const what = m.media === "image" ? t.msgImagePreview : m.media === "gif" ? t.msgGifPreview : "";
+  const text = (m.text ?? "").replace(/\s+/g, " ").trim();
+  const line = text && what ? `${what} ${text}` : text || what || t.pushNewMessage;
+  return { title: m.groupName || APP, body: `${m.senderName}: ${line}`.slice(0, 240), url: `/messages?group=${m.groupId}`, category: "dm" };
+}
+
 /** حلقاتُ اليوم ⇢ دفعٌ واحدٌ للمستخدم: عملٌ واحدٌ يفتح صفحتَه، وأكثرُ يفتح الرئيسيّة */
 export function episodesPush(shows: { tmdbId: number; title: string }[], t: Dict): PushText | null {
   if (!shows.length) return null;
