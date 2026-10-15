@@ -11,6 +11,9 @@ const t = {
   widgetActWatched: (x: string) => `✓ ${x}`, widgetActRated: (x: string) => `قيّمت ${x}`,
   widgetActReviewed: (x: string) => `راجعت ${x}`, widgetActListed: (x: string) => `أضفت ${x}`,
   epLabel: (s: number, e: number) => `م${s} · ح${e}`,
+  widgetFriendEps: (n: number, s: number | null) => (s ? `${n} حلقة · م${s}` : `${n} حلقة`),
+  widgetFriendStars: (r: number) => `★ ${r}`,
+  widgetFriendAdded: "أضاف",
 };
 
 test("التخزين: الفارغ يعطي الإعداد الافتراضي وتخطيطاً رئيسياً واحداً", () => {
@@ -49,7 +52,7 @@ test("للمشاهدة: الأحدث إضافة أولاً، والزر حسب �
     { mediaType: "tv" as const, tmdbId: 4, title: "Old", posterPath: null },
   ];
   const added = new Map([["tv-1", "2026-10-10"], ["movie-2", "2026-10-13"], ["tv-3", "2026-10-12"]]);
-  const out = widgetToWatch(items, added, new Set([3]), new Map([["movie-2", 8.5]]), t);
+  const out = widgetToWatch(items, added, new Set([3]), new Map([["movie-2", 8.5]]), t, 3);
   assert.deepEqual(out.map((x) => x.title), ["Dune", "Frieren", "Andor"]);
   assert.deepEqual(out.map((x) => x.action), ["watched", "start", "start"]);
   assert.deepEqual(out.map((x) => x.type_label), ["فيلم", "أنمي", "مسلسل"]);
@@ -118,4 +121,29 @@ test("أنشطتك: العملُ الذي لا يُعرف اسمُه يسقط", 
     t,
   );
   assert.deepEqual(out.map((x) => x.line), ["قيّمت Dune"]);
+});
+
+/* 🆕 W51 — سطرُ الصديق: حلقاتُ يومه وأعلى موسم، أو تقييمُه — ولا رقمَ حلقةٍ بعينها */
+test("أصدقاؤك W51: «٣ حلقة · م٢» أو «★ ٨»، ووقتُ صاحب الاسم", () => {
+  const p = (x: object) => ({ name: "خالد", avatar_url: null, ...x });
+  const rows = [
+    { tmdb_id: 1, media_type: "tv" as const, title: "The Wire", poster_path: "/w.jpg", at: "2026-10-14T03:00:00Z", people: [p({ kind: "episodes", episode_count: 3, top_season: 2, at: "2026-10-14T01:00:00Z" })] },
+    { tmdb_id: 2, media_type: "movie" as const, title: "Dune", poster_path: "/d.jpg", at: "2026-10-13T00:00:00Z", people: [p({ kind: "rate", rating: 8 })] },
+    { tmdb_id: 3, media_type: "movie" as const, title: "Heat", poster_path: "/h.jpg", at: "2026-10-12T00:00:00Z", people: [p({ kind: "movie" })] },
+    { tmdb_id: 4, media_type: "tv" as const, title: "Andor", poster_path: "/a.jpg", at: "2026-10-11T00:00:00Z", people: [p({ kind: "add" })] },
+    { tmdb_id: 5, media_type: "tv" as const, title: "Fifth", poster_path: "/f.jpg", at: "2026-10-10T00:00:00Z", people: [p({})] },
+  ];
+  const out = widgetFriends(rows, t);
+  /* W54 — أربعةٌ لا ثلاثة */
+  assert.equal(out.length, 4);
+  assert.deepEqual(out.map((x) => x.line), ["3 حلقة · م2", "★ 8", "شاهد Heat", "أضاف Andor"]);
+  assert.equal(out[0].at, "2026-10-14T01:00:00Z");
+  assert.deepEqual([out[0].episodes, out[0].season, out[1].rating], [3, 2, 8]);
+  /* مصدرٌ بلا الحقول: الفعلُ والعنوانُ كما كان */
+  assert.equal(widgetFriends([rows[4]], t)[0].line, "شاهد Fifth");
+});
+
+test("للمشاهدة: أربعة (W54)", () => {
+  const items = Array.from({ length: 6 }, (_, i) => ({ mediaType: "tv" as const, tmdbId: i + 1, title: `x${i}`, posterPath: null }));
+  assert.equal(widgetToWatch(items, new Map(), new Set(), new Map(), t).length, 4);
 });

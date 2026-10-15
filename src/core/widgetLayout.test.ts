@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { defaultWidgetLook, lookFor, sanitizeWidgetLook } from "./widgetLook.ts";
 import {
   defaultWidgetConfig, resolveWidgetLayout, smallWidgetSection, smallWidgetForm, fitImage, widgetAccess,
   effectiveWidgetConfig, sanitizeWidgetConfig, widgetSizesFor, resolveWidget, WIDGET_HEIGHTS, type WidgetLayoutConfig, type WidgetRow,
@@ -12,7 +13,9 @@ const names = (rows: WidgetRow[]) => rows.map((r) =>
 test("الكبير الافتراضي: البحث، أكمل المشاهدة، القادم، وفيلم الليلة سطراً مختصراً", () => {
   const l = resolveWidgetLayout(defaultWidgetConfig(), "large");
   assert.deepEqual(names(l.rows), ["search", "cont", "up×2", "line:tonight"]);
-  assert.equal(l.used, 396);
+  /* 🆕 W50 — فراغُ ٤٤ يكبّر سطرَي «القادم» (١٦ لكلٍّ، السقف) بدل أن يبقى فواصل: ٣٩٦ + ٣٢ */
+  assert.equal(l.used, 428);
+  assert.equal(l.rows[2].type === "list" && l.rows[2].grow, 16);
   assert.deepEqual(l.hidden, ["friends", "tw", "act"]);
 });
 
@@ -188,7 +191,7 @@ test("الفراغ يعود صفوفاً: ٦٠٠ يكبّر الأصدقاء و�
   const big = resolveWidgetLayout(cfg, "xl", 600);
   assert.deepEqual(names(big.rows), ["search", "cont+line", "friends×3", "pair:tonight+act"]);
   assert.equal((big.rows[3] as { count: number }).count, 3);
-  assert.ok(big.used <= 600 && 600 - big.used < WIDGET_HEIGHTS.listRow);
+  assert.ok(big.used <= 600 && 600 - big.used < 50);
   const mid = resolveWidgetLayout(cfg, "large", 500);
   assert.deepEqual(names(mid.rows), ["search", "cont+line", "friends×2", "pair:tonight+act"]);
   assert.equal((mid.rows[3] as { count: number }).count, 2);
@@ -210,4 +213,70 @@ test("أكمل المشاهدة الصغير: صورة افتراضاً، وال
   assert.equal(list.opts.cont.small, "list");
   assert.equal(smallWidgetForm(list, "cont", 170, 170), "list");
   assert.equal(sanitizeWidgetConfig({ opts: { cont: { small: "bogus" } } }).opts.cont.small, "image");
+});
+
+/* 🆕 W50 — الكبير: بطاقتا «أكمل المشاهدة» بمقاسهما في ٤×٢ ولا تتمدّدان، والفراغُ لصفوف الأقسام الأخرى */
+test("W50: البطاقتان بمقاس ٤×٢ في أندرويد الكبير، والفراغ يكبّر الأسطر بالقدر نفسه", () => {
+  const cfg = defaultWidgetConfig();
+  cfg.on.search = false; cfg.on.tonight = false; cfg.on.friends = false; cfg.on.tw = false; cfg.on.act = false;
+  const a = resolveWidgetLayout(cfg, "large", 440, "android");
+  const c = a.rows.find((r) => r.type === "cont");
+  assert.equal(c?.type === "cont" && c.card, 120);
+  const sum = (rows: WidgetRow[]) => rows.reduce((n, x) => n + x.h, 0) + Math.max(0, rows.length - 1) * WIDGET_HEIGHTS.gap + WIDGET_HEIGHTS.pad;
+  assert.ok(sum(a.rows) <= 440);
+  const grown = a.rows.filter((r) => (r.type === "list" || r.type === "pair") && (r.grow ?? 0) > 0);
+  assert.ok(grown.length > 0);
+  for (const r of grown) assert.ok((r as { grow: number }).grow <= lookFor(null, "android", "large").growMax);
+  /* الآيفون: بطاقتا متوسطه ٩٣ — فلا تكبران في الكبير */
+  const i = resolveWidgetLayout(cfg, "large", 376, "ios");
+  const ic = i.rows.find((r) => r.type === "cont");
+  assert.equal(ic?.type === "cont" && (ic.card ?? 93), 93);
+});
+
+test("W50: أندرويد قبل 12 يُحسم كما كان — لا تكبير ولا بطاقتان أطول ولا أربعة بوسترات", () => {
+  const cfg = defaultWidgetConfig();
+  cfg.on.search = false; cfg.on.tonight = false; cfg.on.act = false;
+  cfg.opts.tw.view = "posters";
+  const old = resolveWidgetLayout(cfg, "xl", 720, "android", { resize: false });
+  assert.ok(old.rows.every((r) => !("grow" in r) || !r.grow));
+  assert.ok(old.rows.every((r) => r.type !== "cont" || !r.card));
+  const tw = old.rows.find((r) => r.type === "list" && r.key === "tw");
+  assert.equal(tw?.type === "list" && tw.posters, 3);
+});
+
+/* 🆕 W54 — بوستراتُ «أصدقاؤك» و«للمشاهدة» ٣ أو ٤ (٤ افتراضاً)، والأربعةُ تملأ العرض بشبكةٍ أقصر */
+test("W54: أربعة بوسترات افتراضاً، والإعداد ٣ يُحترم، والقادم يبقى ثلاثة", () => {
+  const cfg = defaultWidgetConfig();
+  assert.equal(cfg.opts.friends.posters, 4);
+  assert.equal(cfg.opts.tw.posters, 4);
+  cfg.on.search = false; cfg.on.cont = false; cfg.on.tonight = false; cfg.on.act = false;
+  cfg.opts.friends.view = "posters"; cfg.opts.up.view = "posters"; cfg.opts.tw.view = "posters";
+  cfg.opts.tw.posters = 3;
+  const l = resolveWidgetLayout(cfg, "xl", 720, "android");
+  const by = (k: string) => l.rows.find((r) => r.type === "list" && r.key === k) as Extract<WidgetRow, { type: "list" }>;
+  const look = lookFor(null, "android", "xl");
+  assert.deepEqual([by("friends").posters, by("friends").h], [4, WIDGET_HEIGHTS.listHeader + look.posterGrid4]);
+  assert.deepEqual([by("tw").posters, by("tw").h], [3, WIDGET_HEIGHTS.listHeader + look.posterGrid]);
+  assert.equal(by("up").posters, 3);
+  /* إعدادٌ محفوظٌ قبل الخيار يأخذ ٤، والقيمةُ الغريبةُ كذلك */
+  assert.equal(sanitizeWidgetConfig({ opts: { friends: { view: "posters" } } }).opts.friends.posters, 4);
+  assert.equal(sanitizeWidgetConfig({ opts: { tw: { posters: 3 } } }).opts.tw.posters, 3);
+  assert.equal(sanitizeWidgetConfig({ opts: { up: { posters: 4 } } }).opts.up.posters, undefined);
+});
+
+/* 🆕 الشكلُ بياناتٌ: الافتراضيُّ أرقامُ الرسّامين اليوم، والخلاصةُ تغيّرها، والفاسدُ يرجع للافتراضيّ */
+test("شكل الودجت: الافتراضي أرقام اليوم، والخلاصة تغيّر الحسم، والفاسد يسقط", () => {
+  const d = defaultWidgetLook();
+  assert.deepEqual([d.android.large?.friendRow, d.android.xl?.friendRow, d.android.xl?.pairRow2, d.ios.large?.friendRow], [58, 52, 150, 50]);
+  assert.equal(lookFor(d, "ios", "xl").friendRow, 50);
+  const bad = sanitizeWidgetLook({ android: { large: { friendRow: -5, listRow: "x", posterGrid: 140, nope: 3 } } });
+  assert.equal(bad.android.large?.friendRow, 58);
+  assert.equal(bad.android.large?.listRow, 50);
+  assert.equal(bad.android.large?.posterGrid, 140);
+  assert.ok(!("nope" in (bad.android.large ?? {})));
+  const cfg = defaultWidgetConfig();
+  cfg.on.search = false; cfg.on.cont = false; cfg.on.up = false; cfg.on.tonight = false; cfg.on.tw = false; cfg.on.act = false;
+  const look = sanitizeWidgetLook({ android: { large: { friendRow: 70, growMax: 0 } } });
+  const l = resolveWidgetLayout(cfg, "large", 440, "android", { look });
+  assert.equal(l.rows[0].h, WIDGET_HEIGHTS.listHeader + 3 * 70);
 });

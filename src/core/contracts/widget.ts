@@ -10,6 +10,7 @@
  */
 
 import type { WidgetLayoutConfig } from "../widgetLayout.ts";
+import type { WidgetLook } from "../widgetLook.ts";
 
 /** نسخةُ العقد — ودجتٌ أقدمُ من الحقل لا يقرأ ما لا يعرفه */
 export const WIDGET_FEED_VERSION = 1;
@@ -130,6 +131,15 @@ export interface WidgetFriendItem {
   title: WidgetTitle;
   /** ISO — الرسّامُ يكتب «قبل ساعة» بساعة الجهاز وقتَ الرسم */
   at: string;
+  /**
+   * 🆕 W51 — السطرُ الثاني جاهزاً بلغة القارئ: «٣ حلقة · م٢» أو «★ ٨» (أو «شاهد Dune» للفيلم بلا تقييم). الرسّامُ الأقدمُ
+   * يتجاهله ويكتب `action` والعنوانَ كما كان. والأرقامُ نفسُها معه لرسمٍ قادم — **لا رقمَ حلقةٍ بعينها** (لا يوجد في الخطّ).
+   */
+  line?: string | null;
+  kind?: "episodes" | "movie" | "rate" | "add" | null;
+  episodes?: number | null;
+  season?: number | null;
+  rating?: number | null;
 }
 
 /** سطرُ «أنشطتك» — نشاطُك أنت (W32) */
@@ -184,6 +194,11 @@ export interface WidgetStringsV2 {
 }
 
 export interface WidgetFeedV2 {
+  /**
+   * 🆕 **شكلُ الودجت بياناتٍ** (`widgetLook.ts`): أحجامُ الخطوط والصفوف والبوسترات لكلِّ حجمٍ ومنصّة. المحرّكُ في التطبيق يحسم
+   * بها والرسّامان يقرآنها — تعديلُها يصل بلا بناء. اختياريٌّ: خلاصةٌ أقدمُ بلاه تُرسم بالأرقام المكتوبة في الرسّامَين.
+   */
+  look?: WidgetLook;
   /** W41 — المشتركُ يرى إعدادَه كاملاً؛ غيرُه أكملَ المشاهدة في الصغير والمتوسّط */
   plus: boolean;
   /** كان مشتركاً وانتهى — يُقفل عليه ويبقى إعدادُه محفوظاً */

@@ -38,6 +38,18 @@
     android:textAlignment="viewStart"
     android:layout_marginTop="1dp" />
     </LinearLayout>
+    <!-- 🆕 W52 — الوقتُ في طرف سطر «أنشطتك» بخطِّ وقتِ «أصدقاؤك» نفسِه؛ مخفيٌّ لبقيّة القوائم (يُكتب صراحةً كلَّ رسم، W47) -->
+    <TextView
+    android:id="@+id/it_time"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="11.5sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="8dp"
+    android:visibility="gone" />
     <FrameLayout
     android:id="@+id/it_chip"
     android:layout_width="wrap_content"

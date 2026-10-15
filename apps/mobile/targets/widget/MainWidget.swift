@@ -19,6 +19,25 @@ struct V2Feed {
   /** 🆕 W37 — ما شوهد أو بدأ من الودجت للتوّ (يُخفى حتى تصل خلاصةٌ أحدث)، وشريطُ التقييم القائم */
   var hidden: Set<Int> = []
   var rate: [String: Any]? = nil
+  /** 🆕 الحجمُ الذي تُقرأ له أرقامُ الشكل (`w2.look.ios.<الحجم>`) — حجمُ الصفوف المحسومة لا حجمُ العائلة */
+  var size: String = "large"
+
+  /** نسخةٌ بحجمٍ آخر لأرقام الشكل */
+  func sized(_ s: String) -> V2Feed {
+    var c = self
+    c.size = s
+    return c
+  }
+
+  /**
+   * 🆕 **شكلُ الودجت بياناتٍ** (`widgetLook.ts`): رقمٌ من الخلاصة لهذا الحجم، وإلّا الرقمُ المكتوبُ هنا — خلاصةٌ أقدمُ أو بلا شكلٍ
+   * ترسم كما كانت. الأرقامُ نفسُها في المحرّك، فما يحسبه من ارتفاعٍ هو ما يُرسم.
+   */
+  func n(_ k: String, _ def: CGFloat) -> CGFloat {
+    let look = ((raw["w2"] as? [String: Any])?["look"] as? [String: Any])?["ios"] as? [String: Any]
+    guard let v = num((look?[size] as? [String: Any])?[k]), v > 0 else { return def }
+    return CGFloat(v)
+  }
 
   var v2: [String: Any] { raw["v2"] as? [String: Any] ?? [:] }
   func s2(_ k: String) -> String { (v2["strings"] as? [String: Any])?[k] as? String ?? "" }
@@ -224,7 +243,7 @@ struct MainView: View {
       if locked {
         LockCard(f: f)
       } else if sizeName == "small" {
-        SmallMain(f: f, small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
+        SmallMain(f: f.sized("small"), small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
       } else {
         /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ على هذا الجهاز (أكبرُ مفتاحٍ لا يزيد عليه) */
         GeometryReader { g in
@@ -235,10 +254,12 @@ struct MainView: View {
           if fitLocked {
             LockCard(f: f)
           } else {
+            /* 🆕 أرقامُ الشكل بحجم الصفوف المحسومة (المتوسطُ أو الكبير) */
+            let fs = f.sized((fit?["size"] as? String) ?? sizeName)
             if f.rate != nil && fit == nil {
-              RowsView(f: f, rows: [], opts: opts, now: entry.date, rate: f.rate)
+              RowsView(f: fs, rows: [], opts: opts, now: entry.date, rate: f.rate)
             } else {
-              RowsView(f: f, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date, rate: f.rate)
+              RowsView(f: fs, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date, rate: f.rate)
             }
           }
         }
@@ -324,6 +345,8 @@ struct Poster: View {
 struct SecHeader: View {
   let title: String
   let link: URL?
+  /** 🆕 حجمُ العنوان من شكل الودجت (`header`) — ١٤٫٥ الأصل */
+  var size: CGFloat = 14.5
   var body: some View {
     HStack(spacing: 6) {
       if let link {
@@ -335,7 +358,7 @@ struct SecHeader: View {
     }
     .frame(height: 20)
   }
-  var titleText: some View { Text(title).font(.system(size: 14.5, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1) }
+  var titleText: some View { Text(title).font(.system(size: size, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1) }
 }
 
 /** سطرٌ في قسم — صورةٌ واسمٌ وسطرٌ ثانٍ ووجهةُ اللمسة */
@@ -409,8 +432,10 @@ enum Sections {
     case "friends":
       return f.arr("friends").compactMap { x in
         guard let t = f.title(x["title"] as? [String: Any]) else { return nil }
-        /* 🆕 سطران: الاسمُ فوق و«شاهد …» تحته، ومتى مختصراً في الطرف (تسجيلُ أحمد ١٤ أكتوبر) */
-        let sub = "\(x["action"] as? String ?? "") \(t.title)"
+        /* 🆕 سطران: الاسمُ فوق و«شاهد …» تحته، ومتى مختصراً في الطرف (تسجيلُ أحمد ١٤ أكتوبر)
+           🆕 W51 — والسطرُ الثاني «٣ حلقة · م٢» أو «★ ٨» جاهزاً من الخادم (`line`)؛ خلاصةٌ أقدمُ بلاه: الفعلُ والعنوانُ كما كان */
+        let line = x["line"] as? String ?? ""
+        let sub = line.isEmpty ? "\(x["action"] as? String ?? "") \(t.title)" : line
         return LineItem(t: t, name: x["name"] as? String ?? "", sub: sub, link: WLink.title(t), raw: x, time: ago(x["at"] as? String, f, now: now))
       }
     case "tw":
@@ -423,7 +448,8 @@ enum Sections {
     case "act":
       return f.arr("activity").compactMap { x in
         guard let t = f.title(x["title"] as? [String: Any]) else { return nil }
-        return LineItem(t: t, name: x["line"] as? String ?? t.title, sub: x["sub"] as? String, link: WLink.title(t), raw: x)
+        /* 🆕 W52 — ومتى في طرف السطر، كـ«أصدقاؤك» */
+        return LineItem(t: t, name: x["line"] as? String ?? t.title, sub: x["sub"] as? String, link: WLink.title(t), raw: x, time: ago(x["at"] as? String, f, now: now))
       }
     case "cont":
       return f.feed.continue.items.map { c in
@@ -537,16 +563,22 @@ struct RowView: View {
   var body: some View {
     switch type {
     case "search": SearchRow(f: f, full: row["full"] as? Bool ?? false, trend: row["trend"] as? String ?? "list")
-    case "cont": ContRow(f: f, upLine: row["upLine"] as? Bool ?? false, tall: row["tall"] as? Bool ?? false, now: now)
-    case "list": ListSection(f: f, key: key, view: row["view"] as? String ?? "list", count: max(0, min(3, Int(num(row["count"]) ?? 2))), now: now)
+    case "cont": ContRow(f: f, upLine: row["upLine"] as? Bool ?? false, tall: row["tall"] as? Bool ?? false, card: num(row["card"]).map { CGFloat($0) }, now: now)
+    case "list":
+      /* 🆕 W50 — `grow` ما زاده المحرّكُ لكلِّ سطر؛ W54 — `posters` ٣ أو ٤ */
+      ListSection(f: f, key: key, view: row["view"] as? String ?? "list", count: max(0, min(3, Int(num(row["count"]) ?? 2))), now: now,
+                  grow: CGFloat(max(0, num(row["grow"]) ?? 0)), posters: max(3, min(4, Int(num(row["posters"]) ?? 3))),
+                  grid: CGFloat(num(row["h"]) ?? 154) - 24)
     case "tonight": TonightRow(f: f, wide: (row["view"] as? String ?? "wide") != "poster", now: now)
     case "pair":
       /* 🆕 بثلاثة أسطر أو بسطرين كما حسم المحرّك (خلاصةٌ أقدمُ بلا العدد ⇒ ٣) */
       let n = max(1, min(3, Int(num(row["count"]) ?? 3)))
+      /* 🆕 W50 — الأسطرُ تتقاسم الجسمَ فتكبر وحدَها؛ والصورةُ تكبر معها بـ`grow` */
+      let g = CGFloat(max(0, num(row["grow"]) ?? 0))
       HStack(alignment: .top, spacing: 17) {
         /* كلُّ نصفٍ محصورٌ في عرضه ومقصوصٌ عليه — لا يطلع اسمٌ على جاره */
-        Half(f: f, key: keys.first ?? "", opts: opts, count: n, now: now).frame(maxWidth: .infinity, alignment: .leading).clipped()
-        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: n, now: now).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
+        Half(f: f, key: keys.first ?? "", opts: opts, count: n, now: now, grow: g).frame(maxWidth: .infinity, alignment: .leading).clipped()
+        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: n, now: now, grow: g).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
       }
     case "line": LineRow(f: f, key: key, now: now)
     default: Color.clear
@@ -621,18 +653,20 @@ struct ContRow: View {
   let upLine: Bool
   /** 🆕 المتوسطُ وأكملُ المشاهدة وحدَه: بطاقتان ١٢٠ بدل ٩٣ (`contTall`) */
   var tall: Bool = false
+  /** 🆕 W50 — ارتفاعُ البطاقتين كما حسمه المحرّك؛ خلاصةٌ أقدمُ بلاه ⇒ ١٢٠ أو ٩٣ من الشكل */
+  var card: CGFloat? = nil
   let now: Date
 
   var body: some View {
     let source = sourceOf(f.feed, "continue", max: 2)
     VStack(alignment: .leading, spacing: 0) {
-      SecHeader(title: source.title, link: source.header)
+      SecHeader(title: source.title, link: source.header, size: f.n("contHeader", 14.5))
       HStack(spacing: 9) {
         ForEach(0..<2, id: \.self) { i in
           if i < source.slots.count { CardView(feed: f.feed, slot: source.slots[i]) } else { Color.clear.frame(maxWidth: .infinity) }
         }
       }
-      .frame(height: tall ? 120 : 93)
+      .frame(height: card ?? (tall ? f.n("contCardTall", 120) : f.n("contCard", 93)))
       .padding(.top, 8)
       if upLine {
         Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).padding(.top, 5)
@@ -663,27 +697,45 @@ struct ListSection: View {
   let view: String
   let count: Int
   let now: Date
+  /** 🆕 W50 — ما زاده كلُّ سطرٍ من فراغ الودجت (والصورةُ معه) */
+  var grow: CGFloat = 0
+  /** 🆕 W54 — عددُ البوسترات (٣ · ٤) */
+  var posters: Int = 3
+  /** ارتفاعُ شبكة البوسترات كما حسمه المحرّك (الصفُّ ناقصاً الرأس) */
+  var grid: CGFloat = 130
 
   var body: some View {
     let items = Sections.lines(f, key, now: now)
     VStack(alignment: .leading, spacing: 4) {
-      SecHeader(title: Sections.title(f, key), link: Sections.link(key))
+      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: key == "friends" ? f.n("friendsHeader", 14.5) : f.n("header", 14.5))
       if view == "posters" {
-        HStack(spacing: 0) {
-          ForEach(0..<3, id: \.self) { n in
-            if n > 0 { Spacer(minLength: 6) }
-            if n < items.count {
-              Link(destination: items[n].link) { Poster(f: f, path: items[n].t?.poster_path, w: 87, h: 130, r: 8) }
-            } else {
-              Color.clear.frame(width: 87, height: 130)
+        /* W35 · 🆕 W54 — ثلاثةٌ أو أربعة بعرضٍ يملأ الودجت (العرضُ ÷ العدد، ٢:٣ حتّى ارتفاع الشبكة)، والمسافاتُ بينها */
+        GeometryReader { g in
+          let gap = f.n("posterGap", 8)
+          let n = CGFloat(posters)
+          let pw = max(30, min((g.size.width - gap * (n - 1)) / n, grid / 1.5))
+          let ph = pw * 1.5
+          HStack(spacing: 0) {
+            ForEach(0..<posters, id: \.self) { i in
+              if i > 0 { Spacer(minLength: 0) }
+              if i < items.count {
+                Link(destination: items[i].link) {
+                  Poster(f: f, path: items[i].t?.poster_path, w: pw, h: ph, r: 8)
+                    .overlay(alignment: .bottom) { if key == "friends" { FriendStrip(f: f, item: items[i]) } }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+              } else {
+                Color.clear.frame(width: pw, height: ph)
+              }
             }
           }
         }
+        .frame(height: min(grid, 400))
       } else {
         /* الصفوفُ متلاصقةٌ بارتفاع ٥٠ (`rowGap` = ٠) */
         VStack(alignment: .leading, spacing: 0) {
           ForEach(Array(items.prefix(count).enumerated()), id: \.offset) { pair in
-            ItemRow(f: f, key: key, item: pair.element)
+            ItemRow(f: f, key: key, item: pair.element, grow: grow)
           }
         }
       }
@@ -691,26 +743,60 @@ struct ListSection: View {
   }
 }
 
+/**
+ * 🆕 W53 — شريطُ بوستر الصديق الداكن (أحمد ١٥ أكتوبر): الاسمُ والوقتُ ثمّ الحلقاتُ أو التقييم — يُقرأ فوق أيِّ بوستر،
+ * وحدُّه حدُّ البوستر (القصُّ على زواياه في `ListSection`).
+ */
+struct FriendStrip: View {
+  let f: V2Feed
+  let item: LineItem
+  var body: some View {
+    VStack(alignment: .leading, spacing: 1) {
+      HStack(spacing: 4) {
+        Text(item.name).font(.system(size: f.n("stripName", 11), weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
+        Spacer(minLength: 0)
+        if let time = item.time { Text(time).font(.system(size: f.n("stripSub", 10) - 0.5)).foregroundStyle(WColor.muted).lineLimit(1) }
+      }
+      if let s = item.sub, !s.isEmpty {
+        Text(s).font(.system(size: f.n("stripSub", 10))).foregroundStyle(Color(white: 0.84)).lineLimit(1)
+      }
+    }
+    .padding(.horizontal, 6).padding(.top, 12).padding(.bottom, 5)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: Color.black.opacity(0.78), location: 0.45), .init(color: Color.black.opacity(0.94), location: 1)], startPoint: .top, endPoint: .bottom))
+  }
+}
+
 struct ItemRow: View {
   let f: V2Feed
   let key: String
   let item: LineItem
+  /** 🆕 W50 — السطرُ وصورتُه يكبران بالقدر نفسِه فالفاصلُ بين الصور ثابت */
+  var grow: CGFloat = 0
 
   /* 🆕 صفٌّ واحدٌ لكلِّ القوائم (٥٠): صورةٌ ٣٢×٤٨ واسمٌ ١٤ وسطرٌ ثانٍ ١٢ — والأصدقاءُ مثلها ومتى في الطرف
      (تسجيلُ أحمد ١٤ أكتوبر، الآيفون ٨: «أصدقائك» و«أنشطتك» صغيرة) */
   var body: some View {
+    /* 🆕 مقاساتُ السطر من شكل الودجت — الافتراضيُّ ما كان هنا (٥٠ · ٣٢×٤٨ · ١٤/١٢) */
+    let friend = key == "friends"
+    let tw = friend ? f.n("friendThumbW", 32) : f.n("listThumbW", 32)
+    let th = friend ? f.n("friendThumbH", 48) : f.n("listThumbH", 48)
+    let nameSize = friend ? f.n("friendName", 14) : f.n("listName", 14)
+    let subSize = friend ? f.n("friendSub", 12) : f.n("listSub", 12)
+    let rowH = (friend ? f.n("friendRow", 50) : f.n("listRow", 50)) + grow
     HStack(spacing: 10) {
       Link(destination: item.link) {
         HStack(spacing: 10) {
-          Poster(f: f, path: item.t?.poster_path, w: 32, h: 48, r: 4)
+          Poster(f: f, path: item.t?.poster_path, w: tw + grow * 2 / 3, h: th + grow, r: 4)
           VStack(alignment: .leading, spacing: 1) {
-            Text(item.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+            Text(item.name).font(.system(size: nameSize, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
             if let done = doneLine {
-              Text(done).font(.system(size: 12, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1)
-            } else if let s = item.sub, !s.isEmpty { Text(s).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1) }
+              Text(done).font(.system(size: subSize, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1)
+            } else if let s = item.sub, !s.isEmpty { Text(s).font(.system(size: subSize)).foregroundStyle(WColor.muted).lineLimit(1) }
           }
           Spacer(minLength: 0)
-          if let time = item.time { Text(time).font(.system(size: 11.5)).foregroundStyle(WColor.muted).lineLimit(1) }
+          /* الوقتُ في الطرف: «أصدقاؤك» و🆕 W52 «أنشطتك» */
+          if let time = item.time { Text(time).font(.system(size: f.n("time", 11.5))).foregroundStyle(WColor.muted).lineLimit(1) }
         }
       }
       /* W35 — «▶ ابدأ» للمسلسل والأنمي و«✓ شاهدته» للفيلم */
@@ -731,7 +817,7 @@ struct ItemRow: View {
         }
       }
     }
-    .frame(height: 50)
+    .frame(height: rowH)
   }
 
   /** W37 — «✓ شاهدته/بدأته» خمسَ ثوانٍ بعد اللمسة */
@@ -835,6 +921,8 @@ struct Half: View {
   let opts: [String: Any]
   var count: Int = 3
   let now: Date
+  /** 🆕 W50 */
+  var grow: CGFloat = 0
 
   var body: some View {
     let o = opts[key] as? [String: Any] ?? [:]
@@ -844,7 +932,8 @@ struct Half: View {
       /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة بأوّل مسلسل */
       ContHalf(f: f, now: now)
     } else {
-      HalfList(f: f, key: key, posters: key != "tonight" && (o["view"] as? String) == "posters", count: count, now: now)
+      /* 🆕 W55 — البوستران في النصف صارا خياراً في الإعداد («أنشطتك» قائمةٌ دائماً) */
+      HalfList(f: f, key: key, posters: key != "tonight" && key != "act" && (o["view"] as? String) == "posters", count: count, now: now, grow: grow)
     }
   }
 }
@@ -1056,11 +1145,13 @@ struct HalfList: View {
   let posters: Bool
   var count: Int = 3
   let now: Date
+  /** 🆕 W50 — الصورةُ تكبر بقدر ما كبر السطر */
+  var grow: CGFloat = 0
 
   var body: some View {
     let items = Sections.lines(f, key, now: now)
     VStack(alignment: .leading, spacing: 4) {
-      SecHeader(title: Sections.title(f, key), link: Sections.link(key))
+      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: f.n("header", 14.5))
       if posters {
         GeometryReader { g in
           let pw = max(0, (g.size.width - 8) / 2)
@@ -1082,10 +1173,10 @@ struct HalfList: View {
           ForEach(Array(items.prefix(key == "tonight" ? 1 : count).enumerated()), id: \.offset) { pair in
             Link(destination: pair.element.link) {
               HStack(spacing: 8) {
-                Poster(f: f, path: pair.element.t?.poster_path, w: 30, h: 45, r: 4)
+                Poster(f: f, path: pair.element.t?.poster_path, w: f.n("halfThumbW", 30) + grow * 2 / 3, h: f.n("halfThumbH", 45) + grow, r: 4)
                 VStack(alignment: .leading, spacing: 1) {
-                  Text(pair.element.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
-                  if let s = pair.element.sub, !s.isEmpty { Text(s).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(1) }
+                  Text(pair.element.name).font(.system(size: f.n("halfName", 14), weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  if let s = pair.element.sub, !s.isEmpty { Text(s).font(.system(size: f.n("halfSub", 12))).foregroundStyle(WColor.muted).lineLimit(1) }
                 }
                 Spacer(minLength: 0)
               }
