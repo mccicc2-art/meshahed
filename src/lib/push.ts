@@ -15,7 +15,7 @@ import {
   groupMessagePush,
   parseMuted,
   signalPush,
-  dmDataOf,
+  dmNativeOf,
   type PushGroup,
   type PushText,
 } from "@/core/push";
@@ -38,8 +38,11 @@ const EXPO_PUSH = "https://exp.host/--/api/v2/push/send";
 /** قناةُ أندرويد — تُنشأ في التطبيق بالاسم نفسِه (`apps/mobile/src/push.ts`) */
 const CHANNEL = "default";
 
-/** 🆕 D-1408 — `dmData`: الجهازُ يرسم إشعارَ الرسالة بنفسه من بياناتها (أندرويد، الهجرة ٢٠٤) */
-type Device = { token: string; lang: Locale; dmData: boolean };
+/**
+ * 🆕 1.12.7 — `dmNative`: كودُ الجهاز الأصليُّ يرسم إشعارَ الرسالة من بياناتها بزرّيه (أندرويد، `caps` فيها «dm-native»).
+ * «dm-data» (D-1408، رسمُ الجافاسكربت) لا يُقرأ هنا عمداً: أندرويد لا يشغّل تلك المهمّةَ في الخلفية فيضيع الإشعار.
+ */
+type Device = { token: string; lang: Locale; dmNative: boolean };
 
 async function devicesOf(db: SupabaseClient, userId: string): Promise<Device[]> {
   /* قبل الهجرة ٢٠٤ العمودُ غائب ⇒ القراءةُ بلاه — والطريقةُ القديمةُ للجميع، لا صمتٌ لكلِّ إشعار */
@@ -50,7 +53,7 @@ async function devicesOf(db: SupabaseClient, userId: string): Promise<Device[]> 
   return (rows ?? []).map((d) => ({
     token: d.token,
     lang: d.lang === "en" ? "en" : "ar",
-    dmData: d.platform === "android" && Array.isArray(d.caps) && d.caps.includes("dm-data"),
+    dmNative: d.platform === "android" && Array.isArray(d.caps) && d.caps.includes("dm-native"),
   }));
 }
 
@@ -66,19 +69,14 @@ async function claim(db: SupabaseClient, key: string): Promise<boolean> {
 }
 
 /**
- * رسالةُ Expo لجهاز. 🆕 D-1408 — **إشعارُ رسالةٍ لجهازٍ يرسمه بنفسه يُرسل «بيانات»** بلا عنوانٍ ولا نصّ: أندرويد يعرض إشعارَ
- * Expo العاديَّ بنفسه والتطبيقُ في الخلفية فلا يصل الزرّان؛ البياناتُ توقظ التطبيقَ فيرسمه هو بـ«رد» و«تمييز كمقروءة».
+ * رسالةُ Expo لجهاز. 🆕 1.12.7 — **إشعارُ رسالةٍ لجهازٍ يرسمه كودُه الأصليّ يُرسل «بيانات»** بلا عنوانٍ ولا نصّ:
+ * إشعارُ Expo العاديُّ يعرضه أندرويد بنفسه والتطبيقُ في الخلفية فيسقط الزرّان (D-1406)، ورسمُ الجافاسكربت لا يجري في
+ * الخلفية (D-1408، موقوف). البياناتُ تصل خدمةَ الرسائل الأصليّة (`DmPush.kt`) في كلِّ حال فترسمه بـ«رد» و«تمييز كمقروءة».
+ * `priority: high` شرطُ أن يصل والجهازُ في وضع السكون.
  */
-/**
- * 🔴 موقوفٌ ١٥ أكتوبر (تجربةُ أحمد): أندرويد لا يشغّل مهمّةَ الجافاسكربت في الخلفية لإشعار البيانات — فلا إشعارَ حتى يُفتح
- * التطبيق. الطريقةُ القديمةُ للجميع حتى يرسمه كودٌ أصليٌّ (Kotlin) في البناء القادم؛ `caps` تبقى تُكتب ولا تُستعمل.
- */
-const DM_DATA_ON = false;
-
-function expoMessage(m: { token: string; text: PushText; dmData?: boolean }) {
-  const data = DM_DATA_ON && m.dmData ? dmDataOf(m.text) : null;
-  /* `categoryId` معها أيضاً: إن رسمها مكوّنُ الإشعارات الأصليُّ بنفسه (لا المهمّة) فبزرّيها — حزامٌ ثانٍ (١٥ أكتوبر) */
-  if (data) return { to: m.token, data, priority: "high", _contentAvailable: true, categoryId: "dm" };
+function expoMessage(m: { token: string; text: PushText; dmNative?: Dict | null }) {
+  const data = m.dmNative ? dmNativeOf(m.text, m.dmNative) : null;
+  if (data) return { to: m.token, data, priority: "high" };
   return {
     to: m.token,
     title: m.text.title,
@@ -92,7 +90,7 @@ function expoMessage(m: { token: string; text: PushText; dmData?: boolean }) {
   };
 }
 
-async function send(db: SupabaseClient, batch: { token: string; text: PushText; dmData?: boolean }[]): Promise<number> {
+async function send(db: SupabaseClient, batch: { token: string; text: PushText; dmNative?: Dict | null }[]): Promise<number> {
   if (!batch.length) return 0;
   let sent = 0;
   /* Expo يقبل مئةً في النداء */
@@ -133,10 +131,12 @@ async function deliver(input: { to: string; group: PushGroup; dedupe?: string; a
     if (data) return;
   }
   if (input.dedupe && !(await claim(db, input.dedupe))) return;
-  const batch: { token: string; text: PushText; dmData: boolean }[] = [];
+  const batch: { token: string; text: PushText; dmNative: Dict | null }[] = [];
   for (const d of devices) {
-    const text = input.build(getDict(d.lang), d.lang);
-    if (text) batch.push({ token: d.token, text, dmData: d.dmData });
+    const t = getDict(d.lang);
+    const text = input.build(t, d.lang);
+    /* القاموسُ نفسُه لنصوص الزرّين و«أنت:» في الإشعار الأصليّ — بلغة هذا الجهاز */
+    if (text) batch.push({ token: d.token, text, dmNative: d.dmNative ? t : null });
   }
   await send(db, batch);
 }

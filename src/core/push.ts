@@ -38,8 +38,14 @@ export function parseMuted(raw: unknown): PushGroup[] {
  * 🆕 D-1408 — `caps`: ما يقدر عليه التطبيقُ على هذا الجهاز. «dm-data»: يرسم إشعارَ الرسالة بنفسه من بياناتها (أندرويد) فتظهر
  * أزرارُه والتطبيقُ في الخلفية. غائبٌ ⇒ الطريقةُ القديمة (Expo يعرض الإشعار) — بناءٌ أقدمُ لا يرسم البياناتِ فلا يُرسل له بها.
  */
-export type PushCap = "dm-data";
-export const PUSH_CAPS: readonly PushCap[] = ["dm-data"];
+/**
+ * 🆕 1.12.7 — «dm-native»: **كودٌ أصليٌّ (Kotlin) يرسم إشعارَ الرسالة** من بياناتها بزرّيه، ويرسل الردَّ برمز الودجت
+ * (`apps/mobile/widget/kotlin/DmPush.kt`) — يعمل والتطبيقُ في الخلفية أو مقفول، لأنّه لا ينتظر الجافاسكربت.
+ * و«dm-data» (D-1408، رسمُ الجافاسكربت) يبقى اسماً مقبولاً من البناء 1.12.6 **ولا يُرسل له بالبيانات أبداً**: أندرويد
+ * لا يشغّل مهمّتَه في الخلفية فيضيع الإشعار.
+ */
+export type PushCap = "dm-data" | "dm-native";
+export const PUSH_CAPS: readonly PushCap[] = ["dm-data", "dm-native"];
 export type PushRegisterBody = { token: string; platform?: "android" | "ios"; lang?: "ar" | "en"; caps?: PushCap[] };
 
 /** إشعارُ رسالةٍ «بيانات» لجهازٍ يرسمه بنفسه: النصُّ في البيانات لا في الإشعار — `kind` يقول للتطبيق ما يرسم */
@@ -47,6 +53,37 @@ export type DmDataPush = { kind: "dm"; title: string; body: string; url: string 
 export function dmDataOf(text: PushText): DmDataPush | null {
   if (text.category !== "dm" || !text.url) return null;
   return { kind: "dm", title: text.title, body: text.body, url: text.url };
+}
+/**
+ * 🆕 1.12.7 — وجهةُ الردِّ من رابط الإشعار نفسِه: شخصٌ (`?with=`) أو قروبٌ (`?group=`) — **الرابطُ الذي يفتحه الضغطُ
+ * هو مصدرُ الوجهة**، فلا يختلف ما يُفتح عمّا يُردّ عليه.
+ */
+export type DmTarget = { to: string } | { group: string };
+const DM_UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+const DM_PEER_URL = new RegExp(`^/messages\\?with=(${DM_UUID})$`);
+const DM_GROUP_URL = new RegExp(`^/messages\\?group=(${DM_UUID})$`);
+export function dmTargetOf(url: string | null | undefined): DmTarget | null {
+  if (!url) return null;
+  const p = DM_PEER_URL.exec(url);
+  if (p) return { to: p[1].toLowerCase() };
+  const g = DM_GROUP_URL.exec(url);
+  return g ? { group: g[1].toLowerCase() } : null;
+}
+
+/**
+ * 🆕 1.12.7 — إشعارُ رسالةٍ «بيانات» لجهازٍ يرسمه **كودُه الأصليّ** (`caps: ["dm-native"]`): النصُّ والوجهةُ ونصوصُ الزرّين
+ * بلغة الجهاز المسجَّلة — الكودُ الأصليُّ لا يقرأ قاموسَنا، وما يكتبه بعد الردّ («أنت: …» أو «تعذّر») يأتي من هنا.
+ * `tag`: خيطٌ واحدٌ = إشعارٌ واحد (رسالةٌ جديدةٌ من الشخص نفسِه تحلّ محلَّ سابقتها لا تتكدّس).
+ */
+export type DmNativeLabels = { reply: string; hint: string; send: string; read: string; you: string; failed: string };
+export type DmNativePush = { kind: "dm"; title: string; body: string; url: string; tag: string; to?: string; group?: string; l: DmNativeLabels };
+export function dmNativeOf(text: PushText, t: Dict): DmNativePush | null {
+  if (text.category !== "dm") return null;
+  const target = dmTargetOf(text.url);
+  if (!target || !text.url) return null;
+  const l: DmNativeLabels = { reply: t.msgReply, hint: t.msgReplyPlaceholder, send: t.pushReplySend, read: t.pushMarkRead, you: t.convYou, failed: t.pushReplyFailed };
+  const base = { kind: "dm" as const, title: text.title.slice(0, 120), body: text.body.slice(0, 400), url: text.url, l };
+  return "to" in target ? { ...base, tag: target.to, to: target.to } : { ...base, tag: `g:${target.group}`, group: target.group };
 }
 /** جسمُ `POST /api/v1/app/push/forget` — بلا جلسة (الخروجُ يسبقه) */
 export type PushForgetBody = { token: string };

@@ -83,19 +83,26 @@ function plainRow(base: Omit<ThreadRow, "bulletin" | "bulletin_vote" | "bulletin
 
 /** غرفةُ العمل — `talk/[type]/[id]/page.tsx` */
 export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPayload> {
+  /* 🆕 1.12.7 — **ثلاثُ جولاتٍ متتالية صارت اثنتين** (`thread.open` p95 ٦٣٣ms على آيفون): العملُ (`workOf` — TMDB ثمّ
+     الاسمُ المعروض) لا يحتاج الخيط، و«وجهي» (`getMyProfileLite`) لا يحتاج إلّا الجلسةَ المخبّأة — كانا ينتظران جولةً
+     وجولتين بلا سبب. يبدآن مع الجولة الأولى، والردُّ حرفاً كما كان (`getMyProfileLite` يعيد `null` بلا جلسة ولا يرمي). */
+  const tP = getT();
+  const workP = tP.then(({ locale, t }) => workOf(tmdbId, kind, locale, t.talkFallbackTitle));
+  const meP = getMyProfileLite();
   const [user, { locale, t }, thread, follow, watched] = await Promise.all([
     getUser(),
-    getT(),
+    tP,
     getTitleThread(tmdbId, kind),
     getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
     kind === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
   ]);
   const ids = thread.map((p) => p.postId);
-  const [work, likes, votes, translations] = await Promise.all([
-    workOf(tmdbId, kind, locale, t.talkFallbackTitle),
+  const [work, likes, votes, translations, me] = await Promise.all([
+    workP,
     getPostLikes(ids).catch(() => ({ counts: {} as Record<string, number>, mine: [] as string[] })),
     getPostVotes(ids),
     translationsOf(thread.filter((p) => !p.kind && !p.hasSpoiler && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })), locale),
+    meP,
   ]);
   const mine = new Set(likes.mine);
   const rows: ThreadRow[] = thread.map((p) => {
@@ -124,7 +131,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
   });
   const w = asWork(work);
   return {
-    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? await getMyProfileLite() : null },
+    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
     head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following },
     rows,
@@ -137,21 +144,24 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
 
 /** منشورُ لوبز — `post/[key]/page.tsx` */
 export async function postPayload(key: string): Promise<ThreadPayload | null> {
+  /* 1.12.7 — «وجهي» مع الجولة الأولى لا جولةً ثالثةً بعد الردود (انظر `talkPayload`) */
+  const meP = getMyProfileLite();
   const [user, { locale, t }, post] = await Promise.all([getUser(), getT(), getNewsPost(key)]);
   if (!post) return null;
   const loc = locale === "en" ? "en" : "ar";
   const line = newsLine(post, t, loc);
   if (!line) return null;
   const likeKey = `${post.media_type}-${post.tmdb_id}`;
-  const [replies, views, reactions, work] = await Promise.all([
+  const [replies, views, reactions, work, me] = await Promise.all([
     getNewsThread(key),
     getPostViewCounts([newsViewKey(key)]),
     getReactions([post.tmdb_id]),
     workOf(post.tmdb_id, post.media_type, locale, post.title),
+    meP,
   ]);
   const w = asWork(work);
   return {
-    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? await getMyProfileLite() : null },
+    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     /* عنوانُ الخبر كما كُتب فيه — الويبُ يرسم `post.title` لا اسمَ TMDB */
     work: { ...w, title: post.title || w.title, poster_path: post.poster_path ?? w.poster_path },
     head: {
@@ -176,21 +186,22 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
 
 /** الرأيُ وخيطُه — `review/[type]/[id]/[user]/page.tsx` */
 export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string): Promise<ThreadPayload | null> {
-  const [user, { locale }, reviews, allReplies] = await Promise.all([
+  /* 1.12.7 — **جولةٌ واحدةٌ لا ثلاث**: العدّادُ والعملُ و«وجهي» لا يحتاج أيٌّ منها قائمةَ الآراء — كانت تنتظرها ثمّ
+     تنتظر بعضَها. رأيٌ غائبٌ (نادر) يكلّف قراءتين ضاعتا؛ والحاضرُ يربح جولتين في كلِّ فتح. */
+  const tP = getT();
+  const [user, reviews, allReplies, views, work, me] = await Promise.all([
     getUser(),
-    getT(),
     getTitleReviews(tmdbId, kind),
     getTitleReplies(tmdbId, kind),
+    getPostViewCounts([commentViewKey(authorId, kind, tmdbId)]),
+    tP.then(({ locale }) => workOf(tmdbId, kind, locale, "")),
+    getMyProfileLite(),
   ]);
   const r = reviews.find((x) => x.id === authorId);
   if (!r) return null;
-  const [views, work] = await Promise.all([
-    getPostViewCounts([commentViewKey(authorId, kind, tmdbId)]),
-    workOf(tmdbId, kind, locale, ""),
-  ]);
   const w = asWork(work);
   return {
-    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? await getMyProfileLite() : null },
+    viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
     head: {
       kind: "review",

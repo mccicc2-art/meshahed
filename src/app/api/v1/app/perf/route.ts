@@ -64,10 +64,8 @@ const NAMES = new Set([
      `worst` أطولُ فجوةٍ ms · `fps` الإطاراتُ المرسومةُ في الثانية). النسبةُ تُحسب من المجموع لا من وسيط الصفوف:
        sum(ms) / (sum(dur) / 16.7) */
   "scroll.jank",
-  /* 🩺 D-1337 — `rail.state`: حالُ صفٍّ أفقيٍّ في «اكتشف» بعد ظهور لوحه. القيمةُ **عرضُ الصفّ** (px) · `y` موضعُه في العمود ·
-     `x` آخرُ موضعٍ أعلنه النظام (غائبٌ = لا حدثَ تمرير) · `cw` عرضُ المحتوى · `jx` موضعُ القائمة في JS · `first`/`last`
-     نافذةُ البطاقات المركّبة · `ev` أحداثُ تمريرٍ بلا إصبع · `drag` سحبه المستخدم. تشخيصٌ يُحذف مع الإصلاح. */
-  "rail.state",
+  /* 🗑️ D-1337 (`rail.state`) و D-1392 (`trailer.tap` · `trailer.state` · `trailer.wake`) سقطت مع مسابرها في 1.12.7 —
+     نسخةٌ قديمةٌ ما زالت ترسلها تُسقَط علاماتُها هنا بصمت (الاسمُ خارج القائمة) والدفعةُ تُحفظ. */
   "token.life",
   /* 🆕 D-1141 — انتظارُ الرمز من صفحة الويب (ms) ونتيجتُه */
   "token.wait",
@@ -104,12 +102,6 @@ const NAMES = new Set([
   /* 🩺 D-1348 — زمنُ الختم وزمنُ جلب الرئيسيّة بعده (`result`) */
   "welcome.finish",
   "welcome.home",
-  /* 🩺 D-1392 — مؤقّت: لمسُ مقطع «اكتشف» على آيفون — الطبقةُ التي تلقّت اللمسة (`layer` = side · centre · wake، `x` نسبةٌ
-     مئويّة من العرض) وحالُ المشغّل لحظتَها (`idle` · `playing` · `controls` · `want`)، وحالُ يوتيوب (`src`)، وسببُ
-     الإحياء والإخماد (`why` = yt · tap · open · refused). القيمةُ صفرٌ دائماً. تُحذف مع الإصلاح. */
-  "trailer.tap",
-  "trailer.state",
-  "trailer.wake",
   /* 🆕 D-1350 — كم بقي ستارُ أنميشن الفتح ولماذا نزل (`why` = ready · cap) */
   "open.hide",
 ]);
@@ -118,9 +110,8 @@ const NAMES = new Set([
    🗑️ D-1272 — عدّاداتُ الرسم (`first` · `roots` · `panes` · `rails` · `cards` · `live` · `marq`، D-1218/D-1230) سقطت مع
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
-   🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank`
-   🩺 D-1337 — `y` · `x` · `jx` · `cw` · `first` · `last` · `ev` · `drag` لـ`rail.state` (قد يكون `x`/`jx` سالباً) */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "y", "x", "jx", "cw", "first", "last", "ev", "drag", "layer", "idle", "playing", "controls", "want"]);
+   🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
