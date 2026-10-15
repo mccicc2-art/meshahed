@@ -70,7 +70,8 @@ async function claim(db: SupabaseClient, key: string): Promise<boolean> {
  */
 function expoMessage(m: { token: string; text: PushText; dmData?: boolean }) {
   const data = m.dmData ? dmDataOf(m.text) : null;
-  if (data) return { to: m.token, data, priority: "high", _contentAvailable: true };
+  /* `categoryId` معها أيضاً: إن رسمها مكوّنُ الإشعارات الأصليُّ بنفسه (لا المهمّة) فبزرّيها — حزامٌ ثانٍ (١٥ أكتوبر) */
+  if (data) return { to: m.token, data, priority: "high", _contentAvailable: true, categoryId: "dm" };
   return {
     to: m.token,
     title: m.text.title,

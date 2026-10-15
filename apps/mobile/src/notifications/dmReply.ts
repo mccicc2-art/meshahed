@@ -190,6 +190,7 @@ function dmDataOf(raw: unknown): DmData | null {
  */
 async function presentDm(m: DmData) {
   await categoryReady;
+  trace(`draw state=${AppState.currentState}`);
   const id = await Notifications.scheduleNotificationAsync({
     content: { title: m.title, body: m.body, data: { url: m.url }, categoryIdentifier: DM_CATEGORY, sound: "default" },
     trigger: Platform.OS === "android" ? { channelId: "default" } : null,
@@ -199,6 +200,7 @@ async function presentDm(m: DmData) {
   try {
     const shown = (await Notifications.getPresentedNotificationsAsync()).find((n) => n.request.identifier === id);
     const cats = (await Notifications.getNotificationCategoriesAsync()).map((c) => c.identifier).join(",");
+    trace(`drawn shown=${shown ? "yes" : "no"} cat=${shown?.request.content.categoryIdentifier ?? "-"} cats=${cats || "-"}`);
     void post("/api/v1/app/crash", {
       screen: "messages",
       message: `dm drawn: state=${AppState.currentState} shown=${shown ? "yes" : "no"} cat=${shown?.request.content.categoryIdentifier ?? "-"} cats=${cats || "-"}`.slice(0, 300),
@@ -209,6 +211,32 @@ async function presentDm(m: DmData) {
   }
 }
 let drawnReported = false;
+
+/**
+ * 🆕 أثرُ المهمّة في الخلفية **محفوظاً على الجهاز** ويُرسل في الإقلاع التالي: التطبيقُ بلا شاشةٍ قد لا يملك رمزاً يرسل به
+ * (السجلُّ بقي فارغاً بعد تجربة ٥:٢٠ — لا نعرف هل جرت المهمّةُ أصلاً). سطرٌ لكلِّ حدث، آخرُ عشرة.
+ */
+const TRACE_KEY = "loopz.push.trace";
+function trace(line: string) {
+  try {
+    const list = JSON.parse(SecureStore.getItem(TRACE_KEY) ?? "[]") as unknown;
+    const prev = Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
+    SecureStore.setItem(TRACE_KEY, JSON.stringify([...prev, `${new Date().toISOString().slice(11, 19)} ${line}`].slice(-10)));
+  } catch {
+    /* لا شيء */
+  }
+}
+async function flushTrace() {
+  try {
+    const raw = SecureStore.getItem(TRACE_KEY);
+    const list = raw ? (JSON.parse(raw) as unknown) : null;
+    if (!Array.isArray(list) || !list.length) return;
+    const sent = await post("/api/v1/app/crash", { screen: "messages", message: `dm trace: ${list.join(" | ")}`.slice(0, 590), version: Platform.OS });
+    if (sent) SecureStore.setItem(TRACE_KEY, "[]");
+  } catch {
+    /* لا شيء */
+  }
+}
 
 /** المهمّةُ مسجَّلةٌ لإشعارات البيانات ⇒ الجهازُ يقدر يرسم الرسالةَ بنفسه — يقوله التسجيلُ للخادم */
 let taskReady: Promise<boolean> = Promise.resolve(false);
@@ -269,10 +297,16 @@ export async function defineDmCategory() {
 
 /* ===== التسجيلُ عند تحميل الوحدة — المهمّةُ في نطاقها لأنّ أندرويد يشغّلها بلا شاشة ===== */
 const categoryReady: Promise<void> = defineDmCategory().catch(() => {});
+/* التطبيقُ أمام صاحبه ⇒ يُرسل ما حفظته المهمّةُ في الخلفية */
+setTimeout(() => {
+  if (AppState.currentState === "active") void flushTrace();
+}, 6000);
 try {
   TaskManager.defineTask(TASK, async ({ data }) => {
     try {
       const dm = dmDataOf(data);
+      const keys = Object.keys(rec(rec(data).data)).slice(0, 8).join(",");
+      trace(`task state=${AppState.currentState} dm=${dm ? "yes" : "no"} keys=${keys || "-"}`);
       if (dm) await presentDm(dm);
       else await handle(data);
     } catch {
