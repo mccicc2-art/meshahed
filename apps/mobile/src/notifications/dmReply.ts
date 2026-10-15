@@ -166,30 +166,54 @@ export function isDmAction(r: Notifications.NotificationResponse | null): boolea
   return !!r && (r.actionIdentifier === ACTION_REPLY || r.actionIdentifier === ACTION_READ);
 }
 
+/**
+ * 🔴 بلاغُ أحمد (١٥ أكتوبر، بناء 82): الإشعارُ وصل بلا زرّين. **أندرويد لا يرسم الزرَّ إلّا لنوعٍ عرّفه التطبيقُ قبل وصوله**،
+ * والتعريفُ كان (١) خلف الجلسة والإذن في `sync` و(٢) **بعد** إنشاء القناة الصامتة في الدالّة نفسِها — فأيُّ رميةٍ في القناة
+ * تُسقط الزرّين بصمت. الآن: النوعُ أوّلاً ووحدَه، عند تحميل الوحدة (بلا جلسةٍ ولا إذن — تعريفُه لا يطلب شيئاً)، والقناةُ
+ * بعده مستقلّة، ثمّ تحقّقٌ أنّ النوعَ محفوظٌ فعلاً — وما فشل يُكتب في سجلّ الأعطال بسببه لا يُبلع.
+ */
+let reported = false;
+function report(what: string, e: unknown) {
+  if (reported) return;
+  reported = true;
+  const msg = e instanceof Error ? e.message : String(e);
+  void post("/api/v1/app/crash", { screen: "messages", message: `dm category: ${what}: ${msg}`.slice(0, 300), version: Platform.OS });
+}
+
 /** الأزرارُ بلغة الجهاز — تُعاد في كلِّ إقلاع (تبدّلُ اللغة يصل للزرّين) */
 export async function defineDmCategory() {
   const t = dictFor(currentLocale());
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync(REPLIES_CHANNEL, {
-      name: t.pushRepliesChannel,
-      importance: Notifications.AndroidImportance.LOW,
-      sound: null,
-      vibrationPattern: null,
-      enableVibrate: false,
-    });
+  try {
+    await Notifications.setNotificationCategoryAsync(DM_CATEGORY, [
+      {
+        identifier: ACTION_REPLY,
+        buttonTitle: t.msgReply,
+        textInput: { submitButtonTitle: t.pushReplySend, placeholder: t.msgReplyPlaceholder },
+        options: { opensAppToForeground: false },
+      },
+      { identifier: ACTION_READ, buttonTitle: t.pushMarkRead, options: { opensAppToForeground: false } },
+    ]);
+    const all = await Notifications.getNotificationCategoriesAsync();
+    if (!all.some((c) => c.identifier === DM_CATEGORY)) report("missing after set", "not stored");
+  } catch (e) {
+    report("set", e);
   }
-  await Notifications.setNotificationCategoryAsync(DM_CATEGORY, [
-    {
-      identifier: ACTION_REPLY,
-      buttonTitle: t.msgReply,
-      textInput: { submitButtonTitle: t.pushReplySend, placeholder: t.msgReplyPlaceholder },
-      options: { opensAppToForeground: false },
-    },
-    { identifier: ACTION_READ, buttonTitle: t.pushMarkRead, options: { opensAppToForeground: false } },
-  ]);
+  if (Platform.OS === "android") {
+    try {
+      await Notifications.setNotificationChannelAsync(REPLIES_CHANNEL, {
+        name: t.pushRepliesChannel,
+        importance: Notifications.AndroidImportance.LOW,
+        sound: null,
+        enableVibrate: false,
+      });
+    } catch (e) {
+      report("channel", e);
+    }
+  }
 }
 
 /* ===== التسجيلُ عند تحميل الوحدة — المهمّةُ في نطاقها لأنّ أندرويد يشغّلها بلا شاشة ===== */
+void defineDmCategory();
 try {
   TaskManager.defineTask(TASK, async ({ data }) => {
     try {

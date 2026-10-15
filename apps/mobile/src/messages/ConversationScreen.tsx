@@ -534,6 +534,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
                   Keyboard.dismiss();
                   setViewer({ e, image });
                 }}
+                onImageFail={refreshLinks}
               />
             )
           }
@@ -802,6 +803,14 @@ function metaSide(body: string): { end: number } | { start: number } {
   return rtl === I18nManager.isRTL ? { end: 10 } : { start: 10 };
 }
 
+/** 🆕 D-1407 — صورةٌ فشلت ⇒ المحادثةُ تُجلب بروابطَ موقَّعةٍ جديدة؛ مرّةً كلَّ عشر ثوانٍ مهما فشل من صور (لا عاصفةَ طلبات) */
+let linksAt = 0;
+function refreshLinks() {
+  if (Date.now() - linksAt < 10_000) return;
+  linksAt = Date.now();
+  void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+}
+
 /** فقاعةٌ واحدة: عملٌ مُشارَك (بطاقة) · قائمة · ردٌّ نصّيّ — والملاحظةُ فقاعةٌ تحت البطاقة (`ConvBubble`) */
 function Bubble({
   e,
@@ -815,6 +824,7 @@ function Bubble({
   onTitle,
   onList,
   onImage,
+  onImageFail,
 }: {
   e: MsgEvent;
   peerName: string;
@@ -827,10 +837,19 @@ function Bubble({
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onList: (id: string) => void;
   onImage: (e: MsgEvent, img: { url: string; key: string }) => void;
+  /** صورةٌ لم تُرسم ⇒ روابطُ جديدةٌ للمحادثة (الرابطُ موقَّعٌ مؤقّت) */
+  onImageFail: () => void;
 }) {
   const { t, tokens } = useApp();
   /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
   const [ratio, setRatio] = useState(4 / 3);
+  /*
+   * 🆕 D-1407 (لقطةُ أحمد ١٥ أكتوبر، أوّلُ فتحٍ لبناء 82): صورتان بقيتا مربّعاً أسود — ذاكرةُ الصور مُسحت بعد التحديث
+   * (`imageCacheGuard`) فنزلت الصورُ كلُّها معاً، وفشلت رسمةٌ ولم يكن بعدها شيء. الآن: الفشلُ الأوّلُ يطلب روابطَ جديدة ويعيد
+   * المحاولة وحدَه، والثاني يُظهر «إعادة التحميل» مكانَ السواد — لمستُه تعيد الدورة.
+   */
+  const [fails, setFails] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   const side = { alignSelf: e.mine ? ("flex-end" as const) : ("flex-start" as const), maxWidth: "80%" as const, marginVertical: 3 };
   /* 🆕 D-1401 — اللمسةُ في وضع التحديد تضيف/تزيل؛ والضغطةُ الطويلةُ تبدأ التحديد — على الفقاعة كلِّها وعلى بطاقاتها */
   const tap = (open: () => void) => () => (selecting ? onToggle(e) : open());
@@ -875,16 +894,42 @@ function Bubble({
                 <GifImage id={e.gif_id} />
               </View>
             ) : img ? (
-              <Image
-                source={{ uri: img.url, cacheKey: img.key }}
-                onLoad={(ev) => {
-                  const { width, height } = ev.source;
-                  if (width > 0 && height > 0) setRatio(Math.max(0.6, Math.min(2, width / height)));
-                }}
-                style={{ width: w, aspectRatio: ratio, borderRadius: 13, backgroundColor: tokens.surface }}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-              />
+              <View>
+                <Image
+                  key={`${img.key}:${attempt}`}
+                  source={{ uri: img.url, cacheKey: img.key }}
+                  onLoad={(ev) => {
+                    const { width, height } = ev.source;
+                    if (width > 0 && height > 0) setRatio(Math.max(0.6, Math.min(2, width / height)));
+                    setFails(0);
+                  }}
+                  onError={() => {
+                    setFails((n) => n + 1);
+                    if (fails === 0) {
+                      onImageFail();
+                      setAttempt((a) => a + 1);
+                    }
+                  }}
+                  style={{ width: w, aspectRatio: ratio, borderRadius: 13, backgroundColor: tokens.surface }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+                {fails >= 2 ? (
+                  <Pressable
+                    onPress={() => {
+                      setFails(0);
+                      onImageFail();
+                      setAttempt((a) => a + 1);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.msgImageReload}
+                    style={{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0, alignItems: "center", justifyContent: "center", gap: 6 }}
+                  >
+                    <Icon name="repeat" size={20} color={tokens.fg} />
+                    <Text size={12} weight="700" color={tokens.fg}>{t.msgImageReload}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             ) : null}
             {/* بلا تعليق: الوقتُ على الصورة نفسِها في شريطٍ غامقٍ صغير — لا يصغّرها سطرٌ تحتها */}
             {!e.body ? (

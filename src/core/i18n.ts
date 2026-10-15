@@ -1753,6 +1753,7 @@ const ar = {
   pushRepliesChannel: "ردودك من الإشعار",
   /* 🆕 D-1387 — صورةٌ أو GIF في الرسائل: سطرُ المعاينة والإشعار، وورقةُ «+» */
   msgImagePreview: "📷 صورة",
+  msgImageReload: "إعادة التحميل",
   msgGifPreview: "GIF",
   msgAttach: "إرفاق",
   msgPickImage: "صورة",
@@ -3839,6 +3840,7 @@ const en: Dict = {
   pushReplyFailed: "Couldn't send — open the chat and send it again",
   pushRepliesChannel: "Your replies from notifications",
   msgImagePreview: "📷 Photo",
+  msgImageReload: "Reload",
   msgGifPreview: "GIF",
   msgAttach: "Attach",
   msgPickImage: "Photo",
