@@ -16,6 +16,8 @@ import {
   type WidgetSectionKey,
   type WidgetSize,
 } from "@/core/widgetLayout";
+import { lookFor, type WidgetLook, type WidgetLookSize } from "@/core/widgetLook";
+import { ANDROID_RESIZE } from "../widget/feed";
 
 /**
  * ====== معاينةُ ودجت لوبز — ما سيرسمه الودجتُ بالضبط ======
@@ -37,6 +39,7 @@ export function WidgetPreview({
   maxHeight = 300,
   thumb = false,
   empty = [],
+  look,
 }: {
   config: WidgetLayoutConfig;
   size: WidgetSize;
@@ -46,6 +49,8 @@ export function WidgetPreview({
   thumb?: boolean;
   /** 🆕 أقسامٌ ظاهرةٌ في الإعداد لا محتوى لها الآن — تُحسم كما يحسمها الودجت (تختفي) ويقولها سطرُ المعاينة */
   empty?: readonly WidgetSectionKey[];
+  /** 🆕 شكلُ الودجت من الخلاصة — المحرّكُ يحسم به هنا كما في الودجت */
+  look?: WidgetLook | null;
 }) {
   const gone = empty.filter((k) => k !== "cont" && k !== "search" && given.on[k]);
   const config: WidgetLayoutConfig = gone.length ? { ...given, on: { ...given.on, ...Object.fromEntries(gone.map((k) => [k, false])) } } : given;
@@ -64,11 +69,12 @@ export function WidgetPreview({
     const form = platform === "ios" ? smallWidgetForm(config, key, 170, 170) : smallWidgetForm(config, key, 173, 246);
     body = <SmallTile name={names[key]} form={form} />;
   } else {
-    const l = resolveWidgetLayout(config, size, H, platform);
+    const l = resolveWidgetLayout(config, size, H, platform, { look, resize: platform === "ios" || ANDROID_RESIZE });
+    const lk = lookFor(look, platform, size);
     body = l.rows.map((r, i) => (
       <View key={i}>
         {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: (WIDGET_HEIGHTS.gap - 1) / 2 }} /> : null}
-        <PreviewRow row={r} names={names} contImage={config.opts.cont.small !== "list"} />
+        <PreviewRow row={r} names={names} contImage={config.opts.cont.small !== "list"} look={lk} posters={(k) => config.opts[k].view === "posters"} />
       </View>
     ));
     note = l.hidden.length ? t.widgetDoesntFit(l.hidden.map((k) => names[k]).join("، ")) : t.widgetAllFit;
@@ -101,7 +107,7 @@ function Title({ text }: { text: string }) {
   return <Text size={13} weight="700" color="#F7F7F7" numberOfLines={1}>{text}</Text>;
 }
 
-function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<WidgetSectionKey, string>; contImage: boolean }) {
+function PreviewRow({ row, names, contImage, look, posters }: { row: WidgetRow; names: Record<WidgetSectionKey, string>; contImage: boolean; look: WidgetLookSize; posters: (k: WidgetSectionKey) => boolean }) {
   const { t } = useApp();
   const h = row.h;
   switch (row.type) {
@@ -117,7 +123,7 @@ function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<W
               <Text size={12} weight="600" color="#B5B5B5" style={{ height: 16 }}>{t.widgetTrendingToday}</Text>
               {/* W31 — قائمةٌ مرقّمةٌ بعمودين، أو بوستراتٌ مرقّمةٌ بارتفاع شبكة البوسترات */}
               {row.trend === "posters" ? (
-                <View style={{ flexDirection: "row", gap: 8, height: WIDGET_HEIGHTS.posterGrid }}>
+                <View style={{ flexDirection: "row", gap: 8, height: look.posterGrid }}>
                   {[1, 2, 3].map((n) => (
                     <View key={n} style={{ flex: 1, borderRadius: 10, backgroundColor: GHOST }}>
                       <Text size={18} weight="800" color={n === 1 ? "#FFD400" : "#F7F7F7"} style={{ position: "absolute", bottom: 4, start: 8 }}>{n}</Text>
@@ -143,7 +149,8 @@ function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<W
       return (
         <View style={{ height: h, gap: 8 }}>
           <Title text={names.cont} />
-          <View style={{ flexDirection: "row", gap: 8, height: row.tall ? 120 : 93 }}>
+          {/* 🆕 W50 — البطاقتان بالمقاس الذي حسمه المحرّك (٤×٢ في الكبير) لا تتمدّدان */}
+          <View style={{ flexDirection: "row", gap: 8, height: row.card ?? (row.tall ? look.contCardTall : look.contCard) }}>
             {/* بطاقتا ١٦:٩ — والعلامةُ رصاصيّة (W36)؛ وفي المتوسط وحدَه أطول (`tall`) */}
             {[0, 1].map((i) => (
               <View key={i} style={{ flex: 1, borderRadius: 12, backgroundColor: "#2f3b46" }}>
@@ -164,13 +171,15 @@ function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<W
         <View style={{ height: h, gap: 4 }}>
           <Title text={names[row.key]} />
           {row.view === "posters" ? (
-            <View style={{ flexDirection: "row", gap: 8, height: WIDGET_HEIGHTS.posterGrid }}>
-              {Array.from({ length: row.count }, (_, i) => <View key={i} style={{ flex: 1, borderRadius: 10, backgroundColor: GHOST }} />)}
+            /* 🆕 W54 — ثلاثةٌ أو أربعةٌ تملأ العرض بارتفاع شبكتها */
+            <View style={{ flexDirection: "row", gap: look.posterGap, height: row.h - WIDGET_HEIGHTS.listHeader }}>
+              {Array.from({ length: row.posters ?? 3 }, (_, i) => <View key={i} style={{ flex: 1, borderRadius: 10, backgroundColor: GHOST }} />)}
             </View>
           ) : (
             Array.from({ length: row.count }, (_, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, height: row.key === "friends" ? (row.h - WIDGET_HEIGHTS.listHeader) / row.count : WIDGET_HEIGHTS.listRow }}>
-                <View style={{ width: 32, height: 48, borderRadius: 6, backgroundColor: GHOST }} />
+              /* 🆕 W50 — السطرُ وصورتُه يكبران بالقدر نفسِه (`grow`) */
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, height: (row.h - WIDGET_HEIGHTS.listHeader) / row.count }}>
+                <View style={{ width: ((row.key === "friends" ? look.friendThumbH : look.listThumbH) + (row.grow ?? 0)) * (2 / 3), height: (row.key === "friends" ? look.friendThumbH : look.listThumbH) + (row.grow ?? 0), borderRadius: 6, backgroundColor: GHOST }} />
                 <View style={{ flex: 1, gap: 6 }}>
                   <Bar w="55%" />
                   <Bar w="35%" h={6} />
@@ -224,6 +233,11 @@ function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<W
                           <Bar w="45%" h={6} />
                         </View>
                         <View style={{ position: "absolute", right: 7, bottom: 7, width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(22,22,22,0.78)" }} />
+                      </View>
+                    ) : posters(k) && k !== "act" ? (
+                      /* 🆕 W55 — القسمُ الصغيرُ بوسترين */
+                      <View style={{ flex: 1, flexDirection: "row", gap: 8 }}>
+                        {[0, 1].map((j) => <View key={j} style={{ flex: 1, borderRadius: 8, backgroundColor: GHOST }} />)}
                       </View>
                     ) : (
                       Array.from({ length: row.count ?? 3 }, (_, j) => (

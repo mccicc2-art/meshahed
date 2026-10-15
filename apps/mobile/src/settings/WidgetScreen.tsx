@@ -16,6 +16,7 @@ import { SettingsScreen, Group, Row, Chevron, OptionRow, RowsSkeleton } from "./
 import { messageOf, useOpenWeb } from "./api";
 import { WidgetPreview } from "./WidgetPreview";
 import { refreshWidgets, ANDROID_WIDGET_LAYOUT, isAndroidWidgetLayout, emptySections, writtenFeed } from "../widget/feed";
+import { sanitizeWidgetLook } from "@/core/widgetLook";
 import { LoopzWidget, type AndroidPlaced, type IosPlaced } from "../../modules/loopz-widget";
 import {
   effectiveWidgetConfig,
@@ -114,6 +115,8 @@ export function WidgetScreen() {
     const f = writtenFeed();
     return f ? emptySections(f) : [];
   }, []);
+  /* 🆕 شكلُ الودجت كما وصل في الخلاصة — المعاينةُ تحسم به كالودجت نفسِه */
+  const look = useMemo(() => sanitizeWidgetLook(writtenFeed()?.v2?.look), []);
   const [saving, setSaving] = useState(false);
   const [ask, setAsk] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -207,7 +210,7 @@ export function WidgetScreen() {
   const pinned = (
     <>
       <Segmented items={sizes.map((s) => ({ id: s, label: sizeLabel[s] }))} value={size} onChange={(v) => setSize(v as WidgetSize)} />
-      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} empty={empty} />
+      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} empty={empty} look={look} />
     </>
   );
 
@@ -243,7 +246,7 @@ export function WidgetScreen() {
       accessibilityLabel={title}
       style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 16, backgroundColor: tokens.surface }}
     >
-      <WidgetPreview thumb config={effectiveWidgetConfig(c, plus)} size={sz} names={names} platform={ios ? "ios" : "android"} maxHeight={sz === "small" ? 84 : 96} />
+      <WidgetPreview thumb config={effectiveWidgetConfig(c, plus)} size={sz} names={names} platform={ios ? "ios" : "android"} maxHeight={sz === "small" ? 84 : 96} look={look} />
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         <Text size={16} weight="700" numberOfLines={1}>{title}</Text>
         <Text size={12} muted numberOfLines={2}>{sub}</Text>
@@ -490,11 +493,16 @@ function SectionSheet({ k, name, opts, onPatch, onClose }: { k: WidgetSectionKey
             {block(t.widgetTonightSmall, seg([{ id: "poster", label: t.widgetPoster }, { id: "list", label: t.widgetList }], opts.small ?? "poster", (v) => onPatch({ small: v as "poster" | "list" })))}
           </>
         ) : null}
-        {list && !small && k !== "act"
+        {/* 🆕 W55 — القسمُ الصغيرُ يختار القائمةَ أو البوسترين أيضاً (كان `!small` يخفيه، والرسّامان يرسمانهما في النصف أصلاً) */}
+        {list && k !== "act"
           ? block(t.widgetView, seg([{ id: "list", label: t.widgetList }, { id: "posters", label: t.widgetPosters }], opts.view === "posters" ? "posters" : "list", (v) => onPatch({ view: v })))
           : null}
         {list && !small && opts.view !== "posters"
           ? block(t.widgetCount, seg([{ id: "2", label: t.widgetTwo }, { id: "3", label: t.widgetThree }], String(opts.count), (v) => onPatch({ count: v === "3" ? 3 : 2 })))
+          : null}
+        {/* 🆕 W54 — بوستراتُ «أصدقاؤك» و«للمشاهدة» في الشكل الكامل: ٣ أو ٤ (٤ افتراضاً) تملأ العرض؛ النصفُ يبقى اثنين */}
+        {(k === "friends" || k === "tw") && !small && opts.view === "posters"
+          ? block(t.widgetPosterCount, seg([{ id: "3", label: t.widgetThree }, { id: "4", label: t.widgetFour }], String(opts.posters === 3 ? 3 : 4), (v) => onPatch({ posters: v === "3" ? 3 : 4 })))
           : null}
         {list && small ? <Text size={12} muted style={{ lineHeight: 18 }}>{t.widgetFixedSmall}</Text> : null}
       </View>

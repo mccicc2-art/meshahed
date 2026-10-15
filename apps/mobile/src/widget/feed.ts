@@ -1,4 +1,4 @@
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
@@ -10,6 +10,13 @@ import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
 import { resolveWidget, type WidgetSectionKey } from "@/core/widgetLayout";
+import { sanitizeWidgetLook } from "@/core/widgetLook";
+
+/**
+ * 🆕 هل يقدر رسّامُ أندرويد أن يغيّر مقاسَ عنصر (`setViewLayoutHeight` — أندرويد 12، API 31)؟ إن لم يقدر يُحسم له كما كان
+ * (لا تكبيرَ أسطر W50، ولا أربعةَ بوسترات W54) — فما يحسبه المحرّكُ هنا يطابق ما يرسمه هو. والشرطُ نفسُه في `LoopzWidgets.kt`.
+ */
+export const ANDROID_RESIZE = Platform.OS !== "android" || (typeof Platform.Version === "number" && Platform.Version >= 31);
 
 /**
  * ====== 🆕 بياناتُ الودجتات — يكتبها التطبيقُ والودجتُ يقرأ (خطّةُ الودجتات §2.1) ======
@@ -257,18 +264,23 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
   /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
   const v2 = data.v2;
   const empty = emptySections(data);
+  /* 🆕 شكلُ الودجت من الخلاصة (مُصلَحاً) — المحرّكُ يحسم به، ويُكتب معه فيقرؤه الرسّامان بالأرقام نفسِها */
+  const look = sanitizeWidgetLook(v2?.look);
+  const androidOpts = { look, resize: ANDROID_RESIZE };
+  const iosOpts = { look, resize: true };
   /* 🆕 W40 — أندرويد: الإعدادُ الافتراضيُّ لكلِّ ودجت، و`byId` لما خُصّص لودجتٍ بعينه (`aw-<رقمه>`)؛ والآيفون تخطيطاتُه وحدَها */
   const w2 = v2
     ? {
         android: {
-          ...resolveWidget(v2.config, v2.plus, "android", empty),
+          ...resolveWidget(v2.config, v2.plus, "android", empty, androidOpts),
           byId: Object.fromEntries(
-            v2.layouts.filter((l) => isAndroidWidgetLayout(l.id)).map((l) => [l.id, resolveWidget(l.config, v2.plus, "android", empty)]),
+            v2.layouts.filter((l) => isAndroidWidgetLayout(l.id)).map((l) => [l.id, resolveWidget(l.config, v2.plus, "android", empty, androidOpts)]),
           ),
         },
         ios: v2.layouts
           .filter((l) => !isAndroidWidgetLayout(l.id))
-          .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty) })),
+          .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty, iosOpts) })),
+        look,
       }
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
