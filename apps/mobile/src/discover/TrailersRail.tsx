@@ -11,7 +11,6 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import type { CuratedTab, FollowBody, TrackResult, TrailerCard, TrailersRailPayload } from "../contracts";
 import { scrollJank } from "../scrollJank";
-import { mark } from "../perfMarks";
 
 /* 🆕 D-1334 — صفُّ التريلرات يُعدّ مع الصفوف الأفقيّة في «اكتشف» (`scroll.jank`) */
 const jank = scrollJank("discover", "h");
@@ -122,8 +121,6 @@ export function TrailersRail({
   const [wantPlay, setWantPlay] = useState(true);
   const [muted, setMuted] = useState(false);
   const open = useCallback(() => {
-    /* 🩺 D-1392 — مؤقّت: متى تصير البطاقةُ حيّةً ومتى تعود خاملة (خطّةُ لمس المقطع على آيفون) */
-    mark("trailer.wake", 0, { why: "open" });
     setLive(true);
     setWantPlay(true);
   }, []);
@@ -294,7 +291,6 @@ export function TrailersRail({
               muted={muted}
               onMuted={setMuted}
               onAutoRefused={() => {
-                mark("trailer.wake", 0, { why: "refused" });
                 setLive(false);
               }}
               onExhausted={() => {

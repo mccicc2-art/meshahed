@@ -45,8 +45,6 @@ export type PerfName =
   | "gesture.jank"
   /* 🆕 D-1334 — إطاراتُ التمرير الضائعة في «اكتشف» و«المكتبة» (العمودُ والصفوفُ الأفقيّة) — انظر `scrollSample` */
   | "scroll.jank"
-  /* 🩺 D-1337 — حالُ صفٍّ أفقيٍّ في «اكتشف» بعد ظهور لوحه (تشخيصُ الصفوف الفارغة على آيفون بالعربيّة) — `railProbe.ts` */
-  | "rail.state"
   | "token.life"
   /* 🆕 D-1141 — انتظارُ الرمز من الصفحة: مدّتُه ونتيجتُه (`result=ok|none`) وجاهزيّةُ الصفحة (`ready=0|1`) */
   | "token.wait"
@@ -91,12 +89,7 @@ export type PerfName =
   /* 🩺 D-1348 — آخرُ الترحيب بزمنَيه: الختمُ في الخادم (`welcome.finish`) وجلبُ الرئيسيّة بعده (`welcome.home`، `result=none`
      = تجاوز السقف). يفصلان سببَ الثواني الثلاث في أوّل رئيسيّة. */
   | "welcome.finish"
-  | "welcome.home"
-  /* 🩺 D-1392 — مؤقّت: لمسُ المقطع في «اكتشف» (`trailer.tap` بطبقته) · حالُ يوتيوب (`trailer.state`) · ومتى تحيا
-     البطاقةُ أو تخمد (`trailer.wake` بسببه) — لتشخيص لمس آيفون من صفوفٍ لا من تخمين. تُحذف مع الإصلاح. */
-  | "trailer.tap"
-  | "trailer.state"
-  | "trailer.wake";
+  | "welcome.home";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

@@ -31,7 +31,6 @@ import { NameSheet } from "./NameSheet";
 import { coldStartVoid, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { scrollJank } from "../scrollJank";
-import { RailTab, useRailProbe, useRailReport } from "../railProbe";
 import { dismissed, useDismissed } from "./dismissed";
 import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
 import type { TabPref } from "@/core/tabPrefs";
@@ -769,10 +768,7 @@ const DiscoverPane = memo(function DiscoverPane({
     lists ? [["discover:lists"]] : [["discover:rail", tab], ["discover:personal", tab], ["discover:trailers", tab]],
     topPad,
   );
-  /* 🩺 D-1337 — حالُ الصفوف الأفقيّة بعد ظهور اللوح (`rail.state`، تشخيصٌ لا يغيّر سلوكاً — انظر `railProbe.ts`) */
-  useRailReport(tab, active && !lists);
   return (
-    <RailTab.Provider value={tab}>
     <ScrollView
       refreshControl={refreshControl}
       /* 🆕 D-1236 — **الصفوفُ التي تحت الشاشة تُفصل عن أندرويد وهي لا تُرى**. مسبارُ D-1235 (٣ أكتوبر، SM-S928B): كلُّ
@@ -864,7 +860,6 @@ const DiscoverPane = memo(function DiscoverPane({
         <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
       )) : null}
     </ScrollView>
-    </RailTab.Provider>
   );
 });
 
@@ -1007,11 +1002,9 @@ const CardsRail = memo(function CardsRail({
     ),
     [ranked, notes, onOpen, onHold],
   );
-  /* 🩺 D-1337 — مسبارُ الصفّ فوق خصائص D-1334 (يناديها كما هي) */
-  const probe = useRailProbe(RAIL_JANK);
   if (shown.length === 0) return null;
   return (
-    <View onLayout={probe.onWrapLayout}>
+    <View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, marginBottom: 10 }}>
         <Icon name={icon} size={16} color={tokens.accent} />
         <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{title}</Text>
@@ -1043,8 +1036,8 @@ const CardsRail = memo(function CardsRail({
            تحمل ~١١٠ بطاقةً مركّبةً في لوحين (`live` في D-1218a) — وفكُّ التجميد يمرّ عليها كلِّها. العرضُ ثابت
            (`getItemLayout`) فما يقترب من الحافّة يُركَّب قبل أن يُرى. */
         windowSize={3}
-        /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك · 🩺 D-1337 — ومعه مسبارُ حال الصفّ */
-        {...probe.list}
+        /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك */
+        {...RAIL_JANK}
       />
     </View>
   );
