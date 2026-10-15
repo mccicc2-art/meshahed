@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- W30 — قسمان صغيران بسطرين (١٢٦) حين لا يتّسع الثلاثة (`pairRow2`)؛ الصغيرُ الوحيدُ يترك نصفَه الآخرَ فارغاً -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pair_root"
     android:layout_width="match_parent"
     android:layout_height="126dp"
     android:orientation="horizontal">
