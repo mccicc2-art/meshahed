@@ -73,6 +73,8 @@ async function send(db: SupabaseClient, batch: { token: string; text: PushText }
             sound: "default",
             channelId: CHANNEL,
             priority: "high",
+            /* 🆕 D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة؛ بناءٌ أقدمُ لا يعرّف النوعَ فيظهر بلا أزرار */
+            ...(m.text.category ? { categoryId: m.text.category } : {}),
           })),
         ),
       });

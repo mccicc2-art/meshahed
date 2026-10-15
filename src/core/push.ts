@@ -41,7 +41,12 @@ export type PushForgetBody = { token: string };
 export type PushPrefsPayload = { muted: PushGroup[] };
 
 /** ما يُرسَل: عنوانٌ وسطرٌ ومسارٌ نسبيٌّ يفتحه الضغط */
-export type PushText = { title: string; body: string; url: string | null };
+/**
+ * 🆕 D-1406 — `category`: نوعُ الإشعار الذي يعرّفه التطبيقُ بأزراره (`apps/mobile/src/notifications/dmReply.ts`) —
+ * «dm» للرسالة: «رد» بخانة كتابةٍ داخل الإشعار و«تمييز كمقروءة». غائبٌ ⇒ إشعارٌ بلا أزرار كما كان.
+ */
+export type PushCategory = "dm";
+export type PushText = { title: string; body: string; url: string | null; category?: PushCategory };
 
 const APP = "Loopz";
 
@@ -71,7 +76,7 @@ export function messagePush(
         : "";
   const text = (m.text ?? "").replace(/\s+/g, " ").trim();
   const body = text && what ? `${what}\n${text}` : text || what || t.pushNewMessage;
-  return { title: m.senderName || APP, body: body.slice(0, 240), url: `/messages?with=${m.senderId}` };
+  return { title: m.senderName || APP, body: body.slice(0, 240), url: `/messages?with=${m.senderId}`, category: "dm" };
 }
 
 /** حلقاتُ اليوم ⇢ دفعٌ واحدٌ للمستخدم: عملٌ واحدٌ يفتح صفحتَه، وأكثرُ يفتح الرئيسيّة */
