@@ -7,6 +7,7 @@ import { homeSeen, useBootRoot } from "../bootRoot";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBadges } from "../messages/badges";
 import { warmDiscoverOnce } from "../discover/DiscoverScreen";
+import { warmMessagesOnce } from "../messages/common";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
@@ -104,7 +105,11 @@ export function HomeScreen() {
   useBadges(!!d);
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
-    if (d) warmDiscoverOnce();
+    if (d) {
+      warmDiscoverOnce();
+      /* 🆕 1.12.7 — والصندوقُ إن لم تكن له نسخةٌ محفوظة (الظرفُ في رأس هذه الشاشة بابُه) */
+      warmMessagesOnce();
+    }
   }, [d]);
   /* 🆕 D-1238 — وملفُّ صاحب الحساب: صورتُه في رأس هذه الشاشة بابُه، فيُجلب قبل الضغطة (`profileData.ts`) */
   useEffect(() => {

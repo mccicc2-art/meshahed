@@ -53,6 +53,13 @@ export type ThreadRoute =
 export const threadKey = (r: ThreadRoute) =>
   (r.t === "post" ? ["thread", "post", r.key] : r.t === "talk" ? ["thread", "talk", r.kind, r.id] : ["thread", "review", r.kind, r.id, r.user]) as readonly unknown[];
 
+/** 🆕 1.12.7 — الاستعلامُ الواحد: الشاشةُ وبابُها (`openThreadPath` يبدأ الجلبَ قبل الدفع) يطلبان بالمفتاح والدالّة نفسيهما */
+export const threadQuery = (r: ThreadRoute) => ({
+  queryKey: threadKey(r),
+  queryFn: async () => (await api<ThreadPayload>(`/api/v1/thread?${query(r)}`)).data,
+  staleTime: 30_000,
+});
+
 function query(r: ThreadRoute): string {
   if (r.t === "post") return `t=post&key=${encodeURIComponent(r.key)}`;
   if (r.t === "talk") return `t=talk&kind=${r.kind}&id=${r.id}`;
@@ -84,7 +91,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
   const key = useMemo(() => threadKey(route), [route]);
-  const q = useQuery({ queryKey: key, queryFn: async () => (await api<ThreadPayload>(`/api/v1/thread?${query(route)}`)).data, staleTime: 30_000 });
+  const q = useQuery({ ...threadQuery(route), queryKey: key });
   const d = q.data ?? null;
 
   /* `thread.open`: من التركيب إلى أوّل رسمٍ فيه حمولة — `cached` يفصل الكاش عن الشبكة (نهجُ `community.open`) */

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { InteractionManager } from "react-native";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient } from "../api";
@@ -60,6 +61,22 @@ export function useMessages() {
 
 export function prefetchMessages(): void {
   void queryClient.prefetchQuery({ queryKey: MESSAGES_KEY, queryFn: fetchMessages, staleTime: 15_000 });
+}
+
+/**
+ * 🆕 1.12.7 — **الصندوقُ يُسخَّن من الرئيسيّة حين لا نسخةَ منه** (`messages.open` p95 ٥١٦ms على آيفون): الصندوقُ محفوظٌ في ملفّ
+ * الكاش (M4-fix) فيُرسم فوراً — **إلّا** أوّلَ مرّةٍ أو بعد مسح الكاش، فيفتح على دوّارةٍ تنتظر الرمزَ والخادم. حينها وحدَها يُطلب
+ * مرّةً بعد أن تهدأ الرئيسيّة (بعد تسخين «اكتشف» بلحظة) — ومن عنده نسخةٌ لا يكلّفه هذا طلباً واحداً.
+ */
+let messagesWarmed = false;
+export function warmMessagesOnce(): void {
+  if (messagesWarmed) return;
+  messagesWarmed = true;
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      if (!queryClient.getQueryData(MESSAGES_KEY)) prefetchMessages();
+    }, 2500);
+  });
 }
 
 /**
