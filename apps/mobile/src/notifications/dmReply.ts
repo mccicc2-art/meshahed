@@ -182,12 +182,33 @@ function dmDataOf(raw: unknown): DmData | null {
   return { title: str(o.title).slice(0, 120), body: str(o.body).slice(0, 400), url: str(o.url) };
 }
 
+/**
+ * 🔴 تجربةُ أحمد (١٥ أكتوبر، تسجيلٌ ٥:٠٨): الإشعارُ والتطبيقُ أمامه بزرّيه، ومقفولاً أو في الخلفية **بلا زرّين**. في الخلفية
+ * يُقلع التطبيقُ بلا شاشةٍ لهذه المهمّة وحدَها — وتعريفُ النوع (`defineDmCategory`) يبدأ في اللحظة نفسِها عند تحميل الوحدة،
+ * فيُرسم الإشعارُ قبل أن يُحفظ النوعُ فلا يجد أزراره. **الرسمُ ينتظر التعريف**، ثمّ يتحقّق أنّ الإشعار المرسوم يحمل نوعَه
+ * ويكتب في سجلّ الأعطال ما وجد (مرّةً في الإقلاع) — فلا تخمينَ ثانٍ إن بقي.
+ */
 async function presentDm(m: DmData) {
-  await Notifications.scheduleNotificationAsync({
+  await categoryReady;
+  const id = await Notifications.scheduleNotificationAsync({
     content: { title: m.title, body: m.body, data: { url: m.url }, categoryIdentifier: DM_CATEGORY, sound: "default" },
     trigger: Platform.OS === "android" ? { channelId: "default" } : null,
   });
+  if (drawnReported) return;
+  drawnReported = true;
+  try {
+    const shown = (await Notifications.getPresentedNotificationsAsync()).find((n) => n.request.identifier === id);
+    const cats = (await Notifications.getNotificationCategoriesAsync()).map((c) => c.identifier).join(",");
+    void post("/api/v1/app/crash", {
+      screen: "messages",
+      message: `dm drawn: state=${AppState.currentState} shown=${shown ? "yes" : "no"} cat=${shown?.request.content.categoryIdentifier ?? "-"} cats=${cats || "-"}`.slice(0, 300),
+      version: Platform.OS,
+    });
+  } catch {
+    /* التشخيصُ ليس شرطاً */
+  }
 }
+let drawnReported = false;
 
 /** المهمّةُ مسجَّلةٌ لإشعارات البيانات ⇒ الجهازُ يقدر يرسم الرسالةَ بنفسه — يقوله التسجيلُ للخادم */
 let taskReady: Promise<boolean> = Promise.resolve(false);
@@ -247,7 +268,7 @@ export async function defineDmCategory() {
 }
 
 /* ===== التسجيلُ عند تحميل الوحدة — المهمّةُ في نطاقها لأنّ أندرويد يشغّلها بلا شاشة ===== */
-void defineDmCategory();
+const categoryReady: Promise<void> = defineDmCategory().catch(() => {});
 try {
   TaskManager.defineTask(TASK, async ({ data }) => {
     try {
