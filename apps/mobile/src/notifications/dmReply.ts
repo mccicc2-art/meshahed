@@ -28,6 +28,11 @@ import type { GroupManageBody, GroupSendBody } from "@/core/contracts/groups";
  * أندرويد قد يسلّم الردَّ الواحدَ للطريقين (المهمّة، ثمّ طابورُ المستمع عند الفتح التالي) — **فكلُّ ردٍّ يُعالَج مرّةً**
  * بمفتاحه (معرّفُ الإشعار + الزرّ + النصّ) محفوظاً.
  *
+ * 🆕 **1.12.7 — أندرويد والتطبيقُ في الخلفية أو مقفول: الكودُ الأصليُّ لا هذا الملفّ** (`apps/mobile/widget/kotlin/DmPush.kt`):
+ * إشعارُ Expo هناك يرسمه النظامُ بلا زرّين، ورسمُه من الجافاسكربت لم يجرِ في الخلفية (D-1408 — أُزيل كودُه من هنا). جهازٌ
+ * يقول `dm-native` (`push.ts`) تصله الرسالةُ «بيانات» فيرسمها الكودُ الأصليُّ بزرّيه ويرسل الردَّ برمز الودجت. **وهذا الملفُّ
+ * باقٍ لما سوى ذلك**: الآيفون، وأندرويد ببناءٍ أقدم، والإشعارُ الذي يرسمه Expo والتطبيقُ أمامك.
+ *
  * 🔑 **جاهزٌ للقروبات**: الوجهةُ تُقرأ من رابط الإشعار (`targetOf`) — اليوم `/messages?with=<شخص>` وحدَه، والقروبُ يضيف
  * شكلَه هناك ويعمل بالزرّين نفسيهما بتحديثٍ هوائيّ (قرارُ أحمد ١٥ أكتوبر: القروباتُ بعد الإصدار).
  */
@@ -173,89 +178,6 @@ async function handle(raw: unknown): Promise<void> {
   }
 }
 
-/**
- * 🆕 D-1408 — **الرسالةُ تصل «بيانات» والتطبيقُ يرسم إشعارَها** (أندرويد): إشعارُ Expo العاديُّ يعرضه النظامُ بنفسه والتطبيقُ
- * في الخلفية فيسقط الزرّان (تجربةُ أحمد ١٥ أكتوبر: «داخل التطبيق تظهر… فالخلفية لا»). الخادمُ يرسل بالبيانات لجهازٍ قال إنّه
- * يقدر (`caps: ["dm-data"]` — `dmDataCaps`)، والمهمّةُ نفسُها هنا تستلمها في الخلفية والأمام وترسم الإشعارَ بصوته وزرّيه.
- * والتطبيقُ أمامك ⇒ مُعالجُ العرض في `push.ts` يحجبه إن كانت المحادثةُ نفسُها مفتوحة، كما كان.
- */
-type DmData = { title: string; body: string; url: string };
-function dmDataOf(raw: unknown): DmData | null {
-  const d = rec(rec(raw).data);
-  let o: Record<string, unknown> = d;
-  if (str(d.kind) !== "dm" && str(d.dataString)) {
-    try {
-      o = rec(JSON.parse(str(d.dataString)));
-    } catch {
-      return null;
-    }
-  }
-  if (str(o.kind) !== "dm" || !targetOf(str(o.url))) return null;
-  return { title: str(o.title).slice(0, 120), body: str(o.body).slice(0, 400), url: str(o.url) };
-}
-
-/**
- * 🔴 تجربةُ أحمد (١٥ أكتوبر، تسجيلٌ ٥:٠٨): الإشعارُ والتطبيقُ أمامه بزرّيه، ومقفولاً أو في الخلفية **بلا زرّين**. في الخلفية
- * يُقلع التطبيقُ بلا شاشةٍ لهذه المهمّة وحدَها — وتعريفُ النوع (`defineDmCategory`) يبدأ في اللحظة نفسِها عند تحميل الوحدة،
- * فيُرسم الإشعارُ قبل أن يُحفظ النوعُ فلا يجد أزراره. **الرسمُ ينتظر التعريف**، ثمّ يتحقّق أنّ الإشعار المرسوم يحمل نوعَه
- * ويكتب في سجلّ الأعطال ما وجد (مرّةً في الإقلاع) — فلا تخمينَ ثانٍ إن بقي.
- */
-async function presentDm(m: DmData) {
-  await categoryReady;
-  trace(`draw state=${AppState.currentState}`);
-  const id = await Notifications.scheduleNotificationAsync({
-    content: { title: m.title, body: m.body, data: { url: m.url }, categoryIdentifier: DM_CATEGORY, sound: "default" },
-    trigger: Platform.OS === "android" ? { channelId: "default" } : null,
-  });
-  if (drawnReported) return;
-  drawnReported = true;
-  try {
-    const shown = (await Notifications.getPresentedNotificationsAsync()).find((n) => n.request.identifier === id);
-    const cats = (await Notifications.getNotificationCategoriesAsync()).map((c) => c.identifier).join(",");
-    trace(`drawn shown=${shown ? "yes" : "no"} cat=${shown?.request.content.categoryIdentifier ?? "-"} cats=${cats || "-"}`);
-    void post("/api/v1/app/crash", {
-      screen: "messages",
-      message: `dm drawn: state=${AppState.currentState} shown=${shown ? "yes" : "no"} cat=${shown?.request.content.categoryIdentifier ?? "-"} cats=${cats || "-"}`.slice(0, 300),
-      version: Platform.OS,
-    });
-  } catch {
-    /* التشخيصُ ليس شرطاً */
-  }
-}
-let drawnReported = false;
-
-/**
- * 🆕 أثرُ المهمّة في الخلفية **محفوظاً على الجهاز** ويُرسل في الإقلاع التالي: التطبيقُ بلا شاشةٍ قد لا يملك رمزاً يرسل به
- * (السجلُّ بقي فارغاً بعد تجربة ٥:٢٠ — لا نعرف هل جرت المهمّةُ أصلاً). سطرٌ لكلِّ حدث، آخرُ عشرة.
- */
-const TRACE_KEY = "loopz.push.trace";
-function trace(line: string) {
-  try {
-    const list = JSON.parse(SecureStore.getItem(TRACE_KEY) ?? "[]") as unknown;
-    const prev = Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
-    SecureStore.setItem(TRACE_KEY, JSON.stringify([...prev, `${new Date().toISOString().slice(11, 19)} ${line}`].slice(-10)));
-  } catch {
-    /* لا شيء */
-  }
-}
-async function flushTrace() {
-  try {
-    const raw = SecureStore.getItem(TRACE_KEY);
-    const list = raw ? (JSON.parse(raw) as unknown) : null;
-    if (!Array.isArray(list) || !list.length) return;
-    const sent = await post("/api/v1/app/crash", { screen: "messages", message: `dm trace: ${list.join(" | ")}`.slice(0, 590), version: Platform.OS });
-    if (sent) SecureStore.setItem(TRACE_KEY, "[]");
-  } catch {
-    /* لا شيء */
-  }
-}
-
-/** المهمّةُ مسجَّلةٌ لإشعارات البيانات ⇒ الجهازُ يقدر يرسم الرسالةَ بنفسه — يقوله التسجيلُ للخادم */
-let taskReady: Promise<boolean> = Promise.resolve(false);
-export function dmDataCaps(): Promise<"dm-data"[]> {
-  return taskReady.then((ok) => (ok && Platform.OS === "android" ? ["dm-data"] : []));
-}
-
 /** هل الضغطةُ زرٌّ من زرّينا؟ — `PushGate` لا يفتح شاشةً لها (الردُّ يُرسل في مكانه) */
 export function isDmAction(r: Notifications.NotificationResponse | null): boolean {
   return !!r && (r.actionIdentifier === ACTION_REPLY || r.actionIdentifier === ACTION_READ);
@@ -265,7 +187,7 @@ export function isDmAction(r: Notifications.NotificationResponse | null): boolea
  * 🔴 بلاغُ أحمد (١٥ أكتوبر، بناء 82): الإشعارُ وصل بلا زرّين. **أندرويد لا يرسم الزرَّ إلّا لنوعٍ عرّفه التطبيقُ قبل وصوله**،
  * والتعريفُ كان (١) خلف الجلسة والإذن في `sync` و(٢) **بعد** إنشاء القناة الصامتة في الدالّة نفسِها — فأيُّ رميةٍ في القناة
  * تُسقط الزرّين بصمت. الآن: النوعُ أوّلاً ووحدَه، عند تحميل الوحدة (بلا جلسةٍ ولا إذن — تعريفُه لا يطلب شيئاً)، والقناةُ
- * بعده مستقلّة، ثمّ تحقّقٌ أنّ النوعَ محفوظٌ فعلاً — وما فشل يُكتب في سجلّ الأعطال بسببه لا يُبلع.
+ * بعده مستقلّة — وما فشل يُكتب في سجلّ الأعطال بسببه (مرّةً في الإقلاع) لا يُبلع.
  */
 let reported = false;
 function report(what: string, e: unknown) {
@@ -288,8 +210,6 @@ export async function defineDmCategory() {
       },
       { identifier: ACTION_READ, buttonTitle: t.pushMarkRead, options: { opensAppToForeground: false } },
     ]);
-    const all = await Notifications.getNotificationCategoriesAsync();
-    if (!all.some((c) => c.identifier === DM_CATEGORY)) report("missing after set", "not stored");
   } catch (e) {
     report("set", e);
   }
@@ -308,26 +228,16 @@ export async function defineDmCategory() {
 }
 
 /* ===== التسجيلُ عند تحميل الوحدة — المهمّةُ في نطاقها لأنّ أندرويد يشغّلها بلا شاشة ===== */
-const categoryReady: Promise<void> = defineDmCategory().catch(() => {});
-/* التطبيقُ أمام صاحبه ⇒ يُرسل ما حفظته المهمّةُ في الخلفية */
-setTimeout(() => {
-  if (AppState.currentState === "active") void flushTrace();
-}, 6000);
+void defineDmCategory().catch(() => {});
 try {
   TaskManager.defineTask(TASK, async ({ data }) => {
     try {
-      const dm = dmDataOf(data);
-      const keys = Object.keys(rec(rec(data).data)).slice(0, 8).join(",");
-      trace(`task state=${AppState.currentState} dm=${dm ? "yes" : "no"} keys=${keys || "-"}`);
-      if (dm) await presentDm(dm);
-      else await handle(data);
+      await handle(data);
     } catch {
       /* لا شيء */
     }
   });
-  taskReady = Notifications.registerTaskAsync(TASK)
-    .then(() => true)
-    .catch(() => false);
+  Notifications.registerTaskAsync(TASK).catch(() => {});
   Notifications.addNotificationResponseReceivedListener((r) => {
     if (isDmAction(r)) void handle(r).catch(() => {});
   });

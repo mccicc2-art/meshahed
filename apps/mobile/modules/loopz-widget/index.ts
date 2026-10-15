@@ -16,6 +16,10 @@ type Native = {
   installedWidgets?(): AndroidPlaced[] | Promise<IosPlaced[]>;
   /** 🆕 أندرويد 8+: يطلب من المشغِّل وضعَ ودجتٍ جديد — `false` إن لم يدعمه */
   requestPin?(): boolean;
+  /** 🆕 1.12.7 — أندرويد: البناءُ يرسم إشعارَ الرسالة بكوده الأصليّ (`DmPush.kt`). بناءٌ أقدمُ لا يملكها */
+  dmNative?(): boolean;
+  /** 🆕 1.12.7 — أندرويد: المحادثةُ المفتوحة (`peer` أو `g:<قروب>`)، و`null` عند المغادرة. بناءٌ أقدمُ لا يملكها */
+  setDmOpen?(key: string | null): void;
   prune(keep: string[]): void;
   reload(): void;
   configuredLists(): string[];

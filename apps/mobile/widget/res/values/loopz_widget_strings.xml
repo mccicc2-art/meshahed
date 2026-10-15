@@ -18,4 +18,10 @@
     <!-- 🆕 الودجت الواحد (W28) -->
     <string name="w2_name" translatable="false">Loopz</string>
     <string name="w2_desc" translatable="false">Continue watching, coming up, tonight\'s movie and more — arranged your way</string>
+    <!-- 🆕 1.12.7 — زرّا إشعار الرسالة (`DmPush.kt`): احتياطٌ إن لم يحمل الإشعارُ نصوصَه من الخادم -->
+    <string name="dm_reply" translatable="false">Reply</string>
+    <string name="dm_reply_hint" translatable="false">Reply…</string>
+    <string name="dm_mark_read" translatable="false">Mark as read</string>
+    <string name="dm_you" translatable="false">You</string>
+    <string name="dm_failed" translatable="false">Couldn\'t send — open the chat and send it again</string>
 </resources>

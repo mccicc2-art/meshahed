@@ -17,4 +17,10 @@
     <!-- 🆕 الودجت الواحد (W28) -->
     <string name="w2_name" translatable="false">لوبز</string>
     <string name="w2_desc" translatable="false">أكمل المشاهدة والقادم وفيلم الليلة وغيرها — بترتيبك</string>
+    <!-- 🆕 1.12.7 — زرّا إشعار الرسالة (`DmPush.kt`): احتياطٌ إن لم يحمل الإشعارُ نصوصَه من الخادم -->
+    <string name="dm_reply" translatable="false">رد</string>
+    <string name="dm_reply_hint" translatable="false">رد…</string>
+    <string name="dm_mark_read" translatable="false">تمييز كمقروءة</string>
+    <string name="dm_you" translatable="false">أنت</string>
+    <string name="dm_failed" translatable="false">تعذّر الإرسال — افتح المحادثة وأرسلها من جديد</string>
 </resources>

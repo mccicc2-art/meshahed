@@ -11,6 +11,7 @@
 
 import type { WidgetLayoutConfig } from "../widgetLayout.ts";
 import type { WidgetLook } from "../widgetLook.ts";
+import type { DmTarget } from "../push.ts";
 
 /** نسخةُ العقد — ودجتٌ أقدمُ من الحقل لا يقرأ ما لا يعرفه */
 export const WIDGET_FEED_VERSION = 1;
@@ -247,4 +248,31 @@ export interface WidgetPrefsBody {
 export interface WidgetPrefsResult {
   ok: boolean;
   needsPlus?: true;
+}
+
+/* ───────── 🆕 1.12.7 — «رد» و«تمييز كمقروءة» من إشعار الرسالة برمز الودجت (`/api/v1/widget/dm-reply|dm-read`) ───────── */
+
+/** أقصى الردّ من الإشعار — حدُّ الرسالة نفسُه في الخاص والقروب (١٠٠٠، قيدا الهجرتين ٢٠٠ و٢٠٥) */
+export const WIDGET_DM_MAX = 1000;
+
+/** `{ to }` شخصٌ أو `{ group }` قروب — واحدٌ لا الاثنان؛ و`body` للردّ وحدَه */
+export type WidgetDmBody = { to?: string; group?: string; body?: string };
+
+const DM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * يقرأ جسمَ المسارين: الوجهةُ معرّفٌ صالحٌ واحد، والردُّ نصٌّ غيرُ فارغٍ في الحدّ (`withBody`).
+ * **نصٌّ فقط**: لا صورةَ ولا GIF ولا اقتباس — خانةُ الإشعار لا تكتب غيرَ النصّ، فلا يُفتح بابٌ لا يستعمله أحد.
+ */
+export function parseWidgetDmBody(raw: unknown, withBody: boolean): { target: DmTarget; body: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const to = typeof o.to === "string" && DM_ID.test(o.to) ? o.to.toLowerCase() : null;
+  const group = typeof o.group === "string" && DM_ID.test(o.group) ? o.group.toLowerCase() : null;
+  if ((to ? 1 : 0) + (group ? 1 : 0) !== 1) return null;
+  if (o.to != null && !to) return null;
+  if (o.group != null && !group) return null;
+  const body = typeof o.body === "string" ? o.body.trim() : "";
+  if (withBody && (!body || body.length > WIDGET_DM_MAX)) return null;
+  return { target: to ? { to } : { group: group as string }, body: withBody ? body : "" };
 }

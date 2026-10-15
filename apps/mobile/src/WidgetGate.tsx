@@ -30,7 +30,10 @@ type Action =
   /* 🆕 W40 — `widget`: رقمُ ودجتِ أندرويد الذي فُتحت إعداداتُه (الضغطُ المطوّل، أو بعد «أضف ودجت») */
   | { do: "settings"; widget?: number }
   | { do: "list"; id: string }
-  | { do: "start"; id: number; title: string; action: "start" | "unpause" };
+  | { do: "start"; id: number; title: string; action: "start" | "unpause" }
+  /* 🆕 1.12.7 — لمسةُ إشعار الرسالة الأصليّ (`DmPush.kt`): خيطُ شخصٍ أو قروب — ما يدفعه `PushGate` لإشعار Expo */
+  | { do: "msg"; peer: string }
+  | { do: "msg"; group: string };
 
 /** `com.loopztv.app://w/title?k=tv&id=1` ⇐ فعلٌ معروف، وكلُّ ما سواه يُهمل */
 export function widgetActionOf(url: string | null): Action | null {
@@ -64,10 +67,18 @@ export function widgetActionOf(url: string | null): Action | null {
       const a = q.get("a") === "unpause" ? "unpause" : "start";
       return Number.isInteger(id) && id > 0 ? { do: "start", id, title: (q.get("t") ?? "").slice(0, 200), action: a } : null;
     }
+    case "msg": {
+      const peer = q.get("with") ?? "";
+      const group = q.get("group") ?? "";
+      if (UUID_RE.test(peer)) return { do: "msg", peer };
+      return UUID_RE.test(group) ? { do: "msg", group } : null;
+    }
     default:
       return null;
   }
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function WidgetGate() {
   const router = useRouter();
@@ -136,6 +147,10 @@ export function WidgetGate() {
         case "all":
           router.navigate("/home");
           widgetBus.emit({ type: "all", section: action.section });
+          return;
+        case "msg":
+          if ("peer" in action) router.push({ pathname: "/messages/[peer]", params: { peer: action.peer, from: "home" } });
+          else router.push({ pathname: "/messages/group/[id]", params: { id: action.group, from: "home" } });
           return;
         case "start": {
           /* «ابدأ» من الخانة الباهتة (W5): الكتابةُ ثمّ الرئيسيّةُ وتوستُ «تراجع» عليها — العملُ صار في «أكمل المشاهدة» */

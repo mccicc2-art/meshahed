@@ -33,6 +33,25 @@ export const ANDROID_RESIZE = Platform.OS !== "android" || (typeof Platform.Vers
 const FEED = "feed.json";
 /** 🆕 W14 — رمزُ ✓ الخاصّ: يقرؤه الودجتُ (`CheckReceiver.kt` · `Intents.swift`) ولا يقدر إلّا على تعليم حلقة */
 const TOKEN = "token";
+
+/**
+ * 🆕 1.12.7 — رمزُ الودجت نفسُه يرسل «رد» من إشعار الرسالة (`DmPush.kt`): التسجيلُ يقول «dm-native» **حين يوجد الملفّ**
+ * وحدَه — فمن يُعلن القدرةَ يقدر فعلاً. أوّلُ رمزٍ يُكتب يُعيد التسجيلَ فوراً (`push.ts` يستمع) لا في الإقلاع التالي.
+ */
+export function hasWidgetToken(): boolean {
+  try {
+    return !!LoopzWidget?.exists(TOKEN);
+  } catch {
+    return false;
+  }
+}
+const tokenSubs = new Set<() => void>();
+export function onWidgetToken(f: () => void): () => void {
+  tokenSubs.add(f);
+  return () => {
+    tokenSubs.delete(f);
+  };
+}
 /** 🆕 سجلُّ لمسات الودجت (`CheckReceiver.kt` · `Intents.swift`): التطبيقُ يرسله للتشخيص ثمّ يفرغه */
 const DIAG = "diag.json";
 /** 🆕 W40 — ما يرسمه ودجتُ الآيفون (الحجمُ|التخطيط)؛ يكتبه الملحقُ ويقرؤه «على شاشتك الآن» — لا يُحذف مع الملصقات */
@@ -165,7 +184,10 @@ async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
   tokenTried = Date.now();
   try {
     const { data } = await api<{ token: string }>("/api/v1/widget/token", { method: "POST", body: {} });
-    if (typeof data?.token === "string" && data.token.startsWith("lw_")) w.writeText(TOKEN, data.token);
+    if (typeof data?.token === "string" && data.token.startsWith("lw_")) {
+      w.writeText(TOKEN, data.token);
+      tokenSubs.forEach((f) => f());
+    }
   } catch {
     /* بلا رمزٍ يبقى ✓ مخفيّاً (`check: false`) — لا شيءَ آخرُ يتغيّر */
   }
