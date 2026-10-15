@@ -1,13 +1,21 @@
-# تشغيلٌ يدويٌّ فقط: يرسل بناءَ تجربةٍ جاهزاً إلى مسار «الاختبار الداخلي» في Play — لا يبني ولا يلمس المتجرَ العامّ.
-# سببه: أداةُ الإرسال المباشر رفضت الطلب (تعارضٌ في مفاتيح حساب الخدمة)، والإرسالُ من سير العمل يقرأ الإعدادَ المحفوظ نفسَه.
-name: Android internal test submit (manual)
+# تشغيلٌ يدويٌّ فقط: بناءُ أندرويد من هذا الفرع ثمّ إرسالُه إلى مسار «الاختبار الداخلي» في Play — لا يلمس المتجرَ العامّ
+# ولا المسارَ المغلق (Alpha). إصدار 1.12.6 (أحمد ١٥ أكتوبر: «٢ أ … ارفع»): تجربةٌ داخليّةٌ أوّلاً، ثمّ يُرقّى البناءُ نفسُه للكلّ
+# من Play بلا بناءٍ ثانٍ. (كان يرسل بناء 81 الجاهز برقمه.)
+name: Android internal test (build + submit, manual)
 on:
   workflow_dispatch: {}
 jobs:
+  build:
+    name: Build Android (production)
+    type: build
+    params:
+      platform: android
+      profile: production
   submit_internal:
-    name: Submit build 81 to Play internal testing
+    name: Submit to Play internal testing
+    needs: [build]
     type: submit
     params:
       platform: android
-      build_id: 5d0466db-a56a-42a9-9e45-960a7ede25d4
+      build_id: ${{ needs.build.outputs.build_id }}
       profile: internal
