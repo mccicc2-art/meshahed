@@ -12,6 +12,7 @@ import {
   episodesPush,
   localDayHour,
   messagePush,
+  groupMessagePush,
   parseMuted,
   signalPush,
   dmDataOf,
@@ -250,6 +251,41 @@ export function notifyMessage(input: { to: string; actorId: string; text: string
           t,
         ),
     });
+  });
+}
+
+/** 🆕 رسالةٌ في قروب: كلُّ عضوٍ غيرُ المرسِل ولم يكتم القروب (الهجرة ٢٠٥) — واحداً واحداً، فلغةُ كلٍّ وأجهزتُه وكتمُه كما في الخاص */
+export function notifyGroupMessage(input: { groupId: string; actorId: string; text: string | null; media?: "image" | "gif" | null }) {
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    const [{ data: group }, { data: members }, person] = await Promise.all([
+      db.from("dm_groups").select("name").eq("id", input.groupId).maybeSingle(),
+      db.from("dm_group_members").select("user_id, muted").eq("group_id", input.groupId),
+      personOf(db, input.actorId),
+    ]);
+    if (!group || !person) return;
+    const to = ((members ?? []) as { user_id: string; muted: boolean }[]).filter((m) => m.user_id !== input.actorId && !m.muted).map((m) => m.user_id);
+    await Promise.all(
+      to.map((id) =>
+        deliver({
+          to: id,
+          group: "messages",
+          actorId: input.actorId,
+          build: (t) =>
+            groupMessagePush(
+              {
+                groupId: input.groupId,
+                groupName: (group as { name: string }).name,
+                senderName: person.hide_name ? t.anonymousUser : person.nickname || person.username || t.anonymousUser,
+                text: input.text,
+                media: input.media,
+              },
+              t,
+            ),
+        }).catch(() => {}),
+      ),
+    );
   });
 }
 
