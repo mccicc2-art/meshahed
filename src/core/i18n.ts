@@ -1309,9 +1309,7 @@ const ar = {
   /* 🆕 قصُّ الصورة قبل رفعها (أحمد ١٥ أكتوبر) */
   cropTitle: "اضبط الصورة",
   cropDone: "تم",
-  cropHint: "قرّب بإصبعين · اسحب لتحرّك",
-  cropRotateLeft: "لفّ يسار",
-  cropRotateRight: "لفّ يمين",
+  cropHint: "إصبعان: قرّب وابعد ولفّ · إصبع: حرّك",
   cropReset: "إرجاع",
   convStartSection: "ابدأ محادثة",
   convStartRowAria: (name: string) => `ابدأ محادثة مع ${name}`,
@@ -3549,9 +3547,7 @@ const en: Dict = {
   /* 🆕 Photo crop before upload (Ahmed 15 Oct) */
   cropTitle: "Adjust photo",
   cropDone: "Done",
-  cropHint: "Pinch to zoom · drag to move",
-  cropRotateLeft: "Rotate left",
-  cropRotateRight: "Rotate right",
+  cropHint: "Two fingers: zoom and rotate · one finger: move",
   cropReset: "Reset",
   convStartSection: "Start a conversation",
   convStartRowAria: (name: string) => `Start a conversation with ${name}`,

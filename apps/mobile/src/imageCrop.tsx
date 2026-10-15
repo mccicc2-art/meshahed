@@ -1,23 +1,26 @@
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StatusBar, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useApp } from "./state";
 import { Text } from "./ui";
-import { Icon } from "./icons";
 import { haptic } from "./haptics";
 
 /**
- * ====== قصُّ الصورة قبل رفعها — تكبيرٌ وتحريكٌ ولفٌّ ربعيّ (أحمد ١٥ أكتوبر: «١ أ · ٢ أ نفذ») ======
+ * ====== قصُّ الصورة قبل رفعها — تكبيرٌ وتحريكٌ ولفٌّ حرٌّ باليد (أحمد ١٥ أكتوبر: «١ أ · ٢ أ نفذ» ثمّ «احذف اللفّ… ب نفذ») ======
  *
  * 🔑 **شاشةٌ واحدةٌ لكلِّ صورةِ هويّة**: صورةُ القروب، وصورتُك (الإعدادات والترحيب) بإطارٍ دائريّ، والغلافُ بإطارٍ عريض ٣:١.
  * صورُ الرسائل والنقاشات تُرسل كما هي.
  * 🔑 **ما في الإطار هو ما يُحفظ بالضبط**: القصُّ على الجهاز (`expo-image-manipulator`) قبل الرفع، فلا يعتمد الرسمُ بعدها على
  * موضعٍ محفوظ. الصورةُ لا تصغر عن الإطار (لا فراغَ أسود)، والسحبُ مقيّدٌ بحوافّها.
- * 🔑 **اللفُّ ربعُ لفّةٍ بكلِّ ضغطة** («١ أ») — يُطبَّق على الصورة نفسها ثمّ يبدأ الضبطُ من جديد، فالحسابُ يبقى بلا زاوية.
+ * 🔑 **اللفُّ بإصبعين بأيّ زاوية** (نقضَ «١ أ» — أزرارُ الربع حُذفت): يوزن بها الأفقَ المائل. **بلا تثبيتٍ عند الصفر** («ب»):
+ * الزاويةُ ما تتركه اليدُ بالضبط، ورقمُها والشبكةُ ظاهران أثناء اللفّ ليُعرف متى استقام.
+ * 🔑 **الإطارُ مغطّى دائماً حتى مع الزاوية**: أقلُّ تكبيرٍ يُحسب من الزاوية (مستطيلُ الإطار مُدارٌ داخل الصورة)، فلا زاويةَ سوداء
+ * في الناتج. والدائرةُ تُعامل كمربّعها — الناتجُ مربّعٌ وقد يُعرض مربّعاً في مكانٍ ما.
  * ⚖️ **لا قصَّ النظام** (`allowsEditing`): لا لفَّ فيه على الآيفون، وشكلُه يختلف بين المنصّتين والأجهزة.
  */
 export type CropShape = "circle" | "wide";
@@ -84,84 +87,145 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
   const { t, tokens } = useApp();
   const insets = useSafeAreaInsets();
   const { width: sw } = useWindowDimensions();
-  const [src, setSrc] = useState<Src>(job.src);
+  const src = job.src;
   const [working, setWorking] = useState(false);
+  const [deg, setDeg] = useState(0);
   /* الإطار: دائرةٌ بعرض الشاشة ناقص الهامش (حتى ٣٢٠)، أو مستطيلٌ ٣:١ بعرض الشاشة */
   const fw = job.shape === "circle" ? Math.min(sw - 48, 320) : sw - 32;
   const fh = job.shape === "circle" ? fw : Math.round(fw / 3);
-  const areaH = Math.max(fh + 120, 360);
+  const areaH = Math.max(fh + 160, 380);
   /* الصورةُ تغطّي الإطار أوّلاً (cover)، والتكبيرُ فوق ذلك */
   const base = Math.max(fw / src.w, fh / src.h);
   const dw = src.w * base;
   const dh = src.h * base;
 
+  /* الحالةُ حول مركز الإطار: إزاحةٌ (tx, ty) ثمّ لفٌّ (r راديان، مع عقارب الساعة) ثمّ تكبير k — ترتيبُ `transform` نفسُه */
   const k = useSharedValue(1);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
-  const k0 = useSharedValue(1);
-  const x0 = useSharedValue(0);
-  const y0 = useSharedValue(0);
+  const r = useSharedValue(0);
+  const lastS = useSharedValue(1);
+  const lastR = useSharedValue(0);
+  const lastX = useSharedValue(0);
+  const lastY = useSharedValue(0);
+  const turning = useSharedValue(0);
 
-  const clampAll = () => {
+  /** يُبقي الإطارَ كلَّه داخل الصورة: يرفع التكبيرَ لأدنى ما تسمح به الزاوية، ثمّ يحصر مركزَ الإطار في إحداثيّات الصورة */
+  const fit = () => {
     "worklet";
-    const mx = Math.max(0, (dw * k.value - fw) / 2);
-    const my = Math.max(0, (dh * k.value - fh) / 2);
-    tx.value = Math.min(mx, Math.max(-mx, tx.value));
-    ty.value = Math.min(my, Math.max(-my, ty.value));
+    const cs = Math.cos(r.value);
+    const sn = Math.sin(r.value);
+    const ac = Math.abs(cs);
+    const as = Math.abs(sn);
+    /* نصفا امتداد الإطار مُداراً إلى محاور الصورة (بوحدات الشاشة) */
+    const ex = (fw * ac + fh * as) / 2;
+    const ey = (fw * as + fh * ac) / 2;
+    const kMin = Math.max(1, (2 * ex) / dw, (2 * ey) / dh);
+    if (k.value < kMin) {
+      tx.value *= kMin / k.value;
+      ty.value *= kMin / k.value;
+      k.value = kMin;
+    }
+    /* مركزُ الإطار في إحداثيّات الصورة المعروضة: R(-r)·(-t)/k */
+    let cx = (-tx.value * cs - ty.value * sn) / k.value;
+    let cy = (tx.value * sn - ty.value * cs) / k.value;
+    const mx = Math.max(0, dw / 2 - ex / k.value);
+    const my = Math.max(0, dh / 2 - ey / k.value);
+    cx = Math.min(mx, Math.max(-mx, cx));
+    cy = Math.min(my, Math.max(-my, cy));
+    tx.value = -k.value * (cx * cs - cy * sn);
+    ty.value = -k.value * (cx * sn + cy * cs);
   };
+
+  /* كلُّ إيماءةٍ تُطبَّق بفرقها عن آخر نبضة — فتجتمع الثلاثُ بلا تنازع، والتكبيرُ واللفُّ حول مركز الإطار لا مركز الصورة */
   const pinch = Gesture.Pinch()
     .onStart(() => {
-      k0.value = k.value;
+      lastS.value = 1;
     })
     .onUpdate((e) => {
-      k.value = Math.min(MAX_ZOOM, Math.max(1, k0.value * e.scale));
-      clampAll();
+      const f = e.scale / lastS.value;
+      lastS.value = e.scale;
+      const nk = Math.min(MAX_ZOOM, k.value * f);
+      tx.value *= nk / k.value;
+      ty.value *= nk / k.value;
+      k.value = nk;
+      fit();
+    });
+  const rotation = Gesture.Rotation()
+    .onStart(() => {
+      lastR.value = 0;
+      turning.value = withTiming(1, { duration: 120 });
+    })
+    .onUpdate((e) => {
+      const d = e.rotation - lastR.value;
+      lastR.value = e.rotation;
+      const c = Math.cos(d);
+      const s = Math.sin(d);
+      const x = tx.value;
+      tx.value = x * c - ty.value * s;
+      ty.value = x * s + ty.value * c;
+      r.value += d;
+      fit();
+    })
+    .onFinalize(() => {
+      turning.value = withTiming(0, { duration: 250 });
     });
   const pan = Gesture.Pan()
     .averageTouches(true)
     .onStart(() => {
-      x0.value = tx.value;
-      y0.value = ty.value;
+      lastX.value = 0;
+      lastY.value = 0;
     })
     .onUpdate((e) => {
-      tx.value = x0.value + e.translationX;
-      ty.value = y0.value + e.translationY;
-      clampAll();
+      tx.value += e.translationX - lastX.value;
+      ty.value += e.translationY - lastY.value;
+      lastX.value = e.translationX;
+      lastY.value = e.translationY;
+      fit();
     });
-  const gesture = Gesture.Simultaneous(pinch, pan);
-  const imgStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: k.value }] }));
+  const gesture = Gesture.Simultaneous(pinch, rotation, pan);
+  const imgStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { rotate: `${r.value}rad` }, { scale: k.value }],
+  }));
+  const guideStyle = useAnimatedStyle(() => ({ opacity: turning.value }));
+  /* رقمُ الزاوية يتغيّر بدرجةٍ كاملة فقط — لا رسمَ للشاشة مع كلِّ نبضة */
+  useAnimatedReaction(
+    () => Math.round((r.value * 180) / Math.PI),
+    (now, prev) => {
+      if (now !== prev) scheduleOnRN(setDeg, now);
+    },
+  );
 
   const reset = () => {
     haptic.pick();
     k.value = withTiming(1);
     tx.value = withTiming(0);
     ty.value = withTiming(0);
-  };
-  const rotate = async (deg: 90 | -90) => {
-    if (working) return;
-    haptic.pick();
-    setWorking(true);
-    try {
-      const img = await (await ImageManipulator.manipulate(src.uri).rotate(deg).renderAsync()).saveAsync({ compress: 0.92, format: SaveFormat.JPEG });
-      k.value = 1;
-      tx.value = 0;
-      ty.value = 0;
-      setSrc({ uri: img.uri, w: img.width, h: img.height });
-    } finally {
-      setWorking(false);
-    }
+    r.value = withTiming(0);
   };
   const done = async () => {
     if (working) return;
     setWorking(true);
     try {
-      /* ما يقع تحت الإطار بإحداثيّات الصورة: مركزُها مزاحٌ بـ(tx, ty) ومقاسُها المعروض (base × k) */
       const S = base * k.value;
-      const cw = Math.min(src.w, fw / S);
-      const ch = Math.min(src.h, fh / S);
-      const ox = Math.min(src.w - cw, Math.max(0, src.w / 2 + (-fw / 2 - tx.value) / S));
-      const oy = Math.min(src.h - ch, Math.max(0, src.h / 2 + (-fh / 2 - ty.value) / S));
-      const ctx = ImageManipulator.manipulate(src.uri).crop({ originX: Math.round(ox), originY: Math.round(oy), width: Math.round(cw), height: Math.round(ch) });
+      const rad = r.value;
+      let uri = src.uri;
+      let W = src.w;
+      let H = src.h;
+      /* اللفُّ أوّلاً على الصورة كلِّها (لوحتُها تتّسع لمحيطها، والمركزُ ثابت)، ثمّ القصُّ بلا زاوية — نقطةُ الشاشة s تقع في
+         الصورة المُدارة عند (s − t)/S من مركزها */
+      if (Math.abs(rad) > 0.0005) {
+        const turned = await ImageManipulator.manipulate(src.uri).rotate((rad * 180) / Math.PI).renderAsync();
+        const saved = await turned.saveAsync({ compress: 0.95, format: SaveFormat.JPEG });
+        uri = saved.uri;
+        W = saved.width;
+        H = saved.height;
+      }
+      const cw = Math.min(W, fw / S);
+      const ch = Math.min(H, fh / S);
+      const ox = Math.min(W - cw, Math.max(0, W / 2 + (-fw / 2 - tx.value) / S));
+      const oy = Math.min(H - ch, Math.max(0, H / 2 + (-fh / 2 - ty.value) / S));
+      const ctx = ImageManipulator.manipulate(uri).crop({ originX: Math.floor(ox), originY: Math.floor(oy), width: Math.floor(cw), height: Math.floor(ch) });
       const out = OUT[job.shape];
       if (cw > out) ctx.resize({ width: out });
       const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.88, format: SaveFormat.JPEG });
@@ -173,14 +237,7 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
   };
 
   const ring = 2000;
-  /* زرٌّ دائريٌّ تحت الإطار: لفٌّ يسار · إرجاع · لفٌّ يمين */
-  const tool = (label: string, onPress: () => void, face: React.ReactNode) => (
-    <Pressable onPress={onPress} disabled={working} accessibilityRole="button" accessibilityLabel={label} style={{ alignItems: "center", gap: 4, opacity: working ? 0.5 : 1 }}>
-      <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: "#222", alignItems: "center", justifyContent: "center" }}>{face}</View>
-      <Text size={11} color="#ccc">{label}</Text>
-    </Pressable>
-  );
-
+  const round = job.shape === "circle";
   return (
     <Modal animationType="slide" statusBarTranslucent onRequestClose={() => onClose(null)}>
       <StatusBar barStyle="light-content" />
@@ -207,19 +264,31 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
                   height: fh + ring * 2,
                   borderWidth: ring,
                   borderColor: "rgba(0,0,0,0.62)",
-                  borderRadius: job.shape === "circle" ? fw / 2 + ring : ring,
+                  borderRadius: round ? fw / 2 + ring : ring,
                 }}
               />
-              <View pointerEvents="none" style={{ position: "absolute", width: fw, height: fh, borderRadius: job.shape === "circle" ? fw / 2 : 4, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.85)" }} />
+              {/* شبكةُ الأثلاث أثناء اللفّ وحدَه — بها يُرى الأفقُ أمستقيمٌ أم لا */}
+              <Animated.View pointerEvents="none" style={[{ position: "absolute", width: fw, height: fh, borderRadius: round ? fw / 2 : 4, overflow: "hidden" }, guideStyle]}>
+                {[1, 2].map((i) => (
+                  <View key={`v${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: (fw * i) / 3, width: 1, backgroundColor: "rgba(255,255,255,0.55)" }} />
+                ))}
+                {[1, 2].map((i) => (
+                  <View key={`h${i}`} style={{ position: "absolute", left: 0, right: 0, top: (fh * i) / 3, height: 1, backgroundColor: "rgba(255,255,255,0.55)" }} />
+                ))}
+              </Animated.View>
+              <View pointerEvents="none" style={{ position: "absolute", width: fw, height: fh, borderRadius: round ? fw / 2 : 4, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.85)" }} />
+              <Animated.View pointerEvents="none" style={[{ position: "absolute", top: (areaH - fh) / 2 - 44, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(0,0,0,0.6)", borderWidth: 1, borderColor: "#444" }, guideStyle]}>
+                {/* الرقمُ بإشارته يساراً في اللغتين (‎ يمنع قلبَ الإشارة في العربيّة) */}
+                <Text size={14} weight="700" color="#fff">{`‎${deg > 0 ? "+" : deg < 0 ? "−" : ""}${Math.abs(deg)}°`}</Text>
+              </Animated.View>
             </View>
           </GestureDetector>
           <Text size={12} color="#bbb" style={{ textAlign: "center", marginTop: 10 }}>{t.cropHint}</Text>
         </View>
-        {/* يسارٌ ويمينٌ بمعناهما على الشاشة في العربيّة والإنجليزيّة — لا يُقلب الصفُّ */}
-        <View style={{ direction: "ltr", flexDirection: "row", justifyContent: "center", gap: 36, paddingVertical: 18 }}>
-          {tool(t.cropRotateLeft, () => void rotate(-90), <View style={{ transform: [{ scaleX: -1 }] }}><Icon name="repeat" size={20} color="#fff" /></View>)}
-          {tool(t.cropReset, reset, <Text size={13} weight="700" color="#fff">1×</Text>)}
-          {tool(t.cropRotateRight, () => void rotate(90), <Icon name="repeat" size={20} color="#fff" />)}
+        <View style={{ alignItems: "center", paddingVertical: 18 }}>
+          <Pressable onPress={reset} disabled={working} accessibilityRole="button" hitSlop={6} style={{ paddingHorizontal: 22, paddingVertical: 9, borderRadius: 999, borderWidth: 1, borderColor: "#444", opacity: working ? 0.5 : 1 }}>
+            <Text size={14} color="#ddd">{t.cropReset}</Text>
+          </Pressable>
         </View>
       </GestureHandlerRootView>
     </Modal>
