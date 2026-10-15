@@ -122,6 +122,22 @@ class LoopzWidgetModule : Module() {
       manager.requestPinAppWidget(ComponentName(ctx.packageName, PROVIDERS.first()), null, cb)
     }
 
+    /**
+     * 🆕 1.12.7 — هذا البناءُ يرسم إشعارَ الرسالة بكوده الأصليّ (`DmPush.kt` في التطبيق) — فيقول التطبيقُ للخادم «dm-native».
+     * **وجودُ الدالّة هو الجواب**: بناءٌ أقدمُ بلا هذا الكود لا يملكها، والتحديثُ عبر الهواء لا يضيفها.
+     */
+    Function("dmNative") { true }
+
+    /**
+     * 🆕 1.12.7 — المحادثةُ المفتوحةُ الآن (`peer` أو `g:<قروب>`، أو `null` عند المغادرة): الإشعارُ الأصليُّ لا يُرسم لرسالةٍ منها
+     * والتطبيقُ أمامك (D-1307). اسمُ الملفّ والمفتاحُ نفسُهما في `DmPush.kt` — يجب أن يتطابقا.
+     */
+    Function("setDmOpen") { key: String? ->
+      val e = context.getSharedPreferences(DM_PREFS, Context.MODE_PRIVATE).edit()
+      if (key.isNullOrEmpty()) e.remove("open") else e.putString("open", key.lowercase())
+      e.apply()
+    }
+
     Function("installedCount") {
       val ctx = context
       val manager = AppWidgetManager.getInstance(ctx)
@@ -133,6 +149,8 @@ class LoopzWidgetModule : Module() {
 
   companion object {
     const val PREFS = "loopz_widget_cfg"
+    /** 🆕 1.12.7 — المحادثةُ المفتوحة (`DmPush.OPEN_PREFS`) */
+    const val DM_PREFS = "loopz_dm"
     /** 🆕 الودجت الواحد (W28) — مزوّدٌ واحد؛ والبيانُ في `withLoopzWidget.js` يطابقه */
     val PROVIDERS = listOf("com.loopztv.app.widget.LoopzWidget")
   }

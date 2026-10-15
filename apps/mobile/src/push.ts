@@ -6,8 +6,10 @@ import { NO_COOKIES, api, queryClient } from "./api";
 import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
-import type { PushForgetBody, PushRegisterBody } from "@/core/push";
-import { defineDmCategory, dmDataCaps } from "./notifications/dmReply";
+import type { PushCap, PushForgetBody, PushRegisterBody } from "@/core/push";
+import { defineDmCategory } from "./notifications/dmReply";
+import { LoopzWidget } from "../modules/loopz-widget";
+import { hasWidgetToken, onWidgetToken } from "./widget/feed";
 
 /**
  * ====== إشعاراتُ الدفع في التطبيق — الإذنُ والرمزُ (D-1305) ======
@@ -34,6 +36,20 @@ let state: State = "unknown";
 let registered: string | null = null; /* `رمز|لغة` الذي قبله الخادمُ في هذا الإقلاع */
 let busy = false;
 let lastTry = 0;
+
+/**
+ * 🆕 1.12.7 — ما يقدر عليه هذا الجهاز: «dm-native» = **كودُه الأصليُّ يرسم إشعارَ الرسالة بزرّيه والتطبيقُ مقفول**
+ * (`DmPush.kt`)، فيرسلها الخادمُ له «بيانات». الجوابُ من البناء نفسِه (`dmNative` في الجسر — بناءٌ أقدمُ لا يملكها، والتحديثُ
+ * عبر الهواء لا يضيفها)، **ومعه رمزُ الودجت** الذي يرسل به الردّ. «dm-data» (D-1408) لم يعد يُعلن: الخادمُ أوقفه.
+ */
+function dmCaps(): PushCap[] {
+  if (Platform.OS !== "android") return [];
+  try {
+    return LoopzWidget?.dmNative?.() === true && hasWidgetToken() ? ["dm-native"] : [];
+  } catch {
+    return [];
+  }
+}
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 
@@ -98,7 +114,8 @@ async function sync(ask: boolean | "user") {
     if (!id) return;
     const token = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;
     const lang = currentLocale() === "en" ? "en" : "ar";
-    const key = `${token}|${lang}|${(await dmDataCaps()).join(",")}`;
+    const caps = dmCaps();
+    const key = `${token}|${lang}|${caps.join(",")}`;
     if (registered === key || Date.now() - lastTry < RETRY_MS) return;
     lastTry = Date.now();
     try {
@@ -106,8 +123,6 @@ async function sync(ask: boolean | "user") {
     } catch {
       /* لا شيء */
     }
-    /* 🆕 D-1408 — ما يقدر عليه هذا الجهاز: يرسم إشعارَ الرسالة بنفسه (أندرويد) ⇒ الخادمُ يرسلها له «بيانات» بزرّيها */
-    const caps = await dmDataCaps();
     const body: PushRegisterBody = { token, lang, platform: Platform.OS === "ios" ? "ios" : "android", caps };
     const r = await api<{ registered: boolean }>("/api/v1/me/push", { method: "POST", body });
     if (r.data.registered) registered = key;
@@ -160,6 +175,12 @@ export const push = {
   setOpenPeer(peer: string | null, only?: string) {
     if (peer === null && only && openPeer !== only) return;
     openPeer = peer;
+    /* 🆕 1.12.7 — والكودُ الأصليُّ يعرفه أيضاً: رسالةٌ من المحادثة المفتوحة لا يرسمها والتطبيقُ أمامك (`DmPush.kt`) */
+    try {
+      LoopzWidget?.setDmOpen?.(peer);
+    } catch {
+      /* بناءٌ أقدمُ بلا الدالّة */
+    }
   },
   subscribe(f: () => void) {
     subs.add(f);
@@ -176,7 +197,7 @@ try {
   /* التطبيقُ في الواجهة: الإشعارُ يظهر شريطاً ويُدرج — والشاراتُ تُجدَّد (الظرفُ والجرسُ لا ينتظران الاستطلاع) */
   Notifications.setNotificationHandler({
     handleNotification: async (n) => {
-      /* 🆕 D-1408 — رسالةٌ وصلت «بيانات» بلا عنوانٍ ولا نصّ: لا تُعرض فارغةً — المهمّةُ ترسم إشعارَها بنفسها (`dmReply.ts`) */
+      /* رسالةٌ «بيانات» بلا عنوانٍ ولا نصّ لا تُعرض فارغةً (إشعارُ الرسالة الأصليّ يرسمه `DmPush.kt` لا Expo) */
       const empty = !n.request.content.title && !n.request.content.body;
       const show = !empty && !inOpenThread(n);
       return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
@@ -192,6 +213,11 @@ try {
   /* جلسةٌ ظهرت (دخولٌ للتوّ) ⇒ يُسأل ويُسجَّل؛ والعودةُ من الخلفيّة تعيد قراءةَ الإذن (قد تغيّر في إعدادات النظام) */
   session.subscribe(() => void sync(true));
   session.onSignOut(forget);
+  /* 🆕 1.12.7 — رمزُ الودجت كُتب للتوّ ⇒ «dm-native» صار صادقاً: التسجيلُ يُعاد الآن */
+  onWidgetToken(() => {
+    lastTry = 0;
+    void sync(false);
+  });
   AppState.addEventListener("change", (s) => {
     if (s === "active") void sync(false);
   });

@@ -25,8 +25,10 @@ class WidgetJobService : JobService() {
     val args = params.extras
     Thread {
       try {
+        /* 🆕 1.12.7 — زرّا إشعار الرسالة (`DmPush.kt`) يمرّان من هنا أيضاً: الدرسُ نفسُه — مستقبِلٌ في الخلفية لا شبكةَ له */
         val token = CheckReceiver.token(ctx)
-        if (token == null) CheckReceiver.diag(ctx, (args.getString("action") ?: "").substringAfterLast('.'), "no_token", "job")
+        if ((args.getString("action") ?: "").startsWith(DmPush.ACTION_PREFIX)) DmPush.perform(ctx, args)
+        else if (token == null) CheckReceiver.diag(ctx, (args.getString("action") ?: "").substringAfterLast('.'), "no_token", "job")
         else CheckReceiver().perform(ctx, args, token)
       } finally {
         jobFinished(params, false)
