@@ -98,17 +98,15 @@ test("شكل الصغير: أندرويد الطولي بوستر كامل، و�
   assert.equal(smallWidgetForm(cfg, "tonight", 173, 246), "list");
 });
 
-/* W41 — لوبز+ */
-test("غير المشترك: أكمل المشاهدة في الصغير والمتوسط فقط، وإعداده محفوظ", () => {
+/* W49 — الودجتُ مجانيّ، والتخصيصُ لوبز+ */
+test("غير المشترك: الودجت بكل أحجامه بالترتيب الأساسي، وتخصيصه محفوظ", () => {
   assert.equal(widgetAccess(true, "xl"), "full");
-  assert.equal(widgetAccess(false, "small"), "continueOnly");
-  assert.equal(widgetAccess(false, "medium"), "continueOnly");
-  assert.equal(widgetAccess(false, "large"), "locked");
+  assert.equal(widgetAccess(false, "small"), "basic");
+  assert.equal(widgetAccess(false, "large"), "basic");
   const mine: WidgetLayoutConfig = defaultWidgetConfig();
   mine.order = ["tonight", "cont", "search", "up", "friends", "tw", "act"];
   const eff = effectiveWidgetConfig(mine, false);
-  assert.equal(smallWidgetSection(eff), "cont");
-  assert.deepEqual(names(resolveWidgetLayout(eff, "medium").rows), ["cont+line"]);
+  assert.deepEqual(eff, defaultWidgetConfig());
   assert.equal(mine.order[0], "tonight");
   assert.equal(effectiveWidgetConfig(mine, true), mine);
 });
@@ -153,9 +151,8 @@ test("المحسوم للرسّام: صفوف كل حجم، والقفل لغي�
   assert.deepEqual(plus.locked, {});
   assert.deepEqual([plus.small.key, plus.small.tall, plus.small.square], ["cont", "posterFull", "headerFade"]);
   const free = resolveWidget(defaultWidgetConfig(), false, "ios");
-  assert.deepEqual(free.locked, { large: true });
-  assert.deepEqual(Object.keys(free.rows), ["medium"]);
-  assert.equal(free.small.key, "cont");
+  assert.deepEqual(free.locked, {});
+  assert.deepEqual(Object.keys(free.rows).sort(), ["large", "medium"]);
 });
 
 test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل أقل", () => {

@@ -4,6 +4,7 @@ import { useRouter, useSegments } from "expo-router";
 import { useDoors } from "./messages/common";
 import { session } from "./session";
 import "./push";
+import { isDmAction } from "./notifications/dmReply";
 
 /**
  * ====== ضغطةُ الإشعار ⇢ وجهتُه الأصليّة (D-1305) ======
@@ -19,6 +20,8 @@ const PEER = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
 const WAIT_MS = 10_000;
 
 function urlOf(r: Notifications.NotificationResponse | null): string | null {
+  /* 🆕 D-1406 — زرّا «رد» و«تمييز كمقروءة» يُنفَّذان في مكانهما (`dmReply.ts`) — لا يفتحان شاشة */
+  if (isDmAction(r)) return null;
   const url = (r?.notification.request.content.data as { url?: unknown } | undefined)?.url;
   /* مسارٌ نسبيٌّ على نطاقنا وحدَه — رابطٌ كاملٌ في حمولةٍ لا يُفتح */
   return typeof url === "string" && url.startsWith("/") && !url.startsWith("//") ? url : null;

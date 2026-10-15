@@ -40,6 +40,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -83,6 +90,13 @@
           "photosPermission": "Loopz uses your photos to set your profile picture and cover.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Loopz saves the photos you choose to your library.",
+          "granularPermissions": []
         }
       ],
       "./plugins/withLoopzWidget",

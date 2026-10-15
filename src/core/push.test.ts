@@ -30,6 +30,8 @@ test("الرسالة: المرسلُ عنوان، والملاحظةُ تحت م
   assert.equal(m.title, "مشعل");
   assert.equal(m.body, `${t.pushSharedTitle("Dark")}\nلازم تشوفه`);
   assert.equal(m.url, `/messages?with=${P.id}`);
+  /* D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة وحدَه */
+  assert.equal(m.category, "dm");
   assert.equal(messagePush({ senderId: P.id, senderName: "مشعل", text: "هلا" }, t).body, "هلا");
   assert.equal(messagePush({ senderId: P.id, senderName: "", text: null }, t).body, t.pushNewMessage);
 });

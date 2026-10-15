@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- W33 — «أكمل المشاهدة»: بطاقتا ١٦:٩ ببطاقة الرئيسيّة نفسِها (W17)، وسطرُ «القادم» تحتهما حين لا يظهر قسمُ «القادم» في الودجت نفسِه -->
+<!-- W33 · 🆕 W48 — «أكمل المشاهدة» يأخذ ما بقي من ارتفاع الودجت (وزنٌ ١) فالأقسامُ تحته لاصقةٌ بخطوطها (أحمد ١٥ أكتوبر، «نسخة ٢» و«المقترح ٣»): بطاقتا ١٦:٩ ببطاقة الرئيسيّة نفسِها (W17)، وسطرُ «القادم» تحتهما حين لا يظهر قسمُ «القادم» في الودجت نفسِه -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="0dp"
+    android:layout_weight="1"
     android:orientation="vertical">
     <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="20dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
+<FrameLayout
+    android:layout_width="15dp"
+    android:layout_height="15dp"
+    android:layout_marginEnd="7dp"
+    android:background="@drawable/w2_ring">
+    <ImageView
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="center"
+        android:src="@drawable/widget_ic_play"
+        android:tint="#FFD400" />
+</FrameLayout>
 <TextView
     android:id="@+id/hdr_title"
     android:layout_width="0dp"
@@ -34,7 +47,8 @@
 </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="93dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_marginTop="8dp"
         android:orientation="horizontal">
     <FrameLayout

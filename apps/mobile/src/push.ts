@@ -7,6 +7,7 @@ import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
 import type { PushForgetBody, PushRegisterBody } from "@/core/push";
+import { defineDmCategory } from "./notifications/dmReply";
 
 /**
  * ====== إشعاراتُ الدفع في التطبيق — الإذنُ والرمزُ (D-1305) ======
@@ -85,6 +86,8 @@ async function sync(ask: boolean | "user") {
   busy = true;
   try {
     await ensureChannel();
+    /* 🆕 D-1406 — زرّا «رد» و«تمييز كمقروءة» بلغة الجهاز الآن (يُعاد في كلِّ إقلاع: اللغةُ قد تبدّلت) */
+    await defineDmCategory().catch(() => {});
     const next = await readPermission(ask);
     if (next !== state) {
       state = next;

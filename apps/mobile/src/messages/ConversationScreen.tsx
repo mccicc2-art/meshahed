@@ -673,7 +673,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           caption={viewer.e.kind === "reply" ? viewer.e.body : ""}
           onClose={() => setViewer(null)}
           onReply={viewer.e.kind === "reply" && viewer.e.dm && !viewer.e.id.startsWith("tmp-") && (conv || person) ? () => beginReply(viewer.e) : undefined}
-          onError={(m) => say(m)}
+          onToast={(m) => say(m)}
         />
       ) : null}
 

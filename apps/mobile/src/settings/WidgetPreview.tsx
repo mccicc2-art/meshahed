@@ -64,7 +64,7 @@ export function WidgetPreview({
     const form = platform === "ios" ? smallWidgetForm(config, key, 170, 170) : smallWidgetForm(config, key, 173, 246);
     body = <SmallTile name={names[key]} form={form} />;
   } else {
-    const l = resolveWidgetLayout(config, size, H);
+    const l = resolveWidgetLayout(config, size, H, platform);
     body = l.rows.map((r, i) => (
       <View key={i}>
         {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: (WIDGET_HEIGHTS.gap - 1) / 2 }} /> : null}
@@ -169,7 +169,7 @@ function PreviewRow({ row, names, contImage }: { row: WidgetRow; names: Record<W
             </View>
           ) : (
             Array.from({ length: row.count }, (_, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, height: row.key === "friends" ? WIDGET_HEIGHTS.friendRow : WIDGET_HEIGHTS.listRow }}>
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, height: row.key === "friends" ? (row.h - WIDGET_HEIGHTS.listHeader) / row.count : WIDGET_HEIGHTS.listRow }}>
                 <View style={{ width: 32, height: 48, borderRadius: 6, backgroundColor: GHOST }} />
                 <View style={{ flex: 1, gap: 6 }}>
                   <Bar w="55%" />

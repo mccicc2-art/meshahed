@@ -24,8 +24,9 @@ import type { MsgImage } from "../contracts";
  * تبدّلان ١× ↔ ٢٫٥× حول موضع اللمس، والسحبُ يحرّك المكبَّرة؛ وغيرُ المكبَّرة يسحبها الإصبعُ لتحت فتقفل
  * (عتبةُ ١٢٠ أو سرعة). لمسةٌ واحدةٌ تخفي الشريطين وتعيدهما.
  *
- * ⚖️ **المشاركةُ لا «حفظ في الاستوديو»**: الحفظُ المباشر يحتاج إذنَ الصور ومكتبةً أصليّةً جديدة (بناءٌ مدفوع)، وورقةُ
- * المشاركة في النظام فيها «حفظ الصورة» أصلاً — فتصل الآن بتحديثٍ هوائيّ.
+ * 🆕 **«حفظ في الاستوديو» جنب المشاركة** (D-1405، إصدار 1.12.6 — كان مؤجَّلاً لأنّه يحتاج مكتبةً أصليّة): تنزل نسخةٌ إلى
+ * ذاكرة التطبيق المؤقّتة ثمّ تُكتب في الاستوديو. **إذنُ الكتابة وحدَه** (`writeOnly`): لا يُطلب قراءةُ صور الجهاز — الآيفون
+ * يسأل «السماح بإضافة الصور» مرّةً، وأندرويد ١٣ وما بعده لا يسأل أصلاً (وإذنُ قراءة الصور ممنوعٌ في البيان، `blockedPermissions`).
  */
 const MAX = 4;
 const DOUBLE = 2.5;
@@ -37,7 +38,7 @@ export function PhotoViewer({
   caption,
   onClose,
   onReply,
-  onError,
+  onToast,
 }: {
   image: MsgImage;
   who: string;
@@ -46,7 +47,8 @@ export function PhotoViewer({
   onClose: () => void;
   /** غائبٌ ⇒ لا خانةَ «رد…» (رسالةٌ لم تصل الخادمَ بعد) */
   onReply?: () => void;
-  onError: (text: string) => void;
+  /** سطرُ الحالة في المحادثة: «انحفظت» أو سببُ الفشل */
+  onToast: (text: string) => void;
 }) {
   /* الألوانُ ثابتةٌ هنا لا من الرموز: العارضُ أسودُ في الثيمين كلّهما، كعارض الواتس والاستوديو */
   const { t } = useApp();
@@ -54,6 +56,7 @@ export function PhotoViewer({
   const { width: W, height: H } = useWindowDimensions();
   const [chrome, setChrome] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -157,24 +160,50 @@ export function PhotoViewer({
   }));
   const bgStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
+  /* الرابطُ مؤقّتٌ من مخزنٍ خاصّ: تُنزَّل نسخةٌ إلى ذاكرة التطبيق المؤقّتة — للمشاركة وللحفظ */
+  const download = useCallback(async () => {
+    const name = `loopz-${image.key.split("/").pop() ?? "photo.jpg"}`;
+    const dest = new File(Paths.cache, name);
+    if (dest.exists) dest.delete();
+    return File.downloadFileAsync(image.url, dest);
+  }, [image]);
+
   const share = useCallback(async () => {
     if (sharing) return;
     haptic.pick();
     setSharing(true);
     try {
-      /* الرابطُ مؤقّتٌ من مخزنٍ خاصّ: تُنزَّل نسخةٌ إلى ذاكرة التطبيق المؤقّتة ثمّ تُعطى ورقةَ النظام */
-      const name = `loopz-${image.key.split("/").pop() ?? "photo.jpg"}`;
-      const dest = new File(Paths.cache, name);
-      if (dest.exists) dest.delete();
-      const file = await File.downloadFileAsync(image.url, dest);
+      const file = await download();
       const Sharing = await import("expo-sharing");
       await Sharing.shareAsync(file.uri, { mimeType: "image/jpeg", UTI: "public.jpeg", dialogTitle: t.msgShareImage });
     } catch (e) {
-      onError(e instanceof Error ? e.message.slice(0, 80) : t.apiInternal);
+      onToast(e instanceof Error ? e.message.slice(0, 80) : t.apiInternal);
     } finally {
       setSharing(false);
     }
-  }, [image, sharing, t, onError]);
+  }, [download, sharing, t, onToast]);
+
+  const save = useCallback(async () => {
+    if (saving) return;
+    haptic.pick();
+    setSaving(true);
+    try {
+      const Media = await import("expo-media-library");
+      const perm = await Media.requestPermissionsAsync(true);
+      if (!perm.granted) {
+        onToast(t.msgSaveDenied);
+        return;
+      }
+      const file = await download();
+      await Media.saveToLibraryAsync(file.uri);
+      haptic.success();
+      onToast(t.msgSaved);
+    } catch (e) {
+      onToast(e instanceof Error ? e.message.slice(0, 80) : t.apiInternal);
+    } finally {
+      setSaving(false);
+    }
+  }, [download, saving, t, onToast]);
 
   const backRotate = I18nManager.isRTL ? "-90deg" : "90deg";
 
@@ -202,6 +231,16 @@ export function PhotoViewer({
                 <Text size={15} weight="700" color="#fff" numberOfLines={1}>{who}</Text>
                 <Text size={12} color="rgba(255,255,255,0.7)" numberOfLines={1}>{stampOf(at, t)}</Text>
               </View>
+              <Pressable
+                onPress={() => void save()}
+                disabled={saving}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t.msgSaveImage}
+                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: saving ? 0.5 : 1 }}
+              >
+                <Icon name="download" size={20} color="#fff" />
+              </Pressable>
               <Pressable
                 onPress={() => void share()}
                 disabled={sharing}

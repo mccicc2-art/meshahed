@@ -211,17 +211,16 @@ export function WidgetScreen() {
     </>
   );
 
-  /* ───────── غيرُ المشترك: ما سيأخذه وبابُ الاشتراك (W41) ───────── */
+  /* ───────── غيرُ المشترك: الودجتُ شغّالٌ بالأساسيّ، والتخصيصُ بابُ الاشتراك (🆕 W49 — كان مقفولاً، W41) ───────── */
   if (!plus) {
     return (
       <SettingsScreen title={t.widgetScreenTitle} pinned={pinned}>
         <View style={{ borderRadius: 16, backgroundColor: tokens.surface, padding: 16, gap: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Icon name="lock" size={18} color={tokens.accent} />
-            <Text size={15} weight="700">{d.lapsed ? t.widgetPlusLapsedTitle : t.widgetPlusLockedTitle}</Text>
+            <Icon name="sparkle-star" size={18} color={tokens.accent} />
+            <Text size={15} weight="700">{d.lapsed ? t.widgetPlusLapsedTitle : t.widgetCustomizePlusTitle}</Text>
           </View>
-          <Text size={13} muted style={{ lineHeight: 20 }}>{d.lapsed ? t.widgetPlusLapsedSub : t.widgetPlusLockedSub}</Text>
-          <Text size={13} muted style={{ lineHeight: 20 }}>{t.widgetPlusBody}</Text>
+          <Text size={13} muted style={{ lineHeight: 20 }}>{d.lapsed ? t.widgetCustomizeLapsedSub : t.widgetCustomizePlusSub}</Text>
           <Button label={d.lapsed ? t.widgetRenew : t.widgetSubscribe} onPress={() => openWeb("/plus")} style={{ marginTop: 6 }} />
         </View>
         <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{ios ? t.widgetIosHow : t.widgetAndroidHow}</Text>

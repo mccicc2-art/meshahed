@@ -87,6 +87,11 @@ export const WIDGET_HEIGHTS = {
   listHeader: 24,
   listRow: 50,
   friendRow: 50,
+  /* 🆕 W48 — أندرويد وحده (أحمد ١٥ أكتوبر): «أصدقاؤك» أكبرُ في الكبير (٥٨، «نسخة ٢») وأوسطُ في الكبير جداً (٥٢، «المقترح ٣»)،
+     والقسمان الصغيران بسطرين ١٥٠ في الكبير جداً — والآيفون على مقاساته (رسّامُه لم يتغيّر) */
+  friendRowLarge: 58,
+  friendRowXl: 52,
+  pairRow2Xl: 150,
   rowGap: 0,
   posterGrid: 130,
   /** فيلم الليلة كاملاً: هيدر ١٦:٩ بعرض الودجت (W34) */
@@ -127,14 +132,24 @@ export interface WidgetLayout {
   used: number;
 }
 
-function listHeight(key: WidgetSectionKey, view: string, n: number): number {
+/** 🆕 W48 — مقاساتُ الصفّ بحسب المنصّة والحجم: أندرويد الكبيرُ والكبيرُ جداً لهما صفُّ أصدقاءٍ وصفُّ قسمين خاصّان */
+interface RowSizes { friendRow: number; pairRow2: number }
+
+function rowSizes(platform: WidgetPlatform, size: Exclude<WidgetSize, "small">): RowSizes {
+  const H = WIDGET_HEIGHTS;
+  if (platform === "android" && size === "large") return { friendRow: H.friendRowLarge, pairRow2: H.pairRow2 };
+  if (platform === "android" && size === "xl") return { friendRow: H.friendRowXl, pairRow2: H.pairRow2Xl };
+  return { friendRow: H.friendRow, pairRow2: H.pairRow2 };
+}
+
+function listHeight(key: WidgetSectionKey, view: string, n: number, rs: RowSizes): number {
   const H = WIDGET_HEIGHTS;
   if (view === "posters") return H.listHeader + H.posterGrid;
-  const row = key === "friends" ? H.friendRow : H.listRow;
+  const row = key === "friends" ? rs.friendRow : H.listRow;
   return H.listHeader + n * row + (n - 1) * H.rowGap;
 }
 
-function fullRow(cfg: WidgetLayoutConfig, key: WidgetSectionKey, upLine: boolean, n?: number): WidgetRow {
+function fullRow(cfg: WidgetLayoutConfig, key: WidgetSectionKey, upLine: boolean, rs: RowSizes, n?: number): WidgetRow {
   const H = WIDGET_HEIGHTS;
   const o = cfg.opts[key];
   if (key === "search") {
@@ -149,7 +164,7 @@ function fullRow(cfg: WidgetLayoutConfig, key: WidgetSectionKey, upLine: boolean
   }
   const view = o.view === "posters" ? "posters" : "list";
   const count = n ?? o.count;
-  return { type: "list", key, view, count, h: listHeight(key, view, count) };
+  return { type: "list", key, view, count, h: listHeight(key, view, count, rs) };
 }
 
 type Block = { one: WidgetSectionKey } | { pair: WidgetSectionKey[] };
@@ -160,8 +175,14 @@ type Block = { one: WidgetSectionKey } | { pair: WidgetSectionKey[] };
  * والمتخطّى سطرٌ مختصرٌ إن اتّسع (W39) · وإن بقي فراغٌ تصير آخرُ قائمةٍ بسطرين ثلاثة (W39) ·
  * وسطرُ «القادم» تحت أكمل المشاهدة يختفي متى ظهر قسمُ «القادم» في الودجت نفسه (W33).
  */
-export function resolveWidgetLayout(cfg: WidgetLayoutConfig, size: Exclude<WidgetSize, "small">, height = WIDGET_SIZE_HEIGHT[size]): WidgetLayout {
+export function resolveWidgetLayout(
+  cfg: WidgetLayoutConfig,
+  size: Exclude<WidgetSize, "small">,
+  height = WIDGET_SIZE_HEIGHT[size],
+  platform: WidgetPlatform = "ios",
+): WidgetLayout {
   const H = WIDGET_HEIGHTS;
+  const rs = rowSizes(platform, size);
   let visible = cfg.order.filter((k) => cfg.on[k]);
   /* المتوسطُ قسمٌ واحدٌ بحجمه الكامل، والبحثُ لا يكون وحدَه ودجتاً */
   if (size === "medium") visible = visible.filter((k) => k !== "search").slice(0, 1);
@@ -186,8 +207,8 @@ export function resolveWidgetLayout(cfg: WidgetLayoutConfig, size: Exclude<Widge
     for (const b of blocks) {
       const keys = "pair" in b ? b.pair : [b.one];
       const row: WidgetRow = "pair" in b
-        ? { type: "pair", keys: b.pair as [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey], count: 2, h: H.pairRow2 }
-        : fullRow(cfg, b.one, upLine);
+        ? { type: "pair", keys: b.pair as [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey], count: 2, h: rs.pairRow2 }
+        : fullRow(cfg, b.one, upLine, rs);
       if (fits(row.h)) { push(row); keys.forEach((k) => shown.add(k)); continue; }
       /* لا يتّسع بشكله: سطرٌ مختصرٌ لكلِّ قسمٍ فيه بدل أن يختفي — والبحثُ لا سطرَ له */
       for (const k of keys) {
@@ -201,7 +222,7 @@ export function resolveWidgetLayout(cfg: WidgetLayoutConfig, size: Exclude<Widge
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       let grown: WidgetRow | null = null;
-      if (r.type === "list" && r.view === "list" && r.count === 2) grown = fullRow(cfg, r.key, upLine, 3);
+      if (r.type === "list" && r.view === "list" && r.count === 2) grown = fullRow(cfg, r.key, upLine, rs, 3);
       else if (r.type === "pair" && r.count === 2) grown = { ...r, count: 3, h: H.pairRow };
       if (grown && used - r.h + grown.h <= height) { used += grown.h - r.h; rows[i] = grown; }
     }
@@ -270,20 +291,17 @@ export function smallWidgetForm(cfg: WidgetLayoutConfig, key: WidgetSectionKey, 
 }
 
 /**
- * W41 — **الودجتُ لمشتركي لوبز+**: غيرُ المشترك يرى أكملَ المشاهدة في الصغير والمتوسّط وحدَهما،
- * وما عداه مقفول (لمستُه تفتح الاشتراك). ومن انتهى اشتراكه يُقفل عليه ويبقى إعدادُه محفوظاً كما هو.
+ * W41 → 🆕 W49 — **الودجتُ مجانيٌّ والتخصيصُ لمشتركي لوبز+** (قرارُ أحمد «ج»، ١٥ أكتوبر — كان الكبيرُ مقفولاً على غير المشترك
+ * والصغيرُ والمتوسطُ «أكمل المشاهدة» وحدَه): غيرُ المشترك يأخذ الودجتَ بكلِّ أحجامه **بالترتيب الأساسيّ**، والاشتراكُ يفتح
+ * اختيارَ الأقسام وترتيبَها وحجمَها والتخطيطات. ومن انتهى اشتراكه يرجع للأساسيّ ويبقى تخصيصُه محفوظاً كما هو.
  */
-export function widgetAccess(plus: boolean, size: WidgetSize): "full" | "continueOnly" | "locked" {
-  if (plus) return "full";
-  return size === "small" || size === "medium" ? "continueOnly" : "locked";
+export function widgetAccess(plus: boolean, _size: WidgetSize): "full" | "basic" {
+  return plus ? "full" : "basic";
 }
 
-/** إعدادُ غيرِ المشترك: أكملُ المشاهدة وحدَه، بلا تخصيص — إعدادُه الأصليُّ لا يُمسّ */
+/** إعدادُ غيرِ المشترك: الأساسيُّ كما هو — إعدادُه الأصليُّ لا يُمسّ */
 export function effectiveWidgetConfig(cfg: WidgetLayoutConfig, plus: boolean): WidgetLayoutConfig {
-  if (plus) return cfg;
-  const base = defaultWidgetConfig();
-  const on = Object.fromEntries(WIDGET_SECTION_KEYS.map((k) => [k, k === "cont"])) as Record<WidgetSectionKey, boolean>;
-  return { ...base, on, order: ["cont", ...base.order.filter((k) => k !== "cont")], smallPick: "cont" };
+  return plus ? cfg : defaultWidgetConfig();
 }
 
 /** الآيفون لا يملك الحجمَ الكبيرَ جداً (W28) */
@@ -334,7 +352,7 @@ export interface ResolvedSmall {
 }
 
 export interface ResolvedWidget {
-  /** W41 — غيرُ المشترك في الكبير والكبير جداً: بطاقةُ قفلٍ لا محتوى */
+  /** W41 — بطاقةُ قفلٍ لا محتوى؛ 🆕 W49 فارغٌ دائماً (الودجتُ مجانيّ) ويبقى لأنّ رسّامَ بناءٍ أقدم يقرؤه */
   locked: Partial<Record<WidgetSize, boolean>>;
   small: ResolvedSmall;
   /** صفوفُ كلِّ حجمٍ بارتفاع التصميم — يقرؤها بناءُ أندرويد 74 وما قبله وحده */
@@ -372,14 +390,13 @@ export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: 
   const locked: ResolvedWidget["locked"] = {};
   for (const size of widgetSizesFor(platform)) {
     if (size === "small") continue;
-    if (widgetAccess(plus, size) === "locked") { locked[size] = true; continue; }
-    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size)).rows;
+    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size), platform).rows;
   }
   const heights: ResolvedWidget["heights"] = {};
   const st = HEIGHT_STEPS[platform];
   for (let h = st.from; h <= st.to; h += st.step) {
     const size = st.size(h);
-    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h).rows };
+    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h, platform).rows };
   }
   return {
     locked,
