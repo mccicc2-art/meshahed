@@ -49,7 +49,8 @@ async function refresh() {
   inflight = true;
   last = Date.now();
   try {
-    const res = await fetch(`${CONFIG.apiBase}/api/v1/app/flags?m=${encodeURIComponent(MODEL)}`);
+    /* بلا كوكيز: آخرُ نسخةٍ من الخادم لا نسخةُ الـWebView (D-1409، `NO_COOKIES` في `api.ts`) */
+    const res = await fetch(`${CONFIG.apiBase}/api/v1/app/flags?m=${encodeURIComponent(MODEL)}`, { credentials: "omit" });
     if (!res.ok) return;
     const j = (await res.json()) as { data?: Partial<AppFlags> } | null;
     const next: AppFlags = { k2: j?.data?.k2 === true, k4: j?.data?.k4 === true, vd: j?.data?.vd === true };

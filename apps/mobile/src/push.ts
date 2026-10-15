@@ -2,7 +2,7 @@ import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
-import { api, queryClient } from "./api";
+import { NO_COOKIES, api, queryClient } from "./api";
 import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
@@ -132,7 +132,7 @@ function forget() {
   if (!token) return;
   SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
   const body: PushForgetBody = { token };
-  void fetch(`${CONFIG.apiBase}/api/v1/app/push/forget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+  void fetch(`${CONFIG.apiBase}/api/v1/app/push/forget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), credentials: NO_COOKIES }).catch(() => {});
 }
 
 /**

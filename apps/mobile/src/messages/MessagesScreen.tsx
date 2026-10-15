@@ -18,7 +18,8 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MESSAGES_KEY } from "./live";
 import { dropBadges, useDoors, useMessages, type Origin } from "./common";
 import { num, type Dict } from "@/core/i18n";
-import { formatDateShort, timeAgo } from "@/core/when";
+import { timeAgo } from "@/core/when";
+import { listStampOf } from "./chatFormat";
 import { displayNameOf } from "@/core/people";
 import { signalHref, signalParts } from "@/core/signals";
 import { curatedName } from "@/core/universes";
@@ -254,7 +255,7 @@ function ConvRow({ c, onPress }: { c: MsgConversation; onPress: () => void }) {
             <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{name}</Text>
             {c.person && !c.person.hide_name ? <IdentityBadges flags={identityFlags(c.person)} nameSize={14} /> : null}
           </View>
-          <Text size={12} muted>{c.last_at ? formatDateShort(c.last_at, t) : ""}</Text>
+          <Text size={12} muted>{c.last_at ? listStampOf(c.last_at, t) : ""}</Text>
         </View>
         <Text size={12} weight={unread ? "600" : "400"} color={unread ? tokens.fg : tokens.muted} numberOfLines={1} content>
           {previewOf(c.events[c.events.length - 1], t)}

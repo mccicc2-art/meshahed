@@ -3,7 +3,7 @@ import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
 import * as SecureStore from "expo-secure-store";
 import { CONFIG } from "../config";
-import { GATE_HEADERS, queryClient } from "../api";
+import { GATE_HEADERS, NO_COOKIES, queryClient } from "../api";
 import { session } from "../session";
 import { own } from "../ownSession";
 import { currentLocale, dictFor } from "../i18n";
@@ -102,6 +102,7 @@ async function post(path: string, body: unknown): Promise<boolean> {
   if (!token) return false;
   try {
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
+      credentials: NO_COOKIES,
       method: "POST",
       headers: {
         Accept: "application/json",

@@ -51,6 +51,19 @@ export function dayLabelOf(key: string, t: Dict, now: Date = new Date()): string
   return formatDateShort(key, t);
 }
 
+/**
+ * 🆕 D-1410 — وقتُ المحادثة في قائمة الرسائل كالواتس (أحمد ١٥ أكتوبر: «خل يطلع الوقت … أمس … تاريخ»): اليومَ الساعة،
+ * وأمسِ «أمس»، وما قبله التاريخ كما كان — بلا أسماء أيّام (القائمةُ تُقرأ بلمحة).
+ */
+export function listStampOf(iso: string, t: Dict, now: Date = new Date()): string {
+  const key = dayKeyOf(iso);
+  if (!key) return "";
+  const today = dayKeyOf(now.toISOString());
+  if (key === today) return clockOf(iso, t);
+  if (key === shiftDay(today, -1)) return t.diaryYesterday;
+  return formatDateShort(key, t);
+}
+
 /** سطرُ عارض الصورة وورقةِ الرسالة: «الخميس ١٥ أكتوبر · 1:02 ص» — أو «اليوم · 1:02 ص» */
 export function stampOf(iso: string, t: Dict, now: Date = new Date()): string {
   return `${dayLabelOf(dayKeyOf(iso), t, now)} · ${clockOf(iso, t)}`;
