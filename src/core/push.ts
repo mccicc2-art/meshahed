@@ -34,7 +34,20 @@ export function parseMuted(raw: unknown): PushGroup[] {
 }
 
 /** جسمُ `POST /api/v1/me/push` */
-export type PushRegisterBody = { token: string; platform?: "android" | "ios"; lang?: "ar" | "en" };
+/**
+ * 🆕 D-1408 — `caps`: ما يقدر عليه التطبيقُ على هذا الجهاز. «dm-data»: يرسم إشعارَ الرسالة بنفسه من بياناتها (أندرويد) فتظهر
+ * أزرارُه والتطبيقُ في الخلفية. غائبٌ ⇒ الطريقةُ القديمة (Expo يعرض الإشعار) — بناءٌ أقدمُ لا يرسم البياناتِ فلا يُرسل له بها.
+ */
+export type PushCap = "dm-data";
+export const PUSH_CAPS: readonly PushCap[] = ["dm-data"];
+export type PushRegisterBody = { token: string; platform?: "android" | "ios"; lang?: "ar" | "en"; caps?: PushCap[] };
+
+/** إشعارُ رسالةٍ «بيانات» لجهازٍ يرسمه بنفسه: النصُّ في البيانات لا في الإشعار — `kind` يقول للتطبيق ما يرسم */
+export type DmDataPush = { kind: "dm"; title: string; body: string; url: string };
+export function dmDataOf(text: PushText): DmDataPush | null {
+  if (text.category !== "dm" || !text.url) return null;
+  return { kind: "dm", title: text.title, body: text.body, url: text.url };
+}
 /** جسمُ `POST /api/v1/app/push/forget` — بلا جلسة (الخروجُ يسبقه) */
 export type PushForgetBody = { token: string };
 /** `GET|POST /api/v1/me/prefs/push` */

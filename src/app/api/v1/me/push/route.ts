@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handle, limited, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { PUSH_TOKEN_RE, type PushRegisterBody } from "@/core/push";
+import { PUSH_CAPS, PUSH_TOKEN_RE, type PushRegisterBody } from "@/core/push";
 
 /**
  * `POST /api/v1/me/push` — تسجيلُ جهازي لإشعارات الدفع (D-1305): `{token, platform?, lang?}`.
@@ -26,11 +26,12 @@ export async function POST(req: NextRequest) {
     const token = typeof b?.token === "string" ? b.token.trim() : "";
     if (!PUSH_TOKEN_RE.test(token)) return fail("invalid_input", { field: "token" });
     const supabase = await createClient();
-    const { error } = await supabase.rpc("register_push_token", {
-      p_token: token,
-      p_platform: b?.platform === "ios" ? "ios" : "android",
-      p_lang: b?.lang === "en" ? "en" : "ar",
-    });
+    const base = { p_token: token, p_platform: b?.platform === "ios" ? "ios" : "android", p_lang: b?.lang === "en" ? "en" : "ar" };
+    /* 🆕 D-1408 — ما يقدر عليه الجهاز (`caps`، الهجرة ٢٠٤) يُكتب مع كلِّ تسجيل؛ قيمٌ مجهولةٌ تسقط هنا وفي قيد العمود.
+       قبل الهجرة الدالّةُ ذاتُ الأربعة غائبة ⇒ القديمةُ كما كانت */
+    const caps = Array.isArray(b?.caps) ? PUSH_CAPS.filter((c) => b.caps?.includes(c)) : [];
+    let { error } = await supabase.rpc("register_push_token", { ...base, p_caps: caps });
+    if (error) ({ error } = await supabase.rpc("register_push_token", base));
     /* قبل الهجرة ١٩٥ الدالّةُ غائبة: التطبيقُ يعيد المحاولةَ في الإقلاع التالي، ولا خطأَ يُعرض */
     if (error) return ok({ registered: false });
     return ok({ registered: true });
