@@ -44,6 +44,7 @@ import {
   widgetFriends,
   widgetActivity,
 } from "@/core/widgetFeedV2";
+import { defaultWidgetLook } from "@/core/widgetLook";
 
 /**
  * 🆕 `GET /api/v1/me/widget?lists=<id,id>` — **بياناتُ الودجتات كلِّها في ردٍّ واحد** (خطّةُ الودجتات).
@@ -354,7 +355,8 @@ export async function GET(req: NextRequest) {
          ونشاطُ من تتابعهم (`following_activity_v2` — نداءُ صفّ الرئيسيّة نفسُه)، ونشاطُك (خمسةٌ من كلِّ مصدر) */
       const [trendRows, friendRows, myActRows] = await Promise.all([
         trendingToday().catch(() => []),
-        getFriendsWatching(6).catch(() => []),
+        /* 🆕 W54 — أربعةٌ تُعرض، وبعضُ الأعمال بلا صاحبٍ مسمّى — فثمانية */
+        getFriendsWatching(8).catch(() => []),
         getMyActivity(5).catch(() => []),
       ]);
       const store = sanitizeWidgetStore((profile?.ui_state as { widget?: unknown } | null | undefined)?.widget, t.widgetLayoutDefault);
@@ -368,6 +370,8 @@ export async function GET(req: NextRequest) {
       const allEntries = calendarEntries(followRows, { today, until: "9999-12-31" });
       const upcomingAll = widgetUpcomingAny(allEntries, (id) => labelById.get(id) ?? null, t);
       const v2: WidgetFeedV2 = {
+        /* 🆕 شكلُ الودجت بياناتٍ — تعديلُ رقمٍ هنا يصل للودجت بلا بناء (المحرّكُ والرسّامان يقرآنه) */
+        look: defaultWidgetLook(),
         plus: plan.plus,
         lapsed: plan.lapsed,
         config: store.config,

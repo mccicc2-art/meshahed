@@ -90,7 +90,8 @@ export function widgetToWatch(
   animeIds: ReadonlySet<number>,
   ratings: ReadonlyMap<string, number>,
   t: Pick<Dict, "typeMovie" | "typeSeries" | "widgetAnime">,
-  max = 3,
+  /* 🆕 W54 — أربعةٌ (كانت ثلاثة): بوستراتُ «للمشاهدة» ٣ أو ٤. الرسّامُ الأقدمُ يقرأ أوّلَ ثلاثةٍ ولا يرى الرابع */
+  max = 4,
 ): WidgetToWatchItem[] {
   const key = (x: ToWatchSource) => `${x.mediaType}-${x.tmdbId}`;
   return [...items]
@@ -152,11 +153,41 @@ export interface FriendSource {
   title: string;
   poster_path: string | null;
   at: string;
-  people: { name: string; avatar_url: string | null }[];
+  people: {
+    name: string;
+    avatar_url: string | null;
+    /** 🆕 W51 — ما فعله هذا الشخص (سطرُه الأحدث) — اختياريّةٌ: مصدرٌ أقدمُ بلاها يكتب «شاهد …» كما كان */
+    kind?: "episodes" | "movie" | "rate" | "add" | null;
+    rating?: number | null;
+    episode_count?: number | null;
+    top_season?: number | null;
+    at?: string;
+  }[];
+}
+
+/**
+ * 🆕 W51 — سطرُ الصديق (أحمد «٢ ب»، ١٥ أكتوبر): «٣ حلقة · م٢» لحلقاتِ يومه، أو «★ ٨» لتقييمه — والعملُ في صورته.
+ * **لا رقمَ حلقةٍ بعينها**: الخطُّ يجمع اليومَ عدّاً وأعلى موسم، فلا يُكتب «ح٧» تخميناً. فيلمٌ شوهد بلا تقييمٍ أو إضافةٌ: الفعلُ
+ * والاسمُ كما كان («شاهد Dune»).
+ */
+export function widgetFriendLine(
+  who: FriendSource["people"][number],
+  title: string,
+  t: Pick<Dict, "widgetFriendWatched" | "widgetFriendEps" | "widgetFriendStars" | "widgetFriendAdded">,
+): string {
+  if (who.kind === "rate" && who.rating != null) return t.widgetFriendStars(who.rating);
+  if (who.kind === "episodes" && who.episode_count) return t.widgetFriendEps(who.episode_count, who.top_season ?? null);
+  if (who.kind === "add") return `${t.widgetFriendAdded} ${title}`;
+  return `${t.widgetFriendWatched} ${title}`;
 }
 
 /** صفٌّ لكلِّ عمل (D-299) باسم أحدثِ من تحرّك عليه — ومن أخفى اسمَه لا يصير سطراً بلا صاحب */
-export function widgetFriends(rows: readonly FriendSource[], t: Pick<Dict, "widgetFriendWatched">, max = 3): WidgetFriendItem[] {
+export function widgetFriends(
+  rows: readonly FriendSource[],
+  t: Pick<Dict, "widgetFriendWatched" | "widgetFriendEps" | "widgetFriendStars" | "widgetFriendAdded">,
+  /* 🆕 W54 — أربعةٌ (كانت ثلاثة) لبوستراتٍ أربعة؛ الرسّامُ الأقدمُ يقرأ أوّلَ ثلاثة */
+  max = 4,
+): WidgetFriendItem[] {
   const out: WidgetFriendItem[] = [];
   for (const r of rows) {
     const who = r.people[0];
@@ -166,7 +197,13 @@ export function widgetFriends(rows: readonly FriendSource[], t: Pick<Dict, "widg
       avatar_url: who.avatar_url,
       action: t.widgetFriendWatched,
       title: { kind: r.media_type, id: r.tmdb_id, title: r.title, poster_path: r.poster_path },
-      at: r.at,
+      /* وقتُ صاحب الاسم لا وقتُ أحدثِ سطر — قد يكون الأحدثُ لمن أخفى اسمَه */
+      at: who.at || r.at,
+      line: widgetFriendLine(who, r.title, t),
+      kind: who.kind ?? null,
+      episodes: who.kind === "episodes" ? who.episode_count ?? null : null,
+      season: who.kind === "episodes" ? who.top_season ?? null : null,
+      rating: who.kind === "rate" ? who.rating ?? null : null,
     });
     if (out.length >= max) break;
   }

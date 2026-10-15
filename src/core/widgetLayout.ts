@@ -11,6 +11,8 @@
  * نقيٌّ بلا شبكةٍ ولا قاموس: المدخلُ إعدادُ الشخص وحجمُ الودجت، والمخرجُ صفوفٌ مرتّبة.
  */
 
+import { lookFor, type WidgetLook } from "./widgetLook.ts";
+
 export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act"] as const;
 export type WidgetSectionKey = (typeof WIDGET_SECTION_KEYS)[number];
 
@@ -29,6 +31,8 @@ export interface WidgetSectionOpts {
   small?: "poster" | "list" | "image";
   /** البحثُ وحده: «الرائج اليوم» تحت الشريط في الشكل الكامل — قائمةٌ مرقّمة افتراضاً، أو بوستراتٌ مرقّمة (W31) */
   trend?: "list" | "posters";
+  /** 🆕 W54 — «أصدقاؤك» و«للمشاهدة» وحدَهما: بوستراتُ الشكل الكامل ٣ أو ٤ (٤ افتراضاً) تملأ العرض؛ النصفُ يبقى ٢ */
+  posters?: 3 | 4;
 }
 
 export interface WidgetLayoutConfig {
@@ -52,8 +56,9 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
       up: full("list"),
       /* W42 — العريضُ للكامل، والبوسترُ مع العمود للصغير */
       tonight: { ...full("wide"), small: "poster" },
-      friends: full("list"),
-      tw: full("list"),
+      /* 🆕 W54 — أربعةُ بوسترات افتراضاً (أحمد ١٥ أكتوبر) */
+      friends: { ...full("list"), posters: 4 },
+      tw: { ...full("list"), posters: 4 },
       act: full("recent"),
     },
     smallPick: "first",
@@ -63,6 +68,8 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
 /**
  * ارتفاعاتُ الرسم بنقاط الودجت. **مصدرٌ واحد** للمحرّك والرسّامين.
  * `pad` حشوةُ الودجت أعلى وأسفل معاً، و`gap` فاصلٌ بين قسمين (خطٌّ ومسافتان).
+ * 🆕 ما يختلف بالحجم والمنصّة (صفُّ القائمة والأصدقاء، صفُّ القسمين، شبكةُ البوسترات، بطاقتا «أكمل المشاهدة») انتقل إلى
+ * `widgetLook.ts` — يسافر في الخلاصة ويقرؤه الرسّامان، فتعديلُه لا يحتاج بناءً. هنا ما لا يتغيّر بالحجم.
  */
 export const WIDGET_HEIGHTS = {
   pad: 24,
@@ -72,28 +79,20 @@ export const WIDGET_HEIGHTS = {
   /** الشريطُ + عنوانُ «الرائج اليوم» + صفٌّ مرقّمٌ (عمودان) — أو شبكةُ البوسترات المرقّمة نفسُها (`posterGrid`) */
   searchFull: 44 + 8 + 16 + 8 + 40,
   searchFullPosters: 44 + 8 + 16 + 8 + 130,
-  /** عنوانُ القسم + بطاقتا ١٦:٩ (W33) */
+  /** عنوانُ القسم (٢٠) + مسافةٌ (٨) + بطاقتا ١٦:٩ بمقاسهما الأصل (٩٣، `contCard`) — W33 */
   cont: 121,
-  /** 🆕 المتوسطُ وأكملُ المشاهدة وحدَه: البطاقتان تكبران لتعبّيا الودجت (١٢٠ بدل ٩٣) */
-  contTall: 148,
+  /** رأسُ «أكمل المشاهدة» ومسافتُه — البطاقتان تحته بارتفاع `look.contCard`/`contCardTall` */
+  contHead: 28,
   /** سطرُ «القادم» تحت أكمل المشاهدة: فاصلٌ + سطر (W33) */
   upLine: 22,
-  /** صفُّ القسمين الصغيرين (W30) بثلاثة أسطر — و`pairRow2` بسطرين حين لا يتّسع */
-  pairRow: 176,
-  pairRow2: 126,
   /** السطرُ المختصر لقسمٍ لا يتّسع (W39) */
   line: 44,
-  /* 🆕 الصفُّ ٥٠ بصورة ٣٢×٤٨ وخط ١٤/١٢، والأصدقاءُ سطران بالمقاس نفسِه (المعتمدُ «أ»، ١٤ أكتوبر) */
+  /* الصفُّ ٥٠ بصورة ٣٢×٤٨ وخط ١٤/١٢، والأصدقاءُ سطران بالمقاس نفسِه (المعتمدُ «أ»، ١٤ أكتوبر) — المقاساتُ في `widgetLook.ts`.
+     W48 (أصدقاؤك ٥٨ في أندرويد الكبير و٥٢ في الكبير جداً، والقسمان بسطرين ١٥٠ في الكبير جداً) هناك أيضاً */
   listHeader: 24,
-  listRow: 50,
-  friendRow: 50,
-  /* 🆕 W48 — أندرويد وحده (أحمد ١٥ أكتوبر): «أصدقاؤك» أكبرُ في الكبير (٥٨، «نسخة ٢») وأوسطُ في الكبير جداً (٥٢، «المقترح ٣»)،
-     والقسمان الصغيران بسطرين ١٥٠ في الكبير جداً — والآيفون على مقاساته (رسّامُه لم يتغيّر) */
-  friendRowLarge: 58,
-  friendRowXl: 52,
-  pairRow2Xl: 150,
+  /** رأسُ القسم الصغير — الجسمُ تحته (`pairRow - pairHead`) */
+  pairHead: 24,
   rowGap: 0,
-  posterGrid: 130,
   /** فيلم الليلة كاملاً: هيدر ١٦:٩ بعرض الودجت (W34) */
   tonightWide: 188,
   tonightPoster: 150,
@@ -118,10 +117,12 @@ const LIST_KEYS: readonly WidgetSectionKey[] = ["up", "friends", "tw", "act"];
 
 export type WidgetRow =
   | { type: "search"; full: boolean; trend: "list" | "posters"; h: number }
-  | { type: "cont"; upLine: boolean; tall?: boolean; h: number }
-  | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; h: number }
+  /** 🆕 W50 — `card` ارتفاعُ البطاقتين كما حُسم (٩٣ · ١٢٠)؛ `tall` يبقى لرسّامٍ أقدمَ لا يقرأ `card` */
+  | { type: "cont"; upLine: boolean; tall?: boolean; card?: number; h: number }
+  /** 🆕 W54 — `posters` عددُ البوسترات (٣ · ٤)؛ و🆕 W50 — `grow` ما زاده كلُّ سطرٍ (والصورةُ معه) من فراغ الودجت */
+  | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; posters?: 3 | 4; grow?: number; h: number }
   | { type: "tonight"; view: "wide" | "poster"; h: number }
-  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; h: number }
+  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; grow?: number; h: number }
   | { type: "line"; key: WidgetSectionKey; h: number };
 
 export interface WidgetLayout {
@@ -132,21 +133,31 @@ export interface WidgetLayout {
   used: number;
 }
 
-/** 🆕 W48 — مقاساتُ الصفّ بحسب المنصّة والحجم: أندرويد الكبيرُ والكبيرُ جداً لهما صفُّ أصدقاءٍ وصفُّ قسمين خاصّان */
-interface RowSizes { friendRow: number; pairRow2: number }
-
-function rowSizes(platform: WidgetPlatform, size: Exclude<WidgetSize, "small">): RowSizes {
-  const H = WIDGET_HEIGHTS;
-  if (platform === "android" && size === "large") return { friendRow: H.friendRowLarge, pairRow2: H.pairRow2 };
-  if (platform === "android" && size === "xl") return { friendRow: H.friendRowXl, pairRow2: H.pairRow2Xl };
-  return { friendRow: H.friendRow, pairRow2: H.pairRow2 };
+/**
+ * 🆕 ما يحسم به المحرّكُ غيرَ الإعداد: أرقامُ الشكل (`look`، من الخلاصة)، وهل يقدر الرسّامُ أن يغيّر مقاسَ عنصر (`resize`).
+ * أندرويد قبل 12 (API 31) لا يقدر (`setViewLayoutHeight`) — فيُحسم له كما كان: لا تكبيرَ صفوف (W50)، وبطاقتا «أكمل المشاهدة»
+ * تملآن الباقي في الرسّام (W48)، والبوستراتُ ثلاثة (W54 — الرابعُ لا مكانَ له في الواجهة الثابتة).
+ */
+export interface WidgetResolveOpts {
+  look?: WidgetLook | null;
+  resize?: boolean;
 }
 
-function listHeight(key: WidgetSectionKey, view: string, n: number, rs: RowSizes): number {
+/** مقاساتُ الصفّ بحسب المنصّة والحجم (W48) — من `look` */
+type RowSizes = ReturnType<typeof lookFor> & { resize: boolean };
+
+function listHeight(key: WidgetSectionKey, view: string, n: number, rs: RowSizes, posters: 3 | 4 = 3): number {
   const H = WIDGET_HEIGHTS;
-  if (view === "posters") return H.listHeader + H.posterGrid;
-  const row = key === "friends" ? rs.friendRow : H.listRow;
+  if (view === "posters") return H.listHeader + (posters === 4 ? rs.posterGrid4 : rs.posterGrid);
+  const row = key === "friends" ? rs.friendRow : rs.listRow;
   return H.listHeader + n * row + (n - 1) * H.rowGap;
+}
+
+/** 🆕 W54 — عددُ البوسترات: «أصدقاؤك» و«للمشاهدة» بإعدادهما (٤ افتراضاً)، والبقيّةُ ثلاثة كما كانت */
+function posterCount(cfg: WidgetLayoutConfig, key: WidgetSectionKey, rs: RowSizes): 3 | 4 {
+  if (key !== "friends" && key !== "tw") return 3;
+  if (!rs.resize) return 3;
+  return cfg.opts[key].posters === 3 ? 3 : 4;
 }
 
 function fullRow(cfg: WidgetLayoutConfig, key: WidgetSectionKey, upLine: boolean, rs: RowSizes, n?: number): WidgetRow {
@@ -164,10 +175,19 @@ function fullRow(cfg: WidgetLayoutConfig, key: WidgetSectionKey, upLine: boolean
   }
   const view = o.view === "posters" ? "posters" : "list";
   const count = n ?? o.count;
+  if (view === "posters") {
+    const posters = posterCount(cfg, key, rs);
+    return { type: "list", key, view, count, posters, h: listHeight(key, view, count, rs, posters) };
+  }
   return { type: "list", key, view, count, h: listHeight(key, view, count, rs) };
 }
 
 type Block = { one: WidgetSectionKey } | { pair: WidgetSectionKey[] };
+
+/** 🆕 W50 — صفُّ قسمين يكبر إن كان فيه قسمٌ بأسطر (الصورةُ العريضةُ لفيلم الليلة و«أكمل المشاهدة» تملأ خانتها بنفسها) */
+function pairGrows(r: Extract<WidgetRow, { type: "pair" }>): boolean {
+  return r.keys.some((k) => k !== "tonight" && k !== "cont");
+}
 
 /**
  * يرتّب الأقسامَ في الحجم المتوسط والكبير والكبير جداً.
@@ -180,9 +200,11 @@ export function resolveWidgetLayout(
   size: Exclude<WidgetSize, "small">,
   height = WIDGET_SIZE_HEIGHT[size],
   platform: WidgetPlatform = "ios",
+  ro: WidgetResolveOpts = {},
 ): WidgetLayout {
   const H = WIDGET_HEIGHTS;
-  const rs = rowSizes(platform, size);
+  const resize = ro.resize !== false;
+  const rs: RowSizes = { ...lookFor(ro.look, platform, size), resize };
   let visible = cfg.order.filter((k) => cfg.on[k]);
   /* المتوسطُ قسمٌ واحدٌ بحجمه الكامل، والبحثُ لا يكون وحدَه ودجتاً */
   if (size === "medium") visible = visible.filter((k) => k !== "search").slice(0, 1);
@@ -217,20 +239,49 @@ export function resolveWidgetLayout(
         shown.add(k);
       }
     }
+    /* 🆕 W50 — **بطاقتا «أكمل المشاهدة» في الكبير بمقاسهما في ٤×٢** (أحمد ١٥ أكتوبر؛ «تُقصّ على ١٦:٩» رُفض): تكبران إلى
+       `contCard` إن اتّسع — ولا تتمدّدان بعده؛ الفراغُ الباقي يذهب للأقسام الأخرى تحت. قبل كلِّ شيء: هما ما يراه أوّلاً */
+    if (resize && size !== "medium") {
+      const i = rows.findIndex((r) => r.type === "cont");
+      const r = rows[i];
+      if (r && r.type === "cont") {
+        const card = rs.contCard;
+        const h = H.contHead + card + (r.upLine ? H.upLine : 0);
+        if (h > r.h && used - r.h + h <= height) { used += h - r.h; rows[i] = { ...r, card, tall: card >= rs.contCardTall, h }; }
+      }
+    }
     /* 🆕 ما زال فيه فراغ: كلُّ قائمةٍ بسطرين تصير ثلاثة من الأعلى ما اتّسع، والقسمان الصغيران كذلك —
        الفراغُ يعود صفوفاً لا مسافاتٍ بين الأقسام (تسجيلُ أحمد ١٤ أكتوبر). وما يبقى أقلُّ من صفّ. */
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       let grown: WidgetRow | null = null;
       if (r.type === "list" && r.view === "list" && r.count === 2) grown = fullRow(cfg, r.key, upLine, rs, 3);
-      else if (r.type === "pair" && r.count === 2) grown = { ...r, count: 3, h: H.pairRow };
+      else if (r.type === "pair" && r.count === 2) grown = { ...r, count: 3, h: rs.pairRow };
       if (grown && used - r.h + grown.h <= height) { used += grown.h - r.h; rows[i] = grown; }
     }
     /* المتوسطُ وأكملُ المشاهدة وحدَه: البطاقتان تكبران لتعبّيا ما تحتهما */
     if (size === "medium" && rows.length === 1 && rows[0].type === "cont") {
       const r = rows[0];
-      const tall = H.contTall + (r.upLine ? H.upLine : 0);
-      if (used - r.h + tall <= height) { used += tall - r.h; rows[0] = { ...r, tall: true, h: tall }; }
+      const tall = H.contHead + rs.contCardTall + (r.upLine ? H.upLine : 0);
+      if (used - r.h + tall <= height) { used += tall - r.h; rows[0] = { ...r, tall: true, card: rs.contCardTall, h: tall }; }
+    }
+    /*
+     * 🆕 W50 — **الفراغُ الباقي يكبّر صفوفَ الأقسام الأخرى** (أحمد ١٥ أكتوبر) — كان يذهب لبطاقتي «أكمل المشاهدة» (W48) فتتمدّدان.
+     * كلُّ سطرٍ في قائمةٍ أو في قسمين صغيرين يكبر بالقدر نفسِه والصورةُ معه، فالفاصلُ بين الصور ثابت؛ وبسقفٍ (`growMax`) —
+     * فما بقي بعده (أقلُّ من سطر) يتوزّع على الفواصل كما كان. الكبيرُ والكبيرُ جداً وحدَهما: المتوسطُ قسمٌ واحدٌ بمقاسه.
+     */
+    if (resize && size !== "medium") {
+      const units = rows.reduce((n, r) => n + (r.type === "list" && r.view === "list" ? r.count : r.type === "pair" && pairGrows(r) ? r.count : 0), 0);
+      const g = units ? Math.min(rs.growMax, Math.floor((height - used) / units)) : 0;
+      if (g > 0) {
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (r.type === "list" && r.view === "list") rows[i] = { ...r, grow: g, h: r.h + g * r.count };
+          else if (r.type === "pair" && pairGrows(r)) rows[i] = { ...r, grow: g, h: r.h + g * r.count };
+          else continue;
+          used += g * (rows[i] as { count: number }).count;
+        }
+      }
     }
     return { rows, hidden: visible.filter((k) => !shown.has(k)), used };
   };
@@ -333,6 +384,8 @@ export function sanitizeWidgetConfig(raw: unknown): WidgetLayoutConfig {
         ...(k === "tonight" ? { small: o.small === "list" ? "list" : "poster" } : {}),
         ...(k === "cont" ? { small: o.small === "list" ? "list" : "image" } : {}),
         ...(k === "search" ? { trend: o.trend === "posters" ? "posters" : "list" } : {}),
+        /* 🆕 W54 — إعدادٌ محفوظٌ قبل الخيار يأخذ الافتراضيَّ الجديد (٤) */
+        ...(k === "friends" || k === "tw" ? { posters: o.posters === 3 ? 3 : 4 } : {}),
       };
     }
   }
@@ -381,7 +434,13 @@ const HEIGHT_STEPS: Record<WidgetPlatform, { from: number; to: number; step: num
  * يحسم الودجتَ للرسّامَين. `empty`: أقسامٌ بلا محتوى الآن — **تختفي ويأخذ ما بعدها مكانَها** (قرارُ أحمد «ب»، ١٤ أكتوبر)؛
  * وأكملُ المشاهدة والبحثُ لا يُعدّان فارغين (للأوّل «ابدأ عملاً»، والثاني شريط).
  */
-export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: WidgetPlatform, empty: readonly WidgetSectionKey[] = []): ResolvedWidget {
+export function resolveWidget(
+  cfg: WidgetLayoutConfig,
+  plus: boolean,
+  platform: WidgetPlatform,
+  empty: readonly WidgetSectionKey[] = [],
+  ro: WidgetResolveOpts = {},
+): ResolvedWidget {
   const base = effectiveWidgetConfig(cfg, plus);
   const eff: WidgetLayoutConfig = { ...base, on: { ...base.on } };
   for (const k of empty) if (k !== "cont" && k !== "search") eff.on[k] = false;
@@ -390,13 +449,13 @@ export function resolveWidget(cfg: WidgetLayoutConfig, plus: boolean, platform: 
   const locked: ResolvedWidget["locked"] = {};
   for (const size of widgetSizesFor(platform)) {
     if (size === "small") continue;
-    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size), platform).rows;
+    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size), platform, ro).rows;
   }
   const heights: ResolvedWidget["heights"] = {};
   const st = HEIGHT_STEPS[platform];
   for (let h = st.from; h <= st.to; h += st.step) {
     const size = st.size(h);
-    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h, platform).rows };
+    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h, platform, ro).rows };
   }
   return {
     locked,

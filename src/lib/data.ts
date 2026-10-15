@@ -1808,6 +1808,15 @@ export interface FriendWho {
   name: string;
   username: string | null;
   avatar_url: string | null;
+  /**
+   * 🆕 W51 — ماذا فعل هذا الشخصُ على العمل (سطرُه الأحدث في `following_activity_v2`): نوعُه، وتقييمُه، وعددُ حلقات يومه
+   * وأعلى موسمٍ فيها — كانت الدالّةُ ترميها. **لا رقمَ حلقةٍ بعينها** في الخطّ (العدُّ تجميعُ يوم)، فلا يُخترع.
+   */
+  kind?: "episodes" | "movie" | "rate" | "add" | null;
+  rating?: number | null;
+  episode_count?: number | null;
+  top_season?: number | null;
+  at?: string;
 }
 
 export interface FriendWatchRow {
@@ -1841,6 +1850,10 @@ export async function getFriendsWatching(
       username?: string | null;
       avatar_url?: string | null;
       hide_name?: boolean | null;
+      kind?: string | null;
+      rating?: number | null;
+      episode_count?: number | null;
+      top_season?: number | null;
       tmdb_id: number;
       media_type: "tv" | "movie";
       title: string | null;
@@ -1872,7 +1885,19 @@ export async function getFriendsWatching(
       e.ids.add(r.id);
       const name = (r.nickname ?? "").trim() || (r.username ?? "").trim();
       if (r.hide_name || !name) e.row.others += 1;
-      else e.row.people.push({ name, username: r.username ?? null, avatar_url: r.avatar_url ?? null });
+      else {
+        const kind = r.kind === "episodes" || r.kind === "movie" || r.kind === "rate" || r.kind === "add" ? r.kind : null;
+        e.row.people.push({
+          name,
+          username: r.username ?? null,
+          avatar_url: r.avatar_url ?? null,
+          kind,
+          rating: kind === "rate" && typeof r.rating === "number" ? r.rating : null,
+          episode_count: typeof r.episode_count === "number" && r.episode_count > 0 ? r.episode_count : null,
+          top_season: typeof r.top_season === "number" && r.top_season > 0 ? r.top_season : null,
+          at: r.at ?? r.updated_at ?? undefined,
+        });
+      }
     }
     return out.slice(0, limit);
   } catch {
