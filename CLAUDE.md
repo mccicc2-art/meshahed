@@ -30,10 +30,11 @@ never write a secret, a user's data, or a way to exploit anything into it.
   each time, asked with the reason. Rehearse on the preview project first.
 - Never print or store keys, tokens or user rows. Report counts, not rows.
 
-## Task registry — before touching code (trial from 11 Oct 2026)
-Two sessions must not edit the same files at once. The registry lives in the
-preview Supabase project (`zzrbebfuzfimrrutefeg`), schema `agent_coord`, and is
-called with read/write SQL on that project only.
+## Task registry and push queue — before touching code (adopted 15 Oct 2026)
+Two sessions must not edit the same files at once, and «ارفع» pushes all finished
+work together. The registry lives in the preview Supabase project
+(`zzrbebfuzfimrrutefeg`), schema `agent_coord`, called with SQL on that project only.
+Its functions are the only way in: direct writes to its tables are refused.
 1. Before editing any file here, register:
    `select agent_coord.register('<session label>', '<task>', array['<path>', ...]);`
    The registry returns the task number. Never invent one.
@@ -42,16 +43,20 @@ called with read/write SQL on that project only.
    to continue; then `select agent_coord.checkin(<id>);` and go on only if
    `may_edit` is true.
 3. Tasks on non-overlapping paths run together. A folder path holds everything
-   under it.
-4. While working, `checkin` at least every 30 minutes and before every push.
-   A task with no call for 60 minutes is cancelled; if yours was, register again
-   and re-check before pushing.
-5. Need another path: `select agent_coord.add_paths(<id>, array[...]);` first.
-6. Status: `select agent_coord.set_status(<id>, 'built_waiting_push');` when built
-   and waiting for «ارفع» (never expires); `'pushed'` with the commit sha, or
-   `'cancelled'`, releases the files.
-7. Registering is neither permission to build nor permission to push.
-If you cannot reach the registry, say so and do not edit.
+   under it. Need another path: `select agent_coord.add_paths(<id>, array[...]);`
+4. While working, `checkin` at least every 30 minutes. A task with no call for
+   60 minutes is cancelled; if yours was, register again and re-check.
+5. Built and checked: put it in the **push queue** —
+   `select agent_coord.enqueue(<id>, '<base64 xz of git format-patch>', '<sha256>', '<base sha>', <native build?>);`
+   It keeps its files and never expires. Do not push it yourself.
+6. When Ahmed says «ارفع» to you, push **the whole queue** (or only task N if he
+   says so): `start_release` → apply every patch on fresh `main` → check the
+   combined tree → one `[deploy]` publish → `finish_release`. A patch that does
+   not apply or breaks the checks is excluded and stays queued; a queue that
+   needs a paid native build stops and asks him first.
+7. Registering or queueing is neither permission to build nor permission to push.
+The full procedure is `claude/TASK-REGISTRY.md` in the Claude project. If you
+cannot reach the registry, say so and do not edit.
 
 ## Quality bar
 - Web: `npx tsc --noEmit`, `npx eslint src`, `npm test`, `npx next build` — all
