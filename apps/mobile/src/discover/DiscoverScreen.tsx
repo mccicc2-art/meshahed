@@ -180,7 +180,11 @@ export function DiscoverScreen() {
   useRefetchOnFocus(["discover:"]);
   const [endOpen] = useState(() => {
     coldStartVoid();
-    return span("discover.open", { tab: memory.tab });
+    /* 🆕 1.12.7 — `cached` كأخواتها (`messages.open` · `thread.open`): ١ إن كان في الكاش صفٌّ لتبويب الفتح لحظةَ التركيب. العلامةُ
+       تنتهي حين يهدأ **كلُّ** جلبٍ لصفوفه — ومع الكاش ترى العينُ الصفوفَ من أوّل إطارٍ والجلبُ تجديدٌ خلفها؛ بلا هذا الوسم
+       يختلط الفتحُ البارد (شبكةٌ ورمزٌ وTMDB) بالدافئ في رقمٍ واحد (p50 ٣٨٨ms · p95 ~٥ث في 1.12.6). */
+    const cached = qc.getQueryCache().findAll({ queryKey: ["discover:rail", memory.tab] }).some((q) => q.state.data !== undefined);
+    return span("discover.open", { tab: memory.tab, cached: cached ? 1 : 0 });
   });
 
   const back = useCallback(() => {

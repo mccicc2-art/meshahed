@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { I18nManager, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { I18nManager, InteractionManager, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -177,6 +177,17 @@ export function TrailersRail({
   useEffect(() => {
     if (!active) setLive(false);
   }, [active]);
+  /* 🆕 1.12.7 — **المشغّلُ المُحمّى يُركَّب بعد أوّل رسمٍ لـ«اكتشف» لا معه** (`discover.open` p95 ~٥ث على آيفون): المشغّلُ
+     WebView ليوتيوب — بناؤه على iOS يأخذ خيطَ الواجهة، وتحميلُ صفحة يوتيوب ينافس طلباتِ الصفوف على الشبكة في اللحظة نفسِها.
+     التحميةُ (D-971) باقيةٌ كما هي، تبدأ بعد أن تهدأ الحركاتُ والرسمُ الأوّل؛ وحتى ذلك تبقى ▶ البطاقة مرسومةً (أدناه) فلا
+     فرقَ يُرى. مرّةً في عمر الصفّ: العودةُ إلى اللوح لا تؤجّله ثانية. */
+  const [armed, setArmed] = useState(false);
+  const hasData = !!q.data;
+  useEffect(() => {
+    if (armed || !active || !hasData) return;
+    const task = InteractionManager.runAfterInteractions(() => setArmed(true));
+    return () => task.cancel();
+  }, [armed, active, hasData]);
   const items = q.data?.items ?? [];
   count.current = items.length;
   const cur = items[Math.min(at, Math.max(0, items.length - 1))] ?? null;
@@ -245,7 +256,7 @@ export function TrailersRail({
               {/* ▶ الخاملة — رسمٌ لا زرّ: المشغّلُ الواحد فوق البطاقة الظاهرة هو من يستقبل اللمسة (ثقبُ D-982)؛
                   والبطاقاتُ الأخرى تُسحب إلى الوسط فتصير هي الظاهرة */}
               {/* بطاقةُ المشغّل ترسم ▶ في سِتره — دائرتان شبهُ شفّافتين فوق بعضهما تُقرآن أغمق */}
-              <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center", opacity: i === at && active ? 0 : 1 }}>
+              <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center", opacity: i === at && active && armed ? 0 : 1 }}>
                 <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
                   <Icon name="play" size={24} color="#fff" />
                 </View>
@@ -271,7 +282,7 @@ export function TrailersRail({
             </View>
           );
         })}
-        {cur && active ? (
+        {cur && active && armed ? (
           /* 🔴 D-1054 — **الحاملُ يحتاج ارتفاعاً صريحاً** (بلاغُ أحمد بتسجيل على 1.11.1: «الفيديو لا يعمل في
              اكتشف» — لا ▶ على البطاقة ولا استجابةَ للمس): `TrailerPlayer` بوضع `overlay` ابنٌ مطلقُ الموضع،
              والابنُ المطلقُ لا يُكسب أباه حجماً في Yoga ⇒ ارتفاعُ الحامل صفرٌ و`overflow: hidden` يقصّ المشغّلَ
