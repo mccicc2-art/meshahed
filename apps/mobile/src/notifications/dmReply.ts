@@ -9,6 +9,7 @@ import { own } from "../ownSession";
 import { currentLocale, dictFor } from "../i18n";
 import type { Dict } from "@/core/i18n";
 import type { MsgPeerBody, MsgTextBody } from "@/core/contracts/messages";
+import type { GroupManageBody, GroupSendBody } from "@/core/contracts/groups";
 
 /**
  * ====== الردُّ من الإشعار — كالواتس (D-1406، إصدار 1.12.6) ======
@@ -38,13 +39,17 @@ const REPLIES_CHANNEL = "replies";
 const DONE_KEY = "loopz.push.handled";
 const DONE_MAX = 30;
 
-type Target = { kind: "dm"; peer: string };
+type Target = { kind: "dm"; peer: string } | { kind: "group"; group: string };
 type Parsed = { key: string; action: string; text: string; id: string; title: string; body: string; url: string; target: Target };
 
 const PEER_URL = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+/* 🆕 القروب (الهجرة ٢٠٥): الزرّان نفسُهما — «رد» يكتب في القروب و«مقروءة» تختم آخرَ قراءتي فيه */
+const GROUP_URL = /^\/messages\?group=([0-9a-fA-F-]{36})$/;
 function targetOf(url: string): Target | null {
   const m = PEER_URL.exec(url);
-  return m ? { kind: "dm", peer: m[1] } : null;
+  if (m) return { kind: "dm", peer: m[1] };
+  const g = GROUP_URL.exec(url);
+  return g ? { kind: "group", group: g[1] } : null;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -144,15 +149,21 @@ async function handle(raw: unknown): Promise<void> {
   if (!p || seenBefore(p.key)) return;
   markDone(p.key);
   const t: Dict = dictFor(currentLocale());
+  const tg = p.target;
+  const markRead = () =>
+    tg.kind === "dm"
+      ? post("/api/v1/me/messages/read", { person_id: tg.peer } satisfies MsgPeerBody)
+      : post(`/api/v1/me/groups/${tg.group}/manage`, { action: "read" } satisfies GroupManageBody);
   if (p.action === ACTION_READ) {
-    const body: MsgPeerBody = { person_id: p.target.peer };
-    await post("/api/v1/me/messages/read", body);
+    await markRead();
     if (p.id) await Notifications.dismissNotificationAsync(p.id).catch(() => {});
   } else {
-    const body: MsgTextBody = { recipient_id: p.target.peer, body: p.text };
-    const ok = await post("/api/v1/me/messages/text", body);
+    const ok =
+      tg.kind === "dm"
+        ? await post("/api/v1/me/messages/text", { recipient_id: tg.peer, body: p.text } satisfies MsgTextBody)
+        : await post(`/api/v1/me/groups/${tg.group}`, { body: p.text } satisfies GroupSendBody);
     /* المرسَلُ ردٌّ على ما فيه ⇒ ما قبله مقروء (كالواتس)؛ والفشلُ يبقي الإشعارَ ويقول ما حدث */
-    if (ok) void post("/api/v1/me/messages/read", { person_id: p.target.peer } satisfies MsgPeerBody);
+    if (ok) void markRead();
     await rewrite(p, ok ? `${t.convYou}: ${p.text}` : `⚠️ ${t.pushReplyFailed}`);
   }
   /* التطبيقُ مفتوح ⇒ القائمةُ والشاراتُ لا تنتظر الاستطلاع */

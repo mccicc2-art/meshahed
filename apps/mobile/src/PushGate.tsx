@@ -17,6 +17,8 @@ import { isDmAction } from "./notifications/dmReply";
  * تُدفع قبلها تُدفن تحتها. فالمسارُ يُحفظ حتى يصير أعلى المكدّس شاشةً أصليّة، ويسقط بعد عشر ثوانٍ (زائرٌ بلا جلسة).
  */
 const PEER = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+/* 🆕 رسالةُ قروب (الهجرة ٢٠٥) تدفع خيطَه */
+const GROUP = /^\/messages\?group=([0-9a-fA-F-]{36})$/;
 const WAIT_MS = 10_000;
 
 function urlOf(r: Notifications.NotificationResponse | null): string | null {
@@ -83,7 +85,9 @@ export function PushGate() {
     nav.current = setTimeout(() => {
       nav.current = null;
       const peer = PEER.exec(url);
+      const group = GROUP.exec(url);
       if (peer) router.push({ pathname: "/messages/[peer]", params: { peer: peer[1], from: "home" } });
+      else if (group) router.push({ pathname: "/messages/group/[id]", params: { id: group[1], from: "home" } });
       else if (url === "/") return;
       else open.current(url);
     }, 250);

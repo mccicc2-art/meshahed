@@ -79,8 +79,8 @@ export function copyableOf(e: MsgEvent): string {
  * نسخُ المحدَّد كالواتس: رسالةٌ واحدةٌ نصُّها وحدَه، وأكثرُ ⇐ كلُّ رسالةٍ بسطرها مسبوقةً بوقتها واسمِ صاحبها،
  * **بترتيب المحادثة** لا بترتيب اللمس — فالمنسوخُ يُقرأ كما قيل.
  */
-export function copyTextOf(selected: MsgEvent[], nameOf: (mine: boolean) => string, t: Dict): string {
+export function copyTextOf(selected: MsgEvent[], nameOf: (mine: boolean, e: MsgEvent) => string, t: Dict): string {
   const rows = [...selected].filter((e) => copyableOf(e)).sort((a, b) => a.created_at.localeCompare(b.created_at));
   if (rows.length === 1) return copyableOf(rows[0]);
-  return rows.map((e) => `[${clockOf(e.created_at, t)}] ${nameOf(e.mine)}: ${copyableOf(e)}`).join("\n");
+  return rows.map((e) => `[${clockOf(e.created_at, t)}] ${nameOf(e.mine, e)}: ${copyableOf(e)}`).join("\n");
 }

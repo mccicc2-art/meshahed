@@ -20,7 +20,8 @@ import { mark } from "../perfMarks";
  * مفتوحتان لا تعنيان قناتين ولا استطلاعين.
  */
 /* 🆕 D-1380 — والرسائلُ النصّيّةُ المباشرة (الهجرة ٢٠٠) */
-const TABLES = ["title_shares", "list_shares", "share_replies", "direct_messages"] as const;
+/* 🆕 والقروبات (الهجرة ٢٠٥): رسائلُها، وأعضاؤها (القراءةُ ✓✓ · الإضافةُ · الخروج) */
+const TABLES = ["title_shares", "list_shares", "share_replies", "direct_messages", "dm_group_messages", "dm_group_members"] as const;
 const POLL_MS = 20_000;
 const COALESCE_MS = 150;
 /** مفتاحُ الكاش — وسمُ الخادم نفسُه (`me:messages`)، فكتاباتُه تُبطله بلا قاعدةٍ ثانية */

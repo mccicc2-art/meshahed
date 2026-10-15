@@ -142,11 +142,16 @@ function forget() {
  */
 let openPeer: string | null = null;
 const PEER_URL = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+/* 🆕 القروب (الهجرة ٢٠٥): شاشتُه تعلن `g:<معرّف>`، ورسالتُه تصل بـ`/messages?group=` */
+const GROUP_URL = /^\/messages\?group=([0-9a-fA-F-]{36})$/;
 function inOpenThread(n: Notifications.Notification): boolean {
   if (!openPeer || AppState.currentState !== "active") return false;
   const url = (n.request.content.data as { url?: unknown } | undefined)?.url;
-  const m = typeof url === "string" ? PEER_URL.exec(url) : null;
-  return !!m && m[1].toLowerCase() === openPeer.toLowerCase();
+  if (typeof url !== "string") return false;
+  const m = PEER_URL.exec(url);
+  if (m) return m[1].toLowerCase() === openPeer.toLowerCase();
+  const g = GROUP_URL.exec(url);
+  return !!g && `g:${g[1].toLowerCase()}` === openPeer.toLowerCase();
 }
 
 export const push = {

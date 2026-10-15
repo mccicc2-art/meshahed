@@ -116,6 +116,11 @@ function Shell() {
         {/* 🆕 11-M · M4 — «الرسائل والإشعارات» وخيطُ المحادثة: شاشتان مدفوعتان فوق الجذور لا تبويب */}
         <Stack.Screen name="messages/index" options={{ headerShown: false }} />
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
+        {/* 🆕 القروبات (الهجرة ٢٠٥): «محادثة جديدة» · الإنشاءُ والإضافة · خيطُ القروب ومعلوماتُه */}
+        <Stack.Screen name="messages/new" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/create-group" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/group/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/group/[id]/info" options={{ headerShown: false }} />
         {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
         <Stack.Screen name="u/[username]" options={{ headerShown: false }} />
         {/* 🆕 11-N · N4 — إحصاءاتُ العضو أصليّةً: تُدفع فوق ملفّه */}

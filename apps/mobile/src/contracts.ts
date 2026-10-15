@@ -193,4 +193,18 @@ export type {
   BadgesPayload,
   MsgShareBody,
 } from "@/core/contracts/messages";
+/* 🆕 القروبات (الهجرة ٢٠٥) */
+export type {
+  MsgGroupConversation,
+  GroupEvent,
+  GroupMsgEvent,
+  GroupSysEvent,
+  GroupMember,
+  GroupRole,
+  GroupReplyRef,
+  GroupCreateBody,
+  GroupCreatePayload,
+  GroupSendBody,
+  GroupManageBody,
+} from "@/core/contracts/groups";
 export type { SignalRow } from "@/core/signals";
