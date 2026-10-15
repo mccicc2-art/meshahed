@@ -51,9 +51,12 @@ Its functions are the only way in: direct writes to its tables are refused.
    It keeps its files and never expires. Do not push it yourself.
 6. When Ahmed says «ارفع» to you, push **the whole queue** (or only task N if he
    says so): `start_release` → apply every patch on fresh `main` → check the
-   combined tree → one `[deploy]` publish → `finish_release`. A patch that does
-   not apply or breaks the checks is excluded and stays queued; a queue that
-   needs a paid native build stops and asks him first.
+   combined tree → one `[deploy]` publish → `finish_release`.
+   **Every push, by any chat and any path (main, a test branch, an OTA, a native
+   build), carries the whole queue.** A queued task stays behind for three
+   reasons only, recorded with `finish_release`: a safety risk; it is not sound
+   (does not apply, or breaks the combined checks); or it needs a paid native
+   build Ahmed has not approved — then the rest goes up without it.
 7. Registering or queueing is neither permission to build nor permission to push.
 The full procedure is `claude/TASK-REGISTRY.md` in the Claude project. If you
 cannot reach the registry, say so and do not edit.
