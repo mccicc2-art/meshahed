@@ -366,6 +366,20 @@ export async function widgetDmRead(who: DmWho, target: DmTarget): Promise<Widget
  * «رد» من الإشعار: رسالةٌ نصّيّةٌ بقواعد مسار الجلسة (`sendDirectMessage` · `POST me/groups/<id>`)، ثمّ دفعٌ للطرف الآخر
  * كأيِّ رسالة، **ثمّ ما قبلها مقروء** (ردٌّ على ما في الإشعار — كالواتس؛ والقروبُ يختمه مشغِّلُ الهجرة ٢٠٥ بنفسه).
  */
+/**
+ * 🆕 1.12.7 — **من ردّ من الإشعار حاضرٌ الآن** (D-1307 كمسار الجلسة `presenceOnSend`): `touch_presence` تعتمد `auth.uid()`
+ * ولا جلسةَ هنا، فيُكتب «آخر ظهور» وحدَه بخنق الدالّة نفسِه (٦٠ث). أيّامُ النشاط وصفُّ الجهاز لا تُلمس: الردُّ من الشريط
+ * ليس فتحاً للتطبيق. وفشلُه صمت — الرسالةُ وصلت.
+ */
+async function seenNow(db: Awaited<ReturnType<typeof createServiceClient>>, userId: string): Promise<void> {
+  try {
+    const cut = new Date(Date.now() - 60_000).toISOString();
+    await db.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", userId).or(`last_seen_at.is.null,last_seen_at.lt.${cut}`);
+  } catch {
+    /* لا شيء */
+  }
+}
+
 export async function widgetDmReply(who: DmWho, target: DmTarget, body: string): Promise<WidgetDmResult> {
   const db = await createServiceClient();
   if ("to" in target) {
@@ -379,7 +393,7 @@ export async function widgetDmReply(who: DmWho, target: DmTarget, body: string):
       throw new Error(`widget dm reply: ${error.message}`);
     }
     notifyMessage({ to: target.to, actorId: who.userId, text: body });
-    await markDmReadAs(db, who.userId, target.to);
+    await Promise.all([markDmReadAs(db, who.userId, target.to), seenNow(db, who.userId)]);
     revalidatePath("/people");
     return "ok";
   }
@@ -392,6 +406,7 @@ export async function widgetDmReply(who: DmWho, target: DmTarget, body: string):
     throw new Error(`widget group reply: ${error.message}`);
   }
   notifyGroupMessage({ groupId: target.group, actorId: who.userId, text: body });
+  await seenNow(db, who.userId);
   return "ok";
 }
 

@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient } from "../api";
 import { HOME_KEY } from "../home/useHome";
-import { MESSAGES_KEY } from "./live";
+import { MESSAGES_KEY, retainLive } from "./live";
 import { patchKeep } from "./common";
 import type { BadgesPayload, HomePayload, MessagesPayload } from "../contracts";
 
@@ -43,6 +43,9 @@ export function useBadges(enabled: boolean) {
     enabled,
     staleTime: 10_000,
   });
+  /* 🆕 1.12.7 — والرئيسيّةُ تسمع Realtime ما دامت مركَّبة (بلا استطلاع): رسالةٌ تصل والتطبيقُ مفتوح ⇒ الشارتان تتجدّدان
+     الآن — الإشعارُ الأصليُّ (`DmPush.kt`) لم يعد يمرّ بمستمع Expo. والقناةُ واحدةٌ مع شاشات الرسائل (`retainLive`) */
+  useEffect(() => (enabled ? retainLive({ poll: false }) : undefined), [enabled]);
   const at = q.dataUpdatedAt;
   useEffect(() => {
     if (q.data) write(q.data);

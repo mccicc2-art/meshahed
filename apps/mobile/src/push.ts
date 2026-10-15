@@ -169,12 +169,43 @@ function inOpenThread(n: Notifications.Notification): boolean {
   return !!g && `g:${g[1].toLowerCase()}` === openPeer.toLowerCase();
 }
 
+/**
+ * 🆕 1.12.7 — **فتحُ المحادثة يمسح إشعاراتِها من الشريط** (كالواتس): ما قرأتَه أمامك لا يبقى ينتظرك فوق. نوعان يُمسحان:
+ * إشعارُ Expo (الآيفون وما قبل 1.12.7) يُعرف برابطه `?with=`/`?group=`، وإشعارُ الكود الأصليّ (`DmPush.kt`) يُعرف بوسمه —
+ * Expo يسمّيه `expo-notifications://foreign_notifications?tag=<peer أو g:قروب>&id=…` ويمسحه بالاسم نفسِه.
+ */
+async function clearThread(key: string): Promise<void> {
+  try {
+    const want = key.toLowerCase();
+    const shown = await Notifications.getPresentedNotificationsAsync();
+    for (const n of shown) {
+      const id = n.request.identifier;
+      let hit = false;
+      if (id.startsWith("expo-notifications://foreign_notifications")) {
+        const tag = /[?&]tag=([^&]+)/.exec(id)?.[1];
+        hit = !!tag && decodeURIComponent(tag).toLowerCase() === want;
+      } else {
+        const url = (n.request.content.data as { url?: unknown } | undefined)?.url;
+        if (typeof url === "string") {
+          const m = PEER_URL.exec(url);
+          const g = GROUP_URL.exec(url);
+          hit = m ? m[1].toLowerCase() === want : !!g && `g:${g[1].toLowerCase()}` === want;
+        }
+      }
+      if (hit) await Notifications.dismissNotificationAsync(id).catch(() => {});
+    }
+  } catch {
+    /* المسحُ تحسين — فشلُه لا يمسّ فتحَ المحادثة */
+  }
+}
+
 export const push = {
   state: (): State => state,
   /** شاشةُ المحادثة: `peer` عند التركيز، و`null` عند المغادرة (تمسح ما أعلنته هي وحدَها) */
   setOpenPeer(peer: string | null, only?: string) {
     if (peer === null && only && openPeer !== only) return;
     openPeer = peer;
+    if (peer) void clearThread(peer);
     /* 🆕 1.12.7 — والكودُ الأصليُّ يعرفه أيضاً: رسالةٌ من المحادثة المفتوحة لا يرسمها والتطبيقُ أمامك (`DmPush.kt`) */
     try {
       LoopzWidget?.setDmOpen?.(peer);
