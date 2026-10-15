@@ -1,6 +1,8 @@
 -- ============================================================
 --  Loopz — 205: القروبات في الرسائل (أحمد ١٥ أكتوبر: «ابدا القروبات»؛ الصورُ معتمدة نفسَ اليوم)
 --  شغّله في Supabase → SQL Editor **قبل** نشر الواجهة. آمنٌ لإعادة التشغيل.
+--  بلا `drop` (السياساتُ في كتل `do` والمشغّلان `create or replace`، وسياسةُ المخزن `alter`): موصلُ Supabase يلغي
+--  نصّاً فيه حذفٌ (19-append 10 أكتوبر e).
 --
 --  القرارات:
 --  - الأعضاءُ من الناس الذين تتابعهم («١ أ») — وبوّابُ الخاص نفسُه (`can_message`) يحكم كلَّ واحد: من قفل خاصَّه
@@ -96,29 +98,33 @@ $$;
 revoke all on function public.is_dm_group_admin(uuid, uuid) from public, anon, authenticated;
 
 -- ٣) السياسات — القراءةُ للأعضاء، والكتابةُ رسالةٌ عاديّةٌ باسمك وحدها
-drop policy if exists "members read group" on public.dm_groups;
-create policy "members read group" on public.dm_groups
+do $$ begin
+  create policy "members read group" on public.dm_groups
   for select to authenticated
   using (public.dm_group_joined_at(id) is not null);
+exception when duplicate_object then null; end $$;
 
-drop policy if exists "members read members" on public.dm_group_members;
-create policy "members read members" on public.dm_group_members
+do $$ begin
+  create policy "members read members" on public.dm_group_members
   for select to authenticated
   using (public.dm_group_joined_at(group_id) is not null);
+exception when duplicate_object then null; end $$;
 
-drop policy if exists "members read messages since joining" on public.dm_group_messages;
-create policy "members read messages since joining" on public.dm_group_messages
+do $$ begin
+  create policy "members read messages since joining" on public.dm_group_messages
   for select to authenticated
   using (created_at >= public.dm_group_joined_at(group_id));
+exception when duplicate_object then null; end $$;
 
-drop policy if exists "members send as self" on public.dm_group_messages;
-create policy "members send as self" on public.dm_group_messages
+do $$ begin
+  create policy "members send as self" on public.dm_group_messages
   for insert to authenticated
   with check (
     auth.uid() = sender_id
     and kind = 'text' and sys is null and sys_target is null
     and public.dm_group_joined_at(group_id) is not null
   );
+exception when duplicate_object then null; end $$;
 
 -- لا تعديلَ ولا حذفَ مباشر: الدوالُّ وحدها تكتب القروبَ وأعضاءه، والرسالةُ لا تتغيّر بعد إرسالها
 revoke insert, update, delete on public.dm_groups from authenticated, anon;
@@ -145,8 +151,7 @@ begin
 end;
 $$;
 revoke all on function public.dm_group_message_before() from public, anon, authenticated;
-drop trigger if exists dm_group_message_before on public.dm_group_messages;
-create trigger dm_group_message_before
+create or replace trigger dm_group_message_before
   before insert on public.dm_group_messages
   for each row execute function public.dm_group_message_before();
 
@@ -166,8 +171,7 @@ begin
 end;
 $$;
 revoke all on function public.dm_group_message_after() from public, anon, authenticated;
-drop trigger if exists dm_group_message_after on public.dm_group_messages;
-create trigger dm_group_message_after
+create or replace trigger dm_group_message_after
   after insert on public.dm_group_messages
   for each row execute function public.dm_group_message_after();
 
@@ -394,9 +398,8 @@ revoke all on function public.unread_shares() from public;
 grant execute on function public.unread_shares() to authenticated;
 
 -- ١٣) صورُ القروب ورسائله في المخزن الخاصّ: يقرؤها الأعضاء (والقاعدةُ القديمة كما هي: صاحبُ المجلّد ومستلمُ الخاص)
-drop policy if exists "dm media read by the two" on storage.objects;
-create policy "dm media read by the two" on storage.objects
-  for select to authenticated
+alter policy "dm media read by the two" on storage.objects
+  to authenticated
   using (
     bucket_id = 'dm-media'
     and (
