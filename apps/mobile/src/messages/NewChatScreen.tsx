@@ -54,7 +54,8 @@ export function NewChatScreen({ mode, groupId, from }: { mode: Mode; groupId?: s
   const [picked, setPicked] = useState<Person[]>([]);
   const [step, setStep] = useState<"pick" | "name">("pick");
   const [name, setName] = useState("");
-  const { pic, setPic, pickImage } = usePicUpload(say);
+  /* 🆕 صورةُ القروب تمرّ بشاشة القصّ (تكبير · تحريك · لفّ) */
+  const { pic, setPic, pickImage, cropUi } = usePicUpload(say, { crop: "circle" });
   const [busy, setBusy] = useState(false);
 
   const inGroup = useMemo(() => new Set(group?.members.map((m) => m.id) ?? []), [group]);
@@ -219,6 +220,7 @@ export function NewChatScreen({ mode, groupId, from }: { mode: Mode; groupId?: s
             </View>
           </View>
         </ScrollView>
+        {cropUi}
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 24} />
       </View>
     );

@@ -258,7 +258,7 @@ function EditSheet({ id, name, hasPhoto, onClose, say }: { id: string; name: str
   const { t, tokens } = useApp();
   const [value, setValue] = useState(name);
   const [clear, setClear] = useState(false);
-  const { pic, setPic, pickImage } = usePicUpload(say);
+  const { pic, setPic, pickImage, cropUi } = usePicUpload(say, { crop: "circle" });
   const [busy, setBusy] = useState(false);
   const clean = value.replace(/\s+/g, " ").trim();
   const changed = (clean && clean !== name) || !!pic?.path || clear;
@@ -319,6 +319,7 @@ function EditSheet({ id, name, hasPhoto, onClose, say }: { id: string; name: str
         />
         <Button label={t.grpSave} busy={busy} disabled={!changed || (!!pic && !pic.path)} onPress={save} />
       </View>
+      {cropUi}
     </Sheet>
   );
 }

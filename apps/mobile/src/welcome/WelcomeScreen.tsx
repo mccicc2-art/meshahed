@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, I18nManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -27,6 +26,7 @@ import { Avatar } from "../community/CommunityCards";
 import { haptic } from "../haptics";
 import { Icon } from "../icons";
 import { IdentityBadges } from "../IdentityBadges";
+import { useImageCrop } from "../imageCrop";
 import { Chip } from "../library/Chip";
 import { mark } from "../perfMarks";
 import { posterFor } from "../poster";
@@ -69,7 +69,6 @@ const PEOPLE = 5;
 const PAD = space.lg;
 const GRID_GAP = space.md;
 const COLS = 3;
-const MAX_EDGE = 1920;
 /* 🆕 D-1350 — المفتاحُ في `prime.ts`: شاشةُ الدخول تملأ به الكاشَ قبل أن تُرفع هذه */
 const KEY = WELCOME_KEY;
 
@@ -151,6 +150,7 @@ export function WelcomeScreen() {
   const [verdict, setVerdict] = useState<{ name: string; state: NameState }>({ name: "", state: "unknown" });
   const [uploading, setUploading] = useState(false);
   const uploaded = useRef<string | null>(null);
+  const { pickCropped, cropUi } = useImageCrop();
   const cleanHandle = cleanUsername(handle);
   const tooShort = !!cleanHandle && usernameIssue(cleanHandle) === "short";
   /* الفحصُ وهو يكتب: الشكلُ محلّيّاً فوراً، والتوفّرُ بسؤالٍ مؤجَّلٍ ٣٥٠ م.ث (لا سؤالَ لكلِّ حرف). `alive` يُسقط
@@ -180,15 +180,13 @@ export function WelcomeScreen() {
   const pickPhoto = useCallback(async () => {
     if (uploading) return;
     setError(null);
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
-    if (r.canceled || !r.assets[0]) return;
-    const a = r.assets[0];
+    /* 🆕 القصُّ قبل الرفع (أحمد ١٥ أكتوبر): ما في الإطار هو ما يُحفظ — تكبيرٌ وتحريكٌ ولفٌّ ربعيّ (`imageCrop`) */
+    const cropped = await pickCropped("circle").catch(() => null);
+    if (!cropped) return;
     setUploading(true);
     try {
-      const long = Math.max(a.width || 0, a.height || 0);
-      const ctx = ImageManipulator.manipulate(a.uri);
-      if (long > MAX_EDGE) ctx.resize(a.width >= a.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
-      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+      /* المقصوصةُ صغيرةٌ أصلاً (٦٤٠ للصورة · ١٥٠٠ للغلاف) — ضغطٌ أخير بالوصفة نفسِها */
+      const img = await (await ImageManipulator.manipulate(cropped).renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
       const form = new FormData();
       form.append("kind", "avatar");
       if (uploaded.current) form.append("replaces", uploaded.current);
@@ -202,7 +200,7 @@ export function WelcomeScreen() {
     } finally {
       setUploading(false);
     }
-  }, [uploading, t]);
+  }, [uploading, t, pickCropped]);
 
   /* ===== الأعمال والتقدّم ===== */
   const seeds = useMemo(() => data?.seeds ?? [], [data]);
@@ -661,6 +659,7 @@ export function WelcomeScreen() {
           }}
         />
       ) : null}
+      {cropUi}
     </KeyboardAvoidingView>
   );
 }

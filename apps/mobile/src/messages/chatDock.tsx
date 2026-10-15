@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { ApiError, filePart, postForm } from "../api";
 import { shrinkForUpload } from "../imageShrink";
+import { useImageCrop, type CropShape } from "../imageCrop";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -41,18 +42,30 @@ export function useKeyboardInset(rootRef: React.RefObject<View | null>): number 
   return kb;
 }
 
-/** صورةُ الرسالة: تُصغَّر وتُرفع فورَ اختيارها (`path` حين يعود الخادم)، والفشلُ يقول سببه */
-export function usePicUpload(say: (m: string) => void) {
+/**
+ * صورةُ الرسالة: تُصغَّر وتُرفع فورَ اختيارها (`path` حين يعود الخادم)، والفشلُ يقول سببه.
+ * 🆕 `crop` — صورةُ القروب: تمرّ بشاشة القصّ أوّلاً (تكبير · تحريك · لفّ)، وتُرسم الشاشةُ بـ`cropUi`.
+ */
+export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape }) {
   const { t } = useApp();
   const [pic, setPic] = useState<ChatPic | null>(null);
+  const { pickCropped, cropUi } = useImageCrop();
+  const crop = opts?.crop;
   const pickImage = useCallback(async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
-    if (r.canceled || !r.assets[0]) return;
-    const a = r.assets[0];
-    if (a.mimeType && !a.mimeType.startsWith("image/")) return say(t.errPickImage);
+    let chosen: string | null = null;
+    if (crop) {
+      chosen = await pickCropped(crop).catch(() => null);
+      if (!chosen) return;
+    } else {
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
+      if (r.canceled || !r.assets[0]) return;
+      const a = r.assets[0];
+      if (a.mimeType && !a.mimeType.startsWith("image/")) return say(t.errPickImage);
+      chosen = a.uri;
+    }
     let local: string | null = null;
     try {
-      local = await shrinkForUpload(a.uri);
+      local = await shrinkForUpload(chosen);
       const mine = local;
       setPic({ local: mine, path: null });
       const form = new FormData();
@@ -67,8 +80,8 @@ export function usePicUpload(say: (m: string) => void) {
       const reason = typeof known === "string" ? known : api ? `${api.error.code} ${api.status}` : e instanceof Error ? e.message.slice(0, 80) : "";
       say(api?.error.message_key === "apiImageTooLarge" ? t.errTooLarge : `${t.errUpload}${reason}`);
     }
-  }, [say, t]);
-  return { pic, setPic, pickImage };
+  }, [say, t, crop, pickCropped]);
+  return { pic, setPic, pickImage, cropUi: crop ? cropUi : null };
 }
 
 /** الخانة: الاقتباسُ فوقها · الصورةُ قبل الإرسال · «+» · الحقلُ الممتدّ · «أرسل» */
