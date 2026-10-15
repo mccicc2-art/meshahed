@@ -14,6 +14,7 @@ import android.os.BaseBundle
 import android.os.Build
 import android.os.PersistableBundle
 import com.google.firebase.messaging.RemoteMessage
+import com.loopztv.app.R
 import expo.modules.notifications.service.ExpoFirebaseMessagingService
 import org.json.JSONObject
 import java.net.HttpURLConnection

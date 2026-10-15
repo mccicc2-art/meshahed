@@ -566,9 +566,12 @@ struct RowView: View {
     case "cont": ContRow(f: f, upLine: row["upLine"] as? Bool ?? false, tall: row["tall"] as? Bool ?? false, card: num(row["card"]).map { CGFloat($0) }, now: now)
     case "list":
       /* 🆕 W50 — `grow` ما زاده المحرّكُ لكلِّ سطر؛ W54 — `posters` ٣ أو ٤ */
-      ListSection(f: f, key: key, view: row["view"] as? String ?? "list", count: max(0, min(3, Int(num(row["count"]) ?? 2))), now: now,
-                  grow: CGFloat(max(0, num(row["grow"]) ?? 0)), posters: max(3, min(4, Int(num(row["posters"]) ?? 3))),
-                  grid: CGFloat(num(row["h"]) ?? 154) - 24)
+      /* القيمُ في `let` أوّلاً — تعبيرٌ واحدٌ طويلٌ يُبطئ فاحصَ الأنواع في Xcode وقد يرفضه */
+      let cnt: Int = max(0, min(3, Int(num(row["count"]) ?? 2)))
+      let gr: CGFloat = CGFloat(max(0, num(row["grow"]) ?? 0))
+      let ps: Int = max(3, min(4, Int(num(row["posters"]) ?? 3)))
+      let gd: CGFloat = max(0, CGFloat(num(row["h"]) ?? 154) - 24)
+      ListSection(f: f, key: key, view: row["view"] as? String ?? "list", count: cnt, now: now, grow: gr, posters: ps, grid: gd)
     case "tonight": TonightRow(f: f, wide: (row["view"] as? String ?? "wide") != "poster", now: now)
     case "pair":
       /* 🆕 بثلاثة أسطر أو بسطرين كما حسم المحرّك (خلاصةٌ أقدمُ بلا العدد ⇒ ٣) */
