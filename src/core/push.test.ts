@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf } from "./push.ts";
+import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf, dmNativeOf, dmTargetOf, PUSH_CAPS, groupMessagePush } from "./push.ts";
+import { parseWidgetDmBody } from "./contracts/widget.ts";
 import { getDict } from "./i18n.ts";
 import type { SignalRow } from "./signals.ts";
 
@@ -61,4 +62,47 @@ test("الرمزُ والمكتوم: شكلٌ يُحرس، ومجهولٌ يسق
   assert.ok(!PUSH_TOKEN_RE.test("https://evil.example/x"));
   assert.deepEqual(parseMuted(["likes", "nope", 3, "episodes"]), ["likes", "episodes"]);
   assert.deepEqual(parseMuted("likes"), []);
+});
+
+/** ====== 1.12.7 — إشعارُ الرسالة يرسمه الكودُ الأصليّ (dm-native) ====== */
+
+const G = "5b7c2a9e-3333-4a2b-9c3d-000000000003";
+
+test("dm-native: الوجهةُ من رابط الإشعار نفسِه — شخصٌ أو قروب، وما سواهما لا شيء", () => {
+  assert.deepEqual(dmTargetOf(`/messages?with=${P.id}`), { to: P.id });
+  assert.deepEqual(dmTargetOf(`/messages?group=${G.toUpperCase()}`), { group: G });
+  assert.equal(dmTargetOf("/messages?with=mishal"), null);
+  assert.equal(dmTargetOf(`/messages?with=${P.id}&x=1`), null);
+  assert.equal(dmTargetOf(null), null);
+  assert.ok(PUSH_CAPS.includes("dm-native"));
+});
+
+test("dm-native: البياناتُ تحمل الوجهةَ ونصوصَ الزرّين بلغة الجهاز، والوسمُ خيطٌ واحد", () => {
+  const t = getDict("ar");
+  const m = messagePush({ senderId: P.id, senderName: "مشعل", text: "هلا" }, t);
+  const d = dmNativeOf(m, t);
+  assert.ok(d);
+  assert.equal(d.kind, "dm");
+  assert.equal(d.to, P.id);
+  assert.equal(d.group, undefined);
+  assert.equal(d.tag, P.id);
+  assert.equal(d.l.read, t.pushMarkRead);
+  assert.equal(d.l.you, t.convYou);
+  const g = dmNativeOf(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "هلا" }, t), getDict("en"));
+  assert.equal(g?.group, G);
+  assert.equal(g?.tag, `g:${G}`);
+  assert.equal(g?.l.reply, getDict("en").msgReply);
+  /* ما ليس رسالةً لا يُرسل بيانات */
+  assert.equal(dmNativeOf({ title: "Loopz", body: "x", url: "/" }, t), null);
+});
+
+test("dm-reply/dm-read: وجهةٌ واحدةٌ صالحة، والردُّ نصٌّ غيرُ فارغٍ في الحدّ", () => {
+  assert.deepEqual(parseWidgetDmBody({ to: P.id, body: "  تم  " }, true), { target: { to: P.id }, body: "تم" });
+  assert.deepEqual(parseWidgetDmBody({ group: G }, false), { target: { group: G }, body: "" });
+  assert.equal(parseWidgetDmBody({ to: P.id, group: G, body: "x" }, true), null);
+  assert.equal(parseWidgetDmBody({ to: P.id, body: "   " }, true), null);
+  assert.equal(parseWidgetDmBody({ to: P.id, body: "x".repeat(1001) }, true), null);
+  assert.equal(parseWidgetDmBody({ to: "nope" }, false), null);
+  assert.equal(parseWidgetDmBody({ to: P.id, group: "nope" }, false), null);
+  assert.equal(parseWidgetDmBody(null, false), null);
 });

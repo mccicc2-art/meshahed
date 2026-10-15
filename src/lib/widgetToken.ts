@@ -9,6 +9,9 @@ import { getDict, type Locale } from "@/core/i18n";
 import { intIn } from "@/core/validate";
 import { ok } from "@/core/contracts/result";
 import { handle, limited, fail } from "@/lib/v1";
+import { notifyGroupMessage, notifyMessage } from "@/lib/push";
+import { parseWidgetDmBody } from "@/core/contracts/widget";
+import type { DmTarget } from "@/core/push";
 import type { NextRequest } from "next/server";
 
 /**
@@ -298,6 +301,119 @@ export function widgetActionRoute(kind: ActionKind) {
         else done = await widgetRate(who, intIn(b?.movieTmdbId, 1, 100_000_000), intIn(b?.rating, 1, 10));
         if (!done) return fail("not_found");
         return ok({ done: true });
+      },
+      { open: true },
+    );
+}
+
+/* ───────── 🆕 1.12.7 — «رد» و«تمييز كمقروءة» من إشعار الرسالة، والتطبيقُ مقفول (`DmPush.kt`) ───────── */
+
+/**
+ * 🔑 **لماذا رمزُ الودجت هنا**: إشعارُ الرسالة يرسمه كودٌ أصليٌّ لا يملك جلسةً — ونسخةُ الجلسة لا تخرج من التطبيق (D-929).
+ * فالرمزُ نفسُه (`files/widget/token`) يكسب فعلين آخرين: **ردٌّ نصّيٌّ لمن تراسله أصلاً، وختمُ «قرأت»** — لا قراءةَ
+ * لرسالةٍ ولا بدءَ محادثةٍ مع من لا يقبل، فأسوأُ ما يفعله رمزٌ مسروقٌ رسالةٌ باسم صاحبه لمن يراسله.
+ *
+ * 🔒 **القواعدُ قواعدُ الجلسة نفسُها**: عميلُ الخدمة يتجاوز RLS، فما تفرضه السياساتُ هناك يُفرض هنا صراحةً قبل الكتابة —
+ * الخاصُّ ببوّاب `can_message` نفسِه (حظرٌ · «من يراسلني» · محادثةٌ قائمة)، والقروبُ بالعضويّة (سياسةُ «members send as
+ * self»). وما لا يُعرف (البوّابُ لم يُجب) رفضٌ لا سماح.
+ */
+type DmWho = { userId: string };
+
+/**
+ * «قرأتُ المحادثة» لصاحب الرمز — **نسخةُ `mark_conversation_read` (الهجرة ٢٠٠) سطراً سطراً**: تلك الدالّةُ تقرأ
+ * `auth.uid()` ولا جلسةَ هنا. أيُّ تغييرٍ فيها يُنقل إلى هنا.
+ */
+async function markDmReadAs(db: Awaited<ReturnType<typeof createServiceClient>>, userId: string, peer: string): Promise<void> {
+  const now = new Date().toISOString();
+  await db.from("title_shares").update({ read_at: now }).eq("recipient_id", userId).eq("sender_id", peer).is("read_at", null);
+  await db.from("list_shares").update({ read_at: now }).eq("recipient_id", userId).eq("sender_id", peer).is("read_at", null);
+  /* ردودُ الشخص في خيوط المشاركة — والردُّ لا يكتبه إلّا طرفا المشاركة، فخيوطُه معي هي مشاركاتٌ بيننا نحن الاثنين */
+  const { data: threads } = await db
+    .from("title_shares")
+    .select("id")
+    .or(`and(sender_id.eq.${userId},recipient_id.eq.${peer}),and(sender_id.eq.${peer},recipient_id.eq.${userId})`)
+    .limit(500);
+  const ids = ((threads ?? []) as { id: string }[]).map((r) => r.id);
+  if (ids.length) await db.from("share_replies").update({ read_at: now }).eq("author_id", peer).is("read_at", null).in("share_id", ids);
+  await db.from("direct_messages").update({ read_at: now }).eq("recipient_id", userId).eq("sender_id", peer).is("read_at", null);
+}
+
+/** «قرأتُ القروب» — `dm_group_mark_read` نفسُها (الهجرة ٢٠٥) لصاحب الرمز؛ `false` إن لم يكن عضواً */
+async function markGroupReadAs(db: Awaited<ReturnType<typeof createServiceClient>>, userId: string, group: string): Promise<boolean> {
+  const { data, error } = await db
+    .from("dm_group_members")
+    .update({ last_read_at: new Date().toISOString() })
+    .match({ group_id: group, user_id: userId })
+    .select("user_id");
+  return !error && (data?.length ?? 0) > 0;
+}
+
+export type WidgetDmResult = "ok" | "forbidden" | "not_found";
+
+/** «تمييز كمقروءة» من الإشعار */
+export async function widgetDmRead(who: DmWho, target: DmTarget): Promise<WidgetDmResult> {
+  const db = await createServiceClient();
+  if ("to" in target) {
+    if (target.to === who.userId) return "not_found";
+    await markDmReadAs(db, who.userId, target.to);
+    revalidatePath("/people");
+    return "ok";
+  }
+  return (await markGroupReadAs(db, who.userId, target.group)) ? "ok" : "forbidden";
+}
+
+/**
+ * «رد» من الإشعار: رسالةٌ نصّيّةٌ بقواعد مسار الجلسة (`sendDirectMessage` · `POST me/groups/<id>`)، ثمّ دفعٌ للطرف الآخر
+ * كأيِّ رسالة، **ثمّ ما قبلها مقروء** (ردٌّ على ما في الإشعار — كالواتس؛ والقروبُ يختمه مشغِّلُ الهجرة ٢٠٥ بنفسه).
+ */
+export async function widgetDmReply(who: DmWho, target: DmTarget, body: string): Promise<WidgetDmResult> {
+  const db = await createServiceClient();
+  if ("to" in target) {
+    if (target.to === who.userId) return "not_found";
+    /* البوّابُ نفسُه الذي تشترطه سياسةُ «send direct message as self» — خطأٌ في السؤال رفضٌ لا سماح */
+    const gate = await db.rpc("can_message", { a: who.userId, b: target.to });
+    if (gate.error || gate.data !== true) return "forbidden";
+    const { error } = await db.from("direct_messages").insert({ sender_id: who.userId, recipient_id: target.to, body });
+    if (error) {
+      if (error.code === "42501" || error.code === "23514" || error.code === "23503") return "forbidden";
+      throw new Error(`widget dm reply: ${error.message}`);
+    }
+    notifyMessage({ to: target.to, actorId: who.userId, text: body });
+    await markDmReadAs(db, who.userId, target.to);
+    revalidatePath("/people");
+    return "ok";
+  }
+  /* العضويّةُ شرطُ سياسة «members send as self» — من خرج أو حُذف لا يكتب من إشعارٍ قديم */
+  const { data: member } = await db.from("dm_group_members").select("user_id").match({ group_id: target.group, user_id: who.userId }).maybeSingle();
+  if (!member) return "forbidden";
+  const { error } = await db.from("dm_group_messages").insert({ group_id: target.group, sender_id: who.userId, body });
+  if (error) {
+    if (error.code === "42501" || error.code === "23514" || error.code === "23503") return "forbidden";
+    throw new Error(`widget group reply: ${error.message}`);
+  }
+  notifyGroupMessage({ groupId: target.group, actorId: who.userId, text: body });
+  return "ok";
+}
+
+/**
+ * `POST /api/v1/widget/dm-reply` `{ to | group, body }` و`POST /api/v1/widget/dm-read` `{ to | group }` — الهويّةُ من الرمز
+ * وحدَه كبقيّة مسارات الودجت. دلوُ حدٍّ خاصٌّ بالرسائل (`wdm`) بحدِّ مسار الإرسال بالجلسة: ردودُ الإشعار لا تأكل
+ * نقراتِ ✓ ولا تتجاوز ما يُسمح به داخل التطبيق.
+ */
+export function widgetDmRoute(kind: "reply" | "read") {
+  return (req: NextRequest) =>
+    handle(
+      async () => {
+        const who = await widgetUser(req.headers.get("authorization"));
+        if (!who) return fail("unauthenticated");
+        const rl = limited(`wdm:${who.userId}`, 30, 60_000);
+        if (rl) return rl;
+        const b = parseWidgetDmBody(await req.json().catch(() => null), kind === "reply");
+        if (!b) return fail("invalid_input");
+        const r = kind === "reply" ? await widgetDmReply(who, b.target, b.body) : await widgetDmRead(who, b.target);
+        if (r === "forbidden") return fail("forbidden");
+        if (r === "not_found") return fail("not_found");
+        return ok({ done: true as const });
       },
       { open: true },
     );
