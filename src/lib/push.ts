@@ -68,8 +68,14 @@ async function claim(db: SupabaseClient, key: string): Promise<boolean> {
  * رسالةُ Expo لجهاز. 🆕 D-1408 — **إشعارُ رسالةٍ لجهازٍ يرسمه بنفسه يُرسل «بيانات»** بلا عنوانٍ ولا نصّ: أندرويد يعرض إشعارَ
  * Expo العاديَّ بنفسه والتطبيقُ في الخلفية فلا يصل الزرّان؛ البياناتُ توقظ التطبيقَ فيرسمه هو بـ«رد» و«تمييز كمقروءة».
  */
+/**
+ * 🔴 موقوفٌ ١٥ أكتوبر (تجربةُ أحمد): أندرويد لا يشغّل مهمّةَ الجافاسكربت في الخلفية لإشعار البيانات — فلا إشعارَ حتى يُفتح
+ * التطبيق. الطريقةُ القديمةُ للجميع حتى يرسمه كودٌ أصليٌّ (Kotlin) في البناء القادم؛ `caps` تبقى تُكتب ولا تُستعمل.
+ */
+const DM_DATA_ON = false;
+
 function expoMessage(m: { token: string; text: PushText; dmData?: boolean }) {
-  const data = m.dmData ? dmDataOf(m.text) : null;
+  const data = DM_DATA_ON && m.dmData ? dmDataOf(m.text) : null;
   /* `categoryId` معها أيضاً: إن رسمها مكوّنُ الإشعارات الأصليُّ بنفسه (لا المهمّة) فبزرّيها — حزامٌ ثانٍ (١٥ أكتوبر) */
   if (data) return { to: m.token, data, priority: "high", _contentAvailable: true, categoryId: "dm" };
   return {
