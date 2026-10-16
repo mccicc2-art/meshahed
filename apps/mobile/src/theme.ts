@@ -31,7 +31,21 @@ export type Tokens = {
   disabled: string;
   /** لوحُ المنسدلة `--elevated` (D-376) */
   elevated: string;
+  /**
+   * 🆕 D-1434 — فقاعةُ رسائلي: لونُ التمييز أغمقُ بخُمس (أحمد ١٦ أكتوبر: «خلفية الخط الصفراء ساطعة وغير مريحة»، «٢ أ»).
+   * مشتقٌّ من `accent` لا رقمٌ ثابت: كلُّ ثيمٍ يختاره العضوُ يأخذ فقاعتَه من لونه، والنصُّ فوقها `onAccent` كما كان.
+   */
+  bubbleMine: string;
 };
+
+/** يمزج لونَ `#rrggbb` بالأسود بنسبة `k` — وما ليس بهذا الشكل يُعاد كما هو */
+function darken(hex: string, k: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = (s: number) => Math.round(((n >> s) & 255) * (1 - k)).toString(16).padStart(2, "0");
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
 
 export function tokensOf(themeId: string | null | undefined): Tokens {
   const t: Theme = themeId ? themeById(themeId) : DEFAULT_THEME;
@@ -54,6 +68,7 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
     divider: v.divider,
     disabled: v.disabled ?? v.muted,
     elevated: v.elevated,
+    bubbleMine: darken(v.accent, 0.2),
   };
 }
 
