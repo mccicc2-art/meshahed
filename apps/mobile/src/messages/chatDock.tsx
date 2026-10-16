@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -160,9 +160,15 @@ export function ChatDock({
       setQ("");
     }
   }, [attach]);
-  /* لوحةُ المفاتيح تطلع والدوائرُ ظاهرة ⇒ تُغلق اللوحة (كتبتَ رسالة). في البحث تبقى: لوحةُ المفاتيح لكتابة البحث */
+  /* لوحةُ المفاتيح **تطلع** والدوائرُ ظاهرة ⇒ تُغلق اللوحة (لمستَ الحقلَ لتكتب). في البحث تبقى: لوحةُ المفاتيح لكتابة البحث.
+     🔴 D-1447 (تسجيلُ أحمد ١٦ أكتوبر: «إذا ضغطت زائد ما يفتح مباشرة، لازم ينزل تحت ثم أضغط زائد مرّة ثانية»): الشرطُ كان «ظاهرة»
+     لا «طلعت» — و«+» والكيبورد مفتوح يفتح اللوحةَ قبل أن ينزل الكيبورد فعلاً، فيرى الفحصُ الكيبوردَ ما زال ظاهراً ويُغلقها فوراً.
+     الآن الانتقالُ وحدَه (من صفرٍ إلى ظاهر) يُغلقها */
+  const prevKb = useRef(kb);
   useEffect(() => {
-    if (kb > 0 && attach && mode === "menu") onAttachClose?.();
+    const rose = prevKb.current === 0 && kb > 0;
+    prevKb.current = kb;
+    if (rose && attach && mode === "menu") onAttachClose?.();
   }, [kb, attach, mode, onAttachClose]);
   const pickGif = (id: string) => {
     Keyboard.dismiss();
