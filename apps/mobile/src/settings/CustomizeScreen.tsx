@@ -202,7 +202,7 @@ export function CustomizeScreen() {
     </View>
   );
 
-  const viewLabel: Record<HomeView, string> = { visual: t.viewVisual, compact: t.viewCompact, mixed: t.viewMixed };
+  const viewLabel: Record<HomeView, string> = { visual: t.viewVisual, mixed: t.viewMixed };
   /* وجهُ المعاينة من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — لا نداءَ لأجل رسمٍ مصغّر */
   const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
   const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;

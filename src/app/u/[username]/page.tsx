@@ -1156,9 +1156,9 @@ export default async function PublicProfilePage({
                 dir="auto"
               >
                 <Icon name="calendar" size={12} className="shrink-0" />
-                {t.memberSince(
+                {t.joinedOn(
                   new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
-                    month: "long",
+                    month: "short",
                     year: "numeric",
                     timeZone: "UTC",
                   }).format(new Date(profile.joined_at)),

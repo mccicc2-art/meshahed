@@ -71,12 +71,27 @@ import { usePosterSizes } from "../posterSizes";
  * الترتيبُ يُرسم فوراً في الكاش (نهجُ D-1094) ثمّ يُكتب؛ الفشلُ يعيد الجلبَ ويقول سببه (D-1179).
  */
 const HEADER_H = 56;
+/**
+ * 🆕 D-1427 — **رأسُ الملفّ الجديد** (أحمد ١٦ أكتوبر بأربع لقطات: «كبّر الصورة ونزّلهم تحت بحيث يوضح الهيدر … خلّ الفريز
+ * إلى الكارد»، ثمّ صحّح بلقطة: «الكارد يختفي، أهمّ شي الصورة والبايو ما تختفي»).
+ * الصورةُ ٨٤ لا ٦٠، ونزلت `AV_DROP` فصار الغلافُ يُرى فوقها كاملاً ومركزُها على حدّ ذوبانه — فالاسمُ والنبذةُ على خلفيّة الصفحة.
+ * عند التمرير تصغر إلى `AV_MIN` ويصعد الفراغُ فوقها، وتبقى هي والاسمُ والنبذةُ ثابتةً، وما تحتها (الحقائقُ وبطاقةُ الأرقام)
+ * ينزلق تحتها حتى تلتصق التبويباتُ أسفلَها. كلُّه تحويلاتٌ (`transform`) لا تغييرُ مقاسات — فلا يُعاد التخطيطُ مع كلِّ إطار.
+ */
+const AV_MAX = 84;
+const AV_MIN = 40;
+const AV_DROP = 64;
+/** بلا غلاف لا شيءَ يُكشف فوق الصورة: تنزل قليلاً عن شريط الأزرار فقط */
+const AV_DROP_BARE = 8;
+/** انزياحُ مركز الصورة لتصغر من ركنها: نصفُ ما نقص من قطرها */
+const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
+/** الاسمُ بعد الطيّ يتوسّط الصورةَ الصغيرة: كتلتُه (~٤٦) أطولُ من ٤٠ بقليل، فيصعد أقلَّ من فرق القطر بثلاث */
+const NAME_LIFT = 3;
 const PAGE_PAD = 16;
 const GAP = 10;
 
 /* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
 const ART_MUTED = "rgba(255,255,255,0.7)";
-const ART_SHADOW = { textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 };
 
 /* 🆕 D-1238 — المفتاحُ في `profileData.ts` (الرئيسيّةُ تسخّن به ملفَّ صاحبها)؛ يُعاد تصديرُه لمن يستورده من هنا */
 export { profileKey };
@@ -404,7 +419,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   }, [d, sorting]);
 
   const posterW = usePosterSizes(d?.viewer.density ?? "comfortable").posterW; /* D-1379 — مصدرُ الرئيسيّة نفسُه */
-  const onArt = !!d?.person.cover_url;
   const name = d ? displayNameOf(d.person, t.anonymousUser) : "";
 
   const stats: StatCell[] = useMemo(() => {
@@ -458,7 +472,28 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
      طول… ابغاها تنفكّ سوى»). الرسمُ على مراحل أنزل أوّلَ ظهورٍ من ~٦١٥ إلى ~٩٥ms، لكنّه أجّل العملَ الثقيل إلى ما بعد الظهور:
      اكتمالُ الشاشة صار ٨٣٠–١٥٧٠ms وخيطُ الواجهة يقف والإصبعُ على الشاشة. **انتظارٌ قصيرٌ قبل الظهور خيرٌ من شاشةٍ ظهرت ولا
      تستجيب.** بقي من D-1240 فصلُ ما تحت الشاشة عن أندرويد (عدّادُ خيط الواجهة أُزيل مع المسابير، D-1265). */
-  const maxC = Math.max(0, headH - barH);
+  /* D-1427 — الرأسُ العلويُّ (الصورة · الاسم · النبذة) يُقاس وحدَه: بعد طيِّه يبقى منه `topH - shrink`، والتبويباتُ تلتصق تحته */
+  const [topH, setTopH] = useState(0);
+  const drop = d?.person.cover_url ? AV_DROP : AV_DROP_BARE;
+  /** ما يطويه الرأسُ العلويُّ من طوله: الفراغُ فوق الصورة + فرقُ قطرها */
+  const shrink = drop + (AV_MAX - AV_MIN);
+  const topMin = topH > 0 ? Math.max(0, topH - shrink) : 0;
+  /* التحويلاتُ تُبنى مرّةً لكلِّ مقاس: كلُّها نسبةٌ من الطيّ (٠ ⇠ ١) */
+  const fold = useMemo(() => {
+    const at = (to: number, from = 0) => collapse.interpolate({ inputRange: [0, shrink], outputRange: [from, to], extrapolate: "clamp" });
+    const side = I18nManager.isRTL ? 1 : -1;
+    return {
+      top: at(-drop),
+      veil: at(1),
+      avX: at(AV_SHIFT * side),
+      avY: at(-AV_SHIFT),
+      avScale: at(AV_MIN / AV_MAX, 1),
+      nameX: at((AV_MAX - AV_MIN) * side),
+      nameY: at(-(AV_MAX - AV_MIN) + NAME_LIFT),
+      bioY: at(-(AV_MAX - AV_MIN)),
+    };
+  }, [collapse, shrink, drop]);
+  const maxC = Math.max(0, headH - barH - topMin);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
   const [aim, setAim] = useState<ProfileTabKey | null>(null);
@@ -590,9 +625,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
           </View>
         ) : (
-          <View style={{ paddingHorizontal: PAGE_PAD, gap: 12 }}>
-            <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: tokens.surface2 }} />
+          <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: AV_DROP_BARE, gap: 12 }}>
+            {/* D-1427 — الهيكلُ بمقاس الرأس الجديد: الصورةُ ٨٤ نازلةً والاسمُ على نصفها السفليّ */}
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-end" }}>
+              <View style={{ width: AV_MAX, height: AV_MAX, borderRadius: AV_MAX / 2, backgroundColor: tokens.surface2 }} />
               <View style={{ flex: 1, gap: 8 }}>
                 <View style={{ height: 20, width: "55%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
                 <View style={{ height: 12, width: "35%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
@@ -620,46 +656,72 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               ) : null}
             </ScrollView>
           ) : null}
-          {/* ——— الرأسُ طبقةٌ فوق اللوحات: يُطوى مع التمرير حتى يلتصق شريطُه، ولا يحبس اللمسَ إلّا على أزراره ——— */}
-          <Animated.View
-            pointerEvents="box-none"
-            onLayout={(e) => setHeadH(Math.round(e.nativeEvent.layout.height))}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, transform: [{ translateY: Animated.multiply(collapse, -1) }] }}
-          >
-            <View pointerEvents="box-none">
-            <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              {/* 🆕 N3 — صورةُ ملفّي بابُ تعديله (D-571) — «تعديل الملفّ» أصليّة (D-1106)؛ ولزائري لا رابط */}
-              <Pressable
-                /* لزائري الصورةُ صورة: لا تحبس اللمس فيصل التمريرُ من فوقها إلى اللوح (كما كانت) */
-                pointerEvents={d.viewer.is_me ? "auto" : "none"}
-                disabled={!d.viewer.is_me}
-                onPress={() => router.push("/settings/profile")}
-                accessibilityRole={d.viewer.is_me ? "button" : undefined}
-                accessibilityLabel={d.viewer.is_me ? t.headerSettings : undefined}
-                style={({ pressed }) => ({ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}
-              >
-                {!d.person.hide_name && d.person.avatar_url ? (
-                  <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /* D-1243 — قبل ملصقات الصفوف: كانت تنتظر دورَها خلف ~٢٠ ملصقاً فتظهر دائرةً رماديّةً ~٠٫٣ث */ priority="high" />
-                ) : (
-                  <Icon name="people" size={24} color={tokens.muted} />
-                )}
-              </Pressable>
-              <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
-                <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  {/* D-1134 — فوق الغلاف أبيضُ بظلٍّ كتحيّة الرئيسيّة (`HomeGreeting.onArt`) — يصحّ في «النهاري» أيضاً */}
-                  {/* 🆕 D-1381 — **الاسمُ الطويلُ يصغر ليظهر كاملاً** (أحمد ١٢ أكتوبر، «ج» من ثلاث صورٍ على ملفّ «Abdulrhman Aldossari»):
-                      كان يُقصّ «Abdulrhman Ald…» قبل الشارة. يصغر حتى ٠٫٦٥ من ٢٠ (≈١٣) في سطرٍ واحدٍ مع الشارة، والاسمُ القصيرُ باقٍ ٢٠؛
-                      وما زاد بعد ذلك يُقصّ في آخره */}
-                  <Text size={20} weight="700" color={onArt ? "#fff" : tokens.fg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={[{ flexShrink: 1, lineHeight: 24 }, onArt ? ART_SHADOW : null]}>{name}</Text>
-                  {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
-                </View>
-                <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-                  {d.person.username && !d.person.hide_name ? <Text size={12} color={onArt ? ART_MUTED : tokens.muted} numberOfLines={1} style={{ flexShrink: 1 }}>@{d.person.username}</Text> : null}
-                  {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
-                  <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
-                  <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={onArt} onPress={() => { setFollowsY(0); setFollows("following"); }} />
-                </View>
-              </View>
+          {/* ——— الرأسُ طبقةٌ فوق اللوحات، ولا يحبس اللمسَ إلّا على أزراره ———
+              🆕 D-1427 — طبقتان: العلويّةُ (الصورة · الاسم · النبذة) تُطوى ولا تغادر، والسفليّةُ (الحقائق · الأرقام · التبويبات)
+              تتحرّك مع المحتوى وتنزلق تحت العلويّة حتى تلتصق التبويباتُ أسفلَها. العلويّةُ فوق السفليّة (`zIndex`) */}
+          <View pointerEvents="box-none" onLayout={(e) => setHeadH(Math.round(e.nativeEvent.layout.height))} style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+            <Animated.View
+              pointerEvents="box-none"
+              onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
+              style={{ zIndex: 2, paddingTop: drop, transform: [{ translateY: fold.top }] }}
+            >
+              {/* خلفيّةُ الصفحة تظهر مع الطيّ: ما ينزلق تحت الرأس لا يُرى من خلاله، والغلافُ يبقى فوقه في شريط الأزرار وحدَه */}
+              <Animated.View pointerEvents="none" style={{ position: "absolute", top: drop, left: 0, right: 0, height: topMin, backgroundColor: tokens.bg, opacity: fold.veil }} />
+              <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+                {/* 🆕 N3 — صورةُ ملفّي بابُ تعديله (D-571) — «تعديل الملفّ» أصليّة (D-1106)؛ ولزائري لا رابط.
+                    D-1427 — تصغر من ركنها الأعلى عند البداية: المركزُ يُزاح بنصف ما نقص ثمّ تُصغَّر حوله */}
+                <Animated.View
+                  pointerEvents="box-none"
+                  style={{
+                    transform: [{ translateX: fold.avX }, { translateY: fold.avY }, { scale: fold.avScale }],
+                  }}
+                >
+                  <Pressable
+                    /* لزائري الصورةُ صورة: لا تحبس اللمس فيصل التمريرُ من فوقها إلى اللوح (كما كانت) */
+                    pointerEvents={d.viewer.is_me ? "auto" : "none"}
+                    disabled={!d.viewer.is_me}
+                    onPress={() => router.push("/settings/profile")}
+                    accessibilityRole={d.viewer.is_me ? "button" : undefined}
+                    accessibilityLabel={d.viewer.is_me ? t.setEditProfile : undefined}
+                    style={({ pressed }) => ({ width: AV_MAX, height: AV_MAX, borderRadius: AV_MAX / 2, overflow: "hidden", borderWidth: 3, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}
+                  >
+                    {!d.person.hide_name && d.person.avatar_url ? (
+                      <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /* D-1243 — قبل ملصقات الصفوف: كانت تنتظر دورَها خلف ~٢٠ ملصقاً فتظهر دائرةً رماديّةً ~٠٫٣ث */ priority="high" />
+                    ) : (
+                      <Icon name="people" size={30} color={tokens.muted} />
+                    )}
+                  </Pressable>
+                </Animated.View>
+                {/* D-1427 — الاسمُ وما بجانبه على النصف السفليّ من الصورة، أي على خلفيّة الصفحة تحت ذوبان الغلاف: لونُ الصفحة لا أبيضُ
+                    الغلاف (الأبيضُ كان يضيع في «النهاري»). ومع الطيّ يقترب من الصورة الصغيرة ويتوسّطها */}
+                <Animated.View
+                  pointerEvents="box-none"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    transform: [{ translateX: fold.nameX }, { translateY: fold.nameY }],
+                  }}
+                >
+                  <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
+                    <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      {/* 🆕 D-1381 — **الاسمُ الطويلُ يصغر ليظهر كاملاً** (أحمد ١٢ أكتوبر، «ج» من ثلاث صورٍ على ملفّ «Abdulrhman Aldossari»):
+                          كان يُقصّ «Abdulrhman Ald…» قبل الشارة. يصغر حتى ٠٫٦٥ من ٢٠ (≈١٣) في سطرٍ واحدٍ مع الشارة، والاسمُ القصيرُ باقٍ ٢٠؛
+                          وما زاد بعد ذلك يُقصّ في آخره */}
+                      <Text size={20} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ flexShrink: 1, lineHeight: 24 }}>{name}</Text>
+                      {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
+                    </View>
+                    <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                      {d.person.username && !d.person.hide_name ? <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>@{d.person.username}</Text> : null}
+                      {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
+                      <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={false} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
+                      <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={false} onPress={() => { setFollowsY(0); setFollows("following"); }} />
+                    </View>
+                  </View>
+                  {/* 🆕 D-1427 — «تعديل الملفّ» في ملفّي (أحمد: «ضيف عدل البروفايل بس صغّرها شوي»): زرُّ المصنع الواحد بمقاسه الصغير */}
+                  {d.viewer.is_me ? <Button size="sm" variant="ghost" label={t.setEditProfile} onPress={() => router.push("/settings/profile")} style={{ minHeight: 30 }} /> : null}
               {/* 🆕 D-1380 — **دائرتان على خطّ الصورة والاسم** (أحمد ١٢ أكتوبر، من صورٍ على لقطة سعود، واختار ٣٢): الرسائلُ ثمّ المتابعة،
                   بمقاس زرّ الفلتر (`controlSize.filterBtn`) فلا مقاسَ جديد. قبل المتابعة دائرةٌ صفراءُ بـ+ هي الدعوةُ الوحيدة في الصفّ،
                   وبعدها إطارٌ بصحّ — وإلغاؤها يُسأل عنه (رمزٌ بلا كلمةٍ قد يُضغط ولا يُعرف أنّه يلغي). والخاصُّ المقفل دائرةٌ باهتةٌ بقفل */}
@@ -670,21 +732,32 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                     label={t.msgOpenAria(name)}
                     dim={d.viewer.can_message === false}
                     locked={d.viewer.can_message === false}
-                    onArt={onArt}
+                    onArt={false}
                     onPress={message}
                   />
                   <CircleBtn
                     icon={d.relation.following ? "person-check" : d.relation.requested ? "clock" : "person-plus"}
                     label={d.relation.following ? t.unfollowAria(name) : d.relation.requested ? t.followRequested : t.followAria(name)}
                     filled={!d.relation.following && !d.relation.requested}
-                    onArt={onArt}
+                    onArt={false}
                     busy={follow.isPending}
                     onPress={() => (d.relation.following ? setMenu("unfollow") : follow.mutate(!d.relation.requested))}
                   />
                 </View>
               )}
-            </View>
-            {d.person.bio ? <Text autoDir pointerEvents="none" size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text> : null}
+                </Animated.View>
+              </View>
+              {d.person.bio ? (
+                <Animated.View pointerEvents="none" style={{ transform: [{ translateY: fold.bioY }] }}>
+                  <Text autoDir size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text>
+                </Animated.View>
+              ) : null}
+              {/* ما تحت النبذة يبدأ بعدها بقليل: فراغٌ ثابتٌ يطويه انزياحُ النبذة نفسُه */}
+              <View pointerEvents="none" style={{ height: 4 }} />
+            </Animated.View>
+
+            <Animated.View pointerEvents="box-none" style={{ zIndex: 1, transform: [{ translateY: Animated.multiply(collapse, -1) }] }}>
+            <View pointerEvents="box-none">
             {/* 🆕 N2-fix — طلب متابعتي وطلبُه قائم: القرارُ هنا أيضاً (الإشعارُ يفتح هذا الملفّ) */}
             {d.relation.requested_me ? (
               <View style={{ marginHorizontal: PAGE_PAD, marginTop: 12, padding: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -743,7 +816,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               </ScrollView>
             ) : null}
             </View>
-          </Animated.View>
+            </Animated.View>
+          </View>
         </View>
       )}
 
@@ -929,7 +1003,7 @@ function CountBtn({ icon, value, label, locked, onArt, onPress }: { icon: "peopl
 function Facts({ d, onRanks }: { d: ProfilePayload; onRanks: () => void }) {
   const { t, tokens, locale } = useApp();
   const since = d.person.joined_at
-    ? t.memberSince(new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { month: "long", year: "numeric" }).format(new Date(d.person.joined_at)))
+    ? t.joinedOn(new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { month: "short", year: "numeric" }).format(new Date(d.person.joined_at)))
     : null;
   if (!d.weekly_ranks.length && !d.person.x && !since) return null;
   return (

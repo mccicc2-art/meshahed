@@ -92,7 +92,7 @@ function HomeMini({ who, prefs }: { who: PreviewWho; prefs: HomePrefs }) {
         <Face url={who.avatarUrl} pos={who.avatarPos} size={20} />
         <Text size={12} weight="700" numberOfLines={1} style={{ flex: 1 }}>{who.name}</Text>
         {/* الرمزُ رمزُ مبدّل الترويسة نفسُه — يصف الحال (D-1321) */}
-        <Icon name={prefs.view === "compact" ? "list" : prefs.view === "mixed" ? "view-mixed" : "grid"} size={13} color={tokens.accent} />
+        <Icon name={prefs.view === "mixed" ? "view-mixed" : "grid"} size={13} color={tokens.accent} />
       </View>
       {prefs.stats ? (
         <StatsStrip items={prefs.statsPick.map((k) => ({ key: k, icon: statMeta[k].icon, label: statMeta[k].label }))} />

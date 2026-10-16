@@ -256,7 +256,8 @@ export type HomeExtrasPayload = {
   trending: HomeTrendCard[];
 };
 
-export type HomeViewBody = { view: "visual" | "compact" | "mixed" };
+/** «compact» ما زالت تُقبل لأنّ نسخ التطبيق القديمة ترسلها — والخادمُ يحفظها «مزدوجاً» (D-1425) */
+export type HomeViewBody = { view: "visual" | "mixed" | "compact" };
 export type HomeOrderBody = { order: string[] };
 
 /* ——— اكتشف (D-905 — بقيت هنا لأنّ `contracts/discover.ts` و`api/v1/discover` يقرآنها) ——— */

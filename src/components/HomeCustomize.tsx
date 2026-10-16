@@ -254,7 +254,7 @@ export function HomeCustomize({
                   onClick={() => set({ ...prefs, view: k })}
                   className={chipClass(prefs.view === k, "sm", "flex-1 basis-0 min-w-0 h-8")}
                 >
-                  {k === "visual" ? t.viewVisual : k === "mixed" ? t.viewMixed : t.viewCompact}
+                  {k === "mixed" ? t.viewMixed : t.viewVisual}
                 </button>
               ))}
             </span>

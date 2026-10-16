@@ -45,7 +45,7 @@ import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
-import { nextHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
+import { nextHomeView, sanitizeHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
 import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
@@ -205,7 +205,8 @@ export function HomeScreen() {
      **ما دامت كتابةٌ في الطريق فقط**: ضغطتان متلاحقتان لا تومضان بردِّ الأولى، ثمّ يعود الحكمُ إلى الخادم.
      🆕 D-1321 — والدورةُ ثلاثةُ أوضاع (بصريّ ← مختصر ← مزدوج)، والكتاباتُ طابورٌ لا تتسابق على العمود (كالويب). */
   const [viewPending, setViewPending] = useState<HomeView | null>(null);
-  const view: HomeView = viewPending ?? d?.prefs.view ?? "visual";
+  /* D-1425 — كاشٌ محفوظٌ من نسخةٍ سابقة قد يحمل «مختصر» الذي لم يعد وضعاً: يُقرأ «مزدوجاً» كما يقرؤه الخادم */
+  const view: HomeView = viewPending ?? sanitizeHomeView(d?.prefs.view);
   const viewQueue = useRef<Promise<unknown>>(Promise.resolve());
   const viewWanted = useRef<HomeView | null>(null);
   const toggleView = useCallback(() => {

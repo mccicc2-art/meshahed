@@ -101,7 +101,13 @@ export function headerStatMeta(
  * رآها، ومن أراد أكبرَ قدرٍ من مكتبته في شاشةٍ واحدة ضغطها. **وصفحتان
  * لبياناتٍ واحدة كانتا ستفترقان عند أوّل تعديل** (قاعدة ٦).
  */
-export const HOME_VIEWS = ["visual", "compact", "mixed"] as const;
+export const HOME_VIEWS = ["visual", "mixed"] as const;
+/**
+ * 🆕 D-1425 — **«المختصر» لم يعد وضعاً يُختار** (حكمُ أحمد ١٦ أكتوبر: «احذف النمط العمودي بحيث تكون نمط المربع
+ * و نمط الميكسد»). **والقيمةُ باقيةٌ في قواعد المستخدمين وفي نسخ التطبيق القديمة التي ترسلها** — فلا تُرفض:
+ * تُقرأ «مزدوجاً» (حكمُه «أ»)، لأنّ «مزدوج» نصفُه مختصرٌ أصلاً، فمن اختار المختصرَ يجد «أكمل المشاهدة» كما تركها.
+ */
+const LEGACY_VIEW: Readonly<Record<string, HomeView>> = { compact: "mixed" };
 export type HomeView = (typeof HOME_VIEWS)[number];
 
 /**
@@ -117,17 +123,19 @@ export type SectionView = "visual" | "compact";
 
 export function sectionView(view: HomeView, section: ViewSection): SectionView {
   if (view === "mixed") return section === "continue" ? "compact" : "visual";
-  return view;
+  return "visual";
 }
 
-/** دورةُ زرِّ الترويسة: بصريّ ← مختصر ← مزدوج ← بصريّ */
+/** دورةُ زرِّ الترويسة: بصريّ ⇄ مزدوج (D-1425) */
 export function nextHomeView(view: HomeView): HomeView {
   return HOME_VIEWS[(HOME_VIEWS.indexOf(view) + 1) % HOME_VIEWS.length];
 }
 
 /** ما جاء من عميلٍ أو عمودٍ حرّ — يسقط إلى «بصريّ» */
 export function sanitizeHomeView(raw: unknown): HomeView {
-  return typeof raw === "string" && (HOME_VIEWS as readonly string[]).includes(raw) ? (raw as HomeView) : "visual";
+  if (typeof raw !== "string") return "visual";
+  if ((HOME_VIEWS as readonly string[]).includes(raw)) return raw as HomeView;
+  return LEGACY_VIEW[raw] ?? "visual";
 }
 
 /**
@@ -359,10 +367,7 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     order,
     statsPick,
     cards: sanitizeCardCount(o.cards),
-    view:
-      typeof o.view === "string" && (HOME_VIEWS as readonly string[]).includes(o.view)
-        ? (o.view as HomeView)
-        : d.view,
+    view: typeof o.view === "string" ? sanitizeHomeView(o.view) : d.view,
     density: sanitizeDensity(o.density),
     toWatch: bool("toWatch") as boolean,
     continueOrder: keyList("continueOrder"),
