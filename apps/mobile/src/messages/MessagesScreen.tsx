@@ -3,7 +3,7 @@ import { ActivityIndicator, BackHandler, FlatList, I18nManager, Platform, Pressa
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, write } from "../api";
+import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -16,7 +16,7 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Avatar } from "../community/CommunityCards";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MESSAGES_KEY } from "./live";
-import { dropBadges, useDoors, useMessages, type Origin } from "./common";
+import { dropBadges, patchKeep, useDoors, useMessages, type Origin } from "./common";
 import { num, type Dict } from "@/core/i18n";
 import { timeAgo } from "@/core/when";
 import { listStampOf } from "./chatFormat";
@@ -24,7 +24,8 @@ import { displayNameOf } from "@/core/people";
 import { signalHref, signalParts } from "@/core/signals";
 import { curatedName } from "@/core/universes";
 import type { MessagesPayload, MsgConversation, MsgEvent, MsgGroupConversation, SignalRow, SignalsPayload } from "../contracts";
-import { GroupAvatar, groupPreview } from "./groups";
+import { GroupAvatar, dropGroup, groupPreview } from "./groups";
+import { Sheet } from "../library/Sheet";
 
 /**
  * ====== «الرسائل» أصليّةً — سطحٌ واحدٌ بتبويبين · Phase 11-M · M4 (خطّة §٣) ======
@@ -187,6 +188,8 @@ export function previewOf(last: MsgEvent | undefined, t: Dict): string {
   if (!last) return "";
   const mine = last.mine ? `${t.convYou}: ` : "";
   /* 🆕 D-1387 — «GIF» أو «📷 صورة» (وتعليقُها إن وُجد) */
+  /* 🆕 D-1441 — المحذوفةُ للجميع سطرُها «حُذفت» */
+  if (last.kind === "reply" && last.deleted) return last.mine ? t.msgDeletedMine : t.msgDeleted;
   if (last.kind === "reply") return `${mine}${last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.body}`;
   if (last.kind === "list") return `${mine}${t.convSharedListPreview(last.list_name ?? "—")}`;
   return `${mine}${t.convSharedPreview(last.title ?? "—")}`;
@@ -211,6 +214,24 @@ function InboxPane({
 }) {
   const { t, tokens } = useApp();
   const refresh = usePullRefresh([MESSAGES_KEY], 0);
+  /* 🆕 D-1441 — ضغطةٌ طويلةٌ على الصفّ («٣ أ»): المحادثةُ تُحذف من عندي وحدي (`hide`)، والقروبُ يُغادَر — بتأكيدٍ وسطيّ */
+  const [held, setHeld] = useState<InboxItem | null>(null);
+  const dropHeld = useCallback(() => {
+    const it = held;
+    setHeld(null);
+    if (!it) return;
+    haptic.pick();
+    const fail = () => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+    if (it.type === "conv") {
+      const peer = it.c.person_id;
+      patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({ ...p, conversations: p.conversations.filter((c) => c.person_id !== peer) }));
+      write("/api/v1/me/messages/hide", { person_id: peer }).catch(fail);
+    } else {
+      const id = it.g.group_id;
+      dropGroup(id);
+      write(`/api/v1/me/groups/${id}/manage`, { action: "leave" }).catch(fail);
+    }
+  }, [held]);
   /* 🆕 المحادثاتُ والقروباتُ قائمةٌ واحدةٌ بالأحدث (الصورةُ المعتمدة)؛ و«ابدأ محادثة» انتقل إلى «محادثة جديدة» */
   const items = useMemo<InboxItem[]>(() => {
     if (!d) return [];
@@ -242,10 +263,25 @@ function InboxPane({
       keyExtractor={(it) => (it.type === "conv" ? `c:${it.c.person_id}` : `g:${it.g.group_id}`)}
       renderItem={({ item }) =>
         item.type === "group" ? (
-          <GroupRow g={item.g} meId={d.me_id} onPress={() => onOpenGroup(item.g.group_id)} />
+          <GroupRow g={item.g} meId={d.me_id} onPress={() => onOpenGroup(item.g.group_id)} onLongPress={() => (haptic.pick(), setHeld(item))} />
         ) : (
-          <ConvRow c={item.c} onPress={() => onOpen(item.c.person_id)} />
+          <ConvRow c={item.c} onPress={() => onOpen(item.c.person_id)} onLongPress={() => (haptic.pick(), setHeld(item))} />
         )
+      }
+      ListFooterComponent={
+        held ? (
+          <Sheet title={held.type === "conv" ? t.msgDeleteChat : t.grpLeave} onClose={() => setHeld(null)} placement="center">
+            <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>
+              {held.type === "conv" ? t.msgDeleteChatHint(displayNameOf(held.c.person, t.anonymousUser)) : t.grpLeaveConfirm}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Button label={t.cancelLabel} variant="ghost" onPress={() => setHeld(null)} />
+              <View style={{ flex: 1 }}>
+                <Button label={held.type === "conv" ? t.msgDeleteChat : t.grpLeave} variant="danger" onPress={dropHeld} />
+              </View>
+            </View>
+          </Sheet>
+        ) : null
       }
       ListEmptyComponent={
         /* الفراغُ الموجَّه (`FeedEmptyCta`، D-106): أوّلُ خطوةٍ محادثةٌ جديدة */
@@ -264,12 +300,14 @@ function InboxPane({
 }
 
 /** 🆕 صفُّ القروب: صورتُه أو صورُ أعضائه · الاسمُ ووسمُ «قروب» · «فلان: آخرُ سطر» · الوقتُ والشارة */
-function GroupRow({ g, meId, onPress }: { g: MsgGroupConversation; meId: string; onPress: () => void }) {
+function GroupRow({ g, meId, onPress, onLongPress }: { g: MsgGroupConversation; meId: string; onPress: () => void; onLongPress?: () => void }) {
   const { t, tokens } = useApp();
   const unread = g.unread > 0;
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       accessibilityRole="button"
       accessibilityLabel={`${g.name} · ${t.grpTag}`}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
@@ -299,13 +337,15 @@ function GroupRow({ g, meId, onPress }: { g: MsgGroupConversation; meId: string;
   );
 }
 
-function ConvRow({ c, onPress }: { c: MsgConversation; onPress: () => void }) {
+function ConvRow({ c, onPress, onLongPress }: { c: MsgConversation; onPress: () => void; onLongPress?: () => void }) {
   const { t, tokens } = useApp();
   const name = displayNameOf(c.person, t.anonymousUser);
   const unread = c.unread > 0;
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       accessibilityRole="button"
       accessibilityLabel={t.convOpenAria(name)}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}

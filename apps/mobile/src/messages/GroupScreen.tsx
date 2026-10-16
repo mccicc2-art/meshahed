@@ -22,6 +22,8 @@ import { copyableOf, copyTextOf, dayKeyOf, dayLabelOf, stampOf } from "./chatFor
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
+import { DeleteSheet, canUnsend, deleteRemote } from "./DeleteSheet";
+import { MentionList, useMentions } from "./mentions";
 import { Bubble, DayChip } from "./ConversationScreen";
 import { GroupAvatar, asBubbleEvent, nameIn, patchGroup, personIn, senderColor, sysLine, titleText } from "./groups";
 import { displayNameOf } from "@/core/people";
@@ -208,32 +210,15 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
     [g, me, quoteRef, replyTo, deliver],
   );
 
-  /* 🆕 D-1436 — المنشن: أسماءُ الأعضاء (غيري) لرسم `@اسم` وللقائمة التي تظهر حين تكتب `@` */
+  /* 🆕 D-1436 — المنشن: أسماءُ الأعضاء (غيري) لرسم `@اسم` وللقائمة التي تظهر حين تكتب `@` (🆕 D-1443 — `mentions.tsx` يقرؤه النقاشُ أيضاً) */
   const mentionables = useMemo(() => {
     if (!g) return [];
     return g.members
       .filter((m) => m.id !== me)
       .map((m) => personIn(g, m.id))
-      .filter((p): p is NonNullable<typeof p> => !!p && !!p.username && !p.hide_name);
+      .filter((p): p is NonNullable<typeof p> => !!p);
   }, [g, me]);
-  const mentionSet = useMemo(() => new Set(mentionables.map((p) => (p.username ?? "").toLowerCase())), [mentionables]);
-  /* الكلمةُ الأخيرةُ في الحقل تبدأ بـ@ ⇒ قائمةُ من يطابقها (الاسمُ أو المعرّف) — حتى خمسة */
-  const mentionQuery = /(^|\s)@([A-Za-z0-9_]*)$/.exec(text)?.[2] ?? null;
-  const mentionHits = useMemo(() => {
-    if (mentionQuery === null) return [];
-    const q = mentionQuery.toLowerCase();
-    return mentionables
-      .filter((p) => (p.username ?? "").toLowerCase().startsWith(q) || displayNameOf(p, "").toLowerCase().includes(q))
-      .slice(0, 5);
-  }, [mentionQuery, mentionables]);
-  const pickMention = useCallback(
-    (username: string) => {
-      haptic.pick();
-      setText((cur) => cur.replace(/(^|\s)@([A-Za-z0-9_]*)$/, (_m, pre: string) => `${pre}@${username} `));
-      inputRef.current?.focus();
-    },
-    [],
-  );
+  const { names: mentionSet, hits: mentionHits, pick: pickMention } = useMentions(text, setText, mentionables, inputRef);
 
   const chatBg = useChatBg();
   const [headH, setHeadH] = useState(0);
@@ -300,7 +285,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
     if (selected.length && selectedMsgs.length !== selected.length) setSelected(selectedMsgs.map((e) => e.id));
   }, [selected, selectedMsgs]);
   const canCopy = selectedMsgs.some((e) => !!copyableOf(asBubbleEvent(e)));
-  const single = selectedMsgs.length === 1 ? selectedMsgs[0] : null;
+  const single = selectedMsgs.length === 1 && !selectedMsgs[0].deleted ? selectedMsgs[0] : null;
   const copySelected = useCallback(() => {
     if (!g) return;
     const bySender = new Map(selectedMsgs.map((e) => [e.id, e.sender_id] as const));
@@ -314,6 +299,37 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
       .catch(() => say(t.apiInternal));
     setSelected([]);
   }, [g, selectedMsgs, me, t, say]);
+  /* ——— 🆕 D-1441 — الحذف: «عندي» لأيِّ رسالة، و«للجميع» لرسائلي في المهلة (كالخاص) ——— */
+  const [delOpen, setDelOpen] = useState(false);
+  const canAll = canUnsend(selectedMsgs) && selectedMsgs.every((e) => !e.deleted);
+  const runDelete = useCallback(
+    (scope: "me" | "all") => {
+      if (!g) return;
+      const ids = new Set(selectedMsgs.map((e) => e.id));
+      setDelOpen(false);
+      setSelected([]);
+      haptic.pick();
+      patchGroup(g.group_id, (cur) => ({
+        ...cur,
+        events:
+          scope === "me"
+            ? cur.events.filter((e) => !ids.has(e.id))
+            : cur.events.map((e) => (e.kind === "msg" && ids.has(e.id) ? { kind: "msg", id: e.id, mine: e.mine, sender_id: e.sender_id, body: "", created_at: e.created_at, deleted: true } : e)),
+      }));
+      deleteRemote({ scope, group_id: g.group_id, items: [...ids].map((id) => ({ kind: "group" as const, id })) })
+        .then((r) => {
+          if (r.refused.length) {
+            say(scope === "all" ? t.apiUnsendWindow : t.apiInternal);
+            void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+          }
+        })
+        .catch((err: unknown) => {
+          say(errorText(t, err));
+          void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+        });
+    },
+    [g, selectedMsgs, say, t],
+  );
   const beginReply = useCallback((e: GroupMsgEvent) => {
     setSelected([]);
     setViewer(null);
@@ -367,6 +383,10 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
             ) : null}
             <Pressable onPress={copySelected} disabled={!canCopy} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgCopy} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", opacity: canCopy ? 1 : 0.35, backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
               <Icon name="copy" size={20} color={tokens.fg} />
+            </Pressable>
+            {/* 🆕 D-1441 — «حذف» بعد «نسخ» */}
+            <Pressable onPress={() => setDelOpen(true)} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgDelete} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
+              <Icon name="trash" size={20} color={tokens.fg} />
             </Pressable>
           </View>
         ) : (
@@ -474,25 +494,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
       )}
 
       {/* 🆕 D-1436 — `@` في آخر الحقل ⇒ أعضاءُ القروب المطابقون فوق الخانة؛ اللمسةُ تكمل الاسمَ ومسافةً بعده */}
-      {g && mentionHits.length ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg, paddingVertical: 4 }}>
-          {mentionHits.map((p) => (
-            <Pressable
-              key={p.id}
-              onPress={() => pickMention(p.username ?? "")}
-              accessibilityRole="button"
-              accessibilityLabel={`@${p.username}`}
-              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: PAGE_PAD, paddingVertical: 8, backgroundColor: pressed ? tokens.surface2 : "transparent" })}
-            >
-              <Avatar uri={p.avatar_url} size={30} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text size={14} weight="600" numberOfLines={1}>{displayNameOf(p, t.anonymousUser)}</Text>
-                <Text size={12} muted numberOfLines={1}>@{p.username}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      {g ? <MentionList hits={mentionHits} onPick={pickMention} pad={PAGE_PAD} /> : null}
 
       {g ? (
         <ChatDock
@@ -539,6 +541,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           <ActivityIndicator color={tokens.accent} />
         </View>
       ) : null}
+      {delOpen ? <DeleteSheet count={selectedMsgs.length} canAll={canAll} onMe={() => runDelete("me")} onAll={() => runDelete("all")} onClose={() => setDelOpen(false)} /> : null}
       <ToastHost hostRef={toastHost} bottom={insets.bottom + 84} />
     </View>
   );

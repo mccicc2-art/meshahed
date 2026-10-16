@@ -192,6 +192,9 @@ export type {
   SignalsPayload,
   BadgesPayload,
   MsgShareBody,
+  MsgDeleteBody,
+  MsgDeleteKind,
+  MsgDeletePayload,
 } from "@/core/contracts/messages";
 /* 🆕 القروبات (الهجرة ٢٠٥) */
 export type {

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, type TextInput, View } from "react-native";
 import { Image } from "expo-image";
-import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -24,12 +23,14 @@ import { MESSAGES_KEY } from "./live";
 import { dropBadges, patchConversation, patchKeep, presenceOf, useDoors, useMessages, type Origin } from "./common";
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
-import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImage, MsgPeerBody, MsgReplyRef, MsgShareBody, MsgTextBody, SearchTitle } from "../contracts";
+import type { LastSeenPayload, MessagesPayload, MsgDeleteKind, MsgEvent, MsgImage, MsgPeerBody, MsgReplyRef, MsgShareBody, MsgTextBody, SearchTitle } from "../contracts";
 import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
+import { DeleteSheet, canUnsend, deleteRemote } from "./DeleteSheet";
+import { richNodes } from "../richText";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -54,6 +55,8 @@ import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 const PAGE_PAD = 16;
 /** مفتاحُ الحدث — نوعُه ومعرّفُه، فلا يتصادم ردٌّ ومشاركةٌ بمعرّفٍ واحد */
 const keyOf = (e: MsgEvent) => `${e.kind}-${e.id}`;
+/** 🆕 D-1441 — ما يُحذف فرادى: الرسالةُ المباشرةُ والبطاقتان؛ الردودُ القديمةُ في خيوط الأعمال لا */
+const delKind = (e: MsgEvent): MsgDeleteKind | null => (e.kind === "reply" ? (e.dm ? "dm" : null) : e.kind);
 type Row = { type: "day"; key: string; label: string } | { type: "ev"; key: string; e: MsgEvent };
 
 /**
@@ -61,23 +64,6 @@ type Row = { type: "day"; key: string; label: string } | { type: "ev"; key: stri
  * كان ١٤/٤٠٠ — Tajawal العاديُّ رفيعٌ وحروفُه قصيرة فيبدو أصغرَ من مقاسه في فقاعةٍ صغيرة. الخطُّ نفسُه، أثقلُ درجة.
  */
 const MSG_SIZE = 16;
-/**
- * 🆕 D-1439 — المنشنُ والروابطُ في مسحٍ واحد: `@اسم` (قاعدةُ `mentionsIn`) أو رابطٌ يبدأ بـ`http(s)://` أو `www.` أو نطاقِ لوبز.
- * الحرفُ قبل كلٍّ منهما ليس حرفاً — فلا يُقطع بريدٌ ولا كلمةٌ ملتصقة.
- */
-const TOKEN_RE = /(^|[^A-Za-z0-9_@/.])(@[A-Za-z0-9_]{3,24}(?![A-Za-z0-9_])|(?:https?:\/\/|www\.|loopztv\.com\/)[^\s]+)/gi;
-const LINK_HINT = /https?:\/\/|www\.|loopztv\.com\//i;
-/** نطاقاتُ لوبز: مسارُها شاشةٌ أصليّة لا صفحةُ ويب */
-const LOOPZ_HOSTS = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
-function openLink(href: string, onPath?: (path: string) => void) {
-  try {
-    const u = new URL(href);
-    if (onPath && LOOPZ_HOSTS.has(u.hostname.toLowerCase())) return onPath(`${u.pathname}${u.search}`);
-  } catch {
-    return;
-  }
-  void WebBrowser.openBrowserAsync(href).catch(() => {});
-}
 const MSG_LINE = 23;
 
 export function ConversationScreen({ peer, from }: { peer: string; from: Origin }) {
@@ -400,7 +386,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   }, [selected, selectedEvents]);
   const canCopy = selectedEvents.some((e) => !!copyableOf(e));
   /* الردُّ على رسالةٍ مباشرةٍ واحدة — الردودُ القديمة في خيوط الأعمال والبطاقاتُ لا يُقتبس منها (الهجرة ٢٠٣ على `direct_messages`) */
-  const replyable = selectedEvents.length === 1 && selectedEvents[0].kind === "reply" && !!selectedEvents[0].dm ? selectedEvents[0] : null;
+  const replyable = selectedEvents.length === 1 && selectedEvents[0].kind === "reply" && !!selectedEvents[0].dm && !selectedEvents[0].deleted ? selectedEvents[0] : null;
   const copySelected = useCallback(() => {
     const text = copyTextOf(selectedEvents, (mine) => (mine ? t.convYou : displayNameOf(person, t.anonymousUser)), t);
     if (!text) return;
@@ -412,6 +398,41 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
       .catch(() => say(t.apiInternal));
     setSelected([]);
   }, [selectedEvents, person, t, say]);
+  /* ——— 🆕 D-1441 — الحذف: الرسالةُ المباشرةُ والبطاقتان (عملٌ · قائمة)؛ الردودُ القديمةُ في خيوط الأعمال لا تُحذف فرادى ——— */
+  const [delOpen, setDelOpen] = useState(false);
+  const canDelete = selectedEvents.length > 0 && selectedEvents.every((e) => !!delKind(e));
+  const canAll = canDelete && canUnsend(selectedEvents) && selectedEvents.every((e) => !(e.kind === "reply" && e.deleted));
+  const runDelete = useCallback(
+    (scope: "me" | "all") => {
+      const items = selectedEvents.map((e) => ({ kind: delKind(e)!, id: e.id }));
+      const ids = new Set(items.map((i) => i.id));
+      setDelOpen(false);
+      setSelected([]);
+      haptic.pick();
+      /* متفائلٌ: «عندي» يزيلها، و«للجميع» يمحو الرسالةَ ويُبقي سطرَها (والبطاقةُ تختفي من الطرفين) */
+      patchConversation(peer, (c) => ({
+        ...c,
+        events:
+          scope === "me"
+            ? c.events.filter((e) => !ids.has(e.id))
+            : c.events.flatMap((e): MsgEvent[] =>
+                !ids.has(e.id) ? [e] : e.kind === "reply" ? [{ kind: "reply", id: e.id, mine: e.mine, body: "", created_at: e.created_at, dm: true, deleted: true }] : [],
+              ),
+      }));
+      deleteRemote({ scope, items })
+        .then((r) => {
+          if (r.refused.length) {
+            say(scope === "all" ? t.apiUnsendWindow : t.apiInternal);
+            void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+          }
+        })
+        .catch((err: unknown) => {
+          say(errorText(t, err));
+          void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+        });
+    },
+    [selectedEvents, peer, say, t],
+  );
   const beginReply = useCallback((e: MsgEvent) => {
     setSelected([]);
     setViewer(null);
@@ -457,6 +478,10 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
             ) : null}
             <Pressable onPress={copySelected} disabled={!canCopy} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgCopy} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", opacity: canCopy ? 1 : 0.35, backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
               <Icon name="copy" size={20} color={tokens.fg} />
+            </Pressable>
+            {/* 🆕 D-1441 — «حذف» بعد «نسخ» كالواتس */}
+            <Pressable onPress={() => setDelOpen(true)} disabled={!canDelete} hitSlop={6} accessibilityRole="button" accessibilityLabel={t.msgDelete} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", opacity: canDelete ? 1 : 0.35, backgroundColor: pressed ? tokens.surface2 : "transparent" })}>
+              <Icon name="trash" size={20} color={tokens.fg} />
             </Pressable>
           </View>
         ) : (
@@ -666,6 +691,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         </Sheet>
       ) : null}
 
+      {delOpen ? <DeleteSheet count={selectedEvents.length} canAll={canAll} onMe={() => runDelete("me")} onAll={() => runDelete("all")} onClose={() => setDelOpen(false)} /> : null}
       {busy || doors.leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />
@@ -774,46 +800,11 @@ export function Bubble({
   const { t, tokens } = useApp();
   /* 🆕 D-1436 — `@عضو` بوزنٍ أثقل ومسطَّر، بلون النصّ نفسِه (على فقاعتي الذهبيّة لونُ التمييز لا يُقرأ). مقاطعُ `Text` داخل
      `Text`: كلُّ مقطعٍ يأخذ خطَّ حروفه (عربيّ/لاتينيّ) كالنصّ الكامل */
-  const bodyOf = (str: string): React.ReactNode => {
-    /* 🆕 D-1439 — الروابطُ تُلمس (أحمد ١٦ أكتوبر: «إذا أحد رسل رابط لازم يكون لونه أزرق وأقدر أفتحه»): أزرقُ مسطّرٌ في فقاعات
-       الآخرين، وفي فقاعتي الذهبيّة بلون نصّها مسطّراً («٣ أ» — الأزرقُ على الذهبيّ لا يُقرأ). روابطُ لوبز تفتح الشاشةَ الأصليّة
-       (`onPath`)، وغيرُها متصفّحاً داخل التطبيق يُغلق بسحبة («٢ أ») */
-    if (!str.includes("@") && !LINK_HINT.test(str)) return str;
-    const plain = e.mine ? tokens.onAccent : tokens.fg;
-    const seg = (key: string, txt: string) => <Text key={key} size={MSG_SIZE} weight="500" chat color={plain}>{txt}</Text>;
-    const out: React.ReactNode[] = [];
-    let last = 0;
-    for (const m of str.matchAll(TOKEN_RE)) {
-      const start = (m.index ?? 0) + (m[1]?.length ?? 0);
-      let tok = m[2] ?? "";
-      if (tok.startsWith("@")) {
-        const name = tok.slice(1).toLowerCase();
-        if (!mentions?.has(name)) continue;
-        if (start > last) out.push(seg(`t${last}`, str.slice(last, start)));
-        out.push(
-          <Text key={`m${start}`} size={MSG_SIZE} weight="700" chat color={plain} style={{ textDecorationLine: "underline" }} onPress={onMention ? () => onMention(name) : undefined}>
-            {tok}
-          </Text>,
-        );
-        last = start + tok.length;
-        continue;
-      }
-      /* علامةُ ترقيمٍ في آخر الجملة ليست من الرابط */
-      tok = tok.replace(/[.,!?؟،:;)\]}»"']+$/, "");
-      if (!tok) continue;
-      if (start > last) out.push(seg(`t${last}`, str.slice(last, start)));
-      const href = /^https?:\/\//i.test(tok) ? tok : `https://${tok}`;
-      out.push(
-        <Text key={`l${start}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.info} style={{ textDecorationLine: "underline" }} onPress={() => openLink(href, onPath)}>
-          {tok}
-        </Text>,
-      );
-      last = start + tok.length;
-    }
-    if (!out.length) return str;
-    if (last < str.length) out.push(seg(`t${last}`, str.slice(last)));
-    return out;
-  };
+  /* 🆕 D-1439 — الروابطُ تُلمس (أحمد ١٦ أكتوبر: «إذا أحد رسل رابط لازم يكون لونه أزرق وأقدر أفتحه»): أزرقُ مسطّرٌ في فقاعات
+     الآخرين، وفي فقاعتي الذهبيّة بلون نصّها مسطّراً («٣ أ» — الأزرقُ على الذهبيّ لا يُقرأ). 🆕 D-1443 — الرسمُ صار في
+     `richText.tsx` يقرؤه النقاشُ أيضاً */
+  const bodyOf = (str: string): React.ReactNode =>
+    richNodes(str, { size: MSG_SIZE, weight: "500", chat: true, color: e.mine ? tokens.onAccent : tokens.fg, linkColor: e.mine ? tokens.onAccent : tokens.info, mentions, onMention, onPath });
   /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
   const [ratio, setRatio] = useState(4 / 3);
   /*
@@ -846,8 +837,17 @@ export function Bubble({
   );
 
   let inner: React.ReactNode;
-  /* 🆕 D-1387 — GIF أو صورةٌ في إطارٍ بلون صاحبها (٣ حول الصورة)، والتعليقُ تحتها داخل الإطار؛ الصورةُ تُفتح بملء الشاشة */
-  if (e.kind === "reply" && (e.gif_id || e.image)) {
+  /* 🆕 D-1441 — حذفها صاحبُها للجميع: سطرٌ خافتٌ مائلٌ بإطارٍ متقطّع مكانَها (لا لونُ صاحبها — لم يبق محتوى)، كالواتس */
+  if (e.kind === "reply" && e.deleted) {
+    inner = (
+      <View style={side}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 18, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, paddingHorizontal: 14, paddingVertical: 8 }}>
+          <Icon name="trash" size={13} color={tokens.muted} />
+          <Text size={14} muted style={{ fontStyle: "italic" }}>{e.mine ? t.msgDeletedMine : t.msgDeleted}</Text>
+        </View>
+      </View>
+    );
+  } else if (e.kind === "reply" && (e.gif_id || e.image)) {
     const img = e.image ?? null;
     const w = 234;
     inner = (

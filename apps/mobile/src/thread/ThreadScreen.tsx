@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Platform, Pressable, Share, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, Share, type TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -18,7 +18,13 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Sheet } from "../library/Sheet";
 import { afterPaint, span } from "../perfMarks";
 import { errorText } from "../community/communityActs";
-import { Composer, type Draft } from "./Composer";
+import { type Draft } from "./Composer";
+import { ChatDock, useKeyboardInset, usePicUpload } from "../messages/chatDock";
+import { ReplyQuote } from "../messages/ReplyQuote";
+import { MentionList, useMentions } from "../messages/mentions";
+import { Chip } from "../library/Chip";
+import type { PersonLite } from "@/core/people";
+import type { SearchTitle } from "../contracts";
 import { rememberGif } from "./GifPicker";
 import { ReplyItem, TEMP } from "./ReplyItem";
 import { backdropUrl } from "@/core/media";
@@ -108,6 +114,30 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const fail = useCallback((e: unknown) => say(errorText(t, e)), [say, t]);
 
+  /* ——— 🆕 D-1443 — خانةُ الرسائل في النقاش (أحمد ١٦ أكتوبر: «كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات حتى
+     طريقة الكيبورد»، «١ أ»): الحقلُ ثابتٌ تحت الغرفة بدل الورقة الوسطى وزرِّ ✎ (D-1032 منقوض)، و«+» يفتح لوحةً مكانَ لوحة
+     المفاتيح (صورة · GIF · بحث لوبز) والحقلُ يصير بحثَها، و«رد» يضع «ردّاً على فلان» فوقه، و`@` يكمل أسماءَ من كتبوا هنا ——— */
+  const rootRef = useRef<View>(null);
+  const kb = useKeyboardInset(rootRef);
+  const inputRef = useRef<TextInput>(null);
+  const [text, setText] = useState("");
+  const [replyTo, setReplyTo] = useState<ThreadRow | null>(null);
+  const [spoiler, setSpoiler] = useState(false);
+  const [attach, setAttach] = useState(false);
+  const attachRef = useRef(false);
+  attachRef.current = attach;
+  const closeAttach = useCallback(() => setAttach(false), []);
+  const toggleAttach = useCallback(() => {
+    if (attachRef.current) {
+      setAttach(false);
+      inputRef.current?.focus();
+    } else {
+      Keyboard.dismiss();
+      setAttach(true);
+    }
+  }, []);
+  const { pic, setPic, pickImage } = usePicUpload(say, { thread: true });
+
   /* ——— الملاحة ——— */
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -116,6 +146,11 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1443 — لوحةُ «+» مفتوحة ⇒ الرجوعُ يغلقها أوّلاً (كالرسائل) */
+      if (attachRef.current) {
+        setAttach(false);
+        return true;
+      }
       back();
       return true;
     });
@@ -262,7 +297,6 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   );
 
   /* ——— الكتابة ——— */
-  const [composing, setComposing] = useState<{ parent: ThreadRow | null } | null>(null);
   /**
    * 🆕 N2-fix — **«تعليق» يفتح حقلَ الكتابة لا الخيطَ وحدَه** (أحمد ٢٩ سبتمبر: «ضغطت كومنت.. وداني صفحة ولا أعتقد أقدر أكتب فيها»):
    * زرُّ ✎ العائم كان البابَ الوحيد، ولا يُرى أنّه للكتابة. من جاء بـ`compose` يجد الحقلَ مفتوحاً مرّةً حين يصل الخيط.
@@ -286,6 +320,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         has_spoiler: nested && draft.spoiler,
         image: nested ? draft.image : null,
         gif_id: nested ? draft.gif : null,
+        ...(nested && draft.share ? { share: draft.share } : {}),
         translated: null,
         likes: 0,
         liked_by_me: false,
@@ -301,6 +336,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           has_spoiler: row.has_spoiler,
           image_url: row.image,
           gif_id: row.gif_id,
+          ...(row.share ? { share: row.share } : {}),
         });
         if (r) {
           patchRow(temp, (x) => ({ ...x, id: r.reply_id, created_at: r.created_at, person: { ...x.person, ...r.author } }));
@@ -318,6 +354,62 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
     },
     [d, nested, route, patch, patchRow, fail],
   );
+
+  /* 🆕 D-1443 — «أرسل» من الخانة: متفائلٌ (الحقلُ يُفرغ فوراً)، والفشلُ يعيد النصَّ والصورةَ والاقتباس */
+  const [sending, setSending] = useState(false);
+  const sendDock = useCallback(() => {
+    const body = text.trim();
+    if ((!body && !pic?.path) || (pic && !pic.path) || sending) return;
+    const was = { text, pic, replyTo, spoiler };
+    setText("");
+    setPic(null);
+    setReplyTo(null);
+    setSpoiler(false);
+    setSending(true);
+    void send(was.replyTo, { body, spoiler: was.spoiler, image: was.pic?.path ?? null, gif: null }).then((ok) => {
+      setSending(false);
+      if (ok) return;
+      setText((cur) => cur || was.text);
+      setPic((cur) => cur ?? was.pic);
+      setReplyTo((cur) => cur ?? was.replyTo);
+      setSpoiler(was.spoiler);
+    });
+  }, [text, pic, replyTo, spoiler, sending, send, setPic]);
+  /* الـGIF والعملُ يُرسلان بلمستهما (كالرسائل)، ردّاً على المقتبَس إن كان — وما في الحقل يبقى لرسالةٍ بعده */
+  const sendGif = useCallback(
+    (id: string) => {
+      const parent = replyTo;
+      setReplyTo(null);
+      void send(parent, { body: "", spoiler: false, image: null, gif: id }).then((ok) => {
+        if (!ok) setReplyTo((cur) => cur ?? parent);
+      });
+    },
+    [replyTo, send],
+  );
+  const sendTitle = useCallback(
+    (r: SearchTitle) => {
+      const parent = replyTo;
+      setReplyTo(null);
+      const share = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
+      void send(parent, { body: "", spoiler: false, image: null, gif: null, share }).then((ok) => {
+        if (!ok) setReplyTo((cur) => cur ?? parent);
+      });
+    },
+    [replyTo, send],
+  );
+  const beginReply = useCallback((row: ThreadRow) => {
+    haptic.pick();
+    setReplyTo(row);
+    setAttach(false);
+    setTimeout(() => inputRef.current?.focus(), 120);
+  }, []);
+  /* المنشن: من كتب هنا (غيري)، بلا تكرار */
+  const people = useMemo(() => {
+    const seen = new Map<string, PersonLite>();
+    for (const r of d?.rows ?? []) if (!r.mine && !r.bulletin && r.person.username && !seen.has(r.person.id)) seen.set(r.person.id, r.person);
+    return [...seen.values()];
+  }, [d?.rows]);
+  const { names: mentionNames, hits: mentionHits, pick: pickMention } = useMentions(text, setText, people, inputRef);
 
   /* ——— ⋯: احذف ردّي · إبلاغ ——— */
   const [menu, setMenu] = useState<ThreadRow | null>(null);
@@ -380,7 +472,8 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   useEffect(() => {
     if (!composeOnce.current || !d || !signedIn) return;
     composeOnce.current = false;
-    setComposing({ parent: null });
+    /* من جاء بـ`compose` («اكتب ردك» من إشعار) يجد الحقلَ مركَّزاً */
+    setTimeout(() => inputRef.current?.focus(), 250);
   }, [d, signedIn]);
   const renderItem = useCallback(
     ({ item }: { item: Item }) => {
@@ -416,15 +509,19 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           showVotes={!!d?.has_votes}
           onLike={like}
           onVote={vote}
-          onReply={(row) => setComposing({ parent: row })}
+          onReply={beginReply}
           onMenu={setMenu}
           onImage={setImage}
           onProfile={(row) => openProfile(row.person)}
+          mentions={mentionNames}
+          onMention={(u) => openWeb(`/u/${u}`)}
+          onPath={openWeb}
+          onTitle={(kind, id) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: from === "web" ? "web" : from } })}
         />
       );
       return item.indented ? <View style={{ marginStart: 20, paddingStart: 12, borderStartWidth: 1, borderStartColor: tokens.divider }}>{body}</View> : body;
     },
-    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile],
+    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from],
   );
 
   const header = d ? (
@@ -440,7 +537,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   ) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
         <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
@@ -482,37 +579,54 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           renderItem={renderItem}
           ListHeaderComponent={header}
           ListEmptyComponent={<Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{nested ? t.talkRoomEmpty : t.postNoReplies}</Text>}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 96 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: signedIn ? 16 : insets.bottom + 24 }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onTouchStart={() => attachRef.current && setAttach(false)}
           initialNumToRender={10}
           windowSize={9}
         />
       )}
 
+      {d && signedIn ? <MentionList hits={mentionHits} onPick={pickMention} /> : null}
       {d && signedIn ? (
-        /* زرُّ الكتابة العائم (`ThreadReplies`): «شارِك في النقاش» للغرفة و«اكتب ردّك» لغيرها */
-        <Pressable
-          onPress={() => {
-            haptic.pick();
-            setComposing({ parent: null });
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
-          style={({ pressed }) => ({ position: "absolute", end: 16, bottom: insets.bottom + 20, width: 52, height: 52, borderRadius: 26, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }], elevation: 6 })}
-        >
-          <Icon name="edit" size={20} color={tokens.fg} />
-        </Pressable>
-      ) : null}
-
-      {composing ? (
-        <Composer
-          title={composing.parent ? t.talkReply : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
-          hint={composing.parent ? t.talkReplyingTo(nameOf.get(composing.parent.id) ?? "") : undefined}
-          allowSpoiler={nested}
-          allowImage={nested}
-          allowGif={nested}
-          onSend={(draft) => send(composing.parent, draft)}
-          onClose={() => setComposing(null)}
+        <ChatDock
+          text={text}
+          onText={setText}
+          pic={pic}
+          onClearPic={() => setPic(null)}
+          quote={
+            replyTo || (nested && (text.trim() || pic)) ? (
+              <View style={{ gap: 8 }}>
+                {replyTo ? (
+                  <ReplyQuote
+                    r={{ id: replyTo.id, mine: replyTo.mine, kind: replyTo.image ? "image" : replyTo.gif_id ? "gif" : "text", body: replyTo.body.replace(/\s+/g, " ").trim().slice(0, 140), ...(replyTo.image ? { image: { url: replyTo.image, key: replyTo.image } } : {}), ...(replyTo.gif_id ? { gif_id: replyTo.gif_id } : {}) }}
+                    peerName={nameOf.get(replyTo.id) ?? ""}
+                    onClear={() => setReplyTo(null)}
+                  />
+                ) : null}
+                {/* «فيها حرق» حيث يُخزَّن (الغرفةُ وحدَها) — يظهر حين يكون في الخانة ما يُرسل */}
+                {nested && (text.trim() || pic) ? (
+                  <View style={{ alignSelf: "flex-start" }}>
+                    <Chip label={t.spoilerMark} active={spoiler} onPress={() => setSpoiler((v) => !v)} leading={<Icon name={spoiler ? "eye-off" : "eye"} size={14} color={spoiler ? tokens.onAccent : tokens.muted} />} />
+                  </View>
+                ) : null}
+              </View>
+            ) : null
+          }
+          inputRef={inputRef}
+          kb={kb}
+          bottomInset={insets.bottom}
+          sending={sending}
+          canSend={(!!text.trim() || !!pic) && !(pic && !pic.path) && !sending}
+          onAttach={nested ? toggleAttach : undefined}
+          attach={attach}
+          onAttachClose={closeAttach}
+          onImage={() => void pickImage()}
+          onGif={nested ? sendGif : undefined}
+          onLoopz={route.t === "talk" ? sendTitle : undefined}
+          onSend={sendDock}
+          placeholder={replyTo ? t.talkReplyingTo(nameOf.get(replyTo.id) ?? "") : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
         />
       ) : null}
 

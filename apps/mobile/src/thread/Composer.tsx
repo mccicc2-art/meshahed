@@ -34,7 +34,14 @@ import { shrinkForUpload } from "../imageShrink";
  * ويُعاد تدويرُه مع التمرير — **والورقةُ الوسطى هي موضعُ «كتابة تعليق» بكلمة أحمد (D-1032)**، ولوحةُ المفاتيح فيها
  * محلولةٌ مرّةً (D-1005).
  */
-export type Draft = { body: string; spoiler: boolean; image: string | null; gif: string | null };
+export type Draft = {
+  body: string;
+  spoiler: boolean;
+  image: string | null;
+  gif: string | null;
+  /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (خانةُ النقاش في `ThreadScreen`) */
+  share?: { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null } | null;
+};
 
 export function Composer({
   title,

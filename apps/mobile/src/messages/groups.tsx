@@ -61,7 +61,7 @@ export function groupPreview(g: MsgGroupConversation, meId: string, t: Dict): st
   if (!last) return "";
   if (last.kind === "sys") return sysLine(last, g, meId, t);
   const who = last.mine ? t.convYou : nameIn(g, last.sender_id, meId, t);
-  const what = last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.title ? titleText(last) : last.body;
+  const what = last.deleted ? (last.mine ? t.msgDeletedMine : t.msgDeleted) : last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.title ? titleText(last) : last.body;
   return `${who}: ${what}`;
 }
 
@@ -97,6 +97,8 @@ export function asBubbleEvent(e: GroupMsgEvent): MsgEvent {
     ...(e.gif_id ? { gif_id: e.gif_id } : {}),
     ...(e.image ? { image: e.image } : {}),
     ...(e.mine && typeof e.read === "boolean" ? { read: e.read } : {}),
+    /* 🆕 D-1441 — المحذوفةُ للجميع تُرسم سطرَ «حُذفت» نفسَه في الخاص */
+    ...(e.deleted ? { deleted: true } : {}),
     ...(e.reply
       ? { reply: { id: e.reply.id, mine: e.reply.mine, kind: e.reply.kind, body: e.reply.body, ...(e.reply.image ? { image: e.reply.image } : {}), ...(e.reply.gif_id ? { gif_id: e.reply.gif_id } : {}) } }
       : {}),

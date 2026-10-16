@@ -12,7 +12,7 @@ import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
-import type { MsgImagePayload, SearchTitle } from "../contracts";
+import type { MsgImagePayload, SearchTitle, ThreadImagePayload } from "../contracts";
 import { GifPanel, LoopzPanel } from "./PanelModes";
 
 /**
@@ -58,11 +58,13 @@ export function useKeyboardInset(rootRef: React.RefObject<View | null>): number 
  * صورةُ الرسالة: تُصغَّر وتُرفع فورَ اختيارها (`path` حين يعود الخادم)، والفشلُ يقول سببه.
  * 🆕 `crop` — صورةُ القروب: تمرّ بشاشة القصّ أوّلاً (تكبير · تحريك · لفّ)، وتُرسم الشاشةُ بـ`cropUi`.
  */
-export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape }) {
+export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape; thread?: boolean }) {
   const { t } = useApp();
   const [pic, setPic] = useState<ChatPic | null>(null);
   const { pickCropped, cropUi } = useImageCrop();
   const crop = opts?.crop;
+  /* 🆕 D-1443 — صورةُ النقاش إلى مخزنه العامّ (`/api/v1/thread/image` → رابط)، لا إلى مخزن الرسائل الخاصّ */
+  const thread = !!opts?.thread;
   const pickImage = useCallback(async () => {
     let chosen: string | null = null;
     if (crop) {
@@ -81,10 +83,12 @@ export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape
       const mine = local;
       setPic({ local: mine, path: null });
       const form = new FormData();
-      form.append("file", filePart(mine, "dm.jpg", "image/jpeg"));
-      const out = await postForm<MsgImagePayload>("/api/v1/me/messages/image", form);
+      form.append("file", filePart(mine, thread ? "talk.jpg" : "dm.jpg", "image/jpeg"));
+      const path = thread
+        ? (await postForm<ThreadImagePayload>("/api/v1/thread/image", form)).url
+        : (await postForm<MsgImagePayload>("/api/v1/me/messages/image", form)).path;
       /* أُزيلت أو استُبدلت وهي تُرفع ⇒ لا تعود */
-      setPic((cur) => (cur && cur.local === mine ? { ...cur, path: out.path } : cur));
+      setPic((cur) => (cur && cur.local === mine ? { ...cur, path } : cur));
     } catch (e) {
       setPic((cur) => (cur && cur.local === local ? null : cur));
       const api = e instanceof ApiError ? e : null;
@@ -92,7 +96,7 @@ export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape
       const reason = typeof known === "string" ? known : api ? `${api.error.code} ${api.status}` : e instanceof Error ? e.message.slice(0, 80) : "";
       say(api?.error.message_key === "apiImageTooLarge" ? t.errTooLarge : `${t.errUpload}${reason}`);
     }
-  }, [say, t, crop, pickCropped]);
+  }, [say, t, crop, pickCropped, thread]);
   return { pic, setPic, pickImage, cropUi: crop ? cropUi : null };
 }
 
@@ -116,6 +120,7 @@ export function ChatDock({
   onImage,
   onGif,
   onLoopz,
+  placeholder,
 }: {
   text: string;
   onText: (v: string) => void;
@@ -128,8 +133,11 @@ export function ChatDock({
   bottomInset: number;
   sending: boolean;
   canSend: boolean;
-  onAttach: () => void;
+  /** «+» — غائبٌ ⇒ لا زرّ (نقاشٌ لا يخزّن صورةً ولا GIF: المنشورُ والرأي) */
+  onAttach?: () => void;
   onSend: () => void;
+  /** 🆕 D-1443 — نصُّ الحقل الفارغ (النقاش: «شارِك في النقاش…») */
+  placeholder?: string;
   /** ارتفاعُ الخانة بلا لوحة مفاتيح وبسطرٍ واحد — الخلفيّةُ تُمطّ إلى حافّتها (D-1386) */
   onRestingHeight?: (h: number) => void;
   /** 🆕 D-1438 — لوحةُ «+» مفتوحة: تُرسم تحت الخانة مكانَ لوحة المفاتيح، و«+» يصير زرَّ الكتابة */
@@ -224,6 +232,7 @@ export function ChatDock({
       {/* يلزم الزرّان قاعَ الحقل وهو ينمو (`items-end`) */}
       <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
         {/* 🆕 D-1387 — زرٌّ واحدٌ «+» (أحمد: «مكان الزر واحد») يفتح ورقةً بخيارين: صورة · GIF */}
+        {onAttach ? (
         <Pressable
           onPress={() => {
             haptic.pick();
@@ -242,6 +251,7 @@ export function ChatDock({
         >
           <Icon name={searching ? "close" : open ? "keyboard" : "plus"} size={searching ? 16 : open ? 20 : 18} color={tokens.fg} />
         </Pressable>
+        ) : null}
         <TextInput
           maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           ref={inputRef}
@@ -249,9 +259,9 @@ export function ChatDock({
           onChangeText={(v) => (searching ? setQ(v.slice(0, 80)) : onText(v.slice(0, MSG_TEXT_MAX)))}
           multiline={!searching}
           maxLength={searching ? 80 : MSG_TEXT_MAX}
-          placeholder={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : t.shareReplyPlaceholder}
+          placeholder={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : placeholder ?? t.shareReplyPlaceholder}
           placeholderTextColor={tokens.muted}
-          accessibilityLabel={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : t.shareReplyPlaceholder}
+          accessibilityLabel={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : placeholder ?? t.shareReplyPlaceholder}
           returnKeyType={searching ? "search" : undefined}
           onLayout={(e) => setOneLine(e.nativeEvent.layout.height < 50)}
           style={{ flex: 1, minWidth: 0, minHeight: 22 + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left", textAlignVertical: "center" }}
