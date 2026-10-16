@@ -122,6 +122,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       has_spoiler: p.hasSpoiler,
       image: bulletin ? null : safeImage(p.imagePath ?? (p.data as Record<string, unknown> | null)?.img),
       gif_id: bulletin ? null : p.gifId,
+      ...(!bulletin && p.share ? { share: p.share } : {}),
       translated: translations[p.postId] ?? null,
       likes: likes.counts[p.postId] ?? 0,
       liked_by_me: mine.has(p.postId),

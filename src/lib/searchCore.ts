@@ -1,6 +1,6 @@
 import "server-only";
-import { searchPeople as searchMembers, searchPublicLists } from "@/lib/data";
-import { searchMulti, searchPeople, yearOf, getTv, getMovie, trendingToday } from "@/lib/tmdb";
+import { searchPeople as searchMembers, searchPublicLists, getPeopleFeatured, getTopSavedListCards, getPublicListsFeed } from "@/lib/data";
+import { searchMulti, searchPeople, yearOf, getTv, getMovie, trendingToday, trendingPeopleToday } from "@/lib/tmdb";
 import { looksAnime } from "@/lib/topChart";
 import { resolveTmdbTitle } from "@/core/media";
 import { posterUrl, profileUrl } from "@/core/media";
@@ -9,7 +9,7 @@ import { roleName } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
 import { getTranslits, searchTranslits } from "@/lib/titleAliases";
 import { needsTranslit } from "@/core/titleMode";
-import type { SearchPayload, SearchScope, SearchTrendingItem } from "@/core/searchTypes";
+import type { SearchPayload, SearchScope, SearchTrendingItem, SearchTrendingPayload } from "@/core/searchTypes";
 
 /**
  * ====== نواةُ البحث — منطقٌ واحدٌ لبابين (Phase 11-G · G0) ======
@@ -182,5 +182,50 @@ export async function trendingSearch(): Promise<SearchTrendingItem[]> {
     });
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 D-1442 — **ما تحت الرقاقات قبل الكتابة يتبع الرقاقة** (أحمد ١٦ أكتوبر، لقطةُ «فنانون» فوق «رائج اليوم» من الأعمال):
+ * - الكلُّ والأعمال ⇒ «رائج اليوم» كما كان (`items`).
+ * - فنانون ⇒ الرائجون اليوم في TMDB. أعضاء ⇒ المميَّزون في المجتمع آخرَ ثلاثين يوماً (`people_featured` نفسُها).
+ * - قوائم ⇒ الأكثرُ حفظاً آخرَ ثلاثين يوماً، وإن قلّت فأحدثُ القوائم المعلنة.
+ * لا يرمي: فشلُ مصدرٍ يعيد قائمتَه فارغةً فتقول الشاشةُ «ابدأ الكتابة» كما كانت.
+ */
+export async function trendingFor(scope: SearchScope): Promise<SearchTrendingPayload> {
+  if (scope === "all" || scope === "titles") return { items: await trendingSearch() };
+  const { locale, t } = await getT();
+  try {
+    if (scope === "artists") {
+      const rows = (await trendingPeopleToday().catch(() => [])).slice(0, TRENDING_LIMIT * 2);
+      return {
+        items: [],
+        artists: rows.map((p) => ({ id: p.id, name: p.name, role: roleName(p.known_for_department, t), photo: profileUrl(p.profile_path ?? null, "w185") })),
+      };
+    }
+    if (scope === "members") {
+      const rows = await getPeopleFeatured(30, 12).catch(() => []);
+      /* الحقولُ الزائدة (المجاميع) تسقط: الشكلُ شكلُ عضو البحث حرفاً */
+      return {
+        items: [],
+        members: rows.map((r) => ({ id: r.id, nickname: r.nickname, username: r.username, avatar_url: r.avatar_url, hide_name: r.hide_name, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null })),
+      };
+    }
+    let lists = await getTopSavedListCards(30, 12).catch(() => []);
+    if (lists.length < 4) {
+      const seen = new Set(lists.map((l) => l.id));
+      lists = [...lists, ...(await getPublicListsFeed(12).catch(() => [])).filter((l) => !seen.has(l.id))].slice(0, 12);
+    }
+    return {
+      items: [],
+      lists: lists.map((l) => ({
+        id: l.id,
+        name: curatedName(l.source_slug, l.name, locale === "en" ? "en" : "ar"),
+        count: l.item_count,
+        poster: posterUrl(l.posters?.[0] ?? null, "w185"),
+      })),
+    };
+  } catch {
+    return { items: [] };
   }
 }

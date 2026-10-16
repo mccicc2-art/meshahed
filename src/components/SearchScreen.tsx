@@ -21,6 +21,7 @@ import type {
   SearchScope,
   SearchTitle,
   SearchTrendingItem,
+  SearchTrendingPayload,
 } from "@/core/searchTypes";
 
 /**
@@ -86,6 +87,8 @@ export function SearchScreen({
   const [descFallback, setDescFallback] = useState(false);
   const [descPending, startDesc] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+  /* 🆕 D-1442 — ما تحت رقاقات «فنانون/أعضاء/قوائم» قبل الكتابة: يُطلب مرّةً لكلِّ رقاقةٍ حين تُختار ويُحفظ للجلسة */
+  const [scoped, setScoped] = useState<Partial<Record<SearchScope, SearchTrendingPayload>>>({});
 
   /* ⚖️ 🆕 **لا لوحةَ مفاتيحٍ عند الدخول** (D-1250، قرارُ أحمد ٣ أكتوبر ٢٠٢٦: «بلا لوحة في الويب أيضاً» —
      ينقض «من فتح البحث جاء ليكتب» وتركيزَ D-711 الفوريّ). الصفحةُ تُفتح اليومَ على «رائج اليوم»،
@@ -186,6 +189,21 @@ export function SearchScreen({
 
   const term = q.trim();
   const short = term.length < MIN;
+  const pre = scope === "artists" || scope === "members" || scope === "lists" ? scope : null;
+  const preData = pre ? scoped[pre] : undefined;
+  const want = short && pre && !preData ? pre : null;
+  useEffect(() => {
+    if (!want) return;
+    const ctrl = new AbortController();
+    fetch(`/api/v1/search/trending?scope=${want}`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { data?: SearchTrendingPayload } | null) => {
+        const d = j?.data;
+        if (d) setScoped((m) => ({ ...m, [want]: d }));
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [want]);
   const nothing =
     !!data &&
     !data.titles.length &&
@@ -355,7 +373,34 @@ export function SearchScreen({
             </div>
           </div>
 
-          {short ? (
+          {short && pre ? (
+            /* 🆕 D-1442 — تحت «فنانون/أعضاء/قوائم» قبل الكتابة: ما يناسب الرقاقةَ لا «رائج اليوم» من الأعمال */
+            !preData ? (
+              <Skeleton />
+            ) : pre === "artists" && preData.artists?.length ? (
+              <Section title={t.searchTrendingArtists} show seeAll={null} t={t}>
+                {preData.artists.map((a) => (
+                  <ArtistRow key={a.id} a={a} />
+                ))}
+              </Section>
+            ) : pre === "members" && preData.members?.length ? (
+              <Section title={t.searchFeaturedMembers} show seeAll={null} t={t}>
+                {preData.members.map((m) => (
+                  <div key={m.id} className="py-2.5">
+                    <PersonName person={m} t={t} size={40} sub={t.searchMemberRole} />
+                  </div>
+                ))}
+              </Section>
+            ) : pre === "lists" && preData.lists?.length ? (
+              <Section title={t.searchPopularLists} show seeAll={null} t={t}>
+                {preData.lists.map((l) => (
+                  <ListRow key={l.id} l={l} t={t} />
+                ))}
+              </Section>
+            ) : (
+              <p className="text-center text-muted py-16">{t.searchStart}</p>
+            )
+          ) : short ? (
             /* 🆕 **الفراغُ قبل الكتابة صار «رائج اليوم»** (قرارُ أحمد ٣ أكتوبر ٢٠٢٦ — ينقض «لا رائج» في
                خطّة 11-G): الصفُّ صفُّ النتيجة نفسُه برقم ترتيبه، فلا تقفز الشاشةُ حين تحلّ النتائجُ محلَّه.
                **وبلا علامةِ «عندك»** («ما يحتاج تقله عندك، هذا ترند»). وإن غابت القائمةُ عاد النصُّ القديم. */

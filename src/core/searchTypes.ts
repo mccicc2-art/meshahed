@@ -76,4 +76,8 @@ export interface SearchTrendingItem extends SearchTitle {
 
 export interface SearchTrendingPayload {
   items: SearchTrendingItem[];
+  /** 🆕 D-1442 — `?scope=artists|members|lists`: ما يُعرض تحت الرقاقة قبل الكتابة (غائبٌ في «الكل» و«الأعمال») */
+  artists?: SearchArtist[];
+  members?: PersonLite[];
+  lists?: SearchList[];
 }

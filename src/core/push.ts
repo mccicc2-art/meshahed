@@ -154,6 +154,16 @@ export function groupMessagePush(
   return { title: m.groupName || APP, body: `${who}: ${line}`.slice(0, 240), url: `/messages?group=${m.groupId}`, category: "dm" };
 }
 
+/**
+ * 🆕 D-1443 — **ذُكرتَ في نقاش** («كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات»): «فلان ذكرك في نقاش X: النصّ»،
+ * والوجهةُ غرفةُ العمل نفسُها (وجهةُ `talk_reply` في `signalHref`).
+ */
+export function talkMentionPush(m: { senderName: string; title: string; tmdbId: number; mediaType: "tv" | "movie"; text: string | null }, t: Dict): PushText {
+  const text = (m.text ?? "").replace(/\s+/g, " ").trim();
+  const head = t.pushTalkMention(m.senderName, m.title || APP);
+  return { title: APP, body: (text ? `${head}: ${text}` : head).slice(0, 240), url: `/talk/${m.mediaType}/${m.tmdbId}` };
+}
+
 /** حلقاتُ اليوم ⇢ دفعٌ واحدٌ للمستخدم: عملٌ واحدٌ يفتح صفحتَه، وأكثرُ يفتح الرئيسيّة */
 export function episodesPush(shows: { tmdbId: number; title: string }[], t: Dict): PushText | null {
   if (!shows.length) return null;

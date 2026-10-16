@@ -77,6 +77,7 @@ export function TitleSearchSheet({
   locale,
   initialMode = "titles",
   onPick,
+  pickTitle,
 }: {
   onClose: () => void;
   locale: Locale;
@@ -95,6 +96,8 @@ export function TitleSearchSheet({
    * مقسّماً، فيغيب كلُّه.
    */
   onPick?: (item: PickedTitle) => void;
+  /** 🆕 D-1443 — عنوانُ الورقة حين يُلتقط عملٌ لغير القائمة («بحث لوبز» في النقاش) */
+  pickTitle?: string;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -237,7 +240,7 @@ export function TitleSearchSheet({
     >
       <SheetHeader
         id="title-search-title"
-        title={onPick ? t.listAddTitles : t.navSearch}
+        title={onPick ? (pickTitle ?? t.listAddTitles) : t.navSearch}
         closeLabel={t.closeLabel}
         onClose={onClose}
       >

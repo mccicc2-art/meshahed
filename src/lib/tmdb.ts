@@ -532,6 +532,15 @@ export async function trendingToday(): Promise<SearchResult[]> {
   );
 }
 
+/**
+ * 🆕 D-1442 — **الفنانون الرائجون اليوم** (`/trending/person/day`): ما تعرضه رقاقةُ «فنانون» في البحث قبل أن يُكتب حرف
+ * (أحمد ١٦ أكتوبر: «إذا ضغطت الفلاتر القائمة تحت تتغيّر بناءً على الفلتر»). بلا صورةٍ لا يُعرض — كنتيجة البحث نفسِها.
+ */
+export async function trendingPeopleToday(): Promise<PersonResult[]> {
+  const data = await railTmdb<{ results: PersonResult[] }>("/trending/person/day");
+  return (data.results ?? []).filter((p) => p.profile_path);
+}
+
 // أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
 /**
  * أدنى ما يليق بصفّ «قادم قريباً».

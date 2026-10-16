@@ -33,10 +33,21 @@ export function parseThreadReplyBody(b: unknown): ThreadReplyBody | null {
   /* الصورةُ والـGIF و«فيها حرق» للغرفة وحدَها (`allowImage`/`allowGif`/`allowSpoiler = nested` في الويب) */
   const image_url = talk && str(o.image_url, 500) ? o.image_url : null;
   const gif_id = talk && str(o.gif_id, 64) ? o.gif_id : null;
-  /* نصٌّ أو صورةٌ أو GIF — **الردُّ الفارغُ يُرفض قبل الرحلة** (`ready` في `Composer`) */
-  if (!body && !image_url && !gif_id) return null;
+  /* 🆕 D-1443 — بطاقةُ عمل: للغرفة وحدَها، ولا تجتمع مع صورةٍ أو GIF (قيدُ الهجرة ٢٠٩ نفسُه) */
+  const so = talk ? obj(o.share) : null;
+  const share =
+    so && id(so.tmdb_id) && media(so.media_type) && !image_url && !gif_id
+      ? {
+          tmdb_id: so.tmdb_id,
+          media_type: so.media_type,
+          title: str(so.title, 300) ? so.title : null,
+          poster_path: typeof so.poster_path === "string" && /^\/[A-Za-z0-9_.-]{1,100}$/.test(so.poster_path) ? so.poster_path : null,
+        }
+      : null;
+  /* نصٌّ أو صورةٌ أو GIF أو عمل — **الردُّ الفارغُ يُرفض قبل الرحلة** (`ready` في `Composer`) */
+  if (!body && !image_url && !gif_id && !share) return null;
   const parent_id = str(o.parent_id) ? o.parent_id : null;
-  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id };
+  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id, ...(share ? { share } : {}) };
 }
 
 export function parseThreadRowBody(b: unknown): ThreadRowBody | null {

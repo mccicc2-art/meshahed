@@ -1816,6 +1816,24 @@ const ar = {
   msgPickGif: "GIF",
   /* 🆕 D-1435 — خانةُ «بحث لوبز» في ورقة «+»: ابحث واختر عملاً يُرسل بطاقةً في المحادثة */
   msgPickLoopz: "بحث لوبز",
+  /* 🆕 D-1441 — حذفُ الرسائل والمحادثة */
+  msgDelete: "حذف",
+  msgDeleteTitle: (n: number) => (n > 1 ? `حذف ${n} رسائل` : "حذف الرسالة"),
+  msgDeleteForMe: "حذف عندي",
+  msgDeleteForAll: "حذف للجميع",
+  msgDeleteForAllHint: "لرسائلك وحدها، خلال ساعتين من إرسالها",
+  msgDeleted: "حُذفت هذه الرسالة",
+  msgDeletedMine: "حذفتَ هذه الرسالة",
+  msgDeleteChat: "حذف المحادثة",
+  msgDeleteChatHint: (name: string) => `تختفي من عندك وحدك، وتبقى عند ${name}`,
+  apiUnsendWindow: "انتهت مهلةُ الحذف للجميع (ساعتان)",
+  /* 🆕 D-1442 — ما تحت رقاقات البحث قبل الكتابة */
+  searchTrendingArtists: "فنانون رائجون اليوم",
+  searchFeaturedMembers: "أعضاء مميّزون",
+  searchPopularLists: "قوائم رائجة",
+  /* 🆕 D-1443 — النقاش بخانة الرسائل */
+  pushTalkMention: (name: string, title: string) => `${name} ذكرك في نقاش ${title}`,
+  talkMentionsNone: "لا أحدَ بهذا الاسم في النقاش",
   msgPickGifSub: "ابحث في GIPHY",
   /* 🆕 D-1401/D-1402/D-1403 — الدردشة كالواتس: التحديدُ والنسخ، الردُّ والاقتباس، علامتا الوصول والقراءة، عارضُ الصورة */
   msgCopy: "نسخ",
@@ -3966,6 +3984,24 @@ const en: Dict = {
   msgPickImageSub: "From your gallery",
   msgPickGif: "GIF",
   msgPickLoopz: "Loopz Search",
+  /* 🆕 D-1441 */
+  msgDelete: "Delete",
+  msgDeleteTitle: (n: number) => (n > 1 ? `Delete ${n} messages` : "Delete message"),
+  msgDeleteForMe: "Delete for me",
+  msgDeleteForAll: "Delete for everyone",
+  msgDeleteForAllHint: "Your own messages, within two hours of sending",
+  msgDeleted: "This message was deleted",
+  msgDeletedMine: "You deleted this message",
+  msgDeleteChat: "Delete chat",
+  msgDeleteChatHint: (name: string) => `It disappears for you only; ${name} keeps their copy`,
+  apiUnsendWindow: "The two-hour window to delete for everyone has passed",
+  /* 🆕 D-1442 */
+  searchTrendingArtists: "Trending artists today",
+  searchFeaturedMembers: "Featured members",
+  searchPopularLists: "Popular lists",
+  /* 🆕 D-1443 */
+  pushTalkMention: (name: string, title: string) => `${name} mentioned you in the ${title} discussion`,
+  talkMentionsNone: "No one by that name in this discussion",
   msgPickGifSub: "Search GIPHY",
   msgCopy: "Copy",
   msgCopied: "Copied",

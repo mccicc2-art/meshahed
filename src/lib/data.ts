@@ -2023,6 +2023,8 @@ export interface ConvReplyEvent {
   reply?: ConvReplyRef | null;
   /** 🆕 D-1403 — رسالةٌ مباشرة (`direct_messages`) لا ردٌّ قديمٌ في خيط عمل — وحدها يُردّ عليها باقتباس */
   dm?: boolean;
+  /** 🆕 D-1441 — حذفها صاحبُها للجميع: «حُذفت هذه الرسالة» */
+  deleted?: boolean;
 }
 /** 🆕 D-1403 — مختصرُ الرسالة المقتبَسة: صاحبُها ونوعُها وأوّلُ سطرها أو صورتُها — يكفي للاقتباس ولا يحمل الأصلَ كلَّه */
 export interface ConvReplyRef {
@@ -2070,6 +2072,8 @@ type DmRow = {
   gif_id?: string | null;
   image_path?: string | null;
   reply_to?: string | null;
+  /** 🆕 D-1441 — الهجرة ٢٠٨ (قبلها غائب) */
+  deleted_at?: string | null;
 };
 /** 🆕 D-1387 — عمرُ رابط صورة الرسالة: ستُّ ساعات — الحمولةُ تُجلب أقلَّ من ذلك بكثير، والتطبيقُ يخزّن الصورةَ بمسارها لا برابطها */
 const DM_IMAGE_URL_TTL = 6 * 3600;
@@ -2080,7 +2084,8 @@ const DM_BASE_COLS = "id, sender_id, recipient_id, body, created_at, read_at";
 async function directMessageRows(supabase: Awaited<ReturnType<typeof createClient>>) {
   const q = (cols: string) =>
     supabase.from("direct_messages").select(cols).order("created_at", { ascending: false }).limit(2000);
-  for (const cols of [`${DM_BASE_COLS}, gif_id, image_path, reply_to`, `${DM_BASE_COLS}, gif_id, image_path`]) {
+  /* 🆕 D-1441 — `deleted_at` من الهجرة ٢٠٨ أوّلاً، وقبلها الدرجاتُ القديمة */
+  for (const cols of [`${DM_BASE_COLS}, gif_id, image_path, reply_to, deleted_at`, `${DM_BASE_COLS}, gif_id, image_path, reply_to`, `${DM_BASE_COLS}, gif_id, image_path`]) {
     const r = await q(cols);
     if (r.error?.code !== "42703") return r;
   }
@@ -2263,7 +2268,8 @@ export async function getConversations(): Promise<Conversation[]> {
     /* 🆕 D-1403 — مختصرُ الأصل المقتبَس؛ غائبٌ (حُذف · أُخفي من عندي) ⇒ «gone» فيقول الاقتباسُ «رسالة غير متاحة» */
     const refOf = (id: string): ConvReplyRef => {
       const o = dmById.get(id);
-      if (!o) return { id, mine: false, kind: "gone", body: "" };
+      /* 🆕 D-1441 — والمحذوفةُ للجميع غائبةٌ كذلك: لا يبقى منها في الاقتباس حرف */
+      if (!o || o.deleted_at) return { id, mine: false, kind: "gone", body: "" };
       const img = imageOf(o);
       const body = o.body.replace(/\s+/g, " ").trim().slice(0, REPLY_SNIPPET);
       if (o.gif_id) return { id, mine: o.sender_id === me.id, kind: "gif", body: "", gif_id: o.gif_id };
@@ -2284,6 +2290,7 @@ export async function getConversations(): Promise<Conversation[]> {
         ...(m.sender_id === me.id ? { read: !!m.read_at } : {}),
         ...(m.reply_to ? { reply: refOf(m.reply_to) } : {}),
         dm: true,
+        ...(m.deleted_at ? { deleted: true } : {}),
       });
       if (m.recipient_id === me.id && !m.read_at) c.unread++;
     }
@@ -3602,6 +3609,8 @@ export interface TalkPost {
   /** 🆕 **معرّفُ Giphy وحدَه — لا رابط** (D-362): الرابطُ يُركَّب من قالبٍ
       ثابتٍ في الواجهة، **فما يُخزَّن حروفٌ وأرقامٌ لا عنوان.** */
   gifId: string | null;
+  /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩؛ قبلها `null`) */
+  share: { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null } | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -3618,6 +3627,14 @@ export interface TalkPost {
  *
  * **وسقوطُها صامت** قبل تشغيل الهجرة: غرفةٌ فارغةٌ وصندوقُ كتابةٍ يعمل.
  */
+/** 🆕 D-1443 — بطاقةُ العمل في صفّ النقاش: معرّفٌ ونوعٌ صحيحان وإلّا لا بطاقة */
+function shareOf(r: { share_tmdb_id?: number | null; share_media_type?: string | null; share_title?: string | null; share_poster_path?: string | null }): TalkPost["share"] {
+  const kind = r.share_media_type;
+  return r.share_tmdb_id && (kind === "tv" || kind === "movie")
+    ? { media_type: kind, tmdb_id: Number(r.share_tmdb_id), title: r.share_title ?? null, poster_path: r.share_poster_path ?? null }
+    : null;
+}
+
 export async function getTitleThread(
   tmdbId: number,
   mediaType: "tv" | "movie",
@@ -3673,6 +3690,8 @@ export async function getTitleThread(
       imagePath: r.image_path ?? null,
       /* 🆕 D-362 — **يُقرأ متسامحاً وغيابُه `null`** (D-179) */
       gifId: (r as { gif_id?: string | null }).gif_id ?? null,
+      /* 🆕 D-1443 — أعمدةُ الهجرة ٢٠٩، وقبلها `undefined` ⇒ `null` */
+      share: shareOf(r as { share_tmdb_id?: number | null; share_media_type?: string | null; share_title?: string | null; share_poster_path?: string | null }),
       })),
       /* **والمعرّفُ هنا `authorId`**: `id` في هذين الشكلين معرّفُ
          المنشور لا صاحبَه — **ومفتاحٌ خاطئٌ يعطي شارةَ شخصٍ آخر.** */

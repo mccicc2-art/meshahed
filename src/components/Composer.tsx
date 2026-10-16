@@ -8,6 +8,7 @@ import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { GifPicker } from "./GifPicker";
+import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 import { gifUrl } from "@/core/media";
 
 /**
@@ -32,6 +33,7 @@ export function Composer({
   allowGif = false,
   onSend,
   onCancel,
+  onSendTitle,
 }: {
   locale: Locale;
   hint?: string;
@@ -69,8 +71,14 @@ export function Composer({
     gifId?: string | null,
   ) => void;
   onCancel: () => void;
+  /**
+   * 🆕 D-1443 — **«بحث لوبز»**: عملٌ يُختار من ورقة البحث نفسِها (`onPick`) ويُرسل بطاقةً فوراً — كما في الرسائل («كل المزايا
+   * اللي عملناها في الرسائل الخاصة اعملها في المناقشات»). غائبٌ ⇒ لا زرّ (النقاشُ وحدَه يخزّن البطاقة، الهجرة ٢٠٩).
+   */
+  onSendTitle?: (picked: PickedTitle) => void;
 }) {
   const t = getDict(locale);
+  const [titleOpen, setTitleOpen] = useState(false);
   const [body, setBody] = useState("");
   const [spoiler, setSpoiler] = useState(false);
   const [img, setImg] = useState<string | null>(null);
@@ -272,6 +280,19 @@ export function Composer({
             GIF
           </button>
         )}
+        {onSendTitle && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setTitleOpen(true)}
+            aria-label={t.msgPickLoopz}
+            title={t.msgPickLoopz}
+            aria-haspopup="dialog"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 text-muted transition hover:text-foreground disabled:opacity-50"
+          >
+            <Icon name="search" size={14} className="shrink-0" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}
@@ -280,6 +301,17 @@ export function Composer({
           {t.cancelLabel}
         </button>
       </div>
+      {onSendTitle && titleOpen && (
+        <TitleSearchSheet
+          locale={locale}
+          pickTitle={t.msgPickLoopz}
+          onClose={() => setTitleOpen(false)}
+          onPick={(p) => {
+            setTitleOpen(false);
+            onSendTitle(p);
+          }}
+        />
+      )}
       {allowGif && (
         <GifPicker
           open={gifOpen}

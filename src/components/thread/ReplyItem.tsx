@@ -6,7 +6,8 @@ import { num, getDict, type Locale } from "@/core/i18n";
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgoShort } from "@/core/when";
 import { dirOf } from "@/core/dir";
-import { gifUrl } from "@/core/media";
+import { gifUrl, posterUrl } from "@/core/media";
+import { richTokens, loopzPath } from "@/core/richText";
 import { tap } from "@/lib/haptics";
 import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/core/bulletinLine";
 import { AccountBadges } from "../AccountIdentity";
@@ -73,6 +74,8 @@ export type ThreadReply = {
   imagePath?: string | null;
   /** 🆕 **معرّفُ GIF لا رابطُه** (D-362) — الرابطُ يُركَّب من قالبٍ ثابت */
   gifId?: string | null;
+  /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩) */
+  share?: { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null } | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -101,7 +104,10 @@ export function ReplyItem({
   onReply,
   onDelete,
   onReport,
+  mentionNames,
 }: {
+  /** 🆕 D-1443 — أسماءُ من كتبوا في هذا النقاش: `@اسم` منهم رابطٌ إلى صفحته، وغيرُه نصّ */
+  mentionNames?: ReadonlySet<string>;
   reply: ThreadReply;
   /**
    * 🆕 **ترجمةُ المتن بلغة القارئ** (D-307) — **تصل من الخادم مع الصفّ**
@@ -368,11 +374,44 @@ export function ReplyItem({
           shownBody.trim() && (
             <p
               dir={dirOf(shownBody)}
-              className="mt-1.5 fs-content text-14 leading-relaxed text-foreground/90 whitespace-pre-line"
+              className="mt-1.5 fs-content text-14 leading-relaxed text-foreground/90 whitespace-pre-line break-words [overflow-wrap:anywhere]"
             >
-              {shownBody}
+              {/* 🆕 D-1443 — الروابطُ زرقاءُ تُفتح (لوبز في الصفحة نفسِها، وغيرُها في لسانٍ جديد)، والمنشنُ إلى صفحة صاحبه —
+                  المسحُ الواحدُ نفسُه في التطبيق (`core/richText`) */}
+              {richTokens(shownBody, (n) => !!mentionNames?.has(n)).map((tk, i) =>
+                tk.kind === "text" ? (
+                  <span key={i}>{tk.text}</span>
+                ) : tk.kind === "mention" ? (
+                  <Link key={i} href={`/u/${tk.name}`} prefetch={false} className="font-bold underline underline-offset-2">
+                    {tk.text}
+                  </Link>
+                ) : loopzPath(tk.href) ? (
+                  <Link key={i} href={loopzPath(tk.href)!} prefetch={false} className="text-[color:var(--info)] underline underline-offset-2" dir="ltr">
+                    {tk.text}
+                  </Link>
+                ) : (
+                  <a key={i} href={tk.href} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-[color:var(--info)] underline underline-offset-2" dir="ltr">
+                    {tk.text}
+                  </a>
+                ),
+              )}
             </p>
           )
+        )}
+        {/* 🆕 D-1443 — بطاقةُ العمل من «بحث لوبز»: ملصقٌ واسمٌ تفتح صفحتَه — كبطاقة القائمة في الرسائل */}
+        {!bulletin && reply.share && (
+          <Link
+            href={`/${reply.share.media_type === "tv" ? "tv" : "movie"}/${reply.share.tmdb_id}`}
+            prefetch={false}
+            className="mt-2 flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2 hover:bg-surface-2 transition max-w-xs"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- ملصقُ TMDB صغيرٌ لا يحتاج المحسّن */}
+            {reply.share.poster_path ? <img src={posterUrl(reply.share.poster_path, "w185") ?? ""} alt="" loading="lazy" className="w-10 shrink-0 aspect-[2/3] rounded-md object-cover bg-surface-2" /> : <span className="grid place-items-center w-10 shrink-0 aspect-[2/3] rounded-md bg-surface-2 text-muted"><Icon name="film" size={15} /></span>}
+            <span className="min-w-0">
+              <span className="block truncate text-14 font-bold">{reply.share.title ?? "—"}</span>
+              <span className="block text-12 text-muted">{reply.share.media_type === "tv" ? t.typeSeries : t.typeMovie}</span>
+            </span>
+          </Link>
         )}
 
         {/* 🆕 **زرُّ «النص الأصلي / الترجمة»** (D-307) — **لا يُرسم إلا
