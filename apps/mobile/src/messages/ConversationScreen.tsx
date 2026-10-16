@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
-import { GifImage, GifPicker, rememberGif } from "../thread/GifPicker";
+import { GifImage, rememberGif } from "../thread/GifPicker";
 import { useApp } from "../state";
 import { push } from "../push";
 import { Button, Text, firstStrongRtl, type ToastTone } from "../ui";
@@ -29,7 +29,7 @@ import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachPanel, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
+import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -191,7 +191,6 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const [attach, setAttach] = useState(false);
   /* 🆕 D-1435 — «بحث لوبز» في الخاص: العملُ المختار مشاركةٌ إلى الطرف الآخر (`/api/v1/me/messages/share` نفسُه) — بطاقتُها
      تصل الخيطَ مع الجلب التالي */
-  const [loopzOpen, setLoopzOpen] = useState(false);
   const sendTitle = useCallback(
     (r: SearchTitle) => {
       haptic.pick();
@@ -201,7 +200,6 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     },
     [peer, say, t],
   );
-  const [gifOpen, setGifOpen] = useState(false);
   /* 🆕 D-1402 — العارضُ يعرف الرسالةَ كلَّها: صاحبُها ووقتُها وتعليقُها، و«رد…» يقتبسها */
   const [viewer, setViewer] = useState<{ e: MsgEvent; image: MsgImage } | null>(null);
 
@@ -350,10 +348,9 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* ——— لوحةُ المفاتيح: الحشوةُ ما يغطّيه منها أسفلَ الشاشة فعلاً ——— */
   const rootRef = useRef<View>(null);
   const kb = useKeyboardInset(rootRef);
-  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح: تُغلق حين تظهر لوحةُ المفاتيح، و«+» يبدّل بينهما كالواتس */
-  useEffect(() => {
-    if (kb > 0) setAttach(false);
-  }, [kb]);
+  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح، و«+» يبدّل بينهما كالواتس. 🆕 D-1440 — إغلاقُها حين تظهر لوحةُ المفاتيح صار في
+     `ChatDock`: في بحث GIF/لوبز تبقى اللوحةُ ولوحةُ المفاتيح معاً */
+  const closeAttach = useCallback(() => setAttach(false), []);
   const attachRef = useRef(false);
   attachRef.current = attach;
   const toggleAttach = useCallback(() => {
@@ -582,14 +579,16 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           sending={sending}
           canSend={canSend}
           onAttach={toggleAttach}
-          panel={attach ? <AttachPanel onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
+          attach={attach}
+          onAttachClose={closeAttach}
+          onImage={() => void pickImage()}
+          onGif={sendGif}
+          onLoopz={sendTitle}
           onSend={send}
           onRestingHeight={setDockH}
         />
       ) : null}
 
-      {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
-      {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer ? (
         <PhotoViewer
           image={viewer.image}

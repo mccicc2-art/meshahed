@@ -4,7 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { queryClient, write } from "../api";
-import { GifPicker, rememberGif } from "../thread/GifPicker";
+import { rememberGif } from "../thread/GifPicker";
 import { useApp } from "../state";
 import { push } from "../push";
 import { Button, Text, type ToastTone } from "../ui";
@@ -21,7 +21,7 @@ import { ChatBackdrop, useChatBg } from "./chatBg";
 import { copyableOf, copyTextOf, dayKeyOf, dayLabelOf, stampOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachPanel, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
+import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 import { Bubble, DayChip } from "./ConversationScreen";
 import { GroupAvatar, asBubbleEvent, nameIn, patchGroup, personIn, senderColor, sysLine, titleText } from "./groups";
 import { displayNameOf } from "@/core/people";
@@ -116,8 +116,6 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const tmp = useRef(0);
   const { pic, setPic, pickImage } = usePicUpload(say);
   const [attach, setAttach] = useState(false);
-  const [gifOpen, setGifOpen] = useState(false);
-  const [loopzOpen, setLoopzOpen] = useState(false);
   const [viewer, setViewer] = useState<{ g: GroupMsgEvent; image: MsgImage } | null>(null);
 
   const deliver = useCallback(
@@ -242,10 +240,9 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const [dockH, setDockH] = useState(0);
   const rootRef = useRef<View>(null);
   const kb = useKeyboardInset(rootRef);
-  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح: تُغلق حين تظهر لوحةُ المفاتيح، و«+» يبدّل بينهما كالواتس */
-  useEffect(() => {
-    if (kb > 0) setAttach(false);
-  }, [kb]);
+  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح، و«+» يبدّل بينهما كالواتس. 🆕 D-1440 — إغلاقُها حين تظهر لوحةُ المفاتيح صار في
+     `ChatDock`: في بحث GIF/لوبز تبقى اللوحةُ ولوحةُ المفاتيح معاً */
+  const closeAttach = useCallback(() => setAttach(false), []);
   const attachRef = useRef(false);
   attachRef.current = attach;
   const toggleAttach = useCallback(() => {
@@ -514,14 +511,16 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           sending={sending}
           canSend={canSend}
           onAttach={toggleAttach}
-          panel={attach ? <AttachPanel onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
+          attach={attach}
+          onAttachClose={closeAttach}
+          onImage={() => void pickImage()}
+          onGif={sendGif}
+          onLoopz={sendTitle}
           onSend={send}
           onRestingHeight={setDockH}
         />
       ) : null}
 
-      {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
-      {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer && g ? (
         <PhotoViewer
           image={viewer.image}

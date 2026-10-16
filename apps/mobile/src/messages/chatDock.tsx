@@ -10,11 +10,10 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
-import { Sheet } from "../library/Sheet";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
 import type { MsgImagePayload, SearchTitle } from "../contracts";
-import { TitlePicker } from "../search/TitlePickerSheet";
+import { GifPanel, LoopzPanel } from "./PanelModes";
 
 /**
  * ====== خانةُ الكتابة في المحادثة — واحدةٌ للخاص والقروب ======
@@ -112,7 +111,11 @@ export function ChatDock({
   onAttach,
   onSend,
   onRestingHeight,
-  panel,
+  attach = false,
+  onAttachClose,
+  onImage,
+  onGif,
+  onLoopz,
 }: {
   text: string;
   onText: (v: string) => void;
@@ -130,14 +133,60 @@ export function ChatDock({
   /** ارتفاعُ الخانة بلا لوحة مفاتيح وبسطرٍ واحد — الخلفيّةُ تُمطّ إلى حافّتها (D-1386) */
   onRestingHeight?: (h: number) => void;
   /** 🆕 D-1438 — لوحةُ «+» مفتوحة: تُرسم تحت الخانة مكانَ لوحة المفاتيح، و«+» يصير زرَّ الكتابة */
-  panel?: React.ReactNode | null;
+  attach?: boolean;
+  onAttachClose?: () => void;
+  onImage?: () => void;
+  /** 🆕 D-1440 — GIF وعملٌ يُختاران **داخل اللوحة** ويُرسلان فوراً */
+  onGif?: (id: string) => void;
+  onLoopz?: (r: SearchTitle) => void;
 }) {
   const { t, tokens } = useApp();
+  /* 🆕 D-1440 — ما في اللوحة: الدوائرُ، أو بحثُ GIF، أو بحثُ لوبز. في البحث **خانةُ الرسالة هي خانةُ البحث** (أحمد ١٦ أكتوبر:
+     «مكانُ الكتابة هو البحث») — نصُّ البحث هنا لا في الشاشة، فما كتبتَه للرسالة لا يضيع ولا يُرسل خطأً */
+  const [mode, setMode] = useState<"menu" | "gif" | "loopz">("menu");
+  const [q, setQ] = useState("");
+  const searching = attach && mode !== "menu";
+  useEffect(() => {
+    if (!attach) {
+      setMode("menu");
+      setQ("");
+    }
+  }, [attach]);
+  /* لوحةُ المفاتيح تطلع والدوائرُ ظاهرة ⇒ تُغلق اللوحة (كتبتَ رسالة). في البحث تبقى: لوحةُ المفاتيح لكتابة البحث */
+  useEffect(() => {
+    if (kb > 0 && attach && mode === "menu") onAttachClose?.();
+  }, [kb, attach, mode, onAttachClose]);
+  const pickGif = (id: string) => {
+    Keyboard.dismiss();
+    onAttachClose?.();
+    onGif?.(id);
+  };
+  const pickTitle = (r: SearchTitle) => {
+    Keyboard.dismiss();
+    onAttachClose?.();
+    onLoopz?.(r);
+  };
+  const panel = !attach ? null : mode === "gif" ? (
+    <GifPanel term={q} compact={false} onPick={pickGif} />
+  ) : mode === "loopz" ? (
+    <LoopzPanel term={q} compact={false} onPick={pickTitle} />
+  ) : (
+    <AttachPanel
+      onImage={() => {
+        onAttachClose?.();
+        onImage?.();
+      }}
+      onGif={onGif ? () => setMode("gif") : undefined}
+      onLoopz={onLoopz ? () => setMode("loopz") : undefined}
+    />
+  );
   /* 🆕 D-1387 — الحقلُ سطرٌ واحدٌ بارتفاع «أرسل» (٤٠) ويكبر ٢٢ مع كلِّ سطرٍ حتى أربعة: النموُّ من الحقل نفسِه (`minHeight`/`maxHeight`)
      لا من `contentSize` — أندرويد يعدّ الحشوَ فيه فكان يُضاف مرّتين فيولد السطرُ الواحدُ بارتفاع ٥٨ (لقطةُ أحمد ١٤ أكتوبر) */
   const [oneLine, setOneLine] = useState(true);
   /* اللوحةُ لا تُرسم ولوحةُ المفاتيح ظاهرة — تنتظر نزولَها فتأخذ مكانَها */
-  const open = !!panel && kb === 0;
+  const open = attach && kb === 0;
+  /* البحثُ ولوحةُ المفاتيح ظاهرة: النتائجُ صفٌّ فوق الخانة كالواتس */
+  const strip = searching && kb > 0;
   return (
     <View
       onLayout={(e) => {
@@ -145,10 +194,15 @@ export function ChatDock({
       }}
       style={{ gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: open ? 0 : (kb > 0 ? kb : bottomInset) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
     >
+      {strip ? (
+        <View style={{ marginHorizontal: -16 }}>
+          {mode === "gif" ? <GifPanel term={q} compact onPick={pickGif} /> : <LoopzPanel term={q} compact onPick={pickTitle} />}
+        </View>
+      ) : null}
       {/* 🆕 D-1403 — المقتبَسُ فوق الحقل كالواتس، و✕ يلغيه */}
-      {quote}
+      {searching ? null : quote}
       {/* 🆕 D-1387 — الصورةُ قبل الإرسال: مصغّرةٌ فوق الحقل و✕ يلغيها؛ ودائرةُ انتظارٍ عليها وهي تُرفع */}
-      {pic ? (
+      {pic && !searching ? (
         <View style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2 }}>
           <Image source={{ uri: pic.local }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
           {!pic.path ? (
@@ -173,29 +227,36 @@ export function ChatDock({
         <Pressable
           onPress={() => {
             haptic.pick();
-            onAttach();
+            /* في البحث: ✕ يرجع إلى الدوائر (لا يُغلق اللوحة) */
+            if (searching) {
+              setMode("menu");
+              setQ("");
+              Keyboard.dismiss();
+            } else onAttach();
           }}
           disabled={sending}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={open ? t.shareReplyPlaceholder : t.msgAttach}
+          accessibilityLabel={searching ? t.backAria : open ? t.shareReplyPlaceholder : t.msgAttach}
           style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
         >
-          <Icon name={open ? "keyboard" : "plus"} size={open ? 20 : 18} color={tokens.fg} />
+          <Icon name={searching ? "close" : open ? "keyboard" : "plus"} size={searching ? 16 : open ? 20 : 18} color={tokens.fg} />
         </Pressable>
         <TextInput
           maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           ref={inputRef}
-          value={text}
-          onChangeText={(v) => onText(v.slice(0, MSG_TEXT_MAX))}
-          multiline
-          maxLength={MSG_TEXT_MAX}
-          placeholder={t.shareReplyPlaceholder}
+          value={searching ? q : text}
+          onChangeText={(v) => (searching ? setQ(v.slice(0, 80)) : onText(v.slice(0, MSG_TEXT_MAX)))}
+          multiline={!searching}
+          maxLength={searching ? 80 : MSG_TEXT_MAX}
+          placeholder={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : t.shareReplyPlaceholder}
           placeholderTextColor={tokens.muted}
-          accessibilityLabel={t.shareReplyPlaceholder}
+          accessibilityLabel={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : t.shareReplyPlaceholder}
+          returnKeyType={searching ? "search" : undefined}
           onLayout={(e) => setOneLine(e.nativeEvent.layout.height < 50)}
           style={{ flex: 1, minWidth: 0, minHeight: 22 + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left", textAlignVertical: "center" }}
         />
+        {searching ? null : (
         <Pressable
           onPress={onSend}
           disabled={!canSend}
@@ -205,6 +266,7 @@ export function ChatDock({
         >
           <Text size={12} weight="700" color={tokens.onAccent}>{t.shareReplySend}</Text>
         </Pressable>
+        )}
       </View>
       {open ? <View style={{ height: panelHeight(), marginHorizontal: -16, paddingBottom: bottomInset }}>{panel}</View> : null}
     </View>
@@ -217,14 +279,13 @@ export function ChatDock({
  * الكيبورد»): أربعُ دوائرَ في الصفّ ٦٤ برموزٍ ذهبيّة («١ أ»: لونُ لوبز لا ألوانُ الواتس) واسمٌ تحتها. الخانةُ تبقى فوقها، و«+»
  * يصير زرَّ الكتابة. «الصوت» ينتظر البناءَ الأصليَّ القادم.
  */
-export function AttachPanel({ onClose, onImage, onGif, onLoopz }: { onClose: () => void; onImage: () => void; onGif: () => void; onLoopz?: () => void }) {
+export function AttachPanel({ onImage, onGif, onLoopz }: { onImage: () => void; onGif?: () => void; onLoopz?: () => void }) {
   const { t, tokens } = useApp();
   const cell = (key: string, label: string, art: React.ReactNode, run: () => void) => (
     <Pressable
       key={key}
       onPress={() => {
         haptic.pick();
-        onClose();
         run();
       }}
       accessibilityRole="button"
@@ -235,27 +296,13 @@ export function AttachPanel({ onClose, onImage, onGif, onLoopz }: { onClose: () 
       <Text size={13} weight="600" numberOfLines={2} style={{ textAlign: "center" }}>{label}</Text>
     </Pressable>
   );
+  /* 🆕 D-1440 — «الصور» تبقى منتقيَ النظام: شبكةُ صورٍ داخل اللوحة تحتاج إذنَ قراءة المعرض (READ_MEDIA_IMAGES)، وهو محجوبٌ عمداً
+     في `app.json` (`blockedPermissions`) لسياسة Google Play — فكُّه بناءٌ أصليٌّ مدفوعٌ وتصريحٌ لدى المتجر، لا تحديثٌ هوائيّ */
   return (
     <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", alignContent: "flex-start", paddingTop: 22, paddingHorizontal: 8, rowGap: 22, backgroundColor: tokens.bg }}>
       {cell("image", t.msgPickImage, <Icon name="image" size={26} color={tokens.accent} />, onImage)}
-      {cell("gif", t.msgPickGif, <Text size={14} weight="800" color={tokens.accent}>GIF</Text>, onGif)}
+      {onGif ? cell("gif", t.msgPickGif, <Text size={14} weight="800" color={tokens.accent}>GIF</Text>, onGif) : null}
       {onLoopz ? cell("loopz", t.msgPickLoopz, <Icon name="search" size={26} color={tokens.accent} />, onLoopz) : null}
     </View>
-  );
-}
-
-/** 🆕 D-1435 — «بحث لوبز»: منتقي العمل نفسُه (`TitlePicker`) في ورقة؛ الاختيارُ يُرسل مباشرةً */
-export function LoopzSearchSheet({ onPick, onClose }: { onPick: (r: SearchTitle) => void; onClose: () => void }) {
-  const { t } = useApp();
-  return (
-    <Sheet title={t.msgPickLoopz} onClose={onClose}>
-      <TitlePicker
-        onPick={(r) => {
-          haptic.pick();
-          onClose();
-          onPick(r);
-        }}
-      />
-    </Sheet>
   );
 }
