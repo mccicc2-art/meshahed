@@ -1799,6 +1799,8 @@ const ar = {
   pushOpenSystem: "إعدادات النظام",
   pushAllow: "السماح بالإشعارات",
   pushNewMessage: "رسالة جديدة",
+  /* 🆕 D-1436 — «فلان ذكرك» في دفع القروب لمن نُودي بـ@ */
+  pushGroupMention: (name: string) => `${name} ذكرك`,
   /* 🆕 D-1406 — أزرارُ إشعار الرسالة */
   pushMarkRead: "تمييز كمقروءة",
   pushReplySend: "إرسال",
@@ -1812,6 +1814,8 @@ const ar = {
   msgPickImage: "صورة",
   msgPickImageSub: "من الاستوديو",
   msgPickGif: "GIF",
+  /* 🆕 D-1435 — خانةُ «بحث لوبز» في ورقة «+»: ابحث واختر عملاً يُرسل بطاقةً في المحادثة */
+  msgPickLoopz: "بحث لوبز",
   msgPickGifSub: "ابحث في GIPHY",
   /* 🆕 D-1401/D-1402/D-1403 — الدردشة كالواتس: التحديدُ والنسخ، الردُّ والاقتباس، علامتا الوصول والقراءة، عارضُ الصورة */
   msgCopy: "نسخ",
@@ -3949,6 +3953,7 @@ const en: Dict = {
   pushOpenSystem: "System settings",
   pushAllow: "Allow notifications",
   pushNewMessage: "New message",
+  pushGroupMention: (name: string) => `${name} mentioned you`,
   pushMarkRead: "Mark as read",
   pushReplySend: "Send",
   pushReplyFailed: "Couldn't send — open the chat and send it again",
@@ -3960,6 +3965,7 @@ const en: Dict = {
   msgPickImage: "Photo",
   msgPickImageSub: "From your gallery",
   msgPickGif: "GIF",
+  msgPickLoopz: "Loopz Search",
   msgPickGifSub: "Search GIPHY",
   msgCopy: "Copy",
   msgCopied: "Copied",

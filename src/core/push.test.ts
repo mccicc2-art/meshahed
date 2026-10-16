@@ -106,3 +106,11 @@ test("dm-reply/dm-read: وجهةٌ واحدةٌ صالحة، والردُّ نص
   assert.equal(parseWidgetDmBody({ to: P.id, group: "nope" }, false), null);
   assert.equal(parseWidgetDmBody(null, false), null);
 });
+
+test("D-1435/D-1436 — دفعُ القروب: العملُ المرسَل يُسمّى، والمذكورُ يقرأ «ذكرك»", () => {
+  const t = getDict("ar");
+  const G = "5b7c2a9e-1111-4a2b-9c3d-000000000009";
+  assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "", sharedTitle: "Dark" }, t).body, "مشعل: 🎬 Dark");
+  assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "شوفوه", sharedTitle: "Dark" }, t).body, "مشعل: 🎬 Dark شوفوه");
+  assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "@khld تعال", mention: true }, t).body, `${t.pushGroupMention("مشعل")}: @khld تعال`);
+});

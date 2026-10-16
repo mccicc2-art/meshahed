@@ -134,13 +134,24 @@ export function messagePush(
  * الفئةُ `dm` نفسُها فالردُّ من الإشعار يعمل، والهدفُ يُقرأ من الرابط (`?group=`).
  */
 export function groupMessagePush(
-  m: { groupId: string; groupName: string; senderName: string; text: string | null; media?: "image" | "gif" | null },
+  m: {
+    groupId: string;
+    groupName: string;
+    senderName: string;
+    text: string | null;
+    media?: "image" | "gif" | null;
+    /** 🆕 D-1435 — اسمُ العمل المرسَل */
+    sharedTitle?: string | null;
+    /** 🆕 D-1436 — القارئُ مذكورٌ في الرسالة */
+    mention?: boolean;
+  },
   t: Dict,
 ): PushText {
-  const what = m.media === "image" ? t.msgImagePreview : m.media === "gif" ? t.msgGifPreview : "";
+  const what = m.media === "image" ? t.msgImagePreview : m.media === "gif" ? t.msgGifPreview : m.sharedTitle ? `🎬 ${m.sharedTitle}` : "";
   const text = (m.text ?? "").replace(/\s+/g, " ").trim();
   const line = text && what ? `${what} ${text}` : text || what || t.pushNewMessage;
-  return { title: m.groupName || APP, body: `${m.senderName}: ${line}`.slice(0, 240), url: `/messages?group=${m.groupId}`, category: "dm" };
+  const who = m.mention ? t.pushGroupMention(m.senderName) : m.senderName;
+  return { title: m.groupName || APP, body: `${who}: ${line}`.slice(0, 240), url: `/messages?group=${m.groupId}`, category: "dm" };
 }
 
 /** حلقاتُ اليوم ⇢ دفعٌ واحدٌ للمستخدم: عملٌ واحدٌ يفتح صفحتَه، وأكثرُ يفتح الرئيسيّة */

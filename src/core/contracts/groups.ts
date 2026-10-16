@@ -29,6 +29,13 @@ export type GroupReplyRef = {
   gif_id?: string | null;
 };
 
+/**
+ * 🆕 D-1435 — **عملٌ يُرسل في القروب من «بحث لوبز»** (أحمد ١٦ أكتوبر: «إذا ضغطت زر البحث يخليني أقدر أبحث في مكاني بحيث
+ * أختار الفلم وأرسله في المحادثة مباشرة»). الاسمُ والملصقُ لقطةٌ وقتَ الإرسال كمشاركات الخاص (`title_shares`) — لا جلبَ من
+ * TMDB لكلِّ قارئ. الهجرة ٢٠٧.
+ */
+export type GroupTitleRef = { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null };
+
 /** رسالةٌ في القروب */
 export type GroupMsgEvent = {
   kind: "msg";
@@ -40,6 +47,8 @@ export type GroupMsgEvent = {
   gif_id?: string | null;
   image?: MsgImage | null;
   reply?: GroupReplyRef | null;
+  /** 🆕 D-1435 — بطاقةُ عمل (والنصُّ تعليقٌ اختياريّ) */
+  title?: GroupTitleRef | null;
   /** على رسائلي وحدي: قرأها **كلُّ** من كان في القروب وقتَها (✓✓) */
   read?: boolean;
   /** على رسائلي وحدي: من قرأها (لمسةُ ✓✓ تعرضهم) */
@@ -84,7 +93,7 @@ export type GroupCreateBody = { name: string; member_ids: string[]; photo_path?:
 export type GroupCreatePayload = { group_id: string };
 
 /** `POST /api/v1/me/groups/<id>` — رسالةٌ: نصٌّ أو GIF أو صورةٌ بتعليقٍ اختياريّ، وردٌّ على رسالة */
-export type GroupSendBody = { body: string; gif_id?: string | null; image_path?: string | null; reply_to?: string | null };
+export type GroupSendBody = { body: string; gif_id?: string | null; image_path?: string | null; reply_to?: string | null; title?: GroupTitleRef | null };
 
 /** `POST /api/v1/me/groups/<id>/manage` */
 export type GroupManageBody =
@@ -99,6 +108,32 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GIF_RE = /^[A-Za-z0-9]{1,64}$/;
 const PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 const TEXT_MAX = 1000;
+/** مسارُ ملصق TMDB (`/abc.jpg`) — قيدُ الهجرة ٢٠٧ نفسُه */
+const POSTER_RE = /^\/[A-Za-z0-9_.-]{1,100}$/;
+const TITLE_MAX = 300;
+
+/** العملُ المرسَل: نوعٌ ومعرّفٌ صحيحان، والاسمُ والملصقُ اختياريّان بحدودهما — `undefined` = جسمٌ فاسد */
+function parseTitleRef(v: unknown): GroupTitleRef | null | undefined {
+  if (v == null) return null;
+  if (typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  if (o.media_type !== "tv" && o.media_type !== "movie") return undefined;
+  if (typeof o.tmdb_id !== "number" || !Number.isInteger(o.tmdb_id) || o.tmdb_id <= 0 || o.tmdb_id > 2_147_483_647) return undefined;
+  const title = typeof o.title === "string" ? o.title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX) || null : null;
+  const poster = typeof o.poster_path === "string" && POSTER_RE.test(o.poster_path) ? o.poster_path : null;
+  return { media_type: o.media_type, tmdb_id: o.tmdb_id, title, poster_path: poster };
+}
+
+/**
+ * 🆕 D-1436 — **المنشن**: أسماءُ المستخدمين المذكورة بـ`@` في نصّ الرسالة (أحمد: «أقدر أضغط @ وأمنشن أيّ شخص من الموجودين»).
+ * قاعدةُ الاسم قاعدةُ `username.ts` (a–z · 0–9 · `_`، ٣–٢٤)، والحرفُ قبل `@` ليس حرفاً أو رقماً — فالبريدُ لا يُقرأ منشناً.
+ * الخادمُ يطابقها بأعضاء القروب وحدهم؛ الاسمُ الذي ليس عضواً نصٌّ عاديّ.
+ */
+export function mentionsIn(body: string): string[] {
+  const out = new Set<string>();
+  for (const m of body.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) out.add(m[2].toLowerCase());
+  return [...out].slice(0, 12);
+}
 
 export function isGroupId(v: unknown): v is string {
   return typeof v === "string" && UUID.test(v);
@@ -133,11 +168,14 @@ export function parseGroupSendBody(raw: unknown): GroupSendBody | null {
   const gif = o.gif_id == null ? null : typeof o.gif_id === "string" && GIF_RE.test(o.gif_id) ? o.gif_id : undefined;
   const image = o.image_path == null ? null : typeof o.image_path === "string" && PATH_RE.test(o.image_path) ? o.image_path : undefined;
   const reply = o.reply_to == null ? null : typeof o.reply_to === "string" && UUID.test(o.reply_to) ? o.reply_to : undefined;
-  if (gif === undefined || image === undefined || reply === undefined) return null;
+  const title = parseTitleRef(o.title);
+  if (gif === undefined || image === undefined || reply === undefined || title === undefined) return null;
   if (body.length > TEXT_MAX) return null;
-  if (!body && !gif && !image) return null;
+  if (!body && !gif && !image && !title) return null;
   if (gif && (image || body)) return null;
-  return { body, gif_id: gif, image_path: image, reply_to: reply };
+  /* العملُ وحدَه مع تعليقٍ اختياريّ — لا مع صورةٍ ولا GIF */
+  if (title && (gif || image)) return null;
+  return { body, gif_id: gif, image_path: image, reply_to: reply, ...(title ? { title } : {}) };
 }
 
 export function parseGroupManageBody(raw: unknown): GroupManageBody | null {

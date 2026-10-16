@@ -4,7 +4,7 @@ import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { isPlus } from "@/core/plan";
 import type { Dict } from "@/core/i18n";
 import type { MsgImage } from "@/core/contracts/messages";
-import type { GroupEvent, GroupMember, GroupReplyRef, GroupRole, GroupSys, MsgGroupConversation } from "@/core/contracts/groups";
+import type { GroupEvent, GroupMember, GroupReplyRef, GroupRole, GroupSys, GroupTitleRef, MsgGroupConversation } from "@/core/contracts/groups";
 
 /**
  * ====== القروبات — ما يُقرأ للصندوق (الهجرة ٢٠٥) ======
@@ -34,9 +34,21 @@ type MsgRow = {
   sys: GroupSys | null;
   sys_target: string | null;
   created_at: string;
+  /* 🆕 D-1435 — الهجرة ٢٠٧ (قبلها غائبة) */
+  tmdb_id?: number | null;
+  media_type?: "tv" | "movie" | null;
+  title?: string | null;
+  poster_path?: string | null;
 };
 
-const MSG_COLS = "id, group_id, sender_id, kind, body, gif_id, image_path, reply_to, sys, sys_target, created_at";
+const MSG_COLS_205 = "id, group_id, sender_id, kind, body, gif_id, image_path, reply_to, sys, sys_target, created_at";
+/**
+ * 🆕 D-1435 — أعمدةُ العمل من الهجرة ٢٠٧. **الواجهةُ قد تُنشر قبل الهجرة**: عمودٌ غائبٌ (`42703`) يعيد القراءةَ بأعمدة ٢٠٥
+ * فتبقى القروباتُ كما كانت — بدونه كان الخطأُ يُبتلع فيعود الصندوقُ بلا قروباتٍ أصلاً.
+ */
+const MSG_COLS = `${MSG_COLS_205}, tmdb_id, media_type, title, poster_path`;
+const titleOf = (m: MsgRow): GroupTitleRef | null =>
+  m.tmdb_id && (m.media_type === "tv" || m.media_type === "movie") ? { media_type: m.media_type, tmdb_id: m.tmdb_id, title: m.title ?? null, poster_path: m.poster_path ?? null } : null;
 
 export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; canCreate: boolean }> {
   try {
@@ -55,21 +67,25 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
     if (error || !mine?.length) return { groups: [], canCreate };
     const ids = (mine as MemberRow[]).map((m) => m.group_id);
 
-    const [{ data: gRows }, { data: mRows }, { data: msgRows }] = await Promise.all([
+    const readMsgs = (cols: string) => supabase.from("dm_group_messages").select(cols).in("group_id", ids).order("created_at", { ascending: false }).limit(MAX_ROWS);
+    const [{ data: gRows }, { data: mRows }, first] = await Promise.all([
       supabase.from("dm_groups").select("id, name, photo_path, last_at").in("id", ids),
       supabase.from("dm_group_members").select("group_id, user_id, role, joined_at, last_read_at, muted").in("group_id", ids),
-      supabase.from("dm_group_messages").select(MSG_COLS).in("group_id", ids).order("created_at", { ascending: false }).limit(MAX_ROWS),
+      readMsgs(MSG_COLS),
     ]);
+    const pre207 = first.error?.code === "42703";
+    const cols = pre207 ? MSG_COLS_205 : MSG_COLS;
+    const msgRows = pre207 ? (await readMsgs(MSG_COLS_205)).data : first.data;
     const groups = (gRows ?? []) as GroupRow[];
     const members = (mRows ?? []) as MemberRow[];
-    const msgs = ((msgRows ?? []) as MsgRow[]).reverse();
+    const msgs = ((msgRows ?? []) as unknown as MsgRow[]).reverse();
 
     /* الأصولُ المقتبَسةُ الغائبةُ عن الصفحة: طلبٌ واحد، والسياسةُ نفسُها تحكم */
     const byId = new Map(msgs.map((m) => [m.id, m]));
     const missing = [...new Set(msgs.map((m) => m.reply_to).filter((x): x is string => !!x && !byId.has(x)))];
     if (missing.length) {
-      const { data } = await supabase.from("dm_group_messages").select(MSG_COLS).in("id", missing.slice(0, 200));
-      for (const m of (data ?? []) as MsgRow[]) byId.set(m.id, m);
+      const { data } = await supabase.from("dm_group_messages").select(cols).in("id", missing.slice(0, 200));
+      for (const m of (data ?? []) as unknown as MsgRow[]) byId.set(m.id, m);
     }
 
     /* الصورُ وصورُ القروبات في المخزن الخاصّ: رابطٌ مؤقّتٌ لكلٍّ منها بطلبٍ واحد */
@@ -97,12 +113,15 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
       const r = byId.get(id);
       if (!r) return { id, sender_id: null, mine: false, kind: "gone", body: "" };
       const kind = r.image_path ? "image" : r.gif_id ? "gif" : "text";
+      /* 🆕 D-1435 — اقتباسُ بطاقة عمل: اسمُ العمل نصُّه (والتعليقُ بعده) — يُقرأ في كلِّ نسخةٍ بلا نوعٍ جديد */
+      const t = titleOf(r);
+      const text = t ? [t.title ?? "", r.body].map((x) => x.trim()).filter(Boolean).join(" · ") : r.body;
       return {
         id: r.id,
         sender_id: r.sender_id,
         mine: r.sender_id === me,
         kind,
-        body: r.body.replace(/\s+/g, " ").trim().slice(0, SNIPPET),
+        body: text.replace(/\s+/g, " ").trim().slice(0, SNIPPET),
         ...(r.image_path ? { image: img(r.image_path) } : {}),
         ...(r.gif_id ? { gif_id: r.gif_id } : {}),
       };
@@ -142,6 +161,7 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
           ...(m.gif_id ? { gif_id: m.gif_id } : {}),
           ...(m.image_path ? { image: img(m.image_path) } : {}),
           ...(m.reply_to ? { reply: refOf(m.reply_to) } : {}),
+          ...(titleOf(m) ? { title: titleOf(m) } : {}),
           ...(mineMsg ? { read, read_by: readBy } : {}),
         });
       }
