@@ -21,7 +21,7 @@ import { ChatBackdrop, useChatBg } from "./chatBg";
 import { copyableOf, copyTextOf, dayKeyOf, dayLabelOf, stampOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachSheet, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
+import { AttachPanel, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
 import { Bubble, DayChip } from "./ConversationScreen";
 import { GroupAvatar, asBubbleEvent, nameIn, patchGroup, personIn, senderColor, sysLine, titleText } from "./groups";
 import { displayNameOf } from "@/core/people";
@@ -80,6 +80,11 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1438 — لوحةُ «+» مفتوحة: الرجوعُ يغلقها أوّلاً */
+      if (attachRef.current) {
+        setAttach(false);
+        return true;
+      }
       if (selectedRef.current.length) {
         setSelected([]);
         return true;
@@ -237,6 +242,21 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const [dockH, setDockH] = useState(0);
   const rootRef = useRef<View>(null);
   const kb = useKeyboardInset(rootRef);
+  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح: تُغلق حين تظهر لوحةُ المفاتيح، و«+» يبدّل بينهما كالواتس */
+  useEffect(() => {
+    if (kb > 0) setAttach(false);
+  }, [kb]);
+  const attachRef = useRef(false);
+  attachRef.current = attach;
+  const toggleAttach = useCallback(() => {
+    if (attachRef.current) {
+      setAttach(false);
+      inputRef.current?.focus();
+    } else {
+      Keyboard.dismiss();
+      setAttach(true);
+    }
+  }, []);
 
   /* الأحدثُ أسفل (قائمةٌ مقلوبة) · فاصلُ يوم · اسمُ المرسِل فوق أوّل فقاعةٍ من دفعته وصورتُه بجانب آخرها */
   const rows = useMemo<Row[]>(() => {
@@ -394,6 +414,8 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
       ) : (
         <FlatList
           ref={listRef}
+          /* 🆕 D-1438 — لمسُ المحادثة أو سحبُها يغلق لوحةَ «+» */
+          onTouchStart={() => attachRef.current && setAttach(false)}
           inverted
           data={rows}
           keyExtractor={(r) => r.key}
@@ -416,6 +438,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
                 onTitle={doors.openTitle}
                 mentions={mentionSet}
                 onMention={(u) => doors.openPath(`/u/${u}`)}
+                onPath={doors.openPath}
                 onList={() => {}}
                 onImage={(_e, image) => {
                   Keyboard.dismiss();
@@ -490,13 +513,13 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           bottomInset={insets.bottom}
           sending={sending}
           canSend={canSend}
-          onAttach={() => setAttach(true)}
+          onAttach={toggleAttach}
+          panel={attach ? <AttachPanel onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
           onSend={send}
           onRestingHeight={setDockH}
         />
       ) : null}
 
-      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
       {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
       {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer && g ? (

@@ -24,6 +24,14 @@ import { TitlePicker } from "../search/TitlePickerSheet";
  */
 export type ChatPic = { local: string; path: string | null };
 
+/**
+ * 🆕 D-1438 — آخرُ ارتفاعٍ للوحة المفاتيح في هذه الجلسة: لوحةُ «+» تأخذه فتحلّ مكانَها بلا قفزة (كالواتس).
+ * قبل أوّل ظهورٍ للوحة المفاتيح: ارتفاعٌ قريبٌ من لوحة الهاتف المعتادة.
+ */
+let lastKb = 0;
+const PANEL_FALLBACK = 300;
+export const panelHeight = () => (lastKb > 0 ? lastKb : PANEL_FALLBACK);
+
 /** ما يغطّيه لوحُ المفاتيح أسفلَ الشاشة فعلاً — بقياس موضع الجذر (يعمل سواءٌ صغّر النظامُ النافذةَ أم لا) */
 export function useKeyboardInset(rootRef: React.RefObject<View | null>): number {
   const [kb, setKb] = useState(0);
@@ -32,7 +40,11 @@ export function useKeyboardInset(rootRef: React.RefObject<View | null>): number 
     const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const s = Keyboard.addListener(showEvt, (e) => {
       const top = e.endCoordinates.screenY;
-      rootRef.current?.measureInWindow((_x, y, _w, h) => setKb(Math.max(0, Math.round(y + h - top))));
+      rootRef.current?.measureInWindow((_x, y, _w, h) => {
+        const v = Math.max(0, Math.round(y + h - top));
+        if (v > 120) lastKb = v;
+        setKb(v);
+      });
     });
     const h = Keyboard.addListener(hideEvt, () => setKb(0));
     return () => {
@@ -100,6 +112,7 @@ export function ChatDock({
   onAttach,
   onSend,
   onRestingHeight,
+  panel,
 }: {
   text: string;
   onText: (v: string) => void;
@@ -116,17 +129,21 @@ export function ChatDock({
   onSend: () => void;
   /** ارتفاعُ الخانة بلا لوحة مفاتيح وبسطرٍ واحد — الخلفيّةُ تُمطّ إلى حافّتها (D-1386) */
   onRestingHeight?: (h: number) => void;
+  /** 🆕 D-1438 — لوحةُ «+» مفتوحة: تُرسم تحت الخانة مكانَ لوحة المفاتيح، و«+» يصير زرَّ الكتابة */
+  panel?: React.ReactNode | null;
 }) {
   const { t, tokens } = useApp();
   /* 🆕 D-1387 — الحقلُ سطرٌ واحدٌ بارتفاع «أرسل» (٤٠) ويكبر ٢٢ مع كلِّ سطرٍ حتى أربعة: النموُّ من الحقل نفسِه (`minHeight`/`maxHeight`)
      لا من `contentSize` — أندرويد يعدّ الحشوَ فيه فكان يُضاف مرّتين فيولد السطرُ الواحدُ بارتفاع ٥٨ (لقطةُ أحمد ١٤ أكتوبر) */
   const [oneLine, setOneLine] = useState(true);
+  /* اللوحةُ لا تُرسم ولوحةُ المفاتيح ظاهرة — تنتظر نزولَها فتأخذ مكانَها */
+  const open = !!panel && kb === 0;
   return (
     <View
       onLayout={(e) => {
         if (kb === 0 && oneLine && !pic && !quote) onRestingHeight?.(Math.round(e.nativeEvent.layout.height));
       }}
-      style={{ gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: (kb > 0 ? kb : bottomInset) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
+      style={{ gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: open ? 0 : (kb > 0 ? kb : bottomInset) + 10, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg }}
     >
       {/* 🆕 D-1403 — المقتبَسُ فوق الحقل كالواتس، و✕ يلغيه */}
       {quote}
@@ -161,10 +178,10 @@ export function ChatDock({
           disabled={sending}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={t.msgAttach}
+          accessibilityLabel={open ? t.shareReplyPlaceholder : t.msgAttach}
           style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
         >
-          <Icon name="plus" size={18} color={tokens.fg} />
+          <Icon name={open ? "keyboard" : "plus"} size={open ? 20 : 18} color={tokens.fg} />
         </Pressable>
         <TextInput
           maxFontSizeMultiplier={SYSTEM_FONT_CAP}
@@ -189,17 +206,18 @@ export function ChatDock({
           <Text size={12} weight="700" color={tokens.onAccent}>{t.shareReplySend}</Text>
         </Pressable>
       </View>
+      {open ? <View style={{ height: panelHeight(), marginHorizontal: -16, paddingBottom: bottomInset }}>{panel}</View> : null}
     </View>
   );
 }
 
 /**
- * 🆕 D-1387 — ورقةُ «+»: الورقةُ الواحدة — «صورة» تفتح الاستوديو و«GIF» المنتقي.
- * 🆕 D-1437 — **شبكةُ دوائر لا قائمة** (أحمد ١٦ أكتوبر بصورة: «هذي القائمة بعد ما تضغط على زايد أبغاها تظهر مثل كذا»):
- * دائرةٌ ٦٤ برمزٍ بلون التمييز واسمٌ تحتها، و«بحث لوبز» خانةٌ ثالثة (`onLoopz`) تُرسل عملاً بطاقةً في المحادثة.
- * «الصوت» في صورته ينتظر البناءَ الأصليَّ القادم (مكتبةُ تسجيلٍ تغيّر البصمة) — لا خانةَ معطّلةً مكانه.
+ * 🆕 D-1387 — «+»: صورة · GIF. 🆕 D-1437 — شبكةُ دوائر و«بحث لوبز».
+ * 🆕 D-1438 — **لوحةٌ مكانَ لوحة المفاتيح لا ورقةٌ فوق المحادثة** (أحمد ١٦ أكتوبر بصورة الواتس: «أبغاها نفس صورة الواتس داخل
+ * الكيبورد»): أربعُ دوائرَ في الصفّ ٦٤ برموزٍ ذهبيّة («١ أ»: لونُ لوبز لا ألوانُ الواتس) واسمٌ تحتها. الخانةُ تبقى فوقها، و«+»
+ * يصير زرَّ الكتابة. «الصوت» ينتظر البناءَ الأصليَّ القادم.
  */
-export function AttachSheet({ onClose, onImage, onGif, onLoopz }: { onClose: () => void; onImage: () => void; onGif: () => void; onLoopz?: () => void }) {
+export function AttachPanel({ onClose, onImage, onGif, onLoopz }: { onClose: () => void; onImage: () => void; onGif: () => void; onLoopz?: () => void }) {
   const { t, tokens } = useApp();
   const cell = (key: string, label: string, art: React.ReactNode, run: () => void) => (
     <Pressable
@@ -211,23 +229,18 @@ export function AttachSheet({ onClose, onImage, onGif, onLoopz }: { onClose: () 
       }}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 8, opacity: pressed ? 0.7 : 1 })}
+      style={({ pressed }) => ({ width: "25%", alignItems: "center", gap: 8, opacity: pressed ? 0.7 : 1 })}
     >
       <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>{art}</View>
       <Text size={13} weight="600" numberOfLines={2} style={{ textAlign: "center" }}>{label}</Text>
     </Pressable>
   );
   return (
-    <Sheet title={t.msgAttach} onClose={onClose}>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", paddingVertical: 8 }}>
-        {/* 🔴 D-1404 (مقطعُ مشعل على الآيفون، ١٥ أكتوبر: «صورة» تقفل الورقةَ ولا يفتح الاستوديو، والـGIF يعمل): iOS لا يعرض
-            نافذةً من النظام والورقةُ (`Modal`) ما زالت تُغلق — يتجاهل الطلبَ بصمت. الاستوديو يُفتح بعد انتهاء
-            إغلاقها (حركةُ الانزلاق ~٣٠٠ms)؛ والـGIF والبحثُ نوافذُنا نحن فلا يمسّهما ذلك، وأندرويد لا قيدَ عليه */}
-        {cell("image", t.msgPickImage, <Icon name="image" size={26} color={tokens.accent} />, () => (Platform.OS === "ios" ? setTimeout(onImage, 450) : onImage()))}
-        {cell("gif", t.msgPickGif, <Text size={14} weight="800" color={tokens.accent}>GIF</Text>, onGif)}
-        {onLoopz ? cell("loopz", t.msgPickLoopz, <Icon name="search" size={26} color={tokens.accent} />, onLoopz) : null}
-      </View>
-    </Sheet>
+    <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", alignContent: "flex-start", paddingTop: 22, paddingHorizontal: 8, rowGap: 22, backgroundColor: tokens.bg }}>
+      {cell("image", t.msgPickImage, <Icon name="image" size={26} color={tokens.accent} />, onImage)}
+      {cell("gif", t.msgPickGif, <Text size={14} weight="800" color={tokens.accent}>GIF</Text>, onGif)}
+      {onLoopz ? cell("loopz", t.msgPickLoopz, <Icon name="search" size={26} color={tokens.accent} />, onLoopz) : null}
+    </View>
   );
 }
 

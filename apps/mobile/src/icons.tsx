@@ -47,6 +47,8 @@ const ICONS = {
   tv: require("../assets/icons/tv.png"),
   sparkles: require("../assets/icons/sparkles.png"),
   plus: require("../assets/icons/plus.png"),
+  /* 🆕 D-1438 — زرُّ الرجوع إلى الكتابة حين تكون لوحةُ «+» مكانَ لوحة المفاتيح — مرسومٌ بالطريقة نفسِها (cairosvg · ٧٢px · أبيض · خطّ ١٫٧) */
+  keyboard: require("../assets/icons/keyboard.png"),
   minus: require("../assets/icons/minus.png"),
   "red-card": require("../assets/icons/red-card.png"),
   bookmark: require("../assets/icons/bookmark.png"),

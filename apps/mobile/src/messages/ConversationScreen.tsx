@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, type TextInput, View } from "react-native";
 import { Image } from "expo-image";
+import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -28,7 +29,7 @@ import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachSheet, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
+import { AttachPanel, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -60,6 +61,23 @@ type Row = { type: "day"; key: string; label: string } | { type: "ev"; key: stri
  * كان ١٤/٤٠٠ — Tajawal العاديُّ رفيعٌ وحروفُه قصيرة فيبدو أصغرَ من مقاسه في فقاعةٍ صغيرة. الخطُّ نفسُه، أثقلُ درجة.
  */
 const MSG_SIZE = 16;
+/**
+ * 🆕 D-1439 — المنشنُ والروابطُ في مسحٍ واحد: `@اسم` (قاعدةُ `mentionsIn`) أو رابطٌ يبدأ بـ`http(s)://` أو `www.` أو نطاقِ لوبز.
+ * الحرفُ قبل كلٍّ منهما ليس حرفاً — فلا يُقطع بريدٌ ولا كلمةٌ ملتصقة.
+ */
+const TOKEN_RE = /(^|[^A-Za-z0-9_@/.])(@[A-Za-z0-9_]{3,24}(?![A-Za-z0-9_])|(?:https?:\/\/|www\.|loopztv\.com\/)[^\s]+)/gi;
+const LINK_HINT = /https?:\/\/|www\.|loopztv\.com\//i;
+/** نطاقاتُ لوبز: مسارُها شاشةٌ أصليّة لا صفحةُ ويب */
+const LOOPZ_HOSTS = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
+function openLink(href: string, onPath?: (path: string) => void) {
+  try {
+    const u = new URL(href);
+    if (onPath && LOOPZ_HOSTS.has(u.hostname.toLowerCase())) return onPath(`${u.pathname}${u.search}`);
+  } catch {
+    return;
+  }
+  void WebBrowser.openBrowserAsync(href).catch(() => {});
+}
 const MSG_LINE = 23;
 
 export function ConversationScreen({ peer, from }: { peer: string; from: Origin }) {
@@ -130,6 +148,11 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      /* 🆕 D-1438 — لوحةُ «+» مفتوحة: الرجوعُ يغلقها أوّلاً */
+      if (attachRef.current) {
+        setAttach(false);
+        return true;
+      }
       /* 🆕 D-1401 — زرُّ الرجوع يلغي التحديدَ أوّلاً ولا يخرج من المحادثة (كالواتس) */
       if (selectedRef.current.length) {
         setSelected([]);
@@ -327,6 +350,21 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* ——— لوحةُ المفاتيح: الحشوةُ ما يغطّيه منها أسفلَ الشاشة فعلاً ——— */
   const rootRef = useRef<View>(null);
   const kb = useKeyboardInset(rootRef);
+  /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح: تُغلق حين تظهر لوحةُ المفاتيح، و«+» يبدّل بينهما كالواتس */
+  useEffect(() => {
+    if (kb > 0) setAttach(false);
+  }, [kb]);
+  const attachRef = useRef(false);
+  attachRef.current = attach;
+  const toggleAttach = useCallback(() => {
+    if (attachRef.current) {
+      setAttach(false);
+      inputRef.current?.focus();
+    } else {
+      Keyboard.dismiss();
+      setAttach(true);
+    }
+  }, []);
 
   /* الأحدثُ أسفل: قائمةٌ مقلوبة — تبدأ من آخر ما قيل ويبقى تحت الإصبع حين يصل جديد.
      🆕 D-1401 — وفاصلُ يومٍ قبل أوّل رسالةٍ من كلِّ يوم («اليوم» · «أمس» · اسمُ اليوم · التاريخ)، بيوم الجهاز */
@@ -487,6 +525,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
       ) : (
         <FlatList
           ref={listRef}
+          /* 🆕 D-1438 — لمسُ المحادثة أو سحبُها يغلق لوحةَ «+» */
+          onTouchStart={() => attachRef.current && setAttach(false)}
           inverted
           data={rows}
           keyExtractor={(r) => r.key}
@@ -505,6 +545,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
                 onToggle={toggleSelect}
                 onQuote={jumpTo}
                 onTitle={doors.openTitle}
+                onPath={doors.openPath}
                 onList={doors.openList}
                 onImage={(e, image) => {
                   Keyboard.dismiss();
@@ -540,13 +581,13 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           bottomInset={insets.bottom}
           sending={sending}
           canSend={canSend}
-          onAttach={() => setAttach(true)}
+          onAttach={toggleAttach}
+          panel={attach ? <AttachPanel onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
           onSend={send}
           onRestingHeight={setDockH}
         />
       ) : null}
 
-      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
       {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
       {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer ? (
@@ -710,6 +751,7 @@ export function Bubble({
   onImageFail,
   mentions,
   onMention,
+  onPath,
 }: {
   e: MsgEvent;
   peerName: string;
@@ -727,29 +769,50 @@ export function Bubble({
   /** 🆕 D-1436 — في القروب: أسماءُ الأعضاء (صغيرة) — `@اسم` منهم يُرسم مميّزاً ولمستُه تفتح ملفَّه */
   mentions?: ReadonlySet<string>;
   onMention?: (username: string) => void;
+  /** 🆕 D-1439 — رابطُ لوبز في رسالة: المسارُ يُفتح بالشاشة الأصليّة */
+  onPath?: (path: string) => void;
 }) {
   const { t, tokens } = useApp();
   /* 🆕 D-1436 — `@عضو` بوزنٍ أثقل ومسطَّر، بلون النصّ نفسِه (على فقاعتي الذهبيّة لونُ التمييز لا يُقرأ). مقاطعُ `Text` داخل
      `Text`: كلُّ مقطعٍ يأخذ خطَّ حروفه (عربيّ/لاتينيّ) كالنصّ الكامل */
   const bodyOf = (str: string): React.ReactNode => {
-    if (!mentions?.size || !str.includes("@")) return str;
+    /* 🆕 D-1439 — الروابطُ تُلمس (أحمد ١٦ أكتوبر: «إذا أحد رسل رابط لازم يكون لونه أزرق وأقدر أفتحه»): أزرقُ مسطّرٌ في فقاعات
+       الآخرين، وفي فقاعتي الذهبيّة بلون نصّها مسطّراً («٣ أ» — الأزرقُ على الذهبيّ لا يُقرأ). روابطُ لوبز تفتح الشاشةَ الأصليّة
+       (`onPath`)، وغيرُها متصفّحاً داخل التطبيق يُغلق بسحبة («٢ أ») */
+    if (!str.includes("@") && !LINK_HINT.test(str)) return str;
+    const plain = e.mine ? tokens.onAccent : tokens.fg;
+    const seg = (key: string, txt: string) => <Text key={key} size={MSG_SIZE} weight="500" chat color={plain}>{txt}</Text>;
     const out: React.ReactNode[] = [];
     let last = 0;
-    for (const m of str.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) {
-      const name = m[2].toLowerCase();
-      if (!mentions.has(name)) continue;
-      const at = (m.index ?? 0) + m[1].length;
-      if (at > last) out.push(<Text key={`t${last}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg}>{str.slice(last, at)}</Text>);
-      const tag = str.slice(at, at + 1 + m[2].length);
+    for (const m of str.matchAll(TOKEN_RE)) {
+      const start = (m.index ?? 0) + (m[1]?.length ?? 0);
+      let tok = m[2] ?? "";
+      if (tok.startsWith("@")) {
+        const name = tok.slice(1).toLowerCase();
+        if (!mentions?.has(name)) continue;
+        if (start > last) out.push(seg(`t${last}`, str.slice(last, start)));
+        out.push(
+          <Text key={`m${start}`} size={MSG_SIZE} weight="700" chat color={plain} style={{ textDecorationLine: "underline" }} onPress={onMention ? () => onMention(name) : undefined}>
+            {tok}
+          </Text>,
+        );
+        last = start + tok.length;
+        continue;
+      }
+      /* علامةُ ترقيمٍ في آخر الجملة ليست من الرابط */
+      tok = tok.replace(/[.,!?؟،:;)\]}»"']+$/, "");
+      if (!tok) continue;
+      if (start > last) out.push(seg(`t${last}`, str.slice(last, start)));
+      const href = /^https?:\/\//i.test(tok) ? tok : `https://${tok}`;
       out.push(
-        <Text key={`m${at}`} size={MSG_SIZE} weight="700" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ textDecorationLine: "underline" }} onPress={onMention ? () => onMention(name) : undefined}>
-          {tag}
+        <Text key={`l${start}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.info} style={{ textDecorationLine: "underline" }} onPress={() => openLink(href, onPath)}>
+          {tok}
         </Text>,
       );
-      last = at + tag.length;
+      last = start + tok.length;
     }
     if (!out.length) return str;
-    if (last < str.length) out.push(<Text key={`t${last}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg}>{str.slice(last)}</Text>);
+    if (last < str.length) out.push(seg(`t${last}`, str.slice(last)));
     return out;
   };
   /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
