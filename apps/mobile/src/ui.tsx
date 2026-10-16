@@ -98,6 +98,7 @@ export function Text({
   color,
   content,
   autoDir,
+  chat,
   children,
   style: rawStyle,
   ...rest
@@ -108,13 +109,17 @@ export function Text({
   color?: string;
   /** 🆕 D-1105 — كلامُ الناس (مراجعة · ردّ · منشور): يتبع «خطَّ المحتوى» لا «خطَّ الواجهة» */
   content?: boolean;
+  /** 🆕 D-1434 — نصُّ الرسائل: يتبع الأكبرَ من «خطّ الواجهة» و«خطّ المحتوى» — أيُّ تكبيرٍ يعمله العضوُ يظهر في المحادثة */
+  chat?: boolean;
   /** 🆕 D-1234 — النصُّ يبدأ من جهة لغته هو (`dir="auto"` الويب). `content` يتضمّنه؛ يُكتب وحدَه لكلام الناس الذي لا يتبع «خطَّ المحتوى» (النبذة) */
   autoDir?: boolean;
 }) {
   const { tokens, fontsReady } = useApp();
   /* 🆕 D-1105 — حجمُ الخطّ: المقاسُ وارتفاعُ السطر يُضربان معاً (سطرٌ ثابتٌ تحت خطٍّ أكبر يقصّ الحروف)،
      وما كُتب في `style` مباشرةً يُضرب كذلك — فلا نصَّ ينجو من الإعداد لأنّه كُتب بطريقةٍ أخرى */
-  const k = useFontScale(content);
+  const kOwn = useFontScale(content);
+  const kContent = useFontScale(true);
+  const k = chat ? Math.max(kOwn, kContent) : kOwn;
   let style = rawStyle;
   if (k !== 1 && rawStyle) {
     const flat = StyleSheet.flatten(rawStyle);
@@ -137,7 +142,7 @@ export function Text({
      حرفٍ قويّ** (عربيّ أو لاتينيّ؛ الأرقامُ والرموزُ لا تقرّر — قاعدةُ `dir="auto"`)، ونصٌّ بلا حروفٍ يبقى على الواجهة.
      ⚠️ `"left"` في RN هي **بدايةُ اتجاه الواجهة** و`"right"` نهايتُه (تُقلبان في RTL)، فالمكتوبُ «عكسُ الواجهة أم لا»
      لا «يمين أم يسار». و`style` الصريح (توسيط) ما زال يغلب لأنّه يأتي بعد `base`. */
-  if ((content || autoDir) && typeof children === "string") {
+  if ((content || autoDir || chat) && typeof children === "string") {
     const rtl = firstStrongRtl(children);
     if (rtl !== null) {
       base.textAlign = rtl === I18nManager.isRTL ? "left" : "right";

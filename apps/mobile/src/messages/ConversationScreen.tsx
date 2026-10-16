@@ -43,6 +43,13 @@ import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
  */
 const PAGE_PAD = 16;
 
+/**
+ * 🆕 D-1434 — نصُّ الرسالة ١٦ بسطر ٢٣ وبوزن ٥٠٠ (أحمد ١٦ أكتوبر: «حجم الخط صغير… ونوع نمط الخط سيء»، «١ أ ٣ أ»):
+ * كان ١٤/٤٠٠ — Tajawal العاديُّ رفيعٌ وحروفُه قصيرة فيبدو أصغرَ من مقاسه في فقاعةٍ صغيرة. الخطُّ نفسُه، أثقلُ درجة.
+ */
+const MSG_SIZE = 16;
+const MSG_LINE = 23;
+
 export function ConversationScreen({ peer, from }: { peer: string; from: Origin }) {
   const { t, tokens } = useApp();
   const router = useRouter();
@@ -419,8 +426,8 @@ function Bubble({ e, onTitle, onList }: { e: MsgEvent; onTitle: (kind: "tv" | "m
   const { t, tokens } = useApp();
   const side = { alignSelf: e.mine ? ("flex-end" as const) : ("flex-start" as const), maxWidth: "80%" as const, marginVertical: 5 };
   const textBubble = (body: string) => (
-    <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: e.mine ? tokens.accent : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start" }}>
-      <Text size={14} content color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: 21 }}>{body}</Text>
+    <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: e.mine ? tokens.bubbleMine : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start" }}>
+      <Text size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: MSG_LINE }}>{body}</Text>
     </View>
   );
   if (e.kind === "reply") return <View style={side}>{textBubble(e.body)}</View>;
