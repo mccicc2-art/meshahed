@@ -7,9 +7,9 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
 import { PAGE_PAD } from "./Section";
-import { controlSize } from "../theme";
 import type { HomeHeaderPayload } from "../contracts";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
+import { HeaderIconButton } from "../HeaderEnd";
 import { nextHomeView, type HomeView } from "@/core/homePrefs";
 
 /**
@@ -68,12 +68,8 @@ export function HomeTopBar({
 }) {
   const { t, tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
-  const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
-      <Icon name={name} size={controlSize.headerIcon} color={fg} />
-      {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
-    </Pressable>
-  );
+  /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
+  const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={fg} />;
   return (
     <View style={{ height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD }}>
       {/* 🆕 D-1376 — الرمزُ ∞ لا الكلمة (أحمد ١٢ أكتوبر؛ ينقض قرارَ ٢٢ سبتمبر «loopz مثل الويب للهوم»).
