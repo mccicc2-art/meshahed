@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Animated, BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -691,7 +691,9 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg,  transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
+      {/* 🆕 D-1433 — رأسُ الرئيسيّة ثابتٌ لا يصعد (أحمد ١٦ أكتوبر: «الهيدر في الهوم لا يطلع فوق، خلّه ثابت والباقي يكون
+          تحته»): الصفحةُ تمرّ تحته وخلفيّتُه معتمة. الدوكُ وحده يتبع التمرير (حكمُه «١ أ») */}
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg }}>
         {/* 🆕 D-1429 — الصورةُ والاسمُ صعدا إلى هذا الصفّ مكانَ الشعار، فالرأسُ صفٌّ واحد */}
         <HomeTopBar
           h={d?.header ?? null}
@@ -704,7 +706,7 @@ export function HomeScreen() {
           onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })}
           onSettings={() => router.push("/settings")}
         />
-      </Animated.View>
+      </View>
       {!d ? (
         home.isError ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -791,6 +793,8 @@ export function HomeScreen() {
       <ToastHost hostRef={toastHost} bottom={navH} />
       <DockLink
         k="home"
+        /* 🆕 D-1433 — الدوكُ في الرئيسيّة يتبع التمرير كالمكتبة واكتشف والمجتمع (حكمُ أحمد «١ أ») والرأسُ ثابت */
+        hidden={chrome.hidden}
         onGo={(k) => {
           if (k === "home") {
             scroll.current?.scrollTo({ y: 0, animated: true });
