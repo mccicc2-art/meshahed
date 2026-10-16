@@ -15,6 +15,7 @@ import { Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { controlSize, radius } from "../theme";
 import { Logo } from "../Logo";
+import { HeaderEnd } from "../HeaderEnd";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { navHeight } from "../BottomNav";
@@ -272,6 +273,8 @@ export function CommunityScreen() {
           <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <Logo size={28} />
           </View>
+          {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
+          <HeaderEnd from="community" />
         </View>
         {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
             بلقطتين، ٣ أكتوبر): ثلاثةُ جذورٍ بمكانين للزرّ نفسِه عيبٌ (القاعدة ٣). الهندسةُ هندسةُ المكتبة حرفاً. */}

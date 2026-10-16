@@ -29,7 +29,8 @@ export function homeReady(capMs: number): Promise<boolean> {
   return Promise.race([got, new Promise<boolean>((r) => setTimeout(() => r(false), capMs))]);
 }
 
-async function fetchHome() {
+/** 🆕 D-1424 — مُصدَّرٌ لترويسات التبويبات: جرسُها يقرأ رقمَ الرئيسيّة من كاشها نفسِه (`useHomeSignals`) */
+export async function fetchHome() {
   return (await api<HomePayload>("/api/v1/me/home")).data;
 }
 async function fetchExtras() {
@@ -45,4 +46,13 @@ export function useHome() {
     return (kind: "tv" | "movie", id: number) => m[`${kind}-${id}`] ?? null;
   }, [extras.data]);
   return { home, extras, backdropOf };
+}
+
+/**
+ * 🆕 D-1424 — رقمُ التنبيهات غير المقروءة لجرس ترويسات التبويبات: **رقمُ جرس الرئيسيّة نفسُه** من كاشها، والكاشُ
+ * يُحدَّث في موضعٍ واحد (`useBadges` عند ظهور الرئيسيّة والعودة من الخلفيّة، و`dropBadges` حين تُقرأ، والصندوقُ الحيّ)
+ * — فالجرسان لا يفترقان، ولا طلبَ جديدٌ في كلِّ تنقّلٍ بين التبويبات.
+ */
+export function useHomeSignals(): number {
+  return useQuery({ queryKey: HOME_KEY, queryFn: fetchHome, staleTime: 60_000, select: (d) => d.header.unread_signals }).data ?? 0;
 }

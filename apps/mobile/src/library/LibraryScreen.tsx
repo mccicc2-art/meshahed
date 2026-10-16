@@ -18,6 +18,7 @@ import type { HoldAction } from "./HoldMenu";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
 import { Logo } from "../Logo";
+import { HeaderEnd } from "../HeaderEnd";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide } from "../TabSlide";
@@ -511,6 +512,8 @@ export function LibraryScreen() {
         <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
           <Logo size={28} />
         </View>
+        {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
+        <HeaderEnd from="library" />
       </View>
 
       {/* التبويباتُ الثلاثة — عائلةُ segmented الواحدة، وزرُّ الأدوات في طرفها (`FilterIconButton`: `h-9 w-9 rounded-full border`) */}

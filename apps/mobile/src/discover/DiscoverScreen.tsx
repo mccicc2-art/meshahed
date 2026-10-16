@@ -26,6 +26,7 @@ import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { warmTrendingOnce } from "../search/useSearch";
 import { FilterSheet } from "./FilterSheet";
 import { Logo } from "../Logo";
+import { HeaderEnd } from "../HeaderEnd";
 import { controlSize } from "../theme";
 import { NameSheet } from "./NameSheet";
 import { coldStartVoid, span, tabLanded } from "../perfMarks";
@@ -463,6 +464,8 @@ export function DiscoverScreen() {
         <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
           <Logo size={28} />
         </View>
+        {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
+        <HeaderEnd from="discover" />
       </View>
 
       {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة؛ D-1009 — زرُّ الأدوات في طرفه
