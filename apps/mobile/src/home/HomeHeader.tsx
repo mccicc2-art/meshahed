@@ -5,11 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Logo } from "../Logo";
 import { PAGE_PAD } from "./Section";
 import type { HomeHeaderPayload } from "../contracts";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
-import { HeaderIconButton } from "../HeaderEnd";
+import { HEADER_END_INSET, HeaderIconButton } from "../HeaderEnd";
+import { controlSize } from "../theme";
 import { nextHomeView, type HomeView } from "@/core/homePrefs";
 
 /**
@@ -32,7 +32,17 @@ import { nextHomeView, type HomeView } from "@/core/homePrefs";
 export const COVER_H = 164;
 export const COVER_SOLID = 135;
 const COVER_SCRIM = "rgba(0,0,0,0.30)";
-const VEIL = require("../../assets/poster-veil.png");
+export const VEIL = require("../../assets/poster-veil.png");
+
+/** صورةُ الغلاف وحجابُها المسطّح — مادّةُ `HomeCover`، ويقرؤها رأسُ الملفّ المطويّ ليكمل الغلافَ تحت شريط الأزرار (D-1431) */
+export function CoverArt({ url, pos }: { url: string; pos: number | null }) {
+  return (
+    <>
+      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${pos ?? 30}%`, left: "50%" }} /* D-1244 — بلا تلاشٍ: الغلافُ مسخَّنٌ مع الحمولة، والتلاشي كان يُظهر الرأسَ قبل غلافه */ transition={0} cachePolicy="memory-disk" priority="high" />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: COVER_SCRIM }]} />
+    </>
+  );
+}
 
 export function HomeCover({ url, pos }: { url: string | null; pos: number | null }) {
   const insets = useSafeAreaInsets();
@@ -42,8 +52,7 @@ export function HomeCover({ url, pos }: { url: string | null; pos: number | null
   const solid = insets.top + COVER_SOLID;
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, height: h, overflow: "hidden" }}>
-      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${pos ?? 30}%`, left: "50%" }} /* D-1244 — بلا تلاشٍ: الغلافُ مسخَّنٌ مع الحمولة، والتلاشي كان يُظهر الرأسَ قبل غلافه */ transition={0} cachePolicy="memory-disk" priority="high" />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: COVER_SCRIM }]} />
+      <CoverArt url={url} pos={pos} />
       {/* الذوبانُ إلى خلفيّة الصفحة من الخطّ الصلب إلى القاع */}
       <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: solid, height: h - solid }} contentFit="fill" />
       <View style={{ position: "absolute", left: 0, right: 0, top: h - 1, height: 1, backgroundColor: tokens.bg }} />
@@ -51,109 +60,102 @@ export function HomeCover({ url, pos }: { url: string | null; pos: number | null
   );
 }
 
+/**
+ * 🆕 D-1429 — **رأسُ الرئيسيّة صفٌّ واحد بلا شعار** (أحمد ١٦ أكتوبر بصورة: «طبّق نفس هذا التصميم في الهوم»، و«١ أ»: الشعارُ يُحذف):
+ * الصورةُ والاسمُ وشارةُ الاشتراك في البداية، والظرفُ والجرسُ والترسُ في الطرف — كان صفّين (الشعارُ والأزرار، ثمّ الترحيبُ ومبدّلُ
+ * العرض). الرئيسيّةُ تُعرف بأيقونتها في الشريط السفليّ، وصفٌّ واحدٌ يعطي المحتوى ارتفاعَ صفٍّ كامل.
+ * - مبدّلُ العرض نزل إلى بطاقة الأرقام خانةً أخيرة (`HomeStats`)؛ ومن أخفى البطاقةَ يجده هنا قبل الظرف.
+ * - الطرفُ على `HEADER_END_INSET` لا هامش الصفحة: الجرسُ ثاني زرٍّ من الطرف في كلِّ ترويسة، فيقف حيث يقف في المكتبة واكتشف والمجتمع.
+ * - **الصورةُ ٣٨ (D-1278) والاسمُ ٢٢/٧٠٠ (D-1233)** كما كانا في صفّ الترحيب.
+ */
+/* 🆕 D-1278 — ٣٨ (كانت ٣٢): أحمد «أحسّ اسم KHLD كبير على الأفتار» واختار ٣٨ من صورةٍ بثلاثة مقاسات */
+const AVATAR = 38;
+const SWITCH_ICON = 18;
+/* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
+const PILL_NAME_SIZE = 20;
+
 export function HomeTopBar({
-  onArt,
+  h,
   unreadSignals,
   unreadShares,
   onInbox,
   onSignals,
   onSettings,
+  onAvatar,
+  avatarRef,
+  viewSwitch,
 }: {
-  onArt: boolean;
+  /** قبل وصول الحمولة: الأزرارُ وحدها في مواضعها */
+  h: HomeHeaderPayload | null;
   unreadSignals: number;
   unreadShares: number;
   onInbox: () => void;
   onSignals: () => void;
   onSettings: () => void;
+  onAvatar: () => void;
+  /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
+  avatarRef?: React.Ref<View>;
+  /** المبدّلُ هنا فقط حين تُخفى بطاقةُ الأرقام */
+  viewSwitch?: React.ReactNode;
 }) {
   const { t, tokens } = useApp();
-  const fg = onArt ? "#fff" : tokens.fg;
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
-  const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={fg} />;
+  const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
   return (
-    <View style={{ height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD }}>
-      {/* 🆕 D-1376 — الرمزُ ∞ لا الكلمة (أحمد ١٢ أكتوبر؛ ينقض قرارَ ٢٢ سبتمبر «loopz مثل الويب للهوم»).
-          🆕 D-1377 — **بلا عنوانٍ ولا خطّ** (أحمد بعد أن رآهما على جهازه: «شيل كلمة هوم .. وشيل الخط»): الرئيسيّةُ تُعرف
-          بأيقونتها الصفراء في الشريط السفليّ وباسمك تحت الشعار، فالعنوانُ كان تكراراً — وهي وحدها بلا عنوانٍ بين الخمسة. */}
-      <Logo size={28} onArt={onArt} />
-      <View style={{ flex: 1 }} />
-      {btn("mail", t.communityTabInbox, onInbox, unreadShares)}
-      {btn("bell", t.notifTitle, onSignals, unreadSignals)}
-      {btn("settings", t.settingsNavHeading, onSettings, 0)}
+    <View style={{ height: 64, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
+      {h ? (
+        <>
+          <Pressable ref={avatarRef} onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={19} color={tokens.muted} />}
+          </Pressable>
+          {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والأزرارُ تُدفع إلى الطرف */}
+          <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 28 }}>{h.display_name}</Text>
+            <IdentityBadges flags={{ ...identityFlags(h), verified: false }} nameSize={PILL_NAME_SIZE} />
+          </View>
+        </>
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {viewSwitch}
+        {btn("mail", t.communityTabInbox, onInbox, unreadShares)}
+        {btn("bell", t.notifTitle, onSignals, unreadSignals)}
+        {btn("settings", t.settingsNavHeading, onSettings, 0)}
+      </View>
     </View>
   );
 }
 
 /**
- * 🆕 D-1233 — **صفُّ الترحيب صفٌّ واحد** (أحمد بثلاث لقطات، ٣ أكتوبر ٢٠٢٦): الصورةُ ٣٢ (اليوم ٣٨ — D-1278) · الاسمُ ٢٢/٧٠٠ (حجمُ عنوان القسم تحته — قياسُ لقطته) · شارةُ
- * الاشتراك (`PARTNER`/`PLUS`، ولا شيء لغير المشترك) · مبدّلُ العرض في الطرف.
- * - **خرج منه**: سطرُ `@username • المتابعون`، وختمُ التوثيق (قرارُه: «يُحذف من الهوم» — يبقى في الملفّ والإعدادات)،
- *   وألوانُ «فوق الغلاف» (`onArt`) لأنّ الغلافَ نفسَه خرج من الرئيسيّة.
- * - **المبدّلُ على خطِّ «الكلّ»** («خلّ تغيير الوضع متساوي على نفس الخط مع all اللي تحت»): هدفُ اللمس ما زال ٤٠،
- *   لكنّ الرمزَ يُسنَد إلى طرفه لا إلى وسطه؛ و`ICON_INSET` يعوّض هامشَ الرسمة الشفّاف (٩ من ٧٢ في `list.png`
- *   و`grid.png`) — بدونه يقف الرمزُ المرئيُّ ٢٫٢٥ قبل حافّة «الكلّ».
+ * مبدّلُ العرض — **والرمزُ يصف الحالَ لا الوجهة** (D-1321، حكمُ أحمد ٨ أكتوبر: «الحالي»)؛ والوجهةُ في الاسم المنطوق.
+ * 🆕 D-1425 — وضعان لا ثلاثة: المربّعات والمزدوج. هدفُ اللمس ٤٠ كأزرار الترويسة.
  */
-/* 🆕 D-1278 — ٣٨ (كانت ٣٢): أحمد «أحسّ اسم KHLD كبير على الأفتار» واختار ٣٨ من صورةٍ بثلاثة مقاسات. الاسمُ ٢٢
-   بسطرٍ ٢٨ كان يكاد يساوي الصورة؛ و٣٨ دون هدف المبدّل (٤٠) فلا يطول الصفّ. */
-const AVATAR = 38;
-const SWITCH_ICON = 18;
-const ICON_INSET = (9 / 72) * SWITCH_ICON;
-/* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
-const PILL_NAME_SIZE = 20;
-
-export function HomeGreeting({
-  h,
-  view,
-  onToggleView,
-  onAvatar,
-  avatarRef,
-}: {
-  h: HomeHeaderPayload;
-  view: HomeView;
-  onToggleView: () => void;
-  onAvatar: () => void;
-  /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
-  avatarRef?: React.Ref<View>;
-}) {
+export function HomeViewSwitch({ view, onToggle }: { view: HomeView; onToggle: () => void }) {
   const { t, tokens } = useApp();
-  /* 🆕 D-1321 — ثلاثةُ أوضاعٍ تدور، **والرمزُ يصف الحالَ لا الوجهة** (حكمُ أحمد ٨ أكتوبر: «الحالي»): بثلاثةٍ لا يعرف
-     الناظرُ أين هو من رمز ما سيأتي. والوجهةُ باقيةٌ في الاسم المنطوق.
-     🆕 D-1425 — وضعان لا ثلاثة (أحمد ١٦ أكتوبر: «احذف النمط العمودي»): المربّعات والمزدوج. */
   const next = nextHomeView(view);
   const nameOf = (v: HomeView) => (v === "mixed" ? t.viewMixed : t.viewVisual);
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <Pressable ref={avatarRef} onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-        {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={19} color={tokens.muted} />}
-      </Pressable>
-      {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والمبدّلُ يُدفع إلى الطرف */}
-      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 28 }}>{h.display_name}</Text>
-        <IdentityBadges flags={{ ...identityFlags(h), verified: false }} nameSize={PILL_NAME_SIZE} />
-      </View>
-      <Pressable
-        onPress={onToggleView}
-        accessibilityRole="button"
-        accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`}
-        hitSlop={6}
-        style={({ pressed }) => [{ width: 40, height: 40, alignItems: "flex-end", justifyContent: "center", marginEnd: -ICON_INSET, opacity: pressed ? 0.7 : 1 }]}
-      >
-        <Icon name={view === "mixed" ? "view-mixed" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
-      </Pressable>
-    </View>
+    <Pressable onPress={onToggle} accessibilityRole="button" accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`} hitSlop={6} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+      <Icon name={view === "mixed" ? "view-mixed" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
+    </Pressable>
   );
 }
 
-export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: string) => void }) {
+/** 🆕 D-1429 — بطاقةُ الرئيسيّة تحمل مبدّلَ العرض خانةً أخيرةً بعد فاصل (صورةُ أحمد: «للمشاهدة | القادم | ▦») */
+export function HomeStats({ h, onStat, viewSwitch }: { h: HomeHeaderPayload; onStat: (href: string) => void; viewSwitch: React.ReactNode }) {
   if (!h.show_stats) return null;
-  return <StatsCard stats={h.stats} onStat={onStat} />;
+  return <StatsCard stats={h.stats} onStat={onStat} trailing={viewSwitch} />;
 }
 
 /** 🆕 11-N · N1 — بطاقةُ الأرقام نفسُها لملفّ الشخص الأصليّ (الويبُ يرسمها للرئيسيّة وللملفّ بوصفةٍ واحدة — D-561/D-650) */
 export type StatCell = { key: string; icon: string; value: string | number; label: string; href: string };
-export function StatsCard({ stats, onStat }: { stats: readonly StatCell[]; onStat: (href: string) => void }) {
+export function StatsCard({ stats, onStat, trailing }: { stats: readonly StatCell[]; onStat: (href: string) => void; trailing?: React.ReactNode }) {
   const { tokens } = useApp();
-  if (stats.length === 0) return null;
+  if (stats.length === 0 && !trailing) return null;
+  /* 🆕 D-1429 — مع خانةٍ أخيرة (مبدّلُ الرئيسيّة) تعود الفواصلُ الرفيعةُ بين الخانات كما في صورة أحمد؛ بطاقةُ الملفّ بلا فواصل
+     كما حكم في D-1093. فاصلٌ قصيرٌ في الوسط لا حدٌّ كامل، بلون الإطار نفسِه */
+  const sep = (key: string) => (trailing ? <View key={key} style={{ width: 1, alignSelf: "center", height: 22, backgroundColor: tokens.border }} /> : null);
   /* 🆕 D-1129 — **أربعةٌ في صفٍّ واحد** (أحمد بلقطة: «إذا كانت ٤ أبغاها خط واحد»؛ كانت عمودين ×
      سطرين — D-620). ربعُ العرض (~٨٧) لا يتّسع لأيقونةٍ ورقمٍ واسمٍ في سطر («120d Time» يُقصّ)، فالخانةُ
      عند الأربعة **عموديّة**: الأيقونةُ والرقمُ فوق والاسمُ تحته — بالأحجام نفسِها. الاثنان والثلاثة كما هي. */
@@ -163,8 +165,9 @@ export function StatsCard({ stats, onStat }: { stats: readonly StatCell[]; onSta
      كي تصحّ `daylight`. الفراغُ بين الأرقام الثلاثة يفصلها وحدَه؛ خطٌّ فوقه كان يكرّر الفصل. */
   return (
     <View style={{ marginHorizontal: PAGE_PAD, marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
-      <View style={{ flexDirection: "row" }}>
-        {stats.map((s) =>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {stats.flatMap((s, i) => [
+          i > 0 ? sep(`sep-${s.key}`) : null,
           stacked ? (
             <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 2, paddingVertical: 11, opacity: pressed ? 0.7 : 1 }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -180,7 +183,13 @@ export function StatsCard({ stats, onStat }: { stats: readonly StatCell[]; onSta
               <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{s.label}</Text>
             </Pressable>
           ),
-        )}
+        ])}
+        {trailing ? (
+          <>
+            {stats.length > 0 ? sep("sep-trailing") : null}
+            <View style={{ paddingHorizontal: 8, alignItems: "center", justifyContent: "center" }}>{trailing}</View>
+          </>
+        ) : null}
       </View>
     </View>
   );

@@ -17,7 +17,7 @@ import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
 import { usePullRefresh } from "../pullRefresh";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
-import { HomeCover, StatsCard, type StatCell } from "../home/HomeHeader";
+import { CoverArt, COVER_H, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard, PlayPill } from "../library/ListCard";
@@ -83,6 +83,8 @@ const AV_MIN = 40;
 const AV_DROP = 64;
 /** بلا غلاف لا شيءَ يُكشف فوق الصورة: تنزل قليلاً عن شريط الأزرار فقط */
 const AV_DROP_BARE = 8;
+/** D-1431 — طولُ ذوبان الغلاف في الرأس المطويّ: يمرّ خلف الصورة والاسم ويصير أسودَ قبل النبذة */
+const VEIL_FADE = 48;
 /** انزياحُ مركز الصورة لتصغر من ركنها: نصفُ ما نقص من قطرها */
 const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
 /** الاسمُ بعد الطيّ يتوسّط الصورةَ الصغيرة: كتلتُه (~٤٦) أطولُ من ٤٠ بقليل، فيصعد أقلَّ من فرق القطر بثلاث */
@@ -485,6 +487,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     return {
       top: at(-drop),
       veil: at(1),
+      /* نسخةُ الغلاف داخل الحجاب تبقى في موضع الغلاف الحقيقيّ من الشاشة مهما تحرّك الحجاب — فلا ظلَّ مزدوج */
+      coverY: at(drop),
       avX: at(AV_SHIFT * side),
       avY: at(-AV_SHIFT),
       avScale: at(AV_MIN / AV_MAX, 1),
@@ -665,8 +669,21 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
               style={{ zIndex: 2, paddingTop: drop, transform: [{ translateY: fold.top }] }}
             >
-              {/* خلفيّةُ الصفحة تظهر مع الطيّ: ما ينزلق تحت الرأس لا يُرى من خلاله، والغلافُ يبقى فوقه في شريط الأزرار وحدَه */}
-              <Animated.View pointerEvents="none" style={{ position: "absolute", top: drop, left: 0, right: 0, height: topMin, backgroundColor: tokens.bg, opacity: fold.veil }} />
+              {/* خلفيّةُ الصفحة تظهر مع الطيّ: ما ينزلق تحت الرأس لا يُرى من خلاله.
+                  🆕 D-1431 — والغلافُ يمتدّ تحتها ويذوب إلى الأسود (أحمد ١٦ أكتوبر بلقطة: «مو عاجبني اللون الأسود، خلّها فيها تدرّج
+                  و يوح شوي مع الهيدر»): كان شريطُ الأزرار ينتهي بحدٍّ قاطعٍ فوق سوادٍ مسطّح. نسخةُ الغلاف مرسومةٌ في موضعه من الشاشة
+                  (`coverY`)، وفوقها حجابُ الملصق بلون الصفحة يذوب في `VEIL_FADE` — والطبقةُ كلُّها معتمةٌ فلا يظهر ما ينزلق تحتها */}
+              <Animated.View pointerEvents="none" style={{ position: "absolute", top: drop, left: 0, right: 0, height: topMin, overflow: "hidden", backgroundColor: tokens.bg, opacity: fold.veil }}>
+                {d.person.cover_url ? (
+                  <>
+                    <Animated.View style={{ position: "absolute", left: 0, right: 0, top: -(insets.top + HEADER_H + drop), height: insets.top + COVER_H, transform: [{ translateY: fold.coverY }] }}>
+                      <CoverArt url={d.person.cover_url} pos={d.person.cover_pos} />
+                    </Animated.View>
+                    <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: 0, height: VEIL_FADE }} contentFit="fill" />
+                    <View style={{ position: "absolute", left: 0, right: 0, top: VEIL_FADE, bottom: 0, backgroundColor: tokens.bg }} />
+                  </>
+                ) : null}
+              </Animated.View>
               <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
                 {/* 🆕 N3 — صورةُ ملفّي بابُ تعديله (D-571) — «تعديل الملفّ» أصليّة (D-1106)؛ ولزائري لا رابط.
                     D-1427 — تصغر من ركنها الأعلى عند البداية: المركزُ يُزاح بنصف ما نقص ثمّ تُصغَّر حوله */}

@@ -39,7 +39,7 @@ import { haptic } from "../haptics";
 import { capCards } from "@/core/cardCount";
 import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
-import { HomeTopBar, HomeGreeting, HomeStats } from "./HomeHeader";
+import { HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
@@ -717,7 +717,18 @@ export function HomeScreen() {
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg,  transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}>
-        <HomeTopBar onArt={false} unreadSignals={d?.header.unread_signals ?? 0} unreadShares={d?.header.unread_shares ?? 0} onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })} onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })} onSettings={() => router.push("/settings")} />
+        {/* 🆕 D-1429 — الصورةُ والاسمُ صعدا إلى هذا الصفّ مكانَ الشعار، فالرأسُ صفٌّ واحد */}
+        <HomeTopBar
+          h={d?.header ?? null}
+          avatarRef={avatarAnchor}
+          onAvatar={() => (d?.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))}
+          viewSwitch={d && !d.header.show_stats ? <HomeViewSwitch view={view} onToggle={toggleView} /> : null}
+          unreadSignals={d?.header.unread_signals ?? 0}
+          unreadShares={d?.header.unread_shares ?? 0}
+          onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })}
+          onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })}
+          onSettings={() => router.push("/settings")}
+        />
       </Animated.View>
       {!d ? (
         home.isError ? (
@@ -736,8 +747,8 @@ export function HomeScreen() {
               وشارةُ الاشتراك ومبدّلُ العرض. الغلافُ وسطرُ `@username • المتابعون` خرجا من هنا للجميع — مكانُهما الملفُّ
               الشخصيّ. **وبطاقةُ الأرقام باقيةٌ بشكلها لمن يريدها** («ابغاها ظاهره بنفس الشكل للي يبيها»): `show_stats`
               من تخصيص الرئيسيّة هو الذي يقرّر، كما كان. */}
-          <HomeGreeting avatarRef={avatarAnchor} h={d.header} view={view} onToggleView={toggleView} onAvatar={() => (d.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))} />
-          <HomeStats h={d.header} onStat={openHref} />
+          {/* 🆕 D-1429 — صفُّ الترحيب صعد إلى الرأس؛ البطاقةُ أوّلُ ما في الصفحة ومبدّلُ العرض خانتُها الأخيرة */}
+          <HomeStats h={d.header} onStat={openHref} viewSwitch={<HomeViewSwitch view={view} onToggle={toggleView} />} />
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
               <OneTimeHint id="home-customize" text={t.hintHome} hidden={tourBusy} />

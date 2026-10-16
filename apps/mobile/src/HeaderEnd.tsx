@@ -26,6 +26,11 @@ export function HeaderIconButton({ name, label, onPress, count, color }: { name:
 
 /** صورةُ الحساب في الترويسة ٣٠ — أصغرُ من صورة الرئيسيّة (٣٨) لأنّها تجاور جرساً لا اسماً */
 const AVATAR = 30;
+/**
+ * 🆕 D-1430 — بُعدُ آخر زرٍّ عن طرف الشاشة في كلِّ ترويسة: الصورةُ المرئيّةُ تقف على هامش الصفحة (١٦) وهدفُها ٤٠.
+ * الرئيسيّةُ تقرؤه أيضاً فيقف جرسُها في الموضع نفسِه من الطرف (أحمد: «تأكّد أنّ موقع زرّ الإشعارات مطابق»).
+ */
+export const HEADER_END_INSET = 16 - (controlSize.headerBtn - AVATAR) / 2;
 
 /**
  * 🆕 D-1424 — طرفُ ترويسة التبويب: الجرسُ ثمّ صورةُ الحساب في الطرف (أحمد ١٦ أكتوبر، بصورةٍ على لقطته: «١ أ ٢ أ ٣ ب كل
@@ -39,7 +44,7 @@ export function HeaderEnd({ from }: { from: NativeRoot }) {
   const signals = useHomeSignals();
   const openMe = () => (me?.username ? openProfile(router, me.username, from) : router.push("/settings/profile"));
   return (
-    <View style={{ position: "absolute", end: 16 - (controlSize.headerBtn - AVATAR) / 2, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
+    <View style={{ position: "absolute", end: HEADER_END_INSET, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
       <HeaderIconButton name="bell" label={t.notifTitle} count={signals} color={tokens.fg} onPress={() => router.push({ pathname: "/messages", params: { tab: "alerts", from } })} />
       <Pressable onPress={openMe} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
