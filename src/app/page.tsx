@@ -51,7 +51,7 @@ import {
   sanitizeHomePrefs,
   applyQueueOrder,
   type HomeSection,
-  type HomeView,
+  type SectionView,
 } from "@/core/homePrefs";
 import { capCards } from "@/core/cardCount";
 import { densityVars } from "@/core/density";
@@ -493,7 +493,7 @@ async function HomeBody({
            أرتّب عناوين الهوم») — مقبضُ D-595 و«الكلّ» سقطا من هذا
            الرأس، **والعنوانُ بابُ المكتبة كما هو** (D-378) فما سقط
            إلا التكرار. **وصفٌّ بعنصرٍ واحدٍ لا يُرتَّب** (D-217). */
-        const toWatchSection = (view: HomeView) => (
+        const toWatchSection = (view: SectionView) => (
           <Section
             key="towatch"
             title={t.libToWatch}
@@ -1076,7 +1076,7 @@ function Section({
    * صفٌّ أفقيٌّ يُمرَّر، أو عمودٌ من صفوفٍ مضغوطة. **ورأسان مكتوبان
    * مرّتين كانا سيفترقان** (قاعدة ٦).
    */
-  view?: HomeView;
+  view?: SectionView;
   /* ⚖️ 🆕 وسقط «صندوقُ الثلاثة صفوف» (peek/D-439) — نقضٌ بطلب أحمد ١٩
      أغسطس ليلاً بنصّه: «لا تستخدم max-height لتقييد القوائم، لا يوجد
      تمرير رأسي داخلي، الصفحة نفسها هي منطقة التمرير الرأسية الوحيدة» —
@@ -1225,7 +1225,7 @@ async function ContinueSection({
     (x) => x.key,
     order,
   ).map((x) => <PosterCard key={`ac-${x.key}`} href={x.href} title={x.title} posterPath={x.poster} progress={x.progress} />);
-  const rail = (view: HomeView) => {
+  const rail = (view: SectionView) => {
     const nodes: { key: string; node: React.ReactNode }[] = [];
     return (
       <Section
@@ -1374,7 +1374,7 @@ async function UpcomingSection({
   const cap = (n: number) => capCards(n, cards);
   /* **الرسمان من الجلب نفسِه**: أرقامُ الحلقات فوقُ تُجلب مرّةً،
    **والذي يتبدّل صدرُ الصفّ وغلافُ القسم** — لا نداءَ ثانٍ. */
-  const rail = (view: HomeView) => (
+  const rail = (view: SectionView) => (
     <Section
       key="upcoming"
       action={<HomeOrderButton label={t.custArrange} />}

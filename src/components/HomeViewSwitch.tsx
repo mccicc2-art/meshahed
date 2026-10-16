@@ -47,9 +47,9 @@ export function HomeViewSwitch({
      نفسَه، **والمتوازيتان قد تصلان مقلوبتين فيُحفظ غيرُ ما يُرى.** */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
-  /* 🆕 D-1321 — ثلاثةُ أوضاعٍ تدور: بصريّ ← مختصر ← مزدوج */
+  /* 🆕 D-1321 — أوضاعٌ تدور؛ 🆕 D-1425 — وضعان: بصريّ ⇄ مزدوج («المختصر» حُذف بحكم أحمد ١٦ أكتوبر) */
   const next: HomeView = nextHomeView(current);
-  const nameOf = (v: HomeView) => (v === "compact" ? t.viewCompact : v === "mixed" ? t.viewMixed : t.viewVisual);
+  const nameOf = (v: HomeView) => (v === "mixed" ? t.viewMixed : t.viewVisual);
   /* ⚖️ 🆕 **والكلمةُ سقطت وبقي الرمز** (D-589، بلاغُ أحمد بلقطة: «هذي
      خلّها رمز فقط بدون نص») — **نقضُ شطرِ «الزرُّ يحمل اسمَ الوجهة» من
      D-434 بيد صاحبه**: **الرمزُ ما زال يحمل الوجهةَ لا الحال** (شبكةٌ
@@ -125,7 +125,7 @@ export function HomeViewSwitch({
           لا باباً عامّاً.** والرمزُ كان يصف الوجهةَ — ومنذ D-1321 يصف الحال. */}
       {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ مع الصفِّ كلِّه (D-620) */}
       <Icon
-        name={current === "compact" ? "list" : current === "mixed" ? "view-mixed" : "grid"}
+        name={current === "mixed" ? "view-mixed" : "grid"}
         size={18}
         strokeWidth={2}
         style={{ color: "var(--accent)" }}

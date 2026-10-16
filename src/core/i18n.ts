@@ -172,7 +172,6 @@ const ar = {
   /* ترويسةُ الرئيسية الجديدة (D-434): تحيّةٌ بالوقت، ومبدّلُ وضع العرض */
   greetNeutral: "أهلاً",
   viewVisual: "بصري",
-  viewCompact: "مختصر",
   /* 🆕 D-1321 — الوضعُ الثالث: «أكمل المشاهدة» مختصرٌ وما عداه بصريّ */
   viewMixed: "مزدوج",
   viewSwitchAria: "طريقة عرض الرئيسية",
@@ -2209,7 +2208,8 @@ const ar = {
   /* 🆕 **شارةُ مدّة العضويّة** (D-831) — **الشهرُ والسنةُ لا اليومُ
      بالضبط**: **«منذ ٢ أغسطس» تُقرأ ذكرى، و«منذ أغسطس ٢٠٢٦» تُقرأ
      مدّةً** — **وهي المدّةُ التي طُلبت.** */
-  memberSince: (when: string) => `عضو منذ ${when}`,
+  /* D-1426 — «انضمّ» لا «عضو منذ» (أحمد ١٦ أكتوبر: «ميمبر ساينس خليها جويند») — والشهرُ مختصر */
+  joinedOn: (when: string) => `انضمّ ${when}`,
   /* 🆕 **أوائلُ الأسبوع** (D-835) — **الكلمةُ لا الرقمُ وحدَه**: **رمزٌ
      ولونٌ يقولان «مرتبة» ولا يقولان أيَّها** (D-142). */
   /* 🆕 **شارةٌ لا تختفي** (D-838، حكمُ أحمد): **الرتبةُ حتّى
@@ -2808,7 +2808,6 @@ const en: Dict = {
 
   greetNeutral: "Welcome",
   viewVisual: "Visual",
-  viewCompact: "Compact",
   viewMixed: "Mixed",
   viewSwitchAria: "Home layout",
   epsCount: (n: number) => `${n} episodes`,
@@ -4256,7 +4255,7 @@ const en: Dict = {
   librarySmartAny: "Any",
   librarySmartCreated: "Smart list created",
   librarySmartNeedsRule: "Pick at least one rule",
-  memberSince: (when: string) => `Member since ${when}`,
+  joinedOn: (when: string) => `Joined ${when}`,
   weeklyRankOrd: (n: number): string =>
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??
     `${n}`,
