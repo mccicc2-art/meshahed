@@ -254,6 +254,8 @@ function previewOf(last: ConvEvent | undefined, t: Dict): string {
 
 /** 🆕 D-1387 — سطرُ الرسالة في القائمة: «📷 صورة» (وتعليقُها إن وُجد) أو «GIF» أو النصّ */
 function replyPreview(e: Extract<ConvEvent, { kind: "reply" }>, t: Dict): string {
+  /* 🆕 D-1441 — المحذوفةُ للجميع سطرُها «حُذفت» لا فراغ */
+  if (e.deleted) return e.mine ? t.msgDeletedMine : t.msgDeleted;
   if (e.gif_id) return t.msgGifPreview;
   if (e.image) return e.body ? `${t.msgImagePreview} · ${e.body}` : t.msgImagePreview;
   return e.body;
@@ -571,6 +573,17 @@ function ConvBubble({ event, locale, peerName }: { event: ConvEvent; locale: Loc
   const quote =
     event.kind === "reply" && event.reply ? <ReplyQuote r={event.reply} onMine={event.mine} t={t} peerName={peerName} /> : null;
 
+  /* 🆕 D-1441 — رسالةٌ حذفها صاحبُها للجميع: سطرٌ خافتٌ مائلٌ بإطارٍ متقطّع مكانَها، لا لونُ صاحبها (لا محتوى بقي) */
+  if (event.kind === "reply" && event.deleted) {
+    return (
+      <div className={`flex flex-col max-w-[80%] ${side}`}>
+        <span className="flex items-center gap-1.5 rounded-2xl border border-dashed border-border px-3.5 py-2 text-13 italic text-muted">
+          <Icon name="trash" size={13} />
+          {event.mine ? t.msgDeletedMine : t.msgDeleted}
+        </span>
+      </div>
+    );
+  }
   /* 🆕 D-1387 — GIF أو صورةٌ (وتعليقُها تحتها) في إطارٍ بلون صاحبها، كفقاعة النصّ. الويبُ يعرض ولا يرسل بعدُ */
   if (event.kind === "reply" && (event.gif_id || event.image)) {
     const src = event.gif_id ? gifUrl(event.gif_id, "small") : event.image?.url ?? null;

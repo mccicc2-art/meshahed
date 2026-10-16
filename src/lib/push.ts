@@ -13,6 +13,7 @@ import {
   localDayHour,
   messagePush,
   groupMessagePush,
+  talkMentionPush,
   parseMuted,
   signalPush,
   dmNativeOf,
@@ -299,6 +300,70 @@ export function notifyGroupMessage(input: {
                 media: input.media,
                 sharedTitle: input.sharedTitle ?? null,
                 mention: named.has(id),
+              },
+              t,
+            ),
+        }).catch(() => {}),
+      ),
+    );
+  });
+}
+
+/**
+ * 🆕 D-1443 — **منشن في نقاش العمل**: الأسماءُ المذكورةُ بـ`@` تُطابَق بمن كتبوا في غرفة هذا العمل وحدهم (كأعضاء القروب في
+ * `notifyGroupMessage`) — اسمٌ لم يشارك نصٌّ عاديّ لا دفع.
+ * فئةُ «الردود» (من كتمها لا يصله)، ومفتاحٌ لكلِّ (مشاركة · مذكور).
+ */
+export function notifyTalkMention(input: {
+  postId: string;
+  actorId: string;
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string | null;
+  text: string;
+  mentions: string[];
+  /** المشاركةُ الأب — صاحبُها وصله «ردّ عليك» (`notifyReply`) فلا يرنّ مرّتين */
+  parentId?: string | null;
+}) {
+  if (!input.mentions.length) return;
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    /* الأسماءُ أوّلاً (١٢ على الأكثر، صغيرةٌ كما تُخزَّن) ثمّ: هل كتب صاحبُها في هذه الغرفة؟ */
+    const [{ data: profs }, person] = await Promise.all([
+      db.from("public_profiles").select("id, username").in("username", input.mentions),
+      personOf(db, input.actorId),
+    ]);
+    if (!person) return;
+    let skip: string | null = null;
+    if (input.parentId) {
+      const { data: par } = await db.from("title_posts").select("user_id").eq("id", input.parentId).maybeSingle();
+      skip = (par as { user_id?: string } | null)?.user_id ?? null;
+    }
+    const named = ((profs ?? []) as { id: string }[]).map((p) => p.id).filter((id) => id !== input.actorId && id !== skip);
+    if (!named.length) return;
+    const { data: posts } = await db
+      .from("title_posts")
+      .select("user_id")
+      .match({ tmdb_id: input.tmdbId, media_type: input.mediaType, hidden: false })
+      .in("user_id", named)
+      .limit(200);
+    const to = [...new Set(((posts ?? []) as { user_id: string }[]).map((p) => p.user_id))];
+    await Promise.all(
+      to.map((id) =>
+        deliver({
+          to: id,
+          group: "replies",
+          dedupe: `talk_mention:${input.postId}:${id}`,
+          actorId: input.actorId,
+          build: (t) =>
+            talkMentionPush(
+              {
+                senderName: person.hide_name ? t.anonymousUser : person.nickname || person.username || t.anonymousUser,
+                title: input.title ?? "",
+                tmdbId: input.tmdbId,
+                mediaType: input.mediaType,
+                text: input.text,
               },
               t,
             ),

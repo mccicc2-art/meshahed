@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
         hasSpoiler: b.has_spoiler,
         imageUrl: b.image_url,
         gifId: b.gif_id,
+        /* 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» */
+        share: b.share ?? null,
         title: (t.media_type === "tv" ? d?.name : d?.title) || null,
         posterPath: d?.poster_path ?? null,
         backdropPath: d?.backdrop_path ?? null,

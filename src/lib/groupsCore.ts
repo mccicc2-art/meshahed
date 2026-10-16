@@ -39,6 +39,8 @@ type MsgRow = {
   media_type?: "tv" | "movie" | null;
   title?: string | null;
   poster_path?: string | null;
+  /* 🆕 D-1441 — الهجرة ٢٠٨ (قبلها غائب) */
+  deleted_at?: string | null;
 };
 
 const MSG_COLS_205 = "id, group_id, sender_id, kind, body, gif_id, image_path, reply_to, sys, sys_target, created_at";
@@ -46,7 +48,9 @@ const MSG_COLS_205 = "id, group_id, sender_id, kind, body, gif_id, image_path, r
  * 🆕 D-1435 — أعمدةُ العمل من الهجرة ٢٠٧. **الواجهةُ قد تُنشر قبل الهجرة**: عمودٌ غائبٌ (`42703`) يعيد القراءةَ بأعمدة ٢٠٥
  * فتبقى القروباتُ كما كانت — بدونه كان الخطأُ يُبتلع فيعود الصندوقُ بلا قروباتٍ أصلاً.
  */
-const MSG_COLS = `${MSG_COLS_205}, tmdb_id, media_type, title, poster_path`;
+const MSG_COLS_207 = `${MSG_COLS_205}, tmdb_id, media_type, title, poster_path`;
+/** 🆕 D-1441 — `deleted_at` من الهجرة ٢٠٨، والقراءةُ تنزل درجةً درجةً قبلها (`42703`) كما نزلت ٢٠٧ */
+const MSG_COLS = `${MSG_COLS_207}, deleted_at`;
 const titleOf = (m: MsgRow): GroupTitleRef | null =>
   m.tmdb_id && (m.media_type === "tv" || m.media_type === "movie") ? { media_type: m.media_type, tmdb_id: m.tmdb_id, title: m.title ?? null, poster_path: m.poster_path ?? null } : null;
 
@@ -68,17 +72,27 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
     const ids = (mine as MemberRow[]).map((m) => m.group_id);
 
     const readMsgs = (cols: string) => supabase.from("dm_group_messages").select(cols).in("group_id", ids).order("created_at", { ascending: false }).limit(MAX_ROWS);
-    const [{ data: gRows }, { data: mRows }, first] = await Promise.all([
+    const [{ data: gRows }, { data: mRows }, first, { data: hidRows }] = await Promise.all([
       supabase.from("dm_groups").select("id, name, photo_path, last_at").in("id", ids),
       supabase.from("dm_group_members").select("group_id, user_id, role, joined_at, last_read_at, muted").in("group_id", ids),
       readMsgs(MSG_COLS),
+      /* 🆕 D-1441 — «حذف عندي»: صفوفي وحدي (قبل ٢٠٨ الجدولُ غائبٌ فيعود فارغاً) */
+      supabase.from("dm_group_hidden").select("message_id").limit(MAX_ROWS),
     ]);
-    const pre207 = first.error?.code === "42703";
-    const cols = pre207 ? MSG_COLS_205 : MSG_COLS;
-    const msgRows = pre207 ? (await readMsgs(MSG_COLS_205)).data : first.data;
+    let cols = MSG_COLS;
+    let msgRows = first.data;
+    if (first.error?.code === "42703") {
+      for (const c of [MSG_COLS_207, MSG_COLS_205]) {
+        const r = await readMsgs(c);
+        cols = c;
+        msgRows = r.data;
+        if (r.error?.code !== "42703") break;
+      }
+    }
+    const hidden = new Set(((hidRows ?? []) as { message_id: string }[]).map((h) => h.message_id));
     const groups = (gRows ?? []) as GroupRow[];
     const members = (mRows ?? []) as MemberRow[];
-    const msgs = ((msgRows ?? []) as unknown as MsgRow[]).reverse();
+    const msgs = ((msgRows ?? []) as unknown as MsgRow[]).reverse().filter((m) => !hidden.has(m.id));
 
     /* الأصولُ المقتبَسةُ الغائبةُ عن الصفحة: طلبٌ واحد، والسياسةُ نفسُها تحكم */
     const byId = new Map(msgs.map((m) => [m.id, m]));
@@ -111,7 +125,8 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
     const refOf = (id: string | null): GroupReplyRef | null => {
       if (!id) return null;
       const r = byId.get(id);
-      if (!r) return { id, sender_id: null, mine: false, kind: "gone", body: "" };
+      /* 🆕 D-1441 — المحذوفةُ للجميع والمخفيّةُ عندي غائبتان في الاقتباس */
+      if (!r || r.deleted_at || hidden.has(id)) return { id, sender_id: null, mine: false, kind: "gone", body: "" };
       const kind = r.image_path ? "image" : r.gif_id ? "gif" : "text";
       /* 🆕 D-1435 — اقتباسُ بطاقة عمل: اسمُ العمل نصُّه (والتعليقُ بعده) — يُقرأ في كلِّ نسخةٍ بلا نوعٍ جديد */
       const t = titleOf(r);
@@ -142,7 +157,7 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
           continue;
         }
         const mineMsg = m.sender_id === me;
-        if (!mineMsg && m.created_at > self.last_read_at) unread++;
+        if (!mineMsg && !m.deleted_at && m.created_at > self.last_read_at) unread++;
         let read: boolean | undefined;
         let readBy: string[] | undefined;
         if (mineMsg) {
@@ -163,6 +178,7 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
           ...(m.reply_to ? { reply: refOf(m.reply_to) } : {}),
           ...(titleOf(m) ? { title: titleOf(m) } : {}),
           ...(mineMsg ? { read, read_by: readBy } : {}),
+          ...(m.deleted_at ? { deleted: true } : {}),
         });
       }
       const ordered: GroupMember[] = [...gm]

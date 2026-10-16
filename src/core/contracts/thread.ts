@@ -11,6 +11,7 @@
  * **والترتيبُ وحدَه يُحسب في الطرفين** (`orderThread` في `core/threadOrder.ts`) لأنّ الردَّ المتفائلَ يُدرج قبل رحلة الخادم.
  */
 import type { PersonLite } from "../people.ts";
+import type { GroupTitleRef } from "./groups.ts";
 
 export type ThreadKind = "talk" | "post" | "review";
 
@@ -35,6 +36,8 @@ export type ThreadRow = {
   image: string | null;
   /** معرّفُ Giphy لا رابط (D-362) — الرابطُ يُبنى من `gifUrl` */
   gif_id: string | null;
+  /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩) — شكلُ بطاقة القروب نفسُه؛ غائبٌ قبل الهجرة وفي غير الغرفة */
+  share?: GroupTitleRef | null;
   /** ترجمتُه بلغة القارئ إن فُعّلت (D-307) */
   translated: string | null;
   likes: number;
@@ -114,6 +117,8 @@ export type ThreadReplyBody = {
   has_spoiler?: boolean;
   image_url?: string | null;
   gif_id?: string | null;
+  /** 🆕 D-1443 — عملٌ من «بحث لوبز» (للغرفة وحدَها، ولا يجتمع مع صورةٍ أو GIF) */
+  share?: GroupTitleRef | null;
 };
 /** والكاتبُ كما يُرسم (`replyAuthor`) — يستبدل السطرَ المتفائلَ بصاحبه الحقيقيّ (D-241) */
 export type ThreadReplyResult = {

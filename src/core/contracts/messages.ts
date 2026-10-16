@@ -42,6 +42,8 @@ export type MsgReplyEvent = {
   reply?: MsgReplyRef | null;
   /** 🆕 D-1403 — رسالةٌ مباشرة (لا ردٌّ قديمٌ في خيط عمل): وحدها يُردّ عليها باقتباس */
   dm?: boolean;
+  /** 🆕 D-1441 — حذفها صاحبُها للجميع (الهجرة ٢٠٨): المحتوى ممحوٌّ ويُرسم مكانَها «حُذفت هذه الرسالة» */
+  deleted?: boolean;
 };
 /** 🆕 D-1403 — مختصرُ الرسالة المقتبَسة: صاحبُها ونوعُها وأوّلُ سطرها أو صورتُها؛ `gone` = لم يعد الأصلُ متاحاً */
 export type MsgReplyRef = {
@@ -132,6 +134,7 @@ export function replyEventOut(e: {
   read?: boolean;
   reply?: MsgReplyRef | null;
   dm?: boolean;
+  deleted?: boolean;
 }): MsgReplyEvent {
   return {
     kind: "reply",
@@ -146,6 +149,7 @@ export function replyEventOut(e: {
     /* 🆕 D-1403 — الاقتباسُ بحقوله المنشورة وحدها */
     ...(e.reply ? { reply: replyRefOut(e.reply) } : {}),
     ...(e.dm ? { dm: true } : {}),
+    ...(e.deleted ? { deleted: true } : {}),
   };
 }
 
@@ -162,6 +166,37 @@ export function replyRefOut(r: MsgReplyRef): MsgReplyRef {
 }
 /** `POST /api/v1/me/messages/{read,hide,block}` */
 export type MsgPeerBody = { person_id: string };
+
+/**
+ * 🆕 D-1441 — `POST /api/v1/me/messages/delete`: رسائلُ بعينها (حتى ٥٠) من الخاص أو من قروب.
+ * `kind`: رسالةٌ مباشرة `dm` · بطاقةُ عملٍ `share` · قائمةٌ `list` · رسالةُ قروب `group` (ومعها `group_id`).
+ * `scope`: «حذف عندي» `me` · «حذف للجميع» `all` (لرسائلي، خلال `MSG_UNSEND_WINDOW_MS` — القاعدةُ تفحصها لا الواجهة).
+ */
+export type MsgDeleteKind = "dm" | "share" | "list" | "group";
+export type MsgDeleteBody = { scope: "me" | "all"; items: { kind: MsgDeleteKind; id: string }[]; group_id?: string | null };
+/** `{ done }` — و`refused`: ما رفضته القاعدةُ (خارج المهلة أو ليس لي) فيبقى في الشاشة */
+export type MsgDeletePayload = { done: string[]; refused: string[] };
+/** مهلةُ «حذف للجميع» — نسخةُ `interval '2 hours'` في `message_unsend` (الهجرة ٢٠٨) للواجهة وحدَها: تُخفي الخيارَ بعدها */
+export const MSG_UNSEND_WINDOW_MS = 2 * 3600 * 1000;
+const DELETE_KINDS: readonly MsgDeleteKind[] = ["dm", "share", "list", "group"];
+export function parseMsgDeleteBody(raw: unknown): MsgDeleteBody | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Record<string, unknown>;
+  if (b.scope !== "me" && b.scope !== "all") return null;
+  if (!Array.isArray(b.items) || !b.items.length || b.items.length > 50) return null;
+  const items: MsgDeleteBody["items"] = [];
+  for (const it of b.items) {
+    const o = (it ?? {}) as Record<string, unknown>;
+    if (typeof o.kind !== "string" || !DELETE_KINDS.includes(o.kind as MsgDeleteKind)) return null;
+    if (typeof o.id !== "string" || !UUID.test(o.id)) return null;
+    items.push({ kind: o.kind as MsgDeleteKind, id: o.id });
+  }
+  const group = typeof b.group_id === "string" && UUID.test(b.group_id) ? b.group_id : null;
+  /* رسالةُ قروبٍ بلا قروبها، أو خليطٌ من القروب والخاص — يُرفض قبل الرحلة */
+  const hasGroup = items.some((i) => i.kind === "group");
+  if (hasGroup && (!group || items.some((i) => i.kind !== "group"))) return null;
+  return { scope: b.scope, items, ...(group ? { group_id: group } : {}) };
+}
 
 /** `GET /api/v1/me/signals` — أسطرُ الجرس كما تعيدها `mySignals`، والجملةُ والوجهةُ من `core/signals.ts` في الطرفين */
 /** 🆕 N2-fix — `pending_requests`: معرّفاتُ من طلبوا متابعتي وما زال طلبُهم قائماً — صفُّ «طلب المتابعة» يُرسم بزرَّي قبولٍ ورفضٍ لهم وحدَهم */

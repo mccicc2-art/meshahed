@@ -88,3 +88,14 @@ test("النصّ المباشر: الردُّ على رسالةٍ بمعرّفه
   assert.equal(parseMsgTextBody({ recipient_id: U, body: "تمام", reply_to: "abc" }), null);
   assert.deepEqual(parseMsgTextBody({ recipient_id: U, body: "تمام", reply_to: "" }), { recipient_id: U, body: "تمام" });
 });
+
+test("D-1441 — جسمُ الحذف: نطاقٌ وعناصرُ صحيحة، والقروبُ لا يختلط بالخاص", async () => {
+  const { parseMsgDeleteBody } = await import("./messages.ts");
+  const id = "11111111-1111-1111-1111-111111111111";
+  assert.deepEqual(parseMsgDeleteBody({ scope: "all", items: [{ kind: "dm", id }] }), { scope: "all", items: [{ kind: "dm", id }] });
+  assert.equal(parseMsgDeleteBody({ scope: "everyone", items: [{ kind: "dm", id }] }), null);
+  assert.equal(parseMsgDeleteBody({ scope: "me", items: [] }), null);
+  assert.equal(parseMsgDeleteBody({ scope: "me", items: [{ kind: "group", id }] }), null, "رسالةُ قروبٍ بلا قروبها");
+  assert.equal(parseMsgDeleteBody({ scope: "me", group_id: id, items: [{ kind: "group", id }, { kind: "dm", id }] }), null);
+  assert.deepEqual(parseMsgDeleteBody({ scope: "me", group_id: id, items: [{ kind: "group", id }] }), { scope: "me", group_id: id, items: [{ kind: "group", id }] });
+});

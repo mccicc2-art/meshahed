@@ -26,6 +26,10 @@ import { KeyboardDock } from "@/components/ui/KeyboardDock";
 import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
+import type { PickedTitle } from "../TitleSearchSheet";
+
+/** 🆕 D-1443 — العملُ الملتقَط من ورقة البحث بشكل بطاقة النقاش */
+const shareOfPick = (p: PickedTitle): NonNullable<ThreadReply["share"]> => ({ media_type: p.kind, tmdb_id: p.id, title: p.title, poster_path: p.posterPath });
 import { isPlus } from "@/core/plan";
 
 /**
@@ -232,6 +236,8 @@ export function ThreadReplies({
     .filter((r) => !removed.has(r.replyId))
     /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة */
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  /* 🆕 D-1443 — من كتب هنا يُمنشَن: `@اسمه` في متنٍ رابطٌ إلى صفحته (والخادمُ يدفع له «ذكرك») */
+  const mentionNames = new Set(all.map((r) => r.username?.toLowerCase()).filter((n): n is string => !!n));
 
   /**
    * 🆕 **ثم الجذورُ بالأصوات حيث توجد** (D-305، نصُّ أحمد: «أكثر ردّ
@@ -391,6 +397,8 @@ export function ThreadReplies({
               allowGif={nested}
               onCancel={() => setOpen(null)}
               onSend={(b, sp, img, gif) => send(b, null, sp, img, gif)}
+              /* 🆕 D-1443 — «بحث لوبز» حيث تُخزَّن البطاقة (الغرفةُ وحدَها، الهجرة ٢٠٩) */
+              onSendTitle={nested && target.kind === "talk" ? (p) => send("", null, false, null, null, shareOfPick(p)) : undefined}
             />
           </KeyboardDock>
         ) : (
@@ -524,6 +532,7 @@ export function ThreadReplies({
           }}
           onDelete={() => remove(r)}
           onReport={() => report(r)}
+          mentionNames={mentionNames}
         />
         {open === r.replyId && (
           /* 🆕 **وحشوةُ الـ٥٢ سقطت** (D-296): كانت تُحاذي عمودَ النصّ
@@ -542,6 +551,7 @@ export function ThreadReplies({
               allowGif={nested}
               onCancel={() => setOpen(null)}
               onSend={(b, sp, img, gif) => send(b, r.replyId, sp, img, gif)}
+              onSendTitle={nested && target.kind === "talk" ? (p) => send("", r.replyId, false, null, null, shareOfPick(p)) : undefined}
             />
           </div>
         )}
@@ -663,6 +673,8 @@ export function ThreadReplies({
     imageUrl?: string | null,
     /* 🆕 **معرّفُ GIF لا رابطُه** (D-362) */
     gifId?: string | null,
+    /* 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» */
+    share?: ThreadReply["share"],
   ) {
     const temp = `${TEMP}${parentId ?? ""}:${body.length}:${all.length}`;
     setAdded((a) => [
@@ -689,6 +701,7 @@ export function ThreadReplies({
         /* 🆕 **والنسخةُ التفاؤليّةُ تحمله كما سيقرؤه الصفُّ الحقيقيّ**
            (D-241/D-312 حرفاً) */
         gifId: gifId ?? null,
+        share: share ?? null,
       },
     ]);
     setOpen(null);
@@ -713,6 +726,7 @@ export function ThreadReplies({
                   hasSpoiler,
                   imageUrl,
                   gifId,
+                  share: share ?? null,
                   title: target.title,
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,

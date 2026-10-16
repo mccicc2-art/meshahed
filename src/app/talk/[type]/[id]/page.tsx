@@ -336,6 +336,8 @@ export default async function TalkPage({
                اختياريّ** — سيرةُ D-179 مقلوبةً: التسامحُ الذي يحمي من
                العطل يخفي النسيان. */
             gifId: p.gifId,
+            /* 🆕 D-1443 — بطاقةُ العمل (درسُ السطر أعلاه: الخريطةُ الصريحةُ تُنسى حقلاً) */
+            share: p.share,
           }))}
           me={me}
           locale={locale}

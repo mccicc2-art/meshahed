@@ -7,7 +7,8 @@ import { PERSON_COLS } from "@/core/people";
 import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { notifyMessage, notifyReply, notifyShareReply, notifySignal } from "@/lib/push";
+import { mentionsIn } from "@/core/contracts/groups";
+import { notifyMessage, notifyReply, notifyShareReply, notifySignal, notifyTalkMention } from "@/lib/push";
 import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/core/region";
 import { TITLE_MODE_COOKIE, parseTitleMode, accountTitleMode } from "@/core/titleMode";
@@ -6403,6 +6404,8 @@ export async function addTalkPost(input: {
    * ثابتٍ عندنا** — **وحارسُه في القاعدة كذلك** (`check` في ١١١).
    */
   gifId?: string | null;
+  /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩) — لا تجتمع مع صورةٍ أو GIF */
+  share?: { media_type: MediaType; tmdb_id: number; title: string | null; poster_path: string | null } | null;
 }): Promise<NewReply | null> {
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -6446,7 +6449,18 @@ export async function addTalkPost(input: {
      (D-214: الشرطُ يُوسَّع يومَ يُضاف إليه).
      🆕 **والشكلُ الثالث GIF** — **وتُوسَّع كلُّ حراساته لا حراسةُ طبقةٍ
      واحدة** (D-302 بنصّها: الواجهةُ والفعلُ والقاعدةُ معاً). */
-  if (!body && !imageUrl && !gifId) return null;
+  /* 🆕 D-1443 — العملُ المرسَل يُحرس بشكله كبطاقة القروب (`parseTitleRef`)، والقاعدةُ تحرسه ثانيةً (قيدُ ٢٠٩) */
+  const sh = input.share && !imageUrl && !gifId ? input.share : null;
+  const share =
+    sh && Number.isInteger(sh.tmdb_id) && sh.tmdb_id > 0 && (sh.media_type === "tv" || sh.media_type === "movie")
+      ? {
+          share_tmdb_id: sh.tmdb_id,
+          share_media_type: sh.media_type,
+          share_title: sh.title ? String(sh.title).slice(0, 300) : null,
+          share_poster_path: sh.poster_path && /^\/[A-Za-z0-9_.-]{1,100}$/.test(sh.poster_path) ? sh.poster_path : null,
+        }
+      : null;
+  if (!body && !imageUrl && !gifId && !share) return null;
 
   const { data, error } = await supabase
     .from("title_posts")
@@ -6470,6 +6484,7 @@ export async function addTalkPost(input: {
       image_path: imageUrl,
       /* 🆕 **والـGIF في عموده** (D-362، الهجرة ١١١) — **معرّفٌ لا رابط** */
       gif_id: gifId,
+      ...(share ?? {}),
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })
@@ -6479,6 +6494,9 @@ export async function addTalkPost(input: {
 
   /* 🆕 D-1305 — ردٌّ داخل الغرفة ⇢ صاحبُ المشاركة الأب وحدَه (`talk_reply`)؛ مشاركةٌ جديدةٌ لا تُبلِّغ أحداً */
   if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId, mediaType, title: input.title?.slice(0, 200) || null });
+  /* 🆕 D-1443 — من ذُكر بـ`@` وكتب في هذه الغرفة: «ذكرك في نقاش…» (صاحبُ الأب يكفيه «ردّ عليك») */
+  const named = mentionsIn(body);
+  if (named.length) notifyTalkMention({ postId: String(data!.id), actorId: user.id, tmdbId, mediaType, title: input.title?.slice(0, 200) || null, text: body, mentions: named, parentId });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
   /* **وتبويبُ «نقاش» يُبطَل معها**: البطاقةُ تحمل عدّاداً ووقتَ آخر
