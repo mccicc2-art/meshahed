@@ -5,6 +5,7 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import type { HomeFriendCard, HomeFriendWho } from "../contracts";
+import { friendBadge } from "@/core/contracts/home";
 
 /**
  * ====== 🆕 D-1353 — مَن يشاهد العمل من أصدقائك ======
@@ -26,6 +27,32 @@ function Face({ uri, size, ring }: { uri: string | null; size: number; ring: str
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1.5, borderColor: ring, alignItems: "center", justifyContent: "center" }}>
       {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={size * 0.5} color={tokens.muted} />}
+    </View>
+  );
+}
+
+/**
+ * 🆕 D-1445 — **شارةُ الملصق: ماذا فعل صديقُك بالعمل** (أحمد ١٦ أكتوبر: «كيف الواحد يفرّق بين اللي قيّم واللي شاهد بس والحلقة»،
+ * «يهمّني تقييمه وأنه شاهد»، واختار الشارةَ على الملصق): وجهُ أحدثِ صديقٍ ثمّ ★ تقييمُه (ذهبيّ) · ✓ خلّصه (أخضر) ·
+ * ▶ آخرُ موسمٍ وحلقة (أبيض). الحالُ من الخادم (`friendBadge` نفسُها في الويب)؛ لا حالَ ⇒ لا شارة.
+ * فوق الزاوية العليا المقابلة لعلامة «عندك» في `PosterCard`، فلا تتزاحمان.
+ */
+export function FriendBadge({ card }: { card: HomeFriendCard }) {
+  const { tokens } = useApp();
+  const who = (card.people ?? []).find((p) => friendBadge(p.state));
+  const b = who ? friendBadge(who.state) : null;
+  if (!who || !b) return null;
+  const color = b.kind === "rated" ? tokens.accent : b.kind === "done" ? tokens.success : "#fff";
+  const label =
+    b.kind === "rated" ? `★ ${b.rating}` : b.kind === "done" ? "✓" : b.episode ? `▶ S${b.season} · E${b.episode}` : `▶ S${b.season}`;
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityLabel={`${who.name} · ${label}`}
+      style={{ position: "absolute", top: 7, end: 7, flexDirection: "row", alignItems: "center", gap: 5, paddingStart: 3, paddingEnd: 8, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color, backgroundColor: "rgba(0,0,0,0.72)" }}
+    >
+      <Face uri={who.avatar_url} size={19} ring="transparent" />
+      <Text size={12} weight="700" color={color} style={{ writingDirection: "ltr" }}>{label}</Text>
     </View>
   );
 }

@@ -9,7 +9,7 @@ import { ReorderBody } from "../library/ReorderSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard } from "../library/ListCard";
 import { MediaRow } from "./Cards";
-import { FriendsNames, FriendsWhoLine, WHO_H, whoOf } from "./Friends";
+import { FriendBadge, FriendsNames, FriendsWhoLine, WHO_H, whoOf } from "./Friends";
 import type { HomeExtrasPayload, HomeFriendCard, HomePayload, HomeQueueItem, QueueOrderBody } from "../contracts";
 
 /**
@@ -192,7 +192,10 @@ export function HomeAllSheet({
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
                 {posters.map((p) => (
                   <View key={p.item.key} style={{ width: cell }}>
-                    <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
+                    <View>
+                      <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
+                      {p.friend ? <FriendBadge card={p.friend} /> : null}
+                    </View>
                     {p.friend ? <FriendsWhoLine card={p.friend} onProfile={(u) => { onClose(); onProfile(u); }} onNames={setWho} /> : null}
                   </View>
                 ))}

@@ -1817,7 +1817,12 @@ export interface FriendWho {
   episode_count?: number | null;
   top_season?: number | null;
   at?: string;
+  /** 🆕 D-1445 — ما فعله بالعمل كلِّه: تقييمُه، وآخرُ موسمٍ (وحلقةٍ بعد ٢١١) وصله، وهل خلّصه */
+  state?: FriendState | null;
 }
+
+/** 🆕 D-1445 — حالُ صديقٍ مع عمل — شكلُ `HomeFriendState` في العقد */
+export type FriendState = { rating: number | null; season: number | null; episode: number | null; done: boolean };
 
 export interface FriendWatchRow {
   tmdb_id: number;
@@ -1843,8 +1848,8 @@ export async function getFriendsWatching(
     const out: FriendWatchRow[] = [];
     /* العملُ مرّةً واحدة (D-299) — وأصحابُه يتجمّعون عليه: السطورُ كلُّها تُقرأ (الدالّةُ تعيد ٦٠ على الأكثر)
        ثمّ يُقصّ العددُ، وإلّا فاتنا صاحبٌ ثانٍ سطرُه بعد الحدّ */
-    const byKey = new Map<string, { row: FriendWatchRow; ids: Set<string> }>();
-    for (const r of data as {
+    const byKey = new Map<string, { row: FriendWatchRow; ids: Map<string, FriendWho | null> }>();
+    type Act = {
       id: string;
       nickname?: string | null;
       username?: string | null;
@@ -1860,8 +1865,23 @@ export async function getFriendsWatching(
       poster_path: string | null;
       at?: string;
       updated_at?: string;
-    }[]) {
+    };
+    const rows = data as Act[];
+    /* 🆕 D-1445 — «حالُ» كلِّ صديقٍ مع كلِّ عمل من سطوره كلِّها لا من الأحدث وحده (أحمد ١٦ أكتوبر: «يهمّني تقييمه وأنه شاهد»):
+       قيّم ثمّ شاهد حلقةً ⇒ التقييمُ باقٍ. والإضافةُ وحدَها ليست مشاهدة ⇒ تسقط من الصفّ كلِّه («١ أ») */
+    const stateOf = new Map<string, FriendState>();
+    for (const r of rows) {
+      if (r.id === uid || r.kind === "add") continue;
+      const k = `${r.id}|${r.media_type}-${r.tmdb_id}`;
+      const st = stateOf.get(k) ?? { rating: null, season: null, episode: null, done: false };
+      if (r.kind === "rate" && typeof r.rating === "number" && st.rating == null) st.rating = r.rating;
+      if (r.kind === "movie") st.done = true;
+      if (r.kind === "episodes" && typeof r.top_season === "number" && r.top_season > 0) st.season = Math.max(st.season ?? 0, r.top_season);
+      stateOf.set(k, st);
+    }
+    for (const r of rows) {
       if (r.id === uid) continue;
+      if (r.kind === "add") continue;
       if (!r.tmdb_id || !r.title || !r.poster_path) continue;
       const key = `${r.media_type}-${r.tmdb_id}`;
       let e = byKey.get(key);
@@ -1876,18 +1896,19 @@ export async function getFriendsWatching(
             people: [],
             others: 0,
           },
-          ids: new Set(),
+          ids: new Map(),
         };
         byKey.set(key, e);
         out.push(e.row);
       }
       if (e.ids.has(r.id)) continue;
-      e.ids.add(r.id);
       const name = (r.nickname ?? "").trim() || (r.username ?? "").trim();
-      if (r.hide_name || !name) e.row.others += 1;
-      else {
-        const kind = r.kind === "episodes" || r.kind === "movie" || r.kind === "rate" || r.kind === "add" ? r.kind : null;
-        e.row.people.push({
+      if (r.hide_name || !name) {
+        e.row.others += 1;
+        e.ids.set(r.id, null);
+      } else {
+        const kind = r.kind === "episodes" || r.kind === "movie" || r.kind === "rate" ? r.kind : null;
+        const who: FriendWho = {
           name,
           username: r.username ?? null,
           avatar_url: r.avatar_url ?? null,
@@ -1896,10 +1917,50 @@ export async function getFriendsWatching(
           episode_count: typeof r.episode_count === "number" && r.episode_count > 0 ? r.episode_count : null,
           top_season: typeof r.top_season === "number" && r.top_season > 0 ? r.top_season : null,
           at: r.at ?? r.updated_at ?? undefined,
-        });
+          state: stateOf.get(`${r.id}|${key}`) ?? null,
+        };
+        e.row.people.push(who);
+        e.ids.set(r.id, who);
       }
     }
-    return out.slice(0, limit);
+    const shown = out.slice(0, limit);
+    /* 🆕 D-1445 — الحالُ الدقيقة (تقييمُه في أيّ وقت · آخرُ موسمٍ وحلقة · خلّصه؟) من `friends_title_state` (الهجرة ٢١١) —
+       لمن يُسمَّون في البطاقات الظاهرة وحدهم. قبل الهجرة الدالّةُ غائبة: يبقى ما قرأناه من الخطّ أعلاه */
+    const named = new Map<string, FriendWho>();
+    const users = new Set<string>();
+    const titles = new Set<string>();
+    for (const row of shown) {
+      const e = byKey.get(`${row.media_type}-${row.tmdb_id}`);
+      if (!e) continue;
+      for (const [id, who] of e.ids) {
+        if (!who) continue;
+        named.set(`${id}|${row.media_type}-${row.tmdb_id}`, who);
+        users.add(id);
+        titles.add(`${row.media_type}-${row.tmdb_id}`);
+      }
+    }
+    if (named.size) {
+      const tl = [...titles].map((k) => k.split("-"));
+      const { data: st, error: stErr } = await supabase.rpc("friends_title_state", {
+        p_users: [...users],
+        p_tmdb: tl.map((x) => Number(x[1])),
+        p_media: tl.map((x) => x[0]),
+      });
+      if (!stErr && Array.isArray(st)) {
+        for (const s of st as { user_id: string; tmdb_id: number; media_type: string; rating: number | null; last_season: number | null; last_episode: number | null; done: boolean | null }[]) {
+          const who = named.get(`${s.user_id}|${s.media_type}-${s.tmdb_id}`);
+          if (!who) continue;
+          const was = who.state ?? { rating: null, season: null, episode: null, done: false };
+          who.state = {
+            rating: typeof s.rating === "number" ? s.rating : was.rating,
+            season: s.last_season && s.last_season > 0 ? s.last_season : was.season,
+            episode: s.last_episode && s.last_episode > 0 ? s.last_episode : null,
+            done: !!s.done || was.done,
+          };
+        }
+      }
+    }
+    return shown;
   } catch {
     return [];
   }

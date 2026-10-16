@@ -91,6 +91,7 @@ export type {
   HomeRatedCard,
   HomeFriendCard,
   HomeFriendWho,
+  HomeFriendState,
   HomeTrendCard,
   HomeWeekDay,
   HomeWeekEntry,
