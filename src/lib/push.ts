@@ -255,7 +255,16 @@ export function notifyMessage(input: { to: string; actorId: string; text: string
 }
 
 /** 🆕 رسالةٌ في قروب: كلُّ عضوٍ غيرُ المرسِل ولم يكتم القروب (الهجرة ٢٠٥) — واحداً واحداً، فلغةُ كلٍّ وأجهزتُه وكتمُه كما في الخاص */
-export function notifyGroupMessage(input: { groupId: string; actorId: string; text: string | null; media?: "image" | "gif" | null }) {
+export function notifyGroupMessage(input: {
+  groupId: string;
+  actorId: string;
+  text: string | null;
+  media?: "image" | "gif" | null;
+  /** 🆕 D-1435 — اسمُ العمل المرسَل */
+  sharedTitle?: string | null;
+  /** 🆕 D-1436 — أسماءُ المستخدمين المذكورة بـ`@` (صغيرة) — تُطابَق بأعضاء القروب هنا */
+  mentions?: string[];
+}) {
   quiet(async () => {
     if (!hasServiceKey()) return;
     const db = await createServiceClient();
@@ -265,7 +274,15 @@ export function notifyGroupMessage(input: { groupId: string; actorId: string; te
       personOf(db, input.actorId),
     ]);
     if (!group || !person) return;
-    const to = ((members ?? []) as { user_id: string; muted: boolean }[]).filter((m) => m.user_id !== input.actorId && !m.muted).map((m) => m.user_id);
+    const rows = (members ?? []) as { user_id: string; muted: boolean }[];
+    /* المذكورون: أعضاءٌ أسماؤهم في الرسالة — يصلهم «ذكرك» حتى لو كتموا القروب (الكتمُ يسكت الكلامَ العامّ لا من يناديك) */
+    const named = new Set<string>();
+    if (input.mentions?.length) {
+      const { data: profs } = await db.from("public_profiles").select("id, username").in("id", rows.map((m) => m.user_id));
+      const wanted = new Set(input.mentions);
+      for (const p of (profs ?? []) as { id: string; username: string | null }[]) if (p.username && wanted.has(p.username.toLowerCase())) named.add(p.id);
+    }
+    const to = rows.filter((m) => m.user_id !== input.actorId && (!m.muted || named.has(m.user_id))).map((m) => m.user_id);
     await Promise.all(
       to.map((id) =>
         deliver({
@@ -280,6 +297,8 @@ export function notifyGroupMessage(input: { groupId: string; actorId: string; te
                 senderName: person.hide_name ? t.anonymousUser : person.nickname || person.username || t.anonymousUser,
                 text: input.text,
                 media: input.media,
+                sharedTitle: input.sharedTitle ?? null,
+                mention: named.has(id),
               },
               t,
             ),

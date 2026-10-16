@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseGroupCreateBody, parseGroupManageBody, parseGroupSendBody, GROUP_MAX_MEMBERS } from "./groups.ts";
+import { mentionsIn, parseGroupCreateBody, parseGroupManageBody, parseGroupSendBody, GROUP_MAX_MEMBERS } from "./groups.ts";
 
 /** القروبات (الهجرة ٢٠٥) — الأجسامُ تُرفض قبل الرحلة إن نقصت أو زادت على الحدود */
 
@@ -45,4 +45,26 @@ test("الإدارة: كلُّ فعلٍ بحقوله وحدها", () => {
   assert.equal(parseGroupManageBody({ action: "edit" }), null);
   assert.equal(parseGroupManageBody({ action: "edit", name: "  " }), null);
   assert.equal(parseGroupManageBody({ action: "drop" }), null);
+});
+
+test("D-1435 — العملُ: نوعٌ ومعرّفٌ صحيحان، وتعليقٌ اختياريّ، ولا يجتمع مع صورةٍ أو GIF", () => {
+  const T = { media_type: "movie", tmdb_id: 603, title: "  The   Matrix ", poster_path: "/abc.jpg" };
+  assert.deepEqual(parseGroupSendBody({ body: "", title: T })?.title, { media_type: "movie", tmdb_id: 603, title: "The Matrix", poster_path: "/abc.jpg" });
+  assert.equal(parseGroupSendBody({ body: "شوفوه", title: T })?.body, "شوفوه");
+  assert.equal(parseGroupSendBody({ body: "", title: { ...T, media_type: "book" } }), null);
+  assert.equal(parseGroupSendBody({ body: "", title: { ...T, tmdb_id: -1 } }), null);
+  assert.equal(parseGroupSendBody({ body: "", title: { ...T, tmdb_id: 1.5 } }), null);
+  assert.equal(parseGroupSendBody({ body: "", title: T, gif_id: "abc" }), null);
+  assert.equal(parseGroupSendBody({ body: "x", title: T, image_path: PHOTO }), null);
+  assert.equal(parseGroupSendBody({ body: "", title: { ...T, poster_path: "../x" } })?.title?.poster_path, null);
+  assert.equal(parseGroupSendBody({ body: "", title: "603" }), null);
+});
+
+test("D-1436 — المنشن: أسماءٌ بقاعدة اسم المستخدم، صغيرة، بلا تكرار، والبريدُ ليس منشناً", () => {
+  assert.deepEqual(mentionsIn("@khld شف هذا و @Mesh_al"), ["khld", "mesh_al"]);
+  assert.deepEqual(mentionsIn("@khld @khld"), ["khld"]);
+  assert.deepEqual(mentionsIn("ahmed@mail.com"), []);
+  assert.deepEqual(mentionsIn("@ab قصير"), []);
+  assert.deepEqual(mentionsIn("(@khld)"), ["khld"]);
+  assert.deepEqual(mentionsIn("@@khld"), []);
 });
