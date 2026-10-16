@@ -1,3 +1,4 @@
+import { FriendBadge } from "@/components/FriendBadge";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -908,18 +909,20 @@ async function HomeBody({
                   friendsRows.length,
                   <PosterGrid sheet>
                     {friendsRows.map((r) => (
-                      <PosterCard
-                        key={`af-${r.media_type}-${r.tmdb_id}`}
-                        href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                        title={r.title}
-                        posterPath={r.poster_path}
-                        saved={followedKeys.has(`${r.media_type}-${r.tmdb_id}`)}
-                        watched={
-                          r.media_type === "movie"
-                            ? watchedMovieIds.has(r.tmdb_id)
-                            : doneShowIds.has(r.tmdb_id)
-                        }
-                      />
+                      <div key={`af-${r.media_type}-${r.tmdb_id}`} className="relative">
+                        <PosterCard
+                          href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                          title={r.title}
+                          posterPath={r.poster_path}
+                          saved={followedKeys.has(`${r.media_type}-${r.tmdb_id}`)}
+                          watched={
+                            r.media_type === "movie"
+                              ? watchedMovieIds.has(r.tmdb_id)
+                              : doneShowIds.has(r.tmdb_id)
+                          }
+                        />
+                        <FriendBadge people={r.people} />
+                      </div>
                     ))}
                   </PosterGrid>,
                   { word: friendsRows.length > cap(12) },
@@ -940,6 +943,8 @@ async function HomeBody({
               >
                 {friendsRows.slice(0, cap(12)).map((r) => (
                   <RailItem key={`fw-${r.media_type}-${r.tmdb_id}`}>
+                    {/* 🆕 D-1445 — شارةُ صديقك: تقييمُه · خلّصه · موسمُه وحلقتُه */}
+                    <div className="relative">
                     <PosterCard
                       href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
                       title={r.title}
@@ -953,6 +958,8 @@ async function HomeBody({
                           : doneShowIds.has(r.tmdb_id)
                       }
                     />
+                    <FriendBadge people={r.people} />
+                    </div>
                   </RailItem>
                 ))}
               </PosterRail>

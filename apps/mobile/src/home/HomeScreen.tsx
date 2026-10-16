@@ -48,7 +48,7 @@ import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueue
 import { nextHomeView, sanitizeHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
 import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
-import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
+import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
 
 /**
@@ -669,7 +669,10 @@ export function HomeScreen() {
                 const it = asItem({ key: `fw-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched });
                 return (
                   <View key={it.key} style={{ width: posterW }}>
-                    <PosterCard item={it} width={posterW} onPress={pressItem} onHold={holdDiscOpen} />
+                    <View>
+                      <PosterCard item={it} width={posterW} onPress={pressItem} onHold={holdDiscOpen} />
+                      <FriendBadge card={r} />
+                    </View>
                     <FriendsWhoLine card={r} onProfile={(u) => openProfile(router, u, "home")} onNames={setWho} />
                   </View>
                 );

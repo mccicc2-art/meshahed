@@ -106,6 +106,8 @@ function Shell() {
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
         {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
         <Stack.Screen name="u/[username]" options={{ headerShown: false }} />
+        {/* 🆕 D-1446 — صفحةُ الفنان بلا ترويسة النظام (لقطةُ أحمد ١٦ أكتوبر: شريطُ «person/[id]» فوق رأسها) — رأسُها في الشاشة نفسِها */}
+        <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
         {/* 🆕 11-N · N4 — إحصاءاتُ العضو أصليّةً: تُدفع فوق ملفّه */}
         <Stack.Screen name="member-stats/[username]" options={{ headerShown: false }} />
         {/* 🆕 D-1213 — «النشاط» أصليّاً: يُدفع فوق المكتبة أو الرئيسيّة */}

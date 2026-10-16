@@ -261,7 +261,7 @@ export async function GET() {
           saved: body.followedKeys.has(`${r.media_type}-${r.tmdb_id}`),
           watched: r.media_type === "movie" ? watchedMovieIds.has(r.tmdb_id) : body.doneShowIds.has(r.tmdb_id),
           /* 🆕 W51 — `people` يحمل الآن ما فعله كلٌّ (للودجت) — الرئيسيّةُ تبقى على عقدها: الاسمُ والبابُ والصورة */
-          people: r.people.map((p) => ({ name: p.name, username: p.username, avatar_url: p.avatar_url })),
+          people: r.people.map((p) => ({ name: p.name, username: p.username, avatar_url: p.avatar_url, ...(p.state ? { state: p.state } : {}) })),
           others: r.others,
         })),
       },

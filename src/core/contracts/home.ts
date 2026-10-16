@@ -168,7 +168,21 @@ export type HomeFriendWho = {
   /** بابُ ملفّه — `null` لمن لا اسمَ مستخدمٍ له (يُسمّى ولا يُفتح) */
   username: string | null;
   avatar_url: string | null;
+  /** 🆕 D-1445 — ما فعله بالعمل: شارةُ الملصق (★ تقييمُه · ✓ خلّصه · ▶ موسمٌ وحلقة). غائبٌ في حمولةٍ أقدم */
+  state?: HomeFriendState | null;
 };
+
+/** 🆕 D-1445 — حالُ صديقٍ مع عمل: التقييمُ يغلب، ثمّ «خلّصه»، ثمّ آخرُ موسمٍ (وحلقةٍ إن عُرفت) */
+export type HomeFriendState = { rating: number | null; season: number | null; episode: number | null; done: boolean };
+
+/** الشارةُ الواحدة من الحال — للتطبيق والويب معاً؛ `null` ⇒ لا شارة */
+export function friendBadge(s: HomeFriendState | null | undefined): { kind: "rated"; rating: number } | { kind: "done" } | { kind: "watching"; season: number; episode: number | null } | null {
+  if (!s) return null;
+  if (typeof s.rating === "number" && s.rating > 0) return { kind: "rated", rating: s.rating };
+  if (s.done) return { kind: "done" };
+  if (s.season && s.season > 0) return { kind: "watching", season: s.season, episode: s.episode && s.episode > 0 ? s.episode : null };
+  return null;
+}
 
 export type HomeFriendCard = {
   kind: TitleKind;
