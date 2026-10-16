@@ -13,7 +13,8 @@ import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { MSG_TEXT_MAX } from "@/core/contracts/messages";
-import type { MsgImagePayload } from "../contracts";
+import type { MsgImagePayload, SearchTitle } from "../contracts";
+import { TitlePicker } from "../search/TitlePickerSheet";
 
 /**
  * ====== خانةُ الكتابة في المحادثة — واحدةٌ للخاص والقروب ======
@@ -192,46 +193,56 @@ export function ChatDock({
   );
 }
 
-/** 🆕 D-1387 — ورقةُ «+»: الورقةُ الواحدة بخيارين — «صورة» تفتح الاستوديو و«GIF» المنتقي */
-export function AttachSheet({ onClose, onImage, onGif }: { onClose: () => void; onImage: () => void; onGif: () => void }) {
+/**
+ * 🆕 D-1387 — ورقةُ «+»: الورقةُ الواحدة — «صورة» تفتح الاستوديو و«GIF» المنتقي.
+ * 🆕 D-1437 — **شبكةُ دوائر لا قائمة** (أحمد ١٦ أكتوبر بصورة: «هذي القائمة بعد ما تضغط على زايد أبغاها تظهر مثل كذا»):
+ * دائرةٌ ٦٤ برمزٍ بلون التمييز واسمٌ تحتها، و«بحث لوبز» خانةٌ ثالثة (`onLoopz`) تُرسل عملاً بطاقةً في المحادثة.
+ * «الصوت» في صورته ينتظر البناءَ الأصليَّ القادم (مكتبةُ تسجيلٍ تغيّر البصمة) — لا خانةَ معطّلةً مكانه.
+ */
+export function AttachSheet({ onClose, onImage, onGif, onLoopz }: { onClose: () => void; onImage: () => void; onGif: () => void; onLoopz?: () => void }) {
   const { t, tokens } = useApp();
+  const cell = (key: string, label: string, art: React.ReactNode, run: () => void) => (
+    <Pressable
+      key={key}
+      onPress={() => {
+        haptic.pick();
+        onClose();
+        run();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 8, opacity: pressed ? 0.7 : 1 })}
+    >
+      <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>{art}</View>
+      <Text size={13} weight="600" numberOfLines={2} style={{ textAlign: "center" }}>{label}</Text>
+    </Pressable>
+  );
   return (
     <Sheet title={t.msgAttach} onClose={onClose}>
-      <Pressable
-        onPress={() => {
+      <View style={{ flexDirection: "row", alignItems: "flex-start", paddingVertical: 8 }}>
+        {/* 🔴 D-1404 (مقطعُ مشعل على الآيفون، ١٥ أكتوبر: «صورة» تقفل الورقةَ ولا يفتح الاستوديو، والـGIF يعمل): iOS لا يعرض
+            نافذةً من النظام والورقةُ (`Modal`) ما زالت تُغلق — يتجاهل الطلبَ بصمت. الاستوديو يُفتح بعد انتهاء
+            إغلاقها (حركةُ الانزلاق ~٣٠٠ms)؛ والـGIF والبحثُ نوافذُنا نحن فلا يمسّهما ذلك، وأندرويد لا قيدَ عليه */}
+        {cell("image", t.msgPickImage, <Icon name="image" size={26} color={tokens.accent} />, () => (Platform.OS === "ios" ? setTimeout(onImage, 450) : onImage()))}
+        {cell("gif", t.msgPickGif, <Text size={14} weight="800" color={tokens.accent}>GIF</Text>, onGif)}
+        {onLoopz ? cell("loopz", t.msgPickLoopz, <Icon name="search" size={26} color={tokens.accent} />, onLoopz) : null}
+      </View>
+    </Sheet>
+  );
+}
+
+/** 🆕 D-1435 — «بحث لوبز»: منتقي العمل نفسُه (`TitlePicker`) في ورقة؛ الاختيارُ يُرسل مباشرةً */
+export function LoopzSearchSheet({ onPick, onClose }: { onPick: (r: SearchTitle) => void; onClose: () => void }) {
+  const { t } = useApp();
+  return (
+    <Sheet title={t.msgPickLoopz} onClose={onClose}>
+      <TitlePicker
+        onPick={(r) => {
+          haptic.pick();
           onClose();
-          /* 🔴 D-1404 (مقطعُ مشعل على الآيفون، ١٥ أكتوبر: «صورة» تقفل الورقةَ ولا يفتح الاستوديو، والـGIF يعمل): iOS لا يعرض
-             نافذةً من النظام والورقةُ (`Modal`) ما زالت تُغلق — يتجاهل الطلبَ بصمت. الاستوديو يُفتح بعد انتهاء
-             إغلاقها (حركةُ الانزلاق ~٣٠٠ms)؛ والـGIF نافذتُنا نحن فلا يمسّه ذلك، وأندرويد لا قيدَ عليه */
-          if (Platform.OS === "ios") setTimeout(onImage, 450);
-          else onImage();
+          onPick(r);
         }}
-        style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}
-      >
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-          <Icon name="image" size={17} color={tokens.fg} />
-        </View>
-        <View>
-          <Text size={15}>{t.msgPickImage}</Text>
-          <Text size={12} muted>{t.msgPickImageSub}</Text>
-        </View>
-      </Pressable>
-      <View style={{ height: 1, backgroundColor: tokens.divider }} />
-      <Pressable
-        onPress={() => {
-          onClose();
-          onGif();
-        }}
-        style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}
-      >
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-          <Text size={11} weight="800">GIF</Text>
-        </View>
-        <View>
-          <Text size={15}>{t.msgPickGif}</Text>
-          <Text size={12} muted>{t.msgPickGifSub}</Text>
-        </View>
-      </Pressable>
+      />
     </Sheet>
   );
 }

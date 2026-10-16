@@ -206,5 +206,6 @@ export type {
   GroupCreatePayload,
   GroupSendBody,
   GroupManageBody,
+  GroupTitleRef,
 } from "@/core/contracts/groups";
 export type { SignalRow } from "@/core/signals";

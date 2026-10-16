@@ -61,12 +61,32 @@ export function groupPreview(g: MsgGroupConversation, meId: string, t: Dict): st
   if (!last) return "";
   if (last.kind === "sys") return sysLine(last, g, meId, t);
   const who = last.mine ? t.convYou : nameIn(g, last.sender_id, meId, t);
-  const what = last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.body;
+  const what = last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.title ? titleText(last) : last.body;
   return `${who}: ${what}`;
+}
+
+/** 🆕 D-1435 — نصُّ رسالة العمل حيث لا بطاقة (المعاينة · الاقتباس · النسخ): «🎬 الاسم · التعليق» */
+export function titleText(e: GroupMsgEvent): string {
+  if (!e.title) return e.body;
+  return [`🎬 ${e.title.title ?? ""}`.trim(), e.body.trim()].filter(Boolean).join(" · ");
 }
 
 /** رسالةُ القروب بشكل الردّ المباشر — لتُرسم بـ`Bubble` نفسِها */
 export function asBubbleEvent(e: GroupMsgEvent): MsgEvent {
+  /* 🆕 D-1435 — بطاقةُ العمل تُرسم بطاقةَ مشاركة الخاص نفسَها (`share`)، والتعليقُ ملاحظتُها */
+  if (e.title)
+    return {
+      kind: "share",
+      id: e.id,
+      mine: e.mine,
+      tmdb_id: e.title.tmdb_id,
+      media_type: e.title.media_type,
+      title: e.title.title,
+      poster_path: e.title.poster_path,
+      note: e.body.trim() || null,
+      created_at: e.created_at,
+      ...(e.mine && typeof e.read === "boolean" ? { read: e.read } : {}),
+    };
   return {
     kind: "reply",
     id: e.id,

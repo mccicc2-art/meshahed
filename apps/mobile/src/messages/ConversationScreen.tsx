@@ -23,12 +23,12 @@ import { MESSAGES_KEY } from "./live";
 import { dropBadges, patchConversation, patchKeep, presenceOf, useDoors, useMessages, type Origin } from "./common";
 import { displayNameOf, profileHref } from "@/core/people";
 import { timeAgo } from "@/core/when";
-import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImage, MsgPeerBody, MsgReplyRef, MsgTextBody } from "../contracts";
+import type { LastSeenPayload, MessagesPayload, MsgEvent, MsgImage, MsgPeerBody, MsgReplyRef, MsgShareBody, MsgTextBody, SearchTitle } from "../contracts";
 import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachSheet, ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
+import { AttachSheet, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -166,6 +166,18 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   /* 🆕 D-1387 — صورةُ الرسالة: تُصغَّر وتُرفع فورَ اختيارها (`path` حين يعود الخادم)، وتُرى فوق الحقل بـ✕ قبل الإرسال (`chatDock`) */
   const { pic, setPic, pickImage } = usePicUpload(say);
   const [attach, setAttach] = useState(false);
+  /* 🆕 D-1435 — «بحث لوبز» في الخاص: العملُ المختار مشاركةٌ إلى الطرف الآخر (`/api/v1/me/messages/share` نفسُه) — بطاقتُها
+     تصل الخيطَ مع الجلب التالي */
+  const [loopzOpen, setLoopzOpen] = useState(false);
+  const sendTitle = useCallback(
+    (r: SearchTitle) => {
+      haptic.pick();
+      write<{ done: true }>("/api/v1/me/messages/share", { recipient_id: peer, tmdb_id: r.id, media_type: r.mediaType, title: r.title, poster_path: r.posterPath ?? null, note: null } satisfies MsgShareBody)
+        .then(() => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }))
+        .catch((e: unknown) => say(errorText(t, e)));
+    },
+    [peer, say, t],
+  );
   const [gifOpen, setGifOpen] = useState(false);
   /* 🆕 D-1402 — العارضُ يعرف الرسالةَ كلَّها: صاحبُها ووقتُها وتعليقُها، و«رد…» يقتبسها */
   const [viewer, setViewer] = useState<{ e: MsgEvent; image: MsgImage } | null>(null);
@@ -534,7 +546,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         />
       ) : null}
 
-      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} /> : null}
+      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
+      {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
       {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer ? (
         <PhotoViewer
@@ -695,6 +708,8 @@ export function Bubble({
   onList,
   onImage,
   onImageFail,
+  mentions,
+  onMention,
 }: {
   e: MsgEvent;
   peerName: string;
@@ -709,8 +724,34 @@ export function Bubble({
   onImage: (e: MsgEvent, img: { url: string; key: string }) => void;
   /** صورةٌ لم تُرسم ⇒ روابطُ جديدةٌ للمحادثة (الرابطُ موقَّعٌ مؤقّت) */
   onImageFail: () => void;
+  /** 🆕 D-1436 — في القروب: أسماءُ الأعضاء (صغيرة) — `@اسم` منهم يُرسم مميّزاً ولمستُه تفتح ملفَّه */
+  mentions?: ReadonlySet<string>;
+  onMention?: (username: string) => void;
 }) {
   const { t, tokens } = useApp();
+  /* 🆕 D-1436 — `@عضو` بوزنٍ أثقل ومسطَّر، بلون النصّ نفسِه (على فقاعتي الذهبيّة لونُ التمييز لا يُقرأ). مقاطعُ `Text` داخل
+     `Text`: كلُّ مقطعٍ يأخذ خطَّ حروفه (عربيّ/لاتينيّ) كالنصّ الكامل */
+  const bodyOf = (str: string): React.ReactNode => {
+    if (!mentions?.size || !str.includes("@")) return str;
+    const out: React.ReactNode[] = [];
+    let last = 0;
+    for (const m of str.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) {
+      const name = m[2].toLowerCase();
+      if (!mentions.has(name)) continue;
+      const at = (m.index ?? 0) + m[1].length;
+      if (at > last) out.push(<Text key={`t${last}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg}>{str.slice(last, at)}</Text>);
+      const tag = str.slice(at, at + 1 + m[2].length);
+      out.push(
+        <Text key={`m${at}`} size={MSG_SIZE} weight="700" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ textDecorationLine: "underline" }} onPress={onMention ? () => onMention(name) : undefined}>
+          {tag}
+        </Text>,
+      );
+      last = at + tag.length;
+    }
+    if (!out.length) return str;
+    if (last < str.length) out.push(<Text key={`t${last}`} size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg}>{str.slice(last)}</Text>);
+    return out;
+  };
   /* نسبةُ الصورة من الصورة نفسِها حين تُحمَّل — قبلها ٤:٣ */
   const [ratio, setRatio] = useState(4 / 3);
   /*
@@ -733,7 +774,7 @@ export function Bubble({
   const textBubble = (body: string, withMeta: boolean, withQuote = false) => (
     <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingTop: withQuote ? 6 : 7, paddingBottom: 7, backgroundColor: e.mine ? tokens.bubbleMine : tokens.surface2, alignSelf: e.mine ? "flex-end" : "flex-start", minWidth: withQuote ? 180 : undefined }}>
       {withQuote ? quote : null}
-      <Text size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: MSG_LINE }}>{withMeta ? body + metaPad(e, t) : body}</Text>
+      <Text size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: MSG_LINE }}>{bodyOf(withMeta ? body + metaPad(e, t) : body)}</Text>
       {withMeta ? (
         <View style={[{ position: "absolute", bottom: 6 }, metaSide(body)]}>
           <Meta e={e} onAccent={e.mine} />
@@ -811,7 +852,7 @@ export function Bubble({
           {e.body ? (
             <View>
               <Text size={MSG_SIZE} weight="500" chat color={e.mine ? tokens.onAccent : tokens.fg} style={{ lineHeight: MSG_LINE, paddingHorizontal: 11, paddingTop: 6, paddingBottom: 6, maxWidth: w }}>
-                {e.body + metaPad(e, t)}
+                {bodyOf(e.body + metaPad(e, t))}
               </Text>
               <View style={[{ position: "absolute", bottom: 6 }, metaSide(e.body)]}>
                 <Meta e={e} onAccent={e.mine} />

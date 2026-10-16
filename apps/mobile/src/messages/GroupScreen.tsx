@@ -21,11 +21,11 @@ import { ChatBackdrop, useChatBg } from "./chatBg";
 import { copyableOf, copyTextOf, dayKeyOf, dayLabelOf, stampOf } from "./chatFormat";
 import { ReplyQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
-import { AttachSheet, ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
+import { AttachSheet, ChatDock, LoopzSearchSheet, useKeyboardInset, usePicUpload } from "./chatDock";
 import { Bubble, DayChip } from "./ConversationScreen";
-import { GroupAvatar, asBubbleEvent, nameIn, patchGroup, personIn, senderColor, sysLine } from "./groups";
+import { GroupAvatar, asBubbleEvent, nameIn, patchGroup, personIn, senderColor, sysLine, titleText } from "./groups";
 import { displayNameOf } from "@/core/people";
-import type { GroupMsgEvent, GroupSendBody, MsgEvent, MsgImage, MsgGroupConversation } from "../contracts";
+import type { GroupMsgEvent, GroupSendBody, MsgEvent, MsgImage, MsgGroupConversation, SearchTitle } from "../contracts";
 
 /**
  * ====== خيطُ القروب — الدردشةُ نفسُها بأسماء المرسِلين (الهجرة ٢٠٥، الصورُ المعتمدة ١٥ أكتوبر) ======
@@ -41,6 +41,9 @@ type Row =
   | { type: "day"; key: string; label: string }
   | { type: "sys"; key: string; text: string }
   | { type: "msg"; key: string; g: GroupMsgEvent; e: MsgEvent; first: boolean; last: boolean };
+
+/** رسالةُ العمل في الاقتباس: نصُّها «🎬 الاسم · التعليق» — الاقتباسُ سطرٌ لا بطاقة */
+const quotable = (e: GroupMsgEvent): GroupMsgEvent => (e.title ? { ...e, title: null, body: titleText(e) } : e);
 
 export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const { t, tokens, locale } = useApp();
@@ -109,6 +112,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const { pic, setPic, pickImage } = usePicUpload(say);
   const [attach, setAttach] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
+  const [loopzOpen, setLoopzOpen] = useState(false);
   const [viewer, setViewer] = useState<{ g: GroupMsgEvent; image: MsgImage } | null>(null);
 
   const deliver = useCallback(
@@ -135,7 +139,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const quoteRef = useCallback(() => {
     if (!replyTo) return { ref: null, id: null };
     return {
-      ref: { id: replyTo.id, sender_id: replyTo.sender_id, mine: replyTo.mine, kind: replyTo.image ? ("image" as const) : replyTo.gif_id ? ("gif" as const) : ("text" as const), body: replyTo.body.slice(0, 140), ...(replyTo.image ? { image: replyTo.image } : {}), ...(replyTo.gif_id ? { gif_id: replyTo.gif_id } : {}) },
+      ref: { id: replyTo.id, sender_id: replyTo.sender_id, mine: replyTo.mine, kind: replyTo.image ? ("image" as const) : replyTo.gif_id ? ("gif" as const) : ("text" as const), body: titleText(replyTo).slice(0, 140), ...(replyTo.image ? { image: replyTo.image } : {}), ...(replyTo.gif_id ? { gif_id: replyTo.gif_id } : {}) },
       id: replyTo.id,
     };
   }, [replyTo]);
@@ -183,6 +187,49 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
       );
     },
     [g, me, quoteRef, replyTo, deliver],
+  );
+
+  /* 🆕 D-1435 — «بحث لوبز»: العملُ المختار يُرسل بطاقةً فوراً (والاقتباسُ إن كان) — ما في الحقل يبقى لرسالةٍ بعده */
+  const sendTitle = useCallback(
+    (r: SearchTitle) => {
+      if (!g) return;
+      const quote = quoteRef();
+      const quoted = replyTo;
+      const title = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
+      const ev: GroupMsgEvent = { kind: "msg", id: `tmp-${tmp.current++}`, mine: true, sender_id: me, body: "", title, created_at: new Date().toISOString(), ...(quote.ref ? { reply: quote.ref } : {}) };
+      setReplyTo(null);
+      deliver(ev, { body: "", title, ...(quote.id ? { reply_to: quote.id } : {}) }, () => {
+        if (quoted) setReplyTo((cur) => cur ?? quoted);
+      });
+    },
+    [g, me, quoteRef, replyTo, deliver],
+  );
+
+  /* 🆕 D-1436 — المنشن: أسماءُ الأعضاء (غيري) لرسم `@اسم` وللقائمة التي تظهر حين تكتب `@` */
+  const mentionables = useMemo(() => {
+    if (!g) return [];
+    return g.members
+      .filter((m) => m.id !== me)
+      .map((m) => personIn(g, m.id))
+      .filter((p): p is NonNullable<typeof p> => !!p && !!p.username && !p.hide_name);
+  }, [g, me]);
+  const mentionSet = useMemo(() => new Set(mentionables.map((p) => (p.username ?? "").toLowerCase())), [mentionables]);
+  /* الكلمةُ الأخيرةُ في الحقل تبدأ بـ@ ⇒ قائمةُ من يطابقها (الاسمُ أو المعرّف) — حتى خمسة */
+  const mentionQuery = /(^|\s)@([A-Za-z0-9_]*)$/.exec(text)?.[2] ?? null;
+  const mentionHits = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return mentionables
+      .filter((p) => (p.username ?? "").toLowerCase().startsWith(q) || displayNameOf(p, "").toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [mentionQuery, mentionables]);
+  const pickMention = useCallback(
+    (username: string) => {
+      haptic.pick();
+      setText((cur) => cur.replace(/(^|\s)@([A-Za-z0-9_]*)$/, (_m, pre: string) => `${pre}@${username} `));
+      inputRef.current?.focus();
+    },
+    [],
   );
 
   const chatBg = useChatBg();
@@ -366,7 +413,9 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
                 onSelect={startSelect}
                 onToggle={toggleSelect}
                 onQuote={jumpTo}
-                onTitle={() => {}}
+                onTitle={doors.openTitle}
+                mentions={mentionSet}
+                onMention={(u) => doors.openPath(`/u/${u}`)}
                 onList={() => {}}
                 onImage={(_e, image) => {
                   Keyboard.dismiss();
@@ -404,6 +453,27 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
         />
       )}
 
+      {/* 🆕 D-1436 — `@` في آخر الحقل ⇒ أعضاءُ القروب المطابقون فوق الخانة؛ اللمسةُ تكمل الاسمَ ومسافةً بعده */}
+      {g && mentionHits.length ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: tokens.bg, paddingVertical: 4 }}>
+          {mentionHits.map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => pickMention(p.username ?? "")}
+              accessibilityRole="button"
+              accessibilityLabel={`@${p.username}`}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: PAGE_PAD, paddingVertical: 8, backgroundColor: pressed ? tokens.surface2 : "transparent" })}
+            >
+              <Avatar uri={p.avatar_url} size={30} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text size={14} weight="600" numberOfLines={1}>{displayNameOf(p, t.anonymousUser)}</Text>
+                <Text size={12} muted numberOfLines={1}>@{p.username}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       {g ? (
         <ChatDock
           text={text}
@@ -411,8 +481,8 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           pic={pic}
           onClearPic={() => setPic(null)}
           quote={
-            replyTo && replyRefOf(asBubbleEvent(replyTo)) ? (
-              <ReplyQuote r={replyRefOf(asBubbleEvent(replyTo))!} peerName={nameIn(g, replyTo.sender_id, me, t)} onClear={() => setReplyTo(null)} />
+            replyTo && replyRefOf(asBubbleEvent(quotable(replyTo))) ? (
+              <ReplyQuote r={replyRefOf(asBubbleEvent(quotable(replyTo)))!} peerName={nameIn(g, replyTo.sender_id, me, t)} onClear={() => setReplyTo(null)} />
             ) : null
           }
           inputRef={inputRef}
@@ -426,7 +496,8 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
         />
       ) : null}
 
-      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} /> : null}
+      {attach ? <AttachSheet onClose={() => setAttach(false)} onImage={() => void pickImage()} onGif={() => setGifOpen(true)} onLoopz={() => setLoopzOpen(true)} /> : null}
+      {loopzOpen ? <LoopzSearchSheet onPick={sendTitle} onClose={() => setLoopzOpen(false)} /> : null}
       {gifOpen ? <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} /> : null}
       {viewer && g ? (
         <PhotoViewer
