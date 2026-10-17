@@ -50,7 +50,9 @@ import type { CommunityFeedRow, CommunityLeaderRow, CommunityRoom, CommunityTopR
  * الملصقُ مع عرض العمود الذي يضيّقه هو.
  */
 const CLAMP_LINES = 6;
-const LINE_H = 21;
+/** 🆕 D-1449 — خطُّ الكلام ١٦ لا ١٤ («كبّره شوي بحيث نبرز التعليق») — والسطرُ ٢٤ */
+const TEXT_SIZE = 16;
+const LINE_H = 24;
 /** الفرقُ بين أعرض الملصق (ستّة أسطر) وأضيقه (ثلاثة) — `(126 − 63) × ⅔` */
 const MEASURE_INSET = Math.round(((CLAMP_LINES - 3) * LINE_H * 2) / 3);
 
@@ -68,11 +70,11 @@ function ClampedText({ text, onPress, onLines }: { text: string; onPress: () => 
   return (
     <View>
       <Pressable onPress={onPress}>
-        <Text size={14} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: LINE_H }}>{text}</Text>
+        <Text size={TEXT_SIZE} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: LINE_H }}>{text}</Text>
       </Pressable>
       {long === null ? (
         <Text
-          size={14}
+          size={TEXT_SIZE}
           content
           pointerEvents="none"
           accessibilityElementsHidden
@@ -98,6 +100,8 @@ function ClampedText({ text, onPress, onLines }: { text: string; onPress: () => 
 }
 const POSTER_W = 72;
 const AVATAR = 40;
+/** 🆕 D-1449 — وجهُ بطاقة الخطّ أكبرُ قليلاً من الوجه العامّ (الصورة المرجعيّة) */
+const FACE = 46;
 
 export type CardDoors = {
   onTitle: (kind: "tv" | "movie", id: number) => void;
@@ -218,30 +222,36 @@ function RowPoster({ path, kind, lib, height, dark = false, onPress }: { path: s
 }
 
 /**
- * 🆕 D-1448 — **رأسُ البطاقة**: الوجهُ والاسمُ والعمرُ تحته، و⋯ في الزاوية (أحمد ١٧ أكتوبر: «ثلاث نقاط في زاوية الصفّ الأوّل»).
+ * 🆕 D-1448 · D-1449 — **هيكلُ البطاقة** كالصورة المرجعيّة (أحمد ١٧ أكتوبر: «مساحة تحت صورة الشخصيّة — المدّة يسار الثلاث نقاط
+ * — اسم الفلم والتقييم تحت الاسم — خطّ المحتوى أكبر»):
+ * - الوجهُ وحدَه في عموده، **وكلُّ ما سواه عمودٌ يبدأ من بداية الاسم** — الكلامُ والملصقُ والذيل؛ فما تحت الوجه فارغ.
+ * - السطرُ الأوّل: الاسمُ وشاراتُه، وفي الزاوية العمرُ ثمّ ⋯.
+ * - السطرُ الثاني (`sub`): اسمُ العمل و★ التقييم.
  * الرأسُ بجهة الواجهة دائماً؛ الجسمُ وحدَه يتبع جهةَ الكلام.
  */
-function CardHead({ face, name, badges, when, onWho, onWhen, onMenu }: { face: React.ReactNode; name: string; badges?: React.ReactNode; when: string; onWho?: () => void; onWhen?: () => void; onMenu: () => void }) {
+function CardShell({ face, name, badges, when, sub, onWho, onWhen, onMenu, children }: { face: React.ReactNode; name: string; badges?: React.ReactNode; when: string; sub?: React.ReactNode; onWho?: () => void; onWhen?: () => void; onMenu: () => void; children: React.ReactNode }) {
   const { t, tokens } = useApp();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <Pressable onPress={onWho} disabled={!onWho} accessibilityRole="link" accessibilityLabel={name}>
+    <View style={{ flexDirection: "row", gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+      <Pressable onPress={onWho} disabled={!onWho} accessibilityRole="link" accessibilityLabel={name} style={{ alignSelf: "flex-start" }}>
         {face}
       </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Pressable onPress={onWho} disabled={!onWho} style={{ flexShrink: 1 }}>
-            <Text size={14} weight="700" numberOfLines={1}>{name}</Text>
+            <Text size={15} weight="700" numberOfLines={1}>{name}</Text>
           </Pressable>
           {badges}
+          <Pressable onPress={onWhen} disabled={!onWhen} hitSlop={6} style={{ marginStart: "auto", paddingStart: 8 }}>
+            <Text size={12} muted>{when}</Text>
+          </Pressable>
+          <Pressable onPress={onMenu} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 30, height: 28, alignItems: "center", justifyContent: "center", marginEnd: -6, opacity: pressed ? 0.5 : 1 })}>
+            <Icon name="dots" size={18} color={tokens.muted} />
+          </Pressable>
         </View>
-        <Pressable onPress={onWhen} disabled={!onWhen} hitSlop={4} style={{ alignSelf: "flex-start" }}>
-          <Text size={12} muted>{when}</Text>
-        </Pressable>
+        {sub}
+        {children}
       </View>
-      <Pressable onPress={onMenu} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 32, height: 32, alignItems: "center", justifyContent: "center", marginEnd: -6, opacity: pressed ? 0.5 : 1 })}>
-        <Icon name="dots" size={18} color={tokens.muted} />
-      </Pressable>
     </View>
   );
 }
@@ -268,34 +278,34 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
   const [lines, setLines] = useState(0);
   const titleDoor = () => (row.kind === "comment" && row.item.listId ? doors.onList(row.item.listId) : doors.onTitle(row.item.media_type, row.item.tmdb_id));
   const menu = () => acts.menu(row);
-  const wrap = { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider };
 
   if (row.kind === "news") {
     const n = row.item;
     const post = `/post/${encodeURIComponent(n.key)}`;
     return (
-      <View style={wrap}>
-        <CardHead
-          face={
-            <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-              <Image source={require("../../assets/loopz-mark.png")} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-            </View>
-          }
-          name="Loopz"
-          when={timeAgoShort(n.published_at, t)}
-          onWho={() => doors.onWeb(`/u/${LOOPZ_USERNAME}`)}
-          onWhen={() => doors.onWeb(post)}
-          onMenu={menu}
-        />
+      <CardShell
+        face={
+          <View style={{ width: FACE, height: FACE, borderRadius: FACE / 2, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+            <Image source={require("../../assets/loopz-mark.png")} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          </View>
+        }
+        name="Loopz"
+        when={timeAgoShort(n.published_at, t)}
+        sub={
+          <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
+            <Text size={13} muted numberOfLines={1}>{n.title} · {n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+          </Pressable>
+        }
+        onWho={() => doors.onWeb(`/u/${LOOPZ_USERNAME}`)}
+        onWhen={() => doors.onWeb(post)}
+        onMenu={menu}
+      >
         <Body
           rtl={textIsRtl(row.line)}
-          poster={<RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} height={posterH(lines + 1 + (row.source ? 1 : 0))} dark={row.poster_dark} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />}
+          poster={<RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} height={posterH(lines + (row.source ? 1 : 0))} dark={row.poster_dark} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />}
         >
-          <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)}>
-            <Text size={13} weight="700" numberOfLines={1}>{n.title} · <Text size={12} muted>{n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text></Text>
-          </Pressable>
-          <Pressable onPress={() => doors.onWeb(post)} style={{ marginTop: 2 }}>
-            <Text size={14} weight="600" numberOfLines={CLAMP_LINES} onTextLayout={lines ? undefined : (e) => setLines(e.nativeEvent.lines.length)} style={{ lineHeight: LINE_H }}>{row.line}</Text>
+          <Pressable onPress={() => doors.onWeb(post)}>
+            <Text size={TEXT_SIZE} weight="600" content numberOfLines={CLAMP_LINES} onTextLayout={lines ? undefined : (e) => setLines(e.nativeEvent.lines.length)} style={{ lineHeight: LINE_H }}>{row.line}</Text>
           </Pressable>
           {row.source ? (
             <Text size={12} muted style={{ marginTop: 4 }}>{t.newsPerSource(row.source.name)}</Text>
@@ -304,7 +314,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
         <View style={{ marginTop: 10 }}>
           <Tail row={row} acts={acts} share={{ path: `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`, title: n.title }} />
         </View>
-      </View>
+      </CardShell>
     );
   }
 
@@ -322,20 +332,32 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
   const cover = isList && a.listCover ? backdropUrl(a.listCover, "w300") : null;
   /* جهةُ الجسم من الكلام نفسِه؛ والمحجوبُ أو الفارغُ من اسم العمل */
   const rtl = textIsRtl(hidden || !text ? rowTitle ?? "" : text);
-  /* سطرُ العمل والنجمة + أسطرُ الكلام (المقصوصةُ عند ستّة) — والمحجوبُ ثلاثةٌ: الحدُّ الأدنى */
-  const rows = hidden || !text ? 0 : 1 + Math.min(lines, CLAMP_LINES);
+  /* أسطرُ الكلام (المقصوصةُ عند ستّة) — والمحجوبُ ثلاثةٌ: الحدُّ الأدنى */
+  const rows = hidden || !text ? 0 : Math.min(lines, CLAMP_LINES);
 
   return (
-    <View style={wrap}>
-      <CardHead
-        face={<Avatar uri={a.person.hide_name ? null : a.person.avatar_url} />}
-        name={who}
-        badges={a.person.hide_name ? null : <IdentityBadges flags={identityFlags(a.person)} nameSize={14} />}
-        when={timeAgoShort(a.updated_at, t)}
-        onWho={whoPath ? () => doors.onWeb(whoPath) : undefined}
-        onWhen={openText}
-        onMenu={menu}
-      />
+    <CardShell
+      face={<Avatar uri={a.person.hide_name ? null : a.person.avatar_url} size={FACE} />}
+      name={who}
+      badges={a.person.hide_name ? null : <IdentityBadges flags={identityFlags(a.person)} nameSize={15} />}
+      when={timeAgoShort(a.updated_at, t)}
+      sub={
+        /* D-1449 — اسمُ العمل ثمّ ★ التقييم تحت الاسم (الصورة المرجعيّة) */
+        <Pressable onPress={titleDoor} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", maxWidth: "100%", marginTop: 2 }}>
+          {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
+          <Text size={13} weight="600" muted numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
+          {a.rating != null ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+              <Icon name="star-filled" size={13} color={tokens.accent} />
+              <Text size={14} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      }
+      onWho={whoPath ? () => doors.onWeb(whoPath) : undefined}
+      onWhen={openText}
+      onMenu={menu}
+    >
       <Body
         rtl={rtl}
         poster={
@@ -348,25 +370,13 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
           ) : null
         }
       >
-        {/* ★ التقييم ثمّ اسمُ العمل — بجهة الكلام كبقيّة الجسم */}
-        <Pressable onPress={titleDoor} style={{ flexDirection: rtl === I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 6, alignSelf: rtl === I18nManager.isRTL ? "flex-start" : "flex-end", maxWidth: "100%" }}>
-          {a.rating != null ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-              <Icon name="star-filled" size={12} color={tokens.accent} />
-              <Text size={13} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
-            </View>
-          ) : null}
-          {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
-          <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
-        </Pressable>
-
         {hidden ? (
-          <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
+          <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
             <Icon name="eye-off" size={14} color={tokens.muted} />
             <Text size={13} muted>{t.spoilerMark}</Text>
           </Pressable>
         ) : text ? (
-          <View style={{ marginTop: 4 }}>
+          <View>
             <ClampedText key={text} text={text} onPress={openText} onLines={setLines} />
             {translated ? (
               <Pressable onPress={() => setOriginal((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: 4 }}>
@@ -385,7 +395,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
           <Tail row={row} acts={acts} share={{ path: `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`, title: a.title ?? "" }} />
         )}
       </View>
-    </View>
+    </CardShell>
   );
 });
 /** غرفةُ نقاش — `TalkRoomCard` الويب: الملصقُ في البداية، والغلافُ خلفها باهتاً، والعنوانُ المولَّد هو البطاقة */
