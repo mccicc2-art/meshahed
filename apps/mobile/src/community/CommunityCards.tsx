@@ -239,13 +239,13 @@ function CardShell({ face, name, badges, when, sub, onWho, onWhen, onMenu, child
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Pressable onPress={onWho} disabled={!onWho} style={{ flexShrink: 1 }}>
-            <Text size={15} weight="700" numberOfLines={1}>{name}</Text>
+            <Text size={15} weight="700" numberOfLines={1} style={{ lineHeight: 20 }}>{name}</Text>
           </Pressable>
           {badges}
           <Pressable onPress={onWhen} disabled={!onWhen} hitSlop={6} style={{ marginStart: "auto", paddingStart: 8 }}>
             <Text size={12} muted>{when}</Text>
           </Pressable>
-          <Pressable onPress={onMenu} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 30, height: 28, alignItems: "center", justifyContent: "center", marginEnd: -6, opacity: pressed ? 0.5 : 1 })}>
+          <Pressable onPress={onMenu} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 26, height: 20, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
             <Icon name="dots" size={18} color={tokens.muted} />
           </Pressable>
         </View>
@@ -293,7 +293,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
         when={timeAgoShort(n.published_at, t)}
         sub={
           <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
-            <Text size={13} muted numberOfLines={1}>{n.title} · {n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+            <Text size={12} weight="500" muted numberOfLines={1} style={{ lineHeight: 16, marginTop: 1 }}>{n.title} · {n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
           </Pressable>
         }
         onWho={() => doors.onWeb(`/u/${LOOPZ_USERNAME}`)}
@@ -343,13 +343,14 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
       when={timeAgoShort(a.updated_at, t)}
       sub={
         /* D-1449 — اسمُ العمل ثمّ ★ التقييم تحت الاسم (الصورة المرجعيّة) */
-        <Pressable onPress={titleDoor} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", maxWidth: "100%", marginTop: 2 }}>
-          {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
-          <Text size={13} weight="600" muted numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
+        /* D-1450 — أصغرُ من الاسم وملاصقٌ له (لقطةُ أحمد ٤:١٠): سطرٌ ثانٍ هادئ لا عنوانٌ ثانٍ */
+        <Pressable onPress={titleDoor} hitSlop={4} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", maxWidth: "100%", marginTop: 1 }}>
+          {isList ? <Icon name="list" size={12} color={tokens.muted} /> : null}
+          <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1, lineHeight: 16 }}>{rowTitle}</Text>
           {a.rating != null ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-              <Icon name="star-filled" size={13} color={tokens.accent} />
-              <Text size={14} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+              <Icon name="star-filled" size={11} color={tokens.accent} />
+              <Text size={12} weight="700" color={tokens.accent} style={{ writingDirection: "ltr", lineHeight: 16 }}>{a.rating.toFixed(1)}</Text>
             </View>
           ) : null}
         </Pressable>
