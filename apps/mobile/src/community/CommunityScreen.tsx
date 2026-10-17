@@ -366,7 +366,7 @@ export function CommunityScreen() {
       ) : null}
       {canPost ? (
         /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
-        <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} />
+        <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
       ) : null}
       {menuRow ? (
         <FeedMenu

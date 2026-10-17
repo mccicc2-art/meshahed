@@ -142,35 +142,33 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
   const readOnly = mine || !acts.signedIn;
   const replies = row.kind === "comment" && row.item.listId ? row.list_social?.replies ?? 0 : row.replies;
   const views = row.kind === "comment" && row.item.listId ? null : row.views;
-  const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingVertical: 8, paddingHorizontal: 10, minHeight: 36 };
+  /* 🆕 D-1451 — رموزٌ بلا كلمات وصفٌّ ألصقُ بالملصق («قلّل المسافة… احذف النصّ خلّي الرموز فقط»): اللمسةُ تبقى ٤٤ بـ`hitSlop` لا بالحشوة */
+  const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingVertical: 4, paddingHorizontal: 10, minHeight: 28 };
   const heartColor = liked ? tokens.accent : tokens.muted;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: "auto", paddingTop: 4, marginHorizontal: -10 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: "auto", marginHorizontal: -10 }}>
       {readOnly ? (
         likes > 0 ? (
           <View style={pad} accessibilityLabel={`${t.likesLabel}: ${likes}`}>
             <Icon name="heart" size={16} color={tokens.muted} />
-            <Text size={12} muted>{t.likesLabel}</Text>
             <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text>
           </View>
         ) : null
       ) : (
-        <Pressable onPress={() => acts.like(row)} hitSlop={4} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t.likesLabel} style={pad}>
+        <Pressable onPress={() => acts.like(row)} hitSlop={10} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t.likesLabel} style={pad}>
           <Icon name={liked ? "heart-filled" : "heart"} size={16} color={heartColor} />
-          <Text size={12} color={heartColor}>{t.likesLabel}</Text>
           {likes > 0 ? <Text size={12} color={heartColor} style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text> : null}
         </Pressable>
       )}
       <Pressable
         onPress={() => (onList ? onList() : acts.signedIn ? acts.comment(row) : undefined)}
         disabled={!onList && !acts.signedIn}
-        hitSlop={4}
+        hitSlop={10}
         accessibilityRole="button"
         accessibilityLabel={onList ? t.talkReply : t.actionComment}
         style={pad}
       >
         <Icon name="comment" size={15} color={tokens.muted} />
-        <Text size={12} muted>{onList ? t.talkReply : t.actionComment}</Text>
         {replies > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replies, locale)}</Text> : null}
       </Pressable>
       {views != null ? (
@@ -180,7 +178,7 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
         </View>
       ) : null}
       {share ? (
-        <Pressable onPress={() => acts.share(share.path, share.title)} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.shareLinkLabel} style={pad}>
+        <Pressable onPress={() => acts.share(share.path, share.title)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.shareLinkLabel} style={pad}>
           <Icon name="share" size={16} color={tokens.muted} />
         </Pressable>
       ) : null}
@@ -311,7 +309,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
             <Text size={12} muted style={{ marginTop: 4 }}>{t.newsPerSource(row.source.name)}</Text>
           ) : null}
         </Body>
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: 6 }}>
           <Tail row={row} acts={acts} share={{ path: `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`, title: n.title }} />
         </View>
       </CardShell>
@@ -389,7 +387,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
       </Body>
 
       {/* المسافةُ تحت الملصق قبل الذيل (الصورة المعتمدة) */}
-      <View style={{ marginTop: 10 }}>
+      <View style={{ marginTop: 6 }}>
         {isList ? (
           <Tail row={row} acts={acts} onList={() => a.listId && doors.onList(a.listId)} />
         ) : (
