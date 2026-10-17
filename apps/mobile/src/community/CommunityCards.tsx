@@ -44,20 +44,49 @@ import type { CommunityFeedRow, CommunityLeaderRow, CommunityRoom, CommunityTopR
  * `onTextLayout` على النصّ المقصوص لا يقول كم كان سيبلغ. **وجهتُها جهةُ النصّ** لا جهةُ الواجهة: مراجعةٌ عربيّةٌ في
  * واجهةٍ إنجليزيّةٍ كلمتُها تحت بداية سطورها (اليمين)، كما في الصورة المعتمدة.
  */
-const CLAMP_LINES = 4;
-function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
+/**
+ * 🆕 D-1448 — **ستّةُ أسطرٍ لا أربعة**، والملصقُ يطول معها (أحمد ١٧ أكتوبر بأربع لقطات: «البوستر أصغر ارتفاع له مساوي لـ٣ أسطر
+ * وأطول ارتفاع له ٦ أسطر ويظهر بعدها المزيد»). العدُّ من النسخة غير المرئيّة نفسِها (`onLines`) — مرّةً واحدة، فلا يتذبذب
+ * الملصقُ مع عرض العمود الذي يضيّقه هو.
+ */
+const CLAMP_LINES = 6;
+const LINE_H = 21;
+/** الفرقُ بين أعرض الملصق (ستّة أسطر) وأضيقه (ثلاثة) — `(126 − 63) × ⅔` */
+const MEASURE_INSET = Math.round(((CLAMP_LINES - 3) * LINE_H * 2) / 3);
+
+/** جهةُ الكلام من أوّل حرفٍ قويّ: عربيٌّ/عبريٌّ ⇒ يمين، لاتينيٌّ ⇒ يسار، ولا حرف ⇒ جهةُ الواجهة */
+export function textIsRtl(text: string): boolean {
+  const strong = /[A-Za-z֐-ࣿ]/.exec(text)?.[0] ?? "";
+  return strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
+}
+
+function ClampedText({ text, onPress, onLines }: { text: string; onPress: () => void; onLines?: (n: number) => void }) {
   const { t } = useApp();
   const [long, setLong] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
-  const strong = /[A-Za-z\u0590-\u08FF]/.exec(text)?.[0] ?? "";
-  const rtl = strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
+  const rtl = textIsRtl(text);
   return (
-    <View style={{ marginTop: 8 }}>
+    <View>
       <Pressable onPress={onPress}>
-        <Text size={14} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: 21 }}>{text}</Text>
+        <Text size={14} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: LINE_H }}>{text}</Text>
       </Pressable>
       {long === null ? (
-        <Text size={14} content pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" onTextLayout={(e) => setLong(e.nativeEvent.lines.length > CLAMP_LINES)} style={{ lineHeight: 21, position: "absolute", left: 0, right: 0, top: 0, opacity: 0 }}>{text}</Text>
+        <Text
+          size={14}
+          content
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onTextLayout={(e) => {
+            const n = e.nativeEvent.lines.length;
+            setLong(n > CLAMP_LINES);
+            onLines?.(n);
+          }}
+          /* يُقاس بأضيق عرضٍ يبلغه العمود (حين يطول الملصق إلى ستّة أسطر): «المزيد» قد يظهر زائداً ولا يُقصّ نصٌّ بلا باب */
+          style={{ lineHeight: LINE_H, position: "absolute", start: 0, end: MEASURE_INSET, top: 0, opacity: 0 }}
+        >
+          {text}
+        </Text>
       ) : null}
       {long ? (
         <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: rtl === I18nManager.isRTL ? "flex-start" : "flex-end", marginTop: 4 }}>
@@ -67,7 +96,6 @@ function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
     </View>
   );
 }
-
 const POSTER_W = 72;
 const AVATAR = 40;
 
@@ -91,6 +119,8 @@ export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: numb
 export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
   comment: (row: CommunityFeedRow) => void;
   share: (path: string, title: string) => void;
+  /** 🆕 D-1448 — ⋯ في زاوية البطاقة: الورقةُ يملكها المستدعي (`FeedMenu`) */
+  menu: (row: CommunityFeedRow) => void;
 };
 
 /**
@@ -154,11 +184,24 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
   );
 }
 
-function RowPoster({ path, kind, lib, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityFeedRow["lib"]; onPress: () => void }) {
+/**
+ * 🆕 D-1448 — **ارتفاعُ الملصق بين ثلاثة أسطرٍ وستّة** والعرضُ يتبعه (٢:٣)؛ و**الداكنُ بلا بديل** (`poster_dark` من الخادم —
+ * `lib/vividPoster`) يأخذ إطاراً رفيعاً بلون النصّ فلا يذوب في الخلفيّة (قرارُ أحمد «٢ أ»).
+ */
+const POSTER_MIN_H = 3 * LINE_H;
+const POSTER_MAX_H = CLAMP_LINES * LINE_H;
+const posterH = (rows: number) => Math.min(POSTER_MAX_H, Math.max(POSTER_MIN_H, rows * LINE_H));
+
+function RowPoster({ path, kind, lib, height, dark = false, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityFeedRow["lib"]; height: number; dark?: boolean; onPress: () => void }) {
   const { tokens } = useApp();
+  const width = Math.round((height * 2) / 3);
   const uri = posterFor(path, POSTER_W);
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start" }}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      style={{ width, height, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: dark ? 1 : 0, borderColor: tokens.fg + "59" }}
+    >
       {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" transition={120} /> : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Icon name={kind === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />
@@ -174,46 +217,93 @@ function RowPoster({ path, kind, lib, onPress }: { path: string | null; kind: "t
   );
 }
 
+/**
+ * 🆕 D-1448 — **رأسُ البطاقة**: الوجهُ والاسمُ والعمرُ تحته، و⋯ في الزاوية (أحمد ١٧ أكتوبر: «ثلاث نقاط في زاوية الصفّ الأوّل»).
+ * الرأسُ بجهة الواجهة دائماً؛ الجسمُ وحدَه يتبع جهةَ الكلام.
+ */
+function CardHead({ face, name, badges, when, onWho, onWhen, onMenu }: { face: React.ReactNode; name: string; badges?: React.ReactNode; when: string; onWho?: () => void; onWhen?: () => void; onMenu: () => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Pressable onPress={onWho} disabled={!onWho} accessibilityRole="link" accessibilityLabel={name}>
+        {face}
+      </Pressable>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Pressable onPress={onWho} disabled={!onWho} style={{ flexShrink: 1 }}>
+            <Text size={14} weight="700" numberOfLines={1}>{name}</Text>
+          </Pressable>
+          {badges}
+        </View>
+        <Pressable onPress={onWhen} disabled={!onWhen} hitSlop={4} style={{ alignSelf: "flex-start" }}>
+          <Text size={12} muted>{when}</Text>
+        </Pressable>
+      </View>
+      <Pressable onPress={onMenu} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 32, height: 32, alignItems: "center", justifyContent: "center", marginEnd: -6, opacity: pressed ? 0.5 : 1 })}>
+        <Icon name="dots" size={18} color={tokens.muted} />
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * 🆕 D-1448 — **الجسم**: الكلامُ والملصقُ في صفٍّ واحد، **والملصقُ في نهاية سطر الكلام**: عربيٌّ ⇒ يسار، إنجليزيٌّ ⇒ يمين
+ * — أيّاً كانت لغةُ الواجهة (لقطاتُ أحمد). الصفُّ يُقلب بـ`row-reverse` حين تخالف جهةُ الكلام جهةَ الواجهة.
+ */
+function Body({ rtl, children, poster }: { rtl: boolean; children: React.ReactNode; poster: React.ReactNode }) {
+  return (
+    <View style={{ flexDirection: rtl === I18nManager.isRTL ? "row" : "row-reverse", alignItems: "flex-start", gap: 12, marginTop: 10 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
+      {poster}
+    </View>
+  );
+}
+
 export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: CommunityFeedRow; doors: CardDoors; acts: CardActs }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
   /* «النص الأصلي» ⇄ «الترجمة» (`FeedReviewText`، D-307) — حالةُ ضغطةٍ في البطاقة لا تفضيل */
   const [original, setOriginal] = useState(false);
+  /* أسطرُ الكلام كما قيست مرّةً (`ClampedText`) — تحدّد طولَ الملصق */
+  const [lines, setLines] = useState(0);
   const titleDoor = () => (row.kind === "comment" && row.item.listId ? doors.onList(row.item.listId) : doors.onTitle(row.item.media_type, row.item.tmdb_id));
+  const menu = () => acts.menu(row);
+  const wrap = { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider };
 
   if (row.kind === "news") {
     const n = row.item;
     const post = `/post/${encodeURIComponent(n.key)}`;
     return (
-      <View style={{ flexDirection: "row", gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Pressable onPress={() => doors.onWeb(`/u/${LOOPZ_USERNAME}`)} accessibilityRole="link">
-              <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-                <Image source={require("../../assets/loopz-mark.png")} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-              </View>
-            </Pressable>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text size={14} weight="700" style={{ flexShrink: 1, writingDirection: "ltr" }}>Loopz</Text>
-                <Pressable onPress={() => doors.onWeb(post)} hitSlop={6} style={{ marginStart: "auto" }}>
-                  <Text size={12} muted>{timeAgoShort(n.published_at, t)}</Text>
-                </Pressable>
-              </View>
-              <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)}>
-                <Text size={12} muted numberOfLines={1}>{n.title} · {n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
-              </Pressable>
+      <View style={wrap}>
+        <CardHead
+          face={
+            <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+              <Image source={require("../../assets/loopz-mark.png")} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             </View>
-          </View>
-          <Pressable onPress={() => doors.onWeb(post)} style={{ marginTop: 8 }}>
-            <Text size={14} weight="600" numberOfLines={3} style={{ lineHeight: 21 }}>{row.line}</Text>
+          }
+          name="Loopz"
+          when={timeAgoShort(n.published_at, t)}
+          onWho={() => doors.onWeb(`/u/${LOOPZ_USERNAME}`)}
+          onWhen={() => doors.onWeb(post)}
+          onMenu={menu}
+        />
+        <Body
+          rtl={textIsRtl(row.line)}
+          poster={<RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} height={posterH(lines + 1 + (row.source ? 1 : 0))} dark={row.poster_dark} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />}
+        >
+          <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)}>
+            <Text size={13} weight="700" numberOfLines={1}>{n.title} · <Text size={12} muted>{n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text></Text>
+          </Pressable>
+          <Pressable onPress={() => doors.onWeb(post)} style={{ marginTop: 2 }}>
+            <Text size={14} weight="600" numberOfLines={CLAMP_LINES} onTextLayout={lines ? undefined : (e) => setLines(e.nativeEvent.lines.length)} style={{ lineHeight: LINE_H }}>{row.line}</Text>
           </Pressable>
           {row.source ? (
             <Text size={12} muted style={{ marginTop: 4 }}>{t.newsPerSource(row.source.name)}</Text>
           ) : null}
+        </Body>
+        <View style={{ marginTop: 10 }}>
           <Tail row={row} acts={acts} share={{ path: `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`, title: n.title }} />
         </View>
-        <RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />
       </View>
     );
   }
@@ -230,72 +320,74 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
   const hidden = a.hasSpoiler && !reveal;
   const openText = () => (isList && a.listId ? doors.onList(a.listId) : reviewPath ? doors.onWeb(reviewPath) : undefined);
   const cover = isList && a.listCover ? backdropUrl(a.listCover, "w300") : null;
+  /* جهةُ الجسم من الكلام نفسِه؛ والمحجوبُ أو الفارغُ من اسم العمل */
+  const rtl = textIsRtl(hidden || !text ? rowTitle ?? "" : text);
+  /* سطرُ العمل والنجمة + أسطرُ الكلام (المقصوصةُ عند ستّة) — والمحجوبُ ثلاثةٌ: الحدُّ الأدنى */
+  const rows = hidden || !text ? 0 : 1 + Math.min(lines, CLAMP_LINES);
 
   return (
-    <View style={{ flexDirection: "row", gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} accessibilityRole="link" accessibilityLabel={who}>
-            <Avatar uri={a.person.hide_name ? null : a.person.avatar_url} />
-          </Pressable>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} style={{ flexShrink: 1 }}>
-                <Text size={14} weight="700" numberOfLines={1}>{who}</Text>
-              </Pressable>
-              {a.person.hide_name ? null : <IdentityBadges flags={identityFlags(a.person)} nameSize={14} />}
-              <Pressable onPress={openText} hitSlop={6} style={{ marginStart: "auto" }}>
-                <Text size={12} muted>{timeAgoShort(a.updated_at, t)}</Text>
-              </Pressable>
+    <View style={wrap}>
+      <CardHead
+        face={<Avatar uri={a.person.hide_name ? null : a.person.avatar_url} />}
+        name={who}
+        badges={a.person.hide_name ? null : <IdentityBadges flags={identityFlags(a.person)} nameSize={14} />}
+        when={timeAgoShort(a.updated_at, t)}
+        onWho={whoPath ? () => doors.onWeb(whoPath) : undefined}
+        onWhen={openText}
+        onMenu={menu}
+      />
+      <Body
+        rtl={rtl}
+        poster={
+          !isList ? (
+            <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} height={posterH(rows)} dark={row.poster_dark} onPress={titleDoor} />
+          ) : cover ? (
+            <Pressable onPress={titleDoor} style={{ width: POSTER_W, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+              <Image source={{ uri: cover }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+            </Pressable>
+          ) : null
+        }
+      >
+        {/* ★ التقييم ثمّ اسمُ العمل — بجهة الكلام كبقيّة الجسم */}
+        <Pressable onPress={titleDoor} style={{ flexDirection: rtl === I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 6, alignSelf: rtl === I18nManager.isRTL ? "flex-start" : "flex-end", maxWidth: "100%" }}>
+          {a.rating != null ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+              <Icon name="star-filled" size={12} color={tokens.accent} />
+              <Text size={13} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Pressable onPress={titleDoor} style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
-                {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
-                <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
-              </Pressable>
-              {a.rating != null ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                  <Icon name="star-filled" size={12} color={tokens.accent} />
-                  <Text size={13} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        </View>
+          ) : null}
+          {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
+          <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
+        </Pressable>
 
         {hidden ? (
-          <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
+          <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
             <Icon name="eye-off" size={14} color={tokens.muted} />
             <Text size={13} muted>{t.spoilerMark}</Text>
           </Pressable>
-        ) : (
-          <>
-            <ClampedText key={text} text={text} onPress={openText} />
+        ) : text ? (
+          <View style={{ marginTop: 4 }}>
+            <ClampedText key={text} text={text} onPress={openText} onLines={setLines} />
             {translated ? (
               <Pressable onPress={() => setOriginal((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: 4 }}>
                 <Text size={12} weight="700" muted>{original ? t.showTranslation : t.showOriginalText}</Text>
               </Pressable>
             ) : null}
-          </>
-        )}
+          </View>
+        ) : null}
+      </Body>
 
+      {/* المسافةُ تحت الملصق قبل الذيل (الصورة المعتمدة) */}
+      <View style={{ marginTop: 10 }}>
         {isList ? (
           <Tail row={row} acts={acts} onList={() => a.listId && doors.onList(a.listId)} />
         ) : (
           <Tail row={row} acts={acts} share={{ path: `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`, title: a.title ?? "" }} />
         )}
       </View>
-      {!isList ? (
-        <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} onPress={titleDoor} />
-      ) : cover ? (
-        <Pressable onPress={titleDoor} style={{ width: POSTER_W, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start" }}>
-          <Image source={{ uri: cover }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
-        </Pressable>
-      ) : null}
     </View>
   );
 });
-
 /** غرفةُ نقاش — `TalkRoomCard` الويب: الملصقُ في البداية، والغلافُ خلفها باهتاً، والعنوانُ المولَّد هو البطاقة */
 /**
  * 🆕 M2 — **دبّوسُ الغرفة** (`RoomPinButton` · `Wrap` في `WorksTalk`): **الإدارةُ** دبّوسُها للجميع ويحلّ محلَّ الشخصيّ (D-314) ·

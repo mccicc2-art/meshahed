@@ -1,0 +1,129 @@
+import React, { useState } from "react";
+import { Clipboard, Pressable, View } from "react-native";
+import { useApp } from "../state";
+import { Button, Text } from "../ui";
+import { Icon, type IconName } from "../icons";
+import { Sheet } from "../library/Sheet";
+import { CONFIG } from "../config";
+import { write } from "../api";
+import { displayNameOf, profileHref } from "@/core/people";
+import type { CommunityFeedRow, TrackResult, UnrateBody } from "../contracts";
+import type { CardDoors } from "./CommunityCards";
+
+/**
+ * ====== 🆕 D-1448 — ورقةُ ⋯ في بطاقة «المجتمع» ======
+ *
+ * أحمد ١٧ أكتوبر: «ثلاث نقاط في زاوية الصفّ الأوّل». الصفوفُ بوصفة «المزيد» في صفحة العمل (`TitleScreen`، D-1020) — رمزٌ
+ * وكلمة — لا ورقةَ جديدة: صفحةُ العمل (أو القائمة) · صفحةُ صاحبه · نسخُ الرابط · المشاركة، **ولرأيك وحدَك** «حذف تقييمي»
+ * بتأكيدٍ في الورقة نفسِها (الحذفُ لا يُتراجع عنه بضغطة) — المسارُ نفسُه في صفحة العمل (`track/unrate`).
+ * لا «إبلاغ» هنا بعد: لا مسارَ له في الخادم، وزرٌّ لا يفعل شيئاً أسوأ من غيابه.
+ */
+type Item = { icon: IconName; label: string; run: () => void; danger?: boolean };
+
+export function FeedMenu({
+  row,
+  meId,
+  doors,
+  onShare,
+  onCopied,
+  onClose,
+  onDeleted,
+  onError,
+}: {
+  row: CommunityFeedRow;
+  meId: string | null;
+  doors: CardDoors;
+  onShare: (path: string, title: string) => void;
+  onCopied: () => void;
+  onClose: () => void;
+  onDeleted: () => void;
+  onError: (e: unknown) => void;
+}) {
+  const { t, tokens } = useApp();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const it = row.item;
+  const titlePath = `/${it.media_type === "tv" ? "show" : "movie"}/${it.tmdb_id}`;
+  const items: Item[] = [];
+  let link = titlePath;
+  let shareTitle = it.title ?? "";
+  let mine = false;
+
+  if (row.kind === "news") {
+    link = `/post/${encodeURIComponent(row.item.key)}`;
+    items.push({ icon: "film", label: t.postMenuOpenTitle(row.item.title), run: () => doors.onTitle(row.item.media_type, row.item.tmdb_id) });
+  } else {
+    const a = row.item;
+    const name = displayNameOf(a.person, t.anonymousUser);
+    const who = profileHref(a.person);
+    if (a.listId) {
+      link = `/list/${a.listId}`;
+      items.push({ icon: "list", label: t.postMenuOpenTitle(a.title ?? ""), run: () => doors.onList(a.listId as string) });
+    } else {
+      link = `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
+      items.push({ icon: a.media_type === "tv" ? "tv" : "film", label: t.postMenuOpenTitle(a.title ?? ""), run: () => doors.onTitle(a.media_type, a.tmdb_id) });
+      mine = !!meId && a.person.id === meId;
+    }
+    if (who && !mine) items.push({ icon: "people", label: t.viewProfileOf(name), run: () => doors.onWeb(who) });
+    shareTitle = a.title ?? "";
+  }
+  items.push({ icon: "link", label: t.shareCopyLink, run: () => {
+    Clipboard.setString(`${CONFIG.apiBase}${link}`);
+    onCopied();
+  } });
+  items.push({ icon: "share", label: t.shareLinkLabel, run: () => onShare(link, shareTitle) });
+
+  const remove = async () => {
+    if (row.kind !== "comment") return;
+    setBusy(true);
+    try {
+      await write<TrackResult>("/api/v1/track/unrate", { tmdbId: row.item.tmdb_id, mediaType: row.item.media_type } satisfies UnrateBody);
+      onDeleted();
+    } catch (e) {
+      onError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (confirm) {
+    return (
+      <Sheet title={t.deleteRating} onClose={onClose} placement="center">
+        <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>{t.postDeleteConfirm}</Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Button label={t.cancelLabel} variant="ghost" onPress={onClose} />
+          <View style={{ flex: 1 }}>
+            <Button label={t.deleteRating} variant="danger" busy={busy} onPress={() => void remove()} />
+          </View>
+        </View>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Sheet title={t.moreMenuTitle} onClose={onClose}>
+      {items.map((x) => (
+        <Pressable
+          key={x.label}
+          onPress={() => {
+            onClose();
+            x.run();
+          }}
+          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Icon name={x.icon} size={19} color={tokens.fg} />
+          <Text size={14}>{x.label}</Text>
+        </Pressable>
+      ))}
+      {mine ? (
+        <>
+          <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
+          <Pressable onPress={() => setConfirm(true)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
+            <Icon name="trash" size={19} color={tokens.error} />
+            <Text size={14} color={tokens.error}>{t.deleteRating}</Text>
+          </Pressable>
+        </>
+      ) : null}
+    </Sheet>
+  );
+}

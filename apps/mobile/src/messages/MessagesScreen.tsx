@@ -14,6 +14,7 @@ import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, span } from "../perfMarks";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Avatar } from "../community/CommunityCards";
+import { FloatButton } from "../FloatButton";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MESSAGES_KEY } from "./live";
 import { dropBadges, patchKeep, useDoors, useMessages, type Origin } from "./common";
@@ -153,15 +154,8 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
       />
 
       {tab === "inbox" && d ? (
-        <Pressable
-          onPress={newChat}
-          accessibilityRole="button"
-          accessibilityLabel={t.msgNewChat}
-          style={({ pressed }) => ({ position: "absolute", bottom: insets.bottom + 20, end: 20, flexDirection: "row", alignItems: "center", gap: 8, height: 50, paddingHorizontal: 20, borderRadius: radius.pill, backgroundColor: tokens.accent, transform: [{ scale: pressed ? 0.96 : 1 }] })}
-        >
-          <Icon name="edit" size={18} color={tokens.onAccent} />
-          <Text size={14} weight="700" color={tokens.onAccent}>{t.msgNewChat}</Text>
-        </Pressable>
+        /* الزرُّ العائمُ الواحد (`FloatButton`) — أخوه في «المجتمع» قلمٌ بلا كلمة */
+        <FloatButton icon="edit" label={t.msgNewChat} onPress={newChat} style={{ bottom: insets.bottom + 20 }} />
       ) : null}
       <ToastHost hostRef={toastHost} bottom={insets.bottom + 84} />
       {doors.leaving ? (

@@ -113,6 +113,8 @@ function Shell() {
         <Stack.Screen name="talk/[kind]/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="post/[key]" options={{ headerShown: false }} />
         <Stack.Screen name="review/[kind]/[id]/[user]" options={{ headerShown: false }} />
+        {/* 🆕 D-1448 — «بوست جديد» من زرّ القلم في «المجتمع»: يصعد من الأسفل كورقة كتابة */}
+        <Stack.Screen name="new-post" options={{ headerShown: false, animation: "slide_from_bottom" }} />
         {/* 🆕 11-M · M4 — «الرسائل والإشعارات» وخيطُ المحادثة: شاشتان مدفوعتان فوق الجذور لا تبويب */}
         <Stack.Screen name="messages/index" options={{ headerShown: false }} />
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
