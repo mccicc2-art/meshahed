@@ -15,8 +15,32 @@ export const GROUP_MAX_MEMBERS = 12;
 /** أقصى طول اسم القروب — قيدُ `dm_groups.name` */
 export const GROUP_NAME_MAX = 30;
 
+/** الدورُ القديم — يبقى كما هو للتطبيق الأقدم: المؤسسُ وشريكُه يُرسلان «admin» فيه (D-1453) */
 export type GroupRole = "admin" | "member";
-export type GroupSys = "created" | "added" | "left" | "removed" | "renamed" | "photo";
+/**
+ * 🆕 D-1453 — **الرتبةُ الحقيقيّة** (الهجرة ٢١٢): المؤسسُ (منشئُ القروب) فوق الجميع · المؤسسُ الشريك له كلُّ صلاحياته إلّا المؤسسَ
+ * وشريكاً آخر · المشرفُ يُخرج الأعضاءَ وحدهم. القاعدةُ تحكم (`dm_group_remove` · `dm_group_set_role`)، والتطبيقُ يُخفي ما سيُرفض.
+ */
+export type GroupRank = "owner" | "co_owner" | "admin" | "member";
+export const GROUP_RANK_LEVEL: Record<GroupRank, number> = { owner: 3, co_owner: 2, admin: 1, member: 0 };
+/** يُخرج `me` العضوَ `them`؟ — مرآةُ `dm_group_remove` */
+export function canRemove(me: GroupRank, them: GroupRank): boolean {
+  const a = GROUP_RANK_LEVEL[me];
+  const b = GROUP_RANK_LEVEL[them];
+  return a >= 1 && b < 3 && !(b === 2 && a < 3) && !(b === 1 && a < 2);
+}
+/** الأدوارُ التي يقدر `me` أن يضعها لـ`them` (غيرَ دوره الحالي) — مرآةُ `dm_group_set_role` */
+export function rolesFor(me: GroupRank, them: GroupRank): GroupRank[] {
+  const a = GROUP_RANK_LEVEL[me];
+  if (a < 2 || them === "owner") return [];
+  if (them === "co_owner" && a < 3) return [];
+  const all: GroupRank[] = a >= 3 ? ["co_owner", "admin", "member"] : ["admin", "member"];
+  return all.filter((r) => r !== them);
+}
+export function rankOf(raw: string | null | undefined): GroupRank {
+  return raw === "owner" || raw === "co_owner" || raw === "admin" ? raw : "member";
+}
+export type GroupSys = "created" | "added" | "left" | "removed" | "renamed" | "photo" | "role";
 
 /** مختصرُ الرسالة المقتبَسة في القروب — كالخاص (`MsgReplyRef`) ومعه صاحبُها */
 export type GroupReplyRef = {
@@ -65,13 +89,13 @@ export type GroupSysEvent = {
   sys: GroupSys;
   actor_id: string | null;
   target_id: string | null;
-  /** الاسمُ الجديد في «سمّى» */
+  /** الاسمُ الجديد في «سمّى» · والدورُ الجديد في «role» (`co_owner` · `admin` · `member`) */
   text: string | null;
 };
 
 export type GroupEvent = GroupMsgEvent | GroupSysEvent;
 
-export type GroupMember = { id: string; role: GroupRole };
+export type GroupMember = { id: string; role: GroupRole; /** 🆕 D-1453 */ rank?: GroupRank };
 
 export type MsgGroupConversation = {
   group_id: string;
@@ -79,6 +103,8 @@ export type MsgGroupConversation = {
   /** صورةُ القروب (رابطٌ مؤقّت) — `null` ⇒ صورُ الأعضاء */
   photo: MsgImage | null;
   me_role: GroupRole;
+  /** 🆕 D-1453 — رتبتي الحقيقيّة (التطبيقُ الأقدم يقرأ `me_role`) */
+  me_rank?: GroupRank;
   muted: boolean;
   /** الأعضاءُ الحاليّون، المشرفُ أوّلاً */
   members: GroupMember[];
@@ -104,6 +130,8 @@ export type GroupManageBody =
   | { action: "mute"; muted: boolean }
   | { action: "add"; member_ids: string[] }
   | { action: "remove"; person_id: string }
+  /** 🆕 D-1453 */
+  | { action: "role"; person_id: string; role: "co_owner" | "admin" | "member" }
   | { action: "edit"; name?: string | null; photo_path?: string | null; clear_photo?: boolean };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -195,6 +223,10 @@ export function parseGroupManageBody(raw: unknown): GroupManageBody | null {
     }
     case "remove":
       return typeof o.person_id === "string" && UUID.test(o.person_id) ? { action: "remove", person_id: o.person_id } : null;
+    case "role":
+      return typeof o.person_id === "string" && UUID.test(o.person_id) && (o.role === "co_owner" || o.role === "admin" || o.role === "member")
+        ? { action: "role", person_id: o.person_id, role: o.role }
+        : null;
     case "edit": {
       const name = o.name == null ? null : cleanName(o.name);
       if (o.name != null && !name) return null;

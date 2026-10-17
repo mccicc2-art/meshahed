@@ -443,16 +443,20 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
     >
       <Avatar uri={s.person.hide_name ? null : s.person.avatar_url} size={40} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        {/* الشارةُ بجانب الاسم داخل الجملة (D-775) — عقدةٌ في السطر تسبح مع النصّ */}
+        {/* الشارةُ بجانب الاسم داخل الجملة (D-775) — عقدةٌ في السطر تسبح مع النصّ.
+            🆕 D-1454 — **ختمُ التوثيق وحدَه** (لا حبّةَ PARTNER/PLUS في التنبيهات)، **والاسمُ وختمُه معزولان** (FSI…PDI):
+            اسمٌ لاتينيٌّ في جملةٍ عربيّة كان يرتّبه iOS بعد أن يضع العقدةَ، فتقع الشارةُ فوق الاسم (لقطةُ أحمد). */}
         <Text size={14} style={{ lineHeight: 20 }}>
           {p.pre}
+          {"\u2068"}
           <Text size={14} weight="700">{p.who}</Text>
-          {s.person.hide_name ? null : (
+          {s.person.hide_name || !identityFlags(s.person).verified ? null : (
             <>
               {" "}
-              <IdentityBadges flags={identityFlags(s.person)} nameSize={14} />
+              <IdentityBadges flags={identityFlags(s.person)} nameSize={14} sealOnly />
             </>
           )}
+          {"\u2069"}
           {p.post}
         </Text>
         <Text size={12} muted>{timeAgo(s.at, t)}</Text>

@@ -52,6 +52,9 @@ export function sysLine(e: GroupSysEvent, g: MsgGroupConversation, meId: string,
       return t.grpSysRenamed(a, e.text ?? "");
     case "photo":
       return t.grpSysPhoto(a);
+    /* 🆕 D-1453 — «فلان عيّن فلاناً مشرفاً / مؤسساً شريكاً» */
+    case "role":
+      return t.grpSysRole(a, b, e.text ?? "member");
   }
 }
 

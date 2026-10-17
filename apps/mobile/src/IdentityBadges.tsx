@@ -30,9 +30,13 @@ export function identityFlags(p: PlanBearer | null | undefined): IdentityFlags {
   return { partner: isPartner(p), plus: isPlus(p), founder: isFounder(p), verified: isVerified(p) };
 }
 
-export function IdentityBadges({ flags, nameSize }: { flags: IdentityFlags; nameSize: number }) {
+/**
+ * 🆕 D-1454 — `sealOnly`: ختمُ التوثيق وحدَه بلا حبّة PARTNER/PLUS — للتنبيهات (أحمد ١٧ أكتوبر: «في التنبيهات لا تظهر علامة
+ * شريك أو بلس، فقط الصح حقّ التوثيق»)، حيث الشارةُ عقدةٌ داخل جملةٍ عربيّةٍ والحبّةُ العريضةُ تتداخل مع الاسم على iOS.
+ */
+export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: IdentityFlags; nameSize: number; sealOnly?: boolean }) {
   const { t } = useApp();
-  const word = flags.partner ? "PARTNER" : flags.plus ? "PLUS" : flags.founder ? "FOUNDER" : null;
+  const word = sealOnly ? null : flags.partner ? "PARTNER" : flags.plus ? "PLUS" : flags.founder ? "FOUNDER" : null;
   const hgt = nameSize * PILL_EM;
   /* الختمُ بمقاس الرئيسيّة عند اسمٍ ٢٠ (١٦) — ويتناسب مع أيِّ اسم */
   const seal = Math.round((16 / 20) * nameSize);

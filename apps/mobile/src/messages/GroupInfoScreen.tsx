@@ -21,7 +21,7 @@ import { useMessages, type Origin } from "./common";
 import { usePicUpload } from "./chatDock";
 import { GroupAvatar, dropGroup, patchGroup, personIn } from "./groups";
 import { displayNameOf } from "@/core/people";
-import { GROUP_NAME_MAX } from "@/core/contracts/groups";
+import { GROUP_NAME_MAX, GROUP_RANK_LEVEL, canRemove, rankOf, rolesFor, type GroupRank } from "@/core/contracts/groups";
 import type { GroupManageBody } from "../contracts";
 
 /**
@@ -38,12 +38,20 @@ export function GroupInfoScreen({ id, from }: { id: string; from: Origin }) {
   const d = q.data ?? null;
   const me = d?.me_id ?? "";
   const g = d?.groups?.find((x) => x.group_id === id) ?? null;
-  const admin = g?.me_role === "admin";
+  /* 🆕 D-1453 — رتبتي: الخادمُ الأحدث يرسل `me_rank`، والأقدمُ `me_role` وحده */
+  const myRank: GroupRank = g?.me_rank ?? (g?.me_role === "admin" ? "admin" : "member");
+  const admin = GROUP_RANK_LEVEL[myRank] >= 1;
+  const rankIn = (uid: string): GroupRank => {
+    const m = g?.members.find((x) => x.id === uid);
+    return m ? m.rank ?? rankOf(m.role) : "member";
+  };
   const toastHost = useRef<ToastHostRef>(null);
   const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const [busy, setBusy] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [member, setMember] = useState<string | null>(null);
+  /* 🆕 D-1453 — الإخراجُ بتأكيدٍ وسطيّ (لا يُتراجع عنه بضغطة) */
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [edit, setEdit] = useState(false);
 
   const back = useCallback(() => {
@@ -95,9 +103,17 @@ export function GroupInfoScreen({ id, from }: { id: string; from: Origin }) {
     });
   };
   const remove = (uid: string) => {
+    setConfirmRemove(null);
     setMember(null);
     haptic.pick();
     void manage({ action: "remove", person_id: uid }, () => patchGroup(id, (x) => ({ ...x, members: x.members.filter((m) => m.id !== uid) })));
+  };
+  const setRole = (uid: string, role: "co_owner" | "admin" | "member") => {
+    setMember(null);
+    haptic.pick();
+    void manage({ action: "role", person_id: uid, role }, () =>
+      patchGroup(id, (x) => ({ ...x, members: x.members.map((m) => (m.id === uid ? { ...m, rank: role, role: role === "member" ? "member" : "admin" } : m)) })),
+    );
   };
 
   if (!g) {
@@ -164,6 +180,13 @@ export function GroupInfoScreen({ id, from }: { id: string; from: Origin }) {
                   haptic.pick();
                   setMember(m.id);
                 }}
+                /* 🆕 D-1453 — الضغطةُ المطوّلة تفتح الورقةَ والإصبعُ ما زال على الشاشة (فيديو أحمد ١٧ أكتوبر: «لازم أرفع إصبعي») */
+                onLongPress={() => {
+                  if (mine) return;
+                  haptic.pick();
+                  setMember(m.id);
+                }}
+                delayLongPress={350}
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
               >
                 <Avatar uri={p?.hide_name ? null : p?.avatar_url ?? null} size={40} />
@@ -171,9 +194,10 @@ export function GroupInfoScreen({ id, from }: { id: string; from: Origin }) {
                   <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{mine ? t.grpYou : displayNameOf(p, t.anonymousUser)}</Text>
                   {p && !p.hide_name ? <IdentityBadges flags={identityFlags(p)} nameSize={14} /> : null}
                 </View>
-                {m.role === "admin" ? (
+                {/* 🆕 D-1453 — «المؤسس» · «مؤسس شريك» · «مشرف» */}
+                {rankIn(m.id) !== "member" ? (
                   <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
-                    <Text size={11} weight="700" color={tokens.accent}>{t.grpAdmin}</Text>
+                    <Text size={11} weight="700" color={tokens.accent}>{rankIn(m.id) === "owner" ? t.grpOwner : rankIn(m.id) === "co_owner" ? t.grpCoOwner : t.grpAdmin}</Text>
                   </View>
                 ) : null}
               </Pressable>
@@ -217,15 +241,49 @@ export function GroupInfoScreen({ id, from }: { id: string; from: Origin }) {
             <Icon name="mail" size={18} color={tokens.accent} />
             <Text size={15}>{t.grpStartChat}</Text>
           </Pressable>
-          {admin ? (
-            <>
-              <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
-              <Pressable onPress={() => remove(member)} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
-                <Icon name="trash" size={18} color={tokens.error} />
-                <Text size={15} color={tokens.error}>{t.grpRemove}</Text>
-              </Pressable>
-            </>
+          {/* 🆕 D-1453 — ما تسمح به رتبتي على رتبته وحدَه (مرآةُ القاعدة: `rolesFor` · `canRemove`) */}
+          {rolesFor(myRank, rankIn(member)).length || canRemove(myRank, rankIn(member)) ? (
+            <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
           ) : null}
+          {rolesFor(myRank, rankIn(member))
+            .filter((r): r is "co_owner" | "admin" => r === "co_owner" || r === "admin")
+            .map((r) => (
+              <Pressable key={r} onPress={() => setRole(member, r)} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
+                <Icon name="shield" size={18} color={tokens.accent} />
+                <Text size={15}>{r === "co_owner" ? t.grpMakeCoOwner : t.grpMakeAdmin}</Text>
+              </Pressable>
+            ))}
+          {rolesFor(myRank, rankIn(member)).includes("member") ? (
+            <Pressable onPress={() => setRole(member, "member")} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
+              <Icon name="shield" size={18} color={tokens.muted} />
+              <Text size={15}>{rankIn(member) === "co_owner" ? t.grpUnCoOwner : t.grpUnAdmin}</Text>
+            </Pressable>
+          ) : null}
+          {canRemove(myRank, rankIn(member)) ? (
+            <Pressable
+              onPress={() => {
+                const uid = member;
+                setMember(null);
+                setConfirmRemove(uid);
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
+            >
+              <Icon name="trash" size={18} color={tokens.error} />
+              <Text size={15} color={tokens.error}>{t.grpRemove}</Text>
+            </Pressable>
+          ) : null}
+        </Sheet>
+      ) : null}
+
+      {confirmRemove ? (
+        <Sheet title={t.grpRemove} onClose={() => setConfirmRemove(null)} placement="center">
+          <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>{t.grpRemoveConfirm(displayNameOf(personIn(g, confirmRemove), t.anonymousUser))}</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button label={t.cancelLabel} variant="ghost" onPress={() => setConfirmRemove(null)} />
+            <View style={{ flex: 1 }}>
+              <Button label={t.grpRemoveAction} variant="danger" onPress={() => remove(confirmRemove)} />
+            </View>
+          </View>
         </Sheet>
       ) : null}
 

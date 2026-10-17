@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StatusBar, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, StatusBar, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -54,6 +54,10 @@ export function useImageCrop() {
     if (r.canceled || !r.assets[0]) return null;
     const a = r.assets[0];
     if (a.mimeType && !a.mimeType.startsWith("image/")) return null;
+    /* 🆕 D-1455 — **iOS: ننتظر حتى تنغلق شاشةُ الصور** (فيديو مشعل ١٧ أكتوبر: صورةُ القروب «ما تنضاف والبرنامج يعلق»). الوعدُ
+       يعود والنظامُ ما زال يُنزل شاشةَ الصور؛ وطبقةٌ (`Modal`) تُفتح في تلك اللحظة يرفضها iOS بصمت ويبقى غشاؤها الشفّاف فوق
+       التطبيق يحجب اللمس — فلا «جاري التجهيز» ولا شاشةُ القصّ. أندرويد لا يعاني منه. */
+    if (Platform.OS === "ios") await new Promise((res) => setTimeout(res, 600));
     setBusy(true);
     let src: Src;
     try {
