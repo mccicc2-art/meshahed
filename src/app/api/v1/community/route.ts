@@ -16,6 +16,7 @@ import { boardRows } from "@/core/communityFeed";
 import { BOARD_PREVIEW, COMMUNITY_PAGER_TABS, asCommunityTab, type CommunityPagerTab } from "@/core/communityParams";
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { feedRows, roomOut, listOut, followsLoopz } from "@/lib/communityPayload";
+import { vividizeFeed } from "@/lib/vividPoster";
 import { handle, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { CommunityPayload } from "@/core/contracts/community";
@@ -89,6 +90,9 @@ export async function GET(req: NextRequest) {
           variants.push({ strangers, sort: vs, keys: rows.map((r) => r.key), quiet: vs === "smart" && (same ? feedReport.quiet : rep.quiet) });
         }
     }
+
+    /* 🆕 D-1448 — الملصقُ الداكنُ يُستبدل بأخٍ ملوّن (التطبيقُ وحدَه؛ الويبُ يرسم من بياناته) — بمهلةٍ لا تؤخّر الخطّ */
+    await vividizeFeed([...feedOut, ...extra], locale === "en" ? "en" : "ar");
 
     const payload: CommunityPayload = {
       viewer: { signed_in: !!user, me_id: user?.id ?? null, admin: core.amAdmin },

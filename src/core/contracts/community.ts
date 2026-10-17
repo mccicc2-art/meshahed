@@ -75,6 +75,8 @@ export type CommunityFeedRow =
       lib: CommunityLibState;
       /** قلوبُ رأي القائمة وردودُه (D-370) — لصفوف القوائم وحدَها */
       list_social: { likes: number; replies: number; liked_by_me: boolean } | null;
+      /** 🆕 D-1448 — لا بديلَ ملوّناً لملصقه الداكن: التطبيقُ يرسم حوله إطاراً فاتحاً (`lib/vividPoster`) */
+      poster_dark?: boolean;
     }
   | {
       kind: "news";
@@ -90,6 +92,8 @@ export type CommunityFeedRow =
       replies: number;
       views: number | null;
       lib: CommunityLibState;
+      /** 🆕 D-1448 — كأخيه في صفّ الرأي */
+      poster_dark?: boolean;
     };
 
 /** غرفةُ نقاش — `TalkRoom` كما في `lib/data`، والاسمُ بلغة القارئ (D-273) */
