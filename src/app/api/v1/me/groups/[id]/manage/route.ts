@@ -7,7 +7,7 @@ import { isGroupId, parseGroupManageBody } from "@/core/contracts/groups";
 
 /**
  * 🆕 `POST /api/v1/me/groups/<id>/manage` — ما يُفعل بالقروب غيرَ الكتابة: قرأتُ · كتمتُ · خرجتُ · (والمشرفُ) أضاف ·
- * حذف · غيّر الاسمَ أو الصورة. **كلُّها دوالُّ القاعدة** (`dm_group_*`) تحكم وتكتب سطرَ النظام بنفسها.
+ * حذف · غيّر الاسمَ أو الصورة · 🆕 غيّر دورَ عضو (D-1453). **كلُّها دوالُّ القاعدة** (`dm_group_*`) تحكم وتكتب سطرَ النظام بنفسها.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   return handle(async () => {
@@ -32,6 +32,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           return supabase.rpc("dm_group_add", { p_group: id, p_members: b.member_ids });
         case "remove":
           return supabase.rpc("dm_group_remove", { p_group: id, p_user: b.person_id });
+        case "role":
+          /* 🆕 D-1453 — المؤسسُ يعيّن الشريكَ والمشرف، والشريكُ المشرف (الهجرة ٢١٢) */
+          return supabase.rpc("dm_group_set_role", { p_group: id, p_user: b.person_id, p_role: b.role });
         case "edit":
           if (b.photo_path && !b.photo_path.startsWith(`${auth.user.id}/`)) return null;
           return supabase.rpc("dm_group_edit", { p_group: id, p_name: b.name ?? null, p_photo: b.photo_path ?? null, p_clear_photo: b.clear_photo ?? false });

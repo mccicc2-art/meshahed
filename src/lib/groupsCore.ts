@@ -4,7 +4,7 @@ import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { isPlus } from "@/core/plan";
 import type { Dict } from "@/core/i18n";
 import type { MsgImage } from "@/core/contracts/messages";
-import type { GroupEvent, GroupMember, GroupReplyRef, GroupRole, GroupSys, GroupTitleRef, MsgGroupConversation } from "@/core/contracts/groups";
+import { GROUP_RANK_LEVEL, rankOf, type GroupEvent, type GroupMember, type GroupReplyRef, type GroupRole, type GroupSys, type GroupTitleRef, type MsgGroupConversation } from "@/core/contracts/groups";
 
 /**
  * ====== القروبات — ما يُقرأ للصندوق (الهجرة ٢٠٥) ======
@@ -18,10 +18,13 @@ import type { GroupEvent, GroupMember, GroupReplyRef, GroupRole, GroupSys, Group
 const URL_TTL = 6 * 3600;
 /** أحدثُ الرسائل عبر القروبات كلِّها — كحدّ الخاص */
 const MAX_ROWS = 2000;
+/** 🆕 D-1453 — التطبيقُ الأقدم يعرف «admin · member» وحدهما: المؤسسُ وشريكُه «admin» عنده */
+const legacyRole = (raw: string): GroupRole => (GROUP_RANK_LEVEL[rankOf(raw)] >= 1 ? "admin" : "member");
 const SNIPPET = 140;
 
 type GroupRow = { id: string; name: string; photo_path: string | null; last_at: string };
-type MemberRow = { group_id: string; user_id: string; role: GroupRole; joined_at: string; last_read_at: string; muted: boolean };
+/* `role` نصٌّ خام: بعد الهجرة ٢١٢ فيه owner · co_owner أيضاً (`rankOf`) */
+type MemberRow = { group_id: string; user_id: string; role: string; joined_at: string; last_read_at: string; muted: boolean };
 type MsgRow = {
   id: string;
   group_id: string;
@@ -153,7 +156,7 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
       for (const m of msgs) {
         if (m.group_id !== g.id) continue;
         if (m.kind === "system") {
-          events.push({ kind: "sys", id: m.id, created_at: m.created_at, sys: m.sys ?? "created", actor_id: m.sender_id, target_id: m.sys_target, text: m.sys === "renamed" ? m.body : null });
+          events.push({ kind: "sys", id: m.id, created_at: m.created_at, sys: m.sys ?? "created", actor_id: m.sender_id, target_id: m.sys_target, text: m.sys === "renamed" || m.sys === "role" ? m.body : null });
           continue;
         }
         const mineMsg = m.sender_id === me;
@@ -181,9 +184,10 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
           ...(m.deleted_at ? { deleted: true } : {}),
         });
       }
+      /* 🆕 D-1453 — الأعلى رتبةً أوّلاً ثمّ الأقدم؛ و`role` القديمُ «admin» لكلِّ من رتبتُه مشرفٌ فما فوق */
       const ordered: GroupMember[] = [...gm]
-        .sort((a, b) => (a.role === b.role ? a.joined_at.localeCompare(b.joined_at) : a.role === "admin" ? -1 : 1))
-        .map((m) => ({ id: m.user_id, role: m.role }));
+        .sort((a, b) => GROUP_RANK_LEVEL[rankOf(b.role)] - GROUP_RANK_LEVEL[rankOf(a.role)] || a.joined_at.localeCompare(b.joined_at))
+        .map((m) => ({ id: m.user_id, role: legacyRole(m.role), rank: rankOf(m.role) }));
       const mentioned = new Set<string>(gm.map((m) => m.user_id));
       for (const e of events) {
         if (e.kind === "msg" && e.sender_id) mentioned.add(e.sender_id);
@@ -196,7 +200,8 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
         group_id: g.id,
         name: g.name,
         photo: img(g.photo_path),
-        me_role: self.role,
+        me_role: legacyRole(self.role),
+        me_rank: rankOf(self.role),
         muted: self.muted,
         members: ordered,
         people: [...mentioned].map((id) => peopleById.get(id)).filter((p): p is PersonLite => !!p),
@@ -218,6 +223,8 @@ export function groupErrorKey(e: { code?: string; message?: string; hint?: strin
   if (e.hint === "plus") return "apiGroupPlus";
   if (e.hint === "member") return "apiGroupMember";
   if (e.hint === "full") return "apiGroupFull";
+  /* 🆕 D-1453 — رتبتُك أدنى من رتبة من تحاول إخراجه أو تغييرَ دوره */
+  if (e.hint === "rank") return "apiGroupRank";
   if (e.code === "42501") return "apiGroupForbidden";
   return null;
 }
