@@ -304,7 +304,8 @@ export function SessionBridge() {
         } catch {}
         return;
       }
-      post({ type: "locale", lang: html.lang, chosen: html.dataset.langChosen !== "0" });
+      /* D-1464 — `path`: المستندُ الجديدُ يقول أين هو — الغلافُ لا يُظهر بابَه قبل أن يسمعها من صفحة الباب نفسِها */
+      post({ type: "locale", lang: html.lang, chosen: html.dataset.langChosen !== "0", path: location.pathname });
     };
     postLocale();
     const langWatch = new MutationObserver(postLocale);

@@ -47,6 +47,7 @@ export function TrailerCardMedia({
   title,
   eager = false,
   playLabel,
+  pauseLabel,
   muteLabel,
   unmuteLabel,
   withControls = false,
@@ -172,6 +173,14 @@ export function TrailerCardMedia({
   const readNow = () => api.getSnapshot().time;
   /* 🆕 D-934: ضغطتان متتاليتان على جهةٍ = قفزةُ خمس ثوانٍ (انظر الخطّاف) */
   const dbl = useDoubleTapSeek(api);
+  /* 🆕 D-1464 (أحمد ١٨ أكتوبر: «ضغط زر التوقف ماهو شغال الفديو مايتوقف») — **زرُّ إيقافٍ مع الأدوات، يعمل فعلاً**: يظهر في
+     الوسط مع الشريط والتكبير والصوت حين تُلمس، ويغيب معها. ⏸ التي كانت تُرى هي علامةُ يوتيوب داخل إطاره المقفول عن اللمس
+     (D-779)، فلا تُضغط. **اللمسةُ الأولى تكشف، ولمسةُ الزرّ والأدواتُ ظاهرةٌ توقف** — وما خارج الزرّ يبقى كشفاً لا إيقافاً. */
+  const showPause = playing && chrome && !hold;
+  const inCenter = (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return Math.abs(e.clientX - (r.left + r.width / 2)) <= 44 && Math.abs(e.clientY - (r.top + r.height / 2)) <= 44;
+  };
 
   const endHold = () => {
     if (holdTimer.current !== null) {
@@ -264,6 +273,10 @@ export function TrailerCardMedia({
             if (playing) {
               /* D-934: **الثانيةُ خلال ثلث ثانيةٍ قفزةٌ لا إيقاف** */
               if (dbl.tap(e)) return;
+              if (showPause && inCenter(e)) {
+                api.togglePlay();
+                return;
+              }
               /* 🆕 D-888 (حكمُ أحمد): **اللمسةُ نفسُها إيماءةٌ تكفي WebKit** —
                  إن كانت النيّةُ صوتاً والمشغّلُ صامتاً بقرار المتصفّح فُكّ هنا،
                  قبل إظهار الأزرار. لا شيءَ يحدث لمن كتم بيده.
@@ -299,7 +312,7 @@ export function TrailerCardMedia({
              **صار هو بابَ كشفِ الأدوات** — **وإخفاؤه كما كان يترك
              مستعملَ لوحةِ المفاتيح بلا وصولٍ إلى الصوت والتقديم.**
              واسمُه اسمُ العمل حينئذٍ لا كلمة «تشغيل» التي تكذب. */
-          aria-label={showsPlayButton ? playLabel : title}
+          aria-label={showsPlayButton ? playLabel : showPause ? (pauseLabel ?? title) : title}
           aria-hidden={!showsPlayButton && !playing}
           tabIndex={showsPlayButton || playing ? 0 : -1}
           className="absolute inset-0 z-50 grid select-none place-items-center"
@@ -308,6 +321,11 @@ export function TrailerCardMedia({
           {showsPlayButton ? (
             <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
               <Icon name="play" size={26} />
+            </span>
+          ) : showPause ? (
+            /* D-1464 — **الزرُّ نفسُه بشكل ▶ الواقفة** (عائلةٌ واحدة)، ويتلاشى مع الأدوات */
+            <span className={`grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm ${fade}`}>
+              <Icon name="pause" size={26} />
             </span>
           ) : null}
           {hold ? (

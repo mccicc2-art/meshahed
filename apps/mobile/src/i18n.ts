@@ -67,7 +67,9 @@ export const webLocale = {
         opening.skipNext();
         opening.cover();
         return new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
-          .then(() => Updates.reloadAsync())
+          /* 🆕 D-1464 — **شاشةُ إعادة التحميل بلون التطبيق** (بلاغُ أحمد: «لسى الشاشة البيضاء موجودة»، وقيسُ تسجيله: عُشرُ ثانيةٍ
+             بيضاء بين الشعارين): شاشةُ Expo نفسُها افتراضُها `#ffffff`. الآن خلفيّةُ التطبيق بلا دوّار، فالشعارُ ⇐ سوادٌ لحظة ⇐ الشعار */
+          .then(() => Updates.reloadAsync({ reloadScreenOptions: { backgroundColor: "#050505", spinner: { enabled: false }, fade: true } }))
           .catch(() => {});
       })
       .catch(() => {});

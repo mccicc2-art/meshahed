@@ -87,6 +87,8 @@ export const shell = {
   },
   /** 🆕 D-1463 — لحظةُ آخر بابٍ وصل: الطبقةُ تنزلق داخلةً لبابٍ جديد، وتظهر بلا انزلاقٍ لرجوعٍ إليها */
   openedAt: 0,
+  /** 🆕 D-1464 — بابُ اللحظة (مسارُه بلا استعلام): الطبقةُ لا تُكشف له قبل أن تقول صفحتُه «أنا هنا» */
+  doorWant: null as string | null,
   /** 🆕 D-1344 — `WebLayer` يسجّل دالّةَ دخوله (`doLogin`) ما دام مركَّباً */
   attachSignIn(fn: Signer | null) {
     signer = fn;
@@ -188,6 +190,7 @@ export const shell = {
     if ((!inject && !loader) || !path.startsWith("/")) return Promise.resolve(false);
     shell.returnTo = opts?.returnTo ?? null;
     shell.doorPath = opts?.returnTo ? path.split("?")[0] : null;
+    shell.doorWant = path.split("?")[0];
     shell.resume = opts?.returnTo && opts.resume?.length ? { root: opts.returnTo, path: path.split("?")[0], stack: opts.resume } : null;
     /* 🆕 K3a-fix — جذرٌ يخرج إلى الويب ويعود: تُحفظ حالةُ مجموعته لتُكملها العودة (`rootsState.doorBack`) */
     if (opts?.returnTo) doorLeft();

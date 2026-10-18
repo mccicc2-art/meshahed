@@ -803,6 +803,12 @@ export function WebLayer() {
       /* 🆕 D-946 — لغةُ الويب: تُقبل من نطاقنا وحدَه، وتُفحص القيمةُ في `webLocale.set` */
       if (msg.type === "locale") {
         if (hostOk) webLocale.set((msg as { lang?: unknown }).lang, (msg as { chosen?: unknown }).chosen);
+        /* 🆕 D-1464 — صفحةُ الباب المنتظَر رُكّبت ⇒ تُكشف الطبقة (انظر `reveal`) */
+        const p = (msg as { path?: unknown }).path;
+        if (hostOk && typeof p === "string" && p === shell.doorWant) {
+          shell.doorWant = null;
+          docReady.current?.();
+        }
         return;
       }
       /* 🆕 D-1104 — ورقةُ المشاركة للنظام بدل الحافظة؛ من نطاقنا وحدَه، والنتيجةُ تُعاد إلى وعد الصفحة */
@@ -1048,6 +1054,11 @@ export function WebLayer() {
      الإخفاءُ فوريٌّ كما كان (الشفافيّةُ هي الإخفاء — `webDoor.ts`). */
   const enter = useRef(new Animated.Value(visible ? 1 : 0)).current;
   const [slide, setSlide] = useState(0);
+  /* 🆕 D-1464 — **البابُ لا يُكشف على مستندٍ قديم** (تسجيلُ أحمد: الضغطةُ الثانية على «الكل» أظهرت هيكلَ «اكتشف» الويبيّ لحظةً قبل
+     التريلرات): زرُّ الرجوع في الصفحة ينقلها إلى «اكتشف» الويبيّة قبل أن تعود الشاشةُ الأصليّة، فتبقى الطبقةُ عليها مخفيّة، والوصولُ
+     يُعلَن قبل أن يُرسم المستندُ الجديد. الآن يُنتظر بلاغُ الصفحة المطلوبة نفسِها (`locale` بمسارها — يُرسل بعد تركيبها) أو ٧٠٠
+     مللي ثانية، ثمّ يبدأ الدخول. */
+  const docReady = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (wasVisible.current === visible) return;
     if (!visible) ref.current?.injectJavaScript(`try{document.querySelectorAll("video,audio").forEach(function(m){try{m.pause()}catch(e){}})}catch(e){};true;`);
@@ -1058,9 +1069,26 @@ export function WebLayer() {
       enter.setValue(0);
       return;
     }
-    setSlide(Date.now() - shell.openedAt < 1500 ? (I18nManager.isRTL ? -28 : 28) : 0);
+    const door = Date.now() - shell.openedAt < 1500;
+    setSlide(door ? (I18nManager.isRTL ? -28 : 28) : 0);
     enter.setValue(0);
-    Animated.timing(enter, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      docReady.current = null;
+      Animated.timing(enter, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    };
+    if (!door || !shell.doorWant) {
+      go();
+      return;
+    }
+    docReady.current = go;
+    const cap = setTimeout(go, 700);
+    return () => {
+      clearTimeout(cap);
+      if (docReady.current === go) docReady.current = null;
+    };
   }, [visible, enter]);
 
   /**
