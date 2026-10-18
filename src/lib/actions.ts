@@ -2320,6 +2320,14 @@ export async function saveRating(input: {
   const rating = Math.max(1, Math.min(10, Math.round(Number(input.rating) || 1)));
   const review = input.review.trim().slice(0, 2000);
 
+  /* 🆕 D-1467 — نعرف قبل الكتابة هل هذا أوّلُ تقييمٍ للعمل: المشاهدةُ تُستنتج من التقييم الأوّل وحدَه،
+     فتعديلُ نصِّ الرأي لاحقاً لا يعيد مشاهدةً ألغاها صاحبُها بيده */
+  const { data: before } = await supabase
+    .from("ratings")
+    .select("rating")
+    .match({ user_id: user.id, tmdb_id: input.tmdbId, media_type: input.mediaType })
+    .maybeSingle();
+
   const { error } = await supabase.from("ratings").upsert(
     {
       user_id: user.id,
@@ -2340,9 +2348,54 @@ export async function saveRating(input: {
   );
   if (error) fail(error);
 
+  if (!before) await watchedFromRating(supabase, user.id, input);
+
   // التقييم يظهر في صفحة العمل وصفحتي العامة فقط — لا داعي لإبطال التطبيق كاملاً
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
   revalidatePath("/");
+}
+
+/**
+ * 🆕 **D-1467 — من قيّم عملاً فقد شاهده** (طلبُ أحمد ١٩ أكتوبر: «عمر قاعد يقيم أعمال لكن ما يجي عنده أنه تابعها»).
+ * كان التقييمُ يكتب صفَّ `ratings` وحدَه، فمن يقيّم من صفحة العمل أو منشورِ المجتمع دون ضغط «شاهدته» يبقى عملُه
+ * «لم يُشاهَد» في المكتبة والإحصاء.
+ *  - **الفيلم** → صفُّ `watched_movies`، و`ignoreDuplicates` لا تمسّ مشاهدةً قائمة ولا تاريخَها.
+ *  - **المسلسل** → في المكتبة دائماً (`follow`)، **وتُعلَّم حلقاتُه المعروضة كلُّها إن لم يُشاهَد منها شيء** (`markShowWatched`)؛
+ *    ومن شاهد بعضَها لا نختم عنه — قيّم وهو في منتصفه، والعدّادُ الصادقُ أهمُّ من الافتراض.
+ * ⚖️ **أثرٌ لا شرط**: فشلُ أيٍّ من هذا (TMDB بطيء، سقفُ «bulk») لا يُفشل التقييمَ الذي كُتب فعلاً.
+ */
+async function watchedFromRating(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  userId: string,
+  input: { tmdbId: number; mediaType: MediaType; title: string; posterPath: string | null },
+) {
+  try {
+    if (input.mediaType === "movie") {
+      /* المدّةُ لإحصاء الساعات — بمهلة ثانيتين ونصف كـ`genreIdsOf`، وغيابُها لا يمنع الصفّ */
+      const m = await Promise.race([
+        getMovie(input.tmdbId).catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+      ]);
+      const runtime = m?.runtime ? Math.round(m.runtime) : null;
+      await supabase
+        .from("watched_movies")
+        .upsert(
+          { user_id: userId, movie_tmdb_id: input.tmdbId, runtime },
+          { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true },
+        );
+      revalidatePath("/stats");
+      revalidatePath("/library");
+      return;
+    }
+    await follow({ tmdbId: input.tmdbId, mediaType: "tv", title: input.title, posterPath: input.posterPath });
+    const { count } = await supabase
+      .from("watched_episodes")
+      .select("episode_number", { count: "exact", head: true })
+      .match({ user_id: userId, show_tmdb_id: input.tmdbId });
+    if (count === 0) await markShowWatched(input.tmdbId);
+  } catch {
+    /* التقييمُ محفوظ؛ المشاهدةُ تُعلَّم يدويّاً إن فشلت هنا */
+  }
 }
 
 export async function deleteRating(input: { tmdbId: number; mediaType: MediaType }) {
