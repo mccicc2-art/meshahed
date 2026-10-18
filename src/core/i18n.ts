@@ -2009,6 +2009,9 @@ const ar = {
   tabReviews: "التعليقات",
   /** تبويبُ غرفة العمل (D-191) — «المجتمع» كاسم القسم في الشريط السفليّ */
   tabCommunity: "المجتمع",
+  /** 🆕 D-1460 — اسمُ التبويب في صفحة العمل (أحمد ١٨ أكتوبر: «غيّر الكلمة من المجتمع إلى المراجعات»): فيه الآراءُ والتقييمات؛
+      و`tabCommunity` يبقى لزرِّ الغرفة «المجتمع ↗» تحتها */
+  tabTitleReviews: "المراجعات",
   /* **`tabCast` حُذف (D-203):** الطاقمُ عاد قسماً داخل «عن العمل» فلم يبقَ
      له تبويبٌ يُسمّى — **ومفتاحٌ لا يقرؤه أحد يُحذف لا يُترك**، وإلا أوهم
      من يقرأ القاموسَ أن التبويبَ ما زال قائماً في مكانٍ ما.
@@ -4166,6 +4169,7 @@ const en: Dict = {
   tabInfo: "About",
   tabReviews: "Reviews",
   tabCommunity: "Community",
+  tabTitleReviews: "Reviews",
   tabEpisodes: "Episodes",
   communityJoin: "Join the conversation",
   communityWriteReview: "Write a review",

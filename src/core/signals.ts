@@ -69,12 +69,16 @@ export function signalParts(s: SignalRow, t: Dict, listName: string): { pre: str
 
 /**
  * 🔑 **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218): القائمةُ أوّلاً (لا `tmdb_id` لها أصلاً)، ثمّ الغرفةُ، ثمّ صفحةُ
- * تعليقك — **بمعرّفك لا باسمك** (D-899: الاسمُ كان يفتح 404) — ثمّ ملفُّ الفاعل، ثمّ العمل.
+ * تعليقك — **بمعرّفك لا باسمك** (D-899: الاسمُ كان يفتح 404)، للردِّ والإعجاب معاً (D-1460) — ثمّ العمل لإعجاب النشاط،
+ * ثمّ ملفُّ الفاعل (المتابعةُ وطلبُها).
  */
 export function signalHref(s: SignalRow, myId: string | null): string | null {
   const titleHref = s.tmdbId ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}` : null;
   if ((s.kind === "list_review" || s.kind === "like_list_review" || s.kind === "list_reply") && s.listId) return `/lists/${s.listId}`;
   if (s.kind === "talk_reply" && s.tmdbId) return `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`;
-  if (s.kind === "reply" && s.tmdbId) return myId ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myId}` : titleHref;
+  /* 🆕 D-1460 — **الإعجابُ يفتح ما أُعجب به لا من أعجبه** (أحمد ١٨ أكتوبر: «المفروض يفتح لي مكان التفاعل مايفتح لي حساب
+     الشخص»). إعجابُ رأيك ⇐ صفحةُ رأيك كالردّ عليه؛ إعجابُ نشاطك (حلقةٌ أنهيتها — لا صفحةَ له) ⇐ صفحةُ العمل. */
+  if ((s.kind === "reply" || s.kind === "like_review") && s.tmdbId) return myId ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myId}` : titleHref;
+  if (s.kind === "like_activity" && titleHref) return titleHref;
   return profileHref(s.person) ?? titleHref;
 }

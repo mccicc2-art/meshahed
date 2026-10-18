@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FlashList } from "@shopify/flash-list";
 import { api, ApiError, qk } from "../api";
 import { useApp } from "../state";
-import { Button, Text, type ToastTone } from "../ui";
+import { BackChevron, Button, Text, type ToastTone } from "../ui";
 import { RailCard, RAIL_CARD_W } from "./RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -138,7 +138,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
           <Text size={15} weight="700" numberOfLines={1}>{title}</Text>
           <Pressable onPress={back} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+              <BackChevron color={tokens.fg} />
             </View>
           </Pressable>
         </View>

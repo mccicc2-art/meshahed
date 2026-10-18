@@ -629,7 +629,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
              * تؤخّر رسمَ الترويسة ولا الحلقات** (D-071/D-087).
              */
             key: "community",
-            label: t.tabCommunity,
+            label: t.tabTitleReviews,
             icon: "people",
             content: (
               <Suspense

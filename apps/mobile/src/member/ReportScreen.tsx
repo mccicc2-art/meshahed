@@ -8,7 +8,7 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from "react-native-svg"
 import { File, Paths } from "expo-file-system";
 import { api, downloadTo, write } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { BackChevron, Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius, type Tokens } from "../theme";
 import { shell, type NativeRoot } from "../shell";
@@ -125,7 +125,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
         <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+          <BackChevron color={tokens.fg} />
         </Pressable>
         {/* المدّةُ في الاسم لا في سطرٍ تحته (D-804)، ورقاقةُ PLUS بجانبه للمشترك وحدَه (D-801) */}
         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>

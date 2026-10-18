@@ -211,6 +211,15 @@ export function Button({
   );
 }
 
+/**
+ * 🆕 D-1460 — **سهمُ الرجوع الواحد** (كان مرسوماً بيده في تسع شاشات، فخرج «^» في الحساب كما خرج في صفحة العمل — D-1458).
+ * حدّان منطقيّان (بدايةٌ + أعلى) يُقلبان مع اللغة، **والدورانُ يتبع الاتّجاه معهما**: ‎-45° في LTR تعطي «<»، وفي RTL
+ * يصير حدُّ البداية الأيمن فتعطي ‎-45° «^» — لذا +45° ⇒ «>». السهمُ يشير دائماً إلى حيث يعود الرجوع.
+ */
+export function BackChevron({ color }: { color: string }) {
+  return <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: I18nManager.isRTL ? "45deg" : "-45deg" }], marginStart: 4 }} />;
+}
+
 export function Loading() {
   const { tokens } = useApp();
   return (

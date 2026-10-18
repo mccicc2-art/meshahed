@@ -570,7 +570,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
              * تؤخّر رسمَ الترويسة ولا الحلقات** (D-071/D-087).
              */
             key: "community",
-            label: t.tabCommunity,
+            label: t.tabTitleReviews,
             icon: "people",
             content: (
               <Suspense

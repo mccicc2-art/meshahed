@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { afterPaint, mark } from "../perfMarks";
 import { useApp } from "../state";
-import { Button, Text, Toast, toastReducer } from "../ui";
+import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
 import { Icon, iconOr } from "../icons";
 import { controlSize, radius } from "../theme";
 import { CONFIG } from "../config";
@@ -921,7 +921,7 @@ function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "s
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       {icon === "back" ? (
-        <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+        <BackChevron color={fg} />
       ) : (
         <Icon name={icon} size={20} color={fg} />
       )}

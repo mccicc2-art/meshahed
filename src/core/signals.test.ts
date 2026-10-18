@@ -18,8 +18,11 @@ test("الوجهة: القائمةُ أوّلاً ثمّ الغرفةُ ثمّ �
   assert.equal(signalHref(row({ kind: "reply", tmdbId: 7, mediaType: "movie" }), ME), `/review/movie/7/${ME}`);
   assert.equal(signalHref(row({ kind: "reply", tmdbId: 7, mediaType: "tv" }), null), "/show/7");
   assert.equal(signalHref(row({ kind: "follow" }), ME), "/u/mishal");
-  assert.equal(signalHref(row({ kind: "like_review", tmdbId: 9, mediaType: "tv" }), ME), "/u/mishal");
-  assert.equal(signalHref(row({ kind: "like_review", person: { ...P, username: null, id: "" }, tmdbId: 9, mediaType: "tv" }), ME), "/show/9");
+  /* D-1460 — الإعجابُ يفتح ما أُعجب به: رأيي بمعرّفي، ونشاطي صفحةَ العمل — لا ملفَّ المُعجِب */
+  assert.equal(signalHref(row({ kind: "like_review", tmdbId: 9, mediaType: "tv" }), ME), `/review/tv/9/${ME}`);
+  assert.equal(signalHref(row({ kind: "like_review", tmdbId: 9, mediaType: "tv" }), null), "/show/9");
+  assert.equal(signalHref(row({ kind: "like_activity", tmdbId: 9, mediaType: "movie" }), ME), "/movie/9");
+  assert.equal(signalHref(row({ kind: "like_activity" }), ME), "/u/mishal");
 });
 
 test("الجملةُ تُشقُّ عند الاسم، والمخفيُّ «مستخدم»", () => {

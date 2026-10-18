@@ -7,7 +7,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import Svg, { Circle, Line, Path, Polygon } from "react-native-svg";
 import { api } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { BackChevron, Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
@@ -96,7 +96,7 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
         <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+          <BackChevron color={tokens.fg} />
         </Pressable>
         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
           <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Full Statistics" : "الإحصائيات الكاملة"}</Text>

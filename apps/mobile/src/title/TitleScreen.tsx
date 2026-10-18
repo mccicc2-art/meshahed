@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { BackHandler, I18nManager, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
@@ -9,7 +9,7 @@ import { qk, write, ApiError, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { openThreadPath } from "../thread/route";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text, Toast, toastReducer } from "../ui";
+import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { radius } from "../theme";
@@ -482,7 +482,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
                   {/* D-1133 — أيقوناتُ الويب نفسُها (`DetailTabs`: list · info · people، ١٦، ذهبيّةٌ للنشط) */}
                   <Icon name={k === "episodes" ? "list" : k === "info" ? "info" : "people"} size={16} color={on ? tokens.accent : tokens.muted} />
-                  <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{k === "episodes" ? t.tabEpisodes : k === "info" ? t.tabInfo : t.tabCommunity}</Text>
+                  <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{k === "episodes" ? t.tabEpisodes : k === "info" ? t.tabInfo : t.tabTitleReviews}</Text>
                 </Pressable>
               );
             })}
@@ -647,9 +647,8 @@ const VEIL = require("../../assets/poster-veil.png");
 function Chevron({ color }: { color: string }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      {/* 🆕 D-1458 — الحدّان منطقيّان (بدايةٌ + أعلى) فيُقلبان مع اللغة، والدورانُ لا: ‎-45° تُخرج «<» في LTR و«^» في
-          RTL (حدُّ البداية يصير الأيمن). الدورانُ يتبع الاتّجاه ⇒ «>» بالعربيّة، والسهمُ يشير إلى حيث يعود الرجوع. */}
-      <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: I18nManager.isRTL ? "45deg" : "-45deg" }], marginStart: 4 }} />
+      {/* D-1458 ⇐ D-1460: السهمُ الواحد في `ui` (يتبع الاتّجاه) */}
+      <BackChevron color={color} />
     </View>
   );
 }

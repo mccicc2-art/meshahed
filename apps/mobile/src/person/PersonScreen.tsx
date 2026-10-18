@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
-import { Button, Text, Toast, toastReducer } from "../ui";
+import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { RailCard, RAIL_CARD_W, type LibMark } from "../discover/RailCard";
@@ -275,7 +275,7 @@ function lifeSpan(p: { birthday: string | null; deathday: string | null }, t: Re
 function Chevron({ color }: { color: string }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+      <BackChevron color={color} />
     </View>
   );
 }
