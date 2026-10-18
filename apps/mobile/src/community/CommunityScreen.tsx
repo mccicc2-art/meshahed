@@ -29,6 +29,7 @@ import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type Card
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
 import { FeedMenu } from "./FeedMenu";
+import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
 import { FloatButton } from "../FloatButton";
 import { Chip } from "../library/Chip";
 import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
@@ -62,7 +63,8 @@ export const COMMUNITY_KEY = ["community"] as const;
 const memory: { tab: Tab | null; all: BoardSection | null } = { tab: null, all: null };
 
 async function fetchCommunity() {
-  return (await api<CommunityPayload>("/api/v1/community")).data;
+  /* 🆕 D-1461 — اختيارُ الجهاز يلبس كلَّ ردٍّ قبل الكاش: الخادمُ لا يرى كوكيز التطبيق فيعيد الأصل («الكل» + «الأكثر تفاعلاً») */
+  return withFeedChoice((await api<CommunityPayload>("/api/v1/community")).data);
 }
 
 /** تسخينٌ اختياريّ — المفتاحُ مفتاحُ الشاشة فلا نداءَ يتكرّر */
@@ -222,6 +224,8 @@ export function CommunityScreen() {
         if (refetch) void qc.invalidateQueries({ queryKey: COMMUNITY_KEY, exact: true });
       } catch (e) {
         if (undo) patchPrefs(() => undo);
+        /* D-1461 — التراجعُ يعود بالجهاز معه، فلا يبقى محفوظاً ما لم يُرَ */
+        if (undo) rememberFeedChoice(undo);
         say(errorText(t, e));
       }
     },
@@ -232,6 +236,7 @@ export function CommunityScreen() {
       haptic.pick();
       const undo = d?.prefs ?? null;
       patchPrefs((p) => ({ ...p, ...patch }));
+      rememberFeedChoice(patch);
       /* 🆕 D-1228 — الشرائحُ والترتيبُ (الخطّ والنقاشات) تُرسم في اليد: الكتابةُ تحفظ التفضيلَ ولا تعيد الجلب — إلّا الترجمة
          (نصوصٌ من الخادم)، أو ردٌّ بلا شرائح الخطّ */
       const local = !("translate" in patch) && (("strangers" in patch || "sort" in patch) ? !!d?.feed.variants : true);
@@ -522,6 +527,33 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
     }
     return { rows, quiet: v.quiet };
   }, [d.feed, d.prefs]);
+  /* 🆕 D-1461 — **الجديدُ ينتظر حبّةً ولا يُحشر فوق القارئ** (أحمد ١٨ أكتوبر: «إذا فيه منشور جديد ابغاه يبان… ومايبدأ دائماً
+     من فوق»). تحديثُ الخلفيّة (العودةُ للتبويب · `staleTime`) كان يضع الصفوفَ الجديدةَ فوق ما يقرؤه فيتزحزح الخطّ. الآن يُرسم
+     ما رآه وحدَه (`seen`)، والجديدُ عددٌ في «منشورات جديدة» — ضغطةٌ تُظهره وتصعد إلى أوّل الخطّ.
+     يُقبل الكلُّ فوراً في ثلاث: أوّلُ رسمة · تبديلُ الشريحة · سحبُ التحديث باليد. **ومنشوري يظهر فوراً** (مفتاحُه `c-<أنا>-…`)،
+     والمحذوفُ يسقط فوراً لأنّ المرسومَ يُقرأ من صفوف الردِّ الأخير لا من ذاكرة. */
+  const sliceKey = d.prefs ? `${d.prefs.strangers}|${d.prefs.sort}` : "";
+  const pulling = !!(refresh.props as { refreshing?: boolean }).refreshing;
+  const mineKey = acts.meId ? `c-${acts.meId}-` : null;
+  const [seen, setSeen] = useState<{ slice: string; keys: ReadonlySet<string> } | null>(null);
+  const feedRef = useRef<FlatList<CommunityFeedRow>>(null);
+  useEffect(() => {
+    if (k !== "activity") return;
+    setSeen((prev) => {
+      const keys = feedView.rows.map((r) => r.key);
+      if (!prev || prev.slice !== sliceKey || pulling) return { slice: sliceKey, keys: new Set(keys) };
+      const mine = mineKey ? keys.filter((x) => !prev.keys.has(x) && x.startsWith(mineKey)) : [];
+      return mine.length ? { slice: sliceKey, keys: new Set([...prev.keys, ...mine]) } : prev;
+    });
+  }, [k, feedView.rows, sliceKey, pulling, mineKey]);
+  const held = seen && seen.slice === sliceKey ? seen.keys : null;
+  const shownRows = useMemo(() => (held ? feedView.rows.filter((r) => held.has(r.key)) : feedView.rows), [held, feedView.rows]);
+  const freshCount = feedView.rows.length - shownRows.length;
+  const showFresh = useCallback(() => {
+    haptic.pick();
+    setSeen({ slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) });
+    feedRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [sliceKey, feedView.rows]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -530,29 +562,37 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
 
   if (k === "activity") {
     return (
-      <FlatList
-        data={feedView.rows}
-        keyExtractor={(r) => r.key}
-        renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
-        /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
-        ListHeaderComponent={
-          d.prefs ? (
-            <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
-          ) : null
-        }
-        onViewableItemsChanged={views.onViewableItemsChanged}
-        viewabilityConfig={views.viewabilityConfig}
-        ListEmptyComponent={empty(d.feed.empty_text)}
-        /* 🔴 D-1207-fix — **رأسُ النشاط على شطر النقاشات حرفاً** (لقطتا أحمد: الشرائحُ أعلى بـ٨ والسطرُ بلا عدد): الحشوةُ العليا
-           `topPad + 12` كالنقاشات (كانت `+ 4` قبل أن يكون للخطّ رأس)، والعددُ على يسار السطر */
-        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        refreshControl={refresh}
-        initialNumToRender={6}
-        windowSize={7}
-        removeClippedSubviews
-      />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={feedRef}
+          data={shownRows}
+          keyExtractor={(r) => r.key}
+          renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
+          /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
+          ListHeaderComponent={
+            d.prefs ? (
+              <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
+            ) : null
+          }
+          onViewableItemsChanged={views.onViewableItemsChanged}
+          viewabilityConfig={views.viewabilityConfig}
+          ListEmptyComponent={empty(d.feed.empty_text)}
+          /* 🔴 D-1207-fix — **رأسُ النشاط على شطر النقاشات حرفاً** (لقطتا أحمد: الشرائحُ أعلى بـ٨ والسطرُ بلا عدد): الحشوةُ العليا
+             `topPad + 12` كالنقاشات (كانت `+ 4` قبل أن يكون للخطّ رأس)، والعددُ على يسار السطر */
+          contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          refreshControl={refresh}
+          initialNumToRender={6}
+          windowSize={7}
+          removeClippedSubviews
+        />
+        {freshCount > 0 ? (
+          <View pointerEvents="box-none" style={{ position: "absolute", top: topPad + 8, start: 0, end: 0, alignItems: "center" }}>
+            <Button size="sm" label={`↑ ${t.feedNewPosts(freshCount)}`} onPress={showFresh} accessibilityLabel={t.feedNewPosts(freshCount)} />
+          </View>
+        ) : null}
+      </View>
     );
   }
 

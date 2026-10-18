@@ -863,6 +863,8 @@ const ar = {
      «المجتمع»، فاسمان من جذرٍ واحد على صفٍّ واحد لا يفرّقان شيئاً.
      والمحتوى نشاطُ من تتابعهم — سمِّه بما هو. */
   communityTabMine: "النشاط",
+  /** 🆕 D-1461 — حبّةُ أعلى الخطّ: ما وصل في تحديثٍ خلفيٍّ ينتظرها بدل أن يُحشر فوق القارئ */
+  feedNewPosts: (n: number) => (n === 1 ? "منشور جديد" : n === 2 ? "منشوران جديدان" : n <= 10 ? `${n} منشورات جديدة` : `${n} منشوراً جديداً`),
   /* تبويبُ المراجعات — الرأيُ المكتوب وحده (طلب أحمد ١٢ أغسطس) */
   communityTabReviews: "المراجعات",
   /* **تبويبُ «نقاش»** (D-187 اسمُه «الأعمال»، وسمّاه أحمد في D-219) —
@@ -3387,6 +3389,7 @@ const en: Dict = {
   // Community tabs and messages
   communityTabsGroup: "Community sections",
   communityTabMine: "Activity",
+  feedNewPosts: (n: number) => (n === 1 ? "1 new post" : `${n} new posts`),
   communityTabReviews: "Reviews",
   communityTabWorks: "Discussions",
   // Renamed from "People" (D-274); the key and the URL stay `people`
