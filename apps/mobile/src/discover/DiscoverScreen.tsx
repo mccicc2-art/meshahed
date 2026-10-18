@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, I18nManager, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -79,12 +79,16 @@ const GAP = 12;
 /* D-965 — موضعُ التمرير لكلِّ تبويب: الجارُ المسلَّح يُرسم بموضعه هو */
 const memory: { tab: Tab; y: Partial<Record<Tab, number>> } = { tab: "shows", y: {} };
 
+/* D-1466 — الصفوفُ الأفقيّةُ بالعربيّ على الآيفون تُركَّب كاملةً (انظر `CardsRail`) */
+const IOS_RTL = Platform.OS === "ios" && I18nManager.isRTL;
+
 /**
  * 🆕 D-1003 — **تسخينُ «اكتشف» قبل فتحها** (بلاغُ أحمد: «بطء في اكتشف أوّل ما تدخل»):
  * الغلافُ يناديها حين تجهز الجلسةُ والويبُ يحمّل الرئيسيّة — فتصل الشاشةُ إلى كاش
  * `react-query` مملوءاً بصفوف التبويب الذي سيُفتح (الشخصيّ + الأربعة/الخمسة المنسَّقة +
  * تفضيلاتُ العرض). المفاتيحُ مفاتيحُ `Rail`/`DiscoverPane` حرفاً فلا نداءَ يتكرّر.
  */
+
 export function prefetchDiscover(): void {
   const tab = memory.tab === "lists" ? "shows" : memory.tab;
   void queryClient.prefetchQuery({ queryKey: ["discover:view"] as const, queryFn: async () => (await api<DiscoverViewPayload>("/api/v1/discover/view")).data, staleTime: 5 * 60_000 });
@@ -784,11 +788,8 @@ const DiscoverPane = memo(function DiscoverPane({
          مركَّباً في React (بياناتُه وموضعُ تمريره) ويُلصق حين يقترب من الشاشة.
          ⚖️ **العمودُ وحدَه**: القصُّ الرأسيُّ لا يتعلّق باتّجاه اللغة (أخطاءُ هذه الخاصيّة المعروفةُ في الأفقيّ مع RTL)،
          والصفوفُ الأفقيّةُ عليها أصلاً افتراضُ `FlatList` في أندرويد. تجربةٌ تُحكم بالرقم: إن لم ينزل `ud` تُحذف.
-         🧪 D-1457 — **أندرويد وحدَه**، كما قصدَ D-1236. على الآيفون بالعربيّ (مشعل، ١٨ أكتوبر، ثلاثةُ مقاطع): انزلْ في
-         تبويبٍ ثمّ انتقلْ وارجعْ ⇒ الصفوفُ التي خرجت من الشاشة ترجع فارغةً (طرفُ بوستر عند الحافّة)، ولا تعود إلّا
-         بتحريكٍ رأسيّ — وهو ما يُعيد حسابَ هذه الخاصيّة في iOS. الإنجليزيُّ سليمٌ بالخطوات نفسِها. تجربةٌ تحكم: إن بقي
-         الفراغُ على الآيفون بعدها فالخاصيّةُ بريئةٌ وتعود كما كانت. */
-      removeClippedSubviews={Platform.OS === "android"}
+         🗑️ D-1457 أُرجع (D-1466): جُرّب على آيفون مشعل فبقي الفراغ — الخاصيّةُ بريئة، والعلّةُ في الصفّ الأفقيّ نفسِه (تحت). */
+      removeClippedSubviews
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
@@ -1047,6 +1048,12 @@ const CardsRail = memo(function CardsRail({
            تحمل ~١١٠ بطاقةً مركّبةً في لوحين (`live` في D-1218a) — وفكُّ التجميد يمرّ عليها كلِّها. العرضُ ثابت
            (`getItemLayout`) فما يقترب من الحافّة يُركَّب قبل أن يُرى. */
         windowSize={3}
+        /* 🆕 D-1466 — **على الآيفون بالعربيّ يُركَّب الصفُّ كلُّه** (مشعل ١٨–١٩ أكتوبر، بعد أن برّأ D-1457 القصَّ الرأسيّ): الصفُّ
+           الأفقيُّ مقلوبٌ في RTL، وحين يُخفى اللوحُ ويعود يعيد `FlatList` قياسَه فيحسب موضعَه في الصفّ خطأً ويركّب بطاقاتٍ بعيدةً عن
+           العين — صفٌّ فارغٌ وطرفُ بوسترٍ عند الحافّة، ويعود بتحريكٍ رأسيّ لأنّ القائمةَ الأمَّ تُبلغ صفوفَها المتداخلة فتعيد الحساب.
+           الإنجليزيُّ لا قلبَ فيه فلا يقع. الصفُّ ~٢٠ بطاقةً أقصى، فنافذةٌ تسعها كلَّها تجعل خطأَ الحساب بلا أثر. أندرويد والإنجليزيُّ كما هما.
+           تجربةٌ تحكم: إن بقي الفراغُ فالعلّةُ ليست الافتراض ويُعاد هذا. */
+        {...(IOS_RTL ? { initialNumToRender: shown.length, windowSize: 21, maxToRenderPerBatch: shown.length } : null)}
         /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك */
         {...RAIL_JANK}
       />
