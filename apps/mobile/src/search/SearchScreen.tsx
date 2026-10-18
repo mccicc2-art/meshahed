@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, useReducer } from "react";
 import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -21,7 +21,7 @@ import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, TitleRow } from "./SearchRows";
 import { Logo } from "../Logo";
 import { HeaderEnd } from "../HeaderEnd";
-import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useSearch, useTrending } from "./useSearch";
+import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useScopedTrending, useSearch, useTrending } from "./useSearch";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
@@ -77,6 +77,8 @@ export function SearchScreen() {
   const term = useDebounced(q);
   const search = useSearch(term, scope);
   const trend = useTrending();
+  /* 🆕 D-1442 — تحت «فنانون/أعضاء/قوائم» قبل الكتابة: ما يناسب الرقاقة (`short` يُحسب أدناه من النصّ نفسِه) */
+  const scoped = useScopedTrending(scope, term.trim().length < MIN_QUERY);
   /* 🆕 D-1263 — **المعروضُ لا يتبدّل والتبويبُ ظاهر**: `shown` يأخذ القائمةَ حين لا شيءَ معروضاً، أو حين تصل
      والتبويبُ غيرُ ظاهر (الشاشةُ ثابتةٌ مركّبة فالتحديثُ لا يُرى). ما وصل وهو ظاهرٌ ينتظر المغادرة. والمغادرةُ
      تطلب التجديدَ إن مضت عشرُ دقائق — فالعودةُ تجد الجديدَ مرسوماً لا يتبدّل أمام العين. */
@@ -129,6 +131,15 @@ export function SearchScreen() {
     el.blur();
     requestAnimationFrame(() => el.focus());
   }, []);
+
+  /* 🆕 شريطُ البحث في الودجت (`focus`): الصفحةُ تُفتح واللوحةُ ظاهرةٌ للكتابة مباشرة — قرارُ أحمد «١ ب» (١٤ أكتوبر).
+     كلُّ لمسةٍ رمزٌ جديد فتعمل ولو كان التبويبُ مفتوحاً؛ والمهلةُ حتّى تستقرّ الشاشة (التركيزُ قبلها لا يفتح اللوحة) */
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
+  useEffect(() => {
+    if (!focus || desc) return;
+    const h = setTimeout(focusField, 350);
+    return () => clearTimeout(h);
+  }, [focus, desc, focusField]);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -357,7 +368,33 @@ export function SearchScreen() {
               ))}
             </ScrollView>
 
-            {short ? (
+            {short && (scope === "artists" || scope === "members" || scope === "lists") ? (
+              /* 🆕 D-1442 — الرقاقةُ تقرّر ما تحتها قبل الكتابة */
+              scoped.data && scope === "artists" && scoped.data.artists?.length ? (
+                <Section title={t.searchTrendingArtists} show seeAll={null} seeAllLabel={t.searchSeeAll}>
+                  {scoped.data.artists.map((a) => (
+                    <ArtistRow key={a.id} a={a} onPress={() => openPerson(a.id)} />
+                  ))}
+                </Section>
+              ) : scoped.data && scope === "members" && scoped.data.members?.length ? (
+                <Section title={t.searchFeaturedMembers} show seeAll={null} seeAllLabel={t.searchSeeAll}>
+                  {scoped.data.members.map((m) => {
+                    const href = profileHref(m);
+                    return <MemberRow key={m.id} m={m} onPress={href ? () => leaveTo(href) : null} />;
+                  })}
+                </Section>
+              ) : scoped.data && scope === "lists" && scoped.data.lists?.length ? (
+                <Section title={t.searchPopularLists} show seeAll={null} seeAllLabel={t.searchSeeAll}>
+                  {scoped.data.lists.map((l) => (
+                    <ListRow key={l.id} l={l} onPress={() => leaveTo(`/lists/${l.id}`)} />
+                  ))}
+                </Section>
+              ) : scoped.isPending ? (
+                <RowsSkeleton />
+              ) : (
+                <Text muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.searchStart}</Text>
+              )
+            ) : short ? (
               /* 🆕 الفراغُ قبل الكتابة = «رائج اليوم». الهيكلُ بإيقاع الصفّ ريثما تصل، ونصُّ «ابدأ» إن لم تصل */
               shown?.length ? (
                 <Section title={t.searchTrendingToday} show seeAll={null} seeAllLabel={t.searchSeeAll}>

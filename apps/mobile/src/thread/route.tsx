@@ -1,6 +1,7 @@
 import React from "react";
 import type { useRouter } from "expo-router";
-import { ThreadScreen, type ThreadRoute } from "./ThreadScreen";
+import { ThreadScreen, threadQuery, type ThreadRoute } from "./ThreadScreen";
+import { queryClient } from "../api";
 import { ErrorBoundary } from "../ErrorBoundary";
 import type { NativeRoot } from "../shell";
 
@@ -28,18 +29,31 @@ export function ThreadRouteScreen({ route, from, compose = false }: { route: Thr
 export function openThreadPath(router: ReturnType<typeof useRouter>, path: string, from: NativeRoot | "web"): boolean {
   let m = /^\/talk\/(tv|movie)\/(\d+)\/?$/.exec(path);
   if (m) {
+    warm({ t: "talk", kind: m[1] === "movie" ? "movie" : "tv", id: Number(m[2]) });
     router.push({ pathname: "/talk/[kind]/[id]", params: { kind: m[1], id: m[2], from } });
     return true;
   }
   m = /^\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?$/i.exec(path);
   if (m) {
+    warm({ t: "review", kind: m[1] === "movie" ? "movie" : "tv", id: Number(m[2]), user: m[3] });
     router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: m[1], id: m[2], user: m[3], from } });
     return true;
   }
   m = /^\/post\/([^/?#]+)\/?$/.exec(path);
   if (m) {
-    router.push({ pathname: "/post/[key]", params: { key: decodeURIComponent(m[1]), from } });
+    const key = decodeURIComponent(m[1]);
+    warm({ t: "post", key });
+    router.push({ pathname: "/post/[key]", params: { key, from } });
     return true;
   }
   return false;
+}
+
+/**
+ * 🆕 1.12.7 — **الغرفةُ تُطلب قبل الدفع لا بعد تركيب شاشتها** (`thread.open` ٦٣٣ms على آيفون): الطلبُ كان يخرج من `useQuery`
+ * بعد أن يرسم المتنقّلُ الشاشةَ الجديدة؛ الآن يخرج مع الضغطة، والشاشةُ تجده في الطريق (المفتاحُ والدالّةُ `threadQuery` نفسُهما).
+ * غرفةٌ في الكاش طازجةٌ لا تُطلب ثانيةً (`staleTime`).
+ */
+function warm(r: ThreadRoute) {
+  void queryClient.prefetchQuery(threadQuery(r));
 }

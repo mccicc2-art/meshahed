@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { AppState } from "react-native";
 import { CONFIG } from "./config";
 import { flag } from "./flags";
 
@@ -32,6 +33,16 @@ const TIMEOUT_MS = 8_000;
 /* 🆕 M4-fix — مهلتا التجديد: الأولى قصيرة (اتّصالٌ عالق بعد الإقلاع)، والثانيةُ على اتّصالٍ جديد */
 const RENEW_FIRST_MS = 3_500;
 const RENEW_RETRY_MS = 6_000;
+/**
+ * 🆕 1.12.7 — **التجديدُ قبل الحاجة لا عندها** (قياسُ TestFlight 1.12.6 على آيفون: `session.renew` و`token.wait` ~٧٠٠ms).
+ * كان التجديدُ يقع **في طريق أوّل طلبٍ** بعد أن يشيخ الرمز (آخرُ ثلاثين ثانيةً من ساعته) أو بعد إقلاعٍ بارد أو عودةٍ من خلفيّةٍ
+ * طويلة — فكلُّ شاشةٍ تُفتح ساعتَها (اكتشف · الرسائل · النقاش…) تنتظر رحلةَ Supabase كاملةً قبل طلبها الأوّل. الآن يُجدَّد
+ * **في الخلفيّة** قبل الانتهاء بخمس دقائق، وفورَ الإقلاع، وفورَ العودة إلى الواجهة — والرمزُ الحاليُّ يُستعمل ما دام صالحاً
+ * (`get()` لم يتغيّر)، فلا شاشةَ تنتظر تجديداً ورمزُها صالح. والتجديدُ واحدٌ مشترك (`renewing`) أيّاً كان من بدأه.
+ */
+const AHEAD_MS = 5 * 60_000;
+/** تجديدٌ مسبقٌ فشل بالشبكة والرمزُ ما زال صالحاً ⇒ يُعاد بعد هذا (لا حلقةَ ضيّقة) */
+const AHEAD_RETRY_MS = 60_000;
 /** سكٌّ فشل لا يُعاد قبل هذا — الخادمُ يحدّ بستٍّ في الساعة، والفشلُ غالباً لا يزول في دقيقة */
 const MINT_BACKOFF_MS = 10 * 60_000;
 
@@ -39,7 +50,7 @@ type Stored = { rt: string; uid: string };
 type Why = string;
 type EventName = "session.mint" | "session.renew";
 /** من أين جاء رمزُ السكّ: الجسر · كوكي الويب · 🆕 K6a رمزُ الدخول نفسُه (كان يُوسَم `bridge` فيختلط بالجسر) */
-type Src = "bridge" | "cookie" | "login";
+type Src = "bridge" | "cookie" | "login" | "ahead" | "wait";
 type EventExtra = { result: "ok" | "none"; why?: Why; src?: Src };
 
 let access: string | null = null;
@@ -49,6 +60,7 @@ let stored: Stored | null | undefined;
 let renewing: Promise<string | null> | null = null;
 let minting: Promise<void> | null = null;
 let mintFailedAt = 0;
+let aheadTimer: ReturnType<typeof setTimeout> | null = null;
 
 const changeListeners = new Set<() => void>();
 const eventListeners = new Set<(name: EventName, ms: number, extra: EventExtra) => void>();
@@ -138,11 +150,25 @@ function adoptTokens(a: string, e: number, rt: string, uid: string) {
   access = a;
   exp = e;
   writeStored({ rt, uid });
+  scheduleAhead(exp * 1000 - AHEAD_MS - Date.now());
   changed();
 }
 
+/** موعدُ التجديد المسبق التالي — مؤقّتٌ واحدٌ في كلِّ لحظة. iOS يجمّد المؤقّتاتِ في الخلفيّة، والعودةُ تتولّاها `AppState` أدناه */
+function scheduleAhead(inMs: number) {
+  if (aheadTimer) clearTimeout(aheadTimer);
+  aheadTimer = setTimeout(() => {
+    aheadTimer = null;
+    own.warm();
+  }, Math.max(1_000, inMs));
+}
+function cancelAhead() {
+  if (aheadTimer) clearTimeout(aheadTimer);
+  aheadTimer = null;
+}
+
 /** التجديدُ بنفسه — رمزٌ رُفض (4xx) يعني جلسةً انتهت (خروجٌ من الويب، إيقاف…) ⇒ تُمسح، والجسرُ يعود */
-async function renew(s: Stored): Promise<string | null> {
+async function renew(s: Stored, src: "ahead" | "wait"): Promise<string | null> {
   const t0 = Date.now();
   /* 🔴 M4-fix — **محاولةٌ قصيرةٌ ثمّ ثانيةٌ على اتّصالٍ جديد، لا انتظارُ ثماني ثوانٍ** (تسجيلُ أحمد ٢٨ سبتمبر: التطبيقُ
      مغلق ⇐ رسالةٌ من الويب ⇐ الفتح: لا شارةَ على الظرف، و«الرسائل» تدور ستَّ ثوانٍ). العلاماتُ من جوال خالد في تلك
@@ -165,23 +191,23 @@ async function renew(s: Stored): Promise<string | null> {
     if (r.status >= 200 && r.status < 300 && j && typeof j.access_token === "string" && typeof j.refresh_token === "string" && typeof j.expires_at === "number") {
       if (j.user?.id !== s.uid) {
         own.clear();
-        report("session.renew", t0, { result: "none", why: "user" });
+        report("session.renew", t0, { result: "none", why: "user", src });
         return null;
       }
       adoptTokens(j.access_token, j.expires_at, j.refresh_token, s.uid);
-      report("session.renew", t0, retried ? { result: "ok", why: "retry" } : { result: "ok" });
+      report("session.renew", t0, retried ? { result: "ok", why: "retry", src } : { result: "ok", src });
       return j.access_token;
     }
     if (r.status >= 400 && r.status < 500 && r.status !== 429) {
       own.clear();
-      report("session.renew", t0, { result: "none", why: typeof j?.error_code === "string" ? j.error_code.slice(0, 16) : `h${r.status}` });
+      report("session.renew", t0, { result: "none", why: typeof j?.error_code === "string" ? j.error_code.slice(0, 16) : `h${r.status}`, src });
       return null;
     }
     /* 5xx أو 429: الرمزُ ما زال صالحاً على الأرجح — يبقى، والجسرُ يحاول هذه المرّة */
-    report("session.renew", t0, { result: "none", why: `h${r.status}` });
+    report("session.renew", t0, { result: "none", why: `h${r.status}`, src });
     return null;
   } catch {
-    report("session.renew", t0, { result: "none", why: retried ? "net2" : "net" });
+    report("session.renew", t0, { result: "none", why: retried ? "net2" : "net", src });
     return null;
   }
 }
@@ -230,11 +256,30 @@ export const own = {
     const s = readStored();
     if (!s) return Promise.resolve(null);
     if (!renewing) {
-      renewing = renew(s).finally(() => {
+      renewing = renew(s, "wait").finally(() => {
         renewing = null;
       });
     }
     return renewing;
+  },
+  /**
+   * 🆕 1.12.7 — **تجديدٌ في الخلفيّة لا ينتظره أحد**: بلا رمزٍ في الذاكرة (إقلاعٌ بارد) أو برمزٍ يبقى فيه أقلُّ من
+   * `AHEAD_MS`. من يطلب الرمزَ في أثنائه: صالحٌ ⇒ يأخذه فوراً (`get`)، وشائخٌ ⇒ ينضمّ إلى التجديد نفسِه (`ensure`).
+   * لا شيءَ في الخلفيّة الحقيقيّة (لا شاشةَ تنتظر، ورحلةٌ قد تُقطع)، ولا شيءَ والمفتاحُ مطفأ أو بلا جلسةٍ محفوظة.
+   */
+  warm() {
+    if (!own.enabled() || renewing || AppState.currentState === "background") return;
+    const s = readStored();
+    if (!s) return;
+    if (access && exp * 1000 - Date.now() > AHEAD_MS) return;
+    const p = renew(s, "ahead");
+    renewing = p.finally(() => {
+      renewing = null;
+    });
+    void p.then((t) => {
+      /* فشلٌ مؤقّت (شبكة · 5xx) ورمزُنا ما زال صالحاً ⇒ محاولةٌ بعد دقيقة؛ رفضٌ مسح الجلسةَ أصلاً فلا شيءَ يُعاد */
+      if (!t && access && exp * 1000 > Date.now()) scheduleAhead(AHEAD_RETRY_MS);
+    });
   },
   /**
    * رمزٌ وصل عبر الجسر ⇒ يُسكّ منه جلسةٌ مملوكة (مرّةً — لا شيءَ إن كانت لصاحبه نفسِه). صاحبٌ آخر ⇒ تُمسح
@@ -299,12 +344,14 @@ export const own = {
   dropAccess() {
     access = null;
     exp = 0;
+    cancelAhead();
   },
   /** خروجٌ أو تبدّلُ مستخدمٍ أو جلسةٌ رُفضت — **محلّيٌّ فقط**، بلا نداء خروج */
   clear() {
     const had = !!access || !!readStored();
     access = null;
     exp = 0;
+    cancelAhead();
     /* D-1152 — الخروجُ يصفّر مهلةَ الفشل أيضاً: الدخولُ التالي يبدأ نظيفاً */
     mintFailedAt = 0;
     writeStored(null);
@@ -319,3 +366,10 @@ export const own = {
     return () => eventListeners.delete(l);
   },
 };
+
+/* 🆕 1.12.7 — **الإقلاعُ والعودةُ يبدآن التجديدَ بأنفسهما**: كان أوّلُ طلبٍ يبدؤه بعد تركيب الشاشة (مئاتُ ms من رسمٍ أوّل
+   قبله)، فيُضاف زمنُ التجديد كاملاً إلى أوّل شاشة. الآن يسير مع التركيب لا بعده. بعد دورة الحدث الأولى كي لا يثقل تقييمَ الوحدة. */
+setTimeout(() => own.warm(), 0);
+AppState.addEventListener("change", (st) => {
+  if (st === "active") own.warm();
+});

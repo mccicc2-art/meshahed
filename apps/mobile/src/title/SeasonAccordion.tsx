@@ -138,7 +138,9 @@ export function SeasonAccordion({
             {/* ⚖️ D-1251 — الخطُّ الأصفرُ أعلى الموسم المكتمل حُذف بكلمة أحمد («الخط الأصفر على كل سيزون ما أبغاه»):
                 العدُّ `13/13` وصحُّ «مسح الموسم» الأخضرُ يقولان الاكتمالَ، وخطٌّ ثالثٌ للمعنى نفسِه ضجيج */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
-              <Pressable onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
+              {/* 🆕 1.12.7 — حلقاتُ الموسم تُطلب **من لمس الإصبع لا من رفعه** (`season.open` p95 ١٣٢٧ms على آيفون — رحلةُ TMDB كلُّها
+                  بعد الرفع): المفتاحُ مفتاحُ `SeasonBody` حرفاً فيجد الطلبَ في الطريق؛ وطيُّ موسمٍ مفتوحٍ لا يطلب شيئاً */}
+              <Pressable onPressIn={isOpen ? undefined : () => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, showRatings))} onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
                 <View style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}>
                   <Icon name="chevron-down" size={16} color={tokens.muted} />
                 </View>

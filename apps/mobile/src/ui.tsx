@@ -83,7 +83,7 @@ function splitRuns(text: string): { s: string; ar: boolean }[] {
 }
 
 /** أوّلُ حرفٍ قويّ: `true` عربيّ · `false` لاتينيّ · `null` لا حروف (أرقامٌ · رموز · فارغ) */
-function firstStrongRtl(text: string): boolean | null {
+export function firstStrongRtl(text: string): boolean | null {
   for (const ch of text) {
     if (ARABIC_RE.test(ch) && !/[\u0660-\u0669\u06F0-\u06F9\u060C\u061B\u061F\u066A-\u066D]/.test(ch)) return true;
     if (/[A-Za-z\u00C0-\u024F]/.test(ch)) return false;

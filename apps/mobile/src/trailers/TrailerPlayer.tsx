@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { WebViewProps } from "react-native-webview";
@@ -426,7 +426,9 @@ export function TrailerPlayer({
         onError={fail}
         onChangeState={(s: PlayerState) => {
           /* D-982 — يوتيوب بدأ من لمسةٍ وصلته وهو خامل: البطاقةُ استيقظت */
-          if (idle && (s === "playing" || s === "buffering")) onWake?.();
+          if (idle && (s === "playing" || s === "buffering")) {
+            onWake?.();
+          }
           if (s === "playing") {
             setPlaying(true);
             /* أوّلُ `playing` يفكّ الكتمَ من نفسه — لا ضغطةَ على الصوت (D-771) */
@@ -471,14 +473,20 @@ export function TrailerPlayer({
             const tp = Math.max(0, (height - hole) / 2);
             const a11y = `${t.trailerPlay} — ${label}`;
             /* الميتُ يفتح البابَ بلمسةٍ — لا من نفسه (D-984) */
-            const wake = () => (dead ? onExhausted() : onWake?.());
+            const wake = () => {
+              if (dead) onExhausted();
+              else onWake?.();
+            };
             return (
               <>
                 <Pressable style={{ position: "absolute", left: 0, right: 0, top: 0, height: tp }} onPress={wake} accessibilityLabel={a11y} />
                 <Pressable style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(0, height - tp - hole) }} onPress={wake} accessibilityLabel={a11y} />
                 <Pressable style={{ position: "absolute", left: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
                 <Pressable style={{ position: "absolute", right: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
-                {dead ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake} accessibilityLabel={a11y} /> : null}
+                {/* 🔴 D-1393 — **الآيفون بلا ثقب** (بلاغُ أحمد، ١٣ أكتوبر: «لمسُ النصّ ما يشغّل، لازم يمين ويسار»؛ والقياسُ
+                    المؤقّتُ D-1392 أكّده: أربعةُ تشغيلاتٍ كلُّها من الأطراف، وصفرٌ من الثقب). يوتيوب في iOS يستلم اللمسةَ ولا يبدأ،
+                    والتشغيلُ بأمرنا ينجح هناك كلَّ مرّة — فالوسطُ زرُّنا كالأطراف. أندرويد يبقى بثقبه (D-982) كما هو. */}
+                {dead || Platform.OS === "ios" ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake} accessibilityLabel={a11y} /> : null}
               </>
             );
           })()}

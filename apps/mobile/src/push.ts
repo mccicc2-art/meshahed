@@ -2,11 +2,14 @@ import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
-import { api, queryClient } from "./api";
+import { NO_COOKIES, api, queryClient } from "./api";
 import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
-import type { PushForgetBody, PushRegisterBody } from "@/core/push";
+import type { PushCap, PushForgetBody, PushRegisterBody } from "@/core/push";
+import { defineDmCategory } from "./notifications/dmReply";
+import { LoopzWidget } from "../modules/loopz-widget";
+import { hasWidgetToken, onWidgetToken } from "./widget/feed";
 
 /**
  * ====== إشعاراتُ الدفع في التطبيق — الإذنُ والرمزُ (D-1305) ======
@@ -33,6 +36,20 @@ let state: State = "unknown";
 let registered: string | null = null; /* `رمز|لغة` الذي قبله الخادمُ في هذا الإقلاع */
 let busy = false;
 let lastTry = 0;
+
+/**
+ * 🆕 1.12.7 — ما يقدر عليه هذا الجهاز: «dm-native» = **كودُه الأصليُّ يرسم إشعارَ الرسالة بزرّيه والتطبيقُ مقفول**
+ * (`DmPush.kt`)، فيرسلها الخادمُ له «بيانات». الجوابُ من البناء نفسِه (`dmNative` في الجسر — بناءٌ أقدمُ لا يملكها، والتحديثُ
+ * عبر الهواء لا يضيفها)، **ومعه رمزُ الودجت** الذي يرسل به الردّ. «dm-data» (D-1408) لم يعد يُعلن: الخادمُ أوقفه.
+ */
+function dmCaps(): PushCap[] {
+  if (Platform.OS !== "android") return [];
+  try {
+    return LoopzWidget?.dmNative?.() === true && hasWidgetToken() ? ["dm-native"] : [];
+  } catch {
+    return [];
+  }
+}
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 
@@ -85,6 +102,8 @@ async function sync(ask: boolean | "user") {
   busy = true;
   try {
     await ensureChannel();
+    /* 🆕 D-1406 — زرّا «رد» و«تمييز كمقروءة» بلغة الجهاز الآن (يُعاد في كلِّ إقلاع: اللغةُ قد تبدّلت) */
+    await defineDmCategory().catch(() => {});
     const next = await readPermission(ask);
     if (next !== state) {
       state = next;
@@ -95,7 +114,8 @@ async function sync(ask: boolean | "user") {
     if (!id) return;
     const token = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;
     const lang = currentLocale() === "en" ? "en" : "ar";
-    const key = `${token}|${lang}`;
+    const caps = dmCaps();
+    const key = `${token}|${lang}|${caps.join(",")}`;
     if (registered === key || Date.now() - lastTry < RETRY_MS) return;
     lastTry = Date.now();
     try {
@@ -103,7 +123,7 @@ async function sync(ask: boolean | "user") {
     } catch {
       /* لا شيء */
     }
-    const body: PushRegisterBody = { token, lang, platform: Platform.OS === "ios" ? "ios" : "android" };
+    const body: PushRegisterBody = { token, lang, platform: Platform.OS === "ios" ? "ios" : "android", caps };
     const r = await api<{ registered: boolean }>("/api/v1/me/push", { method: "POST", body });
     if (r.data.registered) registered = key;
   } catch {
@@ -127,7 +147,7 @@ function forget() {
   if (!token) return;
   SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
   const body: PushForgetBody = { token };
-  void fetch(`${CONFIG.apiBase}/api/v1/app/push/forget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+  void fetch(`${CONFIG.apiBase}/api/v1/app/push/forget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), credentials: NO_COOKIES }).catch(() => {});
 }
 
 /**
@@ -137,11 +157,46 @@ function forget() {
  */
 let openPeer: string | null = null;
 const PEER_URL = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+/* 🆕 القروب (الهجرة ٢٠٥): شاشتُه تعلن `g:<معرّف>`، ورسالتُه تصل بـ`/messages?group=` */
+const GROUP_URL = /^\/messages\?group=([0-9a-fA-F-]{36})$/;
 function inOpenThread(n: Notifications.Notification): boolean {
   if (!openPeer || AppState.currentState !== "active") return false;
   const url = (n.request.content.data as { url?: unknown } | undefined)?.url;
-  const m = typeof url === "string" ? PEER_URL.exec(url) : null;
-  return !!m && m[1].toLowerCase() === openPeer.toLowerCase();
+  if (typeof url !== "string") return false;
+  const m = PEER_URL.exec(url);
+  if (m) return m[1].toLowerCase() === openPeer.toLowerCase();
+  const g = GROUP_URL.exec(url);
+  return !!g && `g:${g[1].toLowerCase()}` === openPeer.toLowerCase();
+}
+
+/**
+ * 🆕 1.12.7 — **فتحُ المحادثة يمسح إشعاراتِها من الشريط** (كالواتس): ما قرأتَه أمامك لا يبقى ينتظرك فوق. نوعان يُمسحان:
+ * إشعارُ Expo (الآيفون وما قبل 1.12.7) يُعرف برابطه `?with=`/`?group=`، وإشعارُ الكود الأصليّ (`DmPush.kt`) يُعرف بوسمه —
+ * Expo يسمّيه `expo-notifications://foreign_notifications?tag=<peer أو g:قروب>&id=…` ويمسحه بالاسم نفسِه.
+ */
+async function clearThread(key: string): Promise<void> {
+  try {
+    const want = key.toLowerCase();
+    const shown = await Notifications.getPresentedNotificationsAsync();
+    for (const n of shown) {
+      const id = n.request.identifier;
+      let hit = false;
+      if (id.startsWith("expo-notifications://foreign_notifications")) {
+        const tag = /[?&]tag=([^&]+)/.exec(id)?.[1];
+        hit = !!tag && decodeURIComponent(tag).toLowerCase() === want;
+      } else {
+        const url = (n.request.content.data as { url?: unknown } | undefined)?.url;
+        if (typeof url === "string") {
+          const m = PEER_URL.exec(url);
+          const g = GROUP_URL.exec(url);
+          hit = m ? m[1].toLowerCase() === want : !!g && `g:${g[1].toLowerCase()}` === want;
+        }
+      }
+      if (hit) await Notifications.dismissNotificationAsync(id).catch(() => {});
+    }
+  } catch {
+    /* المسحُ تحسين — فشلُه لا يمسّ فتحَ المحادثة */
+  }
 }
 
 export const push = {
@@ -150,6 +205,13 @@ export const push = {
   setOpenPeer(peer: string | null, only?: string) {
     if (peer === null && only && openPeer !== only) return;
     openPeer = peer;
+    if (peer) void clearThread(peer);
+    /* 🆕 1.12.7 — والكودُ الأصليُّ يعرفه أيضاً: رسالةٌ من المحادثة المفتوحة لا يرسمها والتطبيقُ أمامك (`DmPush.kt`) */
+    try {
+      LoopzWidget?.setDmOpen?.(peer);
+    } catch {
+      /* بناءٌ أقدمُ بلا الدالّة */
+    }
   },
   subscribe(f: () => void) {
     subs.add(f);
@@ -166,7 +228,9 @@ try {
   /* التطبيقُ في الواجهة: الإشعارُ يظهر شريطاً ويُدرج — والشاراتُ تُجدَّد (الظرفُ والجرسُ لا ينتظران الاستطلاع) */
   Notifications.setNotificationHandler({
     handleNotification: async (n) => {
-      const show = !inOpenThread(n);
+      /* رسالةٌ «بيانات» بلا عنوانٍ ولا نصّ لا تُعرض فارغةً (إشعارُ الرسالة الأصليّ يرسمه `DmPush.kt` لا Expo) */
+      const empty = !n.request.content.title && !n.request.content.body;
+      const show = !empty && !inOpenThread(n);
       return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
     },
   });
@@ -180,6 +244,11 @@ try {
   /* جلسةٌ ظهرت (دخولٌ للتوّ) ⇒ يُسأل ويُسجَّل؛ والعودةُ من الخلفيّة تعيد قراءةَ الإذن (قد تغيّر في إعدادات النظام) */
   session.subscribe(() => void sync(true));
   session.onSignOut(forget);
+  /* 🆕 1.12.7 — رمزُ الودجت كُتب للتوّ ⇒ «dm-native» صار صادقاً: التسجيلُ يُعاد الآن */
+  onWidgetToken(() => {
+    lastTry = 0;
+    void sync(false);
+  });
   AppState.addEventListener("change", (s) => {
     if (s === "active") void sync(false);
   });

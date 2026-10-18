@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getDict, type Locale } from "@/core/i18n";
 import { isPlus } from "@/core/plan";
-import { WidgetSync } from "@/components/WidgetSync";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -354,7 +353,6 @@ async function HomeBody({
     listsQueueItems,
     toWatchListItems,
     empty,
-    widgetItems,
     toWatchCard,
     playlistCards,
     listCards,
@@ -602,7 +600,6 @@ async function HomeBody({
                  الشرطُ يبقى هنا (معروفٌ من الموجة) فلا هيكلَ لقسمٍ لن
                  يُرسم — والهيكلُ يظهر لقسمٍ سيأتي يقيناً. */
               <Suspense key="continue" fallback={<RailSkeleton count={4} />}>
-                <WidgetSync items={widgetItems} />
                 <ContinueSection
                   toWatchCard={toWatchCard}
                   playlistCards={playlistCards}

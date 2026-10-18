@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- أسماءُ الودجتات في قائمة النظام ونصُّ ما قبل أوّل كتابة. ⚠️ ملفٌّ باسمه لا `strings.xml` — ذاك يولّده البناءُ وفيه `app_name` -->
+<resources>
+    <string name="w_continue_name" translatable="false">Continue watching</string>
+    <string name="w_continue_desc" translatable="false">Your next episode in everything you follow</string>
+    <string name="w_comingup_name" translatable="false">Coming up</string>
+    <string name="w_comingup_desc" translatable="false">The nearest dates of your shows</string>
+    <string name="w_tonight_name" translatable="false">Tonight\'s movie</string>
+    <string name="w_tonight_desc" translatable="false">A movie from To watch, or a well-known pick</string>
+    <string name="w_open_app" translatable="false">Open Loopz to update the widget</string>
+    <string name="w_signed_out" translatable="false">Sign in to Loopz</string>
+    <string name="w_cfg_title" translatable="false">What does the widget show?</string>
+    <string name="w_cfg_default" translatable="false">Default</string>
+    <string name="w_cfg_saved" translatable="false">Saved list</string>
+    <string name="w_cfg_continue" translatable="false">Continue watching</string>
+    <string name="w_cfg_towatch" translatable="false">To watch</string>
+    <string name="w_cfg_no_lists" translatable="false">Open Loopz once to load your lists</string>
+    <!-- 🆕 الودجت الواحد (W28) -->
+    <string name="w2_name" translatable="false">Loopz</string>
+    <string name="w2_desc" translatable="false">Continue watching, coming up, tonight\'s movie and more — arranged your way</string>
+    <!-- 🆕 1.12.7 — زرّا إشعار الرسالة (`DmPush.kt`): احتياطٌ إن لم يحمل الإشعارُ نصوصَه من الخادم -->
+    <string name="dm_reply" translatable="false">Reply</string>
+    <string name="dm_reply_hint" translatable="false">Reply…</string>
+    <string name="dm_mark_read" translatable="false">Mark as read</string>
+    <string name="dm_you" translatable="false">You</string>
+    <string name="dm_failed" translatable="false">Couldn\'t send — open the chat and send it again</string>
+</resources>

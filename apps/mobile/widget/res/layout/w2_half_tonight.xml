@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- «فيلم الليلة» في النصف: الهيدرُ ١٦:٩ بعرض النصف كاملاً يذوب في الأسود حتى أسفل الخانة (لا قصَّ ولا زوم — W38)، الاسمُ والسنةُ والمدّة عليه، و✓ في طرفه السفليّ و🔁 فوق -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="20dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+<TextView
+    android:id="@+id/hdr_title"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="14.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1" />
+<TextView
+    android:id="@+id/hdr_all"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="11sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="8dp"
+    android:visibility="gone" />
+</LinearLayout>
+    <FrameLayout
+        android:id="@+id/ht_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="4dp">
+        <ImageView
+            android:id="@+id/ht_img"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY" />
+<FrameLayout
+            android:id="@+id/ht_another"
+            android:layout_width="48dp"
+            android:layout_height="44dp"
+            android:layout_gravity="top|end"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/ht_another_v"
+                android:layout_width="36dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:background="@drawable/w2_chip"
+                android:padding="7dp"
+                android:src="@drawable/widget_ic_repeat"
+                android:tint="#F7F7F7" />
+        </FrameLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:paddingStart="9dp"
+            android:paddingEnd="44dp"
+            android:paddingBottom="8dp"
+            android:orientation="vertical">
+            <TextView
+    android:id="@+id/ht_name"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="14.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+            <TextView
+    android:id="@+id/ht_meta"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="12sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginTop="1dp" />
+        </LinearLayout>
+<FrameLayout
+            android:id="@+id/ht_check"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="bottom|end"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/ht_check_v"
+                android:layout_width="33dp"
+                android:layout_height="33dp"
+                android:layout_gravity="center"
+                android:background="@drawable/w2_chip_round"
+                android:padding="9dp"
+                android:src="@drawable/widget_ic_check"
+                android:tint="#F7F7F7" />
+        </FrameLayout>
+        <!-- 🆕 W45 — «أكمل المشاهدة» في النصف بالشكل نفسِه: شريطُ التقدّم تحت الاسم (فيلمُ الليلة يخفيه) -->
+        <ProgressBar
+            android:id="@+id/ht_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="9dp"
+            android:layout_marginEnd="9dp"
+            android:layout_marginBottom="3dp"
+            android:max="100"
+            android:progressTint="#22C55E"
+            android:progressBackgroundTint="#33FFFFFF"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

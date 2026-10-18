@@ -4,6 +4,7 @@ import { useRouter, useSegments } from "expo-router";
 import { useDoors } from "./messages/common";
 import { session } from "./session";
 import "./push";
+import { isDmAction } from "./notifications/dmReply";
 
 /**
  * ====== ضغطةُ الإشعار ⇢ وجهتُه الأصليّة (D-1305) ======
@@ -16,9 +17,13 @@ import "./push";
  * تُدفع قبلها تُدفن تحتها. فالمسارُ يُحفظ حتى يصير أعلى المكدّس شاشةً أصليّة، ويسقط بعد عشر ثوانٍ (زائرٌ بلا جلسة).
  */
 const PEER = /^\/messages\?with=([0-9a-fA-F-]{36})$/;
+/* 🆕 رسالةُ قروب (الهجرة ٢٠٥) تدفع خيطَه */
+const GROUP = /^\/messages\?group=([0-9a-fA-F-]{36})$/;
 const WAIT_MS = 10_000;
 
 function urlOf(r: Notifications.NotificationResponse | null): string | null {
+  /* 🆕 D-1406 — زرّا «رد» و«تمييز كمقروءة» يُنفَّذان في مكانهما (`dmReply.ts`) — لا يفتحان شاشة */
+  if (isDmAction(r)) return null;
   const url = (r?.notification.request.content.data as { url?: unknown } | undefined)?.url;
   /* مسارٌ نسبيٌّ على نطاقنا وحدَه — رابطٌ كاملٌ في حمولةٍ لا يُفتح */
   return typeof url === "string" && url.startsWith("/") && !url.startsWith("//") ? url : null;
@@ -80,7 +85,9 @@ export function PushGate() {
     nav.current = setTimeout(() => {
       nav.current = null;
       const peer = PEER.exec(url);
+      const group = GROUP.exec(url);
       if (peer) router.push({ pathname: "/messages/[peer]", params: { peer: peer[1], from: "home" } });
+      else if (group) router.push({ pathname: "/messages/group/[id]", params: { id: group[1], from: "home" } });
       else if (url === "/") return;
       else open.current(url);
     }, 250);

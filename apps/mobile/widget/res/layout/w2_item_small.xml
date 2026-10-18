@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W30 — سطرُ القسم الصغير (الأسطرُ الثلاثةُ تتقاسم ارتفاعَ الخانة كلَّه — تسجيلُ أحمد ١٤ أكتوبر) (نصف العرض): ثلاثةُ أسطرٍ ثابتة، بلا أزرار — اللمسةُ تفتح العمل (W35) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/it_img"
+        android:layout_width="30dp"
+        android:layout_height="45dp"
+        android:scaleType="fitXY" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:orientation="vertical">
+        <TextView
+    android:id="@+id/it_name"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="14sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+        <TextView
+    android:id="@+id/it_sub"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="12sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginTop="1dp" />
+    </LinearLayout>
+</LinearLayout>

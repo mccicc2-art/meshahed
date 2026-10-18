@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from "react";
 import { ActivityIndicator, BackHandler, I18nManager, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
+import { GestureHandlerRootView, ScrollView as GHScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -35,6 +36,7 @@ export function SettingsScreen({
   action,
   overlay,
   pinned,
+  gestures,
 }: {
   title: string;
   children: React.ReactNode;
@@ -46,6 +48,13 @@ export function SettingsScreen({
   action?: React.ReactNode;
   /** ما يُرسم فوق الشاشة كلِّها (ورقةُ «تعديلاتٌ لم تُحفظ») */
   overlay?: React.ReactNode;
+  /**
+   * 🆕 D-1397 — **شاشةٌ فيها سحبٌ داخل التمرير** («ودجت لوبز»). `locked` يقفل تمريرَ الصفحة ما دام صفٌّ ممسوكاً.
+   * بلاغُ أحمد بتسجيل (١٤ أكتوبر): المقبضُ لا يحرّك شيئاً والصفحةُ تتمرّر. السببان: لا جذرَ إيماءاتٍ فوق الإعدادات
+   * (الجذرُ محلّيٌّ عن قصد — `TabSlide` و`Sheet`) فالمقبضُ لا يسمع، وتمريرُ RN العاديُّ خارجَ منسّق الإيماءات فيأخذ
+   * اللمسَ أوّلَ ما يتحرّك. فهنا جذرٌ محلّيٌّ وتمريرُ المكتبة نفسِها — **لهذه الشاشة وحدَها**: الإعداداتُ الأخرى كما هي.
+   */
+  gestures?: { locked: boolean };
 }) {
   const { tokens, t } = useApp();
   const insets = useSafeAreaInsets();
@@ -63,7 +72,8 @@ export function SettingsScreen({
     });
     return () => sub.remove();
   }, [back]);
-  return (
+  const Scroll = gestures ? GHScrollView : ScrollView;
+  const page = (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
         <Text size={15} weight="700" numberOfLines={1}>{title}</Text>
@@ -76,13 +86,19 @@ export function SettingsScreen({
         {action ? <View style={{ position: "absolute", end: PAGE_PAD - 4, top: 0, bottom: 0, justifyContent: "center" }}>{action}</View> : null}
       </View>
       {pinned ? <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 10, gap: 10 }}>{pinned}</View> : null}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: insets.bottom + 24, gap: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <Scroll
+        scrollEnabled={!gestures?.locked}
+        contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: insets.bottom + 24, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {children}
-      </ScrollView>
+      </Scroll>
       {toast ? <ToastHost hostRef={toast} bottom={insets.bottom} /> : null}
       {overlay}
     </View>
   );
+  return gestures ? <GestureHandlerRootView style={{ flex: 1 }}>{page}</GestureHandlerRootView> : page;
 }
 
 /** `SettingsGroup` — عنوانٌ خافتٌ فوق بطاقةٍ بفواصل؛ الأبناءُ صفوفٌ والفاصلُ بين كلِّ اثنين */

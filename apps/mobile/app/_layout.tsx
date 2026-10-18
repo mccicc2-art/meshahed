@@ -14,8 +14,11 @@ import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
 import { PushGate } from "../src/PushGate";
+import { WidgetGate } from "../src/WidgetGate";
+import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
 import { Opening } from "../src/opening/Opening";
+import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
@@ -32,12 +35,21 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 applyDirection(currentLocale());
 /* D-1026 (F2) — الكاشُ المحفوظ يُعاد قبل أوّل شاشة: «المكتبة» تفتح على ما عُرض آخرَ مرّة */
 startCachePersist();
+/* 🆕 الودجتات — الخلفيّةُ والخروجُ والمهمّةُ الخلفيّة تُسجَّل من الإقلاع (`widget/feed.ts`) */
+startWidgetFeed();
 
 
 export default function RootLayout() {
   /* Phase 11 · B2 — الخطوطُ تُحمّل في الجذر ولا تحبس الستارَ: الـWebView لا
      تحتاجها، والشاشةُ الأصليّةُ ترسم بخطّ النظام حتى تصل (`ui.tsx`). */
   const fontsReady = useAppFonts();
+  /* 🔴 أوّلُ إقلاعٍ بعد تحديثٍ من المتجر: لا رسمَ حتّى تُمسح ذاكرةُ الصور (`imageCacheGuard.ts`) — وصورةُ النظام
+     باقيةٌ فوقه (`preventAutoHideAsync`)، فالانتظارُ لا يُرى. في كلِّ إقلاعٍ آخر القيمةُ `true` من أوّل رسمة. */
+  const [imagesReady, setImagesReady] = useState(imageCacheClean);
+  useEffect(() => {
+    if (!imagesReady) void imageCacheReady.then(() => setImagesReady(true));
+  }, [imagesReady]);
+  if (!imagesReady) return null;
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
@@ -101,9 +113,16 @@ function Shell() {
         <Stack.Screen name="talk/[kind]/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="post/[key]" options={{ headerShown: false }} />
         <Stack.Screen name="review/[kind]/[id]/[user]" options={{ headerShown: false }} />
+        {/* 🆕 D-1448 — «بوست جديد» من زرّ القلم في «المجتمع»: يصعد من الأسفل كورقة كتابة */}
+        <Stack.Screen name="new-post" options={{ headerShown: false, animation: "slide_from_bottom" }} />
         {/* 🆕 11-M · M4 — «الرسائل والإشعارات» وخيطُ المحادثة: شاشتان مدفوعتان فوق الجذور لا تبويب */}
         <Stack.Screen name="messages/index" options={{ headerShown: false }} />
         <Stack.Screen name="messages/[peer]" options={{ headerShown: false }} />
+        {/* 🆕 القروبات (الهجرة ٢٠٥): «محادثة جديدة» · الإنشاءُ والإضافة · خيطُ القروب ومعلوماتُه */}
+        <Stack.Screen name="messages/new" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/create-group" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/group/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/group/[id]/info" options={{ headerShown: false }} />
         {/* 🆕 11-N · N1 — ملفُّ الشخص أصليّاً: يُدفع فوق من فتحه (صورةُ شخصٍ في أيِّ شاشة · رابطُ `/u/` في الويب) */}
         <Stack.Screen name="u/[username]" options={{ headerShown: false }} />
         {/* 🆕 D-1446 — صفحةُ الفنان بلا ترويسة النظام (لقطةُ أحمد ١٦ أكتوبر: شريطُ «person/[id]» فوق رأسها) — رأسُها في الشاشة نفسِها */}
@@ -143,6 +162,7 @@ function Shell() {
       <WebLayer />
       {/* 🆕 D-1305 — إشعاراتُ الدفع: الإذنُ والرمزُ عند الإقلاع (`src/push.ts`)، وضغطةُ الإشعار تفتح وجهتَه الأصليّة */}
       <PushGate />
+      <WidgetGate />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
       <TourHost />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}

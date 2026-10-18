@@ -5,7 +5,6 @@ import Reanimated, { useAnimatedStyle, useSharedValue, type SharedValue } from "
 import { scheduleOnRN } from "react-native-worklets";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +14,7 @@ import { Icon } from "../icons";
 import { haptic } from "../haptics";
 import { api, filePart, postForm, queryClient, write, ApiError } from "../api";
 import { Sheet } from "../library/Sheet";
+import { useImageCrop } from "../imageCrop";
 import type { ToastHostRef } from "../HoldHost";
 import type { ProfileEditPayload, ProfileImagePayload, ProfileSaveBody } from "../contracts";
 import { SettingsScreen, Group, Row, Field, RowsSkeleton } from "./ui";
@@ -35,7 +35,6 @@ import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 const BIO_MAX = 120;
 const COVER_H = 128;
 const AVATAR = 76;
-const MAX_EDGE = 1920;
 const KEY = ["me:profile-edit"] as const;
 
 type Snap = { nickname: string; username: string; bio: string; avatarUrl: string | null; coverUrl: string | null; coverPos: number; avatarPos: number };
@@ -54,6 +53,7 @@ export function ProfileScreen() {
   const router = useRouter();
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
+  const { pickCropped, cropUi } = useImageCrop();
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<ProfileEditPayload>("/api/v1/me/profile")).data, staleTime: 0 });
   const d = q.data;
 
@@ -83,15 +83,13 @@ export function ProfileScreen() {
   async function pick(kind: "avatar" | "cover") {
     if (uploading) return;
     setError(null);
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });
-    if (r.canceled || !r.assets[0]) return;
-    const a = r.assets[0];
+    /* 🆕 القصُّ قبل الرفع (أحمد ١٥ أكتوبر): ما في الإطار هو ما يُحفظ — تكبيرٌ وتحريكٌ ولفٌّ ربعيّ (`imageCrop`) */
+    const cropped = await pickCropped(kind === "avatar" ? "circle" : "wide").catch(() => null);
+    if (!cropped) return;
     setUploading(kind);
     try {
-      const long = Math.max(a.width || 0, a.height || 0);
-      const ctx = ImageManipulator.manipulate(a.uri);
-      if (long > MAX_EDGE) ctx.resize(a.width >= a.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
-      const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+      /* المقصوصةُ صغيرةٌ أصلاً (٦٤٠ للصورة · ١٥٠٠ للغلاف) — ضغطٌ أخير بالوصفة نفسِها */
+      const img = await (await ImageManipulator.manipulate(cropped).renderAsync()).saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
       const form = new FormData();
       form.append("kind", kind);
       const prev = pendingUpload.current[kind];
@@ -101,6 +99,8 @@ export function ProfileScreen() {
       const out = await postForm<ProfileImagePayload>("/api/v1/me/profile/image", form);
       pendingUpload.current[kind] = out.url;
       set(kind === "avatar" ? "avatarUrl" : "coverUrl", out.url);
+      /* الإطارُ اختار ما يظهر — التموضعُ القديمُ يخصّ الصورةَ السابقة فيعود للمنتصف (السحبُ يبقى للتدقيق) */
+      set(kind === "avatar" ? "avatarPos" : "coverPos", 50);
       haptic.pick();
     } catch (e) {
       setError(e instanceof ApiError ? messageOf(e, t as unknown as Record<string, unknown>, t.errUpload) : t.errUpload);
@@ -299,6 +299,7 @@ export function ProfileScreen() {
           />
         </Group>
       ) : null}
+      {cropUi}
     </SettingsScreen>
   );
 }

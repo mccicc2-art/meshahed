@@ -183,12 +183,33 @@ export type {
   MsgShareEvent,
   MsgListEvent,
   MsgReplyEvent,
+  MsgReplyRef,
+  MsgImage,
   LastSeenPayload,
   MsgReplyBody,
   MsgTextBody,
+  MsgImagePayload,
   MsgPeerBody,
   SignalsPayload,
   BadgesPayload,
   MsgShareBody,
+  MsgDeleteBody,
+  MsgDeleteKind,
+  MsgDeletePayload,
 } from "@/core/contracts/messages";
+/* 🆕 القروبات (الهجرة ٢٠٥) */
+export type {
+  MsgGroupConversation,
+  GroupEvent,
+  GroupMsgEvent,
+  GroupSysEvent,
+  GroupMember,
+  GroupRole,
+  GroupReplyRef,
+  GroupCreateBody,
+  GroupCreatePayload,
+  GroupSendBody,
+  GroupManageBody,
+  GroupTitleRef,
+} from "@/core/contracts/groups";
 export type { SignalRow } from "@/core/signals";

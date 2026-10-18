@@ -1,6 +1,7 @@
 import React from "react";
 import { Platform } from "react-native";
 import { Image, type ImageRef } from "expo-image";
+import { imageCacheReady } from "./imageCacheGuard";
 
 /**
  * ====== مجموعةُ الأيقونات الواحدة — مساراتُ `Icon.tsx` (الويب) مرسومةً مرّةً ======
@@ -46,6 +47,8 @@ const ICONS = {
   tv: require("../assets/icons/tv.png"),
   sparkles: require("../assets/icons/sparkles.png"),
   plus: require("../assets/icons/plus.png"),
+  /* 🆕 D-1438 — زرُّ الرجوع إلى الكتابة حين تكون لوحةُ «+» مكانَ لوحة المفاتيح — مرسومٌ بالطريقة نفسِها (cairosvg · ٧٢px · أبيض · خطّ ١٫٧) */
+  keyboard: require("../assets/icons/keyboard.png"),
   minus: require("../assets/icons/minus.png"),
   "red-card": require("../assets/icons/red-card.png"),
   bookmark: require("../assets/icons/bookmark.png"),
@@ -92,6 +95,9 @@ const ICONS = {
   trash: require("../assets/icons/trash.png"),
   /* 🆕 D-1360 — «نسخ» (رابطُ الدعوة): مسارُ الويب نفسُه (`Icon.tsx` → `copy`) مرسوماً ٧٢px بسماكة ١٫٧ كأخواته */
   copy: require("../assets/icons/copy.png"),
+  /* 🆕 D-1401/D-1403 — ✓✓ «قرأها» و«رد»: مسارا `Icon.tsx` نفسُهما، cairosvg · ٧٢px · أبيض */
+  "check-double": require("../assets/icons/check-double.png"),
+  reply: require("../assets/icons/reply.png"),
   /* 🆕 D-1134 — مبدّلُ العرض في الرئيسيّة كالويب (`HomeViewSwitch`: `grid` ⇄ `list`)، cairosvg · ٧٢px · أبيض،
      خطٌّ ٢ كما يمرّره الويب */
   grid: require("../assets/icons/grid.png"),
@@ -134,17 +140,20 @@ const NAV_ICONS: IconName[] = [
    أحمد ٨ أكتوبر — السببُ نفسُه (صورةٌ تُحمَّل بعد التركيب). سبعُ صورٍ ٧٢px. */
 const PROFILE_ICONS: IconName[] = ["tv", "film", "sparkles", "chart", "calendar", "star", "heart"];
 const warm = new Map<IconName, ImageRef>();
-for (const name of Platform.OS === "ios" ? [] : [...NAV_ICONS, ...PROFILE_ICONS]) {
-  try {
-    void Image.loadAsync(ICONS[name] as number)
-      .then((ref) => {
-        warm.set(name, ref);
-      })
-      .catch(() => {});
-  } catch {
-    /* وحدةٌ أصليّةٌ غائبة (اختبار، ويب): الطريقُ القديم */
+/* 🔴 بعد مسح ذاكرة الصور لا قبله (`imageCacheGuard.ts`): التحميلُ المسبقُ قبل المسح يقرأ الصورةَ القديمةَ لرقمٍ تغيّر */
+void imageCacheReady.then(() => {
+  for (const name of Platform.OS === "ios" ? [] : [...NAV_ICONS, ...PROFILE_ICONS]) {
+    try {
+      void Image.loadAsync(ICONS[name] as number)
+        .then((ref) => {
+          warm.set(name, ref);
+        })
+        .catch(() => {});
+    } catch {
+      /* وحدةٌ أصليّةٌ غائبة (اختبار، ويب): الطريقُ القديم */
+    }
   }
-}
+});
 
 /**
  * 🔴 D-1333 — **في iOS الأيقونةُ من ملفّها، وتُركَّب من جديد إذا تغيّر لونها** (أوّلُ نسخة iOS، تسجيلُ أحمد ٨ أكتوبر:

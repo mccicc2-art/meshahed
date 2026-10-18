@@ -3,27 +3,30 @@ import { ActivityIndicator, BackHandler, FlatList, I18nManager, Platform, Pressa
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, write } from "../api";
+import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
+import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { TabSlide } from "../TabSlide";
 import { usePullRefresh } from "../pullRefresh";
-import { useBootRoot } from "../bootRoot";
 import { afterPaint, span } from "../perfMarks";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Avatar } from "../community/CommunityCards";
+import { FloatButton } from "../FloatButton";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MESSAGES_KEY } from "./live";
-import { dropBadges, useDoors, useMessages, type Origin } from "./common";
+import { dropBadges, patchKeep, useDoors, useMessages, type Origin } from "./common";
 import { num, type Dict } from "@/core/i18n";
-import { formatDateShort, timeAgo } from "@/core/when";
+import { timeAgo } from "@/core/when";
+import { listStampOf } from "./chatFormat";
 import { displayNameOf } from "@/core/people";
 import { signalHref, signalParts } from "@/core/signals";
 import { curatedName } from "@/core/universes";
-import type { MessagesPayload, MsgConversation, MsgEvent, SignalRow, SignalsPayload } from "../contracts";
-import type { PersonLite } from "@/core/people";
+import type { MessagesPayload, MsgConversation, MsgEvent, MsgGroupConversation, SignalRow, SignalsPayload } from "../contracts";
+import { GroupAvatar, dropGroup, groupPreview } from "./groups";
+import { Sheet } from "../library/Sheet";
 
 /**
  * ====== «الرسائل» أصليّةً — سطحٌ واحدٌ بتبويبين · Phase 11-M · M4 (خطّة §٣) ======
@@ -87,6 +90,19 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
     },
     [router, from],
   );
+  /* 🆕 القروبات (الهجرة ٢٠٥) */
+  const openGroup = useCallback(
+    (id: string) => {
+      haptic.pick();
+      router.push({ pathname: "/messages/group/[id]", params: { id, from } });
+    },
+    [router, from],
+  );
+  /* 🆕 «✎ محادثة جديدة» (الصورُ المعتمدة ١٥ أكتوبر): «إنشاء قروب» أوّلاً ثمّ من تتابعهم — بدل قسم «ابدأ محادثة» */
+  const newChat = useCallback(() => {
+    haptic.pick();
+    router.push({ pathname: "/messages/new", params: { from } });
+  }, [router, from]);
 
   const tabItem = (k: Tab, icon: IconName, label: string, badge: number, aria: string) => {
     const on = k === lit;
@@ -130,14 +146,18 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
         render={(k, active) =>
           k === "inbox" ? (
             /* 🆕 D-1380 — «ابدأ محادثة» يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */
-            <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onStart={(p) => openConv(p.id)} />
+            <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onOpenGroup={openGroup} onNewChat={newChat} />
           ) : (
             <AlertsPane live={active} onOpen={doors.openPath} />
           )
         }
       />
 
-      <ToastHost hostRef={toastHost} bottom={insets.bottom + 24} />
+      {tab === "inbox" && d ? (
+        /* الزرُّ العائمُ الواحد (`FloatButton`) — أخوه في «المجتمع» قلمٌ بلا كلمة */
+        <FloatButton icon="edit" label={t.msgNewChat} onPress={newChat} style={{ bottom: insets.bottom + 20 }} />
+      ) : null}
+      <ToastHost hostRef={toastHost} bottom={insets.bottom + 84} />
       {doors.leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />
@@ -161,37 +181,59 @@ function Badge({ n }: { n: number }) {
 export function previewOf(last: MsgEvent | undefined, t: Dict): string {
   if (!last) return "";
   const mine = last.mine ? `${t.convYou}: ` : "";
-  if (last.kind === "reply") return `${mine}${last.body}`;
+  /* 🆕 D-1387 — «GIF» أو «📷 صورة» (وتعليقُها إن وُجد) */
+  /* 🆕 D-1441 — المحذوفةُ للجميع سطرُها «حُذفت» */
+  if (last.kind === "reply" && last.deleted) return last.mine ? t.msgDeletedMine : t.msgDeleted;
+  if (last.kind === "reply") return `${mine}${last.gif_id ? t.msgGifPreview : last.image ? (last.body ? `${t.msgImagePreview} · ${last.body}` : t.msgImagePreview) : last.body}`;
   if (last.kind === "list") return `${mine}${t.convSharedListPreview(last.list_name ?? "—")}`;
   return `${mine}${t.convSharedPreview(last.title ?? "—")}`;
 }
 
-type InboxItem = { type: "conv"; c: MsgConversation } | { type: "head" } | { type: "start"; p: PersonLite };
+type InboxItem = { type: "conv"; c: MsgConversation; at: string } | { type: "group"; g: MsgGroupConversation; at: string };
 
 function InboxPane({
   d,
   error,
   onRetry,
   onOpen,
-  onStart,
+  onOpenGroup,
+  onNewChat,
 }: {
   d: MessagesPayload | null;
   error: boolean;
   onRetry: () => void;
   onOpen: (peer: string) => void;
-  onStart: (p: PersonLite) => void;
+  onOpenGroup: (id: string) => void;
+  onNewChat: () => void;
 }) {
   const { t, tokens } = useApp();
   const refresh = usePullRefresh([MESSAGES_KEY], 0);
-  const { switchTo } = useBootRoot();
+  /* 🆕 D-1441 — ضغطةٌ طويلةٌ على الصفّ («٣ أ»): المحادثةُ تُحذف من عندي وحدي (`hide`)، والقروبُ يُغادَر — بتأكيدٍ وسطيّ */
+  const [held, setHeld] = useState<InboxItem | null>(null);
+  const dropHeld = useCallback(() => {
+    const it = held;
+    setHeld(null);
+    if (!it) return;
+    haptic.pick();
+    const fail = () => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+    if (it.type === "conv") {
+      const peer = it.c.person_id;
+      patchKeep<MessagesPayload>(MESSAGES_KEY, (p) => ({ ...p, conversations: p.conversations.filter((c) => c.person_id !== peer) }));
+      write("/api/v1/me/messages/hide", { person_id: peer }).catch(fail);
+    } else {
+      const id = it.g.group_id;
+      dropGroup(id);
+      write(`/api/v1/me/groups/${id}/manage`, { action: "leave" }).catch(fail);
+    }
+  }, [held]);
+  /* 🆕 المحادثاتُ والقروباتُ قائمةٌ واحدةٌ بالأحدث (الصورةُ المعتمدة)؛ و«ابدأ محادثة» انتقل إلى «محادثة جديدة» */
   const items = useMemo<InboxItem[]>(() => {
     if (!d) return [];
-    const out: InboxItem[] = d.conversations.map((c) => ({ type: "conv", c }));
-    if (d.startable.length) {
-      out.push({ type: "head" });
-      for (const p of d.startable) out.push({ type: "start", p });
-    }
-    return out;
+    const out: InboxItem[] = [
+      ...d.conversations.map((c) => ({ type: "conv" as const, c, at: c.last_at })),
+      ...(d.groups ?? []).map((g) => ({ type: "group" as const, g, at: g.last_at })),
+    ];
+    return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
   }, [d]);
 
   if (!d) {
@@ -212,22 +254,38 @@ function InboxPane({
   return (
     <FlatList
       data={items}
-      keyExtractor={(it) => (it.type === "conv" ? `c:${it.c.person_id}` : it.type === "start" ? `s:${it.p.id}` : "head")}
-      renderItem={({ item }) => {
-        if (item.type === "head") {
-          return <Text size={12} weight="700" muted style={{ marginTop: 20, marginBottom: 4, paddingHorizontal: 4 }}>{t.convStartSection}</Text>;
-        }
-        if (item.type === "start") return <StartRow p={item.p} onPress={() => onStart(item.p)} />;
-        return <ConvRow c={item.c} onPress={() => onOpen(item.c.person_id)} />;
-      }}
+      keyExtractor={(it) => (it.type === "conv" ? `c:${it.c.person_id}` : `g:${it.g.group_id}`)}
+      renderItem={({ item }) =>
+        item.type === "group" ? (
+          <GroupRow g={item.g} meId={d.me_id} onPress={() => onOpenGroup(item.g.group_id)} onLongPress={() => (haptic.pick(), setHeld(item))} />
+        ) : (
+          <ConvRow c={item.c} onPress={() => onOpen(item.c.person_id)} onLongPress={() => (haptic.pick(), setHeld(item))} />
+        )
+      }
+      ListFooterComponent={
+        held ? (
+          <Sheet title={held.type === "conv" ? t.msgDeleteChat : t.grpLeave} onClose={() => setHeld(null)} placement="center">
+            <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>
+              {held.type === "conv" ? t.msgDeleteChatHint(displayNameOf(held.c.person, t.anonymousUser)) : t.grpLeaveConfirm}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Button label={t.cancelLabel} variant="ghost" onPress={() => setHeld(null)} />
+              <View style={{ flex: 1 }}>
+                <Button label={held.type === "conv" ? t.msgDeleteChat : t.grpLeave} variant="danger" onPress={dropHeld} />
+              </View>
+            </View>
+          </Sheet>
+        ) : null
+      }
       ListEmptyComponent={
-        /* الفراغُ الموجَّه (`FeedEmptyCta`، D-106): الرسائلُ تحتاج متابعةً متبادلة — فأوّلُ خطوةٍ إيجادُ الأصدقاء */
+        /* الفراغُ الموجَّه (`FeedEmptyCta`، D-106): أوّلُ خطوةٍ محادثةٌ جديدة */
         <View style={{ marginTop: 16, paddingVertical: 36, paddingHorizontal: 20, borderRadius: 16, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", gap: 14 }}>
           <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{t.inboxEmpty}</Text>
-          <Button label={t.feedEmptyCta} size="sm" onPress={() => switchTo("/search")} />
+          <Button label={t.msgNewChat} size="sm" onPress={onNewChat} />
         </View>
       }
-      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 40 }}
+      /* الزرُّ العائمُ «محادثة جديدة» فوق آخر صفّ — مسافةٌ تحته فلا يغطّيه */
+      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 110 }}
       refreshControl={refresh}
       initialNumToRender={12}
       windowSize={9}
@@ -235,13 +293,53 @@ function InboxPane({
   );
 }
 
-function ConvRow({ c, onPress }: { c: MsgConversation; onPress: () => void }) {
+/** 🆕 صفُّ القروب: صورتُه أو صورُ أعضائه · الاسمُ ووسمُ «قروب» · «فلان: آخرُ سطر» · الوقتُ والشارة */
+function GroupRow({ g, meId, onPress, onLongPress }: { g: MsgGroupConversation; meId: string; onPress: () => void; onLongPress?: () => void }) {
+  const { t, tokens } = useApp();
+  const unread = g.unread > 0;
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      accessibilityRole="button"
+      accessibilityLabel={`${g.name} · ${t.grpTag}`}
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
+    >
+      <GroupAvatar g={g} meId={meId} size={44} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{g.name}</Text>
+            <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
+              <Text size={10} weight="700" muted>{t.grpTag}</Text>
+            </View>
+            {g.muted ? <Icon name="volume-off" size={12} color={tokens.muted} /> : null}
+          </View>
+          <Text size={12} muted>{g.last_at ? listStampOf(g.last_at, t) : ""}</Text>
+        </View>
+        <Text size={12} weight={unread ? "600" : "400"} color={unread ? tokens.fg : tokens.muted} numberOfLines={1} content>
+          {groupPreview(g, meId, t)}
+        </Text>
+      </View>
+      {unread ? (
+        <View accessibilityLabel={t.communityUnreadAria(g.unread)}>
+          <Badge n={g.unread} />
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function ConvRow({ c, onPress, onLongPress }: { c: MsgConversation; onPress: () => void; onLongPress?: () => void }) {
   const { t, tokens } = useApp();
   const name = displayNameOf(c.person, t.anonymousUser);
   const unread = c.unread > 0;
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       accessibilityRole="button"
       accessibilityLabel={t.convOpenAria(name)}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
@@ -253,7 +351,7 @@ function ConvRow({ c, onPress }: { c: MsgConversation; onPress: () => void }) {
             <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{name}</Text>
             {c.person && !c.person.hide_name ? <IdentityBadges flags={identityFlags(c.person)} nameSize={14} /> : null}
           </View>
-          <Text size={12} muted>{c.last_at ? formatDateShort(c.last_at, t) : ""}</Text>
+          <Text size={12} muted>{c.last_at ? listStampOf(c.last_at, t) : ""}</Text>
         </View>
         <Text size={12} weight={unread ? "600" : "400"} color={unread ? tokens.fg : tokens.muted} numberOfLines={1} content>
           {previewOf(c.events[c.events.length - 1], t)}
@@ -264,34 +362,6 @@ function ConvRow({ c, onPress }: { c: MsgConversation; onPress: () => void }) {
           <Badge n={c.unread} />
         </View>
       ) : null}
-    </Pressable>
-  );
-}
-
-function StartRow({ p, onPress }: { p: PersonLite; onPress: () => void }) {
-  const { t, tokens } = useApp();
-  const name = displayNameOf(p, t.anonymousUser);
-  return (
-    <Pressable
-      onPress={() => {
-        haptic.pick();
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={t.convStartRowAria(name)}
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
-    >
-      <Avatar uri={p.hide_name ? null : p.avatar_url} size={44} />
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{name}</Text>
-          {p.hide_name ? null : <IdentityBadges flags={identityFlags(p)} nameSize={14} />}
-        </View>
-        <Text size={12} muted numberOfLines={1}>{t.convStartRowHint}</Text>
-      </View>
-      <View style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
-        <Icon name="mail" size={16} color={tokens.muted} />
-      </View>
     </Pressable>
   );
 }
@@ -373,16 +443,20 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
     >
       <Avatar uri={s.person.hide_name ? null : s.person.avatar_url} size={40} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        {/* الشارةُ بجانب الاسم داخل الجملة (D-775) — عقدةٌ في السطر تسبح مع النصّ */}
+        {/* الشارةُ بجانب الاسم داخل الجملة (D-775) — عقدةٌ في السطر تسبح مع النصّ.
+            🆕 D-1454 — **ختمُ التوثيق وحدَه** (لا حبّةَ PARTNER/PLUS في التنبيهات)، **والاسمُ وختمُه معزولان** (FSI…PDI):
+            اسمٌ لاتينيٌّ في جملةٍ عربيّة كان يرتّبه iOS بعد أن يضع العقدةَ، فتقع الشارةُ فوق الاسم (لقطةُ أحمد). */}
         <Text size={14} style={{ lineHeight: 20 }}>
           {p.pre}
+          {"\u2068"}
           <Text size={14} weight="700">{p.who}</Text>
-          {s.person.hide_name ? null : (
+          {s.person.hide_name || !identityFlags(s.person).verified ? null : (
             <>
               {" "}
-              <IdentityBadges flags={identityFlags(s.person)} nameSize={14} />
+              <IdentityBadges flags={identityFlags(s.person)} nameSize={14} sealOnly />
             </>
           )}
+          {"\u2069"}
           {p.post}
         </Text>
         <Text size={12} muted>{timeAgo(s.at, t)}</Text>

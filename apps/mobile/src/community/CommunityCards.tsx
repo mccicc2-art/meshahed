@@ -45,12 +45,18 @@ import type { CommunityFeedRow, CommunityLeaderRow, CommunityRoom, CommunityTopR
  * واجهةٍ إنجليزيّةٍ كلمتُها تحت بداية سطورها (اليمين)، كما في الصورة المعتمدة.
  */
 const CLAMP_LINES = 4;
+
+/** 🆕 D-1448 — جهةُ الكلام من أوّل حرفٍ قويّ: عربيٌّ/عبريٌّ ⇒ يمين، لاتينيٌّ ⇒ يسار، ولا حرف ⇒ جهةُ الواجهة («بوست جديد» يقرؤها) */
+export function textIsRtl(text: string): boolean {
+  const strong = /[A-Za-z\u0590-\u08FF]/.exec(text)?.[0] ?? "";
+  return strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
+}
+
 function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
   const { t } = useApp();
   const [long, setLong] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
-  const strong = /[A-Za-z\u0590-\u08FF]/.exec(text)?.[0] ?? "";
-  const rtl = strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
+  const rtl = textIsRtl(text);
   return (
     <View style={{ marginTop: 8 }}>
       <Pressable onPress={onPress}>
@@ -91,6 +97,8 @@ export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: numb
 export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
   comment: (row: CommunityFeedRow) => void;
   share: (path: string, title: string) => void;
+  /** 🆕 D-1448 — ⋯ بجوار العمر: الورقةُ يملكها المستدعي (`FeedMenu`) */
+  menu: (row: CommunityFeedRow) => void;
 };
 
 /**
@@ -154,11 +162,12 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
   );
 }
 
-function RowPoster({ path, kind, lib, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityFeedRow["lib"]; onPress: () => void }) {
+/** 🆕 D-1448 — `dark`: لا أخَ ملوّناً لملصقه الداكن (`poster_dark` من الخادم) ⇒ إطارٌ رفيعٌ بلون النصّ فلا يذوب في الخلفيّة */
+function RowPoster({ path, kind, lib, dark = false, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityFeedRow["lib"]; dark?: boolean; onPress: () => void }) {
   const { tokens } = useApp();
   const uri = posterFor(path, POSTER_W);
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start" }}>
+    <Pressable onPress={onPress} accessibilityRole="link" style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start", borderWidth: dark ? 1 : 0, borderColor: tokens.fg + "59" }}>
       {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" transition={120} /> : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Icon name={kind === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />
@@ -199,6 +208,9 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
                 <Pressable onPress={() => doors.onWeb(post)} hitSlop={6} style={{ marginStart: "auto" }}>
                   <Text size={12} muted>{timeAgoShort(n.published_at, t)}</Text>
                 </Pressable>
+                <Pressable onPress={() => acts.menu(row)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
+                  <Icon name="dots" size={16} color={tokens.muted} />
+                </Pressable>
               </View>
               <Pressable onPress={() => doors.onTitle(n.media_type, n.tmdb_id)}>
                 <Text size={12} muted numberOfLines={1}>{n.title} · {n.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
@@ -213,7 +225,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
           ) : null}
           <Tail row={row} acts={acts} share={{ path: `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`, title: n.title }} />
         </View>
-        <RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />
+        <RowPoster path={n.poster_path} kind={n.media_type} lib={row.lib} dark={row.poster_dark} onPress={() => doors.onTitle(n.media_type, n.tmdb_id)} />
       </View>
     );
   }
@@ -246,6 +258,9 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
               {a.person.hide_name ? null : <IdentityBadges flags={identityFlags(a.person)} nameSize={14} />}
               <Pressable onPress={openText} hitSlop={6} style={{ marginStart: "auto" }}>
                 <Text size={12} muted>{timeAgoShort(a.updated_at, t)}</Text>
+              </Pressable>
+              <Pressable onPress={() => acts.menu(row)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
+                <Icon name="dots" size={16} color={tokens.muted} />
               </Pressable>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -286,7 +301,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
         )}
       </View>
       {!isList ? (
-        <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} onPress={titleDoor} />
+        <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} dark={row.poster_dark} onPress={titleDoor} />
       ) : cover ? (
         <Pressable onPress={titleDoor} style={{ width: POSTER_W, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start" }}>
           <Image source={{ uri: cover }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />

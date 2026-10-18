@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["LoopzWidgetModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.loopzwidget.LoopzWidgetModule"]
+  }
+}

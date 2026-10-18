@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W31 — شريطُ البحث في الودجت: `surface` مستديرٌ كشريط البحث في التطبيق -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#161616" />
+    <corners android:radius="22dp" />
+</shape>

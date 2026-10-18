@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="w_continue_name" translatable="false">أكمل المشاهدة</string>
+    <string name="w_continue_desc" translatable="false">حلقتك التالية في كل ما تتابعه</string>
+    <string name="w_comingup_name" translatable="false">القادم</string>
+    <string name="w_comingup_desc" translatable="false">أقرب مواعيد مسلسلاتك</string>
+    <string name="w_tonight_name" translatable="false">فيلم الليلة</string>
+    <string name="w_tonight_desc" translatable="false">فيلم من «للمشاهدة» أو اختيار معروف</string>
+    <string name="w_open_app" translatable="false">افتح لوبز ليتحدّث الودجت</string>
+    <string name="w_signed_out" translatable="false">سجّل الدخول إلى لوبز</string>
+    <string name="w_cfg_title" translatable="false">ماذا يعرض الودجت؟</string>
+    <string name="w_cfg_default" translatable="false">الافتراضي</string>
+    <string name="w_cfg_saved" translatable="false">قائمة محفوظة</string>
+    <string name="w_cfg_continue" translatable="false">أكمل المشاهدة</string>
+    <string name="w_cfg_towatch" translatable="false">للمشاهدة</string>
+    <string name="w_cfg_no_lists" translatable="false">افتح لوبز مرة لتظهر قوائمك</string>
+    <!-- 🆕 الودجت الواحد (W28) -->
+    <string name="w2_name" translatable="false">لوبز</string>
+    <string name="w2_desc" translatable="false">أكمل المشاهدة والقادم وفيلم الليلة وغيرها — بترتيبك</string>
+    <!-- 🆕 1.12.7 — زرّا إشعار الرسالة (`DmPush.kt`): احتياطٌ إن لم يحمل الإشعارُ نصوصَه من الخادم -->
+    <string name="dm_reply" translatable="false">رد</string>
+    <string name="dm_reply_hint" translatable="false">رد…</string>
+    <string name="dm_mark_read" translatable="false">تمييز كمقروءة</string>
+    <string name="dm_you" translatable="false">أنت</string>
+    <string name="dm_failed" translatable="false">تعذّر الإرسال — افتح المحادثة وأرسلها من جديد</string>
+</resources>

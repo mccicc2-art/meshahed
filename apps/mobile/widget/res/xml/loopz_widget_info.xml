@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ٣٠ دقيقةً هو الحدُّ الأدنى الذي يقبله أندرويد؛ ما دونه يُتجاهل بصمت. -->
+<!-- 🆕 الودجت الواحد (W28): مزوّدٌ واحدٌ يُمدّ من ٢×٢ إلى ٤×٦، والمقاسُ الحقيقيُّ يختار الحجم. يوضع ٤×٢ افتراضاً.
+     ٣٠ دقيقةً أدنى ما يقبله أندرويد: إعادةُ رسمٍ من الملفّ نفسِه — «اليوم» وفيلمُ اليوم يُحسبان وقتَ الرسم -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="250dp"
+    android:minWidth="110dp"
     android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="600dp"
+    android:maxResizeHeight="900dp"
     android:updatePeriodMillis="1800000"
-    android:initialLayout="@layout/loopz_widget"
+    android:initialLayout="@layout/w2_root"
+    android:previewLayout="@layout/w2_root"
+    android:description="@string/w2_desc"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:configure="com.loopztv.app.widget.WidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

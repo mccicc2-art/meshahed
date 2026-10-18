@@ -28,6 +28,8 @@ import { ListCard } from "../library/ListCard";
 import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
+import { FeedMenu } from "./FeedMenu";
+import { FloatButton } from "../FloatButton";
 import { Chip } from "../library/Chip";
 import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
@@ -104,8 +106,10 @@ export function CommunityScreen() {
     /* إغلاقُ ورقة النظام ليس خطأً (`ShareTitleButton`) */
     void Share.share({ message: title ? `${title} — ${url}` : url, url }).catch(() => {});
   }, []);
+  /* 🆕 D-1448 — ورقةُ ⋯ في زاوية البطاقة */
+  const [menuRow, setMenuRow] = useState<CommunityFeedRow | null>(null);
   const cardActs: CardActs = useMemo(
-    () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share }),
+    () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share, menu: setMenuRow }),
     [acts.like, acts.signedIn, acts.meId, share],
   );
 
@@ -186,7 +190,9 @@ export function CommunityScreen() {
   /* ——— الكسوة ——— */
   const chrome = useChromeHide();
   const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
-  const bottomPad = navH + 24;
+  /* 🆕 D-1448 — زرُّ القلم العائم للعضو: مسافةٌ تحت آخر بطاقةٍ بقدره فلا يغطّي ذيلَها */
+  const canPost = !!d?.viewer.signed_in;
+  const bottomPad = navH + 24 + (canPost ? 72 : 0);
   const { reveal } = chrome;
   useEffect(() => {
     reveal();
@@ -358,6 +364,29 @@ export function CommunityScreen() {
           onClose={() => setComposing(null)}
         />
       ) : null}
+      {canPost ? (
+        /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
+        <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
+      ) : null}
+      {menuRow ? (
+        <FeedMenu
+          row={menuRow}
+          meId={acts.meId}
+          doors={doors}
+          onShare={share}
+          onCopied={() => say(t.linkCopied, "success")}
+          onClose={() => setMenuRow(null)}
+          onDeleted={() => {
+            setMenuRow(null);
+            say(t.postDeleted, "success");
+            void qc.invalidateQueries({ queryKey: COMMUNITY_KEY });
+          }}
+          onError={(e) => {
+            setMenuRow(null);
+            say(errorText(t, e));
+          }}
+        />
+      ) : null}
       {tools && d?.prefs ? (
         <CommunityTools
           tab={lit}
@@ -375,7 +404,7 @@ export function CommunityScreen() {
           onClose={() => setTools(false)}
         />
       ) : null}
-      <ToastHost hostRef={toastHost} bottom={navH + 16} />
+      <ToastHost hostRef={toastHost} bottom={navH + 16 + (canPost ? 68 : 0)} />
     </View>
   );
 }

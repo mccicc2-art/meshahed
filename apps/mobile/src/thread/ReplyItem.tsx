@@ -11,6 +11,15 @@ import { num } from "@/core/i18n";
 import { timeAgoShort } from "@/core/when";
 import { displayNameOf } from "@/core/people";
 import type { ThreadRow } from "../contracts";
+import { richNodes } from "../richText";
+import { posterFor } from "../poster";
+
+/**
+ * 🆕 D-1443 — متنُ الردّ بخطّ الرسائل (١٦/٢٣ بوزن ٥٠٠ ويتبع الأكبرَ من خطّ الواجهة وخطّ المحتوى، D-1434)، وروابطُه ومنشنُه تُلمس
+ * (`richText.tsx` نفسُه) — أحمد ١٦ أكتوبر: «كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات».
+ */
+const BODY_SIZE = 16;
+const BODY_LINE = 23;
 
 /**
  * ====== سطرٌ في الخيط — نسخةُ `ReplyItem.tsx` (الويب) · Phase 11-M · M3 ======
@@ -39,6 +48,13 @@ export type ReplyItemProps = {
   onMenu: (row: ThreadRow) => void;
   onImage: (uri: string) => void;
   onProfile: (row: ThreadRow) => void;
+  /** 🆕 D-1443 — من كتبوا هنا (صغيرة): `@اسم` منهم يُرسم مميّزاً ولمستُه تفتح ملفَّه */
+  mentions?: ReadonlySet<string>;
+  onMention?: (username: string) => void;
+  /** رابطُ لوبز في متن: المسارُ يُفتح بالشاشة الأصليّة */
+  onPath?: (path: string) => void;
+  /** بطاقةُ العمل من «بحث لوبز» */
+  onTitle?: (kind: "tv" | "movie", id: number) => void;
 };
 
 export const ReplyItem = memo(function ReplyItem({
@@ -56,6 +72,10 @@ export const ReplyItem = memo(function ReplyItem({
   onMenu,
   onImage,
   onProfile,
+  mentions,
+  onMention,
+  onPath,
+  onTitle,
 }: ReplyItemProps) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
@@ -80,6 +100,23 @@ export const ReplyItem = memo(function ReplyItem({
         <View style={{ marginTop: 8, width: 220, aspectRatio: 1, borderRadius: radius.md, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
           <GifImage id={row.gif_id} />
         </View>
+      ) : null}
+      {/* 🆕 D-1443 — بطاقةُ العمل من «بحث لوبز»: ملصقٌ واسمٌ ونوع، تفتح صفحةَ العمل */}
+      {row.share ? (
+        <Pressable
+          onPress={() => row.share && onTitle?.(row.share.media_type, row.share.tmdb_id)}
+          accessibilityRole="link"
+          accessibilityLabel={row.share.title ?? ""}
+          style={({ pressed }) => ({ marginTop: 8, alignSelf: "flex-start", maxWidth: 300, flexDirection: "row", alignItems: "center", gap: 10, padding: 8, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: pressed ? tokens.surface2 : tokens.surface })}
+        >
+          <View style={{ width: 44, aspectRatio: 2 / 3, borderRadius: radius.sm, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            {row.share.poster_path ? <Image source={{ uri: posterFor(row.share.poster_path, 44) ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="film" size={16} color={tokens.muted} />}
+          </View>
+          <View style={{ flexShrink: 1, gap: 2 }}>
+            <Text size={14} weight="700" numberOfLines={2}>{row.share.title ?? "—"}</Text>
+            <Text size={12} muted>{row.share.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+          </View>
+        </Pressable>
       ) : null}
     </>
   );
@@ -130,7 +167,11 @@ export const ReplyItem = memo(function ReplyItem({
         </Pressable>
       ) : (
         <>
-          {text.trim() ? <Text size={14} content style={{ lineHeight: 21, marginTop: 6 }}>{text}</Text> : null}
+          {text.trim() ? (
+            <Text size={BODY_SIZE} weight="500" chat style={{ lineHeight: BODY_LINE, marginTop: 6 }}>
+              {richNodes(text, { size: BODY_SIZE, weight: "500", chat: true, color: tokens.fg, linkColor: tokens.info, mentions, onMention, onPath })}
+            </Text>
+          ) : null}
           {row.translated && !row.has_spoiler ? (
             <Pressable onPress={() => setOriginal((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: 4 }}>
               <Text size={12} weight="700" muted>{original ? t.showTranslation : t.showOriginalText}</Text>

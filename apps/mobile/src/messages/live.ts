@@ -20,13 +20,16 @@ import { mark } from "../perfMarks";
  * مفتوحتان لا تعنيان قناتين ولا استطلاعين.
  */
 /* 🆕 D-1380 — والرسائلُ النصّيّةُ المباشرة (الهجرة ٢٠٠) */
-const TABLES = ["title_shares", "list_shares", "share_replies", "direct_messages"] as const;
+/* 🆕 والقروبات (الهجرة ٢٠٥): رسائلُها، وأعضاؤها (القراءةُ ✓✓ · الإضافةُ · الخروج) */
+const TABLES = ["title_shares", "list_shares", "share_replies", "direct_messages", "dm_group_messages", "dm_group_members"] as const;
 const POLL_MS = 20_000;
 const COALESCE_MS = 150;
 /** مفتاحُ الكاش — وسمُ الخادم نفسُه (`me:messages`)، فكتاباتُه تُبطله بلا قاعدةٍ ثانية */
 export const MESSAGES_KEY = ["me:messages"] as const;
 
 let holders = 0;
+/** 🆕 1.12.7 — من يحتاج الاستطلاعَ أيضاً (شاشاتُ الرسائل)؛ الرئيسيّةُ تكتفي بـRealtime فلا طلبَ كلَّ ٢٠ث */
+let pollers = 0;
 let channel: RealtimeChannel | null = null;
 let poll: ReturnType<typeof setInterval> | null = null;
 let wakeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,6 +48,9 @@ function wake(delay = COALESCE_MS) {
        فتحه وحدَه، فطلبٌ يصل وهو مفتوحٌ لا يظهر حتى سحبِ التحديث. الاستطلاعُ (٢٠ث) وإيقاظُ Realtime يُحدّثانه الآن — `invalidate`
        لا يطلب إلّا ما هو معروضٌ (مشترَكٌ فيه). */
     void queryClient.invalidateQueries({ queryKey: ["me:signals"] });
+    /* 🆕 1.12.7 — **وشارتا الرئيسيّة**: إشعارُ الرسالة يرسمه الكودُ الأصليُّ الآن (`DmPush.kt`) فلا يمرّ بمستمع Expo الذي كان
+       يجدّدها — فإشارةُ Realtime هي التي تقول «وصل جديد» والتطبيقُ مفتوحٌ على أيّ شاشة */
+    void queryClient.invalidateQueries({ queryKey: ["me:badges"] });
   }, delay);
 }
 
@@ -88,7 +94,7 @@ function unsubscribe() {
 }
 
 function startPoll() {
-  if (poll || !active) return;
+  if (poll || !active || pollers === 0) return;
   poll = setInterval(() => wake(0), POLL_MS);
 }
 function stopPoll() {
@@ -111,8 +117,13 @@ function onAppState(next: AppStateStatus) {
 }
 
 /** شاشةٌ تحتاج الفوريّة — تعيد دالّةَ التحرير. الأولى تفتح القناةَ والاستطلاع، والأخيرةُ تغلقهما. */
-export function retainLive(): () => void {
+export function retainLive(opts: { poll?: boolean } = {}): () => void {
+  const polls = opts.poll !== false;
   holders++;
+  if (polls) {
+    pollers++;
+    startPoll();
+  }
   if (holders === 1) {
     active = AppState.currentState === "active";
     appSub = AppState.addEventListener("change", onAppState);
@@ -130,6 +141,7 @@ export function retainLive(): () => void {
     if (released) return;
     released = true;
     holders--;
+    if (polls && --pollers === 0) stopPoll();
     if (holders > 0) return;
     appSub?.remove();
     appSub = null;

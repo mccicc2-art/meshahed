@@ -7,8 +7,8 @@ import { homeSeen, useBootRoot } from "../bootRoot";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBadges } from "../messages/badges";
 import { warmDiscoverOnce } from "../discover/DiscoverScreen";
+import { warmMessagesOnce } from "../messages/common";
 import { useQueryClient } from "@tanstack/react-query";
-import { File, Paths } from "expo-file-system";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
@@ -50,6 +50,8 @@ import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
+import { refreshWidgets } from "../widget/feed";
+import { widgetBus } from "../widget/bus";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -103,7 +105,11 @@ export function HomeScreen() {
   useBadges(!!d);
   /* D-1085 — الرئيسيّةُ رسمت حمولتَها: تُسخَّن «اكتشف» (التريلرات و«قوائم» معها) مرّةً في الجلسة بعد أن تهدأ */
   useEffect(() => {
-    if (d) warmDiscoverOnce();
+    if (d) {
+      warmDiscoverOnce();
+      /* 🆕 1.12.7 — والصندوقُ إن لم تكن له نسخةٌ محفوظة (الظرفُ في رأس هذه الشاشة بابُه) */
+      warmMessagesOnce();
+    }
   }, [d]);
   /* 🆕 D-1238 — وملفُّ صاحب الحساب: صورتُه في رأس هذه الشاشة بابُه، فيُجلب قبل الضغطة (`profileData.ts`) */
   useEffect(() => {
@@ -478,15 +484,34 @@ export function HomeScreen() {
   );
   const queueItemsOf = useCallback((items: HomeQueueItem[]) => items.map((q) => ({ key: q.key, title: q.title ?? "", poster_path: q.poster_path, media_type: q.media_type ?? ("movie" as const) })), []);
 
-  /* ——— الودجت (D-929): ما كان `WidgetSync` الويبيّ يكتبه — يُكتب من هنا ——— */
+  /* ——— 🆕 الودجتات: كلُّ تحميلٍ للرئيسيّة يجدّدها (وكلُّ فعلٍ يبطل الرئيسيّة يعيد تحميلها) — `widget/feed.ts` ——— */
   useEffect(() => {
-    if (!d) return;
-    try {
-      new File(Paths.document, "widget.json").write(JSON.stringify(d.widget.slice(0, 3)));
-    } catch {
-      /* ودجتٌ قديمةٌ خيرٌ من شاشةٍ تسقط */
-    }
+    if (d) void refreshWidgets();
   }, [d]);
+
+  /* ——— 🆕 ما يصل من الودجت: «الكل» يفتح ورقةَ القسم، و«ابدأ» من الخانة الباهتة يترك هنا توستَ «تراجع» ——— */
+  useEffect(
+    () =>
+      widgetBus.subscribe((e) => {
+        if (e.type === "all") {
+          setAllSheet(e.section);
+          return;
+        }
+        toastHost.current?.say(
+          t.widgetStartedToast(e.title),
+          {
+            label: t.undoWatched,
+            onPress: () =>
+              void write<unknown>("/api/v1/track/watch-state", { showTmdbId: e.id, state: e.action === "start" ? null : "paused" } satisfies WatchStateBody)
+                .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+                .catch(onError),
+          },
+          6000,
+          "success",
+        );
+      }),
+    [t, qc, onError],
+  );
 
   /* ——— الرأسُ يختفي بالتمرير كالويب (`chrome-top`)، والغلافُ ثابتٌ خلفه ——— */
   const chrome = useChromeHide();

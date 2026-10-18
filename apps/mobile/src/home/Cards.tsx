@@ -1,6 +1,8 @@
-import React, { memo, useRef, useState } from "react";
+import React, { memo, useEffect, useId, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
+import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -26,8 +28,14 @@ const VEIL = require("../../assets/poster-veil.png");
 const CARD_CHECK = 36;
 const ROW_CHECK = 44;
 
+/** 🆕 D-1409 — حركةُ التأشير بأرقام `ContinueCard` الويب حرفاً (أحمد بتسجيلٍ من المتصفّح: «الإنميشن الموجود في
+    المتصفّح يكون موجود في الآيفون والأندرويد»): `-translate-x-8`/`translate-x-8` = ٣٢، و`duration-200` بـ`ease-in`
+    للخروج و`ease-out` للدخول. الإزاحةُ فيزيائيّةٌ يساراً في الاتّجاهين كالويب (`translate-x` ليس منطقيّاً هناك). */
+const SLIDE_PX = 32;
+const SLIDE_MS = 200;
+
 export const ContinueCard = memo(function ContinueCard({
-  card,
+  card: liveCard,
   size,
   variant,
   backdropPath,
@@ -51,6 +59,50 @@ export const ContinueCard = memo(function ContinueCard({
   onHold?: (anchor: { x: number; y: number; width: number; height: number }) => void;
 }) {
   const { t, tokens } = useApp();
+  /* 🆕 D-1409 — المرحلةُ كـ`slide` في الويب: الوالدُ يقدّم البطاقةَ تفاؤلاً لحظةَ الضغطة (`patchCard`)، فتُجمَّد
+     الحلقةُ الحاليّة طوال الخروج كي ينزلق القديمُ لا الجديد — ثمّ تُفكّ فتدخل التالية من اليمين.
+     للمسلسل وحدَه كالويب (قرار أحمد «٣ أ»): بطاقاتُ القوائم و«للمشاهدة» بلا حركة. */
+  const [phase, setPhase] = useState<"idle" | "out" | "in" | "fill">("idle");
+  const [frozen, setFrozen] = useState<HomeContinueCard | null>(null);
+  const card = frozen ?? liveCard;
+  const tx = useSharedValue(0);
+  const op = useSharedValue(1);
+  const slideStyle = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateX: tx.value }] }));
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const gradId = `ck${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const filled = phase !== "idle";
+  const pressCheck = () => {
+    if (!onCheck) return;
+    if (liveCard.type !== "show" || phase !== "idle") {
+      onCheck();
+      return;
+    }
+    /* الحلقةُ الأخيرةُ تفتح ورقةَ الاحتفال (شرطُ `finishedAll` نفسُه في `markNext`) ⇐ لا انزلاق، الدائرةُ تمتلئ وحدها
+       كما تبقى ممتلئةً في الويب تحت الورقة */
+    const finishedAll = liveCard.aired > 0 && liveCard.watched + 1 >= liveCard.aired;
+    if (finishedAll) {
+      setPhase("fill");
+      onCheck();
+      timers.current.push(setTimeout(() => setPhase("idle"), 600));
+      return;
+    }
+    setFrozen(liveCard);
+    setPhase("out");
+    tx.value = withTiming(-SLIDE_PX, { duration: SLIDE_MS, easing: Easing.in(Easing.ease) });
+    op.value = withTiming(0, { duration: SLIDE_MS, easing: Easing.in(Easing.ease) });
+    onCheck();
+    timers.current.push(
+      setTimeout(() => {
+        setFrozen(null);
+        setPhase("in");
+        tx.value = SLIDE_PX;
+        tx.value = withTiming(0, { duration: SLIDE_MS, easing: Easing.out(Easing.ease) });
+        op.value = withTiming(1, { duration: SLIDE_MS, easing: Easing.out(Easing.ease) });
+        timers.current.push(setTimeout(() => setPhase("idle"), SLIDE_MS));
+      }, SLIDE_MS),
+    );
+  };
   const holdRef = useRef<View>(null);
   const hold = onHold ? () => holdRef.current?.measureInWindow((x, y, width, height) => onHold({ x, y, width, height })) : undefined;
   const isShow = card.type === "show";
@@ -73,8 +125,8 @@ export const ContinueCard = memo(function ContinueCard({
   const check =
     onCheck ? (
       <Pressable
-        onPress={onCheck}
-        disabled={busy || !canCheck}
+        onPress={pressCheck}
+        disabled={busy || !canCheck || phase === "out"}
         hitSlop={variant === "row" ? 6 : 4}
         accessibilityRole="button"
         accessibilityLabel={t.markWatchedAria}
@@ -86,15 +138,29 @@ export const ContinueCard = memo(function ContinueCard({
              لا زجاجٌ رماديّ فوق سطح البطاقة — بلاغُ أحمد على 1.11.8: «الصحّ يلامس النسبة» */
           variant === "row" ? { top: rowTextTop, end: 12, backgroundColor: "#000" } : { top: 10, end: 10, backgroundColor: "rgba(0,0,0,0.55)" },
           { borderColor: "rgba(255,255,255,0.35)", opacity: pressed ? 0.7 : canCheck ? 1 : 0.35 },
+          /* 🆕 D-1409 — تمتلئ لحظةَ التأشير بتدرّج الهويّة وتكبر قليلاً (`scale-105` و`linear-gradient(135deg, accent, accent-2)`
+             في الويب)، ثمّ تعود زجاجيّةً للحلقة التالية. `busy` لا يُطفئها: الإقفالُ حتى ردّ الخادم باقٍ (قرار أحمد «٢ أ») */
+          filled ? { borderColor: "transparent", opacity: 1, overflow: "hidden", transform: [{ scale: 1.05 }] } : null,
         ]}
       >
+        {filled ? (
+          <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100">
+            <Defs>
+              <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={tokens.accent} />
+                <Stop offset="1" stopColor={tokens.accent2} />
+              </LinearGradient>
+            </Defs>
+            <Circle cx="50" cy="50" r="50" fill={`url(#${gradId})`} />
+          </Svg>
+        ) : null}
         <Icon name="check" size={variant === "row" ? 20 : 18} color="#fff" />
       </Pressable>
     ) : null;
 
   if (variant === "row") {
     return (
-      <View>
+      <Reanimated.View style={slideStyle}>
         {/* D-1089 — الصفُّ على لون الصفحة (`bg`) لا `surface` (أحمد بلقطة: «الخلفيّة الرصاصيّة أبغاها سوداء») —
             كبطاقة القائمة والتريلر (D-1081): الحدُّ الإطارُ الرفيع وحده، و`bg` لا `#000` كي تصحّ `daylight` */}
         <Pressable ref={holdRef} onPress={onPress} onLongPress={hold} delayLongPress={350} accessibilityRole="button" accessibilityLabel={`${title}، ${sub}`} style={({ pressed }) => [styles.row, { borderColor: tokens.border, backgroundColor: tokens.bg, opacity: pressed ? 0.85 : 1 }]}>
@@ -119,11 +185,11 @@ export const ContinueCard = memo(function ContinueCard({
           </View>
         </Pressable>
         {check}
-      </View>
+      </Reanimated.View>
     );
   }
   return (
-    <View style={{ width: size.w }}>
+    <Reanimated.View style={[{ width: size.w }, slideStyle]}>
       <Pressable
         ref={variant === "card" ? holdRef : undefined}
         onPress={onPress}
@@ -165,7 +231,7 @@ export const ContinueCard = memo(function ContinueCard({
         </View>
       </Pressable>
       {check}
-    </View>
+    </Reanimated.View>
   );
 });
 

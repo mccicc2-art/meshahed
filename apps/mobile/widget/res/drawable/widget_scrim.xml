@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- حجابُ الملصق الكامل: النصُّ الأبيض فوق أيِّ ملصقٍ يُقرأ (`art-veil` ٤٠٪ في الثيم الرسميّ، أثقلُ أسفلَ حيث الحروف) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="90" android:startColor="#D9000000" android:centerColor="#66000000" android:endColor="#33000000" />
+    <corners android:radius="16dp" />
+</shape>

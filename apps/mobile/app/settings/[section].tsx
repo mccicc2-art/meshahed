@@ -10,6 +10,7 @@ import { VerifyScreen } from "../../src/settings/VerifyScreen";
 import { CustomizeScreen } from "../../src/settings/CustomizeScreen";
 import { InvitesScreen } from "../../src/settings/InvitesScreen";
 import { ImportScreen } from "../../src/settings/ImportScreen";
+import { WidgetScreen } from "../../src/settings/WidgetScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -32,6 +33,8 @@ const SCREENS = {
   invites: InvitesScreen,
   /* 🆕 D-1369 (V-C · C6) — «الاستيراد والتصدير» أصليّة */
   import: ImportScreen,
+  /* 🆕 ودجت لوبز (خطّةُ v2) — الإعدادُ والمعاينةُ والتخطيطات أصليّةٌ من أوّل يوم */
+  widget: WidgetScreen,
 } as const;
 
 export default function SettingsSection() {

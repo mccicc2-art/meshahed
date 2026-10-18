@@ -57,6 +57,15 @@ export function invalidateTags(tags: Tag[]) {
     void queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("profile:") });
 }
 
+/**
+ * 🔴 **نداءاتُ التطبيق بلا كوكيز** (D-1409، تشخيصُ ١٥ أكتوبر): «حمايةُ التوافق» في Vercel (Skew Protection، ١٢ ساعة) تربط
+ * من يحمل كوكي `__vdpl` بالنسخة التي فتحها — والـWebView يضعه، ونداءُ التطبيق الأصليُّ يحمل كوكيز الـWebView نفسَها
+ * (جرّةٌ واحدةٌ للنطاق). فكان الخادمُ يجيب التطبيقَ من نسخةٍ عمرُها ساعات: إشعارُ الرسالة خرج بالطريقة القديمة بعد نشر
+ * الجديدة (السجلُّ قرأ الأجهزةَ بكود ما قبل الهجرة ٢٠٤). والتطبيقُ لا يحتاج كوكياً أصلاً — هويّتُه `Bearer`. فالنداءُ هنا
+ * بلا كوكيز يصل آخرَ نسخةٍ دائماً، وصفحاتُ الويب محميّةٌ كما كانت. الاستثناءُ الوحيد سكُّ الجلسة من كوكي الويب (`ownSession`).
+ */
+export const NO_COOKIES: RequestCredentials = "omit";
+
 export async function api<T>(
   path: string,
   /* 🆕 D-1232 — `signal`: من يملك مهلةً يقطع الطلبَ نفسَه فيُفرغ مكانَه في الشبكة (لا يبقى معلّقاً خلف ردٍّ لن يُقرأ) */
@@ -69,6 +78,7 @@ export async function api<T>(
     const headers = await baseHeaders(auth, path);
     if (init?.body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
+      credentials: NO_COOKIES,
       method: init?.method ?? "GET",
       headers,
       body: init?.body === undefined ? undefined : JSON.stringify(init.body),
@@ -191,7 +201,7 @@ export async function postForm<T>(path: string, form: FormData): Promise<T> {
   if (!session.has()) await session.request();
   for (let attempt = 0; ; attempt++) {
     const headers = await baseHeaders(true, path);
-    const res = await fetch(`${CONFIG.apiBase}${path}`, { method: "POST", headers, body: form });
+    const res = await fetch(`${CONFIG.apiBase}${path}`, { method: "POST", headers, body: form, credentials: NO_COOKIES });
     const json = (await res.json().catch(() => null)) as Envelope<T> | null;
     if (!json || "error" in json) {
       if (res.status === 401 && attempt < 2) {
@@ -249,7 +259,7 @@ async function baseHeaders(auth: boolean, path = ""): Promise<Record<string, str
 
 /** مسارٌ قائمٌ من قبل `v1` (بلا غلاف `{data}`) — للبحث والاقتراح. */
 export async function rawGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${CONFIG.apiBase}${path}`, { headers: await baseHeaders(true, path) });
+  const res = await fetch(`${CONFIG.apiBase}${path}`, { headers: await baseHeaders(true, path), credentials: NO_COOKIES });
   if (!res.ok) throw new ApiError({ code: res.status === 429 ? "rate_limited" : "upstream", message_key: res.status === 429 ? "apiRateLimited" : "apiUpstream" }, res.status);
   return (await res.json()) as T;
 }

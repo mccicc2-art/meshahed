@@ -10,3 +10,6 @@ dist/
 expo-env.d.ts
 # D-1305 — يُرفع متغيّرَ ملفٍّ في EAS (GOOGLE_SERVICES_JSON) ولا يُودَع
 google-services.json
+
+# @bacons/apple-targets يولّده في كلِّ prebuild من expo-target.config.js
+targets/*/Assets.xcassets

@@ -70,6 +70,21 @@ export function useTrending() {
   return useQuery({ ...trendingQuery, refetchOnMount: false, refetchOnReconnect: false });
 }
 
+/**
+ * 🆕 D-1442 — **ما تحت «فنانون/أعضاء/قوائم» قبل الكتابة** (أحمد ١٦ أكتوبر: «إذا ضغطت الفلاتر القائمة تحت تتغيّر بناءً على
+ * الفلتر»): يُطلب حين تُختار الرقاقةُ أوّلَ مرّة ويبقى عشرَ دقائق كـ«رائج اليوم». الكلُّ والأعمالُ لا يطلبان شيئاً هنا.
+ */
+export function useScopedTrending(scope: SearchScope, enabled: boolean) {
+  const pre = scope === "artists" || scope === "members" || scope === "lists";
+  return useQuery({
+    queryKey: ["search:trending", scope] as const,
+    queryFn: async () => (await api<SearchTrendingPayload>(`/api/v1/search/trending?scope=${scope}`)).data,
+    enabled: enabled && pre,
+    staleTime: 600_000,
+    retry: 0,
+  });
+}
+
 /** التبويبُ ظاهرٌ الآن؟ — الشاشةُ تعلنه (`useFocusEffect`)، والتجديدُ لا يبدأ وهي ظاهرة */
 let searchShown = false;
 export function trendingShown(on: boolean) {

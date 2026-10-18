@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🆕 W50 — «أكمل المشاهدة» بمقاسه (أحمد ١٥ أكتوبر: البطاقتان بمقاسهما في ٤×٢ ولا تتمدّدان، والفراغُ لأسطر الأقسام الأخرى):
+     نسخةُ `w2_cont` بلا وزن — RemoteViews لا تغيّر الوزن (لا `setViewLayoutWeight`)، فأندرويد 12+ يكتب ارتفاعَ البطاقتين
+     (`cont_cards`) بما حسمه المحرّك. وأندرويد قبل 12 والمتوسطُ يبقيان على `w2_cont` الذي يملأ (W48). العناصرُ نفسُها بأسمائها. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="20dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+<FrameLayout
+    android:layout_width="15dp"
+    android:layout_height="15dp"
+    android:layout_marginEnd="7dp"
+    android:background="@drawable/w2_ring">
+    <ImageView
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="center"
+        android:src="@drawable/widget_ic_play"
+        android:tint="#FFD400" />
+</FrameLayout>
+<TextView
+    android:id="@+id/hdr_title"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="14.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1" />
+<TextView
+    android:id="@+id/hdr_all"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="11sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="8dp"
+    android:visibility="gone" />
+</LinearLayout>
+    <LinearLayout
+        android:id="@+id/cont_cards"
+        android:layout_width="match_parent"
+        android:layout_height="93dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+    <FrameLayout
+    android:id="@+id/card_1"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:layout_marginEnd="9dp">
+    <ImageView
+        android:id="@+id/card_img_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+    <TextView
+        android:id="@+id/card_plus_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_slot_empty"
+        android:gravity="center"
+        android:padding="8dp"
+        android:textColor="#B5B5B5"
+        android:textSize="11sp"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/card_check_1"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/card_check_1_v"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:background="@drawable/widget_check"
+            android:padding="8dp"
+            android:src="@drawable/widget_ic_check" />
+    </FrameLayout>
+    <FrameLayout
+    android:id="@+id/card_undo_1"
+    android:layout_width="wrap_content"
+    android:layout_height="44dp"
+    android:layout_gravity="top|end"
+    android:layout_marginTop="2dp"
+    android:layout_marginEnd="4dp"
+    android:visibility="gone"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+    <LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:layout_gravity="center_vertical"
+    android:background="@drawable/w2_chip"
+    android:gravity="center_vertical"
+    android:paddingStart="11dp"
+    android:paddingEnd="11dp"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/card_undo_icon_1"
+        android:layout_width="13dp"
+        android:layout_height="13dp"
+        android:src="@drawable/widget_ic_undo"
+        android:tint="#F7F7F7" />
+    <TextView
+        android:id="@+id/card_undo_text_1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:textColor="#F7F7F7"
+        android:textSize="11.5sp"
+        android:textStyle="bold"
+        android:maxLines="1" />
+</LinearLayout>
+</FrameLayout>
+    <LinearLayout
+        android:id="@+id/card_text_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:paddingStart="9dp"
+        android:paddingEnd="9dp"
+        android:paddingBottom="7dp"
+        android:orientation="vertical">
+        <TextView
+    android:id="@+id/card_name_1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#FFFFFF"
+    android:textSize="12.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:orientation="horizontal">
+            <TextView
+    android:id="@+id/card_sub_1"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#BFFFFFFF"
+    android:textSize="10.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1" />
+            <TextView
+    android:id="@+id/card_pct_1"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B3FFFFFF"
+    android:textSize="10.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
+    <FrameLayout
+    android:id="@+id/card_2"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1">
+    <ImageView
+        android:id="@+id/card_img_2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+    <TextView
+        android:id="@+id/card_plus_2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_slot_empty"
+        android:gravity="center"
+        android:padding="8dp"
+        android:textColor="#B5B5B5"
+        android:textSize="11sp"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/card_check_2"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:visibility="gone">
+        <ImageView
+            android:id="@+id/card_check_2_v"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:background="@drawable/widget_check"
+            android:padding="8dp"
+            android:src="@drawable/widget_ic_check" />
+    </FrameLayout>
+    <FrameLayout
+    android:id="@+id/card_undo_2"
+    android:layout_width="wrap_content"
+    android:layout_height="44dp"
+    android:layout_gravity="top|end"
+    android:layout_marginTop="2dp"
+    android:layout_marginEnd="4dp"
+    android:visibility="gone"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+    <LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:layout_gravity="center_vertical"
+    android:background="@drawable/w2_chip"
+    android:gravity="center_vertical"
+    android:paddingStart="11dp"
+    android:paddingEnd="11dp"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/card_undo_icon_2"
+        android:layout_width="13dp"
+        android:layout_height="13dp"
+        android:src="@drawable/widget_ic_undo"
+        android:tint="#F7F7F7" />
+    <TextView
+        android:id="@+id/card_undo_text_2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:textColor="#F7F7F7"
+        android:textSize="11.5sp"
+        android:textStyle="bold"
+        android:maxLines="1" />
+</LinearLayout>
+</FrameLayout>
+    <LinearLayout
+        android:id="@+id/card_text_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:paddingStart="9dp"
+        android:paddingEnd="9dp"
+        android:paddingBottom="7dp"
+        android:orientation="vertical">
+        <TextView
+    android:id="@+id/card_name_2"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#FFFFFF"
+    android:textSize="12.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:orientation="horizontal">
+            <TextView
+    android:id="@+id/card_sub_2"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#BFFFFFFF"
+    android:textSize="10.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1" />
+            <TextView
+    android:id="@+id/card_pct_2"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#B3FFFFFF"
+    android:textSize="10.5sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginStart="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/up_block"
+        android:layout_width="match_parent"
+        android:layout_height="22dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="5dp"
+            android:background="#1AFFFFFF" />
+        <LinearLayout
+            android:id="@+id/up_line"
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+    android:id="@+id/up_day"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#FFD400"
+    android:textSize="11sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginEnd="6dp" />
+            <TextView
+    android:id="@+id/up_name"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="#F7F7F7"
+    android:textSize="11sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_marginEnd="6dp" />
+            <TextView
+    android:id="@+id/up_label"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:textColor="#B5B5B5"
+    android:textSize="11sp"
+    android:maxLines="1"
+    android:ellipsize="end"
+    android:textAlignment="viewStart"
+    android:layout_weight="1" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

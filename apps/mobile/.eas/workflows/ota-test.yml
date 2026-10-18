@@ -1,0 +1,13 @@
+# فرعُ التجربة وحدَه (test/widgets-1.12.6) — لا يدخل main.
+# تحديثٌ هوائيٌّ على قناة production من هذا الفرع: بصمتُه بصمةُ بناءَي التجربة (أندرويد 72 · آيفون 6)
+# فلا يصل غيرَ أجهزتهما — أجهزةُ المتجر على بصمةٍ أخرى لا تراه. يُشغَّل يدويّاً.
+name: OTA to 1.12.6 test devices
+
+jobs:
+  update:
+    name: Publish OTA (test devices)
+    type: update
+    params:
+      channel: production
+      platform: all
+      message: "1.12.6 test: widget v2"

@@ -84,16 +84,19 @@ export function rememberGif(id: string): void {
   SecureStore.setItemAsync(RECENT_KEY, JSON.stringify(next)).catch(() => {});
 }
 
-export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
-  const { t, tokens } = useApp();
-  const { height, width } = useWindowDimensions();
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string | null>(null);
+/** الأخيرةُ من هذا الجهاز — تُقرأ مرّةً لكلِّ فتح */
+export function recentGifs(): string[] {
+  return readRecent();
+}
+
+/**
+ * 🆕 D-1440 — **بحثُ GIF بلا ورقته**: الجلبُ والتقطيعُ والتأخيرُ هنا، فتقرؤه الورقةُ (الخيوط) ولوحةُ «+» في المحادثة
+ * (`PanelModes`) — قارئٌ واحدٌ لا نسختان. `instant` = تصنيفٌ ضُغط (لا كتابةَ تُنتظر).
+ */
+export function useGifSearch(term: string, instant = false) {
   const [hits, setHits] = useState<GifHitLite[]>([]);
   const [next, setNext] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
-  const [recent] = useState(readRecent);
-  const term = (cat ?? q).trim();
   const seq = useRef(0);
   const [endOpen] = useState(() => span("gif.open"));
   const opened = useRef(false);
@@ -120,10 +123,24 @@ export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; o
 
   /* الحقلُ الفارغُ فورٌ (الرائج)، والكتابةُ بعد ٣٥٠ms سكوناً — والتصنيفُ ضغطةٌ لا كتابة فيُطلب فوراً */
   useEffect(() => {
-    const timer = setTimeout(() => void load(term, 0), term && !cat ? 350 : 0);
+    const timer = setTimeout(() => void load(term, 0), term && !instant ? 350 : 0);
     return () => clearTimeout(timer);
-  }, [term, cat, load]);
+  }, [term, instant, load]);
 
+  const more = useCallback(() => {
+    if (!loading && next !== null && hits.length) void load(term, next);
+  }, [loading, next, hits.length, load, term]);
+  return { hits, loading, more };
+}
+
+export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
+  const { t, tokens } = useApp();
+  const { height, width } = useWindowDimensions();
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState<string | null>(null);
+  const [recent] = useState(readRecent);
+  const term = (cat ?? q).trim();
+  const { hits, loading, more } = useGifSearch(term, !!cat);
   const pick = (id: string) => {
     haptic.pick();
     onPick(id);
@@ -183,9 +200,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; o
             keyExtractor={(g) => g.id}
             keyboardShouldPersistTaps="handled"
             onEndReachedThreshold={0.6}
-            onEndReached={() => {
-              if (!loading && next !== null && hits.length) void load(term, next);
-            }}
+            onEndReached={more}
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => pick(item.id)}
