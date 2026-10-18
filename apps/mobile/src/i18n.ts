@@ -46,7 +46,10 @@ export const webLocale = {
     return webLocaleValue;
   },
   /** يقبل `ar`/`en` فقط — الرسالةُ تأتي من الجسر، والقيمةُ تُفحص لا تُصدَّق */
-  set(v: unknown) {
+  set(v: unknown, chosen?: unknown) {
+    /* 🆕 D-1462 — صفحةٌ تقول «لم يختر أحدٌ، أخذتُ لغةَ الجهاز» (`chosen: false`) لا تقلب التطبيق: كانت صفحةُ التريلرات بلا كوكي
+       لغةٍ تبلّغ «en» من نظام الهاتف، فيحفظها الغلافُ ويعيد تشغيلَ نفسه إلى الرئيسيّة. الغائبُ (صفحةٌ أقدم · الإعدادات) يُقبل كما كان */
+    if (chosen === false) return;
     if (v !== "ar" && v !== "en") return;
     if (v === webLocaleValue) return;
     webLocaleValue = v;

@@ -287,10 +287,28 @@ export function SessionBridge() {
        المصدرُ `<html lang>` — يكتبه التخطيطُ من الكوكي — يُبلَّغ عند التركيب
        وعند كلِّ تبديلٍ (المراقبُ يلتقط إعادةَ رسم التخطيط). لا `nonce`: ليست
        سرّاً، والغلافُ يفحص المضيفَ والقيمةَ. */
-    const postLocale = () => post({ type: "locale", lang: document.documentElement.lang });
+    /* 🆕 D-1462 — **ومعها: أهي اختيارٌ أم تخمين** (بلاغُ أحمد ١٨ أكتوبر: «الكل» في التريلرات قلب التطبيقَ إنجليزيّاً وأعاده
+       للرئيسيّة). صفحةٌ بلا كوكي لغةٍ تأخذ لغةَ الجهاز من `Accept-Language`، وكان الغلافُ يصدّقها كأنّها اختيار فيعيد تشغيلَ
+       نفسِه بها. `chosen: false` ⇐ الغلافُ لا يتبعها. */
+    /* والغلافُ يزرع كوكي لغته قبل سكربتات الصفحة (`langSeed`): مستندٌ رُسم قبل الزرع بلغةٍ أخرى قديمٌ لا اختيار — يُعاد تحميلُه
+       مرّةً بلغة التطبيق، ولا يُبلَّغ عنه */
+    const postLocale = () => {
+      const html = document.documentElement;
+      const planted = /(?:^|;\s*)lang=(ar|en)/.exec(document.cookie)?.[1];
+      if (planted && planted !== html.lang) {
+        try {
+          if (!sessionStorage.getItem("loopz:langfix")) {
+            sessionStorage.setItem("loopz:langfix", "1");
+            location.reload();
+          }
+        } catch {}
+        return;
+      }
+      post({ type: "locale", lang: html.lang, chosen: html.dataset.langChosen !== "0" });
+    };
     postLocale();
     const langWatch = new MutationObserver(postLocale);
-    langWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    langWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["lang", "data-lang-chosen"] });
 
     let unsub: (() => void) | null = null;
     createClient()

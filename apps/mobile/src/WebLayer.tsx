@@ -108,6 +108,18 @@ function atGate(p: string, landing: boolean): boolean {
  */
 const SHARE_BRIDGE =
   "if(window.top===window&&!navigator.share&&window.ReactNativeWebView){navigator.share=function(d){return new Promise(function(res,rej){window.__loopzShareDone=function(ok){window.__loopzShareDone=null;ok?res():rej(new DOMException('Share canceled','AbortError'));};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:String((d&&d.title)||''),text:String((d&&d.text)||''),url:String((d&&d.url)||'')}));});};}";
+/**
+ * 🆕 D-1462 — **لغةُ التطبيق تسبق الصفحةَ إلى الويب** (بلاغُ أحمد ١٨ أكتوبر): صفحةٌ تُنشأ بلا كوكي `lang` كانت تُرسم بلغة نظام
+ * الهاتف (`Accept-Language`)، فيُرى التريلرُ إنجليزيّاً والتطبيقُ عربيّ. المستندُ الأوّلُ يحمل لغةَ التطبيق في الترويسة، والكوكي
+ * يُزرع قبل سكربتات الصفحة إن غاب أو خالف — فما بعدها من طلباتٍ يتبعه. **داخل التطبيق لغتُه هي المرجع** (تُبدَّل من «المظهر»
+ * الأصليّة، وكوكي الويب لا يصله ردُّ الـAPI): مستندٌ رُسم قبل الزرع بلغةٍ أخرى يعيد `SessionBridge` تحميلَه مرّةً ولا يبلّغ عنه.
+ */
+function langHeaders(): Record<string, string> {
+  return { "Accept-Language": currentLocale() };
+}
+function langSeed(loc: string): string {
+  return `try{if(window===window.top&&(/(?:^|;\\s*)lang=(ar|en)/.exec(document.cookie)||[])[1]!=="${loc}"){document.cookie="lang=${loc}; path=/; max-age=31536000; samesite=lax"}}catch(e){};`;
+}
 const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true,nav:true,search:true,home:true,community:true,share:true,messages:true,profile:true,rotate:true};" + SHARE_BRIDGE + ";true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
@@ -537,7 +549,7 @@ export function WebLayer() {
     /* 🆕 D-1370 (V-D) — رابطٌ وصل والتطبيقُ مفتوحٌ بلا صفحة: الطبقةُ تُنشأ على هدفه مباشرةً (لا شيءَ يُنتظر تحميلُه قبله) */
     if (lazyBoot.current && !sourceRef.current) {
       mark("web.mount", 0, { why: "widget" });
-      setSource({ uri: CONFIG.apiBase + u });
+      setSource({ uri: CONFIG.apiBase + u, headers: langHeaders() });
       return;
     }
     pending.current = CONFIG.apiBase + u;
@@ -789,7 +801,7 @@ export function WebLayer() {
       }
       /* 🆕 D-946 — لغةُ الويب: تُقبل من نطاقنا وحدَه، وتُفحص القيمةُ في `webLocale.set` */
       if (msg.type === "locale") {
-        if (hostOk) webLocale.set((msg as { lang?: unknown }).lang);
+        if (hostOk) webLocale.set((msg as { lang?: unknown }).lang, (msg as { chosen?: unknown }).chosen);
         return;
       }
       /* 🆕 D-1104 — ورقةُ المشاركة للنظام بدل الحافظة؛ من نطاقنا وحدَه، والنتيجةُ تُعاد إلى وعد الصفحة */
@@ -913,7 +925,7 @@ export function WebLayer() {
     shell.attachLoader((path, arm) => {
       mark("web.mount", 0, { why: "door" });
       setColdArm(arm ? `try{if(!sessionStorage.getItem("loopz:cold")){sessionStorage.setItem("loopz:cold","1");${arm}}}catch(e){};` : "");
-      setSource({ uri: CONFIG.apiBase + path });
+      setSource({ uri: CONFIG.apiBase + path, headers: langHeaders() });
     });
     return () => shell.attachLoader(null);
   }, []);
@@ -1090,7 +1102,7 @@ export function WebLayer() {
           /* 🆕 D-1354 — `LoopzGate/2`: «هذا الغلافُ يملك شاشةَ اسم المستخدم» — حارسُ الويب (`proxy.ts`) لا يحوّل إلى
              `/welcome` عضواً قائماً بلا اسم مستخدم إلّا لمن يقولها؛ غلافٌ أقدمُ كان سيرفع الترحيبَ بخطواته الخمس */
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION} LoopzGate/2`}
-          injectedJavaScriptBeforeContentLoaded={coldArm + CAPABILITIES}
+          injectedJavaScriptBeforeContentLoaded={langSeed(currentLocale()) + coldArm + CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
           injectedJavaScript={CAPABILITIES_LATE}
           onMessage={onMessage}

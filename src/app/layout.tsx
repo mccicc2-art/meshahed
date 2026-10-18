@@ -18,7 +18,7 @@ import { SessionBridge } from "@/components/SessionBridge";
 import { NativeLibraryGate } from "@/components/NativeLibraryGate";
 import { getT } from "@/lib/locale";
 import { OLD_ENGINE_CSS, OLD_ENGINE_SCRIPT, OldEngineNotice } from "@/components/OldEngineNotice";
-import { getDict, isRtl } from "@/core/i18n";
+import { getDict, isRtl, LOCALE_COOKIE } from "@/core/i18n";
 import { themeById, themeCss } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/core/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
@@ -151,6 +151,8 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      /* 🆕 D-1462 — «اختارها المستخدمُ» أم «خمّنها الخادمُ من لغة الجهاز»: الغلافُ لا يقلب لغتَه إلّا للأولى (`SessionBridge`) */
+      data-lang-chosen={cookieStore.has(LOCALE_COOKIE) ? "1" : "0"}
       dir={isRtl(locale) ? "rtl" : "ltr"}
       className="h-full antialiased"
       data-fs-ui={fsUi}
