@@ -2154,6 +2154,8 @@ export async function toggleMovieWatched(input: {
       { user_id: user.id, movie_tmdb_id: input.movieTmdbId, runtime: input.runtime },
       { onConflict: "user_id,movie_tmdb_id" },
     );
+    await ensureMovieInLibrary(supabase, user.id, input.movieTmdbId);
+    revalidatePath("/library");
   } else {
     await supabase
       .from("watched_movies")
@@ -2163,6 +2165,48 @@ export async function toggleMovieWatched(input: {
   revalidatePath("/");
   revalidatePath("/stats");
   revalidatePath(`/movie/${input.movieTmdbId}`);
+}
+
+/**
+ * 🆕 **D-1468 — الفيلمُ المشاهَدُ يدخل المكتبة من أيِّ بابٍ عُلِّم** (بلاغُ أحمد ١٩ أكتوبر: ملفُّ عمر يعرض ٤ أفلام
+ * وعنده ١٩ مشاهَداً). زرُّ الويب كان يتابع ثمّ يختم بنفسه (`TitleActions`)، **وأزرارُ التطبيق تنادي `track/movie`
+ * وحدَه** — والملفُّ الشخصيّ والمكتبةُ يعدّان صفوفَ `follows`. فصار الحارسُ هنا في الخادم لا في كلِّ زرّ.
+ *  - **`ignoreDuplicates`**: فيلمٌ في المكتبة أصلاً لا يُمسّ — لا اسمُه ولا «أوقفته» ولا تاريخُ إضافته.
+ *  - الاسمُ والملصقُ من المستدعي إن حملهما، وإلا من TMDB بمهلة ثانيتين ونصف؛ وغيابُهما لا يمنع الصفّ.
+ *  - ⚖️ إلغاءُ المشاهدة لا يُخرج الفيلمَ من المكتبة (كما في الويب: «لم أشاهده» حالةٌ في المكتبة لا خروجٌ منها).
+ */
+async function ensureMovieInLibrary(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  userId: string,
+  tmdbId: number,
+  meta?: { title: string; posterPath: string | null },
+) {
+  try {
+    const { data: have } = await supabase
+      .from("follows")
+      .select("tmdb_id")
+      .match({ user_id: userId, tmdb_id: tmdbId, media_type: "movie" })
+      .maybeSingle();
+    if (have) return;
+    const m = await Promise.race([
+      getMovie(tmdbId).catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+    ]);
+    const genres = m ? (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n)) : null;
+    await supabase.from("follows").upsert(
+      {
+        user_id: userId,
+        tmdb_id: tmdbId,
+        media_type: "movie",
+        title: (meta?.title || m?.title || "").slice(0, 300),
+        poster_path: meta?.posterPath ?? safeImagePath(m?.poster_path ?? null),
+        ...(genres && genres.length ? { genres } : {}),
+      },
+      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
+    );
+  } catch {
+    /* المشاهدةُ محفوظة؛ المكتبةُ تُكمَّل بزرّ الإضافة إن فشلت هنا */
+  }
 }
 
 // ================= تخزين إحصاءات المسلسلات =================
@@ -2383,6 +2427,11 @@ async function watchedFromRating(
           { user_id: userId, movie_tmdb_id: input.tmdbId, runtime },
           { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true },
         );
+      /* 🆕 D-1468 — والفيلمُ المشاهَدُ في المكتبة: الملفُّ الشخصيّ يعدّ صفوفَ `follows` لا `watched_movies` */
+      await ensureMovieInLibrary(supabase, userId, input.tmdbId, {
+        title: input.title,
+        posterPath: input.posterPath,
+      });
       revalidatePath("/stats");
       revalidatePath("/library");
       return;
