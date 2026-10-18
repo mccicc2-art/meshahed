@@ -1166,7 +1166,9 @@ export function WebLayer() {
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */
           onError={() => { setFailed(true); setReady(true); session.abandon(); if (visibleRef.current) opening.ready(); }}
           /* ولا تُحسب أخطاءُ HTTP انقطاعاً: صفحةُ 404 من موقعنا صفحتُنا. */
-          onRenderProcessGone={() => { setReady(false); session.ready(false); ref.current?.reload(); }}
+          /* 🆕 D-1465 — يُسجَّل حين يقتل أندرويد عمليّةَ الصفحة (ذاكرة) قبل إعادة تحميلها: «تحدّثت الصفحةُ فجأة» تُقرأ من العلامة */
+          onRenderProcessGone={(e) => { mark("web.gone", 0, { crashed: e.nativeEvent?.didCrash ? 1 : 0 }); setReady(false); session.ready(false); ref.current?.reload(); }}
+          onContentProcessDidTerminate={() => { mark("web.gone", 0, { ios: 1 }); ref.current?.reload(); }}
           /* السحبُ للتحديث: غلافٌ بلا تحديثٍ يُجبر على قتل التطبيق لإعادة الفتح.
              ⚠️ **و`overScrollMode="never"` رُفعت من هنا**: المكتبةُ تلفّ العرضَ
              بـ`SwipeRefreshLayout` وتفرض `always` معه — **وخاصّيّتان تتنازعان

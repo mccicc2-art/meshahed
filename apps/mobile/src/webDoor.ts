@@ -67,12 +67,22 @@ export const webLayer = {
   sync(s: State) {
     const st = rootStack(s);
     const top = topOf(s);
+    const was = webLayer.covering();
     topKey = top?.key ?? null;
     if (door && st && !st.routes.some((r) => r.key === door?.anchor)) {
       door = null;
       emit();
+      return;
     }
+    /* D-1465 — تبدّلُ الغطاء بتبدّل أعلى المكدّس (شاشةٌ دُفعت فوق المرساة أو نُزعت) يُبلَّغ لمن يسمعه */
+    if (webLayer.covering() !== was) emit();
   },
+  /**
+   * 🆕 D-1465 — **الطبقةُ تغطّي شاشةً أصليّةً الآن** (بابٌ مفتوحٌ وأعلى المكدّس مرساتُه). تسجيلا أندرويد (١٩ أكتوبر): تريلرُ صفّ
+   * «اكتشف» تحت صفحة التريلرات كان «نشطاً» لأنّ شاشتَه لم تفقد التركيز — فاشتغل بصوته وأخذ الصوتَ من الصفحة فوقها فأوقفها
+   * أندرويد، ومشغّلان معاً يضغطان الذاكرة (الأرجحُ سببُ إعادة تحميل الصفحة وسطَ المشاهدة). المشغّلُ الأصليُّ يقرأ هذا ويقف.
+   */
+  covering: (): boolean => !!door && topKey === door.anchor,
   /** البابُ وصلت صفحتُه: يُرسى على الشاشة المعروضة الآن — والطبقةُ تظهر فوقها */
   openDoor(root: ReturnTo, path: string) {
     if (!topKey) return false;
@@ -94,3 +104,4 @@ export const webLayer = {
     return !!door && top.key === door.anchor;
   },
 };
+

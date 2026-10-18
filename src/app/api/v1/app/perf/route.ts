@@ -93,6 +93,8 @@ const NAMES = new Set([
   "web.home",
   /* 🩺 D-1370 (V-D) — طبقةُ الويب أُنشئت و`vd` مشغَّل (`why`: boot · door · login · signout · widget · lost · rescue) */
   "web.mount",
+  /* 🆕 D-1465 — عمليّةُ صفحة الويب قُتلت فأُعيد تحميلُها */
+  "web.gone",
   /* 🩺 D-1346 — شاشةُ الدخول الأصليّة رُفعت (`why`) / أُنزلت (ms مرفوعةً) — تشخيص؛ يُحذف حين يثبت الإصلاح */
   "signin.show",
   "signin.hide",

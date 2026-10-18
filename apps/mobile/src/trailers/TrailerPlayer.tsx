@@ -5,6 +5,7 @@ import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-ifram
 import type { WebViewProps } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
 import { useApp } from "../state";
+import { webLayer } from "../webDoor";
 import { CONFIG } from "../config";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -174,6 +175,10 @@ export function TrailerPlayer({
   const height = Math.round((width * 9) / 16);
 
   const [idx, setIdx] = useState(0);
+  /* 🆕 D-1465 — **طبقةُ ويبٍ فوق الشاشة = البطاقةُ غيرُ نشطة**: يقف ويُحرّر الصوت، ويكمل حين تُكشف الشاشة */
+  /* `webDoor.ts` يبقى بلا React (يقرؤه اختبارُ الويب وبناؤه) — فالاشتراكُ هنا */
+  const covered = React.useSyncExternalStore(webLayer.subscribe, webLayer.covering, webLayer.covering);
+  const live = active && !covered;
   const [playing, setPlaying] = useState(false);
   /** البِكرُ مكتومٌ حتى أوّل `playing` (D-759)، ثمّ الصوتُ هو الافتراض (D-771).
       **وهذه وحدَها تبقى محلّيّةً**: كلُّ إطارٍ جديدٍ بوّابتُه من جديد. */
@@ -275,7 +280,7 @@ export function TrailerPlayer({
      ثوانٍ يُعامل كرفض (`fail`): البديلُ التالي ثمّ البابُ الويبيّ — **فلا دوّارةَ أبديّة**
      (ما رآه أحمد على 1.8.2 حين زال الرفضُ وبقي الصمت). المهلةُ من قيمة المنتظَر
      (D-580): أطولُ من أيِّ إقلاعٍ صادق، أقصرُ من صبر مشاهد. */
-  const stalled = !idle && wantPlay && active && foreground && veiled;
+  const stalled = !idle && wantPlay && live && foreground && veiled;
   const failRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!stalled) return;
@@ -369,7 +374,7 @@ export function TrailerPlayer({
         height={height}
         width={width}
         videoId={key}
-        play={!idle && wantPlay && active && foreground}
+        play={!idle && wantPlay && live && foreground}
         mute={muted || !primed}
         volume={100}
         useLocalHTML
