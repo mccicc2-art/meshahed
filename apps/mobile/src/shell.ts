@@ -76,6 +76,17 @@ export const shell = {
   attachLoader(fn: ((path: string, arm: string) => void) | null) {
     loader = fn;
   },
+  /**
+   * 🆕 D-1463 — **تسخينُ الطبقة قبل الباب** (بلاغُ أحمد ١٨ أكتوبر: «All» في التريلرات ثلاثُ ثوانٍ ثمّ تظهر الصفحةُ فجأة).
+   * بلا WebView قائمةٍ (D-1370) يدفع البابُ الأوّلُ ثمنَ إنشائها كاملاً؛ هنا تُنشأ مخفيّةً على صفحة الباب المرجّح بعد أن تستقرّ
+   * الشاشة، فيصير الباب تنقّلاً في عمليّةٍ دافئة. مرّةً واحدة، ولا شيءَ إن كانت قائمة.
+   */
+  warm(path: string) {
+    if (inject || !loader || !path.startsWith("/")) return;
+    loader(path, "");
+  },
+  /** 🆕 D-1463 — لحظةُ آخر بابٍ وصل: الطبقةُ تنزلق داخلةً لبابٍ جديد، وتظهر بلا انزلاقٍ لرجوعٍ إليها */
+  openedAt: 0,
   /** 🆕 D-1344 — `WebLayer` يسجّل دالّةَ دخوله (`doLogin`) ما دام مركَّباً */
   attachSignIn(fn: Signer | null) {
     signer = fn;
@@ -194,6 +205,7 @@ export const shell = {
           clearTimeout(timer);
           waiter = null;
           shell.onArrive?.();
+          shell.openedAt = Date.now();
           resolve(own && !!returnTo && webLayer.canLayer() && webLayer.openDoor(returnTo, pathnameOf(path)));
         },
       };

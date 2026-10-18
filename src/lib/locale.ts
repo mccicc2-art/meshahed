@@ -22,6 +22,11 @@ import {
 
 export async function getLocale(): Promise<Locale> {
   try {
+    /* 🆕 D-1463 — **لغةُ التطبيق تغلب كوكي الصفحة** في المستند الأوّل لبابٍ من الغلاف (ترويسةٌ يرسلها `WebLayer.langHeaders`):
+       كوكي قديمٌ كان يرسم الصفحةَ بلغةٍ ثمّ يعيدها الغلافُ بلغته (تسجيلُ أحمد: «Trailers for you» بعد «ترايلرات لك»). القيمةُ
+       تُفحص (ar/en) ولا تُكتب في شيء — الكوكي يزرعه الغلافُ قبل سكربتات الصفحة. */
+    const forced = (await headers()).get("x-loopz-locale");
+    if (forced === "ar" || forced === "en") return forced;
     const store = await cookies();
     const saved = store.get(LOCALE_COOKIE)?.value;
     if (saved) return normalizeLocale(saved);

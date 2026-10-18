@@ -122,6 +122,8 @@ export default async function RootLayout({
   // الثيم من كوكي لا من قاعدة البيانات: انتظارُ الجلسة والبروفايل هنا كان
   // يؤخّر أول بايت للصفحة كلها ~نصف ثانية. ThemeCookieSync يهاجر القدامى.
   const cookieStore = await cookies();
+  /* D-1462/D-1463 — اختيارٌ محفوظ، أو لغةُ الغلاف في ترويسته — لا تخمينٌ من لغة الجهاز */
+  const langChosen = cookieStore.has(LOCALE_COOKIE) || /^(ar|en)$/.test((await headers()).get("x-loopz-locale") ?? "");
   const theme = themeById(cookieStore.get("theme")?.value);
   /* 🗑️ **ولونُ التمييز الشخصيُّ سقط** (D-848): **كان كوكيّاً يُقرأ هنا
      ويُركَّب فوق الثيم** — **ولونُ الثيم وحدَه يرسم اليوم.** ⚠️ **وكوكيُّ
@@ -152,7 +154,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       /* 🆕 D-1462 — «اختارها المستخدمُ» أم «خمّنها الخادمُ من لغة الجهاز»: الغلافُ لا يقلب لغتَه إلّا للأولى (`SessionBridge`) */
-      data-lang-chosen={cookieStore.has(LOCALE_COOKIE) ? "1" : "0"}
+      data-lang-chosen={langChosen ? "1" : "0"}
       dir={isRtl(locale) ? "rtl" : "ltr"}
       className="h-full antialiased"
       data-fs-ui={fsUi}

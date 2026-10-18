@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { BackHandler, Linking, Platform, Share, StatusBar, View } from "react-native";
+import { Animated, BackHandler, I18nManager, Linking, Platform, Share, StatusBar, View } from "react-native";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
@@ -115,7 +115,8 @@ const SHARE_BRIDGE =
  * الأصليّة، وكوكي الويب لا يصله ردُّ الـAPI): مستندٌ رُسم قبل الزرع بلغةٍ أخرى يعيد `SessionBridge` تحميلَه مرّةً ولا يبلّغ عنه.
  */
 function langHeaders(): Record<string, string> {
-  return { "Accept-Language": currentLocale() };
+  /* `x-loopz-locale` يغلب كوكي الصفحة في الخادم (`getLocale`): مستندٌ أوّلٌ بكوكي قديمٍ كان يُرسم بلغته ثمّ يُعاد (D-1463) */
+  return { "Accept-Language": currentLocale(), "x-loopz-locale": currentLocale() };
 }
 function langSeed(loc: string): string {
   return `try{if(window===window.top&&(/(?:^|;\\s*)lang=(ar|en)/.exec(document.cookie)||[])[1]!=="${loc}"){document.cookie="lang=${loc}; path=/; max-age=31536000; samesite=lax"}}catch(e){};`;
@@ -1042,12 +1043,25 @@ export function WebLayer() {
   const wasVisible = useRef(visible);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  /* 🆕 D-1463 — **دخولٌ لا ظهورٌ فجأة** («مثل الانتقال في اليوتيوب فيه انميشن خفيف»): الطبقةُ تبهت داخلةً، وتنزلق من جهة
+     البداية التالية (يميناً في LTR، يساراً في RTL) حين يكون ظهورُها بابَاً وصل للتوّ؛ الرجوعُ إليها من شاشةٍ فوقها بهتانٌ وحده.
+     الإخفاءُ فوريٌّ كما كان (الشفافيّةُ هي الإخفاء — `webDoor.ts`). */
+  const enter = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const [slide, setSlide] = useState(0);
   useEffect(() => {
     if (wasVisible.current === visible) return;
     if (!visible) ref.current?.injectJavaScript(`try{document.querySelectorAll("video,audio").forEach(function(m){try{m.pause()}catch(e){}})}catch(e){};true;`);
     ref.current?.injectJavaScript(coverJs(!visible));
     wasVisible.current = visible;
-  }, [visible]);
+    if (!visible) {
+      enter.stopAnimation();
+      enter.setValue(0);
+      return;
+    }
+    setSlide(Date.now() - shell.openedAt < 1500 ? (I18nManager.isRTL ? -28 : 28) : 0);
+    enter.setValue(0);
+    Animated.timing(enter, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+  }, [visible, enter]);
 
   /**
    * 🆕 D-1012 — **الشريطُ السفليُّ أصليٌّ في كلِّ مكان** (طلبُ أحمد بتسجيل: «الدوك في الأسفل
@@ -1087,11 +1101,19 @@ export function WebLayer() {
        ⚠️ الحافّةُ العليا باقية — الشريطُ الأسودُ فوق غلاف الملفّ مؤجَّلٌ بقرار أحمد («لا بس الدكس»). */
     /* 🆕 K3b — الطبقةُ تملأ الشاشةَ فوق المكدّس؛ مخفيّةً شفّافةٌ ولا تُلمس ولا يقرؤها قارئُ الشاشة (انظر `webDoor.ts`:
        لماذا شفّافةٌ لا مطويّة) */
-    <View
+    <Animated.View
       pointerEvents={visible ? "auto" : "none"}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
       accessibilityElementsHidden={!visible}
-      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: visible ? 1 : 0 }}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        opacity: visible ? enter : 0,
+        transform: [{ translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [slide, 0] }) }],
+      }}
     >
     <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: SHELL_BG }}>
       {source ? (
@@ -1102,7 +1124,8 @@ export function WebLayer() {
           /* 🆕 D-1354 — `LoopzGate/2`: «هذا الغلافُ يملك شاشةَ اسم المستخدم» — حارسُ الويب (`proxy.ts`) لا يحوّل إلى
              `/welcome` عضواً قائماً بلا اسم مستخدم إلّا لمن يقولها؛ غلافٌ أقدمُ كان سيرفع الترحيبَ بخطواته الخمس */
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION} LoopzGate/2`}
-          injectedJavaScriptBeforeContentLoaded={langSeed(currentLocale()) + coldArm + CAPABILITIES}
+          /* 🆕 D-1463 — مستندٌ يُحمَّل والطبقةُ مخفيّة (تسخينٌ · بابٌ قبل وصوله) يعرف أنّه مغطّى من أوّل سطر: لا تريلرَ يبدأ خلف الشاشات */
+          injectedJavaScriptBeforeContentLoaded={langSeed(currentLocale()) + (visible ? "" : coverJs(true)) + coldArm + CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
           injectedJavaScript={CAPABILITIES_LATE}
           onMessage={onMessage}
@@ -1216,6 +1239,6 @@ export function WebLayer() {
         </View>
       ) : null}
     </SafeAreaView>
-    </View>
+    </Animated.View>
   );
 }

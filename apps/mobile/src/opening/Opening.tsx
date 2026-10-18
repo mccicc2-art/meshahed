@@ -58,7 +58,10 @@ type Phase = "lead" | "draw" | "still" | "gone";
 
 export function Opening({ start }: { start: boolean }) {
   const { width, height } = useWindowDimensions();
-  const [phase, setPhase] = useState<Phase>(() => (opening.skipped() ? "gone" : "lead"));
+  /* 🆕 D-1463 — إعادةُ تحميلٍ طلبها التطبيقُ (قلبُ اللغة) كانت بلا ستار: سوادٌ ودوّارٌ ووميضٌ حتى تُرسم الرئيسيّة. الآن الشعارُ
+     الثابتُ من أوّل إطار («هادئ»: بلا رسمٍ ولا تكبير)، ويبهت حين تجهز الشاشةُ تحته */
+  const [phase, setPhase] = useState<Phase>(() => (opening.skipped() ? "still" : "lead"));
+  const quiet = useRef(opening.skipped());
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const [reduced, setReduced] = useState(false);
@@ -68,7 +71,7 @@ export function Opening({ start }: { start: boolean }) {
   const leaving = useRef(false);
   const drawing = useRef(false);
   /* المتحرّكةُ تبقى لحظةً تحت الثابتة ثمّ تُنزع: بقاؤها حتى التكبير يترك شعاراً صغيراً ثابتاً تحت الذي يكبر */
-  const [drawUp, setDrawUp] = useState(true);
+  const [drawUp, setDrawUp] = useState(() => !opening.skipped());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
@@ -94,7 +97,7 @@ export function Opening({ start }: { start: boolean }) {
     (why: string) => {
       if (leaving.current || phaseRef.current === "gone") return;
       leaving.current = true;
-      if (reducedRef.current) {
+      if (reducedRef.current || quiet.current) {
         fade.value = withTiming(0, { duration: 200 }, (done) => {
           if (done) runOnJS(gone)(why);
         });
@@ -133,6 +136,30 @@ export function Opening({ start }: { start: boolean }) {
       }, Math.max(0, left));
     }, reducedRef.current ? 400 : HOLD_MS);
   }, [later, leave]);
+
+  /* 🆕 D-1463 — الستارُ الهادئ: من أوّل إطارٍ حتى تجهز الشاشة (أو السقف)، ثمّ يبهت */
+  useEffect(() => {
+    if (!quiet.current) return;
+    t0.current = Date.now();
+    const off = opening.onReady(() => leave("ready"));
+    const cap = setTimeout(() => leave("cap"), CAP_MS);
+    return () => {
+      off();
+      clearTimeout(cap);
+    };
+  }, [leave]);
+  /* 🆕 D-1463 — طلبُ الستار قبل إعادة التحميل: يعود الشعارُ الثابتُ فوق كلِّ شيء ولا يُغادر (التطبيقُ يُهدم تحته) */
+  useEffect(
+    () =>
+      opening.onCover(() => {
+        leaving.current = true;
+        quiet.current = true;
+        fade.value = 1;
+        setDrawUp(false);
+        setPhase("still");
+      }),
+    [fade],
+  );
 
   /* بدءُ العرض: بعد أن تزول صورةُ النظام */
   useEffect(() => {

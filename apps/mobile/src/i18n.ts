@@ -62,9 +62,13 @@ export const webLocale = {
            اللغة أصلاً — فإعادةٌ واحدةٌ أهونُ من شاشاتٍ أصليّةٍ مقلوبةٍ حتى يُغلق التطبيق. الفشلُ صمت (بيئةُ التطوير) */
         if (I18nManager.isRTL === isRtl(v)) return;
         applyDirection(v);
-        /* D-1350 — إعادةُ تحميلٍ نطلبها نحن ليست فتحةً جديدة: الإقلاعُ التالي بلا أنميشن الفتح */
+        /* D-1350 — إعادةُ تحميلٍ نطلبها نحن ليست فتحةً جديدة: الإقلاعُ التالي بلا أنميشن الفتح
+           🆕 D-1463 — **وستارُ لوبز قبلها وبعدها**: يُرسم الشعارُ أوّلاً (إطاران) ثمّ تُهدم الشاشة، والإقلاعُ التالي يبدأ بالشعار نفسِه */
         opening.skipNext();
-        return Updates.reloadAsync().catch(() => {});
+        opening.cover();
+        return new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+          .then(() => Updates.reloadAsync())
+          .catch(() => {});
       })
       .catch(() => {});
   },

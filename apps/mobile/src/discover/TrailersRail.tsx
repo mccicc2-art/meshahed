@@ -11,6 +11,7 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import type { CuratedTab, FollowBody, TrackResult, TrailerCard, TrailersRailPayload } from "../contracts";
 import { scrollJank } from "../scrollJank";
+import { shell } from "../shell";
 
 /* 🆕 D-1334 — صفُّ التريلرات يُعدّ مع الصفوف الأفقيّة في «اكتشف» (`scroll.jank`) */
 const jank = scrollJank("discover", "h");
@@ -71,6 +72,20 @@ export function TrailersRail({
   /* عرضُ الويب `min(92vw, calc(45dvh·16/9), 760px)` — على الهاتف يحسمها `92vw`؛ هنا الهوامشُ الثابتة */
   const cardW = Math.min(screenW - PAGE_PAD * 2, 760);
   const q = useQuery(trailersQuery(tab));
+  /* 🆕 D-1463 — **«All» تُسخَّن قبل أن تُضغط**: بعد أن يستقرّ اللوحُ النشط (ثانيتان ونصف وتفرغ الحركة) تُنشأ طبقةُ الويب مخفيّةً
+     على صفحة التريلرات، فيصير البابُ تنقّلاً دافئاً لا إنشاءً من الصفر (~٣ث في تسجيل أحمد). `shell.warm` لا يفعل شيئاً إن كانت قائمة */
+  const seeAll = q.data?.see_all ?? null;
+  useEffect(() => {
+    if (!active || !seeAll) return;
+    let task: { cancel: () => void } | null = null;
+    const timer = setTimeout(() => {
+      task = InteractionManager.runAfterInteractions(() => shell.warm(seeAll));
+    }, 2500);
+    return () => {
+      clearTimeout(timer);
+      task?.cancel();
+    };
+  }, [active, seeAll]);
   /* «مكتبتي» متفائلٌ ويتراجع عند الفشل — نسخةُ `useTrailerFollow` (الويب) */
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
   const follow = useMutation({

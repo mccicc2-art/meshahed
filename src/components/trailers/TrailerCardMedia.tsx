@@ -47,7 +47,6 @@ export function TrailerCardMedia({
   title,
   eager = false,
   playLabel,
-  pauseLabel,
   muteLabel,
   unmuteLabel,
   withControls = false,
@@ -131,7 +130,9 @@ export function TrailerCardMedia({
      الرسميّ لتصفير حالةٍ تتبع قيمةً خارجيّة — **و`useEffect` هنا كان
      يرسم مرّتين ويخالف قاعدةَ الخطّافات.** */
   if (!controls && poked) setPoked(false);
-  const chrome = withControls ? controls : controls && poked;
+  /* 🆕 D-1463 (حكمُ أحمد ١٨ أكتوبر: «ابغا المقطع يشتغل و مافيه شي ظاهر… اللمس يظهر الشريط و التكبير») — **العلفُ كالرايل:
+     لا شيءَ ظاهرٌ حتى تُلمس**، فسقط استثناءُ `withControls` الذي كان يُظهر الأدواتَ مع إقلاع المتحكّم */
+  const chrome = controls && poked;
   const fade = `transition-opacity duration-300 ${chrome ? "opacity-100" : "pointer-events-none opacity-0"}`;
   const showsPlayButton =
     (isActive && (snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled")) ||
@@ -164,14 +165,8 @@ export function TrailerCardMedia({
      بتخمين سببٍ بل بنزع الاعتماد**: **لـ⏸ مؤقّتُها المحلّيُّ (١٫٥ ثانية)
      يبدأ بكلِّ لمسةٍ وينتهي وحدَه** — **ومهما فعل مؤقّتُ المتحكّم تغيب.**
      **واللمسةُ توقف حين ترى ⏸ فقط** — **ما تراه هو ما تفعله اللمسة** (D-217). */
-  const [pauseHint, setPauseHint] = useState(false);
-  const [pokeSeq, setPokeSeq] = useState(0);
-  useEffect(() => {
-    if (pokeSeq === 0) return;
-    const t = window.setTimeout(() => setPauseHint(false), 1500);
-    return () => window.clearTimeout(t);
-  }, [pokeSeq]);
-  const showPause = playing && chrome && !hold && pauseHint;
+  /* 🗑️ D-1463 — **سقطت ⏸ الوسط ومعها الإيقافُ باللمس** (نقضُ D-878/D-882 بيد صاحبه): علقت ثانيةً على iPhone رغم مؤقّتها
+     المحلّيّ. اللمسةُ تكشف الأدوات وحدَها؛ المقطعُ لا يقف، والضغطةُ المطوّلةُ والضغطتان باقيتان (إيماءاتٌ بلا علامة). */
   /* **الزمنُ للترجيع يُقرأ من المتحكّم لا من مرجعٍ يُكتب أثناء الرسم**
      (قاعدةُ React: لا مرجعَ يُمسّ في الرسم) — `getSnapshot` هي المصدرُ نفسُه */
   const readNow = () => api.getSnapshot().time;
@@ -269,18 +264,13 @@ export function TrailerCardMedia({
             if (playing) {
               /* D-934: **الثانيةُ خلال ثلث ثانيةٍ قفزةٌ لا إيقاف** */
               if (dbl.tap(e)) return;
-              /* D-878/D-882: **لمسةٌ ترى ⏸ توقف، وما سواها تكشف وتُظهر ⏸ لمدّتها** */
-              if (showPause) api.togglePlay();
-              else {
-                /* 🆕 D-888 (حكمُ أحمد): **اللمسةُ نفسُها إيماءةٌ تكفي WebKit** —
-                   إن كانت النيّةُ صوتاً والمشغّلُ صامتاً بقرار المتصفّح فُكّ هنا،
-                   قبل إظهار الأزرار. لا شيءَ يحدث لمن كتم بيده. */
-                api.unlockSound();
-                api.pokeControls();
-                setPoked(true);
-                setPauseHint(true);
-                setPokeSeq((n) => n + 1);
-              }
+              /* 🆕 D-888 (حكمُ أحمد): **اللمسةُ نفسُها إيماءةٌ تكفي WebKit** —
+                 إن كانت النيّةُ صوتاً والمشغّلُ صامتاً بقرار المتصفّح فُكّ هنا،
+                 قبل إظهار الأزرار. لا شيءَ يحدث لمن كتم بيده.
+                 D-1463: **وتكشف فقط** — لا إيقاف */
+              api.unlockSound();
+              api.pokeControls();
+              setPoked(true);
             } else api.tapPlay(id);
           }}
           onPointerDown={(e) => {
@@ -309,7 +299,7 @@ export function TrailerCardMedia({
              **صار هو بابَ كشفِ الأدوات** — **وإخفاؤه كما كان يترك
              مستعملَ لوحةِ المفاتيح بلا وصولٍ إلى الصوت والتقديم.**
              واسمُه اسمُ العمل حينئذٍ لا كلمة «تشغيل» التي تكذب. */
-          aria-label={showsPlayButton ? playLabel : showPause ? (pauseLabel ?? title) : title}
+          aria-label={showsPlayButton ? playLabel : title}
           aria-hidden={!showsPlayButton && !playing}
           tabIndex={showsPlayButton || playing ? 0 : -1}
           className="absolute inset-0 z-50 grid select-none place-items-center"
@@ -318,11 +308,6 @@ export function TrailerCardMedia({
           {showsPlayButton ? (
             <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
               <Icon name="play" size={26} />
-            </span>
-          ) : showPause ? (
-            /* D-878/D-882: **⏸ في الوسط لمدّة مؤقّتها المحلّيّ** — ولا يُعلَّق على تلاشي CSS */
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
-              <Icon name="pause" size={26} />
             </span>
           ) : null}
           {hold ? (
@@ -359,13 +344,14 @@ export function TrailerCardMedia({
           يظهر أثناء الحظر فصار هو زرَّ التشغيل الفعليّ. الأيقونةُ من
           الحالة المُتحقَّقة، والتشغيلُ لزرِّ التشغيل وحدَه. */}
       {playing ? (
-        <div className="absolute end-2.5 top-2.5 z-50 flex items-center gap-2">
+        /* 🆕 D-1463 — **والصوتُ يتوارى مع البقيّة** (نقضُ D-861 «كل شي ماعدا الصوت»): يظهر باللمسة ويغيب مع الأدوات */
+        <div className={`absolute end-2.5 top-2.5 z-50 flex items-center gap-2 ${fade}`}>
           {/* 🆕 D-933: **المستوى يتوارى مع الأدوات، والزرُّ لا** — الزرُّ هو
               الفعلُ الذي يُطلب بلا مقدّمة (D-861)، والشريطُ ضبطٌ دقيقٌ يُطلب
               بعد أن يُرى. **والصفرُ هو الكتم** فالشريطُ يُعرض على الصفر حين
               الصوتُ مكتوم. */}
           {volumeLabel ? (
-            <div className={fade}>
+            <div>
               <TrailerVolume
                 level={snap.soundOn ? snap.volume : 0}
                 onChange={api.setVolume}

@@ -13,6 +13,7 @@ const SKIP_KEY = "loopz.open.skip";
 
 let ready = false;
 const listeners = new Set<() => void>();
+const coverListeners = new Set<() => void>();
 
 /* يُقرأ مرّةً عند تحميل الوحدة ويُمحى: إعادةُ تحميلٍ طلبها التطبيقُ نفسُه (قلبُ اللغة) ليست «فتحةً جديدة» */
 const skipped = (() => {
@@ -48,7 +49,18 @@ export const opening = {
   skipped(): boolean {
     return skipped;
   },
-  /** قبل `Updates.reloadAsync()` التي يطلبها التطبيق: الإقلاعُ التالي لا يعرض الأنميشن */
+  /**
+   * 🆕 D-1463 — **ستارُ لوبز فوراً** (طلبُ أحمد ١٨ أكتوبر: «وقت تغيير اللغة… ترمش و شاشة بيضاء، الأفضل شاشة انتظار فيها علامة
+   * لوبز»): يُنادى قبل إعادة التحميل التي يطلبها التطبيق، فيغطّي `Opening` الشاشةَ بالشعار الثابت قبل أن تُهدم.
+   */
+  cover() {
+    for (const l of coverListeners) l();
+  },
+  onCover(l: () => void): () => void {
+    coverListeners.add(l);
+    return () => coverListeners.delete(l);
+  },
+  /** قبل `Updates.reloadAsync()` التي يطلبها التطبيق: الإقلاعُ التالي لا يعرض الأنميشن — بل الستارَ الهادئ (D-1463) */
   skipNext() {
     try {
       SecureStore.setItem(SKIP_KEY, "1");
