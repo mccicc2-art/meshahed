@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
+import { BackHandler, I18nManager, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
@@ -647,7 +647,9 @@ const VEIL = require("../../assets/poster-veil.png");
 function Chevron({ color }: { color: string }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+      {/* 🆕 D-1458 — الحدّان منطقيّان (بدايةٌ + أعلى) فيُقلبان مع اللغة، والدورانُ لا: ‎-45° تُخرج «<» في LTR و«^» في
+          RTL (حدُّ البداية يصير الأيمن). الدورانُ يتبع الاتّجاه ⇒ «>» بالعربيّة، والسهمُ يشير إلى حيث يعود الرجوع. */}
+      <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: I18nManager.isRTL ? "45deg" : "-45deg" }], marginStart: 4 }} />
     </View>
   );
 }

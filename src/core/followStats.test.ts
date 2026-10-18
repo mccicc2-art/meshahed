@@ -21,6 +21,16 @@ test("قُرئ في يوم العرض نفسِه ⇒ لا يُعاد في كلِ
   assert.deepEqual(airedSinceStored(rows, TODAY), []);
 });
 
+test("D-1458 — قُرئ يوم العرض ثمّ مضى ذلك اليوم ⇒ يُقرأ (كان يعلق للأبد)", () => {
+  const rows = [row({ tmdb_id: 1, next_air_date: "2026-10-01", stats_updated_at: "2026-10-01T09:31:00Z" })];
+  assert.deepEqual(airedSinceStored(rows, TODAY), [1]);
+});
+
+test("D-1458 — قُرئ بعد يوم العرض ⇒ لا يُعاد", () => {
+  const rows = [row({ tmdb_id: 1, next_air_date: "2026-10-01", stats_updated_at: "2026-10-02T00:10:00Z" })];
+  assert.deepEqual(airedSinceStored(rows, TODAY), []);
+});
+
 test("موعدٌ قادم، وفيلم، وموقوف ⇒ لا شيء", () => {
   const rows = [
     row({ tmdb_id: 1, next_air_date: "2026-10-09", stats_updated_at: "2026-09-01T00:00:00Z" }),

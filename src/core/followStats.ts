@@ -42,7 +42,11 @@ export function airedSinceStored(rows: readonly FollowStatsRow[], today: string,
     .filter((r) => {
       if (!live(r) || !r.next_air_date || r.next_air_date > today) return false;
       const read = r.stats_updated_at ? r.stats_updated_at.slice(0, 10) : "";
-      return read < r.next_air_date;
+      /* 🆕 D-1458 — **يومُ العرض انقضى ⇒ قراءةُ يومِه لا تكفي**: قراءةٌ يومَ العرض كتبت «القادمة = اليوم» (TMDB يُبقيها
+         طوال يومها)، فلمّا مضى اليوم بقي الشرطُ `read < next` كاذباً للأبد وعلق الصفُّ على ذلك الموعد — لا حلقةٌ
+         جديدةٌ تُعدّ ولا موعدٌ قادمٌ يظهر في التقويم (Black Clover، ١٠ أكتوبر: ١٦ صفّاً عالقاً عند ١٨ أكتوبر). يومَ
+         العرض نفسَه يبقى الشرطُ القديم، فلا تتكرّر القراءةُ في كلِّ فتحةٍ ذلك اليوم. */
+      return r.next_air_date < today ? read <= r.next_air_date : read < r.next_air_date;
     })
     .sort((a, b) => (b.next_air_date ?? "").localeCompare(a.next_air_date ?? ""))
     .slice(0, cap)
