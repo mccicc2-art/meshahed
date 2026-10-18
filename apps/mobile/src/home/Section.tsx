@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import React, { useCallback, useRef } from "react";
+import { I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -65,8 +65,23 @@ export function SectionHeader({
 
 /** الصفُّ الأفقيّ — حشوةُ الصفحة في الطرفين، والفجوةُ ١٢ كالويب (`gap-3`) */
 export function Rail({ children }: { children: React.ReactNode }) {
+  /* 🆕 D-1459 — **في الآيفون بالعربيّ يبدأ الصفُّ من أوّل بطاقةٍ في كلِّ تركيب** (تسجيلُ أحمد ١٨ أكتوبر): تبديلُ
+     «مختلط ⇄ بصريّ» يشيل الصفَّ ويركّبه من جديد، فيفتح «أكمل المشاهدة» من آخره (Detective Conan) ويضطرّ المستخدمُ
+     يسحب إلى Fargo. الفتحةُ الأولى سليمة، فالعطلُ في التركيب الثاني لا في الترتيب.
+     ⚠️ **لماذا `scrollToEnd` لا `scrollTo({ x: 0 })`**: Fabric في iOS يقلب الصفَّ بالعربيّ (scaleX ‎-1) ويحوّل الإزاحة:
+     JS ‏x = عرضُ المحتوى − عرضُ الإطار − الإزاحةُ الأصليّة. فبدايةُ الصفِّ المرئيّة (يمين) هي «النهاية» في إحداثيّات
+     JS، و`x: 0` هو الطرفُ الأيسر — أي العطلُ نفسُه. في الصفِّ السليم الأمرُ لا يحرّك شيئاً.
+     مرّةً واحدةً لكلِّ تركيب: تحديثُ البيانات بعدها لا يسحب صفّاً حرّكه المستخدم. الأندرويد والإنجليزيّ كما هما. */
+  const ref = useRef<ScrollView>(null);
+  const pinned = useRef(false);
+  const pinStart = useCallback((w: number) => {
+    if (pinned.current || w <= 0) return;
+    pinned.current = true;
+    ref.current?.scrollToEnd({ animated: false });
+  }, []);
+  const rtlIos = Platform.OS === "ios" && I18nManager.isRTL;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }} decelerationRate="fast">
+    <ScrollView ref={ref} onContentSizeChange={rtlIos ? pinStart : undefined} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }} decelerationRate="fast">
       {children}
     </ScrollView>
   );
