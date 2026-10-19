@@ -1,4 +1,4 @@
-import { AppState } from "react-native";
+import { AppState, I18nManager } from "react-native";
 import { launchT0 } from "./perf";
 import { api, queryClient } from "./api";
 import { session } from "./session";
@@ -118,7 +118,11 @@ function flush() {
      ٤٠ علامةً يُرمى أقدمُها — فجهازُ خالد لم يرسل شيئاً ١٣ ساعةً وهو يستخدم التطبيق، و«٧ سحبات» كانت ما نجا
      لا ما حدث. **والقياسُ المفقودُ منحاز**: ينجو ما وقع والرمزُ حاضر، وتلك أسرعُ اللحظات. العلاماتُ بلا هويّة
      أصلاً (D-881)، والخادمُ يحدّ الزائرَ بعنوانه. ولا يطلب رمزاً لأجل قياس (`auth` = ما في الذاكرة الآن). */
-  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: BUILD_TAG, model: MODEL }, auth: session.has() }).catch(() => {});
+  /* 🆕 D-1481 — **لغةُ الواجهة المرسومة** (`ar`/`en`): أعطالُ الآيفون بالعربيّ (D-1471…D-1478) كانت في الاتّجاه وحده،
+     والصفُّ بلا لغةٍ لا يفرّق جهازَ مشعل بالعربيّ عنه بالإنجليزيّ. تُؤخذ من `I18nManager.isRTL` لا من اللغة المختارة: هذا
+     ما رُسم فعلاً، وتبديلُ اللغة يعيد تحميلَ التطبيق فيتطابقان. كلمةٌ من اثنتين — لا هويّةَ فيها (D-881) */
+  const lang = I18nManager.isRTL ? "ar" : "en";
+  void api("/api/v1/app/perf", { method: "POST", body: { marks, version: BUILD_TAG, model: MODEL, lang }, auth: session.has() }).catch(() => {});
 }
 
 export function mark(name: PerfName, ms: number, extra?: Extra) {

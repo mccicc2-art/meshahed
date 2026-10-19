@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
     const lim = limited(`v1:app:perf:${uid ?? ip}`, 6, 60_000);
     if (lim) return lim;
-    let body: { marks?: unknown; version?: unknown; model?: unknown };
+    let body: { marks?: unknown; version?: unknown; model?: unknown; lang?: unknown };
     try {
       body = (await req.json()) as typeof body;
     } catch {
@@ -137,6 +137,9 @@ export async function POST(req: NextRequest) {
     const version = typeof body.version === "string" ? (/^[\w.]{1,16}$/.exec(body.version)?.[0] ?? "?") : "?";
     /* طرازُ الجهاز يحمل مسافاتٍ («SM-S918B» · «Pixel 7») — تُطوى ولا يُقبل غيرُ الحروف والأرقام */
     const model = typeof body.model === "string" ? body.model.replace(/[^\w-]+/g, "_").slice(0, 24) || "?" : "?";
+    /* 🆕 D-1481 — لغةُ الواجهة المرسومة بعد الطراز (`… iPhone15_2 ar |`): كلمةٌ من اثنتين لا غير. نسخةٌ أقدمُ لا ترسلها
+       فيبقى صفُّها كما كان (بلا خانةٍ ثالثة) — فالإصدارُ في أوّل الصفّ وحدَه ما يُفرَز به، واستعلاما القراءة أعلاه كما هما */
+    const lang = body.lang === "ar" || body.lang === "en" ? ` ${body.lang}` : "";
 
     const parts: string[] = [];
     for (const raw of body.marks.slice(0, MAX_MARKS)) {
@@ -156,7 +159,7 @@ export async function POST(req: NextRequest) {
     if (parts.length === 0) return ok({ done: true }, []);
 
     /* القاعدةُ تقصّ النصَّ عند ٤٠٠ — فالدفعةُ تُقسَّم صفوفاً لا تُقصّ علامةٌ من وسطها */
-    const head = `${APP_UA_TAG}${version} ${model} |`;
+    const head = `${APP_UA_TAG}${version} ${model}${lang} |`;
     const rows: string[] = [];
     let cur = head;
     for (const p of parts) {
