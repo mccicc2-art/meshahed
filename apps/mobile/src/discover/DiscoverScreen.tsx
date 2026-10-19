@@ -805,12 +805,21 @@ const DiscoverPane = memo(function DiscoverPane({
   /* D-1028 (F4) — كائنٌ محفوظ: كان جديداً في كلِّ رسمة فيكسر `memo` كلِّ صفّ */
   const railProps = useMemo(() => ({ hidden, onHold, onOpen }), [hidden, onHold, onOpen]);
   /* 🆕 D-1471 — اللوحُ صار نشطاً: صفوفُه غيرُ الملموسة تُثبَّت على أوّل بطاقة (الآيفون بالعربيّ وحدَه — انظر `pinDiscoverRails`).
-     بعد إطارٍ واحد كي يكون اللوحُ قد استقرّ في مكانه */
+     🆕 D-1475 — **صفوفُ هذا اللوح وحدَه، وبعد أن تهدأ الحركة** (أحمد ١٩ أكتوبر على آيفون أحمد: «الصور سارت تظهر لكن فيه تهنيق
+     وبطء إذا غيرت بسرعة» — `gesture.jank` حتى ١٨ إطاراً). كان كلُّ لوحٍ ينشط يحرّك صفوفَ الألواح كلِّها في إطار نهاية السحبة نفسِه،
+     فتتراكم الأعمالُ فوق الحركة مع كلِّ سحبةٍ سريعة. الآن: ما بعد التفاعلات (`runAfterInteractions`) ومهلةٌ قصيرة، والسحبةُ التالية
+     تُلغي ما لم يقع — فيقع مرّةً على التبويب الذي وقف عنده الإصبع. */
   useEffect(() => {
     if (!active || !IOS_RTL) return;
-    const f = requestAnimationFrame(pinDiscoverRails);
-    return () => cancelAnimationFrame(f);
-  }, [active]);
+    let job: { cancel: () => void } | null = null;
+    const timer = setTimeout(() => {
+      job = InteractionManager.runAfterInteractions(() => pinDiscoverRails(tab));
+    }, PIN_SETTLE_MS);
+    return () => {
+      clearTimeout(timer);
+      job?.cancel();
+    };
+  }, [active, tab]);
   /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
   /* 🆕 D-1219 — ثابتةُ المرجع: كانت دالّةً جديدةً في كلِّ رسمةٍ فتكسر `memo` كلِّ `Rail` و`CardsRail` يحملها */
   const seeAll = useCallback((path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path)), [onSeeAll, onLeave]);
@@ -821,6 +830,7 @@ const DiscoverPane = memo(function DiscoverPane({
     topPad,
   );
   return (
+    <RailPane.Provider value={tab}>
     <ScrollView
       refreshControl={refreshControl}
       /* 🆕 D-1236 — **الصفوفُ التي تحت الشاشة تُفصل عن أندرويد وهي لا تُرى**. مسبارُ D-1235 (٣ أكتوبر، SM-S928B): كلُّ
@@ -920,6 +930,7 @@ const DiscoverPane = memo(function DiscoverPane({
         <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
       )) : null}
     </ScrollView>
+    </RailPane.Provider>
   );
 });
 
@@ -1038,9 +1049,13 @@ const RAIL_JANK = scrollJank("discover", "h");
  *  - الأندرويد والآيفون بالإنجليزيّ لا يمرّون هنا أصلاً.
  */
 const IOS_RTL = Platform.OS === "ios" && I18nManager.isRTL;
-const railPins = new Set<() => void>();
-function pinDiscoverRails(): void {
-  for (const pin of railPins) pin();
+/* D-1475 — دبابيسُ كلِّ لوحٍ على حدة (المفتاحُ تبويبُه من `RailPane`)، ومهلةُ الاستقرار بعد السحب */
+const railPins = new Map<string, Set<() => void>>();
+const RailPane = React.createContext("");
+const PIN_SETTLE_MS = 180;
+function pinDiscoverRails(pane: string): void {
+  const pins = railPins.get(pane);
+  if (pins) for (const pin of pins) pin();
 }
 
 const CardsRail = memo(function CardsRail({
@@ -1086,13 +1101,17 @@ const CardsRail = memo(function CardsRail({
   const pin = useCallback(() => {
     if (!touched.current && sized.current) listRef.current?.scrollToEnd({ animated: false });
   }, []);
+  const pane = React.useContext(RailPane);
   useEffect(() => {
     if (!IOS_RTL) return;
-    railPins.add(pin);
+    let pins = railPins.get(pane);
+    if (!pins) railPins.set(pane, (pins = new Set()));
+    const own = pins;
+    own.add(pin);
     return () => {
-      railPins.delete(pin);
+      own.delete(pin);
     };
-  }, [pin]);
+  }, [pin, pane]);
   const onSized = useCallback(
     (w: number) => {
       if (sized.current || w <= 0) return;
