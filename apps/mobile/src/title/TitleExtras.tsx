@@ -90,7 +90,10 @@ export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | un
     <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 12, marginTop: compact ? 2 : 6 }}>
       {r?.imdb ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-          <Text size={9} weight="800" color="#F5C518">IMDb</Text>
+          {/* 🆕 D-1479 — شارةُ IMDb الصفراء بخطٍّ أسود كالويب (`RatingMarks`)، لا كلمةٌ صفراء تضيع فوق الصورة (لقطةُ أحمد) */}
+          <View style={{ backgroundColor: "#F5C518", borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
+            <Text size={10} weight="800" color="#000">IMDb</Text>
+          </View>
           <Text size={13} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{r.imdb}</Text>
         </View>
       ) : null}

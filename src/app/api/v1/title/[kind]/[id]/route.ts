@@ -10,6 +10,8 @@ import {
 } from "@/lib/data";
 import { airedPerSeason, airedEpisodeCount, firstEpisodeOf } from "@/core/progress";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
+import { originAdjectives } from "@/core/region";
+import { getLocale } from "@/lib/locale";
 import { ok } from "@/core/contracts/result";
 import type { MovieTitlePayload, TitlePayload, TvTitlePayload } from "@/core/contracts/title";
 
@@ -76,6 +78,8 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
     first_air_date: tv.first_air_date,
     status: tv.status,
     genres: tv.genres,
+    /* D-1479 — النسبةُ كما في صفحة الويب حرفاً (D-562): الدالّةُ نفسُها والسقفُ نفسُه */
+    origins: originAdjectives({ origin: tv.origin_country, production: tv.production_countries }, await getLocale()),
     vote_average: tv.vote_average,
     episode_run_time: tv.episode_run_time?.[0] ?? null,
     next_episode_to_air: tv.next_episode_to_air
@@ -129,6 +133,7 @@ async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTi
     release_date: movie.release_date,
     status: movie.status,
     genres: movie.genres,
+    origins: originAdjectives({ origin: movie.origin_country, production: movie.production_countries }, await getLocale()),
     vote_average: movie.vote_average,
     runtime: movie.runtime,
     trailer_key: trailer && "key" in trailer ? (trailer as { key: string }).key : null,

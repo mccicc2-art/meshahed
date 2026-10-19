@@ -34,6 +34,9 @@ type TitleBase = {
   backdrop_path: string | null;
   status: string;
   genres: { id: number; name: string }[];
+  /** 🆕 D-1479 — نسبةُ العمل بلغة القارئ («مصري»، «كوري») — `originAdjectives` نفسُها في صفحة الويب (D-562).
+   *  اختياريّةٌ: تطبيقٌ أقدم لا يقرؤها، وخادمٌ أقدم لا يرسلها */
+  origins?: string[];
   vote_average: number;
   trailer_key: string | null;
 };

@@ -317,7 +317,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
      ⚖️ **سقفٌ واحد**: على شاشةٍ ضيّقة (٣٦٠dp ⇒ خلفيّةٌ ٢٠٢) كان الملصقُ سيصعد تحت زرّ الرجوع (ينتهي عند ٤٤)؛
      فالرفعُ `min(168, heroH − 52)` — يتطابق الأسفلان على هاتفه (٤١٢dp) وعلى كلِّ شاشةٍ تتّسع، وينزل الملصقُ
      قليلاً عن الحافّة حيث لا تتّسع بدل أن يصطدم بالزرّ. */
-  const POSTER_H = 168;
+  /* 🆕 D-1479 — الملصقُ ١٢٨ عرضاً كالويب (`w-32`، D-501) ⇒ ١٩٢ ارتفاعاً؛ السقفُ نفسُه يحميه من زرّ الرجوع */
+  const POSTER_W = 128;
+  const POSTER_H = 192;
   const lift = Math.min(POSTER_H, heroH - 52);
   /* D-1227 — البطلُ والملصقُ من البذرة حتى يصل العمل، ثمّ منه — العنصران نفسُهما فلا يُعاد تحميلُهما */
   const heroBd = d ? d.backdrop_path : (seed?.backdrop_path ?? null);
@@ -353,17 +355,21 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
            **التبويبات** · المحتوى) لاصق. الترويسةُ خارج `ScrollView` فيلتصق تحتها بلا فجوة — لا `top` يُحسب. */
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false} stickyHeaderIndices={[3]}>
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
-          <View style={{ height: heroH, backgroundColor: tokens.surface2 }}>
+          <View style={{ height: heroH, backgroundColor: heroBd ? tokens.bg : tokens.surface2 }}>
             {/* D-1226 — بلا تلاشٍ إن رسمتها البذرةُ قبلُ: الصورةُ نفسُها حاضرةٌ في الذاكرة، والتلاشي كان يضيف ٢٠٠ms */}
-            {heroBd ? <Image source={{ uri: backdropUrl(heroBd, "w780") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === heroBd ? 0 : 200} /> : null}
+            {/* 🆕 D-1479 — **الغلافُ معتَّمٌ كالويب** (`opacity-45` فوق لون الخلفية — لقطةُ أحمد من نسخة الجوال ١٩ أكتوبر): الاسمُ
+                والتفاصيلُ تُقرأ على أيِّ صورة، والثيمُ الفاتح يعتّم إلى لونه هو */}
+            {heroBd ? <Image source={{ uri: backdropUrl(heroBd, "w780") ?? undefined }} style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === heroBd ? 0 : 200} /> : null}
+            {/* D-1479 — ظلٌّ أعلى الصورة بدل دائرتَي الزرّين (الويب: `from-black/50` في أعلى الترويسة) */}
+            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, top: 0, height: 96, opacity: 0.55, transform: [{ rotate: "180deg" }] }} contentFit="fill" />
             {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
-            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة داخل دائرتين شبه شفّافتين ليُقرآ فوق أيِّ صورة */}
-            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب (طلبُ أحمد): الظلُّ أعلاه يكفيهما */}
+            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
             {d ? (
-              <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>
+              <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
                 <Icon name="dots" size={20} color="#fff" />
               </Pressable>
             ) : null}
@@ -380,8 +386,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               الواحد عقدُ D-1020 ويبقى. **والحجابُ يطول معهما** (٩٦ ⇒ ١٤٤): الاسمُ صار أعلى من الحجاب القديم،
               وبدونه يُقرأ على الصورة العارية فيضيع على خلفيّةٍ فاتحة. */}
           <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
-            <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-              {heroPoster ? <Image source={{ uri: posterUrl(heroPoster, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            {/* D-1479 — ١٢٨ وظلٌّ تحته كالويب (`shadow-[0_18px_44px_rgba(0,0,0,0.55)]`) — الظلُّ على غلافٍ لا يقصّ، والقصُّ داخله */}
+            <View style={{ width: POSTER_W, borderRadius: radius.poster, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 18 }, elevation: 12 }}>
+              <View style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
+                {heroPoster ? <Image source={{ uri: posterUrl(heroPoster, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
+              </View>
             </View>
             {d ? (
             <View style={{ flex: 1, minWidth: 0, gap: 4, paddingTop: 2, alignSelf: "stretch", justifyContent: "space-between" }}>
@@ -392,15 +401,15 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                   <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /></View>
                 </View>
                 <Text size={12} muted numberOfLines={2} style={styles.onArt}>
-                  {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join(" · ")}
+                  {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1), ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join("  ·  ")}
                 </Text>
                 <RatingsLine x={x} compact />
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
                 <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  {x?.ratings?.rated ? <View style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="700">{x.ratings.rated}</Text></View> : null}
+                  {x?.ratings?.rated ? <View style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="700">{x.ratings.rated}</Text></View> : null}
                   {d.genres.slice(0, 1).map((g) => (
-                    <View key={g.id} style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="600">{g.name}</Text></View>
+                    <View key={g.id} style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="600">{g.name}</Text></View>
                   ))}
                 </View>
                 <WatchWhere x={x} icon />
