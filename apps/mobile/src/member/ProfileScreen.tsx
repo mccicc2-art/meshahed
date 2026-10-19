@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { useRtlRailPin } from "../rtlRailPin";
 import { TabSlide } from "../TabSlide";
 import { Image } from "expo-image";
 import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
@@ -1149,6 +1150,8 @@ const RAIL_PAD = { paddingStart: PAGE_PAD, paddingEnd: PAGE_PAD - GAP } as const
 
 function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)[]; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void }) {
   const { first, getItemLayout } = useRailLayout(posterW);
+  /* 🆕 D-1478 — على الآيفون بالعربيّ يقف الصفُّ في غير أوّله فيبدو فارغاً (لقطةُ أحمد ١٩ أكتوبر) — التثبيتُ المشترك */
+  const { props: pinProps } = useRtlRailPin<ProfileTitle | ProfileShow>();
   const press = useCallback((it: CardItem) => onTitle(it.kind, it.id), [onTitle]);
   const renderItem = useCallback(
     ({ item }: { item: ProfileTitle | ProfileShow }) => (
@@ -1170,6 +1173,7 @@ function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)
       windowSize={3}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={RAIL_PAD}
+      {...pinProps}
     />
   );
 }

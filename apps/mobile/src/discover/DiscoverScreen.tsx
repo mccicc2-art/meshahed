@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, I18nManager, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
+import { IOS_RTL, useRtlRailPin } from "../rtlRailPin";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
@@ -1051,7 +1052,6 @@ const RAIL_JANK = scrollJank("discover", "h");
  *  - **صفٌّ سحبه المستخدمُ لا يُمسّ** — لا نُرجعه إلى أوّله.
  *  - الأندرويد والآيفون بالإنجليزيّ لا يمرّون هنا أصلاً.
  */
-const IOS_RTL = Platform.OS === "ios" && I18nManager.isRTL;
 /* D-1475 — دبابيسُ كلِّ لوحٍ على حدة (المفتاحُ تبويبُه من `RailPane`)، ومهلةُ الاستقرار بعد السحب */
 const railPins = new Map<string, Set<() => void>>();
 const RailPane = React.createContext("");
@@ -1097,13 +1097,8 @@ const CardsRail = memo(function CardsRail({
     ),
     [ranked, notes, onOpen, onHold],
   );
-  /* D-1471 — التثبيتُ على أوّل بطاقة (انظر `pinDiscoverRails`) */
-  const listRef = useRef<FlatList<CuratedCard & { note?: string | null }>>(null);
-  const touched = useRef(false);
-  const sized = useRef(false);
-  const pin = useCallback(() => {
-    if (!touched.current && sized.current) listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, []);
+  /* D-1471/D-1478 — التثبيتُ على أوّل بطاقة: الخطّافُ المشترك (`rtlRailPin.ts`)، ولوحُه يثبّته حين ينشط (`pinDiscoverRails`) */
+  const { pin, props: pinProps } = useRtlRailPin<CuratedCard & { note?: string | null }>(RAIL_JANK.onScrollBeginDrag);
   const pane = React.useContext(RailPane);
   useEffect(() => {
     if (!IOS_RTL) return;
@@ -1115,18 +1110,6 @@ const CardsRail = memo(function CardsRail({
       own.delete(pin);
     };
   }, [pin, pane]);
-  const onSized = useCallback(
-    (w: number) => {
-      if (sized.current || w <= 0) return;
-      sized.current = true;
-      pin();
-    },
-    [pin],
-  );
-  const onDragStart = useCallback(() => {
-    touched.current = true;
-    RAIL_JANK.onScrollBeginDrag?.();
-  }, []);
   if (shown.length === 0) return null;
   return (
     <View>
@@ -1165,7 +1148,7 @@ const CardsRail = memo(function CardsRail({
            لكنّه أثقل «اكتشف» حتى بعد الدفعات («لسى فيه ثقل»، ١٩ أكتوبر). الفراغُ عاد، وعلاجُه التثبيتُ لا التركيب (D-1471 — تحت). */
         /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك */
         {...RAIL_JANK}
-        {...(IOS_RTL ? { ref: listRef, onContentSizeChange: onSized, onScrollBeginDrag: onDragStart } : null)}
+        {...pinProps}
       />
     </View>
   );
