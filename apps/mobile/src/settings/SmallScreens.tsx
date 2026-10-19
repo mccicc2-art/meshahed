@@ -147,6 +147,7 @@ export function HelpScreen() {
 /** `about/page.tsx` — الوردماركُ ورقمُ البناء، ثلاثةُ أبوابٍ عامّة، وسطرا المصادر */
 export function AboutScreen() {
   const { t, tokens } = useApp();
+  const router = useRouter();
   const q = useSettings();
   const openWeb = useOpenWeb();
   return (
@@ -156,7 +157,8 @@ export function AboutScreen() {
         <Text size={12} muted style={{ marginTop: 4 }}>{`${t.setAboutBuild} ${q.data?.about.build ?? "…"}`}</Text>
       </View>
       <Group>
-        <Row icon="sparkle-star" title={t.setAboutFeatures} onPress={() => openWeb("/features")} busy={openWeb.busy === "/features"} />
+        {/* 🆕 «لا ويب في التطبيق» ١ — المميزاتُ شاشةٌ أصليّة؛ الشروطُ والخصوصيّةُ بابان حتى الشريحة ٢ */}
+        <Row icon="sparkle-star" title={t.setAboutFeatures} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "features" } })} />
         <Row icon="book" title={t.setAboutTerms} onPress={() => openWeb("/terms")} busy={openWeb.busy === "/terms"} />
         <Row icon="shield" title={t.setAboutPrivacy} onPress={() => openWeb("/privacy")} busy={openWeb.busy === "/privacy"} />
       </Group>

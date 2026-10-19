@@ -44,7 +44,9 @@ export function SettingsIndexScreen() {
     : h
       ? { name: h.display_name, username: h.username, avatar: h.avatar_url, pos: h.avatar_pos ?? 50, flags: identityFlags(h) }
       : null;
-  const cardPath = card?.username ? `/u/${card.username}` : "/profile";
+  /* 🆕 «لا ويب في التطبيق» ١ — **عضوٌ بلا معرّفٍ لا ملفَّ عامّاً له يُفتح**: كانت البطاقةُ تفتح `/profile` في الويب
+     (صفحةُ «اختر اسمك»)، والآن «تعديل الملفّ» الأصليّ حيث يُكتب المعرّف. ومن له معرّفٌ يفتح ملفَّه الأصليَّ كما كان (N1). */
+  const cardPath = card?.username ? `/u/${card.username}` : "/settings/profile";
   const go = (section: string) => router.push({ pathname: "/settings/[section]", params: { section } });
 
   return (
@@ -55,7 +57,7 @@ export function SettingsIndexScreen() {
         <Group>
           {/* بطاقةُ الحساب — بابٌ واحدٌ إلى ملفّك كما يراه الناس (D-849) */}
           <Pressable
-            onPress={() => openWeb(cardPath)}
+            onPress={() => (card.username ? openWeb(cardPath) : go("profile"))}
             accessibilityRole="link"
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: pressed ? tokens.surface2 : "transparent" }]}
           >

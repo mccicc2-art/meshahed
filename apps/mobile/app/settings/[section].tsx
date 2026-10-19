@@ -11,6 +11,7 @@ import { CustomizeScreen } from "../../src/settings/CustomizeScreen";
 import { InvitesScreen } from "../../src/settings/InvitesScreen";
 import { ImportScreen } from "../../src/settings/ImportScreen";
 import { WidgetScreen } from "../../src/settings/WidgetScreen";
+import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -35,6 +36,8 @@ const SCREENS = {
   import: ImportScreen,
   /* 🆕 ودجت لوبز (خطّةُ v2) — الإعدادُ والمعاينةُ والتخطيطات أصليّةٌ من أوّل يوم */
   widget: WidgetScreen,
+  /* 🆕 «لا ويب في التطبيق» ١ — «المميزات» أصليّةٌ من سجلِّ النواة نفسِه (كانت بابَ `/features`) */
+  features: FeaturesScreen,
 } as const;
 
 export default function SettingsSection() {
