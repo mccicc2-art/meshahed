@@ -1,0 +1,4 @@
+Release R26 — D-1472: no web in the app, slice 1 — Features is a native settings screen read from the same core registry as the web page (tags, intro; footnote without price or purchase link); the settings card of a member with no username opens the native profile editor instead of web /profile — task 99 [deploy]
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KvUXByuKVx9rtDkn3BoaSD
