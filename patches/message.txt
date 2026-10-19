@@ -1,0 +1,4 @@
+Release — D-1478: the header counters (unread_shares · unread_signals) and my favorites skip the RPC for a visitor with no session — about 1.1 M and 544 k anon calls since 1 Aug, always zero (task 106) · supabase/213_advisor_hardening.sql, applied on production 19 Oct: RLS (select auth.uid()) on 128 policies, watch_summary plpgsql, fixed search_path ×5, definer triggers closed, 38 member/admin definer functions closed to anon (task 105) [deploy]
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011MjjJpwUxsceLa8GsX9C93
