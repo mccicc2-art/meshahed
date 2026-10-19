@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, Keyboard, Pressable, View, useWindowDimensions } from "react-native";
+import { BackHandler, I18nManager, Keyboard, Platform, Pressable, View, useWindowDimensions } from "react-native";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TOUR_STEPS, type TourScreen, type TourState } from "@/core/tour";
@@ -15,6 +15,9 @@ import { HOME_KEY } from "../home/useHome";
 import type { HomePayload, LibraryPayload } from "../contracts";
 import { tourStore } from "./store";
 import { measureAnchor, revealAnchor, type AnchorRect } from "./anchors";
+
+/* D-1477 — انظر `rx` في الرسم */
+const RING_FLIP = Platform.OS === "ios" && I18nManager.isRTL;
 
 /**
  * ====== مضيفُ الجولة — بطاقةٌ فوق الشاشات الأصليّة (🆕 D-1318 · Phase 11-T · T1) ======
@@ -329,19 +332,24 @@ export function TourHost() {
 
   const PAD = 6;
   const TAP_W = 120;
+  /* 🆕 D-1477 — **الحلقةُ في مكان زرّها على الآيفون بالعربيّ** (لقطاتُ أحمد ١٩ أكتوبر: حلقةُ «صورتك» على زرّ الإعدادات، و«النجمة»
+     على أيقونة البحث، و«زرّ الفلتر» على تبويب «مسلسلات» — كلٌّ في الطرف المقابل). `measureInWindow` يعطي السينَ من يسار الشاشة
+     الحقيقيّ، و`left` في واجهةٍ مقلوبةٍ يُقرأ «بداية» أي من اليمين — فتنعكس. هنا تُعكس السينُ قبل الرسم فيلتقي الاثنان.
+     ⚖️ الآيفونُ وحدَه: الأندرويدُ بالعربيّ لم يُرَ بعدُ (سؤالٌ مفتوح لأحمد)، فلا نمسّه حتى يُرى. */
+  const rx = ring ? (RING_FLIP ? W - ring.x - ring.w : ring.x) : 0;
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}>
       {ring ? (
         <>
           {/* هالةٌ ثمّ حلقة — بلونِ السمة لا رقمٍ مكتوب، ولا تلتقط لمساً: الزرُّ تحتها يُضغط */}
-          <View pointerEvents="none" style={{ position: "absolute", left: ring.x - PAD - 5, top: ring.y - PAD - 5, width: ring.w + (PAD + 5) * 2, height: ring.h + (PAD + 5) * 2, borderRadius: (ring.h + (PAD + 5) * 2) / 2, backgroundColor: tokens.accent + "29" }} />
-          <View pointerEvents="none" style={{ position: "absolute", left: ring.x - PAD, top: ring.y - PAD, width: ring.w + PAD * 2, height: ring.h + PAD * 2, borderRadius: (ring.h + PAD * 2) / 2, borderWidth: 2.5, borderColor: tokens.accent }} />
+          <View pointerEvents="none" style={{ position: "absolute", left: rx - PAD - 5, top: ring.y - PAD - 5, width: ring.w + (PAD + 5) * 2, height: ring.h + (PAD + 5) * 2, borderRadius: (ring.h + (PAD + 5) * 2) / 2, backgroundColor: tokens.accent + "29" }} />
+          <View pointerEvents="none" style={{ position: "absolute", left: rx - PAD, top: ring.y - PAD, width: ring.w + PAD * 2, height: ring.h + PAD * 2, borderRadius: (ring.h + PAD * 2) / 2, borderWidth: 2.5, borderColor: tokens.accent }} />
           {lead ? (
             /* «اضغط هنا» — لهذه الخطوة وحدَها (حكمُ أحمد)، تحت الصورة ومنتصفُها منتصفُها */
             <>
               {/* السهمُ تحت منتصف الصورة، والحبّةُ تُقصّ إلى حافّتَي الشاشة — الصورةُ في الطرف، وحبّةٌ تتوسّطها تخرج منه */}
-              <View pointerEvents="none" style={{ position: "absolute", left: ring.x + ring.w / 2 - 5, top: ring.y + ring.h + PAD + 8, width: 10, height: 10, backgroundColor: tokens.accent, transform: [{ rotate: "45deg" }] }} />
-              <View pointerEvents="none" style={{ position: "absolute", left: Math.max(8, Math.min(ring.x + ring.w / 2 - TAP_W / 2, W - TAP_W - 8)), width: TAP_W, top: ring.y + ring.h + PAD + 13, alignItems: "center" }}>
+              <View pointerEvents="none" style={{ position: "absolute", left: rx + ring.w / 2 - 5, top: ring.y + ring.h + PAD + 8, width: 10, height: 10, backgroundColor: tokens.accent, transform: [{ rotate: "45deg" }] }} />
+              <View pointerEvents="none" style={{ position: "absolute", left: Math.max(8, Math.min(rx + ring.w / 2 - TAP_W / 2, W - TAP_W - 8)), width: TAP_W, top: ring.y + ring.h + PAD + 13, alignItems: "center" }}>
                 <View style={{ backgroundColor: tokens.accent, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}>
                   <Text size={13} weight="700" color={tokens.onAccent} numberOfLines={1}>{t.tourTapHere}</Text>
                 </View>
