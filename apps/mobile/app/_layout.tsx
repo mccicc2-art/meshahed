@@ -146,6 +146,8 @@ function Shell() {
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}
         <Stack.Screen name="settings/index" options={{ headerShown: false }} />
         <Stack.Screen name="settings/[section]" options={{ headerShown: false }} />
+        {/* 🆕 «لا ويب في التطبيق» ٢ — الخصوصيّةُ والشروطُ أصليّتين (من شاشة الدخول ومن «عن Loopz») */}
+        <Stack.Screen name="legal/[doc]" options={{ headerShown: false }} />
         {/* D-1158 — بلا حركة: شاشةٌ تُدفع وتُسحب في اللحظة نفسِها لا يجب أن تُرى */}
         <Stack.Screen name="auth/callback" options={{ headerShown: false, animation: "none" }} />
         {/* 🆕 D-1344 — شاشةُ الدخول الأصليّة (Phase 11-U · U1): تُدفع فوق طبقة الويب لمن لم يدخل. بلا حركة (تُرى من أوّل

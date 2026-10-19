@@ -10,9 +10,11 @@ import { api, write, ApiError } from "../api";
 import { push } from "../push";
 import type { PushGroup, PushPrefsPayload } from "@/core/push";
 import type { ToastHostRef } from "../HoldHost";
-import { SettingsScreen, Group, Row, RowsSkeleton, Toggle } from "./ui";
+import { SettingsScreen, Group, Row, RowsSkeleton, Toggle, LinkedRow } from "./ui";
+import { Image } from "expo-image";
+import { Icon, GOOGLE_MARK } from "../icons";
 import { useRouter } from "expo-router";
-import { useSettings, useOpenWeb, invalidateSettings } from "./api";
+import { useSettings, invalidateSettings } from "./api";
 import { linkGoogle } from "../linkGoogle";
 import type { HintsResetBody } from "../contracts";
 import { tourStore } from "../tour/store";
@@ -144,12 +146,11 @@ export function HelpScreen() {
   );
 }
 
-/** `about/page.tsx` — الوردماركُ ورقمُ البناء، ثلاثةُ أبوابٍ عامّة، وسطرا المصادر */
+/** `about/page.tsx` — الوردماركُ ورقمُ البناء، ثلاثُ شاشاتٍ أصليّة (المميزات · الشروط · الخصوصية)، وسطرا المصادر */
 export function AboutScreen() {
   const { t, tokens } = useApp();
   const router = useRouter();
   const q = useSettings();
-  const openWeb = useOpenWeb();
   return (
     <SettingsScreen title={t.setAbout}>
       <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
@@ -157,10 +158,11 @@ export function AboutScreen() {
         <Text size={12} muted style={{ marginTop: 4 }}>{`${t.setAboutBuild} ${q.data?.about.build ?? "…"}`}</Text>
       </View>
       <Group>
-        {/* 🆕 «لا ويب في التطبيق» ١ — المميزاتُ شاشةٌ أصليّة؛ الشروطُ والخصوصيّةُ بابان حتى الشريحة ٢ */}
+        {/* 🆕 «لا ويب في التطبيق» ١ — المميزاتُ شاشةٌ أصليّة */}
         <Row icon="sparkle-star" title={t.setAboutFeatures} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "features" } })} />
-        <Row icon="book" title={t.setAboutTerms} onPress={() => openWeb("/terms")} busy={openWeb.busy === "/terms"} />
-        <Row icon="shield" title={t.setAboutPrivacy} onPress={() => openWeb("/privacy")} busy={openWeb.busy === "/privacy"} />
+        {/* 🆕 «لا ويب في التطبيق» ٢ — الشروطُ والخصوصيّةُ شاشتان أصليّتان تقرآن النصَّ الواحدَ من الخادم */}
+        <Row icon="book" title={t.setAboutTerms} onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc: "terms" } })} />
+        <Row icon="shield" title={t.setAboutPrivacy} onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc: "privacy" } })} />
       </Group>
       <View>
         <Text size={12} weight="600" muted style={{ paddingHorizontal: 4, marginBottom: 6 }}>{t.setAboutSources}</Text>
@@ -232,14 +234,13 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
  * 🆕 D-1358 (V-C · C2) — **والحذفُ صار أصليّاً** (`DeleteAccountSheet`).
  */
 export function AccountScreen() {
-  const { t } = useApp();
+  const { t, tokens } = useApp();
   const q = useSettings();
   const s = q.data;
-  const openWeb = useOpenWeb();
   const router = useRouter();
-  /* D-1106/D-1107 — الاسمُ والتوثيقُ صارا شاشتين أصليّتين؛ الفوترةُ بابٌ (D-1096)، والحذفُ ورقةٌ أصليّة (D-1358) */
+  /* D-1106/D-1107 — التوثيقُ شاشةٌ أصليّة، والحذفُ ورقةٌ أصليّة (D-1358). الاسمُ والاشتراكُ صارا في الفهرس (تصميمُ ١٩ أكتوبر) */
   const [deleting, setDeleting] = useState(false);
-  const go = (section: "profile" | "verify") => router.push({ pathname: "/settings/[section]", params: { section } });
+  const go = (section: "verify") => router.push({ pathname: "/settings/[section]", params: { section } });
   /* 🆕 D-1350 — «ربط حساب Google» لمن دخل بأبل (القرار ٥): صفٌّ يفتح Google في متصفّح النظام، وبعد الربط يقول «مرتبط» */
   const toast = useRef<ToastHostRef>(null);
   const [linking, setLinking] = useState(false);
@@ -259,28 +260,68 @@ export function AccountScreen() {
       setLinking(false);
     }
   };
+  /* 🆕 تصميمُ أحمد (١٩ أكتوبر) — أربعُ مجموعات: «معلومات الحساب» (البريدُ وتحقّقُه) · «طرق تسجيل الدخول» (المرتبطُ وإدارتُه،
+     وإضافةُ ما يمكن إضافتُه) · «توثيق الحساب» · «إدارة الحساب» (الخروجُ ثمّ الحذف). **البريدُ «تم التحقق»** لأنّ الدخولَ
+     بـ Google أو Apple وحدَهما: المزوّدُ هو من تحقّق منه، ولا بريدَ يُكتب باليد في Loopz.
+     **«إدارة»** تفتح صفحةَ المزوّد نفسَه في متصفّح النظام (أذوناتُ التطبيقات المرتبطة) — فكُّ الربط يُدار هناك لا هنا.
+     **«إضافة طريقة دخول»** لا تظهر إلّا حين يوجد ما يُضاف: ربطُ Google لمن دخل بـ Apple (D-1350)؛ ربطُ Apple لم يُبنَ بعد. */
+  const verifiedEmail = providers.includes("google") || providers.includes("apple");
+  const signOut = () => {
+    haptic.pick();
+    /* D-1371 — شاشةُ الخروج تُدفع فوق هذه، وهي من يرسل الطلبَ ويرفع شاشةَ الدخول */
+    router.push("/signing-out");
+  };
   return (
-    <SettingsScreen title={t.setAccount} toast={toast}>
+    <SettingsScreen title={t.appAccountSignIn} toast={toast}>
       {!s ? (
         <RowsSkeleton rows={4} />
       ) : (
         <>
-          <Group>
-            <Row icon="edit" title={t.setNameHandle} value={s.account.username ? `@${s.account.username}` : undefined} onPress={() => go("profile")} />
-            <Row icon="mail" title={t.emailSection} subtitle={s.account.email ?? ""} />
-            {providers.includes("apple") ? (
-              hasGoogle ? (
-                <Row icon="link" title={t.linkGoogleTitle} value={t.linkGoogleLinked} />
-              ) : (
-                <Row icon="link" title={t.linkGoogleTitle} subtitle={t.linkGoogleSub} onPress={() => void link()} busy={linking} />
-              )
-            ) : null}
-            <Row icon="shield" title={t.verifyTitle} subtitle={t.verifySub} onPress={() => go("verify")} />
-            <Row icon="card" title={t.setBilling} value={s.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
+          <Group label={t.appAccountInfo}>
+            <Row
+              icon="mail"
+              title={t.emailSection}
+              subtitle={s.account.email ?? ""}
+              badge={verifiedEmail ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="check" size={11} color={tokens.onAccent} />
+                  </View>
+                  <Text size={12} muted>{t.appEmailVerified}</Text>
+                </View>
+              ) : undefined}
+            />
           </Group>
-          {/* 🆕 D-1358 — الحذفُ ورقةٌ مسلَّحة (ضغطتان) كما في الويب، تُفتح فوق هذه الشاشة لا في صفحة الحساب الويبيّة.
-              والأيقونةُ سلّةٌ كالويب: ✕ أيقونةُ «تسجيل الخروج» كذلك، وخطِران بشكلٍ واحدٍ يُخلطان */}
-          <Group label={t.setDangerZone}>
+
+          <Group label={t.appSignInMethods}>
+            {hasGoogle ? (
+              <LinkedRow
+                leading={<Image source={GOOGLE_MARK} style={{ width: 24, height: 24 }} contentFit="contain" />}
+                title={t.appGoogleAccount}
+                status={t.linkGoogleLinked}
+                actionLabel={t.appManage}
+                onPress={() => void Linking.openURL("https://myaccount.google.com/connections").catch(() => {})}
+              />
+            ) : null}
+            {providers.includes("apple") ? (
+              <LinkedRow
+                leading={<Icon name="person-check" size={22} color={tokens.fg} />}
+                title={t.appAppleAccount}
+                status={t.linkGoogleLinked}
+                actionLabel={t.appManage}
+                onPress={() => void Linking.openURL("https://account.apple.com/account/manage").catch(() => {})}
+              />
+            ) : null}
+            {!hasGoogle ? <Row icon="plus" title={t.appAddSignIn} subtitle={t.linkGoogleSub} onPress={() => void link()} busy={linking} /> : null}
+          </Group>
+
+          <Group label={t.appVerifyGroup}>
+            <Row icon="shield" title={t.verifyTitle} subtitle={t.appVerifySub} onPress={() => go("verify")} />
+          </Group>
+
+          {/* 🆕 D-1358 — الحذفُ ورقةٌ مسلَّحة (ضغطتان) كما في الويب. والأيقونةُ سلّةٌ: الخروجُ بابٌ، وخطِران بشكلٍ واحدٍ يُخلطان */}
+          <Group label={t.appManageAccount}>
+            <Row icon="logout" title={t.appSignOut} onPress={signOut} />
             <Row icon="trash" title={t.deleteAccountTitle} danger onPress={() => { haptic.pick(); setDeleting(true); }} />
           </Group>
         </>

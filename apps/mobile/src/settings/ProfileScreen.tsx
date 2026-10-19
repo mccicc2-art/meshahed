@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, Share, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Reanimated, { useAnimatedStyle, useSharedValue, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -17,7 +17,8 @@ import { Sheet } from "../library/Sheet";
 import { useImageCrop } from "../imageCrop";
 import type { ToastHostRef } from "../HoldHost";
 import type { ProfileEditPayload, ProfileImagePayload, ProfileSaveBody } from "../contracts";
-import { SettingsScreen, Group, Row, Field, RowsSkeleton } from "./ui";
+import { SettingsScreen, Row, Field, FieldCard, LinkedRow, Chevron, RowsSkeleton } from "./ui";
+import { radius } from "../theme";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 
 /**
@@ -34,7 +35,7 @@ import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
  */
 const BIO_MAX = 120;
 const COVER_H = 128;
-const AVATAR = 76;
+const AVATAR = 88;
 const KEY = ["me:profile-edit"] as const;
 
 type Snap = { nickname: string; username: string; bio: string; avatarUrl: string | null; coverUrl: string | null; coverPos: number; avatarPos: number };
@@ -184,6 +185,8 @@ export function ProfileScreen() {
     );
   }
 
+  /* «loopztv.com» بلا البروتوكول — يُقرأ كما يُكتب في المتصفّح */
+  const host = d.site_url.replace(/^https?:\/\//, "");
   const disc = (name: "image" | "trash", onPress: () => void, label: string, busy?: boolean) => (
     <Pressable onPress={onPress} disabled={!!uploading} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", opacity: uploading && !busy ? 0.6 : 1 }}>
       <Icon name={busy ? "hourglass" : name} size={16} color="#fff" />
@@ -198,11 +201,12 @@ export function ProfileScreen() {
         </View>
       ) : null}
 
-      <Group label={t.setProfileDetails}>
-        {/* ===== الصورتان معاينةٌ واحدة ===== ابنٌ واحدٌ للبطاقة (فلا فاصلَ بين الغلاف والوجه) */}
+      {/* ===== 🆕 تصميمُ أحمد (١٩ أكتوبر) — بطاقةٌ واحدةٌ فيها الصورتان ثمّ خمسُ بطاقاتِ حقول ===== الغلافُ بزواياه داخل البطاقة،
+          والوجهُ أكبر (٨٨) بشارة كاميرا، و«معاينة الملف الشخصي» في الطرف الآخر. كلُّ حقلٍ في بطاقته برمزه (`Field boxed`) */}
+      <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, padding: 10, gap: 12 }}>
         <GestureHandlerRootView>
           <GestureDetector gesture={cover.gesture}>
-          <View style={{ height: COVER_H, backgroundColor: tokens.surface2 }}>
+          <View style={{ height: COVER_H, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
             {v.coverUrl ? (
               <PosImage uri={v.coverUrl} value={v.coverPos} pos={cover.pos} boxH={COVER_H} />
             ) : (
@@ -210,13 +214,13 @@ export function ProfileScreen() {
                 <Text size={14} muted>{t.noCover}</Text>
               </View>
             )}
-            <View style={{ position: "absolute", top: 8, end: 8, flexDirection: "row", gap: 8 }}>
+            <View style={{ position: "absolute", top: 10, end: 10, flexDirection: "row", gap: 8 }}>
               {v.coverUrl ? disc("trash", () => set("coverUrl", null), t.removeCover) : null}
               {disc("image", () => void pick("cover"), t.setEditCover, uploading === "cover")}
             </View>
           </View>
           </GestureDetector>
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, paddingHorizontal: 14, paddingBottom: 14, marginTop: -36 }}>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, paddingHorizontal: 6, marginTop: -(AVATAR / 2) }}>
             <GestureDetector gesture={avatar.gesture}>
             <View>
               <View style={{ width: AVATAR + 8, height: AVATAR + 8, borderRadius: (AVATAR + 8) / 2, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center" }}>
@@ -224,7 +228,7 @@ export function ProfileScreen() {
                   {v.avatarUrl ? (
                     <PosImage uri={v.avatarUrl} value={v.avatarPos} pos={avatar.pos} boxH={AVATAR} label={t.avatarAlt} />
                   ) : (
-                    <Icon name="people" size={28} color={tokens.muted} />
+                    <Icon name="person" size={32} color={tokens.muted} />
                   )}
                 </View>
               </View>
@@ -235,19 +239,21 @@ export function ProfileScreen() {
                 accessibilityLabel={t.setEditAvatar}
                 style={{ position: "absolute", bottom: 2, end: 2, width: 32, height: 32, borderRadius: 16, backgroundColor: tokens.accent, borderWidth: 2, borderColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: uploading && uploading !== "avatar" ? 0.6 : 1 }}
               >
-                <Icon name={uploading === "avatar" ? "hourglass" : "image"} size={14} color={tokens.onAccent} />
+                <Icon name={uploading === "avatar" ? "hourglass" : "camera"} size={15} color={tokens.onAccent} />
               </Pressable>
             </View>
             </GestureDetector>
-            <View style={{ flex: 1, alignItems: "flex-end", paddingBottom: 4 }}>
-              {cleaned.length >= 3 ? <Button size="sm" variant="ghost" label={t.setPreviewProfile} onPress={() => openWeb(`/u/${cleaned}`)} /> : null}
+            <View style={{ flex: 1, alignItems: "flex-end", paddingBottom: 6 }}>
+              {cleaned.length >= 3 ? <Button size="sm" variant="ghost" label={t.appPreviewProfile} onPress={() => openWeb(`/u/${cleaned}`)} /> : null}
             </View>
           </View>
-          {v.coverUrl || v.avatarUrl ? <Text size={12} muted style={{ paddingHorizontal: 14, paddingBottom: 14, lineHeight: 18 }}>{t.repositionHint}</Text> : null}
+          {v.coverUrl || v.avatarUrl ? <Text size={12} muted style={{ paddingHorizontal: 6, paddingTop: 8, lineHeight: 18 }}>{t.repositionHint}</Text> : null}
         </GestureHandlerRootView>
 
-        <Field label={t.displayNameSection} value={v.nickname} onChange={(x) => set("nickname", x)} maxLength={40} placeholder={t.displayNamePlaceholder} />
+        <Field boxed icon="person" label={t.displayNameSection} value={v.nickname} onChange={(x) => set("nickname", x)} maxLength={40} placeholder={t.displayNamePlaceholder} />
         <Field
+          boxed
+          icon="at"
           label={t.usernameSection}
           value={v.username}
           onChange={(x) => set("username", x)}
@@ -255,49 +261,69 @@ export function ProfileScreen() {
           placeholder="ahmed_92"
           ltr
           prefix="@"
-          hint={cleaned !== v.username.trim().toLowerCase() && v.username.trim() !== "" ? t.willSaveAs(cleaned || "—") : undefined}
+          hint={cleaned !== v.username.trim().toLowerCase() && v.username.trim() !== "" ? t.willSaveAs(cleaned || "—") : cleaned.length >= 3 ? `${host}/u/${cleaned}` : undefined}
         />
-        <Field label={t.bioSection} value={v.bio} onChange={(x) => set("bio", x.slice(0, BIO_MAX))} maxLength={BIO_MAX} counter multiline lines={2} placeholder={t.bioPlaceholder} />
+        <Field boxed icon="edit" label={t.bioSection} value={v.bio} onChange={(x) => set("bio", x.slice(0, BIO_MAX))} maxLength={BIO_MAX} counter multiline lines={2} placeholder={t.bioPlaceholder} />
 
         {cleaned.length >= 3 ? (
-          <Row
-            icon="share"
-            title={t.setProfileLink}
-            subtitle={`${d.site_url.replace(/^https?:\/\//, "")}/u/${cleaned}`}
-            trailing={
-              <Button
-                size="sm"
-                variant="ghost"
-                label={copied ? t.setCopied : t.setCopyLink}
+          <FieldCard icon="link" label={t.appProfileLink}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, paddingStart: 12, paddingEnd: 4, minHeight: 46, direction: "ltr" }}>
+              <Text size={15} numberOfLines={1} style={{ flex: 1, writingDirection: "ltr", textAlign: "left" }}>{`${host}/u/${cleaned}`}</Text>
+              <Pressable
                 onPress={() => {
                   void Clipboard.setStringAsync(`${d.site_url}/u/${cleaned}`);
+                  haptic.pick();
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1600);
                 }}
-              />
-            }
-          />
+                accessibilityRole="button"
+                accessibilityLabel={copied ? t.setCopied : t.setCopyLink}
+                hitSlop={6}
+                style={{ width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+              >
+                <Icon name={copied ? "check" : "copy"} size={18} color={copied ? tokens.success : tokens.muted} />
+              </Pressable>
+              <Pressable onPress={() => void Share.share({ message: `${d.site_url}/u/${cleaned}` }).catch(() => {})} accessibilityRole="button" accessibilityLabel={t.appShareLink} hitSlop={6} style={{ width: 38, height: 38, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="share" size={18} color={tokens.muted} />
+              </Pressable>
+            </View>
+          </FieldCard>
         ) : null}
-        <Row icon="eye" title={t.setProfileVisibility} value={d.is_private ? t.setVisibilityPrivate : t.setVisibilityPublic} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "privacy" } })} />
-      </Group>
 
-      {/* ===== حسابُ X ===== يغيب مع مزوّده (D-217)؛ الربطُ وفكُّه في صفحة الويب (جلستُها — D-932) */}
+        <FieldCard icon="shield" label={t.appProfilePrivacy}>
+          <Pressable
+            onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "privacy" } })}
+            accessibilityRole="button"
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: pressed ? tokens.surface2 : tokens.bg, paddingHorizontal: 12, minHeight: 46 }]}
+          >
+            <Text size={15} style={{ flex: 1 }}>{d.is_private ? t.setVisibilityPrivate : t.setVisibilityPublic}</Text>
+            <Chevron />
+          </Pressable>
+        </FieldCard>
+      </View>
+
+      {/* ===== الحساباتُ المرتبطة ===== يغيب مع مزوّده (D-217)؛ الربطُ وفكُّه في صفحة الويب (جلستُها — D-932) حتى الشريحة ٣ */}
       {d.x ? (
-        <Group label={t.setXSection}>
-          <Row
-            title={d.x.handle && d.x.verified ? `@${d.x.handle}` : "X"}
-            subtitle={d.x.handle && d.x.verified ? t.xVerified : dirty ? t.xSaveFirst : t.xHint}
-            trailing={
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={dirty || openWeb.busy === "/profile/edit"}
-                label={d.x.handle && d.x.verified ? t.xDisconnect : t.xConnect}
-                onPress={() => openWeb("/profile/edit")}
-              />
-            }
-          />
-        </Group>
+        <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, paddingTop: 14, overflow: "hidden" }}>
+          <Text size={15} weight="700" style={{ paddingHorizontal: 14, marginBottom: 4 }}>{t.appLinkedAccounts}</Text>
+          {d.x.handle && d.x.verified ? (
+            <LinkedRow
+              leading={<Icon name="x-logo" size={22} color={tokens.fg} />}
+              title={`@${d.x.handle}`}
+              status={t.linkGoogleLinked}
+              actionLabel={t.appManage}
+              busy={openWeb.busy === "/profile/edit"}
+              onPress={() => (dirty ? toast.current?.say(t.xSaveFirst) : openWeb("/profile/edit"))}
+            />
+          ) : (
+            <Row
+              leading={<Icon name="x-logo" size={22} color={tokens.fg} />}
+              title="X"
+              subtitle={dirty ? t.xSaveFirst : t.xHint}
+              trailing={<Button size="sm" variant="ghost" disabled={dirty || openWeb.busy === "/profile/edit"} label={t.xConnect} onPress={() => openWeb("/profile/edit")} />}
+            />
+          )}
+        </View>
       ) : null}
       {cropUi}
     </SettingsScreen>

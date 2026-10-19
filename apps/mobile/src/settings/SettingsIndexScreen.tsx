@@ -10,7 +10,8 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
-import { SettingsScreen, Group, Row, Chevron, RowsSkeleton } from "./ui";
+import { SettingsScreen, Group, Row, Chevron, RowsSkeleton, StatusPill } from "./ui";
+import { THEMES, themeName } from "@/core/themes";
 import { useSettings, useOpenWeb } from "./api";
 
 /**
@@ -25,7 +26,7 @@ import { useSettings, useOpenWeb } from "./api";
  * (`shell.post` — D-1156، كان نموذجاً في الصفحة)؛ `web.tsx` يرى العنوانَ فيمسح الجلسةَ ويُنزل الشاشات.
  */
 export function SettingsIndexScreen() {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale, themeId } = useApp();
   const router = useRouter();
   const openWeb = useOpenWeb();
   const q = useSettings();
@@ -48,6 +49,9 @@ export function SettingsIndexScreen() {
      (صفحةُ «اختر اسمك»)، والآن «تعديل الملفّ» الأصليّ حيث يُكتب المعرّف. ومن له معرّفٌ يفتح ملفَّه الأصليَّ كما كان (N1). */
   const cardPath = card?.username ? `/u/${card.username}` : "/settings/profile";
   const go = (section: string) => router.push({ pathname: "/settings/[section]", params: { section } });
+  /* «داكن · العربية» — الثيمُ الملبوسُ (مصدرُه الواحد `themeId` — D-1128) ولغةُ التطبيق */
+  const theme = THEMES.find((x) => x.id === (themeId ?? s?.appearance.theme)) ?? THEMES[0];
+  const appearance = `${themeName(theme, locale)} · ${locale === "ar" ? t.arabicLang : t.englishLang}`;
 
   return (
     <SettingsScreen title={t.settingsNavHeading}>
@@ -61,33 +65,37 @@ export function SettingsIndexScreen() {
             accessibilityRole="link"
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: pressed ? tokens.surface2 : "transparent" }]}
           >
-            <View style={{ width: 52, height: 52, borderRadius: 26, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            {/* 🆕 تصميمُ أحمد (١٩ أكتوبر) — وجهٌ أكبر (٦٤)، والمعرّفُ ثمّ «عرض الملف الشخصي» تحت الاسم: البطاقةُ تقول إلى أين تأخذ */}
+            <View style={{ width: 64, height: 64, borderRadius: 32, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
               {card.avatar ? <Image source={{ uri: card.avatar }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${card.pos}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={22} color={tokens.muted} />}
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{card.name}</Text>
+                <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{card.name}</Text>
                 {/* 🔴 D-1142 — شاراتُ الرئيسيّة نفسُها (`IdentityBadges`): قرصُ الخطّة ثمّ الختمُ الذهبيّ — لا ✓ رفيعٌ ولا «+» */}
-                <IdentityBadges flags={card.flags} nameSize={15} />
+                <IdentityBadges flags={card.flags} nameSize={17} />
               </View>
-              {card.username ? <Text size={12} weight="500" muted numberOfLines={1}>@{card.username}</Text> : null}
+              {card.username ? <Text size={13} weight="500" muted numberOfLines={1} style={{ marginTop: 2 }}>@{card.username}</Text> : null}
+              <Text size={12} muted numberOfLines={1} style={{ marginTop: 4 }}>{card.username ? t.appViewProfile : t.appEditProfile}</Text>
             </View>
             <Chevron busy={openWeb.busy === cardPath} />
           </Pressable>
         </Group>
       )}
 
-      <Group label={t.setGroupAccount}>
-        <Row icon="edit" title={t.setEditProfile} onPress={() => go("profile")} />
-        <Row icon="person-check" title={t.setAccount} onPress={() => go("account")} />
-        <Row icon="card" title={t.setBilling} value={s?.account.plan_label} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
-        <Row icon="share" title={t.setInvites} onPress={() => go("invites")} />
+      {/* 🆕 تصميمُ أحمد (١٩ أكتوبر): ثلاثُ مجموعاتٍ بعناوينها — «الحساب» · «تخصيص التطبيق» · «الخصوصية والبيانات»، والعناوينُ
+          أوضح (مفاتيحُ `app*` للتطبيق وحدَه — الويبُ يُبقي عناوينَه). «نشط» بجانب الاشتراك لمشتركٍ قائم، والمظهرُ يقول ثيمَه ولغتَه */}
+      <Group label={t.setAccount}>
+        <Row icon="person" title={t.appEditProfile} onPress={() => go("profile")} />
+        <Row icon="person-plus" title={t.appAccountSignIn} onPress={() => go("account")} />
+        <Row icon="card" title={t.appManagePlus} badge={s?.account.plus ? <StatusPill label={t.appPlusActive} /> : undefined} onPress={() => openWeb("/profile/settings/billing")} busy={openWeb.busy === "/profile/settings/billing"} />
+        <Row icon="gift" title={t.setInvites} onPress={() => go("invites")} />
       </Group>
 
-      <Group label={t.setGroupPersonalize}>
-        <Row icon="home" title={t.setHomeProfile} onPress={() => go("home")} />
+      <Group label={t.appGroupPersonalize}>
+        <Row icon="home" title={t.appHomeProfile} onPress={() => go("home")} />
         <Row icon="grid" title={t.widgetScreenTitle} onPress={() => go("widget")} />
-        <Row icon="palette" title={t.setAppearance} onPress={() => go("appearance")} />
+        <Row icon="palette" title={t.setAppearance} value={appearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>
 
@@ -103,10 +111,10 @@ export function SettingsIndexScreen() {
       </Group>
 
       <Group>
+        {/* 🆕 تصميمُ «الحساب وتسجيل الدخول» (١٩ أكتوبر): الخروجُ برمز الباب ولونِ النصّ — الأحمرُ للحذف وحدَه */}
         <Row
-          icon="close"
-          title={t.signOut}
-          danger
+          icon="logout"
+          title={t.appSignOut}
           onPress={() => {
             haptic.pick();
             /* 🆕 D-1371 — شاشةُ الخروج تُدفع فوق هذه (فلا تنكشف الرئيسيّة)، وهي من يرسل الطلبَ ويرفع شاشةَ الدخول حين يكتمل رسمُها */

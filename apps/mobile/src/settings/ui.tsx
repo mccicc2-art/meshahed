@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { GestureHandlerRootView, ScrollView as GHScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -129,6 +129,7 @@ export function Row({
   leading,
   disabled,
   busy,
+  badge,
 }: {
   icon?: IconName;
   title: string;
@@ -143,6 +144,8 @@ export function Row({
   disabled?: boolean;
   /** 🆕 D-1103 — بابٌ يُفتح الآن: دوّارةٌ مكانَ السهم حتى تصل الصفحة */
   busy?: boolean;
+  /** 🆕 تصاميمُ الإعدادات (١٩ أكتوبر) — وسمٌ قبل السهم لا بدلَه («نشط» عند الاشتراك، «تم التحقق» عند البريد) */
+  badge?: React.ReactNode;
 }) {
   const { tokens } = useApp();
   const color = danger ? tokens.error : tokens.fg;
@@ -154,6 +157,7 @@ export function Row({
         {subtitle ? <Text size={12} weight="500" muted numberOfLines={2} style={{ marginTop: 2 }}>{subtitle}</Text> : null}
       </View>
       {value ? <Text size={14} muted numberOfLines={1} style={{ maxWidth: "40%" }}>{value}</Text> : null}
+      {badge ?? null}
       {trailing !== undefined ? trailing : onPress ? <Chevron busy={busy} /> : null}
     </>
   );
@@ -274,6 +278,9 @@ export function Field({
   hint,
   editable = true,
   autoFocus,
+  icon,
+  boxed,
+  after,
 }: {
   label: string;
   value: string;
@@ -289,9 +296,48 @@ export function Field({
   editable?: boolean;
   /** D-1324 — حقلٌ يُفتح لأجله اللوح (اسمُ التنسيق): لوحةُ المفاتيح تصعد معه */
   autoFocus?: boolean;
+  /**
+   * 🆕 تصميمُ «تعديل الملف الشخصي» (أحمد، ١٩ أكتوبر) — **الحقلُ نفسُه في بطاقته**: رمزٌ بجانب العنوان، والإدخالُ في صندوقٍ
+   * بإطار، والتلميحُ والعدّادُ تحته. خيارٌ في `Field` لا حقلٌ ثانٍ: لونُ المثال وسقفُ الخطّ والاتّجاهُ قاعدةٌ واحدة.
+   */
+  icon?: IconName;
+  boxed?: boolean;
+  /** ما يُرسم داخل الصندوق بعد الإدخال (زرّا النسخ والمشاركة في «رابط الملف») */
+  after?: React.ReactNode;
 }) {
   const { tokens } = useApp();
   const full = maxLength !== undefined && value.length >= maxLength;
+  if (boxed) {
+    return (
+      <FieldCard icon={icon} label={label}>
+        <View style={{ flexDirection: "row", alignItems: multiline ? "flex-start" : "center", gap: 8, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, paddingHorizontal: 12, paddingVertical: 10, direction: ltr ? "ltr" : undefined }}>
+          {prefix ? <Text size={16} muted={!value}>{prefix}</Text> : null}
+          <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
+            value={value}
+            onChangeText={onChange}
+            placeholder={placeholder}
+            placeholderTextColor={tokens.disabled}
+            maxLength={maxLength}
+            multiline={multiline}
+            editable={editable}
+            autoFocus={autoFocus}
+            autoCapitalize={ltr ? "none" : "sentences"}
+            autoCorrect={!ltr}
+            style={{ flex: 1, minWidth: 0, padding: 0, fontSize: 16, lineHeight: multiline ? 24 : undefined, minHeight: multiline ? lines * 24 : undefined, color: tokens.fg, textAlign: "left", writingDirection: ltr ? "ltr" : undefined, textAlignVertical: multiline ? "top" : "center" }}
+          />
+          {after}
+        </View>
+        {hint || (counter && maxLength !== undefined) ? (
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 6 }}>
+            {hint ? <Text size={12} muted style={{ flex: 1, writingDirection: ltr ? "ltr" : undefined }}>{hint}</Text> : <View style={{ flex: 1 }} />}
+            {counter && maxLength !== undefined ? (
+              <Text size={12} color={full ? tokens.error : tokens.muted} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${value.length} / ${maxLength}`}</Text>
+            ) : null}
+          </View>
+        ) : null}
+      </FieldCard>
+    );
+  }
   return (
     <View style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
@@ -333,5 +379,58 @@ export function Field({
       </View>
       {hint ? <Text size={12} muted style={{ marginTop: 6, writingDirection: ltr ? "ltr" : undefined }}>{hint}</Text> : null}
     </View>
+  );
+}
+
+/**
+ * 🆕 بطاقةُ حقلٍ (تصميمُ «تعديل الملف الشخصي»، ١٩ أكتوبر) — إطارٌ خفيفٌ داخل البطاقة الكبيرة، رمزٌ وعنوانٌ فوق المحتوى.
+ * يلبسها `Field boxed` وصفّا «رابط الملف» و«خصوصية الملف» — فالبطاقاتُ الخمسُ بمقاسٍ واحد.
+ */
+export function FieldCard({ icon, label, children }: { icon?: IconName; label: string; children: React.ReactNode }) {
+  const { tokens } = useApp();
+  return (
+    <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, padding: 12, gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {icon ? <Icon name={icon} size={18} color={tokens.muted} /> : null}
+        <Text size={13} weight="600" muted>{label}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * 🆕 وسمُ حالةٍ صغير (تصاميمُ الإعدادات، ١٩ أكتوبر) — «نشط» بجانب الاشتراك، ووسومُ «المميزات». **وسمٌ واحدٌ بلونٍ يُمرَّر**:
+ * الإطارُ ٣٥٪ والخلفيّةُ ١٠٪ من اللون نفسِه (وصفةُ وسوم `/features` في الويب).
+ */
+export function StatusPill({ label, color }: { label: string; color?: string }) {
+  const { tokens } = useApp();
+  const tone = color ?? tokens.accent;
+  return (
+    <View style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: tone + "59", backgroundColor: tone + "1A", paddingHorizontal: 10, paddingVertical: 3 }}>
+      <Text size={12} weight="700" color={tone} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
+
+/**
+ * 🆕 صفُّ حسابٍ مرتبط (Google في «الحساب وتسجيل الدخول» · X في «تعديل الملف»، تصميما ١٩ أكتوبر): العلامةُ، الاسمُ، نقطةٌ
+ * بلون الهويّة مع «مرتبط»، وزرُّ «إدارة». الصفُّ كلُّه يضغط ما يضغطه الزرّ — هدفٌ أكبرُ للإصبع، فعلٌ واحد.
+ */
+export function LinkedRow({ leading, title, status, actionLabel, onPress, busy }: { leading: React.ReactNode; title: string; status: string; actionLabel: string; onPress: () => void; busy?: boolean }) {
+  const { tokens } = useApp();
+  return (
+    <Pressable onPress={onPress} disabled={busy} accessibilityRole="button" style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: ROW_H, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: pressed ? tokens.surface2 : "transparent" }]}>
+      {leading}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text size={15} weight="600" numberOfLines={1} style={{ writingDirection: "ltr", textAlign: "left" }}>{title}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: tokens.accent }} />
+          <Text size={12} weight="500" muted numberOfLines={1}>{status}</Text>
+        </View>
+      </View>
+      <Button size="sm" variant="ghost" label={actionLabel} busy={busy} disabled={busy} onPress={onPress} />
+      <Chevron />
+    </Pressable>
   );
 }

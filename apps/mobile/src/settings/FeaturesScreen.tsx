@@ -5,7 +5,7 @@ import { Text } from "../ui";
 import { radius } from "../theme";
 import { Icon, iconOr } from "../icons";
 import { SECTIONS, type Feature } from "@/core/features";
-import { SettingsScreen } from "./ui";
+import { SettingsScreen, StatusPill } from "./ui";
 
 /**
  * ====== المميزاتُ أصليّةً — شريحةُ «لا ويب في التطبيق» ١ (١٩ أكتوبر ٢٠٢٦) ======
@@ -58,9 +58,7 @@ function FeatureCard({ f, ar }: { f: Feature; ar: boolean }) {
         <Text size={14} weight="700" style={{ lineHeight: 20 }}>{ar ? f.ar : f.en}</Text>
         <Text size={12} muted style={{ marginTop: 2, lineHeight: 18 }}>{ar ? f.arBody : f.enBody}</Text>
       </View>
-      <View style={{ borderRadius: 999, borderWidth: 1, borderColor: tone + "59", backgroundColor: tone + "1A", paddingHorizontal: 10, paddingVertical: 3 }}>
-        <Text size={12} weight="700" color={tone} numberOfLines={1}>{tag}</Text>
-      </View>
+      <StatusPill label={tag} color={tone} />
     </View>
   );
 }

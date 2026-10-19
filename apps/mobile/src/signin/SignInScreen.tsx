@@ -4,7 +4,6 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, GATE_HEADERS } from "../api";
 import { APPLE_SIGN_IN } from "../auth";
@@ -273,12 +272,11 @@ export function SignInScreen() {
   }, [busy, router, raise, lower, settled]);
 
   const openDoc = useCallback((path: "/terms" | "/privacy") => {
-    /* الصفحتان القانونيّتان تبقيان ويباً (قرارُه ١٠ أكتوبر) — تُفتحان في متصفّح التطبيق المصغَّر: لا جلسةَ تلزمهما.
-       🆕 D-1345 — **النسخةُ العارية `/app/…`** لا صفحةُ الموقع: تلك تحمل شريطَه السفليَّ ورابطَ «‹ Loopz»
-       فتصفّح منها الموقعَ كلَّه قبل أن يسجّل (تسجيلُه ١٠ أكتوبر). واللغةُ في العنوان: المتصفّحُ المصغَّر
-       لا يرى كعكةَ الـWebView، فلا يعرف ما اختاره هنا. */
-    void WebBrowser.openBrowserAsync(`${CONFIG.apiBase}/app${path}?lang=${locale}`).catch(() => {});
-  }, [locale]);
+    /* كانتا ويباً في المتصفّح المصغَّر (قرارُه ١٠ أكتوبر، ثمّ النسخةُ العارية `/app/…` — D-1345: صفحةُ الموقع فتحت الموقعَ كلَّه). */
+    /* 🆕 «لا ويب في التطبيق» ٢ (١٩ أكتوبر) — **شاشةٌ أصليّةٌ تقرأ النصَّ الواحدَ من الخادم** (`/legal/[doc]`، قرارُ أحمد
+       «شاشة تقرأ من الخادم»): لا متصفّحَ مصغَّراً ولا صفحةَ ويب. المسارُ عامٌّ فلا جلسةَ تلزمه، واللغةُ لغةُ هذه الشاشة. */
+    router.push({ pathname: "/legal/[doc]", params: { doc: path === "/terms" ? "terms" : "privacy" } });
+  }, [router]);
 
   const flipLang = useCallback(() => {
     const next = locale === "ar" ? "en" : "ar";
