@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, I18nManager, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -767,6 +767,13 @@ const DiscoverPane = memo(function DiscoverPane({
   }, [foryou, foryouPool]);
   /* D-1028 (F4) — كائنٌ محفوظ: كان جديداً في كلِّ رسمة فيكسر `memo` كلِّ صفّ */
   const railProps = useMemo(() => ({ hidden, onHold, onOpen }), [hidden, onHold, onOpen]);
+  /* 🆕 D-1471 — اللوحُ صار نشطاً: صفوفُه غيرُ الملموسة تُثبَّت على أوّل بطاقة (الآيفون بالعربيّ وحدَه — انظر `pinDiscoverRails`).
+     بعد إطارٍ واحد كي يكون اللوحُ قد استقرّ في مكانه */
+  useEffect(() => {
+    if (!active || !IOS_RTL) return;
+    const f = requestAnimationFrame(pinDiscoverRails);
+    return () => cancelAnimationFrame(f);
+  }, [active]);
   /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
   /* 🆕 D-1219 — ثابتةُ المرجع: كانت دالّةً جديدةً في كلِّ رسمةٍ فتكسر `memo` كلِّ `Rail` و`CardsRail` يحملها */
   const seeAll = useCallback((path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path)), [onSeeAll, onLeave]);
@@ -975,6 +982,23 @@ const cardLayout = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, 
 
 const RAIL_JANK = scrollJank("discover", "h");
 
+/**
+ * 🆕 D-1471 — **صفوفُ «اكتشف» على الآيفون بالعربيّ تُثبَّت على أوّل بطاقة** (تسجيلُ مشعل ١٩ أكتوبر بعد D-1470: بعد السحب بين
+ * التبويبات ترجع صفوفٌ فارغةً بطرفِ ملصقٍ عند الحافّة، ولا تعود إلّا بتحريكٍ رأسيّ). العائلةُ نفسُها التي أصلحها D-1459 في صفِّ
+ * الرئيسيّة: Fabric في iOS يقلب الصفَّ بالعربيّ (scaleX ‎-1) ويحوّل الإزاحة (JS ‏x = المحتوى − الإطار − الأصليّة)، فالصفُّ
+ * المركَّبُ من جديد يقف عند طرفه الآخر — وهنا لا يُرسم إلّا ما حول الإزاحة المظنونة، فيبدو فارغاً. ما رسمه D-1466 كلَّه أخفى
+ * العرضَ لا العلّة، وكان ثقيلاً.
+ *  - **عند التركيب** (`onContentSizeChange` الأوّل) و**كلّما صار لوحُه النشط** (هذا البثّ): `scrollToEnd` = بدايةُ الصفِّ المرئيّة
+ *    (يمين)، وفي صفٍّ سليمٍ لا يحرّك شيئاً؛ والتمريرُ نفسُه يعيد حسابَ ما يُرسم كما كان يفعل التحريكُ الرأسيّ.
+ *  - **صفٌّ سحبه المستخدمُ لا يُمسّ** — لا نُرجعه إلى أوّله.
+ *  - الأندرويد والآيفون بالإنجليزيّ لا يمرّون هنا أصلاً.
+ */
+const IOS_RTL = Platform.OS === "ios" && I18nManager.isRTL;
+const railPins = new Set<() => void>();
+function pinDiscoverRails(): void {
+  for (const pin of railPins) pin();
+}
+
 const CardsRail = memo(function CardsRail({
   title,
   icon,
@@ -1011,6 +1035,32 @@ const CardsRail = memo(function CardsRail({
     ),
     [ranked, notes, onOpen, onHold],
   );
+  /* D-1471 — التثبيتُ على أوّل بطاقة (انظر `pinDiscoverRails`) */
+  const listRef = useRef<FlatList<CuratedCard & { note?: string | null }>>(null);
+  const touched = useRef(false);
+  const sized = useRef(false);
+  const pin = useCallback(() => {
+    if (!touched.current && sized.current) listRef.current?.scrollToEnd({ animated: false });
+  }, []);
+  useEffect(() => {
+    if (!IOS_RTL) return;
+    railPins.add(pin);
+    return () => {
+      railPins.delete(pin);
+    };
+  }, [pin]);
+  const onSized = useCallback(
+    (w: number) => {
+      if (sized.current || w <= 0) return;
+      sized.current = true;
+      pin();
+    },
+    [pin],
+  );
+  const onDragStart = useCallback(() => {
+    touched.current = true;
+    RAIL_JANK.onScrollBeginDrag?.();
+  }, []);
   if (shown.length === 0) return null;
   return (
     <View>
@@ -1046,9 +1096,10 @@ const CardsRail = memo(function CardsRail({
            (`getItemLayout`) فما يقترب من الحافّة يُركَّب قبل أن يُرى. */
         windowSize={3}
         /* 🗑️ D-1470 — أُلغي D-1466 وD-1469 (تركيبُ الصفِّ كلِّه على الآيفون بالعربيّ، ثمّ على دفعات): ملأ الصفوفَ الفارغة عند مشعل
-           لكنّه أثقل «اكتشف» حتى بعد الدفعات («لسى فيه ثقل»، ١٩ أكتوبر). الفراغُ يعود معروفاً؛ وعلاجُه يُبحث على محاكي آيفون بالعربيّ. */
+           لكنّه أثقل «اكتشف» حتى بعد الدفعات («لسى فيه ثقل»، ١٩ أكتوبر). الفراغُ عاد، وعلاجُه التثبيتُ لا التركيب (D-1471 — تحت). */
         /* 🆕 D-1334 — وتمريرُ الصفِّ الأفقيّ كذلك */
         {...RAIL_JANK}
+        {...(IOS_RTL ? { ref: listRef, onContentSizeChange: onSized, onScrollBeginDrag: onDragStart } : null)}
       />
     </View>
   );
