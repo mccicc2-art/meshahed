@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { I18nManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { useAppFonts } from "../src/fonts";
 import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
+import { shell } from "../src/shell";
 import { PushGate } from "../src/PushGate";
 import { WidgetGate } from "../src/WidgetGate";
 import { startWidgetFeed } from "../src/widget/feed";
@@ -66,6 +67,21 @@ export default function RootLayout() {
 function Shell() {
   const { loading } = useAuth();
   const { tokens, themeId } = useApp();
+  /* 🆕 «لا ويب في التطبيق» ٤ — أبوابُ Loopz+ والاشتراك شاشةٌ أصليّة: `shell.open` يسأل هنا قبل أن يفتح الويب */
+  const router = useRouter();
+  useEffect(() => {
+    shell.nativeDoor = (path) => {
+      const p = path.split(/[?#]/)[0];
+      if (p === "/plus" || p === "/profile/settings/billing") {
+        router.push({ pathname: "/settings/[section]", params: { section: "plus" } });
+        return true;
+      }
+      return false;
+    };
+    return () => {
+      shell.nativeDoor = null;
+    };
+  }, [router]);
   /* 🆕 D-1350 — أنميشنُ الفتح يبدأ حين تزول صورةُ النظام لا قبلها: ما يُرسم خلفها لا يُرى */
   const [splashGone, setSplashGone] = useState(false);
   useEffect(() => {

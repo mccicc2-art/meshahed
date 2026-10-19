@@ -18,3 +18,22 @@ export function takeDiscoverAim(): DiscoverAim | null {
   aimed = null;
   return a;
 }
+
+/**
+ * 🆕 «لا ويب في التطبيق» ٣ (١٩ أكتوبر ٢٠٢٦) — **تعديلُ شرطِ قائمةٍ ذكيّةٍ من الكتالوج في «اكتشف» الأصليّة** (كان بابَ
+ * `/lists/<id>?from=app` الويبيّ). شرطُها هو شريطُ فلاتر «اكتشف» نفسُه (D-145 — لا نموذجَ فلاترَ ثانياً)، فتُفتح «اكتشف» على
+ * تبويبه بفلاتره وفي وضع التعديل، و«حدِّث» يكتب الشرطَ الجديد (`/api/v1/lists/smart-rule`). يُقرأ مرّةً كأخيه.
+ */
+export type SmartEdit = { listId: string; name: string; rule: Record<string, string> };
+
+let editing: SmartEdit | null = null;
+
+export function aimDiscoverEdit(e: SmartEdit): void {
+  editing = e;
+}
+
+export function takeDiscoverEdit(): SmartEdit | null {
+  const e = editing;
+  editing = null;
+  return e;
+}

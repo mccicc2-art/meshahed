@@ -12,6 +12,7 @@ import { InvitesScreen } from "../../src/settings/InvitesScreen";
 import { ImportScreen } from "../../src/settings/ImportScreen";
 import { WidgetScreen } from "../../src/settings/WidgetScreen";
 import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
+import { PlusScreen } from "../../src/settings/PlusScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -38,6 +39,8 @@ const SCREENS = {
   widget: WidgetScreen,
   /* 🆕 «لا ويب في التطبيق» ١ — «المميزات» أصليّةٌ من سجلِّ النواة نفسِه (كانت بابَ `/features`) */
   features: FeaturesScreen,
+  /* 🆕 «لا ويب في التطبيق» ٤ — Loopz+ والاشتراك شاشةٌ واحدة (كلُّ أبواب `/plus` والفوترة عبر `shell.nativeDoor`) */
+  plus: PlusScreen,
 } as const;
 
 export default function SettingsSection() {

@@ -10,7 +10,8 @@ import { api, queryClient, write } from "../api";
 import type { ToastHostRef } from "../HoldHost";
 import type { VerifyBody, VerifyPayload } from "../contracts";
 import { SettingsScreen, Group, Field, OptionList, OptionRow, RowsSkeleton } from "./ui";
-import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
+import { SETTINGS_KEY, messageOf } from "./api";
+import { linkProvider } from "../linkGoogle";
 
 /** D-1142 — الختمُ وحدَه: الصفحةُ عن التوثيق لا عن الخطّة */
 const SEAL_ONLY = { partner: false, plus: false, founder: false, verified: true };
@@ -34,10 +35,25 @@ const KINDS = [
 
 export function VerifyScreen() {
   const { t, tokens, locale } = useApp();
-  const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<VerifyPayload>("/api/v1/me/verify")).data, staleTime: 0 });
   const d = q.data;
+  const [linking, setLinking] = useState<null | "x">(null);
+  const link = async (provider: "x") => {
+    if (linking) return;
+    setLinking(provider);
+    try {
+      const out = await linkProvider(provider);
+      if (out === "linked") {
+        await write("/api/v1/me/profile/x", { action: "sync" }).catch(() => null);
+        toast.current?.say(t.appXLinked, undefined, undefined, "success");
+        void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+        void q.refetch();
+      } else if (out !== "cancel") toast.current?.say(t.verifyLinkFailed);
+    } finally {
+      setLinking(null);
+    }
+  };
 
   const [kind, setKind] = useState<string>("person");
   const seeded = useRef(false);
@@ -100,7 +116,6 @@ export function VerifyScreen() {
     </View>
   );
 
-  const busyWeb = openWeb.busy === "/profile/settings/verify";
 
   return (
     <SettingsScreen title={t.verifyTitle} toast={toast}>
@@ -160,8 +175,9 @@ export function VerifyScreen() {
               ))
             )}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <Button size="sm" variant="ghost" disabled={busyWeb} label={t.verifyLinkX} onPress={() => openWeb("/profile/settings/verify")} />
-              <Button size="sm" variant="ghost" disabled={busyWeb} label={t.verifyLinkFacebook} onPress={() => openWeb("/profile/settings/verify")} />
+              {/* 🆕 «لا ويب في التطبيق» ٣ — ربطُ X من متصفّح النظام (`linkProvider`) ثمّ `sync` يكتب معرّفَه (ما يفعله الويب).
+                  Facebook حُذف (أحمد ١٩ أكتوبر: «فيس بوك لا احذفه») */}
+              <Button size="sm" variant="ghost" busy={linking === "x"} disabled={!!linking} label={t.verifyLinkX} onPress={() => void link("x")} />
             </View>
           </View>
         </Group>

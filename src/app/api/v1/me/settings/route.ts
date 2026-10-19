@@ -5,7 +5,7 @@ import { myBlocksList } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { isPlus, isPartner, isVerified, isFounder, planNameOf } from "@/core/plan";
+import { isPlus, isPartner, isVerified, isFounder, planNameOf, planReasonOf } from "@/core/plan";
 import { DEFAULT_THEME } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/core/fontPrefs";
 import { TOUR_IDS, TOUR_META } from "@/lib/tour";
@@ -62,6 +62,8 @@ export async function GET() {
         /* D-1350 — من الهويّات نفسِها (جوابُ `getUser` من خادم المصادقة، لا من رمزٍ قد يسبق الربط) */
         providers: [...new Set((auth.user.identities ?? []).map((i) => i.provider))],
         plan_label: planNameOf(p, t),
+        plan_reason: planReasonOf(p, t),
+        plus_until: p?.plus_until ?? null,
         plus: isPlus(p),
         partner: isPartner(p),
         verified: isVerified(p),

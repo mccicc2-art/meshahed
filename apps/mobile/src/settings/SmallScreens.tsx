@@ -15,7 +15,8 @@ import { Image } from "expo-image";
 import { Icon, GOOGLE_MARK } from "../icons";
 import { useRouter } from "expo-router";
 import { useSettings, invalidateSettings } from "./api";
-import { linkGoogle } from "../linkGoogle";
+import { linkGoogle, linkApple } from "../linkGoogle";
+import { APPLE_SIGN_IN } from "../auth";
 import type { HintsResetBody } from "../contracts";
 import { tourStore } from "../tour/store";
 
@@ -243,29 +244,32 @@ export function AccountScreen() {
   const go = (section: "verify") => router.push({ pathname: "/settings/[section]", params: { section } });
   /* 🆕 D-1350 — «ربط حساب Google» لمن دخل بأبل (القرار ٥): صفٌّ يفتح Google في متصفّح النظام، وبعد الربط يقول «مرتبط» */
   const toast = useRef<ToastHostRef>(null);
-  const [linking, setLinking] = useState(false);
+  const [linking, setLinking] = useState<null | "google" | "apple">(null);
+  const [adding, setAdding] = useState(false);
   const providers = s?.account.providers ?? [];
   const hasGoogle = providers.includes("google");
-  const link = async () => {
+  const hasApple = providers.includes("apple");
+  /* 🆕 ربطُ Apple (أحمد ١٩ أكتوبر: «نعم») — على الآيفون وحدَه (القرار ٣: أبل لا تُعرض على أندرويد)، ولمن ليس عنده */
+  const canAddApple = APPLE_SIGN_IN && !hasApple;
+  const link = async (which: "google" | "apple") => {
     if (linking) return;
-    setLinking(true);
+    setAdding(false);
+    setLinking(which);
     try {
-      const out = await linkGoogle();
+      const out = which === "google" ? await linkGoogle() : await linkApple();
       if (out === "linked") {
-        toast.current?.say(t.linkGoogleDone, undefined, undefined, "success");
+        toast.current?.say(which === "google" ? t.linkGoogleDone : t.appLinkAppleDone, undefined, undefined, "success");
         invalidateSettings();
-      } else if (out === "taken") toast.current?.say(t.linkGoogleTaken);
+      } else if (out === "taken") toast.current?.say(which === "google" ? t.linkGoogleTaken : t.appLinkAppleTaken);
       else if (out === "failed") toast.current?.say(t.linkGoogleFailed);
     } finally {
-      setLinking(false);
+      setLinking(null);
     }
   };
-  /* 🆕 تصميمُ أحمد (١٩ أكتوبر) — أربعُ مجموعات: «معلومات الحساب» (البريدُ وتحقّقُه) · «طرق تسجيل الدخول» (المرتبطُ وإدارتُه،
-     وإضافةُ ما يمكن إضافتُه) · «توثيق الحساب» · «إدارة الحساب» (الخروجُ ثمّ الحذف). **البريدُ «تم التحقق»** لأنّ الدخولَ
-     بـ Google أو Apple وحدَهما: المزوّدُ هو من تحقّق منه، ولا بريدَ يُكتب باليد في Loopz.
-     **«إدارة»** تفتح صفحةَ المزوّد نفسَه في متصفّح النظام (أذوناتُ التطبيقات المرتبطة) — فكُّ الربط يُدار هناك لا هنا.
-     **«إضافة طريقة دخول»** لا تظهر إلّا حين يوجد ما يُضاف: ربطُ Google لمن دخل بـ Apple (D-1350)؛ ربطُ Apple لم يُبنَ بعد. */
-  const verifiedEmail = providers.includes("google") || providers.includes("apple");
+  /* 🆕 تصميمُ أحمد (١٩ أكتوبر) — أربعُ مجموعات: «معلومات الحساب» · «طرق تسجيل الدخول» · «توثيق الحساب» · «إدارة الحساب».
+     **البريدُ «تم التحقق»** لأنّ الدخولَ بـ Google أو Apple وحدَهما: المزوّدُ هو من تحقّق منه. **«إدارة»** تفتح صفحةَ المزوّد
+     نفسَه في متصفّح النظام — فكُّ الربط يُدار هناك. */
+  const verifiedEmail = hasGoogle || hasApple;
   const signOut = () => {
     haptic.pick();
     /* D-1371 — شاشةُ الخروج تُدفع فوق هذه، وهي من يرسل الطلبَ ويرفع شاشةَ الدخول */
@@ -312,7 +316,17 @@ export function AccountScreen() {
                 onPress={() => void Linking.openURL("https://account.apple.com/account/manage").catch(() => {})}
               />
             ) : null}
-            {!hasGoogle ? <Row icon="plus" title={t.appAddSignIn} subtitle={t.linkGoogleSub} onPress={() => void link()} busy={linking} /> : null}
+            {/* «إضافة طريقة دخول» حين يوجد ما يُضاف: Google لمن ليس عنده، وApple على الآيفون لمن ليس عنده. واحدٌ ⇒ يُربط مباشرة؛
+                اثنان ⇒ ورقةٌ تختار منها */}
+            {!hasGoogle || canAddApple ? (
+              <Row
+                icon="plus"
+                title={t.appAddSignIn}
+                subtitle={!hasGoogle && !canAddApple ? t.linkGoogleSub : undefined}
+                busy={!!linking}
+                onPress={() => (!hasGoogle && canAddApple ? setAdding(true) : void link(!hasGoogle ? "google" : "apple"))}
+              />
+            ) : null}
           </Group>
 
           <Group label={t.appVerifyGroup}>
@@ -326,6 +340,14 @@ export function AccountScreen() {
           </Group>
         </>
       )}
+      {adding ? (
+        <Sheet title={t.appAddSignIn} onClose={() => setAdding(false)}>
+          <View style={{ gap: 10 }}>
+            <Button label={t.appGoogleAccount} variant="ghost" onPress={() => void link("google")} />
+            <Button label={t.appAppleAccount} variant="ghost" onPress={() => void link("apple")} />
+          </View>
+        </Sheet>
+      ) : null}
       {deleting ? <DeleteAccountSheet onClose={() => setDeleting(false)} /> : null}
     </SettingsScreen>
   );

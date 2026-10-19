@@ -38,6 +38,7 @@ import type { TabPref } from "@/core/tabPrefs";
 import type { MyRow } from "@/core/myRows";
 import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
+import { takeDiscoverEdit, type SmartEdit } from "./aim";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { useTourAnchor } from "../tour/anchors";
@@ -48,7 +49,7 @@ import { libraryQuery } from "../library/LibraryScreen";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { regionName } from "@/core/region";
-import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
+import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload, SavedFilterBody, SavedFilterResult, SmartListBody, SmartRuleBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
 /**
@@ -177,6 +178,19 @@ export function DiscoverScreen() {
     useCallback(() => {
       const next = takeDiscoverAim();
       if (next) setTab(next);
+    }, []),
+  );
+  /* 🆕 «لا ويب في التطبيق» ٣ — قائمةٌ ذكيّةٌ من الكتالوج تُعدَّل هنا: تبويبُ شرطها وفلاترُه ووضعُ التعديل («حدِّث» بدل «قائمة ذكيّة»).
+     النوعُ إلى التبويب عكسُ `sectionToRuleType`: `movie` أفلام · `tv` مسلسلات · `all` أنمي (التبويبُ الوحيدُ الذي يكتبه) */
+  const [smartEdit, setSmartEdit] = useState<SmartEdit | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const e = takeDiscoverEdit();
+      if (!e) return;
+      const { type, ...rest } = e.rule;
+      setTab(type === "movie" ? "movies" : type === "tv" ? "shows" : "anime");
+      setBrowse(browseFromQuery(new URLSearchParams(rest).toString()));
+      setSmartEdit(e);
     }, []),
   );
   useRefetchOnFocus(["discover:"]);
@@ -533,6 +547,8 @@ export function DiscoverScreen() {
             onToast={(s) => setToast(s, "success")}
             onUndoable={undoable}
             onSeeAll={openAll}
+            smartEdit={smartEdit}
+            onSmartEditDone={setSmartEdit}
           />
         )}
       />
@@ -622,6 +638,8 @@ const DiscoverPane = memo(function DiscoverPane({
   onToast,
   onUndoable,
   onSeeAll,
+  smartEdit,
+  onSmartEditDone,
 }: {
   tab: Tab;
   /** هل هذا اللوحُ هو النشط؟ الجارُ المسلَّح يُرسم حيّاً لكنّه لا يحمّي مشغّلاً (D-975) */
@@ -650,6 +668,9 @@ const DiscoverPane = memo(function DiscoverPane({
   onUndoable: (text: string, commit: () => void, undo: () => void) => void;
   /** D-994 — «الكلّ» لصفّ: العنوانُ ومسارُ `see_all` */
   onSeeAll: (title: string, path: string) => void;
+  /** 🆕 «لا ويب في التطبيق» ٣ — قائمةٌ ذكيّةٌ يُعدَّل شرطُها هنا (`aimDiscoverEdit`)، و`null` حين يُحدَّث أو يُترك */
+  smartEdit: SmartEdit | null;
+  onSmartEditDone: (e: SmartEdit | null) => void;
 }) {
   const { t } = useApp();
   const router = useRouter();
@@ -717,6 +738,22 @@ const DiscoverPane = memo(function DiscoverPane({
     },
     [naming, tab, bq, qc, railTab, onLeave, onError, onToast, t],
   );
+  /* 🆕 «لا ويب في التطبيق» ٣ — «حدِّث» شرطَ القائمة الذكيّة بالفلاتر الظاهرة (الشكلُ نفسُه الذي ينشئها: `q` + `type`) */
+  const updateSmart = useCallback(async () => {
+    if (!smartEdit || tab === "lists") return;
+    try {
+      const type = sectionToRuleType(tab) ?? "all";
+      const r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/lists/smart-rule", { listId: smartEdit.listId, rule: { ...Object.fromEntries(new URLSearchParams(bq)), type } } satisfies SmartRuleBody);
+      if (r.needsPlus) {
+        onLeave("/plus");
+        return;
+      }
+      onToast(t.appSmartUpdated(smartEdit.name));
+      onSmartEditDone(null);
+    } catch (e) {
+      onError(e);
+    }
+  }, [smartEdit, tab, bq, onLeave, onToast, onError, onSmartEditDone, t]);
   const removeSaved = useCallback(
     (f: { name: string; q: string }) => {
       const key = ["discover:personal", railTab, bq] as const;
@@ -832,7 +869,14 @@ const DiscoverPane = memo(function DiscoverPane({
           {!(ps?.filters ?? []).some((f) => f.q === bq) ? (
             <Chip label={ar ? "＋ احفظ الفلتر" : "＋ Save filter"} active={false} onPress={() => setNaming("filter")} />
           ) : null}
-          <Chip label={t.smartListLabel} active={false} onPress={() => setNaming("smart")} />
+          {smartEdit ? (
+            <>
+              <Chip label={t.smartListUpdate(smartEdit.name)} active onPress={() => void updateSmart()} />
+              <Chip label="×" active={false} onPress={() => onSmartEditDone(null)} />
+            </>
+          ) : (
+            <Chip label={t.smartListLabel} active={false} onPress={() => setNaming("smart")} />
+          )}
         </ScrollView>
       ) : null}
       {naming ? (

@@ -15,6 +15,7 @@ import { haptic } from "../haptics";
 import { api, filePart, postForm, queryClient, write, ApiError } from "../api";
 import { Sheet } from "../library/Sheet";
 import { useImageCrop } from "../imageCrop";
+import { linkProvider } from "../linkGoogle";
 import type { ToastHostRef } from "../HoldHost";
 import type { ProfileEditPayload, ProfileImagePayload, ProfileSaveBody } from "../contracts";
 import { SettingsScreen, Row, Field, FieldCard, LinkedRow, Chevron, RowsSkeleton } from "./ui";
@@ -145,6 +146,45 @@ export function ProfileScreen() {
       setError(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort));
     } finally {
       setSaving(false);
+    }
+  }
+
+  /* ===== حسابُ X ===== 🆕 «لا ويب في التطبيق» ٣ */
+  const [xBusy, setXBusy] = useState(false);
+  const [xAsk, setXAsk] = useState(false);
+  async function xAction(action: "sync" | "unlink"): Promise<boolean> {
+    const out = await write<{ handle: string | null; error?: string }>("/api/v1/me/profile/x", { action });
+    if (out.error) throw new Error(out.error);
+    await q.refetch();
+    return action === "unlink" || !!out.handle;
+  }
+  async function connectX() {
+    if (xBusy) return;
+    setXBusy(true);
+    try {
+      const r = await linkProvider("x");
+      if (r === "taken") return toast.current?.say(t.xError + "identity_already_exists");
+      if (r !== "linked") {
+        if (r === "failed") toast.current?.say(t.linkGoogleFailed);
+        return;
+      }
+      if (await xAction("sync")) toast.current?.say(t.appXLinked, undefined, undefined, "success");
+    } catch (e) {
+      toast.current?.say(t.xError + (e instanceof Error ? e.message : ""));
+    } finally {
+      setXBusy(false);
+    }
+  }
+  async function disconnectX() {
+    setXAsk(false);
+    setXBusy(true);
+    try {
+      await xAction("unlink");
+      toast.current?.say(t.appXUnlinked, undefined, undefined, "success");
+    } catch (e) {
+      toast.current?.say(t.xError + (e instanceof Error ? e.message : ""));
+    } finally {
+      setXBusy(false);
     }
   }
 
@@ -302,7 +342,8 @@ export function ProfileScreen() {
         </FieldCard>
       </View>
 
-      {/* ===== الحساباتُ المرتبطة ===== يغيب مع مزوّده (D-217)؛ الربطُ وفكُّه في صفحة الويب (جلستُها — D-932) حتى الشريحة ٣ */}
+      {/* ===== الحساباتُ المرتبطة ===== يغيب مع مزوّده (D-217). 🆕 «لا ويب في التطبيق» ٣ — الربطُ من متصفّح النظام
+          (`linkProvider("x")`) ثمّ `sync`، والفكُّ بتأكيدٍ ثمّ `unlink` — فعلا الويب نفسُهما عبر `/api/v1/me/profile/x` */}
       {d.x ? (
         <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, paddingTop: 14, overflow: "hidden" }}>
           <Text size={15} weight="700" style={{ paddingHorizontal: 14, marginBottom: 4 }}>{t.appLinkedAccounts}</Text>
@@ -312,18 +353,27 @@ export function ProfileScreen() {
               title={`@${d.x.handle}`}
               status={t.linkGoogleLinked}
               actionLabel={t.appManage}
-              busy={openWeb.busy === "/profile/edit"}
-              onPress={() => (dirty ? toast.current?.say(t.xSaveFirst) : openWeb("/profile/edit"))}
+              busy={xBusy}
+              onPress={() => (dirty ? toast.current?.say(t.xSaveFirst) : setXAsk(true))}
             />
           ) : (
             <Row
               leading={<Icon name="x-logo" size={22} color={tokens.fg} />}
               title="X"
               subtitle={dirty ? t.xSaveFirst : t.xHint}
-              trailing={<Button size="sm" variant="ghost" disabled={dirty || openWeb.busy === "/profile/edit"} label={t.xConnect} onPress={() => openWeb("/profile/edit")} />}
+              trailing={<Button size="sm" variant="ghost" busy={xBusy} disabled={dirty || xBusy} label={t.xConnect} onPress={() => void connectX()} />}
             />
           )}
         </View>
+      ) : null}
+      {xAsk ? (
+        <Sheet title={t.appXUnlinkTitle} placement="center" onClose={() => setXAsk(false)}>
+          <Text size={14} muted style={{ lineHeight: 21 }}>{t.appXUnlinkBody}</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+            <Button label={t.setKeepEditing} variant="ghost" style={{ flex: 1 }} onPress={() => setXAsk(false)} />
+            <Button label={t.xDisconnect} variant="danger" style={{ flex: 1 }} onPress={() => void disconnectX()} />
+          </View>
+        </Sheet>
       ) : null}
       {cropUi}
     </SettingsScreen>

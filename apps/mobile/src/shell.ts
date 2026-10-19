@@ -181,11 +181,18 @@ export const shell = {
   /** 🆕 D-1103 — يُنادى لحظةَ وصول الصفحة المطلوبة (قبل نزول الشاشة الأصليّة) — `web.tsx` يرفع درعَ اللمس */
   onArrive: null as (() => void) | null,
   /**
+   * 🆕 «لا ويب في التطبيق» ٤ (١٩ أكتوبر ٢٠٢٦) — **بابٌ ويبيٌّ صار شاشةً أصليّة** (`/plus` وأقفالُه التسعة عشر، وصفحةُ
+   * الاشتراك): يسجّله الجذرُ (`app/_layout.tsx`) بموجّهه، و`open` يسأله أوّلاً — `true` ⇒ الشاشةُ دُفعت فوق المستدعي
+   * فيبقى هو كما هو (عقدُ «الطبقة» نفسُه، K3b). **مكانٌ واحدٌ لا تسعة عشر**: كلُّ مستدعٍ يمرّ من هنا بلا تغيير.
+   */
+  nativeDoor: null as ((path: string) => boolean) | null,
+  /**
    * 🆕 K3b — **الوعدُ يقول إن ظهرت الصفحةُ طبقةً** (`true`): بابٌ بوجهة عودة، والطبقةُ مركَّبة ⇒ تظهر فوق الشاشة التي
    * فتحته **ولا يُنزل المستدعي شيئاً** — العودةُ تُخفيها فتبقى الشاشةُ كما تُركت (`webDoor.ts`). `false` ⇒ الطريقُ القديم
    * (`dismissAll` لتنكشف الصفحةُ تحت المكدّس) — بابٌ بلا وجهة عودة (صفحةٌ فُتحت من الويب) أو طبقةٌ لم تُركَّب.
    */
   open(path: string, opts?: { returnTo?: ReturnTo; resume?: StackEntry[] }): Promise<boolean> {
+    if (shell.nativeDoor?.(path)) return Promise.resolve(true);
     /* 🆕 D-1370 (V-D) — بلا WebView قائمة: البابُ يُنشئها على صفحته (`loader`)؛ وبلا الاثنين كما كان — `false` */
     if ((!inject && !loader) || !path.startsWith("/")) return Promise.resolve(false);
     shell.returnTo = opts?.returnTo ?? null;

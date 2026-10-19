@@ -87,7 +87,7 @@ export function VerifyScreen({
    * يضع أحمدُ مفاتيحَ تطبيقه بنفسه في لوحة Supabase. **فالفشلُ يُقال
    * بجملةٍ تشرح، لا بانكسار.**
    */
-  async function link(provider: "twitter" | "facebook") {
+  async function link(provider: "x") {
     tap(8);
     setLinking(true);
     try {
@@ -216,11 +216,10 @@ export function VerifyScreen({
               </ul>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button variant="surface" size="sm" disabled={linking} onClick={() => link("twitter")}>
+              {/* 🆕 ١٩ أكتوبر — Facebook حُذف (أحمد: «فيس بوك لا احذفه» — مزوّدُه غيرُ مفعَّل)، و X بمفتاح `x` (OAuth 2.0 —
+                  حكمُ `XLinkRow`؛ `twitter` مزوّدُ OAuth 1.0a المهجور) */}
+              <Button variant="surface" size="sm" disabled={linking} onClick={() => link("x")}>
                 {t.verifyLinkX}
-              </Button>
-              <Button variant="surface" size="sm" disabled={linking} onClick={() => link("facebook")}>
-                {t.verifyLinkFacebook}
               </Button>
             </div>
           </div>

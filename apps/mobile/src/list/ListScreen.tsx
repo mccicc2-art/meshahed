@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
+import { aimDiscoverEdit } from "../discover/aim";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
@@ -453,7 +454,16 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                   d.smart_source === "library" ? (
                     <Button label={t.smartListUpdate(d.name)} variant="ghost" onPress={() => setSheet("rule")} />
                   ) : (
-                    <Button label={`${t.smartListLabel} ↗`} variant="ghost" onPress={() => openWeb(`/lists/${id}?from=app`)} />
+                    /* 🆕 «لا ويب في التطبيق» ٣ — شرطُ الكتالوج يُعدَّل في «اكتشف» الأصليّة (حيث بُني — D-875): تبويبُه وفلاترُه
+                       ووضعُ «حدِّث». كان بابَ `/lists/<id>?from=app` الويبيّ */
+                    <Button
+                      label={t.smartListUpdate(d.name)}
+                      variant="ghost"
+                      onPress={() => {
+                        aimDiscoverEdit({ listId: id, name: d.name, rule: d.smart_rule ?? {} });
+                        router.navigate("/discover");
+                      }}
+                    />
                   )
                 ) : (
                   <Button label={t.listAddTitles} variant="ghost" onPress={() => setSheet("add")} />

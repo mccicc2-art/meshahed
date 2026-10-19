@@ -32,6 +32,9 @@ export type SettingsPayload = {
     providers?: string[];
     /** اسمُ الخطّة كما يكتبه `planNameOf` — بلغة الطلب */
     plan_label: string;
+    /** 🆕 شاشةُ Loopz+ الأصليّة (١٩ أكتوبر) — سببُ الخطّة («مؤسِّس» · «شريك») ونهايتُها كما يقرؤهما صفحةُ الاشتراك. خادمٌ أقدمُ لا يرسلهما */
+    plan_reason?: string | null;
+    plus_until?: string | null;
     plus: boolean;
     partner: boolean;
     verified: boolean;

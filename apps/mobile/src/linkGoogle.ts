@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { CONFIG } from "./config";
 import { session } from "./session";
 
@@ -34,7 +35,19 @@ function param(url: string, name: string): string | null {
   }
 }
 
-export async function linkGoogle(): Promise<LinkOutcome> {
+/**
+ * 🆕 «لا ويب في التطبيق» ٣ (١٩ أكتوبر ٢٠٢٦) — **الطريقُ نفسُه لكلِّ مزوّد ويب**: Google (D-1350) ثمّ X (Facebook حُذف — ١٩ أكتوبر) — كان
+ * باباً إلى صفحتي الويب (`/profile/edit` · `/profile/settings/verify`) لأنّ `linkIdentity` كانت تعمل في جلسة الويب وحدَها
+ * (D-932). عنوانُ الربط برمز العضو يعمل من أيِّ مكان؛ فالربطُ صار هنا. ⚠️ **المفتاحُ `x` لا `twitter`** (OAuth 2.0 —
+ * حكمُ `XLinkRow`). مزوّدٌ غيرُ مفعَّلٍ في Supabase ⇒ لا عنوان ⇒ «failed» ونصُّه، لا انكسار.
+ */
+export type WebProvider = "google" | "x";
+
+export function linkGoogle(): Promise<LinkOutcome> {
+  return linkProvider("google");
+}
+
+export async function linkProvider(provider: WebProvider): Promise<LinkOutcome> {
   try {
     const token = session.get() ?? (await session.request());
     if (!token) return "failed";
@@ -43,7 +56,7 @@ export async function linkGoogle(): Promise<LinkOutcome> {
     const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, verifier, { encoding: Crypto.CryptoEncoding.BASE64 });
     const challenge = digest.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const redirectTo = Linking.createURL("auth/callback");
-    const q = `provider=google&redirect_to=${encodeURIComponent(redirectTo)}&code_challenge=${challenge}&code_challenge_method=s256&skip_http_redirect=true`;
+    const q = `provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}&code_challenge=${challenge}&code_challenge_method=s256&skip_http_redirect=true`;
     const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/user/identities/authorize?${q}`, {
       headers: { Accept: "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
     });
@@ -57,5 +70,38 @@ export async function linkGoogle(): Promise<LinkOutcome> {
     return param(back.url, "code") ? "linked" : "failed";
   } catch {
     return "failed";
+  }
+}
+
+/**
+ * 🆕 ربطُ Apple بحسابٍ قائم (قرارُ أحمد ١٩ أكتوبر: «نعم») — **على الآيفون وحدَه وبلا متصفّح**: ورقةُ النظام تعيد رمزَ هويّةٍ
+ * موقَّعاً كما في الدخول (`signInWithApple`)، ويُرسَل إلى Supabase **برمز العضو ومع `link_identity`** فتُضاف الهويّةُ إلى
+ * حسابه بدل أن يولد حسابٌ جديد (`/token?grant_type=id_token` — ما تفعله `linkIdentity({ token })` في auth-js).
+ *
+ * ⚖️ **الردُّ يحمل جلسةً جديدة ولا نأخذها**: جلسةُ التطبيق ملكُ `ownSession` ولا يستبدلها فعلٌ جانبيّ — المطلوبُ الربطُ
+ * وحدَه، وقد تمّ لحظةَ قَبِل Supabase الرمز. والرقمُ العشوائيّ (nonce) كما في الدخول: أبل تضع بصمتَه في الرمز.
+ * هويّةُ Apple لعضوٍ آخر ⇒ `identity_already_exists` ⇒ «taken» (لا دمج — مخاطرُ D-1350 نفسُها).
+ */
+export async function linkApple(): Promise<LinkOutcome> {
+  try {
+    const token = session.get() ?? (await session.request());
+    if (!token) return "failed";
+    let raw = "";
+    for (const b of Crypto.getRandomBytes(16)) raw += HEX[b >> 4] + HEX[b & 15];
+    const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
+    const cred = await AppleAuthentication.signInAsync({ requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL], nonce: hashed });
+    if (!cred.identityToken) return "failed";
+    const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=id_token`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ provider: "apple", id_token: cred.identityToken, nonce: raw, link_identity: true }),
+    });
+    if (res.ok) return "linked";
+    const err = (await res.json().catch(() => null)) as { error_code?: unknown; code?: unknown } | null;
+    const code = String(err?.error_code ?? err?.code ?? "");
+    return code === "identity_already_exists" ? "taken" : "failed";
+  } catch (e) {
+    const code = (e as { code?: unknown } | null)?.code;
+    return code === "ERR_REQUEST_CANCELED" ? "cancel" : "failed";
   }
 }
