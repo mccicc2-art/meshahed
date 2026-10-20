@@ -1,4 +1,4 @@
-Release R41 — D-1490: the list page's works rail uses the shared iPhone-Arabic rail pin (useRtlRailPin, D-1478) — it opened blank or reversed in Arabic on iPhone — task 120 [deploy]
+Release R42 — D-1491: the subscriber stats default drops «Completed» (shows · movies · time; the old four-stat default is known, so untouched subscribers move) · D-1492: the five remaining virtualized horizontal rails (profile ratings, library recurring names, title cast, title related rails, Discover lists rails) use the shared iPhone-Arabic rail pin — task 122 [deploy]
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
