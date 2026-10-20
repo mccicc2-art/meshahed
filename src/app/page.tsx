@@ -50,16 +50,14 @@ import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
   applyQueueOrder,
+  homeOrderUntouched,
   type HomeSection,
   type SectionView,
 } from "@/core/homePrefs";
 import { capCards } from "@/core/cardCount";
 import { densityVars } from "@/core/density";
 import { WeekStrip } from "@/components/WeekStrip";
-import {
-  HomeOrderButton,
-  HomeOrderSheetHost,
-} from "@/components/HomeSectionsOrder";
+import { HomeOrderSheetHost } from "@/components/HomeSectionsOrder";
 import {
   type QueueRow,
   HomeQueueSheetHost,
@@ -374,7 +372,6 @@ async function HomeBody({
     friendsRows,
     followedKeys,
     doneShowIds,
-    favGenres,
   } = await buildHomeBody({
     followRows,
     summary,
@@ -662,7 +659,6 @@ async function HomeBody({
                    **فُحص قبل الحذف، ولم تُحذف ميزةٌ بلا باب** (D-030). */
               <Section
                 key="shows"
-                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.myShows}
                 icon="tv"
                 iconColor="var(--accent)"
@@ -715,7 +711,6 @@ async function HomeBody({
             myMovies.length > 0 ? (
               <Section
                 key="movies"
-                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.myMovies}
                 icon="film"
                 iconColor="var(--accent)"
@@ -807,7 +802,6 @@ async function HomeBody({
             topRated.length > 0 ? (
               <Section
                 key="ratings"
-                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.ratingsListTitle}
                 icon="star"
                 iconColor="var(--accent)"
@@ -984,12 +978,14 @@ async function HomeBody({
 
       <span id="watching" className="block scroll-mt-20" />
 
-      {favGenres.length === 0 && !empty && (
+      {/* 🆕 D-1488 — «خصّص رئيسيتك» مكانَ «اختر أنواعك» (الأنواعُ لا تُستعمل في الرئيسية؛ بطاقتُها في آخر «اكتشف»):
+          لمن لم يرتّب أقسامَه بيده، وتختفي بعد أوّل ترتيب */}
+      {homeOrderUntouched(profile?.home_prefs) && !empty && (
         <Link
-          href="/profile/edit"
-          className="block text-center text-sm text-muted hover:text-accent border border-dashed border-border rounded-xl py-4 transition"
+          href="/profile/settings/home"
+          className="block text-center text-sm text-muted hover:text-accent border border-dashed border-border rounded-xl py-4 px-3 transition"
         >
-          {t.pickGenresHint}
+          {t.customizeHomeHint}
         </Link>
       )}
     </>
@@ -1381,7 +1377,6 @@ async function UpcomingSection({
   const rail = (view: SectionView) => (
     <Section
       key="upcoming"
-      action={<HomeOrderButton label={t.custArrange} />}
       title={t.libUpcoming}
       icon="hourglass"
       iconColor="var(--accent)"
@@ -1469,7 +1464,6 @@ async function TrendingSection({
   return (
     <Section
       key="trending"
-      action={<HomeOrderButton label={t.custArrange} />}
       title={t.trendingWeek}
       icon="trending"
     >

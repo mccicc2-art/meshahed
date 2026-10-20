@@ -27,7 +27,6 @@ import { toWatchState, useCardActs } from "../cardActs";
 import type { HoldAction } from "../library/HoldMenu";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
-import { SectionOrderSheet } from "./SectionOrderSheet";
 import { openProfile, profileHandleOf } from "../member/open";
 import { warmOwnProfile } from "../member/profileData";
 import { CelebrateSheet } from "./CelebrateSheet";
@@ -44,7 +43,7 @@ import { WeekStrip } from "./WeekStrip";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
-import type { HomePayload, HomeMixedCard, HomeViewBody, HomeOrderBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
+import type { HomePayload, HomeMixedCard, HomeViewBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
 import { nextHomeView, sanitizeHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
 import { reorderHomePayload } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
@@ -423,28 +422,10 @@ export function HomeScreen() {
   const toWatchOf = useCallback((item: CardItem) => toWatchState(store.mark(`${item.kind}-${item.id}`)), [store]);
 
   /* ——— الأوراق: ترتيبُ الأقسام · أولويّةُ صفٍّ · «الكلّ» ——— */
-  const [orderSheet, setOrderSheet] = useState(false);
   const [queueRow, setQueueRow] = useState<QueueOrderBody["row"] | null>(null);
   /* 🆕 D-1353 — «الكلّ» والعنوانُ في كلِّ قسمٍ يفتحان ورقةَ القسم نفسِه (`HomeAllSheet`)؛ و`who`: أسماءُ أصدقاء عملٍ من الصفّ */
   const [allSheet, setAllSheet] = useState<AllSection | null>(null);
   const [who, setWho] = useState<HomeFriendCard | null>(null);
-  const saveOrder = useCallback(
-    async (next: HomeSection[]) => {
-      setOrderSheet(false);
-      qc.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: { ...prev.prefs, order: next } } : prev));
-      try {
-        const r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/home-order", { order: next } satisfies HomeOrderBody);
-        if (r.needsPlus) {
-          invalidateHome();
-          openWeb("/plus");
-        }
-      } catch (e) {
-        invalidateHome();
-        onError(e);
-      }
-    },
-    [qc, invalidateHome, openWeb, onError],
-  );
   /* D-1094 — «تمّ» يرتّب الصفَّ **فوراً** ثمّ يكتب (تسجيلُ أحمد على 1.11.9: رتّب «للمشاهدة» وضغط «تمّ»
      فبقي الصفُّ كما كان — الترتيبُ حُفظ فعلاً في `home_prefs` لكنّ الصفَّ ينتظر إعادةَ جلب الرئيسيّة كاملةً).
      الترتيبُ هنا `applyQueueOrder` نفسُها التي يرتّب بها الخادم — فالتفاؤلُ والجلبُ اللاحقُ يتّفقان حرفاً؛
@@ -568,7 +549,7 @@ export function HomeScreen() {
     const s = d.sections;
     const mixedRow = (x: HomeMixedCard) => <MediaRow key={x.key} title={x.title} subtitle={mixedRowSubtitle(x)} posterPath={x.poster_path} progress={x.progress} onPress={() => openTitle(x.kind, x.id)} />;
     const posterRow = (items: CardItem[], hold: typeof holdLibOpen = holdLibOpen) => <Rail>{items.map((it) => <PosterCard key={it.key} item={it} width={posterW} onPress={pressItem} onHold={hold} />)}</Rail>;
-    const arrange = <Pressable onPress={() => setOrderSheet(true)} hitSlop={8} accessibilityRole="button"><Text size={12} weight="500" muted>{t.custArrange}</Text></Pressable>;
+    /* 🗑️ D-1488 — «رتّب الأقسام» غادر رؤوسَ الأقسام الخمسة (أحمد ٢٠ أكتوبر: «شيلها منها»)؛ البابُ صار بطاقةَ «خصّص رئيسيتك» آخرَ الصفحة والإعدادات */
     const map: Record<HomeSection, React.ReactNode> = {
       continue:
         s.continue.length > 0 ? (
@@ -592,7 +573,7 @@ export function HomeScreen() {
       upcoming:
         s.upcoming.length > 0 ? (
           <View key="upcoming">
-            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => setAllSheet("upcoming")} action={arrange} seeAll={s.upcoming.length > cap(s.upcoming.length) ? t.allWord : undefined} onSeeAll={() => setAllSheet("upcoming")} />
+            <SectionHeader title={t.libUpcoming} icon="hourglass" onTitle={() => setAllSheet("upcoming")} seeAll={s.upcoming.length > cap(s.upcoming.length) ? t.allWord : undefined} onSeeAll={() => setAllSheet("upcoming")} />
             <Column>
               {s.upcoming.slice(0, cap(s.upcoming.length)).map((x) => {
                 const ep = extras.data?.upcoming_eps[x.key] ?? x.ep;
@@ -612,14 +593,14 @@ export function HomeScreen() {
       shows:
         s.shows.items.length > 0 ? (
           <View key="shows">
-            <SectionHeader title={t.myShows} icon="tv" onTitle={() => setAllSheet("shows")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
+            <SectionHeader title={t.myShows} icon="tv" onTitle={() => setAllSheet("shows")} seeAll={t.allWord} onSeeAll={() => setAllSheet("shows")} />
             {posterRow(s.shows.items.slice(0, cap(s.shows.items.length)).map((i) => asItem({ key: `ms-${i.id}`, kind: "tv", id: i.id, title: i.title, poster_path: i.poster_path, progress: i.progress, count: i.count, watched: i.badge_tone === "watched", known: true })))}
           </View>
         ) : null,
       movies:
         s.movies.items.length > 0 ? (
           <View key="movies">
-            <SectionHeader title={t.myMovies} icon="film" onTitle={() => setAllSheet("movies")} action={arrange} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
+            <SectionHeader title={t.myMovies} icon="film" onTitle={() => setAllSheet("movies")} seeAll={t.allWord} onSeeAll={() => setAllSheet("movies")} />
             {posterRow(s.movies.items.slice(0, cap(s.movies.items.length)).map((m) => asItem({ key: `mm-${m.id}`, kind: "movie", id: m.id, title: m.title, poster_path: m.poster_path, progress: m.progress, known: true })))}
           </View>
         ) : null,
@@ -644,7 +625,7 @@ export function HomeScreen() {
       ratings:
         s.ratings.length > 0 ? (
           <View key="ratings">
-            <SectionHeader title={t.ratingsListTitle} icon="star" onTitle={() => openWeb("/ratings")} action={arrange} seeAll={t.seeAll} onSeeAll={() => openWeb("/ratings")} />
+            <SectionHeader title={t.ratingsListTitle} icon="star" onTitle={() => openWeb("/ratings")} seeAll={t.seeAll} onSeeAll={() => openWeb("/ratings")} />
             {posterRow(s.ratings.slice(0, cap(s.ratings.length)).map((r) => asItem({ key: `rt-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: `★ ${r.rating}/10 · ${r.title}`, poster_path: r.poster_path })))}
           </View>
         ) : null,
@@ -708,7 +689,7 @@ export function HomeScreen() {
       trending:
         d.prefs.order.includes("trending") && (extras.data?.trending.length ?? 0) > 0 ? (
           <View key="trending">
-            <SectionHeader title={t.trendingWeek} icon="trending" accent={false} action={arrange} />
+            <SectionHeader title={t.trendingWeek} icon="trending" accent={false} />
             {posterRow((extras.data?.trending ?? []).slice(0, cap(12)).map((r) => asItem({ key: `tr-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched })), holdDiscOpen)}
           </View>
         ) : null,
@@ -774,16 +755,17 @@ export function HomeScreen() {
               <Gap />
             </React.Fragment>
           ))}
-          {d.pick_genres_hint ? (
-            <Pressable onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "content" } })} accessibilityRole="link" style={{ marginHorizontal: PAGE_PAD, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, alignItems: "center" }}>
-              <Text size={14} muted>{t.pickGenresHint}</Text>
+          {/* 🆕 D-1488 — «خصّص رئيسيتك» مكانَ «اختر أنواعك» (الأنواعُ لا تُستعمل في الرئيسية؛ بطاقتُها انتقلت إلى «اكتشف»):
+              لمن لم يرتّب أقسامَه بيده، وتختفي بعد أوّل ترتيب. تفتح «الرئيسيّة والملفّ» */}
+          {d.customize_hint ? (
+            <Pressable onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "home" } })} accessibilityRole="link" style={{ marginHorizontal: PAGE_PAD, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}>
+              <Text size={14} muted style={{ textAlign: "center" }}>{t.customizeHomeHint}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
       )}
       <HoldHost hostRef={holdLib} variant="library" toItem={asItemSame} onAction={actLib} />
       <HoldHost hostRef={holdDisc} variant="discover" toItem={asItemSame} toWatchOf={toWatchOf} onAction={actDisc} />
-      {orderSheet && d ? <SectionOrderSheet order={d.prefs.order} onClose={() => setOrderSheet(false)} onDone={(next) => void saveOrder(next)} /> : null}
       {queueRow && d ? (
         <ReorderSheet
           items={queueItemsOf(queueRow === "continue" ? d.queues.continue : queueRow === "towatch" ? d.queues.towatch : queueRow === "lists" ? d.queues.lists : d.queues.towatch_list)}

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getTabPrefs, getHiddenRails } from "@/lib/locale";
+import { getProfile } from "@/lib/data";
 import { parseMyRowsByTab, MY_ROWS_COOKIE } from "@/core/myRows";
 import { handle, limited } from "@/lib/v1";
 import { routeName } from "@/lib/reqTrace";
@@ -20,13 +21,15 @@ export async function GET(req: NextRequest) {
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:discover:view:${ip}`, 120, 60_000);
       if (lim) return lim;
-      const [tabs, hidden, store] = await Promise.all([getTabPrefs("discover"), getHiddenRails(), cookies()]);
+      const [tabs, hidden, store, profile] = await Promise.all([getTabPrefs("discover"), getHiddenRails(), cookies(), getProfile().catch(() => null)]);
       const rowsByTab = parseMyRowsByTab(store.get(MY_ROWS_COOKIE)?.value);
       const payload: DiscoverViewPayload = {
         tabs,
         hidden_rails: [...hidden],
         my_rows: rowsByTab.shows,
         my_rows_by_tab: rowsByTab,
+        /* D-1488 — الأنواعُ المفضّلة تُستعمل في اقتراحات «اكتشف» (لا الرئيسية)، فبطاقتُها هنا */
+        pick_genres_hint: !!profile && (profile.favorite_genres ?? []).length === 0,
       };
       return ok(payload);
     },

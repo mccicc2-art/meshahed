@@ -328,6 +328,15 @@ const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
 ];
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
+/**
+ * 🆕 D-1488 — **هل رتّب صاحبُ الرئيسية أقسامَه بيده؟** — سؤالُ بطاقة «خصّص رئيسيتك» في آخر الرئيسية (أحمد ٢٠ أكتوبر:
+ * «لمن لم يرتّب فقط، وتختفي بعد أول ترتيب»). القاعدةُ قاعدةُ `sanitizeHomePrefs` نفسُها: ترتيبٌ فارغٌ أو يساوي افتراضيّاً معروفاً.
+ */
+export function homeOrderUntouched(raw: unknown): boolean {
+  const order = sanitizeStoredHomePrefs(raw).order;
+  return KNOWN_HOME_ORDERS.some((k) => sameList(k, order));
+}
+
 /** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» في شاشتي التخصيص */
 export function defaultHomePrefs(plus: boolean): HomePrefs {
   return plus

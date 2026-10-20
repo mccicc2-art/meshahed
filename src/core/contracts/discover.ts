@@ -116,6 +116,8 @@ export type DiscoverViewPayload = {
   my_rows: { genre: string; tag: string | null }[];
   /** 🆕 D-1304 — صفوفُك لكلِّ تبويب. اختياريٌّ: حمولةٌ محفوظةٌ من قبل لا تحمله */
   my_rows_by_tab?: Record<"shows" | "movies" | "anime", { genre: string; tag: string | null }[]>;
+  /** 🆕 D-1488 — بطاقةُ «اختر أنواعك المفضّلة» آخرَ «اكتشف» (انتقلت من الرئيسية): لمن لم يختر أنواعاً. اختياريّ */
+  pick_genres_hint?: boolean;
 };
 /** `POST /api/v1/me/prefs/my-rows` */
 /** `tab` (D-1304): التبويبُ الذي تُكتب صفوفُه؛ غيابُه = الثلاثةُ معاً (غلافٌ أقدم) */

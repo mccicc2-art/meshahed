@@ -150,6 +150,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         display: { stats: prefs.stats, stats_link: prefs.statsLink, cards: cardCap >= 999 ? null : cardCap },
         tabs: locked ? [] : (orderedProfileTabs(prefs).filter((k) => !hidden(k)) as ProfileTabKey[]),
         sections: prefs.order as ProfileSectionKey[],
+        customize_hint: c.customizeHint,
         favorites: locked
           ? { order: [...c.favOrder], shows: [], movies: [], anime: [] }
           : { order: [...c.favOrder], shows: c.favShows.map(title), movies: c.favMovies.map(title), anime: c.favAnime.map(title) },

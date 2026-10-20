@@ -1223,6 +1223,7 @@ function Overview({
   onSort?: (sec: SortSec) => void;
 }) {
   const { t, tokens } = useApp();
+  const router = useRouter(); // D-1488 — بطاقةُ «خصّص ملفك»
   const meta = profileSectionMeta(t);
   const rail = useRailLayout(posterW);
   const cap = <T,>(xs: T[]) => (d.display.cards == null ? xs : xs.slice(0, d.display.cards));
@@ -1328,6 +1329,16 @@ function Overview({
             </View>
           ))}
         </View>
+      ) : null}
+      {/* 🆕 D-1488 — «خصّص ملفك» آخرَ «نظرة عامة»: لصاحب الملفّ ما لم يرتّب؛ تفتح «الرئيسيّة والملفّ» على تبويب الملفّ */}
+      {d.viewer.is_me && d.customize_hint ? (
+        <Pressable
+          onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "home", tab: "profile" } })}
+          accessibilityRole="link"
+          style={{ marginHorizontal: PAGE_PAD, marginTop: 20, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}
+        >
+          <Text size={14} muted style={{ textAlign: "center" }}>{t.customizeProfileHint}</Text>
+        </Pressable>
       ) : null}
     </View>
   );

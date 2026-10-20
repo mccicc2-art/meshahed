@@ -53,6 +53,7 @@ export function CustomizeScreen({
   counters,
   templates = [],
   plus = false,
+  initialTab = "home",
 }: {
   locale: Locale;
   nickname: string;
@@ -72,9 +73,11 @@ export function CustomizeScreen({
   /* 🆕 **الخطّة تمرّ ولا تُقرأ هنا** (D-633): الشاشةُ حاويةٌ، **والحكمُ
      في `lib/plan.ts` والقفلُ في اللوحين** — ولا شرطَ ثالث. */
   plus?: boolean;
+  initialTab?: "home" | "profile";
 }) {
   const t = getDict(locale);
-  const [tab, setTab] = useState<"home" | "profile">("home");
+  /* 🆕 D-1488 — «خصّص ملفك» يفتح على تبويب الملفّ (`?tab=profile`) */
+  const [tab, setTab] = useState<"home" | "profile">(initialTab);
   const reset = useRef<(() => void) | null>(null);
 
   /* مرجعٌ ثابت — **ولو تبدّل في كلِّ رسمةٍ لأُعيد التسجيلُ بلا نهاية** */

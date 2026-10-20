@@ -175,6 +175,8 @@ export type ProfilePayload = {
   tabs: ProfileTabKey[];
   /** أقسامُ «نظرة عامّة» بترتيبه */
   sections: ProfileSectionKey[];
+  /** 🆕 D-1488 — «خصّص ملفك» آخرَ «نظرة عامة»: لصاحب الملفّ ما لم يرتّب. اختياريّ: حمولةٌ محفوظةٌ لا تحمله */
+  customize_hint?: boolean;
   favorites: { order: ("shows" | "movies")[]; shows: ProfileTitle[]; movies: ProfileTitle[]; anime: ProfileTitle[] };
   overview: {
     shows: ProfileShow[];

@@ -353,6 +353,19 @@ const KNOWN_HIDDEN_TABS: readonly (readonly string[])[] = [
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
+/**
+ * 🆕 D-1488 — **هل رتّب صاحبُ الملفّ تبويباتِه وأقسامَه بيده؟** — سؤالُ بطاقة «خصّص ملفك» آخرَ «نظرة عامة» (لمن لم يرتّب فقط).
+ * لم يرتّب = الأقسامُ والتبويباتُ معاً على أحد الافتراضيّات المعروفة (قاعدةُ `sanitizeProfilePrefs`).
+ */
+export function profileLayoutUntouched(raw: unknown): boolean {
+  const p = sanitizeStoredProfilePrefs(raw);
+  return (
+    KNOWN_PROFILE_ORDERS.some((k) => sameList(k, p.order)) &&
+    sameList(p.tabOrder, DEFAULT_PROFILE_PREFS.tabOrder) &&
+    KNOWN_HIDDEN_TABS.some((k) => sameSet(k, p.hiddenTabs))
+  );
+}
+
 /** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» */
 export function defaultProfilePrefs(plus: boolean): ProfilePrefs {
   return plus

@@ -38,7 +38,7 @@ import { getProfileActivity } from "@/lib/myActivity";
 import { posterUrl } from "@/core/media";
 import { getLibState } from "@/lib/libState";
 import { createClient } from "@/lib/supabase/server";
-import { applySectionOrder, sanitizeProfilePrefs, sectionKeyOf, type ProfileSection } from "@/core/profilePrefs";
+import { applySectionOrder, profileLayoutUntouched, sanitizeProfilePrefs, sectionKeyOf, type ProfileSection } from "@/core/profilePrefs";
 
 /**
  * `handle` اسمُ المستخدم (أو معرّفُه) كما في الرابط بعد فكّ ترميزه. `null` ⇐ لا حساب.
@@ -366,6 +366,8 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     profile,
     isMe,
     prefs,
+    /* 🆕 D-1488 — بطاقةُ «خصّص ملفك» آخرَ «نظرة عامة»: لصاحب الملفّ وحدَه، ما لم يرتّب تبويباتِه وأقسامَه بيده */
+    customizeHint: isMe && profileLayoutUntouched(profile.profile_prefs),
     wants,
     canView,
     blocked,

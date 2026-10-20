@@ -21,7 +21,8 @@ import { sanitizeUiState } from "@/lib/uiState";
  * تُعاين شيئاً.** **ولا صورةَ TMDB ولا ملخّصَ مشاهدة** — فحجّةُ D-441
  * قائمة: الغلافُ والصورةُ ملفُّك أنت، والعدّاتُ `count` لا صفوف.
  */
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login");
   const { locale } = await getT();
@@ -52,6 +53,7 @@ export default async function Page() {
       templates={sanitizeUiState(p?.ui_state).tpl}
       /* 🆕 D-633 — والحكمُ من `lib/plan.ts` وحدَه */
       plus={isPlus(p)}
+      initialTab={tab === "profile" ? "profile" : "home"}
     />
   );
 }

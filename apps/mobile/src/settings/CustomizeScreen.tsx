@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
 import { Button, Text, type ToastTone } from "../ui";
@@ -99,7 +99,9 @@ export function CustomizeScreen() {
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<CustomizePayload>("/api/v1/me/customize")).data, staleTime: 0 });
   const d = q.data;
 
-  const [tab, setTab] = useState<Tab>("home");
+  /* 🆕 D-1488 — بطاقةُ «خصّص ملفك» تفتح الشاشةَ على تبويب الملفّ (`?tab=profile`) */
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>(params.tab === "profile" ? "profile" : "home");
   const [base, setBase] = useState<{ home: HomePrefs; profile: ProfilePrefs } | null>(null);
   const [home, setHome] = useState<HomePrefs | null>(null);
   const [profile, setProfile] = useState<ProfilePrefs | null>(null);

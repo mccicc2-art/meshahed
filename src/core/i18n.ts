@@ -170,6 +170,9 @@ const ar = {
   helpSupportGroup: "الدعم",
   pickGenresHint:
     "حدّد أنواعك المفضّلة لتظهر لك اقتراحات تناسب ذائقتك ←",
+  /* D-1488 — بطاقتا التخصيص آخرَ الرئيسية وآخرَ «نظرة عامة» */
+  customizeHomeHint: "خصّص رئيسيتك: رتّب الأقسام واختر ما يظهر ←",
+  customizeProfileHint: "خصّص ملفك: رتّب التبويبات والأقسام واختر ما يظهر للزائر ←",
   headerSettings: "الإعدادات",
 
   /* ترويسةُ الرئيسية الجديدة (D-434): تحيّةٌ بالوقت، ومبدّلُ وضع العرض */
@@ -2898,6 +2901,8 @@ const en: Dict = {
   helpSupportGroup: "Support",
   pickGenresHint:
     "Pick your favourite genres to get suggestions that match your taste →",
+  customizeHomeHint: "Customize your Home: arrange sections and choose what shows →",
+  customizeProfileHint: "Customize your profile: arrange tabs and sections, and choose what visitors see →",
   headerSettings: "Settings",
 
   greetNeutral: "Welcome",

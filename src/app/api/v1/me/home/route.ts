@@ -1,4 +1,5 @@
 import { watchStateOf } from "@/core/libraryStatus";
+import { homeOrderUntouched } from "@/core/homePrefs";
 import { after } from "next/server";
 import {
   getFollows,
@@ -272,7 +273,9 @@ export async function GET() {
         towatch_list: body.toWatchListItems.map(queue),
       },
       widget: body.widgetItems,
-      pick_genres_hint: body.favGenres.length === 0,
+      /* D-1488 — بطاقةُ الأنواع انتقلت إلى «اكتشف»؛ `false` يُخفيها في النسخ القديمة، و«خصّص رئيسيتك» مكانَها لمن لم يرتّب */
+      pick_genres_hint: false,
+      customize_hint: homeOrderUntouched(profile?.home_prefs),
       watch_states: Object.fromEntries(
         /* D-1281 — بعد التنقية (`watchStateOf`): «إيقاف مؤقّت» بلا حلقةٍ لا يصل، فقائمتُه «ابدأ» */
         followRows

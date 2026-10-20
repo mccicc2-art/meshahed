@@ -1704,6 +1704,15 @@ export default async function PublicProfilePage({
               </div>
             ),
           )}
+          {/* 🆕 D-1488 — «خصّص ملفك» آخرَ «نظرة عامة»: لصاحب الملفّ ما لم يرتّب تبويباتِه وأقسامَه بيده؛ تفتح «الرئيسيّة والملفّ» على تبويب الملفّ */}
+          {core.customizeHint && (
+            <Link
+              href="/profile/settings/home?tab=profile"
+              className="block text-center text-sm text-muted hover:text-accent border border-dashed border-border rounded-xl py-4 px-3 transition"
+            >
+              {t.customizeProfileHint}
+            </Link>
+          )}
         </>
       )}
     </div>

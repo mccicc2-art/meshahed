@@ -417,6 +417,10 @@ export default async function NewsPage({
           <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} myRows={myRows} hidden={hiddenRails} />
         </Suspense>
       )}
+      {/* 🆕 D-1488 — «اختر أنواعك المفضّلة» آخرَ «اكتشف» في كلِّ تبويب (انتقلت من الرئيسية: الأنواعُ تُستعمل هنا لا هناك) */}
+      <Suspense fallback={null}>
+        <GenresHint label={t.pickGenresHint} />
+      </Suspense>
     </div>
   );
 }
@@ -2199,5 +2203,19 @@ async function SavedFiltersHost({
       plus={isPlus(profile)}
       editing={editing ? { id: editing.id, name: editing.name } : null}
     />
+  );
+}
+
+/** D-1488 — بطاقةُ الأنواع لمن لم يختر — `getProfile` مكيَّشةٌ للطلب فلا نداءَ ثانٍ */
+async function GenresHint({ label }: { label: string }) {
+  const profile = await getProfile().catch(() => null);
+  if (!profile || (profile.favorite_genres ?? []).length > 0) return null;
+  return (
+    <Link
+      href="/profile/edit"
+      className="block text-center text-sm text-muted hover:text-accent border border-dashed border-border rounded-xl py-4 px-3 transition"
+    >
+      {label}
+    </Link>
   );
 }

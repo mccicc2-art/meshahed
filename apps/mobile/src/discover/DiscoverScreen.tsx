@@ -541,6 +541,7 @@ export function DiscoverScreen() {
             bq={bq}
             onBrowse={setBrowse}
             hiddenRails={hiddenRails}
+            genresHint={!!view?.pick_genres_hint}
             hidden={hidden}
             onHold={hold}
             topPad={topH}
@@ -632,6 +633,7 @@ const DiscoverPane = memo(function DiscoverPane({
   bq,
   onBrowse,
   hiddenRails,
+  genresHint,
   hidden,
   onHold,
   topPad,
@@ -656,6 +658,8 @@ const DiscoverPane = memo(function DiscoverPane({
   onBrowse: (next: BrowseState) => void;
   /** D-997 — رموزُ الصفوف المخفيّة (`tab:key`) */
   hiddenRails: ReadonlySet<string>;
+  /** 🆕 D-1488 — بطاقةُ «اختر أنواعك المفضّلة» آخرَ اللوح (انتقلت من الرئيسية) */
+  genresHint: boolean;
   /** D-978 — بطاقاتٌ أُخفيت بـ«غير مهتمّ» في هذه الجلسة */
   hidden: ReadonlySet<string>;
   onHold: (c: CuratedCard, anchor: CardAnchor) => void;
@@ -678,7 +682,7 @@ const DiscoverPane = memo(function DiscoverPane({
   smartEdit: SmartEdit | null;
   onSmartEditDone: (e: SmartEdit | null) => void;
 }) {
-  const { t } = useApp();
+  const { t, tokens } = useApp();
   const router = useRouter();
   /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
   const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
@@ -935,6 +939,12 @@ const DiscoverPane = memo(function DiscoverPane({
       {!lists ? RAILS[tab].filter((key) => !HEAD.includes(key) && !railOff(key)).map((key) => (
         <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
       )) : null}
+      {/* 🆕 D-1488 — «اختر أنواعك المفضّلة» آخرَ كلِّ تبويب: الأنواعُ تُستعمل في اقتراحات «اكتشف» (لا الرئيسية) — لمن لم يختر */}
+      {genresHint ? (
+        <Pressable onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "content" } })} accessibilityRole="link" style={{ marginHorizontal: PAGE_PAD, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}>
+          <Text size={14} muted style={{ textAlign: "center" }}>{t.pickGenresHint}</Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
     </RailPane.Provider>
   );
