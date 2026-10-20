@@ -81,8 +81,9 @@ export function ListReviews({
                 </Pressable>
               ) : null}
               {canAct ? (
-                <Pressable onPress={() => setTo(replying && to?.parent === null ? null : { review: r.user_id, parent: null, name: r.name })} hitSlop={8}>
-                  <Text size={12} weight="600" color={replying ? tokens.accent : tokens.muted}>{t.talkReply}</Text>
+                <Pressable onPress={() => setTo(replying && to?.parent === null ? null : { review: r.user_id, parent: null, name: r.name })} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.talkReply} accessibilityState={{ selected: replying }}>
+                  {/* D-1485 — «ردّ» صار رمزَ الردّ وحدَه (أحمد ٢٠ أكتوبر: «الأيقونات تكفي») */}
+                  <Icon name="reply" size={15} color={replying ? tokens.accent : tokens.muted} />
                 </Pressable>
               ) : null}
             </View>
@@ -95,8 +96,8 @@ export function ListReviews({
                     <Text size={13} content style={{ lineHeight: 20 }}>{x.body}</Text>
                     <View style={{ flexDirection: "row", gap: 16, marginTop: 2 }}>
                       {canAct ? (
-                        <Pressable onPress={() => setTo({ review: r.user_id, parent: x.parent_id ?? x.reply_id, name: x.name })} hitSlop={8}>
-                          <Text size={12} muted>{t.talkReply}</Text>
+                        <Pressable onPress={() => setTo({ review: r.user_id, parent: x.parent_id ?? x.reply_id, name: x.name })} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.talkReply}>
+                          <Icon name="reply" size={14} color={tokens.muted} />
                         </Pressable>
                       ) : null}
                       {x.mine ? (

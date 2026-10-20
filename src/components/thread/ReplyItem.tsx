@@ -520,7 +520,6 @@ export function ReplyItem({
                 )}
               >
                 <Icon name={likedByMe ? "heart-filled" : "heart"} size={15} />
-                <span>{t.likesLabel}</span>
                 {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
               </button>
             )}
@@ -533,7 +532,6 @@ export function ReplyItem({
                 className={actionTailItem(false)}
               >
                 <Icon name="comment" size={15} />
-                <span>{t.talkReply}</span>
                 {replyCount > 0 && (
                   <span className="tabular-nums">{num(replyCount, locale)}</span>
                 )}

@@ -104,9 +104,7 @@ export function LikeButton({
     return (
       <span className="flex items-center gap-1.5 text-12 text-muted" title={t.likesLabel}>
         <Icon name="heart" size={16} />
-        {/* ⚖️ 🆕 **والكلمةُ عادت هنا أيضاً** (نقضُ D-294) — **الرقمُ
-            الصامتُ في صفٍّ فيه رقمُ ردودٍ مثلُه لا يقول أيَّهما هو.** */}
-        <span>{t.likesLabel}</span>
+        {/* 🆕 D-1485 (ينقض «رجّعها») — الرمزُ والرقمُ بلا كلمة: الرمزان مختلفان (قلبٌ وفقاعة) فيقول كلٌّ منهما أيَّ رقمٍ هو */}
         <span className="tabular-nums">{count}</span>
       </span>
     );
@@ -156,7 +154,6 @@ export function LikeButton({
           بحكم أحمد** («رجّعها») — **الرمزُ باقٍ واحداً، وعادت كلمتُه**؛
           الحجّةُ كاملةً في وصفة `actionTailItem`. */}
       <Icon name={liked ? "heart-filled" : "heart"} size={16} />
-      <span>{t.likesLabel}</span>
       {/* **والزرُّ يبقى وإن غاب رقمُه** — الكلمةُ وحدَها فعلٌ مفهوم */}
       {count > 0 && <span className="tabular-nums">{count}</span>}
     </button>

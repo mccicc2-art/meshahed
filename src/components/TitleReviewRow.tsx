@@ -152,7 +152,6 @@ export function TitleReviewRow({
             className={actionTailItem(false)}
           >
             <Icon name="comment" size={15} />
-            <span>{t.talkReply}</span>
             {/* **والصفرُ لا يُرسم** (D-222) */}
             {count > 0 && <span className="tabular-nums">{count}</span>}
           </Link>

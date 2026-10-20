@@ -1398,13 +1398,12 @@ function ReviewsPane({
               ) : null}
               {/* 🆕 N2 — القلبُ فعلٌ و«تعليق» يفتح خيطَ الرأي (`LikeButton` · `RowComment` في الويب) */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
-                <Pressable onPress={onLike ? () => onLike(r) : undefined} disabled={!onLike} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: r.liked_by_me }} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Pressable onPress={onLike ? () => onLike(r) : undefined} disabled={!onLike} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.likesLabel} accessibilityState={{ selected: r.liked_by_me }} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Icon name="heart" size={14} color={r.liked_by_me ? tokens.accent : tokens.muted} />
                   {r.likes > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(r.likes, locale)}</Text> : null}
                 </Pressable>
                 <Pressable onPress={() => onComment(r)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.actionComment} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Icon name="comment" size={14} color={tokens.muted} />
-                  <Text size={12} muted>{t.actionComment}</Text>
                 </Pressable>
               </View>
             </View>

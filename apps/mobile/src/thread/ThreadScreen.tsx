@@ -727,13 +727,11 @@ function Head({
       {canLike ? (
         <Pressable onPress={onLike} hitSlop={4} accessibilityLabel={t.likesLabel} accessibilityState={{ selected: liked }} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8 }}>
           <Icon name={liked ? "heart-filled" : "heart"} size={16} color={liked ? tokens.accent : tokens.muted} />
-          <Text size={12} color={liked ? tokens.accent : tokens.muted}>{t.likesLabel}</Text>
           {likes > 0 ? <Text size={12} color={liked ? tokens.accent : tokens.muted}>{num(likes, locale)}</Text> : null}
         </Pressable>
       ) : likes > 0 ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8 }}>
+        <View accessibilityLabel={`${t.likesLabel}: ${likes}`} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8 }}>
           <Icon name="heart" size={16} color={tokens.muted} />
-          <Text size={12} muted>{t.likesLabel}</Text>
           <Text size={12} muted>{num(likes, locale)}</Text>
         </View>
       ) : (

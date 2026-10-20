@@ -649,7 +649,6 @@ function CommentRow({
               className={actionTailItem(false)}
             >
               <Icon name="comment" size={15} />
-              <span>{t.talkReply}</span>
               {/* **والصفرُ لا يُرسم** (D-222) */}
               {(listSocial?.get(listReviewKey(a.listId, a.person.id))?.replies ?? 0) > 0 && (
                 <span className="tabular-nums">

@@ -356,7 +356,6 @@ export function ListReviews({
                   className={actionTailItem(open)}
                 >
                   <Icon name="comment" size={15} />
-                  <span>{t.talkReply}</span>
                   {(s?.replies ?? mineReplies.length) > 0 && (
                     <span className="tabular-nums">
                       {num(s?.replies ?? mineReplies.length, locale)}

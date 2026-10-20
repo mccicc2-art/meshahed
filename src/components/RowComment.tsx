@@ -91,8 +91,8 @@ export function RowComment({
           title={label}
           className={actionTailItem(open)}
         >
+          {/* 🆕 D-1485 — الرمزُ وحدَه؛ الكلمةُ في aria-label وtitle (أحمد ٢٠ أكتوبر: «الأيقونات تكفي») */}
           <Icon name="comment" size={15} />
-          <span>{label}</span>
         </button>
         {after}
       </div>

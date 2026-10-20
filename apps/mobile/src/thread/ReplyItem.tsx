@@ -211,14 +211,12 @@ export const ReplyItem = memo(function ReplyItem({
           {showLikes && (canAct || row.likes > 0) ? (
             <Pressable onPress={() => onLike(row)} disabled={!canAct} hitSlop={4} accessibilityLabel={t.likesLabel} accessibilityState={{ selected: row.liked_by_me }} style={pad}>
               <Icon name={row.liked_by_me ? "heart-filled" : "heart"} size={15} color={row.liked_by_me ? tokens.accent : tokens.muted} />
-              <Text size={12} color={row.liked_by_me ? tokens.accent : tokens.muted}>{t.likesLabel}</Text>
               {row.likes > 0 ? <Text size={12} color={row.liked_by_me ? tokens.accent : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(row.likes, locale)}</Text> : null}
             </Pressable>
           ) : null}
           {signedIn && canReply ? (
             <Pressable onPress={() => onReply(row)} hitSlop={4} accessibilityLabel={t.talkReply} style={pad}>
               <Icon name="comment" size={15} color={tokens.muted} />
-              <Text size={12} muted>{t.talkReply}</Text>
               {replyCount > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text> : null}
             </Pressable>
           ) : null}
