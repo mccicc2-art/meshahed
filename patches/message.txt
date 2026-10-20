@@ -1,4 +1,4 @@
-Release R39 — D-1488: «Arrange sections» leaves the five Home rail headers (upcoming, my shows, my movies, my ratings, trending) on app and web; the Home end card becomes «Customize your Home» (opens Home & profile) for whoever has not arranged their sections; the own-profile Overview ends with «Customize your profile» (opens the Profile tab) while tabs and sections are untouched; «Pick your favourite genres» moves to the end of Discover in every tab (pick_genres_hint now false on Home so older apps hide it) — task 118 [deploy]
+Release R40 — D-1489: a layout saved by hand is respected even when it equals a known default — the server now marks Home order/stats pick and profile order/tabs as «custom» on save (cleared when they return to the plan default); unmarked legacy rows keep the D-1487 value rule. Fixes «To watch · Upcoming» resetting to the subscriber default after save — task 119 [deploy]
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
