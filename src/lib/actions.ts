@@ -29,6 +29,7 @@ import { DEFAULT_THEME, THEMES } from "@/core/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/core/railPrefs";
 import {
   keepPaidHomePrefs,
+  markHomeCustom,
   sanitizeHomePrefs,
   sanitizeHomeView,
   type HomePrefs,
@@ -36,6 +37,7 @@ import {
 } from "@/core/homePrefs";
 import {
   keepPaidProfilePrefs,
+  markProfileCustom,
   sanitizeProfilePrefs,
   SORTABLE_SECTIONS,
   type ProfilePrefs,
@@ -327,15 +329,18 @@ export async function updateProfile(input: {
      **ورفضُ الجميع كان سيمنع مجّانيّاً من حفظ اسمه.** */
   if (input.homePrefs !== undefined) {
     const next = sanitizeHomePrefs(input.homePrefs);
-    payload.home_prefs = plus
-      ? next
-      : keepPaidHomePrefs(sanitizeHomePrefs(storedRow?.home_prefs), next);
+    /* D-1489 — المحمولُ لغير المشترك هو ما عُرض له (الفعّالُ لخطّته) لا المخزَّنُ الخام، ثمّ علامةُ «رتّبه بيده» */
+    payload.home_prefs = markHomeCustom(
+      plus ? next : keepPaidHomePrefs(sanitizeHomePrefs(storedRow?.home_prefs, false), next),
+      plus,
+    );
   }
   if (input.profilePrefs !== undefined) {
     const next = sanitizeProfilePrefs(input.profilePrefs);
-    payload.profile_prefs = plus
-      ? next
-      : keepPaidProfilePrefs(sanitizeProfilePrefs(storedRow?.profile_prefs), next);
+    payload.profile_prefs = markProfileCustom(
+      plus ? next : keepPaidProfilePrefs(sanitizeProfilePrefs(storedRow?.profile_prefs, false), next),
+      plus,
+    );
   }
 
   /* 🆕 D-1108 — **الصورةُ المحفوظةُ تُقرأ قبل الكتابة لتُحذف بعدها** (طلبُ أحمد ٢٣ سبتمبر: «نفّذه»).
@@ -510,10 +515,11 @@ export async function saveHomeSectionOrder(order: string[]) {
      كيف يعيد المحاولة.** */
   if (!isPlus(data)) return;
 
-  const prefs = sanitizeHomePrefs(data?.home_prefs);
+  /* D-1489 — الفعّالُ لخطّته ثمّ علامةُ «رتّبه بيده» (`markHomeCustom`) */
+  const prefs = sanitizeHomePrefs(data?.home_prefs, true);
   /* **التنقيةُ بمرشِّح القراءة نفسِه**: أقسامٌ معروفةٌ بلا تكرار —
      وقيمةٌ عبرت الشبكةَ لا تُصدَّق (عُرفُ `updateProfile`) */
-  const next = sanitizeHomePrefs({ ...prefs, order });
+  const next = markHomeCustom(sanitizeHomePrefs({ ...prefs, order }), true);
 
   const { error } = await supabase
     .from("profiles")

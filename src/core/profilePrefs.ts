@@ -197,7 +197,15 @@ export interface ProfilePrefs {
    * الحقل لا يفقد تبويباً (D-152).
    */
   tabOrder: HideableProfileTab[];
+  /**
+   * 🆕 D-1489 — **ما رتّبه صاحبُ الملفّ بيده** — نظيرُ `HomePrefs.custom` بحجّته (يكتبه الخادمُ في
+   * `markProfileCustom`): «order» أقسامُ النظرة العامّة، و«tabs» التبويباتُ (ترتيباً أو إخفاءً).
+   */
+  custom: ProfileCustomField[];
 }
+
+export const PROFILE_CUSTOM_FIELDS = ["order", "tabs"] as const;
+export type ProfileCustomField = (typeof PROFILE_CUSTOM_FIELDS)[number];
 
 /** الأقسامُ التي تقبل ترتيباً يدويّاً — والمفضّلةُ لها بابُها القائم (D-567) */
 export const SORTABLE_SECTIONS = ["shows", "movies", "anime", "artists", "lists"] as const;
@@ -328,6 +336,7 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      كانت أوّلَ ما يراه الزائر). ⚠️ **ويمسّ من لم يخصّص وحدَه** (ق٨). */
   hiddenTabs: ["activity", "favorites", "lists"],
   tabOrder: ["overview", "activity", "reviews", "favorites", "lists"],
+  custom: [],
 };
 
 /**
@@ -360,10 +369,20 @@ const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.l
 export function profileLayoutUntouched(raw: unknown): boolean {
   const p = sanitizeStoredProfilePrefs(raw);
   return (
+    p.custom.length === 0 &&
     KNOWN_PROFILE_ORDERS.some((k) => sameList(k, p.order)) &&
     sameList(p.tabOrder, DEFAULT_PROFILE_PREFS.tabOrder) &&
     KNOWN_HIDDEN_TABS.some((k) => sameSet(k, p.hiddenTabs))
   );
+}
+
+/** 🆕 D-1489 — علامةُ «رتّبه بيده» عند الحفظ — قاعدةُ `markHomeCustom` بحرفها (المُدخَلُ فعّالٌ لخطّته) */
+export function markProfileCustom(prefs: ProfilePrefs, plus: boolean): ProfilePrefs {
+  const plan = defaultProfilePrefs(plus);
+  const custom: ProfileCustomField[] = [];
+  if (!sameList(prefs.order, plan.order)) custom.push("order");
+  if (!sameList(prefs.tabOrder, plan.tabOrder) || !sameSet(prefs.hiddenTabs, plan.hiddenTabs)) custom.push("tabs");
+  return { ...prefs, custom };
 }
 
 /** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» */
@@ -408,10 +427,11 @@ export function sanitizeProfilePrefs(raw: unknown, plus?: boolean): ProfilePrefs
      ترتيبُها الافتراضيَّ ومخفيُّها أحدَ المخفيّات المعروفة */
   const plan = defaultProfilePrefs(plus);
   const tabsUntouched =
+    !clean.custom.includes("tabs") &&
     sameList(clean.tabOrder, DEFAULT_PROFILE_PREFS.tabOrder) && KNOWN_HIDDEN_TABS.some((k) => sameSet(k, clean.hiddenTabs));
   return {
     ...clean,
-    order: KNOWN_PROFILE_ORDERS.some((k) => sameList(k, clean.order)) ? plan.order : clean.order,
+    order: !clean.custom.includes("order") && KNOWN_PROFILE_ORDERS.some((k) => sameList(k, clean.order)) ? plan.order : clean.order,
     hiddenTabs: tabsUntouched ? plan.hiddenTabs : clean.hiddenTabs,
   };
 }
@@ -479,6 +499,9 @@ function sanitizeStoredProfilePrefs(raw: unknown): ProfilePrefs {
           return [...kept, ...d.tabOrder.filter((k) => !seen.has(k))];
         })()
       : d.tabOrder,
+    custom: Array.isArray(o.custom)
+      ? PROFILE_CUSTOM_FIELDS.filter((f) => (o.custom as unknown[]).includes(f))
+      : [],
   };
 }
 

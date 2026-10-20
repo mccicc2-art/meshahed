@@ -263,7 +263,18 @@ export interface HomePrefs {
    * الأفلام ولا تُزيح مسلسلاً.**
    */
   towatchListOrder: string[];
+  /**
+   * 🆕 D-1489 — **الحقولُ التي رتّبها صاحبُها بيده** (بلاغُ أحمد ٢٠ أكتوبر: «إذا حطيت هذا الترتيب يعمل reset»).
+   * كانت قاعدةُ D-1487 تقرأ «لم يرتّب» من القيمة وحدَها — فمن اختار بيده ترتيباً يصادف أنه افتراضيٌّ معروف
+   * («للمشاهدة · القادم») **رجع إلى افتراضيّ خطّته بعد الحفظ مباشرة**. 🔑 **والعلامةُ يكتبها الخادمُ لا العميل**
+   * (`markHomeCustom`): عند كلِّ حفظٍ يُعلَّم الحقلُ الذي خالف افتراضيَّ خطّة صاحبه، ويُرفع عمّن عاد إليه.
+   * والصفُّ القديمُ بلا علامةٍ يبقى على قاعدة القيمة. **بلا هجرة**: داخل `home_prefs` القائم.
+   */
+  custom: HomeCustomField[];
 }
+
+export const HOME_CUSTOM_FIELDS = ["order", "statsPick"] as const satisfies readonly (keyof HomePrefs)[];
+export type HomeCustomField = (typeof HOME_CUSTOM_FIELDS)[number];
 
 /**
  * 🆕 **الافتراضُ صار الرئيسيةَ التي ضبطها أحمد بيده** (D-490، طلبُه ٢٠
@@ -304,6 +315,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   towatchOrder: [],
   listsOrder: [],
   towatchListOrder: [],
+  custom: [],
 };
 
 /**
@@ -333,8 +345,18 @@ const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.
  * «لمن لم يرتّب فقط، وتختفي بعد أول ترتيب»). القاعدةُ قاعدةُ `sanitizeHomePrefs` نفسُها: ترتيبٌ فارغٌ أو يساوي افتراضيّاً معروفاً.
  */
 export function homeOrderUntouched(raw: unknown): boolean {
-  const order = sanitizeStoredHomePrefs(raw).order;
-  return KNOWN_HOME_ORDERS.some((k) => sameList(k, order));
+  const p = sanitizeStoredHomePrefs(raw);
+  return !p.custom.includes("order") && KNOWN_HOME_ORDERS.some((k) => sameList(k, p.order));
+}
+
+/**
+ * 🆕 D-1489 — **علامةُ «رتّبه بيده» يكتبها الخادمُ عند الحفظ**: الحقلُ الذي خالف افتراضيَّ خطّة صاحبه يُعلَّم،
+ * والذي عاد إليه تُرفع علامتُه فيتبع خطّتَه من جديد (زرُّ «رجّع الافتراضي» يعمل كما يُقرأ). ⚠️ **والمُدخَلُ الفعّالُ
+ * لخطّته** (`sanitizeHomePrefs(raw, plus)` أو ما عرضته الشاشةُ) — فقيمةٌ قديمةٌ مخزَّنةٌ لم يرها أحدٌ لا تُعلَّم.
+ */
+export function markHomeCustom(prefs: HomePrefs, plus: boolean): HomePrefs {
+  const plan = defaultHomePrefs(plus);
+  return { ...prefs, custom: HOME_CUSTOM_FIELDS.filter((f) => !sameList(prefs[f], plan[f])) };
 }
 
 /** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» في شاشتي التخصيص */
@@ -356,10 +378,13 @@ export function sanitizeHomePrefs(raw: unknown, plus?: boolean): HomePrefs {
   if (plus === undefined) return clean;
   /* D-1487 — من لم يرتّب يتبع خطّتَه (انظر `defaultHomePrefs`) */
   const plan = defaultHomePrefs(plus);
+  /* D-1489 — المعلَّمُ «رتّبه بيده» يُحترم كما هو ولو ساوى افتراضيّاً؛ وقاعدةُ القيمة للصفّ بلا علامة */
+  const untouched = (f: HomeCustomField, known: readonly (readonly string[])[]) =>
+    !clean.custom.includes(f) && known.some((k) => sameList(k, clean[f]));
   return {
     ...clean,
-    order: KNOWN_HOME_ORDERS.some((k) => sameList(k, clean.order)) ? plan.order : clean.order,
-    statsPick: KNOWN_STATS_PICKS.some((k) => sameList(k, clean.statsPick)) ? plan.statsPick : clean.statsPick,
+    order: untouched("order", KNOWN_HOME_ORDERS) ? plan.order : clean.order,
+    statsPick: untouched("statsPick", KNOWN_STATS_PICKS) ? plan.statsPick : clean.statsPick,
   };
 }
 
@@ -426,6 +451,9 @@ function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
     towatchOrder: keyList("towatchOrder"),
     listsOrder: keyList("listsOrder"),
     towatchListOrder: keyList("towatchListOrder"),
+    custom: Array.isArray(o.custom)
+      ? HOME_CUSTOM_FIELDS.filter((f) => (o.custom as unknown[]).includes(f))
+      : [],
   };
 }
 

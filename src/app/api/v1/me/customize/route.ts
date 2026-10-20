@@ -55,8 +55,9 @@ export async function POST(req: NextRequest) {
        يبيعه بلس — فلا يُعلَن نجاحٌ وقد أُسقط نصفُ ما اختير (D-217). `keepPaid*` في `updateProfile` حارسٌ ثانٍ. */
     if (!isPlus(p)) {
       const paid =
-        (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs, false), sanitizeHomePrefs(b.home, false))) ||
-        (b.profile !== undefined && touchesPaidProfilePrefs(sanitizeProfilePrefs(p?.profile_prefs, false), sanitizeProfilePrefs(b.profile, false)));
+        /* D-1489 — المعروضُ (الفعّالُ لخطّته) مقابلَ الوارد كما أُرسل: الواردُ لا يُعاد تفسيرُه بالخطّة */
+        (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs, false), sanitizeHomePrefs(b.home))) ||
+        (b.profile !== undefined && touchesPaidProfilePrefs(sanitizeProfilePrefs(p?.profile_prefs, false), sanitizeProfilePrefs(b.profile)));
       if (paid) return ok({ data: null, needsPlus: true });
     }
     await updateProfile({
