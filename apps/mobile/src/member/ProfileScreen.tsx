@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
-import { TabSlide } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
 import { Image } from "expo-image";
 import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -187,10 +187,16 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /* الأبواب — الأصليُّ دفعٌ بـ`from` من فتح الملفّ، والويبيُّ (الإحصاءات حتى N4) طبقةٌ فوق الشاشة (K3b) */
   const fromOut = from;
   const openTitle = useCallback(
-    (kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: fromOut } }),
+    (kind: "tv" | "movie", id: number) => {
+      if (tabSwipeBlocksPress()) return; // D-1497 — لا يُفتح ما تحت إصبعٍ أنهى سحبةً بين التبويبات
+      router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: fromOut } });
+    },
     [router, fromOut],
   );
-  const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: fromOut } }), [router, fromOut]);
+  const openList = useCallback((id: string) => {
+    if (tabSwipeBlocksPress()) return;
+    router.push({ pathname: "/list/[id]", params: { id, from: fromOut } });
+  }, [router, fromOut]);
   const openPerson = useCallback((id: number) => router.push({ pathname: "/person/[id]", params: { id: String(id), from: fromOut } }), [router, fromOut]);
   const openMember = useCallback((name: string) => openProfile(router, name, fromOut), [router, fromOut]);
   const openWeb = useCallback(

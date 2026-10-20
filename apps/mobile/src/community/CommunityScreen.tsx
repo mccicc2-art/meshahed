@@ -16,7 +16,7 @@ import { Icon, type IconName } from "../icons";
 import { controlSize, radius } from "../theme";
 import { Logo } from "../Logo";
 import { HeaderEnd } from "../HeaderEnd";
-import { TabSlide } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
@@ -171,9 +171,16 @@ export function CommunityScreen() {
   const [leaving, setLeaving] = useState(false);
   const doors: CardDoors = useMemo(
     () => ({
-      onTitle: (kind, id) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "community" } }),
-      onList: (id) => router.push({ pathname: "/list/[id]", params: { id, from: "community" } }),
+      onTitle: (kind, id) => {
+        if (tabSwipeBlocksPress()) return; // D-1497 — لا يُفتح ما تحت إصبعٍ أنهى سحبةً بين التبويبات
+        router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "community" } });
+      },
+      onList: (id) => {
+        if (tabSwipeBlocksPress()) return;
+        router.push({ pathname: "/list/[id]", params: { id, from: "community" } });
+      },
       onWeb: (path) => {
+        if (tabSwipeBlocksPress()) return;
         /* 🆕 11-N · N1 — ملفُّ الشخص أصليٌّ: رابطُه لا يفتح الويب (`member/open.ts`) */
         { const who = profileHandleOf(path); if (who) return openProfile(router, who, "community"); }
         /* 🆕 M3 — الغرفةُ والمنشورُ والرأيُ أصليّةٌ الآن؛ الملفُّ `/u/…` وحدَه يبقى باباً ويبيّاً */

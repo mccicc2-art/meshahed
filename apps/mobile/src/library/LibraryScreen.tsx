@@ -21,7 +21,7 @@ import { Logo } from "../Logo";
 import { HeaderEnd } from "../HeaderEnd";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
-import { TabSlide } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
@@ -249,7 +249,10 @@ export function LibraryScreen() {
 
   /* D-956 — صفحةُ العمل أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ؛ المكتبةُ تبقى تحتها */
   const openTitle = useCallback(
-    (item: CardItem) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: item.kind, id: String(item.id), from: "library" } }),
+    (item: CardItem) => {
+      if (tabSwipeBlocksPress()) return; // D-1497 — لا يُفتح ما تحت إصبعٍ أنهى سحبةً بين التبويبات
+      router.push({ pathname: "/title/[kind]/[id]", params: { kind: item.kind, id: String(item.id), from: "library" } });
+    },
     [router],
   );
 

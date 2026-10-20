@@ -41,7 +41,7 @@ import type { MyRow } from "@/core/myRows";
 import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { takeDiscoverEdit, type SmartEdit } from "./aim";
-import { TabSlide } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
@@ -303,7 +303,10 @@ export function DiscoverScreen() {
     [t, setToast],
   );
   /* D-956 — صفحةُ العمل أصليّةٌ: دفعٌ في المكدّس، و«اكتشف» تبقى تحتها */
-  const openCard = useCallback((c: CuratedCard) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } }), [router]);
+  const openCard = useCallback((c: CuratedCard) => {
+    if (tabSwipeBlocksPress()) return; // D-1497 — لا يُفتح ما تحت إصبعٍ أنهى سحبةً بين التبويبات
+    router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } });
+  }, [router]);
 
   /* «عندك» — خريطةٌ من كاش المكتبة نفسِه (المفتاحُ والجالبُ كما في `LibraryScreen`) */
   const lib = useQuery({
@@ -833,7 +836,10 @@ const DiscoverPane = memo(function DiscoverPane({
   /* D-994 — أقسامُ «اكتشف» تُفتح ورقةً أصليّة؛ ما سواها (رابطٌ خارج `/discover/`) يبقى باباً */
   /* 🆕 D-1219 — ثابتةُ المرجع: كانت دالّةً جديدةً في كلِّ رسمةٍ فتكسر `memo` كلِّ `Rail` و`CardsRail` يحملها */
   const seeAll = useCallback((path: string, title: string) => (path.startsWith("/discover/") ? onSeeAll(title, path) : onLeave(path)), [onSeeAll, onLeave]);
-  const openTitle = useCallback((c: { kind: "tv" | "movie"; id: number }) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } }), [router]);
+  const openTitle = useCallback((c: { kind: "tv" | "movie"; id: number }) => {
+    if (tabSwipeBlocksPress()) return;
+    router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } });
+  }, [router]);
   /* D-1044 (F5) — السحبُ يعيد جلبَ صفوف **هذا التبويب وحدَه** (المفاتيحُ تبدأ بالتبويب)؛ «قوائم» لها مفتاحُها */
   const refreshControl = usePullRefresh(
     lists ? [["discover:lists"]] : [["discover:rail", tab], ["discover:personal", tab], ["discover:trailers", tab]],

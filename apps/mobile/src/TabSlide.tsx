@@ -96,6 +96,32 @@ type Props<K extends string> = {
  * المفتاحُ يُقرأ **مرّةً عند التركيب** ويثبت لعمر الشاشة: لا تبديلَ آليّةٍ والإصبعُ على
  * اللوح. `k2` من الخادم (`flags.ts`) — مطفأٌ ⇒ المسارُ القائم حرفاً (`TabSlideJS`).
  */
+/**
+ * ====== 🆕 D-1497 — السحبُ بين التبويبات لا يفتح ما تحت الإصبع ======
+ *
+ * بلاغُ أحمد بتسجيلين (٢١ أكتوبر): سحبةٌ من «النقاشات» إلى «النشاط» تفتح النقاشَ الذي بدأ عليه الإصبع، وفي المكتبة تفتح
+ * ورقةَ ترتيب «للمشاهدة». مسارُ K2 يسحب على خيط الواجهة (RNGH)، **والضغطةُ في `Pressable` على خيط JS لا تُلغى حين تُقفل
+ * السحبة** على الآيفون — فرفعُ الإصبع في آخر السحبة يُقرأ ضغطة. (رأسُ `TabSlideUI` كان يفترض الإلغاءَ ولم يُختبر على آيفون.)
+ * 🔑 **العلاجُ في اللوح نفسِه لا في كلِّ بطاقة**: ما دامت السحبةُ حيّةً يطالب غلافُ الألواح بالمستجيب عند أوّل حركة
+ * (`onMoveShouldSetResponderCapture`) — فتُنهى ضغطةُ البطاقة قبل الرفع ولا يُفتح شيء ولا يومض. ولمسةٌ تبدأ خلال
+ * `SWIPE_QUIET_MS` بعد السحبة لا تفتح شيئاً: `tabSwipeBlocksPress` حارسٌ ثانٍ في أبواب الفتح (والسحبةُ الخاطفةُ ترفع قبل أن تصل JS حركة).
+ */
+const SWIPE_QUIET_MS = 300;
+let swipeLive = false;
+let swipeEndAt = 0;
+export function tabSwipeBlocksPress(): boolean {
+  return swipeLive || Date.now() - swipeEndAt < SWIPE_QUIET_MS;
+}
+function swipeOn() {
+  swipeLive = true;
+}
+function swipeOff() {
+  swipeLive = false;
+  swipeEndAt = Date.now();
+}
+const captureWhileSwiping = () => swipeLive;
+const noop = () => {};
+
 export function TabSlide<K extends string>(props: Props<K>) {
   const [k2] = useState(() => flag("k2"));
   return k2 ? <TabSlideUI {...props} /> : <TabSlideJS {...props} />;
@@ -532,6 +558,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
           };
           requestAnimationFrame(tick);
           scheduleOnRN(jsJankOn);
+          scheduleOnRN(swipeOn);
         })
         .onUpdate((e) => {
           const i = idx.value;
@@ -599,6 +626,8 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
             jLive.value = 0;
             const dur = jT0.value >= 0 ? jLast.value - jT0.value : 0;
             scheduleOnRN(uiJankReport, jDrop.value, dur, armed.value);
+            /* D-1497 — نهايةُ سحبةٍ قُفلت فعلاً وحدَها (`jLive` يُرفع في `onStart`) — لمسةٌ عاديّةٌ لا تبدأ «هدوءاً» يحجب ضغطتَها */
+            scheduleOnRN(swipeOff);
           }
           scheduleOnRN(jsJankOff);
         }),
@@ -708,7 +737,15 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   return (
     <GestureHandlerRootView style={[{ flex: 1, overflow: "hidden" }, style]}>
       <GestureDetector gesture={gesture}>
-        <View style={{ flex: 1 }} collapsable={false}>
+        <View
+          style={{ flex: 1 }}
+          collapsable={false}
+          /* D-1497 — السحبةُ الحيّةُ تأخذ اللمسَ من البطاقة تحت الإصبع. ⚠️ ولا التقاطَ عند بدء لمسةٍ بعدها: مستجيبُ JS يحجب
+             تمريرَ القائمة الأصليّ لتلك اللمسة — فاللمسةُ التالية يحرسها `tabSwipeBlocksPress` في أبواب الفتح لا هنا */
+          onMoveShouldSetResponderCapture={captureWhileSwiping}
+          onResponderGrant={noop}
+          onResponderTerminationRequest={() => !swipeLive}
+        >
           <Reanimated.View style={[{ position: "absolute", top: 0, bottom: 0, start: 0, width: Math.max(1, order.length) * width }, track]}>
             {panes.map((k) => {
               const on = k === tab;
