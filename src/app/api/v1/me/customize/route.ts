@@ -22,8 +22,9 @@ import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult } from "@
  */
 function payloadOf(p: Awaited<ReturnType<typeof getProfile>>): CustomizePayload {
   return {
-    home: sanitizeHomePrefs(p?.home_prefs),
-    profile: sanitizeProfilePrefs(p?.profile_prefs),
+    /* D-1487 — الفعّالُ لخطّته: من لم يرتّب يرى ترتيبَ خطّته */
+    home: sanitizeHomePrefs(p?.home_prefs, isPlus(p)),
+    profile: sanitizeProfilePrefs(p?.profile_prefs, isPlus(p)),
     templates: sanitizeUiState(p?.ui_state).tpl,
     plus: isPlus(p),
   };
@@ -54,8 +55,8 @@ export async function POST(req: NextRequest) {
        يبيعه بلس — فلا يُعلَن نجاحٌ وقد أُسقط نصفُ ما اختير (D-217). `keepPaid*` في `updateProfile` حارسٌ ثانٍ. */
     if (!isPlus(p)) {
       const paid =
-        (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs), sanitizeHomePrefs(b.home))) ||
-        (b.profile !== undefined && touchesPaidProfilePrefs(sanitizeProfilePrefs(p?.profile_prefs), sanitizeProfilePrefs(b.profile)));
+        (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs, false), sanitizeHomePrefs(b.home, false))) ||
+        (b.profile !== undefined && touchesPaidProfilePrefs(sanitizeProfilePrefs(p?.profile_prefs, false), sanitizeProfilePrefs(b.profile, false)));
       if (paid) return ok({ data: null, needsPlus: true });
     }
     await updateProfile({

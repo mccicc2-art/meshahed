@@ -18,9 +18,12 @@ import type { IconName } from "./iconNames";
  */
 
 /** أقسام البروفايل القابلة للترتيب والإخفاء */
+/* 🆕 D-1487 — ترتيبُ السجلّ ترتيبُ المخفيّ في ورقة الأقسام: التقييماتُ ثمّ الفنّانون ثمّ القوائم (جدولُ أحمد ٢٠ أكتوبر) */
 export const PROFILE_SECTIONS = [
   "shows",
   "movies",
+  "anime",
+  "ratings",
   /* «فنّانوك»: نفس شبكة تبويب المكتبة الرابع (D-128) — تُبنى مرة وتظهر
      مرتين. خارج الافتراضي لأنها تكلّف نداءات TMDB لعدّ الأعمال */
   "artists",
@@ -36,9 +39,7 @@ export const PROFILE_SECTIONS = [
      (قسمةُ المفضّلة نفسُها). ⚠️ **ومن رتّب أقسامَه قبل اليوم** أُدرج المفتاحُ
      في مخزونه بعد «أفلام» بتحديثٍ واحد على القاعدة (لا هجرة) — **لأن غيابَه
      عن `order` يُقرأ إخفاءً** (D-152)، ولا يُميَّز مخفيٌّ بيدٍ من غائبٍ لقِدَم. */
-  "anime",
   "lists",
-  "ratings",
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
 
@@ -307,7 +308,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      دخل الافتراضيَّ لأوّل مرّة** — حجّةُ إبعاده («تكلّف نداءاتِ TMDB لعدّ
      الأعمال») سقطت مع سقوط العدّ نفسِه (D-128: الصفُّ بلا سطرِ «شاهدتَ له ٧
      أعمال»)، **فلم يبقَ للإبعاد سبب.** */
-  order: ["shows", "movies", "anime", "ratings", "lists", "artists"],
+  /* D-1487 — غيرُ المشترك والجديد: الثلاثةُ الأولى ظاهرة (جدولُ أحمد ٢٠ أكتوبر)؛ الستّةُ للمشترك (`PLUS_PROFILE_ORDER`) */
+  order: ["shows", "movies", "anime"],
   density: "comfortable",
   cards: "full",
   /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
@@ -324,9 +326,39 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      فيو مقفل») ولـD-653 («لازم الكل فيفوريت») **بكلمةِ صاحبهما**،
      **والحجّةُ صفحةٌ تبدأ بمكتبته لا بقائمةٍ فارغة** («لا مفضّلات بعد»
      كانت أوّلَ ما يراه الزائر). ⚠️ **ويمسّ من لم يخصّص وحدَه** (ق٨). */
-  hiddenTabs: ["favorites", "lists"],
+  hiddenTabs: ["activity", "favorites", "lists"],
   tabOrder: ["overview", "activity", "reviews", "favorites", "lists"],
 };
+
+/**
+ * ====== 🆕 D-1487 — افتراضيُّ الملفّ يتبع خطّةَ صاحبه (جداولُ أحمد ٢٠ أكتوبر: «أ نفذ») ======
+ *
+ * غيرُ المشترك والجديد: تبويبا «نظرة عامة · المراجعات» وأقسامُ «مسلسلات · أفلام · أنمي» (`DEFAULT_PROFILE_PREFS`).
+ * المشترك: «نظرة عامة · النشاط · المراجعات · المفضّلة» والأقسامُ الستّة (الفنّانون قبل القوائم).
+ * 🔑 **ومن لم يرتّب يتبع خطّتَه** — قاعدةُ `homePrefs` نفسُها: مخزونٌ يساوي أحدَ الافتراضيّات المعروفة
+ * (والقديمَ منها) يُقرأ «لم يرتّب». والاستبدالُ حين تُمرَّر الخطّةُ وحدَها.
+ */
+export const PLUS_PROFILE_ORDER: ProfileSection[] = ["shows", "movies", "anime", "ratings", "artists", "lists"];
+export const PLUS_HIDDEN_TABS: HideableProfileTab[] = ["lists"];
+const KNOWN_PROFILE_ORDERS: readonly (readonly string[])[] = [
+  DEFAULT_PROFILE_PREFS.order,
+  PLUS_PROFILE_ORDER,
+  ["shows", "movies", "anime", "ratings", "lists", "artists"], // افتراضيُّ ما قبل D-1487 (D-941b)
+];
+const KNOWN_HIDDEN_TABS: readonly (readonly string[])[] = [
+  DEFAULT_PROFILE_PREFS.hiddenTabs,
+  PLUS_HIDDEN_TABS,
+  ["favorites", "lists"], // افتراضيُّ ما قبل D-1487 (D-940)
+];
+const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+/** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» */
+export function defaultProfilePrefs(plus: boolean): ProfilePrefs {
+  return plus
+    ? { ...DEFAULT_PROFILE_PREFS, order: [...PLUS_PROFILE_ORDER], hiddenTabs: [...PLUS_HIDDEN_TABS], tabOrder: [...DEFAULT_PROFILE_PREFS.tabOrder] }
+    : { ...DEFAULT_PROFILE_PREFS, order: [...DEFAULT_PROFILE_PREFS.order], hiddenTabs: [...DEFAULT_PROFILE_PREFS.hiddenTabs], tabOrder: [...DEFAULT_PROFILE_PREFS.tabOrder] };
+}
 
 /**
  * أيقونةُ كلِّ تبويبٍ واسمُه — **سجلٌّ واحدٌ لقارئَين** (D-152، حجّةُ
@@ -356,7 +388,22 @@ export function orderedProfileTabs(prefs: ProfilePrefs): HideableProfileTab[] {
  * والفرق هنا أن **الفراغ مسموح**: من أخفى كل الأقسام أخفاها قصداً،
  * بخلاف الرئيسية حيث ترتيبٌ فارغ يعني صفحةً بيضاء بلا سبب.
  */
-export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
+export function sanitizeProfilePrefs(raw: unknown, plus?: boolean): ProfilePrefs {
+  const clean = sanitizeStoredProfilePrefs(raw);
+  if (plus === undefined) return clean;
+  /* D-1487 — من لم يرتّب يتبع خطّةَ صاحب الملفّ (انظر `defaultProfilePrefs`). التبويباتُ «لم تُرتَّب» حين يكون
+     ترتيبُها الافتراضيَّ ومخفيُّها أحدَ المخفيّات المعروفة */
+  const plan = defaultProfilePrefs(plus);
+  const tabsUntouched =
+    sameList(clean.tabOrder, DEFAULT_PROFILE_PREFS.tabOrder) && KNOWN_HIDDEN_TABS.some((k) => sameSet(k, clean.hiddenTabs));
+  return {
+    ...clean,
+    order: KNOWN_PROFILE_ORDERS.some((k) => sameList(k, clean.order)) ? plan.order : clean.order,
+    hiddenTabs: tabsUntouched ? plan.hiddenTabs : clean.hiddenTabs,
+  };
+}
+
+function sanitizeStoredProfilePrefs(raw: unknown): ProfilePrefs {
   const d = DEFAULT_PROFILE_PREFS;
   if (!raw || typeof raw !== "object") return d;
   const o = raw as Record<string, unknown>;

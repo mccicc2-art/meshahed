@@ -10,6 +10,9 @@ export const HOME_SECTIONS = [
   "continue",
   "week",
   "towatch",
+  /* 🆕 D-1487 — **ترتيبُ السجلّ هو ترتيبُ المخفيّ في «رتّب الأقسام»**: «أعمالُ أصدقائك» أوّلُ المخفيّ لغير المشترك،
+     والرائجُ آخرُه للمشترك (جدولُ أحمد ٢٠ أكتوبر) — فنُقل «friends» من آخر السجلّ إلى هنا. */
+  "friends",
   "upcoming",
   "recap",
   "shows",
@@ -19,10 +22,7 @@ export const HOME_SECTIONS = [
   "ratings",
   "lists",
   "trending",
-  /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — الدليلُ الاجتماعيُّ صفّاً في
-     الرئيسية لا سطوراً في `/people` وحدها. **وفي الافتراضي** لأنه يُخفي
-     نفسَه لمن لا يتابع أحداً (D-181) فلا يكلّف من لا دائرةَ له شيئاً. */
-  "friends",
+  /* «أعمالُ أصدقائك الآن» (البند ٧) — انتقل أعلى السجلّ (D-1487). يُخفي نفسَه لمن لا يتابع أحداً (D-181). */
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
@@ -50,14 +50,15 @@ export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; 
 }
 
 /** خانات بطاقة الأرقام — خيارات يعرض المستخدم منها ٢ إلى ٤ */
+/* D-1487 — ترتيبُ السجلّ ترتيبُ المخفيّ في ورقة الخانات (جدولُ أحمد ٢٠ أكتوبر) */
 export const HEADER_STATS = [
   "shows",
   "movies",
-  "towatch",
-  "time",
-  "episodes",
-  "upcoming",
   "completed",
+  "time",
+  "towatch",
+  "upcoming",
+  "episodes",
   "dropped",
   "ratings",
 ] as const;
@@ -293,7 +294,8 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
      المشاهدة» فارغة — **فيملأ الفراغَ لمن لا شيءَ عنده ويختفي وحدَه
      عند أوّل حلقة**، ولا يزحم رئيسيّتك بسطرٍ واحد. */
   order: ["week", "continue", "towatch", "trending"],
-  statsPick: ["towatch", "upcoming"],
+  /* D-1487 — «مسلسلات · أفلام» لغير المشترك (كان «للمشاهدة · القادم») */
+  statsPick: ["shows", "movies"],
   cards: "full",
   view: "visual",
   density: "comfortable",
@@ -305,13 +307,54 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
 };
 
 /**
+ * ====== 🆕 D-1487 — الافتراضيُّ يتبع الخطّة (جداولُ أحمد ٢٠ أكتوبر: «أ نفذ») ======
+ *
+ * **ترتيبان لا ترتيب**: غيرُ المشترك والجديد يرى `DEFAULT_HOME_PREFS`، والمشتركُ يرى ترتيبَ المشترك —
+ * التقويم · أكمل المشاهدة · للمشاهدة · أعمالُ أصدقائك (والرائجُ مخفيّ)، وبطاقةٌ بأربع خانات.
+ *
+ * 🔑 **«من لم يرتّب» يتبع خطّتَه، ومن رتّب يبقى على ترتيبه** (قاعدةُ الجدول): مخزونٌ فارغٌ أو يساوي أحدَ
+ * الافتراضيّات المعروفة يُقرأ «لم يرتّب». ⚠️ **والافتراضيُّ القديمُ معروفٌ لا مرتّب**: كلُّ حفظٍ من «التخصيص» —
+ * ولو لزرِّ العرض المجّانيّ — كان يكتب الترتيبَ الافتراضيَّ كما هو، فلو عُدَّ «ترتيباً» لما وصل أحداً ترتيبُ المشترك.
+ * ⚖️ **والاستبدالُ حين تُمرَّر الخطّةُ وحدَها** (`sanitizeHomePrefs(raw, plus)`): الخادمُ يمرّرها عند القراءة،
+ * والعميلُ يُنقّي ما وصله بلا خطّة **فلا يُعيد ترتيبَ المشترك افتراضيَّ غيرِ المشترك**.
+ */
+export const PLUS_HOME_ORDER: HomeSection[] = ["week", "continue", "towatch", "friends"];
+export const PLUS_STATS_PICK: HeaderStatKey[] = ["shows", "movies", "completed", "time"];
+const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [DEFAULT_HOME_PREFS.order, PLUS_HOME_ORDER];
+const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
+  DEFAULT_HOME_PREFS.statsPick,
+  PLUS_STATS_PICK,
+  ["towatch", "upcoming"], // افتراضيُّ ما قبل D-1487
+];
+const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» في شاشتي التخصيص */
+export function defaultHomePrefs(plus: boolean): HomePrefs {
+  return plus
+    ? { ...DEFAULT_HOME_PREFS, order: [...PLUS_HOME_ORDER], statsPick: [...PLUS_STATS_PICK] }
+    : { ...DEFAULT_HOME_PREFS, order: [...DEFAULT_HOME_PREFS.order], statsPick: [...DEFAULT_HOME_PREFS.statsPick] };
+}
+
+/**
  * تنقية ما جاء من قاعدة البيانات.
  *
  * العمود JSON حرّ، وقد كتبت فيه نسخة قديمة أو يدٌ عابثة ما لا نتوقّع.
  * فكل قيمة تُفحص: المفاتيح المنطقية تسقط إلى افتراضيّها إن لم تكن
  * منطقية، والترتيب يُقصر على الأقسام المعروفة بلا تكرار.
  */
-export function sanitizeHomePrefs(raw: unknown): HomePrefs {
+export function sanitizeHomePrefs(raw: unknown, plus?: boolean): HomePrefs {
+  const clean = sanitizeStoredHomePrefs(raw);
+  if (plus === undefined) return clean;
+  /* D-1487 — من لم يرتّب يتبع خطّتَه (انظر `defaultHomePrefs`) */
+  const plan = defaultHomePrefs(plus);
+  return {
+    ...clean,
+    order: KNOWN_HOME_ORDERS.some((k) => sameList(k, clean.order)) ? plan.order : clean.order,
+    statsPick: KNOWN_STATS_PICKS.some((k) => sameList(k, clean.statsPick)) ? plan.statsPick : clean.statsPick,
+  };
+}
+
+function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
   const d = DEFAULT_HOME_PREFS;
   if (!raw || typeof raw !== "object") return d;
   const o = raw as Record<string, unknown>;

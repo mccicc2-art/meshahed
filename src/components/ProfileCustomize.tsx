@@ -6,7 +6,7 @@ import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import {
-  DEFAULT_PROFILE_PREFS,
+  defaultProfilePrefs,
   HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
   orderedProfileTabs,
@@ -105,9 +105,9 @@ export function ProfileCustomize({
      كلَّه** — وهو ما يقوله اسمُها في التصميم. */
   useEffect(() => {
     registerReset?.(() => {
-      setPrefs({ ...DEFAULT_PROFILE_PREFS });
+      setPrefs(defaultProfilePrefs(plus)); // D-1487 — افتراضيُّ خطّته
     });
-  }, [registerReset]);
+  }, [registerReset, plus]);
 
   function save() {
     /* ⚖️ **القفلُ عند الحفظ لا عند الرسم** (D-633) — الحجّةُ كاملةً في

@@ -15,6 +15,7 @@ import "server-only";
  * (مشاهدُ «التالي»، أرقامُ حلقات القادم، الرائج) صار ثلاثَ دوالٍّ هنا
  * تناديها الصفحةُ خلف `Suspense` ويناديها `me/home/extras` معاً.
  */
+import { isPlus } from "@/core/plan";
 import type { Locale } from "@/core/i18n";
 import {
   getFollows,
@@ -238,7 +239,8 @@ export async function buildHomeHeader({
   const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
   const movieMinutes = watchedMovieMinutes(watchedMovies);
 
-  const prefs = sanitizeHomePrefs(profile?.home_prefs);
+  /* D-1487 — الافتراضيُّ يتبع خطّتَه: من لم يرتّب يرى ترتيبَ خطّته */
+  const prefs = sanitizeHomePrefs(profile?.home_prefs, isPlus(profile));
 
   const myRatingsCount = myRatings.length;
 

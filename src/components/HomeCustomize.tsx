@@ -6,7 +6,7 @@ import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import {
-  DEFAULT_HOME_PREFS,
+  defaultHomePrefs,
   HOME_SECTIONS,
   HOME_VIEWS,
   HEADER_STATS,
@@ -126,9 +126,9 @@ export function HomeCustomize({
   /* **الاستعادةُ صعدت إلى الترويسة** (D-465) — وتستعيد اللوحَ كلَّه */
   useEffect(() => {
     registerReset?.(() => {
-      setPrefs({ ...DEFAULT_HOME_PREFS });
+      setPrefs(defaultHomePrefs(plus)); // D-1487 — افتراضيُّ خطّته
     });
-  }, [registerReset]);
+  }, [registerReset, plus]);
 
   function save() {
     /* ⚖️ **والقفلُ عند الحفظ لا عند الرسم** (D-633، حكمُ أحمد: «تنسيقٌ

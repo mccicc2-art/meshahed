@@ -8,6 +8,8 @@ import {
 import { getT } from "@/lib/locale";
 import { CustomizeScreen } from "@/components/settings/CustomizeScreen";
 import { isPlus } from "@/core/plan";
+import { sanitizeHomePrefs } from "@/core/homePrefs";
+import { sanitizeProfilePrefs } from "@/core/profilePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
 
 /**
@@ -36,8 +38,9 @@ export default async function Page() {
       nickname={p?.nickname ?? ""}
       avatarUrl={p?.avatar_url ?? null}
       genres={p?.favorite_genres ?? []}
-      homePrefs={p?.home_prefs}
-      profilePrefs={p?.profile_prefs}
+      /* D-1487 — ما يُعرض هو الفعّال لخطّته، والعميلُ لا يعيد حسابَه */
+      homePrefs={sanitizeHomePrefs(p?.home_prefs, isPlus(p))}
+      profilePrefs={sanitizeProfilePrefs(p?.profile_prefs, isPlus(p))}
       username={p?.username ?? null}
       bio={p?.bio ?? null}
       coverUrl={p?.cover_url ?? null}

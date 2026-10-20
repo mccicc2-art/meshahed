@@ -18,7 +18,7 @@ import { CustomizePreview, type PreviewWho } from "./CustomizePreview";
 import { SettingsScreen, Group, Row, Toggle, Field, RowsSkeleton } from "./ui";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 import {
-  DEFAULT_HOME_PREFS,
+  defaultHomePrefs,
   HEADER_STATS,
   HOME_SECTIONS,
   HOME_VIEWS,
@@ -32,7 +32,7 @@ import {
   type HomeView,
 } from "@/core/homePrefs";
 import {
-  DEFAULT_PROFILE_PREFS,
+  defaultProfilePrefs,
   HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
   orderedProfileTabs,
@@ -341,8 +341,9 @@ export function CustomizeScreen() {
           trailing={null}
           onPress={() => {
             haptic.pick();
-            if (tab === "home") setHome({ ...DEFAULT_HOME_PREFS });
-            else setProfile({ ...DEFAULT_PROFILE_PREFS });
+            /* D-1487 — افتراضيُّ خطّته */
+            if (tab === "home") setHome(defaultHomePrefs(!!d?.plus));
+            else setProfile(defaultProfilePrefs(!!d?.plus));
             toast.current?.say(t.custResetDraft, undefined, undefined, "info");
           }}
         />
