@@ -108,6 +108,9 @@ export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
  * - **«تعليق»** رمزٌ وكلمةٌ ورقمُ الردود — وفي صفّ القائمة بابُ صفحتها (الخيطُ يسكن تبويبَ تقييماتها، D-333).
  * - **المشاهداتُ** رقمٌ يُقرأ (`StatChip`: باهتٌ على الصفر) · **المشاركةُ** رمزٌ عارٍ — ولا مشاهداتَ ولا مشاركةَ لصفِّ قائمة (D-370).
  * ⚠️ **٤٤ تُلمس** وإن رُسم الرمزُ ١٦ (`hitSlop` + حشوة، D-033).
+ * 🆕 D-1484 (ينقض D-294 «رجّعها») — **الرمزُ والرقمُ بلا كلمة** (أحمد ٢٠ أكتوبر: «احذف كلمة تعليق وإعجاب، الأيقونات تكفي»):
+ *   الكلمتان كانتا أعرضَ ما في الذيل وأوّلَ ما يُقصّ تحت خطٍّ كبير، والمشاهداتُ جنبهما رمزٌ ورقمٌ أصلاً. الكلمةُ باقيةٌ
+ *   لقارئ الشاشة (`accessibilityLabel`) — العينُ ترى الرمز، والأذنُ تسمع الاسم.
  */
 function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardActs; onList?: () => void; share?: { path: string; title: string } }) {
   const { t, tokens, locale } = useApp();
@@ -124,14 +127,12 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
         likes > 0 ? (
           <View style={pad} accessibilityLabel={`${t.likesLabel}: ${likes}`}>
             <Icon name="heart" size={16} color={tokens.muted} />
-            <Text size={12} muted>{t.likesLabel}</Text>
             <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text>
           </View>
         ) : null
       ) : (
         <Pressable onPress={() => acts.like(row)} hitSlop={4} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t.likesLabel} style={pad}>
           <Icon name={liked ? "heart-filled" : "heart"} size={16} color={heartColor} />
-          <Text size={12} color={heartColor}>{t.likesLabel}</Text>
           {likes > 0 ? <Text size={12} color={heartColor} style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text> : null}
         </Pressable>
       )}
@@ -144,7 +145,6 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
         style={pad}
       >
         <Icon name="comment" size={15} color={tokens.muted} />
-        <Text size={12} muted>{onList ? t.talkReply : t.actionComment}</Text>
         {replies > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replies, locale)}</Text> : null}
       </Pressable>
       {views != null ? (

@@ -120,19 +120,23 @@ export function Text({
   const kOwn = useFontScale(content);
   const kContent = useFontScale(true);
   const k = chat ? Math.max(kOwn, kContent) : kOwn;
+  /* 🆕 D-1484 — **كلامُ الناس أكبرُ بدرجة** (أحمد ٢٠ أكتوبر: «كبّر الخط درجة واحدة في المحتوى… في الكل»): مراجعةٌ ومنشورٌ
+     وردٌّ ورسالة — كلُّ ما يحمل `content` أو `chat` — يزيد نقطةً قبل ضربه بالمعامل، والسطرُ نقطتين كي لا يضيق تحت الحرف.
+     هنا لا في كلِّ شاشة: عشرُ شاشاتٍ تكتب `size={14} content` ولا تُعدَّل واحدةً واحدة (وتُنسى الحادية عشرة) */
+  const step = content || chat ? 1 : 0;
   let style = rawStyle;
-  if (k !== 1 && rawStyle) {
+  if ((k !== 1 || step) && rawStyle) {
     const flat = StyleSheet.flatten(rawStyle);
     if (flat && (flat.fontSize || flat.lineHeight)) {
       const scaled: { fontSize?: number; lineHeight?: number } = {};
-      if (flat.fontSize) scaled.fontSize = flat.fontSize * k;
-      if (flat.lineHeight) scaled.lineHeight = flat.lineHeight * k;
+      if (flat.fontSize) scaled.fontSize = (flat.fontSize + step) * k;
+      if (flat.lineHeight) scaled.lineHeight = (flat.lineHeight + step * 2) * k;
       style = [rawStyle, scaled];
     }
   }
   const base = {
     color: color ?? (muted ? tokens.muted : tokens.fg),
-    fontSize: size * k,
+    fontSize: (size + step) * k,
     fontWeight: weight,
     textAlign: "left" as "left" | "right",
     writingDirection: undefined as "rtl" | "ltr" | undefined,

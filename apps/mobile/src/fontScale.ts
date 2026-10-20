@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from "react";
+import { Dimensions, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import * as Updates from "expo-updates";
+import { opening } from "./opening/opening";
 import { FONT_SCALE_CONTENT, FONT_SCALE_UI, sanitizeFontSize, type FontSize } from "@/core/fontPrefs";
 
 /**
@@ -59,4 +62,28 @@ export const fontPrefs = {
 export function useFontScale(content?: boolean): number {
   const p = useSyncExternalStore(fontPrefs.subscribe, fontPrefs.get, fontPrefs.get);
   return content ? FONT_SCALE_CONTENT[p.content] : FONT_SCALE_UI[p.ui];
+}
+
+/**
+ * 🆕 D-1484 — **خطُّ الآيفون تغيّر والتطبيقُ مفتوح ⇒ يُعاد تحميلُه** (تسجيلُ أحمد ٢٠ أكتوبر): الحروفُ كبرت والصناديقُ بقيت
+ * بعرضها القديم، فقُصّ الكلامُ من جهتيه («المجتمع» ⇐ «حتمع»، و«بحث» في الدوك ⇐ «...»، و«5.0» ⇐ «5.(») — iOS يكبّر
+ * الخطَّ حيّاً ولا يعيد قياسَ النصوص المقيسة. **وبعد إعادة الفتح انحلّ كلُّه** (لقطتُه ١١:٤٤) — فلا نقصَ مساحةٍ بل قياسٌ قديم.
+ * فالعلاجُ ما فعله بيده: إعادةُ تحميل JS، بستار لوبز قبلها وبعدها كتبديل اللغة (D-1463). تغييرُ خطِّ الجهاز نادر،
+ * والرجوعُ إلى الرئيسيّة أهونُ من شاشاتٍ مقصوصةٍ حتى يُغلق التطبيق. الأندرويدُ لم يُرَ فيه العطلُ فلا يمرّ هنا.
+ * الفرقُ أصغرُ من ١٪ لا يُحسب (دقّةُ الكسور)؛ والفشلُ صمت (بيئةُ التطوير).
+ */
+if (Platform.OS === "ios") {
+  const fontScale0 = Dimensions.get("window").fontScale;
+  let reloading = false;
+  Dimensions.addEventListener("change", ({ window }) => {
+    if (reloading || Math.abs(window.fontScale - fontScale0) < 0.01) return;
+    reloading = true;
+    opening.skipNext();
+    opening.cover();
+    new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+      .then(() => Updates.reloadAsync({ reloadScreenOptions: { backgroundColor: "#050505", spinner: { enabled: false }, fade: true } }))
+      .catch(() => {
+        reloading = false;
+      });
+  });
 }
