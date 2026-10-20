@@ -20,6 +20,7 @@ import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import { OneTimeHint } from "./OneTimeHint";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
 import { scrollJank } from "../scrollJank";
+import { useRtlRailPin } from "../rtlRailPin";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
@@ -133,6 +134,9 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
      والخاصّةُ باباً ويبيّاً (`?share=1`، D-952) — الآن الإعلانُ والصديقُ والمجتمعُ والرابطُ في ورقةٍ واحدة كالويب */
   const [sharing, setSharing] = useState<LibraryListCard | null>(null);
   const share = useCallback((l: LibraryListCard) => setSharing(l), []);
+
+  /* D-1492 — صفُّ «أسماءٌ تتكرّر» افتراضيٌّ أفقيّ: العلاجُ المشترك على الآيفون بالعربيّ (D-1478)، وسحبُه يمرّ بقياس الاهتزاز كما كان */
+  const { props: groupsPin } = useRtlRailPin<LibraryAutoGroup>(scrollJank("library", "h").onScrollBeginDrag);
 
   const cols = width >= 640 ? 2 : 1;
   const cardW = cols === 1 ? "100%" : Math.floor((width - PAGE_PAD * 2 - 10) / 2);
@@ -248,6 +252,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
           <FlatList
             horizontal
             {...scrollJank("library", "h")}
+            {...groupsPin}
             data={p.auto_groups}
             keyExtractor={(g) => `${g.kind}:${g.name}`}
             showsHorizontalScrollIndicator={false}

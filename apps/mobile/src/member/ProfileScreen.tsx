@@ -1228,6 +1228,8 @@ function Overview({
   const rail = useRailLayout(posterW);
   const cap = <T,>(xs: T[]) => (d.display.cards == null ? xs : xs.slice(0, d.display.cards));
   const o = d.overview;
+  /* D-1492 — صفُّ التقييمات افتراضيٌّ كصفوف الأقسام فيأخذ العلاجَ المشترك نفسَه (D-1478) */
+  const { props: ratingsPin } = useRtlRailPin<(typeof o.ratings)[number]>();
   const body = (s: ProfileSectionKey): React.ReactNode => {
     switch (s) {
       case "shows":
@@ -1266,6 +1268,7 @@ function Overview({
         return o.ratings.length ? (
           /* D-1325 — صفُّ التقييمات بالقائمة الأفقيّة نفسِها */
           <FlatList
+            {...ratingsPin}
             horizontal
             data={cap(o.ratings)}
             keyExtractor={railKey}

@@ -331,12 +331,14 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
  * والعميلُ يُنقّي ما وصله بلا خطّة **فلا يُعيد ترتيبَ المشترك افتراضيَّ غيرِ المشترك**.
  */
 export const PLUS_HOME_ORDER: HomeSection[] = ["week", "continue", "towatch", "friends"];
-export const PLUS_STATS_PICK: HeaderStatKey[] = ["shows", "movies", "completed", "time"];
+/* D-1491 — «أكملتها» خرجت من افتراضيّ المشترك (أحمد ٢٠ أكتوبر: «اكملتها خليه مخفي»): ثلاثُ خانات */
+export const PLUS_STATS_PICK: HeaderStatKey[] = ["shows", "movies", "time"];
 const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [DEFAULT_HOME_PREFS.order, PLUS_HOME_ORDER];
 const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
   DEFAULT_HOME_PREFS.statsPick,
   PLUS_STATS_PICK,
   ["towatch", "upcoming"], // افتراضيُّ ما قبل D-1487
+  ["shows", "movies", "completed", "time"], // افتراضيُّ المشترك في D-1487 — من لم يرتّب ينتقل إلى الثلاث (D-1491)
 ];
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 

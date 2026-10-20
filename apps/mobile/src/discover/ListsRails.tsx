@@ -10,6 +10,7 @@ import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 import { scrollJank } from "../scrollJank";
+import { useRtlRailPin } from "../rtlRailPin";
 
 /**
  * ====== تبويبُ «القوائم» في «اكتشف» — نسخةُ `ListsDiscovery` (الويب) ======
@@ -57,39 +58,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
             </Pressable>
           ) : null}
         </View>
-        <FlatList
-          horizontal
-          {...scrollJank("discover", "h")}
-          data={lists}
-          keyExtractor={(l) => l.id}
-          renderItem={({ item }) => (
-            <View style={{ width: cardW }}>
-              <ListCard
-                card={{
-                  id: item.id,
-                  name: item.name,
-                  icon: item.kind === "smart" || item.kind === "curated" ? "sparkle-star" : undefined,
-                  owner: item.owner,
-                  owner_avatar: item.owner_avatar,
-                  countText: item.count_label ?? t.listCount(item.item_count),
-                  posters: item.posters,
-                  cover: item.cover,
-                  stats: { saves: item.saves, reviews: item.reviews, rating: item.rating },
-                  playlist: null,
-                  canSave: item.can_save,
-                  savedByMe: item.saved_by_me,
-                  canReview: !!item.can_review,
-                  hasMyReview: !!item.my_review,
-                }}
-                onPress={() => onOpenWeb(`/lists/${item.id}`)}
-              />
-            </View>
-          )}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 10 }}
-          initialNumToRender={3}
-          windowSize={5}
-        />
+        <ListsRailList lists={lists} cardW={cardW} onOpenWeb={onOpenWeb} />
       </View>
     );
 
@@ -155,5 +124,47 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
         </Sheet>
       ) : null}
     </View>
+  );
+}
+
+/** صفُّ قوائمٍ أفقيّ — مكوّنٌ لا دالّة (D-1492): لكلِّ صفٍّ تثبيتُه على الآيفون بالعربيّ (`useRtlRailPin`، D-1478)، والخطّافُ لا يُنادى في دالّةٍ تُستدعى لكلِّ صفّ */
+function ListsRailList({ lists, cardW, onOpenWeb }: { lists: LibraryListCard[]; cardW: number; onOpenWeb: (path: string) => void }) {
+  const { t } = useApp();
+  const { props: pin } = useRtlRailPin<LibraryListCard>(scrollJank("discover", "h").onScrollBeginDrag);
+  return (
+    <FlatList
+      horizontal
+      {...scrollJank("discover", "h")}
+      {...pin}
+      data={lists}
+      keyExtractor={(l) => l.id}
+      renderItem={({ item }) => (
+        <View style={{ width: cardW }}>
+          <ListCard
+            card={{
+              id: item.id,
+              name: item.name,
+              icon: item.kind === "smart" || item.kind === "curated" ? "sparkle-star" : undefined,
+              owner: item.owner,
+              owner_avatar: item.owner_avatar,
+              countText: item.count_label ?? t.listCount(item.item_count),
+              posters: item.posters,
+              cover: item.cover,
+              stats: { saves: item.saves, reviews: item.reviews, rating: item.rating },
+              playlist: null,
+              canSave: item.can_save,
+              savedByMe: item.saved_by_me,
+              canReview: !!item.can_review,
+              hasMyReview: !!item.my_review,
+            }}
+            onPress={() => onOpenWeb(`/lists/${item.id}`)}
+          />
+        </View>
+      )}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 10 }}
+      initialNumToRender={3}
+      windowSize={5}
+    />
   );
 }

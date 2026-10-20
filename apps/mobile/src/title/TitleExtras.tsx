@@ -13,6 +13,7 @@ import { posterUrl, profileUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
 import { haptic } from "../haptics";
+import { useRtlRailPin } from "../rtlRailPin";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
@@ -390,6 +391,8 @@ export function AddToListButton({ kind, id, name, posterPath, x, onNewList }: { 
 /** الطاقم — دوائرُ الوجوه، والوجهُ بابٌ إلى `/person/:id` */
 export function CastRail({ x, onPerson }: { x: TitleExtrasPayload | undefined; onPerson: (id: number) => void }) {
   const { t, tokens } = useApp();
+  /* D-1492 — صفٌّ أفقيٌّ افتراضيّ: العلاجُ المشترك على الآيفون بالعربيّ (D-1478) — قبل الرجوع المبكّر لأنه خطّاف */
+  const { props: castPin } = useRtlRailPin<TitleExtrasPayload["cast"][number]>();
   if (!x || x.cast.length === 0) return null;
   return (
     <View style={{ gap: 10 }}>
@@ -398,6 +401,7 @@ export function CastRail({ x, onPerson }: { x: TitleExtrasPayload | undefined; o
         <Text size={15} weight="700">{t.castTitle}</Text>
       </View>
       <FlatList
+        {...castPin}
         horizontal
         data={x.cast}
         keyExtractor={(c) => String(c.id)}
@@ -420,9 +424,23 @@ export function CastRail({ x, onPerson }: { x: TitleExtrasPayload | undefined; o
 
 /** السلسلةُ والمشابهات — ملصقاتٌ ١١٢ تدفع شاشةَ العمل نفسَها */
 export function RelatedRails({ x, onOpen }: { x: TitleExtrasPayload | undefined; onOpen: (kind: "tv" | "movie", id: number) => void }) {
-  const { t, tokens } = useApp();
+  const { t } = useApp();
   if (!x || (!x.collection && x.related.length === 0)) return null;
-  const rail = (title: string, subtitle: string | null, items: { kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; year: string | null }[]) => (
+  return (
+    <>
+      {x.collection ? <RelatedRail title={t.relatedPartsTitle} subtitle={x.collection.name} onOpen={onOpen} items={x.collection.parts.map((p) => ({ kind: "movie" as const, id: p.id, title: p.title, poster_path: p.poster_path, year: p.year }))} /> : null}
+      {x.related.length ? <RelatedRail title={t.relatedTitlesTitle} subtitle={null} onOpen={onOpen} items={x.related} /> : null}
+    </>
+  );
+}
+
+type RelatedItem = { kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; year: string | null };
+
+/** صفٌّ واحدٌ من «السلسلة والمشابهات» — مكوّنٌ لا دالّة (D-1492): لكلِّ صفٍّ تثبيتُه الخاصّ (`useRtlRailPin`)، والخطّافُ لا يُنادى في دالّةٍ تُستدعى مرّتين */
+function RelatedRail({ title, subtitle, items, onOpen }: { title: string; subtitle: string | null; items: RelatedItem[]; onOpen: (kind: "tv" | "movie", id: number) => void }) {
+  const { tokens } = useApp();
+  const { props: pin } = useRtlRailPin<RelatedItem>();
+  return (
     <View style={{ gap: 10 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <Icon name="sparkle-star" size={14} color={tokens.accent} />
@@ -430,6 +448,7 @@ export function RelatedRails({ x, onOpen }: { x: TitleExtrasPayload | undefined;
       </View>
       {subtitle ? <Text size={12} muted style={{ marginTop: -6 }}>{subtitle}</Text> : null}
       <FlatList
+        {...pin}
         horizontal
         data={items}
         keyExtractor={(i) => `${i.kind}-${i.id}`}
@@ -447,11 +466,5 @@ export function RelatedRails({ x, onOpen }: { x: TitleExtrasPayload | undefined;
         style={{ marginHorizontal: -16 }}
       />
     </View>
-  );
-  return (
-    <>
-      {x.collection ? rail(t.relatedPartsTitle, x.collection.name, x.collection.parts.map((p) => ({ kind: "movie" as const, id: p.id, title: p.title, poster_path: p.poster_path, year: p.year }))) : null}
-      {x.related.length ? rail(t.relatedTitlesTitle, null, x.related) : null}
-    </>
   );
 }
