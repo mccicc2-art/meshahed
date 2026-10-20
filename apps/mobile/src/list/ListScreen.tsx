@@ -27,6 +27,7 @@ import { TitlePickerSheet } from "../search/TitlePickerSheet";
 import { ShareListSheet } from "./ShareListSheet";
 import { SmartListSheet } from "../library/SmartListSheet";
 import { haptic } from "../haptics";
+import { useRtlRailPin } from "../rtlRailPin";
 import type { HoldAction } from "../library/HoldMenu";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard, SearchTitle } from "../contracts";
@@ -327,6 +328,9 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     ),
     [numbered, openCard, hold],
   );
+  /* D-1490 — صفُّ أعمال القائمة افتراضيٌّ كصفوف الملفّ: على الآيفون بالعربيّ يقف في غير أوّله فيظهر فارغاً أو مقلوباً
+     (أحمد ٢٠ أكتوبر). العلاجُ المشترك نفسُه (D-1478) لا نسخةٌ ثانية */
+  const { props: pinProps } = useRtlRailPin<ListDetailItem>();
 
   const facts: { icon: IconName; label: string }[] = d
     ? [
@@ -404,6 +408,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               <Text size={13} muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.listItemsEmpty}</Text>
             ) : (
               <FlatList
+                {...pinProps}
                 horizontal
                 data={d.items}
                 keyExtractor={keyOf}
