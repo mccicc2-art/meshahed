@@ -1,4 +1,4 @@
-Release R43 — D-1493..D-1496: discussion redesign — «Mine»/«Following» first and default with a single cycling «Latest ⌄» sort (app + web); room card with a large poster, full backdrop under a start-side shade and three short lines; per-episode discussions (migration 215: season/episode on title_posts + title_thread), season/episode pickers with «All episodes» (opens on All), «Spoilers» reveal toggle, post count and «Latest ⌄» inside the room, one-line overview inside the cover — task 123 [deploy]
+Release R44 — D-1497: swiping between tabs no longer opens the card under the finger — TabSlide claims the responder while a swipe is live (the press is terminated before release) and the open handlers of Community, Library, Discover and Profile ignore a press within 300 ms of a swipe — task 124 [deploy]
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
