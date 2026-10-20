@@ -26,6 +26,7 @@ export function SpoilerText({
   locale,
   note,
   children,
+  forceOpen = false,
 }: {
   text: string;
   locale: Locale;
@@ -50,9 +51,12 @@ export function SpoilerText({
    * ⚠️ **وهو `prop` اختياريٌّ لا مكوّنٌ ثانٍ** (D-234/D-284).
    */
   children?: React.ReactNode;
+  /** 🆕 D-1495 — «حرق الأحداث» مفعّلٌ في رأس الغرفة: مكشوفٌ بلا ضغطة (والزرُّ يبقى لمن أراد إخفاءَه وحدَه) */
+  forceOpen?: boolean;
 }) {
   const t = getDict(locale);
-  const [shown, setShown] = useState(false);
+  const [toggled, setShown] = useState(false);
+  const shown = forceOpen ? !toggled : toggled;
 
   return (
     <div className="mt-2">

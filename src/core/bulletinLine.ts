@@ -82,3 +82,15 @@ export function bulletinSpoiler(
   const other = locale === "en" ? spoiler.ar : spoiler.en;
   return s(mine) ?? s(other);
 }
+
+/**
+ * 🆕 D-1494 — **وسمُ بطاقة الغرفة المختصر** («الحلقة ١٠ · الموسم ٣» — لقطةُ أحمد ٢٠ أكتوبر): الحقولُ نفسُها التي يقرؤها
+ * `bulletinLine` (`s` · `e`) بصيغةٍ أقصر بلا اسم الحلقة — البطاقةُ ثلاثةُ أسطرٍ قصيرة. `null` بلا نشرة (والأفلامُ بلا حلقات).
+ */
+export function bulletinEpisodeShort(data: Record<string, unknown> | null, t: Dict): string | null {
+  if (!data) return null;
+  const season = n(data.s);
+  const episode = n(data.e);
+  if (season === null || episode === null) return null;
+  return t.talkRoomEpisodeShort(season, episode);
+}

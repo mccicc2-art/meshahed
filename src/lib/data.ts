@@ -3696,6 +3696,9 @@ export interface TalkPost {
   gifId: string | null;
   /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩؛ قبلها `null`) */
   share: { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null } | null;
+  /** 🆕 D-1495 — الحلقةُ التي كُتبت فيها المشاركة (الهجرة ٢١٥؛ قبلها وللقديم `null` ⇒ «الكل» وحدَه) */
+  season: number | null;
+  episode: number | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -3713,6 +3716,13 @@ export interface TalkPost {
  * **وسقوطُها صامت** قبل تشغيل الهجرة: غرفةٌ فارغةٌ وصندوقُ كتابةٍ يعمل.
  */
 /** 🆕 D-1443 — بطاقةُ العمل في صفّ النقاش: معرّفٌ ونوعٌ صحيحان وإلّا لا بطاقة */
+/** 🆕 D-1495 — الحلقةُ معاً أو لا شيء: نصفُ حلقةٍ (موسمٌ بلا رقم) لا يُقرأ حلقةً */
+function episodeOf(r: { season?: number | null; episode?: number | null }): { season: number | null; episode: number | null } {
+  const s = r.season == null ? null : Number(r.season);
+  const e = r.episode == null ? null : Number(r.episode);
+  return s !== null && e !== null && Number.isInteger(s) && Number.isInteger(e) ? { season: s, episode: e } : { season: null, episode: null };
+}
+
 function shareOf(r: { share_tmdb_id?: number | null; share_media_type?: string | null; share_title?: string | null; share_poster_path?: string | null }): TalkPost["share"] {
   const kind = r.share_media_type;
   return r.share_tmdb_id && (kind === "tv" || kind === "movie")
@@ -3777,6 +3787,8 @@ export async function getTitleThread(
       gifId: (r as { gif_id?: string | null }).gif_id ?? null,
       /* 🆕 D-1443 — أعمدةُ الهجرة ٢٠٩، وقبلها `undefined` ⇒ `null` */
       share: shareOf(r as { share_tmdb_id?: number | null; share_media_type?: string | null; share_title?: string | null; share_poster_path?: string | null }),
+      /* 🆕 D-1495 — أعمدةُ الهجرة ٢١٥، وقبلها `undefined` ⇒ `null` (قارئٌ متسامح، D-179) */
+      ...episodeOf(r as { season?: number | null; episode?: number | null }),
       })),
       /* **والمعرّفُ هنا `authorId`**: `id` في هذين الشكلين معرّفُ
          المنشور لا صاحبَه — **ومفتاحٌ خاطئٌ يعطي شارةَ شخصٍ آخر.** */

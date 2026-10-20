@@ -117,6 +117,8 @@ export type CommunityRoom = {
   bulletin: Record<string, unknown> | null;
   /** 🆕 سطرُ النشرة بلغة القارئ (`bulletinLine`) — `null` بلا نشرة */
   bulletin_line: string | null;
+  /** 🆕 D-1494 — وسمُ البطاقة المختصر «الحلقة ١٠ · الموسم ٣» (`bulletinEpisodeShort`) — اختياريٌّ لردٍّ أقدم */
+  episode_line?: string | null;
   /** درجةُ التثبيت: ٢ لوبز · ١ أنا · ٠ (D-301/D-314) */
   pin: 0 | 1 | 2;
 };

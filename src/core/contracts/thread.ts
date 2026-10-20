@@ -44,7 +44,16 @@ export type ThreadRow = {
   liked_by_me: boolean;
   score: number;
   my_vote: -1 | 0 | 1;
+  /**
+   * 🆕 D-1495 — **حلقةُ السطر** في نقاش الحلقات: ما كُتبت فيه المشاركة، والردُّ يرث جذرَه، والنشرةُ حلقتَها (`data.s/e`).
+   * `null` ⇒ بلا حلقة (القديمُ والأفلام) فيظهر في «الكل» وحدَه. غائبٌ في غير الغرفة ومن خادمٍ أقدم.
+   */
+  season?: number | null;
+  episode?: number | null;
 };
+
+/** 🆕 D-1495 — موسمٌ في منتقي الحلقة: رقمُه وعددُ حلقاته (TMDB؛ والموسمُ صفر «الحلقاتُ الخاصّة» خارجه) */
+export type TalkSeason = { season: number; episodes: number };
 
 /** رأسُ الصفحة — العملُ في الثلاثة (الغلافُ والملصقُ والاسمُ بلغة القارئ) وما يخصّ كلَّ باب */
 export type ThreadWork = {
@@ -63,6 +72,8 @@ export type ThreadHead =
       overview: string;
       watched: boolean;
       in_library: boolean;
+      /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (فارغةٌ للأفلام فلا منتقي) — غائبةٌ من خادمٍ أقدم */
+      seasons?: TalkSeason[];
     }
   | {
       kind: "post";
@@ -119,6 +130,9 @@ export type ThreadReplyBody = {
   gif_id?: string | null;
   /** 🆕 D-1443 — عملٌ من «بحث لوبز» (للغرفة وحدَها، ولا يجتمع مع صورةٍ أو GIF) */
   share?: GroupTitleRef | null;
+  /** 🆕 D-1495 — الحلقةُ المختارةُ حين كُتبت المشاركة (مشاركةٌ جديدةٌ في غرفة مسلسل وحدَها؛ «الكل» ⇒ بلا حلقة) */
+  season?: number | null;
+  episode?: number | null;
 };
 /** والكاتبُ كما يُرسم (`replyAuthor`) — يستبدل السطرَ المتفائلَ بصاحبه الحقيقيّ (D-241) */
 export type ThreadReplyResult = {

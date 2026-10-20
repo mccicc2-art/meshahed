@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setTalkFollowedOnly, setTalkSort, setFeedStrangers, setFeedSort } from "@/lib/actions";
-import { chipClass, chipRow } from "./ui/controls";
+import { chipClass } from "./ui/controls";
+import { SortCycle } from "./ui/SortCycle";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/core/i18n";
@@ -69,37 +70,28 @@ export function TalkFilters({
     save(() => (kind === "feed" ? setFeedSort(next === "active" ? "smart" : "latest") : setTalkSort(next)), () => setSort(prev));
   };
   return (
-    <div className="space-y-3 mb-3">
-      <div className={chipRow}>
+    <div className="space-y-2 mb-3">
+      {/* 🆕 D-1493 — صفٌّ واحدٌ كالتطبيق: «أعمالي» (و«من أتابعهم») أوّلاً ثمّ «الكل»، والترتيبُ في الطرف زرٌّ يدور «الأحدث ⌄» */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-[color:var(--divider)]">
         <div className="flex items-center gap-2">
-          <button type="button" aria-pressed={!mine} onClick={() => pickMine(false)} className={chipClass(!mine)}>
-            {t.allWord}
-          </button>
           <button type="button" aria-pressed={mine} onClick={() => pickMine(true)} className={chipClass(mine)}>
             {kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine}
           </button>
+          <button type="button" aria-pressed={!mine} onClick={() => pickMine(false)} className={chipClass(!mine)}>
+            {t.allWord}
+          </button>
         </div>
+        <SortCycle
+          label={t.talkSortAria}
+          value={sort}
+          onChange={pickSort}
+          options={[
+            { key: "latest", label: t.talkSortLatest },
+            { key: "active", label: t.talkSortActive },
+          ]}
+        />
       </div>
-      <div className="flex items-baseline justify-between gap-3 pb-2 border-b border-[color:var(--divider)] text-14">
-        <span className="text-muted tabular-nums">{count === undefined ? null : t.talkRoomsCount(count)}</span>
-        <span role="group" aria-label={t.talkSortAria} className="flex items-center gap-3">
-          {(["latest", "active"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={sort === k}
-              onClick={() => pickSort(k)}
-              className={
-                sort === k
-                  ? "font-semibold text-foreground border-b-2 border-accent pb-0.5"
-                  : "text-muted hover:text-foreground transition pb-0.5 border-b-2 border-transparent"
-              }
-            >
-              {k === "latest" ? t.talkSortLatest : t.talkSortActive}
-            </button>
-          ))}
-        </span>
-      </div>
+      {count === undefined ? null : <p className="text-12 text-muted tabular-nums">{t.talkRoomsCount(count)}</p>}
       {quiet ? <QuietHint text={t.activeQuietHint} /> : null}
     </div>
   );

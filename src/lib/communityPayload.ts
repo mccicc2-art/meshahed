@@ -3,7 +3,7 @@ import { listReviewKey, type FeedItem, type LoopzNewsItem, type PublicListCard, 
 import type { Dict, Locale } from "@/core/i18n";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
 import { newsLine, newsSource } from "@/core/newsLine";
-import { bulletinLine } from "@/core/bulletinLine";
+import { bulletinLine, bulletinEpisodeShort } from "@/core/bulletinLine";
 import { toLibraryListCard } from "@/lib/listCard";
 import { orderCommunityFeed, type FeedSort } from "@/core/communityFeed";
 import { LOOPZ_ID } from "@/core/loopz";
@@ -90,6 +90,7 @@ export function roomOut(core: CommunityData, r: TalkRoom, t: Dict, locale: Local
   return {
     ...r,
     bulletin_line: r.bulletin ? bulletinLine("episode", r.bulletin, t, locale) : null,
+    episode_line: bulletinEpisodeShort(r.bulletin, t),
     pin: core.globalPins?.has(key) ? 2 : core.pins?.has(key) ? 1 : 0,
     /* 🆕 D-1201 — شريحةُ «أعمالي»: مكتبةُ القارئ (`followed` — المجموعةُ نفسُها التي كان يُرشِّح بها D-306) */
     mine: core.followed.has(key),

@@ -16,6 +16,7 @@ import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
 import { bulletinLine } from "@/core/bulletinLine";
+import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { TitleHero } from "@/components/TitleHero";
 import { ExpandableText } from "@/components/ExpandableText";
 import { getBatchTranslations } from "@/lib/translate";
@@ -188,6 +189,17 @@ export default async function TalkPage({
      لا `null` حين لا تملك ترجمة. */
   const overview = ((details as { overview?: string | null } | null)?.overview ?? "").trim();
   const avg = Math.round(community.avg * 10) / 10;
+  /* 🆕 D-1495 — حلقةُ كلِّ سطر (النشرةُ من `data`، والمشاركةُ من عمودها، والردُّ يرث جذرَه) ومواسمُ المنتقي — نظيرُ `talkPayload` */
+  const episodeOf = new Map(
+    inheritEpisodes(
+      thread.map((p) => ({
+        id: p.postId,
+        parent_id: p.parentId,
+        ...(p.kind === "episode" ? (bulletinEpisode(p.data) ?? { season: null, episode: null }) : { season: p.season, episode: p.episode }),
+      })),
+    ).map((r) => [r.id, r]),
+  );
+  const seasons = mediaType === "tv" ? seasonsOf(details) : [];
 
   return (
     <main className="pb-24">
@@ -338,7 +350,10 @@ export default async function TalkPage({
             gifId: p.gifId,
             /* 🆕 D-1443 — بطاقةُ العمل (درسُ السطر أعلاه: الخريطةُ الصريحةُ تُنسى حقلاً) */
             share: p.share,
+            season: episodeOf.get(p.postId)?.season ?? null,
+            episode: episodeOf.get(p.postId)?.episode ?? null,
           }))}
+          seasons={seasons}
           me={me}
           locale={locale}
           signedIn={signedIn}

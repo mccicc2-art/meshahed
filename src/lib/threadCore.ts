@@ -21,6 +21,7 @@ import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
 import { getBatchTranslations } from "@/lib/translate";
 import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/core/bulletinLine";
+import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { newsViewKey, commentViewKey } from "@/core/postKeys";
 import type { Locale } from "@/core/i18n";
@@ -41,7 +42,7 @@ import type { ThreadPayload, ThreadRow, ThreadWork } from "@/core/contracts/thre
 
 type Kind = "tv" | "movie";
 
-async function workOf(tmdbId: number, kind: Kind, locale: Locale, fallback: string): Promise<ThreadWork & { overview: string; raw: string }> {
+async function workOf(tmdbId: number, kind: Kind, locale: Locale, fallback: string): Promise<ThreadWork & { overview: string; raw: string; seasons: { season: number; episodes: number }[] }> {
   const [details, myArt, community] = await Promise.all([
     (kind === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
     getMyArtFor(tmdbId, kind).catch(() => null),
@@ -59,6 +60,8 @@ async function workOf(tmdbId: number, kind: Kind, locale: Locale, fallback: stri
     backdrop_path: myArt?.backdrop_path ?? d?.backdrop_path ?? null,
     community: { avg: Math.round(community.avg * 10) / 10, count: community.count },
     overview: (d?.overview ?? "").trim(),
+    /* 🆕 D-1495 — مواسمُ منتقي الحلقة من التفاصيل المجلوبة أصلاً (لا نداءَ ثانٍ) */
+    seasons: kind === "tv" ? seasonsOf(details) : [],
   };
 }
 
@@ -105,7 +108,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
     meP,
   ]);
   const mine = new Set(likes.mine);
-  const rows: ThreadRow[] = thread.map((p) => {
+  const rows: ThreadRow[] = inheritEpisodes(thread.map((p) => {
     const bulletin = bulletinLine(p.kind, p.data, t, locale);
     const facts = bulletin ? bulletinFacts(p.data, t) : { vote: null };
     const my = votes.mine[p.postId] ?? 0;
@@ -128,13 +131,15 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       liked_by_me: mine.has(p.postId),
       score: votes.scores[p.postId] ?? 0,
       my_vote: my === 1 ? 1 : my === -1 ? -1 : 0,
+      /* 🆕 D-1495 — حلقةُ السطر: النشرةُ من `data`، والمشاركةُ من عمودها، والردُّ يرث جذرَه (`inheritEpisodes`) */
+      ...(bulletin ? (bulletinEpisode(p.data) ?? { season: null, episode: null }) : { season: p.season, episode: p.episode }),
     };
-  });
+  }));
   const w = asWork(work);
   return {
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
-    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following },
+    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons },
     rows,
     nested: true,
     has_likes: true,

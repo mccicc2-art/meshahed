@@ -32,6 +32,7 @@ import { FeedMenu } from "./FeedMenu";
 import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
 import { FloatButton } from "../FloatButton";
 import { Chip } from "../library/Chip";
+import { SortCycle } from "../library/SortCycle";
 import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
@@ -443,27 +444,20 @@ function TalkHead({
           صفّاً كاملاً لرقمٍ لا يُفعل به شيء. ⚖️ ينقض «السطرَ الثاني الهادئ» من التصميم B (D-1201) بيد صاحبه.
           `flexWrap`: إن ضاق الصفُّ (خطٌّ مكبَّر · شاشةٌ ضيّقة) ينزل الترتيبُ سطراً بدل أن يُقصّ. */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 8, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+        {/* 🆕 D-1493 — «أعمالي» (و«من أتابعهم») أوّلاً ثمّ «الكل» (أحمد ٢٠ أكتوبر)، والترتيبُ زرٌّ واحدٌ يدور «الأحدث ⌄» */}
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
           <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
+          <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
         </View>
-        <View accessibilityRole="radiogroup" accessibilityLabel={t.talkSortAria} style={{ flexDirection: "row", gap: 14 }}>
-          {(["latest", "active"] as const).map((k) => {
-            const on = sort === k;
-            return (
-              <Pressable
-                key={k}
-                onPress={() => (on ? undefined : order(k))}
-                hitSlop={8}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                style={{ paddingBottom: 2, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}
-              >
-                <Text size={13} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted}>{k === "latest" ? t.talkSortLatest : t.talkSortActive}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SortCycle
+          label={t.talkSortAria}
+          value={sort}
+          onChange={order}
+          options={[
+            { key: "latest", label: t.talkSortLatest },
+            { key: "active", label: t.talkSortActive },
+          ]}
+        />
       </View>
       {/* 🆕 D-1207 — شهرٌ بلا تفاعل: «الأكثر تفاعلاً» صار «الأحدث» ويُقال ذلك (يختفي بأوّل تفاعل) */}
       {quiet ? (

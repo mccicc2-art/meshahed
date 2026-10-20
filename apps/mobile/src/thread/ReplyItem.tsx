@@ -34,6 +34,8 @@ export const TEMP = "temp:";
 
 export type ReplyItemProps = {
   row: ThreadRow;
+  /** 🆕 D-1495 — «حرق الأحداث» مفعّلٌ في رأس الغرفة: الحرقُ مكشوفٌ بلا ضغطة */
+  revealAll?: boolean;
   signedIn: boolean;
   replyingTo: string | null;
   canReply: boolean;
@@ -76,9 +78,12 @@ export const ReplyItem = memo(function ReplyItem({
   onMention,
   onPath,
   onTitle,
+  revealAll = false,
 }: ReplyItemProps) {
   const { t, tokens, locale } = useApp();
-  const [reveal, setReveal] = useState(false);
+  const [revealOne, setReveal] = useState(false);
+  /* 🆕 D-1495 — مفتاحُ «حرق الأحداث» في رأس الغرفة يكشف الحرقَ كلَّه؛ والكشفُ بالضغطة على سطرٍ واحدٍ باقٍ كما كان */
+  const reveal = revealOne || revealAll;
   const [original, setOriginal] = useState(false);
   const pending = row.id.startsWith(TEMP);
   const p = row.person;

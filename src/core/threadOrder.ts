@@ -78,3 +78,23 @@ export function countUnder<T extends OrderRow>(tree: ThreadTree<T>, id: string):
 export function canReplyTo(row: OrderRow, depth: number, nested: boolean): boolean {
   return nested ? depth < MAX_DEPTH : !row.parent_id;
 }
+
+/**
+ * 🆕 D-1496 — **ترتيبُ غرفة النقاش بزرّ «الأحدث ⌄»** (أحمد ٢٠ أكتوبر بلقطة النقاش): الجذورُ وحدَها تُرتَّب — «الأحدث» أحدثُها
+ * أوّلاً، و«الأكثر تفاعلاً» بمجموع القلوب والأصوات والردود (والأحدثُ عند التعادل) — والردودُ بعدها بزمنها كما كانت، فالحوارُ
+ * تحت كلِّ مشاركةٍ يُقرأ من أوّله. يحلّ في الغرفة محلَّ ترتيب الأصوات وحدَها (D-305)؛ الرأيُ والمنشورُ على `orderThread`.
+ */
+export function orderTalk<T extends OrderRow & { likes?: number }>(rows: readonly T[], sort: "latest" | "active"): T[] {
+  const all = [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const roots = all.filter((r) => !r.parent_id);
+  const kids = all.filter((r) => r.parent_id);
+  const replies = new Map<string, number>();
+  for (const k of kids) if (k.parent_id) replies.set(k.parent_id, (replies.get(k.parent_id) ?? 0) + 1);
+  const newest = (a: T, b: T) => b.created_at.localeCompare(a.created_at);
+  if (sort === "latest") roots.sort(newest);
+  else {
+    const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + (replies.get(r.id) ?? 0);
+    roots.sort((a, b) => weight(b) - weight(a) || newest(a, b));
+  }
+  return [...roots, ...kids];
+}

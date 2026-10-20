@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
         gifId: b.gif_id,
         /* 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» */
         share: b.share ?? null,
+        /* 🆕 D-1495 — حلقةُ المشاركة في نقاش الحلقات */
+        season: b.season ?? null,
+        episode: b.episode ?? null,
         title: (t.media_type === "tv" ? d?.name : d?.title) || null,
         posterPath: d?.poster_path ?? null,
         backdropPath: d?.backdrop_path ?? null,

@@ -26,6 +26,8 @@ import { KeyboardDock } from "@/components/ui/KeyboardDock";
 import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
+import { TalkEpisodeBar } from "./TalkEpisodeBar";
+import type { EpisodeRef } from "@/core/talkEpisodes";
 import type { PickedTitle } from "../TitleSearchSheet";
 
 /** 🆕 D-1443 — العملُ الملتقَط من ورقة البحث بشكل بطاقة النقاش */
@@ -111,8 +113,11 @@ export function ThreadReplies({
   likes,
   votes,
   translations,
+  seasons,
 }: {
   target: ReplyTarget;
+  /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (الغرفةُ وحدَها؛ فارغةٌ للأفلام) */
+  seasons?: { season: number; episodes: number }[];
   replies: ThreadReply[];
   /**
    * 🆕 **إعجاباتُ المشاركات — عدداً وحالةً** (D-289، الهجرة ٩٠).
@@ -134,6 +139,10 @@ export function ThreadReplies({
   signedIn: boolean;
 }) {
   const t = getDict(locale);
+  /* 🆕 D-1495/D-1496 — نقاشُ الحلقات: الحلقةُ المختارة (`null` = «الكل»، وعليها تفتح الغرفة)، «حرق الأحداث»، و«الأحدث ⌄» */
+  const [pick, setPick] = useState<EpisodeRef | null>(null);
+  const [revealAll, setRevealAll] = useState(false);
+  const [talkSort, setTalkSort] = useState<"latest" | "active">("latest");
   const [added, setAdded] = useState<ThreadReply[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   /** الصندوقُ المفتوح: `""` للمنشور نفسِه، أو معرّفُ ردٍّ يُردّ عليه */
@@ -234,6 +243,8 @@ export function ThreadReplies({
   const fromServer = new Set(replies.map((r) => r.replyId));
   const all = [...replies, ...added.filter((a) => !fromServer.has(a.replyId))]
     .filter((r) => !removed.has(r.replyId))
+    /* 🆕 D-1495 — الحلقةُ المختارة: السطرُ وردودُه (الردُّ يحمل حلقةَ جذره من الخادم) */
+    .filter((r) => !pick || (r.season === pick.season && r.episode === pick.episode))
     /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة */
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   /* 🆕 D-1443 — من كتب هنا يُمنشَن: `@اسمه` في متنٍ رابطٌ إلى صفحته (والخادمُ يدفع له «ذكرك») */
@@ -282,7 +293,18 @@ export function ThreadReplies({
     }
   }
 
-  if (votes) {
+  if (target.kind === "talk") {
+    /* 🆕 D-1496 — **الغرفةُ بزرّ «الأحدث ⌄»** (لقطةُ أحمد): الجذورُ أحدثُها أوّلاً، أو بالتفاعل (قلوبٌ وأصواتٌ وردود، بأرقام
+       الخادم لا التفاؤل — فلا يقفز سطرٌ تحت الإصبع، D-008)؛ والردودُ بعدها بزمنها. يحلّ محلَّ ترتيب الأصوات وحدَها (D-305) */
+    const roots = all.filter((r) => !r.parentId);
+    const children = all.filter((r) => r.parentId);
+    const replyN = new Map<string, number>();
+    for (const c of children) if (c.parentId) replyN.set(c.parentId, (replyN.get(c.parentId) ?? 0) + 1);
+    const newest = (a: ThreadReply, b: ThreadReply) => b.createdAt.localeCompare(a.createdAt);
+    const weight = (r: ThreadReply) => (likes?.counts[r.replyId] ?? 0) + Math.max(0, votes?.scores[r.replyId] ?? 0) + (replyN.get(r.replyId) ?? 0);
+    roots.sort(talkSort === "latest" ? newest : (a, b) => weight(b) - weight(a) || newest(a, b));
+    all.splice(0, all.length, ...roots, ...children);
+  } else if (votes) {
     /* ⚠️ **قسمةٌ ثم دمجٌ، لا مقارنٌ مشروط**: مقارنٌ يرجع صفراً لكلِّ
        زوجٍ فيه ابنٌ **ليس ترتيباً متعدّياً** — والفرزُ به غيرُ معرَّف.
        فتُفرز الجذورُ وحدَها ويُعاد بناءُ المصفوفة. */
@@ -330,10 +352,25 @@ export function ThreadReplies({
         </p>
       )}
 
+      {/* 🆕 D-1495 — أدواتُ الغرفة فوق الخيط (الحلقة · «حرق الأحداث» · العددُ و«الأحدث ⌄») */}
+      {target.kind === "talk" ? (
+        <TalkEpisodeBar
+          locale={locale}
+          seasons={seasons ?? []}
+          pick={pick}
+          onPick={setPick}
+          revealAll={revealAll}
+          onReveal={() => setRevealAll((v) => !v)}
+          count={all.filter((r) => !r.kind).length}
+          sort={talkSort}
+          onSort={setTalkSort}
+        />
+      ) : null}
+
       {/* ===== الردود ===== */}
       {all.length === 0 ? (
         <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">
-          {nested ? t.talkRoomEmpty : t.postNoReplies}
+          {pick ? t.talkEpisodeEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}
         </p>
       ) : (
         roots.map((r) => node(r))
@@ -462,6 +499,7 @@ export function ThreadReplies({
       <div key={r.replyId}>
         <ReplyItem
           reply={r}
+          revealAll={revealAll}
           /* 🆕 **وسهمُ الطيّ يركب صفَّ الأفعال** (D-288): كان سطراً
              مستقلّاً بإزاحة ٥٢px تحت الرسالة — **سطرٌ كاملٌ لأربع
              كلمات** — وطلب أحمد ضمَّه إلى صفّ العلامات. */
@@ -702,6 +740,9 @@ export function ThreadReplies({
            (D-241/D-312 حرفاً) */
         gifId: gifId ?? null,
         share: share ?? null,
+        /* 🆕 D-1495 — الحلقةُ: الردُّ يرث أصلَه، والجديدةُ حلقةَ المنتقي — فيبقى السطرُ في التصفية الحاليّة */
+        season: parentId ? (all.find((x) => x.replyId === parentId)?.season ?? null) : (pick?.season ?? null),
+        episode: parentId ? (all.find((x) => x.replyId === parentId)?.episode ?? null) : (pick?.episode ?? null),
       },
     ]);
     setOpen(null);
@@ -727,6 +768,7 @@ export function ThreadReplies({
                   imageUrl,
                   gifId,
                   share: share ?? null,
+                  ...(!parentId && pick ? { season: pick.season, episode: pick.episode } : {}),
                   title: target.title,
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,

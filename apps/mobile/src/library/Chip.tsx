@@ -20,6 +20,7 @@ export function Chip({
   onPress,
   onLongPress,
   leading,
+  trailing,
 }: {
   label: string;
   active: boolean;
@@ -28,6 +29,8 @@ export function Chip({
   /** D-993 — ضغطةٌ مطوّلة (حذفُ فلترٍ محفوظ) */
   onLongPress?: () => void;
   leading?: React.ReactNode;
+  /** 🆕 D-1495 — سهمُ المنتقي في نهاية الرقاقة (منتقي الموسم والحلقة) — الرقاقةُ نفسُها لا عائلةٌ ثانية */
+  trailing?: React.ReactNode;
 }) {
   const { tokens } = useApp();
   return (
@@ -55,6 +58,7 @@ export function Chip({
       <Text size={size === "sm" ? 12 : 14} weight="600" color={active ? tokens.onAccent : tokens.muted} numberOfLines={1}>
         {label}
       </Text>
+      {trailing ? <View>{trailing}</View> : null}
     </Pressable>
   );
 }

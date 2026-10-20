@@ -47,7 +47,13 @@ export function parseThreadReplyBody(b: unknown): ThreadReplyBody | null {
   /* نصٌّ أو صورةٌ أو GIF أو عمل — **الردُّ الفارغُ يُرفض قبل الرحلة** (`ready` في `Composer`) */
   if (!body && !image_url && !gif_id && !share) return null;
   const parent_id = str(o.parent_id) ? o.parent_id : null;
-  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id, ...(share ? { share } : {}) };
+  /* 🆕 D-1495 — الحلقةُ لمشاركةٍ جديدةٍ في غرفة مسلسل وحدَها (قيدُ الهجرة ٢١٥ نفسُه)، والردُّ يرث جذرَه */
+  const ep =
+    talk && target.media_type === "tv" && !parent_id && Number.isInteger(o.season) && Number.isInteger(o.episode) &&
+    (o.season as number) >= 0 && (o.season as number) <= 200 && (o.episode as number) >= 1 && (o.episode as number) <= 5000
+      ? { season: o.season as number, episode: o.episode as number }
+      : null;
+  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id, ...(share ? { share } : {}), ...(ep ?? {}) };
 }
 
 export function parseThreadRowBody(b: unknown): ThreadRowBody | null {

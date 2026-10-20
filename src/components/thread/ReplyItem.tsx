@@ -76,6 +76,9 @@ export type ThreadReply = {
   gifId?: string | null;
   /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩) */
   share?: { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null } | null;
+  /** 🆕 D-1495 — حلقةُ السطر في نقاش الحلقات (الردُّ يرث جذرَه) — `null` ⇒ «الكل» وحدَه */
+  season?: number | null;
+  episode?: number | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -105,7 +108,10 @@ export function ReplyItem({
   onDelete,
   onReport,
   mentionNames,
+  revealAll = false,
 }: {
+  /** 🆕 D-1495 — «حرق الأحداث» مفعّلٌ في رأس الغرفة */
+  revealAll?: boolean;
   /** 🆕 D-1443 — أسماءُ من كتبوا في هذا النقاش: `@اسم` منهم رابطٌ إلى صفحته، وغيرُه نصّ */
   mentionNames?: ReadonlySet<string>;
   reply: ThreadReply;
@@ -342,7 +348,7 @@ export function ReplyItem({
                 يُقرَّر به شيء** (D-266). */}
 
             {/* **«أبرزُ ما فيها» خلف الحاجب** — قرارُ أحمد */}
-            {spoilerText && <SpoilerText text={spoilerText} locale={locale} />}
+            {spoilerText && <SpoilerText text={spoilerText} locale={locale} forceOpen={revealAll} />}
           </div>
         ) : reply.hasSpoiler ? (
           /* **ومتنُ العضو خلف الحاجب نفسِه** (D-271) — **لا حاجبَ ثانٍ**:
@@ -360,7 +366,7 @@ export function ReplyItem({
             {/* **والصورةُ خلف الحاجب نفسِه** (D-298): **حرقٌ في صورةٍ
                 أسرعُ وصولاً منه في جملة** — **وحاجبٌ يستر النصَّ ويترك
                 صورتَه ليس حاجباً.** */}
-            <SpoilerText text={shownBody} locale={locale}>
+            <SpoilerText text={shownBody} locale={locale} forceOpen={revealAll}>
               {image && <PostImage src={image} alt={t.talkImageAlt} locale={locale} />}
               {/* 🆕 **والـGIF خلف الحاجب نفسِه** (D-362/D-298 حرفاً) */}
               {gif && <PostImage src={gif} alt={t.talkImageAlt} locale={locale} />}

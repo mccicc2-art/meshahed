@@ -150,9 +150,10 @@ export function isTabSurface(v: string): v is TabSurface {
  */
 export const FEED_STRANGERS_COOKIE = "loopz_feed_strangers";
 
-/** **والغياب إظهار** (D-152): افتراضُ أي تفضيلٍ جديد هو السلوكُ القائم */
+/** ⚖️ D-1493 — **والغيابُ «من أتابعهم»** (أحمد ٢٠ أكتوبر: «حتى النشاط الأول يكون من أتابعهم ثم الكل») — كان إظهاراً (D-152).
+ *  من اختار بيده بقي على اختياره: الكاتبُ يكتب «1» أو «0» صراحةً */
 export function parseFeedStrangers(v: string | undefined): boolean {
-  return v !== "0";
+  return v === "1";
 }
 
 /**
@@ -184,9 +185,9 @@ export function parseTalkSort(v: string | undefined): "latest" | "active" {
   return v === "active" ? "active" : "latest";
 }
 
-/** **والغيابُ إظهارُ الكلّ** (D-152) */
+/** ⚖️ D-1493 — **والغيابُ «أعمالي»** (أحمد ٢٠ أكتوبر: «خله الاول أعمالي ثم الكل») — كان إظهارَ الكلّ (D-152). الاختيارُ الصريحُ باقٍ */
 export function parseTalkFollowed(v: string | undefined): boolean {
-  return v === "1";
+  return v !== "0";
 }
 
 /**

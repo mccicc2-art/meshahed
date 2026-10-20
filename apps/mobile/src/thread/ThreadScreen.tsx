@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, Share, type TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, type TextInput, View } from "react-native";
+import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -23,6 +24,8 @@ import { ChatDock, useKeyboardInset, usePicUpload } from "../messages/chatDock";
 import { ReplyQuote } from "../messages/ReplyQuote";
 import { MentionList, useMentions } from "../messages/mentions";
 import { Chip } from "../library/Chip";
+import { SortCycle } from "../library/SortCycle";
+import { rowsOfEpisode, type EpisodeRef } from "@/core/talkEpisodes";
 import type { PersonLite } from "@/core/people";
 import type { SearchTitle } from "../contracts";
 import { rememberGif } from "./GifPicker";
@@ -31,7 +34,7 @@ import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { displayNameOf, profileHref } from "@/core/people";
 import { stackAboveRoots } from "../nativeStack";
-import { orderThread, buildTree, countUnder, canReplyTo, PEEK } from "@/core/threadOrder";
+import { orderThread, orderTalk, buildTree, countUnder, canReplyTo, PEEK } from "@/core/threadOrder";
 import type { ThreadPayload, ThreadRow, ThreadTarget, ThreadReplyResult, LikeBody } from "../contracts";
 import { openProfile as pushProfile, profileHandleOf } from "../member/open";
 
@@ -99,6 +102,12 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   const key = useMemo(() => threadKey(route), [route]);
   const q = useQuery({ ...threadQuery(route), queryKey: key });
   const d = q.data ?? null;
+  /* 🆕 D-1495/D-1496 — نقاشُ الحلقات (أحمد ٢٠ أكتوبر): الحلقةُ المختارة (`null` = «الكل» — والغرفةُ تفتح عليها: «خليها الكل»)،
+     وترتيبُ «الأحدث ⌄»، ومفتاحُ «حرق الأحداث». حالةُ عرضٍ في الشاشة — التصفيةُ في اليد والخيطُ كاملٌ من الخادم */
+  const [pick, setPick] = useState<EpisodeRef | null>(null);
+  const [talkSort, setTalkSort] = useState<"latest" | "active">("latest");
+  const [revealAll, setRevealAll] = useState(false);
+  const [picker, setPicker] = useState<null | "season" | "episode">(null);
 
   /* `thread.open`: من التركيب إلى أوّل رسمٍ فيه حمولة — `cached` يفصل الكاش عن الشبكة (نهجُ `community.open`) */
   const [endOpen] = useState(() => span("thread.open", { cached: qc.getQueryData(key) ? 1 : 0, screen: route.t }));
@@ -221,8 +230,10 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
     listRef.current?.scrollToOffset({ offset: y, animated: false });
   }, []);
   const nested = !!d?.nested;
-  const { items, tree, nameOf } = useMemo(() => {
-    const rows = d ? orderThread(d.rows, { votes: d.has_votes, plusFirst: !d.has_votes && d.head.kind === "review" }) : [];
+  const { items, tree, nameOf, postCount } = useMemo(() => {
+    const talk = d?.head.kind === "talk";
+    const base = d ? (talk ? rowsOfEpisode(d.rows, pick) : d.rows) : [];
+    const rows = d ? (talk ? orderTalk(base, talkSort) : orderThread(base, { votes: d.has_votes, plusFirst: !d.has_votes && d.head.kind === "review" })) : [];
     const tr = buildTree(rows, nested);
     const names = new Map(rows.map((r) => [r.id, displayNameOf(r.person, t.anonymousUser)]));
     const isOpen = (id: string) => {
@@ -245,8 +256,8 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       for (const x of shown) out.push({ type: "row", row: x.r, depth: tr.depth.get(x.r.id) ?? 1, indented: true, toName: x.toName });
       if (flat.length > shown.length) out.push({ type: "more", rootId: r.id, rest: flat.length - shown.length });
     }
-    return { items: out, tree: tr, nameOf: names };
-  }, [d, nested, toggled, expanded, t.anonymousUser]);
+    return { items: out, tree: tr, nameOf: names, postCount: base.filter((r) => !r.bulletin).length };
+  }, [d, nested, toggled, expanded, t.anonymousUser, pick, talkSort]);
   const toggle = useCallback((id: string) => {
     haptic.pick();
     setToggled((s) => {
@@ -326,6 +337,9 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         liked_by_me: false,
         score: 0,
         my_vote: 0,
+        /* 🆕 D-1495 — الردُّ يرث حلقةَ أصله، والمشاركةُ الجديدةُ حلقةَ المنتقي — فيبقى السطرُ المتفائلُ في التصفية الحاليّة */
+        season: parent ? parent.season ?? null : pick?.season ?? null,
+        episode: parent ? parent.episode ?? null : pick?.episode ?? null,
       };
       patch((p) => ({ ...p, rows: [...p.rows, row] }));
       try {
@@ -337,6 +351,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           image_url: row.image,
           gif_id: row.gif_id,
           ...(row.share ? { share: row.share } : {}),
+          ...(route.t === "talk" && !parent && pick ? { season: pick.season, episode: pick.episode } : {}),
         });
         if (r) {
           patchRow(temp, (x) => ({ ...x, id: r.reply_id, created_at: r.created_at, person: { ...x.person, ...r.author } }));
@@ -352,7 +367,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         return false;
       }
     },
-    [d, nested, route, patch, patchRow, fail],
+    [d, nested, route, patch, patchRow, fail, pick],
   );
 
   /* 🆕 D-1443 — «أرسل» من الخانة: متفائلٌ (الحقلُ يُفرغ فوراً)، والفشلُ يعيد النصَّ والصورةَ والاقتباس */
@@ -500,6 +515,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       const body = (
         <ReplyItem
           row={r}
+          revealAll={revealAll}
           signedIn={signedIn}
           replyingTo={item.toName}
           canReply={canReplyTo(r, item.depth, nested)}
@@ -521,7 +537,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       );
       return item.indented ? <View style={{ marginStart: 20, paddingStart: 12, borderStartWidth: 1, borderStartColor: tokens.divider }}>{body}</View> : body;
     },
-    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from],
+    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from, revealAll],
   );
 
   const header = d ? (
@@ -533,8 +549,11 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       onShare={share}
       onReport={() => d.head.kind === "review" && report({ what: "review" }, "head")}
       onProfile={openProfile}
+      talk={{ pick, onPicker: setPicker, sort: talkSort, onSort: setTalkSort, revealAll, onReveal: () => setRevealAll((v) => !v), count: postCount }}
     />
   ) : null;
+  const seasons = d?.head.kind === "talk" ? d.head.seasons ?? [] : [];
+  const pickSeason = seasons.find((x) => x.season === pick?.season) ?? null;
 
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -578,7 +597,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           keyExtractor={(it) => (it.type === "row" ? it.row.id : `more:${it.rootId}`)}
           renderItem={renderItem}
           ListHeaderComponent={header}
-          ListEmptyComponent={<Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{nested ? t.talkRoomEmpty : t.postNoReplies}</Text>}
+          ListEmptyComponent={<Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{pick ? t.talkEpisodeEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}</Text>}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: signedIn ? 16 : insets.bottom + 24 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -628,6 +647,55 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           onSend={sendDock}
           placeholder={replyTo ? t.talkReplyingTo(nameOf.get(replyTo.id) ?? "") : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
         />
+      ) : null}
+
+      {/* 🆕 D-1495 — منتقيا الموسم والحلقة: الورقةُ الواحدة (القاعدة ٣). «كل الحلقات» أوّلاً، واختيارُ موسمٍ يفتح حلقاتِه */}
+      {picker === "season" ? (
+        <Sheet title={t.talkPickSeason} onClose={() => setPicker(null)}>
+          <ScrollView style={{ maxHeight: 420 }}>
+            {[null, ...seasons].map((x) => {
+              const on = x ? pick?.season === x.season : !pick;
+              return (
+                <Pressable
+                  key={x ? x.season : "all"}
+                  onPress={() => {
+                    haptic.pick();
+                    if (!x) {
+                      setPick(null);
+                      setPicker(null);
+                      return;
+                    }
+                    setPick((cur) => ({ season: x.season, episode: cur?.season === x.season ? cur.episode : 1 }));
+                    setPicker("episode");
+                  }}
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 48 }}
+                >
+                  <Text size={15} weight={on ? "700" : "400"}>{x ? t.talkSeasonLabel(x.season) : t.talkAllEpisodes}</Text>
+                  {on ? <Icon name="check" size={18} color={tokens.accent} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </Sheet>
+      ) : null}
+      {picker === "episode" && pick && pickSeason ? (
+        <Sheet title={`${t.talkSeasonLabel(pick.season)} · ${t.talkPickEpisode}`} onClose={() => setPicker(null)}>
+          <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 8 }}>
+            {Array.from({ length: pickSeason.episodes }, (_, i) => i + 1).map((n) => (
+              <Chip
+                key={n}
+                size="md"
+                label={t.talkEpisodeLabel(n)}
+                active={pick.episode === n}
+                onPress={() => {
+                  haptic.pick();
+                  setPick({ season: pick.season, episode: n });
+                  setPicker(null);
+                }}
+              />
+            ))}
+          </ScrollView>
+        </Sheet>
       ) : null}
 
       {menu ? (
@@ -686,8 +754,19 @@ function Head({
   onShare,
   onReport,
   onProfile,
+  talk,
 }: {
   d: ThreadPayload;
+  /** 🆕 D-1495/D-1496 — أدواتُ الغرفة: منتقي الحلقة · «حرق الأحداث» · العددُ و«الأحدث ⌄» */
+  talk: {
+    pick: EpisodeRef | null;
+    onPicker: (which: "season" | "episode") => void;
+    sort: "latest" | "active";
+    onSort: (s: "latest" | "active") => void;
+    revealAll: boolean;
+    onReveal: () => void;
+    count: number;
+  };
   reportedHead: boolean;
   onTitle: () => void;
   onLike: () => void;
@@ -700,7 +779,7 @@ function Head({
   const [reveal, setReveal] = useState(false);
   const w = d.work;
   const bg = backdropUrl(w.backdrop_path, "w780");
-  const poster = posterFor(w.poster_path, 78);
+  const poster = posterFor(w.poster_path, d.head.kind === "talk" ? 104 : 78);
   const h = d.head;
   const signedIn = d.viewer.signed_in;
 
@@ -751,6 +830,55 @@ function Head({
 
   return (
     <View>
+      {h.kind === "talk" ? (
+        /* 🆕 D-1495 — **غلافُ الغرفة الجديد** (لقطةُ أحمد ٢٠ أكتوبر): الغلافُ ظاهرٌ تحت ظلٍّ في البداية والقاع، بوسترٌ أكبر،
+           «مسلسل» فوق الاسم، والنبذةُ سطرٌ واحدٌ داخل الغلاف مع «المزيد» — كانت ثلاثةَ أسطرٍ تحته */
+        <Pressable onPress={onTitle} accessibilityRole="link" style={{ marginHorizontal: -16, overflow: "hidden", backgroundColor: tokens.surface }}>
+          {bg ? (
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              <Image source={{ uri: bg }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+              <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
+                <Defs>
+                  <SvgGradient id="talk-cover-side" x1={I18nManager.isRTL ? "1" : "0"} y1="0" x2={I18nManager.isRTL ? "0" : "1"} y2="0">
+                    <Stop offset="0" stopColor={tokens.bg} stopOpacity={0.75} />
+                    <Stop offset="1" stopColor={tokens.bg} stopOpacity={0.1} />
+                  </SvgGradient>
+                  <SvgGradient id="talk-cover-foot" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0.45" stopColor={tokens.bg} stopOpacity={0} />
+                    <Stop offset="1" stopColor={tokens.bg} stopOpacity={0.95} />
+                  </SvgGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100" height="100" fill="url(#talk-cover-side)" />
+                <Rect x="0" y="0" width="100" height="100" fill="url(#talk-cover-foot)" />
+              </Svg>
+            </View>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 14, paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={{ width: 104, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
+              {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 2, paddingBottom: 6 }}>
+              <Text size={13}>{w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+              <Text size={24} weight="700" numberOfLines={2}>{w.title}</Text>
+              {w.community.count > 0 ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="star-filled" size={13} color={tokens.accent} />
+                  <Text size={13} weight="700" color={tokens.accent}>{w.community.avg.toFixed(1)}</Text>
+                  <Text size={12} muted>· {t.communityRating} ({num(w.community.count, locale)})</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          {h.overview ? (
+            <Pressable onPress={() => setMore((v) => !v)} style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 }}>
+              <Text size={14} numberOfLines={more ? undefined : 1} style={{ flex: 1, lineHeight: 21 }}>{h.overview}</Text>
+              <Text size={13} weight="700" color={tokens.accent}>{more ? t.showLess : t.showMore}</Text>
+            </Pressable>
+          ) : (
+            <View style={{ height: 14 }} />
+          )}
+        </Pressable>
+      ) : (
       <Pressable onPress={onTitle} accessibilityRole="link" style={{ marginHorizontal: -16, flexDirection: "row", gap: 14, padding: 16, overflow: "hidden" }}>
         {bg ? <Image source={{ uri: bg }} style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, opacity: 0.35 }} contentFit="cover" cachePolicy="memory-disk" /> : null}
         <View style={{ width: 78, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2 }}>
@@ -768,16 +896,40 @@ function Head({
           <Text size={12} muted>{w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
         </View>
       </Pressable>
+      )}
 
       {h.kind === "talk" ? (
-        <View style={{ gap: 8, paddingTop: 8, paddingBottom: 8 }}>
-          {h.overview ? (
-            <Pressable onPress={() => setMore((v) => !v)}>
-              <Text size={13} muted numberOfLines={more ? undefined : 3} style={{ lineHeight: 20 }}>{h.overview}</Text>
-              <Text size={12} weight="700" color={tokens.accent} style={{ marginTop: 2 }}>{more ? t.showLess : t.showMore}</Text>
-            </Pressable>
-          ) : null}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <View>
+          {/* 🆕 D-1495 — الحلقةُ في البداية («الموسم ٣ ⌄» «الحلقة ١٠ ⌄» أو «كل الحلقات ⌄»)، و«حرق الأحداث» في الطرف */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+            <View style={{ flexDirection: "row", gap: 8, flexShrink: 1 }}>
+              {(h.seasons ?? []).length ? (
+                talk.pick ? (
+                  <>
+                    <Chip size="md" label={t.talkSeasonLabel(talk.pick.season)} active={false} onPress={() => talk.onPicker("season")} trailing={<Icon name="chevron-down" size={14} color={tokens.muted} />} />
+                    <Chip size="md" label={t.talkEpisodeLabel(talk.pick.episode)} active={false} onPress={() => talk.onPicker("episode")} trailing={<Icon name="chevron-down" size={14} color={tokens.muted} />} />
+                  </>
+                ) : (
+                  <Chip size="md" label={t.talkAllEpisodes} active={false} onPress={() => talk.onPicker("season")} trailing={<Icon name="chevron-down" size={14} color={tokens.muted} />} />
+                )
+              ) : null}
+            </View>
+            <Chip size="md" label={t.talkSpoilersToggle} active={talk.revealAll} onPress={talk.onReveal} leading={<Icon name={talk.revealAll ? "eye" : "eye-off"} size={14} color={talk.revealAll ? tokens.onAccent : tokens.muted} />} />
+          </View>
+          {/* العددُ في البداية و«الأحدث ⌄» في الطرف — الزرُّ الدوّارُ نفسُه في النقاشات والنشاط (D-1493) */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+            <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{t.talkRoomPosts(talk.count)}</Text>
+            <SortCycle
+              label={t.talkSortAria}
+              value={talk.sort}
+              onChange={talk.onSort}
+              options={[
+                { key: "latest", label: t.talkSortLatest },
+                { key: "active", label: t.talkSortActive },
+              ]}
+            />
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 8 }}>
             {!signedIn ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="comment" size={13} color={tokens.accent} />

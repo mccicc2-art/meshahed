@@ -1,6 +1,7 @@
 import React, { memo, useState } from "react";
 import { talkActivity } from "@/core/talkSort";
-import { I18nManager, Pressable, View } from "react-native";
+import { I18nManager, Pressable, StyleSheet, View } from "react-native";
+import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -11,7 +12,7 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { StatusThread } from "../library/PosterCard";
 import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
-import { timeAgoShort } from "@/core/when";
+import { timeAgo, timeAgoShort } from "@/core/when";
 import { displayNameOf, profileHref } from "@/core/people";
 import { curatedName } from "@/core/universes";
 import { LOOPZ_USERNAME } from "@/core/loopz";
@@ -321,46 +322,57 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
 export type RoomPin = { admin: boolean; readOnly: boolean; onPin: (room: CommunityRoom) => void } | null;
 
 export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin = null, activity = false }: { room: CommunityRoom; doors: CardDoors; hero?: boolean; pin?: RoomPin; activity?: boolean }) {
-  const { t, tokens, locale } = useApp();
-  const poster = posterFor(room.posterPath, hero ? 78 : 64);
+  const { t, tokens } = useApp();
+  /* 🆕 D-1494 — **التصميمُ الجديد** (لقطةُ أحمد ٢٠ أكتوبر): بوسترٌ كبيرٌ بطول البطاقة، والغلافُ ظاهرٌ كاملاً تحت ظلٍّ قويٍّ في
+     البداية (حيث البوسترُ والنصّ) يخفّ نحو النهاية — كان الغلافُ باهتاً كلُّه (٣٥٪) بلا ظلّ. وثلاثةُ أسطرٍ قصيرة: العنوان ·
+     «الحلقة ١٠ · الموسم ٣» · «٧ مشاركات · منذ ٨ دقائق»، ثمّ الوجوه. `hero` يكبّر المقاساتِ وحدَها (القاعدة ٣). */
+  const posterW = hero ? 96 : 84;
+  const poster = posterFor(room.posterPath, posterW);
   const bg = backdropUrl(room.backdropPath, "w780");
   const title = t.talkRoomTitle(room.title?.trim() || "", room.mediaType === "tv");
+  const shadeId = `room-shade-${room.mediaType}-${room.tmdbId}`;
   const card = (
     <Pressable
       onPress={() => doors.onWeb(`/talk/${room.mediaType}/${room.tmdbId}`)}
       accessibilityRole="link"
-      style={({ pressed }) => ({ flexDirection: "row", gap: 14, padding: hero ? 16 : 14, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
+      style={({ pressed }) => ({ flexDirection: "row", gap: 14, padding: 12, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
     >
-      {/* 🔴 D-1201-fix — **الخلفيّةُ داخل قاطعٍ بحوافّ البطاقة نفسِها** (لقطةُ أحمد ٣٠ سبتمبر: بطاقةُ Ted Lasso مقصوصةٌ وشريطٌ من
-          خلفيّتها خارجها): على أندرويد `overflow: hidden` في عنصرٍ يحمل `transform` (ضغطةُ `scale`) لا يقصّ ابنَه المطلقَ دائماً —
-          فصارت الصورةُ ابنةَ `View` مستقلٍّ بـ`borderRadius` نفسِه وقصّه. الشكلُ كما هو. */}
+      {/* 🔴 D-1201-fix — الخلفيّةُ داخل قاطعٍ بحوافّ البطاقة نفسِها (أندرويد لا يقصّ ابنَ عنصرٍ يحمل `transform`) */}
       {bg ? (
         <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.card, overflow: "hidden" }}>
-          <Image source={{ uri: bg }} style={{ width: "100%", height: "100%", opacity: 0.35 }} contentFit="cover" cachePolicy="memory-disk" />
+          <Image source={{ uri: bg }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+          {/* الظلُّ من لون السطح: قويٌّ في البداية خفيفٌ في النهاية. Svg لا يعرف اتّجاهَ الواجهة — فالبدايةُ يمينٌ بالعربيّ تُحدَّد بيدنا */}
+          <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
+            <Defs>
+              <SvgGradient id={shadeId} x1={I18nManager.isRTL ? "1" : "0"} y1="0" x2={I18nManager.isRTL ? "0" : "1"} y2="0">
+                <Stop offset="0" stopColor={tokens.surface} stopOpacity={0.96} />
+                <Stop offset="0.45" stopColor={tokens.surface} stopOpacity={0.82} />
+                <Stop offset="1" stopColor={tokens.surface} stopOpacity={0.2} />
+              </SvgGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100" height="100" fill={`url(#${shadeId})`} />
+          </Svg>
         </View>
       ) : null}
-      <View style={{ width: hero ? 78 : 64, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+      <View style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
         {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
       </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
-          <Text size={hero ? 16 : 15} weight="700" numberOfLines={2} style={{ flex: 1, marginEnd: pin && !(pin.readOnly && room.pin !== 2) ? 28 : 0 }}>{title}</Text>
-        </View>
-        {room.bulletin_line ? <Text size={12} color={tokens.accent} numberOfLines={1}>{room.bulletin_line}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0, gap: 6, paddingVertical: 4 }}>
+        <Text size={hero ? 18 : 16} weight="700" numberOfLines={1} style={{ marginEnd: pin && !(pin.readOnly && room.pin !== 2) ? 28 : 0 }}>{title}</Text>
+        {room.episode_line ? <Text size={13} numberOfLines={1}>{room.episode_line}</Text> : null}
         <Text size={12} muted numberOfLines={1}>
-          {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الأسبوع) — وإلّا بدا الترتيبُ عشوائيّاً */}
+          {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الشهر) — وإلّا بدا الترتيبُ عشوائيّاً */}
           {activity ? t.talkRoomActivityMonth(talkActivity(room)) : hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)}
-          {/* 🔴 D-1207 — «آخر مشاركة» من مشاركات الأعضاء لا من إشعار الحلقة؛ غرفةٌ بلا مشاركةٍ لا تقول وقتاً */}
-          {room.lastPostAt ? ` · ${t.talkRoomLastAt(timeAgoShort(room.lastPostAt, t))}` : null}
+          {/* 🔴 D-1207 — الوقتُ من مشاركات الأعضاء لا من إشعار الحلقة؛ غرفةٌ بلا مشاركةٍ لا تقول وقتاً */}
+          {room.lastPostAt ? ` · ${timeAgo(room.lastPostAt, t)}` : null}
         </Text>
         {room.faces.length ? (
-          <View style={{ flexDirection: "row", marginTop: "auto", paddingTop: 6 }}>
-            {room.faces.slice(0, 5).map((f, i) => (
-              <View key={f.id} style={{ marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.surface, borderRadius: 14 }}>
-                <Avatar uri={f.hide_name ? null : f.avatar_url} size={24} />
+          <View style={{ flexDirection: "row", marginTop: "auto" }}>
+            {room.faces.slice(0, 3).map((f, i) => (
+              <View key={f.id} style={{ marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.surface, borderRadius: 16 }}>
+                <Avatar uri={f.hide_name ? null : f.avatar_url} size={28} />
               </View>
             ))}
-            {room.posts > 5 ? <Text size={11} muted style={{ alignSelf: "center", marginStart: 6 }}>{num(room.posts, locale)}</Text> : null}
           </View>
         ) : null}
       </View>

@@ -5,7 +5,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { timeAgo } from "@/core/when";
 import { displayNameOf } from "@/core/people";
 import type { TalkRoom } from "@/lib/data";
-import { bulletinLine } from "@/core/bulletinLine";
+import { bulletinEpisodeShort } from "@/core/bulletinLine";
 import { talkActivity } from "@/core/talkSort";
 import { Avatar } from "./Avatar";
 import { RoomPinButton } from "./RoomPinButton";
@@ -47,29 +47,6 @@ import { Icon } from "./Icon";
  * ليست حكماً** — ورقمُ التقييم يعيش في صفحة العمل وفي `/review` حيث
  * معناه واضح. **وعنصرٌ يبقى بعد أن سقط سببُه هو كيف تتراكم الفوضى.**
  */
-/**
- * **وسمُ الحلقة على البطاقة** — `bulletinLine` بصيغةٍ أخرى.
- *
- * **ولماذا لا تُستعمل جملتُها كما هي:** تلك خبرٌ («نزلت الحلقة ٣…»)
- * يصلح يومَ نزولها، **والبطاقةُ تُقرأ بعد أسبوعين** — فيصير الخبرُ
- * كذبةً صغيرة. **ونفسُ الحقول، ونفسُ اختيار اللغة، وصيغةٌ ثانية.**
- */
-function bulletinLabel(
-  data: Record<string, unknown> | null,
-  t: ReturnType<typeof getDict>,
-  locale: Locale,
-): string | null {
-  if (!data) return null;
-  /* **والتحقّقُ من الشكل يبقى في `bulletinLine`** — فإن عادت `null` فلا
-     موسمَ ولا حلقة، **ولا يُعاد فحصُ ما فُحص** (D-148: العلاج عند المصدر). */
-  if (!bulletinLine("episode", data, t, locale)) return null;
-  const season = Number(data.s);
-  const episode = Number(data.e);
-  const raw = locale === "en" ? data.name_en : data.name_ar;
-  const alt = locale === "en" ? data.name_ar : data.name_en;
-  const pick = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
-  return t.talkRoomEpisode(season, episode, pick(raw) ?? pick(alt));
-}
 /**
  * 🆕 **بطاقةُ الغرفة الواحدة، مُخرَجةً باسمها** (D-291) — **مكوّنٌ واحدٌ
  * لسطحين لا نسختان تتباعدان** (حجّةُ `CommunityListCard` نفسُها، D-068).
@@ -133,7 +110,7 @@ export function TalkRoomCard({
      الحقول (`s` · `e` · `name_*`) ونفسُ اختيار اللغة، **والصيغةُ
      وحدَها تختلف** فتُمرَّر من هنا (D-261: الصيغةُ التي يقرؤها
      أكثرُ من موضع تملكها دالّةٌ واحدة). */
-  const episode = bulletinLabel(r.bulletin, t, locale);
+  const episode = bulletinEpisodeShort(r.bulletin, t); // D-1494 — الصيغةُ المختصرة
 
   return (
     /* ⚠️ **والغلافُ نسبيٌّ لأن الدبّوسَ مطلقٌ فيه** (D-301) — **وهو أخٌ
@@ -142,57 +119,29 @@ export function TalkRoomCard({
     <Wrap pinned={pinned} globalPinned={globalPinned} admin={admin} room={r} locale={locale}>
     <Link
       href={`/talk/${r.mediaType}/${r.tmdbId}`}
-      className={`relative overflow-hidden flex rounded-2xl bg-surface border border-border group active:scale-[0.99] hover:border-[color:var(--divider)] transition ${
-        hero ? "gap-4 p-4" : "gap-3.5 p-3.5"
-      }`}
+      className="relative overflow-hidden flex gap-3.5 p-3 rounded-2xl bg-surface border border-border group active:scale-[0.99] hover:border-[color:var(--divider)] transition"
     >
-        {/* ============ خلفيّةُ الغلاف ============ */}
+        {/* 🆕 D-1494 — **التصميمُ الجديد** (لقطةُ أحمد ٢٠ أكتوبر، نظيرُ `RoomCard` في التطبيق): الغلافُ ظاهرٌ كاملاً تحت ظلٍّ من
+            لون السطح قويٍّ في البداية (حيث البوسترُ والنصّ) خفيفٍ في النهاية — كان باهتاً (٤٠٪) تحت ظلٍّ ينتهي عند ٥٥٪.
+            ⚠️ والاتّجاهُ كما صُحّح في D-289: `to-r` يضع البدايةَ يساراً (LTR) و`rtl:to-l` يميناً. */}
         {backdrop && (
           <>
-            <Image
-              src={backdrop}
-              alt=""
-              fill
-              sizes="680px"
-              className="object-cover opacity-[0.40] pointer-events-none"
-            />
-            {/* **طبقةٌ من لون السطح إلى الشفّاف باتّجاه البداية**:
-                النصُّ والملصقُ كلاهما في البداية، **فالحمايةُ حيث
-                يُقرأ لا على البطاقة كلِّها**.
-                ⚠️ **وهنا كان نصفُ العطل** (بلاغُ أحمد): الوسَطُ كان
-                `‎/85` **بلا موضعٍ محدَّد، فيمتدّ الغطاءُ الكثيفُ إلى
-                نحو ٨٥٪ من العرض** — فيجتمع على الغلاف خفوتان:
-                شفافيّتُه، والغطاءُ فوقه. **وطبقتان تخفتان معاً حاصلُهما
-                الغياب.**
-                **والآن الكثافةُ تنتهي عند ٥٥٪** (`via-[55%]`) بقيمةٍ
-                أخفّ (`‎/70`)، **فالنصفُ الأوّل محميٌّ والثاني يُرى فيه
-                العمل.**
-
-                ⚠️⚠️ **والنصفُ الثاني من العطل كان الاتّجاهَ نفسَه، ولم
-                يُمسك إلا بقياس `getComputedStyle`:** كان
-                `bg-gradient-to-l` في LTR — **و`to left` تضع `from`
-                عند اليمين** — بينما الملصقُ والنصُّ في البداية
-                (اليسار). **فالغطاءُ كان على الفراغ، والغلافُ مكشوفٌ
-                تحت النصّ حيث لا يُنظر إليه** — وهو سببُ «الغلاف ماهو
-                واضح» أكثرَ من الشفافية.
-                **والقاعدة: `to-r` تضع البدايةَ يساراً و`to-l` تضعها
-                يميناً — فالمحاذاةُ مع `start` عكسُ ما يوحي به الاسم.**
-                (وكان مقلوباً في الاتّجاهين معاً منذ D-257.) */}
+            <Image src={backdrop} alt="" fill sizes="680px" className="object-cover pointer-events-none" />
             <span
               aria-hidden
-              className="absolute inset-0 pointer-events-none bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] via-[color:var(--surface)]/70 via-[55%] to-transparent"
+              className="absolute inset-0 pointer-events-none bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/95 via-[color:var(--surface)]/80 via-[45%] to-[color:var(--surface)]/20"
             />
           </>
         )}
 
-        {/* ============ الملصقُ في البداية ============ */}
+        {/* ============ البوسترُ الكبيرُ في البداية ============ */}
         <div
-          className={`relative shrink-0 self-start rounded-xl overflow-hidden bg-surface-2 border border-border ${
-            hero ? "w-[78px] h-[117px]" : "w-16 h-24"
+          className={`relative shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-border aspect-[2/3] ${
+            hero ? "w-24" : "w-[84px]"
           }`}
         >
           {poster ? (
-            <Image src={poster} alt="" fill sizes={hero ? "78px" : "64px"} className="object-cover" />
+            <Image src={poster} alt="" fill sizes={hero ? "96px" : "84px"} className="object-cover" />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
               <Icon name={r.mediaType === "tv" ? "tv" : "film"} size={18} />
@@ -200,68 +149,28 @@ export function TalkRoomCard({
           )}
         </div>
 
-        <div className="relative min-w-0 flex-1 flex flex-col">
-          {/* **العنوانُ المولَّد هو البطاقة** — وأكبرُ نصٍّ فيها لأنه
-              سببُ الضغط. و`line-clamp-2` لا `truncate`: عنوانٌ مقصوصٌ
-              عند الحرف يفقد اسمَ العمل وهو أهمُّ ما فيه. */}
-          {/* ⚠️ **ولا `dir` على العنوان** (D-273، بلاغُ أحمد «كيف طلع
-              الاسم بالعربي؟»): **الجملةُ جملتُنا نحن** («نقاش مسلسل
-              …») **فتتبع لغة الواجهة لا لغةَ الاسم المخزَّن** — وكان
-              `dirOf(title)` يقلب السطرَ كلَّه لأن الاسمَ عربيّ.
-              **والمعزولُ هو الاسمُ وحدَه، داخل `i18n`.**
-              **والاسمُ نفسُه صار يُترجَم قبل أن يصل** (`localizeTalkRooms`). */}
-          <h3
-            className={`font-bold leading-snug line-clamp-2 group-hover:text-accent transition ${
-              hero ? "text-20" : "text-15"
-            }`}
-          >
+        {/* ============ ثلاثةُ أسطرٍ قصيرة ثمّ الوجوه ============ */}
+        <div className="relative min-w-0 flex-1 flex flex-col gap-1.5 py-1">
+          {/* ⚠️ ولا `dir` على العنوان (D-273): الجملةُ جملتُنا فتتبع لغةَ الواجهة، والاسمُ معزولٌ داخل `i18n` */}
+          <h3 className={`font-bold leading-snug line-clamp-1 pe-8 group-hover:text-accent transition ${hero ? "text-20" : "text-lg"}`}>
             {t.talkRoomTitle(title, r.mediaType === "tv")}
           </h3>
-
-          {/* **وفي موضع العدّاد صارت الحلقة** (طلبُ أحمد): **رقمُ
-              الموسم والحلقة وعنوانُها**، **ويتحدّث مع كل نشرٍ للوبز**
-              لأن الدالّة تقرأ الأحدث.
-              ⚠️ **وغرفةٌ بلا نشرةٍ لا تُرسم لها سطرٌ فارغ** (D-181):
-              الأفلامُ لا حلقاتِ لها أصلاً، **وسطرٌ يظهر أحياناً خيرٌ
-              من سطرٍ يقول «—» دائماً.** */}
-          {episode && (
-            <p className="mt-1.5 text-12 text-accent/90 line-clamp-1">{episode}</p>
-          )}
-
-          {/* **والقاعُ صفٌّ واحد: الوجوهُ في البداية والعدّادُ في
-              النهاية** (طلبُ أحمد: «١ بوست وآخر بوست يكون تحت في
-              الزاوية»).
-              ⚠️ **و«النهاية» موضعٌ لا «اليمين»** (D-216): يمينٌ في
-              الإنجليزية ويسارٌ في العربية — **وهو ما رسمه أحمد على
-              واجهةٍ إنجليزية**، فتُكتب `ms-auto` لا `right`.
-              **و`mt-auto` تُثبّت الصفَّ في القاع** مهما طال العنوان
-              (D-224)، **والصفُّ يبقى وإن غابت الوجوه** فلا يقفز
-              العدّادُ صعوداً في بطاقةٍ دون أخرى (D-234). */}
-          <div className="mt-auto pt-2.5 flex items-end gap-2">
-            <div className="flex items-center min-w-0">
-              {r.faces.map((p, i) => (
-                <span
-                  key={p.id}
-                  className="rounded-full ring-2 ring-[color:var(--surface)]"
-                  style={{ marginInlineStart: i === 0 ? 0 : -8 }}
-                >
-                  <Avatar
-                    src={p.avatar_url}
-                    name={displayNameOf(p, t.anonymousUser)}
-                    size={22}
-                    alt=""
-                  />
+          {/* «الحلقة ١٠ · الموسم ٣» — آخرُ حلقةٍ نشرها Loopz هنا؛ والأفلامُ بلا سطر (D-181) */}
+          {episode && <p className="text-14 line-clamp-1">{episode}</p>}
+          <p className="text-12 text-muted tabular-nums line-clamp-1">
+            {activity ? t.talkRoomActivityMonth(talkActivity(r)) : weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
+            {/* 🔴 D-1207 — الوقتُ من مشاركات الأعضاء لا من إشعار الحلقة */}
+            {r.lastPostAt ? ` · ${timeAgo(r.lastPostAt, t)}` : null}
+          </p>
+          {r.faces.length ? (
+            <div className="mt-auto flex items-center">
+              {r.faces.slice(0, 3).map((p, i) => (
+                <span key={p.id} className="rounded-full ring-2 ring-[color:var(--surface)]" style={{ marginInlineStart: i === 0 ? 0 : -8 }}>
+                  <Avatar src={p.avatar_url} name={displayNameOf(p, t.anonymousUser)} size={28} alt="" />
                 </span>
               ))}
             </div>
-            <div className="ms-auto shrink-0 text-12 text-muted text-end leading-tight">
-              <span className="tabular-nums">
-                {activity ? t.talkRoomActivityMonth(talkActivity(r)) : weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
-              </span>
-              {/* 🔴 D-1207 — «آخر مشاركة» من مشاركات الأعضاء لا من إشعار الحلقة (لقطةُ أحمد: «1d» على غرفةٍ صامتةٍ منذ أغسطس) */}
-              {r.lastPostAt ? <span className="block">{t.talkRoomLastAt(timeAgo(r.lastPostAt, t))}</span> : null}
-            </div>
-          </div>
+          ) : null}
         </div>
       </Link>
     </Wrap>

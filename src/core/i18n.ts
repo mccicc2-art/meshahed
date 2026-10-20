@@ -1027,6 +1027,8 @@ const ar = {
     name
       ? `الموسم ${num(season, "ar")} · الحلقة ${num(episode, "ar")} — ⁨${name}⁩`
       : `الموسم ${num(season, "ar")} · الحلقة ${num(episode, "ar")}`,
+  /** 🆕 D-1494 — وسمُ البطاقة المختصر (لقطةُ أحمد ٢٠ أكتوبر): «الحلقة ١٠ · الموسم ٣» بلا اسم الحلقة */
+  talkRoomEpisodeShort: (season: number, episode: number) => `الحلقة ${num(episode, "ar")} · الموسم ${num(season, "ar")}`,
   /* ✅ **وصارت «آخر مشاركة» كما في لقطة أحمد** (D-257): كُتبت «آخر رأي»
      **لأن الوقتَ الذي كنّا نملكه وقتُ أحدث رأي** — وكان صدقاً في حينه.
      **واليوم للغرفة جدولُها** (`title_posts`) و`last_at` وقتُ أحدث
@@ -1037,6 +1039,14 @@ const ar = {
      باسمه. **والفراغُ يقول ماذا تفعل ليمتلئ** لا «لا يوجد» (D-181). */
   talkRoomPlaceholder: "شارِك في النقاش…",
   talkRoomEmpty: "لا مشاركات بعد — افتح النقاشَ بأوّل سطر",
+  /* 🆕 D-1495 — نقاشُ الحلقات (أحمد ٢٠ أكتوبر) */
+  talkAllEpisodes: "كل الحلقات",
+  talkEpisodeLabel: (n: number) => `الحلقة ${num(n, "ar")}`,
+  talkSeasonLabel: (n: number) => `الموسم ${num(n, "ar")}`,
+  talkPickSeason: "اختر الموسم",
+  talkPickEpisode: "اختر الحلقة",
+  talkSpoilersToggle: "حرق الأحداث",
+  talkEpisodeEmpty: "لا مشاركات في هذه الحلقة بعد — ابدأ نقاشها",
   /* **وفراغُ التبويب غيرُ فراغ الغرفة** (D-259): هذا يقول «لا غرفةَ
      بعد» وذاك يقول «الغرفةُ خالية». **وكان يقرأ نصَّ الآراء** («لم يكتب
      أحدٌ رأياً بعد») — **اسمٌ بقي بعد أن تغيّر ما يسمّيه.**
@@ -3489,9 +3499,17 @@ const en: Dict = {
     name
       ? `Season ${num(season, "en")} · Episode ${num(episode, "en")} — \u2068${name}\u2069`
       : `Season ${num(season, "en")} · Episode ${num(episode, "en")}`,
+  talkRoomEpisodeShort: (season: number, episode: number) => `Season ${num(season, "en")} · Episode ${num(episode, "en")}`,
   talkRoomLastAt: (when: string) => `last post ${when}`,
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
+  talkAllEpisodes: "All episodes",
+  talkEpisodeLabel: (n: number) => `Episode ${num(n, "en")}`,
+  talkSeasonLabel: (n: number) => `Season ${num(n, "en")}`,
+  talkPickSeason: "Pick a season",
+  talkPickEpisode: "Pick an episode",
+  talkSpoilersToggle: "Spoilers",
+  talkEpisodeEmpty: "No posts on this episode yet — start its discussion",
   talkRoomsEmpty:
     "No discussions yet — start the first one from any title's page",
   talkScopeMine: "My titles",

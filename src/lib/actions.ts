@@ -6514,6 +6514,9 @@ export async function addTalkPost(input: {
   gifId?: string | null;
   /** 🆕 D-1443 — بطاقةُ عملٍ من «بحث لوبز» (الهجرة ٢٠٩) — لا تجتمع مع صورةٍ أو GIF */
   share?: { media_type: MediaType; tmdb_id: number; title: string | null; poster_path: string | null } | null;
+  /** 🆕 D-1495 — الحلقةُ المختارةُ في نقاش الحلقات (مشاركةٌ جديدةٌ في غرفة مسلسل وحدَها) */
+  season?: number | null;
+  episode?: number | null;
 }): Promise<NewReply | null> {
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -6593,6 +6596,12 @@ export async function addTalkPost(input: {
       /* 🆕 **والـGIF في عموده** (D-362، الهجرة ١١١) — **معرّفٌ لا رابط** */
       gif_id: gifId,
       ...(share ?? {}),
+      /* 🆕 D-1495 — **الحلقةُ تُكتب حين تُعطى وحدَها** (الهجرة ٢١٥): مشاركةٌ جديدةٌ في غرفة مسلسل بحلقةٍ صحيحة الشكل.
+         والردُّ لا يحمل حلقة (يرث جذرَه في القارئ) — وغيابُ المفتاحين يُبقي الكتابةَ سليمةً قبل الهجرة نفسِها. */
+      ...(mediaType === "tv" && !parentId && Number.isInteger(input.season) && Number.isInteger(input.episode) &&
+      (input.season as number) >= 0 && (input.season as number) <= 200 && (input.episode as number) >= 1 && (input.episode as number) <= 5000
+        ? { season: input.season, episode: input.episode }
+        : {}),
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })
