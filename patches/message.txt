@@ -1,4 +1,4 @@
-Release R40 — D-1489: a layout saved by hand is respected even when it equals a known default — the server now marks Home order/stats pick and profile order/tabs as «custom» on save (cleared when they return to the plan default); unmarked legacy rows keep the D-1487 value rule. Fixes «To watch · Upcoming» resetting to the subscriber default after save — task 119 [deploy]
+Release R41 — D-1490: the list page's works rail uses the shared iPhone-Arabic rail pin (useRtlRailPin, D-1478) — it opened blank or reversed in Arabic on iPhone — task 120 [deploy]
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
