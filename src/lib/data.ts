@@ -697,6 +697,9 @@ export const getMyTitleArt = cache(async (): Promise<Map<string, TitleArt>> => {
  */
 export const getMyFavorites = cache(async (): Promise<Set<string>> => {
   try {
+    /* 🆕 D-1482 — **الزائرُ بلا جلسةٍ لا يُسأل**: جوابُه صفرٌ دائماً، وكانت هذه النداءاتُ الثلاثة أكثرَ ما يطلبه الزائرُ من
+       القاعدة (١٫١ مليون لعدّادَي الترويسة و٥٤٤ ألفاً للمفضّلة، كلُّها أصفار). `getUserId` مخبّأٌ للطلب ولا يقطع رحلةً للزائر */
+    if (!(await getUserId())) return new Set();
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_favorites");
     if (error || !data) return new Set();
@@ -1996,6 +1999,7 @@ export async function getDismissedTitles(): Promise<Set<number>> {
    مغلَّفٌ أصلاً للسبب نفسه). */
 export const getUnreadShares = cache(async (): Promise<number> => {
   try {
+    if (!(await getUserId())) return 0; // D-1482 — زائرٌ بلا جلسة: الجوابُ صفرٌ بلا نداء
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("unread_shares");
     if (error) return 0;
@@ -2036,6 +2040,7 @@ export async function getFeedSeenAt(): Promise<number | null> {
    الصفحة نفسِها كذبٌ على الميزانية لا اقتصادٌ فيها.** */
 export const getUnreadSignals = cache(async (): Promise<number> => {
   try {
+    if (!(await getUserId())) return 0; // D-1482 — زائرٌ بلا جلسة: الجوابُ صفرٌ بلا نداء
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("unread_signals");
     if (error) return 0;
