@@ -24,6 +24,11 @@ export interface Recommendation {
   source: Source;
   seedTitle?: string;
   score: number;
+  /** 🆕 D-1486 — درجةُ التكملة لتبويبَي الأفلام والمسلسلات (`tabPool`): نوعٌ من أنواعه (`genreSlug`) أو «رائج الآن».
+      غيابُه = اقتراحٌ من أعماله كما كان */
+  tier?: "genre" | "trending";
+  /** سجلُّ `BROWSE_GENRES` — اسمُ النوع في سطر السبب بلغة القارئ */
+  genreSlug?: string;
 }
 
 /**

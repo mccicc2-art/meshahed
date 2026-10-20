@@ -59,7 +59,7 @@ import {
   dropKids,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { looksAnime, railGuard } from "@/lib/topChart";
+import { railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
@@ -87,7 +87,7 @@ import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
 import { RailSkeleton, TrailerRailSkeleton } from "@/components/Skeletons";
 import { DiscoverFilters } from "@/components/DiscoverFilters";
-import { getSuggestions } from "@/lib/suggest";
+import { getSuggestions, animePool, tabPool, recoNote } from "@/lib/suggest";
 
 type T = Awaited<ReturnType<typeof getT>>["t"];
 
@@ -2080,13 +2080,15 @@ async function PersonalRails({
      «جريمة» في تبويب المسلسلات يريد مقترحاتِ مسلسلاتٍ جريمة — لا كلَّ ما
      هو جريمة. والمحاورُ التي لا يستطيعها الصفّ أسقطته أصلاً في الصفحة. */
   const ids = browse?.genre ? (wantMovies ? browse.genre.movie : browse.genre.tv) : undefined;
-  const suggested = pool.filter(
-    (s) =>
-      (anime
-        ? looksAnime(s.result)
-        : (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") &&
-          !looksAnime(s.result)) && (!browse || matchesBrowse(s.result, browse, ids)),
-  );
+  /* 🆕 D-1486 — **البِركةُ بدرجاتها كما في التطبيق** (`tabPool`/`animePool`، «1 ج»): من أعماله ثمّ من أنواعه ثمّ «رائج الآن».
+     والتكملةُ للرأس وحدَه — الشطرُ الآخر لا يرسم هذا الصفّ */
+  const tabbed =
+    part !== "head"
+      ? []
+      : anime
+        ? await animePool(pool, locale)
+        : await tabPool(pool, wantMovies ? "movie" : "tv");
+  const suggested = tabbed.filter((s) => !browse || matchesBrowse(s.result, browse, ids));
   const artistRows = browse
     ? artistWorks.filter((r) => matchesBrowse(r, browse, browse.genre?.movie))
     : artistWorks;
@@ -2125,7 +2127,7 @@ async function PersonalRails({
             /* **الاسمُ هو الخبر** (D-494): البذرةُ إن وُجدت، وإلا
                فالأنواع — **ولا فرعَ ثالثٌ للعلاقة** بعد أن صارت
                الصيغةُ واحدة. */
-            note: s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
+            note: recoNote(s, locale),
           }))}
         />
       )}

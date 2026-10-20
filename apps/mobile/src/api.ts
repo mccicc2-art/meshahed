@@ -247,7 +247,8 @@ async function baseHeaders(auth: boolean, path = ""): Promise<Record<string, str
        D-1003 — **لما يحمل حالةَ المستخدم فقط** (`/me/` · `/title/` · `/person/` · `/view`):
        صفوفُ «اكتشف» المنسَّقةُ سواءٌ للجميع وصالحةٌ عشرَ دقائق، وكانت تُعاد من الخادم في
        كلِّ فتحٍ — فتُترك لكاش OkHttp كما يقول رأسُها. */
-    ...(/\/api\/v1\/(me\/|title\/|person\/|discover\/view)/.test(path) ? { "Cache-Control": "no-cache" } : {}),
+    /* 🆕 D-1486 — و`discover/trailers`: شخصيّةٌ كالمكتبة (اقتراحاتُه) — نسخةٌ فارغةٌ في كاش القرص كانت تُعاد خمسَ دقائق */
+    ...(/\/api\/v1\/(me\/|title\/|person\/|discover\/view|discover\/trailers)/.test(path) ? { "Cache-Control": "no-cache" } : {}),
   };
   if (auth) {
     /* الجسرُ أوّلاً (Phase 11 · B1)؛ وجلسةُ الدخول العابرةُ سقوطٌ لا يكاد يُبلغ */

@@ -80,6 +80,9 @@ const ar = {
      (D-002). **والتمييزُ باقٍ في البيانات** (`source`) لمن احتاجه. */
   recoFrom: (title: string) => `من «${title}»`,
   recoFromGenre: "من أنواعك المفضّلة",
+  /* D-1486 — درجتا التكملة في الأفلام والمسلسلات */
+  recoBecauseGenre: (genre: string) => `لأنك تتابع «${genre}»`,
+  recoTrendingNow: "رائج الآن",
   listAddAllDone: (n: number) => `أُضيف ${n} إلى «للمشاهدة»`,
   /* 🆕 **«ابدأ المشاهدة»** (D-538، تصميمُ أحمد): **فعلٌ واحدٌ محلَّ
      «أضف الكل»** — يتبع أعمالَ القائمة كلَّها بترتيبها ويحفظها فتدخل
@@ -2824,6 +2827,8 @@ const en: Dict = {
   suggestedForYou: "Picked for you",
   recoFrom: (title: string) => `From “${title}”`,
   recoFromGenre: "From your genres",
+  recoBecauseGenre: (genre: string) => `Because you watch ${genre}`,
+  recoTrendingNow: "Trending now",
   listAddAllDone: (n: number) => `${n} added to To watch`,
   listStartWatching: "Start Watching",
   listStartWatchingAria:

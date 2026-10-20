@@ -1105,6 +1105,65 @@ export async function moviesByIds(
 }
 
 /**
+ * 🆕 D-1486 — **أعمالٌ بمعرّفاتها في شكل صفِّ البحث** (`SearchResult`): للدرجة الثالثة من الاقتراحات — «الأكثرُ إضافةً
+ * في Loopz» تعطي أرقاماً فقط، والبطاقةُ والتريلرُ والحرّاسُ تقرأ صفّاً كاملاً (الأنواع · اللغة · الخلفيّة · التقييم).
+ * بالتوازي ومخبّأةٌ ساعةً كأختها `moviesByIds`، **والمعرّفُ الفاشل يسقط وحدَه**.
+ */
+export async function resultsByIds(mediaType: MediaType, ids: number[]): Promise<SearchResult[]> {
+  type Detail = {
+    id: number;
+    title?: string;
+    name?: string;
+    original_title?: string;
+    original_name?: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    overview?: string;
+    release_date?: string;
+    first_air_date?: string;
+    vote_average?: number;
+    vote_count?: number;
+    popularity?: number;
+    genres?: { id: number }[];
+    origin_country?: string[];
+    original_language?: string;
+  };
+  const rows = await Promise.all(
+    ids.map((id) =>
+      tmdb<Detail>(`/${mediaType}/${id}`)
+        .then((d): SearchResult => ({
+          id: d.id,
+          media_type: mediaType,
+          title: d.title,
+          name: d.name,
+          original_title: d.original_title,
+          original_name: d.original_name,
+          poster_path: d.poster_path ?? null,
+          backdrop_path: d.backdrop_path ?? null,
+          overview: d.overview ?? "",
+          release_date: d.release_date,
+          first_air_date: d.first_air_date,
+          vote_average: d.vote_average ?? 0,
+          vote_count: d.vote_count,
+          popularity: d.popularity,
+          genre_ids: (d.genres ?? []).map((g) => g.id),
+          origin_country: d.origin_country,
+          original_language: d.original_language,
+        }))
+        .catch(() => null),
+    ),
+  );
+  return rows.filter((r): r is SearchResult => r !== null && !!r.poster_path);
+}
+
+/** 🆕 D-1486 — **رائجُ الأسبوع لجهةٍ واحدة** (`/trending/{movie|tv}/week`) كما يعطيه TMDB، بلا عتبةٍ ولا ترتيبٍ ثانٍ —
+    آخرُ ما تكمّل به الاقتراحات («رائج الآن»). الحرّاسُ والاستبعادُ عند المستدعي. */
+export async function trendingWeekOf(mediaType: MediaType): Promise<SearchResult[]> {
+  const data = await railTmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
+  return (data.results ?? []).filter((r) => r.poster_path).map((r) => ({ ...r, media_type: mediaType }));
+}
+
+/**
  * أعمال مرتبطة.
  *
  * TMDB لا يمثّل «العمل المشتقّ» علاقةً — لا حقل له ولا مسار. فأقرب ما يُنال

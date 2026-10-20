@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { matchesBrowse, personalRails, dateOfResult } from "@/lib/discoverRails";
 import { sectionHref } from "@/lib/sections";
+import { recoNote } from "@/lib/suggest";
 import { getProfile } from "@/lib/data";
 import { sanitizeUiState } from "@/lib/uiState";
 import { filtersOf } from "@/core/savedFilters";
@@ -11,7 +12,6 @@ import { getLocale, getWatchRegion } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
-import { getDict } from "@/core/i18n";
 import { titleOf } from "@/core/media";
 import type { SearchResult } from "@/lib/tmdb";
 import type { PersonalRailsPayload, CuratedCard } from "@/core/contracts/discover";
@@ -36,7 +36,6 @@ export async function GET(req: NextRequest) {
     const tabRaw = req.nextUrl.searchParams.get("tab");
     const tab = tabRaw === "movies" ? "movies" : tabRaw === "anime" ? "anime" : "shows";
     const [locale, region, store, profile] = await Promise.all([getLocale(), getWatchRegion(), cookies(), getProfile().catch(() => null)]);
-    const t = getDict(locale);
     /* D-1304 — صفوفُ هذا التبويب وحدَه */
     const myRows = parseMyRowsByTab(store.get(MY_ROWS_COOKIE)?.value)[tab];
     const r = await personalRails(tab, { locale, region, myRows });
@@ -83,7 +82,7 @@ export async function GET(req: NextRequest) {
     });
     const payload: PersonalRailsPayload = {
       tab,
-      foryou: r.foryou.map((s) => ({ ...card(s.result), note: s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre })),
+      foryou: r.foryou.map((s) => ({ ...card(s.result), note: recoNote({ seedTitle: s.seedTitle ?? undefined, tier: s.tier, genreSlug: s.genreSlug }, locale) })),
       myrows: r.myrows.map((m) => ({ key: m.key, title: m.title, items: m.items.map(card), see_all: m.see_all })),
       artists: r.artists.map(card),
       artists_see_all: r.artists.length ? sectionHref("from-artists", "movie") : null,

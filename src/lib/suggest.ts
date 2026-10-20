@@ -6,13 +6,25 @@ import {
   getWatchedMovieIds,
   getWatchSummary,
   getDismissedTitles,
+  getLoopzPopular,
 } from "@/lib/data";
-import { discoverByGenres, recommendationsFor, topByFilter, ANIME_KEYWORD, type SearchResult } from "@/lib/tmdb";
+import {
+  discoverByGenres,
+  dropKids,
+  recommendationsFor,
+  resultsByIds,
+  topByFilter,
+  trendingWeekOf,
+  ANIME_KEYWORD,
+  type SearchResult,
+} from "@/lib/tmdb";
 import { railGuard, looksAnime } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import { cache } from "react";
-import type { Locale } from "@/core/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { blendRecommendations, type Candidate, type Recommendation } from "@/core/recommend";
+import { hasAnyPrefs, isExcludedLanguage } from "@/core/contentPrefs";
+import { BROWSE_GENRES, browseGenreForId, browseGenreName, type BrowseGenre } from "@/core/browse";
 
 /**
  * محرّك الاقتراحات.
@@ -194,6 +206,167 @@ export const getAnimeSuggestions = cache(async function getAnimeSuggestions(
   }
   return blendRecommendations(candidates, { exclude: excluded, limit: 120, prefs: await getContentPrefs() });
 });
+
+/**
+ * ====== بِركةُ تبويبَي الأفلام والمسلسلات بثلاث درجات — D-1486 (أحمد ٢٠ أكتوبر ٢٠٢٦) ======
+ *
+ * **لماذا**: «نبي المسلسلات والأفلام أيضاً نفس نظام الأنمي — تظهر أوّل شيءٍ اللي يناسبك من أعمالٍ تابعتها، ثمّ من تصنيفاتٍ
+ * تتابعها، ثمّ الأشهر حاليّاً والأكثر متابعةً». كانت الأفلامُ والمسلسلاتُ تأخذ من `getSuggestions` وحدَها، **فإن خلت خلا
+ * الصفُّ** — بينما الأنمي يكمّل (`animePool`/D-1217). وهو ما أظهر التريلرات للأنمي وأخفاها عن جاريه.
+ *
+ * ١ · **من أعماله**: ما في البِركة العامّة لهذه الجهة (بلا أنمي) — كما كان، وهو الأوّلُ دائماً.
+ * ٢ · **من أنواعه** (إن قلّ الأوّلُ عن ٢٠): أكثرُ ثلاثةِ أنواعٍ في مكتبته لهذه الجهة، **ثمّ أنواعُ ملفّه المفضّلة** («2 ب»)،
+ *     الأشهرُ فيها — نداءٌ لكلِّ نوع، مخبّأٌ ساعة. السببُ «لأنك تتابع «دراما»».
+ * ٣ · **الأشهر** (إن قلّ المجموعُ عن ٢٠): الأكثرُ إضافةً في مكتبات أعضاء Loopz («3 ب»، هجرة 214)، ثمّ رائجُ الأسبوع في
+ *     TMDB إن لم يكفِ. السببُ «رائج الآن» («4 أ»).
+ *
+ * ⚖️ **حرّاسُ البِركة العامّة نفسُها في الدرجتين**: لا ما في مكتبته ولا ما شاهده ولا ما رفضه («غير مهتم» أو تقييمٌ ٤ فأقل)،
+ * وأرضيّةُ التقييم ٦٫٥ (طلبُه القديم في `recommend.ts`)، واللغاتُ المستبعدة في تفضيلاته، ولا أنمي ولا أطفال ولا توك شو.
+ * ⚖️ **وسقفُ التكملة أربعون**: نافذةُ قرعة التريلرات ثلاثةُ أضعاف المسبار (٤٢)، و«مقترح لك» يعرض عشراً — ما فوقها نداءاتٌ لا تُعرض.
+ */
+const TIER_MIN = 20;
+const TIER_CAP = 40;
+const TIER_GENRES_FROM_LIBRARY = 3;
+const NO_GENRE_TIER = new Set(["animation"]);
+
+async function tierGuards() {
+  const [rawFollows, rawRatings, watchedMovieIds, dismissed, prefs] = await Promise.all([
+    getFollows(),
+    getMyRatings(),
+    getWatchedMovieIds(),
+    getDismissedTitles(),
+    getContentPrefs(),
+  ]);
+  const excluded = new Set<number>([
+    ...rawFollows.map((f) => f.tmdb_id),
+    ...watchedMovieIds,
+    ...rawRatings.filter((r) => r.rating <= 4).map((r) => r.tmdb_id),
+    ...dismissed,
+  ]);
+  const personalize = hasAnyPrefs(prefs);
+  const pass = (r: SearchResult, side: "movie" | "tv") =>
+    !!r.poster_path &&
+    !excluded.has(r.id) &&
+    (r.vote_average ?? 0) > 6.5 &&
+    !looksAnime(r) &&
+    !(personalize && isExcludedLanguage(r, prefs)) &&
+    railGuard([r], { anime: "drop" }).length === 1 &&
+    dropKids([r], side).length === 1;
+  return { follows: rawFollows, pass };
+}
+
+/** أنواعُ الدرجة الثانية لجهةٍ: أكثرُ ثلاثةٍ في مكتبته (المتروكُ لا يُعدّ) ثمّ مفضّلاتُ ملفّه، بلا تكرارٍ وبلا «رسوم متحرّكة» */
+function tierGenres(
+  follows: { media_type: string; genres?: number[] | null; dropped?: boolean | null }[],
+  favorite: number[],
+  side: "movie" | "tv",
+): BrowseGenre[] {
+  const count = new Map<string, number>();
+  for (const f of follows) {
+    if (f.media_type !== side || f.dropped) continue;
+    const seen = new Set<string>();
+    for (const id of f.genres ?? []) {
+      const g = browseGenreForId(id);
+      if (!g || seen.has(g.slug)) continue;
+      seen.add(g.slug);
+      count.set(g.slug, (count.get(g.slug) ?? 0) + 1);
+    }
+  }
+  const usable = (g: BrowseGenre | null | undefined): g is BrowseGenre =>
+    !!g && !NO_GENRE_TIER.has(g.slug) && (side === "movie" ? g.movie : g.tv).length > 0;
+  const fromLibrary = [...count.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([slug]) => BROWSE_GENRES.find((g) => g.slug === slug))
+    .filter(usable)
+    .slice(0, TIER_GENRES_FROM_LIBRARY);
+  const out = [...fromLibrary];
+  for (const id of favorite) {
+    const g = browseGenreForId(id);
+    if (usable(g) && !out.some((o) => o.slug === g.slug)) out.push(g);
+  }
+  return out;
+}
+
+/** الدرجتان الثانية والثالثة لجهةٍ واحدة — تُنادى فقط إن قصرت الأولى. `have` ما أُخذ قبلها (يُسقط المكرّر) */
+async function tierFill(side: "movie" | "tv", have: Set<string>, need: number, headCount: number): Promise<Recommendation[]> {
+  const out: Recommendation[] = [];
+  if (need <= 0) return out;
+  const { follows, pass } = await tierGuards();
+  const key = (id: number) => `${side}-${id}`;
+  const take = (r: SearchResult, rec: Omit<Recommendation, "result" | "score">) => {
+    const row = { ...r, media_type: side } as SearchResult;
+    if (out.length >= need || have.has(key(row.id)) || !pass(row, side)) return;
+    have.add(key(row.id));
+    out.push({ result: row, score: 0, ...rec });
+  };
+
+  /* ٢ · من أنواعه — قوائمُ الأنواع تُدمج بالتناوب (الأوّلُ من كلٍّ ثمّ الثاني…) فلا يحتكر نوعٌ واحدٌ الصفّ */
+  const profile = await getProfile().catch(() => null);
+  const genres = tierGenres(follows, profile?.favorite_genres ?? [], side);
+  if (genres.length) {
+    const lists = await Promise.all(
+      genres.map((g) =>
+        topByFilter(side, { genreIds: side === "movie" ? g.movie : g.tv }, 20, "popularity.desc")
+          .then((rows) => ({ g, rows }))
+          .catch(() => ({ g, rows: [] as SearchResult[] })),
+      ),
+    );
+    const longest = Math.max(0, ...lists.map((l) => l.rows.length));
+    for (let i = 0; i < longest && out.length < need; i++)
+      for (const { g, rows } of lists) if (rows[i]) take(rows[i], { source: "genres", tier: "genre", genreSlug: g.slug });
+  }
+  /* المجموعُ (الأولى + الأنواع) بلغ العتبة — الدرجةُ الثالثة لا تُطلب */
+  if (headCount + out.length >= TIER_MIN) return out;
+
+  /* ٣ · الأشهر — Loopz أوّلاً (أنواعُ الصفّ تُسقط الأنمي قبل أيِّ نداء)، ثمّ رائجُ الأسبوع */
+  const loopz = (await getLoopzPopular(side))
+    .filter((p) => !have.has(key(p.tmdb_id)) && !(p.genres ?? []).includes(16))
+    .slice(0, need - out.length + 10);
+  if (loopz.length) for (const r of await resultsByIds(side, loopz.map((p) => p.tmdb_id))) take(r, { source: "genres", tier: "trending" });
+  if (out.length < need) {
+    const trend = await trendingWeekOf(side).catch(() => [] as SearchResult[]);
+    for (const r of trend) take(r, { source: "genres", tier: "trending" });
+  }
+  return out;
+}
+
+/**
+ * بِركةُ تبويب الأفلام أو المسلسلات (أو «لك» بالجهتين معاً `"all"`) — الأولى من البِركة العامّة، والتكملةُ إن قلّت عن ٢٠.
+ * **القارئُ الواحدُ لـ«مقترح لك» وصفِّ التريلرات وتبويب «لك» في صفحة التريلرات** («1 ج») فلا يفترق ما يقترحه كلٌّ منها.
+ */
+export async function tabPool(general: Recommendation[], side: "movie" | "tv" | "all"): Promise<Recommendation[]> {
+  const head =
+    side === "all"
+      ? general
+      : general.filter((s) => s.result.media_type === side && !looksAnime(s.result));
+  if (head.length >= TIER_MIN) return head;
+  const have = new Set(head.map((s) => `${s.result.media_type === "movie" ? "movie" : "tv"}-${s.result.id}`));
+  const sides: ("movie" | "tv")[] = side === "all" ? ["movie", "tv"] : [side];
+  const room = TIER_CAP - head.length;
+  /* الجهتان في «لك» تتقاسمان المساحةَ بالعدل ثمّ تُدمجان بالتناوب */
+  const headOf = (s: "movie" | "tv") => head.filter((h) => (h.result.media_type === "movie" ? "movie" : "tv") === s).length;
+  const parts = await Promise.all(
+    sides.map((s) => tierFill(s, have, Math.ceil(room / sides.length), headOf(s)).catch(() => [] as Recommendation[])),
+  );
+  const fill: Recommendation[] = [];
+  const longest = Math.max(0, ...parts.map((p) => p.length));
+  for (let i = 0; i < longest; i++) for (const p of parts) if (p[i]) fill.push(p[i]);
+  /* درجةُ الأنواع قبل «رائج الآن» في الترتيب النهائيّ — الأقربُ إليه أوّلاً */
+  fill.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === "genre" ? -1 : 1));
+  return [...head, ...fill];
+}
+
+/** سطرُ السبب تحت البطاقة — واحدٌ لـ«مقترح لك» والتريلرات على الويب والتطبيق */
+export function recoNote(s: Pick<Recommendation, "seedTitle" | "tier" | "genreSlug">, locale: Locale): string {
+  const t = getDict(locale);
+  if (s.seedTitle) return t.recoFrom(s.seedTitle);
+  if (s.tier === "trending") return t.recoTrendingNow;
+  if (s.tier === "genre") {
+    const g = BROWSE_GENRES.find((x) => x.slug === s.genreSlug);
+    if (g) return t.recoBecauseGenre(browseGenreName(g, locale === "en" ? "en" : "ar"));
+  }
+  return t.recoFromGenre;
+}
 
 /** بِركةُ تبويب الأنمي: أنميُ البِركة العامّة أوّلاً ثمّ بذورُ الأنمي، بلا تكرار */
 export async function animePool(general: Recommendation[], locale: Locale): Promise<Recommendation[]> {

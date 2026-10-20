@@ -8,6 +8,7 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { useBootRoot } from "../bootRoot";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write, queryClient } from "../api";
+import { session } from "../session";
 import { takeDiscoverAim } from "./aim";
 import { prefetchLibrary } from "../library/LibraryScreen";
 import { useApp } from "../state";
@@ -116,13 +117,17 @@ export function prefetchDiscover(): void {
      ظهور الفيديو، وقوائم كذلك»): كانا خارج التسخين، فيبدأ طلبُهما عند فتح الشاشة — والتريلراتُ أبطأُ
      صفوفها (TMDB لكلِّ عمل) فظهرت بعد ~٧ث. ومصغّرةُ أوّل تريلرين تُجلب إلى كاش الصور فتُرسم البطاقةُ
      فوراً ويركب المشغّلُ فوقها كما كان (D-987) — لا تغييرَ في عمل المشغّل نفسِه. */
-  void queryClient
-    .fetchQuery(trailersQuery(tab))
-    .then((d) => {
-      const urls = (d?.items ?? []).slice(0, 2).map(thumbOf);
-      if (urls.length) void Image.prefetch(urls, "memory-disk");
-    })
-    .catch(() => {});
+  /* 🆕 D-1486 — **والتريلراتُ لا تُسخَّن بلا رمزٍ صالح** (تسجيلُ أحمد ٢٠ أكتوبر: صفُّ الأفلام والمسلسلات غائبٌ والأنمي حاضر):
+     تسخينٌ سبق الرمزَ وصل الخادمَ ضيفاً، فعادت قائمةٌ فارغةٌ ناجحةٌ حُفظت في ملفّ الكاش أيّاماً. الخادمُ صار يردّه «غير مسجّل»
+     أيضاً — وهذا حزامُ الجهاز: بلا رمزٍ يجلبه الصفُّ نفسُه حين يُفتح، وبالرمز. */
+  if (session.has())
+    void queryClient
+      .fetchQuery(trailersQuery(tab))
+      .then((d) => {
+        const urls = (d?.items ?? []).slice(0, 2).map(thumbOf);
+        if (urls.length) void Image.prefetch(urls, "memory-disk");
+      })
+      .catch(() => {});
   void queryClient.prefetchQuery(listsQuery);
 }
 

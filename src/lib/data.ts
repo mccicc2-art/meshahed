@@ -1993,6 +1993,25 @@ export async function getDismissedTitles(): Promise<Set<number>> {
   }
 }
 
+/**
+ * 🆕 D-1486 — **الأكثرُ إضافةً في مكتبات أعضاء Loopz** (هجرة 214، `loopz_popular_titles`): رقمُ العمل وعددُ من أضافه
+ * وأنواعُه — بلا هويّة. أوّلُ ما تكمّل به الدرجةُ الثالثة من الاقتراحات («رائج الآن»، أحمد ٢٠ أكتوبر: «3 ب»).
+ * للعضو وحدَه (الدالّةُ لا تُمنح للزائر)، وفشلُها قائمةٌ فارغة: الدرجةُ تكمل من رائج TMDB.
+ */
+export const getLoopzPopular = cache(
+  async (kind: "movie" | "tv"): Promise<{ tmdb_id: number; members: number; genres: number[] | null }[]> => {
+    try {
+      if (!(await getUserId())) return [];
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("loopz_popular_titles", { kind, max_rows: 60 });
+      if (error || !data) return [];
+      return data as { tmdb_id: number; members: number; genres: number[] | null }[];
+    } catch {
+      return [];
+    }
+  },
+);
+
 /** عدد الرسائل الواردة غير المقروءة — لشارة تبويب «الرسائل» */
 /* `cache()`: يُستدعى من الشريط العلويّ ومن الرئيسية ومن البريد في الطلب
    الواحد — كان RPC يُدفع مرّتين لكلّ فتحةٍ للرئيسية (شقيقُه getUnreadSignals

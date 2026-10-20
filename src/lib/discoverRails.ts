@@ -13,9 +13,9 @@ import {
   dropKids,
 } from "@/lib/tmdb";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
-import { railGuard, topChartRail, animeMovieRail, looksAnime } from "@/lib/topChart";
+import { railGuard, topChartRail, animeMovieRail } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
-import { getSuggestions, animePool } from "@/lib/suggest";
+import { getSuggestions, animePool, tabPool } from "@/lib/suggest";
 import { getLibState } from "@/lib/libState";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, seasonRange, type BrowseQuery } from "@/core/browse";
 import { uniqueMyRows, type MyRow } from "@/core/myRows";
@@ -300,7 +300,7 @@ export function drawMyRow<T>(rows: T[], key: string, now: number = Date.now()): 
 export type PersonalTab = "shows" | "movies" | "anime";
 export type PersonalRailsResult = {
   /** «مقترحٌ لك» — مع سببه (`seedTitle`) كما في `PickedForYou` */
-  foryou: { result: SearchResult; seedTitle: string | null }[];
+  foryou: { result: SearchResult; seedTitle: string | null; tier?: "genre" | "trending"; genreSlug?: string }[];
   /** صفوفي (`myRows` من الكوكي) — كلُّ صفٍّ بعنوانه وبابه */
   myrows: { key: string; title: string; items: SearchResult[]; see_all: string }[];
   /** «من فنّانيك» — للأفلام غيرِ الأنمي وحدَها، كما في الصفحة */
@@ -328,9 +328,8 @@ export async function personalRails(
     getLibState(),
   ]);
   /* D-1217 — الأنمي بِركتُه `animePool`: بذورُ الأنمي تكمّل ما تقصر عنه البِركةُ العامّة */
-  const suggested = anime
-    ? await animePool(pool, locale)
-    : pool.filter((s) => (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") && !looksAnime(s.result));
+  /* 🆕 D-1486 — والأفلامُ والمسلسلاتُ بدرجاتها الثلاث (`tabPool`): من أعماله ثمّ من أنواعه ثمّ «رائج الآن» */
+  const suggested = anime ? await animePool(pool, locale) : await tabPool(pool, wantMovies ? "movie" : "tv");
   for (let i = suggested.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
@@ -361,7 +360,7 @@ export async function personalRails(
     }),
   );
   return {
-    foryou: suggested.map((s) => ({ result: s.result, seedTitle: s.seedTitle ?? null })),
+    foryou: suggested.map((s) => ({ result: s.result, seedTitle: s.seedTitle ?? null, tier: s.tier, genreSlug: s.genreSlug })),
     myrows: built.filter((b): b is NonNullable<typeof b> => !!b),
     artists: artistWorks,
     libState,

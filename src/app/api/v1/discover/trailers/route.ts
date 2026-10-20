@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getTrailerFeed } from "@/lib/trailers";
 import { getLocale } from "@/lib/locale";
-import { handle, limited } from "@/lib/v1";
+import { handle, limited, requireUser } from "@/lib/v1";
 import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
 import type { TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";
@@ -15,15 +15,19 @@ import type { TrailerCard, TrailersRailPayload } from "@/core/contracts/discover
  * **الضغطُ يشغّل في مكانه** بمشغّلٍ أصليٍّ فوق `react-native-youtube-iframe`،
  * **و`href` صار احتياطاً** يُفتح حين تُرفض المفاتيحُ كلُّها. ولذلك يحمل الردُّ
  * `video_keys` (سلسلةُ البدائل، D-743) لا مفتاحاً واحداً.
- * **مفتوحٌ للضيف** كالصفحة؛ الحدُّ بعنوان الشبكة.
+ * 🔴 🆕 **للعضو وحدَه** (D-1486، نقضُ «مفتوحٌ للضيف»): طلبٌ بلا جلسة (رمزٌ لم يصل بعد أو انتهى) كان يُجاب
+ * كضيفٍ بقائمةٍ فارغةٍ **ناجحة** — أفلامٌ ٠ ومسلسلاتٌ ٠ وأنمي ٩ — فيحفظها التطبيقُ ويعرضها أيّاماً (تسجيلُ أحمد ٢٠ أكتوبر).
+ * الآن «غير مسجّل» كأخيه `discover/personal`، فيعيد التطبيقُ الطلبَ حين يصل الرمز. والضيفُ لا يصل «اكتشف» أصلاً (الدخولُ
+ * أوّلاً، ١٠ أكتوبر). والحدُّ بالعضو لا بعنوان الشبكة.
  * ⚠️ **`private`**: الاقتراحاتُ تطيع المصروفَ والمُشاهَد لكلِّ قارئ.
  */
 export async function GET(req: NextRequest) {
   return handle(
     async () => {
       routeName("discover/trailers");
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
-      const lim = limited(`v1:discover:trailers:${ip}`, 60, 60_000);
+      const auth = await requireUser();
+      if (!auth.ok) return auth;
+      const lim = limited(`v1:discover:trailers:${auth.user.id}`, 60, 60_000);
       if (lim) return lim;
       const tabRaw = req.nextUrl.searchParams.get("tab");
       const tab = tabRaw === "movies" ? "movies" : tabRaw === "anime" ? "anime" : "shows";

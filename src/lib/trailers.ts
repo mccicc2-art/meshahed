@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { getSuggestions, animePool } from "@/lib/suggest";
+import { getSuggestions, animePool, tabPool, recoNote } from "@/lib/suggest";
 import { getDismissedTitles, getFollows, getWatchedMovieIds } from "@/lib/data";
 import {
   getTrailerKeys,
@@ -18,7 +18,6 @@ import { getAppleTrailerUrl } from "@/lib/appleTrailers";
 import { getDict, num, type Dict, type Locale } from "@/core/i18n";
 import { browseGenreForId, browseGenreName } from "@/core/browse";
 import { originAdjectives } from "@/core/region";
-import { looksAnime } from "@/lib/topChart";
 import type { TrailerTab } from "@/core/trailerTabs";
 import {
   matchesTrailerFilter,
@@ -600,23 +599,18 @@ export async function getTrailerFeed(
   pin?: TrailerPin,
   opts: TrailerFeedOpts = {},
 ): Promise<TrailerItem[]> {
-  const t = getDict(locale);
   const page = Math.max(0, opts.page ?? 0);
   const perTitle = opts.perTitle ?? 1;
   /* **والاقتراحاتُ تُطلب واسعةً ثمّ تُقصّ**: `getSuggestions` تخلط
      وتُصفّي المصروفَ والمُشاهَد، **وسقفُها الداخليُّ هو ما نمرّره.** */
   const all = await getSuggestions(POOL, locale).catch(() => []);
-  /* D-1217 — الأنمي يكمل بِركتَه ببذور الأنمي (`animePool`)، فلا يصمت صفُّه لمكتبةٍ أغلبُها مسلسلات */
-  if (!all.length && scope !== "anime" && !(opts.filter && trailerFilterActive(opts.filter))) return [];
+  /* D-1217 — الأنمي يكمل بِركتَه ببذور الأنمي (`animePool`)، فلا يصمت صفُّه لمكتبةٍ أغلبُها مسلسلات.
+     🆕 D-1486 — **والأفلامُ والمسلسلاتُ و«لك» مثلُه** (`tabPool`، أحمد ٢٠ أكتوبر): من أعماله ثمّ من أنواعه ثمّ «رائج الآن» —
+     كان هنا `if (!all.length) return []` فيصمت الصفّان لمن قلّت اقتراحاتُه، ولطلبٍ وصل بلا جلسة (والأنمي وحدَه يظهر). */
   const scoped = scope === "anime"
     ? await animePool(all, locale)
-    : scope
-    ? all.filter((s) =>
-        (scope === "movies"
-              ? s.result.media_type === "movie"
-              : s.result.media_type === "tv") && !looksAnime(s.result),
-      )
-    : all;
+    : await tabPool(all, scope === "movies" ? "movie" : scope === "shows" ? "tv" : "all");
+  if (!scoped.length && !(opts.filter && trailerFilterActive(opts.filter))) return [];
   /* 🆕 D-1311 — **والفلترُ قبل النافذة والسَّبر لا بعدهما** (قاعدةُ D-731 في هذا الملفّ): ثلاثمئةُ اقتراحٍ
      مقروءةٌ أصلاً، فالتصفيةُ فيها بصفر نداء — ولو صُفّي ما سُبر لخرج العلفُ فارغاً في بِركةٍ مليئة. */
   const filter = opts.filter && trailerFilterActive(opts.filter) ? opts.filter : undefined;
@@ -695,7 +689,7 @@ export async function getTrailerFeed(
   const noteOf = new Map(
     pool.map((s) => [
       `${s.result.media_type === "movie" ? "movie" : "tv"}-${s.result.id}`,
-      s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
+      recoNote(s, locale),
     ]),
   );
 
