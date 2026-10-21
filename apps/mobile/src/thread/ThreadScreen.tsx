@@ -36,7 +36,7 @@ import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { displayNameOf, profileHref } from "@/core/people";
 import { stackAboveRoots } from "../nativeStack";
-import { orderThread, orderTalk, buildTree, countUnder, canReplyTo, PEEK } from "@/core/threadOrder";
+import { orderThread, orderTalk, buildTree, countUnder, canReplyTo, focusView, PEEK } from "@/core/threadOrder";
 import type { ThreadPayload, ThreadRow, ThreadTarget, ThreadReplyResult, LikeBody, ToggleEpisodeBody, TrackResult } from "../contracts";
 import { openProfile as pushProfile, profileHandleOf } from "../member/open";
 
@@ -88,8 +88,12 @@ function targetOf(r: ThreadRoute): ThreadTarget {
 }
 
 type Item =
-  | { type: "row"; row: ThreadRow; depth: number; indented: boolean; toName: string | null }
-  | { type: "more"; rootId: string; rest: number };
+  | { type: "row"; row: ThreadRow; depth: number; indented: boolean; toName: string | null; link?: "up" | "down" | null; open?: boolean }
+  | { type: "more"; rootId: string; rest: number }
+  /* 🆕 R55 — صفحةُ السطر: «ردّاً على فلان» فوقه، وعنوانُ قسم ردوده، و«عرض رد آخر» تحت ردِّ صاحبها */
+  | { type: "parent"; row: ThreadRow }
+  | { type: "heading"; count: number }
+  | { type: "author-more"; parentId: string };
 
 /**
  * 🆕 M3-fix — **ذاكرةُ الغرفة عند الخروج إلى بابٍ ويبيّ** (أحمد: «المفترض يرجعني مكان ما كنت بالضبط»): الشاشةُ تُنزَل
@@ -99,7 +103,7 @@ type Item =
 const threadView = new Map<string, { y: number; toggled: string[]; expanded: string[]; at: number }>();
 const VIEW_TTL_MS = 10 * 60_000;
 
-export function ThreadScreen({ route, from, compose = false }: { route: ThreadRoute; from: NativeRoot | "web"; compose?: boolean }) {
+export function ThreadScreen({ route, from, compose = false, focus = null }: { route: ThreadRoute; from: NativeRoot | "web"; compose?: boolean; focus?: string | null }) {
   const { t, tokens } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
@@ -195,7 +199,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       if (leaving) return;
       setLeaving(true);
       /* M3-fix — موضعُ القراءة والشجرةُ المفتوحة تُحفظ، وما فوق الجذر يُلتقط، فالرجوعُ من الصفحة يعيد الغرفةَ كما تُركت */
-      threadView.set(JSON.stringify(key), { y: scrollY.current, toggled: [...openNow.current.toggled], expanded: [...openNow.current.expanded], at: Date.now() });
+      threadView.set(JSON.stringify([key, focus]), { y: scrollY.current, toggled: [...openNow.current.toggled], expanded: [...openNow.current.expanded], at: Date.now() });
       const resume = from === "web" ? undefined : stackAboveRoots(nav.getRootState());
       void shell.open(path, from === "web" ? undefined : { returnTo: from, resume }).then((layered) => {
         setLeaving(false);
@@ -208,12 +212,21 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         leave();
       });
     },
-    [leaving, from, leave, key, nav, router],
+    [leaving, from, leave, key, nav, router, focus],
   );
   const openTitle = useCallback(() => {
     if (!d) return;
     router.push({ pathname: "/title/[kind]/[id]", params: { kind: d.work.media_type, id: String(d.work.tmdb_id), from: from === "web" ? "web" : from } });
   }, [router, d, from]);
+  /* 🆕 R55 — صفحةُ السطر شاشةٌ فوق الغرفة (`?r=`)، فالرجوعُ خطوةٌ واحدة كتويتر؛ والمفتاحُ واحدٌ فالصفحةُ ترسم من الكاش فوراً */
+  const openRow = useCallback(
+    (row: ThreadRow) => {
+      if (route.t !== "talk" || row.id === focus) return;
+      haptic.pick();
+      router.push({ pathname: "/talk/[kind]/[id]", params: { kind: route.kind, id: String(route.id), r: row.id, from: from === "web" ? "web" : from } });
+    },
+    [route, focus, router, from],
+  );
   const share = useCallback(() => {
     if (!d) return;
     const url = `${CONFIG.apiBase}${d.share_path}`;
@@ -228,7 +241,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   /* ——— الشجرة ——— */
   /* 🆕 M3-fix — عودةٌ من بابٍ ويبيّ (ملفُّ شخص): الشجرةُ كما تُركت وموضعُ القراءة نفسُه — تُستهلك الذاكرةُ مرّةً */
   const [restored] = useState(() => {
-    const k = JSON.stringify(key);
+    const k = JSON.stringify([key, focus]);
     const v = threadView.get(k);
     threadView.delete(k);
     return v && Date.now() - v.at < VIEW_TTL_MS ? v : null;
@@ -271,6 +284,28 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       return out;
     };
     const out: Item[] = [];
+    /* 🆕 R55 — **صفحةُ السطر** (أحمد ٢١ أكتوبر، «١ أ»): السطرُ نفسُه، ثمّ ردودُه المباشرةُ بترتيب الغرفة، وتحت كلٍّ منها أوّلُ ردٍّ
+       لصاحب الصفحة موصولاً بخطّ و«عرض رد آخر» إن زاد (`focusView`). الحمولةُ حمولةُ الغرفة نفسُها (المفتاحُ واحد)، فلا جلبَ ثانياً */
+    if (nested && focus && d) {
+      const all = buildTree(d.rows, true);
+      const fv = focusView(d.rows, focus, (r) => r.person.id, talkSort);
+      if (fv.focus) {
+        /* النشرةُ أبٌ تقنيٌّ لمنشور الحلقة (`episodeRoomRows` يرفعه جذراً) — فلا «ردّاً على» فوقه */
+        if (fv.parent && !fv.parent.bulletin) out.push({ type: "parent", row: fv.parent });
+        out.push({ type: "row", row: fv.focus, depth: all.depth.get(fv.focus.id) ?? 0, indented: false, toName: null });
+        if (fv.count) out.push({ type: "heading", count: fv.count });
+        for (const x of fv.items) {
+          if (x.kind === "more") out.push({ type: "author-more", parentId: x.parentId });
+          else out.push({ type: "row", row: x.row, depth: all.depth.get(x.row.id) ?? 1, indented: false, toName: null, link: x.link, open: true });
+        }
+      }
+      return { items: out, tree: all, nameOf: new Map(d.rows.map((r) => [r.id, displayNameOf(r.person, t.anonymousUser)])), postCount: 0 };
+    }
+    /* 🆕 R55 — والغرفةُ **جذورٌ وحدَها** بعدد ما تحتها؛ الفروعُ المطويّةُ و«عرض N ردود» سقطت إلى صفحة كلِّ سطر */
+    if (nested) {
+      for (const r of tr.roots) out.push({ type: "row", row: r, depth: 0, indented: false, toName: null, open: true });
+      return { items: out, tree: tr, nameOf: names, postCount: base.filter((r) => !r.bulletin).length };
+    }
     for (const r of tr.roots) {
       out.push({ type: "row", row: r, depth: 0, indented: false, toName: !nested && r.parent_id ? names.get(r.parent_id) ?? null : null });
       if (!nested || !isOpen(r.id)) continue;
@@ -280,7 +315,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       if (flat.length > shown.length) out.push({ type: "more", rootId: r.id, rest: flat.length - shown.length });
     }
     return { items: out, tree: tr, nameOf: names, postCount: base.filter((r) => !r.bulletin).length };
-  }, [d, nested, toggled, expanded, t.anonymousUser, pick, talkSort, tvTalk, tab]);
+  }, [d, nested, toggled, expanded, t.anonymousUser, pick, talkSort, tvTalk, tab, focus]);
   const toggle = useCallback((id: string) => {
     haptic.pick();
     setToggled((s) => {
@@ -393,18 +428,28 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
     [d, nested, route, patch, patchRow, fail, pick],
   );
 
+  /* 🆕 R55 — في صفحة السطر الكتابةُ ردٌّ عليه ما لم يُختر غيرُه؛ وسطرٌ بلغ العمقَ ٣ (حارسُ القاعدة `title_posts_depth`) يُردّ
+     على أبيه — أقربُ سطرٍ فوقه يقبل الردّ — فلا تصير الكتابةُ منشوراً في الغرفة من صفحة ردّ */
+  const focusTarget = useMemo(() => {
+    if (!focus || !nested || !d) return null;
+    const byId = new Map(d.rows.map((r) => [r.id, r]));
+    let cur = byId.get(focus) ?? null;
+    while (cur && !canReplyTo(cur, tree.depth.get(cur.id) ?? 0, true)) cur = cur.parent_id ? byId.get(cur.parent_id) ?? null : null;
+    return cur;
+  }, [focus, nested, d, tree]);
+  const target = replyTo ?? focusTarget;
   /* 🆕 D-1443 — «أرسل» من الخانة: متفائلٌ (الحقلُ يُفرغ فوراً)، والفشلُ يعيد النصَّ والصورةَ والاقتباس */
   const [sending, setSending] = useState(false);
   const sendDock = useCallback(() => {
     const body = text.trim();
     if ((!body && !pic?.path) || (pic && !pic.path) || sending) return;
-    const was = { text, pic, replyTo, spoiler };
+    const was = { text, pic, replyTo, spoiler, target };
     setText("");
     setPic(null);
     setReplyTo(null);
     setSpoiler(false);
     setSending(true);
-    void send(was.replyTo, { body, spoiler: was.spoiler, image: was.pic?.path ?? null, gif: null }).then((ok) => {
+    void send(was.target, { body, spoiler: was.spoiler, image: was.pic?.path ?? null, gif: null }).then((ok) => {
       setSending(false);
       if (ok) return;
       setText((cur) => cur || was.text);
@@ -412,28 +457,28 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       setReplyTo((cur) => cur ?? was.replyTo);
       setSpoiler(was.spoiler);
     });
-  }, [text, pic, replyTo, spoiler, sending, send, setPic]);
+  }, [text, pic, replyTo, spoiler, sending, send, setPic, target]);
   /* الـGIF والعملُ يُرسلان بلمستهما (كالرسائل)، ردّاً على المقتبَس إن كان — وما في الحقل يبقى لرسالةٍ بعده */
   const sendGif = useCallback(
     (id: string) => {
       const parent = replyTo;
       setReplyTo(null);
-      void send(parent, { body: "", spoiler: false, image: null, gif: id }).then((ok) => {
+      void send(parent ?? focusTarget, { body: "", spoiler: false, image: null, gif: id }).then((ok) => {
         if (!ok) setReplyTo((cur) => cur ?? parent);
       });
     },
-    [replyTo, send],
+    [replyTo, send, focusTarget],
   );
   const sendTitle = useCallback(
     (r: SearchTitle) => {
       const parent = replyTo;
       setReplyTo(null);
       const share = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
-      void send(parent, { body: "", spoiler: false, image: null, gif: null, share }).then((ok) => {
+      void send(parent ?? focusTarget, { body: "", spoiler: false, image: null, gif: null, share }).then((ok) => {
         if (!ok) setReplyTo((cur) => cur ?? parent);
       });
     },
-    [replyTo, send],
+    [replyTo, send, focusTarget],
   );
   const beginReply = useCallback((row: ThreadRow) => {
     haptic.pick();
@@ -515,6 +560,37 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   }, [d, signedIn]);
   const renderItem = useCallback(
     ({ item }: { item: Item }) => {
+      if (item.type === "parent") {
+        const pr = item.row;
+        const snippet = (pr.body || "").replace(/\s+/g, " ").trim();
+        return (
+          <Pressable onPress={() => openRow(pr)} accessibilityRole="link" style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 12 }}>
+            <Icon name="comment" size={14} color={tokens.muted} />
+            <Text size={13} muted numberOfLines={1} style={{ flexShrink: 1 }}>
+              {t.talkReplyingTo(nameOf.get(pr.id) ?? "")}
+              {snippet && !pr.has_spoiler && !(pr.season != null && pr.episode != null && !watchedEps.has(talkEpisodeKey(pr.season, pr.episode))) ? `: «${snippet.slice(0, 80)}»` : ""}
+            </Text>
+          </Pressable>
+        );
+      }
+      if (item.type === "heading") {
+        return (
+          <View style={{ paddingTop: 16, paddingBottom: 4 }}>
+            <Text size={13} weight="700" muted>{t.talkRepliesHeading(item.count)}</Text>
+          </View>
+        );
+      }
+      if (item.type === "author-more") {
+        const pr = d?.rows.find((x) => x.id === item.parentId);
+        return (
+          <Pressable
+            onPress={() => pr && openRow(pr)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingStart: 42, borderBottomWidth: 1, borderBottomColor: tokens.divider }}
+          >
+            <Text size={12} weight="700" color={tokens.accent}>{t.talkMoreReplies(1)}</Text>
+          </Pressable>
+        );
+      }
       if (item.type === "more") {
         return (
           <Pressable
@@ -539,12 +615,14 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         <ReplyItem
           row={r}
           revealAll={revealAll}
-          unwatched={unwatchedRoom}
+          unwatched={focus && nested ? r.season != null && r.episode != null && !watchedEps.has(talkEpisodeKey(r.season, r.episode)) : unwatchedRoom}
           signedIn={signedIn}
           replyingTo={item.toName}
           canReply={canReplyTo(r, item.depth, nested)}
           replyCount={nested ? countUnder(tree, r.id) : 0}
-          fold={kids.length ? { open, count: countUnder(tree, r.id), onToggle: () => toggle(r.id) } : null}
+          fold={kids.length && !item.open && !focus ? { open, count: countUnder(tree, r.id), onToggle: () => toggle(r.id) } : null}
+          onOpen={item.open ? openRow : undefined}
+          link={item.link ?? null}
           showLikes={!!d?.has_likes}
           showVotes={!!d?.has_votes}
           onLike={like}
@@ -561,7 +639,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
       );
       return item.indented ? <View style={{ marginStart: 20, paddingStart: 12, borderStartWidth: 1, borderStartColor: tokens.divider }}>{body}</View> : body;
     },
-    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from, revealAll, unwatchedRoom],
+    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from, revealAll, unwatchedRoom, openRow, focus, nameOf, d?.rows, watchedEps],
   );
 
   /* 🆕 D-1508 — «شاهدتها» من غرفة الحلقة: الكتابةُ نفسُها في صفحة العمل (`track/episode`)، والغطاءُ ينزل فوراً */
@@ -587,7 +665,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   const latest = useMemo(() => (tvTalk && d ? latestBulletin(d.rows) : null), [tvTalk, d]);
   const pickBulletin = useMemo(() => (d && pick ? episodeBulletin(d.rows, pick) : null), [d, pick]);
 
-  const header = d ? (
+  const header = d && !(focus && nested) ? (
     <Head
       d={d}
       reportedHead={reported.has("head")}
@@ -640,7 +718,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
             </View>
           </Pressable>
           <Text size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>
-            {d ? (d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
+            {d ? (focus && nested ? (items.some((x) => x.type === "parent") ? t.talkReplyPage : t.talkPostPage) : d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
           </Text>
           <Pressable onPress={share} disabled={!d} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <Icon name="share" size={18} color={tokens.fg} />
@@ -668,7 +746,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           scrollEventThrottle={64}
           onContentSizeChange={(_, h) => restoreTo(h)}
           data={epList ? [] : items}
-          keyExtractor={(it) => (it.type === "row" ? it.row.id : `more:${it.rootId}`)}
+          keyExtractor={(it) => (it.type === "row" ? it.row.id : it.type === "more" ? `more:${it.rootId}` : it.type === "parent" ? `parent:${it.row.id}` : it.type === "heading" ? "heading" : `author-more:${it.parentId}`)}
           renderItem={renderItem}
           ListHeaderComponent={header}
           ListEmptyComponent={epList ? null : <Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{pick ? t.talkEpisodeEmpty : tvTalk ? t.talkGeneralEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}</Text>}
@@ -726,7 +804,7 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
           onGif={nested ? sendGif : undefined}
           onLoopz={route.t === "talk" ? sendTitle : undefined}
           onSend={sendDock}
-          placeholder={replyTo ? t.talkReplyingTo(nameOf.get(replyTo.id) ?? "") : pick ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+          placeholder={target ? t.talkReplyingTo(nameOf.get(target.id) ?? "") : pick ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
         />
       ) : null}
 

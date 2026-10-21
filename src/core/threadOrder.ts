@@ -99,3 +99,45 @@ export function orderTalk<T extends OrderRow & { likes?: number }>(rows: readonl
   }
   return [...roots, ...kids];
 }
+
+/* ======================================================================================================================
+ * 🆕 R55 — **صفحةُ المنشور / الردّ** (أحمد ٢١ أكتوبر: «افكر اضغط عالرد ويفتح صفحة الرد واقرا الردود عليها»، ثمّ بلقطة تويتر:
+ * «صاحب التغريدة الاساسية تظهر رده على الرد اللي جاء على بوسته»؛ «١ ب»: بلا شارة، «٢ أ»: أوّلُ ردٍّ ثمّ «عرض رد آخر»).
+ * الغرفةُ صارت جذوراً وحدَها؛ ولمسةُ سطرٍ تفتح صفحتَه: السطرُ نفسُه، ثمّ أبناؤه المباشرون بترتيب الغرفة، وتحت كلِّ ابنٍ
+ * **أوّلُ ردٍّ لصاحب الصفحة عليه** موصولاً بخطّ (`link`)، و«عرض رد آخر» (`more`) إن ردّ أكثر — يفتح صفحةَ ذاك الابن.
+ * دالّةٌ خالصةٌ يقرؤها التطبيقُ والويب.
+ * ==================================================================================================================== */
+export type FocusItem<T> = { kind: "row"; row: T; link: "down" | "up" | null } | { kind: "more"; parentId: string };
+
+export function focusView<T extends OrderRow & { likes?: number; author?: string }>(
+  rows: readonly T[],
+  focusId: string,
+  authorOf: (r: T) => string,
+  sort: "latest" | "active",
+): { focus: T | null; parent: T | null; items: FocusItem<T>[]; count: number } {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const focus = byId.get(focusId) ?? null;
+  if (!focus) return { focus: null, parent: null, items: [], count: 0 };
+  const kids = new Map<string, T[]>();
+  for (const r of rows) {
+    if (!r.parent_id || !byId.has(r.parent_id)) continue;
+    const list = kids.get(r.parent_id);
+    if (list) list.push(r);
+    else kids.set(r.parent_id, [r]);
+  }
+  const under = (id: string): number => (kids.get(id) ?? []).reduce((n, c) => n + 1 + under(c.id), 0);
+  const oldest = (a: T, b: T) => a.created_at.localeCompare(b.created_at);
+  const newest = (a: T, b: T) => b.created_at.localeCompare(a.created_at);
+  const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + 2 * (kids.get(r.id)?.length ?? 0);
+  const children = [...(kids.get(focus.id) ?? [])].sort(sort === "latest" ? newest : (a, b) => weight(b) - weight(a) || newest(a, b));
+  const owner = authorOf(focus);
+  const items: FocusItem<T>[] = [];
+  for (const c of children) {
+    const mine = authorOf(c) === owner ? [] : (kids.get(c.id) ?? []).filter((k) => authorOf(k) === owner).sort(oldest);
+    items.push({ kind: "row", row: c, link: mine.length ? "down" : null });
+    if (!mine.length) continue;
+    items.push({ kind: "row", row: mine[0], link: "up" });
+    if (mine.length > 1) items.push({ kind: "more", parentId: c.id });
+  }
+  return { focus, parent: focus.parent_id ? byId.get(focus.parent_id) ?? null : null, items, count: under(focus.id) };
+}

@@ -13,11 +13,11 @@ export function originOf(from: string | undefined): NativeRoot | "web" {
 /**
  * الأبوابُ الثلاثة إلى شاشةٍ واحدة (Phase 11-M · M3). V-B (D-1356) — وإن سقطت فرسالةٌ و«حاول مجدداً» يعيد تركيبَها؛ لا صفحةَ ويبٍ بديلة.
  */
-export function ThreadRouteScreen({ route, from, compose = false }: { route: ThreadRoute; from: string | undefined; compose?: boolean }) {
+export function ThreadRouteScreen({ route, from, compose = false, focus = null }: { route: ThreadRoute; from: string | undefined; compose?: boolean; focus?: string | null }) {
   const origin = originOf(from);
   return (
     <ErrorBoundary screen="thread">
-      <ThreadScreen route={route} from={origin} compose={compose} />
+      <ThreadScreen route={route} from={origin} compose={compose} focus={focus} />
     </ErrorBoundary>
   );
 }
@@ -27,10 +27,11 @@ export function ThreadRouteScreen({ route, from, compose = false }: { route: Thr
  * نقاشاً فيبقى بابَ ويبٍ كما كان. الشكلُ شكلُ روابط الويب نفسِها، فلا جدولَ مساراتٍ ثانٍ.
  */
 export function openThreadPath(router: ReturnType<typeof useRouter>, path: string, from: NativeRoot | "web"): boolean {
-  let m = /^\/talk\/(tv|movie)\/(\d+)\/?$/.exec(path);
+  /* 🆕 R55 — `?r=<id>` صفحةُ منشورٍ أو ردٍّ في الغرفة (رابطُ الويب نفسُه) */
+  let m = /^\/talk\/(tv|movie)\/(\d+)\/?(?:\?r=([0-9a-f-]{36}))?$/i.exec(path);
   if (m) {
     warm({ t: "talk", kind: m[1] === "movie" ? "movie" : "tv", id: Number(m[2]) });
-    router.push({ pathname: "/talk/[kind]/[id]", params: { kind: m[1], id: m[2], from } });
+    router.push({ pathname: "/talk/[kind]/[id]", params: { kind: m[1], id: m[2], from, ...(m[3] ? { r: m[3] } : {}) } });
     return true;
   }
   m = /^\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?$/i.exec(path);

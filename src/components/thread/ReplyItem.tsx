@@ -110,7 +110,13 @@ export function ReplyItem({
   onReport,
   mentionNames,
   revealAll = false,
+  onOpen,
+  link = null,
 }: {
+  /** 🆕 R55 — لمسةُ الصفّ تفتح صفحتَه (`?r=`): الغرفةُ جذورٌ وحدَها، والردودُ في صفحة كلِّ سطر */
+  onOpen?: () => void;
+  /** 🆕 R55 — خطُّ الوصل بين الوجهين (ردُّ صاحب الصفحة تحت ردٍّ عليه، كتويتر): `down` يمدّه إلى ما تحته، `up` يستقبله */
+  link?: "up" | "down" | null;
   /** 🆕 D-1495 — «حرق الأحداث» مفعّلٌ في رأس الغرفة */
   revealAll?: boolean;
   /** 🆕 D-1443 — أسماءُ من كتبوا في هذا النقاش: `@اسم` منهم رابطٌ إلى صفحته، وغيرُه نصّ */
@@ -237,8 +243,20 @@ export function ReplyItem({
        العرضَ للكلام لأن خيطَه شجرة.** **فالتشريحُ تبع الخيط لا تبع
        الذوق** (D-242). */
     <article
-      className={`py-3 border-b border-[color:var(--divider)] ${pending ? "opacity-60" : ""}`}
+      className={`relative py-3 ${link === "down" ? "" : "border-b border-[color:var(--divider)]"} ${pending ? "opacity-60" : ""} ${onOpen && !pending ? "cursor-pointer" : ""}`}
+      /* 🆕 R55 — الصفُّ كلُّه بابُ صفحته، إلا ما فيه من أزرارٍ وروابطَ وصور (لكلٍّ منها فعلُه) */
+      onClick={
+        onOpen && !pending
+          ? (e) => {
+              if ((e.target as HTMLElement).closest("a,button,input,textarea,img,video,[role=menu],[role=dialog]")) return;
+              onOpen();
+            }
+          : undefined
+      }
     >
+      {/* الخطُّ في منتصف عمود الوجه (٣٤ ⇒ ١٦px) — من تحت الوجه إلى آخر الصفّ، أو من أعلاه إلى الوجه */}
+      {link === "down" ? <span aria-hidden className="absolute w-0.5 bg-border pointer-events-none" style={{ insetInlineStart: 16, top: 50, bottom: 0 }} /> : null}
+      {link === "up" ? <span aria-hidden className="absolute w-0.5 bg-border pointer-events-none" style={{ insetInlineStart: 16, top: 0, height: 10 }} /> : null}
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           {/* **والوجهُ ٣٤ لا ٤٠**: صار في سطرِ ترويسةٍ ارتفاعُه ارتفاعُ
@@ -318,6 +336,8 @@ export function ReplyItem({
           )}
         </div>
 
+        {/* 🆕 R55 — الصفُّ الموصولُ يُزاح متنُه إلى جانب الوجه فيمرّ الخطُّ في عمود الوجوه ولا يشقّ الكلام */}
+        <div style={link ? { marginInlineStart: 42 } : undefined}>
         {replyingToName && <ReplyingTo name={replyingToName} locale={locale} />}
 
         {/* **صفٌّ واحدٌ بمتنين** (D-261) — **ولا مكوّنَ ثانٍ للنشرة**:
@@ -526,6 +546,7 @@ export function ReplyItem({
             {fold ? <div className="-mx-0.5 flex">{fold}</div> : null}
           </>
         )}
+        </div>
       </div>
     </article>
   );

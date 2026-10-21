@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   addReviewReply,
   addNewsReply,
@@ -36,6 +36,7 @@ import type { PickedTitle } from "../TitleSearchSheet";
 /** 🆕 D-1443 — العملُ الملتقَط من ورقة البحث بشكل بطاقة النقاش */
 const shareOfPick = (p: PickedTitle): NonNullable<ThreadReply["share"]> => ({ media_type: p.kind, tmdb_id: p.id, title: p.title, poster_path: p.posterPath });
 import { isPlus } from "@/core/plan";
+import { focusView } from "@/core/threadOrder";
 
 /**
  * **خيطُ الردود — واحدٌ لكلِّ ما يُردّ عليه في Loopz** (D-242).
@@ -167,6 +168,17 @@ export function ThreadReplies({
   /* 🆕 **مسارُ الصفحة الحيّ** (D-361) — يسافر مع الصوت ليُبطل نسخةَ هذه
      الصفحة وحدَها لا صفحةً مسمّرةً في الفعل. */
   const pathname = usePathname();
+  /* 🆕 R55 — **صفحةُ المنشور / الردّ** (أحمد ٢١ أكتوبر: «اضغط عالرد ويفتح صفحة الرد واقرا الردود عليها»): `?r=<id>` في الغرفة.
+     تُفتح بـ`history.pushState` لا بتنقّلٍ إلى الخادم — الخيطُ كلُّه هنا أصلاً، فالصفحةُ ترسم فوراً و«رجوع» المتصفّح خطوةٌ واحدة */
+  const search = useSearchParams();
+  const focusId = target.kind === "talk" ? search.get("r") : null;
+  const openRow = (id: string) => {
+    if (target.kind !== "talk" || id === focusId || id.startsWith(TEMP)) return;
+    tap(6);
+    setOpen(null);
+    window.history.pushState(null, "", `${pathname}?r=${encodeURIComponent(id)}`);
+    window.scrollTo({ top: 0 });
+  };
   /**
    * 🆕 **الفروعُ مطويّةٌ حتى تُفتح** (D-284، طلبُ أحمد: «الردود الي في ردّ
    * الشخص المفروض ما تظهر على طول، لازم فيه سهم توسيع»).
@@ -260,7 +272,7 @@ export function ThreadReplies({
   const tvTalk = target.kind === "talk" && target.mediaType === "tv" && (seasons?.length ?? 0) > 0;
   const epList = tvTalk && talkTab === "episodes" && !pick;
   const bulletinIds = new Set(whole.filter((r) => r.kind).map((r) => r.replyId));
-  const all = whole
+  const all = (focusId ? whole : whole
     .filter((r) =>
       !tvTalk
         ? !pick || (r.season === pick.season && r.episode === pick.episode)
@@ -270,8 +282,8 @@ export function ThreadReplies({
             ? !r.kind && (r.season == null || r.episode == null)
             : false,
     )
-    .map((r) => (tvTalk && pick && r.parentId && bulletinIds.has(r.parentId) ? { ...r, parentId: null } : r))
-    /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة */
+    .map((r) => (tvTalk && pick && r.parentId && bulletinIds.has(r.parentId) ? { ...r, parentId: null } : r)))
+    /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة. وصفحةُ السطر تقرأ الخيطَ كاملاً (رابطٌ مباشرٌ إلى ردٍّ في حلقةٍ لا يعرف منتقيها) */
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   /* 🆕 D-1508 — أرقامُ «الحلقات»: ما قيل في كلِّ حلقة (بلا النشرات) ووقتُ آخره، وآخرُ حلقةٍ نشرها لوبز، واسمُ كلِّ حلقة من نشرتها */
   const epStats = new Map<string, EpisodeStat>();
@@ -407,6 +419,14 @@ export function ThreadReplies({
       depthOf.set(r.replyId, 0);
     }
   }
+  /* 🆕 R55 — هدفُ الكتابة في صفحة السطر: السطرُ نفسُه، أو أقربُ أبٍ تحت حارس العمق (الهجرة ٧٨) — فلا تصير منشوراً في الغرفة */
+  let focusTarget: string | null = null;
+  if (focusId && nested) {
+    const parentOf = new Map(all.map((r) => [r.replyId, r.parentId ?? null]));
+    let cur: string | null = parentOf.has(focusId) ? focusId : null;
+    while (cur && (depthOf.get(cur) ?? 0) >= MAX_DEPTH) cur = parentOf.get(cur) ?? null;
+    focusTarget = cur;
+  }
 
   return (
     <>
@@ -417,7 +437,7 @@ export function ThreadReplies({
       )}
 
       {/* 🆕 D-1495 — أدواتُ الغرفة فوق الخيط (الحلقة · «حرق الأحداث» · العددُ و«الأحدث ⌄») */}
-      {tvTalk ? (
+      {tvTalk && !focusId ? (
         <TalkTvBar
           locale={locale}
           seasons={seasons ?? []}
@@ -441,7 +461,7 @@ export function ThreadReplies({
           onWatched={markEpWatched}
         />
       ) : null}
-      {target.kind === "talk" && !epList ? (
+      {target.kind === "talk" && !epList && !focusId ? (
         <TalkEpisodeBar
           locale={locale}
           seasons={tvTalk ? [] : (seasons ?? [])}
@@ -458,7 +478,9 @@ export function ThreadReplies({
       ) : null}
 
       {/* ===== الردود ===== */}
-      {epList ? null : all.length === 0 ? (
+      {focusId ? (
+        focusPage(focusId)
+      ) : epList ? null : all.length === 0 ? (
         <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">
           {pick ? t.talkEpisodeEmpty : tvTalk ? t.talkGeneralEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}
         </p>
@@ -522,10 +544,12 @@ export function ThreadReplies({
               /* 🆕 **وGIF حيث تُقبل الصورة** (D-362) — نفسُ الشرط، فالنقاشُ
                  وحدَه يخزّن حمولةً بصريّة (D-298/قرارُ ١٦ أغسطس). */
               allowGif={nested}
+              /* 🆕 R55 — في صفحة السطر الكتابةُ ردٌّ عليه (أو على أقرب أبٍ يقبل الردّ) لا منشورٌ في الغرفة */
+              hint={focusTarget ? t.talkReplyingTo(nameOf.get(focusTarget) ?? "") : undefined}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp, img, gif) => send(b, null, sp, img, gif)}
+              onSend={(b, sp, img, gif) => send(b, focusTarget, sp, img, gif)}
               /* 🆕 D-1443 — «بحث لوبز» حيث تُخزَّن البطاقة (الغرفةُ وحدَها، الهجرة ٢٠٩) */
-              onSendTitle={nested && target.kind === "talk" ? (p) => send("", null, false, null, null, shareOfPick(p)) : undefined}
+              onSendTitle={nested && target.kind === "talk" ? (p) => send("", focusTarget, false, null, null, shareOfPick(p)) : undefined}
             />
           </KeyboardDock>
         ) : (
@@ -582,20 +606,20 @@ export function ThreadReplies({
    * وصندوقَ كتابته وحدَهما**، ويقول عمقَه الحقيقيَّ في `real` لأن
    * حارسَ القاعدة يعدّ الحوارَ لا البكسلات.
    */
-  function line(r: ThreadReply, toName: string | null, real: number) {
+  function line(r: ThreadReply, toName: string | null, real: number, extra?: { open?: boolean; link?: "up" | "down" | null }) {
     const kid = nested ? (kids.get(r.replyId) ?? []) : [];
     const kidsOpen = isOpen(r);
     return (
       <div key={r.replyId}>
         <ReplyItem
           /* 🆕 D-1508 — غرفةُ حلقةٍ لم يشاهدها القارئ: كلُّ سطرٍ خلف الحاجب ولو لم يعلن كاتبُه حرقاً */
-          reply={unwatchedRoom && !r.hasSpoiler ? { ...r, hasSpoiler: true } : r}
+          reply={(focusId ? tvTalk && r.season != null && r.episode != null && !seenEps.has(talkEpisodeKey(r.season, r.episode)) : unwatchedRoom) && !r.hasSpoiler ? { ...r, hasSpoiler: true } : r}
           revealAll={revealAll}
           /* 🆕 **وسهمُ الطيّ يركب صفَّ الأفعال** (D-288): كان سطراً
              مستقلّاً بإزاحة ٥٢px تحت الرسالة — **سطرٌ كاملٌ لأربع
              كلمات** — وطلب أحمد ضمَّه إلى صفّ العلامات. */
           fold={
-            kid.length > 0 ? (
+            kid.length > 0 && !nested ? (
               <button
                 type="button"
                 onClick={() => {
@@ -664,6 +688,8 @@ export function ThreadReplies({
           onDelete={() => remove(r)}
           onReport={() => report(r)}
           mentionNames={mentionNames}
+          onOpen={extra?.open ? () => openRow(r.replyId) : undefined}
+          link={extra?.link ?? null}
         />
         {open === r.replyId && (
           /* 🆕 **وحشوةُ الـ٥٢ سقطت** (D-296): كانت تُحاذي عمودَ النصّ
@@ -747,6 +773,8 @@ export function ThreadReplies({
    * صفحةٌ ثالثةٌ للخيط بابٌ ثالثٌ للحديث نفسِه.
    */
   function node(r: ThreadReply) {
+    /* 🆕 R55 — الغرفةُ **جذورٌ وحدَها** بعدد ما تحتها، ولمستُها تفتح صفحتَها؛ الفروعُ المطويّةُ و«عرض N ردود» سقطت إليها */
+    if (nested) return <div key={r.replyId}>{line(r, null, 0, { open: true })}</div>;
     const flat = nested ? branch(r.replyId, r.replyId) : [];
     const all3 = expanded.has(r.replyId);
     const shown = all3 ? flat : flat.slice(0, PEEK);
@@ -783,6 +811,49 @@ export function ThreadReplies({
           </div>
         )}
       </div>
+    );
+  }
+
+  /**
+   * 🆕 R55 — **صفحةُ السطر** (أحمد ٢١ أكتوبر، «١ أ»؛ ثمّ بلقطة تويتر: «صاحب التغريدة الاساسية تظهر رده على الرد اللي جاء على
+   * بوسته»؛ «١ ب» بلا شارة، «٢ أ» أوّلُ ردٍّ ثمّ «عرض رد آخر»): «ردّاً على فلان» فوقه يفتح أباه، ثمّ السطرُ نفسُه، ثمّ ردودُه
+   * المباشرةُ بترتيب الغرفة، وتحت كلٍّ منها أوّلُ ردٍّ لصاحب الصفحة موصولاً بخطّ. القاعدةُ كلُّها في `focusView` (النواة)
+   */
+  function focusPage(id: string) {
+    const rows = all.map((r) => ({ id: r.replyId, parent_id: r.parentId ?? null, created_at: r.createdAt, score: votes ? scoreOf(r.replyId) : 0, likes: likes ? likesNow(r.replyId) : 0, ref: r }));
+    const fv = focusView(rows, id, (x) => x.ref.authorId ?? x.ref.replyId, talkSort);
+    if (!fv.focus) return <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">{t.talkRoomEmpty}</p>;
+    const parent = fv.parent && !fv.parent.ref.kind ? fv.parent.ref : null;
+    const covered = !!parent && tvTalk && parent.season != null && parent.episode != null && !seenEps.has(talkEpisodeKey(parent.season, parent.episode));
+    const snippet = parent && !parent.hasSpoiler && !covered ? (parent.body ?? "").replace(/\s+/g, " ").trim().slice(0, 80) : "";
+    return (
+      <>
+        {parent ? (
+          <button type="button" onClick={() => openRow(parent.replyId)} className="w-full flex items-center gap-1.5 pt-3 text-13 text-muted text-start hover:text-foreground transition">
+            <Icon name="comment" size={14} className="shrink-0" />
+            <span className="truncate">
+              {t.talkReplyingTo(nameOf.get(parent.replyId) ?? "")}
+              {snippet ? `: «${snippet}»` : ""}
+            </span>
+          </button>
+        ) : null}
+        {line(fv.focus.ref, null, depthOf.get(id) ?? 0)}
+        {fv.count > 0 ? <p className="pt-4 pb-1 text-13 font-bold text-muted">{t.talkRepliesHeading(fv.count)}</p> : null}
+        {fv.items.map((x) =>
+          x.kind === "more" ? (
+            <button
+              key={`more:${x.parentId}`}
+              type="button"
+              onClick={() => openRow(x.parentId)}
+              className="w-full flex items-center py-2.5 ps-[42px] text-12 font-bold text-accent border-b border-[color:var(--divider)] hover:opacity-80 transition"
+            >
+              {t.talkMoreReplies(1)}
+            </button>
+          ) : (
+            <div key={x.row.id}>{line(x.row.ref, null, depthOf.get(x.row.id) ?? 1, { open: true, link: x.link })}</div>
+          ),
+        )}
+      </>
     );
   }
 

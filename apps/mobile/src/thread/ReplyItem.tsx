@@ -60,6 +60,10 @@ export type ReplyItemProps = {
   onPath?: (path: string) => void;
   /** بطاقةُ العمل من «بحث لوبز» */
   onTitle?: (kind: "tv" | "movie", id: number) => void;
+  /** 🆕 R55 — لمسةُ السطر تفتح صفحتَه (الغرفةُ جذورٌ وحدَها، والردودُ في صفحة كلِّ سطر) */
+  onOpen?: (row: ThreadRow) => void;
+  /** 🆕 R55 — خطُّ الوصل بين الوجهين (ردُّ صاحب الصفحة تحت ردٍّ عليه، كتويتر): `down` يمدّه إلى ما تحته، `up` يستقبله من فوقه */
+  link?: "up" | "down" | null;
 };
 
 export const ReplyItem = memo(function ReplyItem({
@@ -83,6 +87,8 @@ export const ReplyItem = memo(function ReplyItem({
   onTitle,
   revealAll = false,
   unwatched = false,
+  onOpen,
+  link = null,
 }: ReplyItemProps) {
   const { t, tokens, locale } = useApp();
   const [revealOne, setReveal] = useState(false);
@@ -132,8 +138,17 @@ export const ReplyItem = memo(function ReplyItem({
     </>
   );
 
+  /* 🆕 R55 — السطرُ الموصول يُزاح متنُه إلى جانب الوجه فيمرّ الخطُّ في عمود الوجوه ولا يشقّ الكلام (نهجُ تويتر في لقطة أحمد) */
+  const indent = link ? { marginStart: 42 } : null;
+  const Root = onOpen && !pending ? Pressable : View;
   return (
-    <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pending ? 0.6 : 1 }}>
+    <Root
+      {...(onOpen && !pending ? { onPress: () => onOpen(row), accessibilityHint: t.talkReplyPage } : {})}
+      style={{ paddingVertical: 12, borderBottomWidth: link === "down" ? 0 : 1, borderBottomColor: tokens.divider, opacity: pending ? 0.6 : 1 }}
+    >
+      {/* الخطُّ في منتصف عمود الوجه (٣٤ ⇒ ١٦) — من تحت الوجه إلى آخر السطر، أو من أعلى السطر إلى الوجه */}
+      {link === "down" ? <View pointerEvents="none" style={{ position: "absolute", start: 16, width: 2, top: 50, bottom: 0, backgroundColor: tokens.border }} /> : null}
+      {link === "up" ? <View pointerEvents="none" style={{ position: "absolute", start: 16, width: 2, top: 0, height: 10, backgroundColor: tokens.border }} /> : null}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Pressable onPress={() => onProfile(row)} disabled={p.hide_name} accessibilityRole="link" accessibilityLabel={name}>
           <View style={{ width: 34, height: 34, borderRadius: 17, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
@@ -152,6 +167,7 @@ export const ReplyItem = memo(function ReplyItem({
         ) : null}
       </View>
 
+      <View style={indent}>
       {replyingTo ? <Text size={12} muted style={{ marginTop: 2 }}>{t.talkReplyingTo(replyingTo)}</Text> : null}
 
       {row.bulletin ? (
@@ -259,6 +275,7 @@ export const ReplyItem = memo(function ReplyItem({
           ) : null}
         </>
       ) : null}
-    </View>
+      </View>
+    </Root>
   );
 });

@@ -1232,6 +1232,12 @@ const ar = {
   /** توستُ الإرسال — **الإيصالُ لأن الردّ لا يظهر في الخطّ** (D-227) */
   replySentToast: "أُرسِل ردُّك",
   talkReplyingTo: (name: string) => `ردّاً على ${name}`,
+  /* 🆕 R55 — **صفحةُ المنشور / الردّ** (أحمد ٢١ أكتوبر: «اضغط عالرد ويفتح صفحة الرد واقرا الردود عليها»): عنوانُ الشريط
+     يقول ما في الصفحة، وعنوانُ قسم الردود يعدّها بجمع القِلّة (D-015) كـ`talkShowReplies` */
+  talkPostPage: "المنشور",
+  talkReplyPage: "الردّ",
+  talkRepliesHeading: (n: number) =>
+    n === 1 ? "ردّ واحد" : n === 2 ? "ردَّان" : n <= 10 ? `${num(n, "ar")} ردود` : `${num(n, "ar")} ردّاً`,
   talkDeleteReply: "حذف",
   /* **و`talkHeading` («الكلام») حُذف** (D-217): طلبُ أحمد «تحتها مباشرة
      الردود» — **وعنوانٌ يسمّي ما تراه بعينك يأكل سطراً ولا يضيف معنى.**
@@ -3632,6 +3638,9 @@ const en: Dict = {
   actionComment: "Comment",
   replySentToast: "Reply sent",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
+  talkPostPage: "Post",
+  talkReplyPage: "Reply",
+  talkRepliesHeading: (n: number) => (n === 1 ? "1 reply" : `${num(n, "en")} replies`),
   talkDeleteReply: "Delete",
   // talkOpenTitlePage deleted with the header chevron it labelled (D-297)
   talkFallbackTitle: "Untitled",

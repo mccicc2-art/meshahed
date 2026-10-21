@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { orderThread, buildTree, countUnder, canReplyTo, MAX_DEPTH } from "./threadOrder.ts";
+import { orderThread, buildTree, countUnder, canReplyTo, focusView, MAX_DEPTH } from "./threadOrder.ts";
 import { parseThreadReplyBody, parseThreadReportBody, parseThreadVoteBody, parseThreadTarget } from "./threadActs.ts";
 
 /**
@@ -57,4 +57,44 @@ test("أجسامُ الأفعال: الصورةُ والـGIF والحرقُ ل�
   assert.equal(parseThreadReportBody({ target: talk, what: "review" }), null);
   assert.equal(parseThreadVoteBody({ post_id: "p", vote: 2, tmdb_id: 1, media_type: "tv" }), null);
   assert.equal(parseThreadVoteBody({ post_id: "p", vote: -1, tmdb_id: 1, media_type: "tv" })?.vote, -1);
+});
+
+/* 🆕 R55 — صفحةُ السطر: أبناؤه المباشرون، وتحت كلٍّ منها أوّلُ ردٍّ لصاحب الصفحة موصولاً، و«عرض رد آخر» إن زاد */
+const fr = (id: string, parent: string | null, at: string, author: string, likes = 0) => ({ id, parent_id: parent, created_at: `2026-10-21T10:${at}:00Z`, author, likes });
+const frows = [
+  fr("p", null, "00", "ahmed"),
+  fr("a", "p", "01", "sara", 5),
+  fr("b", "p", "02", "omar"),
+  fr("a1", "a", "03", "ahmed"),
+  fr("a2", "a", "04", "ahmed"),
+  fr("a3", "a", "05", "omar"),
+  fr("c", "p", "06", "ahmed"),
+  fr("c1", "c", "07", "ahmed"),
+];
+const fby = (r: { author: string }) => r.author;
+const fshape = (v: ReturnType<typeof focusView<(typeof frows)[number]>>) => v.items.map((x) => (x.kind === "row" ? `${x.row.id}:${x.link ?? "-"}` : `more:${x.parentId}`));
+
+test("focusView: direct replies newest first, the page author's first reply attached, then a more link", () => {
+  const v = focusView(frows, "p", fby, "latest");
+  assert.equal(v.focus?.id, "p");
+  assert.equal(v.parent, null);
+  assert.equal(v.count, 7);
+  assert.deepEqual(fshape(v), ["c:-", "b:-", "a:down", "a1:up", "more:a"]);
+});
+
+test("focusView: activity order weighs likes plus two per direct reply", () => {
+  const v = focusView(frows, "p", fby, "active");
+  assert.deepEqual(fshape(v).slice(0, 3), ["a:down", "a1:up", "more:a"]);
+});
+
+test("focusView: a reply page knows its parent and lists its own replies", () => {
+  const v = focusView(frows, "a", fby, "latest");
+  assert.equal(v.parent?.id, "p");
+  assert.deepEqual(fshape(v), ["a3:-", "a2:-", "a1:-"]);
+});
+
+test("focusView: an unknown id is an empty page", () => {
+  const v = focusView(frows, "zz", fby, "latest");
+  assert.equal(v.focus, null);
+  assert.equal(v.items.length, 0);
 });
