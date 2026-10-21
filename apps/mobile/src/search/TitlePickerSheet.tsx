@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, TextInput, View } from "react-native";
 import { useApp } from "../state";
-import { Text, alignStart } from "../ui";
+import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
@@ -56,7 +56,7 @@ export function TitlePicker({ onPick, placeholder }: { onPick: (t: SearchTitle) 
           autoFocus
           autoCorrect={false}
           autoCapitalize="none"
-          style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 12, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: alignStart() }}
+          style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 12, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
         />
       </View>
       <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

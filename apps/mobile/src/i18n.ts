@@ -85,6 +85,28 @@ export function currentLocale(): Locale {
   return webLocaleValue ?? deviceLocale();
 }
 
+/**
+ * 🔴 D-1502 — **الإقلاعُ لا يمضي بجلسةٍ مقلوبة** (لقطةُ أحمد ٢١ أكتوبر ٩:٠٥: صفحةُ عملٍ عربيّة بتخطيطٍ من اليسار — البوسترُ يساراً
+ * وزرُّ الرجوع يساراً — بعد تثبيت نسخةٍ جديدة). `forceRTL` لا يسري إلّا بعد إعادة تحميل JS، والإقلاعُ كان يصحّحه ويمضي — فالجلسةُ
+ * كلُّها تُرسم بالاتّجاه القديم حتّى الفتحة التالية. الآن: اتّجاهٌ لا يطابق اللغةَ ⇐ يُصحَّح ويُعاد التحميلُ مرّةً خلف ستار لوبز.
+ * ⚠️ **مرّةً لا حلقة**: وقتُ آخرِ إعادةٍ في المخزن (تزامنيّاً) — إن لم يسرِ التصحيحُ (بيئةٌ تمنعه) فلا إعادةَ ثانيةً قبل دقيقة.
+ */
+const DIR_RELOAD_KEY = "loopz.dirReloadAt";
+export function fixDirectionAtBoot(): void {
+  const locale = currentLocale();
+  if (I18nManager.isRTL === isRtl(locale)) return;
+  applyDirection(locale);
+  try {
+    const last = Number(SecureStore.getItem(DIR_RELOAD_KEY) ?? 0);
+    if (Date.now() - last < 60_000) return;
+    SecureStore.setItem(DIR_RELOAD_KEY, String(Date.now()));
+  } catch {
+    return;
+  }
+  opening.skipNext();
+  void Updates.reloadAsync({ reloadScreenOptions: { backgroundColor: "#050505", spinner: { enabled: false }, fade: true } }).catch(() => {});
+}
+
 export function applyDirection(locale: Locale) {
   const rtl = isRtl(locale);
   if (I18nManager.isRTL !== rtl) {

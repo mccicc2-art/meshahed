@@ -5,7 +5,7 @@ import { FlashList } from "@shopify/flash-list";
 import * as SecureStore from "expo-secure-store";
 import { api } from "../api";
 import { useApp } from "../state";
-import { Text, alignStart } from "../ui";
+import { Text } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
@@ -164,7 +164,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; o
           accessibilityLabel={t.gifSearch}
           autoCorrect={false}
           returnKeyType="search"
-          style={{ minHeight: 44, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: tokens.fg, textAlign: alignStart() }}
+          style={{ minHeight: 44, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: tokens.fg, textAlign: "left" }}
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6 }}>
           {GIF_CATS.map((c) => (

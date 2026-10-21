@@ -86,28 +86,6 @@ function splitRuns(text: string): { s: string; ar: boolean }[] {
 }
 
 /** أوّلُ حرفٍ قويّ: `true` عربيّ · `false` لاتينيّ · `null` لا حروف (أرقامٌ · رموز · فارغ) */
-/**
- * 🔴 D-1501 — **المحاذاةُ بمعنى أندرويد على المنصّتين** (لقطةُ أحمد ٢١ أكتوبر، الآيفون: «القصة» وسطرُ النوع يقفان يساراً في
- * الواجهة العربيّة). أندرويد يقلب `left`/`right` تحت RTL (بدايةُ الاتّجاه ونهايتُه — قيس على جهازه ٣ أكتوبر، D-1234)، والآيفون
- * **لا يقلبهما**: `left` عنده يسارٌ حرفاً. فكلُّ ما كُتب بمعنى أندرويد كان يُرسم على الآيفون العربيّ من الجهة الأخرى — يظهر في
- * الفقرات (آخرُ سطرٍ يلتصق يساراً) لا في سطرٍ واحدٍ ضيّق. هذان يعيدان المعنى نفسَه على الآيفون؛ وأندرويد كما كان حرفاً.
- */
-const IOS_RTL_FLIP = (): boolean => Platform.OS === "ios" && I18nManager.isRTL;
-/** بدايةُ اتّجاه الواجهة (يمينٌ في العربيّ) — للحقول (`TextInput`) والأنماط التي لا تمرّ بـ`Text` */
-export function alignStart(): "left" | "right" {
-  return IOS_RTL_FLIP() ? "right" : "left";
-}
-/** نهايةُ اتّجاه الواجهة */
-export function alignEnd(): "left" | "right" {
-  return IOS_RTL_FLIP() ? "left" : "right";
-}
-/** نمطٌ كتبه مستدعٍ بمعنى أندرويد ⇐ معناه على هذه المنصّة (الآيفونُ العربيُّ يُقلب له، والتوسيطُ لا يُمسّ) */
-function iosAlign(style: StyleProp<TextStyle>): TextStyle | null {
-  if (!IOS_RTL_FLIP() || !style) return null;
-  const a = (StyleSheet.flatten(style) as TextStyle | undefined)?.textAlign;
-  return a === "left" ? { textAlign: "right" } : a === "right" ? { textAlign: "left" } : null;
-}
-
 export function firstStrongRtl(text: string): boolean | null {
   for (const ch of text) {
     if (ARABIC_RE.test(ch) && !/[\u0660-\u0669\u06F0-\u06F9\u060C\u061B\u061F\u066A-\u066D]/.test(ch)) return true;
@@ -163,8 +141,7 @@ export function Text({
     color: color ?? (muted ? tokens.muted : tokens.fg),
     fontSize: (size + step) * k,
     fontWeight: weight,
-    /* 🔴 D-1501 — بدايةُ الواجهة على المنصّتين (الآيفونُ لا يقلب `left` — انظر `alignStart`) */
-    textAlign: alignStart(),
+    textAlign: "left" as "left" | "right",
     writingDirection: undefined as "rtl" | "ltr" | undefined,
   };
   /* 🆕 D-1234 — **كلامُ الناس يبدأ من جهة لغته لا من جهة الواجهة** (أحمد، ٣ أكتوبر: «العربية تبدأ من اليمين،
@@ -175,14 +152,10 @@ export function Text({
   if ((content || autoDir || chat) && typeof children === "string") {
     const rtl = firstStrongRtl(children);
     if (rtl !== null) {
-      /* أندرويد: «عكسُ الواجهة أم لا» (`left` بدايتُها)؛ الآيفون: الجهةُ نفسُها حرفاً — العربيُّ يمينٌ والإنجليزيُّ يسار (D-1501) */
-      base.textAlign = Platform.OS === "ios" ? (rtl ? "right" : "left") : rtl === I18nManager.isRTL ? "left" : "right";
+      base.textAlign = rtl === I18nManager.isRTL ? "left" : "right";
       base.writingDirection = rtl ? "rtl" : "ltr";
     }
   }
-  /* 🔴 D-1501 — `textAlign` صريحٌ من المستدعي مكتوبٌ بمعنى أندرويد (أرقامُ الإحصاءات «right» = نهايةُ السطر) ⇐ يُقلب للآيفون العربيّ */
-  const flip = iosAlign(rawStyle);
-  if (flip) style = [style, flip];
   if (!fontsReady || typeof children !== "string") {
     return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, style]}>{children}</RNText>;
   }

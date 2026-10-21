@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useApp } from "../state";
-import { Button, Text, alignStart } from "../ui";
+import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -146,7 +146,7 @@ export function Composer({
             placeholderTextColor={tokens.muted}
             accessibilityLabel={t.shareReplyPlaceholder}
             textAlignVertical="top"
-            style={{ minHeight: 3 * 22 + 24, maxHeight: 6 * 22 + 24, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: alignStart() }}
+            style={{ minHeight: 3 * 22 + 24, maxHeight: 6 * 22 + 24, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left" }}
           />
           {image || gif || uploading ? (
             <View style={{ flexDirection: "row", gap: 8 }}>

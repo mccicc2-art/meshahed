@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text, Toast, toastReducer, alignStart } from "../ui";
+import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Chip } from "../library/Chip";
@@ -269,7 +269,7 @@ export function SearchScreen() {
               multiline
               autoFocus
               textAlignVertical="top"
-              style={{ minHeight: 96, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: alignStart() }}
+              style={{ minHeight: 96, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
             />
             <Button label={story.isPending ? t.peopleSearching : t.aiSearchRun} busy={story.isPending} disabled={descText.trim().length < DESC_MIN} onPress={runDesc} />
             {story.isPending ? (
@@ -311,7 +311,7 @@ export function SearchScreen() {
                 returnKeyType="search"
                 autoCorrect={false}
                 autoCapitalize="none"
-                style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 44, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: alignStart() }}
+                style={{ minHeight: 48, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingStart: 40, paddingEnd: 44, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
               />
               {/* المسحُ لا يُرسم على حقلٍ فارغ (D-222) — وهدفُ اللمس ٤٤ وإن كان الرمزُ ١٨ (D-033/D-168) */}
               {q ? (

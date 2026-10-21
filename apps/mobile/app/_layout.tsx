@@ -8,7 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider, useAuth } from "../src/auth";
 import { AppStateProvider, useApp } from "../src/state";
 import { queryClient } from "../src/api";
-import { applyDirection, currentLocale } from "../src/i18n";
+import { fixDirectionAtBoot } from "../src/i18n";
 import { useAppFonts } from "../src/fonts";
 import { startCachePersist } from "../src/cachePersist";
 import { statusBarStyleOf } from "../src/theme";
@@ -33,7 +33,8 @@ import "../src/flags";
  * 🆕 D-946 — **ومن لغة الويب المحفوظة** لا لغةِ الجهاز حين تختلفان.
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
-applyDirection(currentLocale());
+/* 🔴 D-1502 — اتّجاهٌ لا يطابق اللغة ⇐ يُصحَّح ويُعاد التحميلُ مرّةً (كان يُصحَّح للفتحة التالية فتمضي هذه مقلوبة) */
+fixDirectionAtBoot();
 /* D-1026 (F2) — الكاشُ المحفوظ يُعاد قبل أوّل شاشة: «المكتبة» تفتح على ما عُرض آخرَ مرّة */
 startCachePersist();
 /* 🆕 الودجتات — الخلفيّةُ والخروجُ والمهمّةُ الخلفيّة تُسجَّل من الإقلاع (`widget/feed.ts`) */

@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
-import { Button, Text, alignStart } from "../ui";
+import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
@@ -241,7 +241,7 @@ export function ReviewSheet({
           placeholderTextColor={tokens.muted}
           textAlignVertical="top"
           /* ثلاثةُ أسطرٍ لا ستّة: الصندوقُ في الوسط ولوحةُ المفاتيح تأخذ نصفَ الشاشة — وما زاد يُمرَّر داخل الحقل */
-          style={{ minHeight: 3 * 22 + 24, maxHeight: 5 * 22 + 24, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: alignStart() }}
+          style={{ minHeight: 3 * 22 + 24, maxHeight: 5 * 22 + 24, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, padding: 12, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left" }}
         />
         <View style={{ flexDirection: "row" }}>
           <Chip label={t.spoilerMark} active={spoiler} onPress={() => setSpoiler((v) => !v)} leading={<Icon name={spoiler ? "eye-off" : "eye"} size={14} color={spoiler ? tokens.onAccent : tokens.muted} />} />
