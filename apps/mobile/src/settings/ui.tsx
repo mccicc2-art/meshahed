@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { GestureHandlerRootView, ScrollView as GHScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, alignStart } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -323,7 +323,7 @@ export function Field({
             autoFocus={autoFocus}
             autoCapitalize={ltr ? "none" : "sentences"}
             autoCorrect={!ltr}
-            style={{ flex: 1, minWidth: 0, padding: 0, fontSize: 16, lineHeight: multiline ? 24 : undefined, minHeight: multiline ? lines * 24 : undefined, color: tokens.fg, textAlign: "left", writingDirection: ltr ? "ltr" : undefined, textAlignVertical: multiline ? "top" : "center" }}
+            style={{ flex: 1, minWidth: 0, padding: 0, fontSize: 16, lineHeight: multiline ? 24 : undefined, minHeight: multiline ? lines * 24 : undefined, color: tokens.fg, textAlign: ltr ? "left" : alignStart(), writingDirection: ltr ? "ltr" : undefined, textAlignVertical: multiline ? "top" : "center" }}
           />
           {after}
         </View>
@@ -371,7 +371,8 @@ export function Field({
             color: tokens.fg,
             /* "left" هو «البداية» في هذا المشروع (الاتّجاهُ مفروضٌ عند الإقلاع — `Text` و`SearchScreen`)،
                وحاويةُ `direction:"ltr"` تجعله يساراً فعليّاً للمعرّفات والروابط كما في الويب */
-            textAlign: "left",
+            /* 🔴 D-1501 — والآيفونُ لا يقلب `left`: البدايةُ من `alignStart` (المعرّفاتُ والروابطُ يسارٌ كما هي) */
+            textAlign: ltr ? "left" : alignStart(),
             writingDirection: ltr ? "ltr" : undefined,
             textAlignVertical: multiline ? "top" : "center",
           }}

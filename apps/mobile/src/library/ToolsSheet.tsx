@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Text, alignStart } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "./Sheet";
@@ -99,7 +99,7 @@ export function ToolsSheet({
                     paddingVertical: 10,
                     fontSize: 16,
                     color: tokens.fg,
-                    textAlign: "left",
+                    textAlign: alignStart(),
                   }}
                 />
               </View>

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, alignStart } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -106,7 +106,7 @@ export function NoteField({ value, onChange }: { value: string; onChange: (v: st
       multiline
       maxLength={MSG_NOTE_MAX}
       textAlignVertical="top"
-      style={{ minHeight: 72, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tokens.fg, textAlign: "left" }}
+      style={{ minHeight: 72, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tokens.fg, textAlign: alignStart() }}
     />
   );
 }

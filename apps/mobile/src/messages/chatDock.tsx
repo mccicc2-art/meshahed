@@ -6,7 +6,7 @@ import { ApiError, filePart, postForm } from "../api";
 import { shrinkForUpload } from "../imageShrink";
 import { useImageCrop, type CropShape } from "../imageCrop";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Text, alignStart } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -270,7 +270,7 @@ export function ChatDock({
           accessibilityLabel={searching ? (mode === "gif" ? t.gifSearch : t.searchPlaceholder) : placeholder ?? t.shareReplyPlaceholder}
           returnKeyType={searching ? "search" : undefined}
           onLayout={(e) => setOneLine(e.nativeEvent.layout.height < 50)}
-          style={{ flex: 1, minWidth: 0, minHeight: 22 + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: "left", textAlignVertical: "center" }}
+          style={{ flex: 1, minWidth: 0, minHeight: 22 + 18, maxHeight: 4 * 22 + 18, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, lineHeight: 22, color: tokens.fg, textAlign: alignStart(), textAlignVertical: "center" }}
         />
         {searching ? null : (
         <Pressable

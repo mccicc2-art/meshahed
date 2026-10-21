@@ -242,6 +242,10 @@ async function baseHeaders(auth: boolean, path = ""): Promise<Record<string, str
     Accept: "application/json",
     ...GATE_HEADERS,
     "Accept-Language": currentLocale(),
+    /* 🔴 D-1501 — **لغةُ التطبيق صريحةً** (أحمد ٢١ أكتوبر: «إذا التطبيق باللغة الإنجليزي يظهر الكلام والمحتوى بالانجلش»): الخادمُ
+       (`getLocale`) يقدّم كوكي اللغة على `Accept-Language`، وكوكي قديمٌ في مخزن الهاتف كان يعيد النبذةَ والأنواعَ بلغةٍ غيرِ لغة
+       التطبيق. هذه الترويسةُ تغلب الكوكي — توأمُ ما يرسله الغلافُ لصفحات الويب (`WebLayer.langHeaders`، D-1463) */
+    "x-loopz-locale": currentLocale(),
     /* D-986 — حزامٌ ثانٍ من جهة الهاتف: OkHttp يملك كاشاً قرصيّاً يحترم `max-age`، فقراءةٌ بعد
        كتابةٍ كانت تعود قديمة (تابع ثمّ يرتدّ). `no-cache` يجبره على سؤال الخادم كلَّ مرّة.
        D-1003 — **لما يحمل حالةَ المستخدم فقط** (`/me/` · `/title/` · `/person/` · `/view`):

@@ -118,6 +118,8 @@ async function post(path: string, body: unknown): Promise<boolean> {
         Accept: "application/json",
         "Content-Type": "application/json",
         "Accept-Language": currentLocale(),
+        /* D-1501 — لغةُ التطبيق تغلب كوكي اللغة في الخادم (`api.ts`) */
+        "x-loopz-locale": currentLocale(),
         Authorization: `Bearer ${token}`,
         ...GATE_HEADERS,
       },

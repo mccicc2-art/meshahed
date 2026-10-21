@@ -516,6 +516,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (
               <>
+                {/* 🆕 D-1501 — النبذةُ تبدأ من جهة لغتها (`autoDir`): عربيّةٌ يمينٌ في أيِّ واجهة — TMDB يعيدها أحياناً بلغةٍ غير لغة التطبيق */}
                 {d.overview ? (
                   <View style={{ gap: 6 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -523,7 +524,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                       <Text size={15} weight="700">{t.storyTitle}</Text>
                     </View>
                     <Pressable onPress={() => setMore((v) => !v)}>
-                      <Text size={14} muted numberOfLines={more ? undefined : 4} style={{ lineHeight: 22 }}>{d.overview}</Text>
+                      <Text size={14} muted autoDir numberOfLines={more ? undefined : 4} style={{ lineHeight: 22 }}>{d.overview}</Text>
                     </Pressable>
                   </View>
                 ) : null}
