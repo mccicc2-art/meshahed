@@ -4,10 +4,13 @@ import {
   Pressable,
   StyleSheet,
   I18nManager,
+  Platform,
   Text as RNText,
   View,
   type PressableProps,
+  type StyleProp,
   type TextProps,
+  type TextStyle,
   type ViewProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -158,6 +161,11 @@ export function Text({
   }
   const runs = runsOf(children);
   const family = (ar: boolean) => ({ fontFamily: familyOf(ar, weight), fontWeight: undefined });
+  /* 🆕 D-1498 — **العربيُّ ينزل إلى وسط سطره على الآيفون** (لقطةُ أحمد ٢١ أكتوبر: «النص ماهو متوسط الأيقونة طالع فوق سطر
+     الأيقونة بشوي»). مقاييسُ Tajawal (من ملفّه: صعود ٦٤٣ · هبوط ٣٥٧ · فجوة ٢٠٠ من ١٠٠٠) تجعل صندوقَ السطر أطولَ من جسم الحرف
+     في أسفله، فتتوسّط الأيقونةُ الصندوقَ ويقع الحرفُ فوق وسطه — قيس في اللقطة نحو ٠٫١٢–٠٫١٨ من مقاس الخطّ. الإزاحةُ رسمٌ لا
+     تخطيط (`translateY`): الصندوقُ ومن حوله لا يتحرّكان، والحرفُ وحدَه ينزل. أندرويد يحسب السطرَ بمقاييس أخرى ولم يُقَس — لا يُمسّ */
+  const nudge = Platform.OS === "ios" && runs.length > 0 && runs[0].ar ? arabicNudge([base, style]) : null;
   /* 🔴 D-981 — **النصُّ الفارغ بلا مقاطع**: `runs[0].ar` على `""` كان يُسقط الشجرةَ كلَّها
      (أوّلُ `AppCrash` في السجلّ، D-974: «Cannot read property 'ar' of undefined» في
      `TitleScreen` — الشاشةُ السوداء عند فتح فيلم بلا شعارٍ أو وصف). الفارغُ يُرسم فارغاً. */
@@ -165,15 +173,25 @@ export function Text({
     return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, style]}>{children}</RNText>;
   }
   if (runs.length === 1) {
-    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style]}>{children}</RNText>;
+    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge]}>{children}</RNText>;
   }
   return (
-    <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style]}>
+    <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge]}>
       {runs.map((r, i) => (
         <RNText key={i} style={family(r.ar)}>{r.s}</RNText>
       ))}
     </RNText>
   );
+}
+
+/** D-1498 — نسبةُ النزول من مقاس الخطّ (انظر رأسَ `Text`). تُضاف إلى `transform` القائم إن وُجد فلا تمحوه */
+const AR_NUDGE = 0.12;
+function arabicNudge(style: StyleProp<TextStyle>): TextStyle | null {
+  const flat = StyleSheet.flatten(style) as TextStyle | undefined;
+  const fs = flat?.fontSize;
+  if (!fs) return null;
+  const own = Array.isArray(flat?.transform) ? flat.transform : [];
+  return { transform: [...own, { translateY: Math.round(fs * AR_NUDGE * 10) / 10 }] } as TextStyle;
 }
 
 /**
