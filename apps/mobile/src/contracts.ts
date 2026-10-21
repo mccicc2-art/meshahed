@@ -14,6 +14,7 @@ export type {
   TitleExtrasPayload,
   TitleArtOptionsPayload,
   TitleArtBody,
+  TitleArtChoice,
   TitleCommunityPayload,
   FavoriteBody,
   ListToggleItemBody,

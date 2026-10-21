@@ -322,8 +322,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const POSTER_H = 192;
   const lift = Math.min(POSTER_H, heroH - 52);
   /* D-1227 — البطلُ والملصقُ من البذرة حتى يصل العمل، ثمّ منه — العنصران نفسُهما فلا يُعاد تحميلُهما */
-  const heroBd = d ? d.backdrop_path : (seed?.backdrop_path ?? null);
-  const heroPoster = d ? d.poster_path : (seed?.poster_path ?? null);
+  /* 🆕 D-1498 — غلافي المختار (`me.art`) يسبق صورةَ TMDB في البطل كما في صفحة الويب (`getMyArtFor`)؛
+     و`d.poster_path` نفسُه يبقى الأصليَّ لأنّ المتابعةَ والمفضّلةَ والمشاركةَ تكتبه */
+  const heroBd = d ? (d.me.art?.backdrop ?? d.backdrop_path) : (seed?.backdrop_path ?? null);
+  const heroPoster = d ? (d.me.art?.poster ?? d.poster_path) : (seed?.poster_path ?? null);
   const watchedSet = useMemo(() => new Set(d?.kind === "tv" ? d.me.watched : []), [d]);
 
   return (
@@ -624,7 +626,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         />
       ) : null}
       {art && d ? (
-        <ArtSheet kind={kind} id={id} current={{ poster: d.poster_path, backdrop: d.backdrop_path }} onPlus={() => { setArt(false); openWeb("", "/plus"); }} onClose={() => setArt(false)} />
+        <ArtSheet kind={kind} id={id} current={d.me.art ?? { poster: null, backdrop: null }} onPlus={() => { setArt(false); openWeb("", "/plus"); }} onClose={() => setArt(false)} />
       ) : null}
       {/* D-1014 — البطاقةُ الحمراء وحدَها في الضغطة المطوّلة على العين */}
       {redCard && d ? (

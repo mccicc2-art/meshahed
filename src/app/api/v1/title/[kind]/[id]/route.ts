@@ -7,13 +7,14 @@ import {
   getMovieProgress,
   getUserId,
   getMyRating,
+  getMyArtFor,
 } from "@/lib/data";
 import { airedPerSeason, airedEpisodeCount, firstEpisodeOf } from "@/core/progress";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
 import { originAdjectives } from "@/core/region";
 import { getLocale } from "@/lib/locale";
 import { ok } from "@/core/contracts/result";
-import type { MovieTitlePayload, TitlePayload, TvTitlePayload } from "@/core/contracts/title";
+import type { MovieTitlePayload, TitleArtChoice, TitlePayload, TvTitlePayload } from "@/core/contracts/title";
 
 /**
  * `GET /api/v1/title/{tv|movie}/{id}` — صفحةُ العمل للتطبيق في ردٍّ واحد.
@@ -57,13 +58,14 @@ export async function GET(
 }
 
 async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayload> {
-  const [tv, trailer, following, watched, rating] = await Promise.all([
+  const [tv, trailer, following, watched, rating, art] = await Promise.all([
     getTv(tvId),
     getTrailer("tv", tvId).catch(() => null),
     signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
     signedIn ? getWatchedForShow(tvId) : new Set<string>(),
     // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
     signedIn ? getMyRating(tvId, "tv") : null,
+    signedIn ? myArt(tvId, "tv") : null,
   ]);
   const aired = airedPerSeason(tv);
   const first = firstEpisodeOf(tv);
@@ -109,18 +111,20 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
       watched_count: watched.size,
       watched: [...watched],
       rating: rating?.rating ?? null,
+      art,
     },
   };
 }
 
 async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTitlePayload> {
-  const [movie, trailer, following, watched, progress, rating] = await Promise.all([
+  const [movie, trailer, following, watched, progress, rating, art] = await Promise.all([
     getMovie(movieId),
     getTrailer("movie", movieId).catch(() => null),
     signedIn ? getFollowState(movieId, "movie") : { following: false, dropped: false },
     signedIn ? isMovieWatched(movieId) : false,
     signedIn ? getMovieProgress(movieId).catch(() => null) : null,
     signedIn ? getMyRating(movieId, "movie") : null,
+    signedIn ? myArt(movieId, "movie") : null,
   ]);
   return {
     kind: "movie",
@@ -143,6 +147,18 @@ async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTi
       watched,
       progress,
       rating: rating?.rating ?? null,
+      art,
     },
   };
+}
+
+/**
+ * 🆕 D-1498 — **غلافي المختار مع الصفحة** (بلاغُ أحمد بتسجيل ٢١ أكتوبر: «ما تظهر لا الخلفية ولا البوستر
+ * اللي انا اخترته»). الويبُ يقرؤه بـ`getMyArtFor` منذ D-131، **وهذا الردُّ لم يقرأه قطّ** — فالكتابةُ تنجح،
+ * ثمّ يعيد التطبيقُ الجلبَ فيعود بصورة TMDB ويومض الاختيارُ ويختفي. الدالّةُ نفسُها، وسقوطُها يعيد null:
+ * الغلافُ زينةٌ لا تُسقط الصفحة.
+ */
+async function myArt(tmdbId: number, kind: "tv" | "movie"): Promise<TitleArtChoice | null> {
+  const a = await getMyArtFor(tmdbId, kind).catch(() => null);
+  return a && (a.poster_path || a.backdrop_path) ? { poster: a.poster_path, backdrop: a.backdrop_path } : null;
 }

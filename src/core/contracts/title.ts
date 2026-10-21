@@ -62,6 +62,8 @@ export type TvTitlePayload = TitleBase & {
     watched: string[];
     /** 🆕 D-919 — تقييمي من ١٠، أو null */
     rating: number | null;
+    /** 🆕 D-1498 — غلافي المختار (`title_art`)، أو null */
+    art?: TitleArtChoice | null;
   };
 };
 
@@ -76,8 +78,18 @@ export type MovieTitlePayload = TitleBase & {
     progress: unknown;
     /** 🆕 D-919 — تقييمي من ١٠، أو null */
     rating: number | null;
+    /** 🆕 D-1498 — غلافي المختار (`title_art`)، أو null */
+    art?: TitleArtChoice | null;
   };
 };
+
+/**
+ * 🆕 D-1498 — **اختيارُ القارئ لا ما يُعرض**: كلُّ حقلٍ مسارُ TMDB اختاره بنفسه، و`null` = «الافتراضيّ».
+ * يأتي منفصلاً عن `poster_path`/`backdrop_path` (وهما يبقيان صورةَ TMDB) لسببين: ورقةُ الاختيار
+ * تحتاج أن تعرف ما اختاره هو لا ما يظهر، والمتابعةُ والمفضّلةُ والمشاركةُ تكتب الملصقَ الأصليّ لا ملصقي.
+ * اختياريٌّ في العقد لأنّ كاشَ التطبيق قد يحمل ردّاً أقدمَ من هذا الحقل.
+ */
+export type TitleArtChoice = { poster: string | null; backdrop: string | null };
 
 export type TitlePayload = TvTitlePayload | MovieTitlePayload;
 
