@@ -116,7 +116,11 @@ export const ContinueCard = memo(function ContinueCard({
   const left = total > watched ? total - watched : 0;
   /* السطرُ الثاني كالويب: «S2 E5 · باقي ٣» للعمل، وللقائمة اسمُها فوق اسم «التالي» */
   const sub = isShow ? [card.episode_label, left > 0 ? t.leftEps(left) : null].filter(Boolean).join(" · ") : (card.next.title ?? "—");
-  const counter = isShow ? `${pct}%` : `${watched} / ${total}`;
+  /* 🆕 D-1507 — **طابورُ الأفلام يقول ما بقي فيه** (أحمد ٢١ أكتوبر «أ+»): «٤١ / ٤٣» كان يعدّ ما شاهدتَ وخرج من الطابور —
+     والقائمةُ نفسُها فيها اثنان. الطابورُ مفتوحٌ يكبر بكلِّ إضافة فلا «نسبةَ إنجاز» له: «باقي ٢» بلا شريطٍ ولا نسبة.
+     قوائمُ التشغيل الحقيقيّة لها أوّلٌ وآخر فتبقى «١٠ / ١٥» */
+  const isQueue = card.type === "towatch";
+  const counter = isShow ? `${pct}%` : isQueue ? t.leftEps(left) : `${watched} / ${total}`;
   /* D-1079 — الصحُّ على البطاقات الأربع كالويب (`ListContinueCard` يرسمه لبطاقات القوائم وطابور
      «للمشاهدة» أيضاً)؛ كان للعمل وحدَه فغاب عن فيلم «للمشاهدة» — بلاغُ أحمد على 1.11.8 */
   const canCheck = !isShow || !!card.episode_label;
@@ -177,9 +181,11 @@ export const ContinueCard = memo(function ContinueCard({
             <Text size={15} weight="600" numberOfLines={1}>{isShow ? title : (card.next.title ?? "—")}</Text>
             {isShow ? <Text size={12} weight="500" muted numberOfLines={1} style={{ marginTop: 4 }}>{sub}</Text> : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: tokens.divider, overflow: "hidden" }}>
-                <View style={{ width: `${pct}%`, height: "100%", backgroundColor: pct >= 100 ? tokens.success : tokens.accent }} />
-              </View>
+              {isQueue ? null : (
+                <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: tokens.divider, overflow: "hidden" }}>
+                  <View style={{ width: `${pct}%`, height: "100%", backgroundColor: pct >= 100 ? tokens.success : tokens.accent }} />
+                </View>
+              )}
               <Text size={12} weight="600" muted style={{ fontVariant: ["tabular-nums"] }}>{counter}</Text>
             </View>
           </View>
@@ -223,12 +229,14 @@ export const ContinueCard = memo(function ContinueCard({
           <Text size={13} weight="600" color="#fff" numberOfLines={1} style={[styles.shadow, { lineHeight: 17 }]}>{isShow ? title : (card.next.title ?? "—")}</Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
             <Text size={11} weight="600" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{isShow ? sub : counter}</Text>
-            <Text size={11} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"], lineHeight: 14 }}>{isShow ? counter : `${pct}%`}</Text>
+            {isQueue ? null : <Text size={11} weight="600" color="rgba(255,255,255,0.7)" style={{ fontVariant: ["tabular-nums"], lineHeight: 14 }}>{isShow ? counter : `${pct}%`}</Text>}
           </View>
         </View>
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: tokens.divider }}>
-          <View style={{ width: `${pct}%`, height: "100%", backgroundColor: pct >= 100 ? tokens.success : tokens.accent }} />
-        </View>
+        {isQueue ? null : (
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: tokens.divider }}>
+            <View style={{ width: `${pct}%`, height: "100%", backgroundColor: pct >= 100 ? tokens.success : tokens.accent }} />
+          </View>
+        )}
       </Pressable>
       {check}
     </Reanimated.View>

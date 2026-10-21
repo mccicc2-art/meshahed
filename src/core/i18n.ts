@@ -1055,6 +1055,19 @@ const ar = {
   talkPickEpisode: "اختر الحلقة",
   talkSpoilersToggle: "حرق الأحداث",
   talkEpisodeEmpty: "لا مشاركات في هذه الحلقة بعد — ابدأ نقاشها",
+  /* 🆕 D-1508 — غرفةُ العمل بمستويين (أحمد ٢١ أكتوبر: «عام اذا بيتكلمون عن المسلسل بشكل عام… حلقات لحلقة حلقة») */
+  talkTabGeneral: "عام",
+  talkTabEpisodes: "الحلقات",
+  talkLatestEpisode: (season: number, episode: number) => `آخر حلقة: م${num(season, "ar")} ح${num(episode, "ar")}`,
+  talkComments: (n: number) =>
+    n === 0 ? "لا تعليقات" : n === 1 ? "تعليقٌ واحد" : n === 2 ? "تعليقان" : n <= 10 ? `${num(n, "ar")} تعليقات` : `${num(n, "ar")} تعليقاً`,
+  talkWriteAboutShow: "اكتب عن المسلسل…",
+  talkWriteAboutEpisode: (episode: number) => `اكتب عن الحلقة ${num(episode, "ar")}…`,
+  talkEpUnwatched: "لم تشاهد هذه الحلقة — التعليقات مغطّاة",
+  talkMarkEpWatched: "شاهدتها",
+  talkEpWatched: "شاهدتها",
+  talkEpShort: (season: number, episode: number) => `م${num(season, "ar")} · ح${num(episode, "ar")}`,
+  talkGeneralEmpty: "لا كلامَ عن المسلسل بعد — ابدأه بأوّل سطر",
   /* **وفراغُ التبويب غيرُ فراغ الغرفة** (D-259): هذا يقول «لا غرفةَ
      بعد» وذاك يقول «الغرفةُ خالية». **وكان يقرأ نصَّ الآراء** («لم يكتب
      أحدٌ رأياً بعد») — **اسمٌ بقي بعد أن تغيّر ما يسمّيه.**
@@ -2238,6 +2251,8 @@ const ar = {
   listPlaylistOnToast: "صارت تظهر في «تابِع المشاهدة»",
   /* 🆕 D-559 — طابورُ «للمشاهدة» بطاقةً بين قوائمك */
   toWatchAutoNote: "تُبنى وحدها من أفلامك بلا قائمة",
+  /* 🆕 D-1507 — اسمُ طابور «أفلامك بلا قائمة» وحدَه (أحمد ٢١ أكتوبر «ب»): «للمشاهدة» بقي للزرّ ولصفِّ الرئيسيّة */
+  movieQueue: "طابور الأفلام",
   toWatchOn: "تعمل",
   toWatchOff: "متوقّفة",
   listPlaylistOffToast: "أُزيلت من «تابِع المشاهدة»",
@@ -3533,6 +3548,17 @@ const en: Dict = {
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
   talkAllEpisodes: "All episodes",
+  talkTabGeneral: "General",
+  talkTabEpisodes: "Episodes",
+  talkLatestEpisode: (season: number, episode: number) => `Latest: S${num(season, "en")} E${num(episode, "en")}`,
+  talkComments: (n: number) => (n === 0 ? "No comments" : n === 1 ? "1 comment" : `${num(n, "en")} comments`),
+  talkWriteAboutShow: "Write about the series…",
+  talkWriteAboutEpisode: (episode: number) => `Write about episode ${num(episode, "en")}…`,
+  talkEpUnwatched: "You haven't watched this episode — comments are covered",
+  talkMarkEpWatched: "Watched it",
+  talkEpWatched: "Watched",
+  talkEpShort: (season: number, episode: number) => `S${num(season, "en")} · E${num(episode, "en")}`,
+  talkGeneralEmpty: "Nothing about the series yet — start with the first line",
   talkEpisodeLabel: (n: number) => `Episode ${num(n, "en")}`,
   talkSeasonLabel: (n: number) => `Season ${num(n, "en")}`,
   talkPickSeason: "Pick a season",
@@ -4422,6 +4448,7 @@ const en: Dict = {
   listPlaylistOnState: "On",
   listPlaylistOnToast: "Now showing in Continue Watching",
   toWatchAutoNote: "Built from your movies with no list",
+  movieQueue: "Movie queue",
   toWatchOn: "On",
   toWatchOff: "Off",
   listPlaylistOffToast: "Removed from Continue Watching",

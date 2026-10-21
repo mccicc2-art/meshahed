@@ -554,11 +554,12 @@ export function HomeScreen() {
       continue:
         s.continue.length > 0 ? (
           <View key="continue">
+            {/* 🆕 D-1507 — بطاقةُ «طابور الأفلام» تفتح ورقتَه (ترتيبُه و✓) بدل صفحة أوّل فيلمٍ فيه */}
             <SectionHeader title={t.continueWatching} icon="play" onTitle={() => setAllSheet("continue")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("continue")} />
             {sectionView(view, "continue") === "compact" ? (
-              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
+              <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? setAllSheet("queue") : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
             ) : (
-              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? openTitle(c.next.kind, c.next.id) : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Rail>
+              <Rail>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="card" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? setAllSheet("queue") : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Rail>
             )}
           </View>
         ) : null,
@@ -775,6 +776,7 @@ export function HomeScreen() {
       ) : null}
       {allSheet && d ? (
         <HomeAllSheet
+          key={allSheet}
           section={allSheet}
           d={d}
           extras={extras.data ?? null}
@@ -792,6 +794,7 @@ export function HomeScreen() {
             setAllSheet(null);
             setQueueRow("towatchlist");
           }}
+          onQueue={() => setAllSheet("queue")}
         />
       ) : null}
       {who ? (
@@ -843,7 +846,7 @@ function ToWatchQueueCard({ count, posters, on, busy, onPress, onToggle }: { cou
       <ListCard
         card={{
           id: "towatch",
-          name: t.libToWatch,
+          name: t.movieQueue,
           icon: "bookmark",
           owner: null,
           owner_avatar: null,

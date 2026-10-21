@@ -1264,6 +1264,7 @@ async function ContinueSection({
                      صفٌّ واحدٌ لا يملك هندستين. */
                   variant={view === "compact" ? "row" : "card"}
                   locale={locale}
+                  queue
                 />
               ),
             });

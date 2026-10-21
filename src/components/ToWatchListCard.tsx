@@ -107,13 +107,13 @@ export function ToWatchListCard({
           open();
         }
       }}
-      aria-label={t.libToWatch}
+      aria-label={t.movieQueue}
       className={`block w-full h-full text-start rounded-2xl border bg-surface overflow-hidden transition hover:border-accent/40 active:scale-[0.99] cursor-pointer ${
         on ? "border-border" : "border-dashed border-border"
       }`}
     >
       <ListCardShell
-        name={t.libToWatch}
+        name={t.movieQueue}
         /* **رمزُ العلامة قبل الاسم** — نفسُ موضع رمز قوائم لوبز، **يقول
            إنها قائمةٌ تُبنى وحدَها لا واحدةً أنشأتَها** */
         icon={<Icon name="bookmark" size={15} style={{ color: "var(--accent)" }} />}
@@ -139,7 +139,7 @@ export function ToWatchListCard({
             }}
             disabled={pending}
             aria-pressed={on}
-            aria-label={t.libToWatch}
+            aria-label={t.movieQueue}
             className="shrink-0 active:scale-95 transition disabled:opacity-60"
           >
             <PlayPill on={on} locale={locale} />

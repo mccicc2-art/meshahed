@@ -34,6 +34,12 @@ function pickName(data: Record<string, unknown>, locale: Locale): string | null 
   return s(mine) ?? s(other);
 }
 
+/** 🆕 D-1508 — اسمُ الحلقة وحدَه (رأسُ غرفتها وصفُّها في «الحلقات») — بلغة القارئ ثمّ الأخرى */
+export function bulletinName(kind: string | null, data: Record<string, unknown> | null, locale: Locale): string | null {
+  if (kind !== "episode" || !data) return null;
+  return pickName(data, locale);
+}
+
 /**
  * **السطرُ الأوّل — حقائقُ بلا حرق** (قرارُ أحمد): رقمُ الحلقة وعنوانُها.
  * **ويعود `null` لما لا يعرفه القالب** — نشرةٌ بلا صيغةٍ صمتٌ لا خطأ.

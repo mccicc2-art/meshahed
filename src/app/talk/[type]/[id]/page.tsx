@@ -11,6 +11,7 @@ import {
   getPostVotes,
   getFollowState,
   isMovieWatched,
+  getWatchedForShow,
 } from "@/lib/data";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
@@ -140,6 +141,8 @@ export default async function TalkPage({
        صفَّ واحداً يقول «شاهدتُه»** — فادّعاؤه للمسلسلات كان سيكذب. */
     mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
   ]);
+  /* 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (كلُّ ما أشّره) — غرفةُ ما لم يشاهده مغطّاة، وقائمتُها تقول «شاهدتها» */
+  const watchedEps = mediaType === "tv" && user ? [...(await getWatchedForShow(tmdbId, null).catch(() => new Set<string>()))] : [];
 
   /* 🆕 **وإعجاباتُ المشاركات بعد الخيط لا معه** (D-289): **مفاتيحُها هي
      معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
@@ -354,6 +357,7 @@ export default async function TalkPage({
             episode: episodeOf.get(p.postId)?.episode ?? null,
           }))}
           seasons={seasons}
+          watchedEps={watchedEps}
           me={me}
           locale={locale}
           signedIn={signedIn}

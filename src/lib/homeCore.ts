@@ -1008,7 +1008,7 @@ export async function buildHomeBody({
   const toWatchCard =
     prefs.toWatch && unlistedNext
       ? {
-          name: t.libToWatch,
+          name: t.movieQueue,
           next: {
             tmdb_id: unlistedNext.tmdb_id,
             media_type: "movie" as const,
@@ -1283,7 +1283,7 @@ export async function buildHomeBody({
         }
       : {
           key: TW_LIST_KEY,
-          title: t.libToWatch,
+          title: t.movieQueue,
           poster_path: toWatchQueueCard?.posters[0] ?? null,
           fallbackIcon: "list" as const,
         },

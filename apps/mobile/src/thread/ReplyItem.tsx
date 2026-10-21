@@ -36,6 +36,8 @@ export type ReplyItemProps = {
   row: ThreadRow;
   /** 🆕 D-1495 — «حرق الأحداث» مفعّلٌ في رأس الغرفة: الحرقُ مكشوفٌ بلا ضغطة */
   revealAll?: boolean;
+  /** 🆕 D-1508 — غرفةُ حلقةٍ لم يشاهدها القارئ: السطرُ مغطًّى ولو لم يعلن كاتبُه حرقاً، وغطاؤه يقول السبب */
+  unwatched?: boolean;
   signedIn: boolean;
   replyingTo: string | null;
   canReply: boolean;
@@ -79,6 +81,7 @@ export const ReplyItem = memo(function ReplyItem({
   onPath,
   onTitle,
   revealAll = false,
+  unwatched = false,
 }: ReplyItemProps) {
   const { t, tokens, locale } = useApp();
   const [revealOne, setReveal] = useState(false);
@@ -89,7 +92,7 @@ export const ReplyItem = memo(function ReplyItem({
   const p = row.person;
   const name = displayNameOf(p, t.anonymousUser);
   const text = row.translated && !original ? row.translated : row.body;
-  const hidden = row.has_spoiler && !reveal;
+  const hidden = (row.has_spoiler || unwatched) && !reveal;
   const canAct = signedIn && !row.mine && !pending;
   const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingVertical: 6, paddingHorizontal: 8, minHeight: 32 };
   const hasTail = !pending && ((signedIn && canReply) || fold || (showLikes && (canAct || row.likes > 0)) || (showVotes && (canAct || row.score !== 0)));
@@ -168,7 +171,7 @@ export const ReplyItem = memo(function ReplyItem({
       ) : hidden ? (
         <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
           <Icon name="eye-off" size={14} color={tokens.muted} />
-          <Text size={13} muted>{t.spoilerShow}</Text>
+          <Text size={13} muted>{unwatched ? t.epSpoilerUnwatched : t.spoilerShow}</Text>
         </Pressable>
       ) : (
         <>

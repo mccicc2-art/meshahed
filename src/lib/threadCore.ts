@@ -15,12 +15,13 @@ import {
   getReactions,
   getTitleReviews,
   getTitleReplies,
+  getWatchedForShow,
 } from "@/lib/data";
 import { getMovie, getTv } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
 import { getBatchTranslations } from "@/lib/translate";
-import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/core/bulletinLine";
+import { bulletinLine, bulletinFacts, bulletinSpoiler, bulletinName } from "@/core/bulletinLine";
 import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { newsViewKey, commentViewKey } from "@/core/postKeys";
@@ -99,6 +100,9 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
     getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
     kind === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
   ]);
+  /* 🆕 D-1508 — ما شاهده القارئُ من حلقات المسلسل (كلَّ ما أشّره، لا دورةَ الإعادة وحدَها): غرفةُ الحلقة تغطّي كلامَها عمّن
+     لم يشاهدها، وقائمةُ «الحلقات» تقفلها. بلا جلسةٍ مصفوفةٌ فارغة (والغلقُ لكلِّ شيء — الزائرُ لا يُحرَق) */
+  const watchedEpsP = kind === "tv" && user ? getWatchedForShow(tmdbId, null).then((s) => [...s]).catch(() => [] as string[]) : Promise.resolve([] as string[]);
   const ids = thread.map((p) => p.postId);
   const [work, likes, votes, translations, me] = await Promise.all([
     workP,
@@ -122,6 +126,8 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       bulletin,
       bulletin_vote: facts.vote,
       bulletin_spoiler: bulletin ? bulletinSpoiler(p.spoiler, locale) : null,
+      /* 🆕 D-1508 — اسمُ الحلقة ومدّتُها لرأس غرفتها */
+      ...(bulletin ? { bulletin_name: bulletinName(p.kind, p.data, locale), bulletin_runtime: bulletinFacts(p.data, t).runtime } : {}),
       has_spoiler: p.hasSpoiler,
       image: bulletin ? null : safeImage(p.imagePath ?? (p.data as Record<string, unknown> | null)?.img),
       gif_id: bulletin ? null : p.gifId,
@@ -139,7 +145,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
   return {
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
-    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons },
+    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons, watched_eps: await watchedEpsP },
     rows,
     nested: true,
     has_likes: true,

@@ -206,7 +206,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                 <ListCard
                   card={{
                     id: "towatch",
-                    name: t.libToWatch,
+                    name: t.movieQueue,
                     icon: "bookmark",
                     owner: null,
                     owner_avatar: null,

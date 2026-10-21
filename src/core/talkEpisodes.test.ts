@@ -39,3 +39,37 @@ test("orderTalk: newest roots first, replies after in time order; active by weig
   assert.deepEqual(orderTalk(rows, "latest").map((r) => r.id), ["new", "old", "r1"]);
   assert.deepEqual(orderTalk(rows, "active").map((r) => r.id), ["old", "new", "r1"]);
 });
+
+/* D-1508 — «عام» و«الحلقات» */
+import { generalRows, episodeRoomRows, episodeStats, episodeBulletin, latestBulletin, talkEpisodeKey } from "./talkEpisodes.ts";
+
+const room = [
+  { id: "b10", parent_id: null, season: 4, episode: 10, bulletin: "Episode 10 is out", created_at: "2026-10-14" },
+  { id: "r1", parent_id: "b10", season: 4, episode: 10, bulletin: null, created_at: "2026-10-15" },
+  { id: "p1", parent_id: null, season: 4, episode: 10, bulletin: null, created_at: "2026-10-16" },
+  { id: "p1r", parent_id: "p1", season: 4, episode: 10, bulletin: null, created_at: "2026-10-17" },
+  { id: "b9", parent_id: null, season: 4, episode: 9, bulletin: "Episode 9 is out", created_at: "2026-10-07" },
+  { id: "g1", parent_id: null, season: null, episode: null, bulletin: null, created_at: "2026-10-18" },
+  { id: "g1r", parent_id: "g1", season: null, episode: null, bulletin: null, created_at: "2026-10-19" },
+];
+
+test("general holds people's words with no episode — no bulletins", () => {
+  assert.deepEqual(generalRows(room).map((r) => r.id), ["g1", "g1r"]);
+});
+
+test("episode room drops its bulletin and lifts replies to it as roots", () => {
+  const r = episodeRoomRows(room, { season: 4, episode: 10 });
+  assert.deepEqual(r.map((x) => [x.id, x.parent_id]), [["r1", null], ["p1", null], ["p1r", "p1"]]);
+});
+
+test("episode stats count roots and replies, latest time, bulletins excluded", () => {
+  const s = episodeStats(room);
+  assert.deepEqual(s.get(talkEpisodeKey(4, 10)), { count: 3, last: "2026-10-17" });
+  assert.equal(s.get(talkEpisodeKey(4, 9)), undefined);
+});
+
+test("the episode's bulletin and the latest bulletin", () => {
+  assert.equal(episodeBulletin(room, { season: 4, episode: 9 })?.id, "b9");
+  assert.equal(episodeBulletin(room, { season: 1, episode: 1 }), null);
+  assert.equal(latestBulletin(room)?.id, "b10");
+});

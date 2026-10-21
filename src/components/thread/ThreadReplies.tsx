@@ -17,6 +17,7 @@ import {
   reportListReviewReply,
   togglePostLike,
   votePost,
+  toggleEpisode,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { displayNameOf } from "@/core/people";
@@ -27,7 +28,9 @@ import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
 import { TalkEpisodeBar } from "./TalkEpisodeBar";
-import type { EpisodeRef } from "@/core/talkEpisodes";
+import { TalkTvBar } from "./TalkTvBar";
+import { talkEpisodeKey, type EpisodeRef, type EpisodeStat } from "@/core/talkEpisodes";
+import { bulletinFacts, bulletinName } from "@/core/bulletinLine";
 import type { PickedTitle } from "../TitleSearchSheet";
 
 /** 🆕 D-1443 — العملُ الملتقَط من ورقة البحث بشكل بطاقة النقاش */
@@ -114,10 +117,13 @@ export function ThreadReplies({
   votes,
   translations,
   seasons,
+  watchedEps,
 }: {
   target: ReplyTarget;
   /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (الغرفةُ وحدَها؛ فارغةٌ للأفلام) */
   seasons?: { season: number; episodes: number }[];
+  /** 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (`s:e`) — غرفةُ ما لم يشاهده مغطّاة */
+  watchedEps?: string[];
   replies: ThreadReply[];
   /**
    * 🆕 **إعجاباتُ المشاركات — عدداً وحالةً** (D-289، الهجرة ٩٠).
@@ -143,6 +149,10 @@ export function ThreadReplies({
   const [pick, setPick] = useState<EpisodeRef | null>(null);
   const [revealAll, setRevealAll] = useState(false);
   const [talkSort, setTalkSort] = useState<"latest" | "active">("latest");
+  /* 🆕 D-1508 — «عام» و«الحلقات» للمسلسل (أحمد ٢١ أكتوبر)، وموسمُ القائمة، وما شاهده القارئ (يُضاف إليه «شاهدتها» محلّيّاً) */
+  const [talkTab, setTalkTab] = useState<"general" | "episodes">("general");
+  const [epSeason, setEpSeason] = useState<number | null>(null);
+  const [seenEps, setSeenEps] = useState<ReadonlySet<string>>(() => new Set(watchedEps ?? []));
   const [added, setAdded] = useState<ThreadReply[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   /** الصندوقُ المفتوح: `""` للمنشور نفسِه، أو معرّفُ ردٍّ يُردّ عليه */
@@ -241,12 +251,63 @@ export function ThreadReplies({
   /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241): ما ظهر معرّفُه من الخادم
      تسقط نسختُه هنا — فلا يظهر الردُّ مرّتين. */
   const fromServer = new Set(replies.map((r) => r.replyId));
-  const all = [...replies, ...added.filter((a) => !fromServer.has(a.replyId))]
-    .filter((r) => !removed.has(r.replyId))
-    /* 🆕 D-1495 — الحلقةُ المختارة: السطرُ وردودُه (الردُّ يحمل حلقةَ جذره من الخادم) */
-    .filter((r) => !pick || (r.season === pick.season && r.episode === pick.episode))
+  const whole = [...replies, ...added.filter((a) => !fromServer.has(a.replyId))].filter((r) => !removed.has(r.replyId));
+  /* 🆕 D-1508 — المسلسلُ بمستويين: «عام» بلا حلقةٍ ولا نشرات، وغرفةُ الحلقة كلامُها بلا نشرتها (والردُّ على النشرة يصعد جذراً)،
+     وقائمةُ «الحلقات» بلا خيط. الفيلمُ كما كان (D-1495) */
+  const tvTalk = target.kind === "talk" && target.mediaType === "tv" && (seasons?.length ?? 0) > 0;
+  const epList = tvTalk && talkTab === "episodes" && !pick;
+  const bulletinIds = new Set(whole.filter((r) => r.kind).map((r) => r.replyId));
+  const all = whole
+    .filter((r) =>
+      !tvTalk
+        ? !pick || (r.season === pick.season && r.episode === pick.episode)
+        : pick
+          ? !r.kind && r.season === pick.season && r.episode === pick.episode
+          : talkTab === "general"
+            ? !r.kind && (r.season == null || r.episode == null)
+            : false,
+    )
+    .map((r) => (tvTalk && pick && r.parentId && bulletinIds.has(r.parentId) ? { ...r, parentId: null } : r))
     /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة */
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  /* 🆕 D-1508 — أرقامُ «الحلقات»: ما قيل في كلِّ حلقة (بلا النشرات) ووقتُ آخره، وآخرُ حلقةٍ نشرها لوبز، واسمُ كلِّ حلقة من نشرتها */
+  const epStats = new Map<string, EpisodeStat>();
+  let latestEp: EpisodeRef | null = null;
+  const epInfo = new Map<string, { name: string | null; vote: string | null; runtime: string | null }>();
+  if (tvTalk) {
+    for (const r of whole) {
+      if (r.season == null || r.episode == null) continue;
+      const k = talkEpisodeKey(r.season, r.episode);
+      if (r.kind) {
+        if (!latestEp || r.season > latestEp.season || (r.season === latestEp.season && r.episode > latestEp.episode)) latestEp = { season: r.season, episode: r.episode };
+        const f = bulletinFacts(r.data ?? null, t);
+        epInfo.set(k, { name: bulletinName(r.kind ?? null, r.data ?? null, locale), vote: f.vote, runtime: f.runtime });
+        continue;
+      }
+      const cur = epStats.get(k) ?? { count: 0, last: null };
+      cur.count += 1;
+      if (!cur.last || r.createdAt > cur.last) cur.last = r.createdAt;
+      epStats.set(k, cur);
+    }
+  }
+  const unwatchedRoom = !!pick && tvTalk && !seenEps.has(talkEpisodeKey(pick.season, pick.episode));
+  function markEpWatched(ep: EpisodeRef) {
+    const k = talkEpisodeKey(ep.season, ep.episode);
+    const set = (on: boolean) =>
+      setSeenEps((s0) => {
+        const n = new Set(s0);
+        if (on) n.add(k);
+        else n.delete(k);
+        return n;
+      });
+    set(true);
+    if (target.kind !== "talk") return;
+    void toggleEpisode({ showTmdbId: target.tmdbId, season: ep.season, episode: ep.episode, runtime: null, watched: true, title: target.title, posterPath: target.posterPath }).catch(() => {
+      set(false);
+      setError(t.errorTitle);
+    });
+  }
+
   /* 🆕 D-1443 — من كتب هنا يُمنشَن: `@اسمه` في متنٍ رابطٌ إلى صفحته (والخادمُ يدفع له «ذكرك») */
   const mentionNames = new Set(all.map((r) => r.username?.toLowerCase()).filter((n): n is string => !!n));
 
@@ -353,11 +414,35 @@ export function ThreadReplies({
       )}
 
       {/* 🆕 D-1495 — أدواتُ الغرفة فوق الخيط (الحلقة · «حرق الأحداث» · العددُ و«الأحدث ⌄») */}
-      {target.kind === "talk" ? (
-        <TalkEpisodeBar
+      {tvTalk ? (
+        <TalkTvBar
           locale={locale}
           seasons={seasons ?? []}
+          tab={talkTab}
+          onTab={(x) => {
+            setTalkTab(x);
+            setPick(null);
+          }}
           pick={pick}
+          onPick={(p) => {
+            if (p) setTalkTab("episodes");
+            setPick(p);
+          }}
+          season={epSeason}
+          onSeason={setEpSeason}
+          stats={epStats}
+          latest={latestEp}
+          episodeOf={(p) => epInfo.get(talkEpisodeKey(p.season, p.episode)) ?? null}
+          watched={seenEps}
+          signedIn={signedIn}
+          onWatched={markEpWatched}
+        />
+      ) : null}
+      {target.kind === "talk" && !epList ? (
+        <TalkEpisodeBar
+          locale={locale}
+          seasons={tvTalk ? [] : (seasons ?? [])}
+          pick={tvTalk ? null : pick}
           onPick={setPick}
           revealAll={revealAll}
           onReveal={() => setRevealAll((v) => !v)}
@@ -368,9 +453,9 @@ export function ThreadReplies({
       ) : null}
 
       {/* ===== الردود ===== */}
-      {all.length === 0 ? (
+      {epList ? null : all.length === 0 ? (
         <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">
-          {pick ? t.talkEpisodeEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}
+          {pick ? t.talkEpisodeEmpty : tvTalk ? t.talkGeneralEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}
         </p>
       ) : (
         roots.map((r) => node(r))
@@ -470,8 +555,8 @@ export function ThreadReplies({
                 tap(6);
                 setOpen("");
               }}
-              aria-label={nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
-              title={nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+              aria-label={pick && tvTalk ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+              title={pick && tvTalk ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
               className="pointer-events-auto w-12 h-12 rounded-full bg-surface-2 border border-border text-foreground grid place-items-center shadow-xl active:scale-95 transition hover:border-accent"
             >
               <Icon name="edit" size={20} />
@@ -498,7 +583,8 @@ export function ThreadReplies({
     return (
       <div key={r.replyId}>
         <ReplyItem
-          reply={r}
+          /* 🆕 D-1508 — غرفةُ حلقةٍ لم يشاهدها القارئ: كلُّ سطرٍ خلف الحاجب ولو لم يعلن كاتبُه حرقاً */
+          reply={unwatchedRoom && !r.hasSpoiler ? { ...r, hasSpoiler: true } : r}
           revealAll={revealAll}
           /* 🆕 **وسهمُ الطيّ يركب صفَّ الأفعال** (D-288): كان سطراً
              مستقلّاً بإزاحة ٥٢px تحت الرسالة — **سطرٌ كاملٌ لأربع

@@ -1,4 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { write } from "../api";
+import { ToastHost, type ToastHostRef } from "../HoldHost";
+import { haptic } from "../haptics";
+import { HOME_KEY } from "./useHome";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -10,7 +15,7 @@ import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard } from "../library/ListCard";
 import { MediaRow } from "./Cards";
 import { FriendBadge, FriendsNames, FriendsWhoLine, WHO_H, whoOf } from "./Friends";
-import type { HomeExtrasPayload, HomeFriendCard, HomePayload, HomeQueueItem, QueueOrderBody } from "../contracts";
+import type { HomeExtrasPayload, HomeFriendCard, HomePayload, HomeQueueItem, QueueOrderBody, ToggleMovieBody, TrackResult } from "../contracts";
 
 /**
  * ====== 🆕 D-1353 — ورقةُ «الكلّ» الواحدةُ لأقسام الرئيسيّة ======
@@ -30,7 +35,7 @@ import type { HomeExtrasPayload, HomeFriendCard, HomePayload, HomeQueueItem, Que
  * 🔑 **ورقةٌ واحدةٌ من مكوّن `Sheet` نفسِه** (القاعدة: ورقةٌ واحدة). لا ضغطَ مطوّلاً على ملصقاتها — كما كانت ورقةُ
  * «مسلسلاتي/أفلامي» قبلها؛ الأفعالُ في الصفّ نفسِه وفي صفحة العمل.
  */
-export type AllSection = "continue" | "towatch" | "upcoming" | "shows" | "movies" | "lists" | "friends";
+export type AllSection = "continue" | "towatch" | "upcoming" | "shows" | "movies" | "lists" | "friends" | "queue";
 
 const GAP = 12;
 /** حشوةُ جسد `Sheet` الأفقيّة */
@@ -38,7 +43,10 @@ const SHEET_PAD = 16;
 /** ما يطلّ من الصفّ الثالث ليدلّ على أنّ تحته مزيداً */
 const PEEK = 28;
 
-const REORDER_ROW: Partial<Record<AllSection, QueueOrderBody["row"]>> = { continue: "continue", towatch: "towatch", lists: "lists" };
+const REORDER_ROW: Partial<Record<AllSection, QueueOrderBody["row"]>> = { continue: "continue", towatch: "towatch", lists: "lists", queue: "towatchlist" };
+
+/** `tw-mv-<id>` — مفتاحُ الفيلم في طابور الأفلام (D-719) */
+const queueIdOf = (key: string) => Number(/^tw-mv-(\d+)$/.exec(key)?.[1] ?? 0);
 
 export function HomeAllSheet({
   section,
@@ -54,6 +62,7 @@ export function HomeAllSheet({
   onReorder,
   onToWatchToggle,
   onToWatchList,
+  onQueue,
 }: {
   section: AllSection;
   d: HomePayload;
@@ -70,12 +79,45 @@ export function HomeAllSheet({
   onToWatchToggle: (on: boolean) => void;
   /** بطاقةُ «للمشاهدة» في القوائم: بابُ ترتيب طابورها — ورقةٌ أخرى، فتُغلق هذه أوّلاً */
   onToWatchList: () => void;
+  /** 🆕 D-1507 — بطاقةُ «طابور الأفلام» في ورقة «تابِع المشاهدة» تفتح ورقةَ الطابور كما في الصفّ */
+  onQueue: () => void;
 }) {
   const { t, tokens } = useApp();
   const { width, height } = useWindowDimensions();
   const [mode, setMode] = useState<"grid" | "reorder">("grid");
   const [who, setWho] = useState<HomeFriendCard | null>(null);
   const s = d.sections;
+  const qc = useQueryClient();
+  /* 🆕 D-1507 — أفلامُ الطابور التي أُشّرت للتوّ: تغيب فوراً ويعيدها «تراجع» أو الفشل */
+  const [gone, setGone] = useState<Set<number>>(() => new Set());
+  const toast = useRef<ToastHostRef>(null);
+  const setGoneOne = (id: number, on: boolean) =>
+    setGone((g) => {
+      const n = new Set(g);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  /* ✓ في الورقة = ✓ بطاقة الطابور في «تابِع المشاهدة» (`markListNext` لفيلم): الكتابةُ نفسُها والرجعةُ نفسُها */
+  const watchQueued = async (id: number, title: string) => {
+    haptic.success();
+    setGoneOne(id, true);
+    const movie = (watched: boolean) => write<TrackResult>("/api/v1/track/movie", { movieTmdbId: id, runtime: null, watched } satisfies ToggleMovieBody);
+    try {
+      await movie(true);
+      void qc.invalidateQueries({ queryKey: HOME_KEY });
+      toast.current?.say(`${title} ✓`, {
+        label: t.undoWatched,
+        onPress: () => {
+          setGoneOne(id, false);
+          void movie(false).then(() => qc.invalidateQueries({ queryKey: HOME_KEY })).catch(() => setGoneOne(id, true));
+        },
+      }, 4000, "success");
+    } catch {
+      setGoneOne(id, false);
+      toast.current?.say(t.errSaveShort);
+    }
+  };
   /* 🔴 D-1354 — **عرضُ الشبكة يُقاس ولا يُفترض** (تسجيلُ أحمد ١١ أكتوبر: «العرض فيه فلمين، ابغاه ثلاثة ما يكون فيه
      مكان فاضي»). كان يُحسب من عرض الشاشة ناقصَ حشوة الورقة — وللورقة إطارٌ بكسلٌ من كلِّ جهة، فزاد مجموعُ ثلاثة
      ملصقاتٍ على المتاح ببكسلٍ واحد (٣٧٨ من ٣٧٧ على شاشته) ونزل الثالثُ إلى السطر التالي. التقديرُ الأوّلُ يطرح
@@ -88,7 +130,8 @@ export function HomeAllSheet({
   const bodyMax = Math.min(rowH * 2 + GAP + PEEK, Math.round(height * 0.62));
 
   const title =
-    section === "continue" ? t.continueWatching
+    section === "queue" ? t.movieQueue
+    : section === "continue" ? t.continueWatching
     : section === "towatch" ? t.libToWatch
     : section === "upcoming" ? t.libUpcoming
     : section === "shows" ? t.myShows
@@ -103,7 +146,14 @@ export function HomeAllSheet({
   const press = (it: CardItem) => go(it.kind, it.id);
 
   /** شبكةُ ملصقات: كلُّ قسمٍ يعطي بطاقاتِه وما تفعله ضغطتُها */
-  const posters: { item: CardItem; onPress: (it: CardItem) => void; friend?: HomeFriendCard }[] | null = useMemo(() => {
+  const posters: { item: CardItem; onPress: (it: CardItem) => void; friend?: HomeFriendCard; queued?: { id: number; rank: number } }[] | null = useMemo(() => {
+    /* 🆕 D-1507 — **طابورُ الأفلام بترتيبه** (أحمد ٢١ أكتوبر: «يفك صفحة من تحت مثل اذا ضغط all… ويقدر يرتب ايش الاول ويقدر
+       يضغط شاهدت»): رقمُ كلِّ فيلمٍ في الطابور، و✓ يخرجه، و«إعادة ترتيب» تحوّل الورقةَ نفسَها إلى السحب */
+    if (section === "queue")
+      return d.queues.towatch_list
+        .map((q) => ({ q, id: queueIdOf(q.key) }))
+        .filter((x) => x.id > 0 && !gone.has(x.id))
+        .map(({ q, id }, i) => ({ item: { ...asItem({ key: q.key, kind: "movie", id, title: q.title ?? "", poster_path: q.poster_path, known: true }), noNext: true }, onPress: press, queued: { id, rank: i + 1 } }));
     if (section === "continue")
       return s.continue.map((c) =>
         c.type === "show"
@@ -113,7 +163,7 @@ export function HomeAllSheet({
               item: asItem({ key: c.key, kind: c.next.kind, id: c.next.id, title: c.list_name, poster_path: c.next.poster_path }),
               onPress: () => {
                 onClose();
-                if (c.type === "towatch") onTitle(c.next.kind, c.next.id);
+                if (c.type === "towatch") onQueue();
                 else onList(c.list_id);
               },
             },
@@ -124,14 +174,14 @@ export function HomeAllSheet({
     if (section === "friends") return s.friends.map((r) => ({ item: asItem({ key: `af-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched }), onPress: press, friend: r }));
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, s, asItem]);
+  }, [section, s, asItem, d.queues.towatch_list, gone]);
 
   const count =
     posters ? posters.length
     : section === "upcoming" ? s.upcoming.length
     : s.lists.cards.length + (s.lists.towatch_card ? 1 : 0);
   const row = REORDER_ROW[section];
-  const queue = row === "continue" ? d.queues.continue : row === "towatch" ? d.queues.towatch : row === "lists" ? d.queues.lists : [];
+  const queue = row === "continue" ? d.queues.continue : row === "towatch" ? d.queues.towatch : row === "lists" ? d.queues.lists : row === "towatchlist" ? d.queues.towatch_list.filter((q) => !gone.has(queueIdOf(q.key))) : [];
   const canReorder = !!row && queue.length > 1;
 
   /* ——— وضعُ الأسماء: الورقةُ نفسُها، رأسُها اسمُ العمل وسهمُ رجوع ——— */
@@ -171,7 +221,7 @@ export function HomeAllSheet({
       ) : (
         <>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: -14, minHeight: 36 }}>
-            <Text size={13} muted>{t.listCount(count)}</Text>
+            <Text size={13} muted>{section === "queue" ? t.leftEps(count) : t.listCount(count)}</Text>
             {canReorder ? (
               <Pressable onPress={() => setMode("reorder")} hitSlop={6} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, opacity: pressed ? 0.7 : 1 })}>
                 <Icon name="grip" size={16} color={tokens.accent} />
@@ -195,6 +245,7 @@ export function HomeAllSheet({
                     <View>
                       <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
                       {p.friend ? <FriendBadge card={p.friend} /> : null}
+                      {p.queued ? <QueueMarks rank={p.queued.rank} onCheck={() => void watchQueued(p.queued!.id, p.item.title)} /> : null}
                     </View>
                     {p.friend ? <FriendsWhoLine card={p.friend} onProfile={(u) => { onClose(); onProfile(u); }} onNames={setWho} /> : null}
                   </View>
@@ -240,9 +291,32 @@ export function HomeAllSheet({
               </View>
             )}
           </ScrollView>
+          {/* إشعارُ «تراجع» داخل الورقة: هي نافذةٌ فوق الرئيسيّة، وإشعارُ الرئيسيّة تحتها لا يُرى */}
+          {section === "queue" ? <View pointerEvents="box-none" style={{ height: 0 }}><ToastHost hostRef={toast} bottom={-64} /></View> : null}
         </>
       )}
     </Sheet>
+  );
+}
+
+/** 🆕 D-1507 — رقمُ الفيلم في الطابور (طرفُ البداية) و✓ «شاهدته» (الطرفُ الآخر) فوق ملصقه — دائرةُ ✓ بطاقة «تابِع المشاهدة» نفسُها */
+function QueueMarks({ rank, onCheck }: { rank: number; onCheck: () => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <>
+      <View pointerEvents="none" style={{ position: "absolute", top: 6, start: 6, minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+        <Text size={11} weight="800" color="#000" style={{ fontVariant: ["tabular-nums"] }}>{rank}</Text>
+      </View>
+      <Pressable
+        onPress={onCheck}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={t.markWatchedAria}
+        style={({ pressed }) => ({ position: "absolute", top: 6, end: 6, width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "rgba(255,255,255,0.45)", backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+      >
+        <Icon name="check" size={16} color="#fff" />
+      </Pressable>
+    </>
   );
 }
 
@@ -253,7 +327,7 @@ function ToWatchCard({ card, busy, onToggle, onPress }: { card: NonNullable<Home
     <ListCard
       card={{
         id: "towatch",
-        name: t.libToWatch,
+        name: t.movieQueue,
         icon: "bookmark",
         owner: null,
         owner_avatar: null,

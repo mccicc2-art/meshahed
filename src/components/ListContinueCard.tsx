@@ -22,6 +22,7 @@ import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { Icon } from "./Icon";
+import { HOME_QUEUE_EVENT } from "./HomeQueueOrder";
 
 /**
  * **قائمةٌ تُتابَع كما يُتابَع المسلسل** (D-496، طلبُ أحمد: «تظهر في
@@ -59,6 +60,7 @@ export function ListContinueCard({
   total,
   variant = "card",
   locale,
+  queue = false,
 }: {
   listName: string;
   /** أوّلُ ما لم يُشاهَد في ترتيب القائمة */
@@ -95,6 +97,12 @@ export function ListContinueCard({
    */
   variant?: "card" | "row";
   locale: Locale;
+  /**
+   * 🆕 D-1507 — **بطاقةُ «طابور الأفلام»** (أحمد ٢١ أكتوبر «أ+»): تقول ما بقي فيه («باقي ٢») بلا شريطٍ ولا نسبة — الطابورُ
+   * مفتوحٌ يكبر بكلِّ إضافة فلا إنجازَ يُقاس — **وضغطتُها تفتح ورقةَ ترتيبه** كبطاقته في «القوائم» (`HOME_QUEUE_EVENT`) لا
+   * صفحةَ أوّل فيلم. قوائمُ التشغيل الحقيقيّة على حالها («١٠ / ١٥» والشريط).
+   */
+  queue?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -145,6 +153,14 @@ export function ListContinueCard({
     ? BACKDROP_INTRINSIC.w300
     : POSTER_INTRINSIC.w185;
   const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
+  const leftText = t.leftEps(Math.max(0, total - watched));
+  const openQueue = queue
+    ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        tap(6);
+        window.dispatchEvent(new CustomEvent(HOME_QUEUE_EVENT, { detail: "towatchlist" }));
+      }
+    : undefined;
 
   function mark(e: React.MouseEvent) {
     /* **الزرُّ داخل بطاقةٍ هي رابط** — فلا بدّ من منع الرابط صراحةً
@@ -243,6 +259,7 @@ export function ListContinueCard({
         <Link
           href={href}
           prefetch={false}
+          onClick={openQueue}
           className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 pe-16 active:scale-[0.99] transition"
         >
           <span className="relative w-[144px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
@@ -267,10 +284,11 @@ export function ListContinueCard({
             <span className="block text-12 font-medium text-muted leading-tight truncate mt-1">
               <span className="text-accent">{listName}</span>
               <span className="opacity-50"> · </span>
-              <span className="tabular-nums" dir="ltr">
-                {num(watched, locale)} / {num(total, locale)}
+              <span className="tabular-nums" dir={queue ? undefined : "ltr"}>
+                {queue ? leftText : `${num(watched, locale)} / ${num(total, locale)}`}
               </span>
             </span>
+            {queue ? null : (
             <span className="mt-2 flex items-center gap-2">
               <span className="h-1 flex-1 rounded-full bg-[color:var(--divider)] overflow-hidden">
                 <span
@@ -285,6 +303,7 @@ export function ListContinueCard({
                 {pct}%
               </span>
             </span>
+            )}
           </span>
         </Link>
         {/* **شقيقُ الرابط لا ابنُه** — فلا ضغطةٌ على الصحّ تفتح الصفحة (D-347) */}
@@ -298,6 +317,7 @@ export function ListContinueCard({
     <Link
       href={href}
       prefetch={false}
+      onClick={openQueue}
       className="group relative block active:scale-[0.98] transition"
     >
       {/* 🆕 **ونفسُ صندوق «تابع المشاهدة»** (D-646): **هذه البطاقةُ
@@ -332,16 +352,19 @@ export function ListContinueCard({
           </p>
           {/* سطرُ المعلومات كبطاقة الحلقة: العدُّ يساراً والنسبةُ طرفاً */}
           <div className="flex items-baseline justify-between gap-2 mt-1">
-            <span className="text-12 font-semibold text-white/75 truncate tabular-nums" dir="ltr">
-              {num(watched, locale)} / {num(total, locale)}
+            <span className="text-12 font-semibold text-white/75 truncate tabular-nums" dir={queue ? undefined : "ltr"}>
+              {queue ? leftText : `${num(watched, locale)} / ${num(total, locale)}`}
             </span>
-            <span className="shrink-0 text-12 font-semibold text-white/70 tabular-nums" dir="ltr">
-              {pct}%
-            </span>
+            {queue ? null : (
+              <span className="shrink-0 text-12 font-semibold text-white/70 tabular-nums" dir="ltr">
+                {pct}%
+              </span>
+            )}
           </div>
         </div>
 
-        {/* شريطُ التقدّم على حافّة البطاقة — كبطاقة الحلقة سواء */}
+        {/* شريطُ التقدّم على حافّة البطاقة — كبطاقة الحلقة سواء (وليس للطابور، D-1507) */}
+        {queue ? null : (
         <span className="absolute inset-x-0 bottom-0 h-1 bg-[color:var(--divider)]">
           <span
             className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
@@ -351,6 +374,7 @@ export function ListContinueCard({
             }}
           />
         </span>
+        )}
       </div>
     </Link>
     {/* **الصحُّ شقيقُ الرابط في الشكلين** — نفسُ الحجّة (D-347) */}

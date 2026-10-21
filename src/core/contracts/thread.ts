@@ -30,6 +30,9 @@ export type ThreadRow = {
   bulletin_vote: string | null;
   /** النثرُ المحجوبُ تحت النشرة بلغة القارئ */
   bulletin_spoiler: string | null;
+  /** 🆕 D-1508 — اسمُ حلقة النشرة ومدّتُها مصوغةً («٥٢ د») — رأسُ غرفة الحلقة. غائبان في غير النشرة ومن خادمٍ أقدم */
+  bulletin_name?: string | null;
+  bulletin_runtime?: string | null;
   /** أعلن كاتبُه أنّ فيه حرقاً (D-268) */
   has_spoiler: boolean;
   /** صورةٌ مرفوعة — `https://` وحدَه (D-298) */
@@ -74,6 +77,8 @@ export type ThreadHead =
       in_library: boolean;
       /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (فارغةٌ للأفلام فلا منتقي) — غائبةٌ من خادمٍ أقدم */
       seasons?: TalkSeason[];
+      /** 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (`s:e`) — تُغطّى غرفةُ ما لم يشاهده. غائبةٌ من خادمٍ أقدم */
+      watched_eps?: string[];
     }
   | {
       kind: "post";
