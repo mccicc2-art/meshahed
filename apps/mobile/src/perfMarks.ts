@@ -1,4 +1,5 @@
 import { AppState, I18nManager } from "react-native";
+import { File, Paths } from "expo-file-system";
 import { launchT0 } from "./perf";
 import { api, queryClient } from "./api";
 import { session } from "./session";
@@ -91,7 +92,10 @@ export type PerfName =
   /* 🩺 D-1348 — آخرُ الترحيب بزمنَيه: الختمُ في الخادم (`welcome.finish`) وجلبُ الرئيسيّة بعده (`welcome.home`، `result=none`
      = تجاوز السقف). يفصلان سببَ الثواني الثلاث في أوّل رئيسيّة. */
   | "welcome.finish"
-  | "welcome.home";
+  | "welcome.home"
+  /* 🩺 D-1505 — تعليقُ خيط JS (بلاغُ أحمد وخالد ٢١ أكتوبر: «فجأة التطبيق يعلق… أحياناً يفك… أضغط عالدوك وأنا أتصفّح»).
+     ms = مدّةُ الوقفة إن فكّت (`live=1`)، و٠ إن أُغلق التطبيقُ وهو واقف (`live=0` — تُرسل في الإقلاع التالي). انظر `startHangWatch` */
+  | "js.hang";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -323,6 +327,7 @@ export function tabLeaving(key: string): boolean {
 }
 
 export function tabPressed(to: string, from: string) {
+  hangAct(`dock.${to}`);
   pendingTab?.stopFrames();
   if (to !== from) lastLeft = { from, at: performance.now() };
   /* ضغطةُ التبويب الظاهر لا تنقل ولا تُعلن وصولاً — لا شيءَ يُقاس، ولا عدّادٌ يدور بلا نهاية */
@@ -349,6 +354,7 @@ export function tabLanded(key: string) {
   const p = pendingTab;
   const seen = landedOnce.has(key);
   landedOnce.add(key);
+  hangScreen = key;
   if (!p || p.to !== key) return;
   pendingTab = null;
   p.focus = performance.now() - p.t0;
@@ -394,3 +400,101 @@ const unsubFresh = queryClient.getQueryCache().subscribe((e) => {
 AppState.addEventListener("change", (s) => {
   if (s !== "active") flush();
 });
+
+/**
+ * ====== مسجّلُ التعليق (`js.hang`) — D-1505 ======
+ * **لماذا**: بلاغُ أحمد ٢١ أكتوبر (أندرويد، وآيفونُ أحمد الثبيتي): التطبيقُ يعلق فجأةً حتى يُغلق، وأحياناً يفكّ، وغالباً بعد
+ * ضغطة الدوك أثناء التصفّح. `tab.switch` رأى على الآيفون وقفاتِ JS من ٢ إلى ٩ ثوانٍ منذ ١٦ أكتوبر (`drop` حتى ٥٣٢ إطاراً)
+ * — **ولم يرَ أندرويد شيئاً**: الدفعةُ تُرسل كلَّ ٣٠ ثانية، والتطبيقُ الذي يُغلق وهو واقف يأخذ قياسَه معه. و`tab.switch` يُسقط
+ * أصلاً كلَّ تبديلٍ تجاوز ١٠ ثوانٍ. فالتشخيصُ يحتاج شاهداً يبقى بعد الإغلاق.
+ *
+ * 🔑 **نبضٌ على القرص**: كلَّ نصف ثانيةٍ والتطبيقُ أمامك يُكتب ملفٌّ صغير (الوقت · الشاشة · آخرُ ضغطة · هل كان يمرّر). خيطُ JS
+ * الواقفُ لا يكتب، فالملفُّ يحفظ آخرَ لحظةٍ قبل الوقفة:
+ * - **وقفةٌ فكّت**: النبضُ التالي يرى فجوةً ≥ ٣ ثوانٍ ⇒ `js.hang` بمدّتها (`live=1`).
+ * - **أُغلق وهو واقف**: الإقلاعُ التالي يجد آخرَ نبضٍ «أمامك» (`fg=1`) بلا نزولٍ إلى الخلفيّة ⇒ `js.hang` بـ`live=0` و`ms=0`
+ *   (المدّةُ لا تُعرف). الإغلاقُ العاديّ يمرّ بالخلفيّة (أو `inactive` في مبدّل iOS) فيُكتب `fg=0` قبله ولا يُحسب.
+ * - الامتدادات: `screen` آخرُ تبويبٍ وصل · `act` آخرُ ضغطة (`dock.<tab>`) · `ago` من الضغطة إلى بداية الوقفة (ms) ·
+ *   `mom` = ١ إن كانت الصفحةُ تُمرَّر لحظةَ الضغطة (`noteScroll` من `ChromeHide`).
+ * ⚖️ قياسٌ فقط: كلُّ فشلٍ صامتٌ ويطفئ المسجّلَ للعمليّة. إعادةُ تحميلٍ يطلبها التطبيقُ نفسُه (اللغة · حجمُ الخط) قد تُقرأ
+ *   `live=0` كاذبة — نادرةٌ ومعروفةُ الوقت. يُحذف حين يُعرف السببُ ويُصلح.
+ */
+const HANG_BEAT_MS = 500;
+const HANG_MIN_MS = 3_000;
+let hangScreen = "";
+let hangActName = "";
+let hangActAt = 0;
+let hangActMom = 0;
+let lastScrollAt = 0;
+let hangOff = false;
+/** من `ChromeHide.onScroll`: آخرُ حدث تمرير (رقمٌ في الذاكرة — لا شيءَ آخرُ في مسار التمرير) */
+export function noteScroll() {
+  lastScrollAt = Date.now();
+}
+function hangAct(name: string) {
+  hangActName = name;
+  hangActAt = Date.now();
+  hangActMom = hangActAt - lastScrollAt < 250 ? 1 : 0;
+}
+const hangFile = () => new File(Paths.document, "hang-beat.json");
+type HangBeat = { t?: number; fg?: number; screen?: string; act?: string; actAt?: number; mom?: number };
+/** حالُ اللحظة: آخرُ تبويبٍ وآخرُ ضغطة */
+const hangNow = (): HangBeat => ({ screen: hangScreen, act: hangActName, actAt: hangActAt, mom: hangActMom });
+function hangWrite(fg: 0 | 1, t: number) {
+  if (hangOff) return;
+  try {
+    const f = hangFile();
+    if (!f.exists) f.create();
+    f.write(JSON.stringify({ ...hangNow(), t, fg }));
+  } catch {
+    hangOff = true;
+  }
+}
+function hangExtra(start: number, live: 0 | 1, b: HangBeat): Extra {
+  const word = (v: unknown) => (typeof v === "string" && /^[\w.-]{1,16}$/.test(v) ? v : "");
+  const screen = word(b.screen);
+  const act = word(b.act);
+  const ago = typeof b.actAt === "number" && b.actAt > 0 ? start - b.actAt : -1;
+  return {
+    live,
+    ...(screen ? { screen } : {}),
+    ...(act ? { act } : {}),
+    /* ضغطةٌ قبل دقيقةٍ ليست سببَ الوقفة — لا تُذكر */
+    ...(act && ago >= 0 && ago < 60_000 ? { ago: Math.round(ago), mom: b.mom ? 1 : 0 } : {}),
+  };
+}
+let hangStarted = false;
+/** يُنادى مرّةً عند تحميل الوحدة: يقرأ نبضَ العمليّة السابقة ثمّ يبدأ النبض */
+function startHangWatch() {
+  if (hangStarted) return;
+  hangStarted = true;
+  void (async () => {
+    try {
+      const f = hangFile();
+      if (f.exists) {
+        const b = JSON.parse(await f.text()) as HangBeat;
+        if (b.fg === 1 && typeof b.t === "number") mark("js.hang", 0, hangExtra(b.t, 0, b));
+      }
+    } catch {
+      /* ملفٌّ تالف: يُكتب فوقه */
+    }
+    let last = Date.now();
+    let fg = AppState.currentState === "active";
+    hangWrite(fg ? 1 : 0, last);
+    AppState.addEventListener("change", (st) => {
+      const now = Date.now();
+      fg = st === "active";
+      last = now;
+      /* النزولُ يُكتب فوراً: إغلاقٌ عاديٌّ بعده لا يُقرأ تعليقاً */
+      hangWrite(fg ? 1 : 0, now);
+    });
+    setInterval(() => {
+      if (hangOff) return;
+      const now = Date.now();
+      const gap = now - last;
+      if (fg && gap >= HANG_MIN_MS) mark("js.hang", gap, hangExtra(last, 1, hangNow()));
+      last = now;
+      if (fg) hangWrite(1, now);
+    }, HANG_BEAT_MS);
+  })();
+}
+startHangWatch();

@@ -321,6 +321,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const POSTER_W = 128;
   const POSTER_H = 192;
   const lift = Math.min(POSTER_H, heroH - 52);
+  /* 🆕 D-1506 — **الخلفيّةُ تنزل إلى أسفل الملصق** (أحمد بلقطة Lost ٢١ أكتوبر: «الخلفية من تحت مطها خليها تغطي كامل البوستر»):
+     كانت تنتهي فوق أسفل الملصق فتقع الأنواعُ و«وين أشاهده» نصفُها على الصورة ونصفُها على الصفحة. تطول البطلُ بما بقي
+     من الملصق تحتها (+١٢)، ويصعد صفُّ الملصق بالقدر نفسِه فلا يتحرّك شيءٌ عن مكانه */
+  const below = Math.max(0, POSTER_H - lift) + 12;
   /* D-1227 — البطلُ والملصقُ من البذرة حتى يصل العمل، ثمّ منه — العنصران نفسُهما فلا يُعاد تحميلُهما */
   /* 🆕 D-1498 — غلافي المختار (`me.art`) يسبق صورةَ TMDB في البطل كما في صفحة الويب (`getMyArtFor`)؛
      و`d.poster_path` نفسُه يبقى الأصليَّ لأنّ المتابعةَ والمفضّلةَ والمشاركةَ تكتبه */
@@ -357,7 +361,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
            **التبويبات** · المحتوى) لاصق. الترويسةُ خارج `ScrollView` فيلتصق تحتها بلا فجوة — لا `top` يُحسب. */
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false} stickyHeaderIndices={[3]}>
           {/* البطل — الخلفيّةُ ١٦:٩ والملصقُ يعلوها من الطرف كما في الصفحة (`-mt-16`) */}
-          <View style={{ height: heroH, backgroundColor: heroBd ? tokens.bg : tokens.surface2 }}>
+          {/* 🆕 D-1506 — **البطلُ داكنٌ في كلِّ ثيم والكتابةُ فوقه بيضاء** (أحمد «١ أ»): في الثيم الفاتح كانت الصورةُ معتّمةً
+              إلى لون الصفحة والحجابُ أسود — فيقع النصُّ الداكنُ على رماديٍّ غامق ولا يُقرأ. الصورةُ في أغلب الأعمال داكنة،
+              فرأسٌ داكنٌ ثابتٌ يُقرأ على كلِّ صورةٍ وكلِّ ثيم؛ والصفحةُ تحته تبقى بثيمها */}
+          <View style={{ height: heroH + below, backgroundColor: "#0b0b0b" }}>
             {/* D-1226 — بلا تلاشٍ إن رسمتها البذرةُ قبلُ: الصورةُ نفسُها حاضرةٌ في الذاكرة، والتلاشي كان يضيف ٢٠٠ms */}
             {/* 🆕 D-1479 — **الغلافُ معتَّمٌ كالويب** (`opacity-45` فوق لون الخلفية — لقطةُ أحمد من نسخة الجوال ١٩ أكتوبر): الاسمُ
                 والتفاصيلُ تُقرأ على أيِّ صورة، والثيمُ الفاتح يعتّم إلى لونه هو */}
@@ -365,7 +372,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {/* D-1479 — ظلٌّ أعلى الصورة بدل دائرتَي الزرّين (الويب: `from-black/50` في أعلى الترويسة) */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, top: 0, height: 96, opacity: 0.55, transform: [{ rotate: "180deg" }] }} contentFit="fill" />
             {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
-            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH, lift + 28) }} contentFit="fill" />
+            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, lift + below + 28) }} contentFit="fill" />
             {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب (طلبُ أحمد): الظلُّ أعلاه يكفيهما */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
@@ -387,7 +394,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               حكمُه على المسوّدة: «ارفعها نفس سطر البوستر» — كنتُ رفعتُ الملصقَ وحدَه فسبق الاسمَ): السطرُ
               الواحد عقدُ D-1020 ويبقى. **والحجابُ يطول معهما** (٩٦ ⇒ ١٤٤): الاسمُ صار أعلى من الحجاب القديم،
               وبدونه يُقرأ على الصورة العارية فيضيع على خلفيّةٍ فاتحة. */}
-          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -lift, alignItems: "flex-start" }}>
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: -(lift + below), alignItems: "flex-start" }}>
             {/* D-1479 — ١٢٨ وظلٌّ تحته كالويب (`shadow-[0_18px_44px_rgba(0,0,0,0.55)]`) — الظلُّ على غلافٍ لا يقصّ، والقصُّ داخله */}
             <View style={{ width: POSTER_W, borderRadius: radius.poster, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 18 }, elevation: 12 }}>
               <View style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
@@ -399,14 +406,14 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               <View style={{ gap: 4 }}>
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                  <Text size={22} weight="700" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d.name}</Text>
+                  <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d.name}</Text>
                   <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /></View>
                 </View>
-                <Text size={12} muted numberOfLines={2} style={styles.onArt}>
+                <Text size={12} color="rgba(255,255,255,0.8)" numberOfLines={2} style={styles.onArt}>
                   {/* ⚖️ D-1504 — النوعُ · السنة · المواسم · الدولة؛ الأنواعُ نزلت إلى إطاراتها تحت (أحمد بلقطةٍ ٢١ أكتوبر: «الازرق شيله خلاص موجوده تحت») */}
                   {[d.anime ? t.animeBadge : d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1)].filter(Boolean).join("  ·  ")}
                 </Text>
-                <RatingsLine x={x} compact />
+                <RatingsLine x={x} compact onArt />
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
                 {/* ⚖️ D-1504 — الأنواعُ رجعت هنا وحدَها (العمرُ يبقى بجانب IMDb في `RatingsLine`)، كلُّ نوعٍ في إطارٍ بحدود صفّ
@@ -417,7 +424,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             </View>
             ) : (
             <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-              <Text size={22} weight="700" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed?.name ?? ""}</Text>
+              <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed?.name ?? ""}</Text>
             </View>
             )}
           </View>
@@ -671,10 +678,9 @@ const styles = StyleSheet.create({
 /**
  * D-1504 — إطاراتُ الأنواع في رأس العمل: ثلاثةٌ إن اتّسعت في سطرٍ واحد، وإلّا اثنان (والثاني ينزل سطراً إن طال —
  * أحمد: «يظهر اثنين فقط دام ما يكفي»). القياسُ بصفٍّ خفيٍّ للثلاثة الأولى لأنّ عرضَ الاسم لا يُعرف قبل رسمه.
- * لا تُضغط: النوعُ هنا وصفٌ لا رابط.
+ * لا تُضغط: النوعُ هنا وصفٌ لا رابط. 🆕 D-1506 — على البطل الداكن دائماً: إطارٌ أبيضُ شفّافٌ ونصٌّ أبيض في كلِّ ثيم.
  */
 function GenreFrames({ genres }: { genres: { id: number; name: string }[] }) {
-  const { tokens } = useApp();
   const GAP = 6;
   const first = genres.slice(0, 3);
   const [boxW, setBoxW] = useState(0);
@@ -686,9 +692,9 @@ function GenreFrames({ genres }: { genres: { id: number; name: string }[] }) {
     <View
       key={g.id}
       onLayout={onLayout ? (e) => onLayout(Math.ceil(e.nativeEvent.layout.width)) : undefined}
-      style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.card, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}
+      style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: radius.card, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}
     >
-      <Text size={11} weight="600" numberOfLines={1}>{g.name}</Text>
+      <Text size={11} weight="600" color="#fff" numberOfLines={1}>{g.name}</Text>
     </View>
   );
   return (

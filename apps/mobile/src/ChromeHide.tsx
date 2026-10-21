@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { noteScroll } from "./perfMarks";
 
 /**
  * ====== الكسوةُ الذكيّة في الشاشات الأصليّة — D-966 (١٤ سبتمبر ٢٠٢٦) ======
@@ -74,6 +75,8 @@ export function useChromeHide() {
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      /* 🩺 D-1505 — مسجّلُ التعليق يعرف أنّ الصفحةَ كانت تُمرَّر لحظةَ ضغطة الدوك */
+      noteScroll();
       const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
       const s = st.current;
       /* قصُّ الارتداد — الحدّ ٣ */

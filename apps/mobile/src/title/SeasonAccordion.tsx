@@ -195,7 +195,7 @@ export function SeasonAccordion({
                 </Pressable>
               ) : null}
             </View>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} onShowRatings={() => setShowRatings(true)} pending={pending} /> : null}
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
           </View>
         );
   };
@@ -291,7 +291,6 @@ function SeasonBody({
   onError,
   onSettled,
   showRatings,
-  onShowRatings,
   pending,
 }: {
   show: TvTitlePayload;
@@ -300,7 +299,6 @@ function SeasonBody({
   watched: Set<string>;
   /** D-1021 — المفتاحُ في رأس التبويب لا في الموسم */
   showRatings: boolean;
-  onShowRatings: () => void;
   onError: (e: unknown) => void;
   onSettled: () => void;
   /** D-1141 — حالتي لم تصل: العلامةُ والنجمةُ هيكلٌ لا يُضغط */

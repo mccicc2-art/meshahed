@@ -80,7 +80,8 @@ export function Pulse({ x, mine, onPress }: { x: TitleExtrasPayload | undefined;
   );
 }
 
-export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | undefined; compact?: boolean }) {
+/** 🆕 D-1506 — `onArt`: السطرُ فوق بطل صفحة العمل الداكن في كلِّ ثيم — الأرقامُ بيضاء والعمرُ بإطارٍ فاتح */
+export function RatingsLine({ x, compact = false, onArt = false }: { x: TitleExtrasPayload | undefined; compact?: boolean; onArt?: boolean }) {
   const { tokens } = useApp();
   if (!x) return null;
   const r = x.ratings;
@@ -95,18 +96,18 @@ export function RatingsLine({ x, compact = false }: { x: TitleExtrasPayload | un
           <View style={{ backgroundColor: "#F5C518", borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
             <Text size={10} weight="800" color="#000">IMDb</Text>
           </View>
-          <Text size={13} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{r.imdb}</Text>
+          <Text size={13} weight="700" color={onArt ? "#fff" : undefined} style={{ fontVariant: ["tabular-nums"] }}>{r.imdb}</Text>
         </View>
       ) : null}
       {r?.rt ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Text size={9} weight="800" color="#FA320A">RT</Text>
-          <Text size={13} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{r.rt}</Text>
+          <Text size={13} weight="700" color={onArt ? "#fff" : undefined} style={{ fontVariant: ["tabular-nums"] }}>{r.rt}</Text>
         </View>
       ) : null}
       {r?.rated ? (
-        <View style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-          <Text size={10} weight="700" muted>{r.rated}</Text>
+        <View style={{ borderWidth: 1, borderColor: onArt ? "rgba(255,255,255,0.45)" : tokens.border, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+          <Text size={10} weight="700" muted={!onArt} color={onArt ? "rgba(255,255,255,0.85)" : undefined}>{r.rated}</Text>
         </View>
       ) : null}
       {!compact ? <Pulse x={x} /> : null}
