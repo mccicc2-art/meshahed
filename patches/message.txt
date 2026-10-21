@@ -1,4 +1,7 @@
-[deploy] Release R59 — D-1498: Arabic text sits on the vertical centre of its line on iPhone — the shared Text nudges Arabic-led text down 0.12em (Tajawal's tall line box put glyphs above icon centre); draw-only translateY, layout unchanged, Android untouched — task 141
+fix(mobile): keep the top dots of Arabic letters and centre the stats card text (D-1499) [deploy]
+
+- ui.tsx: the iOS Arabic nudge now adds top padding with negative margins instead of translateY, so tall Tajawal dots (ش) are no longer clipped and the layout footprint is unchanged.
+- HomeHeader: drop the tight lineHeight on the stats value and label so they sit on the icon's centre.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
