@@ -21,7 +21,7 @@ import { afterPaint, span } from "../perfMarks";
 import { errorText } from "../community/communityActs";
 import { type Draft } from "./Composer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "../messages/chatDock";
-import { ReplyQuote } from "../messages/ReplyQuote";
+import { ReplyQuote, TitleQuote } from "../messages/ReplyQuote";
 import { MentionList, useMentions } from "../messages/mentions";
 import { Chip } from "../library/Chip";
 import { SortCycle } from "../library/SortCycle";
@@ -458,24 +458,30 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   const target = replyTo ?? focusTarget;
   /* 🆕 D-1443 — «أرسل» من الخانة: متفائلٌ (الحقلُ يُفرغ فوراً)، والفشلُ يعيد النصَّ والصورةَ والاقتباس */
   const [sending, setSending] = useState(false);
+  const [picked, setPicked] = useState<SearchTitle | null>(null);
   const sendDock = useCallback(() => {
     const body = text.trim();
-    if ((!body && !pic?.path) || (pic && !pic.path) || sending) return;
-    const was = { text, pic, replyTo, spoiler, target };
+    if (sending) return;
+    if (!picked && ((!body && !pic?.path) || (pic && !pic.path))) return;
+    const was = { text, pic, replyTo, spoiler, target, picked };
+    const share = picked ? { media_type: picked.mediaType, tmdb_id: picked.id, title: picked.title, poster_path: picked.posterPath ?? null } : null;
     setText("");
-    setPic(null);
     setReplyTo(null);
     setSpoiler(false);
     setSending(true);
-    void send(was.target, { body, spoiler: was.spoiler, image: was.pic?.path ?? null, gif: null }).then((ok) => {
+    /* العملُ المختارُ يُنشر مع النصّ وحدَه؛ الصورةُ (إن كانت) تبقى في الخانة لمنشورٍ بعده */
+    if (share) setPicked(null);
+    else setPic(null);
+    void send(was.target, { body, spoiler: was.spoiler, image: share ? null : was.pic?.path ?? null, gif: null, ...(share ? { share } : {}) }).then((ok) => {
       setSending(false);
       if (ok) return;
       setText((cur) => cur || was.text);
-      setPic((cur) => cur ?? was.pic);
+      if (share) setPicked((cur) => cur ?? was.picked);
+      else setPic((cur) => cur ?? was.pic);
       setReplyTo((cur) => cur ?? was.replyTo);
       setSpoiler(was.spoiler);
     });
-  }, [text, pic, replyTo, spoiler, sending, send, setPic, target]);
+  }, [text, pic, replyTo, spoiler, sending, send, setPic, target, picked]);
   /* الـGIF والعملُ يُرسلان بلمستهما (كالرسائل)، ردّاً على المقتبَس إن كان — وما في الحقل يبقى لرسالةٍ بعده */
   const sendGif = useCallback(
     (id: string) => {
@@ -487,17 +493,14 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     },
     [replyTo, send, focusTarget],
   );
-  const sendTitle = useCallback(
-    (r: SearchTitle) => {
-      const parent = replyTo;
-      setReplyTo(null);
-      const share = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
-      void send(parent ?? focusTarget, { body: "", spoiler: false, image: null, gif: null, share }).then((ok) => {
-        if (!ok) setReplyTo((cur) => cur ?? parent);
-      });
-    },
-    [replyTo, send, focusTarget],
-  );
+  /* 🆕 R57 — العملُ **يتعلّق فوق الخانة** ولا يُنشر بلمسته (أحمد: «ابغى اقدر اضيف رسالة مع العمل»؛ «١ أ ٢ أ»): لوحةُ المفاتيح تُفتح،
+     و«أرسل» ينشره ومعه ما كُتب (`body` + `share` في المنشور نفسِه)، ردّاً على المقتبَس إن كان */
+  const sendTitle = useCallback((r: SearchTitle) => {
+    haptic.pick();
+    setPicked(r);
+    setAttach(false);
+    setTimeout(() => inputRef.current?.focus(), 120);
+  }, []);
   const beginReply = useCallback((row: ThreadRow) => {
     if (row.review) return openRow(row);
     haptic.pick();
@@ -793,7 +796,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           pic={pic}
           onClearPic={() => setPic(null)}
           quote={
-            replyTo || (nested && (text.trim() || pic)) ? (
+            replyTo || picked || (nested && (text.trim() || pic)) ? (
               <View style={{ gap: 8 }}>
                 {replyTo ? (
                   <ReplyQuote
@@ -802,8 +805,9 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
                     onClear={() => setReplyTo(null)}
                   />
                 ) : null}
+                {picked ? <TitleQuote title={picked.title} kind={picked.mediaType} poster={picked.poster ?? null} onClear={() => setPicked(null)} /> : null}
                 {/* «فيها حرق» حيث يُخزَّن (الغرفةُ وحدَها) — يظهر حين يكون في الخانة ما يُرسل */}
-                {nested && (text.trim() || pic) ? (
+                {nested && (text.trim() || pic || picked) ? (
                   <View style={{ alignSelf: "flex-start" }}>
                     <Chip label={t.spoilerMark} active={spoiler} onPress={() => setSpoiler((v) => !v)} leading={<Icon name={spoiler ? "eye-off" : "eye"} size={14} color={spoiler ? tokens.onAccent : tokens.muted} />} />
                   </View>
@@ -815,7 +819,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           kb={kb}
           bottomInset={insets.bottom}
           sending={sending}
-          canSend={(!!text.trim() || !!pic) && !(pic && !pic.path) && !sending}
+          canSend={picked ? !sending : (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending}
           onAttach={nested ? toggleAttach : undefined}
           attach={attach}
           onAttachClose={closeAttach}
@@ -823,7 +827,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           onGif={nested ? sendGif : undefined}
           onLoopz={route.t === "talk" ? sendTitle : undefined}
           onSend={sendDock}
-          placeholder={target ? t.talkReplyingTo(nameOf.get(target.id) ?? "") : pick ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+          placeholder={picked && !target ? t.msgAddNote : target ? t.talkReplyingTo(nameOf.get(target.id) ?? "") : pick ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
         />
       ) : null}
 

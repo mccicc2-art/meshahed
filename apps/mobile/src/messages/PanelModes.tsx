@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { FlashList } from "@shopify/flash-list";
@@ -81,9 +81,14 @@ export function GifPanel({ term, compact, onPick }: { term: string; compact: boo
   );
 }
 
-export function LoopzPanel({ term, compact, onPick }: { term: string; compact: boolean; onPick: (r: SearchTitle) => void }) {
+export function LoopzPanel({ term, compact, onPick, cols: colsIn }: { term: string; compact: boolean; onPick: (r: SearchTitle) => void; /** 🆕 R57 — أعمدةٌ من عرض الحاوية لا الشاشة (ورقةُ البحث أضيقُ من الشاشة) */ cols?: number }) {
   const { t, tokens } = useApp();
-  const { width } = useWindowDimensions();
+  const { width: screenW } = useWindowDimensions();
+  /* 🆕 R57 — **الشبكةُ تُقاس من حاويتها** (أحمد ٢١ أكتوبر بلقطة بحث «Discussions»: «فيه فراغ فاليمين .. خل الاعمال جايه فالمنتصف
+     بالضبط»؛ «ب» مكبّرة ١٢٪): كانت تحسب أربعةَ أعمدةٍ من عرض الشاشة فلا يتّسع في الورقة إلّا ثلاثةٌ ويبقى مكانُ الرابع فراغاً يميناً.
+     الآن العرضُ عرضُ الحاوية، والشبكةُ في المنتصف بفراغين متساويين (حشوةٌ محسوبة لا توسيطُ كلِّ صفّ — فالصفُّ الأخيرُ الناقصُ يبدأ من أوّله) */
+  const [boxW, setBoxW] = useState(0);
+  const width = boxW || screenW;
   const q = useDebounced(term);
   const short = q.trim().length < MIN_QUERY;
   const search = useSearch(q, "titles");
@@ -116,10 +121,11 @@ export function LoopzPanel({ term, compact, onPick }: { term: string; compact: b
       </ScrollView>
     );
   }
-  const cols = 4;
-  const w = Math.floor((width - 16 - (cols - 1) * 10) / cols);
+  const cols = colsIn ?? 4;
+  /* ٣ أعمدة ⇐ الملصقُ أكبرُ ١٢٪ من مقاس الأربعة وما بقي فراغٌ متساوٍ في الطرفين */
+  const w = colsIn ? Math.min(Math.floor(((width - 16 - 30) / 4) * 1.12), Math.floor((width - 16 - (cols - 1) * 10) / cols)) : Math.floor((width - 16 - (cols - 1) * 10) / cols);
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10 }}>
+    <ScrollView onLayout={(e) => setBoxW(Math.round(e.nativeEvent.layout.width))} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: colsIn ? Math.max(8, Math.floor((width - cols * w - (cols - 1) * 10) / 2)) : 8, paddingTop: 10, paddingBottom: 10 }}>
       {rows.length === 0 ? <View style={{ width: "100%" }}>{empty}</View> : null}
       {rows.map((r) => (
         <Pressable key={`${r.mediaType}-${r.id}`} onPress={() => pick(r)} accessibilityLabel={r.title} style={({ pressed }) => ({ width: w, gap: 4, opacity: pressed ? 0.7 : 1 })}>

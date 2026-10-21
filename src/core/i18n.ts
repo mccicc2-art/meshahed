@@ -1238,6 +1238,9 @@ const ar = {
   talkReviewTag: "مراجعة",
   /* 🆕 R56 — شارةُ «يعرض الآن» في بطاقة الغرفة (أحمد «ج»): النقطةُ والموعد، ويومَ النزول رقمُ الحلقة */
   talkAiringNow: "يعرض الآن",
+  talkAiringBreak: "متوقّف مؤقتاً",
+  /* 🆕 R57 — الخانةُ وفوقها عملٌ مختار: كلامُك يُرسل معه (أو «أرسل» وحدَه يرسله وحدَه) */
+  msgAddNote: "أضف رسالة…",
   talkAiringNext: (day: string) => `يعرض · القادمة ${day}`,
   talkAiringToday: "يعرض · حلقة اليوم",
   talkAiringOut: (n: number) => `نزلت الحلقة ${num(n, "ar")}`,
@@ -3653,6 +3656,8 @@ const en: Dict = {
   talkReplyingTo: (name: string) => `Replying to ${name}`,
   talkReviewTag: "Review",
   talkAiringNow: "Airing now",
+  talkAiringBreak: "On break",
+  msgAddNote: "Add a message…",
   talkAiringNext: (day: string) => `Airing · Next ${day}`,
   talkAiringToday: "Airing · New today",
   talkAiringOut: (n: number) => `Ep ${num(n, "en")} out`,

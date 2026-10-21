@@ -19,7 +19,7 @@ import { MESSAGES_KEY } from "./live";
 import { dropBadges, useDoors, useMessages, type Origin } from "./common";
 import { ChatBackdrop, useChatBg } from "./chatBg";
 import { copyableOf, copyTextOf, dayKeyOf, dayLabelOf, stampOf } from "./chatFormat";
-import { ReplyQuote, replyRefOf } from "./ReplyQuote";
+import { ReplyQuote, TitleQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 import { DeleteSheet, canUnsend, deleteRemote } from "./DeleteSheet";
@@ -194,21 +194,32 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
     [g, me, quoteRef, replyTo, deliver],
   );
 
-  /* 🆕 D-1435 — «بحث لوبز»: العملُ المختار يُرسل بطاقةً فوراً (والاقتباسُ إن كان) — ما في الحقل يبقى لرسالةٍ بعده */
-  const sendTitle = useCallback(
-    (r: SearchTitle) => {
-      if (!g) return;
-      const quote = quoteRef();
-      const quoted = replyTo;
-      const title = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
-      const ev: GroupMsgEvent = { kind: "msg", id: `tmp-${tmp.current++}`, mine: true, sender_id: me, body: "", title, created_at: new Date().toISOString(), ...(quote.ref ? { reply: quote.ref } : {}) };
-      setReplyTo(null);
-      deliver(ev, { body: "", title, ...(quote.id ? { reply_to: quote.id } : {}) }, () => {
-        if (quoted) setReplyTo((cur) => cur ?? quoted);
-      });
-    },
-    [g, me, quoteRef, replyTo, deliver],
-  );
+  /* 🆕 R57 — «بحث لوبز»: العملُ المختار **يتعلّق فوق الخانة** ولوحةُ المفاتيح تُفتح (أحمد: «ابغى اقدر اضيف رسالة مع العمل»؛ «١ أ ٢ أ»)،
+     و«أرسل» يرسله ومعه ما كُتب في الرسالة نفسِها (`body` + `title` — الحمولةُ تقبلهما معاً) والاقتباسُ إن كان. كان يُرسل بلمسته */
+  const [picked, setPicked] = useState<SearchTitle | null>(null);
+  const sendTitle = useCallback((r: SearchTitle) => {
+    haptic.pick();
+    setPicked(r);
+    setAttach(false);
+    setTimeout(() => inputRef.current?.focus(), 120);
+  }, []);
+  const sendPicked = useCallback(() => {
+    const r = picked;
+    if (!g || !r || sending) return;
+    const body = text.trim();
+    const quote = quoteRef();
+    const quoted = replyTo;
+    const title = { media_type: r.mediaType, tmdb_id: r.id, title: r.title, poster_path: r.posterPath ?? null };
+    const ev: GroupMsgEvent = { kind: "msg", id: `tmp-${tmp.current++}`, mine: true, sender_id: me, body, title, created_at: new Date().toISOString(), ...(quote.ref ? { reply: quote.ref } : {}) };
+    setPicked(null);
+    setText("");
+    setReplyTo(null);
+    deliver(ev, { body, title, ...(quote.id ? { reply_to: quote.id } : {}) }, () => {
+      setPicked((cur) => cur ?? r);
+      setText((cur) => cur || body);
+      if (quoted) setReplyTo((cur) => cur ?? quoted);
+    });
+  }, [g, picked, sending, text, me, quoteRef, replyTo, deliver]);
 
   /* 🆕 D-1436 — المنشن: أسماءُ الأعضاء (غيري) لرسم `@اسم` وللقائمة التي تظهر حين تكتب `@` (🆕 D-1443 — `mentions.tsx` يقرؤه النقاشُ أيضاً) */
   const mentionables = useMemo(() => {
@@ -352,7 +363,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
     [rows],
   );
 
-  const canSend = (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending;
+  const canSend = picked ? !sending : (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending;
   const openInfo = useCallback(() => {
     haptic.pick();
     router.push({ pathname: "/messages/group/[id]/info", params: { id, from } });
@@ -503,10 +514,16 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           pic={pic}
           onClearPic={() => setPic(null)}
           quote={
-            replyTo && replyRefOf(asBubbleEvent(quotable(replyTo))) ? (
-              <ReplyQuote r={replyRefOf(asBubbleEvent(quotable(replyTo)))!} peerName={nameIn(g, replyTo.sender_id, me, t)} onClear={() => setReplyTo(null)} />
+            picked || (replyTo && replyRefOf(asBubbleEvent(quotable(replyTo)))) ? (
+              <View style={{ gap: 6 }}>
+                {replyTo && replyRefOf(asBubbleEvent(quotable(replyTo))) ? (
+                  <ReplyQuote r={replyRefOf(asBubbleEvent(quotable(replyTo)))!} peerName={nameIn(g, replyTo.sender_id, me, t)} onClear={() => setReplyTo(null)} />
+                ) : null}
+                {picked ? <TitleQuote title={picked.title} kind={picked.mediaType} poster={picked.poster ?? null} onClear={() => setPicked(null)} /> : null}
+              </View>
             ) : null
           }
+          placeholder={picked ? t.msgAddNote : undefined}
           inputRef={inputRef}
           kb={kb}
           bottomInset={insets.bottom}
@@ -518,7 +535,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
           onImage={() => void pickImage()}
           onGif={sendGif}
           onLoopz={sendTitle}
-          onSend={send}
+          onSend={picked ? sendPicked : send}
           onRestingHeight={setDockH}
         />
       ) : null}

@@ -1,6 +1,6 @@
 import React from "react";
-import { useRouter } from "expo-router";
-import { tabGone, tabPressed } from "./perfMarks";
+import { useFocusEffect, useRouter } from "expo-router";
+import { dockArea, dockPressIn, dockTouched, tabGone, tabPressed } from "./perfMarks";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
@@ -61,8 +61,18 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
     people: t.navPeople,
     search: t.navSearch,
   };
+  /* 🩺 R57 — `dock.miss`: الشريطُ المركَّزُ يعلن كيف يُقاس أعلاه في النافذة (ويسحبه حين يغيب) — فلمسةٌ تحته لم تصل زرّاً تُعرف */
+  const navRef = React.useRef<View>(null);
+  useFocusEffect(
+    React.useCallback(() => {
+      dockArea((cb) => navRef.current?.measureInWindow((_x, y) => cb(Math.round(y))));
+      return () => dockArea(null);
+    }, []),
+  );
   return (
     <View
+      ref={navRef}
+      onTouchStart={dockTouched}
       accessibilityRole="tablist"
       style={{
         flexDirection: "row",
@@ -81,6 +91,7 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
         return (
           <Pressable
             key={tb.key}
+            onPressIn={dockPressIn}
             onPress={() => {
               tabPressed(tb.key, active);
               /* 🆕 11-M · M1 — «المجتمع» جذرٌ أصليٌّ خامس (D-1171): من أيِّ جذرٍ تبديلٌ إلى تبويبه الحيّ كأخواته،

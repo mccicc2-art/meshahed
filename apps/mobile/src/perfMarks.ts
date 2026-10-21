@@ -95,7 +95,11 @@ export type PerfName =
   | "welcome.home"
   /* 🩺 D-1505 — تعليقُ خيط JS (بلاغُ أحمد وخالد ٢١ أكتوبر: «فجأة التطبيق يعلق… أحياناً يفك… أضغط عالدوك وأنا أتصفّح»).
      ms = مدّةُ الوقفة إن فكّت (`live=1`)، و٠ إن أُغلق التطبيقُ وهو واقف (`live=0` — تُرسل في الإقلاع التالي). انظر `startHangWatch` */
-  | "js.hang";
+  | "js.hang"
+  /* 🩺 R57 — لمسةٌ في منطقة الدوك لم تصل زرَّه (أحمد ٢١ أكتوبر بتسجيل: «مني قادر اضغط الدوك … فجأه يسير مني عارف متى بالضبط»):
+     ms = الثواني منذ الإقلاع ×١٠٠٠ · `screen` التبويب · `src` = `dock` (وصلت الشريطَ ولم يُضغط زرّ) أو `over` (شيءٌ فوق الشريط أخذها)
+     · `mom` = قائمةٌ كانت تتحرّك (أوّلُ لمسةٍ توقفها فقط — سلوكُ النظام). تُحذف مع الإصلاح */
+  | "dock.miss";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -426,6 +430,38 @@ let hangActAt = 0;
 let hangActMom = 0;
 let lastScrollAt = 0;
 let hangOff = false;
+/* ====== 🩺 R57 — `dock.miss` ======
+ * الدوكُ المركَّزُ يعلن مستطيلَه في النافذة (`dockArea`)، والجذرُ يرى كلَّ لمسة (`rootTouch`)، والشريطُ نفسُه يرى ما وصله (`dockTouched`)
+ * والزرُّ ما ضُغط (`dockPressIn`). لمسةٌ داخل المستطيل بلا ضغطةٍ خلال ٤٥٠ms ⇒ علامة. أرقامٌ في الذاكرة؛ لا شيءَ يُكتب لمسةً لمسة */
+/* القياسُ لحظةَ اللمسة لا عند التركيب: الشريطُ يهبط مع التمرير (الكسوةُ الذكيّة) فمستطيلٌ محفوظٌ يكذب */
+let dockMeasure: ((cb: (top: number) => void) => void) | null = null;
+let dockTouchAt = 0;
+let dockPressAt = 0;
+let dockMissAt = 0;
+export function dockArea(measure: ((cb: (top: number) => void) => void) | null) {
+  dockMeasure = measure;
+}
+export function dockTouched() {
+  dockTouchAt = Date.now();
+}
+export function dockPressIn() {
+  dockPressAt = Date.now();
+}
+export function rootTouch(y: number) {
+  const measure = dockMeasure;
+  if (!measure) return;
+  const at = Date.now();
+  measure((top) => {
+    if (!(top > 0) || y < top) return;
+    setTimeout(() => {
+    if (dockPressAt >= at - 50) return;
+    /* لمسةٌ واحدةٌ في الثانية تكفي — النقرُ المتكرّرُ على شريطٍ لا يستجيب لا يملأ الدفعة */
+    if (at - dockMissAt < 1_000) return;
+    dockMissAt = at;
+    mark("dock.miss", Math.round(performance.now() - launchT0), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 });
+    }, 450);
+  });
+}
 /** من `ChromeHide.onScroll`: آخرُ حدث تمرير (رقمٌ في الذاكرة — لا شيءَ آخرُ في مسار التمرير) */
 export function noteScroll() {
   lastScrollAt = Date.now();

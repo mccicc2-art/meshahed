@@ -26,7 +26,7 @@ import { timeAgo } from "@/core/when";
 import type { LastSeenPayload, MessagesPayload, MsgDeleteKind, MsgEvent, MsgImage, MsgPeerBody, MsgReplyRef, MsgShareBody, MsgTextBody, SearchTitle } from "../contracts";
 import { ChatBackdrop, ChatBgSheet, useChatBg } from "./chatBg";
 import { clockOf, copyableOf, copyTextOf, dayKeyOf, dayLabelOf } from "./chatFormat";
-import { ReplyQuote, replyRefOf } from "./ReplyQuote";
+import { ReplyQuote, TitleQuote, replyRefOf } from "./ReplyQuote";
 import { PhotoViewer } from "./PhotoViewer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 import { DeleteSheet, canUnsend, deleteRemote } from "./DeleteSheet";
@@ -177,15 +177,33 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const [attach, setAttach] = useState(false);
   /* 🆕 D-1435 — «بحث لوبز» في الخاص: العملُ المختار مشاركةٌ إلى الطرف الآخر (`/api/v1/me/messages/share` نفسُه) — بطاقتُها
      تصل الخيطَ مع الجلب التالي */
-  const sendTitle = useCallback(
-    (r: SearchTitle) => {
-      haptic.pick();
-      write<{ done: true }>("/api/v1/me/messages/share", { recipient_id: peer, tmdb_id: r.id, media_type: r.mediaType, title: r.title, poster_path: r.posterPath ?? null, note: null } satisfies MsgShareBody)
-        .then(() => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }))
-        .catch((e: unknown) => say(errorText(t, e)));
-    },
-    [peer, say, t],
-  );
+  /* 🆕 R57 — **العملُ لا يُرسَل بلمسته** (أحمد: «ابغى اقدر اضيف رسالة مع العمل .. الان ينرسل مباشرة»؛ «٢ أ»): يتعلّق فوق الخانة
+     (`TitleQuote`) ولوحةُ المفاتيح تُفتح، و«أرسل» يرسله ومعه ما كُتب في `note` — الحقلُ الذي يحمله الخادمُ أصلاً ولم يُملأ قطّ */
+  const [picked, setPicked] = useState<SearchTitle | null>(null);
+  const sendTitle = useCallback((r: SearchTitle) => {
+    haptic.pick();
+    setPicked(r);
+    setAttach(false);
+    setTimeout(() => inputRef.current?.focus(), 120);
+  }, []);
+  const sendPicked = useCallback(() => {
+    const r = picked;
+    if (!r || sending) return;
+    const note = text.trim();
+    setPicked(null);
+    setText("");
+    setSending(true);
+    haptic.pick();
+    write<{ done: true }>("/api/v1/me/messages/share", { recipient_id: peer, tmdb_id: r.id, media_type: r.mediaType, title: r.title, poster_path: r.posterPath ?? null, note: note || null } satisfies MsgShareBody)
+      .then(() => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }))
+      .catch((e: unknown) => {
+        /* الفشلُ يُرجع العملَ والنصَّ كما كانا */
+        setPicked((cur) => cur ?? r);
+        setText((cur) => cur || note);
+        say(errorText(t, e));
+      })
+      .finally(() => setSending(false));
+  }, [picked, sending, text, peer, say, t]);
   /* 🆕 D-1402 — العارضُ يعرف الرسالةَ كلَّها: صاحبُها ووقتُها وتعليقُها، و«رد…» يقتبسها */
   const [viewer, setViewer] = useState<{ e: MsgEvent; image: MsgImage } | null>(null);
 
@@ -455,7 +473,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     [rows],
   );
   const presence = presenceOf(seen.data?.last_seen, t, (iso) => timeAgo(iso, t));
-  const canSend = (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending;
+  const canSend = picked ? !sending : (!!text.trim() || !!pic) && !(pic && !pic.path) && !sending;
 
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -597,7 +615,14 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           onText={setText}
           pic={pic}
           onClearPic={() => setPic(null)}
-          quote={replyTo && replyRefOf(replyTo) ? <ReplyQuote r={replyRefOf(replyTo)!} peerName={name} onClear={() => setReplyTo(null)} /> : null}
+          quote={
+            picked ? (
+              <TitleQuote title={picked.title} kind={picked.mediaType} poster={picked.poster ?? null} onClear={() => setPicked(null)} />
+            ) : replyTo && replyRefOf(replyTo) ? (
+              <ReplyQuote r={replyRefOf(replyTo)!} peerName={name} onClear={() => setReplyTo(null)} />
+            ) : null
+          }
+          placeholder={picked ? t.msgAddNote : undefined}
           inputRef={inputRef}
           kb={kb}
           bottomInset={insets.bottom}
@@ -609,7 +634,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           onImage={() => void pickImage()}
           onGif={sendGif}
           onLoopz={sendTitle}
-          onSend={send}
+          onSend={picked ? sendPicked : send}
           onRestingHeight={setDockH}
         />
       ) : null}

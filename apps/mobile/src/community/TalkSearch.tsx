@@ -74,7 +74,7 @@ export function TalkSearch({ rooms, onOpen, onClose }: { rooms: readonly Communi
       </View>
       {typed ? (
         <View style={{ height: 420 }}>
-          <LoopzPanel term={term} compact={false} onPick={(r: SearchTitle) => open(r.mediaType, r.id)} />
+          <LoopzPanel term={term} compact={false} cols={3} onPick={(r: SearchTitle) => open(r.mediaType, r.id)} />
         </View>
       ) : (
         <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12 }}>

@@ -435,14 +435,16 @@ function AiringBadge({ airing }: { airing: NonNullable<CommunityRoom["airing"]> 
     return days <= 6 ? new Date(`${d}T12:00:00Z`).toLocaleDateString(locale === "ar" ? "ar" : "en", { weekday: "short", timeZone: "UTC" }) : formatDateShort(d, t);
   };
   const out = airing.out != null;
-  const label = out ? t.talkAiringOut(airing.out!) : airing.next === today ? t.talkAiringToday : airing.next ? t.talkAiringNext(day(airing.next)) : t.talkAiringNow;
+  /* 🆕 R57 — «On break» رماديّة: في القسم مع ما يعرض، لكنّها لا تدّعي حلقةً قريبة */
+  const pause = !!airing.pause;
+  const label = out ? t.talkAiringOut(airing.out!) : pause ? t.talkAiringBreak : airing.next === today ? t.talkAiringToday : airing.next ? t.talkAiringNext(day(airing.next)) : t.talkAiringNow;
   return (
     <View
       pointerEvents="none"
-      style={{ position: "absolute", bottom: 10, end: 10, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: out ? tokens.success : "rgba(0,0,0,0.6)", borderWidth: out ? 0 : 1, borderColor: tokens.success }}
+      style={{ position: "absolute", bottom: 10, end: 10, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: out ? tokens.success : "rgba(0,0,0,0.6)", borderWidth: out ? 0 : 1, borderColor: pause ? "rgba(255,255,255,0.35)" : tokens.success }}
     >
-      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: out ? "#04120A" : tokens.success }} />
-      <Text size={12} weight="800" color={out ? "#04120A" : "#E9FBEF"} numberOfLines={1}>{label}</Text>
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: out ? "#04120A" : pause ? "rgba(255,255,255,0.55)" : tokens.success }} />
+      <Text size={12} weight="800" color={out ? "#04120A" : pause ? "rgba(255,255,255,0.8)" : "#E9FBEF"} numberOfLines={1}>{label}</Text>
     </View>
   );
 }

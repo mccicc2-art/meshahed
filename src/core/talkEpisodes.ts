@@ -156,10 +156,14 @@ export function episodeTitle(name: string | null | undefined): string | null {
  * - `out`: نشرةُ لوبز الأخيرة (`data.air`) إن عُرضت اليومَ أو أمس — رقمُها رقمُ TMDB.
  * ونشرةٌ في آخر ١٤ يوماً بلا موعدٍ معروف ⇒ «يعرض الآن» وحدَها. غيرُ ذلك لا شارة — لا نخمّن يوماً.
  * ==================================================================================================================== */
-export type RoomAiring = { next: string | null; out: number | null };
+export type RoomAiring = { next: string | null; out: number | null; /** 🆕 R57 — «On break»: لا موعدَ وآخرُ حلقةٍ قبل ١٥–٦٠ يوماً */ pause?: boolean };
 
 const DAY_MS = 86_400_000;
 const dayNum = (d: string) => Math.floor(Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / DAY_MS);
+/* 🆕 R57 — أحمد ٢١ أكتوبر («ليش فقط بلاك كلوفر ايرينق ناو؟ ون بيس؟ تيد لاسو؟»؛ «ب»): «يعرض الآن» يتّسع إلى آخر ٦٠ يوماً،
+   وما بين ١٥ و٦٠ يوماً بلا موعدٍ معروف «On break» رماديّة — ون بيس في توقّفٍ لا «انتهى»، ولا يختلط بما تنزل حلقاتُه فعلاً */
+const FRESH_DAYS = 14;
+const AIRING_DAYS = 60;
 
 export function roomAiring(bulletin: Record<string, unknown> | null | undefined, nextAirDate: string | null | undefined, today: string): RoomAiring | null {
   const air = typeof bulletin?.air === "string" && /^\d{4}-\d{2}-\d{2}/.test(bulletin.air) ? bulletin.air.slice(0, 10) : null;
@@ -167,7 +171,7 @@ export function roomAiring(bulletin: Record<string, unknown> | null | undefined,
   const next = nextAirDate && /^\d{4}-\d{2}-\d{2}/.test(nextAirDate) && nextAirDate.slice(0, 10) >= today ? nextAirDate.slice(0, 10) : null;
   const ago = air ? dayNum(today) - dayNum(air) : null;
   const out = ep && ago != null && ago >= 0 && ago <= 1 ? ep.episode : null;
-  const recent = ago != null && ago >= 0 && ago <= 14;
-  if (!next && out == null && !recent) return null;
-  return { next, out };
+  if (next || out != null) return { next, out };
+  if (ago == null || ago < 0 || ago > AIRING_DAYS) return null;
+  return ago <= FRESH_DAYS ? { next: null, out: null } : { next: null, out: null, pause: true };
 }

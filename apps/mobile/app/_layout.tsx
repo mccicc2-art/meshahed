@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Stack, useRouter } from "expo-router";
-import { I18nManager } from "react-native";
+import { I18nManager, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -23,7 +23,7 @@ import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
-import "../src/perfMarks";
+import { rootTouch } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
 
@@ -94,6 +94,8 @@ function Shell() {
     <>
       {/* D-1125 — أيقوناتُ الشريط تتبع الثيم: البيضاءُ على «النهاري» لا تُرى */}
       <StatusBar style={statusBarStyleOf(themeId)} />
+      {/* 🩺 R57 — `dock.miss`: كلُّ لمسةٍ في التطبيق تمرّ هنا (حدثٌ يصعد ولا يأخذ اللمسة) — لمسةٌ في منطقة الدوك لم تصل زرَّه تُسجَّل */}
+      <View style={{ flex: 1 }} onTouchStart={(e) => rootTouch(e.nativeEvent.pageY)}>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: tokens.bg },
@@ -175,6 +177,7 @@ function Shell() {
         {/* 🆕 D-1371 — شاشةُ الخروج: شعارُ التجهيز حتى يكتمل رسمُه ثمّ شاشةُ الدخول. بلا حركة (تغطّي فوراً) وبلا سحبٍ للرجوع */}
         <Stack.Screen name="signing-out" options={{ headerShown: false, animation: "none", gestureEnabled: false }} />
       </Stack>
+      </View>
       {/* 🆕 K3b — الـWebView طبقةٌ فوق المكدّس لا جذرٌ تحته (`src/webDoor.ts`): تظهر للزائر وللباب، وتختفي فوق الشاشات
           الأصليّة وهي مركَّبة — فالبابُ لا يهدم ما تحته، والعودةُ لا تبني شيئاً */}
       <WebLayer />

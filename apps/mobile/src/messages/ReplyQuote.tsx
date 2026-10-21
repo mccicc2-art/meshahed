@@ -100,3 +100,25 @@ export function replyRefOf(e: MsgEvent): MsgReplyRef | null {
   if (e.image) return { id: e.id, mine: e.mine, kind: "image", body, image: e.image };
   return { id: e.id, mine: e.mine, kind: "text", body };
 }
+
+/**
+ * 🆕 R57 — **العملُ المختارُ فوق الخانة قبل إرساله** (أحمد ٢١ أكتوبر بتسجيل: «ابغى اقدر اضيف رسالة مع العمل .. الان ينرسل مباشرة»؛
+ * «١ أ»: الخاصّ والقروبات وغرف النقاش). إطارُ المقتبَس نفسُه (شريطٌ ملوّنٌ وصورةٌ في الطرف و✕) — عائلةٌ واحدة لا مكوّنٌ ثانٍ للفكرة نفسِها:
+ * «هذا سيُرسَل مع كلامك».
+ */
+export function TitleQuote({ title, kind, poster, onClear }: { title: string; kind: "tv" | "movie"; poster: string | null; onClear: () => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "stretch", borderRadius: 12, overflow: "hidden", minHeight: 52, backgroundColor: tokens.surface }}>
+      <View style={{ width: 4, backgroundColor: tokens.accent }} />
+      {poster ? <Image source={{ uri: poster }} style={{ width: 34, height: 51, borderRadius: 5, margin: 6, marginEnd: 0 }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+      <View style={{ flex: 1, minWidth: 0, justifyContent: "center", paddingVertical: 6, paddingHorizontal: 8, gap: 1 }}>
+        <Text size={13} weight="700" numberOfLines={1}>{title}</Text>
+        <Text size={12} muted numberOfLines={1}>{kind === "tv" ? t.typeSeries : t.typeMovie}</Text>
+      </View>
+      <Pressable onPress={onClear} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.msgReplyCancel} style={{ width: 36, alignItems: "center", justifyContent: "center" }}>
+        <Icon name="close" size={13} color={tokens.muted} />
+      </Pressable>
+    </View>
+  );
+}

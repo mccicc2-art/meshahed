@@ -122,7 +122,10 @@ test("roomAiring: out on the air day or the day after, next from the library, re
   assert.deepEqual(roomAiring(b("2026-10-20"), null, "2026-10-21"), { next: null, out: 1180 });
   assert.deepEqual(roomAiring(b("2026-10-15"), "2026-10-26", "2026-10-21"), { next: "2026-10-26", out: null });
   assert.deepEqual(roomAiring(b("2026-10-10"), null, "2026-10-21"), { next: null, out: null });
-  assert.equal(roomAiring(b("2026-09-01"), null, "2026-10-21"), null);
+  /* 🆕 R57 — ١٥–٦٠ يوماً بلا موعد: «On break» (ون بيس ٢٧ سبتمبر)، وبعد الستّين لا شارة */
+  assert.deepEqual(roomAiring(b("2026-09-27"), null, "2026-10-21"), { next: null, out: null, pause: true });
+  assert.deepEqual(roomAiring(b("2026-10-06"), "2026-09-22", "2026-10-21"), { next: null, out: null, pause: true });
+  assert.equal(roomAiring(b("2026-08-01"), null, "2026-10-21"), null);
   assert.equal(roomAiring(null, "2026-10-01", "2026-10-21"), null);
   assert.deepEqual(roomAiring(null, "2026-11-02", "2026-10-21"), { next: "2026-11-02", out: null });
 });
