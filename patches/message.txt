@@ -1,4 +1,4 @@
-Release R44 — D-1497: swiping between tabs no longer opens the card under the finger — TabSlide claims the responder while a swipe is live (the press is terminated before release) and the open handlers of Community, Library, Discover and Profile ignore a press within 300 ms of a swipe — task 124 [deploy]
+[deploy] Release R59 — D-1498: Arabic text sits on the vertical centre of its line on iPhone — the shared Text nudges Arabic-led text down 0.12em (Tajawal's tall line box put glyphs above icon centre); draw-only translateY, layout unchanged, Android untouched — task 141
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
