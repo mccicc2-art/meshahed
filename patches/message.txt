@@ -1,7 +1,9 @@
-fix(mobile): keep the top dots of Arabic letters and centre the stats card text (D-1499) [deploy]
+feat(widget): extra-large iPhone size, page arrows in widget sections, «Search Loopz» in Spotlight (D-1500) [deploy]
 
-- ui.tsx: the iOS Arabic nudge now adds top padding with negative margins instead of translateY, so tall Tajawal dots (ش) are no longer clipped and the layout footprint is unchanged.
-- HomeHeader: drop the tight lineHeight on the stats value and label so they sit on the icon's centre.
+- Widget: the iOS 27 full-page size (systemExtraLargePortrait), behind a compiler and an OS check. The layout engine now resolves iPhone heights up to 800, and anything over 450 resolves as «xl».
+- Widget: ‹ › arrows in the header of any section that holds more than fits (Continue watching, To watch and the other lists). A tap shows the next page without opening the app, and the pages wrap. This replaces scrolling, which widgets do not support.
+- Spotlight, Siri and the Action button: an App Shortcut «ابحث في Loopz» asks for the text and opens the app on the results. It lives in the app target, copied there by withLoopzWidget. The link waits in the bridge (takeLink and onLink) and WidgetGate runs it.
+- eas.json: the iOS production build uses Xcode 27 (macos-tahoe-26.6-xcode-27.0). This changes the Android fingerprint as well, so an Android build follows (Ahmed chose «أ»).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
