@@ -163,8 +163,8 @@ export function Text({
   const family = (ar: boolean) => ({ fontFamily: familyOf(ar, weight), fontWeight: undefined });
   /* 🆕 D-1498 — **العربيُّ ينزل إلى وسط سطره على الآيفون** (لقطةُ أحمد ٢١ أكتوبر: «النص ماهو متوسط الأيقونة طالع فوق سطر
      الأيقونة بشوي»). مقاييسُ Tajawal (من ملفّه: صعود ٦٤٣ · هبوط ٣٥٧ · فجوة ٢٠٠ من ١٠٠٠) تجعل صندوقَ السطر أطولَ من جسم الحرف
-     في أسفله، فتتوسّط الأيقونةُ الصندوقَ ويقع الحرفُ فوق وسطه — قيس في اللقطة نحو ٠٫١٢–٠٫١٨ من مقاس الخطّ. الإزاحةُ رسمٌ لا
-     تخطيط (`translateY`): الصندوقُ ومن حوله لا يتحرّكان، والحرفُ وحدَه ينزل. أندرويد يحسب السطرَ بمقاييس أخرى ولم يُقَس — لا يُمسّ */
+     في أسفله، فتتوسّط الأيقونةُ الصندوقَ ويقع الحرفُ فوق وسطه — قيس في اللقطة نحو ٠٫١٢–٠٫١٨ من مقاس الخطّ. الحرفُ ينزل والمساحةُ
+     التي يأخذها النصُّ لا تتغيّر (`arabicNudge` — D-1499). أندرويد يحسب السطرَ بمقاييس أخرى ولم يُقَس — لا يُمسّ */
   const nudge = Platform.OS === "ios" && runs.length > 0 && runs[0].ar ? arabicNudge([base, style]) : null;
   /* 🔴 D-981 — **النصُّ الفارغ بلا مقاطع**: `runs[0].ar` على `""` كان يُسقط الشجرةَ كلَّها
      (أوّلُ `AppCrash` في السجلّ، D-974: «Cannot read property 'ar' of undefined» في
@@ -184,14 +184,34 @@ export function Text({
   );
 }
 
-/** D-1498 — نسبةُ النزول من مقاس الخطّ (انظر رأسَ `Text`). تُضاف إلى `transform` القائم إن وُجد فلا تمحوه */
-const AR_NUDGE = 0.12;
+/**
+ * D-1498 — العربيُّ ينزل إلى وسط سطره (انظر رأسَ `Text`). 🔴 D-1499 — **ومعه سقفٌ لنقاطه** (لقطةُ أحمد ٢١ أكتوبر: «كلمة للمشاهدة
+ * حرف ش ناقصه نقطه»): نقاطُ «ش» في Tajawal ٧٠٠ تعلو إلى ٧٩٩ (و٨٣٠ في ٨٠٠) وصعودُ الخطّ ٦٤٣ — الآيفون يقصّ النصَّ عند حدّ صندوقه
+ * فتسقط النقطةُ العليا. `translateY` (الإصدارُ الأوّل) يحرّك الصندوقَ وقصَّه معاً فلا يحلّ القصّ — فصار **حشوةً عليا** تفتح
+ * للنقاط مكاناً داخل الصندوق، **وهامشين سالبين** يُبقيان المساحةَ التي يأخذها النصُّ من حوله كما كانت حرفاً:
+ * حشوةٌ ٠٫٢ · هامشٌ أعلى −٠٫٠٨ · هامشٌ أسفل −٠٫١٢ ⇒ الحرفُ ينزل ٠٫١٢ والمساحةُ الخارجيّةُ لا تتغيّر.
+ * تُضاف إلى ما كتبه المستدعي (لا تمحوه)، ولا تُطبَّق على نصٍّ بارتفاعٍ صريح أو هوامشَ نسبيّة.
+ */
+const AR_HEAD = 0.2;
+const AR_TOP = 0.08;
+const AR_DOWN = 0.12;
 function arabicNudge(style: StyleProp<TextStyle>): TextStyle | null {
-  const flat = StyleSheet.flatten(style) as TextStyle | undefined;
-  const fs = flat?.fontSize;
-  if (!fs) return null;
-  const own = Array.isArray(flat?.transform) ? flat.transform : [];
-  return { transform: [...own, { translateY: Math.round(fs * AR_NUDGE * 10) / 10 }] } as TextStyle;
+  const f = StyleSheet.flatten(style) as TextStyle | undefined;
+  const fs = f?.fontSize;
+  if (!fs || f?.height != null) return null;
+  const num = (...v: unknown[]): number | null => {
+    for (const x of v) {
+      if (x == null) continue;
+      return typeof x === "number" ? x : null;
+    }
+    return 0;
+  };
+  const pt = num(f?.paddingTop, f?.paddingVertical, f?.padding);
+  const mt = num(f?.marginTop, f?.marginVertical, f?.margin);
+  const mb = num(f?.marginBottom, f?.marginVertical, f?.margin);
+  if (pt === null || mt === null || mb === null) return null;
+  const r = (x: number) => Math.round(x * 10) / 10;
+  return { paddingTop: r(pt + fs * AR_HEAD), marginTop: r(mt - fs * AR_TOP), marginBottom: r(mb - fs * AR_DOWN) };
 }
 
 /**

@@ -169,18 +169,21 @@ export function StatsCard({ stats, onStat, trailing }: { stats: readonly StatCel
         {stats.flatMap((s, i) => [
           i > 0 ? sep(`sep-${s.key}`) : null,
           stacked ? (
-            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 2, paddingVertical: 11, opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 2, paddingVertical: 9, opacity: pressed ? 0.7 : 1 }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Icon name={s.icon as never} size={16} color={tokens.accent} />
-                <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"], lineHeight: 18 }}>{s.value}</Text>
+                <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{s.value}</Text>
               </View>
-              <Text size={12} weight="500" muted numberOfLines={1} style={{ lineHeight: 14, maxWidth: "100%" }}>{s.label}</Text>
+              <Text size={12} weight="500" muted numberOfLines={1} style={{ maxWidth: "100%" }}>{s.label}</Text>
             </Pressable>
           ) : (
-            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 12, opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 10, opacity: pressed ? 0.7 : 1 }]}>
               <Icon name={s.icon as never} size={16} color={tokens.accent} />
-              <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"], lineHeight: 18 }}>{s.value}</Text>
-              <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1, lineHeight: 14 }}>{s.label}</Text>
+              {/* 🔴 D-1499 — **بلا سطرٍ أضيقَ من الخطّ** (لقطةُ أحمد: «النص في الكارد بالأعلى لم يتعدل»): ‏`lineHeight` ‏١٨ تحت Poppins
+                  ١٥ (سطرُه الطبيعيّ ~٢٢) و١٤ تحت Tajawal ١٢ كانا يرفعان الرقمَ والاسمَ فوق وسط الأيقونة (~٢pt في اللقطة). السطرُ
+                  الطبيعيُّ يتوسّط، والحشوةُ نقصت نقطتين فلا تكبر البطاقة إلّا قليلاً */}
+              <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{s.value}</Text>
+              <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1 }}>{s.label}</Text>
             </Pressable>
           ),
         ])}
