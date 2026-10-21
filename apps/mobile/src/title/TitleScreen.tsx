@@ -403,14 +403,15 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                   <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /></View>
                 </View>
                 <Text size={12} muted numberOfLines={2} style={styles.onArt}>
-                  {[d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1), ...d.genres.slice(0, 2).map((g) => g.name)].filter(Boolean).join("  ·  ")}
+                  {/* ⚖️ D-1504 — النوعُ · السنة · المواسم · الدولة؛ الأنواعُ نزلت إلى إطاراتها تحت (أحمد بلقطةٍ ٢١ أكتوبر: «الازرق شيله خلاص موجوده تحت») */}
+                  {[d.anime ? t.animeBadge : d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1)].filter(Boolean).join("  ·  ")}
                 </Text>
                 <RatingsLine x={x} compact />
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-                {/* ⚖️ D-1502 — رقاقتا العمر والنوع حُذفتا (أحمد بلقطةٍ ٢١ أكتوبر: «نوع العمل موجود فوق… ظاهر مرّتين»): العمرُ
-                    بجانب IMDb في `RatingsLine`، والنوعُ في سطر البيانات — والرقاقتان لا تُضغطان. يبقى المكانُ لـ«وين أشاهده» */}
-                <View style={{ flex: 1 }} />
+                {/* ⚖️ D-1504 — الأنواعُ رجعت هنا وحدَها (العمرُ يبقى بجانب IMDb في `RatingsLine`)، كلُّ نوعٍ في إطارٍ بحدود صفّ
+                    الأفعال وخلفيّة `surface2` (اختيارُ أحمد «أ»). الأسماءُ كما تأتي من TMDB («Action & Adventure» نوعٌ واحدٌ للمسلسلات) */}
+                <GenreFrames genres={d.anime ? d.genres.filter((g) => g.id !== 16) : d.genres} />
                 <WatchWhere x={x} icon />
               </View>
             </View>
@@ -666,3 +667,42 @@ function Chevron({ color }: { color: string }) {
 const styles = StyleSheet.create({
   onArt: { textShadowColor: "rgba(0,0,0,0.85)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 });
+
+/**
+ * D-1504 — إطاراتُ الأنواع في رأس العمل: ثلاثةٌ إن اتّسعت في سطرٍ واحد، وإلّا اثنان (والثاني ينزل سطراً إن طال —
+ * أحمد: «يظهر اثنين فقط دام ما يكفي»). القياسُ بصفٍّ خفيٍّ للثلاثة الأولى لأنّ عرضَ الاسم لا يُعرف قبل رسمه.
+ * لا تُضغط: النوعُ هنا وصفٌ لا رابط.
+ */
+function GenreFrames({ genres }: { genres: { id: number; name: string }[] }) {
+  const { tokens } = useApp();
+  const GAP = 6;
+  const first = genres.slice(0, 3);
+  const [boxW, setBoxW] = useState(0);
+  const [widths, setWidths] = useState<Record<number, number>>({});
+  const measured = first.every((g) => widths[g.id] != null) && boxW > 0;
+  const allThree = first.length === 3 && measured && first.reduce((a, g) => a + widths[g.id], 0) + GAP * 2 <= boxW;
+  const shown = first.length === 3 ? (allThree ? first : first.slice(0, 2)) : first;
+  const frame = (g: { id: number; name: string }, onLayout?: (w: number) => void) => (
+    <View
+      key={g.id}
+      onLayout={onLayout ? (e) => onLayout(Math.ceil(e.nativeEvent.layout.width)) : undefined}
+      style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.card, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}
+    >
+      <Text size={11} weight="600" numberOfLines={1}>{g.name}</Text>
+    </View>
+  );
+  return (
+    <View style={{ flex: 1, minWidth: 0 }} onLayout={(e) => setBoxW(Math.floor(e.nativeEvent.layout.width))}>
+      {/* صفُّ القياس: خفيٌّ ولا يأخذ مكاناً ولا يُلمس */}
+      <View pointerEvents="none" style={{ position: "absolute", opacity: 0, flexDirection: "row" }}>
+        {first.map((g) => frame(g, (w) => setWidths((m) => (m[g.id] === w ? m : { ...m, [g.id]: w }))))}
+      </View>
+      {/* قبل القياس لا نرسم شيئاً: لا يقفز صفٌّ من ثلاثةٍ إلى اثنين أمام العين */}
+      {first.length === 3 && !measured ? null : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP, alignItems: "flex-end" }}>
+          {shown.map((g) => frame(g))}
+        </View>
+      )}
+    </View>
+  );
+}
