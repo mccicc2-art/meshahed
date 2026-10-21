@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
     const kind = sp.get("kind");
     const media = kind === "tv" || kind === "movie" ? kind : null;
     if (t === "talk") {
+      /* 🆕 R58 — «النقاش العام»: `kind=general&id=0` شكلُه الوحيد */
+      if (kind === "general" && sp.get("id") === "0") return ok(await talkPayload(0, "general"));
       const id = positiveInt(sp.get("id"));
       if (!id || !media) return fail("invalid_input");
       return ok(await talkPayload(id, media));

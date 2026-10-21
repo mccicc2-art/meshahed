@@ -127,10 +127,11 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
     ) : null;
   }
   const { likes, liked } = likeOf(row);
+  /* 🆕 R58 — منشورُ النقاش يُعجَب صاحبُه به كما في الغرفة (D-1512)؛ والرأيُ لا */
   const mine = row.kind === "comment" && row.item.person.id === acts.meId;
   const readOnly = mine || !acts.signedIn;
   const replies = row.kind === "comment" && row.item.listId ? row.list_social?.replies ?? 0 : row.replies;
-  const views = row.kind === "comment" && row.item.listId ? null : row.views;
+  const views = row.kind === "talk" || (row.kind === "comment" && row.item.listId) ? null : row.views;
   const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingVertical: 8, paddingHorizontal: 10, minHeight: 36 };
   const heartColor = liked ? tokens.accent : tokens.muted;
   return (
@@ -195,7 +196,88 @@ function RowPoster({ path, kind, lib, dark = false, onPress }: { path: string | 
   );
 }
 
+/**
+ * 🆕 R58 — **منشورُ نقاشٍ في الأنشطة** (أحمد ٢١ أكتوبر — الصورة ⑮): جذرٌ من القلم، أو جذرُ غرفةٍ نشط («٤ أ»: ٥ ردود أو ١٠
+ * إعجابات). نفسُ هيكل صفِّ الرأي (الوجه · الاسم · العمر · الكلام · الذيل · الملصق)، والفارقُ وسمٌ واحدٌ بعد اسم العمل:
+ * «نقاش» · «م·ح» للحلقة (ومحجوبٌ حتى يُضغط) · «النقاش العام» بلا ملصق · «نشط» لما جاء من الغرفة. **وكلُّ لمسةٍ تفتح مكانَه في
+ * غرفته** (`?r=`) — الردُّ هناك لا في الخطّ.
+ */
+function TalkRow({ row, doors, acts }: { row: Extract<CommunityFeedRow, { kind: "talk" }>; doors: CardDoors; acts: CardActs }) {
+  const { t, tokens } = useApp();
+  const [reveal, setReveal] = useState(false);
+  const p = row.item;
+  const general = p.media_type === "general";
+  const kind = p.media_type === "movie" ? "movie" : "tv";
+  const room = general ? "/talk/general/0" : `/talk/${p.media_type}/${p.tmdb_id}`;
+  const open = () => doors.onWeb(`${room}?r=${p.id}`);
+  const openTitle = () => (general ? doors.onWeb(room) : doors.onTitle(kind, p.tmdb_id));
+  const who = displayNameOf(p.person, t.anonymousUser);
+  const whoPath = profileHref(p.person);
+  const ep = p.season != null && p.episode != null;
+  const hidden = p.has_spoiler && !reveal;
+  const chip = (label: string, color: string, border: string, icon?: Parameters<typeof Icon>[0]["name"]) => (
+    <Pressable onPress={open} hitSlop={4} style={{ flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1 }}>
+      {icon ? <Icon name={icon} size={11} color={color} /> : null}
+      <Text size={11} weight="600" color={color} style={{ fontVariant: ["tabular-nums"] }}>{label}</Text>
+    </Pressable>
+  );
+  return (
+    <View style={{ flexDirection: "row", gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} accessibilityRole="link" accessibilityLabel={who}>
+            <Avatar uri={p.person.hide_name ? null : p.person.avatar_url} />
+          </Pressable>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} style={{ flexShrink: 1 }}>
+                <Text size={14} weight="700" numberOfLines={1}>{who}</Text>
+              </Pressable>
+              {p.person.hide_name ? null : <IdentityBadges flags={identityFlags(p.person)} nameSize={14} />}
+              <Pressable onPress={open} hitSlop={6} style={{ marginStart: "auto" }}>
+                <Text size={12} muted>{timeAgoShort(p.created_at, t)}</Text>
+              </Pressable>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {general ? (
+                chip(t.talkGeneralTitle, tokens.accent, tokens.accent + "59", "people")
+              ) : (
+                <>
+                  <Pressable onPress={openTitle} style={{ flexShrink: 1 }}>
+                    <Text size={12} muted numberOfLines={1}>{p.title ?? ""}</Text>
+                  </Pressable>
+                  {ep ? chip(t.epChip(p.season as number, p.episode as number, 0), tokens.fg, tokens.border) : p.hot ? null : chip(t.feedTalkTag, tokens.accent, tokens.accent + "59", "comment")}
+                </>
+              )}
+              {p.hot ? chip(t.feedHotTag(row.replies), "#ff9a3c", "#ff9a3c59", "trending") : null}
+            </View>
+          </View>
+        </View>
+        {hidden ? (
+          <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
+            <Icon name="eye-off" size={14} color={tokens.muted} />
+            <Text size={13} muted>{ep ? t.epSpoilerUnwatched : t.spoilerMark}</Text>
+          </Pressable>
+        ) : p.body?.trim() ? (
+          <ClampedText key={p.body} text={p.body} onPress={open} />
+        ) : p.image ? (
+          <Pressable onPress={open} style={{ marginTop: 8, width: 160, aspectRatio: 4 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+            <Image source={{ uri: p.image }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+          </Pressable>
+        ) : null}
+        <Tail row={row} acts={acts} onList={open} share={{ path: room, title: general ? t.talkGeneralTitle : p.title ?? "" }} />
+      </View>
+      {general ? null : <RowPoster path={p.poster_path} kind={kind} lib={row.lib} onPress={openTitle} />}
+    </View>
+  );
+}
+
 export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: CommunityFeedRow; doors: CardDoors; acts: CardActs }) {
+  if (row.kind === "talk") return <TalkRow row={row} doors={doors} acts={acts} />;
+  return <ReviewOrNewsCard row={row} doors={doors} acts={acts} />;
+});
+
+function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityFeedRow, { kind: "talk" }>; doors: CardDoors; acts: CardActs }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
   /* «النص الأصلي» ⇄ «الترجمة» (`FeedReviewText`، D-307) — حالةُ ضغطةٍ في البطاقة لا تفضيل */
@@ -329,7 +411,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
       ) : null}
     </View>
   );
-});
+}
 
 /** غرفةُ نقاش — `TalkRoomCard` الويب: الملصقُ في البداية، والغلافُ خلفها باهتاً، والعنوانُ المولَّد هو البطاقة */
 /**
@@ -340,19 +422,22 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
 /** `readOnly` = الزائر: لا دبّوسَ له، وتبقى علامةُ لوبز وحدَها (`globalPinned` في `Wrap`) */
 export type RoomPin = { admin: boolean; readOnly: boolean; onPin: (room: CommunityRoom) => void } | null;
 
-export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin = null, activity = false }: { room: CommunityRoom; doors: CardDoors; hero?: boolean; pin?: RoomPin; activity?: boolean }) {
+export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin = null, activity = false, general = false }: { room: CommunityRoom; doors: CardDoors; hero?: boolean; pin?: RoomPin; activity?: boolean; general?: boolean }) {
   const { t, tokens } = useApp();
+  /* 🆕 R58 — «النقاش العام» (الصورة ⑯): البطاقةُ نفسُها، شعارُ لوبز مكانَ الملصق، وسطرُها «أي شي عن الأفلام والمسلسلات»،
+     ودبّوسُها علامةٌ ثابتة — مثبّتةٌ للجميع فوق القائمة (أحمد «٢ أ») ولا تُفكّ */
+  if (general) room = { ...room, posterPath: null, backdropPath: null, airing: null, episode_line: t.talkGeneralCard };
   /* 🆕 D-1494 — **التصميمُ الجديد** (لقطةُ أحمد ٢٠ أكتوبر): بوسترٌ كبيرٌ بطول البطاقة، والغلافُ ظاهرٌ كاملاً تحت ظلٍّ قويٍّ في
      البداية (حيث البوسترُ والنصّ) يخفّ نحو النهاية — كان الغلافُ باهتاً كلُّه (٣٥٪) بلا ظلّ. وثلاثةُ أسطرٍ قصيرة: العنوان ·
      «الحلقة ١٠ · الموسم ٣» · «٧ مشاركات · منذ ٨ دقائق»، ثمّ الوجوه. `hero` يكبّر المقاساتِ وحدَها (القاعدة ٣). */
   const posterW = hero ? 96 : 84;
   const poster = posterFor(room.posterPath, posterW);
   const bg = backdropUrl(room.backdropPath, "w780");
-  const title = t.talkRoomTitle(room.title?.trim() || "", room.mediaType === "tv");
+  const title = general ? t.talkGeneralTitle : t.talkRoomTitle(room.title?.trim() || "", room.mediaType === "tv");
   const shadeId = `room-shade-${room.mediaType}-${room.tmdbId}`;
   const card = (
     <Pressable
-      onPress={() => doors.onWeb(`/talk/${room.mediaType}/${room.tmdbId}`)}
+      onPress={() => doors.onWeb(general ? "/talk/general/0" : `/talk/${room.mediaType}/${room.tmdbId}`)}
       accessibilityRole="link"
       style={({ pressed }) => ({ flexDirection: "row", gap: 14, padding: 12, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
     >
@@ -373,11 +458,13 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
           </Svg>
         </View>
       ) : null}
-      <View style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-        {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+      <View style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", borderWidth: general ? 1 : 0, borderColor: tokens.border }}>
+        {general ? (
+          <Image source={require("../../assets/loopz-mark.png")} style={{ width: posterW * 0.6, height: posterW * 0.6, borderRadius: posterW * 0.3 }} contentFit="cover" />
+        ) : poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 6, paddingVertical: 4 }}>
-        <Text size={hero ? 18 : 16} weight="700" numberOfLines={1} style={{ marginEnd: pin && !(pin.readOnly && room.pin !== 2) ? 28 : 0 }}>{title}</Text>
+        <Text size={hero ? 18 : 16} weight="700" numberOfLines={1} style={{ marginEnd: general || (pin && !(pin.readOnly && room.pin !== 2)) ? 28 : 0 }}>{title}</Text>
         {room.episode_line ? <Text size={13} numberOfLines={1}>{room.episode_line}</Text> : null}
         <Text size={12} muted numberOfLines={1}>
           {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الشهر) — وإلّا بدا الترتيبُ عشوائيّاً */}
@@ -398,6 +485,15 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
       {room.airing ? <AiringBadge airing={room.airing} /> : null}
     </Pressable>
   );
+  if (general)
+    return (
+      <View>
+        {card}
+        <View pointerEvents="none" style={{ position: "absolute", top: 8, end: 8, width: 30, height: 30, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="pin-filled" size={17} color={tokens.accent} />
+        </View>
+      </View>
+    );
   if (!pin || (pin.readOnly && room.pin !== 2)) return card;
   const level = pin.admin ? 2 : 1;
   /* درجتا التثبيت (D-301/D-314): لوبز ثمّ أنا — وما ثبّتته لوبز علامةٌ لا تُضغط لغير الإدارة */

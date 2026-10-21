@@ -80,6 +80,11 @@ export interface BulletinData {
   vote?: number;
   /** تاريخُ البثّ `YYYY-MM-DD` */
   air?: string;
+  /**
+   * 🆕 R58 — **نهايةُ موسم** (`episode_type: "finale"` من TMDB). `true` نهايةٌ · `false` فُحصت وليست نهاية ·
+   * والغيابُ «لم تُفحص بعد» (نشراتٌ كُتبت قبل الحقل — يملؤها `healBulletinFinales`).
+   */
+  fin?: boolean;
 }
 
 export interface GeneratedBulletin {
@@ -166,6 +171,8 @@ export function bulletinFrom(ar: TvDetails, en: TvDetails | null): GeneratedBull
   if (Number.isFinite(runtime) && runtime > 0) data.runtime = Math.round(runtime);
   if (hasVote) data.vote = Math.round(vote * 10) / 10;
   if (ep.air_date) data.air = ep.air_date;
+  /* 🆕 R58 — الحقلُ يُكتب صريحاً دائماً (true/false) فلا تعود النشرةُ إلى طابور الفحص */
+  data.fin = ep.episode_type === "finale";
 
   const spoiler =
     proseAr || proseEn ? { ...(proseAr ? { ar: proseAr } : {}), ...(proseEn ? { en: proseEn } : {}) } : null;
@@ -227,10 +234,43 @@ export async function runTalkBulletinSlice(limit = SLICE): Promise<{
   );
 
   const bulletins = built.filter((b): b is GeneratedBulletin => b !== null);
+  /* 🆕 R58 — وفي الدورة نفسِها تُستكمل «نهايةُ الموسم» لنشراتٍ سبقت الحقل (سقفٌ صغير، ولا يُسقط الدورة) */
+  await healBulletinFinales().catch(() => 0);
   if (!bulletins.length) return { checked: rows.length, posted: 0 };
 
   // الكتابةُ بعميل الخدمة (D-898) — القراءةُ أعلاه تبقى على عميل الجلسة
   const writer = await createServiceClient();
   const { data: saved } = await writer.rpc("set_talk_bulletins", { p_rows: bulletins });
   return { checked: rows.length, posted: Number(saved ?? 0) };
+}
+
+/**
+ * 🆕 R58 — **استكمالُ «نهاية الموسم» لنشراتٍ كُتبت قبل الحقل** (أحمد ٢١ أكتوبر، «١ أ»).
+ *
+ * نشرةُ تيد لاسو كُتبت ٦ أكتوبر بلا `fin`، فبقيت شارتُه «متوقّف مؤقتاً» ستّين يوماً بعد نهاية موسمه. **والإصلاحُ يجري في
+ * دورة النشر نفسِها لا بسكربتٍ يُشغَّل يدويّاً**: آخرُ نشرةٍ لكلّ مسلسلٍ في الستّين يوماً بلا الحقل، خمسٌ في الدورة، تُسأل
+ * عنها TMDB (`last_episode_to_air` المخبّأ ساعةً) — وما لم يطابق رقمُها آخرَ حلقةٍ بُثّت كُتب `false`: نشرةٌ قديمةٌ تجاوزها
+ * العمل لا تُسأل ثانيةً.
+ */
+export async function healBulletinFinales(limit = 5): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("talk_bulletin_unflagged", { p_limit: limit });
+  if (error || !Array.isArray(data) || !data.length) return 0;
+  const rows = await Promise.all(
+    (data as { bulletin_key: string; tmdb_id: number; s: number; e: number }[]).map(async (r) => {
+      try {
+        const tv = await getTvIn(r.tmdb_id, "en-US");
+        const last = tv.last_episode_to_air;
+        const same = !!last && Number(last.season_number) === Number(r.s) && Number(last.episode_number) === Number(r.e);
+        return { bulletin_key: r.bulletin_key, fin: same && last?.episode_type === "finale" };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const ready = rows.filter((x): x is { bulletin_key: string; fin: boolean } => x !== null);
+  if (!ready.length) return 0;
+  const writer = await createServiceClient();
+  const { data: n } = await writer.rpc("set_talk_bulletin_fin", { p_rows: ready });
+  return Number(n ?? 0);
 }

@@ -35,8 +35,11 @@ export function feedRows(
   core: CommunityData,
   o: { meId: string; showStrangers: boolean; sort: FeedSort; t: Dict; locale: Locale; report?: { quiet: boolean } },
 ): CommunityFeedRow[] {
-  const ordered = orderCommunityFeed<FeedItem, LoopzNewsItem>({
+  /* 🆕 R58 — منشوراتُ النقاش بشكل `FeedTalkLike` (الشخصُ والوقتُ والعدّادان) */
+  const talk = core.talkFeed.map((p) => ({ ...p, created_at: p.createdAt }));
+  const ordered = orderCommunityFeed<FeedItem, LoopzNewsItem, (typeof talk)[number]>({
     comments: core.localized,
+    talk,
     news: core.newsForMe.filter((n) => newsLine(n, o.t, o.locale) !== null),
     meId: o.meId,
     followingIds: core.followingIds,
@@ -48,6 +51,36 @@ export function feedRows(
     report: o.report,
   });
   return ordered.map((r): CommunityFeedRow => {
+    if (r.kind === "talk") {
+      const p = r.item;
+      const safe = typeof p.imagePath === "string" && p.imagePath.startsWith("https://") ? p.imagePath : null;
+      return {
+        kind: "talk",
+        key: `t-${p.id}`,
+        view_key: p.id,
+        item: {
+          id: p.id,
+          tmdb_id: p.tmdbId,
+          media_type: p.mediaType,
+          title: p.title,
+          poster_path: p.posterPath,
+          person: p.person,
+          body: p.body,
+          created_at: p.createdAt,
+          has_spoiler: p.hasSpoiler,
+          image: safe,
+          gif_id: p.gifId,
+          season: p.season,
+          episode: p.episode,
+          via: p.via,
+          hot: p.hot,
+        },
+        likes: p.likes,
+        liked_by_me: p.likedByMe,
+        replies: p.replies,
+        lib: p.mediaType === "general" ? { ...NO_LIB } : libOf(core, p.tmdbId, p.mediaType),
+      };
+    }
     const mk = `${r.item.media_type}-${r.item.tmdb_id}`;
     if (r.kind === "comment") {
       const a = r.item;

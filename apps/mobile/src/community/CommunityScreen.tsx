@@ -67,7 +67,8 @@ const memory: { tab: Tab | null; all: BoardSection | null } = { tab: null, all: 
 
 async function fetchCommunity() {
   /* 🆕 D-1461 — اختيارُ الجهاز يلبس كلَّ ردٍّ قبل الكاش: الخادمُ لا يرى كوكيز التطبيق فيعيد الأصل («الكل» + «الأكثر تفاعلاً») */
-  return withFeedChoice((await api<CommunityPayload>("/api/v1/community")).data);
+  /* 🆕 R58 — `talk=1`: منشوراتُ النقاش في الخطّ و«النقاش العام» (الخادمُ لا يرسلهما لنسخةٍ لا تعرفهما) */
+  return withFeedChoice((await api<CommunityPayload>("/api/v1/community?talk=1")).data);
 }
 
 /** تسخينٌ اختياريّ — المفتاحُ مفتاحُ الشاشة فلا نداءَ يتكرّر */
@@ -383,7 +384,7 @@ export function CommunityScreen() {
         /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
         <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
       ) : null}
-      {menuRow ? (
+      {menuRow && menuRow.kind !== "talk" ? (
         <FeedMenu
           row={menuRow}
           meId={acts.meId}
@@ -524,17 +525,24 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
     if (!talkPrefs.talk_followed) return sortTalkRooms(d.rooms, sort, (r) => r.pin);
     return sortTalkRooms(d.rooms.filter((r) => r.mine), sort, (r) => r.pin);
   }, [d.rooms, talkPrefs]);
-  type TalkItem = { kind: "head"; key: string; label: string; count: number } | { kind: "room"; key: string; room: CommunityPayload["rooms"][number] };
+  type TalkItem =
+    | { kind: "head"; key: string; label: string; count: number }
+    | { kind: "room"; key: string; room: CommunityPayload["rooms"][number]; general?: boolean };
   const talkItems = useMemo((): TalkItem[] => {
     const asRoom = (r: CommunityPayload["rooms"][number]): TalkItem => ({ kind: "room", key: `${r.mediaType}-${r.tmdbId}`, room: r });
-    if (!talkPrefs?.talk_followed) return talkRooms.map(asRoom);
+    /* 🆕 R58 — «النقاش العام» أوّلُ بطاقةٍ في الشريحتين (أحمد «٢ أ»)، بشكل الغرفة نفسِه وأرقامِه من الخادم */
+    const g = d.general_room;
+    const general: TalkItem[] = g
+      ? [{ kind: "room", key: "general-0", general: true, room: { tmdbId: 0, mediaType: "movie", title: null, posterPath: null, backdropPath: null, posts: g.posts, postsWeek: 0, postsMonth: 0, likesMonth: 0, lastPostAt: g.last_at, lastAt: g.last_at ?? "", faces: g.faces, bulletin: null, bulletin_line: null, episode_line: null, pin: 2, mine: false, airing: null } }]
+      : [];
+    if (!talkPrefs?.talk_followed) return [...general, ...talkRooms.map(asRoom)];
     const airing = talkRooms.filter((r) => r.airing);
     const rest = [...talkRooms.filter((r) => !r.airing), ...(d.library_rooms ?? [])];
-    const out: TalkItem[] = [];
+    const out: TalkItem[] = [...general];
     if (airing.length) out.push({ kind: "head", key: "h-airing", label: t.talkAiringNow, count: airing.length }, ...airing.map(asRoom));
     if (rest.length) out.push({ kind: "head", key: "h-library", label: t.talkScopeLibrary, count: rest.length }, ...rest.map(asRoom));
     return out;
-  }, [talkRooms, talkPrefs, d.library_rooms, t.talkAiringNow, t.talkScopeLibrary]);
+  }, [talkRooms, talkPrefs, d.library_rooms, d.general_room, t.talkAiringNow, t.talkScopeLibrary]);
   /* 🆕 D-1207 — شهرٌ بلا تفاعلٍ في كلِّ ما يُعرض: البطاقاتُ بسطرها العادي والسطرُ الخافتُ يقول لماذا */
   const talkActive = talkPrefs?.talk_sort === "active";
   const talkIsQuiet = talkActive && talkQuiet(talkRooms);
@@ -570,10 +578,12 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
     setSeen((prev) => {
       const keys = feedView.rows.map((r) => r.key);
       if (!prev || prev.slice !== sliceKey || pulling) return { slice: sliceKey, keys: new Set(keys) };
-      const mine = mineKey ? keys.filter((x) => !prev.keys.has(x) && x.startsWith(mineKey)) : [];
+      /* 🆕 R58 — ومنشورُ قلمي (`t-<id>`) يظهر فوراً كرأيي: صاحبُه من الصفّ لا من المفتاح */
+      const mineTalk = new Set(feedView.rows.filter((r) => r.kind === "talk" && r.item.person.id === acts.meId).map((r) => r.key));
+      const mine = mineKey ? keys.filter((x) => !prev.keys.has(x) && (x.startsWith(mineKey) || mineTalk.has(x))) : [];
       return mine.length ? { slice: sliceKey, keys: new Set([...prev.keys, ...mine]) } : prev;
     });
-  }, [k, feedView.rows, sliceKey, pulling, mineKey]);
+  }, [k, feedView.rows, sliceKey, pulling, mineKey, acts.meId]);
   const held = seen && seen.slice === sliceKey ? seen.keys : null;
   const shownRows = useMemo(() => (held ? feedView.rows.filter((r) => held.has(r.key)) : feedView.rows), [held, feedView.rows]);
   const freshCount = feedView.rows.length - shownRows.length;
@@ -636,7 +646,7 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
               <Text size={12} muted>{num(item.count, locale)}</Text>
             </View>
           ) : (
-            <RoomCard room={item.room} doors={doors} pin={roomPin} activity={talkActive && !talkIsQuiet} />
+            <RoomCard room={item.room} doors={doors} pin={item.general ? null : roomPin} activity={!item.general && talkActive && !talkIsQuiet} general={item.general} />
           )
         }
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}

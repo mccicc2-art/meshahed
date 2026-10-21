@@ -126,6 +126,12 @@ test("roomAiring: out on the air day or the day after, next from the library, re
   assert.deepEqual(roomAiring(b("2026-09-27"), null, "2026-10-21"), { next: null, out: null, pause: true });
   assert.deepEqual(roomAiring(b("2026-10-06"), "2026-09-22", "2026-10-21"), { next: null, out: null, pause: true });
   assert.equal(roomAiring(b("2026-08-01"), null, "2026-10-21"), null);
+  /* 🆕 R58 — نهايةُ موسمٍ (تيد لاسو ح١٠) بلا موعد: انتهى لا «متوقّف»؛ ويوم بثّها «نزلت» كغيرها؛ وموعدُ موسمٍ جديدٍ يعيدها */
+  const fin = (air: string) => ({ s: 4, e: 10, air, fin: true });
+  assert.equal(roomAiring(fin("2026-10-06"), null, "2026-10-21"), null);
+  assert.equal(roomAiring(fin("2026-10-12"), null, "2026-10-21"), null);
+  assert.deepEqual(roomAiring(fin("2026-10-21"), null, "2026-10-21"), { next: null, out: 10 });
+  assert.deepEqual(roomAiring(fin("2026-10-06"), "2027-03-01", "2026-10-21"), { next: "2027-03-01", out: null });
   assert.equal(roomAiring(null, "2026-10-01", "2026-10-21"), null);
   assert.deepEqual(roomAiring(null, "2026-11-02", "2026-10-21"), { next: "2026-11-02", out: null });
 });

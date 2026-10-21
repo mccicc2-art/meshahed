@@ -28,9 +28,12 @@ export function ThreadRouteScreen({ route, from, compose = false, focus = null }
  */
 export function openThreadPath(router: ReturnType<typeof useRouter>, path: string, from: NativeRoot | "web"): boolean {
   /* 🆕 R55 — `?r=<id>` صفحةُ منشورٍ أو ردٍّ في الغرفة (رابطُ الويب نفسُه) */
-  let m = /^\/talk\/(tv|movie)\/(\d+)\/?(?:\?r=([0-9a-f-]{36}))?$/i.exec(path);
+  /* 🆕 R58 — و«النقاش العام» `/talk/general/0` */
+  let m = /^\/talk\/(tv|movie|general)\/(\d+)\/?(?:\?r=([0-9a-f-]{36}))?$/i.exec(path);
   if (m) {
-    warm({ t: "talk", kind: m[1] === "movie" ? "movie" : "tv", id: Number(m[2]) });
+    const k = m[1] === "movie" ? "movie" : m[1] === "general" ? "general" : "tv";
+    if (k === "general" && m[2] !== "0") return false;
+    warm({ t: "talk", kind: k, id: Number(m[2]) });
     router.push({ pathname: "/talk/[kind]/[id]", params: { kind: m[1], id: m[2], from, ...(m[3] ? { r: m[3] } : {}) } });
     return true;
   }

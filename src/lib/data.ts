@@ -3748,7 +3748,8 @@ function shareOf(r: { share_tmdb_id?: number | null; share_media_type?: string |
 
 export async function getTitleThread(
   tmdbId: number,
-  mediaType: "tv" | "movie",
+  /** 🆕 R58 — و`general` لـ«النقاش العام» (`tmdbId = 0`) */
+  mediaType: "tv" | "movie" | "general",
 ): Promise<TalkPost[]> {
   try {
     const supabase = await createClient();
@@ -3968,7 +3969,20 @@ export async function getMyRoomPins(): Promise<Set<string>> {
   }
 }
 
-export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
+/* 🆕 R58 — نداءٌ واحدٌ يعيد الغرفَ و«النقاشَ العام» معاً (`media_type = general`، الهجرة ٢١٩): بطاقةُ الثاني مثبّتةٌ فوق
+   القائمة في التطبيق، **ولا تدخل قائمةَ الغرف** فلا يُرسم صفٌّ «فيلمٌ رقمُه صفر» في الويب ولا في نسخٍ أقدم. */
+const talkRoomsAll = cache(async (limit: number): Promise<{ rooms: TalkRoom[]; general: TalkRoom | null }> => {
+  const all = await talkRoomsRaw(limit);
+  const strip = (r: TalkRoom & { raw?: string }): TalkRoom => {
+    const out = { ...r };
+    delete out.raw;
+    return out;
+  };
+  const g = all.find((r) => r.raw === "general");
+  return { rooms: all.filter((r) => r.raw !== "general").map(strip), general: g ? strip(g) : null };
+});
+
+async function talkRoomsRaw(limit: number): Promise<(TalkRoom & { raw: string })[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("title_talk_rooms", {
@@ -3993,7 +4007,9 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       }[]
     ).map((r) => ({
       tmdbId: Number(r.tmdb_id),
-      mediaType: r.media_type === "tv" ? "tv" : "movie",
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
+      /* 🆕 R58 — النوعُ كما في القاعدة: `general` يُفرز في `talkRoomsAll` */
+      raw: r.media_type,
       title: r.title,
       posterPath: r.poster_path,
       backdropPath: r.backdrop_path,
@@ -4013,6 +4029,74 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
   } catch {
     return [];
   }
+}
+
+/** 🆕 R58 — صفُّ `talk_feed` (الهجرة ٢١٩) */
+export type TalkFeedPost = {
+  id: string;
+  tmdbId: number;
+  mediaType: "tv" | "movie" | "general";
+  title: string | null;
+  posterPath: string | null;
+  person: PersonLite;
+  body: string | null;
+  createdAt: string;
+  hasSpoiler: boolean;
+  imagePath: string | null;
+  gifId: string | null;
+  season: number | null;
+  episode: number | null;
+  via: "pen" | null;
+  replies: number;
+  likes: number;
+  likedByMe: boolean;
+  hot: boolean;
+};
+
+/** 🆕 R58 — منشوراتُ النقاش في الأنشطة: جذورُ القلم وجذورُ الغرف النشطة — **وسقوطُها صامت** (قبل الهجرة ٢١٩ لا دالّة) */
+export async function getTalkFeed(limit = 40): Promise<TalkFeedPost[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("talk_feed", { p_limit: limit });
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      tmdbId: Number(r.tmdb_id),
+      mediaType: r.media_type === "tv" ? "tv" : r.media_type === "general" ? "general" : "movie",
+      title: (r.title as string | null) ?? null,
+      posterPath: (r.poster_path as string | null) ?? null,
+      person: {
+        id: String(r.author_id),
+        nickname: (r.nickname as string | null) ?? null,
+        username: (r.username as string | null) ?? null,
+        avatar_url: (r.avatar_url as string | null) ?? null,
+        hide_name: r.hide_name === true,
+      } as PersonLite,
+      body: (r.body as string | null) ?? null,
+      createdAt: String(r.created_at),
+      hasSpoiler: r.has_spoiler === true,
+      imagePath: (r.image_path as string | null) ?? null,
+      gifId: (r.gif_id as string | null) ?? null,
+      season: r.season == null ? null : Number(r.season),
+      episode: r.episode == null ? null : Number(r.episode),
+      via: r.via === "pen" ? "pen" : null,
+      replies: Number(r.replies ?? 0),
+      likes: Number(r.likes ?? 0),
+      likedByMe: r.liked_by_me === true,
+      hot: r.hot === true,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
+  return (await talkRoomsAll(limit)).rooms;
+}
+
+/** 🆕 R58 — إحصاءُ «النقاش العام» من النداء نفسِه — `null` إن لم يكن بين الغرف المجلوبة (لا مشاركاتٍ بعد أو خارج السقف) */
+export async function getGeneralRoom(limit = 40): Promise<TalkRoom | null> {
+  return (await talkRoomsAll(limit)).general;
 }
 
 /**

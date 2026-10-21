@@ -1649,7 +1649,7 @@ export async function rateEpisode(input: {
   const showTmdbId = intId(input.showTmdbId);
   const season = intIn(input.season, 0, 1000);
   const episode = intIn(input.episode, 1, 20_000);
-  const { supabase } = await requireUser("ep", 120, 60_000);
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
 
   /* **الهجرة ٥٢ لم تُشغَّل؟ رسالةٌ للمستخدم لا رسالةُ Postgres.**
      `42883` = الدالّة غير موجودة. الكود قد يسبق الهجرة بدقائق (وقع هذا
@@ -1692,11 +1692,67 @@ export async function rateEpisode(input: {
       ({ error } = await supabase.rpc("set_episode_rating", args));
     }
     guard(error);
+    /* 🆕 R58 — **من قيّم حلقةً فقد شاهدها وما قبلها** (أحمد ٢١ أكتوبر «٢ أ»: «التقييم فقط للحلقة اللي قيّمها»): التقييمُ
+       للحلقة وحدَها، والمشاهدةُ تُعلَّم حتى هي — في كلّ مكانٍ يُقيَّم منه (القلم وصفحة العمل، «٣ أ»). أثرٌ لا شرط. */
+    await markWatchedUpTo(supabase, user.id, showTmdbId, season, episode).catch(() => undefined);
   }
 
   revalidatePath("/");
   revalidatePath("/ratings");
   revalidatePath("/stats");
+  revalidatePath("/library");
+}
+
+/**
+ * 🆕 R58 — **علِّم حلقةً وكلَّ ما قبلها مشاهَداً، على الخادم** (لا يُؤتمن العميلُ على قائمة الحلقات).
+ * الترقيمُ المطلقُ من `firstEpisodeOf` (D-603: مواسمُ-الآركات تبدأ من ١١٥٦ لا من ١)، والمواسمُ السابقةُ بما بُثّ منها
+ * (`airedPerSeason`). والحلقةُ الخاصّة (الموسم ٠) تُعلَّم وحدَها: «قبلها» لا معنى له هناك. وما شوهد يبقى بتاريخه.
+ * ⚠️ **غيرُ مصدَّرةٍ عمداً**: الملفُّ `"use server"`، وكلُّ دالّةٍ مصدَّرةٍ فيه بابٌ يناديه العميل.
+ */
+async function markWatchedUpTo(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  userId: string,
+  tmdbId: number,
+  season: number,
+  episode: number,
+  meta?: { title?: string | null; posterPath?: string | null },
+): Promise<number> {
+  const { getTv } = await import("@/lib/tmdb");
+  const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
+  const tv = await getTv(tmdbId);
+  const runtime = tv.episode_run_time?.[0] ?? null;
+  const want: { s: number; e: number }[] = [];
+  if (season === 0) want.push({ s: 0, e: episode });
+  else {
+    const per = airedPerSeason(tv);
+    const firstOf = firstEpisodeOf(tv);
+    for (const [sn, count] of per) {
+      if (sn === 0 || sn > season) continue;
+      const first = firstOf.get(sn) ?? 1;
+      const last = sn < season ? first + count - 1 : episode;
+      for (let ep = first; ep <= last; ep++) want.push({ s: sn, e: ep });
+    }
+    if (!want.some((w) => w.s === season && w.e === episode)) want.push({ s: season, e: episode });
+  }
+  const { data: seen } = await supabase
+    .from("watched_episodes")
+    .select("season_number, episode_number")
+    .match({ user_id: userId, show_tmdb_id: tmdbId })
+    .limit(20_000);
+  const have = new Set((seen ?? []).map((r) => `${r.season_number}-${r.episode_number}`));
+  const now = new Date().toISOString();
+  const rows = want
+    .filter((w) => !have.has(`${w.s}-${w.e}`))
+    .slice(0, 5000)
+    .map((w) => ({ user_id: userId, show_tmdb_id: tmdbId, season_number: w.s, episode_number: w.e, runtime, watched_at: now }));
+  if (rows.length) {
+    const { error } = await supabase
+      .from("watched_episodes")
+      .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true });
+    if (error) fail(error);
+  }
+  await ensureShowFollowed(supabase, userId, tmdbId, meta?.title ?? tv.name ?? null, meta?.posterPath ?? tv.poster_path ?? null);
+  return rows.length;
 }
 
 // تأشير حلقة وكل ما قبلها كمشاهَد (اختيار الحلقة ٥٠ يعني مشاهدة ١..٥٠)
@@ -6261,7 +6317,8 @@ export async function toggleFavorite(input: {
 // ============================================================
 
 /** المسارُ المشترك للردّ: صفحةُ التعليقات ثم صفحةُ العمل نفسها */
-function talkPaths(tmdbId: number, mediaType: "tv" | "movie") {
+function talkPaths(tmdbId: number, mediaType: "tv" | "movie" | "general") {
+  if (mediaType === "general") return ["/talk/general/0", "/people"];
   return [
     `/talk/${mediaType}/${tmdbId}`,
     `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`,
@@ -6500,7 +6557,8 @@ export async function reportNewsReply(input: {
  */
 export async function addTalkPost(input: {
   tmdbId: number;
-  mediaType: MediaType;
+  /** 🆕 R58 — `general` = «النقاش العام» (`tmdbId = 0`، الهجرة ٢١٩) */
+  mediaType: MediaType | "general";
   body: string;
   parentId?: string | null;
   title?: string | null;
@@ -6529,9 +6587,13 @@ export async function addTalkPost(input: {
   /** 🆕 D-1495 — الحلقةُ المختارةُ في نقاش الحلقات (مشاركةٌ جديدةٌ في غرفة مسلسل وحدَها) */
   season?: number | null;
   episode?: number | null;
+  /** 🆕 R58 — `pen`: جذرٌ من «بوست جديد» يظهر في الأنشطة؛ ومع حلقةٍ تُعلَّم مشاهدتُها وما قبلها (أحمد «٢ أ») */
+  via?: "pen" | null;
 }): Promise<NewReply | null> {
-  const tmdbId = intId(input.tmdbId);
-  const mediaType = asMediaType(input.mediaType);
+  /* 🆕 R58 — «النقاش العام» يتجاوز حارسَي المعرّف والنوع بشكله الوحيد (صفرٌ و`general`)، وما سواه يُحرس كما كان */
+  const general = input.mediaType === "general" && input.tmdbId === 0;
+  const tmdbId = general ? 0 : intId(input.tmdbId);
+  const mediaType: MediaType | "general" = general ? "general" : asMediaType(input.mediaType as MediaType);
   const parentId = input.parentId ? uuid(input.parentId) : null;
 
   const { supabase, user } = await requireUser("reply", 15, 60_000);
@@ -6614,6 +6676,8 @@ export async function addTalkPost(input: {
       (input.season as number) >= 0 && (input.season as number) <= 200 && (input.episode as number) >= 1 && (input.episode as number) <= 5000
         ? { season: input.season, episode: input.episode }
         : {}),
+      /* 🆕 R58 — المصدرُ لجذرٍ وحدَه (قيدُ ٢١٩) */
+      ...(input.via === "pen" && !parentId ? { via: "pen" } : {}),
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })
@@ -6622,10 +6686,13 @@ export async function addTalkPost(input: {
   if (error) fail(error);
 
   /* 🆕 D-1305 — ردٌّ داخل الغرفة ⇢ صاحبُ المشاركة الأب وحدَه (`talk_reply`)؛ مشاركةٌ جديدةٌ لا تُبلِّغ أحداً */
-  if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId, mediaType, title: input.title?.slice(0, 200) || null });
+  if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId: general ? null : tmdbId, mediaType: mediaType === "general" ? null : mediaType, title: input.title?.slice(0, 200) || null });
+  /* 🆕 R58 — منشورُ القلم عن حلقةٍ بلا نجوم: «شاهدها وما قبلها» (أحمد ٢١ أكتوبر). أثرٌ لا شرط */
+  if (input.via === "pen" && !parentId && mediaType === "tv" && Number.isInteger(input.season) && Number.isInteger(input.episode))
+    await markWatchedUpTo(supabase, user.id, tmdbId, input.season as number, input.episode as number, { title: input.title, posterPath: input.posterPath }).catch(() => 0);
   /* 🆕 D-1443 — من ذُكر بـ`@` وكتب في هذه الغرفة: «ذكرك في نقاش…» (صاحبُ الأب يكفيه «ردّ عليك») */
-  const named = mentionsIn(body);
-  if (named.length) notifyTalkMention({ postId: String(data!.id), actorId: user.id, tmdbId, mediaType, title: input.title?.slice(0, 200) || null, text: body, mentions: named, parentId });
+  const named = mediaType === "general" ? [] : mentionsIn(body);
+  if (named.length && mediaType !== "general") notifyTalkMention({ postId: String(data!.id), actorId: user.id, tmdbId, mediaType, title: input.title?.slice(0, 200) || null, text: body, mentions: named, parentId });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
   /* **وتبويبُ «نقاش» يُبطَل معها**: البطاقةُ تحمل عدّاداً ووقتَ آخر
@@ -6640,11 +6707,12 @@ export async function addTalkPost(input: {
 export async function deleteMyTalkPost(input: {
   postId: string;
   tmdbId: number;
-  mediaType: MediaType;
+  mediaType: MediaType | "general";
 }): Promise<void> {
   const postId = uuid(input.postId);
-  const tmdbId = intId(input.tmdbId);
-  const mediaType = asMediaType(input.mediaType);
+  const general = input.mediaType === "general" && input.tmdbId === 0;
+  const tmdbId = general ? 0 : intId(input.tmdbId);
+  const mediaType: MediaType | "general" = general ? "general" : asMediaType(input.mediaType as MediaType);
 
   const { supabase, user } = await requireUser();
   const { error } = await supabase

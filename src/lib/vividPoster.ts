@@ -76,8 +76,12 @@ const cached = (media: "tv" | "movie", id: number, path: string, locale: "ar" | 
  * يعدّل الصفوفَ في مكانها: `item.poster_path` بالبديل الملوّن، و`poster_dark` لمن بقي داكناً.
  * صفوفُ القوائم بلا ملصق ⇒ تُترك.
  */
-export async function vividizeFeed(rows: CommunityFeedRow[], locale: "ar" | "en"): Promise<void> {
-  const byKey = new Map<string, CommunityFeedRow[]>();
+type VividRow = Exclude<CommunityFeedRow, { kind: "talk" }>;
+
+export async function vividizeFeed(all: CommunityFeedRow[], locale: "ar" | "en"): Promise<void> {
+  /* 🆕 R58 — منشوراتُ النقاش خارجه: ملصقُها ملصقُ الغرفة كما كُتب، و«النقاش العام» بلا ملصق */
+  const rows = all.filter((r): r is VividRow => r.kind !== "talk");
+  const byKey = new Map<string, VividRow[]>();
   for (const r of rows) {
     if (r.kind === "comment" && r.item.listId) continue;
     const p = r.item.poster_path;

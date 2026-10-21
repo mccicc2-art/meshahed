@@ -30,7 +30,8 @@ export function FeedMenu({
   onDeleted,
   onError,
 }: {
-  row: CommunityFeedRow;
+  /* 🆕 R58 — صفُّ النقاش بلا ⋯ (بابُه غرفتُه) */
+  row: Exclude<CommunityFeedRow, { kind: "talk" }>;
   meId: string | null;
   doors: CardDoors;
   onShare: (path: string, title: string) => void;

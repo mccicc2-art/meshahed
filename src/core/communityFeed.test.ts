@@ -139,3 +139,17 @@ test("جسمُ تفضيلات الأدوات: الجزئيُّ يمرّ والم
   assert.equal(parseCommunityPrefsBody(null), null);
   assert.deepEqual(parseCommunityPrefsBody({ talk_followed: true, translate: false }), { talk_followed: true, translate: false });
 });
+
+/* 🆕 R58 — منشوراتُ النقاش في الخطّ (أحمد «٤ أ»): تدخل بوقتها، وتُرشَّح بالدائرة كالآراء، و«الأكثر تفاعلاً» يعدّ إعجاباتِها وردودَها */
+test("talk rows: merged by time, filtered by circle, heat = likes + replies", () => {
+  const tk = (id: string, who: string, at: number, likes = 0, replies = 0) => ({ id, person: { id: who }, created_at: iso(at), likes, replies });
+  const tid = (rows: { kind: string; item: { key?: string; id?: string; person?: { id: string } } }[]) =>
+    rows.map((r) => (r.kind === "talk" ? `t:${r.item.id}` : r.kind === "news" ? `n:${r.item.key}` : `c:${r.item.person!.id}`));
+  const base = { comments: [c("friend", 1000)], news: [], meId: "me", followingIds: new Set(["friend"]), now: T0 + 5000 };
+  const talk = [tk("p1", "friend", 3000), tk("p2", "stranger", 2000, 0, 6), tk("p3", "me", 500)];
+  assert.deepEqual(tid(orderCommunityFeed({ ...base, talk, showStrangers: true, sort: "latest" })), ["t:p1", "t:p2", "c:friend", "t:p3"]);
+  assert.deepEqual(tid(orderCommunityFeed({ ...base, talk, showStrangers: false, sort: "latest" })), ["t:p1", "c:friend", "t:p3"]);
+  assert.deepEqual(tid(orderCommunityFeed({ ...base, talk, showStrangers: true, sort: "smart" })).slice(0, 1), ["t:p2"]);
+  /* بلا `talk` يبقى الخطُّ كما كان (الويب) */
+  assert.deepEqual(tid(orderCommunityFeed({ ...base, showStrangers: true, sort: "latest" })), ["c:friend"]);
+});

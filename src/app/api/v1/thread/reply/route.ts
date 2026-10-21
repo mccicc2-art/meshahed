@@ -4,7 +4,7 @@ import { getMovie, getTv } from "@/lib/tmdb";
 import { parseThreadReplyBody } from "@/core/threadActs";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { postTag, titleTag } from "@/core/contracts/tags";
+import { postTag, talkTags, titleTag } from "@/core/contracts/tags";
 import type { ThreadReplyResult } from "@/core/contracts/thread";
 import type { NewReply } from "@/lib/actions";
 
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     if (!b) return fail("invalid_input");
     const t = b.target;
     if (t.kind === "talk") {
-      const d = (await (t.media_type === "tv" ? getTv(t.tmdb_id) : getMovie(t.tmdb_id)).catch(() => null)) as
+      /* 🆕 R58 — «النقاش العام» بلا عملٍ فلا نداءَ لـTMDB */
+      const d = (t.media_type === "general" ? null : await (t.media_type === "tv" ? getTv(t.tmdb_id) : getMovie(t.tmdb_id)).catch(() => null)) as
         | { name?: string; title?: string; poster_path?: string | null; backdrop_path?: string | null }
         | null;
       const r = await addTalkPost({
@@ -43,11 +44,12 @@ export async function POST(req: NextRequest) {
         /* 🆕 D-1495 — حلقةُ المشاركة في نقاش الحلقات */
         season: b.season ?? null,
         episode: b.episode ?? null,
+        via: b.via ?? null,
         title: (t.media_type === "tv" ? d?.name : d?.title) || null,
         posterPath: d?.poster_path ?? null,
         backdropPath: d?.backdrop_path ?? null,
       });
-      return ok(out(r), [titleTag(t.media_type, t.tmdb_id), "people"]);
+      return ok(out(r), talkTags(t.media_type, t.tmdb_id));
     }
     if (t.kind === "review") {
       const r = await addReviewReply({ reviewUserId: t.user_id, tmdbId: t.tmdb_id, mediaType: t.media_type, body: b.body, parentId: b.parent_id });

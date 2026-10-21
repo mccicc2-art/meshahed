@@ -52,7 +52,9 @@ export async function GET(req: NextRequest) {
 
     /* 🆕 D-1201 — **الغرفُ كلُّها تُرسل وكلٌّ يحمل `mine`**: شريحتا «الكل · أعمالي» تُرشِّحان في يد التطبيق بلا جلب
        (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
-    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort });
+    /* 🆕 R58 — منشوراتُ النقاش و«النقاش العام» لمن يعرفهما وحدَه: نسخةٌ أقدم من التطبيق ترسم صفّاً لا تعرفه رأياً فتنكسر */
+    const wantTalk = req.nextUrl.searchParams.get("talk") === "1";
+    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk });
     await refreshCommunityAfter(true);
 
     /* التبويبُ الأوّلُ بترتيب صاحبه (جوابُ أحمد ٢٨ سبتمبر: `defaultTab(tabPrefs, "activity")`) */
@@ -119,6 +121,9 @@ export async function GET(req: NextRequest) {
       },
       rooms: core.roomsShown.map((r) => roomOut(core, r, t, locale)),
       ...(user ? { library_rooms: core.libraryRooms.map((r) => roomOut(core, r, t, locale)) } : {}),
+      ...(wantTalk
+        ? { general_room: { posts: core.generalRoom?.posts ?? 0, last_at: core.generalRoom?.lastPostAt ?? null, faces: core.generalRoom?.faces ?? [] } }
+        : {}),
       board: {
         featured: off("featured") ? null : boardRows(core.featured, "featured", BOARD_PREVIEW),
         top: off("topweek") ? null : boardRows(core.board, "top", BOARD_PREVIEW),

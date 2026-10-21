@@ -45,6 +45,11 @@ import type { ThreadPayload, ThreadRow, ThreadWork } from "@/core/contracts/thre
 
 type Kind = "tv" | "movie";
 
+/** 🆕 R58 — «النقاش العام»: لا عملَ ولا TMDB — اسمُه وسطرُه بلغة القارئ، والرأسُ يُرسم بشعار لوبز (`media_type: general`) */
+function generalWork(t: { talkGeneralTitle: string; talkGeneralSub: string }): ThreadWork & { overview: string; raw: string; seasons: { season: number; episodes: number }[] } {
+  return { tmdb_id: 0, media_type: "general", title: t.talkGeneralTitle, raw: t.talkGeneralTitle, poster_path: null, backdrop_path: null, community: { avg: 0, count: 0 }, overview: t.talkGeneralSub, seasons: [] };
+}
+
 async function workOf(tmdbId: number, kind: Kind, locale: Locale, fallback: string): Promise<ThreadWork & { overview: string; raw: string; seasons: { season: number; episodes: number }[] }> {
   const [details, myArt, community] = await Promise.all([
     (kind === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
@@ -88,21 +93,23 @@ function plainRow(base: Omit<ThreadRow, "bulletin" | "bulletin_vote" | "bulletin
 }
 
 /** غرفةُ العمل — `talk/[type]/[id]/page.tsx` */
-export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPayload> {
+export async function talkPayload(tmdbId: number, kind: Kind | "general"): Promise<ThreadPayload> {
+  /* 🆕 R58 — «النقاش العام» يمرّ بالمسار نفسِه (الإعجابُ والتصويتُ والترجمةُ والردود) بلا ما يخصّ العمل */
+  const general = kind === "general";
   /* 🆕 1.12.7 — **ثلاثُ جولاتٍ متتالية صارت اثنتين** (`thread.open` p95 ٦٣٣ms على آيفون): العملُ (`workOf` — TMDB ثمّ
      الاسمُ المعروض) لا يحتاج الخيط، و«وجهي» (`getMyProfileLite`) لا يحتاج إلّا الجلسةَ المخبّأة — كانا ينتظران جولةً
      وجولتين بلا سبب. يبدآن مع الجولة الأولى، والردُّ حرفاً كما كان (`getMyProfileLite` يعيد `null` بلا جلسة ولا يرمي). */
   const tP = getT();
-  const workP = tP.then(({ locale, t }) => workOf(tmdbId, kind, locale, t.talkFallbackTitle));
+  const workP = tP.then(({ locale, t }) => (kind === "general" ? generalWork(t) : workOf(tmdbId, kind, locale, t.talkFallbackTitle)));
   const meP = getMyProfileLite();
   const [user, { locale, t }, thread, follow, watched, reviewsAll] = await Promise.all([
     getUser(),
     tP,
     getTitleThread(tmdbId, kind),
-    getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
+    kind === "general" ? Promise.resolve({ following: false, dropped: false }) : getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
     kind === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
     /* 🆕 R56 — مراجعاتُ صفحة العمل تظهر في «عام» (والغرفةِ كلِّها للفيلم)؛ نجومٌ بلا نصٍّ لا تظهر (أحمد «٣ أ») */
-    getTitleReviews(tmdbId, kind).catch(() => [] as TitleReview[]),
+    kind === "general" ? Promise.resolve([] as TitleReview[]) : getTitleReviews(tmdbId, kind).catch(() => [] as TitleReview[]),
   ]);
   const reviews = reviewsAll.filter((r) => r.review?.trim());
   /* 🆕 D-1508 — ما شاهده القارئُ من حلقات المسلسل (كلَّ ما أشّره، لا دورةَ الإعادة وحدَها): غرفةُ الحلقة تغطّي كلامَها عمّن
@@ -121,7 +128,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       locale,
     ),
     meP,
-    getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, kind, tmdbId))),
+    general ? Promise.resolve(new Map<string, number>()) : getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, kind as Kind, tmdbId))),
   ]);
   const mine = new Set(likes.mine);
   const rows: ThreadRow[] = inheritEpisodes(thread.map((p) => {
@@ -175,7 +182,7 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       my_vote: 0,
       season: null,
       episode: null,
-      review: { user_id: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, kind, tmdbId)) ?? 0 },
+      review: { user_id: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, kind as Kind, tmdbId)) ?? 0 },
     });
   }
   const w = asWork(work);

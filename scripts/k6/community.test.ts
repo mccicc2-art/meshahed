@@ -36,7 +36,7 @@ test("الصفحةُ والبابُ يقرآن النواةَ نفسَها", () 
     assert.match(src, /\bbuildCommunity\(/, `${name} لا يقرأ buildCommunity`);
     assert.doesNotMatch(src, /\bgetCommunityFeed\(|\bgetTalkRooms\(|\bgetPeopleLeaderboard\(/, `${name} يعيد نداءات النواة بيده`);
   }
-  assert.match(feed, /\borderCommunityFeed\(/, "ActivityFeed لا يرتّب بالنواة");
+  assert.match(feed, /\borderCommunityFeed[<(]/, "ActivityFeed لا يرتّب بالنواة");
   assert.match(payload, /\borderCommunityFeed[<(]/, "الحمولةُ لا ترتّب بالنواة");
   assert.doesNotMatch(feed, /LIKE_MS\s*=/, "صيغةُ الترتيب نُسخت في ActivityFeed");
 });

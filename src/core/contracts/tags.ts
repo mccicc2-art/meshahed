@@ -51,6 +51,9 @@ export const titleTag = (kind: TitleKind, tmdbId: number): Tag =>
 export const userProfileTag = (username: string): Tag =>
   `user:${username}:profile`;
 export const postTag = (key: string): Tag => `post:${key}`;
+/** 🆕 R58 — وسومُ غرفة النقاش: «النقاش العام» لا عملَ له، فيكفيه وسمُ المجتمع */
+export const talkTags = (kind: TitleKind | "general", tmdbId: number): Tag[] =>
+  kind === "general" ? ["people"] : [titleTag(kind, tmdbId), "people"];
 
 /**
  * تُستعمل عند تجميع وسومٍ من فروعٍ متعدّدة: **التكرارُ لا يضرّ الويب**

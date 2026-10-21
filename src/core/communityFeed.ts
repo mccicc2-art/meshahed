@@ -31,11 +31,22 @@ export type FeedNewsLike = {
   published_at: string;
 };
 
+/** 🆕 R58 — منشورُ نقاشٍ (جذرٌ من القلم أو غرفةٌ نشطة) — `talk_feed` */
+export type FeedTalkLike = {
+  id: string;
+  person: { id: string };
+  created_at: string;
+  likes: number;
+  replies: number;
+};
+
 export type FeedSort = "smart" | "latest" | "top";
 
-export type OrderedFeedRow<C, N> =
+export type OrderedFeedRow<C, N, T = never> =
   | { at: number; kind: "comment"; item: C }
-  | { at: number; kind: "news"; item: N };
+  | { at: number; kind: "news"; item: N }
+  /* بلا `T` لا ذراعَ ثالثة — قارئٌ قديمٌ (الويب) لا يُطالَب بنوعٍ لا يصله */
+  | ([T] extends [never] ? never : { at: number; kind: "talk"; item: T });
 
 /** «كل لايك ينقص من وقته نص ساعة وكل رد ساعة» (D-283) — ⚠️ متروكٌ منذ D-1207 (لا قارئَ له) ويبقى لتاريخ D-283 */
 export const FEED_LIKE_MS = 30 * 60 * 1000;
@@ -51,8 +62,10 @@ export const FEED_REPLY_MS = 60 * 60 * 1000;
  */
 export const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNewsLike>(o: {
+export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNewsLike, T extends FeedTalkLike = never>(o: {
   comments: readonly C[];
+  /** 🆕 R58 — منشوراتُ النقاش (أحمد «٤ أ»: القلمُ دائماً، والغرفةُ إذا نشطت) — تُرشَّح بالدائرة كالآراء */
+  talk?: readonly T[];
   /** أخبارٌ لها سطرٌ بلغة القارئ — المرشَّحةُ بـ`newsLine` سلفاً */
   news: readonly N[];
   /** فارغٌ للزائر */
@@ -70,14 +83,15 @@ export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNews
   now?: number;
   /** 🆕 D-1207 — يُملأ مع `smart`: `quiet` ⇐ لا تفاعلَ في النافذة كلِّها فالخطُّ بالأحدث */
   report?: { quiet: boolean };
-}): OrderedFeedRow<C, N>[] {
+}): OrderedFeedRow<C, N, T>[] {
   /* المكتوبُ وحدَه يدخل — «شاهد» و«قيّم بلا نصّ» أحداثٌ بلا كلام */
-  const rows: OrderedFeedRow<C, N>[] = [
+  const rows = [
     ...o.comments
       .filter((a) => a.review?.trim())
       .map((item) => ({ at: Date.parse(item.updated_at) || 0, kind: "comment" as const, item })),
     ...o.news.map((item) => ({ at: Date.parse(item.published_at) || 0, kind: "news" as const, item })),
-  ].sort((a, b) => b.at - a.at);
+    ...(o.talk ?? []).map((item) => ({ at: Date.parse(item.created_at) || 0, kind: "talk" as const, item })),
+  ].sort((a, b) => b.at - a.at) as OrderedFeedRow<C, N, T>[];
 
   /* D-900: المفتاحُ هو الحكم — مفتوحٌ ⇒ المجتمعُ كلُّه؛ مغلقٌ ⇒ دائرتُك وحدَها.
      والزائرُ خارج الترشيح (D-629). */
@@ -96,10 +110,12 @@ export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNews
   const nKey = (n: FeedNewsLike) => `${n.media_type}-${n.tmdb_id}`;
 
   /* العدُّ الخالص: إعجاباتٌ + ردود — «الأكثر تفاعلاً» للعضو و«الأفضل» للزائر يعدّان به */
-  const heat = (r: OrderedFeedRow<C, N>): number =>
+  const heat = (r: OrderedFeedRow<C, N, T>): number =>
     r.kind === "comment"
       ? (r.item.likes ?? 0) + (o.reviewReplies?.get(cKey(r.item)) ?? 0)
-      : (o.newsLikes?.[nKey(r.item)] ?? 0) + (o.newsReplies?.get(r.item.key) ?? 0);
+      : r.kind === "talk"
+        ? r.item.likes + r.item.replies
+        : (o.newsLikes?.[nKey(r.item)] ?? 0) + (o.newsReplies?.get(r.item.key) ?? 0);
 
   /* 🆕 D-1207 — «الأكثر تفاعلاً»: عدٌّ داخل نافذة الشهر، والأقدمُ تحته بالأحدث (`shown` مرتّبٌ بالأحدث سلفاً) */
   if (o.sort === "smart") {

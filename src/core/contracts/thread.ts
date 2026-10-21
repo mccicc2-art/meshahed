@@ -65,9 +65,12 @@ export type ThreadRow = {
 export type TalkSeason = { season: number; episodes: number };
 
 /** رأسُ الصفحة — العملُ في الثلاثة (الغلافُ والملصقُ والاسمُ بلغة القارئ) وما يخصّ كلَّ باب */
+/** 🆕 R58 — «النقاش العام» نوعٌ ثالثٌ للغرفة (`tmdb_id = 0`، الهجرة ٢١٩) — بلا عملٍ ولا TMDB */
+export type TalkKind = "tv" | "movie" | "general";
+
 export type ThreadWork = {
   tmdb_id: number;
-  media_type: "tv" | "movie";
+  media_type: TalkKind;
   title: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -126,7 +129,7 @@ export type ThreadPayload = {
 
 /** الهدفُ الذي يُكتب عليه — `ReplyTarget` الويب بلا المراجعة القائمة (أصليّةٌ في `ListScreen`) */
 export type ThreadTarget =
-  | { kind: "talk"; tmdb_id: number; media_type: "tv" | "movie" }
+  | { kind: "talk"; tmdb_id: number; media_type: TalkKind }
   | { kind: "post"; key: string }
   | { kind: "review"; user_id: string; tmdb_id: number; media_type: "tv" | "movie" };
 
@@ -144,6 +147,8 @@ export type ThreadReplyBody = {
   /** 🆕 D-1495 — الحلقةُ المختارةُ حين كُتبت المشاركة (مشاركةٌ جديدةٌ في غرفة مسلسل وحدَها؛ «الكل» ⇒ بلا حلقة) */
   season?: number | null;
   episode?: number | null;
+  /** 🆕 R58 — `pen`: جذرٌ كُتب من «بوست جديد» فيظهر في الأنشطة (أحمد «٤ أ»)؛ ومع حلقةٍ تُعلَّم مشاهدتُها وما قبلها */
+  via?: "pen" | null;
 };
 /** والكاتبُ كما يُرسم (`replyAuthor`) — يستبدل السطرَ المتفائلَ بصاحبه الحقيقيّ (D-241) */
 export type ThreadReplyResult = {
@@ -158,7 +163,7 @@ export type ThreadReportBody = { target: ThreadTarget; reply_id?: string; what?:
 
 /** `POST /api/v1/thread/like` · `/vote` — منشوراتُ الغرفة وحدَها */
 export type ThreadLikeBody = { post_id: string; on: boolean };
-export type ThreadVoteBody = { post_id: string; vote: -1 | 0 | 1; tmdb_id: number; media_type: "tv" | "movie" };
+export type ThreadVoteBody = { post_id: string; vote: -1 | 0 | 1; tmdb_id: number; media_type: TalkKind };
 
 /** `POST /api/v1/thread/image` (multipart) — رابطُ الصورة العامّ من مخزننا (نمطُ `Composer`) */
 export type ThreadImagePayload = { url: string };

@@ -12,11 +12,14 @@ const obj = (b: unknown): Record<string, unknown> | null =>
 const str = (v: unknown, max = 200): v is string => typeof v === "string" && v.length > 0 && v.length <= max;
 const id = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
 const media = (v: unknown): v is "tv" | "movie" => v === "tv" || v === "movie";
+/** 🆕 R58 — «النقاش العام»: `general` بمعرّفٍ صفريٍّ وحدَه (قيدُ الهجرة ٢١٩ نفسُه) */
+const isGeneral = (o: Record<string, unknown>) => o.media_type === "general" && o.tmdb_id === 0;
 
 export function parseThreadTarget(v: unknown): ThreadTarget | null {
   const o = obj(v);
   if (!o) return null;
   if (o.kind === "talk" && id(o.tmdb_id) && media(o.media_type)) return { kind: "talk", tmdb_id: o.tmdb_id, media_type: o.media_type };
+  if (o.kind === "talk" && isGeneral(o)) return { kind: "talk", tmdb_id: 0, media_type: "general" };
   if (o.kind === "post" && str(o.key, 120)) return { kind: "post", key: o.key };
   if (o.kind === "review" && str(o.user_id) && id(o.tmdb_id) && media(o.media_type))
     return { kind: "review", user_id: o.user_id, tmdb_id: o.tmdb_id, media_type: o.media_type };
@@ -53,7 +56,9 @@ export function parseThreadReplyBody(b: unknown): ThreadReplyBody | null {
     (o.season as number) >= 0 && (o.season as number) <= 200 && (o.episode as number) >= 1 && (o.episode as number) <= 5000
       ? { season: o.season as number, episode: o.episode as number }
       : null;
-  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id, ...(share ? { share } : {}), ...(ep ?? {}) };
+  /* 🆕 R58 — `pen` لجذرٍ في غرفةٍ وحدَه (قيدُ ٢١٩: لا ردَّ ولا نشرة) */
+  const via = talk && !parent_id && o.via === "pen" ? ("pen" as const) : null;
+  return { target, body, parent_id, has_spoiler: talk && o.has_spoiler === true, image_url, gif_id, ...(share ? { share } : {}), ...(ep ?? {}), ...(via ? { via } : {}) };
 }
 
 export function parseThreadRowBody(b: unknown): ThreadRowBody | null {
@@ -78,12 +83,16 @@ export function parseThreadLikeBody(b: unknown): ThreadLikeBody | null {
 
 export function parseThreadVoteBody(b: unknown): ThreadVoteBody | null {
   const o = obj(b);
-  if (!o || !str(o.post_id) || !id(o.tmdb_id) || !media(o.media_type)) return null;
+  if (!o || !str(o.post_id)) return null;
+  const general = isGeneral(o);
+  if (!general && (!id(o.tmdb_id) || !media(o.media_type))) return null;
   if (o.vote !== -1 && o.vote !== 0 && o.vote !== 1) return null;
-  return { post_id: o.post_id, vote: o.vote, tmdb_id: o.tmdb_id, media_type: o.media_type };
+  return general
+    ? { post_id: o.post_id, vote: o.vote, tmdb_id: 0, media_type: "general" }
+    : { post_id: o.post_id, vote: o.vote, tmdb_id: o.tmdb_id as number, media_type: o.media_type as "tv" | "movie" };
 }
 
 /** مسارُ الصفحة التي يُبطلها الصوت (D-361) — من الهدف لا من العميل */
-export function talkPath(t: { tmdb_id: number; media_type: "tv" | "movie" }): string {
+export function talkPath(t: { tmdb_id: number; media_type: "tv" | "movie" | "general" }): string {
   return `/talk/${t.media_type}/${t.tmdb_id}`;
 }

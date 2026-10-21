@@ -11,6 +11,8 @@ import {
   getLoopzNews,
   getCommunityFeed,
   getTalkRooms,
+  getGeneralRoom,
+  getTalkFeed,
   getMyRoomPins,
   getGlobalRoomPins,
   getAmAdmin,
@@ -27,6 +29,7 @@ import {
   getPeopleTopReviews,
   getTopSavedListCards,
   type TalkRoom,
+  type TalkFeedPost,
   type ListReviewSocial,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
@@ -66,6 +69,8 @@ export async function buildCommunity(o: {
   talkFollowedOnly: boolean;
   /** 🆕 D-1201 — ترتيبُ «النقاشات» (الغيابُ «الأحدث») */
   talkSort?: TalkSort;
+  /** 🆕 R58 — منشوراتُ النقاش في الأنشطة و«النقاش العام» — لتطبيقٍ يعرفهما (`?talk=1`) */
+  talk?: boolean;
 }) {
   const { user, locale, allView } = o;
 
@@ -170,6 +175,10 @@ export async function buildCommunity(o: {
     : { counts: {} as Record<string, number>, mine: new Set<string>() };
 
   const followingIds = await getFollowingIds();
+  /* 🆕 R58 — أحمد «٤ أ»: القلمُ دائماً، والغرفةُ إذا نشطت — للمسجَّل (الزائرُ لا يرى خطَّ الأصدقاء أصلاً) */
+  const [talkFeed, generalRoom]: [TalkFeedPost[], TalkRoom | null] = o.talk
+    ? await Promise.all([user ? getTalkFeed(40) : Promise.resolve([] as TalkFeedPost[]), getGeneralRoom(40)])
+    : [[], null];
 
   /* نشرةُ لوبز لمن يهمّه خبرُها (D-360): مكتبتي ومن أتابعهم؛ ومن لا إشارةَ له يرى الكلّ */
   const talkedByFriends = new Set(
@@ -228,6 +237,8 @@ export async function buildCommunity(o: {
     reviewReplies,
     listSocial,
     viewCounts,
+    talkFeed,
+    generalRoom,
   };
 }
 

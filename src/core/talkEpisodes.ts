@@ -172,6 +172,8 @@ export function roomAiring(bulletin: Record<string, unknown> | null | undefined,
   const ago = air ? dayNum(today) - dayNum(air) : null;
   const out = ep && ago != null && ago >= 0 && ago <= 1 ? ep.episode : null;
   if (next || out != null) return { next, out };
+  /* 🆕 R58 — **نهايةُ موسمٍ بلا موعدٍ قادم = انتهى، لا «متوقّف»** (أحمد: «تيد لاسو ١٠ حلقات فقط ف خلص»؛ «ون بيس فعلاً اون بريك») */
+  if (bulletin?.fin === true) return null;
   if (ago == null || ago < 0 || ago > AIRING_DAYS) return null;
   return ago <= FRESH_DAYS ? { next: null, out: null } : { next: null, out: null, pause: true };
 }

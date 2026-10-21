@@ -224,7 +224,8 @@ export function ActivityFeed({
      وخبرٌ بلا صيغةٍ يسقط هنا لا عند الرسم (D-181) — `newsLine` يحتاج القاموس. */
   /* 🆕 D-1207 — «الأكثر تفاعلاً» يقول إن كان شهرُه صامتاً (فالخطُّ بالأحدث) */
   const report = { quiet: false };
-  let shown: Row[] = orderCommunityFeed({
+  /* 🆕 R58 — الويبُ لا يرسم منشوراتِ النقاش في الخطّ بعد (التطبيقُ وحدَه) — فلا `talk` هنا */
+  let shown: Row[] = orderCommunityFeed<FeedItem, LoopzNewsItem>({
     comments,
     news: news.filter((n) => newsLine(n, t, locale) !== null),
     meId,

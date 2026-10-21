@@ -99,7 +99,39 @@ export type CommunityFeedRow =
       lib: CommunityLibState;
       /** 🆕 D-1448 — كأخيه في صفّ الرأي */
       poster_dark?: boolean;
+    }
+  | {
+      /** 🆕 R58 — يصل لمن طلبه وحدَه (`?talk=1` — نسخةٌ أقدم من التطبيق ترسم ما لا تعرفه رأياً فتنكسر) */
+      kind: "talk";
+      key: string;
+      view_key: string;
+      item: CommunityTalkItem;
+      likes: number;
+      liked_by_me: boolean;
+      replies: number;
+      lib: CommunityLibState;
     };
+
+/** 🆕 R58 — منشورُ نقاشٍ في الأنشطة (`talk_feed`): جذرٌ من القلم، أو جذرُ غرفةٍ نشط (٥ ردود أو ١٠ إعجابات — أحمد «٤ أ») */
+export type CommunityTalkItem = {
+  id: string;
+  tmdb_id: number;
+  /** `general` = «النقاش العام» (`tmdb_id = 0`) */
+  media_type: "tv" | "movie" | "general";
+  title: string | null;
+  poster_path: string | null;
+  person: PersonLite;
+  body: string | null;
+  created_at: string;
+  has_spoiler: boolean;
+  image: string | null;
+  gif_id: string | null;
+  season: number | null;
+  episode: number | null;
+  /** `pen` من القلم — وغيابُه جذرُ غرفةٍ وصل الأنشطةَ بنشاطه (`hot`) */
+  via: "pen" | null;
+  hot: boolean;
+};
 
 /** غرفةُ نقاش — `TalkRoom` كما في `lib/data`، والاسمُ بلغة القارئ (D-273) */
 export type CommunityRoom = {
@@ -199,6 +231,8 @@ export type CommunityPayload = {
   rooms: CommunityRoom[];
   /** 🆕 R56 — شريحةُ «مكتبتي»: أعمالُ المكتبة التي لا غرفةَ لها بعد (غرفٌ فارغة) — للمسجَّل وحدَه؛ غائبةٌ من خادمٍ أقدم */
   library_rooms?: CommunityRoom[];
+  /** 🆕 R58 — «النقاش العام» المثبّت فوق «النقاشات» (`?talk=1`) — العدُّ وآخرُ نشاطٍ والوجوه؛ صفرٌ قبل أوّل مشاركة */
+  general_room?: { posts: number; last_at: string | null; faces: PersonLite[] };
   board: CommunityBoard;
   following_ids: string[];
 };

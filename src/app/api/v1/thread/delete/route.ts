@@ -3,7 +3,7 @@ import { deleteMyReply, deleteMyNewsReply, deleteMyTalkPost } from "@/lib/action
 import { parseThreadRowBody } from "@/core/threadActs";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { postTag, titleTag } from "@/core/contracts/tags";
+import { postTag, talkTags, titleTag } from "@/core/contracts/tags";
 
 /**
  * `POST /api/v1/thread/delete` — «احذف ردّي» (Phase 11-M · M3): `deleteMyTalkPost` · `deleteMyReply` · `deleteMyNewsReply`
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const t = b.target;
     if (t.kind === "talk") {
       await deleteMyTalkPost({ postId: b.reply_id, tmdbId: t.tmdb_id, mediaType: t.media_type });
-      return ok({ done: true as const }, [titleTag(t.media_type, t.tmdb_id), "people"]);
+      return ok({ done: true as const }, talkTags(t.media_type, t.tmdb_id));
     }
     if (t.kind === "review") {
       await deleteMyReply({ replyId: b.reply_id, tmdbId: t.tmdb_id, mediaType: t.media_type });

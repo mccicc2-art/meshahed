@@ -59,7 +59,7 @@ import { openProfile as pushProfile, profileHandleOf } from "../member/open";
  * الورقةُ الواحدةُ في التطبيق (القاعدة ٣).
  */
 export type ThreadRoute =
-  | { t: "talk"; kind: "tv" | "movie"; id: number }
+  | { t: "talk"; kind: "tv" | "movie" | "general"; id: number }
   | { t: "post"; key: string }
   | { t: "review"; kind: "tv" | "movie"; id: number; user: string };
 
@@ -137,7 +137,8 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   /* 🆕 R56 — «زرتها مؤخراً» في بحث «Discussions»: الغرفةُ نفسُها لا صفحاتُ أسطرها */
   const remembered = useRef(false);
   useEffect(() => {
-    if (!d || remembered.current || route.t !== "talk" || focus) return;
+    /* 🆕 R58 — «النقاش العام» مثبّتٌ فوق القائمة أصلاً: لا يُحفظ في «زرتها مؤخراً» */
+    if (!d || remembered.current || route.t !== "talk" || route.kind === "general" || focus) return;
     remembered.current = true;
     rememberRoom({ kind: route.kind, id: route.id, title: d.work.title, poster: d.work.poster_path });
   }, [d, route, focus]);
@@ -224,7 +225,8 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     [leaving, from, leave, key, nav, router, focus],
   );
   const openTitle = useCallback(() => {
-    if (!d) return;
+    /* 🆕 R58 — «النقاش العام» بلا عملٍ تُفتح صفحتُه */
+    if (!d || d.work.media_type === "general") return;
     router.push({ pathname: "/title/[kind]/[id]", params: { kind: d.work.media_type, id: String(d.work.tmdb_id), from: from === "web" ? "web" : from } });
   }, [router, d, from]);
   /* 🆕 R55 — صفحةُ السطر شاشةٌ فوق الغرفة (`?r=`)، فالرجوعُ خطوةٌ واحدة كتويتر؛ والمفتاحُ واحدٌ فالصفحةُ ترسم من الكاش فوراً */
@@ -351,7 +353,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       const set = (on: boolean) => patchRow(row.id, (r) => ({ ...r, liked_by_me: on, likes: Math.max(0, r.likes + (on ? 1 : -1)) }));
       set(!was);
       /* 🆕 R56 — مراجعةُ صفحة العمل: قلبُها قلبُ المراجعة نفسِها (المسارُ الذي تكتبه صفحتُها) لا جدولُ المنشورات */
-      const req = row.review && d
+      const req = row.review && d && d.work.media_type !== "general"
         ? write("/api/v1/community/like", { target: "review", user_id: row.review.user_id, tmdb_id: d.work.tmdb_id, media_type: d.work.media_type, on: !was } satisfies LikeBody)
         : write("/api/v1/thread/like", { post_id: row.id, on: !was });
       req
@@ -551,10 +553,12 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     const set = (on: boolean) =>
       patch((p) => (p.head.kind === "post" || p.head.kind === "review" ? { ...p, head: { ...p.head, liked_by_me: on, likes: Math.max(0, p.head.likes + (on ? 1 : -1)) } } : p));
     set(!was);
+    /* الخبرُ والرأيُ لعملٍ دائماً — «النقاش العام» غرفةٌ لا رأسَ «خبرٍ» أو «رأيٍ» لها */
+    const wk = d.work.media_type === "movie" ? "movie" : "tv";
     const body: LikeBody =
       h.kind === "post"
-        ? { target: "post", tmdb_id: d.work.tmdb_id, media_type: d.work.media_type, on: !was }
-        : { target: "review", user_id: h.author.id, tmdb_id: d.work.tmdb_id, media_type: d.work.media_type, on: !was };
+        ? { target: "post", tmdb_id: d.work.tmdb_id, media_type: wk, on: !was }
+        : { target: "review", user_id: h.author.id, tmdb_id: d.work.tmdb_id, media_type: wk, on: !was };
     write("/api/v1/community/like", body)
       .catch((e: unknown) => {
         set(was);
@@ -740,7 +744,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
             </View>
           </Pressable>
           <Text size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>
-            {d ? (focus && nested ? (items.some((x) => x.type === "parent") ? t.talkReplyPage : t.talkPostPage) : d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
+            {d ? (focus && nested ? (items.some((x) => x.type === "parent") ? t.talkReplyPage : t.talkPostPage) : d.work.media_type === "general" ? t.talkGeneralTitle : d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
           </Text>
           <Pressable onPress={share} disabled={!d} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <Icon name="share" size={18} color={tokens.fg} />
@@ -977,7 +981,7 @@ function Head({
       {h.kind === "talk" ? (
         /* 🆕 D-1495 — **غلافُ الغرفة الجديد** (لقطةُ أحمد ٢٠ أكتوبر): الغلافُ ظاهرٌ تحت ظلٍّ في البداية والقاع، بوسترٌ أكبر،
            «مسلسل» فوق الاسم، والنبذةُ سطرٌ واحدٌ داخل الغلاف مع «المزيد» — كانت ثلاثةَ أسطرٍ تحته */
-        <Pressable onPress={onTitle} accessibilityRole="link" style={{ marginHorizontal: -16, overflow: "hidden", backgroundColor: tokens.surface }}>
+        <Pressable onPress={onTitle} disabled={w.media_type === "general"} accessibilityRole="link" style={{ marginHorizontal: -16, overflow: "hidden", backgroundColor: tokens.surface }}>
           {bg ? (
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
               <Image source={{ uri: bg }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
@@ -1001,13 +1005,16 @@ function Head({
               الكبيرُ كان نصفَ الشاشة فلا يظهر كلامٌ إلّا بالنزول. بوسترٌ ٥٨ واسمٌ وسطرُ النوع والتقييم — واللمسةُ تفتح صفحةَ العمل
               كما كانت؛ وهو نفسُه في «عام» وفي غرفة الحلقة كي لا يقفز الحجمُ بين الاثنين */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
-            <View style={{ width: 58, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
-              {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            {/* 🆕 R58 — «النقاش العام» (الصورة ⑰): شعارُ لوبز في مربّعٍ مكانَ الملصق، وسطرُه مكانَ النوع */}
+            <View style={{ width: 58, aspectRatio: w.media_type === "general" ? 1 : 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+              {w.media_type === "general" ? (
+                <Image source={require("../../assets/loopz-mark.png")} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+              ) : poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <Text size={19} weight="700" numberOfLines={2}>{w.title}</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                <Text size={12}>{w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+                <Text size={12} muted={w.media_type === "general"}>{w.media_type === "general" ? (h.overview || t.talkGeneralSub) : w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
                 {w.community.count > 0 ? (
                   <>
                     <Text size={12} muted>·</Text>
