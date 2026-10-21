@@ -64,7 +64,8 @@ export function WidgetScreen() {
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
   const ios = Platform.OS === "ios";
-  const sizes = widgetSizesFor(ios ? "ios" : "android");
+  /* 🆕 D-1500 — الكبيرُ جداً للآيفون من iOS 27 وحدَه (المقاسُ لا يوجد قبله، فلا يُعرض للضبط) */
+  const sizes = widgetSizesFor(ios ? "ios" : "android", ios && parseInt(String(Platform.Version), 10) >= 27);
   const params = useLocalSearchParams<{ widget?: string }>();
 
   /* 🆕 W40 — ما على الشاشة الآن: يُقرأ عند الفتح وكلَّ عودةٍ للتطبيق (بعد «أضف ودجت» أو حذفِ واحد) */

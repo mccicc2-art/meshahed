@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as Linking from "expo-linking";
+import { AppState } from "react-native";
 import { useRouter, useSegments } from "expo-router";
+import { LoopzWidget } from "../modules/loopz-widget";
 import { write } from "./api";
 import { queryClient } from "./api";
 import { session } from "./session";
@@ -26,7 +28,7 @@ type Action =
   | { do: "calendar" }
   | { do: "discover" }
   /* 🆕 الودجت الواحد: شريطُ البحث يفتح البحث (لا كتابةَ في ودجت)، و«الإعدادات»/القفلُ يفتحان «ودجت لوبز» */
-  | { do: "search" }
+  | { do: "search"; q?: string }
   /* 🆕 W40 — `widget`: رقمُ ودجتِ أندرويد الذي فُتحت إعداداتُه (الضغطُ المطوّل، أو بعد «أضف ودجت») */
   | { do: "settings"; widget?: number }
   | { do: "list"; id: string }
@@ -55,8 +57,11 @@ export function widgetActionOf(url: string | null): Action | null {
       return { do: "calendar" };
     case "discover":
       return { do: "discover" };
-    case "search":
-      return { do: "search" };
+    case "search": {
+      /* 🆕 D-1500 — من Spotlight («ابحث في Loopz»): النصُّ الذي كُتب هناك */
+      const text = (q.get("q") ?? "").trim().slice(0, 100);
+      return text ? { do: "search", q: text } : { do: "search" };
+    }
     case "settings":
       return Number.isInteger(id) && id > 0 ? { do: "settings", widget: id } : { do: "settings" };
     case "list": {
@@ -108,6 +113,32 @@ export function WidgetGate() {
     };
   }, []);
 
+  /* 🆕 D-1500 — رابطٌ لا يمرّ بـ`Linking` (بحثُ Spotlight يحفظه في الجسر): يُؤخذ عند التركيب (تطبيقٌ فُتح للتوّ)، وحين
+     ينبّه الجسرُ (مفتوحٌ)، وعند كلِّ عودةٍ للواجهة احتياطاً — والجسرُ يمحوه بعد أوّل قراءة فلا يُنفَّذ مرّتين */
+  useEffect(() => {
+    const w = LoopzWidget;
+    if (!w?.takeLink) return;
+    const take = () => {
+      let u: string | null = null;
+      try {
+        u = w.takeLink?.() ?? null;
+      } catch {
+        /* لا شيء */
+      }
+      const a = widgetActionOf(u);
+      if (a) setPending({ action: a, at: Date.now() });
+    };
+    take();
+    const sub = w.addListener?.("onLink", take);
+    const app = AppState.addEventListener("change", (s) => {
+      if (s === "active") take();
+    });
+    return () => {
+      sub?.remove();
+      app.remove();
+    };
+  }, []);
+
   const top = String(segments[0] ?? "");
   useEffect(() => {
     if (!pending) return;
@@ -139,7 +170,7 @@ export function WidgetGate() {
           return;
         case "search":
           /* 🆕 واللوحةُ ظاهرة (`focus`، قرارُ أحمد «١ ب») */
-          router.navigate({ pathname: "/search", params: { focus: String(Date.now()) } });
+          router.navigate({ pathname: "/search", params: action.q ? { focus: String(Date.now()), q: action.q } : { focus: String(Date.now()) } });
           return;
         case "settings":
           router.push({ pathname: "/settings/[section]", params: action.widget ? { section: "widget", widget: String(action.widget) } : { section: "widget" } });

@@ -20,6 +20,10 @@ type Native = {
   dmNative?(): boolean;
   /** 🆕 1.12.7 — أندرويد: المحادثةُ المفتوحة (`peer` أو `g:<قروب>`)، و`null` عند المغادرة. بناءٌ أقدمُ لا يملكها */
   setDmOpen?(key: string | null): void;
+  /** 🆕 D-1500 — الآيفون: رابطٌ ينتظر من خارج `Linking` (بحثُ Spotlight)، يُقرأ مرّةً. بناءٌ أقدمُ لا يملكها */
+  takeLink?(): string | null;
+  /** 🆕 D-1500 — «onLink»: رابطٌ صار ينتظر والتطبيقُ مفتوح (الوحدةُ مُرسِلةُ أحداث في Expo) */
+  addListener?(event: "onLink", listener: () => void): { remove(): void };
   prune(keep: string[]): void;
   reload(): void;
   configuredLists(): string[];

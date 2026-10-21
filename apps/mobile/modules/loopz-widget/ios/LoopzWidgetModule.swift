@@ -12,6 +12,8 @@ import WidgetKit
  */
 public class LoopzWidgetModule: Module {
   static let group = "group.com.loopztv.app"
+  /** 🆕 D-1500 — تنبيهُ «رابطٌ ينتظر» (بحثُ Spotlight — `app/LoopzSearchIntent.swift`) ما دام في JS من يسمع */
+  private var linkObserver: NSObjectProtocol?
 
   private func dir() throws -> URL {
     guard let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) else {
@@ -34,12 +36,43 @@ public class LoopzWidgetModule: Module {
     case .systemMedium: return "medium"
     case .systemLarge: return "large"
     case .systemExtraLarge: return "xl"
-    default: return "other"
+    default: return isPortraitXL(f) ? "xl" : "other"
     }
+  }
+
+  /** 🆕 D-1500 — الكبيرُ جداً في الآيفون (iOS 27)؛ أدواتُ آبل الأقدم لا تعرف الحالة فتُترجم بلاها */
+  static func isPortraitXL(_ f: WidgetFamily) -> Bool {
+    #if compiler(>=6.4)
+    if #available(iOS 27.0, *), f == .systemExtraLargePortrait { return true }
+    #endif
+    return false
   }
 
   public func definition() -> ModuleDefinition {
     Name("LoopzWidget")
+
+    /* 🆕 D-1500 — رابطٌ من خارج التطبيق لا يمرّ بـ`Linking` (بحثُ Spotlight): يُحفظ، وهذا يقول لـJS «خذه» */
+    Events("onLink")
+
+    OnStartObserving {
+      self.linkObserver = NotificationCenter.default.addObserver(forName: Notification.Name("LoopzPendingLink"), object: nil, queue: .main) { [weak self] _ in
+        self?.sendEvent("onLink", [:])
+      }
+    }
+
+    OnStopObserving {
+      if let o = self.linkObserver { NotificationCenter.default.removeObserver(o) }
+      self.linkObserver = nil
+    }
+
+    /** الرابطُ المنتظَر — يُقرأ مرّةً ويُمحى؛ وما مضت عليه دقيقةٌ يُهمل */
+    Function("takeLink") { () -> String? in
+      let d = UserDefaults.standard
+      guard let o = d.dictionary(forKey: "loopz.pendingLink") else { return nil }
+      d.removeObject(forKey: "loopz.pendingLink")
+      guard let url = o["url"] as? String, let at = o["at"] as? Double, Date().timeIntervalSince1970 - at < 60 else { return nil }
+      return url
+    }
 
     Function("writeText") { (name: String, text: String) in
       let url = try self.dir().appendingPathComponent(try self.safe(name))

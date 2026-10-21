@@ -56,6 +56,60 @@ struct CycleTonightIntent: AppIntent {
   }
 }
 
+/* ====== 🆕 D-1500 — التقليبُ داخل الودجت (بديلُ التمرير) ======
+ * الودجتُ صورةٌ يرسمها النظام: لا سحبَ فيها ولا قائمةَ تتحرّك (طلبُ أحمد ٢١ أكتوبر: «تمرير قائمة للمشاهدة داخل الويدجت»).
+ * فكلُّ قسمٍ يزيد على ما يتّسع له يحمل ‹ › — اللمسةُ تحفظ أوّلَ المعروض في الحاوية ويعيد النظامُ الرسمَ فوراً، بلا شبكة
+ * ولا فتح للتطبيق. والصفحاتُ تدور: بعد الأخيرة الأولى. ودجتان على الشاشة بالقسم نفسِه يتقلّبان معاً (المفتاحُ اسمُ القسم). */
+
+struct WPager {
+  let section: String
+  let total: Int
+  let per: Int
+  let offset: Int
+}
+
+enum WPage {
+  static func key(_ s: String) -> String { "wPage.\(s)" }
+
+  /** أوّلُ المعروض الآن — على حدّ صفحة، وصفرٌ إن قصرت القائمةُ عنه (خلاصةٌ أحدثُ بأعمالٍ أقلّ) */
+  static func offset(_ s: String, total: Int, per: Int) -> Int {
+    guard per > 0, total > per else { return 0 }
+    let o = FeedStore.defaults?.integer(forKey: key(s)) ?? 0
+    return o >= 0 && o < total ? o - o % per : 0
+  }
+
+  static func move(_ s: String, step: Int, total: Int, per: Int) {
+    guard per > 0, total > per else { return }
+    let pages = (total + per - 1) / per
+    let cur = offset(s, total: total, per: per) / per
+    let next = ((cur + step) % pages + pages) % pages
+    FeedStore.defaults?.set(next * per, forKey: key(s))
+  }
+}
+
+struct PageIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.page"
+  static let isDiscoverable = false
+
+  @Parameter(title: "section") var section: String
+  @Parameter(title: "step") var step: Int
+  @Parameter(title: "total") var total: Int
+  @Parameter(title: "per") var per: Int
+
+  init() {}
+  init(section: String, step: Int, total: Int, per: Int) {
+    self.section = section
+    self.step = step
+    self.total = total
+    self.per = per
+  }
+
+  func perform() async throws -> some IntentResult {
+    WPage.move(section, step: step, total: total, per: per)
+    return .result()
+  }
+}
+
 /* ====== أفعالُ الودجت برمزه الخاصّ (W14 · W35 · W37 — الدفعةُ الثانية) ======
  * 🔑 **رمزٌ خاصٌّ لا جلسة** (`widget/token` في الحاوية): حلقة · فيلم · «ابدأ» · تقييم، وتراجعُ كلٍّ منها — لا قراءة ولا تجديدَ جلسة.
  * بلا رمزٍ لا شيء: الخادمُ يكتب `check: false` فتبقى اللمسةُ تفتح العمل. */

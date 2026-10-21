@@ -134,12 +134,17 @@ export function SearchScreen() {
 
   /* 🆕 شريطُ البحث في الودجت (`focus`): الصفحةُ تُفتح واللوحةُ ظاهرةٌ للكتابة مباشرة — قرارُ أحمد «١ ب» (١٤ أكتوبر).
      كلُّ لمسةٍ رمزٌ جديد فتعمل ولو كان التبويبُ مفتوحاً؛ والمهلةُ حتّى تستقرّ الشاشة (التركيزُ قبلها لا يفتح اللوحة) */
-  const { focus } = useLocalSearchParams<{ focus?: string }>();
+  const { focus, q: fromSpotlight } = useLocalSearchParams<{ focus?: string; q?: string }>();
   useEffect(() => {
     if (!focus || desc) return;
+    /* 🆕 D-1500 — من Spotlight («ابحث في Loopz»): النصُّ مكتوبٌ والنتائجُ ظاهرة — لا لوحةَ تغطّيها */
+    if (fromSpotlight) {
+      setQ(fromSpotlight);
+      return;
+    }
     const h = setTimeout(focusField, 350);
     return () => clearTimeout(h);
-  }, [focus, desc, focusField]);
+  }, [focus, fromSpotlight, desc, focusField]);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();

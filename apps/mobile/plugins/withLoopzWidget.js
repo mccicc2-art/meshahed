@@ -1,4 +1,4 @@
-const { withAndroidManifest, withAppBuildGradle, withDangerousMod, AndroidConfig } = require("expo/config-plugins");
+const { withAndroidManifest, withAppBuildGradle, withDangerousMod, AndroidConfig, IOSConfig } = require("expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
@@ -146,4 +146,16 @@ const withMessagingDependency = (config) =>
     return cfg;
   });
 
-module.exports = (config) => withMessagingDependency(withWidgetManifest(withWidgetFiles(config)));
+/**
+ * 🆕 D-1500 — **«ابحث في Loopz» في Spotlight** يُنسخ إلى هدف التطبيق نفسِه: النظامُ لا يقرأ اختصاراتِ التطبيق إلّا منه.
+ * المصدرُ في `modules/loopz-widget/ios/app/` (لا هنا) لأنّ بصمةَ الآيفون تقرأ ذلك المجلّد — فتعديلُ الملفّ يبني الآيفون،
+ * والجسرُ يستثنيه من ترجمته (`exclude_files`).
+ */
+const withSearchShortcut = (config) =>
+  IOSConfig.XcodeProjectFile.withBuildSourceFile(config, {
+    filePath: "LoopzSearchIntent.swift",
+    contents: fs.readFileSync(path.join(__dirname, "..", "modules", "loopz-widget", "ios", "app", "LoopzSearchIntent.swift"), "utf8"),
+    overwrite: true,
+  });
+
+module.exports = (config) => withSearchShortcut(withMessagingDependency(withWidgetManifest(withWidgetFiles(config))));

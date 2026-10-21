@@ -116,6 +116,7 @@ test("غير المشترك: الودجت بكل أحجامه بالترتيب �
 
 test("الآيفون بلا الكبير جداً", () => {
   assert.deepEqual(widgetSizesFor("ios"), ["small", "medium", "large"]);
+  assert.deepEqual(widgetSizesFor("ios", true), ["small", "medium", "large", "xl"]);
   assert.deepEqual(widgetSizesFor("android"), ["small", "medium", "large", "xl"]);
 });
 

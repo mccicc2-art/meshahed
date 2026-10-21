@@ -107,7 +107,9 @@ export const WIDGET_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 172, medi
  * 🆕 **مقاساتُ آبل أقصرُ من أندرويد**: المتوسطُ ١٧٠ والكبيرُ ٣٧٦ على أغلب الآيفونات (الكبيرُ ٣٨٢ في Pro Max) — فالصفوفُ
  * تُحسم للآيفون بمقاسه وإلّا قُصّ آخرُها. والمعاينةُ في التطبيق تأخذ مقاسَ منصّتها من هنا أيضاً.
  */
-const IOS_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 170, medium: 170, large: 376, xl: 376 };
+const IOS_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 170, medium: 170, large: 376, xl: 580 };
+/* 🆕 D-1500 — **الكبيرُ جداً في الآيفون** (iOS 27: صفحةٌ كاملة ٤×٦، `systemExtraLargePortrait`): ٥٨٠ تقديرٌ للمعاينة
+   وحدَها — الرسّامُ يقيس ارتفاعَه الحقيقيّ ويأخذ أقربَ مفتاحٍ من `heights` (حتّى ٨٠٠ أدناه)، فخطأُ التقدير لا يقصّ شيئاً. */
 
 export function widgetSizeHeight(platform: WidgetPlatform, size: WidgetSize): number {
   return platform === "ios" ? IOS_SIZE_HEIGHT[size] : WIDGET_SIZE_HEIGHT[size];
@@ -355,9 +357,9 @@ export function effectiveWidgetConfig(cfg: WidgetLayoutConfig, plus: boolean): W
   return plus ? cfg : defaultWidgetConfig();
 }
 
-/** الآيفون لا يملك الحجمَ الكبيرَ جداً (W28) */
-export function widgetSizesFor(platform: WidgetPlatform): WidgetSize[] {
-  return platform === "android" ? ["small", "medium", "large", "xl"] : ["small", "medium", "large"];
+/** الآيفون لا يملك الحجمَ الكبيرَ جداً (W28) — 🆕 D-1500: إلّا من iOS 27 (`iosXl`، يمرّره التطبيقُ من إصدار النظام) */
+export function widgetSizesFor(platform: WidgetPlatform, iosXl = false): WidgetSize[] {
+  return platform === "android" || iosXl ? ["small", "medium", "large", "xl"] : ["small", "medium", "large"];
 }
 
 /** يُصلح إعداداً قادماً من التخزين: مفاتيحُ مجهولةٌ تسقط، والناقصةُ تأخذ الافتراضيّ، والترتيبُ يحوي السبعةَ مرّةً واحدة */
@@ -427,7 +429,8 @@ const SMALL_SQUARE = { w: 170, h: 170 };
 /** الارتفاعاتُ التي تُحسم لها الصفوف، وحجمُ كلٍّ منها — الحدودُ نفسُها في الرسّامَين */
 const HEIGHT_STEPS: Record<WidgetPlatform, { from: number; to: number; step: number; size: (h: number) => Exclude<WidgetSize, "small"> }> = {
   android: { from: 140, to: 900, step: 20, size: (h) => (h < 260 ? "medium" : h < 600 ? "large" : "xl") },
-  ios: { from: 130, to: 400, step: 10, size: (h) => (h < 250 ? "medium" : "large") },
+  /* 🆕 D-1500 — حتّى ٨٠٠ ليصل الكبيرُ جداً (iOS 27)، وما فوق ٤٥٠ حجمُه «xl»: الكبيرُ ٣٧٦–٣٨٢ لا يبلغه */
+  ios: { from: 130, to: 800, step: 10, size: (h) => (h < 250 ? "medium" : h < 450 ? "large" : "xl") },
 };
 
 /**

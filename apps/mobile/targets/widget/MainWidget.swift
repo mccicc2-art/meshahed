@@ -172,7 +172,7 @@ struct MainProvider: AppIntentTimelineProvider {
     case .systemSmall: fam = "small"
     case .systemMedium: fam = "medium"
     case .systemLarge: fam = "large"
-    default: fam = "other"
+    default: fam = LoopzMainWidget.isXL(family) ? "xl" : "other"
     }
     let now = Date().timeIntervalSince1970
     d = d.filter { now - $0.value < 3 * 86400 }
@@ -205,8 +205,28 @@ struct LoopzMainWidget: Widget {
     }
     .configurationDisplayName(LocalizedStringResource("main.name"))
     .description(LocalizedStringResource("main.desc"))
-    .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    .supportedFamilies(Self.families)
     .contentMarginsDisabled()
+  }
+
+  /**
+   * 🆕 D-1500 — **الكبيرُ جداً** (iOS 27: صفحةٌ كاملة ٤×٦، `systemExtraLargePortrait` — طلبُ أحمد ٢١ أكتوبر: «ابغا اكبر مقاس
+   * يكون شغال»). الحالةُ لا توجد في أدوات آبل قبل Xcode 27 (Swift 6.4) — فالشرطُ مرّتين: عند الترجمة (`compiler`) فيُبنى
+   * المشروعُ بالأدوات الأقدم بلاه، وعند التشغيل (`#available`) فلا تراه أجهزةُ iOS 26 وما قبله. الصفوفُ نفسُها: المحرّكُ
+   * يحسمها لكلِّ ارتفاعٍ حتّى ٨٠٠ (`widgetLayout.ts`)، والرسّامُ يأخذ أكبرَ مفتاحٍ لا يزيد على مقاسه كما في الكبير.
+   */
+  static var families: [WidgetFamily] {
+    #if compiler(>=6.4)
+    if #available(iOS 27.0, *) { return [.systemSmall, .systemMedium, .systemLarge, .systemExtraLargePortrait] }
+    #endif
+    return [.systemSmall, .systemMedium, .systemLarge]
+  }
+
+  static func isXL(_ f: WidgetFamily) -> Bool {
+    #if compiler(>=6.4)
+    if #available(iOS 27.0, *), f == .systemExtraLargePortrait { return true }
+    #endif
+    return f == .systemExtraLarge
   }
 }
 
@@ -232,7 +252,7 @@ struct MainView: View {
     switch family {
     case .systemLarge: return "large"
     case .systemMedium: return "medium"
-    default: return "small"
+    default: return LoopzMainWidget.isXL(family) ? "xl" : "small"
     }
   }
 
@@ -347,6 +367,8 @@ struct SecHeader: View {
   let link: URL?
   /** 🆕 حجمُ العنوان من شكل الودجت (`header`) — ١٤٫٥ الأصل */
   var size: CGFloat = 14.5
+  /** 🆕 D-1500 — سهما التقليب حين يزيد القسمُ على ما يتّسع له (بديلُ التمرير — الودجتُ صورةٌ لا تُسحب) */
+  var pager: WPager? = nil
   var body: some View {
     HStack(spacing: 6) {
       if let link {
@@ -355,8 +377,24 @@ struct SecHeader: View {
         titleText
       }
       Spacer(minLength: 0)
+      if let p = pager, p.total > p.per {
+        Text("\(p.offset / p.per + 1)/\((p.total + p.per - 1) / p.per)")
+          .font(.system(size: 11, weight: .semibold)).foregroundStyle(WColor.muted).lineLimit(1)
+        Button(intent: PageIntent(section: p.section, step: -1, total: p.total, per: p.per)) { pageIcon("chevron.backward") }.buttonStyle(.plain)
+        Button(intent: PageIntent(section: p.section, step: 1, total: p.total, per: p.per)) { pageIcon("chevron.forward") }.buttonStyle(.plain)
+      }
     }
     .frame(height: 20)
+  }
+  /** دائرةُ الأزرار نفسُها في الودجت (`circle`) بقطرٍ أصغر يناسب سطرَ العنوان؛ واللمسُ أعرضُ من الرسم.
+      ‹ › اتّجاهيّان (`backward`/`forward`) فينقلبان وحدَهما في العربيّ */
+  func pageIcon(_ icon: String) -> some View {
+    Image(systemName: icon).font(.system(size: 10, weight: .bold)).foregroundStyle(WColor.fg)
+      .frame(width: 22, height: 22)
+      .background(Circle().fill(Color(red: 22 / 255, green: 22 / 255, blue: 22 / 255).opacity(0.78)))
+      .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
+      .frame(width: 30, height: 28)
+      .contentShape(Rectangle())
   }
   var titleText: some View { Text(title).font(.system(size: size, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1) }
 }
@@ -661,12 +699,18 @@ struct ContRow: View {
   let now: Date
 
   var body: some View {
-    let source = sourceOf(f.feed, "continue", max: 2)
+    /* 🆕 D-1500 — أكثرُ من بطاقتين ⇒ صفحاتٌ من اثنتين بسهمين، والفارغُ يُكمَل بما كان (رقاقاتُ «ابدأ» الباهتة) حين لا تقليب */
+    let total = f.feed.continue.items.count
+    let paged = total > 2
+    let off = paged ? WPage.offset("cont", total: total, per: 2) : 0
+    let source = sourceOf(f.feed, "continue", max: paged ? total : 2)
+    let slots = paged ? Array(source.slots.dropFirst(off).prefix(2)) : source.slots
     VStack(alignment: .leading, spacing: 0) {
-      SecHeader(title: source.title, link: source.header, size: f.n("contHeader", 14.5))
+      SecHeader(title: source.title, link: source.header, size: f.n("contHeader", 14.5),
+                pager: paged ? WPager(section: "cont", total: total, per: 2, offset: off) : nil)
       HStack(spacing: 9) {
         ForEach(0..<2, id: \.self) { i in
-          if i < source.slots.count { CardView(feed: f.feed, slot: source.slots[i]) } else { Color.clear.frame(maxWidth: .infinity) }
+          if i < slots.count { CardView(feed: f.feed, slot: slots[i]) } else { Color.clear.frame(maxWidth: .infinity) }
         }
       }
       .frame(height: card ?? (tall ? f.n("contCardTall", 120) : f.n("contCard", 93)))
@@ -708,9 +752,14 @@ struct ListSection: View {
   var grid: CGFloat = 130
 
   var body: some View {
-    let items = Sections.lines(f, key, now: now)
+    /* 🆕 D-1500 — «للمشاهدة» وبقيّةُ القوائم: ما يزيد على المعروض (أسطراً أو بوسترات) صفحاتٌ بسهمين في رأس القسم */
+    let all = Sections.lines(f, key, now: now)
+    let per = max(1, view == "posters" ? posters : count)
+    let off = WPage.offset(key, total: all.count, per: per)
+    let items = Array(all.dropFirst(off))
     VStack(alignment: .leading, spacing: 4) {
-      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: key == "friends" ? f.n("friendsHeader", 14.5) : f.n("header", 14.5))
+      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: key == "friends" ? f.n("friendsHeader", 14.5) : f.n("header", 14.5),
+                pager: all.count > per ? WPager(section: key, total: all.count, per: per, offset: off) : nil)
       if view == "posters" {
         /* W35 · 🆕 W54 — ثلاثةٌ أو أربعة بعرضٍ يملأ الودجت (العرضُ ÷ العدد، ٢:٣ حتّى ارتفاع الشبكة)، والمسافاتُ بينها */
         GeometryReader { g in

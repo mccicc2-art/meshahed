@@ -13,5 +13,7 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
   s.frameworks     = 'WidgetKit'
   s.source_files   = "**/*.{h,m,swift}"
+  # D-1500 — `app/` يُنسخ إلى هدف التطبيق (`withLoopzWidget.js`)، لا يُترجم هنا
+  s.exclude_files  = "app/**/*"
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'SWIFT_COMPILATION_MODE' => 'wholemodule' }
 end
