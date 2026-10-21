@@ -118,12 +118,15 @@ export function ThreadReplies({
   translations,
   seasons,
   watchedEps,
+  myState,
 }: {
   target: ReplyTarget;
   /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (الغرفةُ وحدَها؛ فارغةٌ للأفلام) */
   seasons?: { season: number; episodes: number }[];
   /** 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (`s:e`) — غرفةُ ما لم يشاهده مغطّاة */
   watchedEps?: string[];
+  /** 🆕 R54 — «شاهدته» / «في مكتبتك» في سطر العدد (كانت شاراتٍ في الصفحة تحت الغلاف) */
+  myState?: "watched" | "library" | null;
   replies: ThreadReply[];
   /**
    * 🆕 **إعجاباتُ المشاركات — عدداً وحالةً** (D-289، الهجرة ٩٠).
@@ -450,6 +453,7 @@ export function ThreadReplies({
           sort={talkSort}
           onSort={setTalkSort}
           covered={!!pick && tvTalk && !revealAll && !seenEps.has(talkEpisodeKey(pick.season, pick.episode))}
+          myState={myState ?? null}
         />
       ) : null}
 
@@ -637,8 +641,9 @@ export function ThreadReplies({
              على نسخةٍ تفاؤليّةٍ لم يصلها معرّفُها بعد (D-241). */
           likes={likes ? likesNow(r.replyId) : 0}
           likedByMe={likes ? likedNow(r.replyId) : false}
+          /* 🆕 R54 — القلبُ على مشاركتك مسموح (أحمد: «نفس نظام تويتر عادي اسوي لنفسي لايك»؛ سياسةُ الجدول لا تمنعه)؛ التصويتُ يبقى لغيرك */
           onLike={
-            likes && signedIn && !r.isMine && !r.replyId.startsWith(TEMP)
+            likes && signedIn && !r.replyId.startsWith(TEMP)
               ? () => like(r.replyId)
               : undefined
           }
@@ -651,6 +656,7 @@ export function ThreadReplies({
               ? (v) => vote(r.replyId, v)
               : undefined
           }
+          votesOn={!!votes}
           onReply={() => {
             tap(6);
             setOpen(open === r.replyId ? null : r.replyId);

@@ -59,7 +59,7 @@ export function TalkTvBar({
     /* 🆕 R53 — **غرفةُ الحلقة صفٌّ واحد** (أحمد ٢١ أكتوبر: «ماخذ مساحة كبيرة ولازم انزل تحت اشوف الكتابات»؛ «ب» المعتمد) —
        رجوعٌ دائريّ · «م٢ · ح٣ · ★ · المدّة» فوق الاسم · «شاهدتها» في الطرف. كانت ثلاثةَ صفوفٍ وشريطاً منقّطاً، و«مغطّاة» صارت في سطر العدد */
     return (
-      <div className="mt-3 mb-1 flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2.5">
+      <div className="mt-3 mb-1 flex items-center gap-2.5 overflow-hidden rounded-2xl border border-border bg-background p-2.5">
         <button
           type="button"
           onClick={() => onPick(null)}

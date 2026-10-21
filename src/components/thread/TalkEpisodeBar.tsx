@@ -27,6 +27,7 @@ export function TalkEpisodeBar({
   sort,
   onSort,
   covered,
+  myState,
 }: {
   locale: Locale;
   seasons: { season: number; episodes: number }[];
@@ -39,6 +40,8 @@ export function TalkEpisodeBar({
   onSort: (s: "latest" | "active") => void;
   /** 🆕 R53 — غرفةُ حلقةٍ لم يشاهدها القارئ: العددُ يقول «مغطّاة» */
   covered?: boolean;
+  /** 🆕 R54 — «شاهدته» / «في مكتبتك» بجانب العدد (أحمد ٢١ أكتوبر: «ادمجه مع الخط اللي فيه ٣ بوست») */
+  myState?: "watched" | "library" | null;
 }) {
   const t = getDict(locale);
   const [menu, setMenu] = useState<null | "season" | "episode">(null);
@@ -111,8 +114,15 @@ export function TalkEpisodeBar({
       {/* 🆕 R53 — **سطرٌ واحد: العددُ، و«حرق» و«الأحدث ⌄» في الطرف** (صورةُ أحمد المعتمدة ٢١ أكتوبر، نظيرُ التطبيق): كان «حرق
           الأحداث» صفّاً وحدَه فوق العدد يدفع الكلامَ للأسفل */}
       <div className="flex items-center justify-between gap-3 py-2.5 border-b border-[color:var(--divider)]">
-        <span className="flex-1 min-w-0 truncate text-14 text-muted tabular-nums">
-          {covered && count > 0 ? `${t.talkRoomPosts(count)} · ${t.talkCovered}` : t.talkRoomPosts(count)}
+        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-14 text-muted">
+          <span className="truncate tabular-nums">{covered && count > 0 ? `${t.talkRoomPosts(count)} · ${t.talkCovered}` : t.talkRoomPosts(count)}</span>
+          {myState ? (
+            <>
+              <span aria-hidden>·</span>
+              <Icon name={myState === "watched" ? "check" : "bookmark"} size={13} className="shrink-0 text-accent" />
+              <span className="truncate">{myState === "watched" ? t.talkWatchedIt : t.talkInLibrary}</span>
+            </>
+          ) : null}
         </span>
         <button type="button" aria-pressed={revealAll} onClick={onReveal} className={`${chipClass(revealAll)} inline-flex items-center gap-1.5 shrink-0`}>
           <Icon name={revealAll ? "eye" : "eye-off"} size={14} className="shrink-0" />

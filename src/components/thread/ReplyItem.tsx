@@ -104,6 +104,7 @@ export function ReplyItem({
   score = 0,
   myVote = 0,
   onVote,
+  votesOn,
   onReply,
   onDelete,
   onReport,
@@ -174,6 +175,8 @@ export function ReplyItem({
   score?: number;
   myVote?: number;
   onVote?: (v: -1 | 0 | 1) => void;
+  /** 🆕 R54 — الخيطُ فيه تصويت (فيُرسم رقمُ مشاركتك وإن لم تستطع التصويتَ عليها) */
+  votesOn?: boolean;
   onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
@@ -455,96 +458,73 @@ export function ReplyItem({
             ⚠️ **والشرطُ صار شرطين لا واحداً**: زرُّ الردّ يشترط دخولاً
             وسماحاً، **والطيُّ لا يشترط شيئاً** — **فزائرٌ لا يستطيع
             الردَّ كان سيفقد سهمَ الطيّ لو بقي الشرطُ واحداً.** */}
-        {!pending && ((signedIn && canReply) || fold || onLike || likes > 0 || onVote || score !== 0) && (
-          <div className="mt-1.5 -mx-0.5 flex items-center gap-1">
-            {/* 🆕 **والقلبُ أوّلاً — والترتيبُ قاعدةٌ لا ذوق** (D-294،
-                طلبُ أحمد: «دائماً الأول القلب بعدها التعليق وبعدها
-                المشاهدة وآخر شي النشر، حافظ على هذا الترتيب»).
-                **وكان الردُّ أوّلَ هذا الصفّ وحدَه في التطبيق** — والخطُّ
-                يبدأ بالقلب — **وترتيبان لأفعالٍ واحدة في سطحين هما ما
-                تمنعه القاعدة ٣**: **الإصبعُ يحفظ الموضعَ لا الأيقونة.**
-                **والقلبُ المصمتُ حالةٌ والمفرَّغُ غيابُها** (D-260)،
-                **واللونُ يحمل الحالة** (D-003). */}
-            {/* 🆕 **السهمان في أوّل الصفّ** (D-305، نصُّ أحمد: «يكونون
-                يسار القلب») — **وهو موضعُ Reddit نفسُه الذي أرسل لقطتَه**:
-                أداةُ الترتيب قبل أدوات التفاعل. **⚠️ وهذا استثناءٌ مقصودٌ
-                من ترتيب D-294** (قلبٌ · تعليق · مشاهدة · نشر): تلك قاعدةُ
-                أفعال التفاعل، **والسهمان ليسا منها** — فيقفان قبلها كما
-                في المرجع الذي طُلب.
-                **والرقمُ بين السهمين** يقرأ صافيَ الأصوات، **ولونُه يقول
-                صوتي أنا**: أصفرُ فوق، خافتٌ تحت (D-003: اللونُ يحمل
-                الحالة). **وضغطُ السهم نفسِه مرّتين سحبٌ** — «تراجَع بعد»
-                (D-047). */}
-            {(onVote || score !== 0) && (
-              <span className="inline-flex items-center gap-0.5 me-0.5">
-                <button
-                  type="button"
-                  onClick={onVote ? () => onVote(myVote === 1 ? 0 : 1) : undefined}
-                  disabled={!onVote}
-                  aria-pressed={myVote === 1}
-                  aria-label={t.voteUp}
-                  title={t.voteUp}
-                  className={`inline-flex items-center rounded-full p-1.5 transition ${
-                    myVote === 1 ? "text-accent" : "text-muted"
-                  } ${onVote ? "hover:text-accent active:scale-90" : "cursor-default"}`}
-                >
-                  <Icon name="chevron-up" size={16} strokeWidth={2.4} />
-                </button>
-                <span
-                  className={`min-w-[1ch] text-center text-12 tabular-nums ${
-                    myVote === 1 ? "text-accent" : myVote === -1 ? "text-muted" : "text-muted"
-                  }`}
-                >
-                  {num(score, locale)}
-                </span>
-                <button
-                  type="button"
-                  onClick={onVote ? () => onVote(myVote === -1 ? 0 : -1) : undefined}
-                  disabled={!onVote}
-                  aria-pressed={myVote === -1}
-                  aria-label={t.voteDown}
-                  title={t.voteDown}
-                  className={`inline-flex items-center rounded-full p-1.5 transition ${
-                    myVote === -1 ? "text-foreground" : "text-muted"
-                  } ${onVote ? "hover:text-foreground active:scale-90" : "cursor-default"}`}
-                >
-                  <Icon name="chevron-down" size={16} strokeWidth={2.4} />
-                </button>
+        {/* 🆕 R54 — **صفُّ التفاعل بخانات «النشاط»** (أحمد ٢١ أكتوبر بلقطة: «خلها متباعده مثل ف اكتفتي .. ونفس نظام تويتر عادي اسوي لنفسي
+            لايك»، والصورةُ المعتمدة): ❤️ · 💬 · ▲▼ كلٌّ في ثلثٍ ثابت، وسهمُ الطيّ تحتها. نقضٌ لموضع السهمين قبل القلب (D-305) —
+            الترتيبُ نفسُه في التطبيق، والقلبُ أوّلاً كما في D-294 */}
+        {!pending && ((signedIn && canReply) || replyCount > 0 || fold || onLike || likes > 0 || onVote || score !== 0 || (votesOn && reply.isMine)) && (
+          <>
+            <div className="mt-1.5 -mx-0.5 grid grid-cols-3 items-center">
+              <span className="justify-self-start">
+                {(onLike || likes > 0) && (
+                  <button
+                    type="button"
+                    onClick={onLike}
+                    disabled={!onLike}
+                    aria-pressed={likedByMe}
+                    aria-label={t.likesLabel}
+                    title={t.likesLabel}
+                    className={actionTailItem(likedByMe, onLike ? "active:scale-95" : "cursor-default hover:text-muted")}
+                  >
+                    <Icon name={likedByMe ? "heart-filled" : "heart"} size={16} />
+                    {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
+                  </button>
+                )}
               </span>
-            )}
-            {(onLike || likes > 0) && (
-              <button
-                type="button"
-                onClick={onLike}
-                disabled={!onLike}
-                aria-pressed={likedByMe}
-                aria-label={t.likesLabel}
-                title={t.likesLabel}
-                className={actionTailItem(
-                  likedByMe,
-                  onLike ? "active:scale-95" : "cursor-default hover:text-muted",
+              <span className="justify-self-start">
+                {signedIn && canReply ? (
+                  <button type="button" onClick={onReply} aria-label={t.talkReply} title={t.talkReply} className={actionTailItem(false)}>
+                    <Icon name="comment" size={15} />
+                    {replyCount > 0 && <span className="tabular-nums">{num(replyCount, locale)}</span>}
+                  </button>
+                ) : replyCount > 0 ? (
+                  <span className={actionTailItem(false, "cursor-default")}>
+                    <Icon name="comment" size={15} />
+                    <span className="tabular-nums">{num(replyCount, locale)}</span>
+                  </span>
+                ) : null}
+              </span>
+              <span className="justify-self-start">
+                {(onVote || score !== 0 || (votesOn && reply.isMine)) && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={onVote ? () => onVote(myVote === 1 ? 0 : 1) : undefined}
+                      disabled={!onVote}
+                      aria-pressed={myVote === 1}
+                      aria-label={t.voteUp}
+                      title={t.voteUp}
+                      className={`inline-flex items-center rounded-full p-1.5 transition ${myVote === 1 ? "text-accent" : "text-muted"} ${onVote ? "hover:text-accent active:scale-90" : "cursor-default"}`}
+                    >
+                      <Icon name="chevron-up" size={16} strokeWidth={2.4} />
+                    </button>
+                    <span className={`min-w-[1ch] text-center text-12 tabular-nums ${myVote === 1 ? "text-accent" : "text-muted"}`}>{num(score, locale)}</span>
+                    <button
+                      type="button"
+                      onClick={onVote ? () => onVote(myVote === -1 ? 0 : -1) : undefined}
+                      disabled={!onVote}
+                      aria-pressed={myVote === -1}
+                      aria-label={t.voteDown}
+                      title={t.voteDown}
+                      className={`inline-flex items-center rounded-full p-1.5 transition ${myVote === -1 ? "text-foreground" : "text-muted"} ${onVote ? "hover:text-foreground active:scale-90" : "cursor-default"}`}
+                    >
+                      <Icon name="chevron-down" size={16} strokeWidth={2.4} />
+                    </button>
+                  </span>
                 )}
-              >
-                <Icon name={likedByMe ? "heart-filled" : "heart"} size={15} />
-                {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
-              </button>
-            )}
-            {signedIn && canReply && (
-              <button
-                type="button"
-                onClick={onReply}
-                aria-label={t.talkReply}
-                title={t.talkReply}
-                className={actionTailItem(false)}
-              >
-                <Icon name="comment" size={15} />
-                {replyCount > 0 && (
-                  <span className="tabular-nums">{num(replyCount, locale)}</span>
-                )}
-              </button>
-            )}
-            {fold}
-          </div>
+              </span>
+            </div>
+            {fold ? <div className="-mx-0.5 flex">{fold}</div> : null}
+          </>
         )}
       </div>
     </article>

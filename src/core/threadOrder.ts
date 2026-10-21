@@ -93,7 +93,8 @@ export function orderTalk<T extends OrderRow & { likes?: number }>(rows: readonl
   const newest = (a: T, b: T) => b.created_at.localeCompare(a.created_at);
   if (sort === "latest") roots.sort(newest);
   else {
-    const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + (replies.get(r.id) ?? 0);
+    /* 🆕 R54 — **الردُّ باثنين** (أحمد ٢١ أكتوبر «ب»: «الرد احسبه ب اثنين لانه تفاعل فعلي») — القلبُ والصوتُ ضغطة، والردُّ نقاش */
+    const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + 2 * (replies.get(r.id) ?? 0);
     roots.sort((a, b) => weight(b) - weight(a) || newest(a, b));
   }
   return [...roots, ...kids];

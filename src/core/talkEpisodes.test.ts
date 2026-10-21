@@ -51,6 +51,17 @@ test("orderTalk: newest roots first, replies after in time order; active by weig
   assert.deepEqual(orderTalk(rows, "active").map((r) => r.id), ["old", "new", "r1"]);
 });
 
+/* R54 — «الأكثر نشاطاً»: الردُّ باثنين */
+test("orderTalk active: a reply weighs two likes", () => {
+  const rows = [
+    { id: "liked", parent_id: null, created_at: "2026-10-20T10:00:00Z", likes: 3 },
+    { id: "talked", parent_id: null, created_at: "2026-10-20T09:00:00Z", likes: 0 },
+    { id: "k1", parent_id: "talked", created_at: "2026-10-20T11:00:00Z" },
+    { id: "k2", parent_id: "talked", created_at: "2026-10-20T11:05:00Z" },
+  ];
+  assert.deepEqual(orderTalk(rows, "active").map((r) => r.id).slice(0, 2), ["talked", "liked"]);
+});
+
 /* D-1508 — «عام» و«الحلقات» */
 import { generalRows, episodeRoomRows, episodeStats, episodeBulletin, latestBulletin, talkEpisodeKey } from "./talkEpisodes.ts";
 

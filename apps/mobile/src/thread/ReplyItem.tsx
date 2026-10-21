@@ -18,8 +18,9 @@ import { posterFor } from "../poster";
  * 🆕 D-1443 — متنُ الردّ بخطّ الرسائل (١٦/٢٣ بوزن ٥٠٠ ويتبع الأكبرَ من خطّ الواجهة وخطّ المحتوى، D-1434)، وروابطُه ومنشنُه تُلمس
  * (`richText.tsx` نفسُه) — أحمد ١٦ أكتوبر: «كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات».
  */
-const BODY_SIZE = 16;
-const BODY_LINE = 23;
+/* 🆕 R54 — ١٤ كنصِّ «النشاط» (أحمد ٢١ أكتوبر: «وحده ١٤») — كان ١٦ فبدت المشاركةُ في الغرفة أكبرَ منها في الخلاصة */
+const BODY_SIZE = 14;
+const BODY_LINE = 21;
 
 /**
  * ====== سطرٌ في الخيط — نسخةُ `ReplyItem.tsx` (الويب) · Phase 11-M · M3 ======
@@ -94,8 +95,10 @@ export const ReplyItem = memo(function ReplyItem({
   const text = row.translated && !original ? row.translated : row.body;
   const hidden = (row.has_spoiler || unwatched) && !reveal;
   const canAct = signedIn && !row.mine && !pending;
+  /* 🆕 R54 — القلبُ على مشاركتك مسموح (مثل تويتر)؛ التصويتُ وحدَه يبقى لغيرك */
+  const canLike = signedIn && !pending;
   const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingVertical: 6, paddingHorizontal: 8, minHeight: 32 };
-  const hasTail = !pending && ((signedIn && canReply) || fold || (showLikes && (canAct || row.likes > 0)) || (showVotes && (canAct || row.score !== 0)));
+  const hasTail = !pending && ((signedIn && canReply) || replyCount > 0 || fold || (showLikes && (canLike || row.likes > 0)) || (showVotes && (canAct || row.mine || row.score !== 0)));
 
   const media = (
     <>
@@ -190,53 +193,71 @@ export const ReplyItem = memo(function ReplyItem({
       )}
 
       {hasTail ? (
-        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 2, marginTop: 4, marginHorizontal: -8 }}>
-          {showVotes && (canAct || row.score !== 0) ? (
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Pressable
-                onPress={() => onVote(row, row.my_vote === 1 ? 0 : 1)}
-                disabled={!canAct}
-                hitSlop={4}
-                accessibilityLabel={t.voteUp}
-                accessibilityState={{ selected: row.my_vote === 1 }}
-                style={{ padding: 6, transform: [{ rotate: "180deg" }] }}
-              >
-                <Icon name="chevron-down" size={16} color={row.my_vote === 1 ? tokens.accent : tokens.muted} />
-              </Pressable>
-              <Text size={12} color={row.my_vote === 1 ? tokens.accent : tokens.muted} style={{ minWidth: 10, textAlign: "center", fontVariant: ["tabular-nums"] }}>{num(row.score, locale)}</Text>
-              <Pressable
-                onPress={() => onVote(row, row.my_vote === -1 ? 0 : -1)}
-                disabled={!canAct}
-                hitSlop={4}
-                accessibilityLabel={t.voteDown}
-                accessibilityState={{ selected: row.my_vote === -1 }}
-                style={{ padding: 6 }}
-              >
-                <Icon name="chevron-down" size={16} color={row.my_vote === -1 ? tokens.fg : tokens.muted} />
+        <>
+          {/* 🆕 R54 — **صفُّ التفاعل بخانات «النشاط»** (أحمد ٢١ أكتوبر: «خلها متباعده مثل ف اكتفتي .. ونفس نظام تويتر عادي اسوي لنفسي لايك»):
+              ❤️ · 💬 · ▲▼ كلٌّ في ثلثٍ ثابتٍ من العرض — كانت متلاصقةً في الطرف، والقلبُ والتصويتُ يغيبان عن مشاركتك ما لم يتفاعل أحد.
+              القلبُ على مشاركتك مسموح (سياسةُ القاعدة لا تمنعه، والمنعُ كان هنا وحده)؛ والتصويتُ على نفسك يبقى رقماً بلا ضغط */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, marginHorizontal: -8 }}>
+            <View style={{ flex: 1, alignItems: "flex-start" }}>
+              {showLikes && (canLike || row.likes > 0) ? (
+                <Pressable onPress={() => onLike(row)} disabled={!canLike} hitSlop={4} accessibilityLabel={t.likesLabel} accessibilityState={{ selected: row.liked_by_me }} style={pad}>
+                  <Icon name={row.liked_by_me ? "heart-filled" : "heart"} size={16} color={row.liked_by_me ? tokens.accent : tokens.muted} />
+                  {row.likes > 0 ? <Text size={12} color={row.liked_by_me ? tokens.accent : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(row.likes, locale)}</Text> : null}
+                </Pressable>
+              ) : null}
+            </View>
+            <View style={{ flex: 1, alignItems: "flex-start" }}>
+              {signedIn && canReply ? (
+                <Pressable onPress={() => onReply(row)} hitSlop={4} accessibilityLabel={t.talkReply} style={pad}>
+                  <Icon name="comment" size={15} color={tokens.muted} />
+                  {replyCount > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text> : null}
+                </Pressable>
+              ) : replyCount > 0 ? (
+                <View style={pad}>
+                  <Icon name="comment" size={15} color={tokens.muted} />
+                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={{ flex: 1, alignItems: "flex-start" }}>
+              {showVotes && (canAct || row.mine || row.score !== 0) ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Pressable
+                    onPress={() => onVote(row, row.my_vote === 1 ? 0 : 1)}
+                    disabled={!canAct}
+                    hitSlop={4}
+                    accessibilityLabel={t.voteUp}
+                    accessibilityState={{ selected: row.my_vote === 1 }}
+                    style={{ padding: 6, transform: [{ rotate: "180deg" }] }}
+                  >
+                    <Icon name="chevron-down" size={16} color={row.my_vote === 1 ? tokens.accent : tokens.muted} />
+                  </Pressable>
+                  <Text size={12} color={row.my_vote === 1 ? tokens.accent : tokens.muted} style={{ minWidth: 10, textAlign: "center", fontVariant: ["tabular-nums"] }}>{num(row.score, locale)}</Text>
+                  <Pressable
+                    onPress={() => onVote(row, row.my_vote === -1 ? 0 : -1)}
+                    disabled={!canAct}
+                    hitSlop={4}
+                    accessibilityLabel={t.voteDown}
+                    accessibilityState={{ selected: row.my_vote === -1 }}
+                    style={{ padding: 6 }}
+                  >
+                    <Icon name="chevron-down" size={16} color={row.my_vote === -1 ? tokens.fg : tokens.muted} />
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          {fold ? (
+            <View style={{ flexDirection: "row", marginHorizontal: -8 }}>
+              <Pressable onPress={fold.onToggle} hitSlop={4} accessibilityState={{ expanded: fold.open }} style={pad}>
+                <View style={{ transform: [{ rotate: fold.open ? "180deg" : "0deg" }] }}>
+                  <Icon name="chevron-down" size={14} color={tokens.muted} />
+                </View>
+                <Text size={12} weight="700" muted>{fold.open ? t.talkHideReplies : t.talkShowReplies(fold.count)}</Text>
               </Pressable>
             </View>
           ) : null}
-          {showLikes && (canAct || row.likes > 0) ? (
-            <Pressable onPress={() => onLike(row)} disabled={!canAct} hitSlop={4} accessibilityLabel={t.likesLabel} accessibilityState={{ selected: row.liked_by_me }} style={pad}>
-              <Icon name={row.liked_by_me ? "heart-filled" : "heart"} size={15} color={row.liked_by_me ? tokens.accent : tokens.muted} />
-              {row.likes > 0 ? <Text size={12} color={row.liked_by_me ? tokens.accent : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(row.likes, locale)}</Text> : null}
-            </Pressable>
-          ) : null}
-          {signedIn && canReply ? (
-            <Pressable onPress={() => onReply(row)} hitSlop={4} accessibilityLabel={t.talkReply} style={pad}>
-              <Icon name="comment" size={15} color={tokens.muted} />
-              {replyCount > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text> : null}
-            </Pressable>
-          ) : null}
-          {fold ? (
-            <Pressable onPress={fold.onToggle} hitSlop={4} accessibilityState={{ expanded: fold.open }} style={pad}>
-              <View style={{ transform: [{ rotate: fold.open ? "180deg" : "0deg" }] }}>
-                <Icon name="chevron-down" size={14} color={tokens.muted} />
-              </View>
-              <Text size={12} weight="700" muted>{fold.open ? t.talkHideReplies : t.talkShowReplies(fold.count)}</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        </>
       ) : null}
     </View>
   );

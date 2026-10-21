@@ -947,11 +947,21 @@ function Head({
               فلا يحتاج شريطاً منفصلاً. وفي قائمة «الحلقات» لا كلامَ يُكشف ولا يُرتَّب فلا سطر */}
           {talk.tv && talk.tv.tab === "episodes" && !talk.pick ? null : (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-              <Text size={13} muted numberOfLines={1} style={{ flex: 1, fontVariant: ["tabular-nums"] }}>
-                {talk.tv && talk.pick && !talk.revealAll && !talk.tv.watchedEps.has(talkEpisodeKey(talk.pick.season, talk.pick.episode)) && talk.count > 0
-                  ? `${t.talkRoomPosts(talk.count)} · ${t.talkCovered}`
-                  : t.talkRoomPosts(talk.count)}
-              </Text>
+              {/* 🆕 R54 — «في مكتبتك» / «شاهدته» في سطر العدد نفسِه (أحمد ٢١ أكتوبر بلقطة: «ادمجه مع الخط اللي فيه ٣ بوست») — كان صفّاً وحدَه تحته */}
+              <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text size={13} muted numberOfLines={1} style={{ flexShrink: 1, fontVariant: ["tabular-nums"] }}>
+                  {talk.tv && talk.pick && !talk.revealAll && !talk.tv.watchedEps.has(talkEpisodeKey(talk.pick.season, talk.pick.episode)) && talk.count > 0
+                    ? `${t.talkRoomPosts(talk.count)} · ${t.talkCovered}`
+                    : t.talkRoomPosts(talk.count)}
+                </Text>
+                {h.watched || h.in_library ? (
+                  <>
+                    <Text size={13} muted>·</Text>
+                    <Icon name={h.watched ? "check" : "bookmark"} size={13} color={tokens.accent} />
+                    <Text size={13} muted numberOfLines={1} style={{ flexShrink: 1 }}>{h.watched ? t.talkWatchedIt : t.talkInLibrary}</Text>
+                  </>
+                ) : null}
+              </View>
               <Chip label={t.talkSpoilersToggle} active={talk.revealAll} onPress={talk.onReveal} leading={<Icon name={talk.revealAll ? "eye" : "eye-off"} size={13} color={talk.revealAll ? tokens.onAccent : tokens.muted} />} />
               <SortCycle
                 label={t.talkSortAria}
@@ -964,25 +974,12 @@ function Head({
               />
             </View>
           )}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 8 }}>
-            {!signedIn && !isGuest(d) ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Icon name="comment" size={13} color={tokens.accent} />
-                <Text size={12} weight="700">{t.talkSignInToWrite}</Text>
-              </View>
-            ) : null}
-            {h.watched ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Icon name="check" size={13} color={tokens.accent} />
-                <Text size={12} muted>{t.talkWatchedIt}</Text>
-              </View>
-            ) : h.in_library ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Icon name="bookmark" size={13} color={tokens.accent} />
-                <Text size={12} muted>{t.talkInLibrary}</Text>
-              </View>
-            ) : null}
-          </View>
+          {!signedIn && !isGuest(d) ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 8 }}>
+              <Icon name="comment" size={13} color={tokens.accent} />
+              <Text size={12} weight="700">{t.talkSignInToWrite}</Text>
+            </View>
+          ) : null}
         </View>
       ) : h.kind === "post" ? (
         <View style={{ paddingTop: 12 }}>
@@ -1062,7 +1059,9 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
        كانت أربعةَ صفوف — «‹ كل الحلقات» وبطاقةُ الحلقة وشريطُ «لم تشاهدها» وزرُّ الحرق — ~٣٠٠ نقطة قبل أوّل تعليق.
        الآن: رجوعٌ دائريّ · «م٢ · ح٣ · ★ · المدّة» فوق الاسم · «شاهدتها» في الطرف (أو ✓ أخضر بعدها). و«مغطّاة» انتقلت لسطر العدد */
     return (
-      <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, backgroundColor: tokens.surface, padding: 10 }}>
+      /* 🆕 R54 — بلون الصفحة لا السطحِ الرماديّ (أحمد ٢١ أكتوبر «أ»: «لون خلفية الحلقة يناسب لون الثيم») والإطارُ الرفيع وحده — كصفوف «تابِع
+         المشاهدة» (D-1089). و«شاهدتها» لا تنكمش ولا تُدفع: لقطتُه أظهرتها مقصوصةً خارج الكرت، فالوسطُ هو الذي يتنازل ويقصّ اسمَه */
+      <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, backgroundColor: tokens.bg, padding: 10, overflow: "hidden" }}>
         <Pressable
           onPress={() => tv.onPick(null)}
           hitSlop={6}
@@ -1074,17 +1073,19 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
             <Icon name="chevron-down" size={15} color={tokens.fg} />
           </View>
         </Pressable>
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, gap: 2 }}>
           <Text size={11} weight="700" color={tokens.accent} numberOfLines={1}>{facts}</Text>
           <Text size={15} weight="700" numberOfLines={1}>{b?.bulletin_name ?? t.talkEpisodeLabel(pick.episode)}</Text>
         </View>
         {watched ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <View style={{ flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Icon name="check" size={13} color={tokens.success} />
             <Text size={12} weight="700" color={tokens.success}>{t.talkEpWatched}</Text>
           </View>
         ) : signedIn ? (
-          <Chip label={t.talkMarkEpWatched} active onPress={() => tv.onWatched(pick)} leading={<Icon name="check" size={13} color={tokens.onAccent} />} />
+          <View style={{ flexShrink: 0 }}>
+            <Chip label={t.talkMarkEpWatched} active onPress={() => tv.onWatched(pick)} leading={<Icon name="check" size={13} color={tokens.onAccent} />} />
+          </View>
         ) : null}
       </View>
     );

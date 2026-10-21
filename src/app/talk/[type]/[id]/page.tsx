@@ -258,8 +258,10 @@ export default async function TalkPage({
 
         {/* **شاراتُ حالتك — تُقرأ ولا تُضغط** (D-217): «المُطَوَّق يُضغط
             والعاري يُقرأ»، فلا يظنُّها أحدٌ زرّين ويضغطهما بلا أثر. */}
+        {/* 🆕 R54 — «شاهدته»/«في مكتبتك» انتقلتا إلى سطر العدد في `TalkEpisodeBar`؛ بقيت دعوةُ الزائر وحدَها */}
+        {!signedIn && (
         <div className="mt-2 flex items-center gap-3 flex-wrap">
-          {!signedIn && (
+          {(
             /* **دعوةٌ لا جدار** (D-221): الزائرُ قرأ الحوار أوّلاً،
                **فالطلبُ يأتي بعد أن رأى لماذا.** */
             <Link
@@ -270,19 +272,8 @@ export default async function TalkPage({
               <span className="text-12 font-bold">{t.talkSignInToWrite}</span>
             </Link>
           )}
-          {watchedIt && (
-            <span className="inline-flex items-center gap-1.5 text-12 text-muted">
-              <Icon name="check" size={13} className="text-accent" />
-              {t.talkWatchedIt}
-            </span>
-          )}
-          {!watchedIt && follow.following && (
-            <span className="inline-flex items-center gap-1.5 text-12 text-muted">
-              <Icon name="bookmark" size={13} className="text-accent" />
-              {t.talkInLibrary}
-            </span>
-          )}
         </div>
+        )}
       </div>
 
       {/* **الخيطُ شجرةٌ كـReddit** (طلبُ أحمد: «تكون مثل Reddit لا مثل
@@ -345,6 +336,7 @@ export default async function TalkPage({
           }))}
           seasons={seasons}
           watchedEps={watchedEps}
+          myState={watchedIt ? "watched" : follow.following ? "library" : null}
           me={me}
           locale={locale}
           signedIn={signedIn}
