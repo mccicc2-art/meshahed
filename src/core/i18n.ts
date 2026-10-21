@@ -365,6 +365,11 @@ const ar = {
   epRatingsHide: "إخفاء تقييمات الحلقات",
   seasonAll: "الموسم كامل ✓",
   seasonUndo: "إلغاء الموسم",
+  /* 🆕 D-1500 — ترتيبُ المواسم */
+  seasonsWatchedFold: "مواسم شاهدتها",
+  seasonOrderLabel: "ترتيب المواسم",
+  seasonOrderProgress: "المتابَعة أولاً",
+  seasonOrderOriginal: "الترتيب الأصلي",
   airsOn: (d: string) => `يُعرض ${d}`,
   markWatchedAria: "تأشير كمشاهَد",
   seasonLabel: (n: number) => `الموسم ${n}`,
@@ -3057,6 +3062,11 @@ const en: Dict = {
   epRatingsHide: "Hide episode ratings",
   seasonAll: "Whole season ✓",
   seasonUndo: "Clear season",
+  /* 🆕 D-1500 — season order */
+  seasonsWatchedFold: "Seasons you've watched",
+  seasonOrderLabel: "Season order",
+  seasonOrderProgress: "In progress first",
+  seasonOrderOriginal: "Original order",
   airsOn: (d: string) => `Airs ${d}`,
   markWatchedAria: "Mark as watched",
   seasonLabel: (n: number) => `Season ${n}`,

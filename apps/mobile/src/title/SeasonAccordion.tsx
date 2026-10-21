@@ -8,6 +8,9 @@ import { backdropUrl } from "@/core/media";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
+import { Chip } from "../library/Chip";
+import * as SecureStore from "expo-secure-store";
+import { SEASON_ORDER_KEY, parseSeasonOrder, splitSeasons, type SeasonOrder } from "@/core/seasonOrder";
 import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
@@ -29,6 +32,15 @@ import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, 
  * الأب) — فعدّادُ «شاهدت N من M» في البطل يتحرّك في اللحظة نفسِها.
  */
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** D-1500 — اختيارُ الترتيب من الجهاز (قراءةٌ متزامنة، نهجُ `feedChoice`) — الافتراضُ «المتابَعة أولاً» */
+function readSeasonOrder(): SeasonOrder {
+  try {
+    return parseSeasonOrder(SecureStore.getItem(SEASON_ORDER_KEY));
+  } catch {
+    return "progress";
+  }
+}
 
 export function SeasonAccordion({
   show,
@@ -98,43 +110,42 @@ export function SeasonAccordion({
     onError,
   });
 
-  return (
-    <View style={{ gap: 8 }}>
-      {total > 0 ? (
-        <View style={{ gap: 6, marginBottom: 6 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            {pending ? (
-              <View style={{ flex: 1, height: 13 }}><View style={{ width: 150, height: 13, borderRadius: 4, backgroundColor: tokens.surface2 }} /></View>
-            ) : (
-              <>
-                <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneAll, total)}</Text>
-                <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
-              </>
-            )}
-            <Pressable
-              onPress={() => setShowRatings((v) => !v)}
-              hitSlop={8}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: showRatings }}
-              accessibilityLabel={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: showRatings ? tokens.surface2 : "transparent" }}
-            >
-              <Icon name={showRatings ? "star-filled" : "star"} size={16} color={showRatings ? tokens.accent : tokens.muted} />
-            </Pressable>
-          </View>
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
-            {pending ? null : <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />}
-          </View>
-          <Text size={11} muted>{t.cascadeHint}</Text>
-        </View>
-      ) : null}
-      {show.seasons.map((s) => {
+  /**
+   * 🆕 D-1500 — **المتابَعةُ أوّلاً** (`core/seasonOrder`): المكتملةُ تنزل تحت غير المكتملة، ومن ستّةٍ تنطوي.
+   * المكتملُ يُجمَّد أوّلَ ما تصل حالتي (لا مع كلِّ تأشير) — موسمٌ يكتمل تحت الإصبع لا يقفز؛ ويُرتَّب من جديد في الفتحة التالية.
+   */
+  const [order, setOrder] = useState<SeasonOrder>(readSeasonOrder);
+  const pickOrder = (v: SeasonOrder) => {
+    setOrder(v);
+    try {
+      SecureStore.setItem(SEASON_ORDER_KEY, v);
+    } catch {
+      /* الحفظُ راحةٌ لا شرط: يبقى الاختيارُ لهذه الجلسة */
+    }
+  };
+  const [foldOpen, setFoldOpen] = useState(false);
+  const frozen = useRef<Set<number> | null>(null);
+  if (!pending && frozen.current === null) {
+    frozen.current = new Set(
+      show.seasons
+        .filter((x) => x.aired > 0 && show.me.watched.filter((k) => k.startsWith(`${x.season_number}:`)).length >= x.aired)
+        .map((x) => x.season_number),
+    );
+  }
+  const doneSet = frozen.current;
+  const split = useMemo(
+    () => (doneSet ? splitSeasons(show.seasons, (x) => doneSet.has(x.season_number), (x) => x.aired > 0) : { active: show.seasons, done: [], differs: false, fold: false }),
+    [show.seasons, doneSet],
+  );
+
+  /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ، بخطٍّ فاصلٍ فوقها) — D-1500 */
+  const card = (s: TvTitlePayload["seasons"][number], flat = false) => {
         const inSeason = show.me.watched.filter((k) => k.startsWith(`${s.season_number}:`)).length;
         const done = s.aired > 0 && inSeason >= s.aired;
         const isOpen = open === s.season_number;
         return (
           /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
-          <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
+          <View key={s.season_number} style={flat ? { borderTopWidth: 1, borderTopColor: tokens.divider } : { borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
             {/* ⚖️ D-1251 — الخطُّ الأصفرُ أعلى الموسم المكتمل حُذف بكلمة أحمد («الخط الأصفر على كل سيزون ما أبغاه»):
                 العدُّ `13/13` وصحُّ «مسح الموسم» الأخضرُ يقولان الاكتمالَ، وخطٌّ ثالثٌ للمعنى نفسِه ضجيج */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
@@ -187,7 +198,87 @@ export function SeasonAccordion({
             {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} onShowRatings={() => setShowRatings(true)} pending={pending} /> : null}
           </View>
         );
-      })}
+  };
+
+  return (
+    <View style={{ gap: 8 }}>
+      {total > 0 ? (
+        <View style={{ gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            {pending ? (
+              <View style={{ flex: 1, height: 13 }}><View style={{ width: 150, height: 13, borderRadius: 4, backgroundColor: tokens.surface2 }} /></View>
+            ) : (
+              <>
+                <Text size={13} style={{ flex: 1 }} numberOfLines={1}>{t.watchedOf(doneAll, total)}</Text>
+                <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
+              </>
+            )}
+            <Pressable
+              onPress={() => setShowRatings((v) => !v)}
+              hitSlop={8}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: showRatings }}
+              accessibilityLabel={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: showRatings ? tokens.surface2 : "transparent" }}
+            >
+              <Icon name={showRatings ? "star-filled" : "star"} size={16} color={showRatings ? tokens.accent : tokens.muted} />
+            </Pressable>
+          </View>
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
+            {pending ? null : <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />}
+          </View>
+          <Text size={11} muted>{t.cascadeHint}</Text>
+        </View>
+      ) : null}
+      {(order === "original" || !split.differs ? show.seasons : split.active).map((s) => card(s))}
+      {order === "progress" && split.differs && !split.fold ? split.done.map((s) => card(s)) : null}
+      {order === "progress" && split.fold ? (
+        /* 🆕 D-1500 — ستّةُ مواسم مكتملة فأكثر: صندوقٌ واحدٌ يُفتح فتظهر صفوفاً قصيرة (الطريقة «٢»)، ولمسةُ صفٍّ تفتح الموسمَ
+           بحلقاته و«إلغاء الموسم» داخله — فزرُّ الإلغاء لا يتكرّر على مواسمَ نادراً ما يُعاد إليها */
+        <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
+          <Pressable onPress={() => setFoldOpen((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: foldOpen }} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 14 }}>
+            <View style={{ transform: [{ rotate: foldOpen ? "0deg" : "-90deg" }] }}>
+              <Icon name="chevron-down" size={16} color={tokens.muted} />
+            </View>
+            <Icon name="check-line" size={16} color={tokens.success} />
+            <Text size={15} weight="700">{t.seasonsWatchedFold}</Text>
+            <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{split.done.length}</Text>
+          </Pressable>
+          {foldOpen
+            ? split.done.map((s) =>
+                open === s.season_number ? (
+                  card(s, true)
+                ) : (
+                  <Pressable
+                    key={s.season_number}
+                    onPressIn={() => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, showRatings))}
+                    onPress={() => setOpen(s.season_number)}
+                    accessibilityRole="button"
+                    style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: pressed ? tokens.surface2 : "transparent" })}
+                  >
+                    <View style={{ transform: [{ rotate: "-90deg" }] }}>
+                      <Icon name="chevron-down" size={14} color={tokens.muted} />
+                    </View>
+                    <Text size={14} weight="600" numberOfLines={1} style={{ flex: 1 }}>{s.name || t.seasonLabel(s.season_number)}</Text>
+                    <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{s.aired}/{s.aired}</Text>
+                    <Icon name="check-line" size={14} color={tokens.success} />
+                  </Pressable>
+                ),
+              )
+            : null}
+        </View>
+      ) : null}
+      {split.differs ? (
+        /* 🆕 D-1500 — «ترتيب المواسم» في آخر القائمة: الرقاقتان (العائلةُ الواحدة `Chip`)، والاختيارُ للأعمال كلِّها ويُحفظ على الجهاز.
+           لا يُرسم حين لا يختلف الترتيبُ عن الأصل — رقاقةٌ لا تغيّر شيئاً تُقرأ عطلاً */
+        <View style={{ marginTop: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: tokens.divider, gap: 8 }}>
+          <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{t.seasonOrderLabel}</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Chip label={t.seasonOrderProgress} active={order === "progress"} onPress={() => pickOrder("progress")} />
+            <Chip label={t.seasonOrderOriginal} active={order === "original"} onPress={() => pickOrder("original")} />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

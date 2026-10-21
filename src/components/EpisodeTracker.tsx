@@ -12,6 +12,8 @@ import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
 import { ImdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
+import { chipClass } from "./ui/controls";
+import { SEASON_ORDER_KEY, parseSeasonOrder, splitSeasons, type SeasonOrder } from "@/core/seasonOrder";
 import dynamic from "next/dynamic";
 import type { EpisodeTarget } from "./EpisodeRateSheet";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -204,6 +206,35 @@ export function EpisodeTracker({
     }
     return m;
   }, [watched, absolute, seasonBounds]);
+
+  /**
+   * 🆕 D-1500 — **المتابَعةُ أوّلاً** (`core/seasonOrder`، توأمُ التطبيق): المكتملةُ تحت غير المكتملة، ومن ستّةٍ تنطوي.
+   * المكتملُ يُجمَّد عند فتح الصفحة (المُهيِّئُ يجري مرّةً) — موسمٌ يكتمل تحت المؤشّر لا يقفز من مكانه.
+   * والاختيارُ من الجهاز بعد الرسم الأوّل (الخادمُ لا يعرفه) — فمن اختار «الأصلي» يرى الأصلَ بعد لحظة.
+   */
+  const [doneSet] = useState(
+    () => new Set(summaries.filter((x) => x.aired_count > 0 && (watchedPerSeason.get(x.season_number) ?? 0) >= x.aired_count).map((x) => x.season_number)),
+  );
+  const split = useMemo(() => splitSeasons(summaries, (x) => doneSet.has(x.season_number), (x) => x.aired_count > 0), [summaries, doneSet]);
+  const [order, setOrder] = useState<SeasonOrder>("progress");
+  const [foldOpen, setFoldOpen] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- قراءةُ الجهاز بعد الترطيب: الخادمُ لا يعرفها
+      setOrder(parseSeasonOrder(window.localStorage.getItem(SEASON_ORDER_KEY)));
+    } catch {
+      /* تخزينٌ محجوب: يبقى الافتراض */
+    }
+  }, []);
+  const pickOrder = (v: SeasonOrder) => {
+    tap(6);
+    setOrder(v);
+    try {
+      window.localStorage.setItem(SEASON_ORDER_KEY, v);
+    } catch {
+      /* الحفظُ راحةٌ لا شرط */
+    }
+  };
 
   /* 🔴 🆕 **والعدّادُ الأعلى من الصفوف الصحيحة وحدَها** (D-603): في
      الترقيم المطلق `watched.size` يحمل الأشباحَ فيقول «أنهيتَ كلَّ
@@ -537,60 +568,8 @@ export function EpisodeTracker({
   }
 
 
-  return (
-    <div>
-      {/* 🆕 **التلميحُ الأوّلُ في الترتيب لأنّه أقوى ما يُجهَل** (D-852):
-          **«شاهدتُ حتى هنا» والموسمُ الكامل يختصران عشراتِ الضغطات** —
-          **ومن لا يعرفهما يؤشّر حلقةً حلقة** ويظنّ التطبيقَ بطيئاً.
-          ⚠️ **ويُقرأ مرّةً ثمّ يصمت للأبد** (`OneTimeHint`) — لا صفٌّ
-          دائمٌ يشرح، **وشرحٌ لا يصمت يصير أثاثاً.** */}
-      <OneTimeHint id="episode-bulk" text={t.hintEpisodeBulk} closeLabel={t.closeLabel} />
-      <div className="mb-5">
-        <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
-          {/* 🆕 **والعمودُ الخاتم واحدٌ من أعلى الصفحة إلى أسفلها** (D-413،
-              طلبُ أحمد: «القلم والنجمة خلّهم تحت الثلاث نقاط»): كانت
-              النجمةُ تسبق النسبةَ فتقع على بُعد ٦٧px من الحافّة **ونقاطُ
-              «المزيد» على ٢٦** — **ثلاثةُ محاورَ في طرفٍ واحد.**
-              **فصارت النجمةُ آخرَ الصفّ** وبإزاحةٍ سالبةٍ تُلغي حشوَها،
-              **فمركزُها على محور النقاط بالضبط.** */}
-          <span className="flex items-center gap-1.5">
-            <span className="font-semibold text-accent-2">{progress}%</span>
-            <button
-              type="button"
-              onClick={toggleRatings}
-              aria-pressed={showRatings}
-              aria-label={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              title={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              className={`grid place-items-center w-9 h-9 -my-2 -me-1.5 rounded-full transition ${
-                showRatings
-                  ? "text-accent bg-accent/10"
-                  : "text-muted hover:text-foreground hover:bg-surface-2"
-              }`}
-            >
-              <Icon name="star" size={16} />
-            </button>
-          </span>
-        </div>
-        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-          {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
-              يجري على المركّب. نقطة الأصل من جهة البداية في الاتجاهين */}
-          <div
-            className="h-full w-full rounded-full bg-accent origin-left rtl:origin-right transition-transform duration-500"
-            style={{ transform: `scaleX(${progress / 100})` }}
-          />
-        </div>
-        <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
-        {guestSeen && <p className="text-xs text-muted mt-1">{t.episodesGuestHint}</p>}
-        {err && (
-          <Alert inline className="mt-2.5">
-            {err}
-          </Alert>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        {summaries.map((s) => {
+  /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ) — D-1500 */
+  const seasonCard = (s: SeasonSummary, flat = false) => {
           const isOpen = open === s.season_number;
           const episodes = episodesBySeason[s.season_number];
           const seasonWatched = Math.min(
@@ -602,7 +581,7 @@ export function EpisodeTracker({
           return (
             <div
               key={s.season_number}
-              className="rounded-2xl border border-border bg-surface overflow-hidden"
+              className={flat ? "border-t border-border" : "rounded-2xl border border-border bg-surface overflow-hidden"}
             >
               <div className="flex items-center gap-2 px-3.5 py-1">
                 <button
@@ -862,7 +841,118 @@ export function EpisodeTracker({
               )}
             </div>
           );
-        })}
+  };
+
+  return (
+    <div>
+      {/* 🆕 **التلميحُ الأوّلُ في الترتيب لأنّه أقوى ما يُجهَل** (D-852):
+          **«شاهدتُ حتى هنا» والموسمُ الكامل يختصران عشراتِ الضغطات** —
+          **ومن لا يعرفهما يؤشّر حلقةً حلقة** ويظنّ التطبيقَ بطيئاً.
+          ⚠️ **ويُقرأ مرّةً ثمّ يصمت للأبد** (`OneTimeHint`) — لا صفٌّ
+          دائمٌ يشرح، **وشرحٌ لا يصمت يصير أثاثاً.** */}
+      <OneTimeHint id="episode-bulk" text={t.hintEpisodeBulk} closeLabel={t.closeLabel} />
+      <div className="mb-5">
+        <div className="flex items-center justify-between text-sm mb-2">
+          <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
+          {/* 🆕 **والعمودُ الخاتم واحدٌ من أعلى الصفحة إلى أسفلها** (D-413،
+              طلبُ أحمد: «القلم والنجمة خلّهم تحت الثلاث نقاط»): كانت
+              النجمةُ تسبق النسبةَ فتقع على بُعد ٦٧px من الحافّة **ونقاطُ
+              «المزيد» على ٢٦** — **ثلاثةُ محاورَ في طرفٍ واحد.**
+              **فصارت النجمةُ آخرَ الصفّ** وبإزاحةٍ سالبةٍ تُلغي حشوَها،
+              **فمركزُها على محور النقاط بالضبط.** */}
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold text-accent-2">{progress}%</span>
+            <button
+              type="button"
+              onClick={toggleRatings}
+              aria-pressed={showRatings}
+              aria-label={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              title={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              className={`grid place-items-center w-9 h-9 -my-2 -me-1.5 rounded-full transition ${
+                showRatings
+                  ? "text-accent bg-accent/10"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
+              }`}
+            >
+              <Icon name="star" size={16} />
+            </button>
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
+              يجري على المركّب. نقطة الأصل من جهة البداية في الاتجاهين */}
+          <div
+            className="h-full w-full rounded-full bg-accent origin-left rtl:origin-right transition-transform duration-500"
+            style={{ transform: `scaleX(${progress / 100})` }}
+          />
+        </div>
+        <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
+        {guestSeen && <p className="text-xs text-muted mt-1">{t.episodesGuestHint}</p>}
+        {err && (
+          <Alert inline className="mt-2.5">
+            {err}
+          </Alert>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {(order === "original" || !split.differs ? summaries : split.active).map((s) => seasonCard(s))}
+        {order === "progress" && split.differs && !split.fold ? split.done.map((s) => seasonCard(s)) : null}
+        {order === "progress" && split.fold && (
+          /* 🆕 D-1500 — ستّةُ مواسم مكتملة فأكثر: صندوقٌ واحد يُفتح صفوفاً قصيرة، ولمسةُ صفٍّ تفتح الموسمَ داخله (توأمُ التطبيق) */
+          <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setFoldOpen((v) => !v)}
+              aria-expanded={foldOpen}
+              className="w-full flex items-center gap-2.5 px-3.5 py-3.5 text-start"
+            >
+              <Icon
+                name="chevron-down"
+                size={16}
+                className={`text-muted transition-transform duration-300 ${foldOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
+              />
+              <Icon name="check-line" size={16} strokeWidth={2.2} className="text-[color:var(--success)]" />
+              <span className="font-semibold text-15">{t.seasonsWatchedFold}</span>
+              <span className="text-xs text-muted tabular-nums">{split.done.length}</span>
+            </button>
+            {foldOpen &&
+              split.done.map((s) =>
+                open === s.season_number ? (
+                  seasonCard(s, true)
+                ) : (
+                  <button
+                    key={s.season_number}
+                    type="button"
+                    onClick={() => toggleOpen(s.season_number)}
+                    aria-label={t.seasonToggleAria(s.season_number)}
+                    className="w-full flex items-center gap-2.5 px-3.5 min-h-11 border-t border-border text-start hover:bg-surface-2 transition"
+                  >
+                    <Icon name="chevron-down" size={14} className="text-muted -rotate-90 rtl:rotate-90" />
+                    <span className="flex-1 min-w-0 truncate font-semibold text-sm">{s.name || t.seasonLabel(s.season_number)}</span>
+                    <span className="text-xs text-muted tabular-nums" dir="ltr">
+                      {s.aired_count}/{s.aired_count}
+                    </span>
+                    <Icon name="check-line" size={14} strokeWidth={2.2} className="text-[color:var(--success)]" />
+                  </button>
+                ),
+              )}
+          </div>
+        )}
+        {split.differs && (
+          /* 🆕 D-1500 — «ترتيب المواسم» في آخر القائمة: رقاقتان (`chipClass`)، للأعمال كلِّها، محفوظٌ على الجهاز */
+          <div className="mt-1.5 pt-3 border-t border-[color:var(--divider)]">
+            <p className="px-1 mb-2 text-xs font-semibold text-muted">{t.seasonOrderLabel}</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => pickOrder("progress")} aria-pressed={order === "progress"} className={chipClass(order === "progress")}>
+                {t.seasonOrderProgress}
+              </button>
+              <button type="button" onClick={() => pickOrder("original")} aria-pressed={order === "original"} className={chipClass(order === "original")}>
+                {t.seasonOrderOriginal}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {(rateTarget !== null || rateSheetMounted) && (
