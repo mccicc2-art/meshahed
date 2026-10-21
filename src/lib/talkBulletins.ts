@@ -210,6 +210,11 @@ export async function runTalkBulletinSlice(limit = SLICE): Promise<{
 }> {
   const supabase = await createClient();
 
+  /* 🆕 R58 — في كلّ دورةٍ تُستكمل «نهايةُ الموسم» لنشراتٍ سبقت الحقل (سقفٌ صغير، ولا يُسقط الدورة).
+     🔴 R62 — **أوّلَ الدورة لا آخرَها**: كانت بعد شرطَي الخروج المبكّر («لا مرشَّحين»)، فلا تُبلَغ في دورةٍ بلا جديد — وهي الغالبة،
+     فبقي تيد لاسو «متوقّفاً» بعد الرفع (لا علامةَ واحدة على الإنتاج). */
+  await healBulletinFinales().catch(() => 0);
+
   const { data: slice, error } = await supabase.rpc("talk_bulletin_slice", { p_limit: limit });
   if (error || !slice) return { checked: 0, posted: 0 };
 
@@ -234,8 +239,6 @@ export async function runTalkBulletinSlice(limit = SLICE): Promise<{
   );
 
   const bulletins = built.filter((b): b is GeneratedBulletin => b !== null);
-  /* 🆕 R58 — وفي الدورة نفسِها تُستكمل «نهايةُ الموسم» لنشراتٍ سبقت الحقل (سقفٌ صغير، ولا يُسقط الدورة) */
-  await healBulletinFinales().catch(() => 0);
   if (!bulletins.length) return { checked: rows.length, posted: 0 };
 
   // الكتابةُ بعميل الخدمة (D-898) — القراءةُ أعلاه تبقى على عميل الجلسة
