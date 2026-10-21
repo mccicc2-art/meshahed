@@ -1011,6 +1011,9 @@ const ar = {
      **فالعنوانُ يحمل الاسم، والملصقُ يحمل الهويّة البصرية.** */
   talkRoomTitle: (title: string, isTv: boolean) =>
     `نقاش ${isTv ? "مسلسل" : "فيلم"} ${title}`,
+  /* 🆕 R61 — عنوانُ بطاقة الغرفة في قائمة النقاشات (أحمد ٢١ أكتوبر: «نقاش ثم اسم المسلسل»): كلمةٌ واحدةٌ قبل الاسم —
+     «نقاش مسلسل» كانت تأكل نصفَ السطر وتقطع الاسم، والقسمُ كلُّه نقاشات. وعنوانُ صفحة الغرفة يبقى `talkRoomTitle` */
+  talkRoomCard: (title: string) => `نقاش ${title}`,
   /* **«مشاركة» تجمع الجذرَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
      أحدَهما وحده يكذب على الآخر** */
   talkRoomPosts: (n: number) =>
@@ -3587,6 +3590,7 @@ const en: Dict = {
   quickAddDone: "Added to To watch",
   talkRoomTitle: (title: string, isTv: boolean) =>
     `Discussing the ${isTv ? "series" : "film"} ${title}`,
+  talkRoomCard: (title: string) => `Discussing ${title}`,
   talkRoomPosts: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
   talkRoomPostsWeek: (n: number) =>
     n === 1 ? "1 post this week" : `${num(n, "en")} posts this week`,

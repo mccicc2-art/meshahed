@@ -426,18 +426,22 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
   const { t, tokens } = useApp();
   /* 🆕 R58 — «النقاش العام» (الصورة ⑯): البطاقةُ نفسُها، شعارُ لوبز مكانَ الملصق، وسطرُها «أي شي عن الأفلام والمسلسلات»،
      ودبّوسُها علامةٌ ثابتة — مثبّتةٌ للجميع فوق القائمة (أحمد «٢ أ») ولا تُفكّ */
-  if (general) room = { ...room, posterPath: null, backdropPath: null, airing: null, episode_line: t.talkGeneralCard };
+  /* 🆕 R61 — «النقاش العام» بطاقةٌ مختصرةٌ بارتفاع 76 (أحمد ٢١ أكتوبر: «ب»): بلا عملٍ فلا ملصقَ يحتاج طولاً — مربّعٌ 52 فيه
+     الرمز، والعنوان، وتحته الوصفُ والعددُ في سطرٍ واحد، والدبّوسُ علامةٌ ثابتة */
+  if (general) return <GeneralRoomCard room={room} doors={doors} />;
   /* 🆕 D-1494 — **التصميمُ الجديد** (لقطةُ أحمد ٢٠ أكتوبر): بوسترٌ كبيرٌ بطول البطاقة، والغلافُ ظاهرٌ كاملاً تحت ظلٍّ قويٍّ في
      البداية (حيث البوسترُ والنصّ) يخفّ نحو النهاية — كان الغلافُ باهتاً كلُّه (٣٥٪) بلا ظلّ. وثلاثةُ أسطرٍ قصيرة: العنوان ·
      «الحلقة ١٠ · الموسم ٣» · «٧ مشاركات · منذ ٨ دقائق»، ثمّ الوجوه. `hero` يكبّر المقاساتِ وحدَها (القاعدة ٣). */
-  const posterW = hero ? 96 : 84;
+  /* 🆕 R61 — **البطاقةُ أخفّ** (أحمد ٢١ أكتوبر: «كبيرة الحجم مو عاجبني» ← «١+»): ملصقٌ 64×96 فارتفاعُها نحو 120 بدل 152،
+     فتظهر ثلاثُ غرفٍ ونصفٌ بدل اثنتين ونصف. و`hero` (بطاقةُ «الأكثر كلاماً» في الأنشطة) بمقاسها لم تتغيّر */
+  const posterW = hero ? 96 : 64;
   const poster = posterFor(room.posterPath, posterW);
   const bg = backdropUrl(room.backdropPath, "w780");
-  const title = general ? t.talkGeneralTitle : t.talkRoomTitle(room.title?.trim() || "", room.mediaType === "tv");
+  const title = hero ? t.talkRoomTitle(room.title?.trim() || "", room.mediaType === "tv") : t.talkRoomCard(room.title?.trim() || "");
   const shadeId = `room-shade-${room.mediaType}-${room.tmdbId}`;
   const card = (
     <Pressable
-      onPress={() => doors.onWeb(general ? "/talk/general/0" : `/talk/${room.mediaType}/${room.tmdbId}`)}
+      onPress={() => doors.onWeb(`/talk/${room.mediaType}/${room.tmdbId}`)}
       accessibilityRole="link"
       style={({ pressed }) => ({ flexDirection: "row", gap: 14, padding: 12, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
     >
@@ -458,15 +462,15 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
           </Svg>
         </View>
       ) : null}
-      <View style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", borderWidth: general ? 1 : 0, borderColor: tokens.border }}>
-        {general ? (
-          <Image source={require("../../assets/loopz-mark.png")} style={{ width: posterW * 0.6, height: posterW * 0.6, borderRadius: posterW * 0.3 }} contentFit="cover" />
-        ) : poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+      <View style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+        {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
       </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 6, paddingVertical: 4 }}>
-        <Text size={hero ? 18 : 16} weight="700" numberOfLines={1} style={{ marginEnd: general || (pin && !(pin.readOnly && room.pin !== 2)) ? 28 : 0 }}>{title}</Text>
-        {room.episode_line ? <Text size={13} numberOfLines={1}>{room.episode_line}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0, gap: hero ? 6 : 5, paddingVertical: hero ? 4 : 2 }}>
+        <Text size={hero ? 18 : 16} weight="700" numberOfLines={1} style={{ marginEnd: (pin && !(pin.readOnly && room.pin !== 2)) ? 28 : 0 }}>{title}</Text>
+        {room.episode_line && hero ? <Text size={13} numberOfLines={1}>{room.episode_line}</Text> : null}
+        {/* 🆕 R61 — في البطاقة الخفيفة الحلقةُ والعددُ سطرٌ واحد («م٢ · ح٣ · ٠ مشاركة») — ثلاثةُ أسطرٍ ووجوهٌ لا تسعها 96 */}
         <Text size={12} muted numberOfLines={1}>
+          {room.episode_line && !hero ? <Text size={13}>{room.episode_line}{" · "}</Text> : null}
           {/* 🆕 D-1201 — مع «الأكثر تفاعلاً» الرقمُ رقمُ الترتيب (تفاعلُ الشهر) — وإلّا بدا الترتيبُ عشوائيّاً */}
           {activity ? t.talkRoomActivityMonth(talkActivity(room)) : hero && room.postsWeek > 0 ? t.talkRoomPostsWeek(room.postsWeek) : t.talkRoomPosts(room.posts)}
           {/* 🔴 D-1207 — الوقتُ من مشاركات الأعضاء لا من إشعار الحلقة؛ غرفةٌ بلا مشاركةٍ لا تقول وقتاً */}
@@ -485,15 +489,6 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
       {room.airing ? <AiringBadge airing={room.airing} /> : null}
     </Pressable>
   );
-  if (general)
-    return (
-      <View>
-        {card}
-        <View pointerEvents="none" style={{ position: "absolute", top: 8, end: 8, width: 30, height: 30, alignItems: "center", justifyContent: "center" }}>
-          <Icon name="pin-filled" size={17} color={tokens.accent} />
-        </View>
-      </View>
-    );
   if (!pin || (pin.readOnly && room.pin !== 2)) return card;
   const level = pin.admin ? 2 : 1;
   /* درجتا التثبيت (D-301/D-314): لوبز ثمّ أنا — وما ثبّتته لوبز علامةٌ لا تُضغط لغير الإدارة */
@@ -517,6 +512,32 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
     </View>
   );
 });
+
+function GeneralRoomCard({ room, doors }: { room: CommunityRoom; doors: CardDoors }) {
+  const { t, tokens } = useApp();
+  return (
+    <Pressable
+      onPress={() => doors.onWeb("/talk/general/0")}
+      accessibilityRole="link"
+      accessibilityLabel={t.talkGeneralTitle}
+      style={({ pressed }) => ({ height: 76, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12, borderRadius: radius.card, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, transform: [{ scale: pressed ? 0.99 : 1 }] })}
+    >
+      <View style={{ width: 52, height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+        <Image source={require("../../assets/loopz-mark.png")} style={{ width: 34, height: 34, borderRadius: 17 }} contentFit="cover" />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3, marginEnd: 28 }}>
+        <Text size={16} weight="700" numberOfLines={1}>{t.talkGeneralTitle}</Text>
+        <Text size={13} numberOfLines={1}>
+          {t.talkGeneralCard}
+          <Text size={12} muted>{` · ${t.talkRoomPosts(room.posts)}`}</Text>
+        </Text>
+      </View>
+      <View pointerEvents="none" style={{ position: "absolute", top: 8, end: 8, width: 30, height: 30, alignItems: "center", justifyContent: "center" }}>
+        <Icon name="pin-filled" size={17} color={tokens.accent} />
+      </View>
+    </Pressable>
+  );
+}
 
 /**
  * 🆕 R56 — **شارةُ «يعرض الآن»** في زاوية البطاقة السفلى من جهة النهاية (أحمد ٢١ أكتوبر: «يمين تحت داخل ايطار العمل»؛ «ج»):
