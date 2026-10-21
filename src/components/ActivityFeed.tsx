@@ -459,14 +459,16 @@ function CommentRow({
      سيُرسم رابطاً إلى `/movie/0` — **ورابطٌ ميّتٌ في خطٍّ اجتماعيّ أسوأُ
      من صفٍّ غائب** (D-181/D-063). */
   const isList = !!a.listId;
+  /* 🆕 D-1503 — **صفُّ تقييم الحلقة** (`ep_rate`): لا صفحةَ مراجعةٍ له ولا ردودَ ولا قلبَ بعد — نصُّه يفتح العمل، وذيلُه مشاركةٌ وحدَها */
+  const isEp = a.kind === "ep_rate";
   /* **وضغطةُ الصفّ تفتح التعليقَ نفسَه لا غرفةَ العمل** (D-242، طلبُ
      أحمد: «وحتى طريقة الفتح نفس الصورة»). **كانت تفتح `/talk`** — فتضغط
      كلامَ خالد فتصل إلى صفحةٍ فيها كلامُ عشرة وتبحث عن سطره.
      **ومراجعةُ القائمة ليس لها صفحةٌ خاصّة** (D-334: بابٌ واحدٌ للقائمة)
      — **فالوجهتان واحدةٌ: صفحتُها وفيها تبويبُ التقييمات** (D-333). */
   const listHref = a.listId ? `/lists/${a.listId}` : null;
-  const reviewHref = listHref ?? `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
   const titleHref = listHref ?? `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`;
+  const reviewHref = listHref ?? (isEp ? titleHref : `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`);
   /* **واسمُ قائمةِ لوبز بلغة القارئ** (دَينُ D-328) — البوّابةُ نفسُها */
   const rowTitle = isList
     ? curatedName(a.listSlug, a.title ?? "", locale === "en" ? "en" : "ar")
@@ -483,7 +485,7 @@ function CommentRow({
        في الترميز لا مخبوءٌ في مكوّن. */
     /* ⚠️ **وصفُّ القائمة لا يُعدّ**: مفتاحُ العدّ `(شخص، عمل)` **ولا عملَ
        فيه** — فكلُّ صفوف القوائم كانت ستشترك في مفتاحٍ واحد (D-237). */
-    <article className="py-4 first:pt-0 flex gap-3" data-post-key={isList ? undefined : viewKey}>
+    <article className="py-4 first:pt-0 flex gap-3" data-post-key={isList || isEp ? undefined : viewKey}>
       {/* **العمودُ الأيسر يحمل الصفَّ كلَّه، والملصقُ وحده خارجه** (D-228).
           **والنصُّ يمرّ تحت الوجه لا بجانبه** (بلاغُ أحمد: «المساحة تحت
           صورة الشخص نحتاجها ضمن مساحة التعليق») — **فالوجهُ يجاور
@@ -575,6 +577,12 @@ function CommentRow({
                 {isList && <Icon name="list" size={13} className="shrink-0" />}
                 <bdi className="truncate">{rowTitle}</bdi>
               </Link>
+              {/* 🆕 D-1503 — وسمُ الحلقة بين العمل والنجمة (و«+٢» إن قُيّم معها غيرُها ذلك اليوم) */}
+              {isEp && a.epSeason != null && a.epEpisode != null && (
+                <span className="shrink-0 rounded-full border border-border bg-surface-2 px-2 py-px text-[11px] font-semibold tabular-nums">
+                  {t.epChip(a.epSeason, a.epEpisode, Math.max(0, (a.epCount ?? 1) - 1))}
+                </span>
+              )}
               {a.rating != null && (
                 <span
                   className="shrink-0 text-14 font-bold text-accent tabular-nums"
@@ -659,7 +667,13 @@ function CommentRow({
           </div>
         )}
 
-        {!isList && (
+        {isEp && (
+          <div className="mt-auto -mx-0.5 flex items-center justify-end gap-1">
+            <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
+          </div>
+        )}
+
+        {!isList && !isEp && (
         <div className="mt-auto">
           <RowComment
             reviewUserId={a.person.id}

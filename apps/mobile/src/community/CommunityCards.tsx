@@ -115,6 +115,17 @@ export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
  */
 function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardActs; onList?: () => void; share?: { path: string; title: string } }) {
   const { t, tokens, locale } = useApp();
+  /* 🆕 D-1503 — **صفُّ تقييم الحلقة: مشاركةٌ وحدَها** — لا قلبَ ولا ردَّ لتقييم الحلقة في القاعدة بعد، وقلبٌ هنا كان سيُكتب
+     على مراجعة العمل كلِّه (`likeBody` يعرف «مراجعة» و«قائمة» وحدَهما) */
+  if (row.kind === "comment" && row.item.kind === "ep_rate") {
+    return share ? (
+      <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: "auto", paddingTop: 4, marginHorizontal: -10 }}>
+        <Pressable onPress={() => acts.share(share.path, share.title)} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.shareLinkLabel} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, minHeight: 36 }}>
+          <Icon name="share" size={16} color={tokens.muted} />
+        </Pressable>
+      </View>
+    ) : null;
+  }
   const { likes, liked } = likeOf(row);
   const mine = row.kind === "comment" && row.item.person.id === acts.meId;
   const readOnly = mine || !acts.signedIn;
@@ -235,13 +246,15 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
   const isList = !!a.listId;
   const who = displayNameOf(a.person, t.anonymousUser);
   const whoPath = profileHref(a.person);
-  const reviewPath = isList ? null : `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
+  /* D-1503 — تقييمُ الحلقة لا صفحةَ مراجعةٍ له: نصُّه يفتح العمل */
+  const isEp = a.kind === "ep_rate";
+  const reviewPath = isList || isEp ? null : `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
   const rowTitle = isList ? curatedName(a.listSlug, a.title ?? "", locale === "en" ? "en" : "ar") : a.title;
   /* المحجوبُ لا يُترجَم (D-315) — والخادمُ لا يرسل له ترجمة أصلاً */
   const translated = isList ? null : row.translated;
   const text = translated && !original ? translated : a.review ?? "";
   const hidden = a.hasSpoiler && !reveal;
-  const openText = () => (isList && a.listId ? doors.onList(a.listId) : reviewPath ? doors.onWeb(reviewPath) : undefined);
+  const openText = () => (isList && a.listId ? doors.onList(a.listId) : reviewPath ? doors.onWeb(reviewPath) : isEp ? doors.onTitle(a.media_type, a.tmdb_id) : undefined);
   const cover = isList && a.listCover ? backdropUrl(a.listCover, "w300") : null;
 
   return (
@@ -269,6 +282,12 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
                 {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
                 <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{rowTitle}</Text>
               </Pressable>
+              {/* 🆕 D-1503 — وسمُ الحلقة «S1 · E3» (و«+٢» إن قُيّم معها غيرُها ذلك اليوم) بين العمل والنجمة */}
+              {isEp && a.epSeason != null && a.epEpisode != null ? (
+                <Pressable onPress={titleDoor} hitSlop={4} style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1 }}>
+                  <Text size={11} weight="600" style={{ fontVariant: ["tabular-nums"] }}>{t.epChip(a.epSeason, a.epEpisode, Math.max(0, (a.epCount ?? 1) - 1))}</Text>
+                </Pressable>
+              ) : null}
               {a.rating != null ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                   <Icon name="star-filled" size={12} color={tokens.accent} />
@@ -282,7 +301,7 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
         {hidden ? (
           <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.surface2 }}>
             <Icon name="eye-off" size={14} color={tokens.muted} />
-            <Text size={13} muted>{t.spoilerMark}</Text>
+            <Text size={13} muted>{isEp ? t.epSpoilerUnwatched : t.spoilerMark}</Text>
           </Pressable>
         ) : (
           <>

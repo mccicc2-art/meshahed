@@ -9,8 +9,10 @@ export function FriendBadge({ people }: { people: { name: string; avatar_url: st
   const who = people.find((p) => friendBadge(p.state));
   const b = who ? friendBadge(who.state) : null;
   if (!who || !b) return null;
-  const color = b.kind === "rated" ? "var(--accent)" : b.kind === "done" ? "var(--success)" : "#fff";
-  const label = b.kind === "rated" ? `★ ${b.rating}` : b.kind === "done" ? "✓" : b.episode ? `▶ S${b.season} · E${b.episode}` : `▶ S${b.season}`;
+  const color = b.kind === "rated" || b.kind === "ep_rated" ? "var(--accent)" : b.kind === "done" ? "var(--success)" : "#fff";
+  /* 🆕 D-1503 — «★ ٩ · E3»: تقييمُه للحلقة التي وصلها (توأمُ التطبيق) */
+  const label =
+    b.kind === "rated" ? `★ ${b.rating}` : b.kind === "ep_rated" ? `★ ${b.rating} · E${b.episode}` : b.kind === "done" ? "✓" : b.episode ? `▶ S${b.season} · E${b.episode}` : `▶ S${b.season}`;
   return (
     <span
       aria-label={`${who.name} · ${label}`}

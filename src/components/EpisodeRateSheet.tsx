@@ -7,6 +7,7 @@ import { tap } from "@/lib/haptics";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
+import { Icon } from "./Icon";
 
 export interface EpisodeTarget {
   season: number;
@@ -15,6 +16,8 @@ export interface EpisodeTarget {
   runtime: number | null;
   rating: number | null;
   review: string | null;
+  /** 🆕 D-1503 — رايةُ الحرق الحاليّة */
+  spoiler?: boolean;
 }
 
 /**
@@ -41,12 +44,13 @@ export function EpisodeRateSheet({
   locale: Locale;
   onClose: () => void;
   /** يُبلَّغ بالنتيجة كي يحدّث الصفّ تفاؤلياً — و`null` تعني «سُحب التقييم» */
-  onSaved: (season: number, episode: number, rating: number | null, review: string | null) => void;
+  onSaved: (season: number, episode: number, rating: number | null, review: string | null, spoiler?: boolean) => void;
 }) {
   const t = getDict(locale);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState("");
+  const [spoiler, setSpoiler] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -59,6 +63,7 @@ export function EpisodeRateSheet({
     setSeen(key);
     setRating(target?.rating ?? 0);
     setReview(target?.review ?? "");
+    setSpoiler(!!target?.spoiler);
     setError(null);
   }
 
@@ -82,8 +87,9 @@ export function EpisodeRateSheet({
           rating,
           review: body || null,
           runtime: target.runtime,
+          spoiler: !!body && spoiler,
         });
-        onSaved(target.season, target.episode, rating, body || null);
+        onSaved(target.season, target.episode, rating, body || null, !!body && spoiler);
         onClose();
       } catch (e) {
         setError((e as Error).message);
@@ -159,6 +165,22 @@ export function EpisodeRateSheet({
               placeholder={t.epReviewPlaceholder}
               className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-14 leading-relaxed outline-none focus:border-accent/60 transition resize-none"
             />
+
+            {/* 🆕 D-1503 — **رقاقةُ الحرق نفسُها في `RatingBox`** (لا مفتاحٌ ثانٍ): مفعّلةً يُغطّى رأيُك في الأنشطة عمّن لم يشاهد الحلقة،
+                ومن شاهدها يقرؤه */}
+            <button
+              type="button"
+              onClick={() => setSpoiler((v) => !v)}
+              aria-pressed={spoiler}
+              className={
+                spoiler
+                  ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-12 font-bold text-accent transition"
+                  : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 text-muted transition hover:text-foreground"
+              }
+            >
+              <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
+              <span>{t.spoilerMark}</span>
+            </button>
 
             {error && <Alert>{error}</Alert>}
 

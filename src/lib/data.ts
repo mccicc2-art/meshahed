@@ -1547,7 +1547,8 @@ export async function getWatchedOf(
  * النوع أصلاً، **والخطرُ المعاكس** — صفُّ قائمةٍ يصل إلى واجهةٍ لا تعرفه
  * فيُرسم برابط `/movie/null` — **هو ما يُحرس منه هنا وفي الرسم.**
  */
-export type FeedKind = "rate" | "movie" | "episodes" | "add" | "list_review";
+/* 🆕 D-1503 — `ep_rate`: تقييمُ حلقةٍ معه نصّ (الهجرة ٢١٧) — صفٌّ لكلّ (شخص + عمل + يوم) كأخواته */
+export type FeedKind = "rate" | "movie" | "episodes" | "add" | "list_review" | "ep_rate";
 
 export interface FeedItem {
   person: PersonLite;
@@ -1580,6 +1581,10 @@ export interface FeedItem {
      `backdrop` من TMDB، **وحقلٌ باسمه لا `poster_path` يحمل مقاسين**
      (D-224/D-312). **وغيابُه يعيد الصفَّ إلى فراغه القديم حرفاً.** */
   listCover?: string | null;
+  /** 🆕 D-1503 — صفُّ `ep_rate`: الحلقةُ الممثِّلة (الأحدثُ قُيّمت بنصٍّ ذلك اليوم) وعددُ ما قُيّم معها */
+  epSeason?: number | null;
+  epEpisode?: number | null;
+  epCount?: number | null;
 }
 
 /**
@@ -1658,6 +1663,10 @@ export async function getCommunityFeed(
       list_slug?: string | null;
       /* 🆕 **ذيلُ الهجرة ١١٩** — يغيب قبلها فيُقرأ `null` (D-179) */
       list_cover?: string | null;
+      /* 🆕 ذيلُ الهجرة ٢١٧ — يغيب قبلها */
+      ep_season?: number | null;
+      ep_episode?: number | null;
+      ep_count?: number | null;
     };
     // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
     // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
@@ -1756,7 +1765,7 @@ export async function getCommunityFeed(
         /* **وتقييمُ القائمة رقمٌ كتقييم العمل** — سلّمٌ واحدٌ من عشرة
            (D-002/D-327)، فيُرسم في موضعه نفسِه بلا فرعٍ في الواجهة. */
         rating:
-          kind === "rate" || kind === "list_review" ? (r.rating ?? null) : null,
+          kind === "rate" || kind === "list_review" || kind === "ep_rate" ? (r.rating ?? null) : null,
         review: review || null,
         title: r.list_id ? (r.list_name ?? r.title) : r.title,
         poster_path: r.poster_path,
@@ -1773,6 +1782,9 @@ export async function getCommunityFeed(
         listSlug: r.list_slug ?? null,
         /* 🆕 الهجرة ١١٩ — غلافُ القائمة يسافر مع صفِّها (D-425) */
         listCover: r.list_cover ?? null,
+        ...(kind === "ep_rate"
+          ? { epSeason: r.ep_season ?? null, epEpisode: r.ep_episode ?? null, epCount: r.ep_count ?? null }
+          : {}),
       };
     });
     return withPersonIdentities(built);
@@ -1825,7 +1837,7 @@ export interface FriendWho {
 }
 
 /** 🆕 D-1445 — حالُ صديقٍ مع عمل — شكلُ `HomeFriendState` في العقد */
-export type FriendState = { rating: number | null; season: number | null; episode: number | null; done: boolean };
+export type FriendState = { rating: number | null; season: number | null; episode: number | null; done: boolean; ep_rating?: number | null };
 
 export interface FriendWatchRow {
   tmdb_id: number;
@@ -1950,7 +1962,7 @@ export async function getFriendsWatching(
         p_media: tl.map((x) => x[0]),
       });
       if (!stErr && Array.isArray(st)) {
-        for (const s of st as { user_id: string; tmdb_id: number; media_type: string; rating: number | null; last_season: number | null; last_episode: number | null; done: boolean | null }[]) {
+        for (const s of st as { user_id: string; tmdb_id: number; media_type: string; rating: number | null; last_season: number | null; last_episode: number | null; done: boolean | null; ep_rating?: number | null }[]) {
           const who = named.get(`${s.user_id}|${s.media_type}-${s.tmdb_id}`);
           if (!who) continue;
           const was = who.state ?? { rating: null, season: null, episode: null, done: false };
@@ -1959,6 +1971,8 @@ export async function getFriendsWatching(
             season: s.last_season && s.last_season > 0 ? s.last_season : was.season,
             episode: s.last_episode && s.last_episode > 0 ? s.last_episode : null,
             done: !!s.done || was.done,
+            /* 🆕 D-1503 — ذيلُ الهجرة ٢١٧ (يغيب قبلها) */
+            ep_rating: typeof s.ep_rating === "number" ? s.ep_rating : null,
           };
         }
       }
@@ -2930,6 +2944,8 @@ export interface EpisodeRatingRow {
   rating: number;
   review: string | null;
   updated_at: string;
+  /** 🆕 D-1503 — رايةُ الحرق (الهجرة ٢١٧)؛ تغيب قبلها */
+  has_spoiler?: boolean;
 }
 
 /**

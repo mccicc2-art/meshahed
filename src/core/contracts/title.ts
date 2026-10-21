@@ -113,6 +113,8 @@ export type SeasonEpisode = {
   my_rating?: number | null;
   /** تعليقي عليها (D-1015) */
   my_review?: string | null;
+  /** 🆕 D-1503 — رايةُ الحرق لتقييمي */
+  my_spoiler?: boolean;
 };
 
 export type SeasonPayload = {

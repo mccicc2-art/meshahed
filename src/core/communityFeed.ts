@@ -125,7 +125,7 @@ export function orderCommunityFeed<C extends FeedCommentLike, N extends FeedNews
  * نصّاً**، فنوعٌ يُضاف هناك ولا يُضاف هنا يكسر `npm test` قبل أن يصل التطبيق. والتطبيقُ
  * يرسم ما لا يعرفه بطاقةً عامّةً لا يُسقطه.
  */
-export const FEED_COMMENT_KINDS = ["rate", "movie", "episodes", "add", "list_review"] as const;
+export const FEED_COMMENT_KINDS = ["rate", "movie", "episodes", "add", "list_review", "ep_rate"] as const;
 export const FEED_NEWS_KINDS = [
   "trailer",
   "date",

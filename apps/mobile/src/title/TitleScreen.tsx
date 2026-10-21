@@ -408,12 +408,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 <RatingsLine x={x} compact />
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-                <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  {x?.ratings?.rated ? <View style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="700">{x.ratings.rated}</Text></View> : null}
-                  {d.genres.slice(0, 1).map((g) => (
-                    <View key={g.id} style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}><Text size={11} weight="600">{g.name}</Text></View>
-                  ))}
-                </View>
+                {/* ⚖️ D-1502 — رقاقتا العمر والنوع حُذفتا (أحمد بلقطةٍ ٢١ أكتوبر: «نوع العمل موجود فوق… ظاهر مرّتين»): العمرُ
+                    بجانب IMDb في `RatingsLine`، والنوعُ في سطر البيانات — والرقاقتان لا تُضغطان. يبقى المكانُ لـ«وين أشاهده» */}
+                <View style={{ flex: 1 }} />
                 <WatchWhere x={x} icon />
               </View>
             </View>

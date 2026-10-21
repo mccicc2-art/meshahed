@@ -73,7 +73,7 @@ export async function buildCommunity(o: {
   const feedTranslations: Record<string, string> = o.translateOn
     ? await getBatchTranslations(
         localized
-          .filter((a) => a.review?.trim() && !a.hasSpoiler)
+          .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate")
           .map((a) => ({ id: commentViewKey(a.person.id, a.media_type, a.tmdb_id), text: a.review ?? "" })),
         locale === "ar" ? "ar" : "en",
       )
@@ -159,14 +159,14 @@ export async function buildCommunity(o: {
     ? await getNewsReplyCounts(genNews.map((n) => n.key))
     : new Map<string, number>();
   const reviewReplies = await getReviewReplyCounts(
-    localized.filter((a) => a.review?.trim()).map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
+    localized.filter((a) => a.review?.trim() && a.kind !== "ep_rate").map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
   );
   const listSocial: Map<string, ListReviewSocial> = await getListReviewSocial([
     ...new Set(localized.map((a) => a.listId).filter(Boolean) as string[]),
   ]);
   const viewCounts = await getPostViewCounts([
     ...localized
-      .filter((a) => a.review?.trim())
+      .filter((a) => a.review?.trim() && a.kind !== "ep_rate")
       .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
     ...genNews.map((n) => newsViewKey(n.key)),
   ]);

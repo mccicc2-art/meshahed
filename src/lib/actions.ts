@@ -1643,6 +1643,8 @@ export async function rateEpisode(input: {
   rating: number | null;
   review?: string | null;
   runtime?: number | null;
+  /** 🆕 D-1503 — «حرق أحداث»: الغيابُ (`undefined`/`null`) يُبقي ما في القاعدة، فلا تمحوه نسخةٌ قديمة */
+  spoiler?: boolean | null;
 }) {
   const showTmdbId = intId(input.showTmdbId);
   const season = intIn(input.season, 0, 1000);
@@ -1669,7 +1671,7 @@ export async function rateEpisode(input: {
     });
     guard(error);
   } else {
-    const { error } = await supabase.rpc("set_episode_rating", {
+    const args = {
       p_show: showTmdbId,
       p_season: season,
       p_episode: episode,
@@ -1678,7 +1680,17 @@ export async function rateEpisode(input: {
          رسالةً للمستخدم (نفس قاعدة النبذة في D-044) */
       p_review: (input.review ?? "").trim().slice(0, 2000) || null,
       p_runtime: input.runtime == null ? null : intIn(input.runtime, 0, 10_000),
-    });
+      /* قبل الهجرة ٢١٧ لا مكانَ للراية: تُرسَل وحدَها حين تُعطى، فلا تفشل كتابةٌ من غير مفتاح */
+    };
+    let { error } = await supabase.rpc(
+      "set_episode_rating",
+      typeof input.spoiler === "boolean" ? { ...args, p_spoiler: input.spoiler } : args,
+    );
+    /* 🔴 D-1503 — **الكودُ قد يسبق الهجرة ٢١٧**: دالّةٌ بستّة معاملاتٍ لا تعرف `p_spoiler` (PGRST202) — فيُعاد النداءُ بلا الراية
+       ويُحفظ التقييم، ولا يسقط حفظُ رأيٍ لأجل رايةٍ لم يُفعَّل مكانُها بعد */
+    if (error && (error as { code?: string }).code === "PGRST202" && typeof input.spoiler === "boolean") {
+      ({ error } = await supabase.rpc("set_episode_rating", args));
+    }
     guard(error);
   }
 

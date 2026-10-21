@@ -50,16 +50,21 @@ export function feedRows(
     const mk = `${r.item.media_type}-${r.item.tmdb_id}`;
     if (r.kind === "comment") {
       const a = r.item;
-      const vk = commentViewKey(a.person.id, a.media_type, a.tmdb_id);
+      /* 🆕 D-1503 — **صفُّ تقييم الحلقة له مفتاحُه** (لا مفتاحَ مراجعة العمل): ترجمةُ مراجعة العمل وردودُها ومشاهداتُها
+         ليست له، ولا خيطَ ردودٍ لتقييم الحلقة بعد — فلا يُحسب له ما ليس له */
+      const ep = a.kind === "ep_rate";
+      const vk = ep
+        ? `${commentViewKey(a.person.id, a.media_type, a.tmdb_id)}#s${a.epSeason ?? 0}e${a.epEpisode ?? 0}`
+        : commentViewKey(a.person.id, a.media_type, a.tmdb_id);
       const ls = a.listId ? core.listSocial.get(listReviewKey(a.listId, a.person.id)) : undefined;
       return {
         kind: "comment",
         key: `c-${a.person.id}-${a.listId ?? mk}-${a.day}`,
         view_key: vk,
         item: a,
-        translated: core.feedTranslations[vk] ?? null,
-        replies: core.reviewReplies.get(vk) ?? 0,
-        views: core.viewCounts.get(vk) ?? null,
+        translated: ep ? null : (core.feedTranslations[vk] ?? null),
+        replies: ep ? 0 : (core.reviewReplies.get(vk) ?? 0),
+        views: ep ? null : (core.viewCounts.get(vk) ?? null),
         i_follow_them: core.followingIds.has(a.person.id),
         lib: libOf(core, a.tmdb_id, a.media_type),
         list_social: a.listId

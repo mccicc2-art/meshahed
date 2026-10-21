@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { tvImdbId } from "@/lib/tmdb";
 import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
-import { getEpisodeRatings, getWatchedForShow, getUserId } from "@/lib/data";
+import { getEpisodeRatings, getWatchedForShow, getUserId, type EpisodeRatingRow } from "@/lib/data";
 import { episodeKey } from "@/core/keys";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -42,7 +42,9 @@ export async function GET(
         getSeasonForView(tvId, seasonNumber),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
         withRatings ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => ({}) as Record<number, number>) : Promise.resolve({} as Record<number, number>),
-        withRatings && uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, { rating: number; review: string | null }>()) : Promise.resolve(new Map<string, { rating: number; review: string | null }>()),
+        /* 🔴 D-1501 — **تقييمي يُقرأ دائماً لا مع `r=1` وحده** (بلاغُ أحمد: «نظام تقييم الحلقات غير واضح»): كانت نجمتي
+           تمتلئ لحظةَ التقييم ثمّ تفرغ بعد الخروج، لأنّ التطبيقَ لا يطلب `r=1` إلّا بالنجمة العلويّة. قراءةٌ من قاعدتنا لا من OMDb. */
+        uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, EpisodeRatingRow>()) : Promise.resolve(new Map<string, EpisodeRatingRow>()),
       ]);
       const payload: SeasonPayload = {
         tv_id: tvId,
@@ -55,11 +57,14 @@ export async function GET(
           runtime: e.runtime,
           still_path: e.still_path,
           watched: watched.has(episodeKey(seasonNumber, e.episode_number)),
-          ...(withRatings
+          ...(withRatings ? { imdb_rating: imdb[e.episode_number] ?? null } : {}),
+          /* 🔴 D-1501 — مفتاحُ `getEpisodeRatings` هو «موسم-حلقة» (بشَرطة) لا `episodeKey` («موسم:حلقة»): كان البحثُ يخطئ
+             دائماً فلا يرى التطبيقُ تقييمَه أبداً — ولو بالنجمة العلويّة. الويبُ يبني خريطتَه من الصفوف فلم يتأثّر. */
+          ...(uid
             ? {
-                imdb_rating: imdb[e.episode_number] ?? null,
-                my_rating: mine.get(episodeKey(seasonNumber, e.episode_number))?.rating ?? null,
-                my_review: mine.get(episodeKey(seasonNumber, e.episode_number))?.review ?? null,
+                my_rating: mine.get(`${seasonNumber}-${e.episode_number}`)?.rating ?? null,
+                my_review: mine.get(`${seasonNumber}-${e.episode_number}`)?.review ?? null,
+                my_spoiler: !!mine.get(`${seasonNumber}-${e.episode_number}`)?.has_spoiler,
               }
             : {}),
         })),

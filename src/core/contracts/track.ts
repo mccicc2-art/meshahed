@@ -109,4 +109,4 @@ export type RateBody = {
 export type UnrateBody = { tmdbId: number; mediaType: TitleKind };
 
 /** `POST /api/v1/track/episode-rate` — تقييمُ حلقة (D-1011)؛ `rating: null` يسحب التقييم */
-export type EpisodeRateBody = { showTmdbId: number; season: number; episode: number; rating: number | null; review?: string | null; runtime?: number | null };
+export type EpisodeRateBody = { showTmdbId: number; season: number; episode: number; rating: number | null; review?: string | null; runtime?: number | null; /** 🆕 D-1503 */ spoiler?: boolean | null };

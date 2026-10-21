@@ -138,12 +138,12 @@ export function EpisodeTracker({
 
   /* تقييماتي — خريطةٌ في الحالة لا قراءةٌ من الخادم عند كل حفظ: الورقة
      تُبلّغ بالنتيجة فيتحدّث الصفّ فوراً، كبقيّة أفعال هذه الشاشة */
-  const [myRatings, setMyRatings] = useState<Map<string, { rating: number; review: string | null }>>(
+  const [myRatings, setMyRatings] = useState<Map<string, { rating: number; review: string | null; spoiler?: boolean }>>(
     () =>
       new Map(
         initialEpisodeRatings.map((r) => [
           episodeKey(r.season_number, r.episode_number),
-          { rating: r.rating, review: r.review },
+          { rating: r.rating, review: r.review, spoiler: !!r.has_spoiler },
         ]),
       ),
   );
@@ -271,6 +271,15 @@ export function EpisodeTracker({
     },
     [showTmdbId],
   );
+
+  /* 🆕 D-1501 — **IMDb للمشاهَدة تلقائياً** (توأمُ التطبيق، اختيارُ أحمد «٢ ج»): الموسمُ المفتوحُ الذي فيه حلقةٌ مشاهَدة
+     يُطلب بأرقامه مرّةً واحدة (`ratedRef` يمنع التكرار، وOMDb مخبَّأٌ يوماً)؛ والرقمُ يُرسم على المشاهَدة وحدَها حتى تُكشف البقيّة */
+  useEffect(() => {
+    if (open == null || !episodesBySeason[open]) return;
+    const n = open;
+    /* تأجيلُ microtask كإقلاع الموسم أعلاه: الحالةُ لا تتغيّر متزامنةً داخل جسد الـeffect */
+    if ((watchedPerSeason.get(n) ?? 0) > 0) void Promise.resolve().then(() => loadRatings(n));
+  }, [open, episodesBySeason, watchedPerSeason, loadRatings]);
 
   function toggleRatings() {
     const next = !showRatings;
@@ -756,7 +765,7 @@ export function EpisodeTracker({
 
                             {/* تقييم الحلقة — يظهر فقط بعد ضغطة الكشف؛
                                 شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
-                            {showRatings && typeof e.imdb_rating === "number" && (
+                            {(showRatings || isWatched) && typeof e.imdb_rating === "number" && (
                               <span
                                 className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums"
                                 dir="ltr"
@@ -788,6 +797,7 @@ export function EpisodeTracker({
                                     runtime: e.runtime ?? defaultRuntime,
                                     rating: mine?.rating ?? null,
                                     review: mine?.review ?? null,
+                                    spoiler: !!mine?.spoiler,
                                   });
                                 }}
                                 aria-label={t.epRateAria(s.season_number, e.episode_number)}
@@ -961,12 +971,12 @@ export function EpisodeTracker({
         target={rateTarget}
         locale={locale}
         onClose={() => setRateTarget(null)}
-        onSaved={(season, episode, rating, review) => {
+        onSaved={(season, episode, rating, review, spoiler) => {
           const k = episodeKey(season, episode);
           setMyRatings((prev) => {
             const next = new Map(prev);
             if (rating === null) next.delete(k);
-            else next.set(k, { rating, review });
+            else next.set(k, { rating, review, spoiler: !!spoiler });
             return next;
           });
           /* التقييم يعني المشاهدة (قرار أحمد): الصفّ يعلّم نفسه فوراً

@@ -370,6 +370,9 @@ const ar = {
   seasonOrderLabel: "ترتيب المواسم",
   seasonOrderProgress: "المتابَعة أولاً",
   seasonOrderOriginal: "الترتيب الأصلي",
+  /* 🆕 D-1503 — تقييمُ الحلقة في الأنشطة */
+  epSpoilerUnwatched: "لم تشاهد هذه الحلقة — المس للكشف",
+  epChip: (s: number, e: number, more: number) => `م${s} · ح${e}${more > 0 ? ` +${more}` : ""}`,
   airsOn: (d: string) => `يُعرض ${d}`,
   markWatchedAria: "تأشير كمشاهَد",
   seasonLabel: (n: number) => `الموسم ${n}`,
@@ -3067,6 +3070,9 @@ const en: Dict = {
   seasonOrderLabel: "Season order",
   seasonOrderProgress: "In progress first",
   seasonOrderOriginal: "Original order",
+  /* 🆕 D-1503 — episode ratings in Activity */
+  epSpoilerUnwatched: "You haven't watched this episode — tap to reveal",
+  epChip: (s: number, e: number, more: number) => `S${s} · E${e}${more > 0 ? ` +${more}` : ""}`,
   airsOn: (d: string) => `Airs ${d}`,
   markWatchedAria: "Mark as watched",
   seasonLabel: (n: number) => `Season ${n}`,

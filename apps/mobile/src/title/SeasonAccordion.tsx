@@ -151,7 +151,7 @@ export function SeasonAccordion({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 }}>
               {/* 🆕 1.12.7 — حلقاتُ الموسم تُطلب **من لمس الإصبع لا من رفعه** (`season.open` p95 ١٣٢٧ms على آيفون — رحلةُ TMDB كلُّها
                   بعد الرفع): المفتاحُ مفتاحُ `SeasonBody` حرفاً فيجد الطلبَ في الطريق؛ وطيُّ موسمٍ مفتوحٍ لا يطلب شيئاً */}
-              <Pressable onPressIn={isOpen ? undefined : () => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, showRatings))} onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
+              <Pressable onPressIn={isOpen ? undefined : () => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, showRatings || inSeason > 0))} onPress={() => setOpen(isOpen ? null : s.season_number)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
                 <View style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}>
                   <Icon name="chevron-down" size={16} color={tokens.muted} />
                 </View>
@@ -251,7 +251,7 @@ export function SeasonAccordion({
                 ) : (
                   <Pressable
                     key={s.season_number}
-                    onPressIn={() => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, showRatings))}
+                    onPressIn={() => void qc.prefetchQuery(seasonQuery(show.id, s.season_number, true))}
                     onPress={() => setOpen(s.season_number)}
                     accessibilityRole="button"
                     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: tokens.divider, backgroundColor: pressed ? tokens.surface2 : "transparent" })}
@@ -314,8 +314,11 @@ function SeasonBody({
    * يعلّم ما قبله (D-988). **التقييماتُ تُطلب عند فتح المفتاح لا قبله** (`?r=1` — رحلةُ OMDb
    * لكلِّ موسم)، كما يفعل `EpisodeTracker` حرفاً، والمفتاحُ يُذكَر للجلسة.
    */
+  /* 🆕 D-1501 — **IMDb للمشاهَدة تلقائياً** (اختيارُ أحمد «٢ ج»): موسمٌ فيه حلقةٌ مشاهَدة يُطلب بأرقامه (`r=1`) بلا نجمةٍ علويّة؛
+     ورقمُ IMDb لا يُرسم إلّا على المشاهَدة — غيرُ المشاهَدة تبقى بلا رقمٍ يسبق قرارَك، إلّا إن كشفتَه بالنجمة */
+  const seasonSeen = useMemo(() => [...watched].some((k) => k.startsWith(`${season}:`)), [watched, season]);
   const q = useQuery({
-    ...seasonQuery(show.id, season, showRatings),
+    ...seasonQuery(show.id, season, showRatings || seasonSeen),
     placeholderData: (prev) => prev,
   });
   /* D-1141 — حلقاتٌ جاءت زائرة: تُعاد حين يصل الرمز (تقييماتي على الحلقات) */
@@ -342,13 +345,13 @@ function SeasonBody({
    * المفتاحَ النشط **وتفتح مفتاحَ التقييمات** كي تُرى النجمةُ فوراً.
    */
   const rate = useMutation({
-    mutationFn: (v: { episode: number; rating: number; review: string | null }) =>
-      write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, review: v.review, runtime } satisfies EpisodeRateBody),
+    mutationFn: (v: { episode: number; rating: number; review: string | null; spoiler: boolean }) =>
+      write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, review: v.review, runtime, spoiler: v.spoiler } satisfies EpisodeRateBody),
     onMutate: (v) => {
-      onShowRatings();
+      /* D-1501 — لم يعد التقييمُ يفتح النجمةَ العلويّة: تقييمي يصل مع كلِّ موسم، وفتحُها كان يكشف أرقامَ IMDb لحلقاتٍ لم تُشاهَد */
       for (const key of [[...qk.season(show.id, season), "r"], [...qk.season(show.id, season), ""]] as const)
         qc.setQueryData<SeasonPayload>(key, (prev) =>
-          prev ? { ...prev, episodes: prev.episodes.map((e) => (e.episode_number === v.episode ? { ...e, my_rating: v.rating, my_review: v.review } : e)) } : prev,
+          prev ? { ...prev, episodes: prev.episodes.map((e) => (e.episode_number === v.episode ? { ...e, my_rating: v.rating, my_review: v.review, my_spoiler: v.spoiler } : e)) } : prev,
         );
     },
     onSuccess: onSettled,
@@ -481,7 +484,7 @@ function SeasonBody({
               <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
               {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
             </View>
-            {showRatings && typeof e.imdb_rating === "number" ? (
+            {(showRatings || on) && typeof e.imdb_rating === "number" ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Text size={9} weight="800" color="#F5C518">IMDb</Text>
                 <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
@@ -508,12 +511,13 @@ function SeasonBody({
           initial={{
             rating: eps.find((e) => e.episode_number === rating)?.my_rating ?? null,
             review: eps.find((e) => e.episode_number === rating)?.my_review ?? null,
-            has_spoiler: false,
+            /* 🆕 D-1503 — رقاقةُ «حرق أحداث» في الورقة نفسِها (`ReviewSheet`) تحفظ رايتَها الآن */
+            has_spoiler: !!eps.find((e) => e.episode_number === rating)?.my_spoiler,
           }}
           busy={rate.isPending}
           onClose={() => setRating(null)}
           onSave={(v) => {
-            rate.mutate({ episode: rating, rating: v.rating, review: v.review });
+            rate.mutate({ episode: rating, rating: v.rating, review: v.review, spoiler: v.has_spoiler });
             setRating(null);
           }}
         />

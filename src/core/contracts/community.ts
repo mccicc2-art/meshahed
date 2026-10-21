@@ -41,6 +41,10 @@ export type CommunityFeedItem = {
   likes: number;
   likedByMe: boolean;
   hasSpoiler: boolean;
+  /** 🆕 D-1503 — صفُّ `kind: "ep_rate"`: الحلقةُ وعددُ ما قُيّم معها ذلك اليوم */
+  epSeason?: number | null;
+  epEpisode?: number | null;
+  epCount?: number | null;
   listId?: string | null;
   listSlug?: string | null;
   listCover?: string | null;
