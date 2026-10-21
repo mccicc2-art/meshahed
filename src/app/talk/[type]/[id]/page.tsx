@@ -19,7 +19,6 @@ import { getT, getTranslateEnabled } from "@/lib/locale";
 import { bulletinLine } from "@/core/bulletinLine";
 import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { TitleHero } from "@/components/TitleHero";
-import { ExpandableText } from "@/components/ExpandableText";
 import { getBatchTranslations } from "@/lib/translate";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
@@ -190,7 +189,6 @@ export default async function TalkPage({
   /* **النبذةُ من TMDB مباشرةً** — `details` مقروءةٌ أصلاً لهذه الصفحة،
      **فلا نداءَ جديد** (D-198). و`?.trim()` لأن TMDB تُرجع نصّاً فارغاً
      لا `null` حين لا تملك ترجمة. */
-  const overview = ((details as { overview?: string | null } | null)?.overview ?? "").trim();
   const avg = Math.round(community.avg * 10) / 10;
   /* 🆕 D-1495 — حلقةُ كلِّ سطر (النشرةُ من `data`، والمشاركةُ من عمودها، والردُّ يرث جذرَه) ومواسمُ المنتقي — نظيرُ `talkPayload` */
   const episodeOf = new Map(
@@ -255,19 +253,8 @@ export default async function TalkPage({
           الغلاف** — **والنصُّ لم يتغيّر في المرّتين** (D-257).
           **فصار أوّلُ ما يقرؤه القارئُ في المتن نبذةَ العمل، ثم الكلام.** */}
       <div className="px-3 sm:px-6 max-w-xl mx-auto mt-1">
-        {/* **ونبذةُ العمل مكانَ الفراغ** (D-284، طلبُ أحمد: «ونبذة عن
-            المسلسل»). **ثلاثةُ أسطرٍ لا أكثر**: الصفحةُ للحوار، **والنبذةُ
-            تعرّف بمن لم يشاهد ولا تزاحم من جاء يقرأ** (D-223: صوتُنا لا
-            يعلو على صوت الناس).
-            **وتُقصّ بلا زرِّ توسيع**: صفحةُ العمل على بُعد ضغطةٍ من
-            الترويسة، **وبابٌ قائمٌ خيرٌ من بابٍ ثانٍ** (D-266).
-            ⚠️ **واتّجاهُها من نصّها** (D-282): TMDB تُرجعها بلغة القارئ
-            حين تتوفّر، **فقد تعود عربيةً في واجهةٍ إنجليزية.** */}
-        {/* 🆕 **سطرٌ واحدٌ وزرُّ «المزيد»** (D-304، طلبُ أحمد) — والحجّةُ
-            كاملةً في رأس `ExpandableText`. **ولا مكوّنَ ثانٍ للنصّ
-            المطويّ**: هذا هو الأوّل، **ومن أراد نصّاً يُوسَّع بعده يقرؤه
-            من هنا** (D-002). */}
-        {overview && <ExpandableText text={overview} locale={locale} />}
+        {/* ⚖️ 🆕 R53 — **النبذةُ حُذفت** (أحمد ٢١ أكتوبر: «احذف وصف العمل ما يحتاج»): الغرفةُ للكلام، والملصقُ والاسمُ في الغلاف
+            رابطٌ إلى صفحة العمل لمن أراد النبذة (D-297). نقضٌ لـD-284/D-304 */}
 
         {/* **شاراتُ حالتك — تُقرأ ولا تُضغط** (D-217): «المُطَوَّق يُضغط
             والعاري يُقرأ»، فلا يظنُّها أحدٌ زرّين ويضغطهما بلا أثر. */}

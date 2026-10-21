@@ -51,54 +51,45 @@ export function TalkTvBar({
   onWatched: (p: EpisodeRef) => void;
 }) {
   const t = getDict(locale);
-  const chevron = <Icon name="chevron-down" size={14} className="shrink-0 text-muted rotate-90 rtl:-rotate-90" />;
 
   if (pick) {
     const ep = episodeOf(pick);
     const seen = watched.has(talkEpisodeKey(pick.season, pick.episode));
-    const facts = [ep?.vote ? `★ ${ep.vote}` : null, ep?.runtime ?? null].filter(Boolean).join(" · ");
+    const facts = [t.talkEpShort(pick.season, pick.episode), ep?.vote ? `★ ${ep.vote}` : null, ep?.runtime ?? null].filter(Boolean).join(" · ");
+    /* 🆕 R53 — **غرفةُ الحلقة صفٌّ واحد** (أحمد ٢١ أكتوبر: «ماخذ مساحة كبيرة ولازم انزل تحت اشوف الكتابات»؛ «ب» المعتمد) —
+       رجوعٌ دائريّ · «م٢ · ح٣ · ★ · المدّة» فوق الاسم · «شاهدتها» في الطرف. كانت ثلاثةَ صفوفٍ وشريطاً منقّطاً، و«مغطّاة» صارت في سطر العدد */
     return (
-      <div className="mb-2">
-        <div className="py-3 border-b border-[color:var(--divider)]">
-          <button type="button" onClick={() => onPick(null)} className={`${chipClass(false)} inline-flex items-center gap-1.5`}>
-            {chevron}
-            {t.talkAllEpisodes}
+      <div className="mt-3 mb-1 flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2.5">
+        <button
+          type="button"
+          onClick={() => onPick(null)}
+          aria-label={t.talkAllEpisodes}
+          className="w-9 h-9 shrink-0 rounded-full border border-border bg-surface-2 grid place-items-center active:scale-95 transition"
+        >
+          <Icon name="chevron-down" size={15} className="rotate-90 rtl:-rotate-90" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-12 font-bold text-accent truncate" dir="auto">{facts}</p>
+          <p className="text-16 font-bold truncate" dir="auto">{ep?.name ?? t.talkEpisodeLabel(pick.episode)}</p>
+        </div>
+        {seen ? (
+          <span className="shrink-0 inline-flex items-center gap-1 text-12 font-bold text-[color:var(--success)]">
+            <Icon name="check" size={13} />
+            {t.talkEpWatched}
+          </span>
+        ) : signedIn ? (
+          <button
+            type="button"
+            onClick={() => {
+              tap([12, 30]);
+              onWatched(pick);
+            }}
+            className={`${chipClass(true)} inline-flex items-center gap-1.5 shrink-0`}
+          >
+            <Icon name="check" size={14} />
+            {t.talkMarkEpWatched}
           </button>
-        </div>
-        <div className="mt-3 rounded-2xl border border-border bg-surface p-4">
-          <p className="text-12 font-bold text-accent">{t.talkEpShort(pick.season, pick.episode)}</p>
-          <p className="mt-1 text-20 font-bold leading-snug line-clamp-2" dir="auto">
-            {ep?.name ?? t.talkEpisodeLabel(pick.episode)}
-          </p>
-          <p className="mt-1 flex items-center gap-2 text-12 text-muted">
-            {facts ? <span dir="ltr">{facts}</span> : null}
-            {seen ? (
-              <span className="inline-flex items-center gap-1 text-[color:var(--success)]">
-                <Icon name="check" size={13} />
-                {t.talkEpWatched}
-              </span>
-            ) : null}
-          </p>
-        </div>
-        {seen ? null : (
-          <div className="mt-2.5 flex items-center gap-2.5 rounded-2xl border border-dashed border-border p-3">
-            <Icon name="eye-off" size={16} className="shrink-0 text-muted" />
-            <span className="flex-1 text-14 text-muted">{t.talkEpUnwatched}</span>
-            {signedIn ? (
-              <button
-                type="button"
-                onClick={() => {
-                  tap([12, 30]);
-                  onWatched(pick);
-                }}
-                className={`${chipClass(true)} inline-flex items-center gap-1.5 shrink-0`}
-              >
-                <Icon name="check" size={14} />
-                {t.talkMarkEpWatched}
-              </button>
-            ) : null}
-          </div>
-        )}
+        ) : null}
       </div>
     );
   }

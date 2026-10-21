@@ -449,6 +449,7 @@ export function ThreadReplies({
           count={all.filter((r) => !r.kind).length}
           sort={talkSort}
           onSort={setTalkSort}
+          covered={!!pick && tvTalk && !revealAll && !seenEps.has(talkEpisodeKey(pick.season, pick.episode))}
         />
       ) : null}
 

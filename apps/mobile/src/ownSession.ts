@@ -140,7 +140,11 @@ async function post(url: string, headers: Record<string, string>, body?: unknown
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: ctl.signal,
     });
-    return { status: res.status, json: await res.json().catch(() => null) };
+    const json = await res.json().catch(() => null);
+    /* 🆕 R53 — **ردٌّ ناجحٌ جسمُه لم يكتمل = شبكةٌ علقت، لا جلسةٌ فاسدة**: علامةُ جوال أحمد ٢١ أكتوبر `session.renew=9518 why=h200` —
+       الرأسُ وصل ٢٠٠ والجسمُ قطعته المهلة، فكان يُعدّ «لا رمز» ويذهب للجسر. الآن يُرمى كخطأ شبكة فتأخذه المحاولةُ الثانية */
+    if (json === null && res.status >= 200 && res.status < 300) throw new Error("body");
+    return { status: res.status, json };
   } finally {
     clearTimeout(t);
   }

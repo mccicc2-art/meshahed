@@ -1053,7 +1053,8 @@ const ar = {
   talkSeasonLabel: (n: number) => `الموسم ${num(n, "ar")}`,
   talkPickSeason: "اختر الموسم",
   talkPickEpisode: "اختر الحلقة",
-  talkSpoilersToggle: "حرق الأحداث",
+  talkSpoilersToggle: "حرق",
+  talkCovered: "مغطّاة",
   talkEpisodeEmpty: "لا مشاركات في هذه الحلقة بعد — ابدأ نقاشها",
   /* 🆕 D-1508 — غرفةُ العمل بمستويين (أحمد ٢١ أكتوبر: «عام اذا بيتكلمون عن المسلسل بشكل عام… حلقات لحلقة حلقة») */
   talkTabGeneral: "عام",
@@ -3564,6 +3565,7 @@ const en: Dict = {
   talkPickSeason: "Pick a season",
   talkPickEpisode: "Pick an episode",
   talkSpoilersToggle: "Spoilers",
+  talkCovered: "covered",
   talkEpisodeEmpty: "No posts on this episode yet — start its discussion",
   talkRoomsEmpty:
     "No discussions yet — start the first one from any title's page",

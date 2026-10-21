@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, write } from "../api";
+import { isGuest, softGet, useGuestUpgrade, write } from "../api";
 import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
@@ -67,7 +67,11 @@ export const threadKey = (r: ThreadRoute) =>
 /** 🆕 1.12.7 — الاستعلامُ الواحد: الشاشةُ وبابُها (`openThreadPath` يبدأ الجلبَ قبل الدفع) يطلبان بالمفتاح والدالّة نفسيهما */
 export const threadQuery = (r: ThreadRoute) => ({
   queryKey: threadKey(r),
-  queryFn: async () => (await api<ThreadPayload>(`/api/v1/thread?${query(r)}`)).data,
+  /* 🆕 R53 — **الغرفةُ لا تنتظر الجلسة** (فيديو أحمد ٢١ أكتوبر: بعد إقفال التطبيق «الدخول للنقاش جدا طوّل .. مره يطول مره لا»):
+     علاماتُ جواله في الدقيقة نفسِها — `token.wait=21139 why=noack` ثمّ `thread.open=3319`: الشاشةُ انتظرت ٢١ ثانيةً رمزاً لم يصل
+     (تجديدٌ علق على أوّل اتّصال، ثمّ جسرٌ لم يردّ). والنقاشُ عامٌّ يقرؤه الزائر: **`softGet`** (D-1141) يجلبه زائراً فوراً،
+     و`useGuestUpgrade` يعيد الجلبَ لحظةَ يصل الرمز. وردُّ الزائر آمنٌ للحرق: لا حلقاتٍ مشاهَدة ⇒ كلُّ غرفةِ حلقةٍ مغطّاة */
+  queryFn: async () => softGet<ThreadPayload>(`/api/v1/thread?${query(r)}`),
   staleTime: 30_000,
 });
 
@@ -104,6 +108,8 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
   const key = useMemo(() => threadKey(route), [route]);
   const q = useQuery({ ...threadQuery(route), queryKey: key });
   const d = q.data ?? null;
+  const guest = isGuest(d);
+  const up = useGuestUpgrade(guest, q.refetch);
   /* 🆕 D-1495/D-1496 — نقاشُ الحلقات (أحمد ٢٠ أكتوبر): الحلقةُ المختارة (`null` = «الكل» — والغرفةُ تفتح عليها: «خليها الكل»)،
      وترتيبُ «الأحدث ⌄»، ومفتاحُ «حرق الأحداث». حالةُ عرضٍ في الشاشة — التصفيةُ في اليد والخيطُ كاملٌ من الخادم */
   const [pick, setPick] = useState<EpisodeRef | null>(null);
@@ -675,6 +681,13 @@ export function ThreadScreen({ route, from, compose = false }: { route: ThreadRo
         />
       )}
 
+      {/* 🆕 R53 — الرمزُ لم يصل بعد ردِّ الزائر: قلها وأعطِ زرّاً (D-1144) بدل خانةِ كتابةٍ غائبةٍ بلا تفسير */}
+      {d && guest && up.failed ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: tokens.divider }}>
+          <Text size={13} muted style={{ flex: 1 }} numberOfLines={2}>{t.myStateUnavailable}</Text>
+          <Button size="sm" variant="ghost" label={t.errorRetry} onPress={up.retry} />
+        </View>
+      ) : null}
       {d && signedIn ? <MentionList hits={mentionHits} onPick={pickMention} /> : null}
       {d && signedIn ? (
         <ChatDock
@@ -806,7 +819,6 @@ function Head({
   onProfile: (p: ThreadPayload["rows"][number]["person"]) => void;
 }) {
   const { t, tokens, locale } = useApp();
-  const [more, setMore] = useState(false);
   const [reveal, setReveal] = useState(false);
   const w = d.work;
   const bg = backdropUrl(w.backdrop_path, "w780");
@@ -884,30 +896,28 @@ function Head({
               </Svg>
             </View>
           ) : null}
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 14, paddingHorizontal: 16, paddingTop: 16 }}>
-            <View style={{ width: 104, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
+          {/* 🆕 R53 — **الغلافُ المتوسّط بلا نبذة** (أحمد ٢١ أكتوبر: «احذف وصف العمل ما يحتاج»، وصورتُه المعتمدة): الغلافُ
+              الكبيرُ كان نصفَ الشاشة فلا يظهر كلامٌ إلّا بالنزول. بوسترٌ ٥٨ واسمٌ وسطرُ النوع والتقييم — واللمسةُ تفتح صفحةَ العمل
+              كما كانت؛ وهو نفسُه في «عام» وفي غرفة الحلقة كي لا يقفز الحجمُ بين الاثنين */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
+            <View style={{ width: 58, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
               {poster ? <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
             </View>
-            <View style={{ flex: 1, minWidth: 0, gap: 2, paddingBottom: 6 }}>
-              <Text size={13}>{w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
-              <Text size={24} weight="700" numberOfLines={2}>{w.title}</Text>
-              {w.community.count > 0 ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="star-filled" size={13} color={tokens.accent} />
-                  <Text size={13} weight="700" color={tokens.accent}>{w.community.avg.toFixed(1)}</Text>
-                  <Text size={12} muted>· {t.communityRating} ({num(w.community.count, locale)})</Text>
-                </View>
-              ) : null}
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <Text size={19} weight="700" numberOfLines={2}>{w.title}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                <Text size={12}>{w.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+                {w.community.count > 0 ? (
+                  <>
+                    <Text size={12} muted>·</Text>
+                    <Icon name="star-filled" size={12} color={tokens.accent} />
+                    <Text size={12} weight="700" color={tokens.accent}>{w.community.avg.toFixed(1)}</Text>
+                    <Text size={12} muted>({num(w.community.count, locale)})</Text>
+                  </>
+                ) : null}
+              </View>
             </View>
           </View>
-          {h.overview ? (
-            <Pressable onPress={() => setMore((v) => !v)} style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 }}>
-              <Text size={14} numberOfLines={more ? undefined : 1} style={{ flex: 1, lineHeight: 21 }}>{h.overview}</Text>
-              <Text size={13} weight="700" color={tokens.accent}>{more ? t.showLess : t.showMore}</Text>
-            </Pressable>
-          ) : (
-            <View style={{ height: 14 }} />
-          )}
         </Pressable>
       ) : (
       <Pressable onPress={onTitle} accessibilityRole="link" style={{ marginHorizontal: -16, flexDirection: "row", gap: 14, padding: 16, overflow: "hidden" }}>
@@ -932,29 +942,30 @@ function Head({
       {h.kind === "talk" ? (
         <View>
           {talk.tv ? <TvTalkHead d={d} talk={talk} tv={talk.tv} /> : null}
-          {/* «حرق الأحداث» في الطرف — وفي قائمة «الحلقات» لا كلامَ يُكشف */}
+          {/* 🆕 R53 — **سطرٌ واحد: العددُ في البداية، و«حرق» و«الأحدث ⌄» في الطرف** (صورةُ أحمد المعتمدة ٢١ أكتوبر): كان «حرق
+              الأحداث» صفّاً وحدَه فوق سطر العدد — صفٌّ كاملٌ يدفع الكلامَ للأسفل. وفي غرفة حلقةٍ لم تُشاهَد يقول العددُ «مغطّاة»
+              فلا يحتاج شريطاً منفصلاً. وفي قائمة «الحلقات» لا كلامَ يُكشف ولا يُرتَّب فلا سطر */}
           {talk.tv && talk.tv.tab === "episodes" && !talk.pick ? null : (
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-              <Chip size="md" label={t.talkSpoilersToggle} active={talk.revealAll} onPress={talk.onReveal} leading={<Icon name={talk.revealAll ? "eye" : "eye-off"} size={14} color={talk.revealAll ? tokens.onAccent : tokens.muted} />} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+              <Text size={13} muted numberOfLines={1} style={{ flex: 1, fontVariant: ["tabular-nums"] }}>
+                {talk.tv && talk.pick && !talk.revealAll && !talk.tv.watchedEps.has(talkEpisodeKey(talk.pick.season, talk.pick.episode)) && talk.count > 0
+                  ? `${t.talkRoomPosts(talk.count)} · ${t.talkCovered}`
+                  : t.talkRoomPosts(talk.count)}
+              </Text>
+              <Chip label={t.talkSpoilersToggle} active={talk.revealAll} onPress={talk.onReveal} leading={<Icon name={talk.revealAll ? "eye" : "eye-off"} size={13} color={talk.revealAll ? tokens.onAccent : tokens.muted} />} />
+              <SortCycle
+                label={t.talkSortAria}
+                value={talk.sort}
+                onChange={talk.onSort}
+                options={[
+                  { key: "latest", label: t.talkSortLatest },
+                  { key: "active", label: t.talkSortActive },
+                ]}
+              />
             </View>
           )}
-          {/* العددُ في البداية و«الأحدث ⌄» في الطرف — الزرُّ الدوّارُ نفسُه في النقاشات والنشاط (D-1493) */}
-          {talk.tv && talk.tv.tab === "episodes" && !talk.pick ? null : (
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-            <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{t.talkRoomPosts(talk.count)}</Text>
-            <SortCycle
-              label={t.talkSortAria}
-              value={talk.sort}
-              onChange={talk.onSort}
-              options={[
-                { key: "latest", label: t.talkSortLatest },
-                { key: "active", label: t.talkSortActive },
-              ]}
-            />
-          </View>
-          )}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 8 }}>
-            {!signedIn ? (
+            {!signedIn && !isGuest(d) ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="comment" size={13} color={tokens.accent} />
                 <Text size={12} weight="700">{t.talkSignInToWrite}</Text>
@@ -1042,39 +1053,39 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
   const pick = talk.pick;
   const season = tv.season ?? tv.latest?.season ?? seasons[seasons.length - 1]?.season ?? 1;
   const seasonInfo = seasons.find((x) => x.season === season) ?? null;
-  const row = (l: React.ReactNode) => <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>{l}</View>;
 
   if (pick) {
     const b = tv.pickBulletin;
     const watched = tv.watchedEps.has(talkEpisodeKey(pick.season, pick.episode));
-    const facts = [b?.bulletin_vote ? `★ ${b.bulletin_vote}` : null, b?.bulletin_runtime ?? null].filter(Boolean).join(" · ");
+    const facts = [t.talkEpShort(pick.season, pick.episode), b?.bulletin_vote ? `★ ${b.bulletin_vote}` : null, b?.bulletin_runtime ?? null].filter(Boolean).join(" · ");
+    /* 🆕 R53 — **غرفةُ الحلقة صفٌّ واحد** (أحمد ٢١ أكتوبر بفيديو: «ماخذ مساحة كبيرة ولازم انزل تحت اشوف الكتابات»؛ «ب» المعتمد):
+       كانت أربعةَ صفوف — «‹ كل الحلقات» وبطاقةُ الحلقة وشريطُ «لم تشاهدها» وزرُّ الحرق — ~٣٠٠ نقطة قبل أوّل تعليق.
+       الآن: رجوعٌ دائريّ · «م٢ · ح٣ · ★ · المدّة» فوق الاسم · «شاهدتها» في الطرف (أو ✓ أخضر بعدها). و«مغطّاة» انتقلت لسطر العدد */
     return (
-      <View>
-        {row(
-          <View style={{ alignSelf: "flex-start" }}>
-            <Chip size="md" label={t.talkAllEpisodes} active={false} onPress={() => tv.onPick(null)} leading={<View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}><Icon name="chevron-down" size={14} color={tokens.muted} /></View>} />
-          </View>,
-        )}
-        <View style={{ marginTop: 12, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, backgroundColor: tokens.surface, padding: 14, gap: 4 }}>
-          <Text size={12} weight="700" color={tokens.accent}>{t.talkEpShort(pick.season, pick.episode)}</Text>
-          <Text size={17} weight="700" numberOfLines={2}>{b?.bulletin_name ?? t.talkEpisodeLabel(pick.episode)}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {facts ? <Text size={12} muted style={{ writingDirection: "ltr" }}>{facts}</Text> : null}
-            {watched ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Icon name="check" size={13} color={tokens.success} />
-                <Text size={12} color={tokens.success}>{t.talkEpWatched}</Text>
-              </View>
-            ) : null}
+      <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, backgroundColor: tokens.surface, padding: 10 }}>
+        <Pressable
+          onPress={() => tv.onPick(null)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={t.talkAllEpisodes}
+          style={({ pressed }) => ({ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+        >
+          <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
+            <Icon name="chevron-down" size={15} color={tokens.fg} />
           </View>
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text size={11} weight="700" color={tokens.accent} numberOfLines={1}>{facts}</Text>
+          <Text size={15} weight="700" numberOfLines={1}>{b?.bulletin_name ?? t.talkEpisodeLabel(pick.episode)}</Text>
         </View>
-        {watched ? null : (
-          <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border }}>
-            <Icon name="eye-off" size={16} color={tokens.muted} />
-            <Text size={13} muted style={{ flex: 1 }}>{t.talkEpUnwatched}</Text>
-            {signedIn ? <Chip size="md" label={t.talkMarkEpWatched} active onPress={() => tv.onWatched(pick)} leading={<Icon name="check" size={14} color={tokens.onAccent} />} /> : null}
+        {watched ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="check" size={13} color={tokens.success} />
+            <Text size={12} weight="700" color={tokens.success}>{t.talkEpWatched}</Text>
           </View>
-        )}
+        ) : signedIn ? (
+          <Chip label={t.talkMarkEpWatched} active onPress={() => tv.onWatched(pick)} leading={<Icon name="check" size={13} color={tokens.onAccent} />} />
+        ) : null}
       </View>
     );
   }

@@ -117,6 +117,20 @@ function emit() {
 /* 🆕 K4b — رمزٌ مملوكٌ وصل أو سقط ⇒ يُبلَغ من ينتظر الرمز (`useGuestUpgrade`…) كما يُبلَغ برمز الجسر */
 own.onChange(emit);
 
+/** أوّلُ رمزٍ غيرِ فارغ من عدّة طرق — `null` إن انتهت كلُّها بلا رمز */
+function firstToken(ps: Promise<string | null>[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    let left = ps.length;
+    for (const p of ps)
+      void p
+        .catch(() => null)
+        .then((t) => {
+          if (t) resolve(t);
+          else if (--left === 0) resolve(null);
+        });
+  });
+}
+
 export const session = {
   /** الرمزُ الحاليُّ إن كان صالحاً لثلاثين ثانيةً أخرى على الأقلّ */
   get(): string | null {
@@ -310,7 +324,17 @@ export const session = {
         lastSrc = "own";
         return t;
       }
-      return session.bridgeOnce();
+      /* 🆕 R53 — **التجديدُ تعثّر بالشبكة ورمزُه باقٍ ⇒ تجديدٌ ثانٍ والجسرُ معاً، وأوّلُ رمزٍ يصل يكفي** (جوال أحمد ٢١ أكتوبر:
+         تجديدٌ علق ٩٫٥ث ثمّ جسرٌ لم يردّ ٨ث أخرى = ٢١ث). كان الجسرُ وحدَه بعد التعثّر، وهو أبطأُ الطريقين بعد إقلاعٍ بارد
+         (الصفحةُ لم تُحمَّل). رفضٌ صريح (4xx) يمسح الرمزَ فيبقى الجسرُ وحدَه كما كان */
+      if (!own.enabled() || !own.hasStored()) return session.bridgeOnce();
+      return firstToken([
+        own.ensure().then((x) => {
+          if (x) lastSrc = "own";
+          return x;
+        }),
+        session.bridgeOnce(),
+      ]);
     });
   },
   /** المحاولةُ نفسُها كما كانت (D-1075) — `request()` يغلّفها بطلبٍ واحدٍ في الطريق وبالقياس */

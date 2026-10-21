@@ -26,6 +26,7 @@ export function TalkEpisodeBar({
   count,
   sort,
   onSort,
+  covered,
 }: {
   locale: Locale;
   seasons: { season: number; episodes: number }[];
@@ -36,6 +37,8 @@ export function TalkEpisodeBar({
   count: number;
   sort: "latest" | "active";
   onSort: (s: "latest" | "active") => void;
+  /** 🆕 R53 — غرفةُ حلقةٍ لم يشاهدها القارئ: العددُ يقول «مغطّاة» */
+  covered?: boolean;
 }) {
   const t = getDict(locale);
   const [menu, setMenu] = useState<null | "season" | "episode">(null);
@@ -43,6 +46,7 @@ export function TalkEpisodeBar({
   const caret = <Icon name="chevron-down" size={14} className="shrink-0 text-muted" />;
   return (
     <div className="mb-2">
+      {seasons.length ? (
       <div className="flex items-center justify-between gap-2 py-3 border-b border-[color:var(--divider)]">
         <div className="flex items-center gap-2 min-w-0">
           {seasons.length ? (
@@ -102,13 +106,18 @@ export function TalkEpisodeBar({
             </>
           ) : null}
         </div>
+      </div>
+      ) : null}
+      {/* 🆕 R53 — **سطرٌ واحد: العددُ، و«حرق» و«الأحدث ⌄» في الطرف** (صورةُ أحمد المعتمدة ٢١ أكتوبر، نظيرُ التطبيق): كان «حرق
+          الأحداث» صفّاً وحدَه فوق العدد يدفع الكلامَ للأسفل */}
+      <div className="flex items-center justify-between gap-3 py-2.5 border-b border-[color:var(--divider)]">
+        <span className="flex-1 min-w-0 truncate text-14 text-muted tabular-nums">
+          {covered && count > 0 ? `${t.talkRoomPosts(count)} · ${t.talkCovered}` : t.talkRoomPosts(count)}
+        </span>
         <button type="button" aria-pressed={revealAll} onClick={onReveal} className={`${chipClass(revealAll)} inline-flex items-center gap-1.5 shrink-0`}>
           <Icon name={revealAll ? "eye" : "eye-off"} size={14} className="shrink-0" />
           {t.talkSpoilersToggle}
         </button>
-      </div>
-      <div className="flex items-center justify-between gap-3 py-3 border-b border-[color:var(--divider)]">
-        <span className="text-14 text-muted tabular-nums">{t.talkRoomPosts(count)}</span>
         <SortCycle
           label={t.talkSortAria}
           value={sort}
