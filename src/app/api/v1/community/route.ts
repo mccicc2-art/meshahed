@@ -118,6 +118,7 @@ export async function GET(req: NextRequest) {
         ...(user ? { variants, extra } : {}),
       },
       rooms: core.roomsShown.map((r) => roomOut(core, r, t, locale)),
+      ...(user ? { library_rooms: core.libraryRooms.map((r) => roomOut(core, r, t, locale)) } : {}),
       board: {
         featured: off("featured") ? null : boardRows(core.featured, "featured", BOARD_PREVIEW),
         top: off("topweek") ? null : boardRows(core.board, "top", BOARD_PREVIEW),

@@ -79,6 +79,8 @@ export type ThreadReply = {
   /** 🆕 D-1495 — حلقةُ السطر في نقاش الحلقات (الردُّ يرث جذرَه) — `null` ⇒ «الكل» وحدَه */
   season?: number | null;
   episode?: number | null;
+  /** 🆕 R56 — مراجعةُ صفحة العمل في «عام»: لا تصويتَ ولا ⋯، والردودُ في صفحتها — `replyId` = `review:<صاحبها>` */
+  review?: { userId: string; rating: number; replies: number } | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -286,7 +288,7 @@ export function ReplyItem({
 
           {/* **النقاطُ في الزاوية** — نفسُ منسدلة التطبيق (D-226).
               **ولا تُرسم لردٍّ لم يُكتب بعد**: لا حذفَ لما لا معرّفَ له. */}
-          {!pending && signedIn && (
+          {!pending && signedIn && !reply.review && (
             <span className="ms-auto shrink-0 relative">
               <button
                 type="button"
@@ -338,6 +340,16 @@ export function ReplyItem({
 
         {/* 🆕 R55 — الصفُّ الموصولُ يُزاح متنُه إلى جانب الوجه فيمرّ الخطُّ في عمود الوجوه ولا يشقّ الكلام */}
         <div style={link ? { marginInlineStart: 42 } : undefined}>
+        {/* 🆕 R56 — مراجعةُ صفحة العمل في «عام»: الشارةُ والنجمة («★ 9 / 10» يُقرأ من اليسار في الاتّجاهين) */}
+        {reply.review ? (
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="rounded-full border border-accent/60 px-2 py-0.5 text-[11px] font-bold text-accent">{t.talkReviewTag}</span>
+            <span dir="ltr" className="text-13 font-extrabold text-accent tabular-nums">
+              ★ {num(reply.review.rating, locale)}
+              <span className="text-12 font-medium text-muted">{` / ${num(10, locale)}`}</span>
+            </span>
+          </div>
+        ) : null}
         {replyingToName && <ReplyingTo name={replyingToName} locale={locale} />}
 
         {/* **صفٌّ واحدٌ بمتنين** (D-261) — **ولا مكوّنَ ثانٍ للنشرة**:

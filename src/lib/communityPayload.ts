@@ -4,6 +4,7 @@ import type { Dict, Locale } from "@/core/i18n";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { bulletinLine, bulletinEpisodeShort } from "@/core/bulletinLine";
+import { roomAiring } from "@/core/talkEpisodes";
 import { toLibraryListCard } from "@/lib/listCard";
 import { orderCommunityFeed, type FeedSort } from "@/core/communityFeed";
 import { LOOPZ_ID } from "@/core/loopz";
@@ -99,6 +100,8 @@ export function roomOut(core: CommunityData, r: TalkRoom, t: Dict, locale: Local
     pin: core.globalPins?.has(key) ? 2 : core.pins?.has(key) ? 1 : 0,
     /* 🆕 D-1201 — شريحةُ «أعمالي»: مكتبةُ القارئ (`followed` — المجموعةُ نفسُها التي كان يُرشِّح بها D-306) */
     mine: core.followed.has(key),
+    /* 🆕 R56 — شارةُ «يعرض الآن» (للمسلسل وحدَه — موعدُ الفيلم عرضٌ لا حلقة) */
+    airing: r.mediaType === "tv" ? roomAiring(r.bulletin, core.nextAir.get(key), new Date().toISOString().slice(0, 10)) : null,
   };
 }
 

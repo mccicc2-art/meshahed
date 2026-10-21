@@ -12,7 +12,7 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { StatusThread } from "../library/PosterCard";
 import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
-import { timeAgo, timeAgoShort } from "@/core/when";
+import { formatDateShort, timeAgo, timeAgoShort } from "@/core/when";
 import { displayNameOf, profileHref } from "@/core/people";
 import { curatedName } from "@/core/universes";
 import { LOOPZ_USERNAME } from "@/core/loopz";
@@ -395,6 +395,7 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
           </View>
         ) : null}
       </View>
+      {room.airing ? <AiringBadge airing={room.airing} /> : null}
     </Pressable>
   );
   if (!pin || (pin.readOnly && room.pin !== 2)) return card;
@@ -420,6 +421,31 @@ export const RoomCard = memo(function RoomCard({ room, doors, hero = false, pin 
     </View>
   );
 });
+
+/**
+ * 🆕 R56 — **شارةُ «يعرض الآن»** في زاوية البطاقة السفلى من جهة النهاية (أحمد ٢١ أكتوبر: «يمين تحت داخل ايطار العمل»؛ «ج»):
+ * نقطةٌ خضراءُ وموعدُ القادمة («الأحد» إن كانت خلال أسبوع، وإلّا التاريخ)، ويومَ النزول أو بعده بيومٍ شارةٌ خضراءُ برقم الحلقة.
+ * لونُ النجاح الواحد (القاعدة ٣)، والخلفيّةُ معتمةٌ لتُقرأ فوق أيّ غلاف.
+ */
+function AiringBadge({ airing }: { airing: NonNullable<CommunityRoom["airing"]> }) {
+  const { t, tokens, locale } = useApp();
+  const today = new Date().toISOString().slice(0, 10);
+  const day = (d: string) => {
+    const days = Math.round((Date.parse(`${d}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+    return days <= 6 ? new Date(`${d}T12:00:00Z`).toLocaleDateString(locale === "ar" ? "ar" : "en", { weekday: "short", timeZone: "UTC" }) : formatDateShort(d, t);
+  };
+  const out = airing.out != null;
+  const label = out ? t.talkAiringOut(airing.out!) : airing.next === today ? t.talkAiringToday : airing.next ? t.talkAiringNext(day(airing.next)) : t.talkAiringNow;
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: "absolute", bottom: 10, end: 10, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: out ? tokens.success : "rgba(0,0,0,0.6)", borderWidth: out ? 0 : 1, borderColor: tokens.success }}
+    >
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: out ? "#04120A" : tokens.success }} />
+      <Text size={12} weight="800" color={out ? "#04120A" : "#E9FBEF"} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
 
 /** بطاقةُ شخصٍ في اللوحة — `PeopleLeaderboard` الويب: وجهٌ · اسمٌ · الرقمُ وتفصيلُه (D-219/D-275) */
 /** 🆕 M2 — زاويةُ المتابعة (`FollowUserButton variant="corner"`، D-281): في «عرض الكل» وحدَه، ولا على وجهك */

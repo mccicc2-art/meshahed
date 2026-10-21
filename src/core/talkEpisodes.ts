@@ -131,3 +131,43 @@ export function latestBulletin<T extends TalkRow>(rows: T[]): (T & { season: num
   }
   return best as (T & { season: number; episode: number }) | null;
 }
+
+/* ======================================================================================================================
+ * 🆕 R56 — **قائمةُ «الحلقات» من حلقات الموسم نفسِها لا من عددها** (أحمد ٢١ أكتوبر بلقطة ون بيس: «يذكر الحلقات ب 1176 مثال
+ * نبيه نفس كذا · نبي عنوان الحلقات ظاهر · نبي صورة الحلقة ظاهره»). كانت القائمةُ ترقّم ١…N من `episode_count`، وTMDB يرقّم
+ * بعضَ الأعمال ترقيماً كلّيّاً (الموسم ٢٣ من ون بيس: 1156–1180) — فلا تطابق «شاهدتها» (`s:e` برقم TMDB) ولا نشرةُ الحلقة.
+ * الرقمُ الآن `episode_number` كما في صفحة العمل والتتبّع، وما لم يُعرض بعدُ (بلا تاريخ أو تاريخُه بعد اليوم) لا غرفةَ له.
+ * ==================================================================================================================== */
+export function airedEpisodes<E extends { episode_number: number; air_date: string | null }>(eps: readonly E[], today = new Date().toISOString().slice(0, 10)): E[] {
+  return eps.filter((e) => !!e.air_date && e.air_date <= today).sort((a, b) => b.episode_number - a.episode_number);
+}
+
+/* «الحلقة 1156» / «Episode 12» عنوانٌ مكرّرٌ من الرقم لا عنوان — TMDB يملأ به ما لم يُترجم؛ أحمد «٢ ب»: لا نعرضه */
+const GENERIC_EPISODE_NAME = /^\s*(?:الحلقة|حلقة|episode|ep\.?|épisode|episodio|folge)\s*\d+\s*$/i;
+export function episodeTitle(name: string | null | undefined): string | null {
+  const s = (name ?? "").trim();
+  return s && !GENERIC_EPISODE_NAME.test(s) ? s : null;
+}
+
+/* ======================================================================================================================
+ * 🆕 R56 — **شارةُ «يعرض الآن» في بطاقة الغرفة** (أحمد ٢١ أكتوبر: «افكر اضيف شيء يوضح انها تعرض الان … يمين تحت داخل ايطار
+ * العمل»؛ «ج»: النقطةُ والموعدُ معاً، ويومَ النزول «● Ep 1,181 out»). من مصدرين بلا نداءٍ جديد:
+ * - `next`: موعدُ الحلقة القادمة المخزَّن في مكتبة القارئ (`follows.next_air_date`) — اليومُ أو بعده وحدَه.
+ * - `out`: نشرةُ لوبز الأخيرة (`data.air`) إن عُرضت اليومَ أو أمس — رقمُها رقمُ TMDB.
+ * ونشرةٌ في آخر ١٤ يوماً بلا موعدٍ معروف ⇒ «يعرض الآن» وحدَها. غيرُ ذلك لا شارة — لا نخمّن يوماً.
+ * ==================================================================================================================== */
+export type RoomAiring = { next: string | null; out: number | null };
+
+const DAY_MS = 86_400_000;
+const dayNum = (d: string) => Math.floor(Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / DAY_MS);
+
+export function roomAiring(bulletin: Record<string, unknown> | null | undefined, nextAirDate: string | null | undefined, today: string): RoomAiring | null {
+  const air = typeof bulletin?.air === "string" && /^\d{4}-\d{2}-\d{2}/.test(bulletin.air) ? bulletin.air.slice(0, 10) : null;
+  const ep = bulletinEpisode(bulletin);
+  const next = nextAirDate && /^\d{4}-\d{2}-\d{2}/.test(nextAirDate) && nextAirDate.slice(0, 10) >= today ? nextAirDate.slice(0, 10) : null;
+  const ago = air ? dayNum(today) - dayNum(air) : null;
+  const out = ep && ago != null && ago >= 0 && ago <= 1 ? ep.episode : null;
+  const recent = ago != null && ago >= 0 && ago <= 14;
+  if (!next && out == null && !recent) return null;
+  return { next, out };
+}

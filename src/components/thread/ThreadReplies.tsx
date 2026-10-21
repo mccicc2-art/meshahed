@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   addReviewReply,
   addNewsReply,
@@ -16,6 +16,7 @@ import {
   reportTalkPost,
   reportListReviewReply,
   togglePostLike,
+  toggleReviewLike,
   votePost,
   toggleEpisode,
 } from "@/lib/actions";
@@ -172,9 +173,16 @@ export function ThreadReplies({
      تُفتح بـ`history.pushState` لا بتنقّلٍ إلى الخادم — الخيطُ كلُّه هنا أصلاً، فالصفحةُ ترسم فوراً و«رجوع» المتصفّح خطوةٌ واحدة */
   const search = useSearchParams();
   const focusId = target.kind === "talk" ? search.get("r") : null;
+  const router = useRouter();
   const openRow = (id: string) => {
     if (target.kind !== "talk" || id === focusId || id.startsWith(TEMP)) return;
     tap(6);
+    /* 🆕 R56 — المراجعةُ تُفتح في صفحتها؛ ردودُها هناك لا في النقاش (أحمد: «اذا كتبت ف نقاش العمل لا يظهر في ريفيو») */
+    const rv = whole.find((x) => x.replyId === id)?.review;
+    if (rv) {
+      router.push(`/review/${target.mediaType}/${target.tmdbId}/${rv.userId}`);
+      return;
+    }
     setOpen(null);
     window.history.pushState(null, "", `${pathname}?r=${encodeURIComponent(id)}`);
     window.scrollTo({ top: 0 });
@@ -231,7 +239,10 @@ export function ThreadReplies({
     /* **الحالةُ تنقلب فور اللمس ثم تُكتب** — وزرٌّ لا يستجيب يُلمس
        مرّتين (سيرةُ `LikeButton`). **وإن فشلت الكتابة رجعت.** */
     setLikeDelta((d) => ({ ...d, [id]: was ? -1 : 1 }));
-    void togglePostLike(id, was).catch(() => {
+    /* 🆕 R56 — مراجعةُ صفحة العمل في «عام»: قلبُها في جدول المراجعات لا المنشورات */
+    const rv = all.find((x) => x.replyId === id)?.review;
+    const req = rv && target.kind === "talk" ? toggleReviewLike(rv.userId, target.tmdbId, target.mediaType, was) : togglePostLike(id, was);
+    void req.catch(() => {
       setLikeDelta((d) => ({ ...d, [id]: was ? 1 : -1 }));
       setError(t.errorTitle);
     });
@@ -440,6 +451,7 @@ export function ThreadReplies({
       {tvTalk && !focusId ? (
         <TalkTvBar
           locale={locale}
+          tvId={target.kind === "talk" ? target.tmdbId : 0}
           seasons={seasons ?? []}
           tab={talkTab}
           onTab={(x) => {
@@ -658,7 +670,7 @@ export function ThreadReplies({
              **وزرٌّ يعِد بما تمنعه القاعدة وعدٌ كاذب** (D-217). */
           canReply={nested ? real < MAX_DEPTH : !r.parentId}
           /* **والعددُ بجانب علامته** (D-284) — كلُّ الفرع لا أبناؤه وحدهم */
-          replyCount={nested ? countUnder(r.replyId) : 0}
+          replyCount={r.review ? r.review.replies : nested ? countUnder(r.replyId) : 0}
           /* **الإعجابُ في الغرفة وحدَها** (D-289): الجدولُ يشير إلى
              `title_posts`، **وسطحٌ يعرض زرّاً لا وجهةَ له يعد بما
              تمنعه القاعدة** (D-217). **ولا زرَّ على مشاركتك** — ولا
@@ -676,12 +688,13 @@ export function ThreadReplies({
           score={votes ? scoreOf(r.replyId) : 0}
           myVote={votes ? myVoteOf(r.replyId) : 0}
           onVote={
-            votes && signedIn && !r.isMine && !r.replyId.startsWith(TEMP)
+            votes && signedIn && !r.isMine && !r.review && !r.replyId.startsWith(TEMP)
               ? (v) => vote(r.replyId, v)
               : undefined
           }
-          votesOn={!!votes}
+          votesOn={!!votes && !r.review}
           onReply={() => {
+            if (r.review) return openRow(r.replyId);
             tap(6);
             setOpen(open === r.replyId ? null : r.replyId);
           }}

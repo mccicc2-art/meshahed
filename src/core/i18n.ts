@@ -1234,6 +1234,19 @@ const ar = {
   talkReplyingTo: (name: string) => `ردّاً على ${name}`,
   /* 🆕 R55 — **صفحةُ المنشور / الردّ** (أحمد ٢١ أكتوبر: «اضغط عالرد ويفتح صفحة الرد واقرا الردود عليها»): عنوانُ الشريط
      يقول ما في الصفحة، وعنوانُ قسم الردود يعدّها بجمع القِلّة (D-015) كـ`talkShowReplies` */
+  /* 🆕 R56 — شارةُ مراجعة صفحة العمل في «عام» */
+  talkReviewTag: "مراجعة",
+  /* 🆕 R56 — شارةُ «يعرض الآن» في بطاقة الغرفة (أحمد «ج»): النقطةُ والموعد، ويومَ النزول رقمُ الحلقة */
+  talkAiringNow: "يعرض الآن",
+  talkAiringNext: (day: string) => `يعرض · القادمة ${day}`,
+  talkAiringToday: "يعرض · حلقة اليوم",
+  talkAiringOut: (n: number) => `نزلت الحلقة ${num(n, "ar")}`,
+  /* 🆕 R56 — «Discussions»: شريحةُ «مكتبتي» وبحثُ الغرف */
+  talkScopeLibrary: "مكتبتي",
+  talkSearchTitle: "ابحث عن نقاش",
+  talkSearchPlaceholder: "ابحث عن عمل وادخل نقاشه",
+  talkSearchRecent: "زرتها مؤخراً",
+  talkSearchActive: "الأنشط هذا الأسبوع",
   talkPostPage: "المنشور",
   talkReplyPage: "الردّ",
   talkRepliesHeading: (n: number) =>
@@ -3638,6 +3651,16 @@ const en: Dict = {
   actionComment: "Comment",
   replySentToast: "Reply sent",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
+  talkReviewTag: "Review",
+  talkAiringNow: "Airing now",
+  talkAiringNext: (day: string) => `Airing · Next ${day}`,
+  talkAiringToday: "Airing · New today",
+  talkAiringOut: (n: number) => `Ep ${num(n, "en")} out`,
+  talkScopeLibrary: "My library",
+  talkSearchTitle: "Find a discussion",
+  talkSearchPlaceholder: "Find a title and open its discussion",
+  talkSearchRecent: "Recently visited",
+  talkSearchActive: "Most active this week",
   talkPostPage: "Post",
   talkReplyPage: "Reply",
   talkRepliesHeading: (n: number) => (n === 1 ? "1 reply" : `${num(n, "en")} replies`),

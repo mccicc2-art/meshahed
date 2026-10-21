@@ -16,6 +16,8 @@ import {
   getTitleReviews,
   getTitleReplies,
   getWatchedForShow,
+  getReviewReplyCounts,
+  type TitleReview,
 } from "@/lib/data";
 import { getMovie, getTv } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
@@ -93,23 +95,33 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
   const tP = getT();
   const workP = tP.then(({ locale, t }) => workOf(tmdbId, kind, locale, t.talkFallbackTitle));
   const meP = getMyProfileLite();
-  const [user, { locale, t }, thread, follow, watched] = await Promise.all([
+  const [user, { locale, t }, thread, follow, watched, reviewsAll] = await Promise.all([
     getUser(),
     tP,
     getTitleThread(tmdbId, kind),
     getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
     kind === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
+    /* 🆕 R56 — مراجعاتُ صفحة العمل تظهر في «عام» (والغرفةِ كلِّها للفيلم)؛ نجومٌ بلا نصٍّ لا تظهر (أحمد «٣ أ») */
+    getTitleReviews(tmdbId, kind).catch(() => [] as TitleReview[]),
   ]);
+  const reviews = reviewsAll.filter((r) => r.review?.trim());
   /* 🆕 D-1508 — ما شاهده القارئُ من حلقات المسلسل (كلَّ ما أشّره، لا دورةَ الإعادة وحدَها): غرفةُ الحلقة تغطّي كلامَها عمّن
      لم يشاهدها، وقائمةُ «الحلقات» تقفلها. بلا جلسةٍ مصفوفةٌ فارغة (والغلقُ لكلِّ شيء — الزائرُ لا يُحرَق) */
   const watchedEpsP = kind === "tv" && user ? getWatchedForShow(tmdbId, null).then((s) => [...s]).catch(() => [] as string[]) : Promise.resolve([] as string[]);
   const ids = thread.map((p) => p.postId);
-  const [work, likes, votes, translations, me] = await Promise.all([
+  const [work, likes, votes, translations, me, reviewReplies] = await Promise.all([
     workP,
     getPostLikes(ids).catch(() => ({ counts: {} as Record<string, number>, mine: [] as string[] })),
     getPostVotes(ids),
-    translationsOf(thread.filter((p) => !p.kind && !p.hasSpoiler && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })), locale),
+    translationsOf(
+      [
+        ...thread.filter((p) => !p.kind && !p.hasSpoiler && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
+        ...reviews.filter((r) => !r.has_spoiler).map((r) => ({ id: `review:${r.id}`, text: r.review ?? "" })),
+      ],
+      locale,
+    ),
     meP,
+    getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, kind, tmdbId))),
   ]);
   const mine = new Set(likes.mine);
   const rows: ThreadRow[] = inheritEpisodes(thread.map((p) => {
@@ -141,6 +153,31 @@ export async function talkPayload(tmdbId: number, kind: Kind): Promise<ThreadPay
       ...(bulletin ? (bulletinEpisode(p.data) ?? { season: null, episode: null }) : { season: p.season, episode: p.episode }),
     };
   }));
+  /* 🆕 R56 — المراجعةُ سطرٌ بلا أب، وقتُه آخرُ تعديلٍ لها، وقلبُها قلبُها (`community/like` بـ`target: review`) */
+  for (const r of reviews) {
+    rows.push({
+      id: `review:${r.id}`,
+      person: person(r, r.id),
+      parent_id: null,
+      body: r.review ?? "",
+      created_at: r.updated_at,
+      mine: r.isMine,
+      bulletin: null,
+      bulletin_vote: null,
+      bulletin_spoiler: null,
+      has_spoiler: !!r.has_spoiler,
+      image: null,
+      gif_id: null,
+      translated: translations[`review:${r.id}`] ?? null,
+      likes: r.likes,
+      liked_by_me: r.likedByMe,
+      score: 0,
+      my_vote: 0,
+      season: null,
+      episode: null,
+      review: { user_id: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, kind, tmdbId)) ?? 0 },
+    });
+  }
   const w = asWork(work);
   return {
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },

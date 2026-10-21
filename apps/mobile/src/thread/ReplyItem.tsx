@@ -104,7 +104,11 @@ export const ReplyItem = memo(function ReplyItem({
   /* 🆕 R54 — القلبُ على مشاركتك مسموح (مثل تويتر)؛ التصويتُ وحدَه يبقى لغيرك */
   const canLike = signedIn && !pending;
   const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingVertical: 6, paddingHorizontal: 8, minHeight: 32 };
-  const hasTail = !pending && ((signedIn && canReply) || replyCount > 0 || fold || (showLikes && (canLike || row.likes > 0)) || (showVotes && (canAct || row.mine || row.score !== 0)));
+  /* 🆕 R56 — مراجعةُ صفحة العمل في «عام»: بلا أصواتٍ ولا ⋯ (حذفُها وبلاغُها في صفحتها)، وعددُ «💬» ردودُ صفحتها */
+  const review = row.review ?? null;
+  const votesOn = showVotes && !review;
+  const replies = review ? review.replies : replyCount;
+  const hasTail = !pending && ((signedIn && canReply) || replies > 0 || fold || (showLikes && (canLike || row.likes > 0)) || (votesOn && (canAct || row.mine || row.score !== 0)));
 
   const media = (
     <>
@@ -160,7 +164,7 @@ export const ReplyItem = memo(function ReplyItem({
           {p.hide_name ? null : <IdentityBadges flags={identityFlags(p)} nameSize={14} />}
         </View>
         <Text size={12} muted>· {timeAgoShort(row.created_at, t)}</Text>
-        {!pending && signedIn ? (
+        {!pending && signedIn && !review ? (
           <Pressable onPress={() => onMenu(row)} hitSlop={8} accessibilityLabel={t.moreMenuTitle} style={{ marginStart: "auto", width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
             <Icon name="dots" size={16} color={tokens.muted} />
           </Pressable>
@@ -168,6 +172,18 @@ export const ReplyItem = memo(function ReplyItem({
       </View>
 
       <View style={indent}>
+      {review ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+          <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent }}>
+            <Text size={11} weight="700" color={tokens.accent}>{t.talkReviewTag}</Text>
+          </View>
+          {/* «★ 9 / 10» يُقرأ من اليسار في الاتجاهين — رقمٌ ومقامُه لا جملة */}
+          <Text size={13} weight="800" color={tokens.accent} style={{ writingDirection: "ltr" }}>
+            {`★ ${num(review.rating, locale)}`}
+            <Text size={12} muted>{` / ${num(10, locale)}`}</Text>
+          </Text>
+        </View>
+      ) : null}
       {replyingTo ? <Text size={12} muted style={{ marginTop: 2 }}>{t.talkReplyingTo(replyingTo)}</Text> : null}
 
       {row.bulletin ? (
@@ -226,17 +242,17 @@ export const ReplyItem = memo(function ReplyItem({
               {signedIn && canReply ? (
                 <Pressable onPress={() => onReply(row)} hitSlop={4} accessibilityLabel={t.talkReply} style={pad}>
                   <Icon name="comment" size={15} color={tokens.muted} />
-                  {replyCount > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text> : null}
+                  {replies > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replies, locale)}</Text> : null}
                 </Pressable>
-              ) : replyCount > 0 ? (
+              ) : replies > 0 ? (
                 <View style={pad}>
                   <Icon name="comment" size={15} color={tokens.muted} />
-                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replyCount, locale)}</Text>
+                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replies, locale)}</Text>
                 </View>
               ) : null}
             </View>
             <View style={{ flex: 1, alignItems: "flex-start" }}>
-              {showVotes && (canAct || row.mine || row.score !== 0) ? (
+              {votesOn && (canAct || row.mine || row.score !== 0) ? (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Pressable
                     onPress={() => onVote(row, row.my_vote === 1 ? 0 : 1)}

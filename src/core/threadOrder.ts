@@ -23,6 +23,8 @@ export type OrderRow = {
   created_at: string;
   score?: number;
   person?: { plan?: string | null; plus_until?: string | null } | null;
+  /** 🆕 R56 — مراجعةٌ في «عام»: ردودُها في صفحتها لا أبناءٌ هنا، فتُحسب في «الأكثر تفاعلاً» من عددها */
+  review?: { replies: number } | null;
 };
 
 export function orderThread<T extends OrderRow>(rows: readonly T[], opts: { votes: boolean; plusFirst: boolean }): T[] {
@@ -94,7 +96,7 @@ export function orderTalk<T extends OrderRow & { likes?: number }>(rows: readonl
   if (sort === "latest") roots.sort(newest);
   else {
     /* 🆕 R54 — **الردُّ باثنين** (أحمد ٢١ أكتوبر «ب»: «الرد احسبه ب اثنين لانه تفاعل فعلي») — القلبُ والصوتُ ضغطة، والردُّ نقاش */
-    const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + 2 * (replies.get(r.id) ?? 0);
+    const weight = (r: T) => (r.likes ?? 0) + Math.max(0, r.score ?? 0) + 2 * ((replies.get(r.id) ?? 0) + (r.review?.replies ?? 0));
     roots.sort((a, b) => weight(b) - weight(a) || newest(a, b));
   }
   return [...roots, ...kids];

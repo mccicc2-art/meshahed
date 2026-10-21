@@ -25,9 +25,11 @@ import { ReplyQuote } from "../messages/ReplyQuote";
 import { MentionList, useMentions } from "../messages/mentions";
 import { Chip } from "../library/Chip";
 import { SortCycle } from "../library/SortCycle";
-import { episodeBulletin, episodeRoomRows, episodeStats, generalRows, latestBulletin, talkEpisodeKey, type EpisodeRef, type EpisodeStat } from "@/core/talkEpisodes";
+import { airedEpisodes, episodeBulletin, episodeRoomRows, episodeStats, episodeTitle, generalRows, latestBulletin, talkEpisodeKey, type EpisodeRef, type EpisodeStat } from "@/core/talkEpisodes";
+import { seasonQuery } from "../title/SeasonAccordion";
+import { rememberRoom } from "./recentRooms";
 import { Segmented } from "../library/ToolsSheet";
-import { timeAgoShort } from "@/core/when";
+import { formatDateShort, timeAgoShort } from "@/core/when";
 import type { PersonLite } from "@/core/people";
 import type { SearchTitle } from "../contracts";
 import { rememberGif } from "./GifPicker";
@@ -132,6 +134,13 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     opened.current = true;
     afterPaint(() => endOpen());
   }, [d, endOpen]);
+  /* 🆕 R56 — «زرتها مؤخراً» في بحث «Discussions»: الغرفةُ نفسُها لا صفحاتُ أسطرها */
+  const remembered = useRef(false);
+  useEffect(() => {
+    if (!d || remembered.current || route.t !== "talk" || focus) return;
+    remembered.current = true;
+    rememberRoom({ kind: route.kind, id: route.id, title: d.work.title, poster: d.work.poster_path });
+  }, [d, route, focus]);
 
   const toastHost = useRef<ToastHostRef>(null);
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
@@ -223,6 +232,11 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     (row: ThreadRow) => {
       if (route.t !== "talk" || row.id === focus) return;
       haptic.pick();
+      /* 🆕 R56 — المراجعةُ تُفتح في صفحتها (ردودُها هناك؛ أحمد: «اذا كتبت ف نقاش العمل لا يظهر في ريفيو») */
+      if (row.review) {
+        router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: route.kind, id: String(route.id), user: row.review.user_id, from: from === "web" ? "web" : from } });
+        return;
+      }
       router.push({ pathname: "/talk/[kind]/[id]", params: { kind: route.kind, id: String(route.id), r: row.id, from: from === "web" ? "web" : from } });
     },
     [route, focus, router, from],
@@ -336,14 +350,18 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       const was = row.liked_by_me;
       const set = (on: boolean) => patchRow(row.id, (r) => ({ ...r, liked_by_me: on, likes: Math.max(0, r.likes + (on ? 1 : -1)) }));
       set(!was);
-      write("/api/v1/thread/like", { post_id: row.id, on: !was })
+      /* 🆕 R56 — مراجعةُ صفحة العمل: قلبُها قلبُ المراجعة نفسِها (المسارُ الذي تكتبه صفحتُها) لا جدولُ المنشورات */
+      const req = row.review && d
+        ? write("/api/v1/community/like", { target: "review", user_id: row.review.user_id, tmdb_id: d.work.tmdb_id, media_type: d.work.media_type, on: !was } satisfies LikeBody)
+        : write("/api/v1/thread/like", { post_id: row.id, on: !was });
+      req
         .catch((e: unknown) => {
           set(was);
           fail(e);
         })
         .finally(() => busy.current.delete(k));
     },
-    [patchRow, fail],
+    [patchRow, fail, d],
   );
   const vote = useCallback(
     (row: ThreadRow, v: -1 | 0 | 1) => {
@@ -481,11 +499,12 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     [replyTo, send, focusTarget],
   );
   const beginReply = useCallback((row: ThreadRow) => {
+    if (row.review) return openRow(row);
     haptic.pick();
     setReplyTo(row);
     setAttach(false);
     setTimeout(() => inputRef.current?.focus(), 120);
-  }, []);
+  }, [openRow]);
   /* المنشن: من كتب هنا (غيري)، بلا تكرار */
   const people = useMemo(() => {
     const seen = new Map<string, PersonLite>();
@@ -1128,6 +1147,9 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
   const pick = talk.pick;
   const season = tv.season ?? tv.latest?.season ?? seasons[seasons.length - 1]?.season ?? 1;
   const seasonInfo = seasons.find((x) => x.season === season) ?? null;
+  /* 🆕 R56 — حلقاتُ الموسم من مسار صفحة العمل نفسِه (`seasonQuery` — الكاشُ مشترك): رقمُ TMDB والعنوانُ والصورة */
+  const sq = useQuery({ ...seasonQuery(d.work.tmdb_id, season), enabled: tv.tab === "episodes" && !pick && !!seasonInfo });
+  const aired = useMemo(() => (sq.data ? airedEpisodes(sq.data.episodes) : null), [sq.data]);
 
   if (pick) {
     const b = tv.pickBulletin;
@@ -1206,34 +1228,62 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
               <Chip key={x.season} size="md" label={t.talkSeasonLabel(x.season)} active={x.season === season} onPress={() => tv.onSeason(x.season)} />
             ))}
           </ScrollView>
-          {seasonInfo
-            ? Array.from({ length: seasonInfo.episodes }, (_, i) => seasonInfo.episodes - i).map((n) => {
-                const k = talkEpisodeKey(season, n);
-                const st = tv.stats.get(k);
-                const watched = tv.watchedEps.has(k);
-                const name = episodeBulletin(d.rows, { season, episode: n })?.bulletin_name ?? null;
-                return (
-                  <Pressable
-                    key={k}
-                    onPress={() => tv.onPick({ season, episode: n })}
-                    accessibilityRole="button"
-                    style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
-                  >
-                    <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                      <Icon name={watched ? "check" : "eye-off"} size={16} color={watched ? tokens.success : tokens.muted} />
+          {/* 🆕 R56 — الحلقاتُ بأرقام TMDB وعناوينها وصورها (أحمد: «١ أ» الصورةُ مغبّشةٌ لما لم تشاهده لأنّ صورَ الحلقات تحرق،
+              «٢ ب» العنوانُ المكرّرُ من الرقم لا يُعرض). وقبل وصول الموسم مؤشّرٌ لا أرقامٌ تخمينيّة؛ وإن فشل فالعددُ القديم كما كان */}
+          {!seasonInfo ? null : aired ? (
+            aired.map((e) => {
+              const n = e.episode_number;
+              const k = talkEpisodeKey(season, n);
+              const st = tv.stats.get(k);
+              const watched = tv.watchedEps.has(k);
+              const name = episodeTitle(e.name) ?? episodeBulletin(d.rows, { season, episode: n })?.bulletin_name ?? null;
+              const still = e.still_path ? backdropUrl(e.still_path, "w300") : null;
+              return (
+                <Pressable
+                  key={k}
+                  onPress={() => tv.onPick({ season, episode: n })}
+                  accessibilityRole="button"
+                  accessibilityLabel={[t.talkEpisodeLabel(n), name].filter(Boolean).join(" · ")}
+                  style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
+                >
+                  <View style={{ width: 112, height: 63, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                    {still ? <Image source={{ uri: still }} style={{ position: "absolute", width: "100%", height: "100%" }} contentFit="cover" blurRadius={watched ? 0 : 18} cachePolicy="memory-disk" recyclingKey={k} /> : null}
+                    {watched ? (
+                      <View style={{ position: "absolute", bottom: 5, end: 5, width: 20, height: 20, borderRadius: 10, backgroundColor: tokens.success, alignItems: "center", justifyContent: "center" }}>
+                        <Icon name="check" size={12} color={tokens.bg} />
+                      </View>
+                    ) : (
+                      <>
+                        {still ? <View style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.35)" }} /> : null}
+                        <Icon name="eye-off" size={18} color={still ? "#fff" : tokens.muted} />
+                      </>
+                    )}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.talkEpisodeLabel(n)}</Text>
+                      <Text size={12} weight="700" color={st?.count ? tokens.accent : tokens.muted} style={{ marginStart: "auto" }}>{t.talkComments(st?.count ?? 0)}</Text>
                     </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text size={14} weight="700" numberOfLines={1}>
-                        {t.talkEpisodeLabel(n)}
-                        {name ? <Text size={14} weight="500">{` · ${name}`}</Text> : null}
-                      </Text>
-                      <Text size={12} muted numberOfLines={1}>{[watched ? t.talkEpWatched : null, st?.last ? timeAgoShort(st.last, t) : null].filter(Boolean).join(" · ") || " "}</Text>
-                    </View>
-                    <Text size={12} weight="700" color={st?.count ? tokens.accent : tokens.muted}>{t.talkComments(st?.count ?? 0)}</Text>
-                  </Pressable>
-                );
-              })
-            : null}
+                    {name ? <Text size={13} numberOfLines={1}>{name}</Text> : null}
+                    <Text size={12} muted numberOfLines={1}>{[e.air_date ? formatDateShort(e.air_date, t) : null, watched ? t.talkEpWatched : null, st?.last ? timeAgoShort(st.last, t) : null].filter(Boolean).join(" · ") || " "}</Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          ) : sq.isError ? (
+            Array.from({ length: seasonInfo.episodes }, (_, i) => seasonInfo.episodes - i).map((n) => {
+              const k = talkEpisodeKey(season, n);
+              const st = tv.stats.get(k);
+              return (
+                <Pressable key={k} onPress={() => tv.onPick({ season, episode: n })} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}>
+                  <Text size={14} weight="700" style={{ flex: 1 }}>{t.talkEpisodeLabel(n)}</Text>
+                  <Text size={12} weight="700" color={st?.count ? tokens.accent : tokens.muted}>{t.talkComments(st?.count ?? 0)}</Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 24 }} />
+          )}
         </View>
       )}
     </View>

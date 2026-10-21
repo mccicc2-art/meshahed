@@ -12,7 +12,10 @@ import {
   getFollowState,
   isMovieWatched,
   getWatchedForShow,
+  getTitleReviews,
+  getReviewReplyCounts,
 } from "@/lib/data";
+import { commentViewKey } from "@/core/postKeys";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
@@ -22,6 +25,7 @@ import { TitleHero } from "@/components/TitleHero";
 import { getBatchTranslations } from "@/lib/translate";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
+import type { ThreadReply } from "@/components/thread/ReplyItem";
 import { Icon } from "@/components/Icon";
 import { Suspense } from "react";
 
@@ -147,7 +151,11 @@ export default async function TalkPage({
      معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
      للغرفة كلِّها** (D-164/D-205)، **وسقوطُه صامتٌ فيُرسم الزرُّ
      بصفر.** */
-  const [postLikes, postVotes] = await Promise.all([
+  /* 🆕 R56 — مراجعاتُ صفحة العمل في «عام» (أحمد ٢١ أكتوبر؛ نجومٌ بلا نصٍّ لا تظهر — «٣ أ»). سطرُها `review:<صاحبها>`، وقلبُها
+     وعددُ ردودها من جداول المراجعة، فتُضاف إلى خريطة القلوب بمفتاحها — والخيطُ يكتب القلبَ إلى جدولها (`toggleReviewLike`) */
+  const reviews = (await getTitleReviews(tmdbId, mediaType).catch(() => [])).filter((r) => r.review?.trim());
+  const reviewReplies = await getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, mediaType, tmdbId)));
+  const [postLikesRaw, postVotes] = await Promise.all([
     getPostLikes(thread.map((p) => p.postId)).catch(() => ({
       counts: {} as Record<string, number>,
       mine: [] as string[],
@@ -156,13 +164,20 @@ export default async function TalkPage({
        اللحظة، **والسقوطُ صامتٌ بصفر** (D-179). */
     getPostVotes(thread.map((p) => p.postId)),
   ]);
+  const postLikes = {
+    counts: { ...postLikesRaw.counts, ...Object.fromEntries(reviews.map((r) => [`review:${r.id}`, r.likes])) },
+    mine: [...postLikesRaw.mine, ...reviews.filter((r) => r.likedByMe).map((r) => `review:${r.id}`)],
+  };
 
   /* 🆕 **ترجمةُ كلام الأعضاء بلغة القارئ** (D-307) — **النشراتُ ثنائيّةُ
      اللغة أصلاً** (`name_ar`/`name_en`) فلا تدخل، **والمفتاحُ غائبٌ؟
      خريطةٌ فارغةٌ والأصلُ وحدَه** (D-077). */
   const translations = (await getTranslateEnabled())
     ? await getBatchTranslations(
-    thread.filter((p) => !p.kind && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
+    [
+      ...thread.filter((p) => !p.kind && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
+      ...reviews.filter((r) => !r.has_spoiler).map((r) => ({ id: `review:${r.id}`, text: r.review ?? "" })),
+    ],
         locale === "ar" ? "ar" : "en",
       )
     : {};
@@ -300,7 +315,7 @@ export default async function TalkPage({
           }}
           votes={postVotes}
           translations={translations}
-          replies={thread.map((p) => ({
+          replies={[...thread.map((p): ThreadReply => ({
             replyId: p.postId,
             authorId: p.authorId,
             nickname: p.nickname,
@@ -333,7 +348,27 @@ export default async function TalkPage({
             share: p.share,
             season: episodeOf.get(p.postId)?.season ?? null,
             episode: episodeOf.get(p.postId)?.episode ?? null,
-          }))}
+          })),
+            ...reviews.map((r): ThreadReply => ({
+              replyId: `review:${r.id}`,
+              authorId: r.id,
+              nickname: r.nickname,
+              username: r.username,
+              avatar_url: r.avatar_url,
+              hide_name: r.hide_name,
+              plan: r.plan ?? null,
+              founder: r.founder ?? null,
+              verified_at: r.verified_at ?? null,
+              parentId: null,
+              body: r.review ?? "",
+              createdAt: r.updated_at,
+              isMine: r.isMine,
+              hasSpoiler: !!r.has_spoiler,
+              season: null,
+              episode: null,
+              review: { userId: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, mediaType, tmdbId)) ?? 0 },
+            })),
+          ]}
           seasons={seasons}
           watchedEps={watchedEps}
           myState={watchedIt ? "watched" : follow.following ? "library" : null}

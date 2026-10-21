@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bulletinEpisode, inheritEpisodes, rowsOfEpisode, seasonsOf } from "./talkEpisodes.ts";
+import { airedEpisodes, bulletinEpisode, episodeTitle, roomAiring, inheritEpisodes, rowsOfEpisode, seasonsOf } from "./talkEpisodes.ts";
 import { orderTalk } from "./threadOrder.ts";
 
 /* D-1495 — نقاشُ الحلقات */
@@ -94,4 +94,35 @@ test("the episode's bulletin and the latest bulletin", () => {
   assert.equal(episodeBulletin(room, { season: 4, episode: 9 })?.id, "b9");
   assert.equal(episodeBulletin(room, { season: 1, episode: 1 }), null);
   assert.equal(latestBulletin(room)?.id, "b10");
+});
+
+/* 🆕 R56 — أرقامُ TMDB الكلّيّة (ون بيس) وما عُرض فقط، والعنوانُ المكرّرُ من الرقم يسقط */
+test("airedEpisodes keeps TMDB numbers, drops unaired, newest first", () => {
+  const eps = [
+    { episode_number: 1156, air_date: "2026-04-05" },
+    { episode_number: 1180, air_date: "2026-09-27" },
+    { episode_number: 1181, air_date: "2026-10-25" },
+    { episode_number: 1182, air_date: null },
+  ];
+  assert.deepEqual(airedEpisodes(eps, "2026-10-21").map((e) => e.episode_number), [1180, 1156]);
+});
+
+test("episodeTitle hides names that only repeat the number", () => {
+  assert.equal(episodeTitle("الحلقة 1156"), null);
+  assert.equal(episodeTitle("Episode 12"), null);
+  assert.equal(episodeTitle("  "), null);
+  assert.equal(episodeTitle(null), null);
+  assert.equal(episodeTitle("The Battle Begins"), "The Battle Begins");
+  assert.equal(episodeTitle("الحلقة الأخيرة"), "الحلقة الأخيرة");
+});
+
+test("roomAiring: out on the air day or the day after, next from the library, recent bulletin alone", () => {
+  const b = (air: string) => ({ s: 23, e: 1180, air });
+  assert.deepEqual(roomAiring(b("2026-10-21"), "2026-10-28", "2026-10-21"), { next: "2026-10-28", out: 1180 });
+  assert.deepEqual(roomAiring(b("2026-10-20"), null, "2026-10-21"), { next: null, out: 1180 });
+  assert.deepEqual(roomAiring(b("2026-10-15"), "2026-10-26", "2026-10-21"), { next: "2026-10-26", out: null });
+  assert.deepEqual(roomAiring(b("2026-10-10"), null, "2026-10-21"), { next: null, out: null });
+  assert.equal(roomAiring(b("2026-09-01"), null, "2026-10-21"), null);
+  assert.equal(roomAiring(null, "2026-10-01", "2026-10-21"), null);
+  assert.deepEqual(roomAiring(null, "2026-11-02", "2026-10-21"), { next: "2026-11-02", out: null });
 });

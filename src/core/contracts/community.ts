@@ -18,6 +18,7 @@
 
 import type { TabPref } from "../tabPrefs.ts";
 import type { PersonLite } from "../people.ts";
+import type { RoomAiring } from "../talkEpisodes.ts";
 import type { BoardSection, CommunityPagerTab } from "../communityParams.ts";
 import type { LibraryListCard } from "./library.ts";
 
@@ -125,6 +126,8 @@ export type CommunityRoom = {
   episode_line?: string | null;
   /** درجةُ التثبيت: ٢ لوبز · ١ أنا · ٠ (D-301/D-314) */
   pin: 0 | 1 | 2;
+  /** 🆕 R56 — «يعرض الآن» وموعدُ الحلقة القادمة (`next`، تاريخ) أو الحلقةُ التي نزلت اليوم/أمس (`out`) — `null` لا شارة؛ غائبٌ من خادمٍ أقدم */
+  airing?: RoomAiring | null;
 };
 
 export type CommunityLeaderRow = PersonLite & { posts: number; reviews: number; total: number; prevTotal: number };
@@ -194,6 +197,8 @@ export type CommunityPayload = {
     extra?: CommunityFeedRow[];
   };
   rooms: CommunityRoom[];
+  /** 🆕 R56 — شريحةُ «مكتبتي»: أعمالُ المكتبة التي لا غرفةَ لها بعد (غرفٌ فارغة) — للمسجَّل وحدَه؛ غائبةٌ من خادمٍ أقدم */
+  library_rooms?: CommunityRoom[];
   board: CommunityBoard;
   following_ids: string[];
 };
