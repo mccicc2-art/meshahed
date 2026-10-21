@@ -1,9 +1,8 @@
-fix(mobile): iOS text alignment follows the Android meaning in Arabic; app API calls send the app language explicitly (D-1501) [deploy]
+revert(mobile): undo the D-1501 iOS alignment mapping; reload once at boot when the direction does not match the language (D-1502) [deploy]
 
-- ui.tsx: alignStart/alignEnd. iOS does not flip textAlign left/right under RTL, so Text's default, its auto-direction branch and any caller-written left/right are mapped for the Arabic iPhone. Android is unchanged.
-- TextInputs that wrote "left" now use alignStart().
-- Title overview aligns by its own language (autoDir).
-- api.ts, prime.ts, dmReply.ts: x-loopz-locale, which the server prefers over a stale locale cookie.
+- D-1501 assumed iOS does not flip textAlign under RTL. That was wrong: the 21:05 screenshot came from a session running with the wrong direction. ui.tsx and the 10 TextInput files go back to a1893bb.
+- Kept from D-1501: x-loopz-locale on app API calls, and autoDir on the title overview.
+- i18n.ts fixDirectionAtBoot: when I18nManager.isRTL does not match the locale at boot, apply the direction and reload once behind the Loopz curtain, at most once a minute.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
