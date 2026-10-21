@@ -2806,6 +2806,19 @@ const ar = {
   widgetIosHow: "في الآيفون: اضغط على الودجت مطوّلاً ← «تعديل الأداة» واختر التخطيط.",
   widgetAndroidHow: "هذا إعدادُ كلِّ ودجتٍ تضيفه. ولتعديل ودجتٍ على شاشتك: اضغط عليه مطوّلاً ← «الإعدادات».",
   widgetPlusBody: "ودجت واحد تخصّصه بنفسك: أكمل المشاهدة، البحث، القادم، فيلم الليلة، أصدقاؤك، للمشاهدة، أنشطتك.",
+  /* 🆕 D-1499 — «أرسل مشكلة أو اقتراح» */
+  fbRow: "أرسل مشكلة أو اقتراح",
+  fbRowSub: "نقرؤها كلّها — تصلنا مباشرة",
+  fbTitle: "أرسل مشكلة أو اقتراح",
+  fbKindBug: "مشكلة",
+  fbKindIdea: "اقتراح",
+  fbPlaceholderBug: "صف ما حدث: وين كنت، وش ضغطت، ووش ظهر لك…",
+  fbPlaceholderIdea: "وش الشيء اللي تتمنّى يكون في Loopz؟",
+  fbAuto: "يُرفق تلقائياً: نسخة التطبيق والجهاز",
+  fbSend: "إرسال",
+  fbSent: "وصلتنا ملاحظتك، شكراً",
+  fbRateLimited: "أرسلتَ خمس ملاحظات خلال ساعة — جرّب بعد قليل",
+  fbFailed: "تعذّر الإرسال، جرّب مرة أخرى",
 };
 
 export type Dict = typeof ar;
@@ -4822,6 +4835,19 @@ const en: Dict = {
   widgetIosHow: "On iPhone: long-press the widget → «Edit Widget» and pick a layout.",
   widgetAndroidHow: "This is the setup for every widget you add. To change one on your screen: long-press it → «Settings».",
   widgetPlusBody: "One widget you set up yourself: continue, search, coming up, tonight's movie, friends, to watch, your activity.",
+  /* 🆕 D-1499 — «Send a problem or suggestion» */
+  fbRow: "Send a problem or suggestion",
+  fbRowSub: "We read every one — it reaches us directly",
+  fbTitle: "Send a problem or suggestion",
+  fbKindBug: "Problem",
+  fbKindIdea: "Suggestion",
+  fbPlaceholderBug: "What happened: where were you, what did you tap, what did you see…",
+  fbPlaceholderIdea: "What do you wish Loopz had?",
+  fbAuto: "Attached automatically: app version and device",
+  fbSend: "Send",
+  fbSent: "Got it — thank you",
+  fbRateLimited: "Five in an hour — try again in a little while",
+  fbFailed: "Couldn't send, try again",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

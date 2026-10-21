@@ -10,6 +10,7 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SignOutRow } from "@/components/settings/SignOutRow";
+import { FeedbackRow } from "@/components/FeedbackSheet";
 
 /**
  * الإعدادات — **فهرسٌ لا لوحة** (D-462، مواصفةُ أحمد).
@@ -57,7 +58,7 @@ export default async function SettingsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const profile = await getProfile();
   const username = profile?.username ?? "";
   const displayName = profile?.nickname || username || (user.email ?? "").split("@")[0];
@@ -175,6 +176,8 @@ export default async function SettingsPage() {
       </SettingsGroup>
 
       <SettingsGroup label={t.setGroupSupport}>
+        {/* 🆕 D-1499 — أسرعُ طريقٍ لمشكلةٍ أو اقتراح: ورقةٌ هنا لا صفحة، والبريدُ باقٍ داخل «المساعدة» لمن يرفق ملفّاً */}
+        <FeedbackRow locale={locale} />
         <SettingsRow href="/profile/settings/help" icon="comment" title={t.setHelp} />
         <SettingsRow href="/profile/settings/about" icon="info" title={t.setAbout} />
       </SettingsGroup>

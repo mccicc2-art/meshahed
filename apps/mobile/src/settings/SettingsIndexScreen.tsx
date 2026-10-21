@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -13,6 +13,8 @@ import { haptic } from "../haptics";
 import { SettingsScreen, Group, Row, Chevron, RowsSkeleton, StatusPill } from "./ui";
 import { THEMES, themeName } from "@/core/themes";
 import { useSettings, useOpenWeb } from "./api";
+import { FeedbackSheet } from "./FeedbackSheet";
+import type { ToastHostRef } from "../HoldHost";
 
 /**
  * ====== الإعداداتُ — الفهرسُ أصليّاً (Phase 11-I · I1) ======
@@ -53,8 +55,16 @@ export function SettingsIndexScreen() {
   const theme = THEMES.find((x) => x.id === (themeId ?? s?.appearance.theme)) ?? THEMES[0];
   const appearance = `${themeName(theme, locale)} · ${locale === "ar" ? t.arabicLang : t.englishLang}`;
 
+  /* 🆕 D-1499 — «أرسل مشكلة أو اقتراح»: ورقةٌ فوق الإعدادات، وتأكيدُها في مضيف الشاشة نفسِها */
+  const [fbOpen, setFbOpen] = useState(false);
+  const toast = useRef<ToastHostRef>(null);
+
   return (
-    <SettingsScreen title={t.settingsNavHeading}>
+    <SettingsScreen
+      title={t.settingsNavHeading}
+      toast={toast}
+      overlay={fbOpen ? <FeedbackSheet onClose={() => setFbOpen(false)} onSent={(text) => toast.current?.say(text, undefined, undefined, "success")} /> : undefined}
+    >
       {!card ? (
         q.isError ? <Text muted style={{ textAlign: "center", paddingVertical: 24 }}>{t.apiInternal}</Text> : <RowsSkeleton rows={3} />
       ) : (
@@ -106,6 +116,8 @@ export function SettingsIndexScreen() {
       </Group>
 
       <Group label={t.setGroupSupport}>
+        {/* 🆕 D-1499 — أوّلَ «الدعم»: أسرعُ طريقٍ لمشكلةٍ أو اقتراح؛ والبريدُ باقٍ داخل «المساعدة» («ب») */}
+        <Row icon="send" title={t.fbRow} subtitle={t.fbRowSub} onPress={() => { haptic.pick(); setFbOpen(true); }} />
         <Row icon="comment" title={t.setHelp} onPress={() => go("help")} />
         <Row icon="info" title={t.setAbout} onPress={() => go("about")} />
       </Group>

@@ -25,6 +25,8 @@ const SECTIONS: { key: string; href: string; label: string; of?: keyof AdminNavC
   { key: "testers", href: "/admin/testers", label: "المختبِرون", of: "testers_missing" },
   { key: "users", href: "/admin/users", label: "المستخدمون", of: "suspended" },
   { key: "reports", href: "/admin/reports", label: "البلاغات", of: "reports" },
+  /* 🆕 D-1499 — ما يكتبه المستخدمون من «أرسل مشكلة أو اقتراح»؛ بلا شارةِ عدٍّ (لا عدّادَ له في `admin_nav_counts` بعد) */
+  { key: "feedback", href: "/admin/feedback", label: "الملاحظات" },
   { key: "verify", href: "/admin/verify", label: "التوثيق", of: "verify" },
   { key: "partners", href: "/admin/partners", label: "الشركاء", of: "partners" },
   { key: "payouts", href: "/admin/payouts", label: "التحويلات", of: "payouts" },
