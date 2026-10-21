@@ -434,7 +434,7 @@ export function HomeScreen() {
     (row: QueueOrderBody["row"], keys: string[]) => {
       setQueueRow(null);
       const prev = qc.getQueryData<HomePayload>(HOME_KEY);
-      if (prev && row !== "towatchlist") qc.setQueryData<HomePayload>(HOME_KEY, reorderHomePayload(prev, row, keys));
+      if (prev) qc.setQueryData<HomePayload>(HOME_KEY, reorderHomePayload(prev, row, keys));
       write<{ done: true }>("/api/v1/me/prefs/queue-order", { row, keys } satisfies QueueOrderBody)
         .then(invalidateHome)
         .catch((e) => {

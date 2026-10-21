@@ -964,8 +964,6 @@ export async function buildHomeBody({
   const unlistedQueue = movieFollows
     .filter((f) => !listedMovieIds.has(f.tmdb_id))
     .sort((a, b) => a.added_at.localeCompare(b.added_at));
-  const unlistedNext =
-    unlistedQueue.find((f) => !watchedMovieIds.has(f.tmdb_id)) ?? null;
   /* ⚖️ 🆕 **ورايةٌ فوقه** (D-559، بلاغُ أحمد: «ما أبغى أشوفها، أبغى
      الليست الي جنبها فقط وهي جات معها»): **كان الطابورُ الوحيدَ في
      هذا الصفّ بلا مفتاح** — قوائمُك الحقيقيّةُ تدخله برايةٍ ترفعها
@@ -985,6 +983,9 @@ export async function buildHomeBody({
     (f) => `tw-mv-${f.tmdb_id}`,
     prefs.towatchListOrder,
   );
+  /* 🆕 R52 — **«التالي» في بطاقة الطابور رأسُه بعد ترتيبه** لا أقدمُ ما أُضيف: كان يُقرأ من ترتيب الإضافة فبقي «العرّاب»
+     على البطاقة وقد قدّمتَ «إنترستلر» في الورقة (بلاغُ أحمد ٢١ أكتوبر، D-1507) — والورقةُ والبطاقةُ صارتا ترتيباً واحداً */
+  const unlistedNext = unlistedOrdered[0] ?? null;
   /* ⚠️ **والشرطُ صار على الباقي لا على الطابور** (D-219/D-280): **من
      شاهد أفلامَه كلَّها لا يرى بطاقةَ «للمشاهدة» تقول صفراً** — **وهي
      القاعدةُ نفسُها التي أخفتها حين كان الطابورُ فارغاً أصلاً.** */

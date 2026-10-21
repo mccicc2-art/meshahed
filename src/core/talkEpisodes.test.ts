@@ -29,6 +29,17 @@ test("bulletin episode and seasons are read defensively", () => {
   ]);
 });
 
+/* R52 — الحلقاتُ تقف عند آخر ما عُرض */
+test("seasonsOf stops at the last aired episode", () => {
+  const seasons = [{ season_number: 1, episode_count: 170 }, { season_number: 2, episode_count: 26 }, { season_number: 3, episode_count: 12 }];
+  assert.deepEqual(seasonsOf({ seasons, last_episode_to_air: { season_number: 2, episode_number: 3 } }), [
+    { season: 1, episodes: 170 },
+    { season: 2, episodes: 3 },
+  ]);
+  assert.deepEqual(seasonsOf({ seasons, last_episode_to_air: null }), []);
+  assert.equal(seasonsOf({ seasons }).length, 3);
+});
+
 /* D-1496 — «الأحدث ⌄» */
 test("orderTalk: newest roots first, replies after in time order; active by weight", () => {
   const rows = [

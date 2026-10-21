@@ -4,10 +4,20 @@ import { applyQueueOrder } from "@/core/homePrefs";
 /**
  * 🆕 D-1353 — **ترتيبُ صفٍّ يُطبَّق على الحمولة المحفوظة فوراً** (D-1094)، في مكانٍ واحد: كان في `HomeScreen` وحدَها،
  * وصفحةُ «الكلّ» (`HomeAllScreen`) صارت بابَ الترتيب — فالدالّةُ هنا يقرؤها الاثنان. الترتيبُ `applyQueueOrder` نفسُها
- * التي يرتّب بها الخادم، فالتفاؤلُ والجلبُ اللاحقُ يتّفقان حرفاً. `towatchlist` لا يُرسم ترتيبُه في الرئيسيّة فيكفيه الجلب.
+ * التي يرتّب بها الخادم، فالتفاؤلُ والجلبُ اللاحقُ يتّفقان حرفاً.
+ * 🆕 R52 — و`towatchlist` صار يُرسم: ورقةُ «طابور الأفلام» (D-1507) تقرأ `queues.towatch_list`، وبطاقتُه في «تابِع المشاهدة»
+ * «التالي» فيها رأسُ الطابور — كان يكفيه الجلبُ فبقيت الورقةُ على ترتيبها القديم بعد «تم» (بلاغُ أحمد ٢١ أكتوبر: «الترتيب لا يعمل»).
  */
 export function reorderHomePayload(prev: HomePayload, row: QueueOrderBody["row"], keys: string[]): HomePayload {
-  if (row === "towatchlist") return prev;
+  if (row === "towatchlist") {
+    const list = applyQueueOrder(prev.queues.towatch_list, (x) => x.key, keys);
+    const head = list[0];
+    const id = head ? Number(/^tw-mv-(\d+)$/.exec(head.key)?.[1] ?? 0) : 0;
+    const continueCards = prev.sections.continue.map((c) =>
+      c.type === "towatch" && head && id ? { ...c, next: { ...c.next, kind: "movie" as const, id, title: head.title, poster_path: head.poster_path } } : c,
+    );
+    return { ...prev, sections: { ...prev.sections, continue: continueCards }, queues: { ...prev.queues, towatch_list: list } };
+  }
   const byKey = <T,>(arr: T[], keyOf: (x: T) => string) => applyQueueOrder(arr, keyOf, keys);
   const s = prev.sections;
   const q = prev.queues;

@@ -51,12 +51,25 @@ export function rowsOfEpisode<T extends { season?: number | null; episode?: numb
 
 /** مواسمُ المسلسل من تفاصيل TMDB — الموسمُ صفر (الحلقاتُ الخاصّة) والموسمُ بلا حلقات خارجه */
 export function seasonsOf(details: unknown): { season: number; episodes: number }[] {
-  const list = (details as { seasons?: { season_number?: number; episode_count?: number }[] } | null)?.seasons;
+  const d = details as {
+    seasons?: { season_number?: number; episode_count?: number }[];
+    last_episode_to_air?: { season_number?: number; episode_number?: number } | null;
+  } | null;
+  const list = d?.seasons;
   if (!Array.isArray(list)) return [];
-  return list
+  const all = list
     .map((x) => ({ season: Number(x.season_number), episodes: Number(x.episode_count) }))
     .filter((x) => Number.isInteger(x.season) && x.season > 0 && Number.isInteger(x.episodes) && x.episodes > 0)
     .sort((a, b) => a.season - b.season);
+  /* 🆕 R52 — **ما عُرض فقط**: `episode_count` عددُ الموسم المُعلن كلِّه، فكانت «الحلقات» تعرض ٢٦ حلقةً للموسم الثاني
+     ولم ينزل منه إلّا ٣ (بلاغُ أحمد ٢١ أكتوبر). «آخرُ حلقةٍ عُرضت» من TMDB تقصّ موسمَها وتُسقط ما بعده؛
+     و`null` صريحاً = لم يُعرض شيءٌ بعد فلا غرف. وغيابُ الحقل (تفاصيلُ ناقصة) يُبقي المُعلنَ — أهونُ من قائمةٍ فارغة */
+  if (!d || !("last_episode_to_air" in d)) return all;
+  const last = d.last_episode_to_air;
+  const ls = Number(last?.season_number);
+  const le = Number(last?.episode_number);
+  if (!Number.isInteger(ls) || ls < 1 || !Number.isInteger(le) || le < 1) return [];
+  return all.filter((x) => x.season <= ls).map((x) => (x.season === ls ? { ...x, episodes: Math.min(x.episodes, le) } : x));
 }
 
 /* ======================================================================================================================
