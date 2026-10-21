@@ -97,7 +97,8 @@ export type ReplyTarget =
   | {
       kind: "talk";
       tmdbId: number;
-      mediaType: "tv" | "movie";
+      /** 🆕 R60 — و`general` لـ«النقاش العام» (`tmdbId = 0`، الهجرة ٢١٩): غرفةٌ بلا عملٍ ولا حلقاتٍ ولا مراجعات */
+      mediaType: "tv" | "movie" | "general";
       title?: string | null;
       posterPath?: string | null;
       backdropPath?: string | null;
@@ -241,7 +242,7 @@ export function ThreadReplies({
     setLikeDelta((d) => ({ ...d, [id]: was ? -1 : 1 }));
     /* 🆕 R56 — مراجعةُ صفحة العمل في «عام»: قلبُها في جدول المراجعات لا المنشورات */
     const rv = all.find((x) => x.replyId === id)?.review;
-    const req = rv && target.kind === "talk" ? toggleReviewLike(rv.userId, target.tmdbId, target.mediaType, was) : togglePostLike(id, was);
+    const req = rv && target.kind === "talk" && target.mediaType !== "general" ? toggleReviewLike(rv.userId, target.tmdbId, target.mediaType, was) : togglePostLike(id, was);
     void req.catch(() => {
       setLikeDelta((d) => ({ ...d, [id]: was ? 1 : -1 }));
       setError(t.errorTitle);

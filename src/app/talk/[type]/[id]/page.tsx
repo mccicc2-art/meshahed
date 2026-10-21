@@ -28,6 +28,7 @@ import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import type { ThreadReply } from "@/components/thread/ReplyItem";
 import { Icon } from "@/components/Icon";
 import { Suspense } from "react";
+import { LoopzLogo } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,16 @@ export async function generateMetadata({
   params: Promise<{ type: string; id: string }>;
 }): Promise<Metadata> {
   const { type, id } = await params;
+  /* 🆕 R60 — «النقاش العام»: عنوانُه ووصفُه من القاموس، ولا TMDB */
+  if (type === "general" && id === "0") {
+    const { t } = await getT();
+    return {
+      title: t.talkGeneralTitle,
+      description: t.talkGeneralSub,
+      openGraph: { title: t.talkGeneralTitle, description: t.talkGeneralSub, type: "article" },
+      twitter: { card: "summary", title: t.talkGeneralTitle, description: t.talkGeneralSub },
+    };
+  }
   if (type !== "tv" && type !== "movie") return {};
   const tmdbId = Number(id);
   if (!Number.isFinite(tmdbId)) return {};
@@ -124,6 +135,11 @@ export default async function TalkPage({
 
   const { locale, t } = await getT();
   const { type, id } = await params;
+  /* 🆕 R60 — «النقاش العام» (`/talk/general/0`، الهجرة ٢١٩): كان رابطُ مشاركته من التطبيق يقع على 404 هنا */
+  if (type === "general") {
+    if (id !== "0") notFound();
+    return <GeneralTalk signedIn={signedIn} />;
+  }
   if (type !== "tv" && type !== "movie") notFound();
   const mediaType = type as "tv" | "movie";
   const tmdbId = Number(id);
@@ -372,6 +388,87 @@ export default async function TalkPage({
           seasons={seasons}
           watchedEps={watchedEps}
           myState={watchedIt ? "watched" : follow.following ? "library" : null}
+          me={me}
+          locale={locale}
+          signedIn={signedIn}
+        />
+      </div>
+    </main>
+  );
+}
+
+/**
+ * ====== 🆕 R60 — «النقاش العام» في الويب (أحمد ٢١ أكتوبر: «نفذ وارفع للويب») ======
+ *
+ * غرفةٌ واحدةٌ للموقع كلِّه، صفوفُها في `title_posts` بـ`media_type = 'general'` و`tmdb_id = 0` (D-1527) —
+ * **فالخيطُ نفسُه** (`ThreadReplies`) بهدفٍ `general`، والكتابةُ والحذفُ والإعجابُ بمعرّف المشاركة كما في كلِّ غرفة.
+ * ⚖️ **ولا `TitleHero`**: لا غلافَ ولا ملصقَ ولا تقييمَ لغرفةٍ بلا عمل — **رمزُ لوبز والعنوانُ ووصفُه**، كما في التطبيق.
+ * ولا مراجعاتٍ ولا حلقاتٍ ولا «شاهدته» — كلُّها صفاتُ عمل.
+ */
+async function GeneralTalk({ signedIn }: { signedIn: boolean }) {
+  const { locale, t } = await getT();
+  const [thread, me] = await Promise.all([getTitleThread(0, "general"), signedIn ? getMyProfileLite() : Promise.resolve(null)]);
+  const [likes, votes] = await Promise.all([
+    getPostLikes(thread.map((p) => p.postId)).catch(() => ({ counts: {} as Record<string, number>, mine: [] as string[] })),
+    getPostVotes(thread.map((p) => p.postId)),
+  ]);
+  const translations = (await getTranslateEnabled())
+    ? await getBatchTranslations(
+        thread.filter((p) => p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
+        locale === "ar" ? "ar" : "en",
+      )
+    : {};
+
+  return (
+    <main className="pb-24">
+      <header className="px-3 sm:px-6 max-w-xl mx-auto pt-6 flex items-center gap-3">
+        <LoopzLogo variant="mark" size={56} />
+        <div className="min-w-0">
+          <h1 className="text-20 font-bold leading-tight">{t.talkGeneralTitle}</h1>
+          <p className="text-14 text-muted mt-0.5">{t.talkGeneralSub}</p>
+        </div>
+      </header>
+      {!signedIn && (
+        <div className="px-3 sm:px-6 max-w-xl mx-auto mt-3">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 active:scale-95 transition hover:border-accent"
+          >
+            <Icon name="comment" size={13} className="shrink-0 text-accent" />
+            <span className="text-12 font-bold">{t.talkSignInToWrite}</span>
+          </Link>
+        </div>
+      )}
+      <div className="px-3 sm:px-6 max-w-xl mx-auto mt-3">
+        <ThreadReplies
+          likes={likes}
+          votes={votes}
+          translations={translations}
+          target={{ kind: "talk", tmdbId: 0, mediaType: "general", title: null, posterPath: null, backdropPath: null }}
+          replies={thread.map((p): ThreadReply => ({
+            replyId: p.postId,
+            authorId: p.authorId,
+            nickname: p.nickname,
+            username: p.username,
+            avatar_url: p.avatar_url,
+            hide_name: p.hide_name,
+            parentId: p.parentId,
+            body: p.body,
+            createdAt: p.createdAt,
+            isMine: p.isMine,
+            kind: p.kind,
+            data: p.data,
+            spoiler: p.spoiler,
+            hasSpoiler: p.hasSpoiler,
+            imagePath: p.imagePath,
+            gifId: p.gifId,
+            share: p.share,
+            season: null,
+            episode: null,
+          }))}
+          seasons={[]}
+          watchedEps={[]}
+          myState={null}
           me={me}
           locale={locale}
           signedIn={signedIn}
