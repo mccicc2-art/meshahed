@@ -105,6 +105,7 @@ export function SettingsIndexScreen() {
       <Group label={t.appGroupPersonalize}>
         <Row icon="home" title={t.appHomeProfile} onPress={() => go("home")} />
         <Row icon="grid" title={t.widgetScreenTitle} onPress={() => go("widget")} />
+        <Row icon="link" title={t.stremioScreenTitle} onPress={() => go("stremio")} />
         <Row icon="palette" title={t.setAppearance} value={appearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>

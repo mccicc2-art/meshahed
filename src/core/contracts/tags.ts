@@ -36,6 +36,8 @@ export type Tag =
   | "me:communities"
   /* 🆕 11-M · M4 — صندوقُ الوارد (المحادثاتُ وعدّادُها) — `GET /api/v1/me/messages` */
   | "me:messages"
+  /* 🆕 Stremio (٢٢ أكتوبر) — إشاراتُ «فتحتها في Stremio» وحالةُ الربط — `GET /api/v1/me/stremio` */
+  | "me:stremio"
   | "people"
   | "news"
   /** لوحةُ الإدارة كاملةً — ويب فقط، ولا تدخل `v1` (§4.4). */

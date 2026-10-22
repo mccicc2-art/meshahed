@@ -1433,6 +1433,25 @@ export async function movieImdbId(id: number): Promise<string | null> {
 }
 
 /**
+ * 🆕 **IMDb ⇢ TMDB** (خطّةُ Stremio، ٢٢ أكتوبر): Stremio يسأل بـ`tt…` ونحن نحفظ بمعرّف TMDB. `/find` يجيب بقوائمَ
+ * لكلِّ نوع، ونأخذ النوعَ الذي سأل عنه Stremio وحدَه — فيلمٌ ومسلسلٌ بالرقم نفسِه لا يختلطان. مخبَّأٌ ساعةً كسائر TMDB،
+ * واللغةُ ثابتةٌ (`en-US`) لأنّ المطلوبَ رقمٌ لا اسم: لا نداءَ ثانياً لأسماء Loopz. الفشلُ `null` — لا إشارة، لا سقوط.
+ */
+export async function findByImdb(imdb: string, kind: "movie" | "tv"): Promise<number | null> {
+  if (!/^tt\d{5,10}$/.test(imdb)) return null;
+  try {
+    const data = await tmdbRaw<{ movie_results?: { id?: number }[]; tv_results?: { id?: number }[] }>(`/find/${imdb}`, {
+      external_source: "imdb_id",
+      language: "en-US",
+    });
+    const id = (kind === "movie" ? data.movie_results : data.tv_results)?.[0]?.id;
+    return Number.isInteger(id) && (id as number) > 0 ? (id as number) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 🔴 🆕 **صيغُ اسمِ العمل كلُّها — الجسرُ الثالثُ إلى IMDb** (D-430،
  * دَينُ D-414 المعلَن).
  *

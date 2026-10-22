@@ -1765,6 +1765,60 @@ async function markWatchedUpTo(
   return rows.length;
 }
 
+/**
+ * 🆕 **جوابُ إشارة Stremio** (خطّةُ Stremio، ٢٢ أكتوبر): «فتحتَ S1 E5 في Stremio — شفتها؟».
+ *  - ✓ على حلقة = **«شاهدتُ حتى هنا»** (`markWatchedUpTo` بحدود A-15): مسلسلٌ جديدٌ فُتح على E5 تُعلَّم E1–E5 ويُتابَع،
+ *    فيظهر في المكتبة وفي «أكمل المشاهدة» عند E6 (قرار ٩). والإشاراتُ المنتظرةُ لما قبلها في المسلسل نفسِه تُغلق معها:
+ *    سؤالٌ عن E3 بعد «شاهدتُ حتى E5» سؤالٌ أُجيب عنه.
+ *  - ✓ على فيلم = مشاهَدٌ ويدخل المكتبة (D-1468، قرار ٨) — في المكتبة أو لا.
+ *  - ✕ = «لم أشاهدها»: تُغلق الإشارةُ ولا يُمسّ شيء.
+ * 🔑 **الصفُّ يُقرأ بجلسة العضو** (RLS: صاحبُه وحده) فمعرّفُ غيره «لا وجود له»؛ والعملُ والحلقةُ من الصفّ لا من العميل.
+ * إشارةٌ أُجيب عنها قبلُ (جهازان، أو ضغطتان) تعود `marked: 0` بلا كتابة.
+ */
+export async function answerWatchSignal(input: { id: number; watched: boolean }): Promise<{ marked: number }> {
+  const id = intId(input?.id);
+  const watched = input?.watched === true;
+  const { supabase, user } = await requireUser("sig", 60, 60_000);
+  const { data: row } = await supabase
+    .from("watch_signals")
+    .select("id, media_type, tmdb_id, season, episode, state")
+    .match({ id, user_id: user.id })
+    .maybeSingle();
+  const sig = row as { id: number; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
+  if (!sig || sig.state !== "pending") return { marked: 0 };
+  let marked = 0;
+  if (watched && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
+    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode);
+    /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
+    if (sig.season > 0) {
+      await supabase
+        .from("watch_signals")
+        .update({ state: "watched", answered_at: new Date().toISOString() })
+        .match({ user_id: user.id, media_type: "tv", tmdb_id: sig.tmdb_id, state: "pending" })
+        .gt("season", 0)
+        .or(`season.lt.${sig.season},and(season.eq.${sig.season},episode.lte.${sig.episode})`);
+    }
+  } else if (watched && sig.media_type === "movie") {
+    const m = await Promise.race([getMovie(sig.tmdb_id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
+    const runtime = m?.runtime && Number.isInteger(m.runtime) && m.runtime > 0 && m.runtime <= 10_000 ? m.runtime : null;
+    const { error } = await supabase
+      .from("watched_movies")
+      .upsert({ user_id: user.id, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true });
+    if (error) fail(error);
+    await ensureMovieInLibrary(supabase, user.id, sig.tmdb_id);
+  }
+  await supabase
+    .from("watch_signals")
+    .update({ state: watched ? "watched" : "dismissed", answered_at: new Date().toISOString() })
+    .match({ id: sig.id, user_id: user.id, state: "pending" });
+  if (watched) {
+    revalidatePath("/");
+    revalidatePath("/stats");
+    revalidatePath("/library");
+  }
+  return { marked };
+}
+
 // تأشير حلقة وكل ما قبلها كمشاهَد (اختيار الحلقة ٥٠ يعني مشاهدة ١..٥٠)
 export async function watchUpTo(input: {
   showTmdbId: number;

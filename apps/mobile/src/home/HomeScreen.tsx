@@ -51,6 +51,9 @@ import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
 import { refreshWidgets } from "../widget/feed";
 import { widgetBus } from "../widget/bus";
+import { useStremio } from "../stremio/api";
+import { useStremioAnswer } from "../stremio/useAnswer";
+import { StremioCard } from "../stremio/StremioCard";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -69,7 +72,7 @@ import { widgetBus } from "../widget/bus";
 const HEADER_H = 64;
 
 export function HomeScreen() {
-  const { t, tokens } = useApp();
+  const { t, tokens, me } = useApp();
   const router = useRouter();
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -184,6 +187,27 @@ export function HomeScreen() {
   );
   const openTitle = useCallback((kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "home" } }), [router]);
   const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: "home" } }), [router]);
+
+  /* 🆕 «من Stremio» (خطّةُ Stremio، ٢٢ أكتوبر) — بعد «أكمل المشاهدة» أينما كان في ترتيب العضو، ولـLoopz+ وحده (لا يُسأل
+     الخادمُ لغيره). الجوابُ يُخفي الإشارةَ فوراً ويُرسل بعد «تراجع» (`useStremioAnswer`)، وبلا منتظرةٍ لا قسم */
+  const stremioQ = useStremio(!!me?.plus);
+  const stremioAns = useStremioAnswer(toastHost);
+  const stremioNode = useMemo(() => {
+    const st = stremioQ.data;
+    if (!st?.plus) return null;
+    const items = st.items.filter((x) => !stremioAns.hidden.has(x.id));
+    if (!items.length) return null;
+    return (
+      <StremioCard
+        key="stremio"
+        items={items}
+        count={Math.max(items.length, st.count - stremioAns.hidden.size)}
+        onAnswer={stremioAns.answer}
+        onAll={() => router.push("/stremio")}
+        onOpen={(x) => openTitle(x.kind, x.tmdb_id)}
+      />
+    );
+  }, [stremioQ.data, stremioAns.hidden, stremioAns.answer, router, openTitle]);
 
   const openHref = useCallback(
     (href: string) => {
@@ -695,8 +719,8 @@ export function HomeScreen() {
           </View>
         ) : null,
     };
-    return d.prefs.order.map((k) => map[k]).filter(Boolean);
-  }, [d, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
+    return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
+  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
 
   return (
     <CardStoreContext.Provider value={store}>

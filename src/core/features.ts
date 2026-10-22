@@ -421,12 +421,15 @@ export const SECTIONS: Section[] = [
            خطّة **وقائمةُ أحمد تضعه في Loopz+** — **وسمٌ ناقصٌ في صفحةٍ
            اسمُها «صادقة» يبيع مجّاناً ما سيُطلب ثمنُه.** */
         plus: true,
-        ar: "دعم اشتراكات IPTV",
-        en: "IPTV support",
+        /* 🆕 Stremio (٢٢ أكتوبر) — قرار ٤: الاسمُ «اربط مشغّلك — Stremio»، وIPTV داخل الوصف وحده. والوصفُ صادق:
+           الإضافةُ تسأل ولا تعلّم، وتعمل مع صفحات الأعمال (معرّفاتُ IMDb) — ما يُفتح من كتالوجات IPTV بمعرّفاتها لا يصلنا */
+        ar: "اربط مشغّلك — Stremio",
+        en: "Link your player — Stremio",
         arBody:
-          "من يشاهد عبر IPTV له مكانٌ هنا أيضاً — ربطٌ يقرأ ما تُشاهده ويضعه في سجلّك.",
+          "ثبّت إضافة Loopz في Stremio، وكل حلقة أو فيلم تشغّله هناك يسألك عنه Loopz: شفتها؟ ✓ تعلّمها وكل ما قبلها. يعمل مع ما تشغّله من اشتراك IPTV عبر إضافته في Stremio.",
         enBody:
-          "If you watch over IPTV you are covered too — a link that reads what you are watching and files it in your log.",
+          "Install the Loopz addon in Stremio, and every episode or movie you play there asks you one thing in Loopz: watched it? ✓ marks it and everything before it. Works with what you play from an IPTV subscription through its Stremio addon.",
+        /* يبقى في «قريباً» حتى يُثبت على Stremio Web والجوّال (خطّة §٦)، ثمّ ينتقل إلى قسمه */
         soon: true,
       },
       {

@@ -13,6 +13,7 @@ import { ImportScreen } from "../../src/settings/ImportScreen";
 import { WidgetScreen } from "../../src/settings/WidgetScreen";
 import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 import { PlusScreen } from "../../src/settings/PlusScreen";
+import { StremioScreen } from "../../src/settings/StremioScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -41,6 +42,8 @@ const SCREENS = {
   features: FeaturesScreen,
   /* 🆕 «لا ويب في التطبيق» ٤ — Loopz+ والاشتراك شاشةٌ واحدة (كلُّ أبواب `/plus` والفوترة عبر `shell.nativeDoor`) */
   plus: PlusScreen,
+  /* 🆕 «اربط Stremio» (٢٢ أكتوبر) — رابطُ الإضافة وإلغاؤه؛ والإشاراتُ نفسُها في الرئيسيّة و`/stremio` */
+  stremio: StremioScreen,
 } as const;
 
 export default function SettingsSection() {
