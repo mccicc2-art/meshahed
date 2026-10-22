@@ -69,3 +69,29 @@ export function placeOnTmdb(seasons: TmdbSeason[], at: Placed): Placed | null {
   }
   return { season, episode };
 }
+
+/**
+ * 🆕 R75 — **المطابقةُ بتاريخ العرض** حين لا يتّفق التقسيم (أحمد «أ نفذ»): «حرب الألف عام» في IMDb أجزاءٌ أربعة، وفي TMDB
+ * موسمٌ واحدٌ يجمعها (السجلّ: `imdbAt` م٤ و`seasons: 1`) — فلا يُعرف «م٤ ح١» برقمه. لكنّ يومَ العرض واحدٌ في المصادر كلّها:
+ * تاريخُ الحلقة من Kitsu الرسميّ ⇐ الحلقةُ التي عُرضت يومَها في هذا العمل عند TMDB.
+ * ⚖️ **حلقةٌ واحدةٌ أو لا شيء**: يومٌ عُرضت فيه حلقتان (عرضٌ مزدوج) ⇐ `null`، وإلّا لعُلِّمت الثانية قبل وقتها. ويومٌ قبله أو
+ * بعده يُقبل حين لا يطابق اليومُ نفسُه شيئاً — فارقُ التوقيت بين اليابان وتاريخ TMDB — بشرط الوحدة نفسِه.
+ */
+export type DatedEpisode = { season: number; episode: number; air_date?: string | null };
+
+const DAY_MS = 86_400_000;
+
+export function matchByAirDate(episodes: DatedEpisode[], airdate: string): Placed | null {
+  const day = Date.parse(`${airdate}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(airdate) || !Number.isFinite(day)) return null;
+  const regular = episodes.filter((e) => int(e.season) && e.season > 0 && int(e.episode) && typeof e.air_date === "string");
+  const on = (offset: number) => {
+    const want = new Date(day + offset * DAY_MS).toISOString().slice(0, 10);
+    return regular.filter((e) => e.air_date === want);
+  };
+  for (const hits of [on(0), [...on(-1), ...on(1)]]) {
+    if (hits.length === 1) return { season: hits[0].season, episode: hits[0].episode };
+    if (hits.length > 1) return null;
+  }
+  return null;
+}

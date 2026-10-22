@@ -1,6 +1,6 @@
 import "server-only";
-import { findByImdb, tvSeasonCounts } from "@/lib/tmdb";
-import { imdbEpisodeOf, placeOnTmdb, type KitsuMapEntry } from "@/core/kitsuEpisode";
+import { findByImdb, getSeason, tvSeasonCounts } from "@/lib/tmdb";
+import { imdbEpisodeOf, matchByAirDate, placeOnTmdb, type DatedEpisode, type KitsuMapEntry } from "@/core/kitsuEpisode";
 import type { StremioRef, StremioVideo } from "@/core/stremioId";
 
 /**
@@ -65,6 +65,39 @@ async function kitsuMap(): Promise<{ byId: Map<number, KitsuMapEntry> | null; wh
   }
 }
 
+/**
+ * 🆕 R75 — **تاريخُ عرض حلقة Kitsu من واجهتها الرسميّة** (`kitsu.app/api/edge`): للمطابقة بالتاريخ حين لا يتّفق تقسيمُ IMDb
+ * وTMDB. نصفُ يومٍ في كاش Next (التاريخُ لا يتغيّر)، والفشلُ لا شيء — وسطرُ التشخيص يقول السبب.
+ */
+async function kitsuAirdate(kitsu: number, episode: number): Promise<{ date: string | null; why: string }> {
+  try {
+    const url = `https://kitsu.app/api/edge/anime/${kitsu}/episodes?filter%5Bnumber%5D=${episode}&page%5Blimit%5D=1`;
+    const res = await fetch(url, {
+      next: { revalidate: 43_200 },
+      signal: AbortSignal.timeout(5_000),
+      headers: { "User-Agent": "Loopz/1.0 (+https://loopztv.com)", Accept: "application/vnd.api+json" },
+    });
+    if (!res.ok) return { date: null, why: `http_${res.status}` };
+    const body = (await res.json()) as { data?: { attributes?: { airdate?: string | null } }[] } | null;
+    const date = body?.data?.[0]?.attributes?.airdate ?? null;
+    return date ? { date: date.slice(0, 10), why: "ok" } : { date: null, why: "no_airdate" };
+  } catch (e) {
+    return { date: null, why: e instanceof Error ? `error_${e.name}` : "error" };
+  }
+}
+
+/** حلقاتُ مواسم TMDB العاديّة بتواريخها — مواسمُ قليلةٌ في العادة، وسقفٌ ٣٠ للمسلسلات الطويلة (One Piece ٢٢) */
+async function datedEpisodes(tmdbId: number, seasons: { season_number?: number }[]): Promise<DatedEpisode[]> {
+  const numbers = seasons
+    .map((s) => s.season_number)
+    .filter((n): n is number => Number.isInteger(n) && (n as number) > 0)
+    .slice(0, 30);
+  const all = await Promise.all(numbers.map((n) => getSeason(tmdbId, n).catch(() => null)));
+  return all.flatMap((s, i) =>
+    (s?.episodes ?? []).map((e) => ({ season: numbers[i], episode: e.episode_number, air_date: e.air_date ?? null })),
+  );
+}
+
 const IMDB = /^tt\d{5,10}$/;
 
 export async function resolveStremioRef(ref: StremioRef): Promise<{ video: StremioVideo; tmdbId: number } | null> {
@@ -96,8 +129,16 @@ export async function resolveStremioRef(ref: StremioRef): Promise<{ video: Strem
   const tmdbId = await findByImdb(imdb, "tv");
   if (!tmdbId) return done("tmdb_not_found", { imdb, imdbAt: at }), null;
   const seasons = await tvSeasonCounts(tmdbId);
-  const placed = placeOnTmdb(seasons, at);
-  if (!placed) return done("no_place", { imdb, tmdbId, imdbAt: at, seasons: seasons.length }), null;
-  done("ok", { imdb, tmdbId, imdbAt: at, season: placed.season, ep: placed.episode });
+  let placed = placeOnTmdb(seasons, at);
+  let how = "number";
+  if (!placed) {
+    /* 🆕 R75 — التقسيمُ مختلف: المطابقةُ بيوم العرض */
+    const { date, why: dateWhy } = await kitsuAirdate(ref.kitsu, ref.episode);
+    if (!date) return done(`no_place_date_${dateWhy}`, { imdb, tmdbId, imdbAt: at, seasons: seasons.length }), null;
+    placed = matchByAirDate(await datedEpisodes(tmdbId, seasons), date);
+    if (!placed) return done("no_place_date_nomatch", { imdb, tmdbId, imdbAt: at, date }), null;
+    how = `date ${date}`;
+  }
+  done("ok", { imdb, tmdbId, imdbAt: at, season: placed.season, ep: placed.episode, how });
   return { video: { kind: "tv", imdb, season: placed.season, episode: placed.episode }, tmdbId };
 }

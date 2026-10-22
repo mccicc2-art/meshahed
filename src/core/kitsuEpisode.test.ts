@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { imdbEpisodeOf, placeOnTmdb } from "./kitsuEpisode.ts";
+import { imdbEpisodeOf, matchByAirDate, placeOnTmdb } from "./kitsuEpisode.ts";
 
 /* مدخلاتٌ من جدول الإضافة كما هي (static/data/imdb_mapping.json) */
 const bleach = { kitsu_id: 244, imdb_id: "tt0434665", fromSeason: 1, fromEpisode: 1 };
@@ -47,4 +47,18 @@ test("الفائضُ يرحل إلى المواسم التالية، والخا�
 test("موسمٌ لا يعرفه TMDB ⇐ لا شيء", () => {
   assert.equal(placeOnTmdb(tmdbBleach, { season: 4, episode: 6 }), null);
   assert.equal(placeOnTmdb([], { season: 1, episode: 1 }), null);
+});
+
+test("تاريخُ العرض: حلقةٌ واحدةٌ في اليوم أو قبله أو بعده، والازدواجُ لا شيء", () => {
+  const tybw = [
+    { season: 1, episode: 40, air_date: "2025-12-27" },
+    { season: 1, episode: 41, air_date: "2026-07-04" },
+    { season: 1, episode: 42, air_date: "2026-07-11" },
+    { season: 0, episode: 1, air_date: "2026-07-04" },
+  ];
+  assert.deepEqual(matchByAirDate(tybw, "2026-07-04"), { season: 1, episode: 41 });
+  assert.deepEqual(matchByAirDate(tybw, "2026-07-10"), { season: 1, episode: 42 });
+  assert.equal(matchByAirDate(tybw, "2026-08-01"), null);
+  assert.equal(matchByAirDate([...tybw, { season: 1, episode: 43, air_date: "2026-07-11" }], "2026-07-11"), null);
+  assert.equal(matchByAirDate(tybw, "not-a-date"), null);
 });
