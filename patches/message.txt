@@ -1,9 +1,8 @@
-[deploy] Release R72 — Stremio: diagnostics for Kitsu anime requests
+[deploy] Release R73 — Stremio: identify Loopz to the Kitsu addon
 
-- 165 One [stremio-kitsu] line in the runtime log per anime request: the stage it
-  stopped at (meta fetch, episode, IMDb, TMDB, placement, ok) and the time it
-  took, plus a line for kitsu ids the parser rejects. Kitsu id and episode only,
-  no token or member. Responses unchanged. To be removed on request.
+- 166 The R72 trace showed meta_http_403 for every anime request: the Kitsu addon's
+  server refuses an anonymous cloud request. The meta fetch now sends
+  User-Agent "Loopz/1.0 (+https://loopztv.com)" and Accept application/json.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
