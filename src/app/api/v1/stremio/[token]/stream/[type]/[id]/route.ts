@@ -35,7 +35,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
     streams: [
       {
         name: "Loopz",
-        description: `✓ علّمها في Loopz\n✓ Mark it in Loopz${where ? `\n${where}` : ""}`,
+        /* 🆕 D-1512 «٢ أ» — كلُّ لغةٍ في سطرٍ لحالها، **والسطرُ العربيُّ عربيٌّ كلُّه** («لوبز» لا «Loopz»، وبلا شدّة: خطُّ Stremio أسقط المسافةَ بعدها): Stremio يرسم
+           السطرَ المختلطَ بالاتّجاه الخطأ ويلصق كلماته (لقطةُ أحمد «علّمهافي»). وعلامةُ RLM تثبّت بدايتَه يميناً */
+        description: `\u200F✓ علمها في لوبز\n✓ Mark it in Loopz${where ? `\n${where}` : ""}`,
         externalUrl: `${SITE_URL}/${video.kind === "tv" ? "show" : "movie"}/${tmdbId}`,
         behaviorHints: { notWebReady: true },
       },

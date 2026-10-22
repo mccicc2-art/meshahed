@@ -1819,6 +1819,35 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   return { marked };
 }
 
+/**
+ * 🆕 **رابطُ إضافة Stremio من صفحة الويب** (`/stremio`، D-1512 «٣ أ»): البابُ نفسُه الذي يناديه التطبيق
+ * (`POST /api/v1/me/stremio/link`) — إصدارٌ لـLoopz+ وحده، والإلغاءُ لكلِّ أحد. الرمزُ يُعاد مرّةً ولا يُحفظ عندنا.
+ * الروابطُ على `SITE_URL` لا على أصل الطلب: صفحةٌ تُفتح من نسخة معاينةٍ لا تُصدر رابطاً يموت معها.
+ */
+export async function stremioLinkAction(action: "issue" | "revoke"): Promise<{ linked: boolean; manifest_url?: string; install_url?: string; web_install_url?: string; needsPlus?: boolean }> {
+  const { supabase, user } = await requireUser("stremio", 10, 60 * 60_000);
+  const { issueStremioToken, revokeStremioToken } = await import("@/lib/stremio");
+  if (action === "revoke") {
+    await revokeStremioToken(user.id);
+    revalidatePath("/stremio");
+    return { linked: false };
+  }
+  if (action !== "issue") throw new Error("مدخل غير صالح");
+  const { data: p } = await supabase.from("profiles").select("plan, plus_until, founder").eq("id", user.id).maybeSingle();
+  if (!isPlus(p as { plan?: unknown; plus_until?: string | null } | null)) return { linked: false, needsPlus: true };
+  const token = await issueStremioToken(user.id);
+  if (!token) throw new Error("تعذّر إصدار الرابط");
+  const { SITE_URL } = await import("@/lib/site");
+  const manifest = `${SITE_URL}/api/v1/stremio/${token}/manifest.json`;
+  revalidatePath("/stremio");
+  return {
+    linked: true,
+    manifest_url: manifest,
+    install_url: manifest.replace(/^https?:\/\//, "stremio://"),
+    web_install_url: `https://web.stremio.com/#/addons?addon=${encodeURIComponent(manifest)}`,
+  };
+}
+
 // تأشير حلقة وكل ما قبلها كمشاهَد (اختيار الحلقة ٥٠ يعني مشاهدة ١..٥٠)
 export async function watchUpTo(input: {
   showTmdbId: number;

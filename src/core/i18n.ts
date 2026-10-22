@@ -2930,6 +2930,17 @@ const ar = {
   stremioPlusTitle: "لمشتركي Loopz+",
   stremioPlusSub: "اربط Stremio فيسألك Loopz عن كل ما تشغّله هناك.",
   stremioCoverage: "يعمل مع صفحات الأعمال في Stremio، ومنها ما تشغّله من اشتراك IPTV عبر إضافته.",
+  stremioWebTitle: "اربط Stremio بـ Loopz",
+  stremioForPlus: "لمشتركي Loopz+",
+  stremioNoContent: "الإضافة لا تعرض أي محتوى ولا روابط تشغيل.",
+  stremioNeedAccount: "تحتاج حساب Loopz واشتراك Loopz+ لتثبيت الإضافة",
+  stremioReady: "رابطك الشخصي جاهز. اضغط وسيفتح Stremio على شاشة التثبيت.",
+  stremioGetLink: "جهّز رابطي",
+  stremioLockedTitle: "الإضافة لمشتركي Loopz+",
+  stremioLockedSub: "اشترك وارجع لهذه الصفحة، يجهز رابطك فوراً. حسابك المجاني يبقى كما هو.",
+  stremioSubscribe: "اشترك في Loopz+",
+  stremioBack: "ارجع لـ Stremio",
+  stremioFailed: "تعذّر إصدار الرابط، جرّب مرة أخرى",
 };
 
 export type Dict = typeof ar;
@@ -5056,6 +5067,17 @@ const en: Dict = {
   stremioPlusTitle: "For Loopz+ members",
   stremioPlusSub: "Link Stremio and Loopz asks you about everything you play there.",
   stremioCoverage: "Works with title pages in Stremio, including what you play from an IPTV subscription through its addon.",
+  stremioWebTitle: "Link Stremio to Loopz",
+  stremioForPlus: "For Loopz+ members",
+  stremioNoContent: "The addon shows no content and no playback links.",
+  stremioNeedAccount: "You need a Loopz account and Loopz+ to install the addon",
+  stremioReady: "Your personal link is ready. Tap and Stremio opens on its install screen.",
+  stremioGetLink: "Get my link",
+  stremioLockedTitle: "The addon is for Loopz+ members",
+  stremioLockedSub: "Subscribe and come back to this page; your link is ready at once. Your free account stays as it is.",
+  stremioSubscribe: "Subscribe to Loopz+",
+  stremioBack: "Back to Stremio",
+  stremioFailed: "Couldn't make the link, try again",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

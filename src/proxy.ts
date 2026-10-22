@@ -253,6 +253,8 @@ function guestOpen(pathname: string): boolean {
   return (
     pathname === "/" ||
     pathname === "/login" ||
+    /* 🆕 D-1512 — صفحةُ ربط Stremio: «Configure» في قائمة Community Addons يفتحها لزائرٍ لم يسجّل بعد، فتشرح ثمّ تطلب الدخول */
+    pathname === "/stremio" ||
     pathname === "/features" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
