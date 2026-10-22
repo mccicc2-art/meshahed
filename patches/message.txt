@@ -1,11 +1,13 @@
-[deploy] Release R77 — Stremio: Kitsu via Fribb table; app commits answers on leave
+[deploy] Release R78 — Pen add-title chip (D-1535); edge.tap diagnostics (D-1536)
 
-- 171 Kitsu anime whose IMDb id lands on a near-empty TMDB duplicate (Bleach TYBW
-  part 4 -> 336301) now falls back to the Fribb anime-lists table, which gives the
-  TMDB id, season and offset directly (49444 ep 1 -> 30984 S2E41). Consulted only
-  after the first path fails; the air-date match remains the last resort.
-- 169 App: pending Stremio answers (incl. undo/dismiss) are sent when the screen
-  loses focus, unmounts, or the app goes to the background.
+- 172 Pen: «Add movie or series» is a full-width lg chip with accent ink and a
+  film icon in accent (Ahmed «د»). Chip gains size "lg", `block` and
+  `ink="accent"` — the same chip family, not a new control.
+- 172 Diagnostics: `edge.tap` marks a short tap in the top or bottom band that
+  pressed no shared control within 450 ms, with the chrome-hide value JS holds,
+  time since it changed, and the measured dock top. `dock.miss` now sends
+  seconds since launch (ms passed the server's 600000 cap after 10 minutes).
+  Server allowlist updated.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
