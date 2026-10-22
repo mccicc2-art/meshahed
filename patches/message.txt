@@ -1,13 +1,9 @@
-[deploy] Release R68 — Stremio watch signals (Loopz+)
+[deploy] Release R69 — Stremio in Community Addons: public manifest, /stremio page, Loopz mark
 
-- 161 Stremio addon (manifest, stream = opened, subtitles = played) records a
-  watch signal and returns one «✓ Mark it in Loopz» entry; it streams nothing
-- Migration 222 (stremio_links, watch_signals, record_watch_signal) — already
-  run on production 22 Oct
-- App: Home «من Stremio» card after Continue watching (played signals only),
-  /stremio list, settings «اربط Stremio»; ✓ episode = watched up to here,
-  ✓ movie = watched + library; answers commit after the undo window
-- Features card renamed «اربط مشغّلك — Stremio» (still under Coming soon)
+- 162 Public manifest /api/v1/stremio/manifest.json (configurationRequired) for
+  Community Addons; Configure opens loopztv.com/stremio (sign in, Loopz+ gate,
+  personal link). Addon v1.2.0: Loopz mark + cover, English-only description.
+  Source row: Arabic line all Arabic, English line separate.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
