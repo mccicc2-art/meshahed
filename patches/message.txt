@@ -1,10 +1,8 @@
-[deploy] Release R70 — Stremio: Kitsu anime ids
+[deploy] Release R71 — Stremio: declare the anime type for Kitsu ids
 
-- 163 The addon accepts kitsu ids (Anime Kitsu catalog): kitsu:{id}:{ep} is mapped
-  through the Kitsu addon's own meta (imdb_id, imdbSeason, imdbEpisode,
-  absoluteEpisode) to IMDb, then TMDB; the episode is placed by its absolute
-  number on TMDB's regular seasons (Bleach: IMDb S2E5 = TMDB S1E25), else by the
-  IMDb numbering when TMDB holds it, else no signal. Manifest 1.3.0.
+- 164 Stremio asks for Kitsu catalog anime with type "anime" (Torrentio declares
+  it for this), so R70 was never asked. Manifest 1.3.1 declares it; the parser
+  takes kitsu:{id}:{ep} as an episode and kitsu:{id} as a movie under "anime".
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
