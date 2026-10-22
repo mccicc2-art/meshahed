@@ -1,10 +1,12 @@
-[deploy] Release R74 — Stremio: Kitsu anime through the published mapping table
+[deploy] Release R75 — Stremio: Kitsu air-date fallback, one question per viewing
 
-- 167 anime-kitsu.strem.fun refuses cloud servers (403 even with a User-Agent),
-  so Kitsu ids are now resolved from the same addon's mapping table published on
-  GitHub (static/data/imdb_mapping.json, Apache-2.0): IMDb id plus the start
-  season/episode, nonImdbEpisodes and imdbEpisodes as the addon reads them, then
-  rolled over TMDB's seasons. Cached half a day; the diagnostic line stays.
+- 168 When IMDb and TMDB split an anime's seasons differently (Bleach TYBW: IMDb
+  part 4, TMDB one season), the episode is matched by its air date from the
+  official Kitsu API against the title's TMDB episodes; one episode or nothing.
+- 168 One question per viewing: a request for an episode or movie answered less
+  than an hour after its last request is the same viewing (Stremio repeats on
+  resume/seek), so it is not asked again; after an hour's quiet it is asked
+  again. Repeats already pending are closed as dismissed on Home.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
