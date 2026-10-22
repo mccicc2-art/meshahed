@@ -1,8 +1,9 @@
-[deploy] Release R71 — Stremio: declare the anime type for Kitsu ids
+[deploy] Release R72 — Stremio: diagnostics for Kitsu anime requests
 
-- 164 Stremio asks for Kitsu catalog anime with type "anime" (Torrentio declares
-  it for this), so R70 was never asked. Manifest 1.3.1 declares it; the parser
-  takes kitsu:{id}:{ep} as an episode and kitsu:{id} as a movie under "anime".
+- 165 One [stremio-kitsu] line in the runtime log per anime request: the stage it
+  stopped at (meta fetch, episode, IMDb, TMDB, placement, ok) and the time it
+  took, plus a line for kitsu ids the parser rejects. Kitsu id and episode only,
+  no token or member. Responses unchanged. To be removed on request.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
