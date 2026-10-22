@@ -1366,6 +1366,8 @@ const ar = {
   newPostAudienceAll: "الكل",
   newPostRateHint: "قيّمه لتنشر",
   newPostSearch: "ابحث عن فيلم أو مسلسل",
+  /** 🆕 D-1538 — صفُّ «بحث العمل» قبل الكتابة: آخرُ ما حدّثتَه في مكتبتك */
+  panelRecent: "من مكتبتك",
   postMenuOpenTitle: (name: string) => `صفحة ${name}`,
   postDeleteConfirm: "سيُحذف تقييمك ورأيك في هذا العمل.",
   postDeleted: "حُذف رأيك",
@@ -3833,6 +3835,7 @@ const en: Dict = {
   newPostAudienceAll: "Everyone",
   newPostRateHint: "Rate it to post",
   newPostSearch: "Search a movie or series",
+  panelRecent: "From your library",
   postMenuOpenTitle: (name: string) => `${name} page`,
   postDeleteConfirm: "Your rating and review of this title will be deleted.",
   postDeleted: "Your review was deleted",

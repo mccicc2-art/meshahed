@@ -9,7 +9,10 @@ import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { GifImage, recentGifs, useGifSearch } from "../thread/GifPicker";
 import { MIN_QUERY, useDebounced, useSearch } from "../search/useSearch";
-import type { SearchTitle } from "../contracts";
+import { useQuery } from "@tanstack/react-query";
+import type { LibraryItem, SearchTitle } from "../contracts";
+import { libraryQuery } from "../library/LibraryScreen";
+import { posterFor } from "../poster";
 
 /**
  * ====== 🆕 D-1440 — ما تعرضه لوحةُ «+» حين تختار GIF أو «بحث لوبز» ======
@@ -22,6 +25,28 @@ import type { SearchTitle } from "../contracts";
  */
 
 const STRIP_H = 96;
+
+/**
+ * 🆕 D-1538 — **قبل الكتابة: آخرُ ما حدّثتَه في مكتبتك** (أحمد ٢٢ أكتوبر بلقطة القلم: «ليش علامتين بحث ولي مساحة فاضية كذا
+ * قبل لا اكتب»، ثمّ «ب» على صورته و«رتبها لا يكون فيه فراغ عاليمين» و«اللي حدثتها مؤخرا»): كان الشريطُ المضغوطُ فارغاً بأيقونة بحثٍ
+ * ثانية فوق خانة البحث. الآن صفٌّ واحدٌ يملأ العرضَ من الطرف إلى الطرف — العددُ من عرض الحاوية والعرضُ يُقسَم بالتساوي — مرتّبٌ بآخر
+ * مشاهدةٍ أو إضافة. يقرأ استعلامَ المكتبة نفسَه (`libraryQuery` — الرئيسيّةُ تسخّنه)، ومكتبةٌ فارغةٌ ⇐ لا صفّ: الخانةُ وحدَها.
+ */
+const RECENT_MIN_W = 46;
+const RECENT_GAP = 8;
+const recentAt = (i: LibraryItem) => Math.max(Date.parse(i.last_watched ?? "") || 0, Date.parse(i.added_at) || 0);
+function useRecentTitles(on: boolean): SearchTitle[] {
+  const lib = useQuery({ ...libraryQuery, staleTime: 5 * 60_000, enabled: on });
+  const items = lib.data?.items ?? [];
+  return [...items]
+    .sort((a, b) => recentAt(b) - recentAt(a))
+    .slice(0, 12)
+    .map((i) => {
+      const path = i.display_poster_path ?? i.poster_path;
+      /* `poster` رابطٌ جاهزٌ كنتيجة البحث (القلمُ يرسمه بعد الاختيار)، و`posterPath` الخامُ لما يُكتب */
+      return { id: i.id, mediaType: i.kind, title: i.display_title ?? i.title, year: null, poster: posterFor(path, 96), posterPath: path };
+    });
+}
 
 export function GifPanel({ term, compact, onPick }: { term: string; compact: boolean; onPick: (id: string) => void }) {
   const { t, tokens } = useApp();
@@ -93,6 +118,7 @@ export function LoopzPanel({ term, compact, onPick, cols: colsIn }: { term: stri
   const short = q.trim().length < MIN_QUERY;
   const search = useSearch(q, "titles");
   const rows = short ? [] : search.data?.titles ?? [];
+  const recent = useRecentTitles(compact && short);
   const pick = (r: SearchTitle) => {
     haptic.pick();
     onPick(r);
@@ -108,6 +134,27 @@ export function LoopzPanel({ term, compact, onPick, cols: colsIn }: { term: stri
       {r.poster ? <Image source={{ uri: r.poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="film" size={18} color={tokens.muted} />}
     </View>
   );
+  if (compact && short) {
+    if (!recent.length || !boxW) {
+      /* القياسُ أوّلاً (عرضُ الحاوية يقرّر العدد)، ومكتبةٌ فارغةٌ لا ترسم شيئاً */
+      return recent.length ? <View onLayout={(e) => setBoxW(Math.round(e.nativeEvent.layout.width))} style={{ height: 1 }} /> : null;
+    }
+    const inner = boxW - 32;
+    const n = Math.max(3, Math.floor((inner + RECENT_GAP) / (RECENT_MIN_W + RECENT_GAP)));
+    const w = Math.floor((inner - (n - 1) * RECENT_GAP) / n);
+    return (
+      <View onLayout={(e) => setBoxW(Math.round(e.nativeEvent.layout.width))} style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, gap: 8 }}>
+        <Text size={12} weight="600" muted>{t.panelRecent}</Text>
+        <View style={{ flexDirection: "row", gap: RECENT_GAP }}>
+          {recent.slice(0, n).map((r) => (
+            <Pressable key={`${r.mediaType}-${r.id}`} onPress={() => pick(r)} accessibilityLabel={r.title} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+              {poster(r, w)}
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    );
+  }
   if (compact) {
     const w = Math.round((STRIP_H - 12) * (2 / 3));
     return (
