@@ -69,13 +69,14 @@ export const NO_COOKIES: RequestCredentials = "omit";
 export async function api<T>(
   path: string,
   /* 🆕 D-1232 — `signal`: من يملك مهلةً يقطع الطلبَ نفسَه فيُفرغ مكانَه في الشبكة (لا يبقى معلّقاً خلف ردٍّ لن يُقرأ) */
-  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal },
+  /* 🆕 A-05 — `headers`: ترويسةٌ إضافيّةٌ لنداءٍ بعينه (رمزُ الودجت مع خلاصته) — لا تغلب ترويساتِ الهويّة واللغة */
+  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal; headers?: Record<string, string> },
 ): Promise<{ data: T; invalidates: Tag[] }> {
   const auth = init?.auth !== false;
   /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
   if (auth && !session.has()) await session.request();
   for (let attempt = 0; ; attempt++) {
-    const headers = await baseHeaders(auth, path);
+    const headers = { ...(init?.headers ?? {}), ...(await baseHeaders(auth, path)) };
     if (init?.body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
       credentials: NO_COOKIES,

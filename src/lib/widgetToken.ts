@@ -37,6 +37,20 @@ const hashOf = (token: string) => createHash("sha256").update(token).digest("hex
 /** شكلُ الرمز وحدُّه قبل أيِّ نداءٍ للقاعدة — نصٌّ غريبٌ لا يكلّف استعلاماً */
 const TOKEN_RE = /^lw_[A-Za-z0-9_-]{43}$/;
 
+/**
+ * 🔴 A-05 (المدقّق ٢١ أكتوبر) — **الرمزُ يموت إن نام**: كان حيّاً إلى الأبد، ورمزٌ على جوّالٍ ضاع أو بِيع يبقى يعلّم ويرسل.
+ * الآن يُقبل ما دام استُعمل (أو جدّده جهازُه) في آخر ٩٠ يوماً، وإلّا رُفض كرمزٍ لا وجود له. **والجهازُ نفسُه يجدّده**:
+ * التطبيقُ يرسل رمزَه مع خلاصة الودجت (`x-loopz-widget` — `noteWidgetLang`)، فجوّالٌ يُفتح لا يموت رمزُه ولو لم يُلمس ✓.
+ * ⚖️ ٩٠ يوماً: أطولُ من أيِّ عطلةٍ عن التطبيق، وأقصرُ من عمر جوّالٍ في درج.
+ */
+const IDLE_DAYS = 90;
+const aliveSince = () => new Date(Date.now() - IDLE_DAYS * 86_400_000).toISOString();
+/** شرطُ «حيّ» بصيغة PostgREST: آخرُ استعمالٍ في النافذة، أو لم يُستعمل بعد وصدر فيها */
+const aliveFilter = () => {
+  const cut = aliveSince();
+  return `last_used_at.gt.${cut},and(last_used_at.is.null,created_at.gt.${cut})`;
+};
+
 /** يُصدر رمزاً جديداً لهذا الجهاز ويعيده **مرّةً واحدة** — `null` إن غاب المفتاحُ أو الجدول */
 export async function issueWidgetToken(userId: string, lang: Locale): Promise<string | null> {
   if (!hasServiceKey()) return null;
@@ -44,6 +58,13 @@ export async function issueWidgetToken(userId: string, lang: Locale): Promise<st
   const token = `lw_${randomBytes(32).toString("base64url")}`;
   const { error } = await db.from("widget_tokens").insert({ token_hash: hashOf(token), user_id: userId, lang });
   if (error) return null;
+  /* 🆕 A-05 — الميّتُ يُكنس عند الإصدار: لا يُقبل أصلاً، وبقاؤه صفٌّ بلا معنى */
+  const cut = aliveSince();
+  await db
+    .from("widget_tokens")
+    .delete()
+    .eq("user_id", userId)
+    .or(`and(last_used_at.not.is.null,last_used_at.lt.${cut}),and(last_used_at.is.null,created_at.lt.${cut})`);
   /* الأقدمُ استعمالاً يخرج أوّلاً — جهازٌ يعلّم كلَّ يومٍ لا يُطرد لأنّ آخرَ أُعيد تثبيتُه */
   const { data } = await db
     .from("widget_tokens")
@@ -64,16 +85,38 @@ export async function issueWidgetToken(userId: string, lang: Locale): Promise<st
 /**
  * يُنادى مع كلِّ جلبٍ لخلاصة الودجت (بجلسة العضو): يحفظ لغةَ الواجهة لسطر الردّ، ويقول هل للعضو رمزٌ أصلاً —
  * **فـ`check` لا يكون `true` إلّا حيث يعمل ✓ فعلاً** (الجدولُ موجودٌ والرمزُ صادر).
+ *
+ * 🆕 A-05 — **ورمزُ هذا الجهاز يتجدّد هنا** حين يرسله التطبيق (`deviceToken`، ترويسةُ `x-loopz-widget`): يُطابَق بصاحب الجلسة
+ * نفسِه (رمزُ غيرك لا يُجدَّد بجلستك)، و`check` يقول هل **هذا** الرمزُ حيّ — `false` يعني «اطلب رمزاً جديداً». ونسخةٌ أقدمُ
+ * لا ترسله: تُجدَّد رموزُ العضو الحيّةُ كلُّها كما كان سلوكُها، فلا يموت ✓ عند من لم يصله التحديث.
  */
-export async function noteWidgetLang(userId: string, lang: Locale): Promise<boolean> {
+export async function noteWidgetLang(userId: string, lang: Locale, deviceToken?: string | null): Promise<boolean> {
   if (!hasServiceKey()) return false;
   try {
     const db = await createServiceClient();
-    const { data, error } = await db.from("widget_tokens").update({ lang }).eq("user_id", userId).select("token_hash");
+    let q = db
+      .from("widget_tokens")
+      .update({ lang, last_used_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .or(aliveFilter());
+    if (deviceToken && TOKEN_RE.test(deviceToken)) q = q.eq("token_hash", hashOf(deviceToken));
+    const { data, error } = await q.select("token_hash");
     return !error && (data?.length ?? 0) > 0;
   } catch {
     return false;
   }
+}
+
+/**
+ * 🆕 A-05 — **الخروجُ يُلغي رمزَ الجهاز على الخادم** لا في ملفّه وحده: كان التطبيقُ يمحو الملفّ (`prune`) ويبقى الرمزُ حيّاً
+ * عند من نسخه. الرمزُ نفسُه يثبت ملكيّته (لا جلسةَ بعد الخروج)، ولا يُلغي إلّا نفسَه.
+ */
+export async function revokeWidgetToken(authHeader: string | null): Promise<boolean> {
+  const token = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? "";
+  if (!TOKEN_RE.test(token) || !hasServiceKey()) return false;
+  const db = await createServiceClient();
+  const { data, error } = await db.from("widget_tokens").delete().eq("token_hash", hashOf(token)).select("token_hash");
+  return !error && (data?.length ?? 0) > 0;
 }
 
 /** صاحبُ الرمز من ترويسة `Authorization: Bearer lw_…` — أو `null` */
@@ -85,6 +128,8 @@ export async function widgetUser(authHeader: string | null): Promise<{ userId: s
     .from("widget_tokens")
     .update({ last_used_at: new Date().toISOString() })
     .eq("token_hash", hashOf(token))
+    /* 🆕 A-05 — رمزٌ نام ٩٠ يوماً لا يُقبل ولا يُبعث باستعماله */
+    .or(aliveFilter())
     .select("user_id, lang")
     .maybeSingle();
   if (error || !data) return null;

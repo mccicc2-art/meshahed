@@ -42,6 +42,7 @@ const eslintConfig = defineConfig([
       "src/lib/push.ts", // D-1305 — إشعاراتُ الدفع: رموزُ أجهزة المستلم وسجلُّ ما أُرسل لا يقرؤهما إلّا الخادم
       "src/lib/apple.ts", // D-1350 — رمزُ تجديد أبل: يُحفظ عند الدخول ويُقرأ ليُلغى عند حذف الحساب؛ جدولُه بلا سياسةٍ ولا منحٍ للعميل
       "src/app/api/v1/session/mint/route.ts", // K4b — سكُّ جلسةٍ مستقلّةٍ للتطبيق من رمز وصولٍ صالح (admin.generateLink + verify)
+      "src/lib/sharedLimit.ts", // A-14 — عدّادُ الحدِّ المشترك (`rate_hit`) وسجلُّ السكّ (`session_mints`): جدولان بلا سياسة، لا يصلهما إلّا الخادم
     ],
     rules: {
       "@typescript-eslint/no-restricted-imports": [

@@ -1717,6 +1717,10 @@ async function markWatchedUpTo(
   episode: number,
   meta?: { title?: string | null; posterPath?: string | null },
 ): Promise<number> {
+  /* 🔴 A-15 (المدقّق ٢٢ أكتوبر) — **الرقمان من العميل، فالحدُّ هنا لا عند من نادى**: منشورُ القلم يمرّر الموسمَ والحلقةَ
+     خارجَ حارسِ عموده (٠–٢٠٠ / ١–٥٠٠٠ يحرس الكتابةَ لا هذه الحلقة)، ورقمٌ كبيرٌ كان يدور حلقةً بلا سقف. الحدّان حدّا
+     `rateEpisode` نفسُهما (`intIn`) — رقمٌ خارجهما ليس حلقةً، فلا يُعلَّم شيء. */
+  if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
   const { getTv } = await import("@/lib/tmdb");
   const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
   const tv = await getTv(tmdbId);
@@ -1726,13 +1730,19 @@ async function markWatchedUpTo(
   else {
     const per = airedPerSeason(tv);
     const firstOf = firstEpisodeOf(tv);
+    /* 🔴 A-15 — **موسمٌ لا يعرفه TMDB لا يُعلِّم ما قبله**: الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان يعلّم الثلاثةَ كلَّها */
+    if (!per.has(season)) return 0;
     for (const [sn, count] of per) {
       if (sn === 0 || sn > season) continue;
       const first = firstOf.get(sn) ?? 1;
-      const last = sn < season ? first + count - 1 : episode;
+      /* 🔴 A-15 — **وفي موسمها: حتى آخر ما بُثّ لا حتى الرقم المرسَل** — «شاهدتُ ٥٠» في موسمٍ بُثّ منه ١٠ لا يعلّم
+         حلقاتٍ لم تُعرض بعد (تظهر مشاهَدةً يومَ بثّها، ويحسبها التقدّمُ والإحصاءُ منذ اليوم) */
+      const last = sn < season ? first + count - 1 : Math.min(episode, first + count - 1);
       for (let ep = first; ep <= last; ep++) want.push({ s: sn, e: ep });
     }
-    if (!want.some((w) => w.s === season && w.e === episode)) want.push({ s: season, e: episode });
+    /* الحلقةُ نفسُها تُضاف حين تقع داخل ما بُثّ وحده — وإلّا فهي حلقةٌ لم تُعرض */
+    const inSeason = (firstOf.get(season) ?? 1) + (per.get(season) ?? 0) - 1;
+    if (episode <= inSeason && !want.some((w) => w.s === season && w.e === episode)) want.push({ s: season, e: episode });
   }
   const { data: seen } = await supabase
     .from("watched_episodes")

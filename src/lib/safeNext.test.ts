@@ -18,3 +18,9 @@ test("صفحتا الدخول والخروج ليستا وجهة", () => {
   assert.equal(safeNext("/login?next=/x"), "/");
   assert.equal(safeNext("/auth/signout"), "/");
 });
+
+test("A-06 — محارفُ التحكّم تسقط إلى الجذر (المتصفّحُ يحذفها فتصير `//`)", () => {
+  for (const v of ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/x\u0000y", "/x\u007fy"]) {
+    assert.equal(safeNext(v), "/");
+  }
+});

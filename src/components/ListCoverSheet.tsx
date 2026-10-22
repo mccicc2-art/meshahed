@@ -52,7 +52,6 @@ export function ListCoverSheet({
   onClose: () => void;
 }) {
   const t = getDict(locale);
-  const ar = locale !== "en";
   const router = useRouter();
   const [pending, start] = useTransition();
   const [cover, setCover] = useState<string | null>(current.backdrop ?? null);

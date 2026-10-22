@@ -63,7 +63,7 @@ import { railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
-import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
+import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { bestOfYear, matchesBrowse, drawMyRow, MY_ROW_POOL } from "@/lib/discoverRails";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab } from "@/core/tabPrefs";

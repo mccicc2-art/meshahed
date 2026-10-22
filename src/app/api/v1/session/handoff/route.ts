@@ -27,6 +27,14 @@ export async function POST(req: NextRequest) {
   if (!isLoopzApp(req.headers.get("user-agent"))) {
     return NextResponse.redirect(home, { status: 303 });
   }
+  /* 🔴 A-03 (المدقّق ٢١ أكتوبر) — **حارسُ الأصل نفسُه الذي على الخروج** (`auth/signout`): وسمُ `LoopzApp/` وحده لا يمنع
+     صفحةً داخل الغلاف من إرسال نموذجٍ برمزين من حسابٍ آخر فتُسجَّل الدخولَ في حسابٍ ليس لك (login-CSRF). الغلافُ يرسل
+     هذا البابَ تنقّلاً أصليّاً بالمسار نفسِه الذي يرسل به الخروج (`setSource` · `postUrl`) ⇒ بلا أصلٍ أو `Origin: null`،
+     وصفحتُنا ⇒ أصلُنا. أيُّ أصلٍ آخر يعود للرئيسية بلا جلسة. */
+  const origin = req.headers.get("origin");
+  if (origin && origin !== "null" && origin !== new URL(req.url).origin) {
+    return NextResponse.redirect(home, { status: 303 });
+  }
   let access = "";
   let refresh = "";
   /* 🔴 D-1330 — **الجسمُ يُقرأ نصّاً لا `formData()`** (أوّلُ نسخة iOS، ٨ أكتوبر: الدخولُ ينجح عند Google ثمّ

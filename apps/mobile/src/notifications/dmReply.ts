@@ -107,11 +107,18 @@ function markDone(key: string) {
 }
 
 /** نداءٌ بلا جسر: رمزُ الجلسة الحاليّ أو المملوكةُ تجدّد نفسها — وبلا رمزٍ لا نداء (الإشعارُ يقول «تعذّر») */
+/* 🔴 A-16 (المدقّق ٢٢ أكتوبر) — **ولا انتظارَ بلا نهاية**: `fetch` في RN بلا مهلة (D-1232)، والردُّ يُرسل من مهمّةٍ في الخلفية
+   يقتلها النظامُ بعد ثوانٍ (iOS نحو ٣٠ث) — طلبٌ علق في الشبكة كان يُبقي الإشعارَ بلا «أنت: …» ولا «تعذّر الإرسال». بعد المهلة
+   يُقطع الطلبُ ويقول الإشعارُ «تعذّر» بزرّيه فيُعاد. ⚖️ ١٥ث: الإرسالُ العاديّ أقلُّ من ثانية، ويبقى وقتٌ لإعادة رسم الإشعار. */
+const POST_TIMEOUT_MS = 15_000;
 async function post(path: string, body: unknown): Promise<boolean> {
   const token = session.get() ?? (await own.ensure());
   if (!token) return false;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), POST_TIMEOUT_MS);
   try {
     const res = await fetch(`${CONFIG.apiBase}${path}`, {
+      signal: ctl.signal,
       credentials: NO_COOKIES,
       method: "POST",
       headers: {
@@ -129,6 +136,8 @@ async function post(path: string, body: unknown): Promise<boolean> {
     return res.ok && !!json && "data" in json;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -3,7 +3,8 @@ import { File, Paths } from "expo-file-system";
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
 import { LoopzWidget } from "../../modules/loopz-widget";
-import { api } from "../api";
+import { api, GATE_HEADERS, NO_COOKIES } from "../api";
+import { CONFIG } from "../config";
 import { BUILD_TAG } from "../ota";
 import { session } from "../session";
 import { own } from "../ownSession";
@@ -40,10 +41,36 @@ const TOKEN = "token";
  */
 export function hasWidgetToken(): boolean {
   try {
-    return !!LoopzWidget?.exists(TOKEN);
+    const w = LoopzWidget;
+    if (!w) return false;
+    /* 🆕 A-05 — ملفٌّ فارغٌ = رمزٌ أُلغي أو مات (`readToken`) — لا يُعلَن به «dm-native» */
+    return w.readText ? !!readToken(w) : w.exists(TOKEN);
   } catch {
     return false;
   }
+}
+
+/**
+ * 🆕 A-05 — **رمزُ الجهاز نصّاً** (أو `null`): يُرسل مع الخلاصة فيتجدّد، ويُلغى به عند الخروج. ملفٌّ فارغٌ أو تالفٌ = لا رمز.
+ * بناءٌ أصليٌّ بلا `readText` لا يُقرأ فيه — يبقى سلوكُه القديم (الخادمُ يجدّد رموزَ العضو الحيّةَ كلَّها حين لا تصله ترويسة).
+ */
+function readToken(w: NonNullable<typeof LoopzWidget>): string | null {
+  try {
+    const t = w.readText?.(TOKEN)?.trim() ?? "";
+    return /^lw_[A-Za-z0-9_-]{43}$/.test(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 A-05 — يمحو رمزَ الجهاز (ملفٌّ فارغ، فالرسّامُ الأصليُّ لا يجد ما يرسله) ويسمح بطلب غيره فوراً */
+function dropToken(w: NonNullable<typeof LoopzWidget>): void {
+  try {
+    w.writeText(TOKEN, "");
+  } catch {
+    /* لا شيء */
+  }
+  tokenTried = 0;
 }
 const tokenSubs = new Set<() => void>();
 export function onWidgetToken(f: () => void): () => void {
@@ -179,7 +206,8 @@ async function sendDiag(w: NonNullable<typeof LoopzWidget>): Promise<void> {
 }
 
 async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
-  if (w.exists(TOKEN)) return;
+  /* 🆕 A-05 — «موجود» = رمزٌ صالحُ الشكل، لا ملفٌّ فقط: الملفُّ الفارغُ (`dropToken`) يطلب رمزاً جديداً */
+  if (w.readText ? readToken(w) : w.exists(TOKEN)) return;
   if (Date.now() - tokenTried < TOKEN_RETRY_MS) return;
   tokenTried = Date.now();
   try {
@@ -224,7 +252,13 @@ async function run(): Promise<void> {
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
   await ensureToken(w);
   await sendDiag(w);
-  const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query);
+  /* 🆕 A-05 — رمزُ الجهاز مع الخلاصة: يتجدّد بفتح التطبيق، و`check: false` معه يعني أنّه مات أو أُلغي ⇒ يُمحى ويُطلب غيرُه */
+  const mine = readToken(w);
+  const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query, mine ? { headers: { "x-loopz-widget": mine } } : undefined);
+  if (mine && data && data.check === false) {
+    dropToken(w);
+    void ensureToken(w);
+  }
   const art = [...collectArt(data)];
   const names = new Map<string, string>();
   /* 🆕 **الودجتُ أوّلاً ثمّ الصور** (تسجيلُ أحمد ١٤ أكتوبر: «حفظت الإعدادات وأروح لسطح المكتب متأخرة ما تجي»): كان الودجتُ
@@ -379,6 +413,17 @@ export function startWidgetFeed() {
     if (s === "background") void refreshWidgets(true);
   });
   session.onSignOut(() => {
+    /* 🆕 A-05 — الرمزُ يُلغى على الخادم قبل أن يُمحى ملفُّه: من نسخه قبل الخروج لا يبقى في يده رمزٌ حيّ. بلا انتظار —
+       الخروجُ لا يتأخّر لأجل الشبكة، وفشلُ الإلغاء يتركه يموت بعد ٩٠ يوماً من النوم */
+    const w = LoopzWidget;
+    const mine = w ? readToken(w) : null;
+    if (mine) {
+      void fetch(`${CONFIG.apiBase}/api/v1/widget/token/revoke`, {
+        method: "POST",
+        credentials: NO_COOKIES,
+        headers: { Authorization: `Bearer ${mine}`, ...GATE_HEADERS },
+      }).catch(() => {});
+    }
     clearWidgets();
     void unregisterBackground();
   });

@@ -2,7 +2,8 @@ import { type NextRequest } from "next/server";
 import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { keepAppleToken, type KeepResult } from "@/lib/apple";
-import { handle, requireUser, fail, limited } from "@/lib/v1";
+import { handle, requireUser, fail } from "@/lib/v1";
+import { sharedLimited } from "@/lib/sharedLimit";
 import { ok } from "@/core/contracts/result";
 
 /**
@@ -35,7 +36,8 @@ export async function POST(req: NextRequest) {
     async () => {
       const auth = await requireUser();
       if (!auth.ok) return auth;
-      const rl = limited(`apple:${auth.user.id}`, 6, 60 * 60_000);
+      /* 🆕 A-14 — الحدُّ في القاعدة لا في ذاكرة النسخة (`sharedLimited`) */
+      const rl = await sharedLimited(`apple:${auth.user.id}`, 6, 60 * 60_000);
       if (rl) return rl;
       const apple = (auth.user.identities ?? []).find((i) => i.provider === "apple");
       if (!apple) return fail("forbidden");

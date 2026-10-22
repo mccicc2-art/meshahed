@@ -421,7 +421,9 @@ export function TrailerPlayer({
               }
               return true;
             }
-            Linking.openURL(url).catch(() => {});
+            /* 🔴 A-07 (المدقّق ٢١ أكتوبر) — **الخروجُ للمتصفّح بـ`https` وحده**: الإطارُ مستندُ يوتيوب، وأيُّ مخطَّطٍ آخر
+               (`intent:` · `tel:` · مخطّطُ تطبيقٍ مثبَّت) كان يفتح تطبيقاً بلمسةٍ داخل الإعلان أو الإطار. يُمنع ولا يُفتح شيء. */
+            if (url.startsWith("https://")) Linking.openURL(url).catch(() => {});
             return false;
           },
         }}

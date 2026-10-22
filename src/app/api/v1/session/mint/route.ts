@@ -1,7 +1,8 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
-import { handle, fail, limited } from "@/lib/v1";
+import { handle, fail } from "@/lib/v1";
+import { logSessionMint, sharedLimited } from "@/lib/sharedLimit";
 import { ok } from "@/core/contracts/result";
 import { sessionCookieParts } from "@/lib/sessionCookie";
 
@@ -29,7 +30,11 @@ import { sessionCookieParts } from "@/lib/sessionCookie";
  * - **المستخدمُ المسكوكُ هو صاحبُ الرمز نفسُه**: المعرّفُ يُطابَق مرّتين (الرابط ثمّ الجلسة) — وإلّا
  *   لا شيء يعود. فرمزٌ صالحٌ لا يفتح إلّا حسابَ صاحبه.
  * - لا يُنشئ حساباً أبداً: بلا بريدٍ ⇒ `forbidden` (رابطُ الدخول لبريدٍ غيرِ موجودٍ يصير تسجيلاً).
- * - حدٌّ: ٦ في الساعة لكلِّ مستخدم — التطبيقُ يسكّ مرّةً لكلِّ تثبيتٍ أو بعد خروج.
+ * - حدٌّ: ٦ في الساعة لكلِّ مستخدم — التطبيقُ يسكّ مرّةً لكلِّ تثبيتٍ أو بعد خروج. 🆕 A-14: **في القاعدة لا في ذاكرة النسخة**
+ *   (`sharedLimited`) — فالستّةُ ستّةٌ مهما تعدّدت النسخ.
+ * - 🆕 A-04 (المدقّق ٢١ أكتوبر): **وثلاثٌ في اليوم لكلِّ جلسة ويب** (`session_id` في الرمز): رمزُ وصولٍ مسروقٌ كان يصير جلساتٍ
+ *   دائمةً بعدد ما يسمح الحدّ؛ والتطبيقُ يسكّ من جلسة الويب الواحدة مرّةً (وإعادةُ سكٍّ نادرةٌ بعد ضياع المملوكة). وكلُّ سكٍّ
+ *   سطرٌ في `session_mints` بعمر الرمز — **القياسُ قبل أيِّ شرطٍ على العمر**.
  * - الردُّ `no-store` ولا يُسجَّل؛ والأخطاءُ بلا نصِّ Supabase.
  *
  * ⚖️ **أثرٌ جانبيٌّ واحدٌ مقصود**: سطرُ «دخول» في سجلّ تدقيق Supabase. ويُمسح رمزُ الاستعادة المؤقّت
@@ -50,8 +55,13 @@ export async function POST(req: NextRequest) {
     const who = await admin.auth.getUser(token);
     const user = who.data.user;
     if (who.error || !user) return fail("unauthenticated");
-    const rl = limited(`mint:${user.id}`, 6, 60 * 60_000);
+    const rl = await sharedLimited(`mint:${user.id}`, 6, 60 * 60_000);
     if (rl) return rl;
+    const claims = jwtClaims(token);
+    if (claims.sessionId) {
+      const rs = await sharedLimited(`mint-s:${claims.sessionId}`, 3, 24 * 60 * 60_000);
+      if (rs) return rs;
+    }
     if (!user.email) return fail("forbidden");
 
     const link = await admin.auth.admin.generateLink({ type: "magiclink", email: user.email });
@@ -65,6 +75,12 @@ export async function POST(req: NextRequest) {
     const s = v.data.session;
     if (v.error || !s || s.user.id !== user.id || !s.refresh_token || !s.expires_at) return fail("internal");
 
+    await logSessionMint({
+      userId: user.id,
+      sessionId: claims.sessionId,
+      via: auth.startsWith("Bearer ") ? "bearer" : "cookie",
+      tokenAgeS: claims.iat ? Math.max(0, Math.round(Date.now() / 1000) - claims.iat) : null,
+    });
     return ok({ access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at, user_id: user.id }, []);
     /* D-1341 — يحتاجه من لم يُتمّ الترحيب: لا يُسأل عن الختم */
   }, { open: true });
@@ -80,5 +96,20 @@ function cookieAccess(req: NextRequest): string {
     return typeof t === "string" ? t : "";
   } catch {
     return "";
+  }
+}
+
+/**
+ * 🆕 A-04 — `session_id` و`iat` من حمولة الرمز. **قراءةٌ بلا تحقّق** وهي آمنةٌ هنا وحدَها: تُقرأ بعد أن قبل `getUser`
+ * الرمزَ نفسَه عند Supabase، فالحمولةُ حمولتُه. ومعرّفٌ ليس بشكل UUID يُهمل (لا مفتاحَ حدٍّ من نصٍّ حرّ).
+ */
+function jwtClaims(token: string): { sessionId: string | null; iat: number | null } {
+  try {
+    const body = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as { session_id?: unknown; iat?: unknown };
+    const sid = typeof body.session_id === "string" && /^[0-9a-f-]{36}$/i.test(body.session_id) ? body.session_id : null;
+    const iat = typeof body.iat === "number" && Number.isFinite(body.iat) ? body.iat : null;
+    return { sessionId: sid, iat };
+  } catch {
+    return { sessionId: null, iat: null };
   }
 }

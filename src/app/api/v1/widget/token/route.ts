@@ -1,4 +1,5 @@
-import { handle, requireUser, limited, fail } from "@/lib/v1";
+import { handle, requireUser, fail } from "@/lib/v1";
+import { sharedLimited } from "@/lib/sharedLimit";
 import { getT } from "@/lib/locale";
 import { ok } from "@/core/contracts/result";
 import { issueWidgetToken } from "@/lib/widgetToken";
@@ -12,7 +13,8 @@ export async function POST() {
   return handle(async () => {
     const u = await requireUser();
     if (!u.ok) return u;
-    const rl = limited(`wtoken:${u.user.id}`, 10, 60 * 60_000);
+    /* 🆕 A-14 — الحدُّ في القاعدة لا في ذاكرة النسخة: رمزٌ يُصدر بلا نهايةٍ عبر النسخ رموزٌ حيّة */
+    const rl = await sharedLimited(`wtoken:${u.user.id}`, 10, 60 * 60_000);
     if (rl) return rl;
     const { locale } = await getT();
     const token = await issueWidgetToken(u.user.id, locale);
