@@ -1,6 +1,14 @@
 import "server-only";
 import { findByImdb, getSeason, tvSeasonCounts } from "@/lib/tmdb";
-import { imdbEpisodeOf, matchByAirDate, placeOnTmdb, type DatedEpisode, type KitsuMapEntry } from "@/core/kitsuEpisode";
+import {
+  fribbEpisodeOf,
+  imdbEpisodeOf,
+  matchByAirDate,
+  placeOnTmdb,
+  type DatedEpisode,
+  type FribbEntry,
+  type KitsuMapEntry,
+} from "@/core/kitsuEpisode";
 import type { StremioRef, StremioVideo } from "@/core/stremioId";
 
 /**
@@ -66,6 +74,50 @@ async function kitsuMap(): Promise<{ byId: Map<number, KitsuMapEntry> | null; wh
 }
 
 /**
+ * 🆕 R77 — **جدولُ Fribb** (`anime-lists`، ~٧٫٥ م.ب): أكبرُ من كاش Next (٢ م.ب) فلا يُحفظ هناك — يُنزَّل **حين يفشل المسارُ
+ * الأوّلُ فقط** ويبقى فهرسُه في ذاكرة النسخة نصفَ يوم. والفشلُ لا يُحفظ.
+ */
+const FRIBB =
+  "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json";
+let fribbCache: { at: number; byId: Map<number, FribbEntry> } | null = null;
+
+async function fribbMap(): Promise<{ byId: Map<number, FribbEntry> | null; why: string }> {
+  if (fribbCache && Date.now() - fribbCache.at < MAP_TTL_MS) return { byId: fribbCache.byId, why: "ok" };
+  try {
+    const res = await fetch(FRIBB, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+      headers: { "User-Agent": "Loopz/1.0 (+https://loopztv.com)", Accept: "application/json" },
+    });
+    if (!res.ok) return { byId: null, why: `http_${res.status}` };
+    const rows = (await res.json()) as unknown;
+    if (!Array.isArray(rows)) return { byId: null, why: "bad_shape" };
+    const byId = new Map<number, FribbEntry>();
+    for (const r of rows as FribbEntry[]) {
+      const id = Number(r?.kitsu_id);
+      /* ما بلا رقم TMDB لا ينفعنا — لا يُحفظ في الذاكرة */
+      if (Number.isInteger(id) && id > 0 && r?.themoviedb_id?.tv) byId.set(id, r);
+    }
+    fribbCache = { at: Date.now(), byId };
+    return { byId, why: "ok" };
+  } catch (e) {
+    return { byId: null, why: e instanceof Error ? `error_${e.name}` : "error" };
+  }
+}
+
+async function viaFribb(kitsu: number, ep: number): Promise<{ tmdbId: number; placed: { season: number; episode: number } } | string> {
+  const { byId, why } = await fribbMap();
+  if (!byId) return `fribb_${why}`;
+  const entry = byId.get(kitsu);
+  if (!entry) return "fribb_not_found";
+  const hit = fribbEpisodeOf(entry, ep);
+  if (!hit) return "fribb_no_season";
+  /* الموسمُ والحلقةُ يُتحقَّق منهما على مواسم TMDB الحاليّة — حلقةٌ لا يعرفها TMDB بعدُ لا تُعلَّم */
+  const placed = placeOnTmdb(await tvSeasonCounts(hit.tmdbId), hit.at);
+  return placed ? { tmdbId: hit.tmdbId, placed } : "fribb_no_place";
+}
+
+/**
  * 🆕 R75 — **تاريخُ عرض حلقة Kitsu من واجهتها الرسميّة** (`kitsu.app/api/edge`): للمطابقة بالتاريخ حين لا يتّفق تقسيمُ IMDb
  * وTMDB. نصفُ يومٍ في كاش Next (التاريخُ لا يتغيّر)، والفشلُ لا شيء — وسطرُ التشخيص يقول السبب.
  */
@@ -111,34 +163,46 @@ export async function resolveStremioRef(ref: StremioRef): Promise<{ video: Strem
     trace({ kitsu: ref.kitsu, episode: ref.episode, stage, ms: Date.now() - t0, ...extra });
 
   const { byId, why } = await kitsuMap();
-  if (!byId) return done(`map_${why}`), null;
-  const entry = byId.get(ref.kitsu);
-  if (!entry) return done("not_in_map"), null;
-  const imdb = entry.imdb_id;
-  if (!imdb || !IMDB.test(imdb)) return done("no_imdb"), null;
+  const entry = byId?.get(ref.kitsu);
+  const imdb = entry?.imdb_id && IMDB.test(entry.imdb_id) ? entry.imdb_id : null;
 
   if (ref.episode === null) {
+    if (!byId) return done(`map_${why}`), null;
+    if (!entry) return done("not_in_map"), null;
+    if (!imdb) return done("no_imdb"), null;
     const tmdbId = await findByImdb(imdb, "movie");
     if (!tmdbId) return done("tmdb_not_found", { imdb }), null;
     done("ok", { imdb, tmdbId });
     return { video: { kind: "movie", imdb }, tmdbId };
   }
+  const ep = ref.episode;
 
-  const at = imdbEpisodeOf(entry, ref.episode);
-  if (!at) return done("no_imdb_episode", { imdb }), null;
-  const tmdbId = await findByImdb(imdb, "tv");
-  if (!tmdbId) return done("tmdb_not_found", { imdb, imdbAt: at }), null;
-  const seasons = await tvSeasonCounts(tmdbId);
-  let placed = placeOnTmdb(seasons, at);
-  let how = "number";
-  if (!placed) {
-    /* 🆕 R75 — التقسيمُ مختلف: المطابقةُ بيوم العرض */
-    const { date, why: dateWhy } = await kitsuAirdate(ref.kitsu, ref.episode);
-    if (!date) return done(`no_place_date_${dateWhy}`, { imdb, tmdbId, imdbAt: at, seasons: seasons.length }), null;
-    placed = matchByAirDate(await datedEpisodes(tmdbId, seasons), date);
-    if (!placed) return done("no_place_date_nomatch", { imdb, tmdbId, imdbAt: at, date }), null;
-    how = `date ${date}`;
+  /* ١) المسارُ الأوّل: جدولُ الإضافة ⇢ IMDb ⇢ TMDB بالرقم */
+  let stage = !byId ? `map_${why}` : !entry ? "not_in_map" : !imdb ? "no_imdb" : "";
+  const at = entry && imdb ? imdbEpisodeOf(entry, ep) : null;
+  if (!stage && !at) stage = "no_imdb_episode";
+  const firstTmdb = at && imdb ? await findByImdb(imdb, "tv") : null;
+  if (!stage && !firstTmdb) stage = "tmdb_not_found";
+  const seasons = firstTmdb ? await tvSeasonCounts(firstTmdb) : [];
+  const byNumber = firstTmdb && at ? placeOnTmdb(seasons, at) : null;
+  if (firstTmdb && byNumber) return finish(firstTmdb, byNumber, "number");
+  if (!stage) stage = "no_place";
+
+  /* ٢) 🆕 R77 — جدولُ Fribb: رقمُ TMDB والموسمُ مباشرةً */
+  const fribb = await viaFribb(ref.kitsu, ep);
+  if (typeof fribb !== "string") return finish(fribb.tmdbId, fribb.placed, `fribb after ${stage}`);
+
+  /* ٣) R75 — المطابقةُ بيوم العرض على عمل المسار الأوّل */
+  if (!firstTmdb) return done(stage, { imdb, fribb }), null;
+  const { date, why: dateWhy } = await kitsuAirdate(ref.kitsu, ep);
+  if (!date) return done(`no_place_date_${dateWhy}`, { imdb, tmdbId: firstTmdb, imdbAt: at, fribb }), null;
+  const byDate = matchByAirDate(await datedEpisodes(firstTmdb, seasons), date);
+  if (!byDate) return done("no_place_date_nomatch", { imdb, tmdbId: firstTmdb, imdbAt: at, date, fribb }), null;
+  return finish(firstTmdb, byDate, `date ${date}`);
+
+  function finish(tmdbId: number, placed: { season: number; episode: number }, how: string) {
+    /* الفيديو يحمل رقمَ IMDb إن وُجد — وإلّا فرغاً: المسارُ بعده يعتمد رقمَ TMDB وحده */
+    done("ok", { imdb, tmdbId, imdbAt: at, season: placed.season, ep: placed.episode, how });
+    return { video: { kind: "tv" as const, imdb: imdb ?? "", season: placed.season, episode: placed.episode }, tmdbId };
   }
-  done("ok", { imdb, tmdbId, imdbAt: at, season: placed.season, ep: placed.episode, how });
-  return { video: { kind: "tv", imdb, season: placed.season, episode: placed.episode }, tmdbId };
 }

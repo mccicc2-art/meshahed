@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { AppState } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { write } from "../api";
 import { useApp } from "../state";
 import { haptic } from "../haptics";
@@ -17,6 +19,9 @@ const UNDO_MS = 4500;
  * 🔑 **الجوابُ يُرسل بعد مهلة التراجع لا قبلها**: ✓ على حلقةٍ يعلّم كلَّ ما قبلها ويتابع المسلسل — كتابةٌ لا تُعكس بنقرة
  * (لا نعرف ما كان معلَّماً قبلها). فالإخفاءُ فوريّ والكتابةُ مؤجّلة، و«تراجع» يُلغي المؤقّتَ فلا يصل الخادمَ شيء.
  * ⚠️ **ومغادرةُ الشاشة لا تُسقط الجواب**: ما بقي في الانتظار يُرسل عند الإزالة — من ضغط ✓ ثمّ خرج قد أجاب.
+ * 🆕 R76 — **وعند فقد التركيز والخروج إلى الخلفيّة أيضاً** (أحمد ٢٢ أكتوبر: «اغير الصفحة او اقفل التطبيق و اندو ديسميس
+ * ما راح»): الرئيسيّةُ تبقى مركّبةً خلف التبويبات فلا «إزالة»، والتطبيقُ في الخلفيّة يُوقف المؤقّتات وإغلاقُه يقتلها — فكان
+ * الجوابُ يضيع ويعود السؤال. فمغادرةُ الشاشة أو التطبيق أثناء «تراجع» = تثبيتُ الجواب فوراً (لا تراجعَ لمن غادر).
  */
 export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
   const { t } = useApp();
@@ -74,17 +79,29 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
     [commit, t, toast, unhide],
   );
 
-  /* الخروجُ يرسل ما بقي — بلا انتظار ولا رسائل (الشاشةُ زالت) */
-  useEffect(() => {
+  /* إرسالُ كلِّ ما ينتظر — بلا رسائل: الشاشةُ غادرت أو التطبيقُ نزل إلى الخلفيّة */
+  const flushAll = useCallback(() => {
     const map = pending.current;
-    return () => {
-      for (const [id, p] of map) {
-        clearTimeout(p.timer);
-        void write("/api/v1/me/stremio/answer", { id, watched: p.watched }).catch(() => {});
-      }
-      map.clear();
-    };
+    for (const [id, p] of map) {
+      clearTimeout(p.timer);
+      void write("/api/v1/me/stremio/answer", { id, watched: p.watched }).catch(() => {});
+    }
+    map.clear();
   }, []);
+
+  /* الإزالة */
+  useEffect(() => flushAll, [flushAll]);
+
+  /* فقدُ التركيز: تبويبٌ آخر أو شاشةٌ فوقها — الرئيسيّةُ تبقى مركّبة فلا تصلها الإزالة */
+  useFocusEffect(useCallback(() => flushAll, [flushAll]));
+
+  /* الخلفيّة: المؤقّتاتُ تتوقّف هناك، وإغلاقُ التطبيق يقتلها */
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") flushAll();
+    });
+    return () => sub.remove();
+  }, [flushAll]);
 
   return { hidden, answer };
 }

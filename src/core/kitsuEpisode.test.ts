@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { imdbEpisodeOf, matchByAirDate, placeOnTmdb } from "./kitsuEpisode.ts";
+import { fribbEpisodeOf, imdbEpisodeOf, matchByAirDate, placeOnTmdb } from "./kitsuEpisode.ts";
+
+test("جدولُ Fribb: رقمُ TMDB والموسمُ والإزاحة، وبلا موسمٍ عاديٍّ لا شيء", () => {
+  /* مدخلُ «حرب الألف عام — الجزء الرابع» كما هو في anime-list-full.json */
+  const tybw4 = { kitsu_id: 49444, themoviedb_id: { tv: 30984 }, season: { tvdb: 17, tmdb: 2 }, episode_offset: { tvdb: 40, tmdb: 40 } };
+  assert.deepEqual(fribbEpisodeOf(tybw4, 1), { tmdbId: 30984, at: { season: 2, episode: 41 } });
+  assert.deepEqual(fribbEpisodeOf(tybw4, 4), { tmdbId: 30984, at: { season: 2, episode: 44 } });
+  assert.deepEqual(fribbEpisodeOf({ kitsu_id: 244, themoviedb_id: { tv: 30984 }, season: { tmdb: 1 } }, 7), { tmdbId: 30984, at: { season: 1, episode: 7 } });
+  assert.equal(fribbEpisodeOf({ kitsu_id: 1, themoviedb_id: { tv: 5 } }, 1), null);
+  assert.equal(fribbEpisodeOf({ kitsu_id: 1, themoviedb_id: { tv: 5 }, season: { tmdb: 0 } }, 1), null);
+  assert.equal(fribbEpisodeOf({ kitsu_id: 1, season: { tmdb: 1 } }, 1), null);
+  assert.equal(fribbEpisodeOf(tybw4, 0), null);
+});
 
 /* مدخلاتٌ من جدول الإضافة كما هي (static/data/imdb_mapping.json) */
 const bleach = { kitsu_id: 244, imdb_id: "tt0434665", fromSeason: 1, fromEpisode: 1 };

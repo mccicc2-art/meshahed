@@ -79,6 +79,28 @@ export function placeOnTmdb(seasons: TmdbSeason[], at: Placed): Placed | null {
  */
 export type DatedEpisode = { season: number; episode: number; air_date?: string | null };
 
+/**
+ * 🆕 R77 — **جدولُ Fribb (`anime-lists`) احتياطاً** (أحمد ٢٢ أكتوبر «أ»): رقمُ IMDb قد يوصل في TMDB إلى صفحةٍ مكرّرةٍ شبه فارغة
+ * (حربُ الألف عام ⇢ 336301: موسمٌ بحلقةٍ واحدةٍ بلا تواريخ)، والعملُ الحقيقيُّ موسمٌ داخل «Bleach» (30984 م٢). جدولُ Fribb
+ * يعطي رقمَ TMDB والموسمَ والإزاحةَ مباشرةً — فلا يمرّ بـ IMDb أصلاً. يُستشار **بعد** المسار الأوّل لا قبله: ما يعمل اليومَ
+ * لا يتغيّر ربطُه.
+ * ⚖️ بلا موسمٍ عاديّ صريح (≥ ١) ⇐ لا شيء: «الحلقةُ ٤١ من أيِّ موسم؟» لا تُخمَّن.
+ */
+export type FribbEntry = {
+  kitsu_id?: number | null;
+  themoviedb_id?: { tv?: number | null } | null;
+  season?: { tmdb?: number | null } | null;
+  episode_offset?: { tmdb?: number | null } | null;
+};
+
+export function fribbEpisodeOf(entry: FribbEntry, ep: number): { tmdbId: number; at: Placed } | null {
+  const tmdbId = entry.themoviedb_id?.tv;
+  const season = entry.season?.tmdb;
+  if (!int(ep) || ep < 1 || !int(tmdbId) || tmdbId < 1 || !int(season) || season < 1) return null;
+  const off = entry.episode_offset?.tmdb;
+  return { tmdbId, at: { season, episode: (int(off) && off > 0 ? off : 0) + ep } };
+}
+
 const DAY_MS = 86_400_000;
 
 export function matchByAirDate(episodes: DatedEpisode[], airdate: string): Placed | null {
