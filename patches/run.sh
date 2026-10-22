@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
-# D-1503 · task 149 — Xcode 26.6 again + hide iOS XL tab
+#!/bin/bash
+# Release R67 — payload in parts: patches/r67-part-* = base64 of xz(git diff origin/main..r67), base 218b1d6
 set -euo pipefail
-echo "/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM4Ab1A3xdADIaSQnC/BF9UN4KT0fVpPOShzt7Im9k+s0k1XCn3hkDJD5Y9esJMjhJv43jkAS/KVxjhvuMZ93FEn8ucDlOEZz3jWqvtGekrIQbK2kVZJ9NjF+X3V0r07D10EaDTxrF5QuHZnMDA638pFyfduMc44cnbdPsVbpqHxzZ6cW21yIR2bqcVTjUPaFsMnboL36zYVnpH/1i9EzEruH1xaSxIIujr6m9g7lOizUMaJkGjdwWw2oLDPnafYwhqwLxGHA01bkjCzIz3BXlGVtzjK5PWFP3TYeeTXRBdwXleX4JglsmkzxIcDnz8CsjXHTheg03Mz/72TKSRzBl9ACh/ZtfohcGrOK/KsUhDtxfEd+rDByfA9nBgeOAXfoZ4i2krXUMCv1fi/h4cC5Hb73cCz8+LVBV8P302YAvo0TlSdeKeLgcZ0GyD+Nj7UrajsDELaMBr129OejhWTRvEfqZRxWF4U7se8G9BdlCh8BgQ9tyiz613c/fc6hlOtO+NOH6U6OxaA2Uo0tmdTn0+T1EnA9vrlmUvxupbNMi2k1SIBvzPc9Ss29jxN/Q+WypTKmcaog/lkBZL3XJumhubIEQ1uLG8f9gtMIFIcFOtj2W/VKygRKeD/dHu84UndKFb5m0ieA6tl8G1fwZaLQL2cs3JcE7VHKNmB/3nCbvexs8WGCUOZ/GK4x4Ydbes/Py6GwQBKRHa2gImyP3mEWT5EuxCJQD5yk7NreP7Yyww0evYg4VfJqimyE/6y0QSTClpAknPXr7WVG2kGnmPA5xOLpLewYpdg/BGoLjcWS9+K72A6kk8acZZYh7xZID85CneRC7IjqAw5QVJnjO1r1gedoHtksj2w6VViN8UNK8OzMfrMnCWwCCSVGO9ylc1iLbUeQmGuu6jK4PW74Omfw8kM9Z/3W6BPT+x9riAp8ROW03Kb1ufWNAVGGclhuLCpg/OJsLSOCteWb40aWUjLjGbMgOZvO1M23/WwC+LMxRARBbfDpOSgbtV4zofX50dx1VE9YSniwl+fktTZpw6B/x2HNfJ7VHvoNtG5KCD0MiGVHDaxw52I9YUJQVnskoQMozJR2CcnXwp03cDdbnAlOp3B4Esy29DtQTaROOf4qFfBtPTW47aSjPA3SZzg8oomKAtK4P9d0w4V0JtnwthwlpInjIBmAT9msZqYxPPDKMDEYKnAAA7CwZhzTlphIAAZgH9g0AAMtGlSuxxGf7AgAAAAAEWVo=" | base64 -d | xz -d -c > /tmp/d.diff
-echo "7ccc782ab8127ad60207f2a41ef35e5e10739d5a239415225b7985b3c78d5e5a  /tmp/d.diff" | sha256sum -c -
-git apply --binary /tmp/d.diff
+D="$(cd "$(dirname "$0")" && pwd)"
+cat "$D"/r67-part-* | tr -d '\n' | base64 -d | xz -d > /tmp/r67.diff
+echo "3cff343774d8add568c5a2ce9bb7b87eb6bb9ae6d32dd5caf04d3405e98b1bc2  /tmp/r67.diff" | sha256sum -c -
+git apply --binary /tmp/r67.diff
