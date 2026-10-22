@@ -1,15 +1,13 @@
-[deploy] Release R67 — auditor fixes A-01, A-03…A-07, A-13…A-16 + unused declarations
+[deploy] Release R68 — Stremio watch signals (Loopz+)
 
-- 150 Remove 3 unused declarations flagged by eslint no-unused-vars — no behaviour change
-- 152 A-01 next + eslint-config-next 16.3.0 → 16.4.2 (critical/high advisories)
-- 153 A-15 markWatchedUpTo bounds the client numbers and stops at the last aired episode
-- 154 A-03 session handoff refuses a foreign Origin, like sign-out
-- 155 A-16 background DM reply request times out after 15 s
-- 156 A-07 trailer player opens only https links outside the embed
-- 157 A-06 safeNext rejects control characters in next
-- 158 A-13 share dataUrl fetches only from our three image hosts (+ migration 220 record)
-- 159 A-04 + A-14 shared DB rate counter for the session doors; mint log + 3 mints a day per web session
-- 160 A-05 widget tokens die after 90 idle days, renew from their own device, revoked at sign-out
+- 161 Stremio addon (manifest, stream = opened, subtitles = played) records a
+  watch signal and returns one «✓ Mark it in Loopz» entry; it streams nothing
+- Migration 222 (stremio_links, watch_signals, record_watch_signal) — already
+  run on production 22 Oct
+- App: Home «من Stremio» card after Continue watching (played signals only),
+  /stremio list, settings «اربط Stremio»; ✓ episode = watched up to here,
+  ✓ movie = watched + library; answers commit after the undo window
+- Features card renamed «اربط مشغّلك — Stremio» (still under Coming soon)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
