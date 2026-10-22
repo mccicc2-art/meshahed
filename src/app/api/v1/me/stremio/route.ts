@@ -1,7 +1,7 @@
 import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { getMovie, getSeason, getTv } from "@/lib/tmdb";
-import { SESSION_GAP_MS, stremioLinkOf } from "@/lib/stremio";
+import { stremioLinkOf } from "@/lib/stremio";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { isPlus } from "@/core/plan";
 import { ok } from "@/core/contracts/result";
@@ -52,42 +52,6 @@ export async function GET() {
     ]);
     const seenEp = new Set(((eps.data ?? []) as { show_tmdb_id: number; season_number: number; episode_number: number }[]).map((w) => `${w.show_tmdb_id}:${w.season_number}:${w.episode_number}`));
     const seenMv = new Set(((mvs.data ?? []) as { movie_tmdb_id: number }[]).map((w) => w.movie_tmdb_id));
-    /* 🆕 R75 — **وما أُجيب عنه قبلُ يُغلق صامتاً** (أحمد «اذا قلت لا خلاص ما يرجع يسأل»): إشاراتٌ تكرّرت قبل هذا الإصلاح
-       لحلقةٍ أُجيب عنها — والتسجيلُ نفسُه صار يرفضها (`recordStremioSignal`) */
-    const ids = [...new Set(rows.map((r) => r.tmdb_id))];
-    const { data: prior } = ids.length
-      ? await supabase
-          .from("watch_signals")
-          .select("media_type, tmdb_id, season, episode, answered_at")
-          .eq("user_id", uid)
-          .neq("state", "pending")
-          .in("tmdb_id", ids)
-          .limit(2_000)
-      : { data: [] };
-    const key = (r: { media_type: string; tmdb_id: number; season: number | null; episode: number | null }) =>
-      `${r.media_type}:${r.tmdb_id}:${r.season ?? ""}:${r.episode ?? ""}`;
-    /* آخرُ جوابٍ لكلِّ حلقة — والإشارةُ المنتظرةُ تكرارٌ إن جاءت في جلسته (`SESSION_GAP_MS`)، وسؤالٌ جديدٌ إن جاءت بعدها */
-    const lastAnswer = new Map<string, number>();
-    for (const p of (prior ?? []) as (Row & { answered_at: string | null })[]) {
-      const t = p.answered_at ? Date.parse(p.answered_at) : NaN;
-      if (Number.isFinite(t) && t > (lastAnswer.get(key(p)) ?? -Infinity)) lastAnswer.set(key(p), t);
-    }
-    const repeat = rows.filter((r) => {
-      const t = lastAnswer.get(key(r));
-      return t !== undefined && Date.parse(r.seen_at) - t < SESSION_GAP_MS;
-    });
-    if (repeat.length) {
-      /* «تجاهلٌ» لا «مشاهَدة»: لا نعرف عن التكرار إلّا أنه سؤالٌ أُجيب عنه */
-      await supabase
-        .from("watch_signals")
-        .update({ state: "dismissed", answered_at: new Date().toISOString() })
-        .eq("user_id", uid)
-        .eq("state", "pending")
-        .in("id", repeat.map((r) => r.id));
-      const gone = new Set(repeat.map((r) => r.id));
-      rows = rows.filter((r) => !gone.has(r.id));
-      total = Math.max(0, total - repeat.length);
-    }
     const done = rows.filter((r) => (r.media_type === "movie" ? seenMv.has(r.tmdb_id) : seenEp.has(`${r.tmdb_id}:${r.season}:${r.episode}`)));
     if (done.length) {
       await supabase

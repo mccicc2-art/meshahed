@@ -80,9 +80,6 @@ export async function stremioOwner(token: string): Promise<{ userId: string; plu
   }
 }
 
-/** هدوءٌ يفصل مشاهدتين للحلقة نفسِها — ساعة (أحمد ٢٢ أكتوبر «الحد ساعة»): أطولُ من استراحةٍ في منتصف حلقة، وأقصرُ من «رجعتُ أشاهدها» */
-export const SESSION_GAP_MS = 60 * 60_000;
-
 /**
  * يسجّل «فتحها» (طلبُ المصادر) أو «شغّلها» (`played` — طلبُ الترجمة عند بدء التشغيل) — صامتٌ إن فشل
  * (ردُّ Stremio لا ينتظر قاعدتنا ولا يسقط بها).
@@ -90,25 +87,6 @@ export const SESSION_GAP_MS = 60 * 60_000;
 export async function recordStremioSignal(userId: string, video: StremioVideo, tmdbId: number, played = false): Promise<void> {
   try {
     const db = await createServiceClient();
-    /* 🆕 R75 — **مشاهدةٌ واحدةٌ = سؤالٌ واحد** (أحمد ٢٢ أكتوبر: «اذا قلت لا خلاص ما يرجع يسأل»، ثمّ «اذا رجعت شغلت
-       الحلقة اثنين مره ثانية لازم يرجع يسألني»): Stremio يعيد طلبَ الحلقة نفسِها مع كلِّ استئنافٍ أو تقديمٍ في الجلسة نفسِها
-       (كيري م١ ح٢: ٥:٠٢ ثمّ ٥:٠٤)، فكانت كلُّ إعادةٍ سؤالاً جديداً بعد الجواب. فالجلسةُ تُعرف بالهدوء: طلبٌ لحلقةٍ أُجيب عنها
-       قبل أقلَّ من `SESSION_GAP_MS` من آخر طلبٍ لها = الجلسةُ نفسُها ⇐ لا سؤال، ونمدّ الجلسة (`seen_at`) كي لا تنتهي في منتصف
-       المشاهدة. وبعد هدوءٍ أطول = تشغيلٌ جديد ⇐ سؤالٌ جديد. */
-    let answered = db
-      .from("watch_signals")
-      .select("id, seen_at")
-      .match({ user_id: userId, source: "stremio", media_type: video.kind, tmdb_id: tmdbId })
-      .neq("state", "pending")
-      .order("seen_at", { ascending: false })
-      .limit(1);
-    if (video.kind === "tv") answered = answered.match({ season: video.season, episode: video.episode });
-    const { data: prior } = await answered;
-    const last = (prior as { id: number; seen_at: string }[] | null)?.[0];
-    if (last && Date.now() - Date.parse(last.seen_at) < SESSION_GAP_MS) {
-      await db.from("watch_signals").update({ seen_at: new Date().toISOString() }).eq("id", last.id);
-      return;
-    }
     await db.rpc("record_watch_signal", {
       p_user: userId,
       p_type: video.kind,
