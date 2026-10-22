@@ -1,5 +1,5 @@
 import { after, type NextRequest } from "next/server";
-import { resolveStremioRef } from "@/lib/stremioResolve";
+import { resolveStremioRef, traceRejected } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
 import { STREMIO_TOKEN_RE, parseSubtitlesVideo } from "@/core/stremioId";
@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   if (!STREMIO_TOKEN_RE.test(token)) return addonJson(EMPTY);
   if (!allow(`stremio-sub:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
   const ref = parseSubtitlesVideo(type, rest ?? []);
-  if (!ref) return addonJson(EMPTY);
+  if (!ref) return traceRejected(type, (rest ?? []).join("/")), addonJson(EMPTY);
   const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
   if (!owner?.plus || !hit) return addonJson(EMPTY);
   after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true));

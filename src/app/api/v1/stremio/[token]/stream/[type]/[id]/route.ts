@@ -1,6 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { SITE_URL } from "@/lib/site";
-import { resolveStremioRef } from "@/lib/stremioResolve";
+import { resolveStremioRef, traceRejected } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
 import { STREMIO_TOKEN_RE, parseStremioRef } from "@/core/stremioId";
@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   if (!allow(`stremio:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
   /* 🆕 أنمي Kitsu أيضاً (`kitsu:{id}:{ep}`) — يُترجم إلى عملٍ وحلقةٍ في TMDB؛ و«S/E» في السطر حلقةُ TMDB لا رقمُ Kitsu */
   const ref = parseStremioRef(type, id);
-  if (!ref) return addonJson(EMPTY);
+  if (!ref) return traceRejected(type, id), addonJson(EMPTY);
   const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
   if (!owner?.plus || !hit) return addonJson(EMPTY);
   const { video, tmdbId } = hit;
