@@ -1,44 +1,71 @@
 /**
- * ====== 🆕 حلقةُ Kitsu ⇢ موسمٌ وحلقةٌ في TMDB (أحمد ٢٢ أكتوبر «نبني دعم كيتسو») ======
+ * ====== 🆕 حلقةُ Kitsu ⇢ موسمٌ وحلقةٌ في TMDB (أحمد ٢٢ أكتوبر «نبني دعم كيتسو»، ثمّ «أ نفذ») ======
  *
- * بيانُ إضافة «Anime Kitsu» يعطي كلَّ حلقةٍ رقمين:
- *  - `imdbSeason · imdbEpisode` — مكانُها في **ترقيم IMDb**؛
- *  - `absoluteEpisode` — رقمُها التسلسليُّ في السلسلة كلِّها (حلقاتُ المواسم العاديّة قبلها + رقمُها في مدخل Kitsu).
+ * ⚖️ **المصدرُ جدولُ الربط المنشور لا بيانُ الإضافة الحيّ** (R74): خادمُ «Anime Kitsu» يحجب الخوادمَ السحابيّة (سطرُ
+ * التشخيص قال `meta_http_403` حتى بهويّة Loopz — R73)، وجدولُها نفسُه منشورٌ على GitHub برخصة Apache-2.0
+ * (`static/data/imdb_mapping.json`): لكلِّ مدخلٍ رقمُ IMDb ومن أيِّ موسمٍ وحلقةٍ يبدأ في ترقيم IMDb.
  *
- * 🔑 **والرقمُ التسلسليُّ أوّلاً، لأنّ TMDB وIMDb يقسمان المواسمَ في الأنمي قسمةً مختلفة**: Bleach في IMDb ستّةَ عشر
- * موسماً، وفي TMDB موسمٌ واحدٌ من ٣٦٦ حلقة ثمّ «حرب الألف عام» موسماً ثانياً — فحلقةُ IMDb «م٢ ح٥» تقع في TMDB على
- * «م٢ ح٥» من حرب الألف عام، وهي حلقةٌ أخرى تماماً. والعدُّ التسلسليُّ على مواسم TMDB العاديّة يصيب في القسمتين.
- * ثمّ ترقيمُ IMDb **إن وُجد موسمُه في TMDB ووسعت حلقاتُه الرقم**؛ وما سوى ذلك `null` — لا إشارةَ أصدقُ من إشارةٍ خاطئة
+ * والحسابُ حسابُ الإضافة نفسِها (`enrichKitsuEpisodes` عندهم) بلا بيان IMDb:
+ *  1. `imdbEpisodes` (قائمةٌ صريحة — ترقيمٌ خارجَ التسلسل) ⇐ الحلقةُ منها، في `fromSeason`؛
+ *  2. وإلّا: `fromEpisode − 1 + الحلقة` في `fromSeason`، مطروحاً منها ما قبلها من `nonImdbEpisodes` (حلقاتٌ لا يعدّها IMDb)،
+ *     والحلقةُ نفسُها إن كانت منها ⇐ لا شيء.
+ * ثمّ **نُرحِّلها على مواسم TMDB** (`placeOnTmdb`): مسلسلٌ طويلٌ يُرقَّم في الجدول تسلسليّاً من موسمه (One Piece «م١ ح١٠٠٠»)،
+ * وTMDB يقسمه مواسم — فما فاض عن الموسم ينتقل إلى ما بعده. وموسمٌ لا يعرفه TMDB ⇐ `null`: لا إشارةَ أصدقُ من إشارةٍ خاطئة
  * («✓» على حلقةٍ يعلّم ما قبلها كلَّه).
  */
+export type KitsuMapEntry = {
+  kitsu_id: number;
+  imdb_id?: string | null;
+  fromSeason?: number | null;
+  fromEpisode?: number | null;
+  imdbEpisodes?: (number | null)[] | null;
+  nonImdbEpisodes?: number[] | null;
+};
+
 export type TmdbSeason = { season_number?: number | null; episode_count?: number | null };
 
 export type Placed = { season: number; episode: number };
 
-export function placeKitsuEpisode(
-  seasons: TmdbSeason[],
-  ep: { imdbSeason?: number | null; imdbEpisode?: number | null; absoluteEpisode?: number | null },
-): Placed | null {
-  const regular = seasons
-    .filter((s) => Number.isInteger(s.season_number) && (s.season_number as number) > 0)
-    .filter((s) => Number.isInteger(s.episode_count) && (s.episode_count as number) > 0)
-    .sort((a, b) => (a.season_number as number) - (b.season_number as number));
+const int = (n: unknown): n is number => Number.isInteger(n);
 
-  const abs = ep.absoluteEpisode;
-  if (Number.isInteger(abs) && (abs as number) >= 1) {
-    let left = abs as number;
-    for (const s of regular) {
-      const count = s.episode_count as number;
-      if (left <= count) return { season: s.season_number as number, episode: left };
-      left -= count;
-    }
-    /* أبعدُ من كلِّ ما يعرفه TMDB: حلقةٌ عُرضت قبل أن يضيفها — ننزل إلى ترقيم IMDb بشرطه */
+/** حلقةُ Kitsu رقم `ep` في ترقيم IMDb حسب المدخل */
+export function imdbEpisodeOf(entry: KitsuMapEntry, ep: number): Placed | null {
+  if (!int(ep) || ep < 1) return null;
+  const season = int(entry.fromSeason) ? entry.fromSeason : 1;
+  if (Array.isArray(entry.imdbEpisodes)) {
+    const e = entry.imdbEpisodes[ep - 1];
+    return int(e) && e >= 1 ? { season, episode: e } : null;
   }
+  const skipped = Array.isArray(entry.nonImdbEpisodes) ? entry.nonImdbEpisodes : [];
+  if (skipped.includes(ep)) return null;
+  const before = skipped.filter((n) => int(n) && n < ep).length;
+  const start = int(entry.fromEpisode) && entry.fromEpisode >= 1 ? entry.fromEpisode : 1;
+  return { season, episode: start - 1 + ep - before };
+}
 
-  const season = ep.imdbSeason;
-  const episode = ep.imdbEpisode;
-  if (!Number.isInteger(season) || !Number.isInteger(episode) || (episode as number) < 1) return null;
-  const match = seasons.find((s) => s.season_number === season);
-  if (!match || !Number.isInteger(match.episode_count) || (episode as number) > (match.episode_count as number)) return null;
-  return { season: season as number, episode: episode as number };
+/** ترقيمٌ يبدأ من موسمٍ ⇢ موسمُ TMDB وحلقتُه: يفيض إلى المواسم العاديّة التالية؛ والخاصُّ (٠) لا يفيض */
+export function placeOnTmdb(seasons: TmdbSeason[], at: Placed): Placed | null {
+  const count = (n: number) => {
+    const s = seasons.find((x) => x.season_number === n);
+    return s && int(s.episode_count) && s.episode_count > 0 ? s.episode_count : null;
+  };
+  let season = at.season;
+  let episode = at.episode;
+  if (!int(season) || !int(episode) || episode < 1) return null;
+  let have = count(season);
+  if (have === null) return null;
+  if (season === 0) return episode <= have ? { season, episode } : null;
+  const later = seasons
+    .map((s) => s.season_number)
+    .filter((n): n is number => int(n) && n > season)
+    .sort((a, b) => a - b);
+  while (episode > have) {
+    const next = later.shift();
+    if (next === undefined) return null;
+    episode -= have;
+    season = next;
+    have = count(season);
+    if (have === null) return null;
+  }
+  return { season, episode };
 }
