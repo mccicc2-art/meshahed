@@ -64,8 +64,9 @@ export function WidgetScreen() {
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
   const ios = Platform.OS === "ios";
-  /* 🆕 D-1500 — الكبيرُ جداً للآيفون من iOS 27 وحدَه (المقاسُ لا يوجد قبله، فلا يُعرض للضبط) */
-  const sizes = widgetSizesFor(ios ? "ios" : "android", ios && parseInt(String(Platform.Version), 10) >= 27);
+  /* 🔴 D-1503 — **الكبيرُ جداً للآيفون مؤجَّل** حتّى Expo SDK 58: لا يُبنى إلّا بـXcode 27، وتطبيقٌ مبنيٌّ به بلا دورة UIScene
+     ينغلق عند الفتح على iOS 27 (كراشُ 1.12.7 (17) — D-1502). البناءُ عاد إلى Xcode 26.6 فالملحقُ لا يعلن المقاس — فلا تبويبَ له */
+  const sizes = widgetSizesFor(ios ? "ios" : "android");
   const params = useLocalSearchParams<{ widget?: string }>();
 
   /* 🆕 W40 — ما على الشاشة الآن: يُقرأ عند الفتح وكلَّ عودةٍ للتطبيق (بعد «أضف ودجت» أو حذفِ واحد) */
