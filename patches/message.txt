@@ -1,8 +1,8 @@
-revert(mobile): undo the D-1501 iOS alignment mapping; reload once at boot when the direction does not match the language (D-1502) [deploy]
+fix(ios): build with Xcode 26.6 again; 1.12.7 (17) crashed at launch on iOS 27 (D-1503) [deploy]
 
-- D-1501 assumed iOS does not flip textAlign under RTL. That was wrong: the 21:05 screenshot came from a session running with the wrong direction. ui.tsx and the 10 TextInput files go back to a1893bb.
-- Kept from D-1501: x-loopz-locale on app API calls, and autoDir on the title overview.
-- i18n.ts fixDirectionAtBoot: when I18nManager.isRTL does not match the locale at boot, apply the direction and reload once behind the Loopz curtain, at most once a minute.
+- iOS 27 refuses to launch apps linked against the iOS 27 SDK that have not adopted the UIScene life cycle. Crash log: _UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption. Expo SDK 57 prebuild has no SceneDelegate, so eas.json drops the Xcode 27 image and EAS picks the SDK 57 image (Xcode 26.6) again.
+- The XL iPhone widget compiles out (#if compiler(>=6.4)), so the XL tab is hidden on iOS until Expo SDK 58.
+- The Android fingerprint changes with eas.json, so an Android build follows.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
