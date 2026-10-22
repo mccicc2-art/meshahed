@@ -36,14 +36,15 @@ export const CONFIGURE_PAGE = `${SITE_URL}/stremio`;
 export function addonManifest(opts: { configurationRequired: boolean }) {
   return {
     id: "com.loopztv.signals",
-    version: "1.3.0",
+    version: "1.3.1",
     name: "Loopz",
     description:
       "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. For Loopz+ members.",
     logo: `${SITE_URL}/loopz-mark.png`,
     background: `${SITE_URL}/loopz-cover.jpg`,
     resources: ["stream", "subtitles"],
-    types: ["movie", "series"],
+    /* 🆕 1.3.1 — `anime`: Stremio يسأل عن أنمي كتالوج Kitsu بهذا النوع، وبلا إعلانه لا يصلنا الطلبُ أصلاً */
+    types: ["movie", "series", "anime"],
     /* 🆕 1.3.0 — `kitsu`: أنمي كتالوج «Anime Kitsu» (Bleach من المستكشف لم يُظهر سطرَنا، أحمد ٢٢ أكتوبر) */
     idPrefixes: ["tt", "kitsu"],
     catalogs: [],

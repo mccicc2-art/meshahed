@@ -55,10 +55,17 @@ export function parseStremioRef(type: string, rawId: string): StremioRef | null 
   if (!m) return null;
   const kitsu = Number(m[1]);
   if (kitsu < 1) return null;
-  /* الفيلمُ بلا حلقة، والمسلسلُ بحلقة — والعكسُ رفض: لا نخمّن أيَّ حلقةٍ قصدها */
+  /* الفيلمُ بلا حلقة، والمسلسلُ بحلقة — والعكسُ رفض: لا نخمّن أيَّ حلقةٍ قصدها.
+     🆕 R71 — **Stremio يطلب أنمي كتالوج Kitsu بالنوع `anime`** لا `series` (Torrentio يعلن `anime` لهذا؛ R70 لم يُعلنه فلم
+     يُسأل قطّ — تجربةُ أحمد). وفي `anime` الشكلُ وحدَه يفرّق: بحلقةٍ مسلسل، وبلا حلقةٍ فيلم */
+  if (type === "anime") return m[2] === undefined ? { kind: "kitsu", kitsu, episode: null } : episodeRef(kitsu, m[2]);
   if (type === "movie") return m[2] === undefined ? { kind: "kitsu", kitsu, episode: null } : null;
   if (type !== "series" || m[2] === undefined) return null;
-  const episode = Number(m[2]);
+  return episodeRef(kitsu, m[2]);
+}
+
+function episodeRef(kitsu: number, raw: string): StremioRef | null {
+  const episode = Number(raw);
   return episode >= 1 && episode <= 20_000 ? { kind: "kitsu", kitsu, episode } : null;
 }
 

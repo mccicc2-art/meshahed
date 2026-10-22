@@ -43,13 +43,18 @@ test("أنمي Kitsu: الفيلمُ بلا حلقة والمسلسلُ بحلق
   assert.deepEqual(parseStremioRef("series", "kitsu%3A244%3A5.json"), { kind: "kitsu", kitsu: 244, episode: 5 });
   assert.deepEqual(parseStremioRef("movie", "kitsu:1234.json"), { kind: "kitsu", kitsu: 1234, episode: null });
   assert.deepEqual(parseStremioRef("series", "tt0944947:1:5"), { kind: "tv", imdb: "tt0944947", season: 1, episode: 5 });
+  /* النوعُ `anime` (كتالوج Kitsu في Stremio): بحلقةٍ مسلسل، وبلا حلقةٍ فيلم */
+  assert.deepEqual(parseStremioRef("anime", "kitsu:244:5.json"), { kind: "kitsu", kitsu: 244, episode: 5 });
+  assert.deepEqual(parseStremioRef("anime", "kitsu:1234.json"), { kind: "kitsu", kitsu: 1234, episode: null });
+  assert.deepEqual(parseSubtitlesVideo("anime", ["x", "videoID=kitsu%3A244%3A5.json"]), { kind: "kitsu", kitsu: 244, episode: 5 });
   for (const [type, id] of [
     ["series", "kitsu:244.json"],
     ["movie", "kitsu:244:1.json"],
     ["series", "kitsu:244:0.json"],
     ["series", "kitsu:0:1.json"],
     ["series", "kitsu:244:20001.json"],
-    ["anime", "kitsu:244:1.json"],
+    ["anime", "kitsu:244:0.json"],
+    ["anime", "tmdb:244:1.json"],
     ["series", "mal:21:1.json"],
     ["series", "kitsu:abc:1.json"],
   ] as const) {
