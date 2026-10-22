@@ -1,9 +1,10 @@
-[deploy] Release R79 — Pen add-title chip: icon on the text line (D-1537)
+[deploy] Release R80 — Title finder: recent library row before typing (D-1538)
 
-- 173 The lg chip lifts its leading icon 1.5 pt on Android for Latin labels:
-  Android's font padding put the label's box centre about 4 px below the
-  glyphs (measured on Ahmed's screenshot). Arabic and iOS unchanged until
-  measured.
+- 174 The compact title finder (pen, chat «+» with keyboard up) no longer shows
+  an empty strip with a second search icon. Before typing it shows «From your
+  library»: the most recently watched or added titles, one row filling the
+  width (count from the container width, even split). Empty library → no row.
+  Typing switches to search results as before. Reads the existing library query.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
