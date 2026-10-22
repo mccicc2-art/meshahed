@@ -51,6 +51,8 @@ async function kitsuMeta(type: "movie" | "series", kitsu: number): Promise<MetaR
       /* البيانُ يتغيّر بحلقةٍ جديدةٍ لا بكلِّ فتح — نصفُ يوم، و Stremio قد يسأل عن الحلقة مرّتين (فتحٌ ثمّ تشغيل) */
       next: { revalidate: 43_200 },
       signal: AbortSignal.timeout(5_000),
+      /* 🆕 R73 — سطرُ التشخيص (R72) قال `meta_http_403` لكلِّ طلب: حمايتُهم تحجب طلباً سحابيّاً بلا هويّة. فنعرّف بأنفسنا */
+      headers: { "User-Agent": "Loopz/1.0 (+https://loopztv.com)", Accept: "application/json" },
     });
     if (!res.ok) return { meta: null, why: `http_${res.status}` };
     const body = (await res.json()) as { meta?: KitsuMeta } | null;
