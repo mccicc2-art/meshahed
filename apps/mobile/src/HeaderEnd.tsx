@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { notePress } from "./perfMarks";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useApp } from "./state";
@@ -17,7 +18,7 @@ import type { NativeRoot } from "./shell";
 export function HeaderIconButton({ name, label, onPress, count, color }: { name: "mail" | "bell" | "settings"; label: string; onPress: () => void; count: number; color: string }) {
   const { tokens } = useApp();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       <Icon name={name} size={controlSize.headerIcon} color={color} />
       {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
     </Pressable>
@@ -46,7 +47,7 @@ export function HeaderEnd({ from }: { from: NativeRoot }) {
   return (
     <View style={{ position: "absolute", end: HEADER_END_INSET, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
       <HeaderIconButton name="bell" label={t.notifTitle} count={signals} color={tokens.fg} onPress={() => router.push({ pathname: "/messages", params: { tab: "alerts", from } })} />
-      <Pressable onPress={openMe} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+      <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
           {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
         </View>

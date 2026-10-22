@@ -23,7 +23,7 @@ import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
 import "../src/presence";
-import { rootTouch } from "../src/perfMarks";
+import { rootTouch, rootTouchEnd } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
 
@@ -96,7 +96,7 @@ function Shell() {
       {/* D-1125 — أيقوناتُ الشريط تتبع الثيم: البيضاءُ على «النهاري» لا تُرى */}
       <StatusBar style={statusBarStyleOf(themeId)} />
       {/* 🩺 R57 — `dock.miss`: كلُّ لمسةٍ في التطبيق تمرّ هنا (حدثٌ يصعد ولا يأخذ اللمسة) — لمسةٌ في منطقة الدوك لم تصل زرَّه تُسجَّل */}
-      <View style={{ flex: 1 }} onTouchStart={(e) => rootTouch(e.nativeEvent.pageY)}>
+      <View style={{ flex: 1 }} onTouchStart={(e) => rootTouch(e.nativeEvent.pageY, e.nativeEvent.pageX)} onTouchEnd={(e) => rootTouchEnd(e.nativeEvent.pageX, e.nativeEvent.pageY)}>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: tokens.bg },

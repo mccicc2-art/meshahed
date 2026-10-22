@@ -1,4 +1,4 @@
-import { AppState, I18nManager } from "react-native";
+import { AppState, Dimensions, I18nManager } from "react-native";
 import { File, Paths } from "expo-file-system";
 import { launchT0 } from "./perf";
 import { api, queryClient } from "./api";
@@ -99,7 +99,11 @@ export type PerfName =
   /* 🩺 R57 — لمسةٌ في منطقة الدوك لم تصل زرَّه (أحمد ٢١ أكتوبر بتسجيل: «مني قادر اضغط الدوك … فجأه يسير مني عارف متى بالضبط»):
      ms = الثواني منذ الإقلاع ×١٠٠٠ · `screen` التبويب · `src` = `dock` (وصلت الشريطَ ولم يُضغط زرّ) أو `over` (شيءٌ فوق الشريط أخذها)
      · `mom` = قائمةٌ كانت تتحرّك (أوّلُ لمسةٍ توقفها فقط — سلوكُ النظام). تُحذف مع الإصلاح */
-  | "dock.miss";
+  | "dock.miss"
+  /* 🩺 D-1536 — نقرةٌ في شريط الرأس أو الدوك لم تضغط شيئاً (أحمد ٢٢ أكتوبر: «اللمسات ما تستجيب فالدوك او اعلى الصفحة»
+     وهو يمرّر الوسط): ms=0 · `band` top/bot · `x`/`y` موضعُها (pt) · `h` ارتفاعُ النافذة · `hid` الكسوةُ الذكيّة ٠..١٠٠ كما
+     يظنّها JS · `cago` منذ آخر تغييرٍ لها (ms) · `dock` أعلى الدوك مقيساً (pt، −١ بلا دوك) · `screen` · `mom`. تُحذف مع الإصلاح */
+  | "edge.tap";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -446,8 +450,10 @@ export function dockTouched() {
 }
 export function dockPressIn() {
   dockPressAt = Date.now();
+  pressAt = dockPressAt;
 }
-export function rootTouch(y: number) {
+export function rootTouch(y: number, x = -1) {
+  edgeStart(x, y);
   const measure = dockMeasure;
   if (!measure) return;
   const at = Date.now();
@@ -458,9 +464,72 @@ export function rootTouch(y: number) {
     /* لمسةٌ واحدةٌ في الثانية تكفي — النقرُ المتكرّرُ على شريطٍ لا يستجيب لا يملأ الدفعة */
     if (at - dockMissAt < 1_000) return;
     dockMissAt = at;
-    mark("dock.miss", Math.round(performance.now() - launchT0), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 });
+    /* 🆕 D-1536 — ثوانٍ لا ms: الخادمُ يرفض ms > ٦٠٠٠٠٠ فكانت كلُّ علامةٍ بعد الدقيقة العاشرة من الإقلاع تسقط */
+    mark("dock.miss", Math.round((performance.now() - launchT0) / 1000), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 });
     }, 450);
   });
+}
+/* ====== 🩺 D-1536 — `edge.tap` ======
+ * **لماذا**: بلاغُ أحمد ٢٢ أكتوبر — الرأسُ والدوك لا يستجيبان والوسطُ يُمرَّر، ولا `js.hang` ولا `dock.miss`. و`dock.miss` أعمى
+ * في موضعين: صفحةٌ مدفوعةٌ فوق التبويبات (لا دوكَ مسجَّلاً) ودوكٌ يقاس «مختبئاً». فهنا كلُّ نقرةٍ قصيرةٍ في شريطَي الحافّة
+ * في أيِّ شاشة، ولم يُسجِّل زرٌّ من المصانع المشتركة ضغطتَه (`notePress`) خلال ٤٥٠ms ⇒ علامة، ومعها ما تظنّه الكسوةُ
+ * الذكيّةُ عن نفسها. «مخفيّةٌ» وأحمد يراها ⇒ قيمتان مختلفتان بين JS والخيط الأصليّ. ⚖️ زرٌّ خارجَ المصانع قد يُقرأ «ميّتاً»:
+ * `x`/`y` تقول أيُّ زرٍّ كان. أرقامٌ في الذاكرة، وعلامةٌ في الثانية على الأكثر */
+const EDGE_TOP = 120;
+const EDGE_BOT = 110;
+let pressAt = 0;
+let edgeAt = 0;
+let edgeY = 0;
+let edgeX = 0;
+let edgeMissAt = 0;
+let chromeV = 0;
+let chromeAt = 0;
+/** ضغطةٌ وصلت زرّاً من المصانع المشتركة (`Chip` · `Button` · الدوك · الرأس · `Segmented` · الزرّ العائم) */
+export function notePress() {
+  pressAt = Date.now();
+}
+/** من `ChromeHide`: القيمةُ التي طلبها JS للكسوة (٠ ظاهرة · ١ مخفيّة) */
+export function noteChrome(v: number) {
+  chromeV = v;
+  chromeAt = Date.now();
+}
+function edgeStart(x: number, y: number) {
+  edgeAt = Date.now();
+  edgeX = x;
+  edgeY = y;
+}
+export function rootTouchEnd(x: number, y: number) {
+  const at = edgeAt;
+  if (!at) return;
+  edgeAt = 0;
+  const now = Date.now();
+  /* نقرةٌ لا سحب: قصيرةٌ وفي مكانها */
+  if (now - at > 350 || Math.abs(x - edgeX) > 10 || Math.abs(y - edgeY) > 10) return;
+  const h = Dimensions.get("window").height;
+  const band = edgeY < EDGE_TOP ? "top" : edgeY > h - EDGE_BOT ? "bot" : "";
+  if (!band) return;
+  const measure = dockMeasure;
+  const tx = Math.round(edgeX);
+  const ty = Math.round(edgeY);
+  setTimeout(() => {
+    if (pressAt >= at - 50) return;
+    if (at - edgeMissAt < 1_000) return;
+    edgeMissAt = at;
+    const send = (dock: number) =>
+      mark("edge.tap", 0, {
+        band,
+        x: tx,
+        y: ty,
+        h: Math.round(h),
+        hid: Math.round(chromeV * 100),
+        cago: chromeAt ? Math.min(600_000, at - chromeAt) : -1,
+        dock,
+        screen: hangScreen || "?",
+        mom: at - lastScrollAt < 400 ? 1 : 0,
+      });
+    if (measure) measure((top) => send(Math.round(top)));
+    else send(-1);
+  }, 450);
 }
 /** من `ChromeHide.onScroll`: آخرُ حدث تمرير (رقمٌ في الذاكرة — لا شيءَ آخرُ في مسار التمرير) */
 export function noteScroll() {

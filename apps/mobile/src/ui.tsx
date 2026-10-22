@@ -13,6 +13,7 @@ import {
   type TextStyle,
   type ViewProps,
 } from "react-native";
+import { notePress } from "./perfMarks";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { radius, space } from "./theme";
@@ -235,6 +236,11 @@ export function Button({
   return (
     <Pressable
       {...rest}
+      onPressIn={(e) => {
+        /* 🩺 D-1536 — `edge.tap` يعرف أنّ اللمسة وصلت زرّاً */
+        notePress();
+        rest.onPressIn?.(e);
+      }}
       disabled={busy || rest.disabled}
       style={({ pressed }) => [
         styles.button,

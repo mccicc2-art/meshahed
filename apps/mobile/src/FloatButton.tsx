@@ -1,5 +1,6 @@
 import React from "react";
 import { Animated, Pressable, type StyleProp, type ViewStyle } from "react-native";
+import { notePress } from "./perfMarks";
 import { useApp } from "./state";
 import { Text } from "./ui";
 import { Icon, type IconName } from "./icons";
@@ -44,6 +45,7 @@ export function FloatButton({
     <Animated.View pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
       <Pressable
         onPress={onPress}
+        onPressIn={notePress}
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => ({

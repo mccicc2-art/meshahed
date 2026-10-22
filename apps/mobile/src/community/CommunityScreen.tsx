@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { notePress } from "../perfMarks";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -304,7 +305,7 @@ export function CommunityScreen() {
           {order.map((k) => {
             const on = k === lit;
             return (
-              <Pressable key={k} onPress={() => goTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
+              <Pressable key={k} onPress={() => goTab(k)} onPressIn={notePress} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
                 <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted}>{label(k)}</Text>
               </Pressable>
             );
@@ -313,6 +314,7 @@ export function CommunityScreen() {
             /* زرُّ الأدوات (`FilterIconButton`) — **بلا رقمٍ ولا نقطة** في المجتمع (D-554/D-592)، والحالةُ في لون الرمز وحدَه */
             <Pressable
               onPress={() => setTools(true)}
+              onPressIn={notePress}
               hitSlop={controlSize.filterSlop}
               accessibilityRole="button"
               accessibilityLabel={t.communityToolsTitle}

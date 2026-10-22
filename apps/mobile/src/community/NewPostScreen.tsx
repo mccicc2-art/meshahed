@@ -331,9 +331,8 @@ export function NewPostScreen() {
             ) : null}
           </View>
         ) : (
-          <View style={{ flexDirection: "row" }}>
-            <Chip label={t.newPostAddTitle} active={false} onPress={openFinder} leading={<Icon name="film" size={14} color={tokens.muted} />} />
-          </View>
+          /* 🆕 D-1535 — أكبرُ وبعرض الصفحة وبالأصفر (أحمد «د» على صورته): هو بابُ ربط المنشور بعمل، فلا يُرى خيطاً رماديّاً */
+          <Chip size="lg" block ink="accent" label={t.newPostAddTitle} active={false} onPress={openFinder} leading={<Icon name="film" size={18} color={tokens.accent} />} />
         )}
         {/* 🆕 R58 — الوجهةُ دائماً تحت (لا مفاجآت): أين يذهب هذا المنشور */}
         {(() => {

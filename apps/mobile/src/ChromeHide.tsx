@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { noteScroll } from "./perfMarks";
+import { noteChrome, noteScroll } from "./perfMarks";
 
 /**
  * ====== الكسوةُ الذكيّة في الشاشات الأصليّة — D-966 (١٤ سبتمبر ٢٠٢٦) ======
@@ -64,6 +64,8 @@ export function useChromeHide() {
       if (s.timer) { clearTimeout(s.timer); s.timer = null; }
       s.hidden = h;
       s.off = h ? FOLLOW_PX : 0;
+      /* 🩺 D-1536 — ما يطلبه JS للكسوة، ليُقارَن بما يراه أحمد في `edge.tap` */
+      noteChrome(h ? 1 : 0);
       if (reduceRef.current) {
         hidden.setValue(h ? 1 : 0);
         return;
@@ -107,6 +109,7 @@ export function useChromeHide() {
         s.off = off;
         s.hidden = off >= FOLLOW_PX;
         hidden.setValue(off / FOLLOW_PX);
+        noteChrome(off / FOLLOW_PX);
       }
       /* توقّف التمريرُ (إصبعٌ رُفع أو زخمٌ انتهى) والكسوةُ في المنتصف: تكمل إلى الأقرب */
       if (s.timer) clearTimeout(s.timer);
