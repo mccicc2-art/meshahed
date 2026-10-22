@@ -1,13 +1,9 @@
-[deploy] Release R78 — Pen add-title chip (D-1535); edge.tap diagnostics (D-1536)
+[deploy] Release R79 — Pen add-title chip: icon on the text line (D-1537)
 
-- 172 Pen: «Add movie or series» is a full-width lg chip with accent ink and a
-  film icon in accent (Ahmed «د»). Chip gains size "lg", `block` and
-  `ink="accent"` — the same chip family, not a new control.
-- 172 Diagnostics: `edge.tap` marks a short tap in the top or bottom band that
-  pressed no shared control within 450 ms, with the chrome-hide value JS holds,
-  time since it changed, and the measured dock top. `dock.miss` now sends
-  seconds since launch (ms passed the server's 600000 cap after 10 minutes).
-  Server allowlist updated.
+- 173 The lg chip lifts its leading icon 1.5 pt on Android for Latin labels:
+  Android's font padding put the label's box centre about 4 px below the
+  glyphs (measured on Ahmed's screenshot). Arabic and iOS unchanged until
+  measured.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
