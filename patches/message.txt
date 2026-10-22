@@ -1,12 +1,8 @@
-[deploy] Release R75 — Stremio: Kitsu air-date fallback, one question per viewing
+[deploy] Release R76 — Stremio: revert one-question-per-viewing
 
-- 168 When IMDb and TMDB split an anime's seasons differently (Bleach TYBW: IMDb
-  part 4, TMDB one season), the episode is matched by its air date from the
-  official Kitsu API against the title's TMDB episodes; one episode or nothing.
-- 168 One question per viewing: a request for an episode or movie answered less
-  than an hour after its last request is the same viewing (Stremio repeats on
-  resume/seek), so it is not asked again; after an hour's quiet it is asked
-  again. Repeats already pending are closed as dismissed on Home.
+- 170 Ahmed asked to undo it: src/lib/stremio.ts and /api/v1/me/stremio go back to
+  their R74 state (every new request after an answer may ask again). The Kitsu
+  air-date fallback from R75 stays.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
