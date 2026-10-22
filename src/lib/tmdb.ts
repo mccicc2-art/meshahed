@@ -1452,6 +1452,20 @@ export async function findByImdb(imdb: string, kind: "movie" | "tv"): Promise<nu
 }
 
 /**
+ * 🆕 **مواسمُ مسلسلٍ وعددُ حلقاتها** (Stremio · أنمي Kitsu، ٢٢ أكتوبر): ما يحتاجه `placeKitsuEpisode` ليضع حلقةَ Kitsu
+ * في موسمها عند TMDB. النداءُ نفسُه المخبَّأُ لصفحة المسلسل (`/tv/{id}`)، والفشلُ قائمةٌ فارغة ⇐ لا إشارة.
+ */
+export async function tvSeasonCounts(tmdbId: number): Promise<{ season_number?: number; episode_count?: number }[]> {
+  if (!Number.isInteger(tmdbId) || tmdbId <= 0) return [];
+  try {
+    const data = await tmdbRaw<{ seasons?: { season_number?: number; episode_count?: number }[] }>(`/tv/${tmdbId}`);
+    return Array.isArray(data.seasons) ? data.seasons : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * 🔴 🆕 **صيغُ اسمِ العمل كلُّها — الجسرُ الثالثُ إلى IMDb** (D-430،
  * دَينُ D-414 المعلَن).
  *

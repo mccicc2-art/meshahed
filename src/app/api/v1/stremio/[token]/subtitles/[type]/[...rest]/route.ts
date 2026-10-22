@@ -1,5 +1,5 @@
 import { after, type NextRequest } from "next/server";
-import { findByImdb } from "@/lib/tmdb";
+import { resolveStremioRef } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
 import { STREMIO_TOKEN_RE, parseSubtitlesVideo } from "@/core/stremioId";
@@ -21,11 +21,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   const { token, type, rest } = await ctx.params;
   if (!STREMIO_TOKEN_RE.test(token)) return addonJson(EMPTY);
   if (!allow(`stremio-sub:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
-  const video = parseSubtitlesVideo(type, rest ?? []);
-  if (!video) return addonJson(EMPTY);
-  const [owner, tmdbId] = await Promise.all([stremioOwner(token), findByImdb(video.imdb, video.kind)]);
-  if (!owner?.plus || !tmdbId) return addonJson(EMPTY);
-  after(() => recordStremioSignal(owner.userId, video, tmdbId, true));
+  const ref = parseSubtitlesVideo(type, rest ?? []);
+  if (!ref) return addonJson(EMPTY);
+  const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
+  if (!owner?.plus || !hit) return addonJson(EMPTY);
+  after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true));
   return addonJson(EMPTY);
 }
 

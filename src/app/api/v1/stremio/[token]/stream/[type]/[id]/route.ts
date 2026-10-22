@@ -1,9 +1,9 @@
 import { after, type NextRequest } from "next/server";
 import { SITE_URL } from "@/lib/site";
-import { findByImdb } from "@/lib/tmdb";
+import { resolveStremioRef } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
-import { STREMIO_TOKEN_RE, parseStremioVideo } from "@/core/stremioId";
+import { STREMIO_TOKEN_RE, parseStremioRef } from "@/core/stremioId";
 import { addonJson, addonOptions } from "../../../../addon";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +25,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   if (!STREMIO_TOKEN_RE.test(token)) return addonJson(EMPTY);
   /* الحدُّ قبل القاعدة: Stremio قد يسأل عن الحلقة التالية مسبقاً، وستّون في الدقيقة فوق أيِّ تصفّحٍ بشريّ */
   if (!allow(`stremio:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
-  const video = parseStremioVideo(type, id);
-  if (!video) return addonJson(EMPTY);
-  const [owner, tmdbId] = await Promise.all([stremioOwner(token), findByImdb(video.imdb, video.kind)]);
-  if (!owner?.plus || !tmdbId) return addonJson(EMPTY);
+  /* 🆕 أنمي Kitsu أيضاً (`kitsu:{id}:{ep}`) — يُترجم إلى عملٍ وحلقةٍ في TMDB؛ و«S/E» في السطر حلقةُ TMDB لا رقمُ Kitsu */
+  const ref = parseStremioRef(type, id);
+  if (!ref) return addonJson(EMPTY);
+  const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
+  if (!owner?.plus || !hit) return addonJson(EMPTY);
+  const { video, tmdbId } = hit;
   after(() => recordStremioSignal(owner.userId, video, tmdbId));
   const where = video.kind === "tv" ? `S${video.season} E${video.episode}` : "";
   return addonJson({
