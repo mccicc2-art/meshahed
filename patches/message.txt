@@ -1,8 +1,11 @@
-[deploy] Release R76 — Stremio: revert one-question-per-viewing
+[deploy] Release R77 — Stremio: Kitsu via Fribb table; app commits answers on leave
 
-- 170 Ahmed asked to undo it: src/lib/stremio.ts and /api/v1/me/stremio go back to
-  their R74 state (every new request after an answer may ask again). The Kitsu
-  air-date fallback from R75 stays.
+- 171 Kitsu anime whose IMDb id lands on a near-empty TMDB duplicate (Bleach TYBW
+  part 4 -> 336301) now falls back to the Fribb anime-lists table, which gives the
+  TMDB id, season and offset directly (49444 ep 1 -> 30984 S2E41). Consulted only
+  after the first path fails; the air-date match remains the last resort.
+- 169 App: pending Stremio answers (incl. undo/dismiss) are sent when the screen
+  loses focus, unmounts, or the app goes to the background.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
