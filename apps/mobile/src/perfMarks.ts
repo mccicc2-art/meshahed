@@ -103,7 +103,9 @@ export type PerfName =
   /* 🩺 D-1536 — نقرةٌ في شريط الرأس أو الدوك لم تضغط شيئاً (أحمد ٢٢ أكتوبر: «اللمسات ما تستجيب فالدوك او اعلى الصفحة»
      وهو يمرّر الوسط): ms=0 · `band` top/bot · `x`/`y` موضعُها (pt) · `h` ارتفاعُ النافذة · `hid` الكسوةُ الذكيّة ٠..١٠٠ كما
      يظنّها JS · `cago` منذ آخر تغييرٍ لها (ms) · `dock` أعلى الدوك مقيساً (pt، −١ بلا دوك) · `screen` · `mom`. تُحذف مع الإصلاح */
-  | "edge.tap";
+  | "edge.tap"
+  /* 🆕 D-1547 — قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة (`TabSlide.tsx`) */
+  | "pane.warm";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };

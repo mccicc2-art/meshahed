@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { jankStart, mark, span } from "./perfMarks";
+import { frameCounter, jankStart, mark, span } from "./perfMarks";
 import { Animated, Easing, I18nManager, InteractionManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Reanimated, { cancelAnimation, Easing as REasing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import Reanimated, { cancelAnimation, Easing as REasing, makeMutable, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 import { flag } from "./flags";
 
 /**
@@ -356,6 +356,76 @@ const PENDING_MS = 1000;
  * الحالةُ في هذا الغلاف وحدَه: كشفُه لا يعيد رسمَ ما بداخله (الأبناءُ عنصرٌ ثابتُ الهويّة من رسمة الأب).
  */
 const VEIL_MS = 150;
+/**
+ * 🆕 D-1547 — **قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة** (`pane.warm`؛ أحمد ٢٣ أكتوبر، خيار «ج»: نخفّف ألواحَ الملفّ بدل أن نؤخّر
+ * الظهور). لكلِّ لوحٍ يُركَّب بـ`warmAll`: القيمةُ ms من طلب التركيب إلى أوّل `onLayout` له (عملُ JS + التركيبُ الأصليّ)،
+ * و`drop`/`worst` إطاراتُ خيط الواجهة الضائعة وأطولُ فجوةٍ فيه خلال `WARM_PROBE_MS`، و`jsd` ما ضاع على JS. نافذةٌ واحدةٌ في
+ * المرّة (الألواحُ بينها `WARM_STEP_MS`). كلُّ فشلٍ صمت. يُزال مع بقيّة المسابر حين يُطلب.
+ */
+const WARM_PROBE_MS = 600;
+type WarmUi = { start: (id: number) => void };
+let warmUi: WarmUi | null | undefined;
+let warmSeq = 0;
+const warmLive = new Map<number, { screen: string; tab: string; t0: number; laid: number; stopJs: () => number }>();
+function warmUiDone(id: number, dropped: number, worstGap: number, dur: number) {
+  const w = warmLive.get(id);
+  if (!w) return;
+  warmLive.delete(id);
+  mark("pane.warm", w.laid >= 0 ? w.laid - w.t0 : -1, { screen: w.screen, tab: w.tab, drop: dropped, worst: Math.round(worstGap), dur: Math.round(dur), jsd: w.stopJs() });
+}
+function buildWarmUi(): WarmUi {
+  const sid = makeMutable(0);
+  const t0 = makeMutable(-1);
+  const last = makeMutable(-1);
+  const drop = makeMutable(0);
+  const worst = makeMutable(0);
+  const start = (id: number) => {
+    "worklet";
+    sid.value = id;
+    t0.value = -1;
+    last.value = -1;
+    drop.value = 0;
+    worst.value = 0;
+    const tick = (ts: number) => {
+      if (sid.value !== id) return;
+      if (t0.value < 0) t0.value = ts;
+      else {
+        const gap = ts - last.value;
+        if (gap > worst.value) worst.value = gap;
+        if (gap > UI_FRAME_MS * 1.5) drop.value += Math.round(gap / UI_FRAME_MS) - 1;
+      }
+      last.value = ts;
+      if (ts - t0.value >= WARM_PROBE_MS) {
+        sid.value = 0;
+        scheduleOnRN(warmUiDone, id, drop.value, worst.value, ts - t0.value);
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  return { start };
+}
+/** يبدأ نافذةَ القياس للوح `tab` ويعيد رقمَها (أو 0 إن انطفأ القياس) */
+function warmProbe(screen: string, tab: string): number {
+  if (warmUi === null) return 0;
+  try {
+    if (warmUi === undefined) warmUi = buildWarmUi();
+    const id = ++warmSeq;
+    warmLive.set(id, { screen, tab, t0: performance.now(), laid: -1, stopJs: frameCounter() });
+    scheduleOnUI(warmUi.start, id);
+    if (warmLive.size > 6) warmLive.delete(warmLive.keys().next().value as number);
+    return id;
+  } catch {
+    warmUi = null;
+    return 0;
+  }
+}
+function warmLaid(id: number) {
+  const w = warmLive.get(id);
+  if (w && w.laid < 0) w.laid = performance.now();
+}
+
 function PaneBox({ veil, onLaid, style, children }: { veil: boolean; onLaid?: () => void; style: ViewStyle; children: React.ReactNode }) {
   /* لوحٌ رُكّب ظاهراً (النشط) لا يُخفى أبداً ولو صار جاراً بعدها */
   const [settled, setSettled] = useState(!veil);
@@ -418,6 +488,8 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
   orderRef.current = order;
   /* 🆕 K2 — الجاران المجهَّزان (انظر `WARM_MS`) */
   const [warm, setWarm] = useState<K[]>([]);
+  /* D-1547 — رقمُ نافذة قياس `pane.warm` لكلِّ لوحٍ طُلب تجهيزُه ولم يُرسم بعد */
+  const probeOf = useRef(new Map<K, number>());
   const warmRef = useRef<K[]>([]);
   warmRef.current = warm;
   /* التبويبُ الذي استقرّ عليه اللوحُ آخرَ مرّة — في رسمة القلب هو الذي غادرناه للتوّ */
@@ -733,7 +805,11 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
           if (cancelled) return;
           const k = queue[i];
           i += 1;
-          if (k) setWarm((w) => (w.includes(k) ? w : [...w, k]));
+          if (k) {
+            /* D-1547 — القياسُ يبدأ مع طلب التركيب */
+            if (perfRef.current && !warmRef.current.includes(k)) probeOf.current.set(k, warmProbe(perfRef.current, k));
+            setWarm((w) => (w.includes(k) ? w : [...w, k]));
+          }
           if (i < queue.length) timer = setTimeout(step, WARM_STEP_MS);
         });
       };
@@ -777,8 +853,20 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
                   key={k}
                   /* D-1242 — المجهَّزُ في الخلفيّة وحدَه يُخفى؛ النشطُ والمسلَّحُ تحت الإصبع ظاهران دائماً */
                   veil={warmAll && !on && k !== side}
-                  onLaid={on ? undefined : () => { armEnd.current?.(); armEnd.current = null; }}
-                  style={{ position: "absolute", top: 0, bottom: 0, width, start: Math.max(0, order.indexOf(k)) * width, pointerEvents: on ? "auto" : "none" }}
+                  onLaid={on ? undefined : () => {
+                    armEnd.current?.();
+                    armEnd.current = null;
+                    const pid = probeOf.current.get(k);
+                    if (pid) {
+                      probeOf.current.delete(k);
+                      warmLaid(pid);
+                    }
+                  }}
+                  /* 🆕 D-1546 — **كلُّ لوحٍ مركَّبٍ يأخذ اللمس، لا النشطُ وحدَه** (أحمد ٢٣ أكتوبر بتسجيل: «اذا لفيت يمين بطلع فوق وانزل
+                     مباشرة ما اقدر لازم تمر نص ثانية او ثانية»). `on` يتبع `tab`، و`tab` يتبدّل بعد الطيران (٥٢٠ms) ثمّ بعد أن يفرغ
+                     خيطُ JS — فاللوحُ الواصلُ كان ظاهراً تحت الإصبع ومقفولاً عن اللمس كلَّ تلك المدّة. الموضعُ وحدَه يقرّر من يُلمس: ما خارج
+                     الشاشة لا يبلغه إصبع، وفي الطيران تحرس `tabSwipeBlocksPress` أوّلَ `SWIPE_QUIET_MS` من ضغطاتِ ما يخرج (D-1497) */
+                  style={{ position: "absolute", top: 0, bottom: 0, width, start: Math.max(0, order.indexOf(k)) * width }}
                 >
                   {render(k, on)}
                 </PaneBox>

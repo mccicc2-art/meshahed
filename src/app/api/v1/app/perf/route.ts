@@ -110,6 +110,8 @@ const NAMES = new Set([
   "dock.miss",
   /* 🩺 D-1536 — نقرةٌ في شريط الرأس أو الدوك لم تضغط زرّاً (`band` · `x` · `y` · `h` · `hid` · `cago` · `dock` · `screen` · `mom`) */
   "edge.tap",
+  /* 🆕 D-1547 — قياسٌ مؤقّت: ms من طلب تجهيز لوحٍ في الخلفيّة إلى أوّل رسمه (`drop`/`worst` خيطُ الواجهة · `jsd` خيطُ JS · `dur` النافذة) */
+  "pane.warm",
   /* 🆕 D-1350 — كم بقي ستارُ أنميشن الفتح ولماذا نزل (`why` = ready · cap) */
   "open.hide",
 ]);
@@ -119,7 +121,7 @@ const NAMES = new Set([
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
    🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock", "jsd"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;
