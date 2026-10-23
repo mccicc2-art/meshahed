@@ -527,6 +527,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
+  /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ عند ثلاثة أخماس الطيّ (أُعيد في R85 — لم يكن سببَ الرأس الثابت، D-1543) */
+  const statsFade = useMemo(
+    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [1, 0], extrapolate: "clamp" }),
+    [collapse, maxC],
+  );
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
   /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) — كانت `pick` تمسحها مع كلِّ قلب */
@@ -597,7 +602,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     } satisfies Record<ProfileTabKey, React.ReactNode>;
   }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
   /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
-  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }>()).current;
+  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void; keep: Animated.AnimatedInterpolation<number> }>()).current;
   const fnsOf = (k: ProfileTabKey) => {
     let f = paneFns.get(k);
     if (!f) {
@@ -618,6 +623,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           useNativeDriver: true,
           listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => onPaneScroll(k, e.nativeEvent.contentOffset.y),
         }),
+        /* 🆕 D-1543 — **قارئٌ دائمٌ لقيمة اللوح** (تسجيلُ أحمد ١٣:١٧: من «المراجعات» إلى «نظرة عامّة» انفتح الرأسُ والقائمةُ نازلة،
+           ثمّ لا يتحرّك): حين يترك الرأسُ قيمةَ لوحٍ لم يبقَ لها قارئ، فيحذف React Native عقدتَها من المحرّك الأصليّ
+           (`__removeChild` ⇠ `__detach` ⇠ `dropAnimatedNode`)، وتمريرُ اللوح باقٍ مربوطاً بالعقدة المحذوفة؛ والعودةُ تبني عقدةً
+           جديدةً لا يكتبها شيء. هذا القارئُ (شفافيّةٌ ثابتةٌ ١ على عنصرٍ بلا حجم) يُبقي للقيمة ابناً ما دام اللوحُ مرسوماً */
+        keep: yOf(k).interpolate({ inputRange: [0, 1], outputRange: [1, 1] }),
       };
       paneFns.set(k, f);
     }
@@ -632,6 +642,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         bottomPad={insets.bottom + 40}
         register={fnsOf(k).register}
         onScroll={fnsOf(k).onScroll}
+        keep={fnsOf(k).keep}
         onSettle={syncOthers}
         refreshControl={refresh}
       >
@@ -813,10 +824,12 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 <Button size="sm" variant="ghost" label={t.requestReject} busy={request.isPending && request.variables === false} onPress={() => request.mutate(false)} />
               </View>
             ) : null}
-            {/* D-1542 مُلغى (R84) — طبقةُ التلاشي فوق Facts/StatsCard أوقفت تتبّعَ الرأسِ للتمرير على المحرّك الأصليّ
-                (تسجيل أحمد ١١:٥١: الرأسُ ثابتٌ مفتوحٌ والقائمةُ تمرّ تحته). الحركةُ أهمّ من التلاشي؛ يعود في رفعةٍ مستقلّة */}
-            <Facts d={d} onRanks={() => setRanks(true)} />
-            <StatsCard stats={stats} onStat={onStat} />
+            {/* 🆕 D-1542 — **يتلاشى وهو يدخل تحت الرأس** (أحمد ٢٣ أكتوبر: «بعد ما انزل تحت واطلع فوق… زي القطعه»): الرأسُ العلويُّ
+                فوقه فيقصّه بحدٍّ حادّ؛ يختفي قبل أن يبلغ الحدّ (ثلاثةُ أخماس الطيّ) ويعود حين يُفكّ — على المحرّك الأصليّ. الضغطُ لا يتغيّر */}
+            <Animated.View pointerEvents="box-none" style={{ opacity: statsFade }}>
+              <Facts d={d} onRanks={() => setRanks(true)} />
+              <StatsCard stats={stats} onStat={onStat} />
+            </Animated.View>
 
             {/* 🆕 N2-fix2 — الحظرُ يُقال صريحاً: من حظرتُه (ومعه رفعُ الحظر) · ومن حظرني «غير متاح» */}
             {d.relation.blocked_by_me || d.relation.blocked_me ? (
@@ -967,6 +980,7 @@ const ProfilePane = React.memo(function ProfilePane({
   bottomPad,
   register,
   onScroll,
+  keep,
   onSettle,
   refreshControl,
   children,
@@ -977,6 +991,7 @@ const ProfilePane = React.memo(function ProfilePane({
   bottomPad: number;
   register: (ref: ScrollView | null) => void;
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  keep: Animated.AnimatedInterpolation<number>;
   onSettle: () => void;
   refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   children: React.ReactNode;
@@ -996,6 +1011,7 @@ const ProfilePane = React.memo(function ProfilePane({
          الرسمة الأولى ويلصقه في التالية. الفصلُ باقٍ في الرئيسيّة و«اكتشف» (D-1236/D-1238) حيث قيس نفعُه. */
       contentContainerStyle={{ paddingTop: topPad, paddingBottom: bottomPad, minHeight: minH + bottomPad }}
     >
+      <Animated.View pointerEvents="none" style={{ position: "absolute", width: 0, height: 0, opacity: keep }} />
       {children}
     </Animated.ScrollView>
   );
