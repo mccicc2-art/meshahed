@@ -417,11 +417,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
   const orderRef = useRef(order);
   orderRef.current = order;
   /* 🆕 K2 — الجاران المجهَّزان (انظر `WARM_MS`) */
-  /* 🆕 D-1545 — **`warmAll` يركّب الألواحَ كلَّها في رسمة الظهور نفسِها** (تسجيلُ أحمد ١٤:١٣: أوّلَ دخول الملفّ ينزل ثمّ يطلع
-     «فيه تقطيع» وهو لم يلمس التبويبات — ثلاثُ وقفاتٍ ~١٠٠ms عند ٢٫٨٣ و٢٫٩٥ و٣٫٠٩ث، مواعيدُ تركيب الألواح الثلاثة واحداً كلَّ
-     `WARM_STEP_MS`). التقسيمُ (D-1241) حوّل وقفةً واحدةً إلى ثلاثٍ تقع والإصبعُ يمرّر. أحمد اختار «أ»: انتظارٌ أطولُ قليلاً قبل
-     الظهور (مبدأ D-1241 نفسُه) ولا عملَ ثقيلٌ بعده. ما يُضاف بعد الظهور (تبويبٌ يظهر لاحقاً) يبقى على الطابور */
-  const [warm, setWarm] = useState<K[]>(() => (warmAll && order.includes(tab) ? order.filter((k) => k !== tab) : []));
+  const [warm, setWarm] = useState<K[]>([]);
   const warmRef = useRef<K[]>([]);
   warmRef.current = warm;
   /* التبويبُ الذي استقرّ عليه اللوحُ آخرَ مرّة — في رسمة القلب هو الذي غادرناه للتوّ */
