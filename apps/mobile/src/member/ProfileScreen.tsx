@@ -527,11 +527,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
-  /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ عند ثلاثة أخماس الطيّ */
-  const statsFade = useMemo(
-    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [1, 0], extrapolate: "clamp" }),
-    [collapse, maxC],
-  );
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
   /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) — كانت `pick` تمسحها مع كلِّ قلب */
@@ -818,13 +813,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 <Button size="sm" variant="ghost" label={t.requestReject} busy={request.isPending && request.variables === false} onPress={() => request.mutate(false)} />
               </View>
             ) : null}
-            {/* 🆕 D-1542 — **يتلاشى وهو يدخل تحت الرأس** (أحمد ٢٣ أكتوبر بتسجيل: «بعد ما انزل تحت واطلع فوق… زي القطعه»): الرأسُ العلويُّ
-                فوقه فيقصّه بحدٍّ حادّ، وبعد D-1539 صارت الحركةُ سلسةً فبان النصفُ المقصوص. يختفي قبل أن يبلغ الحدّ (ثلاثةُ أخماس الطيّ)
-                ويعود كما هو حين يُفكّ — على المحرّك الأصليّ نفسِه. الضغطُ عليه لا يتغيّر وهو ظاهر */}
-            <Animated.View pointerEvents="box-none" style={{ opacity: statsFade }}>
-              <Facts d={d} onRanks={() => setRanks(true)} />
-              <StatsCard stats={stats} onStat={onStat} />
-            </Animated.View>
+            {/* D-1542 مُلغى (R84) — طبقةُ التلاشي فوق Facts/StatsCard أوقفت تتبّعَ الرأسِ للتمرير على المحرّك الأصليّ
+                (تسجيل أحمد ١١:٥١: الرأسُ ثابتٌ مفتوحٌ والقائمةُ تمرّ تحته). الحركةُ أهمّ من التلاشي؛ يعود في رفعةٍ مستقلّة */}
+            <Facts d={d} onRanks={() => setRanks(true)} />
+            <StatsCard stats={stats} onStat={onStat} />
 
             {/* 🆕 N2-fix2 — الحظرُ يُقال صريحاً: من حظرتُه (ومعه رفعُ الحظر) · ومن حظرني «غير متاح» */}
             {d.relation.blocked_by_me || d.relation.blocked_me ? (
