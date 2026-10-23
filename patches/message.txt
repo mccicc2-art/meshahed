@@ -1,12 +1,12 @@
-[deploy] Release R85 — profile header follows scroll after returning to a tab (D-1543); stats fade back (D-1542)
+[deploy] Release R86 — profile: incoming pane is synced to the header before it slides in (D-1544)
 
-- 185 Profile: when the header switched away from a pane, that pane's scroll
-  value lost its last child and React Native dropped its native node, while
-  the pane's scroll event stayed bound to the dropped tag. Returning to the
-  pane built a fresh node nothing wrote to: header expanded and frozen
-  (Ahmed's recording 13:17, Reviews -> Overview). Each pane now holds a
-  permanent zero-size reader of its value, so the node is never dropped.
-- 185 The facts + stats fade (D-1542), wrongly removed in R84, is restored.
+- 186 TabSlide gains an optional `onArm` (K2 path only): called on the JS
+  thread when a swipe locks onto a neighbour, before any of it shows.
+- 186 Profile syncs the incoming pane on arm and again on aim (finger lift).
+  It was synced only on the old pane's settle and on the tab commit after the
+  flight, so a swipe right after unfolding the header showed the next pane at
+  its old offset for ~0.5 s (Ahmed's recording 13:43, 13.5 s, Reviews ->
+  Favorites: "Shows" behind "Joined").
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
