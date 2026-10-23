@@ -83,6 +83,11 @@ type Props<K extends string> = {
    */
   onAim?: (next: K) => void;
   /**
+   * 🆕 D-1544 — **الجارُ الذي بدأ الإصبعُ يسحبه** (أوّلَ القفل، قبل أن يظهر منه شيء). ملفُّ الشخص يضبط به موضعَ اللوح القادم على
+   * الرأس الحاليّ قبل أن ينزلق — كان يُضبط عند القلب (`onTab`) بعد الطيران، فيظهر نصفَ ثانيةٍ بموضعه القديم. مسارُ K2 وحدَه.
+   */
+  onArm?: (next: K) => void;
+  /**
    * 🆕 11-N · N1-fix5 — **كلُّ التبويبات مجهَّزةٌ لا الجاران وحدَهما** (ملفُّ الشخص؛ أحمد ٢٩ سبتمبر: «الإيماءات ممتازة.. لكن ضغط الزر
    * لا»). ضغطةٌ على تبويبٍ بعيدٍ كانت تطير فوق ألواحٍ غير مركّبة وتصل لوحاً بارداً — فراغٌ أسودُ حتى يُرسم. ألواحُ الملفّ من حمولةٍ
    * واحدةٍ محمّلةٍ أصلاً وعددُها خمسةٌ على الأكثر، فتُركَّب كلُّها بعد أن تهدأ الحركة الأولى (المهلةُ نفسُها `WARM_MS`) ولا يُنزع منها
@@ -374,7 +379,7 @@ function PaneBox({ veil, onLaid, style, children }: { veil: boolean; onLaid?: ()
   );
 }
 
-function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false, keepVisited = false }: Props<K>) {
+function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render, style, perfScreen, warmAll = false, keepVisited = false }: Props<K>) {
   const { width } = useWindowDimensions();
   const phys = I18nManager.isRTL ? -1 : 1;
   const at = useCallback((k: K, w = width) => -Math.max(0, order.indexOf(k)) * w * phys, [order, width, phys]);
@@ -421,6 +426,8 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   onTabRef.current = onTab;
   const onAimRef = useRef(onAim);
   onAimRef.current = onAim;
+  const onArmRef = useRef(onArm);
+  onArmRef.current = onArm;
   const perfRef = useRef(perfScreen);
   perfRef.current = perfScreen;
   /* تبويباتٌ حسمها السحبُ على خيط الواجهة ولم يرسمها React بعد — بالترتيب (كانت واحداً؛ قطعُ الطيران يجعلها أكثر) */
@@ -454,6 +461,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
     (i: number) => {
       const k = orderRef.current[i];
       if (!k) return;
+      onArmRef.current?.(k);
       if (sideRef.current !== k && perfRef.current) {
         /* 🆕 K2 — جارٌ مجهَّزٌ مسبقاً: لا تركيبَ ينتظره الإصبع */
         if (warmRef.current.includes(k)) mark("tab.arm", 0, { screen: perfRef.current, tab: k, k2: 1, cached: 1 });

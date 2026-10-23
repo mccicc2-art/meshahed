@@ -562,6 +562,16 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     },
     [syncPane],
   );
+  /* 🆕 D-1544 — **اللوحُ القادم يُضبط قبل أن ينزلق** (تسجيلُ أحمد ١٣:٤٣، الثانية ١٣٫٥: فكّ الرأسَ في «المراجعات» وسحب إلى «المفضّلة»
+     قبل أن يهدأ اللوح، فظهرت «المفضّلة» بموضعها القديم وعنوانُ «Shows» خلف «Joined» نصفَ ثانية حتى جاء القلب). `onSettle` لم يكن
+     قد جرى، و`pick` يأتي بعد الطيران. الآن يُضبط الجارُ أوّلَ السحب (`onArm`) ومرّةً ثانيةً لحظةَ رفع الإصبع (`onAim`) */
+  const aimTo = useCallback(
+    (k: ProfileTabKey) => {
+      syncPane(k);
+      setAim(k);
+    },
+    [syncPane, setAim],
+  );
   const onPaneScroll = useCallback(
     (k: ProfileTabKey, y: number) => {
       const p = panes.get(k);
@@ -684,7 +694,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       ) : (
         <View style={{ flex: 1, overflow: "hidden" }}>
           {headH > 0 && !d.locked && shown.length > 0 && active ? (
-            <TabSlide order={shown} tab={active} onTab={pick} onAim={setAim} perfScreen="profile" warmAll render={(k) => renderPane(k)} />
+            <TabSlide order={shown} tab={active} onTab={pick} onAim={aimTo} onArm={syncPane} perfScreen="profile" warmAll render={(k) => renderPane(k)} />
           ) : headH > 0 ? (
             <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingTop: headH, paddingBottom: insets.bottom + 40 }}>
               {!d.locked && shown.length === 0 ? (
