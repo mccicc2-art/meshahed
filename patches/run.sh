@@ -1,7 +1,7 @@
 #!/bin/bash
-# Release R80 — payload: patches/r80-part-* = base64 of xz(git diff r79..r80), base 66c3de6
+# Release R82 — payload: patches/r82-part-* = base64 of xz(git diff r81..r82), base e3beb3c
 set -euo pipefail
 D="$(cd "$(dirname "$0")" && pwd)"
-cat "$D"/r80-part-* | tr -d '\n' | base64 -d | xz -d > /tmp/r80.diff
-echo "2f7b15cf2db115c6a5c836d4bd8a466294b0d83266895e9df2fea6598a48c12e  /tmp/r80.diff" | sha256sum -c -
-git apply --binary /tmp/r80.diff
+cat "$D"/r82-part-* | tr -d '\n' | base64 -d | xz -d > /tmp/r82.diff
+echo "8e26da1b807e6b1977e397a6a346418b79413f4c474acbbbfc9116eecfe147e3  /tmp/r82.diff" | sha256sum -c -
+git apply --binary /tmp/r82.diff
