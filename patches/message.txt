@@ -1,0 +1,14 @@
+[deploy] Release R81 — auditor fixes: Stremio owner-first, deps, diagnostics kind, log retention, widget rule lock
+
+- 175 LibraryAnalysis: drop the unused epMinutes accumulator (eslint no-unused-vars).
+- 176 A-17 Stremio stream/subtitles: check the token owner before resolving the
+  title, so unknown tokens cause no outbound work.
+- 177 A-09 web deps: source-map-js 1.2.1 → 1.2.2 (lockfile only).
+- 178 A-10 app/crash: widget and DM-category diagnostics logged as AppDiag;
+  real crashes stay AppCrash.
+- 179 A-11 runtime_errors retention: nightly delete over 90 days (migration 223,
+  already run on production 23 Oct); admin data map marks the table pruned.
+- 181 A-12 lock test: widget DM routes mirror the DB rules they re-check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HsaG3AqAv8BFbdc1zgxm2r
