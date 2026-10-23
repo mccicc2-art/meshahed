@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
 import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
 import { Image } from "expo-image";
@@ -464,7 +464,24 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
    * (`box-none`): السحبُ والتمريرُ من فوقه يصلان اللوحَ تحته. تبديلُ التبويب يُبقي الرأسَ حيث هو (الجارُ يُزامَن قبل أن يُرى) —
    * فلا قفزةَ (يحلّ محلَّ N1-fix2).
    */
-  const collapse = useRef(new Animated.Value(0)).current;
+  /* 🆕 D-1539 — **الرأسُ يتبع اللوحَ على الخيط الأصليّ** (تسجيلُ أحمد ٢٣ أكتوبر: «اذا دخلت الملف ورفعت مباشرة شوف كيف تسير» و«الطلوع
+     والنزول… كنه تقطع فريمات»): كان `onScroll` يصل JS ثمّ `collapse.setValue` — فالقائمةُ يحرّكها النظامُ والرأسُ ينتظر خيطَ JS. أوّلَ
+     الدخول وJS يرسم الألواح وقف الرأسُ ثلاثة إطاراتٍ والقائمةُ تمرّ تحته (الصورةُ والاسمُ فوق «Shows»)، ثمّ قفز؛ وبعده يتأخّر إطاراً.
+     الآن لكلِّ لوحٍ قيمةٌ يكتبها `Animated.event` بالمحرّك الأصليّ، والطيُّ قصُّها إلى `[0, maxC]` من لوح التبويب النشط — في الإطار
+     نفسِه الذي تتحرّك فيه القائمة. `collapseNow` ومواضعُ الألواح ما زالت تُقرأ في JS (للمزامنة) عبر `listener` لا يحرّك شيئاً. */
+  const paneY = useRef(new Map<ProfileTabKey, Animated.Value>()).current;
+  const yOf = useCallback(
+    (k: ProfileTabKey) => {
+      let v = paneY.get(k);
+      if (!v) {
+        v = new Animated.Value(0);
+        paneY.set(k, v);
+      }
+      return v;
+    },
+    [paneY],
+  );
+  const zero = useRef(new Animated.Value(0)).current;
   const collapseNow = useRef(0);
   /* 🆕 D-1222 — **الألواحُ تُرسم مع الرأس لا بعده** (تسجيلُ أحمد ١ أكتوبر: الرأسُ يظهر ثمّ الصفوفُ بعده بنحو ٤٠٠ms): الألواحُ تنتظر
      `headH > 0`، والرقمُ لا يُعرف إلّا بعد أن يُرسم الرأسُ ويُقاس — فالرسمُ الثقيل (الصفوفُ وملصقاتُها) يقع في التزامٍ ثانٍ بعد الأوّل.
@@ -487,6 +504,12 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /** ما يطويه الرأسُ العلويُّ من طوله: الفراغُ فوق الصورة + فرقُ قطرها */
   const shrink = drop + (AV_MAX - AV_MIN);
   const topMin = topH > 0 ? Math.max(0, topH - shrink) : 0;
+  const maxC = Math.max(0, headH - barH - topMin);
+  /* الطيُّ = موضعُ اللوح النشط مقصوصاً — بلا سالبٍ (السحبُ للتحديث) ولا أبعدَ من الالتصاق */
+  const collapse = useMemo(
+    () => (active ? yOf(active) : zero).interpolate({ inputRange: [0, Math.max(1, maxC)], outputRange: [0, maxC], extrapolate: "clamp" }),
+    [active, maxC, yOf, zero],
+  );
   /* التحويلاتُ تُبنى مرّةً لكلِّ مقاس: كلُّها نسبةٌ من الطيّ (٠ ⇠ ١) */
   const fold = useMemo(() => {
     const at = (to: number, from = 0) => collapse.interpolate({ inputRange: [0, shrink], outputRange: [from, to], extrapolate: "clamp" });
@@ -504,7 +527,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
-  const maxC = Math.max(0, headH - barH - topMin);
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
   const [aim, setAim] = useState<ProfileTabKey | null>(null);
@@ -540,21 +562,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       const p = panes.get(k);
       if (p) p.y = y;
       if (k !== activeRef.current) return;
-      const c = Math.max(0, Math.min(y, maxCRef.current));
-      collapseNow.current = c;
-      collapse.setValue(c);
+      collapseNow.current = Math.max(0, Math.min(y, maxCRef.current));
     },
-    [panes, collapse],
+    [panes],
   );
   /* التبويبُ النشطُ تغيّر (سحبٌ أو ضغطة): الرأسُ يأخذ موضعَ لوحه الجديد، وسائرُ اللوحات تُزامَن معه */
   useEffect(() => {
     if (!active) return;
     const p = panes.get(active);
-    const c = Math.max(0, Math.min(p?.y ?? collapseNow.current, maxC));
-    collapseNow.current = c;
-    collapse.setValue(c);
+    collapseNow.current = Math.max(0, Math.min(p?.y ?? collapseNow.current, maxC));
     syncOthers();
-  }, [active, maxC, panes, collapse, syncOthers]);
+  }, [active, maxC, panes, syncOthers]);
   const viewportH = height - insets.top - HEADER_H;
   /* 🆕 N3-fix — **اسحب للتحديث** (أحمد ٣٠ سبتمبر: «خليه فيه ريفريش اذا سحبته على تحت») — `usePullRefresh` نفسُه الذي في المكتبة
      واكتشف والمجتمع؛ كلُّ الألواح من حمولةٍ واحدة فمفتاحٌ واحد. الدوّارُ تحت الرأس (`headH`) لا خلفه. */
@@ -579,7 +597,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     } satisfies Record<ProfileTabKey, React.ReactNode>;
   }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
   /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
-  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (y: number) => void }>()).current;
+  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }>()).current;
   const fnsOf = (k: ProfileTabKey) => {
     let f = paneFns.get(k);
     if (!f) {
@@ -595,7 +613,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           panes.set(k, { ref, y: cur?.y ?? 0 });
           if (fresh && !cur) syncPane(k);
         },
-        onScroll: (y) => onPaneScroll(k, y),
+        /* 🆕 D-1539 — المحرّكُ الأصليُّ يكتب القيمة؛ و`listener` يُبلغ JS بالموضع للمزامنة وحدَها */
+        onScroll: Animated.event([{ nativeEvent: { contentOffset: { y: yOf(k) } } }], {
+          useNativeDriver: true,
+          listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => onPaneScroll(k, e.nativeEvent.contentOffset.y),
+        }),
       };
       paneFns.set(k, f);
     }
@@ -952,16 +974,16 @@ const ProfilePane = React.memo(function ProfilePane({
   minH: number;
   bottomPad: number;
   register: (ref: ScrollView | null) => void;
-  onScroll: (y: number) => void;
+  onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onSettle: () => void;
   refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   children: React.ReactNode;
 }) {
   return (
-    <ScrollView
+    <Animated.ScrollView
       ref={register}
       refreshControl={refreshControl}
-      onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
+      onScroll={onScroll}
       scrollEventThrottle={16}
       onScrollEndDrag={onSettle}
       onMomentumScrollEnd={onSettle}
@@ -973,7 +995,7 @@ const ProfilePane = React.memo(function ProfilePane({
       contentContainerStyle={{ paddingTop: topPad, paddingBottom: bottomPad, minHeight: minH + bottomPad }}
     >
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 });
 

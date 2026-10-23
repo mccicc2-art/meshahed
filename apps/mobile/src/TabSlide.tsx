@@ -89,6 +89,13 @@ type Props<K extends string> = {
    * شيء. **لا يُستعمل حيث تجلب الألواحُ بياناتِها بنفسها** (المكتبة · اكتشف) — هناك «ثلاثةُ ألواحٍ حدٌّ أعلى» (K2) تبقى. مسارُ K2 وحدَه.
    */
   warmAll?: boolean;
+  /**
+   * 🆕 D-1540 — **ما زرتَه يبقى** (تسجيلُ أحمد ٢٣ أكتوبر في «اكتشف»: «اذا بتنقل بسرعة ما يمدي يكون الادء افضل واسلس؟»، ثمّ «أ»): حدُّ
+   * الألواح الثلاثة (K2) كان ينزع التبويبَ البعيد، فالتنقّلُ السريع يعيد بناءَه من الصفر — تسعُ تركيباتٍ في دقيقة (`tab.arm` ٧٦–٥٥٤ms
+   * لكلٍّ) وخيطُ JS مشغولٌ والملصقاتُ مربّعاتٌ فارغة. الآن كلُّ لوحٍ ظهر مرّةً يبقى مركّباً لعمر الشاشة (والجاران كما كانا)؛ ما لم يُزَر
+   * لا يُبنى، فلا جلبَ للبيانات كلِّها دفعةً. لشاشةٍ تبويباتُها قليلة (اكتشف أربعة). مسارُ K2 وحدَه.
+   */
+  keepVisited?: boolean;
 };
 
 /**
@@ -367,7 +374,7 @@ function PaneBox({ veil, onLaid, style, children }: { veil: boolean; onLaid?: ()
   );
 }
 
-function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false }: Props<K>) {
+function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style, perfScreen, warmAll = false, keepVisited = false }: Props<K>) {
   const { width } = useWindowDimensions();
   const phys = I18nManager.isRTL ? -1 : 1;
   const at = useCallback((k: K, w = width) => -Math.max(0, order.indexOf(k)) * w * phys, [order, width, phys]);
@@ -684,9 +691,17 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
   /* 🆕 K2 — بعد كلِّ استقرار: يبقى من المجهَّز ما زال جاراً (والتبويبُ الذي غادرناه منه) فلا يُنزع ثمّ يُعاد،
      ويُركَّب الناقصُ بعد أن تهدأ الحركة. الأبعدُ يُنزع فوراً — ثلاثةُ ألواحٍ حدٌّ أعلى */
   const ti = order.indexOf(tab);
+  /* 🆕 D-1540 — ما ظهر نشطاً مرّةً (يُسجَّل في الرسم: `near` تُحسب بعده في الرسمة نفسِها) */
+  const visited = useRef(new Set<K>());
+  if (keepVisited) visited.current.add(tab);
   const near = useMemo(
-    () => (ti < 0 ? [] : warmAll ? order.filter((k) => k !== tab) : [order[ti - 1], order[ti + 1]].filter((k): k is K => !!k)),
-    [order, ti, tab, warmAll],
+    () => {
+      if (ti < 0) return [];
+      if (warmAll) return order.filter((k) => k !== tab);
+      const side2 = [order[ti - 1], order[ti + 1]].filter((k): k is K => !!k);
+      return keepVisited ? order.filter((k) => k !== tab && (side2.includes(k) || visited.current.has(k))) : side2;
+    },
+    [order, ti, tab, warmAll, keepVisited],
   );
   useLayoutEffect(() => {
     const left = lastTab.current;

@@ -536,6 +536,8 @@ export function DiscoverScreen() {
         onTab={goTab}
         onAim={setAim}
         perfScreen="discover"
+        /* 🆕 D-1540 — التبويبُ الذي زرتَه يبقى مركّباً: التنقّلُ السريع لا يعيد بناءَه (انظر `keepVisited`) */
+        keepVisited
         render={(k, active) => (
           <DiscoverPane
             tab={k}
