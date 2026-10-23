@@ -1370,11 +1370,10 @@ export async function loadMyAnalysis(locale: Locale, range: StatsRange = "all"):
   const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
   const movieMinutes = watchedMovieMinutes(watchedMovies);
 
+  /* المدقّق ٢٣ أكتوبر — مجموعُ دقائق الحلقات هنا لم يُقرأ قطّ (تحذيرُ no-unused-vars)؛ الدقائقُ تُحسب في موضعها أدناه */
   const watchedByShow = new Map<number, number>();
-  let epMinutes = 0;
   for (const w of episodes) {
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
-    epMinutes += runtimeMinutes("episode", w.runtime);
   }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");

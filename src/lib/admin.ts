@@ -576,8 +576,9 @@ export const DATA_MAP: {
     keep: "بلا حدّ", pruned: false },
   { table: "admin_audit", what: "فعلُ مديرٍ وهدفُه", kind: "technical",
     keep: "بلا حدّ (مقصود: سجلٌّ يُحذف ليس سجلّاً)", pruned: false },
+  /* A-11 — الهجرة ٢٢٣: وظيفةٌ ليليّةٌ تحذف ما فوق تسعين يوماً (أحمد ٢٣ أكتوبر) */
   { table: "runtime_errors", what: "خطأُ خادمٍ ومسارُه — بلا هويّةٍ ولا IP", kind: "technical",
-    keep: "بلا حدّ", pruned: false },
+    keep: "٩٠ يوماً", pruned: true },
 ];
 
 export const KIND_AR: Record<DataKind, string> = {
@@ -621,8 +622,8 @@ export function findingsOf(h: AdminHealth): Finding[] {
     f.push({
       id: "retention", sev: "med",
       title: `لا وظيفةَ حذفٍ دوريّ — ${noPrune.length} جداولَ تنمو بلا حدّ`,
-      why: "وظيفةُ cron الوحيدةُ صيانةٌ لا تنظيف. runtime_errors وحدَها تكتب آلافَ الصفوف شهريّاً، والاحتفاظُ بلا سببٍ التزامٌ لا أصل.",
-      fix: "وظيفةٌ ليليّةٌ واحدة: حذفُ runtime_errors فوق ٩٠ يوماً وprofile_views فوق ١٨٠. والماليُّ والسجلُّ يبقيان بقرارٍ مكتوب.",
+      why: "runtime_errors وحدَها تُحذف دوريّاً (الهجرة ٢٢٣، فوق ٩٠ يوماً)؛ والباقي ينمو بلا حدّ، والاحتفاظُ بلا سببٍ التزامٌ لا أصل.",
+      fix: "وظيفةٌ ليليّةٌ كوظيفة ٢٢٣: حذفُ profile_views فوق ١٨٠ يوماً. والماليُّ والسجلُّ يبقيان بقرارٍ مكتوب.",
     });
   const extra = (h.sec.providers ?? []).filter((p) => p.provider !== "google");
   if (extra.length > 0)

@@ -28,8 +28,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   /* 🆕 أنمي Kitsu أيضاً (`kitsu:{id}:{ep}`) — يُترجم إلى عملٍ وحلقةٍ في TMDB؛ و«S/E» في السطر حلقةُ TMDB لا رقمُ Kitsu */
   const ref = parseStremioRef(type, id);
   if (!ref) return traceRejected(type, id), addonJson(EMPTY);
-  const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
-  if (!owner?.plus || !hit) return addonJson(EMPTY);
+  /* A-17 (المدقّق ٢٣ أكتوبر) — المالكُ أوّلاً ثمّ الترجمة: رمزٌ مجهولٌ أو غيرُ مشتركٍ لا يكلّفنا طلباً واحداً لـTMDB أو Kitsu.
+     كانا متوازيَين فصار كلُّ رمزٍ صحيحِ الشكل يُطلق عملاً خارجيّاً؛ والثمنُ على العضو المشترك استعلامُ قاعدةٍ واحدٌ قبل الترجمة */
+  const owner = await stremioOwner(token);
+  if (!owner?.plus) return addonJson(EMPTY);
+  const hit = await resolveStremioRef(ref);
+  if (!hit) return addonJson(EMPTY);
   const { video, tmdbId } = hit;
   after(() => recordStremioSignal(owner.userId, video, tmdbId));
   const where = video.kind === "tv" ? `S${video.season} E${video.episode}` : "";

@@ -23,8 +23,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   if (!allow(`stremio-sub:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
   const ref = parseSubtitlesVideo(type, rest ?? []);
   if (!ref) return traceRejected(type, (rest ?? []).join("/")), addonJson(EMPTY);
-  const [owner, hit] = await Promise.all([stremioOwner(token), resolveStremioRef(ref)]);
-  if (!owner?.plus || !hit) return addonJson(EMPTY);
+  /* A-17 (المدقّق ٢٣ أكتوبر) — المالكُ أوّلاً ثمّ الترجمة: رمزٌ مجهولٌ أو غيرُ مشتركٍ لا يكلّفنا طلباً واحداً لـTMDB أو Kitsu.
+     كانا متوازيَين فصار كلُّ رمزٍ صحيحِ الشكل يُطلق عملاً خارجيّاً؛ والثمنُ على العضو المشترك استعلامُ قاعدةٍ واحدٌ قبل الترجمة */
+  const owner = await stremioOwner(token);
+  if (!owner?.plus) return addonJson(EMPTY);
+  const hit = await resolveStremioRef(ref);
+  if (!hit) return addonJson(EMPTY);
   after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true));
   return addonJson(EMPTY);
 }

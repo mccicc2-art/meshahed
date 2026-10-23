@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { handle, requireUser, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { APP_UA_TAG } from "@/core/platform";
+import { crashKind } from "@/core/crashKind";
 
 /**
  * ====== `POST /api/v1/app/crash` — سقوطُ شاشةٍ أصليّة يُكتب في السجلّ (D-974) ======
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest) {
     if (!message) return fail("invalid_input");
     /* البصمةُ من الرسالة والشاشة — الأخطاءُ المتشابهة تتجمّع صفّاً واحداً (D-668) */
     const digest = `${screen}:${message.slice(0, 80)}`;
+    /* A-10 — التشخيصُ (لمساتُ الودجت، تتبّعُ إشعار الرسائل) بنوعه لا بنوع السقوط: عدُّ الأعطال يبقى أعطالاً */
+    const kind = crashKind(screen, message);
     try {
       const supabase = await createServiceClient();
       if (screen === "widget" && stack.length > 300) {
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
           await supabase.rpc("log_runtime_error", {
             p_route: `/app/${screen}`,
             p_digest: digest,
-            p_kind: "AppCrash",
+            p_kind: kind,
             p_message: `${APP_UA_TAG}${version} ${screen} ${i + 1}/${parts.length}: ${i === 0 ? `${message}\n` : ""}${parts[i]}`,
           });
         }
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest) {
         await supabase.rpc("log_runtime_error", {
           p_route: `/app/${screen}`,
           p_digest: digest,
-          p_kind: "AppCrash",
+          p_kind: kind,
           p_message: `${APP_UA_TAG}${version} ${screen}: ${message}${stack ? `\n${stack}` : ""}`,
         });
       }
