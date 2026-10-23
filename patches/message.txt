@@ -1,15 +1,11 @@
-[deploy] Release R89 — swiped-in tab scrolls at once (D-1546); pane.warm probe (D-1547)
+[deploy] Release R90 — diagnostics: pane.warm per pane; dead-tap / hang witnesses sent at once (D-1548)
 
-- 189 TabSlide (K2): every mounted pane takes touches, not only the committed
-  tab. `tab` changes after the 520 ms flight and then waits for the JS thread,
-  so the pane that slid in was visible but deaf to touches for 0.5-1 s and could
-  not be scrolled (Ahmed's recording 15:01, Discover -> Anime). Position decides
-  who gets the finger; off-screen panes are unreachable, and the first 300 ms of
-  presses on the outgoing pane stay blocked by `tabSwipeBlocksPress` (D-1497).
-- 189 Temporary diagnostic `pane.warm` (warmAll / profile only): ms from a
-  background pane mount request to its first layout, UI-thread dropped frames
-  and worst gap over 600 ms (`drop`, `worst`, `dur`) and JS drops (`jsd`).
-  Server allowlist gains `pane.warm` and `jsd`. To be removed with the probes.
+- 190 `pane.warm` window 600 -> 300 ms: it outlived `WARM_STEP_MS` (320 ms), so
+  each pane's window erased the previous one and only Favorites ever reported.
+- 190 `edge.tap`, `dock.miss` and `js.hang` flush 1.5 s after they are marked
+  instead of waiting for the 30 s batch. Ahmed's recording 15:18 (dock dead for
+  ~4 s in Discover -> Anime, then the queued taps replayed) left no trace: the
+  batch holding that moment never arrived. Diagnostic only; removed with probes.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
