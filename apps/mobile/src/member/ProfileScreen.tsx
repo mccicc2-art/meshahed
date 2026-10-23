@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
-import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
 import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
-import { afterPaint, mark } from "../perfMarks";
+import { afterPaint, mark, notePress } from "../perfMarks";
 import { useApp } from "../state";
 import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
 import { Icon, iconOr } from "../icons";
@@ -527,9 +527,15 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
+  /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ عند ثلاثة أخماس الطيّ */
+  const statsFade = useMemo(
+    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [1, 0], extrapolate: "clamp" }),
+    [collapse, maxC],
+  );
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
-  const [aim, setAim] = useState<ProfileTabKey | null>(null);
+  /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) — كانت `pick` تمسحها مع كلِّ قلب */
+  const [aim, setAim] = useTabAim<ProfileTabKey>(active);
   const activeRef = useRef<ProfileTabKey | null>(active);
   activeRef.current = active;
   const panes = useRef(new Map<ProfileTabKey, { ref: ScrollView | null; y: number }>()).current;
@@ -552,7 +558,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const pick = useCallback(
     (k: ProfileTabKey) => {
       syncPane(k);
-      setAim(null);
       setTab(k);
     },
     [syncPane],
@@ -813,8 +818,13 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 <Button size="sm" variant="ghost" label={t.requestReject} busy={request.isPending && request.variables === false} onPress={() => request.mutate(false)} />
               </View>
             ) : null}
-            <Facts d={d} onRanks={() => setRanks(true)} />
-            <StatsCard stats={stats} onStat={onStat} />
+            {/* 🆕 D-1542 — **يتلاشى وهو يدخل تحت الرأس** (أحمد ٢٣ أكتوبر بتسجيل: «بعد ما انزل تحت واطلع فوق… زي القطعه»): الرأسُ العلويُّ
+                فوقه فيقصّه بحدٍّ حادّ، وبعد D-1539 صارت الحركةُ سلسةً فبان النصفُ المقصوص. يختفي قبل أن يبلغ الحدّ (ثلاثةُ أخماس الطيّ)
+                ويعود كما هو حين يُفكّ — على المحرّك الأصليّ نفسِه. الضغطُ عليه لا يتغيّر وهو ظاهر */}
+            <Animated.View pointerEvents="box-none" style={{ opacity: statsFade }}>
+              <Facts d={d} onRanks={() => setRanks(true)} />
+              <StatsCard stats={stats} onStat={onStat} />
+            </Animated.View>
 
             {/* 🆕 N2-fix2 — الحظرُ يُقال صريحاً: من حظرتُه (ومعه رفعُ الحظر) · ومن حظرني «غير متاح» */}
             {d.relation.blocked_by_me || d.relation.blocked_me ? (
@@ -948,7 +958,7 @@ function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "s
   const { tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       {icon === "back" ? (
         <BackChevron color={fg} />
       ) : (

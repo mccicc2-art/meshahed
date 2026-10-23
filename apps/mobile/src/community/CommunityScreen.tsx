@@ -17,7 +17,7 @@ import { Icon, type IconName } from "../icons";
 import { controlSize, radius } from "../theme";
 import { Logo } from "../Logo";
 import { HeaderEnd } from "../HeaderEnd";
-import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
@@ -141,8 +141,8 @@ export function CommunityScreen() {
     setTab(next);
   }, []);
   /* M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`onAim`)، والقلبُ بعد الطيران */
-  const [aim, setAim] = useState<Tab | null>(null);
-  useEffect(() => setAim(null), [tab]);
+  /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) */
+  const [aim, setAim] = useTabAim<Tab>(tab);
   const lit = aim ?? tab;
   const [all, setAllState] = useState<BoardSection | null>(memory.all);
   const setAll = useCallback((s: BoardSection | null) => {

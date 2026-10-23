@@ -21,7 +21,7 @@ import { Logo } from "../Logo";
 import { HeaderEnd } from "../HeaderEnd";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
-import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
@@ -146,8 +146,8 @@ export function LibraryScreen() {
   const [tab, setTab] = useState<Tab | null>(memory.tab);
   const activeTab: Tab = tab ?? data.data?.default_tab ?? "shows";
   /* 11-M · M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`TabSlide.onAim`)، والقلبُ بعد الطيران */
-  const [aim, setAim] = useState<Tab | null>(null);
-  useEffect(() => setAim(null), [activeTab]);
+  /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) */
+  const [aim, setAim] = useTabAim<Tab>(activeTab);
   const lit = aim ?? activeTab;
   const [open, setOpen] = useState<Set<string>>(() => new Set(memory.open));
   useEffect(() => {

@@ -41,7 +41,7 @@ import type { MyRow } from "@/core/myRows";
 import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { takeDiscoverEdit, type SmartEdit } from "./aim";
-import { TabSlide, tabSwipeBlocksPress } from "../TabSlide";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
@@ -439,8 +439,8 @@ export function DiscoverScreen() {
   );
   const goTab = useCallback((next: Tab) => setTab(next), []);
   /* 11-M · M1-fix — الخطُّ يُضيء وجهةَ السحب لحظةَ رفع الإصبع (`TabSlide.onAim`)، والقلبُ بعد الطيران */
-  const [aim, setAim] = useState<Tab | null>(null);
-  useEffect(() => setAim(null), [tab]);
+  /* D-1541 — وجهةٌ أحدثُ لا يمسحها سحبٌ أقدمُ استقرّ بعدها (`useTabAim`) */
+  const [aim, setAim] = useTabAim<Tab>(tab);
   const lit = aim ?? tab;
 
   /* D-966 — الكسوةُ الذكيّة كما في المكتبة: الورقةُ (رأسٌ + ألواح) تصعد بارتفاع الرأس

@@ -782,3 +782,27 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, render, style,
     </GestureHandlerRootView>
   );
 }
+
+/**
+ * 🆕 D-1541 — **وجهةُ السحب لا يمسحها سحبٌ أقدم** (تسجيلُ أحمد ٢٣ أكتوبر في «اكتشف»: «الاشارة … تلخبط لثانية وترجع»، ثمّ «ب»): الخطُّ
+ * يُضيء الوجهةَ لحظةَ رفع الإصبع (`onAim`) ويُمسح حين يتبدّل التبويب. سحبتان متتاليتان قبل أن يستقرّ طيرانُ الأولى: الأولى تستقرّ على
+ * «أفلام» والثانيةُ أضاءت «مسلسلات» — فكان المسحُ يعيد الخطَّ إلى «أفلام» ثلثَ ثانيةٍ ثمّ يقفز (ثانية ٤١ من التسجيل). الآن يُمسح
+ * إذا بلغ التبويبُ الوجهةَ نفسَها وحدَها؛ ووجهةٌ لم تُبلغ (طيرانٌ قُطع) تسقط وحدَها بعد `AIM_TTL_MS`. الشاشاتُ الأربع منه لا نسخٌ أربع.
+ */
+const AIM_TTL_MS = 900;
+export function useTabAim<K extends string>(tab: K | null): [K | null, (k: K | null) => void] {
+  const [aim, setAimState] = useState<K | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setAim = useCallback((k: K | null) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = k === null ? null : setTimeout(() => setAimState(null), AIM_TTL_MS);
+    setAimState(k);
+  }, []);
+  useEffect(() => {
+    setAimState((a) => (a === tab ? null : a));
+  }, [tab]);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  return [aim, setAim];
+}
