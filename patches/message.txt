@@ -1,11 +1,8 @@
-[deploy] Release R87 — profile mounts all tab panes before it appears (D-1545)
+[deploy] Release R88 — revert R87 (D-1545): profile opens as fast as before
 
-- 187 TabSlide `warmAll`: every pane is mounted in the first commit instead of
-  one by one after the screen shows. The staged mounts (D-1241) landed while
-  the user scrolled: three ~100 ms UI stalls at 2.83 / 2.95 / 3.09 s in Ahmed's
-  recording 14:13 (scroll down then up right after opening, no tab switch).
-  Ahmed chose a slightly longer open over stalls after it. Panes added later
-  (a tab that appears afterwards) still go through the queue.
+- 188 TabSlide `warmAll` back to staged background mounts (D-1241). Ahmed
+  tried R87 and rejected the longer open: "ما عجبني التأخير .. رجعه مثل ما كان".
+  The first-scroll stalls after opening return; to be solved another way.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
