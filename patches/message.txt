@@ -1,9 +1,12 @@
-[deploy] Release R84 — revert the profile stats fade (D-1542): header follows scroll again
+[deploy] Release R85 — profile header follows scroll after returning to a tab (D-1543); stats fade back (D-1542)
 
-- 184 Profile: the R83 opacity wrapper around facts + stats card stopped the
-  header from following the scroll on the native thread (Ahmed's recording
-  11:51: header stays expanded while the list slides under it). Removed; the
-  header is back to R82 behaviour. The fade returns later in its own release.
+- 185 Profile: when the header switched away from a pane, that pane's scroll
+  value lost its last child and React Native dropped its native node, while
+  the pane's scroll event stayed bound to the dropped tag. Returning to the
+  pane built a fresh node nothing wrote to: header expanded and frozen
+  (Ahmed's recording 13:17, Reviews -> Overview). Each pane now holds a
+  permanent zero-size reader of its value, so the node is never dropped.
+- 185 The facts + stats fade (D-1542), wrongly removed in R84, is restored.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
