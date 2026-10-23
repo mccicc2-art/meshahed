@@ -147,8 +147,16 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
   if (name === "library.open" && preloaded.has("library") && !landedOnce.has("library")) extra = { ...extra, pre: 1 };
   if (buffer.length >= MAX_BUFFER) buffer.shift();
   buffer.push({ name, ms: Math.round(ms), ...(extra ? { extra } : {}) });
-  arm();
+  /* 🩺 D-1548 — **شهودُ اللمسات الميتة والتعليق تُرسل حالاً** (تسجيلُ أحمد ١٥:١٨: الدوكُ ميّتٌ ٤ ثوانٍ في «اكتشف ← أنمي»
+     ثمّ نُفّذت الضغطاتُ متتابعةً — والدفعةُ التي فيها تلك اللحظةُ لم تصل قطّ). بعد ثانيةٍ ونصف لا ثلاثين: ما يقع متتابعاً
+     يخرج معاً، والحدُّ في الخادم (٦ في الدقيقة) لا يُبلغ. تُحذف مع المسابر */
+  if (URGENT.has(name)) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, URGENT_MS);
+  } else arm();
 }
+const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang"]);
+const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {
   if (!timer) timer = setTimeout(flush, Math.max(2_000, FLUSH_MS - (Date.now() - lastFlush)));

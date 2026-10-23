@@ -362,7 +362,8 @@ const VEIL_MS = 150;
  * و`drop`/`worst` إطاراتُ خيط الواجهة الضائعة وأطولُ فجوةٍ فيه خلال `WARM_PROBE_MS`، و`jsd` ما ضاع على JS. نافذةٌ واحدةٌ في
  * المرّة (الألواحُ بينها `WARM_STEP_MS`). كلُّ فشلٍ صمت. يُزال مع بقيّة المسابر حين يُطلب.
  */
-const WARM_PROBE_MS = 600;
+/* D-1547 — أقصرُ من `WARM_STEP_MS` (٣٢٠): نافذةٌ أطولُ كانت تمسحها نافذةُ اللوح التالي فلا يصل إلّا آخرُها («المفضّلة» وحدَها) */
+const WARM_PROBE_MS = 300;
 type WarmUi = { start: (id: number) => void };
 let warmUi: WarmUi | null | undefined;
 let warmSeq = 0;
