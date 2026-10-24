@@ -6,7 +6,8 @@
  * المراقبين؛ التشخيصُ يُكتب `AppDiag` والسقوطُ الحقيقيُّ يبقى `AppCrash` كما كان.
  */
 export function crashKind(screen: string, message: string): "AppCrash" | "AppDiag" {
-  if (screen === "widget") return "AppDiag";
+  /* A-22 (المدقّق ٢٤ أكتوبر) — بالبادئة لا بالشاشة وحدَها: سقوطٌ حقيقيٌّ لشاشة الودجت يبقى `AppCrash` فيُعدّ */
+  if (screen === "widget" && message.startsWith("widget taps:")) return "AppDiag";
   if (screen === "messages" && message.startsWith("dm category:")) return "AppDiag";
   return "AppCrash";
 }

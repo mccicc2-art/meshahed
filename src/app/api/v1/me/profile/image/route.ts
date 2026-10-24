@@ -4,6 +4,7 @@ import { UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { handle, requireUser, fail, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
+import { sniffBlob } from "@/core/imageMagic";
 import type { ProfileImagePayload } from "@/core/contracts/settings";
 
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -33,13 +34,16 @@ export async function POST(req: NextRequest) {
     const kind = form.get("kind") === "cover" ? "cover" : form.get("kind") === "avatar" ? "avatar" : null;
     const file = form.get("file");
     if (!kind || !(file instanceof Blob)) return fail("invalid_input");
-    const ext = TYPES[file.type];
-    if (!ext) return fail("invalid_input", { field: "file", message_key: "apiImageInvalid" });
+    if (!TYPES[file.type]) return fail("invalid_input", { field: "file", message_key: "apiImageInvalid" });
     if (file.size > UPLOAD_MAX_BYTES) return fail("invalid_input", { field: "file", message_key: "apiImageTooLarge" });
+    /* A-20 — النوعُ من البايتات لا من التصريح: ما ليس JPEG/PNG/WEBP فعلاً لا يصل المخزن، ويُخزَّن بنوعه الحقيقيّ */
+    const real = await sniffBlob(file);
+    if (!real) return fail("invalid_input", { field: "file", message_key: "apiImageInvalid" });
+    const ext = real.ext;
 
     const supabase = await createClient();
     const path = `${auth.user.id}/${kind}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: real.type });
     if (error) throw new Error(`upload: ${error.message}`);
     const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
 

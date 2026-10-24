@@ -11,4 +11,5 @@ test("real screen crashes stay AppCrash", () => {
   assert.equal(crashKind("messages", "Cannot read property 'x' of undefined"), "AppCrash");
   assert.equal(crashKind("home", "dm category: not on this screen"), "AppCrash");
   assert.equal(crashKind("unknown", "TypeError"), "AppCrash");
+  assert.equal(crashKind("widget", "TypeError: undefined is not a function"), "AppCrash");
 });

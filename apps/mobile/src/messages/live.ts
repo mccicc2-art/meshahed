@@ -36,6 +36,11 @@ let wakeTimer: ReturnType<typeof setTimeout> | null = null;
 let appSub: { remove: () => void } | null = null;
 let tokenSub: (() => void) | null = null;
 let lastToken: string | null = null;
+/* A-19 (المدقّق ٢٤ أكتوبر) — إعادةُ الاشتراك بعد سقوط القناة */
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retries = 0;
+const RETRY_BASE_MS = 2_000;
+const RETRY_MAX_MS = 60_000;
 let active = AppState.currentState === "active";
 
 /** يعيد طلبَ الصندوق (والمحادثةِ وسطرِ حضورها — كلُّها تحت المفتاح نفسِه) — المرئيُّ وحدَه */
@@ -76,16 +81,49 @@ async function subscribe() {
   let ch = supabase.channel(`inbox:${Date.now()}`);
   for (const table of TABLES) ch = ch.on("postgres_changes", { event: "*", schema: "public", table }, () => wake());
   let reported = false;
-  channel = ch.subscribe((status) => {
-    if (reported) return;
-    if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+  const mine = ch;
+  channel = ch;
+  ch.subscribe((status) => {
+    if (!reported && (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) {
       reported = true;
       mark("messages.live", Date.now() - t0, status === "SUBSCRIBED" ? { result: "ok" } : { result: "none", why: status.toLowerCase().slice(0, 16) });
+    }
+    if (status === "SUBSCRIBED") {
+      /* عادت بعد سقوط ⇒ ما فاتها في الأثناء يُجلب الآن */
+      if (retries > 0) wake(0);
+      retries = 0;
+      return;
+    }
+    /* A-19 (المدقّق ٢٤ أكتوبر) — قناةٌ سقطت (خطأ · مهلة · إغلاقٌ لم نطلبه) كانت تبقى في `channel` فلا يُعاد الاشتراكُ حتى
+       الخروجِ إلى الخلفيّة والعودة، والرئيسيّةُ بلا استطلاعٍ تعتمد عليها وحدَها في الشارات. الآن تُزال ويُعاد الاشتراكُ بمهلةٍ
+       تتضاعف (٢ث … ٦٠ث). وإغلاقُنا نحن (`unsubscribe`) يُفرغ `channel` قبله فلا يُعدّ سقوطاً. */
+    if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") && channel === mine) {
+      channel = null;
+      lastToken = null;
+      void supabase.removeChannel(mine).catch(() => {});
+      scheduleRetry();
     }
   });
 }
 
+function scheduleRetry() {
+  if (retryTimer || !active || holders === 0) return;
+  const delay = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** Math.min(retries, 5));
+  retries++;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    void subscribe();
+  }, delay);
+}
+
+function clearRetry() {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  retries = 0;
+}
+
 function unsubscribe() {
+  clearRetry();
   const ch = channel;
   channel = null;
   /* الاشتراكُ التالي يضع الرمزَ من جديد — حدثُ دخولٍ أو خروجٍ في العميل قد يكون أعاد القناةَ إلى المفتاح العامّ بيننا */
