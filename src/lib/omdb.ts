@@ -17,6 +17,7 @@ import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
 import { createClient } from "./supabase/server";
 import { createServiceClient } from "./supabase/service";
 import { tracedFetch } from "@/lib/reqTrace";
+import { ratingNumber, readSeasonList, type OmdbSeasonEpisode } from "@/core/omdbSeason";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -221,6 +222,12 @@ export async function imdbIdByName(
  * ستأكل الحصة. تُجلب عند طلب المستخدم وحده (زرّ كشف التقييمات في
  * متتبّع الحلقات — مخفية افتراضياً لأنها قد تحرق الأحداث).
  * حلقة بلا تقييم («N/A» — لم تُبثّ أو لا أصوات) لا تدخل الخريطة أصلاً.
+ *
+ * 🆕 D-1553 — **وقائمةُ الموسم عند OMDb ناقصة** (بلاغ أحمد، Lost الموسم الأول:
+ * الحلقات ١ و٣ و٨ و٩ بلا تقييم ولها تقييمٌ في IMDb): ما بُثّ منها بلا رقم يُسأل
+ * عنه في سجلّه المفرد (`&Episode=n`)، **وبسقفٍ للموسم** (`MAX_EPISODE_LOOKUPS`)
+ * — كلُّ سؤالٍ مخبّأٌ يوماً كاملاً كالقائمة نفسها، فالكلفةُ مرّةً في اليوم لا مع كلّ فتح.
+ * وما بقي بلا رقمٍ بعدها يبقى فارغاً — لا بديلَ من مصدرٍ آخر (قرار أحمد: IMDb وحدَه).
  */
 export async function seasonImdbRatings(
   imdbId: string | null | undefined,
@@ -236,18 +243,33 @@ export async function seasonImdbRatings(
     if (!res.ok) return {};
     const j = (await res.json()) as {
       Response?: string;
-      Episodes?: { Episode?: string; imdbRating?: string }[];
+      Episodes?: OmdbSeasonEpisode[];
     };
     if (j.Response === "False" || !j.Episodes) return {};
-    const out: Record<number, number> = {};
-    for (const e of j.Episodes) {
-      const num = Number(e.Episode);
-      const rating = Number(e.imdbRating);
-      if (Number.isInteger(num) && Number.isFinite(rating)) out[num] = rating;
-    }
-    return out;
+    const { ratings, missing } = readSeasonList(j.Episodes, new Date().toISOString().slice(0, 10));
+    const found = await Promise.all(missing.map((n) => episodeImdbRating(key, imdbId, season, n)));
+    missing.forEach((n, i) => {
+      const r = found[i];
+      if (r !== null) ratings[n] = r;
+    });
+    return ratings;
   } catch {
     return {};
+  }
+}
+
+/** تقييمُ حلقةٍ واحدة من سجلّها المفرد — **وأيُّ فشلٍ غيابٌ لا خطأ** (الموسمُ لا يسقط بحلقة) */
+async function episodeImdbRating(key: string, imdbId: string, season: number, episode: number): Promise<number | null> {
+  try {
+    const res = await tracedFetch(
+      `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}&Season=${season}&Episode=${episode}`,
+      { next: { revalidate: 86400 } },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as { Response?: string; imdbRating?: string };
+    return j.Response === "False" ? null : ratingNumber(j.imdbRating);
+  } catch {
+    return null;
   }
 }
 
