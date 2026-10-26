@@ -965,12 +965,19 @@ export function WebLayer() {
        هناك بلا محيل. الحارسُ للمستند وحدَه؛ الإطارُ يُحمَّل في مكانه كما في أندرويد. */
     if (req.isTopFrame === false) return true;
     let host = "";
+    let scheme = "";
     try {
-      host = new URL(req.url).hostname;
+      const u = new URL(req.url);
+      host = u.hostname;
+      scheme = u.protocol;
     } catch {
       return true;
     }
     if (!host || INSIDE.has(host)) return true;
+    /* A-25 (المدقّق ٢٦ أكتوبر) — لا يُسلَّم إلى النظام إلّا `https:` و`mailto:`: كان كلُّ تنقّلٍ خارج نطاقنا يُفتح
+       أيّاً كان مخطّطُه، فيستطيع رابطٌ في الصفحة أن يوقظ تطبيقاً آخر أو مخطّطَنا نفسَه بلا قصد (من صنف A-07).
+       غيرُ ذلك يُسقط بصمت — والصفحةُ لا تحوي اليوم رابطاً خارجيّاً بغيرهما. */
+    if (scheme !== "https:" && scheme !== "mailto:") return false;
     // حزامُ أمان: لو وصلت الصفحةُ إلى Google بطريقٍ آخر يُفتح خارج الغلاف لا داخله
     Linking.openURL(req.url).catch(() => {});
     return false;
