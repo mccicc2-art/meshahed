@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eraRange, parseBrowse, seasonRange, type BrowseQuery } from "@/core/browse";
+import { eraRange, lengthSpecFor, parseBrowse, seasonRange, type BrowseQuery } from "@/core/browse";
 /* 🔑 **ومفرداتُ الشرط هي `FILTER_KEYS` بعينها** (D-816/D-818) — **ولا
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
@@ -138,6 +138,7 @@ export async function browseToFilter(
         : undefined,
     status: browse.status?.code ?? null,
     companies: studioId ? [studioId] : undefined,
+    length: lengthSpecFor(browse, anime),
   };
 
   const genreIds = browse.genre

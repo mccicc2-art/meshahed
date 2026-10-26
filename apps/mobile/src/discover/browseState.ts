@@ -7,6 +7,8 @@ import {
   BROWSE_STATUSES,
   BROWSE_STUDIOS,
   BROWSE_TAGS,
+  BROWSE_LENGTHS,
+  browseLengthName,
   browseCountryName,
   browseEraName,
   browseGenreName,
@@ -40,9 +42,11 @@ export type BrowseState = {
   st: string | null;
   se: string | null;
   std: string | null;
+  /** 🆕 D-1551 — طولُ العمل (`len`): مواسمُ المسلسلات أو حلقاتُ الأنمي */
+  len: string | null;
 };
 
-export const EMPTY_BROWSE: BrowseState = { g: null, lang: null, co: null, p: null, era: null, rate: null, tag: null, award: null, st: null, se: null, std: null };
+export const EMPTY_BROWSE: BrowseState = { g: null, lang: null, co: null, p: null, era: null, rate: null, tag: null, award: null, st: null, se: null, std: null, len: null };
 
 export function browseActive(b: BrowseState): boolean {
   return Object.values(b).some((v) => v !== null);
@@ -71,6 +75,7 @@ export function browseFromQuery(q: string): BrowseState {
     st: p.get("st"),
     se: p.get("se"),
     std: p.get("std"),
+    len: p.get("len"),
   };
 }
 
@@ -126,12 +131,17 @@ export function axisValueLabel(
       const x = BROWSE_STUDIOS.find((e) => e.slug === v);
       return x ? browseStudioName(x, locale) : v;
     }
+    case "len": {
+      const x = BROWSE_LENGTHS.find((e) => e.slug === v);
+      return x ? browseLengthName(x, locale) : v;
+    }
   }
 }
 
 /** المحاورُ التي تنطبق على تبويبٍ — القواعدُ نفسُها التي في `DiscoverFilterSheet` الويب */
 export function axesForTab(tab: CuratedTab): AxisKey[] {
-  if (tab === "anime") return ["g", "tag", "lang", "co", "p", "era", "rate", "se", "std"];
-  if (tab === "shows") return ["g", "tag", "lang", "co", "p", "era", "rate", "award", "st"];
+  /* 🆕 D-1551 — «الطول» في الخانة الفارغة: حلقاتُ الأنمي ومواسمُ المسلسلات (الأفلامُ ثمانيةٌ فلا خانةَ فارغة) */
+  if (tab === "anime") return ["g", "tag", "lang", "co", "p", "era", "rate", "se", "std", "len"];
+  if (tab === "shows") return ["g", "tag", "lang", "co", "p", "era", "rate", "award", "st", "len"];
   return ["g", "tag", "lang", "co", "p", "era", "rate", "award"];
 }

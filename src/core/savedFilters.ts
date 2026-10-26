@@ -47,6 +47,8 @@ export const FILTER_KEYS = [
   "st",
   "se",
   "std",
+  /* D-1551 — طولُ العمل: مواسمُ المسلسلات أو حلقاتُ الأنمي */
+  "len",
 ] as const;
 
 export type FilterKey = (typeof FILTER_KEYS)[number];

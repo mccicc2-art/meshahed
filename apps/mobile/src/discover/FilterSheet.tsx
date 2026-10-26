@@ -1,9 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import {
   BROWSE_COUNTRIES,
-  BROWSE_COUNTRY_TOP,
+  BROWSE_LENGTHS,
   BROWSE_ERAS,
   BROWSE_GENRES,
   BROWSE_LANGS,
@@ -21,7 +21,8 @@ import {
   browseStudioName,
   browseTagName,
   genreFitsType,
-  searchCountries,
+  browseLengthName,
+  splitCountries,
 } from "@/core/browse";
 import { AWARDS, awardName } from "@/core/awards";
 import { regionName } from "@/core/region";
@@ -38,7 +39,6 @@ import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { Chip } from "../library/Chip";
-import { SYSTEM_FONT_CAP } from "../fontScale";
 import { axesForTab, axisValueLabel, browseActive, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import type { CuratedTab, ProvidersPayload, DiscoverViewPayload } from "../contracts";
 
@@ -100,7 +100,6 @@ export function FilterSheet({
   const [draft, setDraft] = useState<BrowseState>(value);
   /* 🆕 D-1550 — المحورُ المفتوحةُ لوحتُه تحت صفّه (كان: قائمةً تحلّ محلَّ الورقة) */
   const [open, setOpen] = useState<AxisKey | null>(null);
-  const [countryQ, setCountryQ] = useState("");
   const scrollRef = useRef<ScrollView>(null);
   const rowY = useRef<Record<number, number>>({});
   /* D-997 — منتقي صفوفك: `{i, field}` — القائمةُ نفسُها (Radio) بخيارات النوع أو الموضوع */
@@ -128,6 +127,8 @@ export function FilterSheet({
     st: t.browseStatusGroup,
     se: t.browseSeasonGroup,
     std: t.browseStudioGroup,
+    /* D-1551 — المقياسُ يتبع التبويب: حلقاتُ الأنمي ومواسمُ المسلسلات */
+    len: tab === "anime" ? t.browseEpisodesGroup : t.browseSeasonsGroup,
   };
   const anyLabel: Record<AxisKey, string> = {
     g: t.browseAllGenres,
@@ -141,6 +142,7 @@ export function FilterSheet({
     st: t.browseAnyStatus,
     se: t.browseAnySeason,
     std: t.browseAnyStudio,
+    len: tab === "anime" ? t.browseAnyEpisodes : t.browseAnySeasons,
   };
   /* خياراتُ كلِّ محور — من `core/browse` حرفاً، بالقيمة التي يقرؤها الرابط */
   const options = useMemo((): Record<AxisKey, { value: string | number; label: string }[]> => ({
@@ -155,7 +157,8 @@ export function FilterSheet({
     st: BROWSE_STATUSES.map((x) => ({ value: x.slug, label: browseStatusName(x, lang) })),
     se: BROWSE_SEASONS.map((x) => ({ value: x.slug, label: browseSeasonName(x, lang) })),
     std: BROWSE_STUDIOS.map((x) => ({ value: x.slug, label: browseStudioName(x, lang) })),
-  }), [type, lang, provs, t]);
+    len: BROWSE_LENGTHS.filter((x) => x.kind === (tab === "anime" ? "episodes" : "seasons")).map((x) => ({ value: x.slug, label: browseLengthName(x, lang) })),
+  }), [type, lang, provs, t, tab]);
 
   const set = (key: AxisKey, v: string | number | null) => setDraft((d) => ({ ...d, [key]: v }) as BrowseState);
   const valueOf = (key: AxisKey) => draft[key];
@@ -341,7 +344,6 @@ export function FilterSheet({
                     <Pressable
                       key={key}
                       onPress={() => {
-                        setCountryQ("");
                         setOpen(isOpen ? null : key);
                         /* اللوحةُ تحت صفٍّ أسفلَ الورقة قد تقع خارج النظر — يُمرَّر إلى صفّها */
                         if (!isOpen) requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, (rowY.current[ri] ?? 0) - 8), animated: true }));
@@ -349,7 +351,11 @@ export function FilterSheet({
                       accessibilityRole="button"
                       accessibilityState={{ expanded: isOpen }}
                       style={({ pressed }) => ({
-                        flex: 1,
+                        /* 🔴 D-1551 — `flexBasis: 0` صريحاً: «الحالة» الوحيدةُ في صفّها كانت أعرضَ من أخواتها (لقطةُ أحمد) —
+                           الخانةُ الفارغةُ بجانبها تنكمش إلى محتواها الصفريّ فتتمدّد البطاقةُ في مكانها. القاعدةُ صفرٌ للاثنين */
+                        flexGrow: 1,
+                        flexShrink: 1,
+                        flexBasis: 0,
                         minWidth: 0,
                         flexDirection: "row",
                         alignItems: "center",
@@ -375,7 +381,7 @@ export function FilterSheet({
                     </Pressable>
                   );
                 })}
-                {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+                {row.length === 1 ? <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }} /> : null}
               </View>
               {open && col >= 0 ? (
                 <View style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, backgroundColor: tokens.surface, padding: 12, gap: 10, marginTop: 4 }}>
@@ -386,8 +392,6 @@ export function FilterSheet({
                   />
                   {open === "co" ? (
                     <CountryPanel
-                      q={countryQ}
-                      onQ={setCountryQ}
                       current={(valueOf("co") as string | null) ?? null}
                       anyLabel={anyLabel.co}
                       lang={lang}
@@ -404,7 +408,9 @@ export function FilterSheet({
                         return (
                           <Chip
                             key={String(o.value)}
-                            size="md"
+                            /* D-1551 — رقائقُ اللوحة أصغر (١٢ لا ١٤، أحمد: «النتائج صغر خطها»)، ولمسُها أوسعُ من شكلها */
+                            size="sm"
+                            hitSlop={6}
                             active={sel}
                             label={o.label}
                             onPress={() => {
@@ -438,60 +444,42 @@ function pairs<T>(xs: readonly T[]): T[][] {
 }
 
 /**
- * 🆕 D-1550 — **لوحةُ البلد: بحثٌ ثمّ «الأكثر استخداماً»** (أحمد «أ»): البلدانُ أطولُ القوائم، فرقائقُها كلُّها جدارٌ
- * يُمرَّر. اثنا عشر ظاهرةً بلا كتابة (`BROWSE_COUNTRY_TOP`)، والباقي بحرفين. **والمختارُ يبقى ظاهراً** وإن لم يكن منها.
+ * 🆕 D-1551 — **لوحةُ البلد: الأشهرُ ثمّ «+ المزيد»** (أحمد: «حط الاشهر اولا بعدين مور وتظهر الباقية») — ينقض بحثَ
+ * D-1550: إحدى وثلاثون دولةً لا تحتاج حقلاً يُكتب فيه. **والمختارُ من الباقية يفتح اللوحةَ كاملةً** فلا يختفي اختيارُه.
  */
 function CountryPanel({
-  q,
-  onQ,
   current,
   anyLabel,
   lang,
   onPick,
 }: {
-  q: string;
-  onQ: (v: string) => void;
   current: string | null;
   anyLabel: string;
   lang: "ar" | "en";
   onPick: (code: string | null) => void;
 }) {
-  const { t, tokens } = useApp();
-  const typing = q.trim().length > 0;
-  const list = typing
-    ? searchCountries(q)
-    : [
-        ...(current && !BROWSE_COUNTRY_TOP.includes(current) ? BROWSE_COUNTRIES.filter((c) => c.code === current) : []),
-        ...BROWSE_COUNTRY_TOP.map((code) => BROWSE_COUNTRIES.find((c) => c.code === code)).filter((c): c is (typeof BROWSE_COUNTRIES)[number] => !!c),
-      ];
+  const { t, locale } = useApp();
+  const { top, rest } = useMemo(() => splitCountries(), []);
+  const [more, setMore] = useState(() => !!current && rest.some((c) => c.code === current));
   return (
     <>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
-        <Icon name="search" size={16} color={tokens.muted} />
-        <TextInput
-          maxFontSizeMultiplier={SYSTEM_FONT_CAP}
-          value={q}
-          onChangeText={onQ}
-          placeholder={t.browseCountrySearch}
-          placeholderTextColor={tokens.muted}
-          returnKeyType="search"
-          autoCorrect={false}
-          style={{ flex: 1, color: tokens.fg, fontSize: 15, paddingVertical: 8, textAlign: lang === "ar" ? "right" : "left" }}
-        />
-        {typing ? (
-          <Pressable onPress={() => onQ("")} hitSlop={10} accessibilityLabel={t.closeLabel}>
-            <Icon name="close" size={14} color={tokens.muted} />
-          </Pressable>
-        ) : null}
-      </View>
-      {typing ? null : <Text size={11} muted>{t.browseMostUsed}</Text>}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {typing ? null : <Chip size="md" active={current === null} label={anyLabel} onPress={() => onPick(null)} />}
-        {list.map((c) => (
-          <Chip key={c.code} size="md" active={current === c.code} label={browseCountryName(c, lang)} onPress={() => onPick(c.code)} />
+        <Chip size="sm" hitSlop={6} active={current === null} label={anyLabel} onPress={() => onPick(null)} />
+        {top.map((c) => (
+          <Chip key={c.code} size="sm" hitSlop={6} active={current === c.code} label={browseCountryName(c, lang)} onPress={() => onPick(c.code)} />
         ))}
-        {typing && list.length === 0 ? <Text size={13} muted>{t.browseNoMatch}</Text> : null}
+        {more ? null : <Chip size="sm" hitSlop={6} active={false} label={t.browseMoreCount(num(rest.length, locale))} onPress={() => setMore(true)} />}
       </View>
+      {more ? (
+        <>
+          <Text size={11} muted>{t.browseAllCountries}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {rest.map((c) => (
+              <Chip key={c.code} size="sm" hitSlop={6} active={current === c.code} label={browseCountryName(c, lang)} onPress={() => onPick(c.code)} />
+            ))}
+          </View>
+        </>
+      ) : null}
     </>
   );
 }

@@ -17,7 +17,7 @@ import { railGuard, topChartRail, animeMovieRail } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import { getSuggestions, animePool, tabPool } from "@/lib/suggest";
 import { getLibState } from "@/lib/libState";
-import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, seasonRange, type BrowseQuery } from "@/core/browse";
+import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, eraRange, lengthSpecFor, seasonRange, type BrowseQuery } from "@/core/browse";
 import { uniqueMyRows, type MyRow } from "@/core/myRows";
 import type { Locale } from "@/core/i18n";
 import type { RailWin } from "@/core/browse";
@@ -109,6 +109,8 @@ async function browseBase(b: BrowseQuery, region: string, anime: boolean): Promi
     keywords: anime ? [ANIME_KEYWORD, ...(tagId ? [tagId] : [])] : tagId ? [tagId] : undefined,
     companies: studioId ? [studioId] : undefined,
     ...(anime ? {} : { status: b.status?.code ?? null }),
+    /* D-1551 — مواسمُ المسلسلات أو حلقاتُ الأنمي، تصفيةٌ بعد `/discover` (`tmdb.ts`) */
+    length: lengthSpecFor(b, anime),
   };
   return { base, upcoming: b.era?.upcoming === true, unmute: !!b.lang || !!b.country };
 }

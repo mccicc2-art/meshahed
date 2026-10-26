@@ -25,6 +25,8 @@ import {
   browseStatusName,
   browseSeasonName,
   browseStudioName,
+  BROWSE_LENGTHS,
+  browseLengthName,
 } from "@/core/browse";
 import { AWARDS, awardName } from "@/core/awards";
 import { tap } from "@/lib/haptics";
@@ -89,6 +91,7 @@ export function DiscoverFilters({
   status,
   season,
   studio,
+  length = null,
   edit = null,
   listsFilters,
   tabPrefs,
@@ -137,6 +140,8 @@ export function DiscoverFilters({
   status?: string | null;
   season?: string | null;
   studio?: string | null;
+  /** 🆕 D-1551 — طولُ العمل: مواسمُ المسلسلات أو حلقاتُ الأنمي */
+  length?: string | null;
   /** 🆕 D-875: قائمةٌ ذكيّةٌ يُعدَّل شرطُها — **يُحمل في كلِّ رابطٍ يُبنى هنا** وإلّا ضاع وضعُ التعديل عند أوّل لمسة */
   edit?: string | null;
 }) {
@@ -158,6 +163,7 @@ export function DiscoverFilters({
     st?: string | null;
     se?: string | null;
     std?: string | null;
+    len?: string | null;
     /** 🆕 **«مسحتُ اختياري»** (D-817) — «امسح الكل» وحدَها تمرّرها */
     nf?: true;
   }) {
@@ -182,6 +188,7 @@ export function DiscoverFilters({
       st: next.st === undefined ? status : next.st,
       se: next.se === undefined ? season : next.se,
       std: next.std === undefined ? studio : next.std,
+      len: next.len === undefined ? length : next.len,
       /* 🆕 **ولا تُورَّث من الحالة** (D-817): **علامةُ فعلٍ لا حالةُ
          صفحة** — **ولو ورثتها كلُّ لمسةِ فلترٍ بعدها لبقيت في الرابط
          وأبطلت الافتراضيَّ إلى الأبد.** */
@@ -250,6 +257,8 @@ export function DiscoverFilters({
             st: next === "shows" ? status : null,
             se: next === "anime" ? season : null,
             std: next === "anime" ? studio : null,
+            /* D-1551 — المقياسُ يتبع التبويب (مواسمُ المسلسلات، حلقاتُ الأنمي): لا يعبر بينهما */
+            len: null,
           };
     /* **و`edit` يعبر التبويبَ أيضاً** (D-875): **نوعُ الشرط يتبع التبويب**
        (`sectionToRuleType`)، **فمن نقل قائمتَه من الأفلام إلى المسلسلات قصد.** */
@@ -358,6 +367,14 @@ export function DiscoverFilters({
       clear: () => go({ std: null }),
     });
   }
+  const lengthObj = BROWSE_LENGTHS.find((x) => x.slug === length);
+  if (lengthObj) {
+    chips.push({
+      key: "length",
+      label: browseLengthName(lengthObj, loc),
+      clear: () => go({ len: null }),
+    });
+  }
   if (rate) {
     chips.push({
       key: "rate",
@@ -378,6 +395,7 @@ export function DiscoverFilters({
     status: status ?? null,
     season: season ?? null,
     studio: studio ?? null,
+    length: length ?? null,
   };
 
   /* أيّ محاورَ تفتحها الورقة (D-180): كلُّها في الأعمال، وأربعةٌ في
@@ -477,6 +495,7 @@ export function DiscoverFilters({
                   st: null,
                   se: null,
                   std: null,
+                  len: null,
                 })
               }
             />
@@ -514,6 +533,7 @@ export function DiscoverFilters({
               st: next.status,
               se: next.season,
               std: next.studio,
+              len: next.length,
             });
           }}
         />

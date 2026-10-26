@@ -248,30 +248,69 @@ export function browseCountryName(c: BrowseCountry, locale: "ar" | "en") {
 }
 
 /**
- * 🆕 D-1550 — **«الأكثر استخداماً» تحت بحث البلد** (أحمد «أ»): اثنا عشر بلداً تُرى بلا كتابة.
- * ⚠️ **قائمةٌ ثابتةٌ بالاختيار لا بالقياس**: لا سجلَّ عندنا لما يختاره الأعضاءُ في الفلتر (المسودّةُ محليّة
- * والرابطُ لا يُخزَّن) — فالترتيبُ هنا جمهورُ Loopz المعروف (الخليجُ ومصرُ ثمّ الأكثرُ إنتاجاً عالمياً)،
- * ويُستبدل بالمقيس يومَ يوجد مصدرُه. والباقي يصل بحرفين من البحث.
+ * 🆕 D-1551 — **الأشهرُ أوّلاً، والباقي خلف «المزيد»** (أحمد ٢٦ أكتوبر: «دامه ٣١ فقط ما يستاهل بحث» ثمّ «حط الاشهر
+ * اولا بعدين مور وتظهر الباقية»، والترتيبُ «السعودية ثم مصر ثم ترتيبك»). ينقض بحثَ D-1550: إحدى وثلاثون دولةً لا
+ * تحتاج حقلاً يُكتب فيه، تحتاج أن يُرى الأشهرُ بلا تمرير.
+ * ⚠️ **ترتيبٌ بالاختيار لا بالقياس**: لا سجلَّ لما يختاره الأعضاء في الفلتر (المسودّةُ محليّة والرابطُ لا يُخزَّن).
  */
-export const BROWSE_COUNTRY_TOP: readonly string[] = ["SA", "EG", "KW", "AE", "US", "GB", "KR", "JP", "TR", "IN", "ES", "FR"];
+export const BROWSE_COUNTRY_TOP: readonly string[] = ["SA", "EG", "US", "GB", "JP", "KR", "TR", "ES", "IN", "FR", "DE"];
 
-/** تطبيعٌ للمطابقة: الألفاتُ والتاءُ المربوطة والياءُ والحركاتُ — «امريكا» تجد «أمريكا» */
-function foldSearch(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[ً-ْـ]/g, "")
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
-    .replace(/ü/g, "u")
-    .trim();
+/** البلدان الأشهر ثمّ الباقية بترتيب القائمة — طرفا لوحة البلد */
+export function splitCountries(): { top: BrowseCountry[]; rest: BrowseCountry[] } {
+  const top = BROWSE_COUNTRY_TOP.map((code) => BROWSE_COUNTRIES.find((c) => c.code === code)).filter(
+    (c): c is BrowseCountry => !!c,
+  );
+  return { top, rest: BROWSE_COUNTRIES.filter((c) => !BROWSE_COUNTRY_TOP.includes(c.code)) };
 }
 
-/** البلدانُ التي يطابق اسمُها (بالعربيّة أو الإنجليزيّة) ما كُتب — بترتيب القائمة */
-export function searchCountries(q: string): BrowseCountry[] {
-  const n = foldSearch(q);
-  if (!n) return BROWSE_COUNTRIES;
-  return BROWSE_COUNTRIES.filter((c) => foldSearch(c.ar).includes(n) || foldSearch(c.en).includes(n) || c.code.toLowerCase() === n);
+/**
+ * 🆕 D-1551 — **طولُ العمل** في الخانة الفارغة من شبكة الفلاتر (أحمد: «ما نبي مدة الحلقة .. نبي طول المسلسل» ثمّ
+ * «عدد المواسم»، وللأنمي «عدد الحلقات» بحدود الكور: «اعتمد»). المسلسلاتُ بالمواسم والأنمي بالحلقات، لأنّ TMDB يسجّل
+ * كثيراً من الأنمي موسماً واحداً بمئات الحلقات — فمقياسُ المواسم يضع One Piece في «موسم واحد».
+ * ⚠️ **TMDB لا يصفّي بهما**: الخادمُ يقرأ تفاصيلَ كلِّ نتيجةٍ ويُسقط ما لا يطابق (`tmdb.ts`) — فالصفوفُ قد تقصر.
+ * `spec` هو ما يصل الخادم: `s:<min>-<max>` للمواسم و`e:<min>-<max>` للحلقات، والحدُّ الأعلى الفارغ مفتوح.
+ */
+export interface BrowseLength {
+  slug: string;
+  ar: string;
+  en: string;
+  kind: "seasons" | "episodes";
+  spec: string;
+}
+
+export const BROWSE_LENGTHS: BrowseLength[] = [
+  { slug: "s1", ar: "موسم واحد", en: "1 season", kind: "seasons", spec: "s:1-1" },
+  { slug: "s2-3", ar: "٢–٣ مواسم", en: "2–3 seasons", kind: "seasons", spec: "s:2-3" },
+  { slug: "s4", ar: "٤ مواسم فأكثر", en: "4+ seasons", kind: "seasons", spec: "s:4-" },
+  { slug: "e12", ar: "قصير · ١٢ حلقة أو أقل", en: "Short · up to 12 eps", kind: "episodes", spec: "e:1-12" },
+  { slug: "e26", ar: "متوسط · ١٣–٢٦", en: "Medium · 13–26 eps", kind: "episodes", spec: "e:13-26" },
+  { slug: "e100", ar: "طويل · ٢٧–١٠٠", en: "Long · 27–100 eps", kind: "episodes", spec: "e:27-100" },
+  { slug: "e101", ar: "طويل جداً · +١٠٠", en: "Very long · 100+ eps", kind: "episodes", spec: "e:101-" },
+];
+
+export function browseLengthName(x: BrowseLength, locale: "ar" | "en") {
+  return locale === "en" ? x.en : x.ar;
+}
+
+/**
+ * حدُّ الطول الذي يصل الخادم لهذا التبويب — **المقياسُ يتبع التبويب**: المواسمُ للمسلسلات والحلقاتُ للأنمي. حالةُ الفلتر
+ * في التطبيق مشتركةٌ بين التبويبات، فاختيارُ «موسم واحد» في المسلسلات لا يُفرغ صفوفَ الأنمي.
+ */
+export function lengthSpecFor(b: { length: BrowseLength | null } | null | undefined, anime: boolean): string | null {
+  const x = b?.length;
+  if (!x) return null;
+  return x.kind === (anime ? "episodes" : "seasons") ? x.spec : null;
+}
+
+/** هل يطابق العملُ حدَّ الطول؟ `spec` كما في `BROWSE_LENGTHS` — والقيمةُ المجهولة لا تطابق */
+export function lengthMatches(spec: string, seasons: number | null | undefined, episodes: number | null | undefined): boolean {
+  const m = /^([se]):(\d+)-(\d*)$/.exec(spec);
+  if (!m) return true;
+  const n = m[1] === "s" ? seasons : episodes;
+  if (typeof n !== "number" || n <= 0) return false;
+  const lo = Number(m[2]);
+  const hi = m[3] ? Number(m[3]) : Infinity;
+  return n >= lo && n <= hi;
 }
 
 
@@ -622,6 +661,8 @@ export interface BrowseQuery {
   season: BrowseSeason | null;
   /** استوديو الأنمي — تبويبُ الأنمي وحده (D-196) */
   studio: BrowseStudio | null;
+  /** 🆕 D-1551 — طولُ العمل: مواسمُ المسلسلات أو حلقاتُ الأنمي */
+  length: BrowseLength | null;
   /** هل المستخدم يتصفّح فعلاً؟ لو لا، تبقى صفحة اكتشف على صفوفها المنسّقة */
   active: boolean;
 }
@@ -648,6 +689,7 @@ export function parseBrowse(params: {
   st?: string;
   se?: string;
   std?: string;
+  len?: string;
 }): BrowseQuery {
   const type: BrowseType =
     params.type === "movie" || params.type === "tv" ? params.type : "all";
@@ -677,6 +719,7 @@ export function parseBrowse(params: {
   const status = BROWSE_STATUSES.find((x) => x.slug === params.st) ?? null;
   const season = BROWSE_SEASONS.find((x) => x.slug === params.se) ?? null;
   const studio = BROWSE_STUDIOS.find((x) => x.slug === params.std) ?? null;
+  const length = BROWSE_LENGTHS.find((x) => x.slug === params.len) ?? null;
 
   return {
     type,
@@ -691,6 +734,7 @@ export function parseBrowse(params: {
     status,
     season,
     studio,
+    length,
     // الجهة (type) لا تجعل التصفّح «نشطاً»: صارت تبويبَ رأسٍ (أفلام/
     // مسلسلات — طلب أحمد) لا فلتراً، وتبديلها يعيد ضبط الرفوف —
     // كالنافذة تماماً. الفلاتر الحقيقية وحدها تقلب الصفحة لوضع النتائج
@@ -705,7 +749,8 @@ export function parseBrowse(params: {
       award !== null ||
       status !== null ||
       season !== null ||
-      studio !== null,
+      studio !== null ||
+      length !== null,
   };
 }
 
@@ -733,7 +778,9 @@ export function needsDiscover(q: BrowseQuery) {
        و`with_companies` ومدى التواريخ معاملاتُ `/discover` وحده */
     q.status !== null ||
     q.season !== null ||
-    q.studio !== null
+    q.studio !== null ||
+    /* D-1551 — الطولُ تصفيةٌ على نتائج `/discover` (تفاصيلُ كلِّ عمل)، والقوائمُ الجاهزة لا تمرّ بها */
+    q.length !== null
   );
 }
 
@@ -764,6 +811,8 @@ export function browseHref(q: {
   st?: string | null;
   se?: string | null;
   std?: string | null;
+  /** 🆕 D-1551 — طولُ العمل */
+  len?: string | null;
   /**
    * 🆕 **«لا فلتر» صريحةً** (D-817) — **تفرّق بين «لم أختر» و«مسحتُ
    * اختياري».** **ورابطٌ عارٍ يعني الأوّل**، **فيطبّق الخادمُ الفلترَ
@@ -801,6 +850,7 @@ export function browseHref(q: {
   if (q.st) p.set("st", q.st);
   if (q.se) p.set("se", q.se);
   if (q.std) p.set("std", q.std);
+  if (q.len) p.set("len", q.len);
   if (q.award) p.set("award", q.award);
   if (q.nf) p.set("nf", "1");
   if (q.edit) p.set("edit", q.edit);
@@ -823,6 +873,7 @@ export function browseKey(q: BrowseQuery, page = 1) {
     q.status?.slug ?? "any",
     q.season?.slug ?? "any",
     q.studio?.slug ?? "any",
+    q.length?.slug ?? "any",
     page,
   ].join(":");
 }
@@ -833,5 +884,6 @@ export function browseKey(q: BrowseQuery, page = 1) {
  * كانت في `news/page.tsx` وصار لها قارئٌ ثانٍ (التطبيق، D-992).
  */
 export function localAxesOnly(b: BrowseQuery): boolean {
-  return !b.tag && !b.award && !b.status && !b.season && !b.studio;
+  /* D-1551 — والطولُ ليس محلّيّاً: يحتاج تفاصيلَ كلِّ عملٍ من TMDB */
+  return !b.tag && !b.award && !b.status && !b.season && !b.studio && !b.length;
 }

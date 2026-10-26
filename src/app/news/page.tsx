@@ -17,7 +17,7 @@ import {
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
 import { parseMyRowsByTab, isMyRowsTab, uniqueMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
-import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/core/browse";
+import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, lengthSpecFor } from "@/core/browse";
 import { LOOPZ_PERSON } from "@/core/loopz";
 import { Avatar } from "@/components/Avatar";
 import { SavedFiltersRow } from "@/components/SavedFiltersRow";
@@ -291,6 +291,7 @@ export default async function NewsPage({
         status={browse.status?.slug ?? null}
         season={browse.season?.slug ?? null}
         studio={browse.studio?.slug ?? null}
+        length={browse.length?.slug ?? null}
         listsFilters={
           tab === "lists"
             ? listsFiltersProps(
@@ -737,6 +738,7 @@ async function MyRowsRails({
     to: eraR.to,
     minRate: browse?.rate ?? null,
     status: browse?.status?.code ?? null,
+    length: lengthSpecFor(browse, anime),
   };
   const qs = browse ? filterQs(browse) : "";
 
@@ -1027,6 +1029,7 @@ function filterQs(b: BrowseQuery): string {
     st: b.status?.slug ?? null,
     se: b.season?.slug ?? null,
     std: b.studio?.slug ?? null,
+    len: b.length?.slug ?? null,
   });
   const i = href.indexOf("?");
   return i === -1 ? "" : href.slice(i + 1);
@@ -1165,6 +1168,8 @@ async function CuratedRails({
     /* الحالةُ محورُ المسلسلات (D-196) — و`discoverParams` يُسقطها في
        الأفلام من نفسه، فلا شرطَ هنا ولا تعريفان للقاعدة */
     status: status?.code ?? null,
+    /* D-1551 — طولُ العمل (مواسم/حلقات) يُصفّى بعد `/discover` */
+    length: lengthSpecFor(browse, false),
   };
 
   /* أعلى ١٠ حسب نافذة الصفّ (D-099 ثم D-445) — انظر تعليقَي
@@ -1762,6 +1767,7 @@ async function AnimeRails({
     minRate: rate,
     keywords: animeKeywords,
     companies: studioId ? [studioId] : undefined,
+    length: lengthSpecFor(browse, true),
   };
 
   /* الصفّان اللذان **يستطيعان** الطاعة: مسارهما `/discover` أصلاً، فيكفي

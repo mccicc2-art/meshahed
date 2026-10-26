@@ -757,10 +757,14 @@ const ar = {
   searchPeopleTitle: "أشخاص",
   browseCountryGroup: "بلد الإنتاج",
   browseAnyCountry: "كل البلدان",
-  /* 🆕 D-1550 — بحثُ البلد في لوحته (أحمد «أ»): القائمةُ أطولُ القوائم فالبحثُ يختصرها لحرفين */
-  browseCountrySearch: "ابحث عن بلد",
-  browseMostUsed: "الأكثر استخداماً",
-  browseNoMatch: "لا نتيجة",
+  /* 🆕 D-1551 — لوحةُ البلد: الأشهرُ ثمّ «المزيد» (نقضَ بحثَ D-1550) */
+  browseMoreCount: (n: string) => `+ المزيد (${n})`,
+  browseAllCountries: "بقية البلدان",
+  /* 🆕 D-1551 — طولُ العمل: مواسمُ المسلسلات، حلقاتُ الأنمي */
+  browseSeasonsGroup: "عدد المواسم",
+  browseAnySeasons: "أي عدد",
+  browseEpisodesGroup: "عدد الحلقات",
+  browseAnyEpisodes: "أي عدد",
   /* الوسم (طلب أحمد ١١ أغسطس) — «عن ماذا؟» لا «من أيّ نوع؟»: زومبي،
      سرقات، سفرٌ عبر الزمن. وسُمّي «الموضوع» لا «الوسم» كي لا يُقرأ
      مصطلحاً تقنياً، ولا «التصنيف» كي لا يلتبس بمحور النوع فوقه */
@@ -3514,9 +3518,12 @@ const en: Dict = {
   searchPeopleTitle: "People",
   browseCountryGroup: "Country of origin",
   browseAnyCountry: "Any country",
-  browseCountrySearch: "Search countries",
-  browseMostUsed: "Most used",
-  browseNoMatch: "No match",
+  browseMoreCount: (n: string) => `+ More (${n})`,
+  browseAllCountries: "Other countries",
+  browseSeasonsGroup: "Seasons",
+  browseAnySeasons: "Any seasons",
+  browseEpisodesGroup: "Episodes",
+  browseAnyEpisodes: "Any length",
   browseTagGroup: "Theme",
   browseAnyTag: "Any theme",
   browseStatusGroup: "Status",

@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
         st: sp.get("st") ?? undefined,
         se: sp.get("se") ?? undefined,
         std: sp.get("std") ?? undefined,
+        len: sp.get("len") ?? undefined,
       });
       /* الجائزةُ سؤالٌ مغلق (طلبُ أحمد ٩ أغسطس): صفٌّ واحد بالفائزين في `popular` والبقيّةُ تصمت */
       if (browse.award) {

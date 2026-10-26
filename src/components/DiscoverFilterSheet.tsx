@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/core/i18n";
 import {
   BROWSE_COUNTRIES,
-  BROWSE_COUNTRY_TOP,
-  searchCountries,
+  BROWSE_LENGTHS,
+  browseLengthName,
+  splitCountries,
   BROWSE_STATUSES,
   BROWSE_SEASONS,
   BROWSE_STUDIOS,
@@ -63,6 +64,8 @@ export interface FilterDraft {
   season: string | null;
   /** slug استوديو الأنمي — تبويبُ الأنمي وحده (D-196) */
   studio: string | null;
+  /** 🆕 D-1551 — slug طولِ العمل: مواسمُ المسلسلات أو حلقاتُ الأنمي */
+  length: string | null;
 }
 
 /**
@@ -216,6 +219,7 @@ export function DiscoverFilterSheet({
     status: null,
     season: null,
     studio: null,
+    length: null,
   };
   const dirty =
     draft.genre !== null ||
@@ -228,7 +232,8 @@ export function DiscoverFilterSheet({
     draft.award !== null ||
     draft.status !== null ||
     draft.season !== null ||
-    draft.studio !== null;
+    draft.studio !== null ||
+    draft.length !== null;
 
   /* 🆕 D-1550 — المحاورُ بترتيب الشبكة القديمة وشروطِها حرفاً، وصفاً لا رسماً — `AxisGrid` يرسمها */
   const axisList: AxisSpec[] = [
@@ -265,6 +270,19 @@ export function DiscoverFilterSheet({
       ? [
           { id: "season", label: t.browseSeasonGroup, anyLabel: t.browseAnySeason, value: draft.season, options: BROWSE_SEASONS.map((x) => ({ value: x.slug, label: browseSeasonName(x, lang) })), onPick: (v: string | null) => set({ season: v }) },
           { id: "studio", label: t.browseStudioGroup, anyLabel: t.browseAnyStudio, value: draft.studio, options: BROWSE_STUDIOS.map((x) => ({ value: x.slug, label: browseStudioName(x, lang) })), onPick: (v: string | null) => set({ studio: v }) },
+        ]
+      : []),
+    /* 🆕 D-1551 — **الخانةُ الفارغة في الشبكة**: المسلسلاتُ بالمواسم والأنمي بالحلقات، والأفلامُ بلا طول (عددُها زوجيّ) */
+    ...((type === "tv" && !isAnime) || isAnime
+      ? [
+          {
+            id: "length",
+            label: isAnime ? t.browseEpisodesGroup : t.browseSeasonsGroup,
+            anyLabel: isAnime ? t.browseAnyEpisodes : t.browseAnySeasons,
+            value: draft.length,
+            options: BROWSE_LENGTHS.filter((x) => x.kind === (isAnime ? "episodes" : "seasons")).map((x) => ({ value: x.slug, label: browseLengthName(x, lang) })),
+            onPick: (v: string | null) => set({ length: v }),
+          },
         ]
       : []),
   ];
@@ -514,7 +532,6 @@ interface AxisSpec {
  */
 function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: ReturnType<typeof getDict> }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [q, setQ] = useState("");
   const rows: AxisSpec[][] = [];
   for (let i = 0; i < axes.length; i += 2) rows.push(axes.slice(i, i + 2));
   return (
@@ -535,7 +552,6 @@ function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: R
                   aria-controls={`axis-panel-${a.id}`}
                   onClick={() => {
                     tap(6);
-                    setQ("");
                     setOpen(isOpen ? null : a.id);
                   }}
                   className={`min-w-0 flex items-center gap-2 rounded-control border bg-surface-2 ps-3.5 pe-3 py-2.5 text-start transition ${
@@ -570,7 +586,7 @@ function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: R
                   }`}
                 />
                 {ax.country ? (
-                  <CountryPanel q={q} onQ={setQ} axis={ax} lang={lang} t={t} onDone={() => setOpen(null)} />
+                  <CountryPanel axis={ax} lang={lang} t={t} onDone={() => setOpen(null)} />
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {[{ value: "", label: ax.anyLabel }, ...ax.options].map((o) => {
@@ -584,7 +600,7 @@ function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: R
                             ax.onPick(o.value || null);
                             setOpen(null);
                           }}
-                          className={chipClass(sel)}
+                          className={chipClass(sel, "sm")}
                         >
                           {o.label}
                         </button>
@@ -602,66 +618,51 @@ function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: R
 }
 
 /**
- * 🆕 D-1550 — **لوحةُ البلد: بحثٌ ثمّ «الأكثر استخداماً»** (أحمد «أ»). الحقلُ بخطّ ١٦ (D-033: سفاري لا يكبّر)،
- * **والمختارُ يبقى ظاهراً** وإن لم يكن من الاثني عشر.
+ * 🆕 D-1551 — **لوحةُ البلد: الأشهرُ ثمّ «+ المزيد»** (أحمد: «حط الاشهر اولا بعدين مور وتظهر الباقية») — ينقض بحثَ
+ * D-1550: إحدى وثلاثون دولةً لا تحتاج حقلاً. **والمختارُ من الباقية يفتح اللوحةَ كاملةً** فلا يختفي اختيارُه.
  */
 function CountryPanel({
-  q,
-  onQ,
   axis,
   lang,
   t,
   onDone,
 }: {
-  q: string;
-  onQ: (v: string) => void;
   axis: AxisSpec;
   lang: "ar" | "en";
   t: ReturnType<typeof getDict>;
   onDone: () => void;
 }) {
-  const typing = q.trim().length > 0;
+  const { top, rest } = splitCountries();
   const cur = axis.value;
-  const list = typing
-    ? searchCountries(q)
-    : [
-        ...(cur && !BROWSE_COUNTRY_TOP.includes(cur) ? BROWSE_COUNTRIES.filter((c) => c.code === cur) : []),
-        ...BROWSE_COUNTRY_TOP.map((code) => BROWSE_COUNTRIES.find((c) => c.code === code)).filter(
-          (c): c is (typeof BROWSE_COUNTRIES)[number] => !!c,
-        ),
-      ];
+  const [more, setMore] = useState(() => !!cur && rest.some((c) => c.code === cur));
   const pick = (v: string | null) => {
     axis.onPick(v);
     onDone();
   };
+  const chip = (code: string, label: string) => (
+    <button key={code} type="button" aria-pressed={cur === code} onClick={() => pick(code)} className={chipClass(cur === code, "sm")}>
+      {label}
+    </button>
+  );
   return (
     <>
-      <label className="flex items-center gap-2 rounded-full border border-border bg-background ps-3.5 pe-2 min-h-11 focus-within:border-accent">
-        <Icon name="search" size={16} className="text-muted" />
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => onQ(e.target.value)}
-          placeholder={t.browseCountrySearch}
-          aria-label={t.browseCountrySearch}
-          autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-muted"
-        />
-      </label>
-      {!typing && <p className="text-xs text-muted">{t.browseMostUsed}</p>}
       <div className="flex flex-wrap gap-2">
-        {!typing && (
-          <button type="button" aria-pressed={cur === null} onClick={() => pick(null)} className={chipClass(cur === null)}>
-            {axis.anyLabel}
+        <button type="button" aria-pressed={cur === null} onClick={() => pick(null)} className={chipClass(cur === null, "sm")}>
+          {axis.anyLabel}
+        </button>
+        {top.map((c) => chip(c.code, browseCountryName(c, lang)))}
+        {!more && (
+          <button type="button" aria-expanded={false} onClick={() => setMore(true)} className={chipClass(false, "sm")}>
+            {t.browseMoreCount(num(rest.length, lang))}
           </button>
         )}
-        {list.map((c) => (
-          <button key={c.code} type="button" aria-pressed={cur === c.code} onClick={() => pick(c.code)} className={chipClass(cur === c.code)}>
-            {browseCountryName(c, lang)}
-          </button>
-        ))}
-        {typing && list.length === 0 && <p className="text-sm text-muted py-1">{t.browseNoMatch}</p>}
       </div>
+      {more && (
+        <>
+          <p className="text-xs text-muted">{t.browseAllCountries}</p>
+          <div className="flex flex-wrap gap-2">{rest.map((c) => chip(c.code, browseCountryName(c, lang)))}</div>
+        </>
+      )}
     </>
   );
 }

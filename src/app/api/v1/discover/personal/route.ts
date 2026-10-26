@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       st: sp.get("st") ?? undefined,
       se: sp.get("se") ?? undefined,
       std: sp.get("std") ?? undefined,
+      len: sp.get("len") ?? undefined,
     });
     const b = browse.active ? browse : null;
     const silence = !!b && !localAxesOnly(b);

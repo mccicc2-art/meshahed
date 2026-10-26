@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
 import { gauge, op } from "@/lib/reqTrace";
+import { lengthMatches } from "@/core/browse";
 
 export {
   IMG,
@@ -179,11 +180,47 @@ const NO_WORKS =
 /** أقصى ما يُسأل عنه فرادى في ردٍّ واحد (D-1267) */
 const LOOPZ_FILL_LIMIT = 20;
 
+/**
+ * 🆕 D-1551 — **مفتاحُ طولِ العمل في معاملات `/discover`** — خاصٌّ بنا لا يصل TMDB. وُضع في المعاملات لا في توقيعٍ
+ * جديد لأنّ كلَّ صفٍّ مُصفّى يبني استعلامه بـ`discoverParams` — فيمرّ الطولُ في كلِّ الطرق القائمة بلا لمسها واحدةً
+ * واحدة، ونقطةُ التصفية واحدةٌ هنا.
+ */
+const LEN_PARAM = "loopz_len";
+/** تفاصيلُ متوازيةٌ بسقف — صفحةُ `/discover` عشرون عملاً، ونداؤها مخبَّأٌ ساعةً كسائر النداءات */
+const LEN_CONCURRENCY = 8;
+
+async function filterByLength<T>(data: T, spec: string, rail: boolean): Promise<T> {
+  const rows = (data as { results?: SearchResult[] })?.results;
+  if (!Array.isArray(rows) || !rows.length) return data;
+  const keep: boolean[] = new Array(rows.length).fill(false);
+  let next = 0;
+  const worker = async () => {
+    while (next < rows.length) {
+      const i = next++;
+      try {
+        /* اللغةُ ثابتةٌ إنجليزيّة: الأرقامُ لا لغةَ لها، ومفتاحٌ واحدٌ للتخبئة بين القرّاء بلغتين */
+        const d = await tmdbRaw<{ number_of_seasons?: number; number_of_episodes?: number }>(`/tv/${rows[i].id}`, { language: "en-US" }, rail);
+        keep[i] = lengthMatches(spec, d.number_of_seasons, d.number_of_episodes);
+      } catch {
+        /* تفاصيلُ لم تصل ⇒ لا نعرف طولَه ⇒ لا يُعرض: الفلترُ وعدٌ، وعملٌ بطولٍ مجهولٍ ليس جوابَه */
+        keep[i] = false;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(LEN_CONCURRENCY, rows.length) }, worker));
+  return { ...(data as object), results: rows.filter((_, i) => keep[i]) } as T;
+}
+
 async function tmdb<T>(
   path: string,
   params: Record<string, string> = {},
   rail = false,
 ): Promise<T> {
+  if (params[LEN_PARAM] !== undefined) {
+    const { [LEN_PARAM]: spec, ...rest } = params;
+    const data = await tmdb<T>(path, rest, rail);
+    return path === "/discover/tv" ? filterByLength(data, spec, rail) : data;
+  }
   if (params.language || NO_WORKS.test(path)) return tmdbRaw<T>(path, params, rail);
   const mode = await titleModeNow();
   if (mode === "original") return applyOriginalNames(await tmdbRaw<T>(path, params, rail));
@@ -2187,6 +2224,11 @@ export interface DiscoverFilter {
    * صفّاً خاطئاً يبدو صحيحاً. فالقاموسُ أسماءٌ، والاسمُ يُسأل عنه TMDB.
    */
   companies?: string[];
+  /**
+   * 🆕 D-1551 — **طولُ العمل** (`BrowseLength.spec`: `s:1-1` مواسم، `e:13-26` حلقات). TMDB لا يقبله معاملاً، فهو
+   * لا يُرسل إليه: `discoverParams` يضعه في `LEN_PARAM` و`tmdb()` يصفّي النتائجَ بتفاصيل كلِّ عمل. للمسلسلات وحدَها.
+   */
+  length?: string | null;
 }
 
 /**
@@ -2322,6 +2364,8 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.status && mediaType === "tv") p.with_status = f.status;
   /* الشركاتُ بـ«أو»: من اختار «MAPPA» لا يقصد «MAPPA **و** يوفوتيبل» */
   if (f.companies?.length) p.with_companies = f.companies.join("|");
+  /* D-1551 — الطولُ للمسلسلات وحدَها، ومفتاحُه خاصٌّ يُنزع قبل TMDB (`tmdb()`) */
+  if (f.length && mediaType === "tv") p[LEN_PARAM] = f.length;
   /* D-1285 — التوك شو والأخبار تُستبعد عند المصدر كي يبقى الرفُّ ممتلئاً (الحارسُ `railGuard`
      يُسقطها أيضاً، وهو الضمان؛ هذا السطرُ يمنع رفّاً ناقصاً فقط). للتلفزيون وحدَه. */
   /* نوعُ Kids لا يُستبعد عند المصدر (كان في D-1287): قائمةُ الإبقاء تحتاجه — الحارسُ `dropKids` يحكم (D-1289) */
