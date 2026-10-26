@@ -28,11 +28,20 @@ export function OneTimeHint({
   id,
   text,
   closeLabel,
+  after,
+  className = "",
 }: {
   /** مفتاح التلميح — `loopz-hint:<id>` في localStorage و`ui_state.hints` في الحساب */
   id: string;
   text: string;
   closeLabel: string;
+  /**
+   * 🆕 D-1549 — **تلميحٌ يأتي دورُه بعد آخر** («لا تلميحتان معاً»، D-1273): لا يظهر ما لم يُقرأ `after` على هذا
+   * الجهاز — فتلميحُ «حتى هنا» في الحلقات يُقرأ أوّلاً، وتلميحُ القاعدة في الزيارة التي تليه (كدور التطبيق، D-1318)
+   */
+  after?: string;
+  /** هوامشُ الموضع على التلميح نفسِه — غلافٌ بهامشٍ يبقى فراغاً بعد أن يُغلق */
+  className?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const key = `loopz-hint:${id}`;
@@ -54,6 +63,15 @@ export function OneTimeHint({
     } catch {
       /* تخزين معطّل (تصفح خاص) — لا تلميح أفضل من تلميحٍ لا يصمت */
     }
+    if (!seen && after) {
+      try {
+        seen = !localStorage.getItem(`loopz-hint:${after}`);
+      } catch {
+        seen = true;
+      }
+      /* لم يأتِ الدور: لا عرضَ ولا تعليمَ «مقروءاً» — يُنتظر في زيارةٍ لاحقة */
+      if (seen) return;
+    }
     if (seen) return;
     // إظهارٌ في إطارٍ لاحقٍ لا في جسد الـeffect (قاعدة React نفسها —
     // نفس درس LibraryGrid): لا رسم متتالٍ متزامن
@@ -65,12 +83,12 @@ export function OneTimeHint({
     };
     // markSeen ثابتة المعنى؛ والاعتمادية الحقيقية هي المفتاح
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, after]);
 
   if (!visible) return null;
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2 text-12 text-muted">
+    <div className={`flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2 text-12 text-muted${className ? ` ${className}` : ""}`}>
       <Icon name="sparkles" size={14} className="shrink-0 text-accent" />
       <span className="min-w-0 flex-1 leading-relaxed">{text}</span>
       <button

@@ -247,6 +247,33 @@ export function browseCountryName(c: BrowseCountry, locale: "ar" | "en") {
   return locale === "en" ? c.en : c.ar;
 }
 
+/**
+ * 🆕 D-1550 — **«الأكثر استخداماً» تحت بحث البلد** (أحمد «أ»): اثنا عشر بلداً تُرى بلا كتابة.
+ * ⚠️ **قائمةٌ ثابتةٌ بالاختيار لا بالقياس**: لا سجلَّ عندنا لما يختاره الأعضاءُ في الفلتر (المسودّةُ محليّة
+ * والرابطُ لا يُخزَّن) — فالترتيبُ هنا جمهورُ Loopz المعروف (الخليجُ ومصرُ ثمّ الأكثرُ إنتاجاً عالمياً)،
+ * ويُستبدل بالمقيس يومَ يوجد مصدرُه. والباقي يصل بحرفين من البحث.
+ */
+export const BROWSE_COUNTRY_TOP: readonly string[] = ["SA", "EG", "KW", "AE", "US", "GB", "KR", "JP", "TR", "IN", "ES", "FR"];
+
+/** تطبيعٌ للمطابقة: الألفاتُ والتاءُ المربوطة والياءُ والحركاتُ — «امريكا» تجد «أمريكا» */
+function foldSearch(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[ً-ْـ]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/ü/g, "u")
+    .trim();
+}
+
+/** البلدانُ التي يطابق اسمُها (بالعربيّة أو الإنجليزيّة) ما كُتب — بترتيب القائمة */
+export function searchCountries(q: string): BrowseCountry[] {
+  const n = foldSearch(q);
+  if (!n) return BROWSE_COUNTRIES;
+  return BROWSE_COUNTRIES.filter((c) => foldSearch(c.ar).includes(n) || foldSearch(c.en).includes(n) || c.code.toLowerCase() === n);
+}
+
 
 
 /**

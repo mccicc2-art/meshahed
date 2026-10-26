@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/core/i18n";
 import {
   BROWSE_COUNTRIES,
+  BROWSE_COUNTRY_TOP,
+  searchCountries,
   BROWSE_STATUSES,
   BROWSE_SEASONS,
   BROWSE_STUDIOS,
@@ -31,7 +33,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { sheetScroll } from "./ui/controls";
+import { chipClass, sheetScroll } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/core/tabPrefs";
@@ -81,6 +83,9 @@ export interface FilterDraft {
  * وجهة المحتوى — لأن ثلاثة خياراتٍ ظاهرةً تُلمس لمسةً واحدة، ومنسدلةٌ
  * لثلاثة خيارات ضغطةٌ إضافية بلا مقابل (نفس منطق لقطة TMDB التي أبقت
  * Simple/Advanced مقسّماً).
+ *
+ * 🆕 **D-1550 نقض المنسدلات**: الشبكةُ بعمودين باقية، **لكنّ الخليّةَ صارت بطاقةً تفتح رقائقَ خياراتها تحت صفّها**
+ * (`AxisGrid`) — المنسدلةُ تُخفي ما يمكن اختيارُه حتى تُفتح. `SelectField` باقٍ لصفوفك في تبويب «عرض».
  */
 export function DiscoverFilterSheet({
   locale,
@@ -225,6 +230,45 @@ export function DiscoverFilterSheet({
     draft.season !== null ||
     draft.studio !== null;
 
+  /* 🆕 D-1550 — المحاورُ بترتيب الشبكة القديمة وشروطِها حرفاً، وصفاً لا رسماً — `AxisGrid` يرسمها */
+  const axisList: AxisSpec[] = [
+    { id: "genre", label: t.browseGenreGroup, anyLabel: t.browseAllGenres, value: draft.genre, options: genres.map((g) => ({ value: g.slug, label: browseGenreName(g, lang) })), onPick: (v) => set({ genre: v }) },
+    { id: "tag", label: t.browseTagGroup, anyLabel: t.browseAnyTag, value: draft.tag, options: BROWSE_TAGS.map((x) => ({ value: x.slug, label: browseTagName(x, lang) })), onPick: (v) => set({ tag: v }) },
+    ...(wide
+      ? [
+          { id: "lang", label: t.browseLangGroup, anyLabel: t.browseAnyLang, value: draft.lang, options: BROWSE_LANGS.map((l) => ({ value: l.code, label: browseLangName(l, lang) })), onPick: (v: string | null) => set({ lang: v }) },
+          { id: "country", label: t.browseCountryGroup, anyLabel: t.browseAnyCountry, value: draft.country, options: BROWSE_COUNTRIES.map((c) => ({ value: c.code, label: browseCountryName(c, lang) })), onPick: (v: string | null) => set({ country: v }), country: true },
+        ]
+      : []),
+    ...(providers.length > 0
+      ? [{ id: "provider", label: t.browseProviderGroup(regionName(region, lang)), anyLabel: t.browseAnyProvider, value: draft.provider ? String(draft.provider) : null, options: providers.map((pr) => ({ value: String(pr.id), label: pr.name })), onPick: (v: string | null) => set({ provider: v ? Number(v) : null }) }]
+      : []),
+    { id: "era", label: t.browseEraGroup, anyLabel: t.browseAnyEra, value: draft.era, options: BROWSE_ERAS.map((e) => ({ value: e.slug, label: browseEraName(e, lang) })), onPick: (v) => set({ era: v }) },
+    {
+      id: "rate",
+      label: t.browseRateGroup,
+      anyLabel: t.browseAnyRate,
+      value: draft.rate ? String(draft.rate) : null,
+      options: BROWSE_RATES.map((r) => ({ value: String(r), label: t.browseRateFrom(num(r, locale)) })),
+      onPick: (v) => {
+        const n = Number(v);
+        set({ rate: v && (BROWSE_RATES as readonly number[]).includes(n) ? (n as BrowseRate) : null });
+      },
+    },
+    ...(wide
+      ? [{ id: "award", label: t.browseAwardGroup, anyLabel: t.browseAnyAward, value: draft.award, options: AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => ({ value: a.slug, label: awardName(a, lang) })), onPick: (v: string | null) => set({ award: v }) }]
+      : []),
+    ...(type === "tv" && !isAnime
+      ? [{ id: "status", label: t.browseStatusGroup, anyLabel: t.browseAnyStatus, value: draft.status, options: BROWSE_STATUSES.map((x) => ({ value: x.slug, label: browseStatusName(x, lang) })), onPick: (v: string | null) => set({ status: v }) }]
+      : []),
+    ...(isAnime
+      ? [
+          { id: "season", label: t.browseSeasonGroup, anyLabel: t.browseAnySeason, value: draft.season, options: BROWSE_SEASONS.map((x) => ({ value: x.slug, label: browseSeasonName(x, lang) })), onPick: (v: string | null) => set({ season: v }) },
+          { id: "studio", label: t.browseStudioGroup, anyLabel: t.browseAnyStudio, value: draft.studio, options: BROWSE_STUDIOS.map((x) => ({ value: x.slug, label: browseStudioName(x, lang) })), onPick: (v: string | null) => set({ studio: v }) },
+        ]
+      : []),
+  ];
+
   return (
     /* سفليّةٌ لا علويّة: هذه ورقةُ لمسٍ لا كتابة — لا لوحة مفاتيح تدفعها،
        والخيارات تُلمس بالإبهام فتُقرَّب منه. (العلويّة للبحث وحده.) */
@@ -273,216 +317,13 @@ export function DiscoverFilterSheet({
           <p className="text-12 font-bold text-muted">{t.browseFiltersGroup}</p>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
-        {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====
-            الرقائق سقطت كلّها: قوائمُ تُختار منها قيمةٌ واحدة، والمنسدلة
-            الأصلية تختصر كل قائمةٍ إلى سطرٍ مهما طالت. البلد يظهر خليةً
-            تحت العربية وحدها، والمنصّات تغيب خليتها إن تعذّر جلبها. */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-          <SelectField
-            id="browse-genre"
-            label={t.browseGenreGroup}
-            active={!!draft.genre}
-            value={draft.genre ?? ""}
-            onChange={(v) => set({ genre: v || null })}
-          >
-            <option value="">{t.browseAllGenres}</option>
-            {genres.map((g) => (
-              <option key={g.slug} value={g.slug}>
-                {browseGenreName(g, lang)}
-              </option>
-            ))}
-          </SelectField>
-
-          {/* ===== الوسم — المحور الجديد (طلب أحمد ١١ أغسطس) =====
-              يجلس ثانياً بجانب النوع لا في الذيل: هما سؤالان متجاوران —
-              «من أيّ نوع؟» و«عن ماذا؟» — ومن يفتح الورقة يقرؤهما معاً */}
-          <SelectField
-            id="browse-tag"
-            label={t.browseTagGroup}
-            active={!!draft.tag}
-            value={draft.tag ?? ""}
-            onChange={(v) => set({ tag: v || null })}
-          >
-            <option value="">{t.browseAnyTag}</option>
-            {BROWSE_TAGS.map((x) => (
-              <option key={x.slug} value={x.slug}>
-                {browseTagName(x, lang)}
-              </option>
-            ))}
-          </SelectField>
-
-          {wide && (
-            <SelectField
-              id="browse-lang"
-              label={t.browseLangGroup}
-              active={!!draft.lang}
-              value={draft.lang ?? ""}
-              onChange={(v) => set({ lang: v || null })}
-            >
-              <option value="">{t.browseAnyLang}</option>
-              {BROWSE_LANGS.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {browseLangName(l, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {/* الجنسية محورٌ دائم (طلب أحمد 9 Aug) — كان يظهر مع العربية وحدها */}
-          {wide && (
-            <SelectField
-              id="browse-country"
-              label={t.browseCountryGroup}
-              active={!!draft.country}
-              value={draft.country ?? ""}
-              onChange={(v) => set({ country: v || null })}
-            >
-              <option value="">{t.browseAnyCountry}</option>
-              {BROWSE_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {browseCountryName(c, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {providers.length > 0 && (
-            <SelectField
-              id="browse-provider"
-              label={t.browseProviderGroup(regionName(region, lang))}
-              active={!!draft.provider}
-              value={draft.provider ? String(draft.provider) : ""}
-              onChange={(v) => set({ provider: v ? Number(v) : null })}
-            >
-              <option value="">{t.browseAnyProvider}</option>
-              {providers.map((pr) => (
-                <option key={pr.id} value={pr.id}>
-                  {pr.name}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          <SelectField
-            id="browse-era"
-            label={t.browseEraGroup}
-            active={!!draft.era}
-            value={draft.era ?? ""}
-            onChange={(v) => set({ era: v || null })}
-          >
-            <option value="">{t.browseAnyEra}</option>
-            {BROWSE_ERAS.map((e) => (
-              <option key={e.slug} value={e.slug}>
-                {browseEraName(e, lang)}
-              </option>
-            ))}
-          </SelectField>
-
-          <SelectField
-            id="browse-rate"
-            label={t.browseRateGroup}
-            active={!!draft.rate}
-            value={draft.rate ? String(draft.rate) : ""}
-            onChange={(v) => {
-              const n = Number(v);
-              set({
-                rate: (BROWSE_RATES as readonly number[]).includes(n)
-                  ? (n as BrowseRate)
-                  : null,
-              });
-            }}
-          >
-            <option value="">{t.browseAnyRate}</option>
-            {BROWSE_RATES.map((r) => (
-              /* بلا نجمة داخل الخيار: `<option>` نصٌّ خام لا يحمل أيقونة،
-                 والمحرف ★ خطُّ نظامٍ يتقلّب شكله (D-002) — العنوان يكفي */
-              <option key={r} value={r}>
-                {t.browseRateFrom(num(r, locale))}
-              </option>
-            ))}
-          </SelectField>
-
-          {/* الجائزة (طلب أحمد 9 Aug): اختيارُها يحوّل الصفحة إلى صفّ
-              الفائزين بالأحدث — قوائمها الكاملة في تبويب القوائم */}
-          {wide && (
-            <SelectField
-              id="browse-award"
-              label={t.browseAwardGroup}
-              active={!!draft.award}
-              value={draft.award ?? ""}
-              onChange={(v) => set({ award: v || null })}
-            >
-              <option value="">{t.browseAnyAward}</option>
-              {AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => (
-                <option key={a.slug} value={a.slug}>
-                  {awardName(a, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {/* **المحاورُ الثلاثة تظهر حيث تعني شيئاً وتغيب حيث لا تعني**
-              (مواصفةُ أحمد: «Filters should be dynamic depending on the
-              selected tab»). **ومحورٌ يظهر في تبويبٍ لا يقبله كذبٌ في
-              الواجهة** — نفسُ قاعدة D-075 التي تُخفي زرَّ الفلاتر عن تبويب
-              القوائم. */}
-
-          {/* الحالة — المسلسلات وحدها. و«الأفلام» لا حالةَ لها عند TMDB
-              (`with_status` معاملُ `/discover/tv` وحده، ويردّ خطأً في
-              الأفلام) — فالغيابُ هنا قيدُ مصدرٍ لا اختيارُ تصميم. */}
-          {type === "tv" && !isAnime && (
-            <SelectField
-              id="browse-status"
-              label={t.browseStatusGroup}
-              active={!!draft.status}
-              value={draft.status ?? ""}
-              onChange={(v) => set({ status: v || null })}
-            >
-              <option value="">{t.browseAnyStatus}</option>
-              {BROWSE_STATUSES.map((x) => (
-                <option key={x.slug} value={x.slug}>
-                  {browseStatusName(x, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {/* الموسمُ والاستوديو — الأنمي وحده. وهما مفرداتُ صناعته: الموسمُ
-              ربعُ سنةٍ (لا شهر)، والاستوديو اسمٌ يعرفه متابعُه ويختار به. */}
-          {isAnime && (
-            <SelectField
-              id="browse-season"
-              label={t.browseSeasonGroup}
-              active={!!draft.season}
-              value={draft.season ?? ""}
-              onChange={(v) => set({ season: v || null })}
-            >
-              <option value="">{t.browseAnySeason}</option>
-              {BROWSE_SEASONS.map((x) => (
-                <option key={x.slug} value={x.slug}>
-                  {browseSeasonName(x, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {isAnime && (
-            <SelectField
-              id="browse-studio"
-              label={t.browseStudioGroup}
-              active={!!draft.studio}
-              value={draft.studio ?? ""}
-              onChange={(v) => set({ studio: v || null })}
-            >
-              <option value="">{t.browseAnyStudio}</option>
-              {BROWSE_STUDIOS.map((x) => (
-                <option key={x.slug} value={x.slug}>
-                  {browseStudioName(x, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
-        </div>
+        {/* ===== 🆕 D-1550 — بطاقتان في الصفّ، والخياراتُ تنفتح تحت صفّها =====
+            (أحمد ٢٦ أكتوبر على لقطة التطبيق: «مهي سهلة للمستخدم الجديد وسريعة للوصول للي يبيه» — «بطاقتين في الصف ..
+            i1»، والويبُ معه: «أ»). **كانت المنسدلاتُ الأصليّةُ تُخفي خياراتها حتى تُفتح** (D-016/D-018/D-033 اختارتها
+            لمُنتقي النظام وقارئ الشاشة) — **ونقضُ ذلك صريحٌ بطلبه**: القارئُ يرى الآن ما يمكن اختيارُه ضغطةً واحدة،
+            والفلاترُ الأخرى أمامه وهو يختار. والوصولُ باقٍ: البطاقةُ زرٌّ بـ`aria-expanded`، والخياراتُ أزرارٌ بـ`aria-pressed`.
+            **والمحاورُ وشروطُها والمسودّةُ كما هي** — الذي تبدّل طريقةُ الاختيار وحدَها. */}
+        <AxisGrid axes={axisList} lang={lang} t={t} />
       </div>
         )}
 
@@ -651,5 +492,176 @@ function SelectField({
         </span>
       </div>
     </div>
+  );
+}
+
+interface AxisSpec {
+  id: string;
+  label: string;
+  anyLabel: string;
+  /** القيمةُ المختارة نصّاً (`null` = الكلّ) */
+  value: string | null;
+  options: { value: string; label: string }[];
+  onPick: (v: string | null) => void;
+  /** لوحةُ البلد: بحثٌ و«الأكثر استخداماً» بدل الرقائق كلِّها */
+  country?: boolean;
+}
+
+/**
+ * 🆕 D-1550 — **شبكةُ البطاقات ولوحتُها** — بطاقتان في الصفّ، والضغطةُ تفتح لوحةَ خياراتٍ بعرض الشبكة تحت صفّها
+ * (`col-span-2`) وسهمٌ صغيرٌ يشير إلى بطاقتها. ضغطةٌ على خيارٍ تختار وتطوي؛ لوحةٌ واحدةٌ في كلِّ وقت. **الرقائقُ
+ * `chipClass` نفسُها** (القاعدة ٣) — لا عائلةَ ثالثة.
+ */
+function AxisGrid({ axes, lang, t }: { axes: AxisSpec[]; lang: "ar" | "en"; t: ReturnType<typeof getDict> }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const rows: AxisSpec[][] = [];
+  for (let i = 0; i < axes.length; i += 2) rows.push(axes.slice(i, i + 2));
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {rows.map((row) => {
+        const col = row.findIndex((a) => a.id === open);
+        const ax = col >= 0 ? row[col] : null;
+        return (
+          <Fragment key={row.map((a) => a.id).join("-")}>
+            {row.map((a) => {
+              const isOpen = open === a.id;
+              const chosen = a.value !== null ? (a.options.find((o) => o.value === a.value)?.label ?? a.value) : null;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={`axis-panel-${a.id}`}
+                  onClick={() => {
+                    tap(6);
+                    setQ("");
+                    setOpen(isOpen ? null : a.id);
+                  }}
+                  className={`min-w-0 flex items-center gap-2 rounded-control border bg-surface-2 ps-3.5 pe-3 py-2.5 text-start transition ${
+                    chosen || isOpen ? "border-accent" : "border-border hover:border-accent/50"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs text-muted truncate">{a.label}</span>
+                    <span className={`block text-15 font-semibold truncate ${chosen ? "text-accent" : "text-foreground"}`}>
+                      {chosen ?? a.anyLabel}
+                    </span>
+                  </span>
+                  <Icon
+                    name="chevron-down"
+                    size={16}
+                    strokeWidth={2.2}
+                    className={`transition-transform ${isOpen ? "rotate-180 text-accent" : "text-muted"}`}
+                  />
+                </button>
+              );
+            })}
+            {ax && (
+              <div
+                id={`axis-panel-${ax.id}`}
+                className="col-span-2 relative rounded-control border border-border bg-surface-2 p-3 space-y-2.5"
+              >
+                {/* السهمُ يشير إلى بطاقته: مربّعٌ مُدارٌ بحدّين يلتحم بحدّ اللوحة */}
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute -top-[7px] size-3 rotate-45 border-t border-l border-border bg-surface-2 ${
+                    col === 0 ? "start-[calc(25%-6px)]" : "start-[calc(75%-6px)]"
+                  }`}
+                />
+                {ax.country ? (
+                  <CountryPanel q={q} onQ={setQ} axis={ax} lang={lang} t={t} onDone={() => setOpen(null)} />
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {[{ value: "", label: ax.anyLabel }, ...ax.options].map((o) => {
+                      const sel = o.value === "" ? ax.value === null : ax.value === o.value;
+                      return (
+                        <button
+                          key={o.value || "any"}
+                          type="button"
+                          aria-pressed={sel}
+                          onClick={() => {
+                            ax.onPick(o.value || null);
+                            setOpen(null);
+                          }}
+                          className={chipClass(sel)}
+                        >
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * 🆕 D-1550 — **لوحةُ البلد: بحثٌ ثمّ «الأكثر استخداماً»** (أحمد «أ»). الحقلُ بخطّ ١٦ (D-033: سفاري لا يكبّر)،
+ * **والمختارُ يبقى ظاهراً** وإن لم يكن من الاثني عشر.
+ */
+function CountryPanel({
+  q,
+  onQ,
+  axis,
+  lang,
+  t,
+  onDone,
+}: {
+  q: string;
+  onQ: (v: string) => void;
+  axis: AxisSpec;
+  lang: "ar" | "en";
+  t: ReturnType<typeof getDict>;
+  onDone: () => void;
+}) {
+  const typing = q.trim().length > 0;
+  const cur = axis.value;
+  const list = typing
+    ? searchCountries(q)
+    : [
+        ...(cur && !BROWSE_COUNTRY_TOP.includes(cur) ? BROWSE_COUNTRIES.filter((c) => c.code === cur) : []),
+        ...BROWSE_COUNTRY_TOP.map((code) => BROWSE_COUNTRIES.find((c) => c.code === code)).filter(
+          (c): c is (typeof BROWSE_COUNTRIES)[number] => !!c,
+        ),
+      ];
+  const pick = (v: string | null) => {
+    axis.onPick(v);
+    onDone();
+  };
+  return (
+    <>
+      <label className="flex items-center gap-2 rounded-full border border-border bg-background ps-3.5 pe-2 min-h-11 focus-within:border-accent">
+        <Icon name="search" size={16} className="text-muted" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => onQ(e.target.value)}
+          placeholder={t.browseCountrySearch}
+          aria-label={t.browseCountrySearch}
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-muted"
+        />
+      </label>
+      {!typing && <p className="text-xs text-muted">{t.browseMostUsed}</p>}
+      <div className="flex flex-wrap gap-2">
+        {!typing && (
+          <button type="button" aria-pressed={cur === null} onClick={() => pick(null)} className={chipClass(cur === null)}>
+            {axis.anyLabel}
+          </button>
+        )}
+        {list.map((c) => (
+          <button key={c.code} type="button" aria-pressed={cur === c.code} onClick={() => pick(c.code)} className={chipClass(cur === c.code)}>
+            {browseCountryName(c, lang)}
+          </button>
+        ))}
+        {typing && list.length === 0 && <p className="text-sm text-muted py-1">{t.browseNoMatch}</p>}
+      </div>
+    </>
   );
 }

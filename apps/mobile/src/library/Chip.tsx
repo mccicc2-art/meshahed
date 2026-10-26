@@ -29,6 +29,7 @@ export function Chip({
   trailing,
   block,
   ink,
+  hitSlop,
 }: {
   label: string;
   active: boolean;
@@ -43,6 +44,8 @@ export function Chip({
   block?: boolean;
   /** 🆕 D-1535 — حبرُ غير المختارة: `accent` بدل الخافت */
   ink?: "accent";
+  /** 🆕 D-1549 — مساحةُ لمسٍ حول رقاقةٍ صغيرة (رقاقةُ التقييمات ٢٤ وإصبعُ القارئ ٤٤) — الشكلُ لا يتغيّر */
+  hitSlop?: number;
 }) {
   const { tokens } = useApp();
   const pad = size === "lg" ? { h: 18, v: 12 } : size === "md" ? { h: 14, v: 8 } : { h: 10, v: 4 };
@@ -57,6 +60,7 @@ export function Chip({
       onPress={onPress}
       onPressIn={notePress}
       onLongPress={onLongPress}
+      hitSlop={hitSlop}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={{

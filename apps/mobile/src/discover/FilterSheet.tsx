@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import React, { useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import {
   BROWSE_COUNTRIES,
+  BROWSE_COUNTRY_TOP,
   BROWSE_ERAS,
   BROWSE_GENRES,
   BROWSE_LANGS,
@@ -20,6 +21,7 @@ import {
   browseStudioName,
   browseTagName,
   genreFitsType,
+  searchCountries,
 } from "@/core/browse";
 import { AWARDS, awardName } from "@/core/awards";
 import { regionName } from "@/core/region";
@@ -35,6 +37,8 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
 import { OneTimeHint } from "../library/OneTimeHint";
+import { Chip } from "../library/Chip";
+import { SYSTEM_FONT_CAP } from "../fontScale";
 import { axesForTab, axisValueLabel, browseActive, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import type { CuratedTab, ProvidersPayload, DiscoverViewPayload } from "../contracts";
 
@@ -49,6 +53,7 @@ import type { CuratedTab, ProvidersPayload, DiscoverViewPayload } from "../contr
  *
  * 🔑 **محورٌ = صفٌّ يفتح قائمةَ اختيارٍ واحدة** (Radio)، لا تسعُ قوائمَ منسدلةٍ في شاشةٍ عرضُها
  * ٣٦٠: الصفُّ يقول القيمةَ الحاليّة، والضغطةُ تفتح القائمةَ في الورقة نفسِها وتعود.
+ * 🆕 **D-1550**: صار بطاقتين في الصفّ، والضغطةُ تفتح رقائقَ الخيارات تحت صفّها بدل قائمةٍ تحلّ محلَّ الورقة.
  *
  * 🔑 **مسودّةٌ ثمّ تطبيق** كالويب: التغييراتُ تُجمع في `draft`، و«عرض النتائج» يسلّمها
  * دفعةً واحدة — الصفوفُ لا تُعاد بعد كلِّ لمسة.
@@ -93,7 +98,11 @@ export function FilterSheet({
   const { t, tokens, locale } = useApp();
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<BrowseState>(value);
+  /* 🆕 D-1550 — المحورُ المفتوحةُ لوحتُه تحت صفّه (كان: قائمةً تحلّ محلَّ الورقة) */
   const [open, setOpen] = useState<AxisKey | null>(null);
+  const [countryQ, setCountryQ] = useState("");
+  const scrollRef = useRef<ScrollView>(null);
+  const rowY = useRef<Record<number, number>>({});
   /* D-997 — منتقي صفوفك: `{i, field}` — القائمةُ نفسُها (Radio) بخيارات النوع أو الموضوع */
   const [rowPick, setRowPick] = useState<{ i: number; field: "genre" | "tag" } | null>(null);
   const providers = useQuery({
@@ -180,37 +189,6 @@ export function FilterSheet({
             const on = o.value === "" ? current === null : current === o.value;
             return (
               <Pressable key={o.value} onPress={() => pick(o.value || null)} accessibilityRole="radio" accessibilityState={{ selected: on }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
-                <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: on ? tokens.accent : tokens.border, alignItems: "center", justifyContent: "center" }}>
-                  {on ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
-                </View>
-                <Text size={14} weight={on ? "700" : "500"} style={{ flex: 1 }}>{o.label}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </Sheet>
-    );
-  }
-
-  if (open) {
-    const list = options[open];
-    const current = valueOf(open);
-    return (
-      <Sheet title={groupLabel[open]} onClose={() => setOpen(null)}>
-        <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
-          {[{ value: "" as string | number, label: anyLabel[open] }, ...list].map((o) => {
-            const on = o.value === "" ? current === null : String(current) === String(o.value);
-            return (
-              <Pressable
-                key={String(o.value)}
-                onPress={() => {
-                  set(open, o.value === "" ? null : o.value);
-                  setOpen(null);
-                }}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}
-              >
                 <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: on ? tokens.accent : tokens.border, alignItems: "center", justifyContent: "center" }}>
                   {on ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
                 </View>
@@ -343,37 +321,104 @@ export function FilterSheet({
     <Sheet title={t.discoverToolsTitle} onClose={onClose}>
       {seg}
       {rowsHint && !viewOnly ? <OneTimeHint id="discover-rows" text={t.hintMyRows} style={{ marginBottom: 12 }} /> : null}
-      <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      {/* 🆕 D-1550 — **بطاقتان في الصفّ، والخياراتُ تنفتح تحت صفّها** (أحمد ٢٦ أكتوبر على لقطته: «مهي سهلة للمستخدم
+          الجديد وسريعة للوصول للي يبيه» — ثمّ «بطاقتين في الصف .. i1»). كانت المحاورُ صفوفاً بعرض الورقة، وكلُّ ضغطةٍ تُبدل
+          الورقةَ بقائمةٍ ثمّ تعود: **لا يرى القارئُ الخياراتِ قبل أن يفتح، ولا الفلاترَ الأخرى وهو يختار.** الآن الشبكةُ كلُّها
+          في شاشةٍ واحدة، واللوحةُ رقائقُ العائلة نفسِها (`Chip`) في الورقة نفسِها — ضغطةٌ تختار وتطوي. لوحةٌ واحدةٌ مفتوحةٌ في
+          كلِّ وقت، وفتحُ أخرى يطوي الأولى. **والحرّيّةُ كما هي**: المحاورُ والقيمُ والمسودّةُ و«عرض النتائج» لم تتغيّر. */}
+      <ScrollView ref={scrollRef} style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
         <Text size={12} muted style={{ marginBottom: 4 }}>{t.browseFilters}</Text>
-        {axes.map((key) => {
-          const v = valueOf(key);
-          const on = v !== null;
+        {pairs(axes).map((row, ri) => {
+          const col = open ? row.indexOf(open) : -1;
           return (
-            <Pressable
-              key={key}
-              onPress={() => setOpen(key)}
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                borderWidth: 1,
-                borderColor: on ? tokens.accent : tokens.border,
-                borderRadius: radius.control,
-                backgroundColor: tokens.surface,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text size={11} muted numberOfLines={1}>{groupLabel[key]}</Text>
-                <Text size={14} weight="600" numberOfLines={1} color={on ? tokens.fg : tokens.muted}>
-                  {on ? axisValueLabel(key, v as string | number, lang, provs, t) : anyLabel[key]}
-                </Text>
+            <View key={row.join("-")} style={{ gap: 8 }} onLayout={(e) => (rowY.current[ri] = e.nativeEvent.layout.y)}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {row.map((key) => {
+                  const v = valueOf(key);
+                  const on = v !== null;
+                  const isOpen = open === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => {
+                        setCountryQ("");
+                        setOpen(isOpen ? null : key);
+                        /* اللوحةُ تحت صفٍّ أسفلَ الورقة قد تقع خارج النظر — يُمرَّر إلى صفّها */
+                        if (!isOpen) requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, (rowY.current[ri] ?? 0) - 8), animated: true }));
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: isOpen }}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        minWidth: 0,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        borderWidth: 1,
+                        borderColor: on || isOpen ? tokens.accent : tokens.border,
+                        borderRadius: radius.control,
+                        backgroundColor: tokens.surface,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        opacity: pressed ? 0.75 : 1,
+                      })}
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text size={11} muted numberOfLines={1}>{groupLabel[key]}</Text>
+                        <Text size={14} weight="600" numberOfLines={1} color={on ? tokens.accent : tokens.fg}>
+                          {on ? axisValueLabel(key, v as string | number, lang, provs, t) : anyLabel[key]}
+                        </Text>
+                      </View>
+                      <View style={isOpen ? { transform: [{ rotate: "180deg" }] } : undefined}>
+                        <Icon name="chevron-down" size={14} color={isOpen ? tokens.accent : tokens.muted} />
+                      </View>
+                    </Pressable>
+                  );
+                })}
+                {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
               </View>
-              <Icon name="chevron-down" size={16} color={tokens.muted} />
-            </Pressable>
+              {open && col >= 0 ? (
+                <View style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, backgroundColor: tokens.surface, padding: 12, gap: 10, marginTop: 4 }}>
+                  {/* السهمُ الصغير يشير إلى بطاقته — مربّعٌ مُدار بحدّين فيُقرأ ذروةً متّصلةً بحدّ اللوحة */}
+                  <View
+                    pointerEvents="none"
+                    style={{ position: "absolute", top: -6, start: col === 0 ? "25%" : "75%", marginStart: -6, width: 12, height: 12, backgroundColor: tokens.surface, borderTopWidth: 1, borderLeftWidth: 1, borderColor: tokens.border, transform: [{ rotate: "45deg" }] }}
+                  />
+                  {open === "co" ? (
+                    <CountryPanel
+                      q={countryQ}
+                      onQ={setCountryQ}
+                      current={(valueOf("co") as string | null) ?? null}
+                      anyLabel={anyLabel.co}
+                      lang={lang}
+                      onPick={(v) => {
+                        set("co", v);
+                        setOpen(null);
+                      }}
+                    />
+                  ) : (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {[{ value: "" as string | number, label: anyLabel[open] }, ...options[open]].map((o) => {
+                        const cur = valueOf(open);
+                        const sel = o.value === "" ? cur === null : String(cur) === String(o.value);
+                        return (
+                          <Chip
+                            key={String(o.value)}
+                            size="md"
+                            active={sel}
+                            label={o.label}
+                            onPress={() => {
+                              set(open, o.value === "" ? null : o.value);
+                              setOpen(null);
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              ) : null}
+            </View>
           );
         })}
       </ScrollView>
@@ -382,5 +427,71 @@ export function FilterSheet({
         <Button label={t.browseApply} variant="primary" style={{ flex: 1.4 }} onPress={() => onApply(draft)} />
       </View>
     </Sheet>
+  );
+}
+
+/** الشبكةُ صفوفٌ من اثنين — والأخيرُ قد يبقى وحيداً */
+function pairs<T>(xs: readonly T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += 2) out.push(xs.slice(i, i + 2));
+  return out;
+}
+
+/**
+ * 🆕 D-1550 — **لوحةُ البلد: بحثٌ ثمّ «الأكثر استخداماً»** (أحمد «أ»): البلدانُ أطولُ القوائم، فرقائقُها كلُّها جدارٌ
+ * يُمرَّر. اثنا عشر ظاهرةً بلا كتابة (`BROWSE_COUNTRY_TOP`)، والباقي بحرفين. **والمختارُ يبقى ظاهراً** وإن لم يكن منها.
+ */
+function CountryPanel({
+  q,
+  onQ,
+  current,
+  anyLabel,
+  lang,
+  onPick,
+}: {
+  q: string;
+  onQ: (v: string) => void;
+  current: string | null;
+  anyLabel: string;
+  lang: "ar" | "en";
+  onPick: (code: string | null) => void;
+}) {
+  const { t, tokens } = useApp();
+  const typing = q.trim().length > 0;
+  const list = typing
+    ? searchCountries(q)
+    : [
+        ...(current && !BROWSE_COUNTRY_TOP.includes(current) ? BROWSE_COUNTRIES.filter((c) => c.code === current) : []),
+        ...BROWSE_COUNTRY_TOP.map((code) => BROWSE_COUNTRIES.find((c) => c.code === code)).filter((c): c is (typeof BROWSE_COUNTRIES)[number] => !!c),
+      ];
+  return (
+    <>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
+        <Icon name="search" size={16} color={tokens.muted} />
+        <TextInput
+          maxFontSizeMultiplier={SYSTEM_FONT_CAP}
+          value={q}
+          onChangeText={onQ}
+          placeholder={t.browseCountrySearch}
+          placeholderTextColor={tokens.muted}
+          returnKeyType="search"
+          autoCorrect={false}
+          style={{ flex: 1, color: tokens.fg, fontSize: 15, paddingVertical: 8, textAlign: lang === "ar" ? "right" : "left" }}
+        />
+        {typing ? (
+          <Pressable onPress={() => onQ("")} hitSlop={10} accessibilityLabel={t.closeLabel}>
+            <Icon name="close" size={14} color={tokens.muted} />
+          </Pressable>
+        ) : null}
+      </View>
+      {typing ? null : <Text size={11} muted>{t.browseMostUsed}</Text>}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {typing ? null : <Chip size="md" active={current === null} label={anyLabel} onPress={() => onPick(null)} />}
+        {list.map((c) => (
+          <Chip key={c.code} size="md" active={current === c.code} label={browseCountryName(c, lang)} onPress={() => onPick(c.code)} />
+        ))}
+        {typing && list.length === 0 ? <Text size={13} muted>{t.browseNoMatch}</Text> : null}
+      </View>
+    </>
   );
 }

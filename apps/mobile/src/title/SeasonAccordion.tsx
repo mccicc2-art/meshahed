@@ -9,6 +9,8 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
+import { OneTimeHint } from "../library/OneTimeHint";
+import { libraryQuery } from "../library/LibraryScreen";
 import * as SecureStore from "expo-secure-store";
 import { SEASON_ORDER_KEY, parseSeasonOrder, splitSeasons, type SeasonOrder } from "@/core/seasonOrder";
 import { ReviewSheet } from "./TitleCommunity";
@@ -78,6 +80,9 @@ export function SeasonAccordion({
    * و`aired` (D-988) فلا يحتاج فتحَ الموسم.
    */
   const [showRatings, setShowRatings] = useState(false);
+  /* D-1549 — المقروءُ في الحساب يصل مع `me:library` (D-954): كاشٌ بلا نداء، وغيابُه = لا تلميح (أهونُ من تلميحٍ يعود) */
+  const lib = useQuery({ ...libraryQuery, enabled: false });
+  const cascadeDue = !!lib.data && !(lib.data.hints ?? []).includes("episode-cascade");
   const qc = useQueryClient();
   const runtime = show.episode_run_time ?? null;
   const total = show.aired_total;
@@ -213,21 +218,26 @@ export function SeasonAccordion({
                 <Text size={13} weight="700" color={doneAll >= total ? tokens.success : tokens.accent}>{`${pctAll}%`}</Text>
               </>
             )}
-            <Pressable
-              onPress={() => setShowRatings((v) => !v)}
-              hitSlop={8}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: showRatings }}
-              accessibilityLabel={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: showRatings ? tokens.surface2 : "transparent" }}
-            >
-              <Icon name={showRatings ? "star-filled" : "star"} size={16} color={showRatings ? tokens.accent : tokens.muted} />
-            </Pressable>
           </View>
           <View style={{ height: 4, borderRadius: 2, backgroundColor: tokens.surface2, overflow: "hidden" }}>
             {pending ? null : <View style={{ width: `${pctAll}%`, height: "100%", backgroundColor: doneAll >= total ? tokens.success : tokens.accent }} />}
           </View>
-          <Text size={11} muted>{t.cascadeHint}</Text>
+          {/* 🆕 D-1549 — **النجمةُ صارت رقاقةً باسمها في مكان سطر القاعدة** (أحمد ٢٦ أكتوبر على لقطته: «النجمة مهي
+              واضحة»): زرٌّ دائريٌّ ٣٠ بلا كلمةٍ بجانب النسبة لا يُعرف ما يفعل. **رقاقةُ العائلة نفسُها** (`Chip` sm ≈ ٢٤)
+              باسمٍ يقول فعلَه في الحالتين، ومساحةُ لمسها ٤٤ (`hitSlop`) — نحيفةٌ ولا تُخطئها الإصبع.
+              ⚖️ **وسطرُ القاعدة («تأشير حلقة يؤشّر ما قبلها…») صار تلميحاً لمرّةٍ واحدة** («١ أ»): سلوكٌ مفاجئٌ يُقال مرّةً
+              ثمّ يصمت — شرحٌ دائمٌ يصير أثاثاً (D-852). يُقرأ المقروءُ من كاش المكتبة بلا نداء (كتلميح البحث، D-1259) */}
+          <View style={{ flexDirection: "row", marginTop: 4 }}>
+            <Chip
+              size="sm"
+              active={showRatings}
+              label={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              onPress={() => setShowRatings((v) => !v)}
+              hitSlop={10}
+              leading={<Icon name={showRatings ? "star-filled" : "star"} size={12} color={showRatings ? tokens.onAccent : tokens.accent} />}
+            />
+          </View>
+          {cascadeDue ? <OneTimeHint id="episode-cascade" text={t.cascadeHint} style={{ marginTop: 4 }} /> : null}
         </View>
       ) : null}
       {(order === "original" || !split.differs ? show.seasons : split.active).map((s) => card(s))}

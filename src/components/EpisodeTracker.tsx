@@ -864,29 +864,7 @@ export function EpisodeTracker({
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
-          {/* 🆕 **والعمودُ الخاتم واحدٌ من أعلى الصفحة إلى أسفلها** (D-413،
-              طلبُ أحمد: «القلم والنجمة خلّهم تحت الثلاث نقاط»): كانت
-              النجمةُ تسبق النسبةَ فتقع على بُعد ٦٧px من الحافّة **ونقاطُ
-              «المزيد» على ٢٦** — **ثلاثةُ محاورَ في طرفٍ واحد.**
-              **فصارت النجمةُ آخرَ الصفّ** وبإزاحةٍ سالبةٍ تُلغي حشوَها،
-              **فمركزُها على محور النقاط بالضبط.** */}
-          <span className="flex items-center gap-1.5">
-            <span className="font-semibold text-accent-2">{progress}%</span>
-            <button
-              type="button"
-              onClick={toggleRatings}
-              aria-pressed={showRatings}
-              aria-label={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              title={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              className={`grid place-items-center w-9 h-9 -my-2 -me-1.5 rounded-full transition ${
-                showRatings
-                  ? "text-accent bg-accent/10"
-                  : "text-muted hover:text-foreground hover:bg-surface-2"
-              }`}
-            >
-              <Icon name="star" size={16} />
-            </button>
-          </span>
+          <span className="font-semibold text-accent-2">{progress}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
           {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
@@ -896,7 +874,31 @@ export function EpisodeTracker({
             style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
-        <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
+        {/* 🆕 D-1549 — **النجمةُ صارت رقاقةً باسمها في مكان سطر القاعدة** (أحمد ٢٦ أكتوبر على لقطته: «النجمة مهي
+            واضحة»): زرٌّ دائريٌّ بلا كلمةٍ آخرَ صفِّ النسبة لا يُعرف ما يفعل (كان هناك منذ D-413). **رقاقةُ العائلة
+            نفسُها** (`chipClass` sm ≈ ٢٤) باسمٍ يقول فعلَه في الحالتين، **ومساحةُ لمسها ٤٤** بحاشيةٍ شفّافة (`before:`)
+            لا بحشوٍ يكبّر شكلها.
+            ⚖️ **وسطرُ القاعدة صار تلميحاً لمرّةٍ واحدة** («١ أ»): سلوكٌ مفاجئٌ يُقال مرّةً ثمّ يصمت (D-852) — **ودورُه
+            بعد تلميح «حتى هنا»** أعلاه، فلا يُقرأ تلميحان معاً (D-1273). */}
+        <button
+          type="button"
+          onClick={toggleRatings}
+          aria-pressed={showRatings}
+          className={chipClass(
+            showRatings,
+            "sm",
+            "relative mt-2.5 inline-flex items-center gap-1.5 before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
+          )}
+        >
+          <Icon
+            name="star"
+            size={12}
+            strokeWidth={2.2}
+            className={showRatings ? "fill-current" : "text-accent"}
+          />
+          {showRatings ? t.epRatingsHide : t.epRatingsShow}
+        </button>
+        <OneTimeHint id="episode-cascade" after="episode-bulk" text={t.cascadeHint} closeLabel={t.closeLabel} className="mt-2" />
         {guestSeen && <p className="text-xs text-muted mt-1">{t.episodesGuestHint}</p>}
         {err && (
           <Alert inline className="mt-2.5">

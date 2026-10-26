@@ -361,8 +361,9 @@ const ar = {
   ratingSavedTitle: (n: number) => `قُيِّم ${n}/١٠`,
   cascadeHint: "تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة، وإلغاؤه يلغي كل ما بعدها.",
   // تقييمات الحلقات مخفية افتراضياً (طلب أحمد): رقمُ حلقةٍ قادمة حرقٌ محتمل
-  epRatingsShow: "إظهار تقييمات الحلقات (IMDb)",
-  epRatingsHide: "إخفاء تقييمات الحلقات",
+  /* 🆕 D-1549 — النصُّ صار اسمَ الرقاقة الظاهرة لا وصفَ زرٍّ خفيّ (أحمد ٢٦ أكتوبر بنصّه) */
+  epRatingsShow: "إظهار تقييم الحلقات",
+  epRatingsHide: "إخفاء تقييم الحلقات",
   seasonAll: "الموسم كامل ✓",
   seasonUndo: "إلغاء الموسم",
   /* 🆕 D-1500 — ترتيبُ المواسم */
@@ -756,6 +757,10 @@ const ar = {
   searchPeopleTitle: "أشخاص",
   browseCountryGroup: "بلد الإنتاج",
   browseAnyCountry: "كل البلدان",
+  /* 🆕 D-1550 — بحثُ البلد في لوحته (أحمد «أ»): القائمةُ أطولُ القوائم فالبحثُ يختصرها لحرفين */
+  browseCountrySearch: "ابحث عن بلد",
+  browseMostUsed: "الأكثر استخداماً",
+  browseNoMatch: "لا نتيجة",
   /* الوسم (طلب أحمد ١١ أغسطس) — «عن ماذا؟» لا «من أيّ نوع؟»: زومبي،
      سرقات، سفرٌ عبر الزمن. وسُمّي «الموضوع» لا «الوسم» كي لا يُقرأ
      مصطلحاً تقنياً، ولا «التصنيف» كي لا يلتبس بمحور النوع فوقه */
@@ -3177,7 +3182,7 @@ const en: Dict = {
   ratingSavedTitle: (n: number) => `Rated ${n}/10`,
   cascadeHint:
     "Ticking an episode marks every earlier one as watched; unticking clears every later one.",
-  epRatingsShow: "Show episode ratings (IMDb)",
+  epRatingsShow: "Show episode ratings",
   epRatingsHide: "Hide episode ratings",
   seasonAll: "Whole season ✓",
   seasonUndo: "Clear season",
@@ -3509,6 +3514,9 @@ const en: Dict = {
   searchPeopleTitle: "People",
   browseCountryGroup: "Country of origin",
   browseAnyCountry: "Any country",
+  browseCountrySearch: "Search countries",
+  browseMostUsed: "Most used",
+  browseNoMatch: "No match",
   browseTagGroup: "Theme",
   browseAnyTag: "Any theme",
   browseStatusGroup: "Status",
