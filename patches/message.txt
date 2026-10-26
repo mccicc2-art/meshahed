@@ -1,0 +1,7 @@
+[deploy] Release R92 — fixer queue: partner balance guard file, app web layer link schemes
+
+Chat task 194: A-23 — partner balance readable by its owner or admin only
+Fixer task 195: A-25 — app web layer hands only https/mailto links to the system
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XGJVuzH33psx59MiLcQxUa
