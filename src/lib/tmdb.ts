@@ -389,6 +389,8 @@ export interface Episode {
    * (D-167).
    */
   vote_average?: number;
+  /** 🆕 D-1554 — عددُ أصوات الحلقة: شرطُ عرض `vote_average` بديلاً من IMDb (`episodeTmdbFallback`) */
+  vote_count?: number;
   /**
    * 🆕 R58 — **نوعُ الحلقة كما يعلّمه TMDB**: `finale` نهايةُ موسم · `mid_season` توقّفُ منتصفه · `standard`.
    * أحمد ٢١ أكتوبر: «تيد لاسو ١٠ حلقات فقط ف خلص لا يجي عليه اون بريك» — **التاريخُ وحده لا يفرّق بين موسمٍ انتهى وموسمٍ

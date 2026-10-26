@@ -112,6 +112,11 @@ export type SeasonEpisode = {
    * المستخدمُ التقييمات. `undefined` = لم تُطلب؛ `null` = طُلبت ولا رقم.
    */
   imdb_rating?: number | null;
+  /**
+   * 🆕 D-1554 — **تقييمُ TMDB بديلاً** لحلقةٍ تيقّنّا أن لا رقمَ لها في IMDb وعليها ٣٠ صوتاً فأكثر
+   * (`episodeTmdbFallback`). لا يجتمع مع `imdb_rating` رقماً — IMDb يغلب دائماً. يُرسم بشعارٍ رماديّ.
+   */
+  tmdb_rating?: number | null;
   /** تقييمي لهذه الحلقة — من `episode_ratings_of`، فارغٌ للزائر */
   my_rating?: number | null;
   /** تعليقي عليها (D-1015) */

@@ -3,6 +3,7 @@ import { getUser } from "@/lib/data";
 import { tvImdbId } from "@/lib/tmdb";
 import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
+import { episodeTmdbFallback } from "@/core/episodeRating";
 import { allow, retryAfter } from "@/core/ratelimit";
 
 /**
@@ -39,18 +40,23 @@ export async function GET(request: Request) {
       /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد (دالّةُ مسار التطبيق نفسُها) */
       getSeasonForView(tvId, seasonNumber),
       withRatings
-        ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber))
-        : Promise.resolve({} as Record<number, number>),
+        ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => null)
+        : Promise.resolve(null),
     ]);
-    const episodes = season.episodes.map((e) => ({
-      episode_number: e.episode_number,
-      name: e.name,
-      air_date: e.air_date,
-      runtime: e.runtime,
-      still_path: e.still_path,
-      // undefined يسقط من JSON — الحقل لا يظهر أصلاً في الردّ العادي
-      imdb_rating: withRatings ? (ratings[e.episode_number] ?? null) : undefined,
-    }));
+    const episodes = season.episodes.map((e) => {
+      const imdb = ratings?.[e.episode_number] ?? null;
+      return {
+        episode_number: e.episode_number,
+        name: e.name,
+        air_date: e.air_date,
+        runtime: e.runtime,
+        still_path: e.still_path,
+        // undefined يسقط من JSON — الحقل لا يظهر أصلاً في الردّ العادي
+        imdb_rating: withRatings ? imdb : undefined,
+        /* 🆕 D-1554 — بديلُ TMDB لما لا رقمَ له في IMDb — بشروطه الثلاثة (`episodeTmdbFallback`) */
+        tmdb_rating: withRatings ? episodeTmdbFallback(imdb, ratings !== null, e.vote_average, e.vote_count) : undefined,
+      };
+    });
     return NextResponse.json(
       { episodes },
       { headers: { "Cache-Control": "private, max-age=300" } },

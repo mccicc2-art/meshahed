@@ -10,7 +10,7 @@ import { formatDateShort } from "@/core/when";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
-import { ImdbMark } from "./RatingMarks";
+import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
 import { chipClass } from "./ui/controls";
 import { SEASON_ORDER_KEY, parseSeasonOrder, splitSeasons, type SeasonOrder } from "@/core/seasonOrder";
@@ -34,6 +34,8 @@ export interface TrackerEpisode {
   /** تقييم IMDb — يصل فقط حين يُطلب الموسم بـ`r=1` (زرّ كشف التقييمات)؛
       null = طُلب فلم يوجد، undefined = لم يُطلب بعد */
   imdb_rating?: number | null;
+  /** 🆕 D-1554 — تقييمُ TMDB بديلاً لما لا رقمَ له في IMDb (٣٠ صوتاً فأكثر) — يصل مع `r=1` */
+  tmdb_rating?: number | null;
 }
 
 /** رأس الموسم — يصل مع الصفحة بلا حلقاته، فالحلقات تُطلب عند الفتح */
@@ -773,6 +775,18 @@ export function EpisodeTracker({
                               >
                                 <ImdbMark className="text-[8px]" />
                                 {e.imdb_rating.toFixed(1)}
+                              </span>
+                            )}
+                            {/* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ وقاعدةُ الظهور نفسُهما، والشعارُ رماديّ
+                                (اختيارُ أحمد «٢ ب») — يبقى IMDb الأبرز */}
+                            {(showRatings || isWatched) && typeof e.imdb_rating !== "number" && typeof e.tmdb_rating === "number" && (
+                              <span
+                                className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums text-muted"
+                                dir="ltr"
+                                aria-label={`TMDB ${e.tmdb_rating.toFixed(1)}`}
+                              >
+                                <TmdbMark muted className="text-[8px]" />
+                                {e.tmdb_rating.toFixed(1)}
                               </span>
                             )}
 

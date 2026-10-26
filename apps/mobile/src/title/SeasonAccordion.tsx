@@ -497,6 +497,13 @@ function SeasonBody({
                 <Text size={9} weight="800" color="#F5C518">IMDb</Text>
                 <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
               </View>
+            ) : (showRatings || on) && typeof e.tmdb_rating === "number" ? (
+              /* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ نفسُه وقاعدةُ الظهور نفسُها، **والشعارُ رماديّ**
+                 (اختيارُ أحمد «٢ ب») — فيبقى IMDb الأبرزَ ولا يُقرأ المقياسان مقياساً واحداً (D-132) */
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text size={9} weight="800" muted>TMDB</Text>
+                <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.tmdb_rating.toFixed(1)}</Text>
+              </View>
             ) : null}
             {/* نجمةُ تقييمي — تملأ برقمها حين أقيّم، والضغطُ يفتح منتقيَ ١..١٠ */}
             <Pressable

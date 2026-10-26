@@ -42,11 +42,16 @@ export function ImdbMark({ className = "" }: { className?: string }) {
  * والألوان ألوان العلامة نفسها (`#0D253F` على تدرّج `#90CEA1→#01B4E4`)
  * لا ألوان الثيم — كشعار IMDb أعلاه.
  */
-export function TmdbMark({ className = "" }: { className?: string }) {
+export function TmdbMark({ className = "", muted = false }: { className?: string; muted?: boolean }) {
+  /* 🆕 D-1554 — `muted`: **الشعارُ نفسُه رماديّاً** لبديل تقييم الحلقة (اختيارُ أحمد «٢ ب») — مصدرٌ ثانويّ بجانب
+     أرقام IMDb الذهبيّة في القائمة نفسِها. **لونُ الثيم هنا عمداً** (لا لونُ العلامة): يتبع `daylight` كبقيّة الرماديّ */
+  const look = muted
+    ? "bg-muted text-background"
+    : "bg-[linear-gradient(90deg,#90CEA1,#01B4E4)] text-[#0D253F]";
   return (
     <span
       aria-hidden
-      className={`inline-block rounded-[0.27em] bg-[linear-gradient(90deg,#90CEA1,#01B4E4)] px-[0.32em] py-[0.18em] font-black leading-none tracking-tight text-[#0D253F] select-none ${className}`}
+      className={`inline-block rounded-[0.27em] ${look} px-[0.32em] py-[0.18em] font-black leading-none tracking-tight select-none ${className}`}
     >
       TMDB
     </span>
