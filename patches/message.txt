@@ -1,7 +1,9 @@
-[deploy] Release R107 — task 210 (D-1510): subscribers see the Plus card above Settings in the side drawer
+[deploy] Release R108 — task 211 (D-1511): messages icon becomes the Loopz bubble (app + web); settings leave the Home header
 
-- Subscribers: the one-line "Active until …" card moves down, just above the divider over Settings; the menu starts right under
-  the account. Non-subscribers keep the invite card under the account, unchanged. (Ahmed chose it from the "Plus below" boards.)
+- Ahmed: "the messages icon looks like email". Chosen from four: the comment bubble with the Loopz ∞ loop inside (`chat`).
+  App: Home header, "Message" on profiles, push "Messages", DM privacy, chat background. Web: header MessagesLink, Inbox,
+  messages tab, DM policy, Customize preview. The envelope stays for real email (contact us, email notifications, account email).
+- The gear leaves the Home header (it lives in the side drawer now).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
