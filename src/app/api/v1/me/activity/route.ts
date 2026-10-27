@@ -30,6 +30,7 @@ export async function GET() {
         episode: it.episode ?? null,
         rating: it.rating ?? null,
         list_name: it.listName ?? null,
+        runtime: it.runtime ?? null,
       })),
     });
   });

@@ -2208,6 +2208,14 @@ const ar = {
   /** مدى الحلقات في يومٍ واحد — «م٢ · ح٣–٧» */
   actEpisodeRange: (s: number, from: number, to: number) =>
     from === to ? `م${s} · ح${from}` : `م${s} · ح${from}–${to}`,
+  /* 🆕 D-1504 — سجلُّ المشاهدة: عددُ الصفِّ المدموج · حصيلةُ الأسبوع بثلاثة أرقام · ورقةُ الضغطة المطوّلة */
+  actEpisodesN: (n: number) => (n === 2 ? "حلقتان" : n <= 10 ? `${num(n, "ar")} حلقات` : `${num(n, "ar")} حلقة`),
+  activityWeekEpisodes: "حلقة هذا الأسبوع",
+  activityWeekMovies: "فيلم",
+  activityWeekHours: "ساعة مشاهدة",
+  historyRemove: "ما شفتها، احذفها من السجل",
+  historyRemoveConfirm: "بتنشال هذي المشاهدة من سجلّك ومن تقدّمك في العمل وإحصائياتك. ما فيه تراجع.",
+  historyRemoveAction: "احذف من السجل",
   listsTitle: "القوائم",
   listNamePlaceholder: "اسم قائمة جديدة…",
   listCreate: "أنشئ",
@@ -4525,6 +4533,13 @@ const en: Dict = {
   actVerbTo: "to",
   actEpisodeRange: (s: number, from: number, to: number) =>
     from === to ? `S${s} \u00b7 E${from}` : `S${s} \u00b7 E${from}\u2013${to}`,
+  actEpisodesN: (n: number) => `${n} episodes`,
+  activityWeekEpisodes: "Episodes this week",
+  activityWeekMovies: "Movies",
+  activityWeekHours: "Hours watched",
+  historyRemove: "Didn't watch it \u2014 remove from history",
+  historyRemoveConfirm: "This removes the watch from your history, your progress in the title and your stats. It can't be undone.",
+  historyRemoveAction: "Remove from history",
   listsTitle: "Lists",
   listNamePlaceholder: "New list name\u2026",
   listCreate: "Create",

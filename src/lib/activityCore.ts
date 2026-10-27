@@ -53,6 +53,7 @@ export async function getMyActivityItems(locale: Locale): Promise<ActivityItem[]
       episode: r.episode ?? null,
       rating: r.rating ?? null,
       listName: r.listName ?? null,
+      runtime: r.runtime ?? null,
     };
   });
 }

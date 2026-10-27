@@ -1,14 +1,18 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, write } from "../api";
 import { useApp } from "../state";
 import { BackChevron, Button, Text } from "../ui";
 import type { NativeRoot } from "../shell";
 import { usePullRefresh } from "../pullRefresh";
 import { ActivityList } from "./ActivityList";
+import { ToastHost, type ToastHostRef } from "../HoldHost";
+import { errorText } from "../community/communityActs";
+import type { ActivityItem, Scope } from "@/core/activityDays";
+import type { ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
 import type { MyActivityPayload } from "@/core/contracts/profile";
 
 /**
@@ -24,7 +28,7 @@ const PAGE_PAD = 16;
 const HEADER_H = 56;
 export const myActivityKey = ["me:activity"] as const;
 
-export function MyActivityScreen({ from }: { from: NativeRoot | "web" }) {
+export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; scope?: Scope }) {
   const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -34,6 +38,33 @@ export function MyActivityScreen({ from }: { from: NativeRoot | "web" }) {
     staleTime: 60_000,
   });
   const refresh = usePullRefresh([myActivityKey], 0);
+  const qc = useQueryClient();
+  const toast = useRef<ToastHostRef>(null);
+
+  /**
+   * 🆕 D-1504 — **«ما شفتها، احذفها من السجل»**: لا مسارَ جديد — مسارا التتبّع اللذان يلغيان التأشيرَ اليوم.
+   * الحلقاتُ بعينها (`episodes-unmark` — المدموجةُ كلُّها دفعةً) والفيلمُ بـ`watched: false`. وسومُ الردِّ تُبطل
+   * المكتبةَ والإحصائياتِ وصفحةَ العمل؛ **والسجلُّ نفسُه ليس بينها** فيُبطَل هنا صراحةً.
+   */
+  const removeWatch = useCallback(
+    async (it: ActivityItem): Promise<boolean> => {
+      try {
+        if (it.mediaType === "movie") {
+          await write<TrackResult>("/api/v1/track/movie", { movieTmdbId: it.tmdbId, runtime: null, watched: false } satisfies ToggleMovieBody);
+        } else {
+          const episodes = it.eps ?? (it.season != null && it.episode != null ? [{ s: it.season, e: it.episode }] : []);
+          if (!episodes.length) return false;
+          await write<TrackResult>("/api/v1/track/episodes-unmark", { showTmdbId: it.tmdbId, episodes } satisfies UnmarkEpisodesBody);
+        }
+        await qc.invalidateQueries({ queryKey: myActivityKey });
+        return true;
+      } catch (e) {
+        toast.current?.say(errorText(t, e), undefined, undefined, "error");
+        return false;
+      }
+    },
+    [qc, t],
+  );
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -83,9 +114,10 @@ export function MyActivityScreen({ from }: { from: NativeRoot | "web" }) {
         )
       ) : (
         <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-          <ActivityList rows={q.data.items} onTitle={openTitle} emptyText={t.activityEmpty} />
+          <ActivityList rows={q.data.items} onTitle={openTitle} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} />
         </ScrollView>
       )}
+      <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
     </View>
   );
 }

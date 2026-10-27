@@ -41,6 +41,8 @@ export interface ActivityRow {
   rating?: number | null;
   /** اسمُ القائمة — للإضافة وحدَها */
   listName?: string | null;
+  /** 🆕 D-1504 — مدّةُ المشاهدة بالدقائق (للمشاهدة وحدَها) — ساعاتُ «هذا الأسبوع» في سجلّ المشاهدة */
+  runtime?: number | null;
 }
 
 interface EpRow {
@@ -48,10 +50,12 @@ interface EpRow {
   season_number: number | null;
   episode_number: number | null;
   watched_at: string;
+  runtime: number | null;
 }
 interface MovieRow {
   movie_tmdb_id: number;
   watched_at: string;
+  runtime: number | null;
 }
 interface RateRow {
   tmdb_id: number;
@@ -100,13 +104,13 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
     const [eps, movies, rates, items] = await Promise.all([
       supabase
         .from("watched_episodes")
-        .select("show_tmdb_id, season_number, episode_number, watched_at")
+        .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
         .eq("user_id", uid)
         .order("watched_at", { ascending: false })
         .limit(perSource),
       supabase
         .from("watched_movies")
-        .select("movie_tmdb_id, watched_at")
+        .select("movie_tmdb_id, watched_at, runtime")
         .eq("user_id", uid)
         .order("watched_at", { ascending: false })
         .limit(perSource),
@@ -138,6 +142,7 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
         posterPath: null,
         season: e.season_number,
         episode: e.episode_number,
+        runtime: e.runtime,
       });
     }
 
@@ -149,6 +154,7 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
         tmdbId: m.movie_tmdb_id,
         title: null,
         posterPath: null,
+        runtime: m.runtime,
       });
     }
 

@@ -68,6 +68,8 @@ export type ProfileActivity = {
   episode: number | null;
   rating: number | null;
   list_name: string | null;
+  /** 🆕 D-1504 — مدّةُ المشاهدة بالدقائق — سجلُّك وحدَه يرسلها (`/me/activity`)؛ ملفُّ غيرك بلاها، وتطبيقٌ أقدم يتجاهلها */
+  runtime?: number | null;
 };
 
 /** 🆕 D-1213 — `GET /api/v1/me/activity`: سجلُّك أنت كاملاً (شاشةُ `/activity`) بصفِّ ملفِّ الشخص نفسِه — مكوّنٌ واحدٌ يرسمهما */

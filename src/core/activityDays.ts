@@ -22,6 +22,10 @@ export interface ActivityItem {
   episode?: number | null;
   rating?: number | null;
   listName?: string | null;
+  /** 🆕 D-1504 — مدّةُ المشاهدة بالدقائق (من جدولَي المشاهدة) — لساعات «هذا الأسبوع»؛ تغيب في نشاط غيرك */
+  runtime?: number | null;
+  /** 🆕 D-1504 — حلقاتُ الصفِّ المدموج بعينها: عددُها يُكتب، وحذفُها من السجلّ يرسلها كما هي (`episodes-unmark`) */
+  eps?: { s: number; e: number }[];
 }
 
 export type Scope = "all" | "watch" | "rate" | "review" | "list";
@@ -155,9 +159,10 @@ export function mergeEpisodes(rows: ActivityItem[], t: Dict): ActivityItem[] {
       continue;
     }
     const at = seen.get(r.tmdbId);
+    const ep = { s: r.season ?? 0, e: r.episode };
     if (at === undefined) {
       seen.set(r.tmdbId, out.length);
-      out.push({ ...r });
+      out.push({ ...r, eps: [ep] });
       continue;
     }
     const head = out[at];
@@ -170,6 +175,9 @@ export function mergeEpisodes(rows: ActivityItem[], t: Dict): ActivityItem[] {
       episode: to,
       season: head.season,
       listName: t.actEpisodeRange(head.season ?? 0, from, to),
+      /* 🆕 D-1504 — **والمدّةُ تُجمع**: صفٌّ واحدٌ لثلاث حلقاتٍ يحمل وقتَها كلَّه */
+      runtime: head.runtime != null || r.runtime != null ? (head.runtime ?? 0) + (r.runtime ?? 0) : null,
+      eps: [...(head.eps ?? []), ep],
     };
   }
   return out;
@@ -204,4 +212,26 @@ export function episodeOf(item: ActivityItem, t: Dict): string | null {
   return item.kind === "watch" && item.mediaType === "tv"
     ? (item.listName ?? (item.season != null && item.episode != null ? t.diaryEpisode(item.season, item.episode) : null))
     : null;
+}
+
+/**
+ * 🆕 D-1504 — **حصيلةُ المشاهدة: حلقاتٌ وأفلامٌ وساعات** (تصميمُ «سجلّ المشاهدة»، اختيارُ أحمد ٢٧ أكتوبر: «أ»).
+ * تُحسب من الصفوف **قبل الدمج** — فثلاثُ حلقاتٍ في صفٍّ واحدٍ تُعدّ ثلاثاً. **والساعاتُ `null` إن لم تصل مدّةٌ
+ * واحدة** (نشاطُ غيرك، أو خادمٌ أقدمُ من التطبيق) — رقمٌ صفريٌّ كاذبٌ أسوأُ من غيابه.
+ */
+export function watchSummary(items: ActivityItem[]): { episodes: number; movies: number; hours: number | null } {
+  let episodes = 0;
+  let movies = 0;
+  let minutes = 0;
+  let known = false;
+  for (const it of items) {
+    if (it.kind !== "watch") continue;
+    if (it.mediaType === "tv") episodes++;
+    else movies++;
+    if (it.runtime != null) {
+      known = true;
+      minutes += it.runtime;
+    }
+  }
+  return { episodes, movies, hours: known ? Math.round(minutes / 60) : null };
 }
