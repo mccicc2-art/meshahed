@@ -16,6 +16,8 @@ import { Chevron } from "../settings/ui";
 import { useAppearanceActs } from "../settings/appearanceActs";
 import { HOME_KEY, fetchHome } from "../home/useHome";
 import { openProfile } from "../member/open";
+import { FollowsSheet } from "../home/FollowsSheet";
+import type { NativeRoot } from "../shell";
 import { num } from "@/core/i18n";
 import { drawerP, drawerStore, drawerWidth } from "./store";
 
@@ -52,11 +54,32 @@ export function DrawerHost() {
     const id = setTimeout(() => setReady(true), PREMOUNT_MS);
     return () => clearTimeout(id);
   }, [me, ready]);
-  if (!me || !(ready || from)) return null;
-  return <SideDrawer from={from} />;
+  /* 🆕 D-1508 — ورقةُ المتابعين تعيش هنا لا في اللوح: اللوحُ يُغلق أوّلاً ثمّ تظهر فوق الشاشة التي كان فوقها */
+  const router = useRouter();
+  const [follows, setFollows] = useState<{ dir: "followers" | "following"; count: number; root: NativeRoot } | null>(null);
+  if (!me || !(ready || from || follows)) return null;
+  return (
+    <>
+      {ready || from ? <SideDrawer from={from} onFollows={setFollows} /> : null}
+      {follows ? (
+        <FollowsSheet
+          dir={follows.dir}
+          count={follows.count}
+          onClose={() => setFollows(null)}
+          onOpen={(u) => openProfile(router, u, follows.root)}
+        />
+      ) : null}
+    </>
+  );
 }
 
-function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
+function SideDrawer({
+  from,
+  onFollows,
+}: {
+  from: ReturnType<typeof drawerStore.get>;
+  onFollows: (f: { dir: "followers" | "following"; count: number; root: NativeRoot }) => void;
+}) {
   const { t, tokens, locale, me, themeId } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -196,18 +219,36 @@ function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
                   {username ? <Text size={13} muted numberOfLines={1} style={{ writingDirection: "ltr", textAlign: rtl ? "right" : "left" }}>@{username}</Text> : null}
                 </View>
               </View>
-              {h ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 }}>
-                  <Text size={14} muted>
-                    <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(h.following, locale)}</Text> {t.drawerFollowing}
-                  </Text>
-                  <View style={{ width: 1, height: 14, backgroundColor: tokens.divider }} />
-                  <Text size={14} muted>
-                    <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(h.followers, locale)}</Text> {t.drawerFollowers}
-                  </Text>
-                </View>
-              ) : null}
             </Pressable>
+            {/* 🆕 D-1508 — **كلُّ رقمٍ بابُ قائمته** (أحمد ٢٧ أكتوبر: «إذا ضغطت على المتابعين يروح لهم مباشرة، سواء اللي أتابعهم أو
+                يتابعوني»). كانا داخل ضغطة الملفّ. ورقةُ `FollowsSheet` نفسُها التي يفتحها عدّادا الملفّ — لا قائمةَ ثانية؛ واللمسُ أوسعُ من
+                الرقم (`hitSlop`) فلا يُخطئه الإصبع */}
+            {h ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 }}>
+                {(
+                  [
+                    { dir: "following", n: h.following, label: t.drawerFollowing },
+                    { dir: "followers", n: h.followers, label: t.drawerFollowers },
+                  ] as const
+                ).map((c, i) => (
+                  <React.Fragment key={c.dir}>
+                    {i > 0 ? <View style={{ width: 1, height: 14, backgroundColor: tokens.divider }} /> : null}
+                    <Pressable
+                      onPress={() => close(() => onFollows({ dir: c.dir, count: c.n, root: from ?? "home" }))}
+                      onPressIn={notePress}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${num(c.n, locale)} ${c.label}`}
+                      hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    >
+                      <Text size={14} muted>
+                        <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(c.n, locale)}</Text> {c.label}
+                      </Text>
+                    </Pressable>
+                  </React.Fragment>
+                ))}
+              </View>
+            ) : null}
 
             {/* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً») */}
             <Pressable
