@@ -21,6 +21,7 @@ import { OneTimeHint } from "../library/OneTimeHint";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
 import { drawerStore } from "../drawer/store";
+import { DrawerSwipe } from "../drawer/DrawerSwipe";
 import { PRIVACY_HINT } from "@/core/privacyNotice";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -725,6 +726,8 @@ export function HomeScreen() {
 
   return (
     <CardStoreContext.Provider value={store}>
+    {/* 🆕 D-1506 — سحبةٌ نحو الداخل تفتح القائمةَ الجانبيّة (يمينٌ بالإنجليزيّة، يسارٌ بالعربيّة) — والجولةُ تُطفئها ما دامت على الشاشة */}
+    <DrawerSwipe from="home" enabled={!!me && !tourBusy}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {/* 🆕 D-1433 — رأسُ الرئيسيّة ثابتٌ لا يصعد (أحمد ١٦ أكتوبر: «الهيدر في الهوم لا يطلع فوق، خلّه ثابت والباقي يكون
           تحته»): الصفحةُ تمرّ تحته وخلفيّتُه معتمة. الدوكُ وحده يتبع التمرير (حكمُه «١ أ») */}
@@ -857,6 +860,7 @@ export function HomeScreen() {
           التمرير، والمقعدُ كان يُبقي مكانَه فراغاً أسودَ بارتفاعه فتُقصّ الصفوفُ فوقه. الآن يمرّ المحتوى تحته كبقيّة الجذور،
           وذيلُ التمرير (`bottomPad` = الشريط + ٢٤) يُبقي آخرَ بطاقةٍ فوقه. */}
     </View>
+    </DrawerSwipe>
     </CardStoreContext.Provider>
   );
 }

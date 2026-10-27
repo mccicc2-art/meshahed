@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { BackHandler, I18nManager, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Reanimated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
@@ -17,7 +17,7 @@ import { useAppearanceActs } from "../settings/appearanceActs";
 import { HOME_KEY, fetchHome } from "../home/useHome";
 import { openProfile } from "../member/open";
 import { num } from "@/core/i18n";
-import { drawerStore } from "./store";
+import { drawerP, drawerStore, drawerWidth } from "./store";
 
 /**
  * ====== 🆕 D-1505 — القائمةُ الجانبيّة (تصميمُ أحمد، ٢٢–٢٧ أكتوبر · «نفذ» ٢٧ أكتوبر) ======
@@ -29,34 +29,43 @@ import { drawerStore } from "./store";
  * - **من صورة الحساب** (الرئيسيّة وطرفُ ترويسات التبويبات) كقائمة X التي أرسلها أحمد — والملفُّ أوّلُ ما فيها. وخطوةُ
  *   «ملفك» في الجولة تُبقي الصورةَ بابَ الملفّ (جملتُها «اضغط صورتك لتفتح ملفك») — `HomeScreen`.
  * - **تنزلق من طرف البداية** (يمينٌ في العربيّة، يسارٌ في الإنجليزيّة) وتُغلق بالحجاب أو بسحبها نحو طرفها أو بزرّ الرجوع.
- * - **الوجهةُ تُدفع بعد أن تُغلق**: `Modal` فوق المكدّس، وشاشةٌ تُدفع تحته تبقى مغطّاةً حتى يُغلق.
  * - **المظهرُ زرٌّ واحدٌ رمزُه الحالُ** (قمرٌ للداكن، شمسٌ للفاتح) — وصفةُ مبدّل العرض في الرئيسيّة (D-1321) لا مبدّلٌ ثالث:
  *   التصميمُ رسم كبسولةً بزرّين، وهي عائلةُ تحكّمٍ ثالثةٌ تخالف القاعدة ٣. الداكنُ يعود إلى آخر ثيمٍ داكنٍ لبسه في الجلسة.
  * - **اللغةُ زرٌّ يبدّل إلى الأخرى** بفعل شاشة «المظهر» نفسِه (`useAppearanceActs`): الاتّجاهُ ينقلب فيُعاد تحميلُ JS.
+ *
+ * 🔴 **D-1506 — طبقةٌ مركَّبةٌ مسبقاً لا `Modal` يُبنى عند الضغط** (تسجيلُ خالد ٢٧ أكتوبر، أندرويد): من لمس الصورة إلى أوّل إطارٍ
+ * للقائمة ~٣٧٠ms، والانزلاقُ لا يُرى (ينتهي قبل أن تُعرض نافذةُ `Modal`)، والأيقوناتُ والصورةُ تلحق بعد ٧٠–١٠٠ms. الآن اللوحُ
+ * يُركَّب مرّةً بعد أن تهدأ الرئيسيّة، خارجَ الشاشة، **لا يأخذ لمساً ولا يُقرأ للقارئ الآليّ وهو مغلق** — والفتحُ تحريكُ
+ * `drawerP` على خيط الواجهة فقط؛ وهي القيمةُ نفسُها التي يحرّكها الإصبعُ في سحبة الرئيسيّة (`HomeScreen`).
  */
-const PANEL_MAX = 296;
-const DUR = 220;
+/** المهلةُ قبل التركيب المسبق — بعد أن تستقرّ الرئيسيّةُ وصورُها، لا في أوّل رسمها. ضغطةٌ قبلها تركّب فوراً */
+const PREMOUNT_MS = 2500;
 /** آخرُ ثيمٍ داكنٍ قبل «الفاتح» — يُعاد إليه بـ«الداكن» (ثيمُ بلس الملوّن لا يضيع بضغطتين) */
 let lastDark: string | null = null;
 
 export function DrawerHost() {
+  const { me } = useApp();
   const from = useSyncExternalStore(drawerStore.subscribe, drawerStore.get, drawerStore.get);
-  if (!from) return null;
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!me || ready) return;
+    const id = setTimeout(() => setReady(true), PREMOUNT_MS);
+    return () => clearTimeout(id);
+  }, [me, ready]);
+  if (!me || !(ready || from)) return null;
   return <SideDrawer from={from} />;
 }
 
-function SideDrawer({ from }: { from: NonNullable<ReturnType<typeof drawerStore.get>> }) {
+function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
   const { t, tokens, locale, me, themeId } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const W = Math.min(PANEL_MAX, Math.round(width * 0.82));
+  const W = drawerWidth(width);
   const rtl = I18nManager.isRTL;
   /* الإزاحةُ نحو طرف البداية: موجبةٌ في العربيّة (اليمين)، سالبةٌ في الإنجليزيّة */
   const sign = rtl ? 1 : -1;
-  const x = useSharedValue(sign * W);
-  const [closing, setClosing] = useState(false);
-  const after = useRef<(() => void) | null>(null);
+  const open = from !== null;
 
   const home = useQuery({ queryKey: HOME_KEY, queryFn: fetchHome, staleTime: 60_000 });
   const h = home.data?.header ?? null;
@@ -64,57 +73,37 @@ function SideDrawer({ from }: { from: NonNullable<ReturnType<typeof drawerStore.
   const toastFail = useCallback(() => undefined, []);
   const { settings, busy, pickLocale, pickTheme } = useAppearanceActs(toastFail);
 
-  const finish = useCallback(() => {
-    drawerStore.close();
-    const f = after.current;
-    after.current = null;
-    f?.();
-  }, []);
-
-  const close = useCallback(
-    (then?: () => void) => {
-      if (closing) return;
-      setClosing(true);
-      after.current = then ?? null;
-      x.value = withTiming(sign * W, { duration: DUR, easing: Easing.in(Easing.quad) }, (done) => {
-        if (done) scheduleOnRN(finish);
-      });
-    },
-    [closing, finish, sign, W, x],
-  );
+  const close = useCallback((then?: () => void) => drawerStore.close(then), []);
 
   useEffect(() => {
-    x.value = withTiming(0, { duration: DUR, easing: Easing.out(Easing.cubic) });
-  }, [x]);
-
-  useEffect(() => {
+    if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       close();
       return true;
     });
     return () => sub.remove();
-  }, [close]);
+  }, [open, close]);
 
-  /* السحبُ نحو طرف البداية يُغلق — أفقيٌّ وحده، فالتمريرُ العموديُّ (لو طالت القائمة) لا يُسرق */
+  /* السحبُ نحو طرف البداية يُغلق، والإصبعُ يحرّك القيمةَ نفسَها — أفقيٌّ وحده، فالتمريرُ العموديُّ لا يُسرق */
   const pan = Gesture.Pan()
     .activeOffsetX([-12, 12])
     .failOffsetY([-14, 14])
     .onUpdate((e) => {
-      const d = e.translationX * sign;
-      x.value = sign * Math.max(0, Math.min(W, d));
+      const d = Math.max(0, Math.min(W, e.translationX * sign));
+      drawerP.value = 1 - d / W;
     })
     .onEnd((e) => {
       const d = e.translationX * sign;
       const v = e.velocityX * sign;
       if (d > W / 3 || v > 500) scheduleOnRN(close);
-      else x.value = withTiming(0, { duration: 160 });
+      else drawerP.value = withTiming(1, { duration: 160 });
     });
 
-  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
-  const veilStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.abs(x.value) / W }));
+  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateX: sign * W * (1 - drawerP.value) }] }));
+  const veilStyle = useAnimatedStyle(() => ({ opacity: drawerP.value }));
 
   const go = (href: Href) => close(() => router.push(href));
-  const openMe = () => close(() => (me?.username ? openProfile(router, me.username, from) : router.push("/settings/profile")));
+  const openMe = () => close(() => (me?.username ? openProfile(router, me.username, from ?? "home") : router.push("/settings/profile")));
 
   const name = h?.display_name ?? me?.nickname ?? me?.username ?? "";
   const username = h?.username ?? me?.username ?? null;
@@ -157,14 +146,20 @@ function SideDrawer({ from }: { from: NonNullable<ReturnType<typeof drawerStore.
   const divider = <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 8 }} />;
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => close()}>
+    /* مغلقةً: لا لمسَ (`none`) ولا قارئَ آليّ — اللوحُ خارجَ الشاشة والحجابُ شفّاف */
+    <View
+      pointerEvents={open ? "auto" : "none"}
+      importantForAccessibility={open ? "auto" : "no-hide-descendants"}
+      accessibilityElementsHidden={!open}
+      style={StyleSheet.absoluteFill}
+    >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Reanimated.View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.62)" }, veilStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => close()} accessibilityRole="button" accessibilityLabel={t.closeLabel} />
         </Reanimated.View>
         <GestureDetector gesture={pan}>
           <Reanimated.View
-            accessibilityViewIsModal
+            accessibilityViewIsModal={open}
             accessibilityLabel={t.drawerLabel}
             style={[
               {
@@ -261,6 +256,6 @@ function SideDrawer({ from }: { from: NonNullable<ReturnType<typeof drawerStore.
           </Reanimated.View>
         </GestureDetector>
       </GestureHandlerRootView>
-    </Modal>
+    </View>
   );
 }
