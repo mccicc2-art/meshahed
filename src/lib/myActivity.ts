@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserId } from "@/lib/data";
+import { asSource, type WatchSource } from "@/lib/watchSource";
 
 /**
  * **نشاطُك أنت — أربعةُ مصادرَ في خيطٍ واحد** (D-537، تصميمُ أحمد).
@@ -43,9 +44,12 @@ export interface ActivityRow {
   listName?: string | null;
   /** 🆕 D-1504 — مدّةُ المشاهدة بالدقائق (للمشاهدة وحدَها) — ساعاتُ «هذا الأسبوع» في سجلّ المشاهدة */
   runtime?: number | null;
+  /** 🆕 D-1505 — من سجّل (`watchSource`) — `null` بيده أو قبل العمود */
+  source?: WatchSource | null;
 }
 
 interface EpRow {
+  source?: string | null;
   show_tmdb_id: number;
   season_number: number | null;
   episode_number: number | null;
@@ -53,6 +57,7 @@ interface EpRow {
   runtime: number | null;
 }
 interface MovieRow {
+  source?: string | null;
   movie_tmdb_id: number;
   watched_at: string;
   runtime: number | null;
@@ -101,19 +106,16 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
     );
     const listIds = [...listName.keys()];
 
+    /* 🆕 D-1505 — **المصدرُ يُطلب ثمّ يُتخلّى عنه إن لم يوجد العمود**: الصفحةُ تُرفع قبل أن يُضاف (`watchSource`)، وسؤالٌ
+       عن عمودٍ غائبٍ يُسقط الاستعلامَ كلَّه — فيفرغ السجلّ. المحاولةُ الثانيةُ بلا العمود تكلّف نداءً واحداً حتى يُضاف. */
+    const watchRows = async (table: "watched_episodes" | "watched_movies", cols: string) => {
+      const ask = (c: string) => supabase.from(table).select(c).eq("user_id", uid).order("watched_at", { ascending: false }).limit(perSource);
+      const first = await ask(`${cols}, source`);
+      return first.error ? ask(cols) : first;
+    };
     const [eps, movies, rates, items] = await Promise.all([
-      supabase
-        .from("watched_episodes")
-        .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
-        .eq("user_id", uid)
-        .order("watched_at", { ascending: false })
-        .limit(perSource),
-      supabase
-        .from("watched_movies")
-        .select("movie_tmdb_id, watched_at, runtime")
-        .eq("user_id", uid)
-        .order("watched_at", { ascending: false })
-        .limit(perSource),
+      watchRows("watched_episodes", "show_tmdb_id, season_number, episode_number, watched_at, runtime"),
+      watchRows("watched_movies", "movie_tmdb_id, watched_at, runtime"),
       supabase
         .from("ratings")
         .select("tmdb_id, media_type, rating, review, title, poster_path, created_at, updated_at")
@@ -132,7 +134,7 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
 
     const out: ActivityRow[] = [];
 
-    for (const e of (eps.data ?? []) as EpRow[]) {
+    for (const e of (eps.data ?? []) as unknown as EpRow[]) {
       out.push({
         kind: "watch",
         at: e.watched_at,
@@ -143,10 +145,11 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
         season: e.season_number,
         episode: e.episode_number,
         runtime: e.runtime,
+        source: asSource(e.source),
       });
     }
 
-    for (const m of (movies.data ?? []) as MovieRow[]) {
+    for (const m of (movies.data ?? []) as unknown as MovieRow[]) {
       out.push({
         kind: "watch",
         at: m.watched_at,
@@ -155,6 +158,7 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
         title: null,
         posterPath: null,
         runtime: m.runtime,
+        source: asSource(m.source),
       });
     }
 

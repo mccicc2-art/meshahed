@@ -77,6 +77,7 @@ export type {
   TrackResult,
   ShowWatchedResult,
   UnmarkEpisodesBody,
+  MoveWatchDayBody,
 } from "@/core/contracts/track";
 /* Phase 11-H — الرئيسيةُ الأصليّة: الويبُ بحذافيره عبر عقد `v1` (D-1066) */
 export type {

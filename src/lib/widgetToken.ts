@@ -1,4 +1,5 @@
 import "server-only";
+import { tagSource } from "@/lib/watchSource";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
@@ -165,7 +166,7 @@ export async function widgetMark(
 
   const tv = await getTv(showTmdbId);
   if (watched) {
-    const { error } = await db.from("watched_episodes").upsert(
+    const { data: marked, error } = await db.from("watched_episodes").upsert(
       {
         user_id: userId,
         show_tmdb_id: showTmdbId,
@@ -176,8 +177,10 @@ export async function widgetMark(
         watched_at: new Date().toISOString(),
       },
       { onConflict: "user_id,show_tmdb_id,season_number,episode_number" },
-    );
+    ).select("id");
     if (error) throw new Error("widget mark failed");
+    /* 🆕 D-1505 — «من الودجت» شارةٌ في سجلّ المشاهدة (وسمٌ يفشل قبل العمود يُبتلع — `watchSource`) */
+    await tagSource(db, "watched_episodes", marked as { id: number }[] | null, "widget");
   } else {
     const { error } = await db.from("watched_episodes").delete().match({
       user_id: userId,

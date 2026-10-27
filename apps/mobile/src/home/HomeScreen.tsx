@@ -20,6 +20,7 @@ import { ListCard } from "../library/ListCard";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
+import { drawerStore } from "../drawer/store";
 import { PRIVACY_HINT } from "@/core/privacyNotice";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -732,7 +733,14 @@ export function HomeScreen() {
         <HomeTopBar
           h={d?.header ?? null}
           avatarRef={avatarAnchor}
-          onAvatar={() => (d?.header.username ? openProfile(router, d.header.username, "home") : router.push("/settings/profile"))}
+          onAvatar={() =>
+            /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة (والملفُّ أوّلُ ما فيها)؛ وخطوةُ «ملفك» في الجولة تُبقيها بابَ الملفّ كما تقول جملتُها */
+            tourStore.busy()
+              ? d?.header.username
+                ? openProfile(router, d.header.username, "home")
+                : router.push("/settings/profile")
+              : drawerStore.open("home")
+          }
           viewSwitch={d && !d.header.show_stats ? <HomeViewSwitch view={view} onToggle={toggleView} /> : null}
           unreadSignals={d?.header.unread_signals ?? 0}
           unreadShares={d?.header.unread_shares ?? 0}

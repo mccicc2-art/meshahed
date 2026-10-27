@@ -18,6 +18,7 @@ import { PushGate } from "../src/PushGate";
 import { WidgetGate } from "../src/WidgetGate";
 import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
+import { DrawerHost } from "../src/drawer/SideDrawer";
 import { Opening } from "../src/opening/Opening";
 import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
@@ -186,6 +187,8 @@ function Shell() {
       <PushGate />
       <WidgetGate />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
+      {/* 🆕 D-1505 — القائمةُ الجانبيّة: تُفتح من صورة الحساب وتُرسم مرّةً فوق المكدّس (`src/drawer/SideDrawer.tsx`) */}
+      <DrawerHost />
       <TourHost />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}
       <Opening start={splashGone} />

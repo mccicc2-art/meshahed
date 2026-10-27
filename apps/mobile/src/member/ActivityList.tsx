@@ -7,8 +7,9 @@ import { Icon } from "../icons";
 import { haptic } from "../haptics";
 import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
+import { StatusPill } from "../settings/ui";
 import { num } from "@/core/i18n";
-import { SCOPES, clock, dayKey, episodeOf, groupDays, keep, label as scopeLabel, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope } from "@/core/activityDays";
+import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupDays, keep, label as scopeLabel, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
 import type { ProfileActivity } from "@/core/contracts/profile";
 
 /**
@@ -33,6 +34,7 @@ export function ActivityList({
   emptyText,
   initialScope = "all",
   onRemove,
+  onMoveDay,
 }: {
   rows: ProfileActivity[];
   onTitle: (k: "tv" | "movie", id: number) => void;
@@ -40,15 +42,39 @@ export function ActivityList({
   initialScope?: Scope;
   /** يرجع `true` إن حُذف — والفشلُ يقوله صاحبُ الشاشة بنخبه ويُبقي الورقةَ مفتوحة لمحاولةٍ ثانية */
   onRemove?: (item: ActivityItem) => Promise<boolean>;
+  /** 🆕 D-1505 — «غيّر يوم المشاهدة»: إزاحةُ أيّام (سالبةٌ إلى الماضي) — سجلُّك وحدَه، كـ`onRemove` */
+  onMoveDay?: (item: ActivityItem, shiftDays: number) => Promise<boolean>;
 }) {
   const { t, tokens, locale } = useApp();
   const [scope, setScope] = useState<Scope>(initialScope);
   const [menu, setMenu] = useState<ActivityItem | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [busy, setBusy] = useState(false);
   const closeMenu = () => {
     setMenu(null);
     setConfirm(false);
+    setMoving(false);
+  };
+  /* 🆕 D-1505 — الأيّامُ السبعة الأخيرة: يومُ الصفِّ مختارٌ، والضغطُ على غيره يزيح بالفرق */
+  const moveTo = async (key: string) => {
+    if (!menu || !onMoveDay || busy) return;
+    const from = dayKey(menu.at, true);
+    const toDate = (k: string) => {
+      const [y, m, d] = k.split("-").map(Number);
+      return new Date(y, (m ?? 1) - 1, d ?? 1).getTime();
+    };
+    const shift = Math.round((toDate(key) - toDate(from)) / 86_400_000);
+    if (!shift) return;
+    setBusy(true);
+    try {
+      if (await onMoveDay(menu, shift)) {
+        haptic.pick();
+        closeMenu();
+      }
+    } finally {
+      setBusy(false);
+    }
   };
   const remove = async () => {
     if (!menu || !onRemove) return;
@@ -77,6 +103,7 @@ export function ActivityList({
         rating: r.rating,
         listName: r.list_name,
         runtime: r.runtime ?? null,
+        source: r.source ?? null,
       })),
     [rows],
   );
@@ -152,6 +179,7 @@ export function ActivityList({
                           </View>
                         ) : null}
                         <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{clock(r.at, locale, true)}</Text>
+                        {r.source ? <StatusPill label={sourceLabel(r.source, t)} color={r.source === "auto" ? tokens.accent : tokens.muted} /> : null}
                       </View>
                     </View>
                   </Pressable>
@@ -161,7 +189,21 @@ export function ActivityList({
           </View>
         ))
       )}
-      {menu && confirm ? (
+      {menu && moving ? (
+        <Sheet title={t.historyMoveDay} onClose={closeMenu} placement="center">
+          <Text size={13} muted style={{ lineHeight: 20, marginBottom: 14 }}>{t.historyMoveDayHint}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, opacity: busy ? 0.6 : 1 }}>
+            {Array.from({ length: 7 }, (_, i) => shiftDay(today, -i)).map((k, i) => (
+              <Chip
+                key={k}
+                label={i === 0 ? t.diaryToday : i === 1 ? t.diaryYesterday : dayLabel(k, locale)}
+                active={k === dayKey(menu.at, true)}
+                onPress={() => void moveTo(k)}
+              />
+            ))}
+          </View>
+        </Sheet>
+      ) : menu && confirm ? (
         <Sheet title={t.historyRemoveAction} onClose={closeMenu} placement="center">
           <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>{t.historyRemoveConfirm}</Text>
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -184,6 +226,12 @@ export function ActivityList({
             <Icon name={menu.mediaType === "tv" ? "tv" : "film"} size={19} color={tokens.fg} />
             <Text size={14}>{t.postMenuOpenTitle(menu.title)}</Text>
           </Pressable>
+          {onMoveDay ? (
+            <Pressable onPress={() => setMoving(true)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
+              <Icon name="calendar" size={19} color={tokens.fg} />
+              <Text size={14}>{t.historyMoveDay}</Text>
+            </Pressable>
+          ) : null}
           <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
           <Pressable onPress={() => setConfirm(true)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
             <Icon name="trash" size={19} color={tokens.error} />
@@ -193,4 +241,9 @@ export function ActivityList({
       ) : null}
     </View>
   );
+}
+
+/** 🆕 D-1505 — اسمُ المصدر في شارة الصفّ */
+function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string {
+  return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

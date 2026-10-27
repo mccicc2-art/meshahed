@@ -1,5 +1,7 @@
 "use server";
 
+import { tagSource, type WatchSource } from "@/lib/watchSource";
+import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -1716,6 +1718,8 @@ async function markWatchedUpTo(
   season: number,
   episode: number,
   meta?: { title?: string | null; posterPath?: string | null },
+  /** 🆕 D-1505 — من سجّل (جوابُ إشارة Stremio) — يُوسَم به ما أُدرج هنا وحده */
+  source?: WatchSource,
 ): Promise<number> {
   /* 🔴 A-15 (المدقّق ٢٢ أكتوبر) — **الرقمان من العميل، فالحدُّ هنا لا عند من نادى**: منشورُ القلم يمرّر الموسمَ والحلقةَ
      خارجَ حارسِ عموده (٠–٢٠٠ / ١–٥٠٠٠ يحرس الكتابةَ لا هذه الحلقة)، ورقمٌ كبيرٌ كان يدور حلقةً بلا سقف. الحدّان حدّا
@@ -1756,10 +1760,12 @@ async function markWatchedUpTo(
     .slice(0, 5000)
     .map((w) => ({ user_id: userId, show_tmdb_id: tmdbId, season_number: w.s, episode_number: w.e, runtime, watched_at: now }));
   if (rows.length) {
-    const { error } = await supabase
+    const { data: added, error } = await supabase
       .from("watched_episodes")
-      .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true });
+      .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true })
+      .select("id");
     if (error) fail(error);
+    if (source) await tagSource(supabase, "watched_episodes", added as { id: number }[] | null, source);
   }
   await ensureShowFollowed(supabase, userId, tmdbId, meta?.title ?? tv.name ?? null, meta?.posterPath ?? tv.poster_path ?? null);
   return rows.length;
@@ -1788,7 +1794,7 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   if (!sig || sig.state !== "pending") return { marked: 0 };
   let marked = 0;
   if (watched && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode);
+    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode, undefined, "stremio");
     /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
     if (sig.season > 0) {
       await supabase
@@ -1801,10 +1807,12 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   } else if (watched && sig.media_type === "movie") {
     const m = await Promise.race([getMovie(sig.tmdb_id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
     const runtime = m?.runtime && Number.isInteger(m.runtime) && m.runtime > 0 && m.runtime <= 10_000 ? m.runtime : null;
-    const { error } = await supabase
+    const { data: added, error } = await supabase
       .from("watched_movies")
-      .upsert({ user_id: user.id, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true });
+      .upsert({ user_id: user.id, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true })
+      .select("id");
     if (error) fail(error);
+    await tagSource(supabase, "watched_movies", added as { id: number }[] | null, "stremio");
     await ensureMovieInLibrary(supabase, user.id, sig.tmdb_id);
   }
   await supabase
@@ -4376,6 +4384,47 @@ export async function unmarkEpisodes(input: {
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/show/${showTmdbId}`);
+}
+
+/**
+ * 🆕 D-1505 — **«غيّر يوم المشاهدة»** من سجلّ المشاهدة (تصميمُ «أ»: «عدّل الحلقات أو الوقت»). التسجيلُ التلقائيُّ وإشاراتُ
+ * Stremio تختم بلحظة الجواب لا لحظة المشاهدة — ومن شاهد أمس وأجاب اليوم يرى الحلقةَ في يومٍ خاطئ.
+ *
+ * - **إزاحةُ أيّامٍ لا وقتٌ جديد**: كلُّ صفٍّ يُزاح بالأيّام نفسِها فتبقى ساعتُه وترتيبُ الحلقات بينها كما كان.
+ * - **لا مستقبل**: ما تجاوز الآن يُقصّ إلى الآن.
+ * - الصفوفُ بمفاتيحها الطبيعيّة (الحلقةُ أو الفيلم) وبجلسة العضو — RLS تحرس، وشرطُ المالك مكتوبٌ أيضاً.
+ * - **«المكتبة» و«الإحصائيات» تُبطَل** — الأسبوعُ وسلسلةُ الأيّام تُحسب من هذا الطابع.
+ */
+export async function moveWatchDay(input: MoveWatchDayBody) {
+  const tmdbId = intId(input?.tmdbId);
+  const shift = intIn(input?.shiftDays, -366, 366);
+  if (shift === 0) return;
+  const movie = input?.mediaType === "movie";
+  const eps = movie
+    ? []
+    : (input?.episodes ?? []).slice(0, 500).map((x) => ({ s: intIn(x?.s, 0, 1000), e: intIn(x?.e, 1, 20_000) }));
+  if (!movie && !eps.length) return;
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
+  const table = movie ? "watched_movies" : "watched_episodes";
+  let q = supabase.from(table).select(movie ? "id, watched_at" : "id, watched_at, season_number, episode_number").eq("user_id", user.id);
+  q = movie ? q.eq("movie_tmdb_id", tmdbId) : q.eq("show_tmdb_id", tmdbId).in("season_number", [...new Set(eps.map((x) => x.s))]);
+  const { data, error } = await q.limit(5000);
+  if (error) fail(error);
+  const want = new Set(eps.map((x) => `${x.s}-${x.e}`));
+  const rows = ((data ?? []) as unknown as { id: number; watched_at: string; season_number?: number; episode_number?: number }[]).filter(
+    (r) => movie || want.has(`${r.season_number}-${r.episode_number}`),
+  );
+  const now = Date.now();
+  for (const r of rows) {
+    const at = new Date(r.watched_at).getTime();
+    if (!Number.isFinite(at)) continue;
+    const next = new Date(Math.min(now, at + shift * 86_400_000)).toISOString();
+    const { error: e2 } = await supabase.from(table).update({ watched_at: next }).match({ id: r.id, user_id: user.id });
+    if (e2) fail(e2);
+  }
+  revalidatePath("/");
+  revalidatePath("/activity");
+  revalidatePath("/library");
 }
 
 /**

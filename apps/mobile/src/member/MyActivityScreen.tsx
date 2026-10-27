@@ -12,7 +12,7 @@ import { ActivityList } from "./ActivityList";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { errorText } from "../community/communityActs";
 import type { ActivityItem, Scope } from "@/core/activityDays";
-import type { ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
+import type { MoveWatchDayBody, ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
 import type { MyActivityPayload } from "@/core/contracts/profile";
 
 /**
@@ -56,6 +56,22 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
           if (!episodes.length) return false;
           await write<TrackResult>("/api/v1/track/episodes-unmark", { showTmdbId: it.tmdbId, episodes } satisfies UnmarkEpisodesBody);
         }
+        await qc.invalidateQueries({ queryKey: myActivityKey });
+        return true;
+      } catch (e) {
+        toast.current?.say(errorText(t, e), undefined, undefined, "error");
+        return false;
+      }
+    },
+    [qc, t],
+  );
+
+  /** 🆕 D-1505 — «غيّر يوم المشاهدة»: الصفُّ بحلقاته بعينها يُزاح أيّاماً (الخادمُ يقصّ المستقبل — `moveWatchDay`) */
+  const moveDay = useCallback(
+    async (it: ActivityItem, shiftDays: number): Promise<boolean> => {
+      try {
+        const episodes = it.mediaType === "tv" ? (it.eps ?? (it.season != null && it.episode != null ? [{ s: it.season, e: it.episode }] : [])) : undefined;
+        await write<TrackResult>("/api/v1/track/history-day", { mediaType: it.mediaType, tmdbId: it.tmdbId, episodes, shiftDays } satisfies MoveWatchDayBody);
         await qc.invalidateQueries({ queryKey: myActivityKey });
         return true;
       } catch (e) {
@@ -114,7 +130,7 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
         )
       ) : (
         <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-          <ActivityList rows={q.data.items} onTitle={openTitle} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} />
+          <ActivityList rows={q.data.items} onTitle={openTitle} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} onMoveDay={moveDay} />
         </ScrollView>
       )}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24} />

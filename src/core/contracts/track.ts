@@ -61,6 +61,12 @@ export type ShowWatchedResult = { done: true; added: { s: number; e: number }[] 
 export type UnmarkEpisodesBody = { showTmdbId: number; episodes: { s: number; e: number }[] };
 
 /**
+ * 🆕 D-1505 — **«غيّر يوم المشاهدة» من سجلّ المشاهدة**: الصفُّ (فيلمٌ، أو حلقاتُ الصفِّ المدموج بعينها) يُزاح أيّاماً كاملة —
+ * ساعةُ كلِّ حلقةٍ تبقى كما كانت، ولا يصير شيءٌ في المستقبل. `shiftDays` بين −٣٦٦ و٣٦٦ وليس صفراً.
+ */
+export type MoveWatchDayBody = { mediaType: "tv" | "movie"; tmdbId: number; episodes?: { s: number; e: number }[]; shiftDays: number };
+
+/**
  * 🆕 Phase 11 · B3 (D-936) — **أفعالُ قائمة Hold في المكتبة الأصليّة**: «الحلقةُ
  * التالية» و«تعليمُ الكلّ» و«إعادةُ المشاهدة» تحتاج قائمةَ الحلقات المبثوثة،
  * **والويبُ يحسبها في الخادم** (`markNextEpisode` · `markShowWatched` ·

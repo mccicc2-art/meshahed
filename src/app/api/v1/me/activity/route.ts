@@ -31,6 +31,7 @@ export async function GET() {
         rating: it.rating ?? null,
         list_name: it.listName ?? null,
         runtime: it.runtime ?? null,
+        source: it.source ?? null,
       })),
     });
   });

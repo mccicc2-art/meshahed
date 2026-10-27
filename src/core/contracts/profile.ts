@@ -70,6 +70,8 @@ export type ProfileActivity = {
   list_name: string | null;
   /** 🆕 D-1504 — مدّةُ المشاهدة بالدقائق — سجلُّك وحدَه يرسلها (`/me/activity`)؛ ملفُّ غيرك بلاها، وتطبيقٌ أقدم يتجاهلها */
   runtime?: number | null;
+  /** 🆕 D-1505 — من سجّل المشاهدة (`lib/watchSource`) — `null` بيده؛ سجلُّك وحدَه يرسله */
+  source?: import("../activityDays").WatchSource | null;
 };
 
 /** 🆕 D-1213 — `GET /api/v1/me/activity`: سجلُّك أنت كاملاً (شاشةُ `/activity`) بصفِّ ملفِّ الشخص نفسِه — مكوّنٌ واحدٌ يرسمهما */

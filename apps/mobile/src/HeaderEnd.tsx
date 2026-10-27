@@ -1,13 +1,13 @@
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { notePress } from "./perfMarks";
+import { drawerStore } from "./drawer/store";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useApp } from "./state";
 import { Icon } from "./icons";
 import { controlSize } from "./theme";
 import { useHomeSignals } from "./home/useHome";
-import { openProfile } from "./member/open";
 import type { NativeRoot } from "./shell";
 
 /**
@@ -43,7 +43,8 @@ export function HeaderEnd({ from }: { from: NativeRoot }) {
   const { t, tokens, me } = useApp();
   const router = useRouter();
   const signals = useHomeSignals();
-  const openMe = () => (me?.username ? openProfile(router, me.username, from) : router.push("/settings/profile"));
+  /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة كصورة الرئيسيّة (الملفُّ أوّلُ ما فيها) — صورتان لبابٍ واحد */
+  const openMe = () => (me ? drawerStore.open(from) : router.push("/settings/profile"));
   return (
     <View style={{ position: "absolute", end: HEADER_END_INSET, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
       <HeaderIconButton name="bell" label={t.notifTitle} count={signals} color={tokens.fg} onPress={() => router.push({ pathname: "/messages", params: { tab: "alerts", from } })} />

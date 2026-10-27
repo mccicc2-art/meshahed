@@ -7,6 +7,8 @@
  */
 import type { Dict, Locale } from "./i18n";
 export type ActivityKind = "watch" | "rate" | "review" | "list";
+/** 🆕 D-1505 — من سجّل المشاهدة (`lib/watchSource`) — وغيابُه «بيده» */
+export type WatchSource = "stremio" | "widget" | "import" | "auto";
 
 export interface ActivityItem {
   id: string;
@@ -26,6 +28,8 @@ export interface ActivityItem {
   runtime?: number | null;
   /** 🆕 D-1504 — حلقاتُ الصفِّ المدموج بعينها: عددُها يُكتب، وحذفُها من السجلّ يرسلها كما هي (`episodes-unmark`) */
   eps?: { s: number; e: number }[];
+  /** 🆕 D-1505 — من سجّل المشاهدة: `stremio` · `widget` · `import` · `auto` — `null` بيده (شارةُ السجلّ) */
+  source?: WatchSource | null;
 }
 
 export type Scope = "all" | "watch" | "rate" | "review" | "list";
