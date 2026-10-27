@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { BackHandler, I18nManager, Platform, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -108,7 +108,14 @@ function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
   const name = h?.display_name ?? me?.nickname ?? me?.username ?? "";
   const username = h?.username ?? me?.username ?? null;
   const avatar = h?.avatar_url ?? me?.avatar_url ?? null;
-  const until = h?.plus_until ? new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { day: "numeric", month: "long" }).format(new Date(h.plus_until)) : null;
+  /* 🔴 D-1507 — **التاريخُ يُقرأ كاملاً** (تسجيلُ خالد ٢٧ أكتوبر: «Active until Decem…»): الشهرُ مختصرٌ بالإنجليزيّة («Dec 20»)
+     وكاملٌ بالعربيّة («٢٠ نوفمبر» يتّسع) — والسطرُ يصغر قليلاً قبل أن يُقصّ إن ضاق العرضُ على هاتفٍ أصغر */
+  const until = h?.plus_until ? new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { day: "numeric", month: locale === "ar" ? "long" : "short" }).format(new Date(h.plus_until)) : null;
+  /* 🔴 D-1507 — **النصُّ على خطِّ الأيقونة** (تسجيلُ خالد ٢٧ أكتوبر: «الأسطر مهي على نفس الخط مع الأيقونات»). مقيسٌ من التسجيل
+     (أندرويد، الإنجليزيّة): وسطُ الكلمة فوق وسط الأيقونة بـ٦–٧px في كلِّ صفّ ≈ ٠٫١٤ من مقاس الخطّ — صندوقُ سطر Poppins أطولُ من جسم
+     حروفه في أسفله. الحرفُ ينزل بالإزاحة والصفُّ لا يتغيّر ارتفاعُه. العربيُّ على الآيفون مصحَّحٌ في `Text` (D-1498)، وأندرويد العربيُّ
+     لم يُقَس — لا يُمسّ */
+  const lift = (size: number) => (Platform.OS === "android" && locale !== "ar" ? { transform: [{ translateY: Math.round(size * 1.4) / 10 }] } : null);
 
   const isLight = (themeId ?? settings?.appearance.theme) === "daylight";
   const toggleTheme = () => {
@@ -135,7 +142,7 @@ function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
       style={({ pressed }) => ({ height: opts?.small ? 44 : 46, flexDirection: "row", alignItems: "center", gap: 16, opacity: pressed ? 0.6 : 1 })}
     >
       <Icon name={icon} size={opts?.small ? 22 : 24} color={tokens.fg} />
-      <Text size={opts?.small ? 16 : 18} weight={opts?.small ? "500" : "700"} numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
+      <Text size={opts?.small ? 16 : 18} weight={opts?.small ? "500" : "700"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 16 : 18)]}>{label}</Text>
       {opts?.tag ? (
         <View style={{ borderWidth: 1.5, borderColor: tokens.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
           <Text size={10} weight="700" color={tokens.accent}>PLUS</Text>
@@ -213,7 +220,7 @@ function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
                 <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
                   <Text size={11} weight="700" color={tokens.onAccent}>PLUS</Text>
                 </View>
-                <Text size={plus ? 16 : 17} weight="800" numberOfLines={1} style={{ flex: 1 }}>
+                <Text size={plus ? 16 : 17} weight="800" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flex: 1 }}>
                   {plus ? (until ? t.drawerPlusUntil(until) : t.drawerPlusActive) : t.drawerPlusCta}
                 </Text>
                 <Chevron />
@@ -247,7 +254,7 @@ function SideDrawer({ from }: { from: ReturnType<typeof drawerStore.get> }) {
             <View style={{ height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Pressable onPress={toggleLang} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={t.drawerLangAria(langNow)} hitSlop={4} style={({ pressed }) => ({ height: 44, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed || busy ? 0.6 : 1 })}>
                 <Icon name="globe" size={24} color={tokens.fg} />
-                <Text size={16} weight="500">{langNow}</Text>
+                <Text size={16} weight="500" style={lift(16)}>{langNow}</Text>
               </Pressable>
               <Pressable onPress={toggleTheme} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={4} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
                 <Icon name={isLight ? "sun" : "moon"} size={20} color={tokens.fg} />
