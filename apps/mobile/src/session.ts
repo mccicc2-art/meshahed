@@ -88,7 +88,7 @@ let welcomeDoneMem = false;
  * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
  */
 type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject";
-type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own" }) => void;
+type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own"; count?: number }) => void;
 /**
  * 🆕 D-1143 — **لماذا انتهى الطلبُ الأخير** (يُقرأ مرّةً عند التبليغ): `noack` لم يصل الحدثُ الصفحةَ أصلاً ·
  * `slow` وصل ولم يُجب في ٨ث · `stall` الصفحةُ قالت إنّ مكتبتَها علقت · `host`/`jwt`/`exp` ردٌّ رُفض ·
@@ -129,6 +129,36 @@ function firstToken(ps: Promise<string | null>[]): Promise<string | null> {
           else if (--left === 0) resolve(null);
         });
   });
+}
+
+/**
+ * A-21 (المدقّق ٢٧ أكتوبر) — **علامةٌ واحدةٌ لكلِّ انتظارٍ حقيقيّ**. طلباتٌ تُطلق بعد `clear()` (إعادةُ المحاولة عند 401 من
+ * عدّة نداءات) تنضمّ إلى التجديد المشترك نفسِه وتنتهي في اللحظة نفسِها — فكان تجديدٌ واحدٌ علق ٤٫٥ث يُعدّ سبعَ علامات
+ * (٢١ أكتوبر، آيفون) فيرفع p95 وحدَه، وأوّلُها يمسح `lastSrc` فتفقد البقيّةُ مصدرَها. ما ينتهي في الدورة نفسِها بالنتيجة
+ * نفسِها يُطوى في علامةٍ واحدة: أطولُ المدد، و`count` = كم طالباً انتظر (حين يزيد على واحد)، والمسحُ بعد الطيّ.
+ */
+type WaitExtra = Parameters<WaitReport>[1];
+let waitBatch: { ms: number; extra: WaitExtra; n: number } | null = null;
+function flushWait() {
+  const b = waitBatch;
+  waitBatch = null;
+  lastWhy = undefined;
+  lastSrc = undefined;
+  if (!b) return;
+  const extra: WaitExtra = b.n > 1 ? { ...b.extra, count: b.n } : b.extra;
+  for (const l of waitListeners) l(b.ms, extra);
+}
+function reportWait(ms: number, result: "ok" | "none", ready: 0 | 1) {
+  if (waitBatch && waitBatch.extra.result === result) {
+    waitBatch.n++;
+    waitBatch.ms = Math.max(waitBatch.ms, ms);
+    return;
+  }
+  /* السببُ والمصدرُ يُقرآن قبل طيِّ الدفعة السابقة — الطيُّ يمسحهما */
+  const extra: WaitExtra = { result, ready, ...(result === "ok" ? (lastSrc ? { src: lastSrc } : {}) : lastWhy ? { why: lastWhy } : {}) };
+  if (waitBatch) flushWait();
+  waitBatch = { ms, extra, n: 1 };
+  setTimeout(flushWait, 0);
 }
 
 export const session = {
@@ -300,12 +330,7 @@ export const session = {
       if (inflight === mine) inflight = null;
     });
     inflight = mine;
-    void p.then((tok) => {
-      const extra = { result: tok ? ("ok" as const) : ("none" as const), ready, ...(tok ? (lastSrc ? { src: lastSrc } : {}) : lastWhy ? { why: lastWhy } : {}) };
-      lastWhy = undefined;
-      lastSrc = undefined;
-      for (const l of waitListeners) l(Date.now() - t0, extra);
-    });
+    void p.then((tok) => reportWait(Date.now() - t0, tok ? "ok" : "none", ready));
     return mine;
   },
   /** 🆕 D-1141 — مستمعُ `token.wait` */
@@ -327,7 +352,28 @@ export const session = {
       /* 🆕 R53 — **التجديدُ تعثّر بالشبكة ورمزُه باقٍ ⇒ تجديدٌ ثانٍ والجسرُ معاً، وأوّلُ رمزٍ يصل يكفي** (جوال أحمد ٢١ أكتوبر:
          تجديدٌ علق ٩٫٥ث ثمّ جسرٌ لم يردّ ٨ث أخرى = ٢١ث). كان الجسرُ وحدَه بعد التعثّر، وهو أبطأُ الطريقين بعد إقلاعٍ بارد
          (الصفحةُ لم تُحمَّل). رفضٌ صريح (4xx) يمسح الرمزَ فيبقى الجسرُ وحدَه كما كان */
-      if (!own.enabled() || !own.hasStored()) return session.bridgeOnce();
+      if (!own.enabled()) return session.bridgeOnce();
+      if (!own.hasStored()) {
+        /* A-21 (المدقّق، قياسُ ٢٠–٢٧ أكتوبر) — **لا جلسةَ محفوظةً بعد ⇒ الجسرُ ووصولُ الجلسة المملوكة معاً، وأوّلُهما يكفي.**
+           لحظةَ الدخول بـGoogle يُسكّ رمزُ التطبيق (~٠٫٧ث) والصفحةُ في منتصف تسليمها لا تُجيب، فكان الطالبُ ينتظر الجسرَ
+           وحدَه ٨ث `noack` (١٣ من ١٤ انتظاراً فوق ٨ث على أندرويد في دفعة الدخول نفسِها). الآن أوّلُ سكٍّ يصل يُنهي الانتظار —
+           بدأ قبل الطلب أو بعده — وإن لم يصل شيءٌ فالجسرُ كما كان: لا يصير أبطأَ ممّا كان. */
+        const bridge = session.bridgeOnce();
+        const arrived = new Promise<string | null>((resolve) => {
+          const off = own.onChange(() => {
+            const t = own.get();
+            if (!t) return;
+            off();
+            lastSrc = "own";
+            resolve(t);
+          });
+          void bridge.finally(() => {
+            off();
+            resolve(null);
+          });
+        });
+        return firstToken([arrived, bridge]);
+      }
       return firstToken([
         own.ensure().then((x) => {
           if (x) lastSrc = "own";
