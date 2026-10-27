@@ -1,11 +1,9 @@
-[deploy] Release R90 — diagnostics: pane.warm per pane; dead-tap / hang witnesses sent at once (D-1548)
+[deploy] Release R101 — task 204 (D-1504): watch history phase 1 — episode count, week summary, long-press remove
 
-- 190 `pane.warm` window 600 -> 300 ms: it outlived `WARM_STEP_MS` (320 ms), so
-  each pane's window erased the previous one and only Favorites ever reported.
-- 190 `edge.tap`, `dock.miss` and `js.hang` flush 1.5 s after they are marked
-  instead of waiting for the 30 s batch. Ahmed's recording 15:18 (dock dead for
-  ~4 s in Discover -> Anime, then the queued taps replayed) left no trace: the
-  batch holding that moment never arrived. Diagnostic only; removed with probes.
+- Merged episode rows show their count («3 حلقات»).
+- On the «مشاهدة» chip, «هذا الأسبوع» becomes episodes · movies · hours; /me/activity now sends runtime.
+- Long-press on your own watch row: open the title, or remove it from history (episodes-unmark / movie watched:false) with a confirm.
+- /activity?scope=watch opens the same screen on the watch chip (for the side drawer).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01J6pm3TNrULNFEcQuk7xKKj
+Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
