@@ -1,0 +1,8 @@
+[deploy] Release R99 — fixer tasks 200, 201, 202 (auditor A-27, A-28, A-26)
+
+- Fixer task 200: A-27 — season routes treat a failed IMDb id lookup as unknown
+- Fixer task 201: A-28 — timeouts on outbound provider fetches
+- Fixer task 202: A-26 — tighter discover rail limit when the length filter is on
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7EKXCheFcjyEBZemwk
