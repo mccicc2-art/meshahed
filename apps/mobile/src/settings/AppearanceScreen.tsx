@@ -117,7 +117,7 @@ export function AppearanceScreen() {
           </ExpandRow>
 
           <Row
-            icon="mail"
+            icon="chat"
             title={t.chatBgTitle}
             value={chatBg.k === "loopz" ? t.chatBgLoopz : chatBg.k === "plain" ? t.chatBgPlain : t.chatBgFavs}
             onPress={() => setBgSheet(true)}

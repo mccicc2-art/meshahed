@@ -38,7 +38,7 @@ export function DmPolicySection({ locale, initial }: { locale: Locale; initial: 
   }
 
   return (
-    <SettingsExpandRow icon="mail" title={t.dmPolicyLabel} value={labels[value]} open={open} onToggle={() => setOpen((v) => !v)}>
+    <SettingsExpandRow icon="chat" title={t.dmPolicyLabel} value={labels[value]} open={open} onToggle={() => setOpen((v) => !v)}>
       <SettingsOptionList label={t.dmPolicyLabel}>
         {DM_POLICIES.map((p) => (
           <SettingsOptionRow key={p} selected={p === value} title={labels[p]} onSelect={() => pick(p)} />

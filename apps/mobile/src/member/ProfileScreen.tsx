@@ -795,7 +795,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               {d.viewer.is_me || !d.viewer.signed_in || d.person.system || d.relation.blocked_by_me || d.relation.blocked_me ? null : (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <CircleBtn
-                    icon="mail"
+                    icon="chat"
                     label={t.msgOpenAria(name)}
                     dim={d.viewer.can_message === false}
                     locked={d.viewer.can_message === false}
@@ -1028,7 +1028,7 @@ const ProfilePane = React.memo(function ProfilePane({
 });
 
 /** 🆕 D-1380 — دائرةُ فعلٍ في صفِّ الهويّة: ٣٢ (`controlSize.filterBtn`) برمزٍ ١٤، ولمسُها ٤٤ بالهامش */
-function CircleBtn({ icon, label, onPress, filled = false, dim = false, locked = false, busy = false, onArt }: { icon: "mail" | "person-plus" | "person-check" | "clock"; label: string; onPress: () => void; filled?: boolean; dim?: boolean; locked?: boolean; busy?: boolean; onArt: boolean }) {
+function CircleBtn({ icon, label, onPress, filled = false, dim = false, locked = false, busy = false, onArt }: { icon: "chat" | "person-plus" | "person-check" | "clock"; label: string; onPress: () => void; filled?: boolean; dim?: boolean; locked?: boolean; busy?: boolean; onArt: boolean }) {
   const { tokens } = useApp();
   const D = controlSize.filterBtn;
   const fg = filled ? tokens.onAccent : dim ? tokens.muted : onArt ? "#fff" : tokens.fg;

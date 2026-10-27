@@ -54,7 +54,7 @@ export default async function MessagesPage({
     {
       key: "inbox",
       label: t.communityTabInbox,
-      icon: "mail",
+      icon: "chat",
       href: "/messages",
       badge: unreadMessages,
       badgeLabel: t.messagesUnreadAria(unreadMessages),

@@ -81,7 +81,6 @@ export function HomeTopBar({
   unreadShares,
   onInbox,
   onSignals,
-  onSettings,
   onAvatar,
   avatarRef,
   viewSwitch,
@@ -92,7 +91,6 @@ export function HomeTopBar({
   unreadShares: number;
   onInbox: () => void;
   onSignals: () => void;
-  onSettings: () => void;
   onAvatar: () => void;
   /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
   avatarRef?: React.Ref<View>;
@@ -101,7 +99,7 @@ export function HomeTopBar({
 }) {
   const { t, tokens } = useApp();
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
-  const btn = (name: "mail" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
+  const btn = (name: "chat" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
   return (
     <View style={{ height: 64, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
       {h ? (
@@ -120,9 +118,9 @@ export function HomeTopBar({
       )}
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         {viewSwitch}
-        {btn("mail", t.communityTabInbox, onInbox, unreadShares)}
+        {btn("chat", t.communityTabInbox, onInbox, unreadShares)}
         {btn("bell", t.notifTitle, onSignals, unreadSignals)}
-        {btn("settings", t.settingsNavHeading, onSettings, 0)}
+        {/* 🗑️ D-1511 — زرُّ الإعدادات خرج من رأس الرئيسيّة (أحمد ٢٧ أكتوبر: «خلاص لها مكان في القائمة») — بابُه في القائمة الجانبيّة */}
       </View>
     </View>
   );

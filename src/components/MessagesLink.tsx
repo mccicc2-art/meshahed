@@ -43,7 +43,7 @@ export function MessagesLink({ unread, locale }: { unread: number; locale: Local
       className={headerIconControl}
     >
       {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ (D-620) — كالجرس سواء */}
-      <Icon name="mail" size={HEADER_ICON} />
+      <Icon name="chat" size={HEADER_ICON} />
       {has && (
         /* نفسُ شارة الجرس شكلاً وموضعاً: عائلةٌ واحدة لمعنًى واحد
            («عندك جديدٌ هنا»)، فلا يتعلّم المستخدم لغتين للشيء نفسه. */

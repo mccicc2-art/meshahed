@@ -749,7 +749,6 @@ export function HomeScreen() {
           unreadShares={d?.header.unread_shares ?? 0}
           onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })}
           onSignals={() => router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } })}
-          onSettings={() => router.push("/settings")}
         />
       </View>
       {!d ? (

@@ -65,7 +65,7 @@ export function PrivacyScreen() {
             <Toggle icon="people" label={t.followListsSection} hint={t.followListsHint} checked={pv.hide_follow_lists} disabled={busy} onChange={() => void commit({ hide_name: pv.hide_name, is_private: pv.is_private, hide_follow_lists: !pv.hide_follow_lists })} />
           </Group>
           <Group label={t.setGroupPeople}>
-            <ExpandRow icon="mail" title={t.dmPolicyLabel} value={dmLabel[pv.dm_policy ?? "everyone"]} open={dmOpen} onToggle={() => setDmOpen((v) => !v)}>
+            <ExpandRow icon="chat" title={t.dmPolicyLabel} value={dmLabel[pv.dm_policy ?? "everyone"]} open={dmOpen} onToggle={() => setDmOpen((v) => !v)}>
               {DM_POLICIES.map((p) => (
                 <OptionRow key={p} selected={(pv.dm_policy ?? "everyone") === p} title={dmLabel[p]} disabled={busy} onSelect={() => void pickDm(p)} />
               ))}

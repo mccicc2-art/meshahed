@@ -116,5 +116,7 @@ export type IconName =
   | "eye-off"
   | "dots"
   | "mail"
+  /* 🆕 D-1511 — الرسائل (الظرفُ للبريد وحدَه) */
+  | "chat"
   | "volume"
   | "volume-off";

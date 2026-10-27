@@ -143,7 +143,7 @@ export function CustomizePreview({
                   {labels?.follow}
                 </span>
                 <span className="grid place-items-center w-[22px] h-[22px] rounded-full border border-border text-muted">
-                  <Icon name="mail" size={11} />
+                  <Icon name="chat" size={11} />
                 </span>
               </span>
             </div>

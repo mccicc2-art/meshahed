@@ -208,7 +208,7 @@ export function Inbox({
                       </span>
                     </span>
                     <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted" aria-hidden>
-                      <Icon name="mail" size={16} />
+                      <Icon name="chat" size={16} />
                     </span>
                   </Link>
                 </li>

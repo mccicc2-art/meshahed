@@ -31,8 +31,8 @@ import { tourStore } from "../tour/store";
  * الإذنُ مرفوضٌ ⇒ صفٌّ واحدٌ يفتح إعداداتِ النظام (أندرويد لا يعرض النافذةَ ثانيةً)، والمفاتيحُ معطَّلةٌ تحته.
  */
 const PUSH_PREFS_KEY = ["me:push-prefs"] as const;
-const PUSH_ROWS: { group: PushGroup; icon: "mail" | "person-check" | "heart" | "comment" | "tv"; label: "pushMessages" | "pushFollows" | "pushLikes" | "pushReplies" | "pushEpisodes"; hint: "pushMessagesSub" | "pushFollowsSub" | "pushLikesSub" | "pushRepliesSub" | "pushEpisodesSub" }[] = [
-  { group: "messages", icon: "mail", label: "pushMessages", hint: "pushMessagesSub" },
+const PUSH_ROWS: { group: PushGroup; icon: "chat" | "person-check" | "heart" | "comment" | "tv"; label: "pushMessages" | "pushFollows" | "pushLikes" | "pushReplies" | "pushEpisodes"; hint: "pushMessagesSub" | "pushFollowsSub" | "pushLikesSub" | "pushRepliesSub" | "pushEpisodesSub" }[] = [
+  { group: "messages", icon: "chat", label: "pushMessages", hint: "pushMessagesSub" },
   { group: "follows", icon: "person-check", label: "pushFollows", hint: "pushFollowsSub" },
   { group: "likes", icon: "heart", label: "pushLikes", hint: "pushLikesSub" },
   { group: "replies", icon: "comment", label: "pushReplies", hint: "pushRepliesSub" },

@@ -15,7 +15,7 @@ import type { NativeRoot } from "./shell";
  * 🆕 D-1424 — كان دالّةً محلّيّةً في `HomeTopBar` وحدَها؛ صار مكوّناً لأنّ ترويساتِ التبويبات الأربعة تحمل الجرسَ
  * نفسَه الآن — وزرٌّ ثانٍ بمقاسٍ آخر عيبٌ (القاعدة ٣).
  */
-export function HeaderIconButton({ name, label, onPress, count, color }: { name: "mail" | "bell" | "settings"; label: string; onPress: () => void; count: number; color: string }) {
+export function HeaderIconButton({ name, label, onPress, count, color }: { name: "chat" | "bell" | "settings"; label: string; onPress: () => void; count: number; color: string }) {
   const { tokens } = useApp();
   return (
     <Pressable onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
