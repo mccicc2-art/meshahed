@@ -1,9 +1,11 @@
-[deploy] Release R101 — task 204 (D-1504): watch history phase 1 — episode count, week summary, long-press remove
+[deploy] Release R102 — task 205 (D-1505): side drawer from the account avatar + watch history phase 2
 
-- Merged episode rows show their count («3 حلقات»).
-- On the «مشاهدة» chip, «هذا الأسبوع» becomes episodes · movies · hours; /me/activity now sends runtime.
-- Long-press on your own watch row: open the title, or remove it from history (episodes-unmark / movie watched:false) with a confirm.
-- /activity?scope=watch opens the same screen on the watch chip (for the side drawer).
+- Side drawer (Ahmed's design): opens from the account avatar on Home and in the tab headers; profile, watch history
+  (/activity?scope=watch), connections, customize, invite, settings, help, Plus card, language and light/dark toggle.
+  During the tour's "profile" step the avatar still opens the profile.
+- Language/theme actions moved to settings/appearanceActs (one recipe for Appearance and the drawer).
+- Watch history: source badge (Stremio / widget) from a new `source` column (supabase/watch_source.sql — Ahmed runs it;
+  code works before and after), and "change watch day" (POST /api/v1/track/history-day, shift by whole days, never future).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
