@@ -1,7 +1,9 @@
-[deploy] Release R105 — task 208 (D-1508): drawer following/followers counts open their list
+[deploy] Release R106 — task 209 (D-1509): roomier side drawer (54 pt rows), English Plus features on one line, scroll on short screens
 
-- Each count is its own button (wider hit area); the drawer closes, then the same FollowsSheet the profile counts open
-  appears over the current screen; a person opens their profile. Avatar and name still open your profile.
+- Ahmed (with an X screenshot): "the lists feel cramped". Measured: X rows ~56 pt, ours 46. Chosen option B: main rows 54 pt
+  at weight 600, panel 316 pt, secondary rows 48 (Plus) / 44 (free — the invite card takes the difference).
+- English Plus features were truncated on the card ("Everything you watch is…"); shorter copy fits one line each.
+- The panel scrolls when it is taller than the screen (short phones, English non-subscribers); otherwise unchanged.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
