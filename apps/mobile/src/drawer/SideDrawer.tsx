@@ -175,6 +175,36 @@ function SideDrawer({
       ) : null}
     </Pressable>
   );
+  /* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها تحت حسابه، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً») */
+  const plusCard = (
+            <Pressable
+              onPress={() => go("/settings/plus")}
+              onPressIn={notePress}
+              accessibilityRole="link"
+              style={({ pressed }) => ({ marginTop: plus ? 0 : 24, marginBottom: plus ? 14 : 0, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
+                  <Text size={11} weight="700" color={tokens.onAccent}>PLUS</Text>
+                </View>
+                <Text size={plus ? 16 : 17} weight="800" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flex: 1 }}>
+                  {plus ? (until ? t.drawerPlusUntil(until) : t.drawerPlusActive) : t.drawerPlusCta}
+                </Text>
+                <Chevron />
+              </View>
+              {plus ? null : (
+                <View style={{ gap: 4 }}>
+                  {t.drawerPlusFeats.map((f) => (
+                    <View key={f} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Icon name="check" size={16} color={tokens.accent} />
+                      <Text size={14} muted numberOfLines={1} style={{ flex: 1 }}>{f}</Text>
+                    </View>
+                  ))}
+                  <Text size={13} weight="700" color={tokens.accent} style={{ paddingStart: 26 }}>{t.drawerPlusMore}</Text>
+                </View>
+              )}
+            </Pressable>
+  );
   const divider = <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 8 }} />;
 
   return (
@@ -257,36 +287,11 @@ function SideDrawer({
               </View>
             ) : null}
 
-            {/* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً») */}
-            <Pressable
-              onPress={() => go("/settings/plus")}
-              onPressIn={notePress}
-              accessibilityRole="link"
-              style={({ pressed }) => ({ marginTop: 24, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                  <Text size={11} weight="700" color={tokens.onAccent}>PLUS</Text>
-                </View>
-                <Text size={plus ? 16 : 17} weight="800" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flex: 1 }}>
-                  {plus ? (until ? t.drawerPlusUntil(until) : t.drawerPlusActive) : t.drawerPlusCta}
-                </Text>
-                <Chevron />
-              </View>
-              {plus ? null : (
-                <View style={{ gap: 4 }}>
-                  {t.drawerPlusFeats.map((f) => (
-                    <View key={f} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      <Icon name="check" size={16} color={tokens.accent} />
-                      <Text size={14} muted numberOfLines={1} style={{ flex: 1 }}>{f}</Text>
-                    </View>
-                  ))}
-                  <Text size={13} weight="700" color={tokens.accent} style={{ paddingStart: 26 }}>{t.drawerPlusMore}</Text>
-                </View>
-              )}
-            </Pressable>
+            {/* 🆕 D-1510 — **المشتركُ لا يحتاج دعوة** (أحمد ٢٧ أكتوبر، بعد تصميمَي «الاشتراك تحت»): بطاقتُه تنزل فوق خطِّ الإعدادات،
+                فأوّلُ ما يراه تحت حسابه ما يستعمله كلَّ يوم؛ وغيرُ المشترك تبقى الدعوةُ تحت حسابه كما هي */}
+            {plus ? null : plusCard}
 
-            <View style={{ marginTop: plus ? 20 : 16 }}>
+            <View style={{ marginTop: plus ? 26 : 16 }}>
               {row("person", t.drawerProfile, openMe)}
               {row("history", t.drawerHistory, () => go({ pathname: "/activity", params: { from, scope: "watch" } }))}
               {row("link", t.drawerConnections, () => go("/settings/stremio"), { tag: !plus })}
@@ -295,6 +300,7 @@ function SideDrawer({
             </View>
 
             <View style={{ flex: 1 }} />
+            {plus ? plusCard : null}
             {divider}
             {row("settings", t.drawerSettings, () => go("/settings"), { small: true })}
             {row("help", t.drawerHelp, () => go("/settings/help"), { small: true })}
