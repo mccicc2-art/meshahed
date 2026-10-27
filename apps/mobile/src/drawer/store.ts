@@ -13,7 +13,8 @@ import type { NativeRoot } from "../shell";
  * و`from` حالةُ React: من أيِّ جذرٍ فُتحت — `null` = مغلقةٌ تماماً (لا تأخذ لمساً). يُضبط قبل أن تتحرّك ويُصفَّر بعد أن تستقرّ.
  */
 export const DRAWER_MS = 220;
-const PANEL_MAX = 296;
+/* 🆕 D-1509 — ٣١٦ لا ٢٩٦ (أحمد ٢٧ أكتوبر، بلقطة X: «تحسها ملمومة القوائم» — اختار «ب») */
+const PANEL_MAX = 316;
 /** عرضُ اللوح — دالّةٌ واحدةٌ يقرؤها اللوحُ وسحبةُ الرئيسيّة (نسبةُ الإصبع من العرض نفسِه) */
 export function drawerWidth(screen: number): number {
   "worklet";

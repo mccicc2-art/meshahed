@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Platform, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { BackHandler, I18nManager, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -162,10 +162,12 @@ function SideDrawer({
       onPress={onPress}
       onPressIn={notePress}
       accessibilityRole="link"
-      style={({ pressed }) => ({ height: opts?.small ? 44 : 46, flexDirection: "row", alignItems: "center", gap: 16, opacity: pressed ? 0.6 : 1 })}
+      /* 🆕 D-1509 — **مسافاتُ «ب»** (أحمد ٢٧ أكتوبر بلقطة X: «تحسها ملمومة القوائم»؛ قيس من اللقطة: صفُّ X ~٥٦، وصفُّنا كان ٤٦):
+         الصفُّ الرئيس ٥٤ بخطٍّ أخفّ (٦٠٠ لا ٧٠٠)، والثانويّ ٤٨ للمشترك و٤٤ لغيره — بطاقةُ الدعوة بمزاياها الخمس تأخذ مكانَ الفرق */
+      style={({ pressed }) => ({ height: opts?.small ? (plus ? 48 : 44) : 54, flexDirection: "row", alignItems: "center", gap: 18, opacity: pressed ? 0.6 : 1 })}
     >
       <Icon name={icon} size={opts?.small ? 22 : 24} color={tokens.fg} />
-      <Text size={opts?.small ? 16 : 18} weight={opts?.small ? "500" : "700"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 16 : 18)]}>{label}</Text>
+      <Text size={opts?.small ? 16 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 16 : 18)]}>{label}</Text>
       {opts?.tag ? (
         <View style={{ borderWidth: 1.5, borderColor: tokens.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
           <Text size={10} weight="700" color={tokens.accent}>PLUS</Text>
@@ -201,13 +203,18 @@ function SideDrawer({
                 backgroundColor: tokens.bg,
                 borderEndWidth: StyleSheet.hairlineWidth,
                 borderEndColor: tokens.border,
-                paddingTop: insets.top + 20,
-                paddingBottom: insets.bottom + 12,
-                paddingHorizontal: 22,
               },
               panelStyle,
             ]}
           >
+            {/* 🆕 D-1509 — **يتمرّر إن طال عن الشاشة** (هاتفٌ قصير، أو غيرُ مشتركٍ بالإنجليزيّة: يملأ ٨٤٤ نقطة كلَّها) — وإلّا يبقى
+                ساكناً والفاصلُ المرن يدفع الإعداداتِ إلى الأسفل كما كان. العموديُّ لا ينازع سحبةَ الإغلاق الأفقيّة (`failOffsetY`) */}
+            <ScrollView
+              bounces={false}
+              overScrollMode="never"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 12, paddingHorizontal: 22 }}
+            >
             {/* الحساب: الصورةُ بجوار الاسم (أحمد: «الصورة تكون كذا ماتكون فوق الاسم») ثمّ الرقمان */}
             <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={`${t.drawerProfile} — ${name}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -255,7 +262,7 @@ function SideDrawer({
               onPress={() => go("/settings/plus")}
               onPressIn={notePress}
               accessibilityRole="link"
-              style={({ pressed }) => ({ marginTop: 22, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
+              style={({ pressed }) => ({ marginTop: 24, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
@@ -267,7 +274,7 @@ function SideDrawer({
                 <Chevron />
               </View>
               {plus ? null : (
-                <View style={{ gap: 6 }}>
+                <View style={{ gap: 4 }}>
                   {t.drawerPlusFeats.map((f) => (
                     <View key={f} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                       <Icon name="check" size={16} color={tokens.accent} />
@@ -279,7 +286,7 @@ function SideDrawer({
               )}
             </Pressable>
 
-            <View style={{ marginTop: 14 }}>
+            <View style={{ marginTop: plus ? 20 : 16 }}>
               {row("person", t.drawerProfile, openMe)}
               {row("history", t.drawerHistory, () => go({ pathname: "/activity", params: { from, scope: "watch" } }))}
               {row("link", t.drawerConnections, () => go("/settings/stremio"), { tag: !plus })}
@@ -301,6 +308,7 @@ function SideDrawer({
                 <Icon name={isLight ? "sun" : "moon"} size={20} color={tokens.fg} />
               </Pressable>
             </View>
+            </ScrollView>
           </Reanimated.View>
         </GestureDetector>
       </GestureHandlerRootView>

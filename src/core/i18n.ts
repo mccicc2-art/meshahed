@@ -4578,7 +4578,8 @@ const en: Dict = {
   drawerPlusCta: "Get Plus",
   drawerPlusUntil: (d: string) => `Active until ${d}`,
   drawerPlusActive: "Plus is active",
-  drawerPlusFeats: ["Everything you watch is logged automatically", "Connect Netflix, Stremio and more", "Customize your home and profile", "Smart lists that update themselves", "Themes in your colours"] as readonly string[],
+  /* D-1509 — كلُّ ميزةٍ في سطرٍ واحد: الجملُ الطويلة كانت تُقصّ بنقاط على عرض البطاقة («Everything you watch is…») */
+  drawerPlusFeats: ["Auto-log what you watch", "Link Netflix, Stremio & more", "Customize home & profile", "Smart lists that update", "Themes in your colours"] as readonly string[],
   drawerPlusMore: "+8 more features",
   drawerProfile: "Profile",
   drawerHistory: "Watch history",
