@@ -1,10 +1,8 @@
-[deploy] Release R103 — task 206 (D-1506): side drawer opens instantly + swipe to open on Home
+[deploy] Release R104 — task 207 (D-1507): drawer labels on the icon line, Plus date no longer cut
 
-- Khaled's recording (Android): ~370 ms from avatar tap to the first drawer frame, the slide never showed and icons/avatar
-  arrived 70–100 ms late — the drawer was a Modal built on each tap. It is now a pre-mounted overlay (after 2.5 s), off-screen,
-  touch-transparent and hidden from screen readers while closed; opening animates one Reanimated value on the UI thread.
-- Swipe on Home opens it (right in English, left in Arabic); the drawer follows the finger; release past 1/3 or a fling opens.
-  Same lock thresholds as TabSlide (20 px, 1.6x); horizontal rails keep their own touches; disabled while the tour is up.
+- Measured in Khaled's recording (Android, English): every label sat 6–7 px above its icon's centre (~0.14 of the font size).
+  Labels are nudged down by transform on Android Latin only (row height unchanged; iOS Arabic already handled by D-1498).
+- "Active until Decem…": the month is short in English ("Dec 20"), long in Arabic; the line shrinks slightly before truncating.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
