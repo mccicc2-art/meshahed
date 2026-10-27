@@ -1,0 +1,6 @@
+[deploy] Release R100 — task 203 (A-21): token wait at sign-in races the app session; one mark per real wait
+
+- Task 203: A-21 — token wait at sign-in races the app session; one mark per real wait
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7EKXCheFcjyEBZemwk
