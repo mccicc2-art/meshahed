@@ -26,6 +26,8 @@ export async function traktToken(code: string, redirectUri: string): Promise<str
       method: "POST",
       headers: { "content-type": "application/json" },
       cache: "no-store",
+      /* A-28 — مهلةٌ كي لا يحبس Trakt المتعثّرُ الطلبَ حتى حدّ الدالّة؛ تسقط في `catch` ⇒ null */
+      signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         code,
         client_id: process.env.TRAKT_CLIENT_ID,
@@ -52,6 +54,8 @@ async function traktGet<T>(path: string, token: string): Promise<T | null> {
         authorization: `Bearer ${token}`,
       },
       cache: "no-store",
+      /* A-28 — المهلةُ نفسُها */
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null;
     return (await res.json()) as T;

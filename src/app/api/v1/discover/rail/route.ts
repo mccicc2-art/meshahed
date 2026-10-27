@@ -30,6 +30,13 @@ export async function GET(req: NextRequest) {
       const lim = limited(`v1:discover:rail:${ip}`, 120, 60_000);
       if (lim) return lim;
       const sp = req.nextUrl.searchParams;
+      /* A-26 (المدقّق ٢٧ أكتوبر) — فلترُ الطول (D-1551) يكلّف حتى عشرين نداءَ تفاصيلَ لـTMDB لكلّ صفحة،
+         والمسارُ مفتوحٌ للضيف ⇒ حدٌّ أضيق له وحدَه على مفتاح TMDB المشترك. ٤٠ في الدقيقة = خمسُ
+         تبديلاتٍ للفلتر بصفوفها الثمانية — أكثرُ ممّا يفعله قارئٌ، وأقلُّ بثلاث مرّاتٍ من سقف المضاعفة. */
+      if (sp.has("len")) {
+        const lenLim = limited(`v1:discover:rail:len:${ip}`, 40, 60_000);
+        if (lenLim) return lenLim;
+      }
       const tabRaw = sp.get("tab");
       const tab = tabRaw === "movies" ? "movies" : tabRaw === "anime" ? "anime" : "shows";
       const keyRaw = sp.get("key") ?? "";

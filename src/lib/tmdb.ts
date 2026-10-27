@@ -1453,11 +1453,21 @@ export async function getMovieIn(id: number, language: "ar-SA" | "en-US"): Promi
 /** معرّف IMDb لمسلسل — من /external_ids؛ جسر تقييمات OMDb (مخبّأ ساعةً) */
 export async function tvImdbId(id: number): Promise<string | null> {
   try {
-    const data = await tmdb<{ imdb_id?: string | null }>(`/tv/${id}/external_ids`);
-    return data.imdb_id ?? null;
+    return await tvImdbIdStrict(id);
   } catch {
     return null;
   }
+}
+
+/**
+ * A-27 (المدقّق ٢٧ أكتوبر) — **نظيرُ `tvImdbId` يرمي حين يفشل النداء بدل أن يعود `null`.**
+ * `null` هنا تعني «TMDB أجاب: لا معرّفَ IMDb» — غيابٌ يقين؛ وفشلُ الشبكة جهلٌ لا غياب.
+ * مسارا الموسم يحتاجان الفرق: `seasonImdbRatings(null)` تعود `{}` («عرفنا ولا رقم»)
+ * فيُفتح بديلُ TMDB لموسمٍ كاملٍ له تقييماتُ IMDb (يكسر الشرطَ ٢ من D-1554).
+ */
+export async function tvImdbIdStrict(id: number): Promise<string | null> {
+  const data = await tmdb<{ imdb_id?: string | null }>(`/tv/${id}/external_ids`);
+  return data.imdb_id ?? null;
 }
 
 /** معرّف IMDb لفيلم — نتائج /discover لا تحمله فنسأل /external_ids؛

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
-import { tvImdbId } from "@/lib/tmdb";
+import { tvImdbIdStrict } from "@/lib/tmdb";
 import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
 import { episodeTmdbFallback } from "@/core/episodeRating";
@@ -40,7 +40,8 @@ export async function GET(request: Request) {
       /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد (دالّةُ مسار التطبيق نفسُها) */
       getSeasonForView(tvId, seasonNumber),
       withRatings
-        ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => null)
+        ? /* A-27 — فشلُ TMDB يسقط في `.catch` ⇒ `null` = لا نعرف، فلا بديلَ TMDB */
+          tvImdbIdStrict(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => null)
         : Promise.resolve(null),
     ]);
     const episodes = season.episodes.map((e) => {

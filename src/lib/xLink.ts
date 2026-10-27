@@ -56,6 +56,8 @@ export async function xLinkEnabled(): Promise<boolean> {
       /* **لا كاشَ لطبقة Next هنا**: المهلةُ أعلاه هي الكاش،
          **وكاشان لقيمةٍ واحدةٍ يفترقان** (D-145). */
       cache: "no-store",
+      /* A-28 — مهلةٌ: ما لم يُجب يُقرأ مطفأً كما يُقرأ كلُّ ردٍّ غيرِ واضح */
+      signal: AbortSignal.timeout(5_000),
     });
     /* **التحويلُ «مفعَّل» و٤٠٠ «مطفأ»** — وما سواهما يُقرأ مطفأً */
     on = res.status >= 300 && res.status < 400;

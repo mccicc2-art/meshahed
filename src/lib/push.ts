@@ -102,6 +102,9 @@ async function send(db: SupabaseClient, batch: { token: string; text: PushText; 
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(part.map(expoMessage)),
+        /* A-28 (المدقّق ٢٧ أكتوبر) — مهلةٌ سخيّة لدفعة المئة: Expo متعثّرٌ كان يحبس الدفعاتِ التاليةَ حتى حدّ الدالّة.
+           الدفعةُ التي تنقضي مهلتُها تسقط في `catch` القائم وتمضي الحلقةُ إلى ما بعدها. */
+        signal: AbortSignal.timeout(15_000),
       });
       const json = (await res.json().catch(() => null)) as { data?: { status?: string; details?: { error?: string } }[] } | null;
       const tickets = Array.isArray(json?.data) ? json.data : [];

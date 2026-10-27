@@ -213,6 +213,8 @@ export async function getGitHubHead(): Promise<{ sha: string; message: string; d
     const res = await fetch("https://api.github.com/repos/mccicc2-art/meshahed/commits/main", {
       headers: { Accept: "application/vnd.github+json", "User-Agent": "loopz-admin" },
       next: { revalidate: 60 },
+      /* A-28 — مهلةٌ كي لا تتجمّد لوحةُ الإدارة لأجل سطرٍ واحد؛ تسقط في `catch` ⇒ null */
+      signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
     const j = (await res.json()) as { sha: string; commit: { message: string; author: { date: string } } };

@@ -61,6 +61,12 @@ function cleanRated(raw: string | undefined): string | null {
  * صار مهمّاً في D-172: **لا يُعرض بديل TMDB إلا لمن تأكّدنا أن لا تقييم
  * IMDb له** — وشرطُ أحمد كان هذا حرفياً.
  */
+/**
+ * A-28 (المدقّق ٢٧ أكتوبر) — **مهلةٌ لكلّ نداء OMDb** كما لـTMDB: مزوّدٌ متعثّرٌ كان يحبس الطلبَ حتى حدّ الدالّة.
+ * المهلةُ تسقط في `catch` القائم ⇒ `null` = «لا نعرف» (لا غياب)، فلا يتغيّر معنى أيّ ردّ.
+ */
+const OMDB_TIMEOUT_MS = 6_000;
+
 export const NO_IMDB_RATING: ExternalRatings = { imdb: null, rt: null, votes: null, rated: null };
 
 export async function externalRatings(imdbId: string | null | undefined): Promise<ExternalRatings | null> {
@@ -69,7 +75,7 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
   try {
     const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}`,
-      { next: { revalidate: 86400 } },
+      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(OMDB_TIMEOUT_MS) },
     );
     if (!res.ok) return null;
     const j = (await res.json()) as {
@@ -155,7 +161,7 @@ async function searchOmdb(
   try {
     const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&s=${encodeURIComponent(q)}&type=${kind}`,
-      { next: { revalidate: 86400 } },
+      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(OMDB_TIMEOUT_MS) },
     );
     if (!res.ok) return [];
     const j = (await res.json()) as {
@@ -237,7 +243,7 @@ export async function seasonImdbRatings(
   try {
     const res = await tracedFetch(
       `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}&Season=${season}`,
-      { next: { revalidate: 86400 } },
+      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(OMDB_TIMEOUT_MS) },
     );
     if (!res.ok) return null;
     const j = (await res.json()) as {

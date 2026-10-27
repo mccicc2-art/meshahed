@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { tvImdbId } from "@/lib/tmdb";
+import { tvImdbIdStrict } from "@/lib/tmdb";
 import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
 import { episodeTmdbFallback } from "@/core/episodeRating";
@@ -42,8 +42,9 @@ export async function GET(
         /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد */
         getSeasonForView(tvId, seasonNumber),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
-        /* D-1554 — `null` = لم نعرف (حصّةٌ أو شبكة) فلا بديلَ TMDB؛ `{}` = عرفنا ولا رقم */
-        withRatings ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => null) : Promise.resolve(null),
+        /* D-1554 — `null` = لم نعرف (حصّةٌ أو شبكة) فلا بديلَ TMDB؛ `{}` = عرفنا ولا رقم.
+           A-27 — والمعرّفُ بالنسخة التي ترمي: فشلُ TMDB جهلٌ يسقط في `.catch`، لا «لا معرّف» */
+        withRatings ? tvImdbIdStrict(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber)).catch(() => null) : Promise.resolve(null),
         /* 🔴 D-1501 — **تقييمي يُقرأ دائماً لا مع `r=1` وحده** (بلاغُ أحمد: «نظام تقييم الحلقات غير واضح»): كانت نجمتي
            تمتلئ لحظةَ التقييم ثمّ تفرغ بعد الخروج، لأنّ التطبيقَ لا يطلب `r=1` إلّا بالنجمة العلويّة. قراءةٌ من قاعدتنا لا من OMDb. */
         uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, EpisodeRatingRow>()) : Promise.resolve(new Map<string, EpisodeRatingRow>()),
