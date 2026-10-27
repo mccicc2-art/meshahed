@@ -1,8 +1,7 @@
-[deploy] Release R104 — task 207 (D-1507): drawer labels on the icon line, Plus date no longer cut
+[deploy] Release R105 — task 208 (D-1508): drawer following/followers counts open their list
 
-- Measured in Khaled's recording (Android, English): every label sat 6–7 px above its icon's centre (~0.14 of the font size).
-  Labels are nudged down by transform on Android Latin only (row height unchanged; iOS Arabic already handled by D-1498).
-- "Active until Decem…": the month is short in English ("Dec 20"), long in Arabic; the line shrinks slightly before truncating.
+- Each count is its own button (wider hit area); the drawer closes, then the same FollowsSheet the profile counts open
+  appears over the current screen; a person opens their profile. Avatar and name still open your profile.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
