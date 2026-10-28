@@ -254,7 +254,9 @@ export function SearchScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: navH + 24, gap: 16 }} showsVerticalScrollIndicator={false}>
         {desc ? (
           <>
-            <Pressable onPress={() => setDesc(false)} hitSlop={8} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" }}>
+            {/* 🆕 D-1556 — خالد ٢٧ أكتوبر: «اذا ضغطت عالرجوع ما يختفي الكيبورد» — الإيماءةُ تُخفيه (النظامُ يغلقه أوّلاً) والزرُّ لا؛
+                حقلُ الوصف يزول من الشجرة والتركيزُ يبقى معلّقاً، فيُغلَق صراحةً قبل العودة */}
+            <Pressable onPress={() => { Keyboard.dismiss(); setDesc(false); }} hitSlop={8} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" }}>
               <View style={{ transform: [{ rotate: "90deg" }] }}>
                 <Icon name="chevron-down" size={14} color={tokens.muted} />
               </View>
