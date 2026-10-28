@@ -262,7 +262,7 @@ function InboxPane({
           <ConvRow c={item.c} onPress={() => onOpen(item.c.person_id)} onLongPress={() => (haptic.pick(), setHeld(item))} />
         )
       }
-      ListFooterComponent={
+      ListFooterComponent={(
         held ? (
           <Sheet title={held.type === "conv" ? t.msgDeleteChat : t.grpLeave} onClose={() => setHeld(null)} placement="center">
             <Text size={13} muted style={{ lineHeight: 20, marginBottom: 16 }}>
@@ -276,7 +276,7 @@ function InboxPane({
             </View>
           </Sheet>
         ) : null
-      }
+      ) ?? undefined}
       ListEmptyComponent={
         /* الفراغُ الموجَّه (`FeedEmptyCta`، D-106): أوّلُ خطوةٍ محادثةٌ جديدة */
         <View style={{ marginTop: 16, paddingVertical: 36, paddingHorizontal: 20, borderRadius: 16, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", gap: 14 }}>

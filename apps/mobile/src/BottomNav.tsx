@@ -1,7 +1,7 @@
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { dockArea, dockPressIn, dockTouched, tabGone, tabPressed } from "./perfMarks";
-import { Animated, Pressable, View } from "react-native";
+import { Animated, Pressable, View, type ViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { Text } from "./ui";
@@ -62,7 +62,7 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
     search: t.navSearch,
   };
   /* 🩺 R57 — `dock.miss`: الشريطُ المركَّزُ يعلن كيف يُقاس أعلاه في النافذة (ويسحبه حين يغيب) — فلمسةٌ تحته لم تصل زرّاً تُعرف */
-  const navRef = React.useRef<View>(null);
+  const navRef = React.useRef<ViewInstance>(null);
   useFocusEffect(
     React.useCallback(() => {
       dockArea((cb) => navRef.current?.measureInWindow((_x, y) => cb(Math.round(y))));

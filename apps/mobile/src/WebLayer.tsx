@@ -5,6 +5,10 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
+
+/* 🆕 D-1557 — react-native-webview 14: `WebView<P = undefined>` يجعل الخصائص `WebViewProps & undefined` = `never`
+   تحت TypeScript الصارم (SDK 58) فيرفض كلَّ خاصّية. نثبّت P = object — النوعُ فقط، والمكوّنُ نفسُه لم يتغيّر. */
+const Web = WebView<object>;
 import { useGlobalSearchParams, useNavigationContainerRef, useRouter } from "expo-router";
 import { supabase, useAuth } from "./auth";
 import { CONFIG } from "./config";
@@ -204,7 +208,7 @@ export function WebLayer() {
   const { loading, signInWithGoogle, signInWithApple } = useAuth();
   const router = useRouter();
   const t = OFFLINE[currentLocale() === "ar" ? "ar" : "en"];
-  const ref = useRef<WebView>(null);
+  const ref = useRef<WebView<object>>(null);
   /* 🆕 K3b — **أعلى المكدّس الجذر وحدَه** يُعيد رسمَ الطبقة: منه تُحسب رؤيتُها. لا `useRootNavigationState` — كان يُعيد
      رسمَ هذه الشاشة الثقيلة (والـWebView) مع كلِّ ضغطة تبويبٍ في المجموعة، و`tab.switch` بندٌ مفتوح في 05. والحالةُ الكاملةُ
      تُقرأ حين تُحتاج (`goRoot`). */
@@ -1165,7 +1169,7 @@ export function WebLayer() {
     >
     <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: SHELL_BG }}>
       {source ? (
-        <WebView
+        <Web
           ref={ref}
           source={source}
           style={{ flex: 1, backgroundColor: SHELL_BG }}

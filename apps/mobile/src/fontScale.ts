@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { Dimensions, Platform } from "react-native";
+import { Dimensions, Platform, type ScaledSize } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Updates from "expo-updates";
 import { opening } from "./opening/opening";
@@ -75,7 +75,7 @@ export function useFontScale(content?: boolean): number {
 if (Platform.OS === "ios") {
   const fontScale0 = Dimensions.get("window").fontScale;
   let reloading = false;
-  Dimensions.addEventListener("change", ({ window }) => {
+  Dimensions.addEventListener("change", ({ window }: { window: ScaledSize }) => {
     if (reloading || Math.abs(window.fontScale - fontScale0) < 0.01) return;
     reloading = true;
     opening.skipNext();

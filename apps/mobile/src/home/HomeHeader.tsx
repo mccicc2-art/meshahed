@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { notePress } from "../perfMarks";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -93,7 +93,7 @@ export function HomeTopBar({
   onSignals: () => void;
   onAvatar: () => void;
   /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
-  avatarRef?: React.Ref<View>;
+  avatarRef?: React.Ref<ViewInstance>;
   /** المبدّلُ هنا فقط حين تُخفى بطاقةُ الأرقام */
   viewSwitch?: React.ReactNode;
 }) {

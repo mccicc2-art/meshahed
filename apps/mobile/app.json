@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loopz",
     "slug": "mesh",
-    "version": "1.12.8",
+    "version": "1.13.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "com.loopztv.app",
@@ -104,6 +104,7 @@
         }
       ],
       "./plugins/withLoopzWidget",
+      "./plugins/withNoMinify",
       "@bacons/apple-targets",
       "expo-background-task",
       [

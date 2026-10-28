@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { frameCounter, jankStart, mark, span } from "./perfMarks";
-import { Animated, Easing, I18nManager, InteractionManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { afterInteractions } from "./afterInteractions";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Reanimated, { cancelAnimation, Easing as REasing, makeMutable, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
@@ -802,7 +803,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
       const queue = near.filter((k) => !warmRef.current.includes(k)).sort((a, b) => Math.abs(order.indexOf(a) - ti) - Math.abs(order.indexOf(b) - ti));
       let i = 0;
       const step = () => {
-        job = InteractionManager.runAfterInteractions(() => {
+        job = afterInteractions(() => {
           if (cancelled) return;
           const k = queue[i];
           i += 1;
@@ -817,7 +818,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
       timer = setTimeout(step, wait);
     } else {
       timer = setTimeout(() => {
-        job = InteractionManager.runAfterInteractions(() => {
+        job = afterInteractions(() => {
           if (!cancelled) setWarm(near);
         });
       }, wait);

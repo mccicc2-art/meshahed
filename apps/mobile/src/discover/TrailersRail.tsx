@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { I18nManager, InteractionManager, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { I18nManager, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { afterInteractions } from "../afterInteractions";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -79,7 +80,7 @@ export function TrailersRail({
     if (!active || !seeAll) return;
     let task: { cancel: () => void } | null = null;
     const timer = setTimeout(() => {
-      task = InteractionManager.runAfterInteractions(() => shell.warm(seeAll));
+      task = afterInteractions(() => shell.warm(seeAll));
     }, 2500);
     return () => {
       clearTimeout(timer);
@@ -200,7 +201,7 @@ export function TrailersRail({
   const hasData = !!q.data;
   useEffect(() => {
     if (armed || !active || !hasData) return;
-    const task = InteractionManager.runAfterInteractions(() => setArmed(true));
+    const task = afterInteractions(() => setArmed(true));
     return () => task.cancel();
   }, [armed, active, hasData]);
   const items = q.data?.items ?? [];

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, useReducer } from "react";
-import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { BackHandler, Keyboard, Platform, Pressable, ScrollView, TextInput, View, type TextInputInstance } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -62,7 +62,7 @@ export function SearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const navH = navHeight(insets.bottom);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   /* K1 — `search.open`: البحثُ يُفتح على حقلٍ لا بيانات، فالمقياسُ من التركيب إلى أوّل رسم */
   useEffect(() => {

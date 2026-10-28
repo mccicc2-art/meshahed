@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useId, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
@@ -103,7 +103,7 @@ export const ContinueCard = memo(function ContinueCard({
       }, SLIDE_MS),
     );
   };
-  const holdRef = useRef<View>(null);
+  const holdRef = useRef<ViewInstance>(null);
   const hold = onHold ? () => holdRef.current?.measureInWindow((x, y, width, height) => onHold({ x, y, width, height })) : undefined;
   const isShow = card.type === "show";
   const title = isShow ? card.title : card.list_name;

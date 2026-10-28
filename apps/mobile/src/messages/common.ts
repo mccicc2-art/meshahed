@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { InteractionManager } from "react-native";
+import { afterInteractions } from "../afterInteractions";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient } from "../api";
@@ -72,7 +72,7 @@ let messagesWarmed = false;
 export function warmMessagesOnce(): void {
   if (messagesWarmed) return;
   messagesWarmed = true;
-  InteractionManager.runAfterInteractions(() => {
+  afterInteractions(() => {
     setTimeout(() => {
       if (!queryClient.getQueryData(MESSAGES_KEY)) prefetchMessages();
     }, 2500);

@@ -1,5 +1,5 @@
 import React, { memo, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -58,7 +58,7 @@ export const RailCard = memo(function RailCard({
   const lib = cs.store ? cs.mark : libProp;
   const held = cs.store ? cs.held : heldProp;
   const uri = posterFor(card.poster_path, RAIL_CARD_W);
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(card, { x, y, width: w, height: h })) : undefined;
   const a11y = [rank !== null ? String(rank) : null, card.title, lib?.dropped ? t.libStatusDropped : lib?.completed ? t.libStatusCompleted : lib && lib.progress > 0 ? `${t.libStatusWatching} ${lib.progress}%` : lib?.saved ? t.libStatusUnstarted : null].filter(Boolean).join("، ");
   return (

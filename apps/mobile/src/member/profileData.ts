@@ -1,4 +1,4 @@
-import { InteractionManager } from "react-native";
+import { afterInteractions } from "../afterInteractions";
 import { Image } from "expo-image";
 import { File, Paths } from "expo-file-system";
 import { api, queryClient } from "../api";
@@ -50,7 +50,7 @@ export function rememberHead(username: string, head: number, bar: number) {
   if (headTimer) clearTimeout(headTimer);
   headTimer = setTimeout(() => {
     headTimer = null;
-    InteractionManager.runAfterInteractions(() => {
+    afterInteractions(() => {
       try {
         const f = headFile();
         if (!f.exists) f.create();
