@@ -1,0 +1,229 @@
+diff --git a/apps/mobile/.npmrc b/apps/mobile/.npmrc
+index 521a9f7..9e93edb 100644
+--- a/apps/mobile/.npmrc
++++ b/apps/mobile/.npmrc
+@@ -1 +1,4 @@
+ legacy-peer-deps=true
++# 🆕 D-1555 — Universal Sign In (ترخيصٌ مدفوع) من سجلّ GitHub الخاصّ؛ التوكن متغيّرٌ سرّيٌّ في EAS (`NPM_TOKEN_GOOGLE_SIGN_IN`) لا يُودَع هنا
++@react-native-google-signin:registry=https://npm.pkg.github.com/
++//npm.pkg.github.com/:_authToken=${NPM_TOKEN_GOOGLE_SIGN_IN}
+diff --git a/apps/mobile/app.json b/apps/mobile/app.json
+index 3016d48..37fb4d9 100644
+--- a/apps/mobile/app.json
++++ b/apps/mobile/app.json
+@@ -2,7 +2,7 @@
+   "expo": {
+     "name": "Loopz",
+     "slug": "mesh",
+-    "version": "1.12.7",
++    "version": "1.12.8",
+     "orientation": "portrait",
+     "icon": "./assets/icon.png",
+     "scheme": "com.loopztv.app",
+@@ -76,6 +76,10 @@
+       "expo-web-browser",
+       "expo-localization",
+       "expo-apple-authentication",
++      [
++        "@react-native-google-signin/google-signin",
++        { "iosUrlScheme": "com.googleusercontent.apps.751080411743-kbpar9g9kil8k1sccd1qcapni7o0oh6c" }
++      ],
+       [
+         "expo-splash-screen",
+         {
+diff --git a/apps/mobile/package.json b/apps/mobile/package.json
+index 368dbf9..706fad9 100644
+--- a/apps/mobile/package.json
++++ b/apps/mobile/package.json
+@@ -4,6 +4,7 @@
+   "main": "index.ts",
+   "dependencies": {
+     "@bacons/apple-targets": "^5.0.0",
++    "@react-native-google-signin/google-signin": "24.1.0",
+     "@shopify/flash-list": "^2.3.2",
+     "@supabase/supabase-js": "^2.115.0",
+     "@tanstack/react-query": "^5.102.8",
+diff --git a/apps/mobile/src/auth.tsx b/apps/mobile/src/auth.tsx
+index 443f964..99fbf3d 100644
+--- a/apps/mobile/src/auth.tsx
++++ b/apps/mobile/src/auth.tsx
+@@ -8,6 +8,7 @@ import * as Linking from "expo-linking";
+ import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
+ import { CONFIG } from "./config";
+ import { secureStorage } from "./secureStorage";
++import { nativeGoogleIdToken } from "./googleNative";
+ 
+ /**
+  * ====== الدخولُ والجلسة — Google عبر المتصفّح، PKCE، تجديدٌ على الجهاز ======
+@@ -123,6 +124,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
+       loading,
+       async signInWithGoogle(opts) {
+         try {
++          /* 🆕 D-1555 — الورقةُ الأصليّةُ أوّلاً (تعرض «Loopz» لا نطاقَ Supabase)؛ ما بعد الرمز طريقُ أبل نفسُه. «unavailable» ⇒
++             المتصفّحُ كما كان أدناه — الدخولُ لا ينكسر على جهازٍ بلا Play Services */
++          const g = await nativeGoogleIdToken();
++          if (g.kind === "cancel") return { ok: false, message: "cancel" };
++          if (g.kind === "token") {
++            opts?.onReturn?.();
++            const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: g.idToken, nonce: g.nonce });
++            if (error) return { ok: false, message: error.message };
++            return { ok: true };
++          }
++
+           const redirectTo = Linking.createURL("auth/callback");
+           const { data, error } = await supabase.auth.signInWithOAuth({
+             provider: "google",
+diff --git a/apps/mobile/src/googleNative.ts b/apps/mobile/src/googleNative.ts
+new file mode 100644
+index 0000000..2700f83
+--- /dev/null
++++ b/apps/mobile/src/googleNative.ts
+@@ -0,0 +1,75 @@
++import * as Crypto from "expo-crypto";
++import {
++  GoogleOneTapSignIn,
++  isCancelledResponse,
++  isErrorWithCode,
++  isNoSavedCredentialFoundResponse,
++  isSuccessResponse,
++} from "@react-native-google-signin/google-signin";
++
++/**
++ * ====== 🆕 D-1555 — دخولُ Google الأصليّ (Universal Sign In، ترخيصُ Small Team) ======
++ *
++ * **لماذا**: نافذةُ المتصفّح كانت تقول «to continue to uvgmvrdrxzpudoldjxaa.supabase.co» — لأنّ Google يعرض نطاقَ عنوان
++ * الرجوع، والرجوعُ إلى Supabase. **الورقةُ الأصليّة لا عنوانَ رجوعٍ فيها**: تعرض اسمَ التطبيق من شاشة الموافقة («Loopz»)
++ * وتعيد رمزَ هويّةٍ موقَّعاً نسلّمه لـSupabase (`signInWithIdToken`) — طريقُ أبل نفسُه (D-1350).
++ *
++ * 🔑 **الرقمُ العشوائيّ (nonce)**: Google يضع في الرمز **ما نعطيه حرفاً** (Credential Manager على أندرويد وGIDSignIn على
++ * iOS كلاهما)، وSupabase يطابق `sha256(raw)` بما في الرمز — فنعطي Google **البصمةَ** ونعطي Supabase **الأصل**. فحصُ
++ * الـnonce في Supabase يبقى مفعَّلاً (لا «Skip nonce checks»).
++ *
++ * 🔑 **المعرّفات ليست أسراراً**: `webClientId` هو عميلُ الويب القائم (عليه يُصدَر الرمزُ على أندرويد، وهو الأوّلُ في
++ * «Client IDs» عند Supabase)، و`iosClientId` عميلُ iOS (الثاني هناك). عملاءُ أندرويد لا معرّفَ لهم في الكود: Google
++ * يتحقّق من التطبيق بالحزمة وبصمة SHA-1 (أربعُ بصماتٍ مسجّلة — كلُّ شهادات مفتاح التوقيع ومفتاحُ الرفع).
++ *
++ * ⚖️ **«unavailable» يعيد المتصلَ إلى المتصفّح** — جهازٌ بلا Play Services، أو بناءٌ قديمٌ بلا الوحدة الأصليّة (تحديثٌ عبر
++ * الهواء وصل نسخةً لم تُبنَ بها)، أو خطأٌ لا نعرفه: الدخولُ لا ينكسر، يعود إلى طريقه القديم.
++ */
++const WEB_CLIENT_ID = "751080411743-f6vcbmsbp0224n5d0iajd5vejtu87h6h.apps.googleusercontent.com";
++const IOS_CLIENT_ID = "751080411743-kbpar9g9kil8k1sccd1qcapni7o0oh6c.apps.googleusercontent.com";
++
++export type NativeGoogle =
++  | { kind: "token"; idToken: string; nonce: string }
++  | { kind: "cancel" }
++  | { kind: "unavailable"; reason: string };
++
++let configured = false;
++function ensureConfigured() {
++  if (configured) return;
++  GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, iosClientId: IOS_CLIENT_ID });
++  configured = true;
++}
++
++const HEX = "0123456789abcdef";
++function randomHex(bytes: number): string {
++  let out = "";
++  for (const b of Crypto.getRandomBytes(bytes)) out += HEX[b >> 4] + HEX[b & 15];
++  return out;
++}
++
++/**
++ * ورقةُ Google الأصليّة ⇢ رمزُ هويّة + الـnonce الأصليّ. الترتيبُ ترتيبُ المكتبة: حسابٌ دخل قبلاً (`signIn`) ⇢ اختيارُ حساب
++ * (`createAccount`) ⇢ الحوارُ الصريح (`presentExplicitSignIn` — جهازٌ بلا حساب Google يضيفه منه). مع nonce تعرض `signIn`
++ * الورقةَ دائماً (لا دخولَ صامت) — وهذا ما نريد: الضغطُ على الزرّ اختيارٌ صريح.
++ */
++export async function nativeGoogleIdToken(): Promise<NativeGoogle> {
++  try {
++    ensureConfigured();
++    await GoogleOneTapSignIn.checkPlayServices(false);
++    const raw = randomHex(16);
++    const nonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
++
++    let res = await GoogleOneTapSignIn.signIn({ nonce });
++    if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.createAccount({ nonce });
++    if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn({ nonce });
++
++    if (isCancelledResponse(res)) return { kind: "cancel" };
++    if (isSuccessResponse(res) && res.data.idToken) return { kind: "token", idToken: res.data.idToken, nonce: raw };
++    return { kind: "unavailable", reason: "no token" };
++  } catch (e) {
++    /* المكتبةُ لا تُصدّر هذا الرمزَ في `statusCodes` (٢٤٫١) — يُقارن نصّاً كما توصي وثائقُها */
++    if (isErrorWithCode(e) && e.code === "SIGN_IN_CANCELLED") return { kind: "cancel" };
++    const reason = isErrorWithCode(e) ? String(e.code) : e instanceof Error ? e.message : "unknown";
++    return { kind: "unavailable", reason };
++  }
++}
+diff --git a/apps/mobile/src/linkGoogle.ts b/apps/mobile/src/linkGoogle.ts
+index c928496..e955ccd 100644
+--- a/apps/mobile/src/linkGoogle.ts
++++ b/apps/mobile/src/linkGoogle.ts
+@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
+ import * as AppleAuthentication from "expo-apple-authentication";
+ import { CONFIG } from "./config";
+ import { session } from "./session";
++import { nativeGoogleIdToken } from "./googleNative";
+ 
+ /**
+  * ====== 🆕 D-1350 — «ربط حساب Google» (Phase 11-U · U3، القرار ٥) ======
+@@ -43,8 +44,34 @@ function param(url: string, name: string): string | null {
+  */
+ export type WebProvider = "google" | "x";
+ 
+-export function linkGoogle(): Promise<LinkOutcome> {
+-  return linkProvider("google");
++/**
++ * 🆕 D-1555 — **Google بلا متصفّح أوّلاً**: الورقةُ الأصليّة تعيد رمزَ هويّة ويُرسَل برمز العضو ومع `link_identity` — طريقُ
++ * `linkApple` حرفاً (الردُّ يحمل جلسةً لا نأخذها). الورقةُ غيرُ متاحة ⇒ عنوانُ الربط في المتصفّح كما كان.
++ */
++export async function linkGoogle(): Promise<LinkOutcome> {
++  const g = await nativeGoogleIdToken();
++  if (g.kind === "cancel") return "cancel";
++  if (g.kind === "unavailable") return linkProvider("google");
++  return linkIdToken("google", g.idToken, g.nonce);
++}
++
++/** رمزُ هويّةٍ أصليٌّ ⇢ هويّةٌ مضافةٌ إلى حساب العضو (`/token?grant_type=id_token` + `link_identity`) */
++async function linkIdToken(provider: "google" | "apple", idToken: string, nonce: string): Promise<LinkOutcome> {
++  try {
++    const token = session.get() ?? (await session.request());
++    if (!token) return "failed";
++    const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=id_token`, {
++      method: "POST",
++      headers: { Accept: "application/json", "Content-Type": "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
++      body: JSON.stringify({ provider, id_token: idToken, nonce, link_identity: true }),
++    });
++    if (res.ok) return "linked";
++    const err = (await res.json().catch(() => null)) as { error_code?: unknown; code?: unknown } | null;
++    const code = String(err?.error_code ?? err?.code ?? "");
++    return code === "identity_already_exists" ? "taken" : "failed";
++  } catch {
++    return "failed";
++  }
+ }
+ 
+ export async function linkProvider(provider: WebProvider): Promise<LinkOutcome> {
+@@ -84,22 +111,12 @@ export async function linkProvider(provider: WebProvider): Promise<LinkOutcome>
+  */
+ export async function linkApple(): Promise<LinkOutcome> {
+   try {
+-    const token = session.get() ?? (await session.request());
+-    if (!token) return "failed";
+     let raw = "";
+     for (const b of Crypto.getRandomBytes(16)) raw += HEX[b >> 4] + HEX[b & 15];
+     const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
+     const cred = await AppleAuthentication.signInAsync({ requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL], nonce: hashed });
+     if (!cred.identityToken) return "failed";
+-    const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=id_token`, {
+-      method: "POST",
+-      headers: { Accept: "application/json", "Content-Type": "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
+-      body: JSON.stringify({ provider: "apple", id_token: cred.identityToken, nonce: raw, link_identity: true }),
+-    });
+-    if (res.ok) return "linked";
+-    const err = (await res.json().catch(() => null)) as { error_code?: unknown; code?: unknown } | null;
+-    const code = String(err?.error_code ?? err?.code ?? "");
+-    return code === "identity_already_exists" ? "taken" : "failed";
++    return linkIdToken("apple", cred.identityToken, raw);
+   } catch (e) {
+     const code = (e as { code?: unknown } | null)?.code;
+     return code === "ERR_REQUEST_CANCELED" ? "cancel" : "failed";

@@ -1,0 +1,30 @@
+# 🆕 D-1555 — تحقّقٌ لمرّةٍ واحدة على فرعٍ جانبيّ (لا يصل main): يطبّق الرقعة، يولّد القفلَ بـnpm ويطبع بصمتَه (تُقارن ببصمة
+# القفل المكتوب يدوياً)، يثبّت، tsc، ثمّ prebuild للمنصّتين — قبل بناءٍ مدفوع.
+name: Verify Universal Sign In
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    name: Verify
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - name: apply + lock + npm ci + tsc + prebuild
+        run: |
+          git -C ../.. apply --whitespace=nowarn apps/mobile/.eas/d214.diff
+          git -C ../.. status --short
+          git checkout -- package.json
+          npm install @react-native-google-signin/google-signin@24.1.0 --save-exact --package-lock-only --ignore-scripts
+          echo "LOCK_SHA $(sha256sum package-lock.json)"
+          echo "PKG_SHA $(sha256sum package.json)"
+          npm ci --ignore-scripts
+          node -e "console.log('GSI', require('@react-native-google-signin/google-signin/package.json').version)"
+          npx tsc --noEmit -p .
+          echo "TSC_OK"
+          npx expo prebuild --platform android --no-install --clean
+          echo "PREBUILD_ANDROID_OK"
+          npx expo prebuild --platform ios --no-install --clean
+          grep -n -A4 "CFBundleURLSchemes" ios/*/Info.plist | head -30
+          echo "PREBUILD_IOS_OK"
