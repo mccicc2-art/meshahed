@@ -1,13 +1,7 @@
-[deploy] Release R111 — task 214 (D-1555): native Google sign-in — the Google sheet says "Loopz", not the Supabase domain · 1.12.8
+[deploy] Release R112 — task 215 (D-1556): Search — the in-app «back to search by name» button dismisses the keyboard
 
-- Sign in with Google and "Link Google account" now use the native Google sheet (Universal Sign In, paid Small Team
-  licence, @react-native-google-signin/google-signin 24.1.0 from GitHub Packages). The ID token goes to Supabase via
-  signInWithIdToken / id_token + link_identity — the Apple path. Nonce: sha256 to Google, raw to Supabase (nonce check stays on).
-- Falls back to the old browser flow when the sheet is unavailable (no Play Services, any unknown error).
-- .npmrc scopes the package to npm.pkg.github.com with ${NPM_TOKEN_GOOGLE_SIGN_IN} (EAS secret, production env).
-  Lock entry resolved on EAS and verified byte-for-byte; npm ci + tsc + prebuild (both platforms) passed on EAS.
-- Google Cloud: iOS client + four Android clients (all app-signing certs + upload key); Supabase Client IDs = web,iOS.
-- Version 1.12.8 — native build on both platforms (Ahmed: "ارفع", version 1.12.8).
+- Khaled (27 Oct, video): the system back gesture hid the keyboard, the on-screen back button did not. The button now calls
+  Keyboard.dismiss() before leaving description mode. JS only — OTA.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
