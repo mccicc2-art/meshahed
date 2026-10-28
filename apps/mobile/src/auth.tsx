@@ -8,6 +8,7 @@ import * as Linking from "expo-linking";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { CONFIG } from "./config";
 import { secureStorage } from "./secureStorage";
+import { nativeGoogleIdToken } from "./googleNative";
 
 /**
  * ====== الدخولُ والجلسة — Google عبر المتصفّح، PKCE، تجديدٌ على الجهاز ======
@@ -123,6 +124,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       async signInWithGoogle(opts) {
         try {
+          /* 🆕 D-1555 — الورقةُ الأصليّةُ أوّلاً (تعرض «Loopz» لا نطاقَ Supabase)؛ ما بعد الرمز طريقُ أبل نفسُه. «unavailable» ⇒
+             المتصفّحُ كما كان أدناه — الدخولُ لا ينكسر على جهازٍ بلا Play Services */
+          const g = await nativeGoogleIdToken();
+          if (g.kind === "cancel") return { ok: false, message: "cancel" };
+          if (g.kind === "token") {
+            opts?.onReturn?.();
+            const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: g.idToken, nonce: g.nonce });
+            if (error) return { ok: false, message: error.message };
+            return { ok: true };
+          }
+
           const redirectTo = Linking.createURL("auth/callback");
           const { data, error } = await supabase.auth.signInWithOAuth({
             provider: "google",

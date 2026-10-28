@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { CONFIG } from "./config";
 import { session } from "./session";
+import { nativeGoogleIdToken } from "./googleNative";
 
 /**
  * ====== 🆕 D-1350 — «ربط حساب Google» (Phase 11-U · U3، القرار ٥) ======
@@ -43,8 +44,34 @@ function param(url: string, name: string): string | null {
  */
 export type WebProvider = "google" | "x";
 
-export function linkGoogle(): Promise<LinkOutcome> {
-  return linkProvider("google");
+/**
+ * 🆕 D-1555 — **Google بلا متصفّح أوّلاً**: الورقةُ الأصليّة تعيد رمزَ هويّة ويُرسَل برمز العضو ومع `link_identity` — طريقُ
+ * `linkApple` حرفاً (الردُّ يحمل جلسةً لا نأخذها). الورقةُ غيرُ متاحة ⇒ عنوانُ الربط في المتصفّح كما كان.
+ */
+export async function linkGoogle(): Promise<LinkOutcome> {
+  const g = await nativeGoogleIdToken();
+  if (g.kind === "cancel") return "cancel";
+  if (g.kind === "unavailable") return linkProvider("google");
+  return linkIdToken("google", g.idToken, g.nonce);
+}
+
+/** رمزُ هويّةٍ أصليٌّ ⇢ هويّةٌ مضافةٌ إلى حساب العضو (`/token?grant_type=id_token` + `link_identity`) */
+async function linkIdToken(provider: "google" | "apple", idToken: string, nonce: string): Promise<LinkOutcome> {
+  try {
+    const token = session.get() ?? (await session.request());
+    if (!token) return "failed";
+    const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=id_token`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ provider, id_token: idToken, nonce, link_identity: true }),
+    });
+    if (res.ok) return "linked";
+    const err = (await res.json().catch(() => null)) as { error_code?: unknown; code?: unknown } | null;
+    const code = String(err?.error_code ?? err?.code ?? "");
+    return code === "identity_already_exists" ? "taken" : "failed";
+  } catch {
+    return "failed";
+  }
 }
 
 export async function linkProvider(provider: WebProvider): Promise<LinkOutcome> {
@@ -84,22 +111,12 @@ export async function linkProvider(provider: WebProvider): Promise<LinkOutcome> 
  */
 export async function linkApple(): Promise<LinkOutcome> {
   try {
-    const token = session.get() ?? (await session.request());
-    if (!token) return "failed";
     let raw = "";
     for (const b of Crypto.getRandomBytes(16)) raw += HEX[b >> 4] + HEX[b & 15];
     const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
     const cred = await AppleAuthentication.signInAsync({ requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL], nonce: hashed });
     if (!cred.identityToken) return "failed";
-    const res = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=id_token`, {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json", apikey: CONFIG.supabasePublishableKey, Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ provider: "apple", id_token: cred.identityToken, nonce: raw, link_identity: true }),
-    });
-    if (res.ok) return "linked";
-    const err = (await res.json().catch(() => null)) as { error_code?: unknown; code?: unknown } | null;
-    const code = String(err?.error_code ?? err?.code ?? "");
-    return code === "identity_already_exists" ? "taken" : "failed";
+    return linkIdToken("apple", cred.identityToken, raw);
   } catch (e) {
     const code = (e as { code?: unknown } | null)?.code;
     return code === "ERR_REQUEST_CANCELED" ? "cancel" : "failed";

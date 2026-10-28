@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loopz",
     "slug": "mesh",
-    "version": "1.12.7",
+    "version": "1.12.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "com.loopztv.app",
@@ -76,6 +76,10 @@
       "expo-web-browser",
       "expo-localization",
       "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        { "iosUrlScheme": "com.googleusercontent.apps.751080411743-kbpar9g9kil8k1sccd1qcapni7o0oh6c" }
+      ],
       [
         "expo-splash-screen",
         {
