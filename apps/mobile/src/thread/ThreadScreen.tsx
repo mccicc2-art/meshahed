@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, type TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, type TextInput, View, type TextInputInstance, type ViewInstance } from "react-native";
 import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -151,9 +151,9 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   /* ——— 🆕 D-1443 — خانةُ الرسائل في النقاش (أحمد ١٦ أكتوبر: «كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات حتى
      طريقة الكيبورد»، «١ أ»): الحقلُ ثابتٌ تحت الغرفة بدل الورقة الوسطى وزرِّ ✎ (D-1032 منقوض)، و«+» يفتح لوحةً مكانَ لوحة
      المفاتيح (صورة · GIF · بحث لوبز) والحقلُ يصير بحثَها، و«رد» يضع «ردّاً على فلان» فوقه، و`@` يكمل أسماءَ من كتبوا هنا ——— */
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<ViewInstance>(null);
   const kb = useKeyboardInset(rootRef);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<ThreadRow | null>(null);
   const [spoiler, setSpoiler] = useState(false);
@@ -774,8 +774,8 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           data={epList ? [] : items}
           keyExtractor={(it) => (it.type === "row" ? it.row.id : it.type === "more" ? `more:${it.rootId}` : it.type === "parent" ? `parent:${it.row.id}` : it.type === "heading" ? "heading" : `author-more:${it.parentId}`)}
           renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={epList ? null : <Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{pick ? t.talkEpisodeEmpty : tvTalk ? t.talkGeneralEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}</Text>}
+          ListHeaderComponent={header ?? undefined}
+          ListEmptyComponent={(epList ? null : <Text size={14} muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: 20, lineHeight: 21 }}>{pick ? t.talkEpisodeEmpty : tvTalk ? t.talkGeneralEmpty : nested ? t.talkRoomEmpty : t.postNoReplies}</Text>) ?? undefined}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: signedIn ? 16 : insets.bottom + 24 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"

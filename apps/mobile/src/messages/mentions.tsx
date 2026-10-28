@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { Pressable, type TextInput, View } from "react-native";
+import { Pressable, type TextInput, View, type TextInputInstance } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { haptic } from "../haptics";
@@ -15,7 +15,7 @@ import { displayNameOf, type PersonLite } from "@/core/people";
  */
 const TAIL = /(^|\s)@([A-Za-z0-9_]*)$/;
 
-export function useMentions(text: string, setText: (fn: (cur: string) => string) => void, people: PersonLite[], inputRef: React.RefObject<TextInput | null>) {
+export function useMentions(text: string, setText: (fn: (cur: string) => string) => void, people: PersonLite[], inputRef: React.RefObject<TextInputInstance | null>) {
   const usable = useMemo(() => people.filter((p) => !!p.username && !p.hide_name), [people]);
   const names = useMemo(() => new Set(usable.map((p) => (p.username ?? "").toLowerCase())), [usable]);
   const q = TAIL.exec(text)?.[2] ?? null;

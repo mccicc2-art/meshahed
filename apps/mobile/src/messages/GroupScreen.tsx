@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, type TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, type TextInput, View, type TextInputInstance, type ViewInstance } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -72,7 +72,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const selectedRef = useRef<string[]>([]);
   selectedRef.current = selected;
   const [replyTo, setReplyTo] = useState<GroupMsgEvent | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const back = useCallback(() => {
     Keyboard.dismiss();
@@ -234,7 +234,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
   const chatBg = useChatBg();
   const [headH, setHeadH] = useState(0);
   const [dockH, setDockH] = useState(0);
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<ViewInstance>(null);
   const kb = useKeyboardInset(rootRef);
   /* 🆕 D-1438 — لوحةُ «+» مكانَ لوحة المفاتيح، و«+» يبدّل بينهما كالواتس. 🆕 D-1440 — إغلاقُها حين تظهر لوحةُ المفاتيح صار في
      `ChatDock`: في بحث GIF/لوبز تبقى اللوحةُ ولوحةُ المفاتيح معاً */

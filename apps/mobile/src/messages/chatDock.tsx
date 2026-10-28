@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View, type TextInputInstance, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { ApiError, filePart, postForm } from "../api";
@@ -32,7 +32,7 @@ const PANEL_FALLBACK = 300;
 export const panelHeight = () => (lastKb > 0 ? lastKb : PANEL_FALLBACK);
 
 /** ما يغطّيه لوحُ المفاتيح أسفلَ الشاشة فعلاً — بقياس موضع الجذر (يعمل سواءٌ صغّر النظامُ النافذةَ أم لا) */
-export function useKeyboardInset(rootRef: React.RefObject<View | null>): number {
+export function useKeyboardInset(rootRef: React.RefObject<ViewInstance | null>): number {
   const [kb, setKb] = useState(0);
   useEffect(() => {
     const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -128,7 +128,7 @@ export function ChatDock({
   onClearPic: () => void;
   /** الاقتباسُ المرسوم (`ReplyQuote`) أو لا شيء */
   quote: React.ReactNode;
-  inputRef: React.RefObject<TextInput | null>;
+  inputRef: React.RefObject<TextInputInstance | null>;
   kb: number;
   bottomInset: number;
   sending: boolean;

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, I18nManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { BackHandler, I18nManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions, type ScrollViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useQuery } from "@tanstack/react-query";
@@ -100,7 +100,7 @@ export function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   /* 🩺 قياسٌ: كم بقيت الشاشةُ ومن أيِّ خطوةٍ أُنزلت — «أُنزلت في الخطوة ١ بعد ثانية» عطلٌ، «في ٥ بعد دقيقة» إتمام
      (`count` = الخطوة: مفاتيحُ القياس قائمةٌ مغلقةٌ في الخادم) */

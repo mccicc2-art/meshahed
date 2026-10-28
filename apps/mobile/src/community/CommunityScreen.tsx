@@ -609,11 +609,11 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
           keyExtractor={(r) => r.key}
           renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
           /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
-          ListHeaderComponent={
+          ListHeaderComponent={(
             d.prefs ? (
               <TalkHead kind="feed" mine={!d.prefs.strangers} sort={d.prefs.sort === "smart" ? "active" : "latest"} quiet={d.prefs.sort === "smart" && feedView.quiet} onPrefs={onPrefs} />
             ) : null
-          }
+          ) ?? undefined}
           onViewableItemsChanged={views.onViewableItemsChanged}
           viewabilityConfig={views.viewabilityConfig}
           ListEmptyComponent={empty(d.feed.empty_text)}
@@ -652,14 +652,14 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
           )
         }
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListHeaderComponent={
+        ListHeaderComponent={(
           talkPrefs && (d.rooms.length || d.library_rooms?.length) ? (
             <>
               <TalkHead mine={talkPrefs.talk_followed} sort={talkPrefs.talk_sort} quiet={talkIsQuiet} onPrefs={onPrefs} onSearch={() => setSearching(true)} />
               {searching ? <TalkSearch rooms={d.rooms} onOpen={(kind, id) => doors.onWeb(`/talk/${kind}/${id}`)} onClose={() => setSearching(false)} /> : null}
             </>
           ) : null
-        }
+        ) ?? undefined}
         ListEmptyComponent={empty(d.rooms.length ? t.talkMineEmpty : t.talkRoomsEmpty)}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
         onScroll={onScroll}

@@ -1,4 +1,5 @@
-import { AppState, InteractionManager } from "react-native";
+import { AppState } from "react-native";
+import { afterInteractions } from "./afterInteractions";
 import { dehydrate, hydrate, type DehydratedState, type Query } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
 import { queryClient } from "./api";
@@ -210,7 +211,7 @@ export function startCachePersist() {
     const wait = Math.max(0, Math.min(WRITE_QUIET_MS, dirtySince + WRITE_MAX_WAIT_MS - now));
     writeTimer = setTimeout(() => {
       writeTimer = null;
-      InteractionManager.runAfterInteractions(writeNow);
+      afterInteractions(writeNow);
     }, wait);
   });
 

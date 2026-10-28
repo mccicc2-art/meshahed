@@ -1,5 +1,5 @@
 import React, { memo, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -73,7 +73,7 @@ export const PosterCard = memo(function PosterCard({
   const { t, tokens } = useApp();
   /* D-1027 (F3) — كان `w185` لكلِّ عرضٍ ≤ ١٢٠: باهتٌ على شاشات ٣× */
   const uri = posterFor(item.posterPath, width);
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(item, { x, y, width: w, height: h })) : undefined;
   const a11y = [item.title, item.dropped ? t.libStatusDropped : item.completed ? t.libStatusCompleted : item.paused ? t.pausedBadge : item.progress > 0 ? `${t.libStatusWatching} ${item.progress}%` : null].filter(Boolean).join("، ");
   return (

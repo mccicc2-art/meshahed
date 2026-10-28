@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from "react";
-import { I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
+import { I18nManager, Platform, Pressable, ScrollView, View, type ScrollViewInstance } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -72,7 +72,7 @@ export function Rail({ children }: { children: React.ReactNode }) {
      JS ‏x = عرضُ المحتوى − عرضُ الإطار − الإزاحةُ الأصليّة. فبدايةُ الصفِّ المرئيّة (يمين) هي «النهاية» في إحداثيّات
      JS، و`x: 0` هو الطرفُ الأيسر — أي العطلُ نفسُه. في الصفِّ السليم الأمرُ لا يحرّك شيئاً.
      مرّةً واحدةً لكلِّ تركيب: تحديثُ البيانات بعدها لا يسحب صفّاً حرّكه المستخدم. الأندرويد والإنجليزيّ كما هما. */
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const pinned = useRef(false);
   const pinStart = useCallback((w: number) => {
     if (pinned.current || w <= 0) return;

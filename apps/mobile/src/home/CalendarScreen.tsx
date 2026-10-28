@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, View, useWindowDimensions, type ScrollViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -77,7 +77,7 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
   };
 
   /* **ضغطةُ يومٍ تنزل إلى قائمته** — مواضعُ المجموعات تُقاس عند رسمها (رابطُ `#d-…` في الويب) */
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   const listTop = useRef(0);
   const groupTop = useRef(new Map<string, number>());
   const jump = (date: string) => {

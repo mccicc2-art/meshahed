@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, Keyboard, Pressable, ScrollView, TextInput, View } from "react-native";
+import { BackHandler, Keyboard, Pressable, ScrollView, TextInput, View, type TextInputInstance, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -55,10 +55,10 @@ export function NewPostScreen() {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const root = useRef<View>(null);
+  const root = useRef<ViewInstance>(null);
   const kb = useKeyboardInset(root);
-  const bodyRef = useRef<TextInput>(null);
-  const searchRef = useRef<TextInput>(null);
+  const bodyRef = useRef<TextInputInstance>(null);
+  const searchRef = useRef<TextInputInstance>(null);
   const toast = useRef<ToastHostRef>(null);
   const say = useCallback((s: string, tone?: ToastTone) => toast.current?.say(s, undefined, undefined, tone), []);
 

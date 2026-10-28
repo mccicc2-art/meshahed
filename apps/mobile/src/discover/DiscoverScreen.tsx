@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, InteractionManager, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { afterInteractions } from "../afterInteractions";
 import { Image } from "expo-image";
 import { IOS_RTL, useRtlRailPin } from "../rtlRailPin";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -138,7 +139,7 @@ let warmed = false;
 export function warmDiscoverOnce(): void {
   if (warmed) return;
   warmed = true;
-  InteractionManager.runAfterInteractions(() => {
+  afterInteractions(() => {
     setTimeout(() => {
       prefetchLibrary();
       prefetchDiscover();
@@ -828,7 +829,7 @@ const DiscoverPane = memo(function DiscoverPane({
     if (!active || !IOS_RTL) return;
     let job: { cancel: () => void } | null = null;
     const timer = setTimeout(() => {
-      job = InteractionManager.runAfterInteractions(() => pinDiscoverRails(tab));
+      job = afterInteractions(() => pinDiscoverRails(tab));
     }, PIN_SETTLE_MS);
     return () => {
       clearTimeout(timer);

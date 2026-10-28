@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -120,7 +120,7 @@ export function HomeScreen() {
     if (d) warmOwnProfile(d.header.username);
   }, [d]);
   const toastHost = useRef<ToastHostRef>(null);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   /* D-1318 — خطوةُ «ملفك» في الجولة تشير إلى الصورة، والصورةُ في رأس العمود: تُصعَد الصفحةُ قبل أن تُقاس */
   const avatarAnchor = useTourAnchor("home-avatar", () => scroll.current?.scrollTo({ y: 0, animated: true }));
   /* والجولةُ على الشاشة (عرضاً أو خطوةً) تُخفي تلميحَي الرئيسيّة — مخفيّان لا منزوعان، فلا يُحسبان مقروءَين */

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Dimensions, type View } from "react-native";
+import { Dimensions, type ViewInstance } from "react-native";
 import type { TourAnchor } from "@/core/tour";
 
 /**
@@ -15,11 +15,11 @@ import type { TourAnchor } from "@/core/tour";
  */
 export type AnchorRect = { x: number; y: number; w: number; h: number };
 
-type Entry = { node: () => View | null; reveal: () => void };
+type Entry = { node: () => ViewInstance | null; reveal: () => void };
 const anchors = new Map<TourAnchor, Entry>();
 
 export function useTourAnchor(id: TourAnchor, reveal?: () => void) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const rv = useRef(reveal);
   rv.current = reveal;
   useEffect(() => {

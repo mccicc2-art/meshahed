@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { InteractionManager } from "react-native";
+import { afterInteractions } from "../../src/afterInteractions";
 import { Tabs, router } from "expo-router";
 import { useApp } from "../../src/state";
 import { rootsMounted } from "../../src/bootRoot";
@@ -35,7 +35,7 @@ function usePreloadDiscover() {
       preloadArmed = true;
       unsub();
       timer = setTimeout(() => {
-        InteractionManager.runAfterInteractions(() => {
+        afterInteractions(() => {
           if (tabSeen("news")) return;
           tabPreloaded("news");
           router.prefetch("/discover");
@@ -76,7 +76,7 @@ function usePreloadLibrary() {
       libraryArmed = true;
       unsub();
       timer = setTimeout(() => {
-        InteractionManager.runAfterInteractions(() => {
+        afterInteractions(() => {
           if (tabSeen("library")) return;
           tabPreloaded("library");
           router.prefetch("/library");

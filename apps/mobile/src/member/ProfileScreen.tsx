@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
@@ -538,7 +538,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [aim, setAim] = useTabAim<ProfileTabKey>(active);
   const activeRef = useRef<ProfileTabKey | null>(active);
   activeRef.current = active;
-  const panes = useRef(new Map<ProfileTabKey, { ref: ScrollView | null; y: number }>()).current;
+  const panes = useRef(new Map<ProfileTabKey, { ref: ScrollViewInstance | null; y: number }>()).current;
   /* لوحٌ يُرى الآن أو يُسلَّح: يبدأ حيث الرأسُ الآن — مطويٌّ جزئيّاً ⇐ الموضعُ نفسُه؛ ملتصقٌ ⇐ موضعُه هو إن نزل أبعد، وإلّا حدُّ الالتصاق */
   const syncPane = useCallback(
     (k: ProfileTabKey) => {
@@ -612,7 +612,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     } satisfies Record<ProfileTabKey, React.ReactNode>;
   }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
   /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
-  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollView | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void; keep: Animated.AnimatedInterpolation<number> }>()).current;
+  const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollViewInstance | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void; keep: Animated.AnimatedInterpolation<number> }>()).current;
   const fnsOf = (k: ProfileTabKey) => {
     let f = paneFns.get(k);
     if (!f) {
@@ -999,7 +999,7 @@ const ProfilePane = React.memo(function ProfilePane({
   topPad: number;
   minH: number;
   bottomPad: number;
-  register: (ref: ScrollView | null) => void;
+  register: (ref: ScrollViewInstance | null) => void;
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   keep: Animated.AnimatedInterpolation<number>;
   onSettle: () => void;

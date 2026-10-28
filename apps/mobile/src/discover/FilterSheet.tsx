@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View, type ScrollViewInstance } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import {
   BROWSE_COUNTRIES,
@@ -100,7 +100,7 @@ export function FilterSheet({
   const [draft, setDraft] = useState<BrowseState>(value);
   /* 🆕 D-1550 — المحورُ المفتوحةُ لوحتُه تحت صفّه (كان: قائمةً تحلّ محلَّ الورقة) */
   const [open, setOpen] = useState<AxisKey | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const rowY = useRef<Record<number, number>>({});
   /* D-997 — منتقي صفوفك: `{i, field}` — القائمةُ نفسُها (Radio) بخيارات النوع أو الموضوع */
   const [rowPick, setRowPick] = useState<{ i: number; field: "genre" | "tag" } | null>(null);
