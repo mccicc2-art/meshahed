@@ -10,21 +10,20 @@ import { api, queryClient, write } from "../api";
 import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
-import { DragList } from "../library/DragList";
 import type { ToastHostRef } from "../HoldHost";
-import { SettingsScreen, Group, Row, Chevron, OptionRow, RowsSkeleton } from "./ui";
+import { SettingsScreen, Chevron, RowsSkeleton } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
 import { WidgetPreview } from "./WidgetPreview";
+import { SlotEditor, v3Summary } from "./WidgetSlots";
+import { defaultV3 } from "@/core/widgetSlots";
 import { refreshWidgets, ANDROID_WIDGET_LAYOUT, isAndroidWidgetLayout, emptySections, writtenFeed } from "../widget/feed";
 import { sanitizeWidgetLook } from "@/core/widgetLook";
 import { LoopzWidget, type AndroidPlaced, type IosPlaced } from "../../modules/loopz-widget";
 import {
   effectiveWidgetConfig,
   widgetSizesFor,
-  WIDGET_SECTION_KEYS,
   type WidgetLayoutConfig,
   type WidgetSectionKey,
-  type WidgetSectionOpts,
   type WidgetSize,
 } from "@/core/widgetLayout";
 import { MAIN_LAYOUT, WIDGET_LAYOUTS_CAP } from "@/core/widgetFeedV2";
@@ -46,7 +45,6 @@ import type { WidgetLayoutEntry, WidgetPrefsBody, WidgetPrefsPayload, WidgetPref
  * - **الحفظُ زرُّ الترويسة** كالتخصيص، والخادمُ يحكم بالبلس (`needsPlus` يفتح `/plus` لا يصمت).
  */
 const KEY = ["me:widget-prefs"] as const;
-const ROW = 64;
 type Store = { config: WidgetLayoutConfig; layouts: WidgetLayoutEntry[] };
 
 /** شبكةُ كلِّ حجم (W28) — اسمٌ يعرفه الشخصُ من مشغِّله */
@@ -111,7 +109,6 @@ export function WidgetScreen() {
     const p = placedA.find((x) => x.id === editing);
     if (p) setSize(androidSize(p));
   }, [editing, placedA]);
-  const [sheet, setSheet] = useState<WidgetSectionKey | "small" | null>(null);
   /* 🆕 الأقسامُ الفاضيةُ الآن (من الخلاصة المكتوبة للودجت نفسِها) — المعاينةُ لا ترسمها كأنّها ستظهر */
   const empty = useMemo(() => {
     const f = writtenFeed();
@@ -121,7 +118,6 @@ export function WidgetScreen() {
   const look = useMemo(() => sanitizeWidgetLook(writtenFeed()?.v2?.look), []);
   const [saving, setSaving] = useState(false);
   const [ask, setAsk] = useState(false);
-  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (d && !store) {
@@ -161,7 +157,6 @@ export function WidgetScreen() {
       }
       return { ...s, layouts: s.layouts.map((l) => (l.id === active ? { ...l, config: fn(l.config) } : l)) };
     });
-  const setOpt = (k: WidgetSectionKey, patch: Partial<WidgetSectionOpts>) => edit((c) => ({ ...c, opts: { ...c.opts, [k]: { ...c.opts[k], ...patch } } }));
 
   async function save() {
     if (!store || !dirty || saving) return;
@@ -234,11 +229,8 @@ export function WidgetScreen() {
   }
 
   /* ───────── 🆕 W40 — «على شاشتك الآن» ───────── */
-  const summary = (c: WidgetLayoutConfig) => {
-    const on = c.order.filter((k) => c.on[k]);
-    const head = on.slice(0, 3).map((k) => names[k]).join("، ");
-    return on.length > 3 ? `${head} +${on.length - 3}` : head;
-  };
+  /* 🆕 v3 — ما يظهر في الودجت بحجمه بالترتيب (الخانات) */
+  const summary = (c: WidgetLayoutConfig, sz: WidgetSize = "large") => v3Summary(c.v3 ?? defaultV3(), sz, names);
   const configOf = (layoutId: string) => store.layouts.find((l) => l.id === layoutId)?.config ?? store.config;
   const placedCard = (key: string, title: string, sub: string, c: WidgetLayoutConfig, sz: WidgetSize, onPress: () => void) => (
     <Pressable
@@ -287,7 +279,7 @@ export function WidgetScreen() {
         <Text size={17} weight="700" style={{ paddingHorizontal: 4 }}>{list.length ? `${t.widgetOnScreen} · ${list.length}` : t.widgetOnScreen}</Text>
         {list.length === 0 ? <Text size={13} muted style={{ paddingHorizontal: 4 }}>{t.widgetNoneOnScreen}</Text> : null}
         <View style={{ gap: 10 }}>
-          {list.map((p) => placedCard(String(p.id), widgetTitle(p), summary(configOf(ANDROID_WIDGET_LAYOUT(p.id))), configOf(ANDROID_WIDGET_LAYOUT(p.id)), androidSize(p), () => openWidget(p)))}
+          {list.map((p) => placedCard(String(p.id), widgetTitle(p), summary(configOf(ANDROID_WIDGET_LAYOUT(p.id)), androidSize(p)), configOf(ANDROID_WIDGET_LAYOUT(p.id)), androidSize(p), () => openWidget(p)))}
           {placedCard("default", t.widgetDefaultSetup, `${t.widgetDefaultSub} · ${summary(store.config)}`, store.config, "large", () => openWidget("default"))}
         </View>
         <Pressable
@@ -311,24 +303,6 @@ export function WidgetScreen() {
       : editing === "default"
         ? t.widgetDefaultSetup
         : t.widgetScreenTitle;
-
-  const optLabel = (k: WidgetSectionKey) => {
-    const o = cfg.opts[k];
-    if (k === "search") return o.view === "full" ? t.widgetFormFull : t.widgetFormCompact;
-    return o.size === "small" ? t.widgetSizeSmall : t.widgetSizeFull;
-  };
-  const sectionRow = (k: WidgetSectionKey, sub: string) => (
-    <Pressable onPress={() => setSheet(k)} accessibilityRole="button" style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, height: ROW - 8 }}>
-      <View style={{ flex: 1, minWidth: 0, opacity: cfg.on[k] ? 1 : 0.5 }}>
-        <Text size={15} weight="600" numberOfLines={1}>{names[k]}</Text>
-        <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{sub}</Text>
-      </View>
-      <Chip label={cfg.on[k] ? t.widgetShown : t.widgetHiddenChip} active={cfg.on[k]} onPress={() => { haptic.pick(); edit((c) => ({ ...c, on: { ...c.on, [k]: !c.on[k] } })); }} />
-      <Chevron />
-    </Pressable>
-  );
-  const dragKeys = cfg.order.filter((k) => k !== "search");
-  const smallName = cfg.smallPick === "first" ? t.widgetFirstSection : names[cfg.smallPick];
 
   const addLayout = () => {
     if (store.layouts.length >= WIDGET_LAYOUTS_CAP) return;
@@ -369,18 +343,10 @@ export function WidgetScreen() {
         />
       </View>
     </Sheet>
-  ) : sheet === "small" ? (
-    <Sheet title={t.widgetSmallShows} onClose={() => setSheet(null)}>
-      {(["first", ...WIDGET_SECTION_KEYS.filter((k) => k !== "search")] as const).map((k) => (
-        <OptionRow key={k} selected={cfg.smallPick === k} title={k === "first" ? t.widgetFirstSection : names[k]} onSelect={() => edit((c) => ({ ...c, smallPick: k }))} />
-      ))}
-    </Sheet>
-  ) : sheet ? (
-    <SectionSheet k={sheet} name={names[sheet]} opts={cfg.opts[sheet]} onPatch={(p) => setOpt(sheet, p)} onClose={() => setSheet(null)} />
   ) : null;
 
   return (
-    <SettingsScreen title={editorTitle} toast={toast} onBack={back} action={saveAction} pinned={pinned} overlay={overlay} gestures={{ locked: dragging }}>
+    <SettingsScreen title={editorTitle} toast={toast} onBack={back} action={saveAction} pinned={pinned} overlay={overlay}>
       {ios && placedI.length ? (
         /* 🆕 W40 «١ أ» — ما على شاشتك بحجمه وتخطيطه؛ لمستُه تفتح تخطيطَه هنا */
         <View style={{ gap: 8 }}>
@@ -422,92 +388,10 @@ export function WidgetScreen() {
         </View>
       ) : null}
 
-      <View>
-        <Text size={12} weight="600" muted style={{ paddingHorizontal: 4, marginBottom: 6 }}>{t.widgetSectionsTitle}</Text>
-        <View style={{ borderRadius: 16, backgroundColor: tokens.surface, overflow: "hidden", paddingVertical: 4 }}>
-          {/* البحثُ مثبّتٌ أعلى الكبير (W31) — صفٌّ بلا مقبض بعرض صفوف السحب نفسِها */}
-          <View style={{ height: ROW, flexDirection: "row", alignItems: "center", paddingHorizontal: 12 }}>
-            {sectionRow("search", `${t.widgetPinnedTop} · ${optLabel("search")}`)}
-            <View style={{ width: 44 }} />
-          </View>
-          <View style={{ height: 1, backgroundColor: tokens.divider, marginHorizontal: 12 }} />
-          <DragList
-            key={`${active}:${nonce}`}
-            keys={dragKeys}
-            rowHeight={ROW}
-            onOrder={(keys) => edit((c) => ({ ...c, order: ["search", ...(keys as WidgetSectionKey[])] }))}
-            renderRow={(k) => sectionRow(k as WidgetSectionKey, optLabel(k as WidgetSectionKey))}
-            handleLabel={(k) => names[k as WidgetSectionKey]}
-            onDragChange={setDragging}
-          />
-        </View>
-        <Text size={12} muted style={{ paddingHorizontal: 4, marginTop: 6 }}>{t.widgetDragHint}</Text>
-      </View>
-
-      <Group>
-        <Row icon="image" title={t.widgetSmallShows} value={smallName} onPress={() => setSheet("small")} />
-      </Group>
+      {/* 🆕 v3 — الخاناتُ للحجم المعروض فوق (المعاينةُ تتغيّر مع كلِّ لمسة) */}
+      <SlotEditor v3={cfg.v3 ?? defaultV3()} size={size} names={names} onChange={(v3) => edit((c) => ({ ...c, v3 }))} />
 
       <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{ios ? t.widgetIosHow : typeof editing === "number" ? t.widgetThisOnly : t.widgetAndroidHow}</Text>
     </SettingsScreen>
-  );
-}
-
-/** ورقةُ القسم — عائلتا التحكّم وحدَهما (مقطّعٌ ورقاقة، القاعدة ٣): ما يملكه كلُّ قسمٍ من الخطّة لا أكثر */
-function SectionSheet({ k, name, opts, onPatch, onClose }: { k: WidgetSectionKey; name: string; opts: WidgetSectionOpts; onPatch: (p: Partial<WidgetSectionOpts>) => void; onClose: () => void }) {
-  const { t } = useApp();
-  const block = (label: string, node: React.ReactNode, hint?: string) => (
-    <View style={{ gap: 8 }}>
-      <Text size={13} weight="600" muted>{label}</Text>
-      {node}
-      {hint ? <Text size={12} muted style={{ lineHeight: 18 }}>{hint}</Text> : null}
-    </View>
-  );
-  const seg = (items: { id: string; label: string }[], value: string, onChange: (v: string) => void) => <Segmented items={items} value={value} onChange={(v) => { haptic.pick(); onChange(v); }} />;
-  const list = k === "up" || k === "friends" || k === "tw" || k === "act";
-  const small = opts.size === "small";
-
-  return (
-    <Sheet title={name} onClose={onClose}>
-      <View style={{ gap: 18, paddingBottom: 8 }}>
-        {k === "search" ? (
-          <>
-            {block(t.widgetSearchForm, seg([{ id: "compact", label: t.widgetFormCompact }, { id: "full", label: t.widgetFormFull }], opts.view === "full" ? "full" : "compact", (v) => onPatch({ view: v })))}
-            {/* W31 — الرائجُ اليوم يظهر في الشكل الكامل وحدَه، فخيارُه معه */}
-            {opts.view === "full"
-              ? block(t.widgetTrendView, seg([{ id: "list", label: t.widgetList }, { id: "posters", label: t.widgetPosters }], opts.trend ?? "list", (v) => onPatch({ trend: v as "list" | "posters" })))
-              : null}
-          </>
-        ) : (
-          block(
-            t.widgetSecSize,
-            seg([{ id: "full", label: t.widgetSizeFull }, { id: "small", label: t.widgetSizeHalf }], opts.size, (v) => onPatch({ size: v as WidgetSectionOpts["size"] })),
-            t.widgetPairHint,
-          )
-        )}
-        {k === "cont" ? (
-          /* 🆕 W45 — أكملُ المشاهدة الصغير (نصفُ العرض والمربّع): صورةٌ افتراضاً (أحمد «١ أ») أو قائمة */
-          block(t.widgetTonightSmall, seg([{ id: "image", label: t.widgetImage }, { id: "list", label: t.widgetList }], opts.small === "list" ? "list" : "image", (v) => onPatch({ small: v as "image" | "list" })))
-        ) : null}
-        {k === "tonight" ? (
-          <>
-            {block(t.widgetTonightFull, seg([{ id: "wide", label: t.widgetWide }, { id: "poster", label: t.widgetPosterDetails }], opts.view === "poster" ? "poster" : "wide", (v) => onPatch({ view: v })))}
-            {block(t.widgetTonightSmall, seg([{ id: "poster", label: t.widgetPoster }, { id: "list", label: t.widgetList }], opts.small ?? "poster", (v) => onPatch({ small: v as "poster" | "list" })))}
-          </>
-        ) : null}
-        {/* 🆕 W55 — القسمُ الصغيرُ يختار القائمةَ أو البوسترين أيضاً (كان `!small` يخفيه، والرسّامان يرسمانهما في النصف أصلاً) */}
-        {list && k !== "act"
-          ? block(t.widgetView, seg([{ id: "list", label: t.widgetList }, { id: "posters", label: t.widgetPosters }], opts.view === "posters" ? "posters" : "list", (v) => onPatch({ view: v })))
-          : null}
-        {list && !small && opts.view !== "posters"
-          ? block(t.widgetCount, seg([{ id: "2", label: t.widgetTwo }, { id: "3", label: t.widgetThree }], String(opts.count), (v) => onPatch({ count: v === "3" ? 3 : 2 })))
-          : null}
-        {/* 🆕 W54 — بوستراتُ «أصدقاؤك» و«للمشاهدة» في الشكل الكامل: ٣ أو ٤ (٤ افتراضاً) تملأ العرض؛ النصفُ يبقى اثنين */}
-        {(k === "friends" || k === "tw") && !small && opts.view === "posters"
-          ? block(t.widgetPosterCount, seg([{ id: "3", label: t.widgetThree }, { id: "4", label: t.widgetFour }], String(opts.posters === 3 ? 3 : 4), (v) => onPatch({ posters: v === "3" ? 3 : 4 })))
-          : null}
-        {list && small ? <Text size={12} muted style={{ lineHeight: 18 }}>{t.widgetFixedSmall}</Text> : null}
-      </View>
-    </Sheet>
   );
 }

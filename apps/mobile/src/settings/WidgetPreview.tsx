@@ -234,7 +234,7 @@ function PreviewRow({ row, names, contImage, look, posters }: { row: WidgetRow; 
                         </View>
                         <View style={{ position: "absolute", right: 7, bottom: 7, width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(22,22,22,0.78)" }} />
                       </View>
-                    ) : posters(k) && k !== "act" ? (
+                    ) : (row.views ? row.views[i] === "poster" : posters(k)) && k !== "act" ? (
                       /* 🆕 W55 — القسمُ الصغيرُ بوسترين */
                       <View style={{ flex: 1, flexDirection: "row", gap: 8 }}>
                         {[0, 1].map((j) => <View key={j} style={{ flex: 1, borderRadius: 8, backgroundColor: GHOST }} />)}

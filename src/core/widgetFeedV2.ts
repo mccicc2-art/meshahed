@@ -6,7 +6,7 @@
  */
 import type { Dict } from "./i18n.ts";
 import { asPlan, isPlus, type PlanBearer } from "./plan.ts";
-import { sanitizeWidgetConfig, defaultWidgetConfig, type WidgetLayoutConfig } from "./widgetLayout.ts";
+import { sanitizeWidgetConfig, defaultWidgetConfigV3, type WidgetLayoutConfig } from "./widgetLayout.ts";
 import type {
   WidgetActivityItem,
   WidgetFriendItem,
@@ -59,7 +59,7 @@ export function sanitizeStoredWidget(raw: unknown): { config: WidgetLayoutConfig
 }
 
 export function sanitizeWidgetStore(raw: unknown, defaultName: string): WidgetStore {
-  const stored = sanitizeStoredWidget(raw) ?? { config: defaultWidgetConfig(), layouts: [] };
+  const stored = sanitizeStoredWidget(raw) ?? { config: defaultWidgetConfigV3(), layouts: [] };
   /* «الرئيسي» أوّلاً دائماً — وهو الإعدادُ نفسُه باسمه بلغة القارئ اليوم؛ والمخزَّنةُ بعده (السقفُ يشملها معاً) */
   const layouts = [{ id: MAIN_LAYOUT, name: defaultName, config: stored.config }, ...stored.layouts].slice(0, WIDGET_LAYOUTS_CAP);
   return { config: stored.config, layouts };
@@ -254,4 +254,4 @@ export function widgetActivity(
     });
 }
 
-export { defaultWidgetConfig };
+export { defaultWidgetConfigV3 as defaultWidgetConfig };

@@ -61,68 +61,48 @@ export interface WidgetLookSize {
 export type WidgetLook = Record<WidgetPlatform, Partial<Record<WidgetSize, WidgetLookSize>>>;
 
 const BASE: WidgetLookSize = {
-  header: 14.5,
-  contHeader: 14.5,
-  friendsHeader: 14.5,
-  listRow: 50,
-  listThumbW: 32,
-  listThumbH: 48,
-  listName: 14,
-  listSub: 12,
-  friendRow: 50,
-  friendThumbW: 32,
-  friendThumbH: 48,
-  friendName: 14,
-  friendSub: 12,
-  time: 11.5,
-  halfThumbW: 30,
-  halfThumbH: 45,
-  halfName: 14,
-  halfSub: 12,
-  pairRow: 176,
-  pairRow2: 126,
+  header: 14,
+  contHeader: 14,
+  friendsHeader: 14,
+  /* 🆕 v3 — مقاساتُ الخطّة الثابتة (خالد ٢٨ أكتوبر: «ما ابغى تمطيط»): صفُّ القائمة ٤٤ بصورة ٢٨×٤٢، والأصدقاءُ بالمقاس نفسِه */
+  listRow: 44,
+  listThumbW: 28,
+  listThumbH: 42,
+  listName: 13.5,
+  listSub: 11.5,
+  friendRow: 44,
+  friendThumbW: 28,
+  friendThumbH: 42,
+  friendName: 13.5,
+  friendSub: 11.5,
+  time: 11,
+  halfThumbW: 26,
+  halfThumbH: 39,
+  halfName: 13,
+  halfSub: 11.5,
+  /* الخانةُ ١٥٨ = رأسٌ ٢٤ + ١٣٤ (ثلاثةُ أسطرٍ في النصف، أو بوستر ٨٩×١٣٤)؛ وبسطرين ١١٢ حيث لا تتّسع (المتوسط) */
+  pairRow: 158,
+  pairRow2: 112,
   posterGrid: 130,
-  posterGrid4: 116,
+  posterGrid4: 134,
   posterGap: 8,
   stripName: 11,
   stripSub: 10,
-  contCard: 93,
-  contCardTall: 120,
-  growMax: 16,
+  /* بطاقتا «أكمل المشاهدة» بنسبة صورة الخلفية ١٦:٩ بلا زوم (خالد ٢٠:٥٣): ٨٦ في أندرويد (عرضُ ١٥٣٫٥) و٩٣ في الآيفون (١٦٦) */
+  contCard: 86,
+  contCardTall: 104,
+  /* لا تمدّد: الفراغُ الباقي فواصل */
+  growMax: 0,
 };
 
 /**
- * الأرقامُ كما هي في الرسّامَين اليوم. أندرويد الكبير والكبير جداً بمقاسات W48؛ و🆕 W50: بطاقتا «أكمل المشاهدة» في
- * الكبير بمقاسهما في ٤×٢ — ١٢٠ في أندرويد (المتوسطُ يكبّرهما)، و٩٣ في الآيفون (متوسطُه أقصرُ فلا يكبّرهما).
+ * الشكلُ كما يرسله الخادم. 🆕 v3 — رقمٌ واحدٌ لكلِّ المقاسات (الخانةُ نفسُها في كلِّ حجم)؛ الآيفونُ يختلف في البطاقتين وحدَهما.
  */
 export function defaultWidgetLook(): WidgetLook {
+  const ios = { ...BASE, contCard: 93, contCardTall: 110 };
   return {
-    android: {
-      small: { ...BASE },
-      medium: { ...BASE },
-      large: { ...BASE, friendsHeader: 15.5, friendRow: 58, friendThumbW: 38, friendThumbH: 54, friendName: 15, friendSub: 13.5, time: 12.5, contCard: 120 },
-      xl: {
-        ...BASE,
-        header: 12.5,
-        contHeader: 13,
-        friendsHeader: 12.5,
-        friendRow: 52,
-        friendThumbW: 34,
-        friendThumbH: 49,
-        friendSub: 12.8,
-        time: 12,
-        halfThumbW: 38,
-        halfThumbH: 56,
-        halfName: 13,
-        pairRow2: 150,
-        contCard: 120,
-      },
-    },
-    ios: {
-      small: { ...BASE },
-      medium: { ...BASE },
-      large: { ...BASE },
-    },
+    android: { small: { ...BASE }, medium: { ...BASE }, large: { ...BASE }, xl: { ...BASE } },
+    ios: { small: { ...ios }, medium: { ...ios }, large: { ...ios }, xl: { ...ios } },
   };
 }
 

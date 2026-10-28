@@ -12,6 +12,7 @@
  */
 
 import { lookFor, type WidgetLook } from "./widgetLook.ts";
+import { defaultV3, optsFromV3, resolveV3, sanitizeV3, type WidgetV3 } from "./widgetSlots.ts";
 
 export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act"] as const;
 export type WidgetSectionKey = (typeof WIDGET_SECTION_KEYS)[number];
@@ -41,6 +42,11 @@ export interface WidgetLayoutConfig {
   opts: Record<WidgetSectionKey, WidgetSectionOpts>;
   /** ما يعرضه الحجمُ الصغير: أوّلُ قسمٍ في الترتيب أو قسمٌ يختاره (W29) */
   smallPick: "first" | WidgetSectionKey;
+  /**
+   * 🆕 **الودجت v3 — «الخانات»** (`widgetSlots.ts`): متى وُجد حسم المحرّكُ به وحدَه، وما فوقه (الترتيبُ والإظهارُ والأحجام) يبقى محفوظاً
+   * لنسخةٍ أقدمَ من التطبيق تقرؤه. الإعدادُ المحفوظُ قبله يأخذ الافتراضيَّ عند القراءة (`sanitizeWidgetConfig`).
+   */
+  v3?: WidgetV3;
 }
 
 /** الترتيبُ والقيمُ الافتراضيّة لعضوٍ جديد — الأقسامُ السبعةُ ظاهرة (W29 «٤ ب») */
@@ -63,6 +69,11 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
     },
     smallPick: "first",
   };
+}
+
+/** 🆕 v3 — الإعدادُ الافتراضيُّ بالخانات: ما يأخذه عضوٌ جديد، وما يُرسم لغير المشترك */
+export function defaultWidgetConfigV3(): WidgetLayoutConfig {
+  return { ...defaultWidgetConfig(), v3: defaultV3() };
 }
 
 /**
@@ -124,7 +135,8 @@ export type WidgetRow =
   /** 🆕 W54 — `posters` عددُ البوسترات (٣ · ٤)؛ و🆕 W50 — `grow` ما زاده كلُّ سطرٍ (والصورةُ معه) من فراغ الودجت */
   | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; posters?: 3 | 4; grow?: number; h: number }
   | { type: "tonight"; view: "wide" | "poster"; h: number }
-  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; grow?: number; h: number }
+  /** 🆕 v3 — `views` شكلُ كلِّ نصفٍ (قائمة · بوستر) لرسّامٍ يقرؤه؛ والأقدمُ يقرأ `opts[key].view` كما كان */
+  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; grow?: number; views?: ("list" | "poster")[]; h: number }
   | { type: "line"; key: WidgetSectionKey; h: number };
 
 export interface WidgetLayout {
@@ -207,6 +219,13 @@ export function resolveWidgetLayout(
   const H = WIDGET_HEIGHTS;
   const resize = ro.resize !== false;
   const rs: RowSizes = { ...lookFor(ro.look, platform, size), resize };
+  /* 🆕 v3 — الخاناتُ تحسم وحدَها (`widgetSlots.ts`) */
+  if (cfg.v3) {
+    /* «الفارغُ» هنا ما أطفأه `resolveWidget` لأنّه بلا محتوى الآن — لا إظهارُ الإعداد القديم (لم يعد خياراً) */
+    const empty = new Set(WIDGET_SECTION_KEYS.filter((k) => cfg.on[k] === false));
+    const v = resolveV3(cfg.v3, size, height, rs, empty);
+    return { rows: v.rows, hidden: [], used: v.used };
+  }
   let visible = cfg.order.filter((k) => cfg.on[k]);
   /* المتوسطُ قسمٌ واحدٌ بحجمه الكامل، والبحثُ لا يكون وحدَه ودجتاً */
   if (size === "medium") visible = visible.filter((k) => k !== "search").slice(0, 1);
@@ -297,6 +316,7 @@ export function resolveWidgetLayout(
 
 /** ما يعرضه الحجمُ الصغير: القسمُ المختار، أو أوّلُ قسمٍ ظاهرٍ غيرِ البحث، وإلّا أكملُ المشاهدة */
 export function smallWidgetSection(cfg: WidgetLayoutConfig): WidgetSectionKey {
+  if (cfg.v3) return cfg.v3.small;
   if (cfg.smallPick !== "first" && cfg.on[cfg.smallPick] && cfg.smallPick !== "search") return cfg.smallPick;
   return cfg.order.find((k) => cfg.on[k] && k !== "search") ?? "cont";
 }
@@ -354,7 +374,8 @@ export function widgetAccess(plus: boolean, _size: WidgetSize): "full" | "basic"
 
 /** إعدادُ غيرِ المشترك: الأساسيُّ كما هو — إعدادُه الأصليُّ لا يُمسّ */
 export function effectiveWidgetConfig(cfg: WidgetLayoutConfig, plus: boolean): WidgetLayoutConfig {
-  return plus ? cfg : defaultWidgetConfig();
+  /* 🆕 v3 — الأساسيُّ بالخانات (الإعدادُ القديمُ لم يعد يُرسم) */
+  return plus ? cfg : defaultWidgetConfigV3();
 }
 
 /** الآيفون لا يملك الحجمَ الكبيرَ جداً (W28) — 🆕 D-1500: إلّا من iOS 27 (`iosXl`، يمرّره التطبيقُ من إصدار النظام) */
@@ -392,7 +413,8 @@ export function sanitizeWidgetConfig(raw: unknown): WidgetLayoutConfig {
     }
   }
   const smallPick = r.smallPick === "first" || isKey(r.smallPick) ? (r.smallPick as WidgetLayoutConfig["smallPick"]) : "first";
-  return { order, on, opts, smallPick };
+  /* 🆕 v3 — كلُّ إعدادٍ يُقرأ بالخانات: المحفوظُ قبلها يأخذ الافتراضيّ (الترتيبُ الحرُّ لم يعد يُرسم — الخطّةُ v3) */
+  return { order, on, opts, smallPick, v3: sanitizeV3(r.v3) };
 }
 
 export const LIST_SECTION_KEYS = LIST_KEYS;
@@ -445,7 +467,8 @@ export function resolveWidget(
   ro: WidgetResolveOpts = {},
 ): ResolvedWidget {
   const base = effectiveWidgetConfig(cfg, plus);
-  const eff: WidgetLayoutConfig = { ...base, on: { ...base.on } };
+  /* 🆕 v3 — الإظهارُ في الإعداد القديم لا يحكم الخانات: كلُّها «ظاهرة» إلّا الفارغ الآن (أدناه) */
+  const eff: WidgetLayoutConfig = { ...base, on: base.v3 ? (Object.fromEntries(WIDGET_SECTION_KEYS.map((k) => [k, true])) as WidgetLayoutConfig["on"]) : { ...base.on } };
   for (const k of empty) if (k !== "cont" && k !== "search") eff.on[k] = false;
   const key = smallWidgetSection(eff);
   const rows: ResolvedWidget["rows"] = {};
@@ -465,6 +488,7 @@ export function resolveWidget(
     small: { key, tall: smallWidgetForm(eff, key, SMALL_TALL.w, SMALL_TALL.h), square: smallWidgetForm(eff, key, SMALL_SQUARE.w, SMALL_SQUARE.h) },
     rows,
     heights,
-    opts: eff.opts,
+    /* 🆕 v3 — شكلُ القسم في خانته (بوسترٌ أو قائمة) يُكتب في خياراته: الرسّامُ القائمُ يقرأ النصفَ من هنا */
+    opts: eff.v3 ? (["medium", "large", "xl"] as const).reduce((o, sz) => optsFromV3(eff.v3 as WidgetV3, o, sz), eff.opts) : eff.opts,
   };
 }
