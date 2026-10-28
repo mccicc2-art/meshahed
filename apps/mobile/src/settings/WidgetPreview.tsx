@@ -52,8 +52,14 @@ export function WidgetPreview({
   /** 🆕 شكلُ الودجت من الخلاصة — المحرّكُ يحسم به هنا كما في الودجت */
   look?: WidgetLook | null;
 }) {
-  const gone = empty.filter((k) => k !== "cont" && k !== "search" && given.on[k]);
-  const config: WidgetLayoutConfig = gone.length ? { ...given, on: { ...given.on, ...Object.fromEntries(gone.map((k) => [k, false])) } } : given;
+  /*
+   * 🆕 D-1561 — في الخانات (v3) إظهارُ الإعداد القديم (`on`) لم يعد خياراً: كلُّ قسمٍ «ظاهر» إلّا الفارغ الآن — كما يحسمه
+   * `resolveWidget` للودجت. كانت المعاينةُ تقرأ `on.up: false` من الإعداد القديم فتُسقط «القادم» من نصّه وتجعل أخاه كاملاً،
+   * والودجتُ نفسُه يرسمهما (خالد ٢:٣٦ «حطيت قسمين وما جاء إلا واحد»).
+   */
+  const baseOn: WidgetLayoutConfig["on"] = given.v3 ? (Object.fromEntries(Object.keys(given.on).map((k) => [k, true])) as WidgetLayoutConfig["on"]) : given.on;
+  const gone = empty.filter((k) => k !== "cont" && k !== "search" && baseOn[k]);
+  const config: WidgetLayoutConfig = { ...given, on: { ...baseOn, ...Object.fromEntries(gone.map((k) => [k, false])) } };
   const { t, tokens } = useApp();
   /* مقاسُ المنصّة نفسُه الذي يُحسم به الودجت (`widgetSizeHeight`) — الآيفونُ أقصر */
   const H = widgetSizeHeight(platform, size);

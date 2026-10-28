@@ -99,3 +99,16 @@ test("المحسوم للرسّام: شكل النصف في الخيارات (ب
   const l = resolveWidgetLayout(defaultWidgetConfigV3(), "xl", 590, "android");
   assert.equal(l.hidden.length, 0);
 });
+
+test("D-1561: الإظهارُ القديم (on.up=false) لا يُسقط القادمَ من نصّه، والقادمُ في خانةٍ وهو فاضٍ لا يُرجع سطرَه بشَرطة", () => {
+  const v3 = defaultV3();
+  v3.xl.slots[1] = { mode: "pair", a: { s: "friends", v: "poster" }, b: { s: "up", v: "poster" } };
+  const cfg = { ...defaultWidgetConfigV3(), v3 };
+  cfg.on = { ...cfg.on, up: false };
+  const r = resolveWidget(cfg, true, "android");
+  assert.ok(names(r.rows.xl ?? []).includes("pair:friends+up×3"));
+  /* القادمُ فاضٍ الآن: أصدقاؤك كامل، ولا سطرَ قادمٍ تحت أكمل المشاهدة */
+  const e = names(resolveV3(v3, "xl", 590, rs(), new Set(["up"])).rows);
+  assert.equal(e[0], "cont86");
+  assert.ok(e.includes("friends:posters×4"));
+});

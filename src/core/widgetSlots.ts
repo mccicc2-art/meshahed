@@ -179,7 +179,11 @@ export function resolveV3(
       return null;
     })
     .filter((s): s is WidgetSlot => s !== null);
-  const upMoved = upInSlots(slots);
+  /*
+   * 🆕 D-1561 — «انتقل القادمُ لخانة» يُحسب من اختيار الشخص لا من البيانات: القادمُ في خانةٍ وهو فاضٍ الآن كان يُسقط الخانةَ
+   * فيرجع سطرُه تحت أكمل المشاهدة بشَرطةٍ وحدها (خالد ٢:٣٦). وسطرُ القادم لا يُرسم فاضياً أصلاً.
+   */
+  const upMoved = upInSlots(slotsFor(v3, size)) || empty.has("up");
   const rows: WidgetRow[] = [];
   let used = H.pad;
   const gapNext = () => (rows.length ? H.gap : 0);
