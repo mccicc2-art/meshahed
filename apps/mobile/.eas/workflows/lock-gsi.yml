@@ -1,0 +1,22 @@
+# 🆕 D-1512 — مهمّةٌ لمرّةٍ واحدة: تحلّ قفلَ الحزمة الخاصّة (Universal Sign In) على خوادم EAS حيث التوكن السرّيّ —
+# الوكيلُ لا يملك التوكن فلا يستطيع توليدَ package-lock محلّيّاً. تطبع الفرقَ فقط (لا أسرار فيه). فرعٌ جانبيّ لا يصل main.
+name: Resolve Universal Sign In lock entry
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  lock:
+    name: Resolve lock
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - name: npm install (lock only)
+        run: |
+          cd apps/mobile
+          printf '\n@react-native-google-signin:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=${NPM_TOKEN_GOOGLE_SIGN_IN}\n' >> .npmrc
+          npm config get registry
+          npm install @react-native-google-signin/google-signin@24.1.0 --save-exact --package-lock-only --ignore-scripts
+          echo "=====DIFF-BEGIN====="
+          git diff -- package.json package-lock.json
+          echo "=====DIFF-END====="
