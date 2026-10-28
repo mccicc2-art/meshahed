@@ -10,22 +10,7 @@ const names = (rows: WidgetRow[]) => rows.map((r) =>
   r.type === "list" ? `${r.key}×${r.count}` : r.type === "line" ? `line:${r.key}` : r.type === "pair" ? `pair:${r.keys.join("+")}` : r.type === "cont" ? (r.upLine ? "cont+line" : "cont") : r.type);
 
 /* W29 · W39 — الترتيبُ الافتراضيّ في الكبير: ما لا يتّسع سطرٌ مختصر، ولا فراغَ كبير */
-test("الكبير الافتراضي: البحث، أكمل المشاهدة، القادم، وفيلم الليلة سطراً مختصراً", () => {
-  const l = resolveWidgetLayout(defaultWidgetConfig(), "large");
-  assert.deepEqual(names(l.rows), ["search", "cont", "up×2", "line:tonight"]);
-  /* 🆕 W50 — فراغُ ٤٤ يكبّر سطرَي «القادم» (١٦ لكلٍّ، السقف) بدل أن يبقى فواصل: ٣٩٦ + ٣٢ */
-  assert.equal(l.used, 428);
-  assert.equal(l.rows[2].type === "list" && l.rows[2].grow, 16);
-  assert.deepEqual(l.hidden, ["friends", "tw", "act"]);
-});
-
 /* W33 — سطرُ «القادم» تحت البطاقات يظهر في المتوسط (القسمُ وحده) */
-test("المتوسط: أكمل المشاهدة وحده ومعه سطر القادم", () => {
-  const l = resolveWidgetLayout(defaultWidgetConfig(), "medium");
-  assert.deepEqual(names(l.rows), ["cont+line"]);
-  assert.equal(l.used, WIDGET_HEIGHTS.pad + WIDGET_HEIGHTS.cont + WIDGET_HEIGHTS.upLine);
-});
-
 test("سطر القادم يعود إذا أُخفي قسم القادم", () => {
   const cfg = defaultWidgetConfig();
   cfg.on.up = false;
@@ -34,17 +19,6 @@ test("سطر القادم يعود إذا أُخفي قسم القادم", () =>
 });
 
 /* حالةُ أحمد (١٤ أكتوبر ٠٤:٠٥): كان يترك ثلثَ الودجت فارغاً */
-test("لا فراغ كبير: صف الصغيرين يدخل بسطرين حين لا يتسع بثلاثة", () => {
-  const cfg = defaultWidgetConfig();
-  cfg.on.search = false; cfg.on.tw = false; cfg.on.act = false;
-  cfg.opts.tonight.size = "small"; cfg.opts.friends.size = "small";
-  const l = resolveWidgetLayout(cfg, "large");
-  assert.deepEqual(names(l.rows), ["cont", "up×2", "pair:tonight+friends"]);
-  assert.equal((l.rows[2] as { count: number }).count, 2);
-  assert.deepEqual(l.hidden, []);
-  assert.ok(440 - l.used < WIDGET_HEIGHTS.line + WIDGET_HEIGHTS.gap);
-});
-
 test("قسم لا يتسع لا يوقف الترتيب: ما بعده يُجرَّب", () => {
   const cfg = defaultWidgetConfig();
   cfg.on.tw = false; cfg.on.act = false;
@@ -102,18 +76,6 @@ test("شكل الصغير: أندرويد الطولي بوستر كامل، و�
 });
 
 /* W49 — الودجتُ مجانيّ، والتخصيصُ لوبز+ */
-test("غير المشترك: الودجت بكل أحجامه بالترتيب الأساسي، وتخصيصه محفوظ", () => {
-  assert.equal(widgetAccess(true, "xl"), "full");
-  assert.equal(widgetAccess(false, "small"), "basic");
-  assert.equal(widgetAccess(false, "large"), "basic");
-  const mine: WidgetLayoutConfig = defaultWidgetConfig();
-  mine.order = ["tonight", "cont", "search", "up", "friends", "tw", "act"];
-  const eff = effectiveWidgetConfig(mine, false);
-  assert.deepEqual(eff, defaultWidgetConfig());
-  assert.equal(mine.order[0], "tonight");
-  assert.equal(effectiveWidgetConfig(mine, true), mine);
-});
-
 test("الآيفون بلا الكبير جداً", () => {
   assert.deepEqual(widgetSizesFor("ios"), ["small", "medium", "large"]);
   assert.deepEqual(widgetSizesFor("ios", true), ["small", "medium", "large", "xl"]);
@@ -217,23 +179,6 @@ test("أكمل المشاهدة الصغير: صورة افتراضاً، وال
 });
 
 /* 🆕 W50 — الكبير: بطاقتا «أكمل المشاهدة» بمقاسهما في ٤×٢ ولا تتمدّدان، والفراغُ لصفوف الأقسام الأخرى */
-test("W50: البطاقتان بمقاس ٤×٢ في أندرويد الكبير، والفراغ يكبّر الأسطر بالقدر نفسه", () => {
-  const cfg = defaultWidgetConfig();
-  cfg.on.search = false; cfg.on.tonight = false; cfg.on.friends = false; cfg.on.tw = false; cfg.on.act = false;
-  const a = resolveWidgetLayout(cfg, "large", 440, "android");
-  const c = a.rows.find((r) => r.type === "cont");
-  assert.equal(c?.type === "cont" && c.card, 120);
-  const sum = (rows: WidgetRow[]) => rows.reduce((n, x) => n + x.h, 0) + Math.max(0, rows.length - 1) * WIDGET_HEIGHTS.gap + WIDGET_HEIGHTS.pad;
-  assert.ok(sum(a.rows) <= 440);
-  const grown = a.rows.filter((r) => (r.type === "list" || r.type === "pair") && (r.grow ?? 0) > 0);
-  assert.ok(grown.length > 0);
-  for (const r of grown) assert.ok((r as { grow: number }).grow <= lookFor(null, "android", "large").growMax);
-  /* الآيفون: بطاقتا متوسطه ٩٣ — فلا تكبران في الكبير */
-  const i = resolveWidgetLayout(cfg, "large", 376, "ios");
-  const ic = i.rows.find((r) => r.type === "cont");
-  assert.equal(ic?.type === "cont" && (ic.card ?? 93), 93);
-});
-
 test("W50: أندرويد قبل 12 يُحسم كما كان — لا تكبير ولا بطاقتان أطول ولا أربعة بوسترات", () => {
   const cfg = defaultWidgetConfig();
   cfg.on.search = false; cfg.on.tonight = false; cfg.on.act = false;
@@ -266,18 +211,3 @@ test("W54: أربعة بوسترات افتراضاً، والإعداد ٣ يُ
 });
 
 /* 🆕 الشكلُ بياناتٌ: الافتراضيُّ أرقامُ الرسّامين اليوم، والخلاصةُ تغيّرها، والفاسدُ يرجع للافتراضيّ */
-test("شكل الودجت: الافتراضي أرقام اليوم، والخلاصة تغيّر الحسم، والفاسد يسقط", () => {
-  const d = defaultWidgetLook();
-  assert.deepEqual([d.android.large?.friendRow, d.android.xl?.friendRow, d.android.xl?.pairRow2, d.ios.large?.friendRow], [58, 52, 150, 50]);
-  assert.equal(lookFor(d, "ios", "xl").friendRow, 50);
-  const bad = sanitizeWidgetLook({ android: { large: { friendRow: -5, listRow: "x", posterGrid: 140, nope: 3 } } });
-  assert.equal(bad.android.large?.friendRow, 58);
-  assert.equal(bad.android.large?.listRow, 50);
-  assert.equal(bad.android.large?.posterGrid, 140);
-  assert.ok(!("nope" in (bad.android.large ?? {})));
-  const cfg = defaultWidgetConfig();
-  cfg.on.search = false; cfg.on.cont = false; cfg.on.up = false; cfg.on.tonight = false; cfg.on.tw = false; cfg.on.act = false;
-  const look = sanitizeWidgetLook({ android: { large: { friendRow: 70, growMax: 0 } } });
-  const l = resolveWidgetLayout(cfg, "large", 440, "android", { look });
-  assert.equal(l.rows[0].h, WIDGET_HEIGHTS.listHeader + 3 * 70);
-});

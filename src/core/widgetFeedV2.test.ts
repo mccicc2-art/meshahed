@@ -4,7 +4,7 @@ import {
   sanitizeWidgetStore, widgetPlanState, widgetToWatch, widgetUpcomingAny, widgetUpLine, widgetFriends, widgetActivity,
   WIDGET_LAYOUTS_CAP,
 } from "./widgetFeedV2.ts";
-import { defaultWidgetConfig } from "./widgetLayout.ts";
+import { defaultWidgetConfigV3 } from "./widgetLayout.ts";
 
 const t = {
   typeMovie: "فيلم", typeSeries: "مسلسل", widgetAnime: "أنمي", widgetPremiereMovie: "عرضٌ أوّل", widgetFriendWatched: "شاهد",
@@ -18,7 +18,7 @@ const t = {
 
 test("التخزين: الفارغ يعطي الإعداد الافتراضي وتخطيطاً رئيسياً واحداً", () => {
   const s = sanitizeWidgetStore(null, "الرئيسي");
-  assert.deepEqual(s.config, defaultWidgetConfig());
+  assert.deepEqual(s.config, defaultWidgetConfigV3());
   assert.equal(s.layouts.length, 1);
   assert.equal(s.layouts[0].name, "الرئيسي");
 });
