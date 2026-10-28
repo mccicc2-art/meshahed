@@ -72,16 +72,24 @@ function changed() {
   for (const l of changeListeners) l();
 }
 
+/**
+ * 🔴 دخولٌ وهميٌّ على الآيفون (تسجيلُ أحمد ٢٨ أكتوبر: شاشةُ الدخول وهو داخل، وإعادةُ الفتح تُصلحها) — **فشلُ القراءة ليس
+ * «لا جلسة»**. iOS يوقظ التطبيقَ في الخلفيّة (تحديثُ الودجت · إشعارٌ) والجهازُ مقفل، وخزنةُ المفاتيح مغلقةٌ حتى يُفتح:
+ * القراءةُ ترمي أو ترجع فارغة، وكانت النتيجةُ تُحفظ للتشغيلة كلِّها فيُحكم على صاحب الحساب بأنّه زائر. الآن لا يُحفظ
+ * فشلٌ، ولا فراغٌ قُرئ في الخلفيّة — تُعاد القراءةُ في النداء التالي، والعودةُ إلى الواجهة تُبلغ المشتركين (أدناه).
+ */
 function readStored(): Stored | null {
   if (stored !== undefined) return stored;
+  let got: Stored | null;
   try {
     const raw = SecureStore.getItem(KEY);
     const p = raw ? (JSON.parse(raw) as Partial<Stored> | null) : null;
-    stored = p && typeof p.rt === "string" && p.rt && typeof p.uid === "string" && p.uid ? { rt: p.rt, uid: p.uid } : null;
+    got = p && typeof p.rt === "string" && p.rt && typeof p.uid === "string" && p.uid ? { rt: p.rt, uid: p.uid } : null;
   } catch {
-    stored = null;
+    return null;
   }
-  return stored;
+  if (got || AppState.currentState !== "background") stored = got;
+  return got;
 }
 
 function writeStored(s: Stored | null) {
@@ -375,5 +383,9 @@ export const own = {
    قبله)، فيُضاف زمنُ التجديد كاملاً إلى أوّل شاشة. الآن يسير مع التركيب لا بعده. بعد دورة الحدث الأولى كي لا يثقل تقييمَ الوحدة. */
 setTimeout(() => own.warm(), 0);
 AppState.addEventListener("change", (st) => {
-  if (st === "active") own.warm();
+  if (st !== "active") return;
+  /* الجهازُ فُتح: ما لم يُقرأ في الخلفيّة يُقرأ الآن، ومن وجد جلسةً لم يرها قبلُ يُبلَّغ (الإقلاعُ ينتظرها — `session.seen`) */
+  const unknown = stored === undefined;
+  if (unknown && readStored()) changed();
+  own.warm();
 });

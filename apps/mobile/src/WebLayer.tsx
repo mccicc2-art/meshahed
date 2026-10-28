@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { Animated, BackHandler, I18nManager, Linking, Platform, Share, StatusBar, View } from "react-native";
+import { Animated, AppState, BackHandler, I18nManager, Linking, Platform, Share, StatusBar, View } from "react-native";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
@@ -418,8 +418,21 @@ export function WebLayer() {
    * يسلك الطريقَ القديمَ بحرفه** — صفحتُه تسكّ له الجلسة (`bootAsk`) — وكذلك رابطُ الودجت.
    */
   const lazyBoot = useRef<boolean | null>(null);
+  /**
+   * 🔴 الدخولُ الوهميّ على الآيفون (تسجيلُ أحمد ٢٨ أكتوبر) — **قرارُ الإقلاع ينتظر أن يفتح صاحبُ الجهاز التطبيق.** iOS يوقظه في
+   * الخلفيّة (تحديثُ الودجت · إشعارٌ) والجهازُ مقفل، وأثرُ الدخول في خزنة المفاتيح لا يُقرأ حينها — فكان الإقلاعُ يحكم «زائر»
+   * ويرفع شاشةَ الدخول، ويجدها صاحبُها حين يفتح. الإقلاعُ في الواجهة لا ينتظر شيئاً؛ و`unknown` يُعامل كالواجهة كما كان.
+   */
+  const [awake, setAwake] = useState(() => AppState.currentState !== "background");
   useEffect(() => {
-    if (loading || source) return;
+    if (awake) return;
+    const sub = AppState.addEventListener("change", (st) => {
+      if (st === "active") setAwake(true);
+    });
+    return () => sub.remove();
+  }, [awake]);
+  useEffect(() => {
+    if (loading || source || !awake) return;
     if (lazyBoot.current === null) {
       lazyBoot.current = WEB_LAZY && !(typeof u === "string" && u) && (own.hasStored() || !session.seen());
       if (WEB_LAZY && !lazyBoot.current) mark("web.mount", 0, { why: typeof u === "string" && u ? "widget" : "boot" });
@@ -429,7 +442,7 @@ export function WebLayer() {
     /* D-1341 — من لم يُتمّ الترحيب لا تُرفع له الرئيسيّةُ الأصليّة (أدناه)، فيُحمَّل `/` مباشرةً: الحارسُ يحوّله إلى `/welcome` */
     const lightBoot = !(typeof u === "string" && u) && session.seen() && !session.welcomePending();
     setSource({ uri: lightBoot ? BOOT : HOME });
-  }, [loading, source, u]);
+  }, [loading, source, u, awake]);
   /* D-1090 — بعد أوّل ردِّ جلسة (رمزٌ أو `session:clear`) من صفحة الإقلاع الخفيفة تُبدَّل إلى `/`:
      `replace` لا `href` فلا تدخل التاريخ، ولا تبديلَ للمصدر (يعيد تركيبَ العرض — D-1075 أعلاه) */
   const hopped = useRef(false);
@@ -482,12 +495,12 @@ export function WebLayer() {
     }
   }, [router, showSignIn, showWelcome]);
   useEffect(() => {
-    if (loading || booted.current) return;
+    if (loading || booted.current || !awake) return;
     booted.current = true;
     /* D-1344 — رابطُ الودجت لمن لا أثرَ لجلسته يمرّ بالدخول أوّلاً كغيره (القرار ٦: لا تصفّحَ قبل الدخول) */
     if (typeof u === "string" && u && session.seen()) return;
     raise("boot");
-  }, [loading, u, raise]);
+  }, [loading, u, raise, awake]);
   /**
    * 🆕 D-1370 (V-D) — **حارسُ القاعدة**: أعلى المكدّس `web` يعني «الطبقةُ هي الشاشة» — وبلا صفحةٍ هي شاشةُ تحميلٍ لا تنتهي.
    * لا طريقَ معروفاً يوصل إليها (الجذورُ تخرج من التطبيق، والخروجُ يرفع شاشةَ الدخول)، فإن وصل أحدٌ بطريقٍ فاتنا يُعاد

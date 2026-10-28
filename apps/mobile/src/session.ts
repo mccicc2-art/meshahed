@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
+import { AppState } from "react-native";
 import { own } from "./ownSession";
 
 /**
@@ -116,6 +117,11 @@ function emit() {
 }
 /* 🆕 K4b — رمزٌ مملوكٌ وصل أو سقط ⇒ يُبلَغ من ينتظر الرمز (`useGuestUpgrade`…) كما يُبلَغ برمز الجسر */
 own.onChange(emit);
+/* 🆕 الدخولُ الوهميّ (٢٨ أكتوبر) — العودةُ إلى الواجهة بعد قراءةٍ لم تُحسم في الخلفيّة: تُقرأ الآن، ومن تبيّن أنّه داخلٌ يُبلَّغ */
+AppState.addEventListener("change", (st) => {
+  if (st !== "active" || seenMem !== null) return;
+  if (session.seen()) emit();
+});
 
 /** أوّلُ رمزٍ غيرِ فارغ من عدّة طرق — `null` إن انتهت كلُّها بلا رمز */
 function firstToken(ps: Promise<string | null>[]): Promise<string | null> {
@@ -207,13 +213,16 @@ export const session = {
    */
   seen(): boolean {
     if (seenMem === null) {
+      /* 🔴 الدخولُ الوهميّ على الآيفون (٢٨ أكتوبر) — قراءةٌ رمت أو رجعت فارغةً في الخلفيّة (خزنةُ المفاتيح مغلقةٌ والجهازُ
+         مقفل) لا تُحفظ: كانت تُحفظ `false` للتشغيلة كلِّها فتُرفع شاشةُ الدخول لصاحب الحساب. تُعاد في النداء التالي. */
       try {
-        seenMem = SecureStore.getItem(SEEN_KEY) === "1";
+        const v = SecureStore.getItem(SEEN_KEY) === "1";
+        if (v || AppState.currentState !== "background") seenMem = v;
       } catch {
-        seenMem = false;
+        /* لا حكم */
       }
     }
-    return seenMem || own.hasStored();
+    return seenMem === true || own.hasStored();
   },
   /**
    * 🆕 D-1151 (الحلّ أ) — **الأثرُ يُكتب لحظةَ نجاح الدخول الأصليّ بـGoogle**: التطبيقُ نفسُه أجرى الدخول فيعرفه
@@ -231,10 +240,13 @@ export const session = {
   /** 🆕 D-1341 — هل على هذا الجهاز حسابٌ دخل ولم يُتمّ الترحيب؟ (تُقرأ مرّةً من القرص ثمّ من الذاكرة) */
   welcomePending(): boolean {
     if (welcomeMem === null) {
+      /* القاعدةُ نفسُها: فشلُ القراءة في الخلفيّة لا يُحفظ حكماً */
       try {
-        welcomeMem = SecureStore.getItem(WELCOME_KEY) === "1";
+        const v = SecureStore.getItem(WELCOME_KEY) === "1";
+        if (v || AppState.currentState !== "background") welcomeMem = v;
+        return v;
       } catch {
-        welcomeMem = false;
+        return false;
       }
     }
     return welcomeMem;
