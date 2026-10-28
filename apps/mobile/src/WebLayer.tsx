@@ -313,17 +313,41 @@ export function WebLayer() {
     },
     [router, navContainer],
   );
+  /**
+   * 🆕 D-1559 — **من البابِ إلى جذرٍ آخر: التبويبُ يتبدّل أوّلاً والطبقةُ تختفي بعد أن يُرسم** (تسجيلُ خالد بعد D-1558: «رمشه» —
+   * ضغطةُ «الرئيسيّة» فوق التريلرات أظهرت «اكتشف» إطاراً واحداً ثمّ الرئيسيّة). كان البابُ يُغلق ثمّ يُنادى التنقّل، فتنكشف
+   * المرساةُ (الشاشةُ التي فُتح منها الباب) قبل أن يصل التبويبُ الجديد. الآن ثلاثةُ إطاراتٍ (~٥٠ms) بعد التنقّل — يكفي التبويبَ
+   * المركَّبَ أن يُرسم — ثمّ يُغلق البابُ نفسُه لا بابٌ فُتح بعده. `false` ⇒ لا مجموعةَ في المكدّس: يُغلق الآن ويكمل المستدعي.
+   */
+  const leaveDoor = useCallback(
+    (r: ReturnTo): boolean => {
+      const d = webLayer.door();
+      if (!goRoot(r)) {
+        webLayer.closeDoor();
+        return false;
+      }
+      const close = () => {
+        if (webLayer.door() === d) webLayer.closeDoor();
+      };
+      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(close)));
+      return true;
+    },
+    [goRoot],
+  );
   const goNative = useCallback(
     (r: ReturnTo) => {
       /* 🆕 K3b — **بابٌ ظهر طبقةً**: العودةُ تُخفيها. من صفحة الباب نفسِها إلى جذرها ⇒ المرساةُ تحتها كما تُركت (الغرفة ·
          موضعُ التمرير) بلا سطرٍ آخر — هذا ما كانت `takeResume` تُعيد بناءه. ومن صفحةٍ غيرِها ⇒ إلى الجذر الحيّ. */
       const d = webLayer.door();
       if (d) {
-        webLayer.closeDoor();
         doorKept();
         shell.resume = null;
-        if (d.root === r && d.path === pathRef.current) return;
-        if (goRoot(r)) return;
+        if (d.root === r && d.path === pathRef.current) {
+          webLayer.closeDoor();
+          return;
+        }
+        /* 🆕 D-1559 — إلى جذرٍ آخر: التبويبُ أوّلاً ثمّ تختفي الطبقة */
+        if (leaveDoor(r)) return;
       }
       /* 🆕 K3a-fix — عودةٌ من باب: المجموعةُ تُكمل التي فتحته (إقلاعُها ورئيسيّتُها) لا تُولد «من الويب» —
          وإلّا كشف رجوعٌ منها الصفحةَ الويبيّةَ التي عاد منها للتوّ (`rootsState.ts`) */
@@ -344,7 +368,7 @@ export function WebLayer() {
          (`nativeStack.ts`). من صفحة الباب وحدَها — من تنقّل في الويب بعدها ثمّ عاد بالشريط يعود إلى الجذر كما كان */
       for (const e of shell.takeResume(r, pathRef.current)) router.push({ pathname: e.pathname as never, params: e.params });
     },
-    [router, goRoot],
+    [router, goRoot, leaveDoor],
   );
   /**
    * 🆕 D-1103 — **درعُ لمسٍ لحظةَ تنكشف الصفحة** (بلاغُ أحمد بتسجيل على 1.11.11: «تم نسخ الرابط» ولم
@@ -1247,10 +1271,10 @@ export function WebLayer() {
             /* 🆕 K3b — فوق بابٍ ظهر طبقةً: المجموعةُ حيّةٌ تحته — تختفي الطبقةُ وينتقل إلى التبويب (لا بناء) */
             if (webLayer.door()) {
               shell.disarm();
-              webLayer.closeDoor();
               doorKept();
               shell.resume = null;
-              if (goRoot(k === "news" ? "discover" : k === "people" ? "community" : k)) return;
+              /* 🆕 D-1559 — التبويبُ يتبدّل أوّلاً والطبقةُ تختفي بعد رسمه (لا «رمشة» المرساة) */
+              if (leaveDoor(k === "news" ? "discover" : k === "people" ? "community" : k)) return;
             }
             if (shell.returnTo) {
               shell.disarm();
