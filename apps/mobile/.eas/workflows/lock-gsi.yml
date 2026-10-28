@@ -13,7 +13,7 @@ jobs:
       - uses: eas/checkout
       - name: npm install (lock only)
         run: |
-          cd apps/mobile
+          pwd
           printf '\n@react-native-google-signin:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=${NPM_TOKEN_GOOGLE_SIGN_IN}\n' >> .npmrc
           npm config get registry
           npm install @react-native-google-signin/google-signin@24.1.0 --save-exact --package-lock-only --ignore-scripts
