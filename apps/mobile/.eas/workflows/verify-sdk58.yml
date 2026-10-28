@@ -1,0 +1,33 @@
+# 🆕 D-1557 — تحقّقٌ على فرعٍ جانبيّ (لا يصل main) فوق التزام ترقية SDK 58: npm ci · tsc · export · prebuild
+# للمنصّتين — قبل بناءٍ مدفوع.
+name: Verify SDK 58
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    name: Verify
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - name: apply + npm ci + tsc + export + prebuild
+        run: |
+          node -e "console.log('EXPO', require('./package.json').dependencies.expo, 'RN', require('./package.json').dependencies['react-native'])"
+          npm ci --ignore-scripts
+          node -e "console.log('GSI', require('@react-native-google-signin/google-signin/package.json').version)"
+          npx tsc --noEmit -p .
+          echo "TSC_OK"
+          npx expo install --check || echo "CHECK_WARN"
+          npx expo export --platform android --output-dir /tmp/exp-a > /tmp/exp-a.log 2>&1 || (tail -40 /tmp/exp-a.log; exit 1)
+          echo "EXPORT_ANDROID_OK"
+          npx expo export --platform ios --output-dir /tmp/exp-i > /tmp/exp-i.log 2>&1 || (tail -40 /tmp/exp-i.log; exit 1)
+          echo "EXPORT_IOS_OK"
+          npx expo prebuild --platform android --no-install --clean
+          grep -n "enableMinifyInReleaseBuilds" android/gradle.properties
+          echo "PREBUILD_ANDROID_OK"
+          npx expo prebuild --platform ios --no-install --clean
+          ls ios/*/SceneDelegate.swift ios/*/AppDelegate.swift
+          grep -n -A4 "UIApplicationSceneManifest" ios/*/Info.plist | head -12
+          grep -rn "systemExtraLargePortrait" ios/ targets/ | head -3
+          echo "PREBUILD_IOS_OK"
