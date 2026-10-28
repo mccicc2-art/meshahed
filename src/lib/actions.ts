@@ -4415,12 +4415,24 @@ export async function moveWatchDay(input: MoveWatchDayBody) {
     (r) => movie || want.has(`${r.season_number}-${r.episode_number}`),
   );
   const now = Date.now();
+  const updates: { id: number; next: string }[] = [];
   for (const r of rows) {
     const at = new Date(r.watched_at).getTime();
     if (!Number.isFinite(at)) continue;
-    const next = new Date(Math.min(now, at + shift * 86_400_000)).toISOString();
-    const { error: e2 } = await supabase.from(table).update({ watched_at: next }).match({ id: r.id, user_id: user.id });
-    if (e2) fail(e2);
+    updates.push({ id: r.id, next: new Date(Math.min(now, at + shift * 86_400_000)).toISOString() });
+  }
+  /* A-30 (المدقّق ٢٨ أكتوبر) — كان كلُّ صفٍّ ينتظر الذي قبله: موسمٌ طويلٌ مئاتُ الرحلات المتتالية، فيبطؤ الطلبُ وقد يبلغ
+     حدَّ الدالّة. دفعاتٌ صغيرةٌ متوازية (عشرون معاً) تقصّر الانتظار ولا تُغرق القاعدةَ بمئات الطلبات دفعةً واحدة؛ والنتيجةُ
+     نفسُها — كلُّ صفٍّ بإزاحته، بجلسة العضو وشرطِ المالك. وأوّلُ خطأٍ في الدفعة يُفشل الطلبَ كما كان. */
+  const BATCH = 20;
+  for (let i = 0; i < updates.length; i += BATCH) {
+    const results = await Promise.all(
+      updates
+        .slice(i, i + BATCH)
+        .map((u) => supabase.from(table).update({ watched_at: u.next }).match({ id: u.id, user_id: user.id })),
+    );
+    const bad = results.find((x) => x.error);
+    if (bad?.error) fail(bad.error);
   }
   revalidatePath("/");
   revalidatePath("/activity");
