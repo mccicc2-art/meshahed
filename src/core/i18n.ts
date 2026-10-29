@@ -2225,8 +2225,9 @@ const ar = {
   historyMoveDayHint: "الساعة تبقى كما هي، ويتغيّر اليوم فقط.",
   /* 🆕 D-1505 — القائمةُ الجانبيّة (تصميمُ أحمد ٢٢–٢٧ أكتوبر) */
   drawerLabel: "القائمة",
-  drawerFollowing: "يتابعهم",
-  drawerFollowers: "متابع",
+  /* 🆕 D-1572 — بصيغة المخاطَب كبقيّة القائمة («ادعُ صديقاً»): «٧ تتابعهم · ٩ يتابعونك» (أحمد ٢٩ أكتوبر «٢أ») */
+  drawerFollowing: "تتابعهم",
+  drawerFollowers: "يتابعونك",
   drawerPlusCta: "اشترك في Plus",
   drawerPlusUntil: (d: string) => `مفعّل حتى ${d}`,
   drawerPlusActive: "Plus مفعّل",

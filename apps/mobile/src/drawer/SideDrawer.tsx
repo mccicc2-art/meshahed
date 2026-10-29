@@ -253,7 +253,10 @@ function SideDrawer({
                 </View>
                 <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                   <Text size={20} weight="800" numberOfLines={1}>{name}</Text>
-                  {username ? <Text size={13} muted numberOfLines={1} style={{ writingDirection: "ltr", textAlign: rtl ? "right" : "left" }}>@{username}</Text> : null}
+                  {/* 🔴 D-1572 — **المعرّفُ تحت الاسم في جهته** (لقطةُ أحمد ٢٩ أكتوبر، آيفون: «@ahmed» في أقصى اليسار بعيداً عن الاسم): كان
+                      `textAlign: "right"` في العربيّة، وiOS يقلب يمين/يسار مع اتّجاه التطبيق فيرميه للطرف الآخر. الآن يأخذ عرضَ نصّه
+                      ويقف في البداية (`alignSelf`) — والتخطيطُ يقلب البداية صحيحاً في الاتّجاهين، والنصُّ اللاتينيُّ يبقى `ltr` */}
+                  {username ? <Text size={13} muted numberOfLines={1} style={{ writingDirection: "ltr", alignSelf: "flex-start", maxWidth: "100%" }}>@{username}</Text> : null}
                 </View>
               </View>
             </Pressable>
