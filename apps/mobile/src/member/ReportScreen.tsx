@@ -531,8 +531,9 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
   const cells: (number | null)[] = [...Array.from({ length: lead }, () => null), ...s.buckets.map((_, i) => i)];
   while (cells.length % cols) cells.push(null);
   const rows = Array.from({ length: cells.length / cols }, (_, r) => cells.slice(r * cols, r * cols + cols));
-  /* 🆕 D-1583 — الحدُّ الأعلى أوسع (كان ١٠٤ · ٤٦ · ٦٤): الأسبوعُ ترك تحته ١٢٪ فارغة — الخاناتُ تأخذها */
-  const [rowMin, rowMax] = week ? [64, 180] : month ? [24, 72] : [40, 110];
+  /* 🆕 D-1583 — الحدُّ الأعلى أوسع (كان ١٠٤ · ٤٦ · ٦٤). 🆕 D-1584 — ومعتدل: بـ١٨٠ · ٧٢ · ١١٠ صارت الخاناتُ أعمدةً طويلة؛
+     ١٣٢ · ٥٦ · ٨٤ تملأ ولا تتمطّط */
+  const [rowMin, rowMax] = week ? [64, 132] : month ? [24, 56] : [40, 84];
   const level = (m: number) => (m <= 0 ? 0 : m / peak > 0.75 ? 4 : m / peak > 0.5 ? 3 : m / peak > 0.25 ? 2 : 1);
   const fill = (lv: number) => (lv === 0 ? tokens.surface2 : tokens.accent + ["", "40", "80", "BF", "FF"][lv]);
   /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
@@ -606,7 +607,8 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
 const TOP_W = 72;
 /* 🆕 D-1583 — ما تحت الملصق (الاسمُ والوقت) وأعرضُ ملصقٍ حين يتمدّد */
 const TOP_CAPTION = 44;
-const TOP_MAX = 132;
+/* 🆕 D-1584 — ١٢٠ (كانت ١٣٢) */
+const TOP_MAX = 120;
 export function TopThree({ titles, onTitle, fill }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void; fill?: boolean }) {
   const { tokens, locale } = useApp();
   const { width } = useWindowDimensions();

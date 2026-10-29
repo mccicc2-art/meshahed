@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import Svg, { Circle, Line, Path, Polygon } from "react-native-svg";
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Polygon, Stop } from "react-native-svg";
 import { api } from "../api";
 import { useApp } from "../state";
 import { BackChevron, Button, Text } from "../ui";
@@ -44,8 +44,9 @@ const PAGE_PAD = 16;
 const HEADER_H = 56;
 /* 🆕 D-1582 — حدّا قامة الاتّجاه حين يأخذ ما بقي، وما حوله من تسمياتٍ ومفتاح (والهيكلُ بالأدنى) */
 const CHART_MIN = 120;
-/* 🆕 D-1583 — ٣٨٠ (كانت ٢٢٠): «نظرة عامة» تركت تحتها ١٠٪ — الاتّجاهُ يأخذها */
-const CHART_MAX = 380;
+/* 🆕 D-1583 → D-1584 — ٢٠٠: بـ٣٨٠ صار الخطُّ أسناناً بطول نصف الشاشة (لقطةُ أحمد: «مكبرها بشكل غبي») — الفراغُ يُملأ بمعلومة
+   («٢ب»: «أبرز أيامك») لا بتمطيط رسم */
+const CHART_MAX = 200;
 const CHART_CHROME = 16 + 28;
 const PREV = "#7A7A7A";
 const PERIODS: ReportPeriod[] = ["week", "month", "year", "all"];
@@ -261,6 +262,7 @@ function Tiles({ items }: { items: { icon: IconName; value: string; label: strin
 function OverviewTab({ s }: { s: ReportStats }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
+  const topDays = [...s.buckets].filter((b) => b.minutes > 0).sort((a, b) => b.minutes - a.minutes).slice(0, 3);
   return (
     <>
       <Tiles
@@ -276,8 +278,21 @@ function OverviewTab({ s }: { s: ReportStats }) {
         <H3>{en ? "Watch-time trend" : "اتجاه وقت المشاهدة"}</H3>
         {s.deltaPct !== null ? <Text size={13} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.error} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${s.deltaPct >= 0 ? "+" : ""}${n(s.deltaPct)}%`}</Text> : null}
       </View>
-      {/* الاتّجاهُ يأخذ ما بقي من الشاشة (١٢٠–٢٢٠) */}
+      {/* الاتّجاهُ يأخذ ما بقي من الشاشة (١٢٠–٢٠٠) */}
       <TrendChart s={s} />
+
+      {/* 🆕 D-1584 — **«أبرز أيامك» جديد** («٢ب»): أعلى ثلاث خاناتٍ من الاتّجاه نفسِه — اليومُ (أو الشهرُ في السنة) ووقتُه — بخانة
+          التقرير نفسِها. يغيب حين لا يكون في المدّة يومان فيهما مشاهدة: ترتيبُ واحدٍ لا معنى له */}
+      {topDays.length >= 2 ? (
+        <>
+          <H3>{s.period === "year" ? (en ? "Top months" : "أبرز أشهرك") : s.period === "all" ? (en ? "Top years" : "أبرز سنواتك") : en ? "Top days" : "أبرز أيامك"}</H3>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {topDays.map((b, i) => (
+              <Tile key={`${b.label}-${i}`} icon={i === 0 ? "trending" : "calendar"} label={bucketName(b, s.period, locale)} value={hm(b.minutes, locale)} small />
+            ))}
+          </View>
+        </>
+      ) : null}
 
       <H3>{en ? "Content breakdown" : "توزيع المحتوى"}</H3>
       <View style={{ gap: 8 }}>
@@ -498,6 +513,14 @@ function HabitsTab({ s }: { s: ReportStats }) {
   /* الخريطةُ صفوفُ أوقاتٍ وأعمدةُ أيّامٍ من الأحد (`getUTCDay`) — مجموعُ العمود وقتُ ذلك اليوم */
   const dayTotals = [0, 1, 2, 3, 4, 5, 6].map((di) => s.habits.heat.reduce((a, band) => a + (band[di] ?? 0), 0));
   const dayPeak = Math.max(...dayTotals);
+  const heatTotal = dayTotals.reduce((a, v) => a + v, 0);
+  const weekendPct = heatTotal > 0 ? Math.round(((dayTotals[5] + dayTotals[6]) / heatTotal) * 100) : 0;
+  const peakCell = s.habits.heat.reduce<{ b: number; d: number; v: number } | null>((best, band, bi) => {
+    band.forEach((v, di) => {
+      if (v > 0 && (!best || v > best.v)) best = { b: bi, d: di, v };
+    });
+    return best;
+  }, null);
   return (
     <>
       <View style={{ marginTop: 12 }}>
@@ -512,8 +535,8 @@ function HabitsTab({ s }: { s: ReportStats }) {
       </View>
 
       <H3>{en ? "Viewing heatmap" : "خريطة المشاهدة"}</H3>
-      {/* 🆕 D-1582 — الخريطةُ تأخذ ما بقي من الشاشة: صفوفُها `flex: 1` بين ٢٤ و٥٦ (🆕 D-1583 — كانت ٤٨) */}
-      <View style={{ flex: 1, minHeight: 14 + 4 * 24 + 16, maxHeight: 14 + 4 * 56 + 16, gap: 4 }}>
+      {/* 🆕 D-1582 — الخريطةُ تأخذ ما بقي من الشاشة: صفوفُها `flex: 1` بين ٢٤ و٤٤ (🆕 D-1584 — ٥٦ كانت مربّعاتٍ كبيرةً بلا داعٍ) */}
+      <View style={{ flex: 1, minHeight: 14 + 4 * 24 + 16, maxHeight: 14 + 4 * 44 + 16, gap: 4 }}>
         <View style={{ flexDirection: "row", gap: 4 }}>
           <View style={{ width: 64 }} />
           {names.map((d, i) => (
@@ -541,6 +564,14 @@ function HabitsTab({ s }: { s: ReportStats }) {
         <StatCell center stacked icon="check" value={n(s.streak)} label={en ? "Day streak" : "أيام متتالية"} />
       </View>
 
+      {/* 🆕 D-1584 — **ثلاثُ خاناتٍ جديدة** («٢ب»): ذروتُك (أكثفُ خانةٍ في الخريطة: يومُها ووقتُها)، ونصيبُ نهاية الأسبوع (الجمعة
+          والسبت — حدُّ «مشاهد نهاية الأسبوع» نفسُه)، وأيّامٌ بلا مشاهدة من أيّام المدّة المنقضية */}
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
+        <Tile icon="clock" label={en ? "Your peak" : "ذروتك"} value={peakCell ? `${names[peakCell.d]} · ${BAND_LABELS[BANDS[peakCell.b] ?? "night"][en ? 1 : 0]}` : "—"} small />
+        <Tile icon="calendar" label={en ? "Weekend" : "نهاية الأسبوع"} value={`${n(weekendPct)}%`} small />
+        <Tile icon="pause" label={en ? "Days off" : "أيام بلا مشاهدة"} value={n(Math.max(0, s.elapsedDays - s.activeDays))} small />
+      </View>
+
       <H3>{en ? "Time of day" : "أوقات اليوم"}</H3>
       <View style={{ flexDirection: "row", height: 26, borderRadius: 6, overflow: "hidden" }}>
         {bands.map((b) => {
@@ -561,7 +592,8 @@ function HabitsTab({ s }: { s: ReportStats }) {
       {/* 🆕 D-1583 — **«أيّام الأسبوع» جديد**: مجموعُ كلِّ عمودٍ من الخريطة — أيُّ يومٍ تشاهد فيه أكثر، بأعمدةٍ تأخذ ما بقي من
           اللوح (٩٦–٢٠٠)، والأعلى بلون التمييز ووقتُه فوقه */}
       <H3>{en ? "Days of the week" : "أيام الأسبوع"}</H3>
-      <View style={{ flex: 1, minHeight: 96, maxHeight: 200, flexDirection: "row", gap: 6 }}>
+      {/* 🆕 D-1584 — ٦٤–٩٦ (كانت حتى ٢٠٠: أعمدةٌ بطول نصف الشاشة) */}
+      <View style={{ flex: 1, minHeight: 64, maxHeight: 96, flexDirection: "row", gap: 6 }}>
         {dayTotals.map((v, i) => {
           const on = v > 0 && v === dayPeak;
           return (
@@ -694,7 +726,29 @@ function TrendChart({ s }: { s: ReportStats }) {
   const pi = s.buckets.reduce((best, b, i) => (b.minutes > (s.buckets[best]?.minutes ?? 0) ? i : best), 0);
   const pk = s.buckets[pi];
   const PEAK_W = 140;
-  const path = (k: "minutes" | "prevMinutes") => s.buckets.map((b, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(b[k]).toFixed(1)}`).join(" ");
+  /* 🆕 D-1584 — **خطٌّ منحنٍ لا أسنان** («٣ب»): منحنياتٌ بين النقاط (كاتمول-روم) ونقطتا التحكّم محبوستان بين طرفي المقطع — فلا
+     ينزل المنحنى تحت الصفر ولا يعلو فوق القمّة وهماً؛ وتحت خطِّ المدّة ظلٌّ متدرّجٌ من لون التمييز إلى لا شيء */
+  const path = (k: "minutes" | "prevMinutes") => {
+    const pts = s.buckets.map((b, i) => [x(i), y(b[k])] as const);
+    if (pts.length < 2) return "";
+    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const lo = Math.min(p1[1], p2[1]);
+      const hi = Math.max(p1[1], p2[1]);
+      const c1y = Math.max(lo, Math.min(hi, p1[1] + (p2[1] - p0[1]) / 6));
+      const c2y = Math.max(lo, Math.min(hi, p2[1] - (p3[1] - p1[1]) / 6));
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  };
+  const base = y(0);
+  const area = count > 1 ? `${path("minutes")} L${x(count - 1).toFixed(1)},${base.toFixed(1)} L${x(0).toFixed(1)},${base.toFixed(1)} Z` : "";
   const hasPrev = s.buckets.some((b) => b.prevMinutes > 0);
   return (
     <View onLayout={onLayout} style={{ flex: 1, minHeight: CHART_MIN + CHART_CHROME, maxHeight: CHART_MAX + CHART_CHROME }}>
@@ -705,11 +759,23 @@ function TrendChart({ s }: { s: ReportStats }) {
             const gy = 10 + i * ((CH - 36) / 3);
             return <Line key={i} x1={0} x2={w} y1={gy} y2={gy} stroke={tokens.divider} strokeWidth={1} strokeDasharray="2 4" />;
           })}
-          {hasPrev && count > 1 ? <Path d={path("prevMinutes")} fill="none" stroke={PREV} strokeWidth={2} strokeLinejoin="round" /> : null}
-          {count > 1 ? <Path d={path("minutes")} fill="none" stroke={tokens.accent} strokeWidth={2.5} strokeLinejoin="round" /> : null}
-          {s.buckets.map((b, i) => (
-            <Circle key={i} cx={x(i)} cy={y(b.minutes)} r={i === pi && pk && pk.minutes > 0 ? 5 : count > 20 ? 2 : 3} fill={tokens.accent} />
-          ))}
+          <Defs>
+            <LinearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={tokens.accent} stopOpacity={0.32} />
+              <Stop offset="1" stopColor={tokens.accent} stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          {hasPrev && count > 1 ? <Path d={path("prevMinutes")} fill="none" stroke={PREV} strokeWidth={1.5} strokeLinecap="round" opacity={0.8} /> : null}
+          {count > 1 ? <Path d={area} fill="url(#trendFill)" /> : null}
+          {count > 1 ? <Path d={path("minutes")} fill="none" stroke={tokens.accent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" /> : null}
+          {/* نقاطٌ للأسبوع والسنة وحدهما (قليلةٌ تُقرأ)؛ في الشهر ثلاثون نقطةً ضجيج — القمّةُ وحدها */}
+          {s.buckets.map((b, i) =>
+            i === pi && pk && pk.minutes > 0 ? (
+              <Circle key={i} cx={x(i)} cy={y(b.minutes)} r={5} fill={tokens.accent} stroke={tokens.bg} strokeWidth={2} />
+            ) : count <= 12 ? (
+              <Circle key={i} cx={x(i)} cy={y(b.minutes)} r={3} fill={tokens.accent} />
+            ) : null,
+          )}
         </Svg>
       </SvgGuard>
       {/* إحداثيّاتٌ مطلقة (`left`) كتسميات البصمة — الرسمُ نفسُه يعرف جهةَ اللغة في `x` */}
