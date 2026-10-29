@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { File, Paths } from "expo-file-system";
 import { api, downloadTo, write } from "../api";
 import { useApp } from "../state";
@@ -13,9 +13,10 @@ import { Icon, type IconName } from "../icons";
 import { radius, type Tokens } from "../theme";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
+import { Chevron } from "../settings/ui";
 import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
-import { clock, hm, primeLabel, reportLead } from "@/core/statsFormat";
+import { clock, hm, primeLabel } from "@/core/statsFormat";
 import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } from "@/core/contracts/report";
 
 /**
@@ -31,13 +32,15 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *    خافتاً مقصوصاً، وفوقه حجابٌ متدرّجٌ إلى لون الصفحة (`react-native-svg`، في النسخة) ثمّ بطاقةُ الثمن — نصوصُ `PlusPreview`.
  *  - 🆕 D-1367 (الدفعة ب) — **«الإحصائيات الكاملة» شاشةٌ أصليّة** (`FullStatsScreen`) تفتح على مدّة التقرير، والقطعُ المشتركةُ
  *    (`PlusPill` · `PlusLock` · `SvgGuard` · `H2`) تُصدَّر من هنا لها.
- *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): صفٌّ تحت باب الإحصائيات ورمزٌ في الترويسة، كلاهما يشارك **صورةَ المدّة
- *    المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
+ *  - 🆕 D-1575 — **شاشةٌ واحدةٌ بلا نزول** (أحمد ٢٩ أكتوبر): الوقتُ في سطرٍ وحبّةُ الأيّام · «لمحة عن مدّتك» شبكةُ ستّ خانات ·
+ *    أعمدةٌ قصيرة · ثلاثةُ ملصقاتٍ صغيرة · الذوق · سطرُ «الإحصائيات الكاملة». جملةُ الافتتاح وسطرُ الاستنتاج حُذفا («١ب»)،
+ *    وصفُّ «شارك تقريرك» حُذف — رمزُ الترويسة يفعلها. الويبُ باقٍ على ترتيبه («٢أ»: شاشتُه كبيرة).
+ *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
-const BAR_H = 112;
-const RING = 104;
+/* 🆕 D-1575 — ٤٨ (كانت ١١٢): الشكلُ يُقرأ من القامة النسبيّة لا من الطول، والصفحةُ تتّسع لشاشةٍ واحدة */
+const BAR_H = 48;
 /* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` مكتوبين هنا — درجتان غيرُ `success`/`error`
    (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
 const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
@@ -161,13 +164,14 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
           <ReportSkeleton />
         )
       ) : (
-        <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        /* D-1575 — الذيلُ ١٦ لا ٤٠: الشاشةُ الواحدةُ تُحسب بالنقطة (≈٦٣٠ من ٦٦٠ متاحةً على آيفون ٦٫١) */
+        <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
           {d.stats.empty ? (
             <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
               {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
             </Text>
           ) : (
-            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} sharing={sharing} onRepaired={() => void q.refetch()} />
+            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} shareError={sharing.error} onRepaired={() => void q.refetch()} />
           )}
         </ScrollView>
       )}
@@ -191,7 +195,7 @@ function ReportBody({
   onTitle,
   onWeb,
   onFull,
-  sharing,
+  shareError,
   onRepaired,
 }: {
   s: ReportStats;
@@ -199,21 +203,24 @@ function ReportBody({
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onWeb: (path: string) => void;
   onFull: (period: ReportPeriod) => void;
-  sharing: { busy: boolean; error: string | null; share: () => Promise<void> };
+  shareError: string | null;
   onRepaired: () => void;
 }) {
-  const { t, tokens, locale } = useApp();
+  const { tokens, locale } = useApp();
   const en = locale === "en";
-  const lead = reportLead(s, locale);
-  const insight = s.taste.shift[0];
 
-  /* ———— المفتوحُ للجميع: الوقتُ الكبير · الحلقة · جملةُ الافتتاح ———— */
+  /* ———— المفتوحُ للجميع: الوقتُ في سطرٍ وحبّةُ الأيّام ———— */
+  /* 🆕 D-1575 — **التقريرُ شاشةٌ واحدةٌ تُقرأ بلا نزول** (لقطةُ أحمد ٢٩ أكتوبر: «أفضل شي فيه لمحة عن مدتك وماهو ظاهر، والباقي
+     اللي فوق كبيره وبشعه — الأفضل ترتب بحيث من صفحة واحدة كل شي ظاهر»). كانت ثلاثَ شاشاتٍ طولاً: الرقمُ ٤٤ وحلقةُ ١٠٤ ربعُها،
+     والأعمدةُ ربعٌ ثانٍ، والملصقاتُ شاشةٌ كاملة. لا معلومةَ حُذفت إلّا ما اختار حذفَه («١ب»: جملةُ «في اليوم — و٪ منها» وسطرُ
+     الاستنتاج)، والبطاقةُ «شارك تقريرك» لأنّ رمزَ المشاركة في الترويسة يفعلها. الترتيبُ: ما ترجع إليه (أرقامُك) قبل ما تنظر إليه
+     مرّة (الرسمُ والملصقات). على آيفون عاديٍّ وأكبر يتّسع كلُّه؛ SE وmini يبقى لهما نزولٌ قصيرٌ في الذيل — والـ`ScrollView` باقٍ لهما */
   const openPart = (
     <>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16, marginTop: 16 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={44} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: 50 }}>{hm(s.minutes, locale)}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <Text size={30} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: 36 }}>{hm(s.minutes, locale)}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
             <Text size={12} muted>{en ? "WATCH TIME" : "وقت المشاهدة"}</Text>
             {s.deltaPct !== null ? (
               <>
@@ -226,24 +233,11 @@ function ReportBody({
               </>
             ) : null}
           </View>
-          <Text size={12} muted style={{ marginTop: 6, lineHeight: 19 }}>{en ? "Runtime of what you marked in this period" : "مدّة ما علّمتَه في هذه المدّة"}</Text>
         </View>
-        <DaysRing active={s.activeDays} total={s.range.days} />
+        <DaysPill active={s.activeDays} total={s.range.days} />
       </View>
-
-      {lead ? (
-        /* نصوصٌ متجاورةٌ لا نصٌّ داخل نصّ: `Text` يختار خطَّه لنصٍّ صِرف وحدَه */
-        <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 5, marginTop: 14 }}>
-          <Text size={14} weight="700" style={{ lineHeight: 23 }}>{lead.avg}</Text>
-          <Text size={14} style={{ lineHeight: 23 }}>{lead.tail.trimEnd()}</Text>
-          {lead.pct ? (
-            <>
-              <Text size={14} weight="700" color={tokens.accent} style={{ lineHeight: 23 }}>{lead.pct}</Text>
-              <Text size={14} style={{ lineHeight: 23, flexShrink: 1 }}>{(lead.after ?? "").trim()}</Text>
-            </>
-          ) : null}
-        </View>
-      ) : null}
+      {/* الرمزُ في الترويسة وحدَه يشارك الآن — فخطؤه يُقال هنا تحت الرقم، لا في بطاقةٍ ذهبت */}
+      {shareError ? <Text size={12} color={tokens.error} style={{ marginTop: 6 }}>{shareError}</Text> : null}
     </>
   );
 
@@ -252,79 +246,57 @@ function ReportBody({
     <>
       {s.impossible.days > 0 ? <ImpossibleDayCard onDone={onRepaired} /> : null}
 
+      <H3>{en ? "Your period at a glance" : "لمحة عن مدّتك"}</H3>
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Tile icon="play" label={en ? "Episodes" : "حلقة"} value={s.episodes.toLocaleString("en-US")} />
+          <Tile icon="film" label={en ? "Movies" : "فيلم"} value={s.movies.toLocaleString("en-US")} />
+          <Tile icon="check" label={en ? "Day streak" : "أيام متتالية"} value={s.streak.toLocaleString("en-US")} />
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Tile icon="trending" label={en ? "Peak day" : "أكثف يوم"} value={s.peak ? `${s.peak.label} · ${hm(s.peak.minutes, locale)}` : "—"} small />
+          {/* وقتُ الذروة لا يُرسم بلا ساعةٍ حقيقيّة (D-797/D-798) */}
+          <Tile icon="clock" label={en ? "Prime time" : "وقت الذروة"} value={s.habits.primeHours ? primeLabel(s.habits.primeHours) : "—"} small />
+          <Tile icon="check" label={en ? "Completion" : "الإكمال"} value={`${s.completionPct.toLocaleString("en-US")}%`} small />
+        </View>
+      </View>
+
       <Bars s={s} />
 
       {s.topTitles.length > 0 ? (
         <>
-          <H2>{en ? "Most watched" : "الأكثر مشاهدة"}</H2>
+          <H3>{en ? "Most watched" : "الأكثر مشاهدة"}</H3>
           <TopThree s={s} onTitle={onTitle} />
         </>
       ) : null}
 
-      <H2>{en ? "Your period at a glance" : "لمحة عن مدّتك"}</H2>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <RoundStat icon="play" value={s.episodes.toLocaleString("en-US")} label={en ? "Episodes" : "حلقة"} />
-        <RoundStat icon="film" value={s.movies.toLocaleString("en-US")} label={en ? "Movies" : "فيلم"} />
-        <RoundStat icon="check" value={s.streak.toLocaleString("en-US")} label={en ? "Day streak" : "أيام متتالية"} />
-      </View>
-      <View style={{ flexDirection: "row", gap: 12, marginTop: 20 }}>
-        <Glance icon="trending" label={en ? "Peak day" : "أكثف يوم"} value={s.peak ? `${s.peak.label} · ${hm(s.peak.minutes, locale)}` : "—"} />
-        {/* وقتُ الذروة لا يُرسم بلا ساعةٍ حقيقيّة (D-797/D-798) */}
-        <Glance icon="clock" label={en ? "Prime time" : "وقت الذروة"} value={s.habits.primeHours ? primeLabel(s.habits.primeHours) : "—"} />
-        <Glance icon="check" label={en ? "Completion" : "الإكمال"} value={`${s.completionPct.toLocaleString("en-US")}%`} />
-      </View>
-
       {!s.taste.thin && s.taste.genres.length > 0 ? (
         <>
-          <H2>{en ? "Your taste this period" : "ذوقك في هذه المدّة"}</H2>
-          <View style={{ flexDirection: "row", height: 36, borderRadius: 8, overflow: "hidden" }}>
+          <H3>{en ? "Your taste this period" : "ذوقك في هذه المدّة"}</H3>
+          <View style={{ flexDirection: "row", height: 20, borderRadius: 6, overflow: "hidden" }}>
             {s.taste.genres.slice(0, 4).map((g, i) => (
               <View key={g.slug} style={{ flexGrow: Math.max(1, g.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: tasteColors(tokens)[i] }}>
-                {g.pct >= 10 ? <Text size={12} weight="700" color="#fff">{`${g.pct.toLocaleString("en-US")}%`}</Text> : null}
+                {g.pct >= 12 ? <Text size={11} weight="700" color="#fff">{`${g.pct.toLocaleString("en-US")}%`}</Text> : null}
               </View>
             ))}
           </View>
-          {/* الأسماءُ صفٌّ متساوٍ بنقاطٍ ملوّنة (D-805) */}
-          <View style={{ flexDirection: "row", marginTop: 8 }}>
+          {/* الأسماءُ صفٌّ متساوٍ بنقاطٍ ملوّنة (D-805) — سطرٌ واحدٌ لكلّ اسم */}
+          <View style={{ flexDirection: "row", marginTop: 6 }}>
             {s.taste.genres.slice(0, 4).map((g, i) => (
-              <View key={g.slug} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tasteColors(tokens)[i] }} />
-                <Text size={12} muted numberOfLines={2} style={{ flexShrink: 1, textAlign: "center" }}>{g.name}</Text>
+              <View key={g.slug} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 2 }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: tasteColors(tokens)[i] }} />
+                <Text size={11} muted numberOfLines={1} style={{ flexShrink: 1 }}>{g.name}</Text>
               </View>
             ))}
           </View>
         </>
       ) : null}
 
-      {/* سطرُ الاستنتاج — ولا يُكتب بلا حركةٍ تُقاس */}
-      {insight ? (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 16 }}>
-          <Icon name="sparkles" size={16} color={tokens.accent} />
-          <Text size={12} style={{ flex: 1, lineHeight: 20 }}>
-            {en
-              ? `You watched ${insight.delta > 0 ? "more" : "less"} ${insight.label} this period — ${Math.abs(insight.delta).toLocaleString("en-US")} points ${insight.delta > 0 ? "up" : "down"}.`
-              : `${insight.delta > 0 ? "زادت" : "قلّت"} مشاهدتُك لـ«${insight.label}» بمقدار ${Math.abs(insight.delta).toLocaleString("en-US")} نقطة عن المدّة السابقة.`}
-          </Text>
-        </View>
-      ) : null}
-
-      {/* بابُ «الإحصائيات الكاملة» — صفٌّ يُرى لا سطرٌ رماديٌّ في الذيل (D-805). 🆕 D-1367 — شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
-      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, marginTop: 30, opacity: pressed ? 0.7 : 1 })}>
-        <Icon name="chart" size={18} color={tokens.accent} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={14} weight="700">{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
-          <Text size={12} muted style={{ marginTop: 2 }}>{en ? "Content, taste and habits in full" : "المحتوى والذوق والعادات بتفصيلها"}</Text>
-        </View>
-      </Pressable>
-
-      {/* 🆕 D-1368 — «شارك تقريرك» (D-810) تحت باب الإحصائيات لا فوقه، وبشكله (بابان في ذيلٍ بشكلين يُقرآن رتبتين). بلا سهم:
-          السهمُ يَعِد بصفحةٍ تُفتح، وهذا يفعل في مكانه — وسطرُه الثاني يقول حالَه (يُجهَّز · تعذّر) */}
-      <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, marginTop: 12, opacity: pressed ? 0.7 : 1 })}>
-        <Icon name="share" size={18} color={tokens.accent} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={14} weight="700">{t.shareReportTitle}</Text>
-          <Text size={12} color={sharing.error ? tokens.error : tokens.muted} style={{ marginTop: 2 }}>{sharing.error ?? (sharing.busy ? t.shareBusy : t.shareReportSub)}</Text>
-        </View>
+      {/* بابُ «الإحصائيات الكاملة» سطرٌ واحدٌ لا بطاقة (D-1575) — D-1367: شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
+      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+        <Icon name="chart" size={16} color={tokens.accent} />
+        <Text size={14} weight="700" color={tokens.accent} style={{ flex: 1 }}>{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
+        <Chevron />
       </Pressable>
     </>
   );
@@ -410,27 +382,24 @@ export function H2({ children }: { children: string }) {
   return <Text size={20} weight="700" style={{ marginTop: 30, marginBottom: 12 }}>{children}</Text>;
 }
 
-/** حلقةُ الأيّام — أيّامٌ شاهدتَ فيها من أيّام المدّة. الدائرةُ تبدأ من الأعلى (`-rotate-90` في الصفحة) */
-function DaysRing({ active, total }: { active: number; total: number }) {
+/** 🆕 D-1575 — عنوانُ أقسام «تقريرك» بعد ترتيب الشاشة الواحدة: أصغرُ من `H2` (التي تبقى لـ«الإحصائيات الكاملة» وهي تتمرّر) */
+function H3({ children }: { children: string }) {
+  return <Text size={15} weight="700" style={{ marginTop: 16, marginBottom: 8 }}>{children}</Text>;
+}
+
+/**
+ * حبّةُ الأيّام — أيّامٌ شاهدتَ فيها من أيّام المدّة. 🆕 D-1575 — كانت حلقةً ١٠٤ بجانب الرقم الكبير (ربعُ الشاشة معهما)؛ الرقمان
+ * نفسُهما في حبّةٍ بقامة سطر الوقت
+ */
+function DaysPill({ active, total }: { active: number; total: number }) {
   const { tokens, locale } = useApp();
-  const r = 44;
-  const c = 2 * Math.PI * r;
-  const pct = total > 0 ? Math.min(1, active / total) : 0;
   return (
-    <View style={{ width: RING, height: RING }}>
-      <SvgGuard fallback={<View style={{ width: RING, height: RING, borderRadius: RING / 2, borderWidth: 7, borderColor: tokens.surface2 }} />}>
-        <Svg width={RING} height={RING} viewBox="0 0 104 104" style={{ transform: [{ rotate: "-90deg" }] }}>
-          <Circle cx={52} cy={52} r={r} fill="none" stroke={tokens.surface2} strokeWidth={7} />
-          <Circle cx={52} cy={52} r={r} fill="none" stroke={tokens.accent} strokeWidth={7} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} />
-        </Svg>
-      </SvgGuard>
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-        <View style={{ flexDirection: "row", alignItems: "baseline", direction: "ltr" }}>
-          <Text size={26} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{active.toLocaleString("en-US")}</Text>
-          <Text size={15} muted>{` / ${total.toLocaleString("en-US")}`}</Text>
-        </View>
-        <Text size={12} muted style={{ marginTop: 2 }}>{locale === "en" ? "days" : "أيام"}</Text>
+    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent + "80", backgroundColor: tokens.accent + "1A", paddingHorizontal: 12, paddingVertical: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", direction: "ltr" }}>
+        <Text size={16} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{active.toLocaleString("en-US")}</Text>
+        <Text size={12} muted>{` / ${total.toLocaleString("en-US")}`}</Text>
       </View>
+      <Text size={12} muted>{locale === "en" ? "days" : "يوم"}</Text>
     </View>
   );
 }
@@ -448,7 +417,7 @@ function Bars({ s }: { s: ReportStats }) {
   const step = n > 20 ? 5 : n > 7 ? 3 : 1;
   const gap = n > 12 ? 3 : n > 7 ? 6 : 8;
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap, marginTop: 24 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap, marginTop: 18 }}>
       {s.buckets.map((b, i) => {
         const full = Math.round((b.minutes / peakBar) * BAR_H);
         const isPeak = b.minutes === peakBar && b.minutes > 0;
@@ -456,13 +425,13 @@ function Bars({ s }: { s: ReportStats }) {
         const showValue = dense ? isPeak : b.minutes > 0;
         const showLabel = (((i - peakIndex) % step) + step) % step === 0;
         return (
-          <View key={`${b.label}-${i}`} style={{ flex: 1, minWidth: 0, alignItems: "center", gap: 6 }}>
+          <View key={`${b.label}-${i}`} style={{ flex: 1, minWidth: 0, alignItems: "center", gap: 4 }}>
             {/* الرقمُ والتسميةُ أعرضُ من عمودهما في المدد الكثيفة: يتجاوزان حدَّه ولا يُقصّان */}
             <View style={{ height: 16, width: 44, alignItems: "center" }}>
               {showValue ? <Text size={11} muted numberOfLines={1} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{clock(b.minutes, locale)}</Text> : null}
             </View>
-            <View style={{ width: "100%", maxWidth: 34, height: BAR_H, justifyContent: "flex-end", borderRadius: 6, backgroundColor: tokens.surface2 + "B3" }}>
-              <View style={{ height: b.minutes > 0 ? Math.max(6, full) : 0, borderRadius: 6, backgroundColor: tokens.accent }} />
+            <View style={{ width: "100%", maxWidth: 34, height: BAR_H, justifyContent: "flex-end", borderRadius: 4, backgroundColor: tokens.surface2 + "B3" }}>
+              <View style={{ height: b.minutes > 0 ? Math.max(4, full) : 0, borderRadius: 4, backgroundColor: tokens.accent }} />
             </View>
             <View style={{ height: 16, width: 44, alignItems: "center" }}>
               {showLabel ? <Text size={11} weight={top ? "700" : "400"} color={top ? tokens.fg : tokens.muted} numberOfLines={1}>{b.label}</Text> : null}
@@ -474,29 +443,35 @@ function Bars({ s }: { s: ReportStats }) {
   );
 }
 
-/** «الأكثر مشاهدة» — ثلاثةُ ملصقات، الأوّلُ أعرض (`flex 1.6`) وعليه رقمُه */
+/**
+ * «الأكثر مشاهدة» — ثلاثةُ ملصقاتٍ صغيرةٍ في صفّ، وتحت كلٍّ اسمُه ووقتُه، والأوّلُ عليه رقمُه. 🆕 D-1575 — كانت ملصقاتٍ بعرض
+ * الشاشة (الأوّلُ ١٫٦ ضعف) تأخذ شاشةً كاملة؛ الملصقُ هنا يدلّ على العمل ولا يُعرض لذاته
+ */
+const TOP_W = 64;
 function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movie", id: number) => void }) {
   const { tokens, locale } = useApp();
-  const { width } = useWindowDimensions();
   const en = locale === "en";
-  const unit = (width - PAGE_PAD * 2 - 24) / 3.6;
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
       {s.topTitles.slice(0, 3).map((x, i) => {
-        const w = i === 0 ? unit * 1.6 : unit;
-        const uri = posterFor(x.poster, w);
+        const uri = posterFor(x.poster, TOP_W);
         return (
-          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flexGrow: i === 0 ? 1.6 : 1, flexBasis: 0, minWidth: 0, opacity: pressed ? 0.8 : 1 })}>
-            <View style={{ width: "100%", aspectRatio: 2 / 3, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-              {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={20} color={tokens.muted} />}
-              {i === 0 ? (
-                <View style={{ position: "absolute", top: 8, start: 8, width: 24, height: 24, borderRadius: 6, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
-                  <Text size={12} weight="700" color={tokens.onAccent}>1</Text>
-                </View>
-              ) : null}
+          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 8, opacity: pressed ? 0.8 : 1 })}>
+            <View style={{ width: TOP_W * 0.62, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+              {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />}
             </View>
-            <Text size={12} weight="700" numberOfLines={1} style={{ marginTop: 8 }}>{x.title}</Text>
-            <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{`${hm(x.minutes, locale)}${x.episodes > 0 ? ` · ${x.episodes.toLocaleString("en-US")} ${en ? "eps" : "حلقة"}` : ""}`}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                {i === 0 ? (
+                  <View style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+                    <Text size={10} weight="700" color={tokens.onAccent}>1</Text>
+                  </View>
+                ) : null}
+                <Text size={12} weight="700" numberOfLines={1} style={{ flex: 1 }}>{x.title}</Text>
+              </View>
+              <Text size={11} muted numberOfLines={1} style={{ marginTop: 3 }}>{hm(x.minutes, locale)}</Text>
+              {x.episodes > 0 ? <Text size={11} muted numberOfLines={1} style={{ marginTop: 1 }}>{`${x.episodes.toLocaleString("en-US")} ${en ? "eps" : "حلقة"}`}</Text> : null}
+            </View>
           </Pressable>
         );
       })}
@@ -504,28 +479,19 @@ function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movi
   );
 }
 
-function RoundStat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
+/**
+ * خانةُ «لمحة عن مدّتك» — 🆕 D-1575 بدلُ `RoundStat` و`Glance`: كانتا شكلين لصفّين (دائرةٌ ورقمٌ ٢٠، ورمزٌ فوق اسمٍ ورقمٍ ١٢)؛
+ * خانةٌ واحدةٌ بشكلٍ واحد: رمزٌ واسمٌ في سطر، والقيمةُ تحته. `small` لقيمةٍ نصّيّة («الأربعاء ١٥ · 6h 40m») تصغر لتتّسع
+ */
+function Tile({ icon, label, value, small }: { icon: IconName; label: string; value: string; small?: boolean }) {
   const { tokens } = useApp();
   return (
-    <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: tokens.accent + "99", alignItems: "center", justifyContent: "center" }}>
-        <Icon name={icon} size={17} color={tokens.accent} />
+    <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 10, paddingVertical: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+        <Icon name={icon} size={13} color={tokens.accent} />
+        <Text size={11} muted numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
       </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text size={20} weight="700" numberOfLines={1} style={{ fontVariant: ["tabular-nums"] }}>{value}</Text>
-        <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{label}</Text>
-      </View>
-    </View>
-  );
-}
-
-function Glance({ icon, label, value }: { icon: IconName; label: string; value: string }) {
-  const { tokens } = useApp();
-  return (
-    <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
-      <Icon name={icon} size={17} color={tokens.accent} />
-      <Text size={12} muted style={{ marginTop: 6 }}>{label}</Text>
-      <Text size={12} weight="700" style={{ marginTop: 2, lineHeight: 18 }}>{value}</Text>
+      <Text size={small ? 13 : 18} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ marginTop: 4, fontVariant: ["tabular-nums"], lineHeight: small ? 22 : 22 }}>{value}</Text>
     </View>
   );
 }
@@ -579,22 +545,26 @@ function ReportSkeleton() {
   const { tokens } = useApp();
   const bone = tokens.surface2;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 24 }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, gap: 20 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
         <View style={{ flex: 1, gap: 8 }}>
-          <View style={{ height: 46, width: "60%", borderRadius: 8, backgroundColor: bone }} />
+          <View style={{ height: 32, width: "50%", borderRadius: 8, backgroundColor: bone }} />
           <View style={{ height: 12, width: "34%", borderRadius: 6, backgroundColor: bone }} />
         </View>
-        <View style={{ width: RING, height: RING, borderRadius: RING / 2, backgroundColor: bone }} />
+        <View style={{ width: 96, height: 32, borderRadius: 16, backgroundColor: bone }} />
       </View>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 132 }}>
-        {[40, 62, 30, 88, 46, 104, 120].map((h, i) => (
-          <View key={i} style={{ flex: 1, height: h, borderRadius: 6, backgroundColor: bone }} />
+      <View style={{ gap: 8 }}>
+        {[0, 1].map((r) => (
+          <View key={r} style={{ flexDirection: "row", gap: 8 }}>
+            {[0, 1, 2].map((c) => (
+              <View key={c} style={{ flex: 1, height: 56, borderRadius: radius.card, backgroundColor: bone }} />
+            ))}
+          </View>
         ))}
       </View>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        {[1.6, 1, 1].map((g, i) => (
-          <View key={i} style={{ flexGrow: g, flexBasis: 0, aspectRatio: 2 / 3, borderRadius: 16, backgroundColor: bone }} />
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 48 }}>
+        {[16, 26, 12, 36, 20, 44, 48].map((h, i) => (
+          <View key={i} style={{ flex: 1, height: h, borderRadius: 4, backgroundColor: bone }} />
         ))}
       </View>
     </View>
