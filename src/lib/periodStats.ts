@@ -146,6 +146,11 @@ export interface StatBucket {
   prevMinutes: number;
   /** يومٌ بعينه — لأكثفِ يومٍ ولسلسلة الأيّام */
   dayKey?: string;
+  /**
+   * 🆕 D-1580 — **أكثرُ ما شوهد في هذا العمود** (ثلاثةٌ على الأكثر، بالدقائق): التطبيقُ يلمس يوماً في التقويم (أو شهراً في السنة)
+   * فتتبدّل «الأكثر مشاهدة» تحته (أحمد ٢٩ أكتوبر: «إذا حددت يوم الأفلام تتغير تحت»). الدقائقُ والحلقاتُ لهذا العمود وحدَه
+   */
+  titles?: StatTitle[];
 }
 
 export interface PeriodStats {
@@ -294,6 +299,7 @@ export async function buildPeriodStats(
 
   const byTitle = new Map<string, StatTitle>();
   const byDay = new Map<string, number>();
+  const slotTitles = new Map<string, Map<string, { minutes: number; episodes: number }>>();
   const mixMin = { shows: 0, movies: 0, anime: 0 };
   const heat: number[][] = [0, 1, 2, 3].map(() => new Array(7).fill(0));
   const byHour = new Array(24).fill(0) as number[];
@@ -312,6 +318,17 @@ export async function buildPeriodStats(
 
     const day = dayKeyIn(row.watchedAt, tzShift);
     byDay.set(day, (byDay.get(day) ?? 0) + mins);
+    /* D-1580 — الأعمالُ لكلِّ عمود: اليومُ للأسبوع والشهر، والشهرُ (أوّلُ سبعة أحرف) للسنة */
+    {
+      const slot = period === "year" ? day.slice(0, 7) : day;
+      const tk = `${row.kind === "movie" ? "movie" : "tv"}-${row.tmdbId}`;
+      let m = slotTitles.get(slot);
+      if (!m) slotTitles.set(slot, (m = new Map()));
+      const e = m.get(tk) ?? { minutes: 0, episodes: 0 };
+      e.minutes += mins;
+      e.episodes += row.kind === "movie" ? 0 : 1;
+      m.set(tk, e);
+    }
 
     const kind = kindOf(key, mediaType);
     mixMin[kind] += mins;
@@ -413,6 +430,23 @@ export async function buildPeriodStats(
         dayKey: key,
       });
     }
+  }
+
+  /* ═══ 🆕 D-1580 — أكثرُ ما شوهد في كلِّ عمود (ثلاثة) — للأسبوع والشهر يومٌ، وللسنة شهر؛ «كلُّ الأوقات» بلا ═══ */
+  if (period !== "all") {
+    const fy = range.from.getUTCFullYear();
+    buckets.forEach((b, i) => {
+      const slot = period === "year" ? `${fy}-${String(i + 1).padStart(2, "0")}` : b.dayKey;
+      const m = slot ? slotTitles.get(slot) : undefined;
+      if (!m) return;
+      b.titles = [...m]
+        .sort((a, z) => z[1].minutes - a[1].minutes)
+        .slice(0, 3)
+        .flatMap(([k, v]) => {
+          const base = byTitle.get(k);
+          return base ? [{ ...base, minutes: v.minutes, episodes: v.episodes }] : [];
+        });
+    });
   }
 
   /* ═══ أكثفُ يومٍ وسلسلةُ الأيّام ═══ */

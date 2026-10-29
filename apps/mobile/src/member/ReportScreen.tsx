@@ -17,8 +17,8 @@ import { Chevron } from "../settings/ui";
 import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
-import { clock, hm, primeLabel } from "@/core/statsFormat";
-import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } from "@/core/contracts/report";
+import { hm, primeLabel } from "@/core/statsFormat";
+import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, ReportStats, ReportTitle } from "@/core/contracts/report";
 
 /**
  * ====== «تقريرك» أصليّاً (🆕 D-1366 · Phase 11-V · V-C · C5 · الدفعة أ — ١١ أكتوبر ٢٠٢٦) ======
@@ -36,19 +36,14 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *  - 🆕 D-1575 — **شاشةٌ واحدةٌ بلا نزول** (أحمد ٢٩ أكتوبر): الوقتُ في سطرٍ وحبّةُ الأيّام · «لمحة عن مدّتك» شبكةُ ستّ خانات ·
  *    أعمدةٌ قصيرة · ثلاثةُ ملصقاتٍ صغيرة · الذوق · سطرُ «الإحصائيات الكاملة». جملةُ الافتتاح وسطرُ الاستنتاج حُذفا («١ب»)،
  *    وصفُّ «شارك تقريرك» حُذف — رمزُ الترويسة يفعلها. الويبُ باقٍ على ترتيبه («٢أ»: شاشتُه كبيرة).
- *  - 🆕 D-1579 — **الشهرُ تقويمٌ ملوّن** (`MonthHeat`) بدل ٣١ عموداً، والأسبوعُ والسنةُ أعمدةٌ بلا مساراتٍ رماديّة، وملصقاتٌ أكبر.
+ *  - 🆕 D-1579 → D-1580 — **المددُ الثلاث خاناتٌ ملوّنة** (`PeriodHeat`: تقويمُ الشهر، صفُّ الأسبوع، شهورُ السنة) بدل الأعمدة،
+ *    **ولمسةُ يومٍ أو شهرٍ تبدّل «الأكثر مشاهدة» إلى أعماله** (`titles` من الخادم لكلِّ عمود)، وملصقاتٌ أكبر.
  *  - 🆕 D-1576 — **المددُ تُسحب** (`TabSlide`، لوحٌ لكلِّ مدّة: `ReportPane`) **والمحتوى يملأ الطول**: الأعمدةُ تأخذ ما بقي (٤٨–١٦٠)،
  *    والأرقامُ والملصقاتُ والمسافاتُ أوسعُ قليلاً (أحمد: «خلها ترتاح وتستفيد من كامل المساحة»).
  *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
-/* 🆕 D-1575 → D-1576 — **قامةُ العمود تأخذ ما بقي من الشاشة** بين ٤٨ (الهاتفُ الصغير: الصفحةُ تبقى شاشةً واحدة) و١٦٠ (Pro Max:
-   ما فوقها لا يزيد قراءةً). كانت ١١٢ ثابتةً ثمّ ٤٨ ثابتة — والثابتةُ تترك ربعَ آيفون ٦٫١ فارغاً تحت الصفحة */
-const BAR_MIN = 48;
-const BAR_MAX = 160;
-/** ما يحيط بالقامة في عمود: سطرُ الرقم ١٦ وسطرُ التسمية ١٦ والفجوتان ٤+٤، والهامشُ فوق الأعمدة ١٨ */
-const BAR_CHROME = 16 + 16 + 8 + 18;
 /* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` مكتوبين هنا — درجتان غيرُ `success`/`error`
    (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
 const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
@@ -222,7 +217,7 @@ function ReportPane({
   }
   return (
     /* 🆕 D-1576 — **المحتوى يملأ طولَ الشاشة** (أحمد على لقطة D-1575: «فيه مساحة تحت زيادة — خلها ترتاح وتستفيد من كامل
-       المساحة»): `flexGrow` فالأعمدةُ (`Bars`، `flex: 1`) تأخذ ما بقي من الطول بين حدٍّ أدنى وأعلى، والذيلُ ١٦ */
+       المساحة»): `flexGrow` فالخاناتُ (`PeriodHeat`، `flex: 1`) تأخذ ما بقي من الطول بين حدٍّ أدنى وأعلى، والذيلُ ١٦ */
     <ScrollView refreshControl={refresh} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
       {d.stats.empty ? (
         <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
@@ -271,6 +266,11 @@ function ReportBody({
      والأعمدةُ ربعٌ ثانٍ، والملصقاتُ شاشةٌ كاملة. لا معلومةَ حُذفت إلّا ما اختار حذفَه («١ب»: جملةُ «في اليوم — و٪ منها» وسطرُ
      الاستنتاج)، والبطاقةُ «شارك تقريرك» لأنّ رمزَ المشاركة في الترويسة يفعلها. الترتيبُ: ما ترجع إليه (أرقامُك) قبل ما تنظر إليه
      مرّة (الرسمُ والملصقات). على آيفون عاديٍّ وأكبر يتّسع كلُّه؛ SE وmini يبقى لهما نزولٌ قصيرٌ في الذيل — والـ`ScrollView` باقٍ لهما */
+  /* 🆕 D-1580 — العمودُ المختار (يومٌ في الأسبوع والشهر، شهرٌ في السنة): «الأكثر مشاهدة» تحته يصير أعمالَه */
+  const [pick, setPick] = useState<number | null>(null);
+  const picked = pick !== null ? s.buckets[pick] ?? null : null;
+  const pickedName = picked ? bucketName(picked, s.period, locale) : "";
+  const shown = picked ? picked.titles ?? [] : s.topTitles;
   const openPart = (
     <>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 }}>
@@ -317,13 +317,21 @@ function ReportBody({
         </View>
       </View>
 
-      {/* 🆕 D-1579 — الشهرُ تقويمٌ ملوّن، والأسبوعُ والسنةُ أعمدةٌ نظيفة (أحمد ٢٩ أكتوبر: «الشارت هذا سيء» ثمّ «١أ») */}
-      {s.period === "month" && s.buckets.every((b) => b.dayKey) ? <MonthHeat s={s} /> : <Bars s={s} />}
+      {/* 🆕 D-1579 → D-1580 — المددُ الثلاثُ خاناتٌ ملوّنةٌ بشكلٍ واحد (أحمد: «كذلك الأسبوعي والسنة عدلها»): الشهرُ تقويم،
+          والأسبوعُ صفُّ سبعة أيّام، والسنةُ اثنا عشر شهراً */}
+      <PeriodHeat s={s} pick={pick} onPick={setPick} pickedName={pickedName} />
 
       {s.topTitles.length > 0 ? (
         <>
-          <H3>{en ? "Most watched" : "الأكثر مشاهدة"}</H3>
-          <TopThree s={s} onTitle={onTitle} />
+          <H3>{picked ? (en ? `Watched on ${pickedName}` : s.period === "year" ? `شاهدت في ${pickedName}` : `شاهدت يوم ${pickedName}`) : en ? "Most watched" : "الأكثر مشاهدة"}</H3>
+          {shown.length > 0 ? (
+            <TopThree titles={shown} onTitle={onTitle} />
+          ) : (
+            /* قامةُ صفِّ الملصقات نفسُها فلا تقفز الصفحةُ حين يُختار يومٌ فارغ */
+            <View style={{ height: TOP_W * 1.5 + 40, alignItems: "center", justifyContent: "center" }}>
+              <Text size={13} muted>{en ? "Nothing watched" : s.period === "year" ? "لا مشاهدة في هذا الشهر" : "لا مشاهدة في هذا اليوم"}</Text>
+            </View>
+          )}
         </>
       ) : null}
 
@@ -461,85 +469,50 @@ function DaysPill({ active, total }: { active: number; total: number }) {
   );
 }
 
-/**
- * الأعمدة — **قامةٌ ثابتةٌ وداخلها الممتلئ** (الصورة: رمادٌ يقول المدى وأصفرُ يقول القيمة). كثافتُها تتبع عددَها (D-801): الأسبوعُ
- * سبعةٌ فسيحة، والشهرُ حتى ٣١ متراصّة — فالرقمُ فوق القمّة وحدَها، والتسميةُ كلَّ ثلاثةٍ أو خمسةٍ محسوبةً من القمّة.
- */
-function Bars({ s }: { s: ReportStats }) {
-  const { tokens, locale } = useApp();
-  const n = s.buckets.length;
-  const peakBar = Math.max(1, ...s.buckets.map((b) => b.minutes));
-  const peakIndex = Math.max(0, s.buckets.findIndex((b) => b.minutes === peakBar && b.minutes > 0));
-  const dense = n > 7;
-  const step = n > 20 ? 5 : n > 7 ? 3 : 1;
-  const gap = n > 12 ? 3 : n > 7 ? 6 : 8;
-  return (
-    /* `flex: 1` في محتوى `flexGrow` يأخذ الباقي، والحدّان على الغلاف؛ والأعمدةُ تمتدّ إلى قامته (`stretch`) والممتلئُ نسبةٌ منها */
-    <View style={{ flex: 1, minHeight: BAR_MIN + BAR_CHROME, maxHeight: BAR_MAX + BAR_CHROME, flexDirection: "row", alignItems: "stretch", gap, paddingTop: 18 }}>
-      {s.buckets.map((b, i) => {
-        const pct = b.minutes > 0 ? Math.max(4, Math.round((b.minutes / peakBar) * 100)) : 0;
-        const isPeak = b.minutes === peakBar && b.minutes > 0;
-        const top = s.period === "week" && isPeak;
-        const showValue = dense ? isPeak : b.minutes > 0;
-        const showLabel = (((i - peakIndex) % step) + step) % step === 0;
-        return (
-          <View key={`${b.label}-${i}`} style={{ flex: 1, minWidth: 0, alignItems: "center", gap: 4 }}>
-            {/* الرقمُ والتسميةُ أعرضُ من عمودهما في المدد الكثيفة: يتجاوزان حدَّه ولا يُقصّان */}
-            <View style={{ height: 16, width: 44, alignItems: "center" }}>
-              {showValue ? <Text size={11} muted numberOfLines={1} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{clock(b.minutes, locale)}</Text> : null}
-            </View>
-            {/* 🆕 D-1579 — **بلا مسارٍ رماديّ**: المسارُ الفارغُ كان أعلى ما في الشكل (٣١ مساراً يبدو باركوداً)؛ الآن خطُّ قاعدةٍ وحده،
-                والعمودُ يقف عليه */}
-            <View style={{ flex: 1, width: "100%", maxWidth: 34, justifyContent: "flex-end", borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-              {/* ٤٪ أدنى: يومٌ فيه دقائقُ قليلةٌ يُرى نقطةً لا يختفي */}
-              <View style={{ height: `${pct}%`, minHeight: pct ? 4 : 0, borderRadius: 4, backgroundColor: tokens.accent }} />
-            </View>
-            <View style={{ height: 16, width: 44, alignItems: "center" }}>
-              {showLabel ? <Text size={11} weight={top ? "700" : "400"} color={top ? tokens.fg : tokens.muted} numberOfLines={1}>{b.label}</Text> : null}
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
+/** 🆕 D-1580 — اسمُ العمود المختار كما يُقرأ: «الخميس ١٥» لليوم، و«أكتوبر» للشهر */
+function bucketName(b: ReportBucket, period: ReportPeriod, locale: string): string {
+  const en = locale === "en";
+  if (period === "year" || !b.dayKey) return b.label;
+  const d = new Date(`${b.dayKey}T00:00:00Z`);
+  const wd = new Intl.DateTimeFormat(en ? "en" : "ar", { weekday: "long", timeZone: "UTC" }).format(d);
+  return `${wd} ${d.getUTCDate().toLocaleString("en-US")}`;
 }
 
 /**
- * 🆕 D-1579 — **تقويمُ الشهر الملوّن** بدل ٣١ عموداً (أحمد ٢٩ أكتوبر على لقطة الأعمدة: «الشارت هذا سيء — لو فيه مؤشر ثاني أفضل
- * منه اقترحه» ثمّ «١أ»). الأعمدةُ الثلاثون كانت مساراتٍ فارغةً أكثرَ منها قيماً، ويومان يأكلان الصورة. الشبكةُ تقول ما لا تقوله:
- * **أيُّ الأيّام شاهدتَ فيها، ونمطُ أسبوعك، وأيّامُك المتتالية** — وتملأ المكانَ نفسَه (`flex: 1` بين حدّين كالأعمدة).
- * - الأسبوعُ يبدأ الأحد (أسبوعُ المملكة) في اللغتين؛ والصفُّ يبدأ من جهة البداية فالأحدُ يمينٌ في العربيّة.
- * - **أربعُ درجاتٍ من لون التمييز** نسبةً إلى أكثف يوم، واليومُ الفارغ رماديٌّ هادئ، وما لم يأتِ بعدُ من الشهر أخفت.
- * - **لمسةُ يومٍ تكتب وقتَه** فوق الشبكة («الأربعاء ١٥ · 6h 40m»)، ولمسةٌ ثانيةٌ تمحوه؛ وبلا اختيارٍ يقف السطرُ مقياساً «أقلّ ▢▢▢▢ أكثر».
+ * 🆕 D-1579 → D-1580 — **خاناتُ المدّة الملوّنة** — شكلٌ واحدٌ للمدد الثلاث (بدل ٣١ عموداً ثمّ أعمدةً للأسبوع والسنة):
+ * - **الشهر** تقويمٌ بسبعة أعمدةٍ يبدأ الأحد (أسبوعُ المملكة) — في العربيّة الأحدُ يمين؛ **الأسبوع** صفُّ سبعة أيّامٍ أكبر، في كلٍّ اسمُه
+ *   ووقتُه؛ **السنة** اثنا عشر شهراً أربعةً في الصفّ، في كلٍّ اسمُه وساعاتُه.
+ * - **أربعُ درجاتٍ من لون التمييز** نسبةً إلى أكثف عمود، والفارغُ رماديٌّ هادئ، وما لم يأتِ بعدُ من المدّة أخفت.
+ * - **لمسةٌ تختار** (ويُكتب فوق الشبكة اسمُه ووقتُه، و«الأكثر مشاهدة» تصير أعمالَه) ولمسةٌ ثانيةٌ تُلغي؛ وبلا اختيارٍ يقف السطرُ مقياساً.
+ * - القامةُ `flex: 1` بين حدّين: تأخذ ما بقي من الشاشة ولا تنهار على هاتفٍ صغير.
  */
-const HEAT_MIN = 24;
-const HEAT_MAX = 46;
-function MonthHeat({ s }: { s: ReportStats }) {
+function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: number | null; onPick: (i: number | null) => void; pickedName: string }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
-  const [pick, setPick] = useState<number | null>(null);
   const peak = Math.max(1, ...s.buckets.map((b) => b.minutes));
-  const loc = en ? "en" : "ar";
-  const narrow = new Intl.DateTimeFormat(loc, { weekday: "narrow", timeZone: "UTC" });
-  const long = new Intl.DateTimeFormat(loc, { weekday: "long", timeZone: "UTC" });
-  /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
-  const heads = Array.from({ length: 7 }, (_, i) => narrow.format(new Date(Date.UTC(2026, 9, 4 + i))));
-  const first = new Date(`${s.buckets[0].dayKey}T00:00:00Z`).getUTCDay();
-  const cells: (number | null)[] = [...Array.from({ length: first }, () => null), ...s.buckets.map((_, i) => i)];
-  while (cells.length % 7) cells.push(null);
-  const rows = Array.from({ length: cells.length / 7 }, (_, r) => cells.slice(r * 7, r * 7 + 7));
+  const gap = 6;
+  const month = s.period === "month" && s.buckets.every((b) => b.dayKey);
+  const week = s.period === "week";
+  /* الصفوف: الشهرُ من الأحد (خاناتٌ فارغةٌ قبل اليوم الأوّل)، والأسبوعُ صفٌّ واحد، والسنةُ أربعةٌ في الصفّ */
+  const cols = month || week ? 7 : 4;
+  const lead = month ? new Date(`${s.buckets[0].dayKey}T00:00:00Z`).getUTCDay() : 0;
+  const cells: (number | null)[] = [...Array.from({ length: lead }, () => null), ...s.buckets.map((_, i) => i)];
+  while (cells.length % cols) cells.push(null);
+  const rows = Array.from({ length: cells.length / cols }, (_, r) => cells.slice(r * cols, r * cols + cols));
+  const [rowMin, rowMax] = week ? [64, 104] : month ? [24, 46] : [40, 64];
   const level = (m: number) => (m <= 0 ? 0 : m / peak > 0.75 ? 4 : m / peak > 0.5 ? 3 : m / peak > 0.25 ? 2 : 1);
   const fill = (lv: number) => (lv === 0 ? tokens.surface2 : tokens.accent + ["", "40", "80", "BF", "FF"][lv]);
+  /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
+  const narrow = new Intl.DateTimeFormat(en ? "en" : "ar", { weekday: "narrow", timeZone: "UTC" });
+  const heads = month ? Array.from({ length: 7 }, (_, i) => narrow.format(new Date(Date.UTC(2026, 9, 4 + i)))) : null;
   const chosen = pick !== null ? s.buckets[pick] : null;
-  const gap = 6;
+  const chrome = 18 + 26 + (heads ? 18 : 0);
   return (
-    <View style={{ flex: 1, minHeight: rows.length * HEAT_MIN + (rows.length - 1) * gap + 52, maxHeight: rows.length * HEAT_MAX + (rows.length - 1) * gap + 52, paddingTop: 18 }}>
-      {/* سطرُ اليوم المختار أو المقياس — قامتُه ثابتةٌ فلا تقفز الشبكةُ حين يتبدّل */}
+    <View style={{ flex: 1, minHeight: rows.length * rowMin + (rows.length - 1) * gap + chrome, maxHeight: rows.length * rowMax + (rows.length - 1) * gap + chrome, paddingTop: 18 }}>
+      {/* سطرُ المختار أو المقياس — قامتُه ثابتةٌ فلا تقفز الشبكةُ حين يتبدّل */}
       <View style={{ height: 20, flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
         {chosen ? (
-          <Text size={13} weight="700" numberOfLines={1}>
-            {`${long.format(new Date(`${chosen.dayKey}T00:00:00Z`))} ${chosen.label} · ${chosen.minutes > 0 ? hm(chosen.minutes, locale) : en ? "nothing watched" : "بلا مشاهدة"}`}
-          </Text>
+          <Text size={13} weight="700" numberOfLines={1}>{`${pickedName} · ${chosen.minutes > 0 ? hm(chosen.minutes, locale) : en ? "nothing watched" : "بلا مشاهدة"}`}</Text>
         ) : (
           <>
             <Text size={11} muted>{en ? "Less" : "أقلّ"}</Text>
@@ -550,11 +523,13 @@ function MonthHeat({ s }: { s: ReportStats }) {
           </>
         )}
       </View>
-      <View style={{ flexDirection: "row", gap, marginBottom: 4 }}>
-        {heads.map((h, i) => (
-          <Text key={i} size={11} muted style={{ flex: 1, textAlign: "center" }}>{h}</Text>
-        ))}
-      </View>
+      {heads ? (
+        <View style={{ flexDirection: "row", gap, marginBottom: 4 }}>
+          {heads.map((h, i) => (
+            <Text key={i} size={11} muted style={{ flex: 1, textAlign: "center" }}>{h}</Text>
+          ))}
+        </View>
+      ) : null}
       <View style={{ flex: 1, gap }}>
         {rows.map((row, r) => (
           <View key={r} style={{ flex: 1, flexDirection: "row", gap }}>
@@ -562,17 +537,24 @@ function MonthHeat({ s }: { s: ReportStats }) {
               if (idx === null) return <View key={c} style={{ flex: 1 }} />;
               const b = s.buckets[idx];
               const lv = level(b.minutes);
-              const future = idx >= s.elapsedDays;
+              /* ما لم يأتِ بعدُ أخفت: أيّامُ المدّة الجارية بعد اليوم، وشهورُ السنة الجارية بعد الشهر */
+              const future = s.period === "year" ? s.offset === 0 && idx > new Date().getMonth() : idx >= s.elapsedDays;
               const on = pick === idx;
+              const ink = lv >= 3 ? tokens.onAccent : lv > 0 ? tokens.fg : tokens.muted;
               return (
                 <Pressable
                   key={c}
-                  onPress={() => { if (tabSwipeBlocksPress()) return; haptic.pick(); setPick(on ? null : idx); }}
+                  onPress={() => { if (tabSwipeBlocksPress()) return; haptic.pick(); onPick(on ? null : idx); }}
                   accessibilityRole="button"
-                  accessibilityLabel={`${b.label} · ${b.minutes > 0 ? hm(b.minutes, locale) : "0"}`}
-                  style={{ flex: 1, borderRadius: 8, backgroundColor: fill(lv), opacity: future ? 0.35 : 1, alignItems: "center", justifyContent: "center", borderWidth: on ? 2 : 0, borderColor: tokens.fg }}
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={`${bucketName(b, s.period, locale)} · ${b.minutes > 0 ? hm(b.minutes, locale) : "0"}`}
+                  style={{ flex: 1, borderRadius: month ? 8 : 12, backgroundColor: fill(lv), opacity: future ? 0.35 : 1, alignItems: "center", justifyContent: "center", gap: 2, borderWidth: on ? 2 : 0, borderColor: tokens.fg }}
                 >
-                  <Text size={11} weight={lv >= 3 ? "700" : "400"} color={lv >= 3 ? tokens.onAccent : lv > 0 ? tokens.fg : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{b.label}</Text>
+                  <Text size={month ? 11 : 13} weight={lv >= 3 || !month ? "700" : "400"} color={ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontVariant: ["tabular-nums"], paddingHorizontal: 2 }}>{b.label}</Text>
+                  {/* الأسبوعُ والسنةُ خاناتٌ واسعة: وقتُها تحت اسمها؛ والشهرُ رقمٌ وحده (الوقتُ في سطر المختار) */}
+                  {!month && b.minutes > 0 ? (
+                    <Text size={11} color={ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontVariant: ["tabular-nums"], opacity: 0.85 }}>{hm(b.minutes, locale)}</Text>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -589,13 +571,13 @@ function MonthHeat({ s }: { s: ReportStats }) {
  */
 /* 🆕 D-1579 — ٧٢ (كانت ٥٦): «كبرها شوي» */
 const TOP_W = 72;
-function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movie", id: number) => void }) {
+function TopThree({ titles, onTitle }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
   return (
     /* 🆕 D-1579 — الملصقُ فوق اسمه لا بجانبه: بعرض ٧٢ لا يبقى بجانبه في ثلثِ الصفّ مكانٌ لاسم */
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-      {s.topTitles.slice(0, 3).map((x, i) => {
+      {titles.slice(0, 3).map((x, i) => {
         const uri = posterFor(x.poster, TOP_W);
         return (
           <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: "flex-start", opacity: pressed ? 0.8 : 1 })}>

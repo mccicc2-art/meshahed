@@ -19,7 +19,8 @@ export type ReportTitle = {
   kind: "shows" | "movies" | "anime";
 };
 
-export type ReportBucket = { label: string; minutes: number; prevMinutes: number; dayKey?: string };
+/** 🆕 D-1580 — `titles`: أكثرُ ما شوهد في هذا العمود (ثلاثة) — لمسةُ يومٍ أو شهرٍ في التطبيق تبدّل «الأكثر مشاهدة» */
+export type ReportBucket = { label: string; minutes: number; prevMinutes: number; dayKey?: string; titles?: ReportTitle[] };
 
 export type ReportStats = {
   period: ReportPeriod;
