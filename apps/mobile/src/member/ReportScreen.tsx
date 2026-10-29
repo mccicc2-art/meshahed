@@ -36,6 +36,7 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *  - 🆕 D-1575 — **شاشةٌ واحدةٌ بلا نزول** (أحمد ٢٩ أكتوبر): الوقتُ في سطرٍ وحبّةُ الأيّام · «لمحة عن مدّتك» شبكةُ ستّ خانات ·
  *    أعمدةٌ قصيرة · ثلاثةُ ملصقاتٍ صغيرة · الذوق · سطرُ «الإحصائيات الكاملة». جملةُ الافتتاح وسطرُ الاستنتاج حُذفا («١ب»)،
  *    وصفُّ «شارك تقريرك» حُذف — رمزُ الترويسة يفعلها. الويبُ باقٍ على ترتيبه («٢أ»: شاشتُه كبيرة).
+ *  - 🆕 D-1579 — **الشهرُ تقويمٌ ملوّن** (`MonthHeat`) بدل ٣١ عموداً، والأسبوعُ والسنةُ أعمدةٌ بلا مساراتٍ رماديّة، وملصقاتٌ أكبر.
  *  - 🆕 D-1576 — **المددُ تُسحب** (`TabSlide`، لوحٌ لكلِّ مدّة: `ReportPane`) **والمحتوى يملأ الطول**: الأعمدةُ تأخذ ما بقي (٤٨–١٦٠)،
  *    والأرقامُ والملصقاتُ والمسافاتُ أوسعُ قليلاً (أحمد: «خلها ترتاح وتستفيد من كامل المساحة»).
  *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
@@ -316,7 +317,8 @@ function ReportBody({
         </View>
       </View>
 
-      <Bars s={s} />
+      {/* 🆕 D-1579 — الشهرُ تقويمٌ ملوّن، والأسبوعُ والسنةُ أعمدةٌ نظيفة (أحمد ٢٩ أكتوبر: «الشارت هذا سيء» ثمّ «١أ») */}
+      {s.period === "month" && s.buckets.every((b) => b.dayKey) ? <MonthHeat s={s} /> : <Bars s={s} />}
 
       {s.topTitles.length > 0 ? (
         <>
@@ -348,7 +350,7 @@ function ReportBody({
       ) : null}
 
       {/* بابُ «الإحصائيات الكاملة» سطرٌ واحدٌ لا بطاقة (D-1575) — D-1367: شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
-      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
+      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
         <Icon name="chart" size={16} color={tokens.accent} />
         <Text size={14} weight="700" color={tokens.accent} style={{ flex: 1 }}>{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
         <Chevron />
@@ -439,7 +441,7 @@ export function H2({ children }: { children: string }) {
 
 /** 🆕 D-1575 — عنوانُ أقسام «تقريرك» بعد ترتيب الشاشة الواحدة: أصغرُ من `H2` (التي تبقى لـ«الإحصائيات الكاملة» وهي تتمرّر) */
 function H3({ children }: { children: string }) {
-  return <Text size={15} weight="700" style={{ marginTop: 22, marginBottom: 10 }}>{children}</Text>;
+  return <Text size={15} weight="700" style={{ marginTop: 16, marginBottom: 8 }}>{children}</Text>;
 }
 
 /**
@@ -486,7 +488,9 @@ function Bars({ s }: { s: ReportStats }) {
             <View style={{ height: 16, width: 44, alignItems: "center" }}>
               {showValue ? <Text size={11} muted numberOfLines={1} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{clock(b.minutes, locale)}</Text> : null}
             </View>
-            <View style={{ flex: 1, width: "100%", maxWidth: 34, justifyContent: "flex-end", borderRadius: 4, backgroundColor: tokens.surface2 + "B3" }}>
+            {/* 🆕 D-1579 — **بلا مسارٍ رماديّ**: المسارُ الفارغُ كان أعلى ما في الشكل (٣١ مساراً يبدو باركوداً)؛ الآن خطُّ قاعدةٍ وحده،
+                والعمودُ يقف عليه */}
+            <View style={{ flex: 1, width: "100%", maxWidth: 34, justifyContent: "flex-end", borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
               {/* ٤٪ أدنى: يومٌ فيه دقائقُ قليلةٌ يُرى نقطةً لا يختفي */}
               <View style={{ height: `${pct}%`, minHeight: pct ? 4 : 0, borderRadius: 4, backgroundColor: tokens.accent }} />
             </View>
@@ -501,34 +505,110 @@ function Bars({ s }: { s: ReportStats }) {
 }
 
 /**
+ * 🆕 D-1579 — **تقويمُ الشهر الملوّن** بدل ٣١ عموداً (أحمد ٢٩ أكتوبر على لقطة الأعمدة: «الشارت هذا سيء — لو فيه مؤشر ثاني أفضل
+ * منه اقترحه» ثمّ «١أ»). الأعمدةُ الثلاثون كانت مساراتٍ فارغةً أكثرَ منها قيماً، ويومان يأكلان الصورة. الشبكةُ تقول ما لا تقوله:
+ * **أيُّ الأيّام شاهدتَ فيها، ونمطُ أسبوعك، وأيّامُك المتتالية** — وتملأ المكانَ نفسَه (`flex: 1` بين حدّين كالأعمدة).
+ * - الأسبوعُ يبدأ الأحد (أسبوعُ المملكة) في اللغتين؛ والصفُّ يبدأ من جهة البداية فالأحدُ يمينٌ في العربيّة.
+ * - **أربعُ درجاتٍ من لون التمييز** نسبةً إلى أكثف يوم، واليومُ الفارغ رماديٌّ هادئ، وما لم يأتِ بعدُ من الشهر أخفت.
+ * - **لمسةُ يومٍ تكتب وقتَه** فوق الشبكة («الأربعاء ١٥ · 6h 40m»)، ولمسةٌ ثانيةٌ تمحوه؛ وبلا اختيارٍ يقف السطرُ مقياساً «أقلّ ▢▢▢▢ أكثر».
+ */
+const HEAT_MIN = 24;
+const HEAT_MAX = 46;
+function MonthHeat({ s }: { s: ReportStats }) {
+  const { tokens, locale } = useApp();
+  const en = locale === "en";
+  const [pick, setPick] = useState<number | null>(null);
+  const peak = Math.max(1, ...s.buckets.map((b) => b.minutes));
+  const loc = en ? "en" : "ar";
+  const narrow = new Intl.DateTimeFormat(loc, { weekday: "narrow", timeZone: "UTC" });
+  const long = new Intl.DateTimeFormat(loc, { weekday: "long", timeZone: "UTC" });
+  /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
+  const heads = Array.from({ length: 7 }, (_, i) => narrow.format(new Date(Date.UTC(2026, 9, 4 + i))));
+  const first = new Date(`${s.buckets[0].dayKey}T00:00:00Z`).getUTCDay();
+  const cells: (number | null)[] = [...Array.from({ length: first }, () => null), ...s.buckets.map((_, i) => i)];
+  while (cells.length % 7) cells.push(null);
+  const rows = Array.from({ length: cells.length / 7 }, (_, r) => cells.slice(r * 7, r * 7 + 7));
+  const level = (m: number) => (m <= 0 ? 0 : m / peak > 0.75 ? 4 : m / peak > 0.5 ? 3 : m / peak > 0.25 ? 2 : 1);
+  const fill = (lv: number) => (lv === 0 ? tokens.surface2 : tokens.accent + ["", "40", "80", "BF", "FF"][lv]);
+  const chosen = pick !== null ? s.buckets[pick] : null;
+  const gap = 6;
+  return (
+    <View style={{ flex: 1, minHeight: rows.length * HEAT_MIN + (rows.length - 1) * gap + 52, maxHeight: rows.length * HEAT_MAX + (rows.length - 1) * gap + 52, paddingTop: 18 }}>
+      {/* سطرُ اليوم المختار أو المقياس — قامتُه ثابتةٌ فلا تقفز الشبكةُ حين يتبدّل */}
+      <View style={{ height: 20, flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        {chosen ? (
+          <Text size={13} weight="700" numberOfLines={1}>
+            {`${long.format(new Date(`${chosen.dayKey}T00:00:00Z`))} ${chosen.label} · ${chosen.minutes > 0 ? hm(chosen.minutes, locale) : en ? "nothing watched" : "بلا مشاهدة"}`}
+          </Text>
+        ) : (
+          <>
+            <Text size={11} muted>{en ? "Less" : "أقلّ"}</Text>
+            {[1, 2, 3, 4].map((lv) => (
+              <View key={lv} style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: fill(lv) }} />
+            ))}
+            <Text size={11} muted>{en ? "More" : "أكثر"}</Text>
+          </>
+        )}
+      </View>
+      <View style={{ flexDirection: "row", gap, marginBottom: 4 }}>
+        {heads.map((h, i) => (
+          <Text key={i} size={11} muted style={{ flex: 1, textAlign: "center" }}>{h}</Text>
+        ))}
+      </View>
+      <View style={{ flex: 1, gap }}>
+        {rows.map((row, r) => (
+          <View key={r} style={{ flex: 1, flexDirection: "row", gap }}>
+            {row.map((idx, c) => {
+              if (idx === null) return <View key={c} style={{ flex: 1 }} />;
+              const b = s.buckets[idx];
+              const lv = level(b.minutes);
+              const future = idx >= s.elapsedDays;
+              const on = pick === idx;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => { if (tabSwipeBlocksPress()) return; haptic.pick(); setPick(on ? null : idx); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${b.label} · ${b.minutes > 0 ? hm(b.minutes, locale) : "0"}`}
+                  style={{ flex: 1, borderRadius: 8, backgroundColor: fill(lv), opacity: future ? 0.35 : 1, alignItems: "center", justifyContent: "center", borderWidth: on ? 2 : 0, borderColor: tokens.fg }}
+                >
+                  <Text size={11} weight={lv >= 3 ? "700" : "400"} color={lv >= 3 ? tokens.onAccent : lv > 0 ? tokens.fg : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{b.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/**
  * «الأكثر مشاهدة» — ثلاثةُ ملصقاتٍ صغيرةٍ في صفّ، وتحت كلٍّ اسمُه ووقتُه، والأوّلُ عليه رقمُه. 🆕 D-1575 — كانت ملصقاتٍ بعرض
  * الشاشة (الأوّلُ ١٫٦ ضعف) تأخذ شاشةً كاملة؛ الملصقُ هنا يدلّ على العمل ولا يُعرض لذاته
  */
-const TOP_W = 56;
+/* 🆕 D-1579 — ٧٢ (كانت ٥٦): «كبرها شوي» */
+const TOP_W = 72;
 function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movie", id: number) => void }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
   return (
+    /* 🆕 D-1579 — الملصقُ فوق اسمه لا بجانبه: بعرض ٧٢ لا يبقى بجانبه في ثلثِ الصفّ مكانٌ لاسم */
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
       {s.topTitles.slice(0, 3).map((x, i) => {
         const uri = posterFor(x.poster, TOP_W);
         return (
-          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 8, opacity: pressed ? 0.8 : 1 })}>
-            <View style={{ width: TOP_W, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-              {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />}
+          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: "flex-start", opacity: pressed ? 0.8 : 1 })}>
+            <View style={{ width: TOP_W, aspectRatio: 2 / 3, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+              {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />}
+              {i === 0 ? (
+                <View style={{ position: "absolute", top: 6, start: 6, width: 18, height: 18, borderRadius: 5, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+                  <Text size={11} weight="700" color={tokens.onAccent}>1</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                {i === 0 ? (
-                  <View style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
-                    <Text size={10} weight="700" color={tokens.onAccent}>1</Text>
-                  </View>
-                ) : null}
-                <Text size={12} weight="700" numberOfLines={1} style={{ flex: 1 }}>{x.title}</Text>
-              </View>
-              <Text size={11} muted numberOfLines={1} style={{ marginTop: 3 }}>{hm(x.minutes, locale)}</Text>
-              {x.episodes > 0 ? <Text size={11} muted numberOfLines={1} style={{ marginTop: 1 }}>{`${x.episodes.toLocaleString("en-US")} ${en ? "eps" : "حلقة"}`}</Text> : null}
-            </View>
+            <Text size={12} weight="700" numberOfLines={1} style={{ marginTop: 6, alignSelf: "stretch" }}>{x.title}</Text>
+            <Text size={11} muted numberOfLines={1} style={{ marginTop: 2, alignSelf: "stretch" }}>{`${hm(x.minutes, locale)}${x.episodes > 0 ? ` · ${x.episodes.toLocaleString("en-US")} ${en ? "eps" : "حلقة"}` : ""}`}</Text>
           </Pressable>
         );
       })}
@@ -543,7 +623,7 @@ function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movi
 function Tile({ icon, label, value, small }: { icon: IconName; label: string; value: string; small?: boolean }) {
   const { tokens } = useApp();
   return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 12, paddingVertical: 12 }}>
+    <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 12, paddingVertical: 10 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
         <Icon name={icon} size={13} color={tokens.accent} />
         <Text size={11} muted numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
