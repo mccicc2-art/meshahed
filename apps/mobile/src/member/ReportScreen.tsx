@@ -447,8 +447,8 @@ export function H2({ children }: { children: string }) {
   return <Text size={20} weight="700" style={{ marginTop: 30, marginBottom: 12 }}>{children}</Text>;
 }
 
-/** 🆕 D-1575 — عنوانُ أقسام «تقريرك» بعد ترتيب الشاشة الواحدة: أصغرُ من `H2` (التي تبقى لـ«الإحصائيات الكاملة» وهي تتمرّر) */
-function H3({ children }: { children: string }) {
+/** 🆕 D-1575 — عنوانُ أقسام «تقريرك» بعد ترتيب الشاشة الواحدة: أصغرُ من `H2`. 🆕 D-1582 — و«الإحصائيات الكاملة» تقرؤه أيضاً حين صار كلُّ قسمٍ شاشةً واحدة */
+export function H3({ children }: { children: string }) {
   return <Text size={15} weight="700" style={{ marginTop: 16, marginBottom: 8 }}>{children}</Text>;
 }
 
@@ -571,7 +571,7 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
  */
 /* 🆕 D-1579 — ٧٢ (كانت ٥٦): «كبرها شوي» */
 const TOP_W = 72;
-function TopThree({ titles, onTitle }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void }) {
+export function TopThree({ titles, onTitle }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
   return (
@@ -602,7 +602,7 @@ function TopThree({ titles, onTitle }: { titles: ReportTitle[]; onTitle: (kind: 
  * خانةُ «لمحة عن مدّتك» — 🆕 D-1575 بدلُ `RoundStat` و`Glance`: كانتا شكلين لصفّين (دائرةٌ ورقمٌ ٢٠، ورمزٌ فوق اسمٍ ورقمٍ ١٢)؛
  * خانةٌ واحدةٌ بشكلٍ واحد: رمزٌ واسمٌ في سطر، والقيمةُ تحته. `small` لقيمةٍ نصّيّة («الأربعاء ١٥ · 6h 40m») تصغر لتتّسع
  */
-function Tile({ icon, label, value, small }: { icon: IconName; label: string; value: string; small?: boolean }) {
+export function Tile({ icon, label, value, small }: { icon: IconName; label: string; value: string; small?: boolean }) {
   const { tokens } = useApp();
   return (
     <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 12, paddingVertical: 10 }}>
