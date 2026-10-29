@@ -9,11 +9,13 @@ import { api } from "../api";
 import { useApp } from "../state";
 import { BackChevron, Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
+import { Sheet } from "../library/Sheet";
+import { Segmented } from "../library/ToolsSheet";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
-import type { Tokens } from "../theme";
+import { controlSize, type Tokens } from "../theme";
 import { H2, PlusLock, PlusPill, SvgGuard, myReportKey } from "./ReportScreen";
 import { hm, primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
@@ -53,6 +55,8 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
   const [period, setPeriod] = useState<ReportPeriod>(initial ?? "week");
   const [offset, setOffset] = useState(0);
   const [tab, setTab] = useState<Tab>("overview");
+  /* 🆕 D-1581 — ورقةُ المدّة (زرُّ الأدوات) */
+  const [tools, setTools] = useState(false);
   const key = myReportKey(period, offset);
   const q = useQuery({
     queryKey: key,
@@ -109,22 +113,16 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
             <Text size={12} weight="600" numberOfLines={1} style={{ fontVariant: ["tabular-nums"] }}>{s.range.label}</Text>
             {s.range.can_go_next ? <Step dir="next" label={en ? "Next" : "التالي"} onPress={() => { haptic.pick(); setOffset((o) => Math.min(0, o + 1)); }} /> : <View style={{ width: 32, height: 36 }} />}
           </View>
-        ) : null}
-      </View>
-
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", paddingHorizontal: PAGE_PAD }}>
-        {PERIODS.map((p) => {
-          const on = p === period;
-          return (
-            <Pressable key={p} onPress={() => { if (on) return; haptic.pick(); setPeriod(p); setOffset(0); }} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingTop: 4, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
-              <Text size={14} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{periodLabel[p]}</Text>
-            </Pressable>
-          );
-        })}
+        ) : (
+          /* 🆕 D-1581 — بلا صفِّ المدد يبقى اسمُ المدّة مقروءاً في الترويسة («كل الأوقات» وغيرُ المشترك بلا سهمين) */
+          <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
+        )}
       </View>
 
       {/* الأقسام — نقطةٌ بلون التمييز بجانب النشط (الصورة)، لا خطٌّ ثانٍ تحت خطّ المدّة */}
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", paddingHorizontal: PAGE_PAD, marginTop: 16, marginBottom: 20 }}>
+      {/* 🆕 D-1581 — **صفُّ المدد خرج إلى زرّ الأدوات** (أحمد ٢٩ أكتوبر: «نحذف الفلتر الصف الأول ويكون فلتر بشكل مختلف — مثل مكان
+          tools المكتبة، يضغطه ويحدد الفترة»): الدائرةُ نفسُها في طرف صفّ الأقسام كما في المكتبة، والورقةُ الواحدةُ فيها العائلةُ المقسّمة */}
+      <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD, marginTop: 8, marginBottom: 20 }}>
         {TABS.map((id) => {
           const on = id === tab;
           return (
@@ -134,7 +132,32 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
             </Pressable>
           );
         })}
+        <Pressable
+          onPress={() => { haptic.pick(); setTools(true); }}
+          accessibilityRole="button"
+          accessibilityLabel={en ? "Period" : "المدّة"}
+          hitSlop={controlSize.filterSlop}
+          style={{ width: controlSize.filterBtn, height: controlSize.filterBtn, borderRadius: controlSize.filterBtn / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginStart: 8 }}
+        >
+          <Icon name="sliders" size={controlSize.filterIcon} color={tokens.fg} />
+        </Pressable>
       </View>
+
+      {tools ? (
+        <Sheet title={en ? "Period" : "المدّة"} onClose={() => setTools(false)}>
+          <Segmented
+            items={PERIODS.map((p) => ({ id: p, label: periodLabel[p] }))}
+            value={period}
+            onChange={(v) => {
+              setTools(false);
+              if (v === period) return;
+              haptic.pick();
+              setPeriod(v as ReportPeriod);
+              setOffset(0);
+            }}
+          />
+        </Sheet>
+      ) : null}
 
       {!d || !s ? (
         q.isError ? (
