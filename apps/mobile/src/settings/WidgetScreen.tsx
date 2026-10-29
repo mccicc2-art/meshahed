@@ -391,7 +391,8 @@ export function WidgetScreen() {
       ) : null}
 
       {/* 🆕 v3 — الخاناتُ للحجم المعروض فوق (المعاينةُ تتغيّر مع كلِّ لمسة) */}
-      <SlotEditor v3={cfg.v3 ?? defaultV3()} size={size} names={names} onChange={(v3) => edit((c) => ({ ...c, v3 }))} />
+      {/* 🆕 D-1575 — ترتيبٌ واحدٌ لكلِّ المقاسات: المحرِّرُ يعدّل خاناتِ الكبير جداً (والصغيرُ قسمَه) */}
+      <SlotEditor v3={cfg.v3 ?? defaultV3()} size={size === "small" ? "small" : "xl"} names={names} onChange={(v3) => edit((c) => ({ ...c, v3 }))} />
 
       <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{ios ? t.widgetIosHow : typeof editing === "number" ? t.widgetThisOnly : t.widgetAndroidHow}</Text>
     </SettingsScreen>

@@ -134,7 +134,7 @@ const LIST_KEYS: readonly WidgetSectionKey[] = ["up", "friends", "tw", "act"];
 export type WidgetRow =
   | { type: "search"; full: boolean; trend: "list" | "posters"; h: number }
   /** 🆕 W50 — `card` ارتفاعُ البطاقتين كما حُسم (٩٣ · ١٢٠)؛ `tall` يبقى لرسّامٍ أقدمَ لا يقرأ `card` */
-  | { type: "cont"; upLine: boolean; tall?: boolean; card?: number; h: number }
+  | { type: "cont"; upLine: boolean; tall?: boolean; card?: number; h: number; /** 🆕 D-1577 — سطرُ القادم النحيلُ القديم (١٧) حيث لا يتّسع صفُّه ببوستره (الآيفون المتوسط) */ upSlim?: boolean }
   /** 🆕 W54 — `posters` عددُ البوسترات (٣ · ٤)؛ و🆕 W50 — `grow` ما زاده كلُّ سطرٍ (والصورةُ معه) من فراغ الودجت */
   | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; posters?: 3 | 4; grow?: number; h: number }
   | { type: "tonight"; view: "wide" | "poster"; h: number }
@@ -228,7 +228,7 @@ export function resolveWidgetLayout(
   if (cfg.v3) {
     /* «الفارغُ» هنا ما أطفأه `resolveWidget` لأنّه بلا محتوى الآن — لا إظهارُ الإعداد القديم (لم يعد خياراً) */
     const empty = new Set(WIDGET_SECTION_KEYS.filter((k) => cfg.on[k] === false));
-    const v = resolveV3(cfg.v3, size, height, rs, empty);
+    const v = resolveV3(cfg.v3, size, height, { ...rs, ios: platform === "ios" }, empty);
     return { rows: v.rows, hidden: [], used: v.used };
   }
   let visible = cfg.order.filter((k) => cfg.on[k]);
@@ -359,7 +359,15 @@ export type WidgetSmallForm = "posterFull" | "posterColumn" | "headerFade" | "li
 
 export function smallWidgetForm(cfg: WidgetLayoutConfig, key: WidgetSectionKey, width: number, height: number): WidgetSmallForm {
   /* 🆕 D-1571 — الخانات: الصغيرُ ٢×٢ بوسترٌ كاملٌ ١٠٨×١٦٢ وعمودُ أزرار لكلِّ قسم (لوحة الخطّة ٢×٢) */
-  if (cfg.v3) return "posterColumn";
+  /* 🆕 D-1575 — إلّا أكملُ المشاهدة وفيلمُ الليلة: شكلُهما القديم (خالد ١٩:٥٨ بصورة: البوسترُ يملأ الودجت الطوليّ، والآيفونُ المربّعُ كما كان) */
+  if (cfg.v3 && key !== "cont" && key !== "tonight") return "posterColumn";
+  if (cfg.v3) {
+    const fit = fitImage(width, height);
+    if (fit?.image === "poster") return "posterFull";
+    /* المربّع: أكملُ المشاهدة هيدرٌ يذوب، وفيلمُ الليلة «قائمة» (بوسترٌ بتقييمه و↻ ✓ — W46). لا «بوسترٌ وعمود»: رسّامُ أندرويد 1.13.2
+       يرسم المربّعَ بوسترٍ وعمودٍ كلّما كُتب له ذلك، فيغلب الطوليَّ */
+    return key === "cont" ? "headerFade" : "list";
+  }
   if (key === "tonight" && cfg.opts.tonight.small === "list") return "list";
   if (key === "cont" && cfg.opts.cont.small === "list") return "list";
   if (key !== "cont" && key !== "tonight" && key !== "tw") return "list";

@@ -122,8 +122,9 @@ export function slotKeys(slot: WidgetSlot): SlotSection[] {
 
 /** خاناتُ الحجم كما في الإعداد (المتوسطُ بلا خانةٍ حين يعرض أكمل المشاهدة) */
 export function slotsFor(v3: WidgetV3, size: Exclude<WidgetSize, "small">): WidgetSlot[] {
-  if (size === "medium") return v3.medium.top ? [] : [v3.medium.slot];
-  if (size === "large") return [v3.large.slot];
+  /* 🆕 D-1575 — **ترتيبٌ واحدٌ لكلِّ المقاسات** (خالد ١٩:٣٦: «الترتيب اللي سويته لاكبر وحده ابغاه يطبق عالباقية»): خاناتُ الكبير جداً،
+     وكلُّ حجمٍ يأخذ منها بالترتيب ما يتّسع (`resolveV3`). خاناتُ المتوسط والكبير القديمةُ تبقى محفوظةً ولا تُرسم */
+  void size;
   return [...v3.xl.slots];
 }
 
@@ -150,10 +151,11 @@ export function upInSlots(slots: readonly WidgetSlot[]): boolean {
  */
 /* 🆕 D-1571 — الفاصلُ بين القوائم ٩ (خطٌّ ومسافتان ٤) لا ١٣ (خالد ١٤:٢٤: «الفراغات بين القوائم قللها»)، والمسافةُ فوق صفّ القادم ٨.
    وما يبقى من الارتفاع **لا يتوزّع بين القوائم**: الرسّامُ يقسمه فوق الودجت وتحته، فتبقى القوائمُ متلاصقةً بفواصلها */
-const H = { pad: 20, gap: 9, contHead: 24, upGap: 8, upRow: 34, line: 34, listHeader: 24, tonightPoster: 150 } as const;
+const H = { pad: 20, gap: 9, contHead: 24, upGap: 8, upRow: 34, upSlim: 23, line: 34, listHeader: 24, tonightPoster: 150 } as const;
 export const V3_HEIGHTS = H;
 
-type Sizes = WidgetLookSize & { resize: boolean };
+/** 🆕 D-1577 — `ios`: مقاساتُ الآيفون (سطرُ القادم النحيلُ في المتوسط) — أندرويد يبقى بقياسه */
+type Sizes = WidgetLookSize & { resize: boolean; ios?: boolean };
 
 /** صفُّ قسمٍ كامل: قائمةٌ بثلاثة أسطر (أو اثنين إن لم يتّسع) أو بوسترات — والسينما بوستراتٌ دائماً */
 function fullRow(p: SlotPart, rs: Sizes, room: number): WidgetRow | null {
@@ -185,12 +187,6 @@ function pairRow(slot: WidgetSlot, rs: Sizes, room: number): WidgetRow | null {
   return null;
 }
 
-function slotRow(slot: WidgetSlot, rs: Sizes, room: number): WidgetRow | null {
-  const r = slot.mode === "pair" ? pairRow(slot, rs, room) : fullRow(slot.a, rs, room);
-  /* البوستراتُ وفيلمُ الليلة بمقاسٍ واحد: لا يتّسع ⇒ سطرٌ مختصرٌ لا صفٌّ يتجاوز الودجت */
-  return r && r.h <= room ? r : null;
-}
-
 /**
  * صفوفُ حجمٍ وارتفاع (بنقاط التصميم). الترتيبُ: أكملُ المشاهدة (وصفُّ القادم) ثمّ الخانات ثمّ السطرُ الأخير — وما لا يتّسع بشكله يصير
  * سطراً مختصراً لكلِّ قسمٍ فيه إن اتّسع، وإلّا يسقط. 🆕 D-1571 — **التعبئةُ نشاطُك وحدَه** (الخطّة: «ما فيه سطور صغيرة لأقسام ثانية»):
@@ -220,7 +216,7 @@ export function resolveV3(
    */
   const upMoved = upInSlots(slotsFor(v3, size)) || empty.has("up");
   const rows: WidgetRow[] = [];
-  let used = H.pad;
+  let used: number = H.pad;
   const gapNext = () => (rows.length ? H.gap : 0);
   const room = () => height - used - gapNext();
   const push = (r: WidgetRow) => {
@@ -239,27 +235,71 @@ export function resolveV3(
   if (top) {
     const upLine = !upMoved;
     /* البطاقتان بنسبة ١٦:٩ بلا زوم (الرسّامُ يحسبها من عرضها الحقيقيّ) — وتحتهما صفُّ «القادم» المختصر ببوستره (الخطّة ٤×٢) */
-    const card = rs.contCard;
-    const h = H.contHead + card + (upLine ? H.upGap + H.upRow : 0);
-    push({ type: "cont", upLine, card, tall: card >= rs.contCardTall, h });
-  }
-
-  for (const slot of slots) {
-    const r = slotRow(slot, rs, room());
-    if (r) {
-      push(r);
-      slotKeys(slot).forEach((k) => shown.add(k));
-      continue;
+    /*
+     * 🆕 D-1577 — الآيفونُ بمقاساته هو (أحمد ٢٠:٠٧: «قياسات الايفون مثل اللي انت خابرها»): المتوسطُ ١٥٨–١٧٠ لا يتّسع لصفِّ القادم
+     * ببوستره (٣٤) تحت بطاقتين ٩٣ — فالسطرُ النحيلُ القديم (١٧ وخطٌّ فوقه)، ثمّ البطاقتان تقصران حتّى ٧٠ إن لزم. لا شيءَ يتجاوز الودجت.
+     */
+    const room0 = height - used;
+    let card: number = rs.contCard;
+    let upSlim = false;
+    let up = upLine ? H.upGap + H.upRow : 0;
+    if (rs.ios && upLine && H.contHead + card + up > room0) {
+      upSlim = true;
+      up = H.upSlim;
     }
-    for (const k of slotKeys(slot)) if (!shown.has(k)) pushLine(k);
+    if (rs.ios && H.contHead + card + up > room0) card = Math.max(70, room0 - H.contHead - up);
+    const h = H.contHead + card + up;
+    push({ type: "cont", upLine, card, tall: card >= rs.contCardTall, h, ...(upSlim ? { upSlim } : {}) });
   }
 
-  /* السطرُ الأخيرُ المختار في الكبير جداً، ثمّ نشاطُك يعبّي ما يتّسع بسطرٍ كامل — حتى سطرين، ولا تعبئةَ بغيره */
-  if (size === "xl" && !shown.has(v3.xl.line) && !empty.has(v3.xl.line)) pushLine(v3.xl.line);
+  /*
+   * 🆕 D-1575 — بالترتيب وبالشكل الأساسيّ وحدَه (خالد ١٩:٣٦: «لا تحشرها لي كلها ف مقاس صغير»): القسمُ يدخل بشكله الكامل، ويقبل
+   * تصغيراً حتّى ٩٣٪ لما بعد أكمل المشاهدة؛ وأوّلُ قسمٍ لا يتّسع يوقف الترتيب — لا سطورَ مختصرةً للأقسام.
+   */
+  const scalable = (r: WidgetRow) => r.type === "pair" || r.type === "tonight" || (r.type === "list" && r.view === "posters");
+  const total = () => H.pad + rows.reduce((a, r) => a + r.h, 0) + H.gap * Math.max(0, rows.length - 1);
+  let placed = 0;
+  for (const slot of slots) {
+    const r = slot.mode === "pair" ? pairRow(slot, rs, Infinity) : fullRow(slot.a, rs, Infinity);
+    if (!r) break;
+    if (r.h <= room()) {
+      push(r);
+    } else {
+      const flex = [...rows.filter(scalable), r].reduce((a, x) => a + x.h, 0);
+      const fixed = total() + H.gap - rows.filter(scalable).reduce((a, x) => a + x.h, 0);
+      const k = (height - fixed) / flex;
+      if (!scalable(r) || k < 0.93) break;
+      push(r);
+      for (const x of rows) if (scalable(x)) x.h = Math.floor(x.h * k);
+      used = total();
+    }
+    slotKeys(slot).forEach((k) => shown.add(k));
+    placed++;
+  }
+
+  /* السطرُ الأخيرُ المختار بعد الخانات كلِّها، ثمّ نشاطُك يعبّي ما يتّسع بسطرٍ كامل — حتى سطرين، ولا تعبئةَ بغيره */
+  if (placed === slots.length && !shown.has(v3.xl.line) && !empty.has(v3.xl.line)) pushLine(v3.xl.line);
   const actAsSection = rows.some((r) => (r.type === "list" && r.key === "act") || (r.type === "pair" && (r.keys as readonly string[]).includes("act")));
   if (!empty.has("act") && !actAsSection) {
     let n = rows.filter((r) => r.type === "line" && r.key === "act").length;
     while (n < 2 && pushLine("act", n)) n++;
+  }
+
+  /* 🆕 D-1575 — الباقي يكبّر الأقسام قليلاً (حتّى ١٥٪) بدل فراغٍ فوق وتحت: صفُّ النصّين والقائمةُ الكاملة؛ وما زاد يبقى فوق وتحت */
+  if (rs.resize) {
+    const growable = rows.filter((r) => r.type === "pair" || (r.type === "list" && r.view === "list"));
+    let left = height - total();
+    for (const r of growable) {
+      if (left <= 0) break;
+      const add = Math.floor(Math.min(left / growable.length, r.h * 0.15));
+      if (add <= 0) continue;
+      if (r.type === "list") {
+        const per = Math.floor(add / r.count);
+        r.grow = (r.grow ?? 0) + per;
+        r.h += per * r.count;
+      } else r.h += add;
+    }
+    used = total();
   }
   return { rows, used };
 }

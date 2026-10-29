@@ -808,6 +808,8 @@ object W2Render {
      * 🆕 D-1571 — أندرويد 12+ بالخطّة: النصفُ «بوستر» (وفيلمُ الليلة والسينما دائماً) بوسترٌ ٨٩×١٣٤ وعمود؛ والنصفُ «قائمة» أربعةُ
      * أسطرٍ مختصرة (٢٢×٣٣)، و«أصدقاؤك» ثلاثة (٢٨×٤٢ وصورتُه جنب اسمه).
      */
+    /* 🆕 D-1578 — فيلمُ الليلة في النصف بشكل الودجت الصغير (خالد ٢٠:١٥): البوسترُ يملأ النصفَ كلَّه، العنوانُ فوق و↻، والاسمُ والتقييمُ تحت و✓ */
+    if (d.resize && key == "tonight") return posterFull(d, "tonight", wDp, bodyDp + d.u(24f))
     if (d.resize) {
       val poster = key == "tonight" || key == "cine" || (key != "act" && (view?.let { it == "poster" || it == "posters" } ?: (d.opt(key).optString("view") == "posters")))
       if (poster) return posterColumn(d, key, wDp, bodyDp)

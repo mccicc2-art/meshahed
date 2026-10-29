@@ -238,11 +238,23 @@ function PreviewRow({ row, names, look }: { row: WidgetRow; names: Record<Widget
               <React.Fragment key={i}>
                 {i ? <View style={{ width: 1, backgroundColor: LINE }} /> : null}
                 <View style={{ flex: 1, overflow: "hidden" }}>
-                  {k ? (
+                  {k === "tonight" ? (
+                    /* 🆕 D-1578 — فيلمُ الليلة في النصف بطاقةٌ كالصغير: البوسترُ يملأ النصف، العنوانُ فوق والاسمُ تحت */
+                    <View style={{ height: h, borderRadius: 12, backgroundColor: "#3b2a2a", padding: 8, justifyContent: "space-between" }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text size={10} weight="800" color="#FFD400" numberOfLines={1}>{names.tonight}</Text>
+                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#222" }} />
+                      </View>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+                        <Bar w="55%" h={8} />
+                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#222" }} />
+                      </View>
+                    </View>
+                  ) : k ? (
                     <>
                       <SecTitle text={names[k]} />
                       {poster ? (
-                        <PosterColumn h={body} tint={k === "cine" ? "#4a2626" : k === "tonight" ? "#3b2a2a" : GHOST} />
+                        <PosterColumn h={body} tint={k === "cine" ? "#4a2626" : GHOST} />
                       ) : (
                         <ListRows k={k} n={n} rowH={body / n} thumbW={k === "friends" ? 28 : 22} thumbH={k === "friends" ? 42 : 33} />
                       )}

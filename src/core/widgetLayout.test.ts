@@ -177,7 +177,9 @@ test("أكمل المشاهدة الصغير: صورة افتراضاً، وال
   assert.equal(list.opts.cont.small, "list");
   /* المحرّكُ الحرُّ القديم (بلا خانات) — الخاناتُ ترسم الصغيرَ بوستراً وعموداً دائماً (D-1571) */
   assert.equal(smallWidgetForm({ ...list, v3: undefined }, "cont", 170, 170), "list");
-  assert.equal(smallWidgetForm(list, "cont", 170, 170), "posterColumn");
+  assert.equal(smallWidgetForm(list, "cont", 170, 170), "headerFade");
+  assert.equal(smallWidgetForm(list, "tonight", 170, 170), "list");
+  assert.equal(smallWidgetForm(list, "friends", 170, 170), "posterColumn");
   assert.equal(sanitizeWidgetConfig({ opts: { cont: { small: "bogus" } } }).opts.cont.small, "image");
 });
 
