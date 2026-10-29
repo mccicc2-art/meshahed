@@ -13,6 +13,7 @@
 
 import { lookFor, type WidgetLook } from "./widgetLook.ts";
 import { defaultV3, optsFromV3, resolveV3, sanitizeV3, type WidgetV3 } from "./widgetSlots.ts";
+import { defaultV4Look, layoutV4, smallV4, type V4Tile, type WidgetV4Look } from "./widgetTiles.ts";
 
 /* 🆕 D-1571 — `cine` «الآن في السينما» آخرَ القائمة: الإعدادُ المحفوظُ قبله يُكمَل به ولا يتغيّر ترتيبُه */
 export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act", "cine"] as const;
@@ -160,6 +161,8 @@ export interface WidgetLayout {
 export interface WidgetResolveOpts {
   look?: WidgetLook | null;
   resize?: boolean;
+  /** 🆕 v4 — أرقامُ المحرّك والرسم (`widgetTiles.ts`)، من الخلاصة مُصلَحةً */
+  look4?: WidgetV4Look | null;
 }
 
 /** مقاساتُ الصفّ بحسب المنصّة والحجم (W48) — من `look` */
@@ -454,7 +457,9 @@ export interface ResolvedWidget {
    * المفتاحُ الارتفاعُ بالنقاط كلَّ ٢٠ (أندرويد) أو ١٠ (آيفون)، والرسّامُ يأخذ أكبرَ مفتاحٍ لا يزيد على مقاسه.
    * `size` حجمُ ذلك الارتفاع (المتوسطُ قسمٌ واحد، والقفلُ للكبير وما فوقه).
    */
-  heights: Record<string, { size: Exclude<WidgetSize, "small">; rows: WidgetRow[] }>;
+  heights: Record<string, { size: Exclude<WidgetSize, "small">; rows: WidgetRow[]; /** 🆕 v4 — المواضعُ بنقاط التصميم */ tiles?: V4Tile[] }>;
+  /** 🆕 v4 — الصغير: القسمُ و↻ (الرسّامُ يرسم بطاقةً واحدةً بمقاسه) */
+  v4?: { small: { s: WidgetSectionKey; cyc?: number } };
   /** إعداداتُ الأقسام (الحجمُ والعرضُ والعدد) — الرسّامُ يقرأ منها ما لا تقوله الصفوف (شكلُ فيلم الليلة الصغير) */
   opts: WidgetLayoutConfig["opts"];
 }
@@ -490,21 +495,34 @@ export function resolveWidget(
   const key = smallWidgetSection(eff);
   const rows: ResolvedWidget["rows"] = {};
   const locked: ResolvedWidget["locked"] = {};
-  for (const size of widgetSizesFor(platform)) {
-    if (size === "small") continue;
-    rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size), platform, ro).rows;
-  }
   const heights: ResolvedWidget["heights"] = {};
   const st = HEIGHT_STEPS[platform];
-  for (let h = st.from; h <= st.to; h += st.step) {
-    const size = st.size(h);
-    heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h, platform, ro).rows };
+  /*
+   * 🆕 v4 — **المواضعُ لكلِّ ارتفاع** (المعمل، ٣٠ أكتوبر): الرسّامُ يرسم ما هنا بنسبة عرضه ولا يحسب شيئاً — فكلُّ تعديلٍ هوائيّ.
+   * الصفوفُ القديمةُ لا تُكتب معها: لا رسّامَ في هذا البناء يقرؤها، والخلاصةُ أخفّ.
+   */
+  /* أندرويد قبل 12 (`resize: false`) يبقى بالرسم القديم: لا يقدر يضع لمساتِ الأزرار بمواضعها فوق الصورة */
+  const v4 = !!eff.v3 && ro.resize !== false;
+  if (v4 && eff.v3) {
+    const l4 = (ro.look4 ?? defaultV4Look())[platform];
+    const gone = new Set<WidgetSectionKey>(empty.filter((k) => k !== "cont" && k !== "search"));
+    for (let h = st.from; h <= st.to; h += st.step) heights[String(h)] = { size: st.size(h), rows: [], tiles: layoutV4(eff.v3, platform, l4.nums.designW, h, gone, l4.nums).tiles };
+  } else {
+    for (const size of widgetSizesFor(platform)) {
+      if (size === "small") continue;
+      rows[size] = resolveWidgetLayout(eff, size, widgetSizeHeight(platform, size), platform, ro).rows;
+    }
+    for (let h = st.from; h <= st.to; h += st.step) {
+      const size = st.size(h);
+      heights[String(h)] = { size, rows: locked[size] ? [] : resolveWidgetLayout(eff, size, h, platform, ro).rows };
+    }
   }
   return {
     locked,
     small: { key, tall: smallWidgetForm(eff, key, SMALL_TALL.w, SMALL_TALL.h), square: smallWidgetForm(eff, key, SMALL_SQUARE.w, SMALL_SQUARE.h) },
     rows,
     heights,
+    ...(v4 && eff.v3 ? { v4: { small: smallV4(eff.v3) } } : {}),
     /* 🆕 v3 — شكلُ القسم في خانته (بوسترٌ أو قائمة) يُكتب في خياراته: الرسّامُ القائمُ يقرأ النصفَ من هنا */
     opts: eff.v3 ? (["medium", "large", "xl"] as const).reduce((o, sz) => optsFromV3(eff.v3 as WidgetV3, o, sz), eff.opts) : eff.opts,
   };

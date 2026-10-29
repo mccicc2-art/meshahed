@@ -1,46 +1,84 @@
 import React from "react";
 import { View } from "react-native";
+import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import {
-  resolveWidgetLayout,
-  smallWidgetSection,
-  smallWidgetForm,
-  WIDGET_HEIGHTS,
-  widgetSizeHeight,
-  type WidgetLayoutConfig,
-  type WidgetPlatform,
-  type WidgetRow,
-  type WidgetSectionKey,
-  type WidgetSize,
-} from "@/core/widgetLayout";
-import { lookFor, type WidgetLook, type WidgetLookSize } from "@/core/widgetLook";
-import { V3_HEIGHTS } from "@/core/widgetSlots";
-import { ANDROID_RESIZE } from "../widget/feed";
+import { type WidgetLayoutConfig, type WidgetPlatform, type WidgetSectionKey, type WidgetSize } from "@/core/widgetLayout";
+import type { WidgetLook } from "@/core/widgetLook";
+import { defaultV3 } from "@/core/widgetSlots";
+import { defaultV4Look, layoutV4, smallV4, type V4Tile, type WidgetV4Draw, type WidgetV4Look } from "@/core/widgetTiles";
+import type { WidgetFeed } from "@/core/contracts/widget";
+import { backdropUrl, posterUrl } from "@/core/media";
+import { writtenFeed } from "../widget/feed";
 
 /**
  * ====== معاينةُ ودجت لوبز — ما سيرسمه الودجتُ بالضبط ======
  *
- * 🔑 **لا حسابَ هنا**: الصفوفُ وارتفاعاتُها من `resolveWidgetLayout` و`WIDGET_HEIGHTS` — المحرّكُ نفسُه الذي
- * يكتب للودجت. معاينةٌ تحسب وحدَها تكذب عند أوّل تعديل (W39: «الودجتُ يملأ نفسه» وعدٌ بالبكسل).
- * والمحتوى أشكالٌ رماديّة لا بياناتٌ: المعاينةُ تُجيب «أين وكم»، وما سيُعرض يعرفه صاحبُه.
+ * 🔑 **لا حسابَ هنا** (🆕 v4 — «المعمل»، ٣٠ أكتوبر): المواضعُ من `layoutV4` — المحرّكُ نفسُه الذي يكتب للودجت — وأرقامُ الرسم
+ * نفسُها (`look4`)، والصورُ والأسماءُ من الخلاصة المكتوبة للودجت (`writtenFeed`). فما يُرى هنا ما يُرسم على الشاشة: الأشكالُ
+ * والمطُّ والقصُّ والعنوانُ داخل الصورة. والمقاسُ مقاسُ الودجت الحقيقيُّ حين يُعرف (`designH`)، وإلّا مقاسُ الحجم المعتمد.
  */
 const BLACK = "#050505";
-const GHOST = "#1c1c1c";
-const LINE = "#1a1a1a";
-/* 🆕 D-1571 — عرضُ التصميم المرجعيّ (٤×٢ = ٣٣٥؛ الصغيرُ ١٦٠) — الودجتُ يكبّر كلَّ شيءٍ بنسبة عرضه إليه، فالمعاينةُ بالمرجع تطابقه */
-const WIDTH: Record<WidgetSize, number> = { small: 160, medium: 335, large: 335, xl: 335 };
+const SURFACE = "#111111";
+const ACCENT = "#FFD400";
+const SUCCESS = "#22C55E";
+
+/** مقاساتُ لوحات المعمل بنقاط التصميم — أندرويد ٣٣٥ عرضاً (جوال خالد ×١٫٣٠)، والآيفون ٣٦٤ (Pro Max) */
+const DESIGN: Record<WidgetPlatform, Record<WidgetSize, [number, number]>> = {
+  android: { small: [160, 231], medium: [335, 178], large: [335, 372], xl: [335, 568] },
+  ios: { small: [170, 170], medium: [364, 170], large: [364, 382], xl: [364, 594] },
+};
+
+/** عنصرٌ في البطاقة كما يرسمه الودجت */
+interface Item {
+  poster: string | null;
+  backdrop: string | null;
+  name: string;
+  line: string;
+  avatar: string | null;
+  bar?: number;
+  btn?: string;
+  faded?: boolean;
+  line2?: string | null;
+}
+
+const art = (p: string | null | undefined) => (p ? posterUrl(p, "w342") : null);
+const wide = (p: string | null | undefined) => (p ? backdropUrl(p, "w780") : null);
+
+/** عناصرُ القسم — المصادرُ نفسُها التي يقرؤها الرسّامان (`items4` في Kotlin و`Items4` في Swift) */
+function itemsOf(feed: WidgetFeed | null, key: WidgetSectionKey): Item[] {
+  if (!feed) return [];
+  const v2 = feed.v2;
+  switch (key) {
+    case "cont":
+      return feed.continue.items.map((c) => ({ poster: art(c.poster_path), backdrop: wide(c.backdrop_path), name: c.title, line: c.sub ?? c.label ?? "", avatar: null, bar: c.pct, btn: "✓" }));
+    case "tonight":
+      return feed.tonight.map((m) => ({ poster: art(m.poster_path), backdrop: wide(m.backdrop_path), name: m.title, line: [m.rating ? `★ ${m.rating.toFixed(1)}` : null].filter(Boolean).join(" · "), avatar: null, btn: "✓" }));
+    case "cine":
+      return (v2?.cinema ?? []).map((x) => ({ poster: art(x.poster_path), backdrop: wide(x.backdrop_path), name: x.title, line: [x.rating ? `★ ${x.rating.toFixed(1)}` : null, x.genre].filter(Boolean).join(" · "), avatar: null, btn: x.followed ? "✓" : "+" }));
+    case "tw":
+      return (v2?.towatch ?? []).map((x) => ({ poster: art(x.poster_path), backdrop: null, name: x.title, line: x.type_label, avatar: null, btn: x.action === "watched" ? "✓" : "▶" }));
+    case "up":
+      return (v2?.upcoming.items ?? []).map((u) => ({ poster: art(u.poster_path), backdrop: null, name: u.title, line: [u.date, u.label].filter(Boolean).join(" · "), avatar: null, line2: u.label }));
+    case "friends":
+      return (v2?.friends ?? []).map((x) => ({ poster: art(x.title.poster_path), backdrop: null, name: x.name, line: x.line ?? `${x.action} ${x.title.title}`, avatar: x.avatar_url }));
+    case "act":
+      return (v2?.activity ?? []).map((x) => ({ poster: art(x.title.poster_path), backdrop: null, name: x.title.title, line: [x.line, x.sub].filter(Boolean).join(" · "), avatar: null }));
+    default:
+      return [];
+  }
+}
 
 export function WidgetPreview({
-  config: given,
+  config,
   size,
   names,
   platform,
   maxHeight = 300,
   thumb = false,
   empty = [],
-  look,
+  designH,
 }: {
   config: WidgetLayoutConfig;
   size: WidgetSize;
@@ -48,57 +86,71 @@ export function WidgetPreview({
   platform: WidgetPlatform;
   maxHeight?: number;
   thumb?: boolean;
-  /** 🆕 أقسامٌ ظاهرةٌ في الإعداد لا محتوى لها الآن — تُحسم كما يحسمها الودجت (تختفي) ويقولها سطرُ المعاينة */
+  /** أقسامٌ لا محتوى لها الآن — تُحسم كما يحسمها الودجت (تختفي) ويقولها سطرُ المعاينة */
   empty?: readonly WidgetSectionKey[];
-  /** 🆕 شكلُ الودجت من الخلاصة — المحرّكُ يحسم به هنا كما في الودجت */
+  /** شكلُ الودجت القديم — لا يُقرأ في v4 ويبقى لمن يمرّره */
   look?: WidgetLook | null;
+  /** 🆕 v4 — ارتفاعُ الودجت الحقيقيُّ بنقاط التصميم (ودجتُ أندرويد على الشاشة)، وإلّا مقاسُ الحجم المعتمد */
+  designH?: number;
 }) {
-  /*
-   * 🆕 D-1561 — في الخانات (v3) إظهارُ الإعداد القديم (`on`) لم يعد خياراً: كلُّ قسمٍ «ظاهر» إلّا الفارغ الآن — كما يحسمه
-   * `resolveWidget` للودجت. كانت المعاينةُ تقرأ `on.up: false` من الإعداد القديم فتُسقط «القادم» من نصّه وتجعل أخاه كاملاً،
-   * والودجتُ نفسُه يرسمهما (خالد ٢:٣٦ «حطيت قسمين وما جاء إلا واحد»).
-   */
-  const baseOn: WidgetLayoutConfig["on"] = given.v3 ? (Object.fromEntries(Object.keys(given.on).map((k) => [k, true])) as WidgetLayoutConfig["on"]) : given.on;
-  const gone = empty.filter((k) => k !== "cont" && k !== "search" && baseOn[k]);
-  const config: WidgetLayoutConfig = { ...given, on: { ...baseOn, ...Object.fromEntries(gone.map((k) => [k, false])) } };
   const { t, tokens } = useApp();
-  /* مقاسُ المنصّة نفسُه الذي يُحسم به الودجت (`widgetSizeHeight`) — الآيفونُ أقصر */
-  const H = widgetSizeHeight(platform, size);
-  const W = WIDTH[size];
-  /* 🆕 W40 — `thumb`: صورةٌ مصغّرةٌ للودجت في «على شاشتك الآن» (عرضٌ ٨٤ بلا إطارٍ ولا سطرِ «يتّسع») */
+  const feed = React.useMemo(() => writtenFeed(), []);
+  const l4: WidgetV4Look = React.useMemo(() => {
+    const raw = (feed as unknown as { w2?: { look4?: WidgetV4Look } } | null)?.w2?.look4;
+    return raw ?? defaultV4Look();
+  }, [feed]);
+  const nums = l4[platform].nums;
+  const draw = l4[platform].draw;
+  const v3 = config.v3 ?? defaultV3();
+  const gone = new Set<WidgetSectionKey>(empty.filter((k) => k !== "cont" && k !== "search"));
+  const small = size === "small";
+  const [, H0] = DESIGN[platform][size];
+  /* العرضُ من أرقام المحرّك نفسِها (الخادمُ قد يغيّرها) — فالمعاينةُ تتبع الودجت */
+  const W = small ? nums.smallW : nums.designW;
+  const H = !small && designH && designH > 120 ? designH : H0;
   const scale = Math.min(1, maxHeight / H, (thumb ? 84 : 320) / W);
+  const rtl = feed?.dir === "rtl";
 
-  let body: React.ReactNode;
+  const cache = new Map<WidgetSectionKey, Item[]>();
+  const get = (k: WidgetSectionKey) => {
+    let v = cache.get(k);
+    if (!v) {
+      v = itemsOf(feed, k);
+      cache.set(k, v);
+    }
+    return v;
+  };
+
+  let tiles: V4Tile[] = [];
   let note = "";
-  if (size === "small") {
-    const key = smallWidgetSection(config);
-    /* الصغيرُ في أغلب الأجهزة طوليّ — والمعاينةُ ترسمه بأبعاد التصميم المعتمد (W43) */
-    const form = platform === "ios" ? smallWidgetForm(config, key, 170, 170) : smallWidgetForm(config, key, 160, 178);
-    body = <SmallTile name={names[key]} form={form} />;
+  if (small) {
+    const sm = smallV4(v3);
+    tiles = [{ k: "card", x: 0, y: 0, w: W, h: H, s: sm.s, i: 0, img: "p", lab: 1, ...(sm.cyc ? { cyc: 1 } : {}), bt: "b", ...(sm.s === "cont" ? { bar: 1 as const } : {}) }];
   } else {
-    const l = resolveWidgetLayout(config, size, H, platform, { look, resize: platform === "ios" || ANDROID_RESIZE });
-    const lk = lookFor(look, platform, size);
-    /* 🆕 D-1571 — الفاصلُ ٩ بخطّ، والباقي من الارتفاع فوق الودجت وتحته لا بين القوائم (خالد ١٤:٢٤) — كالرسّامَين */
-    body = (
-      <View style={{ flex: 1, justifyContent: "center" }}>
-        {l.rows.map((r, i) => (
-          <View key={i}>
-            {i ? <View style={{ height: 1, backgroundColor: LINE, marginVertical: (V3_HEIGHTS.gap - 1) / 2 }} /> : null}
-            <PreviewRow row={r} names={names} look={lk} />
-          </View>
-        ))}
-      </View>
-    );
-    note = l.hidden.length ? t.widgetDoesntFit(l.hidden.map((k) => names[k]).join("، ")) : t.widgetAllFit;
-    if (gone.length) note = `${note}\n${t.widgetEmptyNow(gone.map((k) => names[k]).join("، "))}`;
+    const l = layoutV4(v3, platform, W, H, gone, nums);
+    tiles = l.tiles;
+    note = l.dropped.length ? t.widgetDoesntFit(l.dropped.map((ks) => ks.map((k) => names[k]).join(" + ")).join("، ")) : t.widgetAllFit;
   }
-  /* الصغيرُ في أندرويد طوليٌّ (W43)، وفي الآيفون مربّع */
-  const h = size === "small" ? (platform === "ios" ? 170 : 178) : H;
+  if (gone.size) note = [note, t.widgetEmptyNow([...gone].map((k) => names[k]).join("، "))].filter(Boolean).join("\n");
 
   const frame = (
-    <View style={{ width: W * scale, height: h * scale, overflow: "hidden", borderRadius: thumb ? 10 : 0 }}>
-      <View style={{ width: W, height: h, transform: [{ scale }], transformOrigin: "top left", borderRadius: 22, backgroundColor: BLACK, padding: size === "small" ? 0 : V3_HEIGHTS.pad / 2, overflow: "hidden" }}>
-        {body}
+    <View style={{ width: W * scale, height: H * scale, overflow: "hidden", borderRadius: (thumb ? 10 : 22) * scale }}>
+      <View style={{ width: W, height: H, transform: [{ scale }], transformOrigin: "top left", backgroundColor: BLACK, overflow: "hidden", direction: "ltr" }}>
+        {tiles.map((tl, n) => {
+          const x = rtl ? W - tl.x - tl.w : tl.x;
+          if (tl.k === "hair") return <View key={n} style={{ position: "absolute", left: x, top: tl.y, width: Math.max(1, tl.w), height: Math.max(1, tl.h), backgroundColor: "rgba(255,255,255,0.13)" }} />;
+          if (tl.k === "card") {
+            const list = get(tl.s);
+            /* لا بوسترَ مكرّر: ما زاد على ما في القسم خانةٌ داكنة — كالرسّامَين */
+            const it = tl.i < list.length ? list[tl.i] : tl.s === "cont" && tl.i === 0 && !list.length ? { poster: null, backdrop: null, name: `+  ${names.cont}`, line: "", avatar: null } : null;
+            return (
+              <Card key={n} it={it} x={x} y={tl.y} w={tl.w} h={tl.h} label={tl.lab ? names[tl.s] : null} cyc={!!tl.cyc} topBtn={tl.bt === "t"} bar={!!tl.bar} wide={tl.img === "b"} small={small} rtl={rtl} d={draw} zoom={small ? draw.smallZoom : 0} />
+            );
+          }
+          const list = get(tl.s);
+          const it = list[0] ?? null;
+          return <UpRow key={n} it={it} x={x} y={tl.y} w={tl.w} h={tl.h} head={tl.s === "friends" ? names.friends : names.up} slim={tl.k === "slim"} friends={tl.s === "friends"} more={tl.s === "up" && list.length > 1 ? list.length - 1 : 0} rtl={rtl} d={draw} />;
+        })}
       </View>
     </View>
   );
@@ -106,195 +158,106 @@ export function WidgetPreview({
   return (
     <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface2, alignItems: "center", paddingVertical: 10, gap: 6 }}>
       {frame}
-      {note ? <Text size={11} muted>{note}</Text> : null}
+      {note ? <Text size={11} muted style={{ textAlign: "center", paddingHorizontal: 12 }}>{note}</Text> : null}
     </View>
   );
 }
 
-function Bar({ w = "60%", h = 8 }: { w?: number | `${number}%`; h?: number }) {
-  return <View style={{ width: w, height: h, borderRadius: h / 2, backgroundColor: GHOST }} />;
-}
-
-/** قطعُ الخانات كما يرسمها الودجت (D-1571) — أشكالٌ رماديّة: المعاينةُ تُجيب «أين وكم»، والمحتوى يعرفه صاحبُه */
-function Thumb({ w, h, r = 4 }: { w: number; h: number; r?: number }) {
-  return <View style={{ width: w, height: h, borderRadius: r, backgroundColor: GHOST }} />;
-}
-
-function Compact({ label, more }: { label: string; more?: boolean }) {
-  /* السطرُ المختصر ٣٤: بوستر ٢٢×٣٣ وسطران — صفُّ «القادم» تحت البطاقتين وسطرُ نشاطك تحت */
-  return (
-    <View style={{ height: 34, flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <Thumb w={22} h={33} r={3.5} />
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text size={9.5} weight="700" color="#FFD400" numberOfLines={1}>{label}</Text>
-        <Bar w="55%" h={7} />
-      </View>
-      {more ? <Text size={9.5} color="#9C9C9C">+٢ ←</Text> : null}
-    </View>
-  );
-}
-
-function SecTitle({ text }: { text: string }) {
-  return (
-    <View style={{ height: 24, justifyContent: "flex-start" }}>
-      <Text size={11.5} weight="800" color="#F7F7F7" numberOfLines={1} style={{ lineHeight: 18 }}>{text}</Text>
-    </View>
-  );
-}
-
-function ListRows({ k, n, rowH, thumbW, thumbH }: { k: WidgetSectionKey; n: number; rowH: number; thumbW: number; thumbH: number }) {
-  return (
-    <>
-      {Array.from({ length: n }, (_, i) => (
-        <View key={i} style={{ height: rowH, flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Thumb w={thumbW} h={thumbH} />
-          <View style={{ flex: 1, gap: 5 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              {k === "friends" ? <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: "#3a3a3a" }} /> : null}
-              <Bar w="55%" h={8} />
-            </View>
-            <Bar w="38%" h={6} />
-          </View>
-        </View>
-      ))}
-    </>
-  );
-}
-
-function PosterColumn({ h, tint }: { h: number; tint: string }) {
-  /* بوسترٌ ٢:٣ بطول الجسم وعمودٌ: ↻ فوق والمعلومةُ ثمّ الفعلُ تحت (فيلمُ الليلة والسينما وكلُّ نصفٍ «بوستر») */
-  return (
-    <View style={{ height: h, flexDirection: "row", gap: 6 }}>
-      <View style={{ width: Math.round((h * 2) / 3), height: h, borderRadius: 7, backgroundColor: tint }} />
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "space-between", paddingVertical: 2 }}>
-        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "#222" }} />
-        <Bar w="70%" h={6} />
-        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "#222" }} />
-      </View>
-    </View>
-  );
-}
-
-function PreviewRow({ row, names, look }: { row: WidgetRow; names: Record<WidgetSectionKey, string>; look: WidgetLookSize }) {
-  const h = row.h;
-  switch (row.type) {
-    case "search":
-      return <View style={{ height: h, borderRadius: 22, backgroundColor: "#161616" }} />;
-    case "cont":
-      return (
-        <View style={{ height: h }}>
-          <View style={{ height: 24 }}>
-            <Text size={13} weight="800" color="#F7F7F7" numberOfLines={1} style={{ lineHeight: 18 }}>{names.cont}</Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: 8, height: row.card ?? look.contCard }}>
-            {[0, 1].map((i) => (
-              <View key={i} style={{ flex: 1, borderRadius: 12, backgroundColor: "#2f3b46" }}>
-                <View style={{ position: "absolute", top: 6, start: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(22,22,22,0.78)" }} />
-              </View>
-            ))}
-          </View>
-          {row.upLine ? (
-            <>
-              <View style={{ height: 1, backgroundColor: LINE, marginVertical: (V3_HEIGHTS.upGap - 1) / 2 }} />
-              <Compact label={names.up} more />
-            </>
-          ) : null}
-        </View>
-      );
-    case "list":
-      return (
-        <View style={{ height: h }}>
-          <SecTitle text={names[row.key]} />
-          {row.view === "posters" ? (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", height: row.h - WIDGET_HEIGHTS.listHeader }}>
-              {Array.from({ length: row.posters ?? 3 }, (_, i) => (
-                <View key={i} style={{ width: 72, gap: 4 }}>
-                  <View style={{ width: 72, height: 108, borderRadius: 7, backgroundColor: row.key === "cine" ? "#4a2626" : GHOST }} />
-                  <Bar w="80%" h={7} />
-                </View>
-              ))}
-            </View>
-          ) : (
-            <ListRows k={row.key} n={row.count} rowH={(row.h - WIDGET_HEIGHTS.listHeader) / row.count} thumbW={row.key === "friends" ? look.friendThumbW : look.listThumbW} thumbH={row.key === "friends" ? look.friendThumbH : look.listThumbH} />
-          )}
-        </View>
-      );
-    case "tonight":
-      return (
-        <View style={{ height: h }}>
-          <SecTitle text={names.tonight} />
-          <PosterColumn h={h - 24} tint="#3b2a2a" />
-        </View>
-      );
-    case "pair": {
-      const body = h - WIDGET_HEIGHTS.pairHead;
-      return (
-        <View style={{ height: h, flexDirection: "row", gap: 8 }}>
-          {[0, 1].map((i) => {
-            const k = row.keys[i];
-            const poster = k === "tonight" || k === "cine" || (row.views?.[i] === "poster" && k !== "act");
-            const n = row.rows?.[i] ?? row.count;
-            return (
-              <React.Fragment key={i}>
-                {i ? <View style={{ width: 1, backgroundColor: LINE }} /> : null}
-                <View style={{ flex: 1, overflow: "hidden" }}>
-                  {k === "tonight" ? (
-                    /* 🆕 D-1578 — فيلمُ الليلة في النصف بطاقةٌ كالصغير: البوسترُ يملأ النصف، العنوانُ فوق والاسمُ تحت */
-                    <View style={{ height: h, borderRadius: 12, backgroundColor: "#3b2a2a", padding: 8, justifyContent: "space-between" }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text size={10} weight="800" color="#FFD400" numberOfLines={1}>{names.tonight}</Text>
-                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#222" }} />
-                      </View>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
-                        <Bar w="55%" h={8} />
-                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#222" }} />
-                      </View>
-                    </View>
-                  ) : k ? (
-                    <>
-                      <SecTitle text={names[k]} />
-                      {poster ? (
-                        <PosterColumn h={body} tint={k === "cine" ? "#4a2626" : GHOST} />
-                      ) : (
-                        <ListRows k={k} n={n} rowH={body / n} thumbW={k === "friends" ? 28 : 22} thumbH={k === "friends" ? 42 : 33} />
-                      )}
-                    </>
-                  ) : null}
-                </View>
-              </React.Fragment>
-            );
-          })}
-        </View>
-      );
-    }
-    case "line":
-      return <Compact label={names[row.key]} />;
+/** الصورةُ تغطّي مربّعها — المطُّ حتّى `lim` ثمّ القصُّ (`cropTop` من فوق) — والرياضةُ نفسُها في الرسّامَين */
+function Fit({ uri, w, h, d, zoom, faded, ratio }: { uri: string | null; w: number; h: number; d: WidgetV4Draw; zoom: number; faded?: boolean; ratio: number }) {
+  if (!uri) return null;
+  const b = w / h;
+  const s = Math.min(Math.max(b, ratio / (1 + d.lim)), ratio * (1 + d.lim));
+  let iw: number;
+  let ih: number;
+  let l = 0;
+  if (b >= s) {
+    iw = w;
+    ih = w / s;
+  } else {
+    ih = h;
+    iw = h * s;
+    l = -(iw - w) / 2;
   }
-  return null;
+  if (zoom > 0) ih = Math.max(h, ih * (1 - zoom));
+  const top = -(ih - h) * d.cropTop;
+  return <Image source={{ uri }} contentFit="fill" style={{ position: "absolute", left: l, top, width: iw, height: ih, opacity: faded ? 0.55 : 1 }} />;
 }
 
-function SmallTile({ name, form }: { name: string; form: ReturnType<typeof smallWidgetForm> }) {
-  /* 🆕 D-1571 — الصغيرُ بوسترٌ كاملٌ ١٠٨×١٦٢ وعمودُ أزرار (لوحة الخطّة ٢×٢) */
-  if (form === "posterColumn") {
+function Circle({ glyph, size, style }: { glyph: string; size: number; style: object }) {
+  return (
+    <View style={[{ position: "absolute", width: size, height: size, borderRadius: size / 2, backgroundColor: "rgba(0,0,0,0.55)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" }, style]}>
+      <Text size={size * 0.46} weight="700" color={glyph === "↶" ? SUCCESS : "#FFFFFF"} style={{ lineHeight: size * 0.6 }}>{glyph}</Text>
+    </View>
+  );
+}
+
+function Card(p: { it: Item | null; x: number; y: number; w: number; h: number; label: string | null; cyc: boolean; topBtn: boolean; bar: boolean; wide: boolean; small: boolean; rtl: boolean; d: WidgetV4Draw; zoom: number }) {
+  const { it, x, y, w, h, d, small, rtl } = p;
+  const cd = small ? d.circleSmall : d.circle;
+  const pad = small ? d.textPadSmall : d.textPad;
+  const start = rtl ? "right" : "left";
+  const end = rtl ? "left" : "right";
+  const bottomBtn = !p.topBtn && !!it?.btn;
+  const uri = it ? (p.wide ? it.backdrop ?? it.poster : it.poster) : null;
+  return (
+    <View style={{ position: "absolute", left: x, top: y, width: w, height: h, borderRadius: small ? 0 : d.radius, overflow: "hidden", backgroundColor: SURFACE }}>
+      {it ? (
+        <>
+          <Fit uri={uri} w={w} h={h} d={d} zoom={p.zoom} faded={it.faded} ratio={p.wide && it.backdrop ? 16 / 9 : 2 / 3} />
+          <View style={{ position: "absolute", inset: 0, experimental_backgroundImage: "linear-gradient(rgba(0,0,0,0.55), transparent 28%, transparent 50%, rgba(0,0,0,0.92))" }} />
+          {p.label ? (
+            <Text size={small ? d.labelSmall : d.label} weight="700" color={ACCENT} numberOfLines={1}
+              style={{ position: "absolute", top: small ? 9 : 7, [start]: pad, [end]: p.cyc || p.topBtn ? cd + 10 : pad, textAlign: rtl ? "right" : "left", textShadowColor: "#000", textShadowRadius: 3 }}>
+              {p.label}
+            </Text>
+          ) : null}
+          {p.cyc ? <Circle glyph="↻" size={cd} style={{ top: 4, [end]: 4 }} /> : p.topBtn && it.btn ? <Circle glyph={it.btn} size={cd} style={{ top: 4, [end]: 4 }} /> : null}
+          {bottomBtn && it.btn ? <Circle glyph={it.btn} size={cd} style={{ bottom: small ? 7 : 4, [end]: small ? 7 : 4 }} /> : null}
+          <View style={{ position: "absolute", [start]: pad, [end]: bottomBtn ? cd + (small ? 14 : 10) : pad, bottom: small ? d.textBottomSmall : d.textBottom, gap: 1, alignItems: rtl ? "flex-end" : "flex-start" }}>
+            <View style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 4, maxWidth: "100%" }}>
+              {it.avatar ? <Image source={{ uri: it.avatar }} style={{ width: small ? d.avatarSmall : d.avatar, height: small ? d.avatarSmall : d.avatar, borderRadius: 999 }} /> : null}
+              <Text size={small ? d.nameSmall : w > 120 ? d.nameBig : d.name} weight="700" color={it.faded ? "rgba(247,247,247,0.55)" : "#FFFFFF"} numberOfLines={1} style={{ flexShrink: 1 }}>{it.name}</Text>
+            </View>
+            {it.line ? <Text size={small ? d.lineSmall : d.line} color={it.faded ? ACCENT : "#DDDDDD"} numberOfLines={1}>{it.line}</Text> : null}
+          </View>
+          {p.bar && it.bar != null ? (
+            <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: d.bar, backgroundColor: "rgba(255,255,255,0.15)", flexDirection: rtl ? "row-reverse" : "row" }}>
+              <View style={{ width: `${Math.max(0, Math.min(100, it.bar))}%`, backgroundColor: it.bar >= 99 ? SUCCESS : ACCENT }} />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+function UpRow(p: { it: Item | null; x: number; y: number; w: number; h: number; head: string; slim: boolean; friends: boolean; more: number; rtl: boolean; d: WidgetV4Draw }) {
+  const { it, d, rtl } = p;
+  const second = !it ? "" : p.friends ? [it.name, it.line].filter(Boolean).join(" · ") : [it.name, it.line2].filter(Boolean).join(" · ");
+  const dir = rtl ? "row-reverse" : "row";
+  if (p.slim) {
     return (
-      <View style={{ flex: 1, backgroundColor: BLACK, padding: 8, flexDirection: "row", gap: 6, alignItems: "center" }}>
-        <View style={{ width: 108, height: 162, borderRadius: 9, backgroundColor: "#2f3b46", justifyContent: "flex-end", padding: 6 }}>
-          <Text size={9} weight="800" color="#FFD400" numberOfLines={1}>{name}</Text>
-        </View>
-        <View style={{ flex: 1, height: 162, alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "#222" }} />
-          <Bar w="70%" h={6} />
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "#222" }} />
-        </View>
+      <View style={{ position: "absolute", left: p.x, top: p.y, width: p.w, height: p.h, flexDirection: dir, alignItems: "center", gap: 6, overflow: "hidden" }}>
+        <Text size={d.slimFont} weight="700" color={ACCENT} numberOfLines={1}>{p.head}</Text>
+        {p.friends && it?.avatar ? <Image source={{ uri: it.avatar }} style={{ width: d.slimAvatar, height: d.slimAvatar, borderRadius: 999 }} /> : null}
+        <Text size={d.slimFont} color="#F7F7F7" numberOfLines={1} style={{ flexShrink: 1 }}>{second}</Text>
       </View>
     );
   }
   return (
-    <View style={{ flex: 1, backgroundColor: form === "list" ? BLACK : "#2f3b46", padding: 11, justifyContent: "space-between" }}>
-      <Text size={11} weight="800" color="#FFD400">{name}</Text>
-      <View style={{ gap: 10 }}>
-        {[0, 1, 2].map((i) => <Bar key={i} w={i ? "60%" : "80%"} />)}
+    <View style={{ position: "absolute", left: p.x, top: p.y, width: p.w, height: p.h, flexDirection: dir, alignItems: "center", gap: 9 }}>
+      <View style={{ width: d.upThumbW, height: d.upThumbH, borderRadius: 4, overflow: "hidden", backgroundColor: SURFACE }}>
+        {it?.poster ? <Image source={{ uri: it.poster }} contentFit="cover" style={{ width: d.upThumbW, height: d.upThumbH }} /> : null}
       </View>
+      <View style={{ flex: 1, alignItems: rtl ? "flex-end" : "flex-start" }}>
+        <Text size={d.upTitle} weight="700" color={ACCENT} numberOfLines={1}>{p.head}</Text>
+        <View style={{ flexDirection: dir, alignItems: "center", gap: 4 }}>
+          {p.friends && it?.avatar ? <Image source={{ uri: it.avatar }} style={{ width: d.avatar, height: d.avatar, borderRadius: 999 }} /> : null}
+          <Text size={d.upName} color="#F7F7F7" numberOfLines={1} style={{ flexShrink: 1 }}>{second}</Text>
+        </View>
+      </View>
+      {p.more ? <Text size={d.upTail} color="#9C9C9C">{rtl ? `← +${p.more}` : `+${p.more} →`}</Text> : null}
     </View>
   );
 }

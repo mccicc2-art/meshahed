@@ -205,11 +205,14 @@ export function WidgetScreen() {
   }
 
   const plus = d.plus;
+  /* 🆕 v4 — ودجتُ أندرويد على الشاشة: المعاينةُ بارتفاعه الحقيقيّ بنقاط التصميم (عرضُه ÷ ٣٣٥ نسبتُه) — ٤×٣ و٤×٥ كما هما */
+  const placedNow = typeof editing === "number" ? placedA?.find((x) => x.id === editing) : undefined;
+  const editingDesignH = placedNow && placedNow.w >= 230 && placedNow.h > 0 && androidSize(placedNow) === size ? placedNow.h / (placedNow.w / 335) : undefined;
   const sizeLabel: Record<WidgetSize, string> = { small: t.widgetSizeSmall, medium: t.widgetSizeMedium, large: t.widgetSizeLarge, xl: t.widgetSizeXl };
   const pinned = (
     <>
       <Segmented items={sizes.map((s) => ({ id: s, label: sizeLabel[s] }))} value={size} onChange={(v) => setSize(v as WidgetSize)} />
-      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 300 : 240} empty={empty} look={look} />
+      <WidgetPreview config={effectiveWidgetConfig(cfg, plus)} size={size} names={names} platform={ios ? "ios" : "android"} maxHeight={size === "xl" ? 420 : 300} empty={empty} look={look} designH={editingDesignH} />
     </>
   );
 

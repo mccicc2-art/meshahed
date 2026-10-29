@@ -119,7 +119,8 @@ test("D-1561: الإظهارُ القديم (on.up=false) لا يُسقط الق
   const cfg = { ...defaultWidgetConfigV3(), v3 };
   cfg.on = { ...cfg.on, up: false };
   const r = resolveWidget(cfg, true, "android");
-  assert.ok(Object.values(r.heights).some((e) => names(e.rows).includes("pair:tw+up×3")));
+  /* 🆕 v4 — المواضع: نصّا للمشاهدة والقادم ظاهران (الإظهارُ القديمُ لا يحكم) */
+  assert.ok(Object.values(r.heights).some((e) => (e.tiles ?? []).some((t) => t.k === "card" && t.s === "up")));
   const e = names(resolveV3(v3, "xl", 590, rs(), new Set(["up"])).rows);
   assert.equal(e[0], "cont86");
   assert.ok(e.includes("tw:posters×4"));

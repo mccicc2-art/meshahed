@@ -399,8 +399,10 @@ export async function GET(req: NextRequest) {
           t,
         ),
         upcoming: upcomingAll,
-        /* 🆕 D-1571 — ثمانيةٌ تكفي (أربعةُ بوسترات، و↻ يقلّب في النصف والصغير)؛ «جديد» لما عُرض في الأسبوعين الأخيرين */
-        cinema: (cinemaRows?.results ?? []).slice(0, 8).map((r) => {
+        /* 🆕 D-1571 — «جديد» لما عُرض في الأسبوعين الأخيرين.
+           🆕 v4 — **كلُّ ما في السينما بالأكثر رواجاً** (خالد ٠١:٣٤: «دور بين كل الموجوده ف السينما مهما كان عددها»): ↻ يقلّب ٣ ٣
+           في الخانة وواحداً واحداً في النصف والصغير ويرجع للأوّل — عشرون حدٌّ لحجم الخلاصة، ومعها الصورةُ العريضةُ للشكل القصير */
+        cinema: [...(cinemaRows?.results ?? [])].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 20).map((r) => {
           const rel = r.release_date ?? null;
           const age = rel ? (Date.parse(today) - Date.parse(rel)) / 86_400_000 : NaN;
           return {
@@ -408,6 +410,7 @@ export async function GET(req: NextRequest) {
             id: r.id,
             title: titleOf(r),
             poster_path: r.poster_path,
+            backdrop_path: r.backdrop_path ?? null,
             rating: typeof r.vote_average === "number" && r.vote_average > 0 ? Math.round(r.vote_average * 10) / 10 : null,
             genre: genreOf(r.genre_ids ?? []),
             release_date: rel,

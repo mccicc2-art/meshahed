@@ -262,8 +262,11 @@ struct MainView: View {
     if let r = f.resolved(entry.layout) {
       let opts = r["opts"] as? [String: Any] ?? [:]
       let locked = (r["locked"] as? [String: Any])?[sizeName] as? Bool ?? false
+      /* 🆕 v4 — «المعمل» (٣٠ أكتوبر): المواضعُ من المحرّك وأرقامُ رسمها (`V4View.swift`)، وشريطُ التقييم بعد ✓ فيلمٍ تحتها */
       if locked {
         LockCard(f: f)
+      } else if r["v4"] != nil, (f.raw["w2"] as? [String: Any])?["look4"] != nil {
+        V4Root(f: f, r: r, small: sizeName == "small", now: entry.date)
       } else if sizeName == "small" {
         /* 🆕 D-1577 — الآيفونُ بمقاساته هو بلا تكبيرٍ بالنسبة (النسبةُ لأندرويد وحدَه — أحمد ٢٠:٠٧) */
         SmallMain(f: f.sized("small"), small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)

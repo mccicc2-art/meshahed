@@ -11,6 +11,7 @@ import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
 import { resolveWidget, type WidgetSectionKey } from "@/core/widgetLayout";
+import { sanitizeV4Look } from "@/core/widgetTiles";
 import { sanitizeWidgetLook } from "@/core/widgetLook";
 
 /**
@@ -142,7 +143,11 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
     });
     v2.activity.forEach((x) => add(x.title.poster_path));
     /* 🆕 D-1571 — «الآن في السينما» */
-    (v2.cinema ?? []).forEach((x) => add(x.poster_path));
+    (v2.cinema ?? []).forEach((x) => {
+      add(x.poster_path);
+      /* 🆕 v4 — بطاقتا السينما العريضتان في الشكل القصير (٤×٥) */
+      add(x.backdrop_path, "backdrop");
+    });
   }
   return out;
 }
@@ -369,8 +374,10 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
   const empty = emptySections(data);
   /* 🆕 شكلُ الودجت من الخلاصة (مُصلَحاً) — المحرّكُ يحسم به، ويُكتب معه فيقرؤه الرسّامان بالأرقام نفسِها */
   const look = sanitizeWidgetLook(v2?.look);
-  const androidOpts = { look, resize: ANDROID_RESIZE };
-  const iosOpts = { look, resize: true };
+  /* 🆕 v4 — أرقامُ المحرّك والرسم من الخادم (`look4`) مُصلَحةً، وإلّا الافتراضيّ — تُكتب مع المواضع فيقرؤها الرسّامان */
+  const look4 = sanitizeV4Look(v2?.look4);
+  const androidOpts = { look, resize: ANDROID_RESIZE, look4 };
+  const iosOpts = { look, resize: true, look4 };
   /* 🆕 W40 — أندرويد: الإعدادُ الافتراضيُّ لكلِّ ودجت، و`byId` لما خُصّص لودجتٍ بعينه (`aw-<رقمه>`)؛ والآيفون تخطيطاتُه وحدَها */
   const w2 = v2
     ? {
@@ -384,6 +391,7 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
           .filter((l) => !isAndroidWidgetLayout(l.id))
           .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty, iosOpts) })),
         look,
+        look4,
       }
     : null;
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };

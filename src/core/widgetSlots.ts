@@ -19,10 +19,12 @@ import type { WidgetPlatform, WidgetRow, WidgetSectionKey, WidgetSectionOpts, Wi
 
 /** ما يدخل الخانة — البحثُ خرج من الودجت (خالد ١٦:٢٠)، و«أكمل المشاهدة» فوقها دائماً */
 /* 🆕 D-1571 — «الآن في السينما» (`cine`، خالد ٢٩ أكتوبر): قسمُ بوسترٍ في كلِّ الأحجام كالبقيّة */
-export const SLOT_SECTIONS = ["friends", "act", "up", "tw", "tonight", "cine"] as const;
+/* 🆕 v4 — بالأولويّة (خالد ٠٢:٠٤): أصدقاؤك · فيلم الليلة · السينما · القادم · للمشاهدة · نشاطك — والاختيارُ يعرضها بهذا الترتيب */
+export const SLOT_SECTIONS = ["friends", "tonight", "cine", "up", "tw", "act"] as const;
 export type SlotSection = (typeof SLOT_SECTIONS)[number];
 /** الصغيرُ قسمٌ واحد: بوسترٌ كاملٌ وعمود */
-export const SMALL_SECTIONS = ["cont", "up", "tonight", "friends", "cine"] as const;
+/* 🆕 v4 — الصغيرُ بوسترٌ لأيِّ قسم */
+export const SMALL_SECTIONS = ["cont", "friends", "tonight", "cine", "up", "tw", "act"] as const;
 export type SmallSection = (typeof SMALL_SECTIONS)[number];
 
 export interface SlotPart {
@@ -30,7 +32,8 @@ export interface SlotPart {
   v: "list" | "poster";
 }
 export interface WidgetSlot {
-  mode: "full" | "pair";
+  /** 🆕 v4 — `off` «بدون» للخانة الثانية */
+  mode: "full" | "pair" | "off";
   /** القسمُ الكامل، أو النصفُ الأوّل (اليمين في العربيّة) */
   a: SlotPart;
   /** النصفُ الثاني — محفوظٌ حتى والخانةُ كاملة، فالرجوعُ إلى «نصّين» يعيده كما كان */
@@ -41,6 +44,10 @@ export interface WidgetV3 {
   medium: { top: boolean; slot: WidgetSlot };
   large: { slot: WidgetSlot };
   xl: { slots: [WidgetSlot, WidgetSlot]; line: SlotSection };
+  /** 🆕 v4 — أكملُ المشاهدة بطاقتان (الافتراضيّ) أو ٣ بوسترات (خالد ٠١:٤٩: «اكمل المشاهدة الثلاثي ممتاز اعتمده») */
+  cont?: "cards" | "posters";
+  /** 🆕 v4 — عدّله الشخص: قبلها يأخذ ٤×٣ افتراضيَّه (أصدقاؤك ٣ بوسترات) */
+  edited?: boolean;
 }
 
 /** فيلمُ الليلة والسينما بوسترٌ دائماً — لا اختيارَ شكلٍ لهما */
@@ -77,7 +84,7 @@ function cleanPart(raw: unknown, fallback: SlotPart): SlotPart {
 
 function cleanSlot(raw: unknown, fallback: WidgetSlot): WidgetSlot {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const mode = r.mode === "pair" ? "pair" : r.mode === "full" ? "full" : fallback.mode;
+  const mode = r.mode === "pair" ? "pair" : r.mode === "full" ? "full" : r.mode === "off" ? "off" : fallback.mode;
   const a = cleanPart(r.a, fallback.a);
   let b = cleanPart(r.b, fallback.b);
   /* النصّان قسمان مختلفان — إعدادٌ تالفٌ بقسمٍ مكرّر يأخذ أوّلَ قسمٍ غيرِه */
@@ -106,10 +113,13 @@ export function sanitizeV3(raw: unknown): WidgetV3 {
     xlSlots[1].mode === "full" && xlSlots[1].a.s === "friends" && xlSlots[1].a.v === "list" && xlLine === "act";
   return {
     small: typeof r.small === "string" && (SMALL_SECTIONS as readonly string[]).includes(r.small) ? (r.small as SmallSection) : base.small,
+    ...(r.cont === "posters" ? { cont: "posters" as const } : {}),
+    ...(r.edited === true ? { edited: true } : {}),
     medium: { top: typeof med.top === "boolean" ? med.top : base.medium.top, slot: cleanSlot(med.slot, base.medium.slot) },
     large: { slot: cleanSlot(lg.slot, base.large.slot) },
     xl: {
-      slots: oldXl ? base.xl.slots : xlSlots,
+      /* الخانةُ الأولى لا تكون «بدون» */
+      slots: oldXl ? base.xl.slots : [xlSlots[0].mode === "off" ? { ...xlSlots[0], mode: "full" } : xlSlots[0], xlSlots[1]],
       line: oldXl ? base.xl.line : xlLine,
     },
   };
@@ -117,6 +127,7 @@ export function sanitizeV3(raw: unknown): WidgetV3 {
 
 /** أقسامُ الخانة الظاهرة — منها يُعرف المستخدَمُ فلا يُختار مرّتين */
 export function slotKeys(slot: WidgetSlot): SlotSection[] {
+  if (slot.mode === "off") return [];
   return slot.mode === "pair" ? [slot.a.s, slot.b.s] : [slot.a.s];
 }
 
@@ -125,7 +136,7 @@ export function slotsFor(v3: WidgetV3, size: Exclude<WidgetSize, "small">): Widg
   /* 🆕 D-1575 — **ترتيبٌ واحدٌ لكلِّ المقاسات** (خالد ١٩:٣٦: «الترتيب اللي سويته لاكبر وحده ابغاه يطبق عالباقية»): خاناتُ الكبير جداً،
      وكلُّ حجمٍ يأخذ منها بالترتيب ما يتّسع (`resolveV3`). خاناتُ المتوسط والكبير القديمةُ تبقى محفوظةً ولا تُرسم */
   void size;
-  return [...v3.xl.slots];
+  return v3.xl.slots.filter((s) => s.mode !== "off");
 }
 
 /** القسمُ مستخدمٌ في الحجم نفسِه (لغير الموضع الذي يُعدَّل) — ورقةُ الاختيار ترسمه رماديّاً */
@@ -288,7 +299,7 @@ export function resolveV3(
   /* 🆕 D-1575 — الباقي يكبّر الأقسام قليلاً (حتّى ١٥٪) بدل فراغٍ فوق وتحت: صفُّ النصّين والقائمةُ الكاملة؛ وما زاد يبقى فوق وتحت */
   if (rs.resize) {
     const growable = rows.filter((r) => r.type === "pair" || (r.type === "list" && r.view === "list"));
-    let left = height - total();
+    const left = height - total();
     for (const r of growable) {
       if (left <= 0) break;
       const add = Math.floor(Math.min(left / growable.length, r.h * 0.15));

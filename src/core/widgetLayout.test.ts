@@ -119,7 +119,9 @@ test("المحسوم للرسّام: صفوف كل حجم، والقفل لغي�
   assert.deepEqual([plus.small.key, plus.small.tall, plus.small.square], ["cont", "posterFull", "headerFade"]);
   const free = resolveWidget(defaultWidgetConfig(), false, "ios");
   assert.deepEqual(free.locked, {});
-  assert.deepEqual(Object.keys(free.rows).sort(), ["large", "medium"]);
+  /* 🆕 v4 — غيرُ المشترك يأخذ الأساسيَّ بالخانات: مواضعُ لكلِّ ارتفاع (`tiles`) بلا صفوفٍ قديمة */
+  assert.deepEqual(Object.keys(free.rows), []);
+  assert.ok(Object.values(free.heights).every((e) => (e.tiles ?? []).length > 0));
 });
 
 test("الآيفون يُحسم بمقاسه: الكبير أقصر فيدخل أقل", () => {

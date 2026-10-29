@@ -6,6 +6,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
@@ -55,7 +60,8 @@ class LoopzWidget : AppWidgetProvider() {
         val p = prefs(ctx)
         /* 🆕 D-1571 — «↻» على «الآن في السينما» يقلّب بعدّاده هو (`cn_`) لا بعدّاد فيلم الليلة */
         val k = (intent.getStringExtra("what") ?: "tn") + "_" + id
-        p.edit().putInt(k, p.getInt(k, 0) + 1).apply()
+        /* 🆕 v4 — الخطوةُ عددُ ما يظهر: الخانةُ الكاملةُ ٣ ورا ٣، والنصُّ والصغيرُ واحدٌ واحد (خالد ٠١:٠١) */
+        p.edit().putInt(k, p.getInt(k, 0) + intent.getIntExtra("step", 1).coerceIn(1, 9)).apply()
         AppWidgetManager.getInstance(ctx).updateAppWidget(id, W2Render.build(ctx, id))
       }
       return
@@ -84,8 +90,8 @@ class LoopzWidget : AppWidgetProvider() {
       }
     }
 
-    fun cycleIntent(ctx: Context, id: Int, code: Int, what: String = "tn"): PendingIntent {
-      val i = Intent(ctx, LoopzWidget::class.java).setAction(ACTION_CYCLE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra("what", what)
+    fun cycleIntent(ctx: Context, id: Int, code: Int, what: String = "tn", step: Int = 1): PendingIntent {
+      val i = Intent(ctx, LoopzWidget::class.java).setAction(ACTION_CYCLE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra("what", what).putExtra("step", step)
       return PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
   }
@@ -223,6 +229,24 @@ object W2Render {
       /* 🆕 شكلُ الودجت بياناتٍ: أرقامُ هذا الحجم كما كتبها التطبيقُ من الخلاصة (`w2.look`) — الصغيرُ بأرقامه هو */
       val look = f.raw.optJSONObject("w2")?.optJSONObject("look")?.optJSONObject("android")?.optJSONObject(if (size == "small") "small" else fitSize)
       val d = Draw(ctx, id, f, v2, w2.optJSONObject("opts") ?: JSONObject(), w, fitSize, look, sc)
+      /* 🆕 v4 — المواضعُ من المحرّك (`tiles`) وأرقامُ رسمها (`look4`): الودجتُ صورةٌ مرسومةٌ بنسبة عرضه (المعمل، ٣٠ أكتوبر).
+         شريطُ التقييم بعد ✓ فيلمٍ يبقى بالرسم القديم حتّى يُقيَّم أو يُتخطّى */
+      val l4 = f.raw.optJSONObject("w2")?.optJSONObject("look4")?.optJSONObject("android")
+      val v4small = w2.optJSONObject("v4")?.optJSONObject("small")
+      if (l4 != null && v4small != null && w2.optJSONObject("locked")?.optBoolean(fitSize) != true) {
+        val nums = l4.optJSONObject("nums")
+        val draw = l4.optJSONObject("draw")
+        if (isSmall) return render4(d, null, v4small, w, h, dn4(nums, "smallW", 160f).coerceAtLeast(50f), draw, null)
+        val dw = dn4(nums, "designW", 335f).coerceAtLeast(50f)
+        val s4 = w / dw
+        /* شريطُ التقييم بعد ✓ فيلمٍ يأخذ مكانه تحت (٩٣ بالنسبة)، والمواضعُ تُحسم لما فوقه */
+        val strip = if (rate != null) RATE_H * s4 else 0f
+        /* لا يتّسع فوق الشريط شيء (المتوسط): الشريطُ وحدَه بالرسم القديم أدناه، كما كان */
+        val roomDesign = (h - strip) / s4
+        val fit4 = if (rate != null && roomDesign < 140f) null else byHeight(w2.optJSONObject("heights"), roomDesign)
+        val tiles = fit4?.optJSONArray("tiles")
+        if (tiles != null) return render4(d, tiles, null, w, h, dw, draw, rate)
+      }
       when {
         size == "small" -> small(d, w2.optJSONObject("small") ?: JSONObject(), w, h)
         w2.optJSONObject("locked")?.optBoolean(fitSize) == true -> locked(d)
@@ -1442,6 +1466,204 @@ object W2Render {
     v.setViewVisibility(R.id.it_avatar, View.VISIBLE)
     v.setImageViewBitmap(R.id.it_avatar, bmp)
     if (d.resize) layoutSize(v, R.id.it_avatar, sizeDp, sizeDp)
+  }
+
+  /* ═════════ 🆕 v4 — «المعمل» (خالد ٣٠ أكتوبر): الودجتُ صورةٌ واحدةٌ مرسومةٌ من المواضع، ولمساتٌ فوقها ═════════
+   *
+   * 🔑 **لا قرارَ هنا**: المحرّكُ (`src/core/widgetTiles.ts`) كتب كلَّ بطاقةٍ وخطٍّ وصفٍّ بموضعه بنقاط التصميم، وأرقامُ الرسم معه
+   * (`w2.look4.android.draw`) — هنا نضرب في نسبة العرض ونرسم (`W4Paint`). فتعديلُ المقاسات والخطوط والمطّ يصل هوائيّاً بلا بناء.
+   * - **صورةٌ واحدة** (`Canvas`): الأشكالُ حرّةٌ بلا واجهاتٍ ثابتة — RemoteViews لا تبني شجرةً حرّة.
+   * - **اللمساتُ إطاراتٌ شفّافةٌ فوقها** (`w4_hit_*`) بمواضعها (أندرويد 12+، `setViewLayoutMargin`). قبله: الودجتُ كلُّه يفتح التطبيق.
+   * - العربيّة: المواضعُ تنعكس (المحرّكُ يكتبها من اليسار)، والكلامُ من اليمين.
+   */
+
+  private val HIT = intArrayOf(
+    R.id.w4_hit_0, R.id.w4_hit_1, R.id.w4_hit_2, R.id.w4_hit_3, R.id.w4_hit_4, R.id.w4_hit_5, R.id.w4_hit_6,
+    R.id.w4_hit_7, R.id.w4_hit_8, R.id.w4_hit_9, R.id.w4_hit_10, R.id.w4_hit_11, R.id.w4_hit_12, R.id.w4_hit_13,
+    R.id.w4_hit_14, R.id.w4_hit_15, R.id.w4_hit_16, R.id.w4_hit_17, R.id.w4_hit_18, R.id.w4_hit_19, R.id.w4_hit_20,
+    R.id.w4_hit_21, R.id.w4_hit_22, R.id.w4_hit_23, R.id.w4_hit_24, R.id.w4_hit_25, R.id.w4_hit_26, R.id.w4_hit_27,
+  )
+
+  /** فيلمُ الليلة: يتبدّل كلَّ يوم، و↻ يقلّب — البدايةُ نفسُها التي يقرؤها `tonightNow` */
+  private fun tonightBase(d: Draw): Int {
+    val day = (System.currentTimeMillis() + TimeZone.getDefault().getOffset(System.currentTimeMillis())) / 86_400_000L
+    return (day + LoopzWidget.prefs(d.ctx).getInt("tn_${d.id}", 0)).toInt()
+  }
+
+  private fun rot(list: List<I4>, base: Int, i: Int): I4? = if (list.isEmpty()) null else list[(((base + i) % list.size) + list.size) % list.size]
+
+  /** عناصرُ القسم بترتيبها — ومن أين يبدأ (فيلمُ الليلة والسينما يدوران بـ↻) */
+  private fun items4(d: Draw, key: String): Pair<List<I4>, Int> {
+    val f = d.f
+    val undo = { CheckReceiver.undoIntent(d.ctx, d.next()) }
+    return when (key) {
+      "cont" -> {
+        val main = f.cont.map { c ->
+          val (g, a) = when {
+            f.check && d.undoOn("ep", c.t.id) -> "↶" to undo()
+            f.check && c.season != null && c.episode != null -> "✓" to CheckReceiver.intent(d.ctx, d.next(), c)
+            else -> null to null
+          }
+          I4(c.t.poster, c.backdrop, c.t.title, c.sub ?: c.label ?: "", null, WLinks.title(c.t), c.pct, g, a)
+        }
+        /* أقلُّ من بطاقتين: الباقي من «للمشاهدة» باهتاً يبدأ العمل (W5) */
+        val faded = f.towatch.filter { w -> w.t.id !in d.hidden && f.cont.none { it.t.id == w.t.id } }
+          .map { w -> I4(w.t.poster, null, w.t.title, f.s("towatchStart"), null, WLinks.start(w.t, w.action), faded = true) }
+        /* لا شيءَ يُكمَل ولا شيءَ للمشاهدة: «ابدأ عملاً» يفتح الاكتشاف */
+        (main + faded).ifEmpty { listOf(I4(null, null, "+  " + f.s("startSomething"), "", null, WLinks.discover())) } to 0
+      }
+      "tonight" -> d.tonight.map { m ->
+        val (g, a) = if (f.check && d.undoOn("movie", m.t.id)) "↶" to undo()
+        else "✓" to (if (f.check) CheckReceiver.movieIntent(d.ctx, d.next(), m.t) else d.open(WLinks.title(m.t)))
+        I4(m.t.poster, m.backdrop, m.t.title, Tonight.subOf(f, m), null, WLinks.title(m.t), null, g, a)
+      } to tonightBase(d)
+      "cine" -> d.cinema.mapNotNull { x ->
+        val t = f.titleFrom(x) ?: return@mapNotNull null
+        val bd = if (x.isNull("backdrop_path")) null else f.art(x.optString("backdrop_path").takeIf { it.isNotEmpty() })
+        val (g, a) = when {
+          f.check && d.undoOn("towatch", t.id) -> "↶" to undo()
+          /* أُضيف من قبل (أو تابعه/شاهده): ✓ تفتح صفحتَه — لا «+» ثانية */
+          x.optBoolean("followed") || t.id in d.hidden -> "✓" to d.open(WLinks.title(t))
+          else -> "+" to (if (f.check) CheckReceiver.towatchIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
+        }
+        I4(t.poster, bd, t.title, cineMeta(d, x), null, WLinks.title(t), null, g, a)
+      } to LoopzWidget.prefs(d.ctx).getInt("cn_${d.id}", 0)
+      "tw" -> d.arr("towatch").mapNotNull { x ->
+        val t = f.titleFrom(x) ?: return@mapNotNull null
+        val rating = if (x.isNull("rating")) null else "★ " + String.format(f.locale(), "%.1f", x.optDouble("rating"))
+        val movie = x.optString("action") == "watched"
+        val (g, a) = when {
+          f.check && d.undoOn(if (movie) "movie" else "start", t.id) -> "↶" to undo()
+          movie -> "✓" to (if (f.check) CheckReceiver.movieIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
+          else -> "▶" to (if (f.check) CheckReceiver.startIntent(d.ctx, d.next(), t) else d.open(WLinks.start(t, "start")))
+        }
+        I4(t.poster, null, t.title, listOfNotNull(x.optString("type_label").takeIf { it.isNotEmpty() }, rating).joinToString(" · "), null, WLinks.title(t), null, g, a)
+      } to 0
+      "up" -> upcoming(d).mapNotNull { u ->
+        val t = f.titleFrom(u) ?: return@mapNotNull null
+        val date = if (u.isNull("date")) null else u.optString("date").takeIf { it.isNotEmpty() }
+        val label = if (u.isNull("label")) null else u.optString("label").takeIf { it.isNotEmpty() }
+        I4(t.poster, null, t.title, listOfNotNull(date?.let { f.dayLabel(it) }, label).joinToString(" · "), null, WLinks.title(t), line2 = label)
+      } to 0
+      /* أصدقاؤك: الصورةُ جنب الاسم (خالد ٠١:٠٣)، ثمّ وش سوّى ومتى */
+      "friends" -> lines(d, key).map { l -> I4(l.t?.poster, null, l.name, listOfNotNull(l.sub?.takeIf { it.isNotEmpty() }, l.time).joinToString(" · "), l.avatar, l.link, line2 = l.time) } to 0
+      /* نشاطك: العملُ ثمّ ما فعلت ومتى */
+      "act" -> lines(d, key).map { l -> I4(l.t?.poster, null, l.t?.title ?: l.name, listOfNotNull(l.name.takeIf { it.isNotEmpty() && it != l.t?.title }, l.sub?.takeIf { it.isNotEmpty() }, l.time).joinToString(" · "), null, l.link) } to 0
+      else -> emptyList<I4>() to 0
+    }
+  }
+
+  private fun dn4(o: JSONObject?, k: String, def: Float): Float = o?.optDouble(k, Double.NaN)?.takeIf { !it.isNaN() && it >= 0 }?.toFloat() ?: def
+
+  /**
+   * يرسم الودجت v4. `tiles` مواضعُ المحرّك بنقاط التصميم (أو `small` للصغير: بطاقةٌ واحدةٌ تملؤه)، و`dw` عرضُ التصميم.
+   */
+  private fun render4(d: Draw, tiles: JSONArray?, small: JSONObject?, wDp: Float, hDp: Float, dw: Float, draw: JSONObject?, rate: JSONObject?): RemoteViews {
+    val v = RemoteViews(d.ctx.packageName, R.layout.w4_root)
+    v.setInt(R.id.w4_root, "setLayoutDirection", View.LAYOUT_DIRECTION_LTR)
+    HIT.forEach { v.setViewVisibility(it, View.GONE) }
+    /* كلُّ رسمةٍ تكتب حالةَ الشريط (W47: المشغّلُ يعيد التطبيقَ على العرض القائم) */
+    v.removeAllViews(R.id.w4_rate)
+    if (rate != null) {
+      v.setViewVisibility(R.id.w4_rate, View.VISIBLE)
+      v.addView(R.id.w4_rate, rateStrip(d, rate))
+    } else v.setViewVisibility(R.id.w4_rate, View.GONE)
+    val s = wDp / dw
+    val designH = hDp / s
+    val dens = d.ctx.resources.displayMetrics.density
+    /* نقاطُ الصورة لكلِّ نقطة تصميم — وحدُّ RemoteViews: لا تزيد الصورةُ على ٢٫٤ مليون نقطة (٤×٦ عند خالد ١١٤٢×١٩٣٧ ≈ ٢٫٢) */
+    val full = s * dens
+    val area = wDp * hDp * dens * dens
+    val P = if (area > 2_400_000f) full * Math.sqrt((2_400_000f / area).toDouble()).toFloat() else full
+    val bw = (dw * P).toInt().coerceAtLeast(1)
+    val bh = (designH * P).toInt().coerceAtLeast(1)
+    val out = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+    val c = Canvas(out)
+    val rr = 16f * dens * P / full
+    c.clipPath(Path().apply { addRoundRect(RectF(0f, 0f, bw.toFloat(), bh.toFloat()), rr, rr, Path.Direction.CW) })
+    c.drawColor(0xFF050505.toInt())
+    val rtl = d.f.rtl
+    var hit = 0
+    fun hitAt(x: Float, y: Float, w: Float, h: Float, pi: PendingIntent?) {
+      if (pi == null || hit >= HIT.size || Build.VERSION.SDK_INT < 31) return
+      val id = HIT[hit++]
+      v.setViewVisibility(id, View.VISIBLE)
+      v.setViewLayoutMargin(id, RemoteViews.MARGIN_LEFT, x * s, TypedValue.COMPLEX_UNIT_DIP)
+      v.setViewLayoutMargin(id, RemoteViews.MARGIN_TOP, y * s, TypedValue.COMPLEX_UNIT_DIP)
+      v.setViewLayoutWidth(id, w * s, TypedValue.COMPLEX_UNIT_DIP)
+      v.setViewLayoutHeight(id, h * s, TypedValue.COMPLEX_UNIT_DIP)
+      v.setOnClickPendingIntent(id, pi)
+    }
+    val sections = HashMap<String, Pair<List<I4>, Int>>()
+    fun sec(k: String) = sections.getOrPut(k) { items4(d, k) }
+    /* الأزرارُ تُضاف بعد البطاقات فتكون فوقها وتأخذ اللمسةَ أوّلاً */
+    val buttons = mutableListOf<() -> Unit>()
+    fun cycleOf(k: String, step: Int) = LoopzWidget.cycleIntent(d.ctx, d.id, d.next(), if (k == "cine") "cn" else "tn", step)
+
+    if (small != null) {
+      val k = small.optString("s", "cont")
+      val (list, base) = sec(k)
+      val it = rot(list, base, 0)
+      val cyc = small.optInt("cyc", 0) > 0 && list.size > 1
+      W4Paint.card(d.ctx, c, P, 0f, 0f, dw, designH, it, titleOf(d, k), true, cyc, false, k == "cont", false, dn4(draw, "smallZoom", 0f), rtl, draw)
+      if (it != null) hitAt(0f, 0f, dw, designH, d.open(it.link))
+      val cd = dn4(draw, "circleSmall", 26f)
+      if (it?.act != null) buttons += { hitAt(if (rtl) 0f else dw - cd - 14f, designH - cd - 14f, cd + 14f, cd + 14f, it.act) }
+      if (cyc) buttons += { hitAt(if (rtl) 0f else dw - cd - 10f, 0f, cd + 10f, cd + 10f, cycleOf(k, 1)) }
+    } else if (tiles != null) {
+      val cd = dn4(draw, "circle", 24f)
+      for (n in 0 until tiles.length()) {
+        val t = tiles.optJSONObject(n) ?: continue
+        val w = t.optDouble("w").toFloat()
+        val h = t.optDouble("h").toFloat()
+        val y = t.optDouble("y").toFloat()
+        val x0 = t.optDouble("x").toFloat()
+        val x = if (rtl) dw - x0 - w else x0
+        when (t.optString("k")) {
+          "hair" -> c.drawRect(x * P, y * P, x * P + maxOf(w * P, dens * P / full), y * P + maxOf(h * P, dens * P / full), Paint().apply { color = 0x21FFFFFF })
+          "card" -> {
+            val k = t.optString("s")
+            val (list, base) = sec(k)
+            val i = t.optInt("i")
+            /* فيلمُ الليلة والسينما يدوران على ما عندهما؛ والبقيّةُ خانةٌ داكنةٌ إن لم يكفِ ما فيها */
+            /* لا بوسترَ مكرّر: ما زاد على ما في القسم خانةٌ داكنة — فيلمُ الليلة والسينما يدوران ببدايتهما فقط */
+            val it = if (i < list.size) rot(list, base, i) else null
+            val cyc = t.optInt("cyc", 0)
+            val topBtn = t.optString("bt") == "t"
+            W4Paint.card(d.ctx, c, P, x, y, w, h, it, if (t.optInt("lab") == 1) titleOf(d, k) else null, false, cyc > 0 && list.size > 1, topBtn, t.optInt("bar") == 1, t.optString("img") == "b", 0f, rtl, draw)
+            if (it != null) hitAt(x, y, w, h, d.open(it.link))
+            if (it?.act != null) {
+              val bx = if (rtl) x else x + w - cd - 8f
+              val by = if (topBtn) y else y + h - cd - 8f
+              buttons += { hitAt(bx, by, cd + 8f, cd + 8f, it.act) }
+            }
+            if (cyc > 0 && list.size > 1) buttons += { hitAt(if (rtl) x else x + w - cd - 8f, y, cd + 8f, cd + 8f, cycleOf(k, cyc)) }
+          }
+          "up", "slim" -> {
+            val friends = t.optString("s") == "friends"
+            val (list, _) = sec(if (friends) "friends" else "up")
+            val it = list.firstOrNull()
+            val head = if (friends) d.s2("friendsTitle") else upHead(d)
+            val tail = if (friends) (it?.line2 ?: "") else if (list.size > 1) "+${list.size - 1} →" else ""
+            W4Paint.row(d.ctx, c, P, x, y, w, h, it, head, if (t.optString("k") == "slim") "" else tail, t.optString("k") == "slim", friends, rtl, draw)
+            hitAt(x, y, w, h, d.open(if (friends) (it?.link ?: WLinks.discover()) else WLinks.calendar()))
+          }
+        }
+      }
+    }
+    buttons.forEach { it() }
+    v.setImageViewBitmap(R.id.w4_img, out)
+    /* قبل أندرويد 12 (أو ودجتٌ بلا محتوى): الودجتُ كلُّه يفتح التطبيق */
+    if (hit == 0) WLinks.launch(d.ctx, d.id * 1000 + 998)?.let { v.setOnClickPendingIntent(R.id.w4_root, it) }
+    return v
+  }
+
+  /** «القادم · غداً» — اليومُ بساعة الجهاز وقتَ الرسم */
+  private fun upHead(d: Draw): String {
+    val u = upcoming(d).firstOrNull()
+    val date = u?.optString("date")?.takeIf { it.isNotEmpty() && !u.isNull("date") }
+    val title = d.f.s("comingUpTitle")
+    return if (date != null) "$title · ${d.f.dayLabel(date)}" else title
   }
 
   /** بوسترٌ بمقاس خانته (٢:٣ في ٢:٣ — لا زوم، W38)؛ ملصقٌ لم يصل يبقى خانةً فارغة */

@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🆕 v4 «المعمل» (٣٠ أكتوبر): الودجتُ صورةٌ واحدةٌ يرسمها `render4` من مواضع المحرّك، وفوقها إطاراتُ لمسٍ شفّافة
+     تُوضع بمواضعها (أندرويد 12+، `setViewLayoutMargin`). الأزرارُ آخرَ الإطارات فتكون فوق البطاقات. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w4_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg">
+    <ImageView
+        android:id="@+id/w4_img"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
+    <!-- شريطُ «قيّم الفيلم» بعد ✓ (W37) — تحت، والمواضعُ فوقه محسومةٌ لما بقي -->
+    <LinearLayout
+        android:id="@+id/w4_rate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_0"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_1"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_2"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_3"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_4"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_5"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_6"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_7"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_8"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_9"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_10"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_11"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_12"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_13"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_14"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_15"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_16"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_17"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_18"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_19"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_20"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_21"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_22"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_23"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_24"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_25"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_26"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/w4_hit_27"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:layout_gravity="top|left"
+        android:visibility="gone" />
+</FrameLayout>
