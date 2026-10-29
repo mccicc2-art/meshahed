@@ -31,6 +31,8 @@ const SECTIONS: { key: string; href: string; label: string; of?: keyof AdminNavC
   { key: "partners", href: "/admin/partners", label: "الشركاء", of: "partners" },
   { key: "payouts", href: "/admin/payouts", label: "التحويلات", of: "payouts" },
   { key: "links", href: "/admin/links", label: "الروابط" },
+  /* 🆕 D-1563 — شخصيات لوبز AI: الإيقافُ والطابور */
+  { key: "personas", href: "/admin/personas", label: "الشخصيات" },
   { key: "health", href: "/admin/health", label: "الأداء والحماية" },
 ];
 

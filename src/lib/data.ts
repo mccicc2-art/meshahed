@@ -4,6 +4,8 @@ import { decodeAccessToken, decodeSessionCookie, sessionCookieParts } from "@/li
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { episodeKey } from "@/core/keys";
 import { LOOPZ_ID } from "@/core/loopz";
+import { personaOf, personaText, type PersonaSlug } from "@/core/personas";
+import { getLocale } from "@/lib/locale";
 import {
   CONTENT_PREFS_COOKIE,
   EMPTY_CONTENT_PREFS,
@@ -3561,7 +3563,8 @@ export async function getFollowingActivity(): Promise<ActivityRow[]> {
 }
 
 export interface TitleReview extends PersonLite {
-  rating: number;
+  /** 🆕 D-1563 — `null` لمراجعة شخصيّةٍ من شخصيّات لوبز AI: رأيٌ بلا درجة (لا تدخل `ratings` ولا متوسّطَ الجمهور) */
+  rating: number | null;
   review: string | null;
   updated_at: string;
   /** 🆕 **إعلانُ كاتبه** (D-315) — يغيب قبل الهجرة ١٠٠ فيُقرأ `false` */
@@ -3570,6 +3573,8 @@ export interface TitleReview extends PersonLite {
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
+  /** 🆕 D-1563 — مراجعةُ شخصيّةٍ AI: النصُّ بلغة القارئ (`review`)، ونطاقُها («الموسم الأول») إن كان */
+  persona?: { slug: PersonaSlug; scope: string | null };
 }
 
 export interface ReviewReply extends PersonLite {
@@ -4549,21 +4554,86 @@ export async function getPostViewCounts(
   }
 }
 
+/** 🆕 D-1563 — صفوفُ `title_persona_reviews` (الهجرة ٢٢٥): ما حان ظهورُه وحده، والإيقافُ حكمُ القاعدة */
+interface PersonaReviewRow {
+  persona_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  scope_ar: string | null;
+  scope_en: string | null;
+  body_ar: string;
+  body_en: string;
+  has_spoiler: boolean;
+  publish_at: string;
+}
+
+async function getTitlePersonaRows(tmdbId: number, mediaType: "tv" | "movie"): Promise<PersonaReviewRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_persona_reviews", { t_id: tmdbId, m_type: mediaType });
+    return error || !data ? [] : (data as PersonaReviewRow[]);
+  } catch {
+    return [];
+  }
+}
+
+/** 🆕 D-1563 — مراجعاتُ شخصيّةٍ واحدة لملفّها (`persona_reviews_of`) — بنصّيها، ويختار القارئُ لغته */
+export interface PersonaReviewOfRow {
+  media_type: "tv" | "movie";
+  tmdb_id: number;
+  title: string | null;
+  poster_path: string | null;
+  scope_ar: string | null;
+  scope_en: string | null;
+  body_ar: string;
+  body_en: string;
+  has_spoiler: boolean;
+  publish_at: string;
+}
+
+export async function getPersonaReviewsOf(personaId: string, limit = 60): Promise<PersonaReviewOfRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("persona_reviews_of", { p_persona: personaId, p_limit: limit });
+    return error || !data ? [] : (data as PersonaReviewOfRow[]);
+  } catch {
+    return [];
+  }
+}
+
 /** مراجعات عمل معيّن مع أصحابها */
 /* `cache()`: generateMetadata وصفحةُ المراجعة يطلبانها معاً — ٤ RPC بدل ٢. */
 export const getTitleReviews = cache(
   async (tmdbId: number, mediaType: "tv" | "movie"): Promise<TitleReview[]> => {
     try {
       const supabase = await createClient();
-      const [{ data, error }, me] = await Promise.all([
+      const [{ data, error }, me, personaRows, locale] = await Promise.all([
         supabase.rpc("title_reviews", { t_id: tmdbId, m_type: mediaType }),
         getUser(),
+        /* 🆕 D-1563 — **مراجعاتُ شخصيّات لوبز في القائمة نفسِها** لا قائمةٍ ثانية: مفتاحُها مفتاحُ المراجعة (الشخصيّة · العمل)،
+           فالإعجابُ والردُّ وصفحةُ الخيط تعمل عليها كما تعمل على رأي إنسان. **وغيابُ الدالّة قبل الهجرة ٢٢٥ فراغٌ لا عطل**. */
+        getTitlePersonaRows(tmdbId, mediaType),
+        getLocale(),
       ]);
-      if (error || !data) return [];
-      const rows = data as Omit<
-        TitleReview,
-        "likes" | "likedByMe" | "isMine"
-      >[];
+      const human = error || !data ? [] : (data as Omit<TitleReview, "likes" | "likedByMe" | "isMine">[]);
+      const ai: Omit<TitleReview, "likes" | "likedByMe" | "isMine">[] = personaRows.flatMap((p) => {
+        const who = personaOf(p.persona_id);
+        if (!who) return [];
+        return [{
+          id: p.persona_id,
+          nickname: who.name[locale === "ar" ? "ar" : "en"],
+          username: p.username,
+          avatar_url: p.avatar_url,
+          hide_name: false,
+          rating: null,
+          review: personaText(locale, p.body_ar, p.body_en),
+          updated_at: p.publish_at,
+          has_spoiler: p.has_spoiler,
+          persona: { slug: who.slug, scope: personaText(locale, p.scope_ar, p.scope_en) || null },
+        } as Omit<TitleReview, "likes" | "likedByMe" | "isMine">];
+      });
+      /* **الأحدثُ أوّلاً بين الصنفين** — والطوابعُ ISO من الخادم نفسِه فترتيبُ حروفها ترتيبُ زمنها */
+      const rows = [...human, ...ai].sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
       if (!rows.length) return [];
 
       // إعجابات العمل كلها في نداءٍ واحد على دالة definer تُرجع الأعداد

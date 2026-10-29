@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "./state";
 import { Text } from "./ui";
-import { isFounder, isPartner, isPlus, isVerified, type PlanBearer } from "@/core/plan";
+import { isAiPersona, isFounder, isPartner, isPlus, isVerified, type PlanBearer } from "@/core/plan";
 
 /**
  * ====== شاراتُ الهويّة — مكوّنٌ واحدٌ للتطبيق كلِّه (D-1134 → D-1142) ======
@@ -24,10 +24,11 @@ const PILL_EM = 0.82;
 const VERIFIED = require("../assets/icons/verified-badge.png");
 
 /** الحالُ مقروءةً من صفّ الحساب (`PlanBearer`) — أو محسوبةً في الخادم كما في `/api/v1/me/settings` */
-export type IdentityFlags = { partner: boolean; plus: boolean; founder: boolean; verified: boolean };
+/** 🆕 D-1563 — `ai`: شخصيّةٌ من شخصيّات لوبز AI (اختياريٌّ فلا ينكسر من يبني الرايات بيده — `/api/v1/me/settings`) */
+export type IdentityFlags = { partner: boolean; plus: boolean; founder: boolean; verified: boolean; ai?: boolean };
 
 export function identityFlags(p: PlanBearer | null | undefined): IdentityFlags {
-  return { partner: isPartner(p), plus: isPlus(p), founder: isFounder(p), verified: isVerified(p) };
+  return { partner: isPartner(p), plus: isPlus(p), founder: isFounder(p), verified: isVerified(p), ai: isAiPersona(p) };
 }
 
 /**
@@ -36,12 +37,19 @@ export function identityFlags(p: PlanBearer | null | undefined): IdentityFlags {
  */
 export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: IdentityFlags; nameSize: number; sealOnly?: boolean }) {
   const { t } = useApp();
+  /* 🆕 D-1563 — «AI» تظهر حتى مع `sealOnly`: هي ما يقول من الكاتب، لا طبقةٌ تُخفى في التنبيهات */
+  const ai = !!flags.ai;
   const word = sealOnly ? null : flags.partner ? "PARTNER" : flags.plus ? "PLUS" : flags.founder ? "FOUNDER" : null;
   const hgt = nameSize * PILL_EM;
   /* الختمُ بمقاس الرئيسيّة عند اسمٍ ٢٠ (١٦) — ويتناسب مع أيِّ اسم */
   const seal = Math.round((16 / 20) * nameSize);
   return (
     <>
+      {ai ? (
+        <View accessibilityRole="image" accessibilityLabel={t.aiBadge} style={{ width: (24 / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
+          <Text size={(9 / 16) * hgt} weight="700" color={BRAND} style={{ letterSpacing: (0.6 / 9) * ((9 / 16) * hgt), lineHeight: (9 / 16) * hgt * 1.15, writingDirection: "ltr" }}>AI</Text>
+        </View>
+      ) : null}
       {word ? (() => {
         const w = word === "PLUS" ? 38 : 62;
         const tracking = word === "PLUS" ? 1.3 : 1.1;

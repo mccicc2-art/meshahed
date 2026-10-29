@@ -1,3 +1,5 @@
+import { isPersonaId } from "./personas.ts";
+
 /**
  * خطّةُ الحساب — **قاعدةٌ واحدةٌ لكلِّ قارئيها** (D-145، D-633).
  *
@@ -32,6 +34,13 @@ export interface PlanBearer {
      لا يحصل عليه تلقائيّاً؛ يقدّم بشكلٍ مستقلّ». **فلا تُقرأ من هنا
      خطّةٌ ولا تُقرأ من الخطّة توثيق** — رافدان في شكلٍ واحد. */
   verified_at?: string | null;
+  /** 🆕 D-1563 — معرّفُ الحساب: منه تُعرف شخصيّاتُ لوبز AI (`isPersonaId`) فتُرسم شارتُها «AI» بجانب الاسم */
+  id?: string | null;
+}
+
+/** 🆕 D-1563 — هل الحسابُ شخصيّةٌ من شخصيّات لوبز AI؟ (المعرّفاتُ الخمسة ثابتةٌ في `personas.ts`) */
+export function isAiPersona(p: PlanBearer | null | undefined): boolean {
+  return isPersonaId(p?.id ?? null);
 }
 
 /**

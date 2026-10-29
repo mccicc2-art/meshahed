@@ -80,7 +80,7 @@ export type ThreadReply = {
   season?: number | null;
   episode?: number | null;
   /** 🆕 R56 — مراجعةُ صفحة العمل في «عام»: لا تصويتَ ولا ⋯، والردودُ في صفحتها — `replyId` = `review:<صاحبها>` */
-  review?: { userId: string; rating: number; replies: number } | null;
+  review?: { userId: string; rating: number | null; replies: number } | null;
   /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
      (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
   plan?: string | null;
@@ -344,10 +344,13 @@ export function ReplyItem({
         {reply.review ? (
           <div className="flex items-center gap-1.5 mt-2">
             <span className="rounded-full border border-accent/60 px-2 py-0.5 text-[11px] font-bold text-accent">{t.talkReviewTag}</span>
-            <span dir="ltr" className="text-13 font-extrabold text-accent tabular-nums">
-              ★ {num(reply.review.rating, locale)}
-              <span className="text-12 font-medium text-muted">{` / ${num(10, locale)}`}</span>
-            </span>
+            {/* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI بلا درجة: الشارةُ وحدَها، ولا نجمةَ بصفرٍ كاذب */}
+            {reply.review.rating != null ? (
+              <span dir="ltr" className="text-13 font-extrabold text-accent tabular-nums">
+                ★ {num(reply.review.rating, locale)}
+                <span className="text-12 font-medium text-muted">{` / ${num(10, locale)}`}</span>
+              </span>
+            ) : null}
           </div>
         ) : null}
         {replyingToName && <ReplyingTo name={replyingToName} locale={locale} />}

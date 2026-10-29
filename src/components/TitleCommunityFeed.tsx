@@ -5,7 +5,8 @@ import { chipClass, chipRow } from "./ui/controls";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 
-export type FeedKind = "review" | "news";
+/** 🆕 D-1563 — `persona`: مراجعاتُ شخصيّات لوبز AI، برقاقتها */
+export type FeedKind = "review" | "news" | "persona";
 
 export interface FeedItem {
   kind: FeedKind;
@@ -52,6 +53,7 @@ export function TitleCommunityFeed({
   const chips: { key: FeedKind | "all"; label: string }[] = [
     { key: "all", label: t.feedFilterAll },
     ...(has("review") ? [{ key: "review" as const, label: t.tabReviews }] : []),
+    ...(has("persona") ? [{ key: "persona" as const, label: t.personaFeedChip }] : []),
     ...(has("news") ? [{ key: "news" as const, label: t.communityTabNews }] : []),
   ];
 

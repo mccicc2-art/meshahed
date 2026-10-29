@@ -55,6 +55,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
           likes: r.likes,
           replies: replyCounts.get(r.id) ?? 0,
           mine: r.isMine,
+          ...(r.persona ? { persona: r.persona } : {}),
         })),
       bulletins: [
         ...thread

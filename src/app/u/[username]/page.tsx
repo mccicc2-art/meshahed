@@ -12,7 +12,8 @@ import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
-import { AccountBadges, badgeLabelsOf } from "@/components/AccountIdentity";
+import { AccountBadges, AiPill, badgeLabelsOf } from "@/components/AccountIdentity";
+import { personaOf } from "@/core/personas";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { WeeklyRanksDoor } from "@/components/WeeklyRanksDoor";
 import { isLoopz } from "@/core/loopz";
@@ -135,7 +136,11 @@ export default async function PublicProfilePage({
     followGenres,
     favorites,
   } = core;
-  const displayName = displayNameOf(profile, t.anonymousUser);
+  /* 🆕 D-1563 — **ملفُّ شخصيّةٍ من شخصيّات لوبز AI**: الاسمُ والوصفُ بلغة القارئ (الملفُّ في القاعدة عربيٌّ وحدَه)،
+     وتبويبُ «مراجعات» وحدَه (لا مكتبةَ لها ولا قوائم)، وسطرُ الشرح الكامل تحت الوصف (قرار أحمد «١أ») */
+  const persona = personaOf(profile.id);
+  const pl = locale === "ar" ? "ar" : "en";
+  const displayName = persona ? persona.name[pl] : displayNameOf(profile, t.anonymousUser);
   /* 🆕 D-1380 — «رسالة» تتبع البوّابَ (`can_message`) لا المتابعةَ المتبادلة: لغيري وحدي، وللمسجَّل وحده */
   const canMsg = isMe ? null : await canMessage(profile.id);
 
@@ -531,7 +536,7 @@ export default async function PublicProfilePage({
      ومحتواه باقٍ بابٌ خلفيٌّ يكذب) — **والآن صاحبُه مثلُه**، فالمعاينةُ
      صارت صادقةً بلا وضعِ «كيف يراني غيري». */
   const tabHidden = (k: string) =>
-    (prefs.hiddenTabs as readonly string[]).includes(k);
+    persona ? k !== "reviews" : (prefs.hiddenTabs as readonly string[]).includes(k);
   /* ⚖️ 🆕 **والمهربُ صار ترتيباً لا اسماً** (D-667، حكمُ أحمد: «هذا
      خلّه مثل الباقي تقدر تطفيه وتشغّله»): **«المفضّلة» تُطفأ الآن
      كغيرها**، **فلا يصلح اسمٌ بعينه مهرباً** — **ومهربٌ إلى بابٍ مغلقٍ
@@ -1075,7 +1080,18 @@ export default async function PublicProfilePage({
                 ما يليه، وإلّا قُرئ الثلاثةُ سطراً واحداً متّصلاً** —
                 و٤ بكسلاتٍ بعد ١٢px كانت تفعل ذلك. **٨ الآن: أربعةُ
                 أضعاف فجوةِ العنقود.** */}
-            {bioText && (
+            {persona ? (
+              /* 🆕 D-1563 — هويّةُ الشخصيّة مكانَ النبذة: وصفُها، ثمّ ذائقتُها، ثمّ الشرحُ الكامل بشارته */
+              <div className="hero-halo mt-2 max-w-[52ch] space-y-1">
+                <p className="text-14 font-semibold leading-snug">{persona.tagline[pl]}</p>
+                <p className="text-13 text-muted leading-snug">{persona.about[pl]}</p>
+                <p className="text-12 text-muted">{persona.tastes[pl]}</p>
+                <p className="flex items-center gap-1.5 text-12 text-muted leading-snug pt-1">
+                  <span className="text-14 shrink-0"><AiPill t={badgeLabelsOf(t)} /></span>
+                  <span>{t.personaExplain}</span>
+                </p>
+              </div>
+            ) : bioText && (
               <p
                 className="hero-halo text-14 text-muted leading-snug mt-2 line-clamp-2 max-w-[46ch]"
                 dir="auto"

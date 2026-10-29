@@ -10,6 +10,7 @@ import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
 import { SpoilerText } from "./SpoilerText";
 import { actionTailItem } from "./ui/controls";
+import { personaOf } from "@/core/personas";
 
 /**
  * **بطاقةُ الرأي في خطّ المجتمع** (D-407، لقطةُ أحمد بمستطيلين أحمرين:
@@ -53,13 +54,21 @@ export function TitleReviewRow({
   const t = getDict(locale);
   const who = displayNameOf(r, t.anonymousUser);
   const href = `/review/${mediaType}/${tmdbId}/${r.id}`;
+  /* 🆕 D-1563 — **مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه** لا بطاقةٌ ثانية: حلقةٌ بلونها حول الصورة، و«AI» بجانب الاسم
+     (`AccountBadges` يعرفها من معرّفها)، ووصفُها مكانَ «مراجعة»، ولا نجمة — رأيٌ بلا درجة */
+  const persona = r.persona ? personaOf(r.id) : null;
 
   return (
     <article
       id={`review-${r.id}`}
       className="rounded-2xl border border-border bg-surface p-3.5 flex gap-3"
     >
-      <Link href={href} prefetch={false} className="shrink-0 active:opacity-80 transition">
+      <Link
+        href={href}
+        prefetch={false}
+        className="shrink-0 self-start rounded-full active:opacity-80 transition"
+        style={persona ? { boxShadow: `0 0 0 2px ${persona.color}` } : undefined}
+      >
         <Avatar src={r.hide_name ? null : r.avatar_url} name={who} size={44} alt="" />
       </Link>
 
@@ -93,20 +102,29 @@ export function TitleReviewRow({
                 {timeAgoShort(r.updated_at, t)}
               </Link>
             </div>
-            <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
-              {t.communityKindReview}
-            </p>
+            {persona ? (
+              <p className="mt-0.5 text-12 font-semibold text-muted leading-snug">
+                {persona.tagline[locale === "ar" ? "ar" : "en"]}
+                {r.persona?.scope ? <span className="font-normal">{` · ${r.persona.scope}`}</span> : null}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
+                {t.communityKindReview}
+              </p>
+            )}
           </div>
 
           {/* **والتقييمُ بشكلٍ واحد في التطبيق** (D-241): `10.0` لا
               `10/10` — **ولا خمسُ نجماتٍ تترجم عشرةً** فتصير للتقييم
               لغتان في شاشةٍ واحدة. */}
-          <span
-            className="ms-auto shrink-0 text-14 font-bold text-accent tabular-nums"
-            title={t.rateOutOf(r.rating)}
-          >
-            ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
-          </span>
+          {r.rating != null ? (
+            <span
+              className="ms-auto shrink-0 text-14 font-bold text-accent tabular-nums"
+              title={t.rateOutOf(r.rating)}
+            >
+              ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
+            </span>
+          ) : null}
         </div>
 
         {r.review?.trim() &&

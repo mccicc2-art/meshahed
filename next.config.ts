@@ -29,7 +29,9 @@ const csp = [
   // في D-726): المحمِّل من www.youtube.com والجسمُ من s.ytimg.com
   "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.youtube.com https://s.ytimg.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-  "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co https://media.giphy.com",
+  // 🆕 D-1563: صورُ شخصيّات لوبز AI بعنوانٍ مطلق (`https://loopztv.com/api/v1/persona/*/avatar`) ليقرأها التطبيقُ كما يقرأها
+  // الويب — وهي «self» على loopztv.com وحدَه، فتُذكر صراحةً لنطاق Vercel ولمن يفتح من www
+  "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co https://media.giphy.com https://loopztv.com",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co https://accounts.google.com`,
   "manifest-src 'self'",
@@ -150,6 +152,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/w1280/**" },
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/original/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      /* 🆕 D-1563 — صورُ الشخصيّات الخمس وحدَها (`/api/v1/persona/{slug}/avatar`)، لا الموقعُ كلُّه */
+      { protocol: "https", hostname: "loopztv.com", pathname: "/api/v1/persona/*/avatar" },
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
       // أعلام اللغات — تُجلب على الخادم وتُقدَّم من نطاقنا، فلا يُوسَّع
       // `img-src` في سياسة الأمان لنطاقٍ خارجيّ جديد

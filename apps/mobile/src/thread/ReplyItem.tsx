@@ -178,10 +178,13 @@ export const ReplyItem = memo(function ReplyItem({
             <Text size={11} weight="700" color={tokens.accent}>{t.talkReviewTag}</Text>
           </View>
           {/* «★ 9 / 10» يُقرأ من اليسار في الاتجاهين — رقمٌ ومقامُه لا جملة */}
-          <Text size={13} weight="800" color={tokens.accent} style={{ writingDirection: "ltr" }}>
-            {`★ ${num(review.rating, locale)}`}
-            <Text size={12} muted>{` / ${num(10, locale)}`}</Text>
-          </Text>
+          {/* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI بلا درجة: الشارةُ وحدَها */}
+          {review.rating != null ? (
+            <Text size={13} weight="800" color={tokens.accent} style={{ writingDirection: "ltr" }}>
+              {`★ ${num(review.rating, locale)}`}
+              <Text size={12} muted>{` / ${num(10, locale)}`}</Text>
+            </Text>
+          ) : null}
         </View>
       ) : null}
       {replyingTo ? <Text size={12} muted style={{ marginTop: 2 }}>{t.talkReplyingTo(replyingTo)}</Text> : null}

@@ -3,6 +3,7 @@ import {
   isPartner as isPartnerOf,
   isVerified as isVerifiedOf,
   isFounder,
+  isAiPersona,
   type PlanBearer,
 } from "@/core/plan";
 import type { Dict } from "@/core/i18n";
@@ -24,6 +25,7 @@ export type BadgeLabels = Pick<
   | "founderBadge"
   | "verifiedBadge"
   | "verifiedBadgeTip"
+  | "aiBadge"
 >;
 
 /**
@@ -48,6 +50,7 @@ export function badgeLabelsOf(t: Dict): BadgeLabels {
     founderBadge: t.founderBadge,
     verifiedBadge: t.verifiedBadge,
     verifiedBadgeTip: t.verifiedBadgeTip,
+    aiBadge: t.aiBadge,
   };
 }
 
@@ -102,7 +105,8 @@ function Pill({
   /* 🆕 **وثالثةٌ في الاتّحاد** (D-833): **الكلمةُ اتّحادٌ لا نصٌّ حرّ**
      — **فمن كتب كلمةً رابعةً بيده يكسر البناء قبل أن يُنشر** (وهو ما
      أمسك هذه الإضافةَ نفسَها لحظةَ كتابتها). */
-  word: "PLUS" | "PARTNER" | "FOUNDER";
+  /* 🆕 **و«AI» رابعتُها** (D-1563): شارةُ شخصيّات لوبز — القرصُ نفسُه بكلمةٍ رابعةٍ وعرضٍ يسع حرفين */
+  word: "PLUS" | "PARTNER" | "FOUNDER" | "AI";
   width: number;
   tracking: number;
   label: string;
@@ -225,6 +229,11 @@ export function PlanPill({
  * ناعمةٍ (منحنيات `Q` لا رؤوسٌ حادّة) وصحٌّ أسودُ عريض.
  * **ولا أيقونةَ جاهزةٍ ولا أزرقَ ولا أخضر** (نصُّ اللوح).
  */
+/** 🆕 D-1563 — شارةُ شخصيّات لوبز AI: القرصُ نفسُه (`Pill`) بالكلمة «AI» — صغيرةٌ بجانب الاسم في كلِّ سطح (قرار أحمد «١أ») */
+export function AiPill({ t }: { t: BadgeLabels }) {
+  return <Pill word="AI" width={24} tracking={0.6} label={t.aiBadge} />;
+}
+
 export function VerifiedBadge({ t }: { t: BadgeLabels }) {
   return (
     <span
@@ -271,6 +280,8 @@ export interface IdentityState {
   founder: boolean;
   /** شعارُ Loopz+ داخل التطبيق — للبلس والبارتنر معاً (نصُّ اللوح) */
   brandPlus: boolean;
+  /** 🆕 D-1563 — شخصيّةٌ من شخصيّات لوبز AI */
+  ai: boolean;
 }
 
 export function identityOf(p: PlanBearer | null | undefined): IdentityState {
@@ -282,6 +293,7 @@ export function identityOf(p: PlanBearer | null | undefined): IdentityState {
     verified: isVerifiedOf(p),
     founder: isFounder(p),
     brandPlus: partner || plus,
+    ai: isAiPersona(p),
   };
 }
 
@@ -301,16 +313,18 @@ export function AccountBadges({
   t: BadgeLabels;
   className?: string;
 }) {
-  const { tier, verified, founder } = identityOf(profile);
+  const { tier, verified, founder, ai } = identityOf(profile);
   /* 🆕 **والمؤسِّسُ يُحسب في شرط الغياب** (D-833): **شرطٌ ينسى الصفةَ
      يُرجع `null` فلا تُرسم شارتُها أصلاً** — **وفرعٌ يُضاف في مكانٍ
      ويُنسى في حارسه لا يعمل.** */
-  if (!tier && !verified && !founder) return null;
+  if (!tier && !verified && !founder && !ai) return null;
   return (
     <span
       className={`inline-flex items-center ${className}`}
       style={{ gap: 4, flex: "0 0 auto" }}
     >
+      {/* 🆕 D-1563 — «AI» أوّلاً: هي ما يقول من الكاتب (والشخصيّةُ لا طبقةَ لها أصلاً) */}
+      {ai ? <AiPill t={t} /> : null}
       <PlanPill tier={tier} t={t} founder={founder} />
       {verified ? <VerifiedBadge t={t} /> : null}
     </span>
@@ -358,6 +372,7 @@ export function AccountIdentity({
   const plus = derived ? derived.tier !== null : !!isPlus || !!isPartner;
   const verified = derived ? derived.verified : !!isVerified;
   const founder = derived ? derived.founder : false;
+  const ai = derived ? derived.ai : false;
   const tier: "plus" | "partner" | null = partner
     ? "partner"
     : plus
@@ -370,6 +385,7 @@ export function AccountIdentity({
       style={{ gap: 4 }}
     >
       <span className={`min-w-0 truncate ${nameClassName}`}>{name}</span>
+      {ai ? <AiPill t={t} /> : null}
       <PlanPill tier={tier} t={t} founder={founder} />
       {verified ? <VerifiedBadge t={t} /> : null}
     </Tag>

@@ -14,6 +14,8 @@ import { num } from "@/core/i18n";
 import { posterFor } from "../poster";
 import type { TitleCommunityPayload } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { IdentityBadges } from "../IdentityBadges";
+import { personaOf } from "@/core/personas";
 
 /**
  * ====== تبويبُ المجتمع — نسخةُ `TitleCommunityTab` للقراءة (Phase 11-D · D3 · D-956) ======
@@ -110,18 +112,30 @@ export function CommunityTab({
 export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(!r.has_spoiler);
+  /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه: حلقةٌ بلونها، و«AI» بجانب الاسم، ووصفُها تحته، ولا نجمة */
+  const persona = r.persona ? personaOf(r.user_id) : null;
   /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (
     <Pressable disabled={!onOpen} onPress={onOpen} accessibilityRole={onOpen ? "link" : undefined} style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <View style={{ width: 28, height: 28, borderRadius: 14, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+        <View style={{ width: 28, height: 28, borderRadius: 14, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: persona ? 2 : 0, borderColor: persona?.color }}>
           {r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
         </View>
-        <Text size={13} weight="700" style={{ flex: 1 }} numberOfLines={1}>{r.name}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-          <Icon name="star-filled" size={12} color={tokens.accent} />
-          <Text size={12} weight="700" color={tokens.accent}>{num(r.rating, locale)}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text size={13} weight="700" style={{ flexShrink: 1 }} numberOfLines={1}>{r.name}</Text>
+            {persona ? <IdentityBadges flags={{ partner: false, plus: false, founder: false, verified: false, ai: true }} nameSize={13} /> : null}
+          </View>
+          {persona ? (
+            <Text size={11} muted numberOfLines={1}>{`${persona.tagline[locale === "ar" ? "ar" : "en"]}${r.persona?.scope ? ` · ${r.persona.scope}` : ""}`}</Text>
+          ) : null}
         </View>
+        {r.rating != null ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            <Icon name="star-filled" size={12} color={tokens.accent} />
+            <Text size={12} weight="700" color={tokens.accent}>{num(r.rating, locale)}</Text>
+          </View>
+        ) : null}
       </View>
       {r.review ? (
         reveal ? (

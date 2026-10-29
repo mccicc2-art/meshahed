@@ -159,13 +159,16 @@ export type TitleCommunityPayload = {
     name: string;
     username: string | null;
     avatar_url: string | null;
-    rating: number;
+    /** 🆕 D-1563 — `null` لمراجعة شخصيّةٍ من شخصيّات لوبز AI */
+    rating: number | null;
     review: string | null;
     has_spoiler: boolean;
     updated_at: string;
     likes: number;
     replies: number;
     mine: boolean;
+    /** 🆕 D-1563 — الشخصيّة ونطاقُ مراجعتها («الموسم الأول») — غائبٌ لرأي إنسان */
+    persona?: { slug: string; scope: string | null };
   }[];
   /** نشراتُ لوبز وأخبارُه بلغة القارئ — سطرٌ وتاريخ (`bulletinLine` · `newsLine`) */
   bulletins: { line: string; at: string; replies: number }[];

@@ -123,7 +123,8 @@ export async function TitleCommunityTab({
     ...reviews
       .filter((r) => r.review?.trim() || replyCounts.has(r.id))
       .map((r) => ({
-        kind: "review" as const,
+        /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI صنفٌ في الخطّ له رقاقتُه («شخصيات لوبز») — والصفُّ نفسُه يرسمها */
+        kind: r.persona ? ("persona" as const) : ("review" as const),
         at: r.updated_at,
         node: (
           <TitleReviewRow
@@ -215,7 +216,8 @@ export async function TitleCommunityTab({
         mediaType={mediaType}
         title={title}
         posterPath={posterPath}
-        raters={reviews.map((r) => ({
+        /* 🆕 D-1563 — **من قيّم** وحدَهم: الشخصيّاتُ لا درجةَ لها، فلا مكانَ لها في بطاقة المقيِّمين */
+        raters={reviews.filter((r): r is typeof r & { rating: number } => r.rating != null && !r.persona).map((r) => ({
           id: r.id,
           nickname: r.nickname,
           username: r.username,

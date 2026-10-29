@@ -8,11 +8,13 @@ import "server-only";
  * (نهجُ `homeCore` · `communityCore` · `messagesCore`). لا نصَّ مترجماً هنا: ما يحتاج القاموسَ (`t`) يبقى عند من يرسم.
  */
 import { isPlus } from "@/core/plan";
+import { isPersonaId, personaText } from "@/core/personas";
 import {
   getUser,
   getProfileByUsername,
   getWeeklyRanks,
   getRatingsOf,
+  getPersonaReviewsOf,
   getFollowStats,
   getFollowRelation,
   recordProfileView,
@@ -80,6 +82,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   const [
     rawRatings,
     stats,
+    personaRaw,
     relation,
     rawFollows,
     watched,
@@ -97,6 +100,8 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   ] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
+    /* 🆕 D-1563 — **شخصيّةُ لوبز AI مراجعاتُها من جدولها** (لا `ratings`): تُقرأ لها وحدَها، والإنسانُ لا يدفع النداء */
+    isPersonaId(profile.id) ? getPersonaReviewsOf(profile.id) : Promise.resolve([]),
     getFollowRelation(profile.id),
     /* ⚖️ **وقراءةُ العدّاد سقطت مع عرضه** (D-584) — **نداءٌ لا يُقرأ
          ثمنٌ بلا مقابل** (D-152)؛ والتسجيلُ (`recordProfileView`) باقٍ
@@ -150,11 +155,27 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
 
   /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
      (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
-  const [ratings, follows, favorites] = await Promise.all([
+  const [ratings, follows, favorites, personaReviews] = await Promise.all([
     localizeRows(rawRatings, locale),
     localizeRows(rawFollows, locale),
     /* المفضّلة عناوينُها مخزّنةٌ كبقية الصفوف، فتُترجَم عند العرض (D-048) */
     localizeRows(rawFavorites, locale),
+    /* 🆕 D-1563 — **مراجعةُ الشخصيّة صفُّ مراجعةٍ بلا درجة**: النصُّ بلغة القارئ، والعنوانُ والملصقُ من الترجمة نفسِها
+       (الكاتبُ قد لا يحفظهما) — فتُرسم في تبويب «مراجعات» بالبطاقة نفسِها، ونجمتُها تغيب لأنّ `rating` فارغ (D-219) */
+    localizeRows(
+      personaRaw.map((p) => ({
+        user_id: profile.id,
+        tmdb_id: p.tmdb_id,
+        media_type: p.media_type,
+        rating: null as number | null,
+        review: personaText(locale, p.body_ar, p.body_en),
+        title: p.title,
+        poster_path: p.poster_path,
+        updated_at: p.publish_at,
+        has_spoiler: p.has_spoiler,
+      })),
+      locale,
+    ),
   ]);
 
   /* استبدالٌ في مصدرٍ واحد: كل أقسام البروفايل تُبنى من هذين الصفّين،
@@ -343,7 +364,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
      **المصدرُ `ratings` كلُّه**، والنجمةُ وحدَها فعلٌ يستحقّ صفَّه
      (وهو عُرفُ خطِّ المجتمع نفسِه: صفُّ `rate` بلا متن). **والمتنُ
      يُرسم لمن كتبه وحدَه** — لا فقرةَ فارغةً تحت النجمة. */
-  const reviewsNewest = [...ratings]
+  const reviewsNewest = [...ratings, ...personaReviews]
     .filter((r) => r.rating != null || r.review?.trim())
     .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
 

@@ -2,6 +2,7 @@
 
 import { tagSource, type WatchSource } from "@/lib/watchSource";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
+import { isPersonaId } from "@/core/personas";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -4206,7 +4207,8 @@ export async function toggleReviewLike(
     : await supabase.from("review_likes").insert(key);
 
   if (error) fail(error);
-  if (!liked)
+  /* 🆕 D-1563 — شخصيّاتُ لوبز AI لا تُنبَّه: لا أحدَ وراءها يقرأ الجرس */
+  if (!liked && !isPersonaId(reviewUserId))
     notifySignal({ to: reviewUserId, kind: "like_review", actorId: user.id, tmdbId, mediaType, dedupe: `like_review:${user.id}:${reviewUserId}:${mediaType}:${tmdbId}` });
   // لا تجديد للرئيسية: الإعجاب يُنقر من صفحات العمل والناس، وكلاهما لا
   // يرسم بيانات الرئيسية — تجديدُ أغلى صفحةٍ مع كل قلب كان هدراً صافياً

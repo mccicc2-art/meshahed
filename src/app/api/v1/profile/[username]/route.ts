@@ -7,6 +7,7 @@ import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus } from "@/core/plan";
 import { isLoopz } from "@/core/loopz";
+import { personaOf } from "@/core/personas";
 import { capCards } from "@/core/cardCount";
 import { HIDEABLE_PROFILE_TABS, orderedProfileTabs, sanitizeProfilePrefs } from "@/core/profilePrefs";
 import {
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       const h = parseProfileHandle(username);
       if (!h) return fail("invalid_input");
 
-      const { locale } = await getT();
+      const { locale, t } = await getT();
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const uid = await getUserId();
       const lim = limited(`v1:profile:${uid ?? ip}`, 60, 60_000);
@@ -116,11 +117,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       /* 🆕 D-1380 — دائرةُ الرسائل في ملفّ غيري: حكمُ البوّاب، للمسجَّل وحدَه */
       const canMsg = c.me && !c.isMe ? await canMessage(profile.id) : null;
 
+      /* 🆕 D-1563 — ملفُّ شخصيّةٍ AI: الاسمُ ووصفُها بلغة القارئ مكانَ الاسم والنبذة، وسطرُ الشرح الكامل في آخر النبذة
+         («AI» بجانب الاسم يرسمها `IdentityBadges` من المعرّف)، وتبويبُ «مراجعات» وحدَه — صنوُ صفحة الويب */
+      const persona = personaOf(profile.id);
+      const pl = locale === "ar" ? "ar" : "en";
       const payload: ProfilePayload = {
         viewer: { signed_in: !!c.me, is_me: c.isMe, density, can_message: canMsg },
         person: {
           id: profile.id,
-          nickname: profile.nickname,
+          nickname: persona ? persona.name[pl] : profile.nickname,
           username: profile.username,
           avatar_url: profile.avatar_url,
           hide_name: !!profile.hide_name,
@@ -130,7 +135,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           cover_url: profile.cover_url,
           cover_pos: profile.cover_pos ?? null,
           avatar_pos: profile.avatar_pos ?? null,
-          bio: c.bioText,
+          bio: persona ? `${persona.tagline[pl]}\n${persona.about[pl]}\n${persona.tastes[pl]}\n\n${t.personaExplain}` : c.bioText,
           is_private: !!profile.is_private,
           hide_follow_lists: !c.isMe && !!profile.hide_follow_lists,
           joined_at: profile.joined_at && isPlus(profile) ? profile.joined_at : null,
@@ -148,7 +153,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         },
         weekly_ranks: c.weeklyRanks,
         display: { stats: prefs.stats, stats_link: prefs.statsLink, cards: cardCap >= 999 ? null : cardCap },
-        tabs: locked ? [] : (orderedProfileTabs(prefs).filter((k) => !hidden(k)) as ProfileTabKey[]),
+        tabs: locked ? [] : persona ? (["reviews"] as ProfileTabKey[]) : (orderedProfileTabs(prefs).filter((k) => !hidden(k)) as ProfileTabKey[]),
         sections: prefs.order as ProfileSectionKey[],
         customize_hint: c.customizeHint,
         favorites: locked

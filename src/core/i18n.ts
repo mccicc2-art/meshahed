@@ -2602,6 +2602,10 @@ const ar = {
   verifiedBadge: "حساب موثَّق",
   /* 🆕 نصُّ أحمد حرفاً (D-773) — ما يظهر عند الضغط على العلامة */
   verifiedBadgeTip: "تم التأكد من أن هذا الحساب يمثل الشخص أو الجهة المذكورة.",
+  /* 🆕 D-1563 — شخصيات لوبز AI: الشارةُ الصغيرة بجانب الاسم، وسطرُ الشرح في ملفّها، ورقاقةُ خطّ العمل */
+  aiBadge: "شخصية AI من لوبز",
+  personaExplain: "شخصية AI من لوبز — مراجعاتها مكتوبة بالذكاء الاصطناعي، ولا تدخل في تقييم الجمهور.",
+  personaFeedChip: "شخصيات لوبز",
   /* 🆕 **وسطرُ المشترك يقول ما اشتراه لا ما ينتظره** (D-633، إصلاحُ
      نصٍّ ظهر حيّاً): «خطط إضافية قريباً» كان جواباً لسؤالٍ لم يسأله
      المشترك — **وسطرٌ ينتظر بالنيابة عن مالكٍ عطلٌ في الصدق** (D-217). */
@@ -4856,6 +4860,9 @@ const en: Dict = {
   verifiedBadge: "Verified account",
   verifiedBadgeTip:
     "This account has been confirmed to represent the stated person or organisation.",
+  aiBadge: "Loopz AI persona",
+  personaExplain: "A Loopz AI persona — its reviews are written by AI and never count toward the audience rating.",
+  personaFeedChip: "Loopz personas",
   plusIncludes: "What your membership includes",
   plusLocked: "Loopz+ feature",
   loginNeedsKeys:

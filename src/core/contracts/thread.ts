@@ -58,7 +58,8 @@ export type ThreadRow = {
    * العمل لا يظهر في ريفيو»). السطرُ ليس منشوراً: `id` = `review:<صاحبها>`، والقلبُ قلبُ المراجعة، والردودُ في صفحتها
    * (`/review/…`). غائبٌ في كلِّ ما عداها ومن خادمٍ أقدم.
    */
-  review?: { user_id: string; rating: number; replies: number } | null;
+  /** 🆕 D-1563 — `rating: null` لمراجعة شخصيّةٍ من شخصيّات لوبز AI (رأيٌ بلا درجة) */
+  review?: { user_id: string; rating: number | null; replies: number } | null;
 };
 
 /** 🆕 D-1495 — موسمٌ في منتقي الحلقة: رقمُه وعددُ حلقاته (TMDB؛ والموسمُ صفر «الحلقاتُ الخاصّة» خارجه) */
