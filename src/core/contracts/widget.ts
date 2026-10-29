@@ -162,6 +162,22 @@ export interface WidgetToWatchItem extends WidgetTitle {
   added_at: string;
 }
 
+/**
+ * 🆕 D-1571 — «الآن في السينما»: أفلامُ دور العرض الآن (TMDB `now_playing` لمنطقة القارئ). بوسترٌ في كلِّ الأشكال؛ «+» يضيفه
+ * إلى «للمشاهدة» برمز الودجت (`/api/v1/widget/towatch`) ما لم يكن فيها (`followed`).
+ */
+export interface WidgetCinemaItem extends WidgetTitle {
+  kind: "movie";
+  rating: number | null;
+  /** التصنيفُ بلغة القارئ */
+  genre: string | null;
+  release_date: string | null;
+  /** عُرض أوّلَ مرّةٍ في الأسبوعين الأخيرين — شارةُ «جديد» */
+  is_new: boolean;
+  /** في متابعاته («للمشاهدة» أو شاهده) — فلا «+» */
+  followed: boolean;
+}
+
 /** تخطيطٌ محفوظٌ في التطبيق — ورقةُ «تعديل الأداة» في الآيفون تختار واحداً منها (W40، الخيار ب) */
 export interface WidgetLayoutEntry {
   id: string;
@@ -192,6 +208,11 @@ export interface WidgetStringsV2 {
   skip?: string;
   started?: string;
   undo?: string;
+  /** 🆕 D-1571 — «الآن في السينما» وشارتاه و«أُضيف» بعد «+» — اختياريّةٌ للخلاصات الأقدم */
+  cinemaTitle?: string;
+  cinemaTag?: string;
+  newTag?: string;
+  added?: string;
 }
 
 export interface WidgetFeedV2 {
@@ -212,6 +233,8 @@ export interface WidgetFeedV2 {
   activity: WidgetActivityItem[];
   towatch: WidgetToWatchItem[];
   upcoming: { items: WidgetUpcomingAny[]; total: number };
+  /** 🆕 D-1571 — «الآن في السينما»؛ خلاصةٌ أقدمُ بلاه ⇒ القسمُ فارغ (يختفي) */
+  cinema?: WidgetCinemaItem[];
   strings: WidgetStringsV2;
 }
 

@@ -137,6 +137,7 @@ export function WidgetScreen() {
       friends: t.widgetFriends,
       tw: t.widgetSecToWatch,
       act: t.widgetActivity,
+      cine: t.widgetCinema,
     }),
     [t],
   );

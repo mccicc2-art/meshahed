@@ -15,7 +15,8 @@ const path = require("path");
 const PKG_DIR = path.join("com", "loopztv", "app", "widget");
 
 /** الأيقوناتُ من مجموعة التطبيق الواحدة (`assets/icons`) لا رسمٌ ثانٍ لها (القاعدة ٣) */
-const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png", widget_ic_play: "play.png", widget_ic_search: "search.png", widget_ic_lock: "lock.png", widget_ic_undo: "undo.png", widget_ic_star: "star-filled.png", widget_ic_star_off: "star.png" };
+/* 🆕 D-1571 — `widget_ic_plus` («+» على «الآن في السينما») و`widget_ic_calendar` («القادم» في نصفه وصغيره) */
+const ICONS = { widget_ic_check: "check.png", widget_ic_repeat: "repeat.png", widget_ic_play: "play.png", widget_ic_search: "search.png", widget_ic_lock: "lock.png", widget_ic_undo: "undo.png", widget_ic_star: "star-filled.png", widget_ic_star_off: "star.png", widget_ic_plus: "plus.png", widget_ic_calendar: "calendar.png" };
 
 /* 🆕 الودجت الواحد (W28): مزوّدٌ واحد — `LoopzWidget` باسم المتوسط القديم (D-929)، والبقيّةُ أُزيلت («٢ ب»: تُوضع من جديد) */
 const PROVIDERS = [{ name: ".widget.LoopzWidget", label: "@string/w2_name", info: "@xml/loopz_widget_info" }];

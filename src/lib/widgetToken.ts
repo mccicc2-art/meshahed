@@ -326,12 +326,43 @@ export async function widgetRate(who: { userId: string }, movieTmdbId: number, r
   return true;
 }
 
-type ActionKind = "movie" | "start" | "rate";
+/**
+ * 🆕 D-1571 — «+» على «الآن في السينما»: يضيف الفيلمَ إلى «للمشاهدة» (متابعةٌ كـ`follow` في التطبيق، والعنوانُ والملصقُ من TMDB لا من
+ * الطلب)، والتراجعُ يحذفه **ما لم يكن له أثرٌ** (لا حالةَ مشاهدة) — فلا يمحو رمزٌ مسروقٌ فيلماً أضافه صاحبُه من قبل وتابعه.
+ */
+export async function widgetToWatch(who: { userId: string }, movieTmdbId: number, on: boolean): Promise<boolean> {
+  const db = await createServiceClient();
+  if (on) {
+    const m = await getMovie(movieTmdbId).catch(() => null);
+    if (!m) return false;
+    const { error } = await db.from("follows").upsert(
+      {
+        user_id: who.userId,
+        tmdb_id: movieTmdbId,
+        media_type: "movie",
+        title: String(m.title ?? "").slice(0, 300),
+        poster_path: m.poster_path ?? null,
+      },
+      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
+    );
+    if (error) throw new Error("widget towatch failed");
+  } else {
+    const { error } = await db.from("follows").delete().match({ user_id: who.userId, tmdb_id: movieTmdbId, media_type: "movie" }).is("watch_state", null);
+    if (error) throw new Error("widget untowatch failed");
+  }
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/movie/${movieTmdbId}`);
+  return true;
+}
+
+type ActionKind = "movie" | "start" | "rate" | "towatch";
 
 /**
  * `POST /api/v1/widget/movie|start|rate` — مسارٌ واحدٌ لكلِّ فعل، والهويّةُ من الرمز وحدَه كـ`widgetMarkRoute`،
  * ودلوُ الحدِّ نفسُه (`wmark`): نقراتُ الودجت كلُّها من جيبٍ واحد.
  * - `movie` `{ movieTmdbId, watched }` · `start` `{ showTmdbId, start }` · `rate` `{ movieTmdbId, rating: 1..10 }`
+ * - 🆕 D-1571 `towatch` `{ movieTmdbId, on }` — «+» على «الآن في السينما»
  * - الردُّ `{ done: true }`؛ و`not_found` = ليس فيلماً حقيقيّاً، أو مسلسلاً لا يتابعه صاحبُ الرمز.
  */
 export function widgetActionRoute(kind: ActionKind) {
@@ -346,6 +377,7 @@ export function widgetActionRoute(kind: ActionKind) {
         let done = false;
         if (kind === "movie") done = await widgetMovie(who, intIn(b?.movieTmdbId, 1, 100_000_000), b?.watched !== false);
         else if (kind === "start") done = await widgetStart(who, intIn(b?.showTmdbId, 1, 100_000_000), b?.start !== false);
+        else if (kind === "towatch") done = await widgetToWatch(who, intIn(b?.movieTmdbId, 1, 100_000_000), b?.on !== false);
         else done = await widgetRate(who, intIn(b?.movieTmdbId, 1, 100_000_000), intIn(b?.rating, 1, 10));
         if (!done) return fail("not_found");
         return ok({ done: true });

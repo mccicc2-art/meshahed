@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- فاصلٌ بين قسمين: `WIDGET_HEIGHTS.gap` = ١٣ (مسافةٌ وخطٌّ ومسافة) — ثابتٌ صغير، والزائدُ صفوفٌ لا فراغ (١٤ أكتوبر) -->
+<!-- فاصلٌ بين قسمين: ١٣ قبل 12 — و🆕 D-1571 ٩×النسبة في أندرويد 12+ (`div_root`، خالد: «الفراغات بين القوائم قللها») -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/div_root"
     android:layout_width="match_parent"
     android:layout_height="13dp">
     <FrameLayout

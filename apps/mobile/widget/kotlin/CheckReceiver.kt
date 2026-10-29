@@ -92,6 +92,8 @@ class CheckReceiver : BroadcastReceiver() {
       ACTION_MARK -> p.putString(K_UNDO, JSONObject().put("kind", "ep").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).put("prev", contItem(ctx, id)).toString())
       ACTION_MOVIE -> p.putString(K_UNDO, JSONObject().put("kind", "movie").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
       ACTION_START -> p.putString(K_UNDO, JSONObject().put("kind", "start").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      /* 🆕 D-1571 — «+» على «الآن في السينما»: «✓ أُضيف» و«↶» فوراً، كـ«شاهدته» */
+      ACTION_TOWATCH -> p.putString(K_UNDO, JSONObject().put("kind", "towatch").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
       ACTION_RATE -> {
         val r = LoopzWidget.prefs(ctx).getString(K_RATE, null)
         if (r != null) p.putString(K_RATE_WAS, r)
@@ -116,7 +118,7 @@ class CheckReceiver : BroadcastReceiver() {
     val prefs = LoopzWidget.prefs(ctx)
     val p = prefs.edit()
     when (action) {
-      ACTION_MARK, ACTION_MOVIE, ACTION_START -> {
+      ACTION_MARK, ACTION_MOVIE, ACTION_START, ACTION_TOWATCH -> {
         val o = prefs.getString(K_UNDO, null)?.let { runCatching { JSONObject(it) }.getOrNull() }
         if (o?.optBoolean("pending") == true) p.remove(K_UNDO)
       }
@@ -172,6 +174,15 @@ class CheckReceiver : BroadcastReceiver() {
         }
         undoFor(ctx, JSONObject().put("kind", "start").put("id", id))
       }
+      ACTION_TOWATCH -> {
+        if (id <= 0) return
+        post(ctx, "/api/v1/widget/towatch", token, JSONObject().put("movieTmdbId", id).put("on", true)) ?: return revert(ctx, action)
+        if (undoneWhilePending(ctx, "towatch", id)) {
+          post(ctx, "/api/v1/widget/towatch", token, JSONObject().put("movieTmdbId", id).put("on", false))
+          return settleEarlyUndo(ctx)
+        }
+        undoFor(ctx, JSONObject().put("kind", "towatch").put("id", id))
+      }
       ACTION_RATE -> {
         val n = i.getInt("rating", 0)
         if (id <= 0 || n !in 1..10) return
@@ -202,7 +213,8 @@ class CheckReceiver : BroadcastReceiver() {
         p.putString(K_HIDDEN, hiddenWith(ctx, o.optInt("id")))
         p.putString(K_RATE, JSONObject().put("id", o.optInt("id")).put("title", o.optString("title")).put("poster", o.optString("poster")).toString())
       }
-      "start" -> p.putString(K_HIDDEN, hiddenWith(ctx, o.optInt("id")))
+      /* «أُضيف» يبقى ✓ على البوستر حتى تصل خلاصةٌ جديدة (`followed` من الخادم) */
+      "start", "towatch" -> p.putString(K_HIDDEN, hiddenWith(ctx, o.optInt("id")))
     }
     p.apply()
     LoopzWidget.redrawAll(ctx)
@@ -224,6 +236,7 @@ class CheckReceiver : BroadcastReceiver() {
       }
       "movie" -> post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false)) != null
       "start" -> post(ctx, "/api/v1/widget/start", token, JSONObject().put("showTmdbId", id).put("start", false)) != null
+      "towatch" -> post(ctx, "/api/v1/widget/towatch", token, JSONObject().put("movieTmdbId", id).put("on", false)) != null
       else -> true
     }
     if (!ok) return revert(ctx, ACTION_UNDO)
@@ -282,7 +295,8 @@ class CheckReceiver : BroadcastReceiver() {
     const val ACTION_RATE = "com.loopztv.app.widget.RATE"
     const val ACTION_SKIP = "com.loopztv.app.widget.SKIP"
     const val ACTION_UNDO = "com.loopztv.app.widget.UNDO"
-    private val ACTIONS = setOf(ACTION_MARK, ACTION_UNMARK, ACTION_MOVIE, ACTION_START, ACTION_RATE, ACTION_UNDO)
+    const val ACTION_TOWATCH = "com.loopztv.app.widget.TOWATCH"
+    private val ACTIONS = setOf(ACTION_MARK, ACTION_UNMARK, ACTION_MOVIE, ACTION_START, ACTION_RATE, ACTION_UNDO, ACTION_TOWATCH)
     const val BASE = "https://loopztv.com"
     /** W37 — «زر تراجع … لمدة ٥ ثوان» */
     const val UNDO_MS = 5_000L
@@ -337,6 +351,8 @@ class CheckReceiver : BroadcastReceiver() {
     /** «▶ ابدأ» لمسلسل */
     fun startIntent(ctx: Context, code: Int, t: WTitle): PendingIntent = pi(ctx, code, base(ctx, ACTION_START).putExtra("id", t.id))
 
+    /** 🆕 D-1571 — «+ للمشاهدة» من «الآن في السينما» */
+    fun towatchIntent(ctx: Context, code: Int, t: WTitle): PendingIntent = pi(ctx, code, base(ctx, ACTION_TOWATCH).putExtra("id", t.id))
     fun undoIntent(ctx: Context, code: Int): PendingIntent = pi(ctx, code, base(ctx, ACTION_UNDO))
     fun skipIntent(ctx: Context, code: Int): PendingIntent = pi(ctx, code, base(ctx, ACTION_SKIP))
     fun rateIntent(ctx: Context, code: Int, id: Int, n: Int): PendingIntent =

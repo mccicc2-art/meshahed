@@ -56,6 +56,18 @@ struct CycleTonightIntent: AppIntent {
   }
 }
 
+/** 🆕 D-1571 — «↻» على «الآن في السينما»: عدّادُه هو (`cinemaIndex`) لا عدّادُ فيلم الليلة */
+struct CycleCinemaIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.cycle"
+  static let isDiscoverable = false
+
+  func perform() async throws -> some IntentResult {
+    let d = FeedStore.defaults
+    d?.set((d?.integer(forKey: "cinemaIndex") ?? 0) + 1, forKey: "cinemaIndex")
+    return .result()
+  }
+}
+
 /* ====== 🆕 D-1500 — التقليبُ داخل الودجت (بديلُ التمرير) ======
  * الودجتُ صورةٌ يرسمها النظام: لا سحبَ فيها ولا قائمةَ تتحرّك (طلبُ أحمد ٢١ أكتوبر: «تمرير قائمة للمشاهدة داخل الويدجت»).
  * فكلُّ قسمٍ يزيد على ما يتّسع له يحمل ‹ › — اللمسةُ تحفظ أوّلَ المعروض في الحاوية ويعيد النظامُ الرسمَ فوراً، بلا شبكة
@@ -275,7 +287,8 @@ enum WState {
     case "movie":
       hide(id)
       d?.set(["id": id, "title": o["title"] as? String ?? "", "poster": o["poster"] as? String ?? ""], forKey: "wRate")
-    case "start":
+    case "start", "towatch":
+      /* 🆕 D-1571 — «أُضيف» يبقى ✓ على بوستر السينما حتى تصل خلاصةٌ أحدث (`followed` من الخادم) */
       hide(id)
     default: break
     }
@@ -415,6 +428,31 @@ struct StartShowIntent: AppIntent {
   }
 }
 
+/** 🆕 D-1571 — «+ للمشاهدة» من «الآن في السينما»: «✓ أُضيف» و«↶» فوراً، كـ«شاهدته» */
+struct ToWatchIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.mark"
+  static let isDiscoverable = false
+  @Parameter(title: "id") var id: Int
+
+  init() {}
+  init(id: Int) { self.id = id }
+
+  func perform() async throws -> some IntentResult {
+    Diag.add("towatch", "tap", nil)
+    WState.setPending("towatch", id)
+    if await MarkAPI.post("/api/v1/widget/towatch", ["movieTmdbId": id, "on": true]) != nil {
+      if WState.takeCancel("towatch", id) {
+        _ = await MarkAPI.post("/api/v1/widget/towatch", ["movieTmdbId": id, "on": false])
+      } else {
+        WState.setUndo(["kind": "towatch", "id": id])
+      }
+    } else {
+      WState.clearPending()
+    }
+    return .result()
+  }
+}
+
 /** 🆕 «↶ تراجع» (W37 — ٥ ثوانٍ): الفعلُ المعاكسُ على الخادم، ثمّ الودجتُ كما كان */
 struct UndoActionIntent: AppIntent {
   static let title: LocalizedStringResource = "intent.unmark"
@@ -432,6 +470,8 @@ struct UndoActionIntent: AppIntent {
       done = await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": false]) != nil
     case "start":
       done = await MarkAPI.post("/api/v1/widget/start", ["showTmdbId": id, "start": false]) != nil
+    case "towatch":
+      done = await MarkAPI.post("/api/v1/widget/towatch", ["movieTmdbId": id, "on": false]) != nil
     default: break
     }
     if done { FeedStore.defaults?.removeObject(forKey: "wUndo") }

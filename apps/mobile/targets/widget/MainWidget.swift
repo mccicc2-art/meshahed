@@ -45,6 +45,8 @@ struct V2Feed {
     let a = v2[k] as? [[String: Any]] ?? []
     return k == "towatch" ? a.filter { !hidden.contains(Int(num($0["id"]) ?? 0)) } : a
   }
+  /** 🆕 D-1571 — «الآن في السينما» (ثمانيةٌ من الخادم، `v2.cinema`) */
+  var cinema: [[String: Any]] { v2["cinema"] as? [[String: Any]] ?? [] }
   /** «فيلم الليلة» بلا ما شوهد للتوّ — فيأتي الفيلمُ التالي */
   var tonight: [WMovie] { feed.tonight.filter { !hidden.contains($0.id) } }
   /** نصٌّ من الخلاصة، وبديلُه للخلاصات الأقدم من الدفعة الثانية */
@@ -263,12 +265,25 @@ struct MainView: View {
       if locked {
         LockCard(f: f)
       } else if sizeName == "small" {
-        SmallMain(f: f.sized("small"), small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
+        /* 🆕 D-1571 — الصغيرُ بنقاط التصميم ١٦٠ ثمّ يُكبَّر بالنسبة، كأندرويد */
+        GeometryReader { g in
+          let sc = Self.scale(g.size.width, 160)
+          SmallMain(f: f.sized("small"), small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
+            .frame(width: g.size.width / sc, height: g.size.height / sc)
+            .scaleEffect(sc)
+            .frame(width: g.size.width, height: g.size.height)
+        }
       } else {
         /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ على هذا الجهاز (أكبرُ مفتاحٍ لا يزيد عليه) */
         GeometryReader { g in
+          /*
+           * 🆕 D-1571 — **كلُّ شيءٍ بالنسبة**: الودجتُ يُرسم بنقاط التصميم (عرضُه ٣٣٥) ثمّ يُكبَّر بـ`sc` — والصفوفُ محسومةٌ
+           * للارتفاع ÷ النسبة، كما يفعل أندرويد (`LoopzWidgets.kt`). فالمعاينةُ والودجتُ بالأرقام نفسِها على كلِّ جهاز.
+           */
+          let sc = Self.scale(g.size.width, 335)
+          let dh = g.size.height / sc
           /* 🆕 W37 — شريطُ التقييم يأخذ مكانه (٨٠ وفاصل) فتُحسم الصفوفُ لما بقي؛ وإن لم يبقَ ما يتّسع لصفٍّ فالشريطُ وحدَه */
-          let room = f.rate != nil ? g.size.height - 93 : g.size.height
+          let room = f.rate != nil ? dh - 93 : dh
           let fit = room < 130 && f.rate != nil ? nil : Self.byHeight(r["heights"] as? [String: Any], room)
           let fitLocked = (r["locked"] as? [String: Any])?[(fit?["size"] as? String) ?? sizeName] as? Bool ?? false
           if fitLocked {
@@ -276,11 +291,11 @@ struct MainView: View {
           } else {
             /* 🆕 أرقامُ الشكل بحجم الصفوف المحسومة (المتوسطُ أو الكبير) */
             let fs = f.sized((fit?["size"] as? String) ?? sizeName)
-            if f.rate != nil && fit == nil {
-              RowsView(f: fs, rows: [], opts: opts, now: entry.date, rate: f.rate)
-            } else {
-              RowsView(f: fs, rows: (fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [], opts: opts, now: entry.date, rate: f.rate)
-            }
+            let rows: [[String: Any]] = f.rate != nil && fit == nil ? [] : ((fit?["rows"] as? [[String: Any]]) ?? ((r["rows"] as? [String: Any])?[sizeName] as? [[String: Any]]) ?? [])
+            RowsView(f: fs, rows: rows, opts: opts, now: entry.date, rate: f.rate)
+              .frame(width: 335, height: dh)
+              .scaleEffect(sc)
+              .frame(width: g.size.width, height: g.size.height)
           }
         }
       }
@@ -291,6 +306,9 @@ struct MainView: View {
 }
 
 extension MainView {
+  /** 🆕 D-1571 — النسبةُ من العرض (٣٣٥، والصغيرُ ١٦٠)، محصورةٌ كما في أندرويد */
+  static func scale(_ w: CGFloat, _ ref: CGFloat) -> CGFloat { w > 0 ? min(1.7, max(0.8, w / ref)) : 1 }
+
   /** أكبرُ ارتفاعٍ محسومٍ لا يزيد على ارتفاع الودجت — وإن قصر عن كلِّها فأصغرُها */
   static func byHeight(_ all: [String: Any]?, _ h: CGFloat) -> [String: Any]? {
     guard let all else { return nil }
@@ -365,8 +383,8 @@ struct Poster: View {
 struct SecHeader: View {
   let title: String
   let link: URL?
-  /** 🆕 حجمُ العنوان من شكل الودجت (`header`) — ١٤٫٥ الأصل */
-  var size: CGFloat = 14.5
+  /** 🆕 D-1571 — رأسُ الخطّة ١١٫٥ بارتفاع ١٨ (وتحته ٦ ⇒ ٢٤ كما في المحرّك) */
+  var size: CGFloat = 11.5
   /** 🆕 D-1500 — سهما التقليب حين يزيد القسمُ على ما يتّسع له (بديلُ التمرير — الودجتُ صورةٌ لا تُسحب) */
   var pager: WPager? = nil
   var body: some View {
@@ -384,7 +402,7 @@ struct SecHeader: View {
         Button(intent: PageIntent(section: p.section, step: 1, total: p.total, per: p.per)) { pageIcon("chevron.forward") }.buttonStyle(.plain)
       }
     }
-    .frame(height: 20)
+    .frame(height: 18)
   }
   /** دائرةُ الأزرار نفسُها في الودجت (`circle`) بقطرٍ أصغر يناسب سطرَ العنوان؛ واللمسُ أعرضُ من الرسم.
       ‹ › اتّجاهيّان (`backward`/`forward`) فينقلبان وحدَهما في العربيّ */
@@ -419,6 +437,7 @@ enum Sections {
     case "tw": return f.feed.s("towatchTitle")
     case "friends": return f.s2("friendsTitle")
     case "act": return f.s2("activityTitle")
+    case "cine": return f.s2or("cinemaTitle", "الآن في السينما", "Now in cinemas")
     default: return f.s2("searchPlaceholder")
     }
   }
@@ -428,8 +447,25 @@ enum Sections {
     case "cont": return WLink.all("continue")
     case "up": return WLink.calendar
     case "tw": return WLink.all("towatch")
+    case "cine": return WLink.discover
     default: return nil
     }
+  }
+
+  /** 🆕 D-1571 — «الآن في السينما» المعروض: الأوّلُ، و«↻» يقلّب بعدّاده (`cinemaIndex`) */
+  static func cinema(_ f: V2Feed) -> [String: Any]? {
+    let all = f.cinema
+    guard !all.isEmpty else { return nil }
+    let n = FeedStore.defaults?.integer(forKey: "cinemaIndex") ?? 0
+    return all[((n % all.count) + all.count) % all.count]
+  }
+
+  /** 🆕 D-1571 — «★ ٧٫٨ · رعب» (و«جديد» إن نزل خلال أسبوعين) */
+  static func cineMeta(_ f: V2Feed, _ x: [String: Any]) -> String {
+    let rating = num(x["rating"]).flatMap { $0 > 0 ? "★ " + String(format: "%.1f", $0) : nil }
+    let genre = (x["genre"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    let fresh = (x["is_new"] as? Bool ?? false) ? f.s2or("newTag", "جديد", "New") : nil
+    return [rating, genre, fresh].compactMap { $0 }.joined(separator: " · ")
   }
 
   static func ago(_ iso: String?, _ f: V2Feed, now: Date) -> String? {
@@ -493,6 +529,11 @@ enum Sections {
       return f.feed.continue.items.map { c in
         LineItem(t: c.asTitle, name: c.title, sub: c.sub ?? c.label, link: WLink.title(c.asTitle), raw: nil)
       }
+    case "cine":
+      return f.cinema.compactMap { x in
+        guard let t = f.title(x) else { return nil }
+        return LineItem(t: t, name: t.title, sub: cineMeta(f, x), link: WLink.title(t), raw: x)
+      }
     case "tonight":
       guard let m = tonight(f, now: now) else { return [] }
       return [LineItem(t: m.asTitle, name: m.title, sub: tonightSub(m, f), link: WLink.title(m.asTitle), raw: nil)]
@@ -554,29 +595,26 @@ struct RowsView: View {
     }
   }
 
+  /** 🆕 D-1571 — فاصلٌ ٩ بخطٍّ في منتصفه (خالد ١٤:٢٤: «الفراغات بين القوائم قللها») */
+  var gap: some View {
+    Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).frame(height: 9)
+  }
+
   var body: some View {
-    /* ما يزيد من الارتفاع يتوزّع على الفواصل — لا كتلةَ سوداءَ تحت آخر قسم */
+    /* 🆕 D-1571 — ما يبقى من الارتفاع **فوق الودجت وتحته** لا بين القوائم: القوائمُ متلاصقةٌ بفواصلها، والصفُّ الوحيدُ في المنتصف */
     let afterSearch = (rows.first?["type"] as? String) == "search"
     VStack(alignment: .leading, spacing: 0) {
       if let rate, !afterSearch {
         RateStrip(f: f, rate: rate)
         if !rows.isEmpty { divider.frame(height: 13) }
       }
-      /* 🆕 D-1562 — صفٌّ وحيدٌ (المتوسط) يتوسّط الودجت بلا تمطيط: فراغٌ فوقه بقدر ما تحته */
-      if rows.count == 1 && rate == nil { Spacer(minLength: 0) }
+      if rate == nil { Spacer(minLength: 0) }
       ForEach(Array(rows.enumerated()), id: \.offset) { pair in
         if pair.offset == 1, afterSearch, let rate {
           divider.frame(height: 13)
           RateStrip(f: f, rate: rate)
         }
-        if pair.offset > 0 {
-          /* 🆕 فاصلٌ ١٣ (`gap`) — والزائدُ القليلُ (أقلُّ من صفّ، المحرّكُ كبّر الصفوف قبله) يتوزّع هنا */
-          VStack(spacing: 0) {
-            Spacer(minLength: 6)
-            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
-            Spacer(minLength: 6)
-          }
-        }
+        if pair.offset > 0 { gap }
         RowView(f: f, row: pair.element, opts: opts, now: now)
           .frame(height: CGFloat(num(pair.element["h"]) ?? 44), alignment: .top)
       }
@@ -584,9 +622,9 @@ struct RowsView: View {
         divider.frame(height: 13)
         RateStrip(f: f, rate: rate)
       }
-      if rows.count < 2 { Spacer(minLength: 0) }
+      Spacer(minLength: 0)
     }
-    .padding(12)
+    .padding(10)
   }
 }
 
@@ -607,25 +645,29 @@ struct RowView: View {
     case "list":
       /* 🆕 W50 — `grow` ما زاده المحرّكُ لكلِّ سطر؛ W54 — `posters` ٣ أو ٤ */
       /* القيمُ في `let` أوّلاً — تعبيرٌ واحدٌ طويلٌ يُبطئ فاحصَ الأنواع في Xcode وقد يرفضه */
-      let cnt: Int = max(0, min(3, Int(num(row["count"]) ?? 2)))
+      let cnt: Int = max(0, min(6, Int(num(row["count"]) ?? 2)))
       let gr: CGFloat = CGFloat(max(0, num(row["grow"]) ?? 0))
       let ps: Int = max(3, min(4, Int(num(row["posters"]) ?? 3)))
       let gd: CGFloat = max(0, CGFloat(num(row["h"]) ?? 154) - 24)
       ListSection(f: f, key: key, view: row["view"] as? String ?? "list", count: cnt, now: now, grow: gr, posters: ps, grid: gd)
-    case "tonight": TonightRow(f: f, wide: (row["view"] as? String ?? "wide") != "poster", now: now)
+    /* 🆕 D-1571 — خانةٌ كاملة = بوسترٌ وعمود (لوحة الخطّة) */
+    case "tonight": PosterColumn(f: f, key: "tonight", now: now)
     case "pair":
       /* 🆕 بثلاثة أسطر أو بسطرين كما حسم المحرّك (خلاصةٌ أقدمُ بلا العدد ⇒ ٣) */
-      let n = max(1, min(3, Int(num(row["count"]) ?? 3)))
+      let n = max(1, min(4, Int(num(row["count"]) ?? 3)))
       /* 🆕 W50 — الأسطرُ تتقاسم الجسمَ فتكبر وحدَها؛ والصورةُ تكبر معها بـ`grow` */
       let g = CGFloat(max(0, num(row["grow"]) ?? 0))
       /* 🆕 D-1562 — شكلُ كلِّ نصفٍ من صفِّه (`views`)؛ خلاصةٌ أقدمُ بلاه ⇒ خياراتُ القسم كما كان */
       let vs = row["views"] as? [String] ?? []
-      HStack(alignment: .top, spacing: 17) {
-        /* كلُّ نصفٍ محصورٌ في عرضه ومقصوصٌ عليه — لا يطلع اسمٌ على جاره */
-        Half(f: f, key: keys.first ?? "", opts: opts, count: n, now: now, grow: g, view: vs.first).frame(maxWidth: .infinity, alignment: .leading).clipped()
-        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: n, now: now, grow: g, view: vs.count > 1 ? vs[1] : nil).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
+      /* 🆕 D-1571 — أسطرُ كلِّ نصفٍ قائمة كما حسمها المحرّك (أربعةٌ، و«أصدقاؤك» ثلاثة) */
+      let rs = (row["rows"] as? [Any] ?? []).compactMap { num($0).map { Int($0) } }
+      HStack(alignment: .top, spacing: 8) {
+        /* كلُّ نصفٍ محصورٌ في عرضه ومقصوصٌ عليه — لا يطلع اسمٌ على جاره؛ وبينهما خطٌّ رفيع */
+        Half(f: f, key: keys.first ?? "", opts: opts, count: rs.first ?? n, now: now, grow: g, view: vs.first).frame(maxWidth: .infinity, alignment: .leading).clipped()
+        Rectangle().fill(Color.white.opacity(0.1)).frame(width: 1)
+        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: rs.count > 1 ? rs[1] : n, now: now, grow: g, view: vs.count > 1 ? vs[1] : nil).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
       }
-    case "line": LineRow(f: f, key: key, now: now)
+    case "line": LineRow(f: f, key: key, index: Int(num(row["index"]) ?? 0), now: now)
     default: Color.clear
     }
   }
@@ -710,7 +752,7 @@ struct ContRow: View {
     let source = sourceOf(f.feed, "continue", max: paged ? total : 2)
     let slots = paged ? Array(source.slots.dropFirst(off).prefix(2)) : source.slots
     VStack(alignment: .leading, spacing: 0) {
-      SecHeader(title: source.title, link: source.header, size: f.n("contHeader", 14.5),
+      SecHeader(title: source.title, link: source.header,
                 pager: paged ? WPager(section: "cont", total: total, per: 2, offset: off) : nil)
       HStack(spacing: 9) {
         ForEach(0..<2, id: \.self) { i in
@@ -718,24 +760,11 @@ struct ContRow: View {
         }
       }
       .frame(height: card ?? (tall ? f.n("contCardTall", 120) : f.n("contCard", 93)))
-      .padding(.top, 8)
+      .padding(.top, 6)
       if upLine {
-        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).padding(.top, 5)
-        Link(destination: WLink.calendar) {
-          HStack(spacing: 6) {
-            if let u = f.upcoming(now).first {
-              let day = (u["date"] as? String).map { WDates.label($0, feed: f.feed, now: now) }
-              Text([f.s2("upLinePrefix"), day].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.system(size: 11, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
-              Text(u["title"] as? String ?? "").font(.system(size: 11)).foregroundStyle(WColor.fg).lineLimit(1)
-              if let l = u["label"] as? String { Text(l).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1) }
-            } else {
-              Text(f.s2("noUpcoming")).font(.system(size: 11)).foregroundStyle(WColor.muted).lineLimit(1)
-            }
-            Spacer(minLength: 0)
-          }
-          .frame(height: 17)
-        }
+        /* 🆕 D-1571 — صفُّ «القادم» المختصر ببوستره تحت البطاقتين (لوحة الخطّة): خطٌّ في مسافة ٨ ثمّ ٣٤ */
+        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).frame(height: 8)
+        LineRow(f: f, key: "up", more: true, now: now)
       }
     }
   }
@@ -761,8 +790,8 @@ struct ListSection: View {
     let per = max(1, view == "posters" ? posters : count)
     let off = WPage.offset(key, total: all.count, per: per)
     let items = Array(all.dropFirst(off))
-    VStack(alignment: .leading, spacing: 4) {
-      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: key == "friends" ? f.n("friendsHeader", 14.5) : f.n("header", 14.5),
+    VStack(alignment: .leading, spacing: 6) {
+      SecHeader(title: Sections.title(f, key), link: Sections.link(key),
                 pager: all.count > per ? WPager(section: key, total: all.count, per: per, offset: off) : nil)
       if view == "posters" {
         /* W35 · 🆕 W54 — ثلاثةٌ أو أربعة بعرضٍ يملأ الودجت (العرضُ ÷ العدد، ٢:٣ حتّى ارتفاع الشبكة)، والمسافاتُ بينها */
@@ -861,7 +890,8 @@ struct ItemRow: View {
           Poster(f: f, path: item.t?.poster_path, w: tw + grow * 2 / 3, h: th + grow, r: 4)
           VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 5) {
-              if friend { Avatar(f: f, raw: item.raw, size: nameSize + 4) }
+              /* 🆕 D-1571 — الصورةُ أكبر بما يناسب الصفّ (خالد ١٤:١٣: «كبر الافتار بشكل يناسبها») */
+              if friend { Avatar(f: f, raw: item.raw, size: 24) }
               Text(item.name).font(.system(size: nameSize, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
             }
             if let done = doneLine {
@@ -1003,14 +1033,14 @@ struct Half: View {
   var body: some View {
     let o = opts[key] as? [String: Any] ?? [:]
     let chosen: Bool = view.map { $0 == "poster" || $0 == "posters" } ?? ((o["view"] as? String) == "posters")
-    if key == "tonight" {
-      TonightHalf(f: f, now: now)
-    } else if key == "cont" && (o["small"] as? String) != "list" {
-      /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة بأوّل مسلسل */
-      ContHalf(f: f, now: now)
+    /*
+     * 🆕 D-1571 — بالخطّة: النصفُ «بوستر» (وفيلمُ الليلة والسينما دائماً) بوسترٌ وعمود؛ والنصفُ «قائمة» أربعةُ أسطرٍ مختصرة
+     * (٢٢×٣٣)، و«أصدقاؤك» ثلاثة (٢٨×٤٢ وصورتُه جنب اسمه). «نشاطك» قائمةٌ دائماً.
+     */
+    if key == "tonight" || key == "cine" || (key != "act" && chosen) {
+      PosterColumn(f: f, key: key, now: now)
     } else {
-      /* 🆕 W55 — البوستران في النصف صارا خياراً في الإعداد («أنشطتك» قائمةٌ دائماً) */
-      HalfList(f: f, key: key, posters: key != "tonight" && key != "act" && chosen, count: count, now: now, grow: grow)
+      HalfList(f: f, key: key, posters: false, count: count, now: now, grow: 0)
     }
   }
 }
@@ -1228,7 +1258,7 @@ struct HalfList: View {
   var body: some View {
     let items = Sections.lines(f, key, now: now)
     VStack(alignment: .leading, spacing: 4) {
-      SecHeader(title: Sections.title(f, key), link: Sections.link(key), size: f.n("header", 14.5))
+      SecHeader(title: Sections.title(f, key), link: Sections.link(key))
       if posters {
         GeometryReader { g in
           let pw = max(0, (g.size.width - 8) / 2)
@@ -1247,16 +1277,19 @@ struct HalfList: View {
       } else {
         /* الأسطرُ الثلاثةُ تتقاسم ارتفاعَ الخانة كلَّه */
         VStack(alignment: .leading, spacing: 0) {
-          ForEach(Array(items.prefix(key == "tonight" ? 1 : count).enumerated()), id: \.offset) { pair in
+          /* 🆕 D-1571 — أسطرٌ متساويةٌ تملأ الجسم: ٢٢×٣٣ واسمٌ ١٠٫٥، و«أصدقاؤك» ٢٨×٤٢ وصورتُه ٢٠ واسمٌ ١١٫٥ ومتى */
+          let friend = key == "friends"
+          ForEach(Array(items.prefix(key == "tonight" ? 1 : max(1, min(4, count))).enumerated()), id: \.offset) { pair in
             Link(destination: pair.element.link) {
-              HStack(spacing: 8) {
-                Poster(f: f, path: pair.element.t?.poster_path, w: f.n("halfThumbW", 30) + grow * 2 / 3, h: f.n("halfThumbH", 45) + grow, r: 4)
+              HStack(spacing: 7) {
+                Poster(f: f, path: pair.element.t?.poster_path, w: friend ? 28 : 22, h: friend ? 42 : 33, r: 3.5)
                 VStack(alignment: .leading, spacing: 1) {
-                  HStack(spacing: 5) {
-                    if key == "friends" { Avatar(f: f, raw: pair.element.raw, size: f.n("halfName", 14) + 3) }
-                    Text(pair.element.name).font(.system(size: f.n("halfName", 14), weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  HStack(spacing: 4) {
+                    if friend { Avatar(f: f, raw: pair.element.raw, size: 20) }
+                    Text(pair.element.name).font(.system(size: friend ? 11.5 : 10.5, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
                   }
-                  if let s = pair.element.sub, !s.isEmpty { Text(s).font(.system(size: f.n("halfSub", 12))).foregroundStyle(WColor.muted).lineLimit(1) }
+                  let sub = [pair.element.sub, friend ? pair.element.time : nil].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+                  if !sub.isEmpty { Text(sub).font(.system(size: friend ? 9.5 : 9)).foregroundStyle(WColor.muted).lineLimit(1) }
                 }
                 Spacer(minLength: 0)
               }
@@ -1269,7 +1302,11 @@ struct HalfList: View {
   }
 }
 
-/** W34 · W35 — بوسترٌ ٢:٣ كاملٌ بطول الخانة وعمودٌ بجانبه: 🔁 فوق، والتقييمُ والمدّة، و✓ تحت */
+/**
+ * W34 · W35 · 🆕 D-1571 — بوسترٌ ٢:٣ بطول الخانة وعمودٌ بجانبه، **لكلِّ قسم** (النصفُ «بوستر» والخانةُ الكاملةُ لفيلم الليلة
+ * والصغيرُ ٢×٢ — لوحة الخطّة): فيلمُ الليلة (↻ و✓)، والسينما (↻ و«+» للمشاهدة)، وللمشاهدة (✓ أو ▶)، وأكملُ المشاهدة (✓ الحلقة)،
+ * والبقيّةُ بوسترٌ واسمٌ وسطرٌ. البوسترُ بارتفاع الجسم وعرضُه حتّى ٦٢٪ من الخانة — كأندرويد.
+ */
 struct PosterColumn: View {
   let f: V2Feed
   let key: String
@@ -1288,55 +1325,101 @@ struct PosterColumn: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      if key == "tonight" {
+      switch key {
+      case "tonight":
         SecHeader(title: Sections.title(f, key), link: nil)
         if let m = Sections.tonight(f, now: now) {
-          column(t: m.asTitle, meta: Sections.tonightSub(m, f), cycle: buttons && f.tonight.count > 1 && !(f.feed.check && WState.undoOn("movie", m.id)), action: buttons ? "watched" : "")
+          let undoing = f.feed.check && WState.undoOn("movie", m.id)
+          column(t: m.asTitle, name: m.title, meta: undoing ? nil : Sections.tonightSub(m, f), done: undoing ? "✓ " + f.s2("watched") : nil,
+                 cycle: buttons && f.tonight.count > 1 && !undoing ? AnyView(Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: nil, touch: 30) }.buttonStyle(.plain)) : nil,
+                 action: buttons ? movieButton(m.asTitle, undoing: undoing) : nil)
         } else {
-          Text(f.feed.s("noTowatchMovies")).font(.system(size: 11)).foregroundStyle(WColor.muted)
+          empty(f.feed.s("noTowatchMovies"))
         }
-      } else {
+      case "cine":
+        SecHeader(title: Sections.title(f, key), link: Sections.link(key))
+        if let x = Sections.cinema(f), let t = f.title(x) {
+          let undoing = f.feed.check && WState.undoOn("towatch", t.id)
+          column(t: t, name: t.title, meta: undoing ? nil : Sections.cineMeta(f, x), done: undoing ? "✓ " + f.s2or("added", "أُضيف", "Added") : nil,
+                 cycle: buttons && f.cinema.count > 1 ? AnyView(Button(intent: CycleCinemaIntent()) { WChip(icon: "repeat", text: nil, touch: 30) }.buttonStyle(.plain)) : nil,
+                 action: buttons ? cineButton(t, x, undoing: undoing) : nil)
+        } else {
+          empty("—")
+        }
+      case "tw":
         let all = f.arr("towatch")
         SecHeader(title: all.count > 1 ? "\(Sections.title(f, key)) · \(all.count)" : Sections.title(f, key), link: Sections.link(key))
         if let x = all.first, let t = f.title(x) {
           let rating = num(x["rating"]).map { "★ " + String(format: "%.1f", $0) }
-          column(t: t, meta: [x["type_label"] as? String, rating].compactMap { $0 }.joined(separator: " · "), cycle: false, action: x["action"] as? String ?? "start")
+          let movie = (x["action"] as? String) == "watched"
+          let undoing = f.feed.check && WState.undoOn(movie ? "movie" : "start", t.id)
+          column(t: t, name: t.title, meta: undoing ? nil : [x["type_label"] as? String, rating].compactMap { $0 }.joined(separator: " · "),
+                 done: undoing ? "✓ " + (movie ? f.s2("watched") : f.s2or("started", "بدأته", "Started")) : nil,
+                 cycle: nil, action: buttons ? (movie ? movieButton(t, undoing: undoing) : startButton(t, undoing: undoing)) : nil)
+        } else {
+          empty("—")
+        }
+      case "cont":
+        SecHeader(title: Sections.title(f, key), link: Sections.link(key))
+        if let c = f.feed.continue.items.first {
+          column(t: c.asTitle, name: c.title, meta: c.sub ?? c.label, done: nil, cycle: nil,
+                 action: buttons && f.feed.check ? AnyView(CheckButton(feed: f.feed, item: c, size: 33)) : nil)
+        } else {
+          empty(f.feed.s("startSomething"))
+        }
+      default:
+        /* القادم وأصدقاؤك ونشاطك: أوّلُ سطرٍ بوسترٌ، والاسمُ والسطرُ الثاني (والوقتُ) بجانبه */
+        SecHeader(title: Sections.title(f, key), link: Sections.link(key))
+        if let it = Sections.lines(f, key, now: now).first, let t = it.t {
+          column(t: t, name: it.name, meta: [it.sub, it.time].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "), done: nil, cycle: nil, action: nil, link: it.link)
+        } else {
+          empty(key == "up" ? f.s2("noUpcoming").ifEmpty("—") : "—")
         }
       }
     }
   }
 
-  func column(t: WTitle, meta: String, cycle: Bool, action: String) -> some View {
+  func empty(_ text: String) -> some View {
+    Text(text).font(.system(size: 11)).foregroundStyle(WColor.muted).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+  }
+
+  func movieButton(_ t: WTitle, undoing: Bool) -> AnyView {
+    if undoing { return AnyView(Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)) }
+    if f.feed.check { return AnyView(Button(intent: MarkMovieIntent(id: t.id, name: t.title, poster: t.poster_path)) { circle("checkmark") }.buttonStyle(.plain)) }
+    return AnyView(Link(destination: WLink.title(t)) { circle("checkmark") })
+  }
+
+  func startButton(_ t: WTitle, undoing: Bool) -> AnyView {
+    if undoing { return AnyView(Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)) }
+    if f.feed.check { return AnyView(Button(intent: StartShowIntent(id: t.id)) { circle("play.fill") }.buttonStyle(.plain)) }
+    return AnyView(Link(destination: WLink.start(t, action: "start")) { circle("play.fill") })
+  }
+
+  /** «+» للمشاهدة — أو ✓ ساكنةٌ تفتح صفحتَه إن أُضيف من قبل (أو تابعه/شاهده)، و«↶» خمسَ ثوانٍ بعد اللمسة */
+  func cineButton(_ t: WTitle, _ x: [String: Any], undoing: Bool) -> AnyView {
+    if undoing { return AnyView(Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)) }
+    if (x["followed"] as? Bool ?? false) || f.hidden.contains(t.id) { return AnyView(Link(destination: WLink.title(t)) { circle("checkmark") }) }
+    if f.feed.check { return AnyView(Button(intent: ToWatchIntent(id: t.id)) { circle("plus") }.buttonStyle(.plain)) }
+    return AnyView(Link(destination: WLink.title(t)) { circle("plus") })
+  }
+
+  func column(t: WTitle, name: String, meta: String?, done: String?, cycle: AnyView?, action: AnyView?, link: URL? = nil) -> some View {
     GeometryReader { g in
-      /* 🆕 البوسترُ ٢:٣ حتّى عرض ٨٠ ووسطَ الخانة — فيبقى للاسم عرضٌ في النصف ولا يتداخل مع جاره (١٤ أكتوبر) */
-      let pw = min(g.size.height * 2 / 3, 80)
+      let pw = min(g.size.height * 2 / 3, g.size.width * 0.62)
       HStack(alignment: .center, spacing: 8) {
-        Link(destination: WLink.title(t)) { Poster(f: f, path: t.poster_path, w: pw, h: pw * 1.5, r: 8) }
-        /* البوسترُ بطول الخانة، وبجانبه 🔁 فوق والاسمُ والتفاصيلُ و✓ تحت — بلا فراغٍ وسط العمود */
+        Link(destination: link ?? WLink.title(t)) { Poster(f: f, path: t.poster_path, w: pw, h: pw * 1.5, r: 8) }
+        /* البوسترُ بطول الخانة، وبجانبه ↻ فوق والاسمُ والتفاصيلُ والزرُّ تحت — بلا فراغٍ وسط العمود */
         VStack(alignment: .leading, spacing: 0) {
-          if cycle {
-            Button(intent: CycleTonightIntent()) { WChip(icon: "repeat", text: nil, touch: 30) }.buttonStyle(.plain)
+          if let cycle { cycle }
+          Spacer(minLength: 0)
+          Text(name).font(.system(size: 12, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
+          if let done {
+            Text(done).font(.system(size: 10, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1).padding(.top, 3)
+          } else if let meta, !meta.isEmpty {
+            Text(meta).font(.system(size: 10)).foregroundStyle(WColor.muted).lineLimit(2).padding(.top, 3)
           }
           Spacer(minLength: 0)
-          Text(t.title).font(.system(size: 14, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(2)
-          let movie = action == "watched"
-          let undoing = !action.isEmpty && f.feed.check && WState.undoOn(movie ? "movie" : "start", t.id)
-          if undoing {
-            /* W37 — «✓ شاهدته/بدأته» و«↶ تراجع» خمسَ ثوانٍ */
-            Text("✓ " + (movie ? f.s2("watched") : f.s2or("started", "بدأته", "Started"))).font(.system(size: 12, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1).padding(.top, 3)
-          } else if !meta.isEmpty { Text(meta).font(.system(size: 12)).foregroundStyle(WColor.muted).lineLimit(2).padding(.top, 3) }
-          Spacer(minLength: 0)
-          if undoing {
-            Button(intent: UndoActionIntent()) { circle("arrow.uturn.backward") }.buttonStyle(.plain)
-          } else if !action.isEmpty && f.feed.check {
-            if movie {
-              Button(intent: MarkMovieIntent(id: t.id, name: t.title, poster: t.poster_path)) { circle("checkmark") }.buttonStyle(.plain)
-            } else {
-              Button(intent: StartShowIntent(id: t.id)) { circle("play.fill") }.buttonStyle(.plain)
-            }
-          } else if !action.isEmpty {
-            Link(destination: movie ? WLink.title(t) : WLink.start(t, action: "start")) { circle(movie ? "checkmark" : "play.fill") }
-          }
+          if let action { action }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
@@ -1344,25 +1427,54 @@ struct PosterColumn: View {
   }
 }
 
-/* W39 — السطرُ المختصر */
+/*
+ * W39 — السطرُ المختصر. 🆕 D-1571 — ٣٤ ببوستر ٢٢×٣٣ وسطرين (لوحة الخطّة): صفُّ «القادم» تحت البطاقتين («القادم · السبت» ثمّ
+ * «Black Clover · م٢ ح٥» و«+٢ ←»)، وسطرا نشاطك تحت (`index`: الأحدثُ ثمّ الذي قبله). عنصرٌ غائبٌ في سطرٍ ثانٍ ⇒ لا شيء.
+ */
 struct LineRow: View {
   let f: V2Feed
   let key: String
+  var index: Int = 0
+  var more: Bool = false
   let now: Date
 
   var body: some View {
-    let it = Sections.lines(f, key, now: now).first
-    Link(destination: it?.link ?? Sections.link(key) ?? WLink.discover) {
-      HStack(spacing: 10) {
-        if let it { Poster(f: f, path: it.t?.poster_path, w: 28, h: 42, r: 4) }
-        VStack(alignment: .leading, spacing: 1) {
-          Text(Sections.title(f, key)).font(.system(size: 10, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
-          Text([it?.name, it?.sub].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty("—"))
-            .font(.system(size: 12)).foregroundStyle(WColor.fg).lineLimit(1)
+    let all = Sections.lines(f, key, now: now)
+    let it = index < all.count ? all[index] : nil
+    if it != nil || index == 0 {
+      Link(destination: key == "up" ? WLink.calendar : (it?.link ?? Sections.link(key) ?? WLink.discover)) {
+        HStack(spacing: 8) {
+          if let it { Poster(f: f, path: it.t?.poster_path, w: 22, h: 33, r: 3.5) }
+          VStack(alignment: .leading, spacing: 1) {
+            Text(label(it)).font(.system(size: 9.5, weight: .bold)).foregroundStyle(WColor.accent).lineLimit(1)
+            Text(name(it)).font(.system(size: 11)).foregroundStyle(WColor.fg).lineLimit(1)
+          }
+          Spacer(minLength: 0)
+          if let tail = tail(it, total: all.count) {
+            Text(tail).font(.system(size: 9.5)).foregroundStyle(WColor.muted).lineLimit(1)
+          }
         }
-        Spacer(minLength: 0)
+        .frame(height: 34)
       }
     }
+  }
+
+  /** «القادم · السبت» — والبقيّةُ اسمُ القسم */
+  func label(_ it: LineItem?) -> String {
+    guard key == "up", let d = it?.raw?["date"] as? String else { return Sections.title(f, key) }
+    return Sections.title(f, key) + " · " + WDates.label(d, feed: f.feed, now: now)
+  }
+
+  func name(_ it: LineItem?) -> String {
+    guard let it else { return key == "up" ? f.s2("noUpcoming").ifEmpty("—") : "—" }
+    if key == "up" { return [it.t?.title, it.raw?["label"] as? String].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ") }
+    return [it.name, it.sub].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+  }
+
+  /** «+٢ ←» للقادم، والوقتُ لنشاطك */
+  func tail(_ it: LineItem?, total: Int) -> String? {
+    if key == "up" { return more && total > 1 ? "+\(total - 1) " + (f.feed.rtl ? "←" : "→") : nil }
+    return it?.time
   }
 }
 
@@ -1385,7 +1497,8 @@ struct SmallMain: View {
     case "headerFade":
       SmallFade(f: f, now: now)
     case "posterColumn":
-      PosterColumn(f: f, key: key, now: now).padding(12)
+      /* 🆕 D-1571 — بالخطّة الصغيرُ ٢×٢ بوسترٌ وعمودٌ لكلِّ قسم، والحشوةُ ٨ */
+      PosterColumn(f: f, key: key, now: now).padding(8)
         .widgetURL(Sections.lines(f, key, now: now).first?.link ?? WLink.discover)
     case "list" where key == "tonight":
       /* 🆕 W46 — كان «قائمة» يرسم أسطرَ نصف العرض فلا يظهر شكلُها */

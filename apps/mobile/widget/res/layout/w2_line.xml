@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- W39 — السطرُ المختصر: قسمٌ لا يتّسع بشكله يظهر سطراً واحداً (أوّلُ عنصرٍ فيه) بدل أن يختفي -->
+<!-- W39 — السطرُ المختصر: قسمٌ لا يتّسع بشكله يظهر سطراً واحداً بدل أن يختفي. 🆕 D-1571 — ٣٤ ببوستر ٢٢×٣٣ (يكتبها الرسّامُ بالنسبة):
+     صفُّ «القادم» تحت البطاقتين وسطرا نشاطك تحت -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/item"
     android:layout_width="match_parent"
@@ -38,4 +39,14 @@
     android:textAlignment="viewStart"
     android:layout_marginTop="1dp" />
     </LinearLayout>
+    <!-- 🆕 D-1571 — «+٢ ←» في طرف صفّ «القادم» تحت البطاقتين (لوحة الخطّة ٤×٢) -->
+    <TextView
+    android:id="@+id/ln_more"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    android:textColor="#9C9C9C"
+    android:textSize="10sp"
+    android:maxLines="1"
+    android:visibility="gone" />
 </LinearLayout>

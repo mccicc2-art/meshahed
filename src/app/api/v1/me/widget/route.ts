@@ -13,7 +13,7 @@ import {
 } from "@/lib/data";
 import { getMyActivity } from "@/lib/myActivity";
 import { getT } from "@/lib/locale";
-import { getMovie, getTv, wellKnownMovies, trendingToday, type TvDetails } from "@/lib/tmdb";
+import { getMovie, getTv, wellKnownMovies, trendingToday, nowPlayingMovies, type TvDetails } from "@/lib/tmdb";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
 import { calendarEntries, todayIn } from "@/core/calendar";
 import { asTimeZone } from "@/core/zone";
@@ -354,11 +354,13 @@ export async function GET(req: NextRequest) {
       /* ——— 🆕 الودجت الواحد (v2، W28–W43) — حقلٌ إضافيٌّ يتجاهله الودجتُ القديم ———
          ⚡ ثلاثةُ نداءاتٍ جديدة لا أكثر، متوازية، وكلٌّ منها يسقط إلى فراغٍ لا إلى خطأ: الرائجُ (مخبّأٌ في `railTmdb`)،
          ونشاطُ من تتابعهم (`following_activity_v2` — نداءُ صفّ الرئيسيّة نفسُه)، ونشاطُك (خمسةٌ من كلِّ مصدر) */
-      const [trendRows, friendRows, myActRows] = await Promise.all([
+      const [trendRows, friendRows, myActRows, cinemaRows] = await Promise.all([
         trendingToday().catch(() => []),
         /* 🆕 W54 — أربعةٌ تُعرض، وبعضُ الأعمال بلا صاحبٍ مسمّى — فثمانية */
         getFriendsWatching(8).catch(() => []),
         getMyActivity(5).catch(() => []),
+        /* 🆕 D-1571 — «الآن في السينما»: نداءُ صفّ الاكتشاف نفسُه (مخبّأٌ في `railTmdb`، بمنطقة القارئ ثمّ جيرانها) */
+        nowPlayingMovies().catch(() => null),
       ]);
       const store = sanitizeWidgetStore((profile?.ui_state as { widget?: unknown } | null | undefined)?.widget, t.widgetLayoutDefault);
       const plan = widgetPlanState(profile);
@@ -397,6 +399,22 @@ export async function GET(req: NextRequest) {
           t,
         ),
         upcoming: upcomingAll,
+        /* 🆕 D-1571 — ثمانيةٌ تكفي (أربعةُ بوسترات، و↻ يقلّب في النصف والصغير)؛ «جديد» لما عُرض في الأسبوعين الأخيرين */
+        cinema: (cinemaRows?.results ?? []).slice(0, 8).map((r) => {
+          const rel = r.release_date ?? null;
+          const age = rel ? (Date.parse(today) - Date.parse(rel)) / 86_400_000 : NaN;
+          return {
+            kind: "movie" as const,
+            id: r.id,
+            title: titleOf(r),
+            poster_path: r.poster_path,
+            rating: typeof r.vote_average === "number" && r.vote_average > 0 ? Math.round(r.vote_average * 10) / 10 : null,
+            genre: genreOf(r.genre_ids ?? []),
+            release_date: rel,
+            is_new: Number.isFinite(age) && age >= 0 && age <= 14,
+            followed: followMeta.has(`movie-${r.id}`) || watchedMovieIds.has(r.id),
+          };
+        }),
         strings: {
           searchPlaceholder: t.widgetSearchPlaceholder,
           trendingToday: t.widgetTrendingToday,
@@ -417,6 +435,10 @@ export async function GET(req: NextRequest) {
           skip: t.widgetSkip,
           started: t.widgetStarted,
           undo: t.undoWatched,
+          cinemaTitle: t.widgetCinema,
+          cinemaTag: t.widgetCinemaTag,
+          newTag: t.widgetNew,
+          added: t.widgetAdded,
         },
       };
 

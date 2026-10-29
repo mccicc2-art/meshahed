@@ -7,6 +7,7 @@ import { Segmented } from "../library/ToolsSheet";
 import { Group, Row, ExpandRow, OptionRow } from "./ui";
 import type { WidgetSectionKey, WidgetSize } from "@/core/widgetLayout";
 import {
+  POSTER_ONLY,
   SLOT_SECTIONS,
   SMALL_SECTIONS,
   slotsFor,
@@ -96,10 +97,11 @@ export function SlotEditor({
     const p: SlotPart = slot[which];
     return (
       <View key={which}>
-        {picker(`${i}:${which}`, label, p.s, (k) => setSlot(i, { ...slot, [which]: { s: k, v: k === "tonight" ? "poster" : p.v } }))}
+        {picker(`${i}:${which}`, label, p.s, (k) => setSlot(i, { ...slot, [which]: { s: k, v: POSTER_ONLY.includes(k) ? "poster" : p.v } }))}
         <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
-          {p.s === "tonight" ? (
-            <Text size={12} muted>{t.widgetTonightPoster}</Text>
+          {POSTER_ONLY.includes(p.s) ? (
+            /* فيلمُ الليلة والسينما بوسترٌ دائماً (D-1571) */
+            <Text size={12} muted>{p.s === "cine" ? t.widgetCinemaPoster : t.widgetTonightPoster}</Text>
           ) : (
             seg([{ id: "list", label: t.widgetList }, { id: "poster", label: t.widgetPoster }], p.v, (v) => setSlot(i, { ...slot, [which]: { ...p, v: v as SlotPart["v"] } }))
           )}
@@ -119,7 +121,7 @@ export function SlotEditor({
             let b = slot.b;
             if (mode === "pair" && (b.s === slot.a.s || used.filter((k) => k !== slot.a.s).includes(b.s))) {
               const free = SLOT_SECTIONS.find((k) => k !== slot.a.s && !used.includes(k));
-              if (free) b = { s: free, v: free === "tonight" ? "poster" : "list" };
+              if (free) b = { s: free, v: POSTER_ONLY.includes(free) ? "poster" : "list" };
             }
             setSlot(i, { ...slot, mode, b });
           })}

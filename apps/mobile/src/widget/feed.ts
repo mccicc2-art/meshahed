@@ -141,6 +141,8 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
       if (x.avatar_url && /^https:\/\//.test(x.avatar_url)) add(x.avatar_url, "avatar");
     });
     v2.activity.forEach((x) => add(x.title.poster_path));
+    /* 🆕 D-1571 — «الآن في السينما» */
+    (v2.cinema ?? []).forEach((x) => add(x.poster_path));
   }
   return out;
 }
@@ -343,6 +345,7 @@ export function emptySections(data: WidgetFeed): WidgetSectionKey[] {
       ["tw", v2.towatch.length === 0],
       ["act", v2.activity.length === 0],
       ["tonight", data.tonight.length === 0],
+      ["cine", (v2.cinema ?? []).length === 0],
     ] as const
   )
     .filter(([, e]) => e)

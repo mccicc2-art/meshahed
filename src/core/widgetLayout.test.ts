@@ -22,7 +22,7 @@ test("سطر القادم يعود إذا أُخفي قسم القادم", () =>
 /* حالةُ أحمد (١٤ أكتوبر ٠٤:٠٥): كان يترك ثلثَ الودجت فارغاً */
 test("قسم لا يتسع لا يوقف الترتيب: ما بعده يُجرَّب", () => {
   const cfg = defaultWidgetConfig();
-  cfg.on.tw = false; cfg.on.act = false;
+  cfg.on.tw = false; cfg.on.act = false; cfg.on.cine = false;
   cfg.opts.cont.size = "small"; cfg.opts.up.size = "small"; cfg.opts.tonight.size = "small";
   const l = resolveWidgetLayout(cfg, "large");
   assert.deepEqual(names(l.rows), ["search", "pair:cont+up", "pair:tonight", "line:friends"]);
@@ -86,7 +86,7 @@ test("الآيفون بلا الكبير جداً", () => {
 test("إعداد فاسد من التخزين يُصلح ولا يُرمى", () => {
   assert.deepEqual(sanitizeWidgetConfig(null), defaultWidgetConfig());
   const s = sanitizeWidgetConfig({ order: ["tw", "tw", "x", "cont"], on: { tw: false, zzz: true }, opts: { search: { size: "small" }, up: { size: "small", count: 3 } }, smallPick: "nope" });
-  assert.equal(s.order.length, 7);
+  assert.equal(s.order.length, 8);
   assert.deepEqual(s.order.slice(0, 2), ["tw", "cont"]);
   assert.equal(s.on.tw, false);
   assert.equal(s.opts.search.size, "full");
@@ -175,7 +175,9 @@ test("أكمل المشاهدة الصغير: صورة افتراضاً، وال
   assert.notEqual(smallWidgetForm(def, "cont", 170, 170), "list");
   const list = sanitizeWidgetConfig({ opts: { cont: { size: "small", view: "cards", count: 2, small: "list" } } });
   assert.equal(list.opts.cont.small, "list");
-  assert.equal(smallWidgetForm(list, "cont", 170, 170), "list");
+  /* المحرّكُ الحرُّ القديم (بلا خانات) — الخاناتُ ترسم الصغيرَ بوستراً وعموداً دائماً (D-1571) */
+  assert.equal(smallWidgetForm({ ...list, v3: undefined }, "cont", 170, 170), "list");
+  assert.equal(smallWidgetForm(list, "cont", 170, 170), "posterColumn");
   assert.equal(sanitizeWidgetConfig({ opts: { cont: { small: "bogus" } } }).opts.cont.small, "image");
 });
 

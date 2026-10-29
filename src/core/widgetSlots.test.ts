@@ -7,7 +7,7 @@ import { defaultV3, resolveV3, sanitizeV3, usedKeys, type WidgetV3 } from "./wid
 const names = (rows: WidgetRow[]) =>
   rows.map((r) =>
     r.type === "list" ? `${r.key}:${r.view}×${r.view === "posters" ? r.posters : r.count}`
-    : r.type === "line" ? `line:${r.key}`
+    : r.type === "line" ? `line:${r.key}${r.index ? `#${r.index + 1}` : ""}`
     : r.type === "pair" ? `pair:${r.keys.join("+")}×${r.count}`
     : r.type === "cont" ? (r.upLine ? `cont${r.card}+up` : `cont${r.card}`)
     : r.type === "tonight" ? `tonight:${r.view}`
@@ -15,42 +15,47 @@ const names = (rows: WidgetRow[]) =>
 
 const rs = (platform: "android" | "ios" = "android") => ({ ...lookFor(null, platform, "xl"), resize: true });
 
-test("الكبير جداً الافتراضي (خالد ٢١:٢٠): أكمل المشاهدة+القادم · نص للمشاهدة+نص فيلم الليلة · أصدقاؤك كامل · نشاطك سطر", () => {
+test("الكبير جداً الافتراضي (خالد ١٤:١٦): أكمل المشاهدة+القادم · نص أصدقاؤك+نص فيلم الليلة · السينما كاملة · نشاطك سطر", () => {
   const l = resolveV3(defaultV3(), "xl", 590, rs());
-  assert.deepEqual(names(l.rows), ["cont86+up", "pair:tw+tonight×3", "friends:list×3", "line:act"]);
+  assert.deepEqual(names(l.rows), ["cont86+up", "pair:friends+tonight×3", "cine:posters×4", "line:act", "line:act#2"]);
   assert.ok(l.used <= 590);
+  /* جوالُ خالد: ٤×٦ ≈ ٥٦٨ بنقاط التصميم — الشكلُ نفسُه */
+  assert.deepEqual(names(resolveV3(defaultV3(), "xl", 568, rs()).rows), ["cont86+up", "pair:friends+tonight×3", "cine:posters×4", "line:act", "line:act#2"]);
 });
 
-test("الكبير: أكمل المشاهدة والقادم وخانة أصدقاؤك — وإن طال الودجت فنشاطك سطرٌ يكمّل (لا فراغ كبير)", () => {
-  assert.deepEqual(names(resolveV3(defaultV3(), "large", 384, rs()).rows), ["cont86+up", "friends:list×3"]);
-  assert.deepEqual(names(resolveV3(defaultV3(), "large", 440, rs()).rows), ["cont86+up", "friends:list×3", "line:act"]);
+test("النصّان: أصدقاؤك ثلاثة أسطر، وغيرُه أربعةٌ مختصرة (خالد ١٤:١٣)", () => {
+  const r = resolveV3(defaultV3(), "xl", 590, rs()).rows[1];
+  assert.ok(r.type === "pair");
+  assert.deepEqual(r.type === "pair" && r.rows, [3, 4]);
 });
 
-test("المتوسط: أكمل المشاهدة والقادم افتراضاً، والخانة نصّان بسطرين حين يختارها", () => {
+test("الكبير: أكمل المشاهدة والقادم وخانة أصدقاؤك — والتعبئةُ نشاطُك وحدَه، سطرٌ أو سطران", () => {
+  assert.deepEqual(names(resolveV3(defaultV3(), "large", 384, rs()).rows), ["cont86+up", "friends:list×3", "line:act"]);
+  assert.deepEqual(names(resolveV3(defaultV3(), "large", 440, rs()).rows), ["cont86+up", "friends:list×3", "line:act", "line:act#2"]);
+});
+
+test("المتوسط: أكمل المشاهدة والقادم افتراضاً، والخانة نصّان حين يختارها", () => {
   const v3 = defaultV3();
   assert.deepEqual(names(resolveV3(v3, "medium", 178, rs()).rows), ["cont86+up"]);
   v3.medium.top = false;
-  assert.deepEqual(names(resolveV3(v3, "medium", 178, rs()).rows), ["pair:friends+tonight×2"]);
+  assert.deepEqual(names(resolveV3(v3, "medium", 178, rs()).rows), ["pair:friends+tonight×3"]);
 });
 
 test("القادم في خانة: يختفي سطره تحت أكمل المشاهدة، ونشاطك يأخذ مكانه (خالد ٢١:٤٥)", () => {
   const v3 = defaultV3();
   v3.large.slot = { mode: "full", a: { s: "up", v: "list" }, b: { s: "tonight", v: "poster" } };
-  assert.deepEqual(names(resolveV3(v3, "large", 384, rs()).rows), ["cont86", "up:list×3", "line:act"]);
+  assert.deepEqual(names(resolveV3(v3, "large", 384, rs()).rows), ["cont86", "up:list×3", "line:act", "line:act#2"]);
   v3.xl.slots[0] = { mode: "pair", a: { s: "up", v: "list" }, b: { s: "tonight", v: "poster" } };
-  /* الكبيرُ جداً: سطرا نشاطك والتالي غيرِ المستخدم */
-  const xl = names(resolveV3(v3, "xl", 590, rs()).rows);
-  assert.deepEqual(xl.slice(0, 3), ["cont86", "pair:up+tonight×3", "friends:list×3"]);
-  assert.equal(xl[3], "line:act");
+  assert.deepEqual(names(resolveV3(v3, "xl", 590, rs()).rows), ["cont86", "pair:up+tonight×3", "cine:posters×4", "line:act", "line:act#2"]);
 });
 
-test("البوستر: قسمٌ كامل أربعة بوسترات، وفيلم الليلة بوستر دائماً، ونشاطك لا بوستر له في الكامل", () => {
+test("البوستر: قسمٌ كامل أربعة بوسترات، وفيلم الليلة والسينما بوستر دائماً", () => {
   const v3 = defaultV3();
   v3.large.slot = { mode: "full", a: { s: "friends", v: "poster" }, b: { s: "tonight", v: "poster" } };
-  assert.deepEqual(names(resolveV3(v3, "large", 384, rs()).rows), ["cont86+up", "friends:posters×4"]);
+  assert.deepEqual(names(resolveV3(v3, "large", 384, rs()).rows), ["cont86+up", "friends:posters×4", "line:act"]);
   v3.large.slot.a = { s: "tonight", v: "list" };
-  /* بقي مكانُ سطر: نشاطك يكمّل تحت */
   assert.deepEqual(names(resolveV3(v3, "large", 384, rs()).rows), ["cont86+up", "tonight:poster", "line:act"]);
+  assert.deepEqual(sanitizeV3({ large: { slot: { mode: "full", a: { s: "cine", v: "list" } } } }).large.slot.a, { s: "cine", v: "poster" });
 });
 
 test("الآيفون: البطاقتان ٩٣", () => {
@@ -59,18 +64,20 @@ test("الآيفون: البطاقتان ٩٣", () => {
 });
 
 test("ما لا يتّسع يصير سطراً ثمّ يسقط — ولا شيء يتجاوز الارتفاع", () => {
-  for (const h of [300, 340, 384, 440, 520, 590, 720]) {
+  for (const h of [178, 275, 300, 384, 440, 470, 520, 568, 590, 720]) {
     const l = resolveV3(defaultV3(), h < 450 ? "large" : "xl", h, rs());
     assert.ok(l.used <= h, `${h}: ${l.used}`);
   }
-  const short = names(resolveV3(defaultV3(), "xl", 470, rs()).rows);
-  /* القائمةُ بسطرين قبل أن تصير سطراً مختصراً */
-  assert.deepEqual(short, ["cont86+up", "pair:tw+tonight×3", "friends:list×2"]);
+  assert.deepEqual(names(resolveV3(defaultV3(), "xl", 470, rs()).rows), ["cont86+up", "pair:friends+tonight×3", "line:cine", "line:act", "line:act#2"]);
+  /* ٤×٣ عند خالد ≈ ٢٧٥: الخانةُ لا تتّسع ⇒ سطرُ أصدقاؤك ثمّ نشاطك */
+  assert.deepEqual(names(resolveV3(defaultV3(), "large", 275, rs()).rows), ["cont86+up", "line:friends", "line:act"]);
 });
 
 test("الفارغ الآن يختفي: نصٌّ فارغ يجعل أخاه كاملاً، وخانةٌ فارغةٌ تسقط", () => {
   const l = resolveV3(defaultV3(), "xl", 590, rs(), new Set(["tw", "friends"]));
-  assert.deepEqual(names(l.rows), ["cont86+up", "tonight:poster", "line:act", "line:up"]);
+  assert.deepEqual(names(l.rows), ["cont86+up", "tonight:poster", "cine:posters×4", "line:act", "line:act#2"]);
+  const noAct = resolveV3(defaultV3(), "large", 440, rs(), new Set(["act"]));
+  assert.deepEqual(names(noAct.rows), ["cont86+up", "friends:list×3"]);
 });
 
 test("الإعداد المحفوظ: التالفُ يُصلح، والمكرّرُ في النصّين يُستبدل، وفيلم الليلة بوستر", () => {
@@ -81,6 +88,7 @@ test("الإعداد المحفوظ: التالفُ يُصلح، والمكرّ�
   assert.notEqual(v.medium.slot.b.s, "act");
   assert.equal(v.xl.line, "act");
   assert.deepEqual(v.xl.slots[0].a, { s: "tonight", v: "poster" });
+  assert.equal(sanitizeV3({ small: "cine" }).small, "cine");
 });
 
 test("كل إعداد يُقرأ بالخانات، وغير المشترك يأخذ الافتراضي، والصغير قسمه المختار", () => {
@@ -91,24 +99,24 @@ test("كل إعداد يُقرأ بالخانات، وغير المشترك يأ
   assert.equal(effectiveWidgetConfig(s, true), s);
 });
 
-test("المحسوم للرسّام: شكل النصف في الخيارات (بوستر للمشاهدة)، والمستخدم لا يُختار مرّتين", () => {
+test("المحسوم للرسّام: السينما بوسترات في الخيارات، والمستخدم لا يُختار مرّتين", () => {
   const r = resolveWidget(defaultWidgetConfigV3(), true, "android");
-  assert.equal(r.opts.tw.view, "posters");
+  assert.equal(r.opts.cine.view, "posters");
   assert.equal(r.opts.friends.view, "list");
-  assert.deepEqual(usedKeys(defaultV3() as WidgetV3, "xl").sort(), ["act", "friends", "tonight", "tw"]);
+  assert.deepEqual(usedKeys(defaultV3() as WidgetV3, "xl").sort(), ["act", "cine", "friends", "tonight"]);
   const l = resolveWidgetLayout(defaultWidgetConfigV3(), "xl", 590, "android");
   assert.equal(l.hidden.length, 0);
+  assert.equal(r.small.square, "posterColumn");
 });
 
-test("D-1561: الإظهارُ القديم (on.up=false) لا يُسقط القادمَ من نصّه، والقادمُ في خانةٍ وهو فاضٍ لا يُرجع سطرَه بشَرطة", () => {
+test("D-1561: الإظهارُ القديم (on.up=false) لا يُسقط القادمَ من نصّه، والقادمُ في خانةٍ وهو فاضٍ لا يُرجع سطرَه", () => {
   const v3 = defaultV3();
-  v3.xl.slots[1] = { mode: "pair", a: { s: "friends", v: "poster" }, b: { s: "up", v: "poster" } };
+  v3.xl.slots[1] = { mode: "pair", a: { s: "tw", v: "poster" }, b: { s: "up", v: "poster" } };
   const cfg = { ...defaultWidgetConfigV3(), v3 };
   cfg.on = { ...cfg.on, up: false };
   const r = resolveWidget(cfg, true, "android");
-  assert.ok(names(r.rows.xl ?? []).includes("pair:friends+up×3"));
-  /* القادمُ فاضٍ الآن: أصدقاؤك كامل، ولا سطرَ قادمٍ تحت أكمل المشاهدة */
+  assert.ok(Object.values(r.heights).some((e) => names(e.rows).includes("pair:tw+up×3")));
   const e = names(resolveV3(v3, "xl", 590, rs(), new Set(["up"])).rows);
   assert.equal(e[0], "cont86");
-  assert.ok(e.includes("friends:posters×4"));
+  assert.ok(e.includes("tw:posters×4"));
 });

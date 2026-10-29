@@ -44,7 +44,7 @@ class LoopzWidget : AppWidgetProvider() {
 
   override fun onDeleted(ctx: Context, ids: IntArray) {
     val e = prefs(ctx).edit()
-    ids.forEach { id -> e.remove("tn_$id") }
+    ids.forEach { id -> e.remove("tn_$id").remove("cn_$id") }
     e.apply()
   }
 
@@ -53,7 +53,9 @@ class LoopzWidget : AppWidgetProvider() {
       val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
       if (id >= 0) {
         val p = prefs(ctx)
-        p.edit().putInt("tn_$id", p.getInt("tn_$id", 0) + 1).apply()
+        /* 🆕 D-1571 — «↻» على «الآن في السينما» يقلّب بعدّاده هو (`cn_`) لا بعدّاد فيلم الليلة */
+        val k = (intent.getStringExtra("what") ?: "tn") + "_" + id
+        p.edit().putInt(k, p.getInt(k, 0) + 1).apply()
         AppWidgetManager.getInstance(ctx).updateAppWidget(id, W2Render.build(ctx, id))
       }
       return
@@ -82,8 +84,8 @@ class LoopzWidget : AppWidgetProvider() {
       }
     }
 
-    fun cycleIntent(ctx: Context, id: Int, code: Int): PendingIntent {
-      val i = Intent(ctx, LoopzWidget::class.java).setAction(ACTION_CYCLE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+    fun cycleIntent(ctx: Context, id: Int, code: Int, what: String = "tn"): PendingIntent {
+      val i = Intent(ctx, LoopzWidget::class.java).setAction(ACTION_CYCLE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra("what", what)
       return PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
   }
@@ -111,13 +113,16 @@ private class Row(val o: JSONObject) {
   val keys: List<String> = o.optJSONArray("keys")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
   /** 🆕 D-1562 — شكلُ كلِّ نصفٍ في صفِّ النصّين («list» · «poster») كما اختاره الشخصُ في خانته؛ خلاصةٌ أقدمُ بلاه ⇒ خياراتُ القسم */
   val views: List<String> = o.optJSONArray("views")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+  /** 🆕 D-1571 — أسطرُ كلِّ نصفٍ قائمة (أربعةٌ مختصرة، و«أصدقاؤك» ثلاثة)، وأيُّ عنصرٍ في السطر المختصر (سطرا نشاطك) */
+  val halfRows: List<Int> = o.optJSONArray("rows")?.let { a -> (0 until a.length()).map { a.optInt(it) } } ?: emptyList()
+  val index: Int = o.optInt("index", 0)
 }
 
 /** سطرٌ في قسم — صورةٌ واسمٌ وسطرٌ ثانٍ ووجهةُ اللمسة */
 private data class Line(val t: WTitle?, val name: String, val sub: String?, val link: String, val time: String? = null, val avatar: String? = null)
 
 /** ما يحتاجه الرسمُ في كلِّ صفّ: الخلاصةُ والقسمُ والمقاسُ وعدّادُ رموز النيّات (كلُّ لمسةٍ برمزها — درسُ D-929) */
-private class Draw(val ctx: Context, val id: Int, val f: WFeed, val v2: JSONObject, val opts: JSONObject, val wDp: Float, val size: String = "", val look: JSONObject? = null) {
+private class Draw(val ctx: Context, val id: Int, val f: WFeed, val v2: JSONObject, val opts: JSONObject, val wDp: Float, val size: String = "", val look: JSONObject? = null, val s: Float = 1f) {
   /** 🆕 W48 — ما بقي من ارتفاع الودجت تحت الصفوف المحسومة: يأخذه «أكمل المشاهدة» فتلتصق الأقسامُ بخطوطها (أندرويد قبل 12 وحدَه الآن) */
   var extra: Float = 0f
   /** «أكمل المشاهدة» يملأ الباقي (W48) — قبل أندرويد 12، أو صفٌّ واحد (المتوسط) */
@@ -129,7 +134,15 @@ private class Draw(val ctx: Context, val id: Int, val f: WFeed, val v2: JSONObje
    */
   val resize: Boolean = Build.VERSION.SDK_INT >= 31
   /** 🆕 رقمٌ من شكل الودجت (`w2.look.android.<الحجم>`) وإلّا الرقمُ المكتوبُ هنا — خلاصةٌ أقدمُ أو بلا شكلٍ ترسم كما كانت */
-  fun n(k: String, def: Float): Float = look?.optDouble(k, Double.NaN)?.takeIf { !it.isNaN() && it > 0 }?.toFloat() ?: def
+  fun n(k: String, def: Float): Float = (look?.optDouble(k, Double.NaN)?.takeIf { !it.isNaN() && it > 0 }?.toFloat() ?: def) * s
+  /**
+   * 🆕 D-1571 — **النسبة** (`s`): عرضُ الودجت الحقيقيّ ÷ عرض التصميم (٣٣٥؛ الصغيرُ ١٦٠). One UI يرسم ودجتَ خالد في مساحة ٤٣٥×٢٣١
+   * ثمّ يصغّره، فبنقاطٍ ثابتةٍ ظهرت القطعُ صغيرةً وبينها فراغات. كلُّ مقاسٍ هنا يُضرب فيها (`n` أعلاه للأرقام من الشكل، و`u` لما كُتب
+   * بيدٍ) — ٤×٢ عنده يطابق التصميمَ بالضبط. قبل أندرويد 12 لا تغيير مقاس ⇒ النسبةُ ١.
+   */
+  fun u(dp: Float): Float = dp * s
+  /** «الآن في السينما» — 🆕 D-1571 */
+  val cinema: List<JSONObject> get() = list(v2.optJSONArray("cinema"))
   private var code = 0
   fun next(): Int = id * 1000 + (code++ % 1000)
   fun open(path: String): PendingIntent = WLinks.open(ctx, path, next())
@@ -195,22 +208,25 @@ object W2Render {
     /* خلاصةٌ من تطبيقٍ أقدم (بلا `w2`) ⇒ «افتح لوبز» حتى يكتبها التطبيقُ الجديد */
     if (w2 == null || v2 == null) return empty(ctx, id, ctx.getString(R.string.w_open_app))
     val (w, h) = sizeDp(ctx, id)
-    val size = sizeOf(w, h)
+    /* 🆕 D-1571 — النسبةُ من العرض، والحجمُ والصفوفُ بنقاط التصميم (الارتفاعُ ÷ النسبة) — المحرّكُ حسم بها */
+    val isSmall = w < 230f
+    val sc = if (Build.VERSION.SDK_INT >= 31) (w / (if (isSmall) 160f else 335f)).coerceIn(0.8f, 1.7f) else 1f
+    val size = if (isSmall) "small" else sizeOf(w / sc, h / sc)
     val v = try {
       /* 🆕 الصفوفُ المحسومةُ لارتفاع الودجت الحقيقيّ (أكبرُ مفتاحٍ لا يزيد عليه) — تسجيلُ أحمد ١٤ أكتوبر */
       /* 🆕 W37 — شريطُ التقييم يأخذ مكانه (٨٠ وفاصل) فتُحسم الصفوفُ لما بقي؛ وإن لم يبقَ ما يتّسع لصفٍّ فالشريطُ وحدَه */
       val rate = if (f.check) CheckReceiver.rateNow(ctx) else null
-      val room = if (rate != null) h - RATE_H else h
-      val fit = byHeight(w2.optJSONObject("heights"), room)
+      val room = if (rate != null) h - RATE_H * sc else h
+      val fit = byHeight(w2.optJSONObject("heights"), room / sc)
       val fitSize = fit?.optString("size") ?: size
       /* 🆕 W48 — مقاساتُ الصفوف بحجم الودجت (أصدقاؤك ٥٨ في الكبير و٥٢ في الكبير جداً) كما حسبها المحرّك لأندرويد */
       /* 🆕 شكلُ الودجت بياناتٍ: أرقامُ هذا الحجم كما كتبها التطبيقُ من الخلاصة (`w2.look`) — الصغيرُ بأرقامه هو */
       val look = f.raw.optJSONObject("w2")?.optJSONObject("look")?.optJSONObject("android")?.optJSONObject(if (size == "small") "small" else fitSize)
-      val d = Draw(ctx, id, f, v2, w2.optJSONObject("opts") ?: JSONObject(), w, fitSize, look)
+      val d = Draw(ctx, id, f, v2, w2.optJSONObject("opts") ?: JSONObject(), w, fitSize, look, sc)
       when {
         size == "small" -> small(d, w2.optJSONObject("small") ?: JSONObject(), w, h)
         w2.optJSONObject("locked")?.optBoolean(fitSize) == true -> locked(d)
-        rate != null && room < 140f -> rows(d, null, rate)
+        rate != null && room / sc < 140f -> rows(d, null, rate)
         fit != null -> rows(d, fit.optJSONArray("rows"), rate, room)
         else -> rows(d, w2.optJSONObject("rows")?.optJSONArray(size), null, h)
       }
@@ -238,11 +254,11 @@ object W2Render {
     return if (w > 0 && h > 0) w.toFloat() to h.toFloat() else 320f to 180f
   }
 
-  /** W28 — العرضُ يفصل الصغيرَ (عمودان)، والارتفاعُ يفصل المتوسطَ والكبيرَ والكبيرَ جداً */
+  /** W28 — العرضُ يفصل الصغيرَ (عمودان)، والارتفاعُ يفصل المتوسطَ والكبيرَ والكبيرَ جداً. 🆕 D-1571 — بنقاط التصميم، حدودُ المحرّك نفسُها */
   private fun sizeOf(w: Float, h: Float): String = when {
     w < 230f -> "small"
-    h < 260f -> "medium"
-    h < 600f -> "large"
+    h < 240f -> "medium"
+    h < 520f -> "large"
     else -> "xl"
   }
 
@@ -278,19 +294,19 @@ object W2Render {
     val v = fresh(d.ctx, R.layout.w2_root)
     val rows = d.list(list).map { Row(it) }
     /*
-     * 🆕 W48 — **«أكمل المشاهدة» يأخذ الباقي** (أحمد ١٥ أكتوبر: «اللي تحته أصدقاؤك تارك فراغ لين الخط اللي فوق — خله لاصق فالخط»):
-     * الفراغُ كان يتوزّع على جانبي كلِّ فاصل (`w2_flex`) فيبتعد كلُّ قسمٍ عن خطّه. الآن ما زاد على ما حسمه المحرّك
-     * (الحشوةُ والصفوفُ والفواصل) يذهب لبطاقتي «أكمل المشاهدة» — والودجتُ بلا «أكمل المشاهدة» يبقى على التوزيع القديم.
+     * 🆕 W48 — قبل أندرويد 12: «أكمل المشاهدة» يأخذ الباقي (W48) كما كان — لا تغييرَ مقاسٍ هناك.
+     * 🆕 D-1571 — أندرويد 12+: **كلُّ شيءٍ بالنسبة** (`d.s`)، والفاصلُ ٩ بخطّ (خالد ١٤:٢٤: «الفراغات بين القوائم قللها»)، وما يبقى من
+     * الارتفاع **فوق الودجت وتحته** لا بين القوائم — فتبقى القوائمُ متلاصقةً بفواصلها، والصفُّ الوحيدُ في المنتصف.
      */
-    /* 🆕 W50 — في أندرويد 12+ البطاقتان بمقاسهما المحسوم والفراغُ صار أسطراً في المحرّك؛ وما بقي (أقلُّ من سطر) على الفواصل.
-       والمتوسطُ (صفٌّ واحد) يبقى يملأ — لا فواصلَ فيه تأخذ الباقي. قبل 12: W48 كما كان */
-    /* 🆕 D-1562 — **لا تمطيط** (خطّةُ الخانات، خالد ٢٨ أكتوبر): في أندرويد 12+ البطاقتان بمقاسهما (١٦:٩ بلا زوم) حتى في المتوسط —
-       والصفُّ الوحيدُ يتوسّط الودجت بفراغين متساويين فوقه وتحته (أدناه) بدل أن تكبر صورتُه */
     val fill = rows.any { it.type == "cont" } && !d.resize
     d.fill = fill
     if (fill) {
       val used = 24f + rows.sumOf { it.o.optDouble("h", 0.0) }.toFloat() + 13f * (rows.size - 1).coerceAtLeast(0)
       d.extra = (room - used).coerceAtLeast(0f)
+    }
+    if (d.resize) {
+      val pad = px(d, d.u(10f))
+      v.setViewPadding(R.id.rows, pad, pad, pad, pad)
     }
     if (rate != null && rows.isEmpty()) {
       v.addView(R.id.rows, rateStrip(d, rate))
@@ -307,20 +323,14 @@ object W2Render {
     val stripAfter = if (rows.firstOrNull()?.type == "search") 0 else -1
     if (rate != null && stripAfter < 0) {
       v.addView(R.id.rows, rateStrip(d, rate))
-      v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
+      v.addView(R.id.rows, divider(d, 13f))
     }
-    val centre = d.resize && rows.size == 1 && rate == null
+    val centre = d.resize && rate == null
     if (centre) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
     rows.forEachIndexed { i, r ->
       if (rate != null && i == 1 && stripAfter == 0) {
-        v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
+        v.addView(R.id.rows, divider(d, 13f))
         v.addView(R.id.rows, rateStrip(d, rate))
-      }
-      /* ما يزيد من الارتفاع يتوزّع على الفواصل (قبل الخطّ وبعده) — لا كتلةَ سوداءَ تحت آخر قسم */
-      if (i > 0) {
-        if (!fill) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
-        v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
-        if (!fill) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
       }
       val child = when (r.type) {
         "search" -> search(d, r)
@@ -328,21 +338,49 @@ object W2Render {
         "list" -> section(d, r)
         "tonight" -> tonight(d, r)
         "pair" -> pair(d, r)
-        "line" -> line(d, r.key)
+        "line" -> line(d, r.key, r.index)
         else -> null
+      } ?: return@forEachIndexed
+      if (i > 0) {
+        if (!fill && !d.resize) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
+        v.addView(R.id.rows, divider(d, if (d.resize) 9f else 13f))
+        if (!fill && !d.resize) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
       }
-      if (child != null) v.addView(R.id.rows, child)
+      v.addView(R.id.rows, child)
+      /* 🆕 D-1571 — صفُّ «القادم» المختصر ببوستره تحت البطاقتين (لوحة الخطّة ٤×٢): خطٌّ ومسافة ٨ ثمّ ٣٤ */
+      if (r.type == "cont" && r.upLine && d.resize) {
+        v.addView(R.id.rows, divider(d, 8f))
+        line(d, "up", 0, more = true)?.let { v.addView(R.id.rows, it) }
+      }
     }
     if (rate != null && stripAfter == 0 && rows.size == 1) {
-      v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
+      v.addView(R.id.rows, divider(d, 13f))
       v.addView(R.id.rows, rateStrip(d, rate))
     }
     if (centre) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
     return v
   }
 
-  /** عرضُ المحتوى داخل الحشوة (١٢ جانباً) */
-  private fun inner(d: Draw) = (d.wDp - 24f).coerceAtLeast(60f)
+  /** فاصلٌ بخطّ — بارتفاعه بالنسبة في أندرويد 12+ (`div_root`)، و١٣ قبله */
+  private fun divider(d: Draw, dp: Float): RemoteViews {
+    val v = RemoteViews(d.ctx.packageName, R.layout.w2_divider)
+    layoutSize(v, R.id.div_root, null, d.u(dp))
+    return v
+  }
+
+  /** نقاطٌ إلى بكسلات (لـ`setViewPadding`) */
+  private fun px(d: Draw, dp: Float): Int = (dp * d.ctx.resources.displayMetrics.density).toInt()
+
+  /** 🆕 D-1571 — رأسُ القسم: ١٨ وتحته ٦، والخطُّ بالنسبة — يُكتب في كلِّ رسم (W47) */
+  private fun hdr(d: Draw, v: RemoteViews, text: String, sp: Float = 11.5f) {
+    v.setTextViewText(R.id.hdr_title, text)
+    v.setTextViewTextSize(R.id.hdr_title, TypedValue.COMPLEX_UNIT_SP, d.u(sp))
+    v.setTextViewTextSize(R.id.hdr_all, TypedValue.COMPLEX_UNIT_SP, d.u(10f))
+    layoutSize(v, R.id.hdr_row, null, d.u(18f))
+  }
+
+  /** عرضُ المحتوى داخل الحشوة — 🆕 D-1571: ١٠×النسبة جانباً في أندرويد 12+ (١٢ قبله) */
+  private fun inner(d: Draw) = (d.wDp - if (d.resize) d.u(20f) else 24f).coerceAtLeast(60f)
 
   /* W31 — البحث */
   private fun search(d: Draw, r: Row): RemoteViews {
@@ -391,7 +429,13 @@ object W2Render {
     val v = RemoteViews(d.ctx.packageName, if (fixed) R.layout.w2_cont_fixed else R.layout.w2_cont)
     val f = d.f
     v.setTextViewText(R.id.hdr_title, f.s("continueTitle"))
-    v.setTextViewTextSize(R.id.hdr_title, TypedValue.COMPLEX_UNIT_SP, d.n("contHeader", if (d.xl) 13f else 14.5f))
+    v.setTextViewTextSize(R.id.hdr_title, TypedValue.COMPLEX_UNIT_SP, if (d.resize) d.u(13f) else d.n("contHeader", if (d.xl) 13f else 14.5f))
+    if (d.resize) {
+      /* 🆕 D-1571 — رأسٌ ١٨ ومسافةٌ ٦ والبطاقتان تحته (لوحة الخطّة) */
+      layoutSize(v, R.id.hdr_row, null, d.u(18f))
+      marginTop(v, R.id.cont_cards, d.u(6f))
+      v.setTextViewTextSize(R.id.hdr_all, TypedValue.COMPLEX_UNIT_SP, d.u(10.5f))
+    }
     v.setOnClickPendingIntent(R.id.hdr_title, d.open(WLinks.all("continue")))
     if (f.contTotal > 2) {
       v.setViewVisibility(R.id.hdr_all, View.VISIBLE)
@@ -399,13 +443,24 @@ object W2Render {
       v.setOnClickPendingIntent(R.id.hdr_all, d.open(WLinks.all("continue")))
     }
     val cardW = ((inner(d) - 9f) / 2f).coerceAtLeast(40f)
-    /* الصورةُ تُرسم بمقاس خانتها الحقيقيّ (الأساسُ ٩٣ وما بقي) — فلا مطَّ في `fitXY` */
-    val base = r.card ?: if (r.tall) d.n("contCardTall", 120f) else d.n("contCard", 93f)
+    /* الصورةُ تُرسم بمقاس خانتها الحقيقيّ (الأساسُ ٩٣ وما بقي) — فلا مطَّ في `fitXY`.
+       🆕 D-1571 — أندرويد 12+: **ارتفاعُ البطاقة من عرضها بنسبة ١٦:٩** (صورةُ الخلفية كاملةً بلا قصٍّ ولا زوم — صورةُ خالد القديمة) */
+    val base = if (d.resize) cardW * 9f / 16f else r.card ?: if (r.tall) d.n("contCardTall", 120f) else d.n("contCard", 93f)
     val cardH = base + d.extra
     /* 🆕 W50 — البطاقتان بمقاسهما المحسوم (٤×٢) لا تتمدّدان */
     if (fixed) layoutSize(v, R.id.cont_cards, null, cardH)
     drawCard(d, v, 0, cardW, cardH)
     drawCard(d, v, 1, cardW, cardH)
+    if (d.resize) {
+      for (n in 0..1) {
+        v.setTextViewTextSize(CARD_NAME[n], TypedValue.COMPLEX_UNIT_SP, d.u(11f))
+        v.setTextViewTextSize(CARD_SUB[n], TypedValue.COMPLEX_UNIT_SP, d.u(8.5f))
+        v.setTextViewTextSize(CARD_PCT[n], TypedValue.COMPLEX_UNIT_SP, d.u(8.5f))
+      }
+      /* صفُّ «القادم» صار صفّاً مختصراً ببوستره تحت البطاقتين (`rows`) — السطرُ القديمُ هنا يُخفى صراحةً (W47) */
+      v.setViewVisibility(R.id.up_block, View.GONE)
+      return v
+    }
     if (r.upLine) {
       v.setViewVisibility(R.id.up_block, View.VISIBLE)
       v.setOnClickPendingIntent(R.id.up_line, d.open(WLinks.calendar()))
@@ -505,6 +560,7 @@ object W2Render {
     "tw" -> d.f.s("towatchTitle")
     "friends" -> d.s2("friendsTitle")
     "act" -> d.s2("activityTitle")
+    "cine" -> d.s2or("cinemaTitle", "الآن في السينما", "Now in cinemas")
     else -> d.s2("searchPlaceholder")
   }
 
@@ -512,6 +568,7 @@ object W2Render {
     "cont" -> WLinks.all("continue")
     "up" -> WLinks.calendar()
     "tw" -> WLinks.all("towatch")
+    "cine" -> WLinks.discover()
     else -> null
   }
 
@@ -545,6 +602,11 @@ object W2Render {
         Line(t, x.optString("line"), if (x.isNull("sub")) null else x.optString("sub"), WLinks.title(t), ago(x.optString("at"), f.locale()))
       }
       "cont" -> f.cont.map { c -> Line(c.t, c.t.title, c.sub ?: c.label, WLinks.title(c.t)) }
+      /* 🆕 D-1571 — «الآن في السينما»: الاسمُ ثمّ «★ ٧٫٨ · رعب» */
+      "cine" -> d.cinema.mapNotNull { x ->
+        val t = f.titleFrom(x) ?: return@mapNotNull null
+        Line(t, t.title, cineMeta(d, x), WLinks.title(t))
+      }
       "tonight" -> listOfNotNull(tonightNow(d)?.let { m -> Line(m.t, m.t.title, Tonight.subOf(f, m), WLinks.title(m.t)) })
       else -> emptyList()
     }
@@ -579,8 +641,9 @@ object W2Render {
   private fun section(d: Draw, r: Row): RemoteViews {
     val v = fresh(d.ctx, R.layout.w2_list)
     v.setTextViewText(R.id.hdr_title, titleOf(d, r.key))
-    /* 🆕 W48 — العناوينُ ١٢٫٥ في الكبير جداً (المقترح ٣)، و«أصدقاؤك» ١٥٫٥ في الكبير (نسخة ٢) */
-    headerSize(d, v, if (r.key == "friends") d.n("friendsHeader", if (d.size == "large") 15.5f else if (d.xl) 12.5f else 14.5f) else null)
+    /* 🆕 W48 — العناوينُ ١٢٫٥ في الكبير جداً (المقترح ٣)، و«أصدقاؤك» ١٥٫٥ في الكبير (نسخة ٢) — 🆕 D-1571: رأسُ الخطّة ١٨ بالنسبة */
+    if (d.resize) hdr(d, v, titleOf(d, r.key))
+    else headerSize(d, v, if (r.key == "friends") d.n("friendsHeader", if (d.size == "large") 15.5f else if (d.xl) 12.5f else 14.5f) else null)
     headerLink(r.key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
     val items = lines(d, r.key)
     if (r.view == "posters") {
@@ -624,7 +687,8 @@ object W2Render {
       row.setTextViewTextSize(R.id.it_sub, TypedValue.COMPLEX_UNIT_SP, subSp)
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
-      if (friend) avatar(d, row, it.avatar, nameSp + 4f)
+      /* 🆕 D-1571 — الصورةُ أكبر بما يناسب الصفّ (خالد ١٤:١٣: «كبر الافتار بشكل يناسبها») */
+      if (friend) avatar(d, row, it.avatar, if (d.resize) d.u(24f) else nameSp + 4f)
       /* الوقتُ في الطرف: «أصدقاؤك»، و🆕 W52 «أنشطتك» بالخطّ نفسِه — وبقيّةُ القوائم تخفيه صراحةً (W47) */
       val time = if (friend || r.key == "act") it.time else null
       if (friend || layout == R.layout.w2_item) {
@@ -677,6 +741,8 @@ object W2Render {
   }
 
   private fun tonight(d: Draw, r: Row): RemoteViews {
+    /* 🆕 D-1571 — أندرويد 12+: خانةٌ كاملةٌ = بوسترٌ وعمود (لوحة الخطّة)، بارتفاع الصفّ المحسوم */
+    if (d.resize && r.h > 24f) return posterColumn(d, "tonight", inner(d), d.u(r.h)).also { layoutSize(it, R.id.pc_root, null, d.u(r.h)) }
     val wide = r.view != "poster"
     val v = RemoteViews(d.ctx.packageName, if (wide) R.layout.w2_tonight_wide else R.layout.w2_tonight_poster)
     val m = tonightNow(d)
@@ -725,19 +791,28 @@ object W2Render {
     val half = ((inner(d) - 17f) / 2f).coerceAtLeast(60f)
     var body = if (three) 152f else if (tall2) 126f else 102f
     val n = if (three) 3 else 2
-    /* 🆕 أندرويد 12+: الصفُّ بارتفاعه المحسوم (مقاسُ الشكل + ما كبرت به الأسطر، W50) — والجسمُ تحت رأسٍ ٢٤ */
+    /* 🆕 أندرويد 12+: الصفُّ بارتفاعه المحسوم بالنسبة (D-1571) — والجسمُ تحت رأسٍ ٢٤ */
     if (d.resize && r.h > 24f) {
-      layoutSize(v, R.id.pair_root, null, r.h)
-      body = r.h - 24f
+      layoutSize(v, R.id.pair_root, null, d.u(r.h))
+      body = d.u(r.h - 24f)
     }
     val g = if (d.resize) r.grow else 0f
-    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, body, n, g, r.views.getOrNull(0))) }
-    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, body, n, g, r.views.getOrNull(1))) }
+    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, body, r.halfRows.getOrNull(0) ?: n, g, r.views.getOrNull(0))) }
+    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, body, r.halfRows.getOrNull(1) ?: n, g, r.views.getOrNull(1))) }
     return v
   }
 
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
   private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3, grow: Float = 0f, view: String? = null): RemoteViews {
+    /*
+     * 🆕 D-1571 — أندرويد 12+ بالخطّة: النصفُ «بوستر» (وفيلمُ الليلة والسينما دائماً) بوسترٌ ٨٩×١٣٤ وعمود؛ والنصفُ «قائمة» أربعةُ
+     * أسطرٍ مختصرة (٢٢×٣٣)، و«أصدقاؤك» ثلاثة (٢٨×٤٢ وصورتُه جنب اسمه).
+     */
+    if (d.resize) {
+      val poster = key == "tonight" || key == "cine" || (key != "act" && (view?.let { it == "poster" || it == "posters" } ?: (d.opt(key).optString("view") == "posters")))
+      if (poster) return posterColumn(d, key, wDp, bodyDp)
+      return halfList(d, key, bodyDp, count)
+    }
     /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
     if (key == "tonight") return tonightHalf(d, wDp, bodyDp)
     /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة نفسُه بأوّل مسلسل؛ و«قائمة» تبقى الأسطرَ الثلاثة */
@@ -786,6 +861,34 @@ object W2Render {
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
       avatar(d, row, if (key == "friends") it.avatar else null, d.n("halfName", if (d.xl) 13f else 14f) + 3f)
+      row.setOnClickPendingIntent(R.id.item, d.open(it.link))
+      v.addView(R.id.items, row)
+    }
+    return v
+  }
+
+  /** 🆕 D-1571 — النصفُ «قائمة» بالنسبة: أسطرٌ متساويةٌ تملأ الجسم، والصورةُ والخطُّ بقدر عدد الأسطر */
+  private fun halfList(d: Draw, key: String, bodyDp: Float, count: Int): RemoteViews {
+    val v = fresh(d.ctx, R.layout.w2_half_list)
+    hdr(d, v, titleOf(d, key))
+    headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
+    v.setViewVisibility(R.id.items, View.VISIBLE)
+    v.setViewVisibility(R.id.posters, View.GONE)
+    val friend = key == "friends"
+    val n = count.coerceIn(1, 4)
+    val rowH = bodyDp / n
+    val tw = if (friend) d.u(28f) else d.u(22f)
+    val th = if (friend) d.u(42f) else d.u(33f)
+    lines(d, key).take(n).forEach {
+      val row = RemoteViews(d.ctx.packageName, R.layout.w2_item_small)
+      layoutSize(row, R.id.item, null, rowH)
+      layoutSize(row, R.id.it_img, tw, th)
+      poster(d, row, R.id.it_img, it.t?.poster, tw, th, 3.5f)
+      row.setTextViewTextSize(R.id.it_name, TypedValue.COMPLEX_UNIT_SP, d.u(if (friend) 11.5f else 10.5f))
+      row.setTextViewTextSize(R.id.it_sub, TypedValue.COMPLEX_UNIT_SP, d.u(if (friend) 9.5f else 9f))
+      row.setTextViewText(R.id.it_name, it.name)
+      row.setTextViewText(R.id.it_sub, listOfNotNull(it.sub?.takeIf { s -> s.isNotEmpty() }, if (friend) it.time else null).joinToString(" · "))
+      avatar(d, row, if (friend) it.avatar else null, d.u(20f))
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
       v.addView(R.id.items, row)
     }
@@ -897,83 +1000,196 @@ object W2Render {
     return v
   }
 
-  /** W34 · W35 — بوسترٌ ٢:٣ كاملٌ بطول الخانة وعمودٌ بجانبه: 🔁 فوق (فيلم الليلة)، والتقييمُ والمدّة، و✓ تحت */
-  private fun posterColumn(d: Draw, key: String, bodyDp: Float, buttons: Boolean = true): RemoteViews {
+  /** 🆕 D-1571 — «الآن في السينما» الذي يُعرض: الأوّلُ، و«↻» يقلّب بعدّاده (`cn_`) */
+  private fun cineNow(d: Draw): JSONObject? {
+    val all = d.cinema
+    if (all.isEmpty()) return null
+    val n = LoopzWidget.prefs(d.ctx).getInt("cn_${d.id}", 0)
+    return all[((n % all.size) + all.size) % all.size]
+  }
+
+  /** 🆕 D-1571 — «★ ٧٫٨ · رعب» (و«جديد» إن نزل خلال أسبوعين) */
+  private fun cineMeta(d: Draw, x: JSONObject): String {
+    val rating = if (x.isNull("rating")) null else x.optDouble("rating").takeIf { it > 0 }?.let { "★ " + String.format(d.f.locale(), "%.1f", it) }
+    val genre = if (x.isNull("genre")) null else x.optString("genre").takeIf { it.isNotEmpty() }
+    val fresh = if (x.optBoolean("is_new")) d.s2or("newTag", "جديد", "New") else null
+    return listOfNotNull(rating, genre, fresh).joinToString(" · ")
+  }
+
+  /**
+   * W34 · W35 · 🆕 D-1571 — بوسترٌ ٢:٣ بطول الخانة وعمودٌ بجانبه، **لكلِّ قسم** (النصفُ «بوستر» والصغيرُ ٢×٢ — لوحة الخطّة):
+   * فيلمُ الليلة (↻ و✓)، والسينما (↻ و«+» للمشاهدة)، وللمشاهدة (✓ أو ▶)، وأكملُ المشاهدة (✓ الحلقة)، والبقيّةُ بوسترٌ واسمٌ وسطرٌ.
+   * أندرويد 12+: البوسترُ بارتفاع الجسم وعرضُه حتّى ٦٢٪ من الخانة، والخطوطُ بالنسبة.
+   */
+  private fun posterColumn(d: Draw, key: String, wDp: Float, bodyDp: Float, buttons: Boolean = true): RemoteViews {
     val v = RemoteViews(d.ctx.packageName, R.layout.w2_half_poster)
-    v.setTextViewText(R.id.hdr_title, titleOf(d, key))
-    headerSize(d, v)
+    var pw = minOf(bodyDp * 2f / 3f, 80f)
+    var ph = pw * 1.5f
+    if (d.resize) {
+      hdr(d, v, titleOf(d, key))
+      val body = (bodyDp - d.u(22f)).coerceAtLeast(40f)
+      pw = minOf(body * 2f / 3f, wDp * 0.62f)
+      ph = pw * 1.5f
+      v.setInt(R.id.pc_img, "setMaxWidth", px(d, pw))
+      layoutSize(v, R.id.pc_img, pw, ph)
+      v.setTextViewTextSize(R.id.pc_name, TypedValue.COMPLEX_UNIT_SP, d.u(12f))
+      v.setTextViewTextSize(R.id.pc_meta, TypedValue.COMPLEX_UNIT_SP, d.u(10f))
+    } else {
+      v.setTextViewText(R.id.hdr_title, titleOf(d, key))
+      headerSize(d, v)
+    }
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
-    /* 🆕 البوسترُ ٢:٣ حتّى عرض ٨٠ (`maxWidth` في الواجهة) — فيبقى للاسم عرضٌ في النصف ولا يتداخل مع جاره */
-    val pw = minOf(bodyDp * 2f / 3f, 80f)
-    val ph = pw * 1.5f
-    if (key == "tonight") {
-      val m = tonightNow(d)
-      if (m == null) {
-        v.setTextViewText(R.id.pc_meta, d.f.s("noTowatchMovies"))
-        return v
-      }
-      poster(d, v, R.id.pc_img, m.t.poster, pw, ph, 8f)
-      v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(m.t)))
-      v.setTextViewText(R.id.pc_name, m.t.title)
-      v.setOnClickPendingIntent(R.id.pc_name, d.open(WLinks.title(m.t)))
-      v.setTextViewText(R.id.pc_meta, Tonight.subOf(d.f, m))
-      if (!buttons) return v
-      v.setViewVisibility(R.id.pc_check, View.VISIBLE)
-      resetCheck(v, R.id.pc_check_v, R.id.pc_meta, 0xFFB5B5B5.toInt())
-      if (d.f.check && d.undoOn("movie", m.t.id)) {
-        undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + d.s2("watched"))
-        return v
-      }
-      v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), m.t) else d.open(WLinks.title(m.t)))
-      if (d.tonight.size > 1) {
-        v.setViewVisibility(R.id.pc_another, View.VISIBLE)
-        v.setOnClickPendingIntent(R.id.pc_another, LoopzWidget.cycleIntent(d.ctx, d.id, d.next()))
-      }
-      return v
-    }
-    /* «للمشاهدة» الصغير (W35): أحدثُ ما أُضيف، والعددُ الباقي في الرأس */
-    val all = d.arr("towatch")
-    val x = all.firstOrNull()
-    val t = d.f.titleFrom(x)
-    if (x == null || t == null) {
-      v.setTextViewText(R.id.pc_meta, "—")
-      return v
-    }
-    if (all.size > 1) v.setTextViewText(R.id.hdr_title, "${titleOf(d, key)} · ${all.size}")
-    poster(d, v, R.id.pc_img, t.poster, pw, ph, 8f)
-    v.setOnClickPendingIntent(R.id.pc_img, d.open(WLinks.title(t)))
-    val rating = if (x.isNull("rating")) null else "★ " + String.format(d.f.locale(), "%.1f", x.optDouble("rating"))
-    v.setTextViewText(R.id.pc_name, t.title)
-    v.setOnClickPendingIntent(R.id.pc_name, d.open(WLinks.title(t)))
-    v.setTextViewText(R.id.pc_meta, listOfNotNull(x.optString("type_label").takeIf { it.isNotEmpty() }, rating).joinToString(" · "))
-    v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+    /* كلُّ رسمٍ يكتب الحالتين (W47): الأيقونةُ واللونُ والظهور */
+    v.setViewVisibility(R.id.pc_another, View.GONE)
+    v.setViewVisibility(R.id.pc_check, View.GONE)
+    v.setImageViewResource(R.id.pc_check_v, R.drawable.widget_ic_check)
     resetCheck(v, R.id.pc_check_v, R.id.pc_meta, 0xFFB5B5B5.toInt())
-    val movie = x.optString("action") == "watched"
-    when {
-      d.f.check && d.undoOn(if (movie) "movie" else "start", t.id) ->
-        undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + if (movie) d.s2("watched") else d.s2or("started", "بدأته", "Started"))
-      movie -> v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
+    fun art(t: WTitle, name: String, meta: String, link: String) {
+      poster(d, v, R.id.pc_img, t.poster, pw, ph, 8f)
+      v.setOnClickPendingIntent(R.id.pc_img, d.open(link))
+      v.setTextViewText(R.id.pc_name, name)
+      v.setOnClickPendingIntent(R.id.pc_name, d.open(link))
+      v.setTextViewText(R.id.pc_meta, meta)
+    }
+    fun none(text: String) {
+      v.setImageViewResource(R.id.pc_img, R.drawable.widget_poster_ph)
+      v.setTextViewText(R.id.pc_name, "")
+      v.setTextViewText(R.id.pc_meta, text)
+    }
+    when (key) {
+      "tonight" -> {
+        val m = tonightNow(d) ?: return v.also { none(d.f.s("noTowatchMovies")) }
+        art(m.t, m.t.title, Tonight.subOf(d.f, m), WLinks.title(m.t))
+        if (!buttons) return v
+        v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+        if (d.f.check && d.undoOn("movie", m.t.id)) {
+          undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + d.s2("watched"))
+          return v
+        }
+        v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), m.t) else d.open(WLinks.title(m.t)))
+        if (d.tonight.size > 1) {
+          v.setViewVisibility(R.id.pc_another, View.VISIBLE)
+          v.setOnClickPendingIntent(R.id.pc_another, LoopzWidget.cycleIntent(d.ctx, d.id, d.next()))
+        }
+      }
+      "cine" -> {
+        val x = cineNow(d)
+        val t = d.f.titleFrom(x)
+        if (x == null || t == null) return v.also { none("—") }
+        art(t, t.title, cineMeta(d, x), WLinks.title(t))
+        if (!buttons) return v
+        v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+        when {
+          d.f.check && d.undoOn("towatch", t.id) -> undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + d.s2or("added", "أُضيف", "Added"))
+          /* أُضيف من قبل (أو تابعه/شاهده): ✓ ساكنةٌ تفتح صفحتَه — لا «+» ثانية */
+          x.optBoolean("followed") || t.id in d.hidden -> v.setOnClickPendingIntent(R.id.pc_check, d.open(WLinks.title(t)))
+          else -> {
+            v.setImageViewResource(R.id.pc_check_v, R.drawable.widget_ic_plus)
+            v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.towatchIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
+          }
+        }
+        if (d.cinema.size > 1) {
+          v.setViewVisibility(R.id.pc_another, View.VISIBLE)
+          v.setOnClickPendingIntent(R.id.pc_another, LoopzWidget.cycleIntent(d.ctx, d.id, d.next(), "cn"))
+        }
+      }
+      "tw" -> {
+        /* «للمشاهدة» (W35): أحدثُ ما أُضيف، والعددُ الباقي في الرأس */
+        val all = d.arr("towatch")
+        val x = all.firstOrNull()
+        val t = d.f.titleFrom(x)
+        if (x == null || t == null) return v.also { none("—") }
+        if (all.size > 1) v.setTextViewText(R.id.hdr_title, "${titleOf(d, key)} · ${all.size}")
+        val rating = if (x.isNull("rating")) null else "★ " + String.format(d.f.locale(), "%.1f", x.optDouble("rating"))
+        art(t, t.title, listOfNotNull(x.optString("type_label").takeIf { it.isNotEmpty() }, rating).joinToString(" · "), WLinks.title(t))
+        if (!buttons) return v
+        v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+        val movie = x.optString("action") == "watched"
+        when {
+          d.f.check && d.undoOn(if (movie) "movie" else "start", t.id) ->
+            undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, R.id.pc_meta, "✓ " + if (movie) d.s2("watched") else d.s2or("started", "بدأته", "Started"))
+          movie -> v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.movieIntent(d.ctx, d.next(), t) else d.open(WLinks.title(t)))
+          else -> {
+            v.setImageViewResource(R.id.pc_check_v, R.drawable.widget_ic_play)
+            v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.startIntent(d.ctx, d.next(), t) else d.open(WLinks.start(t, "start")))
+          }
+        }
+      }
+      "cont" -> {
+        val c = d.f.cont.firstOrNull() ?: return v.also { none(d.f.s("startSomething")) }
+        art(c.t, c.t.title, c.sub ?: c.label ?: "", WLinks.title(c.t))
+        if (!buttons || !d.f.check) return v
+        if (d.undoOn("ep", c.t.id)) {
+          v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+          undoCircle(d, v, R.id.pc_check, R.id.pc_check_v, null, "")
+        } else if (c.season != null && c.episode != null) {
+          v.setViewVisibility(R.id.pc_check, View.VISIBLE)
+          v.setOnClickPendingIntent(R.id.pc_check, CheckReceiver.intent(d.ctx, d.next(), c))
+        }
+      }
       else -> {
-        v.setImageViewResource(R.id.pc_check_v, R.drawable.widget_ic_play)
-        v.setOnClickPendingIntent(R.id.pc_check, if (d.f.check) CheckReceiver.startIntent(d.ctx, d.next(), t) else d.open(WLinks.start(t, "start")))
+        /* القادم وأصدقاؤك ونشاطك: أوّلُ سطرٍ بوسترٌ، والاسمُ والسطرُ الثاني (والوقتُ) بجانبه */
+        val ln = lines(d, key).firstOrNull()
+        val t = ln?.t
+        if (ln == null || t == null) return v.also { none(if (key == "up") d.s2("noUpcoming").ifEmpty { "—" } else "—") }
+        art(t, ln.name, listOfNotNull(ln.sub?.takeIf { s -> s.isNotEmpty() }, ln.time).joinToString(" · "), ln.link)
       }
     }
     return v
   }
 
-  /* W39 — السطرُ المختصر */
-  private fun line(d: Draw, key: String): RemoteViews {
+  /*
+   * W39 — السطرُ المختصر. 🆕 D-1571 — ٣٤ ببوستر ٢٢×٣٣ وسطرين (لوحة الخطّة): صفُّ «القادم» تحت البطاقتين («القادم · السبت» ثمّ
+   * «Black Clover · م٢ ح٥» و«+٢ ←»)، وسطرا نشاطك تحت (`index`: الأحدثُ ثمّ الذي قبله). عنصرٌ غائبٌ في سطرٍ ثانٍ ⇒ لا سطر.
+   */
+  private fun line(d: Draw, key: String, index: Int = 0, more: Boolean = false): RemoteViews? {
     val v = RemoteViews(d.ctx.packageName, R.layout.w2_line)
+    if (d.resize) {
+      layoutSize(v, R.id.item, null, d.u(34f))
+      layoutSize(v, R.id.ln_img, d.u(22f), d.u(33f))
+      v.setTextViewTextSize(R.id.ln_label, TypedValue.COMPLEX_UNIT_SP, d.u(9.5f))
+      v.setTextViewTextSize(R.id.ln_name, TypedValue.COMPLEX_UNIT_SP, d.u(11f))
+      v.setTextViewTextSize(R.id.ln_more, TypedValue.COMPLEX_UNIT_SP, d.u(9.5f))
+    }
+    v.setViewVisibility(R.id.ln_more, View.GONE)
     v.setTextViewText(R.id.ln_label, titleOf(d, key))
-    val it = lines(d, key).firstOrNull()
+    if (key == "up") {
+      val all = upcoming(d)
+      val u = all.firstOrNull()
+      val t = d.f.titleFrom(u)
+      v.setOnClickPendingIntent(R.id.item, d.open(WLinks.calendar()))
+      if (u == null || t == null) {
+        v.setViewVisibility(R.id.ln_img, View.GONE)
+        v.setTextViewText(R.id.ln_name, d.s2("noUpcoming").ifEmpty { "—" })
+        return v
+      }
+      v.setViewVisibility(R.id.ln_img, View.VISIBLE)
+      val date = if (u.isNull("date")) null else u.optString("date").takeIf { it.isNotEmpty() }
+      v.setTextViewText(R.id.ln_label, listOfNotNull(titleOf(d, "up"), date?.let { d.f.dayLabel(it) }).joinToString(" · "))
+      val label = if (u.isNull("label")) null else u.optString("label").takeIf { it.isNotEmpty() }
+      v.setTextViewText(R.id.ln_name, listOfNotNull(t.title, label).joinToString(" · "))
+      poster(d, v, R.id.ln_img, t.poster, d.u(22f), d.u(33f), 3.5f)
+      if (more && all.size > 1) {
+        v.setViewVisibility(R.id.ln_more, View.VISIBLE)
+        v.setTextViewText(R.id.ln_more, String.format(d.f.locale(), "+%d", all.size - 1) + if (d.f.rtl) " ←" else " →")
+      }
+      return v
+    }
+    val it = lines(d, key).getOrNull(index)
     if (it == null) {
+      if (index > 0) return null
       v.setViewVisibility(R.id.ln_img, View.GONE)
       v.setTextViewText(R.id.ln_name, "—")
       headerLink(key)?.let { link -> v.setOnClickPendingIntent(R.id.item, d.open(link)) }
       return v
     }
-    poster(d, v, R.id.ln_img, it.t?.poster, 28f, 42f, 4f)
+    v.setViewVisibility(R.id.ln_img, View.VISIBLE)
+    poster(d, v, R.id.ln_img, it.t?.poster, if (d.resize) d.u(22f) else 28f, if (d.resize) d.u(33f) else 42f, 3.5f)
     v.setTextViewText(R.id.ln_name, listOfNotNull(it.name, it.sub?.takeIf { s -> s.isNotEmpty() }).joinToString(" · "))
+    if (it.time != null && d.resize) {
+      v.setViewVisibility(R.id.ln_more, View.VISIBLE)
+      v.setTextViewText(R.id.ln_more, it.time)
+    }
     v.setOnClickPendingIntent(R.id.item, d.open(it.link))
     return v
   }
@@ -982,13 +1198,21 @@ object W2Render {
 
   private fun small(d: Draw, s: JSONObject, w: Float, h: Float): RemoteViews {
     val key = s.optString("key", "cont")
+    /* 🆕 D-1571 — أندرويد 12+ بالخطّة (`v3`): الصغيرُ ٢×٢ بوسترٌ وعمودٌ لكلِّ قسم، والحشوةُ ٨ بالنسبة */
+    if (d.resize && s.optString("square") == "posterColumn") {
+      return fresh(d.ctx, R.layout.w2_root).also { v ->
+        val pad = px(d, d.u(8f))
+        v.setViewPadding(R.id.rows, pad, pad, pad, pad)
+        v.addView(R.id.rows, posterColumn(d, key, w - d.u(16f), h - d.u(16f)))
+      }
+    }
     /* الطوليُّ (أغلبُ الجوّالات، S24 ≈ 0.70) أو المربّع — والمحرّكُ حسم الشكلَ لكلٍّ منهما */
     val form = if (h / w > 1.2f) s.optString("tall", "list") else s.optString("square", "list")
     return when (form) {
       "posterFull" -> posterFull(d, key, w, h)
       "headerFade" -> headerFade(d, w, h)
       "posterColumn" -> fresh(d.ctx, R.layout.w2_root).also { v ->
-        v.addView(R.id.rows, posterColumn(d, key, (h - 24f - 28f).coerceAtLeast(60f)))
+        v.addView(R.id.rows, posterColumn(d, key, w - 24f, (h - 24f - 28f).coerceAtLeast(60f)))
       }
       /* 🆕 W46 — فيلمُ الليلة «قائمة» في الصغير: شكلُه هو (أندرويد «هـ») لا شكلُ نصف العرض — كان يرسم الصورةَ العريضة فلا تظهر القائمة */
       "list" -> if (key == "tonight") fresh(d.ctx, R.layout.w2_root).also { v -> v.addView(R.id.rows, tonightSmallList(d, h / w > 1.2f)) }
@@ -1128,6 +1352,12 @@ object W2Render {
     if (hDp != null) v.setViewLayoutHeight(id, hDp, TypedValue.COMPLEX_UNIT_DIP)
   }
 
+  /** 🆕 D-1571 — هامشٌ علويّ بالنسبة (أندرويد 12+ وحدَه، `setViewLayoutMargin`) */
+  private fun marginTop(v: RemoteViews, id: Int, dp: Float) {
+    if (Build.VERSION.SDK_INT < 31) return
+    v.setViewLayoutMargin(id, RemoteViews.MARGIN_TOP, dp, TypedValue.COMPLEX_UNIT_DIP)
+  }
+
   private val LP = intArrayOf(R.id.lp_1, R.id.lp_2, R.id.lp_3, R.id.lp_4)
   private val LP_IMG = intArrayOf(R.id.lp_img_1, R.id.lp_img_2, R.id.lp_img_3, R.id.lp_img_4)
   private val LP_STRIP = intArrayOf(R.id.lp_strip_1, R.id.lp_strip_2, R.id.lp_strip_3, R.id.lp_strip_4)
@@ -1143,14 +1373,16 @@ object W2Render {
   private fun posterGrid(d: Draw, v: RemoteViews, r: Row, items: List<Line>) {
     val count = if (d.resize) r.posters else 3
     val gap = d.n("posterGap", 8f)
-    val gridH = if (count == 4) d.n("posterGrid4", 116f) else d.n("posterGrid", 130f)
+    /* 🆕 D-1571 — الشبكةُ بارتفاع صفِّها المحسوم ناقصاً الرأس (المحرّكُ حسبه ٢:٣ من عرض التصميم) */
+    val gridH = if (d.resize && r.h > 24f) d.u(r.h - 24f) else if (count == 4) d.n("posterGrid4", 116f) else d.n("posterGrid", 130f)
     val pw = if (d.resize) minOf((inner(d) - gap * (count - 1)) / count, gridH / 1.5f).coerceAtLeast(30f) else 87f
     val ph = if (d.resize) pw * 1.5f else 130f
     if (d.resize) layoutSize(v, R.id.posters, null, gridH)
     /* الخانةُ الرابعةُ ومسافتُها لا تظهران إلّا بأربعة */
     v.setViewVisibility(R.id.lp_gap_3, if (count == 4) View.VISIBLE else View.GONE)
     v.setViewVisibility(R.id.lp_4, if (count == 4) View.VISIBLE else View.GONE)
-    val friends = r.key == "friends"
+    /* 🆕 D-1571 — «الآن في السينما» عليه الشريطُ نفسُه: الاسمُ ثمّ «★ · التصنيف» */
+    val friends = r.key == "friends" || r.key == "cine"
     for (n in 0 until count) {
       val it = items.getOrNull(n)
       v.setViewVisibility(LP_STRIP[n], View.GONE)

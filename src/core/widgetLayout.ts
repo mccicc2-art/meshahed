@@ -14,7 +14,8 @@
 import { lookFor, type WidgetLook } from "./widgetLook.ts";
 import { defaultV3, optsFromV3, resolveV3, sanitizeV3, type WidgetV3 } from "./widgetSlots.ts";
 
-export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act"] as const;
+/* 🆕 D-1571 — `cine` «الآن في السينما» آخرَ القائمة: الإعدادُ المحفوظُ قبله يُكمَل به ولا يتغيّر ترتيبُه */
+export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act", "cine"] as const;
 export type WidgetSectionKey = (typeof WIDGET_SECTION_KEYS)[number];
 
 /** أندرويد: صغير ٢×٢ · متوسط ٤×٢ · كبير ٤×٤ · كبير جداً ٤×٦ (أندرويد وحده، W28) */
@@ -53,8 +54,8 @@ export interface WidgetLayoutConfig {
 export function defaultWidgetConfig(): WidgetLayoutConfig {
   const full = (view: string, count: 2 | 3 = 2): WidgetSectionOpts => ({ size: "full", view, count });
   return {
-    order: ["search", "cont", "up", "tonight", "friends", "tw", "act"],
-    on: { search: true, cont: true, up: true, tonight: true, friends: true, tw: true, act: true },
+    order: ["search", "cont", "up", "tonight", "friends", "tw", "act", "cine"],
+    on: { search: true, cont: true, up: true, tonight: true, friends: true, tw: true, act: true, cine: true },
     opts: {
       search: { ...full("compact"), trend: "list" },
       /* 🆕 W45 — أكملُ المشاهدة الصغير صورةٌ افتراضاً (أحمد «١ أ»، ١٤ أكتوبر): نصفُ العرض والمربّعُ كفيلم الليلة */
@@ -66,6 +67,7 @@ export function defaultWidgetConfig(): WidgetLayoutConfig {
       friends: { ...full("list"), posters: 4 },
       tw: { ...full("list"), posters: 4 },
       act: full("recent"),
+      cine: { ...full("posters"), posters: 4 },
     },
     smallPick: "first",
   };
@@ -112,7 +114,8 @@ export const WIDGET_HEIGHTS = {
 } as const;
 
 /** ارتفاعُ كلِّ حجمٍ في التصميم المعتمد — الرسّامُ يقرأ الحقيقيَّ من النظام ويمرّره بدلاً منه */
-export const WIDGET_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 172, medium: 188, large: 440, xl: 720 };
+/* 🆕 D-1571 — مقاساتُ لوحات الخطّة (٤×٢ ٣٣٥×١٧٨ · ٤×٤ ٣٨٤ · ٤×٦ ٥٩٠) — المعاينةُ ترسم بها، والودجتُ يحسم بمقاسه الحقيقيّ مقسوماً على نسبة العرض */
+export const WIDGET_SIZE_HEIGHT: Record<WidgetSize, number> = { small: 178, medium: 178, large: 384, xl: 590 };
 
 /**
  * 🆕 **مقاساتُ آبل أقصرُ من أندرويد**: المتوسطُ ١٧٠ والكبيرُ ٣٧٦ على أغلب الآيفونات (الكبيرُ ٣٨٢ في Pro Max) — فالصفوفُ
@@ -136,8 +139,10 @@ export type WidgetRow =
   | { type: "list"; key: WidgetSectionKey; view: "list" | "posters"; count: number; posters?: 3 | 4; grow?: number; h: number }
   | { type: "tonight"; view: "wide" | "poster"; h: number }
   /** 🆕 v3 — `views` شكلُ كلِّ نصفٍ (قائمة · بوستر) لرسّامٍ يقرؤه؛ والأقدمُ يقرأ `opts[key].view` كما كان */
-  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; grow?: number; views?: ("list" | "poster")[]; h: number }
-  | { type: "line"; key: WidgetSectionKey; h: number };
+  /** 🆕 D-1571 — `rows` أسطرُ كلِّ نصفٍ قائمة (أربعة مختصرة، و«أصدقاؤك» ثلاثة) */
+  | { type: "pair"; keys: [WidgetSectionKey] | [WidgetSectionKey, WidgetSectionKey]; count: 2 | 3; grow?: number; views?: ("list" | "poster")[]; rows?: number[]; h: number }
+  /** 🆕 D-1571 — `index` أيُّ عنصرٍ في القسم (سطرا نشاطك: الأحدثُ ثمّ الذي قبله) */
+  | { type: "line"; key: WidgetSectionKey; index?: number; h: number };
 
 export interface WidgetLayout {
   rows: WidgetRow[];
@@ -353,6 +358,8 @@ export function fitImage(width: number, height: number, limit: number = WIDGET_S
 export type WidgetSmallForm = "posterFull" | "posterColumn" | "headerFade" | "list";
 
 export function smallWidgetForm(cfg: WidgetLayoutConfig, key: WidgetSectionKey, width: number, height: number): WidgetSmallForm {
+  /* 🆕 D-1571 — الخانات: الصغيرُ ٢×٢ بوسترٌ كاملٌ ١٠٨×١٦٢ وعمودُ أزرار لكلِّ قسم (لوحة الخطّة ٢×٢) */
+  if (cfg.v3) return "posterColumn";
   if (key === "tonight" && cfg.opts.tonight.small === "list") return "list";
   if (key === "cont" && cfg.opts.cont.small === "list") return "list";
   if (key !== "cont" && key !== "tonight" && key !== "tw") return "list";
@@ -408,7 +415,7 @@ export function sanitizeWidgetConfig(raw: unknown): WidgetLayoutConfig {
         ...(k === "cont" ? { small: o.small === "list" ? "list" : "image" } : {}),
         ...(k === "search" ? { trend: o.trend === "posters" ? "posters" : "list" } : {}),
         /* 🆕 W54 — إعدادٌ محفوظٌ قبل الخيار يأخذ الافتراضيَّ الجديد (٤) */
-        ...(k === "friends" || k === "tw" ? { posters: o.posters === 3 ? 3 : 4 } : {}),
+        ...(k === "friends" || k === "tw" || k === "cine" ? { posters: o.posters === 3 ? 3 : 4 } : {}),
       };
     }
   }
@@ -450,7 +457,9 @@ const SMALL_SQUARE = { w: 170, h: 170 };
 
 /** الارتفاعاتُ التي تُحسم لها الصفوف، وحجمُ كلٍّ منها — الحدودُ نفسُها في الرسّامَين */
 const HEIGHT_STEPS: Record<WidgetPlatform, { from: number; to: number; step: number; size: (h: number) => Exclude<WidgetSize, "small"> }> = {
-  android: { from: 140, to: 900, step: 20, size: (h) => (h < 260 ? "medium" : h < 600 ? "large" : "xl") },
+  /* 🆕 D-1571 — بنقاط التصميم (الرسّامُ يقسم الارتفاعَ الحقيقيّ على نسبة العرض): ٤×٢ ≈ ١٧٨ · ٤×٣ ≈ ٢٧٥ · ٤×٥ ≈ ٤٧٠ (كبيرٌ بسطرَي نشاطك)
+     · ٤×٦ ≈ ٥٧٠ وما فوق (كبيرٌ جداً) — مقاساتُ جوال خالد (`claude/WIDGET-SIZES-khaled-S24U-2026-10-29.md`) */
+  android: { from: 140, to: 900, step: 10, size: (h) => (h < 240 ? "medium" : h < 520 ? "large" : "xl") },
   /* 🆕 D-1500 — حتّى ٨٠٠ ليصل الكبيرُ جداً (iOS 27)، وما فوق ٤٥٠ حجمُه «xl»: الكبيرُ ٣٧٦–٣٨٢ لا يبلغه */
   ios: { from: 130, to: 800, step: 10, size: (h) => (h < 250 ? "medium" : h < 450 ? "large" : "xl") },
 };
