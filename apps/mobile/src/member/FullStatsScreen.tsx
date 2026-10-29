@@ -154,10 +154,12 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
         {TABS.map((id) => {
           const on = id === lit;
           return (
-            /* 🆕 D-1586 — خمسةُ أقسامٍ في صفٍّ واحد: النقطةُ تحت الاسم لا بجانبه، والاسمُ يصغر ليتّسع ولا يُبتر */
-            <Pressable key={id} onPress={() => { if (id === tab) return; haptic.pick(); setAim(id); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4 }}>
+            /* 🆕 D-1586 — خمسةُ أقسامٍ في صفٍّ واحد: النقطةُ تحت الاسم لا بجانبه، والاسمُ يصغر ليتّسع ولا يُبتر.
+               🆕 D-1588 — **النقطةُ معلّقةٌ لا تُحسب من القامة** (لقطةُ أحمد: «دائرة التولز ماهي على نفس السطر»): كانت تحت الاسم في
+               التدفّق فيرتفع الاسمُ عن وسط الدائرة بنصف قامتها وفجوتها (~٥) — الآن الاسمُ وحدَه في الوسط والنقطةُ تحته مطلقة */
+            <Pressable key={id} onPress={() => { if (id === tab) return; haptic.pick(); setAim(id); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, minWidth: 0, height: controlSize.filterBtn, alignItems: "center", justifyContent: "center" }}>
               <Text size={14} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tabLabel[id]}</Text>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: on ? tokens.accent : "transparent" }} />
+              {on ? <View style={{ position: "absolute", bottom: -2, width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.accent }} /> : null}
             </Pressable>
           );
         })}
