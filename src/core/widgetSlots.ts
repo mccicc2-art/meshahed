@@ -94,13 +94,23 @@ export function sanitizeV3(raw: unknown): WidgetV3 {
   const lg = (r.large && typeof r.large === "object" ? r.large : {}) as Record<string, unknown>;
   const xl = (r.xl && typeof r.xl === "object" ? r.xl : {}) as Record<string, unknown>;
   const xs = Array.isArray(xl.slots) ? xl.slots : [];
+  const xlSlots: [WidgetSlot, WidgetSlot] = [cleanSlot(xs[0], base.xl.slots[0]), cleanSlot(xs[1], base.xl.slots[1])];
+  const xlLine = isSlotSection(xl.line) ? xl.line : base.xl.line;
+  /*
+   * 🆕 D-1574 — الإعدادُ المحفوظُ نسخةٌ كاملة: من فتح الإعدادَ قبل 1.13.2 حُفظ له الافتراضيُّ القديمُ (نص للمشاهدة + نص فيلم الليلة ·
+   * أصدقاؤك كامل) فلم يصله الجديد ولا «الآن في السينما» (خالد ١٧:٠٢: «هذا الافتراضي؟»). ما يطابق القديمَ بالضبط يصير الجديد؛
+   * ومن غيّر ترتيبه بنفسه لا يُمسّ.
+   */
+  const oldXl =
+    xlSlots[0].mode === "pair" && xlSlots[0].a.s === "tw" && xlSlots[0].a.v === "poster" && xlSlots[0].b.s === "tonight" &&
+    xlSlots[1].mode === "full" && xlSlots[1].a.s === "friends" && xlSlots[1].a.v === "list" && xlLine === "act";
   return {
     small: typeof r.small === "string" && (SMALL_SECTIONS as readonly string[]).includes(r.small) ? (r.small as SmallSection) : base.small,
     medium: { top: typeof med.top === "boolean" ? med.top : base.medium.top, slot: cleanSlot(med.slot, base.medium.slot) },
     large: { slot: cleanSlot(lg.slot, base.large.slot) },
     xl: {
-      slots: [cleanSlot(xs[0], base.xl.slots[0]), cleanSlot(xs[1], base.xl.slots[1])],
-      line: isSlotSection(xl.line) ? xl.line : base.xl.line,
+      slots: oldXl ? base.xl.slots : xlSlots,
+      line: oldXl ? base.xl.line : xlLine,
     },
   };
 }

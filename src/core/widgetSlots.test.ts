@@ -120,3 +120,10 @@ test("D-1561: الإظهارُ القديم (on.up=false) لا يُسقط الق
   assert.equal(e[0], "cont86");
   assert.ok(e.includes("tw:posters×4"));
 });
+
+test("الإعدادُ المحفوظُ بالافتراضي القديم يصير الجديد، والمخصّصُ لا يُمسّ (D-1574)", () => {
+  const old = { xl: { slots: [{ mode: "pair", a: { s: "tw", v: "poster" }, b: { s: "tonight", v: "poster" } }, { mode: "full", a: { s: "friends", v: "list" }, b: { s: "act", v: "list" } }], line: "act" } };
+  assert.deepEqual(sanitizeV3(old).xl, defaultV3().xl);
+  const mine = { xl: { slots: [{ mode: "pair", a: { s: "tw", v: "poster" }, b: { s: "tonight", v: "poster" } }, { mode: "full", a: { s: "up", v: "list" }, b: { s: "act", v: "list" } }], line: "act" } };
+  assert.equal(sanitizeV3(mine).xl.slots[1].a.s, "up");
+});
