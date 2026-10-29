@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { defaultWidgetLook, lookFor, sanitizeWidgetLook } from "./widgetLook.ts";
+/* المدقّق ٢٩ أكتوبر — حُذفت استيراداتٌ بقيت بلا استعمال بعد نقل اختباراتها في T219 (تحذيراتُ eslint)؛ لا اختبارَ تغيّر */
+import { lookFor } from "./widgetLook.ts";
 import {
-  defaultWidgetConfig, resolveWidgetLayout, smallWidgetSection, smallWidgetForm, fitImage, widgetAccess,
-  effectiveWidgetConfig, sanitizeWidgetConfig, widgetSizesFor, resolveWidget, WIDGET_HEIGHTS, type WidgetLayoutConfig, type WidgetRow,
+  defaultWidgetConfig, resolveWidgetLayout, smallWidgetSection, smallWidgetForm, fitImage,
+  sanitizeWidgetConfig, widgetSizesFor, resolveWidget, WIDGET_HEIGHTS, type WidgetRow,
 } from "./widgetLayout.ts";
 
 const names = (rows: WidgetRow[]) => rows.map((r) =>

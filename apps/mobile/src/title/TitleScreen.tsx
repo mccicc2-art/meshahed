@@ -126,7 +126,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const upX = useGuestUpgrade(isGuest(x), extras.refetch);
   /* قوائمي ومفضّلتي من الإضافات، والباقي من العمل — أيُّهما زائرٌ يعطّل صفَّ الأفعال */
   const pending = guest || isGuest(x);
-  const community = useCommunity(kind, id, tab === "community");
+  /* 🆕 D-1566 — **تُجلب مع العمل لا مع فتح التبويب** (أحمد ٢٩ أكتوبر: «هنا احتاج يظهر عدد المراجعات الموجودة»): عددُها يُكتب
+     بجانب اسم التبويب، والتبويبُ يفتح على قائمةٍ حاضرة. الطلبُ نفسُه الذي كان يُرسل عند فتحه، مخبّأً دقيقة */
+  const community = useCommunity(kind, id, !!d);
+  const reviewsCount = community.data?.reviews.length ?? 0;
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -499,6 +502,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                   {/* D-1133 — أيقوناتُ الويب نفسُها (`DetailTabs`: list · info · people، ١٦، ذهبيّةٌ للنشط) */}
                   <Icon name={k === "episodes" ? "list" : k === "info" ? "info" : "people"} size={16} color={on ? tokens.accent : tokens.muted} />
                   <Text size={14} weight={on ? "700" : "600"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{k === "episodes" ? t.tabEpisodes : k === "info" ? t.tabInfo : t.tabTitleReviews}</Text>
+                  {/* 🆕 D-1566 — عددُ المراجعات المكتوبة كما يعرضها التبويب (الأعضاءُ والشخصيّات) — خفيفٌ، ويغيب عند الصفر */}
+                  {k === "community" && reviewsCount > 0 ? (
+                    <Text size={13} weight="600" color={tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(reviewsCount, locale)}</Text>
+                  ) : null}
                 </Pressable>
               );
             })}

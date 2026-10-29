@@ -36,6 +36,7 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { DetailTabs } from "@/components/DetailTabs";
 import { TitleCommunityTab } from "@/components/TitleCommunityTab";
+import { TitleReviewsCount } from "@/components/TitleReviewsCount";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
@@ -571,6 +572,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
              */
             key: "community",
             label: t.tabTitleReviews,
+            badge: (
+              <Suspense fallback={null}>
+                <TitleReviewsCount tmdbId={movieId} mediaType="movie" locale={locale} />
+              </Suspense>
+            ),
             icon: "people",
             content: (
               <Suspense

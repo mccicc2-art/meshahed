@@ -10,6 +10,8 @@ export interface DetailTab {
   label: string;
   icon: IconName;
   content: React.ReactNode;
+  /** 🆕 D-1566 — عددٌ خفيفٌ بعد الاسم (عددُ المراجعات) — يرسمه الخادمُ خلف `Suspense` فلا يؤخّر الشريط */
+  badge?: React.ReactNode;
 }
 
 /**
@@ -94,6 +96,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
                   className={`transition-colors ${on ? "text-accent" : ""}`}
                 />
                 <span className="truncate">{tab.label}</span>
+                {tab.badge}
               </button>
             );
           })}

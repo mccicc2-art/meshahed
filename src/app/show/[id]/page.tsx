@@ -35,6 +35,7 @@ import { getT, getWatchRegion } from "@/lib/locale";
 import { originAdjectives } from "@/core/region";
 import { DetailTabs } from "@/components/DetailTabs";
 import { TitleCommunityTab } from "@/components/TitleCommunityTab";
+import { TitleReviewsCount } from "@/components/TitleReviewsCount";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
@@ -630,6 +631,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
              */
             key: "community",
             label: t.tabTitleReviews,
+            badge: (
+              <Suspense fallback={null}>
+                <TitleReviewsCount tmdbId={tvId} mediaType="tv" locale={locale} />
+              </Suspense>
+            ),
             icon: "people",
             content: (
               <Suspense
