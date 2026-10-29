@@ -64,7 +64,8 @@ export function WidgetScreen() {
   const ios = Platform.OS === "ios";
   /* 🔴 D-1503 — **الكبيرُ جداً للآيفون مؤجَّل** حتّى Expo SDK 58: لا يُبنى إلّا بـXcode 27، وتطبيقٌ مبنيٌّ به بلا دورة UIScene
      ينغلق عند الفتح على iOS 27 (كراشُ 1.12.7 (17) — D-1502). البناءُ عاد إلى Xcode 26.6 فالملحقُ لا يعلن المقاس — فلا تبويبَ له */
-  const sizes = widgetSizesFor(ios ? "ios" : "android");
+  /* 🆕 D-1562 — الكبيرُ جداً في الآيفون من iOS 27 (بناءُ Xcode 27 يضمّه للودجت) — قبلها يقف عند الكبير */
+  const sizes = widgetSizesFor(ios ? "ios" : "android", ios && parseInt(String(Platform.Version), 10) >= 27);
   const params = useLocalSearchParams<{ widget?: string }>();
 
   /* 🆕 W40 — ما على الشاشة الآن: يُقرأ عند الفتح وكلَّ عودةٍ للتطبيق (بعد «أضف ودجت» أو حذفِ واحد) */
@@ -100,8 +101,8 @@ export function WidgetScreen() {
     const n = Number(params.widget);
     return !ios && Number.isInteger(n) && n > 0 ? ANDROID_WIDGET_LAYOUT(n) : MAIN_LAYOUT;
   });
-  /* يُعاد تركيبُ قائمة السحب حين يتبدّل ترتيبُها من خارجها (تبديلُ التخطيط) — لا عند كلِّ إفلات */
-  const [nonce, setNonce] = useState(0);
+  /* يُعاد تركيبُ قائمة السحب حين يتبدّل ترتيبُها من خارجها — 🆕 D-1562: محرّرُ الخانات بلا سحب، فالعدّادُ لا يُقرأ (يبقى لمواضعه) */
+  const [, setNonce] = useState(0);
   const [size, setSize] = useState<WidgetSize>("large");
   /* الودجتُ المفتوحُ من رابطه (الضغطُ المطوّل أو «أضف ودجت»): حجمُه حين يُعرف مقاسُه */
   useEffect(() => {

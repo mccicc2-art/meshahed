@@ -110,7 +110,7 @@ function posterName(path: string): string | null {
  * والملصقُ `w500` — الودجتُ الصغيرُ على S24 Ultra نحو ٣٥٠px عرضاً، و`w342` أصغرُ منه فيُمَطّ ويَغبَش.
  * المفتاحُ مسارُ TMDB والقيمةُ نوعُه؛ ومسارٌ واحدٌ لا يُنزَّل مرّتين.
  */
-type Art = "poster" | "backdrop";
+type Art = "poster" | "backdrop" | "avatar";
 
 function collectArt(feed: WidgetFeed): Map<string, Art> {
   const out = new Map<string, Art>();
@@ -135,7 +135,11 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
     v2.trending.forEach((x) => add(x.poster_path));
     v2.towatch.forEach((x) => add(x.poster_path));
     v2.upcoming.items.forEach((x) => add(x.poster_path));
-    v2.friends.forEach((x) => add(x.title.poster_path));
+    v2.friends.forEach((x) => {
+      add(x.title.poster_path);
+      /* 🆕 D-1562 — صورةُ الصديق جنب اسمه في الودجت: الرابطُ كاملاً مفتاحُها (ليست من TMDB) */
+      if (x.avatar_url && /^https:\/\//.test(x.avatar_url)) add(x.avatar_url, "avatar");
+    });
     v2.activity.forEach((x) => add(x.title.poster_path));
   }
   return out;
@@ -143,6 +147,12 @@ function collectArt(feed: WidgetFeed): Map<string, Art> {
 
 /** اسمُ ملفِّ الصورة على الجهاز — الاسمُ يحمل المقاسَ (ملفّاتُ `w342` القديمةُ من البناء الأوّل لا تُعاد على أنّها الجديدة) */
 function artName(path: string, kind: Art): string | null {
+  /* 🆕 D-1562 — الرابطُ طويلٌ وفيه ما لا يصلح لاسم ملفّ: بصمتُه (FNV-1a) اسمُه — والرابطُ نفسُه يعطي الاسمَ نفسَه فلا يُنزَّل مرّتين */
+  if (kind === "avatar") {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < path.length; i++) h = Math.imul(h ^ path.charCodeAt(i), 0x01000193) >>> 0;
+    return `a96_${h.toString(16)}_${path.length}`;
+  }
   const base = posterName(path);
   return base ? `${kind === "backdrop" ? "b780" : "p500"}_${base}` : null;
 }
@@ -152,7 +162,7 @@ async function ensureArt(path: string, kind: Art): Promise<string | null> {
   const name = artName(path, kind);
   if (!w || !name) return null;
   if (w.exists(name)) return name;
-  const url = kind === "backdrop" ? backdropUrl(path, "w780") : posterUrl(path, "w500");
+  const url = kind === "avatar" ? path : kind === "backdrop" ? backdropUrl(path, "w780") : posterUrl(path, "w500");
   if (!url) return null;
   const tmp = new File(Paths.cache, `wp-${name}`);
   try {

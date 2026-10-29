@@ -562,6 +562,8 @@ struct RowsView: View {
         RateStrip(f: f, rate: rate)
         if !rows.isEmpty { divider.frame(height: 13) }
       }
+      /* 🆕 D-1562 — صفٌّ وحيدٌ (المتوسط) يتوسّط الودجت بلا تمطيط: فراغٌ فوقه بقدر ما تحته */
+      if rows.count == 1 && rate == nil { Spacer(minLength: 0) }
       ForEach(Array(rows.enumerated()), id: \.offset) { pair in
         if pair.offset == 1, afterSearch, let rate {
           divider.frame(height: 13)
@@ -616,10 +618,12 @@ struct RowView: View {
       let n = max(1, min(3, Int(num(row["count"]) ?? 3)))
       /* 🆕 W50 — الأسطرُ تتقاسم الجسمَ فتكبر وحدَها؛ والصورةُ تكبر معها بـ`grow` */
       let g = CGFloat(max(0, num(row["grow"]) ?? 0))
+      /* 🆕 D-1562 — شكلُ كلِّ نصفٍ من صفِّه (`views`)؛ خلاصةٌ أقدمُ بلاه ⇒ خياراتُ القسم كما كان */
+      let vs = row["views"] as? [String] ?? []
       HStack(alignment: .top, spacing: 17) {
         /* كلُّ نصفٍ محصورٌ في عرضه ومقصوصٌ عليه — لا يطلع اسمٌ على جاره */
-        Half(f: f, key: keys.first ?? "", opts: opts, count: n, now: now, grow: g).frame(maxWidth: .infinity, alignment: .leading).clipped()
-        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: n, now: now, grow: g).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
+        Half(f: f, key: keys.first ?? "", opts: opts, count: n, now: now, grow: g, view: vs.first).frame(maxWidth: .infinity, alignment: .leading).clipped()
+        if keys.count > 1 { Half(f: f, key: keys[1], opts: opts, count: n, now: now, grow: g, view: vs.count > 1 ? vs[1] : nil).frame(maxWidth: .infinity, alignment: .leading).clipped() } else { Color.clear }
       }
     case "line": LineRow(f: f, key: key, now: now)
     default: Color.clear
@@ -819,6 +823,21 @@ struct FriendStrip: View {
   }
 }
 
+/**
+ * 🆕 D-1562 — دائرةُ صورة الصديق قبل اسمه (خالد ٢٨ أكتوبر: «البوستر الصغير … وجنبه افتار الشخص واسمه»). الملفُّ نزّله التطبيقُ
+ * باسمٍ في `posters` (مفتاحُه رابطُ الصورة)؛ بلا ملفٍّ لا شيء — لا دائرةَ فارغة.
+ */
+struct Avatar: View {
+  let f: V2Feed
+  let raw: [String: Any]?
+  let size: CGFloat
+  var body: some View {
+    if let url = raw?["avatar_url"] as? String, !url.isEmpty, let img = FeedStore.image(url, in: f.feed, maxPixel: max(size * 3, 48)) {
+      Image(uiImage: img).resizable().scaledToFill().frame(width: size, height: size).clipShape(Circle())
+    }
+  }
+}
+
 struct ItemRow: View {
   let f: V2Feed
   let key: String
@@ -841,7 +860,10 @@ struct ItemRow: View {
         HStack(spacing: 10) {
           Poster(f: f, path: item.t?.poster_path, w: tw + grow * 2 / 3, h: th + grow, r: 4)
           VStack(alignment: .leading, spacing: 1) {
-            Text(item.name).font(.system(size: nameSize, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+            HStack(spacing: 5) {
+              if friend { Avatar(f: f, raw: item.raw, size: nameSize + 4) }
+              Text(item.name).font(.system(size: nameSize, weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+            }
             if let done = doneLine {
               Text(done).font(.system(size: subSize, weight: .semibold)).foregroundStyle(WColor.success).lineLimit(1)
             } else if let s = item.sub, !s.isEmpty { Text(s).font(.system(size: subSize)).foregroundStyle(WColor.muted).lineLimit(1) }
@@ -975,9 +997,12 @@ struct Half: View {
   let now: Date
   /** 🆕 W50 */
   var grow: CGFloat = 0
+  /** 🆕 D-1562 — «list» أو «poster» من صفِّ النصّين؛ `nil` ⇒ خياراتُ القسم */
+  var view: String? = nil
 
   var body: some View {
     let o = opts[key] as? [String: Any] ?? [:]
+    let chosen: Bool = view.map { $0 == "poster" || $0 == "posters" } ?? ((o["view"] as? String) == "posters")
     if key == "tonight" {
       TonightHalf(f: f, now: now)
     } else if key == "cont" && (o["small"] as? String) != "list" {
@@ -985,7 +1010,7 @@ struct Half: View {
       ContHalf(f: f, now: now)
     } else {
       /* 🆕 W55 — البوستران في النصف صارا خياراً في الإعداد («أنشطتك» قائمةٌ دائماً) */
-      HalfList(f: f, key: key, posters: key != "tonight" && key != "act" && (o["view"] as? String) == "posters", count: count, now: now, grow: grow)
+      HalfList(f: f, key: key, posters: key != "tonight" && key != "act" && chosen, count: count, now: now, grow: grow)
     }
   }
 }
@@ -1227,7 +1252,10 @@ struct HalfList: View {
               HStack(spacing: 8) {
                 Poster(f: f, path: pair.element.t?.poster_path, w: f.n("halfThumbW", 30) + grow * 2 / 3, h: f.n("halfThumbH", 45) + grow, r: 4)
                 VStack(alignment: .leading, spacing: 1) {
-                  Text(pair.element.name).font(.system(size: f.n("halfName", 14), weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  HStack(spacing: 5) {
+                    if key == "friends" { Avatar(f: f, raw: pair.element.raw, size: f.n("halfName", 14) + 3) }
+                    Text(pair.element.name).font(.system(size: f.n("halfName", 14), weight: .semibold)).foregroundStyle(WColor.fg).lineLimit(1)
+                  }
                   if let s = pair.element.sub, !s.isEmpty { Text(s).font(.system(size: f.n("halfSub", 12))).foregroundStyle(WColor.muted).lineLimit(1) }
                 }
                 Spacer(minLength: 0)

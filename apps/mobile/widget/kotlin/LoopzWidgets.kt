@@ -109,10 +109,12 @@ private class Row(val o: JSONObject) {
   val posters: Int = o.optInt("posters", 3).coerceIn(3, 4)
   val h: Float = o.optDouble("h", 0.0).toFloat()
   val keys: List<String> = o.optJSONArray("keys")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+  /** 🆕 D-1562 — شكلُ كلِّ نصفٍ في صفِّ النصّين («list» · «poster») كما اختاره الشخصُ في خانته؛ خلاصةٌ أقدمُ بلاه ⇒ خياراتُ القسم */
+  val views: List<String> = o.optJSONArray("views")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
 }
 
 /** سطرٌ في قسم — صورةٌ واسمٌ وسطرٌ ثانٍ ووجهةُ اللمسة */
-private data class Line(val t: WTitle?, val name: String, val sub: String?, val link: String, val time: String? = null)
+private data class Line(val t: WTitle?, val name: String, val sub: String?, val link: String, val time: String? = null, val avatar: String? = null)
 
 /** ما يحتاجه الرسمُ في كلِّ صفّ: الخلاصةُ والقسمُ والمقاسُ وعدّادُ رموز النيّات (كلُّ لمسةٍ برمزها — درسُ D-929) */
 private class Draw(val ctx: Context, val id: Int, val f: WFeed, val v2: JSONObject, val opts: JSONObject, val wDp: Float, val size: String = "", val look: JSONObject? = null) {
@@ -282,7 +284,9 @@ object W2Render {
      */
     /* 🆕 W50 — في أندرويد 12+ البطاقتان بمقاسهما المحسوم والفراغُ صار أسطراً في المحرّك؛ وما بقي (أقلُّ من سطر) على الفواصل.
        والمتوسطُ (صفٌّ واحد) يبقى يملأ — لا فواصلَ فيه تأخذ الباقي. قبل 12: W48 كما كان */
-    val fill = rows.any { it.type == "cont" } && (!d.resize || rows.size == 1)
+    /* 🆕 D-1562 — **لا تمطيط** (خطّةُ الخانات، خالد ٢٨ أكتوبر): في أندرويد 12+ البطاقتان بمقاسهما (١٦:٩ بلا زوم) حتى في المتوسط —
+       والصفُّ الوحيدُ يتوسّط الودجت بفراغين متساويين فوقه وتحته (أدناه) بدل أن تكبر صورتُه */
+    val fill = rows.any { it.type == "cont" } && !d.resize
     d.fill = fill
     if (fill) {
       val used = 24f + rows.sumOf { it.o.optDouble("h", 0.0) }.toFloat() + 13f * (rows.size - 1).coerceAtLeast(0)
@@ -305,6 +309,8 @@ object W2Render {
       v.addView(R.id.rows, rateStrip(d, rate))
       v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
     }
+    val centre = d.resize && rows.size == 1 && rate == null
+    if (centre) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
     rows.forEachIndexed { i, r ->
       if (rate != null && i == 1 && stripAfter == 0) {
         v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
@@ -331,6 +337,7 @@ object W2Render {
       v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_divider))
       v.addView(R.id.rows, rateStrip(d, rate))
     }
+    if (centre) v.addView(R.id.rows, RemoteViews(d.ctx.packageName, R.layout.w2_flex))
     return v
   }
 
@@ -523,7 +530,9 @@ object W2Render {
         /* 🆕 سطران: الاسمُ فوق و«شاهد …» تحته، ومتى مختصراً في الطرف (تسجيلُ أحمد ١٤ أكتوبر: السطرُ الواحدُ صغّر الخط)
            🆕 W51 — والسطرُ الثاني «٣ حلقة · م٢» أو «★ ٨» جاهزاً من الخادم (`line`)؛ خلاصةٌ أقدمُ بلاه: الفعلُ والعنوانُ كما كان */
         val line = if (x.isNull("line")) "" else x.optString("line")
-        Line(t, x.optString("name"), line.ifEmpty { "${x.optString("action")} ${t.title}" }, WLinks.title(t), ago(x.optString("at"), f.locale()))
+        /* 🆕 D-1562 — صورةُ الصديق جنب اسمه (خالد ٢٨ أكتوبر: «البوستر الصغير … وجنبه افتار الشخص واسمه») — ملفُّها نزّله التطبيق */
+        val avatar = if (x.isNull("avatar_url")) null else f.art(x.optString("avatar_url").takeIf { it.isNotEmpty() })
+        Line(t, x.optString("name"), line.ifEmpty { "${x.optString("action")} ${t.title}" }, WLinks.title(t), ago(x.optString("at"), f.locale()), avatar)
       }
       "tw" -> d.arr("towatch").mapNotNull { x ->
         val t = f.titleFrom(x) ?: return@mapNotNull null
@@ -615,6 +624,7 @@ object W2Render {
       row.setTextViewTextSize(R.id.it_sub, TypedValue.COMPLEX_UNIT_SP, subSp)
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
+      if (friend) avatar(d, row, it.avatar, nameSp + 4f)
       /* الوقتُ في الطرف: «أصدقاؤك»، و🆕 W52 «أنشطتك» بالخطّ نفسِه — وبقيّةُ القوائم تخفيه صراحةً (W47) */
       val time = if (friend || r.key == "act") it.time else null
       if (friend || layout == R.layout.w2_item) {
@@ -721,13 +731,13 @@ object W2Render {
       body = r.h - 24f
     }
     val g = if (d.resize) r.grow else 0f
-    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, body, n, g)) }
-    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, body, n, g)) }
+    r.keys.getOrNull(0)?.let { v.addView(R.id.half_a, half(d, it, half, body, n, g, r.views.getOrNull(0))) }
+    r.keys.getOrNull(1)?.let { v.addView(R.id.half_b, half(d, it, half, body, n, g, r.views.getOrNull(1))) }
     return v
   }
 
   /** نصفٌ: فيلم الليلة بوسترٌ وعمود (W34) ما لم يختر القائمة، والبقيّةُ ثلاثةُ أسطرٍ أو بوستران (W30) */
-  private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3, grow: Float = 0f): RemoteViews {
+  private fun half(d: Draw, key: String, wDp: Float, bodyDp: Float, count: Int = 3, grow: Float = 0f, view: String? = null): RemoteViews {
     /* فيلم الليلة في النصف: البوسترُ بطول الخانة والتفاصيلُ بجانبه — وشكلُ «القائمة» الشكلُ نفسُه بلا أزرار (بدل سطرٍ صغيرٍ تحته فراغ) */
     if (key == "tonight") return tonightHalf(d, wDp, bodyDp)
     /* 🆕 W45 — أكملُ المشاهدة في النصف «صورة» افتراضاً (أحمد «١ أ»): شكلُ فيلم الليلة نفسُه بأوّل مسلسل؛ و«قائمة» تبقى الأسطرَ الثلاثة */
@@ -738,7 +748,9 @@ object W2Render {
     headerLink(key)?.let { v.setOnClickPendingIntent(R.id.hdr_title, d.open(it)) }
     val items = lines(d, key)
     /* W30 · 🆕 W55 — البوستران في النصف (والودجتِ الصغير) صار خياراً في الإعداد؛ الحالتان تُكتبان صراحةً (W47) */
-    val halfPosters = d.opt(key).optString("view") == "posters" && key != "tonight" && key != "act"
+    /* 🆕 D-1562 — شكلُ هذا النصف من صفِّه (`views`): نصفان من قسمٍ واحدٍ في حجمين قد يختلفان — والخياراتُ المشتركةُ تأخذ آخرَ حجم */
+    val chosen = view?.let { it == "poster" || it == "posters" } ?: (d.opt(key).optString("view") == "posters")
+    val halfPosters = chosen && key != "tonight" && key != "act"
     v.setViewVisibility(R.id.items, if (halfPosters) View.GONE else View.VISIBLE)
     v.setViewVisibility(R.id.posters, if (halfPosters) View.VISIBLE else View.GONE)
     if (halfPosters) {
@@ -773,6 +785,7 @@ object W2Render {
       row.setTextViewTextSize(R.id.it_sub, TypedValue.COMPLEX_UNIT_SP, d.n("halfSub", 12f))
       row.setTextViewText(R.id.it_name, it.name)
       row.setTextViewText(R.id.it_sub, it.sub ?: "")
+      avatar(d, row, if (key == "friends") it.avatar else null, d.n("halfName", if (d.xl) 13f else 14f) + 3f)
       row.setOnClickPendingIntent(R.id.item, d.open(it.link))
       v.addView(R.id.items, row)
     }
@@ -1180,6 +1193,21 @@ object W2Render {
       v.setOnClickPendingIntent(sid, CheckReceiver.rateIntent(d.ctx, d.next(), id, n + 1))
     }
     return v
+  }
+
+  /**
+   * 🆕 D-1562 — دائرةُ صورة الصديق قبل اسمه بقدر سطر الاسم. بلا صورةٍ (لم تُنزَّل بعد، أو بلا صورةٍ أصلاً) تُخفى صراحةً — لا دائرةَ
+   * رماديّةً فارغة، والاسمُ يبدأ من مكانه (W47: كلُّ حالةٍ تُكتب في كلِّ رسمة).
+   */
+  private fun avatar(d: Draw, v: RemoteViews, name: String?, sizeDp: Float) {
+    val bmp = if (name == null) null else WPosters.load(d.ctx, name, sizeDp, sizeDp, sizeDp / 2f)
+    if (bmp == null) {
+      v.setViewVisibility(R.id.it_avatar, View.GONE)
+      return
+    }
+    v.setViewVisibility(R.id.it_avatar, View.VISIBLE)
+    v.setImageViewBitmap(R.id.it_avatar, bmp)
+    if (d.resize) layoutSize(v, R.id.it_avatar, sizeDp, sizeDp)
   }
 
   /** بوسترٌ بمقاس خانته (٢:٣ في ٢:٣ — لا زوم، W38)؛ ملصقٌ لم يصل يبقى خانةً فارغة */
