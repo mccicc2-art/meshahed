@@ -112,7 +112,8 @@ export type HomeContinueCard =
 
 /** يومٌ في شريط الأسبوع (١٤ يوماً — D-491) */
 export type HomeWeekDay = { date: string; weekday: string; day_num: string };
-export type HomeWeekEntry = { date: string; show_id: number; title: string };
+/** 🆕 D-1587 — `poster_path` لورقة اليوم (يومٌ بأكثر من عمل): اختياريٌّ فخادمٌ أقدم لا يكسر التطبيق — الصفُّ يُرسم برمز العمل */
+export type HomeWeekEntry = { date: string; show_id: number; title: string; poster_path?: string | null };
 
 /** بطاقةُ عملٍ في صفوف «للمشاهدة» و«القادم» (`MixedItem`) */
 export type HomeMixedCard = {

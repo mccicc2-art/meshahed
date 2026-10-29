@@ -1420,6 +1420,7 @@ export async function buildHomeBody({
       showTmdbId: Number(u.key.replace("tv-", "")),
       title: u.title,
       label: "",
+      posterPath: u.posterPath,
     }));
   return {
     statsToCache, metaToCache, movieDatesToCache,

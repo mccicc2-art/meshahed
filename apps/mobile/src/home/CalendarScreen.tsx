@@ -107,11 +107,16 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
         {d.cells.map((c) => {
           const has = c.count > 0;
+          /* 🆕 D-1587 — **الخانةُ تقول أوّلَ أعمالها** («٣أ»: كانت «+٢» وحدها، والعملُ الواحدُ بلا اسم): من قائمة اليوم تحت الشبكة */
+          const firstTitle = has ? d.groups.find((g) => g.date === c.date)?.items[0]?.title ?? "" : "";
           const face = (
             <>
               <Text size={14} weight="700" color={c.is_today ? tokens.accent : c.in_month ? tokens.fg : tokens.muted} style={{ lineHeight: 16, opacity: c.in_month ? 1 : 0.5 }}>{c.day}</Text>
               <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: has ? tokens.accent2 : c.in_month ? tokens.border : "transparent" }} />
-              <Text size={9} muted style={{ marginTop: 4, lineHeight: 11, height: 12 }}>{c.count > 1 ? `+${c.count}` : ""}</Text>
+              <View style={{ marginTop: 4, height: 24, alignSelf: "stretch", alignItems: "center" }}>
+                {has ? <Text size={9} muted numberOfLines={c.count > 1 ? 1 : 2} style={{ lineHeight: 11, textAlign: "center" }}>{firstTitle}</Text> : null}
+                {c.count > 1 ? <Text size={9} weight="700" color={tokens.accent2} style={{ lineHeight: 11 }}>{`+${c.count - 1}`}</Text> : null}
+              </View>
             </>
           );
           const base = { width: cellW, borderRadius: 10, paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" as const, borderWidth: 1 };

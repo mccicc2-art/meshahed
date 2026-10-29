@@ -8,6 +8,8 @@ export interface WeekEntry {
   showTmdbId: number;
   title: string;
   label: string;
+  /** 🆕 D-1587 — ملصقُ العمل لورقة اليوم في التطبيق (يومٌ فيه أكثرُ من عمل) — الويبُ لا يقرؤه */
+  posterPath?: string | null;
 }
 
 /**

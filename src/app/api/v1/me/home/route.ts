@@ -224,7 +224,7 @@ export async function GET() {
         continue: continueOrdered,
         week: {
           days: body.weekDays.map((d) => ({ date: d.date, weekday: d.weekday, day_num: d.dayNum })),
-          entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title })),
+          entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title, poster_path: e.posterPath ?? null })),
         },
         towatch: { items: body.toWatchRow.map(mixed), all: body.toWatchOrdered.map(mixed) },
         upcoming: body.upcomingRow.map(mixed),
