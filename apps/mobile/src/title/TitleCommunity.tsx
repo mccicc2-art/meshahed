@@ -14,7 +14,7 @@ import { num } from "@/core/i18n";
 import { posterFor } from "../poster";
 import type { TitleCommunityPayload } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
-import { IdentityBadges } from "../IdentityBadges";
+import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { personaOf } from "@/core/personas";
 
 /**
@@ -43,6 +43,7 @@ export function CommunityTab({
   onEditReview,
   onOpenTalk,
   onOpenReview,
+  onLikeReview,
 }: {
   data: TitleCommunityPayload | undefined;
   myRating: number | null;
@@ -50,6 +51,8 @@ export function CommunityTab({
   onOpenTalk: (path: string) => void;
   /** 🆕 11-M · M3 — الرأيُ يُضغط فيفتح خيطَه أصليّاً (`/review/…` في الويب) */
   onOpenReview?: (userId: string) => void;
+  /** 🆕 D-1567 — قلبُ الرأي (الكتابةُ والكاشُ بيد الشاشة) */
+  onLikeReview?: (r: TitleCommunityPayload["reviews"][number]) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
@@ -82,7 +85,7 @@ export function CommunityTab({
       </View>
 
       {data.reviews.map((r) => (
-        <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} />
+        <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} onLike={onLikeReview ? () => onLikeReview(r) : undefined} />
       ))}
 
       {data.bulletins.length ? (
@@ -109,12 +112,17 @@ export function CommunityTab({
 }
 
 /** D-1036 — مُصدَّرٌ: صفحةُ القائمة الأصليّة ترسم آراءَ الناس بالصفِّ نفسِه (شكلٌ واحدٌ للرأي) */
-export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void }) {
+export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void; onLike?: () => void }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(!r.has_spoiler);
   /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه: حلقةٌ بلونها و«AI» بجانب الاسم. 🆕 D-1565 — **ودرجتُها نجمةُ الصفّ كالعضو**
      (لا تدخل متوسّطَ الجمهور)، **ولا وصفَ تحت الاسم** — صفُّ العضو بلا سطرٍ ثانٍ، ووصفُها في ملفّها؛ يبقى نطاقُها إن كان (موسم) */
   const persona = r.persona ? personaOf(r.user_id) : null;
+  /* 🆕 D-1567 — **شاراتُ كلِّ حساب** (PLUS · شريك · مؤسّس · موثّق) لا الشخصيّات وحدَها: الخادمُ صار يرسل حالةَ الحساب كما في صفحة
+     الردود (أحمد ٢٩ أكتوبر: «الحسابات الثانية ليه ما هو ظاهر عندها بلس؟») — و«AI» من المعرّف كما كانت */
+  const flags = identityFlags({ id: r.user_id, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null });
+  const badged = flags.ai || flags.partner || flags.plus || flags.founder || flags.verified;
+  const liked = !!r.liked_by_me;
   /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (
     <Pressable disabled={!onOpen} onPress={onOpen} accessibilityRole={onOpen ? "link" : undefined} style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
@@ -125,7 +133,7 @@ export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][n
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Text size={13} weight="700" style={{ flexShrink: 1 }} numberOfLines={1}>{r.name}</Text>
-            {persona ? <IdentityBadges flags={{ partner: false, plus: false, founder: false, verified: false, ai: true }} nameSize={13} /> : null}
+            {badged ? <IdentityBadges flags={flags} nameSize={13} /> : null}
           </View>
           {persona && r.persona?.scope ? (
             <Text size={11} muted numberOfLines={1}>{r.persona.scope}</Text>
@@ -149,7 +157,14 @@ export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][n
         )
       ) : null}
       <View style={{ flexDirection: "row", gap: 12 }}>
-        {r.likes > 0 ? (
+        {/* 🆕 D-1567 — **القلبُ زرٌّ هنا** حين يمرّر المستدعي `onLike` (تبويبُ مجتمع العمل؛ ومراجعتي عدٌّ لا زرّ) — قلبُ المراجعة
+            نفسُه الذي يكتبه خيطُها (`community/like`)، ولونُه لونُ قلب الخيط */}
+        {onLike && !r.mine ? (
+          <Pressable onPress={onLike} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.likesLabel} accessibilityState={{ selected: liked }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            <Icon name={liked ? "heart-filled" : "heart"} size={13} color={liked ? tokens.accent : tokens.muted} />
+            {r.likes > 0 ? <Text size={11} color={liked ? tokens.accent : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(r.likes, locale)}</Text> : null}
+          </Pressable>
+        ) : r.likes > 0 ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
             <Icon name="heart" size={12} color={tokens.muted} />
             <Text size={11} muted>{num(r.likes, locale)}</Text>

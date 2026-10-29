@@ -31,6 +31,8 @@ import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCo
 import type {
   FavoriteBody,
   FollowBody,
+  LikeBody,
+  TitleCommunityPayload,
   RateBody,
   SetDroppedBody,
   ShowRefBody,
@@ -152,6 +154,34 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
       void q.refetch();
     },
     [t, q],
+  );
+  /* 🆕 D-1567 — **قلبُ المراجعة من التبويب نفسِه** (أحمد ٢٩ أكتوبر: «امكانية وضع قلب للمراجعات من هنا»): يتبدّل فوراً في الكاش
+     ويعود إن رُفض — المسارُ الذي يكتبه خيطُ المراجعة (`community/like`) فالعدُّ عدٌّ واحد. **والزائرُ إلى تسجيل الدخول** («٣أ») */
+  const likeBusy = useRef(new Set<string>());
+  const likeReview = useCallback(
+    (r: TitleCommunityPayload["reviews"][number]) => {
+      if (community.data?.signed_in === false) {
+        router.push("/sign-in");
+        return;
+      }
+      if (likeBusy.current.has(r.user_id)) return;
+      likeBusy.current.add(r.user_id);
+      const was = !!r.liked_by_me;
+      const set = (on: boolean) =>
+        qc.setQueryData<TitleCommunityPayload>(communityKey(kind, id), (prev) =>
+          prev
+            ? { ...prev, reviews: prev.reviews.map((x) => (x.user_id === r.user_id ? { ...x, liked_by_me: on, likes: Math.max(0, x.likes + (on === !!x.liked_by_me ? 0 : on ? 1 : -1)) } : x)) }
+            : prev,
+        );
+      set(!was);
+      write("/api/v1/community/like", { target: "review", user_id: r.user_id, tmdb_id: id, media_type: kind, on: !was } satisfies LikeBody)
+        .catch((e: unknown) => {
+          set(was);
+          fail(e);
+        })
+        .finally(() => likeBusy.current.delete(r.user_id));
+    },
+    [community.data?.signed_in, router, qc, kind, id, fail],
   );
   /* D-959: تركُ تبويب «المعلومات» يهدم المشغّل — لا صوتَ خلف تبويبٍ آخر */
   useEffect(() => {
@@ -518,7 +548,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
             {tab === "community" ? (
-              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} />
+              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} onLikeReview={likeReview} />
             ) : tab === "episodes" && d.kind === "tv" ? (
               <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (

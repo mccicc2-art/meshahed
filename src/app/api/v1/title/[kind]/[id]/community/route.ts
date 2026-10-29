@@ -8,6 +8,7 @@ import { getLocale } from "@/lib/locale";
 import { handle, limited, fail, positiveInt, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { TitleCommunityPayload } from "@/core/contracts/title";
+import { compareReviews } from "@/core/reviewOrder";
 
 /**
  * `GET /api/v1/title/{kind}/{id}/community` — تبويبُ المجتمع للقراءة (Phase 11-D ·
@@ -57,8 +58,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
           likes: r.likes,
           replies: replyCounts.get(r.id) ?? 0,
           mine: r.isMine,
+          /* 🆕 D-1567 — قلبُ الصفّ في التطبيق يبدأ من حالتي، وشاراتُ الحساب (PLUS · شريك · موثّق) كما في صفحة الردود (`person`) */
+          liked_by_me: r.likedByMe,
+          plan: r.plan ?? null,
+          founder: r.founder ?? null,
+          verified_at: r.verified_at ?? null,
           ...(r.persona ? { persona: r.persona } : {}),
-        })),
+        }))
+        /* 🆕 D-1567 — مراجعتي أوّلاً، ثمّ الأعضاءُ بالإعجاب، ثمّ شخصيّاتُ لوبز تحتهم (`compareReviews` — القاعدةُ نفسُها في الويب) */
+        .sort((a, b) => compareReviews({ mine: a.mine, ai: !!a.persona, likes: a.likes, at: a.updated_at }, { mine: b.mine, ai: !!b.persona, likes: b.likes, at: b.updated_at })),
+      signed_in: !!uid,
       bulletins: [
         ...thread
           .filter((p) => !p.parentId && p.kind)

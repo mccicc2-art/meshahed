@@ -169,10 +169,17 @@ export type TitleCommunityPayload = {
     mine: boolean;
     /** 🆕 D-1563 — الشخصيّة ونطاقُ مراجعتها («الموسم الأول») — غائبٌ لرأي إنسان */
     persona?: { slug: string; scope: string | null };
+    /** 🆕 D-1567 — هل أعجبتُ بها (قلبُ الصفّ)، وحالةُ حساب كاتبها للشارات — اختياريّةٌ: خادمٌ أقدم لا يرسلها */
+    liked_by_me?: boolean;
+    plan?: string | null;
+    founder?: boolean | null;
+    verified_at?: string | null;
   }[];
   /** نشراتُ لوبز وأخبارُه بلغة القارئ — سطرٌ وتاريخ (`bulletinLine` · `newsLine`) */
   bulletins: { line: string; at: string; replies: number }[];
   talk_path: string;
+  /** 🆕 D-1567 — صاحبُ جلسة؟ قلبُ الزائر يفتح تسجيلَ الدخول — اختياريٌّ: خادمٌ أقدم لا يرسله */
+  signed_in?: boolean;
 };
 
 /** `POST /api/v1/track/favorite` — تبديلُ المفضّل؛ يعود بالحالة الحقيقيّة */

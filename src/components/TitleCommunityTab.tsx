@@ -9,6 +9,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { bulletinLine } from "@/core/bulletinLine";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { RatingBox } from "./RatingBox";
+import { compareReviews, type RankedReview } from "@/core/reviewOrder";
 import { TitleReviewRow } from "./TitleReviewRow";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";
 import { TitleJoinCard } from "./TitleJoinCard";
@@ -117,7 +118,7 @@ export async function TitleCommunityTab({
      نفسُه: **تقييمٌ بلا كلامٍ رقمٌ لا صفّ**، وقد أُخذ متوسّطُه في
      البطاقة فوق. */
   /** **مفتاحُ الفرز يعيش هنا وحدَه** — الخطُّ يعرض ولا يرتّب */
-  type Dated = FeedItem & { at: string };
+  type Dated = FeedItem & { at: string; rank?: RankedReview };
 
   const items: Dated[] = [
     ...reviews
@@ -126,6 +127,7 @@ export async function TitleCommunityTab({
         /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI صنفٌ في الخطّ له رقاقتُه («شخصيات لوبز») — والصفُّ نفسُه يرسمها */
         kind: r.persona ? ("persona" as const) : ("review" as const),
         at: r.updated_at,
+        rank: { mine: r.isMine, ai: !!r.persona, likes: r.likes, at: r.updated_at },
         node: (
           <TitleReviewRow
             key={`review-${r.id}`}
@@ -180,10 +182,12 @@ export async function TitleCommunityTab({
         ),
       })),
   ]
-    /* **الأحدثُ أوّلاً، والمقارنةُ نصّيةٌ لا زمنيّة**: الطوابعُ كلُّها
-       ISO من الخادم نفسِه، **فترتيبُ حروفها هو ترتيبُ زمنها** ولا
-       `new Date()` لثلاثين صفّاً. */
-    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+    /* 🆕 D-1567 — **المراجعاتُ أوّلاً بترتيبها** (`compareReviews`: مراجعتي · الأعضاءُ بالإعجاب · شخصيّاتُ لوبز تحتهم — القاعدةُ
+       نفسُها في التطبيق)، **ثمّ النشراتُ والأخبارُ الأحدثُ أوّلاً** كما كانت. والمقارنةُ نصّيةٌ لا زمنيّة: الطوابعُ ISO من الخادم
+       نفسِه، فترتيبُ حروفها هو ترتيبُ زمنها. */
+    .sort((a: Dated, b: Dated) =>
+      a.rank && b.rank ? compareReviews(a.rank, b.rank) : a.rank ? -1 : b.rank ? 1 : a.at < b.at ? 1 : a.at > b.at ? -1 : 0,
+    );
 
   return (
     <div>
