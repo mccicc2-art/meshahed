@@ -25,6 +25,8 @@ export interface AdminPersonaReview {
   /** ظاهرةٌ الآن (حان وقتُها، وليست مخفيّة، ولم يحجبها الإيقاف) */
   visible: boolean;
   likes: number;
+  /** 🆕 D-1565 — درجتُها ١–١٠ (الهجرة ٢٢٦)؛ قبل الهجرة غائبة */
+  rating?: number | null;
 }
 
 export interface AdminPersonaSettings {
@@ -52,13 +54,14 @@ export async function getAdminPersonaSettings(): Promise<AdminPersonaSettings | 
   return ((data ?? []) as AdminPersonaSettings[])[0] ?? null;
 }
 
-export async function adminPersonaReviewUpdate(id: string, v: { status?: "live" | "hidden"; body_ar?: string; body_en?: string }) {
+export async function adminPersonaReviewUpdate(id: string, v: { status?: "live" | "hidden"; body_ar?: string; body_en?: string; rating?: number }) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_persona_review_update", {
     p_id: id,
     p_status: v.status ?? null,
     p_body_ar: v.body_ar ?? null,
     p_body_en: v.body_en ?? null,
+    p_rating: v.rating ?? null,
   });
   if (error) throw new Error(error.message);
 }

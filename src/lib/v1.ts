@@ -114,6 +114,21 @@ export async function gateAware(): Promise<boolean> {
   }
 }
 
+/**
+ * 🆕 D-1565 — **هل يعرف السائلُ مراجعاتِ شخصيّات لوبز؟** التطبيقُ الذي أخذ تحديثَها يقول ذلك بترويسة `x-loopz-personas: 1`
+ * (`apps/mobile/src/api.ts`). تطبيقٌ أقدم (أو بناءٌ أصليٌّ لا تصله التحديثات) **لا يرى الشخصيّاتِ أصلاً**: نسختُه ترسم الدرجةَ بلا
+ * تحقّق (انهارت شاشةُ المجتمع بـ«حاول مجدداً» يوم ٢٩ أكتوبر)، ولا تعرف شارةَ «AI» فكانت سترسم الشخصيّةَ عضواً عادياً — وقرارُ
+ * أحمد أنّ الشارةَ في كلِّ مكان. صفحاتُ الويب تُبنى بالخادم نفسِه فتراها دائماً.
+ */
+export const PERSONAS_HEADER = "x-loopz-personas";
+export async function personasAware(): Promise<boolean> {
+  try {
+    return (await headers()).get(PERSONAS_HEADER) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** حالُ البوّابة كما يفهمها هذا السائل — لـ`/me` و`/welcome` (التطبيقُ يقرّر بها أيرفع الترحيب) */
 export async function clientOnboard(): Promise<{ state: OnboardState; mode: "full" | "username" }> {
   const [i, aware] = await Promise.all([getOnboardInfo(), gateAware()]);

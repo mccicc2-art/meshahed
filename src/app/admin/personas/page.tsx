@@ -59,6 +59,8 @@ async function save(formData: FormData) {
       status: status === "hidden" || status === "live" ? status : undefined,
       body_ar: formData.has("body_ar") ? String(formData.get("body_ar")) : undefined,
       body_en: formData.has("body_en") ? String(formData.get("body_en")) : undefined,
+      /* 🆕 D-1565 — الدرجةُ عددٌ صحيحٌ ١–١٠ كدرجة العضو؛ والقاعدةُ ترفض ما سواه */
+      rating: formData.has("rating") && String(formData.get("rating")).trim() ? Number(formData.get("rating")) : undefined,
     });
   } catch (e) {
     redirect(`/admin/personas?state=${back}&err=${encodeURIComponent((e as Error).message.slice(0, 140))}`);
@@ -88,6 +90,7 @@ function Row({ r, state }: { r: AdminPersonaReview; state: State }) {
         <span>{st === "waiting" ? `تظهر ${riyadh(r.publish_at)}` : `ظهرت ${riyadh(r.publish_at)}`}</span>
         <span>·</span>
         <span>كُتبت {riyadh(r.created_at)}</span>
+        {r.rating != null ? <span className="text-accent font-bold tabular-nums">· ★ {r.rating}</span> : null}
         {r.likes ? <span>· ♥ {r.likes}</span> : null}
         {r.has_spoiler ? <span className="text-[color:var(--error)]">· فيها حرق</span> : null}
       </div>
@@ -102,9 +105,23 @@ function Row({ r, state }: { r: AdminPersonaReview; state: State }) {
           <span className="text-12 text-muted">English</span>
           <textarea name="body_en" defaultValue={r.body_en} rows={4} dir="ltr" className={field} />
         </label>
+        <label className="flex items-center gap-2">
+          <span className="text-12 text-muted">الدرجة (١–١٠، لا تدخل تقييم الجمهور)</span>
+          <input
+            name="rating"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={10}
+            step={1}
+            defaultValue={r.rating ?? undefined}
+            dir="ltr"
+            className={`${field} w-20 tabular-nums`}
+          />
+        </label>
         <div className="flex flex-wrap gap-2">
           <button type="submit" className={buttonClass({ variant: "surface", size: "sm" })}>
-            حفظ النص
+            حفظ
           </button>
           <button
             type="submit"

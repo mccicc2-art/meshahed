@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getUserId } from "@/lib/data";
 import { talkPayload, postPayload, reviewPayload } from "@/lib/threadCore";
-import { handle, limited, fail, positiveInt } from "@/lib/v1";
+import { handle, limited, fail, positiveInt, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { ThreadPayload } from "@/core/contracts/thread";
 
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       if (kind === "general" && sp.get("id") === "0") return ok(await talkPayload(0, "general"));
       const id = positiveInt(sp.get("id"));
       if (!id || !media) return fail("invalid_input");
-      return ok(await talkPayload(id, media));
+      return ok(await talkPayload(id, media, { personas: await personasAware() }));
     }
     if (t === "post") {
       const key = (sp.get("key") ?? "").trim().slice(0, 120);
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       const id = positiveInt(sp.get("id"));
       const user = (sp.get("user") ?? "").trim();
       if (!id || !media || !/^[0-9a-f-]{36}$/i.test(user)) return fail("invalid_input");
-      const p = await reviewPayload(id, media, user);
+      const p = await reviewPayload(id, media, user, { personas: await personasAware() });
       return p ? ok(p) : fail("not_found");
     }
     return fail("invalid_input");

@@ -160,14 +160,15 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     localizeRows(rawFollows, locale),
     /* المفضّلة عناوينُها مخزّنةٌ كبقية الصفوف، فتُترجَم عند العرض (D-048) */
     localizeRows(rawFavorites, locale),
-    /* 🆕 D-1563 — **مراجعةُ الشخصيّة صفُّ مراجعةٍ بلا درجة**: النصُّ بلغة القارئ، والعنوانُ والملصقُ من الترجمة نفسِها
-       (الكاتبُ قد لا يحفظهما) — فتُرسم في تبويب «مراجعات» بالبطاقة نفسِها، ونجمتُها تغيب لأنّ `rating` فارغ (D-219) */
+    /* 🆕 D-1563 — **مراجعةُ الشخصيّة صفُّ مراجعة**: النصُّ بلغة القارئ، والعنوانُ والملصقُ من الترجمة نفسِها (الكاتبُ قد لا
+       يحفظهما) — فتُرسم في تبويب «مراجعات» بالبطاقة نفسِها. 🆕 D-1565 — **ودرجتُها نجمةُ البطاقة** (الهجرة ٢٢٦)، وهي لا تدخل
+       `ratings` فلا تمسّ متوسّطَ الجمهور ولا إحصاءاتِ الملفّ */
     localizeRows(
       personaRaw.map((p) => ({
         user_id: profile.id,
         tmdb_id: p.tmdb_id,
         media_type: p.media_type,
-        rating: null as number | null,
+        rating: (p.rating ?? null) as number | null,
         review: personaText(locale, p.body_ar, p.body_en),
         title: p.title,
         poster_path: p.poster_path,

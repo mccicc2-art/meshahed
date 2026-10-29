@@ -4565,6 +4565,8 @@ interface PersonaReviewRow {
   body_en: string;
   has_spoiler: boolean;
   publish_at: string;
+  /** 🆕 D-1565 — درجةُ الشخصيّة (١–١٠، الهجرة ٢٢٦) — تُرسم على مراجعتها ولا تدخل متوسّطَ الجمهور؛ قبل الهجرة غائبة */
+  rating?: number | null;
 }
 
 async function getTitlePersonaRows(tmdbId: number, mediaType: "tv" | "movie"): Promise<PersonaReviewRow[]> {
@@ -4589,6 +4591,7 @@ export interface PersonaReviewOfRow {
   body_en: string;
   has_spoiler: boolean;
   publish_at: string;
+  rating?: number | null;
 }
 
 export async function getPersonaReviewsOf(personaId: string, limit = 60): Promise<PersonaReviewOfRow[]> {
@@ -4625,7 +4628,8 @@ export const getTitleReviews = cache(
           username: p.username,
           avatar_url: p.avatar_url,
           hide_name: false,
-          rating: null,
+          /* 🆕 D-1565 — **درجتُها على مراجعتها وحدَها**: هذه القائمةُ تُرسم ولا يُحسب منها متوسّط (المتوسّطُ من `ratings`) */
+          rating: p.rating ?? null,
           review: personaText(locale, p.body_ar, p.body_en),
           updated_at: p.publish_at,
           has_spoiler: p.has_spoiler,

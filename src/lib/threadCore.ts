@@ -93,7 +93,8 @@ function plainRow(base: Omit<ThreadRow, "bulletin" | "bulletin_vote" | "bulletin
 }
 
 /** غرفةُ العمل — `talk/[type]/[id]/page.tsx` */
-export async function talkPayload(tmdbId: number, kind: Kind | "general"): Promise<ThreadPayload> {
+/* 🆕 D-1565 — `personas`: هل يعرف السائلُ مراجعاتِ الشخصيّات (`lib/v1.ts` → `personasAware`)؛ صفحاتُ الويب تتركه فتراها */
+export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: { personas?: boolean } = {}): Promise<ThreadPayload> {
   /* 🆕 R58 — «النقاش العام» يمرّ بالمسار نفسِه (الإعجابُ والتصويتُ والترجمةُ والردود) بلا ما يخصّ العمل */
   const general = kind === "general";
   /* 🆕 1.12.7 — **ثلاثُ جولاتٍ متتالية صارت اثنتين** (`thread.open` p95 ٦٣٣ms على آيفون): العملُ (`workOf` — TMDB ثمّ
@@ -111,7 +112,7 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general"): Promi
     /* 🆕 R56 — مراجعاتُ صفحة العمل تظهر في «عام» (والغرفةِ كلِّها للفيلم)؛ نجومٌ بلا نصٍّ لا تظهر (أحمد «٣ أ») */
     kind === "general" ? Promise.resolve([] as TitleReview[]) : getTitleReviews(tmdbId, kind).catch(() => [] as TitleReview[]),
   ]);
-  const reviews = reviewsAll.filter((r) => r.review?.trim());
+  const reviews = reviewsAll.filter((r) => r.review?.trim() && (opts.personas !== false || !r.persona));
   /* 🆕 D-1508 — ما شاهده القارئُ من حلقات المسلسل (كلَّ ما أشّره، لا دورةَ الإعادة وحدَها): غرفةُ الحلقة تغطّي كلامَها عمّن
      لم يشاهدها، وقائمةُ «الحلقات» تقفلها. بلا جلسةٍ مصفوفةٌ فارغة (والغلقُ لكلِّ شيء — الزائرُ لا يُحرَق) */
   const watchedEpsP = kind === "tv" && user ? getWatchedForShow(tmdbId, null).then((s) => [...s]).catch(() => [] as string[]) : Promise.resolve([] as string[]);
@@ -241,7 +242,7 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
 }
 
 /** الرأيُ وخيطُه — `review/[type]/[id]/[user]/page.tsx` */
-export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string): Promise<ThreadPayload | null> {
+export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string, opts: { personas?: boolean } = {}): Promise<ThreadPayload | null> {
   /* 1.12.7 — **جولةٌ واحدةٌ لا ثلاث**: العدّادُ والعملُ و«وجهي» لا يحتاج أيٌّ منها قائمةَ الآراء — كانت تنتظرها ثمّ
      تنتظر بعضَها. رأيٌ غائبٌ (نادر) يكلّف قراءتين ضاعتا؛ والحاضرُ يربح جولتين في كلِّ فتح. */
   const tP = getT();
@@ -254,7 +255,7 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
     getMyProfileLite(),
   ]);
   const r = reviews.find((x) => x.id === authorId);
-  if (!r) return null;
+  if (!r || (r.persona && opts.personas === false)) return null;
   const w = asWork(work);
   return {
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },

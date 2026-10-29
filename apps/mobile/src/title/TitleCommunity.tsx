@@ -112,7 +112,8 @@ export function CommunityTab({
 export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(!r.has_spoiler);
-  /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه: حلقةٌ بلونها، و«AI» بجانب الاسم، ووصفُها تحته، ولا نجمة */
+  /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه: حلقةٌ بلونها و«AI» بجانب الاسم. 🆕 D-1565 — **ودرجتُها نجمةُ الصفّ كالعضو**
+     (لا تدخل متوسّطَ الجمهور)، **ولا وصفَ تحت الاسم** — صفُّ العضو بلا سطرٍ ثانٍ، ووصفُها في ملفّها؛ يبقى نطاقُها إن كان (موسم) */
   const persona = r.persona ? personaOf(r.user_id) : null;
   /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (
@@ -126,8 +127,8 @@ export function ReviewRow({ r, onOpen }: { r: TitleCommunityPayload["reviews"][n
             <Text size={13} weight="700" style={{ flexShrink: 1 }} numberOfLines={1}>{r.name}</Text>
             {persona ? <IdentityBadges flags={{ partner: false, plus: false, founder: false, verified: false, ai: true }} nameSize={13} /> : null}
           </View>
-          {persona ? (
-            <Text size={11} muted numberOfLines={1}>{`${persona.tagline[locale === "ar" ? "ar" : "en"]}${r.persona?.scope ? ` · ${r.persona.scope}` : ""}`}</Text>
+          {persona && r.persona?.scope ? (
+            <Text size={11} muted numberOfLines={1}>{r.persona.scope}</Text>
           ) : null}
         </View>
         {r.rating != null ? (

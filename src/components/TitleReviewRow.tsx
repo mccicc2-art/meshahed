@@ -102,16 +102,12 @@ export function TitleReviewRow({
                 {timeAgoShort(r.updated_at, t)}
               </Link>
             </div>
-            {persona ? (
-              <p className="mt-0.5 text-12 font-semibold text-muted leading-snug">
-                {persona.tagline[locale === "ar" ? "ar" : "en"]}
-                {r.persona?.scope ? <span className="font-normal">{` · ${r.persona.scope}`}</span> : null}
-              </p>
-            ) : (
-              <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
-                {t.communityKindReview}
-              </p>
-            )}
+            {/* 🆕 D-1565 — **«مراجعة» تحت اسم الشخصيّة كما تحت اسم العضو** (أحمد ٢٩ أكتوبر: «تحت الاسم يكون مكتوب مراجعة») —
+                وصفُها في ملفّها، وهنا نطاقُ المراجعة وحدَه إن كان (موسمٌ مثلاً) */}
+            <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
+              {t.communityKindReview}
+              {r.persona?.scope ? <span className="normal-case tracking-normal font-semibold text-muted">{` · ${r.persona.scope}`}</span> : null}
+            </p>
           </div>
 
           {/* **والتقييمُ بشكلٍ واحد في التطبيق** (D-241): `10.0` لا

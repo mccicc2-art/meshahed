@@ -5,7 +5,7 @@ import { bulletinLine } from "@/core/bulletinLine";
 import { newsLine } from "@/core/newsLine";
 import { getDict } from "@/core/i18n";
 import { getLocale } from "@/lib/locale";
-import { handle, limited, fail, positiveInt } from "@/lib/v1";
+import { handle, limited, fail, positiveInt, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { TitleCommunityPayload } from "@/core/contracts/title";
 
@@ -25,13 +25,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
     const lim = limited(`v1:title:community:${uid ?? ip}`, 60, 60_000);
     if (lim) return lim;
-    const [locale, my, reviews, replies, thread, news] = await Promise.all([
+    const [locale, my, reviews, replies, thread, news, personas] = await Promise.all([
       getLocale(),
       uid ? getMyRating(tmdbId, kind).catch(() => null) : null,
       getTitleReviews(tmdbId, kind).catch(() => []),
       getTitleReplies(tmdbId, kind).catch(() => []),
       getTitleThread(tmdbId, kind).catch(() => []),
       getTitleLoopzNews(tmdbId, kind).catch(() => []),
+      personasAware(),
     ]);
     const t = getDict(locale);
     const loc = locale === "en" ? ("en" as const) : ("ar" as const);
@@ -42,7 +43,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     const payload: TitleCommunityPayload = {
       my_review: my ? { rating: my.rating, review: my.review, has_spoiler: !!my.has_spoiler } : null,
       reviews: reviews
-        .filter((r) => r.review?.trim() || replyCounts.has(r.id))
+        /* 🆕 D-1565 — **مراجعاتُ الشخصيّات لمن يعرفها وحدَه** (`personasAware`) — تطبيقٌ أقدم كانت تنهار عنده الشاشة */
+        .filter((r) => (personas || !r.persona) && (r.review?.trim() || replyCounts.has(r.id)))
         .map((r) => ({
           user_id: r.id,
           name: displayNameOf(r, t.anonymousUser),
