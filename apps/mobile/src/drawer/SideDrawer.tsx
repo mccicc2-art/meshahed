@@ -25,7 +25,7 @@ import { drawerP, drawerStore, drawerWidth } from "./store";
  * ====== 🆕 D-1505 — القائمةُ الجانبيّة (تصميمُ أحمد، ٢٢–٢٧ أكتوبر · «نفذ» ٢٧ أكتوبر) ======
  *
  * بابُ ما لا مكانَ له في الشريط السفليّ، وبابُ الاشتراك. **كلُّ وجهةٍ فيها شاشةٌ أصليّةٌ قائمة** — القائمةُ لا تبني شيئاً،
- * تختصر الطريق: الملفُّ · سجلُّ المشاهدة (`/activity?scope=watch`، D-1504) · ربطُ المنصّات (`settings/stremio`) ·
+ * تختصر الطريق: الملفُّ · سجلُّ المشاهدة (`/activity?scope=watch`، D-1504) · التقويمُ و«تقريرك» (D-1573) · ربطُ المنصّات (`settings/stremio`) ·
  * التخصيص (`settings/home`) · الدعوات · الإعدادات · المساعدة · Plus.
  *
  * - **من صورة الحساب** (الرئيسيّة وطرفُ ترويسات التبويبات) كقائمة X التي أرسلها أحمد — والملفُّ أوّلُ ما فيها. وخطوةُ
@@ -297,6 +297,11 @@ function SideDrawer({
             <View style={{ marginTop: plus ? 26 : 16 }}>
               {row("person", t.drawerProfile, openMe)}
               {row("history", t.drawerHistory, () => go({ pathname: "/activity", params: { from, scope: "watch" } }))}
+              {/* 🆕 D-1573 — **شاشتان قائمتان بلا بابٍ يُرى** (أحمد ٢٩ أكتوبر: «شي أستفيد منه» للفراغ — «١أ»): التقويمُ بابُه عنوانُ
+                  «أسبوعك ›» وحدَه ويضيع إن أُخفي القسم، و«تقريرك» خلف الإحصائيات ثمّ «تقاريرك». بعد السجلّ لأنّ ثلاثتها عن مشاهدتك.
+                  وسمُ PLUS لغير المشترك كربط المنصّات: كلتاهما تُقفل جزءاً له (`locked` في التقويم، `PlusLock` في التقرير) */}
+              {row("calendar", t.drawerCalendar, () => go({ pathname: "/calendar", params: { from } }), { tag: !plus })}
+              {row("chart", t.drawerReport, () => go({ pathname: "/reports", params: { from } }), { tag: !plus })}
               {row("link", t.drawerConnections, () => go("/settings/stremio"), { tag: !plus })}
               {row("sliders", t.drawerCustomize, () => go("/settings/home"))}
               {row("gift", t.drawerInvite, () => go("/settings/invites"))}
