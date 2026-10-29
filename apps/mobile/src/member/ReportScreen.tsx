@@ -16,6 +16,7 @@ import { haptic } from "../haptics";
 import { Chevron } from "../settings/ui";
 import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { clock, hm, primeLabel } from "@/core/statsFormat";
 import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } from "@/core/contracts/report";
 
@@ -35,12 +36,18 @@ import type { MyReportPayload, ReportPeriod, ReportRepairPayload, ReportStats } 
  *  - 🆕 D-1575 — **شاشةٌ واحدةٌ بلا نزول** (أحمد ٢٩ أكتوبر): الوقتُ في سطرٍ وحبّةُ الأيّام · «لمحة عن مدّتك» شبكةُ ستّ خانات ·
  *    أعمدةٌ قصيرة · ثلاثةُ ملصقاتٍ صغيرة · الذوق · سطرُ «الإحصائيات الكاملة». جملةُ الافتتاح وسطرُ الاستنتاج حُذفا («١ب»)،
  *    وصفُّ «شارك تقريرك» حُذف — رمزُ الترويسة يفعلها. الويبُ باقٍ على ترتيبه («٢أ»: شاشتُه كبيرة).
+ *  - 🆕 D-1576 — **المددُ تُسحب** (`TabSlide`، لوحٌ لكلِّ مدّة: `ReportPane`) **والمحتوى يملأ الطول**: الأعمدةُ تأخذ ما بقي (٤٨–١٦٠)،
+ *    والأرقامُ والملصقاتُ والمسافاتُ أوسعُ قليلاً (أحمد: «خلها ترتاح وتستفيد من كامل المساحة»).
  *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
-/* 🆕 D-1575 — ٤٨ (كانت ١١٢): الشكلُ يُقرأ من القامة النسبيّة لا من الطول، والصفحةُ تتّسع لشاشةٍ واحدة */
-const BAR_H = 48;
+/* 🆕 D-1575 → D-1576 — **قامةُ العمود تأخذ ما بقي من الشاشة** بين ٤٨ (الهاتفُ الصغير: الصفحةُ تبقى شاشةً واحدة) و١٦٠ (Pro Max:
+   ما فوقها لا يزيد قراءةً). كانت ١١٢ ثابتةً ثمّ ٤٨ ثابتة — والثابتةُ تترك ربعَ آيفون ٦٫١ فارغاً تحت الصفحة */
+const BAR_MIN = 48;
+const BAR_MAX = 160;
+/** ما يحيط بالقامة في عمود: سطرُ الرقم ١٦ وسطرُ التسمية ١٦ والفجوتان ٤+٤، والهامشُ فوق الأعمدة ١٨ */
+const BAR_CHROME = 16 + 16 + 8 + 18;
 /* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` مكتوبين هنا — درجتان غيرُ `success`/`error`
    (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
 const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
@@ -82,22 +89,22 @@ function useShareReport(period: ReportPeriod) {
   return { busy, error, share };
 }
 
+const fetchReport = (period: ReportPeriod) => async () => (await api<MyReportPayload>(`/api/v1/me/report?p=${period}`)).data;
+
 export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const en = locale === "en";
   const [period, setPeriod] = useState<ReportPeriod>("month");
-  const key = myReportKey(period);
-  const q = useQuery({
-    queryKey: key,
-    queryFn: async () => (await api<MyReportPayload>(`/api/v1/me/report?p=${period}`)).data,
-    staleTime: 5 * 60_000,
-  });
+  /* 🆕 D-1576 — الخطُّ يتبع الوجهةَ لحظةَ رفع الإصبع لا بعد الطيران (`useTabAim`، وصفةُ المكتبة) */
+  const [aim, setAim] = useTabAim<ReportPeriod>(period);
+  const lit = aim ?? period;
+  /* المدّةُ النشطةُ للترويسة (الاسمُ والمشاركة) — الاستعلامُ نفسُه الذي يقرؤه لوحُها، فلا طلبَ ثانٍ */
+  const q = useQuery({ queryKey: myReportKey(period), queryFn: fetchReport(period), staleTime: 5 * 60_000 });
   const d = q.data ?? null;
-  const refresh = usePullRefresh([key], 0);
   const sharing = useShareReport(period);
-  /* الرمزُ والصفُّ للمشترك وعلى مدّةٍ فيها ما يُشارك: الخادمُ يرفض غيرَ ذلك (403 · 409)، وزرٌّ يُضغط ليُرفض فخّ */
+  /* الرمزُ للمشترك وعلى مدّةٍ فيها ما يُشارك: الخادمُ يرفض غيرَ ذلك (403 · 409)، وزرٌّ يُضغط ليُرفض فخّ */
   const canShare = !!d?.plus && !d.stats.empty;
 
   const back = useCallback(() => {
@@ -113,8 +120,19 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
     return () => sub.remove();
   }, [back]);
 
+  /* D-1497 — سحبةٌ بين المدد لا تفتح الملصقَ أو الباب الذي بدأ عليه الإصبع */
   const openTitle = useCallback(
-    (kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } }),
+    (kind: "tv" | "movie", id: number) => {
+      if (tabSwipeBlocksPress()) return;
+      router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } });
+    },
+    [router, from],
+  );
+  const openFull = useCallback(
+    (p: ReportPeriod) => {
+      if (tabSwipeBlocksPress()) return;
+      router.push({ pathname: "/statistics", params: { from, p } });
+    },
     [router, from],
   );
   const openWeb = useCallback((path: string) => void shell.open(path, from === "web" ? undefined : { returnTo: from }), [from]);
@@ -145,37 +163,74 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
       {/* تبويباتُ المدّة — خطٌّ تحت النشط لا رقاقةٌ مطوَّقة (الصورة) */}
       <View accessibilityRole="tablist" style={{ flexDirection: "row", paddingHorizontal: PAGE_PAD }}>
         {PERIODS.map((p) => {
-          const on = p === period;
+          const on = p === lit;
           return (
-            <Pressable key={p} onPress={() => { if (on) return; haptic.pick(); setPeriod(p); }} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingTop: 4, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
+            <Pressable key={p} onPress={() => { if (p === period) return; haptic.pick(); setAim(p); setPeriod(p); }} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingTop: 4, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
               <Text size={15} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted}>{labels[p]}</Text>
             </Pressable>
           );
         })}
       </View>
 
-      {!d ? (
-        q.isError ? (
-          <View style={{ alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: PAGE_PAD }}>
-            <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
-            <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
-          </View>
-        ) : (
-          <ReportSkeleton />
-        )
-      ) : (
-        /* D-1575 — الذيلُ ١٦ لا ٤٠: الشاشةُ الواحدةُ تُحسب بالنقطة (≈٦٣٠ من ٦٦٠ متاحةً على آيفون ٦٫١) */
-        <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
-          {d.stats.empty ? (
-            <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
-              {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
-            </Text>
-          ) : (
-            <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={(p) => router.push({ pathname: "/statistics", params: { from, p } })} shareError={sharing.error} onRepaired={() => void q.refetch()} />
-          )}
-        </ScrollView>
-      )}
+      {/* 🆕 D-1576 — **المددُ الثلاث تُسحب** (أحمد ٢٩ أكتوبر: «صفحة الأسبوعي والشهري والسنوي أبغا أمرر فيها بالسحب بينهم»):
+          `TabSlide` نفسُه الذي تسحب به المكتبةُ واكتشف — لا سحبةٌ ثانية. كلُّ لوحٍ يجلب مدّتَه، وما زرتَه يبقى (`keepVisited`) فالعودةُ
+          إليه بلا هيكل؛ والجارُ يُجهَّز حين يبدأ الإصبعُ يسحبه */}
+      <TabSlide
+        order={PERIODS}
+        tab={period}
+        onTab={setPeriod}
+        onAim={setAim}
+        keepVisited
+        style={{ flex: 1 }}
+        render={(p) => <ReportPane period={p} openTitle={openTitle} openWeb={openWeb} openFull={openFull} shareError={p === period ? sharing.error : null} />}
+      />
     </View>
+  );
+}
+
+/** لوحُ مدّةٍ واحدة — استعلامُها وسحبُ التحديث فيها وحالاتُها الثلاث (هيكل · خطأ · تقرير) */
+function ReportPane({
+  period,
+  openTitle,
+  openWeb,
+  openFull,
+  shareError,
+}: {
+  period: ReportPeriod;
+  openTitle: (kind: "tv" | "movie", id: number) => void;
+  openWeb: (path: string) => void;
+  openFull: (p: ReportPeriod) => void;
+  shareError: string | null;
+}) {
+  const { t, locale } = useApp();
+  const insets = useSafeAreaInsets();
+  const en = locale === "en";
+  const key = myReportKey(period);
+  const q = useQuery({ queryKey: key, queryFn: fetchReport(period), staleTime: 5 * 60_000 });
+  const d = q.data ?? null;
+  const refresh = usePullRefresh([key], 0);
+  if (!d) {
+    return q.isError ? (
+      <View style={{ alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: PAGE_PAD }}>
+        <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
+        <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
+      </View>
+    ) : (
+      <ReportSkeleton />
+    );
+  }
+  return (
+    /* 🆕 D-1576 — **المحتوى يملأ طولَ الشاشة** (أحمد على لقطة D-1575: «فيه مساحة تحت زيادة — خلها ترتاح وتستفيد من كامل
+       المساحة»): `flexGrow` فالأعمدةُ (`Bars`، `flex: 1`) تأخذ ما بقي من الطول بين حدٍّ أدنى وأعلى، والذيلُ ١٦ */
+    <ScrollView refreshControl={refresh} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
+      {d.stats.empty ? (
+        <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
+          {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
+        </Text>
+      ) : (
+        <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={openFull} shareError={shareError} onRepaired={() => void q.refetch()} />
+      )}
+    </ScrollView>
   );
 }
 
@@ -217,9 +272,9 @@ function ReportBody({
      مرّة (الرسمُ والملصقات). على آيفون عاديٍّ وأكبر يتّسع كلُّه؛ SE وmini يبقى لهما نزولٌ قصيرٌ في الذيل — والـ`ScrollView` باقٍ لهما */
   const openPart = (
     <>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={30} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: 36 }}>{hm(s.minutes, locale)}</Text>
+          <Text size={36} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: 42 }}>{hm(s.minutes, locale)}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
             <Text size={12} muted>{en ? "WATCH TIME" : "وقت المشاهدة"}</Text>
             {s.deltaPct !== null ? (
@@ -273,7 +328,7 @@ function ReportBody({
       {!s.taste.thin && s.taste.genres.length > 0 ? (
         <>
           <H3>{en ? "Your taste this period" : "ذوقك في هذه المدّة"}</H3>
-          <View style={{ flexDirection: "row", height: 20, borderRadius: 6, overflow: "hidden" }}>
+          <View style={{ flexDirection: "row", height: 24, borderRadius: 6, overflow: "hidden" }}>
             {s.taste.genres.slice(0, 4).map((g, i) => (
               <View key={g.slug} style={{ flexGrow: Math.max(1, g.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: tasteColors(tokens)[i] }}>
                 {g.pct >= 12 ? <Text size={11} weight="700" color="#fff">{`${g.pct.toLocaleString("en-US")}%`}</Text> : null}
@@ -293,7 +348,7 @@ function ReportBody({
       ) : null}
 
       {/* بابُ «الإحصائيات الكاملة» سطرٌ واحدٌ لا بطاقة (D-1575) — D-1367: شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
-      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
         <Icon name="chart" size={16} color={tokens.accent} />
         <Text size={14} weight="700" color={tokens.accent} style={{ flex: 1 }}>{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
         <Chevron />
@@ -384,7 +439,7 @@ export function H2({ children }: { children: string }) {
 
 /** 🆕 D-1575 — عنوانُ أقسام «تقريرك» بعد ترتيب الشاشة الواحدة: أصغرُ من `H2` (التي تبقى لـ«الإحصائيات الكاملة» وهي تتمرّر) */
 function H3({ children }: { children: string }) {
-  return <Text size={15} weight="700" style={{ marginTop: 16, marginBottom: 8 }}>{children}</Text>;
+  return <Text size={15} weight="700" style={{ marginTop: 22, marginBottom: 10 }}>{children}</Text>;
 }
 
 /**
@@ -417,9 +472,10 @@ function Bars({ s }: { s: ReportStats }) {
   const step = n > 20 ? 5 : n > 7 ? 3 : 1;
   const gap = n > 12 ? 3 : n > 7 ? 6 : 8;
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap, marginTop: 18 }}>
+    /* `flex: 1` في محتوى `flexGrow` يأخذ الباقي، والحدّان على الغلاف؛ والأعمدةُ تمتدّ إلى قامته (`stretch`) والممتلئُ نسبةٌ منها */
+    <View style={{ flex: 1, minHeight: BAR_MIN + BAR_CHROME, maxHeight: BAR_MAX + BAR_CHROME, flexDirection: "row", alignItems: "stretch", gap, paddingTop: 18 }}>
       {s.buckets.map((b, i) => {
-        const full = Math.round((b.minutes / peakBar) * BAR_H);
+        const pct = b.minutes > 0 ? Math.max(4, Math.round((b.minutes / peakBar) * 100)) : 0;
         const isPeak = b.minutes === peakBar && b.minutes > 0;
         const top = s.period === "week" && isPeak;
         const showValue = dense ? isPeak : b.minutes > 0;
@@ -430,8 +486,9 @@ function Bars({ s }: { s: ReportStats }) {
             <View style={{ height: 16, width: 44, alignItems: "center" }}>
               {showValue ? <Text size={11} muted numberOfLines={1} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{clock(b.minutes, locale)}</Text> : null}
             </View>
-            <View style={{ width: "100%", maxWidth: 34, height: BAR_H, justifyContent: "flex-end", borderRadius: 4, backgroundColor: tokens.surface2 + "B3" }}>
-              <View style={{ height: b.minutes > 0 ? Math.max(4, full) : 0, borderRadius: 4, backgroundColor: tokens.accent }} />
+            <View style={{ flex: 1, width: "100%", maxWidth: 34, justifyContent: "flex-end", borderRadius: 4, backgroundColor: tokens.surface2 + "B3" }}>
+              {/* ٤٪ أدنى: يومٌ فيه دقائقُ قليلةٌ يُرى نقطةً لا يختفي */}
+              <View style={{ height: `${pct}%`, minHeight: pct ? 4 : 0, borderRadius: 4, backgroundColor: tokens.accent }} />
             </View>
             <View style={{ height: 16, width: 44, alignItems: "center" }}>
               {showLabel ? <Text size={11} weight={top ? "700" : "400"} color={top ? tokens.fg : tokens.muted} numberOfLines={1}>{b.label}</Text> : null}
@@ -447,7 +504,7 @@ function Bars({ s }: { s: ReportStats }) {
  * «الأكثر مشاهدة» — ثلاثةُ ملصقاتٍ صغيرةٍ في صفّ، وتحت كلٍّ اسمُه ووقتُه، والأوّلُ عليه رقمُه. 🆕 D-1575 — كانت ملصقاتٍ بعرض
  * الشاشة (الأوّلُ ١٫٦ ضعف) تأخذ شاشةً كاملة؛ الملصقُ هنا يدلّ على العمل ولا يُعرض لذاته
  */
-const TOP_W = 64;
+const TOP_W = 56;
 function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movie", id: number) => void }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
@@ -457,7 +514,7 @@ function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movi
         const uri = posterFor(x.poster, TOP_W);
         return (
           <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 8, opacity: pressed ? 0.8 : 1 })}>
-            <View style={{ width: TOP_W * 0.62, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: TOP_W, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
               {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />}
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -486,12 +543,12 @@ function TopThree({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "movi
 function Tile({ icon, label, value, small }: { icon: IconName; label: string; value: string; small?: boolean }) {
   const { tokens } = useApp();
   return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 10, paddingVertical: 8 }}>
+    <View style={{ flex: 1, minWidth: 0, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 12, paddingVertical: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
         <Icon name={icon} size={13} color={tokens.accent} />
         <Text size={11} muted numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
       </View>
-      <Text size={small ? 13 : 18} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ marginTop: 4, fontVariant: ["tabular-nums"], lineHeight: small ? 22 : 22 }}>{value}</Text>
+      <Text size={small ? 15 : 22} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ marginTop: 6, fontVariant: ["tabular-nums"], lineHeight: 28 }}>{value}</Text>
     </View>
   );
 }
