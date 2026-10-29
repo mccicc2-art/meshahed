@@ -9,6 +9,12 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 
+/*
+ * 🆕 D-1568 — **مرساةُ البصمة لرسّام الودجت**: ملفّاتُ `widget/kotlin` و`widget/res` ينسخها `withLoopzWidget.js` عند البناء، والبصمةُ
+ * لا تقرؤها — فتعديلُها وحدَه يخرج تحديثاً عبر الهواء لا يصل الودجت (D-1562 خرج كذلك، ٢٩ أكتوبر). كلُّ تعديلٍ للرسّام يرفع هذا الرقم.
+ * مراجعةُ الرسّام: 1562
+ */
+
 /**
  * جسرُ الودجتات في أندرويد (خطّةُ الودجتات §2.2).
  *
