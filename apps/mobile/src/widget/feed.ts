@@ -1,4 +1,4 @@
-import { AppState, Platform } from "react-native";
+import { AppState, Dimensions, PixelRatio, Platform } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
@@ -215,6 +215,39 @@ async function sendDiag(w: NonNullable<typeof LoopzWidget>): Promise<void> {
   }
 }
 
+/**
+ * 🆕 D-1570 — **قياسُ الودجت الحقيقيّ** (الخطوةُ ١ في خطّة الخانات، خالد ٢٩ أكتوبر: «خذ مقاسات سامسونج الصحيحة»): الأرقامُ كلُّها
+ * كانت على ودجت المرجع (٤×٢ = ٣٣٥×١٧٨)، وودجتُ خالد أعرضُ بنحو ٢٨٪ (تكبيرُ الشاشة) فظهرت الفراغات. هنا يُرسل مقاسُ كلِّ ودجتٍ
+ * موضوعٍ (dp كما يعطيه المشغِّل للعمودي: أدنى عرض · أقصى ارتفاع) ومقاسُ الشاشة وكثافتُها — مرّةً في الجلسة، بمسار الأعطال نفسِه
+ * (`runtime_errors`، الشاشة `widget` بسطر «widget sizes»). لا يرسل شيئاً عن المحتوى.
+ */
+let sizesSent = false;
+async function reportSizes(w: NonNullable<typeof LoopzWidget>): Promise<void> {
+  if (sizesSent) return;
+  try {
+    const placed = await Promise.resolve(w.installedWidgets?.() ?? []);
+    if (!Array.isArray(placed) || placed.length === 0) return;
+    sizesSent = true;
+    const win = Dimensions.get("window");
+    const scr = Dimensions.get("screen");
+    const info = {
+      os: Platform.OS,
+      ver: String(Platform.Version),
+      window: [Math.round(win.width), Math.round(win.height)],
+      screen: [Math.round(scr.width), Math.round(scr.height)],
+      density: PixelRatio.get(),
+      font: PixelRatio.getFontScale(),
+      widgets: placed,
+    };
+    await api("/api/v1/app/crash", {
+      method: "POST",
+      body: { screen: "widget", message: `widget sizes · ${Platform.OS} · ${placed.length}`, stack: JSON.stringify(info), version: BUILD_TAG },
+    });
+  } catch {
+    sizesSent = false;
+  }
+}
+
 async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
   /* 🆕 A-05 — «موجود» = رمزٌ صالحُ الشكل، لا ملفٌّ فقط: الملفُّ الفارغُ (`dropToken`) يطلب رمزاً جديداً */
   if (w.readText ? readToken(w) : w.exists(TOKEN)) return;
@@ -262,6 +295,7 @@ async function run(): Promise<void> {
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
   await ensureToken(w);
   await sendDiag(w);
+  void reportSizes(w);
   /* 🆕 A-05 — رمزُ الجهاز مع الخلاصة: يتجدّد بفتح التطبيق، و`check: false` معه يعني أنّه مات أو أُلغي ⇒ يُمحى ويُطلب غيرُه */
   const mine = readToken(w);
   const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query, mine ? { headers: { "x-loopz-widget": mine } } : undefined);
