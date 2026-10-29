@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { BackHandler, I18nManager, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { BackHandler, I18nManager, Platform, Pressable, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,9 +14,9 @@ import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
-import { usePullRefresh } from "../pullRefresh";
+import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { controlSize, type Tokens } from "../theme";
-import { H3, PlusLock, PlusPill, SvgGuard, Tile, TopThree, myReportKey } from "./ReportScreen";
+import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, SvgGuard, Tile, TopThree, bucketName, myReportKey } from "./ReportScreen";
 import { hm, primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
 import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contracts/report";
@@ -36,12 +36,16 @@ import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contract
  *    الرسمُ يسارٌ دائماً والتسمياتُ تنعكس مع العربيّة — تباينٌ هناك لا يُنقل.
  *  - ⚖️ **بلا تلميحة «أوّل مرّة»** (`OneTimeHint` الويب): لا مخزنَ تلميحاتٍ هنا لها، وما تقوله تقوله العناوين.
  *  - القفلُ لغير المشترك `PlusLock` نفسُه — على القسم كلِّه كما في الصفحة (لا جزءَ مفتوحاً فوقه).
+ *  - 🆕 D-1583 — **الأقسامُ تُسحب** (`TabSlide` كمدد التقرير) **وكلُّ لوحٍ ثابتٌ** (`FitScroll`) **يملأ الطول** حتى يبقى تحته نحوُ ٥٪:
+ *    في كلِّ قسمٍ قطعةٌ تتمدّد (الاتّجاه · الملصقات · البصمة · الخريطة وأيّامُ الأسبوع)، وما أُضيف: قمّةُ الاتّجاه مكتوبةٌ عليه،
+ *    و«بالأرقام» في المحتوى، و«أيّام الأسبوع» في العادات، وتقدّمُ فتح البصمة حين تكون البياناتُ قليلة.
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
 /* 🆕 D-1582 — حدّا قامة الاتّجاه حين يأخذ ما بقي، وما حوله من تسمياتٍ ومفتاح (والهيكلُ بالأدنى) */
 const CHART_MIN = 120;
-const CHART_MAX = 220;
+/* 🆕 D-1583 — ٣٨٠ (كانت ٢٢٠): «نظرة عامة» تركت تحتها ١٠٪ — الاتّجاهُ يأخذها */
+const CHART_MAX = 380;
 const CHART_CHROME = 16 + 28;
 const PREV = "#7A7A7A";
 const PERIODS: ReportPeriod[] = ["week", "month", "year", "all"];
@@ -58,18 +62,22 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
   const [period, setPeriod] = useState<ReportPeriod>(initial ?? "week");
   const [offset, setOffset] = useState(0);
   const [tab, setTab] = useState<Tab>("overview");
+  /* 🆕 D-1583 — الأقسامُ تُسحب: النقطةُ تتبع الوجهةَ لحظةَ رفع الإصبع (`useTabAim`، وصفةُ التقرير) */
+  const [aim, setAim] = useTabAim<Tab>(tab);
+  const lit = aim ?? tab;
   /* 🆕 D-1581 — ورقةُ المدّة (زرُّ الأدوات) */
   const [tools, setTools] = useState(false);
   const key = myReportKey(period, offset);
   const q = useQuery({
     queryKey: key,
     queryFn: async () => (await api<MyReportPayload>(`/api/v1/me/report?p=${period}${offset ? `&o=${offset}` : ""}`)).data,
-    staleTime: 5 * 60_000,
+    staleTime: REPORT_STALE,
+    /* 🆕 D-1583 — بلا سحب تحديث: كلُّ فتحٍ يجلب («١أ») */
+    refetchOnMount: "always",
     /* التنقّلُ بالسهمين يُبقي ما كان مرسوماً حتى يصل ما بعده — لا هيكلَ يومض مع كلِّ ضغطة */
     placeholderData: keepPreviousData,
   });
   const d = q.data ?? null;
-  const refresh = usePullRefresh([key], 0);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -84,8 +92,12 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
     return () => sub.remove();
   }, [back]);
 
+  /* D-1497 — سحبةٌ بين الأقسام لا تفتح الملصقَ الذي بدأ عليه الإصبع */
   const openTitle = useCallback(
-    (kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } }),
+    (kind: "tv" | "movie", id: number) => {
+      if (tabSwipeBlocksPress()) return;
+      router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } });
+    },
     [router, from],
   );
   const openWeb = useCallback((path: string) => void shell.open(path, from === "web" ? undefined : { returnTo: from }), [from]);
@@ -127,9 +139,9 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
           tools المكتبة، يضغطه ويحدد الفترة»): الدائرةُ نفسُها في طرف صفّ الأقسام كما في المكتبة، والورقةُ الواحدةُ فيها العائلةُ المقسّمة */}
       <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: PAGE_PAD, marginTop: 8, marginBottom: 4 }}>
         {TABS.map((id) => {
-          const on = id === tab;
+          const on = id === lit;
           return (
-            <Pressable key={id} onPress={() => { if (on) return; haptic.pick(); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Pressable key={id} onPress={() => { if (id === tab) return; haptic.pick(); setAim(id); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Text size={14} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{tabLabel[id]}</Text>
               {on ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.accent }} /> : null}
             </Pressable>
@@ -179,19 +191,30 @@ export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; i
           <Skeleton />
         )
       ) : (
-        /* 🆕 D-1582 — **كلُّ قسمٍ شاشةٌ واحدة** (أحمد ٢٩ أكتوبر: «حتى الإحصائيات الكاملة أبغاها صفحة وحدة» ثمّ «١أ»): المحتوى
-           `flexGrow` والرسمُ الذي يتمدّد (الاتّجاه · الخريطة) يأخذ ما بقي بين حدّين، والذيلُ ١٦ */
-        <ScrollView refreshControl={refresh} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
-          {s.empty ? (
-            <Note>{en ? "Nothing watched in this period." : "لا مشاهدات في هذه المدّة."}</Note>
-          ) : d.plus ? (
-            <Body s={s} tab={tab} onTitle={openTitle} />
-          ) : (
-            <PlusLock onPlus={() => openWeb("/plus")}>
-              <Body s={s} tab={tab} onTitle={openTitle} />
-            </PlusLock>
+        /* 🆕 D-1582 — **كلُّ قسمٍ شاشةٌ واحدة** (أحمد ٢٩ أكتوبر: «حتى الإحصائيات الكاملة أبغاها صفحة وحدة» ثمّ «١أ»).
+           🆕 D-1583 — **والأقسامُ تُسحب** (أحمد: «كذلك أقدر أمرر بينهم بالسحب»): `TabSlide` نفسُه، لوحٌ لكلِّ قسمٍ من حمولةٍ واحدة،
+           وكلُّ لوحٍ `FitScroll` — ثابتٌ لا يُسحب عموديّاً إلّا إن لم يتّسع */
+        <TabSlide
+          order={TABS}
+          tab={tab}
+          onTab={setTab}
+          onAim={setAim}
+          keepVisited
+          style={{ flex: 1 }}
+          render={(id) => (
+            <FitScroll>
+              {s.empty ? (
+                <Note>{en ? "Nothing watched in this period." : "لا مشاهدات في هذه المدّة."}</Note>
+              ) : d.plus ? (
+                <Body s={s} tab={id} onTitle={openTitle} />
+              ) : (
+                <PlusLock onPlus={() => openWeb("/plus")}>
+                  <Body s={s} tab={id} onTitle={openTitle} />
+                </PlusLock>
+              )}
+            </FitScroll>
           )}
-        </ScrollView>
+        />
       )}
     </View>
   );
@@ -288,6 +311,10 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
   const { tokens, locale } = useApp();
   const en = locale === "en";
   const decades = s.releaseYears.filter((y) => y.pct > 0);
+  const mixMin = (k: Mix) => s.mix.find((m) => m.key === k)?.minutes ?? 0;
+  const avgEp = s.episodes > 0 ? Math.round((mixMin("shows") + mixMin("anime")) / s.episodes) : null;
+  const avgMovie = s.movies > 0 ? Math.round(mixMin("movies") / s.movies) : null;
+  const perDay = s.episodes > 0 && s.activeDays > 0 ? (Math.round((s.episodes / s.activeDays) * 10) / 10).toLocaleString("en-US") : null;
   return (
     <>
       <Tiles
@@ -314,12 +341,22 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
         </View>
       </View>
 
+      {/* 🆕 D-1583 — **«بالأرقام» جديد** (أحمد: «ضيف شي جديد»): ثلاثةُ أرقامٍ لا تُقرأ في مكانٍ آخر، كلُّها من الحمولة نفسِها —
+          متوسّطُ الحلقة (دقائقُ المسلسلات والأنمي على حلقاتها)، ومتوسّطُ الفيلم، وحلقاتُك في يوم المشاهدة */}
+      <H3>{en ? "By the numbers" : "بالأرقام"}</H3>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <StatCell center stacked icon="play" value={avgEp !== null ? hm(avgEp, locale) : "—"} label={en ? "Avg. episode" : "متوسط الحلقة"} />
+        <StatCell center stacked icon="film" value={avgMovie !== null ? hm(avgMovie, locale) : "—"} label={en ? "Avg. movie" : "متوسط الفيلم"} />
+        <StatCell center stacked icon="calendar" value={perDay !== null ? perDay : "—"} label={en ? "Episodes a day" : "حلقة في اليوم"} />
+      </View>
+
       {/* 🆕 D-1582 — «أعلى الأعمال» هنا لا في «نظرة عامة» («٢أ»): ثلاثةُ ملصقاتٍ كالتقرير بدل قائمةٍ من خمسة.
-          و«حالة المشاهدة» خرجت: أرقامُها في خانات هذا القسم وفي «الإكمال» */}
+          و«حالة المشاهدة» خرجت: أرقامُها في خانات هذا القسم وفي «الإكمال».
+          🆕 D-1583 — والملصقاتُ تأخذ ما بقي من اللوح (`fill`): تكبر حتى ١٣٢ بدل فراغٍ أسود تحت القسم */}
       {s.topTitles.length > 0 ? (
         <>
           <H3>{en ? "Top titles" : "أعلى الأعمال"}</H3>
-          <TopThree titles={s.topTitles} onTitle={onTitle} />
+          <TopThree titles={s.topTitles} onTitle={onTitle} fill />
         </>
       ) : null}
 
@@ -327,16 +364,16 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
       {decades.length > 0 ? (
         <>
           <H3>{en ? "Release years" : "سنوات الإصدار"}</H3>
-          <View style={{ flexDirection: "row", height: 22, borderRadius: 6, overflow: "hidden" }}>
+          <View style={{ flexDirection: "row", height: 28, borderRadius: 8, overflow: "hidden" }}>
             {decades.map((y, i) => (
               <View key={y.decade} style={{ flexGrow: Math.max(1, y.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: tokens.accent, opacity: 1 - (i % 4) * 0.2 }}>
-                {y.pct >= 12 ? <Text size={11} weight="700" color={tokens.onAccent}>{`${n(y.pct)}%`}</Text> : null}
+                {y.pct >= 12 ? <Text size={12} weight="700" color={tokens.onAccent}>{`${n(y.pct)}%`}</Text> : null}
               </View>
             ))}
           </View>
           <View style={{ flexDirection: "row", marginTop: 6 }}>
             {decades.map((y) => (
-              <Text key={y.decade} size={11} muted numberOfLines={1} style={{ flexGrow: Math.max(1, y.pct), flexBasis: 0, textAlign: "center", writingDirection: "ltr" }}>{`${y.decade}s`}</Text>
+              <Text key={y.decade} size={12} muted numberOfLines={1} style={{ flexGrow: Math.max(1, y.pct), flexBasis: 0, textAlign: "center", writingDirection: "ltr" }}>{`${y.decade}s`}</Text>
             ))}
           </View>
         </>
@@ -349,15 +386,23 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
 
 function TasteTab({ s }: { s: ReportStats }) {
   const { tokens, locale } = useApp();
+  const { width } = useWindowDimensions();
   const en = locale === "en";
-  /* لا استنتاجَ على بياناتٍ قليلة (حجّةُ الصفحة) */
-  if (s.taste.thin) return <Note>{en ? "Keep watching to build your taste profile — we do not draw conclusions from too little data." : "واصل المشاهدة لتتكوّن بصمة ذوقك — لا نعرض استنتاجاً على بياناتٍ قليلة."}</Note>;
+  const [rowH, setRowH] = useState(180);
+  const onRow = (e: LayoutChangeEvent) => {
+    const v = Math.round(e.nativeEvent.layout.height);
+    if (Math.abs(v - rowH) > 1) setRowH(v);
+  };
+  const radar = Math.round(Math.max(180, Math.min(260, rowH, (width - PAGE_PAD * 2) * 0.55)));
+  /* لا استنتاجَ على بياناتٍ قليلة (حجّةُ الصفحة). 🆕 D-1583 — **لكن لا صفحةَ سوداء بجملةٍ واحدة** («٤أ»): كم بقي لتُفتح البصمة */
+  if (s.taste.thin) return <TasteUnlock s={s} />;
   return (
     <>
       {/* 🆕 D-1582 — البصمةُ والأنواعُ متجاورتان: شاشةٌ واحدة لا بصمةٌ بعرضها ثمّ قائمة */}
       <H3>{en ? "Your taste fingerprint" : "بصمة ذوقك"}</H3>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Radar axes={s.taste.radar} />
+      {/* 🆕 D-1583 — الصفُّ يأخذ ما بقي (١٨٠–٢٨٠) والبصمةُ تكبر معه حتى نصفِ العرض */}
+      <View onLayout={onRow} style={{ flex: 1, minHeight: 180, maxHeight: 280, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Radar axes={s.taste.radar} size={radar} />
         <View style={{ flex: 1, gap: 8, minWidth: 0 }}>
           {s.taste.genres.map((g, i) => (
             <View key={g.slug}>
@@ -401,7 +446,7 @@ function TasteTab({ s }: { s: ReportStats }) {
               const uri = profileUrl(a.photo, "w185");
               return (
                 <View key={a.name} style={{ flex: 1, minWidth: 0, alignItems: "center" }}>
-                  <View style={{ width: 48, height: 48, borderRadius: 24, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                     {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name="people" size={18} color={tokens.muted} />}
                   </View>
                   <Text size={11} numberOfLines={1} style={{ marginTop: 6, textAlign: "center" }}>{a.name}</Text>
@@ -448,6 +493,11 @@ function HabitsTab({ s }: { s: ReportStats }) {
   const peak = Math.max(1, ...s.habits.heat.flat());
   const names = dayNames(en);
   const top = Math.max(...s.habits.timeOfDay.map((x) => x.pct));
+  /* 🆕 D-1583 — وقتٌ نسبتُه صفرٌ لا يُرسم ولا يُسمّى: كان يترك نقطةً «.» تحت الشريط مكانَ اسمه (اللقطة) */
+  const bands = s.habits.timeOfDay.filter((b) => b.pct > 0);
+  /* الخريطةُ صفوفُ أوقاتٍ وأعمدةُ أيّامٍ من الأحد (`getUTCDay`) — مجموعُ العمود وقتُ ذلك اليوم */
+  const dayTotals = [0, 1, 2, 3, 4, 5, 6].map((di) => s.habits.heat.reduce((a, band) => a + (band[di] ?? 0), 0));
+  const dayPeak = Math.max(...dayTotals);
   return (
     <>
       <View style={{ marginTop: 12 }}>
@@ -462,8 +512,8 @@ function HabitsTab({ s }: { s: ReportStats }) {
       </View>
 
       <H3>{en ? "Viewing heatmap" : "خريطة المشاهدة"}</H3>
-      {/* 🆕 D-1582 — الخريطةُ تأخذ ما بقي من الشاشة: صفوفُها `flex: 1` بين ٢٤ و٤٨ */}
-      <View style={{ flex: 1, minHeight: 14 + 4 * 24 + 16, maxHeight: 14 + 4 * 48 + 16, gap: 4 }}>
+      {/* 🆕 D-1582 — الخريطةُ تأخذ ما بقي من الشاشة: صفوفُها `flex: 1` بين ٢٤ و٥٦ (🆕 D-1583 — كانت ٤٨) */}
+      <View style={{ flex: 1, minHeight: 14 + 4 * 24 + 16, maxHeight: 14 + 4 * 56 + 16, gap: 4 }}>
         <View style={{ flexDirection: "row", gap: 4 }}>
           <View style={{ width: 64 }} />
           {names.map((d, i) => (
@@ -493,7 +543,7 @@ function HabitsTab({ s }: { s: ReportStats }) {
 
       <H3>{en ? "Time of day" : "أوقات اليوم"}</H3>
       <View style={{ flexDirection: "row", height: 26, borderRadius: 6, overflow: "hidden" }}>
-        {s.habits.timeOfDay.map((b) => {
+        {bands.map((b) => {
           const on = b.pct === top;
           return (
             <View key={b.key} style={{ flexGrow: Math.max(1, b.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: on ? tokens.accent : tokens.surface2 }}>
@@ -503,9 +553,27 @@ function HabitsTab({ s }: { s: ReportStats }) {
         })}
       </View>
       <View style={{ flexDirection: "row", marginTop: 6 }}>
-        {s.habits.timeOfDay.map((b) => (
+        {bands.map((b) => (
           <Text key={b.key} size={11} muted numberOfLines={1} style={{ flexGrow: Math.max(1, b.pct), flexBasis: 0, textAlign: "center" }}>{BAND_LABELS[b.key][en ? 1 : 0]}</Text>
         ))}
+      </View>
+
+      {/* 🆕 D-1583 — **«أيّام الأسبوع» جديد**: مجموعُ كلِّ عمودٍ من الخريطة — أيُّ يومٍ تشاهد فيه أكثر، بأعمدةٍ تأخذ ما بقي من
+          اللوح (٩٦–٢٠٠)، والأعلى بلون التمييز ووقتُه فوقه */}
+      <H3>{en ? "Days of the week" : "أيام الأسبوع"}</H3>
+      <View style={{ flex: 1, minHeight: 96, maxHeight: 200, flexDirection: "row", gap: 6 }}>
+        {dayTotals.map((v, i) => {
+          const on = v > 0 && v === dayPeak;
+          return (
+            <View key={i} style={{ flex: 1, minWidth: 0, alignItems: "center" }}>
+              <Text size={10} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontVariant: ["tabular-nums"], height: 14 }}>{v > 0 ? hm(v, locale) : ""}</Text>
+              <View style={{ flex: 1, alignSelf: "stretch", marginTop: 4, borderRadius: 6, backgroundColor: tokens.surface2, overflow: "hidden", justifyContent: "flex-end" }}>
+                {v > 0 ? <View style={{ height: `${Math.max(4, Math.round((v / Math.max(1, dayPeak)) * 100))}%`, backgroundColor: tokens.accent, opacity: on ? 1 : 0.45 }} /> : null}
+              </View>
+              <Text size={11} muted numberOfLines={1} style={{ marginTop: 4 }}>{names[i]}</Text>
+            </View>
+          );
+        })}
       </View>
     </>
   );
@@ -575,8 +643,9 @@ function Ring({ pct }: { pct: number }) {
 
 function Donut({ mix, total, label }: { mix: ReportStats["mix"]; total: string; label: string }) {
   const { tokens } = useApp();
-  /* 🆕 D-1582 — ١٠٤ (كانت ١٣٢) */
-  const r = 36;
+  /* 🆕 D-1582 — ١٠٤ (كانت ١٣٢). 🆕 D-1583 — ١٤٠: القسمُ ترك تحته ٣٠٪ فارغة */
+  const S = 140;
+  const r = 50;
   const c = 2 * Math.PI * r;
   const arcs = mix.reduce<{ key: Mix; len: number; offset: number }[]>((out, m) => {
     const prev = out[out.length - 1];
@@ -584,17 +653,17 @@ function Donut({ mix, total, label }: { mix: ReportStats["mix"]; total: string; 
     return out;
   }, []);
   return (
-    <View style={{ width: 104, height: 104 }}>
-      <SvgGuard fallback={<View style={{ width: 104, height: 104, borderRadius: 52, borderWidth: 9, borderColor: tokens.surface2 }} />}>
-        <Svg width={104} height={104} viewBox="0 0 104 104" style={{ transform: [{ rotate: "-90deg" }] }}>
-          <Circle cx={52} cy={52} r={r} fill="none" stroke={tokens.surface2} strokeWidth={9} />
+    <View style={{ width: S, height: S }}>
+      <SvgGuard fallback={<View style={{ width: S, height: S, borderRadius: S / 2, borderWidth: 12, borderColor: tokens.surface2 }} />}>
+        <Svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ transform: [{ rotate: "-90deg" }] }}>
+          <Circle cx={S / 2} cy={S / 2} r={r} fill="none" stroke={tokens.surface2} strokeWidth={12} />
           {arcs.map((a) => (
-            <Circle key={a.key} cx={52} cy={52} r={r} fill="none" stroke={mixColor(a.key, tokens)} strokeWidth={9} strokeDasharray={`${a.len} ${c - a.len}`} strokeDashoffset={-a.offset} />
+            <Circle key={a.key} cx={S / 2} cy={S / 2} r={r} fill="none" stroke={mixColor(a.key, tokens)} strokeWidth={12} strokeDasharray={`${a.len} ${c - a.len}`} strokeDashoffset={-a.offset} />
           ))}
         </Svg>
       </SvgGuard>
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 }}>
-        <Text size={15} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ["tabular-nums"] }}>{total}</Text>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", paddingHorizontal: 22 }}>
+        <Text size={18} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ["tabular-nums"] }}>{total}</Text>
         <Text size={12} muted style={{ marginTop: 2 }}>{label}</Text>
       </View>
     </View>
@@ -619,11 +688,17 @@ function TrendChart({ s }: { s: ReportStats }) {
   const step = count > 1 ? (w - 8) / (count - 1) : 0;
   const rtl = I18nManager.isRTL;
   const x = (i: number) => (count > 1 ? (rtl ? w - 4 - i * step : 4 + i * step) : w / 2);
-  const y = (v: number) => CH - 10 - (v / peak) * (CH - 26);
+  /* 🆕 D-1583 — فوق القمّة مكانٌ لاسمها (٥٠ لا ٢٦) */
+  const y = (v: number) => CH - 10 - (v / peak) * (CH - 50);
+  /* 🆕 D-1583 — **قمّةُ المدّة مكتوبةٌ عليها** («الخميس ١٥ · 4h 53m»): تُعرف الذروةُ دون قراءة المحور */
+  const pi = s.buckets.reduce((best, b, i) => (b.minutes > (s.buckets[best]?.minutes ?? 0) ? i : best), 0);
+  const pk = s.buckets[pi];
+  const PEAK_W = 140;
   const path = (k: "minutes" | "prevMinutes") => s.buckets.map((b, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(b[k]).toFixed(1)}`).join(" ");
   const hasPrev = s.buckets.some((b) => b.prevMinutes > 0);
   return (
     <View onLayout={onLayout} style={{ flex: 1, minHeight: CHART_MIN + CHART_CHROME, maxHeight: CHART_MAX + CHART_CHROME }}>
+      <View style={{ width: w, height: CH }}>
       <SvgGuard fallback={<View style={{ height: CH, borderRadius: 12, backgroundColor: tokens.surface2, opacity: 0.4 }} />}>
         <Svg width={w} height={CH}>
           {[0, 1, 2, 3].map((i) => {
@@ -633,10 +708,19 @@ function TrendChart({ s }: { s: ReportStats }) {
           {hasPrev && count > 1 ? <Path d={path("prevMinutes")} fill="none" stroke={PREV} strokeWidth={2} strokeLinejoin="round" /> : null}
           {count > 1 ? <Path d={path("minutes")} fill="none" stroke={tokens.accent} strokeWidth={2.5} strokeLinejoin="round" /> : null}
           {s.buckets.map((b, i) => (
-            <Circle key={i} cx={x(i)} cy={y(b.minutes)} r={count > 20 ? 2 : 3} fill={tokens.accent} />
+            <Circle key={i} cx={x(i)} cy={y(b.minutes)} r={i === pi && pk && pk.minutes > 0 ? 5 : count > 20 ? 2 : 3} fill={tokens.accent} />
           ))}
         </Svg>
       </SvgGuard>
+      {/* إحداثيّاتٌ مطلقة (`left`) كتسميات البصمة — الرسمُ نفسُه يعرف جهةَ اللغة في `x` */}
+      {pk && pk.minutes > 0 ? (
+        <View pointerEvents="none" style={{ position: "absolute", left: Math.max(0, Math.min(w - PEAK_W, x(pi) - PEAK_W / 2)), top: Math.max(0, y(pk.minutes) - 32), width: PEAK_W, alignItems: "center" }}>
+          <View style={{ borderRadius: 8, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text size={11} weight="700" numberOfLines={1}>{`${bucketName(pk, s.period, locale)} · ${hm(pk.minutes, locale)}`}</Text>
+          </View>
+        </View>
+      ) : null}
+      </View>
       <View style={{ flexDirection: "row" }}>
         {s.buckets.map((b, i) => (
           /* اثنا عشر شهراً في صفٍّ لا تُقرأ على هاتف (D-801): تسميةٌ كلَّ ثلاثة */
@@ -661,12 +745,11 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 /** بصمةُ الذوق — مضلّعٌ على محاور الأنواع. القيمةُ تُرسم بجذرها (كما في الصفحة) كي لا يبتلع النوعُ الأوّلُ الشكل */
-function Radar({ axes }: { axes: ReportStats["taste"]["radar"] }) {
+function Radar({ axes, size = 180 }: { axes: ReportStats["taste"]["radar"]; size?: number }) {
   const { tokens } = useApp();
-  /* 🆕 D-1582 — ١٨٠ (كانت ٢٤٠) بجانب الأنواع لا بعرض الشاشة */
-  const size = 180;
+  /* 🆕 D-1582 — ١٨٠ (كانت ٢٤٠) بجانب الأنواع لا بعرض الشاشة. 🆕 D-1583 — والقطرُ يتبع ما بقي (١٨٠–٢٦٠) بنسبته */
   const c = size / 2;
-  const r = 46;
+  const r = Math.round(size * 0.256);
   if (axes.length < 3) return null;
   const at = (i: number, dist: number) => {
     const a = (Math.PI * 2 * i) / axes.length - Math.PI / 2;
@@ -702,6 +785,66 @@ function Radar({ axes }: { axes: ReportStats["taste"]["radar"] }) {
           </View>
         );
       })}
+    </View>
+  );
+}
+
+/* 🆕 D-1583 — حدّا البصمة في الخادم (`thin` في `periodStats`): خمسةُ أعمالٍ **و**ثلاثُ ساعات */
+const TASTE_TITLES = 5;
+const TASTE_MIN = 180;
+
+/**
+ * 🆕 D-1583 — **البصمةُ قبل أن تُفتح** («٤أ»): كانت جملةً واحدةً فوق صفحةٍ سوداء. الآن ظلُّ البصمة وقفلُه، وما يفتحها، وشريطان
+ * بما بقي — أعمالٌ ووقت. لا استنتاجَ يُعرض (حجّةُ الصفحة باقية): الأرقامُ عدٌّ لا ذوق
+ */
+function TasteUnlock({ s }: { s: ReportStats }) {
+  const { tokens, locale } = useApp();
+  const { width } = useWindowDimensions();
+  const en = locale === "en";
+  const size = Math.round(Math.min(220, width * 0.55));
+  const rows: { icon: IconName; label: string; value: string; pct: number }[] = [
+    { icon: "tv", label: en ? "Titles" : "الأعمال", value: `${n(Math.min(s.titles, TASTE_TITLES))} / ${n(TASTE_TITLES)}`, pct: (s.titles / TASTE_TITLES) * 100 },
+    { icon: "clock", label: en ? "Watch time" : "وقت المشاهدة", value: `${hm(Math.min(s.minutes, TASTE_MIN), locale)} / ${hm(TASTE_MIN, locale)}`, pct: (s.minutes / TASTE_MIN) * 100 },
+  ];
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 16 }}>
+      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+        <SvgGuard fallback={null}>
+          <Svg width={size} height={size} style={{ position: "absolute" }}>
+            {[0.33, 0.66, 1].map((k) => {
+              const pts = [0, 1, 2, 3, 4, 5].map((i) => {
+                const a = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+                return `${(size / 2 + Math.cos(a) * k * size * 0.45).toFixed(1)},${(size / 2 + Math.sin(a) * k * size * 0.45).toFixed(1)}`;
+              });
+              return <Polygon key={k} points={pts.join(" ")} fill="none" stroke={tokens.divider} strokeWidth={1} strokeDasharray={k === 1 ? undefined : "2 3"} />;
+            })}
+          </Svg>
+        </SvgGuard>
+        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="lock" size={22} color={tokens.accent} />
+        </View>
+      </View>
+      <Text size={18} weight="700" style={{ marginTop: 20, textAlign: "center" }}>{en ? "Your taste fingerprint is forming" : "بصمة ذوقك تتكوّن"}</Text>
+      <Text size={13} muted style={{ marginTop: 6, textAlign: "center", lineHeight: 20, paddingHorizontal: 12 }}>
+        {en ? "It opens after 5 titles and 3 hours of watching in this period — we don't draw conclusions from too little data." : "تُفتح بعد ٥ أعمال و٣ ساعات مشاهدة في هذه المدّة — لا نعرض استنتاجاً على بياناتٍ قليلة."}
+      </Text>
+      <View style={{ alignSelf: "stretch", gap: 16, marginTop: 24 }}>
+        {rows.map((x) => {
+          const done = x.pct >= 100;
+          return (
+            <View key={x.label}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <Icon name={done ? "check-line" : x.icon} size={16} color={tokens.accent} />
+                <Text size={14} style={{ flex: 1 }}>{x.label}</Text>
+                <Text size={13} weight="700" style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{x.value}</Text>
+              </View>
+              <View style={{ flexDirection: "row" }}>
+                <Track pct={x.pct} color={tokens.accent} />
+              </View>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }

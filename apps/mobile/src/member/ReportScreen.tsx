@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import type { LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +16,6 @@ import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { Chevron } from "../settings/ui";
 import { posterFor } from "../poster";
-import { usePullRefresh } from "../pullRefresh";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { hm, primeLabel } from "@/core/statsFormat";
 import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, ReportStats, ReportTitle } from "@/core/contracts/report";
@@ -40,6 +40,8 @@ import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, 
  *    **ولمسةُ يومٍ أو شهرٍ تبدّل «الأكثر مشاهدة» إلى أعماله** (`titles` من الخادم لكلِّ عمود)، وملصقاتٌ أكبر.
  *  - 🆕 D-1576 — **المددُ تُسحب** (`TabSlide`، لوحٌ لكلِّ مدّة: `ReportPane`) **والمحتوى يملأ الطول**: الأعمدةُ تأخذ ما بقي (٤٨–١٦٠)،
  *    والأرقامُ والملصقاتُ والمسافاتُ أوسعُ قليلاً (أحمد: «خلها ترتاح وتستفيد من كامل المساحة»).
+ *  - 🆕 D-1583 — **الصفحةُ ثابتةٌ** (`FitScroll`: لا سحبَ ولا ارتداد، والتمريرُ لما لا يتّسع وحدَه) **والتحديثُ تلقائيّ** عند كلِّ فتح،
+ *    والخاناتُ تتمدّد أكثر فيبقى تحت المحتوى نحوُ ٥٪ من الطول على كلِّ هاتف.
  *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
@@ -85,6 +87,10 @@ function useShareReport(period: ReportPeriod) {
   return { busy, error, share };
 }
 
+/* 🆕 D-1583 — **سحبُ التحديث ذهب مع ثبات الصفحة** («١أ»: تتحدّث تلقائيّاً كلّما فتحت الصفحة أو غيّرت المدّة): كلُّ تركيبٍ يجلب
+   (`refetchOnMount: "always"`)، والحداثةُ نصفُ دقيقةٍ لا خمسُ دقائق — مدّةٌ عُدتَ إليها بعد قليلٍ تُجلب من جديد */
+export const REPORT_STALE = 30_000;
+
 const fetchReport = (period: ReportPeriod) => async () => (await api<MyReportPayload>(`/api/v1/me/report?p=${period}`)).data;
 
 export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
@@ -97,7 +103,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
   const [aim, setAim] = useTabAim<ReportPeriod>(period);
   const lit = aim ?? period;
   /* المدّةُ النشطةُ للترويسة (الاسمُ والمشاركة) — الاستعلامُ نفسُه الذي يقرؤه لوحُها، فلا طلبَ ثانٍ */
-  const q = useQuery({ queryKey: myReportKey(period), queryFn: fetchReport(period), staleTime: 5 * 60_000 });
+  const q = useQuery({ queryKey: myReportKey(period), queryFn: fetchReport(period), staleTime: REPORT_STALE, refetchOnMount: "always" });
   const d = q.data ?? null;
   const sharing = useShareReport(period);
   /* الرمزُ للمشترك وعلى مدّةٍ فيها ما يُشارك: الخادمُ يرفض غيرَ ذلك (403 · 409)، وزرٌّ يُضغط ليُرفض فخّ */
@@ -199,12 +205,10 @@ function ReportPane({
   shareError: string | null;
 }) {
   const { t, locale } = useApp();
-  const insets = useSafeAreaInsets();
   const en = locale === "en";
   const key = myReportKey(period);
-  const q = useQuery({ queryKey: key, queryFn: fetchReport(period), staleTime: 5 * 60_000 });
+  const q = useQuery({ queryKey: key, queryFn: fetchReport(period), staleTime: REPORT_STALE, refetchOnMount: "always" });
   const d = q.data ?? null;
-  const refresh = usePullRefresh([key], 0);
   if (!d) {
     return q.isError ? (
       <View style={{ alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: PAGE_PAD }}>
@@ -218,7 +222,7 @@ function ReportPane({
   return (
     /* 🆕 D-1576 — **المحتوى يملأ طولَ الشاشة** (أحمد على لقطة D-1575: «فيه مساحة تحت زيادة — خلها ترتاح وتستفيد من كامل
        المساحة»): `flexGrow` فالخاناتُ (`PeriodHeat`، `flex: 1`) تأخذ ما بقي من الطول بين حدٍّ أدنى وأعلى، والذيلُ ١٦ */
-    <ScrollView refreshControl={refresh} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
+    <FitScroll>
       {d.stats.empty ? (
         <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
           {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
@@ -226,6 +230,34 @@ function ReportPane({
       ) : (
         <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={openFull} shareError={shareError} onRepaired={() => void q.refetch()} />
       )}
+    </FitScroll>
+  );
+}
+
+/**
+ * 🆕 D-1583 — **لوحٌ ثابتٌ لا يُسحب** (تسجيلُ أحمد ٢٩ أكتوبر: «ما أبغى أقدر أسحبها كذا، أبغاها ثابتة» ثمّ «٢أ»): لا ارتدادَ ولا سحبَ
+ * تحديث، والتمريرُ لا يعمل إلّا حين لا يتّسع المحتوى للشاشة (هاتفٌ صغير أو خطٌّ مكبّر) — فلا يُقصّ شيءٌ أبداً. المحتوى `flexGrow`
+ * فالقطعةُ المتمدّدةُ في اللوح تأخذ ما بقي، والذيلُ مسافةُ الأمان + ١٦ (نحوُ ٥٪ من طول هاتفٍ كبير). قطعةٌ واحدةٌ لـ«تقريرك»
+ * و«الإحصائيات الكاملة»
+ */
+export function FitScroll({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const [box, setBox] = useState(0);
+  const [content, setContent] = useState(0);
+  const over = box > 0 && content > box + 1;
+  return (
+    <ScrollView
+      style={{ flex: 1 }}
+      onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.height))}
+      onContentSizeChange={(_, h) => setContent(Math.round(h))}
+      scrollEnabled={over}
+      bounces={false}
+      alwaysBounceVertical={false}
+      overScrollMode="never"
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 16 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
     </ScrollView>
   );
 }
@@ -470,7 +502,7 @@ function DaysPill({ active, total }: { active: number; total: number }) {
 }
 
 /** 🆕 D-1580 — اسمُ العمود المختار كما يُقرأ: «الخميس ١٥» لليوم، و«أكتوبر» للشهر */
-function bucketName(b: ReportBucket, period: ReportPeriod, locale: string): string {
+export function bucketName(b: ReportBucket, period: ReportPeriod, locale: string): string {
   const en = locale === "en";
   if (period === "year" || !b.dayKey) return b.label;
   const d = new Date(`${b.dayKey}T00:00:00Z`);
@@ -499,7 +531,8 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
   const cells: (number | null)[] = [...Array.from({ length: lead }, () => null), ...s.buckets.map((_, i) => i)];
   while (cells.length % cols) cells.push(null);
   const rows = Array.from({ length: cells.length / cols }, (_, r) => cells.slice(r * cols, r * cols + cols));
-  const [rowMin, rowMax] = week ? [64, 104] : month ? [24, 46] : [40, 64];
+  /* 🆕 D-1583 — الحدُّ الأعلى أوسع (كان ١٠٤ · ٤٦ · ٦٤): الأسبوعُ ترك تحته ١٢٪ فارغة — الخاناتُ تأخذها */
+  const [rowMin, rowMax] = week ? [64, 180] : month ? [24, 72] : [40, 110];
   const level = (m: number) => (m <= 0 ? 0 : m / peak > 0.75 ? 4 : m / peak > 0.5 ? 3 : m / peak > 0.25 ? 2 : 1);
   const fill = (lv: number) => (lv === 0 ? tokens.surface2 : tokens.accent + ["", "40", "80", "BF", "FF"][lv]);
   /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
@@ -571,17 +604,33 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
  */
 /* 🆕 D-1579 — ٧٢ (كانت ٥٦): «كبرها شوي» */
 const TOP_W = 72;
-export function TopThree({ titles, onTitle }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void }) {
+/* 🆕 D-1583 — ما تحت الملصق (الاسمُ والوقت) وأعرضُ ملصقٍ حين يتمدّد */
+const TOP_CAPTION = 44;
+const TOP_MAX = 132;
+export function TopThree({ titles, onTitle, fill }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void; fill?: boolean }) {
   const { tokens, locale } = useApp();
+  const { width } = useWindowDimensions();
   const en = locale === "en";
+  /* 🆕 D-1583 — **`fill`: الصفُّ يأخذ ما بقي من اللوح والملصقُ يكبر بقامته** (أحمد: «استغل كل المساحات السوداء — تكبّر الأشياء»):
+     الغلافُ `flex: 1` بين حدّين يُقاس، والعرضُ من القامة (٢:٣) ولا يتجاوز ثلثَ الصفّ ولا ١٣٢ */
+  const col = (width - PAGE_PAD * 2 - 24) / 3;
+  const [h, setH] = useState(TOP_W * 1.5 + TOP_CAPTION);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const v = Math.round(e.nativeEvent.layout.height);
+    if (Math.abs(v - h) > 1) setH(v);
+  };
+  const pw = fill ? Math.round(Math.max(TOP_W, Math.min(TOP_MAX, col, (h - TOP_CAPTION) / 1.5))) : TOP_W;
   return (
     /* 🆕 D-1579 — الملصقُ فوق اسمه لا بجانبه: بعرض ٧٢ لا يبقى بجانبه في ثلثِ الصفّ مكانٌ لاسم */
-    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+    <View
+      onLayout={fill ? onLayout : undefined}
+      style={[{ flexDirection: "row", alignItems: "flex-start", gap: 12 }, fill ? { flex: 1, minHeight: TOP_W * 1.5 + TOP_CAPTION, maxHeight: TOP_MAX * 1.5 + TOP_CAPTION } : null]}
+    >
       {titles.slice(0, 3).map((x, i) => {
-        const uri = posterFor(x.poster, TOP_W);
+        const uri = posterFor(x.poster, pw);
         return (
           <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: "flex-start", opacity: pressed ? 0.8 : 1 })}>
-            <View style={{ width: TOP_W, aspectRatio: 2 / 3, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: pw, aspectRatio: 2 / 3, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
               {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />}
               {i === 0 ? (
                 <View style={{ position: "absolute", top: 6, start: 6, width: 18, height: 18, borderRadius: 5, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
