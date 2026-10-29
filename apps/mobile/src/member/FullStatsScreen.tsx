@@ -16,8 +16,8 @@ import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { controlSize, type Tokens } from "../theme";
-import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, SvgGuard, Tile, TopThree, bucketName, myReportKey } from "./ReportScreen";
-import { hm, primeLabel } from "@/core/statsFormat";
+import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, SvgGuard, Tile, TopThree, bucketName, hm, myReportKey } from "./ReportScreen";
+import { primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
 import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contracts/report";
 
@@ -54,13 +54,14 @@ type Tab = "overview" | "content" | "taste" | "habits";
 const TABS: Tab[] = ["overview", "content", "taste", "habits"];
 const n = (v: number) => v.toLocaleString("en-US");
 
-export function FullStatsScreen({ from, initial }: { from: NativeRoot | "web"; initial?: ReportPeriod }) {
+/* 🆕 D-1585 — `initial` (مدّةُ التقرير) لم يعد يُقرأ: «الإحصائيات الكاملة تفتح على كل الأوقات دائماً» — والمدّةُ من زرّ الأدوات */
+export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: ReportPeriod }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const en = locale === "en";
   /* الأسبوعُ افتراضُ الصفحة (`asStatsPeriod`)؛ ومن جاء من «تقريرك» يفتح على مدّته */
-  const [period, setPeriod] = useState<ReportPeriod>(initial ?? "week");
+  const [period, setPeriod] = useState<ReportPeriod>("all");
   const [offset, setOffset] = useState(0);
   const [tab, setTab] = useState<Tab>("overview");
   /* 🆕 D-1583 — الأقسامُ تُسحب: النقطةُ تتبع الوجهةَ لحظةَ رفع الإصبع (`useTabAim`، وصفةُ التقرير) */

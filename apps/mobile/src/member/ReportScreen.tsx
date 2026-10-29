@@ -14,10 +14,11 @@ import { Icon, type IconName } from "../icons";
 import { radius, type Tokens } from "../theme";
 import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
-import { Chevron } from "../settings/ui";
 import { posterFor } from "../poster";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
-import { hm, primeLabel } from "@/core/statsFormat";
+import { hm as hmFull, primeLabel } from "@/core/statsFormat";
+import type { Locale } from "@/core/i18n";
+import { Chip } from "../library/Chip";
 import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, ReportStats, ReportTitle } from "@/core/contracts/report";
 
 /**
@@ -50,6 +51,16 @@ const HEADER_H = 56;
    (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
 const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
 const PERIODS: ReportPeriod[] = ["week", "month", "year"];
+
+/**
+ * 🆕 D-1585 — **الوقتُ ساعاتٌ وحدها من عشر ساعات** (أحمد ٣٠ أكتوبر على «2,919h 25m»: «احذف الدقايق فقط ساعات» ثمّ «١أ»): الدقائقُ
+ * بجانب ألفي ساعةٍ ضجيج، وتحت العشر معنى («4h» وحدها تُنقص ساعةً تقريباً) — فتبقى، وتحت الساعة دقائق. التطبيقُ وحدَه («٢أ»):
+ * `hm` النواة تبقى للويب كما هي
+ */
+export function hm(minutes: number, locale: Locale | string): string {
+  if (minutes >= 600) return `${Math.round(minutes / 60).toLocaleString("en-US")}h`;
+  return hmFull(minutes, locale as Locale);
+}
 
 export const myReportKey = (period: ReportPeriod, offset = 0) => ["me:reports", period, offset] as const;
 
@@ -155,6 +166,18 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
           <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{d ? `${title} · ${d.stats.range.label}` : title}</Text>
           {d?.plus ? <PlusPill /> : null}
         </View>
+        {/* 🆕 D-1585 — **بابُ «الإحصائيات الكاملة» في الترويسة** («٣أ»: سطرُه في الذيل لم يكن واضحاً، وطوله يُخرج الشهرَ والسنةَ عن
+            الشاشة فتتحرّك): رقاقةُ العائلة نفسِها (`Chip` بحبر الهويّة) برمزٍ وكلمة، للمشترك (غيرُه يرى القفل) */}
+        {d?.plus ? (
+          <Chip
+            label={en ? "Full" : "الكاملة"}
+            active={false}
+            ink="accent"
+            hitSlop={8}
+            leading={<Icon name="chart" size={14} color={tokens.accent} />}
+            onPress={() => { haptic.pick(); openFull(period); }}
+          />
+        ) : null}
         {canShare ? (
           <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
             <Icon name="share" size={20} color={tokens.fg} />
@@ -184,7 +207,7 @@ export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
         onAim={setAim}
         keepVisited
         style={{ flex: 1 }}
-        render={(p) => <ReportPane period={p} openTitle={openTitle} openWeb={openWeb} openFull={openFull} shareError={p === period ? sharing.error : null} />}
+        render={(p) => <ReportPane period={p} openTitle={openTitle} openWeb={openWeb} shareError={p === period ? sharing.error : null} />}
       />
     </View>
   );
@@ -195,13 +218,11 @@ function ReportPane({
   period,
   openTitle,
   openWeb,
-  openFull,
   shareError,
 }: {
   period: ReportPeriod;
   openTitle: (kind: "tv" | "movie", id: number) => void;
   openWeb: (path: string) => void;
-  openFull: (p: ReportPeriod) => void;
   shareError: string | null;
 }) {
   const { t, locale } = useApp();
@@ -228,7 +249,7 @@ function ReportPane({
           {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
         </Text>
       ) : (
-        <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} onFull={openFull} shareError={shareError} onRepaired={() => void q.refetch()} />
+        <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} shareError={shareError} onRepaired={() => void q.refetch()} />
       )}
     </FitScroll>
   );
@@ -277,7 +298,6 @@ function ReportBody({
   plus,
   onTitle,
   onWeb,
-  onFull,
   shareError,
   onRepaired,
 }: {
@@ -285,7 +305,6 @@ function ReportBody({
   plus: boolean;
   onTitle: (kind: "tv" | "movie", id: number) => void;
   onWeb: (path: string) => void;
-  onFull: (period: ReportPeriod) => void;
   shareError: string | null;
   onRepaired: () => void;
 }) {
@@ -305,7 +324,7 @@ function ReportBody({
   const shown = picked ? picked.titles ?? [] : s.topTitles;
   const openPart = (
     <>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text size={36} weight="700" numberOfLines={1} adjustsFontSizeToFit style={{ lineHeight: 42 }}>{hm(s.minutes, locale)}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
@@ -389,12 +408,6 @@ function ReportBody({
         </>
       ) : null}
 
-      {/* بابُ «الإحصائيات الكاملة» سطرٌ واحدٌ لا بطاقة (D-1575) — D-1367: شاشةٌ أصليّةٌ تفتح على المدّة نفسِها */}
-      <Pressable onPress={() => { haptic.pick(); onFull(s.period); }} accessibilityRole="link" hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
-        <Icon name="chart" size={16} color={tokens.accent} />
-        <Text size={14} weight="700" color={tokens.accent} style={{ flex: 1 }}>{en ? "View full statistics" : "الإحصائيات الكاملة"}</Text>
-        <Chevron />
-      </Pressable>
     </>
   );
 
