@@ -15,8 +15,7 @@ import { shell } from "../shell";
 import { Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { controlSize, radius } from "../theme";
-import { Logo } from "../Logo";
-import { HeaderEnd } from "../HeaderEnd";
+import { HeaderEdges } from "../HeaderEnd";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { navHeight } from "../BottomNav";
@@ -293,11 +292,8 @@ export function CommunityScreen() {
       >
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
           <Text size={15} weight="700">{t.peopleTitle}</Text>
-          <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-            <Logo size={28} />
-          </View>
-          {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
-          <HeaderEnd from="community" />
+          {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر) */}
+          <HeaderEdges from="community" />
         </View>
         {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
             بلقطتين، ٣ أكتوبر): ثلاثةُ جذورٍ بمكانين للزرّ نفسِه عيبٌ (القاعدة ٣). الهندسةُ هندسةُ المكتبة حرفاً. */}

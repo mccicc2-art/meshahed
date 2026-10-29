@@ -28,8 +28,7 @@ import { ListsRails, listsQuery } from "./ListsRails";
 import { TrailersRail, trailersQuery, thumbOf } from "./TrailersRail";
 import { warmTrendingOnce } from "../search/useSearch";
 import { FilterSheet } from "./FilterSheet";
-import { Logo } from "../Logo";
-import { HeaderEnd } from "../HeaderEnd";
+import { HeaderEdges } from "../HeaderEnd";
 import { controlSize } from "../theme";
 import { NameSheet } from "./NameSheet";
 import { coldStartVoid, span, tabLanded } from "../perfMarks";
@@ -488,12 +487,8 @@ export function DiscoverScreen() {
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
         {/* ⚖️ D-980 — بلا سهمِ رجوع (انظر `LibraryScreen`): الشريطُ السفليّ هو المخرج */}
         <Text size={15} weight="700">{t.newsTitle}</Text>
-        {/* D-1022 — شعارُ Loopz يساراً في رؤوس الشاشات الأصليّة كلِّها (طلبُ أحمد) */}
-        <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Logo size={28} />
-        </View>
-        {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
-        <HeaderEnd from="discover" />
+        {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر) */}
+        <HeaderEdges from="discover" />
       </View>
 
       {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة؛ D-1009 — زرُّ الأدوات في طرفه

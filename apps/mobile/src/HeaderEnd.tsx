@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { useApp } from "./state";
 import { Icon } from "./icons";
 import { controlSize } from "./theme";
-import { useHomeSignals } from "./home/useHome";
+import { Logo } from "./Logo";
 import type { NativeRoot } from "./shell";
 
 /**
@@ -25,7 +25,11 @@ export function HeaderIconButton({ name, label, onPress, count, color }: { name:
   );
 }
 
-/** صورةُ الحساب في الترويسة ٣٠ — أصغرُ من صورة الرئيسيّة (٣٨) لأنّها تجاور جرساً لا اسماً */
+/** هامشُ الصفحة، وحجمُ الشعار الذي كانت كلُّ شاشةٍ تكتبه بنفسها */
+const PAGE_PAD = 16;
+const LOGO = 28;
+
+/** صورةُ الحساب في الترويسة ٣٠ — أصغرُ من صورة الرئيسيّة (٣٨) لأنّها تجاور عنواناً لا اسماً */
 const AVATAR = 30;
 /**
  * 🆕 D-1430 — بُعدُ آخر زرٍّ عن طرف الشاشة في كلِّ ترويسة: الصورةُ المرئيّةُ تقف على هامش الصفحة (١٦) وهدفُها ٤٠.
@@ -34,25 +38,33 @@ const AVATAR = 30;
 export const HEADER_END_INSET = 16 - (controlSize.headerBtn - AVATAR) / 2;
 
 /**
- * 🆕 D-1424 — طرفُ ترويسة التبويب: الجرسُ ثمّ صورةُ الحساب في الطرف (أحمد ١٦ أكتوبر، بصورةٍ على لقطته: «١ أ ٢ أ ٣ ب كل
- * الصفحات حتى البحث»). الجرسُ يفتح التنبيهات كجرس الرئيسيّة، والصورةُ تفتح ملفَّك كصورة الرئيسيّة.
- * والرقمُ رقمُ جرس الرئيسيّة نفسُه (`useHomeSignals`) فالجرسان لا يختلفان.
- * مطلقُ الموضع في الطرف كالشعار في البداية، فالعنوانُ يبقى في منتصف الترويسة.
+ * 🆕 D-1569 — طرفا ترويسة التبويب: **صورةُ الحساب في البداية وشعارُ Loopz في الطرف** (أحمد ٢٩ أكتوبر على لقطة «مكتبتي»:
+ * «صوره الحساب تكون في نفس مكان الصوره في الهوم … و لوبز تكون في اليسار مكان الصوره الحالية»). كانت الصورةُ في الطرف
+ * والشعارُ في البداية (D-1022/D-1424)، والرئيسيّةُ تضع الصورةَ في البداية — فبابُ القائمة الجانبيّة كان في مكانين؛ الآن
+ * مكانٌ واحدٌ في كلِّ تبويب، وفي جهة القائمة التي يفتحها.
+ * 🗑️ **والجرسُ خرج من ترويسات التبويبات** («الجرس و الرسائل في الرئيسية فقط و اخفيهم من الباقي»): التنبيهاتُ والرسائلُ
+ *   بابُهما رأسُ الرئيسيّة وحدَه.
+ * - الصورةُ على `HEADER_END_INSET` فحافّتُها المرئيّةُ على هامش الصفحة (١٦) كصورة الرئيسيّة؛ وتبقى ٣٠ لا ٣٨ («٢أ»):
+ *   تجاور عنواناً لا اسماً.
+ * - مطلقا الموضع كلاهما، فالعنوانُ يبقى في منتصف الترويسة.
  */
-export function HeaderEnd({ from }: { from: NativeRoot }) {
+export function HeaderEdges({ from }: { from: NativeRoot }) {
   const { t, tokens, me } = useApp();
   const router = useRouter();
-  const signals = useHomeSignals();
   /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة كصورة الرئيسيّة (الملفُّ أوّلُ ما فيها) — صورتان لبابٍ واحد */
   const openMe = () => (me ? drawerStore.open(from) : router.push("/settings/profile"));
   return (
-    <View style={{ position: "absolute", end: HEADER_END_INSET, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
-      <HeaderIconButton name="bell" label={t.notifTitle} count={signals} color={tokens.fg} onPress={() => router.push({ pathname: "/messages", params: { tab: "alerts", from } })} />
-      <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-        <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-          {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
-        </View>
-      </Pressable>
-    </View>
+    <>
+      <View style={{ position: "absolute", start: HEADER_END_INSET, top: 0, bottom: 0, justifyContent: "center" }}>
+        <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+          <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+            {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
+          </View>
+        </Pressable>
+      </View>
+      <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+        <Logo size={LOGO} />
+      </View>
+    </>
   );
 }

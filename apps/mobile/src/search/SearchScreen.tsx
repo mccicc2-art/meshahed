@@ -19,8 +19,7 @@ import { haptic } from "../haptics";
 import { nativeListId } from "../list/route";
 import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, TitleRow } from "./SearchRows";
-import { Logo } from "../Logo";
-import { HeaderEnd } from "../HeaderEnd";
+import { HeaderEdges } from "../HeaderEnd";
 import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useScopedTrending, useSearch, useTrending } from "./useSearch";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
@@ -243,12 +242,9 @@ export function SearchScreen() {
       {/* `SettingsHeader title={t.navSearch} fallbackHref="/"` — الترويسةُ نفسُها التي ترسمها صفحاتُ الإعدادات */}
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
         <Text size={15} weight="700" numberOfLines={1}>{t.navSearch}</Text>
-        {/* 🆕 D-1424 — الشعارُ بدل سهم الرجوع، والجرسُ وصورةُ الحساب في الطرف: البحثُ تبويبٌ كالأربعة لا صفحةٌ فرعيّة
-            (أحمد ١٦ أكتوبر: «البحث حط فيها اللوقو كذلك بدل سهم الرجوع»). رجوعُ النظام باقٍ (`BackHandler` أعلاه). */}
-        <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Logo size={28} />
-        </View>
-        <HeaderEnd from="search" />
+        {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر).
+            البحثُ تبويبٌ كالأربعة لا صفحةٌ فرعيّة (D-1424): بلا سهم رجوع، ورجوعُ النظام باقٍ (`BackHandler` أعلاه). */}
+        <HeaderEdges from="search" />
       </View>
 
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: navH + 24, gap: 16 }} showsVerticalScrollIndicator={false}>

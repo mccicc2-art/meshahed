@@ -17,8 +17,7 @@ import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
 import type { HoldAction } from "./HoldMenu";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
-import { Logo } from "../Logo";
-import { HeaderEnd } from "../HeaderEnd";
+import { HeaderEdges } from "../HeaderEnd";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
@@ -511,12 +510,8 @@ export function LibraryScreen() {
         {/* ⚖️ D-980 — بلا سهمِ رجوع: الشريطُ السفليّ (D-961) هو المخرج كما في صفحة الويب،
             والسهمُ كان بقيّةَ زمنٍ لم يكن فيه شريط؛ زرُّ النظام للرجوع يبقى (`back`). */}
         <Text size={15} weight="700">{t.libraryTitle}</Text>
-        {/* D-1022 — شعارُ Loopz يساراً (طلبُ أحمد) */}
-        <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Logo size={28} />
-        </View>
-        {/* 🆕 D-1424 — الجرسُ وصورةُ الحساب في الطرف (أحمد ١٦ أكتوبر) */}
-        <HeaderEnd from="library" />
+        {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر) */}
+        <HeaderEdges from="library" />
       </View>
 
       {/* التبويباتُ الثلاثة — عائلةُ segmented الواحدة، وزرُّ الأدوات في طرفها (`FilterIconButton`: `h-9 w-9 rounded-full border`) */}

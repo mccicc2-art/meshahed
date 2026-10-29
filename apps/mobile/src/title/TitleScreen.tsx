@@ -368,12 +368,13 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       {/* الترويسة — `DetailTopBar`: رجوعٌ · الاسمُ · مشاركة */}
-      {/* D-1022 — الشريطُ العلويّ كالويب: شعارُ Loopz يساراً، الاسمُ وسطاً، **واليمينُ فارغٌ عمداً**
+      {/* D-1022 — الشريطُ العلويّ: شعارُ Loopz، الاسمُ وسطاً، **والطرفُ الآخر فارغٌ عمداً**
           (قرارُ أحمد: يُترك حتى تُنقل الرئيسيّةُ والإعداداتُ فيُوضع فيه بابُ الإعدادات). السهمُ
           و⋯ على الخلفيّة (D-1020). */}
       <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
         <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? seed?.name ?? ""}</Text>
-        <View style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+        {/* 🆕 D-1569 — الشعارُ في الطرف كترويسات التبويبات (أحمد ٢٩ أكتوبر «٣أ»): مكانٌ واحدٌ للشعار في كلِّ صفحة */}
+        <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
           <Logo size={28} />
         </View>
       </View>
