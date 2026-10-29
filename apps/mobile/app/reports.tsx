@@ -1,18 +1,19 @@
 import React from "react";
 import { useLocalSearchParams } from "expo-router";
-import { ReportScreen } from "../src/member/ReportScreen";
+import { FullStatsScreen } from "../src/member/FullStatsScreen";
 import { ErrorBoundary } from "../src/ErrorBoundary";
 import { originOf } from "../src/thread/route";
 
 /**
- * `/reports` — «تقريرك» أصليّاً (🆕 D-1366 · V-C · C5). يُدفع من صفّ «تقاريرك» في شاشة الإحصائيات. وإن سقط فرسالةٌ و«حاول
- * مجدداً» (V-B) — لا صفحةَ ويبٍ بديلة.
+ * `/reports` — بابُ «إحصائياتك» (🆕 D-1586: «تقريرك» صار قسمَ «ملخص» فيها، أحمد ٣٠ أكتوبر: «صفحة وحدة وما نشتت المستخدم»).
+ * كان «تقريرك» أصليّاً (D-1366)؛ الآن الشاشةُ الواحدةُ نفسُها التي يفتحها `/statistics` — فالروابطُ القديمة (صفُّ «تقاريرك» في
+ * الإحصائيات، والقائمةُ الجانبيّة) تصل ولا تنكسر. وإن سقطت فرسالةٌ و«حاول مجدداً» (V-B) — لا صفحةَ ويبٍ بديلة.
  */
 export default function Reports() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   return (
     <ErrorBoundary screen="profile">
-      <ReportScreen from={originOf(from)} />
+      <FullStatsScreen from={originOf(from)} />
     </ErrorBoundary>
   );
 }

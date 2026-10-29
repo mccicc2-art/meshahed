@@ -16,7 +16,7 @@ import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { controlSize, type Tokens } from "../theme";
-import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, SvgGuard, Tile, TopThree, bucketName, hm, myReportKey } from "./ReportScreen";
+import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, ReportBody, SvgGuard, Tile, TopThree, bucketName, hm, myReportKey, useShareReport } from "./ReportScreen";
 import { primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
 import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contracts/report";
@@ -39,6 +39,10 @@ import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contract
  *  - 🆕 D-1583 — **الأقسامُ تُسحب** (`TabSlide` كمدد التقرير) **وكلُّ لوحٍ ثابتٌ** (`FitScroll`) **يملأ الطول** حتى يبقى تحته نحوُ ٥٪:
  *    في كلِّ قسمٍ قطعةٌ تتمدّد (الاتّجاه · الملصقات · البصمة · الخريطة وأيّامُ الأسبوع)، وما أُضيف: قمّةُ الاتّجاه مكتوبةٌ عليه،
  *    و«بالأرقام» في المحتوى، و«أيّام الأسبوع» في العادات، وتقدّمُ فتح البصمة حين تكون البياناتُ قليلة.
+ *  - 🆕 D-1586 — **«إحصائياتك»: شاشةٌ واحدةٌ بدل «تقريرك» و«الإحصائيات الكاملة»** (أحمد ٣٠ أكتوبر: «ليه ماتكون صفحة وحدة وما
+ *    نشتت المستخدم؟» ثمّ «١ب ٢أ ٣أ»): خمسةُ أقسامٍ بالسحب — **ملخص** (جسمُ التقرير `ReportBody` كما هو) · **الاتجاه** («نظرة
+ *    عامة» بلا خاناتها المكرّرة في الملخّص) · المحتوى · الذوق · العادات. المدّةُ من زرّ الأدوات («١ب») وتفتح على الشهر («٢أ»)،
+ *    والمشاركةُ في الترويسة، و`/reports` و`/statistics` بابان لهذه الشاشة نفسِها. التطبيقُ وحدَه («٣أ»): الويبُ صفحتاه كما هما.
  */
 const PAGE_PAD = 16;
 const HEADER_H = 56;
@@ -50,20 +54,19 @@ const CHART_MAX = 200;
 const CHART_CHROME = 16 + 28;
 const PREV = "#7A7A7A";
 const PERIODS: ReportPeriod[] = ["week", "month", "year", "all"];
-type Tab = "overview" | "content" | "taste" | "habits";
-const TABS: Tab[] = ["overview", "content", "taste", "habits"];
+type Tab = "summary" | "trend" | "content" | "taste" | "habits";
+const TABS: Tab[] = ["summary", "trend", "content", "taste", "habits"];
 const n = (v: number) => v.toLocaleString("en-US");
 
-/* 🆕 D-1585 — `initial` (مدّةُ التقرير) لم يعد يُقرأ: «الإحصائيات الكاملة تفتح على كل الأوقات دائماً» — والمدّةُ من زرّ الأدوات */
+/* 🆕 D-1585 → D-1586 — `initial` لا يُقرأ: الشاشةُ الواحدةُ تفتح على الشهر («٢أ») أيّاً كان الباب — والمدّةُ من زرّ الأدوات */
 export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: ReportPeriod }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const en = locale === "en";
-  /* الأسبوعُ افتراضُ الصفحة (`asStatsPeriod`)؛ ومن جاء من «تقريرك» يفتح على مدّته */
-  const [period, setPeriod] = useState<ReportPeriod>("all");
+  const [period, setPeriod] = useState<ReportPeriod>("month");
   const [offset, setOffset] = useState(0);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("summary");
   /* 🆕 D-1583 — الأقسامُ تُسحب: النقطةُ تتبع الوجهةَ لحظةَ رفع الإصبع (`useTabAim`، وصفةُ التقرير) */
   const [aim, setAim] = useTabAim<Tab>(tab);
   const lit = aim ?? tab;
@@ -80,6 +83,8 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
     placeholderData: keepPreviousData,
   });
   const d = q.data ?? null;
+  /* المشاركةُ صورةُ المدّة الحاضرة كما يرسمها الخادم (`?p=`، D-810) — فلا رمزَ لمدّةٍ سابقة ولا لـ«كل الأوقات» */
+  const sharing = useShareReport(period);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -108,10 +113,11 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
     ? { week: "Week", month: "Month", year: "Year", all: "All time" }
     : { week: "الأسبوع", month: "الشهر", year: "السنة", all: "كل الأوقات" };
   const tabLabel: Record<Tab, string> = en
-    ? { overview: "Overview", content: "Content", taste: "Taste", habits: "Habits" }
-    : { overview: "نظرة عامة", content: "المحتوى", taste: "الذوق", habits: "العادات" };
+    ? { summary: "Summary", trend: "Trend", content: "Content", taste: "Taste", habits: "Habits" }
+    : { summary: "ملخص", trend: "الاتجاه", content: "المحتوى", taste: "الذوق", habits: "العادات" };
   const s = d?.stats ?? null;
   const nav = !!d?.plus && period !== "all";
+  const canShare = !!d?.plus && !!s && !s.empty && period !== "all" && offset === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -120,7 +126,7 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
           <BackChevron color={tokens.fg} />
         </Pressable>
         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Full Statistics" : "الإحصائيات الكاملة"}</Text>
+          <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Your Stats" : "إحصائياتك"}</Text>
           {d?.plus ? <PlusPill /> : null}
         </View>
         {/* التنقّلُ بين المدد في الترويسة (D-804): السابقُ · اسمُ المدّة · التالي (ولا تالٍ بعد الحاضر) */}
@@ -134,6 +140,11 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
           /* 🆕 D-1581 — بلا صفِّ المدد يبقى اسمُ المدّة مقروءاً في الترويسة («كل الأوقات» وغيرُ المشترك بلا سهمين) */
           <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
         )}
+        {canShare ? (
+          <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
+            <Icon name="share" size={20} color={tokens.fg} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* الأقسام — نقطةٌ بلون التمييز بجانب النشط (الصورة)، لا خطٌّ ثانٍ تحت خطّ المدّة */}
@@ -143,9 +154,10 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
         {TABS.map((id) => {
           const on = id === lit;
           return (
-            <Pressable key={id} onPress={() => { if (id === tab) return; haptic.pick(); setAim(id); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Text size={14} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{tabLabel[id]}</Text>
-              {on ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.accent }} /> : null}
+            /* 🆕 D-1586 — خمسةُ أقسامٍ في صفٍّ واحد: النقطةُ تحت الاسم لا بجانبه، والاسمُ يصغر ليتّسع ولا يُبتر */
+            <Pressable key={id} onPress={() => { if (id === tab) return; haptic.pick(); setAim(id); setTab(id); }} accessibilityRole="tab" accessibilityState={{ selected: on }} hitSlop={8} style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4 }}>
+              <Text size={14} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tabLabel[id]}</Text>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: on ? tokens.accent : "transparent" }} />
             </Pressable>
           );
         })}
@@ -207,6 +219,9 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
             <FitScroll>
               {s.empty ? (
                 <Note>{en ? "Nothing watched in this period." : "لا مشاهدات في هذه المدّة."}</Note>
+              ) : id === "summary" ? (
+                /* الملخّصُ يقفل بنفسه كما في التقرير: الوقتُ والأيّامُ مفتوحان، وما تحتهما خلف `PlusLock` */
+                <ReportBody s={s} plus={d.plus} onTitle={openTitle} onWeb={openWeb} shareError={sharing.error} onRepaired={() => void q.refetch()} />
               ) : d.plus ? (
                 <Body s={s} tab={id} onTitle={openTitle} />
               ) : (
@@ -244,10 +259,10 @@ function Body({ s, tab, onTitle }: { s: ReportStats; tab: Tab; onTitle: (kind: "
   if (tab === "content") return <ContentTab s={s} onTitle={onTitle} />;
   if (tab === "taste") return <TasteTab s={s} />;
   if (tab === "habits") return <HabitsTab s={s} />;
-  return <OverviewTab s={s} />;
+  return <TrendTab s={s} />;
 }
 
-/* ══════════════════════ نظرة عامة ══════════════════════ */
+/* ══════════════════════ الاتجاه ══════════════════════ */
 
 /** صفُّ الخانات الأربع — `Tile` التقرير نفسُها (D-1575) في صفٍّ واحد: قيمةُ المدّة تصغر لتتّسع */
 function Tiles({ items }: { items: { icon: IconName; value: string; label: string; small?: boolean }[] }) {
@@ -260,20 +275,13 @@ function Tiles({ items }: { items: { icon: IconName; value: string; label: strin
   );
 }
 
-function OverviewTab({ s }: { s: ReportStats }) {
+/** 🆕 D-1586 — «نظرة عامة» سابقاً، بلا صفِّ خاناتها: الوقتُ والحلقاتُ والأفلامُ في الملخّص فوقها بسحبة */
+function TrendTab({ s }: { s: ReportStats }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
   const topDays = [...s.buckets].filter((b) => b.minutes > 0).sort((a, b) => b.minutes - a.minutes).slice(0, 3);
   return (
     <>
-      <Tiles
-        items={[
-          { icon: "clock", value: hm(s.minutes, locale), label: en ? "Watch time" : "الوقت", small: true },
-          { icon: "trending", value: hm(s.dailyAvgMin, locale), label: en ? "Daily" : "المعدّل", small: true },
-          { icon: "play", value: n(s.episodes), label: en ? "Episodes" : "حلقات" },
-          { icon: "film", value: n(s.movies), label: en ? "Movies" : "أفلام" },
-        ]}
-      />
 
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
         <H3>{en ? "Watch-time trend" : "اتجاه وقت المشاهدة"}</H3>
@@ -387,9 +395,14 @@ function ContentTab({ s, onTitle }: { s: ReportStats; onTitle: (kind: "tv" | "mo
               </View>
             ))}
           </View>
-          <View style={{ flexDirection: "row", marginTop: 6 }}>
-            {decades.map((y) => (
-              <Text key={y.decade} size={12} muted numberOfLines={1} style={{ flexGrow: Math.max(1, y.pct), flexBasis: 0, textAlign: "center", writingDirection: "ltr" }}>{`${y.decade}s`}</Text>
+          {/* 🆕 D-1586 — **الأسماءُ مفتاحٌ تحت الشريط لا تحت قِطعها** (لقطةُ أحمد: «٢٠٢٠ ماهو واضح؟!»): قطعةٌ بـ٦٪ لا تتّسع لاسمها
+              فيُبتر «20…». كلُّ عقدٍ هنا بمربّع لونه واسمه ونسبته، والسطرُ ينكسر إن لم يتّسع */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 6, marginTop: 8 }}>
+            {decades.map((y, i) => (
+              <View key={y.decade} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: tokens.accent, opacity: 1 - (i % 4) * 0.2 }} />
+                <Text size={12} muted style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>{`${y.decade}s · ${n(y.pct)}%`}</Text>
+              </View>
             ))}
           </View>
         </>

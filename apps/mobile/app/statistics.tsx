@@ -5,7 +5,8 @@ import { ErrorBoundary } from "../src/ErrorBoundary";
 import { originOf } from "../src/thread/route";
 
 /**
- * `/statistics` — «الإحصائيات الكاملة» أصليّةً (🆕 D-1367 · V-C · C5 · ب). تُدفع من ذيل «تقريرك» على مدّته (`p`). وإن سقطت
+ * `/statistics` — «الإحصائيات الكاملة» أصليّةً (🆕 D-1367 · V-C · C5 · ب). 🆕 D-1586 — صارت «إحصائياتك» الواحدة (و`/reports` بابٌ ثانٍ
+ * لها)؛ `p` يُمرَّر ولا يُقرأ: الشاشةُ تفتح على الشهر. وإن سقطت
  * فرسالةٌ و«حاول مجدداً» (V-B) — لا صفحةَ ويبٍ بديلة.
  */
 export default function Statistics() {

@@ -1,25 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { File, Paths } from "expo-file-system";
-import { api, downloadTo, write } from "../api";
+import { downloadTo, write } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
-import { radius, type Tokens } from "../theme";
-import { shell, type NativeRoot } from "../shell";
+import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
-import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
+import { tabSwipeBlocksPress } from "../TabSlide";
 import { hm as hmFull, primeLabel } from "@/core/statsFormat";
 import type { Locale } from "@/core/i18n";
-import { Chip } from "../library/Chip";
-import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, ReportStats, ReportTitle } from "@/core/contracts/report";
+import type { ReportBucket, ReportPeriod, ReportRepairPayload, ReportStats, ReportTitle } from "@/core/contracts/report";
 
 /**
  * ====== «تقريرك» أصليّاً (🆕 D-1366 · Phase 11-V · V-C · C5 · الدفعة أ — ١١ أكتوبر ٢٠٢٦) ======
@@ -43,14 +39,13 @@ import type { MyReportPayload, ReportBucket, ReportPeriod, ReportRepairPayload, 
  *    والأرقامُ والملصقاتُ والمسافاتُ أوسعُ قليلاً (أحمد: «خلها ترتاح وتستفيد من كامل المساحة»).
  *  - 🆕 D-1583 — **الصفحةُ ثابتةٌ** (`FitScroll`: لا سحبَ ولا ارتداد، والتمريرُ لما لا يتّسع وحدَه) **والتحديثُ تلقائيّ** عند كلِّ فتح،
  *    والخاناتُ تتمدّد أكثر فيبقى تحت المحتوى نحوُ ٥٪ من الطول على كلِّ هاتف.
+ *  - 🆕 D-1586 — **«تقريرك» صار قسمَ «ملخص» في «إحصائياتك»** (أحمد ٣٠ أكتوبر: «ليه ماتكون صفحة وحدة وما نشتت المستخدم؟»):
+ *    الشاشةُ ذهبت (`FullStatsScreen` هي الشاشةُ الواحدة)، وهذا الملفُّ قطعُها المشتركة — `ReportBody` جسمُ الملخّص، والمشاركة.
  *  - 🆕 D-1368 (الدفعة ج) — **«شارك تقريرك»** (D-810): رمزٌ في الترويسة يشارك **صورةَ المدّة المعروضة** (`useShareReport`) — الصورةُ يرسمها الخادمُ براسم الويب، تُكتب على القرص ثمّ تُسلَّم لورقة المشاركة (وصفةُ C3).
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 /* 🆕 D-1390 — **لا أخضرَ ولا أحمرَ ثانيين**: كانا `#3DBE6B`/`#E5484D` مكتوبين هنا — درجتان غيرُ `success`/`error`
    (قاعدةُ «لونُ نجاحٍ واحد»)، وعلى «النهاري» تباينُ الأخضر ٢٫١٩ والأحمر ٣٫٥٩. الرمزان يعرفان درجتَهما في كلِّ ثيم. */
-const tasteColors = (tk: Tokens) => ["#7C4DFF", tk.success, tk.error, "#6B6B6B"];
-const PERIODS: ReportPeriod[] = ["week", "month", "year"];
 
 /**
  * 🆕 D-1585 — **الوقتُ ساعاتٌ وحدها من عشر ساعات** (أحمد ٣٠ أكتوبر على «2,919h 25m»: «احذف الدقايق فقط ساعات» ثمّ «١أ»): الدقائقُ
@@ -69,7 +64,7 @@ export const myReportKey = (period: ReportPeriod, offset = 0) => ["me:reports", 
  * الملفُّ في الكاش باسمٍ موقوت، والسابقُ يُمسح قبل الجديد لا بعد المشاركة (ورقةُ أندرويد قد تعود قبل أن يقرأه التطبيقُ الآخر).
  * وحدةُ المشاركة تُحمَّل عند الحاجة (حجّةُ `PrivacyScreen`): إن غابت في ثنائيٍّ ما فالنتيجةُ سطرُ خطأٍ هنا لا سقوطُ الشاشة.
  */
-function useShareReport(period: ReportPeriod) {
+export function useShareReport(period: ReportPeriod) {
   const { t } = useApp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,159 +96,6 @@ function useShareReport(period: ReportPeriod) {
 /* 🆕 D-1583 — **سحبُ التحديث ذهب مع ثبات الصفحة** («١أ»: تتحدّث تلقائيّاً كلّما فتحت الصفحة أو غيّرت المدّة): كلُّ تركيبٍ يجلب
    (`refetchOnMount: "always"`)، والحداثةُ نصفُ دقيقةٍ لا خمسُ دقائق — مدّةٌ عُدتَ إليها بعد قليلٍ تُجلب من جديد */
 export const REPORT_STALE = 30_000;
-
-const fetchReport = (period: ReportPeriod) => async () => (await api<MyReportPayload>(`/api/v1/me/report?p=${period}`)).data;
-
-export function ReportScreen({ from }: { from: NativeRoot | "web" }) {
-  const { t, tokens, locale } = useApp();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const en = locale === "en";
-  const [period, setPeriod] = useState<ReportPeriod>("month");
-  /* 🆕 D-1576 — الخطُّ يتبع الوجهةَ لحظةَ رفع الإصبع لا بعد الطيران (`useTabAim`، وصفةُ المكتبة) */
-  const [aim, setAim] = useTabAim<ReportPeriod>(period);
-  const lit = aim ?? period;
-  /* المدّةُ النشطةُ للترويسة (الاسمُ والمشاركة) — الاستعلامُ نفسُه الذي يقرؤه لوحُها، فلا طلبَ ثانٍ */
-  const q = useQuery({ queryKey: myReportKey(period), queryFn: fetchReport(period), staleTime: REPORT_STALE, refetchOnMount: "always" });
-  const d = q.data ?? null;
-  const sharing = useShareReport(period);
-  /* الرمزُ للمشترك وعلى مدّةٍ فيها ما يُشارك: الخادمُ يرفض غيرَ ذلك (403 · 409)، وزرٌّ يُضغط ليُرفض فخّ */
-  const canShare = !!d?.plus && !d.stats.empty;
-
-  const back = useCallback(() => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/web");
-  }, [router]);
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      back();
-      return true;
-    });
-    return () => sub.remove();
-  }, [back]);
-
-  /* D-1497 — سحبةٌ بين المدد لا تفتح الملصقَ أو الباب الذي بدأ عليه الإصبع */
-  const openTitle = useCallback(
-    (kind: "tv" | "movie", id: number) => {
-      if (tabSwipeBlocksPress()) return;
-      router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } });
-    },
-    [router, from],
-  );
-  const openFull = useCallback(
-    (p: ReportPeriod) => {
-      if (tabSwipeBlocksPress()) return;
-      router.push({ pathname: "/statistics", params: { from, p } });
-    },
-    [router, from],
-  );
-  const openWeb = useCallback((path: string) => void shell.open(path, from === "web" ? undefined : { returnTo: from }), [from]);
-
-  const labels: Record<ReportPeriod, string> = en
-    ? { week: "Week", month: "Month", year: "Year", all: "All time" }
-    : { week: "الأسبوع", month: "الشهر", year: "السنة", all: "كل الأوقات" };
-  const title = en ? "Your Report" : "تقريرك";
-
-  return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        {/* المدّةُ في الاسم لا في سطرٍ تحته (D-804)، ورقاقةُ PLUS بجانبه للمشترك وحدَه (D-801) */}
-        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{d ? `${title} · ${d.stats.range.label}` : title}</Text>
-          {d?.plus ? <PlusPill /> : null}
-        </View>
-        {/* 🆕 D-1585 — **بابُ «الإحصائيات الكاملة» في الترويسة** («٣أ»: سطرُه في الذيل لم يكن واضحاً، وطوله يُخرج الشهرَ والسنةَ عن
-            الشاشة فتتحرّك): رقاقةُ العائلة نفسِها (`Chip` بحبر الهويّة) برمزٍ وكلمة، للمشترك (غيرُه يرى القفل) */}
-        {d?.plus ? (
-          <Chip
-            label={en ? "Full" : "الكاملة"}
-            active={false}
-            ink="accent"
-            hitSlop={8}
-            leading={<Icon name="chart" size={14} color={tokens.accent} />}
-            onPress={() => { haptic.pick(); openFull(period); }}
-          />
-        ) : null}
-        {canShare ? (
-          <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
-            <Icon name="share" size={20} color={tokens.fg} />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* تبويباتُ المدّة — خطٌّ تحت النشط لا رقاقةٌ مطوَّقة (الصورة) */}
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", paddingHorizontal: PAGE_PAD }}>
-        {PERIODS.map((p) => {
-          const on = p === lit;
-          return (
-            <Pressable key={p} onPress={() => { if (p === period) return; haptic.pick(); setAim(p); setPeriod(p); }} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center", paddingTop: 4, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
-              <Text size={15} weight={on ? "700" : "400"} color={on ? tokens.fg : tokens.muted}>{labels[p]}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* 🆕 D-1576 — **المددُ الثلاث تُسحب** (أحمد ٢٩ أكتوبر: «صفحة الأسبوعي والشهري والسنوي أبغا أمرر فيها بالسحب بينهم»):
-          `TabSlide` نفسُه الذي تسحب به المكتبةُ واكتشف — لا سحبةٌ ثانية. كلُّ لوحٍ يجلب مدّتَه، وما زرتَه يبقى (`keepVisited`) فالعودةُ
-          إليه بلا هيكل؛ والجارُ يُجهَّز حين يبدأ الإصبعُ يسحبه */}
-      <TabSlide
-        order={PERIODS}
-        tab={period}
-        onTab={setPeriod}
-        onAim={setAim}
-        keepVisited
-        style={{ flex: 1 }}
-        render={(p) => <ReportPane period={p} openTitle={openTitle} openWeb={openWeb} shareError={p === period ? sharing.error : null} />}
-      />
-    </View>
-  );
-}
-
-/** لوحُ مدّةٍ واحدة — استعلامُها وسحبُ التحديث فيها وحالاتُها الثلاث (هيكل · خطأ · تقرير) */
-function ReportPane({
-  period,
-  openTitle,
-  openWeb,
-  shareError,
-}: {
-  period: ReportPeriod;
-  openTitle: (kind: "tv" | "movie", id: number) => void;
-  openWeb: (path: string) => void;
-  shareError: string | null;
-}) {
-  const { t, locale } = useApp();
-  const en = locale === "en";
-  const key = myReportKey(period);
-  const q = useQuery({ queryKey: key, queryFn: fetchReport(period), staleTime: REPORT_STALE, refetchOnMount: "always" });
-  const d = q.data ?? null;
-  if (!d) {
-    return q.isError ? (
-      <View style={{ alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: PAGE_PAD }}>
-        <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
-        <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
-      </View>
-    ) : (
-      <ReportSkeleton />
-    );
-  }
-  return (
-    /* 🆕 D-1576 — **المحتوى يملأ طولَ الشاشة** (أحمد على لقطة D-1575: «فيه مساحة تحت زيادة — خلها ترتاح وتستفيد من كامل
-       المساحة»): `flexGrow` فالخاناتُ (`PeriodHeat`، `flex: 1`) تأخذ ما بقي من الطول بين حدٍّ أدنى وأعلى، والذيلُ ١٦ */
-    <FitScroll>
-      {d.stats.empty ? (
-        <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 24, lineHeight: 22 }}>
-          {en ? "Nothing watched in this period — tick an episode or a film and your report appears here." : "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."}
-        </Text>
-      ) : (
-        <ReportBody s={d.stats} plus={d.plus} onTitle={openTitle} onWeb={openWeb} shareError={shareError} onRepaired={() => void q.refetch()} />
-      )}
-    </FitScroll>
-  );
-}
 
 /**
  * 🆕 D-1583 — **لوحٌ ثابتٌ لا يُسحب** (تسجيلُ أحمد ٢٩ أكتوبر: «ما أبغى أقدر أسحبها كذا، أبغاها ثابتة» ثمّ «٢أ»): لا ارتدادَ ولا سحبَ
@@ -293,7 +135,7 @@ export function PlusPill() {
   );
 }
 
-function ReportBody({
+export function ReportBody({
   s,
   plus,
   onTitle,
@@ -386,27 +228,7 @@ function ReportBody({
         </>
       ) : null}
 
-      {!s.taste.thin && s.taste.genres.length > 0 ? (
-        <>
-          <H3>{en ? "Your taste this period" : "ذوقك في هذه المدّة"}</H3>
-          <View style={{ flexDirection: "row", height: 24, borderRadius: 6, overflow: "hidden" }}>
-            {s.taste.genres.slice(0, 4).map((g, i) => (
-              <View key={g.slug} style={{ flexGrow: Math.max(1, g.pct), flexBasis: 0, alignItems: "center", justifyContent: "center", backgroundColor: tasteColors(tokens)[i] }}>
-                {g.pct >= 12 ? <Text size={11} weight="700" color="#fff">{`${g.pct.toLocaleString("en-US")}%`}</Text> : null}
-              </View>
-            ))}
-          </View>
-          {/* الأسماءُ صفٌّ متساوٍ بنقاطٍ ملوّنة (D-805) — سطرٌ واحدٌ لكلّ اسم */}
-          <View style={{ flexDirection: "row", marginTop: 6 }}>
-            {s.taste.genres.slice(0, 4).map((g, i) => (
-              <View key={g.slug} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 2 }}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: tasteColors(tokens)[i] }} />
-                <Text size={11} muted numberOfLines={1} style={{ flexShrink: 1 }}>{g.name}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      ) : null}
+      {/* 🆕 D-1586 — شريطُ «ذوقك في هذه المدّة» خرج إلى قسم «الذوق» في الشاشة الواحدة: الأنواعُ نفسُها مرسومةٌ هناك بنسبها */}
 
     </>
   );
@@ -719,37 +541,6 @@ function ImpossibleDayCard({ onDone }: { onDone: () => void }) {
         <Text size={12} weight="700" color={tokens.accent}>{t.impossibleCta}</Text>
       </Pressable>
       {note ? <Text size={12} muted style={{ marginTop: 8, lineHeight: 19 }}>{note}</Text> : null}
-    </View>
-  );
-}
-
-/** هيكلٌ بمواضع المحتوى نفسِها (شرطُ الصفحة) — لا مستطيلٌ واحدٌ كبير */
-function ReportSkeleton() {
-  const { tokens } = useApp();
-  const bone = tokens.surface2;
-  return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, gap: 20 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-        <View style={{ flex: 1, gap: 8 }}>
-          <View style={{ height: 32, width: "50%", borderRadius: 8, backgroundColor: bone }} />
-          <View style={{ height: 12, width: "34%", borderRadius: 6, backgroundColor: bone }} />
-        </View>
-        <View style={{ width: 96, height: 32, borderRadius: 16, backgroundColor: bone }} />
-      </View>
-      <View style={{ gap: 8 }}>
-        {[0, 1].map((r) => (
-          <View key={r} style={{ flexDirection: "row", gap: 8 }}>
-            {[0, 1, 2].map((c) => (
-              <View key={c} style={{ flex: 1, height: 56, borderRadius: radius.card, backgroundColor: bone }} />
-            ))}
-          </View>
-        ))}
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 48 }}>
-        {[16, 26, 12, 36, 20, 44, 48].map((h, i) => (
-          <View key={i} style={{ flex: 1, height: h, borderRadius: 4, backgroundColor: bone }} />
-        ))}
-      </View>
     </View>
   );
 }
