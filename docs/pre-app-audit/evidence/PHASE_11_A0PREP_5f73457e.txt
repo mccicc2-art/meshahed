@@ -1,0 +1,19 @@
+# Phase 11 · A0-prep v2 gates — main @ 5f73457e (committed 2026-09-07T22:27:28+00:00)
+# Run in the container on the exact tree that became 5f73457e (git diff vs origin/main empty after push).
+
+== web tsc ==
+OK
+== mobile tsc ==
+OK
+== eslint ==
+OK
+== next build ==
+✓ Running next.config.ts took 3.6s
+✓ Compiled successfully in 20.3s
+  Generating static pages using 1 worker (0/71) ...
+  Generating static pages using 1 worker (17/71) 
+  Generating static pages using 1 worker (35/71) 
+  Generating static pages using 1 worker (53/71) 
+
+# Full next build tail omitted above; build exited 0 (71 static pages generated).
+# EAS: build for 5f73457e is automatic (android-alpha.yml); Play Alpha submit status is read from expo.dev/Play Console by the owner — NOT asserted here.

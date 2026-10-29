@@ -1,0 +1,11 @@
+== D-883 / D-881 end-to-end evidence (best-effort telemetry) ==
+deployed:      /api/build == d9767dd (read from the browser after deploy)
+before:        select count(*) from public.runtime_errors where kind='TrailerSignal'  -> 1   (row from the D-881 probe: stalled:-1)
+requests sent from a guest browser tab on loopztv.com (all answered 204 by design):
+  1) valid       {"kind":"yt-error","code":150,"phase":"loading","provider":"youtube"}            -> written  (digest yt-error:150)
+  2) invalidKind {"kind":"evil","code":150,"phase":"loading"}                                    -> dropped  (kind not in allow-list)
+  3) oversized   {"kind":"stalled","code":1,"phase":"stalled","pad":"x"*400}  (>256 bytes)      -> dropped  (payload cap)
+  4) badCode     {"kind":"blocked","code":123456,"phase":"blocked"}                              -> written with code clamped to -1 (digest blocked:-1)
+after:         count -> 3 ; digests in order: stalled:-1 | yt-error:150 | blocked:-1
+delta:         +2 (the two allow-listed kinds), 0 rows for the invalid kind and the oversized body
+what was read:  counts and digests only — no message bodies, no IPs, no user data, no secrets
