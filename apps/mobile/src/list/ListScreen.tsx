@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text, type ToastTone } from "../ui";
+import { BackChevron, Button, Text, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
@@ -348,7 +348,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
           <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
           <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+              {/* سهمُ الرجوع الواحد (D-1460) — لا رسمَ باليد: كان «^» في العربيّة (D-1592) */}
+              <BackChevron color={tokens.fg} />
             </View>
           </Pressable>
           {d ? (

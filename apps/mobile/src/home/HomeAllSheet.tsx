@@ -6,7 +6,7 @@ import { haptic } from "../haptics";
 import { HOME_KEY } from "./useHome";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { BackChevron, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
@@ -194,7 +194,8 @@ export function HomeAllSheet({
         header={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Pressable onPress={() => setWho(null)} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 28, height: 28, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ width: 10, height: 10, borderStartWidth: 2, borderTopWidth: 2, borderColor: tokens.fg, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
+              {/* سهمُ الرجوع الواحد (D-1460) — لا رسمَ باليد: كان «^» في العربيّة (D-1592) */}
+              <BackChevron color={tokens.fg} />
             </Pressable>
             <Text size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>{who.title}</Text>
           </View>
