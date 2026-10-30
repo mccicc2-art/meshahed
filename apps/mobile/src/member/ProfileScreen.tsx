@@ -97,6 +97,8 @@ const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
  */
 const COVER_BELOW = 52;
 const COVER_FADE = 100;
+/** 🆕 D-1607b — طولُ التدرّج الذي يسبق لونَ الصفحة فوق الطبقة السفلى في الطيّ */
+const UNDER_FADE = 72;
 const PAGE_PAD = 16;
 const GAP = 10;
 
@@ -538,15 +540,19 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
-  /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ عند ثلاثة أخماس الطيّ (أُعيد في R85 — لم يكن سببَ الرأس الثابت، D-1543) */
+  /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ قبل أن تدخل تحت النبذة.
+     🆕 D-1607b — **أبكرُ: في نصف طيّ الصورة** (لقطةُ أحمد ٣٠ أكتوبر في منتصف الطيّ: الأرقامُ شبحٌ تحت النبذة، ثمّ «أ»). الطبقةُ السفلى
+     تصعد بقدر الطيّ والعليا بـ`drop/shrink` منه — فالبطاقةُ تنزلق تحت النبذة من أوّل الطيّ؛ ثلاثةُ أخماس الطيّ كلِّه كانت تتركها
+     ظاهرةً تحت الكلام. الحدُّ الأقربُ من الاثنين (ملفٌّ قصيرُ الرأس لا يتأخّر) */
+  const fadeEnd = Math.max(1, Math.min(maxC * 0.6, shrink * 0.5));
   const statsFade = useMemo(
-    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [1, 0], extrapolate: "clamp" }),
-    [collapse, maxC],
+    () => collapse.interpolate({ inputRange: [0, fadeEnd], outputRange: [1, 0], extrapolate: "clamp" }),
+    [collapse, fadeEnd],
   );
   /* 🆕 D-1607 — عكسُ `statsFade`: لونُ الصفحة خلف البطاقة وهي تتلاشى (انظر الحجاب في الطبقة السفلى) */
   const underVeil = useMemo(
-    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [0, 1], extrapolate: "clamp" }),
-    [collapse, maxC],
+    () => collapse.interpolate({ inputRange: [0, fadeEnd], outputRange: [0, 1], extrapolate: "clamp" }),
+    [collapse, fadeEnd],
   );
   const maxCRef = useRef(0);
   maxCRef.current = maxC;
@@ -845,7 +851,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 الرأس والتبويبات شقٌّ يُرى منه الغلاف). الطبقةُ السفلى بلا خلفيّة، وبطاقةُ الأرقام تصير شفّافةً عند ثلاثة أخماس الطيّ
                 (D-1542) — فما بين ثلاثة الأخماس والالتصاق فراغٌ يكشف الغلافَ المرسومَ خلف كلِّ شيء. هذا الحجابُ يظهر بالقدر الذي تختفي
                 به البطاقة: مفكوكاً لا يُرى (ذوبانُ الغلاف كما هو)، ومطويّاً لونُ الصفحة. على المحرّك الأصليّ كأخيه `statsFade` */}
-            <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, opacity: underVeil }} />
+            {/* 🆕 D-1607b — **ويمتدّ فوق الطبقة بتدرّجٍ لا بحافّة** (لقطةُ أحمد ٣٠ أكتوبر: شريطٌ رماديٌّ بحدٍّ واضحٍ خلف النبذة في منتصف
+                الطيّ). الغلافُ صار يمتدّ حتى النبذة (D-1607)، والطبقةُ العليا شفّافةٌ فيُرى من خلفها كما هو، والسفلى بلون الصفحة — فالتقاؤهما
+                خطّ. الآن يسبقها `UNDER_FADE` من حجاب الملصق نفسِه (`VEIL`) يذوب من الشفّاف إلى لون الصفحة: الغلافُ يعتم خلف النبذة شيئاً
+                فشيئاً ولا حدّ */}
+            <Animated.View pointerEvents="none" style={{ position: "absolute", top: -UNDER_FADE, bottom: 0, left: 0, right: 0, opacity: underVeil }}>
+              <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: 0, height: UNDER_FADE }} contentFit="fill" />
+              <View style={{ position: "absolute", left: 0, right: 0, top: UNDER_FADE - 1, bottom: 0, backgroundColor: tokens.bg }} />
+            </Animated.View>
             <View pointerEvents="box-none">
             {/* 🆕 N2-fix — طلب متابعتي وطلبُه قائم: القرارُ هنا أيضاً (الإشعارُ يفتح هذا الملفّ) */}
             {d.relation.requested_me ? (
