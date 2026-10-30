@@ -353,7 +353,9 @@ function SeasonBody({
    * المفتاحَ النشط **وتفتح مفتاحَ التقييمات** كي تُرى النجمةُ فوراً.
    */
   const rate = useMutation({
-    mutationFn: (v: { episode: number; rating: number; review: string | null; spoiler: boolean }) =>
+    /* 🆕 D-1601 — `rating: null` يسحب تقييمَ الحلقة («حذف تقييمي» في الورقة — أحمد ٣٠ أكتوبر: «ابغى اقدر ازيل تقييم الحلقة»):
+       الخادمُ يقبله منذ D-1011 والورقةُ ترسم الزرَّ منذ D-1033، والذي غاب أنّ الأكورديون لم يمرّر `onRemove`. المشاهدةُ تبقى */
+    mutationFn: (v: { episode: number; rating: number | null; review: string | null; spoiler: boolean }) =>
       write<TrackResult>("/api/v1/track/episode-rate", { showTmdbId: show.id, season, episode: v.episode, rating: v.rating, review: v.review, runtime, spoiler: v.spoiler } satisfies EpisodeRateBody),
     onMutate: (v) => {
       /* D-1501 — لم يعد التقييمُ يفتح النجمةَ العلويّة: تقييمي يصل مع كلِّ موسم، وفتحُها كان يكشف أرقامَ IMDb لحلقاتٍ لم تُشاهَد */
@@ -533,6 +535,10 @@ function SeasonBody({
           onClose={() => setRating(null)}
           onSave={(v) => {
             rate.mutate({ episode: rating, rating: v.rating, review: v.review, spoiler: v.has_spoiler });
+            setRating(null);
+          }}
+          onRemove={() => {
+            rate.mutate({ episode: rating, rating: null, review: null, spoiler: false });
             setRating(null);
           }}
         />

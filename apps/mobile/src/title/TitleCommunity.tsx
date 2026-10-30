@@ -67,22 +67,41 @@ export function CommunityTab({
   }
   return (
     <View style={{ gap: 16 }}>
-      {/* رأيي — أو دعوةٌ لكتابته إن كان عندي تقييمٌ بلا نصّ */}
-      <View style={{ padding: 12, borderRadius: radius.card, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, gap: 6 }}>
+      {/* 🆕 D-1601 — **رأيي بطاقةٌ تُضغط كلُّها** (أحمد ٣٠ أكتوبر بلقطة: «مكان كتابة الريفيو يحتاج تطوير ومساحة الضغط صغيرة»،
+          ثمّ «كبيرة» ثمّ «اكتب رأيك حجمها كبير» على مسودّتين): كان النصُّ الرماديّ يبدو حقلاً ولا يُضغط، والبابُ الوحيد رقاقةٌ صغيرة.
+          الآن نجومي صغيرةً بجانب العنوان (عرضٌ لا اختيار — نجمةٌ بـ١٥ نقطة هدفٌ يُخطئه الإصبع فيحفظ رقماً لم يُقصد)، وتحتها
+          **حقلٌ بسطرٍ واحد** بشكل حقل الانبثاق يحمل رأيي سطرين أو الدعوةَ بقلم — **والضغطُ في أيّ مكانٍ يفتح `ReviewSheet` نفسَها**.
+          أقصرُ من البطاقة القديمة (لا رقاقةَ تحت النصّ) */}
+      <Pressable
+        onPress={onEditReview}
+        accessibilityRole="button"
+        accessibilityLabel={ar ? (data.my_review?.review ? "عدّل رأيي" : "اكتب رأيي") : data.my_review?.review ? "Edit my review" : "Write my review"}
+        style={({ pressed }) => ({ padding: 12, borderRadius: radius.card, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, gap: 10, opacity: pressed ? 0.85 : 1 })}
+      >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text size={12} weight="700" muted style={{ flex: 1 }}>{t.listReviewMine}</Text>
-          {myRating !== null ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-              <Icon name="star-filled" size={13} color={tokens.accent} />
-              <Text size={13} weight="700" color={tokens.accent}>{num(myRating, locale)}</Text>
-            </View>
-          ) : null}
+          <Text size={12} weight="700" muted style={{ flex: 1 }} numberOfLines={1}>{t.listReviewMine}</Text>
+          <View pointerEvents="none">
+            <StarRow value={myRating} onChange={() => {}} size={15} />
+          </View>
         </View>
-        {data.my_review?.review ? <Text size={14} content style={{ lineHeight: 21 }}>{data.my_review.review}</Text> : <Text size={13} muted>{t.reviewPlaceholder}</Text>}
-        <View style={{ flexDirection: "row", marginTop: 4 }}>
-          <Chip label={ar ? (data.my_review?.review ? "عدّل رأيي" : "اكتب رأيي") : data.my_review?.review ? "Edit my review" : "Write my review"} active={false} onPress={onEditReview} />
+        <View style={{ minHeight: 38, flexDirection: "row", alignItems: "flex-start", gap: 7, paddingVertical: 9, paddingHorizontal: 12, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2 }}>
+          {data.my_review?.review ? (
+            data.my_review.has_spoiler ? (
+              <>
+                <View style={{ marginTop: 3 }}><Icon name="eye-off" size={13} color={tokens.muted} /></View>
+                <Text size={13} muted numberOfLines={2} style={{ flex: 1, lineHeight: 19 }}>{data.my_review.review}</Text>
+              </>
+            ) : (
+              <Text size={14} content numberOfLines={2} style={{ flex: 1, lineHeight: 20 }}>{data.my_review.review}</Text>
+            )
+          ) : (
+            <>
+              <View style={{ marginTop: 3 }}><Icon name="edit" size={13} color={tokens.muted} /></View>
+              <Text size={13} muted numberOfLines={1} style={{ flex: 1, lineHeight: 19 }}>{t.reviewPlaceholder}</Text>
+            </>
+          )}
         </View>
-      </View>
+      </Pressable>
 
       {data.reviews.map((r) => (
         <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} onLike={onLikeReview ? () => onLikeReview(r) : undefined} />

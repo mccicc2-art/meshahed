@@ -271,6 +271,23 @@ export async function widgetMovie(who: { userId: string }, movieTmdbId: number, 
       { onConflict: "user_id,movie_tmdb_id" },
     );
     if (error) throw new Error("widget movie failed");
+    /*
+     * 🆕 D-1600 — **والفيلمُ يدخل المكتبة** كما في التطبيق (D-1468 `ensureMovieInLibrary`): خالد ٣٠ أكتوبر «ينحط عليه اني شاهدته لاكن ما
+     * القاه فالمكتبة» — المكتبةُ تعدّ صفوفَ `follows`، والودجتُ كان يكتب المشاهدةَ وحدَها. فيلمٌ في المكتبة أصلاً لا يُمسّ (`ignoreDuplicates`).
+     */
+    const genres = (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n));
+    await db.from("follows").upsert(
+      {
+        user_id: who.userId,
+        tmdb_id: movieTmdbId,
+        media_type: "movie",
+        title: String(m.title ?? "").slice(0, 300),
+        poster_path: m.poster_path ?? null,
+        ...(genres.length ? { genres } : {}),
+      },
+      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
+    );
+    revalidatePath("/library");
   } else {
     const { error } = await db.from("watched_movies").delete().match({ user_id: who.userId, movie_tmdb_id: movieTmdbId });
     if (error) throw new Error("widget unmovie failed");
