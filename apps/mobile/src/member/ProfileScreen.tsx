@@ -18,7 +18,7 @@ import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
 import { usePullRefresh } from "../pullRefresh";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
-import { CoverArt, COVER_H, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
+import { CoverArt, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard, PlayPill } from "../library/ListCard";
@@ -28,6 +28,7 @@ import { openProfile } from "./open";
 import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
+import { DEFAULT_THEME, themeById, themeScheme } from "@/core/themes";
 import { num } from "@/core/i18n";
 import { PROFILE_SECTIONS, profileSectionMeta, profileTabMeta, sectionKeyOf } from "@/core/profilePrefs";
 import { profileUrl } from "@/core/media";
@@ -88,8 +89,14 @@ const AV_DROP_BARE = 8;
 const VEIL_FADE = 48;
 /** انزياحُ مركز الصورة لتصغر من ركنها: نصفُ ما نقص من قطرها */
 const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
-/** الاسمُ بعد الطيّ يتوسّط الصورةَ الصغيرة: كتلتُه (~٤٦) أطولُ من ٤٠ بقليل، فيصعد أقلَّ من فرق القطر بثلاث */
-const NAME_LIFT = 3;
+/**
+ * 🆕 D-1607 — **الاسمُ يتوسّط ارتفاعَ الصورة** (أحمد ٣٠ أكتوبر بلقطتين ومربّعاتٍ زرقاء: «الاسم و الي معه خلها يتوسط ارتفاع الصوره»)
+ * — كان على نصفها السفليّ (D-1427). فصار نصفُه الأعلى على الغلاف، والغلافُ يمتدّ تحته `COVER_BELOW` من مركز الصورة ويذوب على
+ * `COVER_FADE`: «تظليلٌ متوسّط تقدر تقرا وتشوف الغلاف، بحيث ما يتسرّب في قصّة» (أحمد). في النهاريّ يبدأ الذوبانُ من تحت شريط الأزرار
+ * (`COVER_FADE_LIGHT`) — فالنصُّ الداكنُ يقف على لون الصفحة الفاتح أكثرَ من الصورة (درسُ D-1427: الأبيضُ كان يضيع في «النهاري»).
+ */
+const COVER_BELOW = 52;
+const COVER_FADE = 100;
 const PAGE_PAD = 16;
 const GAP = 10;
 
@@ -102,7 +109,7 @@ export { profileKey };
 type Grid = "shows" | "movies" | "anime";
 
 export function ProfileScreen({ username, from }: { username: string; from: NativeRoot | "web" }) {
-  const { t, tokens, locale } = useApp();
+  const { t, tokens, locale, themeId } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
   const qc = useQueryClient();
@@ -155,7 +162,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     }, []),
   );
   const [grid, setGrid] = useState<Grid | null>(null);
-  const [ranks, setRanks] = useState(false);
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
   const [leaving, setLeaving] = useState(false);
@@ -501,6 +507,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   /* D-1427 — الرأسُ العلويُّ (الصورة · الاسم · النبذة) يُقاس وحدَه: بعد طيِّه يبقى منه `topH - shrink`، والتبويباتُ تلتصق تحته */
   const [topH, setTopH] = useState(0);
   const drop = d?.person.cover_url ? AV_DROP : AV_DROP_BARE;
+  /* 🆕 D-1607 — الغلافُ ينزل حتى أسفل سطر الاسم (تحت الحافّة الآمنة)، والذوبانُ يمرّ خلف الاسم — أطولُ في النهاريّ */
+  const coverH = HEADER_H + drop + AV_MAX / 2 + COVER_BELOW;
+  const lightTheme = themeScheme(themeId ? themeById(themeId) : DEFAULT_THEME) === "light";
+  const coverFadeFrom = lightTheme ? HEADER_H : coverH - COVER_FADE;
   /** ما يطويه الرأسُ العلويُّ من طوله: الفراغُ فوق الصورة + فرقُ قطرها */
   const shrink = drop + (AV_MAX - AV_MIN);
   const topMin = topH > 0 ? Math.max(0, topH - shrink) : 0;
@@ -523,13 +533,19 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       avY: at(-AV_SHIFT),
       avScale: at(AV_MIN / AV_MAX, 1),
       nameX: at((AV_MAX - AV_MIN) * side),
-      nameY: at(-(AV_MAX - AV_MIN) + NAME_LIFT),
+      /* D-1607 — مركزُ الاسم على مركز الصورة: يصعد بقدر ما يصعد مركزُها وهي تصغر من ركنها */
+      nameY: at(-AV_SHIFT),
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
   /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ عند ثلاثة أخماس الطيّ (أُعيد في R85 — لم يكن سببَ الرأس الثابت، D-1543) */
   const statsFade = useMemo(
     () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [1, 0], extrapolate: "clamp" }),
+    [collapse, maxC],
+  );
+  /* 🆕 D-1607 — عكسُ `statsFade`: لونُ الصفحة خلف البطاقة وهي تتلاشى (انظر الحجاب في الطبقة السفلى) */
+  const underVeil = useMemo(
+    () => collapse.interpolate({ inputRange: [0, Math.max(1, maxC * 0.6)], outputRange: [0, 1], extrapolate: "clamp" }),
     [collapse, maxC],
   );
   const maxCRef = useRef(0);
@@ -662,7 +678,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} /> : null}
+      {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} height={coverH} fadeFrom={coverFadeFrom} /> : null}
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8 }}>
         <RoundBtn icon="back" label={t.closeLabel} onPress={back} onArt={!!d?.person.cover_url} />
         <View style={{ flex: 1 }} />
@@ -726,7 +742,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               <Animated.View pointerEvents="none" style={{ position: "absolute", top: drop, left: 0, right: 0, height: topMin, overflow: "hidden", backgroundColor: tokens.bg, opacity: fold.veil }}>
                 {d.person.cover_url ? (
                   <>
-                    <Animated.View style={{ position: "absolute", left: 0, right: 0, top: -(insets.top + HEADER_H + drop), height: insets.top + COVER_H, transform: [{ translateY: fold.coverY }] }}>
+                    <Animated.View style={{ position: "absolute", left: 0, right: 0, top: -(insets.top + HEADER_H + drop), height: insets.top + coverH, transform: [{ translateY: fold.coverY }] }}>
                       <CoverArt url={d.person.cover_url} pos={d.person.cover_pos} />
                     </Animated.View>
                     <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: 0, height: VEIL_FADE }} contentFit="fill" />
@@ -734,7 +750,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                   </>
                 ) : null}
               </Animated.View>
-              <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+              {/* 🆕 D-1607 — الاسمُ وما معه وزرُّ التعديل يتوسّطون ارتفاعَ الصورة (كانوا على نصفها السفليّ — `flex-end`) */}
+              <View pointerEvents="box-none" style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 12 }}>
                 {/* 🆕 N3 — صورةُ ملفّي بابُ تعديله (D-571) — «تعديل الملفّ» أصليّة (D-1106)؛ ولزائري لا رابط.
                     D-1427 — تصغر من ركنها الأعلى عند البداية: المركزُ يُزاح بنصف ما نقص ثمّ تُصغَّر حوله */}
                 <Animated.View
@@ -824,6 +841,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             </Animated.View>
 
             <Animated.View pointerEvents="box-none" style={{ zIndex: 1, transform: [{ translateY: Animated.multiply(collapse, -1) }] }}>
+            {/* 🆕 D-1607 — **لونُ الصفحة يحلّ محلَّ ما يتلاشى** (تسجيلُ أحمد ٣٠ أكتوبر: الرأسُ مطويٌّ وهو يرفع اللوحَ قليلاً، فانفتح بين
+                الرأس والتبويبات شقٌّ يُرى منه الغلاف). الطبقةُ السفلى بلا خلفيّة، وبطاقةُ الأرقام تصير شفّافةً عند ثلاثة أخماس الطيّ
+                (D-1542) — فما بين ثلاثة الأخماس والالتصاق فراغٌ يكشف الغلافَ المرسومَ خلف كلِّ شيء. هذا الحجابُ يظهر بالقدر الذي تختفي
+                به البطاقة: مفكوكاً لا يُرى (ذوبانُ الغلاف كما هو)، ومطويّاً لونُ الصفحة. على المحرّك الأصليّ كأخيه `statsFade` */}
+            <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, opacity: underVeil }} />
             <View pointerEvents="box-none">
             {/* 🆕 N2-fix — طلب متابعتي وطلبُه قائم: القرارُ هنا أيضاً (الإشعارُ يفتح هذا الملفّ) */}
             {d.relation.requested_me ? (
@@ -837,7 +859,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
             {/* 🆕 D-1542 — **يتلاشى وهو يدخل تحت الرأس** (أحمد ٢٣ أكتوبر: «بعد ما انزل تحت واطلع فوق… زي القطعه»): الرأسُ العلويُّ
                 فوقه فيقصّه بحدٍّ حادّ؛ يختفي قبل أن يبلغ الحدّ (ثلاثةُ أخماس الطيّ) ويعود حين يُفكّ — على المحرّك الأصليّ. الضغطُ لا يتغيّر */}
             <Animated.View pointerEvents="box-none" style={{ opacity: statsFade }}>
-              <Facts d={d} onRanks={() => setRanks(true)} />
               <StatsCard stats={stats} onStat={onStat} />
             </Animated.View>
 
@@ -907,7 +928,6 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         />
       ) : null}
       {grid && d ? <GridSheet d={d} which={grid} posterW={posterW} width={width} onClose={() => setGrid(null)} onTitle={(k, id) => { setGrid(null); openTitle(k, id); }} /> : null}
-      {ranks && d ? <RanksSheet d={d} onClose={() => setRanks(false)} /> : null}
       {sorting && d && sortItems.length > 1 ? (
         <ReorderSheet items={sortItems} onClose={() => setSorting(null)} onDone={(keys) => ("fav" in sorting ? saveFav(sorting.fav, keys) : saveSec(sorting.sec, keys))} />
       ) : null}
@@ -1073,52 +1093,9 @@ function CountBtn({ icon, value, label, locked, onArt, onPress }: { icon: "peopl
   );
 }
 
-/** سطرُ الحقائق: مراتبُه الأسبوعيّة (بابٌ لورقتها) · حسابُ X الموثَّق · «عضو منذ» لمشترك Plus — كالويب */
-function Facts({ d, onRanks }: { d: ProfilePayload; onRanks: () => void }) {
-  const { t, tokens, locale } = useApp();
-  const since = d.person.joined_at
-    ? t.joinedOn(new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { month: "short", year: "numeric" }).format(new Date(d.person.joined_at)))
-    : null;
-  if (!d.weekly_ranks.length && !d.person.x && !since) return null;
-  return (
-    <View pointerEvents="box-none" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingHorizontal: PAGE_PAD, marginTop: 10 }}>
-      {d.weekly_ranks.length ? (
-        <Pressable onPress={onRanks} accessibilityRole="button" accessibilityLabel={t.weeklyRanksTimes(d.weekly_ranks.length)} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: tokens.accent }}>
-          <Icon name="star" size={11} color={tokens.accent} />
-          <Text size={11} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{num(d.weekly_ranks.length, locale)}</Text>
-        </Pressable>
-      ) : null}
-      {d.person.x ? (
-        <View accessibilityLabel={t.xVerifiedTip} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text size={12} weight="700">𝕏</Text>
-          <Text size={12} muted>@{d.person.x.handle}</Text>
-        </View>
-      ) : null}
-      {since ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="calendar" size={12} color={tokens.muted} />
-          <Text size={12} muted>{since}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function RanksSheet({ d, onClose }: { d: ProfilePayload; onClose: () => void }) {
-  const { t, tokens, locale } = useApp();
-  const fmt = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  return (
-    <Sheet title={t.weeklyRanksTitle} onClose={onClose}>
-      <Text size={12} muted style={{ marginBottom: 8 }}>{t.weeklyRanksHint}</Text>
-      {d.weekly_ranks.map((r, i) => (
-        <View key={r.week} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: tokens.divider }}>
-          <Text size={13}>{t.weeklyRanksWeek(fmt.format(new Date(`${r.week}T00:00:00Z`)))}</Text>
-          <Text size={13} weight="700" color={tokens.accent}>{t.weeklyRankOrd(r.rank)}</Text>
-        </View>
-      ))}
-    </Sheet>
-  );
-}
+/* 🗑️ D-1607 — **سطرُ الحقائق حُذف** (أحمد ٣٠ أكتوبر: «الصف الي فيه الانضمام و تويتر و ٣ أسابيع في التوب احذفه بالكامل»، ثمّ «١ أ»):
+   «عضو منذ» وعلامةُ X الموثَّقة والمراتبُ الأسبوعيّة وورقتُها خرجت من الملفّ في التطبيق — لا تنتقل إلى مكانٍ آخر. البياناتُ باقيةٌ في
+   الحمولة (`weekly_ranks` · `person.x` · `joined_at`) والويبُ كما هو. */
 
 /* ——————————————————— التبويبات ——————————————————— */
 

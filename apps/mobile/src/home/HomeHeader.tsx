@@ -45,12 +45,16 @@ export function CoverArt({ url, pos }: { url: string; pos: number | null }) {
   );
 }
 
-export function HomeCover({ url, pos }: { url: string | null; pos: number | null }) {
+/**
+ * 🆕 D-1607 — `height`/`fadeFrom` (تحت الحافّة الآمنة): رأسُ الملفّ يمدّ الغلافَ حتى أسفل سطر الاسم ويبدأ الذوبانَ أبكر، فالاسمُ
+ * يقف على تظليلٍ متوسّط يُقرأ عليه ويُرى الغلافُ خلفه، ويذوب بعده إلى لون الصفحة بلا حدٍّ قاطع. الغيابُ = المقاسُ القديم حرفاً.
+ */
+export function HomeCover({ url, pos, height = COVER_H, fadeFrom = COVER_SOLID }: { url: string | null; pos: number | null; height?: number; fadeFrom?: number }) {
   const insets = useSafeAreaInsets();
   const { tokens } = useApp();
   if (!url) return null;
-  const h = insets.top + COVER_H;
-  const solid = insets.top + COVER_SOLID;
+  const h = insets.top + height;
+  const solid = insets.top + Math.min(fadeFrom, height - 1);
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, height: h, overflow: "hidden" }}>
       <CoverArt url={url} pos={pos} />
