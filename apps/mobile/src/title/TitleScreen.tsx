@@ -402,11 +402,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {/* D-1226 — بلا تلاشٍ إن رسمتها البذرةُ قبلُ: الصورةُ نفسُها حاضرةٌ في الذاكرة، والتلاشي كان يضيف ٢٠٠ms */}
             {/* 🆕 D-1479 — **الغلافُ معتَّمٌ كالويب** (`opacity-45` فوق لون الخلفية — لقطةُ أحمد من نسخة الجوال ١٩ أكتوبر): الاسمُ
                 والتفاصيلُ تُقرأ على أيِّ صورة، والثيمُ الفاتح يعتّم إلى لونه هو */}
-            {heroBd ? <Image source={{ uri: backdropUrl(heroBd, "w780") ?? undefined }} style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === heroBd ? 0 : 200} /> : null}
+            {heroBd ? <Image source={{ uri: backdropUrl(heroBd, "w780") ?? undefined }} style={[StyleSheet.absoluteFill, { opacity: 0.7 }]} contentFit="cover" cachePolicy="memory-disk" transition={seed?.backdrop_path === heroBd ? 0 : 200} /> : null}
             {/* D-1479 — ظلٌّ أعلى الصورة بدل دائرتَي الزرّين (الويب: `from-black/50` في أعلى الترويسة) */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, top: 0, height: 96, opacity: 0.55, transform: [{ rotate: "180deg" }] }} contentFit="fill" />
-            {/* D-1040 — الحجابُ يغطّي الصفَّ كلَّه وفوقه قليلاً: الاسمُ صار في أعلى الملصق لا في أسفل الصورة */}
-            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, lift + below + 28) }} contentFit="fill" />
+            {/* D-1040 → 🆕 D-1594 — **الحجابُ خلف الكتابة وحدَها**: الاسمُ نزل إلى فوق الأنواع، فالظلُّ يبدأ من أعلى كتلة الكتابة
+                لا من أعلى الملصق — والغلافُ فوقها يُرى (٧٠٪ بدل ٤٥٪، أحمد «٢ أ»). الكتابةُ تبقى على أغمق جزءٍ من التدرّج */}
+            <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
             {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب (طلبُ أحمد): الظلُّ أعلاه يكفيهما */}
             <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
@@ -436,7 +437,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               </View>
             </View>
             {d ? (
-            <View style={{ flex: 1, minWidth: 0, gap: 4, paddingTop: 2, alignSelf: "stretch", justifyContent: "space-between" }}>
+            /* 🆕 D-1594 — **الكتلةُ كلُّها في أسفل العمود** (أحمد ٣٠ أكتوبر بلقطة Prison Break: «المساحة الفاضية… نزّل الاسم تحت» — «١ أ»،
+               يعكس D-1031): الاسمُ والتفاصيلُ وIMDb فوق الأنواع مباشرة. الاسمُ في الأعلى والأنواعُ في الأسفل كانا يتركان بينهما
+               فراغاً كلّما قصر الاسم؛ مجتمعةً تُرتَّب بسطرٍ أو بسطرين، والفراغُ يصعد إلى حيث يُرى الغلاف */
+            <View style={{ flex: 1, minWidth: 0, gap: 10, alignSelf: "stretch", justifyContent: "flex-end" }}>
               <View style={{ gap: 4 }}>
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
@@ -457,7 +461,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               </View>
             </View>
             ) : (
-            <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+            /* D-1594 — اسمُ البذرة في مكانه بعد الوصول تقريباً (فوق سطرَي التفاصيل وIMDb وصفِّ الأنواع) فلا يقفز كثيراً */
+            <View style={{ flex: 1, minWidth: 0, alignSelf: "stretch", justifyContent: "flex-end", paddingBottom: SEED_BELOW }}>
               <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed?.name ?? ""}</Text>
             </View>
             )}
@@ -698,6 +703,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 }
 
 const VEIL = require("../../assets/poster-veil.png");
+/* D-1594 — ارتفاعُ الحجاب فوق أسفل الملصق: يغطّي كتلةَ الكتابة (اسمٌ بسطرين + تفاصيل + IMDb + الأنواع ≈ ١٥٠) ويبدأ تدرّجُه فوقها */
+const TEXT_VEIL = 180;
+/* D-1594 — ما يقع تحت الاسم بعد وصول العمل: التفاصيل (١٦) وIMDb (٢٤) والأنواع (٣٦) والفواصل */
+const SEED_BELOW = 98;
 
 function Chevron({ color }: { color: string }) {
   return (
