@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sortTalkRooms, talkActivity, talkQuiet } from "./talkSort.ts";
+import { sortTalkRooms, talkActivity, talkLatestAt, talkQuiet } from "./talkSort.ts";
 
 /** D-1201/D-1207 — ترتيبُ «النقاشات»: المثبَّتُ أوّلاً في الترتيبين · «الأكثر تفاعلاً» بتفاعل الشهر · التعادلُ بالأحدث */
 const r = (id: string, postsMonth: number, likesMonth: number, lastAt: string, pin = 0) => ({ id, postsMonth, likesMonth, lastAt, pin });
@@ -34,4 +34,16 @@ test("input is not mutated", () => {
   const before = ids(rooms);
   sortTalkRooms(rooms, "active", (x) => x.pin);
   assert.deepEqual(ids(rooms), before);
+});
+
+test("D-1603 latest: newest of last post or last episode air day, not when Loopz wrote the bulletin", () => {
+  const base = { postsMonth: 0, pin: 0 };
+  const xs = [
+    { ...base, id: "late-bulletin", lastAt: "2026-10-30T09:00:00Z", lastPostAt: null, bulletin: { air: "2026-10-20" } },
+    { ...base, id: "new-episode", lastAt: "2026-10-29T03:00:00Z", lastPostAt: null, bulletin: { air: "2026-10-29" } },
+    { ...base, id: "new-post", lastAt: "2026-10-29T10:00:00Z", lastPostAt: "2026-10-29T10:00:00Z", bulletin: { air: "2026-10-01" } },
+    { ...base, id: "old-server", lastAt: "2026-10-25T00:00:00Z" },
+  ];
+  assert.deepEqual(ids(sortTalkRooms(xs, "latest", (x) => x.pin)), ["new-post", "new-episode", "old-server", "late-bulletin"]);
+  assert.equal(talkLatestAt({ postsMonth: 0, lastAt: "2026-10-05T00:00:00Z", lastPostAt: null, bulletin: { s: 1 } }), Date.parse("2026-10-05T00:00:00Z"));
 });

@@ -530,9 +530,13 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
      وصفحة العمل، لا تزحم القائمة. الخادمُ لم يعد يرسل غرفَ المكتبة الفارغة؛ وهذا يُسقط ما بقي منها في حمولةٍ محفوظةٍ أقدم */
   const liveRooms = useMemo(() => d.rooms.filter((r) => r.posts > 0 || !!r.bulletin_line || r.pin > 0), [d.rooms]);
   const talkRooms = useMemo(() => {
-    if (!talkPrefs) return liveRooms;
+    const allWorthy = (r: CommunityPayload["rooms"][number]) => r.posts > 0 || (!!r.airing && !r.airing.pause);
+    if (!talkPrefs) return liveRooms.filter(allWorthy);
     const sort = talkPrefs.talk_sort ?? "latest";
-    if (!talkPrefs.talk_followed) return sortTalkRooms(liveRooms, sort, (r) => r.pin);
+    /* 🆕 D-1603 — **«الكل»: ما يُعرض الآن أو ما عليه كلام** (أحمد ٣٠ أكتوبر: «خلي فقط الايرينغ ناو و اللي عليها تفاعل، لا تخلي
+       شيء بوستاته 0 موجود الا اذا كان ايرينغ ناو»): النشرةُ وحدَها والتثبيتُ وحدَه لا يُبقيان غرفةً صامتة، و«On break» ليست «يعرض الآن».
+       «النقاش العام» خارج هذا كلِّه — أوّلُ بطاقةٍ دائماً ومثبّتة (`talkItems`). «أعمالي» على حالها */
+    if (!talkPrefs.talk_followed) return sortTalkRooms(liveRooms.filter(allWorthy), sort, (r) => r.pin);
     return sortTalkRooms(liveRooms.filter((r) => r.mine), sort, (r) => r.pin);
   }, [liveRooms, talkPrefs]);
   type TalkItem =
