@@ -39,7 +39,7 @@ import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import { displayNameOf } from "@/core/people";
-import type { CommunityFeedRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
+import type { CommunityFeedPagePayload, CommunityFeedRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
 /**
@@ -594,6 +594,52 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
     setSeen({ slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) });
     feedRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, [sliceKey, feedView.rows]);
+  /* 🆕 D-1596 — **«الأقدم» صفحةً صفحة** (أحمد ٣٠ أكتوبر: «كل مانزل يعرض زيادة» — «٤ أ»): الحمولةُ الأولى تحمل آخرَ ستين، وحين
+     يقترب القاعُ تُطلب ثلاثون أقدم من أقدم رأيٍ وصل (`/api/v1/community/feed?before=`) وتُلحق تحت ما يُرى. تُصفَّر مع تبديل الشريحة
+     وسحب التحديث — الصفحةُ الأولى تتغيّر فيهما. صفحةٌ رشّحها «الغرباء» فارغةً تُتبَع بالتالية (حتى خمسٍ في الضغطة الواحدة) كي
+     لا يقف الخطُّ وتحته المزيد. خادمٌ قبل الهجرة ٢٢٧ يقول «انتهى» فلا يُطلب شيء. */
+  const [older, setOlder] = useState<{ slice: string; rows: CommunityFeedRow[]; before: string | null | undefined; busy: boolean }>({ slice: "", rows: [], before: undefined, busy: false });
+  const olderNow = useMemo(
+    () => (older.slice === sliceKey && !pulling ? older : { slice: sliceKey, rows: [] as CommunityFeedRow[], before: undefined, busy: false }),
+    [older, sliceKey, pulling],
+  );
+  const firstCursor = useMemo(() => {
+    let min: string | null = null;
+    for (const r of feedView.rows) if (r.kind === "comment" && (min === null || r.item.updated_at < min)) min = r.item.updated_at;
+    return min;
+  }, [feedView.rows]);
+  /* سحبُ التحديث يبدأ الخطَّ من جديد: الصفحاتُ الأقدم المحفوظة تسقط لا تعود تحت صفحةٍ أولى تغيّرت */
+  useEffect(() => {
+    if (pulling) setOlder({ slice: "", rows: [], before: undefined, busy: false });
+  }, [pulling]);
+  const loadingOlder = useRef(false);
+  const moreFeed = useCallback(async () => {
+    if (loadingOlder.current) return;
+    let cursor = olderNow.before === undefined ? firstCursor : olderNow.before;
+    if (!cursor) return;
+    loadingOlder.current = true;
+    setOlder({ ...olderNow, busy: true });
+    const seenKeys = new Set([...feedView.rows.map((r) => r.key), ...olderNow.rows.map((r) => r.key)]);
+    const got: CommunityFeedRow[] = [];
+    try {
+      for (let i = 0; i < 5 && cursor; i++) {
+        const page: CommunityFeedPagePayload = (await api<CommunityFeedPagePayload>(`/api/v1/community/feed?before=${encodeURIComponent(cursor)}`)).data;
+        for (const r of page.rows)
+          if (!seenKeys.has(r.key)) {
+            seenKeys.add(r.key);
+            got.push(r);
+          }
+        cursor = page.next_before;
+        if (got.length) break;
+      }
+      setOlder({ slice: sliceKey, rows: [...olderNow.rows, ...got], before: cursor ?? null, busy: false });
+    } catch {
+      setOlder({ ...olderNow, busy: false });
+    } finally {
+      loadingOlder.current = false;
+    }
+  }, [olderNow, firstCursor, feedView.rows, sliceKey]);
+  const feedData = useMemo(() => (olderNow.rows.length ? [...shownRows, ...olderNow.rows] : shownRows), [shownRows, olderNow.rows]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -605,7 +651,7 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
       <View style={{ flex: 1 }}>
         <FlatList
           ref={feedRef}
-          data={shownRows}
+          data={feedData}
           keyExtractor={(r) => r.key}
           renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
           /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
@@ -626,6 +672,9 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
           initialNumToRender={6}
           windowSize={7}
           removeClippedSubviews
+          onEndReached={() => void moreFeed()}
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={olderNow.busy ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 20 }} /> : undefined}
         />
         {freshCount > 0 ? (
           <View pointerEvents="box-none" style={{ position: "absolute", top: topPad + 8, start: 0, end: 0, alignItems: "center" }}>

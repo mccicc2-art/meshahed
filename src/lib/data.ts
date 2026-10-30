@@ -1645,6 +1645,9 @@ export interface FeedItem {
  */
 export async function getCommunityFeed(
   mode: "following" | "all" = "following",
+  /** 🆕 D-1596 — صفحةٌ أقدم (الهجرة ٢٢٧): المكتوبُ قبل `before` حصراً، `limit` صفّاً. `raw` يُملأ بعدد ما أعادته الدالّة
+   *  قبل ترشيح الصفوف بلا عنوان — هو ما يقول إن بقي بعدها شيء. غيابُه = الخطُّ الأوّل كما كان (سقف ٦٠) */
+  page?: { before: string; limit: number; out?: { raw: number } },
 ): Promise<FeedItem[]> {
   try {
     const supabase = await createClient();
@@ -1658,8 +1661,10 @@ export async function getCommunityFeed(
     // نشاط المتابَعين أو المجتمع من دالة definer — الجداول ليست مفتوحة
     // القراءة، والدالّة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم منفَّذاً
     // في SQL (supabase/activity_v2.sql و supabase/community_feed.sql)
+    const pageArgs = page ? { p_before: page.before, p_limit: page.limit } : undefined;
     let { data: actRows, error } = await supabase.rpc(
       effMode === "all" ? "community_activity" : "following_activity_v2",
+      pageArgs,
     );
     /* **ارتدادٌ حين تكون الدالّة غائبةً لا حين يفشل الاستعلام** (D-187):
        `community_activity` مكتوبةٌ في `supabase/community_feed.sql` منذ
@@ -1669,9 +1674,10 @@ export async function getCommunityFeed(
        يسقط من نفسه** يوم توجد. (نفس شكل حارس D-185: لا يُصدَّق الغياب
        قبل دليل.) */
     if (error && mode === "all") {
-      ({ data: actRows, error } = await supabase.rpc("following_activity_v2"));
+      ({ data: actRows, error } = await supabase.rpc("following_activity_v2", pageArgs));
     }
     if (error || !actRows) return [];
+    if (page?.out) page.out.raw = (actRows as unknown[]).length;
 
     type ActivityRow = {
       id: string;

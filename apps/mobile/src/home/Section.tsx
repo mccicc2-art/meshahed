@@ -80,8 +80,11 @@ export function Rail({ children }: { children: React.ReactNode }) {
     ref.current?.scrollToEnd({ animated: false });
   }, []);
   const rtlIos = Platform.OS === "ios" && I18nManager.isRTL;
+  /* 🆕 D-1597 — **التباطؤُ الطبيعيّ كصفوف المكتبة** (تسجيلُ أحمد ٣٠ أكتوبر: «ليه وقت التمرير ماهي ناعمه وتتزحلق مثل المكتبة؟»):
+     كان الصفُّ بـ`decelerationRate="fast"` فيقف لحظةَ رفع الإصبع؛ صفوفُ المكتبة على الافتراضيّ فتنساب وتهدأ. لا التقاطَ للبطاقات
+     هنا يبرّر «سريع» — فالصفُّ الأفقيُّ في التطبيق يتحرّك بإحساسٍ واحد */
   return (
-    <ScrollView ref={ref} onContentSizeChange={rtlIos ? pinStart : undefined} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }} decelerationRate="fast">
+    <ScrollView ref={ref} onContentSizeChange={rtlIos ? pinStart : undefined} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }}>
       {children}
     </ScrollView>
   );

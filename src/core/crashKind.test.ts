@@ -4,6 +4,7 @@ import { crashKind } from "./crashKind.ts";
 
 test("widget tap logs and DM-category traces are diagnostics, not crashes", () => {
   assert.equal(crashKind("widget", "widget taps: 3 · token file yes"), "AppDiag");
+  assert.equal(crashKind("widget", "widget sizes · ios · 2"), "AppDiag");
   assert.equal(crashKind("messages", "dm category: define: boom"), "AppDiag");
 });
 

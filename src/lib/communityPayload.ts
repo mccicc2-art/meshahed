@@ -24,7 +24,24 @@ import type {
 
 const NO_LIB: CommunityLibState = { added: false, watched: false, progress: 0, dropped: false };
 
-export function libOf(core: CommunityData, tmdbId: number, mediaType: "tv" | "movie"): CommunityLibState {
+/** 🆕 D-1596 — ما يقرؤه `feedRows` من النواة وحدَه: صفحةُ «الأقدم» (`buildFeedPage`) تبني هذا القدرَ لا المجتمعَ كلَّه */
+export type FeedCore = Pick<
+  CommunityData,
+  | "talkFeed"
+  | "localized"
+  | "newsForMe"
+  | "followingIds"
+  | "reviewReplies"
+  | "postLikes"
+  | "newsReplies"
+  | "listSocial"
+  | "feedTranslations"
+  | "viewCounts"
+  | "libState"
+  | "followed"
+>;
+
+export function libOf(core: Pick<CommunityData, "libState" | "followed">, tmdbId: number, mediaType: "tv" | "movie"): CommunityLibState {
   const key = `${mediaType}-${tmdbId}`;
   const s = core.libState?.of(tmdbId, mediaType);
   /* غيابُ `libState` يُبقي `followed` وحدَها — سماويٌّ كما في الويب (D-850) */
@@ -32,7 +49,7 @@ export function libOf(core: CommunityData, tmdbId: number, mediaType: "tv" | "mo
 }
 
 export function feedRows(
-  core: CommunityData,
+  core: FeedCore,
   o: { meId: string; showStrangers: boolean; sort: FeedSort; t: Dict; locale: Locale; report?: { quiet: boolean } },
 ): CommunityFeedRow[] {
   /* 🆕 R58 — منشوراتُ النقاش بشكل `FeedTalkLike` (الشخصُ والوقتُ والعدّادان) */

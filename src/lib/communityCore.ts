@@ -224,6 +224,63 @@ export async function buildCommunity(o: {
 export type CommunityData = Awaited<ReturnType<typeof buildCommunity>>;
 
 /**
+ * 🆕 D-1596 — **صفحةُ «الأقدم» في النشاط** (أحمد ٣٠ أكتوبر: «كل مانزل يعرض زيادة» — «٤ أ»): ثلاثون رأياً مكتوباً قبل
+ * `before`، بالشكل الذي يرسمه الخطُّ حرفاً (`feedRows`) — لكن **بلا بقيّة المجتمع**: لا غرفَ ولا لوحةَ ناسٍ ولا أخبار؛ ما يحتاجه
+ * صفُّ الرأي وحدَه (الترجمة · الردود · المشاهدات · إعجاباتُ القوائم · حالةُ المكتبة). بالأحدث دائماً: «الأكثر تفاعلاً» ترتيبُ
+ * الصفحة الأولى، وما تحتها تاريخٌ متّصل. `next_before` آخرُ ما أعادته الدالّة (قبل ترشيح «الغرباء») فلا تتكرّر صفحةٌ ولا تُقفز.
+ */
+export async function buildFeedPage(o: {
+  user: Awaited<ReturnType<typeof getUser>>;
+  locale: Locale;
+  before: string;
+  limit: number;
+  translateOn: boolean;
+}) {
+  const out = { raw: 0 };
+  const items = await getCommunityFeed("all", { before: o.before, limit: o.limit, out });
+  const localized = await localizeRows(items, o.locale);
+  const reviewKeys = localized
+    .filter((a) => a.review?.trim() && a.kind !== "ep_rate")
+    .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id));
+  const [feedTranslations, follows, followingIds, libState, reviewReplies, listSocial, viewCounts] = await Promise.all([
+    o.translateOn
+      ? getBatchTranslations(
+          localized
+            .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate")
+            .map((a) => ({ id: commentViewKey(a.person.id, a.media_type, a.tmdb_id), text: a.review ?? "" })),
+          o.locale === "ar" ? "ar" : "en",
+        )
+      : Promise.resolve({} as Record<string, string>),
+    o.user ? getFollows() : Promise.resolve([] as Awaited<ReturnType<typeof getFollows>>),
+    getFollowingIds(),
+    getLibState().catch(() => undefined),
+    getReviewReplyCounts(reviewKeys),
+    getListReviewSocial([...new Set(localized.map((a) => a.listId).filter(Boolean) as string[])]),
+    getPostViewCounts(reviewKeys),
+  ]);
+  const oldest = items.reduce<string | null>((m, a) => (m === null || a.updated_at < m ? a.updated_at : m), null);
+  return {
+    core: {
+      talkFeed: [],
+      localized,
+      newsForMe: [],
+      followingIds,
+      reviewReplies,
+      postLikes: { counts: {} as Record<string, number>, mine: new Set<string>() },
+      newsReplies: new Map<string, number>(),
+      listSocial,
+      feedTranslations,
+      viewCounts,
+      libState,
+      followed: new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`)),
+    },
+    /* انتهى الخطُّ حين أعادت الدالّةُ أقلَّ من الصفحة */
+    next_before: out.raw >= o.limit ? oldest : null,
+  };
+}
+
+
+/**
  * **التجديدُ بحركة المرور** (D-210/D-215/D-261): دورةُ رصد الأخبار ونشرةُ الغرف بعد إرسال
  * الردّ — فلا ينتظرها قارئ. **والبابُ يطرقها كالصفحة** كي لا يبقى مجتمعُ التطبيق بلا تجديد.
  * `pagerTab` يحرس الأولى كما كانت في الصفحة؛ والثانيةُ لكلِّ فتحة.

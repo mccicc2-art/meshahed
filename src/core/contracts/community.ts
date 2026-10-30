@@ -205,6 +205,9 @@ export type CommunityPrefs = {
   hidden_rails: string[];
 };
 
+/** 🆕 D-1596 — `GET /api/v1/community/feed?before=`: صفحةٌ أقدم من الخطّ بشكل `feed.rows` — `next_before` مؤشّرُ التالية (`null` = انتهى) */
+export type CommunityFeedPagePayload = { rows: CommunityFeedRow[]; next_before: string | null };
+
 export type CommunityPayload = {
   viewer: { signed_in: boolean; me_id: string | null; admin: boolean };
   /** التبويباتُ الظاهرة بترتيب صاحبها، والمفتوحُ أوّلاً (`defaultTab` — جوابُ أحمد ٢٨ سبتمبر) */

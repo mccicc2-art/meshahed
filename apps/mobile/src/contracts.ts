@@ -149,6 +149,7 @@ export type {
   CommunityPeopleAllPayload,
   CommunityLibState,
   CommunityPrefs,
+  CommunityFeedPagePayload,
 } from "@/core/contracts/community";
 /* 🆕 11-M · M2 — أفعالُ «المجتمع» (`/api/v1/community/{like,reply,follow,pin,views}`) */
 export type {
