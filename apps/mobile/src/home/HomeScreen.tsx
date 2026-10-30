@@ -47,7 +47,7 @@ import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
 import { nextHomeView, sanitizeHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
-import { reorderHomePayload } from "./queueOrder";
+import { reorderHomePayload, towatchQueueOf } from "./queueOrder";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
@@ -803,7 +803,7 @@ export function HomeScreen() {
       <HoldHost hostRef={holdDisc} variant="discover" toItem={asItemSame} toWatchOf={toWatchOf} onAction={actDisc} />
       {queueRow && d ? (
         <ReorderSheet
-          items={queueItemsOf(queueRow === "continue" ? d.queues.continue : queueRow === "towatch" ? d.queues.towatch : queueRow === "lists" ? d.queues.lists : d.queues.towatch_list)}
+          items={queueItemsOf(queueRow === "continue" ? d.queues.continue : queueRow === "towatch" ? towatchQueueOf(d) : queueRow === "lists" ? d.queues.lists : d.queues.towatch_list)}
           onClose={() => setQueueRow(null)}
           onDone={(keys) => saveQueue(queueRow, keys)}
         />

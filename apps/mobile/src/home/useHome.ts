@@ -29,8 +29,11 @@ export function homeReady(capMs: number): Promise<boolean> {
   return Promise.race([got, new Promise<boolean>((r) => setTimeout(() => r(false), capMs))]);
 }
 
+/** 🆕 D-1596 — `lite=1`: طابورُ «للمشاهدة» لا يُرسل مرّتين (`towatchQueueOf` يشتقّه) — وكلُّ جالبٍ للرئيسيّة يطلبه بهذا المسار */
+export const HOME_PATH = "/api/v1/me/home?lite=1";
+
 export async function fetchHome() {
-  return (await api<HomePayload>("/api/v1/me/home")).data;
+  return (await api<HomePayload>(HOME_PATH)).data;
 }
 async function fetchExtras() {
   return (await api<HomeExtrasPayload>("/api/v1/me/home/extras")).data;

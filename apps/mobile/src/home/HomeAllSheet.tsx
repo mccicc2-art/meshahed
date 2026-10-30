@@ -4,7 +4,8 @@ import { write } from "../api";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { haptic } from "../haptics";
 import { HOME_KEY } from "./useHome";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { towatchQueueOf } from "./queueOrder";
+import { FlatList, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useApp } from "../state";
 import { BackChevron, Text } from "../ui";
 import { Icon } from "../icons";
@@ -181,7 +182,7 @@ export function HomeAllSheet({
     : section === "upcoming" ? s.upcoming.length
     : s.lists.cards.length + (s.lists.towatch_card ? 1 : 0);
   const row = REORDER_ROW[section];
-  const queue = row === "continue" ? d.queues.continue : row === "towatch" ? d.queues.towatch : row === "lists" ? d.queues.lists : row === "towatchlist" ? d.queues.towatch_list.filter((q) => !gone.has(queueIdOf(q.key))) : [];
+  const queue = row === "continue" ? d.queues.continue : row === "towatch" ? towatchQueueOf(d) : row === "lists" ? d.queues.lists : row === "towatchlist" ? d.queues.towatch_list.filter((q) => !gone.has(queueIdOf(q.key))) : [];
   const canReorder = !!row && queue.length > 1;
 
   /* ——— وضعُ الأسماء: الورقةُ نفسُها، رأسُها اسمُ العمل وسهمُ رجوع ——— */
@@ -230,6 +231,39 @@ export function HomeAllSheet({
               </Pressable>
             ) : null}
           </View>
+          {posters ? (
+            /* 🆕 D-1596 — **شبكةٌ افتراضيّة** (أحمد ٣٠ أكتوبر: «لو شخص حاط ٥٠٠ فلم بيضطر يجهّزها»): كانت الورقةُ ترسم كلَّ ملصقٍ
+               دفعةً واحدة داخل `ScrollView` — ٥٠٠ عملٍ = ٥٠٠ صورةٍ تُبنى قبل أن تظهر الورقة. `FlatList` بثلاثة أعمدة يرسم ما يُرى
+               وما حوله فقط، والباقي حين يقترب التمرير؛ الشكلُ والقياسُ (`onLayout` · D-1354) هما هما */
+            <FlatList
+              data={posters}
+              keyExtractor={(p) => p.item.key}
+              numColumns={3}
+              style={{ maxHeight: bodyMax }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 8 }}
+              columnWrapperStyle={{ gap: GAP }}
+              ItemSeparatorComponent={RowGap}
+              initialNumToRender={9}
+              maxToRenderPerBatch={9}
+              windowSize={5}
+              removeClippedSubviews
+              onLayout={(e) => {
+                const w = Math.floor(e.nativeEvent.layout.width);
+                if (w > 0 && w !== boxW) setBoxW(w);
+              }}
+              renderItem={({ item: p }) => (
+                <View style={{ width: cell }}>
+                  <View>
+                    <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
+                    {p.friend ? <FriendBadge card={p.friend} /> : null}
+                    {p.queued ? <QueueMarks rank={p.queued.rank} onCheck={() => void watchQueued(p.queued!.id, p.item.title)} /> : null}
+                  </View>
+                  {p.friend ? <FriendsWhoLine card={p.friend} onProfile={(u) => { onClose(); onProfile(u); }} onNames={setWho} /> : null}
+                </View>
+              )}
+            />
+          ) : (
           <ScrollView
             style={{ maxHeight: bodyMax }}
             showsVerticalScrollIndicator={false}
@@ -239,20 +273,7 @@ export function HomeAllSheet({
               if (w > 0 && w !== boxW) setBoxW(w);
             }}
           >
-            {posters ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-                {posters.map((p) => (
-                  <View key={p.item.key} style={{ width: cell }}>
-                    <View>
-                      <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
-                      {p.friend ? <FriendBadge card={p.friend} /> : null}
-                      {p.queued ? <QueueMarks rank={p.queued.rank} onCheck={() => void watchQueued(p.queued!.id, p.item.title)} /> : null}
-                    </View>
-                    {p.friend ? <FriendsWhoLine card={p.friend} onProfile={(u) => { onClose(); onProfile(u); }} onNames={setWho} /> : null}
-                  </View>
-                ))}
-              </View>
-            ) : section === "upcoming" ? (
+            {section === "upcoming" ? (
               <View style={{ gap: 8 }}>
                 {s.upcoming.map((x) => {
                   const ep = extras?.upcoming_eps[x.key] ?? x.ep;
@@ -292,12 +313,18 @@ export function HomeAllSheet({
               </View>
             )}
           </ScrollView>
+          )}
           {/* إشعارُ «تراجع» داخل الورقة: هي نافذةٌ فوق الرئيسيّة، وإشعارُ الرئيسيّة تحتها لا يُرى */}
           {section === "queue" ? <View pointerEvents="box-none" style={{ height: 0 }}><ToastHost hostRef={toast} bottom={-64} /></View> : null}
         </>
       )}
     </Sheet>
   );
+}
+
+/** فاصلُ صفوف الشبكة الافتراضيّة — الفجوةُ نفسُها بين الأعمدة (`GAP`) */
+function RowGap() {
+  return <View style={{ height: GAP }} />;
 }
 
 /** 🆕 D-1507 — رقمُ الفيلم في الطابور (طرفُ البداية) و✓ «شاهدته» (الطرفُ الآخر) فوق ملصقه — دائرةُ ✓ بطاقة «تابِع المشاهدة» نفسُها */

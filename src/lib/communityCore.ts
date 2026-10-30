@@ -45,7 +45,6 @@ import {
 } from "@/core/communityParams";
 
 /** 🆕 R56 — سقفُ غرف «مكتبتي» الفارغة في الردّ (مكتبةُ ألف عملٍ لا تُرسل ألفَ بطاقة) */
-const LIBRARY_ROOMS = 150;
 
 /**
  * ====== نواةُ «المجتمع» — ما تقرؤه `/people` وما يعيده `/api/v1/community` (Phase 11-M · M0) ======
@@ -137,30 +136,10 @@ export async function buildCommunity(o: {
   const followed = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
   /* 🆕 R56 — موعدُ الحلقة القادمة المخزَّن في المكتبة (شارةُ «يعرض الآن») — بلا نداء TMDB */
   const nextAir = new Map(follows.filter((f) => f.media_type === "tv" && f.next_air_date).map((f) => [`tv-${f.tmdb_id}`, f.next_air_date as string]));
-  /* 🆕 R56 — شريحةُ «مكتبتي» (أحمد «٣ أ»): كلُّ أعمال المكتبة غيرِ الموقوفة، وما لا غرفةَ له بعدُ يُرسم غرفةً فارغة
-     (لمستُها تفتح النقاشَ وأنت أوّلُ من يكتب). الأحدثُ إضافةً أوّلاً، بسقفٍ يحفظ حجمَ الردّ */
-  const roomKeys = new Set(rooms.map((r) => `${r.mediaType}-${r.tmdbId}`));
-  const libraryRooms: TalkRoom[] = user
-    ? follows
-        .filter((f) => !f.dropped && !roomKeys.has(`${f.media_type}-${f.tmdb_id}`))
-        .sort((a, b) => b.added_at.localeCompare(a.added_at))
-        .slice(0, LIBRARY_ROOMS)
-        .map((f) => ({
-          tmdbId: f.tmdb_id,
-          mediaType: f.media_type,
-          title: f.title,
-          posterPath: f.poster_path,
-          backdropPath: null,
-          posts: 0,
-          postsWeek: 0,
-          postsMonth: 0,
-          likesMonth: 0,
-          lastPostAt: null,
-          lastAt: f.added_at,
-          faces: [],
-          bulletin: null,
-        }))
-    : [];
+  /* 🆕 R56 → 🗑️ D-1596 — **لا غرفَ فارغةً في القائمة** (أحمد ٣٠ أكتوبر: «النقاشات ٠ مشاركة اخفيها وتظهر للشخص إذا بحث عنها» — «٣ أ»):
+     كانت كلُّ أعمال المكتبة بلا غرفةٍ (حتى ١٥٠) تُرسل بطاقاتٍ «٠ مشاركة» تزحم «مكتبتي» وتثقل الردّ. البحثُ (`TalkSearch`) يبحث في
+     الأعمال كلِّها لا في الحمولة، فالغرفةُ الفارغةُ تُفتح منه ومن صفحة العمل كما كانت. الحقلُ يبقى في العقد فارغاً لنسخٍ أقدم */
+  const libraryRooms: TalkRoom[] = [];
   const libState = await getLibState().catch(() => undefined);
 
   /* «أعمالي المتابَعة فقط» (D-306) · والزائرُ أفضلُ خمسٍ (D-628) */

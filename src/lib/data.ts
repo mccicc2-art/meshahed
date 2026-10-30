@@ -1122,6 +1122,40 @@ export async function getMyRatings(): Promise<RatingRow[]> {
   }
 }
 
+/**
+ * 🆕 D-1596 — **تقييماتي صفحةً صفحة** (أحمد ٣٠ أكتوبر: «يعرض جزء وكلما نزل يعرض زيادة» — «١ أ ٢ أ»): الترتيبُ ترتيبُ
+ * `getMyRatings` حرفاً (الأعلى ثمّ الأحدث) لكن بلا سقف ٢٠٠ — من قيّم ٥٠٠ يرى الـ٥٠٠، ثلاثين ثلاثين. و«مع تعليق» صار شرطاً
+ * في الاستعلام لا فرزاً في الجهاز: الجهازُ لا يملك إلا ما جلبه، فالفرزُ فيه يُخفي تعليقاتِ الصفحات التي لم تصل. والعدّان
+ * (الكلّ · مع تعليق) من الخادم لأنّ الرقاقتين تعرضانهما قبل أن تُجلب الصفحاتُ كلُّها.
+ */
+export async function getMyRatingsPage(
+  offset: number,
+  limit: number,
+  commentsOnly: boolean,
+): Promise<{ rows: RatingRow[]; total: number; withComment: number }> {
+  const empty = { rows: [] as RatingRow[], total: 0, withComment: 0 };
+  try {
+    const supabase = await createClient();
+    const uid = await getUserId();
+    if (!uid) return empty;
+    const cols = "user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at, has_spoiler";
+    let page = supabase.from("ratings").select(cols).eq("user_id", uid);
+    if (commentsOnly) page = page.not("review", "is", null).neq("review", "");
+    const [rowsRes, allRes, comRes] = await Promise.all([
+      page
+        .order("rating", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .order("tmdb_id", { ascending: true })
+        .range(offset, offset + limit - 1),
+      supabase.from("ratings").select("tmdb_id", { count: "exact", head: true }).eq("user_id", uid),
+      supabase.from("ratings").select("tmdb_id", { count: "exact", head: true }).eq("user_id", uid).not("review", "is", null).neq("review", ""),
+    ]);
+    return { rows: (rowsRes.data as RatingRow[]) ?? [], total: allRes.count ?? 0, withComment: comRes.count ?? 0 };
+  } catch {
+    return empty;
+  }
+}
+
 /** تقييمات مستخدم معيّن مرتّبة من الأعلى — عبر دالة definer محدودة
  *  الأعمدة والعدد، لأن جدول التقييمات لم يعد مفتوح القراءة */
 export async function getRatingsOf(userId: string): Promise<RatingRow[]> {

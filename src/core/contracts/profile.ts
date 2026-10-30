@@ -79,7 +79,14 @@ export type MyActivityPayload = { items: ProfileActivity[] };
 
 /** 🆕 D-1357 (V-C · C1) — `GET /api/v1/me/ratings`: صفُّ «تقييماتي» كما ترسمه صفحةُ `/ratings` — التقييمُ من ١٠، والتعليقُ نصٌّ داخله */
 export type MyRating = { kind: "tv" | "movie"; id: number; title: string | null; poster_path: string | null; rating: number; review: string | null };
-export type MyRatingsPayload = { items: MyRating[] };
+export type MyRatingsPayload = {
+  items: MyRating[];
+  /** 🆕 D-1596 — بـ`?limit=` (صفحاتٌ): العدّان للرقاقتين، و`next_offset` بابُ الصفحة التالية (`null` = انتهت). بلا `limit` (نسخةٌ أقدم):
+   *  الردُّ القديم حرفاً — الكلُّ حتى ٢٠٠ بلا هذه الحقول */
+  total?: number;
+  with_comment?: number;
+  next_offset?: number | null;
+};
 
 /**
  * 🆕 D-1360 (V-C · C4) — `GET /api/v1/me/invites`: تبويبُ «دعوة الأصدقاء» كما ترسمه `/profile/settings/invites`.

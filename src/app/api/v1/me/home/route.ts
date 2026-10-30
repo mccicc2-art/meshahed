@@ -1,6 +1,6 @@
 import { watchStateOf } from "@/core/libraryStatus";
 import { homeOrderUntouched } from "@/core/homePrefs";
-import { after } from "next/server";
+import { after, type NextRequest } from "next/server";
 import {
   getFollows,
   getWatchSummary,
@@ -51,7 +51,10 @@ import type {
  * وتجديدُ الأخبار (D-215) من الباب نفسِه لأنّ الرئيسيةَ أكثرُ الأسطح زيارة.
  * وكلُّها صامتةُ الفشل: إحصاءٌ يكسر الرئيسيةَ أسوأُ صفقة (D-909).
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  /* 🆕 D-1596 — `?lite=1` (نسخةُ التطبيق الجديدة): طابورُ «للمشاهدة» (`queues.towatch`) نسخةٌ ثانيةٌ من `sections.towatch.all`
+     بالترتيب نفسِه — الجهازُ يشتقّه منها، فلا تُرسل القائمةُ مرّتين مع كلِّ فتحةٍ للرئيسيّة. بلا `lite` (نسخةٌ أقدم): الردُّ كما كان */
+  const lite = req.nextUrl.searchParams.get("lite") === "1";
   return handle(async () => {
     routeName("me/home");
     const auth = await requireUser();
@@ -268,7 +271,7 @@ export async function GET() {
       },
       queues: {
         continue: body.continueQueueItems.map(queue),
-        towatch: body.toWatchQueueItems.map(queue),
+        towatch: lite ? [] : body.toWatchQueueItems.map(queue),
         lists: body.listsQueueItems.map(queue),
         towatch_list: body.toWatchListItems.map(queue),
       },

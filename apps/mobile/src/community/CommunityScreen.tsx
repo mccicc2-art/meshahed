@@ -518,12 +518,15 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
   /* 🆕 R56 — **«أعمالي» بقسمين** (أحمد ٢١ أكتوبر «١ أ»: لا شريحةَ ثالثة): «يعرض الآن» — غرفُ مكتبتي التي عليها الشارة —
      ثمّ «مكتبتي»: بقيّةُ غرفها وأعمالُها التي لا غرفةَ لها بعد (الأحدثُ إضافةً). كلُّ قسمٍ بترتيب «الأحدث ⌄» نفسِه. و🔍 يفتح البحث */
   const [searching, setSearching] = useState(false);
+  /* 🆕 D-1596 — **«٠ مشاركة» لا يُرسم في القائمة** (أحمد ٣٠ أكتوبر «٣ أ»): غرفةٌ بلا مشاركةٍ ولا نشرةٍ ولا تثبيتٍ تُفتح من 🔍
+     وصفحة العمل، لا تزحم القائمة. الخادمُ لم يعد يرسل غرفَ المكتبة الفارغة؛ وهذا يُسقط ما بقي منها في حمولةٍ محفوظةٍ أقدم */
+  const liveRooms = useMemo(() => d.rooms.filter((r) => r.posts > 0 || !!r.bulletin_line || r.pin > 0), [d.rooms]);
   const talkRooms = useMemo(() => {
-    if (!talkPrefs) return d.rooms;
+    if (!talkPrefs) return liveRooms;
     const sort = talkPrefs.talk_sort ?? "latest";
-    if (!talkPrefs.talk_followed) return sortTalkRooms(d.rooms, sort, (r) => r.pin);
-    return sortTalkRooms(d.rooms.filter((r) => r.mine), sort, (r) => r.pin);
-  }, [d.rooms, talkPrefs]);
+    if (!talkPrefs.talk_followed) return sortTalkRooms(liveRooms, sort, (r) => r.pin);
+    return sortTalkRooms(liveRooms.filter((r) => r.mine), sort, (r) => r.pin);
+  }, [liveRooms, talkPrefs]);
   type TalkItem =
     | { kind: "head"; key: string; label: string; count: number }
     | { kind: "room"; key: string; room: CommunityPayload["rooms"][number]; general?: boolean };
@@ -536,12 +539,12 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
       : [];
     if (!talkPrefs?.talk_followed) return [...general, ...talkRooms.map(asRoom)];
     const airing = talkRooms.filter((r) => r.airing);
-    const rest = [...talkRooms.filter((r) => !r.airing), ...(d.library_rooms ?? [])];
+    const rest = talkRooms.filter((r) => !r.airing);
     const out: TalkItem[] = [...general];
     if (airing.length) out.push({ kind: "head", key: "h-airing", label: t.talkAiringNow, count: airing.length }, ...airing.map(asRoom));
     if (rest.length) out.push({ kind: "head", key: "h-library", label: t.talkScopeLibrary, count: rest.length }, ...rest.map(asRoom));
     return out;
-  }, [talkRooms, talkPrefs, d.library_rooms, d.general_room, t.talkAiringNow, t.talkScopeLibrary]);
+  }, [talkRooms, talkPrefs, d.general_room, t.talkAiringNow, t.talkScopeLibrary]);
   /* 🆕 D-1207 — شهرٌ بلا تفاعلٍ في كلِّ ما يُعرض: البطاقاتُ بسطرها العادي والسطرُ الخافتُ يقول لماذا */
   const talkActive = talkPrefs?.talk_sort === "active";
   const talkIsQuiet = talkActive && talkQuiet(talkRooms);

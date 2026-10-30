@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { BackHandler, FlatList, Platform, Pressable, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
 import { BackChevron, Button, Text } from "../ui";
@@ -18,8 +18,8 @@ import type { MyRating, MyRatingsPayload } from "@/core/contracts/profile";
  * ====== «تقييماتي» أصليّاً (🆕 D-1357 · Phase 11-V · V-C · C1 — ١١ أكتوبر ٢٠٢٦) ======
  *
  * **قرارُ أحمد: «نفذ وارفع ترشيحاتك»** بعد صورةٍ للشاشة. كان عنوانُ «التقييمات — من الأعلى» و«الكلّ» في الرئيسيّة يفتحان صفحةَ
- * الويب طبقةً. **الحمولةُ ما ترسمه `/ratings` حرفاً** (`GET /api/v1/me/ratings`): الأعلى تقييماً ثمّ الأحدث، بسقف ٢٠٠.
- *  - **الرقاقتان** («الكل» · «مع تعليق» بعددَيهما) من عائلة `Chip` نفسِها (القاعدة ٣)، والفرزُ هنا لا طلبٌ ثانٍ.
+ * الويب طبقةً. **الحمولةُ ما ترسمه `/ratings` حرفاً** (`GET /api/v1/me/ratings`): الأعلى تقييماً ثمّ الأحدث — 🆕 D-1596 بلا سقف ٢٠٠، صفحاتٍ من ٣٠.
+ *  - **الرقاقتان** («الكل» · «مع تعليق» بعددَيهما) من عائلة `Chip` نفسِها (القاعدة ٣). 🆕 D-1596: كلٌّ صفحاتُه من الخادم، والعدّان منه.
  *  - **«★ 9/10» لا صفُّ نجوم** («1 أ»): السلّمُ من ١٠، وهو شكلُ شريط الرئيسيّة نفسِه.
  *  - الرأسُ رأسُ «النشاط» و«الإحصائيات» (سهمٌ وعنوان) — شاشةٌ في المكدّس لا جذر، فلا شريطَ سفليّ.
  *  - **المفتاحُ وسمُ `me:ratings`**: `track/rate` و`track/unrate` يعيدانه، فتتجدّد القائمةُ بعد تقييمٍ من صفحة العمل بلا منطقٍ هنا.
@@ -27,15 +27,23 @@ import type { MyRating, MyRatingsPayload } from "@/core/contracts/profile";
 const PAGE_PAD = 16;
 const HEADER_H = 56;
 export const myRatingsKey = ["me:ratings"] as const;
+/** 🆕 D-1596 — حجمُ الصفحة: ٣٠ (أحمد «١ أ») */
+const PAGE = 30;
 
 export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
   const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [onlyComments, setOnlyComments] = useState(false);
-  const q = useQuery({
-    queryKey: myRatingsKey,
-    queryFn: async () => (await api<MyRatingsPayload>("/api/v1/me/ratings")).data,
+  /* 🆕 D-1596 — **صفحةٌ صفحة** (أحمد ٣٠ أكتوبر «يعرض جزء وكلما نزل يعرض زيادة»): ٣٠ تقييماً، والتاليةُ تُطلب قبل القاع
+     (`onEndReached` ٠٫٦). كلُّ رقاقةٍ قائمتُها من الخادم (`comments=1`) — الفرزُ في الجهاز كان يُخفي تعليقاتِ صفحاتٍ لم تصل.
+     المفتاحُ تحت `me:ratings` فوسمُ `track/rate` يجدّد الرقاقتين معاً كما كان */
+  const q = useInfiniteQuery({
+    queryKey: [...myRatingsKey, "pages", onlyComments ? "comments" : "all"] as const,
+    queryFn: async ({ pageParam }) =>
+      (await api<MyRatingsPayload>(`/api/v1/me/ratings?limit=${PAGE}&offset=${pageParam}${onlyComments ? "&comments=1" : ""}`)).data,
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.next_offset ?? undefined,
     staleTime: 60_000,
   });
   const refresh = usePullRefresh([myRatingsKey], 0);
@@ -58,9 +66,26 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
     [router, from],
   );
 
-  const all = q.data?.items;
-  const withComment = useMemo(() => (all ?? []).filter((r) => r.review), [all]);
-  const rows = onlyComments ? withComment : (all ?? []);
+  const pages = q.data?.pages;
+  const first = pages?.[0];
+  /* المكرَّرُ يسقط بمفتاحه: تقييمٌ جديدٌ بين صفحتين يزيح الترتيبَ صفّاً فيتكرّر آخرُ الأولى أوّلَ الثانية */
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    const out: MyRating[] = [];
+    for (const p of pages ?? [])
+      for (const r of p.items) {
+        const k = `${r.kind}-${r.id}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(r);
+      }
+    return out;
+  }, [pages]);
+  const totalAll = first?.total ?? rows.length;
+  const totalComments = first?.with_comment ?? rows.filter((r) => r.review).length;
+  const more = useCallback(() => {
+    if (q.hasNextPage && !q.isFetchingNextPage) void q.fetchNextPage();
+  }, [q]);
 
   const renderRow = useCallback(
     ({ item: r }: { item: MyRating }) => {
@@ -99,7 +124,7 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
         <Text size={17} weight="700">{t.ratingsTitle}</Text>
       </View>
 
-      {!all ? (
+      {!pages ? (
         q.isError ? (
           <View style={{ alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: PAGE_PAD }}>
             <Text muted style={{ textAlign: "center" }}>{t.apiInternal}</Text>
@@ -121,11 +146,14 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
           renderItem={renderRow}
           refreshControl={refresh}
           initialNumToRender={10}
+          onEndReached={more}
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 20 }} /> : undefined}
           ItemSeparatorComponent={Gap}
           ListHeaderComponent={
             <View style={{ flexDirection: "row", gap: 8, paddingTop: 6, paddingBottom: 12 }}>
-              <Chip label={`${t.ratingsAll} ${all.length}`} active={!onlyComments} onPress={() => setOnlyComments(false)} />
-              <Chip label={`${t.ratingsWithComment} ${withComment.length}`} active={onlyComments} onPress={() => setOnlyComments(true)} />
+              <Chip label={`${t.ratingsAll} ${totalAll}`} active={!onlyComments} onPress={() => setOnlyComments(false)} />
+              <Chip label={`${t.ratingsWithComment} ${totalComments}`} active={onlyComments} onPress={() => setOnlyComments(true)} />
             </View>
           }
           ListEmptyComponent={<Text muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.ratingsEmpty}</Text>}

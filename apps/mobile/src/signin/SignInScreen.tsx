@@ -9,7 +9,7 @@ import { api, GATE_HEADERS } from "../api";
 import { APPLE_SIGN_IN } from "../auth";
 import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
-import { HOME_KEY } from "../home/useHome";
+import { HOME_KEY, HOME_PATH } from "../home/useHome";
 import { webLocale } from "../i18n";
 import { mark } from "../perfMarks";
 import { opening } from "../opening/opening";
@@ -226,7 +226,7 @@ export function SignInScreen() {
       }
       if (onboarded === true) {
         /* 🆕 D-1350 — الرئيسيّةُ تُجلب خلف شاشة الشعار (سقفٌ خمسُ ثوانٍ) فتُفتح ممتلئة */
-        await settled(prime(r.access, "/api/v1/me/home", HOME_KEY, 5000));
+        await settled(prime(r.access, HOME_PATH, HOME_KEY, 5000));
         /* كما يرفعها الإقلاع (`rootsBorn(true)`: رجوعُها يخرج من التطبيق) — والويبُ يُكمل تسليمَه تحتها */
         if (router.canDismiss()) router.dismissAll();
         rootsBorn(true);

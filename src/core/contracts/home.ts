@@ -259,6 +259,7 @@ export type HomePayload = {
   /** طوابيرُ ورقة الأولويّة — ما يُرى يُرتَّب (D-217) */
   queues: {
     continue: HomeQueueItem[];
+    /** 🆕 D-1596 — فارغٌ بـ`?lite=1`: الجهازُ يشتقّه من `sections.towatch.all` (الترتيبُ نفسُه) — `towatchQueueOf` */
     towatch: HomeQueueItem[];
     lists: HomeQueueItem[];
     towatch_list: HomeQueueItem[];

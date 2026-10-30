@@ -1,4 +1,4 @@
-import type { HomePayload, QueueOrderBody } from "../contracts";
+import type { HomePayload, HomeQueueItem, QueueOrderBody } from "../contracts";
 import { applyQueueOrder } from "@/core/homePrefs";
 
 /**
@@ -31,4 +31,13 @@ export function reorderHomePayload(prev: HomePayload, row: QueueOrderBody["row"]
   const ids = new Set(cards.map((c) => c.id));
   const at = s.lists.towatch_card ? keys.findIndex((k) => !ids.has(k)) : -1;
   return { ...prev, sections: { ...s, lists: { ...s.lists, cards, towatch_at: at } }, queues: { ...q, lists: byKey(q.lists, (x) => x.key) } };
+}
+
+/**
+ * 🆕 D-1596 — **طابورُ «للمشاهدة» مشتقٌّ من القسم نفسِه**: بـ`?lite=1` لا يرسل الخادمُ `queues.towatch` (كان نسخةً ثانيةً من
+ * `sections.towatch.all` بالترتيب نفسِه مع كلِّ فتحة). حمولةٌ محفوظةٌ أقدم ما زالت تحمله، فيُقرأ إن وُجد.
+ */
+export function towatchQueueOf(d: HomePayload): HomeQueueItem[] {
+  if (d.queues.towatch.length) return d.queues.towatch;
+  return d.sections.towatch.all.map((x) => ({ key: x.key, title: x.title, poster_path: x.poster_path, media_type: x.kind }));
 }
