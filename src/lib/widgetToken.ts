@@ -274,6 +274,7 @@ export async function widgetMovie(who: { userId: string }, movieTmdbId: number, 
     /*
      * 🆕 D-1600 — **والفيلمُ يدخل المكتبة** كما في التطبيق (D-1468 `ensureMovieInLibrary`): خالد ٣٠ أكتوبر «ينحط عليه اني شاهدته لاكن ما
      * القاه فالمكتبة» — المكتبةُ تعدّ صفوفَ `follows`، والودجتُ كان يكتب المشاهدةَ وحدَها. فيلمٌ في المكتبة أصلاً لا يُمسّ (`ignoreDuplicates`).
+     * خطأُ هذا السطر لا يُفشل «✓» عمداً: المشاهدةُ — وهي ما ضغطه — قد حُفظت، وإظهارُ فشلٍ لها يدعو إلى ضغطةٍ ثانيةٍ تلغيها.
      */
     const genres = (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n));
     await db.from("follows").upsert(
