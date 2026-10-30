@@ -3,7 +3,7 @@ import { tagSource } from "@/lib/watchSource";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
-import { getMovie, getTv } from "@/lib/tmdb";
+import { getMovie, getMovieIn, getTv } from "@/lib/tmdb";
 import { airedEpisodeCount, nextUnwatchedEpisode } from "@/core/progress";
 import { episodeKey } from "@/core/keys";
 import { getDict, type Locale } from "@/core/i18n";
@@ -261,7 +261,7 @@ export function widgetMarkRoute(watched: boolean) {
  * ويُتحقّق أنّه فيلمٌ حقيقيٌّ في TMDB (ومنه المدّة)، فلا يُكتب رقمٌ عشوائيّ. أسوأُ ما يفعله رمزٌ مسروقٌ هنا
  * «شاهدتُ فيلماً» يتراجع عنه صاحبُه بلمسة — بلا قراءةٍ ولا حذفٍ لغير ما يكتبه.
  */
-export async function widgetMovie(who: { userId: string }, movieTmdbId: number, watched: boolean): Promise<boolean> {
+export async function widgetMovie(who: { userId: string; lang?: Locale }, movieTmdbId: number, watched: boolean): Promise<boolean> {
   const db = await createServiceClient();
   if (watched) {
     const m = await getMovie(movieTmdbId).catch(() => null);
@@ -276,14 +276,19 @@ export async function widgetMovie(who: { userId: string }, movieTmdbId: number, 
      * القاه فالمكتبة» — المكتبةُ تعدّ صفوفَ `follows`، والودجتُ كان يكتب المشاهدةَ وحدَها. فيلمٌ في المكتبة أصلاً لا يُمسّ (`ignoreDuplicates`).
      * خطأُ هذا السطر لا يُفشل «✓» عمداً: المشاهدةُ — وهي ما ضغطه — قد حُفظت، وإظهارُ فشلٍ لها يدعو إلى ضغطةٍ ثانيةٍ تلغيها.
      */
+    /* 🆕 D-1602 — **الصفُّ بلغة صاحبه لا بلغة الخادم** (أحمد ٣٠ أكتوبر بلقطة: «لغتي انجليزية ليش يطلع هنا بالعربي فورست غامب؟»):
+       طلبُ الودجت بلا كوكي لغة، فكان `getMovie` يسأل TMDB بالعربيّة — والاسمُ يُصحَّح إنجليزيّاً في وضع «Loopz» أمّا الملصقُ فلا،
+       و`localizeFollows` لا يعيد سؤالَ صفٍّ اسمُه بخطِّ الواجهة، فبقي الملصقُ العربيُّ في مكتبةٍ إنجليزيّة. لغةُ الودجت محفوظةٌ
+       مع رمزه (`widgetUser`)؛ ويُرجع إلى `m` إن لم يكن للعمل ملصقٌ بتلك اللغة */
+    const own = who.lang ? await getMovieIn(movieTmdbId, who.lang === "en" ? "en-US" : "ar-SA").catch(() => null) : null;
     const genres = (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n));
     await db.from("follows").upsert(
       {
         user_id: who.userId,
         tmdb_id: movieTmdbId,
         media_type: "movie",
-        title: String(m.title ?? "").slice(0, 300),
-        poster_path: m.poster_path ?? null,
+        title: String(own?.title || m.title || "").slice(0, 300),
+        poster_path: own?.poster_path ?? m.poster_path ?? null,
         ...(genres.length ? { genres } : {}),
       },
       { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },

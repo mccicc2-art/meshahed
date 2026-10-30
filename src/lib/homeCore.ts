@@ -614,8 +614,17 @@ export async function buildHomeBody({
     /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — **ولا يدفع كلفتَه إلا من
        أظهره** (قاعدةُ «recap» و«قوائمي» نفسُها)، **وهو نداءُ الخطّ نفسِه
        بلا إعجاباتٍ ولا ترجمة** (D-205). */
+    /* 🆕 D-1602 — **العملُ بلغة القارئ لا بلغة صديقه** (أحمد ٣٠ أكتوبر: «المكان الوحيد اللي يتغير اللغة او شكل بوستر العمل…
+       هو اصدقائك»): الاسمُ والملصقُ من صفِّ الصديق كما حُفظ عنده — فصار «هروب من السجن» عربيّاً في رئيسيةٍ إنجليزيّة. يُترجَم
+       بمحرّك المكتبة نفسِه (D-048/D-147) وبالتوازي مع الموجة، **ولا يُمسّ ما يخصّ الصديق** (مَن · نجمتُه · حلقتُه) */
     prefs.order.includes("friends")
-      ? getFriendsWatching(60).catch(() => [])
+      ? getFriendsWatching(60)
+          .then(async (rows) => {
+            const loc = await localizeRows(rows, locale).catch(() => null);
+            if (loc) rows.forEach((r, i) => ((r.title = loc[i].title ?? r.title), (r.poster_path = loc[i].poster_path ?? r.poster_path)));
+            return rows;
+          })
+          .catch(() => [])
       : Promise.resolve([]),
     /* أغلفتي المختارة (D-131) — كانت `await` منفرداً بعد الموجة رغم أنها
        لا تعتمد على شيءٍ منها: رحلةُ قاعدةٍ كاملة تُدفع وحدَها على أسخن
@@ -649,6 +658,11 @@ export async function buildHomeBody({
       if (a?.poster_path) f.poster_path = a.poster_path;
     }
     for (const r of topRated) {
+      const a = homeArt.get(artKey(r.media_type, r.tmdb_id));
+      if (a?.poster_path) r.poster_path = a.poster_path;
+    }
+    /* 🆕 D-1602 — وغلافي المختارُ على العمل نفسِه في صفِّ أصدقائك: الصفُّ في رئيسيتي، فالعملُ بشكله عندي (غلافُ الصديق لا يُقرأ أصلاً) */
+    for (const r of friendsRows) {
       const a = homeArt.get(artKey(r.media_type, r.tmdb_id));
       if (a?.poster_path) r.poster_path = a.poster_path;
     }
