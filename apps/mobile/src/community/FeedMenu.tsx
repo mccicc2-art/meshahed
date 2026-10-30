@@ -16,7 +16,10 @@ import type { CardDoors } from "./CommunityCards";
  * أحمد ١٧ أكتوبر: «ثلاث نقاط في زاوية الصفّ الأوّل». الصفوفُ بوصفة «المزيد» في صفحة العمل (`TitleScreen`، D-1020) — رمزٌ
  * وكلمة — لا ورقةَ جديدة: صفحةُ العمل (أو القائمة) · صفحةُ صاحبه · نسخُ الرابط · المشاركة، **ولرأيك وحدَك** «حذف تقييمي»
  * بتأكيدٍ في الورقة نفسِها (الحذفُ لا يُتراجع عنه بضغطة) — المسارُ نفسُه في صفحة العمل (`track/unrate`).
- * لا «إبلاغ» هنا بعد: لا مسارَ له في الخادم، وزرٌّ لا يفعل شيئاً أسوأ من غيابه.
+ * 🆕 D-1595 — **«إبلاغ» على رأي غيرك** (مهمّةُ Asana «زر إبلاغ في قائمة بطاقة المنشور»): المسارُ صار موجوداً —
+ * `POST /api/v1/thread/report` بـ`what: "review"`، وهو نفسُه زرُّ «إبلاغ» في صفحة الرأي (`ThreadScreen`). للرأي المكتوب
+ * وحدَه: القائمةُ وتقييمُ الحلقة لا هدفَ بلاغٍ لهما في الخادم، ورأيُك لا تُبلغ عنه، والزائرُ لا يُبلغ (`requireUser`).
+ * الحدُّ والتكرارُ في الخادم (عشرةٌ في الدقيقة · `ignoreDuplicates`)، فالبلاغُ الثاني على الرأي نفسِه لا يضرّ.
  */
 type Item = { icon: IconName; label: string; run: () => void; danger?: boolean };
 
@@ -28,6 +31,7 @@ export function FeedMenu({
   onCopied,
   onClose,
   onDeleted,
+  onReported,
   onError,
 }: {
   /* 🆕 R58 — صفُّ النقاش بلا ⋯ (بابُه غرفتُه) */
@@ -38,6 +42,8 @@ export function FeedMenu({
   onCopied: () => void;
   onClose: () => void;
   onDeleted: () => void;
+  /** 🆕 D-1595 — وصل البلاغ */
+  onReported: () => void;
   onError: (e: unknown) => void;
 }) {
   const { t, tokens } = useApp();
@@ -49,6 +55,7 @@ export function FeedMenu({
   let link = titlePath;
   let shareTitle = it.title ?? "";
   let mine = false;
+  let reportable = false;
 
   if (row.kind === "news") {
     link = `/post/${encodeURIComponent(row.item.key)}`;
@@ -64,6 +71,7 @@ export function FeedMenu({
       link = `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
       items.push({ icon: a.media_type === "tv" ? "tv" : "film", label: t.postMenuOpenTitle(a.title ?? ""), run: () => doors.onTitle(a.media_type, a.tmdb_id) });
       mine = !!meId && a.person.id === meId;
+      reportable = !!meId && !mine && a.kind !== "ep_rate";
     }
     if (who && !mine) items.push({ icon: "people", label: t.viewProfileOf(name), run: () => doors.onWeb(who) });
     shareTitle = a.title ?? "";
@@ -85,6 +93,14 @@ export function FeedMenu({
     } finally {
       setBusy(false);
     }
+  };
+
+  const report = () => {
+    if (row.kind !== "comment") return;
+    const a = row.item;
+    write("/api/v1/thread/report", { target: { kind: "review", user_id: a.person.id, tmdb_id: a.tmdb_id, media_type: a.media_type }, what: "review" })
+      .then(onReported)
+      .catch(onError);
   };
 
   if (confirm) {
@@ -116,6 +132,23 @@ export function FeedMenu({
           <Text size={14}>{x.label}</Text>
         </Pressable>
       ))}
+      {reportable ? (
+        <>
+          <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
+          {/* الرمزُ والكلمةُ نفسُهما في صفحة الرأي (`ThreadScreen`) — بلاغٌ واحدٌ بشكلٍ واحد */}
+          <Pressable
+            onPress={() => {
+              onClose();
+              report();
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Icon name="shield" size={19} color={tokens.fg} />
+            <Text size={14}>{t.reportLabel}</Text>
+          </Pressable>
+        </>
+      ) : null}
       {mine ? (
         <>
           <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />

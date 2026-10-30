@@ -395,6 +395,7 @@ export function CommunityScreen() {
             say(t.postDeleted, "success");
             void qc.invalidateQueries({ queryKey: COMMUNITY_KEY });
           }}
+          onReported={() => say(t.reportDone, "success")}
           onError={(e) => {
             setMenuRow(null);
             say(errorText(t, e));
