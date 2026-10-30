@@ -17,7 +17,7 @@ import { BOARD_PREVIEW, COMMUNITY_PAGER_TABS, asCommunityTab, type CommunityPage
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { feedRows, roomOut, listOut, followsLoopz } from "@/lib/communityPayload";
 import { vividizeFeed } from "@/lib/vividPoster";
-import { handle, limited } from "@/lib/v1";
+import { handle, limited, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { CommunityPayload } from "@/core/contracts/community";
 
@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
        (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
     /* 🆕 R58 — منشوراتُ النقاش و«النقاش العام» لمن يعرفهما وحدَه: نسخةٌ أقدم من التطبيق ترسم صفّاً لا تعرفه رأياً فتنكسر */
     const wantTalk = req.nextUrl.searchParams.get("talk") === "1";
-    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk });
+    /* 🆕 D-1605 — مراجعاتُ الشخصيّات المتابَعة في الخطّ لتطبيقٍ يعرفها وحدَه (D-1565: الأقدمُ لا يرسم شارتَها) */
+    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk, personas: await personasAware() });
     await refreshCommunityAfter(true);
 
     /* التبويبُ الأوّلُ بترتيب صاحبه (جوابُ أحمد ٢٨ سبتمبر: `defaultTab(tabPrefs, "activity")`) */

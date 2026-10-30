@@ -10,6 +10,7 @@ import {
   refreshTalkBulletins,
   getLoopzNews,
   getCommunityFeed,
+  getFollowedPersonaFeed,
   getTalkRooms,
   getGeneralRoom,
   getTalkFeed,
@@ -34,6 +35,8 @@ import {
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
+import { isPersonaId } from "@/core/personas";
+import { mergeFeedStreams } from "@/core/feedMerge";
 import { localizeRows, localizeTalkRooms } from "@/lib/localize";
 import { getBatchTranslations } from "@/lib/translate";
 import {
@@ -45,6 +48,11 @@ import {
 } from "@/core/communityParams";
 
 /** 🆕 R56 — سقفُ غرف «مكتبتي» الفارغة في الردّ (مكتبةُ ألف عملٍ لا تُرسل ألفَ بطاقة) */
+
+/** 🆕 D-1605 — سقفُ الخطّ الأوّل في `community_activity`/`following_activity_v2` بلا معاملات (الهجرة ٢٢٧ لم تغيّره) */
+const FIRST_PAGE = 60;
+/** 🆕 D-1605 — مراجعاتُ الشخصيّات المتابَعة في كلِّ صفحة (`followed_persona_reviews`) */
+const PERSONA_PAGE = 30;
 
 /**
  * ====== نواةُ «المجتمع» — ما تقرؤه `/people` وما يعيده `/api/v1/community` (Phase 11-M · M0) ======
@@ -70,17 +78,26 @@ export async function buildCommunity(o: {
   talkSort?: TalkSort;
   /** 🆕 R58 — منشوراتُ النقاش في الأنشطة و«النقاش العام» — لتطبيقٍ يعرفهما (`?talk=1`) */
   talk?: boolean;
+  /** 🆕 D-1605 — مراجعاتُ شخصيّات لوبز AI التي يتابعها القارئ في الخطّ — لمن يعرفها (`personasAware`؛ الويبُ دائماً) */
+  personas?: boolean;
 }) {
   const { user, locale, allView } = o;
 
-  const followingFeed = await getCommunityFeed(o.scope);
+  const firstOut = { raw: 0 };
+  const [memberFeed, personaFeed] = await Promise.all([
+    getCommunityFeed(o.scope, undefined, firstOut),
+    user && o.personas ? getFollowedPersonaFeed(null, PERSONA_PAGE) : Promise.resolve([]),
+  ]);
+  /* 🆕 D-1605 — **منبعان بمؤشّرٍ واحد** (`mergeFeedStreams`): الخطُّ الأوّلُ سقفُه ٦٠، فما كان من مراجعات الشخصيّات أقدمَ من آخر
+     صفٍّ فيه ينتظر صفحتَه — وإلّا قفز «الأقدم» في التطبيق فوق ما لم يُجلب */
+  const followingFeed = mergeFeedStreams(memberFeed, firstOut.raw >= FIRST_PAGE, personaFeed, personaFeed.length >= PERSONA_PAGE).items;
   const localized = await localizeRows(followingFeed, locale);
 
-  /* ترجمةُ المراجعات بلغة القارئ (D-307) — ولا تُترجَم المحجوبات (D-315) */
+  /* ترجمةُ المراجعات بلغة القارئ (D-307) — ولا تُترجَم المحجوبات (D-315) — 🆕 D-1605 ولا مراجعاتُ الشخصيّات: نصُّها بلغة القارئ أصلاً */
   const feedTranslations: Record<string, string> = o.translateOn
     ? await getBatchTranslations(
         localized
-          .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate")
+          .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate" && !isPersonaId(a.person.id))
           .map((a) => ({ id: commentViewKey(a.person.id, a.media_type, a.tmdb_id), text: a.review ?? "" })),
         locale === "ar" ? "ar" : "en",
       )
@@ -235,9 +252,17 @@ export async function buildFeedPage(o: {
   before: string;
   limit: number;
   translateOn: boolean;
+  /** 🆕 D-1605 — كما في `buildCommunity` */
+  personas?: boolean;
 }) {
   const out = { raw: 0 };
-  const items = await getCommunityFeed("all", { before: o.before, limit: o.limit, out });
+  const [memberItems, personaItems] = await Promise.all([
+    getCommunityFeed("all", { before: o.before, limit: o.limit, out }),
+    o.user && o.personas ? getFollowedPersonaFeed(o.before, PERSONA_PAGE) : Promise.resolve([]),
+  ]);
+  /* 🆕 D-1605 — المؤشّرُ التالي حدُّ الدمج: منبعٌ امتلأ لم يقل كلَّ ما عنده؛ ولا ممتلئَ ⇒ انتهى الخطّ */
+  const merged = mergeFeedStreams(memberItems, out.raw >= o.limit, personaItems, personaItems.length >= PERSONA_PAGE);
+  const items = merged.items;
   const localized = await localizeRows(items, o.locale);
   const reviewKeys = localized
     .filter((a) => a.review?.trim() && a.kind !== "ep_rate")
@@ -246,7 +271,7 @@ export async function buildFeedPage(o: {
     o.translateOn
       ? getBatchTranslations(
           localized
-            .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate")
+            .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate" && !isPersonaId(a.person.id))
             .map((a) => ({ id: commentViewKey(a.person.id, a.media_type, a.tmdb_id), text: a.review ?? "" })),
           o.locale === "ar" ? "ar" : "en",
         )
@@ -258,7 +283,6 @@ export async function buildFeedPage(o: {
     getListReviewSocial([...new Set(localized.map((a) => a.listId).filter(Boolean) as string[])]),
     getPostViewCounts(reviewKeys),
   ]);
-  const oldest = items.reduce<string | null>((m, a) => (m === null || a.updated_at < m ? a.updated_at : m), null);
   return {
     core: {
       talkFeed: [],
@@ -274,8 +298,8 @@ export async function buildFeedPage(o: {
       libState,
       followed: new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`)),
     },
-    /* انتهى الخطُّ حين أعادت الدالّةُ أقلَّ من الصفحة */
-    next_before: out.raw >= o.limit ? oldest : null,
+    /* انتهى الخطُّ حين أعادت الدالّتان أقلَّ من صفحتيهما — 🆕 D-1605 والمؤشّرُ حدُّ الدمج (`mergeFeedStreams`) */
+    next_before: merged.cutoff,
   };
 }
 

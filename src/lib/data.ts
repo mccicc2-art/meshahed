@@ -1648,6 +1648,9 @@ export async function getCommunityFeed(
   /** 🆕 D-1596 — صفحةٌ أقدم (الهجرة ٢٢٧): المكتوبُ قبل `before` حصراً، `limit` صفّاً. `raw` يُملأ بعدد ما أعادته الدالّة
    *  قبل ترشيح الصفوف بلا عنوان — هو ما يقول إن بقي بعدها شيء. غيابُه = الخطُّ الأوّل كما كان (سقف ٦٠) */
   page?: { before: string; limit: number; out?: { raw: number } },
+  /** 🆕 D-1605 — عددُ ما أعادته الدالّةُ للخطّ الأوّل أيضاً (بلا صفحة): هو ما يقول إن امتلأ (٦٠) فيُقصّ ما تحته من مراجعات
+   *  الشخصيّات عند آخر صفٍّ فيه — وإلّا قفز مؤشّرُ «الأقدم» في التطبيق فوق صفوفٍ لم تُجلب */
+  firstOut?: { raw: number },
 ): Promise<FeedItem[]> {
   try {
     const supabase = await createClient();
@@ -1677,7 +1680,8 @@ export async function getCommunityFeed(
       ({ data: actRows, error } = await supabase.rpc("following_activity_v2", pageArgs));
     }
     if (error || !actRows) return [];
-    if (page?.out) page.out.raw = (actRows as unknown[]).length;
+    const sink = page?.out ?? firstOut;
+    if (sink) sink.raw = (actRows as unknown[]).length;
 
     type ActivityRow = {
       id: string;
@@ -1828,6 +1832,72 @@ export async function getCommunityFeed(
           ? { epSeason: r.ep_season ?? null, epEpisode: r.ep_episode ?? null, epCount: r.ep_count ?? null }
           : {}),
       };
+    });
+    return withPersonIdentities(built);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 D-1605 — **مراجعاتُ شخصيّات لوبز AI التي يتابعها القارئ، بشكل صفِّ الخطّ** (الهجرة ٢٢٨ · `followed_persona_reviews`).
+ *
+ * أحمد ٣٠ أكتوبر: «اذا شخص تابع ال ai يشوف مراجعاته في النشاط» ثمّ «في المجتمع ما يظهر إلا في حال تابعهم الشخص». **المتابعةُ
+ * شرطُ القاعدة** (الدالّةُ لا تعيد لغير المتابِع شيئاً)، فهذا القارئُ لا يرشّح؛ يصوغ فقط:
+ * - **صفُّ `rate` كمراجعة العضو**: مفتاحُه (الشخصيّة · العمل) مفتاحُ المراجعة، فالإعجابُ (`feed_review_likes` تقرأ `review_likes`
+ *   وهي تقبل الشخصيّةَ منذ ٢٢٥) والردودُ وصفحةُ الخيط والمشاهداتُ تعمل عليه بلا فرع. **والنصُّ بلغة القارئ** (`personaText`) —
+ *   فلا ترجمةَ آليّةَ له (المستدعي يستثنيه).
+ * - **شارةُ «AI» من المعرّف** (`isAiPersona`) أينما رُسم الشخص — لا حقلَ جديدَ في العقد.
+ * - **الزائرُ والدالّةُ الغائبةُ فراغٌ لا عطل** (نمط D-187).
+ */
+export async function getFollowedPersonaFeed(before: string | null, limit: number): Promise<FeedItem[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, locale] = await Promise.all([
+      supabase.rpc("followed_persona_reviews", { p_before: before, p_limit: limit }),
+      getLocale(),
+    ]);
+    if (error || !data) return [];
+    const rows = data as (PersonaReviewRow & { media_type: "tv" | "movie"; tmdb_id: number; title: string | null; poster_path: string | null })[];
+    if (!rows.length) return [];
+    const { data: likeRows } = await supabase.rpc("feed_review_likes", { uids: [...new Set(rows.map((r) => r.persona_id))] });
+    const key = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    for (const l of (likeRows ?? []) as { review_user_id: string; tmdb_id: number; media_type: string; likes: number; liked_by_me: boolean }[]) {
+      counts.set(key(l.review_user_id, l.tmdb_id, l.media_type), Number(l.likes));
+      if (l.liked_by_me) mine.add(key(l.review_user_id, l.tmdb_id, l.media_type));
+    }
+    const built: FeedItem[] = rows.flatMap((r) => {
+      const who = personaOf(r.persona_id);
+      if (!who) return [];
+      const k = key(r.persona_id, r.tmdb_id, r.media_type);
+      return [{
+        person: {
+          id: r.persona_id,
+          nickname: who.name[locale === "ar" ? "ar" : "en"],
+          username: r.username,
+          avatar_url: r.avatar_url,
+          hide_name: false,
+        } as PersonLite,
+        kind: "rate" as FeedKind,
+        tmdb_id: r.tmdb_id,
+        media_type: r.media_type,
+        rating: r.rating ?? null,
+        review: personaText(locale, r.body_ar, r.body_en) || null,
+        title: r.title,
+        poster_path: r.poster_path,
+        updated_at: r.publish_at,
+        day: r.publish_at.slice(0, 10),
+        episodeCount: 0,
+        topSeason: 0,
+        likes: counts.get(k) ?? 0,
+        likedByMe: mine.has(k),
+        hasSpoiler: Boolean(r.has_spoiler),
+        listId: null,
+        listSlug: null,
+        listCover: null,
+      }];
     });
     return withPersonIdentities(built);
   } catch {

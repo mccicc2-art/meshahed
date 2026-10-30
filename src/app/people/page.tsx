@@ -215,7 +215,8 @@ export default async function PeoplePage({
      من هنا كما هي — الشروطُ والتوازي والسقوف — كي يقرأها `/api/v1/community` أيضاً بلا
      نسخةٍ ثانية (نهجُ `homeCore` في 11-H). الحججُ الكاملةُ لكلِّ نداءٍ في تاريخ هذا الملفّ. */
   const core = pagerTab
-    ? await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort })
+    ? /* 🆕 D-1605 — الويبُ يرسم شارةَ «AI» دائماً، فمراجعاتُ الشخصيّات المتابَعة في خطّه بلا شرط */
+      await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort, personas: true })
     : null;
   const [myCommunities, myInvites] =
     tab === "all"
