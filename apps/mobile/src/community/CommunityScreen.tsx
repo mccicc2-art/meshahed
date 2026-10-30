@@ -344,6 +344,11 @@ export function CommunityScreen() {
           onTab={goTab}
           onAim={setAim}
           perfScreen="community"
+          /* 🆕 D-1598 — **ما زرتَه يبقى مركَّباً** (تسجيلُ أحمد ٣٠ أكتوبر: «ثقلٌ من النقاش إلى النشاط … ما يجي إلّا إذا مرّيت الأعضاء»).
+             حدُّ الألواح الثلاثة (K2) كان ينزع «النشاط» حين تقف على «الأعضاء» (بعيدٌ بلوحين) — فالعودةُ إليه تبنيه من الصفر تحت الإصبع:
+             `tab.arm` للنشاط من الصفر ٤٢ مرّةً في أسبوعين، الوسيطُ ٨٣ms و٩٠٪ ≤ ١٦٦ms (≈ عشرةُ إطاراتٍ تسقط). التبويباتُ ثلاثةٌ من حمولةٍ
+             واحدة، فإبقاؤها لا يجلب شيئاً — ثمنُه ذاكرةُ الخطّ وأنت في «الأعضاء» وحدَه (`keepVisited` نفسُه في «اكتشف»، D-1540) */
+          keepVisited
           render={(k) => (
             <Pane k={k} d={d} doors={doors} acts={acts} cardActs={cardActs} live={tab === k} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} all={all} onAll={setAll} onPrefs={onPrefs} />
           )}
@@ -506,8 +511,11 @@ type PaneProps = {
   onPrefs: (patch: CommunityPrefsBody) => void;
 };
 
-/** لوحُ تبويب — كلُّ ما يخصّ تبويباً واحداً هنا ليرسم `TabSlide` لوحين جنباً إلى جنب في أثناء السحب */
-function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, all, onAll, onPrefs }: PaneProps) {
+/** لوحُ تبويب — كلُّ ما يخصّ تبويباً واحداً هنا ليرسم `TabSlide` لوحين جنباً إلى جنب في أثناء السحب.
+ *  🆕 D-1598 — **`memo`**: الشاشةُ تُعاد رسمتُها مع كلِّ سحبة (إضاءةُ الوجهة `aim` لحظةَ رفع الإصبع، ثمّ مسحُها) — وبلا `memo` كانت
+ *  الألواحُ المركَّبةُ كلُّها (الخطُّ بقائمته معها) تُعاد معها والطيرانُ جارٍ. خصائصُه ثابتةٌ (`useMemo`/`useCallback`)، فلا يُعاد إلّا
+ *  اللوحُ الذي تبدّل `live` له أو بياناتُه */
+const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, all, onAll, onPrefs }: PaneProps) {
   const { t, tokens, locale } = useApp();
   const refresh = usePullRefresh([COMMUNITY_KEY], topPad);
   const views = useViewCounter(live && k === "activity" && acts.signedIn);
@@ -730,7 +738,7 @@ function Pane({ k, d, doors, acts, cardActs, live, topPad, bottomPad, onScroll, 
       {all ? <BoardAll section={all} doors={doors} acts={acts} onBack={() => onAll(null)} /> : d.board.empty ? empty(t.peopleTabEmpty) : <Board d={d} doors={doors} onAll={onAll} />}
     </ScrollView>
   );
-}
+});
 
 /* رموزُ الأقسام وألوانُها — `SECTION_TONE` الويب حرفاً (D-268: فهرسٌ بصريّ لا ألوانُ حالة) */
 const TONE = { featured: "#A78BFA", reviews: "#F26D6D", rising: "#FB923C", talked: "#2DD4BF", lists: "#60A5FA" } as const;
