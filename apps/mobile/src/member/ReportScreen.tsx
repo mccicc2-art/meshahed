@@ -183,7 +183,7 @@ export function ReportBody({
             ) : null}
           </View>
         </View>
-        <DaysPill active={s.activeDays} total={s.range.days} />
+        <DaysBlock active={s.activeDays} total={s.range.days} />
       </View>
       {/* الرمزُ في الترويسة وحدَه يشارك الآن — فخطؤه يُقال هنا تحت الرقم، لا في بطاقةٍ ذهبت */}
       {shareError ? <Text size={12} color={tokens.error} style={{ marginTop: 6 }}>{shareError}</Text> : null}
@@ -218,7 +218,8 @@ export function ReportBody({
         <>
           <H3>{picked ? (en ? `Watched on ${pickedName}` : s.period === "year" ? `شاهدت في ${pickedName}` : `شاهدت يوم ${pickedName}`) : en ? "Most watched" : "الأكثر مشاهدة"}</H3>
           {shown.length > 0 ? (
-            <TopThree titles={shown} onTitle={onTitle} />
+            /* 🆕 D-1590 — الملصقاتُ تتمدّد كما في «المحتوى» (`fill`، ٧٢–١٢٠) — مقاسٌ واحدٌ في القسمين */
+            <TopThree titles={shown} onTitle={onTitle} fill />
           ) : (
             /* قامةُ صفِّ الملصقات نفسُها فلا تقفز الصفحةُ حين يُختار يومٌ فارغ */
             <View style={{ height: TOP_W * 1.5 + 40, alignItems: "center", justifyContent: "center" }}>
@@ -320,18 +321,23 @@ export function H3({ children }: { children: string }) {
 }
 
 /**
- * حبّةُ الأيّام — أيّامٌ شاهدتَ فيها من أيّام المدّة. 🆕 D-1575 — كانت حلقةً ١٠٤ بجانب الرقم الكبير (ربعُ الشاشة معهما)؛ الرقمان
- * نفسُهما في حبّةٍ بقامة سطر الوقت
+ * أيّامُ المشاهدة — أيّامٌ شاهدتَ فيها من أيّام المدّة. 🆕 D-1575 كانت حبّةً «٧ / ٣١ يوم»؛ 🆕 D-1590 — **باسمها وشريطها** (أحمد ٣٠
+ * أكتوبر: «٧/٣١ ماهي واضحة وليست مفهومة» ثمّ «أ» على التصميم): «أيام المشاهدة» صغيرةً فوق، و«٧ من ٣١ يوم» تحتها، وشريطٌ يمتلئ بنسبتها
  */
-function DaysPill({ active, total }: { active: number; total: number }) {
+function DaysBlock({ active, total }: { active: number; total: number }) {
   const { tokens, locale } = useApp();
+  const en = locale === "en";
+  const pct = total > 0 ? Math.min(100, Math.round((active / total) * 100)) : 0;
   return (
-    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.accent + "80", backgroundColor: tokens.accent + "1A", paddingHorizontal: 12, paddingVertical: 6 }}>
-      <View style={{ flexDirection: "row", alignItems: "baseline", direction: "ltr" }}>
-        <Text size={16} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{active.toLocaleString("en-US")}</Text>
-        <Text size={12} muted>{` / ${total.toLocaleString("en-US")}`}</Text>
+    <View style={{ width: 132, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.accent + "73", backgroundColor: tokens.accent + "14", paddingHorizontal: 12, paddingVertical: 10 }}>
+      <Text size={11} muted numberOfLines={1}>{en ? "Days watched" : "أيام المشاهدة"}</Text>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 2 }}>
+        <Text size={20} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{active.toLocaleString("en-US")}</Text>
+        <Text size={12} muted numberOfLines={1}>{en ? `of ${total.toLocaleString("en-US")} days` : `من ${total.toLocaleString("en-US")} يوم`}</Text>
       </View>
-      <Text size={12} muted>{locale === "en" ? "days" : "يوم"}</Text>
+      <View style={{ height: 5, borderRadius: 3, backgroundColor: tokens.surface2, marginTop: 6, overflow: "hidden", flexDirection: "row" }}>
+        <View style={{ width: `${pct}%`, borderRadius: 3, backgroundColor: tokens.accent }} />
+      </View>
     </View>
   );
 }
@@ -368,16 +374,17 @@ function PeriodHeat({ s, pick, onPick, pickedName }: { s: ReportStats; pick: num
   const rows = Array.from({ length: cells.length / cols }, (_, r) => cells.slice(r * cols, r * cols + cols));
   /* 🆕 D-1583 — الحدُّ الأعلى أوسع (كان ١٠٤ · ٤٦ · ٦٤). 🆕 D-1584 — ومعتدل: بـ١٨٠ · ٧٢ · ١١٠ صارت الخاناتُ أعمدةً طويلة؛
      ١٣٢ · ٥٦ · ٨٤ تملأ ولا تتمطّط */
-  const [rowMin, rowMax] = week ? [64, 132] : month ? [24, 56] : [40, 84];
+  /* 🆕 D-1590 — الشهرُ حتى ٤٠ (كان ٥٦): «التقويم صغّره وارفعه فوق» — وما فضل للملصقات تحته */
+  const [rowMin, rowMax] = week ? [64, 132] : month ? [24, 40] : [40, 84];
   const level = (m: number) => (m <= 0 ? 0 : m / peak > 0.75 ? 4 : m / peak > 0.5 ? 3 : m / peak > 0.25 ? 2 : 1);
   const fill = (lv: number) => (lv === 0 ? tokens.surface2 : tokens.accent + ["", "40", "80", "BF", "FF"][lv]);
   /* ٢٠٢٦-١٠-٠٤ أحدٌ — أسماءُ الأيّام من أحدٍ معلوم لا من جدولٍ مكتوب */
   const narrow = new Intl.DateTimeFormat(en ? "en" : "ar", { weekday: "narrow", timeZone: "UTC" });
   const heads = month ? Array.from({ length: 7 }, (_, i) => narrow.format(new Date(Date.UTC(2026, 9, 4 + i)))) : null;
   const chosen = pick !== null ? s.buckets[pick] : null;
-  const chrome = 18 + 26 + (heads ? 18 : 0);
+  const chrome = 10 + 26 + (heads ? 18 : 0);
   return (
-    <View style={{ flex: 1, minHeight: rows.length * rowMin + (rows.length - 1) * gap + chrome, maxHeight: rows.length * rowMax + (rows.length - 1) * gap + chrome, paddingTop: 18 }}>
+    <View style={{ flex: 1, minHeight: rows.length * rowMin + (rows.length - 1) * gap + chrome, maxHeight: rows.length * rowMax + (rows.length - 1) * gap + chrome, paddingTop: 10 }}>
       {/* سطرُ المختار أو المقياس — قامتُه ثابتةٌ فلا تقفز الشبكةُ حين يتبدّل */}
       <View style={{ height: 20, flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
         {chosen ? (
