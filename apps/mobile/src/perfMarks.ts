@@ -104,6 +104,7 @@ export type PerfName =
      وهو يمرّر الوسط): ms=0 · `band` top/bot · `x`/`y` موضعُها (pt) · `h` ارتفاعُ النافذة · `hid` الكسوةُ الذكيّة ٠..١٠٠ كما
      يظنّها JS · `cago` منذ آخر تغييرٍ لها (ms) · `dock` أعلى الدوك مقيساً (pt، −١ بلا دوك) · `screen` · `mom`. تُحذف مع الإصلاح */
   | "edge.tap"
+  | "gesture.stuck"
   /* 🆕 D-1547 — قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة (`TabSlide.tsx`) */
   | "pane.warm";
 
@@ -155,7 +156,7 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
     timer = setTimeout(flush, URGENT_MS);
   } else arm();
 }
-const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang"]);
+const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang", "gesture.stuck"]);
 const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {

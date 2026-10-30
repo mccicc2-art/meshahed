@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { I18nManager, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { makeMutable, withTiming, Easing } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import type { NativeRoot } from "../shell";
 import { DRAWER_MS, drawerP, drawerStore, drawerWidth } from "./store";
+import { gestureProbe, useAppAway } from "../appActive";
 
 /**
  * ====== 🆕 D-1506 — سحبةُ فتح القائمة الجانبيّة (أحمد ٢٧ أكتوبر: «إذا سويت إيماء في الرئيسية لليمين تظهر، وفي العربي لليسار») ======
@@ -26,14 +27,19 @@ export function DrawerSwipe({ from, enabled, children }: { from: NativeRoot; ena
   const { width } = useWindowDimensions();
   /* اتّجاهُ الفتح: نحو داخل الشاشة من طرف القائمة — يمينٌ في الإنجليزيّة (+)، يسارٌ في العربيّة (−) */
   const dir = I18nManager.isRTL ? -1 : 1;
+  /* 🆕 D-1604 — الخروجُ من التطبيق يُطفئ السحبةَ فتُلغى إن كانت جارية (الشرحُ في `appActive.ts`) */
+  const away = useAppAway();
+  const down = useMemo(() => makeMutable(0), []);
+  useEffect(() => gestureProbe(`drawer:${from}`, () => down.value === 1), [from, down]);
   const gesture = useMemo(() => {
     const W = drawerWidth(width);
     const x0 = makeMutable(0);
     const y0 = makeMutable(0);
     return Gesture.Pan()
-      .enabled(enabled)
+      .enabled(enabled && !away)
       .manualActivation(true)
       .onTouchesDown((e, m) => {
+        down.value = 1;
         const t = e.changedTouches[0];
         if (t) {
           x0.value = t.absoluteX;
@@ -62,6 +68,15 @@ export function DrawerSwipe({ from, enabled, children }: { from: NativeRoot; ena
         const d = Math.max(0, e.translationX * dir - LOCK_DX);
         drawerP.value = Math.min(1, d / W);
       })
+      .onTouchesUp((e) => {
+        if (e.numberOfTouches === 0) down.value = 0;
+      })
+      .onTouchesCancelled(() => {
+        down.value = 0;
+      })
+      .onFinalize(() => {
+        down.value = 0;
+      })
       .onEnd((e) => {
         const p = drawerP.value;
         const v = e.velocityX * dir;
@@ -73,7 +88,7 @@ export function DrawerSwipe({ from, enabled, children }: { from: NativeRoot; ena
           });
         }
       });
-  }, [width, dir, enabled, from]);
+  }, [width, dir, enabled, away, from, down]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

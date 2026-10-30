@@ -6,6 +6,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-g
 import Reanimated, { cancelAnimation, Easing as REasing, makeMutable, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 import { flag } from "./flags";
+import { gestureProbe, useAppAway } from "./appActive";
 
 /**
  * ====== انزلاقُ التبويبات — D-961 → D-965 (١٤ سبتمبر ٢٠٢٦) ======
@@ -466,6 +467,10 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
   const armed = useSharedValue(-1);
   const x0 = useSharedValue(0);
   const y0 = useSharedValue(0);
+  /* 🆕 D-1604 — الخروجُ من التطبيق يُطفئ السحبةَ فتُلغى إن كانت جارية، و«إصبعٌ عليها» يُقرأ لحظةَ الخروج (`appActive.ts`) */
+  const away = useAppAway();
+  const down = useSharedValue(0);
+  useEffect(() => gestureProbe(`tab:${perfScreen ?? "?"}`, () => down.value === 1), [perfScreen, down]);
   /* 🆕 D-1335 — السحبةُ تقطع الطيران (الشرحُ عند `gesture`): وجهةُ الطيران الجاري (`-1` = لا طيران)، ورقمُه (ردُّ طيرانٍ
      قُطع لا يمسّ ما بعده)، وموضعُ اللوح لحظةَ التقاطه منسوباً إلى مستقرِّ وجهته، وإزاحةُ الإصبع التي تُبقيه هناك */
   const fly = useSharedValue(-1);
@@ -580,8 +585,10 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
   const gesture = useMemo(
     () =>
       Gesture.Pan()
+        .enabled(!away)
         .manualActivation(true)
         .onTouchesDown((e, m) => {
+          down.value = 1;
           const t = e.changedTouches[0];
           if (t) {
             x0.value = t.absoluteX;
@@ -710,7 +717,14 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
             if (fin) scheduleOnRN(unmountSide);
           });
         })
+        .onTouchesUp((e) => {
+          if (e.numberOfTouches === 0) down.value = 0;
+        })
+        .onTouchesCancelled(() => {
+          down.value = 0;
+        })
         .onFinalize(() => {
+          down.value = 0;
           if (jLive.value) {
             jLive.value = 0;
             const dur = jT0.value >= 0 ? jLast.value - jT0.value : 0;
@@ -720,7 +734,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
           }
           scheduleOnRN(jsJankOff);
         }),
-    [x0, y0, busy, idx, w, ph, count, armed, pos, fly, gen, grab, grabRel, carry, jLive, jT0, jLast, jDrop, arm, aim, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
+    [away, down, x0, y0, busy, idx, w, ph, count, armed, pos, fly, gen, grab, grabRel, carry, jLive, jT0, jLast, jDrop, arm, aim, commit, unmountSide, jsJankOn, jsJankOff, uiJankReport],
   );
 
   /* تبدّلُ `tab` — كما في `TabSlideJS`: من سحبٍ مكتمل ⇒ يُنزع الجار؛ من ضغطة ⇒ ينزلق القديمُ والجديدُ معاً */
