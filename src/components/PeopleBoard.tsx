@@ -16,6 +16,7 @@ import { PersonName } from "./PersonRow";
 import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { FollowUserButton } from "./FollowUserButton";
 import { PosterRail, RailItem } from "./PosterRail";
+import { RailScroll } from "./RailScroll";
 import { CommunityListCard } from "./PublicListsRail";
 import { TalkRoomCard } from "./WorksTalk";
 import { SpoilerText } from "./SpoilerText";
@@ -163,13 +164,16 @@ function CardGrid({ children }: { children: React.ReactNode }) {
 
 function PersonCard({
   children,
+  as: Tag = "li",
 }: {
   children: React.ReactNode;
+  /** 🆕 D-1608b — `div` في الصفّ الأفقيّ (`RailScroll` ليس قائمة `ul`) — البطاقةُ نفسُها */
+  as?: "li" | "div";
 }) {
   return (
-    <li className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface border border-border">
+    <Tag className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface border border-border">
       {children}
-    </li>
+    </Tag>
   );
 }
 
@@ -729,9 +733,12 @@ export function PersonaBoard({
   return (
     <BoardSection icon="sparkle-star" tone="text-accent" title={PERSONA_BOARD.title[lang]}>
       <p className="-mt-1.5 mb-3 text-12 text-muted">{PERSONA_BOARD.hint[lang]}</p>
-      <CardGrid>
+      {/* 🆕 D-1608b — صفٌّ واحدٌ يُمرَّر (أحمد: «خلها صف واحد و تمرر فيه») بالشريط الأفقيّ نفسِه الذي تحمله القوائمُ في اللوحة،
+          وبعرض الملصق (`RailItem`) فتظهر ثلاثٌ ونصف على الهاتف */}
+      <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
         {rows.map((p) => (
-          <PersonCard key={p.id}>
+          <RailItem key={p.id}>
+          <PersonCard as="div">
             <PersonName
               person={p}
               t={t}
@@ -750,8 +757,9 @@ export function PersonaBoard({
               }
             />
           </PersonCard>
+          </RailItem>
         ))}
-      </CardGrid>
+      </RailScroll>
     </BoardSection>
   );
 }

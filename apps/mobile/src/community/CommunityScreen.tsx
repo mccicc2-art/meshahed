@@ -25,7 +25,7 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import { ListCard } from "../library/ListCard";
-import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type LeaderStats, type RoomPin } from "./CommunityCards";
+import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
 import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { TalkSearch } from "./TalkSearch";
 import { num } from "@/core/i18n";
@@ -746,6 +746,9 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
 });
 
 /* رموزُ الأقسام وألوانُها — `SECTION_TONE` الويب حرفاً (D-268: فهرسٌ بصريّ لا ألوانُ حالة) */
+/** 🆕 D-1608b — عرضُ بطاقة الشخصيّة في صفّها الأفقيّ: ثلاثٌ ونصفٌ على عرض الهاتف */
+const PERSONA_CARD_W = 112;
+
 const TONE = { featured: "#A78BFA", reviews: "#F26D6D", rising: "#FB923C", talked: "#2DD4BF", lists: "#60A5FA" } as const;
 
 function SectionHead({ icon, color, title, onAll }: { icon: IconName; color: string; title: string; onAll?: () => void }) {
@@ -763,7 +766,7 @@ function SectionHead({ icon, color, title, onAll }: { icon: IconName; color: str
   );
 }
 
-function Grid({ rows, mode, doors, follow, stats }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors; follow?: { acts: CommunityActs; ids: ReadonlySet<string> }; stats?: (p: CommunityLeaderRow) => LeaderStats }) {
+function Grid({ rows, mode, doors, follow }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors; follow?: { acts: CommunityActs; ids: ReadonlySet<string> } }) {
   const lines: CommunityLeaderRow[][] = [];
   for (let i = 0; i < rows.length; i += 3) lines.push(rows.slice(i, i + 3));
   return (
@@ -782,7 +785,6 @@ function Grid({ rows, mode, doors, follow, stats }: { rows: CommunityLeaderRow[]
                   ? { state: follow.acts.followState(p.id, follow.ids.has(p.id)), onPress: () => follow.acts.follow(p.id, follow.ids.has(p.id)) }
                   : null
               }
-              stats={stats ? stats(p) : null}
             />
           ))}
           {/* خاناتٌ فارغةٌ تُبقي العرضَ ثلاثاً (شبكةُ `grid-cols-3`) */}
@@ -890,13 +892,29 @@ function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoor
           {b.rising?.length ? gap : null}
           <SectionHead icon="sparkle-star" color={tokens.accent} title={PERSONA_BOARD.title[lang]} />
           <Text size={12} muted style={{ marginTop: -6, marginBottom: 10 }}>{PERSONA_BOARD.hint[lang]}</Text>
-          <Grid
-            rows={personaRows}
-            mode="featured"
-            doors={doors}
-            follow={{ acts, ids: personaIds }}
-            stats={(p) => ({ main: personaReviewsLabel(p.reviews, locale), sub: personaOf(p.id)?.tastes[lang] ?? "" })}
-          />
+          {/* 🆕 D-1608b — **صفٌّ واحدٌ يُمرَّر** (أحمد ٣١ أكتوبر: «خلها صف واحد و تمرر فيه») بدل شبكة ٣+٢: نصفُ الارتفاع ولا خانةَ
+              فارغة. الصفُّ الأفقيُّ نفسُه الذي تحمله القوائمُ في هذه اللوحة (`ListsRow`): يلامس حافّتي الشاشة، والبطاقةُ ١١٢ فتظهر
+              ثلاثٌ ونصف — النصفُ يقول إنّ وراءها المزيد */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }} style={{ marginHorizontal: -PAGE_PAD }}>
+            <View style={{ width: PAGE_PAD - 10 }} />
+            {personaRows.map((p, i) => (
+              <View key={p.id} style={{ width: PERSONA_CARD_W, flexDirection: "row" }}>
+                <LeaderCard
+                  p={p}
+                  mode="featured"
+                  rank={i + 1}
+                  doors={doors}
+                  follow={
+                    acts.signedIn && acts.meId && p.id !== acts.meId
+                      ? { state: acts.followState(p.id, personaIds.has(p.id)), onPress: () => acts.follow(p.id, personaIds.has(p.id)) }
+                      : null
+                  }
+                  stats={{ main: personaReviewsLabel(p.reviews, locale), sub: personaOf(p.id)?.tastes[lang] ?? "" }}
+                />
+              </View>
+            ))}
+            <View style={{ width: PAGE_PAD - 10 }} />
+          </ScrollView>
         </>
       ) : null}
     </View>
