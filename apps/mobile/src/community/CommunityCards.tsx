@@ -570,7 +570,10 @@ function AiringBadge({ airing }: { airing: NonNullable<CommunityRoom["airing"]> 
 /** 🆕 M2 — زاويةُ المتابعة (`FollowUserButton variant="corner"`، D-281): في «عرض الكل» وحدَه، ولا على وجهك */
 export type LeaderFollow = { state: FollowState; onPress: () => void } | null;
 
-export function LeaderCard({ p, mode, rank, doors, follow = null }: { p: CommunityLeaderRow; mode: "featured" | "top" | "rising"; rank: number; doors: CardDoors; follow?: LeaderFollow }) {
+/** 🆕 D-1608 — سطرا البطاقة تحت الاسم حين لا يكونان أرقامَ اللوحة (شخصيّاتُ لوبز AI: عددُ المراجعات ثمّ الأنواع) */
+export type LeaderStats = { main: string; sub: string };
+
+export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null }: { p: CommunityLeaderRow; mode: "featured" | "top" | "rising"; rank: number; doors: CardDoors; follow?: LeaderFollow; stats?: LeaderStats | null }) {
   const { t, tokens, locale } = useApp();
   const who = displayNameOf(p, t.anonymousUser);
   const path = profileHref(p);
@@ -601,11 +604,11 @@ export function LeaderCard({ p, mode, rank, doors, follow = null }: { p: Communi
         <Text size={13} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{who}</Text>
         {p.hide_name ? null : <IdentityBadges flags={identityFlags(p)} nameSize={12} />}
       </View>
-      <Text size={12} weight="700" color={mode === "rising" ? tokens.success : tokens.accent}>
-        {mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : t.peopleBoardActions(p.total)}
+      <Text size={12} weight="700" color={mode === "rising" && !stats ? tokens.success : tokens.accent}>
+        {stats ? stats.main : mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : t.peopleBoardActions(p.total)}
       </Text>
-      <Text size={10} muted numberOfLines={1}>
-        {mode === "rising" ? t.peopleBoardVsLast(p.total, p.prevTotal) : t.peopleBoardBreakdown(p.posts, p.reviews)}
+      <Text size={10} muted numberOfLines={stats ? 2 : 1} style={stats ? { textAlign: "center" } : undefined}>
+        {stats ? stats.sub : mode === "rising" ? t.peopleBoardVsLast(p.total, p.prevTotal) : t.peopleBoardBreakdown(p.posts, p.reviews)}
       </Text>
     </Pressable>
   );

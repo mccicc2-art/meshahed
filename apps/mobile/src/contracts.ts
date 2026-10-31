@@ -144,6 +144,7 @@ export type {
   CommunityRoom,
   CommunityBoard,
   CommunityLeaderRow,
+  CommunityPersonaRow,
   CommunityTopReview,
   CommunityListCard,
   CommunityPeopleAllPayload,

@@ -29,6 +29,7 @@ import {
   getPeopleLeaderboard,
   getPeopleTopReviews,
   getTopSavedListCards,
+  getPersonaBoard,
   type TalkRoom,
   type TalkFeedPost,
   type ListReviewSocial,
@@ -106,7 +107,7 @@ export async function buildCommunity(o: {
   /* موجةٌ واحدة (D-263): الغرفُ · التثبيتُ · لوحةُ الناس · من أتابع */
   const wantAll = allView !== null;
   const need = (k: BoardSection) => !wantAll || allView === k;
-  const [roomsRaw, pinsWave, peopleTab, boardFollowing] = await Promise.all([
+  const [roomsRaw, pinsWave, peopleTab, boardFollowing, personaBoard] = await Promise.all([
     getTalkRooms(40).then((r) => localizeTalkRooms(r, locale)),
     user
       ? Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
@@ -120,6 +121,8 @@ export async function buildCommunity(o: {
       need("lists") ? getTopSavedListCards(7, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
     ]),
     getFollowingIds(),
+    /* 🆕 D-1608 — آخرُ أقسام اللوحة: الشخصيّاتُ الخمس بعدد مراجعاتها — للّوحة وحدَها (لا «عرض كلّ» لخمسة) */
+    wantAll ? Promise.resolve([]) : getPersonaBoard(),
   ]);
   const [pins, globalPins, amAdmin] = pinsWave;
 
@@ -221,6 +224,7 @@ export async function buildCommunity(o: {
     topReviews,
     savedLists,
     boardFollowing,
+    personaBoard,
     talkedAbout,
     peopleEmpty,
     genNews,

@@ -132,6 +132,8 @@ export async function GET(req: NextRequest) {
         talked_about: off("talked") || !core.talkedAbout ? null : roomOut(core, core.talkedAbout, t, locale),
         lists: off("savedlists") ? null : core.savedLists.map((c) => listOut(c, locale)),
         rising: off("rising") ? null : boardRows(core.board, "rising", BOARD_PREVIEW),
+        /* 🆕 D-1608 — آخرَ اللوحة، ولا مفتاحَ إطفاءٍ له (ليس صفّاً من صفوف الأدوات) */
+        personas: core.personaBoard,
         empty: core.peopleEmpty,
       },
       following_ids: [...core.boardFollowing],

@@ -16,6 +16,7 @@ import { talkQuiet } from "@/core/talkSort";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
+  PersonaBoard,
   TopReviews,
   TopSavedLists,
   TalkedAboutWork,
@@ -547,6 +548,8 @@ export default async function PeoplePage({
                   following={boardFollowing}
                 />
                 )}
+                {/* 🆕 D-1608 — **آخرُ قسم: شخصيات لوبز AI** (أحمد ٣١ أكتوبر) — بابُ متابعتها، ومراجعاتُها في «النشاط» بعدها */}
+                <PersonaBoard rows={core?.personaBoard ?? []} locale={locale} meId={user?.id ?? ""} following={boardFollowing} />
               </>
             ))
       }

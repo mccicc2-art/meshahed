@@ -109,3 +109,23 @@ export function personaText(locale: string | null | undefined, ar: string | null
   const want = personaLang(locale) === "ar" ? ar : en;
   return (want ?? "").trim() || (ar ?? en ?? "").trim();
 }
+
+/**
+ * 🆕 D-1608 — **نصوصُ قسم «شخصيات لوبز AI» في لوحة «الأعضاء»** — هنا مع هويّتها لا في القاموس: القسمُ والبطاقةُ يقرآن
+ * الاسمَ والأنواعَ من هذا الملفّ، فنصُّ العنوان جارُهما (ويُقرأ في الويب والتطبيق من مكانٍ واحد).
+ */
+export const PERSONA_BOARD = {
+  title: { ar: "شخصيات لوبز AI", en: "Loopz AI personas" },
+  hint: { ar: "تكتب مراجعات بأذواق مختلفة — تابعها تظهر في نشاطك", en: "Reviews from five different tastes — follow one to see it in your activity" },
+} as const;
+
+/** عددُ المراجعات تحت الاسم — بجمع العربيّة كـ`peopleBoardActions` (١ · ٢ · ٣–١٠ · ١١+) */
+export function personaReviewsLabel(n: number, locale: string | null | undefined): string {
+  if (personaLang(locale) === "en") return n === 1 ? "1 review" : `${n} reviews`;
+  if (n === 0) return "لا مراجعات بعد";
+  if (n === 1) return "مراجعةٌ واحدة";
+  if (n === 2) return "مراجعتان";
+  /* الرقمُ كـ`num` في القاموس (لاتينيٌّ بفواصل) — منسوخٌ سطراً لا مستورداً: هذا الملفُّ تقرؤه اختباراتُ node بلا مسارات `@/` */
+  const d = n.toLocaleString("en-US");
+  return n <= 10 ? `${d} مراجعات` : `${d} مراجعة`;
+}

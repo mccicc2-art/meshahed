@@ -163,6 +163,8 @@ export type CommunityRoom = {
 };
 
 export type CommunityLeaderRow = PersonLite & { posts: number; reviews: number; total: number; prevTotal: number };
+/** 🆕 D-1608 — شخصيّةٌ من شخصيّات لوبز AI في آخر اللوحة: `slug` يقرأ منه التطبيقُ أنواعَها (`PERSONAS`)، و`reviews` مراجعاتُها الظاهرة */
+export type CommunityPersonaRow = PersonLite & { slug: string; reviews: number };
 export type CommunityTopReview = PersonLite & {
   tmdbId: number;
   mediaType: "tv" | "movie";
@@ -186,6 +188,8 @@ export type CommunityBoard = {
   talked_about: CommunityRoom | null;
   lists: CommunityListCard[] | null;
   rising: CommunityLeaderRow[] | null;
+  /** 🆕 D-1608 — «شخصيات لوبز AI» آخرَ قسم (أحمد ٣١ أكتوبر) — اختياريٌّ: خادمٌ أقدمُ لا يرسله فيغيب القسم */
+  personas?: CommunityPersonaRow[] | null;
   /** الأقسامُ كلُّها فارغة ⇒ جملةُ `peopleTabEmpty` (D-181) */
   empty: boolean;
 };

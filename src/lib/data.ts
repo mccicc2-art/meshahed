@@ -4,7 +4,7 @@ import { decodeAccessToken, decodeSessionCookie, sessionCookieParts } from "@/li
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { episodeKey } from "@/core/keys";
 import { LOOPZ_ID } from "@/core/loopz";
-import { personaOf, personaText, type PersonaSlug } from "@/core/personas";
+import { PERSONAS, personaOf, personaText, type PersonaSlug } from "@/core/personas";
 import { getLocale } from "@/lib/locale";
 import {
   CONTENT_PREFS_COOKIE,
@@ -4709,6 +4709,39 @@ export async function getPersonaReviewsOf(personaId: string, limit = 60): Promis
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("persona_reviews_of", { p_persona: personaId, p_limit: limit });
     return error || !data ? [] : (data as PersonaReviewOfRow[]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 D-1608 — **قسمُ «شخصيات لوبز AI» في آخر لوحة «الأعضاء»** (أحمد ٣١ أكتوبر: «الأعضاء فقط · ٣ أ» ثمّ «يكون في آخر قسم»).
+ *
+ * الخمسُ بترتيبها في `PERSONAS` (الهويّةُ ترتيبٌ ثابت لا سباق)، ولكلٍّ عددُ مراجعاتها الظاهرة من `persona_board` (الهجرة ٢٢٩ —
+ * عدٌّ في القاعدة بحدِّ `persona_review_visible` نفسِه، لا ألفُ نصٍّ يُسحب ليُحسب رقم). الصورةُ واسمُ المستخدم من
+ * `public_profiles` كأيِّ شخصٍ يُرسم، والاسمُ بلغة القارئ من `personas.ts` (الملفُّ في القاعدة عربيٌّ وحدَه).
+ * **والدالّةُ الغائبةُ أو الخطأ قسمٌ غائب** لا لوحةٌ مكسورة (نمط D-187).
+ */
+export interface PersonaBoardRow extends PersonLite {
+  slug: PersonaSlug;
+  reviews: number;
+}
+
+export async function getPersonaBoard(): Promise<PersonaBoardRow[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data: counts, error }, { data: people }, locale] = await Promise.all([
+      supabase.rpc("persona_board"),
+      supabase.from("public_profiles").select(PERSON_COLS).in("id", PERSONAS.map((p) => p.id)),
+      getLocale(),
+    ]);
+    if (error || !counts || !people) return [];
+    const n = new Map((counts as { persona_id: string; reviews: number }[]).map((c) => [c.persona_id, Number(c.reviews) || 0]));
+    const byId = new Map((people as PersonLite[]).map((p) => [p.id, p]));
+    return PERSONAS.flatMap((who) => {
+      const p = byId.get(who.id);
+      return p ? [{ ...p, nickname: who.name[locale === "ar" ? "ar" : "en"], hide_name: false, slug: who.slug, reviews: n.get(who.id) ?? 0 }] : [];
+    });
   } catch {
     return [];
   }

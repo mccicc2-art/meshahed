@@ -25,7 +25,8 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import { ListCard } from "../library/ListCard";
-import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
+import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type LeaderStats, type RoomPin } from "./CommunityCards";
+import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { TalkSearch } from "./TalkSearch";
 import { num } from "@/core/i18n";
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
@@ -739,7 +740,7 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
       scrollEventThrottle={16}
       refreshControl={refresh}
     >
-      {all ? <BoardAll section={all} doors={doors} acts={acts} onBack={() => onAll(null)} /> : d.board.empty ? empty(t.peopleTabEmpty) : <Board d={d} doors={doors} onAll={onAll} />}
+      {all ? <BoardAll section={all} doors={doors} acts={acts} onBack={() => onAll(null)} /> : d.board.empty ? empty(t.peopleTabEmpty) : <Board d={d} doors={doors} acts={acts} onAll={onAll} />}
     </ScrollView>
   );
 });
@@ -762,7 +763,7 @@ function SectionHead({ icon, color, title, onAll }: { icon: IconName; color: str
   );
 }
 
-function Grid({ rows, mode, doors, follow }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors; follow?: { acts: CommunityActs; ids: ReadonlySet<string> } }) {
+function Grid({ rows, mode, doors, follow, stats }: { rows: CommunityLeaderRow[]; mode: "featured" | "top" | "rising"; doors: CardDoors; follow?: { acts: CommunityActs; ids: ReadonlySet<string> }; stats?: (p: CommunityLeaderRow) => LeaderStats }) {
   const lines: CommunityLeaderRow[][] = [];
   for (let i = 0; i < rows.length; i += 3) lines.push(rows.slice(i, i + 3));
   return (
@@ -781,6 +782,7 @@ function Grid({ rows, mode, doors, follow }: { rows: CommunityLeaderRow[]; mode:
                   ? { state: follow.acts.followState(p.id, follow.ids.has(p.id)), onPress: () => follow.acts.follow(p.id, follow.ids.has(p.id)) }
                   : null
               }
+              stats={stats ? stats(p) : null}
             />
           ))}
           {/* خاناتٌ فارغةٌ تُبقي العرضَ ثلاثاً (شبكةُ `grid-cols-3`) */}
@@ -825,10 +827,17 @@ function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoo
 }
 
 /** اللوحةُ بترتيب أحمد (D-270/D-289/D-291): مميّزون · الأكثر · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم · الصاعدون */
-function Board({ d, doors, onAll }: { d: CommunityPayload; doors: CardDoors; onAll: (s: BoardSection) => void }) {
-  const { t, tokens } = useApp();
+function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoors; acts: CommunityActs; onAll: (s: BoardSection) => void }) {
+  const { t, tokens, locale } = useApp();
   const b = d.board;
   const gap = <View style={{ height: 26 }} />;
+  /* 🆕 D-1608 — الشخصيّاتُ بشكل صفِّ اللوحة (`LeaderCard` نفسُها) — والسطران تحت الاسم عددُ مراجعاتها وأنواعُها («٣ أ») */
+  const personaIds = useMemo(() => new Set(d.following_ids), [d.following_ids]);
+  const personaRows = useMemo<CommunityLeaderRow[]>(
+    () => (b.personas ?? []).map((p) => ({ ...p, posts: 0, total: 0, prevTotal: 0 })),
+    [b.personas],
+  );
+  const lang = personaLang(locale);
   return (
     <View>
       {b.featured?.length ? (
@@ -872,6 +881,22 @@ function Board({ d, doors, onAll }: { d: CommunityPayload; doors: CardDoors; onA
         <>
           <SectionHead icon="trending" color={TONE.rising} title={t.peopleBoardRising} onAll={() => onAll("rising")} />
           <Grid rows={b.rising} mode="rising" doors={doors} />
+        </>
+      ) : null}
+      {personaRows.length ? (
+        /* 🆕 D-1608 — **آخرُ قسم: شخصيات لوبز AI** (أحمد ٣١ أكتوبر: «الأعضاء فقط» ثمّ «في آخر قسم») — بابُ متابعتها، ومراجعاتُها
+           تظهر في «النشاط» بعدها (D-1605). **والمتابعةُ على حافّة الوجه هنا في اللوحة** خلافاً لأقسامها: القسمُ خمسةٌ لا «كلَّ» لها */
+        <>
+          {b.rising?.length ? gap : null}
+          <SectionHead icon="sparkle-star" color={tokens.accent} title={PERSONA_BOARD.title[lang]} />
+          <Text size={12} muted style={{ marginTop: -6, marginBottom: 10 }}>{PERSONA_BOARD.hint[lang]}</Text>
+          <Grid
+            rows={personaRows}
+            mode="featured"
+            doors={doors}
+            follow={{ acts, ids: personaIds }}
+            stats={(p) => ({ main: personaReviewsLabel(p.reviews, locale), sub: personaOf(p.id)?.tastes[lang] ?? "" })}
+          />
         </>
       ) : null}
     </View>

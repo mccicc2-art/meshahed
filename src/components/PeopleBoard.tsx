@@ -8,10 +8,12 @@ import { dirOf, alignOf } from "@/core/dir";
 import type {
   PeopleLeaderRow,
   PeopleTopReviewRow,
+  PersonaBoardRow,
   PublicListCard,
   TalkRoom,
 } from "@/lib/data";
 import { PersonName } from "./PersonRow";
+import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { FollowUserButton } from "./FollowUserButton";
 import { PosterRail, RailItem } from "./PosterRail";
 import { CommunityListCard } from "./PublicListsRail";
@@ -701,3 +703,55 @@ export function TopReviews({
    ⚠️ **والترتيبُ معكوسٌ عمداً** (D-028): يسقطان من `page.tsx` **قبل** أن
    يسقطا من هنا — **ولو حُذفا من هنا أوّلاً لكسر البناءُ في نشرةٍ وسيطة**،
    وهو خطأٌ وقعتُ فيه فعلاً في `b9bf25a`. */
+
+/**
+ * 🆕 D-1608 — **«شخصيات لوبز AI» — آخرُ أقسام اللوحة** (أحمد ٣١ أكتوبر: «الأعضاء فقط · ٣ أ» ثمّ «يكون في آخر قسم في الأعضاء»).
+ *
+ * كانت الشخصيّاتُ لا تُرى إلّا فوق مراجعاتها أو بالبحث باسمها — ومراجعاتُها لا تدخل «النشاط» إلّا لمن يتابعها (D-1605)، فبابُ
+ * المتابعة كان غائباً. **بطاقةُ العضو نفسُها** (`PersonCard` · `PersonName`) بعلامة المتابعة على حافّة الوجه — **وهنا في
+ * المعاينة لا في «عرض الكل»** خلافاً لـD-281، لأنّ القسمَ كلَّه خمسةٌ لا «كلَّ» لها، والمتابعةُ هي غايتُه.
+ * وتحت الاسم: عددُ المراجعات الظاهرة، ثمّ الأنواعُ التي تكتب عنها (`tastes`) — اختيارُه «٣ أ».
+ */
+export function PersonaBoard({
+  rows,
+  locale,
+  meId,
+  following,
+}: {
+  rows: PersonaBoardRow[];
+  locale: Locale;
+  meId?: string;
+  following?: Set<string>;
+}) {
+  if (!rows.length) return null;
+  const t = getDict(locale);
+  const lang = personaLang(locale);
+  return (
+    <BoardSection icon="sparkle-star" tone="text-accent" title={PERSONA_BOARD.title[lang]}>
+      <p className="-mt-1.5 mb-3 text-12 text-muted">{PERSONA_BOARD.hint[lang]}</p>
+      <CardGrid>
+        {rows.map((p) => (
+          <PersonCard key={p.id}>
+            <PersonName
+              person={p}
+              t={t}
+              size={56}
+              vertical
+              corner={
+                meId && p.id !== meId ? (
+                  <FollowUserButton variant="corner" targetId={p.id} locale={locale} initialFollowing={following?.has(p.id) ?? false} />
+                ) : undefined
+              }
+              sub={
+                <>
+                  <span className="block text-12 font-bold tabular-nums text-accent">{personaReviewsLabel(p.reviews, locale)}</span>
+                  <span className="block mt-0.5 text-[10px] opacity-80">{personaOf(p.id)?.tastes[lang] ?? ""}</span>
+                </>
+              }
+            />
+          </PersonCard>
+        ))}
+      </CardGrid>
+    </BoardSection>
+  );
+}
