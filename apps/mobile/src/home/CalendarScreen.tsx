@@ -15,6 +15,7 @@ import { posterFor } from "../poster";
 import { usePullRefresh } from "../pullRefresh";
 import { OneTimeHint } from "../library/OneTimeHint";
 import type { CalendarPayload } from "@/core/contracts/calendar";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * 🆕 **تقويمُ أعمالك شاشةً أصليّة** (D-1317، طلبُ أحمد: «حول التقويم لاصلية») — كانت بابَ ويبٍ يُفتح من عنوان
@@ -51,6 +52,8 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
   const d = q.data ?? null;
   const refresh = usePullRefresh([key], 0);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -173,7 +176,7 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
           {/* سهمُ الرجوع الواحد (D-1460) — المرسومُ باليد هنا كان يدور ‎-45° في الاتّجاهين فخرج «^» في العربيّة (D-1592) */}
           <BackChevron color={tokens.fg} />
         </Pressable>

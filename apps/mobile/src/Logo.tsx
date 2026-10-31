@@ -1,7 +1,8 @@
 import React from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "./state";
+import { useHomeDoor } from "./homeDoor";
 
 /**
  * ====== شعارُ Loopz في رؤوس الشاشات الأصليّة — D-1022 (١٨ سبتمبر ٢٠٢٦) ======
@@ -46,5 +47,18 @@ export function Logo({ size = 28, variant = "mark", onArt = false }: { size?: nu
         </View>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * 🆕 D-1611 — **الشعارُ في رأس صفحةٍ مرفوعة بابٌ إلى أوّل التبويب** (أحمد «٢ أ»): ضغطةٌ واحدة تُنزل الصفحاتِ المكدّسةَ كلَّها
+ * فيظهر التبويبُ الذي بدأ منه. على جذرٍ لا مكدّسَ فوقه لا يفعل شيئاً (`useHomeDoor`).
+ */
+export function HomeLogo({ size = 28 }: { size?: number }) {
+  const home = useHomeDoor();
+  return (
+    <Pressable onPress={home} hitSlop={8} accessibilityRole="button" accessibilityLabel="Loopz" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <Logo size={size} />
+    </Pressable>
   );
 }

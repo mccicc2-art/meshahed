@@ -13,6 +13,7 @@ import { posterFor } from "../poster";
 import type { NativeRoot } from "../shell";
 import { usePullRefresh } from "../pullRefresh";
 import type { MyRating, MyRatingsPayload } from "@/core/contracts/profile";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== «تقييماتي» أصليّاً (🆕 D-1357 · Phase 11-V · V-C · C1 — ١١ أكتوبر ٢٠٢٦) ======
@@ -48,6 +49,8 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
   });
   const refresh = usePullRefresh([myRatingsKey], 0);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -118,7 +121,7 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
           <BackChevron color={tokens.fg} />
         </Pressable>
         <Text size={17} weight="700">{t.ratingsTitle}</Text>

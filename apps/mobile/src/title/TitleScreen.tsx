@@ -24,7 +24,7 @@ import { ActionRow } from "./ActionRow";
 import { Sheet } from "../library/Sheet";
 import { SendTitleSheet } from "../messages/SendSheets";
 import { ArtSheet } from "./ArtSheet";
-import { Logo } from "../Logo";
+import { HomeLogo } from "../Logo";
 import { Clipboard } from "react-native";
 import { useExtras, RatingsLine, Pulse, WatchWhere, ListSheet, CastRail, RelatedRails, extrasKey } from "./TitleExtras";
 import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCommunity";
@@ -44,6 +44,7 @@ import type {
   UnrateBody,
 } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== صفحةُ العمل أصليّةً — Phase 11-D · D1 (D-956) ======
@@ -133,6 +134,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const community = useCommunity(kind, id, !!d);
   const reviewsCount = community.data?.reviews.length ?? 0;
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -375,7 +378,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
         <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? seed?.name ?? ""}</Text>
         {/* 🆕 D-1569 — الشعارُ في الطرف كترويسات التبويبات (أحمد ٢٩ أكتوبر «٣أ»): مكانٌ واحدٌ للشعار في كلِّ صفحة */}
         <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Logo size={28} />
+          <HomeLogo size={28} />
         </View>
       </View>
 
@@ -409,7 +412,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 لا من أعلى الملصق — والغلافُ فوقها يُرى (٧٠٪ بدل ٤٥٪، أحمد «٢ أ»). الكتابةُ تبقى على أغمق جزءٍ من التدرّج */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
             {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب (طلبُ أحمد): الظلُّ أعلاه يكفيهما */}
-            <Pressable onPress={back} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
+            <Pressable onPress={back} onLongPress={home} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
               <Chevron color="#fff" />
             </Pressable>
             {d ? (

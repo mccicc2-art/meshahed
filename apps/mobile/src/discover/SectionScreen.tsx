@@ -15,6 +15,7 @@ import { usePullRefresh } from "../pullRefresh";
 import { dismissed, useDismissed } from "./dismissed";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard, LibraryPayload, SectionPayload } from "../contracts";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== «الكلّ ←» شاشةٌ كاملة بتمريرٍ لا نهائيّ — D-1046 (Phase 11-F · F5) ======
@@ -72,6 +73,8 @@ export function SectionScreen({ title, query }: { title: string; query: string }
   const marks = useMemo(() => marksOf(lib.data?.items), [lib.data]);
   useEffect(() => store.setBase(marks), [store, marks]);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -136,7 +139,7 @@ export function SectionScreen({ title, query }: { title: string; query: string }
       <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
           <Text size={15} weight="700" numberOfLines={1}>{title}</Text>
-          <Pressable onPress={back} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+          <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
               <BackChevron color={tokens.fg} />
             </View>

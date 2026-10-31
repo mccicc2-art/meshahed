@@ -41,6 +41,7 @@ import { stackAboveRoots } from "../nativeStack";
 import { orderThread, orderTalk, buildTree, countUnder, canReplyTo, focusView, PEEK } from "@/core/threadOrder";
 import type { ThreadPayload, ThreadRow, ThreadTarget, ThreadReplyResult, LikeBody, ToggleEpisodeBody, TrackResult } from "../contracts";
 import { openProfile as pushProfile, profileHandleOf } from "../member/open";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== «النقاش» أصليّاً — شاشةٌ واحدةٌ لثلاثة أبواب · Phase 11-M · M3 (خطّة §٣) ======
@@ -175,6 +176,8 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   pickRef.current = pick;
 
   /* ——— الملاحة ——— */
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -737,7 +740,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
         <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-          <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Pressable onPress={back} onLongPress={home} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             {/* السهمُ مُداراً مع اتّجاه الصفحة (`rotate-90 rtl:-rotate-90` — وصفةُ رأس الإعدادات) */}
             <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
               <Icon name="chevron-down" size={22} color={tokens.fg} />

@@ -14,6 +14,7 @@ import { RailCard, RAIL_CARD_W, type LibMark } from "../discover/RailCard";
 import { profileUrl } from "@/core/media";
 import { formatDate } from "@/core/when";
 import type { FollowArtistBody, LibraryPayload, ListFromPersonBody, ListFromPersonResult, PersonPayload, PersonWork, UnfollowArtistBody } from "../contracts";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== صفحةُ الشخص أصليّةً — Phase 11-E · E1 (D-983، ١٥ سبتمبر ٢٠٢٦) ======
@@ -78,6 +79,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
     return m;
   }, [lib.data]);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -148,7 +151,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
         <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+        <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
           <Chevron color={tokens.fg} />
         </Pressable>
       </View>

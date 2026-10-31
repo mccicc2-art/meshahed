@@ -21,6 +21,7 @@ import { PosterCard } from "../library/PosterCard";
 import { displayNameOf } from "@/core/people";
 import { num, worksParts } from "@/core/i18n";
 import type { MemberStatsPayload, MemberTaste, MemberTasteEntry, MemberTasteList, MemberTasteWork, MyStatsPayload, MyStatsRange } from "@/core/contracts/memberStats";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== إحصاءاتُ العضو أصليّةً — Phase 11-N · N4 (٣٠ سبتمبر ٢٠٢٦) ======
@@ -77,6 +78,8 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
     afterPaint(() => endOpen());
   }, [d, opened, endOpen]);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -109,7 +112,7 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
           <BackChevron color={tokens.fg} />
         </Pressable>
         <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{t.statsPageTitle}</Text>

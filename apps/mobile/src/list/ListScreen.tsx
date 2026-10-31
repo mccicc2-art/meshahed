@@ -37,6 +37,7 @@ import type {
 } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 import { profileHref } from "@/core/people";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== صفحةُ القائمة — شاشةٌ أصليّة (D-1036 · الشريحةُ الأولى: القراءة) ======
@@ -88,6 +89,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   const marks = useMemo(() => marksOf(lib.data?.items), [lib.data]);
   useEffect(() => store.setBase(marks), [store, marks]);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -346,7 +349,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
         {/* الترويسة — رجوعٌ · الاسمُ · مشاركة (ترويسةُ صفحتَي العمل والشخص نفسُها) */}
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
           <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
-          <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+          <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
             <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
               {/* سهمُ الرجوع الواحد (D-1460) — لا رسمَ باليد: كان «^» في العربيّة (D-1592) */}
               <BackChevron color={tokens.fg} />

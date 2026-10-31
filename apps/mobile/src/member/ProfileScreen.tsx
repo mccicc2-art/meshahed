@@ -47,6 +47,7 @@ import { REPORT_REASON_MAX, type ProfileReportBody, type ProfileSavedListsBody, 
 import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { usePosterSizes } from "../posterSizes";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -179,6 +180,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     return () => clearTimeout(h);
   }, [toast]);
 
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace("/web");
@@ -686,7 +689,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} height={coverH} fadeFrom={coverFadeFrom} /> : null}
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8 }}>
-        <RoundBtn icon="back" label={t.closeLabel} onPress={back} onArt={!!d?.person.cover_url} />
+        <RoundBtn icon="back" label={t.closeLabel} onPress={back} onLongPress={home} onArt={!!d?.person.cover_url} />
         <View style={{ flex: 1 }} />
         {d?.person.username ? <RoundBtn icon="share" label={t.shareLinkLabel} onPress={share} onArt={!!d.person.cover_url} /> : null}
         {d?.viewer.is_me ? <RoundBtn icon="settings" label={t.headerSettings} onPress={() => router.push("/settings")} onArt={!!d.person.cover_url} /> : null}
@@ -1002,11 +1005,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
 /* ——————————————————— أجزاءُ الرأس ——————————————————— */
 
-function RoundBtn({ icon, label, onPress, onArt }: { icon: "back" | "share" | "settings" | "dots"; label: string; onPress: () => void; onArt: boolean }) {
+function RoundBtn({ icon, label, onPress, onLongPress, onArt }: { icon: "back" | "share" | "settings" | "dots"; label: string; onPress: () => void; onLongPress?: () => void; onArt: boolean }) {
   const { tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   return (
-    <Pressable onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       {icon === "back" ? (
         <BackChevron color={fg} />
       ) : (

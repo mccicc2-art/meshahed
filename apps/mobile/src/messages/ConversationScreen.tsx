@@ -31,6 +31,7 @@ import { PhotoViewer } from "./PhotoViewer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "./chatDock";
 import { DeleteSheet, canUnsend, deleteRemote } from "./DeleteSheet";
 import { richNodes } from "../richText";
+import { useHomeDoor } from "../homeDoor";
 
 /**
  * ====== خيطُ المحادثة أصليّاً — كالدردشة · Phase 11-M · M4 (خطّة §٣) ======
@@ -125,6 +126,8 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   const inputRef = useRef<TextInputInstance>(null);
 
   /* ——— الملاحة ——— */
+  /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
+  const home = useHomeDoor();
   const back = useCallback(() => {
     /* 🆕 D-1307 (تسجيلُ خالد، ٦ أكتوبر): الرجوعُ كان يترك لوحةَ المفاتيح مفتوحةً فوق قائمة الرسائل — تُغلق قبل الانتقال */
     Keyboard.dismiss();
@@ -504,7 +507,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           </View>
         ) : (
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-          <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Pressable onPress={back} onLongPress={home} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
               <Icon name="chevron-down" size={22} color={tokens.fg} />
             </View>
