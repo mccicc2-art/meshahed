@@ -10,7 +10,8 @@ import { session } from "../session";
 import { own } from "../ownSession";
 import { backdropUrl, posterUrl } from "@/core/media";
 import type { WidgetFeed } from "@/core/contracts/widget";
-import { resolveWidget, type WidgetSectionKey } from "@/core/widgetLayout";
+import { defaultWidgetConfigV3, resolveWidget, type WidgetSectionKey } from "@/core/widgetLayout";
+import { defaultV3, type SmallSection } from "@/core/widgetSlots";
 import { sanitizeV4Look } from "@/core/widgetTiles";
 import { sanitizeWidgetLook } from "@/core/widgetLook";
 
@@ -367,6 +368,32 @@ export function writtenFeed(): WidgetFeed | null {
   }
 }
 
+/**
+ * 🆕 D-1609 — تخطيطٌ لكلِّ قسمٍ وحدَه (`solo`، المحرّكُ يرسمه شبكةَ بوسترات) بترتيب ما يُطلب أكثر: ما تكمله، ما ستشاهده، السينما،
+ * القادم، فيلم الليلة، أصدقاؤك، نشاطك. المعرّفُ `solo-<القسم>` ثابت: ودجتٌ اختار قسماً يبقى عليه بعد كلِّ كتابة.
+ */
+const SOLO_ORDER: readonly SmallSection[] = ["cont", "tw", "cine", "up", "tonight", "friends", "act"];
+
+function soloLayouts(data: WidgetFeed, empty: WidgetSectionKey[], opts: Parameters<typeof resolveWidget>[4]) {
+  const s = data.strings;
+  const s2 = data.v2?.strings;
+  const name: Record<SmallSection, string | undefined> = {
+    cont: s.continueTitle,
+    tw: s.towatchTitle,
+    cine: s2?.cinemaTitle,
+    up: s.comingUpTitle,
+    tonight: s.tonightTitle,
+    friends: s2?.friendsTitle,
+    act: s2?.activityTitle,
+  };
+  const base = defaultWidgetConfigV3();
+  return SOLO_ORDER.filter((k) => !!name[k]).map((k) => ({
+    id: `solo-${k}`,
+    name: name[k] as string,
+    resolved: resolveWidget({ ...base, v3: { ...defaultV3(), small: k, solo: k } }, true, "ios", empty, opts),
+  }));
+}
+
 function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: Map<string, string>, prune: boolean): void {
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
   /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
@@ -387,9 +414,15 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
             v2.layouts.filter((l) => isAndroidWidgetLayout(l.id)).map((l) => [l.id, resolveWidget(l.config, v2.plus, "android", empty, androidOpts)]),
           ),
         },
-        ios: v2.layouts
-          .filter((l) => !isAndroidWidgetLayout(l.id))
-          .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty, iosOpts) })),
+        ios: [
+          ...v2.layouts
+            .filter((l) => !isAndroidWidgetLayout(l.id))
+            .map((l) => ({ id: l.id, name: l.name, resolved: resolveWidget(l.config, v2.plus, "ios", empty, iosOpts) })),
+          /* 🆕 D-1609 — **كلُّ قسمٍ وحدَه في قائمة الاختيار** بعد تخطيطات الشخص (أحمد «١ أ»): تختاره من شاشة الودجت بلا تخطيطٍ
+             يُبنى في التطبيق. لا يُحفظ شيء — يُحسب هنا مع كلِّ كتابة، فاسمُه بلغة الخلاصة. **وللمشترك وحدَه** كالتخطيطات نفسِها:
+             غيرُه يُرسم له الافتراضيُّ أيّاً كان اختيارُه (`effectiveWidgetConfig`)، فقائمةٌ لا تفعل شيئاً كذبة */
+          ...(v2.plus ? soloLayouts(data, empty, iosOpts) : []),
+        ],
         look,
         look4,
       }

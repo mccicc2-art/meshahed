@@ -132,3 +132,17 @@ test("لا تصغيرَ تحت ٧٪: الودجتُ القصيرُ يُسقط ص
 test("الخادمُ لا يقدر يجعل عرضَ التصميم صفراً", () => {
   assert.equal(sanitizeV4Look({ android: { nums: { designW: 0 } } }).android.nums.designW, 335);
 });
+
+/* 🆕 D-1609 — قسمٌ وحدَه: شبكةُ بوستراتٍ من القسم المختار، بلا «أكمل المشاهدة» فوقه */
+test("قسمٌ وحدَه: المتوسطُ صفٌّ والكبيرُ صفّان، والعناصرُ بالترتيب والعنوانُ على الأولى", () => {
+  const solo: WidgetV3 = { ...defaultV3(), small: "tw", solo: "tw" };
+  const m = I(170, solo);
+  assert.deepEqual(cards(m.tiles), ["twp", "twp", "twp"]);
+  const l = I(376, solo);
+  assert.equal(l.tiles.length, 6);
+  assert.deepEqual(l.tiles.map((t) => (t.k === "card" ? t.i : -1)), [0, 1, 2, 3, 4, 5]);
+  assert.ok(l.tiles.every((t) => t.k === "card" && t.s === "tw"));
+  assert.equal(l.tiles.filter((t) => t.k === "card" && t.lab === 1).length, 1);
+  assert.ok(bottom(l.tiles) <= 376 - 10 + 0.5);
+  assert.equal(smallV4(solo).s, "tw");
+});

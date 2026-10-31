@@ -145,6 +145,7 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   const avail = H - 2 * n.padY;
   const medium = H < n.mediumMax;
   const l3 = !medium && H < n.l3Max;
+  if (v3.solo) return soloGrid(v3.solo, n, W, avail);
   const slots = liveSlots(v3, l3, empty);
   const posters = v3.cont === "posters";
   const contG = posters ? ((W - 2 * n.posterGap) / 3) * 1.5 : (W - n.cardGap) / 2 / n.cardRatio;
@@ -233,6 +234,25 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   /* الخطُّ العموديُّ بين النصّين: عرضُه ١ (نقطة) */
   for (const t of tiles) if (t.k === "hair" && t.w === 0) t.w = 1;
   return { tiles, f, spare: Math.max(0, spare), dropped };
+}
+
+/**
+ * 🆕 D-1609 — **قسمٌ وحدَه**: صفوفُ ثلاثة بوستراتٍ بعناصر القسم بالترتيب (٠ ١ ٢ ثمّ ٣ ٤ ٥ …)، وعددُ الصفوف أقربُه لبوستر ٢:٣
+ * في هذا الارتفاع — فالمتوسطُ صفٌّ والكبيرُ صفّان والكبيرُ جداً ثلاثة أو أربعة. **بلا «أكمل المشاهدة» فوقه** (هو ما طُلب: قسمٌ
+ * يُختار فيُعرض)، وعنوانُ القسم على أوّل بطاقة كبقيّة الودجت. ما زاد على عناصر القسم يرسمه الرسّامُ خانةً داكنة (لا تكرار).
+ */
+function soloGrid(s: WidgetSectionKey, n: WidgetV4Nums, W: number, avail: number): V4Layout {
+  const cw = (W - 2 * n.posterGap) / 3;
+  const ideal = cw * 1.5;
+  const rows = Math.max(1, Math.round((avail + n.posterGap) / (ideal + n.posterGap)));
+  const rh = (avail - (rows - 1) * n.posterGap) / rows;
+  const tiles: V4Tile[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let i = 0; i < 3; i++) {
+      tiles.push(card(s, r * 3 + i, n.padX + i * (cw + n.posterGap), n.padY + r * (rh + n.posterGap), cw, rh, false, { lab: r === 0 && i === 0 }));
+    }
+  }
+  return { tiles, f: 1, spare: 0, dropped: [] };
 }
 
 /** الصغير: بطاقةٌ واحدةٌ تملأ الودجت — والرسّامُ يرسمها بمقاسه هو */
