@@ -17,6 +17,7 @@ import { ReviewSheet } from "./TitleCommunity";
 import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
+import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
@@ -200,7 +201,7 @@ export function SeasonAccordion({
                 </Pressable>
               ) : null}
             </View>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
           </View>
         );
   };
@@ -297,6 +298,8 @@ function SeasonBody({
   show,
   season,
   aired,
+  first: seasonFirst,
+  parts,
   watched,
   onError,
   onSettled,
@@ -306,6 +309,10 @@ function SeasonBody({
   show: TvTitlePayload;
   season: number;
   aired: number;
+  /** D-1618 — أوّلُ رقمٍ في الموسم (نافذةُ «ما بُثّ» للأجزاء) */
+  first: number;
+  /** 🆕 D-1618 — أجزاءُ الموسم الطويل من الخادم؛ الغيابُ = قائمةٌ واحدة كما كانت */
+  parts?: SeasonPart[];
   watched: Set<string>;
   /** D-1021 — المفتاحُ في رأس التبويب لا في الموسم */
   showRatings: boolean;
@@ -314,7 +321,7 @@ function SeasonBody({
   /** D-1141 — حالتي لم تصل: العلامةُ والنجمةُ هيكلٌ لا يُضغط */
   pending: boolean;
 }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale } = useApp();
   const qc = useQueryClient();
   /**
    * 🆕 D-1011 — **صفُّ الحلقة يحمل ما يحمله في الويب** (طلبُ أحمد بلقطةٍ مؤشَّرة): صورةُ
@@ -449,6 +456,27 @@ function SeasonBody({
     onError,
   });
 
+  /**
+   * 🆕 D-1618 — **الموسمُ الطويل أجزاء** (أحمد ١ نوفمبر بلقطة كونان: «قسم كونان إلى اجزاء» — «١أ · أ»): الجزءُ رأسٌ كرأس الموسم
+   * (الاسمُ · المدى · المشاهَد/المبثوث · «الجزء كامل ✓») يُفتح على حلقاته وحدَها — لا ألفُ صفٍّ في قائمةٍ واحدة. الحلقاتُ
+   * من جلبة الموسم نفسِها (لا نداءَ لكلِّ جزء)، والتأشيرُ «حتى هنا» و«من هنا» كما هما: الجزءُ عرضٌ لا حدٌّ للقاعدة.
+   * المفتوحُ افتراضاً أوّلُ جزءٍ لم يكتمل — حيث يقف القارئ.
+   */
+  const [openPart, setOpenPart] = useState<number | null>(() => {
+    if (!parts?.length) return null;
+    const i = parts.findIndex((p) => partWatched(p, season, watched) < partAired(p, seasonFirst, aired));
+    return i >= 0 ? i : null;
+  });
+  const partAll = useMutation({
+    mutationFn: ({ part, on }: { part: SeasonPart; on: boolean }) => {
+      const episodes = Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => ref(part.first + i));
+      return write<TrackResult>("/api/v1/track/season", { showTmdbId: show.id, episodes, watched: on, title: show.name, posterPath: show.poster_path } satisfies SetSeasonBody);
+    },
+    onMutate: ({ part, on }) => patch(Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => episodeKey(season, part.first + i)), on),
+    onSuccess: onSettled,
+    onError,
+  });
+
   if (!q.data) {
     return (
       <View style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
@@ -458,69 +486,101 @@ function SeasonBody({
       </View>
     );
   }
+  /* صفُّ الحلقة — للقائمة الواحدة ولقائمة الجزء المفتوح (D-1618) */
+  const row = (e: (typeof eps)[number]) => {
+    const key = episodeKey(season, e.episode_number);
+    const on = watched.has(key);
+    const future = !e.air_date || e.air_date > d;
+    return (
+      <Pressable
+        key={e.episode_number}
+        disabled={future || pending}
+        /* D-988 — التأشيرُ «حتى هنا»؛ D-1149 — والإزالةُ «من هنا» في الموسم */
+        onPress={() => (on ? downFrom.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
+        onLongPress={() => upTo.mutate(e.episode_number)}
+        delayLongPress={400}
+        style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}
+      >
+        {/* D-1021 — دائرةُ التأشير يساراً كالويب، والرقمُ مع الاسم */}
+        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: pending ? 0 : 1.5, borderColor: on ? tokens.success : tokens.border, backgroundColor: pending ? tokens.surface2 : on ? tokens.success : "transparent", alignItems: "center", justifyContent: "center" }}>
+          {on && !pending ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
+        </View>
+        {/* صورةُ الحلقة — `w300` تكفي مربّعاً ٧٢×٤٠ (D-895: لا نجلب أكبر ممّا نرسم) */}
+        <View style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+          {e.still_path ? (
+            <Image source={{ uri: backdropUrl(e.still_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={120} recyclingKey={`${season}-${e.episode_number}`} />
+          ) : show.backdrop_path ? (
+            /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد: «يظهر صورة الغلاف حقّ العمل»،
+               واختار الباهتة): العريضةُ لا الملصق (الخانةُ ١٦:٩)، ونصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة» —
+               فصفوفٌ متتاليةٌ بالصورة نفسِها لا تُقرأ عطلاً. بلا خلفيّةٍ يبقى المربّعُ الرماديّ. */
+            <Image source={{ uri: backdropUrl(show.backdrop_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%", opacity: 0.5 }} contentFit="cover" transition={120} recyclingKey={`${season}-bd`} />
+          ) : null}
+        </View>
+        <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
+          <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
+          {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
+        </View>
+        {(showRatings || on) && typeof e.imdb_rating === "number" ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text size={9} weight="800" color="#F5C518">IMDb</Text>
+            <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
+          </View>
+        ) : (showRatings || on) && typeof e.tmdb_rating === "number" ? (
+          /* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ نفسُه وقاعدةُ الظهور نفسُها، **والشعارُ رماديّ**
+             (اختيارُ أحمد «٢ ب») — فيبقى IMDb الأبرزَ ولا يُقرأ المقياسان مقياساً واحداً (D-132) */
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text size={9} weight="800" muted>TMDB</Text>
+            <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.tmdb_rating.toFixed(1)}</Text>
+          </View>
+        ) : null}
+        {/* نجمةُ تقييمي — تملأ برقمها حين أقيّم، والضغطُ يفتح منتقيَ ١..١٠ */}
+        <Pressable
+          disabled={pending}
+          onPress={() => setRating(e.episode_number)}
+          hitSlop={6}
+          accessibilityLabel={t.epRateAria(season, e.episode_number)}
+          style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 2 }}
+        >
+          <Icon name={typeof e.my_rating === "number" ? "star-filled" : "star"} size={15} color={typeof e.my_rating === "number" ? tokens.accent : tokens.muted} />
+          {typeof e.my_rating === "number" ? <Text size={11} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{e.my_rating}</Text> : null}
+        </Pressable>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 6 }}>
       {/* D-1021 — شريطُ التقدّم وزرُّ الموسم كلِّه انتقلا إلى رأس التبويب ورأس الموسم */}
-      {eps.map((e) => {
-        const key = episodeKey(season, e.episode_number);
-        const on = watched.has(key);
-        const future = !e.air_date || e.air_date > d;
-        return (
-          <Pressable
-            key={e.episode_number}
-            disabled={future || pending}
-            /* D-988 — التأشيرُ «حتى هنا»؛ D-1149 — والإزالةُ «من هنا» في الموسم */
-            onPress={() => (on ? downFrom.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
-            onLongPress={() => upTo.mutate(e.episode_number)}
-            delayLongPress={400}
-            style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}
-          >
-            {/* D-1021 — دائرةُ التأشير يساراً كالويب، والرقمُ مع الاسم */}
-            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: pending ? 0 : 1.5, borderColor: on ? tokens.success : tokens.border, backgroundColor: pending ? tokens.surface2 : on ? tokens.success : "transparent", alignItems: "center", justifyContent: "center" }}>
-              {on && !pending ? <Icon name="check-line" size={13} color={tokens.onAccent} /> : null}
-            </View>
-            {/* صورةُ الحلقة — `w300` تكفي مربّعاً ٧٢×٤٠ (D-895: لا نجلب أكبر ممّا نرسم) */}
-            <View style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-              {e.still_path ? (
-                <Image source={{ uri: backdropUrl(e.still_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={120} recyclingKey={`${season}-${e.episode_number}`} />
-              ) : show.backdrop_path ? (
-                /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد: «يظهر صورة الغلاف حقّ العمل»،
-                   واختار الباهتة): العريضةُ لا الملصق (الخانةُ ١٦:٩)، ونصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة» —
-                   فصفوفٌ متتاليةٌ بالصورة نفسِها لا تُقرأ عطلاً. بلا خلفيّةٍ يبقى المربّعُ الرماديّ. */
-                <Image source={{ uri: backdropUrl(show.backdrop_path, "w300") ?? undefined }} style={{ width: "100%", height: "100%", opacity: 0.5 }} contentFit="cover" transition={120} recyclingKey={`${season}-bd`} />
-              ) : null}
-            </View>
-            <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
-              <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
-              {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
-            </View>
-            {(showRatings || on) && typeof e.imdb_rating === "number" ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text size={9} weight="800" color="#F5C518">IMDb</Text>
-                <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.imdb_rating.toFixed(1)}</Text>
+      {parts?.length
+        ? parts.map((p, i) => {
+            const pa = partAired(p, seasonFirst, aired);
+            const pw = Math.min(partWatched(p, season, watched), pa || p.last - p.first + 1);
+            const pDone = pa > 0 && pw >= pa;
+            const pOpen = openPart === i;
+            return (
+              <View key={p.first} style={{ borderTopWidth: i === 0 ? 0 : 1, borderTopColor: tokens.divider }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Pressable onPress={() => setOpenPart(pOpen ? null : i)} accessibilityRole="button" accessibilityState={{ expanded: pOpen }} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, minHeight: 44 }}>
+                    <View style={{ transform: [{ rotate: pOpen ? "0deg" : "-90deg" }] }}>
+                      <Icon name="chevron-down" size={14} color={tokens.muted} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text size={14} weight="600" numberOfLines={1}>{partTitle(p, i, locale)}</Text>
+                      <Text size={11} muted style={{ fontVariant: ["tabular-nums"] }}>{`${p.first}–${p.last}`}{pa > 0 && !pending ? ` · ${pw}/${pa}` : ""}</Text>
+                    </View>
+                  </Pressable>
+                  {pa > 0 ? (
+                    <Pressable disabled={pending} onPress={() => partAll.mutate({ part: p, on: !pDone })} hitSlop={8} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, opacity: pending ? 0.35 : pressed || partAll.isPending ? 0.6 : 1 })}>
+                      {pDone ? <Icon name="check-line" size={14} color={tokens.success} /> : null}
+                      <Text size={13} weight="600" color={pDone ? tokens.muted : tokens.accent}>{pDone ? PART_WORDS[locale].undo : PART_WORDS[locale].all}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {pOpen ? <View style={{ gap: 6, paddingBottom: 6 }}>{eps.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last).map(row)}</View> : null}
               </View>
-            ) : (showRatings || on) && typeof e.tmdb_rating === "number" ? (
-              /* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ نفسُه وقاعدةُ الظهور نفسُها، **والشعارُ رماديّ**
-                 (اختيارُ أحمد «٢ ب») — فيبقى IMDb الأبرزَ ولا يُقرأ المقياسان مقياساً واحداً (D-132) */
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text size={9} weight="800" muted>TMDB</Text>
-                <Text size={11} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{e.tmdb_rating.toFixed(1)}</Text>
-              </View>
-            ) : null}
-            {/* نجمةُ تقييمي — تملأ برقمها حين أقيّم، والضغطُ يفتح منتقيَ ١..١٠ */}
-            <Pressable
-              disabled={pending}
-              onPress={() => setRating(e.episode_number)}
-              hitSlop={6}
-              accessibilityLabel={t.epRateAria(season, e.episode_number)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 2 }}
-            >
-              <Icon name={typeof e.my_rating === "number" ? "star-filled" : "star"} size={15} color={typeof e.my_rating === "number" ? tokens.accent : tokens.muted} />
-              {typeof e.my_rating === "number" ? <Text size={11} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{e.my_rating}</Text> : null}
-            </Pressable>
-          </Pressable>
-        );
-      })}
+            );
+          })
+        : eps.map(row)}
       {rating !== null ? (
         <ReviewSheet
           title={t.epRateAria(season, rating)}

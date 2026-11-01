@@ -1,3 +1,4 @@
+import type { SeasonPart } from "@/core/seasonParts";
 /**
  * ====== عقدُ صفحة العمل — `GET /api/v1/title/{kind}/{id}` ======
  *
@@ -23,6 +24,9 @@ export type TitleSeason = {
   first_episode: number;
   poster_path: string | null;
   air_date: string | null;
+  /** 🆕 D-1618 — أجزاءُ الموسم الطويل (عملٌ كلُّه في موسمٍ واحد فوق مئة حلقة): آركاتُ TMDB أو مئةٌ مئة.
+   *  اختياريٌّ: الغيابُ = موسمٌ بلا أجزاء، وتطبيقٌ أقدم لا يقرؤه فيرى الموسمَ كما كان */
+  parts?: SeasonPart[];
 };
 
 type TitleBase = {

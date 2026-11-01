@@ -48,7 +48,8 @@ import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/core/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
-import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering } from "@/core/progress";
+import { airedEpisodeCount, airedPerSeason, firstEpisodeOf, isAbsoluteNumbering } from "@/core/progress";
+import { seasonPartsFor } from "@/lib/seasonParts";
 import { episodeKey } from "@/core/keys";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -185,6 +186,9 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   /* D-1058 — **موسمٌ بصفر حلقات لا يُخفى بعد الآن** (قرارُ أحمد ٢٢ سبتمبر: «مثل التطبيق»): كان `episode_count > 0`
      يُسقط الموسمَ المعلَن الذي لم تُحصَ حلقاتُه بعد، فيرى مستخدمُ الويب مسلسلاً «انتهى» بينما التطبيقُ يقول «قريباً».
      الآن يمرّ كالتطبيق، وسطرُه في المتعقّب يقول ما أُعلن: عددُه إن وُجد، وموعدُه إن وُجد، وإلّا «قريباً» (D-1050). */
+  /* 🆕 D-1618 — عملٌ كلُّه في موسمٍ طويل (كونان): أجزاؤه مع رؤوس المواسم — آركاتُ TMDB مخبّأةٌ يوماً، وإلّا مئةٌ مئة */
+  const firstEp = firstEpisodeOf(tv);
+  const split = await seasonPartsFor(tv.id, tv.seasons, (n) => firstEp.get(n) ?? 1);
   const summaries: SeasonSummary[] = tv.seasons
     .filter((s) => s.season_number >= 1)
     .sort((a, b) => a.season_number - b.season_number)
@@ -197,6 +201,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       air_date:
         s.air_date ??
         (tv.next_episode_to_air && tv.next_episode_to_air.season_number === s.season_number ? tv.next_episode_to_air.air_date : null),
+      ...(split && split.season === s.season_number ? { parts: split.parts, first_episode: firstEp.get(s.season_number) ?? 1 } : {}),
     }));
 
   /* 🔴 🆕 **والترقيمُ المطلق يغيّر أرقامَ الفحص** (D-603): في One Piece

@@ -10,6 +10,7 @@ import {
   getMyArtFor,
 } from "@/lib/data";
 import { airedPerSeason, airedEpisodeCount, firstEpisodeOf } from "@/core/progress";
+import { seasonPartsFor } from "@/lib/seasonParts";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
 import { originAdjectives } from "@/core/region";
 import { getLocale } from "@/lib/locale";
@@ -69,6 +70,8 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
   ]);
   const aired = airedPerSeason(tv);
   const first = firstEpisodeOf(tv);
+  /* 🆕 D-1618 — عملٌ كلُّه في موسمٍ طويل (كونان): أجزاؤه مع الصفحة — الآركاتُ مخبّأةٌ يوماً، وسقفُ وقتٍ يسقط إلى المئات */
+  const split = await seasonPartsFor(tv.id, tv.seasons ?? [], (n) => first.get(n) ?? 1);
   return {
     kind: "tv",
     id: tv.id,
@@ -103,6 +106,7 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
         first_episode: first.get(s.season_number) ?? 1,
         poster_path: s.poster_path,
         air_date: s.air_date,
+        ...(split && split.season === s.season_number ? { parts: split.parts } : {}),
       })),
     aired_total: airedEpisodeCount(tv),
     trailer_key: trailer && "key" in trailer ? (trailer as { key: string }).key : null,

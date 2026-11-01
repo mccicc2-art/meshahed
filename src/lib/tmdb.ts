@@ -1597,6 +1597,30 @@ export async function getEpisode(tvId: number, seasonNumber: number, episodeNumb
   return tmdb<Episode>(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
 }
 
+/** 🆕 D-1618 — مجموعاتُ الحلقات البديلة لعمل (آركات · مواسمُ بثّ · إنتاج) — رؤوسُها بلا حلقات */
+export interface EpisodeGroupSummary {
+  id: string;
+  name: string;
+  type: number;
+  group_count: number;
+  episode_count: number;
+}
+
+export async function getEpisodeGroups(tvId: number): Promise<EpisodeGroupSummary[]> {
+  /* اللغةُ صريحةٌ: أسماءُ المجموعات لا تُترجم، والنداءُ يُنادى داخل خبيئةٍ (`lib/seasonParts`) لا تقرأ الكوكي */
+  const r = await tmdb<{ results?: EpisodeGroupSummary[] }>(`/tv/${tvId}/episode_groups`, { language: "en-US" });
+  return r.results ?? [];
+}
+
+/** 🆕 D-1618 — مجموعةٌ واحدة بحلقاتها (الموسمُ والرقم يكفيان الأجزاء) */
+export async function getEpisodeGroup(id: string): Promise<{
+  id: string;
+  type: number;
+  groups: { name: string; order: number; episodes: { season_number: number; episode_number: number }[] }[];
+}> {
+  return tmdb(`/tv/episode_group/${encodeURIComponent(id)}`, { language: "en-US" });
+}
+
 export async function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
   const path = `/tv/${tvId}/season/${seasonNumber}`;
   const season = await tmdb<SeasonDetails>(path);

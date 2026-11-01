@@ -7,6 +7,7 @@ import { tap } from "@/lib/haptics";
 import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { formatDateShort } from "@/core/when";
+import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
@@ -46,6 +47,9 @@ export interface SeasonSummary {
   aired_count: number;
   /** D-1050 — موعدُ بدئه إن لم يُبثّ منه شيء بعد؛ اختياريٌّ فلا ينكسر منادٍ قديم */
   air_date?: string | null;
+  /** 🆕 D-1618 — أجزاءُ الموسم الطويل (عملٌ كلُّه في موسمٍ واحد فوق مئة حلقة)، ونافذتُه الأولى */
+  parts?: SeasonPart[];
+  first_episode?: number;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -579,6 +583,51 @@ export function EpisodeTracker({
   }
 
 
+  /* 🆕 D-1618 — الجزءُ المفتوح لكلِّ موسمٍ مقسَّم (غيابُ المفتاح = الافتراض: أوّلُ جزءٍ لم يكتمل — حيث يقف القارئ) */
+  const [partOpen, setPartOpen] = useState<Record<number, number | null>>({});
+  const defaultPart = (s: SeasonSummary): number | null => {
+    const i = (s.parts ?? []).findIndex((p) => partWatched(p, s.season_number, watched) < partAired(p, s.first_episode ?? 1, s.aired_count));
+    return i >= 0 ? i : null;
+  };
+
+  /**
+   * 🆕 D-1618 — **«الجزء كامل»** على قاعدة «الموسم كامل» حرفاً (D-785): التأشيرُ يختم ما قبل الجزء أيضاً (`airedUpTo` بحدِّ
+   * ما قبل أوّل حلقاته)، والإزالةُ جزؤه وحدَه. ولا ورقةَ «متى شاهدتها» (D-798): تلك تؤرّخ موسماً كاملاً — ألفُ حلقةٍ بتاريخٍ واحد.
+   */
+  function togglePart(s: SeasonSummary, part: SeasonPart, mark: boolean) {
+    setErr(null);
+    start(async () => {
+      const eps = await loadSeason(s.season_number);
+      const own = eps.filter((e) => e.episode_number >= part.first && e.episode_number <= part.last && hasAired(e.air_date));
+      if (!own.length) return;
+      const before = watched;
+      const prior = mark
+        ? airedUpTo(s.season_number, part.first - 1).filter((o) => !watched.has(episodeKey(o.season, o.episode)))
+        : [];
+      setWatched((prev) => {
+        const set = new Set(prev);
+        for (const o of prior) set.add(episodeKey(o.season, o.episode));
+        for (const e of own) {
+          const key = episodeKey(s.season_number, e.episode_number);
+          if (mark) set.add(key);
+          else set.delete(key);
+        }
+        return set;
+      });
+      try {
+        await runOrQueue("setSeasonWatched", {
+          showTmdbId,
+          ...(mark ? followMeta() : {}),
+          episodes: [...prior, ...own.map((e) => ({ season: s.season_number, episode: e.episode_number, runtime: e.runtime }))],
+          watched: mark,
+        });
+      } catch (e) {
+        setWatched(before);
+        setErr((e as Error).message);
+      }
+    });
+  }
+
   /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ) — D-1500 */
   const seasonCard = (s: SeasonSummary, flat = false) => {
           const isOpen = open === s.season_number;
@@ -588,6 +637,180 @@ export function EpisodeTracker({
             s.aired_count || s.episode_count,
           );
           const allWatched = s.aired_count > 0 && seasonWatched >= s.aired_count;
+
+          /* صفُّ الحلقة — للقائمة الواحدة ولحلقات الجزء المفتوح (D-1618) */
+          const epRow = (e: TrackerEpisode) => {
+            const key = episodeKey(s.season_number, e.episode_number);
+            const isWatched = watched.has(key);
+            const epAired = hasAired(e.air_date);
+            return (
+              <li
+                key={e.episode_number}
+                className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${
+                  !epAired ? "opacity-50" : "active:bg-surface-2"
+                }`}
+              >
+                <button
+                  disabled={!epAired}
+                  onClick={() => toggleOne(s.season_number, e)}
+  /* مساحة اللمس ٤٤ بكسلاً والمربّع المرئي ٢٠: الإصبع لا يصيب
+     مربّعاً بعرض ٢٠ بكسلاً في صفٍّ مزدحم، والهامش السالب يمنع
+     الحشوة من إزاحة الصف */
+                  className={`shrink-0 w-11 h-11 -my-2.5 -ms-2.5 grid place-items-center ${
+                    !epAired ? "cursor-not-allowed" : ""
+                  }`}
+                  aria-pressed={isWatched}
+                  aria-label={`${t.markWatchedAria} — ${e.episode_number}. ${e.name}`}
+                >
+                  {/* صحٌّ رفيع داخل دائرة تختفي عند التأشير — أخفّ
+                      بصرياً من مربّع مملوء يتكرّر مئات المرّات */}
+                  <span
+                    className={`w-[22px] h-[22px] rounded-full border-[1.5px] grid place-items-center transition-colors ${
+                      isWatched
+                        ? "border-transparent text-[color:var(--success)]"
+                        : "border-border text-transparent hover:border-accent/50"
+                    }`}
+                  >
+                    {isWatched && (
+                      <Icon
+                        name="check-line"
+                        size={16}
+                        strokeWidth={2.2}
+                        className="check-pop"
+                      />
+                    )}
+                  </span>
+                </button>
+
+                {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
+                    واثنتا عشرة حلقة = ألف ونصف بكسل من التمرير.
+                    المصغّرة هنا للتعرّف لا للمشاهدة. */}
+                {/* `next/image` لا وسمَ صورةٍ خام: الخام يطلب TMDB
+                    من المتصفّح مباشرةً وكان لا يظهر عند المستخدم،
+                    بينما بقيّةُ صور التطبيق تمرّ به من نطاقنا */}
+                <span className="relative shrink-0 w-14 sm:w-20 aspect-video rounded-lg overflow-hidden bg-surface-2 border border-white/[0.06]">
+                  {e.still_path ? (
+                    <Image
+                      src={`${IMG}/w185${e.still_path}`}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 56px, 80px"
+                      className="object-cover"
+                    />
+                  ) : showBackdropPath ? (
+                    /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد واختيارُه):
+                       نصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة». بلا خلفيّةٍ يبقى رمزُ الفيلم. */
+                    <Image
+                      src={`${IMG}/w185${showBackdropPath}`}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 56px, 80px"
+                      className="object-cover opacity-50"
+                    />
+                  ) : (
+                    <span
+                      className="w-full h-full grid place-items-center text-muted text-sm"
+                      aria-hidden
+                    >
+                      <Icon name="film" size={14} />
+                    </span>
+                  )}
+                </span>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-12 font-semibold truncate leading-tight">
+                    <span className="text-muted font-medium tabular-nums">
+                      {e.episode_number}.
+                    </span>{" "}
+                    {e.name}
+                  </p>
+                  <p className="text-12 text-muted mt-1 truncate sm:hidden">
+                    {metaLine(e, epAired, t)}
+                  </p>
+                </div>
+
+                {/* تقييم الحلقة — يظهر فقط بعد ضغطة الكشف؛
+                    شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
+                {(showRatings || isWatched) && typeof e.imdb_rating === "number" && (
+                  <span
+                    className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums"
+                    dir="ltr"
+                    aria-label={`IMDb ${e.imdb_rating.toFixed(1)}`}
+                  >
+                    <ImdbMark className="text-[8px]" />
+                    {e.imdb_rating.toFixed(1)}
+                  </span>
+                )}
+                {/* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ وقاعدةُ الظهور نفسُهما، والشعارُ رماديّ
+                    (اختيارُ أحمد «٢ ب») — يبقى IMDb الأبرز */}
+                {(showRatings || isWatched) && typeof e.imdb_rating !== "number" && typeof e.tmdb_rating === "number" && (
+                  <span
+                    className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums text-muted"
+                    dir="ltr"
+                    aria-label={`TMDB ${e.tmdb_rating.toFixed(1)}`}
+                  >
+                    <TmdbMark muted className="text-[8px]" />
+                    {e.tmdb_rating.toFixed(1)}
+                  </span>
+                )}
+
+                {/* **تقييمي أنا — بابٌ دائم لا يظهر بضغطة كشف**
+                    (D-139): زرّ كشف التقييمات يخصّ أرقام IMDb
+                    لأنها حرقٌ محتمل لحلقةٍ لم تُشاهَد؛ أما رأيك
+                    أنت فليس حرقاً عليك، وإخفاؤه خلف ضغطةٍ يدفن
+                    الفعل الذي جاء المستخدم من أجله.
+                    والحلقة التي لم تُبثّ لا تُقيَّم. */}
+                {epAired && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      tap(8);
+                      const mine = myRatings.get(
+                        episodeKey(s.season_number, e.episode_number),
+                      );
+                      setRateTarget({
+                        season: s.season_number,
+                        episode: e.episode_number,
+                        name: e.name,
+                        runtime: e.runtime ?? defaultRuntime,
+                        rating: mine?.rating ?? null,
+                        review: mine?.review ?? null,
+                        spoiler: !!mine?.spoiler,
+                      });
+                    }}
+                    aria-label={t.epRateAria(s.season_number, e.episode_number)}
+                    /* 🆕 **على محور النقاط، وعلى سطر اسم
+                       الحلقة** (D-413): كانت في وسط الصفّ
+                       رأسياً وعلى بُعد ٤١px من الحافّة —
+                       **فلا هي تحت النقاط ولا هي بمحاذاة
+                       الاسم.** */
+                    className="shrink-0 self-start mt-0.5 -me-2 inline-flex items-center gap-1 text-12 font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
+                    dir="ltr"
+                  >
+                    {(() => {
+                      const mine = myRatings.get(
+                        episodeKey(s.season_number, e.episode_number),
+                      );
+                      return mine ? (
+                        <>
+                          <span className="text-accent">★</span>
+                          <span>{mine.rating}</span>
+                        </>
+                      ) : (
+                        <span className="text-muted/40 hover:text-muted transition">
+                          ★
+                        </span>
+                      );
+                    })()}
+                  </button>
+                )}
+
+                <span className="hidden sm:block shrink-0 text-xs text-muted text-end tabular-nums">
+                  {metaLine(e, epAired, t)}
+                </span>
+              </li>
+            );
+          };
 
           return (
             <div
@@ -672,182 +895,55 @@ export function EpisodeTracker({
                     </ul>
                   ) : (
                     <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
-                      {(shownAll.has(s.season_number)
-                        ? episodes
-                        : episodes.slice(0, CHUNK)
-                      ).map((e) => {
-                        const key = episodeKey(s.season_number, e.episode_number);
-                        const isWatched = watched.has(key);
-                        const epAired = hasAired(e.air_date);
-                        return (
-                          <li
-                            key={e.episode_number}
-                            className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${
-                              !epAired ? "opacity-50" : "active:bg-surface-2"
-                            }`}
-                          >
-                            <button
-                              disabled={!epAired}
-                              onClick={() => toggleOne(s.season_number, e)}
-              /* مساحة اللمس ٤٤ بكسلاً والمربّع المرئي ٢٠: الإصبع لا يصيب
-                 مربّعاً بعرض ٢٠ بكسلاً في صفٍّ مزدحم، والهامش السالب يمنع
-                 الحشوة من إزاحة الصف */
-                              className={`shrink-0 w-11 h-11 -my-2.5 -ms-2.5 grid place-items-center ${
-                                !epAired ? "cursor-not-allowed" : ""
-                              }`}
-                              aria-pressed={isWatched}
-                              aria-label={`${t.markWatchedAria} — ${e.episode_number}. ${e.name}`}
-                            >
-                              {/* صحٌّ رفيع داخل دائرة تختفي عند التأشير — أخفّ
-                                  بصرياً من مربّع مملوء يتكرّر مئات المرّات */}
-                              <span
-                                className={`w-[22px] h-[22px] rounded-full border-[1.5px] grid place-items-center transition-colors ${
-                                  isWatched
-                                    ? "border-transparent text-[color:var(--success)]"
-                                    : "border-border text-transparent hover:border-accent/50"
-                                }`}
-                              >
-                                {isWatched && (
-                                  <Icon
-                                    name="check-line"
-                                    size={16}
-                                    strokeWidth={2.2}
-                                    className="check-pop"
-                                  />
-                                )}
-                              </span>
-                            </button>
-
-                            {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
-                                واثنتا عشرة حلقة = ألف ونصف بكسل من التمرير.
-                                المصغّرة هنا للتعرّف لا للمشاهدة. */}
-                            {/* `next/image` لا وسمَ صورةٍ خام: الخام يطلب TMDB
-                                من المتصفّح مباشرةً وكان لا يظهر عند المستخدم،
-                                بينما بقيّةُ صور التطبيق تمرّ به من نطاقنا */}
-                            <span className="relative shrink-0 w-14 sm:w-20 aspect-video rounded-lg overflow-hidden bg-surface-2 border border-white/[0.06]">
-                              {e.still_path ? (
-                                <Image
-                                  src={`${IMG}/w185${e.still_path}`}
-                                  alt=""
-                                  fill
-                                  sizes="(max-width: 640px) 56px, 80px"
-                                  className="object-cover"
-                                />
-                              ) : showBackdropPath ? (
-                                /* 🆕 D-1255 — حلقةٌ بلا صورة تلبس خلفيّةَ العمل **باهتةً** (طلبُ أحمد واختيارُه):
-                                   نصفُ شفافيّةٍ يقول «بديلٌ لا صورةُ الحلقة». بلا خلفيّةٍ يبقى رمزُ الفيلم. */
-                                <Image
-                                  src={`${IMG}/w185${showBackdropPath}`}
-                                  alt=""
-                                  fill
-                                  sizes="(max-width: 640px) 56px, 80px"
-                                  className="object-cover opacity-50"
-                                />
-                              ) : (
-                                <span
-                                  className="w-full h-full grid place-items-center text-muted text-sm"
-                                  aria-hidden
-                                >
-                                  <Icon name="film" size={14} />
-                                </span>
-                              )}
-                            </span>
-
-                            <div className="flex-1 min-w-0">
-                              <p className="text-12 font-semibold truncate leading-tight">
-                                <span className="text-muted font-medium tabular-nums">
-                                  {e.episode_number}.
-                                </span>{" "}
-                                {e.name}
-                              </p>
-                              <p className="text-12 text-muted mt-1 truncate sm:hidden">
-                                {metaLine(e, epAired, t)}
-                              </p>
-                            </div>
-
-                            {/* تقييم الحلقة — يظهر فقط بعد ضغطة الكشف؛
-                                شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
-                            {(showRatings || isWatched) && typeof e.imdb_rating === "number" && (
-                              <span
-                                className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums"
-                                dir="ltr"
-                                aria-label={`IMDb ${e.imdb_rating.toFixed(1)}`}
-                              >
-                                <ImdbMark className="text-[8px]" />
-                                {e.imdb_rating.toFixed(1)}
-                              </span>
-                            )}
-                            {/* 🆕 D-1554 — بديلُ TMDB لحلقةٍ لا رقمَ لها في IMDb: المكانُ وقاعدةُ الظهور نفسُهما، والشعارُ رماديّ
-                                (اختيارُ أحمد «٢ ب») — يبقى IMDb الأبرز */}
-                            {(showRatings || isWatched) && typeof e.imdb_rating !== "number" && typeof e.tmdb_rating === "number" && (
-                              <span
-                                className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums text-muted"
-                                dir="ltr"
-                                aria-label={`TMDB ${e.tmdb_rating.toFixed(1)}`}
-                              >
-                                <TmdbMark muted className="text-[8px]" />
-                                {e.tmdb_rating.toFixed(1)}
-                              </span>
-                            )}
-
-                            {/* **تقييمي أنا — بابٌ دائم لا يظهر بضغطة كشف**
-                                (D-139): زرّ كشف التقييمات يخصّ أرقام IMDb
-                                لأنها حرقٌ محتمل لحلقةٍ لم تُشاهَد؛ أما رأيك
-                                أنت فليس حرقاً عليك، وإخفاؤه خلف ضغطةٍ يدفن
-                                الفعل الذي جاء المستخدم من أجله.
-                                والحلقة التي لم تُبثّ لا تُقيَّم. */}
-                            {epAired && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  tap(8);
-                                  const mine = myRatings.get(
-                                    episodeKey(s.season_number, e.episode_number),
-                                  );
-                                  setRateTarget({
-                                    season: s.season_number,
-                                    episode: e.episode_number,
-                                    name: e.name,
-                                    runtime: e.runtime ?? defaultRuntime,
-                                    rating: mine?.rating ?? null,
-                                    review: mine?.review ?? null,
-                                    spoiler: !!mine?.spoiler,
-                                  });
-                                }}
-                                aria-label={t.epRateAria(s.season_number, e.episode_number)}
-                                /* 🆕 **على محور النقاط، وعلى سطر اسم
-                                   الحلقة** (D-413): كانت في وسط الصفّ
-                                   رأسياً وعلى بُعد ٤١px من الحافّة —
-                                   **فلا هي تحت النقاط ولا هي بمحاذاة
-                                   الاسم.** */
-                                className="shrink-0 self-start mt-0.5 -me-2 inline-flex items-center gap-1 text-12 font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
-                                dir="ltr"
-                              >
-                                {(() => {
-                                  const mine = myRatings.get(
-                                    episodeKey(s.season_number, e.episode_number),
-                                  );
-                                  return mine ? (
-                                    <>
-                                      <span className="text-accent">★</span>
-                                      <span>{mine.rating}</span>
-                                    </>
-                                  ) : (
-                                    <span className="text-muted/40 hover:text-muted transition">
-                                      ★
+                      {s.parts?.length
+                        ? s.parts.map((p, i) => {
+                            /* 🆕 D-1618 — الجزءُ رأسٌ كرأس الموسم يُفتح على حلقاته وحدَها (تكافؤُ التطبيق) */
+                            const pa = partAired(p, s.first_episode ?? 1, s.aired_count);
+                            const pw = Math.min(partWatched(p, s.season_number, watched), pa || p.last - p.first + 1);
+                            const pDone = pa > 0 && pw >= pa;
+                            const pOpen = (partOpen[s.season_number] === undefined ? defaultPart(s) : partOpen[s.season_number]) === i;
+                            return (
+                              <li key={p.first}>
+                                <div className="flex items-center gap-2 px-3.5">
+                                  <button
+                                    onClick={() => setPartOpen((prev) => ({ ...prev, [s.season_number]: pOpen ? null : i }))}
+                                    aria-expanded={pOpen}
+                                    className="flex-1 min-w-0 flex items-center gap-2.5 text-start py-2.5"
+                                  >
+                                    <Icon
+                                      name="chevron-down"
+                                      size={14}
+                                      className={`shrink-0 text-muted transition-transform duration-300 ${pOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
+                                    />
+                                    <span className="min-w-0 flex flex-col">
+                                      <span className="truncate font-semibold text-sm">{partTitle(p, i, locale)}</span>
+                                      <span className="text-xs text-muted tabular-nums" dir="ltr">
+                                        {`${p.first}–${p.last}`}
+                                        {pa > 0 ? ` · ${pw}/${pa}` : ""}
+                                      </span>
                                     </span>
-                                  );
-                                })()}
-                              </button>
-                            )}
-
-                            <span className="hidden sm:block shrink-0 text-xs text-muted text-end tabular-nums">
-                              {metaLine(e, epAired, t)}
-                            </span>
-                          </li>
-                        );
-                      })}
-                      {!shownAll.has(s.season_number) && episodes.length > CHUNK && (
+                                  </button>
+                                  {pa > 0 && (
+                                    <button
+                                      onClick={() => togglePart(s, p, !pDone)}
+                                      className={`shrink-0 text-xs font-semibold px-2.5 py-2 rounded-lg transition ${
+                                        pDone ? "text-muted hover:text-foreground hover:bg-surface-2" : "text-accent-2 hover:bg-accent-2/10"
+                                      }`}
+                                    >
+                                      {pDone ? PART_WORDS[locale].undo : PART_WORDS[locale].all}
+                                    </button>
+                                  )}
+                                </div>
+                                {pOpen && (
+                                  <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
+                                    {episodes.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last).map(epRow)}
+                                  </ul>
+                                )}
+                              </li>
+                            );
+                          })
+                        : (shownAll.has(s.season_number) ? episodes : episodes.slice(0, CHUNK)).map(epRow)}
+                      {!s.parts?.length && !shownAll.has(s.season_number) && episodes.length > CHUNK && (
                         <li>
                           <button
                             onClick={() =>
