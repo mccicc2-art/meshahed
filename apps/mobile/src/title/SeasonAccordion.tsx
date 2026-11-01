@@ -18,7 +18,7 @@ import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
@@ -105,7 +105,8 @@ export function SeasonAccordion({
   /* 🆕 D-1620 — «المسار الذهبي» (أحمد ٢ نوفمبر — «١أ · ٢ب»): يخفي الفلرَ والمختلطة ويُبقي المانجا وقانونيَّ الأنمي.
      شريحتان لا تجتمعان: الذهبيُّ يخفي الفلرَ أصلاً، فتشغيلُ إحداهما يطفئ الأخرى */
   const mixed = useMemo(() => mixedKeys(show.id, show.seasons), [show.id, show.seasons]);
-  const golden = useMemo(() => (filler || mixed ? new Set([...(filler ?? []), ...(mixed ?? [])]) : null), [filler, mixed]);
+  /* D-1621 — لعملٍ حلقاتُه قضايا (كونان) الذهبيُّ هو القصّةُ الأساسيّة وحدَها (`goldenKeys`) */
+  const golden = useMemo(() => goldenKeys(show.id, show.seasons), [show.id, show.seasons]);
   const [mode, setMode] = useState<SkipMode>(readSkipMode);
   const pickMode = (m: Exclude<SkipMode, "all">) => {
     const v: SkipMode = mode === m ? "all" : m;

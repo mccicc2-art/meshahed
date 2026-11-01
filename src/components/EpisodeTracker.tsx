@@ -8,7 +8,7 @@ import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
@@ -227,7 +227,8 @@ export function EpisodeTracker({
   const filler = useMemo(() => fillerKeys(showTmdbId, heads), [showTmdbId, heads]);
   /* 🆕 D-1620 — «المسار الذهبي» (توأمُ التطبيق — «١أ · ٢ب»): الفلرُ والمختلطة معاً، وشريحتان لا تجتمعان */
   const mixed = useMemo(() => mixedKeys(showTmdbId, heads), [showTmdbId, heads]);
-  const golden = useMemo(() => (filler || mixed ? new Set([...(filler ?? []), ...(mixed ?? [])]) : null), [filler, mixed]);
+  /* D-1621 — لعملٍ حلقاتُه قضايا (كونان) الذهبيُّ هو القصّةُ الأساسيّة وحدَها (`goldenKeys`) */
+  const golden = useMemo(() => goldenKeys(showTmdbId, heads), [showTmdbId, heads]);
   const [mode, setMode] = useState<SkipMode>("all");
   useEffect(() => {
     try {

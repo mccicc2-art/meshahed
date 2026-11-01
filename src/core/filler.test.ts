@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countKeys, fillerCount, fillerKeys, mixedCount, mixedKeys, parseRanges, parseSkipMode } from "./filler.ts";
+import { countKeys, fillerCount, fillerKeys, goldenKeys, mixedCount, mixedKeys, parseRanges, parseSkipMode, storyEpisodes } from "./filler.ts";
 
 test("each list matches the filler count stated by its source", () => {
   /* animefillerlist.com، ١ نوفمبر ٢٠٢٦ — العددُ المعلَن لكلِّ عمل */
@@ -79,4 +79,17 @@ test("D-1620 — skip mode: the old stored '1' still means filler", () => {
   assert.equal(parseSkipMode("golden"), "golden");
   assert.equal(parseSkipMode("0"), "all");
   assert.equal(parseSkipMode(null), "all");
+});
+
+test("D-1621 — Conan's golden path keeps the main story only (346 episodes) and hides the rest, manga cases included", () => {
+  assert.equal(storyEpisodes(30983)?.length, 346);
+  const g = goldenKeys(30983, [{ season_number: 0, episode_count: 20 }, { season_number: 1, episode_count: 1219 }]);
+  assert.equal(g?.size, 1219 - 346);
+  assert.ok(!g?.has("1:1")); // الحلقةُ الأولى: المنظمةُ وشينتشي
+  assert.ok(!g?.has("1:345")); // أكاي والمنظمة
+  assert.ok(g?.has("1:2")); // قضيّةٌ مستقلّة
+  assert.ok(!g?.has("0:1")); // الخاصّاتُ لا تُمسّ
+  /* عملٌ متسلسل: الذهبيُّ = الفلرُ والمختلطة */
+  const n = goldenKeys(46260, [{ season_number: 1, episode_count: 220 }]);
+  assert.equal(n?.size, 90 + 56);
 });
