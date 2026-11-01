@@ -597,19 +597,21 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
   /* 🆕 D-1613b — **الفتحةُ الأولى تعرف ما رآه في زيارته السابقة** (أحمد ١ نوفمبر: «ابغاه يفتح صفحة النشاط كذا مثل الصوره و أنا
      بنفسي اطلع اشوف المنشورات الجديدة» — «ب»): `lastSeen` (على الجهاز) يضع الفاصلَ فوق أعلى ما رآه، فيُحسب الجديدُ منذ آخر
      زيارة لا منذ تركيب الشاشة. **وأكثرُ من خمسين جديداً — أو لا شيءَ ممّا رآه في الصفحة الأولى — يفتح من الأعلى بلا فاصل**:
-     قراءةُ خمسين صعوداً أثقلُ من البدء من رأس الخطّ. سحبُ التحديث وتبديلُ الشريحة يمحوان الفاصلَ كما كانا («٣ أ»). */
+     قراءةُ خمسين صعوداً أثقلُ من البدء من رأس الخطّ. تبديلُ الشريحة يمحو الفاصلَ كما كان («٣ أ»).
+     🆕 D-1613c — **وسحبُ التحديث لا يمحوه** (فيديو أحمد ١ نوفمبر: «وين الجديدة؟» — سحب فنزل الجديدُ بلا علامة — «٢ أ»):
+     ما جاء بالسحب جديدٌ فوق الفاصل كغيره، والفاصلُ يسقط حين يصعد بنفسه إلى أعلى الخطّ بعد أن نزل عنه (`onFeedScroll`). */
   useEffect(() => {
     if (k !== "activity") return;
     setSeen((prev) => {
       const all = () => new Set(feedView.rows.map((r) => r.key));
-      if (prev && prev.slice === sliceKey && !pulling) return prev;
-      if (prev || pulling) return { slice: sliceKey, keys: all() };
+      if (prev && prev.slice === sliceKey) return prev;
+      if (prev) return { slice: sliceKey, keys: all() };
       const saved = lastSeen(sliceKey);
       const at = saved.length ? feedView.rows.findIndex((r) => saved.includes(r.key)) : -1;
       const count = at > 0 ? feedView.rows.slice(0, at).filter((r) => !(mineKey && r.key.startsWith(mineKey)) && !(r.kind === "talk" && r.item.person.id === acts.meId)).length : 0;
       return { slice: sliceKey, keys: at > 0 && count <= FRESH_OPEN_MAX ? new Set(feedView.rows.slice(at).map((r) => r.key)) : all() };
     });
-  }, [k, feedView.rows, sliceKey, pulling, mineKey, acts.meId]);
+  }, [k, feedView.rows, sliceKey, mineKey, acts.meId]);
   const held = seen && seen.slice === sliceKey ? seen.keys : null;
   const fresh = useMemo(() => {
     if (!held) return null;
@@ -640,12 +642,20 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     jumped.current = true;
     requestAnimationFrame(() => jumpTo(fresh.at));
   }, [k, fresh, jumpTo]);
+  /* D-1613c — الفاصلُ في الشاشة يسقط حين يبلغ أعلى الخطّ صاعداً من تحت (لا وهو واقفٌ في أعلاه يسحب): قرأ ما فوقه */
+  const wasDown = useRef(false);
   const onFeedScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       onScroll(e);
-      if (e.nativeEvent.contentOffset.y < 60) markSeen();
+      const y = e.nativeEvent.contentOffset.y;
+      if (y > 300) wasDown.current = true;
+      if (y < 60) {
+        markSeen();
+        if (wasDown.current && fresh) setSeen({ slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) });
+        wasDown.current = false;
+      }
     },
-    [onScroll, markSeen],
+    [onScroll, markSeen, fresh, sliceKey, feedView.rows],
   );
   /* تبديلُ الشريحة خطٌّ آخر: يبدأ من أعلاه — والتثبيتُ كان سيلحق بطاقةً مشتركةً بين الشريحتين إلى موضعها الجديد */
   const lastSlice = useRef(sliceKey);
