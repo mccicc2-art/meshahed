@@ -152,7 +152,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           anime: c.animeFollows.length,
         },
         weekly_ranks: c.weeklyRanks,
-        display: { stats: prefs.stats, stats_link: prefs.statsLink, cards: cardCap >= 999 ? null : cardCap },
+        /* 🆕 D-1617 — شخصيّةُ AI بلا بطاقة الأرقام (أحمد ١ نوفمبر بلقطةٍ محوَّطة: «و ال Ai احذف منهم الكاردات»): لا تتابع ولا
+           تشاهد، فـ«٠ مسلسلات · ٠ أفلام · الإحصائيات» صفوفٌ بلا معنى — ملفُّها نبذتُها ومراجعاتُها */
+        display: { stats: persona ? false : prefs.stats, stats_link: persona ? false : prefs.statsLink, cards: cardCap >= 999 ? null : cardCap },
         tabs: locked ? [] : persona ? (["reviews"] as ProfileTabKey[]) : (orderedProfileTabs(prefs).filter((k) => !hidden(k)) as ProfileTabKey[]),
         sections: prefs.order as ProfileSectionKey[],
         customize_hint: c.customizeHint,

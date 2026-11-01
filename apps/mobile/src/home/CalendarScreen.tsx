@@ -25,7 +25,7 @@ import { useHomeDoor } from "../homeDoor";
  * شيءٌ تنزل إلى قائمته، قائمةُ الأيّام بملصقها واسمها، تقليبُ الأشهر بحدَّيه، وقاعدةُ البلس نفسُها (الشهرُ
  * الحاليُّ للجميع وما بعده باهتٌ تحت البوّابة). **والحسابُ كلُّه في الخادم** (`/api/v1/me/calendar`) من
  * `core/calendar.ts` التي تبني صفحةَ الويب — فلا يفترق يومٌ بين السطحين.
- * ⚠️ **والخانةُ خانةُ شريط الأسبوع بحرفها** (العددُ · خطُّ «هنا شيء» بلون `accent2` · `+N`): علامةٌ واحدةٌ
+ * ⚠️ **والخانةُ خانةُ «أسبوعك» بحرفها** (D-1616: ملصقُ العمل · `+N` · المتوقَّعُ باهت): علامةٌ واحدةٌ
  * تعني الشيءَ نفسَه في الرئيسيّة وهنا (القاعدة ٣).
  * ⚠️ **والشهرُ السابقُ يبقى مرسوماً حتى يصل التالي** (`keepPreviousData`): تقليبٌ يمحو الشبكةَ ثمّ يرسمها
  * يُقرأ رمشة.
@@ -91,6 +91,9 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
   };
 
   const cellW = Math.floor((width - PAGE_PAD * 2 - GAP * 6) / 7);
+  /* D-1616 — ملصقُ الخانة: عرضُها بلا حشوتها، ونسبةُ ٢:٣ كملصقات «أسبوعك» */
+  const posterW = cellW - 8;
+  const posterH = Math.round(posterW * 1.5);
   const arrow = (m: string | null, glyph: string, label: string) =>
     m ? (
       <Pressable onPress={() => go(m)} accessibilityRole="button" accessibilityLabel={label} hitSlop={6} style={({ pressed }) => ({ width: 36, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
@@ -107,29 +110,50 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
           <Text key={i} size={10} muted style={{ width: cellW, textAlign: "center", lineHeight: 14 }} numberOfLines={1}>{h}</Text>
         ))}
       </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-        {d.cells.map((c) => {
-          const has = c.count > 0;
-          /* 🆕 D-1587 — **الخانةُ تقول أوّلَ أعمالها** («٣أ»: كانت «+٢» وحدها، والعملُ الواحدُ بلا اسم): من قائمة اليوم تحت الشبكة */
-          const firstTitle = has ? d.groups.find((g) => g.date === c.date)?.items[0]?.title ?? "" : "";
-          const face = (
-            <>
-              <Text size={14} weight="700" color={c.is_today ? tokens.accent : c.in_month ? tokens.fg : tokens.muted} style={{ lineHeight: 16, opacity: c.in_month ? 1 : 0.5 }}>{c.day}</Text>
-              {/* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ: الشريطُ باهتٌ والإطارُ متقطّع (شكلُ الويب) */}
-              <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: has ? (c.expected ? tokens.accent2 + "66" : tokens.accent2) : c.in_month ? tokens.border : "transparent" }} />
-              <View style={{ marginTop: 4, height: 24, alignSelf: "stretch", alignItems: "center" }}>
-                {has ? <Text size={9} muted numberOfLines={c.count > 1 ? 1 : 2} style={{ lineHeight: 11, textAlign: "center" }}>{firstTitle}</Text> : null}
-                {c.count > 1 ? <Text size={9} weight="700" color={tokens.accent2} style={{ lineHeight: 11 }}>{`+${c.count - 1}`}</Text> : null}
-              </View>
-            </>
-          );
-          const base = { width: cellW, borderRadius: 10, paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" as const, borderWidth: 1 };
-          return has ? (
-            <Pressable key={c.date} onPress={() => jump(c.date)} accessibilityRole="button" accessibilityLabel={`${c.day} · ${c.count}`} style={({ pressed }) => [base, c.expected ? { borderColor: tokens.accent2 + "4D", borderStyle: "dashed" as const, opacity: pressed ? 0.5 : 0.75 } : { borderColor: tokens.accent2 + "59", backgroundColor: tokens.accent2 + "0F", opacity: pressed ? 0.7 : 1 }]}>
-              {face}
-            </Pressable>
-          ) : (
-            <View key={c.date} style={[base, c.in_month ? { borderColor: tokens.border, backgroundColor: tokens.surface, opacity: 0.6 } : { borderColor: "transparent" }]}>{face}</View>
+      {/* 🆕 D-1616 — **الخانةُ ملصقُ عملها كـ«أسبوعك»** (أحمد ١ نوفمبر بلقطة التقويم: «التقويم عدله مثل أسبوعك» — «١أ»): كانت
+         رقماً وشريطاً واسماً بخطٍّ ٩ لا يُقرأ. الآن ملصقُ أوّلِ أعمال اليوم، و«+N» شارةٌ عليه إن زاد، والمتوقَّعُ باهتٌ متقطّع (D-1614).
+         ⚠️ **الصفوفُ سبعاً سبعاً** (لا لفٌّ واحد): أسبوعٌ بلا عملٍ يبقى قصيراً ولا يُمدّ لطول ملصقٍ في أسبوعٍ آخر، وأسبوعٌ فيه
+         عملٌ تأخذ كلُّ خاناته طولَ الملصق فتبقى الشبكةُ مستقيمة. والاسمُ في القائمة تحت الشبكة — العرضُ نحو ٤٠ لا يتّسع لاسم. */}
+      <View style={{ gap: GAP }}>
+        {Array.from({ length: Math.ceil(d.cells.length / 7) }, (_, r) => d.cells.slice(r * 7, r * 7 + 7)).map((row) => {
+          const tall = row.some((c) => c.count > 0);
+          return (
+            <View key={row[0]?.date} style={{ flexDirection: "row", gap: GAP }}>
+              {row.map((c) => {
+                const has = c.count > 0;
+                const first = has ? d.groups.find((g) => g.date === c.date)?.items[0] : undefined;
+                const url = first ? posterFor(first.poster_path, posterW) : null;
+                const face = (
+                  <>
+                    <Text size={14} weight="700" color={c.is_today ? tokens.accent : c.in_month ? tokens.fg : tokens.muted} style={{ lineHeight: 16, opacity: c.in_month ? 1 : 0.5 }}>{c.day}</Text>
+                    {tall ? (
+                      has ? (
+                        <View style={{ marginTop: 6, width: posterW, height: posterH, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", opacity: first?.expected ? 0.5 : 1 }}>
+                          {url ? <Image source={{ uri: url }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={first?.media === "movie" ? "film" : "tv"} size={16} color={tokens.muted} />}
+                          {c.count > 1 ? (
+                            <View style={{ position: "absolute", bottom: 3, end: 3, minWidth: 18, paddingHorizontal: 4, height: 16, borderRadius: 8, backgroundColor: tokens.accent2, alignItems: "center", justifyContent: "center" }}>
+                              <Text size={10} weight="700" color="#fff" style={{ lineHeight: 12, fontVariant: ["tabular-nums"] }}>{`+${c.count - 1}`}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : (
+                        <View style={{ marginTop: 6, width: posterW, height: posterH }} />
+                      )
+                    ) : (
+                      <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: c.in_month ? tokens.border : "transparent" }} />
+                    )}
+                  </>
+                );
+                const base = { width: cellW, borderRadius: 10, paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" as const, borderWidth: 1 };
+                return has ? (
+                  <Pressable key={c.date} onPress={() => jump(c.date)} accessibilityRole="button" accessibilityLabel={`${c.day} · ${first?.title ?? ""}${c.count > 1 ? ` +${c.count - 1}` : ""}`} style={({ pressed }) => [base, c.expected ? { borderColor: tokens.accent2 + "4D", borderStyle: "dashed" as const, opacity: pressed ? 0.6 : 1 } : { borderColor: tokens.accent2 + "59", backgroundColor: tokens.accent2 + "0F", opacity: pressed ? 0.7 : 1 }]}>
+                    {face}
+                  </Pressable>
+                ) : (
+                  <View key={c.date} style={[base, c.in_month ? { borderColor: tokens.border, backgroundColor: tokens.surface, opacity: 0.6 } : { borderColor: "transparent" }]}>{face}</View>
+                );
+              })}
+            </View>
           );
         })}
       </View>

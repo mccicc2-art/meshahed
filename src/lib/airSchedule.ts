@@ -48,10 +48,10 @@ async function planOf(id: number, today: string): Promise<AirPlan | null> {
     const last = tv.last_episode_to_air;
     if (last && last.season_number === season) {
       eps.push(asEp(last));
-      if (last.episode_number > 1) {
-        const prev = await getEpisode(id, season, last.episode_number - 1).catch(() => null);
-        if (prev) eps.push(asEp(prev));
-      }
+      /* D-1614c — أربعُ حلقاتٍ قبل الأخيرة (لا واحدة): قاعدةُ اليوم الثابت تقرأ آخرَ ستّةِ مواعيد */
+      const back = [1, 2, 3, 4].map((n) => last.episode_number - n).filter((n) => n >= 1);
+      const prev = await Promise.all(back.map((n) => getEpisode(id, season, n).catch(() => null)));
+      for (const e of prev) if (e) eps.push(asEp(e));
     }
     if (tv.next_episode_to_air && tv.next_episode_to_air.season_number === season) eps.push(asEp(tv.next_episode_to_air));
     return airPlanOf(eps, today, open);

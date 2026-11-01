@@ -96,3 +96,41 @@ test("long season from three points (prev, last, next) is weekly and open", () =
     "2026-11-28?",
   ]);
 });
+
+test("D-1614c — one skipped week keeps the weekly rhythm; two breaks or another weekday do not", () => {
+  /* كونان: سبتٌ · سبتٌ · (توقّف) · سبتٌ · سبت */
+  const brk = airPlanOf(
+    [
+      { ep: 1, date: "2026-10-03" },
+      { ep: 2, date: "2026-10-10" },
+      { ep: 3, date: "2026-10-24" },
+      { ep: 4, date: "2026-10-31" },
+      { ep: 5, date: "2026-11-07" },
+    ],
+    "2026-11-01",
+    true,
+  );
+  assert.equal(brk.weekly, true);
+  assert.deepEqual(planDates(brk, "2026-11-01", "2026-11-21").map((d) => d.date), ["2026-11-07", "2026-11-14", "2026-11-21"]);
+  const twoBreaks = airPlanOf(
+    [
+      { ep: 1, date: "2026-09-26" },
+      { ep: 2, date: "2026-10-10" },
+      { ep: 3, date: "2026-10-24" },
+      { ep: 4, date: "2026-10-31" },
+    ],
+    "2026-11-01",
+    true,
+  );
+  assert.equal(twoBreaks.weekly, false);
+  const shifted = airPlanOf(
+    [
+      { ep: 1, date: "2026-10-17" },
+      { ep: 2, date: "2026-10-24" },
+      { ep: 3, date: "2026-10-30" },
+    ],
+    "2026-11-01",
+    true,
+  );
+  assert.equal(shifted.weekly, false);
+});

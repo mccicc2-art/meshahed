@@ -1238,7 +1238,8 @@ export default async function PublicProfilePage({
             الخط بين الأشياء — نفس النظام في الأماكن الثانية»): **نظامُ D-1093 في رأس الرئيسيّة
             الأصليّة بعينه** — الإطارُ الخارجيُّ وحده يجمع الخانات، **وبطاقتا أرقامٍ بشكلين في
             التطبيق نفسِه تُقرآن رتبتين.** */}
-        {canView && prefs.stats && (
+        {/* 🆕 D-1617 — شخصيّةُ AI بلا بطاقة الأرقام: لا تتابع ولا تشاهد («احذف منهم الكاردات») */}
+        {canView && prefs.stats && !persona && (
           <div className="relative z-10 mt-3 rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden">
             {/* 🆕 **الرقمُ واسمُه سطرٌ واحد، والبابُ على قدر كلمته**
                 (D-611، حكمُه: «الأفلام والمسلسلات تكون سطر واحد
