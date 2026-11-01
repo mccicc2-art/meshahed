@@ -1,7 +1,10 @@
-[deploy] Release R112 — task 215 (D-1556): Search — the in-app «back to search by name» button dismisses the keyboard
+[deploy] Release R146 — avatars listing policy removed (A-36) + mobile toolchain advisories (A-09)
 
-- Khaled (27 Oct, video): the system back gesture hid the keyboard, the on-screen back button did not. The button now calls
-  Keyboard.dismiss() before leaving description mode. JS only — OTA.
+- 286 · supabase/230_avatars_no_list.sql — the numbered copy of the one line already run on preview and production
+  (1 Nov, history row 230): the public avatars bucket no longer allows listing its files. SQL only, no code.
+- 287 · apps/mobile/package-lock.json — shell-quote 1.12.0, node-forge 1.4.2, brace-expansion 5.0.12, each inside
+  its existing range (build-time tooling only). Fingerprint unchanged ⇒ over the air, no native build.
+- Held back: 274 (iOS widget slots) — needs a paid native build not yet approved.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01PVP8tRmStMh7NKcSSqyY2e
+Claude-Session: https://claude.ai/code/session_01FexM7CL7Ngp2J9MgUSEpDD
