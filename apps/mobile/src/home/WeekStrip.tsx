@@ -26,7 +26,7 @@ const POSTER_H = 108;
 const MAX_POSTERS = 3;
 const ROW_LH = 20;
 
-export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; onDay: (showId: number) => void; onCalendar: () => void }) {
+export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; expectedLabel?: string; onDay: (showId: number) => void; onCalendar: () => void }) {
   const { t, tokens } = useApp();
   const [sheetDay, setSheetDay] = useState<HomeWeekDay | null>(null);
   const gradId = `wk${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -63,8 +63,10 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
           }
           const shown = list.length > MAX_POSTERS + 1 ? list.slice(0, MAX_POSTERS) : list;
           const rest = list.length - shown.length;
+          /* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ (لا معلَن): إطارٌ متقطّعٌ بلا تعبئة، والملصقُ المتوقَّعُ باهت — «على الأرجح» لا «أكيد» */
+          const guess = list.every((e) => e.expected);
           return (
-            <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + "8C", backgroundColor: tokens.accent2 + "12", padding: 8, gap: 6, alignItems: "center" }}>
+            <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + (guess ? "4D" : "8C"), borderStyle: guess ? "dashed" : "solid", backgroundColor: guess ? "transparent" : tokens.accent2 + "12", padding: 8, gap: 6, alignItems: "center" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: ROW_LH }}>
                 <Text size={12} muted numberOfLines={1} style={{ lineHeight: ROW_LH }}>{d.weekday}</Text>
                 <Text size={15} weight="700" color={numColor} style={{ lineHeight: ROW_LH, fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
@@ -78,7 +80,7 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
                       onPress={() => onDay(e.show_id)}
                       accessibilityRole="link"
                       accessibilityLabel={`${d.weekday} ${d.day_num} · ${e.title}`}
-                      style={({ pressed }) => [tile, { opacity: pressed ? 0.8 : 1 }]}
+                      style={({ pressed }) => [tile, { opacity: pressed ? 0.8 : e.expected ? 0.5 : 1 }]}
                     >
                       {url ? <Image source={{ uri: url }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name="tv" size={18} color={tokens.muted} />}
                       {/* الاسمُ على أسفل الملصق — تدرّجٌ داكنٌ ثابتٌ في السمتين لأنّ النصَّ فوق صورةٍ لا فوق السطح */}
@@ -125,14 +127,14 @@ export function WeekStrip({ days, entries, onDay, onCalendar }: { days: HomeWeek
                   onPress={() => { setSheetDay(null); onDay(e.show_id); }}
                   accessibilityRole="link"
                   accessibilityLabel={e.title}
-                  style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 8, opacity: pressed ? 0.7 : 1 })}
+                  style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, borderStyle: e.expected ? "dashed" : "solid", backgroundColor: tokens.surface, padding: 8, opacity: pressed ? 0.5 : e.expected ? 0.6 : 1 })}
                 >
                   <View style={{ width: 36, height: 54, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                     {url ? <Image source={{ uri: url }} style={{ width: 36, height: 54 }} contentFit="cover" /> : <Icon name="tv" size={16} color={tokens.muted} />}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text size={14} weight="500" numberOfLines={1} autoDir>{e.title}</Text>
-                    <Text size={12} muted style={{ marginTop: 2 }}>{t.calEpisode}</Text>
+                    <Text size={12} muted style={{ marginTop: 2 }}>{e.expected ? (expectedLabel ?? t.calEpisode) : t.calEpisode}</Text>
                   </View>
                   <Text size={16} muted>›</Text>
                 </Pressable>

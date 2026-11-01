@@ -13,6 +13,8 @@ export interface CalendarCell {
   is_today: boolean;
   /** كم مدخلاً في هذا اليوم — صفرٌ خانةٌ هادئة */
   count: number;
+  /** 🆕 D-1614 — كلُّ ما في اليوم متوقَّعٌ لا معلَن — خانةٌ باهتة. غائبٌ من خادمٍ أقدم */
+  expected?: boolean;
 }
 
 export interface CalendarItem {
@@ -21,6 +23,8 @@ export interface CalendarItem {
   media: "tv" | "movie";
   title: string;
   poster_path: string | null;
+  /** 🆕 D-1614 — موعدٌ متوقَّعٌ من الإيقاع الأسبوعيّ — يُرسم باهتاً ومعه `expected_label` */
+  expected?: boolean;
 }
 
 export interface CalendarGroup {
@@ -48,4 +52,8 @@ export interface CalendarPayload {
   groups: CalendarGroup[];
   /** تلميحُ المرّة الواحدة `calendar-intro` لم يُرَ بعد */
   intro_hint: boolean;
+  /** 🆕 D-1614 — سطرُ أفق التقويم بلغة القارئ (يحلّ محلّ `calHorizon` المحفوظ في التطبيق) — غائبٌ من خادمٍ أقدم */
+  horizon?: string;
+  /** 🆕 D-1614 — «حلقة متوقّعة» تحت اسم المدخل المتوقَّع */
+  expected_label?: string;
 }

@@ -115,7 +115,8 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
           const face = (
             <>
               <Text size={14} weight="700" color={c.is_today ? tokens.accent : c.in_month ? tokens.fg : tokens.muted} style={{ lineHeight: 16, opacity: c.in_month ? 1 : 0.5 }}>{c.day}</Text>
-              <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: has ? tokens.accent2 : c.in_month ? tokens.border : "transparent" }} />
+              {/* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ: الشريطُ باهتٌ والإطارُ متقطّع (شكلُ الويب) */}
+              <View style={{ marginTop: 6, height: 4, borderRadius: 2, alignSelf: "stretch", backgroundColor: has ? (c.expected ? tokens.accent2 + "66" : tokens.accent2) : c.in_month ? tokens.border : "transparent" }} />
               <View style={{ marginTop: 4, height: 24, alignSelf: "stretch", alignItems: "center" }}>
                 {has ? <Text size={9} muted numberOfLines={c.count > 1 ? 1 : 2} style={{ lineHeight: 11, textAlign: "center" }}>{firstTitle}</Text> : null}
                 {c.count > 1 ? <Text size={9} weight="700" color={tokens.accent2} style={{ lineHeight: 11 }}>{`+${c.count - 1}`}</Text> : null}
@@ -124,7 +125,7 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
           );
           const base = { width: cellW, borderRadius: 10, paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" as const, borderWidth: 1 };
           return has ? (
-            <Pressable key={c.date} onPress={() => jump(c.date)} accessibilityRole="button" accessibilityLabel={`${c.day} · ${c.count}`} style={({ pressed }) => [base, { borderColor: tokens.accent2 + "59", backgroundColor: tokens.accent2 + "0F", opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable key={c.date} onPress={() => jump(c.date)} accessibilityRole="button" accessibilityLabel={`${c.day} · ${c.count}`} style={({ pressed }) => [base, c.expected ? { borderColor: tokens.accent2 + "4D", borderStyle: "dashed" as const, opacity: pressed ? 0.5 : 0.75 } : { borderColor: tokens.accent2 + "59", backgroundColor: tokens.accent2 + "0F", opacity: pressed ? 0.7 : 1 }]}>
               {face}
             </Pressable>
           ) : (
@@ -152,14 +153,14 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
                       onPress={() => openTitle(e.media, e.tmdb_id)}
                       accessibilityRole="link"
                       accessibilityLabel={e.title}
-                      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 8, opacity: pressed ? 0.7 : 1 })}
+                      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, borderStyle: e.expected ? "dashed" : "solid", backgroundColor: tokens.surface, padding: 8, opacity: pressed ? 0.5 : e.expected ? 0.6 : 1 })}
                     >
                       <View style={{ width: 36, height: 54, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                         {url ? <Image source={{ uri: url }} style={{ width: 36, height: 54 }} contentFit="cover" /> : <Icon name={e.media === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />}
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text size={14} weight="500" numberOfLines={1} autoDir>{e.title}</Text>
-                        <Text size={12} muted style={{ marginTop: 2 }}>{e.media === "tv" ? t.calEpisode : t.calRelease}</Text>
+                        <Text size={12} muted style={{ marginTop: 2 }}>{e.expected ? (d.expected_label ?? t.calEpisode) : e.media === "tv" ? t.calEpisode : t.calRelease}</Text>
                       </View>
                       <Text size={16} muted>›</Text>
                     </Pressable>
@@ -212,7 +213,8 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
             </View>
           ) : null}
           <Text size={12} muted style={{ marginBottom: 16, lineHeight: 18 }}>
-            {t.calSub} {t.calHorizon}
+            {/* 🆕 D-1614 — سطرُ الأفق من الخادم (المعلنُ والمتوقَّع)؛ خادمٌ أقدمُ ⇐ السطرُ المحفوظ */}
+            {t.calSub} {d.horizon ?? t.calHorizon}
           </Text>
           {d.locked ? (
             /* 🔒 بوّابةُ البلس بوصفة `StatsScreen`: المحتوى باهتٌ تحتها — لا ضبابَ في التطبيق فالخفوتُ يقوم مقامه */

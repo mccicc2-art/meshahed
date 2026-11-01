@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 import { posterUrl } from "@/core/media";
 import { getDict, type Locale } from "@/core/i18n";
 import {
+  CAL_EXPECTED,
   dayLabel,
   weekdayLabels,
   type CalendarDay,
@@ -57,6 +58,8 @@ export function CalendarMonth({
           {days.map((d) => {
             const list = byDay.get(d.date) ?? [];
             const has = d.inMonth && list.length > 0;
+            /* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ يُرسم باهتاً بإطارٍ متقطّع: «هنا شيءٌ على الأرجح» لا «هنا شيء» */
+            const guess = has && list.every((e) => e.expected);
             const body = (
               <>
                 <span
@@ -70,7 +73,7 @@ export function CalendarMonth({
                     واحدةٌ تعني «هنا شيء» في السطحين** (القاعدة ٣). */}
                 <span
                   className={`mt-1.5 block h-1 rounded-full ${
-                    has ? "bg-accent-2" : d.inMonth ? "bg-border" : "bg-transparent"
+                    has ? (guess ? "bg-accent-2/40" : "bg-accent-2") : d.inMonth ? "bg-border" : "bg-transparent"
                   }`}
                 />
                 <span className="block text-[9px] text-muted mt-1 leading-none h-3">
@@ -83,7 +86,7 @@ export function CalendarMonth({
               <a
                 key={d.date}
                 href={`#d-${d.date}`}
-                className={`${cell} border border-accent-2/35 bg-accent-2/[0.06] hover:border-accent-2 transition`}
+                className={`${cell} border ${guess ? "border-dashed border-accent-2/30" : "border-accent-2/35 bg-accent-2/[0.06]"} hover:border-accent-2 transition`}
               >
                 {body}
               </a>
@@ -122,7 +125,7 @@ export function CalendarMonth({
                       <Link
                         href={e.media === "tv" ? `/show/${e.tmdbId}` : `/movie/${e.tmdbId}`}
                         prefetch={false}
-                        className="flex items-center gap-3 rounded-xl border border-border bg-surface p-2 hover:border-accent-2/60 transition"
+                        className={`flex items-center gap-3 rounded-xl border bg-surface p-2 hover:border-accent-2/60 transition ${e.expected ? "border-dashed border-border opacity-60" : "border-border"}`}
                       >
                         <span className="relative block w-9 h-[54px] shrink-0 rounded-md overflow-hidden bg-surface-2">
                           {url ? (
@@ -147,7 +150,7 @@ export function CalendarMonth({
                               صفّ (D-437) — **والغائبُ يغيب ولا يُخمَّن**
                               (D-063). */}
                           <span className="block text-12 text-muted mt-0.5" dir="auto">
-                            {e.media === "tv" ? t.calEpisode : t.calRelease}
+                            {e.expected ? CAL_EXPECTED[locale === "en" ? "en" : "ar"] : e.media === "tv" ? t.calEpisode : t.calRelease}
                           </span>
                         </span>
                         {/* **بلا `dir` وبلا شرطِ لغة** (D-801): الحرفُ

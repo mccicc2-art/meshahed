@@ -6,7 +6,10 @@ import { getFollows, getProfile } from "@/lib/data";
 import { isPlus } from "@/core/plan";
 import { asTimeZone } from "@/core/zone";
 import { sanitizeUiState } from "@/lib/uiState";
+import { airPlans } from "@/lib/airSchedule";
 import {
+  CAL_EXPECTED,
+  CAL_HORIZON,
   MONTHS_AHEAD,
   asMonth,
   calendarEntries,
@@ -43,7 +46,11 @@ export async function GET(req: NextRequest) {
       const now = monthOf(today);
       const month = asMonth(req.nextUrl.searchParams.get("m"), today);
 
-      const entries = calendarEntries(follows, { today, until: monthEnd(month) });
+      /* 🆕 D-1614 — مواعيدُ الموسم المعلنة والإيقاعُ الأسبوعيّ (`airPlans`) — والشهرُ المقفولُ لغير المشترك بلا نداء */
+      const until = monthEnd(month);
+      const locked = !plus && month !== now;
+      const plans = locked ? undefined : await airPlans(follows, { today, until });
+      const entries = calendarEntries(follows, { today, until, plans });
       const byDay = groupByDate(entries.filter((e) => monthOf(e.date) === month));
       const days = monthDays(month, today);
       const prev = monthShift(month, -1);
@@ -55,7 +62,7 @@ export async function GET(req: NextRequest) {
         prev: prev >= now ? prev : null,
         next: next <= monthShift(now, MONTHS_AHEAD) ? next : null,
         plus,
-        locked: !plus && month !== now,
+        locked,
         weekdays: weekdayLabels(locale),
         cells: days.map((d) => ({
           date: d.date,
@@ -63,6 +70,7 @@ export async function GET(req: NextRequest) {
           in_month: d.inMonth,
           is_today: d.isToday,
           count: d.inMonth ? (byDay.get(d.date)?.length ?? 0) : 0,
+          ...(d.inMonth && (byDay.get(d.date) ?? []).length && (byDay.get(d.date) ?? []).every((e) => e.expected) ? { expected: true } : {}),
         })),
         groups: days
           .filter((d) => d.inMonth && (byDay.get(d.date)?.length ?? 0) > 0)
@@ -76,8 +84,11 @@ export async function GET(req: NextRequest) {
               media: e.media,
               title: e.title,
               poster_path: e.posterPath,
+              ...(e.expected ? { expected: true } : {}),
             })),
           })),
+        horizon: CAL_HORIZON[locale === "en" ? "en" : "ar"],
+        expected_label: CAL_EXPECTED[locale === "en" ? "en" : "ar"],
         intro_hint: !sanitizeUiState(profile?.ui_state).hints.includes("calendar-intro"),
       });
     },

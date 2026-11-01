@@ -8,6 +8,7 @@ import { asTimeZone } from "@/core/zone";
 import {
   MONTHS_AHEAD,
   asMonth,
+  CAL_HORIZON,
   calendarEntries,
   groupByDate,
   monthDays,
@@ -18,6 +19,7 @@ import {
   todayIn,
 } from "@/core/calendar";
 import { CalendarMonth } from "@/components/CalendarMonth";
+import { airPlans } from "@/lib/airSchedule";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPill } from "@/components/ui/PlusPill";
@@ -72,7 +74,10 @@ export default async function CalendarPage({
   const locked = !plus && month !== now;
 
   const days = monthDays(month, today);
-  const entries = calendarEntries(follows, { today, until: monthEnd(month) });
+  /* 🆕 D-1614 — مواعيدُ الموسم المعلنة والإيقاعُ الأسبوعيّ لما يُعرض (`airPlans`) — والشهرُ المقفول للزائر بلا بلس يبقى بلا نداء */
+  const until = monthEnd(month);
+  const plans = locked ? undefined : await airPlans(follows, { today, until });
+  const entries = calendarEntries(follows, { today, until, plans });
   const byDay = groupByDate(entries.filter((e) => monthOf(e.date) === month));
 
   const href = (m: string) => (m === now ? "/calendar" : `/calendar?m=${m}`);
@@ -149,7 +154,7 @@ export default async function CalendarPage({
           {t.calSub}{" "}
           {/* ⚠️ **وسقفُ معرفتنا مكتوبٌ في الصفحة لا في تعليقٍ وحدَه**
               (D-063): **شهرٌ شبهُ فارغٍ يُقرأ عطلاً ما لم يُقل سببُه.** */}
-          <span className="opacity-80">{t.calHorizon}</span>
+          <span className="opacity-80">{CAL_HORIZON[ar ? "ar" : "en"]}</span>
         </p>
 
         {locked ? <PlusPreview locale={locale} locked={body} /> : body}

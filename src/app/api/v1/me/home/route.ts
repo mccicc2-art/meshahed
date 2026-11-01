@@ -15,6 +15,7 @@ import {
   refreshLoopzNews,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { CAL_EXPECTED } from "@/core/calendar";
 import { isPlus } from "@/core/plan";
 import { curatedName } from "@/core/universes";
 import { applyQueueOrder } from "@/core/homePrefs";
@@ -227,7 +228,9 @@ export async function GET(req: NextRequest) {
         continue: continueOrdered,
         week: {
           days: body.weekDays.map((d) => ({ date: d.date, weekday: d.weekday, day_num: d.dayNum })),
-          entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title, poster_path: e.posterPath ?? null })),
+          entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title, poster_path: e.posterPath ?? null, ...(e.expected ? { expected: true } : {}) })),
+          /* 🆕 D-1614 — «حلقة متوقّعة» لورقة اليوم بلغة القارئ (القاموسُ محجوز — `CAL_EXPECTED`) */
+          expected_label: CAL_EXPECTED[locale === "en" ? "en" : "ar"],
         },
         towatch: { items: body.toWatchRow.map(mixed), all: body.toWatchOrdered.map(mixed) },
         upcoming: body.upcomingRow.map(mixed),

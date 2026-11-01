@@ -113,7 +113,8 @@ export type HomeContinueCard =
 /** يومٌ في شريط الأسبوع (١٤ يوماً — D-491) */
 export type HomeWeekDay = { date: string; weekday: string; day_num: string };
 /** 🆕 D-1587 — `poster_path` لورقة اليوم (يومٌ بأكثر من عمل): اختياريٌّ فخادمٌ أقدم لا يكسر التطبيق — الصفُّ يُرسم برمز العمل */
-export type HomeWeekEntry = { date: string; show_id: number; title: string; poster_path?: string | null };
+/** 🆕 D-1614 — `expected`: موعدٌ متوقَّعٌ من الإيقاع الأسبوعيّ لا معلَن — يُرسم باهتاً. غائبٌ من خادمٍ أقدم */
+export type HomeWeekEntry = { date: string; show_id: number; title: string; poster_path?: string | null; expected?: boolean };
 
 /** بطاقةُ عملٍ في صفوف «للمشاهدة» و«القادم» (`MixedItem`) */
 export type HomeMixedCard = {
@@ -240,7 +241,8 @@ export type HomePayload = {
   plus: boolean;
   sections: {
     continue: HomeContinueCard[];
-    week: { days: HomeWeekDay[]; entries: HomeWeekEntry[] };
+    /** 🆕 D-1614 — `expected_label` «حلقة متوقّعة» لورقة اليوم — غائبٌ من خادمٍ أقدم */
+    week: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; expected_label?: string };
     /** الصفُّ (١٦) والعددُ الكامل — «الكل» في الورقة يسرد الكامل */
     towatch: { items: HomeMixedCard[]; all: HomeMixedCard[] };
     upcoming: HomeMixedCard[];

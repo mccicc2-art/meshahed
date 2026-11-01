@@ -52,6 +52,9 @@ import { curatedName } from "@/core/universes";
 import type { getT } from "@/lib/locale";
 import type { HeaderStat } from "@/components/HomeHeader";
 import type { WeekEntry } from "@/components/WeekStrip";
+import { airPlans } from "@/lib/airSchedule";
+import type { AirPlan } from "@/core/airPlan";
+import { calendarEntries } from "@/core/calendar";
 import type { ReorderItem } from "@/components/ReorderSheet";
 import type { ShowStat } from "@/components/ShowStatsSync";
 import { airedSinceStored, staleStored, watchedUncounted, FRESHEN_CAP } from "@/core/followStats";
@@ -770,6 +773,14 @@ export async function buildHomeBody({
   const active = follows.filter((f) => !f.dropped);
   const tvFollows = active.filter((f) => f.media_type === "tv");
   const movieFollows = active.filter((f) => f.media_type === "movie");
+  /* 🆕 D-1614 — خططُ ما يُعرض لشريط «أسبوعك» (مواعيدُ الموسم المعلنة ثمّ المتوقَّعُ الأسبوعيّ): تنطلق هنا وتُنتظر عند
+     الشريط في آخر البناء، فتجري مع بقيّته لا قبله — وسقفُها أقصر من التقويم (الرئيسيّةُ أوّلُ ما يُفتح)، والمتأخّرُ يسقط
+     إلى موعد صفّه وحده. وشريطٌ مخفيٌّ بالتخصيص لا يكلّف نداءً */
+  const weekStart = new Date().toISOString().slice(0, 10);
+  const weekUntil = new Date(Date.now() + 13 * 86400000).toISOString().slice(0, 10);
+  const weekPlans = prefs.order.includes("week")
+    ? airPlans(tvFollows, { today: weekStart, until: weekUntil, limit: 16, ms: 1200 }).catch(() => new Map<string, AirPlan>())
+    : Promise.resolve(new Map<string, AirPlan>());
 
   interface UpcomingItem {
     key: string;
@@ -1422,20 +1433,16 @@ export async function buildHomeBody({
     };
   });
   const weekEnd = weekDays[weekDays.length - 1].date;
-  const weekEntries: WeekEntry[] = upcoming
-    .filter(
-      (u) =>
-        u.date >= weekDays[0].date &&
-        u.date <= weekEnd &&
-        u.key.startsWith("tv-"),
-    )
-    .map((u) => ({
-      date: u.date,
-      showTmdbId: Number(u.key.replace("tv-", "")),
-      title: u.title,
-      label: "",
-      posterPath: u.posterPath,
-    }));
+  /* 🆕 D-1614 — مداخلُ الشريط من `calendarEntries` حرفاً (منطقُ التقويم نفسُه، D-145) مع خطط الموسم: المعلنُ كما هو
+     والمتوقَّعُ باهتاً — كان من `upcoming` (القادمةُ وحدَها) فيقف السبتُ الأوّلُ ويسكت الثاني */
+  const weekEntries: WeekEntry[] = calendarEntries(tvFollows, { today: weekDays[0].date, until: weekEnd, plans: await weekPlans }).map((e) => ({
+    date: e.date,
+    showTmdbId: e.tmdbId,
+    title: e.title,
+    label: "",
+    posterPath: e.posterPath,
+    ...(e.expected ? { expected: true } : {}),
+  }));
   return {
     statsToCache, metaToCache, movieDatesToCache,
     continueQueueItems, toWatchQueueItems, listsQueueItems, toWatchListItems,

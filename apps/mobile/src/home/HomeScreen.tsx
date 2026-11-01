@@ -589,7 +589,7 @@ export function HomeScreen() {
             )}
           </View>
         ) : null,
-      week: <WeekStrip key="week" days={s.week.days} entries={s.week.entries} onDay={(id) => openTitle("tv", id)} onCalendar={() => openWeb("/calendar")} />,
+      week: <WeekStrip key="week" days={s.week.days} entries={s.week.entries} expectedLabel={s.week.expected_label} onDay={(id) => openTitle("tv", id)} onCalendar={() => openWeb("/calendar")} />,
       towatch:
         s.towatch.items.length > 0 ? (
           <View key="towatch">

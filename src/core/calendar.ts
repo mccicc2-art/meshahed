@@ -1,6 +1,7 @@
 import type { FollowRow } from "@/lib/data";
 import { zoneShiftMs } from "@/core/zone";
 import type { Locale } from "@/core/i18n";
+import { planDates, type AirPlan } from "@/core/airPlan";
 
 /**
  * ============ تقويمُ أعمالك — منطقٌ نقيّ (D-828) ============
@@ -37,7 +38,21 @@ export interface CalendarEntry {
   posterPath: string | null;
   /** YYYY-MM-DD */
   date: string;
+  /** 🆕 D-1614 — موعدٌ متوقَّعٌ من الإيقاع الأسبوعيّ لا معلَن — يُرسم باهتاً بكلمته */
+  expected?: boolean;
 }
+
+/**
+ * 🆕 D-1614 — **سطرُ أفق التقويم بعد الجدول الأسبوعيّ** — يحلّ محلّ `calHorizon` («نعرف موعدَ القادم وحدَه…») الذي لم يعد
+ * صحيحاً. هنا لا في القاموس لأنّ `i18n.ts` محجوزٌ لمهمّةٍ تنتظر بناءً مدفوعاً (274) — يُنقل إليه حين تُرفع.
+ */
+export const CAL_HORIZON = {
+  ar: "المواعيدُ المعلنةُ كما هي، والباهتُ متوقَّعٌ من جدوله الأسبوعيّ.",
+  en: "Announced dates as they are; faded ones are expected from the weekly schedule.",
+} as const;
+
+/** 🆕 D-1614 — كلمةُ المدخل المتوقَّع تحت اسمه (مكانَ «حلقة جديدة») */
+export const CAL_EXPECTED = { ar: "حلقة متوقّعة", en: "Expected episode" } as const;
 
 export interface CalendarDay {
   /** YYYY-MM-DD */
@@ -129,21 +144,33 @@ export function monthDays(month: string, today: string): CalendarDay[] {
  */
 export function calendarEntries(
   rows: readonly FollowRow[],
-  { today, until }: { today: string; until: string },
+  {
+    today,
+    until,
+    plans,
+  }: {
+    today: string;
+    until: string;
+    /** 🆕 D-1614 — خططُ المسلسلات (`lib/airSchedule.ts`) بمفتاح `tv-<id>`: موسمٌ معلنٌ ثمّ متوقَّع. غائبةٌ ⇒ القادمةُ وحدَها كما كان */
+    plans?: ReadonlyMap<string, AirPlan>;
+  },
 ): CalendarEntry[] {
   const out: CalendarEntry[] = [];
   for (const r of rows) {
     if (r.dropped) continue;
-    const date = r.next_air_date;
-    if (!date || date < today || date > until) continue;
-    out.push({
-      key: `${r.media_type}-${r.tmdb_id}`,
-      tmdbId: r.tmdb_id,
-      media: r.media_type,
-      title: r.title,
-      posterPath: r.poster_path,
-      date,
-    });
+    const key = `${r.media_type}-${r.tmdb_id}`;
+    const base = { key, tmdbId: r.tmdb_id, media: r.media_type, title: r.title, posterPath: r.poster_path };
+    const next = r.next_air_date && r.next_air_date >= today && r.next_air_date <= until ? r.next_air_date : null;
+    const plan = r.media_type === "tv" ? plans?.get(key) : undefined;
+    if (plan) {
+      /* موعدُ الصفّ يبقى ولو غاب عن الموسم المجلوب (TMDB تتأخّر بين نسختيها) — والمعلنُ يغلب المتوقَّعَ في اليوم نفسه */
+      const days = new Map<string, boolean>();
+      for (const p of planDates(plan, today, until)) if (!days.has(p.date) || !p.expected) days.set(p.date, p.expected);
+      if (next) days.set(next, false);
+      for (const [date, expected] of days) out.push({ ...base, date, ...(expected ? { expected: true } : {}) });
+      continue;
+    }
+    if (next) out.push({ ...base, date: next });
   }
   /* **الترتيبُ بالتاريخ ثمّ بالاسم** — **ومرتَّبٌ بلا فاصلٍ ثانٍ يتبدّل
      ترتيبُه بين رسمتين على الصفوف نفسِها.** */

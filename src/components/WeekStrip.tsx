@@ -10,6 +10,8 @@ export interface WeekEntry {
   label: string;
   /** 🆕 D-1587 — ملصقُ العمل لورقة اليوم في التطبيق (يومٌ فيه أكثرُ من عمل) — الويبُ لا يقرؤه */
   posterPath?: string | null;
+  /** 🆕 D-1614 — موعدٌ متوقَّعٌ من الإيقاع الأسبوعيّ لا معلَن — الخانةُ باهتةٌ بإطارٍ متقطّع */
+  expected?: boolean;
 }
 
 /**
@@ -108,6 +110,8 @@ export function WeekStrip({
           const list = byDay.get(d.date) ?? [];
           const has = list.length > 0;
           const first = list[0];
+          /* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ يُرسم باهتاً (شكلُ خانة التقويم نفسُه) */
+          const guess = has && list.every((e) => e.expected);
           const body = (
             <>
               <span className="block text-[10px] text-muted leading-none">{d.weekday}</span>
@@ -119,7 +123,7 @@ export function WeekStrip({
                 {d.dayNum}
               </span>
               <span
-                className={`mt-1.5 block h-1 rounded-full ${has ? "bg-accent-2" : "bg-border"}`}
+                className={`mt-1.5 block h-1 rounded-full ${has ? (guess ? "bg-accent-2/40" : "bg-accent-2") : "bg-border"}`}
               />
               <span className="block text-[9px] text-muted mt-1 leading-tight h-6 overflow-hidden">
                 {has ? (list.length > 1 ? `+${list.length}` : first.title) : ""}
@@ -139,7 +143,7 @@ export function WeekStrip({
               href={`/show/${first.showTmdbId}`}
               prefetch={false}
               title={list.map((e) => `${e.title} — ${e.label}`).join("\n")}
-              className={`${cell} border border-accent-2/35 bg-accent-2/[0.06] hover:border-accent-2 transition`}
+              className={`${cell} border ${guess ? "border-dashed border-accent-2/30 opacity-75" : "border-accent-2/35 bg-accent-2/[0.06]"} hover:border-accent-2 transition`}
             >
               {body}
             </Link>
