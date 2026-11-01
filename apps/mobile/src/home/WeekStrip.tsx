@@ -21,8 +21,12 @@ import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
  * اسمُ اليوم ورقمُه **يتوسّطان سطراً واحداً بارتفاع سطرٍ موحّد** — المحاذاةُ على خطّ القاعدة كانت تُنزل العربيّةَ عن الرقم اللاتينيّ.
  */
 const NARROW = 44;
-const POSTER_W = 72;
-const POSTER_H = 108;
+/* 🆕 D-1615 — **الشريطُ أقصر بنحو ٢٠٪** (أحمد ١ نوفمبر بلقطة الرئيسيّة: «تقليل ارتفاع الأسبوع بنحو 20٪»): الملصقُ هو ما يحدّد
+   ارتفاعَ الصفّ كلِّه (والأيّامُ الفارغةُ تتمدّد إليه) — ٧٢×١٠٨ ⇐ ٥٦×٨٤ بالنسبة نفسِها، والحشوةُ ٨ ⇐ ٦ والفجوةُ ٦ ⇐ ٤:
+   ١٥١ ⇐ ~١٢٢ نقطة. واسمُ العمل على ملصقه ١٠ ⇐ ٩ ليتّسع في العرض الأضيق */
+const POSTER_W = 56;
+const POSTER_H = 84;
+const DAY_PAD = 6;
 const MAX_POSTERS = 3;
 const ROW_LH = 20;
 
@@ -38,7 +42,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
   const tile = { width: POSTER_W, height: POSTER_H, borderRadius: 8, overflow: "hidden" as const, backgroundColor: tokens.surface2, alignItems: "center" as const, justifyContent: "center" as const };
   return (
     <View>
-      <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <Pressable onPress={onCalendar} accessibilityRole="link" style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
           <Icon name="calendar" size={18} color={tokens.muted} />
           <Text size={20} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekTitle}</Text>
@@ -55,7 +59,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
           if (list.length === 0) {
             /* اليومُ الفارغ ضيّقٌ باهت: اسمُه ورقمُه فقط — الفراغُ معلومة (D-491) ولا يأخذ عرضاً */
             return (
-              <View key={d.date} style={{ width: NARROW, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingVertical: 8, alignItems: "center", gap: 4, opacity: 0.7 }}>
+              <View key={d.date} style={{ width: NARROW, borderRadius: 12, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingVertical: DAY_PAD, alignItems: "center", gap: 4, opacity: 0.7 }}>
                 <Text size={10} muted numberOfLines={1}>{d.weekday}</Text>
                 <Text size={14} weight="700" color={numColor} style={{ fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
               </View>
@@ -66,7 +70,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
           /* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ (لا معلَن): إطارٌ متقطّعٌ بلا تعبئة، والملصقُ المتوقَّعُ باهت — «على الأرجح» لا «أكيد» */
           const guess = list.every((e) => e.expected);
           return (
-            <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + (guess ? "4D" : "8C"), borderStyle: guess ? "dashed" : "solid", backgroundColor: guess ? "transparent" : tokens.accent2 + "12", padding: 8, gap: 6, alignItems: "center" }}>
+            <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + (guess ? "4D" : "8C"), borderStyle: guess ? "dashed" : "solid", backgroundColor: guess ? "transparent" : tokens.accent2 + "12", padding: DAY_PAD, gap: 4, alignItems: "center" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: ROW_LH }}>
                 <Text size={12} muted numberOfLines={1} style={{ lineHeight: ROW_LH }}>{d.weekday}</Text>
                 <Text size={15} weight="700" color={numColor} style={{ lineHeight: ROW_LH, fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
@@ -95,7 +99,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
                           <Rect x="0" y="0" width="1" height="1" fill={`url(#${gradId})`} />
                         </Svg>
                       </View>
-                      <Text size={10} weight="700" color="#fff" numberOfLines={2} autoDir style={{ position: "absolute", left: 4, right: 4, bottom: 5, textAlign: "center", lineHeight: 13 }}>{e.title}</Text>
+                      <Text size={9} weight="700" color="#fff" numberOfLines={2} autoDir style={{ position: "absolute", left: 3, right: 3, bottom: 4, textAlign: "center", lineHeight: 11 }}>{e.title}</Text>
                     </Pressable>
                   );
                 })}
@@ -106,7 +110,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
                     accessibilityLabel={`${d.weekday} ${d.day_num} · +${rest}`}
                     style={({ pressed }) => [tile, { borderWidth: 1, borderColor: tokens.accent2 + "8C", opacity: pressed ? 0.8 : 1 }]}
                   >
-                    <Text size={18} weight="700" color={tokens.accent2} style={{ fontVariant: ["tabular-nums"] }}>{`+${rest}`}</Text>
+                    <Text size={16} weight="700" color={tokens.accent2} style={{ fontVariant: ["tabular-nums"] }}>{`+${rest}`}</Text>
                   </Pressable>
                 ) : null}
               </View>

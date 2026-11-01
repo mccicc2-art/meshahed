@@ -40,7 +40,7 @@ export function SectionHeader({
 }) {
   const { tokens } = useApp();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, paddingHorizontal: PAGE_PAD }}>
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8, paddingHorizontal: PAGE_PAD }}>
       <Pressable onPress={onTitle} disabled={!onTitle} accessibilityRole={onTitle ? "link" : undefined} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
         {icon ? <Icon name={icon} size={20} color={accent ? tokens.accent : tokens.muted} /> : null}
         {/* D-1378 — عنوانُ القسم ٢٢ ⇐ ٢٠ (أحمد ١٢ أكتوبر، بلقطتين على جهاز خالد): كان أكبرَ ما في الصفحة فطغى على البطاقات تحته.
@@ -95,7 +95,11 @@ export function Column({ children }: { children: React.ReactNode }) {
   return <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>{children}</View>;
 }
 
-/** الفراغُ بين الأقسام (D-467) */
-export function Gap() {
-  return <View style={{ height: 12 }} />;
+/**
+ * الفراغُ بين الأقسام (D-467).
+ * 🆕 D-1615 — ١٢ ⇐ ٢٦ (≈٢٨ مرئيّة) مع عنوانٍ أقرب إلى محتواه (٦ ⇐ ٨ تحت العنوان ≈١٠ مرئيّة) — أحمد «٣ أ»: كان ما بين
+ * قسمين (~١٤) قريباً ممّا بين العنوان وقسمه (~٩) فلا يُعرف أيُّ عنوانٍ لأيِّ صفّ.
+ */
+export function Gap({ size = 26 }: { size?: number }) {
+  return <View style={{ height: size }} />;
 }

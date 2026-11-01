@@ -40,7 +40,7 @@ import { haptic } from "../haptics";
 import { capCards } from "@/core/cardCount";
 import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
-import { HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader";
+import { HOME_TOP_H, HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
@@ -71,7 +71,8 @@ import { StremioCard } from "../stremio/StremioCard";
  * وورقةُ «الكلّ» لمسلسلاتي/أفلامي (سقفُ ٥٠ ثمّ بابُ المكتبة — D-733).
  * ⚖️ ما بقي ويباً بقرار: عدّادا المتابِعين (ورقةُ `FollowCountButton` بلا باب `v1` بعد).
  */
-const HEADER_H = 64;
+/* D-1615 — من `HomeHeader` لا رقمٌ ثانٍ: الرأسُ ٥٦ */
+const HEADER_H = HOME_TOP_H;
 
 export function HomeScreen() {
   const { t, tokens, me } = useApp();
@@ -783,7 +784,8 @@ export function HomeScreen() {
               <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} hidden={tourBusy} />
             </View>
           ) : null}
-          <Gap />
+          {/* D-1615 — بين بطاقة الأرقام وأوّل قسمٍ أقلُّ من بين الأقسام: هي رأسُ الصفحة لا قسمٌ — والفراغُ فوق المحتوى هو ما طُلب تقليلُه */}
+          <Gap size={16} />
           {sections?.map((node, i) => (
             <React.Fragment key={i}>
               {node}

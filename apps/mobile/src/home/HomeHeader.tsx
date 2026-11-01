@@ -75,6 +75,8 @@ export function HomeCover({ url, pos, height = COVER_H, fadeFrom = COVER_SOLID }
  */
 /* 🆕 D-1278 — ٣٨ (كانت ٣٢): أحمد «أحسّ اسم KHLD كبير على الأفتار» واختار ٣٨ من صورةٍ بثلاثة مقاسات */
 const AVATAR = 38;
+/** ارتفاعُ رأس الرئيسيّة — الرأسُ والشاشةُ (حشوةُ المحتوى تحته) يقرآنه من هنا فلا يفترقان */
+export const HOME_TOP_H = 56;
 const SWITCH_ICON = 18;
 /* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
 const PILL_NAME_SIZE = 20;
@@ -105,7 +107,9 @@ export function HomeTopBar({
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
   const btn = (name: "chat" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
   return (
-    <View style={{ height: 64, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
+    /* 🆕 D-1615 — الرأسُ ٦٤ ⇐ ٥٦ (`HOME_TOP_H`): الفراغُ تحت الصورة (٣٨) كان ١٣ نقطةً يضاف إليها هامشُ بطاقة الأرقام —
+       «تقليل الفراغ فوق شريط الإحصائيات» (أحمد ١ نوفمبر). والرأسُ معتمٌ ثابت، فلا يُرفع المحتوى تحته بل يقصر هو */
+    <View style={{ height: HOME_TOP_H, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
       {h ? (
         <>
           <Pressable ref={avatarRef} onPress={onAvatar} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
@@ -167,7 +171,7 @@ export function StatsCard({ stats, onStat, trailing }: { stats: readonly StatCel
      بدل رصاصي وبدون خطوط بينهم»): وصفةُ D-1081 — الإطارُ الخارجيُّ الرفيع وحده يحدّها، و`bg` لا `#000`
      كي تصحّ `daylight`. الفراغُ بين الأرقام الثلاثة يفصلها وحدَه؛ خطٌّ فوقه كان يكرّر الفصل. */
   return (
-    <View style={{ marginHorizontal: PAGE_PAD, marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
+    <View style={{ marginHorizontal: PAGE_PAD, marginTop: 0, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         {stats.flatMap((s, i) => [
           i > 0 ? sep(`sep-${s.key}`) : null,
