@@ -33,6 +33,7 @@ import { errorText, useCommunityActs, useViewCounter, type CommunityActs, type F
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
 import { FeedMenu } from "./FeedMenu";
 import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
+import { lastSeen, rememberSeen } from "./feedSeen";
 import { FloatButton } from "../FloatButton";
 import { Chip } from "../library/Chip";
 import { SortCycle } from "../library/SortCycle";
@@ -63,6 +64,9 @@ const HEADER_H = 64;
 const PAGE_PAD = 16;
 const ALL_TABS: Tab[] = ["activity", "talk", "people"];
 export const COMMUNITY_KEY = ["community"] as const;
+/** D-1613b — أكثرُ من هذا جديداً منذ آخر زيارة ⇐ الخطُّ يفتح من أعلاه بلا فاصل («ب») */
+const FRESH_OPEN_MAX = 50;
+
 /* الشاشةُ ثابتةٌ في مجموعة التبويبات (K3)؛ هذه ذاكرتُها إن أُعيد بناؤها بعد بابٍ ويبيّ (K3b) */
 const memory: { tab: Tab | null; all: BoardSection | null } = { tab: null, all: null };
 
@@ -590,10 +594,22 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
   const mineKey = acts.meId ? `c-${acts.meId}-` : null;
   const [seen, setSeen] = useState<{ slice: string; keys: ReadonlySet<string> } | null>(null);
   const feedRef = useRef<FlatList<FeedItem>>(null);
+  /* 🆕 D-1613b — **الفتحةُ الأولى تعرف ما رآه في زيارته السابقة** (أحمد ١ نوفمبر: «ابغاه يفتح صفحة النشاط كذا مثل الصوره و أنا
+     بنفسي اطلع اشوف المنشورات الجديدة» — «ب»): `lastSeen` (على الجهاز) يضع الفاصلَ فوق أعلى ما رآه، فيُحسب الجديدُ منذ آخر
+     زيارة لا منذ تركيب الشاشة. **وأكثرُ من خمسين جديداً — أو لا شيءَ ممّا رآه في الصفحة الأولى — يفتح من الأعلى بلا فاصل**:
+     قراءةُ خمسين صعوداً أثقلُ من البدء من رأس الخطّ. سحبُ التحديث وتبديلُ الشريحة يمحوان الفاصلَ كما كانا («٣ أ»). */
   useEffect(() => {
     if (k !== "activity") return;
-    setSeen((prev) => (!prev || prev.slice !== sliceKey || pulling ? { slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) } : prev));
-  }, [k, feedView.rows, sliceKey, pulling]);
+    setSeen((prev) => {
+      const all = () => new Set(feedView.rows.map((r) => r.key));
+      if (prev && prev.slice === sliceKey && !pulling) return prev;
+      if (prev || pulling) return { slice: sliceKey, keys: all() };
+      const saved = lastSeen(sliceKey);
+      const at = saved.length ? feedView.rows.findIndex((r) => saved.includes(r.key)) : -1;
+      const count = at > 0 ? feedView.rows.slice(0, at).filter((r) => !(mineKey && r.key.startsWith(mineKey)) && !(r.kind === "talk" && r.item.person.id === acts.meId)).length : 0;
+      return { slice: sliceKey, keys: at > 0 && count <= FRESH_OPEN_MAX ? new Set(feedView.rows.slice(at).map((r) => r.key)) : all() };
+    });
+  }, [k, feedView.rows, sliceKey, pulling, mineKey, acts.meId]);
   const held = seen && seen.slice === sliceKey ? seen.keys : null;
   const fresh = useMemo(() => {
     if (!held) return null;
@@ -603,6 +619,34 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     const count = feedView.rows.slice(0, at).filter((r) => !(mineKey && r.key.startsWith(mineKey)) && !(r.kind === "talk" && r.item.person.id === acts.meId)).length;
     return count ? { at, count } : null;
   }, [held, feedView.rows, mineKey, acts.meId]);
+  /* D-1613b — **ما رآه يُحفظ حين يراه**: لا فاصلَ (رأى كلَّ ما في الخطّ)، أو بلغ أعلى الخطّ بنفسه فقرأ الجديد. والفاصلُ في الشاشة
+     يبقى كما هو إلى السحب أو التبديل («٣ أ») — الحفظُ للزيارة التالية وحدَها */
+  const markSeen = useCallback(() => {
+    if (k === "activity" && sliceKey) rememberSeen(sliceKey, feedView.rows.map((r) => r.key));
+  }, [k, sliceKey, feedView.rows]);
+  useEffect(() => {
+    if (held && !fresh) markSeen();
+  }, [held, fresh, markSeen]);
+  /* الفتحةُ تقف عند الفاصل — مرّةً لكلِّ تركيب، وما لم يلمس الخطَّ بإصبعه (من سحب لا يُنقل) */
+  const touched = useRef(false);
+  const jumped = useRef(false);
+  const jumpTries = useRef(0);
+  const jumpTo = useCallback(
+    (index: number) => feedRef.current?.scrollToIndex({ index, viewPosition: 0, viewOffset: topPad + 8, animated: false }),
+    [topPad],
+  );
+  useEffect(() => {
+    if (k !== "activity" || !fresh || jumped.current || touched.current) return;
+    jumped.current = true;
+    requestAnimationFrame(() => jumpTo(fresh.at));
+  }, [k, fresh, jumpTo]);
+  const onFeedScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      onScroll(e);
+      if (e.nativeEvent.contentOffset.y < 60) markSeen();
+    },
+    [onScroll, markSeen],
+  );
   /* تبديلُ الشريحة خطٌّ آخر: يبدأ من أعلاه — والتثبيتُ كان سيلحق بطاقةً مشتركةً بين الشريحتين إلى موضعها الجديد */
   const lastSlice = useRef(sliceKey);
   useEffect(() => {
@@ -688,7 +732,15 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
           /* 🔴 D-1207-fix — **رأسُ النشاط على شطر النقاشات حرفاً** (لقطتا أحمد: الشرائحُ أعلى بـ٨ والسطرُ بلا عدد): الحشوةُ العليا
              `topPad + 12` كالنقاشات (كانت `+ 4` قبل أن يكون للخطّ رأس)، والعددُ على يسار السطر */
           contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
-          onScroll={onScroll}
+          onScroll={onFeedScroll}
+          onScrollBeginDrag={() => (touched.current = true)}
+          /* الفاصلُ خارج ما رُسم بعد (أوّلُ ستّ بطاقات): قفزةٌ تقريبيّةٌ بمتوسّط الارتفاع ثمّ المحاولةُ ثانيةً — مرّتين على الأكثر */
+          onScrollToIndexFailed={(info) => {
+            if (jumpTries.current >= 2) return;
+            jumpTries.current += 1;
+            feedRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+            setTimeout(() => jumpTo(info.index), 80);
+          }}
           scrollEventThrottle={16}
           refreshControl={refresh}
           maintainVisibleContentPosition={keepPlace}
