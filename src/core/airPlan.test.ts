@@ -75,3 +75,24 @@ test("two episodes on one day count once; a stale last date projects nothing", (
   const stale = airPlanOf(weekly, "2026-11-20", true);
   assert.deepEqual(planDates(stale, "2026-11-20", "2026-11-30"), []);
 });
+
+test("long season from three points (prev, last, next) is weekly and open", () => {
+  /* D-1614b — كونان: الحلقةُ قبل الأخيرة · الأخيرة · القادمة */
+  const plan = airPlanOf(
+    [
+      { ep: 1180, date: "2026-10-24" },
+      { ep: 1181, date: "2026-10-31" },
+      { ep: 1182, date: "2026-11-07" },
+    ],
+    "2026-11-01",
+    true,
+  );
+  assert.equal(plan.weekly, true);
+  assert.equal(plan.more, null);
+  assert.deepEqual(planDates(plan, "2026-11-01", "2026-11-30").map((d) => `${d.date}${d.expected ? "?" : ""}`), [
+    "2026-11-07",
+    "2026-11-14?",
+    "2026-11-21?",
+    "2026-11-28?",
+  ]);
+});

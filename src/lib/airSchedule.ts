@@ -1,5 +1,5 @@
 import "server-only";
-import { getSeason, getTv } from "@/lib/tmdb";
+import { getEpisode, getSeason, getTv, type Episode } from "@/lib/tmdb";
 import { airPlanOf, type AirEp, type AirPlan } from "@/core/airPlan";
 
 /**
@@ -24,19 +24,40 @@ function timeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))]).catch(() => null);
 }
 
+/** موسمٌ أطولُ من هذا لا يُجلب كاملاً — يكفي ثلاثُ حلقاتٍ للحكم على الإيقاع */
+const LONG_SEASON = 60;
+
+const asEp = (e: Episode): AirEp => ({
+  ep: e.episode_number,
+  date: e.air_date || null,
+  type: (e as { episode_type?: string | null }).episode_type ?? null,
+});
+
 async function planOf(id: number, today: string): Promise<AirPlan | null> {
   const tv = await getTv(id);
   const season = tv.next_episode_to_air?.season_number ?? tv.last_episode_to_air?.season_number;
   if (!season) return null;
-  const s = await getSeason(id, season);
-  const eps: AirEp[] = (s.episodes ?? []).map((e) => ({
-    ep: e.episode_number,
-    date: e.air_date || null,
-    type: (e as { episode_type?: string | null }).episode_type ?? null,
-  }));
   /* `in_production` يصل من TMDB ولا يحمله النوع — والحالةُ «مستمرّ» بديلُه إن غاب */
   const open = (tv as { in_production?: boolean }).in_production ?? tv.status === "Returning Series";
-  return airPlanOf(eps, today, open);
+  /* 🆕 D-1614b — **الموسمُ الطويل** (أحمد ١ نوفمبر: «شفت بلاك كلوفر فقط» — كونان غاب): TMDB تضع حلقاتِ كونان كلَّها (~١٢٠٠)
+     في موسمٍ واحد، فملفُّه يتجاوز مهلةَ التقويم وسقفَ الخبيئة فيسقط إلى موعد صفّه. هنا تكفي الأخيرةُ والقادمةُ من تفاصيل المسلسل
+     (مجلوبةٌ أصلاً) وحلقةٌ واحدةٌ قبل الأخيرة: ثلاثةُ مواعيد = قاعدةُ الأسبوعيّة نفسُها في `airPlanOf` */
+  const count = tv.seasons?.find((x) => x.season_number === season)?.episode_count ?? 0;
+  if (count > LONG_SEASON) {
+    const eps: AirEp[] = [];
+    const last = tv.last_episode_to_air;
+    if (last && last.season_number === season) {
+      eps.push(asEp(last));
+      if (last.episode_number > 1) {
+        const prev = await getEpisode(id, season, last.episode_number - 1).catch(() => null);
+        if (prev) eps.push(asEp(prev));
+      }
+    }
+    if (tv.next_episode_to_air && tv.next_episode_to_air.season_number === season) eps.push(asEp(tv.next_episode_to_air));
+    return airPlanOf(eps, today, open);
+  }
+  const s = await getSeason(id, season);
+  return airPlanOf((s.episodes ?? []).map(asEp), today, open);
 }
 
 /**

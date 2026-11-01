@@ -1589,6 +1589,14 @@ export async function altTitles(
  * عادت نسختُه عادت أسماؤها (أحمد: «وإذا جاء بالإنجليزي ترجع إنجليزي صح؟»). والتأشيرُ برقم الموسم
  * والحلقة لا بالاسم، فما عُلِّم والاسمُ بلغةٍ أخرى يبقى معلَّماً. فشلُ البديلة يعيد الأصلَ كما هو.
  */
+/**
+ * 🆕 D-1614b — **حلقةٌ واحدة** (`/tv/{id}/season/{s}/episode/{e}`) — لجدول المسلسل الطويل في التقويم: موسمُ كونان في TMDB
+ * قرابةَ ١٢٠٠ حلقة في ملفٍّ واحد يتجاوز سقفَ الخبيئة ومهلةَ التقويم، والحكمُ على الإيقاع يحتاج تاريخَ حلقةٍ واحدةٍ قبل الأخيرة لا الموسم.
+ */
+export async function getEpisode(tvId: number, seasonNumber: number, episodeNumber: number): Promise<Episode> {
+  return tmdb<Episode>(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+}
+
 export async function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
   const path = `/tv/${tvId}/season/${seasonNumber}`;
   const season = await tmdb<SeasonDetails>(path);
