@@ -8,7 +8,7 @@ import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, activeMode, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
@@ -229,7 +229,9 @@ export function EpisodeTracker({
   const mixed = useMemo(() => mixedKeys(showTmdbId, heads), [showTmdbId, heads]);
   /* D-1621 — لعملٍ حلقاتُه قضايا (كونان) الذهبيُّ هو القصّةُ الأساسيّة وحدَها (`goldenKeys`) */
   const golden = useMemo(() => goldenKeys(showTmdbId, heads), [showTmdbId, heads]);
-  const [mode, setMode] = useState<SkipMode>("all");
+  const [saved, setMode] = useState<SkipMode>("all");
+  /* D-1622 — المحفوظُ للأعمال كلِّها، والنافذُ هنا ما له شريحةٌ في هذا العمل (`activeMode`) */
+  const mode = activeMode(saved, filler, golden);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- قراءةُ الجهاز بعد الترطيب: الخادمُ لا يعرفها
@@ -248,7 +250,7 @@ export function EpisodeTracker({
       /* الحفظُ راحةٌ لا شرط */
     }
   };
-  const skip = mode === "filler" && filler?.size ? filler : mode === "golden" && golden?.size ? golden : null;
+  const skip = mode === "filler" ? filler : mode === "golden" ? golden : null;
   /* 🆕 D-1620 — «٤أ»: عملٌ كلُّه موسمٌ واحدٌ مقسَّمٌ أجزاءً — الأجزاءُ بلا رأس الموسم، مفتوحةً دائماً */
   const solo = summaries.length === 1 && !!summaries[0].parts?.length;
   const airedSkip = (x: SeasonSummary) => (skip ? countKeys(skip, x.season_number, firstOf(x.season_number), firstOf(x.season_number) + x.aired_count - 1) : 0);
@@ -631,8 +633,21 @@ export function EpisodeTracker({
 
   /* 🆕 D-1618 — الجزءُ المفتوح لكلِّ موسمٍ مقسَّم (غيابُ المفتاح = الافتراض: أوّلُ جزءٍ لم يكتمل — حيث يقف القارئ) */
   const [partOpen, setPartOpen] = useState<Record<number, number | null>>({});
+  /* D-1622 — عدّاداتُ الجزء بعد المخفيّ: رأسُه والافتراضُ بالعدّ نفسِه (وإلّا فتح الذهبيُّ جزءاً يقول رأسُه إنّه كامل) */
+  const partCounts = (s: SeasonSummary, p: SeasonPart) => {
+    const pf = s.first_episode ?? 1;
+    const pa = partAired(p, pf, s.aired_count) - (skip ? countKeys(skip, s.season_number, p.first, Math.min(p.last, pf + s.aired_count - 1)) : 0);
+    const pw = Math.min(
+      partWatched(p, s.season_number, watched) - (skip ? countKeys([...watched].filter((k) => skip.has(k)), s.season_number, p.first, p.last) : 0),
+      pa || p.last - p.first + 1,
+    );
+    return { pa, pw };
+  };
   const defaultPart = (s: SeasonSummary): number | null => {
-    const i = (s.parts ?? []).findIndex((p) => partWatched(p, s.season_number, watched) < partAired(p, s.first_episode ?? 1, s.aired_count));
+    const i = (s.parts ?? []).findIndex((p) => {
+      const { pa, pw } = partCounts(s, p);
+      return pw < pa;
+    });
     return i >= 0 ? i : null;
   };
 
@@ -954,12 +969,7 @@ export function EpisodeTracker({
                       {s.parts?.length
                         ? s.parts.map((p, i) => {
                             /* 🆕 D-1618 — الجزءُ رأسٌ كرأس الموسم يُفتح على حلقاته وحدَها (تكافؤُ التطبيق) */
-                            const pf = s.first_episode ?? 1;
-                            const pa = partAired(p, pf, s.aired_count) - (skip ? countKeys(skip, s.season_number, p.first, Math.min(p.last, pf + s.aired_count - 1)) : 0);
-                            const pw = Math.min(
-                              partWatched(p, s.season_number, watched) - (skip ? countKeys([...watched].filter((k) => skip.has(k)), s.season_number, p.first, p.last) : 0),
-                              pa || p.last - p.first + 1,
-                            );
+                            const { pa, pw } = partCounts(s, p);
                             const pDone = pa > 0 && pw >= pa;
                             const pOpen = (partOpen[s.season_number] === undefined ? defaultPart(s) : partOpen[s.season_number]) === i;
                             return (

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countKeys, fillerCount, fillerKeys, goldenKeys, mixedCount, mixedKeys, parseRanges, parseSkipMode, storyEpisodes } from "./filler.ts";
+import { activeMode, countKeys, fillerCount, fillerKeys, goldenKeys, mixedCount, mixedKeys, parseRanges, parseSkipMode, storyEpisodes } from "./filler.ts";
 
 test("each list matches the filler count stated by its source", () => {
   /* animefillerlist.com، ١ نوفمبر ٢٠٢٦ — العددُ المعلَن لكلِّ عمل */
@@ -84,7 +84,10 @@ test("D-1620 — skip mode: the old stored '1' still means filler", () => {
 test("D-1621 — Conan's golden path keeps the main story only (346 episodes) and hides the rest, manga cases included", () => {
   assert.equal(storyEpisodes(30983)?.length, 346);
   const g = goldenKeys(30983, [{ season_number: 0, episode_count: 20 }, { season_number: 1, episode_count: 1219 }]);
-  assert.equal(g?.size, 1219 - 346);
+  /* D-1622 — ومعها الفلرُ الذي يظهر فيه أحدُ القصّة (١٤ حلقة: كيد · أمورو …) — الذهبيُّ يخفي الفلرَ أصلاً */
+  assert.equal(g?.size, 1219 - 346 + 14);
+  assert.ok(g?.has("1:418")); // فلرٌ للمنظمة — مخفيّ
+  for (const k of fillerKeys(30983, [{ season_number: 1, episode_count: 1219 }]) ?? []) assert.ok(g?.has(k), k);
   assert.ok(!g?.has("1:1")); // الحلقةُ الأولى: المنظمةُ وشينتشي
   assert.ok(!g?.has("1:345")); // أكاي والمنظمة
   assert.ok(g?.has("1:2")); // قضيّةٌ مستقلّة
@@ -92,4 +95,28 @@ test("D-1621 — Conan's golden path keeps the main story only (346 episodes) an
   /* عملٌ متسلسل: الذهبيُّ = الفلرُ والمختلطة */
   const n = goldenKeys(46260, [{ season_number: 1, episode_count: 220 }]);
   assert.equal(n?.size, 90 + 56);
+});
+
+test("D-1622 — no golden chip where golden equals filler; the saved mode falls back to what this show has", () => {
+  /* الخيميائيّ ٢٠٠٣: فلرٌ بلا مختلطة — الذهبيُّ هو الفلرُ نفسُه */
+  const fma = [{ season_number: 1, episode_count: 51 }];
+  assert.ok(fillerKeys(37863, fma)?.size);
+  assert.equal(goldenKeys(37863, fma), null);
+  /* فاير فورس: مختلطةٌ بلا فلر — الذهبيُّ وحدَه */
+  assert.equal(goldenKeys(88046, [{ season_number: 1, episode_count: 48 }])?.size, 1);
+  const f = new Set(["1:4"]);
+  const g = new Set(["1:4", "1:5"]);
+  assert.equal(activeMode("golden", f, null), "filler");
+  assert.equal(activeMode("golden", f, g), "golden");
+  assert.equal(activeMode("golden", null, null), "all");
+  assert.equal(activeMode("filler", null, g), "all");
+  assert.equal(activeMode("filler", f, g), "filler");
+  assert.equal(activeMode("all", f, g), "all");
+});
+
+test("D-1622 — episodes after the reviewed horizon stay visible in Conan's golden path until the lists are reviewed", () => {
+  const g = goldenKeys(30983, [{ season_number: 1, episode_count: 1230 }]);
+  assert.ok(g?.has("1:1219")); // مُراجَعةٌ وخارج القصّة
+  assert.ok(!g?.has("1:1220"));
+  assert.ok(!g?.has("1:1230"));
 });

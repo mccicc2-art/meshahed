@@ -117,8 +117,14 @@ const SHOWS: Record<number, FillerShow> = {
  * الذكرياتُ المعلَّمة) — كلٌّ بعدده المعلَن هناك، والاتّحادُ ٣٤٦ حلقة. والأعمالُ المتسلسلة (ناروتو · ون بيس …) يبقى
  * ذهبيُّها «بلا فلرٍ ولا مختلطة» («٢أ»): مانجاها هي القصّة.
  */
-const STORY: Record<number, Record<string, string>> = {
+/**
+ * 🆕 D-1622 — `through`: آخرُ حلقةٍ راجعتها القوائم — ما بعدها **يظهر** في الذهبيّ حتى تُراجَع (حلقةٌ جديدة للمنظمة لا تُخفى
+ * لأنّ القائمة لم تُحدَّث بعد؛ المراجعةُ ٢ نوفمبر)، والمُراجَعُ يُخفى منه ما خارج القصّة.
+ */
+const STORY: Record<number, { through: number; lists: Record<string, string> }> = {
   30983: {
+    through: 1219,
+    lists: {
     /* المنظمة السوداء (٩٠) */
     blackOrg: "1 52 54 68 128-129 176-178 230-231 272 289-290 307-311 345 418 425 435 462-465 491-504 579-581 667-668 671-675 681 683 700-706 723 734 739 751 770-771 779-783 792 813 863-864 866-867 941-942 953 995 1004 1018 1035 1045-1046 1072 1077-1079",
     /* شويتشي أكاي (٨٢) */
@@ -137,13 +143,14 @@ const STORY: Record<number, Record<string, string>> = {
     sera: "646-652 656-657 661 672-675 690-691 699-704 724-725 727-728 740-741 744-746 754-756 759-760 763 785-788 827-828 836-837 843 853-854 863-864 866 878-879 881-882 919-920 927-928 941-942 993-995 1002 1018-1020 1033 1045-1046 1144-1145 1204-1205",
     /* ماري سيرا — عائلة أكاي (٢٣) */
     mary: "756 759-760 785-788 827-828 843-844 847 863-864 881-882 928 1020 1033 1045-1046 1144-1145",
+    },
   },
 };
 
 /** حلقاتُ القصّة الأساسيّة (مطلقة) لعملٍ له قائمةُ قصّة، وإلّا `null` */
 export function storyEpisodes(tmdbId: number): number[] | null {
   const st = STORY[tmdbId];
-  return st ? [...new Set(Object.values(st).flatMap((r) => parseRanges(r)))].sort((a, b) => a - b) : null;
+  return st ? [...new Set(Object.values(st.lists).flatMap((r) => parseRanges(r)))].sort((a, b) => a - b) : null;
 }
 
 /** الحلقاتُ المطلقةُ من نصّ النطاقات — مرتّبةٌ بلا تكرار */
@@ -214,18 +221,35 @@ export function goldenKeys(tmdbId: number, seasons: readonly SeasonHead[]): Set<
   const story = storyEpisodes(tmdbId);
   if (story) {
     const keep = new Set(story);
-    const out = new Set<string>();
+    const through = STORY[tmdbId].through;
+    /* D-1622 — والفلرُ يُخفى ولو ظهر فيه أحدُ القصّة (كيد في حلقةٍ أصليّة للأنمي): الذهبيُّ يخفي الفلرَ أصلاً، والشريحتان لا تجتمعان */
+    const out = new Set<string>(fillerKeys(tmdbId, seasons) ?? []);
     let before = 0;
     for (const s of seasons.filter((x) => x.season_number >= 1).sort((a, b) => a.season_number - b.season_number)) {
       const first = s.first_episode ?? 1;
-      for (let i = 0; i < s.episode_count; i++) if (!keep.has(before + i + 1)) out.add(`${s.season_number}:${first + i}`);
+      for (let i = 0; i < s.episode_count; i++) {
+        const abs = before + i + 1;
+        if (abs <= through && !keep.has(abs)) out.add(`${s.season_number}:${first + i}`);
+      }
       before += s.episode_count;
     }
     return out;
   }
   const f = fillerKeys(tmdbId, seasons);
   const m = mixedKeys(tmdbId, seasons);
-  return f || m ? new Set([...(f ?? []), ...(m ?? [])]) : null;
+  if (!f && !m) return null;
+  const g = new Set([...(f ?? []), ...(m ?? [])]);
+  /* 🆕 D-1622 — «٣أ» (أحمد ٢ نوفمبر): عملٌ بلا مختلطةٍ ذهبيُّه هو فلرُه حرفاً — شريحتان تفعلان الشيءَ نفسَه تُربكان، فلا ذهبيّ */
+  return f && g.size === f.size ? null : g;
+}
+
+/**
+ * 🆕 D-1622 — **الوضعُ النافذ في هذا العمل**: الاختيارُ محفوظٌ للأعمال كلِّها، وقد لا تكون شريحتُه هنا — «الذهبيّ» في عملٍ
+ * لا ذهبيَّ له يصير «إخفاء الفلر» (هو نفسُه فيه)، و«الفلر» في عملٍ بلا فلرٍ يصير «الكلّ». الشريحةُ المضاءة والمخفيُّ منه.
+ */
+export function activeMode(mode: SkipMode, filler: ReadonlySet<string> | null, golden: ReadonlySet<string> | null): SkipMode {
+  if (mode === "golden") return golden?.size ? "golden" : filler?.size ? "filler" : "all";
+  return mode === "filler" && filler?.size ? "filler" : "all";
 }
 
 /**

@@ -18,7 +18,7 @@ import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, activeMode, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
@@ -107,7 +107,9 @@ export function SeasonAccordion({
   const mixed = useMemo(() => mixedKeys(show.id, show.seasons), [show.id, show.seasons]);
   /* D-1621 — لعملٍ حلقاتُه قضايا (كونان) الذهبيُّ هو القصّةُ الأساسيّة وحدَها (`goldenKeys`) */
   const golden = useMemo(() => goldenKeys(show.id, show.seasons), [show.id, show.seasons]);
-  const [mode, setMode] = useState<SkipMode>(readSkipMode);
+  const [saved, setMode] = useState<SkipMode>(readSkipMode);
+  /* D-1622 — المحفوظُ للأعمال كلِّها، والنافذُ هنا ما له شريحةٌ في هذا العمل (`activeMode`) */
+  const mode = activeMode(saved, filler, golden);
   const pickMode = (m: Exclude<SkipMode, "all">) => {
     const v: SkipMode = mode === m ? "all" : m;
     setMode(v);
@@ -117,7 +119,7 @@ export function SeasonAccordion({
       /* راحةٌ لا شرط: يبقى الاختيارُ لهذه الجلسة */
     }
   };
-  const skip = mode === "filler" && filler?.size ? filler : mode === "golden" && golden?.size ? golden : null;
+  const skip = mode === "filler" ? filler : mode === "golden" ? golden : null;
   const airedSkip = (s: TvTitlePayload["seasons"][number]) => (skip ? countKeys(skip, s.season_number, s.first_episode ?? 1, (s.first_episode ?? 1) + s.aired - 1) : 0);
   const total = show.aired_total - (skip ? show.seasons.reduce((n, s) => n + airedSkip(s), 0) : 0);
   const doneAll = show.me.watched_count - (skip ? show.me.watched.filter((k) => skip.has(k)).length : 0);
