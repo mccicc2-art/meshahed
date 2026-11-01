@@ -4206,6 +4206,9 @@ export async function toggleReviewLike(
     ? await supabase.from("review_likes").delete().match(key)
     : await supabase.from("review_likes").insert(key);
 
+  /* المدقّق ١ نوفمبر (A-37): 23505 = الإعجابُ موجودٌ أصلاً (نقرتان متتاليتان أو بطاقةٌ لم تعرف حالتَها) — الحالةُ المطلوبة
+     قائمة، فلا خطأَ للعضو ولا جرسَ ثانٍ */
+  if (error?.code === "23505") return;
   if (error) fail(error);
   /* 🆕 D-1563 — شخصيّاتُ لوبز AI لا تُنبَّه: لا أحدَ وراءها يقرأ الجرس */
   if (!liked && !isPersonaId(reviewUserId))
@@ -4921,6 +4924,8 @@ export async function toggleListReviewLike(
     ? await supabase.from("list_review_likes").delete().match(key)
     : await supabase.from("list_review_likes").insert(key);
 
+  /* A-37 — كأختها: إعجابٌ موجودٌ أصلاً ليس خطأً */
+  if (error?.code === "23505") return;
   if (error) fail(error);
   if (!liked)
     notifySignal({ to: reviewUserId, kind: "like_list_review", actorId: user.id, listId, dedupe: `like_list_review:${user.id}:${reviewUserId}:${listId}` });

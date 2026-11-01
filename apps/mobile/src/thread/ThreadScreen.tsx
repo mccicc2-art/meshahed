@@ -18,7 +18,7 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Sheet } from "../library/Sheet";
 import { afterPaint, span } from "../perfMarks";
-import { errorText } from "../community/communityActs";
+import { errorText, mirrorFeedLike, mirrorThreadLike, type LikeRef } from "../community/communityActs";
 import { type Draft } from "./Composer";
 import { ChatDock, useKeyboardInset, usePicUpload } from "../messages/chatDock";
 import { ReplyQuote, TitleQuote } from "../messages/ReplyQuote";
@@ -353,7 +353,18 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       busy.current.add(k);
       haptic.pick();
       const was = row.liked_by_me;
-      const set = (on: boolean) => patchRow(row.id, (r) => ({ ...r, liked_by_me: on, likes: Math.max(0, r.likes + (on ? 1 : -1)) }));
+      /* 🆕 D-1612 — والخطُّ والخيوطُ الأخرى المحفوظةُ لهذا الشيء ترى القلبَ نفسَه (`mirror*` في `communityActs`) */
+      const ref: LikeRef | null =
+        row.review && d && d.work.media_type !== "general"
+          ? { t: "review", user: row.review.user_id, tmdb: d.work.tmdb_id, media: d.work.media_type }
+          : row.id.startsWith(TEMP) ? null : { t: "post", id: row.id };
+      const set = (on: boolean) => {
+        patchRow(row.id, (r) => ({ ...r, liked_by_me: on, likes: Math.max(0, r.likes + (on ? 1 : -1)) }));
+        if (ref) {
+          mirrorFeedLike(ref, on);
+          mirrorThreadLike(ref, on);
+        }
+      };
       set(!was);
       /* 🆕 R56 — مراجعةُ صفحة العمل: قلبُها قلبُ المراجعة نفسِها (المسارُ الذي تكتبه صفحتُها) لا جدولُ المنشورات */
       const req = row.review && d && d.work.media_type !== "general"
@@ -553,11 +564,16 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     haptic.pick();
     const h = d.head;
     const was = h.liked_by_me;
-    const set = (on: boolean) =>
-      patch((p) => (p.head.kind === "post" || p.head.kind === "review" ? { ...p, head: { ...p.head, liked_by_me: on, likes: Math.max(0, p.head.likes + (on ? 1 : -1)) } } : p));
-    set(!was);
     /* الخبرُ والرأيُ لعملٍ دائماً — «النقاش العام» غرفةٌ لا رأسَ «خبرٍ» أو «رأيٍ» لها */
     const wk = d.work.media_type === "movie" ? "movie" : "tv";
+    /* 🆕 D-1612 — بطاقتُه في الخطّ وسطرُه في غرفة العمل (R56) يريان القلبَ نفسَه */
+    const ref: LikeRef = h.kind === "post" ? { t: "news", key: h.key } : { t: "review", user: h.author.id, tmdb: d.work.tmdb_id, media: wk };
+    const set = (on: boolean) => {
+      patch((p) => (p.head.kind === "post" || p.head.kind === "review" ? { ...p, head: { ...p.head, liked_by_me: on, likes: Math.max(0, p.head.likes + (on ? 1 : -1)) } } : p));
+      mirrorFeedLike(ref, on);
+      mirrorThreadLike(ref, on);
+    };
+    set(!was);
     const body: LikeBody =
       h.kind === "post"
         ? { target: "post", tmdb_id: d.work.tmdb_id, media_type: wk, on: !was }

@@ -11,6 +11,7 @@ import type {
   LikeBody,
   ReplyBody,
   RoomPinBody,
+  ThreadPayload,
 } from "../contracts";
 
 /**
@@ -27,6 +28,9 @@ import type {
  */
 
 type Say = (text: string) => void;
+
+/** 🆕 D-1613 — صفُّ الخطّ أو فاصلُ «منشورات جديدة» بينه (`FreshMark` في الشاشة) — الفاصلُ لا يُعدّ مشاهدةً ولا قلبَ له */
+export type FeedItem = CommunityFeedRow | { kind: "fresh"; key: string; count: number };
 export type FollowState = FollowUserResult["state"];
 
 export type CommunityActs = {
@@ -68,6 +72,73 @@ function setLike(row: CommunityFeedRow, liked: boolean): CommunityFeedRow {
   return { ...row, item: { ...row.item, likedByMe: liked, likes: Math.max(0, row.item.likes + d) } };
 }
 
+/**
+ * 🆕 D-1612 — **القلبُ واحدٌ في الخطّ والخيط** (فيديو أحمد ٣١ أكتوبر: «حطيت للرد قلب من برا ادخل عليه و ما احصل فيه قلبه
+ * و ابغا احط له يعطيني فشل»). الخيطُ يُجلب مع الضغطة ويبقى طازجاً ٣٠ث (`threadQuery`)، فإن سُخّن قبل القلب فتح بنسخةِ ما قبله:
+ * القلبُ فارغ، وضغطتُه «أضف» على إعجابٍ قائمٍ — فيرفضه المفتاحُ الأساسيّ (والخادمُ صار يقبله، A-37). العلاجُ هنا:
+ * **كلُّ قلبٍ يُكتب في كلِّ نسخةٍ محفوظةٍ للشيء نفسه** — الخطُّ (`["community"]`) والخيوطُ (`["thread", …]`: رأسُ المراجعة
+ * أو الخبر، وسطرُها في غرفة العمل R56، ومنشورُ الغرفة بمعرّفه) — لحظةَ اللمس، ويُرجَع معه إن فشل.
+ * 🔑 **يُضبط على حالةٍ لا يُعكس**: نسخةٌ هي على المطلوب أصلاً لا يُمسّ عدّادُها، فلا قلبَ يُعدّ مرّتين.
+ */
+export type LikeRef =
+  | { t: "review"; user: string; tmdb: number; media: "tv" | "movie" }
+  | { t: "news"; key: string }
+  | { t: "post"; id: string };
+
+export function likeRefOf(row: CommunityFeedRow): LikeRef | null {
+  if (row.kind === "talk") return { t: "post", id: row.item.id };
+  if (row.kind === "news") return { t: "news", key: row.item.key };
+  if (row.item.listId) return null;
+  return { t: "review", user: row.item.person.id, tmdb: row.item.tmdb_id, media: row.item.media_type };
+}
+
+function sameLike(row: CommunityFeedRow, ref: LikeRef): boolean {
+  const r = likeRefOf(row);
+  if (!r || r.t !== ref.t) return false;
+  if (r.t === "post" && ref.t === "post") return r.id === ref.id;
+  if (r.t === "news" && ref.t === "news") return r.key === ref.key;
+  return r.t === "review" && ref.t === "review" && r.user === ref.user && r.tmdb === ref.tmdb && r.media === ref.media;
+}
+
+/** الخطّ ⇐ قلبٌ ضُغط في خيط */
+export function mirrorFeedLike(ref: LikeRef, liked: boolean): void {
+  const fix = (rows: CommunityFeedRow[]) => {
+    let hit = false;
+    const next = rows.map((r) => {
+      if (!sameLike(r, ref) || likeOf(r).liked === liked) return r;
+      hit = true;
+      return setLike(r, liked);
+    });
+    return hit ? next : rows;
+  };
+  patchPayload((d) => {
+    const rows = fix(d.feed.rows);
+    const extra = d.feed.extra ? fix(d.feed.extra) : undefined;
+    return rows === d.feed.rows && extra === d.feed.extra ? d : { ...d, feed: { ...d.feed, rows, ...(extra ? { extra } : {}) } };
+  });
+}
+
+/** الخيوطُ المحفوظة ⇐ قلبٌ ضُغط في الخطّ أو في خيطٍ آخر */
+export function mirrorThreadLike(ref: LikeRef, liked: boolean): void {
+  const flip = <T extends { likes: number; liked_by_me: boolean }>(x: T): T => ({ ...x, liked_by_me: liked, likes: Math.max(0, x.likes + (liked ? 1 : -1)) });
+  queryClient.setQueriesData<ThreadPayload>({ queryKey: ["thread"] }, (p) => {
+    if (!p) return p;
+    const work = ref.t === "review" && p.work.tmdb_id === ref.tmdb && p.work.media_type === ref.media;
+    const h = p.head;
+    const headHit =
+      (h.kind === "review" && work && ref.t === "review" && h.author.id === ref.user) || (h.kind === "post" && ref.t === "news" && h.key === ref.key);
+    const head = headHit && (h.kind === "review" || h.kind === "post") && h.liked_by_me !== liked ? flip(h) : h;
+    let hit = head !== h;
+    const rows = p.rows.map((r) => {
+      const mine = ref.t === "post" ? r.id === ref.id : ref.t === "review" && work && r.review?.user_id === ref.user;
+      if (!mine || r.liked_by_me === liked) return r;
+      hit = true;
+      return flip(r);
+    });
+    return hit ? { ...p, head, rows } : p;
+  });
+}
+
 function likeBody(row: Exclude<CommunityFeedRow, { kind: "talk" }>, on: boolean): LikeBody {
   if (row.kind === "news") return { target: "post", tmdb_id: row.item.tmdb_id, media_type: row.item.media_type, on };
   if (row.item.listId) return { target: "list_review", user_id: row.item.person.id, list_id: row.item.listId, on };
@@ -104,12 +175,16 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
     haptic.pick();
     const was = likeOf(row).liked;
     patchRow(row.key, (r) => setLike(r, !was));
+    /* D-1612 — والخيطُ المسخَّنُ لهذا الصفّ يرى القلبَ نفسَه */
+    const ref = likeRefOf(row);
+    if (ref) mirrorThreadLike(ref, !was);
     /* 🆕 R58 — منشورُ النقاش يُعجَب بمعرّفه في الغرفة (`thread/like`) — بابُ الغرفة نفسُه */
     (row.kind === "talk"
       ? write<{ done: true }>("/api/v1/thread/like", { post_id: row.item.id, on: !was })
       : write<{ done: true }>("/api/v1/community/like", likeBody(row, !was)))
       .catch((e: unknown) => {
         patchRow(row.key, (r) => setLike(r, was));
+        if (ref) mirrorThreadLike(ref, was);
         sayRef.current(errorText(tRef.current, e));
       })
       .finally(() => busy.current.delete(k));
@@ -240,12 +315,12 @@ export function useViewCounter(enabled: boolean) {
   }, []);
   useEffect(() => flush, [flush]);
   /* آخرُ ما ظهر — يُعدّ حين يصير اللوحُ هو المفتوح: الجارُ المسخَّن (K2) يُرسم خارج الشاشة أفقيّاً، والقائمةُ لا تعرف ذلك */
-  const last = useRef<{ item: CommunityFeedRow }[]>([]);
+  const last = useRef<{ item: FeedItem }[]>([]);
   const enabledRef = useRef(enabled);
   const take = useCallback(() => {
     for (const v of last.current) {
       const row = v.item;
-      if (row.kind === "talk" || row.views == null || (row.kind === "comment" && row.item.listId)) continue;
+      if (row.kind === "fresh" || row.kind === "talk" || row.views == null || (row.kind === "comment" && row.item.listId)) continue;
       if (counted.has(row.view_key)) continue;
       counted.add(row.view_key);
       pending.current.add(row.view_key);
@@ -264,7 +339,7 @@ export function useViewCounter(enabled: boolean) {
   useEffect(() => {
     takeRef.current = take;
   }, [take]);
-  const [onViewableItemsChanged] = useState(() => ({ viewableItems }: { viewableItems: { item: CommunityFeedRow }[] }) => {
+  const [onViewableItemsChanged] = useState(() => ({ viewableItems }: { viewableItems: { item: FeedItem }[] }) => {
     last.current = viewableItems;
     if (enabledRef.current) takeRef.current();
   });

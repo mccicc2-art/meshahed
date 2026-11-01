@@ -29,7 +29,7 @@ import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type Card
 import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { TalkSearch } from "./TalkSearch";
 import { num } from "@/core/i18n";
-import { errorText, useCommunityActs, useViewCounter, type CommunityActs } from "./communityActs";
+import { errorText, useCommunityActs, useViewCounter, type CommunityActs, type FeedItem } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
 import { FeedMenu } from "./FeedMenu";
 import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
@@ -578,35 +578,38 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     }
     return { rows, quiet: v.quiet };
   }, [d.feed, d.prefs]);
-  /* 🆕 D-1461 — **الجديدُ ينتظر حبّةً ولا يُحشر فوق القارئ** (أحمد ١٨ أكتوبر: «إذا فيه منشور جديد ابغاه يبان… ومايبدأ دائماً
-     من فوق»). تحديثُ الخلفيّة (العودةُ للتبويب · `staleTime`) كان يضع الصفوفَ الجديدةَ فوق ما يقرؤه فيتزحزح الخطّ. الآن يُرسم
-     ما رآه وحدَه (`seen`)، والجديدُ عددٌ في «منشورات جديدة» — ضغطةٌ تُظهره وتصعد إلى أوّل الخطّ.
-     يُقبل الكلُّ فوراً في ثلاث: أوّلُ رسمة · تبديلُ الشريحة · سحبُ التحديث باليد. **ومنشوري يظهر فوراً** (مفتاحُه `c-<أنا>-…`)،
-     والمحذوفُ يسقط فوراً لأنّ المرسومَ يُقرأ من صفوف الردِّ الأخير لا من ذاكرة. */
+  /* 🆕 D-1461 — **الخطُّ لا يتزحزح تحت القارئ** (أحمد ١٨ أكتوبر: «ومايبدأ دائماً من فوق»).
+     🆕 D-1613 — **والجديدُ يدخل وحده فوق فاصل** (فيديو أحمد ١ نوفمبر: «يعطيني ٨ منشورات جديدة و لازم اضغط عليها و بعدين يحدث…
+     ابغا نفس العباره و المنشورات الجديد تكون موجودة بالأعلى فوق العبارة بحيث اسحب الشاشه و اقرأها بالترتيب» — «١ أ · ٢ أ · ٣ أ»).
+     كانت حبّةٌ عائمةٌ تحبس الجديدَ وضغطتُها تُظهره وتصعد إلى أوّل الخطّ. الآن تحديثُ الخلفيّة يُرسم كلُّه فوراً، و**القائمةُ
+     تثبت على البطاقة التي أمامه** (`maintainVisibleContentPosition`) فيقع الجديدُ فوقها خارجَ الشاشة، وسطرُ «↑ ٨ منشورات جديدة»
+     فاصلٌ بينه وبين ما رآه — يسحب للأعلى فيقرؤه بالترتيب. `seen` لقطةُ ما رآه: أوّلُ رسمة · تبديلُ الشريحة · سحبُ التحديث باليد
+     (وفيها يسقط الفاصل — «٣ أ»)، وجديدٌ يصل بعد جديدٍ يقع فوق الفاصل ويزيد عددَه. ومنشوري لا يُعدّ في الفاصل (هو من كتبه). */
   const sliceKey = d.prefs ? `${d.prefs.strangers}|${d.prefs.sort}` : "";
   const pulling = !!(refresh.props as { refreshing?: boolean }).refreshing;
   const mineKey = acts.meId ? `c-${acts.meId}-` : null;
   const [seen, setSeen] = useState<{ slice: string; keys: ReadonlySet<string> } | null>(null);
-  const feedRef = useRef<FlatList<CommunityFeedRow>>(null);
+  const feedRef = useRef<FlatList<FeedItem>>(null);
   useEffect(() => {
     if (k !== "activity") return;
-    setSeen((prev) => {
-      const keys = feedView.rows.map((r) => r.key);
-      if (!prev || prev.slice !== sliceKey || pulling) return { slice: sliceKey, keys: new Set(keys) };
-      /* 🆕 R58 — ومنشورُ قلمي (`t-<id>`) يظهر فوراً كرأيي: صاحبُه من الصفّ لا من المفتاح */
-      const mineTalk = new Set(feedView.rows.filter((r) => r.kind === "talk" && r.item.person.id === acts.meId).map((r) => r.key));
-      const mine = mineKey ? keys.filter((x) => !prev.keys.has(x) && (x.startsWith(mineKey) || mineTalk.has(x))) : [];
-      return mine.length ? { slice: sliceKey, keys: new Set([...prev.keys, ...mine]) } : prev;
-    });
-  }, [k, feedView.rows, sliceKey, pulling, mineKey, acts.meId]);
+    setSeen((prev) => (!prev || prev.slice !== sliceKey || pulling ? { slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) } : prev));
+  }, [k, feedView.rows, sliceKey, pulling]);
   const held = seen && seen.slice === sliceKey ? seen.keys : null;
-  const shownRows = useMemo(() => (held ? feedView.rows.filter((r) => held.has(r.key)) : feedView.rows), [held, feedView.rows]);
-  const freshCount = feedView.rows.length - shownRows.length;
-  const showFresh = useCallback(() => {
-    haptic.pick();
-    setSeen({ slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) });
-    feedRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, [sliceKey, feedView.rows]);
+  const fresh = useMemo(() => {
+    if (!held) return null;
+    /* الفاصلُ فوق أوّل ما رآه؛ لا شيءَ ممّا رآه باقٍ ⇐ لا فاصل */
+    const at = feedView.rows.findIndex((r) => held.has(r.key));
+    if (at <= 0) return null;
+    const count = feedView.rows.slice(0, at).filter((r) => !(mineKey && r.key.startsWith(mineKey)) && !(r.kind === "talk" && r.item.person.id === acts.meId)).length;
+    return count ? { at, count } : null;
+  }, [held, feedView.rows, mineKey, acts.meId]);
+  /* تبديلُ الشريحة خطٌّ آخر: يبدأ من أعلاه — والتثبيتُ كان سيلحق بطاقةً مشتركةً بين الشريحتين إلى موضعها الجديد */
+  const lastSlice = useRef(sliceKey);
+  useEffect(() => {
+    if (lastSlice.current === sliceKey) return;
+    lastSlice.current = sliceKey;
+    feedRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [sliceKey]);
   /* 🆕 D-1596 — **«الأقدم» صفحةً صفحة** (أحمد ٣٠ أكتوبر: «كل مانزل يعرض زيادة» — «٤ أ»): الحمولةُ الأولى تحمل آخرَ ستين، وحين
      يقترب القاعُ تُطلب ثلاثون أقدم من أقدم رأيٍ وصل (`/api/v1/community/feed?before=`) وتُلحق تحت ما يُرى. تُصفَّر مع تبديل الشريحة
      وسحب التحديث — الصفحةُ الأولى تتغيّر فيهما. صفحةٌ رشّحها «الغرباء» فارغةً تُتبَع بالتالية (حتى خمسٍ في الضغطة الواحدة) كي
@@ -652,7 +655,13 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
       loadingOlder.current = false;
     }
   }, [olderNow, firstCursor, feedView.rows, sliceKey]);
-  const feedData = useMemo(() => (olderNow.rows.length ? [...shownRows, ...olderNow.rows] : shownRows), [shownRows, olderNow.rows]);
+  const feedData = useMemo<FeedItem[]>(() => {
+    const top: FeedItem[] = fresh ? [...feedView.rows.slice(0, fresh.at), { kind: "fresh", key: "fresh-mark", count: fresh.count }, ...feedView.rows.slice(fresh.at)] : feedView.rows;
+    return olderNow.rows.length ? [...top, ...olderNow.rows] : top;
+  }, [fresh, feedView.rows, olderNow.rows]);
+  /* D-1613 — التثبيتُ على أوّل بطاقةٍ ظاهرة (١ = بعد رأس الشرائح، فالرأسُ لا يكون المرساة) — ويُرفع في سحب التحديث باليد:
+     هناك يُراد الجديدُ في أعلى الشاشة لا فوقها (يُرفع لحظةَ يبدأ السحب، قبل أن يصل الردّ) */
+  const keepPlace = useMemo(() => (pulling ? undefined : { minIndexForVisible: d.prefs ? 1 : 0 }), [pulling, d.prefs]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -666,7 +675,7 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
           ref={feedRef}
           data={feedData}
           keyExtractor={(r) => r.key}
-          renderItem={({ item }) => <FeedCard row={item} doors={doors} acts={cardActs} />}
+          renderItem={({ item }) => (item.kind === "fresh" ? <FreshMark count={item.count} /> : <FeedCard row={item} doors={doors} acts={cardActs} />)}
           /* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» فوق الخطّ (خرجا من الأدوات) — الخادمُ يرتّب الشرائحَ الأربع والتبديلُ في اليد (D-1228) */
           ListHeaderComponent={(
             d.prefs ? (
@@ -682,6 +691,7 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
           onScroll={onScroll}
           scrollEventThrottle={16}
           refreshControl={refresh}
+          maintainVisibleContentPosition={keepPlace}
           initialNumToRender={6}
           windowSize={7}
           removeClippedSubviews
@@ -689,11 +699,6 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
           onEndReachedThreshold={0.6}
           ListFooterComponent={olderNow.busy ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 20 }} /> : undefined}
         />
-        {freshCount > 0 ? (
-          <View pointerEvents="box-none" style={{ position: "absolute", top: topPad + 8, start: 0, end: 0, alignItems: "center" }}>
-            <Button size="sm" label={`↑ ${t.feedNewPosts(freshCount)}`} onPress={showFresh} accessibilityLabel={t.feedNewPosts(freshCount)} />
-          </View>
-        ) : null}
       </View>
     );
   }
@@ -744,6 +749,22 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     </ScrollView>
   );
 });
+
+/**
+ * 🆕 D-1613 — **فاصلُ الجديد** في الخطّ: «↑ ٨ منشورات جديدة» بين ما وصل وما رآه القارئ — العبارةُ نفسُها التي كانت على الحبّة
+ * العائمة («ابغا نفس العباره»)، سطراً لا زرّاً: لا شيءَ يُضغط، فالجديدُ ظاهرٌ فوقه. خطّا اللون الأساس على جانبيه كي يُرى وسط البطاقات.
+ */
+function FreshMark({ count }: { count: number }) {
+  const { t, tokens } = useApp();
+  const line = { flex: 1, height: 1, backgroundColor: tokens.accent + "59" } as const;
+  return (
+    <View accessible accessibilityLabel={t.feedNewPosts(count)} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 }}>
+      <View style={line} />
+      <Text size={12} weight="700" color={tokens.accent}>{`↑ ${t.feedNewPosts(count)}`}</Text>
+      <View style={line} />
+    </View>
+  );
+}
 
 /* رموزُ الأقسام وألوانُها — `SECTION_TONE` الويب حرفاً (D-268: فهرسٌ بصريّ لا ألوانُ حالة) */
 /** 🆕 D-1608b — عرضُ بطاقة الشخصيّة في صفّها الأفقيّ: ثلاثٌ ونصفٌ على عرض الهاتف */
