@@ -18,6 +18,7 @@ import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys } from "@/core/filler";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
@@ -45,6 +46,15 @@ function readSeasonOrder(): SeasonOrder {
   }
 }
 
+/** D-1619 — «إخفاء الفلر» من الجهاز (قراءةٌ متزامنة كترتيب المواسم) — الافتراضُ الظهور */
+function readHideFiller(): boolean {
+  try {
+    return SecureStore.getItem(HIDE_FILLER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function SeasonAccordion({
   show,
   watched,
@@ -59,7 +69,7 @@ export function SeasonAccordion({
   /** 🆕 D-1141 — العملُ جاء زائراً (الرمزُ لم يصل): حالتي مجهولةٌ لا «صفر» — العدّاداتُ والعلاماتُ هيكلٌ معطَّل */
   pending?: boolean;
 }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale } = useApp();
   /* الموسمُ المفتوحُ افتراضاً: أوّلُ موسمٍ لم يكتمل (كما `initialSeason` في الصفحة) */
   const firstOpen = useMemo(() => firstOpenSeason(show), [show]);
   const [open, setOpenRaw] = useState<number | null>(firstOpen);
@@ -86,22 +96,41 @@ export function SeasonAccordion({
   const cascadeDue = !!lib.data && !(lib.data.hints ?? []).includes("episode-cascade");
   const qc = useQueryClient();
   const runtime = show.episode_run_time ?? null;
-  const total = show.aired_total;
-  const doneAll = show.me.watched_count;
+  /**
+   * 🆕 D-1619 — **«إخفاء الفلر»** (أحمد ١ نوفمبر — «١ب · ٢ب · ٣أ»): لأعمال قائمتنا وحدَها (`core/filler`) رقاقةٌ بجانب رقاقة
+   * التقييمات، تُحفظ على الجهاز للأعمال كلِّها. المخفيُّ **لا يُرسم ولا يُحسب** (العدّاداتُ والنسبةُ بلا فلره المبثوث والمشاهَد)
+   * **ولا يؤشّره** «حتى هنا» ولا «الموسم/الجزء كامل». الإلغاءُ يبقى كما هو: «إلغاء الموسم» يمسح الموسمَ كلَّه.
+   */
+  const filler = useMemo(() => fillerKeys(show.id, show.seasons), [show.id, show.seasons]);
+  const [hideFiller, setHideFiller] = useState(readHideFiller);
+  const toggleFiller = () => {
+    const v = !hideFiller;
+    setHideFiller(v);
+    try {
+      SecureStore.setItem(HIDE_FILLER_KEY, v ? "1" : "0");
+    } catch {
+      /* راحةٌ لا شرط: يبقى الاختيارُ لهذه الجلسة */
+    }
+  };
+  const skip = hideFiller && filler ? filler : null;
+  const airedSkip = (s: TvTitlePayload["seasons"][number]) => (skip ? countKeys(skip, s.season_number, s.first_episode ?? 1, (s.first_episode ?? 1) + s.aired - 1) : 0);
+  const total = show.aired_total - (skip ? show.seasons.reduce((n, s) => n + airedSkip(s), 0) : 0);
+  const doneAll = show.me.watched_count - (skip ? show.me.watched.filter((k) => skip.has(k)).length : 0);
   const pctAll = total > 0 ? Math.round((doneAll / total) * 100) : 0;
   const whole = useMutation({
     mutationFn: ({ season, on }: { season: number; on: boolean }) => {
       const sm = show.seasons.find((x) => x.season_number === season);
       const first = sm?.first_episode ?? 1;
       const count = Math.min(sm?.aired ?? 0, sm?.episode_count ?? 0);
-      const episodes = Array.from({ length: count }, (_, i) => ({ season, episode: first + i, runtime }));
+      /* D-1619 — الفلرُ المخفيُّ لا يُختم؛ والإلغاءُ يمسح الموسمَ كلَّه */
+      const episodes = Array.from({ length: count }, (_, i) => ({ season, episode: first + i, runtime })).filter((x) => !(on && skip?.has(episodeKey(season, x.episode))));
       return write<TrackResult>("/api/v1/track/season", { showTmdbId: show.id, episodes, watched: on, title: show.name, posterPath: show.poster_path } satisfies SetSeasonBody);
     },
     onMutate: ({ season, on }) => {
       const sm = show.seasons.find((x) => x.season_number === season);
       const first = sm?.first_episode ?? 1;
       const count = Math.min(sm?.aired ?? 0, sm?.episode_count ?? 0);
-      const keys = Array.from({ length: count }, (_, i) => episodeKey(season, first + i));
+      const keys = Array.from({ length: count }, (_, i) => episodeKey(season, first + i)).filter((k) => !(on && skip?.has(k)));
       qc.setQueryData<TvTitlePayload>(qk.title("tv", show.id), (prev) => {
         if (!prev) return prev;
         const set = new Set(prev.me.watched);
@@ -146,8 +175,10 @@ export function SeasonAccordion({
 
   /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ، بخطٍّ فاصلٍ فوقها) — D-1500 */
   const card = (s: TvTitlePayload["seasons"][number], flat = false) => {
-        const inSeason = show.me.watched.filter((k) => k.startsWith(`${s.season_number}:`)).length;
-        const done = s.aired > 0 && inSeason >= s.aired;
+        const inSeason = show.me.watched.filter((k) => k.startsWith(`${s.season_number}:`) && !skip?.has(k)).length;
+        /* D-1619 — المبثوثُ بلا فلره المخفيّ */
+        const sAired = s.aired - airedSkip(s);
+        const done = sAired > 0 && inSeason >= sAired;
         const isOpen = open === s.season_number;
         return (
           /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
@@ -171,7 +202,7 @@ export function SeasonAccordion({
                 {s.aired > 0 && pending ? (
                   <View style={{ width: 30, height: 12, borderRadius: 4, backgroundColor: tokens.surface2 }} />
                 ) : s.aired > 0 ? (
-                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{s.aired}</Text>
+                  <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{inSeason}/{sAired}</Text>
                 ) : s.episode_count > 0 ? (
                   <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{t.episodesCount(s.episode_count)}</Text>
                 ) : null}
@@ -201,7 +232,7 @@ export function SeasonAccordion({
                 </Pressable>
               ) : null}
             </View>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} skip={skip} filler={filler} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
           </View>
         );
   };
@@ -228,7 +259,7 @@ export function SeasonAccordion({
               باسمٍ يقول فعلَه في الحالتين، ومساحةُ لمسها ٤٤ (`hitSlop`) — نحيفةٌ ولا تُخطئها الإصبع.
               ⚖️ **وسطرُ القاعدة («تأشير حلقة يؤشّر ما قبلها…») صار تلميحاً لمرّةٍ واحدة** («١ أ»): سلوكٌ مفاجئٌ يُقال مرّةً
               ثمّ يصمت — شرحٌ دائمٌ يصير أثاثاً (D-852). يُقرأ المقروءُ من كاش المكتبة بلا نداء (كتلميح البحث، D-1259) */}
-          <View style={{ flexDirection: "row", marginTop: 4 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
             <Chip
               size="sm"
               active={showRatings}
@@ -237,6 +268,8 @@ export function SeasonAccordion({
               hitSlop={10}
               leading={<Icon name={showRatings ? "star-filled" : "star"} size={12} color={showRatings ? tokens.onAccent : tokens.accent} />}
             />
+            {/* 🆕 D-1619 — للأعمال التي في قائمة الفلر وحدَها: رقاقةٌ لا تفعل شيئاً تُقرأ عطلاً */}
+            {filler?.size ? <Chip size="sm" active={hideFiller} label={FILLER_WORDS[locale].hide} onPress={toggleFiller} hitSlop={10} /> : null}
           </View>
           {cascadeDue ? <OneTimeHint id="episode-cascade" text={t.cascadeHint} style={{ marginTop: 4 }} /> : null}
         </View>
@@ -300,6 +333,8 @@ function SeasonBody({
   aired,
   first: seasonFirst,
   parts,
+  skip,
+  filler,
   watched,
   onError,
   onSettled,
@@ -313,6 +348,10 @@ function SeasonBody({
   first: number;
   /** 🆕 D-1618 — أجزاءُ الموسم الطويل من الخادم؛ الغيابُ = قائمةٌ واحدة كما كانت */
   parts?: SeasonPart[];
+  /** 🆕 D-1619 — الفلرُ المخفيّ (لا يُرسم ولا يُعدّ ولا يُختم) · `null` = لا إخفاء */
+  skip: Set<string> | null;
+  /** D-1619 — فلرُ العمل كلُّه (لوسم «فلر» حين يظهر) */
+  filler: Set<string> | null;
   watched: Set<string>;
   /** D-1021 — المفتاحُ في رأس التبويب لا في الموسم */
   showRatings: boolean;
@@ -442,7 +481,8 @@ function SeasonBody({
     }
     /* حلقاتُ الموسم المفتوح بأرقامها الفعليّة (قد لا تبدأ من ١ في الترقيم المطلق) */
     const own = airedEps.filter((e) => e.episode_number <= n).map((e) => ref(e.episode_number));
-    return [...list, ...own].filter((x) => !watched.has(episodeKey(x.season, x.episode)));
+    /* D-1619 — «٣أ»: الفلرُ المخفيُّ لا يؤشّره «حتى هنا» */
+    return [...list, ...own].filter((x) => !watched.has(episodeKey(x.season, x.episode)) && !skip?.has(episodeKey(x.season, x.episode)));
   };
   const upTo = useMutation({
     mutationFn: (n: number) => {
@@ -456,6 +496,11 @@ function SeasonBody({
     onError,
   });
 
+  /* D-1619 — ما يُعدّ في الجزء: المبثوثُ والمشاهَدُ بلا الفلر المخفيّ */
+  const partShown = (p: SeasonPart) => partAired(p, seasonFirst, aired) - (skip ? countKeys(skip, season, p.first, Math.min(p.last, seasonFirst + aired - 1)) : 0);
+  const partSeen = (p: SeasonPart) => partWatched(p, season, watched) - (skip ? countKeys([...watched].filter((k) => skip.has(k)), season, p.first, p.last) : 0);
+  const shown = (e: { episode_number: number }) => !skip?.has(episodeKey(season, e.episode_number));
+
   /**
    * 🆕 D-1618 — **الموسمُ الطويل أجزاء** (أحمد ١ نوفمبر بلقطة كونان: «قسم كونان إلى اجزاء» — «١أ · أ»): الجزءُ رأسٌ كرأس الموسم
    * (الاسمُ · المدى · المشاهَد/المبثوث · «الجزء كامل ✓») يُفتح على حلقاته وحدَها — لا ألفُ صفٍّ في قائمةٍ واحدة. الحلقاتُ
@@ -464,15 +509,15 @@ function SeasonBody({
    */
   const [openPart, setOpenPart] = useState<number | null>(() => {
     if (!parts?.length) return null;
-    const i = parts.findIndex((p) => partWatched(p, season, watched) < partAired(p, seasonFirst, aired));
+    const i = parts.findIndex((p) => partSeen(p) < partShown(p));
     return i >= 0 ? i : null;
   });
   const partAll = useMutation({
     mutationFn: ({ part, on }: { part: SeasonPart; on: boolean }) => {
-      const episodes = Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => ref(part.first + i));
+      const episodes = Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => ref(part.first + i)).filter((x) => !(on && skip?.has(episodeKey(season, x.episode))));
       return write<TrackResult>("/api/v1/track/season", { showTmdbId: show.id, episodes, watched: on, title: show.name, posterPath: show.poster_path } satisfies SetSeasonBody);
     },
-    onMutate: ({ part, on }) => patch(Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => episodeKey(season, part.first + i)), on),
+    onMutate: ({ part, on }) => patch(Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => episodeKey(season, part.first + i)).filter((k) => !(on && skip?.has(k))), on),
     onSuccess: onSettled,
     onError,
   });
@@ -518,7 +563,13 @@ function SeasonBody({
         </View>
         <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
           <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
-          {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
+          {e.air_date || filler?.has(key) ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
+              {/* 🆕 D-1619 — وسمُ «فلر» حين يظهر الفلر: يعرف القارئُ ما يتخطّاه قبل أن يُخفيه */}
+              {filler?.has(key) ? <Text size={10} weight="700" color={tokens.accent2}>{FILLER_WORDS[locale].tag}</Text> : null}
+            </View>
+          ) : null}
         </View>
         {(showRatings || on) && typeof e.imdb_rating === "number" ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -553,8 +604,8 @@ function SeasonBody({
       {/* D-1021 — شريطُ التقدّم وزرُّ الموسم كلِّه انتقلا إلى رأس التبويب ورأس الموسم */}
       {parts?.length
         ? parts.map((p, i) => {
-            const pa = partAired(p, seasonFirst, aired);
-            const pw = Math.min(partWatched(p, season, watched), pa || p.last - p.first + 1);
+            const pa = partShown(p);
+            const pw = Math.min(partSeen(p), pa || p.last - p.first + 1);
             const pDone = pa > 0 && pw >= pa;
             const pOpen = openPart === i;
             return (
@@ -576,11 +627,11 @@ function SeasonBody({
                     </Pressable>
                   ) : null}
                 </View>
-                {pOpen ? <View style={{ gap: 6, paddingBottom: 6 }}>{eps.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last).map(row)}</View> : null}
+                {pOpen ? <View style={{ gap: 6, paddingBottom: 6 }}>{eps.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last && shown(e)).map(row)}</View> : null}
               </View>
             );
           })
-        : eps.map(row)}
+        : eps.filter(shown).map(row)}
       {rating !== null ? (
         <ReviewSheet
           title={t.epRateAria(season, rating)}

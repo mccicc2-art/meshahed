@@ -8,6 +8,7 @@ import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys } from "@/core/filler";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
@@ -214,6 +215,39 @@ export function EpisodeTracker({
   }, [watched, absolute, seasonBounds]);
 
   /**
+   * 🆕 D-1619 — **«إخفاء الفلر»** (توأمُ التطبيق، أحمد ١ نوفمبر — «١ب · ٢ب · ٣أ»): لأعمال قائمتنا وحدَها (`core/filler`)
+   * رقاقةٌ بجانب رقاقة التقييمات، تُحفظ على الجهاز. المخفيُّ لا يُرسم ولا يُعدّ، **ولا يؤشّره** «حتى هنا» ولا «الموسم/الجزء
+   * كامل» (`airedUpTo` يتخطّاه — البابُ الواحد لكلِّ تأشيرٍ يختم ما قبله). الإلغاءُ كما هو.
+   */
+  const firstOf = useCallback((n: number) => (absolute ? (seasonBounds.get(n)?.lo ?? 1) : 1), [absolute, seasonBounds]);
+  const filler = useMemo(
+    () => fillerKeys(showTmdbId, summaries.map((x) => ({ season_number: x.season_number, episode_count: x.episode_count, first_episode: firstOf(x.season_number) }))),
+    [showTmdbId, summaries, firstOf],
+  );
+  const [hideFiller, setHideFiller] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- قراءةُ الجهاز بعد الترطيب: الخادمُ لا يعرفها
+      setHideFiller(window.localStorage.getItem(HIDE_FILLER_KEY) === "1");
+    } catch {
+      /* تخزينٌ محجوب: يبقى الظهور */
+    }
+  }, []);
+  const toggleFiller = () => {
+    tap(6);
+    const v = !hideFiller;
+    setHideFiller(v);
+    try {
+      window.localStorage.setItem(HIDE_FILLER_KEY, v ? "1" : "0");
+    } catch {
+      /* الحفظُ راحةٌ لا شرط */
+    }
+  };
+  const skip = hideFiller && filler ? filler : null;
+  const airedSkip = (x: SeasonSummary) => (skip ? countKeys(skip, x.season_number, firstOf(x.season_number), firstOf(x.season_number) + x.aired_count - 1) : 0);
+  const watchedSkip = (n: number) => (skip ? countKeys([...watched].filter((k) => skip.has(k)), n, firstOf(n), firstOf(n) + (summaries.find((x) => x.season_number === n)?.episode_count ?? 0) - 1) : 0);
+
+  /**
    * 🆕 D-1500 — **المتابَعةُ أوّلاً** (`core/seasonOrder`، توأمُ التطبيق): المكتملةُ تحت غير المكتملة، ومن ستّةٍ تنطوي.
    * المكتملُ يُجمَّد عند فتح الصفحة (المُهيِّئُ يجري مرّةً) — موسمٌ يكتمل تحت المؤشّر لا يقفز من مكانه.
    * والاختيارُ من الجهاز بعد الرسم الأوّل (الخادمُ لا يعرفه) — فمن اختار «الأصلي» يرى الأصلَ بعد لحظة.
@@ -249,8 +283,11 @@ export function EpisodeTracker({
   const validWatched = absolute
     ? [...watchedPerSeason.values()].reduce((a, b) => a + b, 0)
     : watched.size;
-  const watchedAired = Math.min(validWatched, airedTotal || validWatched);
-  const progress = airedTotal ? Math.round((watchedAired / airedTotal) * 100) : 0;
+  /* D-1619 — «٢ب»: الفلرُ المخفيُّ خارجَ العدّ — من المبثوث ومن المشاهَد */
+  const shownTotal = airedTotal - (skip ? summaries.reduce((n, x) => n + airedSkip(x), 0) : 0);
+  const shownWatched = validWatched - (skip ? summaries.reduce((n, x) => n + watchedSkip(x.season_number), 0) : 0);
+  const watchedAired = Math.min(shownWatched, shownTotal || shownWatched);
+  const progress = shownTotal ? Math.round((watchedAired / shownTotal) * 100) : 0;
 
   /* ===== تقييمات الحلقات — مخفية افتراضياً (طلب أحمد: «بعض الأحيان
      تعتبر حرق») ===== تُجلب عند أول ضغطة كشفٍ وحدها: جلبها مع كل موسم
@@ -391,12 +428,14 @@ export function EpisodeTracker({
           const e = first + i;
           const ep = byNum?.get(e);
           if (s.season_number === season && ep && !hasAired(ep.air_date)) continue;
+          /* D-1619 — «٣أ»: الفلرُ المخفيُّ لا يُختم — هنا البابُ الواحد لـ«حتى هنا» و«الموسم/الجزء كامل» */
+          if (skip?.has(episodeKey(s.season_number, e))) continue;
           list.push({ season: s.season_number, episode: e, runtime: ep?.runtime ?? defaultRuntime });
         }
       }
       return list;
     },
-    [summaries, episodesBySeason, defaultRuntime, absolute, seasonBounds],
+    [summaries, episodesBySeason, defaultRuntime, absolute, seasonBounds, skip],
   );
 
   // مواسم بمئات الحلقات لا تُرسم دفعة واحدة: ١٥٠ صفاً ثم زرّ للبقية
@@ -516,7 +555,7 @@ export function EpisodeTracker({
     setErr(null);
     start(async () => {
       const eps = await loadSeason(s.season_number);
-      const aired = eps.filter((e) => hasAired(e.air_date));
+      const aired = eps.filter((e) => hasAired(e.air_date) && !(mark && skip?.has(episodeKey(s.season_number, e.episode_number))));
       if (!aired.length) return;
       const before = watched;
       /* 🆕 **«الموسم كله» يختم ما قبله أيضاً** (D-785، طلبُ أحمد: «إذا
@@ -598,7 +637,7 @@ export function EpisodeTracker({
     setErr(null);
     start(async () => {
       const eps = await loadSeason(s.season_number);
-      const own = eps.filter((e) => e.episode_number >= part.first && e.episode_number <= part.last && hasAired(e.air_date));
+      const own = eps.filter((e) => e.episode_number >= part.first && e.episode_number <= part.last && hasAired(e.air_date) && !(mark && skip?.has(episodeKey(s.season_number, e.episode_number))));
       if (!own.length) return;
       const before = watched;
       const prior = mark
@@ -632,11 +671,13 @@ export function EpisodeTracker({
   const seasonCard = (s: SeasonSummary, flat = false) => {
           const isOpen = open === s.season_number;
           const episodes = episodesBySeason[s.season_number];
+          /* D-1619 — المبثوثُ والمشاهَدُ بلا الفلر المخفيّ */
+          const sAired = s.aired_count - airedSkip(s);
           const seasonWatched = Math.min(
-            watchedPerSeason.get(s.season_number) ?? 0,
-            s.aired_count || s.episode_count,
+            (watchedPerSeason.get(s.season_number) ?? 0) - watchedSkip(s.season_number),
+            sAired || s.episode_count,
           );
-          const allWatched = s.aired_count > 0 && seasonWatched >= s.aired_count;
+          const allWatched = sAired > 0 && seasonWatched >= sAired;
 
           /* صفُّ الحلقة — للقائمة الواحدة ولحلقات الجزء المفتوح (D-1618) */
           const epRow = (e: TrackerEpisode) => {
@@ -724,6 +765,10 @@ export function EpisodeTracker({
                     </span>{" "}
                     {e.name}
                   </p>
+                  {/* 🆕 D-1619 — وسمُ «فلر» حين يظهر الفلر */}
+                  {filler?.has(key) && (
+                    <span className="mt-1 inline-block text-[10px] font-bold text-accent-2">{FILLER_WORDS[locale].tag}</span>
+                  )}
                   <p className="text-12 text-muted mt-1 truncate sm:hidden">
                     {metaLine(e, epAired, t)}
                   </p>
@@ -837,7 +882,7 @@ export function EpisodeTracker({
                       (حيث «الموسم كامل» الغائبُ أصلاً) **موعدُه، وإلّا «قريباً»** — السطرُ يقول دائماً لماذا هو فارغ. */}
                   {s.aired_count > 0 ? (
                     <span className="text-xs text-muted tabular-nums" dir="ltr">
-                      {seasonWatched}/{s.aired_count}
+                      {seasonWatched}/{sAired}
                     </span>
                   ) : s.episode_count > 0 ? (
                     <span className="text-xs text-muted tabular-nums">{t.episodesCount(s.episode_count)}</span>
@@ -898,8 +943,12 @@ export function EpisodeTracker({
                       {s.parts?.length
                         ? s.parts.map((p, i) => {
                             /* 🆕 D-1618 — الجزءُ رأسٌ كرأس الموسم يُفتح على حلقاته وحدَها (تكافؤُ التطبيق) */
-                            const pa = partAired(p, s.first_episode ?? 1, s.aired_count);
-                            const pw = Math.min(partWatched(p, s.season_number, watched), pa || p.last - p.first + 1);
+                            const pf = s.first_episode ?? 1;
+                            const pa = partAired(p, pf, s.aired_count) - (skip ? countKeys(skip, s.season_number, p.first, Math.min(p.last, pf + s.aired_count - 1)) : 0);
+                            const pw = Math.min(
+                              partWatched(p, s.season_number, watched) - (skip ? countKeys([...watched].filter((k) => skip.has(k)), s.season_number, p.first, p.last) : 0),
+                              pa || p.last - p.first + 1,
+                            );
                             const pDone = pa > 0 && pw >= pa;
                             const pOpen = (partOpen[s.season_number] === undefined ? defaultPart(s) : partOpen[s.season_number]) === i;
                             return (
@@ -936,13 +985,13 @@ export function EpisodeTracker({
                                 </div>
                                 {pOpen && (
                                   <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
-                                    {episodes.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last).map(epRow)}
+                                    {episodes.filter((e) => e.episode_number >= p.first && e.episode_number <= p.last && !skip?.has(episodeKey(s.season_number, e.episode_number))).map(epRow)}
                                   </ul>
                                 )}
                               </li>
                             );
                           })
-                        : (shownAll.has(s.season_number) ? episodes : episodes.slice(0, CHUNK)).map(epRow)}
+                        : (shownAll.has(s.season_number) ? episodes : episodes.slice(0, CHUNK)).filter((e) => !skip?.has(episodeKey(s.season_number, e.episode_number))).map(epRow)}
                       {!s.parts?.length && !shownAll.has(s.season_number) && episodes.length > CHUNK && (
                         <li>
                           <button
@@ -973,7 +1022,7 @@ export function EpisodeTracker({
       <OneTimeHint id="episode-bulk" text={t.hintEpisodeBulk} closeLabel={t.closeLabel} />
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
+          <span className="text-muted">{t.watchedOf(watchedAired, shownTotal)}</span>
           <span className="font-semibold text-accent-2">{progress}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
@@ -1008,6 +1057,21 @@ export function EpisodeTracker({
           />
           {showRatings ? t.epRatingsHide : t.epRatingsShow}
         </button>
+        {/* 🆕 D-1619 — للأعمال التي في قائمة الفلر وحدَها */}
+        {!!filler?.size && (
+          <button
+            type="button"
+            onClick={toggleFiller}
+            aria-pressed={hideFiller}
+            className={chipClass(
+              hideFiller,
+              "sm",
+              "relative mt-2.5 ms-2 inline-flex items-center gap-1.5 before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
+            )}
+          >
+            {FILLER_WORDS[locale].hide}
+          </button>
+        )}
         <OneTimeHint id="episode-cascade" after="episode-bulk" text={t.cascadeHint} closeLabel={t.closeLabel} className="mt-2" />
         {guestSeen && <p className="text-xs text-muted mt-1">{t.episodesGuestHint}</p>}
         {err && (
