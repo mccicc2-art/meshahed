@@ -72,12 +72,21 @@ export function partsFromGroups(sets: readonly GroupSet[], season: number, first
   return null;
 }
 
+/**
+ * 🆕 D-1620 — **اسمُ الآرك يُعرض إن قُرئ** (أحمد ٢ نوفمبر بعد أن جاءت أجزاءُ كونان «ปี 1»: «٣أ»): مجموعاتُ TMDB يُدخلها
+ * متطوّعون بلغاتهم، فاسمٌ بغير الحرف العربيّ أو اللاتينيّ (تايلنديّ · يابانيّ …) يسقط إلى «الجزء n» — رقمٌ يُقرأ خيرٌ من اسمٍ لا يُقرأ.
+ */
+export function readableName(name: string | null | undefined): string | null {
+  const n = name?.trim();
+  return n && /^[\p{Script=Latin}\p{Script=Arabic}\p{N}\p{P}\p{S}\s]+$/u.test(n) ? n : null;
+}
+
 function arcParts(set: GroupSet, season: number, first: number, last: number): SeasonPart[] | null {
   const ranges: { name: string | null; lo: number; hi: number; n: number }[] = [];
   for (const g of [...set.groups].sort((a, b) => a.order - b.order)) {
     const eps = [...new Set(g.episodes.filter((e) => e.season_number === season && e.episode_number >= first && e.episode_number <= last).map((e) => e.episode_number))];
     if (!eps.length) continue;
-    ranges.push({ name: g.name?.trim() || null, lo: Math.min(...eps), hi: Math.max(...eps), n: eps.length });
+    ranges.push({ name: readableName(g.name), lo: Math.min(...eps), hi: Math.max(...eps), n: eps.length });
   }
   if (ranges.length < 2 || ranges.length > MAX_GROUPS) return null;
   for (let i = 1; i < ranges.length; i++) if (ranges[i].lo <= ranges[i - 1].hi) return null;

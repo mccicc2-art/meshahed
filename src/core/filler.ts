@@ -25,6 +25,8 @@ interface FillerShow {
   total: number | null;
   /** النطاقاتُ كما في المصدر: «26 97 101-106 …» */
   ranges: string;
+  /** 🆕 D-1620 — «مختلطٌ مانجا/فلر» (Mixed Canon/Filler) — يُخفيه «المسار الذهبي» مع الفلر */
+  mixed?: string;
 }
 
 /** بمعرّف TMDB — الأشهرُ أوّلاً («أبدأ بالأنميات الكبيرة والمشهورة فوق») */
@@ -34,18 +36,24 @@ const SHOWS: Record<number, FillerShow> = {
     total: null,
     ranges:
       "54-60 98-99 102 131-143 196-206 220-225 279-283 291-292 303 317-319 326-336 382-384 406-407 426-429 457-458 492 542 575-578 590 626-627 747-750 780-782 895-896 907 1029-1030",
+    mixed:
+      "45-47 61 68-69 101 226 354 421 489 520 574 625 628 633 653 657 679 690 731 738 751 777-778 789 803 807 878-879 881-885 887-890 924 988-989 991",
   },
-  46260: { name: "Naruto", total: 220, ranges: "26 97 101-106 136-140 143-219" },
+  46260: { name: "Naruto", total: 220, ranges: "26 97 101-106 136-140 143-219", mixed: "7 9 14-16 18-21 23-24 27-30 37-41 43-47 49 52-60 63 66 69-72 74 83 98-100 112-114 126-127 130-131 141-142 220" },
   31910: {
     name: "Naruto Shippuden",
     total: 500,
     ranges:
       "57-71 91-112 144-151 170-171 176-196 223-242 257-260 271 279-281 284-295 303-320 347-361 376-377 388-390 394-413 416-417 422-423 427-450 464-468 480-483",
+    mixed:
+      "1-19 24-25 45 49-50 54 56 89-90 113 115 127-128 213 254 296 324 327-328 330-331 338 346 362 385-386 415 419 426 451-458 460-462 469 471-472 478-479",
   },
   30984: {
     name: "Bleach",
     total: 366,
     ranges: "33 50 64-108 128-137 147-149 168-189 204-205 213-214 228-266 287 298-299 303-305 311-341 355",
+    mixed:
+      "8 27 32 46 109 111 116 119-120 124 141 143 146 156 160-161 190 193 206-207 209 222-223 267-268 274 276 284-285 288 290-291 295-296 310 342-343 345 347 351 357",
   },
   30983: {
     name: "Detective Conan",
@@ -63,11 +71,42 @@ const SHOWS: Record<number, FillerShow> = {
       "1080-1084 1087-1092 1095-1097 1100-1104 1107-1108 1111-1114 1117-1122 1125-1129 1132-1134 1137-1143 1146-1147 1152-1163 1168 " +
       "1173-1177 1180-1183 1186 1188-1192 1195-1203 1206-1213 1217-1219",
   },
-  46261: { name: "Fairy Tail", total: 328, ranges: "9 19 50 70-75 125-150 202-226 268" },
-  73223: { name: "Black Clover", total: 170, ranges: "29 66 68 82 123-125 131 134-135 142-149" },
-  70881: { name: "Boruto", total: 293, ranges: "16-17 40-41 48-50 67-69 96-97 112-119 138-140 152-154 156 256" },
-  35610: { name: "InuYasha", total: 193, ranges: "59 63-65 68 72 75-79 89-101 129-130 133-134 136-140 162-163" },
-  12971: { name: "Dragon Ball Z", total: 291, ranges: "9-10 12-16 39-43 100 102 108-117 124-125 170-171 174 195-199 202-203 274 288" },
+  46261: { name: "Fairy Tail", total: 328, ranges: "9 19 50 70-75 125-150 202-226 268", mixed: "20 49 69 151 182-183 201 255 260 270 312" },
+  73223: { name: "Black Clover", total: 170, ranges: "29 66 68 82 123-125 131 134-135 142-149", mixed: "2 8-9 12 30 69 102" },
+  70881: { name: "Boruto", total: 293, ranges: "16-17 40-41 48-50 67-69 96-97 112-119 138-140 152-154 156 256", mixed: "1 18 24 59 93-95 127 157 192 210-211" },
+  35610: { name: "InuYasha", total: 193, ranges: "59 63-65 68 72 75-79 89-101 129-130 133-134 136-140 162-163", mixed: "26 57-58 69 83-84 87 102 127-128 135 141-142 144 147-148 160" },
+  12971: { name: "Dragon Ball Z", total: 291, ranges: "9-10 12-16 39-43 100 102 108-117 124-125 170-171 174 195-199 202-203 274 288", mixed: "11 17-18 20 44 204 229 251 287" },
+  /* 🆕 D-1620 — «زود عدد الانمي اكثر» (أحمد ٢ نوفمبر): ستّةٌ أخرى بالمصدر نفسِه، كلٌّ بعدد فلره المعلَن */
+  12609: { name: "Dragon Ball", total: 153, ranges: "30-33 45 79-83 127-132 149-153", mixed: "29 42 44" },
+  62715: { name: "Dragon Ball Super", total: 131, ranges: "4 15 42-46 68-70 73-76", mixed: "1-2 89" },
+  46298: { name: "Hunter x Hunter (2011)", total: 148, ranges: "13 26", mixed: "12" },
+  65930: { name: "My Hero Academia", total: 170, ranges: "39 58 64 104", mixed: "54-55 89 105 127" },
+  57041: {
+    name: "Gintama",
+    total: 369,
+    ranges: "1-2 50 57 75 106 114 124-125 135 137 150 155 164 166 171 173-174 176 185 189 209 252",
+    mixed: "82 111 120 367",
+  },
+  28136: { name: "Rurouni Kenshin", total: 100, ranges: "13-18 22 25-27 63-78 83-94 99-100", mixed: "1 79-82" },
+  /* 🆕 D-1620 — «ارفعها إلى ٢٥ انمي مشهور» (أحمد ٢ نوفمبر): تسعةٌ أخرى. «المجموع» حارسٌ: عددُ المصدر، أو الجزءُ الذي فيه الفلر
+     حين تُلحق TMDB بالعمل جزءاً لا يعدّه المصدر (D.Gray-man · Blue Exorcist) */
+  902: { name: "Yu-Gi-Oh! Duel Monsters", total: 225, ranges: "13 25 33 41-45 74 80 98-121 136 144-198 225", mixed: "1 34 53 70 79 135 137" },
+  3570: {
+    name: "Sailor Moon",
+    total: 200,
+    ranges:
+      "2-7 9 11-12 15-18 20-21 26-32 37-41 43 47-59 63-67 69 78-80 89 94-100 104 107-108 114 116-118 127 129 131-132 134 136-142 " +
+      "144-147 151-157 159 175-178 183-186 192",
+    mixed: "13-14 23-24 36 42 62 70-71 76 81 91 93 101-102 109 115",
+  },
+  34141: { name: "D.Gray-man", total: 103, ranges: "14-18 25 27 29-36 41-50", mixed: "26 63-64" },
+  38464: { name: "Blue Exorcist", total: 25, ranges: "6 11 18-25", mixed: "1-3 16-17" },
+  37863: { name: "Fullmetal Alchemist (2003)", total: 51, ranges: "4 10 37" },
+  37305: { name: "Soul Eater", total: 51, ranges: "17", mixed: "7" },
+  50712: { name: "Black Butler", total: 46, ranges: "7-12 16-36", mixed: "1 37" },
+  /* بلا فلر — المختلطةُ وحدَها، فلا يظهر لهما إلّا «المسار الذهبي» */
+  88046: { name: "Fire Force", total: 48, ranges: "", mixed: "25" },
+  61223: { name: "Akame ga Kill!", total: 24, ranges: "", mixed: "19" },
 };
 
 /** الحلقاتُ المطلقةُ من نصّ النطاقات — مرتّبةٌ بلا تكرار */
@@ -87,17 +126,10 @@ export function fillerCount(tmdbId: number): number {
   return s ? parseRanges(s.ranges).length : 0;
 }
 
-/**
- * **مفاتيحُ حلقات الفلر** (`episodeKey`) لعملٍ في قائمتنا، وإلّا `null`.
- * `seasons` رؤوسُ المواسم من TMDB؛ `first_episode` أوّلُ رقمٍ في الموسم (غيابُه = ١، نسبيّ).
- */
-export function fillerKeys(
-  tmdbId: number,
-  seasons: readonly { season_number: number; episode_count: number; first_episode?: number }[],
-): Set<string> | null {
-  const show = SHOWS[tmdbId];
-  if (!show) return null;
-  const abs = parseRanges(show.ranges);
+type SeasonHead = { season_number: number; episode_count: number; first_episode?: number };
+
+/** من المطلق إلى مفاتيح المواسم — بحارس الترقيم (أعلاه) */
+function mapKeys(show: FillerShow, abs: readonly number[], seasons: readonly SeasonHead[]): Set<string> | null {
   const regular = seasons.filter((s) => s.season_number >= 1).sort((a, b) => a.season_number - b.season_number);
   const sum = regular.reduce((n, s) => n + s.episode_count, 0);
   if (show.total !== null && sum < show.total) return null;
@@ -114,6 +146,37 @@ export function fillerKeys(
     before = hi;
   }
   return out;
+}
+
+/**
+ * **مفاتيحُ حلقات الفلر** (`episodeKey`) لعملٍ في قائمتنا، وإلّا `null`.
+ * `seasons` رؤوسُ المواسم من TMDB؛ `first_episode` أوّلُ رقمٍ في الموسم (غيابُه = ١، نسبيّ).
+ */
+export function fillerKeys(tmdbId: number, seasons: readonly SeasonHead[]): Set<string> | null {
+  const show = SHOWS[tmdbId];
+  return show ? mapKeys(show, parseRanges(show.ranges), seasons) : null;
+}
+
+/** 🆕 D-1620 — مفاتيحُ الحلقات المختلطة (مانجا + فلر) — فارغةٌ لعملٍ بلا مختلطة، و`null` خارج القائمة أو تحت الحارس */
+export function mixedKeys(tmdbId: number, seasons: readonly SeasonHead[]): Set<string> | null {
+  const show = SHOWS[tmdbId];
+  return show ? mapKeys(show, parseRanges(show.mixed ?? ""), seasons) : null;
+}
+
+/** عددُ المختلطة في القائمة (للاختبار) */
+export function mixedCount(tmdbId: number): number {
+  const s = SHOWS[tmdbId];
+  return s ? parseRanges(s.mixed ?? "").length : 0;
+}
+
+/**
+ * 🆕 D-1620 — **وضعُ الإخفاء** (أحمد ٢ نوفمبر — «١أ · ٢ب»): `filler` يخفي الفلر · `golden` («المسار الذهبي») يخفي الفلر
+ * والمختلطة ويُبقي المانجا وقانونيَّ الأنمي · `all` لا يخفي. شريحتان لا تجتمعان (الذهبيُّ يخفي الفلر أصلاً).
+ * القيمةُ القديمة «1» (D-1619) تُقرأ `filler` فلا يضيع اختيارُ من فعّله.
+ */
+export type SkipMode = "all" | "filler" | "golden";
+export function parseSkipMode(raw: string | null | undefined): SkipMode {
+  return raw === "golden" ? "golden" : raw === "1" || raw === "filler" ? "filler" : "all";
 }
 
 /** كم مفتاحاً من `keys` في الموسم بين `lo` و`hi` (شاملين) — لعدّ ما أُخفي من المبثوث والمشاهَد */
@@ -133,6 +196,6 @@ export const HIDE_FILLER_KEY = "loopz.hideFiller";
 
 /** كلماتُ الفلر — هنا لا في `i18n.ts` لأنّ القاموسَ محجوزٌ لمهمّةٍ أخرى في السجلّ (274)؛ تنتقل إليه حين يُفرَج عنه */
 export const FILLER_WORDS = {
-  ar: { hide: "إخفاء الفلر", tag: "فلر" },
-  en: { hide: "Hide filler", tag: "Filler" },
+  ar: { hide: "إخفاء الفلر", golden: "المسار الذهبي", tag: "فلر", mixedTag: "مختلطة" },
+  en: { hide: "Hide filler", golden: "Golden path", tag: "Filler", mixedTag: "Mixed" },
 } as const;

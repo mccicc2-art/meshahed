@@ -18,7 +18,7 @@ import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
 /**
@@ -46,12 +46,12 @@ function readSeasonOrder(): SeasonOrder {
   }
 }
 
-/** D-1619 — «إخفاء الفلر» من الجهاز (قراءةٌ متزامنة كترتيب المواسم) — الافتراضُ الظهور */
-function readHideFiller(): boolean {
+/** D-1619/D-1620 — وضعُ الإخفاء من الجهاز (قراءةٌ متزامنة كترتيب المواسم) — الافتراضُ الظهور، و«1» القديمة = الفلر */
+function readSkipMode(): SkipMode {
   try {
-    return SecureStore.getItem(HIDE_FILLER_KEY) === "1";
+    return parseSkipMode(SecureStore.getItem(HIDE_FILLER_KEY));
   } catch {
-    return false;
+    return "all";
   }
 }
 
@@ -102,17 +102,21 @@ export function SeasonAccordion({
    * **ولا يؤشّره** «حتى هنا» ولا «الموسم/الجزء كامل». الإلغاءُ يبقى كما هو: «إلغاء الموسم» يمسح الموسمَ كلَّه.
    */
   const filler = useMemo(() => fillerKeys(show.id, show.seasons), [show.id, show.seasons]);
-  const [hideFiller, setHideFiller] = useState(readHideFiller);
-  const toggleFiller = () => {
-    const v = !hideFiller;
-    setHideFiller(v);
+  /* 🆕 D-1620 — «المسار الذهبي» (أحمد ٢ نوفمبر — «١أ · ٢ب»): يخفي الفلرَ والمختلطة ويُبقي المانجا وقانونيَّ الأنمي.
+     شريحتان لا تجتمعان: الذهبيُّ يخفي الفلرَ أصلاً، فتشغيلُ إحداهما يطفئ الأخرى */
+  const mixed = useMemo(() => mixedKeys(show.id, show.seasons), [show.id, show.seasons]);
+  const golden = useMemo(() => (filler || mixed ? new Set([...(filler ?? []), ...(mixed ?? [])]) : null), [filler, mixed]);
+  const [mode, setMode] = useState<SkipMode>(readSkipMode);
+  const pickMode = (m: Exclude<SkipMode, "all">) => {
+    const v: SkipMode = mode === m ? "all" : m;
+    setMode(v);
     try {
-      SecureStore.setItem(HIDE_FILLER_KEY, v ? "1" : "0");
+      SecureStore.setItem(HIDE_FILLER_KEY, v);
     } catch {
       /* راحةٌ لا شرط: يبقى الاختيارُ لهذه الجلسة */
     }
   };
-  const skip = hideFiller && filler ? filler : null;
+  const skip = mode === "filler" && filler?.size ? filler : mode === "golden" && golden?.size ? golden : null;
   const airedSkip = (s: TvTitlePayload["seasons"][number]) => (skip ? countKeys(skip, s.season_number, s.first_episode ?? 1, (s.first_episode ?? 1) + s.aired - 1) : 0);
   const total = show.aired_total - (skip ? show.seasons.reduce((n, s) => n + airedSkip(s), 0) : 0);
   const doneAll = show.me.watched_count - (skip ? show.me.watched.filter((k) => skip.has(k)).length : 0);
@@ -173,6 +177,7 @@ export function SeasonAccordion({
     [show.seasons, doneSet],
   );
 
+  const solo = show.seasons.length === 1 && !!show.seasons[0].parts?.length;
   /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ، بخطٍّ فاصلٍ فوقها) — D-1500 */
   const card = (s: TvTitlePayload["seasons"][number], flat = false) => {
         const inSeason = show.me.watched.filter((k) => k.startsWith(`${s.season_number}:`) && !skip?.has(k)).length;
@@ -180,6 +185,14 @@ export function SeasonAccordion({
         const sAired = s.aired - airedSkip(s);
         const done = sAired > 0 && inSeason >= sAired;
         const isOpen = open === s.season_number;
+        /* 🆕 D-1620 — **عملٌ كلُّه موسمٌ واحدٌ مقسَّمٌ أجزاءً: الأجزاءُ بلا صفّ الموسم** (أحمد ٢ نوفمبر: «كونان الموسم الكامل ظاهر
+           ماتقسم» — «٤أ»): «الموسم 1 · الموسم كامل» فوق أجزائه طبقةٌ زائدة تُقرأ «لم يُقسَّم». الأجزاءُ في بطاقةٍ واحدة مفتوحةٍ دائماً */
+        if (solo)
+          return (
+            <View key={s.season_number} style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden", paddingTop: 4 }}>
+              <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} skip={skip} filler={filler} mixed={mixed} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} />
+            </View>
+          );
         return (
           /* D-1019 — بطاقةُ الموسم سوداءُ كالصفحة (حدُّها وحدَه يفصلها) — كالأوراق وصفوف الأفعال */
           <View key={s.season_number} style={flat ? { borderTopWidth: 1, borderTopColor: tokens.divider } : { borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg, overflow: "hidden" }}>
@@ -232,7 +245,7 @@ export function SeasonAccordion({
                 </Pressable>
               ) : null}
             </View>
-            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} skip={skip} filler={filler} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
+            {isOpen ? <SeasonBody show={show} season={s.season_number} aired={s.aired} first={s.first_episode ?? 1} parts={s.parts} skip={skip} filler={filler} mixed={mixed} watched={watched} onError={onError} onSettled={onSettled} showRatings={showRatings} pending={pending} /> : null}
           </View>
         );
   };
@@ -269,7 +282,8 @@ export function SeasonAccordion({
               leading={<Icon name={showRatings ? "star-filled" : "star"} size={12} color={showRatings ? tokens.onAccent : tokens.accent} />}
             />
             {/* 🆕 D-1619 — للأعمال التي في قائمة الفلر وحدَها: رقاقةٌ لا تفعل شيئاً تُقرأ عطلاً */}
-            {filler?.size ? <Chip size="sm" active={hideFiller} label={FILLER_WORDS[locale].hide} onPress={toggleFiller} hitSlop={10} /> : null}
+            {filler?.size ? <Chip size="sm" active={mode === "filler"} label={FILLER_WORDS[locale].hide} onPress={() => pickMode("filler")} hitSlop={10} /> : null}
+            {golden?.size ? <Chip size="sm" active={mode === "golden"} label={FILLER_WORDS[locale].golden} onPress={() => pickMode("golden")} hitSlop={10} /> : null}
           </View>
           {cascadeDue ? <OneTimeHint id="episode-cascade" text={t.cascadeHint} style={{ marginTop: 4 }} /> : null}
         </View>
@@ -335,6 +349,7 @@ function SeasonBody({
   parts,
   skip,
   filler,
+  mixed,
   watched,
   onError,
   onSettled,
@@ -352,6 +367,8 @@ function SeasonBody({
   skip: Set<string> | null;
   /** D-1619 — فلرُ العمل كلُّه (لوسم «فلر» حين يظهر) */
   filler: Set<string> | null;
+  /** D-1620 — المختلطةُ (لوسم «مختلطة» حين تظهر) */
+  mixed: Set<string> | null;
   watched: Set<string>;
   /** D-1021 — المفتاحُ في رأس التبويب لا في الموسم */
   showRatings: boolean;
@@ -563,11 +580,11 @@ function SeasonBody({
         </View>
         <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
           <Text size={14} weight={on ? "500" : "600"} numberOfLines={1} color={on ? tokens.muted : tokens.fg}>{`${e.episode_number}. ${e.name}`}</Text>
-          {e.air_date || filler?.has(key) ? (
+          {e.air_date || filler?.has(key) || mixed?.has(key) ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {e.air_date ? <Text size={11} muted>{formatDateShort(e.air_date, t)}{e.runtime ? ` · ${t.minutesCount(e.runtime)}` : ""}</Text> : null}
               {/* 🆕 D-1619 — وسمُ «فلر» حين يظهر الفلر: يعرف القارئُ ما يتخطّاه قبل أن يُخفيه */}
-              {filler?.has(key) ? <Text size={10} weight="700" color={tokens.accent2}>{FILLER_WORDS[locale].tag}</Text> : null}
+              {filler?.has(key) ? <Text size={10} weight="700" color={tokens.accent2}>{FILLER_WORDS[locale].tag}</Text> : mixed?.has(key) ? <Text size={10} weight="700" muted>{FILLER_WORDS[locale].mixedTag}</Text> : null}
             </View>
           ) : null}
         </View>

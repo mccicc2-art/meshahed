@@ -1,13 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countKeys, fillerCount, fillerKeys, parseRanges } from "./filler.ts";
+import { countKeys, fillerCount, fillerKeys, mixedCount, mixedKeys, parseRanges, parseSkipMode } from "./filler.ts";
 
 test("each list matches the filler count stated by its source", () => {
   /* animefillerlist.com، ١ نوفمبر ٢٠٢٦ — العددُ المعلَن لكلِّ عمل */
   const stated: Record<number, number> = {
     37854: 94, 46260: 90, 31910: 203, 30984: 163, 30983: 578, 46261: 61, 73223: 18, 70881: 28, 35610: 35, 12971: 38,
+    /* D-1620 — الستّةُ الجديدة */
+    12609: 21, 62715: 14, 46298: 2, 65930: 4, 57041: 23, 28136: 40,
+    902: 91, 3570: 98, 34141: 25, 38464: 10, 37863: 3, 37305: 1, 50712: 27, 88046: 0, 61223: 0,
   };
   for (const [id, n] of Object.entries(stated)) assert.equal(fillerCount(Number(id)), n, `tmdb ${id}`);
+});
+
+test("D-1620 — twenty-five shows in the list", () => {
+  const ids = [37854, 46260, 31910, 30984, 30983, 46261, 73223, 70881, 35610, 12971, 12609, 62715, 46298, 65930, 57041, 28136, 902, 3570, 34141, 38464, 37863, 37305, 50712, 88046, 61223];
+  assert.equal(new Set(ids).size, 25);
+  for (const id of ids) assert.ok(fillerCount(id) + mixedCount(id) > 0, `tmdb ${id}`);
 });
 
 test("ranges parse inclusive, sorted, without duplicates", () => {
@@ -51,4 +60,23 @@ test("a finished show with fewer TMDB episodes ⇒ no filler (numbers would drif
 
 test("countKeys counts one season inside a range", () => {
   assert.equal(countKeys(["1:5", "1:6", "1:50", "2:5"], 1, 1, 10), 2);
+});
+
+test("D-1620 — mixed canon/filler lists: stated counts where the source gives one; Conan has none", () => {
+  assert.equal(mixedCount(37854), 43);
+  assert.equal(mixedCount(31910), 64);
+  assert.equal(mixedCount(46260), 56);
+  assert.equal(mixedCount(30983), 0);
+  assert.equal(mixedKeys(30983, [{ season_number: 1, episode_count: 1219 }])?.size, 0);
+  const k = mixedKeys(46260, [{ season_number: 1, episode_count: 220 }]);
+  assert.ok(k?.has("1:7"));
+  assert.ok(!k?.has("1:26")); // فلرٌ لا مختلط
+});
+
+test("D-1620 — skip mode: the old stored '1' still means filler", () => {
+  assert.equal(parseSkipMode("1"), "filler");
+  assert.equal(parseSkipMode("filler"), "filler");
+  assert.equal(parseSkipMode("golden"), "golden");
+  assert.equal(parseSkipMode("0"), "all");
+  assert.equal(parseSkipMode(null), "all");
 });

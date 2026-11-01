@@ -8,7 +8,7 @@ import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
-import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys } from "@/core/filler";
+import { FILLER_WORDS, HIDE_FILLER_KEY, countKeys, fillerKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import { IMG } from "@/core/media";
 import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
@@ -220,30 +220,36 @@ export function EpisodeTracker({
    * كامل» (`airedUpTo` يتخطّاه — البابُ الواحد لكلِّ تأشيرٍ يختم ما قبله). الإلغاءُ كما هو.
    */
   const firstOf = useCallback((n: number) => (absolute ? (seasonBounds.get(n)?.lo ?? 1) : 1), [absolute, seasonBounds]);
-  const filler = useMemo(
-    () => fillerKeys(showTmdbId, summaries.map((x) => ({ season_number: x.season_number, episode_count: x.episode_count, first_episode: firstOf(x.season_number) }))),
-    [showTmdbId, summaries, firstOf],
+  const heads = useMemo(
+    () => summaries.map((x) => ({ season_number: x.season_number, episode_count: x.episode_count, first_episode: firstOf(x.season_number) })),
+    [summaries, firstOf],
   );
-  const [hideFiller, setHideFiller] = useState(false);
+  const filler = useMemo(() => fillerKeys(showTmdbId, heads), [showTmdbId, heads]);
+  /* 🆕 D-1620 — «المسار الذهبي» (توأمُ التطبيق — «١أ · ٢ب»): الفلرُ والمختلطة معاً، وشريحتان لا تجتمعان */
+  const mixed = useMemo(() => mixedKeys(showTmdbId, heads), [showTmdbId, heads]);
+  const golden = useMemo(() => (filler || mixed ? new Set([...(filler ?? []), ...(mixed ?? [])]) : null), [filler, mixed]);
+  const [mode, setMode] = useState<SkipMode>("all");
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- قراءةُ الجهاز بعد الترطيب: الخادمُ لا يعرفها
-      setHideFiller(window.localStorage.getItem(HIDE_FILLER_KEY) === "1");
+      setMode(parseSkipMode(window.localStorage.getItem(HIDE_FILLER_KEY)));
     } catch {
       /* تخزينٌ محجوب: يبقى الظهور */
     }
   }, []);
-  const toggleFiller = () => {
+  const pickMode = (m: Exclude<SkipMode, "all">) => {
     tap(6);
-    const v = !hideFiller;
-    setHideFiller(v);
+    const v: SkipMode = mode === m ? "all" : m;
+    setMode(v);
     try {
-      window.localStorage.setItem(HIDE_FILLER_KEY, v ? "1" : "0");
+      window.localStorage.setItem(HIDE_FILLER_KEY, v);
     } catch {
       /* الحفظُ راحةٌ لا شرط */
     }
   };
-  const skip = hideFiller && filler ? filler : null;
+  const skip = mode === "filler" && filler?.size ? filler : mode === "golden" && golden?.size ? golden : null;
+  /* 🆕 D-1620 — «٤أ»: عملٌ كلُّه موسمٌ واحدٌ مقسَّمٌ أجزاءً — الأجزاءُ بلا رأس الموسم، مفتوحةً دائماً */
+  const solo = summaries.length === 1 && !!summaries[0].parts?.length;
   const airedSkip = (x: SeasonSummary) => (skip ? countKeys(skip, x.season_number, firstOf(x.season_number), firstOf(x.season_number) + x.aired_count - 1) : 0);
   const watchedSkip = (n: number) => (skip ? countKeys([...watched].filter((k) => skip.has(k)), n, firstOf(n), firstOf(n) + (summaries.find((x) => x.season_number === n)?.episode_count ?? 0) - 1) : 0);
 
@@ -669,7 +675,7 @@ export function EpisodeTracker({
 
   /* بطاقةُ الموسم — `flat` داخل صندوق «مواسم شاهدتها» (بلا إطارٍ ثانٍ) — D-1500 */
   const seasonCard = (s: SeasonSummary, flat = false) => {
-          const isOpen = open === s.season_number;
+          const isOpen = solo || open === s.season_number;
           const episodes = episodesBySeason[s.season_number];
           /* D-1619 — المبثوثُ والمشاهَدُ بلا الفلر المخفيّ */
           const sAired = s.aired_count - airedSkip(s);
@@ -766,9 +772,11 @@ export function EpisodeTracker({
                     {e.name}
                   </p>
                   {/* 🆕 D-1619 — وسمُ «فلر» حين يظهر الفلر */}
-                  {filler?.has(key) && (
+                  {filler?.has(key) ? (
                     <span className="mt-1 inline-block text-[10px] font-bold text-accent-2">{FILLER_WORDS[locale].tag}</span>
-                  )}
+                  ) : mixed?.has(key) ? (
+                    <span className="mt-1 inline-block text-[10px] font-bold text-muted">{FILLER_WORDS[locale].mixedTag}</span>
+                  ) : null}
                   <p className="text-12 text-muted mt-1 truncate sm:hidden">
                     {metaLine(e, epAired, t)}
                   </p>
@@ -862,66 +870,68 @@ export function EpisodeTracker({
               key={s.season_number}
               className={flat ? "border-t border-border" : "rounded-2xl border border-border bg-surface overflow-hidden"}
             >
-              <div className="flex items-center gap-2 px-3.5 py-1">
-                <button
-                  onClick={() => toggleOpen(s.season_number)}
-                  aria-expanded={isOpen}
-                  aria-label={t.seasonToggleAria(s.season_number)}
-                  className="flex-1 flex items-center gap-2.5 text-start py-2.5 -my-1"
-                >
-                  <Icon
-                    name="chevron-down"
-                    size={16}
-                    className={`text-muted transition-transform duration-300 ${isOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
-                  />
-                  <span className="font-semibold text-15">
-                    {s.name || t.seasonLabel(s.season_number)}
-                  </span>
-                  {/* 🔴 D-1050 — **موسمٌ لم يُبثّ منه شيء لا يُكتب «0/0»** (تكافؤُ التطبيق: D-1029 ثمّ D-1039 بعد بلاغ أحمد
-                      «وصل ولم تُعالَج»): «٠ من ٠» كسرٌ بلا معنى يُقرأ عطلاً. مكانَه **عددُ حلقاته المعلَن**، وفي طرف السطر
-                      (حيث «الموسم كامل» الغائبُ أصلاً) **موعدُه، وإلّا «قريباً»** — السطرُ يقول دائماً لماذا هو فارغ. */}
-                  {s.aired_count > 0 ? (
-                    <span className="text-xs text-muted tabular-nums" dir="ltr">
-                      {seasonWatched}/{sAired}
-                    </span>
-                  ) : s.episode_count > 0 ? (
-                    <span className="text-xs text-muted tabular-nums">{t.episodesCount(s.episode_count)}</span>
-                  ) : null /* D-1058 — صفرُ حلقاتٍ لا يُكتب «٠ حلقات»؛ طرفُ السطر يقول الموعدَ أو «قريباً» */}
-                  {loading === s.season_number && (
-                    <span className="text-xs text-muted">{t.loadingLabel}</span>
-                  )}
-                  {/* الموسم المكتمل يحمل صحّاً رفيعاً هادئاً في طرفه */}
-                  {allWatched && (
-                    <Icon
-                      name="check-line"
-                      size={16}
-                      strokeWidth={2.2}
-                      className="ms-auto text-[color:var(--success)]"
-                    />
-                  )}
-                </button>
-                {s.aired_count === 0 && (
-                  <span className="shrink-0 text-xs text-muted tabular-nums px-2.5 py-2">
-                    {s.air_date
-                      ? s.air_date > today()
-                        ? t.airsOn(formatDateShort(s.air_date, t))
-                        : formatDateShort(s.air_date, t)
-                      : t.comingSoon}
-                  </span>
-                )}
-                {s.aired_count > 0 && (
+              {!solo && (
+                <div className="flex items-center gap-2 px-3.5 py-1">
                   <button
-                    onClick={() => toggleSeason(s, !allWatched)}
-                    className={`shrink-0 text-xs font-semibold px-2.5 py-2 rounded-lg transition ${
-                      allWatched
-                        ? "text-muted hover:text-foreground hover:bg-surface-2"
-                        : "text-accent-2 hover:bg-accent-2/10"
-                    }`}
+                    onClick={() => toggleOpen(s.season_number)}
+                    aria-expanded={isOpen}
+                    aria-label={t.seasonToggleAria(s.season_number)}
+                    className="flex-1 flex items-center gap-2.5 text-start py-2.5 -my-1"
                   >
-                    {allWatched ? t.seasonUndo : t.seasonAll}
+                    <Icon
+                      name="chevron-down"
+                      size={16}
+                      className={`text-muted transition-transform duration-300 ${isOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
+                    />
+                    <span className="font-semibold text-15">
+                      {s.name || t.seasonLabel(s.season_number)}
+                    </span>
+                    {/* 🔴 D-1050 — **موسمٌ لم يُبثّ منه شيء لا يُكتب «0/0»** (تكافؤُ التطبيق: D-1029 ثمّ D-1039 بعد بلاغ أحمد
+                        «وصل ولم تُعالَج»): «٠ من ٠» كسرٌ بلا معنى يُقرأ عطلاً. مكانَه **عددُ حلقاته المعلَن**، وفي طرف السطر
+                        (حيث «الموسم كامل» الغائبُ أصلاً) **موعدُه، وإلّا «قريباً»** — السطرُ يقول دائماً لماذا هو فارغ. */}
+                    {s.aired_count > 0 ? (
+                      <span className="text-xs text-muted tabular-nums" dir="ltr">
+                        {seasonWatched}/{sAired}
+                      </span>
+                    ) : s.episode_count > 0 ? (
+                      <span className="text-xs text-muted tabular-nums">{t.episodesCount(s.episode_count)}</span>
+                    ) : null /* D-1058 — صفرُ حلقاتٍ لا يُكتب «٠ حلقات»؛ طرفُ السطر يقول الموعدَ أو «قريباً» */}
+                    {loading === s.season_number && (
+                      <span className="text-xs text-muted">{t.loadingLabel}</span>
+                    )}
+                    {/* الموسم المكتمل يحمل صحّاً رفيعاً هادئاً في طرفه */}
+                    {allWatched && (
+                      <Icon
+                        name="check-line"
+                        size={16}
+                        strokeWidth={2.2}
+                        className="ms-auto text-[color:var(--success)]"
+                      />
+                    )}
                   </button>
-                )}
-              </div>
+                  {s.aired_count === 0 && (
+                    <span className="shrink-0 text-xs text-muted tabular-nums px-2.5 py-2">
+                      {s.air_date
+                        ? s.air_date > today()
+                          ? t.airsOn(formatDateShort(s.air_date, t))
+                          : formatDateShort(s.air_date, t)
+                        : t.comingSoon}
+                    </span>
+                  )}
+                  {s.aired_count > 0 && (
+                    <button
+                      onClick={() => toggleSeason(s, !allWatched)}
+                      className={`shrink-0 text-xs font-semibold px-2.5 py-2 rounded-lg transition ${
+                        allWatched
+                          ? "text-muted hover:text-foreground hover:bg-surface-2"
+                          : "text-accent-2 hover:bg-accent-2/10"
+                      }`}
+                    >
+                      {allWatched ? t.seasonUndo : t.seasonAll}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* ⚖️ D-1251 — خيطُ تقدّم الموسم حُذف بكلمة أحمد («الخط الأصفر على كل سيزون ما أبغاه»، التطبيقُ
                   والويبُ معاً): العدُّ بجانب الاسم والصحُّ الأخضرُ يقولان ما كان يقوله، وشريطُ التقدّم الكلّيِّ فوق باقٍ. */}
@@ -1057,19 +1067,33 @@ export function EpisodeTracker({
           />
           {showRatings ? t.epRatingsHide : t.epRatingsShow}
         </button>
-        {/* 🆕 D-1619 — للأعمال التي في قائمة الفلر وحدَها */}
+        {/* 🆕 D-1619/D-1620 — للأعمال التي في قائمتنا وحدَها: «إخفاء الفلر» و«المسار الذهبي» */}
         {!!filler?.size && (
           <button
             type="button"
-            onClick={toggleFiller}
-            aria-pressed={hideFiller}
+            onClick={() => pickMode("filler")}
+            aria-pressed={mode === "filler"}
             className={chipClass(
-              hideFiller,
+              mode === "filler",
               "sm",
               "relative mt-2.5 ms-2 inline-flex items-center gap-1.5 before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
             )}
           >
             {FILLER_WORDS[locale].hide}
+          </button>
+        )}
+        {!!golden?.size && (
+          <button
+            type="button"
+            onClick={() => pickMode("golden")}
+            aria-pressed={mode === "golden"}
+            className={chipClass(
+              mode === "golden",
+              "sm",
+              "relative mt-2.5 ms-2 inline-flex items-center gap-1.5 before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
+            )}
+          >
+            {FILLER_WORDS[locale].golden}
           </button>
         )}
         <OneTimeHint id="episode-cascade" after="episode-bulk" text={t.cascadeHint} closeLabel={t.closeLabel} className="mt-2" />

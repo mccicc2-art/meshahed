@@ -11,6 +11,7 @@ import { fixedParts, partSeason, partsFromGroups, type GroupSet, type SeasonPart
  *
  * 🔑 **الناتجُ يُخبّأ لا الردود**: ملفُّ المجموعة لعملٍ بألف حلقة كبيرٌ (حلقاتٌ بأوصافها) وقد يتجاوز سقفَ خبيئة الجلب —
  * فتُخبّأ الأجزاءُ نفسُها (بضعُ مئات بايت) يوماً، ومفتاحُها عددُ الحلقات: حلقةٌ جديدة ⇒ حسابٌ جديد.
+ * 🔑 المفتاحُ «-2» (D-1620): أسماءُ الأجزاء صارت تُصفّى (`readableName`) فلا تُقرأ الخبيئةُ القديمة بأسمائها التايلنديّة.
  * 🔑 **ولا يوقف الصفحة**: سقفُ وقت، والفشلُ أو التأخّر ⇒ الأجزاءُ الثابتة (لا تُخبّأ — المرّةُ التالية تحاول الآركات).
  */
 const BUDGET_MS = 2500;
@@ -34,7 +35,7 @@ async function fromTmdb(tvId: number, season: number, first: number, last: numbe
 }
 
 const cached = (tvId: number, season: number, first: number, last: number) =>
-  unstable_cache(() => fromTmdb(tvId, season, first, last), ["season-parts-1", String(tvId), String(season), String(first), String(last)], {
+  unstable_cache(() => fromTmdb(tvId, season, first, last), ["season-parts-2", String(tvId), String(season), String(first), String(last)], {
     revalidate: 60 * 60 * 24,
   })();
 

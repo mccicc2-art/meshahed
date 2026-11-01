@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fixedParts, partAired, partSeason, partsFromGroups, partWatched, type GroupSet } from "./seasonParts.ts";
+import { fixedParts, partAired, partSeason, partsFromGroups, partWatched, readableName, type GroupSet } from "./seasonParts.ts";
 
 test("only a show whose whole run is one regular season over 100 episodes is split", () => {
   /* كونان: موسمٌ واحد + الخاصّات */
@@ -57,4 +57,14 @@ test("aired and watched are counted inside the part only", () => {
   assert.equal(partAired(part, 1, 90), 0);
   assert.equal(partAired(part, 1, 1218), 100);
   assert.equal(partWatched(part, 1, ["1:100", "1:101", "1:200", "1:201", "0:150", "2:150"]), 2);
+});
+
+test("D-1620 — names in Thai or Japanese drop to «Part n»; Arabic and Latin stay", () => {
+  assert.equal(readableName("ปี 1"), null);
+  assert.equal(readableName("黒の組織"), null);
+  assert.equal(readableName("Black Organization Arc"), "Black Organization Arc");
+  assert.equal(readableName("آرك المنظمة"), "آرك المنظمة");
+  assert.equal(readableName("  "), null);
+  const thai: GroupSet = { type: 7, groups: [{ name: "ปี 1", order: 1, episodes: ep(1, 500) }, { name: "ปี 2", order: 2, episodes: ep(501, 1000) }] };
+  assert.deepEqual(partsFromGroups([thai], 1, 1, 1000)?.map((p) => p.name), [null, null]);
 });
