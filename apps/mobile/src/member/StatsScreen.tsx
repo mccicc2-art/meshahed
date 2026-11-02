@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { shell, type NativeRoot } from "../shell";
@@ -44,7 +44,6 @@ import { useHomeDoor } from "../homeDoor";
  * واسمُه تحت وقت المشاهدة، **وبابُ «تقاريرك» في الذيل** (D-796، ويفتح صفحتَه الويبيّة طبقةً)، **و«ذوقك»** بضمير صاحبها.
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 
 export const memberStatsKey = (handle: string) => [`profile:${handle.toLowerCase()}:stats`] as const;
 
@@ -111,23 +110,29 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{t.statsPageTitle}</Text>
-        {/* 🆕 D-1214 — ترويسةُ `/stats`: مشاركةٌ ثمّ ⋯ المدى (`StatsRangeMenu`) — لإحصاءاتي وحدَها (لا مدى للزائر) */}
-        {mine && d?.person.username ? <HeadBtn icon="share" label={t.shareLinkLabel} onPress={shareMine} /> : null}
-        {mine ? (
-          <HeadBtn
-            icon="dots"
-            label={t.statsRangeMenu}
-            onPress={() => {
-              haptic.pick();
-              setRangeSheet(true);
-            }}
-          />
-        ) : null}
+      {/* D-1624 — الشريطُ الواحد؛ 🆕 D-1214 — مشاركةٌ ثمّ ⋯ المدى في طرفه (لإحصاءاتي وحدَها — لا مدى للزائر) */}
+      <View style={{ paddingTop: insets.top }}>
+        <TopBar
+          title={t.statsPageTitle}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          end={
+            mine ? (
+              <>
+                {d?.person.username ? <HeadBtn icon="share" label={t.shareLinkLabel} onPress={shareMine} /> : null}
+                <HeadBtn
+                  icon="dots"
+                  label={t.statsRangeMenu}
+                  onPress={() => {
+                    haptic.pick();
+                    setRangeSheet(true);
+                  }}
+                />
+              </>
+            ) : undefined
+          }
+        />
       </View>
 
       {!d ? (

@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { BackChevron, Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -125,11 +125,9 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
+        <View style={{ minHeight: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-            <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-              <Icon name="chevron-down" size={22} color={tokens.fg} />
-            </View>
+            <BackChevron color={tokens.fg} />
           </Pressable>
           {tabItem("inbox", "mail", t.communityTabInbox, d?.unread.messages ?? 0, t.messagesUnreadAria(d?.unread.messages ?? 0))}
           {tabItem("alerts", "bell", t.notifTitle, d?.unread.signals ?? 0, t.notifUnreadAria(d?.unread.signals ?? 0))}

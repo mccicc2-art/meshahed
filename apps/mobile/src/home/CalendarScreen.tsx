@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { shell, type NativeRoot } from "../shell";
@@ -31,7 +31,6 @@ import { useHomeDoor } from "../homeDoor";
  * يُقرأ رمشة.
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 const GAP = 4;
 
 export const calendarKey = (month: string | null) => ["me:calendar", month ?? "now"] as const;
@@ -201,20 +200,23 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          {/* سهمُ الرجوع الواحد (D-1460) — المرسومُ باليد هنا كان يدور ‎-45° في الاتّجاهين فخرج «^» في العربيّة (D-1592) */}
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{t.calTitle}</Text>
-        {/* **الشهرُ وسهماه في الترويسة** كما في الويب — والسهمُ يغيب عند حدِّ المدى ويبقى مكانُه فلا يقفز الاسم */}
-        {d ? (
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {arrow(d.prev, "‹", locale === "en" ? "Previous month" : "الشهر السابق")}
-            <Text size={13} weight="600" numberOfLines={1} style={{ minWidth: 92, textAlign: "center" }}>{d.label}</Text>
-            {arrow(d.next, "›", locale === "en" ? "Next month" : "الشهر التالي")}
-          </View>
-        ) : null}
+      {/* D-1624 — الشريطُ الواحد؛ **الشهرُ وسهماه في طرفه** كما في الويب — والسهمُ يغيب عند حدِّ المدى ويبقى مكانُه فلا يقفز الاسم */}
+      <View style={{ paddingTop: insets.top }}>
+        <TopBar
+          title={t.calTitle}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          end={
+            d ? (
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {arrow(d.prev, "‹", locale === "en" ? "Previous month" : "الشهر السابق")}
+                <Text size={13} weight="600" numberOfLines={1} style={{ minWidth: 92, textAlign: "center" }}>{d.label}</Text>
+                {arrow(d.next, "›", locale === "en" ? "Next month" : "الشهر التالي")}
+              </View>
+            ) : undefined
+          }
+        />
       </View>
 
       {!d ? (

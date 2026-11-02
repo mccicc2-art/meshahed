@@ -7,6 +7,7 @@ import {
   Platform,
   Text as RNText,
   View,
+  useWindowDimensions,
   type PressableProps,
   type StyleProp,
   type TextProps,
@@ -266,6 +267,75 @@ export function Button({
  */
 export function BackChevron({ color }: { color: string }) {
   return <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: I18nManager.isRTL ? "45deg" : "-45deg" }], marginStart: 4 }} />;
+}
+
+/**
+ * 🆕 D-1624 — **الشريطُ العلويُّ الواحد وزرُّ الرجوع الواحد** (أحمد ٢ نوفمبر بلقطتَي Fargo وCode Geass: «كل مكان فيه سهم الرجوع
+ * يكون فوق في المنطقة السوداء — ماينفع كل صفحة سهم الرجوع يكون في مكان مختلف» — «١أ · ٢أ · ٣أ · ٤أ»). كان السهمُ على صورة
+ * العمل في صفحته، وفي شريطٍ بارتفاع ٥٢ أو ٥٦ أو ٦٤ في غيرها، بحاشيةٍ ٨ أو ١٦، ومرسوماً مرّةً بـ`BackChevron` ومرّةً بأيقونةٍ مُدارة.
+ * الآن: شريطٌ بارتفاع `TOP_BAR_H` تحت حافّة الأمان، الرجوعُ مربّعُ ٤٠ على بُعد `TOP_BAR_INSET` من البداية، والاسمُ في الوسط
+ * («١أ»). الشاشاتُ التي رأسُها أغنى من اسم (المحادثة · الرسائل) تضع `BackButton` في المكان نفسِه وترسم ما بعده كما كانت.
+ */
+export const TOP_BAR_H = 56;
+export const TOP_BAR_INSET = 8;
+
+export function BackButton({ onPress, onLongPress, label, color }: { onPress: () => void; onLongPress?: () => void; label: string; color?: string }) {
+  const { tokens } = useApp();
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+      <BackChevron color={color ?? tokens.fg} />
+    </Pressable>
+  );
+}
+
+/**
+ * الشريط: `title` نصٌّ يتوسّط (أو عقدةٌ تُرسم كما هي)، `end` ما في الطرف الآخر (شعار · مشاركة · ⋯ · تنقّلُ المدّة).
+ * الاسمُ يتوسّط بحاشيتين متساويتين بقدر أعرض الطرفين؛ فإن ضاق الوسطُ عن ١٢٠ (تقويمٌ بشهره وسهميه) يبدأ بعد السهم ولا يُخنق.
+ */
+export function TopBar({
+  title,
+  onBack,
+  onBackLong,
+  backLabel,
+  end,
+  bordered,
+  color,
+}: {
+  title?: React.ReactNode;
+  onBack?: () => void;
+  onBackLong?: () => void;
+  backLabel?: string;
+  end?: React.ReactNode;
+  bordered?: boolean;
+  color?: string;
+}) {
+  const { tokens } = useApp();
+  const { width } = useWindowDimensions();
+  const [endW, setEndW] = React.useState(0);
+  const lead = TOP_BAR_INSET + 40 + 8;
+  const side = Math.max(lead, endW ? endW + TOP_BAR_INSET + 8 : lead);
+  const centered = width - side * 2 >= 120;
+  return (
+    <View style={{ height: TOP_BAR_H, justifyContent: "center", paddingStart: centered ? side : lead, paddingEnd: side, ...(bordered ? { borderBottomWidth: 1, borderBottomColor: tokens.border } : {}) }}>
+      {typeof title === "string" ? (
+        <Text size={15} weight="700" numberOfLines={1} color={color} style={{ textAlign: centered ? "center" : undefined }}>
+          {title}
+        </Text>
+      ) : title ? (
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: centered ? "center" : "flex-start", gap: 8, minWidth: 0 }}>{title}</View>
+      ) : null}
+      {onBack ? (
+        <View style={{ position: "absolute", start: TOP_BAR_INSET, top: 0, bottom: 0, justifyContent: "center" }}>
+          <BackButton onPress={onBack} onLongPress={onBackLong} label={backLabel ?? ""} color={color} />
+        </View>
+      ) : null}
+      {end ? (
+        <View onLayout={(e) => setEndW(Math.round(e.nativeEvent.layout.width))} style={{ position: "absolute", end: TOP_BAR_INSET, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" }}>
+          {end}
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 export function Loading() {

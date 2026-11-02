@@ -9,7 +9,7 @@ import { isGuest, softGet, useGuestUpgrade, write } from "../api";
 import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text, type ToastTone } from "../ui";
+import { Button, Text, TopBar, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -755,20 +755,18 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   return (
     <View ref={rootRef} style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
-        <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-          <Pressable onPress={back} onLongPress={home} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-            {/* السهمُ مُداراً مع اتّجاه الصفحة (`rotate-90 rtl:-rotate-90` — وصفةُ رأس الإعدادات) */}
-            <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-              <Icon name="chevron-down" size={22} color={tokens.fg} />
-            </View>
-          </Pressable>
-          <Text size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>
-            {d ? (focus && nested ? (items.some((x) => x.type === "parent") ? t.talkReplyPage : t.talkPostPage) : d.work.media_type === "general" ? t.talkGeneralTitle : d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
-          </Text>
-          <Pressable onPress={share} disabled={!d} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-            <Icon name="share" size={18} color={tokens.fg} />
-          </Pressable>
-        </View>
+        {/* 🆕 D-1624 — الشريطُ الواحد (أحمد ٢ نوفمبر — «١أ»): الرجوعُ في مكانه في كلِّ صفحة بالسهم الواحد، والاسمُ في الوسط */}
+        <TopBar
+          title={d ? (focus && nested ? (items.some((x) => x.type === "parent") ? t.talkReplyPage : t.talkPostPage) : d.work.media_type === "general" ? t.talkGeneralTitle : d.head.kind === "talk" ? t.talkRoomTitle(d.work.title, d.work.media_type === "tv") : d.work.title) : ""}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.backAria}
+          end={
+            <Pressable onPress={share} disabled={!d} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="share" size={18} color={tokens.fg} />
+            </Pressable>
+          }
+        />
       </View>
 
       {!d ? (

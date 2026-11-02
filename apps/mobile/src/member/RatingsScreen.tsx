@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { posterFor } from "../poster";
@@ -26,7 +26,6 @@ import { useHomeDoor } from "../homeDoor";
  *  - **المفتاحُ وسمُ `me:ratings`**: `track/rate` و`track/unrate` يعيدانه، فتتجدّد القائمةُ بعد تقييمٍ من صفحة العمل بلا منطقٍ هنا.
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 export const myRatingsKey = ["me:ratings"] as const;
 /** 🆕 D-1596 — حجمُ الصفحة: ٣٠ (أحمد «١ أ») */
 const PAGE = 30;
@@ -120,11 +119,9 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        <Text size={17} weight="700">{t.ratingsTitle}</Text>
+      {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة والاسمُ في الوسط */}
+      <View style={{ paddingTop: insets.top }}>
+        <TopBar title={t.ratingsTitle} onBack={back} onBackLong={home} backLabel={t.closeLabel} />
       </View>
 
       {!pages ? (

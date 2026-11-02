@@ -9,7 +9,7 @@ import { api, queryClient, write } from "../api";
 import { GifImage, rememberGif } from "../thread/GifPicker";
 import { useApp } from "../state";
 import { push } from "../push";
-import { Button, Text, firstStrongRtl, type ToastTone } from "../ui";
+import { BackChevron, Button, Text, firstStrongRtl, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -487,9 +487,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
           /* 🆕 D-1401 — شريطُ التحديد مكانَ الترويسة كالواتس: رجوعٌ يلغي، والعدد، ثمّ «رد» و«نسخ» */
           <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
             <Pressable onPress={() => setSelected([])} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.msgSelectCancel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-                <Icon name="chevron-down" size={22} color={tokens.fg} />
-              </View>
+              <BackChevron color={tokens.fg} />
             </Pressable>
             <Text size={17} weight="700" accessibilityLabel={t.msgSelectedCount(selected.length)} style={{ flex: 1, paddingHorizontal: 4 }}>{String(selected.length)}</Text>
             {replyable ? (
@@ -508,9 +506,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
         ) : (
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           <Pressable onPress={back} onLongPress={home} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-            <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-              <Icon name="chevron-down" size={22} color={tokens.fg} />
-            </View>
+            <BackChevron color={tokens.fg} />
           </Pressable>
           {/* الهويّةُ كلُّها — صورةٌ واسمٌ وسطرُ الحضور — بابُ الملفّ (D-767)؛ والمخفيُّ لا صفحةَ له فيبقى نصّاً */}
           <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 4 }}>

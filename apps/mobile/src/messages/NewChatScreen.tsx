@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
 import { useApp } from "../state";
-import { Button, Text, type ToastTone } from "../ui";
+import { BackChevron, Button, Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -142,9 +142,7 @@ export function NewChatScreen({ mode, groupId, from }: { mode: Mode; groupId?: s
     <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: tokens.border, backgroundColor: tokens.bg }}>
       <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
         <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.backAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-          <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-            <Icon name="chevron-down" size={22} color={tokens.fg} />
-          </View>
+          <BackChevron color={tokens.fg} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text size={16} weight="700" numberOfLines={1}>{title}</Text>

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
+import { Button, Text, Toast, TopBar, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { RailCard, RAIL_CARD_W, type LibMark } from "../discover/RailCard";
@@ -36,7 +36,6 @@ import { useHomeDoor } from "../homeDoor";
  * (`createListFromPerson`) لا ورقة — فصار `POST /api/v1/lists/from-person` والتوستُ نفسُه.
  * الويبُ يبقى بديلَ الحارس فقط (D-974).
  */
-const HEADER_H = 64;
 const PAGE_PAD = 16;
 const GRID_GAP = 10;
 const BIO_LINES = 5;
@@ -149,12 +148,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
-      <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-        <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
-        <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Chevron color={tokens.fg} />
-        </Pressable>
-      </View>
+      {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة */}
+      <TopBar title={d?.name ?? ""} onBack={back} onBackLong={home} backLabel={t.closeLabel} bordered />
 
       {!d ? (
         q.isError ? (
@@ -275,10 +270,3 @@ function lifeSpan(p: { birthday: string | null; deathday: string | null }, t: Re
   return `${born} · ${t.personAge(age)}`;
 }
 
-function Chevron({ color }: { color: string }) {
-  return (
-    <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      <BackChevron color={color} />
-    </View>
-  );
-}

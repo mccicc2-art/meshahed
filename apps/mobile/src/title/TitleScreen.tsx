@@ -9,7 +9,7 @@ import { qk, write, ApiError, isGuest, useGuestUpgrade } from "../api";
 import { useApp } from "../state";
 import { openThreadPath } from "../thread/route";
 import { shell, type NativeRoot } from "../shell";
-import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
+import { Button, Text, Toast, TopBar, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { radius } from "../theme";
@@ -67,7 +67,6 @@ import { useHomeDoor } from "../homeDoor";
  * `me:stats` لا `title:*` — فالشاشةُ تعدّل كاشَها فوراً ثمّ تعيد الجلبَ لتأكيد
  * الخادم (كما `TitleActions` في الويب: التفاؤلُ ثمّ الارتداد عند الفشل).
  */
-const HEADER_H = 64;
 const PAGE_PAD = 16;
 
 /** D-1000 — `from="web"`: فُتحت من صفحةٍ ويبيّة؛ أبوابُها بلا `returnTo` والرجوعُ إلى تلك الصفحة */
@@ -374,13 +373,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
       {/* D-1022 — الشريطُ العلويّ: شعارُ Loopz، الاسمُ وسطاً، **والطرفُ الآخر فارغٌ عمداً**
           (قرارُ أحمد: يُترك حتى تُنقل الرئيسيّةُ والإعداداتُ فيُوضع فيه بابُ الإعدادات). السهمُ
           و⋯ على الخلفيّة (D-1020). */}
-      <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-        <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? seed?.name ?? ""}</Text>
-        {/* 🆕 D-1569 — الشعارُ في الطرف كترويسات التبويبات (أحمد ٢٩ أكتوبر «٣أ»): مكانٌ واحدٌ للشعار في كلِّ صفحة */}
-        <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <HomeLogo size={28} />
-        </View>
-      </View>
+      {/* 🆕 D-1624 — **الرجوعُ صعد إلى الشريط** (أحمد ٢ نوفمبر بلقطة Fargo: «كل مكان فيه سهم الرجوع يكون فوق في المنطقة السوداء»):
+          كان على صورة الخلفيّة وحدَه بين الصفحات. الآن الشريطُ الواحد (`TopBar`): الرجوعُ في البداية، الاسمُ وسطاً، و🆕 D-1569 الشعارُ
+          في الطرف كترويسات التبويبات. ⋯ بقي على الصورة («٢أ») */}
+      <TopBar title={d?.name ?? seed?.name ?? ""} onBack={back} onBackLong={home} backLabel={t.closeLabel} end={<HomeLogo size={28} />} />
 
       {/* 🔴 D-1227 — **شجرةٌ واحدةٌ للبذرة وللعمل** (تسجيلُ أحمد: «رمشة إذا دخلت صفحة الفلم»): كانت البذرةُ (D-1221) شجرةً مستقلّةً
           تُستبدل كلُّها حين يصل العمل، فتُركَّب صورتا الخلفيّة والملصق من جديد ويبقى مكانُهما فارغاً إطاراً أو اثنين ثمّ يعودان.
@@ -411,10 +407,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             {/* D-1040 → 🆕 D-1594 — **الحجابُ خلف الكتابة وحدَها**: الاسمُ نزل إلى فوق الأنواع، فالظلُّ يبدأ من أعلى كتلة الكتابة
                 لا من أعلى الملصق — والغلافُ فوقها يُرى (٧٠٪ بدل ٤٥٪، أحمد «٢ أ»). الكتابةُ تبقى على أغمق جزءٍ من التدرّج */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
-            {/* D-1020/D-1022 — الرجوعُ و⋯ في زاويتَي الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب (طلبُ أحمد): الظلُّ أعلاه يكفيهما */}
-            <Pressable onPress={back} onLongPress={home} hitSlop={10} accessibilityLabel={t.closeLabel} style={{ position: "absolute", top: 10, start: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
-              <Chevron color="#fff" />
-            </Pressable>
+            {/* D-1020/D-1022 — ⋯ في زاوية الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب: الظلُّ أعلاه يكفيه. (الرجوعُ في الشريط — D-1624) */}
             {d ? (
               <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
                 <Icon name="dots" size={20} color="#fff" />
@@ -711,14 +704,6 @@ const TEXT_VEIL = 180;
 /* D-1594 — ما يقع تحت الاسم بعد وصول العمل: التفاصيل (١٦) وIMDb (٢٤) والأنواع (٣٦) والفواصل */
 const SEED_BELOW = 98;
 
-function Chevron({ color }: { color: string }) {
-  return (
-    <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      {/* D-1458 ⇐ D-1460: السهمُ الواحد في `ui` (يتبع الاتّجاه) */}
-      <BackChevron color={color} />
-    </View>
-  );
-}
 
 /* D-1040 — الاسمُ وسطرُ التفاصيل فوق الصورة مباشرةً الآن: ظلٌّ خفيفٌ كظلِّ أسماء الملصقات (`PosterCard.shadow`)،
    فيُقرآن على خلفيّةٍ فاتحة حيث يرقّ الحجابُ في أعلاه. لا لونَ ولا مقاسَ تغيّر. */

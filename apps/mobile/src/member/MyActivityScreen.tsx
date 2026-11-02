@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, write } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import type { NativeRoot } from "../shell";
 import { usePullRefresh } from "../pullRefresh";
 import { ActivityList } from "./ActivityList";
@@ -26,7 +26,6 @@ import { useHomeDoor } from "../homeDoor";
  * الرأسُ رأسُ «الإحصائيات» الأصليّة (سهمٌ وعنوان) — شاشةٌ في المكدّس لا جذر، فلا شريطَ سفليّ.
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 export const myActivityKey = ["me:activity"] as const;
 
 export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; scope?: Scope }) {
@@ -105,11 +104,9 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        <Text size={17} weight="700">{t.activityTitle}</Text>
+      {/* D-1624 — الشريطُ الواحد */}
+      <View style={{ paddingTop: insets.top }}>
+        <TopBar title={t.activityTitle} onBack={back} onBackLong={home} backLabel={t.closeLabel} />
       </View>
 
       {!q.data ? (

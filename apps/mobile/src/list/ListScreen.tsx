@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { BackChevron, Button, Text, type ToastTone } from "../ui";
+import { Button, Text, TopBar, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
@@ -58,7 +58,6 @@ import { useHomeDoor } from "../homeDoor";
  * ⚖️ **ما بقي ويبيّاً ببابٍ ظاهر — ثلاثةٌ مربوطةٌ بشاشاتٍ لم تُنقل**: إضافةُ عمل (⇐ البحث) · المشاركةُ لصديق/
  * مجتمع وورقةُ الإعلان (⇐ شاشاتُ الناس) · محرّرُ شرط القائمة الذكيّة. تُغلق حين تُنقل شاشاتُها، لا قبلها.
  */
-const HEADER_H = 64;
 const PAGE_PAD = 16;
 const GAP = 10;
 
@@ -347,20 +346,21 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     <CardStoreContext.Provider value={store}>
       <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
         {/* الترويسة — رجوعٌ · الاسمُ · مشاركة (ترويسةُ صفحتَي العمل والشخص نفسُها) */}
-        <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-          <Text size={15} weight="700" numberOfLines={1}>{d?.name ?? ""}</Text>
-          <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-            <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-              {/* سهمُ الرجوع الواحد (D-1460) — لا رسمَ باليد: كان «^» في العربيّة (D-1592) */}
-              <BackChevron color={tokens.fg} />
-            </View>
-          </Pressable>
-          {d ? (
-            <Pressable onPress={() => void share()} hitSlop={12} accessibilityLabel={t.shareLinkLabel} style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-              <Icon name="share" size={20} color={tokens.fg} />
-            </Pressable>
-          ) : null}
-        </View>
+        {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة، والمشاركةُ في طرفه */}
+        <TopBar
+          title={d?.name ?? ""}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          bordered
+          end={
+            d ? (
+              <Pressable onPress={() => void share()} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="share" size={20} color={tokens.fg} />
+              </Pressable>
+            ) : undefined
+          }
+        />
 
         {!d ? (
           q.isError ? (

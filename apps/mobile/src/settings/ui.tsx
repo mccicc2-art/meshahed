@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { GestureHandlerRootView, ScrollView as GHScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
-import { Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -21,10 +21,9 @@ import { SYSTEM_FONT_CAP } from "../fontScale";
  * بزاوية `card` · فواصلُ `divider` · عنوانُ مجموعةٍ ١٢ خافت) — **ولا عائلةَ
  * صفٍّ ثانية**: بطاقةُ الحساب صفٌّ رمزُه وجهُك (D-849).
  *
- * الترويسةُ ترويسةُ صفحة الشخص (`HEADER_H` ٦٤ · العنوانُ في المنتصف · الرجوعُ
+ * الترويسةُ الشريطُ الواحد (`TopBar` — D-1624 · العنوانُ في المنتصف · الرجوعُ
  * في البداية) — ترويسةٌ واحدةٌ للشاشات المدفوعة لا اثنتان.
  */
-const HEADER_H = 64;
 export const ROW_H = 56;
 
 /** `toast` — مرجعُ مضيف الإشعار الواحد (القاعدة ٣) يُرسم فوق المحتوى لا داخل التمرير */
@@ -75,16 +74,8 @@ export function SettingsScreen({
   const Scroll = gestures ? GHScrollView : ScrollView;
   const page = (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
-      <View style={{ height: HEADER_H, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-        <Text size={15} weight="700" numberOfLines={1}>{title}</Text>
-        <Pressable onPress={back} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD - 4, top: 0, bottom: 0, justifyContent: "center", width: 44 }}>
-          {/* السهمُ `chevron-down` مُداراً مع اتّجاه الصفحة (`rotate-90 rtl:-rotate-90` في الويب) */}
-          <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-            <Icon name="chevron-down" size={24} color={tokens.fg} />
-          </View>
-        </Pressable>
-        {action ? <View style={{ position: "absolute", end: PAGE_PAD - 4, top: 0, bottom: 0, justifyContent: "center" }}>{action}</View> : null}
-      </View>
+      {/* 🆕 D-1624 — الشريطُ الواحد: الرجوعُ بالسهم الواحد في مكانه في كلِّ صفحة، والاسمُ في الوسط، والفعلُ في الطرف */}
+      <TopBar title={title} onBack={back} backLabel={t.closeLabel} end={action ?? undefined} />
       {pinned ? <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 10, gap: 10 }}>{pinned}</View> : null}
       <Scroll
         scrollEnabled={!gestures?.locked}

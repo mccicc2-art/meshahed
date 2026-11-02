@@ -7,7 +7,7 @@ import { queryClient, write } from "../api";
 import { rememberGif } from "../thread/GifPicker";
 import { useApp } from "../state";
 import { push } from "../push";
-import { Button, Text, type ToastTone } from "../ui";
+import { BackChevron, Button, Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
@@ -377,9 +377,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
         {selecting ? (
           <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
             <Pressable onPress={() => setSelected([])} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.msgSelectCancel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-                <Icon name="chevron-down" size={22} color={tokens.fg} />
-              </View>
+              <BackChevron color={tokens.fg} />
             </Pressable>
             <Text size={17} weight="700" accessibilityLabel={t.msgSelectedCount(selected.length)} style={{ flex: 1, paddingHorizontal: 4 }}>{String(selected.length)}</Text>
             {single && single.mine ? (
@@ -403,9 +401,7 @@ export function GroupScreen({ id, from }: { id: string; from: Origin }) {
         ) : (
           <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
             <Pressable onPress={back} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.convBackAria} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ transform: [{ rotate: I18nManager.isRTL ? "-90deg" : "90deg" }] }}>
-                <Icon name="chevron-down" size={22} color={tokens.fg} />
-              </View>
+              <BackChevron color={tokens.fg} />
             </Pressable>
             {/* الترويسةُ كلُّها بابُ معلومات القروب */}
             <Pressable

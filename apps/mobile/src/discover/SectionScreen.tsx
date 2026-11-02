@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FlashList } from "@shopify/flash-list";
 import { api, ApiError, qk } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text, type ToastTone } from "../ui";
+import { Button, Text, TopBar, type ToastTone } from "../ui";
 import { RailCard, RAIL_CARD_W } from "./RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -30,7 +30,6 @@ import { useHomeDoor } from "../homeDoor";
  * «اكتشف») · `usePullRefresh`. والترويسةُ ترويسةُ صفحتَي الشخص والقائمة.
  * 🔑 **«غير مهتمّ» هنا يخفي البطاقةَ في «اكتشف» تحتها أيضاً، فوراً** — المخزنُ واحد (`dismissed` — D-1053).
  */
-const HEADER_H = 64;
 const PAD = 16;
 const GAP = 10;
 const keyOf = (c: CuratedCard) => `${c.kind}-${c.id}`;
@@ -137,14 +136,8 @@ export function SectionScreen({ title, query }: { title: string; query: string }
   return (
     <CardStoreContext.Provider value={store}>
       <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
-        <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center", paddingHorizontal: 56 }}>
-          <Text size={15} weight="700" numberOfLines={1}>{title}</Text>
-          <Pressable onPress={back} onLongPress={home} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-            <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-              <BackChevron color={tokens.fg} />
-            </View>
-          </Pressable>
-        </View>
+        {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة */}
+        <TopBar title={title} onBack={back} onBackLong={home} backLabel={t.closeLabel} bordered />
         {q.isError && items.length === 0 ? (
           <View style={{ padding: PAD, alignItems: "center", gap: 12, paddingTop: 48 }}>
             <Text muted>{t.apiInternal}</Text>

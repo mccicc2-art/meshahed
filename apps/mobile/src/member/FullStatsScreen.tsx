@@ -8,7 +8,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Polygon, Stop } from "react-native-svg";
 import { api } from "../api";
 import { useApp } from "../state";
-import { BackChevron, Button, Text } from "../ui";
+import { Button, Text, TopBar } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
@@ -46,7 +46,6 @@ import { useHomeDoor } from "../homeDoor";
  *    والمشاركةُ في الترويسة، و`/reports` و`/statistics` بابان لهذه الشاشة نفسِها. التطبيقُ وحدَه («٣أ»): الويبُ صفحتاه كما هما.
  */
 const PAGE_PAD = 16;
-const HEADER_H = 56;
 /* 🆕 D-1582 — حدّا قامة الاتّجاه حين يأخذ ما بقي، وما حوله من تسمياتٍ ومفتاح (والهيكلُ بالأدنى) */
 const CHART_MIN = 120;
 /* 🆕 D-1583 → D-1584 — ٢٠٠: بـ٣٨٠ صار الخطُّ أسناناً بطول نصف الشاشة (لقطةُ أحمد: «مكبرها بشكل غبي») — الفراغُ يُملأ بمعلومة
@@ -124,30 +123,39 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
-        <Pressable onPress={back} onLongPress={home} accessibilityRole="button" accessibilityLabel={t.closeLabel} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
-          <BackChevron color={tokens.fg} />
-        </Pressable>
-        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <Text size={17} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Your Stats" : "إحصائياتك"}</Text>
-          {d?.plus ? <PlusPill /> : null}
-        </View>
-        {/* التنقّلُ بين المدد في الترويسة (D-804): السابقُ · اسمُ المدّة · التالي (ولا تالٍ بعد الحاضر) */}
-        {nav && s ? (
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Step dir="prev" label={en ? "Previous" : "السابق"} onPress={() => { haptic.pick(); setOffset((o) => o - 1); }} />
-            <Text size={12} weight="600" numberOfLines={1} style={{ fontVariant: ["tabular-nums"] }}>{s.range.label}</Text>
-            {s.range.can_go_next ? <Step dir="next" label={en ? "Next" : "التالي"} onPress={() => { haptic.pick(); setOffset((o) => Math.min(0, o + 1)); }} /> : <View style={{ width: 32, height: 36 }} />}
-          </View>
-        ) : (
-          /* 🆕 D-1581 — بلا صفِّ المدد يبقى اسمُ المدّة مقروءاً في الترويسة («كل الأوقات» وغيرُ المشترك بلا سهمين) */
-          <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
-        )}
-        {canShare ? (
-          <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
-            <Icon name="share" size={20} color={tokens.fg} />
-          </Pressable>
-        ) : null}
+      {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه، والاسمُ (وشارةُ بلس) في الوسط ما اتّسع، وفي الطرف المدّةُ والمشاركة */}
+      <View style={{ paddingTop: insets.top }}>
+        <TopBar
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          title={
+            <>
+              <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Your Stats" : "إحصائياتك"}</Text>
+              {d?.plus ? <PlusPill /> : null}
+            </>
+          }
+          end={
+            <>
+              {/* التنقّلُ بين المدد في الترويسة (D-804): السابقُ · اسمُ المدّة · التالي (ولا تالٍ بعد الحاضر) */}
+              {nav && s ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Step dir="prev" label={en ? "Previous" : "السابق"} onPress={() => { haptic.pick(); setOffset((o) => o - 1); }} />
+                  <Text size={12} weight="600" numberOfLines={1} style={{ fontVariant: ["tabular-nums"] }}>{s.range.label}</Text>
+                  {s.range.can_go_next ? <Step dir="next" label={en ? "Next" : "التالي"} onPress={() => { haptic.pick(); setOffset((o) => Math.min(0, o + 1)); }} /> : <View style={{ width: 32, height: 36 }} />}
+                </View>
+              ) : (
+                /* 🆕 D-1581 — بلا صفِّ المدد يبقى اسمُ المدّة مقروءاً في الترويسة («كل الأوقات» وغيرُ المشترك بلا سهمين) */
+                <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
+              )}
+              {canShare ? (
+                <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
+                  <Icon name="share" size={20} color={tokens.fg} />
+                </Pressable>
+              ) : null}
+            </>
+          }
+        />
       </View>
 
       {/* الأقسام — نقطةٌ بلون التمييز بجانب النشط (الصورة)، لا خطٌّ ثانٍ تحت خطّ المدّة */}
