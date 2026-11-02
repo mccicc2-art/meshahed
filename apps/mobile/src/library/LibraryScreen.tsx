@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
@@ -21,7 +21,7 @@ import { HeaderEdges } from "../HeaderEnd";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
-import { useChromeHide } from "../ChromeHide";
+import { ChromeTop, useChromeHide } from "../ChromeHide";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { scrollJank } from "../scrollJank";
@@ -483,7 +483,9 @@ export function LibraryScreen() {
         فقفز المحتوى معه — **والويبُ يحرّك الكسوةَ فقط والمحتوى يظهر من تحتها** (`transform`
         على `.chrome-top` وحدَه). فالرأسُ مطلقٌ فوق الألواح، والألواحُ تملأ الشاشةَ وتبدأ
         بحشوةٍ علويّة بارتفاعه — ما مرّ تحته يظهر حين يختبئ، كما في الويب حرفاً. */}
-    <Animated.View
+    <ChromeTop
+      hidden={chrome.hidden}
+      lift={topH}
       onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
       style={{
         position: "absolute",
@@ -493,7 +495,6 @@ export function LibraryScreen() {
         zIndex: 2,
         paddingTop: insets.top,
         backgroundColor: tokens.bg,
-        transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
       }}
     >
     <View>
@@ -554,7 +555,7 @@ export function LibraryScreen() {
       </View>
 
     </View>
-    </Animated.View>
+    </ChromeTop>
 
       {/* D-965 — لوحٌ لكلِّ تبويب: `TabSlide` يرسم النشطَ، ويسلّح الجارَ حيّاً عند قفل السحب */}
       <TabSlide

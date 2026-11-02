@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { afterInteractions } from "../afterInteractions";
 import { Image } from "expo-image";
 import { IOS_RTL, useRtlRailPin } from "../rtlRailPin";
@@ -42,7 +42,7 @@ import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { takeDiscoverEdit, type SmartEdit } from "./aim";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
-import { useChromeHide } from "../ChromeHide";
+import { ChromeTop, useChromeHide } from "../ChromeHide";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
 import { OneTimeHint } from "../library/OneTimeHint";
@@ -470,7 +470,9 @@ export function DiscoverScreen() {
     <CardStoreContext.Provider value={store}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
     {/* ⚖️ D-969 — الرأسُ وحدَه يتحرّك والمحتوى ثابت، كالويب (انظر `LibraryScreen`) */}
-    <Animated.View
+    <ChromeTop
+      hidden={chrome.hidden}
+      lift={topH}
       onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
       style={{
         position: "absolute",
@@ -480,7 +482,6 @@ export function DiscoverScreen() {
         zIndex: 2,
         paddingTop: insets.top,
         backgroundColor: tokens.bg,
-        transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
       }}
     >
     <View>
@@ -522,7 +523,7 @@ export function DiscoverScreen() {
         />
       ) : null}
     </View>
-    </Animated.View>
+    </ChromeTop>
 
       {/* ⚖️ D-961 → D-965 — اللوحُ ينزلق، **والجارُ يُرسم حيّاً** تحت الإصبع لحظةَ قفل السحب */}
       {openTab !== "lists" ? <OpenMark tab={openTab} onDone={endOpen} /> : null}

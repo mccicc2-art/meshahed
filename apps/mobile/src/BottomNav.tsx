@@ -1,7 +1,8 @@
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { dockArea, dockPressIn, dockTouched, tabGone, tabPressed } from "./perfMarks";
-import { Animated, Pressable, View, type ViewInstance } from "react-native";
+import { Pressable, View, type ViewInstance } from "react-native";
+import Reanimated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { Text } from "./ui";
@@ -138,16 +139,15 @@ export function TabDock({ active }: { active: NavKey }) {
   useDockVersion();
   const dock = dockOf(active);
   const navH = navHeight(insets.bottom);
+  /* 🆕 D-1629 — الكسوةُ قيمةٌ مشتركة (`ChromeHide`): الشريطُ يهبط بها على Reanimated فموضعُ اللمس هو موضعُ الرسم.
+     جذرٌ بلا كسوةٍ (أو قبل أن يسجّل) يقرأ صفراً ثابتاً */
+  const still = useSharedValue(0);
+  const hidden = dock?.hidden ?? still;
+  const motion = useAnimatedStyle(() => ({ transform: [{ translateY: hidden.value * navH }] }), [hidden, navH]);
   return (
-    <Animated.View
+    <Reanimated.View
       pointerEvents={dock?.locked ? "none" : "box-none"}
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        transform: dock?.hidden ? [{ translateY: Animated.multiply(dock.hidden, navH) }] : undefined,
-      }}
+      style={[{ position: "absolute", left: 0, right: 0, bottom: 0 }, motion]}
     >
       <BottomNav
         active={active}
@@ -157,6 +157,6 @@ export function TabDock({ active }: { active: NavKey }) {
           if (k !== active) router.navigate(ROOT_PATH[k]);
         }}
       />
-    </Animated.View>
+    </Reanimated.View>
   );
 }

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AccessibilityInfo, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type StyleProp, type ViewStyle } from "react-native";
+import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from "react-native-reanimated";
 import { noteChrome, noteScroll } from "./perfMarks";
 
 /**
@@ -42,9 +43,24 @@ const EDGE = 24;
  */
 const FOLLOW_PX = 72;
 const SETTLE_MS = 120;
+/**
+ * 🆕 D-1629 — **الكسوةُ على محرّكٍ واحد: Reanimated** (تسجيلا خالد ٢ نوفمبر، S24U، وقياسُ T304).
+ * **الشرطُ المثبت** (٤ من ٤ في التسجيلين): يُفتح عملٌ والرأسُ والدوكُ مخفيّان بالتمرير ⇒ بعد الرجوع **الرأسُ (بتبويباته) والدوكُ
+ * ميّتان** والبطاقاتُ والتمريرُ بينهما حيّة؛ ويعودان بفتح عملٍ والكسوةُ ظاهرة ثمّ الرجوع. ونفى `T304` قفلَ السحب والسحباتِ
+ * المعلّقة ومستجيبَ الألواح (`sw=0 pd=0 rh=0`)، **وقاس الدوكَ عند ٨٨٨ من ٨٩١ وهو مرسومٌ ظاهراً** (موضعُه ٨١٤): ما يُرسم غيرُ ما
+ * تُحسب عليه اللمسة. **والسببُ في هذا الملفّ**: قيمةٌ واحدةٌ (`Animated.Value`) يكتبها JS مع كلِّ بكسل (D-1432) ويحرّكها النابضُ
+ * على المحرّك الأصليّ — والمحرّكُ الأصليّ في المعماريّة الجديدة يحرّك المنظرَ ولا يكتب في شجرة التخطيط التي تُحسب عليها اللمسات
+ * والقياس. (أنّ هذا هو مسارُ التفرّق بالضبط داخل React Native استنتاجٌ؛ الشرطُ والمناطقُ الميتةُ وقراءةُ ٨٨٨ مثبتة.)
+ * 🔑 **الآن قيمةٌ مشتركةٌ (`SharedValue`) يكتبها التمريرُ والنابضُ معاً**، وReanimated يُثبت كلَّ إطارٍ في شجرة التخطيط نفسِها
+ * (`ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS` مطفأ) — كما تفعل ألواحُ التبويبات (`TabSlide`) التي لم تمت لمستُها قطّ. الحدودُ
+ * الخمسةُ وتتبّعُ الإصبع والنابضُ بأرقامه كما هي حرفاً: الإحساسُ لا يتغيّر، تغيّر المحرّكُ وحده.
+ */
+const SPRING = { damping: 26, stiffness: 260, mass: 1, overshootClamping: true } as const;
+
+export type ChromeHidden = SharedValue<number>;
 
 export function useChromeHide() {
-  const hidden = useRef(new Animated.Value(0)).current;
+  const hidden = useSharedValue(0);
   const st = useRef({ lastY: 0, acc: 0, hidden: false, off: 0, timer: null as ReturnType<typeof setTimeout> | null });
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
@@ -66,11 +82,7 @@ export function useChromeHide() {
       s.off = h ? FOLLOW_PX : 0;
       /* 🩺 D-1536 — ما يطلبه JS للكسوة، ليُقارَن بما يراه أحمد في `edge.tap` */
       noteChrome(h ? 1 : 0);
-      if (reduceRef.current) {
-        hidden.setValue(h ? 1 : 0);
-        return;
-      }
-      Animated.spring(hidden, { toValue: h ? 1 : 0, damping: 26, stiffness: 260, mass: 1, overshootClamping: true, useNativeDriver: true }).start();
+      hidden.value = reduceRef.current ? (h ? 1 : 0) : withSpring(h ? 1 : 0, SPRING);
     },
     [hidden],
   );
@@ -108,7 +120,7 @@ export function useChromeHide() {
       if (off !== s.off) {
         s.off = off;
         s.hidden = off >= FOLLOW_PX;
-        hidden.setValue(off / FOLLOW_PX);
+        hidden.value = off / FOLLOW_PX;
         noteChrome(off / FOLLOW_PX);
       }
       /* توقّف التمريرُ (إصبعٌ رُفع أو زخمٌ انتهى) والكسوةُ في المنتصف: تكمل إلى الأقرب */
@@ -129,4 +141,29 @@ export function useChromeHide() {
   }, [set]);
 
   return useMemo(() => ({ hidden, onScroll, reveal }), [hidden, onScroll, reveal]);
+}
+
+/**
+ * 🆕 D-1629 — **الرأسُ المختبئ** في الشاشات الثلاث (اكتشف · المكتبة · المجتمع): مطلقٌ فوق الألواح ويصعد بارتفاعه `lift` مع
+ * الكسوة. واحدٌ للثلاث بدلَ ثلاث نسخٍ من `Animated.View` + `Animated.multiply` (القاعدة ٣).
+ */
+export function ChromeTop({
+  hidden,
+  lift,
+  onLayout,
+  style,
+  children,
+}: {
+  hidden: ChromeHidden;
+  lift: number;
+  onLayout?: (e: LayoutChangeEvent) => void;
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+}) {
+  const motion = useAnimatedStyle(() => ({ transform: [{ translateY: -hidden.value * lift }] }), [hidden, lift]);
+  return (
+    <Reanimated.View onLayout={onLayout} style={[style, motion]}>
+      {children}
+    </Reanimated.View>
+  );
 }

@@ -1,5 +1,7 @@
 import React from "react";
-import { Animated, Pressable, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, type StyleProp, type ViewStyle } from "react-native";
+import Reanimated, { interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import type { ChromeHidden } from "./ChromeHide";
 import { notePress } from "./perfMarks";
 import { useApp } from "./state";
 import { Text } from "./ui";
@@ -31,18 +33,22 @@ export function FloatButton({
   showLabel?: boolean;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
-  hidden?: Animated.Value;
+  hidden?: ChromeHidden;
   drop?: number;
 }) {
   const { tokens } = useApp();
-  const motion = hidden
-    ? {
-        transform: [{ translateY: hidden.interpolate({ inputRange: [0, 1], outputRange: [0, drop] }) }],
-        opacity: hidden.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 0.4, 0] }),
-      }
-    : null;
+  /* 🆕 D-1629 — يهبط مع الكسوة على Reanimated (`ChromeHide`) فموضعُ لمسه موضعُ رسمه؛ بلا كسوةٍ صفرٌ ثابت */
+  const still = useSharedValue(0);
+  const h = hidden ?? still;
+  const motion = useAnimatedStyle(
+    () => ({
+      transform: [{ translateY: interpolate(h.value, [0, 1], [0, drop]) }],
+      opacity: interpolate(h.value, [0, 0.6, 1], [1, 0.4, 0]),
+    }),
+    [h, drop],
+  );
   return (
-    <Animated.View pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
+    <Reanimated.View pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
       <Pressable
         onPress={onPress}
         onPressIn={notePress}
@@ -69,6 +75,6 @@ export function FloatButton({
         <Icon name={icon} size={showLabel ? 18 : 20} color={tokens.onAccent} />
         {showLabel ? <Text size={14} weight="700" color={tokens.onAccent}>{label}</Text> : null}
       </Pressable>
-    </Animated.View>
+    </Reanimated.View>
   );
 }

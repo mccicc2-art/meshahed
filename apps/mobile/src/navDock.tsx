@@ -1,5 +1,5 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
-import type { Animated } from "react-native";
+import type { ChromeHidden } from "./ChromeHide";
 import type { NavKey } from "./BottomNav";
 
 /**
@@ -24,7 +24,7 @@ import type { NavKey } from "./BottomNav";
  */
 export type Dock = {
   onGo: (key: NavKey) => void;
-  hidden?: Animated.Value;
+  hidden?: ChromeHidden;
   locked?: boolean;
 };
 

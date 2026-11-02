@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { notePress } from "../perfMarks";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -17,7 +17,7 @@ import { Icon, type IconName } from "../icons";
 import { controlSize, radius } from "../theme";
 import { HeaderEdges } from "../HeaderEnd";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
-import { useChromeHide } from "../ChromeHide";
+import { ChromeTop, useChromeHide } from "../ChromeHide";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { useBootRoot } from "../bootRoot";
@@ -294,9 +294,11 @@ export function CommunityScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      <Animated.View
+      <ChromeTop
+        hidden={chrome.hidden}
+        lift={topH}
         onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg, transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }] }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: insets.top, backgroundColor: tokens.bg }}
       >
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
           <Text size={15} weight="700">{t.peopleTitle}</Text>
@@ -332,7 +334,7 @@ export function CommunityScreen() {
             <View style={{ width: controlSize.filterBtn, marginStart: 8 }} />
           )}
         </View>
-      </Animated.View>
+      </ChromeTop>
 
       {!d ? (
         <View style={{ flex: 1, paddingTop: topH + 12, paddingHorizontal: PAGE_PAD, gap: 12 }}>
