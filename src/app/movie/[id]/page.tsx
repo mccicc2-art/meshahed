@@ -44,7 +44,7 @@ import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { bestSearchTitle } from "@/core/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
-import { TitlePulse } from "@/components/TitlePulse";
+import { TitleRaters } from "@/components/TitleRaters";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
@@ -270,7 +270,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 {title}
               </h1>
               <span className="ms-auto shrink-0 -mt-0.5">
-                <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+                {/* 🆕 D-1628 — النبضُ زرٌّ يفتح «من قيّم» (وتقييمي إن لم أقيّم) */}
+                <TitleRaters kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
             </div>
             {/* 🆕 **لونٌ أقوى وهالة** (D-501) — نفسُ حجّة صفحة المسلسل */}

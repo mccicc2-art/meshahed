@@ -45,7 +45,7 @@ import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { bestSearchTitle } from "@/core/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
-import { TitlePulse } from "@/components/TitlePulse";
+import { TitleRaters } from "@/components/TitleRaters";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/core/when";
@@ -351,7 +351,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 {title}
               </h1>
               <span className="ms-auto shrink-0 -mt-0.5">
-                <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+                {/* 🆕 D-1628 — النبضُ زرٌّ يفتح «من قيّم» (وتقييمي إن لم أقيّم) */}
+                <TitleRaters kind="tv" tmdbId={tvId} title={tv.name} posterPath={tv.poster_path} backdropPath={tv.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
             </div>
             {/* 🆕 **ولونُ السطر `foreground/85` لا `muted`** (D-501): هذا

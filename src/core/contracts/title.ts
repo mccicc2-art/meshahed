@@ -186,6 +186,11 @@ export type TitleCommunityPayload = {
   talk_path: string;
   /** 🆕 D-1567 — صاحبُ جلسة؟ قلبُ الزائر يفتح تسجيلَ الدخول — اختياريٌّ: خادمٌ أقدم لا يرسله */
   signed_in?: boolean;
+  /**
+   * 🆕 D-1628 — **من قيّم العمل** (برقمٍ أو بمراجعة): الناسُ وحدَهم (لا شخصيّاتُ لوبز — لا تدخل المتوسّط)، تقييمي أوّلاً ثمّ الأحدث.
+   * الحسابُ الخاصُّ الذي لا أتابعه لا يُرسل (`can_view_profile`) — يُعدّ من نبض الترويسة ولا يُسمّى. اختياريٌّ: خادمٌ أقدم لا يرسله.
+   */
+  raters?: { user_id: string; name: string; username: string | null; avatar_url: string | null; rating: number; has_review: boolean; mine: boolean }[];
 };
 
 /** `POST /api/v1/track/favorite` — تبديلُ المفضّل؛ يعود بالحالة الحقيقيّة */

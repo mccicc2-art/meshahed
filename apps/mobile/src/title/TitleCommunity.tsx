@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
@@ -223,6 +223,7 @@ export function ReviewSheet({
   head,
   prompt = false,
   onRemove,
+  allRatings,
 }: {
   initial: { rating: number | null; review: string | null; has_spoiler: boolean };
   /** D-1015 — اسمُ السؤال: «قيّم هذا العمل» افتراضاً، أو «قيّم الموسم س الحلقة ص» */
@@ -234,6 +235,8 @@ export function ReviewSheet({
   prompt?: boolean;
   /** «حذف تقييمي» — يُرسم فقط لمن له تقييمٌ محفوظ */
   onRemove?: () => void;
+  /** 🆕 D-1628 — «عرض جميع التقييمات» لمن لم يقيّم بعد (البابُ من النجمة) — يغيب حين لا مقيِّمين */
+  allRatings?: { label: string; onPress: () => void };
   busy: boolean;
   onClose: () => void;
   onSave: (v: { rating: number; review: string | null; has_spoiler: boolean }) => void;
@@ -304,6 +307,88 @@ export function ReviewSheet({
             <Text size={13} color={tokens.error}>{t.deleteRating}</Text>
           </Pressable>
         ) : null}
+        {allRatings && !prompt ? <Button label={allRatings.label} variant="ghost" onPress={allRatings.onPress} /> : null}
+      </View>
+    </Sheet>
+  );
+}
+
+/**
+ * ====== 🆕 D-1628 — «من قيّم العمل» ======
+ *
+ * أحمد ٢ نوفمبر: «كيف أشوف من قيم العمل؟» — لم يكن مكان: تبويبُ المراجعات يعرض من كتب نصّاً، ومن قيّم برقمٍ وحده لا يظهر
+ * في أيِّ مكان. حكمُه: **الكلُّ إلّا الحساباتِ الخاصّة التي لا أتابعها — تُعدّ ولا تُسمّى** («٢أ»)؛ والنجمةُ لمن لم يقيّم
+ * تفتح التقييمَ وبه «عرض جميع التقييمات»، ولمن قيّم تفتح القائمةَ وبها «تقييمي» («٣»).
+ * 🔑 الصفوفُ من `title_reviews` نفسِها (تحترم `can_view_profile`: الخاصُّ لا يظهر إلّا لمتابعيه) — لا دالّةَ ولا هجرةَ جديدة.
+ * والخاصُّ المحجوبُ = عددُ النبض − ما رُسم.
+ * **الورقةُ الواحدة في الوسط** (D-1032 — تفتحها النجمةُ كما يفتح التقييم)، لا مكوّنٌ ثانٍ.
+ */
+export const RATERS_WORDS = {
+  ar: { title: "تقييمات المجتمع", all: "عرض جميع التقييمات", mine: "تقييمي", rate: "قيّم العمل", review: "مراجعة", hidden: (n: string) => `و${n} من حسابات خاصة`, empty: "لا تقييمات بعد" },
+  en: { title: "Community ratings", all: "See all ratings", mine: "My rating", rate: "Rate it", review: "Review", hidden: (n: string) => `+${n} from private accounts`, empty: "No ratings yet" },
+} as const;
+
+export function RatersSheet({
+  data,
+  votes,
+  myRating,
+  onRate,
+  onOpen,
+  onClose,
+}: {
+  data: TitleCommunityPayload | undefined;
+  /** عددُ النبض — منه يُعرف كم حساباً خاصّاً لم يُرسم */
+  votes: number;
+  /** `undefined` للزائر: لا زرَّ تقييم */
+  myRating: number | null | undefined;
+  onRate: () => void;
+  onOpen: (username: string) => void;
+  onClose: () => void;
+}) {
+  const { tokens, locale } = useApp();
+  const w = RATERS_WORDS[locale === "en" ? "en" : "ar"];
+  const rows = data?.raters;
+  const hidden = rows ? Math.max(0, votes - rows.length) : 0;
+  return (
+    <Sheet title={w.title} onClose={onClose} placement="center">
+      <View style={{ gap: 12 }}>
+        {myRating !== undefined ? (
+          <Button
+            label={myRating != null ? `${w.mine} · ★ ${num(myRating, locale)}` : w.rate}
+            variant={myRating != null ? "ghost" : "primary"}
+            onPress={onRate}
+          />
+        ) : null}
+        {!data ? (
+          <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 24 }} />
+        ) : !rows?.length && !hidden ? (
+          <Text size={13} muted style={{ textAlign: "center", paddingVertical: 24 }}>{w.empty}</Text>
+        ) : (
+          <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+            {(rows ?? []).map((r) => (
+              <Pressable
+                key={r.user_id}
+                disabled={!r.username}
+                onPress={() => { if (r.username) onOpen(r.username); }}
+                accessibilityRole={r.username ? "link" : undefined}
+                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.6 : 1 })}
+              >
+                <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                  {r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text size={14} weight={r.mine ? "700" : "600"} numberOfLines={1}>{r.name}</Text>
+                  {r.has_review ? <Text size={11} muted numberOfLines={1}>{w.review}</Text> : null}
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="star-filled" size={13} color={tokens.accent} />
+                  <Text size={13} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{num(r.rating, locale)}</Text>
+                </View>
+              </Pressable>
+            ))}
+            {hidden ? <Text size={12} muted style={{ textAlign: "center", paddingTop: 10 }}>{w.hidden(num(hidden, locale))}</Text> : null}
+          </ScrollView>
+        )}
       </View>
     </Sheet>
   );

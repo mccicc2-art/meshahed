@@ -28,7 +28,7 @@ import { ArtSheet } from "./ArtSheet";
 import { HomeLogo } from "../Logo";
 import { Clipboard } from "react-native";
 import { useExtras, RatingsLine, Pulse, WatchWhere, ListSheet, CastRail, RelatedRails, extrasKey } from "./TitleExtras";
-import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCommunity";
+import { useCommunity, CommunityTab, ReviewSheet, RatersSheet, RATERS_WORDS, communityKey } from "./TitleCommunity";
 import type {
   FavoriteBody,
   FollowBody,
@@ -110,6 +110,14 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   /** 🆕 D-1141 — ردُّ زائر: حالتي مجهولة — الأفعالُ والعدّاداتُ هيكلٌ معطَّل حتى الترقية */
   const guest = isGuest(d);
   const up = useGuestUpgrade(guest, q.refetch);
+  /* 🆕 D-1628 — **النجمةُ بابان** (أحمد ٢ نوفمبر: «بالأول يظهر له قيم و زر عرض جميع التقييمات و إذا كان قيمها يظهر له القائمة و زر
+     تقيمي»): من لم يقيّم يفتح التقييمَ وتحته «عرض جميع التقييمات»؛ من قيّم — والزائرُ — يفتح «من قيّم» وفيه زرُّ تقييمي */
+  const [ratersOpen, setRatersOpen] = useState(false);
+  const openPulse = () => {
+    if (!d) return;
+    if (guest || d.me.rating != null) setRatersOpen(true);
+    else setReviewOpen("edit");
+  };
   /* 🆕 D-1118 — `title.open`: من فتح الشاشة إلى أوّل بيانات (`cached=1` إن رُسمت من الكاش/الملفّ) */
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
   useEffect(() => {
@@ -285,6 +293,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     onSuccess: () => {
       settle();
       void qc.invalidateQueries({ queryKey: communityKey(kind, id) });
+      /* 🆕 D-1628 — والنبضُ معه: متوسّطُ الترويسة وعددُها (ومنه عدُّ الخاصّ في «من قيّم») يشملان تقييمي الآن */
+      void qc.invalidateQueries({ queryKey: extrasKey(kind, id) });
       setReviewOpen(false);
     },
     onError: fail,
@@ -440,8 +450,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته — وخانتُه بعرضها دائماً */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                   <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d?.name ?? seed?.name ?? ""}</Text>
-                  <View style={{ width: PULSE_W, height: 28, justifyContent: "center", alignItems: "flex-start" }}>
-                    {d ? <Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /> : null}
+                  {/* 🆕 D-1628 — **طرفُ النجمة على خطِّ ⋯ فوقها** (أحمد ٢ نوفمبر بلقطة: «خلها موازيه للثلاث نقاط» — «١أ»): كانت تلتصق
+                      بجهة الاسم فيتغيّر طرفُها بطول رقمها. الآن تلتصق بالحافّة الخارجيّة وتبتعد عنها `PULSE_INSET` — حيث يبدأ رسمُ النقاط
+                      (زرٌّ ٣٤ على `PAGE_PAD`، والنقاطُ في رمزٍ ٢٠ تبدأ عند ٣ من حافّته) — فيبقى الخطُّ واحداً مهما طال العدد */}
+                  <View style={{ width: PULSE_W, height: 28, justifyContent: "center", alignItems: "flex-end", paddingEnd: PULSE_INSET }}>
+                    {d ? <Pulse x={x} mine={d.me.rating} onPress={openPulse} /> : null}
                   </View>
                 </View>
                 <View style={{ height: 17, justifyContent: "center" }}>
@@ -632,6 +645,21 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           onClose={() => setReviewOpen(false)}
           onSave={(v) => rate.mutate(v)}
           onRemove={() => rate.mutate({ rating: null })}
+          allRatings={
+            (x?.pulse.votes ?? 0) > 0
+              ? { label: RATERS_WORDS[locale === "en" ? "en" : "ar"].all, onPress: () => { setReviewOpen(false); setRatersOpen(true); } }
+              : undefined
+          }
+        />
+      ) : null}
+      {ratersOpen && d ? (
+        <RatersSheet
+          data={community.data}
+          votes={x?.pulse.votes ?? 0}
+          myRating={guest ? undefined : d.me.rating}
+          onRate={() => { setRatersOpen(false); setReviewOpen("edit"); }}
+          onOpen={(u) => { setRatersOpen(false); openProfile(router, u, from); }}
+          onClose={() => setRatersOpen(false)}
         />
       ) : null}
       {listOpen && d ? (
@@ -701,7 +729,8 @@ const VEIL = require("../../assets/poster-veil.png");
 /* D-1594 — ارتفاعُ الحجاب فوق أسفل الملصق: يغطّي كتلةَ الكتابة (اسمٌ بسطرين + تفاصيل + IMDb + الأنواع ≈ ١٥٠) ويبدأ تدرّجُه فوقها */
 const TEXT_VEIL = 180;
 /* 🆕 D-1625 — مقاساتُ الخانات الثابتة في كتلة الاسم: عرضُ النجمة (★ 9.0 (999))، سطرُ IMDb، وصفُّ الأنواع بمربّع المشاهدة (٤٠) */
-const PULSE_W = 68;
+const PULSE_INSET = 10;
+const PULSE_W = 68 + PULSE_INSET;
 const RATINGS_H = 22;
 const GENRE_ROW_H = 40;
 /* 🆕 D-1627 — **لا رماديَّ ينتظر** (أحمد بلقطةٍ ٢ نوفمبر: «مو لازم شي رمادي يخليك تنتظر خلها بدون»): الخاناتُ تبقى

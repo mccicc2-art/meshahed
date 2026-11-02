@@ -68,6 +68,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
         /* 🆕 D-1567 — مراجعتي أوّلاً، ثمّ الأعضاءُ بالإعجاب، ثمّ شخصيّاتُ لوبز تحتهم (`compareReviews` — القاعدةُ نفسُها في الويب) */
         .sort((a, b) => compareReviews({ mine: a.mine, ai: !!a.persona, likes: a.likes, at: a.updated_at }, { mine: b.mine, ai: !!b.persona, likes: b.likes, at: b.updated_at })),
       signed_in: !!uid,
+      /* 🆕 D-1628 — «من قيّم»: الصفوفُ نفسُها بلا شرط النصّ (من قيّم برقمٍ وحده لم يكن يظهر في أيِّ مكان) */
+      raters: reviews
+        .filter((r) => !r.persona && typeof r.rating === "number")
+        .map((r) => ({
+          user_id: r.id,
+          name: displayNameOf(r, t.anonymousUser),
+          username: r.username,
+          avatar_url: r.avatar_url,
+          rating: r.rating as number,
+          has_review: !!r.review?.trim(),
+          mine: r.isMine,
+        }))
+        .sort((a, b) => Number(b.mine) - Number(a.mine)),
       bulletins: [
         ...thread
           .filter((p) => !p.parentId && p.kind)
