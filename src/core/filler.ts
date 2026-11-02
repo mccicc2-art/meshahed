@@ -107,6 +107,28 @@ const SHOWS: Record<number, FillerShow> = {
   /* بلا فلر — المختلطةُ وحدَها، فلا يظهر لهما إلّا «المسار الذهبي» */
   88046: { name: "Fire Force", total: 48, ranges: "", mixed: "25" },
   61223: { name: "Akame ga Kill!", total: 24, ranges: "", mixed: "19" },
+  /*
+   * 🆕 D-1622 — «١أ» (أحمد ٢ نوفمبر: «نقدر نوصل ٥٠ انمي؟»): ثلاثة عشر أخرى، كلٌّ قُرئ من المصدر مرّتين (سطرُ النطاقات
+   * وجدولُ الحلقات) وطوبق رقمُه بعدد حلقات TMDB. ما لا فلرَ فيه ولا مختلطةَ لا يدخل (لا شارةَ «بلا فلر»). «المجموع» حارسٌ:
+   * عددُ المصدر، أو الجزءُ الذي يقع فيه الفلر حين يزيد المصدرُ حلقاتٍ ليست عند TMDB — القنّاص ١٩٩٩ (أوفا ٦٣–٩٢)، ساكورا
+   * (حلقةُ تمهيدٍ بعد ٧٠)، يو يو هاكشو (أوفا ١١٣–١١٤)؛ وزيكسال قائمتُه في المصدر تقف عند ١٢٣ من ١٤٦.
+   * تُركت: بوكيمون (ترقيمُ المصدر ينزاح عن TMDB من الحلقة ٣٨ حتى ٩٥ حلقة) · يو-غي-أوه 5D's (ينزاح بحلقةٍ من ~٨٦) ·
+   * دراغون بول GT (كلُّه فلر) · كاي (ترقيمٌ دوليّ) · الخطايا السبع (فلرُه ليس عند TMDB) · ديث نوت (مختلطتُه الحلقةُ الأولى
+   * والأخيرة) · ما لم يُعثر عليه في المصدر أو تعذّر.
+   */
+  45952: { name: "Hunter x Hunter (1999)", total: 62, ranges: "2 7 18-20", mixed: "4-6 11-12 26-27 32-34 46" },
+  12536: { name: "Yu-Gi-Oh! GX", total: 180, ranges: "9 13-20 23 34-35 38 42 47 54 60 63-64 66 71-72 74 80-81 85-86 90-92 105 156 161-167", mixed: "5-6 10-11 21-22 27-28 36-37 39-41 43 48-50 61-62 70 73 75-79 82 87-89 96 99" },
+  45854: { name: "Yu-Gi-Oh! Zexal", total: 123, ranges: "15-16 21 44-45", mixed: "5-8 17-18 26-32 36-39 50-53" },
+  38603: { name: "Beelzebub", total: 60, ranges: "11-14 27-28 52-57 60", mixed: "15 17" },
+  38251: { name: "Toriko", total: 147, ranges: "1 42-43 51 69-70 80-82 86 99 112-113 124-125 130-131 147", mixed: "146" },
+  45857: { name: "Katekyo Hitman Reborn!", total: 203, ranges: "56 84-85 97 120-121 142-154 158 179-188", mixed: "10 29 73 119 141 159 178 189" },
+  27845: { name: "The Prince of Tennis", total: 178, ranges: "21 24 64 70-75 87-90 98-104 106-116 129-176", mixed: "10 22-23 27 76-85" },
+  35790: { name: "Cardcaptor Sakura", total: 70, ranges: "12-15 19-24 27-34 36-38 40 43 53 55-58 60-64" },
+  57706: { name: "Ranma ½", total: 161, ranges: "14 21 46 48-52 54 56-60 62-64 66 70-71 73-74 77-78 81 83-84 86-87 90-92 94 97-104 108-109 111-113 115-120 123-124 127 131 134-135 137-140 145 147-148 150 152-153 156-157 159", mixed: "6 17 22 27 34-36 55 76 93 114 130 158" },
+  46345: { name: "Tokyo Mew Mew", total: 52, ranges: "5-6 8-9 14-16 20 22-24 29-35 39 42-43", mixed: "4 19 21 37" },
+  60654: { name: "Magi", total: 50, ranges: "", mixed: "21-25" },
+  61374: { name: "Tokyo Ghoul", total: 24, ranges: "", mixed: "13-24" },
+  30669: { name: "Yu Yu Hakusho", total: 112, ranges: "", mixed: "11 13 109 111" },
 };
 
 /**
@@ -153,6 +175,11 @@ export function storyEpisodes(tmdbId: number): number[] | null {
   return st ? [...new Set(Object.values(st.lists).flatMap((r) => parseRanges(r)))].sort((a, b) => a - b) : null;
 }
 
+/** 🆕 D-1623 — هل للعمل قائمةُ فلرٍ أو قصّة — الخادمُ لا يجلب مفاتيحَ عملٍ لا يُخفى منه شيء */
+export function hasSkipList(tmdbId: number): boolean {
+  return tmdbId in SHOWS || tmdbId in STORY;
+}
+
 /** الحلقاتُ المطلقةُ من نصّ النطاقات — مرتّبةٌ بلا تكرار */
 export function parseRanges(ranges: string): number[] {
   const out = new Set<number>();
@@ -170,7 +197,7 @@ export function fillerCount(tmdbId: number): number {
   return s ? parseRanges(s.ranges).length : 0;
 }
 
-type SeasonHead = { season_number: number; episode_count: number; first_episode?: number };
+export type SeasonHead = { season_number: number; episode_count: number; first_episode?: number };
 
 /** من المطلق إلى مفاتيح المواسم — بحارس الترقيم (أعلاه) */
 function mapKeys(show: FillerShow, abs: readonly number[], seasons: readonly SeasonHead[]): Set<string> | null {
@@ -274,7 +301,20 @@ export function countKeys(keys: Iterable<string>, season: number, lo: number, hi
   return n;
 }
 
-/** مفتاحُ الحفظ على الجهاز (التطبيق `SecureStore`، الويب `localStorage`) — الاختيارُ للأعمال كلِّها */
+/**
+ * 🆕 D-1623 — **المفاتيحُ المخفيّة لعملٍ بوضعٍ محفوظ** — ما ترسمه صفحةُ العمل حرفاً (`activeMode`)، ليعدّ الخادمُ (الرئيسيّة ·
+ * المكتبة · الودجت) بالحساب نفسِه. `null` = لا يُخفى شيء.
+ */
+export function skipKeysOf(tmdbId: number, seasons: readonly SeasonHead[], saved: SkipMode): Set<string> | null {
+  if (saved === "all" || !hasSkipList(tmdbId)) return null;
+  const f = fillerKeys(tmdbId, seasons);
+  const g = goldenKeys(tmdbId, seasons);
+  const m = activeMode(saved, f, g);
+  return m === "filler" ? f : m === "golden" ? g : null;
+}
+
+/** مفتاحُ الحفظ على الجهاز (التطبيق `SecureStore`، الويب `localStorage`) — الاختيارُ للأعمال كلِّها.
+ *  🆕 D-1623 — **والحسابُ مرجعُه** (`profiles.skip_mode`): الجهازُ نسختُه السريعة، وما في الحساب ينزل إلى كلِّ جهاز. */
 export const HIDE_FILLER_KEY = "loopz.hideFiller";
 
 /** كلماتُ الفلر — هنا لا في `i18n.ts` لأنّ القاموسَ محجوزٌ لمهمّةٍ أخرى في السجلّ (274)؛ تنتقل إليه حين يُفرَج عنه */

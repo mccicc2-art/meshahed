@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { after } from "next/server";
 import { getEpisodeGroup, getEpisodeGroups } from "@/lib/tmdb";
 import { fixedParts, partSeason, partsFromGroups, type GroupSet, type SeasonPart } from "@/core/seasonParts";
 
@@ -53,9 +54,21 @@ export async function seasonPartsFor(
   const count = seasons.find((s) => s.season_number === season)?.episode_count ?? 0;
   const first = firstEpisode(season);
   const last = first + count - 1;
-  const parts = await Promise.race([
-    cached(tvId, season, first, last).catch(() => null),
-    new Promise<null>((r) => setTimeout(() => r(null), BUDGET_MS)),
-  ]);
-  return { season, parts: parts ?? fixedParts(first, last) };
+  /* 🆕 D-1623 — **ما سبق المهلةَ يكمل بعد الردّ** (مراجعة ٢ نوفمبر): الوعدُ الذي خسر السباق كان يُترك معلّقاً، وVercel قد
+     يجمّد الدالّةَ بعد الردّ فلا تُكتب الآركاتُ في الخبيئة أبداً — فتعود الزيارةُ الباردة بأجزاءٍ ثابتة وتتبدّل الأسماء. `after`
+     يُبقي الدالّةَ حيّةً حتى يكتمل، والمؤقّتُ يُلغى */
+  const work = cached(tvId, season, first, last).catch(() => null);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const parts = await Promise.race([work, new Promise<null>((r) => (timer = setTimeout(() => r(null), BUDGET_MS)))]);
+  clearTimeout(timer);
+  if (parts === null) {
+    try {
+      after(work);
+    } catch {
+      /* خارج طلب (بناءٌ ثابت): لا شيءَ يُنتظر */
+    }
+  }
+  const list = parts ?? fixedParts(first, last);
+  /* D-1623 — جزءٌ واحدٌ ليس تقسيماً (١٠١ حلقة بعد ضمّ الذيل) */
+  return list.length >= 2 ? { season, parts: list } : null;
 }

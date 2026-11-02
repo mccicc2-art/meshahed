@@ -202,7 +202,9 @@ export function isComplete(watched: number, aired: number): boolean {
  */
 export function nextUnwatchedEpisode(
   tv: TvDetails,
-  watchedKeys: Set<string>,
+  watchedKeys: ReadonlySet<string>,
+  /** 🆕 D-1623 — المخفيُّ بالفلر/الذهبيّ (`skipKeysOf`) لا يُقترح: «التالية» هي التالية في صفحة العمل */
+  skip?: ReadonlySet<string> | null,
 ): { season: number; episode: number } | null {
   /* 🔴 🆕 **بقيّةُ D-603**: كان يعدّ من ١ في كلِّ موسم، ففي العمل
      المطلق ظنّ «S2 E1» غيرَ مشاهَدةٍ ومفاتيحُ صاحبها 62–77 —
@@ -216,7 +218,7 @@ export function nextUnwatchedEpisode(
     const first = firstOf.get(season) ?? 1;
     for (let i = 0; i < count; i++) {
       const e = first + i;
-      if (!watchedKeys.has(`${season}:${e}`)) {
+      if (!watchedKeys.has(`${season}:${e}`) && !skip?.has(`${season}:${e}`)) {
         return { season, episode: e };
       }
     }

@@ -8,7 +8,9 @@ import {
   getUserId,
   getMyRating,
   getMyArtFor,
+  getProfile,
 } from "@/lib/data";
+import { hasSkipList } from "@/core/filler";
 import { airedPerSeason, airedEpisodeCount, firstEpisodeOf } from "@/core/progress";
 import { seasonPartsFor } from "@/lib/seasonParts";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
@@ -59,7 +61,7 @@ export async function GET(
 }
 
 async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayload> {
-  const [tv, trailer, following, watched, rating, art] = await Promise.all([
+  const [tv, trailer, following, watched, rating, art, profile] = await Promise.all([
     getTv(tvId),
     getTrailer("tv", tvId).catch(() => null),
     signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
@@ -67,6 +69,8 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
     // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
     signedIn ? getMyRating(tvId, "tv") : null,
     signedIn ? myArt(tvId, "tv") : null,
+    /* D-1623 — وضعُ الإخفاء من الحساب لعملٍ في القوائم وحدَه (`getProfile` مخبّأةٌ للطلب) */
+    signedIn && hasSkipList(tvId) ? getProfile().catch(() => null) : null,
   ]);
   const aired = airedPerSeason(tv);
   const first = firstEpisodeOf(tv);
@@ -117,6 +121,7 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
       watched: [...watched],
       rating: rating?.rating ?? null,
       art,
+      skip_mode: profile?.skip_mode ?? null,
     },
   };
 }

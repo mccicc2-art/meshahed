@@ -9,13 +9,16 @@ test("each list matches the filler count stated by its source", () => {
     /* D-1620 — الستّةُ الجديدة */
     12609: 21, 62715: 14, 46298: 2, 65930: 4, 57041: 23, 28136: 40,
     902: 91, 3570: 98, 34141: 25, 38464: 10, 37863: 3, 37305: 1, 50712: 27, 88046: 0, 61223: 0,
+    /* D-1622 — الثلاثة عشر */
+    45952: 5, 12536: 39, 45854: 5, 38603: 13, 38251: 18, 45857: 30, 27845: 79, 35790: 33, 57706: 71, 46345: 21, 60654: 0, 61374: 0, 30669: 0,
   };
   for (const [id, n] of Object.entries(stated)) assert.equal(fillerCount(Number(id)), n, `tmdb ${id}`);
 });
 
-test("D-1620 — twenty-five shows in the list", () => {
-  const ids = [37854, 46260, 31910, 30984, 30983, 46261, 73223, 70881, 35610, 12971, 12609, 62715, 46298, 65930, 57041, 28136, 902, 3570, 34141, 38464, 37863, 37305, 50712, 88046, 61223];
-  assert.equal(new Set(ids).size, 25);
+test("D-1622 — thirty-eight shows in the list", () => {
+  const ids = [37854, 46260, 31910, 30984, 30983, 46261, 73223, 70881, 35610, 12971, 12609, 62715, 46298, 65930, 57041, 28136, 902, 3570, 34141, 38464, 37863, 37305, 50712, 88046, 61223,
+    45952, 12536, 45854, 38603, 38251, 45857, 27845, 35790, 57706, 46345, 60654, 61374, 30669];
+  assert.equal(new Set(ids).size, 38);
   for (const id of ids) assert.ok(fillerCount(id) + mixedCount(id) > 0, `tmdb ${id}`);
 });
 
@@ -119,4 +122,18 @@ test("D-1622 — episodes after the reviewed horizon stay visible in Conan's gol
   assert.ok(g?.has("1:1219")); // مُراجَعةٌ وخارج القصّة
   assert.ok(!g?.has("1:1220"));
   assert.ok(!g?.has("1:1230"));
+});
+
+test("D-1622 — the new mixed counts, and the guard follows TMDB's layout", () => {
+  const mixed: Record<number, number> = { 45952: 11, 12536: 32, 45854: 21, 38603: 2, 38251: 1, 45857: 8, 27845: 14, 35790: 0, 57706: 13, 46345: 4, 60654: 5, 61374: 12, 30669: 4 };
+  for (const [id, n] of Object.entries(mixed)) assert.equal(mixedCount(Number(id)), n, `tmdb ${id}`);
+  /* القنّاص ١٩٩٩ عند TMDB ٦٢ حلقة — يكفي الحارس */
+  assert.equal(fillerKeys(45952, [{ season_number: 1, episode_count: 62 }])?.size, 5);
+  /* ريبورن بترقيمٍ مطلق عبر ثمانية مواسم: ١٤٢ أوّلُ الموسم الخامس */
+  const reborn = fillerKeys(45857, [33, 32, 8, 68, 13, 23, 12, 14].map((c, i, a) => ({ season_number: i + 1, episode_count: c, first_episode: 1 + a.slice(0, i).reduce((x, y) => x + y, 0) })));
+  assert.ok(reborn?.has("5:142"));
+  assert.equal(reborn?.size, 30);
+  /* أمير التنس بترقيمٍ من ١ في كلِّ موسم: المطلقةُ ٢٧ (مختلطة) هي الأولى في الموسم الثاني */
+  const tennis = mixedKeys(27845, [26, 27, 22, 26, 27, 37, 13].map((c, i) => ({ season_number: i + 1, episode_count: c })));
+  assert.ok(tennis?.has("2:1"));
 });

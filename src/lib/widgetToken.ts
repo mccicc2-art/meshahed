@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { getMovie, getMovieIn, getTv } from "@/lib/tmdb";
 import { airedEpisodeCount, nextUnwatchedEpisode } from "@/core/progress";
+import { hasSkipList, parseSkipMode } from "@/core/filler";
+import { shownProgress, skipKeysForTv } from "@/core/skipProgress";
 import { episodeKey } from "@/core/keys";
 import { getDict, type Locale } from "@/core/i18n";
 import { intIn } from "@/core/validate";
@@ -218,11 +220,19 @@ export async function widgetMark(
   revalidatePath("/");
   revalidatePath("/stats");
 
-  const n = nextUnwatchedEpisode(tv, keys);
+  /* 🆕 D-1623 — إخفاءُ صاحب الرمز من حسابه (الودجتُ بلا جلسة — مفتاحُ الخدمة): «التالية» و«باقي N» بلا المخفيّ كصفحة العمل */
+  let skip: Set<string> | null = null;
+  if (hasSkipList(showTmdbId)) {
+    const { data: prof } = await db.from("profiles").select("skip_mode").eq("id", userId).maybeSingle();
+    skip = skipKeysForTv(tv, parseSkipMode((prof as { skip_mode?: string | null } | null)?.skip_mode ?? null));
+  }
+  const n = nextUnwatchedEpisode(tv, keys, skip);
   if (!n) return { next: null };
   const t = getDict(who.lang);
-  const aired = airedEpisodeCount(tv);
-  const left = aired > counted ? aired - counted : 0;
+  const shown = skip ? shownProgress(tv, keys, skip) : null;
+  const aired = shown ? shown.aired : airedEpisodeCount(tv);
+  const seen = shown ? shown.watched : counted;
+  const left = aired > seen ? aired - seen : 0;
   const label = [`S${n.season} E${n.episode}`, left > 0 ? t.leftEps(left) : null].filter(Boolean).join(" · ");
   return { next: { season: n.season, episode: n.episode, label } };
 }

@@ -15,6 +15,7 @@ import { notifyMessage, notifyReply, notifyShareReply, notifySignal, notifyTalkM
 import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/core/region";
 import { TITLE_MODE_COOKIE, parseTitleMode, accountTitleMode } from "@/core/titleMode";
+import { parseSkipMode, type SkipMode } from "@/core/filler";
 import {
   CONTENT_PREFS_COOKIE,
   hasAnyPrefs,
@@ -855,6 +856,29 @@ export async function setTitleMode(value: string) {
   } catch (e) {
     console.error("[title-mode] account write failed:", e instanceof Error ? e.message : e);
   }
+}
+
+/**
+ * 🆕 D-1623 — **«إخفاء الفلر»/«المسار الذهبي» في الحساب** (أحمد ٢ نوفمبر — «٤أ»): كان على الجهاز وحده، فالرئيسيّةُ والمكتبةُ
+ * والودجت تعدّ الفلرَ وصفحةُ العمل تخفيه. الآن يُكتب هنا من الويب والتطبيق، والخادمُ يعدّ به في كلِّ مكان (`lib/skipProgress`).
+ * والجهازُ يبقى نسختَه السريعة. ⚠️ وسقوطُ الكتابة لا يُسقط الاختيار على هذا الجهاز — السطرُ في السجلّ يقول إنّ الحسابَ لم يلحق.
+ */
+export async function setSkipMode(value: string): Promise<{ mode: SkipMode }> {
+  const mode = parseSkipMode(value);
+  try {
+    const supabase = await createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return { mode };
+    const { error } = await supabase.from("profiles").upsert({ id: auth.user.id, skip_mode: mode }, { onConflict: "id" });
+    if (error) console.error("[skip-mode] account write failed:", error.message);
+    else {
+      revalidatePath("/");
+      revalidatePath("/library");
+    }
+  } catch (e) {
+    console.error("[skip-mode] account write failed:", e instanceof Error ? e.message : e);
+  }
+  return { mode };
 }
 
 /**

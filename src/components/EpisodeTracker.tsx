@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { runOrQueue } from "@/lib/offline";
+import { setSkipMode } from "@/lib/actions";
 import { tap } from "@/lib/haptics";
 import { episodeKey } from "@/core/keys";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
@@ -86,6 +87,7 @@ export function EpisodeTracker({
   absolute = false,
   locale,
   guest = false,
+  accountSkipMode = null,
 }: {
   showTmdbId: number;
   /* 🆕 **العنوانُ والملصقُ ورايةُ المتابعة** (D-777، حكمُ أحمد: «نعم —
@@ -127,6 +129,8 @@ export function EpisodeTracker({
    * (D-152)، **و401 يُعامَل زائراً في كلِّ حال** لا خطأً.
    */
   guest?: boolean;
+  /** 🆕 D-1623 — وضعُ الإخفاء المحفوظ في الحساب (`profiles.skip_mode`)، `null` = لم يختر بعد — فيبقى ما على الجهاز */
+  accountSkipMode?: string | null;
 }) {
   const t = getDict(locale);
   /* 🆕 **مواسمُ تنتظر سؤالَ التاريخ** (D-798) — `null` = لا سؤال.
@@ -234,12 +238,13 @@ export function EpisodeTracker({
   const mode = activeMode(saved, filler, golden);
   useEffect(() => {
     try {
+      /* D-1623 — الحسابُ أوّلاً (ما اختاره في أيِّ جهاز)، والجهازُ لمن لم يختر في حسابه */
       // eslint-disable-next-line react-hooks/set-state-in-effect -- قراءةُ الجهاز بعد الترطيب: الخادمُ لا يعرفها
-      setMode(parseSkipMode(window.localStorage.getItem(HIDE_FILLER_KEY)));
+      setMode(parseSkipMode(accountSkipMode ?? window.localStorage.getItem(HIDE_FILLER_KEY)));
     } catch {
       /* تخزينٌ محجوب: يبقى الظهور */
     }
-  }, []);
+  }, [accountSkipMode]);
   const pickMode = (m: Exclude<SkipMode, "all">) => {
     tap(6);
     const v: SkipMode = mode === m ? "all" : m;
@@ -249,6 +254,8 @@ export function EpisodeTracker({
     } catch {
       /* الحفظُ راحةٌ لا شرط */
     }
+    /* D-1623 — والحسابُ يحفظه فتعدّ به الرئيسيّةُ والمكتبةُ والودجت؛ الزائرُ يبقى على جهازه */
+    if (!guestRef.current) void setSkipMode(v).catch(() => undefined);
   };
   const skip = mode === "filler" ? filler : mode === "golden" ? golden : null;
   /* 🆕 D-1620 — «٤أ»: عملٌ كلُّه موسمٌ واحدٌ مقسَّمٌ أجزاءً — الأجزاءُ بلا رأس الموسم، مفتوحةً دائماً */
@@ -348,6 +355,8 @@ export function EpisodeTracker({
   const guestRef = useRef(guest);
   const [guestSeen, setGuestSeen] = useState(guest);
 
+  /* 🆕 D-1623 — موسمٌ فشلت جلبتُه: العملُ المقسَّمُ أجزاءً بلا رأسِ موسم (`solo`) لا بابَ فيه لإعادة الفتح — فزرُّ «حاول مجدداً» مكانَ الهيكل */
+  const [failedSeason, setFailedSeason] = useState<number | null>(null);
   const loadSeason = useCallback(
     async (n: number): Promise<TrackerEpisode[]> => {
       const have = episodesBySeason[n];
@@ -373,6 +382,7 @@ export function EpisodeTracker({
         return eps;
       } catch {
         setErr(t.showLoadFailed);
+        setFailedSeason(n);
         return [];
       } finally {
         setLoading(null);
@@ -652,8 +662,9 @@ export function EpisodeTracker({
   };
 
   /**
-   * 🆕 D-1618 — **«الجزء كامل»** على قاعدة «الموسم كامل» حرفاً (D-785): التأشيرُ يختم ما قبل الجزء أيضاً (`airedUpTo` بحدِّ
-   * ما قبل أوّل حلقاته)، والإزالةُ جزؤه وحدَه. ولا ورقةَ «متى شاهدتها» (D-798): تلك تؤرّخ موسماً كاملاً — ألفُ حلقةٍ بتاريخٍ واحد.
+   * 🆕 D-1618 — **«الجزء كامل»**: حلقاتُ الجزء المبثوثة. ولا ورقةَ «متى شاهدتها» (D-798): تلك تؤرّخ موسماً كاملاً.
+   * 🆕 D-1623 — **الجزءُ وحدَه لا ما قبله** (أحمد ٢ نوفمبر — «٢ب»، توحيداً على التطبيق): كان يختم ما قبله كـ«الموسم كامل» (D-785)
+   * فضغطةٌ على الجزء ١٣ من كونان تؤشّر ١٣٠٠ حلقة. «حتى هنا» على الحلقة يبقى بابَ «شاهدتُ كلَّ ما قبل».
    */
   function togglePart(s: SeasonSummary, part: SeasonPart, mark: boolean) {
     setErr(null);
@@ -662,12 +673,8 @@ export function EpisodeTracker({
       const own = eps.filter((e) => e.episode_number >= part.first && e.episode_number <= part.last && hasAired(e.air_date) && !(mark && skip?.has(episodeKey(s.season_number, e.episode_number))));
       if (!own.length) return;
       const before = watched;
-      const prior = mark
-        ? airedUpTo(s.season_number, part.first - 1).filter((o) => !watched.has(episodeKey(o.season, o.episode)))
-        : [];
       setWatched((prev) => {
         const set = new Set(prev);
-        for (const o of prior) set.add(episodeKey(o.season, o.episode));
         for (const e of own) {
           const key = episodeKey(s.season_number, e.episode_number);
           if (mark) set.add(key);
@@ -679,7 +686,7 @@ export function EpisodeTracker({
         await runOrQueue("setSeasonWatched", {
           showTmdbId,
           ...(mark ? followMeta() : {}),
-          episodes: [...prior, ...own.map((e) => ({ season: s.season_number, episode: e.episode_number, runtime: e.runtime }))],
+          episodes: own.map((e) => ({ season: s.season_number, episode: e.episode_number, runtime: e.runtime })),
           watched: mark,
         });
       } catch (e) {
@@ -954,7 +961,21 @@ export function EpisodeTracker({
 
               {isOpen && (
                 <div className="acc-in">
-                  {!episodes ? (
+                  {!episodes && failedSeason === s.season_number && loading !== s.season_number ? (
+                    <div className="flex justify-center border-t border-border px-3.5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFailedSeason(null);
+                          setErr(null);
+                          void loadSeason(s.season_number);
+                        }}
+                        className={chipClass(false, "sm")}
+                      >
+                        {t.errorRetry}
+                      </button>
+                    </div>
+                  ) : !episodes ? (
                     <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
                       {Array.from({ length: Math.min(s.episode_count, 6) }, (_, i) => (
                         <li key={i} className="flex items-center gap-3 px-3.5 py-2.5">

@@ -82,12 +82,13 @@ function setLike(row: CommunityFeedRow, liked: boolean): CommunityFeedRow {
  */
 export type LikeRef =
   | { t: "review"; user: string; tmdb: number; media: "tv" | "movie" }
-  | { t: "news"; key: string }
+  /* 🆕 D-1623 — إعجابُ الخبر يُحفظ للعمل لا للبطاقة (`post_reactions`: المستخدم · tmdb · النوع) — فكلُّ بطاقة خبرٍ للعمل نفسِه قلبٌ واحد */
+  | { t: "news"; tmdb: number; media: "tv" | "movie" }
   | { t: "post"; id: string };
 
 export function likeRefOf(row: CommunityFeedRow): LikeRef | null {
   if (row.kind === "talk") return { t: "post", id: row.item.id };
-  if (row.kind === "news") return { t: "news", key: row.item.key };
+  if (row.kind === "news") return { t: "news", tmdb: row.item.tmdb_id, media: row.item.media_type };
   if (row.item.listId) return null;
   return { t: "review", user: row.item.person.id, tmdb: row.item.tmdb_id, media: row.item.media_type };
 }
@@ -96,7 +97,7 @@ function sameLike(row: CommunityFeedRow, ref: LikeRef): boolean {
   const r = likeRefOf(row);
   if (!r || r.t !== ref.t) return false;
   if (r.t === "post" && ref.t === "post") return r.id === ref.id;
-  if (r.t === "news" && ref.t === "news") return r.key === ref.key;
+  if (r.t === "news" && ref.t === "news") return r.tmdb === ref.tmdb && r.media === ref.media;
   return r.t === "review" && ref.t === "review" && r.user === ref.user && r.tmdb === ref.tmdb && r.media === ref.media;
 }
 
@@ -123,10 +124,9 @@ export function mirrorThreadLike(ref: LikeRef, liked: boolean): void {
   const flip = <T extends { likes: number; liked_by_me: boolean }>(x: T): T => ({ ...x, liked_by_me: liked, likes: Math.max(0, x.likes + (liked ? 1 : -1)) });
   queryClient.setQueriesData<ThreadPayload>({ queryKey: ["thread"] }, (p) => {
     if (!p) return p;
-    const work = ref.t === "review" && p.work.tmdb_id === ref.tmdb && p.work.media_type === ref.media;
+    const work = ref.t !== "post" && p.work.tmdb_id === ref.tmdb && p.work.media_type === ref.media;
     const h = p.head;
-    const headHit =
-      (h.kind === "review" && work && ref.t === "review" && h.author.id === ref.user) || (h.kind === "post" && ref.t === "news" && h.key === ref.key);
+    const headHit = (h.kind === "review" && work && ref.t === "review" && h.author.id === ref.user) || (h.kind === "post" && work && ref.t === "news");
     const head = headHit && (h.kind === "review" || h.kind === "post") && h.liked_by_me !== liked ? flip(h) : h;
     let hit = head !== h;
     const rows = p.rows.map((r) => {
@@ -175,16 +175,22 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
     haptic.pick();
     const was = likeOf(row).liked;
     patchRow(row.key, (r) => setLike(r, !was));
-    /* D-1612 — والخيطُ المسخَّنُ لهذا الصفّ يرى القلبَ نفسَه */
+    /* D-1612 — والخيطُ المسخَّنُ لهذا الصفّ يرى القلبَ نفسَه؛ 🆕 D-1623 — وبطاقاتُ الخطّ الأخرى للشيء نفسه (رأيُه في يومٍ آخر · خبرٌ آخر للعمل) */
     const ref = likeRefOf(row);
-    if (ref) mirrorThreadLike(ref, !was);
+    if (ref) {
+      mirrorFeedLike(ref, !was);
+      mirrorThreadLike(ref, !was);
+    }
     /* 🆕 R58 — منشورُ النقاش يُعجَب بمعرّفه في الغرفة (`thread/like`) — بابُ الغرفة نفسُه */
     (row.kind === "talk"
       ? write<{ done: true }>("/api/v1/thread/like", { post_id: row.item.id, on: !was })
       : write<{ done: true }>("/api/v1/community/like", likeBody(row, !was)))
       .catch((e: unknown) => {
         patchRow(row.key, (r) => setLike(r, was));
-        if (ref) mirrorThreadLike(ref, was);
+        if (ref) {
+          mirrorFeedLike(ref, was);
+          mirrorThreadLike(ref, was);
+        }
         sayRef.current(errorText(tRef.current, e));
       })
       .finally(() => busy.current.delete(k));

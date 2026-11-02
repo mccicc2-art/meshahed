@@ -44,10 +44,21 @@ export function partSeason(seasons: readonly { season_number: number; episode_co
   return regular[0].episode_count > PARTS_FROM ? regular[0].season_number : null;
 }
 
-/** أجزاءٌ ثابتة من `first` إلى `last` — الأخيرُ ما بقي */
+/** ذيلٌ أقصرُ من هذا يُضمّ إلى الجزء قبله (D-1623) */
+const SHORT_TAIL = PART_SIZE / 4;
+
+/**
+ * أجزاءٌ ثابتة من `first` إلى `last` — الأخيرُ ما بقي.
+ * 🆕 D-1623 — وذيلٌ قصير (أقلُّ من ربع جزء) يُضمّ إلى ما قبله: موسمٌ بـ١٠١ حلقة كان «جزء ١ (١٠٠) · جزء ٢ (حلقةٌ واحدة)».
+ */
 export function fixedParts(first: number, last: number, size = PART_SIZE): SeasonPart[] {
   const out: SeasonPart[] = [];
   for (let a = first; a <= last; a += size) out.push({ first: a, last: Math.min(last, a + size - 1), name: null });
+  const tail = out[out.length - 1];
+  if (out.length >= 2 && tail.last - tail.first + 1 < SHORT_TAIL) {
+    out.pop();
+    out[out.length - 1] = { ...out[out.length - 1], last: tail.last };
+  }
   return out;
 }
 

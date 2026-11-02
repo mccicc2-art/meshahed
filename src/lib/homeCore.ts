@@ -43,6 +43,8 @@ import {
   type ListItem,
 } from "@/lib/data";
 import { getTv, getMovie, trending, type SearchResult } from "@/lib/tmdb";
+import { shownProgressFor, skipModeOf } from "@/lib/skipProgress";
+import { skipKeysForTv } from "@/core/skipProgress";
 import { railGuard } from "@/lib/topChart";
 import { nextUnwatchedEpisode, airedEpisodeCount, percentOf } from "@/core/progress";
 import { whenLabel } from "@/core/when";
@@ -503,14 +505,20 @@ export async function buildHomeBody({
   /* نستطلع بقدر ما نعرض: معرفةُ «الحلقة التالية» تلزم لكلِّ بطاقة، وبها
      نعرف مَن ينتظره موسمٌ جديد فيبقى في «للمشاهدة». */
   const CONTINUE_PROBE = CONTINUE_CARDS;
+  /* 🆕 D-1623 — **الإخفاءُ من الحساب** (أحمد ٢ نوفمبر — «٤أ»): من اختار «إخفاء الفلر» أو «المسار الذهبي» يرى هنا عدَّ صفحة العمل
+     نفسَه — المعروضُ والمشاهَدُ بلا المخفيّ، و«التالية» تتخطّاه. لأعمال القوائم وحدَها، ومن لم يختر لا يدفع نداءً واحداً */
+  const skipMode = skipModeOf(profile);
+  const shown = await shownProgressFor(rawTv.map((r) => r.tmdb_id), skipMode, rewatchSinceMap);
+  const countsOf = (row: (typeof rawTv)[number]) => {
+    const s = shown.get(row.tmdb_id);
+    if (s) return s;
+    const aired = row.aired_episodes ?? row.total_episodes ?? 0;
+    return { aired, watched: Math.min(watchedByShow.get(row.tmdb_id) ?? 0, aired || Infinity) };
+  };
   const earlyContinueIds: number[] = summary
     ? rawTv
         .map((row) => {
-          const aired = row.aired_episodes ?? row.total_episodes ?? 0;
-          const watched = Math.min(
-            watchedByShow.get(row.tmdb_id) ?? 0,
-            aired || Infinity,
-          );
+          const { aired, watched } = countsOf(row);
           return { id: row.tmdb_id, watched, aired, state: watchStateOf(row, watched) };
         })
         /* D-1280 — الشرطُ نفسُه الذي يرسم الصفَّ أدناه (`inContinue`): المبدوءُ بلا حلقةٍ يُستطلع فتُعرف
@@ -575,7 +583,7 @@ export async function buildHomeBody({
             () => new Set<string>(),
           ),
         ]);
-        const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
+        const next = tv ? nextUnwatchedEpisode(tv, keys, skipKeysForTv(tv, skipMode)) : null;
         return {
           id,
           backdropPath: tv?.backdrop_path ?? null,
@@ -804,12 +812,8 @@ export async function buildHomeBody({
   const upcoming: UpcomingItem[] = [];
 
   for (const row of tvFollows) {
-    const aired = row.aired_episodes ?? row.total_episodes ?? 0;
-    // لا تتجاوز المشاهَد ما عُرض، وإلا خرجت نسبة فوق ١٠٠٪
-    const watched = Math.min(
-      watchedByShow.get(row.tmdb_id) ?? 0,
-      aired || Infinity,
-    );
+    // لا تتجاوز المشاهَد ما عُرض، وإلا خرجت نسبة فوق ١٠٠٪ — 🆕 D-1623 وبلا المخفيّ لمن اختار الإخفاء (`countsOf`)
+    const { aired, watched } = countsOf(row);
     items.push({
       id: row.tmdb_id,
       name: row.title,
@@ -901,7 +905,7 @@ export async function buildHomeBody({
               () => new Set<string>(),
             ),
           ]);
-          const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
+          const next = tv ? nextUnwatchedEpisode(tv, keys, skipKeysForTv(tv, skipMode)) : null;
           return {
             id: i.id,
             backdropPath: tv?.backdrop_path ?? null,

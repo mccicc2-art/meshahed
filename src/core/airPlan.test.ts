@@ -134,3 +134,13 @@ test("D-1614c — one skipped week keeps the weekly rhythm; two breaks or anothe
   );
   assert.equal(shifted.weekly, false);
 });
+
+test("D-1623 — a season whose whole schedule is published is not extended after its last date", () => {
+  /* عشرُ حلقاتٍ أسبوعيّة كلُّها مؤرَّخة تنتهي ٥ ديسمبر — والمسلسلُ مجدَّدٌ (`open`) */
+  const full: AirEp[] = Array.from({ length: 10 }, (_, i) => ({ ep: i + 1, date: new Date(Date.UTC(2026, 9, 3 + 7 * i)).toISOString().slice(0, 10) }));
+  const plan = airPlanOf(full, "2026-11-01", true);
+  assert.equal(plan.more, 0);
+  assert.equal(planDates(plan, "2026-11-01", "2027-02-28").filter((d) => d.expected).length, 0);
+  /* ما يُضاف حلقةً حلقةً (موعدٌ قادمٌ واحد) يبقى مفتوحاً */
+  assert.equal(airPlanOf(weekly, "2026-11-01", true).more, null);
+});

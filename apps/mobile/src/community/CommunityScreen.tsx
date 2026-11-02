@@ -613,22 +613,25 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     });
   }, [k, feedView.rows, sliceKey, mineKey, acts.meId]);
   const held = seen && seen.slice === sliceKey ? seen.keys : null;
+  /* 🆕 D-1623 — **الفاصلُ في «الأحدث» وحدَه** (أحمد ٢ نوفمبر — «١ب»): «الأكثر تفاعلاً» يرتّب بالإعجابات، فالجديدُ قليلُ الإعجاب
+     يقع تحت ما رآه — لا يصحّ أنّ ما فوق أوّلِ مَرئيٍّ هو الجديد، فلا فاصلَ هناك (ولا يُحسب أنّه رأى ما لم يصعد إليه) */
+  const latest = d.prefs?.sort !== "smart";
   const fresh = useMemo(() => {
-    if (!held) return null;
+    if (!held || !latest) return null;
     /* الفاصلُ فوق أوّل ما رآه؛ لا شيءَ ممّا رآه باقٍ ⇐ لا فاصل */
     const at = feedView.rows.findIndex((r) => held.has(r.key));
     if (at <= 0) return null;
     const count = feedView.rows.slice(0, at).filter((r) => !(mineKey && r.key.startsWith(mineKey)) && !(r.kind === "talk" && r.item.person.id === acts.meId)).length;
     return count ? { at, count } : null;
-  }, [held, feedView.rows, mineKey, acts.meId]);
+  }, [held, latest, feedView.rows, mineKey, acts.meId]);
   /* D-1613b — **ما رآه يُحفظ حين يراه**: لا فاصلَ (رأى كلَّ ما في الخطّ)، أو بلغ أعلى الخطّ بنفسه فقرأ الجديد. والفاصلُ في الشاشة
      يبقى كما هو إلى السحب أو التبديل («٣ أ») — الحفظُ للزيارة التالية وحدَها */
   const markSeen = useCallback(() => {
     if (k === "activity" && sliceKey) rememberSeen(sliceKey, feedView.rows.map((r) => r.key));
   }, [k, sliceKey, feedView.rows]);
   useEffect(() => {
-    if (held && !fresh) markSeen();
-  }, [held, fresh, markSeen]);
+    if (held && latest && !fresh) markSeen();
+  }, [held, latest, fresh, markSeen]);
   /* الفتحةُ تقف عند الفاصل — مرّةً لكلِّ تركيب، وما لم يلمس الخطَّ بإصبعه (من سحب لا يُنقل) */
   const touched = useRef(false);
   const jumped = useRef(false);
@@ -648,7 +651,8 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       onScroll(e);
       const y = e.nativeEvent.contentOffset.y;
-      if (y > 300) wasDown.current = true;
+      /* 🆕 D-1623 — «٣»: جديدٌ قصير (منشوران) يزيح الخطَّ أقلَّ من ٣٠٠ — ومع فاصلٍ في الشاشة يكفي أن ينزل عن رأس الخطّ */
+      if (y > 300 || (fresh && y > 60)) wasDown.current = true;
       if (y < 60) {
         markSeen();
         if (wasDown.current && fresh) setSeen({ slice: sliceKey, keys: new Set(feedView.rows.map((r) => r.key)) });

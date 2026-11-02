@@ -1,3 +1,4 @@
+import { shownProgressFor, skipModeOf } from "@/lib/skipProgress";
 import {
   getProfile,
   getFollows,
@@ -77,7 +78,13 @@ export async function GET() {
         /* D-954 — `getProfile` مخبّأةٌ للطلب (`cache`) فلا رحلةَ إضافيّةً فعليّاً */
         getProfile().catch(() => null),
       ]);
-    const localized = await localizeFollows(followRows, locale);
+    /* 🆕 D-1623 — من اختار إخفاء الفلر/الذهبيّ يرى عدَّ صفحة العمل (بلا المخفيّ) — لأعمال القوائم وحدَها، في الموجة نفسِها */
+    const rewatch = new Map<number, string>();
+    for (const f of followRows) if (f.media_type === "tv" && f.rewatch_started_at) rewatch.set(f.tmdb_id, f.rewatch_started_at);
+    const [localized, shown] = await Promise.all([
+      localizeFollows(followRows, locale),
+      shownProgressFor(followRows.filter((f) => f.media_type === "tv" && !f.dropped).map((f) => f.tmdb_id), skipModeOf(profileRow), rewatch),
+    ]);
 
     // خريطةُ العدّ: من الملخّص، وإلا من الصفوف الخام (السقوطُ نفسُه في الويب)
     const watchedByShow = new Map<number, { watched: number; last: string | null }>();
@@ -101,9 +108,13 @@ export async function GET() {
     };
     const items: LibraryItem[] = followRows.map((f, n) => {
       const isTv = f.media_type === "tv";
-      const w = isTv ? watchedByShow.get(f.tmdb_id) : undefined;
+      const sh = isTv ? shown.get(f.tmdb_id) : undefined;
+      const raw = isTv ? watchedByShow.get(f.tmdb_id) : undefined;
+      const w = raw && sh ? { ...raw, watched: sh.watched } : raw;
+      /* الصفُّ بمعروضه بعد الإخفاء — فـ«مكتمل» يعني ما يعنيه في صفحة العمل */
+      const fs = sh ? { ...f, aired_episodes: sh.aired } : f;
       const movieWatched = !isTv && movieIds.has(f.tmdb_id);
-      const status = isTv ? showStatusOf(f, w?.watched ?? 0) : movieStatusOf(f, movieWatched);
+      const status = isTv ? showStatusOf(fs, w?.watched ?? 0) : movieStatusOf(f, movieWatched);
       counts[status] += 1;
       const key = artKey(f.media_type, f.tmdb_id);
       /* الصفُّ المترجَم يقابل الخامَ بموضعه: `localizeFollows` تعيد المصفوفةَ
@@ -118,7 +129,7 @@ export async function GET() {
         added_at: f.added_at,
         status,
         watched: isTv ? (w?.watched ?? 0) : movieWatched ? 1 : 0,
-        aired: isTv ? (f.aired_episodes ?? f.total_episodes ?? 0) : 1,
+        aired: isTv ? (sh?.aired ?? f.aired_episodes ?? f.total_episodes ?? 0) : 1,
         next_air_date: f.next_air_date ?? null,
         last_watched: w?.last ?? null,
         rewatch_count: f.rewatch_count ?? 0,
@@ -126,7 +137,7 @@ export async function GET() {
         display_poster_path: art?.poster_path ?? loc?.poster_path ?? f.poster_path,
         is_anime: animeFlags.get(key) ?? null,
         is_favorite: favorites.has(key),
-        paused: isTv && status === "watching" && watchStateOf(f, w?.watched ?? 0) === "paused",
+        paused: isTv && status === "watching" && watchStateOf(fs, w?.watched ?? 0) === "paused",
       };
     });
     const dt = defaultTab(tabPrefs, "shows");

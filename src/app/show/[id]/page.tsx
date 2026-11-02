@@ -16,8 +16,10 @@ import {
   getMyFavorites,
   getProviderLinks,
   getUser,
+  getProfile,
   artKey,
 } from "@/lib/data";
+import { hasSkipList } from "@/core/filler";
 import {
   getTv,
   getTrailer,
@@ -106,7 +108,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
-  const [userRegion, tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse, user] =
+  const [userRegion, tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse, user, skipProfile] =
     await Promise.all([
     /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا يعتمد
        عليها أحدٌ فيها، فدخلتها. */
@@ -133,6 +135,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     /* 🆕 D-892: هل القارئُ زائر؟ `getUser` مخبّأٌ للطلب (تقرأه قراءاتُ
        الموجة نفسُها) فلا رحلةَ إضافيّة — والمتتبّعُ يحتاج الجوابَ ليصمت. */
     getUser(),
+    /* 🆕 D-1623 — «إخفاء الفلر»/«المسار الذهبي» من الحساب لعملٍ في القوائم وحدَه (`getProfile` مخبّأةٌ للطلب) */
+    hasSkipList(tvId) ? getProfile().catch(() => null) : Promise.resolve(null),
   ]);
   const following = followState.following;
 
@@ -556,6 +560,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 initialWatched={[...watched]}
                 initialEpisodeRatings={[...epRatings.values()]}
                 guest={!user}
+                accountSkipMode={skipProfile?.skip_mode ?? null}
                 locale={locale}
               />
             ),

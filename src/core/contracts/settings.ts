@@ -76,6 +76,8 @@ export type LocaleBody = { locale: string };
 export type ThemeBody = { theme: string };
 export type FontBody = { ui: string; content: string };
 export type TitleModeBody = { mode: string };
+/** 🆕 D-1623 — `POST /api/v1/me/settings/skip-mode`: `all` · `filler` · `golden` («1» القديمة تُقرأ `filler`) */
+export type SkipModeBody = { mode: string };
 export type RegionBody = { region: string };
 export type ContentPrefsBody = Partial<ContentPrefs>;
 /** الحقولُ الثلاثةُ معاً كما يرسلها `AccountSettings` في الويب — كتابةٌ واحدةٌ للثلاثة */

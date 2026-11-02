@@ -155,6 +155,8 @@ export interface Profile {
   ui_state?: unknown;
   /** 🆕 D-1269 (الهجرة ١٩٣) — طريقةُ عرض أسماء الأعمال كما اختارها صاحبُ الحساب؛ `null` = لم يختر */
   title_mode?: string | null;
+  /** 🆕 D-1623 (الهجرة ٢٣٢) — «إخفاء الفلر»/«المسار الذهبي» للحساب (`all` · `filler` · `golden`)؛ `null` = لم يختر */
+  skip_mode?: string | null;
   /** 🆕 **لونُ التمييز الشخصيّ** (D-825 · هجرة ١٦٣) — رمزٌ لا لون */
   theme_accent?: string | null;
   /* 🆕 **الخطّة** (D-633، الهجرة ١٤٠) — والحكمُ عليها في `lib/plan.ts`
@@ -342,7 +344,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone, title_mode",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone, title_mode, skip_mode",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -396,6 +398,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
           timezone: null,
           /* 🆕 D-1269 — وأسماءُ العناوين تسقط إلى «لم يختر»: الجهازُ يبقى على كوكيّه */
           title_mode: null,
+          skip_mode: null,
         };
       } else {
         const legacy = await supabase
@@ -434,6 +437,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             verified_at: null,
             timezone: null,
             title_mode: null,
+            skip_mode: null,
           };
         }
       }

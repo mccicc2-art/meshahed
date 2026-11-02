@@ -1,3 +1,4 @@
+import { shownProgressFor, skipModeOf } from "@/lib/skipProgress";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -171,7 +172,15 @@ export default async function LibraryPage({
        يصله القارئُ بضغطةٍ بلا طلبٍ جديد.** */
     getMyFavorites(),
   ]);
-  const follows = await localizeFollows(followRows, locale);
+  /* 🆕 D-1623 — عدُّ صفحة العمل لمن اختار إخفاء الفلر/الذهبيّ (أعمالُ القوائم وحدَها، بجانب الترجمة لا بعدها) */
+  const rewatchOf = new Map<number, string>();
+  for (const f of followRows) if (f.media_type === "tv" && f.rewatch_started_at) rewatchOf.set(f.tmdb_id, f.rewatch_started_at);
+  const [follows, shown] = await Promise.all([
+    localizeFollows(followRows, locale),
+    getProfile()
+      .catch(() => null)
+      .then((p) => shownProgressFor(followRows.filter((f) => f.media_type === "tv" && !f.dropped).map((f) => f.tmdb_id), skipModeOf(p), rewatchOf)),
+  ]);
 
   /* الأغلفة المختارة (D-131) — تُطبَّق هنا على مصدرٍ واحد: كل بطاقةٍ في
      المكتبة تقرأ من `follows`، فاستبدالُ الملصق مرّةً هنا يغطّي التبويبات
@@ -249,9 +258,13 @@ export default async function LibraryPage({
   // الترتيب داخل كل تبويب: ما أنت في وسطه، ثم ما لم تبدأه، ثم المكتمل
   const shows: (GridItem & { rank: number; progressSort: number })[] = follows
     .filter((f) => f.media_type === "tv")
-    .map((f) => {
+    .map((raw) => {
+      /* D-1623 — الصفُّ بمعروضه ومشاهَده بعد الإخفاء، فالحالةُ والنسبةُ والعدّادُ كصفحة العمل */
+      const sh = shown.get(raw.tmdb_id);
+      const f = sh ? { ...raw, aired_episodes: sh.aired } : raw;
       const aired = f.aired_episodes ?? f.total_episodes ?? 0;
-      const watched = Math.min(watchedByShow.get(f.tmdb_id) ?? 0, aired || Infinity);
+      const seen = sh ? sh.watched : (watchedByShow.get(f.tmdb_id) ?? 0);
+      const watched = Math.min(seen, aired || Infinity);
       const done = aired > 0 && watched >= aired && watched > 0;
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
       const dropped = !!f.dropped;
@@ -275,7 +288,7 @@ export default async function LibraryPage({
            (rank)، ورقائق التقسيم (طلب المالك) تحتاجها بالاسم */
         /* **من الوصفة الواحدة** (D-876): **قائمةُ المكتبة الذكيّة تقرأ الحالةَ
            نفسَها** — فاستُخرجت لا نُسخت (D-376). */
-        status: showStatusOf(f, watchedByShow.get(f.tmdb_id) ?? 0),
+        status: showStatusOf(f, seen),
         /* D-1280 — «ابدأ» بلا حلقةٍ يرتَّب مع ما يُتابَع، كما تقول حالتُه */
         rank: dropped ? 3 : !done && (watched > 0 || watchStateOf(f, watched) === "started") ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,

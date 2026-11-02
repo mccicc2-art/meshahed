@@ -92,7 +92,8 @@ export function CalendarScreen({ from }: { from: NativeRoot | "web" }) {
 
   const cellW = Math.floor((width - PAGE_PAD * 2 - GAP * 6) / 7);
   /* D-1616 — ملصقُ الخانة: عرضُها بلا حشوتها، ونسبةُ ٢:٣ كملصقات «أسبوعك» */
-  const posterW = cellW - 8;
+  /* D-1623 — الحاشيةُ ٤+٤ والإطارُ ١+١: البوستر كان يتجاوز إطارَ الخانة بنقطةٍ من كلِّ جانب */
+  const posterW = cellW - 10;
   const posterH = Math.round(posterW * 1.5);
   const arrow = (m: string | null, glyph: string, label: string) =>
     m ? (

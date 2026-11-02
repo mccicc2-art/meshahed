@@ -11,10 +11,18 @@ test("only a show whose whole run is one regular season over 100 episodes is spl
 });
 
 test("fixed parts of 100, the last one holds what remains", () => {
-  const p = fixedParts(1, 1218);
+  const p = fixedParts(1, 1250);
   assert.equal(p.length, 13);
   assert.deepEqual(p[0], { first: 1, last: 100, name: null });
-  assert.deepEqual(p[12], { first: 1201, last: 1218, name: null });
+  assert.deepEqual(p[12], { first: 1201, last: 1250, name: null });
+});
+
+test("D-1623 — a short tail joins the part before it", () => {
+  assert.deepEqual(fixedParts(1, 101), [{ first: 1, last: 101, name: null }]);
+  const p = fixedParts(1, 1218);
+  assert.equal(p.length, 12);
+  assert.deepEqual(p[11], { first: 1101, last: 1218, name: null });
+  assert.equal(fixedParts(1, 1225).length, 13);
 });
 
 const ep = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => ({ season_number: 1, episode_number: a + i }));

@@ -567,7 +567,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     /* الخبرُ والرأيُ لعملٍ دائماً — «النقاش العام» غرفةٌ لا رأسَ «خبرٍ» أو «رأيٍ» لها */
     const wk = d.work.media_type === "movie" ? "movie" : "tv";
     /* 🆕 D-1612 — بطاقتُه في الخطّ وسطرُه في غرفة العمل (R56) يريان القلبَ نفسَه */
-    const ref: LikeRef = h.kind === "post" ? { t: "news", key: h.key } : { t: "review", user: h.author.id, tmdb: d.work.tmdb_id, media: wk };
+    const ref: LikeRef = h.kind === "post" ? { t: "news", tmdb: d.work.tmdb_id, media: wk } : { t: "review", user: h.author.id, tmdb: d.work.tmdb_id, media: wk };
     const set = (on: boolean) => {
       patch((p) => (p.head.kind === "post" || p.head.kind === "review" ? { ...p, head: { ...p.head, liked_by_me: on, likes: Math.max(0, p.head.likes + (on ? 1 : -1)) } } : p));
       mirrorFeedLike(ref, on);

@@ -71,6 +71,8 @@ export type TvTitlePayload = TitleBase & {
     rating: number | null;
     /** 🆕 D-1498 — غلافي المختار (`title_art`)، أو null */
     art?: TitleArtChoice | null;
+    /** 🆕 D-1623 — «إخفاء الفلر»/«المسار الذهبي» من الحساب (`all` · `filler` · `golden`)، `null` = لم يختر — لأعمال القوائم وحدَها */
+    skip_mode?: string | null;
   };
 };
 

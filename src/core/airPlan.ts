@@ -48,6 +48,8 @@ function addDays(d: string, n: number): string {
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** مواعيدُ قادمةٌ معلنةٌ بهذا العدد (وكلُّ حلقةٍ مؤرَّخة) = جدولُ الموسم منشورٌ كلُّه — لا توقّعَ بعده (D-1623) */
+const FULL_SCHEDULE = 4;
 
 /**
  * **الخطّةُ من حلقات الموسم.** `open` = المسلسلُ ما زال يُنتَج (`in_production` عند TMDB).
@@ -77,7 +79,11 @@ export function airPlanOf(episodes: readonly AirEp[], today: string, open: boole
   if (lastEp && (lastEp.type === "finale" || lastEp.type === "mid_season")) more = 0;
   else {
     const undated = lastEp ? eps.filter((e) => e.ep > lastEp.ep && !e.date).length : 0;
-    more = undated > 0 ? undated : open ? null : 0;
+    /* 🆕 D-1623 — **موسمٌ جدولُه منشورٌ كلُّه لا يُمدّ** (مراجعة ٢ نوفمبر — «٣ نعم»): `in_production` يبقى صحيحاً لمسلسلٍ جُدِّد
+       لموسمٍ آخر، فعشرُ حلقاتٍ مؤرَّخةٍ كلُّها تنتهي في ديسمبر كانت تُمدّ أسابيعَ «متوقَّعة» إلى فبراير. جدولٌ يُعلن مواعيدَ كثيرةً
+       قادمةً بلا حلقةٍ بلا موعد هو الموسمُ كاملاً؛ وما يُضيف حلقةً حلقةً (موعدٌ أو اثنان قادمان) يبقى مفتوحاً كما كان */
+    const scheduled = undated === 0 && announced.length >= FULL_SCHEDULE;
+    more = undated > 0 ? undated : open && !scheduled ? null : 0;
   }
   return { announced, last, weekly, more };
 }

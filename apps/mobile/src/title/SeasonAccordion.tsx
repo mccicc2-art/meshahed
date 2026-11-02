@@ -3,6 +3,7 @@ import { mark } from "../perfMarks";
 import { Pressable, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isGuest, qk, softGet, useGuestUpgrade, write } from "../api";
+import { session } from "../session";
 import { Image } from "expo-image";
 import { backdropUrl } from "@/core/media";
 import { useApp } from "../state";
@@ -18,6 +19,7 @@ import { radius } from "../theme";
 import { episodeKey } from "@/core/keys";
 import { formatDateShort } from "@/core/when";
 import { PART_WORDS, partAired, partTitle, partWatched, type SeasonPart } from "@/core/seasonParts";
+import type { SkipModeBody } from "@/core/contracts/settings";
 import { FILLER_WORDS, HIDE_FILLER_KEY, activeMode, countKeys, fillerKeys, goldenKeys, mixedKeys, parseSkipMode, type SkipMode } from "@/core/filler";
 import type { EpisodeRateBody, SeasonPayload, SetSeasonBody, ToggleEpisodeBody, TrackResult, TvTitlePayload, UnmarkEpisodesBody, WatchUpToBody } from "../contracts";
 
@@ -107,7 +109,9 @@ export function SeasonAccordion({
   const mixed = useMemo(() => mixedKeys(show.id, show.seasons), [show.id, show.seasons]);
   /* D-1621 — لعملٍ حلقاتُه قضايا (كونان) الذهبيُّ هو القصّةُ الأساسيّة وحدَها (`goldenKeys`) */
   const golden = useMemo(() => goldenKeys(show.id, show.seasons), [show.id, show.seasons]);
-  const [saved, setMode] = useState<SkipMode>(readSkipMode);
+  /* 🆕 D-1623 — **الحسابُ أوّلاً** (أحمد ٢ نوفمبر — «٤أ»): ما اختاره في أيِّ جهازٍ يصل مع العمل (`me.skip_mode`)، والجهازُ نسختُه
+     السريعة لمن لم يختر بعد في حسابه */
+  const [saved, setMode] = useState<SkipMode>(() => (show.me.skip_mode ? parseSkipMode(show.me.skip_mode) : readSkipMode()));
   /* D-1622 — المحفوظُ للأعمال كلِّها، والنافذُ هنا ما له شريحةٌ في هذا العمل (`activeMode`) */
   const mode = activeMode(saved, filler, golden);
   const pickMode = (m: Exclude<SkipMode, "all">) => {
@@ -118,6 +122,8 @@ export function SeasonAccordion({
     } catch {
       /* راحةٌ لا شرط: يبقى الاختيارُ لهذه الجلسة */
     }
+    /* D-1623 — والحسابُ يحفظه فتعدّ به الرئيسيّةُ والمكتبةُ والودجت (الإبطالُ من وسوم الردّ). الزائرُ بلا حسابٍ يبقى على جهازه */
+    if (session.has()) write<{ mode: string }>("/api/v1/me/settings/skip-mode", { mode: v } satisfies SkipModeBody).catch(() => undefined);
   };
   const skip = mode === "filler" ? filler : mode === "golden" ? golden : null;
   const airedSkip = (s: TvTitlePayload["seasons"][number]) => (skip ? countKeys(skip, s.season_number, s.first_episode ?? 1, (s.first_episode ?? 1) + s.aired - 1) : 0);
@@ -527,11 +533,13 @@ function SeasonBody({
    * من جلبة الموسم نفسِها (لا نداءَ لكلِّ جزء)، والتأشيرُ «حتى هنا» و«من هنا» كما هما: الجزءُ عرضٌ لا حدٌّ للقاعدة.
    * المفتوحُ افتراضاً أوّلُ جزءٍ لم يكتمل — حيث يقف القارئ.
    */
-  const [openPart, setOpenPart] = useState<number | null>(() => {
-    if (!parts?.length) return null;
-    const i = parts.findIndex((p) => partSeen(p) < partShown(p));
-    return i >= 0 ? i : null;
-  });
+  /* 🆕 D-1623 — الافتراضُ يُحسب حيّاً (`undefined` = لم يلمس): يُركَّب قبل وصول مشاهداته أو قبل آركات TMDB فيبقى على الجزء الأوّل
+     لو حُفظ عند التركيب؛ ولمسةُ القارئ وحدَها تثبّت جزءاً — بابُ الويب نفسُه */
+  /* والمحفوظُ أوّلُ حلقةٍ في الجزء لا ترتيبُه: تتبدّل الأجزاءُ (ثابتةٌ ثمّ آركات) فيبقى المفتوحُ هو هو */
+  const [picked, setPicked] = useState<number | null | undefined>(undefined);
+  const live = parts?.length ? parts.findIndex((p) => partSeen(p) < partShown(p)) : -1;
+  const openPart = picked === undefined ? (live >= 0 ? live : null) : picked === null ? null : (parts ?? []).findIndex((p) => p.first === picked);
+  const setOpenPart = (i: number | null) => setPicked(i === null ? null : (parts?.[i]?.first ?? null));
   const partAll = useMutation({
     mutationFn: ({ part, on }: { part: SeasonPart; on: boolean }) => {
       const episodes = Array.from({ length: partAired(part, seasonFirst, aired) }, (_, i) => ref(part.first + i)).filter((x) => !(on && skip?.has(episodeKey(season, x.episode))));
