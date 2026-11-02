@@ -1,10 +1,9 @@
-[deploy] Release R146 — avatars listing policy removed (A-36) + mobile toolchain advisories (A-09)
+[deploy] Release R158 — dead-touch witness on the dock and top tabs (T304) + FOUNDER badge removed (T303)
 
-- 286 · supabase/230_avatars_no_list.sql — the numbered copy of the one line already run on preview and production
-  (1 Nov, history row 230): the public avatars bucket no longer allows listing its files. SQL only, no code.
-- 287 · apps/mobile/package-lock.json — shell-quote 1.12.0, node-forge 1.4.2, brace-expansion 5.0.12, each inside
-  its existing range (build-time tooling only). Fingerprint unchanged ⇒ over the air, no native build.
-- Held back: 274 (iOS widget slots) — needs a paid native build not yet approved.
+Release R158 (registry release 172):
+- 303 · Remove the FOUNDER badge and its «forever» promise from the app, /plus, /features and the terms; founders keep Loopz+ until 30 Nov 2026. Web + app (OTA).
+- 304 · Dead-touch witness: dock.miss and edge.tap now carry the swipe lock (sw/swe), gestures that still see a finger (pd/pds) and the tab-slide wrapper holding the JS responder (rh/rha/rhs). Khaled's S24U recording: Discover tab swipe → title → edge-back ⇒ dock and top tabs dead. Diagnostic only. App (OTA) + perf allowlist.
+- 274 stays queued: needs a paid native build not approved by Ahmed
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7CL7Ngp2J9MgUSEpDD
+Claude-Session: https://claude.ai/code/session_01FexM7DEucaynQVGEPWhmmR
