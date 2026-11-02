@@ -362,53 +362,73 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
           }
         />
 
-        {!d ? (
-          q.isError ? (
-            <View style={{ padding: PAGE_PAD, alignItems: "center", gap: 12, paddingTop: 48 }}>
-              <Text muted>{t.apiInternal}</Text>
-              <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
+        {!d && q.isError ? (
+          <View style={{ padding: PAGE_PAD, alignItems: "center", gap: 12, paddingTop: 48 }}>
+            <Text muted>{t.apiInternal}</Text>
+            <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ paddingTop: PAGE_PAD, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+            {/* 🆕 D-1625 — **شجرةٌ واحدةٌ بخاناتٍ ثابتة** (أحمد ٢ نوفمبر: «كل شي له مكان ثابت سواءا المعلومة موجودة او لا»):
+                كان هيكلٌ بسطرين ثمّ شجرةٌ أخرى يظهر فيها الوصفُ والمالكُ والحقائقُ والرقاقةُ أسطراً متفاوتة فيقفز الصفّ تحتها.
+                الآن لكلٍّ خانتُه من أوّل إطار: الاسمُ سطراً بـ«…»، والوصفُ سطرين محجوزين، وصفُّ المالك ٢٤، وصفُّ الحقائق ٣٢
+                ورقاقةُ التشغيل في طرفه — فإن غابت معلومةٌ بقيت خانتُها فارغةً بمقاسها */}
+            <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
+              <View style={{ height: 28, justifyContent: "center" }}>
+                {d ? (
+                  <Text size={22} weight="700" numberOfLines={1} style={{ lineHeight: 28 }}>{d.name}</Text>
+                ) : (
+                  <View style={{ height: 22, width: "65%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
+                )}
+              </View>
+              <View style={{ height: 42 }}>
+                {d ? (
+                  d.subtitle ? <Text size={14} muted numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null
+                ) : (
+                  <View style={{ height: 12, width: "90%", marginTop: 4, borderRadius: 5, backgroundColor: tokens.surface2 }} />
+                )}
+              </View>
+              <View style={{ height: 24, justifyContent: "center" }}>
+                {d?.owner ? (
+                  <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
+                      {d.owner.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                    </View>
+                    <Text size={13} muted numberOfLines={1}>{d.owner.name}</Text>
+                  </Pressable>
+                ) : !d ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: tokens.surface2 }} />
+                    <View style={{ height: 11, width: 90, borderRadius: 5, backgroundColor: tokens.surface2 }} />
+                  </View>
+                ) : null}
+              </View>
+              {/* D-1037 — مفتاحُ التشغيل: رقاقةٌ (عائلةُ التحكّم القائمة) — لقائمتي ولمحفوظتي وحدَهما؛ في طرف صفّ الحقائق */}
+              <View style={{ height: 32, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", columnGap: 14, overflow: "hidden" }}>
+                  {d
+                    ? facts.map((f) => (
+                        <View key={f.label} style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}>
+                          <Icon name={f.icon} size={14} color={tokens.accent} />
+                          <Text size={12} muted numberOfLines={1}>{f.label}</Text>
+                        </View>
+                      ))
+                    : [70, 56].map((w) => <View key={w} style={{ height: 11, width: w, borderRadius: 5, backgroundColor: tokens.surface2 }} />)}
+                </View>
+                {d && d.playlist !== null ? (
+                  <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
+                ) : null}
+              </View>
             </View>
-          ) : (
-            <View style={{ padding: PAGE_PAD, gap: 12 }}>
-              <View style={{ height: 26, width: "65%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
-              <View style={{ height: 14, width: "90%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
-              <View style={{ flexDirection: "row", gap: GAP, marginTop: 12 }}>
-                {[0, 1, 2].map((i) => (
+
+            {!d ? (
+              /* صفُّ الملصقات حتى يصل — بمحاذاة الـFlatList نفسها (هامش ١٦ وحشوة الصفحة) */
+              <View style={{ flexDirection: "row", gap: GAP, marginTop: 16, paddingHorizontal: PAGE_PAD, overflow: "hidden" }}>
+                {[0, 1, 2, 3].map((i) => (
                   <View key={i} style={{ width: RAIL_CARD_W, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface2 }} />
                 ))}
               </View>
-            </View>
-          )
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingTop: PAGE_PAD, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
-            <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
-              <Text size={22} weight="700" style={{ lineHeight: 28 }}>{d.name}</Text>
-              {d.subtitle ? <Text size={14} muted style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
-              {d.owner ? (
-                <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, alignSelf: "flex-start" }}>
-                  <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
-                    {d.owner.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
-                  </View>
-                  <Text size={13} muted>{d.owner.name}</Text>
-                </Pressable>
-              ) : null}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 6, marginTop: 6 }}>
-                {facts.map((f) => (
-                  <View key={f.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Icon name={f.icon} size={14} color={tokens.accent} />
-                    <Text size={12} muted>{f.label}</Text>
-                  </View>
-                ))}
-              </View>
-              {/* D-1037 — مفتاحُ التشغيل: رقاقةٌ (عائلةُ التحكّم القائمة) — لقائمتي ولمحفوظتي وحدَهما */}
-              {d.playlist !== null ? (
-                <View style={{ flexDirection: "row", marginTop: 8 }}>
-                  <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
-                </View>
-              ) : null}
-            </View>
-
-            {d.items.length === 0 ? (
+            ) : d.items.length === 0 ? (
               <Text size={13} muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.listItemsEmpty}</Text>
             ) : (
               <FlatList
@@ -427,7 +447,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
             )}
 
             {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الحفظ · 💬 الآراء · ★ المتوسّط وبابُ رأيي. للمعلنة وحدَها */}
-            {d.is_public ? (
+            {d?.is_public ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 16, marginHorizontal: PAGE_PAD, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
                 <Pressable disabled={!d.can_save || saving} onPress={() => void toggleSave()} hitSlop={8} accessibilityLabel={d.saved_by_me ? t.listUnsaveLabel : t.listSaveBtn} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Icon name={d.can_save && !d.saved_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
@@ -444,7 +464,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               </View>
             ) : null}
 
-            {d.is_public ? (
+            {d?.is_public ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 20, gap: 12 }}>
                 <Text size={17} weight="700">{t.listReviewsTitle}</Text>
                 {d.can_review ? (
@@ -454,7 +474,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               </View>
             ) : null}
 
-            {d.mine ? (
+            {d?.mine ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
                 <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
                 {/* Phase 11-G (G4/G5) — إضافةُ عملٍ بالمنتقي الأصليّ؛ وشرطُ ذكيّةِ المكتبة بورقتها الأصليّة. **ذكيّةُ الكتالوج

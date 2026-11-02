@@ -408,11 +408,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 لا من أعلى الملصق — والغلافُ فوقها يُرى (٧٠٪ بدل ٤٥٪، أحمد «٢ أ»). الكتابةُ تبقى على أغمق جزءٍ من التدرّج */}
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
             {/* D-1020/D-1022 — ⋯ في زاوية الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب: الظلُّ أعلاه يكفيه. (الرجوعُ في الشريط — D-1624) */}
-            {d ? (
-              <Pressable disabled={guest} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
-                <Icon name="dots" size={20} color="#fff" />
-              </Pressable>
-            ) : null}
+            {/* 🆕 D-1625 — ⋯ في مكانه من أوّل إطار (معطَّلٌ حتى يصل العمل) — لا زرَّ يظهر فجأة */}
+            <Pressable disabled={guest || !d} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center", opacity: d ? 1 : 0.5 }}>
+              <Icon name="dots" size={20} color="#fff" />
+            </Pressable>
           </View>
           {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
               كان يهبط ٥٦ تحتها فتطول الترويسةُ بلا سبب؛ الآن يرتفع بقدر ارتفاعه تقريباً
@@ -432,36 +431,51 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 {heroPoster ? <Image source={{ uri: posterUrl(heroPoster, "w342") ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : null}
               </View>
             </View>
-            {d ? (
-            /* 🆕 D-1594 — **الكتلةُ كلُّها في أسفل العمود** (أحمد ٣٠ أكتوبر بلقطة Prison Break: «المساحة الفاضية… نزّل الاسم تحت» — «١ أ»،
-               يعكس D-1031): الاسمُ والتفاصيلُ وIMDb فوق الأنواع مباشرة. الاسمُ في الأعلى والأنواعُ في الأسفل كانا يتركان بينهما
-               فراغاً كلّما قصر الاسم؛ مجتمعةً تُرتَّب بسطرٍ أو بسطرين، والفراغُ يصعد إلى حيث يُرى الغلاف */
+            {/* 🆕 D-1625 — **شجرةٌ واحدةٌ بخاناتٍ ثابتة** (أحمد ٢ نوفمبر بتسجيل A Knight of the Seven Kingdoms: «اسم الفلم اول ما افتحه
+                يظهر في النص بعدين يتغير مكانه… ابغا كل شي له مكان ثابت سواءا المعلومة موجودة او لا» — «١أ · ٢ب»). كانت الكتلةُ تُرسم ثلاثَ
+                مرّات: البذرةُ (الاسمُ وحدَه بعرضٍ كامل فوق ارتفاعٍ مقدَّر) ثمّ العملُ (شجرةٌ ثانية) ثمّ الإضافات (النجمةُ تأخذ من عرض الاسم
+                فينكسر سطرُه، وسطرُ IMDb يدفعه للأعلى). الآن الخاناتُ كلُّها من أوّل إطار بمقاساتٍ ثابتة: خانةُ النجمة بعرضها، سطرُ التفاصيل
+                سطرٌ واحد («…» إن طال)، سطرُ IMDb بارتفاعه ولو غاب، وصفُّ الأنواع سطرٌ واحد بجانب مربّع المشاهدة. ما لم يصل هيكلٌ رماديّ في
+                مكانه، وما لا معلومةَ له يبقى فارغاً بمقاسه — يتغيّر ما داخل الخانة لا مكانُها */}
             <View style={{ flex: 1, minWidth: 0, gap: 10, alignSelf: "stretch", justifyContent: "flex-end" }}>
               <View style={{ gap: 4 }}>
-                {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته */}
+                {/* D-1030 — نبضُ المجتمع في طرف سطر الاسم كما في الويب؛ الاسمُ يأخذ ما بقي ويلتفّ تحته — وخانتُه بعرضها دائماً */}
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                  <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d.name}</Text>
-                  <View style={{ height: 28, justifyContent: "center" }}><Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /></View>
+                  <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d?.name ?? seed?.name ?? ""}</Text>
+                  <View style={{ width: PULSE_W, height: 28, justifyContent: "center", alignItems: "flex-start" }}>
+                    {d ? <Pulse x={x} mine={d.me.rating} onPress={() => { if (!guest) setReviewOpen("edit"); }} /> : null}
+                  </View>
                 </View>
-                <Text size={12} color="rgba(255,255,255,0.8)" numberOfLines={2} style={styles.onArt}>
-                  {/* ⚖️ D-1504 — النوعُ · السنة · المواسم · الدولة؛ الأنواعُ نزلت إلى إطاراتها تحت (أحمد بلقطةٍ ٢١ أكتوبر: «الازرق شيله خلاص موجوده تحت») */}
-                  {[d.anime ? t.animeBadge : d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1)].filter(Boolean).join("  ·  ")}
-                </Text>
-                <RatingsLine x={x} compact onArt />
+                <View style={{ height: 17, justifyContent: "center" }}>
+                  {d ? (
+                    <Text size={12} color="rgba(255,255,255,0.8)" numberOfLines={1} style={styles.onArt}>
+                      {/* ⚖️ D-1504 — النوعُ · السنة · المواسم · الدولة؛ الأنواعُ نزلت إلى إطاراتها تحت (أحمد بلقطةٍ ٢١ أكتوبر: «الازرق شيله خلاص موجوده تحت») */}
+                      {[d.anime ? t.animeBadge : d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1)].filter(Boolean).join("  ·  ")}
+                    </Text>
+                  ) : (
+                    <View style={{ height: 11, width: "75%", borderRadius: 5, backgroundColor: SKELETON_ON_ART }} />
+                  )}
+                </View>
+                <View style={{ height: RATINGS_H, justifyContent: "center" }}>
+                  {x ? <RatingsLine x={x} compact onArt /> : <View style={{ height: 16, width: 96, borderRadius: 5, backgroundColor: SKELETON_ON_ART }} />}
+                </View>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: GENRE_ROW_H }}>
                 {/* ⚖️ D-1504 — الأنواعُ رجعت هنا وحدَها (العمرُ يبقى بجانب IMDb في `RatingsLine`)، كلُّ نوعٍ في إطارٍ بحدود صفّ
                     الأفعال وخلفيّة `surface2` (اختيارُ أحمد «أ»). الأسماءُ كما تأتي من TMDB («Action & Adventure» نوعٌ واحدٌ للمسلسلات) */}
-                <GenreFrames genres={d.anime ? d.genres.filter((g) => g.id !== 16) : d.genres} />
-                <WatchWhere x={x} icon />
+                {d ? (
+                  <GenreFrames genres={d.anime ? d.genres.filter((g) => g.id !== 16) : d.genres} />
+                ) : (
+                  <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
+                    <View style={{ height: 30, width: 64, borderRadius: radius.card, backgroundColor: SKELETON_ON_ART }} />
+                    <View style={{ height: 30, width: 88, borderRadius: radius.card, backgroundColor: SKELETON_ON_ART }} />
+                  </View>
+                )}
+                <View style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                  {x ? <WatchWhere x={x} icon /> : <View style={{ width: 40, height: 40, borderRadius: radius.control, backgroundColor: SKELETON_ON_ART }} />}
+                </View>
               </View>
             </View>
-            ) : (
-            /* D-1594 — اسمُ البذرة في مكانه بعد الوصول تقريباً (فوق سطرَي التفاصيل وIMDb وصفِّ الأنواع) فلا يقفز كثيراً */
-            <View style={{ flex: 1, minWidth: 0, alignSelf: "stretch", justifyContent: "flex-end", paddingBottom: SEED_BELOW }}>
-              <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ lineHeight: 28 }, styles.onArt]}>{seed?.name ?? ""}</Text>
-            </View>
-            )}
           </View>
 
           {/* D-1014 — صفُّ الأفعال الأربعة في إطارٍ واحد (تصميمُ أحمد) بدل أربعة أزرارٍ في صفَّين */}
@@ -511,9 +525,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 وآخر حلقة، وبابُه الدائم نجمةُ سطر الاسم. الويبُ لم يحمل هذا الصفَّ أصلاً. */}
           </View>
           ) : (
-          /* D-1227 — هيكلُ صفّ الأفعال حتى يصل العمل — مكانُه نفسُه فلا يقفز ما تحته */
-          <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16 }}>
-            <View style={{ height: 64, borderRadius: radius.card, backgroundColor: tokens.surface2 }} />
+          /* D-1227 — صفُّ الأفعال حتى يصل العمل في مكانه. 🆕 D-1625 — **الصفُّ نفسُه خافتاً** لا مستطيلٌ بارتفاعٍ مقدَّر (٦٤ والصفُّ
+             الحقيقيّ أقصر فيقفز ما تحته): المكوّنُ ذاتُه بمقاسه ذاته، ولا يُلمس حتى تصل الحالة */
+          <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 16, paddingBottom: 16, gap: 10 }}>
+            <View pointerEvents="none" style={{ opacity: 0.4 }}>
+              <ActionRow inWatch={false} inList={false} favorite={false} watched={false} busy={null} onPress={() => undefined} />
+            </View>
           </View>
           )}
 
@@ -524,10 +541,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
               `ScrollViewStickyHeader` في RN **ينقل نمطَ الابن اللاصق إلى غلافه ويستنسخ الابنَ بـ`{ flex: 1 }` وحدَه**
               (`cloneElement(child, { style: styles.fill })`) — فضاع `flexDirection: "row"` واصطفّت الخاناتُ عموداً.
               الابنُ اللاصقُ الآن غلافٌ خلفيّتُه لونُ الصفحة، والصفُّ داخله بنمطه كاملاً. */}
-          {d ? (
+          {/* 🆕 D-1625 — الشريطُ من أوّل إطار: نوعُ العمل معروفٌ من الرابط (`kind`) فلا ينتظر العمل — كان مستطيلاً فارغاً بارتفاعٍ مقدَّر */}
           <View style={{ backgroundColor: tokens.bg }}>
           <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD, backgroundColor: tokens.bg }}>
-            {(d.kind === "tv" ? (["episodes", "info", "community"] as const) : (["info", "community"] as const)).map((k) => {
+            {(kind === "tv" ? (["episodes", "info", "community"] as const) : (["info", "community"] as const)).map((k) => {
               const on = tab === k;
               return (
                 <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: on ? tokens.accent : "transparent" }}>
@@ -543,9 +560,6 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             })}
           </View>
           </View>
-          ) : (
-          <View style={{ backgroundColor: tokens.bg, height: 46, borderBottomWidth: 1, borderBottomColor: tokens.divider }} />
-          )}
 
           {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
@@ -701,8 +715,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
 const VEIL = require("../../assets/poster-veil.png");
 /* D-1594 — ارتفاعُ الحجاب فوق أسفل الملصق: يغطّي كتلةَ الكتابة (اسمٌ بسطرين + تفاصيل + IMDb + الأنواع ≈ ١٥٠) ويبدأ تدرّجُه فوقها */
 const TEXT_VEIL = 180;
-/* D-1594 — ما يقع تحت الاسم بعد وصول العمل: التفاصيل (١٦) وIMDb (٢٤) والأنواع (٣٦) والفواصل */
-const SEED_BELOW = 98;
+/* 🆕 D-1625 — مقاساتُ الخانات الثابتة في كتلة الاسم: عرضُ النجمة (★ 9.0 (999))، سطرُ IMDb، وصفُّ الأنواع بمربّع المشاهدة (٤٠) */
+const PULSE_W = 68;
+const RATINGS_H = 22;
+const GENRE_ROW_H = 40;
+/* هيكلُ ما لم يصل فوق البطل الداكن (أبيضُ خافت — البطلُ داكنٌ في كلِّ ثيم، D-1506) */
+const SKELETON_ON_ART = "rgba(255,255,255,0.12)";
 
 
 /* D-1040 — الاسمُ وسطرُ التفاصيل فوق الصورة مباشرةً الآن: ظلٌّ خفيفٌ كظلِّ أسماء الملصقات (`PosterCard.shadow`)،
@@ -724,11 +742,11 @@ function GenreFrames({ genres }: { genres: { id: number; name: string }[] }) {
   const measured = first.every((g) => widths[g.id] != null) && boxW > 0;
   const allThree = first.length === 3 && measured && first.reduce((a, g) => a + widths[g.id], 0) + GAP * 2 <= boxW;
   const shown = first.length === 3 ? (allThree ? first : first.slice(0, 2)) : first;
-  const frame = (g: { id: number; name: string }, onLayout?: (w: number) => void) => (
+  const frame = (g: { id: number; name: string }, onLayout?: (w: number) => void, shrink = false) => (
     <View
       key={g.id}
       onLayout={onLayout ? (e) => onLayout(Math.ceil(e.nativeEvent.layout.width)) : undefined}
-      style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: radius.card, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}
+      style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: radius.card, paddingHorizontal: 10, paddingVertical: 6, flexShrink: shrink ? 1 : 0, minWidth: shrink ? 0 : undefined }}
     >
       <Text size={11} weight="600" color="#fff" numberOfLines={1}>{g.name}</Text>
     </View>
@@ -741,8 +759,9 @@ function GenreFrames({ genres }: { genres: { id: number; name: string }[] }) {
       </View>
       {/* قبل القياس لا نرسم شيئاً: لا يقفز صفٌّ من ثلاثةٍ إلى اثنين أمام العين */}
       {first.length === 3 && !measured ? null : (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP, alignItems: "flex-end" }}>
-          {shown.map((g) => frame(g))}
+        /* 🆕 D-1625 — **سطرٌ واحدٌ دائماً** («١أ»): كان الثاني ينزل سطراً إن طال فيطول الصفُّ ويصعد الاسم — الآن يضيق بـ«…» */
+        <View style={{ flexDirection: "row", flexWrap: "nowrap", gap: GAP, alignItems: "flex-end", overflow: "hidden" }}>
+          {shown.map((g) => frame(g, undefined, true))}
         </View>
       )}
     </View>
