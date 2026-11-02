@@ -476,7 +476,7 @@ export function rootTouch(y: number, x = -1) {
     if (at - dockMissAt < 1_000) return;
     dockMissAt = at;
     /* 🆕 D-1536 — ثوانٍ لا ms: الخادمُ يرفض ms > ٦٠٠٠٠٠ فكانت كلُّ علامةٍ بعد الدقيقة العاشرة من الإقلاع تسقط */
-    mark("dock.miss", Math.round((performance.now() - launchT0) / 1000), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 });
+    mark("dock.miss", Math.round((performance.now() - launchT0) / 1000), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0, ...witnessNow() });
     }, 450);
   });
 }
@@ -498,6 +498,21 @@ let chromeAt = 0;
 /** ضغطةٌ وصلت زرّاً من المصانع المشتركة (`Chip` · `Button` · الدوك · الرأس · `Segmented` · الزرّ العائم) */
 export function notePress() {
   pressAt = Date.now();
+}
+/* 🩺 T304 — **شاهدُ اللمسة الميتة** (تسجيلُ خالد ٢ نوفمبر، S24U: سحبٌ بين تبويبات «اكتشف» ← عمل ← رجوعٌ بسحبة الحافّة ⇒ الدوكُ
+   والتبويباتُ العلويّةُ ميّتةٌ والبطاقاتُ والتمريرُ تحتها حيّة؛ يعود بدخول عملٍ والرجوع). اللمسةُ تبلغ JS ولا يأخذها الزرّ.
+   من يملكها؟ قفلُ السحب (D-1497)، أم سحبةٌ أصليّةٌ ترى إصبعاً عليها، أم غلافُ الألواح ماسكٌ مستجيبَ JS. المصدرُ يُسجَّل من
+   خارج هذا الملفّ (`TabSlide`) كي لا يدور الاستيراد؛ يُقرأ مع `dock.miss` و`edge.tap` وحدَهما. قياسٌ مؤقّت يُحذف مع الإصلاح */
+let witness: (() => Extra) | null = null;
+export function touchWitness(fn: (() => Extra) | null) {
+  witness = fn;
+}
+function witnessNow(): Extra {
+  try {
+    return witness ? witness() : {};
+  } catch {
+    return {};
+  }
 }
 /** من `ChromeHide`: القيمةُ التي طلبها JS للكسوة (٠ ظاهرة · ١ مخفيّة) */
 export function noteChrome(v: number) {
@@ -537,6 +552,7 @@ export function rootTouchEnd(x: number, y: number) {
         dock,
         screen: hangScreen || "?",
         mom: at - lastScrollAt < 400 ? 1 : 0,
+        ...witnessNow(),
       });
     if (measure) measure((top) => send(Math.round(top)));
     else send(-1);

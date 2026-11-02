@@ -151,14 +151,12 @@ export const SECTIONS: Section[] = [
       },
       {
         icon: "sparkle-star",
-        ar: "شارة «مؤسِّس»",
-        en: "Founder badge",
-        /* ⚖️ 🆕 **«مدى الحياة» سقطت بحكمه** (D-833): **المدّةُ صارت
-           ثلاثةَ أشهرٍ والصفةُ باقية** — **وصفحةٌ اسمُها «صادقة» تَعِد
-           بما نقضته القاعدةُ أسوأُ من صفحةٍ لا تعد** (D-217، وهو عطلُ
-           `9cbe3ae` نفسُه في جولة D-633). */
-        arBody: `من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس دائماً — والصفة لا تنتهي — ومعها Loopz+ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
-        enBody: `Anyone who joined before subscriptions were announced keeps a Founder badge for good — the status never expires — with Loopz+ until ${FOUNDER_PLUS_UNTIL.en}.`,
+        ar: "Loopz+ هديةٌ للأوائل",
+        en: "Loopz+ on us for the first members",
+        /* ⚖️ 🆕 **وشارةُ «مؤسِّس» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها») — **فلا تُعدّ ميزةً هنا ولا تُوعد**: **صفحةٌ
+           اسمُها «صادقة» تَعِد بشارةٍ لا تُرسم أسوأُ من صفحةٍ لا تعد** (D-217). **والهديةُ ومدّتُها باقيتان كما هما.** */
+        arBody: `من سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+        enBody: `Anyone who joined before subscriptions were announced has Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}.`,
         plus: true,
       },
       /* 🆕 **وثلاثُ ميزاتٍ مجّانيّةٍ قائمةٍ لم تُوثَّق قطّ** (D-793،

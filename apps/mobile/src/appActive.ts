@@ -59,3 +59,16 @@ export function gestureProbe(name: string, down: () => boolean): () => void {
     if (probes.get(name) === down) probes.delete(name);
   };
 }
+
+/** 🩺 T304 — أسماءُ السحبات التي ترى إصبعاً عليها الآن (لشاهد اللمسة الميتة في `perfMarks.touchWitness`) */
+export function downNow(): string[] {
+  const out: string[] = [];
+  for (const [name, down] of probes) {
+    try {
+      if (down()) out.push(name);
+    } catch {
+      /* المقياسُ لا يكسر شيئاً */
+    }
+  }
+  return out;
+}

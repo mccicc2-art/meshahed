@@ -98,7 +98,7 @@ export function termsDoc(locale: Locale): LegalDoc {
   const t = getDict(locale);
   return {
     title: ar ? "شروط الاستخدام" : "Terms of Use",
-    updated: ar ? "آخر تحديث: ٢٩ أغسطس ٢٠٢٦" : "Last updated: 29 August 2026",
+    updated: ar ? "آخر تحديث: ٢ نوفمبر ٢٠٢٦" : "Last updated: 2 November 2026",
     sections: [
       { title: ar ? "ما هو Loopz" : "What Loopz is",
         body: ar
@@ -134,8 +134,8 @@ export function termsDoc(locale: Locale): LegalDoc {
 
       { title: ar ? "اشتراك Loopz+" : "The Loopz+ subscription",
         body: ar
-        ? `Loopz+ اشتراكٌ اختياريّ للثيمات وتنسيق صفحاتك وشارةٍ بجانب اسمك — والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً. الثمن ${t.plusPrice}، ${t.plusPriceRenew}، ${t.plusPriceLocal}. والاشتراك يُجدَّد تلقائياً في نهاية مدّته ما لم تُلغِه، والإلغاء متاحٌ في أيّ وقتٍ من إعدادات الاشتراك ويسري في نهاية المدّة المدفوعة — فلا تفقد ما دفعت مقابله. ومن سجّل قبل إعلان الاشتراك يحمل صفة «مؤسِّس» دائماً — والصفة لا تنتهي — ومعها Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}. وتجربة Loopz بلا إعلانات للجميع، مشتركين وغير مشتركين. والاشتراك لم يُفتح بعد؛ ولا يُطلب منك دفعٌ حتى تُفتح بوّابته.`
-        : `Loopz+ is an optional subscription for themes, shaping your pages and a badge beside your name — tracking, lists, community and search stay free for everyone, always. It costs ${t.plusPrice}, ${t.plusPriceRenew}, ${t.plusPriceLocal}. It renews automatically at the end of each term unless you cancel; cancelling is available any time from subscription settings and takes effect at the end of the paid term, so you never lose what you already paid for. Anyone who joined before subscriptions were announced keeps Founder status permanently — it never expires — with Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}. Loopz carries no advertising for anyone, subscriber or not. Subscriptions are not open yet, and you are never asked to pay until they are.` },
+        ? `Loopz+ اشتراكٌ اختياريّ للثيمات وتنسيق صفحاتك وشارةٍ بجانب اسمك — والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً. الثمن ${t.plusPrice}، ${t.plusPriceRenew}، ${t.plusPriceLocal}. والاشتراك يُجدَّد تلقائياً في نهاية مدّته ما لم تُلغِه، والإلغاء متاحٌ في أيّ وقتٍ من إعدادات الاشتراك ويسري في نهاية المدّة المدفوعة — فلا تفقد ما دفعت مقابله. ومن سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}. وتجربة Loopz بلا إعلانات للجميع، مشتركين وغير مشتركين. والاشتراك لم يُفتح بعد؛ ولا يُطلب منك دفعٌ حتى تُفتح بوّابته.`
+        : `Loopz+ is an optional subscription for themes, shaping your pages and a badge beside your name — tracking, lists, community and search stay free for everyone, always. It costs ${t.plusPrice}, ${t.plusPriceRenew}, ${t.plusPriceLocal}. It renews automatically at the end of each term unless you cancel; cancelling is available any time from subscription settings and takes effect at the end of the paid term, so you never lose what you already paid for. Anyone who joined before subscriptions were announced has Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}. Loopz carries no advertising for anyone, subscriber or not. Subscriptions are not open yet, and you are never asked to pay until they are.` },
       { title: ar ? "برنامج شركاء Loopz" : "The Loopz Partners programme",
         body: ar
         ? "الشريك يحصل على ٢٥٪ من صافي كلّ دفعةٍ يدفعها مشترِكٌ انضمّ عبر رابط إحالته، طوال السنة الأولى من اشتراك ذلك العضو. و«الصافي» هو ما يصلنا بعد رسوم الدفع والضرائب. وتُعلَّق العمولة إذا ترك الشريك البرنامج أو أُنهيت شراكته، فهي مقابل شراكةٍ قائمةٍ لا حقٌّ دائم. ويحقّ لنا تعديل النسبة للإحالات الجديدة وحدها بإشعارٍ مسبق، أمّا الإحالات القائمة فتبقى بنسبتها المتّفق عليها. ويُمنع الترويج المضلِّل أو الرسائل غير المرغوبة أو الإحالة الذاتية، ومخالفتها تُنهي الشراكة وتُسقط العمولة غير المدفوعة."

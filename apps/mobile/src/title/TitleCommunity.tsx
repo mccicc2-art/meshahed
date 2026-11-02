@@ -137,10 +137,10 @@ export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["rev
   /* 🆕 D-1563 — مراجعةُ شخصيّةٍ AI هي هذا الصفُّ نفسُه: حلقةٌ بلونها و«AI» بجانب الاسم. 🆕 D-1565 — **ودرجتُها نجمةُ الصفّ كالعضو**
      (لا تدخل متوسّطَ الجمهور)، **ولا وصفَ تحت الاسم** — صفُّ العضو بلا سطرٍ ثانٍ، ووصفُها في ملفّها؛ يبقى نطاقُها إن كان (موسم) */
   const persona = r.persona ? personaOf(r.user_id) : null;
-  /* 🆕 D-1567 — **شاراتُ كلِّ حساب** (PLUS · شريك · مؤسّس · موثّق) لا الشخصيّات وحدَها: الخادمُ صار يرسل حالةَ الحساب كما في صفحة
+  /* 🆕 D-1567 — **شاراتُ كلِّ حساب** (PLUS · شريك · موثّق) لا الشخصيّات وحدَها: الخادمُ صار يرسل حالةَ الحساب كما في صفحة
      الردود (أحمد ٢٩ أكتوبر: «الحسابات الثانية ليه ما هو ظاهر عندها بلس؟») — و«AI» من المعرّف كما كانت */
   const flags = identityFlags({ id: r.user_id, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null });
-  const badged = flags.ai || flags.partner || flags.plus || flags.founder || flags.verified;
+  const badged = flags.ai || flags.partner || flags.plus || flags.verified;
   const liked = !!r.liked_by_me;
   /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (

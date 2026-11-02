@@ -9,14 +9,14 @@ import { isAiPersona, isFounder, isPartner, isPlus, isVerified, type PlanBearer 
  * ====== شاراتُ الهويّة — مكوّنٌ واحدٌ للتطبيق كلِّه (D-1134 → D-1142) ======
  *
  * **شكلُ الويب نفسُه** (`AccountIdentity.tsx`: `PlanPill` ثمّ `VerifiedBadge`) بقاعدة الطبقة نفسِها
- * (`@/core/plan`): قرصٌ «PARTNER»/«PLUS»/«FOUNDER» ثمّ ختمُ التوثيق الذهبيّ.
+ * (`@/core/plan`): قرصٌ «PARTNER»/«PLUS» ثمّ ختمُ التوثيق الذهبيّ.
  *
  * 🔴 **D-1142 — كان في رأس الرئيسيّة وحدَه** (D-1134)، وبطاقةُ الإعدادات بقيت على الشكلين القديمين (خطُّ ✓
  * رفيعٌ وقرصُ «+») — أحمد بتسجيل: «خلّي الصح والبارتنر بالشكل الصحيح مثل فالهوم». **شكلان لشارةٍ واحدة
  * عطلٌ** (القاعدة ٣)، فانتقل الشكلُ إلى هنا ويقرؤه كلُّ من يرسم اسمَ صاحب الحساب.
  *
  * الألوانُ ثابتةٌ هناك (`BRAND` · `INK`) لا ثيميّة — علامةٌ لا سطح؛ والمقاساتُ نسبةٌ من خطِّ الاسم (`PILL_EM`
- * ٠٫٨٢): العرضُ إلى الارتفاع ٣٨:١٦ (PLUS) و٦٢:١٦ (PARTNER/FOUNDER)، نصفُ القطر ٥:١٦، الخطُّ ٩:١٦.
+ * ٠٫٨٢): العرضُ إلى الارتفاع ٣٨:١٦ (PLUS) و٦٢:١٦ (PARTNER)، نصفُ القطر ٥:١٦، الخطُّ ٩:١٦.
  */
 const BRAND = "#FFD400";
 const INK = "#050505";
@@ -39,7 +39,9 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
   const { t } = useApp();
   /* 🆕 D-1563 — «AI» تظهر حتى مع `sealOnly`: هي ما يقول من الكاتب، لا طبقةٌ تُخفى في التنبيهات */
   const ai = !!flags.ai;
-  const word = sealOnly ? null : flags.partner ? "PARTNER" : flags.plus ? "PLUS" : flags.founder ? "FOUNDER" : null;
+  /* 🆕 ⚖️ **و«FOUNDER» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها»، نقضٌ لـD-833): **الشارةُ تقول الاشتراكَ وحدَه** — كالويب حرفاً
+     (`AccountIdentity`). **و`flags.founder` يبقى في النوع** لأنّ مستدعين كُثُراً يمرّرونه، **ولا يُقرأ هنا أبداً.** */
+  const word = sealOnly ? null : flags.partner ? "PARTNER" : flags.plus ? "PLUS" : null;
   const hgt = nameSize * PILL_EM;
   /* الختمُ بمقاس الرئيسيّة عند اسمٍ ٢٠ (١٦) — ويتناسب مع أيِّ اسم */
   const seal = Math.round((16 / 20) * nameSize);
@@ -54,7 +56,7 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
         const w = word === "PLUS" ? 38 : 62;
         const tracking = word === "PLUS" ? 1.3 : 1.1;
         const fs = (9 / 16) * hgt;
-        const label = word === "PARTNER" ? t.partnerBadge : flags.founder ? t.founderBadge : t.plusBadge;
+        const label = word === "PARTNER" ? t.partnerBadge : t.plusBadge;
         return (
           <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
             <Text size={fs} weight="700" color={BRAND} style={{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }}>{word}</Text>

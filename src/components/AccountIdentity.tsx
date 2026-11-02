@@ -2,7 +2,6 @@ import {
   isPlus as isPlusOf,
   isPartner as isPartnerOf,
   isVerified as isVerifiedOf,
-  isFounder,
   isAiPersona,
   type PlanBearer,
 } from "@/core/plan";
@@ -22,7 +21,6 @@ export type BadgeLabels = Pick<
   Dict,
   | "plusBadge"
   | "partnerBadge"
-  | "founderBadge"
   | "verifiedBadge"
   | "verifiedBadgeTip"
   | "aiBadge"
@@ -47,7 +45,6 @@ export function badgeLabelsOf(t: Dict): BadgeLabels {
   return {
     plusBadge: t.plusBadge,
     partnerBadge: t.partnerBadge,
-    founderBadge: t.founderBadge,
     verifiedBadge: t.verifiedBadge,
     verifiedBadgeTip: t.verifiedBadgeTip,
     aiBadge: t.aiBadge,
@@ -188,11 +185,9 @@ function Pill({
 export function PlanPill({
   tier,
   t,
-  founder = false,
 }: {
   tier: "plus" | "partner" | null;
   t: BadgeLabels;
-  founder?: boolean;
 }) {
   if (tier === "partner")
     return (
@@ -204,23 +199,13 @@ export function PlanPill({
         word="PLUS"
         width={38}
         tracking={1.3}
-        label={founder ? t.founderBadge : t.plusBadge}
+        label={t.plusBadge}
       />
     );
-  /* 🆕 ⚖️ **والصفةُ تبقى بعد أن تنتهي المدّة** (D-833، حكمُ أحمد: «نفّذها
-     وأصلح الوعد معها»): **كانت الشارةُ كلُّها معلَّقةً بـ`tier`** —
-     **فيومَ تنتهي ثلاثةُ الأشهر كان المؤسِّسُ يفقد بلس وصفتَه معاً في
-     رسمةٍ واحدة.**
-     🔑 **و«مؤسِّس» ليست طبقةً تُشترى، هي تاريخٌ لا يُنسخ**: **من سجّل
-     قبل إعلان الاشتراك سجّل قبله أبداً** — **وصفةٌ تُنتزع بانقضاء
-     اشتراكٍ ليست صفة، هي إيجار.**
-     ⚠️ **ورتبةٌ ثالثةٌ في العائلة نفسِها لا شارةٌ ثانية**: `Pill` بعينها
-     بكلمةٍ ثالثة (القاعدة ٣) — **وعرضُها عرضُ `PARTNER`** لأنّ الكلمتين
-     سبعةُ حروفٍ لا أربعة. */
-  if (founder)
-    return (
-      <Pill word="FOUNDER" width={62} tracking={1.1} label={t.founderBadge} />
-    );
+  /* 🆕 ⚖️ **وشارةُ FOUNDER حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها») — **وهو نقضٌ صريحٌ لـD-833 بيد صاحبه.**
+     **الشارةُ بجانب الاسم صارت تقول الاشتراكَ وحدَه** (PLUS أو GOLD قادماً) — **وشارةٌ ثالثةٌ لا تُشترى تنافس الذهبيّةَ
+     المدفوعةَ على المكان نفسِه.** **والحقلُ `founder` باقٍ في القاعدة سجلّاً لا يُعرض**، **والوعدُ بـ«دائماً» سقط من
+     الصفحات الثلاث في الدفعة نفسِها** (D-217). */
   return null;
 }
 
@@ -277,7 +262,6 @@ export function VerifiedBadge({ t }: { t: BadgeLabels }) {
 export interface IdentityState {
   tier: "plus" | "partner" | null;
   verified: boolean;
-  founder: boolean;
   /** شعارُ Loopz+ داخل التطبيق — للبلس والبارتنر معاً (نصُّ اللوح) */
   brandPlus: boolean;
   /** 🆕 D-1563 — شخصيّةٌ من شخصيّات لوبز AI */
@@ -291,7 +275,6 @@ export function identityOf(p: PlanBearer | null | undefined): IdentityState {
   return {
     tier,
     verified: isVerifiedOf(p),
-    founder: isFounder(p),
     brandPlus: partner || plus,
     ai: isAiPersona(p),
   };
@@ -313,11 +296,8 @@ export function AccountBadges({
   t: BadgeLabels;
   className?: string;
 }) {
-  const { tier, verified, founder, ai } = identityOf(profile);
-  /* 🆕 **والمؤسِّسُ يُحسب في شرط الغياب** (D-833): **شرطٌ ينسى الصفةَ
-     يُرجع `null` فلا تُرسم شارتُها أصلاً** — **وفرعٌ يُضاف في مكانٍ
-     ويُنسى في حارسه لا يعمل.** */
-  if (!tier && !verified && !founder && !ai) return null;
+  const { tier, verified, ai } = identityOf(profile);
+  if (!tier && !verified && !ai) return null;
   return (
     <span
       className={`inline-flex items-center ${className}`}
@@ -325,7 +305,7 @@ export function AccountBadges({
     >
       {/* 🆕 D-1563 — «AI» أوّلاً: هي ما يقول من الكاتب (والشخصيّةُ لا طبقةَ لها أصلاً) */}
       {ai ? <AiPill t={t} /> : null}
-      <PlanPill tier={tier} t={t} founder={founder} />
+      <PlanPill tier={tier} t={t} />
       {verified ? <VerifiedBadge t={t} /> : null}
     </span>
   );
@@ -371,7 +351,6 @@ export function AccountIdentity({
   const partner = derived ? derived.tier === "partner" : !!isPartner;
   const plus = derived ? derived.tier !== null : !!isPlus || !!isPartner;
   const verified = derived ? derived.verified : !!isVerified;
-  const founder = derived ? derived.founder : false;
   const ai = derived ? derived.ai : false;
   const tier: "plus" | "partner" | null = partner
     ? "partner"
@@ -386,7 +365,7 @@ export function AccountIdentity({
     >
       <span className={`min-w-0 truncate ${nameClassName}`}>{name}</span>
       {ai ? <AiPill t={t} /> : null}
-      <PlanPill tier={tier} t={t} founder={founder} />
+      <PlanPill tier={tier} t={t} />
       {verified ? <VerifiedBadge t={t} /> : null}
     </Tag>
   );

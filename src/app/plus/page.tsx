@@ -119,14 +119,13 @@ const READY: Perk[] = [
   },
   {
     icon: "sparkle-star",
-    ar: "شارة «مؤسِّس» للأوائل",
-    en: "A Founder badge for the first members",
-    /* ⚖️ 🆕 **وجملةُ «لا خدمةَ تُنتزع من عضوٍ قائم» سقطت معها** (D-833):
-       **مدّةُ البلس صارت محدودةً بحكم صاحبها** — **وجملةٌ تنفي ما وقع
-       تكذب مرّتين: مرّةً بالوعد ومرّةً بالمبدأ.** **والباقي صدقٌ يُقال:
-       الصفةُ لا تُنتزع.** */
-    arBody: `من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس دائماً — والصفة لا تنتهي — ومعها Loopz+ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
-    enBody: `Everyone who joined before subscriptions were announced keeps a Founder badge for good — the status never expires — with Loopz+ until ${FOUNDER_PLUS_UNTIL.en}.`,
+    ar: "Loopz+ هديةٌ للأوائل",
+    en: "Loopz+ on us for the first members",
+    /* ⚖️ 🆕 **وشارةُ «مؤسِّس» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها»، نقضٌ لـD-833 بيد صاحبه) — **فوعدُ «دائماً»
+       يسقط معها في الدفعة نفسِها**: **صفحةٌ تَعِد بشارةٍ لا تُرسم هي الكذبُ بعينه** (D-217). **والباقي صدقٌ يُقال: الهديةُ
+       ومدّتُها.** */
+    arBody: `من سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+    enBody: `Everyone who joined before subscriptions were announced has Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}.`,
   },
 ];
 
