@@ -170,19 +170,12 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
             </View>
             <View style={{ flex: 1, minWidth: 0, paddingTop: 4, gap: 4 }}>
               <View style={{ height: 56 }}>
-                {d ? (
-                  <Text size={22} weight="700" numberOfLines={2} style={{ lineHeight: 28 }}>{d.name}</Text>
-                ) : (
-                  <View style={{ height: 22, width: "70%", marginTop: 3, borderRadius: 6, backgroundColor: tokens.surface2 }} />
-                )}
+                {/* D-1627 — الخانةُ فارغةٌ حتى يصل الاسم، لا شريطَ رماديّ */}
+                {d ? <Text size={22} weight="700" numberOfLines={2} style={{ lineHeight: 28 }}>{d.name}</Text> : null}
               </View>
               {[0, 1, 2].map((i) => (
                 <View key={i} style={{ height: 17, justifyContent: "center" }}>
-                  {d ? (
-                    factRows[i] ? <Text size={12} muted numberOfLines={1}>{factRows[i]}</Text> : null
-                  ) : (
-                    <View style={{ height: 11, width: i === 0 ? "45%" : i === 1 ? "60%" : "50%", borderRadius: 5, backgroundColor: tokens.surface2 }} />
-                  )}
+                  {d && factRows[i] ? <Text size={12} muted numberOfLines={1}>{factRows[i]}</Text> : null}
                 </View>
               ))}
               <Button
@@ -197,14 +190,6 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
             </View>
           </View>
 
-          {!d ? (
-            /* ما تحت الترويسة حتى يصل: سطورُ النبذة ثمّ رأسُ الأعمال وصفُّ ملصقات — في مكانها */
-            <View style={{ marginTop: 28, gap: 10 }}>
-              {["92%", "100%", "84%", "60%"].map((w, i) => (
-                <View key={i} style={{ height: 12, width: w as `${number}%`, borderRadius: 5, backgroundColor: tokens.surface2 }} />
-              ))}
-            </View>
-          ) : null}
           {d?.biography ? (
             <View style={{ marginTop: 28, gap: 10 }}>
               <SectionTitle icon="info" label={t.personBioTitle} tokens={tokens} />
@@ -224,14 +209,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
 
           <View style={{ marginTop: 32 }}>
             <SectionTitle icon="play" label={t.personWorksTitle} tokens={tokens} />
-            {!d ? (
-              /* D-1625 — رأسُ الأعمال ثابتٌ من أوّل إطار، وتحته صفُّ ملصقاتٍ بمقاس RailCard نفسه حتى لا تقفز الشبكة */
-              <View style={{ flexDirection: "row", gap: GRID_GAP, marginTop: 12 + 41 + 12 }}>
-                {Array.from({ length: cols }, (_, i) => (
-                  <View key={i} style={{ width: RAIL_CARD_W, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface2 }} />
-                ))}
-              </View>
-            ) : counts.all === 0 ? (
+            {/* D-1625 — رأسُ الأعمال ثابتٌ من أوّل إطار · D-1627 — وتحته لا شيءَ رماديّ حتى تصل الأعمال */}
+            {!d ? null : counts.all === 0 ? (
               <Text size={13} muted style={{ textAlign: "center", paddingVertical: 40 }}>{t.personNoWorks}</Text>
             ) : (
               <>

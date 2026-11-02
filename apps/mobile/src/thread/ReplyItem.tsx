@@ -1,5 +1,5 @@
-import React, { memo, useState } from "react";
-import { Pressable, View } from "react-native";
+import React, { memo, useRef, useState } from "react";
+import { Pressable, View, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -13,6 +13,7 @@ import { displayNameOf } from "@/core/people";
 import type { ThreadRow } from "../contracts";
 import { richNodes } from "../richText";
 import { posterFor } from "../poster";
+import { measureAnchor, type Anchor } from "../library/HoldMenu";
 
 /**
  * 🆕 D-1443 — متنُ الردّ بخطّ الرسائل (١٦/٢٣ بوزن ٥٠٠ ويتبع الأكبرَ من خطّ الواجهة وخطّ المحتوى، D-1434)، وروابطُه ومنشنُه تُلمس
@@ -50,7 +51,8 @@ export type ReplyItemProps = {
   onLike: (row: ThreadRow) => void;
   onVote: (row: ThreadRow, v: -1 | 0 | 1) => void;
   onReply: (row: ThreadRow) => void;
-  onMenu: (row: ThreadRow) => void;
+  /** 🆕 D-1626 — ومعه مكانُ ⋯ فتنسدل القائمةُ منه */
+  onMenu: (row: ThreadRow, anchor: Anchor) => void;
   onImage: (uri: string) => void;
   onProfile: (row: ThreadRow) => void;
   /** 🆕 D-1443 — من كتبوا هنا (صغيرة): `@اسم` منهم يُرسم مميّزاً ولمستُه تفتح ملفَّه */
@@ -95,6 +97,8 @@ export const ReplyItem = memo(function ReplyItem({
   /* 🆕 D-1495 — مفتاحُ «حرق الأحداث» في رأس الغرفة يكشف الحرقَ كلَّه؛ والكشفُ بالضغطة على سطرٍ واحدٍ باقٍ كما كان */
   const reveal = revealOne || revealAll;
   const [original, setOriginal] = useState(false);
+  /* 🆕 D-1626 — ⋯ يُقاس لحظةَ الضغط */
+  const dotsRef = useRef<ViewInstance>(null);
   const pending = row.id.startsWith(TEMP);
   const p = row.person;
   const name = displayNameOf(p, t.anonymousUser);
@@ -165,7 +169,7 @@ export const ReplyItem = memo(function ReplyItem({
         </View>
         <Text size={12} muted>· {timeAgoShort(row.created_at, t)}</Text>
         {!pending && signedIn && !review ? (
-          <Pressable onPress={() => onMenu(row)} hitSlop={8} accessibilityLabel={t.moreMenuTitle} style={{ marginStart: "auto", width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
+          <Pressable ref={dotsRef} onPress={() => measureAnchor(dotsRef.current, (a) => onMenu(row, a))} hitSlop={8} accessibilityLabel={t.moreMenuTitle} style={{ marginStart: "auto", width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
             <Icon name="dots" size={16} color={tokens.muted} />
           </Pressable>
         ) : null}

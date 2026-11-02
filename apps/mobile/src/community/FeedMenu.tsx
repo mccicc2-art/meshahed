@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Clipboard, Pressable, View } from "react-native";
+import { Clipboard, View } from "react-native";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
-import { Icon, type IconName } from "../icons";
+import type { IconName } from "../icons";
 import { Sheet } from "../library/Sheet";
+import { DropMenu, type Anchor, type DropRow } from "../library/HoldMenu";
 import { CONFIG } from "../config";
 import { write } from "../api";
 import { displayNameOf, profileHref } from "@/core/people";
@@ -25,6 +26,7 @@ type Item = { icon: IconName; label: string; run: () => void; danger?: boolean }
 
 export function FeedMenu({
   row,
+  anchor,
   meId,
   doors,
   onShare,
@@ -36,6 +38,8 @@ export function FeedMenu({
 }: {
   /* 🆕 R58 — صفُّ النقاش بلا ⋯ (بابُه غرفتُه) */
   row: Exclude<CommunityFeedRow, { kind: "talk" }>;
+  /** 🆕 D-1626 — مكانُ ⋯ على الشاشة */
+  anchor: Anchor;
   meId: string | null;
   doors: CardDoors;
   onShare: (path: string, title: string) => void;
@@ -46,7 +50,7 @@ export function FeedMenu({
   onReported: () => void;
   onError: (e: unknown) => void;
 }) {
-  const { t, tokens } = useApp();
+  const { t } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const it = row.item;
@@ -117,47 +121,20 @@ export function FeedMenu({
     );
   }
 
-  return (
-    <Sheet title={t.moreMenuTitle} onClose={onClose}>
-      {items.map((x) => (
-        <Pressable
-          key={x.label}
-          onPress={() => {
-            onClose();
-            x.run();
-          }}
-          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
-        >
-          <Icon name={x.icon} size={19} color={tokens.fg} />
-          <Text size={14}>{x.label}</Text>
-        </Pressable>
-      ))}
-      {reportable ? (
-        <>
-          <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
-          {/* الرمزُ والكلمةُ نفسُهما في صفحة الرأي (`ThreadScreen`) — بلاغٌ واحدٌ بشكلٍ واحد */}
-          <Pressable
-            onPress={() => {
-              onClose();
-              report();
-            }}
-            accessibilityRole="button"
-            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}
-          >
-            <Icon name="shield" size={19} color={tokens.fg} />
-            <Text size={14}>{t.reportLabel}</Text>
-          </Pressable>
-        </>
-      ) : null}
-      {mine ? (
-        <>
-          <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
-          <Pressable onPress={() => setConfirm(true)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
-            <Icon name="trash" size={19} color={tokens.error} />
-            <Text size={14} color={tokens.error}>{t.deleteRating}</Text>
-          </Pressable>
-        </>
-      ) : null}
-    </Sheet>
-  );
+  /* 🆕 D-1626 — اللوحُ المنسدلُ من النقاط نفسِها (`DropMenu`)، لا الورقةُ السفليّة؛ الصفوفُ والترتيبُ كما كانت.
+     تأكيدُ الحذف يبقى في الوسط أعلاه («٢أ») */
+  const rows: DropRow[] = items.map((x) => ({
+    key: x.label,
+    icon: x.icon,
+    label: x.label,
+    onPress: () => {
+      onClose();
+      x.run();
+    },
+  }));
+  if (reportable)
+    /* الرمزُ والكلمةُ نفسُهما في صفحة الرأي (`ThreadScreen`) — بلاغٌ واحدٌ بشكلٍ واحد */
+    rows.push({ key: "report", icon: "shield", label: t.reportLabel, divider: true, onPress: () => (onClose(), report()) });
+  if (mine) rows.push({ key: "delete", icon: "trash", label: t.deleteRating, tone: "danger", tint: true, divider: true, onPress: () => setConfirm(true) });
+  return <DropMenu anchor={anchor} rows={rows} onClose={onClose} />;
 }

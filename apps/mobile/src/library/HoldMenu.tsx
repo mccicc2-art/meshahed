@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
 import { navHeight } from "../BottomNav";
@@ -99,9 +99,7 @@ export function HoldMenu({
   /** «اكتشف» وأخواتُها: حالُ العمل من «للمشاهدة» — تقلب الصفّين الأوّلين (D-1328) */
   toWatch?: ToWatchState;
 }) {
-  const { t, tokens } = useApp();
-  const { width: W, height: H } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const { t } = useApp();
 
   const rows: Row[] =
     variant === "discover" || variant === "list" || variant === "mylist"
@@ -130,40 +128,103 @@ export function HoldMenu({
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]
       : libraryRows(item, t);
 
-  const panelH = rows.length * ROW_H + 8;
+  return (
+    <DropMenu
+      anchor={anchor}
+      onClose={onClose}
+      rows={rows.map((r) => ({
+        key: r.key,
+        icon: r.icon,
+        label: r.label,
+        tone: r.tone,
+        state: r.state,
+        dim: r.dim,
+        disabled: r.state || (busy && r.key !== "review"),
+        onPress: () => onAction(r.key),
+      }))}
+    />
+  );
+}
+
+/**
+ * ====== 🆕 D-1626 — اللوحُ المنسدلُ الواحد (`DropMenu`) ======
+ *
+ * أحمد ٢ نوفمبر بلقطتين (ورقةُ «المزيد» السفليّة وقائمةُ تويتر): «إذا ضغطت على الثلاث نقاط نبغاها تطلع مثل كذا … كل الثلاث
+ * النقاط في كل مكان ماتطلع من تحت» → «١ب ٢أ ٣أ ٤أ». كانت ⋯ تفتح الورقةَ السفليّة فيقطع الإصبعُ نصفَ الشاشة ليصل إلى صفٍّ
+ * بجوار النقاط التي ضغطها.
+ * 🔑 **لا مكوّنَ جديد**: هذا لوحُ `HoldMenu` نفسُه (D-376 «منسدلةٌ لا ورقة» · قياسُ D-977/D-990) مُخرَجاً ليخدم الضغطَ المطوَّل
+ * و⋯ معاً — فالمنسدلةُ في التطبيق واحدةٌ كما الورقةُ واحدة. والورقةُ تبقى للتأكيد (حذفٌ · حظرٌ · إلغاءُ متابعة) في الوسط («٢أ»):
+ * ما لا يُتراجع عنه يستحقّ وقفة. لوحٌ داكنٌ بحدٍّ وظلٍّ بلا ضبابيّة («٣أ» — الضبابيّةُ مكتبةٌ أصليّةٌ وبناءٌ مدفوع).
+ * 📐 تحت المرساة ملاصقةً لطرفها، وتُرفع فوقها إن لم تسع؛ العرضُ يتّسع للسطر حتّى ٣٢٠ والسطرُ الطويل («صفحة Code Geass: …») سطران.
+ * الارتفاعُ يُقاس كالعرض (كانت الصفوفُ سطراً واحداً فكفى العدُّ؛ الآن قد يلتفّ سطرٌ).
+ */
+export type DropRow = {
+  key: string;
+  /** بلا رمز: خانتُه فارغةٌ بمقاسه فتصطفّ الكلماتُ (اختيارُ الفترة — الصحُّ على المختار وحدَه) */
+  icon?: IconName;
+  label: string;
+  onPress: () => void;
+  tone?: "success" | "danger" | "accent";
+  /** صفُّ حالٍ لا فعل (D-1328) */
+  state?: boolean;
+  dim?: boolean;
+  disabled?: boolean;
+  /** خطٌّ فوق الصفّ — يفصل البلاغَ والحذفَ عمّا قبلهما كما في الورقة */
+  divider?: boolean;
+  /** صفُّ اختيار: المختارُ يُعلَن للقارئ الآليّ */
+  selected?: boolean;
+  /** الكلمةُ بلون الرمز (حذفُ تقييمي · حظرٌ — كما كانا في الورقة)؛ صفوفُ الضغط المطوَّل كلمتُها بيضاء */
+  tint?: boolean;
+};
+
+/** يقيس زرَّ ⋯ لحظةَ الضغط — المرساةُ مكانُه على الشاشة لا رقمٌ مكتوب */
+export function measureAnchor(node: ViewInstance | null, cb: (a: Anchor) => void) {
+  if (!node) return;
+  node.measureInWindow((x, y, width, height) => cb({ x, y, width, height }));
+}
+
+export function DropMenu({ anchor, rows, onClose }: { anchor: Anchor; rows: DropRow[]; onClose: () => void }) {
+  const { t, tokens } = useApp();
+  const { width: W, height: H } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   /* 🔴 D-977 — **أرضيّةُ القائمة فوق الشريط السفليّ، وعرضُها على قدر سطرها** (بلاغُ
      أحمد بتسجيل على 1.8.5): القائمةُ كانت تهبط فوق شريط التنقّل وتكسر «الحلقة
      التالية +1» سطرين — الشاشةُ كلُّها كانت أرضيّتَها، والعرضُ ٢٠٨ ثابتاً. الأرضيّةُ
      الآن حافّةُ الشريط (`navHeight` نفسُه الذي يرفع التوست)، والعرضُ يبدأ من ٢٠٨
-     ويتّسع للسطر الأطول حتّى حافّتَي الشاشة — كما تفعل `min-w-52` في الويب. */
+     ويتّسع للسطر الأطول — كما تفعل `min-w-52` في الويب. */
   const floor = H - navHeight(insets.bottom) - 8;
   /* 🔴 D-990 — **القائمةُ تُقاس ثمّ تُوضع، ولا تخرج من الشاشة** (بلاغُ أحمد بلقطة، ١٦
-     سبتمبر: بطاقةٌ على الطرف والقائمةُ مقطوعةٌ من اليسار): D-977 ربطت الحافّةَ النهائيّةَ
-     بالبطاقة وتركت العرضَ يتّسع — فعلى بطاقةِ الطرف يتّسع خارجَ الشاشة. الآن العرضُ يُقاس
-     (`onLayout`) ثمّ يُحسب اليسارُ ويُقصّ إلى `[8, W − عرض − 8]`، وأوّلُ إطارٍ قبل القياس
-     غيرُ مرئيّ كي لا يقفز. */
-  const [panelW, setPanelW] = useState<number | null>(null);
-  const pw = panelW ?? PANEL_W;
+     سبتمبر: بطاقةٌ على الطرف والقائمةُ مقطوعةٌ من اليسار): العرضُ يُقاس (`onLayout`)
+     ثمّ يُحسب اليسارُ ويُقصّ إلى `[8, W − عرض − 8]`، وأوّلُ إطارٍ قبل القياس غيرُ مرئيّ كي لا يقفز. */
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const pw = size?.w ?? PANEL_W;
+  const panelH = size?.h ?? rows.length * ROW_H + 8;
   let left = I18nManager.isRTL ? anchor.x : anchor.x + anchor.width - pw;
   left = Math.max(8, Math.min(left, W - pw - 8));
   let top = anchor.y + anchor.height + GAP;
-  if (top + panelH > floor) top = Math.max(8, anchor.y - panelH - GAP);
+  if (top + panelH > floor) top = Math.max(insets.top + 8, anchor.y - panelH - GAP);
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t.closeLabel} />
+      {/* 🆕 D-1626 — **الإحداثيّاتُ فيزيائيّة**: `measureInWindow` يعطي يساراً حقيقيّاً، و`left` في وضع RTL المفروض (`forceRTL`)
+          يُقرأ «بداية» أي من اليمين على الآيفون (رآه D-1477 في حلقة الجولة). حاويةٌ بـ`ltr` تثبّت المعنى على المنصّتين،
+          والصفوفُ تعود إلى اتّجاه اللغة في داخل اللوح */}
+      <View style={[StyleSheet.absoluteFill, { direction: "ltr" }]} pointerEvents="box-none">
       <View
+        accessibilityViewIsModal
         onLayout={(e) => {
           const w = Math.round(e.nativeEvent.layout.width);
-          if (w !== panelW) setPanelW(w);
+          const h = Math.round(e.nativeEvent.layout.height);
+          if (!size || w !== size.w || h !== size.h) setSize({ w, h });
         }}
         style={{
           position: "absolute",
           left,
           top,
-          opacity: panelW === null ? 0 : 1,
+          opacity: size === null ? 0 : 1,
           minWidth: PANEL_W,
-          maxWidth: W - 16,
+          maxWidth: Math.min(W - 16, 320),
           paddingVertical: 4,
           borderRadius: 14,
           borderWidth: 1,
@@ -176,32 +237,40 @@ export function HoldMenu({
           elevation: 16,
         }}
       >
+        {/* اتّجاهُ اللغة للصفوف داخل اللوح — لا على اللوح نفسِه: اتّجاهُ العقدة يقرّر معنى `left` فيها (Yoga) */}
+        <View style={{ direction: I18nManager.isRTL ? "rtl" : "ltr" }}>
         {rows.map((r) => {
           const color =
             r.tone === "success" ? tokens.success : r.tone === "danger" ? tokens.error : r.tone === "accent" ? tokens.accent : tokens.muted;
-          const disabled = r.state || (busy && r.key !== "review");
+          const disabled = !!(r.state || r.disabled);
           return (
-            <Pressable
-              key={r.key}
-              disabled={disabled}
-              onPress={() => onAction(r.key)}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                minHeight: ROW_H,
-                backgroundColor: pressed ? tokens.surface2 : "transparent",
-                opacity: r.dim || (disabled && !r.state) ? 0.5 : 1,
-                borderRadius: radius.sm,
-              })}
-            >
-              <Icon name={r.icon} size={18} color={color} />
-              <Text size={14} numberOfLines={1} color={r.state ? color : undefined}>{r.label}</Text>
-            </Pressable>
+            <React.Fragment key={r.key}>
+              {r.divider ? <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} /> : null}
+              <Pressable
+                disabled={disabled}
+                onPress={r.onPress}
+                accessibilityRole="menuitem"
+                accessibilityState={r.selected !== undefined ? { selected: r.selected } : undefined}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  minHeight: ROW_H,
+                  backgroundColor: pressed ? tokens.surface2 : "transparent",
+                  opacity: r.dim || (disabled && !r.state) ? 0.5 : 1,
+                  borderRadius: radius.sm,
+                })}
+              >
+                {r.icon ? <Icon name={r.icon} size={18} color={color} /> : <View style={{ width: 18 }} />}
+                <Text size={14} numberOfLines={2} color={r.state || r.tint ? color : undefined} style={{ flexShrink: 1 }}>{r.label}</Text>
+              </Pressable>
+            </React.Fragment>
           );
         })}
+        </View>
+      </View>
       </View>
     </Modal>
   );

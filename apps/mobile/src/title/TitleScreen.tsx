@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
@@ -22,6 +22,7 @@ import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
 import { Sheet } from "../library/Sheet";
+import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { SendTitleSheet } from "../messages/SendSheets";
 import { ArtSheet } from "./ArtSheet";
 import { HomeLogo } from "../Logo";
@@ -331,7 +332,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const done = d?.kind === "movie" ? d.me.watched : tvDone;
   /* D-1014 — ورقةُ القوائم وورقةُ البطاقة الحمراء يفتحهما صفُّ الأفعال */
   const [listOpen, setListOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  /* 🆕 D-1626 — مكانُ ⋯ حين فُتحت (القائمةُ تنسدل منه) */
+  const [menuOpen, setMenuOpen] = useState<Anchor | null>(null);
+  const dotsRef = useRef<ViewInstance>(null);
   const [art, setArt] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [redCard, setRedCard] = useState(false);
@@ -382,13 +385,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           تُستبدل كلُّها حين يصل العمل، فتُركَّب صورتا الخلفيّة والملصق من جديد ويبقى مكانُهما فارغاً إطاراً أو اثنين ثمّ يعودان.
           الآن صفحةٌ واحدة: البطلُ والملصقُ عنصران ثابتان مصدرُهما البذرةُ ثمّ العمل، وما يحتاج العملَ يُرسم هيكلاً في مكانه
           حتى يصل — فلا شيءَ يُعاد تركيبه. */}
-      {!d && !seed ? (
-        <View style={{ padding: PAGE_PAD, gap: 12 }}>
-          <View style={{ height: heroH, borderRadius: radius.card, backgroundColor: tokens.surface2 }} />
-          <View style={{ height: 22, width: 200, borderRadius: 6, backgroundColor: tokens.surface2 }} />
-          <View style={{ height: 44, borderRadius: radius.control, backgroundColor: tokens.surface2 }} />
-        </View>
-      ) : (
+      {/* 🆕 D-1627 — وبلا بذرةٍ أيضاً (رابطٌ من خارج التطبيق) الشجرةُ نفسُها بخاناتها الفارغة — كانت ثلاثةَ مستطيلاتٍ رماديّة */}
+      {(
         /* 🆕 D-1133 — **شريطُ التبويبات يلتصق تحت الترويسة** (أحمد بتسجيلين، ويبٌ وتطبيق: «وأنا نازل تحت تبقى
            الحلقات وعن وكومنتي فوق، لا يكون فيه فراغ أسود فوقها»): الابنُ الرابع (البطل · الملصق · الأفعال ·
            **التبويبات** · المحتوى) لاصق. الترويسةُ خارج `ScrollView` فيلتصق تحتها بلا فجوة — لا `top` يُحسب. */
@@ -409,7 +407,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
             {/* D-1020/D-1022 — ⋯ في زاوية الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب: الظلُّ أعلاه يكفيه. (الرجوعُ في الشريط — D-1624) */}
             {/* 🆕 D-1625 — ⋯ في مكانه من أوّل إطار (معطَّلٌ حتى يصل العمل) — لا زرَّ يظهر فجأة */}
-            <Pressable disabled={guest || !d} onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center", opacity: d ? 1 : 0.5 }}>
+            <Pressable ref={dotsRef} disabled={guest || !d} onPress={() => measureAnchor(dotsRef.current, setMenuOpen)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center", opacity: d ? 1 : 0.5 }}>
               <Icon name="dots" size={20} color="#fff" />
             </Pressable>
           </View>
@@ -452,12 +450,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                       {/* ⚖️ D-1504 — النوعُ · السنة · المواسم · الدولة؛ الأنواعُ نزلت إلى إطاراتها تحت (أحمد بلقطةٍ ٢١ أكتوبر: «الازرق شيله خلاص موجوده تحت») */}
                       {[d.anime ? t.animeBadge : d.kind === "tv" ? t.typeSeries : t.typeMovie, year, d.kind === "tv" && d.seasons.length ? t.seasonsCount(d.seasons.filter((s) => s.season_number > 0).length) : null, d.kind === "movie" && d.runtime ? `${num(d.runtime, locale)} ${locale === "en" ? "min" : "د"}` : null, ...(d.origins ?? []).slice(0, 1)].filter(Boolean).join("  ·  ")}
                     </Text>
-                  ) : (
-                    <View style={{ height: 11, width: "75%", borderRadius: 5, backgroundColor: SKELETON_ON_ART }} />
-                  )}
+                  ) : null}
                 </View>
                 <View style={{ height: RATINGS_H, justifyContent: "center" }}>
-                  {x ? <RatingsLine x={x} compact onArt /> : <View style={{ height: 16, width: 96, borderRadius: 5, backgroundColor: SKELETON_ON_ART }} />}
+                  {x ? <RatingsLine x={x} compact onArt /> : null}
                 </View>
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: GENRE_ROW_H }}>
@@ -466,13 +462,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 {d ? (
                   <GenreFrames genres={d.anime ? d.genres.filter((g) => g.id !== 16) : d.genres} />
                 ) : (
-                  <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
-                    <View style={{ height: 30, width: 64, borderRadius: radius.card, backgroundColor: SKELETON_ON_ART }} />
-                    <View style={{ height: 30, width: 88, borderRadius: radius.card, backgroundColor: SKELETON_ON_ART }} />
-                  </View>
+                  <View style={{ flex: 1 }} />
                 )}
                 <View style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-                  {x ? <WatchWhere x={x} icon /> : <View style={{ width: 40, height: 40, borderRadius: radius.control, backgroundColor: SKELETON_ON_ART }} />}
+                  {x ? <WatchWhere x={x} icon /> : null}
                 </View>
               </View>
             </View>
@@ -646,31 +639,23 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
       ) : null}
       {/* D-1020 — ورقةُ «المزيد» كـ`DetailTopBar` الويب */}
       {menuOpen && d ? (
-        <Sheet title={t.moreMenuTitle} onClose={() => setMenuOpen(false)}>
-          {(
-            [
-              /* 🆕 11-M · M5 — «أرسِله لـ…» ورقةٌ أصليّة (`SendTitleSheet`) لا بابُ `/people?send=` */
-              { icon: "send", label: t.shareSendTitle, color: tokens.accent, run: () => setSendOpen(true) },
-              { icon: "link", label: t.shareCopyLink, color: tokens.fg, run: () => { Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast({ text: t.linkCopied, tone: "success" }); } },
-              { icon: "share", label: t.shareTitle, color: tokens.fg, run: () => void share() },
-              { icon: "palette", label: t.artTitle, color: tokens.fg, run: () => setArt(true) },
-            ] as const
-          ).map((it) => (
-            <Pressable key={it.label} onPress={() => { setMenuOpen(false); it.run(); }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
-              <Icon name={it.icon} size={19} color={it.color} />
-              <Text size={14}>{it.label}</Text>
-            </Pressable>
-          ))}
-          {d.kind === "tv" ? (
-            <>
-              <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
-              <Pressable onPress={() => { setMenuOpen(false); drop.mutate(!d.me.dropped); }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, opacity: pressed ? 0.6 : 1 })}>
-                <Icon name={d.me.dropped ? "play" : "red-card"} size={19} color={d.me.dropped ? tokens.accent : tokens.error} />
-                <Text size={14} color={d.me.dropped ? tokens.fg : tokens.error}>{d.me.dropped ? t.resumeWatching : t.redCardAction}</Text>
-              </Pressable>
-            </>
-          ) : null}
-        </Sheet>
+        /* 🆕 D-1626 — تنسدل من ⋯ في زاوية الخلفيّة (`DropMenu`) لا من أسفل الشاشة؛ الصفوفُ وألوانُها كما كانت */
+        <DropMenu
+          anchor={menuOpen}
+          onClose={() => setMenuOpen(null)}
+          rows={[
+            /* 🆕 11-M · M5 — «أرسِله لـ…» ورقةٌ أصليّة (`SendTitleSheet`) لا بابُ `/people?send=` */
+            { key: "send", icon: "send", label: t.shareSendTitle, tone: "accent", onPress: () => { setMenuOpen(null); setSendOpen(true); } },
+            { key: "link", icon: "link", label: t.shareCopyLink, onPress: () => { setMenuOpen(null); Clipboard.setString(`${CONFIG.apiBase}${webPath}`); setToast({ text: t.linkCopied, tone: "success" }); } },
+            { key: "share", icon: "share", label: t.shareTitle, onPress: () => { setMenuOpen(null); void share(); } },
+            { key: "art", icon: "palette", label: t.artTitle, onPress: () => { setMenuOpen(null); setArt(true); } },
+            ...(d.kind === "tv"
+              ? [d.me.dropped
+                  ? { key: "drop", icon: "play" as const, label: t.resumeWatching, tone: "accent" as const, divider: true, onPress: () => { setMenuOpen(null); drop.mutate(!d.me.dropped); } }
+                  : { key: "drop", icon: "red-card" as const, label: t.redCardAction, tone: "danger" as const, tint: true, divider: true, onPress: () => { setMenuOpen(null); drop.mutate(!d.me.dropped); } }]
+              : []),
+          ]}
+        />
       ) : null}
       {sendOpen && d ? (
         <SendTitleSheet
@@ -719,8 +704,8 @@ const TEXT_VEIL = 180;
 const PULSE_W = 68;
 const RATINGS_H = 22;
 const GENRE_ROW_H = 40;
-/* هيكلُ ما لم يصل فوق البطل الداكن (أبيضُ خافت — البطلُ داكنٌ في كلِّ ثيم، D-1506) */
-const SKELETON_ON_ART = "rgba(255,255,255,0.12)";
+/* 🆕 D-1627 — **لا رماديَّ ينتظر** (أحمد بلقطةٍ ٢ نوفمبر: «مو لازم شي رمادي يخليك تنتظر خلها بدون»): الخاناتُ تبقى
+   بمقاسها (D-1625 — لا شيءَ يتحرّك) لكنّها فارغةٌ حتى تصل معلومتُها، لا مستطيلاتٍ باهتة */
 
 
 /* D-1040 — الاسمُ وسطرُ التفاصيل فوق الصورة مباشرةً الآن: ظلٌّ خفيفٌ كظلِّ أسماء الملصقات (`PosterCard.shadow`)،

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,6 +9,7 @@ import { useApp } from "../state";
 import { Button, Text, TopBar } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
+import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { shell, type NativeRoot } from "../shell";
 import { CONFIG } from "../config";
 import { haptic } from "../haptics";
@@ -57,7 +58,9 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
   const mine = username == null;
   /* المدى حالةٌ في الشاشة لا في الرابط: التطبيقُ لا يشارك روابطَ شاشاته، ولكلِّ مدًى مفتاحُه فالعودةُ إليه فوريّة من الكاش */
   const [range, setRange] = useState<MyStatsRange>("all");
-  const [rangeSheet, setRangeSheet] = useState(false);
+  /* 🆕 D-1626 — مكانُ ⋯ حين فُتحت قائمةُ الفترة */
+  const [rangeSheet, setRangeSheet] = useState<Anchor | null>(null);
+  const dotsRef = useRef<ViewInstance>(null);
   const key = mine ? myStatsKey(range) : memberStatsKey(username ?? "");
   const q = useQuery({
     queryKey: key,
@@ -122,11 +125,12 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
               <>
                 {d?.person.username ? <HeadBtn icon="share" label={t.shareLinkLabel} onPress={shareMine} /> : null}
                 <HeadBtn
+                  btnRef={dotsRef}
                   icon="dots"
                   label={t.statsRangeMenu}
                   onPress={() => {
                     haptic.pick();
-                    setRangeSheet(true);
+                    measureAnchor(dotsRef.current, setRangeSheet);
                   }}
                 />
               </>
@@ -170,32 +174,31 @@ export function StatsScreen({ username, from }: { username?: string; from: Nativ
       )}
 
       {rangeSheet ? (
-        <Sheet title={t.statsRangeMenu} onClose={() => setRangeSheet(false)}>
-          {(
+        /* 🆕 D-1626 — تنسدل من ⋯ (`DropMenu`) لا من أسفل الشاشة («١ب»)؛ الصحُّ على الفترة المختارة كما كان */
+        <DropMenu
+          anchor={rangeSheet}
+          onClose={() => setRangeSheet(null)}
+          rows={(
             [
               { key: "all", label: t.statsRangeAll },
               { key: "year", label: String(new Date().getUTCFullYear()) },
               { key: "month", label: t.statsRangeMonth },
             ] as const
-          ).map((it, i) => (
-            <Pressable
-              key={it.key}
-              onPress={() => {
-                setRangeSheet(false);
-                if (it.key !== range) {
-                  haptic.pick();
-                  setRange(it.key);
-                }
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ selected: range === it.key }}
-              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderTopColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
-            >
-              <Text size={14} weight="600" style={{ flex: 1 }} numberOfLines={1}>{it.label}</Text>
-              {range === it.key ? <Icon name="check-line" size={18} color={tokens.accent} /> : null}
-            </Pressable>
-          ))}
-        </Sheet>
+          ).map((it) => ({
+            key: it.key,
+            label: it.label,
+            icon: range === it.key ? ("check-line" as const) : undefined,
+            tone: "accent" as const,
+            selected: range === it.key,
+            onPress: () => {
+              setRangeSheet(null);
+              if (it.key !== range) {
+                haptic.pick();
+                setRange(it.key);
+              }
+            },
+          }))}
+        />
       ) : null}
       {sheet?.kind === "all" ? (
         <Sheet title={sheet.title} onClose={() => setSheet(null)}>
@@ -248,10 +251,10 @@ function fmtWatchTime(minutes: number, t: ReturnType<typeof useApp>["t"]) {
 /* ——————————————————— بطاقةُ صاحبها ——————————————————— */
 
 /** زرٌّ في ترويسة الشاشة — مقاسُ زرِّ الرجوع نفسِه (٤٠) */
-function HeadBtn({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function HeadBtn({ icon, label, onPress, btnRef }: { icon: IconName; label: string; onPress: () => void; btnRef?: React.RefObject<ViewInstance | null> }) {
   const { tokens } = useApp();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+    <Pressable ref={btnRef} onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
       <Icon name={icon} size={20} color={tokens.fg} />
     </Pressable>
   );

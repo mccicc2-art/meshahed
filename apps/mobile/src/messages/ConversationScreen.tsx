@@ -17,6 +17,7 @@ import { posterFor } from "../poster";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Sheet } from "../library/Sheet";
+import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { Avatar } from "../community/CommunityCards";
 import { errorText } from "../community/communityActs";
 import { MESSAGES_KEY } from "./live";
@@ -305,7 +306,9 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
   );
 
   /* ——— ⋯: الملفّ · الإخفاء · الحظر ——— */
-  const [menu, setMenu] = useState(false);
+  /* 🆕 D-1626 — مكانُ ⋯ حين فُتحت */
+  const [menu, setMenu] = useState<Anchor | null>(null);
+  const dotsRef = useRef<ViewInstance>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
   /* 🆕 D-1382 — خلفيّةٌ واحدةٌ لكلِّ المحادثات، ومنتقيها من ⋯ */
   const chatBg = useChatBg();
@@ -323,7 +326,7 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
     else router.replace({ pathname: "/messages", params: { from } });
   }, [router, from]);
   const hide = useCallback(() => {
-    setMenu(false);
+    setMenu(null);
     haptic.pick();
     setBusy(true);
     closing.current = true;
@@ -527,9 +530,10 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
             {person && !person.hide_name ? <IdentityBadges flags={identityFlags(person)} nameSize={14} /> : null}
           </View>
           <Pressable
+            ref={dotsRef}
             onPress={() => {
               haptic.pick();
-              setMenu(true);
+              measureAnchor(dotsRef.current, setMenu);
             }}
             disabled={!conv}
             hitSlop={8}
@@ -651,45 +655,17 @@ export function ConversationScreen({ peer, from }: { peer: string; from: Origin 
       ) : null}
 
       {menu ? (
-        <Sheet title={t.moreMenuTitle} onClose={() => setMenu(false)}>
-          {profile ? (
-            <Pressable
-              onPress={() => {
-                setMenu(false);
-                doors.openWeb(profile);
-              }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
-            >
-              <Icon name="people" size={18} color={tokens.accent} />
-              <Text size={15}>{t.viewProfileOf(name)}</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => {
-              setMenu(false);
-              setBgSheet(true);
-            }}
-            style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
-          >
-            <Icon name="palette" size={18} color={tokens.accent} />
-            <Text size={15}>{t.chatBgTitle}</Text>
-          </Pressable>
-          <Pressable onPress={hide} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
-            <Icon name="eye-off" size={18} color={tokens.muted} />
-            <Text size={15}>{t.convHide}</Text>
-          </Pressable>
-          <View style={{ height: 1, backgroundColor: tokens.divider, marginVertical: 4 }} />
-          <Pressable
-            onPress={() => {
-              setMenu(false);
-              setConfirmBlock(true);
-            }}
-            style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
-          >
-            <Icon name="close" size={18} color={tokens.error} />
-            <Text size={15} color={tokens.error}>{t.blockOption}</Text>
-          </Pressable>
-        </Sheet>
+        /* 🆕 D-1626 — تنسدل من ⋯ في الرأس (`DropMenu`) لا من أسفل الشاشة؛ والحظرُ يبقى بتأكيده في الوسط («٢أ») */
+        <DropMenu
+          anchor={menu}
+          onClose={() => setMenu(null)}
+          rows={[
+            ...(profile ? [{ key: "profile", icon: "people" as const, label: t.viewProfileOf(name), tone: "accent" as const, onPress: () => { setMenu(null); doors.openWeb(profile); } }] : []),
+            { key: "bg", icon: "palette", label: t.chatBgTitle, tone: "accent", onPress: () => { setMenu(null); setBgSheet(true); } },
+            { key: "hide", icon: "eye-off", label: t.convHide, onPress: hide },
+            { key: "block", icon: "close", label: t.blockOption, tone: "danger", tint: true, divider: true, onPress: () => { setMenu(null); setConfirmBlock(true); } },
+          ]}
+        />
       ) : null}
 
       {bgSheet ? (

@@ -1,6 +1,6 @@
-import React, { memo, useState } from "react";
+import React, { memo, useRef, useState } from "react";
 import { talkActivity } from "@/core/talkSort";
-import { I18nManager, Pressable, StyleSheet, View } from "react-native";
+import { I18nManager, Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -10,6 +10,7 @@ import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { StatusThread } from "../library/PosterCard";
+import { measureAnchor, type Anchor } from "../library/HoldMenu";
 import { backdropUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { formatDateShort, timeAgo, timeAgoShort } from "@/core/when";
@@ -98,8 +99,8 @@ export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: numb
 export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
   comment: (row: CommunityFeedRow) => void;
   share: (path: string, title: string) => void;
-  /** 🆕 D-1448 — ⋯ بجوار العمر: الورقةُ يملكها المستدعي (`FeedMenu`) */
-  menu: (row: CommunityFeedRow) => void;
+  /** 🆕 D-1448 — ⋯ بجوار العمر: القائمةُ يملكها المستدعي (`FeedMenu`) · D-1626: ومعها مكانُ النقاط */
+  menu: (row: CommunityFeedRow, anchor: Anchor) => void;
 };
 
 /**
@@ -282,6 +283,8 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityFeedRow,
   const [reveal, setReveal] = useState(false);
   /* «النص الأصلي» ⇄ «الترجمة» (`FeedReviewText`، D-307) — حالةُ ضغطةٍ في البطاقة لا تفضيل */
   const [original, setOriginal] = useState(false);
+  /* 🆕 D-1626 — ⋯ يُقاس لحظةَ الضغط فتنسدل القائمةُ منه */
+  const dotsRef = useRef<ViewInstance>(null);
   const titleDoor = () => (row.kind === "comment" && row.item.listId ? doors.onList(row.item.listId) : doors.onTitle(row.item.media_type, row.item.tmdb_id));
 
   if (row.kind === "news") {
@@ -302,7 +305,7 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityFeedRow,
                 <Pressable onPress={() => doors.onWeb(post)} hitSlop={6} style={{ marginStart: "auto" }}>
                   <Text size={12} muted>{timeAgoShort(n.published_at, t)}</Text>
                 </Pressable>
-                <Pressable onPress={() => acts.menu(row)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
+                <Pressable ref={dotsRef} onPress={() => measureAnchor(dotsRef.current, (a) => acts.menu(row, a))} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
                   <Icon name="dots" size={16} color={tokens.muted} />
                 </Pressable>
               </View>
@@ -355,7 +358,7 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityFeedRow,
               <Pressable onPress={openText} hitSlop={6} style={{ marginStart: "auto" }}>
                 <Text size={12} muted>{timeAgoShort(a.updated_at, t)}</Text>
               </Pressable>
-              <Pressable onPress={() => acts.menu(row)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
+              <Pressable ref={dotsRef} onPress={() => measureAnchor(dotsRef.current, (a) => acts.menu(row, a))} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ width: 24, height: 18, alignItems: "center", justifyContent: "center", marginEnd: -4, opacity: pressed ? 0.5 : 1 })}>
                 <Icon name="dots" size={16} color={tokens.muted} />
               </Pressable>
             </View>

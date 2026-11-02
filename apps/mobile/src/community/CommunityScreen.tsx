@@ -32,6 +32,7 @@ import { num } from "@/core/i18n";
 import { errorText, useCommunityActs, useViewCounter, type CommunityActs, type FeedItem } from "./communityActs";
 import { CommunityTools, toolsOnFor } from "./CommunityTools";
 import { FeedMenu } from "./FeedMenu";
+import type { Anchor } from "../library/HoldMenu";
 import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
 import { lastSeen, rememberSeen } from "./feedSeen";
 import { FloatButton } from "../FloatButton";
@@ -118,10 +119,12 @@ export function CommunityScreen() {
     void Share.share({ message: title ? `${title} — ${url}` : url, url }).catch(() => {});
   }, []);
   /* 🆕 D-1448 — ورقةُ ⋯ في زاوية البطاقة */
-  const [menuRow, setMenuRow] = useState<CommunityFeedRow | null>(null);
+  /* 🆕 D-1626 — ومعه مكانُ النقاط: القائمةُ تنسدل منها */
+  const [menuRow, setMenuRow] = useState<{ row: CommunityFeedRow; anchor: Anchor } | null>(null);
+  const openMenu = useCallback((row: CommunityFeedRow, anchor: Anchor) => setMenuRow({ row, anchor }), []);
   const cardActs: CardActs = useMemo(
-    () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share, menu: setMenuRow }),
-    [acts.like, acts.signedIn, acts.meId, share],
+    () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share, menu: openMenu }),
+    [acts.like, acts.signedIn, acts.meId, share, openMenu],
   );
 
   /* التبويباتُ الظاهرةُ بترتيبك، والمفتوحُ أوّلاً من تفضيلك (D-1171) — ما لم يكن للشاشة تبويبٌ تذكره */
@@ -392,9 +395,10 @@ export function CommunityScreen() {
         /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
         <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
       ) : null}
-      {menuRow && menuRow.kind !== "talk" ? (
+      {menuRow && menuRow.row.kind !== "talk" ? (
         <FeedMenu
-          row={menuRow}
+          row={menuRow.row}
+          anchor={menuRow.anchor}
           meId={acts.meId}
           doors={doors}
           onShare={share}

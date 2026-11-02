@@ -375,18 +375,11 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                 ورقاقةُ التشغيل في طرفه — فإن غابت معلومةٌ بقيت خانتُها فارغةً بمقاسها */}
             <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
               <View style={{ height: 28, justifyContent: "center" }}>
-                {d ? (
-                  <Text size={22} weight="700" numberOfLines={1} style={{ lineHeight: 28 }}>{d.name}</Text>
-                ) : (
-                  <View style={{ height: 22, width: "65%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
-                )}
+                {/* D-1627 — الخاناتُ فارغةٌ حتى تصل معلومتُها، لا أشرطةَ رماديّة */}
+                {d ? <Text size={22} weight="700" numberOfLines={1} style={{ lineHeight: 28 }}>{d.name}</Text> : null}
               </View>
               <View style={{ height: 42 }}>
-                {d ? (
-                  d.subtitle ? <Text size={14} muted numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null
-                ) : (
-                  <View style={{ height: 12, width: "90%", marginTop: 4, borderRadius: 5, backgroundColor: tokens.surface2 }} />
-                )}
+                {d?.subtitle ? <Text size={14} muted numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
               </View>
               <View style={{ height: 24, justifyContent: "center" }}>
                 {d?.owner ? (
@@ -396,11 +389,6 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                     </View>
                     <Text size={13} muted numberOfLines={1}>{d.owner.name}</Text>
                   </Pressable>
-                ) : !d ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: tokens.surface2 }} />
-                    <View style={{ height: 11, width: 90, borderRadius: 5, backgroundColor: tokens.surface2 }} />
-                  </View>
                 ) : null}
               </View>
               {/* D-1037 — مفتاحُ التشغيل: رقاقةٌ (عائلةُ التحكّم القائمة) — لقائمتي ولمحفوظتي وحدَهما؛ في طرف صفّ الحقائق */}
@@ -413,7 +401,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                           <Text size={12} muted numberOfLines={1}>{f.label}</Text>
                         </View>
                       ))
-                    : [70, 56].map((w) => <View key={w} style={{ height: 11, width: w, borderRadius: 5, backgroundColor: tokens.surface2 }} />)}
+                    : null}
                 </View>
                 {d && d.playlist !== null ? (
                   <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
@@ -421,14 +409,8 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               </View>
             </View>
 
-            {!d ? (
-              /* صفُّ الملصقات حتى يصل — بمحاذاة الـFlatList نفسها (هامش ١٦ وحشوة الصفحة) */
-              <View style={{ flexDirection: "row", gap: GAP, marginTop: 16, paddingHorizontal: PAGE_PAD, overflow: "hidden" }}>
-                {[0, 1, 2, 3].map((i) => (
-                  <View key={i} style={{ width: RAIL_CARD_W, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface2 }} />
-                ))}
-              </View>
-            ) : d.items.length === 0 ? (
+            {/* D-1627 — لا صفَّ ملصقاتٍ رماديّاً ينتظر */}
+            {!d ? null : d.items.length === 0 ? (
               <Text size={13} muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.listItemsEmpty}</Text>
             ) : (
               <FlatList

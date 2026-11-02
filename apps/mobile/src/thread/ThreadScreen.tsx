@@ -17,6 +17,7 @@ import { posterFor } from "../poster";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Sheet } from "../library/Sheet";
+import { DropMenu, type Anchor } from "../library/HoldMenu";
 import { afterPaint, span } from "../perfMarks";
 import { errorText, mirrorFeedLike, mirrorThreadLike, type LikeRef } from "../community/communityActs";
 import { type Draft } from "./Composer";
@@ -533,7 +534,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   const { names: mentionNames, hits: mentionHits, pick: pickMention } = useMentions(text, setText, people, inputRef);
 
   /* ——— ⋯: احذف ردّي · إبلاغ ——— */
-  const [menu, setMenu] = useState<ThreadRow | null>(null);
+  const [menu, setMenu] = useState<{ row: ThreadRow; anchor: Anchor } | null>(null);
   const [reported, setReported] = useState<ReadonlySet<string>>(() => new Set());
   const remove = useCallback(
     (row: ThreadRow) => {
@@ -673,7 +674,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           onLike={like}
           onVote={vote}
           onReply={beginReply}
-          onMenu={setMenu}
+          onMenu={(row, anchor) => setMenu({ row, anchor })}
           onImage={setImage}
           onProfile={(row) => openProfile(row.person)}
           mentions={mentionNames}
@@ -853,34 +854,24 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       ) : null}
 
       {menu ? (
-        <Sheet title={t.moreMenuTitle} onClose={() => setMenu(null)}>
-          {menu.mine ? (
-            <Pressable
-              onPress={() => {
-                const r = menu;
-                setMenu(null);
-                remove(r);
-              }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
-            >
-              <Icon name="trash" size={18} color={tokens.error} />
-              <Text size={15} color={tokens.error}>{t.talkDeleteReply}</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              disabled={reported.has(menu.id)}
-              onPress={() => {
-                const r = menu;
-                setMenu(null);
-                report({ reply_id: r.id, what: "reply" }, r.id);
-              }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, opacity: reported.has(menu.id) ? 0.5 : 1 }}
-            >
-              <Icon name="shield" size={18} color={tokens.muted} />
-              <Text size={15}>{reported.has(menu.id) ? t.reportDone : t.reportLabel}</Text>
-            </Pressable>
-          )}
-        </Sheet>
+        /* 🆕 D-1626 — اللوحُ المنسدلُ من ⋯ الردّ (`DropMenu`) لا الورقةُ السفليّة؛ الصفُّ نفسُه */
+        <DropMenu
+          anchor={menu.anchor}
+          onClose={() => setMenu(null)}
+          rows={
+            menu.row.mine
+              ? [{ key: "delete", icon: "trash", label: t.talkDeleteReply, tone: "danger", tint: true, onPress: () => {
+                  const r = menu.row;
+                  setMenu(null);
+                  remove(r);
+                } }]
+              : [{ key: "report", icon: "shield", label: reported.has(menu.row.id) ? t.reportDone : t.reportLabel, dim: reported.has(menu.row.id), disabled: reported.has(menu.row.id), onPress: () => {
+                  const r = menu.row;
+                  setMenu(null);
+                  report({ reply_id: r.id, what: "reply" }, r.id);
+                } }]
+          }
+        />
       ) : null}
 
       {image ? (

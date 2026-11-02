@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
-import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance } from "react-native";
+import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance, type ViewInstance } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
@@ -24,6 +24,7 @@ import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard, PlayPill } from "../library/ListCard";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
+import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { openProfile } from "./open";
 import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
@@ -170,6 +171,9 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [leaving, setLeaving] = useState(false);
   /* 🆕 N2 — ورقةُ ⋯ ثمّ ورقتا البلاغ وتأكيد الحظر (الويبُ: قائمةٌ ثمّ ورقتان — `ProfileMenu`) */
   const [menu, setMenu] = useState<null | "menu" | "report" | "block" | "unfollow">(null);
+  /* 🆕 D-1626 — مكانُ ⋯ حين فُتحت القائمة */
+  const [menuAt, setMenuAt] = useState<Anchor | null>(null);
+  const dotsRef = useRef<ViewInstance>(null);
   const [reason, setReason] = useState("");
   const [reported, setReported] = useState(false);
   /* 🆕 N3 — ورقةُ الترتيب: صفٌّ من «المفضّلة» أو قسمٌ من «نظرة عامّة» */
@@ -694,7 +698,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
         {d?.person.username ? <RoundBtn icon="share" label={t.shareLinkLabel} onPress={share} onArt={!!d.person.cover_url} /> : null}
         {d?.viewer.is_me ? <RoundBtn icon="settings" label={t.headerSettings} onPress={() => router.push("/settings")} onArt={!!d.person.cover_url} /> : null}
         {/* 🆕 N2 — ⋯ ملفّ غيرك (`ProfileMenu`): رسالة · بلاغ · حظر */}
-        {d && !d.viewer.is_me && d.viewer.signed_in ? <RoundBtn icon="dots" label={t.profileMenuAria} onPress={() => setMenu("menu")} onArt={!!d.person.cover_url} /> : null}
+        {d && !d.viewer.is_me && d.viewer.signed_in ? <RoundBtn icon="dots" label={t.profileMenuAria} btnRef={dotsRef} onPress={() => measureAnchor(dotsRef.current, (a) => { setMenuAt(a); setMenu("menu"); })} onArt={!!d.person.cover_url} /> : null}
       </View>
 
       {!d ? (
@@ -959,18 +963,21 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           />
         </Sheet>
       ) : null}
-      {menu === "menu" && d ? (
-        <Sheet title={name} onClose={() => setMenu(null)}>
-          {/* «رسالة» خرجت من القائمة إلى دائرتها في صفِّ الهويّة (D-1380) — بابان لفعلٍ واحدٍ زيادة */}
-          {d.person.system ? null : (
-            <MenuRow icon="shield" label={reported ? t.reportDone : t.reportUserOption} dim={reported} onPress={() => (reported ? setMenu(null) : setMenu("report"))} />
-          )}
-          {d.relation.blocked_by_me ? (
-            <MenuRow icon="shield" label={t.unblockButton} onPress={() => unblock.mutate()} />
-          ) : (
-            <MenuRow icon="close" label={t.blockOption} danger onPress={() => setMenu("block")} />
-          )}
-        </Sheet>
+      {menu === "menu" && menuAt && d ? (
+        /* 🆕 D-1626 — تنسدل من ⋯ في الرأس (`DropMenu`) لا من أسفل الشاشة. «رسالة» خرجت من القائمة إلى دائرتها في صفِّ
+           الهويّة (D-1380). البلاغُ نموذجٌ والحظرُ تأكيد — يبقيان ورقتين بعد القائمة («٢أ») */
+        <DropMenu
+          anchor={menuAt}
+          onClose={() => setMenu(null)}
+          rows={[
+            ...(d.person.system
+              ? []
+              : [{ key: "report", icon: "shield" as const, label: reported ? t.reportDone : t.reportUserOption, tone: "accent" as const, dim: reported, onPress: () => (reported ? setMenu(null) : setMenu("report")) }]),
+            d.relation.blocked_by_me
+              ? { key: "unblock", icon: "shield", label: t.unblockButton, tone: "accent", onPress: () => { setMenu(null); unblock.mutate(); } }
+              : { key: "block", icon: "close", label: t.blockOption, tone: "danger", tint: true, onPress: () => setMenu("block") },
+          ]}
+        />
       ) : null}
       {menu === "report" && d ? (
         <Sheet title={t.reportUserTitle} onClose={() => setMenu(null)}>
@@ -1005,11 +1012,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
 /* ——————————————————— أجزاءُ الرأس ——————————————————— */
 
-function RoundBtn({ icon, label, onPress, onLongPress, onArt }: { icon: "back" | "share" | "settings" | "dots"; label: string; onPress: () => void; onLongPress?: () => void; onArt: boolean }) {
+function RoundBtn({ icon, label, onPress, onLongPress, onArt, btnRef }: { icon: "back" | "share" | "settings" | "dots"; label: string; onPress: () => void; onLongPress?: () => void; onArt: boolean; btnRef?: React.RefObject<ViewInstance | null> }) {
   const { tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable ref={btnRef} onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       {icon === "back" ? (
         <BackChevron color={fg} />
       ) : (
@@ -1083,17 +1090,6 @@ function CircleBtn({ icon, label, onPress, filled = false, dim = false, locked =
           <Icon name="lock" size={8} color={tokens.muted} />
         </View>
       ) : null}
-    </Pressable>
-  );
-}
-
-function MenuRow({ icon, label, onPress, dim = false, danger = false }: { icon: "comment" | "shield" | "close"; label: string; onPress: () => void; dim?: boolean; danger?: boolean }) {
-  const { tokens } = useApp();
-  const c = danger ? tokens.error : dim ? tokens.muted : tokens.fg;
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, opacity: pressed ? 0.7 : 1 }]}>
-      <Icon name={icon} size={18} color={danger ? tokens.error : dim ? tokens.muted : tokens.accent} />
-      <Text size={15} color={c}>{label}</Text>
     </Pressable>
   );
 }
