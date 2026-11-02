@@ -1,8 +1,7 @@
-[deploy] Release R158 — dead-touch witness on the dock and top tabs (T304) + FOUNDER badge removed (T303)
+[deploy] Release R159 — the hiding header and dock run on one engine: no dead dock after leaving a screen with them hidden (D-1629)
 
-Release R158 (registry release 172):
-- 303 · Remove the FOUNDER badge and its «forever» promise from the app, /plus, /features and the terms; founders keep Loopz+ until 30 Nov 2026. Web + app (OTA).
-- 304 · Dead-touch witness: dock.miss and edge.tap now carry the swipe lock (sw/swe), gestures that still see a finger (pd/pds) and the tab-slide wrapper holding the JS responder (rh/rha/rhs). Khaled's S24U recording: Discover tab swipe → title → edge-back ⇒ dock and top tabs dead. Diagnostic only. App (OTA) + perf allowlist.
+Release R159 (registry release 173):
+- 305 · Khaled's S24U recordings: open a title while the header and dock are hidden by scrolling, come back ⇒ header tabs and dock dead (4 of 4). T304: swipe lock, stuck gestures and tab-slide responder all clear; dock measured at 888 of 891 while drawn at 814. ChromeHide moves from an Animated.Value (JS writes + native spring) to a Reanimated SharedValue; ChromeTop serves Discover, Library and Community; TabDock and FloatButton read the same value. Same follow-the-finger and spring. App only (OTA).
 - 274 stays queued: needs a paid native build not approved by Ahmed
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
