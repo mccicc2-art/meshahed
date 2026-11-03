@@ -1,0 +1,9 @@
+[deploy] Release R160 — provider links open only over https (A-39) + dead-touch witness removed (T306)
+
+Release R160 (registry release 174):
+- 306 · Remove the T304 dead-touch witness (sw/swe/pd/pds/rh/rha/rhs) now that D-1629 is confirmed on Khaled S24U. App (OTA) + perf allowlist.
+- 307 · A-39: the app's "where to watch" sheet opens a provider link only when it is https (that same link opens the provider's app on the title page); anything else falls back to the search link. App (OTA).
+- 274 stays queued: needs a paid native build not approved by Ahmed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7B2bPWoCkpATpHNv31
