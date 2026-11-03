@@ -123,7 +123,7 @@ const NAMES = new Set([
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
    🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock", "jsd", "sw", "swe", "pd", "pds", "rh", "rha", "rhs"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock", "jsd"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { frameCounter, jankStart, mark, span, touchWitness } from "./perfMarks";
+import { frameCounter, jankStart, mark, span } from "./perfMarks";
 import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 import { afterInteractions } from "./afterInteractions";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Reanimated, { cancelAnimation, Easing as REasing, makeMutable, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 import { flag } from "./flags";
-import { downNow, gestureProbe, useAppAway } from "./appActive";
+import { gestureProbe, useAppAway } from "./appActive";
 
 /**
  * ====== انزلاقُ التبويبات — D-961 → D-965 (١٤ سبتمبر ٢٠٢٦) ======
@@ -134,24 +134,7 @@ function swipeOff() {
   swipeEndAt = Date.now();
 }
 const captureWhileSwiping = () => swipeLive;
-
-/* 🩺 T304 — مع كلِّ لمسةٍ ميتة (`dock.miss` · `edge.tap`): حالُ قفل السحب، والسحباتُ التي ترى إصبعاً، وأيُّ غلافِ ألواحٍ يمسك
-   مستجيبَ JS ومنذ متى. أرقامٌ وكلماتٌ قصيرة (`WORD` في الخادم: حروفٌ وأرقامٌ و`.-` حتى ١٦) — لا هويّة */
-let holdName = "";
-let holdAt = 0;
-const word = (n: string) => n.replace(/^[a-z]+:/, "").replace(/[^\w.-]/g, "").slice(0, 16) || "x";
-const age = (t: number) => (t ? Math.min(600_000, Date.now() - t) : -1);
-touchWitness(() => {
-  const downs = downNow();
-  return {
-    sw: swipeLive ? 1 : 0,
-    swe: age(swipeEndAt),
-    pd: downs.length,
-    ...(downs[0] ? { pds: word(downs[0]) } : {}),
-    rh: holdAt ? 1 : 0,
-    ...(holdAt ? { rha: age(holdAt), rhs: word(holdName) } : {}),
-  };
-});
+const noop = () => {};
 
 export function TabSlide<K extends string>(props: Props<K>) {
   const [k2] = useState(() => flag("k2"));
@@ -488,14 +471,6 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
   const away = useAppAway();
   const down = useSharedValue(0);
   useEffect(() => gestureProbe(`tab:${perfScreen ?? "?"}`, () => down.value === 1), [perfScreen, down]);
-  /* 🩺 T304 — هذا الغلافُ أخذ مستجيبَ JS (أثناء سحبةٍ حيّة) ⇒ يُعرف اسمُه حتى يتركه */
-  const holdOn = useCallback(() => {
-    holdName = perfScreen ?? "?";
-    holdAt = Date.now();
-  }, [perfScreen]);
-  const holdOff = useCallback(() => {
-    if (holdName === (perfScreen ?? "?")) holdAt = 0;
-  }, [perfScreen]);
   /* 🆕 D-1335 — السحبةُ تقطع الطيران (الشرحُ عند `gesture`): وجهةُ الطيران الجاري (`-1` = لا طيران)، ورقمُه (ردُّ طيرانٍ
      قُطع لا يمسّ ما بعده)، وموضعُ اللوح لحظةَ التقاطه منسوباً إلى مستقرِّ وجهته، وإزاحةُ الإصبع التي تُبقيه هناك */
   const fly = useSharedValue(-1);
@@ -883,9 +858,7 @@ function TabSlideUI<K extends string>({ order, tab, onTab, onAim, onArm, render,
           /* D-1497 — السحبةُ الحيّةُ تأخذ اللمسَ من البطاقة تحت الإصبع. ⚠️ ولا التقاطَ عند بدء لمسةٍ بعدها: مستجيبُ JS يحجب
              تمريرَ القائمة الأصليّ لتلك اللمسة — فاللمسةُ التالية يحرسها `tabSwipeBlocksPress` في أبواب الفتح لا هنا */
           onMoveShouldSetResponderCapture={captureWhileSwiping}
-          onResponderGrant={holdOn}
-          onResponderRelease={holdOff}
-          onResponderTerminate={holdOff}
+          onResponderGrant={noop}
           onResponderTerminationRequest={() => !swipeLive}
         >
           <Reanimated.View style={[{ position: "absolute", top: 0, bottom: 0, start: 0, width: Math.max(1, order.length) * width }, track]}>

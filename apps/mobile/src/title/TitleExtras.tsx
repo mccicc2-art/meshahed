@@ -180,7 +180,10 @@ export function WatchWhere({ x, icon = false }: { x: TitleExtrasPayload | undefi
                   {g.providers.map((p) => (
                     <Pressable
                       key={p.id}
-                      onPress={() => void Linking.openURL(p.link ?? `https://www.google.com/search?q=${encodeURIComponent(p.name)}`)}
+                      // A-39 (المدقّق ٣ نوفمبر) — رابطُ المنصّة يُدخله المشرف؛ لا يُفتح إلّا
+                      // إن كان https (رابطُ نتفليكس هذا نفسُه يفتح تطبيقها على صفحة العمل)،
+                      // وما سواه يرجع إلى البحث كأنّه لا رابط.
+                      onPress={() => void Linking.openURL(p.link && /^https:\/\//i.test(p.link) ? p.link : `https://www.google.com/search?q=${encodeURIComponent(p.name)}`)}
                       style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 }}
                     >
                       <View style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2 }}>
