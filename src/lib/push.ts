@@ -19,6 +19,9 @@ import {
   dmNativeOf,
   type PushGroup,
   type PushText,
+  airingByDay,
+  pushFailureLine,
+  type ExpoTicket,
 } from "@/core/push";
 
 /**
@@ -91,12 +94,41 @@ function expoMessage(m: { token: string; text: PushText; dmNative?: Dict | null 
   };
 }
 
-async function send(db: SupabaseClient, batch: { token: string; text: PushText; dmNative?: Dict | null }[]): Promise<number> {
-  if (!batch.length) return 0;
+/**
+ * 🆕 T313 — **ما فشل يُكتب** (`runtime_errors`، نوع `PushSend`): الخادمُ كان يرمي ردَّ Expo كلَّه، فلم يظهر عطلُ تنبيهات
+ * الحلقات ثلاثةَ أسابيع (بلاغُ خالد ٤ نوفمبر). سطرٌ واحدٌ للدفعة بأسباب الفشل معدودةً، بلا رمز جهاز (`pushFailureLine`).
+ * صامتٌ كغيره: السجلُّ لا يُفشل إرسالاً.
+ */
+async function logPushFailure(db: SupabaseClient, line: string | null): Promise<void> {
+  if (!line) return;
+  try {
+    await db.rpc("log_runtime_error", { p_route: "push", p_digest: "", p_kind: "PushSend", p_message: line });
+  } catch {
+    /* لا شيء */
+  }
+}
+
+/** مفتاحُ تذكرةٍ ينتظر إيصالَها في `push_sent` (لا جدولَ جديد): `rcpt:<المجموعة>:<معرّف التذكرة>` */
+const RECEIPT_KEY = "rcpt:";
+
+/**
+ * يعيد **أيَّ الرسائل لم يقبلها Expo** (فهارسُها في الدفعة) مع عدد ما قُبل — ليعيد صاحبُ الحلقات المحاولةَ لمن فشل وحدَه.
+ * 🆕 T313 — والتذاكرُ المقبولةُ تُحفظ مفاتيحَ لإيصالها: «مقبول» عند Expo لا يعني «وصل» — الرفضُ من Google/Apple يظهر في
+ * الإيصال بعد دقائق (`checkPushReceipts`).
+ */
+async function send(
+  db: SupabaseClient,
+  batch: { token: string; text: PushText; dmNative?: Dict | null }[],
+  what: string,
+): Promise<{ sent: number; failed: Set<number> }> {
+  const failed = new Set<number>();
+  if (!batch.length) return { sent: 0, failed };
   let sent = 0;
   /* Expo يقبل مئةً في النداء */
   for (let i = 0; i < batch.length; i += 100) {
     const part = batch.slice(i, i + 100);
+    let tickets: ExpoTicket[] = [];
+    let extra = "";
     try {
       const res = await fetch(EXPO_PUSH, {
         method: "POST",
@@ -106,20 +138,76 @@ async function send(db: SupabaseClient, batch: { token: string; text: PushText; 
            الدفعةُ التي تنقضي مهلتُها تسقط في `catch` القائم وتمضي الحلقةُ إلى ما بعدها. */
         signal: AbortSignal.timeout(15_000),
       });
-      const json = (await res.json().catch(() => null)) as { data?: { status?: string; details?: { error?: string } }[] } | null;
-      const tickets = Array.isArray(json?.data) ? json.data : [];
-      const dead: string[] = [];
-      tickets.forEach((tk, n) => {
-        if (tk?.status === "ok") sent++;
-        /* التطبيقُ حُذف أو الرمزُ دُوِّر: الصفُّ يُنسى فلا يُرسَل إليه ثانيةً */
-        else if (tk?.details?.error === "DeviceNotRegistered" && part[n]) dead.push(part[n].token);
-      });
-      if (dead.length) await db.from("device_tokens").delete().in("token", dead);
-    } catch {
-      /* شبكة Expo — يسقط هذا الإشعارُ وحدَه */
+      const json = (await res.json().catch(() => null)) as { data?: ExpoTicket[]; errors?: { code?: string; message?: string }[] } | null;
+      tickets = Array.isArray(json?.data) ? json.data : [];
+      if (!res.ok || !tickets.length) extra = `http ${res.status}${json?.errors?.[0] ? ` ${json.errors[0].code ?? ""} ${json.errors[0].message ?? ""}` : ""}`;
+    } catch (e) {
+      /* شبكة Expo — تسقط هذه الدفعةُ وحدَها */
+      extra = e instanceof Error ? `${e.name}: ${e.message}` : "fetch failed";
     }
+    const dead: string[] = [];
+    const receipts: string[] = [];
+    part.forEach((m, n) => {
+      const tk = tickets[n];
+      if (tk?.status === "ok") {
+        sent++;
+        if (tk.id) receipts.push(`${RECEIPT_KEY}${what}:${tk.id}`);
+        return;
+      }
+      failed.add(i + n);
+      /* التطبيقُ حُذف أو الرمزُ دُوِّر: الصفُّ يُنسى فلا يُرسَل إليه ثانيةً */
+      if (tk?.details?.error === "DeviceNotRegistered") dead.push(m.token);
+    });
+    await logPushFailure(db, pushFailureLine(what, tickets, part.length, extra));
+    if (dead.length) await db.from("device_tokens").delete().in("token", dead);
+    if (receipts.length) await db.from("push_sent").insert(receipts.map((key) => ({ key: key.slice(0, 200) })));
   }
-  return sent;
+  return { sent, failed };
+}
+
+/**
+ * 🆕 T313 — **الإيصالات**: بعد ١٥ دقيقة يقول Expo هل سلّمت Google/Apple الرسالةَ فعلاً. يُقرأ ما نضج من `push_sent` (٣٠٠ في
+ * المرّة)، ويُكتب الفاشلُ بأسبابه، ثمّ تُمسح المفاتيح — والأقدمُ من يوم يُمسح بلا قراءة (Expo لا يحفظ الإيصالَ أكثر).
+ * يُنادى من دورة الحلقات (بحركة المرور، مرّةً كلَّ عشر دقائق للنسخة) فلا مؤقّتَ جديد.
+ */
+async function checkPushReceipts(db: SupabaseClient, nowMs: number): Promise<void> {
+  try {
+    /* نسخٌ كثيرةٌ للدالّة: واحدةٌ تقرأ في كلِّ عشر دقائق، فلا يُكتب الفشلُ نفسُه مرّتين */
+    if (!(await claim(db, `job:receipts:${dayOf(nowMs)}:${Math.floor((nowMs % 86_400_000) / 600_000)}`))) return;
+    const ripe = new Date(nowMs - 15 * 60_000).toISOString();
+    const stale = new Date(nowMs - 24 * 3_600_000).toISOString();
+    await db.from("push_sent").delete().like("key", `${RECEIPT_KEY}%`).lt("at", stale);
+    const { data } = await db.from("push_sent").select("key").like("key", `${RECEIPT_KEY}%`).lt("at", ripe).limit(300);
+    const keys = ((data ?? []) as { key: string }[]).map((r) => r.key);
+    if (!keys.length) return;
+    const byWhat = new Map<string, string[]>();
+    for (const k of keys) {
+      const rest = k.slice(RECEIPT_KEY.length);
+      const at = rest.lastIndexOf(":");
+      if (at < 0) continue;
+      const what = rest.slice(0, at);
+      byWhat.set(what, [...(byWhat.get(what) ?? []), rest.slice(at + 1)]);
+    }
+    const res = await fetch("https://exp.host/--/api/v2/push/getReceipts", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...byWhat.values()].flat() }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const json = (await res.json().catch(() => null)) as { data?: Record<string, ExpoTicket> } | null;
+    if (!res.ok || !json?.data) {
+      await logPushFailure(db, `push receipts: http ${res.status}`);
+      return;
+    }
+    for (const [what, ids] of byWhat) {
+      /* إيصالٌ لم يصدر بعد يُعدّ «ناقصاً» لا فاشلاً — لكنّه يُمسح: بعد ١٥ دقيقة غيابُه نفسُه خبر */
+      const got = ids.map((id) => json.data?.[id]).filter((x): x is ExpoTicket => !!x);
+      await logPushFailure(db, pushFailureLine(`${what} receipts`, got, got.length));
+    }
+    await db.from("push_sent").delete().in("key", keys);
+  } catch {
+    /* الإيصالاتُ مراقبةٌ لا شرط — تُعاد في الدورة التالية */
+  }
 }
 
 /** القلبُ: مستلمٌ واحد، نوعٌ واحد، ونصٌّ يُبنى بلغة كلِّ جهاز */
@@ -142,7 +230,7 @@ async function deliver(input: { to: string; group: PushGroup; dedupe?: string; a
     /* القاموسُ نفسُه لنصوص الزرّين و«أنت:» في الإشعار الأصليّ — بلغة هذا الجهاز */
     if (text) batch.push({ token: d.token, text, dmNative: d.dmNative ? t : null });
   }
-  await send(db, batch);
+  await send(db, batch, input.group);
 }
 
 async function personOf(db: SupabaseClient, id: string): Promise<PersonLite | null> {
@@ -460,12 +548,18 @@ const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /**
  * **«حلقةٌ جديدة اليوم»** — بحركة المرور، بلا cron ولا سرّ (نمطُ D-210): يُنادى في `after` من `me/badges`.
  *
- * 🔑 **موعدُ الحلقة من مكتبات الناس لا من TMDB**: `follows.next_air_date` يُحدَّث لمن فتح التطبيق؛ ومن غاب أسبوعاً
- * موعدُه قديم — وهو بالذات من يُراد إعلامُه. فالسؤالُ «أيُّ مسلسلٍ يُعرض اليوم؟» يُجاب من صفوف الجميع (أحدثُ قارئٍ
- * يكفي)، ثمّ يُبلَّغ كلُّ من يتابعه وله جهاز. صفرُ نداءِ TMDB.
+ * 🔑 **موعدُ الحلقة من لقطة العمل** (`title_snapshots`، تُحدَّث يوميّاً) — 🆕 T313، نقضٌ لـ«من مكتبات الناس»: موعدُ
+ * `follows.next_air_date` لا يتحدّث إلّا لمن فتح رئيسيّتَه بعد فوات الموعد المحفوظ، ففاتت «بلاك كلوفر» ثلاثَ حلقاتٍ بلا
+ * محاولة (بلاغُ خالد ٤ نوفمبر: عند متابعٍ ما زال ٢٤ أكتوبر، وعند آخرَ فارغ). **اليومُ يُطابق القادمةَ أو الأخيرة**
+ * (`airingByDay`): يومَ الحلقة تنقل TMDB القادمةَ أسبوعاً فتصير الأخيرة. **ومكتباتُ الناس احتياطٌ لعملٍ بلا لقطة** وحدَه —
+ * موعدُها القديمُ لا يعلو موعدَ اللقطة. صفرُ نداءِ TMDB كما كان.
  *
  * 🔑 **اليومُ بمنطقة صاحبه، ولا رنينَ قبل العاشرة** (`EPISODE_PUSH_FROM_HOUR`) — D-1253: الحلقةُ معروضةٌ متى حلّ
  * تاريخُها. ومفتاحٌ في `push_sent` لكلِّ (مستخدم · عمل · يوم): دورةٌ لاحقةٌ لا تعيد ما أُعلن.
+ *
+ * 🔑 🆕 T313 — **المفتاحُ يُردّ إن لم يقبل Expo الرسالة**: كان يُكتب قبل الإرسال ويبقى مهما حدث، فإشعارٌ سقط ضاع يومُه
+ * (يوما ٢٤ و٣١ أكتوبر: المفتاحُ موجود ولم يصل شيء). الآن من لم تُقبل له رسالةٌ على أيِّ جهاز تُمسح مفاتيحُه، فتعيده
+ * الدورةُ التالية بعد ساعتين. الثمنُ تكرارٌ نادر إن وصلت الرسالةُ وانقطع ردُّ Expo — أهونُ من صمت.
  */
 export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean; users: number; sent: number }> {
   const idle = { ran: false, users: 0, sent: 0 };
@@ -473,6 +567,8 @@ export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean
   if (nowMs - lastTry < TRY_EVERY_MS) return idle;
   lastTry = nowMs;
   const db = await createServiceClient();
+  /* 🆕 T313 — إيصالاتُ ما أُرسل قبل ربع ساعة (كلُّ الأنواع) — قبل بوّابة النافذة: تُقرأ في كلِّ دورةٍ لا مرّةً كلَّ ساعتين */
+  await checkPushReceipts(db, nowMs);
   const window = Math.floor(new Date(nowMs).getUTCHours() / WINDOW_HOURS);
   if (!(await claim(db, `job:episodes:${dayOf(nowMs)}:${window}`))) return idle;
 
@@ -483,12 +579,31 @@ export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean
 
   /* ما يُعرض أمس · اليوم · غداً (UTC) — يغطّي كلَّ منطقةٍ زمنيّة */
   const days = [dayOf(nowMs - 86_400_000), dayOf(nowMs), dayOf(nowMs + 86_400_000)];
-  const { data: air } = await db.from("follows").select("tmdb_id, next_air_date").eq("media_type", "tv").in("next_air_date", days).limit(10_000);
-  const airing = new Map<string, Set<number>>();
-  for (const r of (air ?? []) as { tmdb_id: number; next_air_date: string }[]) {
-    const set = airing.get(r.next_air_date) ?? new Set<number>();
-    set.add(r.tmdb_id);
-    airing.set(r.next_air_date, set);
+  const inDays = `(${days.join(",")})`;
+  const [{ data: snaps }, { data: air }] = await Promise.all([
+    db
+      .from("title_snapshots")
+      .select("tmdb_id, next_air_date, last_air_date")
+      .eq("media_type", "tv")
+      .or(`next_air_date.in.${inDays},last_air_date.in.${inDays}`)
+      .limit(10_000),
+    db.from("follows").select("tmdb_id, next_air_date").eq("media_type", "tv").in("next_air_date", days).limit(10_000),
+  ]);
+  const airing = airingByDay((snaps ?? []) as { tmdb_id: number; next_air_date: string | null; last_air_date: string | null }[], days);
+  /* الاحتياط: ما في المكتبات ولا لقطةَ له أصلاً */
+  const fromLibs = airingByDay((air ?? []) as { tmdb_id: number; next_air_date: string | null }[], days);
+  const libIds = [...new Set([...fromLibs.values()].flatMap((x) => [...x]))];
+  if (libIds.length) {
+    const { data: known } = await db.from("title_snapshots").select("tmdb_id").eq("media_type", "tv").in("tmdb_id", libIds.slice(0, 1000));
+    const has = new Set(((known ?? []) as { tmdb_id: number }[]).map((r) => r.tmdb_id));
+    for (const [day, set] of fromLibs) {
+      for (const id of set) {
+        if (has.has(id)) continue;
+        const into = airing.get(day) ?? new Set<number>();
+        into.add(id);
+        airing.set(day, into);
+      }
+    }
   }
   const ids = [...new Set([...airing.values()].flatMap((s) => [...s]))];
   if (!ids.length) return { ran: true, users: users.length, sent: 0 };
@@ -514,6 +629,8 @@ export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean
   }
 
   const batch: { token: string; text: PushText }[] = [];
+  /* مفاتيحُ كلِّ مستخدمٍ وفهارسُ رسائله في الدفعة — لردّ المفاتيح إن لم تُقبل له رسالة */
+  const claimed = new Map<string, { keys: string[]; at: number[] }>();
   for (const user of users) {
     if (muted.has(user)) continue;
     const { day, hour } = localDayHour(nowMs, zone.get(user));
@@ -521,14 +638,27 @@ export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean
     const today = airing.get(day);
     if (!today) continue;
     const fresh: { tmdbId: number; title: string }[] = [];
+    const keys: string[] = [];
     for (const s of mine.get(user) ?? []) {
-      if (today.has(s.tmdbId) && (await claim(db, `ep:${user}:${s.tmdbId}:${day}`))) fresh.push(s);
+      const key = `ep:${user}:${s.tmdbId}:${day}`;
+      if (today.has(s.tmdbId) && (await claim(db, key))) {
+        fresh.push(s);
+        keys.push(key);
+      }
     }
     if (!fresh.length) continue;
+    const at: number[] = [];
     for (const d of tokens.filter((x) => x.user_id === user)) {
       const text = episodesPush(fresh, getDict(d.lang === "en" ? "en" : "ar"));
-      if (text) batch.push({ token: d.token, text });
+      if (text) {
+        at.push(batch.length);
+        batch.push({ token: d.token, text });
+      }
     }
+    claimed.set(user, { keys, at });
   }
-  return { ran: true, users: users.length, sent: await send(db, batch) };
+  const { sent, failed } = await send(db, batch, "episodes");
+  const release = [...claimed.values()].filter((c) => c.at.length && c.at.every((n) => failed.has(n))).flatMap((c) => c.keys);
+  if (release.length) await db.from("push_sent").delete().in("key", release);
+  return { ran: true, users: users.length, sent };
 }

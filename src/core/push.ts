@@ -192,3 +192,55 @@ export function localDayHour(nowMs: number, timeZone: string | null | undefined)
 
 /** لا رنينَ قبل العاشرة صباحاً بتوقيت صاحبه: تاريخُ الحلقة يحلّ منتصفَ الليل، والإشعارُ لا */
 export const EPISODE_PUSH_FROM_HOUR = 10;
+
+/**
+ * 🆕 T313 — **أيُّ مسلسلٍ يُعرض في أيّ يوم** (`يوم ⇢ معرّفات`) من صفوفٍ فيها الموعدان، لأيّامٍ محدّدة فقط.
+ *
+ * 🔴 **لماذا الموعدان لا القادمُ وحدَه** (بلاغُ خالد ٤ نوفمبر: «بلاك كلوفر» ثلاثةَ أسابيع بلا تنبيه): لقطةُ العمل
+ * (`title_snapshots`) تُحدَّث مرّةً في اليوم، ويومَ الحلقة نفسَه ينقل TMDB «القادمة» إلى الأسبوع التالي فتصير الحلقةُ
+ * «الأخيرة». بالقادمة وحدَها تفوت الحلقةُ كلّما حُدِّثت اللقطةُ قبل الدورة. **اليومُ يُطابق إن كان القادمَ أو الأخير.**
+ */
+export function airingByDay(
+  rows: readonly { tmdb_id: number; next_air_date?: string | null; last_air_date?: string | null }[],
+  days: readonly string[],
+): Map<string, Set<number>> {
+  const want = new Set(days);
+  const out = new Map<string, Set<number>>();
+  const add = (day: string | null | undefined, id: number) => {
+    if (!day || !want.has(day)) return;
+    const set = out.get(day) ?? new Set<number>();
+    set.add(id);
+    out.set(day, set);
+  };
+  for (const r of rows) {
+    add(r.next_air_date, r.tmdb_id);
+    add(r.last_air_date, r.tmdb_id);
+  }
+  return out;
+}
+
+/** تذكرةُ Expo لرسالةٍ واحدة (`/push/send`) أو إيصالُها (`/push/getReceipts`) — الشكلُ نفسُه */
+export type ExpoTicket = { status?: string; id?: string; message?: string; details?: { error?: string } };
+
+/**
+ * 🆕 T313 — **سطرٌ واحدٌ يقول ما فشل** لـ`runtime_errors`، أو `null` إن نجح كلُّ شيء.
+ * 🔴 لماذا: الخادمُ كان يرمي ردَّ Expo فلم يظهر عطلٌ ثلاثةَ أسابيع. **ولا رمزَ جهازٍ في السطر** — رسالةُ Expo تذكره
+ * أحياناً (`"ExponentPushToken[…]" is not a registered…`) فيُستبدل بـ`token`: السجلُّ تقنيٌّ بلا هويّة (D-668).
+ */
+export function pushFailureLine(what: string, tickets: readonly (ExpoTicket | null | undefined)[], sent: number, extra?: string): string | null {
+  const counts = new Map<string, number>();
+  let sample = "";
+  for (const tk of tickets) {
+    if (tk?.status === "ok") continue;
+    const code = tk?.details?.error || (tk ? "error" : "missing");
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+    if (!sample && tk?.message) sample = tk.message;
+  }
+  const missing = Math.max(0, sent - tickets.length);
+  if (missing) counts.set("missing", (counts.get("missing") ?? 0) + missing);
+  const failed = [...counts.values()].reduce((a, b) => a + b, 0);
+  if (!failed && !extra) return null;
+  const codes = [...counts].map(([k, n]) => `${k}×${n}`).join(", ");
+  const scrub = (s: string) => s.replace(/Expo(nent)?PushToken\[[^\]]*\]/g, "token").slice(0, 160);
+  return [`push ${what}: ${failed}/${sent} failed`, codes, extra ? scrub(extra) : "", sample ? scrub(sample) : ""].filter(Boolean).join(" · ");
+}

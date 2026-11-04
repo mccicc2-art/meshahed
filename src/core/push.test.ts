@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf, dmNativeOf, dmTargetOf, PUSH_CAPS, groupMessagePush } from "./push.ts";
+import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf, dmNativeOf, dmTargetOf, PUSH_CAPS, groupMessagePush, airingByDay, pushFailureLine } from "./push.ts";
 import { parseWidgetDmBody } from "./contracts/widget.ts";
 import { getDict } from "./i18n.ts";
 import type { SignalRow } from "./signals.ts";
@@ -113,4 +113,39 @@ test("D-1435/D-1436 — دفعُ القروب: العملُ المرسَل يُ�
   assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "", sharedTitle: "Dark" }, t).body, "مشعل: 🎬 Dark");
   assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "شوفوه", sharedTitle: "Dark" }, t).body, "مشعل: 🎬 Dark شوفوه");
   assert.equal(groupMessagePush({ groupId: G, groupName: "الشلة", senderName: "مشعل", text: "@khld تعال", mention: true }, t).body, `${t.pushGroupMention("مشعل")}: @khld تعال`);
+});
+
+test("T313 — يومُ الحلقة يُطابق القادمَ أو الأخير، وخارجَ الأيّام لا شيء", () => {
+  const days = ["2026-11-06", "2026-11-07", "2026-11-08"];
+  const m = airingByDay(
+    [
+      /* بلاك كلوفر قبل تحديث اللقطة: القادمةُ اليوم */
+      { tmdb_id: 73223, next_air_date: "2026-11-07", last_air_date: "2026-10-31" },
+      /* وبعده: القادمةُ الأسبوعَ التالي والأخيرةُ اليوم — كانت تفوت */
+      { tmdb_id: 30983, next_air_date: "2026-11-14", last_air_date: "2026-11-07" },
+      { tmdb_id: 1, next_air_date: null, last_air_date: "2020-01-01" },
+      { tmdb_id: 2, next_air_date: "2026-11-08" },
+    ],
+    days,
+  );
+  assert.deepEqual([...(m.get("2026-11-07") ?? [])].sort(), [30983, 73223]);
+  assert.deepEqual([...(m.get("2026-11-08") ?? [])], [2]);
+  assert.equal(m.has("2020-01-01"), false);
+  assert.equal(m.has("2026-11-06"), false);
+});
+
+test("T313 — سطرُ فشل الدفع: الأخطاءُ معدودة، والناقصُ يُعدّ، ولا رمزَ جهاز", () => {
+  assert.equal(pushFailureLine("episodes", [{ status: "ok" }, { status: "ok" }], 2), null);
+  const line = pushFailureLine(
+    "messages",
+    [{ status: "ok" }, { status: "error", message: '"ExponentPushToken[abcDEF123456]" is not a registered push notification recipient', details: { error: "DeviceNotRegistered" } }],
+    3,
+  );
+  assert.ok(line);
+  assert.match(line, /^push messages: 2\/3 failed/);
+  assert.match(line, /DeviceNotRegistered×1/);
+  assert.match(line, /missing×1/);
+  assert.doesNotMatch(line, /PushToken/);
+  /* انقطاعٌ بلا تذاكر: الكلُّ فشل، والسببُ يُقال */
+  assert.equal(pushFailureLine("episodes", [], 4, "TimeoutError: The operation was aborted"), "push episodes: 4/4 failed · missing×4 · TimeoutError: The operation was aborted");
 });
