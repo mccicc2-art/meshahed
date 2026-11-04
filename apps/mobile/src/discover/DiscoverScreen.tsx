@@ -31,7 +31,7 @@ import { FilterSheet } from "./FilterSheet";
 import { HeaderEdges } from "../HeaderEnd";
 import { controlSize } from "../theme";
 import { NameSheet } from "./NameSheet";
-import { coldStartVoid, span, tabLanded } from "../perfMarks";
+import { afterPaint, coldStartVoid, mark, span, tabLanded } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { scrollJank } from "../scrollJank";
 import { dismissed, useDismissed } from "./dismissed";
@@ -200,14 +200,41 @@ export function DiscoverScreen() {
     }, []),
   );
   useRefetchOnFocus(["discover:"]);
+  const [openCached] = useState(() => qc.getQueryCache().findAll({ queryKey: ["discover:rail", memory.tab] }).some((q) => q.state.data !== undefined));
   const [endOpen] = useState(() => {
     coldStartVoid();
     /* 🆕 1.12.7 — `cached` كأخواتها (`messages.open` · `thread.open`): ١ إن كان في الكاش صفٌّ لتبويب الفتح لحظةَ التركيب. العلامةُ
        تنتهي حين يهدأ **كلُّ** جلبٍ لصفوفه — ومع الكاش ترى العينُ الصفوفَ من أوّل إطارٍ والجلبُ تجديدٌ خلفها؛ بلا هذا الوسم
        يختلط الفتحُ البارد (شبكةٌ ورمزٌ وTMDB) بالدافئ في رقمٍ واحد (p50 ٣٨٨ms · p95 ~٥ث في 1.12.6). */
-    const cached = qc.getQueryCache().findAll({ queryKey: ["discover:rail", memory.tab] }).some((q) => q.state.data !== undefined);
-    return span("discover.open", { tab: memory.tab, cached: cached ? 1 : 0 });
+    return span("discover.open", { tab: memory.tab, cached: openCached ? 1 : 0 });
   });
+  /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٣أ) — **`discover.open` تجديدٌ خلف ما تراه العين، لا ما تراه**: عيّناتُ الآيفون الظاهرةُ بين ٤ و٢٠ثانية
+     جاءت في دفعاتٍ دخل فيها المستخدمُ «اكتشف» في ٥٨–١١٦ms من الكاش. فعلامتان: `discover.paint` من التركيب إلى أوّل إطارٍ فيه صفّ
+     (ما تراه العين)، و`discover.open` كما كانت ومعها `away` — كم كان التبويبُ غيرَ ظاهرٍ في أثنائها (من غادر قبل أن ينتهي التجديد،
+     أو المركَّبُ مسبقاً قبل أوّل زيارة). الاسمُ القديمُ باقٍ كي لا ينقطع خطُّه في السجلّ. قياسٌ لا يغيّر شيئاً */
+  const [mountAt] = useState(() => performance.now());
+  const away = useRef({ ms: 0, since: mountAt as number | null });
+  useFocusEffect(
+    useCallback(() => {
+      const a = away.current;
+      if (a.since !== null) a.ms += performance.now() - a.since;
+      a.since = null;
+      return () => {
+        away.current.since = performance.now();
+      };
+    }, []),
+  );
+  const awayNow = useCallback(() => {
+    const a = away.current;
+    return Math.round(a.ms + (a.since !== null ? performance.now() - a.since : 0));
+  }, []);
+  const finishOpen = useCallback(() => endOpen({ away: awayNow() }), [endOpen, awayNow]);
+  const painted = useRef(false);
+  const onPaint = useCallback(() => {
+    if (painted.current) return;
+    painted.current = true;
+    afterPaint(() => mark("discover.paint", performance.now() - mountAt, { tab: openTab, cached: openCached ? 1 : 0, away: awayNow() }));
+  }, [mountAt, openTab, openCached, awayNow]);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -526,7 +553,7 @@ export function DiscoverScreen() {
     </ChromeTop>
 
       {/* ⚖️ D-961 → D-965 — اللوحُ ينزلق، **والجارُ يُرسم حيّاً** تحت الإصبع لحظةَ قفل السحب */}
-      {openTab !== "lists" ? <OpenMark tab={openTab} onDone={endOpen} /> : null}
+      {openTab !== "lists" ? <OpenMark tab={openTab} onDone={finishOpen} onPaint={onPaint} /> : null}
       <TabSlide
         order={tabsOrder}
         tab={tab}
@@ -963,14 +990,16 @@ const DiscoverPane = memo(function DiscoverPane({
  * سيجلب ما لا تعرضه الشاشة — قياسٌ يثقل ما يقيسه قياسٌ فاسد. ومكوّنٌ مستقلّ كي لا
  * تعيد وصولاتُ الصفوف رسمَ الشاشة كلِّها.
  */
-function OpenMark({ tab, onDone }: { tab: CuratedTab; onDone: () => void }) {
+function OpenMark({ tab, onDone, onPaint }: { tab: CuratedTab; onDone: () => void; /** 🆕 المهمّة ٣١٩ — أوّلُ صفٍّ له بيانات (من الكاش أو الشبكة) */ onPaint: () => void }) {
   const qc = useQueryClient();
   const fetching = useIsFetching({ queryKey: ["discover:rail", tab] });
   useEffect(() => {
+    const rails = qc.getQueryCache().findAll({ queryKey: ["discover:rail", tab] });
+    /* 🆕 المهمّة ٣١٩ — صفٌّ له بيانات ⇒ تُرسم في هذا الالتزام: `onPaint` ينتظر إطارين (`afterPaint`) ثمّ يكتب `discover.paint` مرّةً */
+    if (rails.some((q) => q.state.data !== undefined)) onPaint();
     if (fetching > 0) return;
-    const any = qc.getQueryCache().findAll({ queryKey: ["discover:rail", tab] }).some((q) => q.state.status === "success");
-    if (any) onDone();
-  }, [fetching, qc, tab, onDone]);
+    if (rails.some((q) => q.state.status === "success")) onDone();
+  }, [fetching, qc, tab, onDone, onPaint]);
   return null;
 }
 

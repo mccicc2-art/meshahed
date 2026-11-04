@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, StyleSheet, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, StyleSheet, useWindowDimensions, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import Reanimated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { mark } from "../perfMarks";
+import { touchTarget } from "../touchTargets";
 import { opening } from "./opening";
 
 /**
@@ -208,12 +209,16 @@ export function Opening({ start }: { start: boolean }) {
     };
   });
 
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — الستارُ يملأ الشاشةَ ويقبل اللمسَ ما دام مركَّباً: يُسجَّل هدفاً حتى «gone» */
+  const sheetRef = useRef<ViewInstance>(null);
+  useEffect(() => touchTarget("opn", (cb) => sheetRef.current?.measureInWindow(cb), () => phaseRef.current !== "gone"), []);
+
   if (phase === "gone") return null;
   /* صندوقُ اللوحة: حبرُ الشعار بثلث العرض؛ والطبقةُ الثابتةُ ضعفُه مصغَّرةً إلى النصف */
   const box = Math.round(width / 3 / INK);
   const still = phase === "still";
   return (
-    <Reanimated.View style={[StyleSheet.absoluteFill, { backgroundColor: BG, alignItems: "center", justifyContent: "center" }, sheet]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Reanimated.View ref={sheetRef} style={[StyleSheet.absoluteFill, { backgroundColor: BG, alignItems: "center", justifyContent: "center" }, sheet]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <StatusBar style="light" />
       {(phase === "draw" || still) && drawUp && !reduced ? (
         <Image source={DRAW} style={{ position: "absolute", width: box, height: box, left: (width - box) / 2, top: (height - box) / 2 }} contentFit="contain" autoplay cachePolicy="memory" onDisplay={onDrawShown} onError={() => settle()} />

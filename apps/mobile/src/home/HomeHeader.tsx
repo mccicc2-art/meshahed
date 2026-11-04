@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { notePress } from "../perfMarks";
+import { touchTarget } from "../touchTargets";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
@@ -106,17 +107,41 @@ export function HomeTopBar({
   const { t, tokens } = useApp();
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
   const btn = (name: "chat" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — `edge.tap` في أعلى الرئيسيّة يقول إنّ نقرةً لم تضغط زرّاً ولا يقول أين وقعت: الصفُّ
+     (`hdr`) والصورةُ (`hav`) والاسمُ (`hnm` — ليس زرّاً) ومجموعةُ الأزرار في الطرف (`hbt`) تُسجَّل أهدافاً فيُكتب ما تحت الإصبع.
+     قياسٌ لا يغيّر رسماً: الحاويةُ نفسُها بلا تغليفٍ جديد، و`collapsable` كي لا تُسطَّح فلا تُقاس */
+  const rowRef = useRef<ViewInstance>(null);
+  const avRef = useRef<ViewInstance | null>(null);
+  const nameRef = useRef<ViewInstance>(null);
+  const endRef = useRef<ViewInstance>(null);
+  const setAvatar = useCallback(
+    (n: ViewInstance | null) => {
+      avRef.current = n;
+      if (typeof avatarRef === "function") avatarRef(n);
+      else if (avatarRef) (avatarRef as React.RefObject<ViewInstance | null>).current = n;
+    },
+    [avatarRef],
+  );
+  useEffect(() => {
+    const offs = [
+      touchTarget("hdr", (cb) => rowRef.current?.measureInWindow(cb)),
+      touchTarget("hav", (cb) => avRef.current?.measureInWindow(cb), () => avRef.current != null),
+      touchTarget("hnm", (cb) => nameRef.current?.measureInWindow(cb), () => nameRef.current != null),
+      touchTarget("hbt", (cb) => endRef.current?.measureInWindow(cb)),
+    ];
+    return () => offs.forEach((off) => off());
+  }, []);
   return (
     /* 🆕 D-1615 — الرأسُ ٦٤ ⇐ ٥٦ (`HOME_TOP_H`): الفراغُ تحت الصورة (٣٨) كان ١٣ نقطةً يضاف إليها هامشُ بطاقة الأرقام —
        «تقليل الفراغ فوق شريط الإحصائيات» (أحمد ١ نوفمبر). والرأسُ معتمٌ ثابت، فلا يُرفع المحتوى تحته بل يقصر هو */
-    <View style={{ height: HOME_TOP_H, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
+    <View ref={rowRef} collapsable={false} style={{ height: HOME_TOP_H, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
       {h ? (
         <>
-          <Pressable ref={avatarRef} onPress={onAvatar} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+          <Pressable ref={setAvatar} onPress={onAvatar} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={19} color={tokens.muted} />}
           </Pressable>
           {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والأزرارُ تُدفع إلى الطرف */}
-          <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View ref={nameRef} collapsable={false} style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text size={22} weight="700" numberOfLines={1} style={{ flexShrink: 1, lineHeight: 28 }}>{h.display_name}</Text>
             <IdentityBadges flags={{ ...identityFlags(h), verified: false }} nameSize={PILL_NAME_SIZE} />
           </View>
@@ -124,7 +149,7 @@ export function HomeTopBar({
       ) : (
         <View style={{ flex: 1 }} />
       )}
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <View ref={endRef} collapsable={false} style={{ flexDirection: "row", alignItems: "center" }}>
         {viewSwitch}
         {btn("chat", t.communityTabInbox, onInbox, unreadShares)}
         {btn("bell", t.notifTitle, onSignals, unreadSignals)}

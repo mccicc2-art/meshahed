@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { BackHandler, I18nManager, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -12,6 +12,7 @@ import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { haptic } from "../haptics";
 import { notePress } from "../perfMarks";
+import { touchState, touchTarget } from "../touchTargets";
 import { Chevron } from "../settings/ui";
 import { useAppearanceActs } from "../settings/appearanceActs";
 import { HOME_KEY, fetchHome } from "../home/useHome";
@@ -106,6 +107,21 @@ function SideDrawer({
     });
     return () => sub.remove();
   }, [open, close]);
+
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — **الحجابُ يملأ الشاشةَ فوق الدوك، ولمسُه يتبع `open` في JS بينما موضعُه `drawerP` على
+     الخيط الأصليّ**. فيُسجَّل هدفاً حيّاً ما دام JS يراه مفتوحاً (`drw`)، وموضعُه رقماً (`dp` ٠..١٠٠): نقرةٌ ميتةٌ والحجابُ
+     «مفتوحٌ» في JS ومغلقٌ على الشاشة تقول ذلك بنفسها. قياسٌ لا يغيّر لمساً ولا رسماً */
+  const rootRef = React.useRef<ViewInstance>(null);
+  const openRef = React.useRef(open);
+  openRef.current = open;
+  useEffect(() => {
+    const offTarget = touchTarget("drw", (cb) => rootRef.current?.measureInWindow(cb), () => openRef.current);
+    const offState = touchState("dp", () => drawerP.value * 100);
+    return () => {
+      offTarget();
+      offState();
+    };
+  }, []);
 
   /* السحبُ نحو طرف البداية يُغلق، والإصبعُ يحرّك القيمةَ نفسَها — أفقيٌّ وحده، فالتمريرُ العموديُّ لا يُسرق */
   const pan = Gesture.Pan()
@@ -210,6 +226,9 @@ function SideDrawer({
   return (
     /* مغلقةً: لا لمسَ (`none`) ولا قارئَ آليّ — اللوحُ خارجَ الشاشة والحجابُ شفّاف */
     <View
+      ref={rootRef}
+      /* المهمّة ٣١٩ — لا يُطوى في Fabric (عرضٌ بلا خصائصَ مرئيّة قد يُسطَّح فلا يُقاس) */
+      collapsable={false}
       pointerEvents={open ? "auto" : "none"}
       importantForAccessibility={open ? "auto" : "no-hide-descendants"}
       accessibilityElementsHidden={!open}

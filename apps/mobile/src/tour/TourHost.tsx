@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Keyboard, Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { BackHandler, I18nManager, Keyboard, Platform, Pressable, View, useWindowDimensions, type ViewInstance } from "react-native";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TOUR_STEPS, type TourScreen, type TourState } from "@/core/tour";
@@ -14,6 +14,7 @@ import { rootStack, topOf, webLayer, type State } from "../webDoor";
 import { HOME_KEY } from "../home/useHome";
 import type { HomePayload, LibraryPayload } from "../contracts";
 import { tourStore } from "./store";
+import { touchTarget } from "../touchTargets";
 import { measureAnchor, revealAnchor, type AnchorRect } from "./anchors";
 
 /* D-1477 — انظر `rx` في الرسم */
@@ -278,6 +279,10 @@ export function TourHost() {
     };
   }, [shown, index, atStep, top, end, move]);
 
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — بطاقةُ الجولة تقعد فوق الدوك: تُسجَّل هدفاً ما دامت مرسومة */
+  const cardRef = useRef<ViewInstance>(null);
+  useEffect(() => touchTarget("tour", (cb) => cardRef.current?.measureInWindow(cb), () => cardRef.current != null), []);
+
   if (!native) return null;
   if (!shown && !(prompt && onHome)) return null;
 
@@ -307,7 +312,7 @@ export function TourHost() {
   if (!shown) {
     return (
       <View pointerEvents="box-none" style={{ position: "absolute", left: 16, right: 16, bottom, alignItems: "center" }}>
-        <View accessibilityRole="summary" accessibilityLabel={t.tourSuggestTitle} style={card}>
+        <View ref={cardRef} accessibilityRole="summary" accessibilityLabel={t.tourSuggestTitle} style={card}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             {disc}
             <Text size={14} weight="600" style={{ flex: 1, lineHeight: 21 }}>{t.tourSuggestTitle}</Text>
@@ -360,7 +365,7 @@ export function TourHost() {
       ) : null}
 
       <View pointerEvents="box-none" style={{ position: "absolute", left: 16, right: 16, bottom, alignItems: "center" }}>
-        <View accessibilityRole="summary" accessibilityLabel={step.title(t)} style={card}>
+        <View ref={cardRef} accessibilityRole="summary" accessibilityLabel={step.title(t)} style={card}>
           <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
             {disc}
             <View style={{ flex: 1, minWidth: 0 }}>

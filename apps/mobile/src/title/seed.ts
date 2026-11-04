@@ -58,10 +58,45 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, outer?: AbortS
 export const titleQuery = (kind: "tv" | "movie", id: number) => ({
   queryKey: qk.title(kind, id),
   /* D-1141 — العملُ عامٌّ: لا ينتظر الرمز؛ حالتي تلحق حين يصل (`useGuestUpgrade`) */
-  queryFn: ({ signal }: { signal?: AbortSignal }) => withTimeout((s) => softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s), signal),
+  queryFn: ({ signal }: { signal?: AbortSignal }) =>
+    withTimeout((s) => {
+      /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٤أ) — زمنُ الرحلة كلِّها وحصّةُ الخادم منها (`Server-Timing`) تُحفظ للعمل، و`title.open`
+         يأخذها حين يُرسم من الشبكة (`takeNet`). فالرقمُ ينقسم: خادمٌ بمراحله · وشبكةٌ = الرحلة − الخادم */
+      const t0 = performance.now();
+      return softGet<TitlePayload>(`/api/v1/title/${kind}/${id}`, s, (st) => keepNet(`${kind}-${id}`, performance.now() - t0, st));
+    }, signal),
   staleTime: 60_000,
   retryDelay: 300,
 });
+
+/**
+ * 🆕 المهمّة ٣١٩ — آخرُ رحلةٍ لكلِّ عمل: `rtt` (ms على الجوال) و`srv` (المجموعُ في الخادم) ومراحلُه — `stm` تفاصيلُ العمل ·
+ * `strl` المقطع · `sme` حالتي · `sau` الهويّة · `spt` أجزاءُ الموسم. تُقرأ مرّةً خلال ١٥ ثانية ثمّ تُنسى، والقائمةُ مقصوصةٌ
+ * كالبذور. ترويسةٌ غائبة (خادمٌ أقدم) ⇒ `rtt` وحده.
+ */
+type NetTiming = { at: number; extra: Record<string, number> };
+const netTimes = new Map<string, NetTiming>();
+const NET_MAX = 30;
+const NET_FRESH_MS = 15_000;
+const SPAN_KEY: Record<string, string> = { total: "srv", tmdb: "stm", trl: "strl", me: "sme", auth: "sau", parts: "spt" };
+function keepNet(key: string, rtt: number, serverTiming: string | null) {
+  const extra: Record<string, number> = { rtt: Math.round(rtt) };
+  for (const part of (serverTiming ?? "").split(",")) {
+    const m = /^\s*([a-z]+)\s*;\s*dur=([0-9.]+)/.exec(part);
+    const k = m ? SPAN_KEY[m[1]] : undefined;
+    if (m && k) extra[k] = Math.round(Number(m[2]));
+  }
+  netTimes.delete(key);
+  netTimes.set(key, { at: performance.now(), extra });
+  if (netTimes.size > NET_MAX) netTimes.delete(netTimes.keys().next().value as string);
+}
+/** أزمنةُ آخر رحلةٍ لهذا العمل إن كانت حديثة — مرّةً واحدة */
+export function takeNet(kind: "tv" | "movie", id: number): Record<string, number> | null {
+  const key = `${kind}-${id}`;
+  const n = netTimes.get(key);
+  netTimes.delete(key);
+  return n && performance.now() - n.at < NET_FRESH_MS ? n.extra : null;
+}
 
 /** بذورٌ سلّمتها بطاقاتٌ لُمست — قليلةٌ ومقصوصة (آخرُ ٣٠)، فلا تكبر مع الجلسة */
 const handoff = new Map<string, TitleSeed>();

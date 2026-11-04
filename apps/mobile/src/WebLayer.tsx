@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { Animated, AppState, BackHandler, I18nManager, Linking, Platform, Share, StatusBar, View } from "react-native";
+import { Animated, AppState, BackHandler, I18nManager, Linking, Platform, Share, StatusBar, View, type ViewInstance } from "react-native";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
@@ -28,6 +28,7 @@ import { rootStack, topOf, webLayer, type State } from "./webDoor";
 import { BottomNav, type NavKey } from "./BottomNav";
 import { prefetchDiscover } from "./discover/DiscoverScreen";
 import { WEB_LAZY } from "./webLazy";
+import { touchTarget } from "./touchTargets";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -1097,6 +1098,10 @@ export function WebLayer() {
   const wasVisible = useRef(visible);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — **الطبقةُ تملأ الشاشةَ فوق المكدّس، ولمسُها يتبع `visible` في JS وشفافيّتُها قيمةٌ
+     متحرّكةٌ على الخيط الأصليّ** (درسُ D-1558). تُسجَّل هدفاً حيّاً ما دام JS يراها ظاهرة (`web`) — فنقرةٌ ميتةٌ تحتها تُعرف */
+  const layerRef = useRef<ViewInstance>(null);
+  useEffect(() => touchTarget("web", (cb) => layerRef.current?.measureInWindow(cb), () => visibleRef.current), []);
   /* 🆕 D-1463 — **دخولٌ لا ظهورٌ فجأة** («مثل الانتقال في اليوتيوب فيه انميشن خفيف»): الطبقةُ تبهت داخلةً، وتنزلق من جهة
      البداية التالية (يميناً في LTR، يساراً في RTL) حين يكون ظهورُها بابَاً وصل للتوّ؛ الرجوعُ إليها من شاشةٍ فوقها بهتانٌ وحده.
      الإخفاءُ فوريٌّ كما كان (الشفافيّةُ هي الإخفاء — `webDoor.ts`). */
@@ -1178,6 +1183,7 @@ export function WebLayer() {
     /* 🆕 K3b — الطبقةُ تملأ الشاشةَ فوق المكدّس؛ مخفيّةً شفّافةٌ ولا تُلمس ولا يقرؤها قارئُ الشاشة (انظر `webDoor.ts`:
        لماذا شفّافةٌ لا مطويّة) */
     <Animated.View
+      ref={layerRef}
       pointerEvents={visible ? "auto" : "none"}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
       accessibilityElementsHidden={!visible}

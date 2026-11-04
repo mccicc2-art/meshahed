@@ -66,7 +66,8 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
   const navRef = React.useRef<ViewInstance>(null);
   useFocusEffect(
     React.useCallback(() => {
-      dockArea((cb) => navRef.current?.measureInWindow((_x, y) => cb(Math.round(y))));
+      /* 🆕 المهمّة ٣١٩ — والارتفاعُ معها: `dock.miss` يكتب موضعَ النقرة من الحافّة (`dy`) نسبةً إليه */
+      dockArea((cb) => navRef.current?.measureInWindow((_x, y, _w, h) => cb(Math.round(y), Math.round(h))));
       return () => dockArea(null);
     }, []),
   );

@@ -1,8 +1,9 @@
-import React from "react";
-import { Pressable, type StyleProp, type ViewStyle } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Pressable, type StyleProp, type ViewInstance, type ViewStyle } from "react-native";
 import Reanimated, { interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import type { ChromeHidden } from "./ChromeHide";
 import { notePress } from "./perfMarks";
+import { touchTarget } from "./touchTargets";
 import { useApp } from "./state";
 import { Text } from "./ui";
 import { Icon, type IconName } from "./icons";
@@ -47,8 +48,11 @@ export function FloatButton({
     }),
     [h, drop],
   );
+  /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — زرٌّ عائمٌ فوق الدوك قد يأخذ نقرةً قُصد بها الدوك: يُسجَّل هدفاً ما دام مركَّباً */
+  const wrapRef = useRef<ViewInstance>(null);
+  useEffect(() => touchTarget("fab", (cb) => wrapRef.current?.measureInWindow(cb)), []);
   return (
-    <Reanimated.View pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
+    <Reanimated.View ref={wrapRef} pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
       <Pressable
         onPress={onPress}
         onPressIn={notePress}

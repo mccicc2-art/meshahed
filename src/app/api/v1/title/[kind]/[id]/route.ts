@@ -36,19 +36,20 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ kind: string; id: string }> },
 ) {
-  return handle(
+  const tm = new Timing();
+  const res = await handle(
     async () => {
       const { kind, id } = await ctx.params;
       const tmdbId = positiveInt(id);
       if ((kind !== "tv" && kind !== "movie") || !tmdbId) return fail("invalid_input");
 
-      const uid = await getUserId();
+      const uid = await tm.time("auth", getUserId());
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
       const lim = limited(`v1:title:${uid ?? ip}`, 120, 60_000);
       if (lim) return lim;
 
       const payload: TitlePayload =
-        kind === "tv" ? await tvPayload(tmdbId, !!uid) : await moviePayload(tmdbId, !!uid);
+        kind === "tv" ? await tvPayload(tmdbId, !!uid, tm) : await moviePayload(tmdbId, !!uid, tm);
       return ok(payload);
     },
     // العملُ عامٌّ وثابتٌ لدقائق؛ **لكنّ الردَّ يحمل حالتي** — فالكاشُ خاصٌّ
@@ -58,24 +59,62 @@ export async function GET(
        1.8.7). الكتابةُ نجحت، والقراءةُ بعدها كذبت. */
     { cacheControl: "private, no-store" },
   );
+  /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٤أ) — أين تذهب ~٠٫٧ث من فتح صفحة العمل من الشبكة؟ الترويسةُ تقول حصّةَ الخادم بمراحلها،
+     والتطبيقُ يطرحها من زمن رحلته فيعرف حصّةَ الشبكة. ترويسةٌ قياسيّةٌ لا تغيّر الجسمَ ولا الكاش (`private, no-store` كما هو) */
+  res.headers.set("Server-Timing", tm.header());
+  return res;
 }
 
-async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayload> {
-  const [tv, trailer, following, watched, rating, art, profile] = await Promise.all([
-    getTv(tvId),
-    getTrailer("tv", tvId).catch(() => null),
-    signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
-    signedIn ? getWatchedForShow(tvId) : new Set<string>(),
-    // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
-    signedIn ? getMyRating(tvId, "tv") : null,
-    signedIn ? myArt(tvId, "tv") : null,
-    /* D-1623 — وضعُ الإخفاء من الحساب لعملٍ في القوائم وحدَه (`getProfile` مخبّأةٌ للطلب) */
-    signedIn && hasSkipList(tvId) ? getProfile().catch(() => null) : null,
+/**
+ * 🆕 المهمّة ٣١٩ — **مراحلُ الطلب بأزمنتها** لترويسة `Server-Timing`: `auth` (الهويّة) · `tmdb` (تفاصيلُ العمل من كاش البيانات
+ * أو TMDB) · `trl` (المقطع) · `me` (حالتي: المتابعة والمشاهدة والتقييم والغلاف — بالتوازي) · `parts` (أجزاءُ الموسم الطويل، بعد
+ * ما سبق) · `total`. **لا يغيّر الترتيبَ ولا التوازي**: كلُّ وعدٍ يُلفّ كما هو ويُقرأ زمنُ انتهائه.
+ */
+class Timing {
+  private t0 = performance.now();
+  private spans = new Map<string, number>();
+  time<T>(name: string, p: Promise<T>): Promise<T> {
+    const s = performance.now();
+    const done = () => this.spans.set(name, performance.now() - s);
+    return p.then(
+      (v) => {
+        done();
+        return v;
+      },
+      (e: unknown) => {
+        done();
+        throw e;
+      },
+    );
+  }
+  header(): string {
+    const parts = [...this.spans].map(([k, v]) => `${k};dur=${v.toFixed(1)}`);
+    parts.push(`total;dur=${(performance.now() - this.t0).toFixed(1)}`);
+    return parts.join(", ");
+  }
+}
+
+async function tvPayload(tvId: number, signedIn: boolean, tm: Timing): Promise<TvTitlePayload> {
+  /* المهمّة ٣١٩ — النداءاتُ نفسُها بالتوازي نفسِه؛ `tm.time` يقرأ متى انتهى كلٌّ (`me` = حالتي كلُّها معاً) */
+  const [[tv, trailer], [following, watched, rating, art, profile]] = await Promise.all([
+    Promise.all([tm.time("tmdb", getTv(tvId)), tm.time("trl", getTrailer("tv", tvId).catch(() => null))]),
+    tm.time(
+      "me",
+      Promise.all([
+        signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
+        signedIn ? getWatchedForShow(tvId) : new Set<string>(),
+        // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
+        signedIn ? getMyRating(tvId, "tv") : null,
+        signedIn ? myArt(tvId, "tv") : null,
+        /* D-1623 — وضعُ الإخفاء من الحساب لعملٍ في القوائم وحدَه (`getProfile` مخبّأةٌ للطلب) */
+        signedIn && hasSkipList(tvId) ? getProfile().catch(() => null) : null,
+      ]),
+    ),
   ]);
   const aired = airedPerSeason(tv);
   const first = firstEpisodeOf(tv);
   /* 🆕 D-1618 — عملٌ كلُّه في موسمٍ طويل (كونان): أجزاؤه مع الصفحة — الآركاتُ مخبّأةٌ يوماً، وسقفُ وقتٍ يسقط إلى المئات */
-  const split = await seasonPartsFor(tv.id, tv.seasons ?? [], (n) => first.get(n) ?? 1);
+  const split = await tm.time("parts", seasonPartsFor(tv.id, tv.seasons ?? [], (n) => first.get(n) ?? 1));
   return {
     kind: "tv",
     id: tv.id,
@@ -126,15 +165,20 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
   };
 }
 
-async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTitlePayload> {
-  const [movie, trailer, following, watched, progress, rating, art] = await Promise.all([
-    getMovie(movieId),
-    getTrailer("movie", movieId).catch(() => null),
-    signedIn ? getFollowState(movieId, "movie") : { following: false, dropped: false },
-    signedIn ? isMovieWatched(movieId) : false,
-    signedIn ? getMovieProgress(movieId).catch(() => null) : null,
-    signedIn ? getMyRating(movieId, "movie") : null,
-    signedIn ? myArt(movieId, "movie") : null,
+async function moviePayload(movieId: number, signedIn: boolean, tm: Timing): Promise<MovieTitlePayload> {
+  /* المهمّة ٣١٩ — كما في `tvPayload`: النداءاتُ نفسُها بالتوازي نفسِه، وأزمنتُها للترويسة */
+  const [[movie, trailer], [following, watched, progress, rating, art]] = await Promise.all([
+    Promise.all([tm.time("tmdb", getMovie(movieId)), tm.time("trl", getTrailer("movie", movieId).catch(() => null))]),
+    tm.time(
+      "me",
+      Promise.all([
+        signedIn ? getFollowState(movieId, "movie") : { following: false, dropped: false },
+        signedIn ? isMovieWatched(movieId) : false,
+        signedIn ? getMovieProgress(movieId).catch(() => null) : null,
+        signedIn ? getMyRating(movieId, "movie") : null,
+        signedIn ? myArt(movieId, "movie") : null,
+      ]),
+    ),
   ]);
   return {
     kind: "movie",

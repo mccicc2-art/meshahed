@@ -45,6 +45,8 @@ const NAMES = new Set([
   "library.flatgrid",
   "tab.arm",
   "discover.open",
+  /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٣أ) — من تركيب «اكتشف» إلى أوّل إطارٍ فيه صفّ (`discover.open` تجديدٌ خلفه، ومعه `away`) */
+  "discover.paint",
   "coldstart.library",
   "title.open",
   /* 🆕 D-1224 — من لمس البطاقة إلى أوّل التزامٍ لصفحة العمل (`src` = hand · scan · none: من أين جاءت البذرة) */
@@ -123,7 +125,11 @@ const NAMES = new Set([
       كاتبها في التطبيق؛ نسخةٌ قديمةٌ ما زالت ترسلها يُسقَط مفتاحُها هنا بصمتٍ والعلامةُ تُحفظ.
    🆕 D-1229 — `pre` (1: التبويبُ رُكّب مسبقاً في الخلفيّة قبل أوّل زيارة)
    🆕 D-1334 — `worst` (أطولُ فجوةٍ بين إطارين، ms) و`fps` (إطاراتٌ مرسومةٌ في الثانية) لـ`scroll.jank` */
-const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock", "jsd"]);
+const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "thread", "result", "ready", "guest", "why", "src", "from", "go", "focus", "drop", "pre", "worst", "fps", "live", "act", "ago", "mom", "band", "x", "y", "h", "hid", "cago", "dock", "jsd",
+  /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر) — النقرةُ الميتة: `hit` ما تحت الإصبع (أسماءُ أهدافٍ مسجَّلة أو none) · `dy` موضعُها من حافّة الدوك ·
+     `dh` ارتفاعُه · `dp` موضعُ القائمة الجانبيّة ٠..١٠٠. «اكتشف»: `away` كم كان التبويبُ غيرَ ظاهر. صفحةُ العمل من الشبكة: `rtt` الرحلة ·
+     `srv` الخادم كلُّه · `stm` تفاصيلُ العمل · `strl` المقطع · `sme` حالتي · `sau` الهويّة · `spt` أجزاءُ الموسم */
+  "hit", "dy", "dh", "dp", "away", "rtt", "srv", "stm", "strl", "sme", "sau", "spt"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

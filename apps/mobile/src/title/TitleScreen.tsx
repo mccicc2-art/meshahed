@@ -17,7 +17,7 @@ import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
-import { titleSeed, prefetchFirstSeason, titleQuery, takePress, seedSrc } from "./seed";
+import { titleSeed, prefetchFirstSeason, titleQuery, takePress, seedSrc, takeNet } from "./seed";
 import { mark } from "../perfMarks";
 import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { ActionRow } from "./ActionRow";
@@ -122,9 +122,11 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
   useEffect(() => {
     if (!d || !openMark.current) return;
-    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind, guest: isGuest(d) ? 1 : 0 });
+    /* 🆕 المهمّة ٣١٩ — من الشبكة: زمنُ الرحلة وحصّةُ الخادم بمراحلها (`takeNet`)؛ من الكاش لا رحلةَ فلا شيء */
+    const net = openMark.current.cached ? null : takeNet(kind, id);
+    mark("title.open", performance.now() - openMark.current.t0, { cached: openMark.current.cached, screen: kind, guest: isGuest(d) ? 1 : 0, ...(net ?? {}) });
     openMark.current = null;
-  }, [d, kind]);
+  }, [d, kind, id]);
   /* 🆕 D-1118 — **الموسمُ المفتوحُ يُجلب مع الصفحة لا بعد رسم قائمتها**: ما إن تُعرف الصفحةُ (من الكاش أو
      الشبكة) يبدأ جلبُ حلقات أوّل موسمٍ لم يكتمل — والقائمةُ حين تُرسم تجده في الطريق أو واصلاً (المفتاحُ واحد). */
   useEffect(() => {

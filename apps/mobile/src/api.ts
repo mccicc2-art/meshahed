@@ -70,7 +70,8 @@ export async function api<T>(
   path: string,
   /* 🆕 D-1232 — `signal`: من يملك مهلةً يقطع الطلبَ نفسَه فيُفرغ مكانَه في الشبكة (لا يبقى معلّقاً خلف ردٍّ لن يُقرأ) */
   /* 🆕 A-05 — `headers`: ترويسةٌ إضافيّةٌ لنداءٍ بعينه (رمزُ الودجت مع خلاصته) — لا تغلب ترويساتِ الهويّة واللغة */
-  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal; headers?: Record<string, string> },
+  /* 🆕 المهمّة ٣١٩ — `onTiming`: ترويسةُ `Server-Timing` لنداءٍ يقيس حصّةَ الخادم (صفحةُ العمل) — تُقرأ مع الردّ الناجح وحدَه */
+  init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean; signal?: AbortSignal; headers?: Record<string, string>; onTiming?: (serverTiming: string | null) => void },
 ): Promise<{ data: T; invalidates: Tag[] }> {
   const auth = init?.auth !== false;
   /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
@@ -97,6 +98,13 @@ export async function api<T>(
       if (error.message_key === "apiFinishWelcome") session.setWelcomePending(true);
       throw new ApiError(error, res.status);
     }
+    if (init?.onTiming) {
+      try {
+        init.onTiming(res.headers.get("server-timing"));
+      } catch {
+        /* القياسُ لا يُسقط الردّ */
+      }
+    }
     return json;
   }
 }
@@ -115,10 +123,10 @@ export async function api<T>(
  */
 export type Soft<T> = T & { _guest?: true };
 
-export async function softGet<T extends object>(path: string, signal?: AbortSignal): Promise<Soft<T>> {
-  if (session.has()) return (await api<T>(path, { signal })).data;
+export async function softGet<T extends object>(path: string, signal?: AbortSignal, onTiming?: (serverTiming: string | null) => void): Promise<Soft<T>> {
+  if (session.has()) return (await api<T>(path, { signal, onTiming })).data;
   void session.request();
-  const r = await api<T>(path, { auth: false, signal });
+  const r = await api<T>(path, { auth: false, signal, onTiming });
   return { ...r.data, _guest: true };
 }
 

@@ -6,6 +6,8 @@ import { session } from "./session";
 import { BUILD_TAG } from "./ota";
 import { MODEL } from "./device";
 import { own } from "./ownSession";
+/* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — ما كان تحت الإصبع لحظةَ النقرة الميتة (`touchTargets.ts`) */
+import { targetsAt, touchStates } from "./touchTargets";
 
 /**
  * ====== علاماتُ الأداء في الشاشات الأصليّة — Phase 11-F · F0 (D-1024) ======
@@ -30,6 +32,8 @@ export type PerfName =
   | "library.flatgrid"
   | "tab.arm"
   | "discover.open"
+  /* 🆕 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٣أ) — من تركيب «اكتشف» إلى أوّل إطارٍ فيه صفّ: ما تراه العين (`discover.open` تجديدٌ خلفه) */
+  | "discover.paint"
   | "coldstart.library"
   /* 🆕 D-1118 — بطءُ صفحة العمل والمواسم يُقاس لا يُخمَّن */
   | "title.open"
@@ -143,7 +147,7 @@ function flush() {
 export function mark(name: PerfName, ms: number, extra?: Extra) {
   if (!Number.isFinite(ms) || ms < 0) return;
   /* 🆕 D-1229 — «اكتشف» المركَّبةُ مخفيّةً تقيس `discover.open` بلا عينٍ تنتظر: تُعلَّم كي لا تُخلط بفتحٍ ظاهر */
-  if (name === "discover.open" && preloaded.has("news") && !landedOnce.has("news")) extra = { ...extra, pre: 1 };
+  if ((name === "discover.open" || name === "discover.paint") && preloaded.has("news") && !landedOnce.has("news")) extra = { ...extra, pre: 1 };
   /* 🆕 D-1246 — و«المكتبة» المركَّبةُ مسبقاً كذلك */
   if (name === "library.open" && preloaded.has("library") && !landedOnce.has("library")) extra = { ...extra, pre: 1 };
   if (buffer.length >= MAX_BUFFER) buffer.shift();
@@ -449,11 +453,12 @@ let hangOff = false;
  * الدوكُ المركَّزُ يعلن مستطيلَه في النافذة (`dockArea`)، والجذرُ يرى كلَّ لمسة (`rootTouch`)، والشريطُ نفسُه يرى ما وصله (`dockTouched`)
  * والزرُّ ما ضُغط (`dockPressIn`). لمسةٌ داخل المستطيل بلا ضغطةٍ خلال ٤٥٠ms ⇒ علامة. أرقامٌ في الذاكرة؛ لا شيءَ يُكتب لمسةً لمسة */
 /* القياسُ لحظةَ اللمسة لا عند التركيب: الشريطُ يهبط مع التمرير (الكسوةُ الذكيّة) فمستطيلٌ محفوظٌ يكذب */
-let dockMeasure: ((cb: (top: number) => void) => void) | null = null;
+/* 🆕 المهمّة ٣١٩ — والارتفاعُ مع الحافّة: `dy`/`dh` يفرّقان شريطَ الحشوة فوق الأزرار وتحتها عن الفجوة بينها */
+let dockMeasure: ((cb: (top: number, height: number) => void) => void) | null = null;
 let dockTouchAt = 0;
 let dockPressAt = 0;
 let dockMissAt = 0;
-export function dockArea(measure: ((cb: (top: number) => void) => void) | null) {
+export function dockArea(measure: ((cb: (top: number, height: number) => void) => void) | null) {
   dockMeasure = measure;
 }
 export function dockTouched() {
@@ -468,15 +473,27 @@ export function rootTouch(y: number, x = -1) {
   const measure = dockMeasure;
   if (!measure) return;
   const at = Date.now();
-  measure((top) => {
+  measure((top, height) => {
     if (!(top > 0) || y < top) return;
     setTimeout(() => {
     if (dockPressAt >= at - 50) return;
     /* لمسةٌ واحدةٌ في الثانية تكفي — النقرُ المتكرّرُ على شريطٍ لا يستجيب لا يملأ الدفعة */
     if (at - dockMissAt < 1_000) return;
     dockMissAt = at;
-    /* 🆕 D-1536 — ثوانٍ لا ms: الخادمُ يرفض ms > ٦٠٠٠٠٠ فكانت كلُّ علامةٍ بعد الدقيقة العاشرة من الإقلاع تسقط */
-    mark("dock.miss", Math.round((performance.now() - launchT0) / 1000), { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 });
+    const base = { screen: hangScreen || "?", src: dockTouchAt >= at - 50 ? "dock" : "over", mom: at - lastScrollAt < 400 ? 1 : 0 };
+    /* 🆕 المهمّة ٣١٩ — موضعُ النقرة من الدوك (`x` · `dy` من حافّته · `dh` ارتفاعُه) وما كان فوقه بحسب JS (`hit`) والأرقامُ
+       الحيّة (`dp` موضعُ القائمة الجانبيّة ٠..١٠٠). القياسُ بعد أن تقرّر أنّها ميتة — لا شيءَ في مسار اللمس */
+    targetsAt(x, y, (hit) => {
+      /* 🆕 D-1536 — ثوانٍ لا ms: الخادمُ يرفض ms > ٦٠٠٠٠٠ فكانت كلُّ علامةٍ بعد الدقيقة العاشرة من الإقلاع تسقط */
+      mark("dock.miss", Math.round((performance.now() - launchT0) / 1000), {
+        ...base,
+        x: Math.round(x),
+        dy: Math.round(y - top),
+        dh: Math.round(height),
+        hit,
+        ...touchStates(),
+      });
+    });
     }, 450);
   });
 }
@@ -526,18 +543,18 @@ export function rootTouchEnd(x: number, y: number) {
     if (pressAt >= at - 50) return;
     if (at - edgeMissAt < 1_000) return;
     edgeMissAt = at;
-    const send = (dock: number) =>
-      mark("edge.tap", 0, {
-        band,
-        x: tx,
-        y: ty,
-        h: Math.round(h),
-        hid: Math.round(chromeV * 100),
-        cago: chromeAt ? Math.min(600_000, at - chromeAt) : -1,
-        dock,
-        screen: hangScreen || "?",
-        mom: at - lastScrollAt < 400 ? 1 : 0,
-      });
+    const fields = {
+      band,
+      x: tx,
+      y: ty,
+      h: Math.round(h),
+      hid: Math.round(chromeV * 100),
+      cago: chromeAt ? Math.min(600_000, at - chromeAt) : -1,
+      screen: hangScreen || "?",
+      mom: at - lastScrollAt < 400 ? 1 : 0,
+    };
+    /* 🆕 المهمّة ٣١٩ — وما كان تحت الإصبع (`hit`: زرُّ رأسٍ مسجَّل · طبقةٌ فوق الشاشة · `none`) والأرقامُ الحيّة */
+    const send = (dock: number) => targetsAt(tx, ty, (hit) => mark("edge.tap", 0, { ...fields, dock, hit, ...touchStates() }));
     if (measure) measure((top) => send(Math.round(top)));
     else send(-1);
   }, 450);
