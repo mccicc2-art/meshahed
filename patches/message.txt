@@ -1,0 +1,11 @@
+[deploy] Release R177 — widget start asks first (A-24), AniList timeouts (A-40), iPhone photo crop fixed (T318)
+
+Release R177 (registry release 177):
+- 315 · A-40: the show page's two AniList lookups give up after 4 s instead of holding the page open. Web only.
+- 316 · Drop the unused size parameter of widgetAccess (the only no-unused-vars warning). No behaviour change.
+- 317 · A-24 (option a): a widget «start» link no longer changes watch state on arrival; Home asks «Start <title>?» and writes only on the tap; the title comes from the app, not the link. App (OTA).
+- 318 · iPhone photo crop: one Modal from «preparing» to the crop screen (iOS refused a second one opening while the first closed); a failed prepare/crop is said and recorded. App (OTA).
+- 314 stays queued: needs a paid native build not approved by Ahmed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7CRdFxpzBRa29LHVHT
