@@ -8,7 +8,7 @@ import { radius } from "../theme";
 import { SectionHeader, PAGE_PAD } from "../home/Section";
 import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
-import type { StremioSignal } from "@/core/contracts/stremio";
+import { SIGNAL_SOURCE_NAME, type StremioSignal } from "@/core/contracts/stremio";
 import { episodeLabel } from "./api";
 
 /** عرضُ اللقطة 16:9 (قرار ٦: ١١٦ نقطة) — والنصُّ بجانبها بارتفاعها */
@@ -32,7 +32,10 @@ export function SignalStill({ s, width }: { s: StremioSignal; width: number }) {
 }
 
 /**
- * ====== 🆕 «من Stremio» — بطاقةُ الرئيسيّة (خطّةُ Stremio، تصميم «٣»، ٢٢ أكتوبر) ======
+ * ====== 🆕 «من أجهزتك» — بطاقةُ الرئيسيّة (خطّةُ Stremio، تصميم «٣»، ٢٢ أكتوبر · وسيرفراتُ البيت منذ هجرة ٢٣٥) ======
+ *
+ * ⚖️ **قسمٌ واحدٌ لكلِّ الأجهزة** (أحمد ٤ نوفمبر، البطاقة «أ»): أسئلةُ Stremio وPlex وJellyfin وEmby جدولٌ واحد، والمصدرُ
+ * اسمٌ في سطر الوقت — لا قسمٌ لكلِّ مصدرٍ يكدّس الرئيسيّة.
  *
  * إشارةٌ واحدةٌ — الأحدث — بلقطتها وسؤالها، وتحتها نصفان بعرض البطاقة: ✓ شفتها (أساسيّ) و✕ لا (شفّاف). الجوابُ يُظهر
  * التي بعدها وينقص العدد، **وبلا إشارةٍ منتظرةٍ يختفي القسمُ كلُّه** (قرار ٥: لا حالةَ فارغةَ في الرئيسيّة) — فالمكوّنُ
@@ -58,10 +61,11 @@ export function StremioCard({
   const s = items[0];
   if (!s) return null;
   const ep = episodeLabel(s, t.stremioMovie);
+  const src = s.source ?? "stremio";
   return (
     <View>
       <SectionHeader
-        title={t.stremioFrom}
+        title={t.devicesFrom}
         icon="play"
         onTitle={onAll}
         action={<Text size={12} weight="700" color={tokens.accent}>{String(count)}</Text>}
@@ -79,7 +83,8 @@ export function StremioCard({
           <View style={{ flex: 1, minWidth: 0, height: STILL_H, justifyContent: "space-between" }}>
             <Text size={15} weight="700" numberOfLines={1}>{s.title}</Text>
             <Text size={13} weight="500" numberOfLines={1}>{`${ep} · ${t.stremioAsk}`}</Text>
-            <Text size={12} muted numberOfLines={1}>{`${t.stremioOpened} ${timeAgo(s.seen_at, t)}`}</Text>
+            {/* 🆕 هجرة ٢٣٥ — «من أجهزتك» (البطاقة «أ»): المصدرُ اسمٌ في السطر، و«شغّلتها» لـStremio و«خلّصتها» لسيرفر البيت */}
+            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${src === "stremio" ? t.stremioOpened : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         <View style={{ flexDirection: "row", gap: 8 }}>

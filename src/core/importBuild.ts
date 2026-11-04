@@ -5,11 +5,13 @@
 // المشاهدة لاحقاً») وتبقى خطأً في الأخرى — بلا خطأٍ يُرى، فقط مكتبةٌ مستوردةٌ تختلف بين الويب والتطبيق.
 
 import { recordKey, type RawRecord } from "./importParse.ts";
-import { IMPORT_CAPS, type ImportMovie, type ImportShow, type ResolveResult } from "./importer.ts";
+import { earliestAt as earliest, IMPORT_CAPS, type ImportEpisode, type ImportList, type ImportMovie, type ImportShow, type ResolveResult } from "./importer.ts";
 
 export interface BuiltImport {
   shows: ImportShow[];
   movies: ImportMovie[];
+  /** 🆕 IMDb («٤ أ») — قوائمُ صاحبها بأعمالها مرتّبة؛ `[]` لكلِّ مصدرٍ آخر */
+  lists: ImportList[];
   /** ما لم يُطابَق — بالاسم كما ورد في التصدير، مرّةً واحدةً لكلِّ اسم */
   unmatched: string[];
 }
@@ -19,6 +21,11 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
   const showMap = new Map<number, ImportShow>();
   const movieMap = new Map<number, ImportMovie>();
   const unmatched = new Set<string>();
+  /** 🆕 IMDb — اسمُ القائمة ⇐ أعمالُها بمواضعها (تُرتَّب وتُطوى في الختام) */
+  const listMap = new Map<string, (ImportList["items"][number] & { pos: number })[]>();
+  /** 🆕 MyAnimeList — تقييماتُ مواسم العمل الواحد (يُؤخذ متوسّطها)، وحالةُ أبعدِ مواسمه */
+  const malScores = new Map<number, number[]>();
+  const malFront = new Map<number, { pos: number; state: ImportShow["state"] | "active" }>();
 
   const addShow = (hit: NonNullable<ResolveResult>) => {
     let sh = showMap.get(hit.tmdbId);
@@ -56,6 +63,80 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
         at: prev?.at ?? r.at,
         rating: r.rating ?? prev?.rating,
       });
+      continue;
+    }
+
+    /* 🆕 **صفُّ IMDb** — معناه في `role` (`imdb.ts` يشرح القرارات)، وأبكرُ تاريخٍ يُحفظ في كلِّ دمجٍ كما في الأفلام */
+    /* 🆕 **صفُّ MyAnimeList** — الموسمُ والإزاحةُ من المطابقة (`span`)، والحلقاتُ نفسُها على الخادم (`spans`) */
+    if (r.kind === "mal") {
+      const hit = resolved.get(recordKey(r));
+      if (!hit) {
+        unmatched.add(r.name); // «٣ أ»: أوفا وخاصّاتٌ بلا موسمٍ عاديٍّ، وما ليس في الجدول
+        continue;
+      }
+      if (hit.mediaType === "movie") {
+        const prev = movieMap.get(hit.tmdbId);
+        const watched = r.status === "completed";
+        movieMap.set(hit.tmdbId, {
+          tmdbId: hit.tmdbId,
+          title: prev?.title || r.name,
+          posterPath: hit.posterPath,
+          watched: (prev?.watched ?? false) || watched,
+          at: watched ? earliest(prev?.at, r.at) : prev?.at,
+          rating: r.rating ?? prev?.rating,
+        });
+        continue;
+      }
+      if (!hit.span) continue;
+      const sh = addShow({ ...hit, title: hit.title || r.name });
+      /* «١ أ»: المكتملُ موسمُه كلُّه (بعدده المعلن إن عُرف — موسمُ TMDB قد يحمل جزأين من MAL بإزاحتين)، وغيرُه ما سجّله */
+      const count = r.status === "completed" ? Math.max(r.watched, r.total) || null : r.watched;
+      if (r.status !== "plan" && count !== 0) (sh.spans ??= []).push({ season: hit.span.season, offset: hit.span.offset, count, at: r.at });
+      if (r.rating != null) malScores.set(hit.tmdbId, [...(malScores.get(hit.tmdbId) ?? []), r.rating]);
+      /* حالةُ العمل حالةُ **أبعدِ** مواسمه: تَرَكَ الثالثَ بعد أن أكمل الأوّلين ⇐ متروك؛ أكمل الثالثَ بعد أن ترك الأوّل ⇐ لا */
+      const pos = (hit.span.season ?? 0) * 100_000 + hit.span.offset;
+      const state = r.status === "dropped" ? "dropped" : r.status === "onhold" ? "paused" : "active";
+      const front = malFront.get(hit.tmdbId);
+      if (!front || pos >= front.pos) malFront.set(hit.tmdbId, { pos, state });
+      continue;
+    }
+
+    if (r.kind === "imdb") {
+      const hit = resolved.get(recordKey(r));
+      if (!hit) {
+        unmatched.add(r.media === "episode" ? showOfEpisodeTitle(r.name) : r.name);
+        continue;
+      }
+      if (r.role === "list") {
+        if (hit.season != null) continue; // حلقةٌ لا تدخل قائمة
+        const items = listMap.get(r.list ?? "IMDb") ?? [];
+        items.push({ tmdbId: hit.tmdbId, mediaType: hit.mediaType, title: hit.title, posterPath: hit.posterPath, pos: r.pos ?? items.length + 1 });
+        listMap.set(r.list ?? "IMDb", items);
+      } else if (r.media === "movie") {
+        const prev = movieMap.get(hit.tmdbId);
+        const watched = r.role === "rated";
+        movieMap.set(hit.tmdbId, {
+          tmdbId: hit.tmdbId,
+          title: hit.title,
+          posterPath: hit.posterPath,
+          /* «أشاهده لاحقاً» لا يدهس مشاهدةً — والتقييمُ يختمه مشاهَداً أينما ورد */
+          watched: (prev?.watched ?? false) || watched,
+          at: watched ? earliest(prev?.at, r.at) : prev?.at,
+          rating: r.rating ?? prev?.rating,
+        });
+      } else if (r.media === "tv") {
+        const sh = addShow(hit);
+        if (r.role === "rated") {
+          if (r.rating != null) sh.rating = r.rating;
+          sh.all = { at: earliest(sh.all?.at, r.at) };
+        }
+      } else if (r.role === "rated" && hit.season != null && hit.episode != null) {
+        /* حلقةٌ قيّمها: هي بتاريخها، وما قبلها يُعلَّم على الخادم (`upTo`) — والعنوانُ من الملف لا من الحلقة */
+        const sh = addShow({ ...hit, title: showOfEpisodeTitle(r.name) });
+        const ep: ImportEpisode = { s: hit.season, e: hit.episode, at: r.at };
+        sh.episodes.push(ep);
+        (sh.upTo ??= []).push({ ...ep });
+      }
       continue;
     }
 
@@ -119,14 +200,59 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
       seen.add(k);
       return true;
     });
+    /* 🆕 ومرساةُ «حتى هنا» واحدةٌ لكلِّ حلقة — بأبكر تاريخها (قيّمها في ملفّين) */
+    if (sh.upTo) {
+      const best = new Map<string, ImportEpisode>();
+      for (const a of sh.upTo) {
+        const k = `${a.s}-${a.e}`;
+        const prev = best.get(k);
+        best.set(k, prev ? { ...a, at: earliest(prev.at, a.at) } : a);
+      }
+      sh.upTo = [...best.values()];
+    }
   }
+
+  /* 🆕 MyAnimeList: تقييمُ المسلسل متوسّطُ تقييمات مواسمه هناك (مقياسُنا من عشرة واحد) — وحالتُه حالةُ أبعدِ مواسمه */
+  for (const [id, scores] of malScores) {
+    const sh = showMap.get(id);
+    if (sh) sh.rating = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }
+  for (const [id, f] of malFront) {
+    const sh = showMap.get(id);
+    if (sh && f.state !== "active") sh.state = f.state;
+  }
+
+  /* 🆕 القوائمُ بترتيب IMDb، والعملُ مرّةً في قائمته — وسقفاها سقفا `upsertListWithItems` وحساب القوائم */
+  const lists: ImportList[] = [...listMap].slice(0, IMPORT_CAPS.lists).map(([name, items]) => {
+    const seen = new Set<string>();
+    return {
+      name,
+      items: items
+        .sort((a, b) => a.pos - b.pos)
+        .filter((it) => {
+          const k = `${it.mediaType}-${it.tmdbId}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+        .slice(0, IMPORT_CAPS.listItems)
+        .map(({ tmdbId, mediaType, title, posterPath }) => ({ tmdbId, mediaType, title, posterPath })),
+    };
+  });
 
   return {
     shows: [...showMap.values()].slice(0, IMPORT_CAPS.shows),
     movies: [...movieMap.values()].slice(0, IMPORT_CAPS.movies),
+    lists: lists.filter((l) => l.items.length),
     unmatched: [...unmatched],
   };
 }
 
-/** دفعاتُ الكتابة — خمسةُ مسلسلاتٍ أو ستّون فيلماً في الطلب (سقفُ `applyImportChunk` نفسُه) */
-export const IMPORT_CHUNK = { resolve: 40, shows: 5, movies: 60 } as const;
+/** «Breaking Bad: Pilot» ⇐ «Breaking Bad» — عنوانُ الحلقة في IMDb يحمل اسمَ مسلسلها قبل النقطتين */
+export function showOfEpisodeTitle(name: string): string {
+  const i = name.indexOf(": ");
+  return (i > 0 ? name.slice(0, i) : name).trim();
+}
+
+/** دفعاتُ الكتابة — خمسةُ مسلسلاتٍ أو ستّون فيلماً أو قائمةٌ في الطلب (تحت سقوف `applyImportChunk`) */
+export const IMPORT_CHUNK = { resolve: 40, shows: 5, movies: 60, lists: 1 } as const;

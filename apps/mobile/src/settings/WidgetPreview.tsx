@@ -139,12 +139,15 @@ export function WidgetPreview({
         {tiles.map((tl, n) => {
           const x = rtl ? W - tl.x - tl.w : tl.x;
           if (tl.k === "hair") return <View key={n} style={{ position: "absolute", left: x, top: tl.y, width: Math.max(1, tl.w), height: Math.max(1, tl.h), backgroundColor: "rgba(255,255,255,0.13)" }} />;
+          /* 🆕 D-1610 — خاناتُ «مخصّص» يملؤها الآيفونُ باختيار صاحب الودجت؛ المعاينةُ لا ترسمها (لا تأتيها أصلاً) */
+          if (tl.k === "card" && tl.s.startsWith("slot")) return null;
           if (tl.k === "card") {
-            const list = get(tl.s);
+            const s = tl.s as WidgetSectionKey;
+            const list = get(s);
             /* لا بوسترَ مكرّر: ما زاد على ما في القسم خانةٌ داكنة — كالرسّامَين */
             const it = tl.i < list.length ? list[tl.i] : tl.s === "cont" && tl.i === 0 && !list.length ? { poster: null, backdrop: null, name: `+  ${names.cont}`, line: "", avatar: null } : null;
             return (
-              <Card key={n} it={it} x={x} y={tl.y} w={tl.w} h={tl.h} label={tl.lab ? names[tl.s] : null} cyc={!!tl.cyc} topBtn={tl.bt === "t"} bar={!!tl.bar} wide={tl.img === "b"} small={small} rtl={rtl} d={draw} zoom={small ? draw.smallZoom : 0} />
+              <Card key={n} it={it} x={x} y={tl.y} w={tl.w} h={tl.h} label={tl.lab ? names[s] : null} cyc={!!tl.cyc} topBtn={tl.bt === "t"} bar={!!tl.bar} wide={tl.img === "b"} small={small} rtl={rtl} d={draw} zoom={small ? draw.smallZoom : 0} />
             );
           }
           const list = get(tl.s);

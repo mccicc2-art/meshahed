@@ -38,6 +38,8 @@ export type Tag =
   | "me:messages"
   /* 🆕 Stremio (٢٢ أكتوبر) — إشاراتُ «فتحتها في Stremio» وحالةُ الربط — `GET /api/v1/me/stremio` */
   | "me:stremio"
+  /* 🆕 سيرفراتُ البيت (هجرة ٢٣٥) — حالةُ رابط Plex/Jellyfin/Emby — `GET /api/v1/me/home-server` (أسئلتُها في `me:stremio`) */
+  | "me:home-server"
   | "people"
   | "news"
   /** لوحةُ الإدارة كاملةً — ويب فقط، ولا تدخل `v1` (§4.4). */

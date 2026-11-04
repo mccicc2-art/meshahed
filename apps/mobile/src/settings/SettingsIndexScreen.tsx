@@ -106,6 +106,8 @@ export function SettingsIndexScreen() {
         <Row icon="home" title={t.appHomeProfile} onPress={() => go("home")} />
         <Row icon="grid" title={t.widgetScreenTitle} onPress={() => go("widget")} />
         <Row icon="link" title={t.stremioScreenTitle} onPress={() => go("stremio")} />
+        {/* 🆕 سيرفراتُ البيت (هجرة ٢٣٥، «٤ أ») — تحت Stremio: كلاهما يسأل «شفتها؟» */}
+        <Row icon="tv" title={t.homeServersTitle} subtitle="Plex · Jellyfin · Emby" onPress={() => go("home-servers")} />
         <Row icon="palette" title={t.setAppearance} value={appearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>

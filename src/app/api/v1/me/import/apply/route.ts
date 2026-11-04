@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     if (!body || typeof body !== "object") return fail("invalid_input");
     const shows = Array.isArray(body.shows) ? body.shows : [];
     const movies = Array.isArray(body.movies) ? body.movies : [];
-    const done = await applyImportChunk({ shows, movies });
+    /* 🆕 قوائمُ IMDb — اختياريّةٌ: تطبيقٌ لم يصله التحديث لا يرسلها */
+    const lists = Array.isArray(body.lists) ? body.lists : [];
+    const done = await applyImportChunk({ shows, movies, lists });
     return ok(done, []);
   });
 }

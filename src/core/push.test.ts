@@ -22,7 +22,7 @@ test("دفعُ الجرس: الجملةُ كاملةً والوجهةُ من sig
 });
 
 test("كلُّ نوعٍ في الجرس له مفتاحٌ في الإعدادات", () => {
-  for (const k of ["follow", "request", "like_review", "like_activity", "reply", "talk_reply", "list_review", "like_list_review", "list_reply"] as const) assert.ok(PUSH_GROUP_OF[k]);
+  for (const k of ["follow", "request", "like_review", "like_activity", "reply", "talk_reply", "list_review", "like_list_review", "list_reply", "list_copy", "list_invite"] as const) assert.ok(PUSH_GROUP_OF[k]);
 });
 
 test("الرسالة: المرسلُ عنوان، والملاحظةُ تحت ما أُرسل، والوجهةُ خيطُه", () => {

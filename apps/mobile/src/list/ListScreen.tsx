@@ -13,6 +13,7 @@ import { Button, Text, TopBar, type ToastTone } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
+import { LIST_MEMBERS_MAX } from "@/core/contracts/library";
 import { RailCard, RAIL_CARD_W } from "../discover/RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -25,6 +26,8 @@ import { ListCoverSheet } from "./ListCoverSheet";
 import { ListReviews } from "./ListReviews";
 import { TitlePickerSheet } from "../search/TitlePickerSheet";
 import { ShareListSheet } from "./ShareListSheet";
+import { ListMembersSheet } from "./ListMembersSheet";
+import { ListInviteSheet } from "./ListInviteSheet";
 import { SmartListSheet } from "../library/SmartListSheet";
 import { haptic } from "../haptics";
 import { useRtlRailPin } from "../rtlRailPin";
@@ -33,7 +36,8 @@ import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard, SearchTitle } from "../contracts";
 import type {
   LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
-  ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody,
+  ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody, CopyListBody, CopyListPayload,
+  ListMember, ListMembersBody, ListMembersPayload,
 } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 import { profileHref } from "@/core/people";
@@ -65,8 +69,12 @@ const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id,
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
 const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
 
-export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
-  const { t, tokens, locale } = useApp();
+/**
+ * 🆕 233 — `justCopied`: القائمةُ فُتحت لأنّي نسختُها الآن (`?copied=1` من رقاقة «انسخها لقوائمي»): إشعارُ «نُسخت · خاصة»
+ * ببابِ إعلانها يُقال هنا مرّةً — **في القائمة الجديدة لا القديمة**، لأنّ الإعلانَ فعلٌ على النسخة.
+ */
+export function ListScreen({ id, from, justCopied = false }: { id: string; from: NativeRoot; justCopied?: boolean }) {
+  const { t, tokens, locale, me } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
   const insets = useSafeAreaInsets();
@@ -139,7 +147,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "add" | "share" | "rule">(null);
+  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "add" | "share" | "rule" | "members" | "invite">(null);
   const patch = useCallback((fn: (p: ListDetailPayload) => ListDetailPayload) => qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? fn(p) : p)), [qc, id]);
   const run = useCallback(
     async (optimistic: ((p: ListDetailPayload) => ListDetailPayload) | null, job: () => Promise<unknown>, done?: () => void) => {
@@ -184,6 +192,19 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
       ),
     [run, id, q, qc],
   );
+  /* 🆕 233 — بعد النسخ: «نُسخت إلى قوائمك · خاصة» (٤أ) وبابُ إعلانها في الإشعار نفسِه — مرّةً، ولنسختي وحدَها */
+  const copiedSaid = useRef(false);
+  useEffect(() => {
+    if (!justCopied || copiedSaid.current || !d || !d.mine) return;
+    copiedSaid.current = true;
+    if (d.is_public) return;
+    toastHost.current?.say(
+      t.listCopiedToast,
+      { label: t.listCopyPublish, onPress: () => saveMeta({ name: d.name, subtitle: d.subtitle, isPublic: true }) },
+      6000,
+      "success",
+    );
+  }, [justCopied, d, t, saveMeta]);
   const saveOrder = useCallback(
     (keys: string[]) =>
       void run(
@@ -222,12 +243,12 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
       }
       haptic.success();
       void run(
-        (prev) => ({ ...prev, items: [...prev.items, { kind: p.mediaType, id: p.id, title: p.title, poster_path: p.posterPath ?? null, badge: null }] }),
+        (prev) => ({ ...prev, items: [...prev.items, { kind: p.mediaType, id: p.id, title: p.title, poster_path: p.posterPath ?? null, badge: null, added_by: prev.members?.length ? (me?.id ?? null) : null }] }),
         () => write<{ done: true }>("/api/v1/lists/toggle-item", { listId: id, tmdbId: p.id, mediaType: p.mediaType, title: p.title, posterPath: p.posterPath ?? null, add: true } satisfies ListToggleItemBody),
         () => say(t.listAddedToast(p.title), "success"),
       );
     },
-    [q.data, run, id, say, t],
+    [q.data, run, id, say, t, me],
   );
   const removeList = useCallback(
     () =>
@@ -304,6 +325,49 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
     }
   }, [d, saving, qc, id, say, t, fail]);
 
+  /* 🆕 233 — **النسخُ فعلٌ ثانٍ بجانب ♥** (أحمد ٤ نوفمبر): القلبُ مرجعٌ حيّ، والنسخةُ قائمتي أعدّلها. لا تفاؤلَ هنا:
+     الجوابُ معرّفُ قائمةٍ جديدةٍ تُفتح، **ونسختي الموجودة تُفتح ولا تُكرَّر** (`copy_list`) */
+  const [copying, setCopying] = useState(false);
+  const copy = useCallback(async () => {
+    if (!d || !d.can_copy || copying) return;
+    setCopying(true);
+    try {
+      const r = await write<CopyListPayload>("/api/v1/lists/copy", { listId: id } satisfies CopyListBody);
+      haptic.success();
+      /* «قوائمي» تُبطَل بوسوم الردّ نفسِها (`write` ⇐ `invalidateTags`) — لا إبطالَ يدويَّ ثانٍ */
+      router.push({ pathname: "/list/[id]", params: { id: r.id, from, copied: r.created ? "1" : "0" } });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setCopying(false);
+    }
+  }, [d, copying, id, router, from, fail]);
+
+  /* 🆕 234 — **ردُّ المدعوّ** (٢أ): «قبول» يجعله عضواً فيصير «أضف أعمالاً» له؛ «لا شكراً» يحذف الدعوةَ ويرجع —
+     القائمةُ الخاصّةُ لا يراها بعدها، فالبقاءُ في صفحتها يعرض فراغاً */
+  const [responding, setResponding] = useState(false);
+  const respond = useCallback(
+    async (accept: boolean) => {
+      if (responding) return;
+      setResponding(true);
+      try {
+        await write<ListMembersPayload>("/api/v1/lists/members", { listId: id, action: "respond", accept } satisfies ListMembersBody);
+        if (accept) {
+          haptic.success();
+          say(t.listJoined, "success");
+          void q.refetch();
+        } else {
+          back();
+        }
+      } catch (e) {
+        fail(e);
+      } finally {
+        setResponding(false);
+      }
+    },
+    [responding, id, say, t, q, back, fail],
+  );
+
   const [reviewOpen, setReviewOpen] = useState(false);
   const onReviewSaved = useCallback(
     (next: MyReview | null) => {
@@ -324,11 +388,23 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   }, [d]);
 
   const numbered = d ? d.kind === "ranked" || d.kind === "watch_order" : false;
+  /* 🆕 234 — صورةُ من أضاف العملَ على زاويته (٥أ): من الأعضاء المعروفين وحدَهم — من أُزيل أو أخفى صورتَه بلا صورة */
+  const avatarOf = useMemo(() => new Map((d?.members ?? []).map((m) => [m.id, m.avatar])), [d?.members]);
   const renderItem = useCallback(
-    ({ item, index }: { item: ListDetailItem; index: number }) => (
-      <RailCard card={asCard(item)} rank={item.badge ?? (numbered ? index + 1 : null)} rankTone={item.badge !== null ? "accent" : undefined} lib={null} onPress={openCard} onHold={hold} />
-    ),
-    [numbered, openCard, hold],
+    ({ item, index }: { item: ListDetailItem; index: number }) => {
+      const card = <RailCard card={asCard(item)} rank={item.badge ?? (numbered ? index + 1 : null)} rankTone={item.badge !== null ? "accent" : undefined} lib={null} onPress={openCard} onHold={hold} />;
+      const by = item.added_by ? avatarOf.get(item.added_by) : undefined;
+      if (by === undefined) return card;
+      return (
+        <View>
+          {card}
+          <View pointerEvents="none" style={{ position: "absolute", top: 6, end: 6, width: 20, height: 20, borderRadius: 10, overflow: "hidden", borderWidth: 1, borderColor: tokens.bg, backgroundColor: tokens.surface2 }}>
+            {by ? <Image source={{ uri: by }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+          </View>
+        </View>
+      );
+    },
+    [numbered, openCard, hold, avatarOf, tokens],
   );
   /* D-1490 — صفُّ أعمال القائمة افتراضيٌّ كصفوف الملفّ: على الآيفون بالعربيّ يقف في غير أوّله فيظهر فارغاً أو مقلوباً
      (أحمد ٢٠ أكتوبر). العلاجُ المشترك نفسُه (D-1478) لا نسخةٌ ثانية */
@@ -339,8 +415,13 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
         { icon: "library", label: d.smart ? t.smartListLabel : t.listCount(d.items.length) },
         ...(d.kind === "ranked" ? [{ icon: "list" as const, label: t.listTypeRanked }] : d.kind === "watch_order" ? [{ icon: "list" as const, label: t.listTypeWatch }] : []),
         ...(d.is_public ? [{ icon: "eye" as const, label: d.mine ? t.listPublic : t.listOwnerOther }] : []),
+        /* 🆕 234 — «قائمة مشتركة» حين يكون فيها عضوٌ فعّالٌ مع صاحبها */
+        ...((d.members ?? []).some((m) => m.role === "member") ? [{ icon: "people" as const, label: t.listShared }] : []),
       ]
     : [];
+  /* 🆕 234 — سطرُ الأعضاء في خانة الصاحب (الشكلُ «أ»): صاحبُها والفعّالون — المعلّقون في الورقة وحدَها */
+  const shown = (d?.members ?? []).filter((m: ListMember) => m.role !== "pending");
+  const sharedRow = shown.length > 1;
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -373,6 +454,28 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                 كان هيكلٌ بسطرين ثمّ شجرةٌ أخرى يظهر فيها الوصفُ والمالكُ والحقائقُ والرقاقةُ أسطراً متفاوتة فيقفز الصفّ تحتها.
                 الآن لكلٍّ خانتُه من أوّل إطار: الاسمُ سطراً بـ«…»، والوصفُ سطرين محجوزين، وصفُّ المالك ٢٤، وصفُّ الحقائق ٣٢
                 ورقاقةُ التشغيل في طرفه — فإن غابت معلومةٌ بقيت خانتُها فارغةً بمقاسها */}
+            {/* 🆕 234 — **الدعوةُ فوق القائمة** (٢أ — الصورةُ المعتمدة): من دعاك، وما تقدر عليه، ثمّ «قبول · لا شكراً» */}
+            {d?.my_membership === "pending" ? (
+              <View style={{ marginHorizontal: PAGE_PAD, marginBottom: 16, gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                    {d.owner?.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text size={14} weight="700" numberOfLines={2}>{t.listInviteBanner(d.owner?.name ?? t.anonymousUser)}</Text>
+                    <Text size={12} muted numberOfLines={1}>{t.listInviteBannerSub}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Button label={t.listInviteAccept} busy={responding} onPress={() => void respond(true)} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button label={t.listInviteDecline} variant="ghost" disabled={responding} onPress={() => void respond(false)} />
+                  </View>
+                </View>
+              </View>
+            ) : null}
             <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
               <View style={{ height: 28, justifyContent: "center" }}>
                 {/* D-1627 — الخاناتُ فارغةٌ حتى تصل معلومتُها، لا أشرطةَ رماديّة */}
@@ -382,7 +485,29 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                 {d?.subtitle ? <Text size={14} muted numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
               </View>
               <View style={{ height: 24, justifyContent: "center" }}>
-                {d?.owner ? (
+                {/* 🆕 234 — **الشكلُ «أ»**: في الخانة نفسِها صورٌ مكدّسةٌ وأسماؤها، والضغطةُ تفتح ورقةَ الأعضاء؛ و«+ ادعُ»
+                    في طرفها لصاحبها — فلا سطرَ يُضاف ولا تقفز الصفحة (D-1625) */}
+                {d && (sharedRow || d.can_invite) ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {sharedRow ? (
+                      <Pressable onPress={() => setSheet("members")} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.listMembersTitle(shown.length, LIST_MEMBERS_MAX)} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
+                        <View style={{ flexDirection: "row" }}>
+                          {shown.slice(0, 3).map((m, i) => (
+                            <View key={m.id} style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2 }}>
+                              {m.avatar ? <Image source={{ uri: m.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                            </View>
+                          ))}
+                        </View>
+                        <Text size={13} muted numberOfLines={1} style={{ flexShrink: 1 }}>{t.listMembersNames(shown.slice(0, 3).map((m) => m.name), shown.length - 3)}</Text>
+                      </Pressable>
+                    ) : null}
+                    {d.can_invite ? (
+                      <View style={{ marginStart: "auto" }}>
+                        <Chip label={t.listInvite} active={false} size="sm" onPress={() => setSheet((d.members?.length ?? 0) > 1 ? "members" : "invite")} leading={<Icon name="plus" size={13} color={tokens.accent} />} hitSlop={10} />
+                      </View>
+                    ) : null}
+                  </View>
+                ) : d?.owner ? (
                   <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" }}>
                     <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
                       {d.owner.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
@@ -402,6 +527,20 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                         </View>
                       ))
                     : null}
+                  {/* 🆕 233 — «من قائمة @فلان» (٢أ): صفةٌ في صفِّ الحقائق، والضغطةُ تفتح الأصل */}
+                  {d?.copied_from ? (
+                    <Pressable
+                      onPress={() => router.push({ pathname: "/list/[id]", params: { id: d.copied_from!.list_id, from } })}
+                      hitSlop={8}
+                      accessibilityRole="link"
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}
+                    >
+                      <Icon name="copy" size={14} color={tokens.accent} />
+                      <Text size={12} muted numberOfLines={1}>
+                        {d.copied_from.username ? t.listCopiedFrom(`@${d.copied_from.username}`) : t.listCopiedFromHidden}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
                 {d && d.playlist !== null ? (
                   <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
@@ -443,6 +582,19 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                   <Icon name={d.my_review ? "star-filled" : "star"} size={18} color={tokens.accent} />
                   <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{d.rating !== null ? d.rating.toFixed(1) : num(0, locale)}</Text>
                 </Pressable>
+                {/* 🆕 233 — **«انسخها لقوائمي» في طرف الصفّ داخل إطار** (حكمُ أحمد بالصورة: «أ»، العلامةُ صفراءُ والكتابةُ
+                    رماديّة) — الرقاقةُ نفسُها (`Chip`)، لا زرٌّ ثالث. **قيس على ٣٦٠**: الصفُّ كاملٌ بلا سطرٍ ثانٍ */}
+                {d.can_copy ? (
+                  <View style={{ marginStart: "auto" }}>
+                    <Chip
+                      label={t.listCopyBtn}
+                      active={false}
+                      size="md"
+                      onPress={() => void copy()}
+                      leading={<Icon name="copy" size={16} color={tokens.accent} />}
+                    />
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -456,6 +608,12 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
               </View>
             ) : null}
 
+            {/* 🆕 234 — **العضو يضيف أعمالاً** (٣أ) — بلا «عدّل القائمة»: الاسمُ والترتيبُ والإعلانُ لصاحبها */}
+            {d && !d.mine && d.can_edit_items ? (
+              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
+                <Button label={t.listAddTitles} variant="ghost" onPress={() => setSheet("add")} />
+              </View>
+            ) : null}
             {d?.mine ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
                 <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
@@ -521,7 +679,38 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
           />
         ) : null}
         {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet("edit")} /> : null}
-        <HoldHost hostRef={holdHost} variant={d?.mine && !d.smart ? "mylist" : "list"} toItem={heldItemOf} toWatchOf={toWatchOf} onAction={act} onHeld={onHeld} />
+        {sheet === "members" && d ? (
+          <ListMembersSheet
+            listId={id}
+            members={d.members ?? []}
+            mine={d.mine}
+            meId={me?.id ?? null}
+            onClose={() => setSheet(null)}
+            onInvite={d.can_invite ? () => setSheet("invite") : null}
+            onChanged={(removed) => patch((p) => ({ ...p, members: (p.members ?? []).filter((m) => m.id !== removed) }))}
+            onLeft={() => {
+              setSheet(null);
+              say(t.listLeft, "info");
+              back();
+            }}
+            onError={fail}
+          />
+        ) : null}
+        {sheet === "invite" && d ? (
+          <ListInviteSheet
+            listId={id}
+            name={d.name}
+            members={d.members ?? []}
+            onClose={() => setSheet(null)}
+            onDone={() => {
+              setSheet(null);
+              say(t.listInviteSent, "success");
+              void q.refetch();
+            }}
+            onError={fail}
+          />
+        ) : null}
+        <HoldHost hostRef={holdHost} variant={d?.can_edit_items ?? (d?.mine && !d.smart) ? "mylist" : "list"} toItem={heldItemOf} toWatchOf={toWatchOf} onAction={act} onHeld={onHeld} />
         {reviewOpen && d ? <ListReviewSheet listId={id} listName={d.name} mine={d.my_review ? { rating: d.my_review.rating, body: d.my_review.body, has_spoiler: d.my_review.has_spoiler } : null} onClose={() => setReviewOpen(false)} onSaved={onReviewSaved} onError={fail} /> : null}
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 16} />
       </View>

@@ -1446,6 +1446,9 @@ object W2Render {
     poster(d, v, R.id.rt_img, poster, 22f, 33f, 3f)
     v.setTextViewText(R.id.rt_skip_text, d.s2or("skip", "تخطَّ", "Skip"))
     v.setOnClickPendingIntent(R.id.rt_skip, CheckReceiver.skipIntent(d.ctx, d.next()))
+    /* 🆕 D-1600 — «ما شاهدته»: يلغي «شاهدته» ويعيد الفيلم (خالد ٣٠ أكتوبر) */
+    v.setTextViewText(R.id.rt_unwatch_text, d.s2or("notWatched", "ما شاهدته", "Didn't watch"))
+    v.setOnClickPendingIntent(R.id.rt_unwatch, CheckReceiver.unwatchIntent(d.ctx, d.next(), id))
     STARS.forEachIndexed { n, sid ->
       v.setInt(sid, "setColorFilter", 0xFF6B6B6B.toInt())
       v.setOnClickPendingIntent(sid, CheckReceiver.rateIntent(d.ctx, d.next(), id, n + 1))

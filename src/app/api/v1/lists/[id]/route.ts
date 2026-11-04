@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { getList, getPublicList, getMyListSave, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, getListReviewReplies, listReviewKey, getUserId } from "@/lib/data";
+import { getList, getListOrigin, getPublicList, getMyListSave, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, getListReviewReplies, listReviewKey, getUserId } from "@/lib/data";
 import { displayNameOf } from "@/core/people";
+import { shapeListMembers } from "@/lib/listMembers";
 import { getDict } from "@/core/i18n";
 import { resolveSmartItems } from "@/lib/listItems";
 import { localizeRows } from "@/lib/localize";
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       const mine = !!uid && data.list.user_id === uid;
       const award = data.list.source_slug ? (universeBySlug(data.list.source_slug)?.award ?? null) : null;
 
-      const [pub, mySave, stats, myReview, smart, winners, reviews, social, replies] = await Promise.all([
+      const [pub, mySave, stats, myReview, smart, winners, reviews, social, replies, origin, memberRows] = await Promise.all([
         mine ? Promise.resolve(null) : getPublicList(id),
         mine || !uid ? Promise.resolve(null) : getMyListSave(id),
         data.list.is_public ? getListCardStats([id]).catch(() => new Map<string, { saves: number; reviews: number; rating: number | null }>()) : Promise.resolve(new Map<string, { saves: number; reviews: number; rating: number | null }>()),
@@ -53,12 +54,22 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         data.list.is_public ? getListReviews(id).catch(() => []) : Promise.resolve([]),
         data.list.is_public ? getListReviewSocial([id]).catch(() => new Map()) : Promise.resolve(new Map()),
         data.list.is_public ? getListReviewReplies(id).catch(() => []) : Promise.resolve([]),
+        /* 🆕 233 — «من قائمة @فلان» لكلِّ قارئ: النسخةُ المعلنةُ تنسب أصلَها لزوّارها أيضاً */
+        getListOrigin(data.list.copied_from),
+        /* 🆕 234 — قوائمُ لوبز لا تُشارَك: لا نداءَ لها */
+        Promise.resolve(!data.list.source_slug),
       ]);
       const t = getDict(locale);
       const badges = new Map(winners.map((r) => [`${r.media_type === "tv" ? "tv" : "movie"}-${r.id}`, r.awarded]));
       const rows = await localizeRows(smart.rows ?? data.items, locale);
       const st = stats.get(id);
       const curated = !!data.list.source_slug;
+
+      /* 🆕 234 — **القائمةُ المشتركة**: القارئُ الواحد (`shapeListMembers`) — صاحبُها أوّلاً ثمّ الفعّالون ثمّ المعلّقون */
+      const { members, my: my_membership } = memberRows
+        ? await shapeListMembers({ listId: id, ownerId: data.list.user_id, uid, owner: pub ? { nickname: pub.owner_nickname, username: pub.owner_username, avatar: pub.owner_avatar } : null, t })
+        : { members: [], my: null };
+      const ownerMember = members.find((m) => m.role === "owner") ?? null;
 
       const payload: ListDetailPayload = {
         id: data.list.id,
@@ -77,12 +88,29 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             ? { name: LOOPZ_PERSON.nickname ?? "Loopz", username: LOOPZ_PERSON.username ?? null, avatar: `${SITE_URL}${LOOPZ_PERSON.avatar_url}` }
             : pub
               ? { name: pub.owner_nickname ?? pub.owner_username ?? "", username: pub.owner_username, avatar: pub.owner_avatar }
-              : null,
-        items: rows.map((r) => ({ kind: r.media_type, id: r.tmdb_id, title: r.title ?? "", poster_path: r.poster_path, badge: badges.get(`${r.media_type}-${r.tmdb_id}`) ?? null })),
+              : ownerMember
+                ? { name: ownerMember.name, username: ownerMember.username, avatar: ownerMember.avatar }
+                : null,
+        items: rows.map((r) => ({
+          kind: r.media_type,
+          id: r.tmdb_id,
+          title: r.title ?? "",
+          poster_path: r.poster_path,
+          badge: badges.get(`${r.media_type}-${r.tmdb_id}`) ?? null,
+          /* 🆕 234 — صورةُ من أضاف تُرسم في المشتركة وحدَها */
+          added_by: members.length ? ((r as { added_by?: string | null }).added_by ?? null) : null,
+        })),
         saves: st?.saves ?? 0,
         reviews: st?.reviews ?? 0,
         rating: st?.rating ?? null,
         can_save: !!uid && !mine && data.list.is_public,
+        /* 🆕 233 — النسخُ لغيري من المعلنة، ولا قوائمُ لوبز (٥ب: حفظٌ فقط) — والحارسُ الحقيقيُّ `copy_list` */
+        can_copy: !!uid && !mine && data.list.is_public && !curated,
+        copied_from: origin ? { list_id: origin.id, username: origin.username, name: origin.nickname } : null,
+        members,
+        my_membership,
+        can_invite: mine && !smart.rule && !curated,
+        can_edit_items: (mine || my_membership === "active") && !smart.rule,
         saved_by_me: !!mySave?.saved,
         can_review: !!uid && !mine && data.list.is_public,
         review_rows: reviews.slice(0, 30).map((r) => {

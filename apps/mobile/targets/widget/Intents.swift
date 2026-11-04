@@ -294,6 +294,12 @@ enum WState {
     }
   }
 
+  static func unhide(_ id: Int) {
+    var h = (FeedStore.defaults?.dictionary(forKey: "wHidden") as? [String: Double]) ?? [:]
+    h.removeValue(forKey: String(id))
+    FeedStore.defaults?.set(h, forKey: "wHidden")
+  }
+
   static func hide(_ id: Int) {
     let now = Date().timeIntervalSince1970
     var h = (FeedStore.defaults?.dictionary(forKey: "wHidden") as? [String: Double]) ?? [:]
@@ -387,18 +393,49 @@ struct MarkMovieIntent: AppIntent {
     self.poster = poster ?? ""
   }
 
+  /*
+   * 🆕 D-1600 — **الفيلمُ يُخفى وشريطُ التقييم يظهر فوراً** (خالد ٣٠ أكتوبر: «ما يمدي تكون اسرع»): كان «↶» معلّقاً حتى يردّ الخادم ثمّ
+   * خمسَ ثوانٍ قبل الشريط. الآن التراجعُ زرٌّ في الشريط («ما شاهدته» — `UnwatchMovieIntent`) لا مهلةٌ تُنتظر.
+   */
   func perform() async throws -> some IntentResult {
     Diag.add("movie", "tap", nil)
-    WState.setPending("movie", id)
+    let d = FeedStore.defaults
+    d?.removeObject(forKey: "wUnwatch")
+    WState.hide(id)
+    d?.set(["id": id, "title": name, "poster": poster], forKey: "wRate")
+    WidgetCenter.shared.reloadAllTimelines()
     if await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": true]) != nil {
-      if WState.takeCancel("movie", id) {
+      /* «ما شاهدته» لُمس قبل أن يردّ الخادم: يُعكس الآن */
+      if d?.integer(forKey: "wUnwatch") == id {
         _ = await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": false])
-      } else {
-        WState.setUndo(["kind": "movie", "id": id, "title": name, "poster": poster])
+        d?.removeObject(forKey: "wUnwatch")
       }
     } else {
-      WState.clearPending()
+      /* الخادمُ لم يقبل: الفيلمُ يعود والشريطُ يزول */
+      WState.unhide(id)
+      if (d?.dictionary(forKey: "wRate")?["id"] as? Int) == id { d?.removeObject(forKey: "wRate") }
     }
+    return .result()
+  }
+}
+
+/** 🆕 D-1600 — «ما شاهدته» في شريط التقييم: يلغي «شاهدته» ويعيد الفيلم فوراً */
+struct UnwatchMovieIntent: AppIntent {
+  static let title: LocalizedStringResource = "intent.unmark"
+  static let isDiscoverable = false
+  @Parameter(title: "id") var id: Int
+
+  init() {}
+  init(id: Int) { self.id = id }
+
+  func perform() async throws -> some IntentResult {
+    Diag.add("unwatch", "tap", nil)
+    let d = FeedStore.defaults
+    d?.removeObject(forKey: "wRate")
+    d?.set(id, forKey: "wUnwatch")
+    WState.unhide(id)
+    WidgetCenter.shared.reloadAllTimelines()
+    _ = await MarkAPI.post("/api/v1/widget/movie", ["movieTmdbId": id, "watched": false])
     return .result()
   }
 }

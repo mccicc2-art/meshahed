@@ -146,3 +146,15 @@ test("قسمٌ وحدَه: المتوسطُ صفٌّ والكبيرُ صفّان
   assert.ok(bottom(l.tiles) <= 376 - 10 + 0.5);
   assert.equal(smallV4(solo).s, "tw");
 });
+
+/* 🆕 D-1610 — «مخصّص»: المواضعُ بأسماء الخانات، و«أكمل المشاهدة» فوقها أو لا */
+test("مخصّص: أكمل المشاهدة فوق ثمّ الخانتان بأسمائهما في الكبير، وبلاه أربعُ خانات في الكبير جداً", () => {
+  const big = I(376, { ...defaultV3(), custom: { top: true, count: 2 } });
+  const keys = big.tiles.filter((t) => t.k === "card").map((t) => (t.k === "card" ? t.s : ""));
+  assert.deepEqual(keys, ["cont", "cont", "slot1", "slot1", "slot1", "slot2", "slot2", "slot2"]);
+  assert.ok(bottom(big.tiles) <= 376 - 10 + 0.5);
+  const xl = I(580, { ...defaultV3(), custom: { top: false, count: 4 } });
+  assert.equal(xl.tiles.filter((t) => t.k === "card").length, 12);
+  assert.ok(xl.tiles.every((t) => t.k !== "card" || t.s.startsWith("slot")));
+  assert.equal(smallV4({ ...defaultV3(), custom: { top: false, count: 1 } }).s, "slot1");
+});

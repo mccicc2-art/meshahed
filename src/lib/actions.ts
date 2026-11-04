@@ -1751,28 +1751,14 @@ async function markWatchedUpTo(
      `rateEpisode` نفسُهما (`intIn`) — رقمٌ خارجهما ليس حلقةً، فلا يُعلَّم شيء. */
   if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
+  const { airedPerSeason, airedEpisodesUpTo } = await import("@/core/progress");
   const tv = await getTv(tmdbId);
   const runtime = tv.episode_run_time?.[0] ?? null;
-  const want: { s: number; e: number }[] = [];
-  if (season === 0) want.push({ s: 0, e: episode });
-  else {
-    const per = airedPerSeason(tv);
-    const firstOf = firstEpisodeOf(tv);
-    /* 🔴 A-15 — **موسمٌ لا يعرفه TMDB لا يُعلِّم ما قبله**: الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان يعلّم الثلاثةَ كلَّها */
-    if (!per.has(season)) return 0;
-    for (const [sn, count] of per) {
-      if (sn === 0 || sn > season) continue;
-      const first = firstOf.get(sn) ?? 1;
-      /* 🔴 A-15 — **وفي موسمها: حتى آخر ما بُثّ لا حتى الرقم المرسَل** — «شاهدتُ ٥٠» في موسمٍ بُثّ منه ١٠ لا يعلّم
-         حلقاتٍ لم تُعرض بعد (تظهر مشاهَدةً يومَ بثّها، ويحسبها التقدّمُ والإحصاءُ منذ اليوم) */
-      const last = sn < season ? first + count - 1 : Math.min(episode, first + count - 1);
-      for (let ep = first; ep <= last; ep++) want.push({ s: sn, e: ep });
-    }
-    /* الحلقةُ نفسُها تُضاف حين تقع داخل ما بُثّ وحده — وإلّا فهي حلقةٌ لم تُعرض */
-    const inSeason = (firstOf.get(season) ?? 1) + (per.get(season) ?? 0) - 1;
-    if (episode <= inSeason && !want.some((w) => w.s === season && w.e === episode)) want.push({ s: season, e: episode });
-  }
+  /* 🔴 A-15 — **موسمٌ لا يعرفه TMDB لا يُعلِّم ما قبله** ولا يُتابَع العملُ لأجله: الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان
+     يعلّم الثلاثةَ كلَّها. ⚖️ **والحسبةُ خرجت إلى `airedEpisodesUpTo`** يومَ صار لها قارئٌ ثانٍ (استيرادُ IMDb) —
+     بحدودها كلِّها: الخاصّةُ وحدَها، وفي موسمها حتى آخر ما بُثّ لا حتى الرقم المرسَل (D-145). */
+  if (season !== 0 && !airedPerSeason(tv).has(season)) return 0;
+  const want = airedEpisodesUpTo(tv, season, episode);
   const { data: seen } = await supabase
     .from("watched_episodes")
     .select("season_number, episode_number")
@@ -1812,14 +1798,16 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   const { supabase, user } = await requireUser("sig", 60, 60_000);
   const { data: row } = await supabase
     .from("watch_signals")
-    .select("id, media_type, tmdb_id, season, episode, state")
+    .select("id, source, media_type, tmdb_id, season, episode, state")
     .match({ id, user_id: user.id })
     .maybeSingle();
-  const sig = row as { id: number; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
+  const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
+  /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
+  const src: WatchSource = sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" ? sig.source : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
   let marked = 0;
   if (watched && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode, undefined, "stremio");
+    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode, undefined, src);
     /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
     if (sig.season > 0) {
       await supabase
@@ -1837,7 +1825,7 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
       .upsert({ user_id: user.id, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true })
       .select("id");
     if (error) fail(error);
-    await tagSource(supabase, "watched_movies", added as { id: number }[] | null, "stremio");
+    await tagSource(supabase, "watched_movies", added as { id: number }[] | null, src);
     await ensureMovieInLibrary(supabase, user.id, sig.tmdb_id);
   }
   await supabase
@@ -2851,7 +2839,13 @@ export type SignalKind =
    * **ويغطّي الحالتين — ردٌّ على رأيك وردٌّ على ردّك — بنوعٍ واحدٍ لأن
    * الجملةَ واحدةٌ والوجهةَ واحدة** (نصُّ `reply` في ٧١ حرفاً).
    */
-  | "list_reply";
+  | "list_reply"
+  /**
+   * 🆕 **نسخ أحدٌ قائمتَك** (الهجرة ٢٣٣ — أحمد ٤ نوفمبر، ٣أ). يفتح قائمتي أنا (الأصل)، لا نسختَه الخاصّة.
+   */
+  | "list_copy"
+  /** 🆕 **دعاك أحدٌ إلى قائمةٍ مشتركة** (الهجرة ٢٣٤). يفتح القائمة وفوقها «قبول · لا شكراً» — وإن كانت خاصّة */
+  | "list_invite";
 
 export interface Signal {
   kind: SignalKind;
@@ -3891,7 +3885,9 @@ export async function toggleInList(input: {
         title: input.title,
         poster_path: safeImagePath(input.posterPath),
       },
-      { onConflict: "list_id,tmdb_id,media_type" },
+      /* 🆕 234 — `ignoreDuplicates`: عضوُ القائمة المشتركة يضيف ولا يعدّل (٣أ — لا سياسةَ تعديلٍ له)، و«أضِف» لعملٍ
+         موجودٍ كانت تصير تعديلاً للعنوان والملصق فيُرفض. العملُ الموجودُ يبقى كما هو — وهو ما يراه الجميع أصلاً */
+      { onConflict: "list_id,tmdb_id,media_type", ignoreDuplicates: true },
     );
     if (error) fail(error);
   } else {
@@ -3929,6 +3925,9 @@ async function upsertListWithItems(
   name: string,
   rawItems: NewItem[],
   kind: "regular" | "watch_order" | "ranked",
+  /** 🆕 استيرادُ IMDb: **جلسةُ دفعة الاستيراد** (لا يُحسب على دلو «list» — عشرون قائمةً في استيرادٍ واحدٍ ليست عبثاً)،
+   *  و**ترتيبُ المصدر** يُكتب في القائمة الجديدة أيّاً كان نوعُها (قائمةُ IMDb مرتّبةٌ عند صاحبها) */
+  opts?: { session?: Awaited<ReturnType<typeof requireUser>>; ordered?: boolean },
 ): Promise<{ listId: string; name: string; added: number; created: boolean }> {
   const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("مدخل غير صالح / Invalid input");
@@ -3955,7 +3954,7 @@ async function upsertListWithItems(
     throw new Error("لا أعمال لإضافتها / Nothing to add");
   }
 
-  const { supabase, user } = await requireUser("list", 10, 60_000);
+  const { supabase, user } = opts?.session ?? (await requireUser("list", 10, 60_000));
 
   // قائمةٌ بنفس الاسم عندي؟ نُضيف إليها بدل التكرار
   const { data: existing } = await supabase
@@ -3992,7 +3991,7 @@ async function upsertListWithItems(
     media_type: it.mediaType,
     title: it.title,
     poster_path: it.posterPath,
-    ...(created && kind === "watch_order" ? { sort_order: i } : {}),
+    ...(created && (kind === "watch_order" || opts?.ordered) ? { sort_order: i } : {}),
   }));
 
   // `ignoreDuplicates` يُبقي الصفوف الموجودة كما هي، ويعيد المُدرَج وحده
@@ -4304,18 +4303,15 @@ export async function markShowWatched(
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason, airedEpisodeCount, firstEpisodeOf } = await import(
-    "@/core/progress"
-  );
+  const { airedEpisodeCount, airedEpisodesAll } = await import("@/core/progress");
 
   const tv = await getTv(tmdbId);
-  const per = airedPerSeason(tv);
   /* 🔴 🆕 **الترقيمُ المطلق** (D-603): مواسمُ-الآركات تحمل حلقاتُها
      أرقامَ العمل كلِّه («Elbaph» ١١٥٦–١١٨١ لا ١–٢٦) — **والعدُّ من ١
      كان يكتب أشباحاً نسبيّةً لا يقابلها شيءٌ يُرسم** (سلالةُ بلاغ
-     خالد بعينها). ⚖️ **والحسبةُ خرجت إلى `firstEpisodeOf` يومَ
-     الهجرة ١٣٣** — صار قرّاؤها أربعةً فالنسخُ الداخليُّ عطلٌ (D-145). */
-  const firstOf = firstEpisodeOf(tv);
+     خالد بعينها). ⚖️ **والحسبةُ في `airedEpisodesAll`** (نوافذُ
+     `firstEpisodeOf` على `airedPerSeason`) — قارئُها الثاني استيرادُ IMDb،
+     فالنسخُ الداخليُّ عطلٌ (D-145). */
   const runtime = tv.episode_run_time?.[0] ?? null;
   const now = new Date().toISOString();
 
@@ -4330,21 +4326,17 @@ export async function markShowWatched(
 
   const rows: Record<string, unknown>[] = [];
   const added: { s: number; e: number }[] = [];
-  for (const [season, count] of per) {
-    const first = firstOf.get(season) ?? 1;
-    for (let i = 0; i < count; i++) {
-      const ep = first + i;
-      if (have.has(`${season}-${ep}`)) continue;
-      rows.push({
-        user_id: user.id,
-        show_tmdb_id: tmdbId,
-        season_number: season,
-        episode_number: ep,
-        runtime,
-        watched_at: now,
-      });
-      added.push({ s: season, e: ep });
-    }
+  for (const { s: season, e: ep } of airedEpisodesAll(tv)) {
+    if (have.has(`${season}-${ep}`)) continue;
+    rows.push({
+      user_id: user.id,
+      show_tmdb_id: tmdbId,
+      season_number: season,
+      episode_number: ep,
+      runtime,
+      watched_at: now,
+    });
+    added.push({ s: season, e: ep });
   }
   if (rows.length) {
     const { error } = await supabase
@@ -4849,6 +4841,119 @@ export async function saveList(listId: string, save: boolean) {
       .match({ user_id: user.id, list_id: listId });
     if (error) fail(error);
   }
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * 🆕 **نسخُ قائمةِ غيري إلى قوائمي لأعدّلها** (أحمد ٤ نوفمبر ٢٠٢٦ — البند ١ من ستّة · الهجرة ٢٣٣).
+ *
+ * ⚖️ **فعلٌ ثانٍ بجانب ♥ لا بدلَه**: الحفظُ مرجعٌ حيٌّ يتبع صاحبَه (D-068، «مرجع حي لا نسخة»)، والنسخةُ
+ * قائمةٌ مستقلّةٌ أملكها — **لا يمسّها تعديلُ الأصل بعد يومها.** الذكيّةُ تنسخ شرطَها (١أ)، والنسخةُ تبدأ
+ * خاصّة (٤أ)، وقوائمُ لوبز لا تُنسخ (٥ب) — **والحرّاسُ كلُّهم في `copy_list` بالقاعدة** (D-302): ما هنا
+ * ترجمةُ رفضها إلى سببٍ يُقرأ، لا حارسٌ ثانٍ.
+ *
+ * 🔑 **نسختي الموجودة تُعاد ولا تُكرَّر**: ضغطتان لا تصنعان قائمتين، **ولا جرسين لصاحب الأصل** — فالتنبيهُ
+ * (٣أ) يرنّ لأوّل نسخةٍ وحدَها (`created`).
+ */
+export type CopyListResult =
+  | { ok: true; id: string; created: boolean }
+  | { ok: false; reason: "too_many" | "unavailable" };
+
+export async function copyList(sourceId: string): Promise<CopyListResult> {
+  sourceId = uuid(sourceId);
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+
+  const { data: src } = await supabase
+    .from("user_lists")
+    .select("id, user_id, is_public, source_slug")
+    .eq("id", sourceId)
+    .maybeSingle();
+  const s = src as { id: string; user_id: string; is_public: boolean; source_slug: string | null } | null;
+  if (!s || !s.is_public || s.source_slug || s.user_id === user.id) return { ok: false, reason: "unavailable" };
+
+  const { data: mine } = await supabase
+    .from("user_lists")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("copied_from", sourceId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const existing = (mine as { id?: string } | null)?.id;
+  if (existing) return { ok: true, id: existing, created: false };
+
+  const { data, error } = await supabase.rpc("copy_list", { p_src: sourceId });
+  if (error) {
+    const msg = String(error.message ?? "");
+    if (msg.includes("list_copy_too_many")) return { ok: false, reason: "too_many" };
+    if (msg.includes("list_not_found") || msg.includes("list_copy_own") || msg.includes("list_copy_curated")) {
+      return { ok: false, reason: "unavailable" };
+    }
+    fail(error);
+  }
+  const id = typeof data === "string" ? data : null;
+  if (!id) fail("copy_list returned no id");
+
+  notifySignal({ to: s.user_id, kind: "list_copy", actorId: user.id, listId: sourceId, dedupe: `list_copy:${user.id}:${sourceId}` });
+  revalidatePath("/lists");
+  return { ok: true, id, created: true };
+}
+
+/**
+ * 🆕 **القوائمُ المشتركة** (أحمد ٤ نوفمبر ٢٠٢٦ — البند ٢ · الهجرة ٢٣٤).
+ *
+ * ثلاثةُ أفعالٍ بثلاث دوالٍّ في القاعدة، **والحرّاسُ هناك كلُّهم** (D-302): الدعوةُ لصاحبها ولمن يتابعهم (١أ)،
+ * وعشرةٌ مع صاحبها (٤ب)، والذكيّةُ وقوائمُ لوبز لا تُشارَك؛ والقبولُ للمدعوِّ وحدَه؛ والإزالةُ لصاحبها
+ * والمغادرةُ للعضو. ما هنا ترجمةُ الرفض إلى سببٍ يُقرأ، والتنبيهُ للدعوة وحدَها (٦ب: لا تنبيهَ للإضافة).
+ */
+export type ListMembersResult = { ok: true; count: number } | { ok: false; reason: "full" | "not_allowed" };
+
+export async function inviteListMembers(listId: string, userIds: string[]): Promise<ListMembersResult> {
+  listId = uuid(listId);
+  const ids = [...new Set((Array.isArray(userIds) ? userIds : []).slice(0, 20).map((u) => uuid(u)))];
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+  if (!ids.length) return { ok: true, count: 0 };
+
+  /* من كان مدعوّاً أو عضواً قبلُ لا يُنبَّه ثانيةً — التنبيهُ للمدعوِّين الجدد في هذه الضغطة وحدَهم */
+  const { data: before } = await supabase.from("list_members").select("user_id").eq("list_id", listId);
+  const had = new Set((before ?? []).map((r) => r.user_id as string));
+
+  const { data, error } = await supabase.rpc("invite_list_members", { p_list: listId, p_users: ids });
+  if (error) {
+    const msg = String(error.message ?? "");
+    if (msg.includes("list_members_full")) return { ok: false, reason: "full" };
+    if (msg.includes("list_not_owner") || msg.includes("list_not_shareable")) return { ok: false, reason: "not_allowed" };
+    fail(error);
+  }
+  const { data: after } = await supabase.from("list_members").select("user_id").eq("list_id", listId).eq("status", "pending");
+  for (const r of after ?? []) {
+    const to = r.user_id as string;
+    if (!had.has(to) && ids.includes(to)) {
+      notifySignal({ to, kind: "list_invite", actorId: user.id, listId, dedupe: `list_invite:${user.id}:${to}:${listId}` });
+    }
+  }
+  revalidatePath(`/lists/${listId}`);
+  return { ok: true, count: typeof data === "number" ? data : 0 };
+}
+
+export async function respondListInvite(listId: string, accept: boolean): Promise<"active" | "declined"> {
+  listId = uuid(listId);
+  const { supabase } = await requireUser("list", 20, 60_000);
+  const { data, error } = await supabase.rpc("respond_list_invite", { p_list: listId, p_accept: !!accept });
+  if (error) fail(error);
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+  return data === "active" ? "active" : "declined";
+}
+
+/** صاحبُها يزيل عضواً أو يلغي دعوتَه · والعضوُ يغادر (`userId` = نفسُه) — الأعمالُ التي أضافها تبقى */
+export async function removeListMember(listId: string, userId: string): Promise<void> {
+  listId = uuid(listId);
+  userId = uuid(userId);
+  const { supabase } = await requireUser("list", 20, 60_000);
+  const { error } = await supabase.rpc("remove_list_member", { p_list: listId, p_user: userId });
+  if (error) fail(error);
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
 }
@@ -5910,8 +6015,27 @@ export async function resolveImportItems(
   const list = (requests ?? []).slice(0, 40);
   const { findByExternalId, searchByName, titleOf } = await import("@/lib/tmdb");
 
+  /* 🆕 **MyAnimeList ⇐ جدولُ Fribb** (`lib/fribb.ts`): رقمُ MAL يعطي مسلسلَ TMDB وموسمَه وإزاحتَه — لا بحثَ بالاسم (موسمُ أنمي
+     باسمٍ ياباني يطابق خطأً). يُحمَّل مرّةً للدفعة وحين تطلبه وحدَه. **وتعذُّرُه خطأٌ يُقال** لا «لم نجد» على كلِّ عمل: من يرى
+     مكتبتَه كلَّها «لم نجدها» يظنّ ملفَّه هو المعطوب. */
+  const fribb = list.some((r) => r?.kind === "mal") ? await import("@/lib/fribb") : null;
+  const { malPlacementOf } = await import("@/core/kitsuEpisode");
+  const malIdx = fribb ? (await fribb.fribbIndex()).idx : null;
+  if (fribb && !malIdx) throw new Error("تعذّر تحميل جدول ربط الأنمي — حاول بعد دقائق / Couldn't load the anime mapping — try again in a few minutes");
+
   const one = async (req: ResolveRequest): Promise<ResolveResult> => {
     try {
+      if (req.kind === "mal") {
+        const e = malIdx?.byMal.get(intId(req.id));
+        const tv = e?.themoviedb_id?.tv;
+        /* الموضعُ كلُّه في `malPlacementOf` (نقيّةٌ مُختبَرة): موسمٌ صريح، أو ترقيمٌ متّصلٌ لمسلسلٍ وحيد، أو فيلم — والخاصّاتُ لا شيء */
+        const p = e ? malPlacementOf(e, typeof tv === "number" ? (malIdx?.malPerTv.get(tv) ?? 0) : 0) : null;
+        if (!p) return null;
+        return p.mediaType === "tv"
+          ? { tmdbId: p.tmdbId, mediaType: "tv", title: "", posterPath: null, span: p.span }
+          : { tmdbId: p.tmdbId, mediaType: "movie", title: "", posterPath: null };
+      }
+
       if (req.kind === "tvdb-tv") {
         const found = await findByExternalId(String(intId(req.id)), "tvdb_id");
         const tv = found?.tv_results?.[0];
@@ -5942,6 +6066,12 @@ export async function resolveImportItems(
 
       if (req.kind === "imdb") {
         const found = await findByExternalId(String(req.id).slice(0, 20), "imdb_id");
+        /* 🆕 IMDb — **حلقةٌ بمعرّفها** تعطي المسلسلَ وموسمَها ورقمَها معاً، كمعرّف حلقة TVDB أعلاه */
+        if (req.media === "episode") {
+          const ep = found?.tv_episode_results?.[0];
+          if (!ep) return null;
+          return { tmdbId: ep.show_id, mediaType: "tv", title: ep.name ?? "", posterPath: null, season: ep.season_number, episode: ep.episode_number };
+        }
         const hit =
           req.media === "tv" ? found?.tv_results?.[0] : found?.movie_results?.[0];
         if (!hit) return null;
@@ -5991,8 +6121,12 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   shows: number;
   episodes: number;
   movies: number;
+  /** 🆕 IMDb — قوائمُ أُنشئت أو أُضيف إليها، وما لم يدخل منها (سقفُ الخمسين قائمة) */
+  lists: number;
+  listsSkipped: number;
 }> {
-  const { supabase, user } = await requireUser("import-apply", 90, 60_000);
+  const session = await requireUser("import-apply", 90, 60_000);
+  const { supabase, user } = session;
 
   /* ختمٌ واحد لكل دفعة يحلّ محلّ التاريخ الغائب — لسببين: PostgREST يرفض
      مصفوفةً تختلف مفاتيح كائناتها (بعضها بتاريخٍ وبعضها بلا)، فالمفتاح
@@ -6003,6 +6137,25 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   const shows = (payload?.shows ?? []).slice(0, 5);
   const movies = (payload?.movies ?? []).slice(0, 60);
   let epCount = 0;
+
+  /* 🆕 **IMDb — ما يُعلَّم ضمناً يُحسب هنا لا عند العميل** (R58): «المسلسلُ كلُّه» (`all`، «١ ب») و«الحلقةُ وما قبلها»
+     (`upTo`، «٢ أ») يحتاجان مواسمَ العمل كما يعرفها TMDB اليوم — فتُجلب تفاصيلُه مرّةً لكلِّ مسلسلٍ منها (خمسةٌ في
+     الدفعة بحدٍّ أقصى، متوازية). وفشلُ جلبٍ يُسقط الضمنيَّ لذلك المسلسل وحدَه — الصريحُ يُكتب كما هو. */
+  const { getTv } = await import("@/lib/tmdb");
+  const { airedEpisodeCount, impliedEpisodes } = await import("@/core/progress");
+  const tvOf = new Map<number, Awaited<ReturnType<typeof getTv>>>();
+  await Promise.all(
+    shows
+      /* 🆕 ومسلسلٌ وصل بلا ملصق (MyAnimeList · Simkl · حلقاتُ TVDB) تُجلب تفاصيلُه أيضاً: اسمُه وملصقُه وإحصاؤه في الدفعة نفسِها */
+      .filter((sh) => sh.all || (Array.isArray(sh.upTo) && sh.upTo.length) || (Array.isArray(sh.spans) && sh.spans.length) || !sh.posterPath)
+      .map(async (sh) => {
+        try {
+          tvOf.set(intId(sh.tmdbId), await getTv(intId(sh.tmdbId)));
+        } catch {
+          /* عملٌ لا يجيب عنه TMDB الآن: صريحُه يُكتب، وضمنيُّه يُعاد باستيرادٍ ثانٍ */
+        }
+      }),
+  );
 
   /* 🆕 **الدفعةُ صفوفٌ لا حلقة**: كانت الدفعةُ (٥ مسلسلات + ٦٠ فيلماً)
      تُكتب رحلةً رحلةً — حتى ١٨٠ رحلةً متعاقبةً للأفلام وحدَها — والأفعال
@@ -6017,13 +6170,17 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   };
 
   const showFollowRows = dedupe(
-    shows.map((sh) => ({
-      user_id: user.id,
-      tmdb_id: intId(sh.tmdbId),
-      media_type: "tv" as const,
-      title: String(sh.title ?? "").slice(0, 300),
-      poster_path: safeImagePath(sh.posterPath),
-    })),
+    shows.map((sh) => {
+      /* 🆕 تفاصيلُ TMDB في اليد (IMDb) ⇐ اسمُ العمل وملصقُه منها: صفُّ الحلقة في IMDb يحمل «المسلسل: الحلقة» لا ملصق */
+      const tv = tvOf.get(intId(sh.tmdbId));
+      return {
+        user_id: user.id,
+        tmdb_id: intId(sh.tmdbId),
+        media_type: "tv" as const,
+        title: String(tv?.name || sh.title || "").slice(0, 300),
+        poster_path: safeImagePath(sh.posterPath ?? tv?.poster_path ?? null),
+      };
+    }),
     (r) => r.tmdb_id,
   );
   const movieFollowRows = dedupe(
@@ -6086,17 +6243,60 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
       .upsert(followRows, { onConflict: "user_id,tmdb_id,media_type" });
   }
 
-  const episodeRows = dedupe(
-    shows.flatMap((sh) =>
-      (sh.episodes ?? []).slice(0, IMPORT_CAPS.episodesPerShow).map((ep) => ({
-        user_id: user.id,
-        show_tmdb_id: intId(sh.tmdbId),
-        season_number: intIn(ep.s, 0, 100),
-        episode_number: intIn(ep.e, 0, 20_000),
-        runtime: null as number | null,
-        watched_at: ep.at ?? stamp,
+  /* 🆕 **الضمنيُّ لا يدهس ما عند صاحبه**: حلقةٌ أشّرها في Loopz بتاريخها الحقيقيّ تبقى كما هي — فما شوهد يُقرأ أوّلاً
+     ويُستثنى (نفسُ قاعدة `markWatchedUpTo`). والصريحُ (حلقةٌ قيّمها) يُكتب بعده بتاريخه كما يُكتب كلُّ مستورد. */
+  const impliedIds = [...tvOf.keys()];
+  const have = new Set<string>();
+  if (impliedIds.length) {
+    const { data: seen } = await supabase
+      .from("watched_episodes")
+      .select("show_tmdb_id, season_number, episode_number")
+      .eq("user_id", user.id)
+      .in("show_tmdb_id", impliedIds)
+      .limit(50_000);
+    for (const r of seen ?? []) have.add(`${r.show_tmdb_id}-${r.season_number}-${r.episode_number}`);
+  }
+  const impliedRows = shows.flatMap((sh) => {
+    const id = intId(sh.tmdbId);
+    const tv = tvOf.get(id);
+    if (!tv) return [];
+    const runtime = tv.episode_run_time?.[0] ?? null;
+    return impliedEpisodes(tv, {
+      all: sh.all ? { at: typeof sh.all.at === "string" ? sh.all.at : undefined } : undefined,
+      upTo: (Array.isArray(sh.upTo) ? sh.upTo : []).slice(0, 500).map((a) => ({ s: Number(a.s), e: Number(a.e), at: typeof a.at === "string" ? a.at : undefined })),
+      spans: (Array.isArray(sh.spans) ? sh.spans : []).slice(0, 100).map((sp) => ({
+        season: sp.season == null ? null : Number(sp.season),
+        offset: Number(sp.offset) || 0,
+        count: sp.count == null ? null : Number(sp.count),
+        at: typeof sp.at === "string" ? sp.at : undefined,
       })),
-    ),
+    })
+      .filter((ep) => !have.has(`${id}-${ep.s}-${ep.e}`))
+      .slice(0, 5000)
+      .map((ep) => ({
+        user_id: user.id,
+        show_tmdb_id: id,
+        season_number: ep.s,
+        episode_number: ep.e,
+        runtime: runtime as number | null,
+        watched_at: ep.at ?? stamp,
+      }));
+  });
+
+  const episodeRows = dedupe(
+    [
+      ...impliedRows,
+      ...shows.flatMap((sh) =>
+        (sh.episodes ?? []).slice(0, IMPORT_CAPS.episodesPerShow).map((ep) => ({
+          user_id: user.id,
+          show_tmdb_id: intId(sh.tmdbId),
+          season_number: intIn(ep.s, 0, 100),
+          episode_number: intIn(ep.e, 0, 20_000),
+          runtime: null as number | null,
+          watched_at: ep.at ?? stamp,
+        })),
+      ),
+    ],
     (r) => `${r.show_tmdb_id}-${r.season_number}-${r.episode_number}`,
   );
 
@@ -6131,7 +6331,60 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   }
   await Promise.all(writes);
 
-  return { shows: shows.length, episodes: epCount, movies: movies.length };
+  /* 🆕 **وإحصاءُ المتابعة يُكتب لما جُلبت تفاصيلُه** — كما يكتبه «شفته كله» (D-604): الرئيسيّةُ تحكم «انتهى»
+     بـ`aired_episodes`، ومسلسلٌ استُورد كاملاً يجب أن يُرى منتهياً دون أن تُفتح صفحتُه. تحسينُ قراءةٍ لا شرطُ الكتابة. */
+  await Promise.all(
+    [...tvOf].map(([id, tv]) =>
+      supabase
+        .from("follows")
+        .update({
+          total_episodes: tv.number_of_episodes ?? 0,
+          aired_episodes: airedEpisodeCount(tv),
+          next_air_date: tv.next_episode_to_air?.air_date ?? null,
+          stats_updated_at: stamp,
+        })
+        .match({ user_id: user.id, tmdb_id: id, media_type: "tv" }),
+    ),
+  );
+
+  /* 🆕 **حالةُ MyAnimeList** («١ أ»): «Dropped» ⇐ متروكٌ (`dropped`)، «On-Hold» ⇐ موقوفٌ مؤقّتاً (`watch_state`، هجرة ١٩٤) —
+     العمودان اللذان تكتبهما أزرارُ المكتبة نفسُها. وما عداهما لا يُمسّ: الاستيرادُ لا يمحو «متروكاً» وضعه صاحبُه بيده. */
+  /* ⚠️ **و«موقوفٌ» بلا حلقةٍ لا يُكتب** (D-1281، كـ`setWatchState`): إيقافُ ما لم يُشاهَد منه شيءٌ تراجعٌ عن «ابدأ»، وصفٌّ يحمله
+     يصير موقوفاً فعلاً عند أوّل حلقةٍ تُعلَّم بعدُ. والمتروكُ يمسح «بدأ/موقوف» كما تمسحه البطاقةُ الحمراء (`setDropped`). */
+  const withEpisodes = new Set([...episodeRows.map((r) => r.show_tmdb_id), ...[...have].map((k) => Number(k.split("-")[0]))]);
+  await Promise.all(
+    shows
+      .filter((sh) => sh.state === "dropped" || (sh.state === "paused" && withEpisodes.has(intId(sh.tmdbId))))
+      .map((sh) =>
+        supabase
+          .from("follows")
+          .update(sh.state === "dropped" ? { dropped: true, watch_state: null } : { watch_state: "paused" })
+          .match({ user_id: user.id, tmdb_id: intId(sh.tmdbId), media_type: "tv" }),
+      ),
+  );
+
+  /* 🆕 **قوائمُ IMDb** («٤ أ»): قائمةٌ خاصّةٌ باسمها وبترتيبها — **وبالطريق الذي تُبنى به كلُّ قائمةٍ من دفعة**
+     (`upsertListWithItems`): قائمةٌ بالاسم نفسِه عندي يُضاف إليها ولا تُكرَّر، فالاستيرادُ الثاني لا يولّد نسخة.
+     وسقفُ الخمسين قائمة يُحسب ولا يُفشل الدفعة. */
+  let listCount = 0;
+  let listsSkipped = 0;
+  for (const l of (Array.isArray(payload?.lists) ? payload.lists : []).slice(0, 2)) {
+    const items = (Array.isArray(l?.items) ? l.items : []).map((it) => ({
+      tmdbId: it.tmdbId,
+      mediaType: it.mediaType,
+      title: it.title,
+      posterPath: it.posterPath,
+    }));
+    if (!items.length) continue;
+    try {
+      await upsertListWithItems(String(l.name ?? ""), items, "regular", { session, ordered: true });
+      listCount++;
+    } catch {
+      listsSkipped++;
+    }
+  }
+
+  return { shows: shows.length, episodes: epCount, movies: movies.length, lists: listCount, listsSkipped };
 }
 
 /** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */

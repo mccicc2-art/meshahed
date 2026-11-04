@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Platform, Pressable, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -439,21 +439,25 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
       onPress={() => href && onOpen(href)}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
     >
-      <Avatar uri={s.person.hide_name ? null : s.person.avatar_url} size={40} />
+      {/* 🆕 ختمُ التوثيق **على زاوية الصورة** من جهة النصّ (`end`: يسارُها بالعربيّة، يمينُها بالإنجليزيّة) — لا داخلَ الجملة.
+          🔴 لماذا: D-775 وضعه عقدةً في السطر، وD-1454 عزل الاسمَ وختمَه (FSI…PDI) — **ولم يكفِ**: لقطةُ مشعل (آيفون، ٣ نوفمبر)
+          والختمُ فوق «أعجب KHLD». iOS يحدّد مكانَ العقدة قبل أن يرتّب الجملةَ المختلطة، فأيُّ عقدةٍ داخل نصٍّ عربيٍّ فيه اسمٌ
+          لاتينيٌّ هشّة. **الجملةُ الآن نصٌّ خالص** فلا شيءَ يتداخل (خالد ٤ نوفمبر: «اعتمد المقترح»). حلقةٌ بلون الصفحة تفصل
+          الختمَ عن الصورة. «AI» لا تُرسم هنا — الزاويةُ للتوثيق وحدَه. */}
+      <View style={{ width: 40, height: 40 }}>
+        <Avatar uri={s.person.hide_name ? null : s.person.avatar_url} size={40} />
+        {s.person.hide_name || !identityFlags(s.person).verified ? null : (
+          <View style={{ position: "absolute", bottom: -3, end: -3, width: 18, height: 18, borderRadius: 9, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
+            <IdentityBadges flags={{ ...identityFlags(s.person), ai: false }} nameSize={18} sealOnly />
+          </View>
+        )}
+      </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        {/* الشارةُ بجانب الاسم داخل الجملة (D-775) — عقدةٌ في السطر تسبح مع النصّ.
-            🆕 D-1454 — **ختمُ التوثيق وحدَه** (لا حبّةَ PARTNER/PLUS في التنبيهات)، **والاسمُ وختمُه معزولان** (FSI…PDI):
-            اسمٌ لاتينيٌّ في جملةٍ عربيّة كان يرتّبه iOS بعد أن يضع العقدةَ، فتقع الشارةُ فوق الاسم (لقطةُ أحمد). */}
+        {/* الاسمُ معزولٌ (FSI…PDI) ما زال: اسمٌ لاتينيٌّ في جملةٍ عربيّة يبقى في مكانه منها */}
         <Text size={14} style={{ lineHeight: 20 }}>
           {p.pre}
           {"\u2068"}
           <Text size={14} weight="700">{p.who}</Text>
-          {s.person.hide_name || !identityFlags(s.person).verified ? null : (
-            <>
-              {" "}
-              <IdentityBadges flags={identityFlags(s.person)} nameSize={14} sealOnly />
-            </>
-          )}
           {"\u2069"}
           {p.post}
         </Text>

@@ -197,8 +197,9 @@ async function signalNow(input: SignalInput): Promise<void> {
     if (input.listId) {
       const { data } = await db.from("user_lists").select("name, source_slug, is_public").eq("id", input.listId).maybeSingle();
       const l = data as { name: string | null; source_slug: string | null; is_public: boolean | null } | null;
-      /* قائمةٌ خاصّة لا تُنتج سطراً في الجرس أصلاً (`ul.is_public` في `my_signals`) */
-      if (!l || !l.is_public) return;
+      /* قائمةٌ خاصّة لا تُنتج سطراً في الجرس أصلاً (`ul.is_public` في `my_signals`) —
+         🆕 234 إلّا الدعوةَ إلى قائمةٍ مشتركة: هي تُدعى إليها خاصّةً كانت أو معلنة، وفرعُها في الجرس بلا هذا الشرط */
+      if (!l || (!l.is_public && input.kind !== "list_invite")) return;
       title = l.name;
       listSlug = l.source_slug;
     } else if (!title && input.tmdbId && input.mediaType) {

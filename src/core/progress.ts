@@ -5,6 +5,7 @@
 // القاعدة الموحّدة الآن: المقام = الحلقات التي عُرضت فعلاً.
 
 import type { TvDetails } from "@/lib/tmdb";
+import { earliestAt, type ImportEpisode, type ImportShow, type ImportSpan } from "./importer.ts";
 
 /** اليومُ بصيغة `YYYY-MM-DD` (UTC) — صيغةُ `air_date` نفسُها، فالمقارنةُ نصّيّة */
 function todayIso(): string {
@@ -144,6 +145,65 @@ export function firstEpisodeOf(tv: TvDetails): Map<number, number> {
   return out;
 }
 
+/**
+ * 🆕 **كلُّ حلقةٍ عُرضت من العمل** — المواسمُ المنتظمة بنوافذها (`airedPerSeason` · `firstEpisodeOf`)، بلا الخاصّات.
+ * **قارئاها**: «شفته كله» (`markShowWatched`) واستيرادُ IMDb («مسلسلٌ قيّمتَه = شاهدتَه كلَّه»، أحمد ٤ نوفمبر «١ ب»).
+ * نسختان من هذه الحلقة تفترقان عند أوّل تعديلٍ في الترقيم (D-145 / D-603).
+ */
+export function airedEpisodesAll(tv: TvDetails): { s: number; e: number }[] {
+  const per = airedPerSeason(tv);
+  const firstOf = firstEpisodeOf(tv);
+  const out: { s: number; e: number }[] = [];
+  for (const [s, count] of per) {
+    const first = firstOf.get(s) ?? 1;
+    for (let i = 0; i < count; i++) out.push({ s, e: first + i });
+  }
+  return out;
+}
+
+/**
+ * 🆕 **«شاهدتُ حتى هنا» — الحلقةُ وكلُّ ما عُرض قبلها** (R58 · حدودُ A-15) — خرجت من `markWatchedUpTo` يومَ صار
+ * لها قارئٌ ثانٍ: استيرادُ IMDb («حلقةٌ قيّمتَها تُعلَّم وما قبلها»، أحمد ٤ نوفمبر «٢ أ»).
+ * - الخاصّةُ (الموسم ٠) وحدَها: «قبلها» لا معنى له هناك.
+ * - موسمٌ لا يعرفه TMDB لا يُعلِّم شيئاً (الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان يعلّم الثلاثة).
+ * - وفي موسمها: حتى آخر ما بُثّ لا حتى الرقم المرسَل — حلقةٌ لم تُعرض لا تُعلَّم.
+ * - رقمٌ خارج الحدّين (٠–١٠٠٠ / ١–٢٠٠٠٠) ليس حلقةً: `[]`.
+ */
+export function airedEpisodesUpTo(tv: TvDetails, season: number, episode: number): { s: number; e: number }[] {
+  if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return [];
+  if (season === 0) return [{ s: 0, e: episode }];
+  const per = airedPerSeason(tv);
+  const firstOf = firstEpisodeOf(tv);
+  if (!per.has(season)) return [];
+  const want: { s: number; e: number }[] = [];
+  for (const [sn, count] of per) {
+    if (sn === 0 || sn > season) continue;
+    const first = firstOf.get(sn) ?? 1;
+    const last = sn < season ? first + count - 1 : Math.min(episode, first + count - 1);
+    for (let ep = first; ep <= last; ep++) want.push({ s: sn, e: ep });
+  }
+  /* الحلقةُ نفسُها تُضاف حين تقع داخل ما بُثّ وحده — وإلّا فهي حلقةٌ لم تُعرض */
+  const inSeason = (firstOf.get(season) ?? 1) + (per.get(season) ?? 0) - 1;
+  if (episode <= inSeason && !want.some((w) => w.s === season && w.e === episode)) want.push({ s: season, e: episode });
+  return want;
+}
+
+/**
+ * 🆕 **مدىً من حلقات العمل في ترتيبه** — موسمُ MyAnimeList على مسلسل TMDB (جدولُ Fribb: موسمٌ وإزاحة):
+ * يبدأ من أوّل حلقةٍ عُرضت في `season` (أو من أوّل العمل إن كان `null` — ترقيمٌ متّصلٌ كـ One Piece) بعد `offset`،
+ * ويمتدّ `count` حلقةً **ويفيض إلى ما بعد موسمه** كما يفيض `placeOnTmdb` (جدولٌ يرقّم تسلسليّاً وTMDB يقسم)،
+ * أو — بلا `count` — بقيّةَ موسمه. وما لم يُعرض لا يدخل: المدى يُقصّ على `airedEpisodesAll`.
+ */
+export function airedEpisodesSpan(tv: TvDetails, span: Pick<ImportSpan, "season" | "offset" | "count">): { s: number; e: number }[] {
+  const all = airedEpisodesAll(tv);
+  const start = span.season == null ? 0 : all.findIndex((x) => x.s === span.season);
+  if (start < 0) return [];
+  const from = start + (Number.isInteger(span.offset) && span.offset > 0 ? span.offset : 0);
+  if (span.count == null) return span.season == null ? all.slice(from) : all.slice(from).filter((x) => x.s === span.season);
+  const n = Number.isInteger(span.count) && span.count > 0 ? Math.min(span.count, 5000) : 0;
+  return all.slice(from, from + n);
+}
+
 /** أقصى ما يُرسم من صفوفٍ عامّة — فوقه العطلُ أكبرُ من حلقةٍ تأخّرت، وصفوفٌ بلا أسماءٍ بالعشرات ضجيج */
 const MAX_PADDED = 3;
 
@@ -224,4 +284,30 @@ export function nextUnwatchedEpisode(
     }
   }
   return null;
+}
+
+/**
+ * 🆕 **ما يُعلَّم ضمناً من مسلسلٍ مستورد** — «كلُّه» (`all`) و«حتى هنا» (`upTo`) ومدى MyAnimeList (`spans`) — **على الخادم وبتفاصيل TMDB**
+ * (R58: العميلُ لا يُؤتمن على قائمة الحلقات). وحدةٌ نقيّةٌ ليُختبر فيها القراران — **هنا لا في `importBuild`**: تقرأ تفاصيلَ TMDB، والتطبيقُ يحمل `importBuild` ولا يحمل هذا الملفّ:
+ * - **التاريخ** («٣ أ»): كلُّ حلقةٍ بتاريخ **أبكرِ** تقييمٍ يغطّيها — من قيّم الحلقة الخامسة في مايو والثالثة في أبريل
+ *   شاهد الأولى قبل أبريل. ولا تاريخ ⇐ `undefined` (يأخذ ختمَ الدفعة عند الكاتب).
+ * - **الحدود** حدودُ `airedEpisodesUpTo` / `airedEpisodesAll` بحرفها: ما لم يُعرض لا يُعلَّم، والخاصّةُ وحدَها.
+ * الحلقاتُ الصريحة (`episodes`) خارجَها: تُكتب بتواريخها هي.
+ */
+export function impliedEpisodes(
+  tv: TvDetails,
+  show: Pick<ImportShow, "upTo" | "all" | "spans">,
+): ImportEpisode[] {
+  const dates = new Map<string, ImportEpisode>();
+  const cover = (eps: { s: number; e: number }[], at: string | undefined) => {
+    for (const { s, e } of eps) {
+      const k = `${s}-${e}`;
+      const prev = dates.get(k);
+      dates.set(k, { s, e, at: prev ? earliestAt(prev.at, at) : at });
+    }
+  };
+  if (show.all) cover(airedEpisodesAll(tv), show.all.at);
+  for (const a of show.upTo ?? []) cover(airedEpisodesUpTo(tv, a.s, a.e), a.at);
+  for (const sp of show.spans ?? []) cover(airedEpisodesSpan(tv, sp), sp.at);
+  return [...dates.values()];
 }

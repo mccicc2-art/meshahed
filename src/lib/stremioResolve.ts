@@ -10,6 +10,7 @@ import {
   type KitsuMapEntry,
 } from "@/core/kitsuEpisode";
 import type { StremioRef, StremioVideo } from "@/core/stremioId";
+import { fribbIndex } from "@/lib/fribb";
 
 /**
  * 🆕 **معرّفُ Stremio ⇢ عملٌ في TMDB وحلقتُه** — مسارُ المصادر ومسارُ الترجمة يمرّان من هنا (أحمد ٢٢ أكتوبر «نبني دعم كيتسو»).
@@ -74,35 +75,12 @@ async function kitsuMap(): Promise<{ byId: Map<number, KitsuMapEntry> | null; wh
 }
 
 /**
- * 🆕 R77 — **جدولُ Fribb** (`anime-lists`، ~٧٫٥ م.ب): أكبرُ من كاش Next (٢ م.ب) فلا يُحفظ هناك — يُنزَّل **حين يفشل المسارُ
- * الأوّلُ فقط** ويبقى فهرسُه في ذاكرة النسخة نصفَ يوم. والفشلُ لا يُحفظ.
+ * 🆕 R77 — **جدولُ Fribb** احتياطاً — يُنزَّل **حين يفشل المسارُ الأوّلُ فقط**. ⚖️ **وتنزيلُه وفهرسُه في `lib/fribb.ts`** منذ صار
+ * له قارئٌ ثانٍ (استيرادُ MyAnimeList، ٤ نوفمبر): جدولٌ واحدٌ في ذاكرة النسخة لا اثنان.
  */
-const FRIBB =
-  "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json";
-let fribbCache: { at: number; byId: Map<number, FribbEntry> } | null = null;
-
 async function fribbMap(): Promise<{ byId: Map<number, FribbEntry> | null; why: string }> {
-  if (fribbCache && Date.now() - fribbCache.at < MAP_TTL_MS) return { byId: fribbCache.byId, why: "ok" };
-  try {
-    const res = await fetch(FRIBB, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-      headers: { "User-Agent": "Loopz/1.0 (+https://loopztv.com)", Accept: "application/json" },
-    });
-    if (!res.ok) return { byId: null, why: `http_${res.status}` };
-    const rows = (await res.json()) as unknown;
-    if (!Array.isArray(rows)) return { byId: null, why: "bad_shape" };
-    const byId = new Map<number, FribbEntry>();
-    for (const r of rows as FribbEntry[]) {
-      const id = Number(r?.kitsu_id);
-      /* ما بلا رقم TMDB لا ينفعنا — لا يُحفظ في الذاكرة */
-      if (Number.isInteger(id) && id > 0 && r?.themoviedb_id?.tv) byId.set(id, r);
-    }
-    fribbCache = { at: Date.now(), byId };
-    return { byId, why: "ok" };
-  } catch (e) {
-    return { byId: null, why: e instanceof Error ? `error_${e.name}` : "error" };
-  }
+  const { idx, why } = await fribbIndex();
+  return { byId: idx?.byKitsu ?? null, why };
 }
 
 async function viaFribb(kitsu: number, ep: number): Promise<{ tmdbId: number; placed: { season: number; episode: number } } | string> {

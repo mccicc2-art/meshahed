@@ -19,3 +19,12 @@
 "layout.param" = "Layout";
 "layout.main" = "Main";
 "intent.page" = "Next page";
+/* D-1610 — «مخصّص» وخاناتُه في شاشة تعديل الودجت */
+"layout.custom" = "Custom";
+"slot.type" = "Section";
+"slot.top" = "Continue watching on top";
+"slot.1" = "Slot 1";
+"slot.2" = "Slot 2";
+"slot.3" = "Slot 3";
+"slot.4" = "Slot 4";
+"slot.none" = "None";

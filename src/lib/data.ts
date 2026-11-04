@@ -5363,6 +5363,8 @@ export interface ListItem {
   poster_path: string | null;
   added_at: string;
   sort_order: number | null;
+  /** 🆕 234 — من أضافه (القوائمُ المشتركة، ٥أ): صورتُه على زاوية البوستر · غائبٌ قبل الهجرة وفي الأعمال القديمة */
+  added_by?: string | null;
 }
 
 /** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
@@ -5438,6 +5440,8 @@ export async function getList(listId: string): Promise<{
     /** 🆕 **شرطُ القائمة الذكيّة** (D-823 · هجرة ١٦١) — `null` = عاديّة */
     rule?: unknown;
     rule_source?: string | null;
+    /** 🆕 **مصدرُ النسخة** (هجرة ٢٣٣) — قائمةُ غيري التي نُسخت منها، أو `null` · غائبٌ قبل الهجرة */
+    copied_from?: string | null;
   };
   items: ListItem[];
   ratings: Record<string, number>;
@@ -5453,10 +5457,19 @@ export async function getList(listId: string): Promise<{
     let { data: list } = await supabase
       .from("user_lists")
       .select(
-        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, cover_color, is_playlist, rule, rule_source`,
+        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, cover_color, is_playlist, rule, rule_source, copied_from`,
       )
       .eq("id", listId)
       .maybeSingle();
+    /* 🆕 233 — قبل تشغيل الهجرة يردّ PostgREST «عمودٌ مجهول» على `copied_from` وحدَه: درجةٌ قبل الأساس
+       لا سقوطٌ إليه، فلا يضيع الغلافُ وقائمةُ التشغيل لأنّ عموداً جديداً لم يُهاجَر بعد */
+    if (!list) {
+      ({ data: list } = await supabase
+        .from("user_lists")
+        .select(`${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, cover_color, is_playlist, rule, rule_source`)
+        .eq("id", listId)
+        .maybeSingle());
+    }
     if (!list) {
       ({ data: list } = await supabase
         .from("user_lists")
@@ -5466,15 +5479,19 @@ export async function getList(listId: string): Promise<{
     }
     if (!list) return null;
 
-    const { data: items } = await supabase
-      .from("user_list_items")
-      .select("tmdb_id, media_type, title, poster_path, added_at, sort_order")
-      .eq("list_id", listId)
-      .order("sort_order", { ascending: true, nullsFirst: false })
-      .order("added_at", { ascending: false })
-      .limit(500);
+    /* 🆕 234 — `added_by` أوّلاً (صورةُ من أضاف)، والسقوطُ إلى الأعمدة القديمة لا إلى الخطأ قبل الهجرة */
+    const itemsOf = (cols: string) =>
+      supabase
+        .from("user_list_items")
+        .select(cols)
+        .eq("list_id", listId)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("added_at", { ascending: false })
+        .limit(500);
+    const first = await itemsOf("tmdb_id, media_type, title, poster_path, added_at, sort_order, added_by");
+    const items = first.error ? (await itemsOf("tmdb_id, media_type, title, poster_path, added_at, sort_order")).data : first.data;
 
-    const rows = (items ?? []) as ListItem[];
+    const rows = (items ?? []) as unknown as ListItem[];
 
     const ratings: Record<string, number> = {};
     const user = await getUser();
@@ -5546,6 +5563,101 @@ export const getPublicList = cache(
     }
   },
 );
+
+/**
+ * 🆕 **من أين نُسخت هذه القائمة** (هجرة ٢٣٣ — أحمد ٤ نوفمبر، ٢أ: «منسوخة من قائمة @فلان» برابطٍ للأصل).
+ *
+ * **قراءةٌ خفيفةٌ لا `public_list`**: سطرٌ واحدٌ يحتاج اسمَ صاحب الأصل ومعرّفَه، لا أعمالَه كلَّها.
+ * والأصلُ **المعلنُ وحدَه** يُنسب (RLS لا تردّ الخاصّة أصلاً) — أصلٌ صار خاصّاً أو حُذف يُسقط السطرَ،
+ * ومن أخفى اسمه لا يُسمّى (D-011): يبقى الرابطُ بلا اسم.
+ */
+export async function getListOrigin(
+  sourceId: string | null | undefined,
+): Promise<{ id: string; username: string | null; nickname: string | null } | null> {
+  if (!sourceId || !/^[0-9a-f-]{36}$/i.test(sourceId)) return null;
+  try {
+    const supabase = await createClient();
+    const { data: src } = await supabase
+      .from("user_lists")
+      .select("id, user_id")
+      .eq("id", sourceId)
+      .eq("is_public", true)
+      .maybeSingle();
+    if (!src) return null;
+    const { data: owner } = await supabase
+      .from("public_profiles")
+      .select(PERSON_COLS)
+      .eq("id", (src as { user_id: string }).user_id)
+      .maybeSingle();
+    const o = owner as { nickname: string | null; username: string | null; hide_name: boolean | null } | null;
+    const hidden = !o || !!o.hide_name;
+    return { id: (src as { id: string }).id, username: hidden ? null : o!.username, nickname: hidden ? null : o!.nickname };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 🆕 **أعضاءُ القائمة المشتركة** (هجرة ٢٣٤ — أحمد ٤ نوفمبر، البند ٢).
+ *
+ * **ما يُرجَع هو ما يحقّ للقارئ رؤيتُه** (RLS `read list members`): صاحبُها يرى المعلّقين معهم، والعضوُ
+ * يرى نفسَه والفعّالين، والزائرُ الفعّالين لقائمةٍ يراها. **والأسماءُ من `public_profiles`** — ومن أخفى
+ * اسمه يصل بلا اسمٍ ولا صورة (D-011). قبل الهجرة: لا جدول ⇒ `[]` فلا شيءَ يُرسم.
+ */
+export type ListMemberRow = {
+  id: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  status: "pending" | "active";
+  invited_by: string | null;
+};
+export async function getListMembers(listId: string): Promise<ListMemberRow[]> {
+  if (!/^[0-9a-f-]{36}$/i.test(listId)) return [];
+  try {
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+      .from("list_members")
+      .select("user_id, status, invited_by, created_at")
+      .eq("list_id", listId)
+      .order("created_at", { ascending: true })
+      .limit(20);
+    if (error || !rows?.length) return [];
+    const ids = rows.map((r) => r.user_id as string);
+    const { data: people } = await supabase.from("public_profiles").select(PERSON_COLS).in("id", ids);
+    const byId = new Map(
+      ((people ?? []) as { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean | null }[]).map((p) => [p.id, p]),
+    );
+    return rows.map((r) => {
+      const p = byId.get(r.user_id as string);
+      const hidden = !p || !!p.hide_name;
+      return {
+        id: r.user_id as string,
+        nickname: hidden ? null : p!.nickname,
+        username: hidden ? null : p!.username,
+        avatar_url: hidden ? null : p!.avatar_url,
+        status: r.status === "active" ? "active" : "pending",
+        invited_by: (r.invited_by as string | null) ?? null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** 🆕 234 — صاحبُ القائمة كما يُعرض في سطر الأعضاء (القائمةُ الخاصّة لا يردّها `public_list`، فتُقرأ هنا) */
+export async function getPersonLite(userId: string): Promise<{ id: string; nickname: string | null; username: string | null; avatar_url: string | null } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("public_profiles").select(PERSON_COLS).eq("id", userId).maybeSingle();
+    const p = data as { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean | null } | null;
+    if (!p) return null;
+    return p.hide_name ? { id: p.id, nickname: null, username: null, avatar_url: null } : { id: p.id, nickname: p.nickname, username: p.username, avatar_url: p.avatar_url };
+  } catch {
+    return null;
+  }
+}
 
 /** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
 export async function getListsContaining(
@@ -6809,23 +6921,34 @@ export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
     const supabase = await createClient();
     const user = await getUser();
     if (!user) return [];
-    const { data: saves } = await supabase
-      .from("list_saves")
-      .select("list_id, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    if (!saves?.length) return [];
+    const [{ data: savesRows }, shared] = await Promise.all([
+      supabase
+        .from("list_saves")
+        .select("list_id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      mySharedListIds(),
+    ]);
+    /* 🆕 234 — **القوائمُ المشتركةُ معي تجلس هنا لا في «قوائمي»**: هي لصاحبها (اسمُها وحذفُها وإعلانُها له)،
+       فبطاقتُها بطاقةُ قائمةِ غيري — **وقوائمي بأفعال المالك كانت ستعرض «حذف» لا يحذف.** والمشتركةُ أوّلاً،
+       وقد تكون خاصّةً (العضويّةُ هي الإذن) */
+    const saves = [
+      ...shared.map((id) => ({ list_id: id, created_at: "" })),
+      ...(savesRows ?? []).filter((s) => !shared.includes(s.list_id as string)),
+    ];
+    if (!saves.length) return [];
+    const sharedSet = new Set(shared);
 
-    const { data: lists } = await supabase
+    const { data: listRows } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, source_slug")
+      .select("id, user_id, name, kind, source_slug, is_public")
       .in(
         "id",
         saves.map((s) => s.list_id),
-      )
-      .eq("is_public", true);
-    if (!lists?.length) return [];
+      );
+    const lists = (listRows ?? []).filter((l) => l.is_public || sharedSet.has(l.id as string));
+    if (!lists.length) return [];
 
     // ترتيب الحفظ لا ترتيب القوائم: الأحدث حفظاً أولاً
     const rank = new Map(saves.map((s, i) => [s.list_id, i]));
@@ -6852,17 +6975,38 @@ export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
  * حرفاً**: نداءٌ خفيفٌ يجري دائماً (`head: true` بلا صفوف) **والثقيلُ
  * مشروطٌ بتبويبه** (D-128/D-350).
  */
+/** 🆕 234 — معرّفاتُ القوائم المشتركة معي (عضوٌ فعّال) — قبل الهجرة: لا جدول ⇒ `[]` */
+async function mySharedListIds(): Promise<string[]> {
+  try {
+    const uid = await getUserId();
+    if (!uid) return [];
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("list_members")
+      .select("list_id, accepted_at")
+      .eq("user_id", uid)
+      .eq("status", "active")
+      .order("accepted_at", { ascending: false })
+      .limit(50);
+    if (error) return [];
+    return (data ?? []).map((r) => r.list_id as string);
+  } catch {
+    return [];
+  }
+}
+
 export async function getSavedListsCount(): Promise<number> {
   try {
     const supabase = await createClient();
     const uid = await getUserId();
     if (!uid) return 0;
-    const { data: saves } = await supabase
-      .from("list_saves")
-      .select("list_id")
-      .eq("user_id", uid)
-      .limit(200);
-    if (!saves?.length) return 0;
+    const [{ data: saves }, shared] = await Promise.all([
+      supabase.from("list_saves").select("list_id").eq("user_id", uid).limit(200),
+      mySharedListIds(),
+    ]);
+    /* 🆕 234 — المشتركةُ معي تُعدّ مع المحفوظة لأنها تُعرض معها (شرطُ العدّاد شرطُ العرض، D-219) */
+    const sharedOnly = shared.filter((id) => !(saves ?? []).some((s) => s.list_id === id)).length;
+    if (!saves?.length) return sharedOnly;
     /* 🔴 **والمعلنةُ وحدَها تُعدّ** — **وهذا ما قِيس على الموقع الحيّ**:
        أوّلُ نسخةٍ عدّت صفوفَ `list_saves` كلَّها فقالت «٤» فوق لوحٍ يعرض
        ثلاثاً، **لأن `getSavedLists` تُسقط ما لم يعد عامّاً** (صاحبُها
@@ -6876,7 +7020,7 @@ export async function getSavedListsCount(): Promise<number> {
         saves.map((s) => s.list_id),
       )
       .eq("is_public", true);
-    return count ?? 0;
+    return (count ?? 0) + sharedOnly;
   } catch {
     /* **والصفرُ عند السقوط يُبقي العدّادَ كما كان** — لا شاشةَ خطأ (D-063) */
     return 0;

@@ -17,7 +17,18 @@ export interface StremioSignal {
   episode: number | null;
   /** ISO — متى فتحها آخرَ مرّة */
   seen_at: string;
+  /** 🆕 هجرة ٢٣٥ — من أين جاء السؤال: Stremio أو سيرفرٌ في البيت. ⚠️ اختياريٌّ لأجل ترتيب النشر: خادمٌ أقدم لا يرسله (= Stremio) */
+  source?: SignalSource;
 }
+
+export type SignalSource = "stremio" | "plex" | "jellyfin" | "emby";
+export const SIGNAL_SOURCES: readonly SignalSource[] = ["stremio", "plex", "jellyfin", "emby"];
+/** قيمةٌ معروفةٌ أو Stremio — صفٌّ قبل العمود، أو قيمةٌ لا نعرفها */
+export function signalSourceOf(v: unknown): SignalSource {
+  return typeof v === "string" && (SIGNAL_SOURCES as readonly string[]).includes(v) ? (v as SignalSource) : "stremio";
+}
+/** اسمُ المصدر كما يُكتب — أسماءُ منتجاتٍ لا تُترجم */
+export const SIGNAL_SOURCE_NAME: Record<SignalSource, string> = { stremio: "Stremio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby" };
 
 export interface StremioState {
   /** Loopz+ — الميزةُ له وحدَه (قرار ١)؛ `false` ⇒ الشاشةُ تعرض الترقية ولا تُصدر رابطاً */

@@ -13,7 +13,7 @@
 
 import { lookFor, type WidgetLook } from "./widgetLook.ts";
 import { defaultV3, optsFromV3, resolveV3, sanitizeV3, type WidgetV3 } from "./widgetSlots.ts";
-import { defaultV4Look, layoutV4, smallV4, type V4Tile, type WidgetV4Look } from "./widgetTiles.ts";
+import { defaultV4Look, layoutV4, smallV4, type SlotRef, type V4Tile, type WidgetV4Look } from "./widgetTiles.ts";
 
 /* 🆕 D-1571 — `cine` «الآن في السينما» آخرَ القائمة: الإعدادُ المحفوظُ قبله يُكمَل به ولا يتغيّر ترتيبُه */
 export const WIDGET_SECTION_KEYS = ["search", "cont", "up", "tonight", "friends", "tw", "act", "cine"] as const;
@@ -459,7 +459,7 @@ export interface ResolvedWidget {
    */
   heights: Record<string, { size: Exclude<WidgetSize, "small">; rows: WidgetRow[]; /** 🆕 v4 — المواضعُ بنقاط التصميم */ tiles?: V4Tile[] }>;
   /** 🆕 v4 — الصغير: القسمُ و↻ (الرسّامُ يرسم بطاقةً واحدةً بمقاسه) */
-  v4?: { small: { s: WidgetSectionKey; cyc?: number } };
+  v4?: { small: { s: WidgetSectionKey | SlotRef; cyc?: number } };
   /** إعداداتُ الأقسام (الحجمُ والعرضُ والعدد) — الرسّامُ يقرأ منها ما لا تقوله الصفوف (شكلُ فيلم الليلة الصغير) */
   opts: WidgetLayoutConfig["opts"];
 }

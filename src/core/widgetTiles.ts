@@ -57,8 +57,10 @@ export const V4_NUMS: Record<WidgetPlatform, WidgetV4Nums> = {
  *   (`t` فوق يمين كبطاقة أكمل المشاهدة · `b` تحت يمين) · `bar` شريطُ التقدّم.
  * - `hair` خطٌّ رفيع · `up` صفُّ القادم المكبّر (أو آخرُ نشاطٍ لأصدقائك حين لا قادم) · `slim` سطرُه النحيل.
  */
+/** 🆕 D-1610 — خانةٌ يملؤها الرسّامُ بما اختاره صاحبُ الودجت في شاشة تعديله (`custom`) */
+export type SlotRef = "slot1" | "slot2" | "slot3" | "slot4";
 export type V4Tile =
-  | { k: "card"; x: number; y: number; w: number; h: number; s: WidgetSectionKey; i: number; img: "p" | "b"; lab?: 1; cyc?: number; bt?: "t" | "b"; bar?: 1 }
+  | { k: "card"; x: number; y: number; w: number; h: number; s: WidgetSectionKey | SlotRef; i: number; img: "p" | "b"; lab?: 1; cyc?: number; bt?: "t" | "b"; bar?: 1 }
   | { k: "hair"; x: number; y: number; w: number; h: number }
   | { k: "up" | "slim"; x: number; y: number; w: number; h: number; s: "up" | "friends" };
 
@@ -70,16 +72,18 @@ const CYCLES: readonly WidgetSectionKey[] = ["tonight", "cine"];
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /** زرُّ الفعل: ✓ أكمل المشاهدة فوق يمين (كالتطبيق)، والبقيّةُ تحت يمين — وما لا فعلَ له بلا زرّ */
-function btFor(s: WidgetSectionKey, wide: boolean): "t" | "b" | undefined {
+function btFor(s: WidgetSectionKey | SlotRef, wide: boolean): "t" | "b" | undefined {
+  /* الخانةُ لا يُعرف قسمُها هنا: الزرُّ تحت، والرسّامُ لا يرسمه إلّا لعنصرٍ له فعل */
+  if (s.startsWith("slot")) return "b";
   if (s === "cont") return wide ? "t" : "b";
   if (s === "tonight" || s === "tw" || s === "cine") return "b";
   return undefined;
 }
 
-function card(s: WidgetSectionKey, i: number, x: number, y: number, w: number, h: number, wide: boolean, o: { lab?: boolean; cyc?: number } = {}): V4Tile {
+function card(s: WidgetSectionKey | SlotRef, i: number, x: number, y: number, w: number, h: number, wide: boolean, o: { lab?: boolean; cyc?: number } = {}): V4Tile {
   const t: V4Tile = { k: "card", x: r1(x), y: r1(y), w: r1(w), h: r1(h), s, i, img: wide ? "b" : "p" };
   if (o.lab) t.lab = 1;
-  if (o.cyc && CYCLES.includes(s)) t.cyc = o.cyc;
+  if (o.cyc && (CYCLES as readonly string[]).includes(s)) t.cyc = o.cyc;
   const bt = btFor(s, wide);
   if (bt) t.bt = bt;
   if (s === "cont") t.bar = 1;
@@ -146,6 +150,7 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   const medium = H < n.mediumMax;
   const l3 = !medium && H < n.l3Max;
   if (v3.solo) return soloGrid(v3.solo, n, W, avail);
+  if (v3.custom) return customGrid(v3.custom.top && !medium, v3.custom.count, n, W, avail);
   const slots = liveSlots(v3, l3, empty);
   const posters = v3.cont === "posters";
   const contG = posters ? ((W - 2 * n.posterGap) / 3) * 1.5 : (W - n.cardGap) / 2 / n.cardRatio;
@@ -255,8 +260,49 @@ function soloGrid(s: WidgetSectionKey, n: WidgetV4Nums, W: number, avail: number
   return { tiles, f: 1, spare: 0, dropped: [] };
 }
 
+/**
+ * 🆕 D-1610 — **«مخصّص»**: «أكمل المشاهدة» فوق (إن أُبقي) ثمّ الخاناتُ صفوفاً كاملةً بثلاثة بوسترات من أعلى لأسفل. الارتفاعُ يتوزّع
+ * عليها بنسبة أطوالها الطبيعيّة (لا تكبيرَ فوق `grow`)، وما بقي فراغٌ يتوسّط. عنوانُ القسم على أوّل بطاقةٍ في كلِّ خانة، والرسّامُ
+ * يعرف القسمَ من اختيار صاحب الودجت. بلا خاناتٍ ولا «أكمل المشاهدة»: لا شيء (الرسّامُ يرسم الرئيسيّ حينها).
+ */
+function customGrid(top: boolean, count: number, n: WidgetV4Nums, W: number, avail: number): V4Layout {
+  const tiles: V4Tile[] = [];
+  const cw = (W - 2 * n.posterGap) / 3;
+  const contW = (W - n.cardGap) / 2;
+  const contG = contW / n.cardRatio;
+  const rows: { cont: boolean; G: number }[] = [];
+  if (top) rows.push({ cont: true, G: count === 0 ? avail : contG });
+  for (let k = 0; k < count; k++) rows.push({ cont: false, G: cw * 1.5 });
+  if (!rows.length) return { tiles, f: 1, spare: 0, dropped: [] };
+  const gaps = n.gap * (rows.length - 1);
+  const G = rows.reduce((a, r) => a + r.G, 0);
+  const f = Math.min(1 + n.grow, (avail - gaps) / G);
+  const spare = Math.max(0, avail - (G * f + gaps));
+  let y = n.padY + spare / 2;
+  let slot = 0;
+  rows.forEach((r, idx) => {
+    if (idx) {
+      tiles.push(hair(n.padX, y + (n.gap - 1) / 2, W));
+      y += n.gap;
+    }
+    const h = r.G * f;
+    if (r.cont) {
+      for (let i = 0; i < 2; i++) tiles.push(card("cont", i, n.padX + i * (contW + n.cardGap), y, contW, h, true, { lab: i === 0 }));
+    } else {
+      slot += 1;
+      const s = `slot${slot}` as SlotRef;
+      for (let i = 0; i < 3; i++) tiles.push(card(s, i, n.padX + i * (cw + n.posterGap), y, cw, h, false, { lab: i === 0 }));
+    }
+    y += h;
+  });
+  for (const t of tiles) if (t.k === "hair" && t.w === 0) t.w = 1;
+  return { tiles, f, spare, dropped: [] };
+}
+
 /** الصغير: بطاقةٌ واحدةٌ تملأ الودجت — والرسّامُ يرسمها بمقاسه هو */
-export function smallV4(v3: WidgetV3): { s: WidgetSectionKey; cyc?: number } {
+export function smallV4(v3: WidgetV3): { s: WidgetSectionKey | SlotRef; cyc?: number } {
+  /* 🆕 D-1610 — «مخصّص»: الصغيرُ الخانةُ الأولى (والرسّامُ يرجع إلى «أكمل المشاهدة» إن كانت «بدون») */
+  if (v3.custom) return { s: "slot1" };
   const s = v3.small as WidgetSectionKey;
   return CYCLES.includes(s) ? { s, cyc: 1 } : { s };
 }

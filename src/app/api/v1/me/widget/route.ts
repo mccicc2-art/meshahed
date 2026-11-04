@@ -436,6 +436,7 @@ export async function GET(req: NextRequest) {
           /* 🆕 الدفعةُ الثانية: شريطُ التقييم و«بدأته» و«تراجع» (W37) */
           rate: t.widgetRate,
           skip: t.widgetSkip,
+          notWatched: t.widgetNotWatched,
           started: t.widgetStarted,
           undo: t.undoWatched,
           cinemaTitle: t.widgetCinema,

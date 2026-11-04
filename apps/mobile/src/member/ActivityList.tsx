@@ -11,6 +11,7 @@ import { StatusPill } from "../settings/ui";
 import { num } from "@/core/i18n";
 import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupDays, keep, label as scopeLabel, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
 import type { ProfileActivity } from "@/core/contracts/profile";
+import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 
 /**
  * 🆕 D-1213 — **قائمةُ النشاط مكوّنٌ واحدٌ لشاشتين** (القاعدة ٣): تبويبُ «النشاط» في ملفّ الشخص (N1) وشاشةُ «النشاط»
@@ -245,5 +246,7 @@ export function ActivityList({
 
 /** 🆕 D-1505 — اسمُ المصدر في شارة الصفّ */
 function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string {
+  /* 🆕 هجرة ٢٣٥ — سيرفراتُ البيت أسماءُ منتجاتٍ لا تُترجم */
+  if (s === "plex" || s === "jellyfin" || s === "emby") return SIGNAL_SOURCE_NAME[s];
   return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

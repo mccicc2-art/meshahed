@@ -5,11 +5,11 @@ import { stremioLinkOf } from "@/lib/stremio";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { isPlus } from "@/core/plan";
 import { ok } from "@/core/contracts/result";
-import type { StremioSignal, StremioState } from "@/core/contracts/stremio";
+import { signalSourceOf, type StremioSignal, type StremioState } from "@/core/contracts/stremio";
 
 const PAGE = 50;
 
-type Row = { id: number; media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; seen_at: string };
+type Row = { id: number; source?: string | null; media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; seen_at: string };
 
 /**
  * `GET /api/v1/me/stremio` — حالةُ الربط والإشاراتُ المنتظرةُ **المشغَّلة** (`played_at`) (بطاقةُ الرئيسيّة وقائمةُ «عرض الكل» وشاشةُ الربط).
@@ -17,6 +17,7 @@ type Row = { id: number; media_type: "tv" | "movie"; tmdb_id: number; season: nu
  * 🔑 **ما شوهد منذ الفتح لا يُسأل عنه**: عضوٌ فتح E5 في Stremio ثمّ علّمها في Loopz بيده — الإشارةُ تُغلق هنا صامتةً
  * (`watched`) بدل سؤالٍ عن شيءٍ أجاب عنه (قرار ٩). والصورةُ 16:9: لقطةُ الحلقة، وإلّا خلفيّةُ العمل، وإلّا الملصق (قرار ٧).
  * ⚖️ أسماءُ الأعمال من TMDB بوضع أسماء العضو (`tmdb()`) ومخبَّأةٌ ساعة — خمسون إشارةً أقصى ما يُرسم.
+ * 🆕 **ومصدرُها** (`source`، هجرة ٢٣٥): Stremio أو سيرفرٌ في البيت — البطاقةُ واحدةٌ «من أجهزتك» والمصدرُ سطرٌ فيها.
  */
 export async function GET() {
   return handle(async () => {
@@ -30,7 +31,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data, count } = await supabase
       .from("watch_signals")
-      .select("id, media_type, tmdb_id, season, episode, seen_at", { count: "exact" })
+      .select("id, source, media_type, tmdb_id, season, episode, seen_at", { count: "exact" })
       .match({ user_id: uid, state: "pending" })
       /* 🆕 «أ مع ج» — يُسأل عمّا شُغّل لا عمّا فُتح: فتحُ الصفحة ثمّ الخروج ليس سؤالاً */
       .not("played_at", "is", null)
@@ -92,6 +93,7 @@ export async function GET() {
           season: r.season,
           episode: r.episode,
           seen_at: r.seen_at,
+          source: signalSourceOf(r.source),
         });
       } else {
         const m = mv.get(r.tmdb_id);
@@ -105,6 +107,7 @@ export async function GET() {
           season: null,
           episode: null,
           seen_at: r.seen_at,
+          source: signalSourceOf(r.source),
         });
       }
     }

@@ -394,6 +394,27 @@ function soloLayouts(data: WidgetFeed, empty: WidgetSectionKey[], opts: Paramete
   }));
 }
 
+/**
+ * 🆕 D-1610 — نسخُ «مخصّص»: `custom-<أكمل المشاهدة فوق ١/٠>-<عددُ الخانات>`. كلُّ حجمٍ يأخذ ما يتّسع له من الخانات (المتوسطُ ١ بلا
+ * «أكمل المشاهدة» فوق، والكبيرُ ٢، والكبيرُ جداً ٤) — فالارتفاعاتُ التي لا تستعملها نسخةٌ تُحذف منها لتبقى الخلاصةُ خفيفة.
+ */
+function customLayouts(empty: WidgetSectionKey[], opts: Parameters<typeof resolveWidget>[4]) {
+  const base = defaultWidgetConfigV3();
+  const cap = { medium: 1, large: 2, xl: 4 } as const;
+  const out: { id: string; resolved: ReturnType<typeof resolveWidget> }[] = [];
+  for (const top of [true, false]) {
+    for (const count of [0, 1, 2, 3, 4] as const) {
+      if (!top && count === 0) continue;
+      const r = resolveWidget({ ...base, v3: { ...defaultV3(), custom: { top, count } } }, true, "ios", empty, opts);
+      const heights = Object.fromEntries(
+        Object.entries(r.heights).filter(([, e]) => count <= cap[e.size] && !(top && e.size === "medium") && (count > 0 || e.size !== "medium")),
+      );
+      if (Object.keys(heights).length) out.push({ id: `custom-${top ? 1 : 0}-${count}`, resolved: { ...r, heights } });
+    }
+  }
+  return out;
+}
+
 function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: Map<string, string>, prune: boolean): void {
   /* `posters`: مسارُ TMDB ⇐ اسمُ الملفّ المحلّيّ — الودجتُ يقرأ الصورةَ من المجلّد ولا يعرف الشبكة */
   /* 🆕 الودجت الواحد (§11.2) — **المحرّكُ هنا مرّةً** والرسّامان يرسمان ما يُكتب: صفوفُ كلِّ حجمٍ لأندرويد، ولكلِّ تخطيطٍ في الآيفون */
@@ -423,6 +444,9 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
              غيرُه يُرسم له الافتراضيُّ أيّاً كان اختيارُه (`effectiveWidgetConfig`)، فقائمةٌ لا تفعل شيئاً كذبة */
           ...(v2.plus ? soloLayouts(data, empty, iosOpts) : []),
         ],
+        /* 🆕 D-1610 — «مخصّص» من شاشة تعديل ودجت الآيفون: المواضعُ بأسماء الخانات لكلِّ عددٍ ومع «أكمل المشاهدة» أو بدونه.
+           **خارج `ios`** عمداً: قائمةُ «التخطيط» تقرأ `ios` فلا تظهر فيها هذه النسخُ العشر — يختارها الرسّامُ بنفسه */
+        iosCustom: v2.plus ? customLayouts(empty, iosOpts) : [],
         look,
         look4,
       }

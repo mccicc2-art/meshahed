@@ -19,6 +19,10 @@ export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
   like_review: "likes",
   like_activity: "likes",
   like_list_review: "likes",
+  /* 🆕 233 — النسخُ تقديرٌ للقائمة كالإعجاب: يُكتم مع «الإعجابات» لا مفتاحاً سادساً */
+  list_copy: "likes",
+  /* 🆕 234 — دعوةٌ من شخصٍ تتابعه: مع «المتابعات» (أختُ طلب المتابعة) */
+  list_invite: "follows",
   list_review: "replies",
   reply: "replies",
   talk_reply: "replies",

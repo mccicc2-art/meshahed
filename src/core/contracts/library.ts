@@ -171,6 +171,18 @@ export type ListReviewReplyBody = { listId: string; reviewUserId: string; body: 
 export type ListReplyDeleteBody = { listId: string; replyId: string };
 export type ListReplyRow = { reply_id: string; review_user_id: string; parent_id: string | null; name: string; username: string | null; avatar_url: string | null; body: string; created_at: string; mine: boolean };
 export type SaveListBody = { listId: string; save: boolean };
+/** 🆕 233 — `POST /api/v1/lists/copy`: نسخُ قائمةِ غيري إلى قوائمي. `created: false` = نسختي الموجودة أُعيدت */
+export type CopyListBody = { listId: string };
+export type CopyListPayload = { id: string; created: boolean };
+/** 🆕 234 — `POST /api/v1/lists/members`: دعوةٌ (صاحبُها) · ردٌّ على دعوة (المدعوّ) · إزالةٌ أو مغادرة */
+export type ListMembersBody =
+  | { listId: string; action: "invite"; userIds: string[] }
+  | { listId: string; action: "respond"; accept: boolean }
+  | { listId: string; action: "remove"; userId: string };
+export type ListMembersPayload = { done: true; count?: number; status?: "active" | "declined" };
+/** 🆕 234 — عضوٌ كما يُرسم: صاحبُها أوّلاً، والمعلّقون لا يصلون إلّا لصاحبها (RLS) */
+export type ListMember = { id: string; name: string; username: string | null; avatar: string | null; role: "owner" | "member" | "pending" };
+export const LIST_MEMBERS_MAX = 10;
 export type ToWatchBody = { on: boolean };
 export type HiddenRailsBody = { keys: string[] };
 
@@ -186,6 +198,8 @@ export type ListDetailItem = {
   poster_path: string | null;
   /** قائمةُ جائزة (D-995): سنةُ الفوز شارةً على الملصق؛ وإلّا `null` */
   badge: number | null;
+  /** 🆕 234 — من أضافه في القائمة المشتركة (٥أ) — يُطابَق مع `members` لصورته؛ اختياريّ (D-028) */
+  added_by?: string | null;
 };
 export type ListDetailPayload = {
   id: string;
@@ -209,6 +223,18 @@ export type ListDetailPayload = {
   reviews: number;
   rating: number | null;
   can_save: boolean;
+  /** 🆕 233 — رقاقةُ «انسخها لقوائمي»: لغيري، معلنةٌ، وليست من قوائم لوبز (٥ب). اختياريٌّ لترتيب الكوميتات (D-028) */
+  can_copy?: boolean;
+  /** 🆕 233 — «من قائمة @فلان» (٢أ): الأصلُ المعلنُ وحدَه؛ `username` غائبٌ لمن أخفى اسمه */
+  copied_from?: { list_id: string; username: string | null; name: string | null } | null;
+  /** 🆕 234 — القائمةُ المشتركة: الأعضاءُ (صاحبُها أوّلاً) — `[]` لقائمةٍ بلا أعضاء */
+  members?: ListMember[];
+  /** 🆕 234 — عضويّتي: «active» عضوٌ · «pending» دعوةٌ تنتظر ردّي (فوق القائمة «قبول · لا شكراً») · `null` */
+  my_membership?: "active" | "pending" | null;
+  /** 🆕 234 — «ادعُ» لصاحبها: ليست ذكيّةً ولا من قوائم لوبز */
+  can_invite?: boolean;
+  /** 🆕 234 — إضافةُ الأعمال وحذفُها: لصاحبها وللعضو الفعّال (٣أ) — لا ترتيبَ ولا تحرير للعضو */
+  can_edit_items?: boolean;
   saved_by_me: boolean;
   can_review: boolean;
   my_review: { rating: number; body: string | null; has_spoiler: boolean } | null;

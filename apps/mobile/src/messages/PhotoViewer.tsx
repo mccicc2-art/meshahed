@@ -188,6 +188,10 @@ export function PhotoViewer({
     haptic.pick();
     setSaving(true);
     try {
+      /* 🔴 SDK 58 (بلاغُ خالد ٤ نوفمبر، لقطةُ S24): `saveToLibraryAsync` من المدخل الرئيسيّ صارت **ترمي دائماً** — المكتبةُ
+         أبقت اسمَها للتحذير فقط («is deprecated»)، فلم تُحفظ صورةٌ منذ الترقية. الحفظُ الآن بالواجهة الجديدة `Asset.create`:
+         مسارُ Expo المدعوم (المدخلُ `legacy` باقٍ اليومَ ويُحذف في إصدارٍ قادم)، ووحدتُها الأصليّة في البناء الحاليّ فيكفي تحديثٌ
+         عبر الهواء. على أندرويد ١٠+ تُدرج الصورةَ في المعرض بنفسها بلا إذن قراءة — يبقى إذنُ «الحفظ فقط» (D-1405) كما هو. */
       const Media = await import("expo-media-library");
       const perm = await Media.requestPermissionsAsync(true);
       if (!perm.granted) {
@@ -195,7 +199,7 @@ export function PhotoViewer({
         return;
       }
       const file = await download();
-      await Media.saveToLibraryAsync(file.uri);
+      await Media.Asset.create(file.uri);
       haptic.success();
       onToast(t.msgSaved);
     } catch (e) {

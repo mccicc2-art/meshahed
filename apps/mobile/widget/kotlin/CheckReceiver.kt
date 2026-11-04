@@ -90,7 +90,18 @@ class CheckReceiver : BroadcastReceiver() {
     when (action) {
       /* W44 — الحلقةُ المعروضةُ قبل اللمسة تُحفظ مع التراجع («prev»): التراجعُ يعيدها فوراً بلا انتظار الخادم */
       ACTION_MARK -> p.putString(K_UNDO, JSONObject().put("kind", "ep").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).put("prev", contItem(ctx, id)).toString())
-      ACTION_MOVIE -> p.putString(K_UNDO, JSONObject().put("kind", "movie").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
+      /*
+       * 🆕 D-1600 — **الفيلمُ يُخفى وشريطُ التقييم يظهر فوراً** (خالد ٣٠ أكتوبر: «ما يمدي تكون اسرع»): كان «↶» معلّقاً حتى يردّ الخادم ثمّ
+       * خمسَ ثوانٍ قبل الشريط. الآن التراجعُ زرٌّ في الشريط نفسِه («ما شاهدته») لا مهلةٌ تُنتظر.
+       */
+      ACTION_MOVIE -> {
+        p.putString(K_HIDDEN, hiddenWith(ctx, id)).remove(K_UNWATCH)
+        p.putString(K_RATE, JSONObject().put("id", id).put("title", i.getStringExtra("title") ?: "").put("poster", i.getStringExtra("poster") ?: "").toString())
+      }
+      /* «ما شاهدته»: الشريطُ يزول والفيلمُ يعود فوراً — ويُحفظ أنّه أُلغي، فإن وصل ردُّ «شاهدته» بعده عُكس (`run`) */
+      ACTION_UNWATCH -> {
+        p.remove(K_RATE).putString(K_HIDDEN, hiddenWithout(ctx, id)).putInt(K_UNWATCH, id)
+      }
       ACTION_START -> p.putString(K_UNDO, JSONObject().put("kind", "start").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
       /* 🆕 D-1571 — «+» على «الآن في السينما»: «✓ أُضيف» و«↶» فوراً، كـ«شاهدته» */
       ACTION_TOWATCH -> p.putString(K_UNDO, JSONObject().put("kind", "towatch").put("id", id).put("at", System.currentTimeMillis()).put("pending", true).toString())
@@ -118,7 +129,12 @@ class CheckReceiver : BroadcastReceiver() {
     val prefs = LoopzWidget.prefs(ctx)
     val p = prefs.edit()
     when (action) {
-      ACTION_MARK, ACTION_MOVIE, ACTION_START, ACTION_TOWATCH -> {
+      ACTION_MOVIE -> {
+        /* الخادمُ لم يقبل «شاهدته»: الفيلمُ يعود والشريطُ يزول */
+        val id = prefs.getString(K_RATE, null)?.let { runCatching { JSONObject(it).optInt("id") }.getOrNull() }
+        if (id != null) p.remove(K_RATE).putString(K_HIDDEN, hiddenWithout(ctx, id))
+      }
+      ACTION_MARK, ACTION_START, ACTION_TOWATCH -> {
         val o = prefs.getString(K_UNDO, null)?.let { runCatching { JSONObject(it) }.getOrNull() }
         if (o?.optBoolean("pending") == true) p.remove(K_UNDO)
       }
@@ -159,11 +175,17 @@ class CheckReceiver : BroadcastReceiver() {
       ACTION_MOVIE -> {
         if (id <= 0) return
         post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", true)) ?: return revert(ctx, action)
-        if (undoneWhilePending(ctx, "movie", id)) {
+        /* «ما شاهدته» لُمس قبل أن يردّ الخادم: يُعكس الآن */
+        val prefs = LoopzWidget.prefs(ctx)
+        if (prefs.getInt(K_UNWATCH, 0) == id) {
           post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false))
-          return settleEarlyUndo(ctx)
+          prefs.edit().remove(K_UNWATCH).apply()
         }
-        undoFor(ctx, JSONObject().put("kind", "movie").put("id", id).put("title", i.getString("title") ?: "").put("poster", i.getString("poster") ?: ""))
+      }
+      ACTION_UNWATCH -> {
+        if (id <= 0) return
+        post(ctx, "/api/v1/widget/movie", token, JSONObject().put("movieTmdbId", id).put("watched", false))
+        LoopzWidget.redrawAll(ctx)
       }
       ACTION_START -> {
         if (id <= 0) return
@@ -296,7 +318,9 @@ class CheckReceiver : BroadcastReceiver() {
     const val ACTION_SKIP = "com.loopztv.app.widget.SKIP"
     const val ACTION_UNDO = "com.loopztv.app.widget.UNDO"
     const val ACTION_TOWATCH = "com.loopztv.app.widget.TOWATCH"
-    private val ACTIONS = setOf(ACTION_MARK, ACTION_UNMARK, ACTION_MOVIE, ACTION_START, ACTION_RATE, ACTION_UNDO, ACTION_TOWATCH)
+    /** 🆕 D-1600 — «ما شاهدته» في شريط التقييم */
+    const val ACTION_UNWATCH = "com.loopztv.app.widget.UNWATCH"
+    private val ACTIONS = setOf(ACTION_MARK, ACTION_UNMARK, ACTION_MOVIE, ACTION_START, ACTION_RATE, ACTION_UNDO, ACTION_TOWATCH, ACTION_UNWATCH)
     const val BASE = "https://loopztv.com"
     /** W37 — «زر تراجع … لمدة ٥ ثوان» */
     const val UNDO_MS = 5_000L
@@ -306,6 +330,7 @@ class CheckReceiver : BroadcastReceiver() {
     private const val K_HIDDEN = "w_hidden"
     private const val K_RATE_WAS = "w_rate_was"
     private const val K_UNDO_WAS = "w_undo_was"
+    private const val K_UNWATCH = "w_unwatch"
     private const val DIAG = "diag.json"
 
     /**
@@ -355,6 +380,7 @@ class CheckReceiver : BroadcastReceiver() {
     fun towatchIntent(ctx: Context, code: Int, t: WTitle): PendingIntent = pi(ctx, code, base(ctx, ACTION_TOWATCH).putExtra("id", t.id))
     fun undoIntent(ctx: Context, code: Int): PendingIntent = pi(ctx, code, base(ctx, ACTION_UNDO))
     fun skipIntent(ctx: Context, code: Int): PendingIntent = pi(ctx, code, base(ctx, ACTION_SKIP))
+    fun unwatchIntent(ctx: Context, code: Int, id: Int): PendingIntent = pi(ctx, code, base(ctx, ACTION_UNWATCH).putExtra("id", id))
     fun rateIntent(ctx: Context, code: Int, id: Int, n: Int): PendingIntent =
       pi(ctx, code, base(ctx, ACTION_RATE).putExtra("id", id).putExtra("rating", n))
 
@@ -380,6 +406,12 @@ class CheckReceiver : BroadcastReceiver() {
         val at = o.optLong(k)
         now - at < HIDDEN_MS && at > feedAt
       }.mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    private fun hiddenWithout(ctx: Context, id: Int): String {
+      val o = LoopzWidget.prefs(ctx).getString(K_HIDDEN, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
+      o.remove(id.toString())
+      return o.toString()
     }
 
     private fun hiddenWith(ctx: Context, id: Int): String {

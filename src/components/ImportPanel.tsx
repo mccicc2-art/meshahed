@@ -6,8 +6,10 @@ import { getDict, num, type Locale } from "@/core/i18n";
 import { parseTvTimeFiles } from "@/core/tvtime";
 import { parseLetterboxdFiles } from "@/core/letterboxd";
 import { parseTrackerExport } from "@/core/trackerExport";
+import { parseImdbFiles } from "@/core/imdb";
+import { parseMalFiles } from "@/core/mal";
 import { groupForResolve, type ParseOutcome } from "@/core/importParse";
-import { buildImport } from "@/core/importBuild";
+import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
 import type { ResolveResult } from "@/core/importer";
 import { resolveImportItems, applyImportChunk, finishImport } from "@/lib/actions";
 import { Alert } from "./ui/Alert";
@@ -27,12 +29,16 @@ type Phase = "idle" | "reading" | "matching" | "writing" | "done";
  * الخدمة القادمة سطرٌ في هذا السجلّ، لا نسخةٌ ثانية من مسار الاستيراد
  * كلِّه — فالمراحل الثلاث (قراءة · مطابقة · كتابة) واحدةٌ للجميع.
  */
-type SourceId = "tvtime" | "letterboxd" | "simkl";
+type SourceId = "imdb" | "mal" | "tvtime" | "letterboxd" | "simkl";
 
 const SOURCES: Record<
   SourceId,
   { parse: (f: { name: string; buf: ArrayBuffer }[]) => Promise<ParseOutcome>; accept: string }
 > = {
+  /* 🆕 IMDb — ملفّاتٌ عدّة (التقييمات · قائمة المشاهدة · القوائم) تُرفع معاً */
+  imdb: { parse: parseImdbFiles, accept: ".csv,.zip" },
+  /* 🆕 MyAnimeList — `animelist_….xml.gz` كما نزل */
+  mal: { parse: parseMalFiles, accept: ".gz,.xml,.zip" },
   tvtime: { parse: parseTvTimeFiles, accept: ".zip,.csv,.json" },
   letterboxd: { parse: parseLetterboxdFiles, accept: ".zip,.csv" },
   simkl: { parse: parseTrackerExport, accept: ".zip,.json,.csv" },
@@ -63,6 +69,8 @@ export function ImportPanel({
   const tvtimeRef = useRef<HTMLInputElement>(null);
   const letterboxdRef = useRef<HTMLInputElement>(null);
   const simklRef = useRef<HTMLInputElement>(null);
+  const imdbRef = useRef<HTMLInputElement>(null);
+  const malRef = useRef<HTMLInputElement>(null);
   const stop = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -80,6 +88,8 @@ export function ImportPanel({
     shows: number;
     episodes: number;
     movies: number;
+    lists: number;
+    listsSkipped: number;
     unmatched: string[];
   } | null>(null);
 
@@ -137,7 +147,7 @@ export function ImportPanel({
 
       // ===== التجميع: من سجلاتٍ متفرّقة إلى أعمالٍ بحلقاتها =====
       /* 🆕 D-1369 — **في `core/importBuild` لا هنا**: الاستيرادُ الأصليُّ يقرأ القواعدَ نفسَها بحرفها */
-      const { shows, movies, unmatched } = buildImport(records, resolved);
+      const { shows, movies, lists, unmatched } = buildImport(records, resolved);
 
       // ===== الكتابة =====
       setPhase("writing");
@@ -145,7 +155,12 @@ export function ImportPanel({
       let sC = 0;
       let eC = 0;
       let mC = 0;
-      const steps = Math.ceil(shows.length / 5) + Math.ceil(movies.length / 60) || 1;
+      let lC = 0;
+      let lSkip = 0;
+      const steps =
+        Math.ceil(shows.length / IMPORT_CHUNK.shows) +
+          Math.ceil(movies.length / IMPORT_CHUNK.movies) +
+          Math.ceil(lists.length / IMPORT_CHUNK.lists) || 1;
       let step = 0;
 
       for (let i = 0; i < shows.length; i += 5) {
@@ -161,9 +176,17 @@ export function ImportPanel({
         mC += r.movies;
         setPct(Math.round((++step / steps) * 100));
       }
+      /* 🆕 قوائمُ IMDb بعد المكتبة — قائمةٌ في الطلب (حتى ٣٠٠ عمل) */
+      for (let i = 0; i < lists.length; i += IMPORT_CHUNK.lists) {
+        if (stop.current) break;
+        const r = await applyImportChunk({ shows: [], movies: [], lists: lists.slice(i, i + IMPORT_CHUNK.lists) });
+        lC += r.lists;
+        lSkip += r.listsSkipped;
+        setPct(Math.round((++step / steps) * 100));
+      }
 
       await finishImport();
-      setResult({ shows: sC, episodes: eC, movies: mC, unmatched: unmatched.slice(0, 60) });
+      setResult({ shows: sC, episodes: eC, movies: mC, lists: lC, listsSkipped: lSkip, unmatched: unmatched.slice(0, 60) });
       setPhase("done");
       router.refresh();
     } catch (e) {
@@ -183,6 +206,19 @@ export function ImportPanel({
           : "";
 
   const sources = [
+    /* IMDb أوّلاً: أوسعُ الأربعة جمهوراً، وأدقُّها مطابقةً (بالمعرّف لا بالاسم) */
+    {
+      id: "imdb" as const,
+      title: t.importImdbTitle,
+      hint: t.importImdbHint,
+      fileHint: t.importImdbFileHint,
+    },
+    {
+      id: "mal" as const,
+      title: t.importMalTitle,
+      hint: t.importMalHint,
+      fileHint: t.importMalFileHint,
+    },
     {
       id: "letterboxd" as const,
       title: t.importLetterboxdTitle,
@@ -235,7 +271,7 @@ export function ImportPanel({
         /* **المرجعُ يُختار هنا لا يُخزَّن في السجلّ**: مرجعٌ داخل مصفوفةٍ
            تُبنى في كلِّ رسمة يقرؤه المدقّقُ «قراءةَ مرجعٍ أثناء الرسم» */
         const inputRef =
-          src.id === "letterboxd" ? letterboxdRef : src.id === "simkl" ? simklRef : tvtimeRef;
+          src.id === "imdb" ? imdbRef : src.id === "mal" ? malRef : src.id === "letterboxd" ? letterboxdRef : src.id === "simkl" ? simklRef : tvtimeRef;
         return (
           <SettingsBottomSheet
             key={src.id}
@@ -314,7 +350,9 @@ export function ImportPanel({
                       num(result.episodes, locale),
                       num(result.movies, locale),
                     )}
+                    {result.lists > 0 && <> {t.importDoneLists(num(result.lists, locale))}</>}
                   </Alert>
+                  {result.listsSkipped > 0 && <Alert tone="info">{t.importListsFull}</Alert>}
 
                   {result.unmatched.length > 0 && (
                     <div className="rounded-control border border-border bg-surface-2 p-3">

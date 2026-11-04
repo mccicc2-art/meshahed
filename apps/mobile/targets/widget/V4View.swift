@@ -444,6 +444,14 @@ struct V4Root: View {
   let r: [String: Any]
   let small: Bool
   let now: Date
+  /** 🆕 D-1610 — أقسامُ خانات «مخصّص» (`MainEntry.slots`) */
+  var slots: [String] = []
+
+  /** `slot1` ⇐ القسمُ الأوّلُ المختار… — وغيرُ الخانة كما هو */
+  func pickKey(_ k: String) -> String {
+    guard k.hasPrefix("slot"), let n = Int(k.dropFirst(4)) else { return k }
+    return n >= 1 && n <= slots.count ? slots[n - 1] : ""
+  }
 
   var look: [String: Any] { (((f.raw["w2"] as? [String: Any])?["look4"] as? [String: Any])?["ios"] as? [String: Any]) ?? [:] }
 
@@ -456,7 +464,8 @@ struct V4Root: View {
       let H = g.size.height
       if small {
         let sm = (r["v4"] as? [String: Any])?["small"] as? [String: Any] ?? [:]
-        let key = sm["s"] as? String ?? "cont"
+        let picked = pickKey(sm["s"] as? String ?? "cont")
+        let key = picked.isEmpty ? "cont" : picked
         let src = Items4.of(f, key, now: now)
         let it = Items4.rot(src.items, src.base, 0)
         let s = W / max(50, nums.n("smallW", 170))
@@ -509,7 +518,7 @@ struct V4Root: View {
     case "hair":
       Color.white.opacity(0.13).frame(width: max(w * s, 1), height: max(h * s, 1)).offset(x: x * s, y: y * s)
     case "card":
-      let key = t["s"] as? String ?? ""
+      let key = pickKey(t["s"] as? String ?? "")
       let src = cache.get(key)
       let i = Int(num(t["i"]) ?? 0)
       /* لا بوسترَ مكرّر: ما زاد على ما في القسم خانةٌ داكنة */
@@ -518,7 +527,8 @@ struct V4Root: View {
       let label: String? = (num(t["lab"]) ?? 0) == 1 ? Sections.title(f, key) : nil
       let cyc: (String, Int)? = step > 0 && src.items.count > 1 ? (key, step) : nil
       let topBtn: Bool = (t["bt"] as? String) == "t"
-      let bar: Bool = (num(t["bar"]) ?? 0) == 1
+      /* خانةُ «مخصّص» لا يعرف المحرّكُ قسمَها: شريطُ التقدّم لأكمل المشاهدة هنا */
+      let bar: Bool = (num(t["bar"]) ?? 0) == 1 || key == "cont"
       let wideImg: Bool = (t["img"] as? String) == "b"
       Card4(f: f, it: it, w: w * s, h: h * s, s: s, label: label, small: false, cyc: cyc, topBtn: topBtn, bar: bar, wide: wideImg, zoom: 0, rtl: rtl, d: d)
         .offset(x: x * s, y: y * s)

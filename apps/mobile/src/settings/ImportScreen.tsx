@@ -7,7 +7,7 @@ import { Text, Button } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
-import { api, write, downloadTo, ApiError } from "../api";
+import { downloadTo, ApiError } from "../api";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row } from "./ui";
 import { messageOf } from "./api";
@@ -15,9 +15,10 @@ import { num } from "@/core/i18n";
 import { parseTvTimeFiles } from "@/core/tvtime";
 import { parseLetterboxdFiles } from "@/core/letterboxd";
 import { parseTrackerExport } from "@/core/trackerExport";
-import { groupForResolve, setInflateRaw, type ParseOutcome } from "@/core/importParse";
-import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
-import type { ImportPayload, ResolveRequest, ResolveResult } from "@/core/importer";
+import { parseImdbFiles } from "@/core/imdb";
+import { parseMalFiles } from "@/core/mal";
+import { setInflateRaw, type ParseOutcome } from "@/core/importParse";
+import { importRecords, type ImportResult } from "./importPipeline";
 
 /**
  * ====== الاستيراد والتصدير (🆕 D-1369 · V-C · C6) — `settings/import/page.tsx` ======
@@ -34,12 +35,16 @@ import type { ImportPayload, ResolveRequest, ResolveResult } from "@/core/import
  */
 setInflateRaw((data) => inflateSync(data));
 
-type SourceId = "letterboxd" | "simkl" | "tvtime";
+type SourceId = "imdb" | "mal" | "letterboxd" | "simkl" | "tvtime";
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
-type Result = { shows: number; episodes: number; movies: number; unmatched: string[] };
+type Result = ImportResult;
 
 /** سجلٌّ لا فرعُ شرط (D-153): مصدرٌ جديدٌ سطرٌ هنا لا نسخةٌ من المسار */
 const SOURCES: Record<SourceId, { parse: (f: { name: string; buf: ArrayBuffer }[]) => Promise<ParseOutcome>; ext: readonly string[] }> = {
+  /* 🆕 IMDb — ملفّاتٌ عدّة (التقييمات · قائمة المشاهدة · القوائم) تُختار معاً */
+  imdb: { parse: parseImdbFiles, ext: [".csv", ".zip"] },
+  /* 🆕 MyAnimeList — `animelist_….xml.gz` كما نزل (يُفكّ بالفاكّ المسجَّل أعلاه) */
+  mal: { parse: parseMalFiles, ext: [".gz", ".xml", ".zip"] },
   letterboxd: { parse: parseLetterboxdFiles, ext: [".zip", ".csv"] },
   simkl: { parse: parseTrackerExport, ext: [".zip", ".json", ".csv"] },
   tvtime: { parse: parseTvTimeFiles, ext: [".zip", ".csv", ".json"] },
@@ -117,48 +122,10 @@ export function ImportScreen() {
         return;
       }
 
-      // ===== المطابقة — ما وصل بمعرّف TMDB لا يمرّ من هنا (D-154) =====
-      setPhase("matching");
-      const { requests, keys } = groupForResolve(records);
-      const resolved = new Map<string, ResolveResult>();
-      for (let i = 0; i < requests.length; i += IMPORT_CHUNK.resolve) {
-        if (stop.current) return void setPhase("idle");
-        const slice: ResolveRequest[] = requests.slice(i, i + IMPORT_CHUNK.resolve);
-        /* `api` لا `write`: المطابقةُ قراءةٌ بجسم — لا وسومَ تُبطَل */
-        const out = (await api<{ results: ResolveResult[] }>("/api/v1/me/import/resolve", { method: "POST", body: { requests: slice } })).data.results;
-        out.forEach((r, n) => resolved.set(keys[i + n], r));
-        setPct(Math.round(((i + slice.length) / requests.length) * 100));
-      }
-
-      const { shows, movies, unmatched } = buildImport(records, resolved);
-
-      // ===== الكتابة =====
-      setPhase("writing");
-      setPct(0);
-      let sC = 0;
-      let eC = 0;
-      let mC = 0;
-      const steps = Math.ceil(shows.length / IMPORT_CHUNK.shows) + Math.ceil(movies.length / IMPORT_CHUNK.movies) || 1;
-      let step = 0;
-      const apply = async (payload: ImportPayload) =>
-        (await api<{ shows: number; episodes: number; movies: number }>("/api/v1/me/import/apply", { method: "POST", body: payload })).data;
-      for (let i = 0; i < shows.length; i += IMPORT_CHUNK.shows) {
-        if (stop.current) break;
-        const r = await apply({ shows: shows.slice(i, i + IMPORT_CHUNK.shows), movies: [] });
-        sC += r.shows;
-        eC += r.episodes;
-        setPct(Math.round((++step / steps) * 100));
-      }
-      for (let i = 0; i < movies.length; i += IMPORT_CHUNK.movies) {
-        if (stop.current) break;
-        const r = await apply({ shows: [], movies: movies.slice(i, i + IMPORT_CHUNK.movies) });
-        mC += r.movies;
-        setPct(Math.round((++step / steps) * 100));
-      }
-      /* `write`: الختامُ يحمل الوسوم — الرئيسيّةُ والمكتبةُ والإحصاءاتُ تُعاد مرّةً واحدةً لا مع كلِّ دفعة.
-         ويُنادى حتى بعد «إيقاف»: ما كُتب قبله في المكتبة فعلاً، والشاشاتُ يجب أن تراه */
-      await write<{ done: true }>("/api/v1/me/import/finish", {});
-      setResult({ shows: sC, episodes: eC, movies: mC, unmatched: unmatched.slice(0, 60) });
+      /* 🆕 المطابقةُ والتجميعُ والكتابةُ في `importPipeline.ts` — قارئُها الثاني استيرادُ Plex (هجرة ٢٣٥) */
+      const done = await importRecords(records, { stopped: () => stop.current, phase: setPhase, pct: setPct });
+      if (!done) return void setPhase("idle");
+      setResult(done);
       setPhase("done");
       haptic.success();
     } catch (e) {
@@ -190,6 +157,9 @@ export function ImportScreen() {
   }
 
   const sources: { id: SourceId; title: string; hint: string; fileHint: string }[] = [
+    /* IMDb أوّلاً كما في الويب: أوسعُ الأربعة جمهوراً وأدقُّها مطابقة */
+    { id: "imdb", title: t.importImdbTitle, hint: t.importImdbHint, fileHint: t.importImdbFileHint },
+    { id: "mal", title: t.importMalTitle, hint: t.importMalHint, fileHint: t.importMalFileHint },
     { id: "letterboxd", title: t.importLetterboxdTitle, hint: t.importLetterboxdHint, fileHint: t.importLetterboxdFileHint },
     { id: "simkl", title: t.importSimklTitle, hint: t.importSimklHint, fileHint: t.importSimklFileHint },
     { id: "tvtime", title: t.importTvTimeTitle, hint: t.importTvTimeHint, fileHint: t.importFileHint },
@@ -237,7 +207,12 @@ export function ImportScreen() {
 
             {phase === "done" && result && mine ? (
               <>
-                <Note tone="success" title={t.importDone} body={t.importDoneBody(num(result.shows, locale), num(result.episodes, locale), num(result.movies, locale))} />
+                <Note
+                  tone="success"
+                  title={t.importDone}
+                  body={`${t.importDoneBody(num(result.shows, locale), num(result.episodes, locale), num(result.movies, locale))}${result.lists > 0 ? ` ${t.importDoneLists(num(result.lists, locale))}` : ""}`}
+                />
+                {result.listsSkipped > 0 ? <Note tone="error" body={t.importListsFull} /> : null}
                 {result.unmatched.length > 0 ? (
                   <View style={{ marginTop: 12, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, padding: 12 }}>
                     <Text size={12} weight="700" style={{ marginBottom: 4 }}>{t.importUnmatchedTitle(num(result.unmatched.length, locale))}</Text>
@@ -255,7 +230,7 @@ export function ImportScreen() {
 }
 
 /** سطرُ حالٍ داخل الورقة — لونُ النجاح الواحد ولونُ الخطأ الواحد من الرموز (القاعدة ٣)، لا مضيفَ إشعارٍ ثانياً تحت ورقة */
-function Note({ tone, title, body }: { tone: "error" | "success"; title?: string; body: string }) {
+export function Note({ tone, title, body }: { tone: "error" | "success"; title?: string; body: string }) {
   const { tokens } = useApp();
   const c = tone === "error" ? tokens.error : tokens.success;
   return (

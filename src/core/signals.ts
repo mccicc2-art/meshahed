@@ -18,7 +18,9 @@ export type SignalKind =
   | "talk_reply"
   | "list_review"
   | "like_list_review"
-  | "list_reply";
+  | "list_reply"
+  | "list_copy"
+  | "list_invite";
 
 /** سطرُ الجرس كما تعيده `mySignals` — الشكلُ نفسُه (`Signal` في `lib/actions`) */
 export type SignalRow = {
@@ -61,7 +63,11 @@ export function signalParts(s: SignalRow, t: Dict, listName: string): { pre: str
                 ? t.notifListReviewLike(NAME_SLOT, listName)
                 : s.kind === "list_reply"
                   ? t.notifListReply(NAME_SLOT, listName)
-                  : t.notifLike(NAME_SLOT, s.title ?? "");
+                  : s.kind === "list_copy"
+                    ? t.notifListCopy(NAME_SLOT, listName)
+                    : s.kind === "list_invite"
+                      ? t.notifListInvite(NAME_SLOT, listName)
+                      : t.notifLike(NAME_SLOT, s.title ?? "");
   const at = text.indexOf(NAME_SLOT);
   if (at < 0) return { pre: text, who, post: "" };
   return { pre: text.slice(0, at), who, post: text.slice(at + NAME_SLOT.length) };
@@ -74,7 +80,7 @@ export function signalParts(s: SignalRow, t: Dict, listName: string): { pre: str
  */
 export function signalHref(s: SignalRow, myId: string | null): string | null {
   const titleHref = s.tmdbId ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}` : null;
-  if ((s.kind === "list_review" || s.kind === "like_list_review" || s.kind === "list_reply") && s.listId) return `/lists/${s.listId}`;
+  if ((s.kind === "list_review" || s.kind === "like_list_review" || s.kind === "list_reply" || s.kind === "list_copy" || s.kind === "list_invite") && s.listId) return `/lists/${s.listId}`;
   if (s.kind === "talk_reply" && s.tmdbId) return `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`;
   /* 🆕 D-1460 — **الإعجابُ يفتح ما أُعجب به لا من أعجبه** (أحمد ١٨ أكتوبر: «المفروض يفتح لي مكان التفاعل مايفتح لي حساب
      الشخص»). إعجابُ رأيك ⇐ صفحةُ رأيك كالردّ عليه؛ إعجابُ نشاطك (حلقةٌ أنهيتها — لا صفحةَ له) ⇐ صفحةُ العمل. */

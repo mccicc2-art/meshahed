@@ -467,7 +467,7 @@ const ar = {
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
   importHint:
-    "انقل ما شاهدته من Letterboxd أو Simkl أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر.",
+    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "اطلب نسخة بياناتك من TV Time ثم ارفع الملف المضغوط هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
@@ -508,6 +508,20 @@ const ar = {
     "من Simkl: الإعدادات ← Import/Export ← نزّل نسخة JSON الاحتياطية (مجانية للجميع)، ثم ارفع الملف كما نزل. أعمالك تصل بمعرّفاتها فتُطابَق فوراً بلا بحثٍ بالاسم.",
   importSimklFileHint:
     "صيغ مقبولة: zip أو json أو csv. يعمل مع أي تصديرٍ يحمل معرّفات TMDB.",
+  /* 🆕 IMDb (أحمد ٤ نوفمبر: «١ ب · ٢ أ · ٣ أ · ٤ أ») — التقييمُ مشاهدة، ويومُه يومُها، والقوائمُ تدخل خاصّة */
+  importImdbTitle: "IMDb",
+  importImdbHint:
+    "من IMDb: افتح «Your ratings» أو «Watchlist» أو أيّ قائمة لك ← ⋯ ← Export، ثم نزّل الملفات من صفحة Exports وارفعها هنا معاً. التقييم يعني أنك شاهدت: الفيلم، والمسلسل كلّه، والحلقة وما قبلها — بيوم التقييم.",
+  importImdbFileHint:
+    "صيغ مقبولة: csv أو zip. كل قائمة تدخل قوائمك خاصّةً باسم ملفها، والمطابقة بمعرّف IMDb لا بالاسم.",
+  importDoneLists: (n: string) => `والقوائم المضافة إلى قوائمك: ${n} — خاصّةً حتى تعلنها.`,
+  importListsFull: "بعض القوائم لم تُضف: وصلت إلى 50 قائمة.",
+  /* 🆕 MyAnimeList (أحمد ٤ نوفمبر: «١ أ · ٢ أ · ٣ أ») — الحالاتُ والتواريخُ كما هي هناك، والأوفا بلا موسمٍ لا تُخمَّن */
+  importMalTitle: "MyAnimeList",
+  importMalHint:
+    "من MyAnimeList: افتح myanimelist.net/panel.php?go=export ← «Export My Anime List»، ثم ارفع الملف كما نزل. المكتمل يُعلَّم موسمه كله، وما تشاهده بعدد حلقاتك، والموقوف والمتروك بحالتهما — بتاريخ البدء أو الانتهاء.",
+  importMalFileHint:
+    "صيغ مقبولة: xml.gz أو xml. كل موسم في MyAnimeList يجد موسمه في مسلسله — والأوفا والخاصّات التي لا موسم لها تظهر بأسمائها لتضيفها بيدك.",
 
   usernameSection: "اسم المستخدم",
   usernameShort: "اسم المستخدم يجب أن يكون ٣ أحرف على الأقل.",
@@ -865,6 +879,12 @@ const ar = {
      الإعجاب** — وهما نوعان لأن الفعلين مختلفان وإن اتّحدت الوجهة. */
   notifListReply: (who: string, list: string) =>
     list ? `ردّ ${who} عليك في «${list}»` : `ردّ ${who} عليك في إحدى القوائم`,
+  /* 🆕 233 — **نسخ أحدٌ قائمتَك** (أحمد ٤ نوفمبر، ٣أ): الجملةُ تسمّي قائمتي لأن الضغطةَ تفتحها، لا نسختَه الخاصّة */
+  notifListCopy: (who: string, list: string) =>
+    list ? `نسخ ${who} قائمتك «${list}»` : `نسخ ${who} إحدى قوائمك`,
+  /* 🆕 234 — **دعاك إلى قائمةٍ مشتركة**: الضغطةُ تفتح القائمةَ وفوقها «قبول · لا شكراً» */
+  notifListInvite: (who: string, list: string) =>
+    list ? `دعاك ${who} إلى قائمة «${list}»` : `دعاك ${who} إلى قائمة مشتركة`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -2320,6 +2340,44 @@ const ar = {
   listSavedBtn: "محفوظة",
   listSavedToast: "أُضيفت إلى قوائمك — تبقى متصلةً بقائمة صاحبها ✓",
   listUnsavedToast: "أُزيلت من قوائمك",
+  /* 🆕 233 — **النسخُ فعلٌ ثانٍ بجانب الحفظ** (أحمد ٤ نوفمبر): ♥ «أضِفها» مرجعٌ حيّ، و«انسخها» قائمةٌ تملكها وتعدّلها */
+  listCopyBtn: "انسخها لقوائمي",
+  listCopiedToast: "نُسخت إلى قوائمك · خاصة",
+  listCopyPublish: "اعلنها",
+  listCopiedFrom: (who: string) => `من قائمة ${who}`,
+  /* لمن أخفى اسمه: الرابطُ يبقى بلا اسم (D-011) */
+  listCopiedFromHidden: "منسوخة من قائمة أخرى",
+  apiListCopyTooMany: "وصلت إلى 50 قائمة — احذف واحدة لتنسخ هذه",
+  apiListCopyUnavailable: "هذه القائمة لم تعد متاحة للنسخ",
+  /* 🆕 234 — **القوائمُ المشتركة** (أحمد ٤ نوفمبر، البند ٢): صاحبُها يدعو من يتابعهم، والأعضاءُ يضيفون ويحذفون */
+  listMemberYou: "أنت",
+  listShared: "قائمة مشتركة",
+  listInvite: "ادعُ",
+  listMembersTitle: (n: number, max: number) => `الأعضاء · ${num(n, "ar")} من ${num(max, "ar")}`,
+  listMemberOwner: "صاحب القائمة",
+  listMemberActive: "عضو",
+  listMemberPending: "بانتظار القبول",
+  listMemberRemove: "إزالة",
+  listMemberCancel: "إلغاء",
+  listMemberLeave: "غادر القائمة",
+  listInviteFromFollowing: "ادعُ من تتابعهم",
+  listInviteTitle: (name: string) => `ادعُ إلى «${name}»`,
+  listInviteSearch: "ابحث فيمن تتابعهم",
+  listInviteSend: (n: number) => `أرسل الدعوة · ${num(n, "ar")}`,
+  listInviteNote: (n: number, max: number) => `يقدرون يضيفون ويحذفون أعمالاً · ${num(n, "ar")} من ${num(max, "ar")}`,
+  listInviteNoFollowing: "ما تتابع أحداً بعد",
+  listInviteBanner: (who: string) => `${who} دعاك تشارك في هذه القائمة`,
+  listInviteBannerSub: "تقدر تضيف وتحذف أعمالاً",
+  listInviteAccept: "قبول",
+  listInviteDecline: "لا شكراً",
+  listInviteSent: "أُرسلت الدعوة",
+  listJoined: "انضممت إلى القائمة",
+  listLeft: "غادرت القائمة",
+  /* «أنت وخالد وسارة» — وما زاد على ثلاثة «+٢» */
+  listMembersNames: (names: string[], more: number) =>
+    (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join("، ")} و${names[names.length - 1]}`) + (more > 0 ? ` +${num(more, "ar")}` : ""),
+  apiListMembersFull: "اكتمل العدد — 10 مع صاحب القائمة",
+  apiListNotShareable: "هذه القائمة لا تُشارَك",
   openMyLists: "افتح قوائمي",
   savedListsSection: "قوائم محفوظة",
   /* 🆕 **عنوانُ «تجتمع عندك» في القاموس لا في المكوّن** (D-874): **لوحُ
@@ -2880,6 +2938,8 @@ const ar = {
   /** 🆕 شريطُ التقييم في الودجت بعد «شاهدته» (W37 · «١ ب») — `%s` اسمُ الفيلم */
   widgetRate: "قيّم %s",
   widgetSkip: "تخطَّ",
+  /* 🆕 D-1600 — في شريط التقييم: يلغي «شاهدته» (خالد ٣٠ أكتوبر) */
+  widgetNotWatched: "ما شاهدته",
   widgetStarted: "بدأته",
   /** 🆕 W40 — «ودجت لوبز»: كلُّ ودجتٍ بإعداده (أندرويد)، وما على الشاشة بتخطيطه (الآيفون) */
   widgetOnScreen: "على شاشتك الآن",
@@ -3023,6 +3083,52 @@ const ar = {
   stremioSubscribe: "اشترك في Loopz+",
   stremioBack: "ارجع لـ Stremio",
   stremioFailed: "تعذّر إصدار الرابط، جرّب مرة أخرى",
+  /* 🆕 سيرفراتُ البيت (هجرة ٢٣٥ — أحمد ٤ نوفمبر: الشاشة «ب»، البطاقة «أ»، لـLoopz+ وحده) — والبطاقةُ صارت «من أجهزتك» */
+  devicesFrom: "من أجهزتك",
+  devicesListLead: "حلقات وأفلام شغّلتها في Stremio أو خلّصتها على سيرفرك. ✓ على حلقة تعلّمها وكل ما قبلها.",
+  serverFinished: "خلّصتها",
+  homeServersTitle: "سيرفرات البيت",
+  homeServersIntro: "شغّل حلقة أو فيلم على سيرفرك في البيت، ولما تخلصه يسألك Loopz في الرئيسية: شفتها؟",
+  homeServersHow2: "✕ تتجاهلها. ما نعلّم شيئاً بدون جوابك.",
+  homeServersNeeds: "Plex يحتاج Plex Pass، وEmby يحتاج Emby Premiere، وJellyfin مجاني بإضافة Webhook.",
+  homeServersPlusSub: "اربط سيرفرك فيسألك Loopz عن كل ما تخلصه عليه، واستورد تاريخ مشاهدتك من Plex.",
+  homeServerLink: "رابطك الخاص",
+  homeServerOneLink: "رابط واحد يشتغل مع السيرفرات الثلاثة",
+  homeServerLastSeen: (when: string) => `آخر ما وصل ${when}`,
+  homeServerCreate: "أنشئ رابطك",
+  homeServerCopy: "انسخ الرابط",
+  homeServerStepsPlex: [
+    "افتح Plex من المتصفح: الإعدادات ← Webhooks.",
+    "اضغط «Add Webhook» والصق رابطك.",
+    "احفظ. كل حلقة تكمل 90% منها توصلنا.",
+  ] as readonly string[],
+  homeServerStepsJellyfin: [
+    "من لوحة Jellyfin: Plugins ← Catalog، ثبّت «Webhook» وأعد تشغيل السيرفر.",
+    "افتح الإضافة واضغط «Add Generic Destination»، والصق رابطك في Webhook Url.",
+    "فعّل «Playback Stop» واختر Movies وEpisodes.",
+    "الصق القالب في Template واحفظ.",
+  ] as readonly string[],
+  homeServerStepsEmby: [
+    "من لوحة Emby: Webhooks (في الإصدارات الحديثة داخل Notifications).",
+    "أضف Webhook والصق رابطك، ونوع المحتوى application/json.",
+    "اختر «Playback Stop» و«Mark Played» واحفظ.",
+  ] as readonly string[],
+  homeServerCopyTemplate: "انسخ قالب Jellyfin",
+  homeServerTemplateSub: "يُلصق في خانة Template كما هو",
+  homeServerTemplateCopied: "نُسخ القالب",
+  plexImportRow: "استورد تاريخك من Plex",
+  plexImportRowSub: "مرة واحدة: كل ما شاهدته قبل",
+  plexImportTitle: "استورد من Plex",
+  plexImportLead: "نعطيك رمزاً تكتبه في plex.tv/link، ثم يقرأ جوالك مكتبات سيرفرك ويضيف ما شاهدته إلى مكتبتك. خلّ جوالك على شبكة البيت.",
+  plexImportStart: "ابدأ",
+  plexImportCode: "افتح plex.tv/link من أي جهاز واكتب هذا الرمز:",
+  plexImportWaiting: "ننتظر موافقتك… الرمز صالح 15 دقيقة",
+  plexImportOpen: "افتح plex.tv/link",
+  plexImportReading: "نقرأ مكتبات سيرفرك…",
+  plexImportNoServer: "ما وصلنا لسيرفرك. تأكد أن جوالك على شبكة البيت وأن السيرفر شغّال.",
+  plexImportExpired: "انتهت صلاحية الرمز. ابدأ من جديد.",
+  plexImportFailed: "تعذّر الاتصال بـ Plex. حاول مرة أخرى.",
+  plexImportPrivacy: "دخولك في Plex ما يوصلنا ولا ينحفظ: يُستعمل مرة واحدة من جوالك ثم ينتهي.",
 };
 
 export type Dict = typeof ar;
@@ -3338,7 +3444,7 @@ const en: Dict = {
 
   importSection: "Import your library",
   importHint:
-    "Bring what you have watched over from Letterboxd, Simkl or TV Time — export your file from them and upload it here, no starting from scratch.",
+    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl or TV Time — export your file from them and upload it here, no starting from scratch.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "Request your data copy from TV Time, then upload the zip here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
@@ -3376,6 +3482,18 @@ const en: Dict = {
     "In Simkl: Settings → Import/Export → download the JSON backup (free for everyone), then upload the file as it downloaded. Titles arrive with their IDs, so they match instantly — no name search.",
   importSimklFileHint:
     "Accepted: zip, json or csv. Works with any export carrying TMDB ids.",
+  importImdbTitle: "IMDb",
+  importImdbHint:
+    "From IMDb: open Your ratings, your Watchlist or any of your lists → ⋯ → Export, then download the files from the Exports page and upload them here together. A rating means you watched it: the film, the whole series, or the episode and everything before it — on the day you rated it.",
+  importImdbFileHint:
+    "Accepted: csv or zip. Each list joins your lists, private, under its file name — titles are matched by IMDb id, not by name.",
+  importDoneLists: (n: string) => `${n} lists were added to your lists — private until you publish them.`,
+  importListsFull: "Some lists were not added: you've reached 50 lists.",
+  importMalTitle: "MyAnimeList",
+  importMalHint:
+    "From MyAnimeList: open myanimelist.net/panel.php?go=export → Export My Anime List, then upload the file as it downloaded. Completed marks its whole season, watching marks your episode count, on-hold and dropped keep their status — dated by your start or finish date.",
+  importMalFileHint:
+    "Accepted: xml.gz or xml. Each MyAnimeList season finds its season in the series — OVAs and specials without a season are listed by name so you can add them yourself.",
 
   usernameSection: "Username",
   usernameShort: "Username must be at least 3 characters.",
@@ -3669,6 +3787,10 @@ const en: Dict = {
     list
       ? `${who} replied to you about “${list}”`
       : `${who} replied to you on a list`,
+  notifListCopy: (who: string, list: string) =>
+    list ? `${who} copied your list “${list}”` : `${who} copied one of your lists`,
+  notifListInvite: (who: string, list: string) =>
+    list ? `${who} invited you to the list “${list}”` : `${who} invited you to a shared list`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   watchWhereTitle: "Where to watch",
@@ -4685,6 +4807,40 @@ const en: Dict = {
   listSavedBtn: "Saved",
   listSavedToast: "Added to your lists — stays linked to its owner's list ✓",
   listUnsavedToast: "Removed from your lists",
+  listCopyBtn: "Copy to my lists",
+  listCopiedToast: "Copied to your lists · Private",
+  listCopyPublish: "Make public",
+  listCopiedFrom: (who: string) => `From ${who}'s list`,
+  listCopiedFromHidden: "Copied from another list",
+  apiListCopyTooMany: "You've reached 50 lists — delete one to copy this",
+  apiListCopyUnavailable: "This list can no longer be copied",
+  listMemberYou: "You",
+  listShared: "Shared list",
+  listInvite: "Invite",
+  listMembersTitle: (n: number, max: number) => `Members · ${n} of ${max}`,
+  listMemberOwner: "List owner",
+  listMemberActive: "Member",
+  listMemberPending: "Waiting to accept",
+  listMemberRemove: "Remove",
+  listMemberCancel: "Cancel",
+  listMemberLeave: "Leave list",
+  listInviteFromFollowing: "Invite people you follow",
+  listInviteTitle: (name: string) => `Invite to “${name}”`,
+  listInviteSearch: "Search people you follow",
+  listInviteSend: (n: number) => `Send invite · ${n}`,
+  listInviteNote: (n: number, max: number) => `They can add and remove titles · ${n} of ${max}`,
+  listInviteNoFollowing: "You don't follow anyone yet",
+  listInviteBanner: (who: string) => `${who} invited you to this list`,
+  listInviteBannerSub: "You can add and remove titles",
+  listInviteAccept: "Accept",
+  listInviteDecline: "No thanks",
+  listInviteSent: "Invite sent",
+  listJoined: "You joined the list",
+  listLeft: "You left the list",
+  listMembersNames: (names: string[], more: number) =>
+    (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`) + (more > 0 ? ` +${more}` : ""),
+  apiListMembersFull: "The list is full — 10 including the owner",
+  apiListNotShareable: "This list can't be shared",
   openMyLists: "Open my lists",
   savedListsSection: "Saved lists",
   autoGroupsTitle: "Recurring in your library",
@@ -5096,6 +5252,7 @@ const en: Dict = {
   widgetRenew: "Renew",
   widgetRate: "Rate %s",
   widgetSkip: "Skip",
+  widgetNotWatched: "Didn't watch",
   widgetStarted: "Started",
   widgetOnScreen: "On your screen now",
   widgetAddToScreen: "Add a widget to the screen",
@@ -5232,6 +5389,51 @@ const en: Dict = {
   stremioSubscribe: "Subscribe to Loopz+",
   stremioBack: "Back to Stremio",
   stremioFailed: "Couldn't make the link, try again",
+  devicesFrom: "From your devices",
+  devicesListLead: "Episodes and movies you played in Stremio or finished on your server. ✓ on an episode marks it and everything before it.",
+  serverFinished: "Finished",
+  homeServersTitle: "Home servers",
+  homeServersIntro: "Play an episode or a movie on your home server, and when you finish it Loopz asks you on Home: watched it?",
+  homeServersHow2: "✕ ignores it. Nothing is marked without your answer.",
+  homeServersNeeds: "Plex needs Plex Pass, Emby needs Emby Premiere, and Jellyfin is free with the Webhook plugin.",
+  homeServersPlusSub: "Link your server so Loopz asks about everything you finish on it, and import your Plex watch history.",
+  homeServerLink: "Your private link",
+  homeServerOneLink: "One link works with all three servers",
+  homeServerLastSeen: (when: string) => `Last event ${when}`,
+  homeServerCreate: "Create your link",
+  homeServerCopy: "Copy link",
+  homeServerStepsPlex: [
+    "Open Plex in a browser: Settings → Webhooks.",
+    "Tap “Add Webhook” and paste your link.",
+    "Save. Every episode you finish past 90% reaches us.",
+  ] as readonly string[],
+  homeServerStepsJellyfin: [
+    "In the Jellyfin dashboard: Plugins → Catalog, install “Webhook” and restart the server.",
+    "Open the plugin, tap “Add Generic Destination” and paste your link into Webhook Url.",
+    "Enable “Playback Stop” and pick Movies and Episodes.",
+    "Paste the template into Template and save.",
+  ] as readonly string[],
+  homeServerStepsEmby: [
+    "In the Emby dashboard: Webhooks (inside Notifications on recent versions).",
+    "Add a webhook, paste your link, content type application/json.",
+    "Pick “Playback Stop” and “Mark Played” and save.",
+  ] as readonly string[],
+  homeServerCopyTemplate: "Copy the Jellyfin template",
+  homeServerTemplateSub: "Paste it into the Template box as is",
+  homeServerTemplateCopied: "Template copied",
+  plexImportRow: "Import your Plex history",
+  plexImportRowSub: "Once: everything you watched before",
+  plexImportTitle: "Import from Plex",
+  plexImportLead: "We give you a code to enter at plex.tv/link, then your phone reads your server's libraries and adds what you watched to your library. Keep your phone on your home network.",
+  plexImportStart: "Start",
+  plexImportCode: "Open plex.tv/link on any device and enter this code:",
+  plexImportWaiting: "Waiting for your approval… the code lasts 15 minutes",
+  plexImportOpen: "Open plex.tv/link",
+  plexImportReading: "Reading your server's libraries…",
+  plexImportNoServer: "We couldn't reach your server. Make sure your phone is on your home network and the server is running.",
+  plexImportExpired: "The code expired. Start again.",
+  plexImportFailed: "Couldn't reach Plex. Please try again.",
+  plexImportPrivacy: "Your Plex sign-in never reaches us and isn't saved: it's used once from your phone and then dropped.",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

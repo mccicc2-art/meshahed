@@ -30,6 +30,9 @@ import { buttonClass } from "./ui/Button";
 import { HEADER_ICON } from "./ui/controls";
 import { QuickAdd } from "./QuickAdd";
 import { RailScroll } from "./RailScroll";
+import { ListCopyChip } from "./ListCopyChip";
+import { ListInviteBanner, ListMembersRow } from "./ListMembers";
+import type { ListMember } from "@/core/contracts/library";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
    في البروفايل تحتاجها أيضاً — **وهي هنا خمسون سطراً من رياضيّات
    سحبٍ لا تُنسخ** (القاعدة ٣/D-145). */
@@ -89,9 +92,26 @@ export function ListDetail({
   initialPlaylist,
   saves,
   initialSavedPlaylist,
+  canCopy = false,
+  copiedFrom = null,
+  members = [],
+  myMembership = null,
+  canInvite = false,
+  meId = null,
 }: {
   /** 🆕 تجربةُ Loopz+ (D-773ب) — `isPlus || isPartner` عند المستدعي */
   brandPlus?: boolean;
+  /** 🆕 233 — رقاقةُ «انسخها لقوائمي» في طرف شريط الحال: لغيري، معلنةٌ، وليست من قوائم لوبز (٥ب) */
+  canCopy?: boolean;
+  /** 🆕 233 — «من قائمة @فلان» في صفِّ التعريف (٢أ) — الأصلُ المعلنُ وحدَه؛ `username` غائبٌ لمن أخفى اسمه */
+  copiedFrom?: { listId: string; username: string | null } | null;
+  /** 🆕 234 — القائمةُ المشتركة: أعضاؤها (صاحبُها أوّلاً، والمعلّقون لصاحبها وحدَه) — `[]` لقائمةٍ لم تُشارَك */
+  members?: ListMember[];
+  /** 🆕 234 — عضويّتي: «pending» ⇒ الدعوةُ فوق القائمة · «active» ⇒ أضيف وأحذف (٣أ) */
+  myMembership?: "active" | "pending" | null;
+  /** 🆕 234 — «+ ادعُ» لصاحبها: ليست ذكيّةً ولا من قوائم لوبز */
+  canInvite?: boolean;
+  meId?: string | null;
   listId: string;
   name: string;
   subtitle: string | null;
@@ -264,7 +284,10 @@ export function ListDetail({
   /* 🔑 **وصاحبُ القائمة الذكيّة مالكٌ لا محرّر** — **شرطٌ واحدٌ يُشتقّ
      منه كلُّ منعٍ** (D-145)، **ولا يُكتب `!smart` في ستّة مواضعَ تُنسى
      واحدةٌ منها.** */
-  const canEditItems = isOwner && !smart;
+  /* 🆕 234 — والعضوُ الفعّالُ يضيف ويحذف (٣أ) — الترتيبُ والتحريرُ في قائمة النقاط لصاحبها وحدَه */
+  const canEditItems = (isOwner || myMembership === "active") && !smart;
+  const sharedRow = members.filter((m) => m.role !== "pending").length > 1;
+  const avatarOf = new Map(members.map((m) => [m.id, m.avatar]));
 
 
   function remove(it: ListItem) {
@@ -447,6 +470,14 @@ export function ListDetail({
         )}
       </div>
 
+      {/* 🆕 234 — **الدعوةُ فوق القائمة** (٢أ) */}
+      {myMembership === "pending" && (
+        <ListInviteBanner
+          listId={listId}
+          owner={{ name: members.find((m) => m.role === "owner")?.name ?? t.anonymousUser, avatar: members.find((m) => m.role === "owner")?.avatar ?? null }}
+          locale={locale}
+        />
+      )}
       <h1 className="text-22 leading-tight font-bold break-words mb-1.5">{name}</h1>
 
       {/* الوصف امتدادٌ للاسم لا منافسٌ له: نصف وزنه ولونٌ خافت وسطران على
@@ -513,7 +544,11 @@ export function ListDetail({
           يُقرأ من الموضع قبل أن يُقرأ من الاسم.
           **والصفُّ يُرسم إن وُجد أحدُهما**: قائمةٌ بلا صاحبٍ ظاهر
           تحتفظ بزرّها، **وزرٌّ يختفي لأن اسماً غاب عطلٌ لا ترتيب.** */}
-      {!isOwner && owner && (owner.nickname || owner.username) && (
+      {/* 🆕 234 — **الشكلُ «أ»**: القائمةُ المشتركةُ تضع أعضاءها في خانة صاحبها، و«+ ادعُ» في طرفها لصاحبها */}
+      {(sharedRow || canInvite) && (
+        <ListMembersRow listId={listId} name={name} members={members} canInvite={canInvite} isOwner={isOwner} meId={meId} locale={locale} />
+      )}
+      {!sharedRow && !isOwner && owner && (owner.nickname || owner.username) && (
         <div className="flex items-center gap-2 mt-3.5">
           {owner && (owner.nickname || owner.username) && (
             <>
@@ -594,6 +629,24 @@ export function ListDetail({
             </span>
           )
         )}
+        {/* 🆕 233 — **المصدرُ صفةٌ لا فعل** فيجلس هنا كلمةً برمزها (D-677)، **والضغطةُ تفتح الأصل** */}
+        {sharedRow && (
+          <span className="inline-flex items-center gap-1.5 text-12 text-muted">
+            <Icon name="people" size={14} className="text-accent" />
+            {t.listShared}
+          </span>
+        )}
+        {copiedFrom && (
+          <Link
+            href={`/lists/${copiedFrom.listId}`}
+            className="inline-flex items-center gap-1.5 text-12 text-muted hover:text-foreground transition min-w-0"
+          >
+            <Icon name="copy" size={14} className="text-accent shrink-0" />
+            <span className="truncate">
+              {copiedFrom.username ? t.listCopiedFrom(`@${copiedFrom.username}`) : t.listCopiedFromHidden}
+            </span>
+          </Link>
+        )}
       </div>
 
 
@@ -629,6 +682,8 @@ export function ListDetail({
                 rating={ratings[keyOf(it)] ?? null}
                 canRemove={canEditItems}
                 onRemove={() => remove(it)}
+                /* 🆕 234 — صورةُ من أضافه (٥أ) — في المشتركة وحدَها */
+                addedBy={sharedRow && it.added_by ? (avatarOf.get(it.added_by) ?? null) : undefined}
                 /* **زرُّ «+» على الملصق** (D-495): `undefined` تعني
                    «لا زرّ» — للزائر بلا حساب، **ولصاحب القائمة**
                    الذي تسكن زاويتُه علامةُ الإزالة (D-205). */
@@ -645,6 +700,9 @@ export function ListDetail({
           ))}
         </RailScroll>
       )}
+
+      {/* 🆕 234 — **العضوُ يضيف أعمالاً** (٣أ): قائمةُ النقاط لصاحبها وحدَه، فالبابُ هنا تحت الرفّ */}
+      {!isOwner && canEditItems && visible.length > 0 && <div className="mt-4">{addButton}</div>}
 
       {/* 🆕 **شريطُ الحال** (D-677/D-678، تصميمُه): ♥ عددُ الحفظ · 💬 عددُ
           الآراء · ★ المتوسّط · **ومفتاحُ التشغيل في طرفه** — **تشريحُ
@@ -694,6 +752,8 @@ export function ListDetail({
             </span>
           )}
         </span>
+        {/* 🆕 233 — **النسخُ في طرف الصفّ** (حكمُ أحمد بالصورة: «أ» داخل إطار) */}
+        {canCopy && <ListCopyChip listId={listId} name={name} locale={locale} />}
         {(isOwner
           ? initialPlaylist !== null && initialPlaylist !== undefined
           : initialSavedPlaylist !== null && initialSavedPlaylist !== undefined && saved) &&
@@ -1149,8 +1209,11 @@ function PosterTile({
   onRemove,
   quickAdd,
   state,
+  addedBy,
   t,
 }: {
+  /** 🆕 234 — صورةُ من أضافه: `undefined` لا شارة · `null` شارةٌ بلا صورة (أخفى صورتَه) */
+  addedBy?: string | null;
   item: ListItem;
   n: number | null;
   rating: number | null;
@@ -1183,6 +1246,11 @@ function PosterTile({
             </span>
           )}
 
+          {addedBy !== undefined && (
+            <span className="absolute bottom-1.5 end-1.5 w-5 h-5 rounded-full overflow-hidden bg-surface-2 border border-[color:var(--background)] pointer-events-none">
+              {addedBy ? <Image src={addedBy} alt="" fill sizes="20px" className="object-cover" /> : null}
+            </span>
+          )}
           {(n !== null || rating !== null) && (
             <>
               <div

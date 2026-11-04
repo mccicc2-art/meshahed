@@ -88,7 +88,11 @@ export type DatedEpisode = { season: number; episode: number; air_date?: string 
  */
 export type FribbEntry = {
   kitsu_id?: number | null;
-  themoviedb_id?: { tv?: number | null } | null;
+  /** 🆕 استيرادُ MyAnimeList — رقمُ العمل هناك، ونوعُه (`TV` · `ONA` · `MOVIE` · `OVA` · `SPECIAL` …) */
+  mal_id?: number | null;
+  type?: string | null;
+  /** الفيلمُ مصفوفةٌ في الجدول (`"movie": [129]`) — قُرئ ٤ نوفمبر */
+  themoviedb_id?: { tv?: number | null; movie?: number[] | number | null } | null;
   season?: { tmdb?: number | null } | null;
   episode_offset?: { tmdb?: number | null } | null;
 };
@@ -99,6 +103,33 @@ export function fribbEpisodeOf(entry: FribbEntry, ep: number): { tmdbId: number;
   if (!int(ep) || ep < 1 || !int(tmdbId) || tmdbId < 1 || !int(season) || season < 1) return null;
   const off = entry.episode_offset?.tmdb;
   return { tmdbId, at: { season, episode: (int(off) && off > 0 ? off : 0) + ep } };
+}
+
+/**
+ * 🆕 **عملُ MyAnimeList على TMDB** (استيرادُ MAL، أحمد ٤ نوفمبر «٣ أ»): مدخلُ Fribb ⇐ مسلسلٌ وموضعُه، أو فيلم، أو لا شيء.
+ * - موسمٌ عاديٌّ صريح (≥ ١) ⇐ ذلك الموسمُ بإزاحته (هجوم العمالقة ٢ ⇐ 1429 م٢ · حربُ الألف عام ⇐ 30984 م٢).
+ * - الموسمُ ٠ (أوفا · خاصّات) ⇐ لا شيء: لا يُخمَّن مكانُه.
+ * - بلا موسم ⇐ ترقيمٌ متّصلٌ من أوّل العمل (One Piece) **إن كان مسلسلاً وحيداً في مسلسله** (`perTv` = ١) — وإلّا تخمين.
+ * - بلا مسلسل ⇐ الفيلمُ إن وُجد (الجدولُ يكتبه مصفوفة).
+ */
+export type MalPlacement =
+  | { mediaType: "tv"; tmdbId: number; span: { season: number | null; offset: number } }
+  | { mediaType: "movie"; tmdbId: number }
+  | null;
+
+export function malPlacementOf(entry: FribbEntry, perTv: number): MalPlacement {
+  const tv = entry.themoviedb_id?.tv;
+  const off = entry.episode_offset?.tmdb;
+  const offset = int(off) && off > 0 ? off : 0;
+  if (int(tv) && tv > 0) {
+    const season = entry.season?.tmdb;
+    if (int(season) && season >= 1) return { mediaType: "tv", tmdbId: tv, span: { season, offset } };
+    if (season == null && (entry.type === "TV" || entry.type === "ONA") && perTv === 1) return { mediaType: "tv", tmdbId: tv, span: { season: null, offset } };
+    return null;
+  }
+  const m = entry.themoviedb_id?.movie;
+  const movie = Array.isArray(m) ? m[0] : m;
+  return int(movie) && movie > 0 ? { mediaType: "movie", tmdbId: movie } : null;
 }
 
 const DAY_MS = 86_400_000;

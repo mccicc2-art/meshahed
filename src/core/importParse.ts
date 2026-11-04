@@ -42,6 +42,34 @@ export type RawRecord =
       at?: string;
       rating?: number;
       planned?: boolean;
+    }
+  /* 🆕 **صفٌّ من IMDb** — بمعرّفه هناك (`tt…`) فالمطابقةُ بالمعرّف لا بالاسم. `role` ما يعنيه الصفُّ:
+     - `rated`: قيّمه صاحبُه ⇐ شاهده (فيلمٌ مشاهَد · مسلسلٌ كلُّه «١ ب» · حلقةٌ وما قبلها «٢ أ»)، و`at` يومُ التقييم «٣ أ».
+     - `watchlist`: «أنوي مشاهدته» — يدخل المكتبة بلا مشاهدة.
+     - `list`: عملٌ في قائمةٍ من قوائمه (`list` اسمُها، `pos` موضعُه) — يدخل تلك القائمة وحدَها «٤ أ». */
+  | {
+      kind: "imdb";
+      imdb: string;
+      media: "movie" | "tv" | "episode";
+      /** العنوانُ كما في الملف — للمطابَق الذي لم يُوجد، ولاسم المسلسل من صفِّ حلقته («المسلسل: الحلقة») */
+      name: string;
+      role: "rated" | "watchlist" | "list";
+      rating?: number;
+      at?: string;
+      list?: string;
+      pos?: number;
+    }
+  /* 🆕 **صفٌّ من MyAnimeList** (`mal.ts`) — رقمُه هناك، وما سجّله منه (`watched` من `total`)، وحالتُه. ومعناه على مواسم TMDB
+     يُعرف بعد المطابقة (جدولُ Fribb يعطي الموسمَ والإزاحة) — فالحلقاتُ تُحسب على الخادم لا هنا */
+  | {
+      kind: "mal";
+      mal: number;
+      name: string;
+      status: "watching" | "completed" | "onhold" | "dropped" | "plan";
+      watched: number;
+      total: number;
+      rating?: number;
+      at?: string;
     };
 
 export interface ParseOutcome {
@@ -79,6 +107,21 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
   const ds = new DecompressionStream("deflate-raw");
   const stream = new Blob([data as BlobPart]).stream().pipeThrough(ds);
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/**
+ * 🆕 **gzip** (تصديرُ MyAnimeList `.xml.gz`) — ترويسةٌ ثمّ deflate خامٌ ثمّ ذيلٌ من ثمانية بايتات (RFC 1952). يُقصّ الطرفان
+ * ويُفكّ الوسطُ بالفاكّ نفسِه (`inflateRaw`) — فالتطبيقُ يفكّه بـ`fflate` الذي سجّله، والويبُ بأداة المتصفّح، بلا فاكٍّ ثانٍ.
+ */
+export async function gunzip(b: Uint8Array): Promise<Uint8Array> {
+  if (b.length < 18 || b[0] !== 0x1f || b[1] !== 0x8b || b[2] !== 8) throw new Error("not gzip");
+  const flags = b[3];
+  let off = 10;
+  if (flags & 4) off += 2 + (b[off] | (b[off + 1] << 8)); // FEXTRA
+  if (flags & 8) while (off < b.length && b[off++] !== 0); // FNAME
+  if (flags & 16) while (off < b.length && b[off++] !== 0); // FCOMMENT
+  if (flags & 2) off += 2; // FHCRC
+  return inflateRaw(b.slice(off, b.length - 8));
 }
 
 export async function readZip(buf: ArrayBuffer): Promise<ZipEntry[]> {
@@ -234,6 +277,11 @@ export function recordKey(r: RawRecord): string {
       return `tmdbtv:${r.tmdbId}`;
     case "tmdb-movie":
       return `tmdbmv:${r.tmdbId}`;
+    /* المعرّفُ وحدَه يكفي — لكنّ الجهةَ في المفتاح لأنها جزءٌ من الطلب (`media`) */
+    case "imdb":
+      return `imdb:${r.media}:${r.imdb}`;
+    case "mal":
+      return `mal:${r.mal}`;
   }
 }
 
@@ -248,6 +296,8 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
       map.set(key, { kind: "name-movie", name: r.name, year: r.year });
     else if (r.kind === "show-tvdb") map.set(key, { kind: "tvdb-tv", id: r.tvdbId });
     else if (r.kind === "ep-tvdb") map.set(key, { kind: "tvdb-episode", id: r.episodeTvdbId });
+    else if (r.kind === "imdb") map.set(key, { kind: "imdb", id: r.imdb, media: r.media });
+    else if (r.kind === "mal") map.set(key, { kind: "mal", id: r.mal });
     /* `tmdb-*` لا يُطلب: معرّفه بيده. **وإدراجه هنا كان سيكلّف رحلةَ
        خادمٍ لكل عملٍ بلا فائدة** — وهي مئاتُ الطلبات في مكتبةٍ كبيرة */
   }

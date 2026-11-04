@@ -5,6 +5,7 @@ import {
   getUser,
   getProfile,
   getList,
+  getListOrigin,
   getPublicList,
   getMyListSave,
   getListCardStats,
@@ -21,6 +22,8 @@ import { ListReviews } from "@/components/ListReviews";
 import { isPlus } from "@/core/plan";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
+import { shapeListMembers } from "@/lib/listMembers";
+import { getDict } from "@/core/i18n";
 import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
@@ -141,6 +144,7 @@ export default async function ListPage({
     social,
     replies,
     meProfile,
+    origin,
   ] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
     /* 🆕 **الحالتان من صفِّ الحفظ نفسِه** (D-677): «أحفظتُها؟»
@@ -160,7 +164,20 @@ export default async function ListPage({
     data.list.is_public ? getListReviewSocial([id]) : Promise.resolve(new Map()),
     data.list.is_public ? getListReviewReplies(id) : Promise.resolve([]),
     getMyProfileLite().catch(() => null),
+    /* 🆕 233 — «من قائمة @فلان»: قراءةٌ خفيفةٌ للأصل المعلن، لا شيءَ للقوائم غير المنسوخة */
+    getListOrigin(data.list.copied_from),
   ]);
+
+  /* 🆕 234 — **أعضاءُ القائمة المشتركة** — القارئُ نفسُه الذي يقرأ منه مسارُ التطبيق (`shapeListMembers`) */
+  const { members, my: myMembership } = data.list.source_slug
+    ? { members: [], my: null }
+    : await shapeListMembers({
+        listId: id,
+        ownerId: data.list.user_id,
+        uid: user?.id ?? null,
+        owner: pub ? { nickname: pub.owner_nickname, username: pub.owner_username, avatar: pub.owner_avatar } : null,
+        t: getDict(locale),
+      });
 
   /* ===================== 🆕 القائمةُ الذكيّة (D-823) =====================
      🔑 **أعمالُها محسوبةٌ عند الفتح لا مخزَّنةٌ في صفوف** (قاعدةُ D-818):
@@ -246,6 +263,13 @@ export default async function ListPage({
         initialPlaylist={
           isOwner && data.list.is_playlist !== undefined ? !!data.list.is_playlist : null
         }
+        /* 🆕 233 — النسخُ لغيري من المعلنة، ولا قوائمُ لوبز (٥ب) — والحارسُ الحقيقيُّ `copy_list` */
+        canCopy={!!user && !isOwner && data.list.is_public && !data.list.source_slug}
+        copiedFrom={origin ? { listId: origin.id, username: origin.username } : null}
+        members={members}
+        myMembership={myMembership}
+        canInvite={isOwner && data.list.kind !== "smart" && !data.list.source_slug}
+        meId={user?.id ?? null}
         libState={libState}
         cover={{
           backdrop: data.list.cover_backdrop ?? null,

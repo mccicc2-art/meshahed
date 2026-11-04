@@ -56,9 +56,14 @@ struct V2Feed {
   }
   var lapsed: Bool { v2["lapsed"] as? Bool ?? false }
   var layouts: [[String: Any]] { ((raw["w2"] as? [String: Any])?["ios"] as? [[String: Any]]) ?? [] }
+  /** 🆕 D-1610 — نسخُ «مخصّص» (`custom-<١/٠>-<عدد الخانات>`): خارج قائمة «التخطيط»، يختار منها `MainProvider.pick` */
+  var customLayouts: [[String: Any]] { ((raw["w2"] as? [String: Any])?["iosCustom"] as? [[String: Any]]) ?? [] }
 
   /** التخطيطُ المختار، أو الأوّلُ («الرئيسي») إن حُذف المختارُ في التطبيق */
   func resolved(_ id: String?) -> [String: Any]? {
+    if let id, id.hasPrefix("custom-"), let c = customLayouts.first(where: { ($0["id"] as? String) == id }) {
+      return c["resolved"] as? [String: Any]
+    }
     let all = layouts
     let pick = all.first { ($0["id"] as? String) == id } ?? all.first
     return pick?["resolved"] as? [String: Any]
@@ -123,9 +128,14 @@ struct LayoutEntity: AppEntity {
 struct LayoutQuery: EntityQuery {
   func all() -> [LayoutEntity] {
     if case .ready(let f) = FeedStore.loadV2() {
-      let out = f.layouts.compactMap { o -> LayoutEntity? in
+      var out = f.layouts.compactMap { o -> LayoutEntity? in
         guard let id = o["id"] as? String else { return nil }
         return LayoutEntity(id: id, name: o["name"] as? String ?? id)
+      }
+      /* 🆕 D-1610 — «مخصّص» بعد تخطيطات صاحبه وقبل الأقسام المفردة: الخاناتُ تحته في شاشة التعديل — للمشترك (النسخُ تُكتب له وحدَه) */
+      if !f.customLayouts.isEmpty {
+        let at = out.firstIndex { $0.id.hasPrefix("solo-") } ?? out.count
+        out.insert(LayoutEntity(id: "custom", name: String(localized: "layout.custom")), at: at)
       }
       if !out.isEmpty { return out }
     }
@@ -141,10 +151,87 @@ struct LayoutQuery: EntityQuery {
   func defaultResult() async -> LayoutEntity? { all().first }
 }
 
+/**
+ * 🆕 D-1610 — **قسمُ الخانة** في شاشة تعديل الودجت (أحمد ٣١ أكتوبر، لقطةُ Fantastical: «خانات اختارها من الويدجت نفسه من خارج
+ * التطبيق»). الأقسامُ بأسمائها من الخلاصة (لغةُ التطبيق)، و«بدون» تترك الخانةَ فيكبر ما فوقها.
+ */
+struct SlotEntity: AppEntity {
+  let id: String
+  let name: String
+
+  static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("slot.type"))
+  static let defaultQuery = SlotQuery()
+  var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
+}
+
+struct SlotQuery: EntityQuery {
+  /** بترتيب الأقسام المفردة في قائمة «التخطيط» (`SOLO_ORDER`) */
+  static let keys = ["cont", "tw", "cine", "up", "tonight", "friends", "act"]
+
+  func all() -> [SlotEntity] {
+    var out: [SlotEntity] = []
+    if case .ready(let f) = FeedStore.loadV2() {
+      out = Self.keys.map { SlotEntity(id: $0, name: Sections.title(f, $0)) }
+    }
+    out.append(SlotEntity(id: "none", name: String(localized: "slot.none")))
+    return out
+  }
+
+  func entities(for identifiers: [SlotEntity.ID]) async throws -> [SlotEntity] {
+    let a = all()
+    return identifiers.compactMap { id in a.first { $0.id == id } }
+  }
+
+  func suggestedEntities() async throws -> [SlotEntity] { all() }
+}
+
 struct LayoutConfigIntent: WidgetConfigurationIntent {
   static let title: LocalizedStringResource = "layout.title"
   @Parameter(title: "layout.param")
   var layout: LayoutEntity?
+
+  /* 🆕 D-1610 — «مخصّص»: «أكمل المشاهدة» فوق (الكبيرُ والكبيرُ جداً) والخاناتُ تحته من أعلى لأسفل */
+  @Parameter(title: "slot.top", default: true)
+  var contTop: Bool
+  @Parameter(title: "slot.1")
+  var slot1: SlotEntity?
+  @Parameter(title: "slot.2")
+  var slot2: SlotEntity?
+  @Parameter(title: "slot.3")
+  var slot3: SlotEntity?
+  @Parameter(title: "slot.4")
+  var slot4: SlotEntity?
+
+  /** ما يُعرض في شاشة التعديل بحسب الحجم: الصغيرُ والمتوسطُ خانة، والكبيرُ خانتان، والكبيرُ جداً أربع */
+  static var parameterSummary: some ParameterSummary {
+    When(widgetFamily: .equalTo, .systemSmall) {
+      Summary("\(\.$layout)") {
+        \.$slot1
+      }
+    } otherwise: {
+      When(widgetFamily: .equalTo, .systemMedium) {
+        Summary("\(\.$layout)") {
+          \.$slot1
+        }
+      } otherwise: {
+        When(widgetFamily: .equalTo, .systemLarge) {
+          Summary("\(\.$layout)") {
+            \.$contTop
+            \.$slot1
+            \.$slot2
+          }
+        } otherwise: {
+          Summary("\(\.$layout)") {
+            \.$contTop
+            \.$slot1
+            \.$slot2
+            \.$slot3
+            \.$slot4
+          }
+        }
+      }
+    }
+  }
 
   init() {}
 }
@@ -153,13 +240,41 @@ struct MainEntry: TimelineEntry {
   let date: Date
   let state: V2State
   let layout: String?
+  /** 🆕 D-1610 — أقسامُ خانات «مخصّص» بالترتيب (بلا «بدون»): `slot1` في المواضع ⇐ الأوّل */
+  var slots: [String] = []
 }
 
 struct MainProvider: AppIntentTimelineProvider {
   func placeholder(in context: Context) -> MainEntry { MainEntry(date: Date(), state: .none, layout: nil) }
 
   func snapshot(for configuration: LayoutConfigIntent, in context: Context) async -> MainEntry {
-    MainEntry(date: Date(), state: FeedStore.loadV2(), layout: configuration.layout?.id)
+    let p = Self.pick(configuration, context.family)
+    return MainEntry(date: Date(), state: FeedStore.loadV2(), layout: p.id, slots: p.slots)
+  }
+
+  /**
+   * 🆕 D-1610 — **«مخصّص»**: الخاناتُ التي تتّسع لهذا الحجم (الصغيرُ والمتوسطُ ١، والكبيرُ ٢، والكبيرُ جداً ٤) بلا «بدون»، ونسخةُ
+   * المواضع التي تناسب عددَها ومع «أكمل المشاهدة» فوق أو بدونه. خانةٌ لم تُختر بعدُ تأخذ الافتراضيَّ (أصدقاؤك · فيلم الليلة · السينما ·
+   * للمشاهدة). لا خاناتٍ ولا «أكمل المشاهدة» ⇒ الرئيسيّ. وغيرُ «مخصّص» كما كان.
+   */
+  static func pick(_ c: LayoutConfigIntent, _ family: WidgetFamily) -> (id: String?, slots: [String]) {
+    guard c.layout?.id == "custom" else { return (c.layout?.id, []) }
+    let cap: Int
+    switch family {
+    case .systemSmall, .systemMedium: cap = 1
+    case .systemLarge: cap = 2
+    default: cap = 4
+    }
+    let fallback = ["friends", "tonight", "cine", "tw"]
+    let picked: [SlotEntity?] = [c.slot1, c.slot2, c.slot3, c.slot4]
+    var slots: [String] = []
+    for i in 0..<cap {
+      let k = picked[i]?.id ?? fallback[i]
+      if k != "none" { slots.append(k) }
+    }
+    let top = c.contTop && cap > 1
+    if slots.isEmpty && !top { return (nil, []) }
+    return ("custom-\(top ? 1 : 0)-\(slots.count)", slots)
   }
 
   /**
@@ -189,14 +304,15 @@ struct MainProvider: AppIntentTimelineProvider {
     let now = Date()
     let state = FeedStore.loadV2()
     /* 🆕 W37 — «↶ تراجع» قائم: رسمٌ جديدٌ عند انقضاء الخمس ثوانٍ (قد يتأخّر ثانيةً أو اثنتين في iOS) */
+    let p = Self.pick(configuration, context.family)
     if let end = WState.undoEnds() {
-      return Timeline(entries: [MainEntry(date: now, state: state, layout: configuration.layout?.id)], policy: .after(end))
+      return Timeline(entries: [MainEntry(date: now, state: state, layout: p.id, slots: p.slots)], policy: .after(end))
     }
-    let id = configuration.layout?.id
+    let id = p.id
     let cal = Calendar.current
     let midnight = cal.startOfDay(for: cal.date(byAdding: .day, value: 1, to: now) ?? now)
     let after = cal.date(byAdding: .day, value: 1, to: midnight) ?? midnight
-    return Timeline(entries: [MainEntry(date: now, state: state, layout: id), MainEntry(date: midnight, state: state, layout: id)], policy: .after(after))
+    return Timeline(entries: [MainEntry(date: now, state: state, layout: id, slots: p.slots), MainEntry(date: midnight, state: state, layout: id, slots: p.slots)], policy: .after(after))
   }
 }
 
@@ -266,7 +382,7 @@ struct MainView: View {
       if locked {
         LockCard(f: f)
       } else if r["v4"] != nil, (f.raw["w2"] as? [String: Any])?["look4"] != nil {
-        V4Root(f: f, r: r, small: sizeName == "small", now: entry.date)
+        V4Root(f: f, r: r, small: sizeName == "small", now: entry.date, slots: entry.slots)
       } else if sizeName == "small" {
         /* 🆕 D-1577 — الآيفونُ بمقاساته هو بلا تكبيرٍ بالنسبة (النسبةُ لأندرويد وحدَه — أحمد ٢٠:٠٧) */
         SmallMain(f: f.sized("small"), small: r["small"] as? [String: Any] ?? [:], opts: opts, now: entry.date)
@@ -554,6 +670,8 @@ struct RateStrip: View {
         Text(f.s2or("rate", "قيّم %s", "Rate %s").replacingOccurrences(of: "%s", with: title))
           .font(.system(size: 13, weight: .bold)).foregroundStyle(WColor.fg).lineLimit(1)
         Spacer(minLength: 0)
+        /* 🆕 D-1600 — «ما شاهدته» يلغي «شاهدته» ويعيد الفيلم (خالد ٣٠ أكتوبر) */
+        Button(intent: UnwatchMovieIntent(id: id)) { WChip(icon: nil, text: f.s2or("notWatched", "ما شاهدته", "Didn't watch")) }.buttonStyle(.plain)
         Button(intent: SkipRateIntent()) { WChip(icon: nil, text: f.s2or("skip", "تخطَّ", "Skip")) }.buttonStyle(.plain)
       }
       .frame(height: 34)

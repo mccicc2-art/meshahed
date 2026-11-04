@@ -7,6 +7,7 @@ import { Icon } from "../icons";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, RowsSkeleton } from "../settings/ui";
 import { timeAgo } from "@/core/when";
+import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 import type { StremioSignal } from "@/core/contracts/stremio";
 import { episodeLabel, useStremio } from "./api";
 import { useStremioAnswer } from "./useAnswer";
@@ -67,10 +68,10 @@ export function StremioListScreen() {
   const open = (s: StremioSignal) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: s.kind, id: String(s.tmdb_id) } });
 
   return (
-    <SettingsScreen title={t.stremioFrom} toast={toast}>
+    <SettingsScreen title={t.devicesFrom} toast={toast}>
       <View style={{ gap: 4, alignItems: "center", paddingHorizontal: 8 }}>
         {q.data ? <Text size={13} weight="700" color={tokens.accent}>{t.stremioWaiting(left)}</Text> : null}
-        <Text size={13} muted style={{ textAlign: "center", lineHeight: 20 }}>{t.stremioListLead}</Text>
+        <Text size={13} muted style={{ textAlign: "center", lineHeight: 20 }}>{t.devicesListLead}</Text>
       </View>
       {!q.data ? <RowsSkeleton rows={4} /> : null}
       {groups.map(([name, rows]) => (
@@ -85,7 +86,7 @@ export function StremioListScreen() {
                   <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                     <Text size={14} weight="700" numberOfLines={1}>{s.title}</Text>
                     <Text size={12} weight="500" numberOfLines={1}>{ep}</Text>
-                    <Text size={11} muted numberOfLines={1}>{timeAgo(s.seen_at, t)}</Text>
+                    <Text size={11} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[s.source ?? "stremio"]} · ${timeAgo(s.seen_at, t)}`}</Text>
                   </View>
                 </Pressable>
                 <Pressable

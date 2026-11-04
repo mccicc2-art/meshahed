@@ -14,6 +14,7 @@ import { WidgetScreen } from "../../src/settings/WidgetScreen";
 import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 import { PlusScreen } from "../../src/settings/PlusScreen";
 import { StremioScreen } from "../../src/settings/StremioScreen";
+import { HomeServersScreen } from "../../src/settings/HomeServersScreen";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -44,6 +45,8 @@ const SCREENS = {
   plus: PlusScreen,
   /* 🆕 «اربط Stremio» (٢٢ أكتوبر) — رابطُ الإضافة وإلغاؤه؛ والإشاراتُ نفسُها في الرئيسيّة و`/stremio` */
   stremio: StremioScreen,
+  /* 🆕 «سيرفرات البيت» (هجرة ٢٣٥) — رابطُ Webhook الواحد لـPlex وJellyfin وEmby، واستيرادُ تاريخ Plex */
+  "home-servers": HomeServersScreen,
 } as const;
 
 export default function SettingsSection() {
