@@ -74,6 +74,14 @@ import { StremioCard } from "../stremio/StremioCard";
 /* D-1615 — من `HomeHeader` لا رقمٌ ثانٍ: الرأسُ ٥٦ */
 const HEADER_H = HOME_TOP_H;
 
+/** A-24 «أ» — اسمُ المسلسل من حمولة الرئيسيّة (للمشاهدة · مسلسلاتي · القادم · أسبوعك)، أو `null` */
+function titleInHome(d: HomePayload | undefined, id: number): string | null {
+  if (!d) return null;
+  const s = d.sections;
+  const tv = [...s.towatch.all, ...s.upcoming].find((c) => c.kind === "tv" && c.id === id);
+  return tv?.title ?? s.shows.items.find((c) => c.id === id)?.title ?? s.week.entries.find((w) => w.show_id === id)?.title ?? null;
+}
+
 export function HomeScreen() {
   const { t, tokens, me } = useApp();
   const router = useRouter();
@@ -505,18 +513,29 @@ export function HomeScreen() {
           setAllSheet(e.section);
           return;
         }
-        toastHost.current?.say(
-          t.widgetStartedToast(e.title),
-          {
-            label: t.undoWatched,
-            onPress: () =>
-              void write<unknown>("/api/v1/track/watch-state", { showTmdbId: e.id, state: e.action === "start" ? null : "paused" } satisfies WatchStateBody)
-                .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
-                .catch(onError),
-          },
-          6000,
-          "success",
-        );
+        /* A-24 «أ» — الرابطُ قد يأتي من خارج الودجت، فالسؤالُ قبل الكتابة، والعنوانُ من حمولة الرئيسيّة لا من الرابط.
+           عملٌ ليس في الحمولة يُسأل عنه بلا اسم — لا نصَّ يأتي من خارج التطبيق */
+        const title = titleInHome(qc.getQueryData<HomePayload>(HOME_KEY), e.id);
+        const start = () =>
+          void write<unknown>("/api/v1/track/watch-state", { showTmdbId: e.id, state: e.action === "start" ? "started" : null } satisfies WatchStateBody)
+            .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+            .then(() => {
+              void refreshWidgets(true);
+              toastHost.current?.say(
+                title ? t.widgetStartedToast(title) : t.widgetStartedToastAny,
+                {
+                  label: t.undoWatched,
+                  onPress: () =>
+                    void write<unknown>("/api/v1/track/watch-state", { showTmdbId: e.id, state: e.action === "start" ? null : "paused" } satisfies WatchStateBody)
+                      .then(() => qc.invalidateQueries({ queryKey: HOME_KEY }))
+                      .catch(onError),
+                },
+                6000,
+                "success",
+              );
+            })
+            .catch(onError);
+        toastHost.current?.say(title ? t.widgetStartAsk(title) : t.widgetStartAskAny, { label: t.widgetStartYes, onPress: start }, 8000);
       }),
     [t, qc, onError],
   );

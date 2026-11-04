@@ -7,7 +7,8 @@
  */
 export type WidgetEvent =
   | { type: "all"; section: "continue" | "towatch" | "upcoming" }
-  | { type: "started"; id: number; title: string; action: "start" | "unpause" };
+  /* A-24 «أ» — «ابدأ» من الخانة الباهتة يصل سؤالاً: الرئيسيّةُ تعرض توستَ تأكيد ولا تكتب إلّا عند لمسه */
+  | { type: "ask-start"; id: number; action: "start" | "unpause" };
 
 type Listener = (e: WidgetEvent) => void;
 

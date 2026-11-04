@@ -2898,6 +2898,11 @@ const ar = {
   widgetSeasonNoDate: (s: number) => `الموسم ${s} · لم يُحدَّد موعد`,
   widgetSignedOut: "سجّل الدخول إلى لوبز",
   widgetStartedToast: (title: string) => `بدأت ${title}`,
+  /* A-24 «أ» — «ابدأ» من الودجت يُسأل قبل أن يُكتب */
+  widgetStartedToastAny: "بدأت المسلسل",
+  widgetStartAsk: (title: string) => `تبدأ ${title}؟`,
+  widgetStartAskAny: "تبدأ هذا المسلسل؟",
+  widgetStartYes: "ابدأ",
   /* 🆕 الودجت الواحد (v2) */
   widgetSearchPlaceholder: "ابحث عن مسلسل، فيلم، أنمي…",
   widgetTrendingToday: "الرائج اليوم",
@@ -5216,6 +5221,10 @@ const en: Dict = {
   widgetSeasonNoDate: (s: number) => `Season ${s} · Date not set`,
   widgetSignedOut: "Sign in to Loopz",
   widgetStartedToast: (title: string) => `Started ${title}`,
+  widgetStartedToastAny: "Show started",
+  widgetStartAsk: (title: string) => `Start ${title}?`,
+  widgetStartAskAny: "Start this show?",
+  widgetStartYes: "Start",
   widgetSearchPlaceholder: "Search shows, movies, anime…",
   widgetTrendingToday: "Trending today",
   widgetFriends: "Your friends",

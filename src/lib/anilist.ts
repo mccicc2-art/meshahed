@@ -58,6 +58,9 @@ async function anilistIdFor(tmdbId: number, mediaType: "tv" | "movie"): Promise<
       `${ARM}?id=${tmdbId}&type=${mediaType === "tv" ? "show" : "movie"}&include=anilist`,
       {
         headers: { Accept: "application/json", "User-Agent": UA },
+        /* A-40 (المدقّق ٤ نوفمبر) — مهلةٌ صريحة: خدمةٌ عامّةٌ عالقة كانت تُبقي بثَّ صفحة العمل
+           والدالّةَ مفتوحتين حتى حدّها؛ بعد ٤ ثوانٍ نسكت كما نسكت عند أيّ فشل (`null`) */
+        signal: AbortSignal.timeout(4000),
         /* أسبوع: الربط بين معرّفين **لا يتغيّر**. ونفس منطق تخبئة
            `wikidata.ts` — جوابٌ ثابت لا يُسأل عنه مرّتين. */
         next: { revalidate: 604_800 },
@@ -107,6 +110,8 @@ async function extrasFor(anilistId: number): Promise<AnimeExtras | null> {
         "User-Agent": UA,
       },
       body: JSON.stringify({ query, variables: { id: anilistId } }),
+      /* A-40 — المهلةُ نفسُها: AniList بطيءٌ أو حدُّه ممتلئ ⇢ سطرُ الحقائق يغيب ولا تنتظر الصفحة */
+      signal: AbortSignal.timeout(4000),
       /* يومٌ واحد لا أسبوع: المصدر والاستوديو ثابتان، **لكن العمل الجديد
          قد يُسجَّل عندهم ناقصاً ثم يُكمَّل** — واليوم يلحق ذلك بلا إثقال. */
       next: { revalidate: 86_400 },

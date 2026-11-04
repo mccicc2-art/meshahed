@@ -386,7 +386,8 @@ export function smallWidgetForm(cfg: WidgetLayoutConfig, key: WidgetSectionKey, 
  * والصغيرُ والمتوسطُ «أكمل المشاهدة» وحدَه): غيرُ المشترك يأخذ الودجتَ بكلِّ أحجامه **بالترتيب الأساسيّ**، والاشتراكُ يفتح
  * اختيارَ الأقسام وترتيبَها وحجمَها والتخطيطات. ومن انتهى اشتراكه يرجع للأساسيّ ويبقى تخصيصُه محفوظاً كما هو.
  */
-export function widgetAccess(plus: boolean, _size: WidgetSize): "full" | "basic" {
+/* الحجمُ لم يعد يقرّر الوصولَ منذ W49، فسقط معاملُه — كان يبقى بلا استعمالٍ ويُطلق تحذيرَ eslint الوحيد (المدقّق ٤ نوفمبر)؛ ولا مستدعيَ يمرّره */
+export function widgetAccess(plus: boolean): "full" | "basic" {
   return plus ? "full" : "basic";
 }
 

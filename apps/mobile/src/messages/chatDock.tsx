@@ -68,7 +68,11 @@ export function usePicUpload(say: (m: string) => void, opts?: { crop?: CropShape
   const pickImage = useCallback(async () => {
     let chosen: string | null = null;
     if (crop) {
-      chosen = await pickCropped(crop).catch(() => null);
+      /* 🆕 T318 — فشلُ التجهيز يُقال لا يُبتلع */
+      chosen = await pickCropped(crop).catch(() => {
+        say(t.errUpload.replace(/[:：]\s*$/, ""));
+        return null;
+      });
       if (!chosen) return;
     } else {
       const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 1 });

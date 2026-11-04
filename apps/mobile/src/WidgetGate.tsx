@@ -3,13 +3,8 @@ import * as Linking from "expo-linking";
 import { AppState } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { LoopzWidget } from "../modules/loopz-widget";
-import { write } from "./api";
-import { queryClient } from "./api";
 import { session } from "./session";
-import { HOME_KEY } from "./home/useHome";
 import { widgetBus } from "./widget/bus";
-import { refreshWidgets } from "./widget/feed";
-import type { WatchStateBody } from "./contracts";
 
 /**
  * ====== 🆕 لمسةُ الودجت ⇢ الشاشةُ الأصليّة (خطّةُ الودجتات §2.3) ======
@@ -32,7 +27,8 @@ type Action =
   /* 🆕 W40 — `widget`: رقمُ ودجتِ أندرويد الذي فُتحت إعداداتُه (الضغطُ المطوّل، أو بعد «أضف ودجت») */
   | { do: "settings"; widget?: number }
   | { do: "list"; id: string }
-  | { do: "start"; id: number; title: string; action: "start" | "unpause" }
+  /* A-24 «أ» (المدقّق ٢٦ أكتوبر، قرارُ أحمد ٤ نوفمبر) — لا `title`: العنوانُ من بيانات التطبيق لا من الرابط */
+  | { do: "start"; id: number; action: "start" | "unpause" }
   /* 🆕 1.12.7 — لمسةُ إشعار الرسالة الأصليّ (`DmPush.kt`): خيطُ شخصٍ أو قروب — ما يدفعه `PushGate` لإشعار Expo */
   | { do: "msg"; peer: string }
   | { do: "msg"; group: string };
@@ -70,7 +66,8 @@ export function widgetActionOf(url: string | null): Action | null {
     }
     case "start": {
       const a = q.get("a") === "unpause" ? "unpause" : "start";
-      return Number.isInteger(id) && id > 0 ? { do: "start", id, title: (q.get("t") ?? "").slice(0, 200), action: a } : null;
+      /* `t` في الرابط يُهمل عمداً: أيُّ صفحةٍ أو تطبيقٍ يستطيع فتحَ هذا الرابط، فنصُّه لا يُعرض */
+      return Number.isInteger(id) && id > 0 ? { do: "start", id, action: a } : null;
     }
     case "msg": {
       const peer = q.get("with") ?? "";
@@ -183,21 +180,12 @@ export function WidgetGate() {
           if ("peer" in action) router.push({ pathname: "/messages/[peer]", params: { peer: action.peer, from: "home" } });
           else router.push({ pathname: "/messages/group/[id]", params: { id: action.group, from: "home" } });
           return;
-        case "start": {
-          /* «ابدأ» من الخانة الباهتة (W5): الكتابةُ ثمّ الرئيسيّةُ وتوستُ «تراجع» عليها — العملُ صار في «أكمل المشاهدة» */
-          const body: WatchStateBody = { showTmdbId: action.id, state: action.action === "start" ? "started" : null };
+        case "start":
+          /* «ابدأ» من الخانة الباهتة (W5) — A-24 «أ»: الرابطُ يصل من خارج الودجت أيضاً، فلا كتابةَ حين يصل.
+             الرئيسيّةُ تسأل بتوستٍ فيه زرُّ «ابدأ»، والكتابةُ عند اللمس وحدَه (`HomeScreen` ⇢ `startFromWidget`) */
           router.navigate("/home");
-          void write<unknown>("/api/v1/track/watch-state", body)
-            .then(() => queryClient.invalidateQueries({ queryKey: HOME_KEY }))
-            .then(() => {
-              widgetBus.emit({ type: "started", id: action.id, title: action.title, action: action.action });
-              void refreshWidgets(true);
-            })
-            .catch(() => {
-              /* الخادمُ رفض أو لا شبكة: الرئيسيّةُ مفتوحةٌ على حالها — لا توستَ يكذب */
-            });
+          widgetBus.emit({ type: "ask-start", id: action.id, action: action.action });
           return;
-        }
       }
     }, 250);
     return undefined;

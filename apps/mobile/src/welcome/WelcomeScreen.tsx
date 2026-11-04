@@ -181,7 +181,11 @@ export function WelcomeScreen() {
     if (uploading) return;
     setError(null);
     /* 🆕 القصُّ قبل الرفع (أحمد ١٥ أكتوبر): ما في الإطار هو ما يُحفظ — تكبيرٌ وتحريكٌ ولفٌّ ربعيّ (`imageCrop`) */
-    const cropped = await pickCropped("circle").catch(() => null);
+    /* 🆕 T318 — فشلُ التجهيز يُقال لا يُبتلع */
+    const cropped = await pickCropped("circle").catch(() => {
+      setError(t.errUpload.replace(/[:：]\s*$/, ""));
+      return null;
+    });
     if (!cropped) return;
     setUploading(true);
     try {

@@ -86,7 +86,11 @@ export function ProfileScreen() {
     if (uploading) return;
     setError(null);
     /* 🆕 القصُّ قبل الرفع (أحمد ١٥ أكتوبر): ما في الإطار هو ما يُحفظ — تكبيرٌ وتحريكٌ ولفٌّ ربعيّ (`imageCrop`) */
-    const cropped = await pickCropped(kind === "avatar" ? "circle" : "wide").catch(() => null);
+    /* 🆕 T318 — فشلُ التجهيز يُقال (كان يُبتلع فلا يرى صاحبُه شيئاً — فيديو مشعل ٤ نوفمبر) */
+    const cropped = await pickCropped(kind === "avatar" ? "circle" : "wide").catch(() => {
+      setError(t.errUpload.replace(/[:：]\s*$/, ""));
+      return null;
+    });
     if (!cropped) return;
     setUploading(kind);
     try {

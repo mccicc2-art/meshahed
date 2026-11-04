@@ -9,6 +9,8 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useApp } from "./state";
 import { Text } from "./ui";
 import { haptic } from "./haptics";
+import { api } from "./api";
+import { BUILD_TAG } from "./ota";
 
 /**
  * ====== قصُّ الصورة قبل رفعها — تكبيرٌ وتحريكٌ ولفٌّ حرٌّ باليد (أحمد ١٥ أكتوبر: «١ أ · ٢ أ نفذ» ثمّ «احذف اللفّ… ب نفذ») ======
@@ -44,7 +46,23 @@ async function normalize(uri: string): Promise<Src> {
 }
 
 /**
- * يختار صورةً من الاستوديو ثمّ يفتح شاشةَ القصّ: يعود بمسار JPEG المقصوص، أو `null` إن ألغى. الشاشةُ تُرسم بـ`cropUi`.
+ * 🆕 T318 — **فشلُ التجهيز أو القصّ يُقال ويُسجَّل** (فيديو مشعل ٤ نوفمبر: الغلافُ «ما يتغيّر» على الآيفون بلا كلمة). كان
+ * المنادون يبتلعون الخطأ (`.catch(() => null)`) فلم يظهر في `runtime_errors` ولا للمستخدم. الآن يُرسل سطرٌ بنوع `AppCrash`
+ * (يُقرأ يوميّاً) ويرمي `CropFailed` — المنادي يعرضه برسالته هو.
+ */
+export class CropFailed extends Error {}
+
+function reportCrop(step: "prepare" | "crop", shape: CropShape, e: unknown) {
+  const why = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+  void api("/api/v1/app/crash", {
+    method: "POST",
+    body: { screen: "profile", message: `image ${step} (${shape}, ${Platform.OS}): ${why}`.slice(0, 300), version: BUILD_TAG },
+  }).catch(() => {});
+}
+
+/**
+ * يختار صورةً من الاستوديو ثمّ يفتح شاشةَ القصّ: يعود بمسار JPEG المقصوص، أو `null` إن ألغى، ويرمي `CropFailed` إن تعذّر.
+ * الشاشةُ تُرسم بـ`cropUi`.
  */
 export function useImageCrop() {
   const [job, setJob] = useState<Job | null>(null);
@@ -62,10 +80,16 @@ export function useImageCrop() {
     let src: Src;
     try {
       src = await normalize(a.uri);
-    } finally {
+    } catch (e) {
       setBusy(false);
+      reportCrop("prepare", shape, e);
+      throw new CropFailed();
     }
-    return new Promise<string | null>((resolve) => setJob({ src, shape, resolve }));
+    /* القصُّ يُعرض قبل أن تُطفأ «جاري التجهيز» — في التصيير نفسِه، والطبقةُ واحدةٌ لا تُغلق (انظر `CropHost`) */
+    return new Promise<string | null>((resolve) => {
+      setJob({ src, shape, resolve });
+      setBusy(false);
+    });
   }, []);
   const close = useCallback((uri: string | null) => {
     setJob((j) => {
@@ -73,16 +97,30 @@ export function useImageCrop() {
       return null;
     });
   }, []);
-  const cropUi = job ? <CropScreen key={job.src.uri} job={job} onClose={close} /> : busy ? <Preparing /> : null;
+  const cropUi = job || busy ? <CropHost job={job} onClose={close} /> : null;
   return { pickCropped, cropUi };
 }
 
-function Preparing() {
+/**
+ * 🆕 T318 — **طبقةٌ واحدةٌ من «جاري التجهيز» إلى القصّ**. كانتا طبقتين (`Modal`): الأولى تُغلق والثانية تُفتح في التصيير نفسِه
+ * — **والآيفون لا يفتح طبقةً وأخرى تنغلق**: يرفضها بصمت (من عائلة D-1404 وD-1455). فيديو مشعل (iOS 27): الدائرةُ ثانيةً
+ * ثمّ صفحةُ تعديل الملف بلا شاشة القصّ ولا رفع. أندرويد لا يعاني (خالد جرّب الغلافَ عليه فتغيّر).
+ * الآن `Modal` واحدٌ يبقى مركّباً، ويتبدّل ما بداخله: الدائرةُ ثمّ القصّ. ثمنُه أنّ القصَّ يظهر بالتلاشي لا بالانزلاق.
+ */
+function CropHost({ job, onClose }: { job: Job | null; onClose: (uri: string | null) => void }) {
+  /* زرُّ الرجوع في أندرويد: يلغي القصَّ، ولا يفعل شيئاً أثناء التجهيز */
+  const back = () => {
+    if (job) onClose(null);
+  };
   return (
-    <Modal transparent animationType="fade" statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#fff" />
-      </View>
+    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={back}>
+      {job ? (
+        <CropScreen key={job.src.uri} job={job} onClose={onClose} />
+      ) : (
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      )}
     </Modal>
   );
 }
@@ -235,7 +273,9 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
       const img = await (await ctx.renderAsync()).saveAsync({ compress: 0.88, format: SaveFormat.JPEG });
       haptic.success();
       onClose(img.uri);
-    } catch {
+    } catch (e) {
+      /* القصُّ نفسُه فشل — يبقى المستخدمُ في الشاشة ليعيد أو يلغي، والسببُ يُسجَّل */
+      reportCrop("crop", job.shape, e);
       setWorking(false);
     }
   };
@@ -243,7 +283,7 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
   const ring = 2000;
   const round = job.shape === "circle";
   return (
-    <Modal animationType="slide" statusBarTranslucent onRequestClose={() => onClose(null)}>
+    <>
       <StatusBar barStyle="light-content" />
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000", paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16 }}>
@@ -295,6 +335,6 @@ function CropScreen({ job, onClose }: { job: Job; onClose: (uri: string | null) 
           </Pressable>
         </View>
       </GestureHandlerRootView>
-    </Modal>
+    </>
   );
 }
