@@ -1803,7 +1803,7 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
     .maybeSingle();
   const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
   /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
-  const src: WatchSource = sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" ? sig.source : "stremio";
+  const src: WatchSource = sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" ? sig.source : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
   let marked = 0;
   if (watched && sig.media_type === "tv" && sig.season != null && sig.episode != null) {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { HOME_SERVER_TOKEN_RE, JELLYFIN_TEMPLATE, parseHomeEvent } from "./homeServer.ts";
+import { HOME_SERVER_TOKEN_RE, JELLYFIN_TEMPLATE, KODI_TOKEN_RE, parseHomeEvent } from "./homeServer.ts";
 
 /* Plex — شكلُ `payload` في Webhooks (Plex Pass): حلقةٌ بلغت ٩٠٪ */
 const PLEX_EPISODE = {
@@ -77,6 +77,40 @@ test("Emby: playback.stop مكتملاً، وitem.markplayed، وما لم يك�
   assert.equal(parseHomeEvent({ ...base, Event: "item.markplayed", PlaybackInfo: undefined })?.finished, true);
 });
 
+/* 🆕 هجرة ٢٣٦ — جسمُ إضافتنا `service.loopz` كما ترسله: حلقةٌ من المكتبة بمعرّفات المسلسل */
+test("Kodi: حلقةٌ من المكتبة — معرّفاتُ الحلقة ومعرّفاتُ المسلسل", () => {
+  const ev = parseHomeEvent({
+    server: "kodi",
+    event: "finished",
+    type: "episode",
+    title: "Breaking Bad",
+    season: 5,
+    episode: 14,
+    ids: { tmdb: 62161, imdb: "tt2301451" },
+    show: { tmdb: 1396, tvdb: 81189, imdb: "tt0903747" },
+  });
+  assert.deepEqual(ev, {
+    server: "kodi",
+    kind: "episode",
+    finished: true,
+    title: "Breaking Bad",
+    year: undefined,
+    ids: { tmdb: 62161, imdb: "tt2301451", tvdb: undefined },
+    series: { tmdb: 1396, imdb: "tt0903747", tvdb: 81189 },
+    season: 5,
+    episode: 14,
+  });
+});
+
+test("Kodi: فيلمٌ من إضافة بثّ، وما ليس «انتهى» وما ليس حلقةً أو فيلماً", () => {
+  const ev = parseHomeEvent({ server: "kodi", event: "finished", type: "movie", title: "Heat", year: 1995, ids: { tmdb: 949 } });
+  assert.deepEqual(ev, { server: "kodi", kind: "movie", finished: true, title: "Heat", year: 1995, ids: { tmdb: 949, imdb: undefined, tvdb: undefined }, series: undefined, season: undefined, episode: undefined });
+  assert.equal(parseHomeEvent({ server: "kodi", event: "started", type: "movie", title: "Heat" })?.finished, false);
+  assert.equal(parseHomeEvent({ server: "kodi", event: "finished", type: "song", title: "x" }), null);
+  /* جسمٌ يقول «kodi» لا يُقرأ بشكل Jellyfin ولو حمل أسماءَه */
+  assert.equal(parseHomeEvent({ server: "kodi", NotificationType: "PlaybackStop", ItemType: "Movie", Name: "x" }), null);
+});
+
 test("ما ليس لنا: لا شيء", () => {
   assert.equal(parseHomeEvent(null), null);
   assert.equal(parseHomeEvent({ hello: "world" }), null);
@@ -86,4 +120,8 @@ test("ما ليس لنا: لا شيء", () => {
 test("شكلُ الرمز", () => {
   assert.ok(HOME_SERVER_TOKEN_RE.test(`lh_${"a".repeat(43)}`));
   assert.ok(!HOME_SERVER_TOKEN_RE.test(`ls_${"a".repeat(43)}`));
+  /* رابطُ Kodi سابقتُه غيرُ سابقة الثلاثة — والبابُ يردّ حدثَ Kodi برابطٍ ليس له */
+  assert.ok(KODI_TOKEN_RE.test(`lk_${"a".repeat(43)}`));
+  assert.ok(!KODI_TOKEN_RE.test(`lh_${"a".repeat(43)}`));
+  assert.ok(!HOME_SERVER_TOKEN_RE.test(`lk_${"a".repeat(43)}`));
 });

@@ -106,7 +106,10 @@ export function HomeTopBar({
 }) {
   const { t, tokens } = useApp();
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
-  const btn = (name: "chat" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} />;
+  /* 🩺 المهمّة ٣٢١ — قياسُ R178: ستُّ نقراتٍ في دقيقةٍ وقعت داخل مجموعة الزرّين (`hbt`) بلا ضغطة. الآن كلُّ زرٍّ يُعرف وحدَه —
+     `hin` الرسائل · `hbl` الجرس: نقرةٌ داخل زرٍّ بلا ضغطةٍ زرٌّ ميّت، وداخل المجموعة خارجَهما فجوةٌ بينهما */
+  const probeOf = { chat: "hin", bell: "hbl", settings: "hst" } as const;
+  const btn = (name: "chat" | "bell" | "settings", label: string, onPress: () => void, count: number) => <HeaderIconButton name={name} label={label} onPress={onPress} count={count} color={tokens.fg} probe={probeOf[name]} />;
   /* 🩺 المهمّة ٣١٩ (تقييمُ ٥ نوفمبر ٢أ) — `edge.tap` في أعلى الرئيسيّة يقول إنّ نقرةً لم تضغط زرّاً ولا يقول أين وقعت: الصفُّ
      (`hdr`) والصورةُ (`hav`) والاسمُ (`hnm` — ليس زرّاً) ومجموعةُ الأزرار في الطرف (`hbt`) تُسجَّل أهدافاً فيُكتب ما تحت الإصبع.
      قياسٌ لا يغيّر رسماً: الحاويةُ نفسُها بلا تغليفٍ جديد، و`collapsable` كي لا تُسطَّح فلا تُقاس */

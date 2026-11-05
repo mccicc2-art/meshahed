@@ -1,7 +1,7 @@
 import "server-only";
 import { issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken } from "@/lib/linkTokens";
 import { findByExternalId, searchByName } from "@/lib/tmdb";
-import { HOME_SERVER_TOKEN_RE, type HomeEvent } from "@/core/homeServer";
+import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, type HomeEvent } from "@/core/homeServer";
 
 /**
  * ====== 🆕 سيرفراتُ البيت — الرابطُ والمطابقةُ والتسجيل (هجرة ٢٣٥) ======
@@ -26,7 +26,15 @@ export async function homeServerLinkOf(userId: string) {
   return linkStateOf("home_server_links", userId);
 }
 export async function homeServerOwner(token: string) {
+  /* 🆕 هجرة ٢٣٦ — البابُ واحدٌ والجدولُ من سابقة الرمز: `lk_` رابطُ Kodi، و`lh_` رابطُ السيرفرات الثلاثة */
+  if (KODI_TOKEN_RE.test(token)) return linkOwner("kodi_links", token, KODI_TOKEN_RE);
   return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE);
+}
+export async function kodiLinkOf(userId: string) {
+  return linkStateOf("kodi_links", userId);
+}
+export async function revokeKodiToken(userId: string) {
+  return revokeLinkToken("kodi_links", userId);
 }
 
 export type HomeHit = { kind: "tv" | "movie"; tmdbId: number; season: number | null; episode: number | null };
@@ -43,6 +51,16 @@ export async function resolveHomeEvent(ev: HomeEvent): Promise<HomeHit | null> {
     return hit ? { kind: "movie", tmdbId: hit.id, season: null, episode: null } : null;
   }
 
+  /* 🆕 Kodi — مكتبتُه تعرف المسلسلَ نفسَه: رقمُه في TMDB مع موسم الحلقة ورقمها كما في المكتبة (ترقيمُ TMDB في سكرابر Kodi الافتراضيّ) */
+  if (ev.series?.tmdb && ev.season != null && ev.episode) return { kind: "tv", tmdbId: ev.series.tmdb, season: ev.season, episode: ev.episode };
+  for (const [id, source] of [
+    [ev.series?.imdb, "imdb_id"],
+    [ev.series?.tvdb, "tvdb_id"],
+  ] as const) {
+    if (!id || ev.season == null || !ev.episode) continue;
+    const show = (await findByExternalId(String(id), source))?.tv_results?.[0];
+    if (show) return { kind: "tv", tmdbId: show.id, season: ev.season, episode: ev.episode };
+  }
   for (const [id, source] of [
     [ev.ids.imdb, "imdb_id"],
     [ev.ids.tvdb, "tvdb_id"],

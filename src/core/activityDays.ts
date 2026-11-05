@@ -9,7 +9,7 @@ import type { Dict, Locale } from "./i18n";
 export type ActivityKind = "watch" | "rate" | "review" | "list";
 /** 🆕 D-1505 — من سجّل المشاهدة (`lib/watchSource`) — وغيابُه «بيده» */
 /* 🆕 هجرة ٢٣٥ — سيرفراتُ البيت: ما أجاب عنه العضو من سؤال Plex أو Jellyfin أو Emby */
-export type WatchSource = "stremio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby";
+export type WatchSource = "stremio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi";
 
 export interface ActivityItem {
   id: string;

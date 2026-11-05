@@ -1,7 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { homeServerOwner, recordHomeSignal, resolveHomeEvent } from "@/lib/homeServer";
 import { allow } from "@/core/ratelimit";
-import { HOME_SERVER_TOKEN_RE, parseHomeEvent } from "@/core/homeServer";
+import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, parseHomeEvent } from "@/core/homeServer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,8 @@ const OK = () => NextResponse.json({ ok: true });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
-  if (!HOME_SERVER_TOKEN_RE.test(token)) return OK();
+  /* 🆕 هجرة ٢٣٦ — ورابطُ إضافة Kodi (`lk_`) يصل البابَ نفسَه */
+  if (!HOME_SERVER_TOKEN_RE.test(token) && !KODI_TOKEN_RE.test(token)) return OK();
   /* السيرفرُ يرسل مع كلِّ تشغيلٍ وإيقاف — ستّون في الدقيقة فوق أيِّ مشاهدةٍ بشريّة */
   if (!allow(`home-server:${token.slice(0, 16)}`, 60, 60_000)) return OK();
 
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   }
   const ev = parseHomeEvent(body);
   if (!ev?.finished) return OK();
+  /* حدثُ Kodi لا يُقبل إلّا برابط Kodi، ولا حدثُ سيرفرٍ آخر برابطه — مصدرُ السؤال يصدق صاحبَ الرابط */
+  if ((ev.server === "kodi") !== KODI_TOKEN_RE.test(token)) return OK();
 
   /* المالكُ قبل TMDB (درسُ A-17 في Stremio): رمزٌ مجهولٌ لا يكلّفنا طلباً خارجيّاً */
   const owner = await homeServerOwner(token);

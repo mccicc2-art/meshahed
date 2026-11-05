@@ -1,6 +1,7 @@
-import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { notePress } from "./perfMarks";
+import { touchTarget } from "./touchTargets";
 import { drawerStore } from "./drawer/store";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -15,10 +16,28 @@ import type { NativeRoot } from "./shell";
  * 🆕 D-1424 — كان دالّةً محلّيّةً في `HomeTopBar` وحدَها؛ صار مكوّناً لأنّ ترويساتِ التبويبات الأربعة تحمل الجرسَ
  * نفسَه الآن — وزرٌّ ثانٍ بمقاسٍ آخر عيبٌ (القاعدة ٣).
  */
-export function HeaderIconButton({ name, label, onPress, count, color }: { name: "chat" | "bell" | "settings"; label: string; onPress: () => void; count: number; color: string }) {
+export function HeaderIconButton({
+  name,
+  label,
+  onPress,
+  count,
+  color,
+  probe,
+}: {
+  name: "chat" | "bell" | "settings";
+  label: string;
+  onPress: () => void;
+  count: number;
+  color: string;
+  /** 🩺 المهمّة ٣٢١ — اسمُ هدف اللمس (`touchTargets.ts`) حين يُراد أن يُعرف هذا الزرُّ بعينه في `edge.tap`. رأسُ الرئيسيّة وحدَه يمرّره:
+      الزرُّ نفسُه في ترويسات التبويبات الأخرى، وتبويبٌ مجمَّدٌ يُقاس في موضعه فيُقرأ «تحت الإصبع» كذباً */
+  probe?: string;
+}) {
   const { tokens } = useApp();
+  const ref = useRef<ViewInstance>(null);
+  useEffect(() => (probe ? touchTarget(probe, (cb) => ref.current?.measureInWindow(cb), () => ref.current != null) : undefined), [probe]);
   return (
-    <Pressable onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable ref={ref} onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       <Icon name={name} size={controlSize.headerIcon} color={color} />
       {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
     </Pressable>

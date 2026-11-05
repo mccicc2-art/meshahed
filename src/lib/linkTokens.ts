@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { isPlus } from "@/core/plan";
 import type { SignalSource } from "@/core/contracts/stremio";
@@ -14,7 +14,8 @@ import type { SignalSource } from "@/core/contracts/stremio";
  * ⚠️ **الفشلُ صمت**: قبل الهجرة يغيب الجدول — فلا رابطَ يُصدر، والرابطُ لا يجد صاحباً.
  */
 
-export type LinkTable = "stremio_links" | "home_server_links";
+/* 🆕 هجرة ٢٣٦ — `kodi_links`: رابطُ إضافة Kodi مستقلٌّ عن رابط Plex/Jellyfin/Emby (إصدارُه لا يُسقط ذاك) */
+export type LinkTable = "stremio_links" | "home_server_links" | "kodi_links";
 
 const IDLE_DAYS = 90;
 const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -102,5 +103,71 @@ export async function recordSignal(
     return typeof data === "string" ? data : null;
   } catch {
     return null;
+  }
+}
+
+/* ============================================================
+ * 🆕 ربطُ Kodi برمزٍ قصير (هجرة ٢٣٦ — أحمد ٥ نوفمبر «٢ أ»)
+ * ============================================================
+ * 🔑 **رابطٌ طويلٌ لا يُكتب بريموت التلفزيون** — فالتطبيقُ يعرض ستّةَ أرقام، والعضوُ يكتبها في إعدادات الإضافة، والإضافةُ تبدّلها
+ * برابطها (`/api/v1/home-server/kodi/pair`). الرمزُ: بصمتُه لا هو، عشرُ دقائق، مرّةً واحدة، ورمزٌ واحدٌ للعضو (الجديدُ يُسقط القديم).
+ * ⚖️ **والتخمينُ محدود**: مليونُ رمزٍ وعشرُ دقائق، وبابُ التبديل محدودٌ بعنوان المرسِل في القاعدة (A-14) — عشرةٌ في الدقيقة.
+ */
+const PAIR_TTL_MS = 10 * 60_000;
+
+export async function issueKodiPairCode(userId: string): Promise<{ code: string; expires_at: string } | null> {
+  if (!hasServiceKey()) return null;
+  const db = await createServiceClient();
+  await db.from("kodi_pair_codes").delete().eq("user_id", userId);
+  /* رمزٌ يصادف رمزاً حيّاً لعضوٍ آخر (المفتاحُ بصمتُه) يُعاد اختيارُه — نادرٌ، وثلاثُ محاولاتٍ تكفي */
+  for (let i = 0; i < 3; i++) {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const expires_at = new Date(Date.now() + PAIR_TTL_MS).toISOString();
+    const { error } = await db.from("kodi_pair_codes").insert({ code_hash: hashOf(`kodi:${code}`), user_id: userId, expires_at });
+    if (!error) return { code, expires_at };
+  }
+  return null;
+}
+
+/** الرمزُ ⇐ رابطُ Kodi جديدٌ لصاحبه (ويُسقط رابطَ Kodi قبله)، باسم الجهاز — `null` لرمزٍ مجهولٍ أو منتهٍ */
+export async function redeemKodiPairCode(code: string, device: string | null): Promise<{ token: string; userId: string } | null> {
+  if (!/^\d{6}$/.test(code) || !hasServiceKey()) return null;
+  try {
+    const db = await createServiceClient();
+    const { data } = await db.from("kodi_pair_codes").delete().eq("code_hash", hashOf(`kodi:${code}`)).select("user_id, expires_at").maybeSingle();
+    const row = data as { user_id: string; expires_at: string } | null;
+    if (!row || Date.parse(row.expires_at) < Date.now()) return null;
+    const token = await issueLinkToken("kodi_links", "lk_", row.user_id);
+    if (!token) return null;
+    const name = (device ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 80) || null;
+    if (name) await db.from("kodi_links").update({ device: name }).eq("user_id", row.user_id);
+    return { token, userId: row.user_id };
+  } catch {
+    return null;
+  }
+}
+
+/** اسمُ جهاز Kodi المربوط — لسطر «مربوط من …» */
+export async function kodiDeviceOf(userId: string): Promise<string | null> {
+  if (!hasServiceKey()) return null;
+  try {
+    const db = await createServiceClient();
+    const { data } = await db.from("kodi_links").select("device").eq("user_id", userId).maybeSingle();
+    return (data as { device: string | null } | null)?.device ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** هل للعضو رمزُ ربطٍ حيٌّ الآن؟ — التطبيقُ يسأل وهو ينتظر Kodi، فيعرف أن الرمزَ استُعمل حين يختفي */
+export async function kodiPairPending(userId: string): Promise<boolean> {
+  if (!hasServiceKey()) return false;
+  try {
+    const db = await createServiceClient();
+    const { data } = await db.from("kodi_pair_codes").select("expires_at").eq("user_id", userId).maybeSingle();
+    const r = data as { expires_at: string } | null;
+    return !!r && Date.parse(r.expires_at) > Date.now();
+  } catch {
+    return false;
   }
 }

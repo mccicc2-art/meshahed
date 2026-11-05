@@ -8,16 +8,22 @@
  *   `PlaybackStop` مع `PlayedToCompletion`. ويُقبل أيضاً بأسماء متغيّراتها نفسِها لمن كتب قالبَه بيده.
  * - **Emby** (Premiere): JSON — أو `multipart` حقلُه `data` في الإصدارات الأقدم — وحدثُه `playback.stop` مع
  *   `PlaybackInfo.PlayedToCompletion`، أو `item.markplayed` (علّمها في Emby بيده).
+ * - 🆕 **Kodi** (هجرة ٢٣٦): إضافتُنا `service.loopz` (`lib/kodiAddon.ts`) ترسل جسمَها هي `{server:"kodi", …}` برابطٍ خاصّ (`lk_`).
  *
  * ⚖️ **«انتهى» وحده يُسجَّل** (`finished`) — والتسجيلُ سؤالٌ لا تعليم («٢ أ»): العضوُ يجيب «شفتها؟» في الرئيسيّة.
  * ⚖️ **وحدةٌ نقيّة** بلا شبكة: المطابقةُ مع TMDB في `lib/homeServer.ts`.
  */
 
-export type HomeServer = "plex" | "jellyfin" | "emby";
-export const HOME_SERVERS: readonly HomeServer[] = ["plex", "jellyfin", "emby"];
+export type HomeServer = "plex" | "jellyfin" | "emby" | "kodi";
+export const HOME_SERVERS: readonly HomeServer[] = ["plex", "jellyfin", "emby", "kodi"];
 
 /** رمزُ رابط سيرفرات البيت: `lh_` + ٤٣ محرفاً (٣٢ بايتاً base64url) — شكلُ رمز Stremio بسابقةٍ أخرى */
 export const HOME_SERVER_TOKEN_RE = /^lh_[A-Za-z0-9_-]{43}$/;
+/** 🆕 هجرة ٢٣٦ — رمزُ رابط إضافة Kodi: `lk_` + ٤٣ — جدولُه `kodi_links`، والبابُ نفسُه يقبله */
+export const KODI_TOKEN_RE = /^lk_[A-Za-z0-9_-]{43}$/;
+
+/** 🆕 مصدرُ إضافة Kodi — يُكتب في File manager ← Add source. تحت `/api/v1/` لأن جدارَ Vercel يتحدّى Kodi في غيرها (D-945) */
+export const KODI_SOURCE_URL = "https://loopztv.com/api/v1/kodi/";
 
 export type HomeIds = { tmdb?: number; imdb?: string; tvdb?: number };
 
@@ -30,6 +36,8 @@ export type HomeEvent = {
   year?: number;
   /** معرّفاتُ العنصر نفسِه (الفيلم أو الحلقة) */
   ids: HomeIds;
+  /** 🆕 Kodi — **معرّفاتُ المسلسل نفسِه** (مكتبتُه تعرفها): أدقُّ طريقٍ للحلقة — رقمُ المسلسل مع موسمها ورقمها */
+  series?: HomeIds;
   season?: number;
   episode?: number;
 };
@@ -139,9 +147,34 @@ function fromEmby(p: Obj): HomeEvent | null {
   };
 }
 
+/**
+ * 🆕 **Kodi** — الجسمُ جسمُ إضافتنا (`service.loopz`، مصدرُها `lib/kodiAddon.ts`)، فشكلُه معروف:
+ * `{server:"kodi", event:"finished", type:"episode"|"movie", title, year, season, episode, ids:{tmdb,imdb,tvdb}, show:{tmdb,imdb,tvdb}}`
+ * والإضافةُ ترسل «انتهى» وحدَه (حين تبلغ النسبةُ حدَّها) — فلا حدثَ آخر يُقبل.
+ */
+function fromKodi(p: Obj): HomeEvent | null {
+  const type = str(p.type).toLowerCase();
+  if (type !== "episode" && type !== "movie") return null;
+  const ids = isObj(p.ids) ? p.ids : {};
+  const show = isObj(p.show) ? p.show : {};
+  const idsOf = (o: Obj): HomeIds => ({ tmdb: extId(o.tmdb), imdb: imdbOf(o.imdb), tvdb: extId(o.tvdb) });
+  return {
+    server: "kodi",
+    kind: type,
+    finished: str(p.event) === "finished",
+    title: str(p.title),
+    year: int(p.year),
+    ids: idsOf(ids),
+    series: type === "episode" ? idsOf(show) : undefined,
+    season: type === "episode" ? int(p.season) : undefined,
+    episode: type === "episode" ? int(p.episode) : undefined,
+  };
+}
+
 /** الجسمُ (بعد فكِّ JSON) ⇐ حدثٌ نفهمه، أو `null` لما ليس لنا (حدثُ تشغيلٍ لموسيقى، اختبارُ اتّصال، شكلٌ مجهول) */
 export function parseHomeEvent(body: unknown): HomeEvent | null {
   if (!isObj(body)) return null;
+  if (str(body.server).toLowerCase() === "kodi") return fromKodi(body);
   if (isObj(body.Metadata) && typeof body.event === "string") return fromPlex(body);
   if (isObj(body.Item) && typeof body.Event === "string") return fromEmby(body);
   if (str(body.server).toLowerCase() === "jellyfin" || pick(body, "NotificationType") != null) return fromJellyfin(body);

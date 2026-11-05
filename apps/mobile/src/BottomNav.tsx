@@ -46,6 +46,9 @@ const TABS: { key: NavKey; icon: IconName; on: IconName }[] = [
   { key: "search", icon: "search", on: "search-filled" },
 ];
 
+/** المهمّة ٣٢١ — الحشوةُ العلويّة للشريط، داخلَ الخانات لا حولها */
+const DOCK_PAD_TOP = 10;
+
 /** ارتفاعُ الشريط بأرضيّته — يقرؤه ذيلُ التمرير والإشعارُ فوقه */
 export function navHeight(insetBottom: number) {
   return 66 + Math.max(6, insetBottom * 0.5);
@@ -71,6 +74,8 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
       return () => dockArea(null);
     }, []),
   );
+  /* المهمّة ٣٢١ — الحشوتان كما كانتا على الحاوية، تُضافان الآن إلى كلِّ خانة */
+  const padBottom = Math.max(6, insets.bottom * 0.5);
   return (
     <View
       ref={navRef}
@@ -83,8 +88,11 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
         borderTopLeftRadius: radius.sheet,
         borderTopRightRadius: radius.sheet,
         backgroundColor: tokens.bg,
-        paddingTop: 10,
-        paddingBottom: Math.max(6, insets.bottom * 0.5),
+        /* 🆕 المهمّة ٣٢١ (تقييمُ ٥ نوفمبر ٢ب) — **الحشوةُ صارت داخل الأزرار لا حولها**: قياسُ R178 — ١٣ نقرةً ميتةً من ١٣ وقعت
+           في ذيل الشريط (النقطة ٦٥–٧٤ من ارتفاع ٨٢ على الآيفون، ٧٤ من ٧٧ على أندرويد) تحت أسماء التبويبات، حيث كانت الحشوةُ
+           السفلى (`insets.bottom × 0.5` ≈ ١٧ على الآيفون) ملكَ الشريط لا ملكَ زرّ. والعلويّةُ (١٠) كذلك. الآن تحملها الخاناتُ
+           نفسُها فارتفاعُ الشريط كلُّه زرّ — والمقاساتُ والمواضعُ كما هي حرفاً (`navHeight` لم يتغيّر).
+           ⚠️ آخرُ النقاط على الآيفون فوق شريط العودة للشاشة الرئيسيّة: النظامُ قد يأخذ بعضَ ما يقع هناك مهما فعلنا */
       }}
     >
       {TABS.map((tb) => {
@@ -111,7 +119,7 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
             accessibilityState={{ selected: on }}
             accessibilityLabel={label[tb.key]}
             /* خاناتٌ متساويةُ العرض بشبكةٍ لا بحشوٍ لكلِّ خانة (حجّةُ الويب: «المجتمع» ضِعفا «بحث») */
-            style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 8 }}
+            style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 + DOCK_PAD_TOP, paddingBottom: 8 + padBottom }}
           >
             <Icon name={on ? tb.on : tb.icon} size={24} color={color} />
             <Text size={10} weight="600" numberOfLines={1} color={color}>{label[tb.key]}</Text>

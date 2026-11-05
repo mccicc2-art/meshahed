@@ -247,6 +247,6 @@ export function ActivityList({
 /** 🆕 D-1505 — اسمُ المصدر في شارة الصفّ */
 function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string {
   /* 🆕 هجرة ٢٣٥ — سيرفراتُ البيت أسماءُ منتجاتٍ لا تُترجم */
-  if (s === "plex" || s === "jellyfin" || s === "emby") return SIGNAL_SOURCE_NAME[s];
+  if (s === "plex" || s === "jellyfin" || s === "emby" || s === "kodi") return SIGNAL_SOURCE_NAME[s];
   return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }
