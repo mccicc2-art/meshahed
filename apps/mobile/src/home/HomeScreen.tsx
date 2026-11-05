@@ -803,7 +803,7 @@ export function HomeScreen() {
               <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} hidden={tourBusy} />
             </View>
           ) : null}
-          {/* D-1615 — بين بطاقة الأرقام وأوّل قسمٍ أقلُّ من بين الأقسام: هي رأسُ الصفحة لا قسمٌ — والفراغُ فوق المحتوى هو ما طُلب تقليلُه */}
+          {/* D-1615 — بين بطاقة الأرقام وأوّل قسم ١٦ — 🆕 T320: وصار هو نفسَه ما بين الأقسام (`Gap` ١٦) */}
           <Gap size={16} />
           {sections?.map((node, i) => (
             <React.Fragment key={i}>

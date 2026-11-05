@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BackHandler, I18nManager, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,8 @@ import { useAppearanceActs } from "../settings/appearanceActs";
 import { HOME_KEY, fetchHome } from "../home/useHome";
 import { openProfile } from "../member/open";
 import { FollowsSheet } from "../home/FollowsSheet";
+import { FeedbackSheet } from "../settings/FeedbackSheet";
+import { ToastHost, type ToastHostRef } from "../HoldHost";
 import type { NativeRoot } from "../shell";
 import { num } from "@/core/i18n";
 import { drawerP, drawerStore, drawerWidth } from "./store";
@@ -27,7 +29,7 @@ import { drawerP, drawerStore, drawerWidth } from "./store";
  *
  * بابُ ما لا مكانَ له في الشريط السفليّ، وبابُ الاشتراك. **كلُّ وجهةٍ فيها شاشةٌ أصليّةٌ قائمة** — القائمةُ لا تبني شيئاً،
  * تختصر الطريق: الملفُّ · سجلُّ المشاهدة (`/activity?scope=watch`، D-1504) · التقويمُ و«تقريرك» (D-1573) · ربطُ المنصّات (`settings/stremio`) ·
- * التخصيص (`settings/home`) · الدعوات · الإعدادات · المساعدة · Plus.
+ * التخصيص (`settings/home`) · الدعوات · الإعدادات · المساعدة · «أرسل مشكلة أو اقتراح» · Plus.
  *
  * - **من صورة الحساب** (الرئيسيّة وطرفُ ترويسات التبويبات) كقائمة X التي أرسلها أحمد — والملفُّ أوّلُ ما فيها. وخطوةُ
  *   «ملفك» في الجولة تُبقي الصورةَ بابَ الملفّ (جملتُها «اضغط صورتك لتفتح ملفك») — `HomeScreen`.
@@ -58,10 +60,16 @@ export function DrawerHost() {
   /* 🆕 D-1508 — ورقةُ المتابعين تعيش هنا لا في اللوح: اللوحُ يُغلق أوّلاً ثمّ تظهر فوق الشاشة التي كان فوقها */
   const router = useRouter();
   const [follows, setFollows] = useState<{ dir: "followers" | "following"; count: number; root: NativeRoot } | null>(null);
-  if (!me || !(ready || from || follows)) return null;
+  /* 🆕 T320 — **«أرسل مشكلة أو اقتراح» من القائمة** (خالد ٥ نوفمبر بلقطة: «ضيفها تحت هيلب سنتر»): الورقةُ نفسُها التي في
+     الإعدادات (`FeedbackSheet`) لا نسخةٌ ثانية، وتعيش هنا كورقة المتابعين — اللوحُ يُغلق أوّلاً ثمّ تظهر. وإشعارُ «وصلت»
+     بمضيف الإشعار الواحد (`ToastHost`) هنا: الورقةُ تُغلق عند النجاح، فلا شاشةَ تحتها تقوله */
+  const [feedback, setFeedback] = useState(false);
+  const toast = useRef<ToastHostRef>(null);
+  const insets = useSafeAreaInsets();
+  if (!me) return null;
   return (
     <>
-      {ready || from ? <SideDrawer from={from} onFollows={setFollows} /> : null}
+      {ready || from ? <SideDrawer from={from} onFollows={setFollows} onFeedback={() => setFeedback(true)} /> : null}
       {follows ? (
         <FollowsSheet
           dir={follows.dir}
@@ -70,6 +78,8 @@ export function DrawerHost() {
           onOpen={(u) => openProfile(router, u, follows.root)}
         />
       ) : null}
+      {feedback ? <FeedbackSheet onClose={() => setFeedback(false)} onSent={(text) => toast.current?.say(text, undefined, undefined, "success")} /> : null}
+      <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
     </>
   );
 }
@@ -77,9 +87,11 @@ export function DrawerHost() {
 function SideDrawer({
   from,
   onFollows,
+  onFeedback,
 }: {
   from: ReturnType<typeof drawerStore.get>;
   onFollows: (f: { dir: "followers" | "following"; count: number; root: NativeRoot }) => void;
+  onFeedback: () => void;
 }) {
   const { t, tokens, locale, me, themeId } = useApp();
   const router = useRouter();
@@ -182,8 +194,9 @@ function SideDrawer({
          الصفُّ الرئيس ٥٤ بخطٍّ أخفّ (٦٠٠ لا ٧٠٠)، والثانويّ ٤٨ للمشترك و٤٤ لغيره — بطاقةُ الدعوة بمزاياها الخمس تأخذ مكانَ الفرق */
       style={({ pressed }) => ({ height: opts?.small ? (plus ? 48 : 44) : 54, flexDirection: "row", alignItems: "center", gap: 18, opacity: pressed ? 0.6 : 1 })}
     >
-      <Icon name={icon} size={opts?.small ? 22 : 24} color={tokens.fg} />
-      <Text size={opts?.small ? 16 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 16 : 18)]}>{label}</Text>
+      {/* 🆕 T320 — الصفوفُ الصغيرة درجةً أصغر (خالد ٥ نوفمبر): الخطُّ ١٦ ⇐ ١٥ والأيقونةُ ٢٢ ⇐ ٢٠ — صارت ثلاثةً تحت الفاصل */}
+      <Icon name={icon} size={opts?.small ? 20 : 24} color={tokens.fg} />
+      <Text size={opts?.small ? 15 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 15 : 18)]}>{label}</Text>
       {opts?.tag ? (
         <View style={{ borderWidth: 1.5, borderColor: tokens.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
           <Text size={10} weight="700" color={tokens.accent}>PLUS</Text>
@@ -332,14 +345,18 @@ function SideDrawer({
             {divider}
             {row("settings", t.drawerSettings, () => go("/settings"), { small: true })}
             {row("help", t.drawerHelp, () => go("/settings/help"), { small: true })}
+            {/* 🆕 T320 — آخرَ الثلاثة (خالد: «خليها الاقتراح اخر شيء») — نصُّ صفِّ الإعدادات وأيقونتُه نفسُهما */}
+            {row("send", t.fbRow, () => close(onFeedback), { small: true })}
             {divider}
             <View style={{ height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Pressable onPress={toggleLang} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={t.drawerLangAria(langNow)} hitSlop={4} style={({ pressed }) => ({ height: 44, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed || busy ? 0.6 : 1 })}>
-                <Icon name="globe" size={24} color={tokens.fg} />
-                <Text size={16} weight="500" style={lift(16)}>{langNow}</Text>
+                {/* 🆕 T320 — الكرةُ ٢٤ ⇐ ٢٢ والاسمُ ١٦ ⇐ ١٥ (خالد ٥ نوفمبر) — بخطِّ الصفوف فوقه */}
+                <Icon name="globe" size={22} color={tokens.fg} />
+                <Text size={15} weight="500" style={lift(15)}>{langNow}</Text>
               </Pressable>
-              <Pressable onPress={toggleTheme} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={4} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
-                <Icon name={isLight ? "sun" : "moon"} size={20} color={tokens.fg} />
+              <Pressable onPress={toggleTheme} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
+                {/* 🆕 T320 — الدائرةُ ٤٤ ⇐ ٤٠ والرمزُ ٢٠ ⇐ ١٨ (خالد: «اصغر درجة») — ومساحةُ اللمس كما كانت (٥٢) بـ`hitSlop` ٦ */}
+                <Icon name={isLight ? "sun" : "moon"} size={18} color={tokens.fg} />
               </Pressable>
             </View>
             </ScrollView>
