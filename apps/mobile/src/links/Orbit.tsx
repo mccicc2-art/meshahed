@@ -24,13 +24,13 @@ const TILE = 46;
 const HUB = 64;
 
 export type Slot =
-  | { type: "device"; kind: DeviceKind; paused: boolean }
+  | { type: "device"; kind: DeviceKind; paused: boolean; waiting: boolean }
   | { type: "empty" }
   | { type: "locked" };
 
 /** الخاناتُ بالترتيب — المربوطُ بترتيب «من أجهزتك» الثابت، ثمّ ما بقي */
 export function slotsOf(d: DeviceLinksState): Slot[] {
-  const linked: Slot[] = d.devices.filter((x) => x.linked && !x.stopped).map((x) => ({ type: "device", kind: x.kind, paused: false }));
+  const linked: Slot[] = d.devices.filter((x) => x.linked && !x.stopped).map((x) => ({ type: "device", kind: x.kind, paused: false, waiting: !x.used_at }));
   const limit = d.limit ?? Math.min(8, Math.max(5, d.used + 1));
   const total = d.limit == null ? limit : 5;
   const out: Slot[] = [...linked];
@@ -101,13 +101,15 @@ export function Orbit({
               onLongPress={() => onHold(s.kind)}
               delayLongPress={350}
               accessibilityRole="button"
-              accessibilityLabel={`${name}، ${t.stremioLinked}`}
+              accessibilityLabel={`${name}، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
               accessibilityActions={[{ name: "menu", label: t.linksUnlink }]}
               onAccessibilityAction={(e) => e.nativeEvent.actionName === "menu" && onHold(s.kind)}
               style={{ position: "absolute", left, top, width: TILE, alignItems: "center" }}
             >
-              <DeviceMark kind={s.kind} size={TILE} state="on" />
+              {/* 🆕 الصحُّ الأخضرُ لما اتّصل فعلاً (وصلت منه رسالة)، والساعةُ الرمليّةُ لرابطٍ صدر ولم يتّصل — أحمد ٥ نوفمبر */}
+              <DeviceMark kind={s.kind} size={TILE} state={s.waiting ? "waiting" : "on"} />
               <DeviceLabel name={name} />
+              {s.waiting ? <Text size={10} muted numberOfLines={1}>{t.linksWaiting}</Text> : null}
             </Pressable>
           );
         }

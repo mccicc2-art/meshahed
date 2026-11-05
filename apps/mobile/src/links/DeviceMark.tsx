@@ -30,19 +30,19 @@ export function DeviceMark({
 }: {
   kind: DeviceKind;
   size?: number;
-  /** `on` مربوطٌ شغّال (إطارٌ بلون التمييز وعلامةُ ✓) · `paused` موقوفٌ بعد النزول · `idle` في القائمة */
-  state?: "idle" | "on" | "paused";
+  /** `on` مربوطٌ ووصلت منه رسالة (✓ أخضر) · `waiting` صدر رابطُه ولم يتّصل بعد (ساعةٌ رمليّة) · `paused` موقوفٌ بعد النزول · `idle` في القائمة */
+  state?: "idle" | "on" | "waiting" | "paused";
 }) {
   const { tokens } = useApp();
   const logo = LOGO[kind];
-  const ring = state === "on" ? tokens.accent : tokens.border;
+  const ring = state === "on" || state === "waiting" ? tokens.accent : tokens.border;
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: radius.md,
-        borderWidth: state === "on" ? 1.5 : 1,
+        borderWidth: state === "on" || state === "waiting" ? 1.5 : 1,
         borderColor: ring,
         backgroundColor: tokens.surface,
         alignItems: "center",
@@ -73,7 +73,7 @@ export function DeviceMark({
             justifyContent: "center",
           }}
         >
-          <Icon name={state === "on" ? "check" : "pause"} size={10} color={state === "on" ? "#fff" : tokens.muted} />
+          <Icon name={state === "on" ? "check" : state === "waiting" ? "hourglass" : "pause"} size={10} color={state === "on" ? "#fff" : tokens.muted} />
         </View>
       ) : null}
     </View>

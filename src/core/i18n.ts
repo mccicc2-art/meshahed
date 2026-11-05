@@ -3169,6 +3169,17 @@ const ar = {
     n > 0 ? `فك ربط ${name}؟ الـ${hind(n)} عملاً تبقى في مكتبتك، ويتوقف تسجيل الجديد، وتنفتح خانة` : `فك ربط ${name}؟ يتوقف تسجيل الجديد، وتنفتح خانة`,
   linksUnlinked: (name: string) => `انفك ربط ${name}`,
   linksStopped: "موقوف",
+  /* 🆕 الربطُ يُؤكَّد بأوّل رسالةٍ من الجهاز لا بإصدار الرابط (أحمد ٥ نوفمبر) */
+  linksWaiting: "ينتظر",
+  deviceWaitingPill: "بانتظار الاتصال",
+  deviceWaitHint: (kind: string) =>
+    kind === "stremio"
+      ? "ثبّت الإضافة في Stremio، وأول ما يفتحها نتأكد من الربط."
+      : kind === "jellyfin"
+        ? "شغّل أي شيء على Jellyfin وأوقفه، ولو بعد ثواني، عشان نتأكد من الربط."
+        : kind === "kodi"
+          ? "اكتب الرمز في إعدادات الإضافة، وأول ما يوصل نتأكد من الربط."
+          : `شغّل أي شيء على ${kind === "emby" ? "Emby" : "Plex"}، ولو ثواني، عشان نتأكد من الربط.`,
   linksPendingLegacy: "رابط سيرفر قديم",
   linksPendingLegacySub: "ينتظر أول حلقة من سيرفرك",
   autoMarkTitle: "سجّل بلا سؤال",
@@ -5564,6 +5575,16 @@ const en: Dict = {
     n > 0 ? `Unlink ${name}? The ${n} titles it logged stay in your library, new watches stop, and a slot opens.` : `Unlink ${name}? New watches stop, and a slot opens.`,
   linksUnlinked: (name: string) => `${name} unlinked`,
   linksStopped: "Paused",
+  linksWaiting: "Waiting",
+  deviceWaitingPill: "Waiting to connect",
+  deviceWaitHint: (kind: string) =>
+    kind === "stremio"
+      ? "Install the add-on in Stremio; as soon as Stremio opens it, we know it's linked."
+      : kind === "jellyfin"
+        ? "Play anything on Jellyfin and stop it, even after a few seconds, so we can confirm the link."
+        : kind === "kodi"
+          ? "Type the code in the add-on's settings; as soon as it arrives, we know it's linked."
+          : `Play anything on ${kind === "emby" ? "Emby" : "Plex"}, even for a few seconds, so we can confirm the link.`,
   linksPendingLegacy: "Old server link",
   linksPendingLegacySub: "Waiting for the first episode from your server",
   autoMarkTitle: "Log without asking",

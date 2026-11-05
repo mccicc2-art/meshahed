@@ -44,15 +44,18 @@ function DeviceHead({ kind, d, intro, needs }: { kind: DeviceKind; d: DeviceLink
   const { t, tokens } = useApp();
   const info = d.devices.find((x) => x.kind === kind);
   const on = !!info?.linked && !info.stopped;
-  const status = info?.stopped ? t.linksStopped : on ? t.stremioLinked : t.stremioNotLinked;
+  /* 🆕 «مربوط» لما اتّصل فعلاً — رابطٌ صدر ولم تصل منه رسالةٌ بعد «بانتظار الاتصال» وسطرٌ يقول كيف يُتأكّد منه */
+  const waiting = on && !info?.used_at;
+  const status = info?.stopped ? t.linksStopped : waiting ? t.deviceWaitingPill : on ? t.stremioLinked : t.stremioNotLinked;
   return (
     <View style={{ alignItems: "center", gap: 10, paddingTop: 8 }}>
-      <DeviceMark kind={kind} size={72} state={on ? "on" : info?.stopped ? "paused" : "idle"} />
+      <DeviceMark kind={kind} size={72} state={waiting ? "waiting" : on ? "on" : info?.stopped ? "paused" : "idle"} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Text size={24} weight="800" style={{ writingDirection: "ltr" }}>{deviceName(kind)}</Text>
         <StatusPill label={t.linksFreeTag} color={tokens.muted} />
       </View>
-      <StatusPill label={status} color={on ? tokens.success : tokens.muted} />
+      <StatusPill label={status} color={on && !waiting ? tokens.success : waiting ? tokens.accent : tokens.muted} />
+      {waiting ? <Text size={13} muted style={{ textAlign: "center", lineHeight: 20 }}>{t.deviceWaitHint(kind)}</Text> : null}
       {/* «آخر ما وصل قبل ساعتين · The Bear S3 E4» — والاسمُ يغيب إن لم يُعرف بعد */}
       {on && info?.used_at ? (
         <Text size={13} muted numberOfLines={2} style={{ textAlign: "center" }}>

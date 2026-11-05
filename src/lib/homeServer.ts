@@ -28,10 +28,10 @@ export async function homeServerLinkOf(userId: string) {
   return linkStateOf("home_server_links", userId);
 }
 /** صاحبُ الرابط — ونوعُ السيرفر المرسِل (`server`) يُطابق رابطَ نوعه، ويُربط به الرابطُ القديمُ أوّلَ مرّة (هجرة ٢٣٧) */
-export async function homeServerOwner(token: string, server: HomeServer) {
+export async function homeServerOwner(token: string, server?: HomeServer) {
   /* 🆕 هجرة ٢٣٦ — البابُ واحدٌ والجدولُ من سابقة الرمز: `lk_` رابطُ Kodi، و`lh_` رابطُ السيرفرات الثلاثة */
   if (KODI_TOKEN_RE.test(token)) return linkOwner("kodi_links", token, KODI_TOKEN_RE);
-  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE, server === "kodi" ? undefined : server);
+  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE, server === "kodi" || !server ? undefined : server);
 }
 export async function kodiLinkOf(userId: string) {
   return linkStateOf("kodi_links", userId);

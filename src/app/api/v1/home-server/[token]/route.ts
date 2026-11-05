@@ -38,14 +38,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     return OK();
   }
   const ev = parseHomeEvent(body);
-  if (!ev?.finished) return OK();
   /* حدثُ Kodi لا يُقبل إلّا برابط Kodi، ولا حدثُ سيرفرٍ آخر برابطه — مصدرُ السؤال يصدق صاحبَ الرابط */
-  if ((ev.server === "kodi") !== KODI_TOKEN_RE.test(token)) return OK();
+  if (ev && (ev.server === "kodi") !== KODI_TOKEN_RE.test(token)) return OK();
 
   /* المالكُ قبل TMDB (درسُ A-17 في Stremio): رمزٌ مجهولٌ لا يكلّفنا طلباً خارجيّاً */
   /* 🆕 هجرة ٢٣٧ — «داخل خانات العضو» بدل «بلس»، ونوعُ المرسِل يطابق رابطَ نوعه (ويُربط به الرابطُ القديمُ أوّلَ مرّة) */
-  const owner = await homeServerOwner(token, ev.server);
-  if (!owner?.active) return OK();
+  /* 🆕 **أيُّ رسالةٍ صحيحةٍ برابطٍ حيٍّ دليلُ الربط** (أحمد ٥ نوفمبر «نفذ»): تشغيلٌ، إيقافٌ مؤقّت، رسالةُ تجربة — كانت تُرمى قبل
+     المالك، والآن تُلمس بها «آخرُ استعمال» (`linkOwner`، مرّةً في الساعة) فتقول صفحةُ الربط «مربوط» قبل أوّل حلقةٍ تكتمل.
+     والسؤالُ «شفتها؟» يبقى لما اكتمل وحدَه. رسالةٌ لا نعرف شكلَها (تجربة) تُلمس بلا نوع: الرابطُ القديمُ بلا نوعٍ لا يُربط بها. */
+  const owner = await homeServerOwner(token, ev?.server);
+  if (!ev?.finished || !owner?.active) return OK();
   after(async () => {
     try {
       const hit = await resolveHomeEvent(ev);

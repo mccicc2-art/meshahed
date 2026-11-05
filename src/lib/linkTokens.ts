@@ -385,7 +385,8 @@ export async function redeemKodiPairCode(code: string, device: string | null): P
     if (!out.ok) return null;
     const token = out.token;
     const name = (device ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 80) || null;
-    if (name) await db.from("kodi_links").update({ device: name }).eq("user_id", row.user_id);
+    /* 🆕 تبديلُ الرمز دليلُ الربط: الإضافةُ وصلت فعلاً — «آخرُ استعمال» الآن، فصفحةُ Kodi تقول «مربوط» في حينها */
+    await db.from("kodi_links").update({ ...(name ? { device: name } : {}), last_used_at: new Date().toISOString() }).eq("user_id", row.user_id);
     return { token, userId: row.user_id };
   } catch {
     return null;
