@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, View } from "react-native";
+import { I18nManager, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from "react-native-svg";
 import { useApp } from "../state";
@@ -22,6 +22,24 @@ export const ORBIT_H = 252;
 const R = 92;
 const TILE = 46;
 const HUB = 64;
+
+/**
+ * 🆕 **المدارُ يُرسم بإحداثيّاتٍ فيزيائيّة** — الحلقةُ والخطوطُ في SVG لا تنقلب مع العربيّة، أمّا `left` فيقلبه React Native في
+ * الاتّجاه من اليمين (`doLeftAndRightSwapInRTL`): فكانت شارةُ الخانة الثانية تُرسم يساراً وخطُّها يميناً. فالخاناتُ تُوضع بـ`right`
+ * حين ينقلب — وهو يعود يساراً فيزيائيّاً — فتطابق الخطوطَ، ويطابق مكانُها ما يقيسه السحبُ (`absoluteX` فيزيائيٌّ دائماً).
+ */
+const SWAP = I18nManager.isRTL && I18nManager.doLeftAndRightSwapInRTL;
+export const physLeft = (x: number) => (SWAP ? { right: x } : { left: x });
+
+/** مراكزُ الخانات داخل المدار (فيزيائيّة) — يقرؤها الرسمُ وإفلاتُ السحب معاً، فلا يختلفان */
+export function slotPoints(n: number, width: number): { x: number; y: number }[] {
+  const cx = width / 2;
+  const cy = R + TILE / 2 + 4;
+  return Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+  });
+}
 
 export type Slot =
   | { type: "device"; kind: DeviceKind; paused: boolean; waiting: boolean }
@@ -49,24 +67,24 @@ export function Orbit({
   onSlot,
   onHold,
   hot,
+  hotSlot,
 }: {
   d: DeviceLinksState;
   width: number;
-  /** ضغطُ خانة: جهازٌ ⇐ صفحتُه · فارغةٌ ⇐ أوّلُ ما لم يُربط · مقفلةٌ ⇐ «اربط أجهزتك» */
+  /** ضغطُ خانة: جهازٌ ⇐ صفحتُه · فارغةٌ ⇐ ورقةُ «أضف جهازاً» · مقفلةٌ ⇐ «اربط أجهزتك» */
   onSlot: (slot: Slot) => void;
   /** الضغطُ المطوَّل على جهازٍ مربوط — «افتح صفحته · فك الربط» */
   onHold: (kind: DeviceKind) => void;
   /** جهازٌ يُسحب فوق المدار الآن — الحلقةُ تتوهّج */
   hot?: boolean;
+  /** 🆕 أقربُ خانةٍ فارغةٍ إلى الإصبع أثناء السحب — تضيء بـ«أفلت هنا» (أحمد ٦ نوفمبر) */
+  hotSlot?: number | null;
 }) {
   const { t, tokens } = useApp();
   const slots = slotsOf(d);
   const cx = width / 2;
   const cy = R + TILE / 2 + 4;
-  const pos = slots.map((_, i) => {
-    const a = (i / slots.length) * Math.PI * 2 - Math.PI / 2;
-    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
-  });
+  const pos = slotPoints(slots.length, width);
   const limit = d.limit ?? 0;
   return (
     <View accessible={false} style={{ height: ORBIT_H, width }}>
@@ -86,7 +104,7 @@ export function Orbit({
           ) : null,
         )}
       </Svg>
-      <View style={{ position: "absolute", left: cx - HUB / 2, top: cy - HUB / 2, width: HUB, height: HUB, borderRadius: HUB / 2, borderWidth: 1.5, borderColor: tokens.accent, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ position: "absolute", ...physLeft(cx - HUB / 2), top: cy - HUB / 2, width: HUB, height: HUB, borderRadius: HUB / 2, borderWidth: 1.5, borderColor: tokens.accent, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
         <Image source={MARK} style={{ width: HUB * 0.62, height: HUB * 0.62 }} contentFit="contain" />
       </View>
       {slots.map((s, i) => {
@@ -104,7 +122,7 @@ export function Orbit({
               accessibilityLabel={`${name}، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
               accessibilityActions={[{ name: "menu", label: t.linksUnlink }]}
               onAccessibilityAction={(e) => e.nativeEvent.actionName === "menu" && onHold(s.kind)}
-              style={{ position: "absolute", left, top, width: TILE, alignItems: "center" }}
+              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
             >
               {/* 🆕 الصحُّ الأخضرُ لما اتّصل فعلاً (وصلت منه رسالة)، والساعةُ الرمليّةُ لرابطٍ صدر ولم يتّصل — أحمد ٥ نوفمبر */}
               <DeviceMark kind={s.kind} size={TILE} state={s.waiting ? "waiting" : "on"} />
@@ -114,23 +132,25 @@ export function Orbit({
           );
         }
         const locked = s.type === "locked";
+        const lit = !locked && hotSlot === i;
         return (
           <Pressable
             key={`s-${i}`}
             onPress={() => onSlot(s)}
             accessibilityRole="button"
             accessibilityLabel={locked ? t.linksPlusSlot : t.linksEmptySlot}
-            style={{ position: "absolute", left, top, width: TILE, alignItems: "center" }}
+            style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
           >
             <View
               style={{
                 width: TILE,
                 height: TILE,
                 borderRadius: radius.md,
-                borderWidth: 1,
-                borderStyle: "dashed",
+                borderWidth: lit ? 2 : 1,
+                borderStyle: lit ? "solid" : "dashed",
                 borderColor: locked ? tokens.border : tokens.accent,
-                backgroundColor: locked ? tokens.surface : tokens.accent + "14",
+                backgroundColor: locked ? tokens.surface : tokens.accent + (lit ? "47" : "14"),
+                transform: [{ scale: lit ? 1.14 : 1 }],
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 3,
@@ -147,8 +167,8 @@ export function Orbit({
                 <Icon name="plus" size={18} color={tokens.accent} />
               )}
             </View>
-            <Text size={11} weight="600" muted numberOfLines={1} style={{ marginTop: 6 }}>
-              {locked ? t.linksPlusSlot : t.linksEmptySlot}
+            <Text size={11} weight={lit ? "800" : "600"} muted={!lit} color={lit ? tokens.accent : undefined} numberOfLines={1} style={{ marginTop: 6 }}>
+              {locked ? t.linksPlusSlot : lit ? t.linksDropHere : t.linksEmptySlot}
             </Text>
           </Pressable>
         );

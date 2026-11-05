@@ -1,8 +1,8 @@
-import React, { useCallback, useRef, useState } from "react";
-import { Pressable, View, useWindowDimensions } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Gesture, GestureDetector, ScrollView as GHScrollView } from "react-native-gesture-handler";
-import Reanimated, { measure, useAnimatedRef, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import Reanimated, { measure, useAnimatedRef, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
@@ -16,7 +16,7 @@ import { messageOf } from "../settings/api";
 import { PlexImportSheet } from "../settings/PlexImport";
 import { DeviceLabel, DeviceMark } from "./DeviceMark";
 import { UnlinkSheet } from "./UnlinkSheet";
-import { Orbit, OrbitCounter, type Slot } from "./Orbit";
+import { Orbit, OrbitCounter, physLeft, slotPoints, slotsOf, type Slot } from "./Orbit";
 import { canLinkNow, deviceName, linksWrite, useLinks } from "./api";
 import { DEVICE_KINDS } from "@/core/deviceLinks";
 import type { DeviceKind, DeviceLinksState } from "@/core/contracts/deviceLinks";
@@ -34,6 +34,9 @@ import type { DeviceKind, DeviceLinksState } from "@/core/contracts/deviceLinks"
  */
 const PLATFORMS = ["Netflix", "Prime Video", "Disney+", "Apple TV", "HBO Max", "Hulu", "Paramount+", "Peacock", "Discovery+"] as const;
 const LIST_TILE = 56;
+/** 🆕 الشبحُ أكبرُ من شارته بربع، ويطفو فوق الإصبع بمقدار ما يُرى (أحمد ٦ نوفمبر «خل التطبيق يطلع معي بشكل واضح») */
+const GHOST = 70;
+const LIFT = 46;
 
 type Rect = { x: number; y: number; w: number; h: number };
 
@@ -70,47 +73,100 @@ export function LinksScreen() {
   const orbitRect = useSharedValue<Rect>({ x: 0, y: 0, w: 0, h: 0 });
   const gx = useSharedValue(0);
   const gy = useSharedValue(0);
+  /* 🆕 الشبحُ مرسومٌ من البداية لكلِّ جهاز، وما يُسحب يظهر بقيمةٍ على خيط الواجهة — لا ينتظر رسمَ React (كان يتأخّر لحظة) */
+  const dragK = useSharedValue(-1);
+  const lift = useSharedValue(0.8);
+  /* مراكزُ الخانات الفارغة (فيزيائيّةً داخل المدار) — أقربُها إلى الإصبع يضيء «أفلت هنا» */
+  const empties = useSharedValue<{ i: number; x: number; y: number }[]>([]);
+  const hotS = useSharedValue(-1);
   const [ghost, setGhost] = useState<DeviceKind | null>(null);
   const [hot, setHot] = useState(false);
+  const [hotSlot, setHotSlot] = useState<number | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const orbitW = width - 32;
+  useEffect(() => {
+    if (!d?.ready) return;
+    const slots = slotsOf(d);
+    const pts = slotPoints(slots.length, orbitW);
+    empties.value = slots.flatMap((s, i) => (s.type === "empty" ? [{ i, x: pts[i].x, y: pts[i].y }] : []));
+  }, [d, orbitW, empties]);
   /* الإيماءاتُ تُبنى مرّةً لكلِّ جهاز، والإفلاتُ يقرأ أحدثَ حالٍ من المرجع — لا الحالَ يومَ بُنيت */
   const linkRef = useRef(link);
   linkRef.current = link;
   const drop = useCallback((kind: DeviceKind, inside: boolean) => {
     setGhost(null);
     setHot(false);
+    setHotSlot(null);
     if (inside) linkRef.current(kind);
+  }, []);
+  const lifted = useCallback((kind: DeviceKind) => {
+    haptic.pick();
+    setGhost(kind);
   }, []);
   const pans = useRef(new Map<DeviceKind, ReturnType<typeof Gesture.Pan>>()).current;
   const panFor = (kind: DeviceKind) => {
     const hit = pans.get(kind);
     if (hit) return hit;
-    /* عموديٌّ يمسك، وأفقيٌّ يترك للتمرير: الصفُّ يتمرّر جانباً والمدارُ فوقه */
+    /*
+     * 🆕 **اضغط مطوّلاً ثمّ اسحب** (أحمد ٦ نوفمبر بتسجيل: «مره يسحب ومره لا»): كان السحبُ يبدأ بأوّل ١٢ نقطةً عموديّة — وهي
+     * حركةُ تمرير الصفحة نفسُها، فأيُّهما التقطها أوّلاً فاز. الآن لا يبدأ إلا بعد ربع ثانيةٍ ثابتة (اهتزازٌ يؤكّد الالتقاط)، وأيُّ
+     * حركةٍ قبلها تُفشله فيأخذها التمرير — كترتيب تطبيقات الشاشة الرئيسيّة. والضغطةُ القصيرة تبقى تفتح صفحةَ الجهاز.
+     */
+    const idx = DEVICE_KINDS.indexOf(kind);
+    const inOrbit = (x: number, y: number) => {
+      "worklet";
+      const r = orbitRect.value;
+      return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    };
     const g = Gesture.Pan()
-      .activeOffsetY([-12, 12])
-      .failOffsetX([-14, 14])
+      .activateAfterLongPress(250)
       .onStart((e) => {
         const m = measure(orbitRef);
         if (m) orbitRect.value = { x: m.pageX, y: m.pageY, w: m.width, h: m.height };
         gx.value = e.absoluteX;
         gy.value = e.absoluteY;
-        scheduleOnRN(setGhost, kind);
+        dragK.value = idx;
+        lift.value = 0.8;
+        lift.value = withSpring(1, { damping: 14, stiffness: 260 });
+        hotS.value = -2;
+        scheduleOnRN(lifted, kind);
       })
       .onUpdate((e) => {
         gx.value = e.absoluteX;
         gy.value = e.absoluteY;
-        const r = orbitRect.value;
-        const inside = e.absoluteX >= r.x && e.absoluteX <= r.x + r.w && e.absoluteY >= r.y && e.absoluteY <= r.y + r.h;
-        scheduleOnRN(setHot, inside);
+        const inside = inOrbit(e.absoluteX, e.absoluteY);
+        /* أقربُ خانةٍ فارغةٍ إلى الشبح (لا الإصبع — الشبحُ فوقه) داخل المدار */
+        let best = -1;
+        if (inside) {
+          const r = orbitRect.value;
+          const px = e.absoluteX - r.x;
+          const py = e.absoluteY - LIFT - r.y;
+          let bd = Infinity;
+          for (const p of empties.value) {
+            const dd = (p.x - px) * (p.x - px) + (p.y - py) * (p.y - py);
+            if (dd < bd) {
+              bd = dd;
+              best = p.i;
+            }
+          }
+        }
+        /* يُرسل إلى React حين يتبدّل الحالُ وحده — لا في كلِّ إطار */
+        const code = inside ? best + 1 : -1;
+        if (code !== hotS.value) {
+          hotS.value = code;
+          scheduleOnRN(setHotSlot, best < 0 ? null : best);
+          scheduleOnRN(setHot, inside);
+        }
       })
       .onFinalize((e, ok) => {
-        const r = orbitRect.value;
-        const inside = ok && e.absoluteX >= r.x && e.absoluteX <= r.x + r.w && e.absoluteY >= r.y && e.absoluteY <= r.y + r.h;
+        const inside = ok && dragK.value === idx && inOrbit(e.absoluteX, e.absoluteY);
+        dragK.value = -1;
+        hotS.value = -1;
         scheduleOnRN(drop, kind, inside);
       });
     pans.set(kind, g);
     return g;
   };
-  const ghostStyle = useAnimatedStyle(() => ({ transform: [{ translateX: gx.value - LIST_TILE / 2 }, { translateY: gy.value - LIST_TILE / 2 }] }));
 
   const revoke = async (kind: DeviceKind) => {
     try {
@@ -166,11 +222,17 @@ export function LinksScreen() {
   const unlinked = DEVICE_KINDS.filter((k) => !d.devices.find((x) => x.kind === k)?.linked || d.devices.find((x) => x.kind === k)?.stopped);
   /* الرابطُ القديمُ قبل أوّل إرسالٍ لا يُختار في الورقة (لا جهازَ معروفاً له) — صفُّه تحت «من أجهزتك» يفكّه */
   const stopped = d.devices.filter((x) => x.stopped).length;
+  /* 🆕 الخانةُ الفارغةُ تفتح «أضف جهازاً» فيختار العضو (أحمد ٦ نوفمبر: «لا تقترح بلكس») — كانت تفتح أوّلَ ما لم يُربط */
   const onSlot = (s: Slot) => {
     if (s.type === "device") return open(s.kind);
     if (s.type === "locked") return intro();
-    const next = unlinked.find((k) => !d.devices.find((x) => x.kind === k)?.stopped);
-    if (next) link(next);
+    haptic.pick();
+    setAddOpen(true);
+  };
+  const pickDevice = (k: DeviceKind) => {
+    setAddOpen(false);
+    if (d.devices.find((x) => x.kind === k)?.stopped) setKeepOpen(true);
+    else link(k);
   };
 
   return (
@@ -180,11 +242,10 @@ export function LinksScreen() {
       gestures={{ locked: !!ghost }}
       overlay={
         <>
-          {ghost ? (
-            <Reanimated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: 0, opacity: 0.92 }, ghostStyle]}>
-              <DeviceMark kind={ghost} size={LIST_TILE} state="idle" />
-            </Reanimated.View>
-          ) : null}
+          {unlinked.map((k) => (
+            <Ghost key={k} kind={k} idx={DEVICE_KINDS.indexOf(k)} dragK={dragK} gx={gx} gy={gy} lift={lift} />
+          ))}
+          {addOpen ? <AddSheet kinds={unlinked} d={d} onClose={() => setAddOpen(false)} onPick={pickDevice} /> : null}
           {hold ? <HoldSheet kind={hold} onClose={() => setHold(null)} onOpen={() => { setHold(null); open(hold); }} onUnlink={() => { setHold(null); setConfirm(hold); }} /> : null}
           {confirm ? <UnlinkSheet kind={confirm} works={d.devices.find((x) => x.kind === confirm)?.works ?? 0} onClose={() => setConfirm(null)} onConfirm={() => revoke(confirm)} /> : null}
           {keepOpen ? <KeepSheet d={d} onClose={() => setKeepOpen(false)} onError={say} /> : null}
@@ -194,7 +255,7 @@ export function LinksScreen() {
     >
       {/* ───── المدار والعدّاد ───── */}
       <Reanimated.View ref={orbitRef} collapsable={false}>
-        <Orbit d={d} width={width - 32} onSlot={onSlot} onHold={(k) => { haptic.pick(); setHold(k); }} hot={hot} />
+        <Orbit d={d} width={orbitW} onSlot={onSlot} onHold={(k) => { haptic.pick(); setHold(k); }} hot={hot} hotSlot={hotSlot} />
       </Reanimated.View>
       <OrbitCounter d={d} />
       {stopped > 0 ? (
@@ -217,13 +278,15 @@ export function LinksScreen() {
               const info = d.devices.find((x) => x.kind === k);
               const paused = !!info?.stopped;
               const dim = free && full && !paused;
+              /* ما يُسحب الآن يبقى مكانُه إطاراً باهتاً — الشبحُ في يدك */
+              const away = ghost === k;
               return (
                 <GestureDetector key={k} gesture={panFor(k)}>
                   <Pressable
                     onPress={() => (paused ? setKeepOpen(true) : link(k))}
                     accessibilityRole="button"
                     accessibilityLabel={paused ? `${deviceName(k)}، ${t.linksStopped}` : t.linksLinkAction(deviceName(k))}
-                    style={{ width: LIST_TILE + 8, alignItems: "center", opacity: dim ? 0.45 : 1 }}
+                    style={{ width: LIST_TILE + 8, alignItems: "center", opacity: away ? 0.3 : dim ? 0.45 : 1 }}
                   >
                     <View>
                       <DeviceMark kind={k} size={LIST_TILE} state={paused ? "paused" : "idle"} />
@@ -262,13 +325,7 @@ export function LinksScreen() {
           <StatusPill label={t.linksSoon} />
         </View>
         <GHScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
-          {PLATFORMS.map((p) => (
-            <View key={p} accessible accessibilityLabel={`${p}، ${t.linksSoon}`} style={{ alignItems: "center", gap: 6, opacity: 0.6 }}>
-              <View style={{ width: LIST_TILE, height: LIST_TILE, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", padding: 4 }}>
-                <Text size={10} weight="700" muted numberOfLines={2} style={{ textAlign: "center", writingDirection: "ltr" }}>{p}</Text>
-              </View>
-            </View>
-          ))}
+          <PlatformTiles />
         </GHScrollView>
         <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{t.linksPlatformsNote}</Text>
       </View>
@@ -283,6 +340,89 @@ export function LinksScreen() {
         <Row icon="history" title={t.plexImportRow} subtitle={t.plexImportRowSub} onPress={free ? intro : () => setPlexOpen(true)} trailing={free ? <PlusLock /> : undefined} />
       </Group>
     </SettingsScreen>
+  );
+}
+
+/** «منصات البث · قريباً» — أسماءٌ بلا شعارات ولا ضغط؛ في الصفحة وفي «أضف جهازاً» */
+function PlatformTiles() {
+  const { t, tokens } = useApp();
+  return (
+    <>
+      {PLATFORMS.map((p) => (
+        <View key={p} accessible accessibilityLabel={`${p}، ${t.linksSoon}`} style={{ alignItems: "center", gap: 6, opacity: 0.6 }}>
+          <View style={{ width: LIST_TILE, height: LIST_TILE, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", padding: 4 }}>
+            <Text size={10} weight="700" muted numberOfLines={2} style={{ textAlign: "center", writingDirection: "ltr" }}>{p}</Text>
+          </View>
+        </View>
+      ))}
+    </>
+  );
+}
+
+/** 🆕 شبحُ الشارة المسحوبة: أكبرُ بربعٍ بحدٍّ ذهبيٍّ وظلّ، فوق الإصبع لا تحته، ومائلٌ قليلاً — يُرى أنّه في يدك */
+function Ghost({ kind, idx, dragK, gx, gy, lift }: { kind: DeviceKind; idx: number; dragK: SharedValue<number>; gx: SharedValue<number>; gy: SharedValue<number>; lift: SharedValue<number> }) {
+  const { tokens } = useApp();
+  const st = useAnimatedStyle(() => {
+    const on = dragK.value === idx;
+    return {
+      opacity: on ? 1 : 0,
+      transform: [{ translateX: gx.value - GHOST / 2 }, { translateY: gy.value - GHOST / 2 - LIFT }, { scale: on ? lift.value : 0.8 }, { rotate: "-4deg" }],
+    };
+  });
+  return (
+    <Reanimated.View
+      pointerEvents="none"
+      style={[
+        { position: "absolute", top: 0, ...physLeft(0), borderRadius: radius.md + 2, borderWidth: 2, borderColor: tokens.accent, shadowColor: "#000", shadowOpacity: 0.6, shadowRadius: 14, shadowOffset: { width: 0, height: 10 }, elevation: 12 },
+        st,
+      ]}
+    >
+      <DeviceMark kind={kind} size={GHOST} state="idle" />
+    </Reanimated.View>
+  );
+}
+
+/**
+ * 🆕 **«أضف جهازاً»** — ورقةٌ من الخانة الفارغة (أحمد ٦ نوفمبر: «اظهر التطبيقات والشخص يختار منها»، ثمّ «شعارات بدون كلام
+ * جنبها · الخلفية سوداء»): شعاراتُ ما لم يُربط بأسمائها تحتها (Jellyfin وKodi بلا شعارٍ رسميٍّ بعد، فالاسمُ يعرّفهما)،
+ * والمنصّاتُ تحتها «قريباً». الضغطُ يسلك باب الربط الواحد (`link`): لا خانة ⇐ «اربط أجهزتك»، وموقوفٌ ⇐ «اختر ما يبقى».
+ */
+function AddSheet({ kinds, d, onClose, onPick }: { kinds: DeviceKind[]; d: DeviceLinksState; onClose: () => void; onPick: (k: DeviceKind) => void }) {
+  const { t, tokens } = useApp();
+  const full = d.tier === "free" && d.limit != null && d.used >= d.limit;
+  return (
+    <Sheet title={t.linksAddTitle} onClose={onClose}>
+      {kinds.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
+          {kinds.map((k) => {
+            const paused = !!d.devices.find((x) => x.kind === k)?.stopped;
+            const dim = full && !paused;
+            return (
+              <Pressable key={k} onPress={() => onPick(k)} accessibilityRole="button" accessibilityLabel={t.linksLinkAction(deviceName(k))} style={{ width: 64, alignItems: "center", opacity: dim ? 0.45 : 1 }}>
+                <View>
+                  <DeviceMark kind={k} size={64} state={paused ? "paused" : "idle"} />
+                  {dim ? (
+                    <View style={{ position: "absolute", top: -4, end: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                      <Icon name="lock" size={11} color={tokens.muted} />
+                    </View>
+                  ) : null}
+                </View>
+                <DeviceLabel name={deviceName(k)} muted={dim} />
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      <View style={{ gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text size={13} weight="800" muted>{t.linksPlatforms}</Text>
+          <StatusPill label={t.linksSoon} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+          <PlatformTiles />
+        </ScrollView>
+      </View>
+    </Sheet>
   );
 }
 
