@@ -15,6 +15,8 @@ import {
   type PartnerDetails,
 } from "@/lib/data";
 import { isPlus } from "@/core/plan";
+import { partnerExample } from "@/core/billing";
+import { createClient } from "@/lib/supabase/server";
 import { applyPartner, cancelPartnerApplication, savePartnerDetails, requestPayout } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
@@ -448,7 +450,7 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
 function TermsCard({ t }: { t: Dict }) {
   return (
     <SettingsGroup label={t.prtTermsTitle}>
-      {[t.prtTermRate, t.prtTermDirect, t.prtTermHold, t.prtTermMin, t.prtTermNature].map(
+      {[t.prtTermRate, t.prtTermExample(...exampleOf(99.99, t.code)), t.prtTermDirect, t.prtTermHold, t.prtTermRefund, t.prtTermMin, t.prtTermNature].map(
         (line) => (
           <p key={line} className="flex items-center gap-2.5 p-3.5 text-14 leading-relaxed">
             <Icon name="shield" size={15} className="shrink-0 text-accent" />
@@ -593,26 +595,26 @@ async function PartnersTab({
        **بالواقع** (لا قناةَ دفع)، وهي الموضعُ الوحيد الذي يتغيّر يومَ الفتح.
        **فالزرُّ يقول «بانتظار الربط» ما دام صفراً، ويصير طلباً حقيقيّاً
        من نفسِه حين يبلغ الحدّ** — لا ثابتَ يُنسى ولا سطرَ يُعدَّل. */
-    const [available, payouts] = await Promise.all([
+    const [available, payouts, earnings] = await Promise.all([
       me ? getMyPartnerBalance(me.id) : Promise.resolve(0),
       getMyPayoutRequests(),
+      myEarnings(),
     ]);
     const hasPendingPayout = payouts.some((r) => r.status === "pending");
     const canRequest = available >= 100 && !hasPendingPayout;
-    const pending = payouts
-      .filter((r) => r.status === "pending" || r.status === "approved")
-      .reduce((sum, r) => sum + r.amount, 0);
+    /* 🆕 هجرة ٢٣٨ — «قيد التعليق» عمولاتٌ في ثلاثينها الأولى (نصُّ «شروط العمولة») — كان يعرض طلباتِ الصرف المعلّقة،
+       وهي في قائمتها أسفل اللوحة */
+    const pending = earnings?.on_hold ?? 0;
     const payoutStatus = (st: string) =>
       st === "paid" ? t.prtPayoutStPaid
       : st === "approved" ? t.prtPayoutStApproved
       : st === "rejected" ? t.prtPayoutStRejected
       : t.prtPayoutStPending;
-    /* «اشتركوا» صفرٌ حقيقيٌّ لا ثابتٌ مزيَّف: `subscribed_at` لا يكتبه
-       شيءٌ قبل قناة الاشتراك — يوم تفتح يصير قراءةً حيّة */
-    const paid = 0;
+    /* «اشتركوا» قراءةٌ حيّة (هجرة ٢٣٨): أوّلُ اشتراكٍ حقيقيٍّ يختم `subscribed_at` — وقبل الهجرة صفرٌ كما كان */
+    const paid = earnings?.subscribed ?? 0;
     const conv = state.clicks > 0 ? Math.round((state.joined / state.clicks) * 100) : 0;
-    const money = (n: number) =>
-      locale === "ar" ? `${num(n, locale)}٫٠٠` : `${n}.00`;
+    /* 🆕 هجرة ٢٣٨ — الرصيدُ بهللاتٍ حقيقيّة (عمولةُ ١٨٫٤٨): رقمان بعد الفاصلة، والفاصلةُ العربيّة في العربيّة */
+    const money = (n: number) => fmtMoney(n, locale);
     const outlineBtn =
       "rounded-xl border border-accent font-bold text-accent transition disabled:opacity-50 disabled:cursor-not-allowed";
     return (
@@ -748,16 +750,32 @@ async function PartnersTab({
           </div>
         </div>
 
-        {/* حركةُ الأرباح — فارغةٌ بحقٍّ حتى يفتح الدفع؛ المرشِّحُ يُضاف مع أول صفّ */}
+        {/* حركةُ الأرباح — 🆕 هجرة ٢٣٨: سطورُ الدفتر (عمولةٌ · استرجاع) بآخرها أوّلاً، وفارغةٌ بحقٍّ حتى أوّل دفعة */}
         <section className="space-y-3">
           <SectionTitle>{t.prtActivityTitle}</SectionTitle>
-          <div className={`${settingsCard} p-6 text-center`}>
-            <span className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2">
-              <Icon name="card" size={24} className="text-accent" />
-            </span>
-            <p className="mt-3 text-15 font-bold">{t.prtNoEarnTitle}</p>
-            <p className="mt-1 text-14 text-muted">{t.prtNoEarnBody}</p>
-          </div>
+          {earnings?.recent.length ? (
+            <div className={settingsCardRows}>
+              {earnings.recent.map((r, i) => (
+                <div key={`${r.created_at}-${i}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-14 font-semibold">{r.kind === "reversed" ? t.prtActReversed : t.prtActEarned}</p>
+                    <p className="text-12 text-muted">{timeAgo(r.created_at, t)}</p>
+                  </div>
+                  <span className={`text-14 font-bold tabular-nums ${r.kind === "reversed" ? "text-error" : "text-accent"}`} dir="ltr">
+                    {t.prtCurrency} {money(r.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={`${settingsCard} p-6 text-center`}>
+              <span className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2">
+                <Icon name="card" size={24} className="text-accent" />
+              </span>
+              <p className="mt-3 text-15 font-bold">{t.prtNoEarnTitle}</p>
+              <p className="mt-1 text-14 text-muted">{t.prtNoEarnBody}</p>
+            </div>
+          )}
         </section>
 
         {/* 🗑️ 🆕 **وسقطت بطاقةُ «إكمال الإعداد» الميّتة** (D-858 —
@@ -989,4 +1007,36 @@ async function PartnersTab({
       <p className="text-center text-12 text-muted">{t.prtReviewNote}</p>
     </>
   );
+}
+
+/** 🆕 هجرة ٢٣٨ — لوحةُ الشريك من دفتر العمولات (`my_partner_earnings`، لصاحبها وحده). قبل الهجرة: `null` فتبقى أصفاراً */
+type Earnings = { available: number; on_hold: number; total: number; subscribed: number; recent: { kind: "earned" | "reversed"; amount: number; created_at: string }[] };
+async function myEarnings(): Promise<Earnings | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_partner_earnings");
+    if (error || !data) return null;
+    const d = data as Partial<Earnings>;
+    return {
+      available: Number(d.available ?? 0),
+      on_hold: Number(d.on_hold ?? 0),
+      total: Number(d.total ?? 0),
+      subscribed: Number(d.subscribed ?? 0),
+      recent: Array.isArray(d.recent) ? d.recent.map((r) => ({ kind: r.kind === "reversed" ? "reversed" : "earned", amount: Number(r.amount ?? 0), created_at: String(r.created_at) })) : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 مثالُ «شروط العمولة» من السعر في الكود (`partnerExample`) — لا رقمٌ منسوخٌ بيد يفترق عن الحساب يومَ يتبدّل */
+function exampleOf(price: number, locale: Locale): [string, string, string] {
+  const { net, commission } = partnerExample(price);
+  return [fmtMoney(price, locale), fmtMoney(net, locale), fmtMoney(commission, locale)];
+}
+
+/** المبلغُ بأرقام الصفحة نفسِها (`num`: أرقامٌ لاتينيّة) ورقمين بعد الفاصلة — «١٨٫٤٨» بالعربيّة فاصلتُها «٫» */
+function fmtMoney(n: number, locale: Locale): string {
+  const s = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return locale === "ar" ? s.replace(".", "٫") : s;
 }

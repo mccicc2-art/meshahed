@@ -211,12 +211,13 @@ async function checkPushReceipts(db: SupabaseClient, nowMs: number): Promise<voi
 }
 
 /** القلبُ: مستلمٌ واحد، نوعٌ واحد، ونصٌّ يُبنى بلغة كلِّ جهاز */
-async function deliver(input: { to: string; group: PushGroup; dedupe?: string; actorId?: string; build: (t: Dict, lang: Locale) => PushText | null }) {
+async function deliver(input: { to: string; group: PushGroup | null; dedupe?: string; actorId?: string; build: (t: Dict, lang: Locale) => PushText | null }) {
   if (!hasServiceKey()) return;
   const db = await createServiceClient();
   const devices = await devicesOf(db, input.to);
   if (!devices.length) return;
-  if ((await mutedOf(db, input.to)).includes(input.group)) return;
+  /* 🆕 `null` = إشعارُ حساب (انتهاءُ الاشتراك) لا يتبع مجموعةً تُكتم — يأتي مرّةً في عمر الاشتراك */
+  if (input.group && (await mutedOf(db, input.to)).includes(input.group)) return;
   if (input.actorId) {
     /* من حظرتَه لا يرنّ عندك — الكتابةُ نفسُها تُرفض في أغلب الأفعال، وهذا حزامٌ ثانٍ لما لا يُرفض */
     const { data } = await db.from("blocks").select("blocked_id").match({ blocker_id: input.to, blocked_id: input.actorId }).maybeSingle();
@@ -230,7 +231,7 @@ async function deliver(input: { to: string; group: PushGroup; dedupe?: string; a
     /* القاموسُ نفسُه لنصوص الزرّين و«أنت:» في الإشعار الأصليّ — بلغة هذا الجهاز */
     if (text) batch.push({ token: d.token, text, dmNative: d.dmNative ? t : null });
   }
-  await send(db, batch, input.group);
+  await send(db, batch, input.group ?? "account");
 }
 
 async function personOf(db: SupabaseClient, id: string): Promise<PersonLite | null> {
@@ -317,6 +318,21 @@ async function signalNow(input: SignalInput): Promise<void> {
       build: (t, lang) => signalPush(row, t, curatedName(listSlug, title ?? "", lang), input.to),
     });
   }
+}
+
+/**
+ * 🆕 **«اشتراكك انتهى، أبقينا X — اختر ما يبقى»** (خطّةُ Loopz+ v2 — أحمد ٥ نوفمبر «٢ أ»): من سقط من بلس وأُوقف من أجهزته
+ * ما زاد على خانته. يفتح «الربط» حيث بطاقةُ «اختر ما يبقى». مفتاحُه يومُ النهاية فيأتي مرّة.
+ */
+export function notifyPlanEnded(input: { to: string; kept: string | null; dedupe: string }) {
+  quiet(() =>
+    deliver({
+      to: input.to,
+      group: null,
+      dedupe: input.dedupe,
+      build: (t) => ({ title: t.planEndedPushTitle, body: input.kept ? t.planEndedPushKept(input.kept) : t.planEndedPushNone, url: "/links" }),
+    }),
+  );
 }
 
 /** رسالةٌ (عملٌ أو قائمةٌ لصديق، أو ردٌّ في خيطها) ⇢ دفع */

@@ -6275,12 +6275,19 @@ export async function aiStorySearch(
   description: string,
 ): Promise<
   | { ok: true; results: AiSearchResult[]; fallback?: boolean }
-  | { ok: false; reason: "empty" | "short" }
+  | { ok: false; reason: "empty" | "short" | "plus" }
 > {
   await requireUser("aisearch", 6, 60_000);
 
   const desc = String(description ?? "").trim().slice(0, 600);
   if (desc.length < 8) return { ok: false, reason: "short" };
+
+  /* 🆕 خطّةُ Loopz+ v2 — البحثُ بوصف القصّة لبلس، والبوّابةُ مطفأةٌ حتى التشغيل (المرحلة ٥). `reason: "plus"` يقرؤه
+     1.13.x نتيجةً فارغة، والويبُ يقول «اشترك من التطبيق» */
+  {
+    const [{ AI_STORY_SEARCH_PLUS_ONLY, isPlus }, { getProfile: me }] = await Promise.all([import("@/core/plan"), import("@/lib/data")]);
+    if (AI_STORY_SEARCH_PLUS_ONLY && !isPlus(await me().catch(() => null))) return { ok: false, reason: "plus" };
+  }
 
   const [{ aiSuggestTitles }, { getLocale }] = await Promise.all([
     import("@/lib/ai"),

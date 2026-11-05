@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { platformFromUA } from "@/core/platform";
 import { handle, requireUser, clientOnboard } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
+import { isPlus, isPartner, isVerified, isFounder, isGold } from "@/core/plan";
+import { goldUntilOf } from "@/lib/billing";
 import { sanitizeFontSize } from "@/core/fontPrefs";
 import { TITLE_MODE_COOKIE, accountTitleMode, parseTitleMode } from "@/core/titleMode";
 
@@ -27,7 +28,7 @@ export async function GET() {
        يمرّ من هنا. **بالتوازي لا بالتسلسل** فلا تُضاف إليه ملّي ثانية،
        **وفشلُه صمتٌ** — إحصاءٌ يكسر إقلاعَ تطبيقٍ أسوأُ صفقةٍ ممكنة. */
     const ua = (await headers()).get("user-agent");
-    const [p, welcome] = await Promise.all([
+    const [p, welcome, , goldUntil] = await Promise.all([
       getProfile(),
       /* 🆕 D-1341 — هل أتمّ الترحيب؟ التطبيقُ يسأل هنا عند الإقلاع ليعرف أيرفع الرئيسيّةَ الأصليّة أم يترك الويب */
       /* D-1354 — بما يفهمه السائل: تطبيقٌ قديمٌ يُحكم له بالختم وحدَه، فلا يُرفع له ترحيبٌ لا يملك شاشتَه */
@@ -40,6 +41,8 @@ export async function GET() {
           /* لا شيء */
         }
       })(),
+      /* 🆕 هجرة ٢٣٨ — الذهبيُّ بقارئه المستقلّ (عمودٌ غائبٌ قبل الهجرة لا يُسقط الملفّ) */
+      createClient().then((db) => goldUntilOf(db, auth.user.id)),
     ]);
     if (!p) return ok(null);
     /* 🆕 D-1269 — **إقلاعُ التطبيق يسوّي كوكيَّ «أسماء العناوين» باختيار الحساب**: الخادمُ يقرأ الكوكي في
@@ -68,6 +71,8 @@ export async function GET() {
       partner: isPartner(p),
       verified: isVerified(p),
       founder: isFounder(p),
+      /* 🆕 Loopz+ ذهبي (المرحلة ١) — شارةُ GOLD تُرسم منه في 1.14.0؛ التطبيقُ الأقدمُ يتجاهله */
+      gold: isGold({ ...p, gold_until: goldUntil }),
       /* 🆕 D-1105 — حجما الخطّ: الشاشاتُ الأصليّةُ تكبر بهما كالويب (إضافةٌ لا تكسر غلافاً قديماً) */
       font_ui: sanitizeFontSize(p.font_ui),
       font_content: sanitizeFontSize(p.font_content),

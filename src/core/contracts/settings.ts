@@ -36,6 +36,9 @@ export type SettingsPayload = {
     plan_reason?: string | null;
     plus_until?: string | null;
     plus: boolean;
+    /** 🆕 Loopz+ ذهبي (هجرة ٢٣٨) — خادمٌ أقدمُ لا يرسله */
+    gold?: boolean;
+    gold_until?: string | null;
     partner: boolean;
     verified: boolean;
     founder: boolean;

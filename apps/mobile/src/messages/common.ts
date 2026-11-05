@@ -134,6 +134,8 @@ export function useDoors(from: Origin) {
       const title = /^\/(show|movie)\/(\d+)\/?$/.exec(path);
       if (title) return openTitle(title[1] === "show" ? "tv" : "movie", Number(title[2]));
       if (openThreadPath(router, path, from)) return;
+      /* 🆕 إشعارُ «اشتراكك انتهى — اختر ما يبقى» ⇐ صفحةُ «الربط» الأصليّة (لا صفحةَ ويبٍ لها) */
+      if (path === "/links") return router.push("/links");
       openWeb(path);
     },
     [openList, openTitle, openWeb, router, from],

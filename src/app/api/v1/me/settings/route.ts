@@ -5,7 +5,8 @@ import { myBlocksList } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { isPlus, isPartner, isVerified, isFounder, planNameOf, planReasonOf } from "@/core/plan";
+import { isPlus, isPartner, isVerified, isFounder, isGold, planNameOf, planReasonOf } from "@/core/plan";
+import { goldUntilOf } from "@/lib/billing";
 import { DEFAULT_THEME } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/core/fontPrefs";
 import { TOUR_IDS, TOUR_META } from "@/lib/tour";
@@ -40,9 +41,10 @@ export async function GET() {
       cookies(),
       createClient(),
     ]);
-    const [grants, blocked] = await Promise.all([
+    const [grants, blocked, goldUntil] = await Promise.all([
       supabase.from("library_grants").select("grantee_id", { count: "exact", head: true }).eq("owner_id", auth.user.id),
       myBlocksList().catch(() => []),
+      goldUntilOf(supabase, auth.user.id),
     ]);
     /* 🆕 D-1269 — الحسابُ مرجعُ «أسماء العناوين»: ما يُعرض هنا اختيارُه، والكوكي (ما يقرؤه الخادم في
        كلِّ حمولة) يُسوّى به إن خالفه — جهازٌ جديد أو تغييرٌ جرى في مكانٍ آخر. */
@@ -68,6 +70,9 @@ export async function GET() {
         partner: isPartner(p),
         verified: isVerified(p),
         founder: isFounder(p),
+        /* 🆕 المرحلة ١ — الذهبيُّ ونهايتُه (صفحةُ الاشتراك في 1.14.0: «نشط حتى …») */
+        gold: isGold(p ? { ...p, gold_until: goldUntil } : null),
+        gold_until: goldUntil,
       },
       appearance: {
         locale,

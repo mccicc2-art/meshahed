@@ -36,6 +36,8 @@ export interface PlanBearer {
   verified_at?: string | null;
   /** 🆕 D-1563 — معرّفُ الحساب: منه تُعرف شخصيّاتُ لوبز AI (`isPersonaId`) فتُرسم شارتُها «AI» بجانب الاسم */
   id?: string | null;
+  /** 🆕 هجرة ٢٣٨ — نهايةُ الذهبيّ (اشتراكُه من المتجر). حقلٌ مستقلٌّ لا قيمةٌ في `plan`: تطبيقٌ أقدمُ يقرأ المجهولَ مجانيّاً */
+  gold_until?: string | null;
 }
 
 /** 🆕 D-1563 — هل الحسابُ شخصيّةٌ من شخصيّات لوبز AI؟ (المعرّفاتُ الخمسة ثابتةٌ في `personas.ts`) */
@@ -59,6 +61,22 @@ export function isPlus(p: PlanBearer | null | undefined): boolean {
   const until = Date.parse(p.plus_until);
   return Number.isNaN(until) ? true : until > Date.now();
 }
+
+/**
+ * 🆕 **Loopz+ ذهبي** (خطّةُ Loopz+ v2 §٢ — أحمد ٥ نوفمبر «٣ ب» و«٧ نعم»): شارةُ GOLD وخاناتٌ بلا حدّ، **وكلُّ ما لبلس**
+ * (المرآةُ تمدّ `plus_until` إلى نهايته، فـ`isPlus` صادقٌ له دون شرطٍ هنا). والشريكُ يقدر أن يكون ذهبيّاً.
+ */
+export function isGold(p: PlanBearer | null | undefined): boolean {
+  if (!p?.gold_until) return false;
+  const until = Date.parse(p.gold_until);
+  return !Number.isNaN(until) && until > Date.now() && isPlus(p);
+}
+
+/**
+ * 🆕 **بحثُ القصّة بالذكاء يصير لبلس** (الخطّة §٣ البند ٢ — «مجانيٌّ على الخادم اليوم؛ البوّابةُ تعمل عند التشغيل
+ * بإشعار»). مبنيّةٌ في المرحلة ١ ومطفأة؛ تُقلب في المرحلة ٥ مع إشعار المجانيّين.
+ */
+export const AI_STORY_SEARCH_PLUS_ONLY = false;
 
 /** الطبقةُ العليا — البارتنر. **مبنيّةُ البنية، ولمّا تُبنَ سطوحُها** */
 export function isPartner(p: PlanBearer | null | undefined): boolean {

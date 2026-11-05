@@ -131,6 +131,8 @@ export function TitleSearchSheet({
           // يُجيب بما يملكه التطبيق (إصلاح 9 Aug)
           setAiItems([]);
           setAiFallback(false);
+          /* 🆕 بوّابةُ بلس (المرحلة ٥، مطفأةٌ اليوم): الويبُ لا يبيع — يدلّ على التطبيق */
+          if (res.reason === "plus") flashError(t.aiSearchPlus);
           return;
         }
         setAiFallback(!!res.fallback);

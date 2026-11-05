@@ -166,8 +166,10 @@ export const SECTIONS: Section[] = [
         icon: "list",
         ar: "ترتيب التبويبات وإخفاؤها",
         en: "Reorder and hide tabs",
-        arBody: "رتّب تبويبات المكتبة والمجتمع والاكتشاف كما تحبّ، وأخفِ ما لا تستعمله — مجّاناً للجميع.",
-        enBody: "Order the tabs in Library, Community and Discover the way you like, and hide the ones you never use — free for everyone.",
+        arBody: "رتّب تبويبات المكتبة والمجتمع والاكتشاف كما تحبّ، وأخفِ ما لا تستعمله.",
+        enBody: "Order the tabs in Library, Community and Discover the way you like, and hide the ones you never use.",
+        /* 🆕 خطّةُ Loopz+ v2 §٣ — «الترتيبُ والإخفاءُ يبقيان لبلس (2ب)، ونصُّ صفحة المزايا يُصحَّح»: كانت «مجّاناً للجميع» */
+        plus: true,
       },
       {
         icon: "globe",
@@ -288,6 +290,15 @@ export const SECTIONS: Section[] = [
         arBody: "محادثات تصل لحظياً، تشارك فيها عملاً أو قائمة وتبدأ النقاش منها.",
         enBody: "Real-time conversations — share a title or a list and talk about it.",
       },
+      /* 🆕 المرحلة ١ — القروباتُ ١٦ للطبقتين (الخطّة §٣ البند ١٠)، والانضمامُ مجّاني */
+      {
+        icon: "comment",
+        ar: "قروبات حتى ١٦ شخصاً",
+        en: "Groups of up to 16",
+        arBody: "أنشئ قروباً لأصحابك حتى ١٦ شخصاً معك، والانضمام إليه مجّاني للجميع.",
+        enBody: "Start a group of up to 16 people, you included — joining one is free for everyone.",
+        plus: true,
+      },
       {
         icon: "home",
         ar: "مجتمعات",
@@ -387,7 +398,7 @@ export const SECTIONS: Section[] = [
     ],
   },
   /* 🆕 **الربط** (هجرة ٢٣٧، أحمد ٥ نوفمبر): خرج من «قريباً» — Stremio وسيرفراتُ البيت شُحنت، والمدارُ يعدّ: جهازٌ مجّاناً، وخمسةٌ
-     مع Loopz+ ومعها «سجّل بلا سؤال». ومنصّاتُ البثّ باقيةٌ في «قريباً» حتى يونيفاي. */
+     مع Loopz+ ومعها «التتبّع التلقائي» (كان «سجّل بلا سؤال» — أحمد ٦ نوفمبر)، والذهبيُّ بلا حدّ. ومنصّاتُ البثّ باقيةٌ في «قريباً». */
   {
     icon: "tv",
     ar: "الربط",
@@ -407,9 +418,9 @@ export const SECTIONS: Section[] = [
         ar: "اربط حتى ٥ أجهزة، ومشاهدتك تتسجّل وحدها",
         en: "Link up to 5 devices, and your watching logs itself",
         arBody:
-          "خمسة أجهزة في مدارك، و«سجّل بلا سؤال»: ما تخلّصه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك وحده (Stremio يسألك دائماً، لأنه لا يخبرنا إنك خلّصت). واستورد تاريخك القديم من Plex.",
+          "خمسة أجهزة في مدارك (وبلا حدّ مع الذهبي)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio يسألك دائماً، لأنه لا يخبرنا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
         enBody:
-          "Five devices in your orbit, and “Log without asking”: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library on its own (Stremio always asks, because it doesn't tell us you finished). And import your old Plex history.",
+          "Five devices in your orbit (no limit with Gold), and Auto-track: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library without asking (Stremio always asks, because it doesn't tell us you finished). And import your old Plex history.",
         plus: true,
       },
     ],

@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
-import { isPlus, type PlanBearer } from "@/core/plan";
+import { isGold, isPlus, type PlanBearer } from "@/core/plan";
 import type { SignalSource } from "@/core/contracts/stremio";
 import { markSignalWatched, type SignalRow } from "@/lib/watchMark";
 import {
@@ -48,7 +48,7 @@ const aliveSince = () => new Date(Date.now() - IDLE_DAYS * 86_400_000).toISOStri
  * جدول. فالخادمُ يُنشر قبل الهجرة أو بعدها ولا ينكسر.
  */
 type Db = Awaited<ReturnType<typeof createServiceClient>>;
-type Profile = { plan?: unknown; plus_until?: string | null; founder?: boolean | null; auto_mark?: boolean | null };
+type Profile = { plan?: unknown; plus_until?: string | null; founder?: boolean | null; auto_mark?: boolean | null; gold_until?: string | null };
 
 const LINK_COLS = "token_hash, created_at, last_used_at, stopped_at";
 const HOME_COLS = `${LINK_COLS}, server, kinds`;
@@ -78,15 +78,19 @@ async function readRows(db: Db, userId: string): Promise<LinkRow[] | null> {
 
 /** الملفُّ للحكم — و`auto_mark` يُقرأ إن وُجد (قبل الهجرة: `null`) */
 async function profileOf(db: Db, userId: string): Promise<Profile | null> {
+  /* 🆕 هجرة ٢٣٨ — الذهبيُّ (`gold_until`) أوّلاً، ثمّ بلاه قبل الهجرة، ثمّ بلا `auto_mark` قبل ٢٣٧ */
+  const gold = await db.from("profiles").select("plan, plus_until, founder, auto_mark, gold_until").eq("id", userId).maybeSingle();
+  if (!gold.error) return (gold.data as Profile | null) ?? null;
   const full = await db.from("profiles").select("plan, plus_until, founder, auto_mark").eq("id", userId).maybeSingle();
   if (!full.error) return (full.data as Profile | null) ?? null;
   const base = await db.from("profiles").select("plan, plus_until, founder").eq("id", userId).maybeSingle();
   return (base.data as Profile | null) ?? null;
 }
 
-/** الطبقةُ للعدّ — والذهبيُّ يدخل هنا مع حقله في المرحلة ١ */
+/** الطبقةُ للعدّ — 🆕 الذهبيُّ بحقله (هجرة ٢٣٨): خاناتٌ بلا حدّ */
 function tierOf(p: Profile | null): LinkTier {
-  return isPlus(p as PlanBearer | null) ? "plus" : "free";
+  const b = p as PlanBearer | null;
+  return isGold(b) ? "gold" : isPlus(b) ? "plus" : "free";
 }
 
 /** يُنزل حكمَ الخانات على الصفوف (يُوقف الزائد ويُعيد ما اتّسع له) ويعيد الصفوفَ بعده */

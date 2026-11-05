@@ -338,6 +338,8 @@ const ar = {
   aiSearchHint:
     "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
   aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
+  /* 🆕 بوّابةُ المرحلة ٥ (مطفأةٌ اليوم) — الويبُ لا يبيع، فيدلّ على التطبيق */
+  aiSearchPlus: "البحث بوصف القصة من مزايا Loopz+ — اشترك من التطبيق.",
   /* 🆕 D-1259 — **المسارُ البديل يُسمّى**: نتائجُ الكلمات المفتاحيّة أضعفُ من
      النموذج، وعرضُها بلا كلمةٍ يجعل الذكاءَ يبدو رديئاً وهو غائب. */
   aiSearchFallback: "البحث الذكي غير متاح الآن — هذه نتائج تقريبية بالكلمات.",
@@ -573,7 +575,7 @@ const ar = {
   apiMsgNotAccepting: "هذا الشخص لا يستقبل رسائل",
   apiGroupPlus: "إنشاء القروبات لمشتركي لوبز+",
   apiGroupMember: "واحدٌ من الأعضاء لا يمكن إضافته",
-  apiGroupFull: "القروب ممتلئ — ١٢ شخصاً على الأكثر",
+  apiGroupFull: "القروب ممتلئ — ١٦ شخصاً على الأكثر",
   apiGroupForbidden: "هذا للمشرف فقط",
   apiGroupRank: "ليست لك صلاحيةٌ على هذا العضو",
   apiGroupNotMember: "لم تعد عضواً في هذا القروب",
@@ -1809,7 +1811,7 @@ const ar = {
   invStRejected: "مرفوضة",
   invEmpty: "لم ينضم أحد بعد — شارك رابطك أول مرة",
   prtEntryTitle: "تصنع محتوى؟ انضم إلى Loopz Partners",
-  prtEntryBody: "اكسب ٢٥٪ من المشتركين المباشرين",
+  prtEntryBody: "اكسب ٢٥٪ من صافي اشتراكات من تدعوهم",
   prtLearnMore: "اعرف أكثر",
   prtHeroTitle1: "شارك القصص.",
   prtHeroTitle2: "واكسب مع Loopz.",
@@ -1913,8 +1915,13 @@ const ar = {
   prtCompleteSetup: "أكمل الإعداد",
   prtSetupLater: "يتاح مع فتح الاشتراكات",
   prtTermsTitle: "شروط العمولة",
+  /* 🆕 المرحلة ١ (الخطّة §٧) — أوّلُ بندٍ يعرّف «الصافي»، ومثالٌ من السعر في الكود موسومٌ مثالاً */
   prtTermRate:
-    "٢٥٪ من صافي الإيراد عن كلّ دفعة يدفعها المشترك خلال أوّل سنة من اشتراكه (الاشتراك السنوي: دفعة واحدة)",
+    "٢٥٪ من صافي الإيراد — الثمن بعد ضريبة القيمة المضافة ورسوم المتجر — عن كلّ دفعة يدفعها المشترك خلال أوّل سنة من اشتراكه (الاشتراك السنوي: دفعة واحدة)",
+  prtTermExample: (price: string, net: string, commission: string) => `مثال: اشتراكٌ سنويّ بـ${price} ريال ⇐ صافٍ ≈ ${net} ⇐ عمولتك ≈ ${commission} ريال`,
+  prtTermRefund: "إذا استُرجع ثمن الدفعة تُعكس عمولتها",
+  prtActEarned: "عمولة اشتراك",
+  prtActReversed: "استرجاع",
   prtTermDirect: "الإحالة المباشرة فقط — لا مستويات",
   prtTermHold: "تعليق ٣٠ يوماً قبل استحقاق أي عمولة",
   prtTermMin: "حد أدنى للتحويل ١٠٠ ريال — تحويل بنكي شهري",
@@ -2004,6 +2011,10 @@ const ar = {
   pushSharedTitle: (title: string) => `أرسل لك «${title}»`,
   pushSharedList: (name: string) => `أرسل لك قائمة «${name}»`,
   pushNewEpisode: (title: string) => `حلقة جديدة من «${title}» اليوم`,
+  /* 🆕 المرحلة ١ — من سقط من بلس وأُوقف من أجهزته ما زاد (أحمد «٢ أ») */
+  planEndedPushTitle: "انتهى اشتراكك في Loopz+",
+  planEndedPushKept: (name: string) => `أبقينا ${name} — اختر ما يبقى من أجهزتك`,
+  planEndedPushNone: "أوقفنا ما زاد من أجهزتك — اختر ما يبقى",
   pushNewEpisodes: (a: string, b: string, more: number) =>
     more > 0 ? `حلقات جديدة اليوم: «${a}»، «${b}» و${more} غيرها` : `حلقات جديدة اليوم: «${a}» و«${b}»`,
   setNotifEmail: "إشعارات البريد",
@@ -2603,7 +2614,7 @@ const ar = {
   plusName: "Loopz+",
   plusGateTitle: "هذي من مزايا Loopz+",
   plusGateHint:
-    "المتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع — و Loopz+ للثيمات وتنسيق صفحاتك كما تحبّ.",
+    "المتابعة والقوائم والمجتمع والبحث العادي تبقى مجّانيةً للجميع — و Loopz+ للثيمات وتنسيق صفحاتك كما تحبّ.",
   /* 🆕 **الثمنُ بحكم أحمد (٢٩ أغسطس، D-786)** — **نقضٌ مسجَّلٌ لـ«٩٩
      ريالاً سنويّاً» في D-633**، والفرقُ ليس صياغةً بل ضعفٌ تقريباً.
      **وسعرُ السنة الأولى دائمٌ لكلِّ مشترِكٍ جديد** لا عرضَ إطلاقٍ
@@ -2620,8 +2631,10 @@ const ar = {
      تغييرِ صرف** — **والسوقُ سعوديٌّ أوّلاً.** ⚠️ **والمفاتيحُ الثلاثةُ
      هي المصدرُ الوحيد**: `/terms` وصفحةُ البيع والبوّابةُ تقرأ منها،
      **وثمنٌ مكتوبٌ بيدٍ في صفحةٍ هو أوّلُ سعرٍ يُنسى عند التغيير.** */
-  plusPrice: "149.99 ريالاً للسنة الأولى",
-  plusPriceRenew: "ثمّ 186.99 ريالاً سنويّاً · أو 18.99 شهريّاً",
+  plusPrice: "99.99 ريالاً للسنة الأولى",
+  plusPriceRenew: "ثمّ 119.99 ريالاً سنويّاً · أو 12.99 شهريّاً",
+  /* 🆕 المرحلة ١ — الذهبيُّ سنويٌّ فقط بسعرٍ ثابت (الخطّة §٢) */
+  goldPrice: "199.99 ريالاً سنويّاً",
   plusPriceLocal: "أو ما يعادلها بعملة بلدك",
   plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
   plusLearnMore: "ما الذي يشمله Loopz+؟",
@@ -3451,6 +3464,7 @@ const en: Dict = {
   aiSearchHint:
     "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
   aiSearchEmpty: "No matches found — try a broader description or add details.",
+  aiSearchPlus: "Searching by story is a Loopz+ feature — subscribe in the app.",
   aiSearchFallback: "Smart search isn't available right now — these are rough keyword matches.",
   hintSearchDesc: "Tap the star to search by describing the story or the mood",
 
@@ -3646,7 +3660,7 @@ const en: Dict = {
   apiMsgNotAccepting: "This person isn't accepting messages",
   apiGroupPlus: "Creating groups is a Loopz+ feature",
   apiGroupMember: "One of the members can't be added",
-  apiGroupFull: "The group is full — 12 people at most",
+  apiGroupFull: "The group is full — 16 people at most",
   apiGroupForbidden: "Only the admin can do this",
   apiGroupRank: "You don't have permission over this member",
   apiGroupNotMember: "You're no longer in this group",
@@ -4469,7 +4483,7 @@ const en: Dict = {
   invStRejected: "Rejected",
   invEmpty: "No one has joined yet — share your link for the first time",
   prtEntryTitle: "Create content? Join Loopz Partners",
-  prtEntryBody: "Earn 25% from direct subscribers",
+  prtEntryBody: "Earn 25% of the net from the subscribers you invite",
   prtLearnMore: "Learn more",
   prtHeroTitle1: "Share stories.",
   prtHeroTitle2: "Earn with Loopz.",
@@ -4573,7 +4587,11 @@ const en: Dict = {
   prtSetupLater: "Available when subscriptions open",
   prtTermsTitle: "Commission terms",
   prtTermRate:
-    "25% of net revenue on every payment a subscriber makes during their first year (annual plan: one payment)",
+    "25% of net revenue — the price after VAT and the store's fee — on every payment a subscriber makes during their first year (annual plan: one payment)",
+  prtTermExample: (price: string, net: string, commission: string) => `Example: a SAR ${price} yearly plan ⇒ net ≈ ${net} ⇒ your commission ≈ SAR ${commission}`,
+  prtTermRefund: "If a payment is refunded, its commission is reversed",
+  prtActEarned: "Subscription commission",
+  prtActReversed: "Refund",
   prtTermDirect: "Direct referrals only — no tiers",
   prtTermHold: "30-day hold before any commission is confirmed",
   prtTermMin:
@@ -4655,6 +4673,9 @@ const en: Dict = {
   pushSharedTitle: (title: string) => `Sent you “${title}”`,
   pushSharedList: (name: string) => `Sent you the list “${name}”`,
   pushNewEpisode: (title: string) => `New episode of “${title}” today`,
+  planEndedPushTitle: "Your Loopz+ subscription ended",
+  planEndedPushKept: (name: string) => `We kept ${name} — choose which devices stay`,
+  planEndedPushNone: "Your extra devices are paused — choose what stays",
   pushNewEpisodes: (a: string, b: string, more: number) =>
     more > 0 ? `New episodes today: “${a}”, “${b}” and ${more} more` : `New episodes today: “${a}” and “${b}”`,
   setNotifEmail: "Email notifications",
@@ -5095,9 +5116,10 @@ const en: Dict = {
   plusName: "Loopz+",
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:
-    "Tracking, lists, community and search stay free for everyone — Loopz+ is for themes and shaping your pages the way you like.",
-  plusPrice: "SAR 149.99 for your first year",
-  plusPriceRenew: "then SAR 186.99 a year · or 18.99 a month",
+    "Tracking, lists, community and regular search stay free for everyone — Loopz+ is for themes and shaping your pages the way you like.",
+  plusPrice: "SAR 99.99 for your first year",
+  plusPriceRenew: "then SAR 119.99 a year · or 12.99 a month",
+  goldPrice: "SAR 199.99 a year",
   plusPriceLocal: "or the equivalent in your local currency",
   plusSoon: "Coming soon — subscriptions are not open yet",
   plusLearnMore: "What does Loopz+ include?",

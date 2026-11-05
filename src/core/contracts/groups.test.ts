@@ -7,7 +7,7 @@ import { mentionsIn, parseGroupCreateBody, parseGroupManageBody, parseGroupSendB
 const id = (n: number) => `5b7c2a9e-1111-4a2b-9c3d-${String(n).padStart(12, "0")}`;
 const PHOTO = `${id(1)}/${id(2)}.jpg`;
 
-test("الإنشاء: اسمٌ مطويّ، وأعضاءٌ من ١ إلى ١١، وصورةٌ اختياريّة", () => {
+test("الإنشاء: اسمٌ مطويّ، وأعضاءٌ من ١ إلى ١٥، وصورةٌ اختياريّة", () => {
   assert.deepEqual(parseGroupCreateBody({ name: "  سهرة   الخميس ", member_ids: [id(1)] }), { name: "سهرة الخميس", member_ids: [id(1)], photo_path: null });
   assert.deepEqual(parseGroupCreateBody({ name: "x", member_ids: [id(1)], photo_path: PHOTO })?.photo_path, PHOTO);
   assert.equal(parseGroupCreateBody({ name: " ", member_ids: [id(1)] }), null);
@@ -15,9 +15,9 @@ test("الإنشاء: اسمٌ مطويّ، وأعضاءٌ من ١ إلى ١١،
   assert.equal(parseGroupCreateBody({ name: "x", member_ids: [] }), null);
   assert.deepEqual(parseGroupCreateBody({ name: "x", member_ids: [id(1), id(1)] })?.member_ids, [id(1)]);
   assert.equal(parseGroupCreateBody({ name: "x", member_ids: [id(1), "bad"] }), null);
-  const eleven = Array.from({ length: GROUP_MAX_MEMBERS - 1 }, (_, i) => id(i + 1));
-  assert.ok(parseGroupCreateBody({ name: "x", member_ids: eleven }));
-  assert.equal(parseGroupCreateBody({ name: "x", member_ids: [...eleven, id(99)] }), null);
+  const fifteen = Array.from({ length: GROUP_MAX_MEMBERS - 1 }, (_, i) => id(i + 1));
+  assert.ok(parseGroupCreateBody({ name: "x", member_ids: fifteen }));
+  assert.equal(parseGroupCreateBody({ name: "x", member_ids: [...fifteen, id(99)] }), null);
   assert.equal(parseGroupCreateBody({ name: "x", member_ids: [id(1)], photo_path: "../etc" }), null);
 });
 

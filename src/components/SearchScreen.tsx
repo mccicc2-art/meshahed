@@ -167,6 +167,8 @@ export function SearchScreen({
         if (!res.ok) {
           setDescItems([]);
           setDescFallback(false);
+          /* 🆕 بوّابةُ بلس (المرحلة ٥، مطفأةٌ اليوم): الويبُ لا يبيع — يدلّ على التطبيق */
+          if (res.reason === "plus") flashError(t.aiSearchPlus);
           return;
         }
         setDescFallback(!!res.fallback);

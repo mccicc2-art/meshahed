@@ -5,13 +5,14 @@
  * الأقدم)، والشاشةُ تقرأ خيطَه من الكاش نفسِه — فإشارةُ Realtime الواحدةُ تجدّد الصندوقَ والقروبَ معاً كما في الخاص.
  *
  * 🔑 **القاعدةُ هي الحَكَم**: الإنشاءُ للوبز+ (`plus`)، والأعضاءُ ممّن تتابعهم ويقبلهم بوّابُ الخاص (`member`)، والحدُّ
- * ١٢ معك (`full`) — الرفضُ يعود مفتاحاً يُقرأ لا «تعذّر».
+ * ١٦ معك (`full`) — الرفضُ يعود مفتاحاً يُقرأ لا «تعذّر».
  */
 import type { PersonLite } from "../people.ts";
 import type { MsgImage } from "./messages.ts";
 
-/** الحدُّ: ١٢ شخصاً وأنت منهم (قرارُ أحمد ١٥ أكتوبر) — قيدُ الدالّتين `dm_group_create` و`dm_group_add` */
-export const GROUP_MAX_MEMBERS = 12;
+/** الحدُّ: ١٦ شخصاً وأنت منهم (خطّةُ Loopz+ v2 §١٢ «Groups 16 for both tiers»، كان ١٢ بقرار ١٥ أكتوبر) — قيدُ الدالّتين
+ *  `dm_group_create` و`dm_group_add` (هجرة ٢٣٨). قبل الهجرة يرفض الخادمُ ما فوق ١٢ كما كان */
+export const GROUP_MAX_MEMBERS = 16;
 /** أقصى طول اسم القروب — قيدُ `dm_groups.name` */
 export const GROUP_NAME_MAX = 30;
 

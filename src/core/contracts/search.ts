@@ -26,8 +26,9 @@ export interface SearchStoryItem {
 
 export interface SearchStoryPayload {
   items: SearchStoryItem[];
-  /** `short`: أقلُّ من ٨ أحرف · `empty`: النموذجُ لم يجد — الواجهةُ تقرّر النصّ */
-  reason: "short" | "empty" | null;
+  /** `short`: أقلُّ من ٨ أحرف · `empty`: النموذجُ لم يجد · 🆕 `plus`: البحثُ بالوصف لبلس (بوّابةُ المرحلة ٥، مطفأةٌ اليوم) —
+   *  1.13.x لا يعرفها فيعرض «لم أجد»، و1.14.0 يفتح صفحةَ الاشتراك. الواجهةُ تقرّر النصّ */
+  reason: "short" | "empty" | "plus" | null;
   /** المسارُ البديل (بلا نموذج) — الويبُ لا يميّزه بصريّاً اليوم، يمرّ للمستقبل */
   fallback: boolean;
 }
