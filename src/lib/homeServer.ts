@@ -1,7 +1,8 @@
 import "server-only";
-import { issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken } from "@/lib/linkTokens";
+import { autoMarkSignal, issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken, type LinkOwner } from "@/lib/linkTokens";
 import { findByExternalId, searchByName } from "@/lib/tmdb";
-import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, type HomeEvent } from "@/core/homeServer";
+import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, type HomeEvent, type HomeServer } from "@/core/homeServer";
+import type { HomeKind } from "@/core/deviceLinks";
 
 /**
  * ====== 🆕 سيرفراتُ البيت — الرابطُ والمطابقةُ والتسجيل (هجرة ٢٣٥) ======
@@ -16,19 +17,21 @@ import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, type HomeEvent } from "@/core/home
  * والخطأُ هنا ثمنُه سؤالٌ يُجاب بـ✕ — لا حلقةٌ تُعلَّم (السؤالُ قبل التعليم، «٢ أ»).
  */
 
-export async function issueHomeServerToken(userId: string) {
-  return issueLinkToken("home_server_links", "lh_", userId);
+/* 🆕 هجرة ٢٣٧ — **رابطٌ لكلِّ نوع** (`server`)، والطلبُ بلا نوعٍ (تطبيقُ 1.13.x) يُصدر الرابطَ القديمَ المشترك */
+export async function issueHomeServerToken(userId: string, server?: HomeKind | null) {
+  return issueLinkToken("home_server_links", "lh_", userId, server);
 }
-export async function revokeHomeServerToken(userId: string) {
-  return revokeLinkToken("home_server_links", userId);
+export async function revokeHomeServerToken(userId: string, server?: HomeKind | null) {
+  return revokeLinkToken("home_server_links", userId, server);
 }
 export async function homeServerLinkOf(userId: string) {
   return linkStateOf("home_server_links", userId);
 }
-export async function homeServerOwner(token: string) {
+/** صاحبُ الرابط — ونوعُ السيرفر المرسِل (`server`) يُطابق رابطَ نوعه، ويُربط به الرابطُ القديمُ أوّلَ مرّة (هجرة ٢٣٧) */
+export async function homeServerOwner(token: string, server: HomeServer) {
   /* 🆕 هجرة ٢٣٦ — البابُ واحدٌ والجدولُ من سابقة الرمز: `lk_` رابطُ Kodi، و`lh_` رابطُ السيرفرات الثلاثة */
   if (KODI_TOKEN_RE.test(token)) return linkOwner("kodi_links", token, KODI_TOKEN_RE);
-  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE);
+  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE, server === "kodi" ? undefined : server);
 }
 export async function kodiLinkOf(userId: string) {
   return linkStateOf("kodi_links", userId);
@@ -37,7 +40,8 @@ export async function revokeKodiToken(userId: string) {
   return revokeLinkToken("kodi_links", userId);
 }
 
-export type HomeHit = { kind: "tv" | "movie"; tmdbId: number; season: number | null; episode: number | null };
+/** `byName`: وُجد بالاسم لا بمعرّف — قد يكون عملاً آخر بالاسم نفسِه، فلا يُعلَّم بلا سؤال (هجرة ٢٣٧) */
+export type HomeHit = { kind: "tv" | "movie"; tmdbId: number; season: number | null; episode: number | null; byName?: boolean };
 
 export async function resolveHomeEvent(ev: HomeEvent): Promise<HomeHit | null> {
   if (ev.kind === "movie") {
@@ -48,7 +52,7 @@ export async function resolveHomeEvent(ev: HomeEvent): Promise<HomeHit | null> {
     }
     if (!ev.title) return null;
     const hit = await searchByName(ev.title.slice(0, 200), "movie", ev.year);
-    return hit ? { kind: "movie", tmdbId: hit.id, season: null, episode: null } : null;
+    return hit ? { kind: "movie", tmdbId: hit.id, season: null, episode: null, byName: true } : null;
   }
 
   /* 🆕 Kodi — مكتبتُه تعرف المسلسلَ نفسَه: رقمُه في TMDB مع موسم الحلقة ورقمها كما في المكتبة (ترقيمُ TMDB في سكرابر Kodi الافتراضيّ) */
@@ -73,10 +77,16 @@ export async function resolveHomeEvent(ev: HomeEvent): Promise<HomeHit | null> {
   }
   if (!ev.title || ev.season == null || !ev.episode) return null;
   const show = await searchByName(ev.title.slice(0, 200), "tv");
-  return show ? { kind: "tv", tmdbId: show.id, season: ev.season, episode: ev.episode } : null;
+  return show ? { kind: "tv", tmdbId: show.id, season: ev.season, episode: ev.episode, byName: true } : null;
 }
 
-/** يُسجَّل «أنهاها في سيرفره» سؤالاً منتظراً (`played` = نعم: انتهى، فهو يُعرض فوراً) — صامتٌ إن فشل */
-export async function recordHomeSignal(userId: string, ev: HomeEvent, hit: HomeHit) {
-  return recordSignal(userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode, true);
+/**
+ * يُسجَّل «أنهاها في سيرفره» سؤالاً منتظراً (`played` = نعم: انتهى، فهو يُعرض فوراً) — صامتٌ إن فشل.
+ * 🆕 هجرة ٢٣٧ — **ولمن فعّل «سجّل بلا سؤال»** (Loopz+) يُجاب ✓ في الحال: الحلقةُ تُعلَّم بشارة سيرفرها ولا يُسأل عنها.
+ */
+export async function recordHomeSignal(owner: LinkOwner, ev: HomeEvent, hit: HomeHit) {
+  const r = await recordSignal(owner.userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode, true);
+  /* ⚖️ **بالمعرّف وحده**: مطابقةٌ بالاسم قد تكون مسلسلاً آخر، و«حتى هنا» يعلّم ما قبلها كلَّه بلا تراجع — فتبقى سؤالاً */
+  if (owner.autoMark && !hit.byName && (r === "added" || r === "touched")) await autoMarkSignal(owner.userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode);
+  return r;
 }

@@ -40,6 +40,8 @@ export type Tag =
   | "me:stremio"
   /* 🆕 سيرفراتُ البيت (هجرة ٢٣٥) — حالةُ رابط Plex/Jellyfin/Emby — `GET /api/v1/me/home-server` (أسئلتُها في `me:stremio`) */
   | "me:home-server"
+  /* 🆕 مدارُ الأجهزة (هجرة ٢٣٧) — الخاناتُ وما في كلٍّ منها و«سجّل بلا سؤال» — `GET /api/v1/me/links` */
+  | "me:links"
   | "people"
   | "news"
   /** لوحةُ الإدارة كاملةً — ويب فقط، ولا تدخل `v1` (§4.4). */

@@ -170,6 +170,8 @@ export function AboutScreen() {
         <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, padding: 14, gap: 6 }}>
           <Text size={12} color={tokens.muted + "CC"} style={{ lineHeight: 18 }}>{t.tmdbAttribution}</Text>
           <Text size={12} color={tokens.muted + "CC"} style={{ lineHeight: 18 }}>{t.justwatchAttribution}</Text>
+          {/* 🆕 هجرة ٢٣٧ — شعارُ Plex في صفحة «الربط»، وسطرُ العلامة التجاريّة هنا */}
+          <Text size={12} color={tokens.muted + "CC"} style={{ lineHeight: 18 }}>{t.plexAttribution}</Text>
         </View>
       </View>
     </SettingsScreen>

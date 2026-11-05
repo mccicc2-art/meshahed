@@ -26,7 +26,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   /* A-17 (المدقّق ٢٣ أكتوبر) — المالكُ أوّلاً ثمّ الترجمة: رمزٌ مجهولٌ أو غيرُ مشتركٍ لا يكلّفنا طلباً واحداً لـTMDB أو Kitsu.
      كانا متوازيَين فصار كلُّ رمزٍ صحيحِ الشكل يُطلق عملاً خارجيّاً؛ والثمنُ على العضو المشترك استعلامُ قاعدةٍ واحدٌ قبل الترجمة */
   const owner = await stremioOwner(token);
-  if (!owner?.plus) return addonJson(EMPTY);
+  /* 🆕 هجرة ٢٣٧ — «داخل خانات العضو» بدل «بلس»: المجانيُّ يربط جهازاً، والزائدُ بعد النزول موقوف */
+  if (!owner?.active) return addonJson(EMPTY);
   const hit = await resolveStremioRef(ref);
   if (!hit) return addonJson(EMPTY);
   after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true));

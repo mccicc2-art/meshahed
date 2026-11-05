@@ -13,8 +13,11 @@ import { ImportScreen } from "../../src/settings/ImportScreen";
 import { WidgetScreen } from "../../src/settings/WidgetScreen";
 import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 import { PlusScreen } from "../../src/settings/PlusScreen";
-import { StremioScreen } from "../../src/settings/StremioScreen";
 import { HomeServersScreen } from "../../src/settings/HomeServersScreen";
+import { HomeDeviceScreen, KodiDeviceScreen, StremioDeviceScreen } from "../../src/links/DeviceScreens";
+import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
+import { LinksScreen } from "../../src/links/LinksScreen";
+import { useLinks } from "../../src/links/api";
 
 /**
  * `/settings/[section]` — صفحةٌ لكلِّ قسم كما في الويب (D-462: الرابطُ يقول أين أنت،
@@ -43,11 +46,23 @@ const SCREENS = {
   features: FeaturesScreen,
   /* 🆕 «لا ويب في التطبيق» ٤ — Loopz+ والاشتراك شاشةٌ واحدة (كلُّ أبواب `/plus` والفوترة عبر `shell.nativeDoor`) */
   plus: PlusScreen,
-  /* 🆕 «اربط Stremio» (٢٢ أكتوبر) — رابطُ الإضافة وإلغاؤه؛ والإشاراتُ نفسُها في الرئيسيّة و`/stremio` */
-  stremio: StremioScreen,
-  /* 🆕 «سيرفرات البيت» (هجرة ٢٣٥) — رابطُ Webhook الواحد لـPlex وJellyfin وEmby، واستيرادُ تاريخ Plex */
-  "home-servers": HomeServersScreen,
+  /* 🆕 هجرة ٢٣٧ — صفحةٌ لكلِّ جهازٍ برابطه (وقبل الهجرة تعرض كلٌّ منها الشاشةَ القديمة)، و«اربط أجهزتك» قبل الاشتراك */
+  stremio: StremioDeviceScreen,
+  plex: () => <HomeDeviceScreen kind="plex" />,
+  jellyfin: () => <HomeDeviceScreen kind="jellyfin" />,
+  emby: () => <HomeDeviceScreen kind="emby" />,
+  kodi: KodiDeviceScreen,
+  "link-intro": LinkIntroScreen,
+  /* «سيرفرات البيت» (هجرة ٢٣٥) — رابطٌ قديمٌ قد يفتحها: قبل الهجرة شاشتُها، وبعدها المدار */
+  "home-servers": HomeServersEntry,
 } as const;
+
+/** بابُ «سيرفرات البيت» القديم: الشاشةُ نفسُها قبل الهجرة، والمدارُ بعدها */
+function HomeServersEntry() {
+  const links = useLinks();
+  if ((links.data && !links.data.ready) || (!links.data && links.isError)) return <HomeServersScreen />;
+  return <LinksScreen />;
+}
 
 export default function SettingsSection() {
   const { section } = useLocalSearchParams<{ section: string }>();

@@ -10,7 +10,7 @@ import { useApp } from "../state";
 import { Button, Text, Toast, TopBar, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
-import { RailCard, RAIL_CARD_W, type LibMark } from "../discover/RailCard";
+import { gridCards, RailCard, type LibMark } from "../discover/RailCard";
 import { profileUrl } from "@/core/media";
 import { formatDate } from "@/core/when";
 import type { FollowArtistBody, LibraryPayload, ListFromPersonBody, ListFromPersonResult, PersonPayload, PersonWork, UnfollowArtistBody } from "../contracts";
@@ -146,7 +146,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   /* D-1625 — الحقائقُ بخاناتها الثلاث (المتوفّرُ يتقدّم والباقي فارغٌ بمقاسه) */
   const factRows = [facts[0] ?? null, facts[1] ?? null, facts[2] ?? null];
   /* شبكةُ ثلاثة أعمدة بعرض بطاقة الصفّ — لا عرضَ ثانياً للملصق (القاعدة ٣) */
-  const cols = Math.max(2, Math.floor((width - PAGE_PAD * 2 + GRID_GAP) / (RAIL_CARD_W + GRID_GAP)));
+  /* 🆕 الشبكةُ تملأ عرضَها (`gridCards`): كان الباقي فراغاً على اليمين */
+  const { w: cardW } = gridCards(width, PAGE_PAD, GRID_GAP);
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
@@ -228,7 +229,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
                   })}
                 </View>
                 <Text size={12} muted style={{ marginBottom: 12 }}>{t.personWorksCount(works.length)}</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP, justifyContent: cols > 2 ? "flex-start" : "space-between" }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP }}>
                   {works.map((w) => (
                     <RailCard
                       key={`${w.kind}-${w.id}`}
@@ -236,6 +237,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
                       rank={null}
                       lib={marks.get(`${w.kind}-${w.id}`) ?? null}
                       onPress={() => openTitle(w)}
+                      width={cardW}
                     />
                   ))}
                 </View>

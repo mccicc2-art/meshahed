@@ -386,22 +386,39 @@ export const SECTIONS: Section[] = [
       },
     ],
   },
+  /* 🆕 **الربط** (هجرة ٢٣٧، أحمد ٥ نوفمبر): خرج من «قريباً» — Stremio وسيرفراتُ البيت شُحنت، والمدارُ يعدّ: جهازٌ مجّاناً، وخمسةٌ
+     مع Loopz+ ومعها «سجّل بلا سؤال». ومنصّاتُ البثّ باقيةٌ في «قريباً» حتى يونيفاي. */
+  {
+    icon: "tv",
+    ar: "الربط",
+    en: "Linking",
+    items: [
+      {
+        icon: "tv",
+        ar: "اربط جهازك",
+        en: "Link your device",
+        arBody:
+          "اربط Stremio أو سيرفرك في البيت (Plex · Jellyfin · Emby · Kodi)، وكل ما تشاهده هناك يسألك عنه Loopz في الرئيسية: شفتها؟ ✓ تعلّمها وكل ما قبلها. الحساب المجاني يربط جهازاً واحداً.",
+        enBody:
+          "Link Stremio or your home server (Plex · Jellyfin · Emby · Kodi), and everything you watch there asks you one thing on Loopz Home: watched it? ✓ marks it and everything before it. A free account links one device.",
+      },
+      {
+        icon: "repeat",
+        ar: "اربط حتى ٥ أجهزة، ومشاهدتك تتسجّل وحدها",
+        en: "Link up to 5 devices, and your watching logs itself",
+        arBody:
+          "خمسة أجهزة في مدارك، و«سجّل بلا سؤال»: ما تخلّصه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك وحده (Stremio يسألك دائماً، لأنه لا يخبرنا إنك خلّصت). واستورد تاريخك القديم من Plex.",
+        enBody:
+          "Five devices in your orbit, and “Log without asking”: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library on its own (Stremio always asks, because it doesn't tell us you finished). And import your old Plex history.",
+        plus: true,
+      },
+    ],
+  },
   {
     icon: "sparkle-star",
     ar: "قريباً",
     en: "Coming soon",
     items: [
-      {
-        icon: "repeat",
-        plus: true,
-        ar: "تسجيلٌ تلقائي لما تشاهده",
-        en: "Automatic watch tracking",
-        arBody:
-          "لن تحتاج أن تعلّم شيئاً بيدك: يُسجَّل ما تشاهده تلقائياً أوّلاً بأوّل، ويبقى التعليم اليدوي متاحاً لمن يفضّله.",
-        enBody:
-          "No more ticking by hand: what you watch is logged automatically as you watch it, with manual ticking still there if you prefer it.",
-        soon: true,
-      },
       {
         icon: "tv",
         plus: true,
@@ -411,23 +428,6 @@ export const SECTIONS: Section[] = [
           "اربط حساباتك على منصّات البثّ الكبرى مرّةً واحدة، وتتدفّق مشاهداتك إلى مكتبتك بلا خطوةٍ إضافية.",
         enBody:
           "Connect your accounts on the major streaming platforms once, and your watches flow into your library with no extra step.",
-        soon: true,
-      },
-      {
-        icon: "newspaper",
-        /* 🆕 **وسمُ بلس** (D-783 §٢): كانت الصفحةُ تقول «قريباً» بلا وسم
-           خطّة **وقائمةُ أحمد تضعه في Loopz+** — **وسمٌ ناقصٌ في صفحةٍ
-           اسمُها «صادقة» يبيع مجّاناً ما سيُطلب ثمنُه.** */
-        plus: true,
-        /* 🆕 Stremio (٢٢ أكتوبر) — قرار ٤: الاسمُ «اربط مشغّلك — Stremio»، وIPTV داخل الوصف وحده. والوصفُ صادق:
-           الإضافةُ تسأل ولا تعلّم، وتعمل مع صفحات الأعمال (معرّفاتُ IMDb) — ما يُفتح من كتالوجات IPTV بمعرّفاتها لا يصلنا */
-        ar: "اربط مشغّلك — Stremio",
-        en: "Link your player — Stremio",
-        arBody:
-          "ثبّت إضافة Loopz في Stremio، وكل حلقة أو فيلم تشغّله هناك يسألك عنه Loopz: شفتها؟ ✓ تعلّمها وكل ما قبلها. يعمل مع ما تشغّله من اشتراك IPTV عبر إضافته في Stremio.",
-        enBody:
-          "Install the Loopz addon in Stremio, and every episode or movie you play there asks you one thing in Loopz: watched it? ✓ marks it and everything before it. Works with what you play from an IPTV subscription through its Stremio addon.",
-        /* يبقى في «قريباً» حتى يُثبت على Stremio Web والجوّال (خطّة §٦)، ثمّ ينتقل إلى قسمه */
         soon: true,
       },
       {

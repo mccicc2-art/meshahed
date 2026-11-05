@@ -199,13 +199,14 @@ export function HomeScreen() {
   const openTitle = useCallback((kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "home" } }), [router]);
   const openList = useCallback((id: string) => router.push({ pathname: "/list/[id]", params: { id, from: "home" } }), [router]);
 
-  /* 🆕 «من Stremio» (خطّةُ Stremio، ٢٢ أكتوبر) — بعد «أكمل المشاهدة» أينما كان في ترتيب العضو، ولـLoopz+ وحده (لا يُسأل
-     الخادمُ لغيره). الجوابُ يُخفي الإشارةَ فوراً ويُرسل بعد «تراجع» (`useStremioAnswer`)، وبلا منتظرةٍ لا قسم */
-  const stremioQ = useStremio(!!me?.plus);
+  /* 🆕 «من Stremio» (خطّةُ Stremio، ٢٢ أكتوبر) — بعد «أكمل المشاهدة» أينما كان في ترتيب العضو. الجوابُ يُخفي الإشارةَ فوراً
+     ويُرسل بعد «تراجع» (`useStremioAnswer`)، وبلا منتظرةٍ لا قسم.
+     🆕 هجرة ٢٣٧ — **لكلِّ عضو**: المجانيُّ يربط جهازاً واحداً فتصله أسئلتُه (كان لـLoopz+ وحده) */
+  const stremioQ = useStremio(!!me);
   const stremioAns = useStremioAnswer(toastHost);
   const stremioNode = useMemo(() => {
     const st = stremioQ.data;
-    if (!st?.plus) return null;
+    if (!st) return null;
     const items = st.items.filter((x) => !stremioAns.hidden.has(x.id));
     if (!items.length) return null;
     return (

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getProfile, getUser } from "@/lib/data";
 import { getT, getLocale } from "@/lib/locale";
 import { stremioLinkOf } from "@/lib/stremio";
+import { mayLinkDevice } from "@/lib/linkTokens";
 import { isPlus } from "@/core/plan";
 import { GoogleButton } from "@/components/GoogleButton";
 import { buttonClass } from "@/components/ui/Button";
@@ -23,8 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * 🆕 **صفحةُ ربط Stremio** (D-1512 «٣ أ»، ٢٢ أكتوبر) — «Configure» في قائمة Community Addons وفي الإضافة المثبّتة يفتحانها.
- * ثلاثُ حالات (الصور المعتمدة): زائرٌ ⇢ الشرحُ ثمّ الدخولُ بـ Google ويعود إلى هنا · عضوٌ بلا Loopz+ ⇢ بابُ الاشتراك ·
- * مشتركٌ ⇢ رابطُه الشخصيُّ والتثبيت (`StremioConnect`، البابُ نفسُه الذي يناديه التطبيق).
+ * ثلاثُ حالات (الصور المعتمدة): زائرٌ ⇢ الشرحُ ثمّ الدخولُ بـ Google ويعود إلى هنا · عضوٌ لا خانةَ له ⇢ «خانتك ممتلئة»
+ * وبابُ الاشتراك · له خانة ⇢ رابطُه الشخصيُّ والتثبيت (`StremioConnect`، البابُ نفسُه الذي يناديه التطبيق).
  * 🔑 **الشرحُ قبل الدخول**: من ضغط «Configure» في Stremio لا يعرف Loopz بعد — صفحةٌ تبدأ بالدخول تُغلق في وجهه.
  */
 export default async function StremioPage() {
@@ -32,7 +33,11 @@ export default async function StremioPage() {
   const locale = await getLocale();
   const profile = user ? await getProfile() : null;
   const plus = isPlus(profile);
-  const link = user && plus ? await stremioLinkOf(user.id) : null;
+  /* 🆕 هجرة ٢٣٧ — **العدُّ نفسُه الذي في التطبيق**: المجانيُّ يربط جهازاً واحداً، فالصفحةُ تفتح الربطَ لمن له خانة (أو Stremio
+     مربوطٌ عنده أصلاً: رابطٌ جديدٌ استبدالٌ لا خانة). وقبل الهجرة الحكمُ القديم: بلس وحده. */
+  const may = user ? await mayLinkDevice(user.id, "stremio") : null;
+  const canLink = !!user && (may ?? plus);
+  const link = user && canLink ? await stremioLinkOf(user.id) : null;
 
   return (
     <main className="max-w-md mx-auto px-4 py-10" dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -42,7 +47,7 @@ export default async function StremioPage() {
           <div>
             <h1 className="text-20 font-bold">{t.stremioWebTitle}</h1>
             <span className="inline-block mt-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-12 font-bold text-accent">
-              {t.stremioForPlus}
+              {may === null ? t.stremioForPlus : t.stremioSlotsBadge}
             </span>
           </div>
         </div>
@@ -61,11 +66,11 @@ export default async function StremioPage() {
             <GoogleButton locale={locale} next="/stremio" />
             <p className="mt-4 text-center text-12 text-muted">{t.stremioNeedAccount}</p>
           </>
-        ) : !plus ? (
+        ) : !canLink ? (
           <>
             <div className="mt-5 rounded-card bg-surface-2 p-4">
-              <b className="block text-15">{t.stremioLockedTitle}</b>
-              <span className="mt-1 block text-sm text-muted leading-relaxed">{t.stremioLockedSub}</span>
+              <b className="block text-15">{may === false ? t.stremioFullTitle : t.stremioLockedTitle}</b>
+              <span className="mt-1 block text-sm text-muted leading-relaxed">{may === false ? t.stremioFullSub : t.stremioLockedSub}</span>
             </div>
             <a href="/plus" className={buttonClass({ size: "lg", full: true, className: "mt-5" })}>
               {t.stremioSubscribe}

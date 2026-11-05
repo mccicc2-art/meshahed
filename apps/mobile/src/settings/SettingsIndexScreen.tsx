@@ -14,6 +14,7 @@ import { SettingsScreen, Group, Row, Chevron, RowsSkeleton, StatusPill } from ".
 import { THEMES, themeName } from "@/core/themes";
 import { useSettings, useOpenWeb } from "./api";
 import { FeedbackSheet } from "./FeedbackSheet";
+import { useLinks } from "../links/api";
 import type { ToastHostRef } from "../HoldHost";
 
 /**
@@ -33,6 +34,7 @@ export function SettingsIndexScreen() {
   const openWeb = useOpenWeb();
   const q = useSettings();
   const s = q.data;
+  const links = useLinks();
   const a = s?.account;
   /**
    * 🆕 D-1142 — **البطاقةُ لا تنتظر الإعدادات** (أحمد بتسجيل: «بطء في ظهور صفحة البروفايل في الإعدادات» —
@@ -105,9 +107,8 @@ export function SettingsIndexScreen() {
       <Group label={t.appGroupPersonalize}>
         <Row icon="home" title={t.appHomeProfile} onPress={() => go("home")} />
         <Row icon="grid" title={t.widgetScreenTitle} onPress={() => go("widget")} />
-        <Row icon="link" title={t.stremioScreenTitle} onPress={() => go("stremio")} />
-        {/* 🆕 سيرفراتُ البيت (هجرة ٢٣٥، «٤ أ») — تحت Stremio: كلاهما يسأل «شفتها؟» */}
-        <Row icon="tv" title={t.homeServersTitle} subtitle="Plex · Jellyfin · Emby · Kodi" onPress={() => go("home-servers")} />
+        {/* 🆕 هجرة ٢٣٧ — «الربط» يحلّ محلَّ «اربط Stremio» و«سيرفرات البيت»: صفحةُ المدار، وعددُ المربوط قيمةُ الصفّ */}
+        <Row icon="link" title={t.linksTitle} subtitle={t.linksRowSub} value={links.data?.ready && links.data.used > 0 ? t.linksRowCount(links.data.used) : undefined} onPress={() => router.push("/links")} />
         <Row icon="palette" title={t.setAppearance} value={appearance} onPress={() => go("appearance")} />
         <Row icon="film" title={t.setContent} onPress={() => go("content")} />
       </Group>

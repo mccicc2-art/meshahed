@@ -1,5 +1,5 @@
 import "server-only";
-import { issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken } from "@/lib/linkTokens";
+import { issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken, type IssueOutcome, type LinkOwner } from "@/lib/linkTokens";
 import { STREMIO_TOKEN_RE, type StremioVideo } from "@/core/stremioId";
 
 /**
@@ -17,8 +17,8 @@ import { STREMIO_TOKEN_RE, type StremioVideo } from "@/core/stremioId";
 
 /* ⚖️ **الرموزُ في `linkTokens.ts`** منذ صار لها جدولٌ ثانٍ (سيرفراتُ البيت، هجرة ٢٣٥) — القواعدُ نفسُها، وهنا أسماءُ Stremio وحدها */
 
-/** يُصدر رابطاً جديداً (ويُسقط القديم) ويعيد الرمزَ **مرّةً واحدة** — `null` إن غاب المفتاحُ أو الجدول */
-export async function issueStremioToken(userId: string): Promise<string | null> {
+/** يُصدر رابطاً جديداً (ويُسقط القديم) ويعيد الرمزَ **مرّةً واحدة** — أو «لا خانة» (هجرة ٢٣٧) أو فشلاً */
+export async function issueStremioToken(userId: string): Promise<IssueOutcome> {
   return issueLinkToken("stremio_links", "ls_", userId);
 }
 
@@ -32,8 +32,8 @@ export async function stremioLinkOf(userId: string): Promise<{ linked_at: string
   return st ? { linked_at: st.linked_at } : null;
 }
 
-/** صاحبُ الرمز وهل هو Loopz+ — `null` لرمزٍ لا شكلَ له أو لا وجودَ له أو نام ٩٠ يوماً */
-export async function stremioOwner(token: string): Promise<{ userId: string; plus: boolean } | null> {
+/** صاحبُ الرمز وهل رابطُه داخل خاناته (`active`، هجرة ٢٣٧) — `null` لرمزٍ لا شكلَ له أو لا وجودَ له أو نام ٩٠ يوماً */
+export async function stremioOwner(token: string): Promise<LinkOwner | null> {
   return linkOwner("stremio_links", token, STREMIO_TOKEN_RE);
 }
 

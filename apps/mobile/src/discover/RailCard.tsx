@@ -25,6 +25,15 @@ import { primeTitle, unprimeTitle } from "../title/seed";
  */
 export const RAIL_CARD_W = 112;
 
+/**
+ * 🆕 **شبكةُ الملصقات تملأ عرضَها** (خطّةُ Loopz+ v2، المرحلة ٠ — لقطةُ أحمد لصفحة الشخص: «فيه فراغ عاليمين»). عددُ الأعمدة كما
+ * كان (كم ١١٢ يتّسع)، **ثمّ يتوزّع الباقي على البطاقات** بدل أن يبقى فراغاً في طرفٍ واحد. قارئان: صفحةُ الشخص وشبكةُ القسم.
+ */
+export function gridCards(screenW: number, pad: number, gap: number): { cols: number; w: number } {
+  const cols = Math.max(2, Math.floor((screenW - pad * 2 + gap) / (RAIL_CARD_W + gap)));
+  return { cols, w: Math.floor((screenW - pad * 2 - gap * (cols - 1)) / cols) };
+}
+
 export type LibMark = { saved: boolean; progress: number; completed: boolean; dropped: boolean } | null;
 
 export const RailCard = memo(function RailCard({
@@ -36,6 +45,7 @@ export const RailCard = memo(function RailCard({
   onHold,
   held: heldProp = false,
   rankTone,
+  width: cardW = RAIL_CARD_W,
 }: {
   card: CuratedCard;
   /** رقمُ الترتيب (١..) — للمرتَّب وحدَه */
@@ -50,6 +60,8 @@ export const RailCard = memo(function RailCard({
   held?: boolean;
   /** D-1036 — سنةُ الفوز في قائمة جائزة تُكتب **بلون التمييز** كالويب (D-995)؛ الرتبةُ بيضاءُ كما كانت */
   rankTone?: "accent";
+  /** 🆕 عرضُ البطاقة في الشبكات (`gridCards`) — الصفوفُ الأفقيّةُ تبقى على ١١٢ */
+  width?: number;
 }) {
   const { t, tokens } = useApp();
   /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
@@ -57,7 +69,7 @@ export const RailCard = memo(function RailCard({
   const cs = useCardState(`${card.kind}-${card.id}`);
   const lib = cs.store ? cs.mark : libProp;
   const held = cs.store ? cs.held : heldProp;
-  const uri = posterFor(card.poster_path, RAIL_CARD_W);
+  const uri = posterFor(card.poster_path, cardW);
   const ref = useRef<ViewInstance>(null);
   const hold = onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(card, { x, y, width: w, height: h })) : undefined;
   const a11y = [rank !== null ? String(rank) : null, card.title, lib?.dropped ? t.libStatusDropped : lib?.completed ? t.libStatusCompleted : lib && lib.progress > 0 ? `${t.libStatusWatching} ${lib.progress}%` : lib?.saved ? t.libStatusUnstarted : null].filter(Boolean).join("، ");
@@ -84,12 +96,12 @@ export const RailCard = memo(function RailCard({
       }}
       delayLongPress={350}
       /* 🆕 D-1224 — الضغطةُ تُرى تحت الإصبع (كانت البطاقةُ لا تتغيّر حتى تبدأ الحركة) — خفوتُ بطاقة المكتبة نفسُه */
-      style={({ pressed }) => ({ width: RAIL_CARD_W, opacity: pressed ? 0.8 : 1 })}
+      style={({ pressed }) => ({ width: cardW, opacity: pressed ? 0.8 : 1 })}
     >
       <View
         ref={ref}
         style={{
-          width: RAIL_CARD_W,
+          width: cardW,
           aspectRatio: 2 / 3,
           borderRadius: radius.poster,
           overflow: "hidden",

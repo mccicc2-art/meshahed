@@ -43,12 +43,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   if ((ev.server === "kodi") !== KODI_TOKEN_RE.test(token)) return OK();
 
   /* المالكُ قبل TMDB (درسُ A-17 في Stremio): رمزٌ مجهولٌ لا يكلّفنا طلباً خارجيّاً */
-  const owner = await homeServerOwner(token);
-  if (!owner?.plus) return OK();
+  /* 🆕 هجرة ٢٣٧ — «داخل خانات العضو» بدل «بلس»، ونوعُ المرسِل يطابق رابطَ نوعه (ويُربط به الرابطُ القديمُ أوّلَ مرّة) */
+  const owner = await homeServerOwner(token, ev.server);
+  if (!owner?.active) return OK();
   after(async () => {
     try {
       const hit = await resolveHomeEvent(ev);
-      if (hit) await recordHomeSignal(owner.userId, ev, hit);
+      if (hit) await recordHomeSignal(owner, ev, hit);
     } catch {
       /* لا سؤالَ هذه المرّة — الحلقةُ التالية تصل */
     }

@@ -335,7 +335,8 @@ function SideDrawer({
               {/* 🆕 D-1606 — **التقويمُ ليس في القائمة** (أحمد ٣٠ أكتوبر بلقطة: «التقويم كالندر شيله من هنا ما نبيه يكون موجود»): صفحتُه باقيةٌ
                   وبابُها عنوانُ «أسبوعك ›» في الرئيسية؛ والقائمةُ لغير المشترك تقصر صفّاً فلا يختفي سطرُ اللغة كلُّه تحت الشاشة */}
               {row("chart", t.drawerReport, () => go({ pathname: "/reports", params: { from } }), { tag: !plus })}
-              {row("link", t.drawerConnections, () => go("/settings/stremio"), { tag: !plus })}
+              {/* 🆕 هجرة ٢٣٧ — «الربط» صفحةُ المدار، والمجانيُّ يربط جهازاً فلا وسمَ PLUS */}
+              {row("link", t.linksTitle, () => go("/links"))}
               {row("sliders", t.drawerCustomize, () => go("/settings/home"))}
               {row("gift", t.drawerInvite, () => go("/settings/invites"))}
             </View>

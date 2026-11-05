@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, BackHandler, Platform, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { FlashList } from "@shopify/flash-list";
 import { api, ApiError, qk } from "../api";
 import { useApp } from "../state";
 import { Button, Text, TopBar, type ToastTone } from "../ui";
-import { RailCard, RAIL_CARD_W } from "./RailCard";
+import { gridCards, RailCard } from "./RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { marksOf, toWatchState, useCardActs } from "../cardActs";
@@ -39,7 +39,8 @@ export function SectionScreen({ title, query }: { title: string; query: string }
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const cols = Math.max(2, Math.floor((width - PAD * 2 + GAP) / (RAIL_CARD_W + GAP)));
+  /* 🆕 الشبكةُ تملأ عرضَها (`gridCards`): الباقي كان يتوزّع فجواتٍ واسعةً بين أعمدةٍ في وسطها */
+  const { cols, w: cardW } = gridCards(width, PAD, GAP);
 
   const q = useInfiniteQuery({
     queryKey: ["discover:section", query] as const,
@@ -123,10 +124,10 @@ export function SectionScreen({ title, query }: { title: string; query: string }
   const renderItem = useCallback(
     ({ item }: { item: CuratedCard }) => (
       <View style={{ alignItems: "center", paddingBottom: GAP }}>
-        <RailCard card={item} rank={null} lib={null} onPress={openCard} onHold={hold} />
+        <RailCard card={item} rank={null} lib={null} onPress={openCard} onHold={hold} width={cardW} />
       </View>
     ),
-    [openCard, hold],
+    [openCard, hold, cardW],
   );
   const refreshControl = usePullRefresh([["discover:section", query]], 0);
   const more = useCallback(() => {

@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, BackHandler, Easing, Platform, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BackHandler, Platform, Pressable, StyleSheet, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { Image } from "expo-image";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, GATE_HEADERS } from "../api";
+import { GATE_HEADERS } from "../api";
 import { APPLE_SIGN_IN } from "../auth";
 import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
@@ -15,7 +13,6 @@ import { mark } from "../perfMarks";
 import { opening } from "../opening/opening";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
-import { posterFor } from "../poster";
 import { prime, WELCOME_KEY } from "../prime";
 import { session } from "../session";
 import { shell, type SignInProvider } from "../shell";
@@ -23,6 +20,7 @@ import { useApp } from "../state";
 import { radius, space, statusBarStyleOf } from "../theme";
 import { Button, Text } from "../ui";
 import { Preparing } from "../welcome/Preparing";
+import { PosterWall, useWallPosters, withAlpha } from "../PosterWall";
 
 /**
  * ====== شاشةُ الدخول الأصليّة (D-1344 · Phase 11-U · U1) ======
@@ -48,84 +46,6 @@ import { Preparing } from "../welcome/Preparing";
  * يدخل»). تُرفع لحظةَ يعود ومعه ما يكفي للدخول (`onReturn` — فمن أغلق النافذةَ لا يراها)، وتبقى حتى يكتمل الرسمُ
  * **وتجهز الشاشةُ التالية** (`prime`: الرئيسيّةُ أو أوّلُ الترحيب، برمز الدخول نفسِه) — فتُفتح ممتلئة.
  */
-
-/* ===== جدارُ الملصقات =====
-   أربعةُ صفوفٍ تنزلق أفقيّاً ببطء، صفٌّ يميناً وصفٌّ يساراً، مائلةً خلف المحتوى. كلُّ صفٍّ يُرسم مرّتين متتاليتين
-   وينزلق بمقدار نسخةٍ واحدة ثمّ يعود — فالحلقةُ بلا قفزة. الحركةُ على الخيط الأصليّ (`useNativeDriver`) فلا
-   تمسّ JS. ومن أطفأ الحركةَ في جهازه يراه ثابتاً. `direction: ltr` للجدار وحدَه: زينةٌ لا نصَّ فيها، وحسابُ
-   الانزلاق لا يُقلب مع اتّجاه الواجهة. */
-const TILE_W = 92;
-const TILE_H = 138;
-const TILE_GAP = 10;
-const ROWS = 4;
-const LOOP_MS = 70_000;
-
-function WallRow({ posters, reverse, still }: { posters: string[]; reverse: boolean; still: boolean }) {
-  const x = useRef(new Animated.Value(0)).current;
-  const span = posters.length * (TILE_W + TILE_GAP);
-  useEffect(() => {
-    if (still || span === 0) return;
-    x.setValue(0);
-    const loop = Animated.loop(Animated.timing(x, { toValue: 1, duration: LOOP_MS, easing: Easing.linear, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [x, span, still]);
-  const translateX = x.interpolate({ inputRange: [0, 1], outputRange: reverse ? [-span, 0] : [0, -span] });
-  return (
-    <Animated.View style={{ flexDirection: "row", marginBottom: TILE_GAP, transform: [{ translateX }] }}>
-      {[...posters, ...posters].map((p, i) => (
-        <Image
-          key={`${p}-${i}`}
-          source={{ uri: posterFor(p, TILE_W) ?? undefined }}
-          style={{ width: TILE_W, height: TILE_H, borderRadius: radius.poster, marginRight: TILE_GAP }}
-          contentFit="cover"
-          transition={400}
-        />
-      ))}
-    </Animated.View>
-  );
-}
-
-/** `#rrggbb` ⇒ `rgba()` — لستارة الجدار بلون خلفيّة الثيم نفسِه (لا قيمةَ مكتوبةً بيد) */
-function withAlpha(hex: string, a: number): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
-
-function PosterWall({ posters }: { posters: string[] }) {
-  const { tokens } = useApp();
-  const { height } = useWindowDimensions();
-  const [still, setStill] = useState(false);
-  useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then((v) => setStill(!!v));
-  }, []);
-  const rows = useMemo(() => {
-    const per = Math.max(1, Math.ceil(posters.length / ROWS));
-    return Array.from({ length: ROWS }, (_, r) => {
-      const slice = posters.slice(r * per, r * per + per);
-      return slice.length >= 3 ? slice : posters.slice(0, per);
-    });
-  }, [posters]);
-  /* ستارةٌ من شرائحَ متدرّجة (لا مكتبةَ تدرّجٍ في التطبيق): شفّافةٌ أعلى الجدار حيث يذوب في الخلفيّة، وأكثفُ أسفلَه
-     حيث النقاطُ والزرّ — فالنصُّ يُقرأ والملصقاتُ تُرى. */
-  const BANDS = 10;
-  return (
-    <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.72, overflow: "hidden" }}>
-      <View style={{ position: "absolute", left: -60, right: -60, bottom: -40, opacity: 0.55, transform: [{ rotate: "-6deg" }], direction: "ltr" }}>
-        {rows.map((r, i) => (
-          <WallRow key={i} posters={r} reverse={i % 2 === 1} still={still} />
-        ))}
-      </View>
-      <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}>
-        {Array.from({ length: BANDS }, (_, i) => (
-          <View key={i} style={{ flex: 1, backgroundColor: withAlpha(tokens.bg, i === 0 ? 1 : Math.max(0.5, 0.95 - i * 0.07)) }} />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 const POINTS = [
   { icon: "check-line", key: "signInPoint1" },
@@ -183,13 +103,8 @@ export function SignInScreen() {
   }, []);
   const [failed, setFailed] = useState(false);
 
-  /* الجدارُ زينة: يُطلب بعد أن تُرسم الشاشة، ولا رمزَ معه (لا جلسةَ بعد)، وسقوطُه يتركها بلا خلفيّة */
-  const wall = useQuery({
-    queryKey: ["welcome:posters"],
-    queryFn: async () => (await api<{ posters: string[] }>("/api/v1/welcome/posters", { auth: false })).data.posters,
-    staleTime: 60 * 60_000,
-    retry: 0,
-  });
+  /* الجدارُ زينة: يُطلب بعد أن تُرسم الشاشة، ولا رمزَ معه (لا جلسةَ بعد)، وسقوطُه يتركها بلا خلفيّة (`PosterWall.tsx`) */
+  const wall = useWallPosters();
 
   /* رجوعُ النظام يخرج من التطبيق: لا شيءَ خلف هذه الشاشة يُرجَع إليه (طبقةُ الويب تحتها صفحةُ الدخول القديمة) */
   useEffect(() => {

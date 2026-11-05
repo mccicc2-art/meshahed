@@ -38,6 +38,8 @@ export interface KodiResult {
 
 export interface HomeServerLinkBody {
   action: "issue" | "revoke";
+  /** 🆕 هجرة ٢٣٧ — رابطٌ لكلِّ نوع. الغيابُ (تطبيقُ 1.13.x) = الرابطُ القديمُ المشترك؛ والإلغاءُ بلا نوع يقطع الثلاثة */
+  server?: "plex" | "jellyfin" | "emby";
 }
 
 export interface HomeServerLinkResult {

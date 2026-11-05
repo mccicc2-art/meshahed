@@ -27,6 +27,7 @@ import "../src/presence";
 import { rootTouch, rootTouchEnd } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
+import { UpdateBanner } from "../src/UpdateBanner";
 
 /**
  * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
@@ -166,6 +167,8 @@ function Shell() {
         {/* Phase 11-I — الإعداداتُ أصليّاً: الفهرسُ وصفحةٌ لكلِّ قسم، تُدفع فوق الرئيسيّة */}
         <Stack.Screen name="settings/index" options={{ headerShown: false }} />
         <Stack.Screen name="settings/[section]" options={{ headerShown: false }} />
+        {/* 🆕 هجرة ٢٣٧ — «الربط»: مدارُ الأجهزة */}
+        <Stack.Screen name="links" options={{ headerShown: false }} />
         {/* 🆕 «لا ويب في التطبيق» ٢ — الخصوصيّةُ والشروطُ أصليّتين (من شاشة الدخول ومن «عن Loopz») */}
         <Stack.Screen name="legal/[doc]" options={{ headerShown: false }} />
         {/* D-1158 — بلا حركة: شاشةٌ تُدفع وتُسحب في اللحظة نفسِها لا يجب أن تُرى */}
@@ -190,6 +193,8 @@ function Shell() {
       {/* 🆕 D-1505 — القائمةُ الجانبيّة: تُفتح من صورة الحساب وتُرسم مرّةً فوق المكدّس (`src/drawer/SideDrawer.tsx`) */}
       <DrawerHost />
       <TourHost />
+      {/* 🆕 لافتةُ «نسخة جديدة في المتجر» — مطفأةٌ حتى يُشغّلها الخادم (`src/UpdateBanner.tsx`) */}
+      <UpdateBanner />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}
       <Opening start={splashGone} />
     </>

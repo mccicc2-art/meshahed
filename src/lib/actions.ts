@@ -1,6 +1,7 @@
 "use server";
 
 import { tagSource, type WatchSource } from "@/lib/watchSource";
+import { closeSignal, ensureMovieInLibrary, ensureShowFollowed, markSignalWatched, markWatchedUpTo, safeImagePath } from "@/lib/watchMark";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { isPersonaId } from "@/core/personas";
 import { avatarStoragePath } from "@/core/avatarPath";
@@ -1552,53 +1553,6 @@ export async function classifyMyFollows(limit = 240): Promise<number> {
   return verdict.size;
 }
 
-/**
- * 🆕 **تأشيرُ حلقةٍ يُدخل المسلسلَ المكتبةَ** (D-777، سؤالُ أحمد: «هذا
- * المسلسل مثلاً ليه ماهو موجود في المكتبة؟» وحكمُه: «نعم — من أوّل تأشير»).
- *
- * 🔴 **والعطلُ كان صامتاً وقديماً**: المكتبةُ تُبنى من `follows`،
- * **والتأشيرُ يكتب في `watched_episodes` ولا يمسّ `follows`** — **فمن
- * أشّر ٩٢ حلقةً من Arrow لم يكن مسلسلُه في مكتبته**، وصفحةُ العمل تقول
- * «شاهدتَ ٩٢ من ١٧٠» بينما المكتبةُ لا تعرفه. **مقيسٌ في الإنتاج: ٤١
- * زوجاً (مستخدم، عمل) عند ١٢ حساباً، و٣١٦٢ حلقةً خارج المكتبات.**
- *
- * 🔑 **والتأشيرُ إقرارٌ بمتابعةٍ لا لمسةٌ عابرة**: أوّلُ صحٍّ يعلّم كلَّ ما
- * قبله أيضاً (نصُّ الشاشة نفسِها) — **فمن أشّر حلقةً واحدةً قال إنّه
- * يتابع.**
- *
- * ⚠️ **و`ignoreDuplicates` لا استبدال**: من تابَع ثمّ أسقط (`dropped`)
- * ثمّ أشّر حلقةً **لا تُمحى حالتُه** — **ولا `rewatch_count` ولا `genres`
- * ولا `added_at`.** **الصفُّ يُنشأ إن غاب، ولا يُلمس إن حضر.**
- * ⚠️ **ولا نداءَ قراءةٍ قبله**: `on conflict do nothing` جملةٌ واحدةٌ —
- * **والتأشيرُ أعلى فعلٍ تكراراً في التطبيق**، فقراءةٌ تسبق كلَّ ضغطةٍ
- * ثمنٌ لا يُدفع. **والعميلُ يرسل العنوانَ مرّةً واحدةً** (أوّلَ تأشيرٍ
- * وهو غيرُ متابع) فلا تتكرّر الجملةُ مع كلِّ حلقة.
- */
-async function ensureShowFollowed(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  showTmdbId: number,
-  title: string | null | undefined,
-  posterPath: string | null | undefined,
-) {
-  const name = String(title ?? "").trim().slice(0, 300);
-  if (!name) return;
-  try {
-    await supabase.from("follows").upsert(
-      {
-        user_id: userId,
-        tmdb_id: showTmdbId,
-        media_type: "tv",
-        title: name,
-        poster_path: safeImagePath(posterPath ?? null),
-      },
-      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
-    );
-  } catch {
-    /* **والتأشيرُ لا يسقط لأنّ الإضافةَ سقطت** — المشاهدةُ محفوظةٌ
-       أصلاً، والمكتبةُ تُصلَح في التأشير التالي. */
-  }
-}
 
 export async function toggleEpisode(input: {
   showTmdbId: number;
@@ -1730,57 +1684,6 @@ export async function rateEpisode(input: {
   revalidatePath("/library");
 }
 
-/**
- * 🆕 R58 — **علِّم حلقةً وكلَّ ما قبلها مشاهَداً، على الخادم** (لا يُؤتمن العميلُ على قائمة الحلقات).
- * الترقيمُ المطلقُ من `firstEpisodeOf` (D-603: مواسمُ-الآركات تبدأ من ١١٥٦ لا من ١)، والمواسمُ السابقةُ بما بُثّ منها
- * (`airedPerSeason`). والحلقةُ الخاصّة (الموسم ٠) تُعلَّم وحدَها: «قبلها» لا معنى له هناك. وما شوهد يبقى بتاريخه.
- * ⚠️ **غيرُ مصدَّرةٍ عمداً**: الملفُّ `"use server"`، وكلُّ دالّةٍ مصدَّرةٍ فيه بابٌ يناديه العميل.
- */
-async function markWatchedUpTo(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  userId: string,
-  tmdbId: number,
-  season: number,
-  episode: number,
-  meta?: { title?: string | null; posterPath?: string | null },
-  /** 🆕 D-1505 — من سجّل (جوابُ إشارة Stremio) — يُوسَم به ما أُدرج هنا وحده */
-  source?: WatchSource,
-): Promise<number> {
-  /* 🔴 A-15 (المدقّق ٢٢ أكتوبر) — **الرقمان من العميل، فالحدُّ هنا لا عند من نادى**: منشورُ القلم يمرّر الموسمَ والحلقةَ
-     خارجَ حارسِ عموده (٠–٢٠٠ / ١–٥٠٠٠ يحرس الكتابةَ لا هذه الحلقة)، ورقمٌ كبيرٌ كان يدور حلقةً بلا سقف. الحدّان حدّا
-     `rateEpisode` نفسُهما (`intIn`) — رقمٌ خارجهما ليس حلقةً، فلا يُعلَّم شيء. */
-  if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
-  const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason, airedEpisodesUpTo } = await import("@/core/progress");
-  const tv = await getTv(tmdbId);
-  const runtime = tv.episode_run_time?.[0] ?? null;
-  /* 🔴 A-15 — **موسمٌ لا يعرفه TMDB لا يُعلِّم ما قبله** ولا يُتابَع العملُ لأجله: الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان
-     يعلّم الثلاثةَ كلَّها. ⚖️ **والحسبةُ خرجت إلى `airedEpisodesUpTo`** يومَ صار لها قارئٌ ثانٍ (استيرادُ IMDb) —
-     بحدودها كلِّها: الخاصّةُ وحدَها، وفي موسمها حتى آخر ما بُثّ لا حتى الرقم المرسَل (D-145). */
-  if (season !== 0 && !airedPerSeason(tv).has(season)) return 0;
-  const want = airedEpisodesUpTo(tv, season, episode);
-  const { data: seen } = await supabase
-    .from("watched_episodes")
-    .select("season_number, episode_number")
-    .match({ user_id: userId, show_tmdb_id: tmdbId })
-    .limit(20_000);
-  const have = new Set((seen ?? []).map((r) => `${r.season_number}-${r.episode_number}`));
-  const now = new Date().toISOString();
-  const rows = want
-    .filter((w) => !have.has(`${w.s}-${w.e}`))
-    .slice(0, 5000)
-    .map((w) => ({ user_id: userId, show_tmdb_id: tmdbId, season_number: w.s, episode_number: w.e, runtime, watched_at: now }));
-  if (rows.length) {
-    const { data: added, error } = await supabase
-      .from("watched_episodes")
-      .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true })
-      .select("id");
-    if (error) fail(error);
-    if (source) await tagSource(supabase, "watched_episodes", added as { id: number }[] | null, source);
-  }
-  await ensureShowFollowed(supabase, userId, tmdbId, meta?.title ?? tv.name ?? null, meta?.posterPath ?? tv.poster_path ?? null);
-  return rows.length;
-}
 
 /**
  * 🆕 **جوابُ إشارة Stremio** (خطّةُ Stremio، ٢٢ أكتوبر): «فتحتَ S1 E5 في Stremio — شفتها؟».
@@ -1805,44 +1708,21 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
   const src: WatchSource = sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" ? sig.source : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
-  let marked = 0;
-  if (watched && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markWatchedUpTo(supabase, user.id, sig.tmdb_id, sig.season, sig.episode, undefined, src);
-    /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
-    if (sig.season > 0) {
-      await supabase
-        .from("watch_signals")
-        .update({ state: "watched", answered_at: new Date().toISOString() })
-        .match({ user_id: user.id, media_type: "tv", tmdb_id: sig.tmdb_id, state: "pending" })
-        .gt("season", 0)
-        .or(`season.lt.${sig.season},and(season.eq.${sig.season},episode.lte.${sig.episode})`);
-    }
-  } else if (watched && sig.media_type === "movie") {
-    const m = await Promise.race([getMovie(sig.tmdb_id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
-    const runtime = m?.runtime && Number.isInteger(m.runtime) && m.runtime > 0 && m.runtime <= 10_000 ? m.runtime : null;
-    const { data: added, error } = await supabase
-      .from("watched_movies")
-      .upsert({ user_id: user.id, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true })
-      .select("id");
-    if (error) fail(error);
-    await tagSource(supabase, "watched_movies", added as { id: number }[] | null, src);
-    await ensureMovieInLibrary(supabase, user.id, sig.tmdb_id);
+  /* 🆕 هجرة ٢٣٧ — التعليمُ نفسُه في `watchMark.ts`: يقرؤه التسجيلُ بلا سؤال أيضاً */
+  if (!watched) {
+    await closeSignal(supabase, user.id, sig.id, false);
+    return { marked: 0 };
   }
-  await supabase
-    .from("watch_signals")
-    .update({ state: watched ? "watched" : "dismissed", answered_at: new Date().toISOString() })
-    .match({ id: sig.id, user_id: user.id, state: "pending" });
-  if (watched) {
-    revalidatePath("/");
-    revalidatePath("/stats");
-    revalidatePath("/library");
-  }
+  const marked = await markSignalWatched(supabase, user.id, sig, src);
+  revalidatePath("/");
+  revalidatePath("/stats");
+  revalidatePath("/library");
   return { marked };
 }
 
 /**
  * 🆕 **رابطُ إضافة Stremio من صفحة الويب** (`/stremio`، D-1512 «٣ أ»): البابُ نفسُه الذي يناديه التطبيق
- * (`POST /api/v1/me/stremio/link`) — إصدارٌ لـLoopz+ وحده، والإلغاءُ لكلِّ أحد. الرمزُ يُعاد مرّةً ولا يُحفظ عندنا.
+ * (`POST /api/v1/me/stremio/link`) — إصدارٌ بخانةٍ في المدار (هجرة ٢٣٧)، والإلغاءُ لكلِّ أحد. الرمزُ يُعاد مرّةً ولا يُحفظ عندنا.
  * الروابطُ على `SITE_URL` لا على أصل الطلب: صفحةٌ تُفتح من نسخة معاينةٍ لا تُصدر رابطاً يموت معها.
  */
 export async function stremioLinkAction(action: "issue" | "revoke"): Promise<{ linked: boolean; manifest_url?: string; install_url?: string; web_install_url?: string; needsPlus?: boolean }> {
@@ -1854,10 +1734,20 @@ export async function stremioLinkAction(action: "issue" | "revoke"): Promise<{ l
     return { linked: false };
   }
   if (action !== "issue") throw new Error("مدخل غير صالح");
-  const { data: p } = await supabase.from("profiles").select("plan, plus_until, founder").eq("id", user.id).maybeSingle();
-  if (!isPlus(p as { plan?: unknown; plus_until?: string | null } | null)) return { linked: false, needsPlus: true };
-  const token = await issueStremioToken(user.id);
-  if (!token) throw new Error("تعذّر إصدار الرابط");
+  /* 🆕 هجرة ٢٣٧ — خانةٌ في المدار بدل «بلس وحده» (والحكمُ القديمُ قبل الهجرة) — `needsPlus` = لا خانة: اشترك أو فكّ جهازك */
+  const { mayLinkDevice } = await import("@/lib/linkTokens");
+  const may = await mayLinkDevice(user.id, "stremio");
+  if (may === false) return { linked: false, needsPlus: true };
+  if (may === null) {
+    const { data: p } = await supabase.from("profiles").select("plan, plus_until, founder").eq("id", user.id).maybeSingle();
+    if (!isPlus(p as { plan?: unknown; plus_until?: string | null } | null)) return { linked: false, needsPlus: true };
+  }
+  const out = await issueStremioToken(user.id);
+  if (!out.ok) {
+    if (out.reason === "limit") return { linked: false, needsPlus: true };
+    throw new Error("تعذّر إصدار الرابط");
+  }
+  const token = out.token;
   const { SITE_URL } = await import("@/lib/site");
   const manifest = `${SITE_URL}/api/v1/stremio/${token}/manifest.json`;
   revalidatePath("/stremio");
@@ -2355,47 +2245,6 @@ export async function toggleMovieWatched(input: {
   revalidatePath(`/movie/${input.movieTmdbId}`);
 }
 
-/**
- * 🆕 **D-1468 — الفيلمُ المشاهَدُ يدخل المكتبة من أيِّ بابٍ عُلِّم** (بلاغُ أحمد ١٩ أكتوبر: ملفُّ عمر يعرض ٤ أفلام
- * وعنده ١٩ مشاهَداً). زرُّ الويب كان يتابع ثمّ يختم بنفسه (`TitleActions`)، **وأزرارُ التطبيق تنادي `track/movie`
- * وحدَه** — والملفُّ الشخصيّ والمكتبةُ يعدّان صفوفَ `follows`. فصار الحارسُ هنا في الخادم لا في كلِّ زرّ.
- *  - **`ignoreDuplicates`**: فيلمٌ في المكتبة أصلاً لا يُمسّ — لا اسمُه ولا «أوقفته» ولا تاريخُ إضافته.
- *  - الاسمُ والملصقُ من المستدعي إن حملهما، وإلا من TMDB بمهلة ثانيتين ونصف؛ وغيابُهما لا يمنع الصفّ.
- *  - ⚖️ إلغاءُ المشاهدة لا يُخرج الفيلمَ من المكتبة (كما في الويب: «لم أشاهده» حالةٌ في المكتبة لا خروجٌ منها).
- */
-async function ensureMovieInLibrary(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  userId: string,
-  tmdbId: number,
-  meta?: { title: string; posterPath: string | null },
-) {
-  try {
-    const { data: have } = await supabase
-      .from("follows")
-      .select("tmdb_id")
-      .match({ user_id: userId, tmdb_id: tmdbId, media_type: "movie" })
-      .maybeSingle();
-    if (have) return;
-    const m = await Promise.race([
-      getMovie(tmdbId).catch(() => null),
-      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
-    ]);
-    const genres = m ? (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n)) : null;
-    await supabase.from("follows").upsert(
-      {
-        user_id: userId,
-        tmdb_id: tmdbId,
-        media_type: "movie",
-        title: (meta?.title || m?.title || "").slice(0, 300),
-        poster_path: meta?.posterPath ?? safeImagePath(m?.poster_path ?? null),
-        ...(genres && genres.length ? { genres } : {}),
-      },
-      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
-    );
-  } catch {
-    /* المشاهدةُ محفوظة؛ المكتبةُ تُكمَّل بزرّ الإضافة إن فشلت هنا */
-  }
-}
 
 // ================= تخزين إحصاءات المسلسلات =================
 
@@ -4112,11 +3961,6 @@ export async function buildCuratedList(slug: string): Promise<{ slug: string; li
   return { slug: clean, listId: String(data), items: items.length };
 }
 
-/** مسار ملصق TMDB فقط — لا نقبل عنواناً كاملاً من العميل */
-function safeImagePath(path: string | null): string | null {
-  if (!path) return null;
-  return /^\/[A-Za-z0-9._-]{1,64}$/.test(path) ? path : null;
-}
 
 /**
  * إعجابٌ بمراجعة، أو سحبه.

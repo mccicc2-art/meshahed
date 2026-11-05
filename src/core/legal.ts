@@ -34,7 +34,7 @@ export function privacyDoc(locale: Locale): LegalDoc {
   انتقل المفتاحُ إلى خطّةٍ مدفوعة فالجملةُ الأخيرةُ هناك تُحذف. */
   /* D-1305: إشعاراتُ الجهاز — معرّفٌ جديدٌ يُحفظ (رمزُ الدفع) وطرفان يمرّ بهما (Expo · FCM)، فتقدّم التاريخ */
 
-    updated: ar ? "آخر تحديث: ٦ أكتوبر ٢٠٢٦" : "Last updated: 6 October 2026",
+    updated: ar ? "آخر تحديث: ٥ نوفمبر ٢٠٢٦" : "Last updated: 5 November 2026",
     sections: [
       { title: ar ? "الخلاصة" : "The short version",
         body: ar
@@ -66,6 +66,11 @@ export function privacyDoc(locale: Locale): LegalDoc {
         body: ar
         ? "ملف التصدير الذي ترفعه — من Letterboxd أو Simkl أو TV Time — يُقرأ داخل متصفّحك ولا يُرفع إلى أي خادم. ولا نربط حسابك في أي خدمةٍ أخرى ولا نطلب إذناً منها: ما يغادر جهازك هو أسماء الأعمال فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء."
         : "The export file you upload — from Letterboxd, Simkl or TV Time — is read inside your browser and never uploaded to any server. We do not link your account on any other service and we ask no permission from one: all that leaves your device is title names, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all." },
+      /* 🆕 الربط (هجرات ٢٢٢ · ٢٣٥ · ٢٣٦ · ٢٣٧): طرفٌ جديدٌ يرسل إلينا — فذُكر ما يصلنا وما يُحفظ، وتقدّم التاريخ */
+      { title: ar ? "ربط أجهزتك" : "Linking your devices",
+        body: ar
+        ? "حين تربط Stremio أو سيرفرك في البيت (Plex · Jellyfin · Emby) أو Kodi، يرسل إلينا ما تشغّله أو تخلّصه: معرّف العمل واسمه، ورقم الموسم والحلقة، ونوع الحدث — ومن Kodi اسم جهازه. لا يصلنا محتوى ولا كلمة مرور، ولا نحفظ رابطك نفسه بل بصمته. ما يصل يُحفظ سؤالاً «شفتها؟» حتى تجيب (أو يُعلَّم مباشرةً إن فعّلت «سجّل بلا سؤال»)، والأسئلة المُجاب عنها تُحذف بعد ٩٠ يوماً. وفك الربط يوقف كل ما بعده."
+        : "When you link Stremio, your home server (Plex · Jellyfin · Emby) or Kodi, it sends us what you play or finish: the title's id and name, the season and episode number, and the kind of event — and, from Kodi, the device's name. No video and no password ever reach us, and we store only a fingerprint of your link, not the link itself. What arrives is kept as a “watched it?” question until you answer (or marked straight away if you turned on “Log without asking”), and answered questions are deleted after 90 days. Unlinking stops everything after it." },
       { deleteLink: true, title: ar ? "حقّك في بياناتك" : "Your data, your call",
         body: ar
         ? "تستطيع تعديل أو حذف أي تقييمٍ أو مراجعةٍ أو قائمةٍ أو متابعةٍ متى شئت من داخل التطبيق. وحذف الحساب من الإعدادات يحذف صفّ تسجيل الدخول نفسه، فيسقط معه كلُّ ما يشير إليه: ملفك ومتابعاتك وحلقاتك وتقييماتك وقوائمك ورسائلك ومشاركاتك وصورك. لا يبقى منك صفٌّ واحد، ولا تحتاج مراسلتنا."
@@ -98,7 +103,7 @@ export function termsDoc(locale: Locale): LegalDoc {
   const t = getDict(locale);
   return {
     title: ar ? "شروط الاستخدام" : "Terms of Use",
-    updated: ar ? "آخر تحديث: ٢ نوفمبر ٢٠٢٦" : "Last updated: 2 November 2026",
+    updated: ar ? "آخر تحديث: ٥ نوفمبر ٢٠٢٦" : "Last updated: 5 November 2026",
     sections: [
       { title: ar ? "ما هو Loopz" : "What Loopz is",
         body: ar
@@ -132,6 +137,11 @@ export function termsDoc(locale: Locale): LegalDoc {
     ⚠️ **والثمنُ من القاموس لا منسوخاً بيد** — وهو الرقمُ نفسُه
     في `/plus` و`/features` وورقة البوّابة وصفِّ الفوترة. */
 
+      /* 🆕 الربط (هجرة ٢٣٧، أحمد ٥ نوفمبر): العدُّ وما يحدث عند النزول مكتوبان قبل أن يُطلب ثمنُهما (D-217) */
+      { title: ar ? "ربط أجهزتك" : "Linking your devices",
+        body: ar
+        ? "الحساب المجاني يربط جهازاً واحداً، وLoopz+ يربط حتى خمسة، ولكلّ جهازٍ رابطه الخاص. الجهاز يُعدّ من لحظة إصدار رابطه، والرابط سرّك: من يملكه يقدر أن يرسل إلى حسابك ما شاهده، فإن ضاع أصدر غيره. «سجّل بلا سؤال» لمشتركي Loopz+، وStremio يسأل دائماً. وإن انتهى اشتراكك لا نحذف شيئاً: يبقى آخر جهازٍ استعملته، ويتوقّف الباقي حتى تختار ما يبقى أو تشترك من جديد، وما سُجّل يبقى في مكتبتك."
+        : "A free account links one device and Loopz+ links up to five, each with its own link. A device counts from the moment its link is issued, and the link is your secret: whoever holds it can send what they watched to your account, so issue a new one if it leaks. “Log without asking” is for Loopz+ members, and Stremio always asks. If your subscription ends we delete nothing: the device you used last keeps working, the others pause until you choose what stays or subscribe again, and everything already logged stays in your library." },
       { title: ar ? "اشتراك Loopz+" : "The Loopz+ subscription",
         body: ar
         ? `Loopz+ اشتراكٌ اختياريّ للثيمات وتنسيق صفحاتك وشارةٍ بجانب اسمك — والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً. الثمن ${t.plusPrice}، ${t.plusPriceRenew}، ${t.plusPriceLocal}. والاشتراك يُجدَّد تلقائياً في نهاية مدّته ما لم تُلغِه، والإلغاء متاحٌ في أيّ وقتٍ من إعدادات الاشتراك ويسري في نهاية المدّة المدفوعة — فلا تفقد ما دفعت مقابله. ومن سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}. وتجربة Loopz بلا إعلانات للجميع، مشتركين وغير مشتركين. والاشتراك لم يُفتح بعد؛ ولا يُطلب منك دفعٌ حتى تُفتح بوّابته.`
