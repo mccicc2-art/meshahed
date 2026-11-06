@@ -41,6 +41,8 @@ export type WelcomePerson = {
   plus: boolean;
   founder: boolean;
   verified: boolean;
+  /** 🆕 T336 — شارةُ GOLD (تغلب PARTNER وPLUS) — غائبةٌ من خادمٍ أقدم */
+  gold?: boolean;
 };
 export type WelcomePeopleBody = { seeds: number[] };
 export type WelcomePeoplePayload = { people: WelcomePerson[] };

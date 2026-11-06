@@ -56,6 +56,7 @@ export function HomeHeader({
   plan = null,
   founder = false,
   plusUntil = null,
+  goldUntil = null,
   locale,
 }: {
   displayName: string;
@@ -64,6 +65,8 @@ export function HomeHeader({
   plan?: string | null;
   founder?: boolean | null;
   plusUntil?: string | null;
+  /** 🆕 T336 — نهايةُ الذهبيّ: شارةُ GOLD تغلب PLUS/PARTNER (`hasGoldBadge` في `AccountIdentity`) */
+  goldUntil?: string | null;
   avatarUrl?: string | null;
   avatarPos?: number | null;
   /** عدّادان لا مجموع (D-536) — لكلِّ بابٍ رقمُه */
@@ -138,7 +141,7 @@ export function HomeHeader({
             <AccountIdentity
               as="p"
               name={displayName}
-              profile={{ plan, founder, plus_until: plusUntil, verified_at: null }}
+              profile={{ plan, founder, plus_until: plusUntil, gold_until: goldUntil, verified_at: null }}
               t={t}
               className="text-22 font-bold leading-tight"
             />

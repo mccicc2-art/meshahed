@@ -3,6 +3,7 @@ import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { getLocale } from "@/lib/locale";
 import { getProfile } from "@/lib/data";
+import { isGold } from "@/core/plan";
 import { loadMyAnalysis } from "@/components/LibraryAnalysis";
 import type { MyStatsPayload, MyStatsRange } from "@/core/contracts/memberStats";
 
@@ -35,6 +36,8 @@ export async function GET(req: NextRequest) {
         plan: me?.plan ?? null,
         founder: me?.founder ?? null,
         verified_at: me?.verified_at ?? null,
+        /* 🆕 T336 — `getProfile` يقرأ `gold_until` الآن */
+        gold: isGold(me),
       };
       if (!data) {
         return ok({

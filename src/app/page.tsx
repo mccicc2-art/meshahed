@@ -257,6 +257,7 @@ export default async function HomePage() {
           plan={profile?.plan ?? null}
           founder={profile?.founder ?? false}
           plusUntil={profile?.plus_until ?? null}
+          goldUntil={profile?.gold_until ?? null}
           avatarUrl={profile?.avatar_url ?? null}
           avatarPos={profile?.avatar_pos ?? null}
           unreadSignals={unreadSignals}

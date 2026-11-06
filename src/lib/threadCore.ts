@@ -83,6 +83,8 @@ function person(p: Omit<PersonLite, "id">, id: string): PersonLite {
     plan: p.plan ?? null,
     founder: p.founder ?? null,
     verified_at: p.verified_at ?? null,
+    /* 🆕 T336 — رايةُ GOLD تعبر مع الخطّة (`PERSON_COLS` يقرؤها) — وإلّا قالت الشارةُ PARTNER/PLUS لذهبيّ */
+    gold: p.gold ?? null,
   };
 }
 

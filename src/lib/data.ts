@@ -164,6 +164,8 @@ export interface Profile {
   plan?: string | null;
   /** `null` = بلا انتهاء (حالُ المؤسِّسين) */
   plus_until?: string | null;
+  /** 🆕 T336 — نهايةُ الذهبيّ (هجرة ٢٣٨): `isGold` يقرؤه فتقول كلُّ صفحةٍ تحمل الملفَّ «ذهبي» بلا قارئٍ ثانٍ */
+  gold_until?: string | null;
   /** صفةٌ لا خطّة — تبقى بعد أيِّ تبدّلٍ في الاشتراك */
   founder?: boolean | null;
   /* 🆕 **ختمُ التوثيق** (D-773، الهجرة ١٥٦) — **لا صلةَ له بالخطّة**:
@@ -347,7 +349,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone, title_mode, skip_mode",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, gold_until, founder, verified_at, timezone, title_mode, skip_mode",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -393,6 +395,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
           x_verified_at: null,
           plan: "free",
           plus_until: null,
+          gold_until: null,
           founder: false,
           verified_at: null,
           /* 🆕 **ومنطقةُ ١٦٠ تسقط إلى الفراغ** — **والفراغُ غرينتش**،
@@ -436,6 +439,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
                السلوكَ القديم بالضبط** (D-063/D-179). */
             plan: "free",
             plus_until: null,
+            gold_until: null,
             founder: false,
             verified_at: null,
             timezone: null,
@@ -1277,6 +1281,8 @@ export interface PublicProfile {
      ملفِّ صاحبها وفي كلِّ سطرٍ يحمل اسمَه — **ونوعُ التوثيق لا يخرج**،
      فهو لسياسة المراجعة لا لرسمٍ ثانٍ. */
   verified_at?: string | null;
+  /** 🆕 T336 — رايةُ GOLD العامّة (`public_profiles.gold`، هجرة ٢٣٨) — الملفُّ يقرؤها في `select` */
+  gold?: boolean | null;
   /**
    * 🆕 **تاريخُ الانضمام** (D-831 · هجرة ١٦٤) — **حكمُ أحمد: «مدّة
    * العضويّة من الانضمام»**، **بعد أن قِيست القاعدة**: ٢٩ من ٣٢ عضواً

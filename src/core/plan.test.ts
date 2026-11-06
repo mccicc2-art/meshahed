@@ -8,6 +8,8 @@ import {
   isFounder,
   themeNeedsPlus,
   FREE_THEMES,
+  planNameOf,
+  planReasonOf,
 } from "./plan.ts";
 
 /**
@@ -95,4 +97,18 @@ test("الثيماتُ المجّانيّة ثلاث: الرسميُّ الاف�
   assert.equal(themeNeedsPlus("amber"), false);
   assert.equal(themeNeedsPlus("daylight"), false);
   assert.equal(themeNeedsPlus("midnight"), true);
+});
+
+/* T336 — خطّةٌ واحدةٌ «ذهبي» تشمل بلس: الاسمُ ذهبيّ، ولا «شريك» ولا «مؤسِّس» تحته */
+const LABELS = { plusName: "Loopz+", partnerBadge: "Partner", founderBadge: "Founder", setPlanFree: "Free", goldBadge: "Loopz+ Gold" };
+const SOON = new Date(Date.now() + 86_400_000).toISOString();
+test("a Gold member is named Gold, partner or not", () => {
+  assert.equal(planNameOf({ plan: "partner", plus_until: SOON, gold_until: SOON, founder: true }, LABELS), "Loopz+ Gold");
+  assert.equal(planNameOf({ plan: "plus", plus_until: SOON, gold: true }, LABELS), "Loopz+ Gold");
+  assert.equal(planReasonOf({ plan: "partner", plus_until: SOON, gold_until: SOON }, LABELS), null);
+});
+test("without Gold nothing changes", () => {
+  assert.equal(planNameOf({ plan: "plus", plus_until: SOON }, LABELS), "Loopz+");
+  assert.equal(planReasonOf({ plan: "partner", plus_until: SOON }, LABELS), "Partner");
+  assert.equal(planNameOf({ plan: "free" }, LABELS), "Free");
 });

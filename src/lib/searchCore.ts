@@ -208,7 +208,7 @@ export async function trendingFor(scope: SearchScope): Promise<SearchTrendingPay
       /* الحقولُ الزائدة (المجاميع) تسقط: الشكلُ شكلُ عضو البحث حرفاً */
       return {
         items: [],
-        members: rows.map((r) => ({ id: r.id, nickname: r.nickname, username: r.username, avatar_url: r.avatar_url, hide_name: r.hide_name, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null })),
+        members: rows.map((r) => ({ id: r.id, nickname: r.nickname, username: r.username, avatar_url: r.avatar_url, hide_name: r.hide_name, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null, /* T336 — `getPeopleFeatured` يُلحق الرايةَ (`withIdentities`) */ gold: r.gold ?? null })),
       };
     }
     let lists = await getTopSavedListCards(30, 12).catch(() => []);

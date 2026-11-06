@@ -175,10 +175,13 @@ export type PlanLabels = {
   partnerBadge: string;
   founderBadge: string;
   setPlanFree: string;
+  /** 🆕 T336 — «Loopz+ ذهبي» */
+  goldBadge: string;
 };
 
+/** 🆕 T336 — **خطّةٌ واحدةٌ «ذهبي» تشمل بلس** (أحمد ٦ نوفمبر: «خطة وحده قولد، القولد شامل بلس»): الذهبيُّ يُسمّى باسمه لا «Loopz+» */
 export function planNameOf(p: PlanBearer | null | undefined, t: PlanLabels): string {
-  return isPlus(p) ? t.plusName : t.setPlanFree;
+  return hasGoldBadge(p) ? t.goldBadge : isPlus(p) ? t.plusName : t.setPlanFree;
 }
 
 /**
@@ -207,6 +210,8 @@ export function planReasonOf(
   p: PlanBearer | null | undefined,
   t: PlanLabels,
 ): string | null {
+  /* 🆕 T336 — الذهبيُّ خطّةٌ تُقال وحدَها (أحمد ٦ نوفمبر: «مشتركين قولد فقط»): لا «شريك» ولا «مؤسِّس» تحته */
+  if (hasGoldBadge(p)) return null;
   if (isPartner(p)) return t.partnerBadge;
   if (isFounder(p) && isPlus(p)) return t.founderBadge;
   return null;

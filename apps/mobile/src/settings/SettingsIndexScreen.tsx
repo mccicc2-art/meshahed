@@ -45,7 +45,7 @@ export function SettingsIndexScreen() {
   const qc = useQueryClient();
   const h = qc.getQueryData<HomePayload>(HOME_KEY)?.header;
   const card: { name: string; username: string | null; avatar: string | null; pos: number; flags: IdentityFlags } | null = a
-    ? { name: a.nickname || a.username || "", username: a.username, avatar: a.avatar_url, pos: a.avatar_pos, flags: { partner: a.partner, plus: a.plus, founder: a.founder, verified: a.verified } }
+    ? { name: a.nickname || a.username || "", username: a.username, avatar: a.avatar_url, pos: a.avatar_pos, flags: { partner: a.partner, plus: a.plus, founder: a.founder, verified: a.verified, gold: a.gold === true } }
     : h
       ? { name: h.display_name, username: h.username, avatar: h.avatar_url, pos: h.avatar_pos ?? 50, flags: identityFlags(h) }
       : null;

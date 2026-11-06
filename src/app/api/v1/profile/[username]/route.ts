@@ -132,6 +132,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           plan: profile.plan ?? null,
           founder: profile.founder ?? null,
           verified_at: profile.verified_at ?? null,
+          /* 🆕 T336 — الرايةُ العامّة من `public_profiles` (الملفُّ يقرؤها) — شارةُ GOLD في رأس الملفّ */
+          gold: profile.gold === true,
           cover_url: profile.cover_url,
           cover_pos: profile.cover_pos ?? null,
           avatar_pos: profile.avatar_pos ?? null,

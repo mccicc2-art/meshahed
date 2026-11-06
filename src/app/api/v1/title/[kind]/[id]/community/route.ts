@@ -63,6 +63,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
           plan: r.plan ?? null,
           founder: r.founder ?? null,
           verified_at: r.verified_at ?? null,
+          /* 🆕 T336 — `withIdentities` يُلحق الرايةَ مع الخطّة */
+          gold: r.gold ?? null,
           ...(r.persona ? { persona: r.persona } : {}),
         }))
         /* 🆕 D-1567 — مراجعتي أوّلاً، ثمّ الأعضاءُ بالإعجاب، ثمّ شخصيّاتُ لوبز تحتهم (`compareReviews` — القاعدةُ نفسُها في الويب) */

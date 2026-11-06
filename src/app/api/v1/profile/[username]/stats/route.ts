@@ -49,6 +49,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         plan: profile.plan ?? null,
         founder: profile.founder ?? null,
         verified_at: profile.verified_at ?? null,
+        gold: profile.gold === true,
       };
       const blank: MemberStatsPayload = {
         person: { ...person, bio: null, followers: null },

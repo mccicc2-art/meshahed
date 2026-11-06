@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { suggestPeople } from "@/lib/actions";
 import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
+import { isPlus, isPartner, isVerified, isFounder, hasGoldBadge } from "@/core/plan";
 import type { WelcomePeopleBody, WelcomePeoplePayload } from "@/core/contracts/welcome";
 
 /**
@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
           plus: isPlus(p),
           founder: isFounder(p),
           verified: isVerified(p),
+          /* 🆕 T336 — `getPeopleToFollow` يُلحق الرايةَ (`withIdentities`) — شارةُ الرئيسيّة نفسُها */
+          gold: hasGoldBadge(p),
         })),
       });
     },
