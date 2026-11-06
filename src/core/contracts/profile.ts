@@ -181,7 +181,8 @@ export type ProfilePayload = {
   counts: { followers: number; following: number; shows: number; movies: number; anime: number };
   weekly_ranks: { week: string; rank: number; total: number }[];
   /** ما يعرضه صاحبُ الملفّ من صفّ الأرقام، وسقفُ البطاقات في الصفوف (D-152) */
-  display: { stats: boolean; stats_link: boolean; cards: number | null };
+  /** 🆕 D-1630 — `stats_pick`: خاناتُ البطاقة بترتيب صاحبها — اختياريٌّ: خادمٌ أقدم لا يرسله */
+  display: { stats: boolean; stats_link: boolean; cards: number | null; stats_pick?: ("shows" | "movies" | "anime" | "stats")[] };
   /** التبويباتُ الظاهرةُ بترتيب صاحبها — فارغةٌ إن أطفأها كلَّها (D-667) */
   tabs: ProfileTabKey[];
   /** أقسامُ «نظرة عامّة» بترتيبه */

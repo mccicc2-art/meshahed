@@ -64,6 +64,7 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
  */
 export const PLUS_PROFILE_FIELDS = [
   "stats",
+  "statsPick",
   "visits",
   "visitsWho",
   "savedLists",
@@ -116,6 +117,10 @@ export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: Icon
  * ⚠️ **والمفتاحُ يبقى فوق القائمة لا بدلاً منها**: الإطفاءُ يُخفي عنك
  * أنت أيضاً — **وهو حالةٌ رابعةٌ لا تُعبَّر عنها بالجمهور.**
  */
+/** 🆕 D-1630 — خاناتُ بطاقة أرقام الملفّ — ما تحسبه الصفحةُ اليوم وحدَه (`counts`) وبابُ الإحصائيات */
+export const PROFILE_STATS = ["shows", "movies", "anime", "stats"] as const;
+export type ProfileStatKey = (typeof PROFILE_STATS)[number];
+
 export const VISIT_AUDIENCES = ["everyone", "followers", "me"] as const;
 export type VisitAudience = (typeof VISIT_AUDIENCES)[number];
 
@@ -127,6 +132,12 @@ export interface ProfilePrefs {
    * إضافتها أو حذفها»). ظاهرٌ افتراضاً — ما تفعله الصفحةُ اليوم (D-152). ويُطبَّق لكلِّ زائر.
    */
   statsLink: boolean;
+  /**
+   * 🆕 D-1630 — **أيُّ الأرقام في بطاقة الملفّ وبأيّ ترتيب** (أحمد ٦ نوفمبر: «نفس شبكة الاختيار» — «٣ب»): مسلسلات · أفلام ·
+   * أنمي · بابُ «الإحصائيات»، من واحدٍ إلى أربعة. **`stats` و`statsLink` يبقيان كما هما ويُكتبان معه** (`stats` = في الشبكة
+   * شيء، `statsLink` = «الإحصائيات» فيها) — فالويبُ والنسخُ الأقدم تقرأ ما كانت تقرأ. الغائبُ يُبنى من الرايتين القديمتين.
+   */
+  statsPick: ProfileStatKey[];
   /** شريط المستوى */
   /** شارة عدد الزيارات على الغلاف */
   visits: boolean;
@@ -293,6 +304,7 @@ export const sectionKeyOf = {
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   stats: true,
   statsLink: true,
+  statsPick: ["shows", "movies", "anime", "stats"],
   visits: true,
   /* **والافتراضيُّ «الجميع»** — **وهو ما كانت تفعله الصفحةُ فعلاً قبل
      وجود القائمة**، فلا يتبدّل شيءٌ لمن لم يختر (D-152). */
@@ -460,14 +472,27 @@ function sanitizeStoredProfilePrefs(raw: unknown): ProfilePrefs {
     ? (o.visitsWho as VisitAudience)
     : d.visitsWho;
 
+  /* 🆕 D-1630 — المعروفُ بلا تكرار وحتى أربعة؛ الغائبُ (حفظٌ أقدم) يُبنى من الرايتين: ما كانت الصفحةُ ترسمه فعلاً */
+  const linkOn = bool("statsLink");
+  let statsPick: ProfileStatKey[] = d.statsPick.filter((k) => k !== "stats" || linkOn);
+  if (Array.isArray(o.statsPick)) {
+    const seen = new Set<string>();
+    const clean = o.statsPick.filter(
+      (s): s is ProfileStatKey => typeof s === "string" && (PROFILE_STATS as readonly string[]).includes(s) && !seen.has(s) && !!seen.add(s),
+    );
+    if (clean.length) statsPick = clean.slice(0, PROFILE_STATS.length);
+  }
+
   return {
     stats: bool("stats"),
-    statsLink: bool("statsLink"),
+    statsLink: linkOn,
+    statsPick,
     visits: bool("visits"),
     visitsWho: who,
     savedLists: bool("savedLists"),
     order,
-    cards: sanitizeCardCount(o.cards),
+    /* 🆕 D-1630 — «عدد البطاقات» خرج من التخصيص: الكلُّ للجميع (انظر `homePrefs`) */
+    cards: sanitizeCardCount("full"),
     density: sanitizeDensity(o.density),
     /* **المسافاتُ تُطوى والحدُّ أربعةٌ وعشرون** — كنبذةِ `updateProfile`
        حرفاً: **سطرٌ يجلس بين الاسم والعدّادات لا يحتمل فقرةً**، **والقصُّ

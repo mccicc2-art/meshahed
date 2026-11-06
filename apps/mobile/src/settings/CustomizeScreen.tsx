@@ -1,186 +1,247 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Keyboard, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
-import { Button, Text, type ToastTone } from "../ui";
-import { Icon } from "../icons";
+import { Button, Text } from "../ui";
+import { Icon, iconOr } from "../icons";
 import { haptic } from "../haptics";
 import { api, queryClient, write } from "../api";
-import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
-import { ArrangeSheet } from "../home/SectionOrderSheet";
+import { ArrangeList } from "../home/SectionOrderSheet";
 import type { ToastHostRef } from "../HoldHost";
-import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult, HomePayload, SettingsPayload, TemplatesBody } from "../contracts";
+import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult, HomePayload, SettingsPayload } from "../contracts";
 import { HOME_KEY } from "../home/useHome";
-import { CustomizePreview, type PreviewWho } from "./CustomizePreview";
-import { SettingsScreen, Group, Row, Toggle, Field, RowsSkeleton } from "./ui";
+import { profileKey } from "../member/profileData";
+import { radius } from "../theme";
+import { SettingsScreen, Group, Row, Toggle, RowsSkeleton, StatusPill } from "./ui";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 import {
   defaultHomePrefs,
   HEADER_STATS,
   HOME_SECTIONS,
-  HOME_VIEWS,
   STATS_PICK_MAX,
-  STATS_PICK_MIN,
   headerStatMeta,
   homeSectionMeta,
-  sanitizeHomePrefs,
   touchesPaidHomePrefs,
+  type HeaderStatKey,
   type HomePrefs,
-  type HomeView,
 } from "@/core/homePrefs";
 import {
   defaultProfilePrefs,
   HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
+  PROFILE_STATS,
   orderedProfileTabs,
   profileSectionMeta,
   profileTabMeta,
-  sanitizeProfilePrefs,
   touchesPaidProfilePrefs,
   type HideableProfileTab,
   type ProfilePrefs,
+  type ProfileStatKey,
 } from "@/core/profilePrefs";
-import { CARD_COUNTS, type CardCount } from "@/core/cardCount";
 import { DENSITIES, type Density } from "@/core/density";
-import {
-  TEMPLATES_CAP,
-  TEMPLATE_NAME_MAX,
-  newTemplateId,
-  removeTemplate,
-  sanitizeTemplateName,
-  templatesOf,
-  upsertTemplate,
-  type PrefTemplate,
-  type TemplateSurface,
-} from "@/core/prefTemplates";
 
 /**
- * 🆕 D-1112 — «الرئيسيّة والملفّ» أصليّةً (Phase 11-I · I3) — `CustomizeScreen` الويبيّة بخياراتها كلِّها:
- * تبويبان (الرئيسيّة · الملفّ) · قوالبُ «احفظ هذا التنسيق» (D-822) · رأسُ الصفحة (الأرقام وخاناتُها) ·
- * ترتيبُ الأقسام والتبويبات وإخفاؤها · العرض (المظهر · عددُ البطاقات · حجمُ الملصق) · قوائمُ محفوظة · استعادة.
- *
- * ⚖️ **فرقان عن الويب، وكلاهما لصالح الهاتف**:
- * ١) **مسودّتان لا مسودّةٌ واحدة**: في الويب يُفكّ اللوحُ عند تبديل التبويب فيضيع ما لم يُحفظ فيه صامتاً؛
- *    هنا كلُّ تبويبٍ يحفظ مسودّتَه، و«حفظ» في الترويسة يرسل ما تغيّر منهما في نداءٍ واحد.
- * ٢) **«حفظ» في الترويسة وورقةُ «تعديلاتٌ لم تُحفظ» عند الرجوع** — نمطُ «تعديل الملفّ» الأصليّ (D-1106)
- *    بدل شريط الحفظ العائم.
- * 🆕 D-1322 — **والمعاينةُ الحيّة نُقلت** (`CustomizePreview` الأصليّة، دَينُ D-1112 يُسدَّد بطلب أحمد ٨ أكتوبر):
- * مثبّتةٌ تحت التبويبين فوق التمرير — في الويب تنزلق مع الصفحة، وهنا كانت ستغيب والإصبعُ على «حجم الملصق» —
- * وتُطوى بضغطة، وتبدأ مطويّةً على الشاشات القصيرة.
- * 🔒 **بلس** يحكمه الخادم (`plus` في الحمولة و`needsPlus` في الردّ) — **غيرُ المشترك يجرّب ويرى في المعاينة**،
- * و«حفظ» يفتح صفحةَ بلس **حين يمسّ خياراً مدفوعاً فقط**: وضعُ العرض مجّانيٌّ (D-791) فيُحفظ له (حكمُ أحمد ٨ أكتوبر).
+ * 🆕 D-1630 — **«التخصيص» من جديد: كلُّ خيارٍ صورةٌ تُرى، وكلُّ لمسةٍ تُحفظ** (أحمد ٦ نوفمبر، «ب» ثمّ «نفذ و ارفع»).
+ * بلاغُه: «سيئة وغير مفهومة… اجعل المعاينة عند كلِّ خيار». فالصفحةُ القديمة (D-1112 · D-1322) تغيّرت هكذا:
+ * - **المعاينةُ الكبيرةُ المثبّتة حُذفت** — كلُّ خيارٍ يحمل معاينتَه: شبكةُ الأرقام ببطاقتها فوقها، أقسامٌ بصورٍ مصغّرة،
+ *   أحجامُ الملصق بملصقاتٍ بأحجامها.
+ * - **«تنسيقاتي» و«طريقة العرض» و«عدد البطاقات» حُذفت** — العرضُ زرُّه في رأس الرئيسيّة، والعددُ «الكلّ» للجميع
+ *   (`sanitizeCardCount("full")` في الأساس، والاختيارُ القديمُ يُهمل).
+ * - **لا زرَّ «حفظ»**: كلُّ تغييرٍ يُكتب بعد لحظةٍ («الأحدثُ يفوز» — `seq`)، ومكانَ الزرّ «✓ محفوظ»، وبعد كلِّ تغييرٍ
+ *   «تم · تراجع». فلا ورقةَ «تعديلاتٌ لم تُحفظ» ولا خسارةَ عند الرجوع (الخروجُ يُفرغ المنتظر).
+ * - **الأرقامُ شبكةٌ تُختار باللمس**: لا شيء (البطاقةُ تختفي) أو ١–٤ بترتيب اللمس، وعلى كلِّ مختارٍ رقمُ موضعه.
+ * - **الأقسامُ والتبويباتُ قوائمُ في الصفحة نفسِها** (`ArrangeList`): سحبٌ بـ≡ وعينٌ للإخفاء.
+ * - **الاستعادةُ تسأل أوّلاً** («٤أ») ثمّ تُحفظ، و«تراجع» يعيد ما كان.
+ * 🔒 **بلس** يحكمه الخادم (`plus` و`needsPlus`): كلُّ حقول الصفحة مدفوعةٌ اليوم (`PLUS_*_FIELDS`)، فغيرُ المشترك يرى
+ * الشارةَ على المجموعة، ولمستُه تفتح صفحةَ بلس بدل أن تغيّر شيئاً — كان يجرّب في المعاينة ثمّ يُصدّ عند «حفظ»، والحفظُ
+ * التلقائيُّ لا مكانَ فيه لتجربةٍ لا تُحفظ.
  */
 const KEY = ["me:customize"] as const;
 type Tab = "home" | "profile";
-/** طيُّ المعاينة اختيارُ جلسةٍ — يبقى بين فتحتَين للشاشة ولا يُكتب في مكان */
-let previewChoice: boolean | null = null;
-const SHORT_SCREEN = 640;
+/** مهلةُ الحفظ بعد آخر لمسة — تجمع لمساتِ ترتيبٍ متتالية في نداءٍ واحد */
+const SAVE_DELAY = 600;
+
+/** النصوصُ الجديدةُ محلّيّة — `i18n.ts` محجوزٌ لمهمّة الودجت (٢٧٤) في السجلّ، كـ`RATERS_WORDS` */
+const WORDS = {
+  ar: {
+    saved: "✓ محفوظ",
+    saving: "يحفظ…",
+    failed: "لم يُحفظ",
+    done: "تم",
+    undo: "تراجع",
+    max: `${STATS_PICK_MAX} أرقام على الأكثر`,
+    statsHint: "اختر حتى ٤ بترتيب اللمس — ولا شيء يُخفي البطاقة",
+    statsHidden: "البطاقةُ مخفيّة",
+    profileStatsHint: "اختر ما يظهر في بطاقة صفحتك — ولا شيء يُخفيها",
+    asOthers: "هذه صفحتك كما يراها غيرك",
+    openPage: "افتح صفحتك",
+    savedListsHint: "القوائمُ التي حفظتَها من غيرك تظهر في تبويب القوائم",
+    resetTitle: "استعادة الافتراضيّ؟",
+    resetBody: (tab: string) => `يعود تبويب «${tab}» كما كان أوّل مرّة — وتقدر تتراجع بعدها.`,
+    resetDo: "استعادة",
+    cancel: "إلغاء",
+    resetHint: "يعيد هذا التبويب إلى الافتراضيّ",
+  },
+  en: {
+    saved: "✓ Saved",
+    saving: "Saving…",
+    failed: "Not saved",
+    done: "Done",
+    undo: "Undo",
+    max: `${STATS_PICK_MAX} numbers at most`,
+    statsHint: "Pick up to 4 in tap order — none hides the card",
+    statsHidden: "The card is hidden",
+    profileStatsHint: "Pick what your page's card shows — none hides it",
+    asOthers: "This is your page as others see it",
+    openPage: "Open your page",
+    savedListsHint: "Lists you saved from others appear in the Lists tab",
+    resetTitle: "Restore defaults?",
+    resetBody: (tab: string) => `The «${tab}» tab goes back to how it started — you can undo it after.`,
+    resetDo: "Restore",
+    cancel: "Cancel",
+    resetHint: "Returns this tab to its defaults",
+  },
+} as const;
+
+type Draft = { home?: HomePrefs; profile?: ProfilePrefs };
 
 export function CustomizeScreen() {
   const { t, tokens, locale } = useApp();
+  const w = WORDS[locale === "en" ? "en" : "ar"];
   const router = useRouter();
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
-  const { height: winH } = useWindowDimensions();
-  const [previewOpen, setPreviewOpen] = useState(() => previewChoice ?? winH >= SHORT_SCREEN);
-  /* D-1324 — المعاينةُ مثبّتةٌ فوق التمرير؛ ولوحةُ المفاتيح تأخذ النصفَ الآخر فلا يبقى لحقل الاسم مكان — تُطوى ما دامت مفتوحة */
-  const [typing, setTyping] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setTyping(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setTyping(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<CustomizePayload>("/api/v1/me/customize")).data, staleTime: 0 });
   const d = q.data;
 
   /* 🆕 D-1488 — بطاقةُ «خصّص ملفك» تفتح الشاشةَ على تبويب الملفّ (`?tab=profile`) */
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(params.tab === "profile" ? "profile" : "home");
-  const [base, setBase] = useState<{ home: HomePrefs; profile: ProfilePrefs } | null>(null);
-  const [home, setHome] = useState<HomePrefs | null>(null);
-  const [profile, setProfile] = useState<ProfilePrefs | null>(null);
-  const [tpl, setTpl] = useState<PrefTemplate[]>([]);
-  useEffect(() => {
-    if (d && !base) {
-      setBase({ home: d.home, profile: d.profile });
-      setHome(d.home);
-      setProfile(d.profile);
-      setTpl(d.templates);
-    }
-  }, [d, base]);
+  const [home, setHomeState] = useState<HomePrefs | null>(null);
+  const [profile, setProfileState] = useState<ProfilePrefs | null>(null);
+  /* المراجعُ نسخةُ الحالة للدوالّ المؤجّلة (المؤقّت · التراجع · التنظيف عند الخروج) — الحالةُ في إغلاقها قديمة */
+  const homeRef = useRef<HomePrefs | null>(null);
+  const profileRef = useRef<ProfilePrefs | null>(null);
+  /** آخرُ ما أكّده الخادم — إليه نعود عند الفشل أو `needsPlus` */
+  const baseRef = useRef<{ home: HomePrefs; profile: ProfilePrefs } | null>(null);
+  const plusRef = useRef(false);
+  const pending = useRef<Draft>({});
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seq = useRef(0);
+  const applied = useRef(0);
+  const [status, setStatus] = useState<"saved" | "saving" | "failed">("saved");
+  const [locked, setLocked] = useState(false);
+  const [askReset, setAskReset] = useState(false);
 
-  const [sheet, setSheet] = useState<"sections" | "stats" | "tabs" | "overview" | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ask, setAsk] = useState(false);
-
-  const homeDirty = !!home && !!base && JSON.stringify(home) !== JSON.stringify(base.home);
-  const profileDirty = !!profile && !!base && JSON.stringify(profile) !== JSON.stringify(base.profile);
-  const dirty = homeDirty || profileDirty;
-
-  async function save() {
-    if (!d || !home || !profile || !base || !dirty || saving) return;
-    /* D-1322 — البوّابةُ على الحقل المدفوع لا على الحفظ كلِّه؛ والخادمُ يحكم بالقاعدة نفسِها (`touchesPaid*`) */
-    const paid = (homeDirty && touchesPaidHomePrefs(base.home, home)) || (profileDirty && touchesPaidProfilePrefs(base.profile, profile));
-    if (!d.plus && paid) return openWeb("/plus");
-    setError(null);
-    setSaving(true);
-    try {
-      const body: CustomizeSaveBody = { ...(homeDirty ? { home } : {}), ...(profileDirty ? { profile } : {}) };
-      const out = await write<CustomizeSaveResult>("/api/v1/me/customize", body);
-      if (out.needsPlus || !out.data) return openWeb("/plus");
-      queryClient.setQueryData(KEY, out.data);
-      void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
-      setBase({ home: out.data.home, profile: out.data.profile });
-      setHome(out.data.home);
-      setProfile(out.data.profile);
-      /* D-1323 — الرئيسيّةُ ترسم المحفوظَ فوراً (وسمُ `home` يعيد جلبَها بعده): العائدُ منها يرى ما اختار بلا انتظار */
-      const saved = out.data.home;
-      queryClient.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: saved } : prev));
-      haptic.success();
-      toast.current?.say(t.setSaved, undefined, undefined, "success");
-    } catch (e) {
-      setError(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const back = () => {
-    if (dirty) return setAsk(true);
-    if (router.canGoBack()) router.back();
+  const setHome = (h: HomePrefs) => {
+    homeRef.current = h;
+    setHomeState(h);
+  };
+  const setProfile = (p: ProfilePrefs) => {
+    profileRef.current = p;
+    setProfileState(p);
   };
 
-  /* «حفظ» الترويسة — زرُّ «تعديل الملفّ» نفسُه (D-1106) لا زرٌّ ثانٍ بشكلٍ آخر */
-  const saveAction = (
-    <Pressable onPress={() => void save()} disabled={!dirty || saving} hitSlop={10} accessibilityRole="button" style={{ height: 44, justifyContent: "center", paddingHorizontal: 4 }}>
-      <Text size={14} weight="700" color={dirty && !saving ? tokens.accent : tokens.muted}>{saving ? t.saving : t.setSave}</Text>
-    </Pressable>
-  );
+  useEffect(() => {
+    if (d && !baseRef.current) {
+      baseRef.current = { home: d.home, profile: d.profile };
+      plusRef.current = d.plus;
+      setHome(d.home);
+      setProfile(d.profile);
+    }
+  }, [d]);
 
-  const overlay = ask ? (
-    <Sheet title={t.setUnsavedTitle} placement="center" onClose={() => setAsk(false)}>
-      <Text size={14} muted style={{ lineHeight: 21 }}>{t.setUnsavedBody}</Text>
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-        <Button label={t.setKeepEditing} variant="ghost" style={{ flex: 1 }} onPress={() => setAsk(false)} />
-        <Button
-          label={t.setDiscard}
-          variant="danger"
-          style={{ flex: 1 }}
-          onPress={() => {
-            setAsk(false);
-            if (router.canGoBack()) router.back();
-          }}
-        />
-      </View>
-    </Sheet>
-  ) : null;
+  /* اسمُ العضو من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — لزرّ «افتح صفحتك» ولإبطال كاش صفحته */
+  const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
+  const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;
+  const username = head?.username ?? account?.username ?? null;
+  const usernameRef = useRef(username);
+  usernameRef.current = username;
+
+  function revert() {
+    const b = baseRef.current;
+    if (!b) return;
+    setHome(b.home);
+    setProfile(b.profile);
+  }
+
+  /** يرسل المنتظرَ الآن — من المؤقّت، ومن التنظيف عند الخروج فلا يضيع آخرُ تغيير */
+  function flush() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const body: CustomizeSaveBody = { ...pending.current };
+    pending.current = {};
+    if (!body.home && !body.profile) return;
+    const my = ++seq.current;
+    setStatus("saving");
+    write<CustomizeSaveResult>("/api/v1/me/customize", body)
+      .then((out) => {
+        if (out.needsPlus || !out.data) {
+          if (my === seq.current) {
+            revert();
+            setStatus("saved");
+            openWeb("/plus");
+          }
+          return;
+        }
+        /* «الأحدثُ يفوز»: ردٌّ أقدمُ يصل بعد أحدثَ لا يكتب فوقه */
+        if (my > applied.current) {
+          applied.current = my;
+          baseRef.current = { home: out.data.home, profile: out.data.profile };
+          queryClient.setQueryData(KEY, out.data);
+          void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+          /* D-1323 — الرئيسيّةُ ترسم المحفوظَ فوراً، ثمّ تُجلب لتأتي قيمُ الأرقام الجديدة المختارة */
+          const saved = out.data.home;
+          queryClient.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: saved } : prev));
+          void queryClient.invalidateQueries({ queryKey: HOME_KEY });
+          if (body.profile && usernameRef.current) void queryClient.invalidateQueries({ queryKey: profileKey(usernameRef.current) });
+        }
+        if (my === seq.current) setStatus("saved");
+      })
+      .catch((e) => {
+        if (my !== seq.current) return;
+        revert();
+        setStatus("failed");
+        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort), undefined, undefined, "error");
+      });
+  }
+
+  /* الخروجُ لا ينتظر المؤقّت: ما لُمس يُرسل الآن */
+  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * التغييرُ الواحد: بوّابةُ بلس ← الحالة ← الحفظُ المؤجّل ← «تم · تراجع».
+   * التراجعُ تغييرٌ مثلُه (يُحفظ) بلا إشعارِ تراجعٍ ثانٍ.
+   */
+  function change(next: Draft, undoable = true) {
+    const curH = homeRef.current;
+    const curP = profileRef.current;
+    if (!curH || !curP) return;
+    const paid = (next.home && touchesPaidHomePrefs(curH, next.home)) || (next.profile && touchesPaidProfilePrefs(curP, next.profile));
+    if (!plusRef.current && paid) {
+      haptic.pick();
+      return openWeb("/plus");
+    }
+    haptic.pick();
+    const prev: Draft = { ...(next.home ? { home: curH } : {}), ...(next.profile ? { profile: curP } : {}) };
+    if (next.home) {
+      setHome(next.home);
+      pending.current.home = next.home;
+    }
+    if (next.profile) {
+      setProfile(next.profile);
+      pending.current.profile = next.profile;
+    }
+    setStatus("saving");
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(flush, SAVE_DELAY);
+    if (undoable) toast.current?.say(w.done, { label: w.undo, onPress: () => change(prev, false) }, 4000, "success");
+  }
 
   if (!d || !home || !profile) {
     return (
@@ -190,278 +251,282 @@ export function CustomizeScreen() {
     );
   }
 
+  const locks = !d.plus;
   const posterLabel: Record<Density, string> = { compact: t.custPosterS, comfortable: t.custPosterM, large: t.custPosterL };
-  const cardsLabel: Record<CardCount, string> = { compact: t.cardsCompact, medium: t.cardsMedium, full: t.cardsFull };
-  /* صفُّ اختيارٍ واحد — عائلةُ الرقاقة (`chipClass` في الويب) باسمه في طرفه */
-  const choice = <K extends string>(label: string, all: readonly K[], value: K, names: Record<K, string>, onPick: (k: K) => void) => (
-    <View style={{ paddingHorizontal: 14, paddingVertical: 12, gap: 10 }}>
-      <Text size={15} weight="600">{label}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {all.map((k) => (
-          <Chip key={k} label={names[k]} active={value === k} onPress={() => onPick(k)} />
-        ))}
-      </View>
+  const statMeta = headerStatMeta(t);
+  const values = new Map((head?.stats ?? []).map((s) => [s.key, s.value]));
+  const visibleTabs = orderedProfileTabs(profile).filter((k) => !profile.hiddenTabs.includes(k));
+  const tabNames: Record<Tab, string> = { home: t.custTabHome, profile: t.custTabProfile };
+
+  /* مكانُ «حفظ» القديم — حالةٌ تُقرأ لا زرٌّ يُضغط */
+  const statusAction = (
+    <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 4 }} accessibilityLiveRegion="polite">
+      <Text size={13} weight="700" color={status === "failed" ? tokens.error : status === "saving" ? tokens.muted : tokens.success}>
+        {status === "failed" ? w.failed : status === "saving" ? w.saving : w.saved}
+      </Text>
     </View>
   );
 
-  const viewLabel: Record<HomeView, string> = { visual: t.viewVisual, mixed: t.viewMixed };
-  /* وجهُ المعاينة من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — لا نداءَ لأجل رسمٍ مصغّر */
-  const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
-  const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;
-  const who: PreviewWho = {
-    name: head?.display_name ?? account?.nickname ?? account?.username ?? "",
-    username: head?.username ?? account?.username ?? null,
-    avatarUrl: head?.avatar_url ?? account?.avatar_url ?? null,
-    avatarPos: head?.avatar_pos ?? account?.avatar_pos ?? null,
-    coverUrl: head?.cover_url ?? null,
-    coverPos: head?.cover_pos ?? null,
-    followers: head && !head.hide_follow_lists ? head.followers : null,
-    following: head && !head.hide_follow_lists ? head.following : null,
+  /* ── الأرقام ── */
+  const homePick: HeaderStatKey[] = home.stats ? home.statsPick : [];
+  const tapHomeStat = (k: HeaderStatKey) => {
+    const next = homePick.includes(k) ? homePick.filter((x) => x !== k) : [...homePick, k];
+    if (next.length > STATS_PICK_MAX) return toast.current?.say(w.max, undefined, undefined, "info");
+    /* لا شيء ⇒ البطاقةُ مخفيّة، والقائمةُ المحفوظةُ تبقى (لا تقلّ عن رقمٍ عند الخادم) فتعود كما كانت إن رجع إليها */
+    change({ home: next.length ? { ...home, stats: true, statsPick: next } : { ...home, stats: false } });
   };
-  const togglePreview = () => {
-    haptic.pick();
-    previewChoice = !previewOpen;
-    setPreviewOpen(previewChoice);
+  const profileStatMeta: Record<ProfileStatKey, { icon: string; label: string }> = {
+    shows: { icon: "tv", label: t.shortShows },
+    movies: { icon: "film", label: t.shortMovies },
+    anime: { icon: "sparkles", label: t.discoverTabAnime },
+    stats: { icon: "chart", label: t.custStatsShort },
   };
-  const statMeta = headerStatMeta(t);
-  const visibleTabs = orderedProfileTabs(profile).filter((k) => !profile.hiddenTabs.includes(k));
+  const profilePick: ProfileStatKey[] = profile.stats ? profile.statsPick : [];
+  const tapProfileStat = (k: ProfileStatKey) => {
+    const next = profilePick.includes(k) ? profilePick.filter((x) => x !== k) : [...profilePick, k];
+    /* «٣ب» — الخلايا الأربع تُختار؛ بابُ «الإحصائيات» خليّةٌ منها فـ`statsLink` يتبعها (الويبُ القديمُ يقرؤه) */
+    change({ profile: next.length ? { ...profile, stats: true, statsPick: next, statsLink: next.includes("stats") } : { ...profile, stats: false } });
+  };
+
+  const resetSheet = askReset ? (
+    <Sheet title={w.resetTitle} placement="center" onClose={() => setAskReset(false)}>
+      <Text size={14} muted style={{ lineHeight: 21 }}>{w.resetBody(tabNames[tab])}</Text>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+        <Button label={w.cancel} variant="ghost" style={{ flex: 1 }} onPress={() => setAskReset(false)} />
+        <Button
+          label={w.resetDo}
+          variant="danger"
+          style={{ flex: 1 }}
+          onPress={() => {
+            setAskReset(false);
+            /* D-1487 — افتراضيُّ خطّته */
+            change(tab === "home" ? { home: defaultHomePrefs(d.plus) } : { profile: defaultProfilePrefs(d.plus) });
+          }}
+        />
+      </View>
+    </Sheet>
+  ) : null;
+
+  const poster = (value: Density, onPick: (v: Density) => void) => (
+    <Section label={t.custPosterSize} plus={locks}>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {DENSITIES.map((k) => (
+          <PosterTile key={k} size={k} label={posterLabel[k]} active={value === k} onPress={() => onPick(k)} />
+        ))}
+      </View>
+    </Section>
+  );
 
   return (
     <SettingsScreen
       title={t.custTitle}
       toast={toast}
-      onBack={back}
-      action={saveAction}
+      action={statusAction}
+      gestures={{ locked }}
       pinned={
-        <>
-          <Segmented
-            items={[
-              { id: "home", label: t.custTabHome },
-              { id: "profile", label: t.custTabProfile },
-            ]}
-            value={tab}
-            onChange={(v) => setTab(v as Tab)}
-          />
-          <CustomizePreview kind={tab} who={who} home={home} profile={profile} open={previewOpen && !typing} onToggle={togglePreview} />
-        </>
+        <Segmented
+          items={[
+            { id: "home", label: t.custTabHome },
+            { id: "profile", label: t.custTabProfile },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
+        />
       }
-      overlay={
-      <>
-        {overlay}
-        {sheet === "sections" ? (
-          <ArrangeSheet title={t.custArrange} hint={t.custOrderHint} all={HOME_SECTIONS} picked={home.order} meta={homeSectionMeta(t)} onClose={() => setSheet(null)} onDone={(order) => { setHome({ ...home, order }); setSheet(null); }} />
-        ) : sheet === "stats" ? (
-          <ArrangeSheet title={t.custArrangeStats} hint={t.custStatsPickHint} all={HEADER_STATS} picked={home.statsPick} meta={statMeta} min={STATS_PICK_MIN} max={STATS_PICK_MAX} onClose={() => setSheet(null)} onDone={(statsPick) => { setHome({ ...home, statsPick }); setSheet(null); }} />
-        ) : sheet === "tabs" ? (
-          <ArrangeSheet
-            title={t.custTabsTitle}
-            hint={t.custTabsHint}
-            all={HIDEABLE_PROFILE_TABS}
-            picked={visibleTabs}
-            meta={profileTabMeta(t)}
-            onClose={() => setSheet(null)}
-            onDone={(picked) => {
-              /* وصفةُ `ProfileCustomize` حرفاً: الظاهرُ بترتيبه ثمّ المخفيُّ بترتيبه القديم */
-              const hidden = orderedProfileTabs(profile).filter((k) => !picked.includes(k));
-              setProfile({ ...profile, tabOrder: [...picked, ...hidden], hiddenTabs: HIDEABLE_PROFILE_TABS.filter((k): k is HideableProfileTab => hidden.includes(k)) });
-              setSheet(null);
-            }}
-          />
-        ) : sheet === "overview" ? (
-          <ArrangeSheet title={t.custArrange} hint={t.custOrderHint} all={PROFILE_SECTIONS} picked={profile.order} meta={profileSectionMeta(t)} onClose={() => setSheet(null)} onDone={(order) => { setProfile({ ...profile, order }); setSheet(null); }} />
-        ) : null}
-      </>
-    }>
-      <Templates
-        key={tab}
-        surface={tab}
-        list={tpl}
-        setList={setTpl}
-        current={(tab === "home" ? home : profile) as unknown as Record<string, unknown>}
-        onApply={(p) => (tab === "home" ? setHome(sanitizeHomePrefs(p)) : setProfile(sanitizeProfilePrefs(p)))}
-        plus={d.plus}
-        ar={locale !== "en"}
-        onPlus={() => openWeb("/plus")}
-        say={(text, tone) => toast.current?.say(text, undefined, undefined, tone)}
-      />
-
-      {error ? <Text size={13} color={tokens.error}>{error}</Text> : null}
-
+      overlay={resetSheet}
+    >
       {tab === "home" ? (
         <>
-          <Group label={t.custHeaderSection}>
-            <Toggle icon="chart" label={t.custStatsShort} checked={home.stats} onChange={() => setHome({ ...home, stats: !home.stats })} />
-            {/* D-1323 — خاناتُ البطاقة لا تُعرض والبطاقةُ مخفيّة — كما يفعل تبويبُ «الملفّ» بـ«زرّ الإحصائيات» (D-1130) */}
-            {home.stats ? <Row icon="chart" title={t.custStatsCard} value={t.custShownN(home.statsPick.length)} onPress={() => setSheet("stats")} /> : null}
-          </Group>
-          <Group label={t.custSectionsTitle}>
-            <Row icon="grip" title={t.custArrange} subtitle={t.custSectionsHint} value={t.custShownN(home.order.length)} onPress={() => setSheet("sections")} />
-          </Group>
-          <Group label={t.custDisplay}>
-            {choice(t.custHomeView, HOME_VIEWS, home.view, viewLabel, (view) => setHome({ ...home, view }))}
-            {choice(t.custLayout, CARD_COUNTS, home.cards, cardsLabel, (cards) => setHome({ ...home, cards }))}
-            {choice(t.custPosterSize, DENSITIES, home.density, posterLabel, (density) => setHome({ ...home, density }))}
-          </Group>
+          <Section label={t.custHeaderSection} hint={w.statsHint} plus={locks}>
+            {/* المعاينةُ فوق الشبكة: البطاقةُ كما ستظهر في الرئيسيّة، بالقيم التي نعرفها */}
+            <View style={{ flexDirection: "row", borderRadius: radius.md, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, minHeight: 56, alignItems: "stretch", marginBottom: 10 }}>
+              {homePick.length ? (
+                homePick.map((k, i) => (
+                  <View key={k} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8, borderStartWidth: i ? 1 : 0, borderStartColor: tokens.divider }}>
+                    <Text size={15} weight="800" numberOfLines={1}>{values.get(k) ?? "—"}</Text>
+                    <Text size={11} muted numberOfLines={1}>{statMeta[k].label}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <Text size={13} muted>{w.statsHidden}</Text>
+                </View>
+              )}
+            </View>
+            <PickGrid all={HEADER_STATS} picked={homePick} meta={statMeta} values={values} onTap={tapHomeStat} />
+          </Section>
+
+          <Section label={t.custSectionsTitle} hint={t.custSectionsHint} plus={locks}>
+            <Card>
+              <ArrangeList all={HOME_SECTIONS} picked={home.order} meta={homeSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => change({ home: { ...home, order } })} />
+            </Card>
+          </Section>
+
+          {poster(home.density, (density) => change({ home: { ...home, density } }))}
         </>
       ) : (
         <>
-          <Group label={t.custProfileHeader}>
-            <Toggle icon="chart" label={t.custStatsShort} checked={profile.stats} onChange={() => setProfile({ ...profile, stats: !profile.stats })} />
-            {/* 🆕 D-1130 — نظيرُ الويب: بابُ «الإحصائيات» يُخفى وحدَه، ولا يُعرض والبطاقةُ مخفيّة */}
-            {profile.stats ? <Toggle icon="chart" label={t.custStatsLink} hint={t.custStatsLinkHint} checked={profile.statsLink} onChange={() => setProfile({ ...profile, statsLink: !profile.statsLink })} /> : null}
-          </Group>
-          <Group label={t.custTabsTitle}>
-            {/* D-1323 — «رتّب التبويبات»: الصفُّ تحته يحمل «رتّب الأقسام» لفعلٍ آخر */}
-            <Row icon="grip" title={t.custArrangeTabs} subtitle={t.custSectionsHint} value={t.custShownN(visibleTabs.length)} onPress={() => setSheet("tabs")} />
-          </Group>
-          <View style={{ gap: 6 }}>
-            <Group label={t.custOverviewTab}>
-              <Row icon="grip" title={t.custArrange} subtitle={t.custSectionsHint} value={t.custShownN(profile.order.length)} onPress={() => setSheet("overview")} />
-            </Group>
-            <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>
-              {t.custProfileHint}
-              {profile.order.length === 0 ? ` — ${t.custProfileEmpty}` : ""}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 }}>
+            <Text size={13} muted style={{ flex: 1 }}>{w.asOthers}</Text>
+            {username ? <Button label={w.openPage} size="sm" variant="ghost" onPress={() => router.push({ pathname: "/u/[username]", params: { username } })} /> : null}
           </View>
-          <Group label={t.custListsTab}>
-            <Toggle icon="bookmark" label={t.savedListsSection} checked={profile.savedLists} onChange={() => setProfile({ ...profile, savedLists: !profile.savedLists })} />
-          </Group>
-          <Group label={t.custDisplay}>
-            {choice(t.custLayout, CARD_COUNTS, profile.cards, cardsLabel, (cards) => setProfile({ ...profile, cards }))}
-            {choice(t.custPosterSize, DENSITIES, profile.density, posterLabel, (density) => setProfile({ ...profile, density }))}
-          </Group>
+
+          <Section label={t.custProfileHeader} hint={w.profileStatsHint} plus={locks}>
+            <PickGrid all={PROFILE_STATS} picked={profilePick} meta={profileStatMeta} columns={4} onTap={tapProfileStat} />
+          </Section>
+
+          <Section label={t.custTabsTitle} hint={t.custTabsHint} plus={locks}>
+            <Card>
+              <ArrangeList
+                all={HIDEABLE_PROFILE_TABS}
+                picked={visibleTabs}
+                meta={profileTabMeta(t)}
+                thumbs
+                onDragChange={setLocked}
+                onChange={(picked) => {
+                  /* وصفةُ `ProfileCustomize` حرفاً: الظاهرُ بترتيبه ثمّ المخفيُّ بترتيبه القديم */
+                  const hidden = orderedProfileTabs(profile).filter((k) => !picked.includes(k));
+                  change({ profile: { ...profile, tabOrder: [...picked, ...hidden], hiddenTabs: HIDEABLE_PROFILE_TABS.filter((k): k is HideableProfileTab => hidden.includes(k)) } });
+                }}
+              />
+            </Card>
+          </Section>
+
+          <Section label={t.custOverviewTab} hint={t.custProfileHint} plus={locks}>
+            <Card>
+              <ArrangeList all={PROFILE_SECTIONS} picked={profile.order} meta={profileSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => change({ profile: { ...profile, order } })} />
+            </Card>
+          </Section>
+
+          <Section label={t.custListsTab} plus={locks}>
+            <Group>
+              <Toggle icon="bookmark" label={t.savedListsSection} hint={w.savedListsHint} checked={profile.savedLists} onChange={() => change({ profile: { ...profile, savedLists: !profile.savedLists } })} />
+            </Group>
+          </Section>
+
+          {poster(profile.density, (density) => change({ profile: { ...profile, density } }))}
         </>
       )}
 
-      {/* الاستعادةُ تعيد التبويبَ الظاهرَ إلى افتراضيّه — مسودّةً لا حفظاً، كالويب */}
       <Group>
-        <Row
-          icon="repeat"
-          title={t.custResetShort}
-          subtitle={t.custResetHint}
-          /* D-1323 — فعلٌ فوريٌّ لا باب: بلا سهم، وإشعارٌ يقول ما حدث (كان «حفظ» يصفرّ وحدَه دليلاً) */
-          trailing={null}
-          onPress={() => {
-            haptic.pick();
-            /* D-1487 — افتراضيُّ خطّته */
-            if (tab === "home") setHome(defaultHomePrefs(!!d?.plus));
-            else setProfile(defaultProfilePrefs(!!d?.plus));
-            toast.current?.say(t.custResetDraft, undefined, undefined, "info");
-          }}
-        />
+        <Row icon="repeat" title={t.custResetShort} subtitle={w.resetHint} trailing={null} onPress={() => setAskReset(true)} />
       </Group>
     </SettingsScreen>
   );
 }
 
-/**
- * قوالبُ التخصيص — `PrefTemplatesRow` الويبيّة: رقاقةٌ لكلِّ قالبٍ تطبّقه على المسودّة، و«احفظ هذا التنسيق»
- * باسمٍ حتى ٢٤ حرفاً، و«احذف» للمختار. **القائمةُ تُكتب كاملةً فوراً** (لا مع «حفظ» الترويسة) — كالويب،
- * فالقالبُ ليس تنسيقاً بل لقطةٌ منه. التراجعُ عند الفشل أو `needsPlus`.
- */
-function Templates({
-  surface,
-  list,
-  setList,
-  current,
-  onApply,
-  plus,
-  ar,
-  onPlus,
-  say,
-}: {
-  say: (text: string, tone: ToastTone) => void;
-  surface: TemplateSurface;
-  list: PrefTemplate[];
-  setList: (l: PrefTemplate[]) => void;
-  current: Record<string, unknown>;
-  onApply: (p: Record<string, unknown>) => void;
-  plus: boolean;
-  ar: boolean;
-  onPlus: () => void;
-}) {
-  const { t, tokens } = useApp();
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
-  const mine = templatesOf(list, surface);
-  const full = mine.length >= TEMPLATES_CAP;
-
-  /* D-1324 (بلاغُ أحمد: «احفظ هذا الشكل لا يعمل»): الفشلُ كان صامتاً — `ok:false` من الخادم يُبقي الرقاقةَ حتى إعادة
-     الفتح ثمّ تختفي، وسقوطُ النداء يعيدها بلا كلمة. الآن يُقال ما حدث في الحالين، والنجاحُ يُعلَن. */
-  function persist(next: PrefTemplate[], done?: string) {
-    const before = list;
-    const fail = () => {
-      setList(before);
-      say(t.errSaveShort, "error");
-    };
-    setList(next);
-    write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/customize/templates", { tpl: next } satisfies TemplatesBody)
-      .then((r) => {
-        if (r.needsPlus) {
-          setList(before);
-          onPlus();
-        } else if (!r.ok) fail();
-        else if (done) say(done, "success");
-      })
-      .catch(fail);
-  }
-  function saveTpl() {
-    if (!plus) return onPlus();
-    const clean = sanitizeTemplateName(name);
-    if (!clean) return;
-    const next = upsertTemplate(list, { id: newTemplateId(), name: clean, s: surface, p: current });
-    if (next !== list) persist(next, t.savedToast);
-    Keyboard.dismiss();
-    setName("");
-    setNaming(false);
-  }
-
+/** عنوانُ المجموعة بشارة بلس لغير المشترك — `Group` يأخذ نصّاً، والشارةُ تحتاج صفّاً */
+function Section({ label, hint, plus, children }: { label: string; hint?: string; plus?: boolean; children: React.ReactNode }) {
   return (
-    <View style={{ gap: 8 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {mine.map((x) => (
-          <Chip
-            key={x.id}
-            label={x.name}
-            active={picked === x.id}
-            onPress={() => {
-              setPicked(x.id);
-              onApply(x.p);
-            }}
-          />
-        ))}
-        {!naming && !full ? (
-          <Chip label={ar ? "احفظ هذا التنسيق" : "Save this look"} active={false} leading={<Icon name="plus" size={14} color={tokens.muted} />} onPress={() => (plus ? setNaming(true) : onPlus())} />
-        ) : null}
-      </ScrollView>
-      {naming ? (
-        <View style={{ borderRadius: 16, backgroundColor: tokens.surface }}>
-          {/* D-1324 — الحقلُ كان مساحةً فارغةً بلا إرشادٍ ولا تركيز: لوحةُ المفاتيح تصعد معه ونصٌّ يقول أين يُكتب */}
-          <Field label={ar ? "سمِّ التنسيق" : "Name this look"} value={name} onChange={setName} maxLength={TEMPLATE_NAME_MAX} counter autoFocus placeholder={ar ? "اكتب اسماً" : "Type a name"} />
-          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: 12 }}>
-            <Button label={ar ? "إلغاء" : "Cancel"} size="sm" variant="ghost" style={{ flex: 1 }} onPress={() => { setNaming(false); setName(""); }} />
-            <Button label={ar ? "حفظ" : "Save"} size="sm" style={{ flex: 1 }} disabled={!sanitizeTemplateName(name)} onPress={saveTpl} />
-          </View>
-        </View>
-      ) : null}
-      {picked && mine.some((x) => x.id === picked) ? (
-        <Text
-          size={12}
-          color={tokens.error}
-          onPress={() => {
-            persist(removeTemplate(list, picked));
-            setPicked(null);
-          }}
-        >
-          {ar ? "احذف هذا التنسيق" : "Delete this look"}
-        </Text>
-      ) : null}
-      {full ? (
-        <Text size={12} muted>
-          {ar ? `بلغتَ الحدّ (${TEMPLATES_CAP}) — احذف واحداً لتحفظ غيره` : `Limit reached (${TEMPLATES_CAP}) — delete one to save another`}
-        </Text>
-      ) : null}
+    <View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4, marginBottom: hint ? 2 : 6 }}>
+        <Text size={12} weight="600" muted>{label}</Text>
+        {plus ? <StatusPill label="PLUS" /> : null}
+      </View>
+      {hint ? <Text size={12} muted style={{ paddingHorizontal: 4, marginBottom: 8, lineHeight: 17 }}>{hint}</Text> : null}
+      {children}
     </View>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  const { tokens } = useApp();
+  return <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, paddingHorizontal: 8, paddingVertical: 4 }}>{children}</View>;
+}
+
+/**
+ * شبكةُ اختيارٍ بالترتيب: كلُّ خانةٍ اسمُها كبيرٌ وقيمتُها صغيرة (التحسين ٥ — الاسمُ ما تختار به، والقيمةُ تأكيد)،
+ * والمختارُ يحمل رقمَ موضعه في زاويته. الشكلُ واحدٌ لأرقام الرئيسيّة وبطاقة الملفّ.
+ */
+function PickGrid<K extends string>({
+  all,
+  picked,
+  meta,
+  values,
+  columns = 3,
+  onTap,
+}: {
+  all: readonly K[];
+  picked: K[];
+  meta: Record<K, { icon: string; label: string }>;
+  values?: Map<string, string>;
+  columns?: number;
+  onTap: (k: K) => void;
+}) {
+  const { tokens } = useApp();
+  const basis = columns === 4 ? "23%" : "31.5%";
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {all.map((k) => {
+        const at = picked.indexOf(k);
+        const on = at >= 0;
+        const value = values?.get(k);
+        return (
+          <Pressable
+            key={k}
+            onPress={() => onTap(k)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: on }}
+            accessibilityLabel={on ? `${meta[k].label} — ${at + 1}` : meta[k].label}
+            style={({ pressed }) => ({
+              flexBasis: basis,
+              flexGrow: 1,
+              minHeight: 64,
+              borderRadius: radius.md,
+              borderWidth: 1.5,
+              borderColor: on ? tokens.accent : tokens.border,
+              backgroundColor: on ? tokens.accent + "1A" : tokens.surface,
+              paddingVertical: 10,
+              paddingHorizontal: 8,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 3,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            {on ? (
+              <View style={{ position: "absolute", top: 5, end: 5, width: 18, height: 18, borderRadius: 9, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
+                <Text size={11} weight="800" color={tokens.onAccent}>{at + 1}</Text>
+              </View>
+            ) : null}
+            <Icon name={iconOr(meta[k].icon, "list")} size={16} color={on ? tokens.accent : tokens.muted} />
+            <Text size={13} weight="700" numberOfLines={1} style={{ textAlign: "center" }}>{meta[k].label}</Text>
+            {value ? <Text size={11} muted numberOfLines={1}>{value}</Text> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** خانةُ حجم الملصق — ملصقاتٌ بحجمها الحقيقيّ نسبةً، فالفرقُ يُرى قبل أن يُختار */
+function PosterTile({ size, label, active, onPress }: { size: Density; label: string; active: boolean; onPress: () => void }) {
+  const { tokens } = useApp();
+  const shape = size === "compact" ? { n: 4, w: 13 } : size === "comfortable" ? { n: 3, w: 18 } : { n: 2, w: 25 };
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        flex: 1,
+        borderRadius: radius.md,
+        borderWidth: 1.5,
+        borderColor: active ? tokens.accent : tokens.border,
+        backgroundColor: active ? tokens.accent + "1A" : tokens.surface,
+        paddingVertical: 12,
+        alignItems: "center",
+        gap: 8,
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      <View style={{ flexDirection: "row", gap: 3, height: 40, alignItems: "flex-end" }}>
+        {Array.from({ length: shape.n }).map((_, i) => (
+          <View key={i} style={{ width: shape.w, height: shape.w * 1.5, borderRadius: 3, backgroundColor: active ? tokens.accent : tokens.surface2 }} />
+        ))}
+      </View>
+      <Text size={13} weight={active ? "700" : "600"} color={active ? tokens.accent : tokens.fg}>{label}</Text>
+    </Pressable>
   );
 }

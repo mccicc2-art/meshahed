@@ -191,7 +191,9 @@ export function keepPaidHomePrefs(stored: HomePrefs, incoming: HomePrefs): HomeP
   return out;
 }
 
-export const STATS_PICK_MIN = 2;
+/* 🆕 D-1630 — **رقمٌ واحدٌ يكفي** (أحمد ٦ نوفمبر: «لا شيء أو ١ إلى ٤»): إخفاءُ البطاقة كلِّها صار «لا شيء مختار» في
+   شبكة الأرقام (`stats: false`)، فالقائمةُ المحفوظةُ لا تقلّ عن رقمٍ واحد — وكانت اثنين */
+export const STATS_PICK_MIN = 1;
 export const STATS_PICK_MAX = 4;
 
 export interface HomePrefs {
@@ -445,7 +447,9 @@ function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
     social: bool("social") as boolean,
     order,
     statsPick,
-    cards: sanitizeCardCount(o.cards),
+    /* 🆕 D-1630 — **«عدد البطاقات في كل قسم» خرج من التخصيص** (أحمد ٦ نوفمبر: «احذفها من الإعدادات» · «الكل للجميع»):
+       الاختيارُ القديمُ يُقرأ «الكل» — خيارٌ لا يُرى ولا يُغيَّر لا يبقى حاكماً على أحد. الحقلُ باقٍ في الشكل لعملاءٍ أقدم */
+    cards: sanitizeCardCount("full"),
     view: typeof o.view === "string" ? sanitizeHomeView(o.view) : d.view,
     density: sanitizeDensity(o.density),
     toWatch: bool("toWatch") as boolean,

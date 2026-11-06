@@ -156,7 +156,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         weekly_ranks: c.weeklyRanks,
         /* 🆕 D-1617 — شخصيّةُ AI بلا بطاقة الأرقام (أحمد ١ نوفمبر بلقطةٍ محوَّطة: «و ال Ai احذف منهم الكاردات»): لا تتابع ولا
            تشاهد، فـ«٠ مسلسلات · ٠ أفلام · الإحصائيات» صفوفٌ بلا معنى — ملفُّها نبذتُها ومراجعاتُها */
-        display: { stats: persona ? false : prefs.stats, stats_link: persona ? false : prefs.statsLink, cards: cardCap >= 999 ? null : cardCap },
+        display: {
+          stats: persona ? false : prefs.stats,
+          stats_link: persona ? false : prefs.statsLink,
+          cards: cardCap >= 999 ? null : cardCap,
+          /* 🆕 D-1630 — ترتيبُ خانات البطاقة واختيارُها (التطبيقُ يقرؤه؛ الأقدمُ يكتفي بالرايتين) */
+          stats_pick: persona ? [] : prefs.statsPick,
+        },
         tabs: locked ? [] : persona ? (["reviews"] as ProfileTabKey[]) : (orderedProfileTabs(prefs).filter((k) => !hidden(k)) as ProfileTabKey[]),
         sections: prefs.order as ProfileSectionKey[],
         customize_hint: c.customizeHint,
