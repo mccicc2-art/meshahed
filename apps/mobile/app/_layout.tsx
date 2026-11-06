@@ -28,6 +28,8 @@ import { rootTouch, rootTouchEnd } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
 import { UpdateBanner } from "../src/UpdateBanner";
+import { identify as identifyBuyer } from "../src/billing/purchases";
+import { ObserveRoot } from "expo-observe";
 
 /**
  * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
@@ -43,7 +45,7 @@ startCachePersist();
 startWidgetFeed();
 
 
-export default function RootLayout() {
+function RootLayout() {
   /* Phase 11 · B2 — الخطوطُ تُحمّل في الجذر ولا تحبس الستارَ: الـWebView لا
      تحتاجها، والشاشةُ الأصليّةُ ترسم بخطّ النظام حتى تصل (`ui.tsx`). */
   const fontsReady = useAppFonts();
@@ -69,7 +71,12 @@ export default function RootLayout() {
 
 function Shell() {
   const { loading } = useAuth();
-  const { tokens, themeId } = useApp();
+  const { tokens, themeId, me } = useApp();
+  /* 🆕 بناء 1.14.0 — RevenueCat يعرف العضوَ بمعرّفه (`Purchases.logIn(uid)`) فيُنسب الشراءُ إليه في الويبهوك؛ والخروجُ يفكّه */
+  const meId = me?.id ?? null;
+  useEffect(() => {
+    void identifyBuyer(meId);
+  }, [meId]);
   /* 🆕 «لا ويب في التطبيق» ٤ — أبوابُ Loopz+ والاشتراك شاشةٌ أصليّة: `shell.open` يسأل هنا قبل أن يفتح الويب */
   const router = useRouter();
   useEffect(() => {
@@ -200,3 +207,10 @@ function Shell() {
     </>
   );
 }
+
+/**
+ * 🆕 1.14.0 — **قياسُ الإقلاع الأصليّ** (`expo-observe`، تقييمُ ٥ نوفمبر البند ١٠): علاماتُنا (`perf.ts`) تبدأ من أوّل سطر
+ * جافاسكربت، وما قبله (صورةُ النظام والإقلاعُ الأصليّ — «السوادُ قبل الفتح» في ١١ أكتوبر) لا يُقاس. هذا الغلافُ يقيسه
+ * (الإقلاعُ البارد والدافئ وأوّلُ رسم)، و«صالحٌ للمس» من الرئيسيّة (`markInteractive` بجانب `coldstart.home`). علاماتُنا باقيةٌ كما هي.
+ */
+export default ObserveRoot.wrap(RootLayout);

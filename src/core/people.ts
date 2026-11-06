@@ -30,6 +30,8 @@ export interface PersonLite {
   plan?: string | null;
   founder?: boolean | null;
   verified_at?: string | null;
+  /** 🆕 رايةُ GOLD العامّة (هجرة ٢٣٨) — غيابُها «بلا شارة» كأخواتها */
+  gold?: boolean | null;
 }
 
 /**
@@ -48,7 +50,7 @@ export interface PersonLite {
  * زرع حكماً ثانياً.**
  */
 export const PERSON_COLS =
-  "id, nickname, username, avatar_url, hide_name, plan, founder, verified_at";
+  "id, nickname, username, avatar_url, hide_name, plan, founder, verified_at, gold";
 
 /** الاسم المعروض مع احترام خيار الإخفاء */
 export function displayNameOf(

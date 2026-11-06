@@ -324,13 +324,17 @@ async function signalNow(input: SignalInput): Promise<void> {
  * 🆕 **«اشتراكك انتهى، أبقينا X — اختر ما يبقى»** (خطّةُ Loopz+ v2 — أحمد ٥ نوفمبر «٢ أ»): من سقط من بلس وأُوقف من أجهزته
  * ما زاد على خانته. يفتح «الربط» حيث بطاقةُ «اختر ما يبقى». مفتاحُه يومُ النهاية فيأتي مرّة.
  */
-export function notifyPlanEnded(input: { to: string; kept: string | null; dedupe: string }) {
+export function notifyPlanEnded(input: { to: string; kept: string | null; stopped: number; dedupe: string }) {
   quiet(() =>
     deliver({
       to: input.to,
       group: null,
       dedupe: input.dedupe,
-      build: (t) => ({ title: t.planEndedPushTitle, body: input.kept ? t.planEndedPushKept(input.kept) : t.planEndedPushNone, url: "/links" }),
+      /* أُوقف جهازٌ ⇒ «اختر ما يبقى» ويفتح الربط؛ لم يُوقف شيء ⇒ سطرُ «المجّانيّة» ويفتح صفحةَ Loopz+ (التطبيقُ يفتحها أصليّةً) */
+      build: (t) =>
+        input.stopped > 0
+          ? { title: t.planEndedPushTitle, body: input.kept ? t.planEndedPushKept(input.kept) : t.planEndedPushNone, url: "/links" }
+          : { title: t.planEndedPushTitle, body: t.planEndedPushFree, url: "/plus" },
     }),
   );
 }

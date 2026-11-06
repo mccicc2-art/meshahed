@@ -36,6 +36,11 @@ export const ANDROID_RESIZE = Platform.OS !== "android" || (typeof Platform.Vers
 const FEED = "feed.json";
 /** 🆕 W14 — رمزُ ✓ الخاصّ: يقرؤه الودجتُ (`CheckReceiver.kt` · `Intents.swift`) ولا يقدر إلّا على تعليم حلقة */
 const TOKEN = "token";
+/**
+ * 🆕 A-05 (هجرة ٢٣٩، بناء 1.14.0) — **رمزُ ردود الإشعار** منفصلٌ عن رمز ✓: يقرؤه `DmPush.kt` وحدَه (أندرويد)، والخادمُ يقبل
+ * كلّاً منهما على مساراته وحدَها — فرمزُ الودجت لا يرسل رسائل. الآيفون يردّ بالجلسة المملوكة (`dmReply.ts`) فلا يحتاجه.
+ */
+const DM_TOKEN = "dm_token";
 
 /**
  * 🆕 1.12.7 — رمزُ الودجت نفسُه يرسل «رد» من إشعار الرسالة (`DmPush.kt`): التسجيلُ يقول «dm-native» **حين يوجد الملفّ**
@@ -56,9 +61,9 @@ export function hasWidgetToken(): boolean {
  * 🆕 A-05 — **رمزُ الجهاز نصّاً** (أو `null`): يُرسل مع الخلاصة فيتجدّد، ويُلغى به عند الخروج. ملفٌّ فارغٌ أو تالفٌ = لا رمز.
  * بناءٌ أصليٌّ بلا `readText` لا يُقرأ فيه — يبقى سلوكُه القديم (الخادمُ يجدّد رموزَ العضو الحيّةَ كلَّها حين لا تصله ترويسة).
  */
-function readToken(w: NonNullable<typeof LoopzWidget>): string | null {
+function readToken(w: NonNullable<typeof LoopzWidget>, name: string = TOKEN): string | null {
   try {
-    const t = w.readText?.(TOKEN)?.trim() ?? "";
+    const t = w.readText?.(name)?.trim() ?? "";
     return /^lw_[A-Za-z0-9_-]{43}$/.test(t) ? t : null;
   } catch {
     return null;
@@ -98,6 +103,7 @@ const BG_MINUTES = 180;
 
 let last = 0;
 let tokenTried = 0;
+let dmTokenTried = 0;
 let running: Promise<void> | null = null;
 let again: Promise<void> | null = null;
 
@@ -272,6 +278,22 @@ async function ensureToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
   }
 }
 
+/**
+ * 🆕 A-05 — رمزُ `dm` لهذا الجهاز (أندرويد وحدَه، وفي بناءٍ يقرأ الملفّات). قبل أن تُشغَّل الهجرةُ ٢٣٩ يرفض الخادمُ إصدارَه
+ * (`upstream`) فيبقى `DmPush.kt` على رمز الودجت، والخادمُ يقبله للردود في فترة الانتقال — ويُعاد الطلبُ بعد نصف ساعة.
+ */
+async function ensureDmToken(w: NonNullable<typeof LoopzWidget>): Promise<void> {
+  if (Platform.OS !== "android" || !w.readText || readToken(w, DM_TOKEN)) return;
+  if (Date.now() - dmTokenTried < TOKEN_RETRY_MS) return;
+  dmTokenTried = Date.now();
+  try {
+    const { data } = await api<{ token: string }>("/api/v1/widget/token", { method: "POST", body: { scope: "dm" } });
+    if (typeof data?.token === "string" && data.token.startsWith("lw_")) w.writeText(DM_TOKEN, data.token);
+  } catch {
+    /* بلا رمز `dm` يردّ الإشعارُ برمز الودجت حتى نهاية الانتقال */
+  }
+}
+
 /** يكتب ودجتاً فارغاً «سجّل الدخول» — عند الخروج وحين لا جلسة */
 export function clearWidgets() {
   const w = LoopzWidget;
@@ -302,11 +324,17 @@ async function run(): Promise<void> {
   }
   const query = lists.length ? `?lists=${lists.join(",")}` : "";
   await ensureToken(w);
+  await ensureDmToken(w);
   await sendDiag(w);
   void reportSizes(w);
   /* 🆕 A-05 — رمزُ الجهاز مع الخلاصة: يتجدّد بفتح التطبيق، و`check: false` معه يعني أنّه مات أو أُلغي ⇒ يُمحى ويُطلب غيرُه */
   const mine = readToken(w);
-  const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query, mine ? { headers: { "x-loopz-widget": mine } } : undefined);
+  /* 🆕 A-05 — ورمزُ `dm` معه فيتجدّد هو أيضاً (ردٌّ بعد ٩٠ يوماً بلا ردود لا يجده ميّتاً) */
+  const dm = readToken(w, DM_TOKEN);
+  const headers: Record<string, string> = {};
+  if (mine) headers["x-loopz-widget"] = mine;
+  if (mine && dm) headers["x-loopz-widget-dm"] = dm;
+  const { data } = await api<WidgetFeed>("/api/v1/me/widget" + query, mine ? { headers } : undefined);
   if (mine && data && data.check === false) {
     dropToken(w);
     void ensureToken(w);
@@ -454,7 +482,8 @@ function writeFeed(w: NonNullable<typeof LoopzWidget>, data: WidgetFeed, names: 
   const out = { ...data, w2, posters: Object.fromEntries(names), written_at: new Date().toISOString() };
   w.writeText(FEED, JSON.stringify(out));
   /* الكتابةُ الأولى (قبل الصور) لا تمحو شيئاً: ملفُّ صورةٍ لم يُذكر بعدُ قد يكون في طريقه */
-  if (prune) w.prune([FEED, TOKEN, DIAG, PLACED, ...names.values()]);
+  /* 🆕 A-05 — رمزُ الردود يبقى مع رمز ✓ حين تُكنس الملصقات */
+  if (prune) w.prune([FEED, TOKEN, DM_TOKEN, DIAG, PLACED, ...names.values()]);
   w.reload();
 }
 
@@ -528,14 +557,16 @@ export function startWidgetFeed() {
     /* 🆕 A-05 — الرمزُ يُلغى على الخادم قبل أن يُمحى ملفُّه: من نسخه قبل الخروج لا يبقى في يده رمزٌ حيّ. بلا انتظار —
        الخروجُ لا يتأخّر لأجل الشبكة، وفشلُ الإلغاء يتركه يموت بعد ٩٠ يوماً من النوم */
     const w = LoopzWidget;
-    const mine = w ? readToken(w) : null;
-    if (mine) {
+    /* 🆕 A-05 — الرمزان معاً: ✓ والردود */
+    for (const mine of w ? [readToken(w), readToken(w, DM_TOKEN)] : []) {
+      if (!mine) continue;
       void fetch(`${CONFIG.apiBase}/api/v1/widget/token/revoke`, {
         method: "POST",
         credentials: NO_COOKIES,
         headers: { Authorization: `Bearer ${mine}`, ...GATE_HEADERS },
       }).catch(() => {});
     }
+    dmTokenTried = 0;
     clearWidgets();
     void unregisterBackground();
   });

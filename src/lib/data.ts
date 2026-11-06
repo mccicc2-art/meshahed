@@ -202,7 +202,7 @@ export const getIdentities = cache(
       const supabase = await createClient();
       const { data } = await supabase
         .from("public_profiles")
-        .select("id, plan, founder, verified_at")
+        .select("id, plan, founder, verified_at, gold")
         .in("id", want);
       return new Map(
         (data ?? []).map((r) => [
@@ -211,6 +211,7 @@ export const getIdentities = cache(
             plan: r.plan ?? null,
             founder: r.founder ?? null,
             verified_at: r.verified_at ?? null,
+            gold: r.gold === true,
           },
         ]),
       );
@@ -225,6 +226,8 @@ export interface IdentityFields {
   plan?: string | null;
   founder?: boolean | null;
   verified_at?: string | null;
+  /** 🆕 رايةُ GOLD العامّة (هجرة ٢٣٨) */
+  gold?: boolean | null;
 }
 
 /**
@@ -1362,7 +1365,7 @@ export async function getProfileByUsername(
          لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
          والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, theme_accent, joined_at, socials, x_verified_at",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, gold, theme_accent, joined_at, socials, x_verified_at",
       )
       .eq(column, value)
       .maybeSingle();

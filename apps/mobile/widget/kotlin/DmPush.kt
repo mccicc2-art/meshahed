@@ -261,14 +261,18 @@ object DmPush {
     val dm = args.getString(EXTRA_DM)?.let { fromJson(it) } ?: return
     val text = args.getString("text") ?: ""
     val target = if (dm.to != null) JSONObject().put("to", dm.to) else JSONObject().put("group", dm.group)
-    val token = CheckReceiver.token(ctx)
+    /* 🆕 A-05 — رمزُ الردود أوّلاً؛ وبلاه (قبل أن يصدره الخادم) رمزُ الودجت، يقبله الخادمُ للردود في فترة الانتقال وحدَها */
+    val dmToken = CheckReceiver.dmToken(ctx)
+    val token = dmToken ?: CheckReceiver.token(ctx)
     if (token == null) CheckReceiver.diag(ctx, "dm", "no_token", action.substringAfterLast('.'))
     if (action == ACTION_READ) {
-      if (token != null) post(ctx, "/api/v1/widget/dm-read", token, target)
+      if (token != null) settle(ctx, post(ctx, "/api/v1/widget/dm-read", token, target), dmToken != null)
       return
     }
     if (action != ACTION_REPLY || text.isEmpty()) return
-    val ok = token != null && post(ctx, "/api/v1/widget/dm-reply", token, target.put("body", text))
+    val code = if (token != null) post(ctx, "/api/v1/widget/dm-reply", token, target.put("body", text)) else -1
+    settle(ctx, code, dmToken != null)
+    val ok = code in 200..299
     /* الإشعارُ نفسُه يقول ما جرى: «أنت: …» — أو «تعذّر» ويبقى بزرّيه فيُعاد */
     val line = if (ok) "${label(ctx, dm, "you", R.string.dm_you)}: $text" else "⚠️ ${label(ctx, dm, "failed", R.string.dm_failed)}"
     try {
@@ -278,8 +282,13 @@ object DmPush {
     }
   }
 
-  /** نداءٌ برمز الودجت — `true` لردٍّ ناجح؛ والفشلُ يُكتب في سجلّ لمسات الودجت (يرسله التطبيقُ عند فتحه) */
-  private fun post(ctx: Context, path: String, token: String, body: JSONObject): Boolean {
+  /** 🆕 A-05 — ٤٠١ على رمز الردود ⇒ يُفرَّغ فيطلب التطبيقُ غيرَه (رمزُ الودجت لا يُمسّ من هنا) */
+  private fun settle(ctx: Context, code: Int, usedDm: Boolean) {
+    if (code == 401 && usedDm) CheckReceiver.dropDmToken(ctx)
+  }
+
+  /** نداءٌ بالرمز — رمزُ حالة HTTP (‎-1 لعطل شبكة)؛ والفشلُ يُكتب في سجلّ لمسات الودجت (يرسله التطبيقُ عند فتحه) */
+  private fun post(ctx: Context, path: String, token: String, body: JSONObject): Int {
     return try {
       val conn = (URL(CheckReceiver.BASE + path).openConnection() as HttpURLConnection).apply {
         requestMethod = "POST"
@@ -293,13 +302,13 @@ object DmPush {
         conn.outputStream.use { it.write(body.toString().toByteArray()) }
         val code = conn.responseCode
         if (code !in 200..299) CheckReceiver.diag(ctx, "dm", "http", "${path.substringAfterLast('/')} $code")
-        code in 200..299
+        code
       } finally {
         conn.disconnect()
       }
     } catch (e: Exception) {
       CheckReceiver.diag(ctx, "dm", "error", "${path.substringAfterLast('/')} ${e.javaClass.simpleName}: ${e.message?.take(100)}")
-      false
+      -1
     }
   }
 }

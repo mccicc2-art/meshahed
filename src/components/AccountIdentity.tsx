@@ -1,4 +1,5 @@
 import {
+  hasGoldBadge,
   isPlus as isPlusOf,
   isPartner as isPartnerOf,
   isVerified as isVerifiedOf,
@@ -20,6 +21,7 @@ import type { Dict } from "@/core/i18n";
 export type BadgeLabels = Pick<
   Dict,
   | "plusBadge"
+  | "goldBadge"
   | "partnerBadge"
   | "verifiedBadge"
   | "verifiedBadgeTip"
@@ -44,6 +46,7 @@ export type BadgeLabels = Pick<
 export function badgeLabelsOf(t: Dict): BadgeLabels {
   return {
     plusBadge: t.plusBadge,
+    goldBadge: t.goldBadge,
     partnerBadge: t.partnerBadge,
     verifiedBadge: t.verifiedBadge,
     verifiedBadgeTip: t.verifiedBadgeTip,
@@ -181,14 +184,60 @@ function Pill({
   );
 }
 
-/** `PARTNER` أو `PLUS` أو لا شيء — **ولا يجتمعان أبداً** */
+/**
+ * 🆕 **شارةُ GOLD** (خطّةُ Loopz+ v2 §٤، لوحُ `Badges`): تدرّجٌ معدنيٌّ `#FFE680 → #FFD200 → #F59E0B` بحدٍّ `#C2860B` وضوءٍ
+ * داخليّ، و«GOLD» بلون `#2A1A00` ثمّ علامةُ ∞ بلونها في قامة الحرف. **المقاساتُ نسبةُ القرص نفسِه** (ارتفاعٌ ٠٫٨٢em، حشوةٌ
+ * ٥:١٦، فجوةٌ ٣:١٦، خطٌّ ٩:١٦) — **وعرضُها يتبع الكلمةَ والعلامة** لا رقماً ثابتاً، كما في اللوح.
+ */
+function GoldPill({ label }: { label: string }) {
+  return (
+    <span
+      role="img"
+      title={label}
+      aria-label={label}
+      style={{
+        height: `${PILL_EM}em`,
+        boxSizing: "border-box",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: `${(3 / 16) * PILL_EM}em`,
+        padding: `0 ${(5 / 16) * PILL_EM}em`,
+        flex: "0 0 auto",
+        background: "linear-gradient(135deg, #FFE680 0%, #FFD200 45%, #F59E0B 100%)",
+        border: "1px solid #C2860B",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
+        borderRadius: `${(5 / 16) * PILL_EM}em`,
+        color: GOLD_INK,
+        fontFamily: "var(--font-sans)",
+        fontWeight: 700,
+        lineHeight: 1,
+        direction: "ltr",
+        transform: "translateY(-0.02em)",
+      }}
+    >
+      <span className="lz-pill-word" style={{ fontSize: `${(9 / 16) * PILL_EM}em`, letterSpacing: `${1.1 / 9}em` }}>
+        GOLD
+      </span>
+      <svg viewBox="0 0 24 12" aria-hidden="true" style={{ width: `${(12.5 / 16) * PILL_EM}em`, height: `${(6.3 / 16) * PILL_EM}em`, display: "block" }}>
+        <path d={INFINITY_D} fill="none" stroke={GOLD_INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/** حبرُ الذهبيّ وعلامةُ ∞ — من اللوح، ولا يتبعان الثيم (الشكلُ نفسُه في `IdentityBadges` بالتطبيق) */
+const GOLD_INK = "#2A1A00";
+const INFINITY_D = "M6 2.2a3.8 3.8 0 1 0 0 7.6c2.4 0 3.9-1.9 6-3.8s3.6-3.8 6-3.8a3.8 3.8 0 1 1 0 7.6c-2.4 0-3.9-1.9-6-3.8S8.4 2.2 6 2.2z";
+
+/** `GOLD` أو `PARTNER` أو `PLUS` أو لا شيء — **ولا يجتمعن أبداً** */
 export function PlanPill({
   tier,
   t,
 }: {
-  tier: "plus" | "partner" | null;
+  tier: "gold" | "plus" | "partner" | null;
   t: BadgeLabels;
 }) {
+  if (tier === "gold") return <GoldPill label={t.goldBadge} />;
   if (tier === "partner")
     return (
       <Pill word="PARTNER" width={62} tracking={1.1} label={t.partnerBadge} />
@@ -260,7 +309,8 @@ export function VerifiedBadge({ t }: { t: BadgeLabels }) {
  * بلا سطرٍ يتغيّر** — لأنّ `isPartner` تشترط `isPlus` أصلاً في `plan.ts`.
  */
 export interface IdentityState {
-  tier: "plus" | "partner" | null;
+  /** 🆕 `gold` يغلب الشريكَ والبلس (`hasGoldBadge`) — شارةٌ واحدةٌ بجانب الاسم */
+  tier: "gold" | "plus" | "partner" | null;
   verified: boolean;
   /** شعارُ Loopz+ داخل التطبيق — للبلس والبارتنر معاً (نصُّ اللوح) */
   brandPlus: boolean;
@@ -271,11 +321,11 @@ export interface IdentityState {
 export function identityOf(p: PlanBearer | null | undefined): IdentityState {
   const partner = isPartnerOf(p);
   const plus = isPlusOf(p);
-  const tier = partner ? "partner" : plus ? "plus" : null;
+  const tier = hasGoldBadge(p) ? "gold" : partner ? "partner" : plus ? "plus" : null;
   return {
     tier,
     verified: isVerifiedOf(p),
-    brandPlus: partner || plus,
+    brandPlus: partner || plus || tier === "gold",
     ai: isAiPersona(p),
   };
 }
@@ -352,11 +402,13 @@ export function AccountIdentity({
   const plus = derived ? derived.tier !== null : !!isPlus || !!isPartner;
   const verified = derived ? derived.verified : !!isVerified;
   const ai = derived ? derived.ai : false;
-  const tier: "plus" | "partner" | null = partner
-    ? "partner"
-    : plus
-      ? "plus"
-      : null;
+  const tier: "gold" | "plus" | "partner" | null = derived?.tier === "gold"
+    ? "gold"
+    : partner
+      ? "partner"
+      : plus
+        ? "plus"
+        : null;
 
   return (
     <Tag

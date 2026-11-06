@@ -159,4 +159,35 @@ const withSearchShortcut = (config) =>
     overwrite: true,
   });
 
-module.exports = (config) => withSearchShortcut(withMessagingDependency(withWidgetManifest(withWidgetFiles(config))));
+/**
+ * 🆕 1.14.0 — **R8 يعمل من جديد** (D-1557 أطفأه مع SDK 58 في `withNoMinify.js`، وحُذف ذلك الملحق؛ تقييمُ ٥ نوفمبر البند ٨): كودٌ
+ * أصغر وإقلاعٌ أسرع، وPlay يقرأ ملفَّ الربط من الحزمة نفسِها (AAB) فتبقى آثارُ الأعطال مقروءة. **ما يُطلب بالاسم يُحفظ هنا**:
+ * أصنافُ الودجت (مذكورةٌ بأسمائها في البيان وفي `LoopzWidgetModule.kt`)، والجسرُ نفسُه، والدخولُ الأصليُّ بقوقل
+ * (ومديرُ بيانات الاعتماد الذي تحمّله Play Services بالاسم)، وRevenueCat. القواعدُ تُلحق بملفّ القالب بعلامتها فلا تتكرّر.
+ * ⚠️ قائمةُ التحقّق قبل Alpha إلزاميّة (`claude/NATIVE-BUILD-LIST.md` البند ٤): صنفٌ يُغيَّر اسمُه ولم نحفظه يُكسر وقتَ التشغيل وحدَه.
+ */
+const R8_MARK = "# loopz-r8-keep (plugins/withLoopzWidget.js)";
+const R8_RULES = [
+  R8_MARK,
+  "-keep class com.loopztv.app.widget.** { *; }",
+  "-keep class expo.modules.loopzwidget.** { *; }",
+  "-keep class com.reactnativegooglesignin.** { *; }",
+  "-keep class androidx.credentials.playservices.** { *; }",
+  "-keep class com.google.android.libraries.identity.googleid.** { *; }",
+  "-keep class com.revenuecat.purchases.** { *; }",
+  "# end loopz-r8-keep",
+].join("\n");
+
+const withR8Keep = (config) =>
+  withDangerousMod(config, [
+    "android",
+    (cfg) => {
+      const file = path.join(cfg.modRequest.platformProjectRoot, "app", "proguard-rules.pro");
+      const was = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+      const clean = was.replace(/\n?# loopz-r8-keep[\s\S]*?# end loopz-r8-keep\n?/, "\n");
+      fs.writeFileSync(file, `${clean.trimEnd()}\n\n${R8_RULES}\n`);
+      return cfg;
+    },
+  ]);
+
+module.exports = (config) => withR8Keep(withSearchShortcut(withMessagingDependency(withWidgetManifest(withWidgetFiles(config)))));

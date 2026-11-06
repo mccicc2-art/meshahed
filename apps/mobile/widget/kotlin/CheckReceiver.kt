@@ -360,6 +360,22 @@ class CheckReceiver : BroadcastReceiver() {
       null
     }
 
+    /** 🆕 A-05 (هجرة ٢٣٩) — رمزُ ردود الإشعار (`dm_token`، يكتبه التطبيقُ من 1.14.0): رمزُ ✓ لا يرسل رسائل. بلا ملفٍّ ⇒ `null` */
+    fun dmToken(ctx: Context): String? = try {
+      File(WFeed.dir(ctx), "dm_token").takeIf { it.exists() }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) {
+      null
+    }
+
+    /** 🆕 A-05 — رمزُ ردودٍ رفضه الخادم (مات أو أُلغي) يُفرَّغ: التطبيقُ يطلب غيرَه في جلبه التالي */
+    fun dropDmToken(ctx: Context) {
+      try {
+        File(WFeed.dir(ctx), "dm_token").takeIf { it.exists() }?.writeText("")
+      } catch (e: Exception) {
+        /* لا شيء */
+      }
+    }
+
     private fun pi(ctx: Context, code: Int, i: Intent): PendingIntent =
       PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 

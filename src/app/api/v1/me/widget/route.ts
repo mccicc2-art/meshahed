@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       const { locale, t } = await getT();
       /* 🆕 W14 — ✓ يُرسم حيث يعمل فقط: للعضو رمزُ ودجتٍ صادر (والجدولُ موجود). ويُحفظ معه لغةُ سطر الردّ */
       /* 🆕 A-05 — ومعه رمزُ هذا الجهاز إن أرسله التطبيق: يتجدّد، و`check` يقول هل هو حيّ (`widgetToken.ts`) */
-      const checkPromise = noteWidgetLang(auth.user.id, locale, req.headers.get("x-loopz-widget"));
+      const checkPromise = noteWidgetLang(auth.user.id, locale, req.headers.get("x-loopz-widget"), req.headers.get("x-loopz-widget-dm"));
       const movieProgressPromise = getAllMovieProgress();
       const [storedFollows, summary, watchedMovies, profile, myRatings] = await Promise.all([
         getFollows(),

@@ -38,6 +38,8 @@ export interface PlanBearer {
   id?: string | null;
   /** 🆕 هجرة ٢٣٨ — نهايةُ الذهبيّ (اشتراكُه من المتجر). حقلٌ مستقلٌّ لا قيمةٌ في `plan`: تطبيقٌ أقدمُ يقرأ المجهولَ مجانيّاً */
   gold_until?: string | null;
+  /** 🆕 رايةُ الذهبيّ العامّة (`public_profiles.gold`، هجرة ٢٣٨): نعم/لا للآخرين بلا التاريخ — منها تُرسم شارةُ GOLD لغير صاحب الحساب */
+  gold?: boolean | null;
 }
 
 /** 🆕 D-1563 — هل الحسابُ شخصيّةٌ من شخصيّات لوبز AI؟ (المعرّفاتُ الخمسة ثابتةٌ في `personas.ts`) */
@@ -70,6 +72,14 @@ export function isGold(p: PlanBearer | null | undefined): boolean {
   if (!p?.gold_until) return false;
   const until = Date.parse(p.gold_until);
   return !Number.isNaN(until) && until > Date.now() && isPlus(p);
+}
+
+/**
+ * 🆕 **شارةُ GOLD** (خطّةُ Loopz+ v2 §٤): صاحبُ الحساب يُعرف بتاريخه (`isGold`)، والآخرون بالراية العامّة وحدها — العرضُ
+ * يحجب التواريخ (D-633) فلا يُحسب من عندنا. ⚖️ **وتغلب PARTNER وPLUS**: الذهبيُّ يُشترى ليُرى، والشريكُ الذهبيُّ ذهبيٌّ.
+ */
+export function hasGoldBadge(p: PlanBearer | null | undefined): boolean {
+  return p?.gold === true || isGold(p);
 }
 
 /**

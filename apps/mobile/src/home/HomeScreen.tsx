@@ -56,6 +56,7 @@ import { widgetBus } from "../widget/bus";
 import { useStremio } from "../stremio/api";
 import { useStremioAnswer } from "../stremio/useAnswer";
 import { StremioCard } from "../stremio/StremioCard";
+import { useObserve } from "expo-observe";
 
 /**
  * ====== الرئيسيةُ الأصليّة — `app/page.tsx` بحذافيرها (Phase 11-H · H2/H3، D-1066) ======
@@ -99,13 +100,16 @@ export function HomeScreen() {
   useEffect(() => {
     if (openReady) opening.ready();
   }, [openReady]);
+  /* 🆕 1.14.0 — `expo-observe`: اللحظةُ نفسُها «صالحةٌ للمس» في لوحة EAS (الأولى وحدَها تُحسب في الجلسة) */
+  const { markInteractive } = useObserve();
   useEffect(() => {
     if (!d) return;
     afterPaint(() => {
       endOpen();
       coldStartOnce("coldstart.home");
+      markInteractive();
     });
-  }, [d, endOpen]);
+  }, [d, endOpen, markInteractive]);
   /* K3 — التبويبُ ثابت: «وصلتُ» عند كلِّ ظهورٍ لا عند التركيب وحدَه — ومعه أنّ للمجموعة رئيسيّةً يُرجع إليها */
   useFocusEffect(
     useCallback(() => {

@@ -15,6 +15,7 @@ import { handle, limited, fail } from "@/lib/v1";
 import { notifyGroupMessage, notifyMessage } from "@/lib/push";
 import { parseWidgetDmBody } from "@/core/contracts/widget";
 import type { DmTarget } from "@/core/push";
+import { scopeOf, scopeVerdict, type WidgetScope } from "@/core/widgetScope";
 import type { NextRequest } from "next/server";
 
 /**
@@ -54,12 +55,23 @@ const aliveFilter = () => {
   return `last_used_at.gt.${cut},and(last_used_at.is.null,created_at.gt.${cut})`;
 };
 
-/** يُصدر رمزاً جديداً لهذا الجهاز ويعيده **مرّةً واحدة** — `null` إن غاب المفتاحُ أو الجدول */
-export async function issueWidgetToken(userId: string, lang: Locale): Promise<string | null> {
+/** عمودٌ غائب (PostgREST/Postgres) — قبل أن تُشغَّل هجرةُ ٢٣٩ على القاعدة */
+const missingColumn = (e: { code?: string } | null) => e?.code === "42703" || e?.code === "PGRST204";
+
+/**
+ * يُصدر رمزاً جديداً لهذا الجهاز ويعيده **مرّةً واحدة** — `null` إن غاب المفتاحُ أو الجدول.
+ * 🆕 A-05 — `scope`: `widget` (الافتراضيّ، كما كان) أو `dm` لردود الإشعار. قبل الهجرة ٢٣٩ لا يُصدر رمزُ `dm` (`null`):
+ * التطبيقُ يبقى على رمز الودجت للردود، والخادمُ يقبله هناك في فترة الانتقال (`scopeVerdict`).
+ */
+export async function issueWidgetToken(userId: string, lang: Locale, scope: WidgetScope = "widget"): Promise<string | null> {
   if (!hasServiceKey()) return null;
   const db = await createServiceClient();
   const token = `lw_${randomBytes(32).toString("base64url")}`;
-  const { error } = await db.from("widget_tokens").insert({ token_hash: hashOf(token), user_id: userId, lang });
+  let { error } = await db.from("widget_tokens").insert({ token_hash: hashOf(token), user_id: userId, lang, scope });
+  if (error && missingColumn(error)) {
+    if (scope === "dm") return null;
+    ({ error } = await db.from("widget_tokens").insert({ token_hash: hashOf(token), user_id: userId, lang }));
+  }
   if (error) return null;
   /* 🆕 A-05 — الميّتُ يُكنس عند الإصدار: لا يُقبل أصلاً، وبقاؤه صفٌّ بلا معنى */
   const cut = aliveSince();
@@ -68,20 +80,28 @@ export async function issueWidgetToken(userId: string, lang: Locale): Promise<st
     .delete()
     .eq("user_id", userId)
     .or(`and(last_used_at.not.is.null,last_used_at.lt.${cut}),and(last_used_at.is.null,created_at.lt.${cut})`);
-  /* الأقدمُ استعمالاً يخرج أوّلاً — جهازٌ يعلّم كلَّ يومٍ لا يُطرد لأنّ آخرَ أُعيد تثبيتُه */
-  const { data } = await db
-    .from("widget_tokens")
-    .select("token_hash, created_at, last_used_at")
-    .eq("user_id", userId)
-    .limit(50);
-  const rows = (data ?? []) as { token_hash: string; created_at: string; last_used_at: string | null }[];
-  if (rows.length > KEEP_PER_USER) {
-    const stale = rows
-      .sort((a, b) => (b.last_used_at ?? b.created_at).localeCompare(a.last_used_at ?? a.created_at))
-      .slice(KEEP_PER_USER)
-      .map((r) => r.token_hash);
-    await db.from("widget_tokens").delete().in("token_hash", stale);
+  /* الأقدمُ استعمالاً يخرج أوّلاً — جهازٌ يعلّم كلَّ يومٍ لا يُطرد لأنّ آخرَ أُعيد تثبيتُه.
+     🆕 A-05 — **الحدُّ لكلِّ نطاق**: رمزُ `dm` لكلِّ جهازٍ لا يطرد رمزَ ودجت جهازٍ آخر (خمسةُ أجهزةٍ = خمسةٌ من كلٍّ) */
+  type Row = { token_hash: string; created_at: string; last_used_at: string | null; scope?: string };
+  const readRows = async (cols: string) => {
+    const r = await db.from("widget_tokens").select(cols).eq("user_id", userId).limit(50);
+    return { error: r.error, rows: (r.data ?? []) as unknown as Row[] };
+  };
+  let read = await readRows("token_hash, created_at, last_used_at, scope");
+  if (read.error && missingColumn(read.error)) read = await readRows("token_hash, created_at, last_used_at");
+  const rows = read.rows;
+  const stale: string[] = [];
+  for (const sc of ["widget", "dm"] as const) {
+    const mine = rows.filter((r) => scopeOf(r.scope) === sc);
+    if (mine.length <= KEEP_PER_USER) continue;
+    stale.push(
+      ...mine
+        .sort((a, b) => (b.last_used_at ?? b.created_at).localeCompare(a.last_used_at ?? a.created_at))
+        .slice(KEEP_PER_USER)
+        .map((r) => r.token_hash),
+    );
   }
+  if (stale.length) await db.from("widget_tokens").delete().in("token_hash", stale);
   return token;
 }
 
@@ -93,7 +113,7 @@ export async function issueWidgetToken(userId: string, lang: Locale): Promise<st
  * نفسِه (رمزُ غيرك لا يُجدَّد بجلستك)، و`check` يقول هل **هذا** الرمزُ حيّ — `false` يعني «اطلب رمزاً جديداً». ونسخةٌ أقدمُ
  * لا ترسله: تُجدَّد رموزُ العضو الحيّةُ كلُّها كما كان سلوكُها، فلا يموت ✓ عند من لم يصله التحديث.
  */
-export async function noteWidgetLang(userId: string, lang: Locale, deviceToken?: string | null): Promise<boolean> {
+export async function noteWidgetLang(userId: string, lang: Locale, deviceToken?: string | null, dmToken?: string | null): Promise<boolean> {
   if (!hasServiceKey()) return false;
   try {
     const db = await createServiceClient();
@@ -102,9 +122,14 @@ export async function noteWidgetLang(userId: string, lang: Locale, deviceToken?:
       .update({ lang, last_used_at: new Date().toISOString() })
       .eq("user_id", userId)
       .or(aliveFilter());
-    if (deviceToken && TOKEN_RE.test(deviceToken)) q = q.eq("token_hash", hashOf(deviceToken));
+    /* 🆕 A-05 — ورمزُ `dm` لهذا الجهاز يتجدّد مع رمز الودجت (`x-loopz-widget-dm`): ردُّ إشعارٍ بعد ٩٠ يوماً بلا ردٍّ لا يموت.
+       و`check` يبقى عن رمز الودجت وحدَه */
+    const mine = deviceToken && TOKEN_RE.test(deviceToken) ? hashOf(deviceToken) : null;
+    if (mine) q = q.in("token_hash", dmToken && TOKEN_RE.test(dmToken) ? [mine, hashOf(dmToken)] : [mine]);
     const { data, error } = await q.select("token_hash");
-    return !error && (data?.length ?? 0) > 0;
+    if (error) return false;
+    const rows = (data ?? []) as { token_hash: string }[];
+    return mine ? rows.some((r) => r.token_hash === mine) : rows.length > 0;
   } catch {
     return false;
   }
@@ -122,21 +147,31 @@ export async function revokeWidgetToken(authHeader: string | null): Promise<bool
   return !error && (data?.length ?? 0) > 0;
 }
 
-/** صاحبُ الرمز من ترويسة `Authorization: Bearer lw_…` — أو `null` */
-export async function widgetUser(authHeader: string | null): Promise<{ userId: string; lang: Locale } | null> {
+/**
+ * صاحبُ الرمز من ترويسة `Authorization: Bearer lw_…` — أو `null`.
+ * 🆕 A-05 — **`need`: نطاقُ المسار** (`widget` لمسارات الودجت، `dm` لمسارَي الرسائل): رمزٌ بنطاقٍ آخر يُرفض كرمزٍ لا وجود له،
+ * إلّا رمزَ الودجت على مسارَي الرسائل في فترة الانتقال (`scopeVerdict` — نسخُ 1.13.x) فيُقبل ويُسجَّل سطرُه.
+ */
+export async function widgetUser(authHeader: string | null, need: WidgetScope = "widget"): Promise<{ userId: string; lang: Locale } | null> {
   const token = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? "";
   if (!TOKEN_RE.test(token) || !hasServiceKey()) return null;
   const db = await createServiceClient();
-  const { data, error } = await db
-    .from("widget_tokens")
-    .update({ last_used_at: new Date().toISOString() })
-    .eq("token_hash", hashOf(token))
-    /* 🆕 A-05 — رمزٌ نام ٩٠ يوماً لا يُقبل ولا يُبعث باستعماله */
-    .or(aliveFilter())
-    .select("user_id, lang")
-    .maybeSingle();
-  if (error || !data) return null;
-  const row = data as { user_id: string; lang: string };
+  const touch = (cols: string) =>
+    db
+      .from("widget_tokens")
+      .update({ last_used_at: new Date().toISOString() })
+      .eq("token_hash", hashOf(token))
+      /* 🆕 A-05 — رمزٌ نام ٩٠ يوماً لا يُقبل ولا يُبعث باستعماله */
+      .or(aliveFilter())
+      .select(cols)
+      .maybeSingle();
+  let res = await touch("user_id, lang, scope");
+  if (res.error && missingColumn(res.error)) res = await touch("user_id, lang");
+  if (res.error || !res.data) return null;
+  const row = res.data as unknown as { user_id: string; lang: string; scope?: string };
+  const verdict = scopeVerdict(scopeOf(row.scope), need);
+  if (verdict === "refused") return null;
+  if (verdict === "legacy") console.warn("[A-05] widget-scoped token on a DM route (1.13.x app) — accepted until WIDGET_ON_DM_UNTIL");
   return { userId: row.user_id, lang: row.lang === "en" ? "en" : "ar" };
 }
 
@@ -532,7 +567,7 @@ export function widgetDmRoute(kind: "reply" | "read") {
   return (req: NextRequest) =>
     handle(
       async () => {
-        const who = await widgetUser(req.headers.get("authorization"));
+        const who = await widgetUser(req.headers.get("authorization"), "dm");
         if (!who) return fail("unauthenticated");
         const rl = limited(`wdm:${who.userId}`, 30, 60_000);
         if (rl) return rl;

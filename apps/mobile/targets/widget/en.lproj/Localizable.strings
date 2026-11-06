@@ -28,3 +28,14 @@
 "slot.3" = "Slot 3";
 "slot.4" = "Slot 4";
 "slot.none" = "None";
+/* 🆕 1.14.0 — «النوع» (جاهز | مخصّص) وأسماءُ الأقسام في الخانات: افتراضيُّ كلِّ خانةٍ يُرى باسمه (D-1610 البندان ١ و٣) */
+"mode.param" = "Style";
+"mode.ready" = "Ready-made";
+"mode.custom" = "Custom";
+"slot.cont" = "Continue watching";
+"slot.tw" = "To watch";
+"slot.cine" = "Now in cinemas";
+"slot.up" = "Coming up";
+"slot.tonight" = "Tonight's movie";
+"slot.friends" = "Your friends";
+"slot.act" = "Your activity";

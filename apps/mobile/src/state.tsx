@@ -25,6 +25,8 @@ export type Me = {
   partner: boolean;
   verified: boolean;
   founder: boolean;
+  /** 🆕 بناء 1.14.0 — Loopz+ ذهبي (`/api/v1/me` يرسله منذ R184؛ خادمٌ أقدمُ لا يرسله ⇒ «لا») — منه شارةُ GOLD فوق رأس صاحبه */
+  gold?: boolean;
   /** D-1105 — حجما الخطّ (خادمٌ أقدمُ لا يرسلهما ⇒ يبقى المحفوظُ على الجهاز) */
   font_ui?: string;
   font_content?: string;

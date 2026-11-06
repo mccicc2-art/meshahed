@@ -218,7 +218,8 @@ function nameOf(r: LinkRow): string {
 
 /**
  * نزل طبقةً (انتهى أو استُرجع أو نُقل، أو من الذهبيّ إلى بلس بأكثرَ من خمسة): تُنزل خاناتُه الآن — لا عند أوّل حدث — ويصله
- * الإشعارُ إن أُوقف شيء. ⚖️ لا إشعارَ لمن لم يتوقّف له شيء: النصُّ «اختر ما يبقى»، ولا شيءَ يُختار. مفتاحُه يومُ النهاية.
+ * الإشعارُ **دائماً** (أحمد ٦ نوفمبر: «اي احد ينتهي اشتراكه يجيه اشعار .. لاكن ما يكون شيء خاص بالمؤسسين»): أُوقف شيءٌ ⇒
+ * «اختر ما يبقى»، لم يُوقف شيء ⇒ «حسابك الآن على الخطّة المجّانيّة». مفتاحُه يومُ النهاية فلا يتكرّر.
  */
 export async function planEnded(uid: string, endedAt?: string | null): Promise<void> {
   try {
@@ -227,13 +228,29 @@ export async function planEnded(uid: string, endedAt?: string | null): Promise<v
     /* ما أوقفه هذا النزول — لا ما وقف قبل شهر */
     const since = Date.now() - 15 * 60_000;
     const stopped = st.rows.filter((r) => r.stopped_at && Date.parse(r.stopped_at) >= since).length;
-    if (!stopped) return;
+    /* من الذهبيّ إلى بلس بلا جهازٍ أُوقف: الاشتراكُ لم ينتهِ ولا شيءَ يُختار — فلا إشعار (و«المجّانيّة» تكون كذباً له) */
+    if (!stopped && st.tier !== "free") return;
+    /* 🔴 مراجعةُ الصحّة (٦ نوفمبر) — **تجديدٌ تأخّر ليس نهاية**: المرآةُ تجعل `plus_until` نهايةَ الفترة بالضبط، وحدثُ التجديد
+       يصل بعدها بدقائقَ أو ساعات — فالدورةُ الساعيّةُ كانت تقول لمشتركٍ يتجدّد «حسابك الآن على المجّانيّة». صفُّ متجرٍ ما زال
+       «نشطاً» أو «في مهلة الدفع» ⇒ لم ينتهِ بعد، فلا إشعارَ «المجّانيّة» (أمّا الأجهزةُ إن أُوقفت فتُقال كما كانت) */
+    if (!stopped && (await storeStillLive(uid))) return;
     const kept = st.rows.find((r) => !r.stopped_at);
     /* المفتاحُ يومُ النهاية من الملفّ نفسِه (لا يومُ الويبهوك) — فالويبهوكُ والدورةُ الساعيّةُ لا يرسلان مرّتين حول منتصف الليل */
     const day = (endedAt ?? (await endOf(uid)) ?? new Date().toISOString()).slice(0, 10);
-    notifyPlanEnded({ to: uid, kept: kept ? nameOf(kept) : null, dedupe: `planend:${uid}:${st.tier}:${day}` });
+    notifyPlanEnded({ to: uid, kept: kept ? nameOf(kept) : null, stopped, dedupe: `planend:${uid}:${st.tier}:${day}` });
   } catch {
     /* صامت */
+  }
+}
+
+/** اشتراكٌ من المتجر لم يصله «انتهى» بعد (`active` أو `past_due`) — المتجرُ سيقول كلمتَه، والإشعارُ ينتظرها */
+async function storeStillLive(uid: string): Promise<boolean> {
+  try {
+    const db = await createServiceClient();
+    const { data, error } = await db.from("subscriptions").select("id").eq("user_id", uid).eq("provider", "revenuecat").in("status", ["active", "past_due"]).limit(1);
+    return !error && (data?.length ?? 0) > 0;
+  } catch {
+    return false;
   }
 }
 

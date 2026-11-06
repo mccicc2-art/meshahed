@@ -132,11 +132,8 @@ struct LayoutQuery: EntityQuery {
         guard let id = o["id"] as? String else { return nil }
         return LayoutEntity(id: id, name: o["name"] as? String ?? id)
       }
-      /* 🆕 D-1610 — «مخصّص» بعد تخطيطات صاحبه وقبل الأقسام المفردة: الخاناتُ تحته في شاشة التعديل — للمشترك (النسخُ تُكتب له وحدَه) */
-      if !f.customLayouts.isEmpty {
-        let at = out.firstIndex { $0.id.hasPrefix("solo-") } ?? out.count
-        out.insert(LayoutEntity(id: "custom", name: String(localized: "layout.custom")), at: at)
-      }
+      /* 🆕 1.14.0 — «مخصّص» خرج من هذه القائمة إلى «النوع» (`LayoutMode`): شاشةُ التعديل لا تُخفي سطراً إلّا بقيمةِ تعدادٍ
+         (`When` لا يقرأ قيمةَ AppEntity)، فالخاناتُ صارت تظهر تحت «مخصّص» وحدَه لا تحت كلِّ تخطيط (D-1610 البند ١) */
       if !out.isEmpty { return out }
     }
     return [LayoutEntity(id: "main", name: String(localized: "layout.main"))]
@@ -144,7 +141,11 @@ struct LayoutQuery: EntityQuery {
 
   func entities(for identifiers: [LayoutEntity.ID]) async throws -> [LayoutEntity] {
     let a = all()
-    return identifiers.compactMap { id in a.first { $0.id == id } }
+    return identifiers.compactMap { (id: String) -> LayoutEntity? in
+      /* 🆕 1.14.0 — ودجتٌ ضُبط على «مخصّص» في 1.13.x يبقى «مخصّصاً» (مراجعةُ الصحّة): الاسمُ يُفهم وإن خرج من القائمة */
+      if id == "custom" { return LayoutEntity(id: "custom", name: String(localized: "layout.custom")) }
+      return a.first { $0.id == id }
+    }
   }
 
   func suggestedEntities() async throws -> [LayoutEntity] { all() }
@@ -152,81 +153,121 @@ struct LayoutQuery: EntityQuery {
 }
 
 /**
- * 🆕 D-1610 — **قسمُ الخانة** في شاشة تعديل الودجت (أحمد ٣١ أكتوبر، لقطةُ Fantastical: «خانات اختارها من الويدجت نفسه من خارج
- * التطبيق»). الأقسامُ بأسمائها من الخلاصة (لغةُ التطبيق)، و«بدون» تترك الخانةَ فيكبر ما فوقها.
+ * 🆕 1.14.0 — **«النوع»: جاهز | مخصّص** (خطّةُ Loopz+ v2 §٩ المرحلة ٢، أحمد ٥ نوفمبر «ضيف الاربع»). `ParameterSummary` لا يشترط
+ * على قيمة AppEntity، فالتخطيطُ وحدَه لا يقدر أن يُخفي الخانات — والتعدادُ يقدر. «جاهز» ⇒ التخطيطُ وحدَه، «مخصّص» ⇒ الخانات.
  */
-struct SlotEntity: AppEntity {
-  let id: String
-  let name: String
+enum LayoutMode: String, AppEnum {
+  case ready
+  case custom
 
-  static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("slot.type"))
-  static let defaultQuery = SlotQuery()
-  var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
+  static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("mode.param"))
+  static let caseDisplayRepresentations: [LayoutMode: DisplayRepresentation] = [
+    .ready: DisplayRepresentation(title: LocalizedStringResource("mode.ready")),
+    .custom: DisplayRepresentation(title: LocalizedStringResource("mode.custom")),
+  ]
 }
 
-struct SlotQuery: EntityQuery {
-  /** بترتيب الأقسام المفردة في قائمة «التخطيط» (`SOLO_ORDER`) */
-  static let keys = ["cont", "tw", "cine", "up", "tonight", "friends", "act"]
+/**
+ * 🆕 D-1610 → 1.14.0 — **قسمُ الخانة** تعدادٌ لا AppEntity: **لكلِّ خانةٍ افتراضيُّها باسمه** (أصدقاؤك · فيلم الليلة · السينما ·
+ * للمشاهدة — البند ٣) بدل سطرٍ فارغ، والأسماءُ من ملفّ النصوص بلغة الجهاز. «بدون» تترك الخانةَ فيكبر ما فوقها.
+ * ⚠️ الحالةُ `off` قيمتُها `"none"`: اسمُ `none` يلتبس بـ`Optional.none` عند المقارنة.
+ */
+enum SlotKind: String, AppEnum {
+  case cont
+  case tw
+  case cine
+  case up
+  case tonight
+  case friends
+  case act
+  case off = "none"
 
-  func all() -> [SlotEntity] {
-    var out: [SlotEntity] = []
-    if case .ready(let f) = FeedStore.loadV2() {
-      out = Self.keys.map { SlotEntity(id: $0, name: Sections.title(f, $0)) }
-    }
-    out.append(SlotEntity(id: "none", name: String(localized: "slot.none")))
-    return out
-  }
-
-  func entities(for identifiers: [SlotEntity.ID]) async throws -> [SlotEntity] {
-    let a = all()
-    return identifiers.compactMap { id in a.first { $0.id == id } }
-  }
-
-  func suggestedEntities() async throws -> [SlotEntity] { all() }
+  static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("slot.type"))
+  static let caseDisplayRepresentations: [SlotKind: DisplayRepresentation] = [
+    .cont: DisplayRepresentation(title: LocalizedStringResource("slot.cont")),
+    .tw: DisplayRepresentation(title: LocalizedStringResource("slot.tw")),
+    .cine: DisplayRepresentation(title: LocalizedStringResource("slot.cine")),
+    .up: DisplayRepresentation(title: LocalizedStringResource("slot.up")),
+    .tonight: DisplayRepresentation(title: LocalizedStringResource("slot.tonight")),
+    .friends: DisplayRepresentation(title: LocalizedStringResource("slot.friends")),
+    .act: DisplayRepresentation(title: LocalizedStringResource("slot.act")),
+    .off: DisplayRepresentation(title: LocalizedStringResource("slot.none")),
+  ]
 }
 
 struct LayoutConfigIntent: WidgetConfigurationIntent {
   static let title: LocalizedStringResource = "layout.title"
+  /* 🆕 1.14.0 — «النوع» أوّلاً: «جاهز» يُظهر التخطيط، و«مخصّص» يُظهر «أكمل المشاهدة فوق» والخانات */
+  @Parameter(title: "mode.param", default: .ready)
+  var mode: LayoutMode
+
   @Parameter(title: "layout.param")
   var layout: LayoutEntity?
 
-  /* 🆕 D-1610 — «مخصّص»: «أكمل المشاهدة» فوق (الكبيرُ والكبيرُ جداً) والخاناتُ تحته من أعلى لأسفل */
+  /* 🆕 D-1610 — «مخصّص»: «أكمل المشاهدة» فوق (الكبيرُ والكبيرُ جداً) والخاناتُ تحته من أعلى لأسفل، ولكلِّ خانةٍ افتراضيُّها */
   @Parameter(title: "slot.top", default: true)
   var contTop: Bool
-  @Parameter(title: "slot.1")
-  var slot1: SlotEntity?
-  @Parameter(title: "slot.2")
-  var slot2: SlotEntity?
-  @Parameter(title: "slot.3")
-  var slot3: SlotEntity?
-  @Parameter(title: "slot.4")
-  var slot4: SlotEntity?
+  @Parameter(title: "slot.1", default: .friends)
+  var slot1: SlotKind
+  @Parameter(title: "slot.2", default: .tonight)
+  var slot2: SlotKind
+  @Parameter(title: "slot.3", default: .cine)
+  var slot3: SlotKind
+  @Parameter(title: "slot.4", default: .tw)
+  var slot4: SlotKind
 
-  /** ما يُعرض في شاشة التعديل بحسب الحجم: الصغيرُ والمتوسطُ خانة، والكبيرُ خانتان، والكبيرُ جداً أربع */
+  /**
+   * ما يُعرض في شاشة التعديل بحسب الحجم: الصغيرُ والمتوسطُ خانة، والكبيرُ خانتان، والكبيرُ جداً أربع — **والخاناتُ تحت «مخصّص»
+   * وحدَه** (البند ١)، و«جاهز» يُظهر التخطيطَ وحدَه.
+   */
   static var parameterSummary: some ParameterSummary {
     When(widgetFamily: .equalTo, .systemSmall) {
-      Summary("\(\.$layout)") {
-        \.$slot1
-      }
-    } otherwise: {
-      When(widgetFamily: .equalTo, .systemMedium) {
-        Summary("\(\.$layout)") {
+      When(\.$mode, .equalTo, .custom) {
+        Summary("\(\.$mode)") {
           \.$slot1
         }
       } otherwise: {
-        When(widgetFamily: .equalTo, .systemLarge) {
-          Summary("\(\.$layout)") {
-            \.$contTop
+        Summary("\(\.$mode)") {
+          \.$layout
+        }
+      }
+    } otherwise: {
+      When(widgetFamily: .equalTo, .systemMedium) {
+        When(\.$mode, .equalTo, .custom) {
+          Summary("\(\.$mode)") {
             \.$slot1
-            \.$slot2
           }
         } otherwise: {
-          Summary("\(\.$layout)") {
-            \.$contTop
-            \.$slot1
-            \.$slot2
-            \.$slot3
-            \.$slot4
+          Summary("\(\.$mode)") {
+            \.$layout
+          }
+        }
+      } otherwise: {
+        When(widgetFamily: .equalTo, .systemLarge) {
+          When(\.$mode, .equalTo, .custom) {
+            Summary("\(\.$mode)") {
+              \.$contTop
+              \.$slot1
+              \.$slot2
+            }
+          } otherwise: {
+            Summary("\(\.$mode)") {
+              \.$layout
+            }
+          }
+        } otherwise: {
+          When(\.$mode, .equalTo, .custom) {
+            Summary("\(\.$mode)") {
+              \.$contTop
+              \.$slot1
+              \.$slot2
+              \.$slot3
+              \.$slot4
+            }
+          } otherwise: {
+            Summary("\(\.$mode)") {
+              \.$layout
+            }
           }
         }
       }
@@ -258,21 +299,23 @@ struct MainProvider: AppIntentTimelineProvider {
    * للمشاهدة). لا خاناتٍ ولا «أكمل المشاهدة» ⇒ الرئيسيّ. وغيرُ «مخصّص» كما كان.
    */
   static func pick(_ c: LayoutConfigIntent, _ family: WidgetFamily) -> (id: String?, slots: [String]) {
-    guard c.layout?.id == "custom" else { return (c.layout?.id, []) }
+    /* «مخصّص» بالنوع الجديد، أو تخطيطُ «custom» من 1.13.x (ودجتٌ قديمٌ لم يُفتح ضبطُه بعد) */
+    guard c.mode == .custom || c.layout?.id == "custom" else { return (c.layout?.id, []) }
     let cap: Int
     switch family {
     case .systemSmall, .systemMedium: cap = 1
     case .systemLarge: cap = 2
     default: cap = 4
     }
-    let fallback = ["friends", "tonight", "cine", "tw"]
-    let picked: [SlotEntity?] = [c.slot1, c.slot2, c.slot3, c.slot4]
+    let picked: [SlotKind] = [c.slot1, c.slot2, c.slot3, c.slot4]
+    let top = c.contTop && cap > 1
     var slots: [String] = []
     for i in 0..<cap {
-      let k = picked[i]?.id ?? fallback[i]
-      if k != "none" { slots.append(k) }
+      let k = picked[i].rawValue
+      /* البند ٤ — «أكمل المشاهدة» فوق ⇒ لا يتكرّر في خانة: القسمُ مرّةً واحدةً في الودجت */
+      if k == "none" || (top && k == "cont") { continue }
+      slots.append(k)
     }
-    let top = c.contTop && cap > 1
     if slots.isEmpty && !top { return (nil, []) }
     return ("custom-\(top ? 1 : 0)-\(slots.count)", slots)
   }
@@ -300,7 +343,7 @@ struct MainProvider: AppIntentTimelineProvider {
   /** الآن، ثمّ منتصفُ الليل — «اليوم» وفيلمُ اليوم يتبدّلان بلا فتح التطبيق (W42) */
   func timeline(for configuration: LayoutConfigIntent, in context: Context) async -> Timeline<MainEntry> {
     WState.settle()
-    Self.notePlaced(context.family, configuration.layout?.id)
+    Self.notePlaced(context.family, configuration.mode == .custom || configuration.layout?.id == "custom" ? "custom" : configuration.layout?.id)
     let now = Date()
     let state = FeedStore.loadV2()
     /* 🆕 W37 — «↶ تراجع» قائم: رسمٌ جديدٌ عند انقضاء الخمس ثوانٍ (قد يتأخّر ثانيةً أو اثنتين في iOS) */
@@ -375,7 +418,10 @@ struct MainView: View {
   }
 
   @ViewBuilder func content(_ f: V2Feed) -> some View {
-    if let r = f.resolved(entry.layout) {
+    /* 🆕 1.14.0 — «مخصّص» لغير المشترك: نسخُ «مخصّص» لا تُكتب له (`iosCustom` فارغ) — بطاقةُ القفل لا الرئيسيُّ صامتاً */
+    if (entry.layout ?? "").hasPrefix("custom-") && f.customLayouts.isEmpty {
+      LockCard(f: f)
+    } else if let r = f.resolved(entry.layout) {
       let opts = r["opts"] as? [String: Any] ?? [:]
       let locked = (r["locked"] as? [String: Any])?[sizeName] as? Bool ?? false
       /* 🆕 v4 — «المعمل» (٣٠ أكتوبر): المواضعُ من المحرّك وأرقامُ رسمها (`V4View.swift`)، وشريطُ التقييم بعد ✓ فيلمٍ تحتها */
