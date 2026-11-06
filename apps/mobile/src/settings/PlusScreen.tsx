@@ -7,6 +7,7 @@ import { Button, Text } from "../ui";
 import { radius } from "../theme";
 import { Icon, type IconName } from "../icons";
 import { IdentityBadges } from "../IdentityBadges";
+import { PlanWordmark } from "../PlanWordmark";
 import { Segmented } from "../library/ToolsSheet";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { haptic } from "../haptics";
@@ -47,6 +48,8 @@ const FEATURES: { icon: IconName; key: keyof Dict; skipForGold?: boolean }[] = [
 ];
 
 const TOP_ICONS: IconName[] = ["tv", "palette", "grid", "widget"];
+/** 🆕 T340 — حدُّ بطاقة الذهبيّ: ذهبٌ بين طرفَي تدرّج الشارة (`#FFD200` · `#F59E0B`) — كما في المحاكاة التي اعتمدها أحمد */
+const GOLD_FRAME = "#E9A80F";
 
 export function PlusScreen() {
   const { t, tokens, locale } = useApp();
@@ -71,6 +74,9 @@ export function PlusScreen() {
   const serverGold = !active && a?.gold === true;
   const subscriber = (!!active && (active.tier === "gold" || !offer?.goldYearly || !active.here)) || serverGold;
   const upgrade = !!active && active.here && active.tier === "plus" && !!offer?.goldYearly;
+  /* 🆕 T340 — **ما يملكه المشترك هو ما تقوله الصفحة** (أحمد ٦ نوفمبر بلقطة: «وش حصلت من لوبز+ … ابغى يكون لوبز قولد وصفحة مميزات
+     القولد»): الذهبيُّ يرى مزايا Gold أوّلاً ثمّ «وكل مزايا Plus» — محتوى تبويب «Gold» في العرض نفسِه — لا قائمةَ بلس وحدها */
+  const mineGold = subscriber && (serverGold || active?.tier === "gold");
 
   const [tier, setTier] = useState<Tier>("plus");
   const [plusPlan, setPlusPlan] = useState<"yearly" | "monthly">("yearly");
@@ -110,7 +116,12 @@ export function PlusScreen() {
   const selected: Plan | null = !offer ? null : goldTab ? offer.goldYearly : plusPlan === "yearly" ? offer.plusYearly : offer.plusMonthly;
 
   const headline = ownsPlusView ? t.pwHeadSub : goldTab ? t.pwHeadGold : t.pwHeadOffer;
-  const items = FEATURES.filter((f) => !(goldTab && !ownsPlusView && f.skipForGold));
+  /* مزايا الذهبيّ ظاهرةٌ في تبويبه قبل الشراء، ولمن يملكه بعده (T340) */
+  const goldRows = (goldTab && !ownsPlusView) || mineGold;
+  /* المالكُ يرى البندَ الأوّل «اربط الأجهزة» (أحمد على المحاكاة: «خلّه نفس التصميم ذا»)؛ تبويبُ العرض يبقى بلا سطرَيه (لوحُ `Supporter`) */
+  const items = FEATURES.filter((f) => !(goldRows && f.skipForGold && !(mineGold && f.key === "pwFLink")));
+  /* اسمُ الخطّة في البطاقة: ما يُعرض قبل الشراء، أو ما يُملك بعده */
+  const cardTier: Tier = mineGold || (goldTab && !ownsPlusView) ? "gold" : "plus";
 
   const onBuy = useCallback(async () => {
     if (!selected || busy) return;
@@ -163,9 +174,26 @@ export function PlusScreen() {
         </View>
       </View>
 
-      <Text size={24} weight="800" style={{ textAlign: "center", lineHeight: 34, marginTop: -6, marginBottom: 14, marginHorizontal: 24 }} accessibilityRole="header">
-        {headline}
-      </Text>
+      {ownsPlusView ? (
+        /* 🆕 T340 — اسمُ ما يملكه ملوّناً داخل الجملة: «كل مزايا ⟨Loopz Gold⟩ مفتوحة لك». الاسمُ رسمٌ (`PlanWordmark`) لا يجري داخل
+           `Text`، فالسطرُ الثاني كلماتٌ في صفٍّ يلتفّ — يتبع اتّجاهَ الواجهة كالنصّ، ويُقرأ لقارئ الشاشة جملةً واحدة */
+        <View accessible accessibilityRole="header" accessibilityLabel={`${t.pwHeadSubPre}${mineGold ? "Loopz Gold" : "Loopz Plus"}${t.pwHeadSubPost}`} style={{ marginTop: -6, marginBottom: 14, marginHorizontal: 24, alignItems: "center" }}>
+          <Text size={22} weight="800" style={{ textAlign: "center", lineHeight: 32 }}>{t.pwHeadSubPre.split("\n")[0]}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", columnGap: 6 }}>
+            {(t.pwHeadSubPre.split("\n")[1] ?? "").split(" ").filter(Boolean).map((w, i) => (
+              <Text key={`a${i}`} size={22} weight="800" style={{ lineHeight: 32 }}>{w}</Text>
+            ))}
+            <PlanWordmark tier={mineGold ? "gold" : "plus"} size={22} />
+            {t.pwHeadSubPost.split(" ").filter(Boolean).map((w, i) => (
+              <Text key={`b${i}`} size={22} weight="800" style={{ lineHeight: 32 }}>{w}</Text>
+            ))}
+          </View>
+        </View>
+      ) : (
+        <Text size={24} weight="800" style={{ textAlign: "center", lineHeight: 34, marginTop: -6, marginBottom: 14, marginHorizontal: 24 }} accessibilityRole="header">
+          {headline}
+        </Text>
+      )}
 
       {/* بطاقةُ المزايا تتمرّر وحدَها، والشريطُ السفليُّ ثابت (لوحُ `Main`) */}
       <View style={{ flex: 1, minHeight: 0, marginHorizontal: 16, borderRadius: radius.sheet, backgroundColor: tokens.surface, overflow: "hidden" }}>
@@ -183,16 +211,14 @@ export function PlusScreen() {
             </View>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <Text size={13} weight="700" muted>{goldTab && !ownsPlusView ? t.pwCardGold : t.pwCardPlus}</Text>
-            <Text size={15} weight="800" style={{ writingDirection: "ltr" }}>
-              Loopz<Text size={15} weight="800" color={tokens.accent}>+</Text>
-            </Text>
+            <Text size={13} weight="700" muted>{goldRows ? t.pwCardGold : t.pwCardPlus}</Text>
+            <PlanWordmark tier={cardTier} size={15} />
           </View>
           <View style={{ height: 1, backgroundColor: tokens.divider, marginTop: 12, marginBottom: 4 }} />
-          {goldTab && !ownsPlusView ? (
+          {goldRows ? (
             <>
               <FeatureRow icon="star" title={t.pwGoldBadgeLine} accent trailing={<IdentityBadges flags={{ partner: false, plus: true, founder: false, verified: false, gold: true }} nameSize={20} />} />
-              <FeatureRow icon="heart" title={t.pwGoldSupport} accent />
+              <FeatureRow icon="heart" title={mineGold ? t.pwGoldSupportMine : t.pwGoldSupport} accent check={mineGold} checkLabel={t.pwIncluded} />
               <Text size={12} weight="700" muted style={{ paddingTop: 6, paddingBottom: 2 }}>{t.pwGoldAllPlus}</Text>
             </>
           ) : null}
@@ -209,13 +235,13 @@ export function PlusScreen() {
           <View style={{ height: 52 }} />
         ) : ownsPlusView && (active || serverGold) ? (
           <>
-            <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {/* 🆕 T340 — بحدِّ البطاقة المختارة في العرض (`PlanCard`): ذهبيٌّ للـGold وبلونِ التمييز للـPlus — واسمُ الخطّة نفسُه
+                ملوّناً بدل «Loopz+» وكلمةٍ رماديّة («القولد بالرصاصي» — أحمد) */}
+            <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, borderWidth: 2, borderColor: mineGold ? GOLD_FRAME : tokens.accent, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-                  <Text size={18} weight="800" style={{ writingDirection: "ltr" }}>
-                    Loopz<Text size={18} weight="800" color={tokens.accent}>+</Text>
-                  </Text>
-                  <Text size={14} weight="700" muted>{!active || active.tier === "gold" ? t.pwTierGold : active.monthly ? t.pwMonthly : t.pwYearly}</Text>
+                  <PlanWordmark tier={mineGold ? "gold" : "plus"} size={18} />
+                  {!mineGold && active ? <Text size={14} weight="700" muted>{active.monthly ? t.pwMonthly : t.pwYearly}</Text> : null}
                 </View>
                 {active ? (
                   fmtDate(active.expires) ? (

@@ -5323,7 +5323,7 @@ export async function applyPartner(input: {
        ووصل البابَ يقرأ سببَ الردّ لا «حاول مجدداً». */
     if ((error.message ?? "").includes("partner_requirements_not_met")) {
       throw new Error(
-        "شرطا التقديم: حساب X موثّق في لوبز واشتراك بلس فعّال / Requirements: a verified X account on Loopz and an active Plus subscription",
+        "شرطا التقديم: حساب X موثّق في لوبز واشتراك Plus فعّال / Requirements: a verified X account on Loopz and an active Plus subscription",
       );
     }
     throw new Error("تعذّر إرسال الطلب — حاول مجدداً / Could not submit, try again");

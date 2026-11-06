@@ -12,6 +12,7 @@ import { api, ApiError, qk, write, queryClient } from "../api";
 import { session } from "../session";
 import { takeDiscoverAim } from "./aim";
 import { prefetchLibrary } from "../library/LibraryScreen";
+import { prefetchCommunity } from "../community/CommunityScreen";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { nativeListId } from "../list/route";
@@ -144,6 +145,10 @@ export function warmDiscoverOnce(): void {
       prefetchDiscover();
       /* 🆕 D-1263 — و«رائج اليوم» في البحث: طلبٌ واحدٌ خفيف، فيجده التبويبُ جاهزاً من أوّل إطار */
       warmTrendingOnce();
+      /* 🆕 T339 — **والمجتمعُ أخيراً** (أحمد ٦ نوفمبر بتسجيل: «أوّل مرّة أدخل المجتمع يكون بطيء» — بعد تغيير اللغة وأوّلَ فتحٍ للتطبيق):
+         `prefetchCommunity` كُتبت ولم يُنادِها أحد، فكان أوّلُ دخولٍ يجلب الحمولةَ كلَّها تحت الإصبع (`community.open` بلا كاشٍ ٣٫٤ث
+         وسيطاً). طلبٌ واحدٌ بمفتاح الشاشة نفسِه (≈١٠٨ ك.ب) في كلِّ جلسة — آخرَ الأربعة لأنّه أثقلُها، فلا يزاحم ما هو أقربُ للإبهام */
+      prefetchCommunity();
     }, 1500);
   });
 }

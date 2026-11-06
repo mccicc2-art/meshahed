@@ -85,6 +85,20 @@ export async function buildCommunity(o: {
   const { user, locale, allView } = o;
 
   const firstOut = { raw: 0 };
+  /* 🆕 T339 — **ما لا يحتاج الخطَّ يبدأ معه** (أحمد ٦ نوفمبر بتسجيل: «أوّل مرّة أدخل المجتمع يكون بطيء»): كانت الدالّةُ
+     اثنتي عشرةَ رحلةً إلى القاعدة واحدةً بعد أخرى — قيس الردُّ ١٫٥–٣ث من المتصفّح، و`community.open` بلا كاشٍ ٣٫٤ث وسيطاً في
+     الإنتاج. الأخبارُ ومكتبتي وحالتُها ومن أتابع ونقاشُ الأصدقاء لا تعرف الخطَّ، فتُطلق هنا وتُنتظر حيث كانت تُقرأ —
+     **الترتيبُ والقيمُ كما كانت حرفاً، والتوقيتُ وحدَه تغيّر.** والفشلُ يبقى في مكانه: كلُّ وعدٍ يُنتظر حيث كان يُنتظر */
+  const genNewsP = getLoopzNews(12);
+  const followsP = getFollows();
+  const libStateP = getLibState().catch(() => undefined);
+  const followingIdsP = getFollowingIds();
+  const talkWaveP: Promise<[TalkFeedPost[], TalkRoom | null]> = o.talk
+    ? Promise.all([user ? getTalkFeed(40) : Promise.resolve([] as TalkFeedPost[]), getGeneralRoom(40)])
+    : Promise.resolve([[], null]);
+  /* وعدٌ يُنتظر لاحقاً لا يُترك بلا ماسك: رفضُه قبل أن يُنتظر كان «رفضاً غيرَ مُعالج» يُسقط الدالّة في Node — فيُعلَّق
+     عليه ماسكٌ صامتٌ هنا، والانتظارُ أسفلُ يرمي الخطأ نفسَه كما كان */
+  for (const p of [genNewsP, followsP, followingIdsP, talkWaveP]) p.catch(() => {});
   const [memberFeed, personaFeed] = await Promise.all([
     getCommunityFeed(o.scope, undefined, firstOut),
     user && o.personas ? getFollowedPersonaFeed(null, PERSONA_PAGE) : Promise.resolve([]),
@@ -95,14 +109,23 @@ export async function buildCommunity(o: {
   const localized = await localizeRows(followingFeed, locale);
 
   /* ترجمةُ المراجعات بلغة القارئ (D-307) — ولا تُترجَم المحجوبات (D-315) — 🆕 D-1605 ولا مراجعاتُ الشخصيّات: نصُّها بلغة القارئ أصلاً */
-  const feedTranslations: Record<string, string> = o.translateOn
-    ? await getBatchTranslations(
+  const feedTranslationsP: Promise<Record<string, string>> = o.translateOn
+    ? getBatchTranslations(
         localized
           .filter((a) => a.review?.trim() && !a.hasSpoiler && a.kind !== "ep_rate" && !isPersonaId(a.person.id))
           .map((a) => ({ id: commentViewKey(a.person.id, a.media_type, a.tmdb_id), text: a.review ?? "" })),
         locale === "ar" ? "ar" : "en",
       )
-    : {};
+    : Promise.resolve({});
+  feedTranslationsP.catch(() => {});
+
+  /* 🆕 T339 — ما يحتاج الخطَّ وحدَه يبدأ الآن معاً (ردودُ المراجعات · القوائم) — وعددُ المشاهدات ينتظر الأخبارَ معه أسفل */
+  const reviewKeys = localized.filter((a) => a.review?.trim() && a.kind !== "ep_rate").map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id));
+  const reviewRepliesP = getReviewReplyCounts(reviewKeys);
+  const listSocialP: Promise<Map<string, ListReviewSocial>> = getListReviewSocial([
+    ...new Set(localized.map((a) => a.listId).filter(Boolean) as string[]),
+  ]);
+  for (const p of [reviewRepliesP, listSocialP]) p.catch(() => {});
 
   /* موجةٌ واحدة (D-263): الغرفُ · التثبيتُ · لوحةُ الناس · من أتابع */
   const wantAll = allView !== null;
@@ -120,7 +143,7 @@ export async function buildCommunity(o: {
       need("reviews") ? getPeopleTopReviews(30, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
       need("lists") ? getTopSavedListCards(7, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
     ]),
-    getFollowingIds(),
+    followingIdsP,
     /* 🆕 D-1608 — آخرُ أقسام اللوحة: الشخصيّاتُ الخمس بعدد مراجعاتها — للّوحة وحدَها (لا «عرض كلّ» لخمسة) */
     wantAll ? Promise.resolve([]) : getPersonaBoard(),
   ]);
@@ -149,10 +172,18 @@ export async function buildCommunity(o: {
       ? board.every((r) => r.total - r.prevTotal <= 0)
       : featured.length === 0 && board.length === 0 && topReviews.length === 0;
 
-  const genNews = await getLoopzNews(12);
+  const feedTranslations = await feedTranslationsP;
+  const genNews = await genNewsP;
+  /* 🆕 T339 — ما يحتاج الأخبار: الإعجاباتُ وعددُ ردودها وعددُ المشاهدات — معاً، والأخبارُ وصلت */
+  const postLikesP = genNews.length
+    ? getReactions(genNews.map((n) => n.tmdb_id))
+    : Promise.resolve({ counts: {} as Record<string, number>, mine: new Set<string>() });
+  const newsRepliesP = genNews.length ? getNewsReplyCounts(genNews.map((n) => n.key)) : Promise.resolve(new Map<string, number>());
+  const viewCountsP = getPostViewCounts([...reviewKeys, ...genNews.map((n) => newsViewKey(n.key))]);
+  for (const p of [postLikesP, newsRepliesP, viewCountsP]) p.catch(() => {});
 
   /* حالةُ «+ للمشاهدة» ومكتبتي (D-205/D-850) */
-  const follows = await getFollows();
+  const follows = await followsP;
   const followed = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
   /* 🆕 R56 — موعدُ الحلقة القادمة المخزَّن في المكتبة (شارةُ «يعرض الآن») — بلا نداء TMDB */
   const nextAir = new Map(follows.filter((f) => f.media_type === "tv" && f.next_air_date).map((f) => [`tv-${f.tmdb_id}`, f.next_air_date as string]));
@@ -160,7 +191,7 @@ export async function buildCommunity(o: {
      كانت كلُّ أعمال المكتبة بلا غرفةٍ (حتى ١٥٠) تُرسل بطاقاتٍ «٠ مشاركة» تزحم «مكتبتي» وتثقل الردّ. البحثُ (`TalkSearch`) يبحث في
      الأعمال كلِّها لا في الحمولة، فالغرفةُ الفارغةُ تُفتح منه ومن صفحة العمل كما كانت. الحقلُ يبقى في العقد فارغاً لنسخٍ أقدم */
   const libraryRooms: TalkRoom[] = [];
-  const libState = await getLibState().catch(() => undefined);
+  const libState = await libStateP;
 
   /* «أعمالي المتابَعة فقط» (D-306) · والزائرُ أفضلُ خمسٍ (D-628) */
   const roomsFiltered =
@@ -169,15 +200,11 @@ export async function buildCommunity(o: {
     ? roomsFiltered
     : [...roomsFiltered].sort((a, b) => b.postsWeek - a.postsWeek || b.posts - a.posts).slice(0, GUEST_ROOMS);
 
-  const postLikes = genNews.length
-    ? await getReactions(genNews.map((n) => n.tmdb_id))
-    : { counts: {} as Record<string, number>, mine: new Set<string>() };
+  const postLikes = await postLikesP;
 
-  const followingIds = await getFollowingIds();
+  const followingIds = await followingIdsP;
   /* 🆕 R58 — أحمد «٤ أ»: القلمُ دائماً، والغرفةُ إذا نشطت — للمسجَّل (الزائرُ لا يرى خطَّ الأصدقاء أصلاً) */
-  const [talkFeed, generalRoom]: [TalkFeedPost[], TalkRoom | null] = o.talk
-    ? await Promise.all([user ? getTalkFeed(40) : Promise.resolve([] as TalkFeedPost[]), getGeneralRoom(40)])
-    : [[], null];
+  const [talkFeed, generalRoom] = await talkWaveP;
 
   /* نشرةُ لوبز لمن يهمّه خبرُها (D-360): مكتبتي ومن أتابعهم؛ ومن لا إشارةَ له يرى الكلّ */
   const talkedByFriends = new Set(
@@ -193,21 +220,7 @@ export async function buildCommunity(o: {
       })
     : genNews;
 
-  const newsReplies = genNews.length
-    ? await getNewsReplyCounts(genNews.map((n) => n.key))
-    : new Map<string, number>();
-  const reviewReplies = await getReviewReplyCounts(
-    localized.filter((a) => a.review?.trim() && a.kind !== "ep_rate").map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
-  );
-  const listSocial: Map<string, ListReviewSocial> = await getListReviewSocial([
-    ...new Set(localized.map((a) => a.listId).filter(Boolean) as string[]),
-  ]);
-  const viewCounts = await getPostViewCounts([
-    ...localized
-      .filter((a) => a.review?.trim() && a.kind !== "ep_rate")
-      .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
-    ...genNews.map((n) => newsViewKey(n.key)),
-  ]);
+  const [newsReplies, reviewReplies, listSocial, viewCounts] = await Promise.all([newsRepliesP, reviewRepliesP, listSocialP, viewCountsP]);
 
   return {
     localized,

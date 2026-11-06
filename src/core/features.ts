@@ -145,18 +145,18 @@ export const SECTIONS: Section[] = [
         icon: "sparkles",
         ar: "شارةٌ بجانب اسمك",
         en: "A badge beside your name",
-        arBody: "علامة Loopz+ تظهر مع اسمك في كل سطحٍ يحمله، وشعار شريطك العلوي يصير Loopz+.",
-        enBody: "The Loopz+ mark appears with your name everywhere it shows, and your top-bar wordmark becomes Loopz+.",
+        arBody: "شارة PLUS، أو GOLD في Loopz Gold، تظهر مع اسمك في كل سطحٍ يحمله، وتظهر علامة + بجانب شعار شريطك العلوي.",
+        enBody: "A PLUS badge — GOLD with Loopz Gold — appears with your name everywhere it shows, and your top-bar wordmark carries a +.",
         plus: true,
       },
       {
         icon: "sparkle-star",
-        ar: "Loopz+ هديةٌ للأوائل",
-        en: "Loopz+ on us for the first members",
+        ar: "Loopz Plus هديةٌ للأوائل",
+        en: "Loopz Plus on us for the first members",
         /* ⚖️ 🆕 **وشارةُ «مؤسِّس» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها») — **فلا تُعدّ ميزةً هنا ولا تُوعد**: **صفحةٌ
            اسمُها «صادقة» تَعِد بشارةٍ لا تُرسم أسوأُ من صفحةٍ لا تعد** (D-217). **والهديةُ ومدّتُها باقيتان كما هما.** */
-        arBody: `من سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
-        enBody: `Anyone who joined before subscriptions were announced has Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}.`,
+        arBody: `من سجّل قبل إعلان الاشتراك معه Loopz Plus بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+        enBody: `Anyone who joined before subscriptions were announced has Loopz Plus free until ${FOUNDER_PLUS_UNTIL.en}.`,
         plus: true,
       },
       /* 🆕 **وثلاثُ ميزاتٍ مجّانيّةٍ قائمةٍ لم تُوثَّق قطّ** (D-793،
@@ -342,9 +342,9 @@ export const SECTIONS: Section[] = [
         ar: "دعوة الأصدقاء",
         en: "Invite friends",
         arBody:
-          "لكل عضو رابط دعوة دائم يرى منه كم صديقاً انضم ومَن هم. صديقك يبدأ بشهر Loopz+ هدية، وكل ٥ أصدقاء محتسبين يمنحونك شهر Loopz+.",
+          "لكل عضو رابط دعوة دائم يرى منه كم صديقاً انضم ومَن هم. صديقك يبدأ بشهر Loopz Plus هدية، وكل ٥ أصدقاء محتسبين يمنحونك شهر Loopz Plus.",
         enBody:
-          "Every member gets a permanent invite link, with a live count of who joined through it. Your friend starts with a free month of Loopz+, and every 5 counted invites earn you a month of Loopz+.",
+          "Every member gets a permanent invite link, with a live count of who joined through it. Your friend starts with a free month of Loopz Plus, and every 5 counted invites earn you a month of Loopz Plus.",
       },
       {
         icon: "people",
@@ -370,9 +370,9 @@ export const SECTIONS: Section[] = [
         ar: "توثيق الحساب",
         en: "Account verification",
         arBody:
-          "علامةٌ تقول إنّ هذا الحساب يمثّل الشخص أو الجهة المذكورة. تُطلب من الإعدادات وتُراجَع يدوياً — ولا تُباع ولا تأتي مع Loopz+.",
+          "علامةٌ تقول إنّ هذا الحساب يمثّل الشخص أو الجهة المذكورة. تُطلب من الإعدادات وتُراجَع يدوياً — ولا تُباع ولا تأتي مع Loopz Plus.",
         enBody:
-          "A mark saying this account represents the stated person or organisation. Requested from settings and reviewed by hand — never sold, and it does not come with Loopz+.",
+          "A mark saying this account represents the stated person or organisation. Requested from settings and reviewed by hand — never sold, and it does not come with Loopz Plus.",
       },
       {
         icon: "eye-off",
@@ -418,7 +418,7 @@ export const SECTIONS: Section[] = [
         ar: "اربط حتى ٥ أجهزة، ومشاهدتك تتسجّل وحدها",
         en: "Link up to 5 devices, and your watching logs itself",
         arBody:
-          "خمسة أجهزة في مدارك (وبلا حدّ مع الذهبي)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio يسألك دائماً، لأنه لا يخبرنا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
+          "خمسة أجهزة في مدارك (وبلا حدّ مع Gold)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio يسألك دائماً، لأنه لا يخبرنا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
         enBody:
           "Five devices in your orbit (no limit with Gold), and Auto-track: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library without asking (Stremio always asks, because it doesn't tell us you finished). And import your old Plex history.",
         plus: true,

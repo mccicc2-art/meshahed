@@ -26,8 +26,8 @@ const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="ye
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">Loopz asks "watched it?" when you finish an episode or a movie on Kodi</summary>
     <summary lang="ar_SA">يسألك Loopz «شفتها؟» لما تخلّص حلقة أو فيلم على Kodi</summary>
-    <description lang="en_GB">When an episode or a movie reaches 90% on Kodi, Loopz asks you on Home whether you watched it. Nothing is marked without your answer. Link it with the 6-digit code from Loopz: Settings, Home servers, Kodi. Needs Loopz+.</description>
-    <description lang="ar_SA">لما تكمل 90% من حلقة أو فيلم على Kodi، يسألك Loopz في الرئيسية: شفتها؟ ما نعلّم شيئاً بدون جوابك. اربطها بالرمز من ستة أرقام من Loopz: الإعدادات، سيرفرات البيت، Kodi. تحتاج Loopz+.</description>
+    <description lang="en_GB">When an episode or a movie reaches 90% on Kodi, Loopz asks you on Home whether you watched it. Nothing is marked without your answer. Link it with the 6-digit code from Loopz: Settings, Home servers, Kodi. Needs Loopz Plus.</description>
+    <description lang="ar_SA">لما تكمل 90% من حلقة أو فيلم على Kodi، يسألك Loopz في الرئيسية: شفتها؟ ما نعلّم شيئاً بدون جوابك. اربطها بالرمز من ستة أرقام من Loopz: الإعدادات، سيرفرات البيت، Kodi. تحتاج Loopz Plus.</description>
     <platform>all</platform>
     <license>All rights reserved</license>
     <website>https://loopztv.com</website>

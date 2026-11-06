@@ -48,7 +48,7 @@ function FeatureCard({ f, ar }: { f: Feature; ar: boolean }) {
   /* وسمٌ واحدٌ في خانةٍ واحدة (الويب حرفاً): «مجاني» بلون النجاح، و«Loopz+» و«قريباً» بلون الهويّة */
   const free = !f.plus && !f.soon;
   const tone = free ? tokens.success : tokens.accent;
-  const tag = f.plus ? (f.soon ? t.featuresTagPlusSoon : "Loopz+") : f.soon ? t.featuresTagSoon : t.featuresTagFree;
+  const tag = f.plus ? (f.soon ? t.featuresTagPlusSoon : "Loopz Plus") : f.soon ? t.featuresTagSoon : t.featuresTagFree;
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, borderRadius: radius.card, backgroundColor: tokens.surface, paddingHorizontal: 14, paddingVertical: 12 }}>
       <View style={{ marginTop: 2 }}>

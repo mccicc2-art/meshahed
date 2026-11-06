@@ -14,8 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: ar ? "المميزات" : "Features",
     description: ar
-      ? "كل ما يقدر عليه Loopz في صفحة واحدة: تتبّع الحلقات والأفلام والأنمي، اليوميات والإحصاءات، القوائم والجوائز، الأصدقاء والرسائل — مجاناً، وما يخصّ Loopz+ موسومٌ بجانبه."
-      : "Everything Loopz can do, in one honest page: episode, movie and anime tracking, diary and stats, lists and awards, friends and messages — free, with anything Loopz+ marked beside it.",
+      ? "كل ما يقدر عليه Loopz في صفحة واحدة: تتبّع الحلقات والأفلام والأنمي، اليوميات والإحصاءات، القوائم والجوائز، الأصدقاء والرسائل — مجاناً، وما يخصّ Loopz Plus موسومٌ بجانبه."
+      : "Everything Loopz can do, in one honest page: episode, movie and anime tracking, diary and stats, lists and awards, friends and messages — free, with anything Loopz Plus marked beside it.",
     keywords: seoKeywords(locale),
     alternates: { canonical: "/features" },
     openGraph: { type: "article", url: "/features" },
@@ -54,8 +54,8 @@ export default async function FeaturesPage() {
             بلا مقدّمة.** فصارت المقدّمةُ تشرح الوسومَ الثلاثةَ لا تَعِد
             بمجّانيّةٍ شاملة. */}
         {ar
-          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكلُّ بندٍ موسومٌ بما هو عليه: «مجاني» للجميع، و«Loopz+» لمن اشترك، و«قريباً» لما هو قيد العمل. كي لا يختلط الوعد بالمتاح."
-          : "Everything the app can do, on one honest page — and every line is marked for what it is: “Free” for everyone, “Loopz+” for subscribers, “Soon” for what is still being built, so a promise never reads as a feature."}
+          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكلُّ بندٍ موسومٌ بما هو عليه: «مجاني» للجميع، و«Loopz Plus» لمن اشترك، و«قريباً» لما هو قيد العمل. كي لا يختلط الوعد بالمتاح."
+          : "Everything the app can do, on one honest page — and every line is marked for what it is: “Free” for everyone, “Loopz Plus” for subscribers, “Soon” for what is still being built, so a promise never reads as a feature."}
       </p>
 
       <div className="mt-8 space-y-9">
@@ -92,9 +92,9 @@ export default async function FeaturesPage() {
                     {f.plus
                       ? f.soon
                         ? ar
-                          ? "Loopz+ قريباً"
-                          : "Loopz+ soon"
-                        : "Loopz+"
+                          ? "Loopz Plus قريباً"
+                          : "Loopz Plus soon"
+                        : "Loopz Plus"
                       : f.soon
                         ? ar
                           ? "قريباً"
@@ -115,8 +115,8 @@ export default async function FeaturesPage() {
             اشتراك اليوم، وإن جاء ستقول هذه الصفحةُ بوضوحٍ ما يبقى
             مجّانيّاً» — **وقد جاء، فقالت.** */}
         {ar
-          ? `المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz+ (${t.plusPrice}، ${t.plusPriceRenew}) للثيمات الملوّنة وتنسيق صفحاتك. `
-          : `Tracking, lists, community, search and translation are free for everyone, always — Loopz+ (${t.plusPrice}, ${t.plusPriceRenew}) covers colour themes and shaping your pages. `}
+          ? `المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz Plus (${t.plusPrice}، ${t.plusPriceRenew}) للثيمات الملوّنة وتنسيق صفحاتك. `
+          : `Tracking, lists, community, search and translation are free for everyone, always — Loopz Plus (${t.plusPrice}, ${t.plusPriceRenew}) covers colour themes and shaping your pages. `}
         <Link href="/plus" className="text-accent hover:underline">
           {t.plusLearnMore}
         </Link>

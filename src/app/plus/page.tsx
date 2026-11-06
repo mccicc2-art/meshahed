@@ -12,10 +12,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const ar = locale === "ar";
   return {
-    title: ar ? "Loopz+" : "Loopz+",
+    title: ar ? "Loopz Plus" : "Loopz Plus",
     description: ar
-      ? "Loopz+ — الثيمات الملوّنة، وتنسيق رئيسيتك وملفّك، وشارةٌ بجانب اسمك. والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً."
-      : "Loopz+ — colour themes, a home and profile you shape yourself, and a badge beside your name. Tracking, lists, community and search stay free for everyone, always.",
+      ? "Loopz Plus — الثيمات الملوّنة، وتنسيق رئيسيتك وملفّك، وشارةٌ بجانب اسمك. والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً."
+      : "Loopz Plus — colour themes, a home and profile you shape yourself, and a badge beside your name. Tracking, lists, community and search stay free for everyone, always.",
     keywords: seoKeywords(locale),
     alternates: { canonical: "/plus" },
     openGraph: { type: "article", url: "/plus" },
@@ -107,25 +107,25 @@ const READY: Perk[] = [
     icon: "sparkles",
     ar: "شارةٌ بجانب اسمك",
     en: "A badge beside your name",
-    arBody: "علامة Loopz+ تظهر مع اسمك في كل سطحٍ يحمله — رمزٌ بلا كلمة.",
-    enBody: "The Loopz+ mark appears with your name on every surface that carries it — a mark, not a label.",
+    arBody: "شارة PLUS، أو GOLD في Loopz Gold، تظهر مع اسمك في كل سطحٍ يحمله.",
+    enBody: "A PLUS badge — GOLD with Loopz Gold — appears with your name on every surface that carries it.",
   },
   {
     icon: "star",
-    ar: "شعار Loopz+ في تجربتك",
-    en: "The Loopz+ wordmark",
-    arBody: "شعار التطبيق في شريطك العلوي يصير Loopz+ ما دمت مشتركاً.",
-    enBody: "The wordmark in your top bar becomes Loopz+ for as long as you subscribe.",
+    ar: "علامة + بجانب شعار Loopz",
+    en: "A + beside the Loopz wordmark",
+    arBody: "شعار التطبيق في شريطك العلوي تظهر بجانبه علامة + ما دمت مشتركاً.",
+    enBody: "The wordmark in your top bar carries a + for as long as you subscribe.",
   },
   {
     icon: "sparkle-star",
-    ar: "Loopz+ هديةٌ للأوائل",
-    en: "Loopz+ on us for the first members",
+    ar: "Loopz Plus هديةٌ للأوائل",
+    en: "Loopz Plus on us for the first members",
     /* ⚖️ 🆕 **وشارةُ «مؤسِّس» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها»، نقضٌ لـD-833 بيد صاحبه) — **فوعدُ «دائماً»
        يسقط معها في الدفعة نفسِها**: **صفحةٌ تَعِد بشارةٍ لا تُرسم هي الكذبُ بعينه** (D-217). **والباقي صدقٌ يُقال: الهديةُ
        ومدّتُها.** */
-    arBody: `من سجّل قبل إعلان الاشتراك معه Loopz+ بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
-    enBody: `Everyone who joined before subscriptions were announced has Loopz+ free until ${FOUNDER_PLUS_UNTIL.en}.`,
+    arBody: `من سجّل قبل إعلان الاشتراك معه Loopz Plus بلا مقابلٍ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+    enBody: `Everyone who joined before subscriptions were announced has Loopz Plus free until ${FOUNDER_PLUS_UNTIL.en}.`,
   },
 ];
 
@@ -221,11 +221,11 @@ export default async function PlusPage() {
         ‹ Loopz
       </Link>
 
-      <h1 className="text-2xl font-bold mt-3">Loopz+</h1>
+      <h1 className="text-2xl font-bold mt-3">Loopz Plus</h1>
       <p className="text-sm text-muted mt-1.5 leading-relaxed">
         {ar
-          ? "Loopz+ زينةٌ وتنسيق، لا وظيفة. المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — والاشتراك للثيمات ولتنسيق صفحاتك كما تحبّها أنت."
-          : "Loopz+ is polish, not function. Tracking, lists, community, search and translation are free for everyone, always — the subscription is for themes and for shaping your pages the way you want them."}
+          ? "Loopz Plus زينةٌ وتنسيق، لا وظيفة. المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — والاشتراك للثيمات ولتنسيق صفحاتك كما تحبّها أنت."
+          : "Loopz Plus is polish, not function. Tracking, lists, community, search and translation are free for everyone, always — the subscription is for themes and for shaping your pages the way you want them."}
       </p>
 
       {/* 🚫 **بطاقةُ الثمن بلا زرّ** (D-217): تقول كم، وماذا بعد السنة
@@ -266,7 +266,7 @@ export default async function PlusPage() {
       <section className="mt-9">
         <h2 className="flex items-center gap-2 text-20 font-bold mb-1.5">
           <Icon name="hourglass" size={18} className="text-muted" />
-          {ar ? "قريباً في Loopz+" : "Coming to Loopz+"}
+          {ar ? "قريباً في Loopz Plus" : "Coming to Loopz Plus"}
         </h2>
         <p className="text-12 text-muted leading-relaxed mb-3">
           {ar
@@ -296,8 +296,8 @@ export default async function PlusPage() {
 
       <p className="text-xs text-muted mt-10 leading-relaxed">
         {ar
-          ? "التوثيق لا يُباع ولا يأتي مع Loopz+ — يُقدَّم عليه بشكل مستقلّ ويُراجَع يدوياً. وكلّ ما يقدر عليه Loopz، مجّانيّه ومدفوعه، مكتوبٌ في "
-          : "Verification is not sold and does not come with Loopz+ — it is applied for separately and reviewed by hand. Everything Loopz can do, free and paid, is listed on "}
+          ? "التوثيق لا يُباع ولا يأتي مع Loopz Plus — يُقدَّم عليه بشكل مستقلّ ويُراجَع يدوياً. وكلّ ما يقدر عليه Loopz، مجّانيّه ومدفوعه، مكتوبٌ في "
+          : "Verification is not sold and does not come with Loopz Plus — it is applied for separately and reviewed by hand. Everything Loopz can do, free and paid, is listed on "}
         <Link href="/features" className="text-accent hover:underline">
           {ar ? "صفحة المميزات" : "the features page"}
         </Link>

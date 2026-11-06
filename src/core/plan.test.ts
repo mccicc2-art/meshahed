@@ -100,15 +100,16 @@ test("الثيماتُ المجّانيّة ثلاث: الرسميُّ الاف�
 });
 
 /* T336 — خطّةٌ واحدةٌ «ذهبي» تشمل بلس: الاسمُ ذهبيّ، ولا «شريك» ولا «مؤسِّس» تحته */
-const LABELS = { plusName: "Loopz+", partnerBadge: "Partner", founderBadge: "Founder", setPlanFree: "Free", goldBadge: "Loopz+ Gold" };
+/* T340 — الاسمان «Loopz Plus» و«Loopz Gold» (أحمد ٦ نوفمبر) — القيمُ هنا من القاموسين حرفاً */
+const LABELS = { plusName: "Loopz Plus", partnerBadge: "Partner", founderBadge: "Founder", setPlanFree: "Free", goldBadge: "Loopz Gold" };
 const SOON = new Date(Date.now() + 86_400_000).toISOString();
 test("a Gold member is named Gold, partner or not", () => {
-  assert.equal(planNameOf({ plan: "partner", plus_until: SOON, gold_until: SOON, founder: true }, LABELS), "Loopz+ Gold");
-  assert.equal(planNameOf({ plan: "plus", plus_until: SOON, gold: true }, LABELS), "Loopz+ Gold");
+  assert.equal(planNameOf({ plan: "partner", plus_until: SOON, gold_until: SOON, founder: true }, LABELS), "Loopz Gold");
+  assert.equal(planNameOf({ plan: "plus", plus_until: SOON, gold: true }, LABELS), "Loopz Gold");
   assert.equal(planReasonOf({ plan: "partner", plus_until: SOON, gold_until: SOON }, LABELS), null);
 });
 test("without Gold nothing changes", () => {
-  assert.equal(planNameOf({ plan: "plus", plus_until: SOON }, LABELS), "Loopz+");
+  assert.equal(planNameOf({ plan: "plus", plus_until: SOON }, LABELS), "Loopz Plus");
   assert.equal(planReasonOf({ plan: "partner", plus_until: SOON }, LABELS), "Partner");
   assert.equal(planNameOf({ plan: "free" }, LABELS), "Free");
 });

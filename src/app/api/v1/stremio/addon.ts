@@ -39,7 +39,7 @@ export function addonManifest(opts: { configurationRequired: boolean }) {
     version: "1.3.1",
     name: "Loopz",
     description:
-      "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. For Loopz+ members.",
+      "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. For Loopz Plus members.",
     logo: `${SITE_URL}/loopz-mark.png`,
     background: `${SITE_URL}/loopz-cover.jpg`,
     resources: ["stream", "subtitles"],
