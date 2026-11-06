@@ -6,8 +6,9 @@ import Purchases, {
   type CustomerInfo,
   type PurchasesPackage,
 } from "react-native-purchases";
-import { api } from "../api";
+import { api, queryClient } from "../api";
 import { invalidateMe, invalidateSettings } from "../settings/api";
+import { HOME_KEY } from "../home/useHome";
 import type { BillingSyncPayload } from "@/core/billing";
 
 /**
@@ -262,5 +263,9 @@ export async function syncServer(want: "plus" | "gold" = "plus"): Promise<Billin
   }
   invalidateMe();
   invalidateSettings();
+  /* 🆕 T341 — **ورأسُ الرئيسيّة معهما** (آيفون أحمد ٦ نوفمبر: رقّى إلى Gold فصارت الشارةُ GOLD في القائمة والملفّ وبقيت PLUS في
+     الرئيسيّة حتى بعد إعادة الفتح): الشارةُ هناك من `me/home` لا من «من أنا»، ونسختُه المحفوظةُ «حديثةٌ» دقيقةً (`staleTime`)
+     فلا يُطلب غيرُها. إبطالُها هنا يرسم الطبقةَ الجديدة فور أن يراها الخادم — شراءً وترقيةً واسترجاعاً */
+  void queryClient.invalidateQueries({ queryKey: HOME_KEY });
   return last;
 }

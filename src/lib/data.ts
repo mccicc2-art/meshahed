@@ -88,17 +88,21 @@ export const getUser = cache(async () => {
  */
 export const getUserId = cache(async (): Promise<string | null> => {
   try {
-    const { cookies } = await import("next/headers");
-    const store = await cookies();
-    const parts = sessionCookieParts(store.getAll());
-
-    // 🆕 التطبيق: لا كوكي بل `Bearer` — الرمزُ نفسُه من بابٍ آخر (Phase 9 §4.3)
+    /* 🆕 التطبيق: `Bearer` لا كوكي — الرمزُ نفسُه من بابٍ آخر (Phase 9 §4.3).
+       🔴 T342 — **والرمزُ أوّلاً، بترتيب `createClient` نفسِه** (خالد ٦ نوفمبر: خرج من حسابٍ ودخل آخر على أندرويد فظهرت
+       رئيسيّةٌ فارغة باسم قوقل ومعرّفٍ مؤقّت ١٥ ثانية): أندرويد يشارك مخزنَ الكوكيز بين `fetch` والـWebView، فبقي كوكي
+       الحساب السابق يرافق طلبات التطبيق حتى سُكَّت جلسةُ الويب. كان هذا القارئ يأخذ `sub` من الكوكي (السابق) والعميلُ
+       يفتح القاعدة بالرمز (الجديد)، فتُطلب صفوفُ ذاك بصلاحيّة هذا — RLS تُرجع صفراً لا صفوفَ غيره، فلا تسرّب، لكنّه حسابٌ
+       فارغ يُرسم ويُحفظ على الجهاز. **مصدرٌ واحدٌ للهويّة في الطلب الواحد**: حيث يحضر الرمز فهو الهويّة */
     let claims: ReturnType<typeof decodeSessionCookie> = null;
-    if (parts.length === 0) {
-      const token = await bearerToken();
-      if (!token) return null; // زائر — بلا رحلةٍ أصلاً
+    const token = await bearerToken();
+    if (token) {
       claims = decodeAccessToken(token);
     } else {
+      const { cookies } = await import("next/headers");
+      const store = await cookies();
+      const parts = sessionCookieParts(store.getAll());
+      if (parts.length === 0) return null; // زائر — بلا رحلةٍ أصلاً
       claims = decodeSessionCookie(parts);
     }
     // مشوَّهٌ أو منتهٍ أو على وشك؟ التحقّق الكامل يجدّد الجلسة —
