@@ -39,6 +39,9 @@ const GOLD_EDGE = "#C2860B";
 /* 🆕 T337 — **شعارُ لوبز الأصليُّ نفسُه** لا رسمُ ∞ ثانٍ (أحمد ٦ نوفمبر: «طابقه تماماً مع شعار لوبز الأصلي» — كان الخطُّ رفيعاً
    والحلقتان متشابكتين): `loopz-mark-xl.png` مقصوصاً على حدوده (٢:١) ومصبوغاً بحبر الذهبيّ، بلا تعديلٍ في شكله — قاعدةُ D-145 */
 const MARK = require("../assets/icons/loopz-mark-badge.png");
+/* 🆕 T338 — **«GOLD» بوزن ٨٠٠** (أحمد: «ثقيلة نفس درجة شعار لوبز»، «١أ»): كتلةُ الشعار تُثقل العينَ فوق سماكة خطّه (قيس ٠٫٠٩٧ من
+   القرص ≈ جذعُ ٧٠٠)، فاختار ٨٠٠ من ثلاث صور. `Text` يضع `style` بعد العائلة فتغلب هنا وحدَها؛ وقبل تحميل الخطوط لا تُطلب عائلةٌ غائبة */
+const GOLD_WEIGHT = { fontFamily: "Poppins-800" } as const;
 
 /**
  * 🆕 T337 — **كلمةُ الشارة إلى وسطها على الآيفون** (لقطةُ أحمد ٦ نوفمبر): بسطرٍ ضيّقٍ (١٫١٥ من الخطّ) يضع الآيفون حروفَ Poppins
@@ -54,6 +57,7 @@ function wordNudge(fs: number) {
  * التدرّجُ رسمٌ (`react-native-svg`، في البناء منذ زمن) لا حزمةٌ جديدة؛ وعرضُه من قياس المحتوى (`onLayout`) فيُرسم خلفه تماماً.
  */
 function GoldPill({ hgt, label }: { hgt: number; label: string }) {
+  const { fontsReady } = useApp();
   const [w, setW] = React.useState(0);
   const fs = (9 / 16) * hgt;
   const r = (5 / 16) * hgt;
@@ -78,7 +82,7 @@ function GoldPill({ hgt, label }: { hgt: number; label: string }) {
           <Rect x={r} y={1.5} width={Math.max(0, w - 2 * r)} height={1} fill="rgba(255,255,255,0.55)" />
         </Svg>
       ) : null}
-      <Text size={fs} weight="700" color={GOLD_INK} style={[{ letterSpacing: (1.1 / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }, wordNudge(fs)]}>GOLD</Text>
+      <Text size={fs} weight="700" color={GOLD_INK} style={[{ letterSpacing: (1.1 / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }, fontsReady ? GOLD_WEIGHT : null, wordNudge(fs)]}>GOLD</Text>
       <Image source={MARK} style={{ width: (12.5 / 16) * hgt, height: (6.25 / 16) * hgt }} contentFit="contain" accessible={false} />
     </View>
   );

@@ -215,7 +215,8 @@ function GoldPill({ label }: { label: string }) {
         transform: "translateY(-0.02em)",
       }}
     >
-      <span className="lz-pill-word" style={{ fontSize: `${(9 / 16) * PILL_EM}em`, letterSpacing: `${1.1 / 9}em` }}>
+      {/* 🆕 T338 — «GOLD» بوزن ٨٠٠ (أحمد: «ثقيلة نفس درجة شعار لوبز») — `latin-800` محمّلٌ في `globals.css`، والتطبيقُ بالملفّ نفسه */}
+      <span className="lz-pill-word" style={{ fontSize: `${(9 / 16) * PILL_EM}em`, letterSpacing: `${1.1 / 9}em`, fontWeight: 800 }}>
         GOLD
       </span>
       {/* 🆕 T337 — شعارُ لوبز الأصليُّ نفسُه مصبوغاً بحبر الذهبيّ (`public/loopz-mark-badge.png`) لا رسمُ ∞ ثانٍ — الملفُّ نفسُه في التطبيق */}

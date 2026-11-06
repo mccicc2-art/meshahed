@@ -23,6 +23,9 @@ export const FONTS = {
   "Poppins-500": require("../assets/fonts/Poppins-500.ttf"),
   "Poppins-600": require("../assets/fonts/Poppins-600.ttf"),
   "Poppins-700": require("../assets/fonts/Poppins-700.ttf"),
+  /* 🆕 T338 — لكلمة GOLD وحدَها (أحمد ٦ نوفمبر: «كلمة قولد ثقيلة نفس درجة شعار لوبز»، «١أ» = ٨٠٠)، من `@fontsource/poppins`
+     كأخواتها. **لا يدخل `familyOf`**: ٤٦ نصّاً بوزن ٨٠٠ تسقط إلى ٧٠٠ منذ D-454 وتغييرُها كلِّها لم يُطلب */
+  "Poppins-800": require("../assets/fonts/Poppins-800.ttf"),
 } as const;
 
 export type Weight = "400" | "500" | "600" | "700" | "800";
@@ -40,6 +43,7 @@ export function familyOf(arabic: boolean, weight: Weight): keyof typeof FONTS {
     const w = weight === "600" ? "700" : weight;
     return `Tajawal-${w}` as keyof typeof FONTS;
   }
+  /* ⚠️ ٨٠٠ يبقى ساقطاً إلى ٧٠٠ رغم وجود `Poppins-800` (T338): ذاك الملفُّ لشارة GOLD وحدَها */
   const w = weight === "800" ? "700" : weight;
   return `Poppins-${w}` as keyof typeof FONTS;
 }
