@@ -43,7 +43,11 @@ export async function applyRevenueCatEvent(ev: RcEvent, nowMs = Date.now()): Pro
 
   /* مرّةً لكلِّ حدث: الإدراجُ هو القفل — تعارضُ المفتاح = وصل قبلاً، إلّا ختماً لم يكتمل منذ دقيقتين (تشغيلٌ انقطع) فيُؤخذ */
   const id = ev.id.slice(0, 200);
-  const seen = await db.from("billing_events").insert({ event_id: id, type: ev.type.slice(0, 60), user_id: uid, environment: env, event_ms: ev.event_timestamp_ms ?? null });
+  const stamp = { event_id: id, type: ev.type.slice(0, 60), environment: env, event_ms: ev.event_timestamp_ms ?? null };
+  let seen = await db.from("billing_events").insert({ ...stamp, user_id: uid });
+  /* معرّفٌ بشكل UUID ليس عضواً عندنا (حسابٌ حُذف واشتراكُه باقٍ عند المتجر، أو حدثُ تجربةٍ من لوحة RevenueCat): قيدُ الربط
+     يرفضه بـ٢٣٥٠٣، فيُختم بلا عضو — وإلّا ردَدنا ٥٠٠ على كلِّ إعادةٍ ولم يُسجَّل الحدثُ أبداً. ما بعده يقول «لا صاحبَ له» */
+  if (seen.error?.code === "23503") seen = await db.from("billing_events").insert({ ...stamp, user_id: null });
   if (seen.error) {
     if (seen.error.code !== "23505") return "unavailable";
     const stale = new Date(nowMs - 2 * 60_000).toISOString();
