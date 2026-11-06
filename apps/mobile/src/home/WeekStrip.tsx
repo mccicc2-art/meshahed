@@ -8,7 +8,7 @@ import { posterFor } from "../poster";
 import { haptic } from "../haptics";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { PAGE_PAD } from "./Section";
+import { PAGE_PAD, latinTitleFit } from "./Section";
 import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
 
 /**
@@ -18,10 +18,10 @@ import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
  * داخل الكارد تحت بحيث ارتفاعه يقل» — «١ أ ٢ أ»): ملصقٌ لكلّ عمل جنباً إلى جنب، **والاسمُ على أسفل ملصقه فوق تدرّجٍ داكن**
  * فلا سطرَ للاسم ولا سطرَ لـ«+ن» تحته — الفراغُ الذي كان بينهما هو ما رآه أحمد. ثلاثةُ ملصقاتٍ حدٌّ، والرابعُ خانةُ «+ن»
  * تفتح ورقةَ اليوم (D-1587)؛ وكلُّ ملصقٍ يفتح عملَه مباشرة. الفارغُ يضيق ويبهت كما كان.
- * 🆕 T323 — **اسمُ اليوم فوق رقمه بجانب الملصقات، والملصقُ يبدأ من أعلى البطاقة** (خالد ٥ نوفمبر بصورتين على لقطته — عملٌ واحد
- * وعملان — «نفذ»): سطرُ «السبت ٧» فوق الملصق كان يأخذ ٢٠ نقطةً و٤ فجوةً من ارتفاع الشريط كلِّه، ١٢٢ ⇐ ٩٨. صار عموداً بعد آخر
- * ملصق (يمينَه في الإنجليزيّة، يسارَه في العربيّة لأنّ الصفَّ ينقلب) — بترتيب اليوم الفارغ نفسِه: الاسمُ فوق والرقمُ تحته وعلى
- * حشوته العليا نفسِها، فتقرأ الأيّامُ كلُّها على خطٍّ واحد. الثمن: البطاقةُ أعرضُ بنحو ٢٢ نقطة، والارتفاعُ لا يتغيّر بعدد الأعمال.
+ * اسمُ اليوم ورقمُه **يتوسّطان سطراً واحداً بارتفاع سطرٍ موحّد** — المحاذاةُ على خطّ القاعدة كانت تُنزل العربيّةَ عن الرقم اللاتينيّ.
+ * ↩️ T332 — **رجع سطرُ «السبت ٧» فوق الملصق** (أحمد ٦ نوفمبر بلقطة خالد: «في الأسبوع رجّعه مثل الشكل قبل هذا» — رأى الصورتين
+ * و«١ أ»): T323 (أمس) كان قد نقل اليومَ إلى عمودٍ بجانب الملصقات ليقصر الشريطُ ١٢٢ ⇐ ٩٨. عاد الشريطُ ١٢٢ والبطاقةُ أضيق بنحو ٢٢
+ * نقطة. لا تُعِد العمودَ الجانبيَّ بلا كلمةٍ من أحمد.
  */
 const NARROW = 44;
 /* 🆕 D-1615 — **الشريطُ أقصر بنحو ٢٠٪** (أحمد ١ نوفمبر بلقطة الرئيسيّة: «تقليل ارتفاع الأسبوع بنحو 20٪»): الملصقُ هو ما يحدّد
@@ -48,7 +48,7 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
       <View style={{ paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <Pressable onPress={onCalendar} accessibilityRole="link" style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
           <Icon name="calendar" size={18} color={tokens.muted} />
-          <Text size={20} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekTitle}</Text>
+          <Text size={20} weight="700" numberOfLines={1} style={[{ flexShrink: 1 }, latinTitleFit(t.weekTitle)]}>{t.weekTitle}</Text>
           <Text size={16} muted>›</Text>
         </Pressable>
         {entries.length === 0 ? (
@@ -73,7 +73,11 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
           /* 🆕 D-1614 — يومٌ كلُّ ما فيه متوقَّعٌ (لا معلَن): إطارٌ متقطّعٌ بلا تعبئة، والملصقُ المتوقَّعُ باهت — «على الأرجح» لا «أكيد» */
           const guess = list.every((e) => e.expected);
           return (
-            <View key={d.date} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + (guess ? "4D" : "8C"), borderStyle: guess ? "dashed" : "solid", backgroundColor: guess ? "transparent" : tokens.accent2 + "12", padding: DAY_PAD }}>
+            <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent2 + (guess ? "4D" : "8C"), borderStyle: guess ? "dashed" : "solid", backgroundColor: guess ? "transparent" : tokens.accent2 + "12", padding: DAY_PAD, gap: 4, alignItems: "center" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: ROW_LH }}>
+                <Text size={12} muted numberOfLines={1} style={{ lineHeight: ROW_LH }}>{d.weekday}</Text>
+                <Text size={15} weight="700" color={numColor} style={{ lineHeight: ROW_LH, fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
+              </View>
               <View style={{ flexDirection: "row", gap: 6 }}>
                 {shown.map((e, k) => {
                   const url = posterFor(e.poster_path ?? null, POSTER_W);
@@ -112,11 +116,6 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
                     <Text size={16} weight="700" color={tokens.accent2} style={{ fontVariant: ["tabular-nums"] }}>{`+${rest}`}</Text>
                   </Pressable>
                 ) : null}
-              </View>
-              {/* T323 — عمودُ اليوم بعد الملصقات: الاسمُ فوق الرقم، لا سطرٌ فوقها */}
-              <View style={{ alignItems: "center", gap: 2, minWidth: 22 }}>
-                <Text size={12} muted numberOfLines={1} style={{ lineHeight: ROW_LH }}>{d.weekday}</Text>
-                <Text size={15} weight="700" color={numColor} style={{ lineHeight: ROW_LH, fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
               </View>
             </View>
           );

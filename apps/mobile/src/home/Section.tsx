@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from "react";
-import { I18nManager, Platform, Pressable, ScrollView, View, type ScrollViewInstance } from "react-native";
+import { I18nManager, Platform, Pressable, ScrollView, View, type ScrollViewInstance, type TextStyle } from "react-native";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Text, firstStrongRtl } from "../ui";
 import { Icon, type IconName } from "../icons";
 
 /**
@@ -16,6 +16,17 @@ import { Icon, type IconName } from "../icons";
 export const PAGE_PAD = 16;
 export const RAIL_GAP = 12;
 /* عرضُ بطاقة «تابِع المشاهدة» (١٨٤ — D-1278) انتقل إلى `posterSizes.ts` مع مقاسات الملصق (D-1379) */
+
+/**
+ * 🆕 T332 — **العنوانُ الإنجليزيّ على خطّ أيقونته في أندرويد** (أحمد ٦ نوفمبر بلقطة خالد: «الكلام جاي أعلى من الأيقونة»):
+ * أندرويد يحشو صندوقَ النصّ بحدودِ رسمِ الخطّ (`includeFontPadding`)، وحدودُ Poppins غيرُ متناظرة (فوق ١١٠٨ · تحت ٦٠٦ من ١٠٠٠
+ * مقابلَ صعودٍ ١٠٥٠ وهبوطٍ ٣٥٠)، فيتوسّط الصفُّ الصندوقَ ويقع جسمُ الحرف فوقه — قيس في اللقطة ٥ بكسل (≈٢ نقطة) في كلّ عنوان.
+ * بلا الحشوة يقع مركزُ الحروف على مركز الصندوق (فرقٌ دون ٠٫٣ نقطة). **العربيُّ لا يُمسّ**: أحمد رآه ممتازاً، ونقاطُ Tajawal
+ * تعلو فوق صعوده (D-1499) فتُقصّ بلا حشوة. والآيفون لا يعرف هذه الحشوة أصلاً.
+ */
+export function latinTitleFit(title: string): TextStyle | undefined {
+  return Platform.OS === "android" && firstStrongRtl(title) === false ? { includeFontPadding: false } : undefined;
+}
 
 export function SectionHeader({
   title,
@@ -45,7 +56,7 @@ export function SectionHeader({
         {icon ? <Icon name={icon} size={20} color={accent ? tokens.accent : tokens.muted} /> : null}
         {/* D-1378 — عنوانُ القسم ٢٢ ⇐ ٢٠ (أحمد ١٢ أكتوبر، بلقطتين على جهاز خالد): كان أكبرَ ما في الصفحة فطغى على البطاقات تحته.
             (١٨ أوّلاً ثمّ ٢٠ بعد جدول الدرجات — أحمد «اعتمد ٢٠»). الرقمُ نفسُه في «أسبوعك» (`WeekStrip`) وعناوين حالات المكتبة وقوائمها */}
-        <Text size={20} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>
+        <Text size={20} weight="700" numberOfLines={1} style={[{ flexShrink: 1 }, latinTitleFit(title)]}>
           {title}
         </Text>
       </Pressable>
