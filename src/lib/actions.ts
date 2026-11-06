@@ -1,6 +1,7 @@
 "use server";
 
-import { tagSource, type WatchSource } from "@/lib/watchSource";
+/* المدقّق ٦ نوفمبر — النوعُ وحده: الختمُ بالمصدر انتقل إلى `watchMark.ts` (R181)، والاستيرادُ الباقي كان تحذيرَ eslint */
+import type { WatchSource } from "@/lib/watchSource";
 import { closeSignal, ensureMovieInLibrary, ensureShowFollowed, markSignalWatched, markWatchedUpTo, safeImagePath } from "@/lib/watchMark";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { isPersonaId } from "@/core/personas";

@@ -237,7 +237,10 @@ export function PlusScreen() {
             ) : null}
             {serverPlusLine ? <Text size={12} weight="700" color={tokens.accent} style={{ textAlign: "center" }}>{serverPlusLine}</Text> : null}
             {goldTab ? (
-              <PlanCard selected title={t.pwGoldName} sub={t.pwGoldSub} price={selected.price} per={t.pwPerYear} />
+              /* البطاقةُ مبنيّةٌ لتتمدّد في صفّ (flex: 1)؛ وحدَها في عمودٍ يصير تمدّدُها طولاً فينكمش ارتفاعُها إلى صفرٍ حين تمتلئ الشاشةُ بالمزايا — فيختفي السعرُ ولا يظهر إلا بعد إعادة الرسم */
+              <View style={{ flexDirection: "row" }}>
+                <PlanCard selected title={t.pwGoldName} sub={t.pwGoldSub} price={selected.price} per={t.pwPerYear} />
+              </View>
             ) : (
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {offer.plusYearly ? (
