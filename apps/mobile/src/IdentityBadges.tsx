@@ -1,7 +1,7 @@
 import React from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Image } from "expo-image";
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useApp } from "./state";
 import { Text } from "./ui";
 import { hasGoldBadge, isAiPersona, isFounder, isPartner, isPlus, isVerified, type PlanBearer } from "@/core/plan";
@@ -36,10 +36,21 @@ export function identityFlags(p: PlanBearer | null | undefined): IdentityFlags {
 /** ألوانُ GOLD من اللوح (`Badges`) — علامةٌ لا سطح، فلا تتبع الثيم؛ والشكلُ نفسُه في `AccountIdentity` بالويب */
 const GOLD_INK = "#2A1A00";
 const GOLD_EDGE = "#C2860B";
-const INFINITY_D = "M6 2.2a3.8 3.8 0 1 0 0 7.6c2.4 0 3.9-1.9 6-3.8s3.6-3.8 6-3.8a3.8 3.8 0 1 1 0 7.6c-2.4 0-3.9-1.9-6-3.8S8.4 2.2 6 2.2z";
+/* 🆕 T337 — **شعارُ لوبز الأصليُّ نفسُه** لا رسمُ ∞ ثانٍ (أحمد ٦ نوفمبر: «طابقه تماماً مع شعار لوبز الأصلي» — كان الخطُّ رفيعاً
+   والحلقتان متشابكتين): `loopz-mark-xl.png` مقصوصاً على حدوده (٢:١) ومصبوغاً بحبر الذهبيّ، بلا تعديلٍ في شكله — قاعدةُ D-145 */
+const MARK = require("../assets/icons/loopz-mark-badge.png");
 
 /**
- * 🆕 **قرصُ GOLD** — نِسَبُ اللوح من ارتفاع القرص: حشوةٌ ٥:١٦ · فجوةٌ ٣:١٦ · خطٌّ ٩:١٦ · ∞ بعرض ١٢٫٥:١٦ وارتفاع ٦٫٣:١٦.
+ * 🆕 T337 — **كلمةُ الشارة إلى وسطها على الآيفون** (لقطةُ أحمد ٦ نوفمبر): بسطرٍ ضيّقٍ (١٫١٥ من الخطّ) يضع الآيفون حروفَ Poppins
+ * أعلى من وسط صندوقها — قيس في اللقطة نحو ٠٫٠٩ من ارتفاع القرص فوق مركز الشعار (≈٠٫١٥ من مقاس الخطّ). **أندرويد قيس على جوال
+ * خالد في الوسط تماماً فلا يُمسّ.** إزاحةُ رسمٍ لا تغيّر المساحة التي تأخذها الكلمة.
+ */
+function wordNudge(fs: number) {
+  return Platform.OS === "ios" ? { transform: [{ translateY: 0.15 * fs }] } : null;
+}
+
+/**
+ * 🆕 **قرصُ GOLD** — نِسَبُ اللوح من ارتفاع القرص: حشوةٌ ٥:١٦ · فجوةٌ ٣:١٦ · خطٌّ ٩:١٦ · الشعارُ بعرض ١٢٫٥:١٦ وارتفاع ٦٫٢٥:١٦ (T337).
  * التدرّجُ رسمٌ (`react-native-svg`، في البناء منذ زمن) لا حزمةٌ جديدة؛ وعرضُه من قياس المحتوى (`onLayout`) فيُرسم خلفه تماماً.
  */
 function GoldPill({ hgt, label }: { hgt: number; label: string }) {
@@ -67,10 +78,8 @@ function GoldPill({ hgt, label }: { hgt: number; label: string }) {
           <Rect x={r} y={1.5} width={Math.max(0, w - 2 * r)} height={1} fill="rgba(255,255,255,0.55)" />
         </Svg>
       ) : null}
-      <Text size={fs} weight="700" color={GOLD_INK} style={{ letterSpacing: (1.1 / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }}>GOLD</Text>
-      <Svg width={(12.5 / 16) * hgt} height={(6.3 / 16) * hgt} viewBox="0 0 24 12">
-        <Path d={INFINITY_D} fill="none" stroke={GOLD_INK} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      </Svg>
+      <Text size={fs} weight="700" color={GOLD_INK} style={[{ letterSpacing: (1.1 / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }, wordNudge(fs)]}>GOLD</Text>
+      <Image source={MARK} style={{ width: (12.5 / 16) * hgt, height: (6.25 / 16) * hgt }} contentFit="contain" accessible={false} />
     </View>
   );
 }
@@ -95,7 +104,7 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
     <>
       {ai ? (
         <View accessibilityRole="image" accessibilityLabel={t.aiBadge} style={{ width: (24 / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
-          <Text size={(9 / 16) * hgt} weight="700" color={BRAND} style={{ letterSpacing: (0.6 / 9) * ((9 / 16) * hgt), lineHeight: (9 / 16) * hgt * 1.15, writingDirection: "ltr" }}>AI</Text>
+          <Text size={(9 / 16) * hgt} weight="700" color={BRAND} style={[{ letterSpacing: (0.6 / 9) * ((9 / 16) * hgt), lineHeight: (9 / 16) * hgt * 1.15, writingDirection: "ltr" }, wordNudge((9 / 16) * hgt)]}>AI</Text>
         </View>
       ) : null}
       {gold ? <GoldPill hgt={hgt} label={t.goldBadge} /> : null}
@@ -106,7 +115,7 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
         const label = word === "PARTNER" ? t.partnerBadge : t.plusBadge;
         return (
           <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
-            <Text size={fs} weight="700" color={BRAND} style={{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }}>{word}</Text>
+            <Text size={fs} weight="700" color={BRAND} style={[{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }, wordNudge(fs)]}>{word}</Text>
           </View>
         );
       })() : null}

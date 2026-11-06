@@ -186,7 +186,7 @@ function Pill({
 
 /**
  * 🆕 **شارةُ GOLD** (خطّةُ Loopz+ v2 §٤، لوحُ `Badges`): تدرّجٌ معدنيٌّ `#FFE680 → #FFD200 → #F59E0B` بحدٍّ `#C2860B` وضوءٍ
- * داخليّ، و«GOLD» بلون `#2A1A00` ثمّ علامةُ ∞ بلونها في قامة الحرف. **المقاساتُ نسبةُ القرص نفسِه** (ارتفاعٌ ٠٫٨٢em، حشوةٌ
+ * داخليّ، و«GOLD» بلون `#2A1A00` ثمّ شعارُ لوبز بلونها (T337). **المقاساتُ نسبةُ القرص نفسِه** (ارتفاعٌ ٠٫٨٢em، حشوةٌ
  * ٥:١٦، فجوةٌ ٣:١٦، خطٌّ ٩:١٦) — **وعرضُها يتبع الكلمةَ والعلامة** لا رقماً ثابتاً، كما في اللوح.
  */
 function GoldPill({ label }: { label: string }) {
@@ -218,16 +218,25 @@ function GoldPill({ label }: { label: string }) {
       <span className="lz-pill-word" style={{ fontSize: `${(9 / 16) * PILL_EM}em`, letterSpacing: `${1.1 / 9}em` }}>
         GOLD
       </span>
-      <svg viewBox="0 0 24 12" aria-hidden="true" style={{ width: `${(12.5 / 16) * PILL_EM}em`, height: `${(6.3 / 16) * PILL_EM}em`, display: "block" }}>
-        <path d={INFINITY_D} fill="none" stroke={GOLD_INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* 🆕 T337 — شعارُ لوبز الأصليُّ نفسُه مصبوغاً بحبر الذهبيّ (`public/loopz-mark-badge.png`) لا رسمُ ∞ ثانٍ — الملفُّ نفسُه في التطبيق */}
+      <span
+        aria-hidden="true"
+        style={{
+          width: `${(12.5 / 16) * PILL_EM}em`,
+          height: `${(6.25 / 16) * PILL_EM}em`,
+          display: "block",
+          backgroundImage: "url(/loopz-mark-badge.png)",
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+        }}
+      />
     </span>
   );
 }
 
-/** حبرُ الذهبيّ وعلامةُ ∞ — من اللوح، ولا يتبعان الثيم (الشكلُ نفسُه في `IdentityBadges` بالتطبيق) */
+/** حبرُ الذهبيّ — من اللوح، ولا يتبعان الثيم (الشكلُ نفسُه في `IdentityBadges` بالتطبيق) */
 const GOLD_INK = "#2A1A00";
-const INFINITY_D = "M6 2.2a3.8 3.8 0 1 0 0 7.6c2.4 0 3.9-1.9 6-3.8s3.6-3.8 6-3.8a3.8 3.8 0 1 1 0 7.6c-2.4 0-3.9-1.9-6-3.8S8.4 2.2 6 2.2z";
 
 /** `GOLD` أو `PARTNER` أو `PLUS` أو لا شيء — **ولا يجتمعن أبداً** */
 export function PlanPill({
