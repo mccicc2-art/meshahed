@@ -40,6 +40,8 @@ export type HomeHeaderPayload = {
   plan: string | null;
   founder: boolean;
   plus_until: string | null;
+  /** 🆕 T334 — شارةُ GOLD في رأس الرئيسيّة (`hasGoldBadge` يقرؤه) — غائبٌ من خادمٍ أقدم فتبقى شارةُ الخطّة */
+  gold?: boolean;
   verified_at: string | null;
   avatar_url: string | null;
   avatar_pos: number | null;

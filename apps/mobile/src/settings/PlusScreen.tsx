@@ -11,7 +11,7 @@ import { Segmented } from "../library/ToolsSheet";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { haptic } from "../haptics";
 import { useSettings } from "./api";
-import { buy, load, manage, reached, restore, type ActiveSub, type Loaded, type Plan } from "../billing/purchases";
+import { buy, load, manage, reached, restore, type Loaded, type Plan } from "../billing/purchases";
 import type { Dict } from "@/core/i18n";
 
 /**
@@ -66,7 +66,10 @@ export function PlusScreen() {
   const active = store?.active ?? null;
   const offer = store?.offer ?? null;
   /* اشتراكٌ من متجرٍ آخر (آيفون ⇄ أندرويد) يُعرض ويُدار ولا يُرقّى من هنا — `ActiveSub.here` */
-  const subscriber = !!active && (active.tier === "gold" || !offer?.goldYearly || !active.here);
+  /* 🆕 T334 — **ذهبيٌّ من الخادم بلا متجر** (منحةٌ — أحمد ٦ نوفمبر بلقطة خالد: «خطة وحده قولد، القولد شامل بلس»): صفحةُ المشترك
+     بخطّةٍ واحدة «ذهبي» وتاريخِها — لا سطرَ بلس ولا أزرارَ شراء. المتجرُ إن وُجد يغلب (هو ما يُدار ويُجدَّد) */
+  const serverGold = !active && a?.gold === true;
+  const subscriber = (!!active && (active.tier === "gold" || !offer?.goldYearly || !active.here)) || serverGold;
   const upgrade = !!active && active.here && active.tier === "plus" && !!offer?.goldYearly;
 
   const [tier, setTier] = useState<Tier>("plus");
@@ -204,7 +207,7 @@ export function PlusScreen() {
       <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
         {store === undefined ? (
           <View style={{ height: 52 }} />
-        ) : ownsPlusView && active ? (
+        ) : ownsPlusView && (active || serverGold) ? (
           <>
             <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -212,18 +215,28 @@ export function PlusScreen() {
                   <Text size={18} weight="800" style={{ writingDirection: "ltr" }}>
                     Loopz<Text size={18} weight="800" color={tokens.accent}>+</Text>
                   </Text>
-                  <Text size={14} weight="700" muted>{active.tier === "gold" ? t.pwTierGold : active.monthly ? t.pwMonthly : t.pwYearly}</Text>
+                  <Text size={14} weight="700" muted>{!active || active.tier === "gold" ? t.pwTierGold : active.monthly ? t.pwMonthly : t.pwYearly}</Text>
                 </View>
-                {fmtDate(active.expires) ? (
-                  <Text size={13} muted style={{ marginTop: 4, lineHeight: 19 }}>{active.willRenew ? t.pwRenews(fmtDate(active.expires) as string) : t.pwEnds(fmtDate(active.expires) as string)}</Text>
+                {active ? (
+                  fmtDate(active.expires) ? (
+                    <Text size={13} muted style={{ marginTop: 4, lineHeight: 19 }}>{active.willRenew ? t.pwRenews(fmtDate(active.expires) as string) : t.pwEnds(fmtDate(active.expires) as string)}</Text>
+                  ) : null
+                ) : fmtDate(a?.gold_until) ? (
+                  /* المنحةُ لا تتجدّد: تاريخُ نهايتها وحدَه */
+                  <Text size={13} muted style={{ marginTop: 4, lineHeight: 19 }}>{t.pwEnds(fmtDate(a?.gold_until) as string)}</Text>
                 ) : null}
               </View>
               <View style={{ paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: tokens.success + "24" }}>
                 <Text size={12} weight="800" color={tokens.success} style={{ lineHeight: 24 }}>{t.pwActive}</Text>
               </View>
             </View>
-            <Button label={t.pwManage} variant="ghost" onPress={() => void manage(active as ActiveSub)} />
-            <Text size={11} muted style={{ textAlign: "center", lineHeight: 17 }}>{t.pwManageNote}</Text>
+            {/* لا متجرَ يُدار لمنحة: زرُّ الإدارة وملاحظتُه لاشتراك المتجر وحده */}
+            {active ? (
+              <>
+                <Button label={t.pwManage} variant="ghost" onPress={() => void manage(active)} />
+                <Text size={11} muted style={{ textAlign: "center", lineHeight: 17 }}>{t.pwManageNote}</Text>
+              </>
+            ) : null}
           </>
         ) : !offer || !selected ? (
           <Text size={13} muted style={{ textAlign: "center", lineHeight: 20, paddingVertical: 8 }}>{t.pwUnavailable}</Text>

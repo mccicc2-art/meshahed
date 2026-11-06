@@ -16,7 +16,9 @@ import {
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { CAL_EXPECTED } from "@/core/calendar";
-import { isPlus } from "@/core/plan";
+import { isPlus, isGold } from "@/core/plan";
+import { goldUntilOf } from "@/lib/billing";
+import { createClient } from "@/lib/supabase/server";
 import { curatedName } from "@/core/universes";
 import { applyQueueOrder } from "@/core/homePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
@@ -80,7 +82,7 @@ export async function GET(req: NextRequest) {
     const head = await buildHomeHeader({ followRows, summary, watchedMovies, profile, myRatings, t });
     const { watchedMovieIds, prefs, today, watchedByShow, lastWatchedOrder, rewatchSinceMap, headerStats } = head;
 
-    const [unreadSignals, unreadShares, followStats, body] = await Promise.all([
+    const [unreadSignals, unreadShares, followStats, body, goldUntil] = await Promise.all([
       getUnreadSignals(),
       getUnreadShares(),
       getFollowStats(user.id).catch(() => ({ followers: 0, following: 0 })),
@@ -100,6 +102,8 @@ export async function GET(req: NextRequest) {
         today,
         freshStats,
       }),
+      /* 🆕 T334 — الذهبيُّ بقارئه المستقلّ كما في `/me` (أحمد ٦ نوفمبر بلقطة خالد: الرأسُ يقول PARTNER والذهبيُّ ممنوح) */
+      createClient().then((db) => goldUntilOf(db, user.id)),
     ]);
 
     /* ——— آثارٌ جانبيّةٌ بعد الردّ — ما كان العميلُ الويبيُّ يكتبه ——— */
@@ -209,6 +213,7 @@ export async function GET(req: NextRequest) {
         plan: profile?.plan ?? null,
         founder: profile?.founder ?? false,
         plus_until: profile?.plus_until ?? null,
+        gold: profile ? isGold({ ...profile, gold_until: goldUntil }) : false,
         verified_at: profile?.verified_at ?? null,
         avatar_url: profile?.avatar_url ?? null,
         avatar_pos: profile?.avatar_pos ?? null,
