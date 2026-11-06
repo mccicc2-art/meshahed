@@ -14,6 +14,7 @@ import { haptic } from "../haptics";
 import { notePress } from "../perfMarks";
 import { touchState, touchTarget } from "../touchTargets";
 import { Chevron } from "../settings/ui";
+import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { useAppearanceActs } from "../settings/appearanceActs";
 import { HOME_KEY, fetchHome } from "../home/useHome";
 import { openProfile } from "../member/open";
@@ -106,6 +107,9 @@ function SideDrawer({
   const home = useQuery({ queryKey: HOME_KEY, queryFn: fetchHome, staleTime: 60_000 });
   const h = home.data?.header ?? null;
   const plus = me?.plus ?? false;
+  /* 🆕 T335 — **الذهبيُّ في القائمة كما في الرئيسيّة** (أحمد ٦ نوفمبر بلقطة خالد: «هنا مكتوب اشتراك بلس، والاسم فوق فاضي — خلّ جنبه
+     أيضاً الاشتراك»): رأسُ الرئيسيّة يحمله من الخادم (T334) و`/me` كذلك — أيُّهما وصل */
+  const gold = h?.gold === true || me?.gold === true;
   const toastFail = useCallback(() => undefined, []);
   const { settings, busy, pickLocale, pickTheme } = useAppearanceActs(toastFail);
 
@@ -213,9 +217,14 @@ function SideDrawer({
               style={({ pressed }) => ({ marginTop: plus ? 0 : 24, marginBottom: plus ? 14 : 0, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                  <Text size={11} weight="700" color={tokens.onAccent}>PLUS</Text>
-                </View>
+                {/* T335 — للذهبيّ شارتُه (`IdentityBadges` كصفحة الاشتراك) لا «PLUS»: خطّةٌ واحدة «ذهبي» تشمل بلس */}
+                {gold ? (
+                  <IdentityBadges flags={{ partner: false, plus: true, founder: false, verified: false, gold: true }} nameSize={16} />
+                ) : (
+                  <View style={{ backgroundColor: tokens.accent, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
+                    <Text size={11} weight="700" color={tokens.onAccent}>PLUS</Text>
+                  </View>
+                )}
                 <Text size={plus ? 16 : 17} weight="800" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flex: 1 }}>
                   {plus ? (until ? t.drawerPlusUntil(until) : t.drawerPlusActive) : t.drawerPlusCta}
                 </Text>
@@ -284,7 +293,11 @@ function SideDrawer({
                   {avatar ? <Image source={{ uri: avatar }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h?.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="person" size={26} color={tokens.muted} />}
                 </View>
                 <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <Text size={20} weight="800" numberOfLines={1}>{name}</Text>
+                  {/* T335 — شارةُ الرئيسيّة نفسُها بجانب الاسم (`IdentityBadges` · ٢٠ كرأس الرئيسيّة): GOLD يغلب PARTNER وPLUS، والتوثيقُ لا يُرسم هنا كالرئيسيّة */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text size={20} weight="800" numberOfLines={1} style={{ flexShrink: 1 }}>{name}</Text>
+                    <IdentityBadges flags={{ ...identityFlags(h ?? me), gold, verified: false }} nameSize={20} />
+                  </View>
                   {/* 🔴 D-1572 — **المعرّفُ تحت الاسم في جهته** (لقطةُ أحمد ٢٩ أكتوبر، آيفون: «@ahmed» في أقصى اليسار بعيداً عن الاسم): كان
                       `textAlign: "right"` في العربيّة، وiOS يقلب يمين/يسار مع اتّجاه التطبيق فيرميه للطرف الآخر. الآن يأخذ عرضَ نصّه
                       ويقف في البداية (`alignSelf`) — والتخطيطُ يقلب البداية صحيحاً في الاتّجاهين، والنصُّ اللاتينيُّ يبقى `ltr` */}
