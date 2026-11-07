@@ -15,6 +15,7 @@ import { statusBarStyleOf } from "../src/theme";
 import { WebLayer } from "../src/WebLayer";
 import { shell } from "../src/shell";
 import { PushGate } from "../src/PushGate";
+import { PushNudge } from "../src/PushNudge";
 import { WidgetGate } from "../src/WidgetGate";
 import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
@@ -195,6 +196,8 @@ function Shell() {
       <WebLayer />
       {/* 🆕 D-1305 — إشعاراتُ الدفع: الإذنُ والرمزُ عند الإقلاع (`src/push.ts`)، وضغطةُ الإشعار تفتح وجهتَه الأصليّة */}
       <PushGate />
+      {/* 🆕 T348 — مرّةً لمن رفض إذنَ الإشعارات: ورقةٌ تفتح صفحةَ Loopz في إعدادات الجهاز (`src/PushNudge.tsx`) */}
+      <PushNudge />
       <WidgetGate />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
       {/* 🆕 D-1505 — القائمةُ الجانبيّة: تُفتح من صورة الحساب وتُرسم مرّةً فوق المكدّس (`src/drawer/SideDrawer.tsx`) */}

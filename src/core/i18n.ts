@@ -1955,6 +1955,11 @@ const ar = {
   pushOffSub: "افتح إعدادات النظام واسمح لـLoopz بالإشعارات",
   pushOpenSystem: "إعدادات النظام",
   pushAllow: "السماح بالإشعارات",
+  /* 🆕 T348 — ورقةُ «الإشعارات موقوفة» مرّةً لمن رفض الإذن (أحمد ٧ نوفمبر «١ ج»): صفوفُها نصوصُ إعدادات الإشعارات نفسُها */
+  pushNudgeTitle: "الإشعارات موقوفة",
+  pushNudgeSub: "فعّلها من الإعدادات ليصلك ما يهمّك لحظة حدوثه",
+  pushNudgeOpen: "افتح الإعدادات",
+  pushNudgeLater: "لاحقاً",
   pushNewMessage: "رسالة جديدة",
   /* 🆕 D-1436 — «فلان ذكرك» في دفع القروب لمن نُودي بـ@ */
   pushGroupMention: (name: string) => `${name} ذكرك`,
@@ -4697,6 +4702,10 @@ const en: Dict = {
   pushOffSub: "Open system settings and allow notifications for Loopz",
   pushOpenSystem: "System settings",
   pushAllow: "Allow notifications",
+  pushNudgeTitle: "Notifications are off",
+  pushNudgeSub: "Turn them on in Settings so what matters reaches you as it happens",
+  pushNudgeOpen: "Open Settings",
+  pushNudgeLater: "Later",
   pushNewMessage: "New message",
   pushGroupMention: (name: string) => `${name} mentioned you`,
   pushMarkRead: "Mark as read",

@@ -68,8 +68,28 @@ async function ensureChannel() {
   });
 }
 
-/** النافذةُ تُعرض تلقائيّاً مرّةً في عمر التثبيت: من أغلقها بلا جواب لا تلاحقه في كلِّ إقلاع — صفُّ الإعدادات بابُه بعدها */
-const ASKED_KEY = "loopz.push.asked";
+/** النافذةُ تُعرض تلقائيّاً مرّةً في عمر التثبيت: من أغلقها بلا جواب لا تلاحقه في كلِّ إقلاع — صفُّ الإعدادات بابُه بعدها.
+    🆕 T348 — **المفتاحُ ‎v2 يعيد السؤالَ مرّةً لكلِّ من لم يمنح الإذن** (أحمد ٧ نوفمبر: «اطلب من الكل يعطي صلاحية للاشعارات —
+    غلط كبير ننتظره يدخل الاعدادات»؛ وآيفونُه نفسُه كان بلا رمزٍ فلم يصله إشعارُ نهاية اشتراكه). من يقدر النظامُ أن يسأله
+    (`canAskAgain`) تظهر له نافذةُ النظام في أوّل فتحٍ بعد التحديث؛ ومن رفضها رفضاً نهائيّاً تأتيه ورقةُ `PushNudge` مرّةً */
+const ASKED_KEY = "loopz.push.asked.v2";
+/** 🆕 T348 — ورقةُ «الإشعارات موقوفة» تُعرض مرّةً في عمر التثبيت («١ ج»)، ومن سُئل بنافذة النظام في هذا الدور لا تأتيه */
+const NUDGE_KEY = "loopz.push.nudged";
+let canAskNow = false; /* آخرُ ما قاله النظام: هل تُعرض نافذتُه إن طُلبت؟ */
+function nudgedBefore(): boolean {
+  try {
+    return SecureStore.getItem(NUDGE_KEY) === "1";
+  } catch {
+    return true; /* لا نعرف ⇒ لا نلحّ */
+  }
+}
+function markNudged() {
+  try {
+    SecureStore.setItem(NUDGE_KEY, "1");
+  } catch {
+    /* لا شيء */
+  }
+}
 function askedBefore(): boolean {
   try {
     return SecureStore.getItem(ASKED_KEY) === "1";
@@ -86,14 +106,20 @@ function askedBefore(): boolean {
  */
 async function readPermission(ask: boolean | "user"): Promise<State> {
   let p = await Notifications.getPermissionsAsync();
-  if (!p.granted && ask && p.canAskAgain && (ask === "user" || !askedBefore())) {
+  /* 🆕 T348 — **بعد الترحيب لا أثناءه** («٢ ب»: نافذةُ النظام مباشرةً بعد إتمامه): الداخلُ للتوّ يُسأل حين يُختم الترحيب
+     (`session.onWelcome` أدناه)، لا فوق خطواته. وصفُّ الإعدادات («user») يسأل متى ضُغط */
+  const inWelcome = ask !== "user" && session.welcomePending();
+  if (!p.granted && ask && !inWelcome && p.canAskAgain && (ask === "user" || !askedBefore())) {
     try {
       SecureStore.setItem(ASKED_KEY, "1");
     } catch {
       /* لا شيء */
     }
+    /* سُئل بنافذة النظام نفسِها ⇒ هذه فرصتُه في هذا الدور، فلا تلحقها ورقةٌ تكرّر السؤال */
+    markNudged();
     p = await Notifications.requestPermissionsAsync();
   }
+  canAskNow = !p.granted && p.canAskAgain;
   return p.granted ? "granted" : p.canAskAgain ? "undetermined" : "denied";
 }
 
@@ -221,6 +247,16 @@ export const push = {
   },
   /** من صفّ «السماح بالإشعارات» في الإعدادات، وبعد العودة من إعدادات النظام */
   refresh: (ask = false) => sync(ask ? "user" : false),
+  /**
+   * 🆕 T348 — هل تُعرض ورقةُ «الإشعارات موقوفة» الآن؟ عضوٌ بجلسةٍ أتمّ الترحيب، والإذنُ غيرُ ممنوح، ونافذةُ النظام سُئلها من
+   * قبل (أو لا تُعرض له أصلاً)، ولم يرَ الورقةَ قطّ — مرّةً في عمر التثبيت
+   */
+  nudgeDue: (): boolean =>
+    (state === "denied" || (state === "undetermined" && askedBefore())) && session.seen() && !session.welcomePending() && !nudgedBefore(),
+  /** تُختم عند العرض نفسِه: من أغلق التطبيقَ والورقةُ أمامه لا تعود إليه */
+  markNudged,
+  /** زرُّ الورقة: النظامُ ما زال يقدر أن يسأل ⇒ نافذتُه (أندرويد بعد رفضٍ واحد)؛ وإلّا صفحةُ Loopz في إعدادات الجهاز */
+  canAskNow: (): boolean => canAskNow,
 };
 
 /* ===== التسجيلُ عند الإقلاع (وحدةُ أثرٍ جانبيّ كـ`ota`) ===== */
@@ -243,6 +279,10 @@ try {
   setTimeout(() => void sync(true), 2500);
   /* جلسةٌ ظهرت (دخولٌ للتوّ) ⇒ يُسأل ويُسجَّل؛ والعودةُ من الخلفيّة تعيد قراءةَ الإذن (قد تغيّر في إعدادات النظام) */
   session.subscribe(() => void sync(true));
+  /* 🆕 T348 — خُتم الترحيبُ ⇒ نافذةُ النظام الآن («٢ ب»)، بعد أن ترسم الرئيسيّةُ أوّلَ مرّة */
+  session.onWelcome((pending) => {
+    if (!pending) setTimeout(() => void sync(true), 1500);
+  });
   session.onSignOut(forget);
   /* 🆕 1.12.7 — رمزُ الودجت كُتب للتوّ ⇒ «dm-native» صار صادقاً: التسجيلُ يُعاد الآن */
   onWidgetToken(() => {
