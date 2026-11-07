@@ -9,6 +9,7 @@ import { createClient, type Session, type SupabaseClient } from "@supabase/supab
 import { CONFIG } from "./config";
 import { secureStorage } from "./secureStorage";
 import { nativeGoogleIdToken } from "./googleNative";
+import { session as appSession } from "./session";
 
 /**
  * ====== الدخولُ والجلسة — Google عبر المتصفّح، PKCE، تجديدٌ على الجهاز ======
@@ -52,6 +53,31 @@ export const supabase: SupabaseClient = createClient(
     },
   },
 );
+
+/**
+ * 🔴 T349 — **رمزُ الدخول الأصليُّ يتقاعد مع الخروج** (تسجيلاتُ خالد ٧ نوفمبر: بعد تبديل الحساب أظهرت القائمةُ الجانبيّة
+ * خطّةَ الحساب السابق — GOLD و«فعّالٌ حتى ٦ نوفمبر» على حسابٍ منتهٍ، و«اشترك في Plus» على حساب GOLD).
+ *
+ * العميلُ أعلاه يحفظ جلسةَ آخر دخولٍ في الذاكرة ولا يُخرج منها أبداً (انظر أعلى: لا `signOut` من هنا). فكان رمزُها
+ * يبقى بعد الخروج، و`accessToken()` يعيده سقوطاً كلّما لم يكن للجسر ولا للجلسة المملوكة رمز — ومن ذلك الثواني بين
+ * الخروج والدخول التالي، وفيها يصير الرمزُ لغير صاحبه. «من أنا» يُطلب فيها فيعود بالحساب السابق (رمزُه صالحٌ حتّى ساعةٍ بعد الخروج)، ويبقى في
+ * الكاش دقيقةً على أنّه حديث، والرئيسيّةُ تُطلب بعد الدخول بالرمز الجديد — فتختلط الخطّتان على شاشةٍ واحدة.
+ *
+ * ⚖️ **يُتقاعد محلّيّاً لا عند الخادم**: نداءُ خروجٍ هنا يُلغي الجلسةَ عند Supabase (علّةُ ٧ سبتمبر)؛ يكفي ألّا يسأل
+ * `accessToken()` العميلَ عن رمزٍ بعد خروج صاحبه. **ولا يسأله أصلاً، لا يُقارن الرمزُ فقط**: `getSession()` يجدّد الجلسةَ
+ * بنفسه إن بقي من عمرها دون تسعين ثانية (رغم `autoRefreshToken: false`) فيأتي برمزٍ آخر للحساب نفسِه لا تطابقه المقارنة —
+ * وإن رفض الخادمُ التجديدَ (الخروجُ `global`) أعاد الجلسةَ السابقةَ نفسَها ما دام رمزُها صالحاً. وحيث بقيت جلستُه حيّةً عند
+ * الخادم (خروجٌ بلا شبكة، أو `session:clear` و`/login`) يُستهلك به رمزُ التجديد الذي سُلِّم للويب
+ * (`refresh_token_already_used`). الدخولُ التالي يُطلق `SIGNED_IN` داخل `signInWithIdToken` / `exchangeCodeForSession` قبل
+ * أن يقرأ `doLogin` الجلسة، فيعود كلُّ شيءٍ كما كان.
+ */
+let retired = false;
+supabase.auth.onAuthStateChange((e) => {
+  if (e === "SIGNED_IN") retired = false;
+});
+appSession.onSignOut(() => {
+  retired = true;
+});
 
 /** مفتاحُ supabase-js الافتراضيّ للجلسة في المخزن — لِمسح ما حفظته 1.1/1.2 مرّةً واحدة */
 const LEGACY_SESSION_KEY = (() => {
@@ -114,8 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     /* لا جلسةَ تُقرأ من مخزن: الكوكي في الـWebView هو الجلسة. يُمسح إرثُ
        النسخ السابقة ثمّ يُرفع الستار. */
     forgetLegacySession().finally(() => setLoading(false));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
+    /* 🆕 T349 — بعد الخروج لا يعيدها إلّا دخولٌ جديد (مستمعُ التقاعد أعلاه سُجّل قبل هذا، فيُمحى `retired` عند `SIGNED_IN` قبل أن يصل هنا) */
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(retired ? null : s));
+    /* 🆕 T349 — الخارجُ لا جلسةَ له هنا أيضاً: كانت تبقى فتُبقي «من أنا» مفعَّلاً في نافذة التبديل (`state.tsx` → `on`) */
+    const offOut = appSession.onSignOut(() => setSession(null));
+    return () => {
+      sub.subscription.unsubscribe();
+      offOut();
+    };
   }, []);
 
   const value = useMemo<AuthState>(
@@ -200,8 +232,13 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
-/** رمزُ الوصول الحاليّ — يُجدَّد إن كان على وشك الانتهاء. */
+/**
+ * رمزُ الوصول الحاليّ — يُجدَّد إن كان على وشك الانتهاء (`getSession()` يجدّده بنفسه دون تسعين ثانية).
+ * 🆕 T349 — و`null` بعد الخروج حتّى دخولٍ جديد، **بلا سؤال العميل**: هويّةُ حسابٍ خرج لا تُرسل باسم من بعده، ولا تُجدَّد.
+ */
 export async function accessToken(): Promise<string | null> {
+  if (retired) return null;
   const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  /* خروجٌ وقع والقراءةُ في الطريق: ما عادت به لصاحبٍ خرج */
+  return retired ? null : (data.session?.access_token ?? null);
 }
