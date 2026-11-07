@@ -416,7 +416,7 @@ export const SECTIONS: Section[] = [
       {
         icon: "repeat",
         ar: "اربط حتى ٥ تطبيقات، ومشاهدتك تتسجّل وحدها",
-        en: "Link up to 5 apps, and your watching logs itself",
+        en: "Link up to 5 apps, and your watching is tracked automatically",
         arBody:
           "خمسة تطبيقات في مدارك (وبلا حدّ مع Gold)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio يسألك دائماً، لأنه لا يخبرنا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
         enBody:
