@@ -109,6 +109,13 @@ export function rowPatchOf(ev: RcEvent, nowMs: number, current?: { plan: SubTier
       const next = tierOfProduct(ev.new_product_id, null);
       const was = current?.plan ?? plan;
       if (!ev.new_product_id || tierRank(next) <= tierRank(was)) return null;
+      /* 🔴 T344 — **قوقل يبيع الترقيةَ شراءً جديداً** (المرحلة ٤، أندرويد خالد ٦ نوفمبر): رمزُ شراءٍ آخر ⇐ صفٌّ آخر يأتيه
+         `INITIAL_PURCHASE` بالذهبيّ، والقديمُ لا يصله «انتهى» أبداً. كان يُرقّى هنا ويبقى «نشطاً» بنهايةٍ ماضية، فيراه
+         `storeStillLive` اشتراكاً حيّاً ولا يُرسَل «انتهى اشتراكك» حين ينتهي الذهبيّ. **فالقديمُ يُغلق في لحظة الترقية** بطبقته
+         ومنتجه كما كانا. وأبل تُبقي الشراءَ نفسَه في المجموعة (صفٌّ واحد يتجدّد بالذهبيّ — آيفون أحمد)، فيُرقّى كما كان */
+      if (String(ev.store ?? "").toUpperCase() === "PLAY_STORE") {
+        return { ...base, plan: was, status: "expired", cancel_at_period_end: true, current_period_end: new Date(Math.min(nowMs, ev.expiration_at_ms ?? nowMs)).toISOString() };
+      }
       return { plan: next, product_id: ev.new_product_id, current_period_end: end, status: "active", cancel_at_period_end: false };
     }
     case "CANCELLATION": {

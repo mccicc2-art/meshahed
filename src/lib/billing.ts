@@ -126,7 +126,9 @@ async function applyClaimed(db: Db, ev: RcEvent, uid: string | null, env: "produ
   }
 
   const after = await rankOf(db, uid);
-  if (after != null && after < before) await planEnded(uid);
+  /* T344 — **الترقيةُ ليست نهاية**: في قوقل يُغلق حدثُها الشراءَ القديم، وقد يسبق `INITIAL_PURCHASE` الذهبيَّ بثوانٍ فتهبط
+     الرتبةُ لحظةً — فلا يُقال لمن رقّى للتوّ «انتهى اشتراكك». النهايةُ الحقيقيّةُ يلتقطها حدثُها أو الدورةُ الساعيّة */
+  if (after != null && after < before && ev.type !== "PRODUCT_CHANGE") await planEnded(uid);
   return "applied";
 }
 
@@ -247,7 +249,10 @@ export async function planEnded(uid: string, endedAt?: string | null): Promise<v
 async function storeStillLive(uid: string): Promise<boolean> {
   try {
     const db = await createServiceClient();
-    const { data, error } = await db.from("subscriptions").select("id").eq("user_id", uid).eq("provider", "revenuecat").in("status", ["active", "past_due"]).limit(1);
+    /* 🔴 T344 — **وحيٌّ بنهايةٍ قريبة**: التجديدُ المتأخّر يصل بعد النهاية بدقائقَ أو ساعات، أمّا صفٌّ مضى على نهايته يومٌ
+       وما زال «نشطاً» فصفٌّ عالقٌ لم يصله «انتهى» (ترقيةُ قوقل قبل T344) — لا يحبس إشعارَ النهاية إلى الأبد */
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const { data, error } = await db.from("subscriptions").select("id").eq("user_id", uid).eq("provider", "revenuecat").in("status", ["active", "past_due"]).or(`current_period_end.is.null,current_period_end.gt.${since}`).limit(1);
     return !error && (data?.length ?? 0) > 0;
   } catch {
     return false;

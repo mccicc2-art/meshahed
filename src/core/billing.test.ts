@@ -65,6 +65,24 @@ test("تبديلُ المنتج: الترقيةُ فوريّة، والنزول�
   assert.equal(rowPatchOf(ev({ type: "PRODUCT_CHANGE", product_id: "plus_monthly", new_product_id: "plus_yearly" }), NOW, { plan: "plus" }), null);
 });
 
+test("T344 — ترقيةُ قوقل تُغلق الشراءَ القديم (الذهبيُّ يأتي في صفٍّ جديد)", () => {
+  const old = rowPatchOf(
+    ev({ type: "PRODUCT_CHANGE", store: "PLAY_STORE", product_id: "loopz_plus:monthly", new_product_id: "loopz_gold:yearly", expiration_at_ms: NOW + 60_000 }),
+    NOW,
+    { plan: "plus" },
+  )!;
+  assert.equal(old.status, "expired");
+  assert.equal(old.plan, "plus");
+  assert.equal(old.product_id, "loopz_plus:monthly");
+  assert.equal(old.current_period_end, new Date(NOW).toISOString());
+  /* وأبل تُبقي الشراءَ نفسَه: الصفُّ يُرقّى في مكانه ويبقى نشطاً */
+  const apple = rowPatchOf(ev({ type: "PRODUCT_CHANGE", store: "APP_STORE", product_id: "plus_yearly", new_product_id: "gold_yearly" }), NOW, { plan: "plus" })!;
+  assert.equal(apple.status, "active");
+  assert.equal(apple.plan, "gold");
+  /* والنزولُ في قوقل كما في أبل: لا يُمسّ */
+  assert.equal(rowPatchOf(ev({ type: "PRODUCT_CHANGE", store: "PLAY_STORE", product_id: "loopz_gold:yearly", new_product_id: "loopz_plus:monthly" }), NOW, { plan: "gold" }), null);
+});
+
 test("العمولة: ٢٥٪ من الصافي في السنة الأولى، والاسترجاعُ يعكسها، والتجربةُ لا شيء", () => {
   const c = commissionOf(ev({}), NOW)!;
   /* ٢٦٫٦٦$ × ٣٫٧٥ = ٩٩٫٩٨ ريال · صافٍ بعد ٢٦٫٠٨٪ ≈ ٧٣٫٩١ · عمولةٌ ≈ ١٨٫٤٨ */

@@ -195,8 +195,8 @@ function SideDrawer({
       onPressIn={notePress}
       accessibilityRole="link"
       /* 🆕 D-1509 — **مسافاتُ «ب»** (أحمد ٢٧ أكتوبر بلقطة X: «تحسها ملمومة القوائم»؛ قيس من اللقطة: صفُّ X ~٥٦، وصفُّنا كان ٤٦):
-         الصفُّ الرئيس ٥٤ بخطٍّ أخفّ (٦٠٠ لا ٧٠٠)، والثانويّ ٤٨ للمشترك و٤٤ لغيره — بطاقةُ الدعوة بمزاياها الخمس تأخذ مكانَ الفرق */
-      style={({ pressed }) => ({ height: opts?.small ? (plus ? 48 : 44) : 54, flexDirection: "row", alignItems: "center", gap: 18, opacity: pressed ? 0.6 : 1 })}
+         الصفُّ الرئيس بخطٍّ أخفّ (٦٠٠ لا ٧٠٠)، والثانويّ ٤٨ للمشترك و٤٤ لغيره. وصار الرئيسُ ٥٠ لا ٥٤ ومزايا البطاقة ثلاثاً لا خمساً (T345 — قائمةٌ ثابتة) */
+      style={({ pressed }) => ({ height: opts?.small ? (plus ? 48 : 44) : 50, flexDirection: "row", alignItems: "center", gap: 18, opacity: pressed ? 0.6 : 1 })}
     >
       {/* 🆕 T320 — الصفوفُ الصغيرة درجةً أصغر (خالد ٥ نوفمبر): الخطُّ ١٦ ⇐ ١٥ والأيقونةُ ٢٢ ⇐ ٢٠ — صارت ثلاثةً تحت الفاصل */}
       <Icon name={icon} size={opts?.small ? 20 : 24} color={tokens.fg} />
@@ -208,13 +208,17 @@ function SideDrawer({
       ) : null}
     </Pressable>
   );
-  /* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها تحت حسابه، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً») */
+  /* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها تحت حسابه، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً»).
+     🆕 T345 — **قائمةٌ ثابتة** (أحمد ٧ نوفمبر بتسجيل خالد: «ما ابغى القائمة الجانبية تتحرك فوق وتحت»): كانت أطولَ من شاشة خالد
+     (٨٩١ نقطة) بنحو ٤٥–٩٠ فتتمرّر. المزايا ثلاثٌ هي أوّلُ ثلاثٍ في صفحة الاشتراك بترتيبها («حط اول ثلاثة ف بلس») لا خمسٌ، والصفُّ
+     الرئيسُ ٥٠ لا ٥٤، وبطاقةُ الدعوة أقربُ (١٦ فوقها و٨ بين أجزائها و١٤ حشوُها) — فتتّسع في جوال خالد وPro Max ولا تتحرّك؛ والتمريرُ باقٍ
+     لما لا يتّسع (آيفون ٨٥٢، خطٌّ مكبَّر) فلا ينقطع سطرُ اللغة */
   const plusCard = (
             <Pressable
               onPress={() => go("/settings/plus")}
               onPressIn={notePress}
               accessibilityRole="link"
-              style={({ pressed }) => ({ marginTop: plus ? 0 : 24, marginBottom: plus ? 14 : 0, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 12, opacity: pressed ? 0.85 : 1 })}
+              style={({ pressed }) => ({ marginTop: plus ? 0 : 16, marginBottom: plus ? 14 : 0, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 14, gap: 8, opacity: pressed ? 0.85 : 1 })}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 {/* T335 — للذهبيّ شارتُه (`IdentityBadges` كصفحة الاشتراك) لا «PLUS»: خطّةٌ واحدة «ذهبي» تشمل بلس */}
