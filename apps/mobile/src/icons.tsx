@@ -140,6 +140,14 @@ export type IconName = keyof typeof ICONS;
  * تُرسم في صفِّ «طرق تسجيل الدخول» وحدَه (تصميمُ أحمد، ١٩ أكتوبر).
  */
 export const GOOGLE_MARK = { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAMAAABiM0N1AAAAYFBMVEU0p1NBhfP6uwXrRTQzp1LpQzVChfTqSDMzqFLqQzU0p1NChfT5tgdBhPX9rQH7uwX0SkpAt0j7NTU5nIyXsiw3kfU/jdAA//9Jq0uAgP88krVorj6IqjP/zAAAAADpQzRCcjRWAAAAIHRSTlP9/vwfYGCO0iGcoWOuHBVlBAUIuMcJ2wHNAszEDwUA/kholfEAAAIySURBVHja3djXeqMwEAbQQRKohACxU7fA+79laIpVRtXrm/0vE75jjUADEszhXGgrJV/2cClbSiMXQ+gfK7J4WbEyaGr5EggPWIAOZolG0iwoxWxpL2koXJRVIE1AVC6ZkZcYRPmSHWdQFtQuRaEhqNBZ+IBDxU5gRPc5N4je5/xA9zoamkL3nct2j5R5DyT+HEpzKUxGO/CdE6J5a1M/94hzQNgDzdFusV/Jg6sfufPthPevSQZ+AvDC2nBPjTS2kURXUV5WaCCE8NzxxKCROFKNs0FkT3+77XMdNJAzd0zQDo0aOsurKmyD+h/oKG+qhAZipnpALkQ4rYVGG+rnWqi3oRG7qEnGh4Y66HkG8iBoroOeHgb1/y/07yZ7qIb6B0Fj9QOZs2izIKeNgECgzo+/aP+azCsAy+saPmS22t+w5iXHebadzm7+n5uTN6Qn96aZryM4I9LOmzfX2wuy19NzRhUPqDFe2Z9wCyucoa0y/REBVhLSV+dXdnzWvIKT+DR1fus/oD/gJTKmj65BKjs+/RgihR6ntw5ZHxoSgAQvj10bdEDn5zEqKZ8Sav07OiD9wa4ApZhpCT0D78iANPQCoSi2R5k/dbWXmbWpEVAUtzBjm1UovTuOsfFjZdIvc4LsrWihdDUmyNkcF0rQdB+B7XqhpL6CBwhFM85iRxpCZTsicciSWZ63fvxjH8HKhxM4iEpSLPtoLEYpUXZYJ5hK9oMsaGsJwlj0am0DsVb+DUKngC68q+OlAAAAAElFTkSuQmCC" } as const;
+/**
+ * 🆕 T354 — **مصدرُ الرمز نفسُه لمن يرسمه بغير لونٍ واحد** (شارةُ Jellyfin بتدرّج ألوانه في `links/DeviceMark.tsx`): الصورةُ
+ * البيضاءُ ذاتُها التي يرسمها `Icon` — قناعاً لا رسماً جديداً، فتبقى مجموعةُ الأيقونات واحدة.
+ */
+export function iconSource(name: IconName) {
+  return ICONS[name];
+}
+
 /** 🆕 D-1112 — أسماءُ الأيقونات في سجلّات النواة (`homePrefs`/`profilePrefs`) أسماءُ الويب؛ ما لا نظيرَ له
     هنا (`grid`) يسقط إلى بديلٍ لا إلى صورةٍ فارغة */
 export function iconOr(name: string, fallback: IconName): IconName {

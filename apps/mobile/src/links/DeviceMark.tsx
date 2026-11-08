@@ -1,8 +1,8 @@
 import React from "react";
 import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Defs, Image as SvgImage, LinearGradient, Mask, Path, Rect, Stop } from "react-native-svg";
 import { useApp } from "../state";
-import { Icon, type IconName } from "../icons";
+import { Icon, iconSource, type IconName } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import type { DeviceKind } from "@/core/contracts/deviceLinks";
@@ -10,7 +10,8 @@ import type { DeviceKind } from "@/core/contracts/deviceLinks";
 /**
  * 🆕 **شارةُ الجهاز في المدار وفي «من أجهزتك»** (خطّةُ Loopz+ v2 §الشعارات).
  * 🔑 **شعارٌ بإذن صاحبه وحده**: Plex وEmby بشعارهما الرسميّ (مسارُ المتّجه كما ينشرانه، بلونهما — لا نرسمه بأيدينا)، وسطرُ
- * نسبة Plex في «عن التطبيق». وJellyfin وKodi وStremio برمزٍ عامٍّ من رموز التطبيق حتى يصل إذنُهم (الرسائلُ بعد هذا الدفع) —
+ * نسبة Plex في «عن التطبيق». وKodi وStremio برمزٍ عامٍّ من رموز التطبيق حتى يصل إذنُهما (أُرسلت الرسالتان ٩ نوفمبر)، وJellyfin
+ * برمزه العامِّ مصبوغاً بألوانه (T354) —
  * والاسمُ تحت الشارة في كلِّ حال.
  */
 const PLEX =
@@ -22,6 +23,12 @@ const LOGO: Partial<Record<DeviceKind, { d: string; color: string; scale: number
   emby: { d: EMBY, color: "#52B54B", scale: 0.62 },
 };
 const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
+/**
+ * 🆕 T354 — **Jellyfin بألوانه لا بشعاره** (أحمد ٩ نوفمبر: «نفذ المقترح … ما راح نرسل»): دليلُ هويّتهم يقصر الشعارَ على المشاريع
+ * المفتوحة المصدر، ويُبيح ألوانَهم المتدرّجة مع شكلٍ غيرِ شكل شعارهم. فرمزُ «فيلم» العامُّ نفسُه يُصبغ بتدرّجهم (بنفسجيٌّ إلى أزرق)
+ * فيُعرف بلونه ولا ندّعي علامتَه. الصورةُ البيضاءُ قناعٌ بشفافيّتها (`maskType="alpha"`) لا رسمٌ ثانٍ للرمز.
+ */
+const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"] };
 
 export function DeviceMark({
   kind,
@@ -35,6 +42,8 @@ export function DeviceMark({
 }) {
   const { tokens } = useApp();
   const logo = LOGO[kind];
+  const tint = TINT[kind];
+  const glyph = size * 0.42;
   const ring = state === "on" || state === "waiting" ? tokens.accent : tokens.border;
   return (
     <View
@@ -54,8 +63,21 @@ export function DeviceMark({
         <Svg width={size * logo.scale} height={size * logo.scale} viewBox="0 0 24 24">
           <Path d={logo.d} fill={logo.color} />
         </Svg>
+      ) : tint ? (
+        <Svg width={glyph} height={glyph} viewBox="0 0 72 72">
+          <Defs>
+            <LinearGradient id="dmTint" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={tint[0]} />
+              <Stop offset="1" stopColor={tint[1]} />
+            </LinearGradient>
+            <Mask id="dmGlyph" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="72" maskType="alpha">
+              <SvgImage href={iconSource(GENERIC[kind])} x="0" y="0" width="72" height="72" />
+            </Mask>
+          </Defs>
+          <Rect x="0" y="0" width="72" height="72" fill="url(#dmTint)" mask="url(#dmGlyph)" />
+        </Svg>
       ) : (
-        <Icon name={GENERIC[kind]} size={size * 0.42} color={tokens.muted} />
+        <Icon name={GENERIC[kind]} size={glyph} color={tokens.muted} />
       )}
       {state !== "idle" ? (
         <View
