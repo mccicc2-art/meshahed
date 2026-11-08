@@ -92,6 +92,9 @@ export interface RowPatch {
   cancel_at_period_end: boolean;
 }
 
+/** A-51 — كم يبقى الشراءُ القديمُ بطبقته بعد ترقية قوقل، انتظاراً لحدث الشراء الجديد (يتأخّر دقائق، وRevenueCat يعيد ساعات) */
+export const PLAY_UPGRADE_GRACE_MS = 48 * 3_600_000;
+
 export function rowPatchOf(ev: RcEvent, nowMs: number, current?: { plan: SubTier } | null): RowPatch | null {
   const end = iso(ev.expiration_at_ms);
   const plan = tierOfProduct(ev.product_id, ev.entitlement_ids);
@@ -113,8 +116,14 @@ export function rowPatchOf(ev: RcEvent, nowMs: number, current?: { plan: SubTier
          `INITIAL_PURCHASE` بالذهبيّ، والقديمُ لا يصله «انتهى» أبداً. كان يُرقّى هنا ويبقى «نشطاً» بنهايةٍ ماضية، فيراه
          `storeStillLive` اشتراكاً حيّاً ولا يُرسَل «انتهى اشتراكك» حين ينتهي الذهبيّ. **فالقديمُ يُغلق في لحظة الترقية** بطبقته
          ومنتجه كما كانا. وأبل تُبقي الشراءَ نفسَه في المجموعة (صفٌّ واحد يتجدّد بالذهبيّ — آيفون أحمد)، فيُرقّى كما كان */
+      /* 🆕 A-51 (المدقّق ٨ نوفمبر، أحمد «أ») — **لا يُغلق في لحظته بل بعد مهلة**: الذهبيُّ يصل في حدثٍ منفصل، وإن تأخّر أو ضاع
+         كان المرقّي يُرى مجّانيّاً وقد دفع. فالقديمُ «أُلغي» بطبقته حتى `PLAY_UPGRADE_GRACE_MS` (أو نهايتِه إن سبقت): يُبقي ما دفع
+         ثمنه إلى أن يصل الجديد، ثمّ ينتهي وحده — فلا يبقى صفٌّ «نشطٌ» عالقٌ يحبس إشعارَ النهاية (علّةُ T344)، ولا بلسٌ
+         مجّانيٌّ بعد انتهاء الذهبيّ (المهلةُ أقصرُ من أيِّ مدّة). وما مضت نهايتُه يُختم منتهياً الآن */
       if (String(ev.store ?? "").toUpperCase() === "PLAY_STORE") {
-        return { ...base, plan: was, status: "expired", cancel_at_period_end: true, current_period_end: new Date(Math.min(nowMs, ev.expiration_at_ms ?? nowMs)).toISOString() };
+        const until = Math.min(nowMs + PLAY_UPGRADE_GRACE_MS, ev.expiration_at_ms ?? Infinity);
+        if (until <= nowMs) return { ...base, plan: was, status: "expired", cancel_at_period_end: true, current_period_end: new Date(nowMs).toISOString() };
+        return { ...base, plan: was, status: "canceled", cancel_at_period_end: true, current_period_end: new Date(until).toISOString() };
       }
       return { plan: next, product_id: ev.new_product_id, current_period_end: end, status: "active", cancel_at_period_end: false };
     }

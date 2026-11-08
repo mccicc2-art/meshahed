@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { inviteListMembers, peopleFollowsOf, removeListMember, respondListInvite } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
@@ -179,19 +179,20 @@ function InviteSheet({
 }) {
   const t = getDict(locale);
   const [people, setPeople] = useState<PersonLite[] | null>(null);
-  const [loading, startLoad] = useTransition();
   const [sending, startSend] = useTransition();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  if (people === null && !loading) {
-    startLoad(async () => {
-      try {
-        setPeople(await peopleFollowsOf(meId, "following"));
-      } catch {
-        setPeople([]);
-      }
-    });
-  }
+  // A-43 (المدقّق ٥ نوفمبر) — الجلبُ في أثرٍ لا أثناءَ الرسم: رسمٌ يُعاد أو يُهمَل (الوضع المتزامن/الصارم) كان يطلقه مرّتين.
+  // و`alive` يُسقط ردّاً وصل بعد إغلاق النافذة أو تبدّل الحساب.
+  useEffect(() => {
+    let alive = true;
+    peopleFollowsOf(meId, "following")
+      .then((p) => alive && setPeople(p))
+      .catch(() => alive && setPeople([]));
+    return () => {
+      alive = false;
+    };
+  }, [meId]);
   const inList = useMemo(() => new Set(members.map((m) => m.id)), [members]);
   const taken = Math.max(1, members.length);
   const room = Math.max(0, LIST_MEMBERS_MAX - taken);

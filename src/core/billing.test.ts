@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { commissionOf, environmentOf, parseRcBody, partnerExample, rowKeyOf, rowPatchOf, tierOfProduct, userIdOf, type RcEvent } from "./billing.ts";
+import { PLAY_UPGRADE_GRACE_MS, commissionOf, environmentOf, parseRcBody, partnerExample, rowKeyOf, rowPatchOf, tierOfProduct, userIdOf, type RcEvent } from "./billing.ts";
 
 const NOW = Date.parse("2026-12-01T10:00:00Z");
 const UID = "0b6f8c2e-4a1d-4f3e-9c2b-7d5e6f8a9b10";
@@ -65,16 +65,24 @@ test("تبديلُ المنتج: الترقيةُ فوريّة، والنزول�
   assert.equal(rowPatchOf(ev({ type: "PRODUCT_CHANGE", product_id: "plus_monthly", new_product_id: "plus_yearly" }), NOW, { plan: "plus" }), null);
 });
 
-test("T344 — ترقيةُ قوقل تُغلق الشراءَ القديم (الذهبيُّ يأتي في صفٍّ جديد)", () => {
-  const old = rowPatchOf(
-    ev({ type: "PRODUCT_CHANGE", store: "PLAY_STORE", product_id: "loopz_plus:monthly", new_product_id: "loopz_gold:yearly", expiration_at_ms: NOW + 60_000 }),
-    NOW,
-    { plan: "plus" },
-  )!;
-  assert.equal(old.status, "expired");
+test("T344 + A-51 — ترقيةُ قوقل تُلغي الشراءَ القديم بمهلة (الذهبيُّ يأتي في صفٍّ جديد)", () => {
+  const up = (exp: number | null) =>
+    rowPatchOf(ev({ type: "PRODUCT_CHANGE", store: "PLAY_STORE", product_id: "loopz_plus:monthly", new_product_id: "loopz_gold:yearly", expiration_at_ms: exp }), NOW, { plan: "plus" })!;
+  /* شهرٌ باقٍ: يبقى بلس «أُلغي» مهلةً واحدة — لا مجّانيّاً قبل وصول الذهبيّ، ولا بلس شهراً بعده */
+  const old = up(NOW + 30 * 86_400_000);
+  assert.equal(old.status, "canceled");
   assert.equal(old.plan, "plus");
   assert.equal(old.product_id, "loopz_plus:monthly");
-  assert.equal(old.current_period_end, new Date(NOW).toISOString());
+  assert.equal(old.cancel_at_period_end, true);
+  assert.equal(old.current_period_end, new Date(NOW + PLAY_UPGRADE_GRACE_MS).toISOString());
+  /* نهايتُه قبل المهلة: إليها لا بعدها */
+  assert.equal(up(NOW + 60_000).current_period_end, new Date(NOW + 60_000).toISOString());
+  /* بلا نهايةٍ في الحدث: المهلةُ وحدها */
+  assert.equal(up(null).current_period_end, new Date(NOW + PLAY_UPGRADE_GRACE_MS).toISOString());
+  /* نهايتُه مضت: يُختم منتهياً الآن كما كان */
+  const past = up(NOW - 1);
+  assert.equal(past.status, "expired");
+  assert.equal(past.current_period_end, new Date(NOW).toISOString());
   /* وأبل تُبقي الشراءَ نفسَه: الصفُّ يُرقّى في مكانه ويبقى نشطاً */
   const apple = rowPatchOf(ev({ type: "PRODUCT_CHANGE", store: "APP_STORE", product_id: "plus_yearly", new_product_id: "gold_yearly" }), NOW, { plan: "plus" })!;
   assert.equal(apple.status, "active");
