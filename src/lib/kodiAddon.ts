@@ -9,7 +9,7 @@ import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
  * ⚖️ **تحت `/api/v1/` لا `/kodi`**: جدارُ Vercel يتحدّى كلَّ عميلٍ غير متصفّح خارج هذه السابقة (D-945) — وKodi عميلٌ غيرُ متصفّح،
  * فقائمةُ المصدر والملفُّ ونداءا الربط والإرسال كلُّها هنا.
  * ⚖️ **ما تفعله الإضافة**: ترى ما يُشغَّل (المكتبةُ عبر JSON-RPC، وإضافاتُ البثّ عبر وسم الفيديو)، وحين تبلغ ٩٠٪ — كـPlex —
- * ترسل «انتهى» إلى رابطها. **ولا تعلّم شيئاً**: السؤالُ «شفتها؟» في الرئيسيّة («٢ أ» في سيرفرات البيت).
+ * ترسل «انتهى» إلى رابطها. **ولا تعلّم شيئاً بنفسها**: الخادمُ يسأل «شفتها؟» في الرئيسيّة («٢ أ» في سيرفرات البيت)، أو يضيفها مباشرةً لمن فعّل التتبّع التلقائي.
  * ⚖️ **والربطُ بستّة أرقام** يُكتب في إعداداتها بريموت التلفزيون — الرابطُ الطويل لا يُكتب هناك.
  * 📌 بايثون ٣ (Kodi 19 فما بعد). وإصدارٌ جديدٌ = رقمٌ جديد هنا وفي `addon.xml` (Kodi يقارن الرقم).
  * 🆕 T359 — **جاهزةٌ لمستودع Kodi الرسميّ** (أذنت مؤسّسةُ Kodi بشعارها ٩ نوفمبر واقترحت المستودع): رخصةٌ مفتوحة (`kodiAddonLicense.ts`)،
@@ -17,28 +17,30 @@ import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
  * 🆕 T363 — **1.0.2: «انتهى» يُرسل لحظةَ تجاوز ٩٠٪ والفيديو يعمل** (أحمد: «لازم ف كودي اضغط ايقاف عالحلقة عشان تجي؟ ما يمدي اطلع
  * وبس؟» ثمّ «نفذ»). كان ينتظر الإيقافَ أو النهاية: و«رجوع» في Kodi يُخفي الفيديو ولا يوقفه، وإغلاقُ Kodi قد يُطفئ الإضافةَ قبل
  * أن ترسل. الآن كـPlex — مرّةً لكلِّ عمل (`finish` يمحو العنصر).
+ * 🆕 T364 — **1.0.3: نصوصٌ فقط** قبل تقديمها لمستودع Kodi (أحمد «نفذ»): الوصفُ كان يقول «ما نعلّم شيئاً بدون جوابك» وقد صار
+ * التتبّعُ التلقائيُّ يضيف بلا سؤال، وتلميحُ الرمز كان يدلّ على «الإعدادات، سيرفرات البيت» وقد انتقل الربطُ إلى «الربط». ولا ذكرَ لخطّة.
  */
 
 export const KODI_ADDON_ID = "service.loopz";
-export const KODI_ADDON_VERSION = "1.0.2";
+export const KODI_ADDON_VERSION = "1.0.3";
 export const KODI_ZIP_NAME = `${KODI_ADDON_ID}-${KODI_ADDON_VERSION}.zip`;
 
 const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.loopz" name="Loopz" version="1.0.2" provider-name="Loopz">
+<addon id="service.loopz" name="Loopz" version="1.0.3" provider-name="Loopz">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
   </requires>
   <extension point="xbmc.service" library="service.py"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">Loopz asks "watched it?" when you finish an episode or a movie on Kodi</summary>
-    <summary lang="ar_SA">يسألك Loopz «شفتها؟» لما تخلّص حلقة أو فيلم على Kodi</summary>
-    <description lang="en_GB">When an episode or a movie reaches 90% on Kodi, Loopz asks you on Home whether you watched it. Nothing is marked without your answer. Link it with the 6-digit code from Loopz: Linking, Kodi.</description>
-    <description lang="ar_SA">لما تكمل 90% من حلقة أو فيلم على Kodi، يسألك Loopz في الرئيسية: شفتها؟ ما نعلّم شيئاً بدون جوابك. اربطها بالرمز من ستة أرقام من Loopz: الربط، Kodi.</description>
+    <summary lang="en_GB">Tells your Loopz account when you finish an episode or a movie on Kodi</summary>
+    <summary lang="ar_SA">يُخبر حسابك في Loopz حين تُنهي حلقةً أو فيلماً على Kodi</summary>
+    <description lang="en_GB">When an episode or a movie passes 90% on Kodi, your Loopz account hears about it: Loopz asks you on Home whether you watched it, or adds it to your library straight away if you turned on auto-tracking. Link it with the 6-digit code from Loopz: Linking, Kodi.</description>
+    <description lang="ar_SA">حين تتجاوز 90% من حلقةٍ أو فيلم على Kodi يصل الخبر إلى حسابك في Loopz: يسألك في الرئيسية «شفتها؟»، أو يضيفها إلى مكتبتك مباشرةً إن فعّلت التتبّع التلقائي. اربطها بالرمز من ستة أرقام من Loopz: الربط، Kodi.</description>
     <platform>all</platform>
     <license>GPL-2.0-or-later</license>
     <website>https://loopztv.com</website>
     <source>https://github.com/mccicc2-art/meshahed/blob/main/src/lib/kodiAddon.ts</source>
-    <news>v1.0.2: a title counts as watched the moment it passes 90%, so leaving or closing Kodi afterwards no longer matters.&#10;v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
+    <news>v1.0.3: the description and the link-code hint match Loopz today (auto-tracking, the Linking page).&#10;v1.0.2: Kodi reports a title the moment it passes 90%, so leaving or closing Kodi afterwards no longer matters.&#10;v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
     <assets>
       <icon>icon.png</icon>
     </assets>
@@ -73,7 +75,7 @@ msgid "Link code"
 msgstr ""
 
 msgctxt "#30002"
-msgid "Type the 6-digit code from Loopz: Settings, Home servers, Kodi"
+msgid "Type the 6-digit code from Loopz: Linking, Kodi"
 msgstr ""
 
 msgctxt "#30003"
@@ -119,8 +121,8 @@ msgid "Link code"
 msgstr "رمز الربط"
 
 msgctxt "#30002"
-msgid "Type the 6-digit code from Loopz: Settings, Home servers, Kodi"
-msgstr "اكتب الرمز من ستة أرقام من Loopz: الإعدادات، سيرفرات البيت، Kodi"
+msgid "Type the 6-digit code from Loopz: Linking, Kodi"
+msgstr "اكتب الرمز من ستة أرقام من Loopz: الربط، Kodi"
 
 msgctxt "#30003"
 msgid "Status"
