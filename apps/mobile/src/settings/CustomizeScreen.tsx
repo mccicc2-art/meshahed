@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { I18nManager, Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { scheduleOnRN } from "react-native-worklets";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, iconOr } from "../icons";
@@ -15,6 +17,7 @@ import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult, HomePayl
 import { HOME_KEY } from "../home/useHome";
 import { profileKey } from "../member/profileData";
 import { radius } from "../theme";
+import { CustomizePreview, type PreviewWho } from "./CustomizePreview";
 import { SettingsScreen, Group, Row, Toggle, RowsSkeleton, StatusPill } from "./ui";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 import {
@@ -44,34 +47,34 @@ import {
 import { DENSITIES, type Density } from "@/core/density";
 
 /**
- * 🆕 D-1630 — **«التخصيص» من جديد: كلُّ خيارٍ صورةٌ تُرى، وكلُّ لمسةٍ تُحفظ** (أحمد ٦ نوفمبر، «ب» ثمّ «نفذ و ارفع»).
- * بلاغُه: «سيئة وغير مفهومة… اجعل المعاينة عند كلِّ خيار». فالصفحةُ القديمة (D-1112 · D-1322) تغيّرت هكذا:
- * - **المعاينةُ الكبيرةُ المثبّتة حُذفت** — كلُّ خيارٍ يحمل معاينتَه: شبكةُ الأرقام ببطاقتها فوقها، أقسامٌ بصورٍ مصغّرة،
- *   أحجامُ الملصق بملصقاتٍ بأحجامها.
- * - **«تنسيقاتي» و«طريقة العرض» و«عدد البطاقات» حُذفت** — العرضُ زرُّه في رأس الرئيسيّة، والعددُ «الكلّ» للجميع
- *   (`sanitizeCardCount("full")` في الأساس، والاختيارُ القديمُ يُهمل).
- * - **لا زرَّ «حفظ»**: كلُّ تغييرٍ يُكتب بعد لحظةٍ («الأحدثُ يفوز» — `seq`)، ومكانَ الزرّ «✓ محفوظ»، وبعد كلِّ تغييرٍ
- *   «تم · تراجع». فلا ورقةَ «تعديلاتٌ لم تُحفظ» ولا خسارةَ عند الرجوع (الخروجُ يُفرغ المنتظر).
- * - **الأرقامُ شبكةٌ تُختار باللمس**: لا شيء (البطاقةُ تختفي) أو ١–٤ بترتيب اللمس، وعلى كلِّ مختارٍ رقمُ موضعه.
- * - **الأقسامُ والتبويباتُ قوائمُ في الصفحة نفسِها** (`ArrangeList`): سحبٌ بـ≡ وعينٌ للإخفاء.
- * - **الاستعادةُ تسأل أوّلاً** («٤أ») ثمّ تُحفظ، و«تراجع» يعيد ما كان.
- * 🔒 **بلس** يحكمه الخادم (`plus` و`needsPlus`): كلُّ حقول الصفحة مدفوعةٌ اليوم (`PLUS_*_FIELDS`)، فغيرُ المشترك يرى
- * الشارةَ على المجموعة، ولمستُه تفتح صفحةَ بلس بدل أن تغيّر شيئاً — كان يجرّب في المعاينة ثمّ يُصدّ عند «حفظ»، والحفظُ
- * التلقائيُّ لا مكانَ فيه لتجربةٍ لا تُحفظ.
+ * 🆕 D-1630 — **«التخصيص»: كلُّ خيارٍ صورةٌ تُرى** (أحمد ٦ نوفمبر، «ب»): شبكةُ الأرقام بترتيب اللمس (لا شيء = البطاقةُ مخفيّة)،
+ * الأقسامُ والتبويباتُ قوائمُ في الصفحة نفسِها (`ArrangeList`)، أحجامُ الملصق صورٌ، والاستعادةُ تسأل أوّلاً.
+ * «تنسيقاتي» و«طريقة العرض» و«عدد البطاقات» حُذفت — العرضُ زرُّه في رأس الرئيسيّة، والعددُ «الكلّ» للجميع.
+ *
+ * 🆕 D-1640 — **ثلاثةُ تعديلاتٍ بطلب أحمد (٩ نوفمبر، بعد تجربة «المعمل»)**:
+ * ١) **المعاينةُ عادت مثبّتةً وتطوى («١ب»)** — `CustomizePreview` فوق الخيارات: الصفحةُ كاملةً في صندوقٍ يتمرّر، تتبدّل مع الإصبع.
+ *    بلاغُه: «مافيه محاكي يظهر كيف صار للشخص قبل يسوي حفظ».
+ * ٢) **«حفظ» عاد زرّاً** («الحفظ خله يضغط زر حفظ») — نقضٌ صريحٌ للحفظ التلقائيّ في D-1630. مسودّتان (لكلِّ تبويبٍ مسودّتُه)
+ *    و«حفظ» يرسل ما تغيّر منهما في نداءٍ واحد، والرجوعُ بتعديلٍ لم يُحفظ يسأل (`setUnsaved*` — نمطُ «تعديل الملفّ»).
+ *    **غيرُ المشترك يجرّب كلَّ شيءٍ ويراه في المعاينة**، و«حفظ» يفتح صفحةَ بلس («اذا ضغط حفظ للغير مشترك يجيه اشترك بلس»)
+ *    — حين يمسّ حقلاً مدفوعاً، والخادمُ يحكم بالقاعدة نفسِها (`touchesPaid*` · `needsPlus`).
+ * ٣) **التنقّلُ بين «الرئيسيّة» و«الملفّ» بالإيماء** — سحبٌ أفقيٌّ على الخيارات (`activeOffsetX` · `failOffsetY`: العموديُّ
+ *    للتمرير، والمقبضُ ≡ يمسك قبله). الاتّجاهُ اتّجاهُ القراءة: في العربيّة «الملفّ» يسار «الرئيسيّة»، فالسحبُ يميناً يأتي به.
  */
 const KEY = ["me:customize"] as const;
 type Tab = "home" | "profile";
-/** مهلةُ الحفظ بعد آخر لمسة — تجمع لمساتِ ترتيبٍ متتالية في نداءٍ واحد */
-const SAVE_DELAY = 600;
+type Draft = { home: HomePrefs; profile: ProfilePrefs };
+/** طيُّ المعاينة اختيارُ جلسة — يبقى بين فتحتَين للشاشة ولا يُكتب في مكان */
+let previewChoice: boolean | null = null;
+/** دونه تبدأ المعاينةُ مطويّةً: الصندوقُ (٢٦٠) والترويسةُ والتبويبان لا يتركون للخيارات ما يكفي */
+const SHORT_SCREEN = 720;
+/** مسافةُ السحب الأفقيّ أو سرعتُه التي تبدّل التبويب */
+const SWIPE_DIST = 60;
+const SWIPE_SPEED = 500;
 
 /** النصوصُ الجديدةُ محلّيّة — `i18n.ts` محجوزٌ لمهمّة الودجت (٢٧٤) في السجلّ، كـ`RATERS_WORDS` */
 const WORDS = {
   ar: {
-    saved: "✓ محفوظ",
-    saving: "يحفظ…",
-    failed: "لم يُحفظ",
-    done: "تم",
-    undo: "تراجع",
     max: `${STATS_PICK_MAX} أرقام على الأكثر`,
     statsHint: "اختر حتى ٤ بترتيب اللمس — ولا شيء يُخفي البطاقة",
     statsHidden: "البطاقةُ مخفيّة",
@@ -80,17 +83,14 @@ const WORDS = {
     openPage: "افتح صفحتك",
     savedListsHint: "القوائمُ التي حفظتَها من غيرك تظهر في تبويب القوائم",
     resetTitle: "استعادة الافتراضيّ؟",
-    resetBody: (tab: string) => `يعود تبويب «${tab}» كما كان أوّل مرّة — وتقدر تتراجع بعدها.`,
+    resetBody: (tab: string) => `يعود تبويب «${tab}» كما كان أوّل مرّة — ولا يُحفظ حتى تضغط «حفظ».`,
     resetDo: "استعادة",
     cancel: "إلغاء",
     resetHint: "يعيد هذا التبويب إلى الافتراضيّ",
+    resetDone: "رجع للافتراضيّ — اضغط «حفظ» لتعتمده",
+    undo: "تراجع",
   },
   en: {
-    saved: "✓ Saved",
-    saving: "Saving…",
-    failed: "Not saved",
-    done: "Done",
-    undo: "Undo",
     max: `${STATS_PICK_MAX} numbers at most`,
     statsHint: "Pick up to 4 in tap order — none hides the card",
     statsHidden: "The card is hidden",
@@ -99,14 +99,14 @@ const WORDS = {
     openPage: "Open your page",
     savedListsHint: "Lists you saved from others appear in the Lists tab",
     resetTitle: "Restore defaults?",
-    resetBody: (tab: string) => `The «${tab}» tab goes back to how it started — you can undo it after.`,
+    resetBody: (tab: string) => `The «${tab}» tab goes back to how it started — nothing is saved until you tap Save.`,
     resetDo: "Restore",
     cancel: "Cancel",
     resetHint: "Returns this tab to its defaults",
+    resetDone: "Back to defaults — tap Save to keep it",
+    undo: "Undo",
   },
 } as const;
-
-type Draft = { home?: HomePrefs; profile?: ProfilePrefs };
 
 export function CustomizeScreen() {
   const { t, tokens, locale } = useApp();
@@ -114,134 +114,100 @@ export function CustomizeScreen() {
   const router = useRouter();
   const openWeb = useOpenWeb();
   const toast = useRef<ToastHostRef>(null);
+  const { height: winH } = useWindowDimensions();
   const q = useQuery({ queryKey: KEY, queryFn: async () => (await api<CustomizePayload>("/api/v1/me/customize")).data, staleTime: 0 });
   const d = q.data;
 
   /* 🆕 D-1488 — بطاقةُ «خصّص ملفك» تفتح الشاشةَ على تبويب الملفّ (`?tab=profile`) */
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(params.tab === "profile" ? "profile" : "home");
-  const [home, setHomeState] = useState<HomePrefs | null>(null);
-  const [profile, setProfileState] = useState<ProfilePrefs | null>(null);
-  /* المراجعُ نسخةُ الحالة للدوالّ المؤجّلة (المؤقّت · التراجع · التنظيف عند الخروج) — الحالةُ في إغلاقها قديمة */
-  const homeRef = useRef<HomePrefs | null>(null);
-  const profileRef = useRef<ProfilePrefs | null>(null);
-  /** آخرُ ما أكّده الخادم — إليه نعود عند الفشل أو `needsPlus` */
-  const baseRef = useRef<{ home: HomePrefs; profile: ProfilePrefs } | null>(null);
-  const plusRef = useRef(false);
-  const pending = useRef<Draft>({});
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const seq = useRef(0);
-  const applied = useRef(0);
-  const [status, setStatus] = useState<"saved" | "saving" | "failed">("saved");
-  const [locked, setLocked] = useState(false);
-  const [askReset, setAskReset] = useState(false);
-
-  const setHome = (h: HomePrefs) => {
-    homeRef.current = h;
-    setHomeState(h);
-  };
-  const setProfile = (p: ProfilePrefs) => {
-    profileRef.current = p;
-    setProfileState(p);
-  };
-
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const [base, setBase] = useState<Draft | null>(null);
+  const [home, setHome] = useState<HomePrefs | null>(null);
+  const [profile, setProfile] = useState<ProfilePrefs | null>(null);
   useEffect(() => {
-    if (d && !baseRef.current) {
-      baseRef.current = { home: d.home, profile: d.profile };
-      plusRef.current = d.plus;
+    if (d && !base) {
+      setBase({ home: d.home, profile: d.profile });
       setHome(d.home);
       setProfile(d.profile);
     }
-  }, [d]);
+  }, [d, base]);
 
-  /* اسمُ العضو من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — لزرّ «افتح صفحتك» ولإبطال كاش صفحته */
-  const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
-  const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;
-  const username = head?.username ?? account?.username ?? null;
-  const usernameRef = useRef(username);
-  usernameRef.current = username;
+  const [previewOpen, setPreviewOpen] = useState(() => previewChoice ?? winH >= SHORT_SCREEN);
+  const [saving, setSaving] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const [askReset, setAskReset] = useState(false);
+  const [locked, setLocked] = useState(false);
 
-  function revert() {
-    const b = baseRef.current;
-    if (!b) return;
-    setHome(b.home);
-    setProfile(b.profile);
-  }
+  const homeDirty = !!home && !!base && JSON.stringify(home) !== JSON.stringify(base.home);
+  const profileDirty = !!profile && !!base && JSON.stringify(profile) !== JSON.stringify(base.profile);
+  const dirty = homeDirty || profileDirty;
 
-  /** يرسل المنتظرَ الآن — من المؤقّت، ومن التنظيف عند الخروج فلا يضيع آخرُ تغيير */
-  function flush() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-    const body: CustomizeSaveBody = { ...pending.current };
-    pending.current = {};
-    if (!body.home && !body.profile) return;
-    const my = ++seq.current;
-    setStatus("saving");
-    write<CustomizeSaveResult>("/api/v1/me/customize", body)
-      .then((out) => {
-        if (out.needsPlus || !out.data) {
-          if (my === seq.current) {
-            revert();
-            setStatus("saved");
-            openWeb("/plus");
-          }
-          return;
-        }
-        /* «الأحدثُ يفوز»: ردٌّ أقدمُ يصل بعد أحدثَ لا يكتب فوقه */
-        if (my > applied.current) {
-          applied.current = my;
-          baseRef.current = { home: out.data.home, profile: out.data.profile };
-          queryClient.setQueryData(KEY, out.data);
-          void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
-          /* D-1323 — الرئيسيّةُ ترسم المحفوظَ فوراً، ثمّ تُجلب لتأتي قيمُ الأرقام الجديدة المختارة */
-          const saved = out.data.home;
-          queryClient.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: saved } : prev));
-          void queryClient.invalidateQueries({ queryKey: HOME_KEY });
-          if (body.profile && usernameRef.current) void queryClient.invalidateQueries({ queryKey: profileKey(usernameRef.current) });
-        }
-        if (my === seq.current) setStatus("saved");
-      })
-      .catch((e) => {
-        if (my !== seq.current) return;
-        revert();
-        setStatus("failed");
-        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort), undefined, undefined, "error");
+  /* السحبُ الأفقيّ يبدّل التبويب — إيماءةٌ واحدةٌ ثابتة (درسُ D-1094)، والقرارُ على خيط JS */
+  const swipeTo = (forward: boolean) => {
+    const next: Tab = forward ? "profile" : "home";
+    if (next === tabRef.current) return;
+    haptic.pick();
+    setTab(next);
+  };
+  const swipeRef = useRef(swipeTo);
+  swipeRef.current = swipeTo;
+  const swipe = useMemo(() => {
+    const rtl = I18nManager.isRTL;
+    const go = (forward: boolean) => swipeRef.current(forward);
+    return Gesture.Pan()
+      .activeOffsetX([-24, 24])
+      .failOffsetY([-14, 14])
+      .onEnd((e) => {
+        if (Math.abs(e.translationX) < SWIPE_DIST && Math.abs(e.velocityX) < SWIPE_SPEED) return;
+        /* «الملفّ» بعد «الرئيسيّة» في اتّجاه القراءة: يسارها في العربيّة فيأتي بالسحب يميناً، ويمينها في الإنجليزيّة */
+        const forward = rtl ? e.translationX > 0 : e.translationX < 0;
+        scheduleOnRN(go, forward);
       });
-  }
+  }, []);
 
-  /* الخروجُ لا ينتظر المؤقّت: ما لُمس يُرسل الآن */
-  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /**
-   * التغييرُ الواحد: بوّابةُ بلس ← الحالة ← الحفظُ المؤجّل ← «تم · تراجع».
-   * التراجعُ تغييرٌ مثلُه (يُحفظ) بلا إشعارِ تراجعٍ ثانٍ.
-   */
-  function change(next: Draft, undoable = true) {
-    const curH = homeRef.current;
-    const curP = profileRef.current;
-    if (!curH || !curP) return;
-    const paid = (next.home && touchesPaidHomePrefs(curH, next.home)) || (next.profile && touchesPaidProfilePrefs(curP, next.profile));
-    if (!plusRef.current && paid) {
+  async function save() {
+    if (!d || !home || !profile || !base || !dirty || saving) return;
+    /* D-1322 — البوّابةُ على الحقل المدفوع لا على الحفظ كلِّه؛ والخادمُ يحكم بالقاعدة نفسِها (`touchesPaid*`) */
+    const paid = (homeDirty && touchesPaidHomePrefs(base.home, home)) || (profileDirty && touchesPaidProfilePrefs(base.profile, profile));
+    if (!d.plus && paid) {
       haptic.pick();
       return openWeb("/plus");
     }
-    haptic.pick();
-    const prev: Draft = { ...(next.home ? { home: curH } : {}), ...(next.profile ? { profile: curP } : {}) };
-    if (next.home) {
-      setHome(next.home);
-      pending.current.home = next.home;
+    setSaving(true);
+    try {
+      const body: CustomizeSaveBody = { ...(homeDirty ? { home } : {}), ...(profileDirty ? { profile } : {}) };
+      const out = await write<CustomizeSaveResult>("/api/v1/me/customize", body);
+      if (out.needsPlus || !out.data) return openWeb("/plus");
+      queryClient.setQueryData(KEY, out.data);
+      void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+      setBase({ home: out.data.home, profile: out.data.profile });
+      setHome(out.data.home);
+      setProfile(out.data.profile);
+      /* D-1323 — الرئيسيّةُ ترسم المحفوظَ فوراً، ثمّ تُجلب لتأتي قيمُ الأرقام الجديدة المختارة */
+      const saved = out.data.home;
+      queryClient.setQueryData<HomePayload>(HOME_KEY, (prev) => (prev ? { ...prev, prefs: saved } : prev));
+      void queryClient.invalidateQueries({ queryKey: HOME_KEY });
+      if (profileDirty && username) void queryClient.invalidateQueries({ queryKey: profileKey(username) });
+      haptic.success();
+      toast.current?.say(t.setSaved, undefined, undefined, "success");
+    } catch (e) {
+      toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.errSaveShort), undefined, undefined, "error");
+    } finally {
+      setSaving(false);
     }
-    if (next.profile) {
-      setProfile(next.profile);
-      pending.current.profile = next.profile;
-    }
-    setStatus("saving");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(flush, SAVE_DELAY);
-    if (undoable) toast.current?.say(w.done, { label: w.undo, onPress: () => change(prev, false) }, 4000, "success");
   }
+
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+  };
+  const back = () => (dirty ? setAsk(true) : leave());
+
+  /* اسمُ العضو ووجهُه من كاشَين قائمَين (ترويسةُ الرئيسيّة ثمّ الإعدادات) — للمعاينة ولزرّ «افتح صفحتك» */
+  const head = queryClient.getQueryData<HomePayload>(HOME_KEY)?.header;
+  const account = queryClient.getQueryData<SettingsPayload>(SETTINGS_KEY)?.account;
+  const username = head?.username ?? account?.username ?? null;
 
   if (!d || !home || !profile) {
     return (
@@ -254,17 +220,30 @@ export function CustomizeScreen() {
   const locks = !d.plus;
   const posterLabel: Record<Density, string> = { compact: t.custPosterS, comfortable: t.custPosterM, large: t.custPosterL };
   const statMeta = headerStatMeta(t);
-  const values = new Map((head?.stats ?? []).map((s) => [s.key, s.value]));
+  const values = new Map((head?.stats ?? []).map((s) => [s.key as string, s.value]));
   const visibleTabs = orderedProfileTabs(profile).filter((k) => !profile.hiddenTabs.includes(k));
   const tabNames: Record<Tab, string> = { home: t.custTabHome, profile: t.custTabProfile };
+  const who: PreviewWho = {
+    name: head?.display_name ?? account?.nickname ?? account?.username ?? "",
+    username,
+    avatarUrl: head?.avatar_url ?? account?.avatar_url ?? null,
+    avatarPos: head?.avatar_pos ?? account?.avatar_pos ?? null,
+    coverUrl: head?.cover_url ?? null,
+    coverPos: head?.cover_pos ?? null,
+    followers: head && !head.hide_follow_lists ? head.followers : null,
+    following: head && !head.hide_follow_lists ? head.following : null,
+  };
+  const togglePreview = () => {
+    haptic.pick();
+    previewChoice = !previewOpen;
+    setPreviewOpen(previewChoice);
+  };
 
-  /* مكانُ «حفظ» القديم — حالةٌ تُقرأ لا زرٌّ يُضغط */
-  const statusAction = (
-    <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 4 }} accessibilityLiveRegion="polite">
-      <Text size={13} weight="700" color={status === "failed" ? tokens.error : status === "saving" ? tokens.muted : tokens.success}>
-        {status === "failed" ? w.failed : status === "saving" ? w.saving : w.saved}
-      </Text>
-    </View>
+  /* «حفظ» الترويسة — زرُّ «تعديل الملفّ» نفسُه (D-1106) */
+  const saveAction = (
+    <Pressable onPress={() => void save()} disabled={!dirty || saving} hitSlop={10} accessibilityRole="button" accessibilityState={{ disabled: !dirty || saving }} style={{ height: 44, justifyContent: "center", paddingHorizontal: 4 }}>
+      <Text size={14} weight="700" color={dirty && !saving ? tokens.accent : tokens.muted}>{saving ? t.saving : t.setSave}</Text>
+    </Pressable>
   );
 
   /* ── الأرقام ── */
@@ -272,8 +251,9 @@ export function CustomizeScreen() {
   const tapHomeStat = (k: HeaderStatKey) => {
     const next = homePick.includes(k) ? homePick.filter((x) => x !== k) : [...homePick, k];
     if (next.length > STATS_PICK_MAX) return toast.current?.say(w.max, undefined, undefined, "info");
+    haptic.pick();
     /* لا شيء ⇒ البطاقةُ مخفيّة، والقائمةُ المحفوظةُ تبقى (لا تقلّ عن رقمٍ عند الخادم) فتعود كما كانت إن رجع إليها */
-    change({ home: next.length ? { ...home, stats: true, statsPick: next } : { ...home, stats: false } });
+    setHome(next.length ? { ...home, stats: true, statsPick: next } : { ...home, stats: false });
   };
   const profileStatMeta: Record<ProfileStatKey, { icon: string; label: string }> = {
     shows: { icon: "tv", label: t.shortShows },
@@ -284,11 +264,28 @@ export function CustomizeScreen() {
   const profilePick: ProfileStatKey[] = profile.stats ? profile.statsPick : [];
   const tapProfileStat = (k: ProfileStatKey) => {
     const next = profilePick.includes(k) ? profilePick.filter((x) => x !== k) : [...profilePick, k];
-    /* «٣ب» — الخلايا الأربع تُختار؛ بابُ «الإحصائيات» خليّةٌ منها فـ`statsLink` يتبعها (الويبُ القديمُ يقرؤه) */
-    change({ profile: next.length ? { ...profile, stats: true, statsPick: next, statsLink: next.includes("stats") } : { ...profile, stats: false } });
+    haptic.pick();
+    /* «٣ب» — بابُ «الإحصائيات» خليّةٌ منها فـ`statsLink` يتبعها */
+    setProfile(next.length ? { ...profile, stats: true, statsPick: next, statsLink: next.includes("stats") } : { ...profile, stats: false });
   };
 
-  const resetSheet = askReset ? (
+  const overlay = ask ? (
+    <Sheet title={t.setUnsavedTitle} placement="center" onClose={() => setAsk(false)}>
+      <Text size={14} muted style={{ lineHeight: 21 }}>{t.setUnsavedBody}</Text>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+        <Button label={t.setKeepEditing} variant="ghost" style={{ flex: 1 }} onPress={() => setAsk(false)} />
+        <Button
+          label={t.setDiscard}
+          variant="danger"
+          style={{ flex: 1 }}
+          onPress={() => {
+            setAsk(false);
+            leave();
+          }}
+        />
+      </View>
+    </Sheet>
+  ) : askReset ? (
     <Sheet title={w.resetTitle} placement="center" onClose={() => setAskReset(false)}>
       <Text size={14} muted style={{ lineHeight: 21 }}>{w.resetBody(tabNames[tab])}</Text>
       <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
@@ -299,8 +296,17 @@ export function CustomizeScreen() {
           style={{ flex: 1 }}
           onPress={() => {
             setAskReset(false);
-            /* D-1487 — افتراضيُّ خطّته */
-            change(tab === "home" ? { home: defaultHomePrefs(d.plus) } : { profile: defaultProfilePrefs(d.plus) });
+            haptic.pick();
+            /* D-1487 — افتراضيُّ خطّته؛ مسودّةٌ لا حفظ، و«تراجع» يعيد ما كان قبلها */
+            if (tab === "home") {
+              const before = home;
+              setHome(defaultHomePrefs(d.plus));
+              toast.current?.say(w.resetDone, { label: w.undo, onPress: () => setHome(before) }, 4500, "info");
+            } else {
+              const before = profile;
+              setProfile(defaultProfilePrefs(d.plus));
+              toast.current?.say(w.resetDone, { label: w.undo, onPress: () => setProfile(before) }, 4500, "info");
+            }
           }}
         />
       </View>
@@ -311,7 +317,16 @@ export function CustomizeScreen() {
     <Section label={t.custPosterSize} plus={locks}>
       <View style={{ flexDirection: "row", gap: 8 }}>
         {DENSITIES.map((k) => (
-          <PosterTile key={k} size={k} label={posterLabel[k]} active={value === k} onPress={() => onPick(k)} />
+          <PosterTile
+            key={k}
+            size={k}
+            label={posterLabel[k]}
+            active={value === k}
+            onPress={() => {
+              haptic.pick();
+              onPick(k);
+            }}
+          />
         ))}
       </View>
     </Section>
@@ -321,96 +336,94 @@ export function CustomizeScreen() {
     <SettingsScreen
       title={t.custTitle}
       toast={toast}
-      action={statusAction}
+      onBack={back}
+      action={saveAction}
       gestures={{ locked }}
       pinned={
-        <Segmented
-          items={[
-            { id: "home", label: t.custTabHome },
-            { id: "profile", label: t.custTabProfile },
-          ]}
-          value={tab}
-          onChange={(v) => setTab(v as Tab)}
-        />
+        <>
+          <Segmented
+            items={[
+              { id: "home", label: t.custTabHome },
+              { id: "profile", label: t.custTabProfile },
+            ]}
+            value={tab}
+            onChange={(v) => setTab(v as Tab)}
+          />
+          <CustomizePreview kind={tab} who={who} home={home} profile={profile} open={previewOpen} onToggle={togglePreview} values={values} />
+        </>
       }
-      overlay={resetSheet}
+      overlay={overlay}
     >
-      {tab === "home" ? (
-        <>
-          <Section label={t.custHeaderSection} hint={w.statsHint} plus={locks}>
-            {/* المعاينةُ فوق الشبكة: البطاقةُ كما ستظهر في الرئيسيّة، بالقيم التي نعرفها */}
-            <View style={{ flexDirection: "row", borderRadius: radius.md, backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, minHeight: 56, alignItems: "stretch", marginBottom: 10 }}>
-              {homePick.length ? (
-                homePick.map((k, i) => (
-                  <View key={k} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8, borderStartWidth: i ? 1 : 0, borderStartColor: tokens.divider }}>
-                    <Text size={15} weight="800" numberOfLines={1}>{values.get(k) ?? "—"}</Text>
-                    <Text size={11} muted numberOfLines={1}>{statMeta[k].label}</Text>
+      <GestureDetector gesture={swipe}>
+        <View collapsable={false} style={{ gap: 16 }}>
+          {tab === "home" ? (
+            <>
+              <Section label={t.custHeaderSection} hint={w.statsHint} plus={locks}>
+                {homePick.length === 0 ? (
+                  <View style={{ minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                    <Text size={13} muted>{w.statsHidden}</Text>
                   </View>
-                ))
-              ) : (
-                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                  <Text size={13} muted>{w.statsHidden}</Text>
-                </View>
-              )}
-            </View>
-            <PickGrid all={HEADER_STATS} picked={homePick} meta={statMeta} values={values} onTap={tapHomeStat} />
-          </Section>
+                ) : null}
+                <PickGrid all={HEADER_STATS} picked={homePick} meta={statMeta} values={values} onTap={tapHomeStat} />
+              </Section>
 
-          <Section label={t.custSectionsTitle} hint={t.custSectionsHint} plus={locks}>
-            <Card>
-              <ArrangeList all={HOME_SECTIONS} picked={home.order} meta={homeSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => change({ home: { ...home, order } })} />
-            </Card>
-          </Section>
+              <Section label={t.custSectionsTitle} hint={t.custSectionsHint} plus={locks}>
+                <Card>
+                  <ArrangeList all={HOME_SECTIONS} picked={home.order} meta={homeSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => setHome({ ...home, order })} />
+                </Card>
+              </Section>
 
-          {poster(home.density, (density) => change({ home: { ...home, density } }))}
-        </>
-      ) : (
-        <>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 }}>
-            <Text size={13} muted style={{ flex: 1 }}>{w.asOthers}</Text>
-            {username ? <Button label={w.openPage} size="sm" variant="ghost" onPress={() => router.push({ pathname: "/u/[username]", params: { username } })} /> : null}
-          </View>
+              {poster(home.density, (density) => setHome({ ...home, density }))}
+            </>
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 }}>
+                <Text size={13} muted style={{ flex: 1 }}>{w.asOthers}</Text>
+                {username ? <Button label={w.openPage} size="sm" variant="ghost" onPress={() => router.push({ pathname: "/u/[username]", params: { username } })} /> : null}
+              </View>
 
-          <Section label={t.custProfileHeader} hint={w.profileStatsHint} plus={locks}>
-            <PickGrid all={PROFILE_STATS} picked={profilePick} meta={profileStatMeta} columns={4} onTap={tapProfileStat} />
-          </Section>
+              <Section label={t.custProfileHeader} hint={w.profileStatsHint} plus={locks}>
+                <PickGrid all={PROFILE_STATS} picked={profilePick} meta={profileStatMeta} columns={4} onTap={tapProfileStat} />
+              </Section>
 
-          <Section label={t.custTabsTitle} hint={t.custTabsHint} plus={locks}>
-            <Card>
-              <ArrangeList
-                all={HIDEABLE_PROFILE_TABS}
-                picked={visibleTabs}
-                meta={profileTabMeta(t)}
-                thumbs
-                onDragChange={setLocked}
-                onChange={(picked) => {
-                  /* وصفةُ `ProfileCustomize` حرفاً: الظاهرُ بترتيبه ثمّ المخفيُّ بترتيبه القديم */
-                  const hidden = orderedProfileTabs(profile).filter((k) => !picked.includes(k));
-                  change({ profile: { ...profile, tabOrder: [...picked, ...hidden], hiddenTabs: HIDEABLE_PROFILE_TABS.filter((k): k is HideableProfileTab => hidden.includes(k)) } });
-                }}
-              />
-            </Card>
-          </Section>
+              <Section label={t.custTabsTitle} hint={t.custTabsHint} plus={locks}>
+                <Card>
+                  <ArrangeList
+                    all={HIDEABLE_PROFILE_TABS}
+                    picked={visibleTabs}
+                    meta={profileTabMeta(t)}
+                    thumbs
+                    onDragChange={setLocked}
+                    onChange={(picked) => {
+                      /* وصفةُ `ProfileCustomize` حرفاً: الظاهرُ بترتيبه ثمّ المخفيُّ بترتيبه القديم */
+                      const hidden = orderedProfileTabs(profile).filter((k) => !picked.includes(k));
+                      setProfile({ ...profile, tabOrder: [...picked, ...hidden], hiddenTabs: HIDEABLE_PROFILE_TABS.filter((k): k is HideableProfileTab => hidden.includes(k)) });
+                    }}
+                  />
+                </Card>
+              </Section>
 
-          <Section label={t.custOverviewTab} hint={t.custProfileHint} plus={locks}>
-            <Card>
-              <ArrangeList all={PROFILE_SECTIONS} picked={profile.order} meta={profileSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => change({ profile: { ...profile, order } })} />
-            </Card>
-          </Section>
+              <Section label={t.custOverviewTab} hint={t.custProfileHint} plus={locks}>
+                <Card>
+                  <ArrangeList all={PROFILE_SECTIONS} picked={profile.order} meta={profileSectionMeta(t)} thumbs onDragChange={setLocked} onChange={(order) => setProfile({ ...profile, order })} />
+                </Card>
+              </Section>
 
-          <Section label={t.custListsTab} plus={locks}>
-            <Group>
-              <Toggle icon="bookmark" label={t.savedListsSection} hint={w.savedListsHint} checked={profile.savedLists} onChange={() => change({ profile: { ...profile, savedLists: !profile.savedLists } })} />
-            </Group>
-          </Section>
+              <Section label={t.custListsTab} plus={locks}>
+                <Group>
+                  <Toggle icon="bookmark" label={t.savedListsSection} hint={w.savedListsHint} checked={profile.savedLists} onChange={() => setProfile({ ...profile, savedLists: !profile.savedLists })} />
+                </Group>
+              </Section>
 
-          {poster(profile.density, (density) => change({ profile: { ...profile, density } }))}
-        </>
-      )}
+              {poster(profile.density, (density) => setProfile({ ...profile, density }))}
+            </>
+          )}
 
-      <Group>
-        <Row icon="repeat" title={t.custResetShort} subtitle={w.resetHint} trailing={null} onPress={() => setAskReset(true)} />
-      </Group>
+          <Group>
+            <Row icon="repeat" title={t.custResetShort} subtitle={w.resetHint} trailing={null} onPress={() => setAskReset(true)} />
+          </Group>
+        </View>
+      </GestureDetector>
     </SettingsScreen>
   );
 }
@@ -435,7 +448,7 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * شبكةُ اختيارٍ بالترتيب: كلُّ خانةٍ اسمُها كبيرٌ وقيمتُها صغيرة (التحسين ٥ — الاسمُ ما تختار به، والقيمةُ تأكيد)،
+ * شبكةُ اختيارٍ بالترتيب: كلُّ خانةٍ اسمُها كبيرٌ وقيمتُها صغيرة (الاسمُ ما تختار به، والقيمةُ تأكيد)،
  * والمختارُ يحمل رقمَ موضعه في زاويته. الشكلُ واحدٌ لأرقام الرئيسيّة وبطاقة الملفّ.
  */
 function PickGrid<K extends string>({

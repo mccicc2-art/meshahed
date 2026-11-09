@@ -2083,6 +2083,9 @@ export async function repairImpossibleDays(): Promise<{
       .from("watched_episodes")
       .select("show_tmdb_id, season_number, episode_number, runtime, watched_at")
       .eq("user_id", user.id)
+      /* **ترتيبٌ ثابتٌ للصفحات**: بلا ترتيبٍ قد تتداخل صفحتان لمن تجاوز الألفَ فيتكرّر صفٌّ،
+       * فيحمل الـupsert الواحدُ المفتاحَ مرّتين ويسقط كلُّه (21000) */
+      .order("id")
       .range(from, from + 999);
     if (error) fail(error);
     if (!data?.length) break;
