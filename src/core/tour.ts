@@ -1,9 +1,11 @@
 // الجولة التعريفية — سجلُّها الواحد وحالتُها (Phase 11-T · T0)
 
 import type { Dict } from "./i18n.ts";
+import { AI_STORY_SEARCH_PLUS_ONLY } from "./plan.ts";
 
 /**
- * 🆕 D-1318 — **جولةٌ واحدةٌ من سبع خطوات، وسجلٌّ واحدٌ يقرؤه الويبُ والتطبيق.**
+ * 🆕 D-1318 — **جولةٌ واحدةٌ، وسجلٌّ واحدٌ يقرؤه الويبُ والتطبيق.** (سبعُ خطواتٍ في الويب وثمانٍ في التطبيق منذ T357 —
+ * الثامنةُ «الربط» لا صفحةَ لها في الويب؛ انظر `TOUR_STEPS`.)
  *
  * 🔑 **لماذا واحدةٌ بعد أن كانتا اثنتين** (D-852 منقوضٌ بمراجعة أحمد ٨ أكتوبر): الثانيةُ لم تكن تظهر
  * لأحدٍ من تلقاء نفسها، ولا موعدَ صادقاً لها — كلُّ عتبةٍ («بعد خمسة أعمال») تخمين. والجولتان
@@ -16,7 +18,8 @@ import type { Dict } from "./i18n.ts";
  *
  * ⚠️ **والترتيبُ حكمُ أحمد لا اجتهاد**: تبدأ بـ«اكتشف» («الجولة واحد خله يبدا باكتشف»)، و«الرئيسية
  * والملف» السادسةُ والمجتمعُ السابعة («خل الإعدادات … رقم 6 و المجتمع رقم 7») — فالتخصيصُ يلي
- * ما يخصّصه مباشرةً، والجولةُ تنتهي على تبويبٍ من الشريط لا داخل الإعدادات.
+ * ما يخصّصه مباشرةً. والويبُ ينتهي على تبويبٍ من الشريط؛ والتطبيقُ منذ T357 على صفحة «الربط» (حكمُ أحمد ٩ نوفمبر:
+ * «٨ الربط و صفحة الاشتراك»، ثمّ «٦أ») — ينقض «تنتهي على تبويبٍ لا داخل الإعدادات» في التطبيق وحدَه.
  *
  * ⚠️ **ولا خطوةَ تفترض مكتبةً فارغة**: الترحيبُ (`/welcome`) لا يُتجاوز قبل اختيار عملٍ واحد —
  * فنصُّ المكتبة يقول «أعمالك التي اخترتها هنا» بصيغة الحاضر (تصحيحُ أحمد).
@@ -121,10 +124,10 @@ export function tourWrite(current: TourState | null, patch: TourState | null): T
 }
 
 /** الزرُّ الذي تحيطه الحلقةُ في التطبيق — معرّفٌ تسجّله الشاشةُ نفسُها (T1) */
-export type TourAnchor = "discover-filter" | "search-describe" | "home-avatar";
+export type TourAnchor = "discover-filter" | "search-describe" | "home-avatar" | "drawer-customize";
 
 /** شاشةُ الخطوة في التطبيق — **اسمٌ لا مسار**: مساراتُ expo-router شأنُ التطبيق وحدَه */
-export type TourScreen = "discover" | "search" | "library" | "home" | "profile" | "customize" | "community";
+export type TourScreen = "discover" | "search" | "library" | "home" | "menu" | "customize" | "community" | "links";
 
 export interface TourStep {
   id: string;
@@ -135,16 +138,43 @@ export interface TourStep {
   title: (t: Dict) => string;
   body: (t: Dict) => string;
   /**
-   * **نصُّ ما قبل الفعل** — للتطبيق وحدَه: خطوةُ الملفّ تقف على الرئيسية والحلقةُ على صورته
+   * **نصُّ ما قبل الفعل** — للتطبيق وحدَه: خطوةُ القائمة تقف على الرئيسية والحلقةُ على صورته
    * ويضغطها بنفسه (حكمُ أحمد: «يضغطها بنفسه مع علامة اضغط هنا»)، فالبطاقةُ تدعوه أوّلاً ثمّ
    * تصف ما فتحه. والويبُ يُبحر إلى الملفّ مباشرةً ويعرض `body`.
    */
   lead?: (t: Dict) => string;
+  /**
+   * 🆕 T357 — **نصُّ التطبيق حين يختلف عن الويب** (مراجعةُ أحمد ٩ نوفمبر). الشاشتان افترقتا بعد ٨ أكتوبر: في التطبيق
+   * قائمةٌ جانبيّةٌ تفتحها الصورةُ وفيها الإعداداتُ واللغة (D-1505)، وفي الويب زرُّ الإعدادات في الرأس والصورةُ تفتح الملفّ.
+   * فجملةٌ واحدةٌ للطرفين تكذب في أحدهما. الغائبُ هنا يعني «نصُّ الويب صادقٌ في التطبيق أيضاً».
+   */
+  appTitle?: (t: Dict) => string;
+  /** `plus`: هل العضوُ مشترك — ما يُقفل عليه يُقال لغير المشترك وحدَه (حكمُ أحمد «٥أ») */
+  appBody?: (t: Dict, plus: boolean) => string;
+  /**
+   * **خطوةٌ بمرحلتين في التطبيق** (القائمة الجانبيّة): قبل الفعل `lead` والحلقةُ على `anchor`؛ فإذا فتح القائمةَ بنفسه
+   * انتقلت الحلقةُ إلى `openAnchor` ومعها «اضغط هنا»، والبطاقةُ تصف ما فُتح (`appBody`) ثمّ تدعوه إليه (`tap`).
+   */
+  openAnchor?: TourAnchor;
+  tap?: (t: Dict) => string;
+  /** وسمُ PLUS بجانب العنوان — حين تشرح البطاقةُ ميزةً مقفلةً على هذا العضو (حكمُ أحمد «٥أ») */
+  plusTag?: (plus: boolean) => boolean;
+  /**
+   * **للتطبيق وحدَه** — صفحةُ «الربط» لا وجودَ لها في الويب. ⚠️ **ولا تكون إلّا آخراً**: الحالةُ رقمُ خطوةٍ واحدٌ يشترك
+   * فيه الطرفان (`ui_state.tour.i`)، وخطوةٌ تُحذف من وسط الويب تزيح ما بعدها فيستأنف الويبُ غيرَ ما وقف عليه التطبيق.
+   */
+  appOnly?: boolean;
 }
 
 /**
  * ⚠️ **وكلُّ مسارٍ هنا صفحةٌ قائمةٌ فعلاً** — الجولةُ تُبحر إليها (`router.push`)، ومسارٌ ميّتٌ
  * يقذف القارئَ في ٤٠٤ وسطَ درسٍ عن التطبيق. `/profile` يحوّل إلى ملفّه العامّ (D-434).
+ *
+ * 🆕 T357 — **ثماني خطواتٍ في التطبيق، وسبعٌ في الويب** (مراجعةُ أحمد ٩ نوفمبر: «١أ · ٢أ · ٥أ · ٦أ»، والسابعةُ «المجتمع
+ * والرسايل الخاصة» والثامنةُ «الربط وصفحة الاشتراك»). الخامسةُ في التطبيق **القائمةُ الجانبيّة** — الصورةُ تفتحها كما تفتحها
+ * بعد الجولة، فلا تُعلّمه الجولةُ ما يكذب بعد دقيقة؛ ومنها يضغط «التخصيص» بنفسه فيدخل السادسةَ بطريقها الحقيقيّ ويرى
+ * المعاينةَ الحيّة («حلو انه يشوف المعاينة الحية»). والثامنةُ تقف على «الربط»: ميزةٌ مجّانيّةٌ يجرّبها فوراً، وصفحةُ
+ * الاشتراك منها بـ«اعرف أكثر» لا بابٌ يُفتح عليه — جولةٌ تنتهي على صفحة بيعٍ تُقرأ كلُّها إعلاناً.
  */
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -162,17 +192,39 @@ export const TOUR_STEPS: TourStep[] = [
     anchor: "search-describe",
     title: (t) => t.tourSearchTitle,
     body: (t) => t.tourSearchBody,
+    /* مفتوحٌ للجميع حتى تُقلب البوّابة (المرحلة ٥) — والوسمُ يتبعها لا يسبقها */
+    plusTag: (plus) => AI_STORY_SEARCH_PLUS_ONLY && !plus,
   },
-  { id: "track", path: "/library", screen: "library", title: (t) => t.tourTrackTitle, body: (t) => t.tourTrackBody },
-  { id: "home", path: "/", screen: "home", title: (t) => t.tourHomeTitle, body: (t) => t.tourHomeBody },
   {
-    id: "profile",
+    id: "track",
+    path: "/library",
+    screen: "library",
+    title: (t) => t.tourTrackTitle,
+    body: (t) => t.tourTrackBody,
+    appBody: (t) => t.tourTrackBodyApp,
+  },
+  {
+    id: "home",
+    path: "/",
+    screen: "home",
+    title: (t) => t.tourHomeTitle,
+    body: (t) => t.tourHomeBody,
+    /* الرسائلُ انتقلت إلى السابعة، والإعداداتُ إلى القائمة — فلا يبقى في الرأس ما يُذكر إلّا الإشعارات */
+    appBody: (t) => t.tourHomeBodyApp,
+  },
+  {
+    /* الويبُ: «ملفك» كما كانت (الصورةُ هناك تفتح الملفّ) · التطبيقُ: القائمةُ الجانبيّة — والرقمُ واحدٌ في الطرفين */
+    id: "menu",
     path: "/profile",
-    screen: "profile",
+    screen: "menu",
     anchor: "home-avatar",
+    openAnchor: "drawer-customize",
     title: (t) => t.tourProfileTitle,
     body: (t) => t.tourProfileBody,
-    lead: (t) => t.tourProfileLead,
+    appTitle: (t) => t.tourMenuTitle,
+    lead: (t) => t.tourMenuLead,
+    appBody: (t) => t.tourMenuBody,
+    tap: (t) => t.tourMenuTap,
   },
   {
     id: "shape",
@@ -180,6 +232,8 @@ export const TOUR_STEPS: TourStep[] = [
     screen: "customize",
     title: (t) => t.tourShapeTitle,
     body: (t) => t.tourShapeBody,
+    appBody: (t, plus) => (plus ? t.tourShapeBodyApp : `${t.tourShapeBodyApp} ${t.tourShapeSaveFree}`),
+    plusTag: (plus) => !plus,
   },
   {
     id: "community",
@@ -187,16 +241,43 @@ export const TOUR_STEPS: TourStep[] = [
     screen: "community",
     title: (t) => t.tourCommunityTitle,
     body: (t) => t.tourCommunityBody,
+    appTitle: (t) => t.tourCommunityTitleApp,
+    appBody: (t) => t.tourCommunityBodyApp,
+  },
+  {
+    id: "links",
+    /* لا تُزار في الويب (`appOnly`) — المسارُ للنوع وحدَه */
+    path: "",
+    screen: "links",
+    appOnly: true,
+    title: (t) => t.tourLinksTitle,
+    body: (t) => t.tourLinksBody,
+    /* الربطُ مجّانيٌّ (تطبيقٌ واحد) فلا وسم — والمشتركُ يُقال له ما عنده لا ما يفوته */
+    appBody: (t, plus) => (plus ? t.tourLinksBodyPlus : t.tourLinksBody),
   },
 ];
+
+/** خطواتُ الويب — بلا ما لا صفحةَ له هناك. وما يُحذف آخرٌ دائماً، فأرقامُ ما بقي أرقامُ التطبيق نفسُها */
+export const WEB_TOUR_STEPS: TourStep[] = TOUR_STEPS.filter((s) => !s.appOnly);
+
+/** ما تعرضه بطاقةُ التطبيق: نصُّه إن كان له نصٌّ، وإلّا نصُّ الويب */
+export function appTitleOf(step: TourStep, t: Dict): string {
+  return (step.appTitle ?? step.title)(t);
+}
+export function appBodyOf(step: TourStep, t: Dict, plus: boolean): string {
+  return step.appBody ? step.appBody(t, plus) : step.body(t);
+}
 
 /** اسمُ الجولة وسطرُها — يقرؤهما صفُّ «المساعدة» في الويب والتطبيق */
 export const TOUR_META: Record<TourId, { title: (t: Dict) => string; sub: (t: Dict) => string }> = {
   basics: { title: (t) => t.tourRow, sub: (t) => t.tourRowSub },
 };
 
-/** خطواتُ الجولة — **والمعرّفُ يبقى في التوقيع**: المستدعون يمرّرونه، وجولةٌ ثانيةٌ غداً صفٌّ لا إعادةُ كتابة */
-export function stepsOf(id?: TourId): TourStep[] {
+/**
+ * خطواتُ الجولة — **والمعرّفُ يبقى في التوقيع**: المستدعون يمرّرونه، وجولةٌ ثانيةٌ غداً صفٌّ لا إعادةُ كتابة.
+ * والويبُ (الافتراض) يأخذ خطواتِه؛ التطبيقُ يقرأ `TOUR_STEPS` كاملة.
+ */
+export function stepsOf(id?: TourId, platform: "web" | "app" = "web"): TourStep[] {
   void id;
-  return TOUR_STEPS;
+  return platform === "app" ? TOUR_STEPS : WEB_TOUR_STEPS;
 }

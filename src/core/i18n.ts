@@ -113,6 +113,9 @@ const ar = {
   hintStats:
     "تحت الأرقام: تقاريرُ المدّة، وأوقاتُ مشاهدتك، وبطاقةُ ذوقٍ تشاركها بصورة.",
   hintHome: "رتّب أقسام الرئيسية وبدّل وضع العرض من زرّ التخصيص أعلى الصفحة.",
+  /* 🆕 T357 — **للتطبيق**: لا زرَّ تخصيصٍ في رأس الرئيسية هناك منذ القائمة الجانبيّة (D-1505)، و«وضعُ العرض» نفسُه في
+     «التخصيص» — فالجملةُ تدلّ على الباب الذي يبقى ولو أُخفي مبدّلُ العرض من الرأس */
+  hintHomeApp: "رتّب أقسام الرئيسية واختر وضع عرضها من «التخصيص» في القائمة.",
   /* 🆕 D-1273 — إعلامُ تغيّر سياسة الخصوصيّة (D-1268)؛ نصٌّ يُقرأ ولا يُضغط — المكانُ في الجملة نفسِها */
   hintPrivacy:
     "حدّثنا سياسة الخصوصية: إشعارات الجهاز تحفظ معرّف جهازك وتمرّ عبر Expo و Google. التفاصيل في الإعدادات ← سياسة الخصوصية.",
@@ -155,8 +158,6 @@ const ar = {
   tourHomeBody:
     "«أكمل المشاهدة» لما بدأته و«للمشاهدة» لما تنويه. والرسائل والإشعارات والإعدادات من الأزرار أعلى الشاشة.",
   tourProfileTitle: "ملفك",
-  /* `Lead` للتطبيق: البطاقةُ على الرئيسية والحلقةُ على صورته، ويضغطها بنفسه — ثمّ `Body` تصف ما فتحه */
-  tourProfileLead: "اضغط صورتك لتفتح ملفك.",
   tourProfileBody: "أعمالك ومراجعاتك ومفضّلتك وقوائمك، وإحصاءاتك ومن يتابعك.",
   tourTapHere: "اضغط هنا",
   tourShapeTitle: "خصّصه كما تريد",
@@ -164,6 +165,31 @@ const ar = {
     "اختر ما يظهر في رئيسيتك وملفك: الأقسام والتبويبات وترتيبها، وعناصر الترويسة، وحجم الملصق. واللغة في «المظهر واللغة».",
   tourCommunityTitle: "المجتمع",
   tourCommunityBody: "ثلاثة تبويبات: نشاط من تتابعهم، نقاشات الأعمال، والأعضاء.",
+  /* 🆕 T357 — **نصوصُ التطبيق حين يختلف عن الويب** (مراجعةُ أحمد ٩ نوفمبر، واعتمدها بنصّها): في التطبيق قائمةٌ جانبيّة
+     فيها الإعداداتُ واللغة، والرسائلُ لها خطوتُها، والجولةُ ثمانٍ بخطوة «الربط». ⚠️ أسماءُ الصفوف والتبويبات هنا كما في
+     التطبيق («أسبوعك»، «التخصيص»، «الرئيسية» و«الملف»، «شفتها؟») — تغييرُ أحدها هناك يُكذّب جملةً هنا */
+  tourSuggestTitleApp: "جولة سريعة في Loopz — ٨ بطاقات، دقيقة واحدة.",
+  tourTrackBodyApp:
+    "أعمالك التي اخترتها هنا. افتح عملاً وأشّر حلقةً أو موسماً كاملاً، والفيلم بضغطة واحدة. وفي تبويب «القوائم» قوائمك، ومنها ما تشاركه مع أصدقائك.",
+  tourHomeBodyApp:
+    "«أكمل المشاهدة» لما بدأته، و«للمشاهدة» لما تنويه. واضغط «أسبوعك» لترى مواعيد حلقاتك في التقويم. والإشعارات في أعلى الشاشة.",
+  tourMenuTitle: "قائمتك",
+  tourMenuLead: "اضغط صورتك لتفتح القائمة.",
+  tourMenuBody:
+    "منها ملفك وسجلّ مشاهدتك وإحصائياتك والربط، وتحتها الإعدادات واللغة والمظهر. وتفتحها أيضاً بسحب الرئيسية جانباً.",
+  tourMenuTap: "اضغط «التخصيص».",
+  tourShapeBodyApp:
+    "اختر أقسام رئيسيتك وملفك وترتيبها وحجم الملصق، وشاهد النتيجة في المعاينة فوراً. واسحب جانباً لتنتقل بين «الرئيسية» و«الملف».",
+  tourShapeSaveFree: "والحفظ لمشتركي Plus.",
+  tourCommunityTitleApp: "المجتمع والرسائل",
+  tourCommunityBodyApp:
+    "ثلاثة تبويبات: نشاط من تتابعهم، ونقاشات الأعمال، والأعضاء. ورسائلك الخاصة ومجموعاتك من زرّ الرسائل أعلى الرئيسية.",
+  tourLinksTitle: "الربط وLoopz Plus",
+  tourLinksBody:
+    "اربط Stremio أو سيرفر بيتك، فيسألك Loopz «شفتها؟» حين تُنهي حلقة. والحساب المجاني يربط تطبيقاً واحداً، ومع Plus خمسة وتتبّعٌ تلقائي دون سؤال.",
+  /* المشتركُ «تتبّع تلقائي» عنده مفعّلٌ من البداية — فلا يُقال له إنّه سيُسأل */
+  tourLinksBodyPlus:
+    "اربط Stremio أو سيرفر بيتك. ومع اشتراكك تربط خمسة تطبيقات، ويتتبّع Loopz ما تُنهيه دون أن يسألك.",
   tourRow: "الجولة التعريفية",
   tourRowSub: "تعرّف على أقسام Loopz خطوة خطوة — في أي وقت",
   hintsResetRow: "إعادة عرض التلميحات",
@@ -3385,6 +3411,7 @@ const en: Dict = {
     "Under the numbers: period reports, your viewing times, and a taste card you can share as an image.",
   hintHome:
     "Reorder home sections and switch the view mode from the customize button up top.",
+  hintHomeApp: "Arrange your Home sections and pick its view from \u201cCustomize\u201d in the menu.",
   hintPrivacy:
     "We updated the privacy policy: device notifications store your device identifier and travel through Expo and Google. Details in Settings → Privacy policy.",
   hintLists:
@@ -3418,7 +3445,6 @@ const en: Dict = {
   tourHomeBody:
     "\u201cContinue Watching\u201d for what you started, \u201cTo watch\u201d for what you plan. Messages, notifications and settings are the buttons at the top.",
   tourProfileTitle: "Your profile",
-  tourProfileLead: "Tap your picture to open it.",
   tourProfileBody: "Your titles, reviews, favorites and lists, plus your stats and followers.",
   tourTapHere: "Tap here",
   tourShapeTitle: "Make it yours",
@@ -3426,6 +3452,27 @@ const en: Dict = {
     "Choose what shows on your Home and profile: sections, tabs and their order, header elements, poster size. Language is under \u201cAppearance & language\u201d.",
   tourCommunityTitle: "Community",
   tourCommunityBody: "Three tabs: activity from people you follow, title discussions, and members.",
+  tourSuggestTitleApp: "A quick tour of Loopz \u2014 8 cards, one minute.",
+  tourTrackBodyApp:
+    "The titles you picked are here. Open one and mark an episode or a whole season; a movie takes one tap. Your lists are in the Lists tab, including the ones you share with friends.",
+  tourHomeBodyApp:
+    "\u201cContinue Watching\u201d for what you started, \u201cTo watch\u201d for what you plan. Tap \u201cYour week\u201d to see your episodes in the calendar. Notifications are at the top.",
+  tourMenuTitle: "Your menu",
+  tourMenuLead: "Tap your picture to open the menu.",
+  tourMenuBody:
+    "Your profile, watch history, stats and Linking are here, with settings, language and appearance below. You can also swipe Home sideways to open it.",
+  tourMenuTap: "Tap \u201cCustomize\u201d.",
+  tourShapeBodyApp:
+    "Pick your Home and profile sections, their order and poster size, and see it in the preview right away. Swipe sideways to switch between Home and Profile.",
+  tourShapeSaveFree: "Saving is for Plus subscribers.",
+  tourCommunityTitleApp: "Community and messages",
+  tourCommunityBodyApp:
+    "Three tabs: Activity from people you follow, Discussions about titles, and Members. Your private messages and groups are behind the messages button at the top of Home.",
+  tourLinksTitle: "Linking and Loopz Plus",
+  tourLinksBody:
+    "Link Stremio or your home server, and Loopz asks \u201cWatched it?\u201d when you finish an episode. A free account links one app; Plus links five and auto-tracks without asking.",
+  tourLinksBodyPlus:
+    "Link Stremio or your home server. Your plan links five apps, and Loopz auto-tracks what you finish without asking.",
   tourRow: "Take the tour",
   tourRowSub: "Walk through Loopz step by step \u2014 any time",
   hintsResetRow: "Show hints again",

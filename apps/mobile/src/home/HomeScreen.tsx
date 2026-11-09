@@ -138,6 +138,8 @@ export function HomeScreen() {
   const avatarAnchor = useTourAnchor("home-avatar", () => scroll.current?.scrollTo({ y: 0, animated: true }));
   /* والجولةُ على الشاشة (عرضاً أو خطوةً) تُخفي تلميحَي الرئيسيّة — مخفيّان لا منزوعان، فلا يُحسبان مقروءَين */
   const tourBusy = useSyncExternalStore(tourStore.subscribe, tourStore.busy);
+  /* 🆕 T357 — خطوةُ القائمة تفتح السحبةَ (`store.ts` — `step`) */
+  const tourStep = useSyncExternalStore(tourStore.subscribe, tourStore.step);
   /* وعرضُ الجولة يظهر على الرئيسيّة وحدَها — فتقول هي إنّها الظاهرة (`store.ts`: لماذا لا تكفي حالةُ التبويبات) */
   useFocusEffect(
     useCallback(() => {
@@ -752,7 +754,7 @@ export function HomeScreen() {
   return (
     <CardStoreContext.Provider value={store}>
     {/* 🆕 D-1506 — سحبةٌ نحو الداخل تفتح القائمةَ الجانبيّة (يمينٌ بالإنجليزيّة، يسارٌ بالعربيّة) — والجولةُ تُطفئها ما دامت على الشاشة */}
-    <DrawerSwipe from="home" enabled={!!me && !tourBusy}>
+    <DrawerSwipe from="home" enabled={!!me && (!tourBusy || tourStep === "menu")}>
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {/* 🆕 D-1433 — رأسُ الرئيسيّة ثابتٌ لا يصعد (أحمد ١٦ أكتوبر: «الهيدر في الهوم لا يطلع فوق، خلّه ثابت والباقي يكون
           تحته»): الصفحةُ تمرّ تحته وخلفيّتُه معتمة. الدوكُ وحده يتبع التمرير (حكمُه «١ أ») */}
@@ -762,12 +764,9 @@ export function HomeScreen() {
           h={d?.header ?? null}
           avatarRef={avatarAnchor}
           onAvatar={() =>
-            /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة (والملفُّ أوّلُ ما فيها)؛ وخطوةُ «ملفك» في الجولة تُبقيها بابَ الملفّ كما تقول جملتُها */
-            tourStore.busy()
-              ? d?.header.username
-                ? openProfile(router, d.header.username, "home")
-                : router.push("/settings/profile")
-              : drawerStore.open("home")
+            /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة (والملفُّ أوّلُ ما فيها). 🆕 T357 — **وفي الجولة أيضاً**: كانت خطوةُ
+               «ملفك» تجعلها بابَ الملفّ فتُعلّمه الجولةُ ما يكذب بعد دقيقة (مراجعةُ أحمد ٩ نوفمبر «١أ») — والخطوةُ صارت القائمة */
+            drawerStore.open("home")
           }
           viewSwitch={d && !d.header.show_stats ? <HomeViewSwitch view={view} onToggle={toggleView} /> : null}
           unreadSignals={d?.header.unread_signals ?? 0}
@@ -797,7 +796,7 @@ export function HomeScreen() {
           <HomeStats h={d.header} onStat={openHref} viewSwitch={<HomeViewSwitch view={view} onToggle={toggleView} />} />
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
-              <OneTimeHint id="home-customize" text={t.hintHome} hidden={tourBusy} />
+              <OneTimeHint id="home-customize" text={t.hintHomeApp} hidden={tourBusy} />
             </View>
           ) : !d.hints.includes(PRIVACY_HINT) ? (
             /* 🆕 D-1273 — **السياسةُ تَعِد: «نُعلمك داخل التطبيق»** (فقرةُ «التغييرات والتواصل»)، وتغيّرت في D-1268 بلا

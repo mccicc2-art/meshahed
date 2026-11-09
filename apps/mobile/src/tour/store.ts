@@ -28,9 +28,14 @@ type Snap = {
    * الإقلاع، حين يُعرَض الاقتراح، لم يحدث بعد.
    */
   home: boolean;
+  /**
+   * 🆕 T357 — **معرّفُ الخطوة الجارية** (`null` = لا جولة). تقرؤه الرئيسيّة: سحبةُ القائمة مطفأةٌ ما دامت الجولةُ على
+   * الشاشة (لا تفتح القائمةَ فوق بطاقةٍ تشرح شيئاً آخر)، **إلّا في خطوة القائمة** — وجملتُها تقول «وتفتحها أيضاً بسحب الرئيسية».
+   */
+  step: string | null;
 };
 
-let snap: Snap = { local: undefined, busy: false, home: false };
+let snap: Snap = { local: undefined, busy: false, home: false, step: null };
 const subs = new Set<() => void>();
 const set = (next: Partial<Snap>) => {
   snap = { ...snap, ...next };
@@ -72,6 +77,10 @@ export const tourStore = {
     if (snap.busy !== busy) set({ busy });
   },
   busy: () => snap.busy,
+  setStep(step: string | null) {
+    if (snap.step !== step) set({ step });
+  },
+  step: () => snap.step,
   setHome(home: boolean) {
     if (snap.home !== home) set({ home });
   },

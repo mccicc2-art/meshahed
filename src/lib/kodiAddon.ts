@@ -1,4 +1,5 @@
 import "server-only";
+import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
 
 /**
  * ====== 🆕 إضافةُ Kodi — `service.loopz` (هجرة ٢٣٦؛ أحمد ٥ نوفمبر: «١ أ · ٢ أ · ٣ أ»، والرمزُ داخل التبويب «أ») ======
@@ -11,14 +12,16 @@ import "server-only";
  * ترسل «انتهى» إلى رابطها. **ولا تعلّم شيئاً**: السؤالُ «شفتها؟» في الرئيسيّة («٢ أ» في سيرفرات البيت).
  * ⚖️ **والربطُ بستّة أرقام** يُكتب في إعداداتها بريموت التلفزيون — الرابطُ الطويل لا يُكتب هناك.
  * 📌 بايثون ٣ (Kodi 19 فما بعد). وإصدارٌ جديدٌ = رقمٌ جديد هنا وفي `addon.xml` (Kodi يقارن الرقم).
+ * 🆕 T359 — **جاهزةٌ لمستودع Kodi الرسميّ** (أذنت مؤسّسةُ Kodi بشعارها ٩ نوفمبر واقترحت المستودع): رخصةٌ مفتوحة (`kodiAddonLicense.ts`)،
+ * وسجلٌّ بمستوى التصحيح وحدَه (قاعدتُهم)، ونصوصٌ مترجمةٌ كلُّها، ولا ذكرَ لخطّةٍ مدفوعة — ربطُ جهازٍ واحدٍ مجّانيّ (D-1640).
  */
 
 export const KODI_ADDON_ID = "service.loopz";
-export const KODI_ADDON_VERSION = "1.0.0";
+export const KODI_ADDON_VERSION = "1.0.1";
 export const KODI_ZIP_NAME = `${KODI_ADDON_ID}-${KODI_ADDON_VERSION}.zip`;
 
 const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.loopz" name="Loopz" version="1.0.0" provider-name="Loopz">
+<addon id="service.loopz" name="Loopz" version="1.0.1" provider-name="Loopz">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
   </requires>
@@ -26,11 +29,13 @@ const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="ye
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">Loopz asks "watched it?" when you finish an episode or a movie on Kodi</summary>
     <summary lang="ar_SA">يسألك Loopz «شفتها؟» لما تخلّص حلقة أو فيلم على Kodi</summary>
-    <description lang="en_GB">When an episode or a movie reaches 90% on Kodi, Loopz asks you on Home whether you watched it. Nothing is marked without your answer. Link it with the 6-digit code from Loopz: Settings, Home servers, Kodi. Needs Loopz Plus.</description>
-    <description lang="ar_SA">لما تكمل 90% من حلقة أو فيلم على Kodi، يسألك Loopz في الرئيسية: شفتها؟ ما نعلّم شيئاً بدون جوابك. اربطها بالرمز من ستة أرقام من Loopz: الإعدادات، سيرفرات البيت، Kodi. تحتاج Loopz Plus.</description>
+    <description lang="en_GB">When an episode or a movie reaches 90% on Kodi, Loopz asks you on Home whether you watched it. Nothing is marked without your answer. Link it with the 6-digit code from Loopz: Linking, Kodi.</description>
+    <description lang="ar_SA">لما تكمل 90% من حلقة أو فيلم على Kodi، يسألك Loopz في الرئيسية: شفتها؟ ما نعلّم شيئاً بدون جوابك. اربطها بالرمز من ستة أرقام من Loopz: الربط، Kodi.</description>
     <platform>all</platform>
-    <license>All rights reserved</license>
+    <license>GPL-2.0-or-later</license>
     <website>https://loopztv.com</website>
+    <source>https://github.com/mccicc2-art/meshahed/blob/main/src/lib/kodiAddon.ts</source>
+    <news>v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
     <assets>
       <icon>icon.png</icon>
     </assets>
@@ -140,7 +145,15 @@ msgstr "محاولات كثيرة. انتظر دقيقة"
 
 `;
 
-const SERVICE_PY = String.raw`# -*- coding: utf-8 -*-
+/* 🆕 T359 — **مدخلٌ قصيرٌ والمنطقُ في `resources/lib/loopz.py`**: أداةُ فحص مستودع Kodi (`kodi-addon-checker`) تنبّه على مدخلٍ يزيد على
+   خمسة عشر سطراً، والمراجعون يطلبون نقلَه — فالسلوكُ نفسُه حرفاً، والمدخلُ يستدعيه فقط. */
+const ENTRY_PY = String.raw`# -*- coding: utf-8 -*-
+from resources.lib.loopz import main
+
+main()
+`;
+
+const LIB_PY = String.raw`# -*- coding: utf-8 -*-
 """
 Loopz for Kodi.
 
@@ -183,7 +196,7 @@ def tr(string_id):
 
 
 def log(msg):
-    xbmc.log("[%s] %s" % (ADDON_ID, msg), xbmc.LOGINFO)
+    xbmc.log("[%s] %s" % (ADDON_ID, msg), xbmc.LOGDEBUG)
 
 
 def notify(string_id, error=False):
@@ -442,10 +455,6 @@ def main():
         if monitor.waitForAbort(1):
             break
         player.tick()
-
-
-if __name__ == "__main__":
-    main()
 `;
 
 /** أيقونةُ التطبيق نفسُها (`public/icon-512.png`) */
@@ -635,10 +644,14 @@ export function kodiAddonZip(): Uint8Array {
   cached = zip([
     dir(""),
     text("addon.xml", ADDON_XML),
-    text("service.py", SERVICE_PY),
+    /* 🆕 T359 — يشترطه مستودعُ Kodi الرسميّ، وبه يعرف من يثبّت الملفَّ من موقعنا رخصتَه أيضاً */
+    text("LICENSE.txt", KODI_LICENSE_TXT),
+    text("service.py", ENTRY_PY),
     { name: `${root}icon.png`, data: new Uint8Array(Buffer.from(ICON_PNG_B64, "base64")) },
     dir("resources/"),
     text("resources/settings.xml", SETTINGS_XML),
+    dir("resources/lib/"),
+    text("resources/lib/loopz.py", LIB_PY),
     dir("resources/language/"),
     dir("resources/language/resource.language.en_gb/"),
     text("resources/language/resource.language.en_gb/strings.po", STRINGS_EN),

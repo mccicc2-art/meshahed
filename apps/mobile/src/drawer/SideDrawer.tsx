@@ -24,6 +24,20 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import type { NativeRoot } from "../shell";
 import { num } from "@/core/i18n";
 import { drawerP, drawerStore, drawerWidth } from "./store";
+import { useTourAnchor } from "../tour/anchors";
+
+/**
+ * وسمُ «PLUS» المحدَّد — صفُّ القائمة لميزةٍ يُقفل جزءٌ منها على غير المشترك. 🆕 T357 — **مُصدَّرٌ لبطاقة الجولة** (حكمُ أحمد
+ * «٥أ»: وسمٌ في البطاقة التي تشرح ميزةً مقفلة) — الوسمُ نفسُه لا شبيهٌ ثانٍ له (القاعدة ٣).
+ */
+export function PlusTag() {
+  const { tokens } = useApp();
+  return (
+    <View style={{ borderWidth: 1.5, borderColor: tokens.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
+      <Text size={10} weight="700" color={tokens.accent}>PLUS</Text>
+    </View>
+  );
+}
 
 /**
  * ====== 🆕 D-1505 — القائمةُ الجانبيّة (تصميمُ أحمد، ٢٢–٢٧ أكتوبر · «نفذ» ٢٧ أكتوبر) ======
@@ -32,8 +46,8 @@ import { drawerP, drawerStore, drawerWidth } from "./store";
  * تختصر الطريق: الملفُّ · سجلُّ المشاهدة (`/activity?scope=watch`، D-1504) · التقويمُ و«تقريرك» (D-1573) · ربطُ المنصّات (`settings/stremio`) ·
  * التخصيص (`settings/home`) · الدعوات · الإعدادات · المساعدة · «أرسل مشكلة أو اقتراح» · Plus.
  *
- * - **من صورة الحساب** (الرئيسيّة وطرفُ ترويسات التبويبات) كقائمة X التي أرسلها أحمد — والملفُّ أوّلُ ما فيها. وخطوةُ
- *   «ملفك» في الجولة تُبقي الصورةَ بابَ الملفّ (جملتُها «اضغط صورتك لتفتح ملفك») — `HomeScreen`.
+ * - **من صورة الحساب** (الرئيسيّة وطرفُ ترويسات التبويبات) كقائمة X التي أرسلها أحمد — والملفُّ أوّلُ ما فيها. 🆕 T357 —
+ *   **وفي الجولة أيضاً**: خطوتُها الخامسة هي هذه القائمة، وحلقتُها تنتقل إلى صفّ «التخصيص» (`drawer-customize`) حين تُفتح.
  * - **تنزلق من طرف البداية** (يمينٌ في العربيّة، يسارٌ في الإنجليزيّة) وتُغلق بالحجاب أو بسحبها نحو طرفها أو بزرّ الرجوع.
  * - **المظهرُ زرٌّ واحدٌ رمزُه الحالُ** (قمرٌ للداكن، شمسٌ للفاتح) — وصفةُ مبدّل العرض في الرئيسيّة (D-1321) لا مبدّلٌ ثالث:
  *   التصميمُ رسم كبسولةً بزرّين، وهي عائلةُ تحكّمٍ ثالثةٌ تخالف القاعدة ٣. الداكنُ يعود إلى آخر ثيمٍ داكنٍ لبسه في الجلسة.
@@ -114,6 +128,7 @@ function SideDrawer({
   const { settings, busy, pickLocale, pickTheme } = useAppearanceActs(toastFail);
 
   const close = useCallback((then?: () => void) => drawerStore.close(then), []);
+  const customizeAnchor = useTourAnchor("drawer-customize");
 
   useEffect(() => {
     if (!open) return;
@@ -188,9 +203,10 @@ function SideDrawer({
     void pickLocale(locale === "ar" ? "en" : "ar");
   };
 
-  const row = (icon: IconName, label: string, onPress: () => void, opts?: { small?: boolean; tag?: boolean }) => (
+  const row = (icon: IconName, label: string, onPress: () => void, opts?: { small?: boolean; tag?: boolean; anchor?: React.Ref<ViewInstance> }) => (
     <Pressable
       key={label}
+      ref={opts?.anchor}
       onPress={onPress}
       onPressIn={notePress}
       accessibilityRole="link"
@@ -201,11 +217,7 @@ function SideDrawer({
       {/* 🆕 T320 — الصفوفُ الصغيرة درجةً أصغر (خالد ٥ نوفمبر): الخطُّ ١٦ ⇐ ١٥ والأيقونةُ ٢٢ ⇐ ٢٠ — صارت ثلاثةً تحت الفاصل */}
       <Icon name={icon} size={opts?.small ? 20 : 24} color={tokens.fg} />
       <Text size={opts?.small ? 15 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 15 : 18)]}>{label}</Text>
-      {opts?.tag ? (
-        <View style={{ borderWidth: 1.5, borderColor: tokens.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
-          <Text size={10} weight="700" color={tokens.accent}>PLUS</Text>
-        </View>
-      ) : null}
+      {opts?.tag ? <PlusTag /> : null}
     </Pressable>
   );
   /* Plus: غيرُ المشترك يرى الدعوةَ ومزاياها تحت حسابه، والمشتركُ سطراً واحداً (أحمد: «سطر واحد يكفي ومختصر جداً»).
@@ -354,7 +366,8 @@ function SideDrawer({
               {row("chart", t.drawerReport, () => go({ pathname: "/reports", params: { from } }), { tag: !plus })}
               {/* 🆕 هجرة ٢٣٧ — «الربط» صفحةُ المدار، والمجانيُّ يربط جهازاً فلا وسمَ PLUS */}
               {row("link", t.linksTitle, () => go("/links"))}
-              {row("sliders", t.drawerCustomize, () => go("/settings/home"))}
+              {/* 🆕 T357 — مرسى الجولة: خطوةُ القائمة تحيط هذا الصفَّ ويضغطه بنفسه فيدخل خطوةَ التخصيص بطريقها الحقيقيّ */}
+              {row("sliders", t.drawerCustomize, () => go("/settings/home"), { anchor: customizeAnchor })}
               {row("gift", t.drawerInvite, () => go("/settings/invites"))}
             </View>
 
