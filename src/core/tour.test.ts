@@ -63,15 +63,20 @@ test("لكلِّ خطوةٍ عنوانٌ ونصٌّ باللغتين، وعرض�
   assert.ok(getDict("en").tourSuggestTitleApp.includes(String(TOUR_STEPS.length)));
 });
 
-test("خطوةُ القائمة وحدَها بمرحلتين: نصُّ ما قبل الفعل، ثمّ حلقةٌ على «التخصيص» ودعوةٌ إليه — والتخصيصُ بعدها مباشرة", () => {
-  assert.deepEqual(TOUR_STEPS.filter((s) => s.lead).map((s) => s.id), ["menu"]);
+test("القائمةُ والمجتمعُ بمرحلتين: نصُّ ما قبل الفعل، ثمّ القائمةُ تدعو إلى «التخصيص» — والتخصيصُ بعدها مباشرة", () => {
+  assert.deepEqual(TOUR_STEPS.filter((s) => s.lead).map((s) => s.id), ["menu", "community"]);
   assert.deepEqual(TOUR_STEPS.filter((s) => s.tap || s.openAnchor).map((s) => `${s.id}:${s.openAnchor}`), ["menu:drawer-customize"]);
   const menu = TOUR_STEPS.findIndex((s) => s.id === "menu");
   assert.equal(TOUR_STEPS[menu + 1].screen, "customize");
   assert.deepEqual(
     TOUR_STEPS.filter((s) => s.anchor).map((s) => `${s.id}:${s.anchor}`),
-    ["discover:discover-filter", "search:search-describe", "menu:home-avatar"],
+    ["discover:discover-filter", "search:search-describe", "menu:home-avatar", "community:community-messages"],
   );
+});
+
+test("🆕 T362 — «إنهاء» الجولة يفتح صفحةَ الاشتراك من الخطوة الأخيرة وحدَها (أحمد «٣أ»)", () => {
+  assert.deepEqual(TOUR_STEPS.filter((s) => s.endsOn).map((s) => `${s.id}:${s.endsOn}`), ["links:plus"]);
+  assert.equal(TOUR_STEPS[TOUR_STEPS.length - 1].endsOn, "plus");
 });
 
 test("ما يُقفل على غير المشترك يُقال له وحدَه (حكمُ أحمد «٥أ»)", () => {

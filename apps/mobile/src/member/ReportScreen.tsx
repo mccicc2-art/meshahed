@@ -193,8 +193,6 @@ export function ReportBody({
   /* ———— ما تحت الافتتاح: للمشترك كاملاً، ولغيره معاينةٌ خلف الحجاب ———— */
   const lockedPart = (
     <>
-      {s.impossible.days > 0 ? <ImpossibleDayCard onDone={onRepaired} /> : null}
-
       <H3>{en ? "Your period at a glance" : "لمحة عن مدّتك"}</H3>
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -230,6 +228,10 @@ export function ReportBody({
       ) : null}
 
       {/* 🆕 D-1586 — شريطُ «ذوقك في هذه المدّة» خرج إلى قسم «الذوق» في الشاشة الواحدة: الأنواعُ نفسُها مرسومةٌ هناك بنسبها */}
+
+      {/* 🆕 T362 — «اليومُ المستحيل» آخرَ الملخّص (أحمد ١٠ نوفمبر: «خله تحت اخر شيء»): تنبيهٌ لإصلاح السجلّ لا جزءٌ من قراءة المدّة —
+          فوق المربّعات كان يدفع الأرقامَ كلَّها إلى الأسفل في كلِّ فتح. ولغير المشترك يخرج من المعاينة المقصوصة، وكان فيها زرّاً لا يُلمس */}
+      {s.impossible.days > 0 ? <ImpossibleDayCard onDone={onRepaired} /> : null}
 
     </>
   );
@@ -538,7 +540,7 @@ function ImpossibleDayCard({ onDone }: { onDone: () => void }) {
     }
   };
   return (
-    <View style={{ marginTop: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 14, paddingVertical: 12 }}>
+    <View style={{ marginTop: 24, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 14, paddingVertical: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Icon name="clock" size={16} color={tokens.accent} />
         <Text size={14} weight="700" style={{ flex: 1 }}>{t.impossibleTitle}</Text>

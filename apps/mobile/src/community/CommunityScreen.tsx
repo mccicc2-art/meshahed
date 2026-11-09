@@ -302,8 +302,9 @@ export function CommunityScreen() {
       >
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
           <Text size={15} weight="700">{t.peopleTitle}</Text>
-          {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر) */}
-          <HeaderEdges from="community" />
+          {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر)
+              🆕 T362 — **وزرُّ الرسائل بجانب الشعار هنا** (أحمد ١٠ نوفمبر «١أ وتبقى فالرئيسية ايضا») */}
+          <HeaderEdges from="community" messages />
         </View>
         {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
             بلقطتين، ٣ أكتوبر): ثلاثةُ جذورٍ بمكانين للزرّ نفسِه عيبٌ (القاعدة ٣). الهندسةُ هندسةُ المكتبة حرفاً. */}

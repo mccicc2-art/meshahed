@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { notePress } from "./perfMarks";
 import { touchTarget } from "./touchTargets";
@@ -10,6 +10,10 @@ import { Icon } from "./icons";
 import { controlSize } from "./theme";
 import { Logo } from "./Logo";
 import type { NativeRoot } from "./shell";
+import { queryClient } from "./api";
+import { HOME_KEY } from "./home/useHome";
+import type { HomePayload } from "./contracts";
+import { useTourAnchor } from "./tour/anchors";
 
 /**
  * زرُّ الترويسة الواحد — دائرةُ لمسٍ ٤٠ ورمزٌ ١٨ ونقطةُ «غير مقروء» الصفراء في زاويتها.
@@ -67,7 +71,7 @@ export const HEADER_END_INSET = 16 - (controlSize.headerBtn - AVATAR) / 2;
  *   تجاور عنواناً لا اسماً.
  * - مطلقا الموضع كلاهما، فالعنوانُ يبقى في منتصف الترويسة.
  */
-export function HeaderEdges({ from }: { from: NativeRoot }) {
+export function HeaderEdges({ from, messages = false }: { from: NativeRoot; messages?: boolean }) {
   const { t, tokens, me } = useApp();
   const router = useRouter();
   /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة كصورة الرئيسيّة (الملفُّ أوّلُ ما فيها) — صورتان لبابٍ واحد */
@@ -81,9 +85,35 @@ export function HeaderEdges({ from }: { from: NativeRoot }) {
           </View>
         </Pressable>
       </View>
-      <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
+      {/* 🆕 T362 — زرُّ الرسائل بجانب الشعار من جهة العنوان، في «المجتمع» وحدَه (`messages`) — الصفُّ يتبع الاتّجاه فيبقى الشعارُ في الطرف */}
+      <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 4 }}>
+        {messages && me ? <MessagesButton from={from} /> : null}
         <Logo size={LOGO} />
       </View>
     </>
+  );
+}
+
+/**
+ * 🆕 T362 — **زرُّ الرسائل في رأس «المجتمع»** (أحمد ١٠ نوفمبر: «جنب شعار لوبز فالمجتمع فوق يمين حط ايقونة الرسايل منها يدخل
+ * للمحادثات» ثمّ «١أ وتبقى فالرئيسية ايضا»). يستثني «المجتمع» من D-1569 («الجرس والرسائل في الرئيسية فقط»): الرسائلُ مجتمعٌ
+ * خاصّ، والجولةُ تقف هنا وتَعِد بها. **والجرسُ يبقى في الرئيسية وحدَها.**
+ * - **الزرُّ زرُّ الرئيسية نفسُه** (`HeaderIconButton` — رمزُه واسمُه ونقطتُه) ويفتح «الرسائل» نفسَها فوق المجتمع، والرجوعُ إليه.
+ * - **النقطةُ من رقم رأس الرئيسية** (`header.unread_shares`): `useBadges` يكتبه هناك عند كلِّ ظهورٍ وعودة، فيُقرأ من الكاش
+ *   بلا مراقبٍ ثانٍ — مراقبٌ بلا `queryFn` على مفتاح الرئيسية يسرق دالّتَها عند الإبطال (انظر `TourHost`).
+ * - **مرساةُ الجولة** (`community-messages`): الخطوةُ السابعة تحيطه بالحلقة و«اضغط هنا».
+ */
+function MessagesButton({ from }: { from: NativeRoot }) {
+  const { t, tokens } = useApp();
+  const router = useRouter();
+  const anchor = useTourAnchor("community-messages");
+  const unread = useSyncExternalStore(
+    useCallback((fn: () => void) => queryClient.getQueryCache().subscribe(fn), []),
+    () => queryClient.getQueryData<HomePayload>(HOME_KEY)?.header.unread_shares ?? 0,
+  );
+  return (
+    <View ref={anchor} collapsable={false}>
+      <HeaderIconButton name="chat" label={t.communityTabInbox} onPress={() => router.push({ pathname: "/messages", params: { from } })} count={unread} color={tokens.fg} />
+    </View>
   );
 }

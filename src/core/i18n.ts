@@ -182,8 +182,11 @@ const ar = {
     "اختر أقسام رئيسيتك وملفك وترتيبها وحجم الملصق، وشاهد النتيجة في المعاينة فوراً. واسحب جانباً لتنتقل بين «الرئيسية» و«الملف».",
   tourShapeSaveFree: "والحفظ لمشتركي Plus.",
   tourCommunityTitleApp: "المجتمع والرسائل",
+  /* 🆕 T362 — مرحلتان (أحمد ١٠ نوفمبر «٢أ»): على المجتمع تدعوه إلى زرّ الرسائل في رأسه، ثمّ تصف «الرسائل» التي فتحها بنفسه */
+  tourCommunityLeadApp:
+    "ثلاثة تبويبات: نشاط من تتابعهم، ونقاشات الأعمال، والأعضاء. ورسائلك من الزرّ أعلى الشاشة — اضغطه.",
   tourCommunityBodyApp:
-    "ثلاثة تبويبات: نشاط من تتابعهم، ونقاشات الأعمال، والأعضاء. ورسائلك الخاصة ومجموعاتك من زرّ الرسائل أعلى الرئيسية.",
+    "هنا محادثاتك الخاصة ومجموعاتك، وبجانبها الإشعارات. ومن «محادثة جديدة» تراسل صديقاً أو تُنشئ مجموعة. والزرّ نفسه أعلى الرئيسية أيضاً.",
   tourLinksTitle: "الربط وLoopz Plus",
   tourLinksBody:
     "اربط Stremio أو سيرفر بيتك، فيسألك Loopz «شفتها؟» حين تُنهي حلقة. والحساب المجاني يربط تطبيقاً واحداً، ومع Plus خمسة وتتبّعٌ تلقائي دون سؤال.",
@@ -3479,8 +3482,10 @@ const en: Dict = {
     "Pick your Home and profile sections, their order and poster size, and see it in the preview right away. Swipe sideways to switch between Home and Profile.",
   tourShapeSaveFree: "Saving is for Plus subscribers.",
   tourCommunityTitleApp: "Community and messages",
+  tourCommunityLeadApp:
+    "Three tabs: Activity from people you follow, Discussions about titles, and Members. Your messages are behind the button at the top \u2014 tap it.",
   tourCommunityBodyApp:
-    "Three tabs: Activity from people you follow, Discussions about titles, and Members. Your private messages and groups are behind the messages button at the top of Home.",
+    "Your private chats and groups live here, with Notifications next to them. Use \u201cNew chat\u201d to message a friend or start a group. The same button is at the top of Home too.",
   tourLinksTitle: "Linking and Loopz Plus",
   tourLinksBody:
     "Link Stremio or your home server, and Loopz asks \u201cWatched it?\u201d when you finish an episode. A free account links one app; Plus links five and auto-tracks without asking.",

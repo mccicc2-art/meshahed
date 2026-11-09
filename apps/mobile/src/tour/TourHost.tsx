@@ -239,9 +239,12 @@ export function TourHost() {
     [index],
   );
 
-  /* ——— خطوةُ القائمة: يضغط صورتَه بنفسه (حكمُ أحمد) — والبطاقةُ تدعوه، ثمّ تصف ما فتحه وتدعوه إلى «التخصيص» ——— */
-  const opened = step.screen === "menu" && drawerOpen;
-  const lead = step.lead && step.screen === "menu" && !opened ? step.lead : null;
+  /* ——— خطوةُ القائمة: يضغط صورتَه بنفسه (حكمُ أحمد) — والبطاقةُ تدعوه، ثمّ تصف ما فتحه وتدعوه إلى «التخصيص» ———
+     🆕 T362 — **والمجتمعُ مثلُها** (أحمد «٢أ»): يضغط زرَّ الرسائل في رأسه فتُفتح «الرسائل» فوقه، والبطاقةُ تصفها هناك. ما دام في
+     «الرسائل» أو ما فتحه منها (محادثة، مجموعة) فقد فُتحت — ورجوعُه منها إلى المجتمع يعيد المرحلةَ الأولى بلا إبحار */
+  const inMessages = !!top?.name.startsWith("messages");
+  const opened = (step.screen === "menu" && drawerOpen) || (step.screen === "community" && inMessages);
+  const lead = step.lead && !opened ? step.lead : null;
   const tapLine = opened && step.tap ? step.tap(t) : null;
   const pushedNow = !!PUSHED[step.screen];
   /* هل الظاهرُ شاشةُ خطوةٍ مدفوعة؟ — «التخصيص» بقسمه لا أيُّ صفحة إعدادات */
@@ -372,7 +375,15 @@ export function TourHost() {
 
   /* فوق الشريط السفليّ في الجذور (قاعدةُ مضيف الإشعار)، وفوق منطقة الأمان في الشاشات المدفوعة — **وفوق لوحة
      المفاتيح حين تُفتح** (D-1319) */
-  const bottom = keyboard > 0 ? keyboard + 12 : top?.name === "(tabs)" ? navHeight(insets.bottom) + 12 : insets.bottom + 16;
+  /* 🆕 T362 — وفي «الرسائل» فوق زرّها العائم («محادثة جديدة»: ٥٠ على ٢٠ من الحافّة) — البطاقةُ تذكره فلا تغطّيه */
+  const bottom =
+    keyboard > 0
+      ? keyboard + 12
+      : top?.name === "(tabs)"
+        ? navHeight(insets.bottom) + 12
+        : top?.name === "messages/index"
+          ? insets.bottom + 20 + 50 + 12
+          : insets.bottom + 16;
   const card = {
     width: "100%" as const,
     maxWidth: 448,
@@ -497,8 +508,11 @@ export function TourHost() {
               size="sm"
               onPress={() => {
                 haptic.pick();
-                if (last) end(true);
-                else move(index + 1);
+                if (!last) return move(index + 1);
+                end(true);
+                /* 🆕 T362 — **وتنتهي الجولةُ على صفحة الاشتراك** (أحمد ١٠ نوفمبر «٣أ»، للجميع): تُدفع فوق «الربط» فرجوعُها إليه.
+                   × تخطٍّ لا إنهاء — لا تذهب إلى شيء */
+                if (step.endsOn === "plus") router.push({ pathname: "/settings/[section]", params: { section: "plus" } });
               }}
             />
           </View>
