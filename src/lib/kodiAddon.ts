@@ -14,14 +14,17 @@ import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
  * 📌 بايثون ٣ (Kodi 19 فما بعد). وإصدارٌ جديدٌ = رقمٌ جديد هنا وفي `addon.xml` (Kodi يقارن الرقم).
  * 🆕 T359 — **جاهزةٌ لمستودع Kodi الرسميّ** (أذنت مؤسّسةُ Kodi بشعارها ٩ نوفمبر واقترحت المستودع): رخصةٌ مفتوحة (`kodiAddonLicense.ts`)،
  * وسجلٌّ بمستوى التصحيح وحدَه (قاعدتُهم)، ونصوصٌ مترجمةٌ كلُّها، ولا ذكرَ لخطّةٍ مدفوعة — ربطُ جهازٍ واحدٍ مجّانيّ (D-1640).
+ * 🆕 T363 — **1.0.2: «انتهى» يُرسل لحظةَ تجاوز ٩٠٪ والفيديو يعمل** (أحمد: «لازم ف كودي اضغط ايقاف عالحلقة عشان تجي؟ ما يمدي اطلع
+ * وبس؟» ثمّ «نفذ»). كان ينتظر الإيقافَ أو النهاية: و«رجوع» في Kodi يُخفي الفيديو ولا يوقفه، وإغلاقُ Kodi قد يُطفئ الإضافةَ قبل
+ * أن ترسل. الآن كـPlex — مرّةً لكلِّ عمل (`finish` يمحو العنصر).
  */
 
 export const KODI_ADDON_ID = "service.loopz";
-export const KODI_ADDON_VERSION = "1.0.1";
+export const KODI_ADDON_VERSION = "1.0.2";
 export const KODI_ZIP_NAME = `${KODI_ADDON_ID}-${KODI_ADDON_VERSION}.zip`;
 
 const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.loopz" name="Loopz" version="1.0.1" provider-name="Loopz">
+<addon id="service.loopz" name="Loopz" version="1.0.2" provider-name="Loopz">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
   </requires>
@@ -35,7 +38,7 @@ const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="ye
     <license>GPL-2.0-or-later</license>
     <website>https://loopztv.com</website>
     <source>https://github.com/mccicc2-art/meshahed/blob/main/src/lib/kodiAddon.ts</source>
-    <news>v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
+    <news>v1.0.2: a title counts as watched the moment it passes 90%, so leaving or closing Kodi afterwards no longer matters.&#10;v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
     <assets>
       <icon>icon.png</icon>
     </assets>
@@ -421,7 +424,11 @@ class Player(xbmc.Player):
             if self.isPlayingVideo():
                 self.pos, self.total = self.getTime(), self.getTotalTime()
         except RuntimeError:
-            pass
+            return
+        # past 90% counts now, while it still plays: Back only hides the video, and quitting Kodi may not
+        # leave time to send — finish() clears the item, so it is sent once
+        if self.total >= MIN_LENGTH and self.pos / self.total >= FINISHED_AT:
+            self.finish()
 
     def finish(self):
         item, pos, total = self.item, self.pos, self.total

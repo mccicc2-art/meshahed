@@ -176,18 +176,20 @@ export function TourHost() {
   const booted = useRef(false);
   /* 🆕 T357 — إبحارٌ ينتظر إغلاقَ القائمة: يجري حين تُغلق، **إن بقيت الجولةُ على خطوته** — وإلّا فقد سبقه إبحارٌ أحدث */
   const pending = useRef<{ i: number; run: () => void } | null>(null);
+  /* ما فوق مجموعة التبويبات يُنزَل (ملفٌّ فتحه، إعداداتٌ بدأ منها، عملٌ دخله وسطَ الجولة، «الربط» في آخرها) — وصفةُ
+     `goRoot` في `WebLayer` حرفاً: `dismiss` بالعدد. 🆕 T363 — صار دالّةً: «إنهاء» يستعملها أيضاً */
+  const toTabs = useCallback(() => {
+    const st = rootStack((nav.isReady() ? nav.getRootState() : undefined) as unknown as State);
+    if (!st) return;
+    const at = st.index ?? st.routes.length - 1;
+    const tabs = st.routes.slice(0, at + 1).map((r) => r.name).lastIndexOf("(tabs)");
+    if (tabs >= 0 && at > tabs) router.dismiss(at - tabs);
+  }, [nav, router]);
   const go = useCallback(
     (i: number) => {
       const target = TOUR_STEPS[i];
       const run = () => {
-        /* ما فوق مجموعة التبويبات يُنزَل أوّلاً (ملفٌّ فتحه، إعداداتٌ بدأ منها، عملٌ دخله وسطَ الجولة) — وصفةُ
-           `goRoot` في `WebLayer` حرفاً: `dismiss` بالعدد ثمّ تبديلُ التبويب الحيّ */
-        const st = rootStack((nav.isReady() ? nav.getRootState() : undefined) as unknown as State);
-        if (st) {
-          const at = st.index ?? st.routes.length - 1;
-          const tabs = st.routes.slice(0, at + 1).map((r) => r.name).lastIndexOf("(tabs)");
-          if (tabs >= 0 && at > tabs) router.dismiss(at - tabs);
-        }
+        toTabs();
         router.navigate(TAB_OF[target.screen]);
         const pushed = PUSHED[target.screen];
         if (pushed) router.push(pushed.href());
@@ -201,7 +203,7 @@ export function TourHost() {
         drawerStore.close();
       } else run();
     },
-    [nav, router],
+    [router, toTabs],
   );
   useEffect(() => {
     if (!active) {
@@ -510,9 +512,14 @@ export function TourHost() {
                 haptic.pick();
                 if (!last) return move(index + 1);
                 end(true);
-                /* 🆕 T362 — **وتنتهي الجولةُ على صفحة الاشتراك** (أحمد ١٠ نوفمبر «٣أ»، للجميع): تُدفع فوق «الربط» فرجوعُها إليه.
-                   × تخطٍّ لا إنهاء — لا تذهب إلى شيء */
-                if (step.endsOn === "plus") router.push({ pathname: "/settings/[section]", params: { section: "plus" } });
+                /* 🆕 T362 — **وتنتهي الجولةُ على صفحة الاشتراك** (أحمد ١٠ نوفمبر «٣أ»، للجميع). × تخطٍّ لا إنهاء — لا تذهب إلى شيء.
+                   🆕 T363 — **وتحتها الرئيسيّةُ لا «الربط»** (أحمد بتسجيل: «المفترض بعد صفحة الاشتراك يوديني للرئيسية اذا ضغطت اكس او
+                   سويت رجوع»): كانت تُدفع فوق «الربط» فرجوعُها يمرّ به ثمّ بالمجتمع. الجولةُ انتهت، فالرجوعُ إلى بدايتها */
+                if (step.endsOn === "plus") {
+                  toTabs();
+                  router.navigate("/home");
+                  router.push({ pathname: "/settings/[section]", params: { section: "plus" } });
+                }
               }}
             />
           </View>
