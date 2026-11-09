@@ -1,4 +1,5 @@
 import "server-only";
+import { notifyAutoTracked } from "@/lib/push";
 import { autoMarkSignal, issueLinkToken, linkOwner, linkStateOf, recordSignal, revokeLinkToken, type LinkOwner } from "@/lib/linkTokens";
 import { findByExternalId, searchByName } from "@/lib/tmdb";
 import { HOME_SERVER_TOKEN_RE, KODI_TOKEN_RE, type HomeEvent, type HomeServer } from "@/core/homeServer";
@@ -28,10 +29,11 @@ export async function homeServerLinkOf(userId: string) {
   return linkStateOf("home_server_links", userId);
 }
 /** صاحبُ الرابط — ونوعُ السيرفر المرسِل (`server`) يُطابق رابطَ نوعه، ويُربط به الرابطُ القديمُ أوّلَ مرّة (هجرة ٢٣٧) */
-export async function homeServerOwner(token: string, server?: HomeServer) {
+export async function homeServerOwner(token: string, server?: HomeServer, finished = false) {
   /* 🆕 هجرة ٢٣٦ — البابُ واحدٌ والجدولُ من سابقة الرمز: `lk_` رابطُ Kodi، و`lh_` رابطُ السيرفرات الثلاثة */
-  if (KODI_TOKEN_RE.test(token)) return linkOwner("kodi_links", token, KODI_TOKEN_RE);
-  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE, server === "kodi" || !server ? undefined : server);
+  /* 🆕 T361 — `finished`: حدثُ «انتهت» يكتب وقتَ آخرِ حدثٍ الآن (`linkOwner` → `fresh`) */
+  if (KODI_TOKEN_RE.test(token)) return linkOwner("kodi_links", token, KODI_TOKEN_RE, undefined, finished);
+  return linkOwner("home_server_links", token, HOME_SERVER_TOKEN_RE, server === "kodi" || !server ? undefined : server, finished);
 }
 export async function kodiLinkOf(userId: string) {
   return linkStateOf("kodi_links", userId);
@@ -87,6 +89,10 @@ export async function resolveHomeEvent(ev: HomeEvent): Promise<HomeHit | null> {
 export async function recordHomeSignal(owner: LinkOwner, ev: HomeEvent, hit: HomeHit) {
   const r = await recordSignal(owner.userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode, true);
   /* ⚖️ **بالمعرّف وحده**: مطابقةٌ بالاسم قد تكون مسلسلاً آخر، و«حتى هنا» يعلّم ما قبلها كلَّه بلا تراجع — فتبقى سؤالاً */
-  if (owner.autoMark && !hit.byName && (r === "added" || r === "touched")) await autoMarkSignal(owner.userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode);
+  if (owner.autoMark && !hit.byName && (r === "added" || r === "touched")) {
+    const id = await autoMarkSignal(owner.userId, ev.server, hit.kind, hit.tmdbId, hit.season, hit.episode);
+    /* 🆕 T361 — «وصل من Kodi» (أحمد ١٠ نوفمبر): التسجيلُ الصامتُ يُقال لصاحبه، وللفيلم دعوةٌ للتقييم — بعد الختم وحدَه */
+    if (id != null) await notifyAutoTracked({ to: owner.userId, source: ev.server, kind: hit.kind, tmdbId: hit.tmdbId, season: hit.season, episode: hit.episode });
+  }
   return r;
 }

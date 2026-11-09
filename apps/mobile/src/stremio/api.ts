@@ -12,7 +12,8 @@ export const STREMIO_KEY = ["me:stremio"] as const;
 export function useStremio(enabled = true) {
   return useQuery({
     queryKey: STREMIO_KEY,
-    queryFn: async () => (await api<StremioState>("/api/v1/me/stremio")).data,
+    /* 🆕 T361 — `?auto=1`: وما سجّله Loopz بنفسه ولم يُرَ (بطاقةُ «أضفناه لمكتبتك») — نسخةٌ أقدمُ لا تطلبه فلا تسأل عمّا عُلِّم */
+    queryFn: async () => (await api<StremioState>("/api/v1/me/stremio?auto=1")).data,
     enabled,
     staleTime: 60_000,
   });

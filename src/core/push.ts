@@ -10,7 +10,9 @@
 import type { Dict } from "./i18n.ts";
 import { signalHref, signalParts, type SignalKind, type SignalRow } from "./signals.ts";
 
-export const PUSH_GROUPS = ["messages", "follows", "likes", "replies", "episodes"] as const;
+/* 🆕 هجرة ٢٤٢ — «auto»: ما سجّله Loopz بنفسه من أجهزة العضو (أحمد ١٠ نوفمبر «٣ أ») — مفتاحٌ سادسٌ لأنّه نيّةٌ أخرى: من يكتمه
+   لا يكتم الحلقاتِ الجديدة. ⚠️ قيدُ `push_prefs.muted` يقبله من الهجرة ٢٤٢ — قبلها يُرفض كتمُه وحدَه، ولا يتعطّل شيءٌ آخر */
+export const PUSH_GROUPS = ["messages", "follows", "likes", "replies", "episodes", "auto"] as const;
 export type PushGroup = (typeof PUSH_GROUPS)[number];
 
 export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
@@ -100,7 +102,11 @@ export type PushPrefsPayload = { muted: PushGroup[] };
  * «dm» للرسالة: «رد» بخانة كتابةٍ داخل الإشعار و«تمييز كمقروءة». غائبٌ ⇒ إشعارٌ بلا أزرار كما كان.
  */
 export type PushCategory = "dm";
-export type PushText = { title: string; body: string; url: string | null; category?: PushCategory };
+/**
+ * 🆕 T361 — `tag`: إشعارٌ بالوسم نفسِه **يحلّ محلَّ** الظاهر على الجهاز (أندرويد `tag`، آيفون `collapseId`) — حلقاتُ المسلسل
+ * الواحد المتتالية تصير إشعاراً واحداً بعددها (أحمد «١ ب») بدل عشرةٍ في ليلة.
+ */
+export type PushText = { title: string; body: string; url: string | null; category?: PushCategory; tag?: string };
 
 const APP = "Loopz";
 

@@ -85,11 +85,27 @@ export function StremioListScreen() {
                   <SignalStill s={s} width={STILL_W} />
                   <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                     <Text size={14} weight="700" numberOfLines={1}>{s.title}</Text>
-                    <Text size={12} weight="500" numberOfLines={1}>{ep}</Text>
+                    {/* 🆕 T361 — ما سُجّل تلقائياً: «✓ أضفناه لمكتبتك» بدل السؤال، ودائرةُ «حسناً» وحدَها */}
+                    <Text size={12} weight="500" numberOfLines={1}>
+                      {s.auto ? (s.kind === "movie" ? "" : `${ep} · `) : ep}
+                      {s.auto ? <Text size={12} weight="700" color={tokens.success}>{"✓ "}</Text> : null}
+                      {s.auto ? (s.kind === "movie" ? t.autoAddedMovie : t.autoAddedEpisode) : null}
+                    </Text>
                     <Text size={11} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[s.source ?? "stremio"]} · ${timeAgo(s.seen_at, t)}`}</Text>
                   </View>
                 </Pressable>
-                <Pressable
+                {s.auto ? (
+                  <Pressable
+                    onPress={() => answer(s, true)}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t.autoOk} — ${s.title}`}
+                    style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+                  >
+                    <Icon name="check" size={18} color={tokens.success} />
+                  </Pressable>
+                ) : null}
+                {s.auto ? null : <Pressable
                   onPress={() => answer(s, false)}
                   hitSlop={4}
                   accessibilityRole="button"
@@ -97,8 +113,8 @@ export function StremioListScreen() {
                   style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
                 >
                   <Icon name="close" size={16} color={tokens.muted} />
-                </Pressable>
-                <Pressable
+                </Pressable>}
+                {s.auto ? null : <Pressable
                   onPress={() => answer(s, true)}
                   hitSlop={4}
                   accessibilityRole="button"
@@ -106,7 +122,7 @@ export function StremioListScreen() {
                   style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
                 >
                   <Icon name="check" size={18} color={tokens.onAccent} />
-                </Pressable>
+                </Pressable>}
               </View>
             );
           })}

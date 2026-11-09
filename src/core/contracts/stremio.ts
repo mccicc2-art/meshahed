@@ -19,6 +19,18 @@ export interface StremioSignal {
   seen_at: string;
   /** 🆕 هجرة ٢٣٥ — من أين جاء السؤال: Stremio أو سيرفرٌ في البيت. ⚠️ اختياريٌّ لأجل ترتيب النشر: خادمٌ أقدم لا يرسله (= Stremio) */
   source?: SignalSource;
+  /**
+   * 🆕 T361 (هجرة ٢٤٢) — **سجّله Loopz بنفسه** («سجّل بلا سؤال») ولم يره صاحبُه بعد: البطاقةُ تقول «أضفناه لمكتبتك» وتعرض نجوماً
+   * للفيلم أو «حسناً» للحلقة، لا ✓/✕. يصل لمن طلب `?auto=1` وحدَه.
+   */
+  auto?: boolean;
+  /** 🆕 T361 — ملصقُ الفيلم لتقييمه من البطاقة (`track/rate` يحفظه مع التقييم) — للفيلم المسجَّل تلقائياً وحدَه */
+  poster_path?: string | null;
+}
+
+/** 🆕 T361 — `POST /api/v1/me/stremio/notice` `{id}`: رأى ما سُجّل تلقائياً (قيّمه أو «حسناً») فيخرج من البطاقة */
+export interface StremioNoticeBody {
+  id: number;
 }
 
 export type SignalSource = "stremio" | "plex" | "jellyfin" | "emby" | "kodi";

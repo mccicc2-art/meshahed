@@ -52,6 +52,13 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
 
   const answer = useCallback(
     (s: StremioSignal, watched: boolean) => {
+      /* 🆕 T361 — **ما سجّله Loopz بنفسه لا جوابَ له**: «حسناً» أو تقييمٌ من البطاقة = «رأيتُه» (`notice`) — يُخفى ويُرسل في الحال، بلا
+         «تراجع»: لا كتابةَ تُعكس هنا، المشاهدةُ محفوظةٌ قبله */
+      if (s.auto) {
+        setHidden((h) => new Set(h).add(s.id));
+        write("/api/v1/me/stremio/notice", { id: s.id }).catch(() => unhide(s.id));
+        return;
+      }
       haptic.pick();
       setHidden((h) => new Set(h).add(s.id));
       pending.current.set(s.id, { watched, timer: setTimeout(() => commit(s.id), UNDO_MS) });

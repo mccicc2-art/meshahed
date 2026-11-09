@@ -5,6 +5,9 @@ import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { curatedName } from "@/core/universes";
+import { getMovieIn, getTvIn } from "@/lib/tmdb";
+import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
+import type { HomeServer } from "@/core/homeServer";
 import type { SignalKind, SignalRow } from "@/core/signals";
 import {
   EPISODE_PUSH_FROM_HOUR,
@@ -91,6 +94,8 @@ function expoMessage(m: { token: string; text: PushText; dmNative?: Dict | null 
     priority: "high",
     /* 🆕 D-1406 — أزرارُ «رد» و«تمييز كمقروءة» على إشعار الرسالة؛ بناءٌ أقدمُ لا يعرّف النوعَ فيظهر بلا أزرار */
     ...(m.text.category ? { categoryId: m.text.category } : {}),
+    /* 🆕 T361 — يحلّ محلَّ الظاهر بالوسم نفسِه: أندرويد بـ`tag` (المعروض)، والآيفون بـ`collapseId` (المعروض وما في الطريق) */
+    ...(m.text.tag ? { tag: m.text.tag, collapseId: m.text.tag } : {}),
   };
 }
 
@@ -337,6 +342,60 @@ export function notifyPlanEnded(input: { to: string; kept: string | null; stoppe
           : { title: t.planEndedPushTitle, body: t.planEndedPushFree, url: "/plus" },
     }),
   );
+}
+
+/** نافذةُ جمع الحلقات: ما سُجّل تلقائياً من المسلسل نفسِه في الساعات الستّ الأخيرة ولم يُرَ — إشعارٌ واحدٌ بعدده */
+const AUTO_PUSH_WINDOW_MS = 6 * 60 * 60_000;
+
+/**
+ * 🆕 T361 — **«وصل من Kodi»: ما سجّله Loopz بنفسه** (أحمد ١٠ نوفمبر: «١ أ و ج · ٢ ب و … وصل من كودي (أو اسم التطبيق اللي وصل
+ * منه) · ٣ أ»). يُنادى بعد أن خُتمت الإشارةُ `auto_at` (`autoMarkSignal`) — مرّةً لكلِّ ما سُجّل، فلا مفتاحَ تكرار: الحدثُ الثاني
+ * لما عُلِّم يقف عند `record_watch_signal` («watched») ولا يصل هنا.
+ * - **فيلم**: «أضفنا X لمكتبتك · قيّمه» ويفتح الرئيسيّة — بطاقةُ «من تطبيقاتك» أعلاها، ونجومُها هناك (`StremioCard`).
+ * - **حلقة**: «أضفنا X · S3 E4 لمكتبتك»؛ وحلقاتُ المسلسل المتتالية **تحلّ محلَّ الإشعار نفسِه** بعددها (`tag`) — «X · ٣ حلقات».
+ * ⚖️ مفتاحُ «ما يُسجَّل تلقائياً» (`auto`) يكتمه. والاسمُ بلغة كلِّ جهاز (TMDB بلغتيه، ساعةً في الخبيئة). صامتٌ كلُّه: الإشعارُ
+ * لا يُفشل تسجيلاً. ⚠️ **يُنتظر ولا يُؤجَّل** (`after`): المنادي يعمل أصلاً بعد ردِّ السيرفر.
+ */
+export async function notifyAutoTracked(input: { to: string; source: HomeServer; kind: "tv" | "movie"; tmdbId: number; season: number | null; episode: number | null }): Promise<void> {
+  try {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    let count = 1;
+    if (input.kind === "tv") {
+      const { count: n } = await db
+        .from("watch_signals")
+        .select("id", { count: "exact", head: true })
+        .match({ user_id: input.to, media_type: "tv", tmdb_id: input.tmdbId })
+        .not("auto_at", "is", null)
+        .is("noticed_at", null)
+        .gte("auto_at", new Date(Date.now() - AUTO_PUSH_WINDOW_MS).toISOString());
+      count = Math.max(1, n ?? 1);
+    }
+    const nameIn = async (language: "ar-SA" | "en-US") => {
+      try {
+        const d = input.kind === "tv" ? await getTvIn(input.tmdbId, language) : await getMovieIn(input.tmdbId, language);
+        return ((d as { name?: string; title?: string }).name ?? (d as { title?: string }).title ?? "").trim();
+      } catch {
+        return "";
+      }
+    };
+    const [ar, en] = await Promise.all([nameIn("ar-SA"), nameIn("en-US")]);
+    if (!ar && !en) return;
+    const app = SIGNAL_SOURCE_NAME[input.source];
+    const ep = input.season != null && input.episode != null ? `S${input.season} E${input.episode}` : "";
+    await deliver({
+      to: input.to,
+      group: "auto",
+      build: (t, lang) => {
+        const title = (lang === "ar" ? ar || en : en || ar).slice(0, 120);
+        const body =
+          input.kind === "movie" ? t.autoPushMovie(title) : count > 1 ? t.autoPushEpisodes(title, t.episodesCount(count)) : t.autoPushEpisode(title, ep);
+        return { title: t.autoPushTitle(app), body, url: "/", tag: `auto-${input.kind}-${input.tmdbId}` };
+      },
+    });
+  } catch {
+    /* لا شيء — التسجيلُ تمّ، والإشعارُ تحسين */
+  }
 }
 
 /** رسالةٌ (عملٌ أو قائمةٌ لصديق، أو ردٌّ في خيطها) ⇢ دفع */

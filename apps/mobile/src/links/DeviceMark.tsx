@@ -10,7 +10,7 @@ import type { DeviceKind } from "@/core/contracts/deviceLinks";
 /**
  * 🆕 **شارةُ الجهاز في المدار وفي «من أجهزتك»** (خطّةُ Loopz+ v2 §الشعارات).
  * 🔑 **شعارٌ بإذن صاحبه وحده**: Plex وEmby بشعارهما الرسميّ (مسارُ المتّجه كما ينشرانه، بلونهما — لا نرسمه بأيدينا)، وسطرُ
- * نسبة Plex في «عن التطبيق». وKodi وStremio برمزٍ عامٍّ من رموز التطبيق حتى يصل إذنُهما (أُرسلت الرسالتان ٩ نوفمبر)، وJellyfin
+ * نسبة Plex في «عن التطبيق». وKodi بشعاره الرسميّ (أذنت مؤسّستُه ٩ نوفمبر — T360)، وStremio برمزٍ عامٍّ من رموز التطبيق حتى يصل إذنُه، وJellyfin
  * برمزه العامِّ مصبوغاً بألوانه (T354) —
  * والاسمُ تحت الشارة في كلِّ حال.
  */
@@ -29,6 +29,36 @@ const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", plex: "tv", jel
  * فيُعرف بلونه ولا ندّعي علامتَه. الصورةُ البيضاءُ قناعٌ بشفافيّتها (`maskType="alpha"`) لا رسمٌ ثانٍ للرمز.
  */
 const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"] };
+
+/**
+ * 🆕 T360 — **شعارُ Kodi الرسميُّ بإذن مؤسّستهم** (رسالةُ trademark@kodi.tv، ٩ نوفمبر: «you have our permission»؛ أحمد «نفذ ١»).
+ * المسارُ والألوانُ من ملفّهم الرسميّ في مستودع Kodi نفسِه (`xbmc/xbmc` → `tools/Linux/packaging/media/iconScalable.svg`) بلا تعديل:
+ * الإطارُ الأبيضُ والحرفُ الأزرق بتدرّجيهما. تحويلُ التدرّج (`matrix(2 0 0 -2 831 927)`) محسوبٌ هنا إلى إحداثيّاتٍ صريحة لأنّ
+ * `react-native-svg` لا يحتاجه — النتيجةُ نفسُها. ودليلُ هويّتهم يشترط علامةَ ™ بجانبه، فهي صغيرةٌ في الزاوية.
+ */
+const KODI_BORDER =
+  "M17.3,114.9l97.6-97.6c7.2-7.2,19-7.2,26.2,0l97.6,97.6c7.2,7.2,7.2,19,0,26.2l-97.6,97.6c-7.2,7.2-19,7.2-26.2,0l-97.6-97.6C10.1,133.9,10.1,122.1,17.3,114.9z";
+const KODI_MARK =
+  "M61.6,96.1c0-4.4-2.1-6.4-4-4.4l-31.3,31.3c-2.8,2.8-2.8,7.3,0,10.1l31.3,31.3c1.9,1.9,4,0,4-4.4L61.6,96.1z M152.5,123l33.6-33.6c2.8-2.8,7.3-2.8,10.1,0l33.6,33.6c2.8,2.8,2.8,7.3,0,10.1l-33.6,33.6c-2.8,2.8-7.3,2.8-10.1,0L152.5,133C149.7,130.3,149.7,125.7,152.5,123z M89.4,186.1l33.6-33.6c2.8-2.8,7.3-2.8,10.1,0l33.6,33.6c2.8,2.8,2.8,7.3,0,10.1L133,229.7c-2.8,2.8-7.3,2.8-10.1,0l-33.6-33.6C86.6,193.4,86.6,188.8,89.4,186.1z M88.5,65.8c0-3.5,1-6,3.4-8.5c10.4-10.4,20.7-20.7,31-31.1c2.8-2.8,7.3-2.8,10.1,0l33.6,33.6c2.8,2.8,2.8,7.3,0,10.1c-24.8,24.8-49.5,49.5-74.3,74.3c-1.9,1.9-3.8,0-3.8-4.4L88.5,65.8L88.5,65.8z";
+
+function KodiLogo({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 256 256">
+      <Defs>
+        <LinearGradient id="kodiBorder" gradientUnits="userSpaceOnUse" x1="128" y1="11.9426" x2="128" y2="244.059">
+          <Stop offset="0" stopColor="#FEFEFE" />
+          <Stop offset="1" stopColor="#DFDFDF" />
+        </LinearGradient>
+        <LinearGradient id="kodiMark" gradientUnits="userSpaceOnUse" x1="128.0096" y1="26.264" x2="128.0096" y2="229.736">
+          <Stop offset="0" stopColor="#33ADDD" />
+          <Stop offset="1" stopColor="#148FBF" />
+        </LinearGradient>
+      </Defs>
+      <Path d={KODI_BORDER} fill="url(#kodiBorder)" fillRule="evenodd" clipRule="evenodd" />
+      <Path d={KODI_MARK} fill="url(#kodiMark)" fillRule="evenodd" clipRule="evenodd" />
+    </Svg>
+  );
+}
 
 export function DeviceMark({
   kind,
@@ -59,7 +89,14 @@ export function DeviceMark({
         opacity: state === "paused" ? 0.55 : 1,
       }}
     >
-      {logo ? (
+      {kind === "kodi" ? (
+        <>
+          <KodiLogo size={size * 0.64} />
+          <Text size={7} weight="700" muted style={{ position: "absolute", top: size * 0.12, end: size * 0.1, writingDirection: "ltr" }}>
+            ™
+          </Text>
+        </>
+      ) : logo ? (
         <Svg width={size * logo.scale} height={size * logo.scale} viewBox="0 0 24 24">
           <Path d={logo.d} fill={logo.color} />
         </Svg>

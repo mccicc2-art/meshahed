@@ -268,7 +268,9 @@ export interface LinkOwner {
  * 🆕 هجرة ٢٣٧ — **«نشِط» بدل «بلس»**: الرابطُ داخل الخانات بعد إنزال حكمها (`settle`)؛ و«آخرُ استعمال» يُكتب بعده وللنشِط وحده —
  * فحدثٌ من رابطٍ موقوف لا يجعله الأحدثَ فيُوقف غيرَه. ورابطٌ قديمٌ بلا نوعٍ يأخذ نوعَ السيرفر المرسِل (`kind`) أوّلَ مرّة.
  */
-export async function linkOwner(table: LinkTable, token: string, shape: RegExp, kind?: HomeKind): Promise<LinkOwner | null> {
+/** 🆕 T361 — `fresh`: حدثُ «انتهت» — يُكتب وقتُ آخرِ حدثٍ الآن لا مرّةً في الساعة (أحمد «١ب»): صفحةُ الجهاز تقول «آخر ما وصل»
+    بعد الفيلم مباشرةً. رسائلُ التشغيل والإيقاف تبقى مرّةً في الساعة — كثيرةٌ ولا تُرى. */
+export async function linkOwner(table: LinkTable, token: string, shape: RegExp, kind?: HomeKind, fresh = false): Promise<LinkOwner | null> {
   if (!shape.test(token) || !hasServiceKey()) return null;
   try {
     const db = await createServiceClient();
@@ -296,7 +298,7 @@ export async function linkOwner(table: LinkTable, token: string, shape: RegExp, 
       if (me && me.table === "home_server_links" && me.server && kind && me.server !== kind) active = false;
     }
     /* قبل الهجرة (`rows` غائبة) يُكتب كما كان لكلِّ رابطٍ حيّ */
-    if ((active || !rows) && (!r.last_used_at || Date.now() - Date.parse(r.last_used_at) > 3_600_000))
+    if ((active || !rows) && (fresh || !r.last_used_at || Date.now() - Date.parse(r.last_used_at) > 3_600_000))
       await db.from(table).update({ last_used_at: new Date().toISOString() }).eq("token_hash", hash);
     return { userId: r.user_id, plus, active, autoMark: plus && p?.auto_mark !== false && rows != null };
   } catch {
@@ -308,7 +310,11 @@ export async function linkOwner(table: LinkTable, token: string, shape: RegExp, 
  * 🆕 «سجّل بلا سؤال» — حدثُ «انتهت» من سيرفر البيت أو Kodi لمن فعّله: السؤالُ يُسجَّل ثمّ يُجاب ✓ في الحال، **بالتعليم
  * نفسِه الذي يفعله ✓ العضو** (`watchMark.ts`) وشارةِ المصدر. ⚖️ Stremio لا يصل هنا أبداً: «فتحها» ليس «خلّصها».
  */
-export async function autoMarkSignal(userId: string, source: Exclude<SignalSource, "stremio">, kind: "tv" | "movie", tmdbId: number, season: number | null, episode: number | null): Promise<number> {
+/**
+ * 🆕 T361 — **يعيد رقمَ الإشارة المعلَّمة** (أو `null`) ويختمها `auto_at` (هجرة ٢٤٢): منها بطاقةُ الرئيسيّة «أضفناه لمكتبتك» وإشعارُ
+ * «وصل من …». الختمُ صامتٌ إن فشل — قبل الهجرة لا عمود، فيبقى التعليمُ كما كان بلا بطاقةٍ ولا إشعار.
+ */
+export async function autoMarkSignal(userId: string, source: Exclude<SignalSource, "stremio">, kind: "tv" | "movie", tmdbId: number, season: number | null, episode: number | null): Promise<number | null> {
   try {
     const db = await createServiceClient();
     let q = db
@@ -317,10 +323,13 @@ export async function autoMarkSignal(userId: string, source: Exclude<SignalSourc
       .match({ user_id: userId, state: "pending", media_type: kind, tmdb_id: tmdbId });
     q = kind === "tv" ? q.eq("season", season as number).eq("episode", episode as number) : q;
     const { data } = await q.maybeSingle();
-    if (!data) return 0;
-    return await markSignalWatched(db, userId, data as SignalRow, source);
+    if (!data) return null;
+    const row = data as SignalRow;
+    await markSignalWatched(db, userId, row, source);
+    const { error } = await db.from("watch_signals").update({ auto_at: new Date().toISOString() }).match({ id: row.id, user_id: userId });
+    return error ? null : row.id;
   } catch {
-    return 0;
+    return null;
   }
 }
 

@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { getMovie, getSeason, getTv } from "@/lib/tmdb";
@@ -9,7 +10,10 @@ import { signalSourceOf, type StremioSignal, type StremioState } from "@/core/co
 
 const PAGE = 50;
 
-type Row = { id: number; source?: string | null; media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; seen_at: string };
+type Row = { id: number; source?: string | null; media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; seen_at: string; auto?: boolean };
+
+/** ما سُجّل تلقائياً يبقى في البطاقة أسبوعين إن لم يُرَ — بعدها لم يعد خبراً */
+const AUTO_DAYS = 14;
 
 /**
  * `GET /api/v1/me/stremio` — حالةُ الربط والإشاراتُ المنتظرةُ **المشغَّلة** (`played_at`) (بطاقةُ الرئيسيّة وقائمةُ «عرض الكل» وشاشةُ الربط).
@@ -19,7 +23,12 @@ type Row = { id: number; source?: string | null; media_type: "tv" | "movie"; tmd
  * ⚖️ أسماءُ الأعمال من TMDB بوضع أسماء العضو (`tmdb()`) ومخبَّأةٌ ساعة — خمسون إشارةً أقصى ما يُرسم.
  * 🆕 **ومصدرُها** (`source`، هجرة ٢٣٥): Stremio أو سيرفرٌ في البيت — البطاقةُ واحدةٌ «من أجهزتك» والمصدرُ سطرٌ فيها.
  */
-export async function GET() {
+/**
+ * 🆕 T361 — `?auto=1` (التطبيقُ الجديدُ وحدَه): **وما سجّله Loopz بنفسه ولم يره صاحبُه** (`auto_at` · `noticed_at`، هجرة ٢٤٢) يدخل
+ * القائمةَ نفسَها بعلامة `auto` — البطاقةُ تعرضه «أضفناه لمكتبتك» بنجومٍ أو «حسناً» لا بـ✓/✕. نسخةٌ أقدمُ لا تطلبه فلا تسأل عمّا
+ * عُلِّم. قبل الهجرة لا عمود: القراءةُ تفشل صامتةً والقائمةُ كما كانت.
+ */
+export async function GET(req: NextRequest) {
   return handle(async () => {
     const auth = await requireUser();
     if (!auth.ok) return auth;
@@ -66,8 +75,27 @@ export async function GET() {
       total = Math.max(0, total - done.length);
     }
 
-    const tv = new Map(await Promise.all(shows.map(async (id) => [id, await getTv(id).catch(() => null)] as const)));
-    const mv = new Map(await Promise.all(movies.map(async (id) => [id, await getMovie(id).catch(() => null)] as const)));
+    if (req.nextUrl.searchParams.get("auto") === "1") {
+      const { data: autos, error } = await supabase
+        .from("watch_signals")
+        .select("id, source, media_type, tmdb_id, season, episode, auto_at")
+        .eq("user_id", uid)
+        .eq("state", "watched")
+        .not("auto_at", "is", null)
+        .is("noticed_at", null)
+        .gte("auto_at", new Date(Date.now() - AUTO_DAYS * 86_400_000).toISOString())
+        .order("auto_at", { ascending: false })
+        .limit(20);
+      if (!error && autos?.length) {
+        const extra = (autos as (Omit<Row, "seen_at"> & { auto_at: string })[]).map((r) => ({ ...r, seen_at: r.auto_at, auto: true }));
+        rows = [...rows, ...extra].sort((a, b) => (a.seen_at < b.seen_at ? 1 : a.seen_at > b.seen_at ? -1 : 0));
+        total += extra.length;
+        for (const r of extra) (r.media_type === "tv" ? shows : movies).push(r.tmdb_id);
+      }
+    }
+
+    const tv = new Map(await Promise.all([...new Set(shows)].map(async (id) => [id, await getTv(id).catch(() => null)] as const)));
+    const mv = new Map(await Promise.all([...new Set(movies)].map(async (id) => [id, await getMovie(id).catch(() => null)] as const)));
     const seasonKeys = [...new Set(rows.filter((r) => r.media_type === "tv" && tv.get(r.tmdb_id)).map((r) => `${r.tmdb_id}:${r.season}`))];
     const seasons = new Map(
       await Promise.all(
@@ -94,6 +122,7 @@ export async function GET() {
           episode: r.episode,
           seen_at: r.seen_at,
           source: signalSourceOf(r.source),
+          ...(r.auto ? { auto: true } : {}),
         });
       } else {
         const m = mv.get(r.tmdb_id);
@@ -108,6 +137,8 @@ export async function GET() {
           episode: null,
           seen_at: r.seen_at,
           source: signalSourceOf(r.source),
+          ...(r.auto ? { auto: true } : {}),
+          ...(r.auto ? { poster_path: m.poster_path ?? null } : {}),
         });
       }
     }
