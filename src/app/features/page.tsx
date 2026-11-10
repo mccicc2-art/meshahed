@@ -113,10 +113,12 @@ export default async function FeaturesPage() {
       <p className="text-xs text-muted mt-10 leading-relaxed">
         {/* ⚖️ 🆕 **والوعدُ وُفِّي في مكانه** (D-633): كان السطرُ يقول «لا
             اشتراك اليوم، وإن جاء ستقول هذه الصفحةُ بوضوحٍ ما يبقى
-            مجّانيّاً» — **وقد جاء، فقالت.** */}
+            مجّانيّاً» — **وقد جاء، فقالت.**
+            🆕 (١٠ نوفمبر) **و«للثيمات الملوّنة وتنسيق صفحاتك» صار نصفَ الحقيقة**: البلسُ اليومَ ربطٌ وإحصاءاتٌ وودجت
+            وقوائمُ ذكيّة وبحثٌ بالوصف — **فالسطرُ يحيل إلى الوسوم بدل أن يعدّها**، فلا يتأخّر عن السجلّ مرّةً أخرى. */}
         {ar
-          ? `المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz Plus (${t.plusPrice}، ${t.plusPriceRenew}) للثيمات الملوّنة وتنسيق صفحاتك. `
-          : `Tracking, lists, community, search and translation are free for everyone, always — Loopz Plus (${t.plusPrice}, ${t.plusPriceRenew}) covers colour themes and shaping your pages. `}
+          ? `المتابعة والقوائم والمجتمع والبحث العادي والترجمة مجّانيةٌ للجميع دائماً، وLoopz بلا إعلاناتٍ لأحد — و Loopz Plus (${t.plusPrice}، ${t.plusPriceRenew}) لكلِّ ما يحمل وسمه أعلاه. `
+          : `Tracking, lists, community, regular search and translation are free for everyone, always, and Loopz shows no ads to anyone — Loopz Plus (${t.plusPrice}, ${t.plusPriceRenew}) covers everything tagged with it above. `}
         <Link href="/plus" className="text-accent hover:underline">
           {t.plusLearnMore}
         </Link>

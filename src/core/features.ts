@@ -85,12 +85,33 @@ export const SECTIONS: Section[] = [
         arBody: "سجلٌّ يوميّ لما شاهدت، يوماً بيوم.",
         enBody: "A day-by-day log of everything you watched.",
       },
+      /* 🆕 **مراجعةُ ١٠ نوفمبر ٢٠٢٦** (أحمد: «راجعها وحدثها»): **صفحةُ الإحصاءات الكاملة صارت لبلس** (`preview={!plus}`
+         في `statistics/page.tsx`، وبندُ الخطّة v2 §٣/٧) — **وبقاءُ «الإحصاءات · مجاني» وعدٌ تنقضه الصفحةُ نفسُها عند
+         أوّل ضغطة** (D-217). فالمجّانيُّ ما يبقى مجّانيّاً فعلاً: البطاقةُ التي تُشارَك (`api/share` لا تحرسها). */
       {
         icon: "chart",
-        ar: "الإحصاءات",
-        en: "Stats",
-        arBody: "ساعاتك وأنواعك وأرقامك — وبطاقة إحصاءات أنيقة تشاركها.",
-        enBody: "Your hours, genres and numbers — with a shareable stats card.",
+        ar: "بطاقة إحصاءاتك",
+        en: "Your stats card",
+        arBody: "أرقامك الأساسية في بطاقةٍ أنيقة تشاركها مع من تحب.",
+        enBody: "Your headline numbers on a polished card you can share.",
+      },
+      /* 🆕 **التقويمُ والتنبيهُ شُحنا ولم يُكتبا هنا قطّ** — الشهرُ الحاليُّ مجّانيّ (`locked = !plus && month !== now`
+         في `me/calendar`)، والتنبيهُ لا حارسَ عليه */
+      {
+        icon: "bell",
+        ar: "تقويم الحلقات وتنبيهاتها",
+        en: "Episode calendar and alerts",
+        arBody: "تقويمٌ لما يُعرض هذا الشهر من أعمالك، وتنبيهٌ على جوالك عند كل حلقةٍ جديدة.",
+        enBody: "A calendar of what airs this month from your titles, and a phone alert for every new episode.",
+      },
+      /* ونصُّ البند سطرُ شاشة الاشتراك حرفاً (الخطّة §٣/٧) — **قائمتان تقولان الشيءَ نفسَه بلفظين تفترقان** (D-145) */
+      {
+        icon: "chart",
+        ar: "إحصاءاتك وتقاريرك كاملة، وتقويمك لكل الشهور",
+        en: "Full stats and reports, and your calendar for every month",
+        arBody: "كل تبويبات الإحصاءات ومدّاتها، وتقريرك الشهري، وتطابق ذوقك مع أصدقائك، والتقويم لما مضى وما سيأتي.",
+        enBody: "Every stats tab and period, your monthly report, taste match with friends, and the calendar for past and coming months.",
+        plus: true,
       },
     ],
   },
@@ -101,12 +122,12 @@ export const SECTIONS: Section[] = [
     items: [
       {
         icon: "grid",
-        ar: "رئيسيةٌ تبنيها أنت",
-        en: "A home screen you build",
+        ar: "رئيسيتك وملفّك الشخصي على ذوقك",
+        en: "Your home and profile, your way",
         arBody:
-          "أظهِر الأقسام التي تهمّك وأخفِ ما لا يهمّك ورتّبها كما تحب: أكمل المشاهدة، للمشاهدة، تقييماتي، قوائمي، ملخّص أسبوعك…",
+          "أظهِر الأقسام التي تهمّك في رئيسيتك وملفّك وأخفِ ما لا يهمّك ورتّبها كما تحب: أكمل المشاهدة، للمشاهدة، تقييماتي، قوائمي، ملخّص أسبوعك…",
         enBody:
-          "Show the sections you care about, hide the ones you do not, and order them your way: continue watching, to watch, my ratings, my lists, your week…",
+          "Show the sections you care about on your home and profile, hide the ones you do not, and order them your way: continue watching, to watch, my ratings, my lists, your week…",
         plus: true,
       },
       {
@@ -121,8 +142,9 @@ export const SECTIONS: Section[] = [
         icon: "palette",
         ar: "ثيمات ملوّنة",
         en: "Colour themes",
-        arBody: "خمسة ثيمات تبدّل مظهر التطبيق كاملاً — لوبز، المحيط، البنفسجي، القرمزي، الغابة.",
-        enBody: "Five themes that change the whole look — Loopz, Ocean, Violet, Crimson, Forest.",
+        /* 🆕 كان «خمسة ثيمات — لوبز…»: **و«لوبز» والفحمي والعنبر مجّانيّةٌ** (`FREE_THEMES`، D-1387) — فالبيعُ بها كذب */
+        arBody: "أربعة ثيمات تبدّل مظهر التطبيق كاملاً — المحيط، البنفسجي، القرمزي، الغابة. ولوبز والفحمي والعنبر مجّانية للجميع.",
+        enBody: "Four themes that change the whole look — Ocean, Violet, Crimson, Forest. Loopz, Charcoal and Amber are free for everyone.",
         plus: true,
       },
       /* ⚖️ **والنهاريُّ وحجمُ الخطّ خارج البلس** (D-633، بموافقة أحمد على
@@ -139,6 +161,31 @@ export const SECTIONS: Section[] = [
         en: "Your own poster and backdrop",
         arBody: "اختر ملصق العمل وخلفيته كما تحبّ — والأثر لا يتعدّى أسطحك أنت.",
         enBody: "Pick the poster and backdrop you want — it only ever changes your own surfaces.",
+        plus: true,
+      },
+      /* 🆕 **الودجت شُحن (D-929، ثم v2) ولم يُكتب** — الصغيرُ للجميع، والتخصيصُ والأحجامُ الكبيرة لبلس (`needsPlus` في
+         `me/prefs/widget`، الخطّة §٣/٦) */
+      {
+        icon: "grid",
+        ar: "ودجت لشاشتك",
+        en: "Home-screen widget",
+        arBody: "أكمل المشاهدة على شاشة جوالك الرئيسية، بضغطةٍ تفتح الحلقة.",
+        enBody: "Continue watching right on your phone's home screen — one tap opens the episode.",
+      },
+      {
+        icon: "grid",
+        ar: "ودجت تخصّصه بأحجامه الكبيرة",
+        en: "A widget you customise, in its larger sizes",
+        arBody: "اختر ما يعرضه الودجت — أكمل المشاهدة، فيلم الليلة، أصدقاؤك، الآن في السينما — وبأحجامه الكبيرة.",
+        enBody: "Choose what the widget shows — continue watching, tonight's movie, your friends, now in cinemas — in its larger sizes.",
+        plus: true,
+      },
+      {
+        icon: "image",
+        ar: "خلفية للمحادثات",
+        en: "Chat backgrounds",
+        arBody: "اختر خلفية محادثاتك وقروباتك من بوسترات الأعمال.",
+        enBody: "Pick the background of your chats and groups from title posters.",
         plus: true,
       },
       {
@@ -238,8 +285,18 @@ export const SECTIONS: Section[] = [
         icon: "search",
         ar: "بحث الذكاء",
         en: "AI search",
-        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل.",
-        enBody: "Describe a story in your own words — AI finds the title.",
+        /* 🆕 **قُلب لبلس ١٠ نوفمبر** (`AI_STORY_SEARCH_PLUS_ONLY`، وثلاثُ تجاربٍ مدى الحياة — `STORY_FREE_TRIALS`) */
+        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل. ولكل حسابٍ ثلاث تجارب مجّانية.",
+        enBody: "Describe a story in your own words — AI finds the title. Every account gets three free tries.",
+        plus: true,
+      },
+      /* 🆕 صفحةُ الإعلانات التشويقيّة شُحنت (`/trailers`) ولم تُذكر */
+      {
+        icon: "play",
+        ar: "الإعلانات التشويقية",
+        en: "Trailers",
+        arBody: "أحدث الإعلانات التشويقية للأفلام والمسلسلات في صفحةٍ واحدة.",
+        enBody: "The latest movie and series trailers, on one page.",
       },
     ],
   },
@@ -266,8 +323,26 @@ export const SECTIONS: Section[] = [
         icon: "share",
         ar: "مشاركة وحفظ",
         en: "Share & save",
-        arBody: "شارك قائمتك برابط، واحفظ قوائم غيرك مرجعاً حيّاً يتحدّث مع صاحبه.",
-        enBody: "Share a list by link, and save other people’s lists as live references that stay in sync.",
+        /* 🆕 والنسخُ فعلٌ ثانٍ بجانب الحفظ (هجرة ٢٣٣) */
+        arBody: "شارك قائمتك برابط، واحفظ قوائم غيرك مرجعاً حيّاً يتحدّث مع صاحبه، أو انسخها لقوائمك وعدّلها كما تشاء.",
+        enBody: "Share a list by link, save other people’s lists as live references that stay in sync, or copy one into your lists and make it yours.",
+      },
+      /* 🆕 هجرة ٢٣٤ (أحمد ٤ نوفمبر): الدعوةُ لمن تتابعهم، وعشرةٌ مع صاحبها، ومجّانيّةٌ للجميع (٧أ) */
+      {
+        icon: "people",
+        ar: "قوائم مشتركة",
+        en: "Shared lists",
+        arBody: "ادعُ من تتابعهم إلى قائمتك ليضيفوا إليها معك، حتى عشرة أشخاص.",
+        enBody: "Invite people you follow to add to your list with you — up to ten people.",
+      },
+      /* 🆕 الخطّة §٣/٨ — `lists/smart` و`saved-filters` محروسان ببلس */
+      {
+        icon: "sparkles",
+        ar: "قوائم ذكية تتحدّث وحدها، وفلاتر تحفظها",
+        en: "Smart lists that update themselves, and filters you save",
+        arBody: "اكتب شرط القائمة مرّة فتمتلئ وتتحدّث وحدها، واحفظ فلاترك لتعود إليها بضغطة.",
+        enBody: "Set a list's rule once and it fills and updates itself, and save your filters to come back to in one tap.",
+        plus: true,
       },
     ],
   },
@@ -385,8 +460,8 @@ export const SECTIONS: Section[] = [
         icon: "download",
         ar: "استيراد تاريخك",
         en: "Import your history",
-        arBody: "انقل مشاهداتك من تطبيقك السابق بملفٍّ واحد — يُطابَق مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة.",
-        enBody: "Bring your history over from your previous app in one file — matched against the catalogue and imported in one go.",
+        arBody: "انقل مشاهداتك من TV Time أو Letterboxd أو IMDb أو MyAnimeList بملفٍّ واحد — يُطابَق مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة.",
+        enBody: "Bring your history over from TV Time, Letterboxd, IMDb or MyAnimeList in one file — matched against the catalogue and imported in one go.",
       },
       {
         icon: "settings",
@@ -441,16 +516,9 @@ export const SECTIONS: Section[] = [
           "Connect your accounts on the major streaming platforms once, and your watches flow into your library with no extra step.",
         soon: true,
       },
-      {
-        icon: "download",
-        ar: "تطبيقا iOS وأندرويد",
-        en: "iOS and Android apps",
-        arBody:
-          "تطبيقان أصليّان على App Store وGoogle Play. وحتى ذلك الحين، ثبّت Loopz من متصفّحك على شاشتك الرئيسية ويعمل كتطبيق.",
-        enBody:
-          "Native apps on the App Store and Google Play. Until then, install Loopz from your browser to your home screen — it already behaves like an app.",
-        soon: true,
-      },
+      /* ⚖️ 🆕 **وبندُ «تطبيقا iOS وأندرويد · قريباً» حُذف** (١٠ نوفمبر): **هذا السجلُّ يُقرأ داخل التطبيق نفسِه**
+         (`FeaturesScreen`) — **فتطبيقٌ يقول لقارئه «التطبيقُ قريباً، ثبّتني من المتصفّح» يكذّب نفسَه**، ومراجعُ Apple يقرأ
+         فيه ذكرَ أندرويد وتثبيتاً من الويب على شاشة آيفون. */
       {
         icon: "compass",
         ar: "لغاتٌ أكثر",
