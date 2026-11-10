@@ -130,10 +130,10 @@ export default async function DeleteAccountPage() {
 
         <p className="text-15" dir="ltr">
           <a
-            href="mailto:alharbiahmed3bd@gmail.com?subject=Delete%20my%20Loopz%20account"
+            href="mailto:support@loopztv.com?subject=Delete%20my%20Loopz%20account"
             className="text-accent hover:brightness-110 transition"
           >
-            alharbiahmed3bd@gmail.com
+            support@loopztv.com
           </a>
         </p>
 

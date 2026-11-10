@@ -31,7 +31,7 @@ export default async function Page() {
 
       <SettingsGroup label={t.helpSupportGroup}>
         <SettingsRow
-          href="mailto:alharbiahmed3bd@gmail.com"
+          href="mailto:support@loopztv.com"
           icon="mail"
           title={t.setHelpContact}
           subtitle={t.setHelpContactSub}

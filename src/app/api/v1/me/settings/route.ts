@@ -14,7 +14,7 @@ import { TITLE_MODE_COOKIE, accountTitleMode } from "@/core/titleMode";
 import type { SettingsPayload } from "@/core/contracts/settings";
 
 /** بريدُ الدعم كما في `profile/settings/help` — سطرٌ واحدٌ لا يُكتب مرّتين */
-const CONTACT_EMAIL = "alharbiahmed3bd@gmail.com";
+const CONTACT_EMAIL = "support@loopztv.com";
 
 /**
  * `GET /api/v1/me/settings` — الإعداداتُ كلُّها في قراءةٍ واحدة (Phase 11-I · I0).

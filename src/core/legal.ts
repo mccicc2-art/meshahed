@@ -17,7 +17,7 @@ export type LegalDocName = "privacy" | "terms";
 export type LegalSection = { title: string; body: string; deleteLink?: true };
 export type LegalDoc = { title: string; updated: string; sections: LegalSection[]; contact: string; note: string | null };
 
-export const LEGAL_CONTACT = "alharbiahmed3bd@gmail.com";
+export const LEGAL_CONTACT = "support@loopztv.com";
 
 export function privacyDoc(locale: Locale): LegalDoc {
   const ar = locale === "ar";
