@@ -325,7 +325,11 @@ export async function autoMarkSignal(userId: string, source: Exclude<SignalSourc
     const { data } = await q.maybeSingle();
     if (!data) return null;
     const row = data as SignalRow;
-    await markSignalWatched(db, userId, row, source);
+    /* 🆕 T367 — **بلغة العضو**: الطلبُ من Kodi أو السيرفر أو Stremio بلا كوكي، فلغةُ الطلب العربيّةُ الافتراضيّة لا لغتُه.
+       المحفوظةُ في ملفّه (`setLocale`)، وبلا قيمةٍ = كما كان */
+    const { data: prof } = await db.from("profiles").select("locale").eq("id", userId).maybeSingle();
+    const loc = (prof as { locale?: string | null } | null)?.locale;
+    await markSignalWatched(db, userId, row, source, loc === "en" ? "en-US" : loc === "ar" ? "ar-SA" : null);
     const { error } = await db.from("watch_signals").update({ auto_at: new Date().toISOString() }).match({ id: row.id, user_id: userId });
     return error ? null : row.id;
   } catch {

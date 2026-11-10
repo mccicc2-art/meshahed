@@ -1,6 +1,9 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getMovie } from "@/lib/tmdb";
+import { getMovieFor } from "@/lib/tmdb";
+
+/** لغةُ TMDB صراحةً — `null`/غيابُها = لغةُ الطلب كما كانت */
+type TmdbLang = "ar-SA" | "en-US";
 import { tagSource, type WatchSource } from "@/lib/watchSource";
 
 /**
@@ -93,14 +96,16 @@ export async function markWatchedUpTo(
   meta?: { title?: string | null; posterPath?: string | null },
   /** 🆕 D-1505 — من سجّل (جوابُ إشارة Stremio) — يُوسَم به ما أُدرج هنا وحده */
   source?: WatchSource,
+  /** 🆕 T367 — لغةُ العضو حين لا يحملها الطلب (تطبيقٌ مربوطٌ يسجّل بلا سؤال) — منها اسمُ المسلسل وملصقُه في المكتبة */
+  lang?: TmdbLang | null,
 ): Promise<number> {
   /* 🔴 A-15 (المدقّق ٢٢ أكتوبر) — **الرقمان من العميل، فالحدُّ هنا لا عند من نادى**: منشورُ القلم يمرّر الموسمَ والحلقةَ
      خارجَ حارسِ عموده (٠–٢٠٠ / ١–٥٠٠٠ يحرس الكتابةَ لا هذه الحلقة)، ورقمٌ كبيرٌ كان يدور حلقةً بلا سقف. الحدّان حدّا
      `rateEpisode` نفسُهما (`intIn`) — رقمٌ خارجهما ليس حلقةً، فلا يُعلَّم شيء. */
   if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
-  const { getTv } = await import("@/lib/tmdb");
+  const { getTvFor } = await import("@/lib/tmdb");
   const { airedPerSeason, airedEpisodesUpTo } = await import("@/core/progress");
-  const tv = await getTv(tmdbId);
+  const tv = await getTvFor(tmdbId, lang);
   const runtime = tv.episode_run_time?.[0] ?? null;
   /* 🔴 A-15 — **موسمٌ لا يعرفه TMDB لا يُعلِّم ما قبله** ولا يُتابَع العملُ لأجله: الموسمُ ٩٩ في مسلسلٍ من ثلاثة كان
      يعلّم الثلاثةَ كلَّها. ⚖️ **والحسبةُ خرجت إلى `airedEpisodesUpTo`** يومَ صار لها قارئٌ ثانٍ (استيرادُ IMDb) —
@@ -143,6 +148,8 @@ export async function ensureMovieInLibrary(
   userId: string,
   tmdbId: number,
   meta?: { title: string; posterPath: string | null },
+  /** 🆕 T367 — كما في `markWatchedUpTo` */
+  lang?: TmdbLang | null,
 ) {
   try {
     const { data: have } = await supabase
@@ -152,7 +159,7 @@ export async function ensureMovieInLibrary(
       .maybeSingle();
     if (have) return;
     const m = await Promise.race([
-      getMovie(tmdbId).catch(() => null),
+      getMovieFor(tmdbId, lang).catch(() => null),
       new Promise<null>((r) => setTimeout(() => r(null), 2500)),
     ]);
     const genres = m ? (m.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n)) : null;
@@ -186,10 +193,10 @@ export interface SignalRow {
  * ثمّ يُغلق السؤالُ نفسُه (`watched`). يعيد عددَ الحلقات المعلَّمة.
  * ⚖️ **وإغلاقُ السؤال بشرط «ما زال منتظراً»**: جهازان أو ضغطتان لا تكتبان مرّتين.
  */
-export async function markSignalWatched(supabase: Db, userId: string, sig: SignalRow, src: WatchSource): Promise<number> {
+export async function markSignalWatched(supabase: Db, userId: string, sig: SignalRow, src: WatchSource, lang?: TmdbLang | null): Promise<number> {
   let marked = 0;
   if (sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markWatchedUpTo(supabase, userId, sig.tmdb_id, sig.season, sig.episode, undefined, src);
+    marked = await markWatchedUpTo(supabase, userId, sig.tmdb_id, sig.season, sig.episode, undefined, src, lang);
     /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
     if (sig.season > 0) {
       await supabase
@@ -200,7 +207,7 @@ export async function markSignalWatched(supabase: Db, userId: string, sig: Signa
         .or(`season.lt.${sig.season},and(season.eq.${sig.season},episode.lte.${sig.episode})`);
     }
   } else if (sig.media_type === "movie") {
-    const m = await Promise.race([getMovie(sig.tmdb_id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
+    const m = await Promise.race([getMovieFor(sig.tmdb_id, lang).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
     const runtime = m?.runtime && Number.isInteger(m.runtime) && m.runtime > 0 && m.runtime <= 10_000 ? m.runtime : null;
     const { data: added, error } = await supabase
       .from("watched_movies")
@@ -208,7 +215,7 @@ export async function markSignalWatched(supabase: Db, userId: string, sig: Signa
       .select("id");
     if (error) failed(error);
     await tagSource(supabase, "watched_movies", added as { id: number }[] | null, src);
-    await ensureMovieInLibrary(supabase, userId, sig.tmdb_id);
+    await ensureMovieInLibrary(supabase, userId, sig.tmdb_id, undefined, lang);
   }
   await closeSignal(supabase, userId, sig.id, true);
   return marked;

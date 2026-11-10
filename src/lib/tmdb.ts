@@ -1428,6 +1428,20 @@ export async function getMovie(id: number): Promise<MovieDetails> {
 }
 
 /**
+ * 🆕 T367 — **تفاصيلُ بلغة العضو لا بلغة الطلب** حين لا يحمل الطلبُ لغةَ أحد: Kodi وPlex وJellyfin وEmby وStremio يطرقون الخادمَ
+ * بلا كوكي ولا ترويسة لغة، فكانت `tmdbLanguage` ترجع إلى العربيّة — ودخل «Bohemian Rhapsody» مكتبةَ عضوٍ إنجليزيّ بملصقه
+ * العربيّ (أحمد ١٠ نوفمبر: «ليه بوستر الاعمال يظهر عندي بالعربي وحسابي انجليزي؟»). بلا لغةٍ = الدالّةُ القديمةُ نفسُها،
+ * والملصقُ الاحتياطيُّ (`withPoster`) كما هو.
+ */
+export async function getTvFor(id: number, language?: "ar-SA" | "en-US" | null): Promise<TvDetails> {
+  return language ? withPoster(await tmdb<TvDetails>(`/tv/${id}`, { language }), `/tv/${id}`) : getTv(id);
+}
+
+export async function getMovieFor(id: number, language?: "ar-SA" | "en-US" | null): Promise<MovieDetails> {
+  return language ? withPoster(await tmdb<MovieDetails>(`/movie/${id}`, { language }), `/movie/${id}`) : getMovie(id);
+}
+
+/**
  * **تفاصيلُ مسلسلٍ بلغةٍ مطلوبةٍ صراحةً** (D-261).
  *
  * `getTv` تسأل TMDB **بلغة القارئ** (`tmdbLanguage`) — وهو الصواب لكل
