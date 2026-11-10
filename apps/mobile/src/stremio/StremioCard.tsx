@@ -158,7 +158,17 @@ function AutoCard({ s, count, ep, onDone, onAll, onOpen }: { s: StremioSignal; c
         </Pressable>
         {movie ? (
           <View style={{ gap: 6, paddingHorizontal: 4, paddingBottom: 2 }}>
-            <Text size={13} weight="700" muted>{t.autoRate}</Text>
+            {/* 🆕 T365 — **«بدون تقييم» في سطر «قيّمه» نفسِه، في طرفه** (أحمد ١٠ نوفمبر: «ما ابغى اقيمه كيف اشيله؟» ثمّ «لا يكون تحت النجوم
+                عشان ما تزيد المساحة .. خليها مساوي لكلمة قيّمه ويكون اقصى اليمين»): كانت النجومُ البابَ الوحيدَ لإخفاء الفيلم. يُخفيه كـ«حسناً»
+                في الحلقة — والفيلمُ في مكتبته — وبالطرف المنطقيّ فينقلب مع العربيّة */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text size={13} weight="700" muted>{t.autoRate}</Text>
+              {stars ? null : (
+                <Pressable onPress={() => onDone(s)} accessibilityRole="button" hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+                  <Text size={13} weight="700" muted>{t.autoSkipRate}</Text>
+                </Pressable>
+              )}
+            </View>
             <View pointerEvents={stars ? "none" : "auto"}>
               <StarRow spread size={22} value={stars || null} onChange={(n) => void rate(n ?? 0)} />
             </View>

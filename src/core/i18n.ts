@@ -3233,6 +3233,8 @@ const ar = {
   autoAddedMovie: "أضفناه لمكتبتك",
   autoAddedEpisode: "أضفناها لمكتبتك",
   autoRate: "قيّمه",
+  /* 🆕 T365 — الفيلمُ يُخفى بلا تقييم (أحمد: «ما ابغى اقيمه كيف اشيله؟») */
+  autoSkipRate: "بدون تقييم",
   autoOk: "حسناً",
   homeServersTitle: "سيرفرات البيت",
   homeServersIntro: "شغّل حلقة أو فيلم على سيرفرك في البيت، ولما تخلصه يسألك Loopz في الرئيسية: شفتها؟",
@@ -3252,7 +3254,7 @@ const ar = {
   homeServerStepsJellyfin: [
     "من لوحة Jellyfin: Plugins ← Catalog، ثبّت «Webhook» وأعد تشغيل السيرفر.",
     "افتح الإضافة واضغط «Add Generic Destination»، والصق رابطك في Webhook Url.",
-    "فعّل «Playback Stop» واختر Movies وEpisodes.",
+    "فعّل «Playback Start» و«Playback Stop» واختر Movies وEpisodes.",
     "الصق القالب في Template واحفظ.",
   ] as readonly string[],
   homeServerStepsEmby: [
@@ -3313,7 +3315,7 @@ const ar = {
     kind === "stremio"
       ? "ثبّت الإضافة في Stremio، وأول ما يفتحها نتأكد من الربط."
       : kind === "jellyfin"
-        ? "شغّل أي شيء على Jellyfin وأوقفه، ولو بعد ثواني، عشان نتأكد من الربط."
+        ? "شغّل أي شيء على Jellyfin، وأول ما يبدأ نتأكد من الربط."
         : kind === "kodi"
           ? "اكتب الرمز في إعدادات الإضافة، وأول ما يوصل نتأكد من الربط."
           : `شغّل أي شيء على ${kind === "emby" ? "Emby" : "Plex"}، ولو ثواني، عشان نتأكد من الربط.`,
@@ -5755,6 +5757,7 @@ const en: Dict = {
   autoAddedMovie: "Added to your library",
   autoAddedEpisode: "Added to your library",
   autoRate: "Rate it",
+  autoSkipRate: "Skip rating",
   autoOk: "OK",
   homeServersTitle: "Home servers",
   homeServersIntro: "Play an episode or a movie on your home server, and when you finish it Loopz asks you on Home: watched it?",
@@ -5774,7 +5777,7 @@ const en: Dict = {
   homeServerStepsJellyfin: [
     "In the Jellyfin dashboard: Plugins → Catalog, install “Webhook” and restart the server.",
     "Open the plugin, tap “Add Generic Destination” and paste your link into Webhook Url.",
-    "Enable “Playback Stop” and pick Movies and Episodes.",
+    "Enable “Playback Start” and “Playback Stop” and pick Movies and Episodes.",
     "Paste the template into Template and save.",
   ] as readonly string[],
   homeServerStepsEmby: [
@@ -5833,7 +5836,7 @@ const en: Dict = {
     kind === "stremio"
       ? "Install the add-on in Stremio; as soon as Stremio opens it, we know it's linked."
       : kind === "jellyfin"
-        ? "Play anything on Jellyfin and stop it, even after a few seconds, so we can confirm the link."
+        ? "Play anything on Jellyfin; as soon as it starts, we know it's linked."
         : kind === "kodi"
           ? "Type the code in the add-on's settings; as soon as it arrives, we know it's linked."
           : `Play anything on ${kind === "emby" ? "Emby" : "Plex"}, even for a few seconds, so we can confirm the link.`,
