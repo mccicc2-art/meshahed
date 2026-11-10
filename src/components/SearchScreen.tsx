@@ -165,9 +165,10 @@ export function SearchScreen({
       try {
         const res = await aiStorySearch(text);
         if (!res.ok) {
-          setDescItems([]);
+          /* 🆕 بوّابةُ بلس (قُلبت ١٠ نوفمبر، هجرة ٢٤٣): الويبُ لا يبيع — يدلّ على التطبيق. **ولا «لم أجد» تحتها**:
+             القائمةُ الفارغةُ تقول «لا مطابقة» والتنبيهُ يقول «اشترك»، فتُترك القائمةُ كما قبل البحث */
+          setDescItems(res.reason === "plus" ? null : []);
           setDescFallback(false);
-          /* 🆕 بوّابةُ بلس (المرحلة ٥، مطفأةٌ اليوم): الويبُ لا يبيع — يدلّ على التطبيق */
           if (res.reason === "plus") flashError(t.aiSearchPlus);
           return;
         }

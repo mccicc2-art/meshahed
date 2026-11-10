@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { handle, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { aiStorySearch } from "@/lib/actions";
-import type { SearchStoryBody, SearchStoryPayload } from "@/core/contracts/search";
+import { aiStorySearch, storyTrialsLeft } from "@/lib/actions";
+import type { SearchStoryBody, SearchStoryPayload, SearchStoryTrialsPayload } from "@/core/contracts/search";
 
 /**
  * `POST /api/v1/search/story` — «ابحث بالوصف» للتطبيق (Phase 11-G · G3).
@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
     if (!description.trim()) return fail("invalid_input", { field: "description" });
 
     const res = await aiStorySearch(description);
-    if (!res.ok) return ok({ items: [], reason: res.reason, fallback: false });
+    /* 🆕 هجرة ٢٤٣ — `left` يُرسل حين يعرفه الخادم فقط: غيابُه عند «قصير»/«لم أجد» يُبقي الرصيدَ المعروضَ كما هو */
+    const left = res.left !== undefined ? { left: res.left } : {};
+    if (!res.ok) return ok({ items: [], reason: res.reason, fallback: false, ...left });
     return ok({
       items: res.results.map((r) => ({
         id: r.id,
@@ -34,6 +36,15 @@ export async function POST(req: NextRequest) {
       })),
       reason: res.results.length ? null : "empty",
       fallback: !!res.fallback,
+      ...left,
     });
   });
+}
+
+/**
+ * 🆕 `GET /api/v1/search/story` — كم تجربةً بقيت للمجانيّ (هجرة ٢٤٣ · ٢ أ): السطرُ تحت حقل الوصف يُرسم قبل أوّل
+ * بحث، و«انتهت» تُعرف قبل أن يكتب العضوُ وصفاً لن يُبحث. `null` = بلا حدّ (Plus).
+ */
+export async function GET() {
+  return handle<SearchStoryTrialsPayload>(async () => ok({ left: await storyTrialsLeft() }));
 }

@@ -199,7 +199,7 @@ export const TOUR_STEPS: TourStep[] = [
     anchor: "search-describe",
     title: (t) => t.tourSearchTitle,
     body: (t) => t.tourSearchBody,
-    /* مفتوحٌ للجميع حتى تُقلب البوّابة (المرحلة ٥) — والوسمُ يتبعها لا يسبقها */
+    /* الوسمُ يتبع البوّابةَ لا يسبقها — قُلبت ١٠ نوفمبر (هجرة ٢٤٣)، وللمجانيّ ثلاثُ تجاربَ تُعرض تحت الحقل نفسِه */
     plusTag: (plus) => AI_STORY_SEARCH_PLUS_ONLY && !plus,
   },
   {

@@ -369,6 +369,17 @@ const ar = {
   aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
   /* 🆕 بوّابةُ المرحلة ٥ (مطفأةٌ اليوم) — الويبُ لا يبيع، فيدلّ على التطبيق */
   aiSearchPlus: "البحث بوصف القصة من مزايا Loopz Plus — اشترك من التطبيق.",
+  /* 🆕 هجرة ٢٤٣ — رصيدُ المجانيّ سطرٌ تحت حقل الوصف (٢ أ)، وبطاقةُ الاشتراك حين ينفد. التجربةُ تُحسب حين يجد نتائج (١ أ) */
+  aiSearchTrialsLeft: (n: number, of: number) =>
+    n >= of
+      ? `لك ${of} تجارب مجانية للبحث بالوصف، تُحسب التجربة حين أجد نتائج.`
+      : n === 2
+        ? `بقيت لك تجربتان مجانيتان من ${of}.`
+        : n === 1
+          ? `بقيت لك تجربة مجانية واحدة من ${of}.`
+          : `بقيت لك ${n} تجارب مجانية من ${of}.`,
+  aiSearchPlusTitle: "البحث بالوصف لمشتركي Loopz Plus",
+  aiSearchPlusBody: "انتهت تجاربك المجانية. اشترك لتبحث بوصف القصة متى شئت.",
   /* 🆕 D-1259 — **المسارُ البديل يُسمّى**: نتائجُ الكلمات المفتاحيّة أضعفُ من
      النموذج، وعرضُها بلا كلمةٍ يجعل الذكاءَ يبدو رديئاً وهو غائب. */
   aiSearchFallback: "البحث الذكي غير متاح الآن — هذه نتائج تقريبية بالكلمات.",
@@ -3616,6 +3627,14 @@ const en: Dict = {
     "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
   aiSearchEmpty: "No matches found — try a broader description or add details.",
   aiSearchPlus: "Searching by story is a Loopz Plus feature — subscribe in the app.",
+  aiSearchTrialsLeft: (n: number, of: number) =>
+    n >= of
+      ? `You have ${of} free story searches — one is used only when I find results.`
+      : n === 1
+        ? `1 free story search left of ${of}.`
+        : `${n} free story searches left of ${of}.`,
+  aiSearchPlusTitle: "Story search is for Loopz Plus members",
+  aiSearchPlusBody: "Your free searches are used up. Subscribe to search by story any time.",
   aiSearchFallback: "Smart search isn't available right now — these are rough keyword matches.",
   hintSearchDesc: "Tap the star to search by describing the story or the mood",
 

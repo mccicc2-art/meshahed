@@ -129,9 +129,9 @@ export function TitleSearchSheet({
         if (!res.ok) {
           // «غير مفعّل» سقطت: غياب مفتاح النموذج له الآن مسارٌ بديل
           // يُجيب بما يملكه التطبيق (إصلاح 9 Aug)
-          setAiItems([]);
+          /* 🆕 بوّابةُ بلس (قُلبت ١٠ نوفمبر، هجرة ٢٤٣): الويبُ لا يبيع — يدلّ على التطبيق، بلا «لم أجد» تحت التنبيه */
+          setAiItems(res.reason === "plus" ? null : []);
           setAiFallback(false);
-          /* 🆕 بوّابةُ بلس (المرحلة ٥، مطفأةٌ اليوم): الويبُ لا يبيع — يدلّ على التطبيق */
           if (res.reason === "plus") flashError(t.aiSearchPlus);
           return;
         }

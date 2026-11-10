@@ -6278,20 +6278,37 @@ export interface AiSearchResult {
 export async function aiStorySearch(
   description: string,
 ): Promise<
-  | { ok: true; results: AiSearchResult[]; fallback?: boolean }
-  | { ok: false; reason: "empty" | "short" | "plus" }
+  | { ok: true; results: AiSearchResult[]; fallback?: boolean; left?: number | null }
+  | { ok: false; reason: "empty" | "short" | "plus"; left?: number | null }
 > {
-  await requireUser("aisearch", 6, 60_000);
+  const { user } = await requireUser("aisearch", 6, 60_000);
 
   const desc = String(description ?? "").trim().slice(0, 600);
   if (desc.length < 8) return { ok: false, reason: "short" };
 
-  /* 🆕 خطّةُ Loopz+ v2 — البحثُ بوصف القصّة لبلس، والبوّابةُ مطفأةٌ حتى التشغيل (المرحلة ٥). `reason: "plus"` يقرؤه
-     1.13.x نتيجةً فارغة، والويبُ يقول «اشترك من التطبيق» */
-  {
-    const [{ AI_STORY_SEARCH_PLUS_ONLY, isPlus }, { getProfile: me }] = await Promise.all([import("@/core/plan"), import("@/lib/data")]);
-    if (AI_STORY_SEARCH_PLUS_ONLY && !isPlus(await me().catch(() => null))) return { ok: false, reason: "plus" };
-  }
+  /* 🆕 **البحثُ بالوصف لبلس، وللمجانيّ ثلاثُ تجارب** (هجرة ٢٤٣ · أحمد ١٠ نوفمبر). `used: null` = بلا حدّ (Plus،
+     أو البوّابةُ مطفأة، أو تعذّرت القراءة). والفحصُ بعد «قصير» عمداً: الوصفُ الناقص لا يُدعى للاشتراك.
+     `reason: "plus"` يقرؤه 1.13.x نتيجةً فارغة، والويبُ يقول «اشترك من التطبيق». */
+  const { STORY_FREE_TRIALS } = await import("@/core/plan");
+  const used = await storyTrialUsed(user.id);
+  if (used !== null && used >= STORY_FREE_TRIALS) return { ok: false, reason: "plus", left: 0 };
+
+  /** التجربةُ تُحسب إذا رجع البحثُ بنتائج فقط (١ أ) — فهذه تُنادى عند الخروج بنتائج لا قبله */
+  const spend = async (): Promise<number | null> => {
+    if (used === null) return null;
+    try {
+      const svc = await createServiceClient();
+      const { data, error } = await svc.rpc("ai_story_trial_bump", { p_user: user.id });
+      // بلا معرّفات: الرمزُ وحدَه يكفي ليظهر في السجلّ أنّ عدّاً ضاع
+      if (error) console.error("[story-trials] bump failed", error.code);
+      const now = !error && typeof data === "number" ? data : used + 1;
+      return Math.max(0, STORY_FREE_TRIALS - now);
+    } catch {
+      // العدُّ تحسينٌ لا شرط: النتائجُ وصلت، والرصيدُ المعروضُ تقديرٌ من القراءة
+      console.error("[story-trials] bump threw");
+      return Math.max(0, STORY_FREE_TRIALS - used - 1);
+    }
+  };
 
   const [{ aiSuggestTitles }, { getLocale }] = await Promise.all([
     import("@/lib/ai"),
@@ -6395,7 +6412,7 @@ export async function aiStorySearch(
       ),
     );
     for (const g of grounded) if (g) push(g.row, g.reason);
-    if (results.length) return { ok: true, results: await finish(results) };
+    if (results.length) return { ok: true, results: await finish(results), left: await spend() };
   }
 
   /* ===== المسار البديل — بلا نموذج (إصلاح 9 Aug) =====
@@ -6435,7 +6452,48 @@ export async function aiStorySearch(
   }
 
   if (results.length === 0) return { ok: false, reason: "empty" };
-  return { ok: true, results: await finish(results.slice(0, 12)), fallback: true };
+  /* 🆕 والمسارُ البديلُ نتائجُ أيضاً فيُحسب (١ أ — «تُحسب إذا رجع بنتائج»): وإلّا صار غيابُ النموذج بحثاً مجانيّاً بلا حدّ
+     (المراجعةُ المستقلّة ١٠ نوفمبر) */
+  return { ok: true, results: await finish(results.slice(0, 12)), fallback: true, left: await spend() };
+}
+
+/**
+ * 🆕 **كم بحثاً بالوصف استهلك المجانيُّ؟** (هجرة ٢٤٣) — `null` = بلا حدّ.
+ *
+ * الجدولُ للخادم وحده (لا يقرؤه العضوُ فلا يصفّره)، فالقراءةُ بعميل الخدمة. **وأيُّ فشلٍ يفتح البحث**:
+ * لا نقفل ميزةً على عضوٍ بسبب عطلٍ عندنا — أسوأُ ما يحدث تجربةٌ زائدة. **لكنّ الفتحَ يُسجَّل** (المراجعة المستقلّة):
+ * غيابُ مفتاح الخدمة يفتح البوّابةَ للجميع بصمت، فالسجلُّ هو ما يكشفه.
+ * **وتعذّرُ قراءة الملفّ الشخصيّ لا يُعامَل «مجانيّاً»**: `getProfile` تبتلع أخطاءها فتردّ `null`، ومشترِكٌ يدفع لا يُخصم
+ * منه ولا يُدعى للاشتراك بسبب عطلٍ عابر — فهو «بلا حدّ» كبقيّة حالات الفشل.
+ */
+async function storyTrialUsed(userId: string): Promise<number | null> {
+  const [{ AI_STORY_SEARCH_PLUS_ONLY, isPlus }, { getProfile: me }] = await Promise.all([import("@/core/plan"), import("@/lib/data")]);
+  if (!AI_STORY_SEARCH_PLUS_ONLY) return null;
+  const profile = await me().catch(() => null);
+  if (!profile || isPlus(profile)) return null;
+  try {
+    const svc = await createServiceClient();
+    const { data, error } = await svc.from("ai_story_trials").select("used").eq("user_id", userId).maybeSingle();
+    if (error) {
+      console.error("[story-trials] read failed — gate open", error.code);
+      return null;
+    }
+    return typeof data?.used === "number" ? data.used : 0;
+  } catch {
+    console.error("[story-trials] read threw — gate open");
+    return null;
+  }
+}
+
+/**
+ * 🆕 **رصيدُ التجارب المتبقّي** — للسطر تحت حقل الوصف قبل أوّل بحث (٢ أ). `null` = بلا حدّ (Plus).
+ */
+export async function storyTrialsLeft(): Promise<number | null> {
+  const { user } = await requireUser();
+  const used = await storyTrialUsed(user.id);
+  if (used === null) return null;
+  const { STORY_FREE_TRIALS } = await import("@/core/plan");
+  return Math.max(0, STORY_FREE_TRIALS - used);
 }
 
 // ============================================================

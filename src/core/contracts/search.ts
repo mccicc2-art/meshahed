@@ -31,4 +31,12 @@ export interface SearchStoryPayload {
   reason: "short" | "empty" | "plus" | null;
   /** المسارُ البديل (بلا نموذج) — الويبُ لا يميّزه بصريّاً اليوم، يمرّ للمستقبل */
   fallback: boolean;
+  /** 🆕 هجرة ٢٤٣ — تجاربُ المجانيّ الباقية بعد هذا البحث: رقمٌ للمجانيّ، `null` بلا حدّ (Plus)، **وغيابُه «لا جديد»**
+   *  (وصفٌ قصيرٌ أو «لم أجد» لا يُحسبان فلا يُرسلان رصيداً). 1.14.x قبلها يتجاهله */
+  left?: number | null;
+}
+
+/** 🆕 `GET /api/v1/search/story` — الرصيدُ قبل أوّل بحث، للسطر تحت الحقل. `null` = بلا حدّ */
+export interface SearchStoryTrialsPayload {
+  left: number | null;
 }

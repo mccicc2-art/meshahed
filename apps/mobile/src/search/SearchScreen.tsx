@@ -4,7 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ApiError, write } from "../api";
+import { ApiError, api, queryClient, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text, Toast, toastReducer } from "../ui";
@@ -22,7 +22,8 @@ import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, TitleRow } from "
 import { HeaderEdges } from "../HeaderEnd";
 import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useScopedTrending, useSearch, useTrending } from "./useSearch";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
-import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload } from "../contracts";
+import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload, SearchStoryTrialsPayload } from "../contracts";
+import { STORY_FREE_TRIALS } from "@/core/plan";
 import { openProfile, profileHandleOf } from "../member/open";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
@@ -55,6 +56,7 @@ const HEADER_H = 64;
 const SCOPES: SearchScope[] = ["all", "titles", "artists", "members", "lists"];
 const DESC_MIN = 8;
 const DESC_MAX = 600;
+const STORY_TRIALS_KEY = ["search:story-trials"] as const;
 
 export function SearchScreen() {
   const { t, tokens } = useApp();
@@ -107,8 +109,21 @@ export function SearchScreen() {
   const [descText, setDescText] = useState("");
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
+  /* 🆕 هجرة ٢٤٣ — **رصيدُ تجارب المجانيّ** (٣ مدى الحياة، تُحسب حين يجد البحثُ نتائج). يُقرأ عند فتح وضع الوصف
+     وعند كلِّ عودةٍ إلى الشاشة وهو مفتوح (`useFocusEffect` تحت — صفحةُ الاشتراك تُدفع فوقها فلا تُعاد تركيبها)،
+     ويُحدَّث من جواب كلِّ بحثٍ بلا نداءٍ ثانٍ. `null` = بلا حدّ (Plus) */
+  const trials = useQuery({
+    queryKey: STORY_TRIALS_KEY,
+    queryFn: async () => (await api<SearchStoryTrialsPayload>("/api/v1/search/story")).data.left,
+    enabled: desc,
+    staleTime: 0,
+    retry: 0,
+  });
   const story = useMutation({
     mutationFn: async (description: string) => write<SearchStoryPayload>("/api/v1/search/story", { description } satisfies SearchStoryBody),
+    onSuccess: (res) => {
+      if (res.left !== undefined) queryClient.setQueryData(STORY_TRIALS_KEY, res.left);
+    },
     onError: (e: unknown) => {
       const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
       const msg = (t as unknown as Record<string, unknown>)[key];
@@ -211,6 +226,22 @@ export function SearchScreen() {
     story.mutate(text);
   };
   const descItems: SearchStoryItem[] | null = story.data ? story.data.items : null;
+  const left = trials.data;
+  /* من اشترك ورجع من صفحة الاشتراك يُفتح له فوراً — لا انتظارَ لإعادة فتح وضع الوصف (المراجعة المستقلّة) */
+  const refetchTrials = trials.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      if (desc) void refetchTrials();
+    }, [desc, refetchTrials]),
+  );
+  const openPlus = () => {
+    Keyboard.dismiss();
+    router.push("/settings/plus");
+  };
+  /* نفدت التجارب: من الرصيد، أو من جوابٍ قال «plus» (خادمٌ لا يرسل `left` بعد) — ما لم يقل الرصيدُ «بلا حدّ».
+     ⚠️ **ونتائجُ التجربة الأخيرة تبقى**: الثالثةُ تُرجع نتائجَ ورصيدَ صفر معاً، والبطاقةُ تنتظر البحثَ التالي */
+  const showing = !!descItems?.length && !story.isPending;
+  const locked = (left === 0 || (story.data?.reason === "plus" && left !== null)) && !showing;
 
   /* 🆕 D-1309 (طلبُ خالد بلقطة، ٦ أكتوبر) — «لا نتائج» تدلّ على البحث بالوصف (الشرحُ في `SearchScreen` الويب، والسلوكُ
      واحد): النجمةُ تُحاط وتحتها تلميحٌ خمسَ ثوانٍ، وتحت الفراغ سطرٌ ينتهي برابط؛ والثلاثةُ تفتح وضعَ الوصف حاملةً ما كُتب
@@ -259,6 +290,17 @@ export function SearchScreen() {
               <Text size={12} weight="600" muted>{t.aiSearchBack}</Text>
             </Pressable>
             {/* textarea ٣ أسطر: `rounded-xl bg-surface-2 border px-4 py-3 text-base` — ١٦ بكسلاً لا أصغر */}
+            {locked ? (
+              /* 🆕 هجرة ٢٤٣ — **البطاقةُ مكانَ الحقل لا تحته**: حقلٌ يُكتب فيه وصفٌ لن يُبحث وعدٌ كاذب. شكلُ بوّابة
+                 Plus في «الإحصاءات» حرفاً (نجمةٌ وعنوانٌ وزرٌّ واحد) — لا بطاقةَ اشتراكٍ ثانية */
+              <View style={{ alignItems: "center", gap: 8, paddingVertical: 32, paddingHorizontal: 8 }}>
+                <Icon name="star" size={24} color={tokens.accent} />
+                <Text size={15} weight="700" style={{ textAlign: "center" }}>{t.aiSearchPlusTitle}</Text>
+                <Text size={13} muted style={{ textAlign: "center", lineHeight: 20 }}>{t.aiSearchPlusBody}</Text>
+                <Button size="sm" label={t.plusLearnMore} onPress={openPlus} />
+              </View>
+            ) : (
+            <>
             <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
               value={descText}
               onChangeText={(v) => setDescText(v.slice(0, DESC_MAX))}
@@ -269,7 +311,14 @@ export function SearchScreen() {
               textAlignVertical="top"
               style={{ minHeight: 96, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
             />
-            <Button label={story.isPending ? t.peopleSearching : t.aiSearchRun} busy={story.isPending} disabled={descText.trim().length < DESC_MIN} onPress={runDesc} />
+            {/* 🆕 ٢ أ — الرصيدُ سطرٌ خافتٌ تحت الحقل، للمجانيّ وحدَه */}
+            {typeof left === "number" ? <Text size={12} muted>{left > 0 ? t.aiSearchTrialsLeft(left, STORY_FREE_TRIALS) : t.aiSearchPlusBody}</Text> : null}
+            {/* نفدت والنتائجُ الأخيرةُ ظاهرة: زرُّ الاشتراك مكانَ «ابحث» — وإلّا بقي «اشترك» سطراً بلا باب حتى تُعاد الشاشة (المراجعة المستقلّة) */}
+            {left === 0 ? (
+              <Button size="sm" label={t.plusLearnMore} onPress={openPlus} />
+            ) : (
+              <Button label={story.isPending ? t.peopleSearching : t.aiSearchRun} busy={story.isPending} disabled={descText.trim().length < DESC_MIN} onPress={runDesc} />
+            )}
             {story.isPending ? (
               <Text size={14} muted style={{ textAlign: "center", paddingVertical: 32 }}>{t.peopleSearching}</Text>
             ) : descItems === null ? (
@@ -286,6 +335,8 @@ export function SearchScreen() {
                   ))}
                 </Divided>
               </>
+            )}
+            </>
             )}
           </>
         ) : (
