@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { platformFromUA } from "@/core/platform";
 import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
+import { requalify } from "@/lib/referral";
 
 /**
  * `POST /api/v1/me/presence` — نبضةُ حضور التطبيق الأصليّ (D-1307).
@@ -25,6 +26,8 @@ export async function POST() {
     } catch {
       /* لا شيء */
     }
+    /* 🆕 المهمة ٣٧٠ (البند ٢) — يومُ النشاط كُتب للتوّ؛ فالاحتسابُ يُفحص هنا لا عند إضافة عملٍ وحدَها */
+    await requalify();
     return ok({ ok: true });
   });
 }

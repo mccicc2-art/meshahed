@@ -1,6 +1,7 @@
 import { handle } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { AppConfig } from "@/core/contracts/appConfig";
+import { STORE_URL } from "@/core/storeLinks";
 
 /**
  * ====== 🆕 `GET /api/v1/app/config` — لافتةُ «حدّث التطبيق» (خطّةُ Loopz+ v2، المرحلة ٠) ======
@@ -14,11 +15,8 @@ const MIN_VERSION: string | null = null;
 
 const CONFIG: AppConfig = {
   min_version: MIN_VERSION,
-  store_url: {
-    /* ascAppId في `apps/mobile/eas.json` */
-    ios: "https://apps.apple.com/app/id6820369011",
-    android: "https://play.google.com/store/apps/details?id=com.loopztv.app",
-  },
+  /* 🆕 المهمة ٣٧٠ — الرابطان من `core/storeLinks.ts` (صفحةُ الدعوة تقرؤهما أيضاً) */
+  store_url: { ...STORE_URL },
 };
 
 export async function GET() {

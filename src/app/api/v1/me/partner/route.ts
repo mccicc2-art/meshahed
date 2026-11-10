@@ -10,6 +10,7 @@ import {
 } from "@/lib/data";
 import { isGold, isPlus } from "@/core/plan";
 import { siteUrl } from "@/lib/site";
+import { getMyPartnerEarnings } from "@/lib/partnerEarnings";
 import type { MyPartnerPayload, PartnerDashboard } from "@/core/contracts/profile";
 
 /**
@@ -33,10 +34,12 @@ export async function GET() {
     const application = state.appStatus === "pending" || state.appStatus === "rejected" ? await getMyPartnerApplication() : null;
     let dashboard: PartnerDashboard | null = null;
     if (state.appStatus === "approved" && state.code) {
-      const [details, available, payouts] = await Promise.all([
+      const [details, available, payouts, earnings] = await Promise.all([
         getMyPartnerDetails(),
         getMyPartnerBalance(auth.user.id),
         getMyPayoutRequests(),
+        /* 🆕 المهمة ٣٧٠ — دفترُ العمولات نفسُه الذي تقرؤه لوحةُ الويب */
+        getMyPartnerEarnings(),
       ]);
       dashboard = {
         url: siteUrl(`/p/${state.code}`),
@@ -52,6 +55,9 @@ export async function GET() {
           account_name: details?.account_name ?? "",
           phone: details?.phone ?? "",
         },
+        on_hold: earnings?.on_hold ?? 0,
+        subscribed: earnings?.subscribed ?? 0,
+        activity: earnings?.recent ?? [],
       };
     }
     return ok({

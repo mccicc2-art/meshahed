@@ -14,9 +14,9 @@ import {
   type InviteStatus,
   type PartnerDetails,
 } from "@/lib/data";
-import { isPlus } from "@/core/plan";
-import { partnerExample } from "@/core/billing";
-import { createClient } from "@/lib/supabase/server";
+import { isGold, isPlus } from "@/core/plan";
+import { partnerExample, partnerMoney, PARTNER_EXAMPLE_PRICE } from "@/core/billing";
+import { getMyPartnerEarnings } from "@/lib/partnerEarnings";
 import { applyPartner, cancelPartnerApplication, savePartnerDetails, requestPayout } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
@@ -450,7 +450,7 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
 function TermsCard({ t }: { t: Dict }) {
   return (
     <SettingsGroup label={t.prtTermsTitle}>
-      {[t.prtTermRate, t.prtTermExample(...exampleOf(99.99, t.code)), t.prtTermDirect, t.prtTermHold, t.prtTermRefund, t.prtTermMin, t.prtTermNature].map(
+      {[t.prtTermRate, t.prtTermExample(...exampleOf(PARTNER_EXAMPLE_PRICE, t.code)), t.prtTermDirect, t.prtTermHold, t.prtTermRefund, t.prtTermMin, t.prtTermNature].map(
         (line) => (
           <p key={line} className="flex items-center gap-2.5 p-3.5 text-14 leading-relaxed">
             <Icon name="shield" size={15} className="shrink-0 text-accent" />
@@ -508,9 +508,11 @@ function PartnerReqCard({ t, xOk, plusOk }: { t: Dict; xOk: boolean; plusOk: boo
    نموذجُ البنك والجوال — **والحَكَمُ قيودُ الجدول وسياساتُ المخزن**
    (D-011)، وهذه قشرةٌ تشرح وتوصل. */
 function PartnerSetupBlock({
-  t, details, xDone, derr,
+  t, details, xDone, gold = false, derr,
 }: {
-  t: Dict; details: PartnerDetails | null; xDone: boolean; derr?: string;
+  t: Dict; details: PartnerDetails | null; xDone: boolean;
+  /** 🆕 المهمة ٣٧٠ (قرارُ أحمد «٣ ب فقط للقولد يسقط») — شريكُ Gold لا يُطلب منه توثيقُ X: صفُّه لا يُرسم */
+  gold?: boolean; derr?: string;
 }) {
   const doneMark = (
     <span className="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-accent">
@@ -520,14 +522,16 @@ function PartnerSetupBlock({
   return (
     <div className="space-y-3">
       {derr && <p className="text-14 text-[color:var(--error)] px-1">⚠ {derr}</p>}
-      <div className={settingsCardRows}>
-        <SettingsRow
-          icon="person-check"
-          title={t.prtReqX}
-          href={xDone ? undefined : "/profile/settings/verify"}
-          trailing={xDone ? doneMark : undefined}
-        />
-      </div>
+      {gold ? null : (
+        <div className={settingsCardRows}>
+          <SettingsRow
+            icon="person-check"
+            title={t.prtReqX}
+            href={xDone ? undefined : "/profile/settings/verify"}
+            trailing={xDone ? doneMark : undefined}
+          />
+        </div>
+      )}
       <form action={saveDetails}>
         <div className={settingsCardRows}>
           <Field name="iban" label={t.prtBankIban} value={details?.iban ?? ""} required dir="ltr" type="text" placeholder="SA0380000000608010167519" />
@@ -583,13 +587,15 @@ async function PartnersTab({
     /* 🆕 D-858: حالُ الاستكمال — أربعُ حقائقَ تُقرأ لا تُخمَّن */
     const details = await getMyPartnerDetails();
     const xDone = !!me?.x_verified_at;
+    /* 🆕 المهمة ٣٧٠ (قرارُ أحمد ١٠ نوفمبر «٣ ب فقط للقولد يسقط») — توثيقُ X باقٍ في استكمال الشريك، ويسقط عن شريك Gold وحدَه */
+    const gold = isGold(me);
     const bankDone = !!(details?.iban && details?.bank_name && details?.account_name);
     const phoneDone = !!details?.phone;
     /* 🗑️ D-1364 (١١ أكتوبر ٢٠٢٦، قرارُ أحمد «1 أ» بعد سؤاله «ما تشوف مبالغة طلب صورة هوية؟») — **الهويّةُ خرجت من الاستكمال**
        — نقضٌ معلَنٌ لشطرها في D-858 («إرفاق الـID تبعه»). لم يكن يشترطها حارسٌ واحد: لا `apply_partner` ولا `request_payout`
        (آيبانٌ واسمُ حسابٍ وحدَهما)، والتحويلاتُ لم تُفتح — **فكانت أخطرَ بياناتٍ في المنتج تُجمع بلا غرض**. يُعاد بحثُها مع فتح
        الدفع (والمرجَّحُ رقمٌ لا صورة). ⚖️ الملفُّ المرفوعُ سابقاً والعمودُ `id_file` والمخزنُ `partner-ids` باقيةٌ كما هي («2 ب»). */
-    const setupDone = xDone && bankDone && phoneDone;
+    const setupDone = (xDone || gold) && bankDone && phoneDone;
     const url = siteUrl(`/p/${state.code}`);
     /* 🆕 D-901: الرصيدُ يُقرأ لا يُثبَّت — `partner_balance` صفرٌ اليوم
        **بالواقع** (لا قناةَ دفع)، وهي الموضعُ الوحيد الذي يتغيّر يومَ الفتح.
@@ -598,7 +604,7 @@ async function PartnersTab({
     const [available, payouts, earnings] = await Promise.all([
       me ? getMyPartnerBalance(me.id) : Promise.resolve(0),
       getMyPayoutRequests(),
-      myEarnings(),
+      getMyPartnerEarnings(),
     ]);
     const hasPendingPayout = payouts.some((r) => r.status === "pending");
     const canRequest = available >= 100 && !hasPendingPayout;
@@ -614,7 +620,7 @@ async function PartnersTab({
     const paid = earnings?.subscribed ?? 0;
     const conv = state.clicks > 0 ? Math.round((state.joined / state.clicks) * 100) : 0;
     /* 🆕 هجرة ٢٣٨ — الرصيدُ بهللاتٍ حقيقيّة (عمولةُ ١٨٫٤٨): رقمان بعد الفاصلة، والفاصلةُ العربيّة في العربيّة */
-    const money = (n: number) => fmtMoney(n, locale);
+    const money = (n: number) => partnerMoney(n, locale);
     const outlineBtn =
       "rounded-xl border border-accent font-bold text-accent transition disabled:opacity-50 disabled:cursor-not-allowed";
     return (
@@ -628,7 +634,7 @@ async function PartnersTab({
           <section className="space-y-3">
             <SectionTitle>{t.prtSetupTitle}</SectionTitle>
             <p className="px-1 text-12 text-muted">{t.prtSetupBody}</p>
-            <PartnerSetupBlock t={t} details={details} xDone={xDone} derr={sp.derr} />
+            <PartnerSetupBlock t={t} details={details} xDone={xDone} gold={gold} derr={sp.derr} />
           </section>
         )}
 
@@ -786,7 +792,7 @@ async function PartnersTab({
             بطاقةٌ دائمة. */}
         {setupDone && (
           <Disclosure label={t.prtDetailsTitle}>
-            <PartnerSetupBlock t={t} details={details} xDone={xDone} derr={sp.derr} />
+            <PartnerSetupBlock t={t} details={details} xDone={xDone} gold={gold} derr={sp.derr} />
           </Disclosure>
         )}
 
@@ -1009,34 +1015,9 @@ async function PartnersTab({
   );
 }
 
-/** 🆕 هجرة ٢٣٨ — لوحةُ الشريك من دفتر العمولات (`my_partner_earnings`، لصاحبها وحده). قبل الهجرة: `null` فتبقى أصفاراً */
-type Earnings = { available: number; on_hold: number; total: number; subscribed: number; recent: { kind: "earned" | "reversed"; amount: number; created_at: string }[] };
-async function myEarnings(): Promise<Earnings | null> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("my_partner_earnings");
-    if (error || !data) return null;
-    const d = data as Partial<Earnings>;
-    return {
-      available: Number(d.available ?? 0),
-      on_hold: Number(d.on_hold ?? 0),
-      total: Number(d.total ?? 0),
-      subscribed: Number(d.subscribed ?? 0),
-      recent: Array.isArray(d.recent) ? d.recent.map((r) => ({ kind: r.kind === "reversed" ? "reversed" : "earned", amount: Number(r.amount ?? 0), created_at: String(r.created_at) })) : [],
-    };
-  } catch {
-    return null;
-  }
-}
-
 /** 🆕 مثالُ «شروط العمولة» من السعر في الكود (`partnerExample`) — لا رقمٌ منسوخٌ بيد يفترق عن الحساب يومَ يتبدّل */
 function exampleOf(price: number, locale: Locale): [string, string, string] {
   const { net, commission } = partnerExample(price);
-  return [fmtMoney(price, locale), fmtMoney(net, locale), fmtMoney(commission, locale)];
+  return [partnerMoney(price, locale), partnerMoney(net, locale), partnerMoney(commission, locale)];
 }
 
-/** المبلغُ بأرقام الصفحة نفسِها (`num`: أرقامٌ لاتينيّة) ورقمين بعد الفاصلة — «١٨٫٤٨» بالعربيّة فاصلتُها «٫» */
-function fmtMoney(n: number, locale: Locale): string {
-  const s = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return locale === "ar" ? s.replace(".", "٫") : s;
-}

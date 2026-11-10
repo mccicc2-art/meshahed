@@ -24,7 +24,12 @@ export async function GET(
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 10);
   const { origin } = new URL(request.url);
-  const res = NextResponse.redirect(`${origin}/`);
+  /* 🆕 المهمة ٣٧٠ — **إلى صفحة الدعوة لا إلى الجذر**: كان الزائرُ يصل صفحةَ الهبوط بلا أن يعرف من دعاه، ومن على جوّاله
+     لا يعود منها إلى التطبيق بالكود. الصفحةُ تسمّي الداعي وتحمل زرَّي المتجر و«افتح الدعوة في التطبيق». والكوكي باقٍ كما كان
+     لمن يُكمل في المتصفّح (`/auth/callback`). */
+  /* 🆕 `?to=login` — «أو أكمل في المتصفح» في صفحة الدعوة يمرّ من هنا ليُكتب الكوكي ثمّ يذهب إلى الدخول */
+  const toLogin = new URL(request.url).searchParams.get("to") === "login";
+  const res = NextResponse.redirect(toLogin ? `${origin}/login` : clean ? `${origin}/invite/${clean}` : `${origin}/`);
   if (clean) {
     res.cookies.set("loopz_ref", clean, {
       maxAge: 60 * 60 * 24 * 30,

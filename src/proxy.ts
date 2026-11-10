@@ -265,6 +265,7 @@ function guestOpen(pathname: string): boolean {
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/join/") ||
     pathname.startsWith("/p/") ||
+    pathname.startsWith("/invite/") ||
     pathname.startsWith("/i/") ||
     pathname.startsWith("/.well-known/") ||
     pathname.includes("opengraph-image") ||

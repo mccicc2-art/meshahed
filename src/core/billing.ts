@@ -183,6 +183,18 @@ export function commissionOf(ev: RcEvent, anchorMs: number | null): Commission |
 
 const clampPct = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
 
+/** 🆕 المهمة ٣٧٠ — سعرُ المثال في «شروط العمولة» (السنويُّ الأوّل) — مكانٌ واحدٌ للويب والتطبيق، لا رقمٌ منسوخٌ في موضعين */
+export const PARTNER_EXAMPLE_PRICE = 99.99;
+
+/**
+ * 🆕 المهمة ٣٧٠ — مبالغُ الشريك بخانتين، والفاصلةُ العشريّةُ العربيّةُ «٫» في العربيّة. كانت نسختين (`fmtMoney` في صفحة الويب و
+ * `money` في لوحة التطبيق بلا الفاصلة العربيّة) — فافترقتا. الأرقامُ لاتينيّةٌ كبقيّة الصفحتين.
+ */
+export function partnerMoney(n: number, locale: string): string {
+  const s = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return locale === "ar" ? s.replace(".", "٫") : s;
+}
+
 /** مثالُ صفحة الشريك من السعر في الكود (الخطّة §٧): ٩٩٫٩٩ ⇢ صافٍ ≈ ٧٣٫٩١ ⇢ عمولةٌ ≈ ١٨٫٤٨ (ضريبةٌ ١٥٪ من السعر الشامل، ورسمُ المتجر ١٥٪ من الباقي) */
 export function partnerExample(price: number): { net: number; commission: number } {
   const net = round2((price / 1.15) * 0.85);

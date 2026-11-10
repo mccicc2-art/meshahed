@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { getProfile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { requalify } from "@/lib/referral";
 import { platformFromUA } from "@/core/platform";
 import { handle, requireUser, clientOnboard } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -40,6 +41,8 @@ export async function GET() {
         } catch {
           /* لا شيء */
         }
+        /* 🆕 المهمة ٣٧٠ (البند ٢) — بعد يوم النشاط مباشرةً: من أكمل شرطَي الاحتساب يُحتسب عند فتح التطبيق، لا عند إضافة عمل */
+        await requalify();
       })(),
       /* 🆕 هجرة ٢٣٨ — الذهبيُّ بقارئه المستقلّ (عمودٌ غائبٌ قبل الهجرة لا يُسقط الملفّ) */
       createClient().then((db) => goldUntilOf(db, auth.user.id)),

@@ -2,6 +2,7 @@
 
 /* المدقّق ٦ نوفمبر — النوعُ وحده: الختمُ بالمصدر انتقل إلى `watchMark.ts` (R181)، والاستيرادُ الباقي كان تحذيرَ eslint */
 import type { WatchSource } from "@/lib/watchSource";
+import { requalify } from "@/lib/referral";
 import { closeSignal, ensureMovieInLibrary, ensureShowFollowed, markSignalWatched, markWatchedUpTo, safeImagePath } from "@/lib/watchMark";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { isPersonaId } from "@/core/personas";
@@ -5287,6 +5288,8 @@ export async function touchPresence() {
   const ua = (await headers()).get("user-agent");
   // 🆕 D-922: من داخل الغلاف الهجين الوسمُ `LoopzApp/…` — فالنبضةُ نفسُها تشهد بالتثبيت
   await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: isLoopzApp(ua) });
+  /* 🆕 المهمة ٣٧٠ (البند ٢) — الاحتسابُ يُفحص مع نبضة الحضور (يومُ النشاط كُتب للتوّ)، لا عند إضافة عملٍ وحدَها */
+  await requalify();
 }
 
 /**

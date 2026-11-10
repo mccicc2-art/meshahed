@@ -150,6 +150,14 @@ export type PartnerDashboard = {
   has_pending_payout: boolean;
   payouts: PartnerPayout[];
   details: { iban: string; bank_name: string; account_name: string; phone: string };
+  /**
+   * 🆕 المهمة ٣٧٠ — **دفترُ العمولات** (`my_partner_earnings`، هجرة ٢٣٨) كما تقرؤه لوحةُ الويب منذ R184: كانت لوحةُ التطبيق تثبّت
+   * «اشتركوا» صفراً، وتعرض في «قيد التعليق» طلباتِ الصرف لا العمولاتِ في ثلاثينها الأولى، و«حركةُ الأرباح» فارغةً أبداً.
+   * اختياريّةٌ لخادمٍ أقدم: غيابُها يُبقي سلوكَ النسخة السابقة.
+   */
+  on_hold?: number;
+  subscribed?: number;
+  activity?: { kind: "earned" | "reversed"; amount: number; created_at: string }[];
 };
 /** `POST /api/v1/me/partner/details` — حقولُ `savePartnerDetails` */
 export type PartnerDetailsBody = { iban: string; bankName: string; accountName: string; phone: string };

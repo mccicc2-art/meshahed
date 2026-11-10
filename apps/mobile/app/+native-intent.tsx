@@ -20,7 +20,13 @@
  *
  * 🆕 **روابطُ الودجتات الجديدة** (`com.loopztv.app://w/…`) لا تخصّ الموجِّه: تُردّ فارغةً والتطبيقُ مفتوح،
  * وإلى البداية (`/`) حين تفتحه من الصفر — و`WidgetGate` يقرؤها من `Linking` وينفّذها بعد أن يُدفع الجذر.
+ *
+ * 🆕 المهمة ٣٧٠ — **رابطُ الدعوة** (`com.loopztv.app://join/<CODE>`، زرُّ «افتح الدعوة في التطبيق» في `/invite/<code>`) لا
+ * يخصّ الموجِّه أيضاً: الكودُ يُحفظ في الجهاز (`invite/pending.ts`) ويقرؤه الترحيبُ فيسأل «هل دعاك أحمد؟» — والتطبيقُ مفتوحٌ يبقى
+ * حيث هو، ومن الصفر يبدأ من البداية كما يبدأ دائماً (الدخولُ ثمّ الترحيب).
  */
+import { inviteCodeOf, pendingInvite } from "../src/invite/pending";
+
 const APP_LINK = /^(?:https?:\/\/(?:www\.)?loopztv\.com)?\/(show|movie)\/(\d+)\/?(?:[?#].*)?$/i;
 const WIDGET_LINK = /^(?:com\.loopztv\.app:\/\/|\/)?w\/[a-z]+(?:[?#].*)?$/i;
 
@@ -33,6 +39,11 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
   try {
     if (!initial && path.includes("auth/callback")) return null;
     if (WIDGET_LINK.test(path)) return initial ? "/" : null;
+    const invite = inviteCodeOf(path);
+    if (invite) {
+      void pendingInvite.set(invite);
+      return initial ? "/" : null;
+    }
     const link = appLinkTarget(path);
     if (link) return link;
   } catch {

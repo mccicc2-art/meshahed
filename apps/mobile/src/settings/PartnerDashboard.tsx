@@ -11,7 +11,8 @@ import type { ToastHostRef } from "../HoldHost";
 import { Group, Row, Field } from "./ui";
 import { messageOf } from "./api";
 import { LinkCard } from "./LinkCard";
-import { formatDate } from "@/core/when";
+import { formatDate, timeAgo } from "@/core/when";
+import { partnerMoney } from "@/core/billing";
 import type { PartnerDashboard as Dash, PartnerDetailsBody, PartnerPayout } from "@/core/contracts/profile";
 
 /**
@@ -28,7 +29,7 @@ import type { PartnerDashboard as Dash, PartnerDetailsBody, PartnerPayout } from
  *  - الأرقامُ لاتينيّةٌ كبقيّة الشاشة؛ والمبلغُ بخانتين.
  */
 const MIN_PAYOUT = 100;
-const money = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 function Card({ children, style }: { children: React.ReactNode; style?: object }) {
   const { tokens } = useApp();
@@ -47,6 +48,7 @@ function Done() {
 export function PartnerDashboard({
   d,
   xDone,
+  gold = false,
   refetch,
   toast,
   disclosure,
@@ -54,14 +56,18 @@ export function PartnerDashboard({
 }: {
   d: Dash;
   xDone: boolean;
+  /** 🆕 المهمة ٣٧٠ (قرارُ أحمد «٣ ب فقط للقولد يسقط») — شريكُ Gold لا يُطلب منه توثيقُ X في الاستكمال */
+  gold?: boolean;
   refetch: () => Promise<unknown>;
   toast: React.RefObject<ToastHostRef | null>;
   /** السطرُ المطويُّ وبطاقةُ الشروط من `PartnersTab` — نسخةٌ واحدةٌ منهما في التبويب كلِّه */
   disclosure: (label: string, children: React.ReactNode) => React.ReactNode;
   terms: React.ReactNode;
 }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale } = useApp();
   const router = useRouter();
+  /* 🆕 المهمة ٣٧٠ — المبلغُ بفاصلة الويب نفسِها («١٨٫٤٨» بالعربيّة) */
+  const money = (n: number) => partnerMoney(n, locale);
   const dict = t as unknown as Record<string, unknown>;
   const [f, setF] = useState<PartnerDetailsBody>({ iban: d.details.iban, bankName: d.details.bank_name, accountName: d.details.account_name, phone: d.details.phone });
   const [busy, setBusy] = useState<"save" | "payout" | null>(null);
@@ -74,7 +80,7 @@ export function PartnerDashboard({
   }, [d.details.iban, d.details.bank_name, d.details.account_name, d.details.phone]);
 
   const bankDone = !!(d.details.iban && d.details.bank_name && d.details.account_name);
-  const setupDone = xDone && bankDone && !!d.details.phone;
+  const setupDone = (xDone || gold) && bankDone && !!d.details.phone;
   const canRequest = d.available >= MIN_PAYOUT && !d.has_pending_payout;
   const conv = d.clicks > 0 ? Math.round((d.joined / d.clicks) * 100) : 0;
   const ready = !!(f.iban.trim() && f.bankName.trim() && f.accountName.trim() && f.phone.trim());
@@ -123,9 +129,11 @@ export function PartnerDashboard({
   /* كتلةُ الاستكمال — قطعةٌ واحدةٌ لموضعيها (رأسُ اللوحة ما دام فيها نقص · خلف «بيانات التحويل» بعد الاكتمال): D-858 */
   const setup = (
     <View style={{ gap: 12 }}>
-      <Group>
-        <Row icon="person-check" title={t.prtReqX} onPress={xDone ? undefined : () => router.push({ pathname: "/settings/[section]", params: { section: "verify" } })} trailing={xDone ? <Done /> : undefined} />
-      </Group>
+      {gold ? null : (
+        <Group>
+          <Row icon="person-check" title={t.prtReqX} onPress={xDone ? undefined : () => router.push({ pathname: "/settings/[section]", params: { section: "verify" } })} trailing={xDone ? <Done /> : undefined} />
+        </Group>
+      )}
       <Group>
         <Field label={t.prtBankIban} value={f.iban} onChange={set("iban")} maxLength={34} ltr placeholder="SA0380000000608010167519" />
         <Field label={t.prtBankName} value={f.bankName} onChange={set("bankName")} maxLength={60} />
@@ -142,7 +150,8 @@ export function PartnerDashboard({
   const stats: [number, string, string][] = [
     [d.clicks, t.prtStatClicks, ""],
     [d.joined, t.prtStatJoined, ""],
-    [0, t.prtStatPaid, ""],
+    /* 🆕 المهمة ٣٧٠ — «اشتركوا» من دفتر العمولات (كان صفراً مثبَّتاً)؛ خادمٌ أقدمُ لا يرسله ⇒ صفرٌ كما كان */
+    [d.subscribed ?? 0, t.prtStatPaid, ""],
     [conv, t.prtStatConv, "%"],
   ];
   const chips: [IconName, string][] = [
@@ -168,7 +177,8 @@ export function PartnerDashboard({
           <Text size={30} weight="800">{t.prtCurrency}</Text>
           <Text size={30} weight="800" color={tokens.accent} style={{ fontVariant: ["tabular-nums"] }}>{money(d.available)}</Text>
         </View>
-        <Text size={14} muted style={{ marginTop: 2 }}>{`${t.prtCurrency} ${money(d.pending)} ${t.prtPendingSuffix}`}</Text>
+        {/* 🆕 المهمة ٣٧٠ — «قيد التعليق» عمولاتٌ في ثلاثينها الأولى كالويب منذ R184 (كان مجموعَ طلبات الصرف، وهي في قائمتها أسفل) */}
+        <Text size={14} muted style={{ marginTop: 2 }}>{`${t.prtCurrency} ${money(d.on_hold ?? d.pending)} ${t.prtPendingSuffix}`}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
           <Text size={12} muted style={{ flex: 1 }}>{t.prtMinPayout}</Text>
           {/* ثلاثُ حالاتٍ صادقة (D-901): صفرٌ = «بانتظار الربط» · دون الحدّ أو طلبٌ معلَّق = «سحب» معطَّل · بلغ الحدّ = طلبٌ حقيقيّ */}
@@ -244,9 +254,22 @@ export function PartnerDashboard({
         </View>
       </Card>
 
-      {/* حركةُ الأرباح — فارغةٌ بحقٍّ حتى يُفتح الدفع */}
+      {/* حركةُ الأرباح — 🆕 المهمة ٣٧٠: سطورُ الدفتر (عمولةٌ · استرجاع) بآخرها أوّلاً كالويب، وفارغةٌ بحقٍّ حتى أوّل دفعة */}
       <View style={{ gap: 10 }}>
         <Text size={15} weight="700" style={{ paddingHorizontal: 4 }}>{t.prtActivityTitle}</Text>
+        {d.activity && d.activity.length > 0 ? (
+          <Card>
+            {d.activity.map((r, i) => (
+              <View key={`${r.created_at}-${i}`} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text size={14} weight="600">{r.kind === "reversed" ? t.prtActReversed : t.prtActEarned}</Text>
+                  <Text size={12} muted>{timeAgo(r.created_at, t)}</Text>
+                </View>
+                <Text size={14} weight="700" color={r.kind === "reversed" ? tokens.error : tokens.accent} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${t.prtCurrency} ${money(r.amount)}`}</Text>
+              </View>
+            ))}
+          </Card>
+        ) : (
         <Card style={{ padding: 24, alignItems: "center" }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             <Icon name="card" size={24} color={tokens.accent} />
@@ -254,6 +277,7 @@ export function PartnerDashboard({
           <Text size={15} weight="700" style={{ marginTop: 12, textAlign: "center" }}>{t.prtNoEarnTitle}</Text>
           <Text size={14} muted style={{ marginTop: 4, textAlign: "center" }}>{t.prtNoEarnBody}</Text>
         </Card>
+        )}
       </View>
 
       {setupDone ? disclosure(t.prtDetailsTitle, setup) : null}

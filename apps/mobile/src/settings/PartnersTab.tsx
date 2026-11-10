@@ -14,6 +14,7 @@ import { invalidateSettings, messageOf, useOpenWeb } from "./api";
 import { PartnerDashboard } from "./PartnerDashboard";
 import type { ToastHostRef } from "../HoldHost";
 import { formatDate } from "@/core/when";
+import { partnerExample, partnerMoney, PARTNER_EXAMPLE_PRICE } from "@/core/billing";
 import type { MyPartnerPayload, PartnerApplicationFields, PartnerApplyBody } from "@/core/contracts/profile";
 
 /**
@@ -60,10 +61,14 @@ function Disclosure({ label, children }: { label: string; children: React.ReactN
 }
 
 function TermsCard() {
-  const { t, tokens } = useApp();
+  const { t, tokens, locale } = useApp();
+  /* 🆕 المهمة ٣٧٠ — سطرا الويب منذ R184 كانا غائبين هنا: المثالُ المحسوب من السعر في الكود (`partnerExample`، لا رقمٌ منسوخ)
+     وعكسُ العمولة عند الاسترجاع — بترتيب الويب نفسِه */
+  const ex = partnerExample(PARTNER_EXAMPLE_PRICE);
+  const example = t.prtTermExample(partnerMoney(PARTNER_EXAMPLE_PRICE, locale), partnerMoney(ex.net, locale), partnerMoney(ex.commission, locale));
   return (
     <Group label={t.prtTermsTitle}>
-      {[t.prtTermRate, t.prtTermDirect, t.prtTermHold, t.prtTermMin, t.prtTermNature].map((line) => (
+      {[t.prtTermRate, example, t.prtTermDirect, t.prtTermHold, t.prtTermRefund, t.prtTermMin, t.prtTermNature].map((line) => (
         <View key={line} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 14 }}>
           <Icon name="shield" size={15} color={tokens.accent} />
           <Text size={14} style={{ flex: 1, lineHeight: 22 }}>{line}</Text>
@@ -131,6 +136,7 @@ export function PartnersTab({ q, form, setForm, toast }: { q: UseQueryResult<MyP
       <PartnerDashboard
         d={d.dashboard}
         xDone={d.requirements.x}
+        gold={!!d.requirements.gold}
         refetch={q.refetch}
         toast={toast}
         disclosure={(label, children) => <Disclosure label={label}>{children}</Disclosure>}

@@ -38,6 +38,8 @@ import { useApp } from "../state";
 import { radius, space } from "../theme";
 import { Button, Loading, Text } from "../ui";
 import { EpisodeSheet } from "./EpisodeSheet";
+import { InviteCard } from "./InviteCard";
+import { pendingInvite } from "../invite/pending";
 import { Preparing } from "./Preparing";
 import { homeReady } from "../home/useHome";
 import { WELCOME_KEY } from "../prime";
@@ -323,6 +325,8 @@ export function WelcomeScreen() {
       mark("welcome.finish", Date.now() - t0, { result: r.done ? "ok" : "none" });
       if (r.done) {
         haptic.success();
+        /* 🆕 المهمة ٣٧٠ — بعد الختم لا تُقبل نسبةٌ أصلاً (المتابعاتُ كُتبت): كودٌ لم يُجب عنه يُمسح لا يبقى أسبوعاً */
+        void pendingInvite.clear();
         /* `pending` يبقى مرفوعاً: شاشةُ التجهيز تبقى حتى تُفتح الرئيسيّة (لا عودةَ لحظةً إلى الخطوة الخامسة) */
         stay = true;
         await leave();
@@ -496,6 +500,9 @@ export function WelcomeScreen() {
             </View>
           </Group>
         ) : null}
+        {/* 🆕 المهمة ٣٧٠ — «هل دعاك أحمد؟» في الخطوة الأولى وحدَها: آخرُ موضعٍ تقبل فيه `claim_referral` النسبةَ (ترفض من تابع
+            عملاً، والأعمالُ تُكتب في آخر ضغطة). ليست قفلاً: «التالي» يمضي بلا جواب. ومن يكمل اسمَه فقط (`nameOnly`) عضوٌ قديم */}
+        {step === ME && !nameOnly ? <InviteCard /> : null}
 
         {/* ٢ — اختيار ما شاهده */}
         {step === PICK ? (
