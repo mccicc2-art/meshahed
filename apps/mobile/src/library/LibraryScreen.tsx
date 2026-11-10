@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { aimDiscoverTab } from "../discover/aim";
+import { takeLibraryAim } from "./aim";
 import { useBootRoot } from "../bootRoot";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
@@ -165,6 +166,26 @@ export function LibraryScreen() {
   const [sort, setSort] = useState<LibrarySort>("smart");
   const [fav, setFav] = useState(false);
   const [tools, setTools] = useState(false);
+  /* 🆕 T375 — وجهةٌ طُلبت من خارج الشاشة (خاناتُ رأس الرئيسيّة: `aimLibrary`) تُؤخذ عند الظهور، مرّةً. والرفُّ المطلوب
+     يحتاج الفرزَ «ذكيّ» بلا بحث (الرفوفُ لا تُرسم إلّا فيه)، فيُعاد إليه — وهما حالةُ شاشةٍ لا تُحفظ أصلاً.
+     `jump.n` عدّادٌ لا يعود إلى الصفر (والطلبُ يُمحى بعد تنفيذه) فتنزل الضغطةُ الثانيةُ على الخانة نفسِها كالأولى. */
+  const [jump, setJump] = useState<{ tab: Tab; status: LibraryStatus; n: number } | null>(null);
+  const jumpSeq = useRef(0);
+  useFocusEffect(
+    useCallback(() => {
+      const a = takeLibraryAim();
+      if (!a) return;
+      setTab(a.tab);
+      if (!a.section) return;
+      setQ("");
+      setSort("smart");
+      setFav(false);
+      const status = a.section;
+      jumpSeq.current += 1;
+      setJump({ tab: a.tab, status, n: jumpSeq.current });
+    }, []),
+  );
+  const clearJump = useCallback(() => setJump(null), []);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -592,6 +613,8 @@ export function LibraryScreen() {
               onReady={on ? onPaneReady : undefined}
               onFlatPainted={on ? onFlatPainted : undefined}
               head={coreHead}
+              jump={jump && jump.tab === k ? jump : null}
+              onJumped={clearJump}
             />
           )
         }
@@ -683,6 +706,8 @@ function LibraryPane({
   onReady,
   onFlatPainted,
   head,
+  jump,
+  onJumped,
 }: {
   tab: Tab;
   /** D-1318 — دورُ تلميح الضغط المطوّل في هذه الزيارة (يحسبه الأبُ — `useHintTurn`)، لا «لم يُقرأ بعد» وحدَها */
@@ -712,6 +737,10 @@ function LibraryPane({
   onFlatPainted?: (count: number) => void;
   /** 🆕 D-1210 — رأسُ اللوح (الرقاقات · «الإحصائيات · النشاط» · القلب): أوّلُ المحتوى فينزلق مع لوحه */
   head: React.ReactNode;
+  /** 🆕 T375 — رفٌّ طُلب من خارج الشاشة: ينزل اللوحُ إلى رأسه (`n` يتبدّل مع كلِّ طلب) */
+  jump: { status: LibraryStatus; n: number } | null;
+  /** الطلبُ نُفِّذ: يُمحى عند الأب فلا يعود لوحٌ يُركَّب من جديد (سحبُ تبويب) إلى الرفِّ نفسِه */
+  onJumped: () => void;
 }) {
   const { t, locale } = useApp();
   /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
@@ -836,6 +865,20 @@ function LibraryPane({
     },
     [tab, onScroll],
   );
+  /* 🆕 T375 — **النزولُ إلى الرفِّ المطلوب** بعد أن يستقرّ اللوح (`shown`: استعادةُ الموضع انتهت فلا تكتب فوقه).
+     الرأسُ يرسو تحت الكسوة (`viewOffset` بارتفاعها)، ورفٌّ غائبٌ (لا أعمالَ موقوفةً مثلاً) ⇒ أعلى التبويب، لا مكانٌ عشوائيّ.
+     مرّةً لكلِّ طلب: تحديثُ البيانات بعده لا يسحب صاحبَ الشاشة إليه ثانيةً. */
+  const jumped = useRef(0);
+  useEffect(() => {
+    if (!jump || !shown || jumped.current === jump.n || rows.length === 0) return;
+    jumped.current = jump.n;
+    onJumped();
+    const index = rows.findIndex((r) => r.t === "header" && r.status === jump.status);
+    afterPaint(() => {
+      if (index < 0) listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      else listRef.current?.scrollToIndex({ index, animated: true, viewOffset: topPad + 12 });
+    });
+  }, [jump, shown, rows, topPad, onJumped]);
   /* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت الأدوات)، **ولا يُرسم
      إن قُرئ في الحساب** — على أيِّ جهاز. **رأسُ قائمةٍ لا صفٌّ فيها** (F1): الصفُّ يُنزع حين
      يبتعد، والتلميحُ يعلن قراءتَه عند نزعه — فكان التمريرُ وحدَه سيُعلنه مقروءاً. */

@@ -53,6 +53,7 @@ import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
 import { refreshWidgets } from "../widget/feed";
 import { widgetBus } from "../widget/bus";
+import { aimLibrary, libraryAimOf } from "../library/aim";
 import { useStremio } from "../stremio/api";
 import { useStremioAnswer } from "../stremio/useAnswer";
 import { StremioCard } from "../stremio/StremioCard";
@@ -231,8 +232,16 @@ export function HomeScreen() {
     (href: string) => {
       const m = /^\/(show|movie)\/(\d+)/.exec(href);
       if (m) return openTitle(m[1] === "show" ? "tv" : "movie", Number(m[2]));
-      /* K3 — المكتبةُ والبحثُ تبويبان: انتقالٌ إليهما لا دفعٌ فوق الرئيسيّة */
-      if (href.startsWith("/library")) return switchTo("/library");
+      /* 🆕 T375 — خانةُ «للمشاهدة» في رأس الرئيسيّة تفتح القائمةَ التي يفتحها «الكل» في قسمها: العددُ نفسُه والأعمالُ نفسُها
+         (الويبُ يتجاهل `open` فيبقى على المكتبة كما كان) */
+      if (href === "/library?open=towatch") return setAllSheet("towatch");
+      /* K3 — المكتبةُ والبحثُ تبويبان: انتقالٌ إليهما لا دفعٌ فوق الرئيسيّة.
+         🆕 T375 — **والتبويبُ والرفُّ في الرابط يُحملان إليها** (تسجيلُ أحمد: «أفلام» فتحت «مسلسلات» — كان `?filter=` يُرمى هنا) */
+      if (href.startsWith("/library")) {
+        const a = libraryAimOf(href);
+        if (a) aimLibrary(a);
+        return switchTo("/library");
+      }
       if (href === "/search" || href.startsWith("/search?")) return switchTo("/search");
       openWeb(href);
     },

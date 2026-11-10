@@ -357,6 +357,12 @@ export async function buildHomeHeader({
      تعديل** (القاعدة ٦). **والقيمةُ والوجهةُ تبقيان هنا**: هما بيانُ
      الصفحة لا وصفُ الخانة. */
   const statMeta = headerStatMeta(t);
+  /* 🆕 T375 — **كلُّ خانةٍ تفتح مكانَها** (تسجيلُ أحمد ١٠ نوفمبر: «أفلام» فتحت المكتبةَ على «مسلسلات»). كانت أربعُ
+     خاناتٍ تقول `/library` عارياً فتُفتح على آخر تبويب، واثنتان تقولان تبويبَهما والتطبيقُ يرميه. الآن:
+     «للمشاهدة» قائمتُها في الرئيسيّة (`open=towatch` — التطبيقُ يفتح ورقةَ «الكل»، والويبُ يتجاهله) ·
+     «القادم» التقويم (حكمُ أحمد «٢ أ») · «أكملتها» و«موقوف» رفُّهما في تبويب المسلسلات (حكمُه «١ أ»؛ `section`
+     يقرؤه التطبيقُ وحدَه، والويبُ يفتح التبويبَ أعلاه). ⚠️ «أكملتها» تعدّ المسلسلاتِ والأفلامَ معاً والوجهةُ رفُّ المسلسلات —
+     الحكمُ معلن. */
   const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
     shows: {
       key: "shows",
@@ -379,7 +385,7 @@ export async function buildHomeHeader({
       icon: statMeta.towatch.icon,
       value: String(toWatchCount),
       label: statMeta.towatch.label,
-      href: "/library",
+      href: "/library?open=towatch",
       color: "var(--accent)",
     },
     time: {
@@ -403,7 +409,7 @@ export async function buildHomeHeader({
       icon: statMeta.upcoming.icon,
       value: String(upcomingCount),
       label: statMeta.upcoming.label,
-      href: "/library",
+      href: "/calendar",
       color: "var(--accent)",
     },
     completed: {
@@ -411,7 +417,7 @@ export async function buildHomeHeader({
       icon: statMeta.completed.icon,
       value: String(finishedShowsCount + finishedMoviesCount),
       label: statMeta.completed.label,
-      href: "/library",
+      href: "/library?filter=tv&section=completed",
       color: "var(--accent)",
     },
     dropped: {
@@ -419,7 +425,7 @@ export async function buildHomeHeader({
       icon: statMeta.dropped.icon,
       value: String(droppedCount),
       label: statMeta.dropped.label,
-      href: "/library",
+      href: "/library?filter=tv&section=dropped",
       color: "var(--accent)",
     },
     // خانة «تقييماتي» في بطاقة الأرقام (طلب أحمد 9 Aug)
