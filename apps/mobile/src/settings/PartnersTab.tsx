@@ -6,10 +6,11 @@ import { api } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
+import { GOLD_FRAME, IdentityBadges, useGoldText } from "../IdentityBadges";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Group, Row, Field, RowsSkeleton, Chevron } from "./ui";
-import { messageOf, useOpenWeb } from "./api";
+import { invalidateSettings, messageOf, useOpenWeb } from "./api";
 import { PartnerDashboard } from "./PartnerDashboard";
 import type { ToastHostRef } from "../HoldHost";
 import { formatDate } from "@/core/when";
@@ -144,6 +145,8 @@ export function PartnersTab({ q, form, setForm, toast }: { q: UseQueryResult<MyP
   }
 
   const eligible = d.requirements.x && d.requirements.plus;
+  /* 🆕 D-gold-perks — عضو Gold ينضمّ مباشرة (أحمد ١٠ نوفمبر «٢ أ»): لا نموذجَ ولا مراجعة، الموافقةُ على الشروط ثمّ «انضم الآن» */
+  if (d.requirements.gold) return <GoldJoin q={q} xDone={d.requirements.x} terms={<Disclosure label={t.prtTermsLink}><TermsCard /></Disclosure>} />;
   const dict = t as unknown as Record<string, unknown>;
   const set = (k: keyof PartnerApplicationFields) => (v: string) => setF((p) => ({ ...p, [k]: v }));
   const ready = !!(f.channelUrl.trim() && f.contentType.trim() && f.platforms.trim() && f.country.trim() && f.contentLanguage.trim() && terms);
@@ -225,12 +228,7 @@ export function PartnersTab({ q, form, setForm, toast }: { q: UseQueryResult<MyP
           <Field label={t.prtFieldLanguage} value={f.contentLanguage} onChange={set("contentLanguage")} maxLength={60} />
           <Field label={t.prtFieldReason} value={f.reason} onChange={set("reason")} maxLength={600} multiline lines={3} />
           <View style={{ padding: 14, gap: 14 }}>
-            <Pressable onPress={() => { haptic.pick(); setTerms((v) => !v); }} accessibilityRole="checkbox" accessibilityState={{ checked: terms }} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: terms ? tokens.accent : tokens.muted, backgroundColor: terms ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
-                {terms ? <Icon name="check" size={12} color={tokens.onAccent} /> : null}
-              </View>
-              <Text size={14} style={{ flex: 1 }}>{t.prtTermsAgree}</Text>
-            </Pressable>
+            <AgreeBox checked={terms} onToggle={() => setTerms((v) => !v)} />
             {error ? <Text size={13} color={tokens.error} style={{ lineHeight: 20 }}>{error}</Text> : null}
             <Button label={t.prtSubmit} disabled={!ready} busy={busy === "submit"} onPress={() => void submit()} />
           </View>
@@ -309,5 +307,104 @@ export function PartnersTab({ q, form, setForm, toast }: { q: UseQueryResult<MyP
 
       <Text size={12} muted style={{ textAlign: "center" }}>{t.prtReviewNote}</Text>
     </>
+  );
+}
+
+const GOLD_JOIN_WORDS = {
+  ar: {
+    head: "أنت عضو Gold — مقعدك محجوز",
+    link: "رابط إحالة خاص بك من أول يوم",
+    x: "اربط حساب X لتعرض قناتك",
+    join: "انضم الآن",
+    after: "بعد الانضمام يظهر رابطك وأرباحك في هذه الصفحة",
+  },
+  en: {
+    head: "You're Gold — your seat is reserved",
+    link: "Your own referral link from day one",
+    x: "Link your X account to show your channel",
+    join: "Join now",
+    after: "Once you join, your link and earnings appear on this page",
+  },
+} as const;
+
+/**
+ * 🆕 D-gold-perks — **انضمامُ عضو Gold** (تصميمُ «Partner للذهبي» الذي اختاره أحمد: «مثل هنا»): بطاقةٌ بإطارٍ ذهبيّ فيها الشارةُ
+ * وسطرا الميزة، ثمّ الموافقةُ و«انضم الآن». حسابُ X هنا اختياريّ (يعرض القناة) لا شرط — الشرطان لطلب بلس وحدَه (D-855).
+ * الحارسُ في جسم `join_partner_gold`، والنجاحُ يعيد السؤالَ فتظهر لوحةُ الشريك (`PartnerDashboard`) مكانَ هذا.
+ */
+function GoldJoin({ q, xDone, terms }: { q: UseQueryResult<MyPartnerPayload>; xDone: boolean; terms: React.ReactNode }) {
+  const { t, tokens, locale } = useApp();
+  const w = GOLD_JOIN_WORDS[locale === "en" ? "en" : "ar"];
+  const goldInk = useGoldText();
+  const router = useRouter();
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const join = async () => {
+    if (busy || !agree) return;
+    haptic.pick();
+    setBusy(true);
+    setError(null);
+    try {
+      await api<{ code: string | null }>("/api/v1/me/partner/join", { method: "POST", body: { terms: true } });
+      haptic.success();
+      /* صحُّ «برنامج الشركاء» في صفحة الاشتراك يقرأ `account.partner` من الإعدادات — تُبطَل هنا وإلا بقي «انضم» بعد الرجوع */
+      invalidateSettings();
+      await q.refetch();
+    } catch (e) {
+      setError(messageOf(e, t as unknown as Record<string, unknown>, t.apiPartnerSubmit));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Card style={{ padding: 22, alignItems: "center" }}>
+        <Icon name="people" size={40} color={tokens.accent} />
+        <Text size={24} weight="800" style={{ marginTop: 12, textAlign: "center", lineHeight: 34 }}>{t.prtHeroTitle1}</Text>
+        <Text size={24} weight="800" style={{ textAlign: "center", lineHeight: 34 }}>{t.prtHeroTitle2}</Text>
+        <Text size={14} muted style={{ marginTop: 8, textAlign: "center", lineHeight: 23 }}>{t.prtHeroBody}</Text>
+      </Card>
+      <View style={{ borderRadius: radius.card, borderWidth: 1.5, borderColor: GOLD_FRAME, backgroundColor: tokens.surface, padding: 16, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <IdentityBadges flags={{ partner: false, plus: true, founder: false, verified: false, gold: true }} nameSize={18} />
+          <Text size={15} weight="700" color={goldInk} style={{ flex: 1 }}>{w.head}</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Done />
+          <Text size={14} style={{ flex: 1 }}>{w.link}</Text>
+        </View>
+        <Pressable
+          onPress={xDone ? undefined : () => router.push({ pathname: "/settings/[section]", params: { section: "verify" } })}
+          disabled={xDone}
+          accessibilityRole={xDone ? undefined : "button"}
+          style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+        >
+          {xDone ? <Done /> : <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: tokens.muted }} />}
+          <Text size={14} muted={!xDone} style={{ flex: 1 }}>{w.x}</Text>
+          {xDone ? null : <Chevron />}
+        </Pressable>
+      </View>
+      <View style={{ paddingHorizontal: 4 }}>
+        <AgreeBox checked={agree} onToggle={() => setAgree((v) => !v)} />
+      </View>
+      {error ? <Text size={13} color={tokens.error} style={{ lineHeight: 20, paddingHorizontal: 4 }}>{error}</Text> : null}
+      <Button label={w.join} disabled={!agree} busy={busy} onPress={() => void join()} />
+      <Text size={12} muted style={{ textAlign: "center" }}>{w.after}</Text>
+      {terms}
+    </>
+  );
+}
+
+/** خانةُ الموافقة على الشروط — واحدةٌ لطلب بلس ولانضمام Gold (مراجعةٌ مستقلّة: نسختان كانتا ستتباعدان) */
+function AgreeBox({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  const { t, tokens } = useApp();
+  return (
+    <Pressable onPress={() => { haptic.pick(); onToggle(); }} accessibilityRole="checkbox" accessibilityState={{ checked }} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: checked ? tokens.accent : tokens.muted, backgroundColor: checked ? tokens.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
+        {checked ? <Icon name="check" size={12} color={tokens.onAccent} /> : null}
+      </View>
+      <Text size={14} style={{ flex: 1 }}>{t.prtTermsAgree}</Text>
+    </Pressable>
   );
 }

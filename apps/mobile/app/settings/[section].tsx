@@ -13,6 +13,7 @@ import { ImportScreen } from "../../src/settings/ImportScreen";
 import { WidgetScreen } from "../../src/settings/WidgetScreen";
 import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 import { PlusScreen } from "../../src/settings/PlusScreen";
+import { SupportersScreen } from "../../src/settings/SupportersScreen";
 import { HomeServersScreen } from "../../src/settings/HomeServersScreen";
 import { HomeDeviceScreen, KodiDeviceScreen, StremioDeviceScreen } from "../../src/links/DeviceScreens";
 import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
@@ -46,6 +47,8 @@ const SCREENS = {
   features: FeaturesScreen,
   /* 🆕 «لا ويب في التطبيق» ٤ — Loopz+ والاشتراك شاشةٌ واحدة (كلُّ أبواب `/plus` والفوترة عبر `shell.nativeDoor`) */
   plus: PlusScreen,
+  /* 🆕 D-gold-perks — لوحةُ داعمي لوبز (أعضاء Gold)، يفتحها زرُّ «اللوحة» في صفحة الاشتراك وسطرُ «داعم لوبز منذ» في الملفّ */
+  supporters: SupportersScreen,
   /* 🆕 هجرة ٢٣٧ — صفحةٌ لكلِّ جهازٍ برابطه (وقبل الهجرة تعرض كلٌّ منها الشاشةَ القديمة)، و«اربط أجهزتك» قبل الاشتراك */
   stremio: StremioDeviceScreen,
   plex: () => <HomeDeviceScreen kind="plex" />,

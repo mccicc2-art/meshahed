@@ -17,7 +17,7 @@ import { haptic } from "../haptics";
 import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
 import { usePullRefresh } from "../pullRefresh";
-import { IdentityBadges, identityFlags } from "../IdentityBadges";
+import { GoldButton, IdentityBadges, identityFlags } from "../IdentityBadges";
 import { CoverArt, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
@@ -851,6 +851,13 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                   <Text autoDir size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text>
                 </Animated.View>
               ) : null}
+              {/* 🆕 D-gold-perks — «♡ داعم لوبز منذ …» (أحمد ١٠ نوفمبر «٣ ب»): سطرٌ صغيرٌ تحت النبذة يفتح لوحةَ الداعمين.
+                  الخادمُ يرسله لعضو Gold الظاهر في اللوحة وحدَه (`supporter_since`)، فالإخفاءُ من اللوحة يُسقطه هنا أيضاً */}
+              {d.person.supporter_since && !d.person.hide_name ? (
+                <Animated.View pointerEvents="box-none" style={{ transform: [{ translateY: fold.bioY }], flexDirection: "row", paddingHorizontal: PAGE_PAD, marginTop: 8 }}>
+                  <GoldButton size="line" a11yRole="link" label={supporterLine(d.person.supporter_since, locale)} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "supporters" } })} />
+                </Animated.View>
+              ) : null}
               {/* ما تحت النبذة يبدأ بعدها بقليل: فراغٌ ثابتٌ يطويه انزياحُ النبذة نفسُه */}
               <View pointerEvents="none" style={{ height: 4 }} />
             </Animated.View>
@@ -1611,4 +1618,12 @@ function GridSheet({
       />
     </Sheet>
   );
+}
+
+/** «♡ داعم لوبز منذ نوفمبر ٢٠٢٦» — الشهرُ والسنةُ بلغة الواجهة؛ تاريخٌ فاسدٌ يُسقط «منذ» ويُبقي الجملة */
+function supporterLine(iso: string, locale: string): string {
+  const ms = Date.parse(iso);
+  const when = Number.isNaN(ms) ? null : new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { month: "long", year: "numeric" }).format(new Date(ms));
+  if (locale === "en") return when ? `♡ Loopz supporter since ${when}` : "♡ Loopz supporter";
+  return when ? `♡ داعم لوبز منذ ${when}` : "♡ داعم لوبز";
 }

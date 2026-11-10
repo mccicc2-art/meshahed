@@ -8,7 +8,7 @@ import {
   getMyPayoutRequests,
   getProfile,
 } from "@/lib/data";
-import { isPlus } from "@/core/plan";
+import { isGold, isPlus } from "@/core/plan";
 import { siteUrl } from "@/lib/site";
 import type { MyPartnerPayload, PartnerDashboard } from "@/core/contracts/profile";
 
@@ -57,7 +57,8 @@ export async function GET() {
     return ok({
       status: state.appStatus,
       applied_at: state.appliedAt,
-      requirements: { x: !!me?.x_verified_at, plus: isPlus(me) },
+      /* 🆕 D-gold-perks — `gold`: عضو Gold ينضمّ مباشرة (`/me/partner/join`)، وبلس يقدّم طلباً بشرطَيه */
+      requirements: { x: !!me?.x_verified_at, plus: isPlus(me), gold: isGold(me) },
       application,
       dashboard,
     });

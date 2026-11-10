@@ -1,8 +1,9 @@
 import React from "react";
-import { Platform, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useApp } from "./state";
+import { haptic } from "./haptics";
 import { Text } from "./ui";
 import { hasGoldBadge, isAiPersona, isFounder, isPartner, isPlus, isVerified, type PlanBearer } from "@/core/plan";
 
@@ -36,6 +37,16 @@ export function identityFlags(p: PlanBearer | null | undefined): IdentityFlags {
 /** ألوانُ GOLD من اللوح (`Badges`) — علامةٌ لا سطح، فلا تتبع الثيم؛ والشكلُ نفسُه في `AccountIdentity` بالويب */
 const GOLD_INK = "#2A1A00";
 const GOLD_EDGE = "#C2860B";
+/**
+ * 🆕 D-gold-perks — **ذهبُ مزايا Gold خارج الشارة** (إطارُ بطاقتي في لوحة الداعمين، زرّا «اللوحة/انضم»، سطرُ «داعم لوبز منذ»):
+ * لونٌ واحدٌ هنا لا نسخةٌ في كلّ شاشة. الإطارُ يُرى على الثيمين، أمّا الكتابةُ فـ#FFC21A تذوب على أبيض `daylight` فتغمق هناك.
+ */
+/** حدُّ بطاقة الذهبيّ (T340): ذهبٌ بين طرفَي تدرّج الشارة (`#FFD200` · `#F59E0B`) */
+export const GOLD_FRAME = "#E9A80F";
+export function useGoldText(): string {
+  const { themeId } = useApp();
+  return themeId === "daylight" ? "#8A5A00" : "#FFC21A";
+}
 /* 🆕 T337 — **شعارُ لوبز الأصليُّ نفسُه** لا رسمُ ∞ ثانٍ (أحمد ٦ نوفمبر: «طابقه تماماً مع شعار لوبز الأصلي» — كان الخطُّ رفيعاً
    والحلقتان متشابكتين): `loopz-mark-xl.png` مقصوصاً على حدوده (٢:١) ومصبوغاً بحبر الذهبيّ، بلا تعديلٍ في شكله — قاعدةُ D-145 */
 const MARK = require("../assets/icons/loopz-mark-badge.png");
@@ -125,5 +136,44 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
       })() : null}
       {flags.verified ? <Image source={VERIFIED} style={{ width: seal, height: seal }} contentFit="contain" accessibilityLabel={t.verifiedBadge} /> : null}
     </>
+  );
+}
+
+/**
+ * 🆕 D-gold-perks — **زرُّ Gold المحدَّد** (أحمد ١٠ نوفمبر: «بدل سهم … خلي بنفس حجم قولد زر اللوحة وزر انضم»): إطارٌ ذهبيٌّ ونصٌّ
+ * ذهبيٌّ على السطح، والشارةُ نفسُها ممتلئةٌ — فلا يُخلط الزرُّ بالشارة. مقاسان لا شكلان:
+ * · `badge` — بارتفاع شارة GOLD بجانب اسمٍ ٢٠ (٠٫٨٢ منه) وعرضِها المقيس؛ في صفوف صفحة الاشتراك.
+ * · `line` — سطرٌ قابلٌ للضغط تحت النبذة («♡ داعم لوبز منذ …» في الملفّ).
+ * الارتفاعُ حدٌّ أدنى لا ثابت (خطُّ الواجهة الكبير يكبر ولا يُقصّ)، واللمسُ ٤٤ بـ`hitSlop` لأنّ الشكلَ أصغرُ منها.
+ */
+export function GoldButton({ label, onPress, size = "badge", width, a11yRole = "button" }: { label: string; onPress: () => void; size?: "badge" | "line"; width?: number; a11yRole?: "button" | "link" }) {
+  const ink = useGoldText();
+  const badge = size === "badge";
+  const hgt = 20 * 0.82;
+  return (
+    <Pressable
+      onPress={() => {
+        haptic.pick();
+        onPress();
+      }}
+      accessibilityRole={a11yRole}
+      accessibilityLabel={label}
+      hitSlop={badge ? { top: 14, bottom: 14, left: 10, right: 10 } : 8}
+      style={({ pressed }) => ({
+        minWidth: badge ? width || 48 : undefined,
+        minHeight: badge ? hgt : undefined,
+        paddingHorizontal: badge ? 6 : 10,
+        paddingVertical: badge ? 0 : 3,
+        borderRadius: badge ? (5 / 16) * hgt : 999,
+        borderWidth: 1,
+        borderColor: GOLD_FRAME,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Text size={badge ? 10 : 12} weight={badge ? "800" : "700"} color={ink} numberOfLines={1} style={badge ? { lineHeight: 13 } : undefined}>{label}</Text>
+    </Pressable>
   );
 }

@@ -6,7 +6,7 @@ import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { radius } from "../theme";
 import { Icon, type IconName } from "../icons";
-import { IdentityBadges } from "../IdentityBadges";
+import { GOLD_FRAME, GoldButton, IdentityBadges } from "../IdentityBadges";
 import { PlanWordmark } from "../PlanWordmark";
 import { Segmented } from "../library/ToolsSheet";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
@@ -35,7 +35,8 @@ type Tier = "plus" | "gold";
 
 /** مزايا بلس بترتيب الخطّة §٣ — `tvLine` و`badge` لا يتكرّران تحت الذهبيّ (لوحُ `Supporter`) */
 const FEATURES: { icon: IconName; key: keyof Dict; skipForGold?: boolean }[] = [
-  { icon: "tv", key: "pwFLink", skipForGold: true },
+  /* 🆕 D-gold-perks — «حتى ٥ تطبيقات» يبقى تحت Gold أيضاً (أحمد ١٠ نوفمبر: «حاليا عندنا ٥ بس») — لا «بلا حدّ» */
+  { icon: "tv", key: "pwFLink" },
   { icon: "search", key: "pwFStory" },
   { icon: "grid", key: "pwFHome" },
   { icon: "palette", key: "pwFThemes" },
@@ -47,9 +48,32 @@ const FEATURES: { icon: IconName; key: keyof Dict; skipForGold?: boolean }[] = [
   { icon: "people", key: "pwFGroups" },
 ];
 
+/** نصوصُ مزايا Gold الجديدة محلّيّة — كـ`RATERS_WORDS` (ملفُّ النصوص المشترك تلمسه مهامُّ كثيرة) */
+const GOLD_WORDS = {
+  ar: {
+    board: "واسمك في لوحة الداعمين",
+    boardMine: "اسمك في لوحة الداعمين",
+    boardBtn: "اللوحة",
+    partners: "برنامج الشركاء",
+    partnersSub: "اكسب من كل اشتراك عن طريقك",
+    joinBtn: "انضم",
+    more: (n: number) => `+ ${new Intl.NumberFormat("ar").format(n)} مزايا أخرى ▾`,
+    less: "أقل ▴",
+  },
+  en: {
+    board: "And your name on the supporters board",
+    boardMine: "Your name on the supporters board",
+    boardBtn: "Board",
+    partners: "Partner program",
+    partnersSub: "Earn from every subscription you bring",
+    joinBtn: "Join",
+    more: (n: number) => `+ ${n} more features ▾`,
+    less: "Less ▴",
+  },
+} as const;
+
 const TOP_ICONS: IconName[] = ["tv", "palette", "grid", "widget"];
-/** 🆕 T340 — حدُّ بطاقة الذهبيّ: ذهبٌ بين طرفَي تدرّج الشارة (`#FFD200` · `#F59E0B`) — كما في المحاكاة التي اعتمدها أحمد */
-const GOLD_FRAME = "#E9A80F";
+/* 🆕 T340 — حدُّ بطاقة الذهبيّ (`GOLD_FRAME`) انتقل إلى `IdentityBadges` مع لون الشارة: تتشاركه الآن لوحةُ الداعمين والشركاءُ والملفّ */
 
 export function PlusScreen() {
   const { t, tokens, locale } = useApp();
@@ -119,7 +143,15 @@ export function PlusScreen() {
   /* مزايا الذهبيّ ظاهرةٌ في تبويبه قبل الشراء، ولمن يملكه بعده (T340) */
   const goldRows = (goldTab && !ownsPlusView) || mineGold;
   /* المالكُ يرى البندَ الأوّل «اربط الأجهزة» (أحمد على المحاكاة: «خلّه نفس التصميم ذا»)؛ تبويبُ العرض يبقى بلا سطرَيه (لوحُ `Supporter`) */
-  const items = FEATURES.filter((f) => !(goldRows && f.skipForGold && !(mineGold && f.key === "pwFLink")));
+  const items = FEATURES.filter((f) => !(goldRows && f.skipForGold));
+  /* 🆕 D-gold-perks — تحت Gold تُطوى مزايا Plus بعد أوّلها (ثلاثٌ للمالك، اثنتان في العرض) فلا تطول الصفحة؛ «+ n مزايا أخرى» يفتحها */
+  const [plusOpen, setPlusOpen] = useState(false);
+  const foldAt = mineGold ? 3 : 2;
+  const shown = goldRows && !plusOpen ? items.slice(0, foldAt) : items;
+  const folded = items.length - shown.length;
+  /* زرّا «اللوحة» و«انضم» بمقاس شارة GOLD نفسِها (أحمد: «خلي بنفس حجم قولد») — العرضُ يُقاس من الشارة في سطرها */
+  const [badgeW, setBadgeW] = useState(0);
+  const isPartner = !!a?.partner;
   /* اسمُ الخطّة في البطاقة: ما يُعرض قبل الشراء، أو ما يُملك بعده */
   const cardTier: Tier = mineGold || (goldTab && !ownsPlusView) ? "gold" : "plus";
 
@@ -217,14 +249,48 @@ export function PlusScreen() {
           <View style={{ height: 1, backgroundColor: tokens.divider, marginTop: 12, marginBottom: 4 }} />
           {goldRows ? (
             <>
-              <FeatureRow icon="star" title={t.pwGoldBadgeLine} accent trailing={<IdentityBadges flags={{ partner: false, plus: true, founder: false, verified: false, gold: true }} nameSize={20} />} />
-              <FeatureRow icon="heart" title={mineGold ? t.pwGoldSupportMine : t.pwGoldSupport} accent check={mineGold} checkLabel={t.pwIncluded} />
+              <FeatureRow
+                icon="star"
+                title={t.pwGoldBadgeLine}
+                accent
+                trailing={
+                  <View onLayout={(e) => setBadgeW(Math.round(e.nativeEvent.layout.width))} style={{ flexDirection: "row" }}>
+                    <IdentityBadges flags={{ partner: false, plus: true, founder: false, verified: false, gold: true }} nameSize={20} />
+                  </View>
+                }
+              />
+              {/* 🆕 D-gold-perks — «اللوحة» للجميع (غيرُ المشترك يرى من يدعم قبل أن يشترك)، و«انضم» لعضو Gold وحدَه */}
+              <FeatureRow
+                icon="heart"
+                title={mineGold ? t.pwGoldSupportMine : t.pwGoldSupport}
+                sub={mineGold ? GOLD_WORDS[locale === "en" ? "en" : "ar"].boardMine : GOLD_WORDS[locale === "en" ? "en" : "ar"].board}
+                accent
+                trailing={<GoldButton label={GOLD_WORDS[locale === "en" ? "en" : "ar"].boardBtn} width={badgeW} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "supporters" } })} />}
+              />
+              <FeatureRow
+                icon="people"
+                title={GOLD_WORDS[locale === "en" ? "en" : "ar"].partners}
+                sub={GOLD_WORDS[locale === "en" ? "en" : "ar"].partnersSub}
+                accent
+                check={mineGold && isPartner}
+                checkLabel={t.pwIncluded}
+                trailing={
+                  mineGold && !isPartner ? (
+                    <GoldButton label={GOLD_WORDS[locale === "en" ? "en" : "ar"].joinBtn} width={badgeW} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "invites", tab: "partners" } })} />
+                  ) : undefined
+                }
+              />
               <Text size={12} weight="700" muted style={{ paddingTop: 6, paddingBottom: 2 }}>{t.pwGoldAllPlus}</Text>
             </>
           ) : null}
-          {items.map((f) => (
+          {shown.map((f) => (
             <FeatureRow key={f.key} icon={f.icon} title={t[f.key] as string} check={ownsPlusView} checkLabel={t.pwIncluded} />
           ))}
+          {goldRows && (folded > 0 || plusOpen) ? (
+            <Pressable onPress={() => { haptic.pick(); setPlusOpen((v) => !v); }} accessibilityRole="button" accessibilityState={{ expanded: plusOpen }} hitSlop={6} style={{ minHeight: 40, alignItems: "center", justifyContent: "center" }}>
+              <Text size={13} weight="600" muted>{plusOpen ? GOLD_WORDS[locale === "en" ? "en" : "ar"].less : GOLD_WORDS[locale === "en" ? "en" : "ar"].more(folded)}</Text>
+            </Pressable>
+          ) : null}
           <View style={{ height: 1, backgroundColor: tokens.divider, marginTop: 8, marginBottom: 12 }} />
           <Text size={12} muted style={{ lineHeight: 19 }}>{t.pwFreeNote}</Text>
         </ScrollView>
@@ -317,13 +383,16 @@ export function PlusScreen() {
   );
 }
 
-function FeatureRow({ icon, title, accent, check, checkLabel, trailing }: { icon: IconName; title: string; accent?: boolean; check?: boolean; checkLabel?: string; trailing?: React.ReactNode }) {
+function FeatureRow({ icon, title, sub, accent, check, checkLabel, trailing }: { icon: IconName; title: string; sub?: string; accent?: boolean; check?: boolean; checkLabel?: string; trailing?: React.ReactNode }) {
   const { tokens } = useApp();
   const color = accent ? tokens.accent : tokens.fg;
   return (
-    <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12 }}>
+    <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: sub ? 6 : 0 }}>
       <Icon name={icon} size={20} color={color} />
-      <Text size={15} weight={accent ? "700" : "500"} color={accent ? tokens.accent : undefined} style={{ flex: 1, minWidth: 0, lineHeight: 21 }}>{title}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text size={15} weight={accent ? "700" : "500"} color={accent ? tokens.accent : undefined} style={{ lineHeight: 21 }}>{title}</Text>
+        {sub ? <Text size={12} muted style={{ lineHeight: 17, marginTop: 1 }}>{sub}</Text> : null}
+      </View>
       {trailing}
       {check ? (
         <View accessible accessibilityRole="image" accessibilityLabel={checkLabel}>

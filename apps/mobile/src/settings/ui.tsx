@@ -218,7 +218,6 @@ export function OptionList({ children }: { children: React.ReactNode }) {
 
 /** `ToggleRow` — كبسولةٌ ٤٤×٢٦ بقرصٍ يزحف؛ المختارُ بلون التمييز */
 export function Toggle({ icon, label, hint, checked, onChange, disabled }: { icon?: IconName; label: string; hint?: string; checked: boolean; onChange: () => void; disabled?: boolean }) {
-  const { tokens } = useApp();
   return (
     <Row
       icon={icon}
@@ -226,12 +225,18 @@ export function Toggle({ icon, label, hint, checked, onChange, disabled }: { ico
       subtitle={hint}
       onPress={onChange}
       disabled={disabled}
-      trailing={
-        <View accessibilityRole="switch" accessibilityState={{ checked }} style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: checked ? tokens.accent : tokens.surface2, padding: 3, alignItems: checked ? "flex-end" : "flex-start", justifyContent: "center" }}>
-          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: checked ? tokens.onAccent : tokens.muted }} />
-        </View>
-      }
+      trailing={<SwitchPill checked={checked} />}
     />
+  );
+}
+
+/** رسمُ المفتاح وحدَه — لـ`Toggle` ولمن يضعه داخل بطاقةٍ بلا صفّ (بطاقتي في لوحة الداعمين): رسمٌ واحدٌ لا نسختان */
+export function SwitchPill({ checked }: { checked: boolean }) {
+  const { tokens } = useApp();
+  return (
+    <View accessibilityRole="switch" accessibilityState={{ checked }} style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: checked ? tokens.accent : tokens.surface2, padding: 3, alignItems: checked ? "flex-end" : "flex-start", justifyContent: "center" }}>
+      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: checked ? tokens.onAccent : tokens.muted }} />
+    </View>
   );
 }
 

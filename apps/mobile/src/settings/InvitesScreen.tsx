@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
@@ -47,7 +47,9 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 export function InvitesScreen() {
   const { t, tokens } = useApp();
   const toast = useRef<ToastHostRef>(null);
-  const [tab, setTab] = useState<"friends" | "partners">("friends");
+  /* 🆕 D-gold-perks — زرُّ «انضم» في صفحة الاشتراك يفتح الشاشةَ على تبويب الشركاء (`?tab=partners`) */
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<"friends" | "partners">(params.tab === "partners" ? "partners" : "friends");
   /* نموذجُ التقديم مفتوحٌ بيد صاحبه (تقديمٌ أوّل · تعديل) — هنا لا في التبويب كي يُغلقه رجوعُ الشاشة قبل أن يغادرها */
   const [form, setForm] = useState(false);
   /* حالُ الشريك تُقرأ مع الشاشة لا مع الحبّة: التبويبُ يُفتح على وجهه لا على هيكل */

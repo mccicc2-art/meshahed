@@ -1902,6 +1902,7 @@ const ar = {
   /* 🆕 D-1361 — أخطاءُ التقديم في التطبيق: نصوصُ `applyPartner` نفسُها (كان الويبُ يعرضها باللغتين معاً في الرابط) */
   apiPartnerChannel: "رابط القناة يجب أن يبدأ بـ https://",
   apiPartnerRequirements: "شرطا التقديم: حساب X موثّق في لوبز واشتراك Plus فعّال",
+  apiPartnerGoldRequired: "الانضمام المباشر لأعضاء Gold — اشتراكك الذهبي غير فعّال الآن",
   apiPartnerSubmit: "تعذّر إرسال الطلب — حاول مجدداً",
   /* 🆕 D-1362 (C7 · الدفعة ٢) — أسبابُ `savePartnerDetails` و`requestPayout` بمفاتيحها: الفعلان يرميان نصّاً باللغتين معاً */
   apiPartnerIban: "الآيبان السعودي: SA ثم ٢٢ رقماً",
@@ -4703,6 +4704,7 @@ const en: Dict = {
   prtSubmit: "Submit application",
   apiPartnerChannel: "Channel URL must start with https://",
   apiPartnerRequirements: "Requirements: a verified X account on Loopz and an active Plus subscription",
+  apiPartnerGoldRequired: "Direct joining is for Gold members — your Gold isn't active right now",
   apiPartnerSubmit: "Could not submit, try again",
   apiPartnerIban: "Saudi IBAN: SA followed by 22 digits",
   apiPartnerBank: "Bank and account holder names are required",

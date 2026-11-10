@@ -123,7 +123,8 @@ export type MyPartnerPayload = {
   status: "pending" | "approved" | "rejected" | null;
   applied_at: string | null;
   /** للرسم وحدَه — الحارسُ في جسم `apply_partner` (D-855) */
-  requirements: { x: boolean; plus: boolean };
+  /** 🆕 D-gold-perks — `gold` (اختياريٌّ لخادمٍ أقدم): عضو Gold ينضمّ مباشرة بلا طلب */
+  requirements: { x: boolean; plus: boolean; gold?: boolean };
   application: PartnerApplicationFields | null;
   /** 🆕 D-1362 — لوحةُ الموافَق عليه؛ `null` لغيره */
   dashboard: PartnerDashboard | null;
@@ -173,6 +174,8 @@ export type ProfilePayload = {
     system: boolean;
     /** حسابُ X الموثَّق وحدَه (D-839) */
     x: { handle: string; url: string } | null;
+    /** 🆕 D-gold-perks — «داعم لوبز منذ …»: عضو Gold ظاهرٌ في لوحة الداعمين، وإلا `null` (غائبٌ من خادمٍ أقدم) */
+    supporter_since?: string | null;
   };
   locked: boolean;
   /** 🆕 N2-fix — `requested_me`: طلب متابعتي وطلبُه قائم ⇐ الملفُّ يعرض قبولاً ورفضاً */

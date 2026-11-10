@@ -2705,7 +2705,8 @@ export async function getMyPartnerState(): Promise<PartnerState> {
         ? row.app_status
         : null;
     return {
-      appStatus: status,
+      /* 🆕 D-gold-perks — عضو Gold ينضمّ بلا طلب (`join_partner_gold`): الكودُ وحدَه يشهد بالشراكة، فيُقرأ «موافَقاً عليه» */
+      appStatus: row.code ? "approved" : status,
       appliedAt: row.applied_at,
       code: row.code,
       clicks: row.clicks ?? 0,
@@ -7432,5 +7433,20 @@ export async function getMyPayoutRequests(): Promise<MyPayoutRow[]> {
     }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 D-gold-perks — «داعم لوبز منذ …» تحت اسم عضو Gold في ملفّه (أحمد ١٠ نوفمبر «٣ ب»). الحكمُ في جسم `supporter_since`
+ * (الهجرة ٢٤٤): Gold فعّالٌ لم يُخفِ نفسه من اللوحة ولا اسمَه من الملفّ. قبل الهجرة الدالّةُ غائبةٌ فيعود `null` — لا سطر.
+ */
+export async function getSupporterSince(userId: string): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("supporter_since", { p_user: userId });
+    if (error || typeof data !== "string") return null;
+    return data;
+  } catch {
+    return null;
   }
 }
