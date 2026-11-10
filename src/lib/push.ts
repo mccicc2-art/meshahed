@@ -88,7 +88,8 @@ function expoMessage(m: { token: string; text: PushText; dmNative?: Dict | null 
     to: m.token,
     title: m.text.title,
     body: m.text.body,
-    data: m.text.url ? { url: m.text.url } : {},
+    /* 🆕 T366 — والوسمُ في البيانات أيضاً: التطبيقُ المفتوح يعرف به «وصل من…» فيحدّث الرئيسيّةَ والمكتبة، لا البطاقةَ وحدَها */
+    data: { ...(m.text.url ? { url: m.text.url } : {}), ...(m.text.tag ? { tag: m.text.tag } : {}) },
     sound: "default",
     channelId: CHANNEL,
     priority: "high",

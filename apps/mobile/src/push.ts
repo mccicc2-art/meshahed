@@ -2,7 +2,8 @@ import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
-import { NO_COOKIES, api, queryClient } from "./api";
+import { NO_COOKIES, api, qk, queryClient } from "./api";
+import { HOME_KEY } from "./home/useHome";
 import { CONFIG } from "./config";
 import { session } from "./session";
 import { currentLocale } from "./i18n";
@@ -270,10 +271,24 @@ try {
       return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
     },
   });
-  Notifications.addNotificationReceivedListener(() => {
+  Notifications.addNotificationReceivedListener((n) => {
     void queryClient.invalidateQueries({ queryKey: ["me:messages"] });
     void queryClient.invalidateQueries({ queryKey: ["me:signals"] });
     void queryClient.invalidateQueries({ queryKey: ["me:badges"] });
+    /* 🆕 T366 — **وبطاقةُ «من تطبيقاتك»** (أحمد ١٠ نوفمبر: «الاشعار يصل مباشرة بس فالرئيسية لازم اقفل التطبيق واشغله»): سؤالُ «شفتها؟»
+       وما سُجّل تلقائياً يصلان بإشعار، والبطاقةُ كانت تبقى على قراءتها القديمة. طلبٌ خفيفٌ لكلِّ إشعار — Stremio وKodi وPlex
+       وJellyfin وEmby معاً (استعلامٌ واحد). و«وصل من…» (`auto-…`) غيّر المكتبةَ وعدَّ الأفلام: الرئيسيّةُ والمكتبةُ تُجدَّدان أيضاً */
+    void queryClient.invalidateQueries({ queryKey: ["me:stremio"] });
+    const tag = (n.request.content.data as { tag?: unknown } | undefined)?.tag;
+    if (typeof tag === "string" && tag.startsWith("auto-")) {
+      void queryClient.invalidateQueries({ queryKey: HOME_KEY });
+      void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
+    }
+  });
+  /* 🆕 T366 — **والعودةُ من الخلفيّة تعيد سؤالَ البطاقة**: إشعارٌ وصل والتطبيقُ خلفيٌّ لا يمرّ بالمستمع أعلاه، و`refetchOnWindowFocus`
+     مطفأٌ في التطبيق كلِّه (`api.ts`) — فمن رأى الإشعارَ ثمّ فتح التطبيق وجد البطاقةَ كما تركها */
+  AppState.addEventListener("change", (s) => {
+    if (s === "active") void queryClient.invalidateQueries({ queryKey: ["me:stremio"] });
   });
   /* مهلةٌ قصيرة: نافذةُ الإذن لا تسبق أوّلَ رسمةٍ للرئيسيّة */
   setTimeout(() => void sync(true), 2500);

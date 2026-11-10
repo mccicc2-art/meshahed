@@ -3239,7 +3239,8 @@ const ar = {
   homeServersTitle: "سيرفرات البيت",
   homeServersIntro: "شغّل حلقة أو فيلم على سيرفرك في البيت، ولما تخلصه يسألك Loopz في الرئيسية: شفتها؟",
   homeServersHow2: "✕ تتجاهلها. ما نعلّم شيئاً بدون جوابك.",
-  homeServersNeeds: "Plex يحتاج Plex Pass، وEmby يحتاج Emby Premiere، وJellyfin مجاني بإضافة Webhook، وKodi بإضافة Loopz المجانية.",
+  /* 🆕 T366 — Emby مجانيٌّ أيضاً: تجربةُ أحمد ١٠ نوفمبر على Emby 4.10 بلا Premiere وصلت بها المشاهدةُ وسُجّلت */
+  homeServersNeeds: "Plex يحتاج Plex Pass، وEmby مجاني من إعدادات Notifications، وJellyfin مجاني بإضافة Webhook، وKodi بإضافة Loopz المجانية.",
   homeServersPlusSub: "اربط سيرفرك فيسألك Loopz عن كل ما تخلصه عليه، واستورد تاريخ مشاهدتك من Plex.",
   homeServerLink: "رابطك الخاص",
   homeServerOneLink: "رابط واحد يشتغل مع السيرفرات الثلاثة",
@@ -3258,9 +3259,10 @@ const ar = {
     "الصق القالب في Template واحفظ.",
   ] as readonly string[],
   homeServerStepsEmby: [
-    "من لوحة Emby: Webhooks (في الإصدارات الحديثة داخل Notifications).",
-    "أضف Webhook والصق رابطك، ونوع المحتوى application/json.",
-    "اختر «Playback Stop» و«Mark Played» واحفظ.",
+    "من إعدادات Emby: Notifications ← Add Notification ← Webhooks.",
+    "سمِّه Loopz، والصق رابطك في Url، واختر application/json.",
+    "اختر «Stop» تحت Playback و«Mark Played» تحت Users، واضغط Add Notification.",
+    "افتحه مرة ثانية واضغط «Send Test Notification»، فيظهر هنا مربوطاً فوراً.",
   ] as readonly string[],
   /* 🆕 Kodi (هجرة ٢٣٦ — أحمد ٥ نوفمبر: «١ أ · ٢ أ · ٣ أ»، والرمزُ داخل التبويب «أ») — العنوانُ سطرٌ وحده تحت الخطوة الثانية */
   homeServerStepsKodi: [
@@ -3311,14 +3313,16 @@ const ar = {
   /* 🆕 الربطُ يُؤكَّد بأوّل رسالةٍ من الجهاز لا بإصدار الرابط (أحمد ٥ نوفمبر) */
   linksWaiting: "ينتظر",
   deviceWaitingPill: "بانتظار الاتصال",
-  deviceWaitHint: (kind: string) =>
+  deviceWaitHint: (kind: string): string =>
     kind === "stremio"
       ? "ثبّت الإضافة في Stremio، وأول ما يفتحها نتأكد من الربط."
       : kind === "jellyfin"
         ? "شغّل أي شيء على Jellyfin، وأول ما يبدأ نتأكد من الربط."
         : kind === "kodi"
           ? "اكتب الرمز في إعدادات الإضافة، وأول ما يوصل نتأكد من الربط."
-          : `شغّل أي شيء على ${kind === "emby" ? "Emby" : "Plex"}، ولو ثواني، عشان نتأكد من الربط.`,
+          : kind === "emby"
+            ? "اضغط «Send Test Notification» في إعداد الـWebhook في Emby، ونتأكد من الربط فوراً."
+            : "شغّل أي شيء على Plex، ولو ثواني، عشان نتأكد من الربط.",
   linksPendingLegacy: "رابط سيرفر قديم",
   linksPendingLegacySub: "ينتظر أول حلقة من سيرفرك",
   autoMarkTitle: "تتبّع تلقائي",
@@ -3336,7 +3340,7 @@ const ar = {
   deviceSharedNote: "هذا رابطك القديم، مشترك بين سيرفراتك. فكّه يفك الكل، وبعدها اربط كل سيرفر برابطه.",
   deviceFullSub: (name: string) => `الحساب المجاني يربط تطبيقاً واحداً، و${name} مربوط الآن. فكّه أولاً، أو اشترك في Loopz Plus واربط حتى ٥.`,
   devicePlexNeeds: "يحتاج Plex Pass على حساب صاحب السيرفر.",
-  deviceEmbyNeeds: "يحتاج Emby Premiere على السيرفر.",
+  deviceEmbyNeeds: "مجاني، من إعدادات Notifications في Emby.",
   deviceJellyfinNeeds: "مجاني، بإضافة Webhook من كتالوج Jellyfin.",
   deviceKodiIntro: "ثبّت إضافة Loopz المجانية في Kodi، وكل ما تخلّصه عليه يسألك عنه Loopz في الرئيسية.",
   deviceKodiNeeds: "على التلفاز أو الصندوق، والخطوات بالريموت.",
@@ -5762,7 +5766,7 @@ const en: Dict = {
   homeServersTitle: "Home servers",
   homeServersIntro: "Play an episode or a movie on your home server, and when you finish it Loopz asks you on Home: watched it?",
   homeServersHow2: "✕ ignores it. Nothing is marked without your answer.",
-  homeServersNeeds: "Plex needs Plex Pass, Emby needs Emby Premiere, Jellyfin is free with the Webhook plugin, and Kodi with the free Loopz add-on.",
+  homeServersNeeds: "Plex needs Plex Pass, Emby is free from its Notifications settings, Jellyfin is free with the Webhook plugin, and Kodi with the free Loopz add-on.",
   homeServersPlusSub: "Link your server so Loopz asks about everything you finish on it, and import your Plex watch history.",
   homeServerLink: "Your private link",
   homeServerOneLink: "One link works with all three servers",
@@ -5781,9 +5785,10 @@ const en: Dict = {
     "Paste the template into Template and save.",
   ] as readonly string[],
   homeServerStepsEmby: [
-    "In the Emby dashboard: Webhooks (inside Notifications on recent versions).",
-    "Add a webhook, paste your link, content type application/json.",
-    "Pick “Playback Stop” and “Mark Played” and save.",
+    "In Emby settings: Notifications → Add Notification → Webhooks.",
+    "Name it Loopz, paste your link into Url, and pick application/json.",
+    "Tick “Stop” under Playback and “Mark Played” under Users, then Add Notification.",
+    "Open it again and tap “Send Test Notification”; it shows as linked here right away.",
   ] as readonly string[],
   homeServerStepsKodi: [
     "In Kodi: Settings → System → Add-ons, and turn on Unknown sources.",
@@ -5839,7 +5844,9 @@ const en: Dict = {
         ? "Play anything on Jellyfin; as soon as it starts, we know it's linked."
         : kind === "kodi"
           ? "Type the code in the add-on's settings; as soon as it arrives, we know it's linked."
-          : `Play anything on ${kind === "emby" ? "Emby" : "Plex"}, even for a few seconds, so we can confirm the link.`,
+          : kind === "emby"
+            ? "Tap “Send Test Notification” in the Emby webhook settings, and we confirm the link right away."
+            : "Play anything on Plex, even for a few seconds, so we can confirm the link.",
   linksPendingLegacy: "Old server link",
   linksPendingLegacySub: "Waiting for the first episode from your server",
   autoMarkTitle: "Auto-track",
@@ -5857,7 +5864,7 @@ const en: Dict = {
   deviceSharedNote: "This is your old link, shared by your servers. Unlinking it unlinks them all; then link each server with its own link.",
   deviceFullSub: (name: string) => `A free account links one app, and ${name} is linked now. Unlink it first, or get Loopz Plus and link up to 5.`,
   devicePlexNeeds: "Needs Plex Pass on the server owner's account.",
-  deviceEmbyNeeds: "Needs Emby Premiere on the server.",
+  deviceEmbyNeeds: "Free, from Emby's Notifications settings.",
   deviceJellyfinNeeds: "Free, with the Webhook plugin from the Jellyfin catalog.",
   deviceKodiIntro: "Install the free Loopz add-on in Kodi, and everything you finish there is asked about on your Loopz home.",
   deviceKodiNeeds: "On the TV or box, with the remote.",
