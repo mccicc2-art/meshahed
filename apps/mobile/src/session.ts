@@ -88,7 +88,7 @@ let welcomeDoneMem = false;
  * كلُّ طلبٍ يُبلَّغ مرّةً: مدّتُه، ونتيجتُه (`ok` · `none`)، وهل كانت الصفحةُ جاهزةً لحظةَ الطلب (`ready`).
  * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
  */
-type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject";
+type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject" | "out";
 type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own"; count?: number }) => void;
 /**
  * 🆕 D-1143 — **لماذا انتهى الطلبُ الأخير** (يُقرأ مرّةً عند التبليغ): `noack` لم يصل الحدثُ الصفحةَ أصلاً ·
@@ -100,6 +100,14 @@ let lastSrc: "cookie" | "lib" | "own" | undefined;
 const waitListeners = new Set<WaitReport>();
 /** 🆕 D-1141 — طلبٌ واحدٌ في الطريق لكلِّ من يسأل — كان كلُّ نداءٍ في الطابور يرسل طلبَه بعد التحميل */
 let inflight: Promise<string | null> | null = null;
+/**
+ * 🆕 A-50 (المدقّق ٧ نوفمبر، تشخيصُ ١٢ نوفمبر) — **خرج صاحبُ الجهاز في هذه التشغيلة ولم يدخل بعد** (ذاكرةٌ فقط).
+ * الخروجُ ينتهي بالويب على `/login`، وهي صفحةٌ لا يُركَّب فيها جسرُ الجلسة أصلاً (يُركَّب للمسجَّل وحدَه) — فكلُّ طلبِ رمزٍ
+ * من الشاشات تحت شاشة الدخول كان يُحقن في صفحةٍ لا تسمعه وينتظر ٨ث ثمّ `noack`: ١٣ من ١٣ علامةً بطيئةً على أندرويد
+ * (٦–١٠ نوفمبر) ومثلُها على الآيفون، كلُّها بين خروجٍ ودخول. لا جلسةَ تُنتظر هنا، فالجوابُ «لا رمز» الآن.
+ * يُمحى بما يثبت جلسةً: الدخولُ الأصليّ (`markSeen`) · ردٌّ مقبولٌ من الجسر · وصولُ رمزٍ مملوك.
+ */
+let out = false;
 
 const NONCE_TTL_MS = 30_000;
 const REPLY_TIMEOUT_MS = 8_000;
@@ -116,6 +124,11 @@ function emit() {
   for (const l of listeners) l();
 }
 /* 🆕 K4b — رمزٌ مملوكٌ وصل أو سقط ⇒ يُبلَغ من ينتظر الرمز (`useGuestUpgrade`…) كما يُبلَغ برمز الجسر */
+own.onChange(() => {
+  /* A-50 — رمزٌ مملوكٌ وصل ⇒ لم يعد خارجاً. البوّابةُ تفتحها `own.hasStored()` قبل هذا أصلاً؛ هذا يمنع علامةً قديمةً
+     من أن تعيش بعد `own.clear()` لاحق */
+  if (own.get()) out = false;
+});
 own.onChange(emit);
 /* 🆕 الدخولُ الوهميّ (٢٨ أكتوبر) — العودةُ إلى الواجهة بعد قراءةٍ لم تُحسم في الخلفيّة: تُقرأ الآن، ومن تبيّن أنّه داخلٌ يُبلَّغ */
 AppState.addEventListener("change", (st) => {
@@ -229,6 +242,8 @@ export const session = {
    * يقيناً، ولا ينتظر رمزاً عبر جسرٍ قد لا يُجيب. أثرٌ لا رمز، كما في `receive`.
    */
   markSeen() {
+    /* A-50 — دخل فعلاً: الطلباتُ بعد هذا تعود إلى مسارها (سباقُ A-21 ينتظر الرمزَ المملوكَ الذي يُسكّ الآن) */
+    out = false;
     seenMem = true;
     try {
       SecureStore.setItem(SEEN_KEY, "1");
@@ -293,8 +308,13 @@ export const session = {
    * D-1026 (F2) — **خروجٌ أو تبدّلُ مستخدم**، لا رمزٌ شاخ: `clear()` تُنادى كلَّ ساعةٍ وبعد كلِّ
    * خلفيّةٍ طويلة ولا تعني أنّ صاحبَ الجهاز تغيّر؛ هذه تعنيه — فيُمسح معها ما حُفظ له.
    */
-  signOut() {
+  signOut(toLogin = true) {
     session.clear();
+    /* A-50 — بعد المسح: من ينتظر الآن أُجيب بـ`null`، ومن يسأل بعده يُجاب فوراً حتى يدخل أحد.
+       **إلّا مسحاً جاء من الصفحة نفسِها** (`session:clear`، `toLogin=false`): من أرسله جسرٌ مركَّبٌ يسمع، وقد يرسله بلا خروجٍ
+       حقيقيّ (مكتبةٌ لم تُحمَّل، تجديدٌ تعثّر بالشبكة) — فالطلبُ التالي يبلغه كما كان ويستعيد الجلسةَ من الكوكي. الخروجُ
+       الحقيقيُّ يمرّ دائماً بأحد الثلاثة: شاشةُ الخروج · عنوانُ الخروج أو الدخول في الـWebView · فشلُ الإنقاذ (D-1370) */
+    if (toLogin) out = true;
     /* 🆕 K4b — الخروجُ يمسح الجلسةَ المملوكةَ أيضاً — محلّيّاً؛ الويبُ خرج بـ`global` فأبطلها عند الخادم */
     own.clear();
     const hadSeen = seenMem !== false;
@@ -355,6 +375,12 @@ export const session = {
    * مطفأٌ ⇒ `ensure()` يعود `null` فوراً ⇒ الجسرُ وحدَه، حرفيّاً كما قبل K4b.
    */
   requestOnce(): Promise<string | null> {
+    /* A-50 — خرج ولا جلسةَ محفوظة: لا حقنَ في صفحة دخولٍ لا جسرَ فيها، ولا ثماني ثوانٍ لجوابٍ لا يوجد.
+       وصولُ الجلسة بعد الدخول يُبلَّغ للمشتركين (`emit`) فيعيدون الجلب — كما كانوا يفعلون بعد المهلة */
+    if (out && !own.hasStored()) {
+      lastWhy = "out";
+      return Promise.resolve(null);
+    }
     if (!own.enabled()) return session.bridgeOnce();
     return own.ensure().then((t) => {
       if (t) {
@@ -449,7 +475,7 @@ export const session = {
   receive(msg: Record<string, unknown>, hostOk: boolean): boolean {
     if (msg.type === "session:clear") {
       lastWhy = "clear";
-      session.signOut();
+      session.signOut(false);
       return true;
     }
     /* 🆕 D-1143 — «وصلني» من الصفحة: لا يُنهي الطلب، يوسمه فقط (المهلةُ بعده `slow` لا `noack`) */
@@ -481,6 +507,7 @@ export const session = {
     access = msg.access as string;
     exp = msg.exp as number;
     lastLife = Math.round(exp - Date.now() / 1000);
+    out = false; /* A-50 — الجسرُ أعطى جلسةً: لم يعد خارجاً */
     seenMem = true;
     try {
       SecureStore.setItem(SEEN_KEY, "1"); /* D-1075 — أثرٌ لا رمز */
