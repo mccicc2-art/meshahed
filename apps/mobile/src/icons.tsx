@@ -46,6 +46,8 @@ const ICONS = {
   film: require("../assets/icons/film.png"),
   tv: require("../assets/icons/tv.png"),
   sparkles: require("../assets/icons/sparkles.png"),
+  /* 🆕 T378 — رمزُ الأنمي (بوابةُ توري) من `Icon.tsx` بالطريقة نفسِها (cairosvg · ٧٢px · أبيض · خطّ ١٫٧ — طابق `sparkles` بكسلاً) */
+  torii: require("../assets/icons/torii.png"),
   plus: require("../assets/icons/plus.png"),
   /* 🆕 D-1438 — زرُّ الرجوع إلى الكتابة حين تكون لوحةُ «+» مكانَ لوحة المفاتيح — مرسومٌ بالطريقة نفسِها (cairosvg · ٧٢px · أبيض · خطّ ١٫٧) */
   keyboard: require("../assets/icons/keyboard.png"),
@@ -175,7 +177,8 @@ const NAV_ICONS: IconName[] = [
 ];
 /* 🆕 D-1325 — ورموزُ رأس الملفّ معها (بطاقةُ الأرقام وسطرُ العدّادات): كانت تظهر بعد وصول الملفّ بنحو ١٧٠ms في تسجيل
    أحمد ٨ أكتوبر — السببُ نفسُه (صورةٌ تُحمَّل بعد التركيب). سبعُ صورٍ ٧٢px. */
-const PROFILE_ICONS: IconName[] = ["tv", "film", "sparkles", "chart", "calendar", "star", "heart"];
+/* 🆕 T378 — `torii` مكانَ `sparkles`: خانةُ الأنمي في الرأس صار رمزُها البوابة */
+const PROFILE_ICONS: IconName[] = ["tv", "film", "torii", "chart", "calendar", "star", "heart"];
 const warm = new Map<IconName, ImageRef>();
 /* 🔴 بعد مسح ذاكرة الصور لا قبله (`imageCacheGuard.ts`): التحميلُ المسبقُ قبل المسح يقرأ الصورةَ القديمةَ لرقمٍ تغيّر */
 void imageCacheReady.then(() => {

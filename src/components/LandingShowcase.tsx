@@ -77,7 +77,7 @@ const PANELS: Panel[] = [
     enScreen: "Your movies",
   },
   {
-    icon: "sparkles",
+    icon: "torii",
     ar: "الأنمي في نفس المكان",
     en: "Anime in the same place",
     arBody:

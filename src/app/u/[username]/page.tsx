@@ -189,10 +189,10 @@ export default async function PublicProfilePage({
     },
     /* 🆕 **وخانةٌ ثالثةٌ للأنمي** (D-941c) — ⚖️ نقضٌ لذيل D-650 («ثلاثةٌ هي التي
        طُلبت، ورابعةٌ زيادةٌ على الطلب») **بطلبٍ صريحٍ من صاحبه**؛ رمزُها
-       واسمُها من سجلّ الأقسام نفسِه (`sparkles` · `discoverTabAnime`). */
+       واسمُها من سجلّ الأقسام نفسِه (`torii` منذ T378 · `discoverTabAnime`). */
     {
       key: "anime",
-      icon: "sparkles" as const,
+      icon: "torii" as const,
       value: animeFollows.length,
       label: t.discoverTabAnime,
     },

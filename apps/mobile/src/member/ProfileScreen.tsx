@@ -451,7 +451,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       shows: { key: "shows", icon: "tv", value: num(d.counts.shows, locale), label: t.shortShows, href: "#shows" },
       movies: { key: "movies", icon: "film", value: num(d.counts.movies, locale), label: t.shortMovies, href: "#movies" },
       /* الأنمي بلا أعمالٍ لا يُرسم صفراً — كما كان */
-      anime: d.counts.anime > 0 ? { key: "anime", icon: "sparkles", value: num(d.counts.anime, locale), label: t.discoverTabAnime, href: "#anime" } : null,
+      anime: d.counts.anime > 0 ? { key: "anime", icon: "torii", value: num(d.counts.anime, locale), label: t.discoverTabAnime, href: "#anime" } : null,
       /* 🆕 N3 — بابي أنا `/stats` بمداها الكامل، ولزائري سطحُ العضو (D-650: `/stats` تقرأ صاحبَ الجلسة) */
       stats: d.viewer.is_me || d.person.username ? { key: "stats", icon: "chart", value: "", label: t.statsPageTitle, href: d.viewer.is_me ? "/stats" : `/u/${d.person.username}/stats` } : null,
     };
@@ -1244,7 +1244,7 @@ function Favorites({ d, posterW, onTitle, onSort }: { d: ProfilePayload; posterW
   if (!f.shows.length && !f.movies.length && !f.anime.length) return <Empty text={t.profileEmptyFavorites} />;
   const rows: { key: FavRow; icon: string; label: string; items: ProfileTitle[] }[] = [
     ...f.order.map((k) => (k === "shows" ? { key: k, icon: "tv", label: t.shortShows, items: f.shows } : { key: k, icon: "film", label: t.shortMovies, items: f.movies })),
-    { key: "anime" as const, icon: "sparkles", label: t.discoverTabAnime, items: f.anime },
+    { key: "anime" as const, icon: "torii", label: t.discoverTabAnime, items: f.anime },
   ];
   return (
     <View>

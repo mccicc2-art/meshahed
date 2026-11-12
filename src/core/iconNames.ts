@@ -30,6 +30,8 @@ export type IconName =
   | "clock"
   | "check"
   | "sparkles"
+  /* 🆕 T378 — رمزُ الأنمي وحدَه (كان يستعير `sparkles` رمزَ البحث بالوصف) */
+  | "torii"
   | "trending"
   | "pause"
   | "hourglass"

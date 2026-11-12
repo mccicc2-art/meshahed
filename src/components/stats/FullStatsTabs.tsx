@@ -442,7 +442,7 @@ function rhythmLabel(r: PeriodStats["habits"]["rhythm"], ar: boolean): string {
 }
 
 function mixIcon(k: "shows" | "movies" | "anime"): IconName {
-  return k === "movies" ? "film" : k === "anime" ? "sparkles" : "tv";
+  return k === "movies" ? "film" : k === "anime" ? "torii" : "tv";
 }
 function mixLabel(k: "shows" | "movies" | "anime", ar: boolean): string {
   if (k === "movies") return ar ? "أفلام" : "Movies";

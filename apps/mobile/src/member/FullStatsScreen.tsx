@@ -648,7 +648,7 @@ function rhythmLabel(r: ReportStats["habits"]["rhythm"], en: boolean): string {
   return en ? "Not clear yet" : "لم يتّضح بعد";
 }
 type Mix = "shows" | "movies" | "anime";
-const mixIcon = (k: Mix): IconName => (k === "movies" ? "film" : k === "anime" ? "sparkles" : "tv");
+const mixIcon = (k: Mix): IconName => (k === "movies" ? "film" : k === "anime" ? "torii" : "tv");
 const mixLabel = (k: Mix, en: boolean) => (k === "movies" ? (en ? "Movies" : "أفلام") : k === "anime" ? (en ? "Anime" : "أنمي") : en ? "Shows" : "مسلسلات");
 /* ألوانُ الصفحة: التمييزُ للمسلسلات، والنصُّ ثمّ الخافتُ للأفلام والأنمي.
    🆕 D-1390 — كانا رقمين ثابتين (`#EDEDED` · `#8A8A8A`): الأبيضُ على «النهاري» تباينُه ١٫٠٧ — شريحةُ الأفلام لا تُرى أصلاً.

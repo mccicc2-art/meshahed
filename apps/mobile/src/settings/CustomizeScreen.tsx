@@ -258,7 +258,7 @@ export function CustomizeScreen() {
   const profileStatMeta: Record<ProfileStatKey, { icon: string; label: string }> = {
     shows: { icon: "tv", label: t.shortShows },
     movies: { icon: "film", label: t.shortMovies },
-    anime: { icon: "sparkles", label: t.discoverTabAnime },
+    anime: { icon: "torii", label: t.discoverTabAnime },
     stats: { icon: "chart", label: t.custStatsShort },
   };
   const profilePick: ProfileStatKey[] = profile.stats ? profile.statsPick : [];

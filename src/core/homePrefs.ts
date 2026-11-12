@@ -88,7 +88,7 @@ export function headerStatMeta(
     shows: { icon: "tv", label: t.shortShows },
     movies: { icon: "film", label: t.shortMovies },
     /* اسمُ تبويبها في المكتبة نفسُه (D-703: اسمُ الشيء واحدٌ حيث ظهر) */
-    anime: { icon: "sparkles", label: t.discoverTabAnime },
+    anime: { icon: "torii", label: t.discoverTabAnime },
     towatch: { icon: "bookmark", label: t.libToWatch },
     time: { icon: "clock", label: t.shortWatchTime },
     upcoming: { icon: "hourglass", label: t.libUpcoming },

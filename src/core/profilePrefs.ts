@@ -98,7 +98,7 @@ export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: Icon
     shows: { icon: "tv", label: t.shortShows },
     movies: { icon: "film", label: t.shortMovies },
     /* التسميةُ والرمزُ تسميةُ تبويب المكتبة نفسِه (`LibraryGrid`) — لا كلمةٌ ثانية */
-    anime: { icon: "sparkles", label: t.discoverTabAnime },
+    anime: { icon: "torii", label: t.discoverTabAnime },
     artists: { icon: "people", label: t.shortArtists },
     lists: { icon: "list", label: t.profileListsRail },
     ratings: { icon: "star", label: t.ratingsListTitle },

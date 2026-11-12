@@ -373,9 +373,9 @@ export function LibraryGrid({
     { key: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { key: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
     /* والتسميةُ تسميةُ اكتشف نفسها (`discoverTabAnime`) لا كلمةٌ ثانية:
-       تبويبٌ واحد باسمين في سطحين يُقرأ شيئين. والأيقونة `sparkles`
-       موضعياً — لا مِيكا في العُدّة، ورسمُ واحدةٍ بندٌ لا ذريعةُ تأخير. */
-    { key: "anime" as const, icon: "sparkles" as const, label: t.discoverTabAnime, n: anime.length },
+       تبويبٌ واحد باسمين في سطحين يُقرأ شيئين. 🆕 T378 — والأيقونةُ `torii` رمزُ الأنمي الواحد
+       (كانت `sparkles` موضعياً، وهي رمزُ «ابحث بالوصف» فقرأ القارئُ شيئين برمزٍ واحد). */
+    { key: "anime" as const, icon: "torii" as const, label: t.discoverTabAnime, n: anime.length },
     { key: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
     {
       key: "lists" as const,
