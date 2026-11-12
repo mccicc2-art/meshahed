@@ -25,6 +25,7 @@ import {
   getMyListedMovieIds,
   artKey,
   getAllWatchedEpisodes,
+  getMyAnimeFlags,
   getWatchSummary,
   getWatchedMovies,
   watchedMovieMinutes,
@@ -238,7 +239,12 @@ export async function buildHomeHeader({
   /* احتياط ما قبل performance.sql — كان في الموجة الثانية وصعد هنا:
      أرقام الترويسة تُبنى من عدّاد المشاهدات، والترويسة (منذ D-087) تُرسم
      قبل الموجة الثانية. من شغّل performance.sql لا يدفع هذا الطلب أصلاً */
-  const fallbackEps = summary ? null : await getAllWatchedEpisodes();
+  /* 🆕 T377 — علَمُ الأنمي يُقرأ هنا بجوار احتياط الحلقات (موجةٌ واحدة): خاناتُ «مسلسلات/أفلام/أنمي» تعدّ ما تعدّه تبويباتُ
+     المكتبة. والعلَمُ استعلامٌ منفصلٌ عن `getFollows` عمداً (D-182)، و`cache` يجعله رحلةً واحدةً في الطلب مهما سُئل. */
+  const [fallbackEps, animeFlags] = await Promise.all([
+    summary ? Promise.resolve(null) : getAllWatchedEpisodes(),
+    getMyAnimeFlags().catch(() => new Map<string, boolean | null>()),
+  ]);
 
   // مجموعة المعرّفات للحالة، والدقائق الفعلية للوقت — من الصفوف نفسها
   const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
@@ -260,6 +266,14 @@ export async function buildHomeHeader({
   const rawActive = followRows.filter((f) => !f.dropped);
   const rawTv = rawActive.filter((f) => f.media_type === "tv");
   const rawMovies = rawActive.filter((f) => f.media_type === "movie");
+  /* 🆕 T377 — **رقمُ الخانة رقمُ التبويب الذي تفتحه** (تسجيلُ أحمد ١٠ نوفمبر: «45 مسلسل» تفتح تبويباً عنوانُه 41).
+     كانت الخانةُ تعدّ النشطَ بأنميّه (`rawTv`)، والتبويبُ يعدّ الكلَّ بموقوفه ويُخرج الأنمي (D-946). الآن وصفةُ التبويب
+     حرفاً (`api/v1/me/library`): كلُّ المتابَع، والمعلَّمُ أنمياً (`true` وحدَها — غيرُ المصنَّف يبقى في تبويبه) في خانته.
+     `rawTv`/`rawMovies` باقيان لما سواها: «للمشاهدة» و«القادم» عن النشط لا عن الموقوف. */
+  const isAnimeRow = (f: { media_type: string; tmdb_id: number }) => animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true;
+  const libAnime = followRows.filter(isAnimeRow).length;
+  const libShows = followRows.filter((f) => f.media_type === "tv" && !isAnimeRow(f)).length;
+  const libMovies = followRows.filter((f) => f.media_type === "movie" && !isAnimeRow(f)).length;
 
   const watchedByShow = new Map<number, number>();
   // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
@@ -323,10 +337,6 @@ export async function buildHomeHeader({
     rawMovies.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
   const droppedCount = followRows.filter((f) => f.dropped).length;
 
-  const watchedEpisodeTotal = [...watchedByShow.values()].reduce(
-    (a, n) => a + n,
-    0,
-  );
   const totalMinutes =
     (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0) + movieMinutes;
   const hours = Math.round(totalMinutes / 60);
@@ -367,7 +377,7 @@ export async function buildHomeHeader({
     shows: {
       key: "shows",
       icon: statMeta.shows.icon,
-      value: String(rawTv.length),
+      value: String(libShows),
       label: statMeta.shows.label,
       href: "/library?filter=tv",
       color: "var(--accent)",
@@ -375,9 +385,17 @@ export async function buildHomeHeader({
     movies: {
       key: "movies",
       icon: statMeta.movies.icon,
-      value: String(rawMovies.length),
+      value: String(libMovies),
       label: statMeta.movies.label,
       href: "/library?filter=movie",
+      color: "var(--accent)",
+    },
+    anime: {
+      key: "anime",
+      icon: statMeta.anime.icon,
+      value: String(libAnime),
+      label: statMeta.anime.label,
+      href: "/library?filter=anime",
       color: "var(--accent)",
     },
     towatch: {
@@ -393,14 +411,6 @@ export async function buildHomeHeader({
       icon: statMeta.time.icon,
       value: watchTime,
       label: statMeta.time.label,
-      href: "/stats",
-      color: "var(--accent)",
-    },
-    episodes: {
-      key: "episodes",
-      icon: statMeta.episodes.icon,
-      value: String(watchedEpisodeTotal),
-      label: statMeta.episodes.label,
       href: "/stats",
       color: "var(--accent)",
     },

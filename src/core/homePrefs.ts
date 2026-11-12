@@ -50,15 +50,18 @@ export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; 
 }
 
 /** خانات بطاقة الأرقام — خيارات يعرض المستخدم منها ٢ إلى ٤ */
-/* D-1487 — ترتيبُ السجلّ ترتيبُ المخفيّ في ورقة الخانات (جدولُ أحمد ٢٠ أكتوبر) */
+/* D-1487 — ترتيبُ السجلّ ترتيبُ المخفيّ في ورقة الخانات (جدولُ أحمد ٢٠ أكتوبر)
+   🆕 T377 (حكمُ أحمد ١٢ نوفمبر) — «أنمي» خانةٌ ثالثةٌ أختُ «مسلسلات» و«أفلام» (تبويبُها في المكتبة)، و«حلقات» حُذفت:
+   رقمُها باقٍ في الإحصائيات. حلقاتٌ محفوظةٌ في اختيار عضوٍ تُسقطها `sanitizeHomePrefs` كأيِّ مفتاحٍ مجهول، فإن كانت
+   وحدَها عاد إلى افتراضِ خطّته (`STATS_PICK_MIN`). */
 export const HEADER_STATS = [
   "shows",
   "movies",
+  "anime",
   "completed",
   "time",
   "towatch",
   "upcoming",
-  "episodes",
   "dropped",
   "ratings",
 ] as const;
@@ -84,9 +87,10 @@ export function headerStatMeta(
   return {
     shows: { icon: "tv", label: t.shortShows },
     movies: { icon: "film", label: t.shortMovies },
+    /* اسمُ تبويبها في المكتبة نفسُه (D-703: اسمُ الشيء واحدٌ حيث ظهر) */
+    anime: { icon: "sparkles", label: t.discoverTabAnime },
     towatch: { icon: "bookmark", label: t.libToWatch },
     time: { icon: "clock", label: t.shortWatchTime },
-    episodes: { icon: "play", label: t.shortEpisodes },
     upcoming: { icon: "hourglass", label: t.libUpcoming },
     completed: { icon: "check", label: t.libTabFinished },
     dropped: { icon: "card", label: t.droppedBadge },
