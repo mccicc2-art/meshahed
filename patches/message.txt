@@ -1,4 +1,8 @@
-[deploy] Release R202 — auditor fixes: Kodi pairing gets a shared cap across all addresses (A-45, task 350); the shared-list invite sheet loads followed people in an effect (A-43, task 351); a Google Play upgrade keeps the old plan for a 48 h grace until the new purchase lands, so the upgrader is never shown as free (A-51, task 352); migration files 240 (the dashboard-run persona publish window, already live) and 241 (invites lock the list row so two at once cannot pass the 10-member cap — to run on production) (A-49 + A-44, task 353)
+[deploy] Release R221 — after sign-out, token requests answer at once instead of waiting 8 s (A-50, T376)
+
+- Task 376: A-50 — after sign-out, token requests answer at once (why=out) instead of waiting 8 s
+
+App only (apps/mobile/src/session.ts), JS — OTA, native fingerprint unchanged.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7EtT73TxzMqim2p5nq
+Claude-Session: https://claude.ai/code/session_01FexM7BXmoyGbpmfbmbF17A
