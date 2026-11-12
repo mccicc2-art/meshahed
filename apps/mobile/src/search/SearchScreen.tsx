@@ -4,7 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useBootRoot } from "../bootRoot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ApiError, api, queryClient, write } from "../api";
+import { ApiError, api, queryClient } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Button, Text, Toast, toastReducer } from "../ui";
@@ -21,7 +21,7 @@ import { profileHref } from "@/core/people";
 import { ArtistRow, Divided, ListRow, MemberRow, RowsSkeleton, TitleRow } from "./SearchRows";
 import { HeaderEdges } from "../HeaderEnd";
 import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useScopedTrending, useSearch, useTrending } from "./useSearch";
-import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
+import { afterPaint, coldStartVoid, mark, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload, SearchStoryTrialsPayload } from "../contracts";
 import { STORY_FREE_TRIALS } from "@/core/plan";
 import { openProfile, profileHandleOf } from "../member/open";
@@ -57,6 +57,24 @@ const SCOPES: SearchScope[] = ["all", "titles", "artists", "members", "lists"];
 const DESC_MIN = 8;
 const DESC_MAX = 600;
 const STORY_TRIALS_KEY = ["search:story-trials"] as const;
+
+/**
+ * 🆕 المهمّة ٣٧٩ — **زمنُ البحث بالوصف ومراحلُه** (بلاغُ mesho ١٢ نوفمبر: «بحث ال AI بطيء جداً» — ولا رقمَ عندنا يقول أين).
+ * `rtt` الرحلةُ كلُّها على الجوال، و`Server-Timing` من المسار يقسم حصّةَ الخادم: الهويّة · الذوق · Gemini · TMDB · البديل ·
+ * الأسماء، ومعها أيُّ نموذجٍ أجاب وبكم نداء. فالشبكةُ = `rtt − srv`. ترويسةٌ غائبة (خادمٌ أقدم) ⇒ `rtt` وحده.
+ */
+const STORY_SPAN: Record<string, string> = { total: "srv", gate: "sgt", taste: "stz", ai: "sai", grd: "sgr", fb: "sfb", fin: "sfn", mdl: "mdl", try: "try" };
+function markStory(t0: number, result: string, serverTiming: string | null, count?: number) {
+  const rtt = performance.now() - t0;
+  const extra: Record<string, number | string> = { result, rtt: Math.round(rtt) };
+  if (count !== undefined) extra.count = count;
+  for (const part of (serverTiming ?? "").split(",")) {
+    const m = /^\s*([a-z]+)\s*;\s*dur=([0-9.]+)/.exec(part);
+    const k = m ? STORY_SPAN[m[1]] : undefined;
+    if (m && k) extra[k] = Math.round(Number(m[2]));
+  }
+  mark("story.search", rtt, extra);
+}
 
 export function SearchScreen() {
   const { t, tokens } = useApp();
@@ -120,7 +138,25 @@ export function SearchScreen() {
     retry: 0,
   });
   const story = useMutation({
-    mutationFn: async (description: string) => write<SearchStoryPayload>("/api/v1/search/story", { description } satisfies SearchStoryBody),
+    /* المهمّة ٣٧٩ — `api` لا `write`: الثانيةُ لا تمرّر `onTiming`، والمسارُ لا يُبطل شيئاً (`ok` بلا وسوم) فلا فرقَ في السلوك */
+    mutationFn: async (description: string) => {
+      const t0 = performance.now();
+      let timing: string | null = null;
+      try {
+        const r = await api<SearchStoryPayload>("/api/v1/search/story", {
+          method: "POST",
+          body: { description } satisfies SearchStoryBody,
+          onTiming: (st) => {
+            timing = st;
+          },
+        });
+        markStory(t0, r.data.reason ?? "ok", timing, r.data.items.length);
+        return r.data;
+      } catch (e) {
+        markStory(t0, "err", null);
+        throw e;
+      }
+    },
     onSuccess: (res) => {
       if (res.left !== undefined) queryClient.setQueryData(STORY_TRIALS_KEY, res.left);
     },

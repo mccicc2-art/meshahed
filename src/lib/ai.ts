@@ -114,10 +114,22 @@ async function askModel(model: string, key: string, prompt: string, thinking: bo
   }
 }
 
+/**
+ * 🆕 المهمّة ٣٧٩ — **أيُّ نموذجٍ أجاب وبكم محاولة** (بلاغُ mesho ١٢ نوفمبر: «بحث ال AI بطيء جداً»). السلسلةُ تنتقل
+ * بصمتٍ إلى التالي عند الفشل، فبحثٌ أجابه الثاني دفع مهلةَ الأوّل كاملةً — وهذا لا يُرى في زمنٍ واحد. يُملأ ولا يُقرأ هنا.
+ */
+export interface AiAnswerInfo {
+  /** ترتيبُ النموذج الذي أجاب في السلسلة (١ = الأوّل) · ٠ = لم يُجب أحد */
+  model: number;
+  /** كم نداءً خرج إلى Google (إعادةُ «بلا تفكير» نداءٌ ثانٍ) */
+  tries: number;
+}
+
 /** `null` = المفتاح غير موجود (ميزة غير مفعّلة)؛ `[]` = فشل أو لا نتائج */
 export async function aiSuggestTitles(
   description: string,
   taste: AiTaste = {},
+  info?: AiAnswerInfo,
 ): Promise<AiCandidate[] | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
@@ -168,12 +180,19 @@ export async function aiSuggestTitles(
   );
 
   const prompt = lines.join("\n");
-  for (const model of models) {
+  for (const [i, model] of models.entries()) {
     let got = await askModel(model, key, prompt, true);
-    if (!got.ok && got.then === "noThinking") got = await askModel(model, key, prompt, false);
+    if (info) info.tries += 1;
+    if (!got.ok && got.then === "noThinking") {
+      got = await askModel(model, key, prompt, false);
+      if (info) info.tries += 1;
+    }
     if (got.ok) {
       const parsed = parseCandidates(got.text);
-      if (parsed.length) return parsed;
+      if (parsed.length) {
+        if (info) info.model = i + 1;
+        return parsed;
+      }
       /* جوابٌ وصل ولم يُقرأ (JSON مقصوص أو قائمةٌ فارغة) — يُكتب ويُجرَّب التالي */
       console.error("[ai]", model, "unparsed", got.text.length);
       continue;

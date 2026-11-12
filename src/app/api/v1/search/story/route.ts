@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { handle, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { aiStorySearch, storyTrialsLeft } from "@/lib/actions";
+import { aiStorySearch, storyTrialsLeft, type StoryPhases } from "@/lib/actions";
 import type { SearchStoryBody, SearchStoryPayload, SearchStoryTrialsPayload } from "@/core/contracts/search";
 
 /**
@@ -15,12 +15,15 @@ import type { SearchStoryBody, SearchStoryPayload, SearchStoryTrialsPayload } fr
  * الواجهةُ تكتب نصَّها (`aiSearchHint`/`aiSearchEmpty`) كما يفعل الويب.
  */
 export async function POST(req: NextRequest) {
-  return handle<SearchStoryPayload>(async () => {
+  const t0 = performance.now();
+  let phases: StoryPhases | undefined;
+  const out = await handle<SearchStoryPayload>(async () => {
     const body = (await req.json().catch(() => null)) as SearchStoryBody | null;
     const description = typeof body?.description === "string" ? body.description : "";
     if (!description.trim()) return fail("invalid_input", { field: "description" });
 
     const res = await aiStorySearch(description);
+    phases = res.phases;
     /* 🆕 هجرة ٢٤٣ — `left` يُرسل حين يعرفه الخادم فقط: غيابُه عند «قصير»/«لم أجد» يُبقي الرصيدَ المعروضَ كما هو */
     const left = res.left !== undefined ? { left: res.left } : {};
     if (!res.ok) return ok({ items: [], reason: res.reason, fallback: false, ...left });
@@ -39,6 +42,15 @@ export async function POST(req: NextRequest) {
       ...left,
     });
   });
+  /* 🆕 المهمّة ٣٧٩ — **أين يذهب وقتُ البحث بالوصف؟** (بلاغُ mesho ١٢ نوفمبر: «بطيء جداً»). المراحلُ في ترويسة `Server-Timing`
+     كصفحة العمل (المهمّة ٣١٩): الجسمُ والعقدُ كما هما، والتطبيقُ يقرؤها ويطرحها من زمن رحلته (`story.search`).
+     `mdl`/`try` ليسا زمناً: ترتيبُ النموذج الذي أجاب وعددُ النداءات — في خانة `dur` لأنّها الخانةُ الرقميّةُ الوحيدة */
+  const parts = Object.entries(phases ?? {})
+    .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+    .map(([k, v]) => `${k === "tries" ? "try" : k};dur=${v}`);
+  parts.push(`total;dur=${(performance.now() - t0).toFixed(1)}`);
+  out.headers.set("Server-Timing", parts.join(", "));
+  return out;
 }
 
 /**

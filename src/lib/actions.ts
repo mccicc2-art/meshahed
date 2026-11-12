@@ -6267,6 +6267,24 @@ export interface AiSearchResult {
 }
 
 /**
+ * 🆕 المهمّة ٣٧٩ — **مراحلُ البحث بالوصف بأزمنتها (ms)** — بلاغُ mesho (١٢ نوفمبر): «بحث ال AI بطيء جداً»، ولا رقمَ
+ * واحداً يقول أين يذهب الوقت (القاعدة D-1261: لا إصلاحَ لمسارٍ بطيءٍ قبل أن تكون مراحلُه على سطرٍ واحد).
+ * `gate` الهويّةُ ورصيدُ التجارب · `taste` الذوق (تقييماتٌ وملفٌّ ومكتبة) · `ai` النموذج · `grd` تثبيتُ المرشّحين في TMDB ·
+ * `fb` المسارُ البديل إن نزل إليه · `fin` الأسماءُ وعدُّ التجربة. و`mdl`/`tries` من `AiAnswerInfo`.
+ * **قياسٌ لا تغيير**: الترتيبُ والتوازي والنتائجُ كما كانت؛ مسارُ التطبيق يكتبها في `Server-Timing`، والويبُ يتجاهلها.
+ */
+export interface StoryPhases {
+  gate?: number;
+  taste?: number;
+  ai?: number;
+  grd?: number;
+  fb?: number;
+  fin?: number;
+  mdl?: number;
+  tries?: number;
+}
+
+/**
  * بحث الذكاء: وصفٌ حرّ → مرشّحون من Gemini → **تثبيتٌ عبر TMDB** (D-076).
  *
  * النموذج يقترح أسماءً والحقيقة عند TMDB: كل مرشّحٍ يمرّ على `searchByName`
@@ -6281,9 +6299,17 @@ export interface AiSearchResult {
 export async function aiStorySearch(
   description: string,
 ): Promise<
-  | { ok: true; results: AiSearchResult[]; fallback?: boolean; left?: number | null }
-  | { ok: false; reason: "empty" | "short" | "plus"; left?: number | null }
+  | { ok: true; results: AiSearchResult[]; fallback?: boolean; left?: number | null; phases?: StoryPhases }
+  | { ok: false; reason: "empty" | "short" | "plus"; left?: number | null; phases?: StoryPhases }
 > {
+  /* المهمّة ٣٧٩ — ساعةُ المراحل: `lap` يكتب ما مضى منذ آخر علامةٍ تحت اسمها ويحرّك العلامة */
+  const phases: StoryPhases = {};
+  let lapAt = performance.now();
+  const lap = (k: "gate" | "taste" | "ai" | "grd" | "fb" | "fin") => {
+    const now = performance.now();
+    phases[k] = Math.round(now - lapAt);
+    lapAt = now;
+  };
   const { user } = await requireUser("aisearch", 6, 60_000);
 
   const desc = String(description ?? "").trim().slice(0, 600);
@@ -6295,6 +6321,7 @@ export async function aiStorySearch(
   const { STORY_FREE_TRIALS } = await import("@/core/plan");
   const used = await storyTrialUsed(user.id);
   if (used !== null && used >= STORY_FREE_TRIALS) return { ok: false, reason: "plus", left: 0 };
+  lap("gate");
 
   /** التجربةُ تُحسب إذا رجع البحثُ بنتائج فقط (١ أ) — فهذه تُنادى عند الخروج بنتائج لا قبله */
   const spend = async (): Promise<number | null> => {
@@ -6342,8 +6369,13 @@ export async function aiStorySearch(
     .slice(0, 6)
     .map((g) => genreName(g!, loc));
   const exclude = follows.map((f) => f.title).filter(Boolean).slice(0, 40) as string[];
+  lap("taste");
 
-  const candidates = await aiSuggestTitles(desc, { loved, genres, exclude, locale: loc });
+  const info = { model: 0, tries: 0 };
+  const candidates = await aiSuggestTitles(desc, { loved, genres, exclude, locale: loc }, info);
+  lap("ai");
+  phases.mdl = info.model;
+  phases.tries = info.tries;
 
   const { groundByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
     await import("@/lib/tmdb");
@@ -6415,7 +6447,13 @@ export async function aiStorySearch(
       ),
     );
     for (const g of grounded) if (g) push(g.row, g.reason);
-    if (results.length) return { ok: true, results: await finish(results), left: await spend() };
+    lap("grd");
+    if (results.length) {
+      const rows = await finish(results);
+      const left = await spend();
+      lap("fin");
+      return { ok: true, results: rows, left, phases };
+    }
   }
 
   /* ===== المسار البديل — بلا نموذج (إصلاح 9 Aug) =====
@@ -6454,10 +6492,14 @@ export async function aiStorySearch(
     for (const r of rows.slice(0, 10)) push(r);
   }
 
-  if (results.length === 0) return { ok: false, reason: "empty" };
+  lap("fb");
+  if (results.length === 0) return { ok: false, reason: "empty", phases };
   /* 🆕 والمسارُ البديلُ نتائجُ أيضاً فيُحسب (١ أ — «تُحسب إذا رجع بنتائج»): وإلّا صار غيابُ النموذج بحثاً مجانيّاً بلا حدّ
      (المراجعةُ المستقلّة ١٠ نوفمبر) */
-  return { ok: true, results: await finish(results.slice(0, 12)), fallback: true, left: await spend() };
+  const rows = await finish(results.slice(0, 12));
+  const left = await spend();
+  lap("fin");
+  return { ok: true, results: rows, fallback: true, left, phases };
 }
 
 /**

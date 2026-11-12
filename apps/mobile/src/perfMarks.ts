@@ -110,7 +110,9 @@ export type PerfName =
   | "edge.tap"
   | "gesture.stuck"
   /* 🆕 D-1547 — قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة (`TabSlide.tsx`) */
-  | "pane.warm";
+  | "pane.warm"
+  /* 🆕 المهمّة ٣٧٩ — البحثُ بالوصف من الضغطة إلى الجواب، ومراحلُ الخادم معه (بلاغُ mesho ١٢ نوفمبر: «بطيء جداً») */
+  | "story.search";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
