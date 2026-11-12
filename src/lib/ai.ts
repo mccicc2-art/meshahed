@@ -61,13 +61,20 @@ export interface AiTaste {
 const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
 /** مهلةُ النداء الواحد — سلسلةٌ بلا مهلةٍ تُبقي المستخدمَ أمام «جارٍ البحث» */
 const ATTEMPT_MS = 14_000;
+/**
+ * 🆕 المهمّة ٣٨٠ — **مهلةٌ أقصرُ لكلِّ نموذجٍ بعده بديل**. قِيس في R224 (١٣ نوفمبر، ٩ بحثاتٍ من جهاز أحمد): الأوّلُ
+ * (`gemini-3.8-flash`) لم يُجب مرّةً — ستُّ مهلٍ كاملة و٥٠٣ «ضغطٌ عالٍ» ثلاثاً — والبديلُ أجاب في ٢–٣ث، فكان البحثُ ١٧–١٩ث
+ * أغلبُها انتظارُ من لن يجيب. المفتاحُ مجّانيّ، وطلباتُ المدفوع تُقدَّم وقتَ الضغط. ٦ث تبقي للأدقّ فرصتَه حين يكون متاحاً،
+ * وتنزل بأسوأ بحثٍ إلى ~٩ث. **والأخيرُ يبقى ١٤ث**: لا بديلَ بعده، وقطعُه مبكّراً يعني «لم أجد» بدل نتيجةٍ متأخّرة.
+ */
+const FALLBACK_AFTER_MS = 6_000;
 
 type Attempt =
   | { ok: true; text: string }
   /** `next`: جرّب النموذجَ التالي · `noThinking`: أعِد بلا حقل التفكير · `stop`: المفتاحُ نفسُه مرفوض */
   | { ok: false; then: "next" | "noThinking" | "stop" };
 
-async function askModel(model: string, key: string, prompt: string, thinking: boolean): Promise<Attempt> {
+async function askModel(model: string, key: string, prompt: string, thinking: boolean, timeoutMs: number): Promise<Attempt> {
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
@@ -88,7 +95,7 @@ async function askModel(model: string, key: string, prompt: string, thinking: bo
         }),
         /* لا خبيئة: كل وصفٍ سؤالٌ جديد، وأجوبة النموذج ليست حقائق تُخبّأ */
         cache: "no-store",
-        signal: AbortSignal.timeout(ATTEMPT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       },
     );
     if (!res.ok) {
@@ -181,10 +188,11 @@ export async function aiSuggestTitles(
 
   const prompt = lines.join("\n");
   for (const [i, model] of models.entries()) {
-    let got = await askModel(model, key, prompt, true);
+    const ms = i < models.length - 1 ? FALLBACK_AFTER_MS : ATTEMPT_MS;
+    let got = await askModel(model, key, prompt, true, ms);
     if (info) info.tries += 1;
     if (!got.ok && got.then === "noThinking") {
-      got = await askModel(model, key, prompt, false);
+      got = await askModel(model, key, prompt, false, ms);
       if (info) info.tries += 1;
     }
     if (got.ok) {
