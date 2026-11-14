@@ -1,8 +1,11 @@
-[deploy] Release R230 — terms no longer say subscriptions are closed (T387)
+[deploy] Release R231 — build 1.14.1: first launch after install gets the latest OTA, Play install referrer for invites, Stremio in its purple (T388, folds T385)
 
-- Task 387: Terms of Use drop «Subscriptions are not open yet, and you are never asked to pay until they are» (AR + EN); terms date 15 November 2026. Purchases are live on Android and under App Store review, and these terms become the custom EULA in App Store Connect.
-
-Web only (src/core/legal.ts; the app reads the terms from the server). Task 385 (A-09, native) stays queued: paid build not approved.
+Registry release 228 · task 388 (native build approved by Ahmed: «نفذ البناء … اذا اعطاك ممتاز ارفع»; independent review: «ممتاز»).
+- First launch after install (first embedded launch of a build): the opening curtain waits up to 3 s for expo-updates' own startup check; an update downloaded in time is applied behind the curtain, otherwise next launch as before. Existing members unchanged. Perf mark ota.first (applied · none · cap · err); applied is reported from the next boot.
+- Android: Play install referrer (ref=<CODE>) read once per install via expo-application (up to 3 tries) into the pending invite code; the invite page's Google Play button carries it (playInviteLink). Parser + tests in src/core/storeLinks.
+- Stremio's generic play glyph tinted with Stremio's purple, as Jellyfin is; per-kind SVG ids.
+- T385 (A-09) folded in: @xmldom/xmldom 0.8.15 under @bacons/xcode. expo-application declared directly. Version 1.14.1.
+Checks: web tsc 0 · eslint 0 errors · tests 452/452 · next build OK · app tsc 0 · expo export iOS + Android OK · fingerprint changed (iOS f8dbed0a…, Android 884f635c… before review fixes) ⇒ paid native build on both platforms.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FexM7AfwR6J4qaaSAKHhyP
