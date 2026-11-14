@@ -1,0 +1,10 @@
+[deploy] Release R228 — persona reviews read in the other language (T383); Home stays in the saved cache after a failed refetch (T384, A-56)
+
+Registry release 225 · tasks 383, 384.
+- T383: Persona reviews: «اقرأ بالعربية / Read in English» reads the other text in place (web + app title community).
+- T384 (A-56): a failed refetch no longer drops Home from the saved cache; home.open carries file=0|1|2; the perf route accepts `file`.
+Excluded: T385 (A-09 mobile) — changes the native fingerprint (paid build not approved); stays queued.
+Checks on the combined tree: tsc 0 · eslint 0 errors / 10 warnings · tests 449/449 · next build OK · app tsc = main · expo export Android + iOS OK · fingerprint = main ⇒ OTA.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7BLhp2B2MDNM28JW39
