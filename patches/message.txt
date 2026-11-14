@@ -1,8 +1,8 @@
-[deploy] Release R221 — after sign-out, token requests answer at once instead of waiting 8 s (A-50, T376)
+[deploy] Release R229 — remove streaming-platform promises: Younify cancelled (T386)
 
-- Task 376: A-50 — after sign-out, token requests answer at once (why=out) instead of waiting 8 s
+- Task 386: links page and Add-device sheet lose the «منصات البث · قريباً» tiles and note; link intro loses «ومنصات البث»; settings row subtitle → «تطبيقاتك التي تشاهد منها»; web /plus names the apps actually linked (Kodi, Plex, Jellyfin, Emby, Stremio)
 
-App only (apps/mobile/src/session.ts), JS — OTA, native fingerprint unchanged.
+App JS + web — OTA, native fingerprint unchanged (iOS 87118ea1…, Android ad88529c…). Task 385 (A-09, native) stays queued: paid build not approved.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7BXmoyGbpmfbmbF17A
+Claude-Session: https://claude.ai/code/session_01FexM7AfwR6J4qaaSAKHhyP
