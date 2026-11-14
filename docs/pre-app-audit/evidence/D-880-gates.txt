@@ -1,0 +1,19 @@
+== git head ==
+921abd7272561f3de898242e0f03ddb916faa6d9
+== git status ==
+ M src/components/trailers/TrailerCardMedia.tsx
+== npx tsc --noEmit ==
+exit=0
+== npx eslint src (summary) ==
+
+✖ 15 problems (0 errors, 15 warnings)
+
+== npx next build (tail) ==
+✓ Compiled successfully in 28.6s
+  Generating static pages using 1 worker (0/58) ...
+  Generating static pages using 1 worker (14/58) 
+  Generating static pages using 1 worker (28/58) 
+  Generating static pages using 1 worker (43/58) 
+✓ Generating static pages using 1 worker (58/58) in 984ms
+ƒ Proxy (Middleware)
+exit=0

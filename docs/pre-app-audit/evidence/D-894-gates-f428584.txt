@@ -1,0 +1,30 @@
+D-894 — LOOPZ-AUD-0081 (new, P1 for the Arabic UI): the Wikidata Arabic-title lookup no longer waits behind TMDB, and a failed lookup is not retried on every open
+=============================================================================================================================================================
+
+finding (owner-reported "heaviness/slowness" in chat, then measured between the D-893 delivery (16:56:04 UTC, PR comment 105) and 7122b21 (17:19:17 UTC); exact minute not recorded):
+  Arabic UI, any title whose TMDB name is Latin: page.tsx awaited displayWorkTitle() AFTER the main TMDB wave — a second external round-trip (query.wikidata.org SPARQL, timeout 1.5 s, success cached 604,800 s) on the critical path BEFORE the hero. A timeout or error was never cached, so a slow entity cost up to 1.5 s on every open until the endpoint answered in time.
+  from the owner's browser (Edge/Windows, guest, ar, navigator.connection: 4g, rtt 200 ms, downlink 6.35 Mbps): /show/60059 hero 2,017 ms (cold) then 1,686 ms on the second open (TMDB warm) — the second number is the Wikidata leg alone.
+  from the Claude pane (ar, 8 Latin-named titles, first open): hero 393–2,086 — two of eight at 1,411 and 2,086; second opens all 175–245 (Wikidata success cached).
+  the Wikidata endpoint cannot be timed from the pane (page CSP blocks the cross-origin fetch) nor from the container (egress blocked) — attribution is by elimination: TMDB warm + hero still ≈ 1.5–1.7 s = the 1.5 s timeout.
+
+owner decision (chat, before 7122b21): option A of three — start the lookup with the main wave + remember failures 10 minutes; no visual change (option B: render TMDB title first and stream the Arabic one — rejected: the title would flip; option C: lower the timeout — rejected).
+
+commits (main, git log, UTC):
+  7122b21  2026-09-02 17:19:17  D-894 (1/3) src/lib/wikidata.ts — failedUntil memo (10 min, per server instance, capped 500 keys; !ok and thrown/timeout both remembered; a memoized query returns the empty map immediately) · prefetchWorkTitle(id, media, locale) (null for en) · displayWorkTitle(..., pending?) optional 5th argument (D-152: callers that pass nothing keep the old behaviour)
+  a909426  2026-09-02 17:20:11  D-894 (2/3) src/app/show/[id]/page.tsx — workTitlePromise created before `await Promise.all`, passed to displayWorkTitle after the wave
+  f428584  2026-09-02 17:21:03  D-894 (3/3) src/app/movie/[id]/page.tsx — same  [deploy]
+rollback point: 254ce48 (three files)
+scope: application only. The Wikidata fetch, its timeout (1.5 s), its data-cache TTL and the SPARQL query are unchanged; the failure memo is an in-process Map like `lastGood` in tmdb.ts, not a data-cache change. Cost declared: a title whose TMDB Arabic name is already Arabic now triggers one Wikidata call it does not need (cached a week; the displayed title is unaffected because the Arabic check still runs before the promise is read).
+
+gates on f428584, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == f428584 read from the Claude pane at 17:22:57 UTC
+
+After (pane, ar, 8 fresh Latin-named titles, first open; hero − first byte):
+  1668 630 · 456 197 · 1434 500 · 4614 597 · 2288 337 · 1418 654 · 72844 1,518 · 1408 348   (median 548; worst 1,518 = the 1.5 s timeout as a ceiling, no longer added to TMDB)
+  second opens (4): hero 195–429 (72844 again: 1,653 → 673 → 216 across three opens)
+  before (same method, ar first opens, between 16:56 and 17:19 UTC): hero − first byte median ≈ 452, worst 1,929 (1396) and 1,245 (66732); owner's browser worst 1,850 (60059, second open 1,686 with TMDB warm)
+  reading: with cold TMDB dominating first opens, the median does not move measurably in 8 samples (452 → 548, inside the hour's spread); the ceiling moves from TMDB + 1.5 s to max(TMDB, 1.5 s) — visible in the worst rows (1,929 → 1,518). The failure memo cannot be demonstrated from outside (it needs a repeated timeout on the same instance); it is by construction. Arabic titles still resolve: /show/1399 "لعبة العروش" · /show/60059 "من الأفضل الاتصال بسول" · /movie/597 "تيتانيك" (h1 of the ar HTML after deploy).
+not measured: the Wikidata endpoint itself (blocked from pane and container) · the owner's network after the change (his browser tab froze; to be re-run) · first paint.
