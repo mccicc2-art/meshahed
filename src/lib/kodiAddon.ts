@@ -1,5 +1,6 @@
 import "server-only";
 import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
+import { KODI_FANART_JPG_B64 } from "./kodiAddonFanart";
 
 /**
  * ====== 🆕 إضافةُ Kodi — `service.loopz` (هجرة ٢٣٦؛ أحمد ٥ نوفمبر: «١ أ · ٢ أ · ٣ أ»، والرمزُ داخل التبويب «أ») ======
@@ -19,14 +20,17 @@ import { KODI_LICENSE_TXT } from "./kodiAddonLicense";
  * أن ترسل. الآن كـPlex — مرّةً لكلِّ عمل (`finish` يمحو العنصر).
  * 🆕 T364 — **1.0.3: نصوصٌ فقط** قبل تقديمها لمستودع Kodi (أحمد «نفذ»): الوصفُ كان يقول «ما نعلّم شيئاً بدون جوابك» وقد صار
  * التتبّعُ التلقائيُّ يضيف بلا سؤال، وتلميحُ الرمز كان يدلّ على «الإعدادات، سيرفرات البيت» وقد انتقل الربطُ إلى «الربط». ولا ذكرَ لخطّة.
+ * 🆕 T381 — **1.0.4: خلفيّةٌ (`fanart.jpg`) في `<assets>`** (أحمد «١ أ» ثمّ «نفذ»): تحذيرُ `art.no-fanart` من فاحص طلب المستودع.
+ * لا تغييرَ في السلوك. ⚖️ وتحذيرُه الثاني (`<website>` ردّ 429) يبقى: جدارُ Vercel يتحدّى كلَّ عميلٍ غير متصفّح (D-945)،
+ * وقرارُ أحمد («٢ أ»): لا يُضعَف الجدار لأجله — يُشرح في وصف الطلب.
  */
 
 export const KODI_ADDON_ID = "service.loopz";
-export const KODI_ADDON_VERSION = "1.0.3";
+export const KODI_ADDON_VERSION = "1.0.4";
 export const KODI_ZIP_NAME = `${KODI_ADDON_ID}-${KODI_ADDON_VERSION}.zip`;
 
 const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.loopz" name="Loopz" version="1.0.3" provider-name="Loopz">
+<addon id="service.loopz" name="Loopz" version="1.0.4" provider-name="Loopz">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
   </requires>
@@ -40,9 +44,10 @@ const ADDON_XML = String.raw`<?xml version="1.0" encoding="UTF-8" standalone="ye
     <license>GPL-2.0-or-later</license>
     <website>https://loopztv.com</website>
     <source>https://github.com/mccicc2-art/meshahed/blob/main/src/lib/kodiAddon.ts</source>
-    <news>v1.0.3: the description and the link-code hint match Loopz today (auto-tracking, the Linking page).&#10;v1.0.2: Kodi reports a title the moment it passes 90%, so leaving or closing Kodi afterwards no longer matters.&#10;v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
+    <news>v1.0.4: background art (fanart) for the add-on page.&#10;v1.0.3: the description and the link-code hint match Loopz today (auto-tracking, the Linking page).&#10;v1.0.2: Kodi reports a title the moment it passes 90%, so leaving or closing Kodi afterwards no longer matters.&#10;v1.0.1: linking moved to the Linking page in Loopz; one Kodi link is free.</news>
     <assets>
       <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
     </assets>
   </extension>
 </addon>
@@ -657,6 +662,7 @@ export function kodiAddonZip(): Uint8Array {
     text("LICENSE.txt", KODI_LICENSE_TXT),
     text("service.py", ENTRY_PY),
     { name: `${root}icon.png`, data: new Uint8Array(Buffer.from(ICON_PNG_B64, "base64")) },
+    { name: `${root}fanart.jpg`, data: new Uint8Array(Buffer.from(KODI_FANART_JPG_B64, "base64")) },
     dir("resources/"),
     text("resources/settings.xml", SETTINGS_XML),
     dir("resources/lib/"),
