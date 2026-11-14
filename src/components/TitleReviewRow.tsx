@@ -9,6 +9,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
 import { SpoilerText } from "./SpoilerText";
+import { FeedReviewText } from "./FeedReviewText";
 import { actionTailItem } from "./ui/controls";
 import { personaOf } from "@/core/personas";
 
@@ -128,6 +129,10 @@ export function TitleReviewRow({
              الرابط**: زرُّ الكشف داخلَ رابطٍ هو عطلُ D-155 بعينه. */
           (r.has_spoiler ? (
             <SpoilerText text={r.review} locale={locale} />
+          ) : r.persona?.alt ? (
+            /* 🆕 T383 — **مراجعةُ شخصيّةٍ بنصّين**: المتنُ نفسُه وتحته «اقرأ بالعربية / Read in English» — جزيرةُ الخطّ نفسُها
+               (`FeedReviewText`) لا زرٌّ ثانٍ؛ والزرُّ خارجَ الرابط (D-155) */
+            <FeedReviewText href={href} review={r.review} alt={r.persona.alt} locale={locale} strong />
           ) : (
             <Link
               href={href}

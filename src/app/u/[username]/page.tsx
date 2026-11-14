@@ -1596,6 +1596,8 @@ export default async function PublicProfilePage({
                         review={r.review}
                         locale={locale}
                         hasSpoiler={!!r.has_spoiler}
+                        /* 🆕 T383 — مراجعةُ الشخصيّة: نصُّها الآخرُ بزرّ */
+                        alt={"review_alt" in r ? r.review_alt : null}
                       />
                     ) : (
                       <div className="pb-2" />

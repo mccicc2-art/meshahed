@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance, type ViewInstance } from "react-native";
 import { useRtlRailPin } from "../rtlRailPin";
+import { PersonaAltButton } from "../title/TitleCommunity";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
 import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
@@ -1437,6 +1438,8 @@ function ReviewsPane({
 }) {
   const { t, tokens, locale } = useApp();
   const [shown, setShown] = useState<ReadonlySet<string>>(() => new Set());
+  /* 🆕 T383 — مراجعاتُ الشخصيّة التي قُلبت إلى نصّها الآخر (مفتاحُ الصفّ نفسُه) */
+  const [flipped, setFlipped] = useState<ReadonlySet<string>>(() => new Set());
   if (!rows.length) return <Empty text={t.profileEmptyReviews} />;
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 6 }}>
@@ -1461,7 +1464,16 @@ function ReviewsPane({
                     <Text size={12} muted>{`${t.spoilerMark} · ${t.spoilerShow}`}</Text>
                   </Pressable>
                 ) : (
-                  <Text autoDir size={13} style={{ lineHeight: 19 }}>{r.review}</Text>
+                  <View style={{ gap: 4 }}>
+                    <Text autoDir size={13} style={{ lineHeight: 19 }}>{r.review_alt && flipped.has(k) ? r.review_alt.text : r.review}</Text>
+                    {r.review_alt ? (
+                      <PersonaAltButton
+                        alt={r.review_alt}
+                        flip={flipped.has(k)}
+                        onFlip={() => setFlipped((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; })}
+                      />
+                    ) : null}
+                  </View>
                 )
               ) : null}
               {/* 🆕 N2 — القلبُ فعلٌ و«تعليق» يفتح خيطَ الرأي (`LikeButton` · `RowComment` في الويب) */}

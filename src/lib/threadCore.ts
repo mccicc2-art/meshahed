@@ -267,6 +267,8 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
       author: person(r, r.id),
       rating: r.rating ?? null,
       review: r.review,
+      /* 🆕 T383 — نصُّ الشخصيّة الآخرُ لزرِّ «اقرأ بالعربية / Read in English» */
+      ...(r.persona?.alt ? { review_alt: r.persona.alt } : {}),
       has_spoiler: !!r.has_spoiler,
       updated_at: r.updated_at,
       views: views.get(commentViewKey(authorId, kind, tmdbId)) ?? 0,

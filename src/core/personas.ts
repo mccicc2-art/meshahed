@@ -111,6 +111,25 @@ export function personaText(locale: string | null | undefined, ar: string | null
 }
 
 /**
+ * 🆕 T383 — **النصُّ الآخر من المنشور نفسِه**: عربيٌّ لقارئٍ واجهتُه إنجليزيّة ويحبّ يقرأ بالعربيّ، أو العكس (أحمد ١٤ نوفمبر:
+ * «اذا شخص لغته انجليزية لاكن يبي المراجعة تظهر له بالعربي»). النصّان مكتوبان أصلاً لكلِّ مراجعة، فلا ترجمةَ آليّة (D-1605).
+ * **وغيابُه `null`**: نصٌّ آخرُ فارغ، أو هو نفسُه المعروضُ احتياطاً — فلا زرَّ يَعِد بشيءٍ لا يتغيّر.
+ */
+export interface PersonaAlt {
+  text: string;
+  lang: "ar" | "en";
+}
+
+export function personaAlt(locale: string | null | undefined, ar: string | null | undefined, en: string | null | undefined): PersonaAlt | null {
+  const lang = personaLang(locale) === "ar" ? "en" : "ar";
+  const text = ((lang === "ar" ? ar : en) ?? "").trim();
+  return text && text !== personaText(locale, ar, en) ? { text, lang } : null;
+}
+
+/** اسمُ الزرّ **بلغة النصّ الذي يفتحه** لا بلغة الواجهة — من يبحث عن العربيّ يقرأ كلمةً عربيّة */
+export const PERSONA_READ_IN = { ar: "اقرأ بالعربية", en: "Read in English" } as const;
+
+/**
  * 🆕 D-1608 — **نصوصُ قسم «شخصيات لوبز AI» في لوحة «الأعضاء»** — هنا مع هويّتها لا في القاموس: القسمُ والبطاقةُ يقرآن
  * الاسمَ والأنواعَ من هذا الملفّ، فنصُّ العنوان جارُهما (ويُقرأ في الويب والتطبيق من مكانٍ واحد).
  */

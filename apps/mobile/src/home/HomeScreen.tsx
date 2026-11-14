@@ -40,6 +40,7 @@ import { haptic } from "../haptics";
 import { capCards } from "@/core/cardCount";
 import { useHome, HOME_KEY, HOME_EXTRAS_KEY } from "./useHome";
 import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
+import { cacheFileState } from "../cachePersist";
 import { HOME_TOP_H, HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
 import { opening } from "../opening/opening";
@@ -95,7 +96,8 @@ export function HomeScreen() {
   /* K1 — `home.open`: من التركيب إلى أوّل رسمٍ فيه حمولة، و`cached` يفصل الكاشَ عن الشبكة كما في المكتبة.
      والإقلاعُ صار إلى الرئيسيّة ⇒ `coldstart.home` هنا، وهو يُسكت `coldstart.library` الذي صار يقيس «متى
      فُتحت المكتبةُ أوّلَ مرّة» لا الإقلاع */
-  const [endOpen] = useState(() => span("home.open", { cached: qc.getQueryData(HOME_KEY) ? 1 : 0 }));
+  /* 🆕 A-56 — و`file`: حالُ الملفّ المحفوظ لحظةَ التركيب (٠ لا ملفّ · ١ أُعيد · ٢ ما زال يُقرأ) — يفصل «لا كاش» عن «كاشٌ بلا رئيسيّة» */
+  const [endOpen] = useState(() => span("home.open", { cached: qc.getQueryData(HOME_KEY) ? 1 : 0, file: cacheFileState() }));
   /* 🆕 D-1350 — أنميشنُ الفتح ينتظر هذه: الرئيسيّةُ معها حمولتُها (أو عرفت أنّها لن تصل) */
   const openReady = !!home.data || home.isError;
   useEffect(() => {

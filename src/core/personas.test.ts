@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { PERSONAS, isPersonaId, personaLang, personaOf, personaText } from "./personas.ts";
+import { PERSONAS, isPersonaId, personaAlt, personaLang, personaOf, personaText } from "./personas.ts";
 import { isAiPersona } from "./plan.ts";
 
 /* 🆕 D-1563 — شخصيات لوبز AI */
@@ -33,4 +33,13 @@ test("الشخصيات: العربيُّ لجهازٍ عربيّ، والإنج�
   assert.equal(personaText("ar", "نص", "text"), "نص");
   assert.equal(personaText("en", "نص", "text"), "text");
   assert.equal(personaText("en", "نص", "  "), "نص");
+});
+
+test("الشخصيات: النصُّ الآخرُ للزرّ، وغائبٌ حين لا يتغيّر شيء", () => {
+  assert.deepEqual(personaAlt("en", "نص", "text"), { text: "نص", lang: "ar" });
+  assert.deepEqual(personaAlt("ar", "نص", "text"), { text: "text", lang: "en" });
+  assert.deepEqual(personaAlt("fr", "نص", "text"), { text: "نص", lang: "ar" });
+  assert.equal(personaAlt("en", "نص", "  "), null);
+  assert.equal(personaAlt("ar", null, "text"), null);
+  assert.equal(personaAlt("ar", "same", "same"), null);
 });

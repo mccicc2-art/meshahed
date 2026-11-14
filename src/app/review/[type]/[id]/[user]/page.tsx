@@ -19,6 +19,7 @@ import { getT } from "@/lib/locale";
 import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { SpoilerText } from "@/components/SpoilerText";
+import { FeedReviewText } from "@/components/FeedReviewText";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { ReportButton } from "@/components/ReportButton";
@@ -239,6 +240,9 @@ export default async function ReviewPage({
              يكشف بعدُ، **والكشفُ ضغطتُه هو** (D-063) */
           (r.has_spoiler ? (
             <SpoilerText text={r.review} locale={locale} />
+          ) : r.persona?.alt ? (
+            /* 🆕 T383 — مراجعةُ شخصيّةٍ بنصّين: جزيرةُ المتن نفسُها بلا رابط (هذه صفحتُه) وتحتها «اقرأ بالعربية / Read in English» */
+            <FeedReviewText review={r.review} alt={r.persona.alt} locale={locale} page />
           ) : (
             <p
               dir={dirOf(r.review)}

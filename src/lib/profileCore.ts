@@ -8,7 +8,7 @@ import "server-only";
  * (نهجُ `homeCore` · `communityCore` · `messagesCore`). لا نصَّ مترجماً هنا: ما يحتاج القاموسَ (`t`) يبقى عند من يرسم.
  */
 import { isPlus } from "@/core/plan";
-import { isPersonaId, personaText } from "@/core/personas";
+import { isPersonaId, personaAlt, personaText, type PersonaAlt } from "@/core/personas";
 import {
   getUser,
   getProfileByUsername,
@@ -170,6 +170,8 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
         media_type: p.media_type,
         rating: (p.rating ?? null) as number | null,
         review: personaText(locale, p.body_ar, p.body_en),
+        /* 🆕 T383 — نصُّها الآخرُ لزرِّ «اقرأ بالعربية / Read in English» (صفوفُ الإنسان بلا هذا الحقل) */
+        review_alt: personaAlt(locale, p.body_ar, p.body_en) as PersonaAlt | null,
         title: p.title,
         poster_path: p.poster_path,
         updated_at: p.publish_at,

@@ -86,9 +86,17 @@ function pickRecentTitles() {
   keptTitles = new Set([...latest.entries()].sort((a, b) => b[1] - a[1]).slice(0, TITLES_KEPT).map(([k]) => k));
 }
 
+/* 🆕 A-56 (المدقّق ١١–١٤ نوفمبر) — **تحديثٌ فشل لا يمحو آخرَ حمولةٍ سليمة**: كان الشرطُ `success` وحدَه، وجلبٌ عند العودة
+   يفشل (الرمزُ يتجدّد · لا شبكة) يترك الاستعلامَ `error` ومعه بياناتُه — الشاشةُ ما زالت ترسمها، لكنّ كتابةَ النزول إلى
+   الخلفيّة تُسقطها من الملفّ. فالإقلاعُ التالي يفتح الرئيسيّةَ بلا كاش (`home.open … cached=0`) وينتظر الشبكةَ ٢–٣ث، و«اكتشف»
+   في الملفّ نفسِه تُرسم فوراً (١٤ من ٢٢ فتحةً باردة في أسبوعين). الآن ما معه بياناتٌ يُحفظ بآخر بياناته (`asLastGood`) */
+function hasData(q: Query): boolean {
+  return q.state.status === "success" || (q.state.status === "error" && q.state.data !== undefined);
+}
+
 function persistable(q: Query, checkKept = true): boolean {
   const key = q.queryKey;
-  if (q.state.status !== "success" || typeof key[0] !== "string") return false;
+  if (!hasData(q) || typeof key[0] !== "string") return false;
   if (key[0].startsWith("title:")) {
     if (checkKept && !keptTitles.has(key[0])) return false;
     /* `[title:k:id]` الصفحة · `[title:tv:id, "season", n, ""]` الموسمُ بلا تقييمات — لا الإضافاتُ ولا المجتمع */
@@ -146,6 +154,23 @@ export function dropAfterCrash() {
   void queryClient.resetQueries({ predicate: (q) => q.queryKey[0] !== "user:me:profile" });
 }
 
+/** A-56 — ما فشل تحديثُه الأخير يُكتب نجاحاً بآخر بياناته وطابعِها القديم: يُعاد عند الإقلاع «قديماً» فيُجلب كأخواته،
+ *  ولا يحمل خطأً (ولا كائنَ خطأٍ لا يُسلسَل) إلى الفتحة التالية */
+function asLastGood(state: DehydratedState): DehydratedState {
+  return {
+    ...state,
+    queries: state.queries.map((q) =>
+      q.state.status === "error" ? { ...q, state: { ...q.state, status: "success", error: null, fetchFailureCount: 0, fetchFailureReason: null } } : q,
+    ),
+  };
+}
+
+/** 🆕 A-56 — حالُ الملفّ لحظةَ السؤال (تقرؤه `home.open`): ٠ لا ملفَّ أو رُفض · ١ أُعيد · ٢ ما زال يُقرأ */
+let fileState: 0 | 1 | 2 = 2;
+export function cacheFileState(): 0 | 1 | 2 {
+  return fileState;
+}
+
 function writeNow() {
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = null;
@@ -153,7 +178,7 @@ function writeNow() {
   dirtySince = 0;
   try {
     pickRecentTitles();
-    const state = dehydrate(queryClient, { shouldDehydrateQuery: (q) => persistable(q) });
+    const state = asLastGood(dehydrate(queryClient, { shouldDehydrateQuery: (q) => persistable(q) }));
     const body: Stored = { v: CACHE_SCHEMA, sub: owner, locale: currentLocale(), at: Date.now(), state };
     const f = file();
     if (!f.exists) f.create();
@@ -176,17 +201,23 @@ export function startCachePersist() {
   void (async () => {
     try {
       const f = file();
-      if (!f.exists) return;
+      if (!f.exists) {
+        fileState = 0;
+        return;
+      }
       const s = JSON.parse(await f.text()) as Partial<Stored>;
       const ok = s.v === CACHE_SCHEMA && s.locale === currentLocale() && typeof s.sub === "string" && typeof s.at === "number" && Date.now() - s.at <= MAX_AGE_MS && !!s.state;
       /* رمزٌ وصل قبل انتهاء القراءة يحسم الملكيّةَ هنا لا بعدها */
       if (!ok || (owner !== null && owner !== s.sub)) {
+        fileState = 0;
         dropFile();
         return;
       }
       owner = s.sub as string;
       hydrate(queryClient, s.state as DehydratedState);
+      fileState = 1;
     } catch {
+      fileState = 0;
       dropFile();
     }
   })();

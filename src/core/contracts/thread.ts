@@ -105,6 +105,8 @@ export type ThreadHead =
       author: PersonLite;
       rating: number | null;
       review: string | null;
+      /** 🆕 T383 — مراجعةُ شخصيّةٍ AI: نصُّها الآخر (عربيٌّ لواجهةٍ إنجليزيّة أو العكس) — غائبٌ لرأي إنسان ومن خادمٍ أقدم */
+      review_alt?: { text: string; lang: "ar" | "en" } | null;
       has_spoiler: boolean;
       updated_at: string;
       views: number;

@@ -135,7 +135,9 @@ const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "th
   "hit", "dy", "dh", "dp", "away", "rtt", "srv", "stm", "strl", "sme", "sau", "spt",
   /* 🆕 المهمّة ٣٧٩ — مراحلُ البحث بالوصف في الخادم: `sgt` الهويّةُ والرصيد · `stz` الذوق · `sai` Gemini · `sgr` التثبيتُ في TMDB ·
      `sfb` المسارُ البديل · `sfn` الأسماءُ والعدّ · `mdl` ترتيبُ النموذج الذي أجاب (٠ لا أحد) · `try` كم نداءً إلى Google */
-  "sgt", "stz", "sai", "sgr", "sfb", "sfn", "mdl", "try"]);
+  "sgt", "stz", "sai", "sgr", "sfb", "sfn", "mdl", "try",
+  /* 🆕 A-56 — `file` في `home.open`: حالُ ملفّ الكاش لحظةَ التركيب (٠ لا ملفّ · ١ أُعيد · ٢ ما زال يُقرأ) */
+  "file"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

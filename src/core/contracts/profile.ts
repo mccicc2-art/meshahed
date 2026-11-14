@@ -49,6 +49,8 @@ export type ProfileReview = {
   poster_path: string | null;
   rating: number | null;
   review: string | null;
+  /** 🆕 T383 — مراجعةُ شخصيّةٍ AI: نصُّها الآخر — غائبٌ لرأي إنسان ومن خادمٍ أقدم */
+  review_alt?: { text: string; lang: "ar" | "en" } | null;
   has_spoiler: boolean;
   updated_at: string;
   likes: number;

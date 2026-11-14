@@ -4,7 +4,7 @@ import { decodeAccessToken, decodeSessionCookie, sessionCookieParts } from "@/li
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { episodeKey } from "@/core/keys";
 import { LOOPZ_ID } from "@/core/loopz";
-import { PERSONAS, personaOf, personaText, type PersonaSlug } from "@/core/personas";
+import { PERSONAS, personaAlt, personaOf, personaText, type PersonaAlt, type PersonaSlug } from "@/core/personas";
 import { getLocale } from "@/lib/locale";
 import {
   CONTENT_PREFS_COOKIE,
@@ -1612,6 +1612,8 @@ export interface FeedItem {
   rating: number | null;
   /** نصّ المراجعة إن كُتب؛ التقييم المجرّد صفٌّ بلا فقرة */
   review: string | null;
+  /** 🆕 T383 — مراجعةُ شخصيّةٍ AI: نصُّها الآخر (عربيٌّ لواجهةٍ إنجليزيّة أو العكس) — غائبٌ لكلام إنسان */
+  reviewAlt?: PersonaAlt | null;
   title: string | null;
   poster_path: string | null;
   updated_at: string;
@@ -1902,6 +1904,8 @@ export async function getFollowedPersonaFeed(before: string | null, limit: numbe
         media_type: r.media_type,
         rating: r.rating ?? null,
         review: personaText(locale, r.body_ar, r.body_en) || null,
+        /* 🆕 T383 — النصُّ الآخرُ لزرِّ «اقرأ بالعربية / Read in English» في الخطّ */
+        reviewAlt: personaAlt(locale, r.body_ar, r.body_en),
         title: r.title,
         poster_path: r.poster_path,
         updated_at: r.publish_at,
@@ -3702,7 +3706,7 @@ export interface TitleReview extends PersonLite {
   likedByMe: boolean;
   isMine: boolean;
   /** 🆕 D-1563 — مراجعةُ شخصيّةٍ AI: النصُّ بلغة القارئ (`review`)، ونطاقُها («الموسم الأول») إن كان */
-  persona?: { slug: PersonaSlug; scope: string | null };
+  persona?: { slug: PersonaSlug; scope: string | null; /** 🆕 T383 — النصُّ الآخرُ من المنشور (زرُّ «اقرأ بالعربية / Read in English») */ alt?: PersonaAlt | null };
 }
 
 export interface ReviewReply extends PersonLite {
@@ -4794,7 +4798,7 @@ export const getTitleReviews = cache(
           review: personaText(locale, p.body_ar, p.body_en),
           updated_at: p.publish_at,
           has_spoiler: p.has_spoiler,
-          persona: { slug: who.slug, scope: personaText(locale, p.scope_ar, p.scope_en) || null },
+          persona: { slug: who.slug, scope: personaText(locale, p.scope_ar, p.scope_en) || null, alt: personaAlt(locale, p.body_ar, p.body_en) },
         } as Omit<TitleReview, "likes" | "likedByMe" | "isMine">];
       });
       /* **الأحدثُ أوّلاً بين الصنفين** — والطوابعُ ISO من الخادم نفسِه فترتيبُ حروفها ترتيبُ زمنها */

@@ -15,7 +15,7 @@ import { posterFor } from "../poster";
 import type { TitleCommunityPayload } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
-import { personaOf } from "@/core/personas";
+import { PERSONA_READ_IN, personaLang, personaOf } from "@/core/personas";
 
 /**
  * ====== تبويبُ المجتمع — نسخةُ `TitleCommunityTab` للقراءة (Phase 11-D · D3 · D-956) ======
@@ -130,6 +130,19 @@ export function CommunityTab({
   );
 }
 
+/**
+ * 🆕 T383 — **زرُّ «اقرأ بالعربية / Read in English» تحت مراجعة شخصيّةٍ AI** — واحدٌ للأسطح الثلاثة في التطبيق (مجتمعُ العمل ·
+ * ملفُّ الشخصيّة · خيطُ المراجعة)، واسمُه بلغة النصّ الذي يفتحه. الحالةُ عند المستدعي: هو من يعرف أيَّ نصٍّ يرسم.
+ */
+export function PersonaAltButton({ alt, flip, onFlip }: { alt: { lang: "ar" | "en" }; flip: boolean; onFlip: () => void }) {
+  const { locale } = useApp();
+  return (
+    <Pressable onPress={onFlip} hitSlop={8} accessibilityRole="button" style={{ alignSelf: "flex-start" }}>
+      <Text size={12} weight="700" muted autoDir>{PERSONA_READ_IN[flip ? personaLang(locale) : alt.lang]}</Text>
+    </Pressable>
+  );
+}
+
 /** D-1036 — مُصدَّرٌ: صفحةُ القائمة الأصليّة ترسم آراءَ الناس بالصفِّ نفسِه (شكلٌ واحدٌ للرأي) */
 export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["reviews"][number]; onOpen?: () => void; onLike?: () => void }) {
   const { t, tokens, locale } = useApp();
@@ -142,6 +155,11 @@ export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["rev
   const flags = identityFlags({ id: r.user_id, plan: r.plan ?? null, founder: r.founder ?? null, verified_at: r.verified_at ?? null });
   const badged = flags.ai || flags.partner || flags.plus || flags.verified;
   const liked = !!r.liked_by_me;
+  /* 🆕 T383 — **نصُّ الشخصيّة الآخر** (أحمد ١٤ نوفمبر: واجهةٌ إنجليزيّة ويبي المراجعة بالعربي): الخادمُ يرسله مع المنشور،
+     والزرُّ يبدّل المتنَ في مكانه، واسمُه بلغة النصّ الذي يفتحه. `Text content` يأخذ جهتَه من النصّ نفسِه (D-1234) */
+  const alt = r.persona?.alt ?? null;
+  const [flip, setFlip] = useState(false);
+  const body = alt && flip ? alt.text : r.review;
   /* 🆕 11-M · M3 — **الصفُّ بابُ خيطه** حين يمرّر المستدعي `onOpen` (تبويبُ مجتمع العمل)، وقراءةٌ وحدَها في صفحة القائمة */
   return (
     <Pressable disabled={!onOpen} onPress={onOpen} accessibilityRole={onOpen ? "link" : undefined} style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
@@ -167,7 +185,10 @@ export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["rev
       </View>
       {r.review ? (
         reveal ? (
-          <Text size={14} content style={{ lineHeight: 21 }}>{r.review}</Text>
+          <View style={{ gap: 4 }}>
+            <Text size={14} content style={{ lineHeight: 21 }}>{body}</Text>
+            {alt ? <PersonaAltButton alt={alt} flip={flip} onFlip={() => setFlip((v) => !v)} /> : null}
+          </View>
         ) : (
           <Pressable onPress={() => setReveal(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
             <Icon name="eye-off" size={13} color={tokens.muted} />

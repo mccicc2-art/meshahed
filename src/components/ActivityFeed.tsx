@@ -616,6 +616,8 @@ function CommentRow({
              `(كاتب، عمل)` — **ومفتاحٌ يشترك فيه صفّان يعطي أحدَهما كلامَ
              الآخر** (D-237). */
           translated={isList ? null : translated}
+          /* 🆕 T383 — مراجعةُ شخصيّةٍ AI: نصُّها الآخر بزرِّ «اقرأ بالعربية / Read in English» */
+          alt={isList ? null : a.reviewAlt ?? null}
           locale={locale}
           hasSpoiler={a.hasSpoiler}
         />

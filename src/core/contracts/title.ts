@@ -174,7 +174,12 @@ export type TitleCommunityPayload = {
     replies: number;
     mine: boolean;
     /** 🆕 D-1563 — الشخصيّة ونطاقُ مراجعتها («الموسم الأول») — غائبٌ لرأي إنسان */
-    persona?: { slug: string; scope: string | null };
+    persona?: {
+      slug: string;
+      scope: string | null;
+      /** 🆕 T383 — النصُّ الآخرُ من المنشور (عربيٌّ لواجهةٍ إنجليزيّة أو العكس) — خادمٌ أقدم لا يرسله */
+      alt?: { text: string; lang: "ar" | "en" } | null;
+    };
     /** 🆕 D-1567 — هل أعجبتُ بها (قلبُ الصفّ)، وحالةُ حساب كاتبها للشارات — اختياريّةٌ: خادمٌ أقدم لا يرسلها */
     liked_by_me?: boolean;
     plan?: string | null;

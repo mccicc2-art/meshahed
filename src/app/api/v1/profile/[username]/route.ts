@@ -93,6 +93,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           poster_path: r.poster_path,
           rating: r.rating ?? null,
           review: r.review?.trim() ? r.review : null,
+          /* 🆕 T383 — مراجعةُ الشخصيّة: نصُّها الآخر */
+          ...("review_alt" in r && r.review_alt ? { review_alt: r.review_alt } : {}),
           has_spoiler: !!r.has_spoiler,
           updated_at: r.updated_at,
           likes: social?.likes ?? 0,

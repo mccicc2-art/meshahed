@@ -28,6 +28,7 @@ import { Chip } from "../library/Chip";
 import { SortCycle } from "../library/SortCycle";
 import { airedEpisodes, episodeBulletin, episodeRoomRows, episodeStats, episodeTitle, generalRows, latestBulletin, talkEpisodeKey, type EpisodeRef, type EpisodeStat } from "@/core/talkEpisodes";
 import { seasonQuery } from "../title/SeasonAccordion";
+import { PersonaAltButton } from "../title/TitleCommunity";
 import { rememberRoom } from "./recentRooms";
 import { Segmented } from "../library/ToolsSheet";
 import { formatDateShort, timeAgoShort } from "@/core/when";
@@ -933,6 +934,8 @@ function Head({
 }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
+  /* 🆕 T383 — رأسُ خيطِ مراجعةِ شخصيّة: نصُّها الآخرُ بالزرّ نفسِه */
+  const [flip, setFlip] = useState(false);
   const w = d.work;
   const bg = backdropUrl(w.backdrop_path, "w780");
   const poster = posterFor(w.poster_path, d.head.kind === "talk" ? 104 : 78);
@@ -1141,7 +1144,10 @@ function Head({
                 <Text size={13} muted>{t.spoilerShow}</Text>
               </Pressable>
             ) : (
-              <Text size={15} content style={{ marginTop: 12, lineHeight: 23 }}>{h.review}</Text>
+              <View style={{ marginTop: 12, gap: 6 }}>
+                <Text size={15} content style={{ lineHeight: 23 }}>{h.review_alt && flip ? h.review_alt.text : h.review}</Text>
+                {h.review_alt ? <PersonaAltButton alt={h.review_alt} flip={flip} onFlip={() => setFlip((v) => !v)} /> : null}
+              </View>
             )
           ) : null}
           {dateLine(h.updated_at, h.views)}
