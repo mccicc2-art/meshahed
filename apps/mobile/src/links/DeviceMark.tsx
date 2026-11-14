@@ -10,8 +10,8 @@ import type { DeviceKind } from "@/core/contracts/deviceLinks";
 /**
  * 🆕 **شارةُ الجهاز في المدار وفي «من أجهزتك»** (خطّةُ Loopz+ v2 §الشعارات).
  * 🔑 **شعارٌ بإذن صاحبه وحده**: Plex وEmby بشعارهما الرسميّ (مسارُ المتّجه كما ينشرانه، بلونهما — لا نرسمه بأيدينا)، وسطرُ
- * نسبة Plex في «عن التطبيق». وKodi بشعاره الرسميّ (أذنت مؤسّستُه ٩ نوفمبر — T360)، وStremio برمزٍ عامٍّ من رموز التطبيق حتى يصل إذنُه، وJellyfin
- * برمزه العامِّ مصبوغاً بألوانه (T354) —
+ * نسبة Plex في «عن التطبيق». وKodi بشعاره الرسميّ (أذنت مؤسّستُه ٩ نوفمبر — T360)، وJellyfin وStremio برمزٍ عامٍّ من رموز التطبيق
+ * مصبوغاً بألوان كلٍّ منهما (T354 · 1.14.1) حتى يصل إذنٌ بشعاره —
  * والاسمُ تحت الشارة في كلِّ حال.
  */
 const PLEX =
@@ -28,7 +28,11 @@ const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", plex: "tv", jel
  * المفتوحة المصدر، ويُبيح ألوانَهم المتدرّجة مع شكلٍ غيرِ شكل شعارهم. فرمزُ «فيلم» العامُّ نفسُه يُصبغ بتدرّجهم (بنفسجيٌّ إلى أزرق)
  * فيُعرف بلونه ولا ندّعي علامتَه. الصورةُ البيضاءُ قناعٌ بشفافيّتها (`maskType="alpha"`) لا رسمٌ ثانٍ للرمز.
  */
-const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"] };
+/*
+ * 🆕 1.14.1 — **وStremio كذلك** (أحمد ١٥ نوفمبر بعد معاينة «أ»: «ضيفه مع البناء»): لم يردّوا على طلب الشعار، فرمزُ «تشغيل» العامُّ
+ * يُصبغ بتدرّجٍ ينتهي ببنفسجيّهم المنشور (#685CEE) — يُعرف بلونه، ولا نرسم شعارَهم ولا ما يشبهه. شعارُهم الحقيقيُّ بإذنٍ مكتوبٍ فقط.
+ */
+const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"], stremio: ["#8B80F5", "#685CEE"] };
 
 /**
  * 🆕 T360 — **شعارُ Kodi الرسميُّ بإذن مؤسّستهم** (رسالةُ trademark@kodi.tv، ٩ نوفمبر: «you have our permission»؛ أحمد «نفذ ١»).
@@ -103,15 +107,15 @@ export function DeviceMark({
       ) : tint ? (
         <Svg width={glyph} height={glyph} viewBox="0 0 72 72">
           <Defs>
-            <LinearGradient id="dmTint" x1="0" y1="0" x2="1" y2="1">
+            <LinearGradient id={`dmTint-${kind}`} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor={tint[0]} />
               <Stop offset="1" stopColor={tint[1]} />
             </LinearGradient>
-            <Mask id="dmGlyph" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="72" maskType="alpha">
+            <Mask id={`dmGlyph-${kind}`} maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="72" maskType="alpha">
               <SvgImage href={iconSource(GENERIC[kind])} x="0" y="0" width="72" height="72" />
             </Mask>
           </Defs>
-          <Rect x="0" y="0" width="72" height="72" fill="url(#dmTint)" mask="url(#dmGlyph)" />
+          <Rect x="0" y="0" width="72" height="72" fill={`url(#dmTint-${kind})`} mask={`url(#dmGlyph-${kind})`} />
         </Svg>
       ) : (
         <Icon name={GENERIC[kind]} size={glyph} color={tokens.muted} />

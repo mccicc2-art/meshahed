@@ -118,6 +118,8 @@ const NAMES = new Set([
   "pane.warm",
   /* 🆕 D-1350 — كم بقي ستارُ أنميشن الفتح ولماذا نزل (`why` = ready · cap) */
   "open.hide",
+  /* 🆕 1.14.1 — التحديثُ الهوائيُّ في أوّل فتحةٍ بعد التثبيت (ms إلى القرار، `result` = applied · none · cap · err) */
+  "ota.first",
   /* 🆕 المهمّة ٣٧٩ — البحثُ بالوصف من الضغطة إلى الجواب (ms، `result` ok · empty · short · plus · err · `count` النتائج ·
      `rtt` · `srv` ومراحلُه `sgt` `stz` `sai` `sgr` `sfb` `sfn` · `mdl` النموذجُ الذي أجاب · `try` نداءاتُه) — بلاغُ mesho «بطيء جداً» */
   "story.search",

@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { getT } from "@/lib/locale";
 import { limited } from "@/lib/v1";
 import { inviterById, ownerOfCode } from "@/lib/referral";
-import { appInviteLink, cleanInviteCode, STORE_URL } from "@/core/storeLinks";
+import { appInviteLink, cleanInviteCode, playInviteLink, STORE_URL } from "@/core/storeLinks";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
@@ -19,7 +19,7 @@ import { buttonClass } from "@/components/ui/Button";
  * 🔑 **خطوتان على الصفحة**: نزّل التطبيق، ثمّ «افتح الدعوة في التطبيق» — زرٌّ يفتح التطبيقَ بعنوانه الخاصّ حاملاً الكود
  * (`com.loopztv.app://join/<CODE>`، يقرؤه `+native-intent.tsx`)، فيسأل الترحيبُ «هل دعاك أحمد؟» قبل أن تُكتب متابعةٌ واحدة.
  * ⚖️ **لا تخمينَ بعنوان الشبكة**: Apple تمنع بصمةَ الجهاز ولو للنسبة، وiPhone لا يمرّر مصدرَ التثبيت — فمن ذهب إلى المتجر ولم
- * يرجع يجد في الترحيب «هل دعاك أحدٌ؟» بالبحث بالاسم. (أندرويد يقرأ مصدرَ التثبيت مع البناء الأصليّ القادم — `NATIVE-BUILD-LIST`.)
+ * يرجع يجد في الترحيب «هل دعاك أحدٌ؟» بالبحث بالاسم. (ومنذ 1.14.1 يقرأ أندرويد الكودَ من مصدر التثبيت في Google Play — `playInviteLink` · `apps/mobile/src/invite/installReferrer.ts`.)
  * - **الوجهُ عامٌّ بقدر الرابط نفسِه**: من فتح الرابطَ يرى صاحبَه، ومن أخفى اسمَه لا يُعرض اسمُه ولا صورتُه.
  * - **«أكمل في المتصفح»** طريقُ الويب القائم: الكوكي كُتب في `/join` و`/p`، والنسبةُ تقع في `/auth/callback` كما كانت.
  * - الأزرارُ بحسب الجهاز من ترويسة الطلب: iPhone يرى App Store، وأندرويد Google Play، والحاسوبُ سطراً يقول افتحه من جوّالك.
@@ -50,7 +50,8 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   const stores: { key: "ios" | "android"; label: string; href: string }[] = (
     [
       { key: "ios", label: "App Store", href: STORE_URL.ios },
-      { key: "android", label: "Google Play", href: STORE_URL.android },
+      /* 🆕 1.14.1 — الكودُ في رابط Play (`referrer`) فيعرف التطبيقُ بعد التثبيت مَن دعا العضو (`playInviteLink`) */
+      { key: "android", label: "Google Play", href: code ? playInviteLink(code) : STORE_URL.android },
     ] as const
   ).filter((s) => device === "desktop" || s.key === device);
   const phone = device !== "desktop";

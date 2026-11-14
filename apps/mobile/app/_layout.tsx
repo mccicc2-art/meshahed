@@ -24,6 +24,10 @@ import { Opening } from "../src/opening/Opening";
 import { imageCacheClean, imageCacheReady } from "../src/imageCacheGuard";
 /* يسجّلان مستمعَيهما عند الإقلاع لا عند أوّل شاشةٍ أصليّة: التحقّقُ من التحديث عند العودة، و`boot.fresh` */
 import "../src/ota";
+/* 🆕 1.14.1 — أوّلُ فتحةٍ بعد التثبيت: يُمسك ستارَ الفتح لحظةَ تحميل الوحدة حتى يُقرَّر التحديثُ الهوائيّ (`src/firstLaunchUpdate.tsx`) */
+import { FirstLaunchUpdate } from "../src/firstLaunchUpdate";
+/* 🆕 1.14.1 — مصدرُ التثبيت من Google Play يحمل كودَ الدعوة (أندرويد، مرّةً في عمر التثبيت — `src/invite/installReferrer.ts`) */
+import { readInstallReferrerOnce } from "../src/invite/installReferrer";
 import "../src/presence";
 import { rootTouch, rootTouchEnd } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
@@ -40,6 +44,7 @@ import { ObserveRoot } from "expo-observe";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 /* 🔴 D-1502 — اتّجاهٌ لا يطابق اللغة ⇐ يُصحَّح ويُعاد التحميلُ مرّةً (كان يُصحَّح للفتحة التالية فتمضي هذه مقلوبة) */
 fixDirectionAtBoot();
+void readInstallReferrerOnce();
 /* D-1026 (F2) — الكاشُ المحفوظ يُعاد قبل أوّل شاشة: «المكتبة» تفتح على ما عُرض آخرَ مرّة */
 startCachePersist();
 /* 🆕 الودجتات — الخلفيّةُ والخروجُ والمهمّةُ الخلفيّة تُسجَّل من الإقلاع (`widget/feed.ts`) */
@@ -205,6 +210,8 @@ function Shell() {
       <TourHost />
       {/* 🆕 لافتةُ «نسخة جديدة في المتجر» — مطفأةٌ حتى يُشغّلها الخادم (`src/UpdateBanner.tsx`) */}
       <UpdateBanner />
+      {/* 🆕 1.14.1 — يقرأ حالَ `expo-updates` في أوّل فتحةٍ بعد التثبيت ويُعيد التحميلَ خلف الستار إن نزل تحديث */}
+      <FirstLaunchUpdate />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}
       <Opening start={splashGone} />
     </>
