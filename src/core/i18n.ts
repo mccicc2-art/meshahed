@@ -2106,13 +2106,13 @@ const ar = {
   pwHeadSubPost: " مفتوحة لك.",
   pwCardPlus: "مزايا الاشتراك",
   pwCardGold: "مزايا Gold",
-  /* قائمةُ الذهبيّ قبل Younify (أحمد ٥ نوفمبر ٢١:٤٤): لا تعِد بما ليس موجوداً يومَ المراجعة */
+  /* قائمةُ الذهبيّ (أحمد ٥ نوفمبر ٢١:٤٤): لا تعِد بما ليس موجوداً يومَ المراجعة */
   pwGoldBadgeLine: "شارة GOLD بجانب اسمك",
   pwGoldSupport: "ادعم لوبز",
   /** 🆕 T340 — لمن اشترك: حالٌ لا دعوة */
   pwGoldSupportMine: "تدعم لوبز",
   pwGoldAllPlus: "وكل مزايا Plus:",
-  /* البندُ الأوّلُ «يومَ الإطلاق» (الخطّة §٣) — يصير «منصات وتطبيقات» مع Younify عبر الهواء */
+  /* البندُ الأوّلُ (الخطّة §٣) — تطبيقاتٌ لا منصّات: أُلغي Younify (أحمد ١٥ نوفمبر) */
   pwFLink: "اربط حتى ٥ تطبيقات، ومشاهدتك تتسجّل وحدها",
   pwFStory: "ابحث بوصف القصة، والذكاء يجد العمل",
   pwFHome: "رئيسيتك وملفّك الشخصي على ذوقك",
@@ -3321,7 +3321,7 @@ const ar = {
   kodiRevoked: "أُلغي ربط Kodi",
   /* 🆕 مدارُ الأجهزة (هجرة ٢٣٧ — أحمد ٥ نوفمبر): صفحةُ «الربط» وصفحاتُ الأجهزة و«اربط أجهزتك» و«اختر ما يبقى» */
   linksTitle: "الربط",
-  linksRowSub: "منصات البث وتطبيقاتك",
+  linksRowSub: "تطبيقاتك التي تشاهد منها",
   linksRowCount: (n: number) => `${hind(n)} مربوطة`,
   linksCounterFree: (used: number) => `${hind(used)} من ١ · مع Plus ٥`,
   linksCounterPlus: (used: number, limit: number) => `${hind(used)} من ${hind(limit)} في مدارك`,
@@ -3335,9 +3335,6 @@ const ar = {
   linksSlotFull: "خانتك ممتلئة",
   linksFreeCard: "الحساب المجاني يربط تطبيقاً واحداً. مع Plus خمسة",
   linksLearnMore: "اعرف أكثر",
-  linksPlatforms: "منصات البث",
-  linksSoon: "قريباً",
-  linksPlatformsNote: "نشتغل على ربط منصات البث. أول ما يجهز تسحبها للمدار مثل تطبيقاتك",
   linksWithPlus: "مع Loopz Plus",
   linksEmptySlot: "فارغ",
   linksPlusSlot: "Plus",
@@ -3393,7 +3390,6 @@ const ar = {
   introChipSafe: "دخول آمن",
   introChipHistory: "سجلك القديم",
   introChipAuto: "تسجيل تلقائي",
-  introPlatforms: "ومنصات البث",
   introCta: "اعرف عن Loopz Plus",
   introLater: "ليس الآن",
   updateBannerTitle: "نسخة جديدة في المتجر",
@@ -5880,7 +5876,7 @@ const en: Dict = {
   kodiRevoked: "Kodi unlinked",
   /* 🆕 Device orbit (migration 237 — Ahmed 5 Nov) */
   linksTitle: "Linking",
-  linksRowSub: "Streaming platforms and your apps",
+  linksRowSub: "The apps you watch on",
   linksRowCount: (n: number) => `${n} linked`,
   linksCounterFree: (used: number) => `${used} of 1 · 5 with Plus`,
   linksCounterPlus: (used: number, limit: number) => `${used} of ${limit} in your orbit`,
@@ -5894,9 +5890,6 @@ const en: Dict = {
   linksSlotFull: "Your slot is full",
   linksFreeCard: "A free account links one app. Plus links five.",
   linksLearnMore: "Learn more",
-  linksPlatforms: "Streaming platforms",
-  linksSoon: "Soon",
-  linksPlatformsNote: "We're working on linking streaming platforms. Once it's ready, you'll drag them into your orbit like your apps.",
   linksWithPlus: "With Loopz Plus",
   linksEmptySlot: "Empty",
   linksPlusSlot: "Plus",
@@ -5951,7 +5944,6 @@ const en: Dict = {
   introChipSafe: "Safe sign-in",
   introChipHistory: "Your old history",
   introChipAuto: "Auto-track",
-  introPlatforms: "and streaming platforms",
   introCta: "About Loopz Plus",
   introLater: "Not now",
   updateBannerTitle: "A new version is in the store",

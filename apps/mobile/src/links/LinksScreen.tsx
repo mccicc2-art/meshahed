@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Gesture, GestureDetector, ScrollView as GHScrollView } from "react-native-gesture-handler";
 import Reanimated, { measure, useAnimatedRef, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from "react-native-reanimated";
@@ -27,12 +27,12 @@ import type { DeviceKind, DeviceLinksState } from "@/core/contracts/deviceLinks"
  * 🔑 **مدارٌ واحدٌ يُعدّ**: المجانيُّ جهازٌ واحدٌ من «من أجهزتك»، وبلس خمسة. المربوطُ في المدار بخطٍّ إلى القلب، وما لم يُربط
  * في الصفّ تحته — **يُسحب إلى المدار** (أو يُضغط) فتُفتح صفحتُه وخطواتُه. والضغطُ المطوَّل على مربوط: «افتح صفحته · فك الربط».
  * - المجانيُّ وخانتُه ممتلئة: الصفُّ يخفت بـ«خانتك ممتلئة»، والسحبُ أو الخانةُ المقفلةُ يفتحان «اربط أجهزتك».
- * - **قبل يونيفاي**: «منصات البث · قريباً» أسماءٌ بلا شعارات ولا سحب، وسطرُ «نشتغل على ربط منصات البث».
+ * - **لا منصّاتِ بثٍّ هنا** (أحمد ١٥ نوفمبر: «ما راح نسوي ربط مع يونفاي»): الصفحةُ تعِد بما يُربط فعلاً فقط — وعدٌ بميزةٍ لن تأتي
+ *   يضلّل العضوَ وتردّه مراجعةُ Apple.
  * - «مع Loopz+»: «سجّل بلا سؤال» (مفعّلٌ للمشترك من البداية) واستيرادُ Plex.
  * - **النزولُ لا يحذف**: ما زاد موقوف، وبطاقةُ «اختر ما يبقى» تفتح ورقتَها.
  * ⚠️ قبل الهجرة (`ready: false`) تُعرض الشاشتان القديمتان كما كانتا — لا مدارَ بلا عدّ.
  */
-const PLATFORMS = ["Netflix", "Prime Video", "Disney+", "Apple TV", "HBO Max", "Hulu", "Paramount+", "Peacock", "Discovery+"] as const;
 const LIST_TILE = 56;
 /** 🆕 الشبحُ أكبرُ من شارته بربع، ويطفو فوق الإصبع بمقدار ما يُرى (أحمد ٦ نوفمبر «خل التطبيق يطلع معي بشكل واضح») */
 const GHOST = 70;
@@ -318,18 +318,6 @@ export function LinksScreen() {
         ) : null}
       </View>
 
-      {/* ───── منصات البث · قريباً — أسماءٌ بلا شعارات ولا سحب ───── */}
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
-          <Text size={16} weight="800">{t.linksPlatforms}</Text>
-          <StatusPill label={t.linksSoon} />
-        </View>
-        <GHScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
-          <PlatformTiles />
-        </GHScrollView>
-        <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{t.linksPlatformsNote}</Text>
-      </View>
-
       {/* ───── مع Loopz+ ───── */}
       <Group label={t.linksWithPlus}>
         {free ? (
@@ -340,22 +328,6 @@ export function LinksScreen() {
         <Row icon="history" title={t.plexImportRow} subtitle={t.plexImportRowSub} onPress={free ? intro : () => setPlexOpen(true)} trailing={free ? <PlusLock /> : undefined} />
       </Group>
     </SettingsScreen>
-  );
-}
-
-/** «منصات البث · قريباً» — أسماءٌ بلا شعارات ولا ضغط؛ في الصفحة وفي «أضف جهازاً» */
-function PlatformTiles() {
-  const { t, tokens } = useApp();
-  return (
-    <>
-      {PLATFORMS.map((p) => (
-        <View key={p} accessible accessibilityLabel={`${p}، ${t.linksSoon}`} style={{ alignItems: "center", gap: 6, opacity: 0.6 }}>
-          <View style={{ width: LIST_TILE, height: LIST_TILE, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", padding: 4 }}>
-            <Text size={10} weight="700" muted numberOfLines={2} style={{ textAlign: "center", writingDirection: "ltr" }}>{p}</Text>
-          </View>
-        </View>
-      ))}
-    </>
   );
 }
 
@@ -385,7 +357,7 @@ function Ghost({ kind, idx, dragK, gx, gy, lift }: { kind: DeviceKind; idx: numb
 /**
  * 🆕 **«أضف جهازاً»** — ورقةٌ من الخانة الفارغة (أحمد ٦ نوفمبر: «اظهر التطبيقات والشخص يختار منها»، ثمّ «شعارات بدون كلام
  * جنبها · الخلفية سوداء»): شعاراتُ ما لم يُربط بأسمائها تحتها (Jellyfin وKodi بلا شعارٍ رسميٍّ بعد، فالاسمُ يعرّفهما)،
- * والمنصّاتُ تحتها «قريباً». الضغطُ يسلك باب الربط الواحد (`link`): لا خانة ⇐ «اربط أجهزتك»، وموقوفٌ ⇐ «اختر ما يبقى».
+ * بلا منصّاتِ بثّ (أُلغي Younify، ١٥ نوفمبر). الضغطُ يسلك باب الربط الواحد (`link`): لا خانة ⇐ «اربط أجهزتك»، وموقوفٌ ⇐ «اختر ما يبقى».
  */
 function AddSheet({ kinds, d, onClose, onPick }: { kinds: DeviceKind[]; d: DeviceLinksState; onClose: () => void; onPick: (k: DeviceKind) => void }) {
   const { t, tokens } = useApp();
@@ -413,15 +385,6 @@ function AddSheet({ kinds, d, onClose, onPick }: { kinds: DeviceKind[]; d: Devic
           })}
         </View>
       ) : null}
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text size={13} weight="800" muted>{t.linksPlatforms}</Text>
-          <StatusPill label={t.linksSoon} />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-          <PlatformTiles />
-        </ScrollView>
-      </View>
     </Sheet>
   );
 }

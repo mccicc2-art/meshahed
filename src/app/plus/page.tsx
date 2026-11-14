@@ -203,10 +203,11 @@ const COMING: Perk[] = [
   },
   {
     icon: "tv",
-    ar: "تسجيلٌ تلقائي وربط المنصّات",
-    en: "Automatic tracking and platform linking",
-    arBody: "اربط منصّات البثّ واشتراك IPTV مرّةً واحدة، وتتدفّق مشاهداتك بلا تعليمٍ يدوي.",
-    enBody: "Link your streaming platforms and IPTV once, and your watches flow in with no manual ticking.",
+    /* تطبيقاتٌ تُربط فعلاً، لا منصّاتُ بثّ: أُلغي Younify (أحمد ١٥ نوفمبر) — لا نعِد بما لن يأتي */
+    ar: "تتبّعٌ تلقائي وربط تطبيقاتك",
+    en: "Automatic tracking and linking your apps",
+    arBody: "اربط حتى ٥ من تطبيقاتك: Kodi وPlex وJellyfin وEmby وStremio، وتصلك مشاهداتك منها بلا بحثٍ ولا تعليمٍ يدوي.",
+    enBody: "Link up to 5 of your apps — Kodi, Plex, Jellyfin, Emby and Stremio — and what you watch there reaches Loopz with no searching or manual ticking.",
     app: true,
   },
 ];

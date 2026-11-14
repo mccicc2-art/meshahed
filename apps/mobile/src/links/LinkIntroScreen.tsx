@@ -21,7 +21,6 @@ import { DEVICE_KINDS } from "@/core/deviceLinks";
  * والسطرُ تحته، والرقائقُ الثلاث (الرمزُ والنصُّ على خطٍّ واحد)، و«اعرف عن Loopz+» (صفحةُ المميزات حتى يُفتح الشراء —
  * ثمّ «اعرض الاشتراك» مع المرحلة ٢)، و«ليس الآن».
  */
-const PLATFORMS = ["Netflix", "Prime Video", "Disney+", "Apple TV", "HBO Max"] as const;
 const CHIPS: { icon: IconName; key: "introChipSafe" | "introChipHistory" | "introChipAuto" }[] = [
   { icon: "lock", key: "introChipSafe" },
   { icon: "history", key: "introChipHistory" },
@@ -92,23 +91,6 @@ export function LinkIntroScreen() {
               <DeviceLabel name={deviceName(k)} />
             </View>
           ))}
-        </View>
-
-        {/* ───── ومنصات البث · قريباً ───── */}
-        <View style={{ alignItems: "center", gap: 10, marginTop: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text size={13} weight="700" muted>{t.introPlatforms}</Text>
-            <View style={{ borderRadius: radius.pill, backgroundColor: tokens.accent + "26", paddingHorizontal: 8, paddingVertical: 1 }}>
-              <Text size={11} weight="700" color={tokens.accent}>{t.linksSoon}</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-            {[...PLATFORMS, "…"].map((p) => (
-              <View key={p} style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 12, paddingVertical: 5 }}>
-                <Text size={12} weight="700" style={{ writingDirection: "ltr" }}>{p}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         {/* ───── العنوانُ والرقائق ───── */}
