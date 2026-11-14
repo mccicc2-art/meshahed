@@ -1,8 +1,8 @@
-[deploy] Release R229 — remove streaming-platform promises: Younify cancelled (T386)
+[deploy] Release R230 — terms no longer say subscriptions are closed (T387)
 
-- Task 386: links page and Add-device sheet lose the «منصات البث · قريباً» tiles and note; link intro loses «ومنصات البث»; settings row subtitle → «تطبيقاتك التي تشاهد منها»; web /plus names the apps actually linked (Kodi, Plex, Jellyfin, Emby, Stremio)
+- Task 387: Terms of Use drop «Subscriptions are not open yet, and you are never asked to pay until they are» (AR + EN); terms date 15 November 2026. Purchases are live on Android and under App Store review, and these terms become the custom EULA in App Store Connect.
 
-App JS + web — OTA, native fingerprint unchanged (iOS 87118ea1…, Android ad88529c…). Task 385 (A-09, native) stays queued: paid build not approved.
+Web only (src/core/legal.ts; the app reads the terms from the server). Task 385 (A-09, native) stays queued: paid build not approved.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FexM7AfwR6J4qaaSAKHhyP
