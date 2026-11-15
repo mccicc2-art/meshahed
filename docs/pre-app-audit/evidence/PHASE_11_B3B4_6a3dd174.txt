@@ -1,0 +1,46 @@
+# Phase 11 · B3+B4 gates — main @ 6a3dd1744319253ffb4fe42ee7002af1c052711e (clean tree)
+# 2026-09-08 09:57:44 +0000 feat(mobile): native Library B3+B4 — Hold menu with server-side actions, search/sort tools s
+
+## git status --short | wc -l
+0
+
+## web: npx tsc --noEmit
+TSC_WEB_OK
+
+## app: npx tsc --noEmit
+TSC_APP_OK
+
+## eslint (new/changed web files)
+ESLINT_OK
+
+## B1 §5 re-check: grep -rn access (code lines only) — unchanged surfaces
+apps/mobile/src/api.ts:3 apps/mobile/src/api.ts:94 apps/mobile/src/auth.tsx:139 apps/mobile/src/auth.tsx:141 apps/mobile/src/session.ts:29 apps/mobile/src/session.ts:52 apps/mobile/src/session.ts:54 apps/mobile/src/session.ts:67 apps/mobile/src/session.ts:68 apps/mobile/src/session.ts:121 apps/mobile/src/session.ts:126 apps/mobile/src/session.ts:129 apps/mobile/src/session.ts:132 apps/mobile/src/session.ts:137 apps/mobile/app/web.tsx:81 apps/mobile/app/web.tsx:83 apps/mobile/app/web.tsx:185 
+
+## Hold rows (HoldMenu.tsx) vs web (LibraryGrid.tsx HoldMenu): resume | next | rewatch | all | review | drop
+55:      ? [{ key: "resume", icon: "play", label: t.resumeWatching }]
+57:          ...(item.kind === "tv" && !item.completed ? [{ key: "next" as const, icon: "play" as const, label: t.markNe
+58:          ...(item.kind === "tv" && item.completed ? [{ key: "rewatch" as const, icon: "repeat" as const, label: t.re
+59:          { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
+60:          { key: "review", icon: "star", label: t.reviewSectionTitle },
+61:          { key: "drop", icon: "card", label: t.dropTitle, tone: "danger" },
+
+## icons rasterised from Icon.tsx paths (72px white, tinted at render)
+card.png
+chart.png
+check-line.png
+clock.png
+close.png
+heart-filled.png
+heart.png
+play.png
+repeat.png
+search.png
+sliders.png
+star.png
+
+## web: npx next build (tail)
+✓ Compiled successfully in 2.0s
+├ ƒ /api/v1/track/next-episode
+├ ƒ /api/v1/track/rewatch
+├ ƒ /api/v1/track/show-watched
+ƒ  (Dynamic)  server-rendered on demand
