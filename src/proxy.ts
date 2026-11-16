@@ -94,9 +94,11 @@ function needsRefresh(cookieValue: string | undefined): boolean {
    قالت ٢٩٩ ألفَ استدعاءٍ في ١٢ ساعة، ثلثاها صفحاتُ أشخاصٍ وأفلامٍ لا يفتحها
    بشرٌ بهذا العدد. صفحةُ عملٍ ترسم برحلاتٍ إلى TMDB وقاعدةٍ وتُسجَّل زمنَ معالجٍ
    يُفوتَر — **و403 من هنا ملّي ثانية بلا رحلة**. القائمةُ الأسماءُ التي تُعلن عن
-   نفسها (نسخةُ `robots.txt`)؛ **والمقنَّعُ يوقفه جدارُ Vercel** (حدُّ المعدّل — من اللوحة). */
+   نفسها (نسخةُ `robots.txt`)؛ **والمقنَّعُ يوقفه جدارُ Vercel** (حدُّ المعدّل — من اللوحة).
+   🆕 A-58: `SERankingBacklinksBot` — ستّةُ آلافِ رسمٍ لصفحاتِ الأعمال في يوم؛ قاعدةُ الجدار
+   «Deny SERankingBacklinksBot (A-58)» تردّه أوّلاً، وهذا السطرُ يبقى إن أُزيلت. */
 const BLOCKED_UA =
-  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy|meta-webindexer|meta-externalfetcher/i;
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy|meta-webindexer|meta-externalfetcher|SERankingBacklinksBot/i;
 
 /**
  * ====== 🆕 D-1341 — بوّابةُ الترحيب على الويب (Phase 11-U · U0) ======

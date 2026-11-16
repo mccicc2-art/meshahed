@@ -20,6 +20,11 @@ const AI_BOTS = [
   // بوسم Chrome كامل — لم يكن في القائمة فمرّ من الأبواب الثلاثة. **والاسمُ
   // يُقرأ من لوحة Traffic لا من ذاكرة أحد.**
   "meta-webindexer", "meta-externalfetcher",
+  // 🔴 🆕 A-58 (لوحة Vercel ١٦ نوفمبر): **`SERankingBacklinksBot` ستّةُ آلافِ طلبٍ في
+  // يوم** من عنوانٍ واحدٍ في Hetzner — كلُّها رسمٌ خادميٌّ لصفحاتِ أعمالٍ بلا زائر،
+  // وشكلُه الزمنيُّ هو حِملُ title_pulse نفسُه. زاحفُ روابطَ لعملاء SE Ranking لا
+  // يُدخل Loopz في بحثٍ — **فلحق بأخواته (AhrefsBot وSemrushBot) في القائمة.**
+  "SERankingBacklinksBot",
 ];
 
 export function GET(request: Request) {

@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,10 @@ import type { SupportersPayload, Supporter } from "@/core/contracts/supporters";
 export async function GET() {
   return handle<SupportersPayload>(async () => {
     const user = await getUser().catch(() => null);
-    const lim = limited(`v1:supporters:${user?.id ?? "anon"}`, 30, 60_000);
+    /* A-59 (المدقّق ١٥ نوفمبر) — الزائرُ بلا جلسةٍ يُعدّ بعنوانه كما في معاينة الدعوة، لا في سلّةٍ واحدةٍ لكلِّ الزوّار:
+       وإلّا أوقف زائرٌ واحدٌ كثيرُ الطلبات اللوحةَ عن الجميع */
+    const ip = user ? null : (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+    const lim = limited(`v1:supporters:${user?.id ?? `ip:${ip}`}`, 30, 60_000);
     if (lim) return lim;
     const supabase = await createClient();
     const [rows, mine] = await Promise.all([
