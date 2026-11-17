@@ -46,7 +46,7 @@ function browserLabel(): string {
   return os ? `${b} · ${os}` : b;
 }
 
-function FeedbackSheet({ locale, onClose }: { locale: Locale; onClose: () => void }) {
+export function FeedbackSheet({ locale, onClose }: { locale: Locale; onClose: () => void }) {
   const t = getDict(locale);
   const [kind, setKind] = useState<FeedbackKind>("bug");
   const [body, setBody] = useState("");

@@ -80,8 +80,10 @@ export function HeaderShell({
 
      ⚠️ **وشكلُ المسجَّل لم يتبدّل بكسلاً**: حكمُ D-536 قائمٌ له. */
   if (signedIn && hidesAppHeaderOnMobile(pathname)) {
-    return <div className="hidden md:contents">{children}</div>;
+    return <div className="hidden md:contents lz-desk-hide">{children}</div>;
   }
 
-  return <div className="contents">{children}</div>;
+  /* 🆕 قشرةُ الحاسوب — `lz-desk-hide`: الشريطُ العلويُّ يغيب حين يحضر الشريطُ الجانبيّ (1024 فما فوق، خارج غلاف
+     التطبيق، للمسجَّل وحدَه) — بابان للشيء نفسه في شاشةٍ واحدة عطل. القاعدةُ في `globals.css`. */
+  return <div className="contents lz-desk-hide">{children}</div>;
 }

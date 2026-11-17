@@ -22,6 +22,8 @@ import { getDict, isRtl, LOCALE_COOKIE } from "@/core/i18n";
 import { themeById, themeCss } from "@/core/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/core/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
+import { DesktopSidebarFrame } from "@/components/DesktopSidebarFrame";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
 import { AccountSync } from "@/components/AccountSync";
 import { LangPing } from "@/components/LangPing";
@@ -276,6 +278,14 @@ export default async function RootLayout({
             <Navbar />
           </HeaderShell>
         </Suspense>
+        {/* 🆕 قشرةُ الحاسوب (التصميم «أ»، أحمد ١٧ نوفمبر): شريطٌ جانبيٌّ ثابتٌ للمسجَّل من 1024 فما فوق،
+            يحلّ محلَّ الشريط العلويّ هناك. الهيكلُ (بلا بيانات) هو حدُّ الانتظار فلا تقفز الصفحة،
+            والظهورُ والإزاحةُ في `globals.css` (`body:has(.lz-desk)`) — وداخل غلاف التطبيق لا يظهر. */}
+        {signedIn && (
+          <Suspense fallback={<DesktopSidebarFrame locale={locale} />}>
+            <DesktopSidebar />
+          </Suspense>
+        )}
         {/* 🆕 **مزامنةُ تفضيلات الحساب — خارج الشريط لا داخله** (D-498):
             الشريطُ يُلغى في الإعدادات، **والتفضيلُ يجب أن ينزل هناك
             بالذات.** لا ترسم شيئاً، وتُبثّ فلا تحبس أوّل بايت. */}
