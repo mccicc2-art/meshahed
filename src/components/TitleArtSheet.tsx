@@ -7,6 +7,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 import { getDict, type Locale } from "@/core/i18n";
+import { WORDS } from "./plus/plusStore";
 import { posterUrl, backdropUrl, type MediaType } from "@/core/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
@@ -144,7 +145,8 @@ export function TitleArtSheet({
             <div className="rounded-2xl border border-border bg-surface px-4 py-3">
               <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
               <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
-              <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
+              <p className="mt-1.5 text-12 text-muted leading-none">{/* T408 — «قريباً، والاشتراك لم يُفتح» لم يعد صادقاً: الاشتراكُ مفتوحٌ من التطبيق (القاموسُ المشترك لا يُلمس — يُطلق تحديثَ التطبيق) */}
+            {WORDS[locale === "en" ? "en" : "ar"].gateLine}</p>
             </div>
             <Link href="/plus" className="text-12 font-bold text-accent hover:underline">
               {t.plusLearnMore}

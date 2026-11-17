@@ -6,6 +6,7 @@ import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { Icon } from "@/components/Icon";
 import { PLUS_GATE_EVENT } from "@/lib/plusGate";
 import { getDict, type Locale } from "@/core/i18n";
+import { WORDS } from "./plus/plusStore";
 
 /**
  * مضيفُ بوّابة Loopz+ — يُركَّب مرّةً في التخطيط كمضيفَي التوست وبوّابة
@@ -55,7 +56,8 @@ export function PlusGateHost({ locale }: { locale: Locale }) {
                 الأولى دائمٌ لكلِّ مشترِكٍ جديد، **وثمنٌ أوّلُ يُعرض بلا
                 ذكر ما بعده هو الوعدُ الذي لا يُسلَّم** (D-217). */}
             <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
-            <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
+            <p className="mt-1.5 text-12 text-muted leading-none">{/* T408 — «قريباً، والاشتراك لم يُفتح» لم يعد صادقاً: الاشتراكُ مفتوحٌ من التطبيق (القاموسُ المشترك لا يُلمس — يُطلق تحديثَ التطبيق) */}
+            {WORDS[locale === "en" ? "en" : "ar"].gateLine}</p>
           </div>
         </div>
 

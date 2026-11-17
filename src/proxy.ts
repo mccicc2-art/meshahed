@@ -148,6 +148,8 @@ function welcomeExempt(pathname: string): boolean {
     pathname === "/welcome" ||
     pathname === "/login" ||
     pathname === "/features" ||
+    /* 🆕 T408 — رمزُ QR في نافذة الاشتراك يُمسح من جوّالٍ قد لا يكون داخلاً: تحويلٌ إلى المتجر لا أكثر */
+    pathname === "/get" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
     pathname === "/account/delete" ||
@@ -258,6 +260,8 @@ function guestOpen(pathname: string): boolean {
     /* 🆕 D-1512 — صفحةُ ربط Stremio: «Configure» في قائمة Community Addons يفتحها لزائرٍ لم يسجّل بعد، فتشرح ثمّ تطلب الدخول */
     pathname === "/stremio" ||
     pathname === "/features" ||
+    /* 🆕 T408 — رمزُ QR في نافذة الاشتراك يُمسح من جوّالٍ قد لا يكون داخلاً: تحويلٌ إلى المتجر لا أكثر */
+    pathname === "/get" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
     pathname === "/account/delete" ||
