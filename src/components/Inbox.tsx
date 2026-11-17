@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { getDict, num, type Locale } from "@/core/i18n";
-import { gifUrl, posterUrl } from "@/core/media";
+import { gifUrl } from "@/core/media";
 import { formatDateShort, timeAgo } from "@/core/when";
 import { tap } from "@/lib/haptics";
-import { flashError } from "@/lib/toast";
+import { copiedToast, flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/core/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import { FeedEmptyCta } from "./FeedEmptyCta";
@@ -20,9 +19,13 @@ import { KeyboardDock } from "./ui/KeyboardDock";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { sendDirectMessage, markConversationRead, hideConversation } from "@/lib/actions";
-import { DM_MAX } from "@/core/dmPolicy";
 import { DEFAULT_CHAT_BG, type ChatBg } from "@/core/chatBg";
 import { ChatBackground } from "./ChatBackground";
+import { ChatComposer, type Outgoing } from "./InboxComposer";
+import { ConvBubble, MsgDeleteSheet, MsgMenuSheet, MsgShell, canUnsend, deleteMessages, replyLineOf, replyRefOf } from "./InboxChat";
+import { CreateGroupSheet, GroupAvatar, GroupView, groupPreview } from "./InboxGroups";
+import type { MsgDeleteKind } from "@/core/contracts/messages";
+import type { MsgGroupConversation } from "@/core/contracts/groups";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -52,6 +55,11 @@ export function Inbox({
   peer = null,
   canMessage = null,
   chatBg = DEFAULT_CHAT_BG,
+  groups = [],
+  canCreateGroup = false,
+  openGroup = null,
+  meId,
+  header = null,
 }: {
   conversations: Conversation[];
   /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
@@ -68,12 +76,25 @@ export function Inbox({
   canMessage?: boolean | null;
   /** 🆕 D-1382 — خلفيّةُ الخيط كما تُرسم (`effectiveChatBg`) — واحدةٌ لكلِّ المحادثات */
   chatBg?: ChatBg;
+  /** 🆕 T397 — القروباتُ (الهجرة ٢٠٥) من `getGroups` — في القائمة نفسِها بجانب الخاص، مرتّبةً بآخر نشاط */
+  groups?: MsgGroupConversation[];
+  /** 🆕 T397 — لوبز+: «إنشاء قروب» يفتح الورقة؛ ولغيره يقول لمن هو ويفتح صفحةَ لوبز+ */
+  canCreateGroup?: boolean;
+  /** 🆕 T397 — `?group=<id>`: القروبُ المفتوح */
+  openGroup?: string | null;
+  /** معرّفُ القارئ — «أنت» في القروب ومن كتب ماذا */
+  meId: string;
+  /** 🆕 T397 — ترويسةُ الصفحة (التلميح + التبويبات) تسكن لوحَ القائمة: على الجوال تسقط مع القائمة حين يُفتح خيط (D-767)،
+   *  وعلى الحاسوب تبقى فوق القائمة واللوحان معاً */
+  header?: React.ReactNode;
 }) {
   const t = getDict(locale);
   /* 🆕 11-M · M4 — الورقةُ تُفتح للشخص المطلوب إن كان ممّن يُبدأ معهم فعلاً؛ غيرُه يسقط إلى القائمة بلا ورقة */
   const [startWith, setStartWith] = useState<PersonLite | null>(() =>
     openStart ? startable.find((p) => p.id === openStart) ?? null : null,
   );
+  /* 🆕 T397 — ورقةُ «إنشاء قروب» (تُحمَّل أوّلَ فتحٍ وتبقى بعده لتعمل حركةُ الإغلاق) */
+  const [createOpen, setCreateOpen] = useState<boolean | null>(null);
 
   /* **الاسمُ من `displayNameOf` لا من سطرٍ محليّ** (D-193): كان هنا تعريفٌ
      ثانٍ لـ«اسمُ من أخفى اسمه» — نسخةٌ وُلدت لأن الدالّة الأصلية كانت في
@@ -87,22 +108,15 @@ export function Inbox({
   const open =
     (openWith ? conversations.find((c) => c.personId === openWith) : null) ??
     (fresh ? { personId: fresh.id, person: fresh, events: [], lastAt: "", unread: 0, latestShareId: "" } : null);
-  if (open) {
-    return (
-      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} canMessage={canMessage} chatBg={chatBg} />
-    );
-  }
+  const group = !open && openGroup ? groups.find((g) => g.group_id === openGroup) ?? null : null;
+  const threadOpen = !!open || !!group;
 
-  // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده
-  if (conversations.length === 0 && startable.length === 0) {
-    /* حالة موجهة (تعميم نمط D-106): الرسائل تحتاج متابعة متبادلة —
-       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث */
-    return (
-      <div>
-        <FeedEmptyCta locale={locale} text={t.inboxEmpty} />
-      </div>
-    );
-  }
+  /* 🆕 T397 — الخاصُّ والقروباتُ صفوفٌ في قائمةٍ واحدة، الأحدثُ أوّلاً — كما في التطبيق */
+  type Row = { k: "dm"; at: string; c: Conversation } | { k: "group"; at: string; g: MsgGroupConversation };
+  const rows: Row[] = [
+    ...conversations.map((c): Row => ({ k: "dm", at: c.lastAt, c })),
+    ...groups.map((g): Row => ({ k: "group", at: g.last_at, g })),
+  ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
   /* **صفُّ البحث ذهب** (طلب أحمد ١١ أغسطس، لقطةٌ مشطوبةٌ بالأحمر): كان
      يفعل شيئين — يُرشّح محادثاتك بالاسم، **ويكشف من تستطيع أن تبدأ معه**.
@@ -113,118 +127,223 @@ export function Inbox({
      **والكلفة تُقال:** من له متابَعون متبادلون كثيرون يرى قائمةً أطول
      أسفل محادثاته. ولم يُقصَّ القسم بسقفٍ صامت — سقفٌ يُخفي أشخاصاً
      ويقول إنه عرض الجميع أسوأ من قائمةٍ طويلة (D-165). */
-  const shown = conversations;
   const startShown = startable;
+  const rowClass = (active: boolean) =>
+    `flex items-center gap-3 py-3 -mx-2 px-2 rounded-xl transition ${active ? "bg-surface-2" : "hover:bg-surface-2"}`;
 
-  return (
-    <div>
-      {shown.length > 0 && (
-        <ul className="divide-y divide-[color:var(--divider)]">
-          {shown.map((c) => {
-        const name = nameOf(c.person);
-        const last = c.events[c.events.length - 1];
-        const preview = previewOf(last, t);
-        return (
-          <li key={c.personId}>
-            <Link
-              href={`/people?tab=inbox&with=${c.personId}`}
-              aria-label={t.convOpenAria(name)}
-              className="flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition"
-            >
-              <Avatar
-                src={c.person?.hide_name ? null : c.person?.avatar_url ?? null}
-                name={name}
-                size={44}
-                alt={t.avatarAlt}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="flex flex-1 min-w-0 items-center" style={{ gap: 4 }}>
-                    <span className="text-sm font-semibold truncate min-w-0">{name}</span>
-                    {c.person?.hide_name ? null : (
-                      <AccountBadges profile={c.person} t={t} />
-                    )}
-                  </span>
-                  <span className="text-12 text-muted shrink-0">
-                    {formatDateShort(c.lastAt, t)}
-                  </span>
-                </span>
-                <span
-                  className={`block text-12 truncate ${
-                    c.unread > 0 ? "text-foreground font-medium" : "text-muted"
-                  }`}
-                >
-                  {preview}
-                </span>
-              </span>
-              {c.unread > 0 && (
-                <span
-                  aria-label={t.communityUnreadAria(c.unread)}
-                  className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold tabular-nums"
-                  dir="ltr"
-                >
-                  {num(c.unread, locale)}
-                </span>
-              )}
-            </Link>
-          </li>
-        );
-          })}
-        </ul>
-      )}
-
-      {/* ابدأ محادثة — كلُّ متابَعٍ متبادلٍ لا خيط معه بعد، **ظاهراً دائماً**
-          بعد أن ذهب صفُّ البحث الذي كان يكشفهم.
-          🆕 D-1380 — الضغطُ يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */}
-      {startShown.length > 0 && (
-        <section className="mt-5">
-          <p className="text-12 font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">
-            {t.convStartSection}
-          </p>
+  const list =
+    rows.length === 0 && startShown.length === 0 ? (
+      /* حالة موجهة (تعميم نمط D-106): الرسائل تحتاج متابعة متبادلة —
+         فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث */
+      <div>
+        <FeedEmptyCta locale={locale} text={t.inboxEmpty} />
+      </div>
+    ) : (
+      <div>
+        {rows.length > 0 && (
           <ul className="divide-y divide-[color:var(--divider)]">
-            {startShown.map((p) => {
-              const name = nameOf(p);
+            {rows.map((r) => {
+              if (r.k === "group") {
+                const g = r.g;
+                const active = group?.group_id === g.group_id;
+                return (
+                  <li key={`g-${g.group_id}`}>
+                    <Link
+                      href={`/messages?group=${g.group_id}`}
+                      scroll={false}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={t.convOpenAria(g.name)}
+                      className={rowClass(active)}
+                    >
+                      <GroupAvatar g={g} meId={meId} size={44} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="flex flex-1 min-w-0 items-center gap-1.5">
+                            <span className="text-sm font-semibold truncate min-w-0">{g.name}</span>
+                            {g.muted ? <Icon name="volume-off" size={13} className="shrink-0 text-muted" /> : null}
+                          </span>
+                          <span className="text-12 text-muted shrink-0">{formatDateShort(g.last_at, t)}</span>
+                        </span>
+                        <span className={`block text-12 truncate ${g.unread > 0 ? "text-foreground font-medium" : "text-muted"}`}>
+                          {groupPreview(g, meId, t)}
+                        </span>
+                      </span>
+                      {g.unread > 0 && (
+                        <span
+                          aria-label={t.communityUnreadAria(g.unread)}
+                          className={`shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full text-12 font-bold tabular-nums ${
+                            g.muted ? "bg-surface-2 text-muted" : "bg-accent text-[color:var(--on-accent)]"
+                          }`}
+                          dir="ltr"
+                        >
+                          {num(g.unread, locale)}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              }
+              const c = r.c;
+              const name = nameOf(c.person);
+              const last = c.events[c.events.length - 1];
+              const preview = previewOf(last, t);
+              const active = open?.personId === c.personId;
               return (
-                <li key={p.id}>
+                <li key={c.personId}>
                   <Link
-                    href={`/people?tab=inbox&with=${p.id}`}
-                    onClick={() => tap(6)}
-                    aria-label={t.convStartRowAria(name)}
-                    className="w-full flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition text-start"
+                    href={`/messages?with=${c.personId}`}
+                    scroll={false}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={t.convOpenAria(name)}
+                    className={rowClass(active)}
                   >
-                    <Avatar
-                      src={p.hide_name ? null : p.avatar_url}
-                      name={name}
-                      size={44}
-                      alt={t.avatarAlt}
-                    />
+                    <Avatar src={c.person?.hide_name ? null : c.person?.avatar_url ?? null} name={name} size={44} alt={t.avatarAlt} />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center min-w-0" style={{ gap: 4 }}>
-                        <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
-                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      <span className="flex items-center gap-2">
+                        <span className="flex flex-1 min-w-0 items-center" style={{ gap: 4 }}>
+                          <span className="text-sm font-semibold truncate min-w-0">{name}</span>
+                          {c.person?.hide_name ? null : <AccountBadges profile={c.person} t={t} />}
+                        </span>
+                        <span className="text-12 text-muted shrink-0">{formatDateShort(c.lastAt, t)}</span>
                       </span>
-                      <span className="block text-12 text-muted truncate">
-                        {t.convStartRowHint}
+                      <span className={`block text-12 truncate ${c.unread > 0 ? "text-foreground font-medium" : "text-muted"}`}>
+                        {preview}
                       </span>
                     </span>
-                    <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted" aria-hidden>
-                      <Icon name="chat" size={16} />
-                    </span>
+                    {c.unread > 0 && (
+                      <span
+                        aria-label={t.communityUnreadAria(c.unread)}
+                        className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold tabular-nums"
+                        dir="ltr"
+                      >
+                        {num(c.unread, locale)}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
             })}
           </ul>
-        </section>
-      )}
+        )}
+
+        {/* ابدأ محادثة — كلُّ متابَعٍ متبادلٍ لا خيط معه بعد، **ظاهراً دائماً**
+            بعد أن ذهب صفُّ البحث الذي كان يكشفهم.
+            🆕 D-1380 — الضغطُ يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */}
+        {startShown.length > 0 && (
+          <section className="mt-5">
+            <p className="text-12 font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">{t.convStartSection}</p>
+            <ul className="divide-y divide-[color:var(--divider)]">
+              {startShown.map((p) => {
+                const name = nameOf(p);
+                return (
+                  <li key={p.id}>
+                    <Link
+                      href={`/messages?with=${p.id}`}
+                      scroll={false}
+                      onClick={() => tap(6)}
+                      aria-label={t.convStartRowAria(name)}
+                      className={`${rowClass(open?.personId === p.id)} w-full text-start`}
+                    >
+                      <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={44} alt={t.avatarAlt} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                          <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                          {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                        </span>
+                        <span className="block text-12 text-muted truncate">{t.convStartRowHint}</span>
+                      </span>
+                      <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted" aria-hidden>
+                        <Icon name="chat" size={16} />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+      </div>
+    );
+
+  /* 🆕 T397 — «إنشاء قروب» فوق القائمة: لمشترك لوبز+ يفتح الورقة، ولغيره رابطٌ إلى لوبز+ يقول لمن هي (`grpPlusOnly`) */
+  const createRow = canCreateGroup ? (
+    <button
+      type="button"
+      onClick={() => {
+        tap(6);
+        setCreateOpen(true);
+      }}
+      className="mb-2 flex w-full items-center gap-3 rounded-xl -mx-2 px-2 py-2.5 text-start hover:bg-surface-2 transition"
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 text-accent" aria-hidden>
+        <Icon name="people" size={18} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{t.grpCreate}</span>
+        <span className="block text-12 text-muted truncate">{t.grpCreateSub}</span>
+      </span>
+    </button>
+  ) : (
+    <Link href="/plus" className="mb-2 flex w-full items-center gap-3 rounded-xl -mx-2 px-2 py-2.5 hover:bg-surface-2 transition">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 text-muted" aria-hidden>
+        <Icon name="people" size={18} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{t.grpCreate}</span>
+        <span className="block text-12 text-muted truncate">{t.grpPlusOnly}</span>
+      </span>
+      <Icon name="lock" size={14} className="shrink-0 text-muted" />
+    </Link>
+  );
+
+  return (
+    /* 🆕 T397 — **لوحان على الحاسوب** (قرار أحمد ١٧ نوفمبر، اتجاه «أ»): القائمةُ ٣٤٠ ثابتةٌ في جهة البداية والمحادثةُ
+       بجانبها بعرض ما بقي. **وتحت ١٠٢٤ لا شيء تغيّر**: لوحٌ واحدٌ — القائمةُ أو الخيط — كما كان (D-767).
+       الخيطُ يبقى في تمرير الصفحة نفسِه والخانةُ في مرساها (`KeyboardDock`)، والقائمةُ تلتصق برأس النافذة وتُمرَّر وحدها */
+    <div className="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+      <div
+        className={`${threadOpen ? "hidden lg:block" : "space-y-4"} lg:space-y-4 lg:sticky lg:top-6 lg:z-[2] lg:h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:overscroll-contain lg:pe-4 lg:border-e lg:border-[color:var(--divider)] lg:bg-[color:var(--background)]`}
+      >
+        {header}
+        <div>
+          {createRow}
+          {list}
+        </div>
+      </div>
+
+      <div className={`${threadOpen ? "" : "hidden lg:block"} min-w-0 lg:ps-6`}>
+        {open ? (
+          <ConversationView
+            key={open.personId}
+            conv={open}
+            name={nameOf(open.person)}
+            locale={locale}
+            lastSeen={lastSeen}
+            canMessage={canMessage}
+            chatBg={chatBg}
+          />
+        ) : group ? (
+          <GroupView key={group.group_id} g={group} meId={meId} locale={locale} chatBg={chatBg} />
+        ) : (
+          /* الحاسوبُ وحدَه: لوحُ المحادثة فارغٌ حتى تُختار واحدة — أيقونةٌ وعنوانٌ لا فراغٌ أبيض */
+          <div className="grid min-h-[70vh] place-items-center text-center">
+            <div className="flex flex-col items-center gap-2">
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-surface-2 text-muted" aria-hidden>
+                <Icon name="chat" size={28} />
+              </span>
+              <p className="text-15 font-bold">{t.communityTabInbox}</p>
+              <p className="max-w-xs text-12 text-muted">{t.convStartRowHint}</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {startWith && (
-        <StartConversationSheet
-          person={startWith}
-          locale={locale}
-          onClose={() => setStartWith(null)}
-        />
+        <StartConversationSheet person={startWith} locale={locale} onClose={() => setStartWith(null)} />
       )}
+      {createOpen !== null ? (
+        <CreateGroupSheet open={createOpen} onClose={() => setCreateOpen(false)} locale={locale} />
+      ) : null}
     </div>
   );
 }
@@ -261,6 +380,23 @@ function replyPreview(e: Extract<ConvEvent, { kind: "reply" }>, t: Dict): string
   return e.body;
 }
 
+/** 🆕 T397 — نوعُ الرسالة عند الحذف (`MsgDeleteKind`) — الردُّ القديمُ في خيط عمل لا يُحذف (نسخةُ `delKind` في التطبيق) */
+function delKind(e: ConvEvent): MsgDeleteKind | null {
+  if (e.id.startsWith("tmp-")) return null;
+  return e.kind === "reply" ? (e.dm ? "dm" : null) : e.kind;
+}
+
+/** 🆕 T397 — ما يُنسخ: نصُّ الرسالة أو تعليقُ الصورة أو ملاحظةُ البطاقة — ولا شيء لـGIF وحده أو لمحذوفة */
+function copyOf(e: ConvEvent): string {
+  if (e.kind === "reply") return e.deleted ? "" : e.body.trim();
+  return (e.note ?? "").trim();
+}
+
+/** مصغّرةُ ما يُقتبس فوق الخانة */
+function replyThumb(e: ConvReplyEvent): string | null {
+  return e.image?.url ?? (e.gif_id ? gifUrl(e.gif_id, "small") : null);
+}
+
 /** خيط محادثةٍ واحد — كالدردشة */
 function ConversationView({
   conv,
@@ -281,6 +417,11 @@ function ConversationView({
   const router = useRouter();
   const [events, setEvents] = useState<ConvEvent[]>(conv.events);
   const idRef = useRef(0);
+  /* 🆕 T397 — الردُّ على رسالة، وورقتا الأفعال والحذف لرسالةٍ واحدة */
+  const [replyTo, setReplyTo] = useState<ConvReplyEvent | null>(null);
+  const [acting, setActing] = useState<ConvEvent | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
 
   /* فورية (م٥/D-069): Realtime على جداول الخيط يوقظ التجديد لحظةَ وصول
      رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
@@ -333,7 +474,7 @@ function ConversationView({
     setMenu(false);
     tap(8);
     hideConversation(conv.personId)
-      .then(() => router.push("/people?tab=inbox"))
+      .then(() => router.push("/messages"))
       .catch((e) => flashError((e as Error).message));
   }
 
@@ -347,17 +488,79 @@ function ConversationView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv.unread]);
 
+  /* 🆕 T397 — الإرسالُ: فقاعةٌ متفائلةٌ فوراً (بصورتها المحلّيّة أو الـGIF أو اقتباسها)، ثمّ الكتابة، ثمّ تجديدُ الخيط
+     فيحلّ ما في الخادم محلَّها — نهجُ الحقل القديم نفسُه */
+  async function send(m: Outgoing) {
+    const quoted = m.reply_to ? events.find((e): e is ConvReplyEvent => e.kind === "reply" && e.id === m.reply_to) ?? null : null;
+    setEvents((prev) => [
+      ...prev,
+      {
+        kind: "reply",
+        id: `tmp-${idRef.current++}`,
+        mine: true,
+        body: m.body,
+        created_at: new Date().toISOString(),
+        dm: true,
+        ...(m.gif_id ? { gif_id: m.gif_id } : {}),
+        ...(m.local ? { image: { url: m.local, key: m.local } } : {}),
+        ...(quoted ? { reply: replyRefOf(quoted) } : {}),
+      },
+    ]);
+    try {
+      await sendDirectMessage(conv.personId, m.body, { gif_id: m.gif_id ?? null, image_path: m.image_path ?? null, reply_to: m.reply_to ?? null });
+      coalescedRefresh(router);
+    } catch (e) {
+      flashError((e as Error).message);
+    }
+  }
+
+  /* 🆕 T397 — أفعالُ الرسالة: الردُّ على المباشرة وحدها (D-1403)، والنسخُ لما فيه نصّ، والحذفُ لما يقبله الخادم (D-1441) */
+  const act = acting;
+  const canReply = !!act && act.kind === "reply" && !!act.dm && !act.deleted;
+  const copyText = act ? copyOf(act) : "";
+  const kind = act ? delKind(act) : null;
+  const canAll = !!act && !!kind && canUnsend([act]) && !(act.kind === "reply" && act.deleted);
+
+  async function runDelete(scope: "me" | "all") {
+    const e = acting;
+    const k = e ? delKind(e) : null;
+    setDelOpen(false);
+    if (!e || !k) return;
+    tap(8);
+    try {
+      const res = await deleteMessages({ scope, items: [{ kind: k, id: e.id }] }, t);
+      if (res.refused.includes(e.id)) {
+        flashError(t.apiUnsendWindow);
+        return;
+      }
+      setEvents((prev) =>
+        prev.flatMap((x): ConvEvent[] =>
+          x.id !== e.id || x.kind !== e.kind
+            ? [x]
+            : scope === "all" && x.kind === "reply"
+              ? [{ kind: "reply", id: x.id, mine: x.mine, body: "", created_at: x.created_at, dm: true, deleted: true }]
+              : [],
+        ),
+      );
+      if (replyTo?.id === e.id) setReplyTo(null);
+      coalescedRefresh(router);
+    } catch (err) {
+      flashError((err as Error).message);
+    }
+  }
+
   return (
     <>
     {/* 🆕 D-1382 — الخلفيّةُ طبقةٌ ثابتةٌ تحت الخيط، والخيطُ فوقها (`z-[1]`) */}
     <ChatBackground bg={chatBg} />
     <div className="relative z-[1] flex flex-col">
       {/* ترويسة: رجوع، صاحب المحادثة، إخفاء */}
-      <div className="flex items-center gap-2.5 pb-3 border-b border-[color:var(--divider)]">
+      <div className="flex items-center gap-2.5 pb-3 border-b border-[color:var(--divider)] lg:sticky lg:top-0 lg:z-10 lg:-mt-6 lg:pt-6 lg:bg-[color:var(--background)]">
+        {/* 🆕 T397 — على الحاسوب القائمةُ بجانب الخيط فلا رجوع */}
         <Link
-          href="/people?tab=inbox"
+          href="/messages"
           aria-label={t.convBackAria}
-          className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
+          className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition lg:hidden"
         >
           <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
         </Link>
@@ -493,7 +696,7 @@ function ConversationView({
           onBlocked={() => {
             hideConversation(conv.personId)
               .catch(() => {})
-              .finally(() => router.push("/people?tab=inbox"));
+              .finally(() => router.push("/messages"));
           }}
         />
       )}
@@ -501,7 +704,19 @@ function ConversationView({
       {/* الأحداث */}
       <div className="py-4 space-y-3">
         {events.map((e) => (
-          <ConvBubble key={`${e.kind}-${e.id}`} event={e} locale={locale} peerName={name} />
+          <MsgShell
+            key={`${e.kind}-${e.id}`}
+            mine={e.mine}
+            enabled={!e.id.startsWith("tmp-") && !(e.kind === "reply" && e.deleted && !delKind(e))}
+            label={t.moreMenuTitle}
+            className={e.mine ? "ms-auto max-w-[85%] lg:max-w-[70%]" : "me-auto max-w-[85%] lg:max-w-[70%]"}
+            onMenu={() => {
+              setActing(e);
+              setMenuOpen(true);
+            }}
+          >
+            <ConvBubble event={e} t={t} quoteWho={name} />
+          </MsgShell>
         ))}
         {/* 🆕 D-1380 — خيطٌ لم يبدأ بعد: دعوةٌ لا فراغ */}
         {events.length === 0 && canMessage !== false ? (
@@ -521,260 +736,47 @@ function ConversationView({
         </p>
       ) : (
         /* 🆕 الحقلُ على حافّة الشاشة (مرسى النقاش نفسُه — D-320) لا في آخر المستند: خيطٌ طويلٌ كان يدفنه تحت كلِّ ما قيل */
-        <KeyboardDock spacer="h-20">
-        <ReplyBox
-          recipientId={conv.personId}
-          locale={locale}
-          onReplied={(body) =>
-            setEvents((prev) => [
-              ...prev,
-              {
-                kind: "reply",
-                id: `tmp-${idRef.current++}`,
-                mine: true,
-                body,
-                created_at: new Date().toISOString(),
-              },
-            ])
-          }
-        />
+        <KeyboardDock spacer={replyTo ? "h-36" : "h-24"}>
+          <ChatComposer
+            locale={locale}
+            reply={replyTo ? { id: replyTo.id, who: replyTo.mine ? t.convYou : name, line: replyLineOf(replyTo, t), thumb: replyThumb(replyTo) } : null}
+            onCancelReply={() => setReplyTo(null)}
+            onSend={send}
+          />
         </KeyboardDock>
       )}
     </div>
+    <MsgMenuSheet
+      open={menuOpen}
+      onClose={() => setMenuOpen(false)}
+      t={t}
+      onReply={
+        canReply
+          ? () => {
+              setMenuOpen(false);
+              setReplyTo(act as ConvReplyEvent);
+            }
+          : null
+      }
+      onCopy={
+        copyText
+          ? () => {
+              setMenuOpen(false);
+              navigator.clipboard?.writeText(copyText).then(() => copiedToast(t.msgCopied), () => {});
+            }
+          : null
+      }
+      onDelete={
+        kind
+          ? () => {
+              setMenuOpen(false);
+              setDelOpen(true);
+            }
+          : null
+      }
+    />
+    <MsgDeleteSheet open={delOpen} canAll={canAll} onMe={() => void runDelete("me")} onAll={() => void runDelete("all")} onClose={() => setDelOpen(false)} t={t} />
     {bgSheet !== null ? <ChatBgSheet open={bgSheet} onClose={() => setBgSheet(false)} locale={locale} /> : null}
     </>
-  );
-}
-
-/** فقاعةٌ واحدة: عملٌ مُشارَك (بطاقة) أو ردٌّ نصّي */
-/** 🆕 D-1403 — اقتباسُ الأصل: خطٌّ بلون صاحبه، اسمُه، وأوّلُ سطرٍ أو «📷 صورة»/«GIF» ومصغّرتُها */
-function ReplyQuote({ r, onMine, t, peerName }: { r: NonNullable<ConvReplyEvent["reply"]>; onMine: boolean; t: Dict; peerName: string }) {
-  const who = r.kind === "gone" ? "" : r.mine ? t.convYou : peerName;
-  const line =
-    r.kind === "gone" ? t.msgReplyGone : r.kind === "gif" ? t.msgGifPreview : r.kind === "image" ? (r.body ? `${t.msgImagePreview} · ${r.body}` : t.msgImagePreview) : r.body;
-  const thumb = r.kind === "image" ? r.image?.url ?? null : r.kind === "gif" && r.gif_id ? gifUrl(r.gif_id, "small") : null;
-  return (
-    <span className={`flex items-stretch gap-2 overflow-hidden rounded-xl ${onMine ? "bg-black/10" : "bg-white/5"}`}>
-      <span className={`w-1 shrink-0 ${r.mine ? (onMine ? "bg-[color:var(--on-accent)]" : "bg-accent") : onMine ? "bg-[color:var(--on-accent)] opacity-50" : "bg-muted"}`} />
-      <span className="min-w-0 flex-1 py-1.5 pe-2 text-12 leading-snug">
-        {who ? <span className="block font-bold">{who}</span> : null}
-        <span className="block truncate opacity-80">{line}</span>
-      </span>
-      {/* eslint-disable-next-line @next/next/no-img-element -- رابطٌ مؤقّتٌ من مخزنٍ خاصّ أو Giphy */}
-      {thumb ? <img src={thumb} alt="" className="h-12 w-12 shrink-0 object-cover" loading="lazy" /> : null}
-    </span>
-  );
-}
-
-function ConvBubble({ event, locale, peerName }: { event: ConvEvent; locale: Locale; peerName: string }) {
-  const t = getDict(locale);
-  const side = event.mine ? "ms-auto items-end" : "me-auto items-start";
-  /* 🆕 D-1403 — الاقتباسُ فوق الردّ: الويبُ يعرضه (والردُّ نفسُه من التطبيق) — فلا يُقرأ ردٌّ هنا بلا سياقه */
-  const quote =
-    event.kind === "reply" && event.reply ? <ReplyQuote r={event.reply} onMine={event.mine} t={t} peerName={peerName} /> : null;
-
-  /* 🆕 D-1441 — رسالةٌ حذفها صاحبُها للجميع: سطرٌ خافتٌ مائلٌ بإطارٍ متقطّع مكانَها، لا لونُ صاحبها (لا محتوى بقي) */
-  if (event.kind === "reply" && event.deleted) {
-    return (
-      <div className={`flex flex-col max-w-[80%] ${side}`}>
-        <span className="flex items-center gap-1.5 rounded-2xl border border-dashed border-border px-3.5 py-2 text-13 italic text-muted">
-          <Icon name="trash" size={13} />
-          {event.mine ? t.msgDeletedMine : t.msgDeleted}
-        </span>
-      </div>
-    );
-  }
-  /* 🆕 D-1387 — GIF أو صورةٌ (وتعليقُها تحتها) في إطارٍ بلون صاحبها، كفقاعة النصّ. الويبُ يعرض ولا يرسل بعدُ */
-  if (event.kind === "reply" && (event.gif_id || event.image)) {
-    const src = event.gif_id ? gifUrl(event.gif_id, "small") : event.image?.url ?? null;
-    return (
-      <div className={`flex flex-col max-w-[70%] ${side}`}>
-        <div className={`rounded-2xl p-[3px] ${event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"}`}>
-          {quote ? <div className="p-1">{quote}</div> : null}
-          {src ? (
-            <a href={event.image?.url ?? src} target="_blank" rel="noopener noreferrer" className="block">
-              {/* eslint-disable-next-line @next/next/no-img-element -- رابطٌ مؤقّتٌ من مخزنٍ خاصّ أو Giphy: لا يمرّ بمحسّن الصور */}
-              <img src={src} alt={event.gif_id ? "GIF" : t.msgPickImage} loading="lazy" className="block max-w-full max-h-80 rounded-[13px] object-cover" />
-            </a>
-          ) : null}
-          {event.body ? (
-            <span className="fs-content block px-3 pt-1.5 pb-1 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">{event.body}</span>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-  if (event.kind === "reply") {
-    return (
-      <div className={`flex flex-col max-w-[80%] ${side}`}>
-        <span
-          className={`fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
-            event.mine
-              ? "bg-accent text-[color:var(--on-accent)]"
-              : "bg-surface-2 text-foreground"
-          }`}
-        >
-          {quote ? <span className="block mb-1.5">{quote}</span> : null}
-          {event.body}
-        </span>
-      </div>
-    );
-  }
-
-  // قائمةٌ مُشارَكة — بطاقةٌ كبطاقة العمل: أيقونةٌ مكان الملصق، والرابط
-  // إلى صفحة القائمة الحيّة (الاسم والعدّة لحظة الإرسال، D-048 روحاً)
-  if (event.kind === "list") {
-    return (
-      <div className={`flex flex-col max-w-[80%] ${side}`}>
-        <Link
-          href={`/lists/${event.list_id}`}
-          prefetch={false}
-          className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2 hover:bg-surface-2 transition group w-full"
-        >
-          <span
-            className="grid place-items-center w-10 shrink-0 aspect-[2/3] rounded-md bg-surface-2 text-muted"
-            aria-hidden
-          >
-            <Icon name="list" size={15} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-14 font-semibold truncate group-hover:text-accent transition">
-              {event.list_name ?? "—"}
-            </span>
-            <span className="block text-12 text-muted">
-              {event.item_count
-                ? `${t.convListBadge} · ${t.personWorksCount(event.item_count)}`
-                : t.convListBadge}
-            </span>
-          </span>
-        </Link>
-        {event.note && (
-          <span
-            className={`mt-1 fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
-              event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"
-            }`}
-          >
-            {event.note}
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  // عملٌ مُشارَك — بطاقةٌ بسطحٍ محايد في الجهتين، مصطفّةٌ حسب المُرسِل
-  const poster = posterUrl(event.poster_path, "w185");
-  const href = `/${event.media_type === "tv" ? "show" : "movie"}/${event.tmdb_id}`;
-  return (
-    <div className={`flex flex-col max-w-[80%] ${side}`}>
-      <Link
-        href={href}
-        prefetch={false}
-        className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2 hover:bg-surface-2 transition group w-full"
-      >
-        <span className="relative block w-10 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2">
-          {poster ? (
-            <Image src={poster} alt="" fill sizes="40px" className="object-cover" />
-          ) : (
-            <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
-              <Icon name="film" size={13} />
-            </span>
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-14 font-semibold truncate group-hover:text-accent transition">
-            {event.title ?? "—"}
-          </span>
-          <span className="block text-12 text-muted">
-            {event.media_type === "tv" ? t.typeSeries : t.typeMovie}
-          </span>
-        </span>
-      </Link>
-      {event.note && (
-        <span
-          className={`mt-1 fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
-            event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"
-          }`}
-        >
-          {event.note}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** حقلُ الرسالة — 🆕 D-1380: نصٌّ مباشرٌ إلى صاحب الخيط (`sendDirectMessage`)، كان ردّاً معلَّقاً بآخر عملٍ شورك.
- *  ⚖️ 🆕 D-765 (بلاغ ٢٨ أغسطس: «ماتشوف وش كتبت»): كان `<input>` سطراً
- *  واحداً لا يلتفّ — الكتابةُ الطويلة تهرب أفقيّاً خارج النظر. صار
- *  `textarea` ينمو مع المحتوى: الارتفاعُ يُقاس من `scrollHeight` بعد
- *  تصفيره (القياسُ الصادقُ الوحيد للالتفاف)، بسقفِ ~أربعة أسطرٍ ثم
- *  تمريرٌ داخليّ. وEnter يُرسل كما كان (وShift+Enter سطرٌ جديد) —
- *  فسلوكُ الإرسال لم يتغيّر على أحد. */
-function ReplyBox({
-  recipientId,
-  locale,
-  onReplied,
-}: {
-  recipientId: string;
-  locale: Locale;
-  onReplied: (body: string) => void;
-}) {
-  const t = getDict(locale);
-  const [value, setValue] = useState("");
-  const [pending, start] = useTransition();
-  const box = useRef<HTMLTextAreaElement>(null);
-
-  /* النموُّ بعد كلِّ تغيير قيمة — في effect لا في onChange: القياسُ يقع
-     بعد أن يرسم React القيمةَ الجديدة فعلاً (ومنه التصفيرُ بعد الإرسال) */
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-  }, [value]);
-
-  function submit() {
-    const body = value.trim();
-    if (!body || pending) return;
-    tap(8);
-    onReplied(body);
-    setValue("");
-    start(async () => {
-      try {
-        await sendDirectMessage(recipientId, body);
-      } catch (e) {
-        flashError((e as Error).message);
-      }
-    });
-  }
-
-  return (
-    /* items-end لا items-center: زرُّ الإرسال يلزم قاعَ الحقل وهو ينمو */
-    /* الفاصلُ العلويُّ والحشوُ صارا للمرسى (`KeyboardDock`) */
-    <div className="flex items-end gap-2">
-      <textarea
-        ref={box}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        placeholder={t.shareReplyPlaceholder}
-        aria-label={t.shareReplyPlaceholder}
-        maxLength={DM_MAX}
-        rows={1}
-        className="flex-1 min-w-0 resize-none overflow-y-auto rounded-2xl bg-surface-2 border border-border px-4 py-2 text-base leading-relaxed outline-none focus:border-accent transition"
-      />
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!value.trim() || pending}
-        className="shrink-0 px-4 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold disabled:opacity-40 hover:brightness-110 active:scale-95 transition"
-      >
-        {t.shareReplySend}
-      </button>
-    </div>
   );
 }

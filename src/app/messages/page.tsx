@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf, getIncomingFollowRequests } from "@/lib/data";
 import { mySignals, getChatBgState } from "@/lib/actions";
 import { buildInbox } from "@/lib/messagesCore";
+import { getGroups } from "@/lib/groupsCore";
 import { getT } from "@/lib/locale";
 import { Inbox } from "@/components/Inbox";
 import { NotificationList } from "@/components/NotificationList";
@@ -34,16 +35,16 @@ export const dynamic = "force-dynamic";
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ with?: string; tab?: string; start?: string }>;
+  searchParams: Promise<{ with?: string; tab?: string; start?: string; group?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const { with: withParam, tab, start } = await searchParams;
+  const { with: withParam, tab, start, group: groupParam } = await searchParams;
   /* **الخيطُ المطلوبُ يفرض تبويبَه**: رابطُ `?with=` يصل من إشعارٍ أو
      مشاركة — **وفتحُه على تبويب الإشعارات يُخفي ما جاء الزائرُ لأجله.** */
-  const alerts = tab === "alerts" && !withParam;
+  const alerts = tab === "alerts" && !withParam && !groupParam;
 
   const [unreadMessages, unreadSignals] = await Promise.all([
     getUnreadShares(),
@@ -94,7 +95,14 @@ export default async function MessagesPage({
           <AlertsPane locale={locale} myId={user.id} />
         </>
       ) : (
-        <InboxPane locale={locale} withParam={withParam ?? null} startParam={start ?? null} header={header} />
+        <InboxPane
+          locale={locale}
+          myId={user.id}
+          withParam={withParam ?? null}
+          startParam={start ?? null}
+          groupParam={groupParam ?? null}
+          header={header}
+        />
       )}
     </div>
   );
@@ -125,12 +133,17 @@ async function AlertsPane({
  *  `?with=` خيطاً قائماً فعلاً — القرارُ حيث المعرفة، لا في الصفحة العمياء */
 async function InboxPane({
   locale,
+  myId,
   withParam,
   startParam,
+  groupParam,
   header,
 }: {
   locale: Awaited<ReturnType<typeof getT>>["locale"];
+  myId: string;
   withParam: string | null;
+  /** 🆕 T397 — `?group=<id>`: القروبُ المفتوح */
+  groupParam: string | null;
   /** 🆕 11-M · M4 — `?start=<id>` يفتح ورقةَ «ابدأ محادثة» لذلك الشخص: بابُ التطبيق قبل M5 (يبقى لنسخةٍ لم يصلها التحديث) */
   startParam: string | null;
   header: React.ReactNode;
@@ -139,20 +152,26 @@ async function InboxPane({
      واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
   /* 🆕 11-M · M4 — المحادثاتُ و«ابدأ محادثة» من النواة الواحدة (`lib/messagesCore.ts`) التي يقرؤها التطبيقُ أيضاً */
   /* 🆕 D-1382 — الخلفيّةُ تُقرأ مع الخيط المفتوح وحدَه (قراءةُ الملفّ مخبّأةٌ في الطلب — `getProfile`) */
-  const [{ conversations, startable, peer, canMessage }, lastSeen, bgState] = await Promise.all([
+  /* 🆕 T397 — والقروباتُ في الموجة نفسِها (`getGroups` — ما يقرؤه `GET /api/v1/me/messages` للتطبيق حرفاً) */
+  const [{ conversations, startable, peer, canMessage }, lastSeen, bgState, { groups, canCreate }] = await Promise.all([
     buildInbox(locale, withParam),
     withParam ? getLastSeenOf(withParam) : Promise.resolve(null),
-    withParam ? getChatBgState().catch(() => null) : Promise.resolve(null),
+    withParam || groupParam ? getChatBgState().catch(() => null) : Promise.resolve(null),
+    getGroups(),
   ]);
 
   /* داخل خيطٍ مفتوحٍ تسقط الترويسة — «نكتفي بزر الرجوع» (D-767) */
   /* 🆕 D-1380 — وخيطٌ لم يبدأ بعد (`peer`) خيطٌ مفتوحٌ أيضاً: يُرسم فارغاً بخانة كتابة */
-  const threadOpen = !!withParam && (conversations.some((c) => c.personId === withParam) || !!peer);
-
+  /* 🆕 T397 — الترويسةُ صارت في لوح القائمة داخل `Inbox`: على الجوال تسقط معه حين يُفتح خيطٌ (D-767 كما هو)، وعلى
+     الحاسوب تبقى فوق القائمة بجانب الخيط */
   return (
     <>
-      {!threadOpen && header}
       <Inbox
+        header={header}
+        groups={groups}
+        canCreateGroup={canCreate}
+        openGroup={groupParam}
+        meId={myId}
         conversations={conversations}
         startable={startable}
         openWith={withParam}
