@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
@@ -237,8 +238,9 @@ function PickedTitle({ pick, info, t, onClear }: { pick: SearchTitle; info: Titl
   return (
     <div className="mt-3 ms-[52px] flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-2">
       <span className="relative block h-14 w-10 shrink-0 overflow-hidden rounded-md bg-surface">
-        {/* eslint-disable-next-line @next/next/no-img-element -- رابطُ البحث جاهزٌ من TMDB بمقاسه */}
-        {pick.poster ? <img src={pick.poster} alt="" className="h-full w-full object-cover" /> : null}
+        {/* عبر `next/image` لا `<img>` (T407): image.tmdb.org محجوبٌ عند مستخدمينا (D-726)، فالرابطُ المباشر ظهر فارغاً،
+            ومحمِّلُ الموقع (`src/core/imageLoader.ts`) يمرّره من ممرّنا المخزَّن ‎/i/‎ كبقيّة ملصقات الموقع */}
+        {pick.poster ? <Image src={pick.poster} alt="" fill sizes="40px" className="object-cover" /> : null}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold">{pick.title}</span>
@@ -300,9 +302,8 @@ function TitleFinder({ t, onPick, onClose }: { t: Dict; onPick: (r: SearchTitle)
           {shown.map((r) => (
             <li key={`${r.mediaType}-${r.id}`}>
               <button type="button" onClick={() => onPick(r)} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-start hover:bg-surface transition">
-                <span className="block h-12 w-8 shrink-0 overflow-hidden rounded bg-surface">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- رابطُ البحث جاهزٌ من TMDB بمقاسه */}
-                  {r.poster ? <img src={r.poster} alt="" className="h-full w-full object-cover" /> : null}
+                <span className="relative block h-12 w-8 shrink-0 overflow-hidden rounded bg-surface">
+                  {r.poster ? <Image src={r.poster} alt="" fill sizes="32px" className="object-cover" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{r.title}</span>
