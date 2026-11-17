@@ -935,19 +935,33 @@ summary:focus-visible,
   html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid [data-rail-arrow] {
     display: none;
   }
-  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 11),
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide):not(.lz-deskgrid-all) [data-rail-track] > :nth-child(n + 11),
   html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid-wide [data-rail-track] > :nth-child(n + 7) {
     display: none;
   }
 }
 @media (min-width: 1440px) {
-  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide):not(.lz-deskgrid-all) {
     --dg-cols: 6;
   }
-  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 11) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide):not(.lz-deskgrid-all) [data-rail-track] > :nth-child(n + 11) {
     display: block;
   }
-  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 13) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide):not(.lz-deskgrid-all) [data-rail-track] > :nth-child(n + 13) {
     display: none;
+  }
+}
+
+/* 🆕 T404 — **المكتبةُ شبكةٌ كاملةٌ على الحاسوب** (قرار أحمد ١٧ نوفمبر «أ»، الصورة `a_library_1280`): مجموعاتُ الحالة
+   (أشاهدها · لم أبدأها · أكملتها…) كانت رفوفاً تُسحب بالفأرة؛ المجموعةُ الآن كلُّها في النظر — ٧ أعمدةٍ تحت 1440 و٨ فوقها
+   (عرضُ الملصق ~١٣٠ كالجوال)، بلا سقف صفّين: من فتح مكتبته يريد أن يرى ما فيها لا أوّلَه */
+@media (min-width: 1280px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid-all {
+    --dg-cols: 7;
+  }
+}
+@media (min-width: 1440px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid-all {
+    --dg-cols: 8;
   }
 }

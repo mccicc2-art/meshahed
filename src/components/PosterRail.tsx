@@ -78,11 +78,12 @@ export function PosterRail({
    * ترويسةٍ ثانيةٍ تُنسخ** (القاعدة ٣/D-002).
    */
   bare?: boolean;
-  /** 🆕 T398 — على الحاسوب العريض يصير الرفُّ شبكةً من صفّين (`.lz-deskgrid` في `globals.css`): ملصقاتٌ أو بطاقاتُ خلفيّة */
-  deskGrid?: "poster" | "wide";
+  /** 🆕 T398 — على الحاسوب العريض يصير الرفُّ شبكةً من صفّين (`.lz-deskgrid` في `globals.css`): ملصقاتٌ أو بطاقاتُ خلفيّة.
+   *  🆕 T404 — `all`: شبكةٌ بكلِّ ما في الرفّ بلا سقف صفّين (المكتبة: المجموعةُ كلُّها في النظر، قرار «أ») */
+  deskGrid?: "poster" | "wide" | "all";
   children: React.ReactNode;
 }) {
-  const grid = deskGrid ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : ""}` : "";
+  const grid = deskGrid ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : deskGrid === "all" ? " lz-deskgrid-all" : ""}` : "";
   return (
     <section className={[className, grid].filter(Boolean).join(" ") || undefined}>
       {/* ⚖️ رأسُ القسم يتحرّك مع محتواه — لا لصقَ (نقضُ D-464، طلبُ

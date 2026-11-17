@@ -717,6 +717,8 @@ export function LibraryGrid({
                   /* 🔴 **والمفتوحُ يخرج من جاري الصفّ** (D-428): شبكةٌ
                      داخل `RailScroll` تُرسم فارغةً — قِيس حيّاً. */
                   bare={open || solo}
+                  /* 🆕 T404 — على الحاسوب المجموعةُ شبكةٌ كاملة (قرار «أ»): لا سحبَ بالفأرة ولا سقف */
+                  deskGrid="all"
                   action={
                     <button
                       type="button"
@@ -730,7 +732,7 @@ export function LibraryGrid({
                   {open ? (
                     /* **والمفتوحُ شبكةٌ لا صفٌّ أطول**: من طلب الكلَّ
                        يريد أن يراه دفعةً، **لا أن يسحب ثلاثين بطاقة.** */
-                    <div className={posterGrid}>
+                    <div className={`${posterGrid} ${DESK_COLS}`}>
                       {g.items.map((x) => cell(x))}
                     </div>
                   ) : solo ? (
@@ -747,7 +749,7 @@ export function LibraryGrid({
             })}
           </div>
         ) : (
-        <div className={posterGrid}>
+        <div className={`${posterGrid} ${DESK_COLS}`}>
           {items.map((x) => cell(x))}
         </div>
         )
@@ -761,6 +763,10 @@ export function LibraryGrid({
 }
 
 type Dict = ReturnType<typeof getDict>;
+
+/** 🆕 T404 — أعمدةُ شبكة المكتبة على الحاسوب: عددُ رفوف المجموعات نفسُه (٧ ثمّ ٨ — `.lz-deskgrid-all`) فلا يتغيّر
+ *  مقاسُ الملصق بين مجموعةٍ مفتوحةٍ وأختها. محلّيٌّ للمكتبة: `posterGrid` تقرؤه الأوراقُ أيضاً، وعرضُها لا يحتمل ثمانية */
+const DESK_COLS = "desk:grid-cols-7 desk:min-[1440px]:grid-cols-8";
 
 /** اسم رقاقة الحالة نفسه يسمّي الفاصل — مفهومٌ واحد، اسمٌ واحد (D-026) */
 /**
