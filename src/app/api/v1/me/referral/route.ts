@@ -4,6 +4,7 @@ import { ok } from "@/core/contracts/result";
 import { createClient } from "@/lib/supabase/server";
 import { codeForUsername, inviterById, ownerOfCode, referralState } from "@/lib/referral";
 import { cleanInviteCode } from "@/core/storeLinks";
+import { isLoopz } from "@/core/loopz";
 import type { ClaimReferralBody, ClaimReferralPayload, MyReferralPayload, ReferralSource } from "@/core/contracts/referral";
 
 /**
@@ -24,7 +25,9 @@ export async function GET() {
       const lim = limited(`v1:referral:${auth.user.id}`, 30, 60_000);
       if (lim) return lim;
       const st = await referralState(auth.user.id, auth.user.created_at);
-      return ok({ eligible: st.eligible, inviter: st.inviterId ? await inviterById(st.inviterId) : null });
+      /* 🆕 المهمة ٣٩٤ — من نُسب إلى الحملة (الحساب الرسميّ) لا يُرسم له «دعاك Loopz»: الحملةُ عدٌّ لا داعٍ */
+      const inviter = st.inviterId && !isLoopz(st.inviterId) ? await inviterById(st.inviterId) : null;
+      return ok({ eligible: st.eligible, inviter });
     },
     { open: true },
   );

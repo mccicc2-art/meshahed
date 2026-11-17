@@ -34,6 +34,8 @@ import type {
  *  - **سطرُ «هل دعاك أحدٌ إلى Loopz؟»** — لمن ذهب إلى المتجر مباشرةً (iPhone لا يمرّر مصدرَ التثبيت): يفتح ورقةَ البحث بالاسم.
  *  - **«دعاك أحمد»** — بعد النعم، أو لمن نُسب في الويب (كوكي الرابط). وسطرُ الهديّة لدعوة الصديق وحدَها (الشريكُ بلا هديّة).
  *  - **لا شيء** — حسابٌ لا يقبل نسبةً (قديمٌ، أو تابع، أو نُسب) ولا داعيَ له.
+ *  - 🆕 المهمة ٣٩٤ — **كودُ الحملة (`source: "campaign"`) يُنسب بلا سؤال ولا بطاقة**: لا يصل الكودُ إلى التطبيق إلّا من رابطنا،
+ *    فسؤالُ «هل دعاك Loopz؟» لا يضيف شيئاً — و«لا» تُسقط العضوَ من عدّ الحملة. وفشلُ الشبكة يُبقي الكودَ لمحاولةٍ تالية.
  * ⚖️ **ليست خطوةً سادسة ولا قفلاً**: «التالي» يمضي بلا جواب، والسؤالُ صفٌّ تحت بطاقة «هذا أنت».
  */
 type State =
@@ -41,6 +43,16 @@ type State =
   | { kind: "ask" }
   | { kind: "confirm"; who: InviterLite; by: ClaimReferralBody }
   | { kind: "done"; who: InviterLite | null; gift: boolean };
+
+/** 🆕 المهمة ٣٩٤ — نسبةُ كود الحملة بلا سؤال. فشلُ الشبكة يُبقي الكودَ في `pendingInvite` ليُعاد عند الظهور التالي */
+async function claimCampaign(code: string): Promise<void> {
+  try {
+    await api<ClaimReferralPayload>("/api/v1/me/referral", { method: "POST", body: { code } });
+    await pendingInvite.clear();
+  } catch {
+    /* يُعاد لاحقاً */
+  }
+}
 
 export function InviteCard() {
   const { t, tokens } = useApp();
@@ -65,6 +77,11 @@ export function InviteCard() {
       if (code) {
         const pre = (await api<ReferralPreviewPayload>(`/api/v1/referral/${encodeURIComponent(code)}`)).data;
         if (!alive.current) return;
+        if (pre.inviter && pre.source === "campaign") {
+          await claimCampaign(code);
+          if (alive.current) setState({ kind: "none" });
+          return;
+        }
         if (pre.inviter) {
           setState({ kind: "confirm", who: pre.inviter, by: { code } });
           return;

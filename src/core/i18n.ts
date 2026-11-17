@@ -1853,6 +1853,8 @@ const ar = {
   /* 🆕 المهمة ٣٧٠ — صفحةُ الدعوة (`/invite/[code]`) وسؤالُ «هل دعاك؟» في الخطوة الأولى من ترحيب التطبيق */
   invitePageTitle: (name: string) => `${name} يدعوك إلى Loopz`,
   invitePageTitleAnon: "دعوةٌ إلى Loopz",
+  /* 🆕 المهمة ٣٩٤ — رابطُ حملة الحساب الرسميّ (`LOOPZX`): «Loopz يدعوك إلى Loopz» يكرّر الاسم، فالحملةُ دعوةٌ بلا داعٍ (أحمد: «انضم الى لوبز») */
+  invitePageTitleCampaign: "انضم إلى Loopz",
   invitePageBody: "تابِع مسلسلاتك وأفلامك وأنميك، واعرف متى تنزل حلقتك القادمة.",
   invitePageGift: "وهديّتك ١٤ يومًا من Loopz Plus بعد أن تتابع ٥ أعمال وتنشط ٣ أيام خلال أسبوعيك الأولين.",
   inviteStep1: "نزّل التطبيق",
@@ -4677,6 +4679,7 @@ const en: Dict = {
   invEmpty: "No one has joined yet — share your link for the first time",
   invitePageTitle: (name: string) => `${name} invited you to Loopz`,
   invitePageTitleAnon: "You're invited to Loopz",
+  invitePageTitleCampaign: "Join Loopz",
   invitePageBody: "Track your series, movies and anime, and know when your next episode drops.",
   invitePageGift: "Your gift: 14 days of Loopz Plus after you track 5 titles and are active on 3 days within your first two weeks.",
   inviteStep1: "Get the app",

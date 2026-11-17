@@ -59,7 +59,10 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   return (
     <div className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[400px] flex-col items-center justify-center px-6 py-10 text-center">
       <Avatar src={inviter?.avatar_url ?? null} name={name ?? "Loopz"} size={80} alt="" />
-      <h1 className="mt-5 text-[26px] font-extrabold leading-tight">{name ? t.invitePageTitle(name) : t.invitePageTitleAnon}</h1>
+      {/* 🆕 المهمة ٣٩٤ — رابطُ الحملة دعوةٌ من Loopz نفسِها: «انضم إلى Loopz» لا «Loopz يدعوك إلى Loopz» */}
+      <h1 className="mt-5 text-[26px] font-extrabold leading-tight">
+        {owner?.source === "campaign" ? t.invitePageTitleCampaign : name ? t.invitePageTitle(name) : t.invitePageTitleAnon}
+      </h1>
       <p className="mt-2 text-14 leading-relaxed text-muted">
         {t.invitePageBody}
         {owner?.source === "friend" ? (
