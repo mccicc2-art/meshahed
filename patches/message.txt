@@ -1,9 +1,9 @@
-[deploy] Release R232 — supporters board counts each signed-out visitor by address (T389, A-59); SERankingBacklinksBot blocked in robots.txt and the proxy (T390, A-58)
+[deploy] Release R235 - campaign invite link LOOPZX for the Loopz X account, counted without rewards (T393)
 
-Registry release 229 · tasks 389, 390 (Ahmed: «ارفع»).
-- T389 (A-59): the supporters board rate limit keyed every signed-out visitor into one shared bucket; guests are now keyed by the first x-forwarded-for address, as the referral preview does. Members still by id.
-- T390 (A-58): SERankingBacklinksBot (one Hetzner IP, ~6k server renders of title pages per day, the title_pulse load) added to the robots.txt list and to BLOCKED_UA in proxy.ts. The Vercel Firewall rule «Deny SERankingBacklinksBot (A-58)» has been live since 16 Nov 01:47 UTC.
-Checks on the combined tree: web tsc 0 · eslint 0 errors / 10 warnings · tests 452/452 · next build OK. Server only: no apps/mobile change, no OTA, no native build.
+- Migration 247 (already run on production): referrals.source accepts 'campaign';
+  claim_referral attributes the official account's code as 'campaign'; LOOPZX code.
+- ownerOfCode returns 'campaign' for the official account (no friend gift shown).
+- Link: loopztv.com/join/LOOPZX
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7C6By2PB6KR4bghkse
+Claude-Session: https://claude.ai/code/session_01FexM7EcvU9UUeVvv2UmuD8
