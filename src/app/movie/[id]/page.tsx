@@ -182,7 +182,10 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   const universeSaved = !!universeListId && mySaved.has(universeListId);
 
   return (
-    <div>
+    /* 🆕 T402 — **عمودان على الحاسوب العريض** (التصميم المعتمد `a_title`، أحمد ١٧ نوفمبر): الترويسةُ بطاقةٌ بعرض
+       العمودين، ثمّ التبويباتُ في العمود الرئيسيّ وبطاقةُ الأفعال في عمودٍ جانبيٍّ ثابتٍ يبقى في النظر مع التمرير —
+       كان زرُّ «أضف لقائمة» بعرض ١٤٠٠ والتبويباتُ ممدودة (ع5). **وتحت الحاسوب لا شيء تغيّر** (`desk:`). */
+    <div className="desk:grid desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start desk:gap-x-8">
       {/* الترويسة: الملصق والعنوان والأزرار فقط — القصة والترايلر والآراء
           انتقلت إلى تبويبات، فالصفحة تبدأ من شاشة واحدة لا من عمود طويل */}
       {/* 🆕 **الغلافُ ارتفع والملصقُ معه** (D-399، طلبُ أحمد:
@@ -215,7 +218,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           ⚠️ **و`px-5` لا `px-1`**: الصفُّ صار داخل حاويةٍ ملغيةٍ لحشوة
           التخطيط (`-mx-4`)، **فحشوتُه تُعاد هنا** — ١٦ + ٤ = ٢٠،
           **وهي نفسُها إلى البكسل.** */}
-      <div className="relative -mx-4 -mt-6 mb-3">
+      {/* 🆕 T402 — على الحاسوب بطاقةٌ مستديرةٌ لا شريطٌ ملاصقٌ للحوافّ، والغلافُ بكامل وضوحه وتدرّجٌ من جهة النصّ */}
+      <div className="relative -mx-4 -mt-6 mb-3 desk:col-span-2 desk:mx-0 desk:mt-0 desk:mb-6 desk:overflow-hidden desk:rounded-3xl desk:pb-8">
         <div className="absolute inset-0 overflow-hidden">
           {backdrop && (
             <Image
@@ -224,10 +228,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               fill
               priority
               sizes="(max-width: 640px) 100vw, 1440px"
-              className="object-cover opacity-45"
+              className="object-cover opacity-45 desk:opacity-100"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/20 via-40% to-transparent" />
+          {/* 🆕 T402 — الحاسوب: الغلافُ كاملُ الوضوح، فيُقرأ النصُّ بتدرّجٍ بلون الصفحة من جهته (أسودُ في الليل وأبيضُ في
+              النهاريّ — الحجّةُ نفسُها التي جعلت الهالةَ من `--background`، D-405) */}
+          <div className="absolute inset-0 hidden desk:block bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--background)]/90 via-[color:var(--background)]/45 via-55% to-transparent" />
         </div>
 
         <div className="relative h-36 sm:h-60">
@@ -242,7 +249,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        <div className="relative flex flex-wrap gap-4 -mt-24 sm:-mt-28 px-5">
+        <div className="relative flex flex-wrap gap-4 -mt-24 sm:-mt-28 px-5 desk:gap-6 desk:px-8">
           <div className="w-32 sm:w-44 shrink-0">
             <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-[color:var(--divider)] bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
               {poster && <Image src={poster} alt={title} fill sizes="176px" className="object-cover" />}
@@ -400,6 +407,10 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
+            {/* 🆕 T402 — القصّةُ سطران في الترويسة على الحاسوب (`a_title`): هناك متّسعٌ بجانب الملصق، والقصّةُ كاملةً تبقى في «معلومات» */}
+            {movie.overview ? (
+              <p className="hero-halo mt-3 hidden max-w-2xl text-sm leading-relaxed text-foreground/85 line-clamp-2 desk:block">{movie.overview}</p>
+            ) : null}
           </div>
 
           {/* زرّا السلسلة والعالم (D-052/D-074) — خرجا من عمود البيانات إلى
@@ -444,7 +455,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
-      <div className="mt-4 px-1">
+      {/* 🆕 T402 — الحاسوب: بطاقةُ الأفعال في العمود الجانبيّ، ثابتةٌ مع التمرير — أوّلُ ما يُفعل بالعمل في النظر دائماً */}
+      <div className="mt-4 px-1 desk:col-start-2 desk:row-start-2 desk:sticky desk:top-6 desk:mt-0 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
         <TitleActions
           tmdbId={movieId}
           mediaType="movie"
@@ -467,6 +479,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
       {/* تبويب «تتبّع» حُذف من الأفلام: الفيلم إمّا شوهد أو لم يُشاهَد،
           ودائرة ✓ في الترويسة تقول ذلك وتقلبه — لا يحتاج تبويباً كاملاً */}
+      <div className="min-w-0 desk:col-start-1 desk:row-start-2">
       <DetailTabs
         tabs={[
           {
@@ -601,6 +614,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           },
         ]}
       />
+      </div>
 
     </div>
   );
