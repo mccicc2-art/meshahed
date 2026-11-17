@@ -13,7 +13,7 @@ import { PlexImportSheet } from "../settings/PlexImport";
 import { StremioScreen } from "../settings/StremioScreen";
 import { HomeServersScreen } from "../settings/HomeServersScreen";
 import { timeAgo } from "@/core/when";
-import { JELLYFIN_TEMPLATE, KODI_SOURCE_URL } from "@/core/homeServer";
+import { JELLYFIN_TEMPLATE } from "@/core/homeServer";
 import type { HomeServerLinkResult, KodiResult } from "@/core/contracts/homeServer";
 import type { StremioLinkResult } from "@/core/contracts/stremio";
 import type { DeviceKind, DeviceLinksState, HomeKind } from "@/core/contracts/deviceLinks";
@@ -353,14 +353,9 @@ export function KodiDeviceScreen() {
       <PlusGroup d={d} onError={say} />
       <Group label={t.deviceSteps}>
         {t.homeServerStepsKodi.map((line, i) => (
+          /* T396 — التثبيتُ من مستودع Kodi الرسميّ: لا عنوانَ مصدرٍ يُكتب، والرمزُ تحت الخطوة الأخيرة أيّاً كان عددُ الخطوات */
           <Step key={line} n={i + 1} text={line}>
-            {i === 1 ? (
-              <Slab>
-                <Text size={14} weight="700" color={tokens.accent} selectable style={{ writingDirection: "ltr", textAlign: "center" }}>{KODI_SOURCE_URL}</Text>
-              </Slab>
-            ) : i === 3 ? (
-              codeBox
-            ) : null}
+            {i === t.homeServerStepsKodi.length - 1 ? codeBox : null}
           </Step>
         ))}
       </Group>

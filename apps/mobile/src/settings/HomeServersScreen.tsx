@@ -8,7 +8,7 @@ import { api, write } from "../api";
 import type { ToastHostRef } from "../HoldHost";
 import { Segmented } from "../library/ToolsSheet";
 import { timeAgo } from "@/core/when";
-import { JELLYFIN_TEMPLATE, KODI_SOURCE_URL, type HomeServer } from "@/core/homeServer";
+import { JELLYFIN_TEMPLATE, type HomeServer } from "@/core/homeServer";
 import type { HomeServerLinkResult, HomeServerState, KodiResult } from "@/core/contracts/homeServer";
 import { SettingsScreen, Group, Row, RowsSkeleton, StatusPill } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
@@ -230,12 +230,6 @@ export function HomeServersScreen() {
             <Text size={13} weight="700" color={tokens.accent} style={{ lineHeight: 21, minWidth: 16 }}>{`${i + 1}.`}</Text>
             <View style={{ flex: 1, gap: 4 }}>
               <Text size={13} style={{ lineHeight: 21 }}>{line}</Text>
-              {/* عنوانُ المصدر سطرٌ وحده: يُقرأ حرفاً حرفاً وهو يُكتب بالريموت */}
-              {server === "kodi" && i === 1 ? (
-                <Text size={14} weight="700" color={tokens.accent} selectable style={{ writingDirection: "ltr", textAlign: "left", lineHeight: 21 }}>
-                  {KODI_SOURCE_URL}
-                </Text>
-              ) : null}
             </View>
           </View>
         ))}

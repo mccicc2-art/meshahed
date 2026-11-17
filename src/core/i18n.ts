@@ -3304,12 +3304,14 @@ const ar = {
     "اختر «Stop» تحت Playback و«Mark Played» تحت Users، واضغط Add Notification.",
     "افتحه مرة ثانية واضغط «Send Test Notification»، فيظهر هنا مربوطاً فوراً.",
   ] as readonly string[],
-  /* 🆕 Kodi (هجرة ٢٣٦ — أحمد ٥ نوفمبر: «١ أ · ٢ أ · ٣ أ»، والرمزُ داخل التبويب «أ») — العنوانُ سطرٌ وحده تحت الخطوة الثانية */
+  /* 🆕 Kodi (هجرة ٢٣٦ — أحمد ٥ نوفمبر: «١ أ · ٢ أ · ٣ أ»، والرمزُ داخل التبويب «أ»)
+     🆕 T396 (أحمد ١٧ نوفمبر «عدل الخطوات»): Kodi دمج service.loopz في مستودعه الرسميّ (PR #2973، ١٤ نوفمبر)، فالتثبيتُ
+     من Install from repository — لا Unknown sources ولا ملفَّ zip ولا عنوانَ يُكتب بالريموت. ملفُّ zip باقٍ على الموقع احتياطاً.
+     الرمزُ تحت الخطوة الأخيرة. */
   homeServerStepsKodi: [
-    "في Kodi: الإعدادات ← System ← Add-ons، وفعّل Unknown sources.",
-    "الإعدادات ← File manager ← Add source، واكتب هذا العنوان وسمّه Loopz:",
-    "الإعدادات ← Add-ons ← Install from zip file، واختر Loopz ثم الملف.",
-    "Add-ons ← My add-ons ← Services ← Loopz ← Configure، واكتب الرمز اللي تحت.",
+    "في Kodi: الإعدادات ← Add-ons ← Install from repository ← Kodi Add-on repository ← Services.",
+    "اختر Loopz واضغط Install.",
+    "Add-ons ← My add-ons ← Services ← Loopz ← Configure، واكتب الرمز الظاهر تحت.",
   ] as readonly string[],
   kodiCodeTitle: "رمز ربط Kodi",
   kodiCodeWait: "صالح 10 دقائق · ننتظر Kodi…",
@@ -5862,9 +5864,8 @@ const en: Dict = {
     "Open it again and tap “Send Test Notification”; it shows as linked here right away.",
   ] as readonly string[],
   homeServerStepsKodi: [
-    "In Kodi: Settings → System → Add-ons, and turn on Unknown sources.",
-    "Settings → File manager → Add source, type this address and name it Loopz:",
-    "Settings → Add-ons → Install from zip file, pick Loopz, then the file.",
+    "In Kodi: Settings → Add-ons → Install from repository → Kodi Add-on repository → Services.",
+    "Pick Loopz and press Install.",
     "Add-ons → My add-ons → Services → Loopz → Configure, and type the code below.",
   ] as readonly string[],
   kodiCodeTitle: "Kodi link code",
