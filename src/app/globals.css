@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* 🆕 T398 — **«desk:» = حاسوبٌ عريضٌ والقشرةُ حاضرة** (≥1280 خارج غلاف التطبيق، والشريطُ الجانبيُّ مرسوم): تخطيطُ الصفحة
+   للحاسوب يتبع القشرةَ لا عرضَ النافذة وحده — لوحٌ عريضٌ يفتح الويبَ داخل التطبيق، أو زائرٌ بلا شريط، يبقى على تخطيط الجوال */
+@custom-variant desk {
+  @media (min-width: 1280px) {
+    html:not([data-app="1"]):has(.lz-desk) & {
+      @slot;
+    }
+  }
+}
+
 /* الخط مستضاف ذاتياً من حزمة npm.
    كان يُطلب من fonts.googleapis.com في كل زيارة: رحلتا شبكة لنطاق خارجي
    قبل أن يُرسم أول حرف، وتسريبُ زيارة كل مستخدم لطرف ثالث. الحزمة تحمل
@@ -893,5 +903,51 @@ summary:focus-visible,
 @media (min-width: 1280px) {
   html:not([data-app="1"]) body:has(.lz-desk) {
     padding-inline-start: 16rem;
+  }
+}
+
+/* ====== 🆕 T398 — رفوفُ الرئيسية شبكةٌ من صفّين على الحاسوب (التصميم المعتمد `a_home`) ======
+   🔑 **الرفُّ نفسُه لا مكوّنٌ ثانٍ** (القاعدة ٣): `PosterRail` يعلّم قسمَه بـ`lz-deskgrid` (وبـ`lz-deskgrid-wide`
+   لبطاقات الخلفيّة)، و`RailScroll` يعلّم أجزاءه بـ`data-rail-*` — وهنا وحدَه يصير الشريطُ المنزلقُ شبكةً: لا تمرير،
+   لا أسهم، وعرضُ البطاقة من العمود. **وصفّان لا أكثر**: ما بعدهما خلف «الكلّ» كما كان.
+   🔑 ٥ أعمدةٍ للملصقات تحت 1440 و٦ فوقها؛ ولبطاقات الخلفيّة ٣ دائماً (٢ تحت 1440 كانت بطاقتين بعرض ٣١٤ — أكبرَ من ملصق صفحة العمل). */
+@media (min-width: 1280px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid {
+    --dg-cols: 5;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid-wide {
+    --dg-cols: 3;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid [data-rail-scroller] {
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid [data-rail-track] {
+    display: grid;
+    width: auto;
+    grid-template-columns: repeat(var(--dg-cols), minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid [data-rail-track] > * {
+    width: auto;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid [data-rail-arrow] {
+    display: none;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 11),
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid-wide [data-rail-track] > :nth-child(n + 7) {
+    display: none;
+  }
+}
+@media (min-width: 1440px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) {
+    --dg-cols: 6;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 11) {
+    display: block;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskgrid:not(.lz-deskgrid-wide) [data-rail-track] > :nth-child(n + 13) {
+    display: none;
   }
 }

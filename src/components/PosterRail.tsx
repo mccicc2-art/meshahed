@@ -29,6 +29,7 @@ export function PosterRail({
   action,
   className,
   bare = false,
+  deskGrid,
   children,
 }: {
   title: string;
@@ -77,10 +78,13 @@ export function PosterRail({
    * ترويسةٍ ثانيةٍ تُنسخ** (القاعدة ٣/D-002).
    */
   bare?: boolean;
+  /** 🆕 T398 — على الحاسوب العريض يصير الرفُّ شبكةً من صفّين (`.lz-deskgrid` في `globals.css`): ملصقاتٌ أو بطاقاتُ خلفيّة */
+  deskGrid?: "poster" | "wide";
   children: React.ReactNode;
 }) {
+  const grid = deskGrid ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : ""}` : "";
   return (
-    <section className={className}>
+    <section className={[className, grid].filter(Boolean).join(" ") || undefined}>
       {/* ⚖️ رأسُ القسم يتحرّك مع محتواه — لا لصقَ (نقضُ D-464، طلبُ
           أحمد ١٩ أغسطس: «يختفي عند تجاوزه، لا يتوقف أسفل الهيدر») */}
       <div className="flex items-center justify-between gap-3 mb-0.5">

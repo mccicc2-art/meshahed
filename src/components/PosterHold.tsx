@@ -332,7 +332,7 @@ export function PosterHold({
         open ? "ring-2 ring-accent ring-offset-2 ring-offset-[color:var(--background)]" : ""
       }`}
     >
-      <LongPressable onLongPress={() => setOpen(true)}>{children}</LongPressable>
+      <LongPressable onLongPress={() => setOpen(true)} menuLabel={t.moreMenuTitle}>{children}</LongPressable>
 
       {/* **خيطُ الحالة يرسمه هذا المكوّن لا البطاقة** (D-235): الحالةُ
           تفاؤليةٌ وتسكن هنا، **وخيطٌ في `PosterCard` لا يراها فلا يتغيّر

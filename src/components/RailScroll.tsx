@@ -44,17 +44,20 @@ export function RailScroll({
 
   return (
     <div className="relative group/rail">
+      {/* 🆕 T398 — `data-rail-*` مقابضُ الشبكة على الحاسوب (`.lz-deskgrid` في `globals.css`) — لا أثرَ لها في غيره */}
       <div
         ref={ref}
+        data-rail-scroller=""
         className="-mx-4 px-4 scroll-px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex gap-3 w-max pb-1">{children}</div>
+        <div data-rail-track="" className="flex gap-3 w-max pb-1">{children}</div>
       </div>
 
       {/* فيزيائيان لا منطقيان — left/right لا start/end عمداً */}
       <button
         type="button"
         aria-label={prevLabel}
+        data-rail-arrow=""
         onClick={() => go(-1)}
         className={`${btn} left-0`}
       >
@@ -63,6 +66,7 @@ export function RailScroll({
       <button
         type="button"
         aria-label={nextLabel}
+        data-rail-arrow=""
         onClick={() => go(1)}
         className={`${btn} right-0`}
       >

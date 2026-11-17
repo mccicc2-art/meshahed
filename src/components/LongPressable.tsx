@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { tap } from "@/lib/haptics";
+import { Icon } from "./Icon";
 
 /**
  * غلاف الضغطة المطوّلة — إجراءٌ ثانٍ فوق بطاقةٍ هي رابط.
@@ -25,14 +26,20 @@ import { tap } from "@/lib/haptics";
  */
 export function LongPressable({
   onLongPress,
+  menuLabel,
   children,
 }: {
   onLongPress: () => void;
+  /** 🆕 T398 — زرُّ «⋯» يظهر عند المرور بالفأرة (الحاسوب وحدَه) ويفتح القائمةَ نفسَها؛ غيابُه = لا زرّ */
+  menuLabel?: string;
   children: React.ReactNode;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fired = useRef(false);
   const origin = useRef<{ x: number; y: number } | null>(null);
+  /* 🆕 T398 — نوعُ آخرِ مؤشّر: الزرُّ الأيمنُ يفتح القائمةَ للفأرة وحدها — أندرويد يطلق `contextmenu` نفسَه مع
+     الضغطة المطوّلة، والمؤقّتُ هناك هو الباب */
+  const pointer = useRef<string>("mouse");
 
   function clear() {
     if (timer.current) clearTimeout(timer.current);
@@ -42,12 +49,22 @@ export function LongPressable({
 
   return (
     <div
-      className="select-none [-webkit-user-drag:none] [&_img]:[-webkit-user-drag:none] [&_a]:[-webkit-user-drag:none]"
+      className="relative group/lp select-none [-webkit-user-drag:none] [&_img]:[-webkit-user-drag:none] [&_a]:[-webkit-user-drag:none]"
       style={{ WebkitTouchCallout: "none" }}
       onDragStart={(e) => e.preventDefault()}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        /* 🆕 T398 — **الزرُّ الأيمنُ هو «الضغطُ المطوّل» على الحاسوب** (مبدأ ٤ في تقرير المقارنة): كان يُكتم ولا يفعل شيئاً */
+        if (pointer.current === "mouse") {
+          clear();
+          fired.current = false;
+          onLongPress();
+        }
+      }}
       onPointerDown={(e) => {
+        pointer.current = e.pointerType;
         fired.current = false;
+        if (e.button === 2) return;
         origin.current = { x: e.clientX, y: e.clientY };
         timer.current = setTimeout(() => {
           fired.current = true;
@@ -74,6 +91,23 @@ export function LongPressable({
       }}
     >
       {children}
+      {menuLabel ? (
+        /* 🆕 T398 — بابُ الفأرة الظاهر: يظهر بالمرور وبالتركيز، ولا يُرسم لمن لا مؤشّرَ له (اللمس بابه الضغطةُ المطوّلة) */
+        <button
+          type="button"
+          aria-label={menuLabel}
+          title={menuLabel}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onLongPress();
+          }}
+          className="absolute top-1.5 end-1.5 z-10 hidden [@media(hover:hover)]:grid place-items-center w-7 h-7 rounded-full bg-black/65 text-white border border-white/15 backdrop-blur-sm opacity-0 group-hover/lp:opacity-100 focus-visible:opacity-100 hover:bg-black/85 transition"
+        >
+          <Icon name="dots" size={14} />
+        </button>
+      ) : null}
     </div>
   );
 }

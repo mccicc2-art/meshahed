@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getDict, type Locale } from "@/core/i18n";
+import { posterUrl } from "@/core/media";
 import { Icon } from "./Icon";
 
 export interface WeekEntry {
@@ -44,6 +46,7 @@ export function WeekStrip({
   locale,
   action,
   href,
+  variant = "strip",
 }: {
   /** تواريخُ متتابعةٌ تبدأ من اليوم — أربعةَ عشرَ اليوم (D-491) */
   days: { date: string; weekday: string; dayNum: string }[];
@@ -58,12 +61,86 @@ export function WeekStrip({
    * العنوان لا في طرفٍ ثالثٍ يُخترع له.**
    */
   href?: string;
+  /** 🆕 T398 — `list`: الأيّامُ صفوفٌ بعضُها تحت بعض — للعمود الجانبيّ في رئيسيّة الحاسوب (`a_home`)، أسبوعٌ واحد */
+  variant?: "strip" | "list";
 }) {
   const t = getDict(locale);
   const byDay = new Map<string, WeekEntry[]>();
   for (const e of entries) {
     if (!byDay.has(e.date)) byDay.set(e.date, []);
     byDay.get(e.date)!.push(e);
+  }
+
+  /* 🆕 T398 — **الأسبوعُ عموداً على الحاسوب** (التصميم المعتمد `a_home`): سبعةُ مربّعاتٍ بعرض الصفحة كانت فارغةَ
+     الوسط (ع6 في تقرير المقارنة)، وفي العمود الجانبيّ يصير كلُّ يومٍ سطراً: رقمُه واسمُه، ثمّ ملصقاتُ ما ينزل فيه —
+     والعنوانُ بابُ التقويم كما في الشريط. البياناتُ نفسُها والحكمُ نفسُه (المتوقَّعُ باهتٌ بحدٍّ متقطّع). */
+  if (variant === "list") {
+    return (
+      <section>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="flex min-w-0 items-center gap-2 text-15 font-bold">
+            <Icon name="calendar" size={16} className="text-accent" />
+            <span className="truncate">{t.weekTitle}</span>
+          </h2>
+          {href ? (
+            <Link href={href} className="shrink-0 text-12 font-medium text-muted hover:text-accent transition">
+              {t.drawerCalendar} <span aria-hidden>›</span>
+            </Link>
+          ) : null}
+        </div>
+        {entries.length === 0 ? (
+          <p className="mb-2 text-12 text-muted" dir="auto">
+            {t.weekNothing}
+          </p>
+        ) : null}
+        <ul className="divide-y divide-[color:var(--divider)]">
+          {days.slice(0, 7).map((d, i) => {
+            const list = byDay.get(d.date) ?? [];
+            const guess = list.length > 0 && list.every((e) => e.expected);
+            return (
+              <li key={d.date} className="flex items-center gap-3 py-2">
+                <span className="w-12 shrink-0">
+                  <span className={`block text-15 font-bold leading-none tabular-nums ${i === 0 ? "text-accent" : ""}`}>{d.dayNum}</span>
+                  <span className="mt-1 block text-[11px] leading-none text-muted">{d.weekday}</span>
+                </span>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  {list.length === 0 ? (
+                    <span className="text-12 text-muted" aria-hidden>
+                      —
+                    </span>
+                  ) : (
+                    list.slice(0, 4).map((e) => {
+                      const src = posterUrl(e.posterPath ?? null, "w185");
+                      return (
+                        <Link
+                          key={`${e.showTmdbId}-${e.label}`}
+                          href={`/show/${e.showTmdbId}`}
+                          prefetch={false}
+                          title={`${e.title} — ${e.label}`}
+                          aria-label={`${e.title} — ${e.label}`}
+                          className={`relative block h-12 w-8 shrink-0 overflow-hidden rounded-md bg-surface-2 ${guess ? "opacity-60 outline outline-1 outline-dashed outline-accent-2/40" : ""} hover:ring-2 hover:ring-accent-2 transition`}
+                        >
+                          {src ? <Image src={src} alt="" fill sizes="32px" className="object-cover" /> : null}
+                        </Link>
+                      );
+                    })
+                  )}
+                  {list.length > 4 ? <span className="text-12 text-muted tabular-nums">+{list.length - 4}</span> : null}
+                  {list.length === 1 ? (
+                    <span className="min-w-0 truncate text-12 text-muted" dir="auto">
+                      {list[0].title}
+                    </span>
+                  ) : null}
+                </span>
+                {i === 0 ? (
+                  <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-muted">{t.whenToday}</span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
   }
 
   return (

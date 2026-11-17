@@ -126,8 +126,10 @@ export function HomeHeader({
       </header>
 
       {/* ===== محتوًى يجري مع الصفحة (D-479): صفُّ الترحيب ثمّ بطاقةُ الأرقام ===== */}
-      <div className="relative space-y-2.5">
-        <div className="flex items-center gap-2.5">
+      {/* 🆕 T398 — على الحاسوب العريض صفٌّ واحد (`a_home`): الترحيبُ في البداية والأرقامُ في الطرف بمقاس محتواها —
+          بطاقةٌ بعرض ١١٠٠ لأربعة أرقامٍ كانت فراغاً ممدوداً (ع6) */}
+      <div className="relative space-y-2.5 desk:flex desk:items-center desk:gap-6 desk:space-y-0">
+        <div className="flex items-center gap-2.5 desk:min-w-0 desk:flex-1">
           {/* الصورةُ بابٌ مباشرٌ إلى الملفّ (D-774) */}
           <HomeAvatarLink
             locale={locale}
@@ -159,7 +161,7 @@ export function HomeHeader({
           أصمّ كي يصحّ «النهاري». **وأربعُ خاناتٍ صفٌّ واحد** (D-1129) — ينقض عمودَي D-487. */}
         {showStats && stats.length > 0 && (
           <div
-            className="grid rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden"
+            className="grid rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden desk:shrink-0"
             style={{
               /* العمودُ بمقاس محتواه ثمّ يُقسم الفائضُ بالتساوي (D-787) — وعند الأربعة أرباعٌ متساوية: الخانةُ
                  عموديّةٌ وموسَّطة، فالقسمةُ العادلةُ هي ما يصفّها */
@@ -174,8 +176,8 @@ export function HomeHeader({
                 href={s.href ?? "/library"}
                 className={
                   stacked
-                    ? "flex min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-[11px] lg:py-5 transition active:opacity-70"
-                    : "flex items-center justify-center gap-1.5 px-1.5 py-3 lg:px-3 lg:py-5 transition active:opacity-70"
+                    ? "flex min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-[11px] lg:py-5 desk:px-4 desk:py-2.5! transition active:opacity-70 hover:bg-surface-2"
+                    : "flex items-center justify-center gap-1.5 px-1.5 py-3 lg:px-3 lg:py-5 desk:px-4 desk:py-3! transition active:opacity-70 hover:bg-surface-2"
                 }
               >
                 <StatFace stat={s} stacked={stacked} />

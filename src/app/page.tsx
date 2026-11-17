@@ -704,6 +704,21 @@ async function HomeBody({
                         ? "watched"
                         : "neutral"
                     }
+                    /* 🆕 T398 — قائمةُ المكتبة على ملصقات «مسلسلاتي» (البند ١١ في تقرير المقارنة): ابدأ · أوقف مؤقّتاً ·
+                       كمّل · شاهدته كاملاً · أزل — بالضغط المطوّل وبالزرّ الأيمن و«⋯» عند المرور. الحالُ من الصفّ نفسِه */
+                    savedMark={false}
+                    hold={{
+                      tmdbId: i.id,
+                      mediaType: "tv",
+                      added: true,
+                      watched: i.aired > 0 && i.watched >= i.aired,
+                      progress: i.progress,
+                      lib: {
+                        unstarted: i.watched === 0 && i.state !== "started",
+                        paused: i.state === "paused",
+                      },
+                      locale,
+                    }}
                   />
                 ))}
               </Section>
@@ -739,6 +754,17 @@ async function HomeBody({
                     posterPath={m.posterPath}
                     progress={m.progress}
                     badge={m.badge}
+                    /* 🆕 T398 — قائمةُ المكتبة على «أفلامي» كأختها (البند ١١): الفيلمُ لم يبدأ ما لم يُحفظ له موضعٌ أو يُشاهَد */
+                    savedMark={false}
+                    hold={{
+                      tmdbId: m.tmdbId,
+                      mediaType: "movie",
+                      added: true,
+                      watched: m.progress >= 100,
+                      progress: m.progress,
+                      lib: { unstarted: m.progress === 0, paused: false },
+                      locale,
+                    }}
                   />
                 ))}
               </Section>
@@ -891,6 +917,7 @@ async function HomeBody({
             friendsRows.length > 0 ? (
               <PosterRail
                 key="friends"
+                deskGrid="poster"
                 title={t.railFriendsNow}
                 icon="people"
                 /* 🆕 D-1355 — «الكلّ» ورقةٌ فيها كلُّ ما يشاهده أصدقاؤك (حتى ٦٠) لا انتقالٌ إلى `/people`؛ الملصقُ وحدَه
@@ -974,7 +1001,40 @@ async function HomeBody({
             </Suspense>
           ) : null,
         };
-        return prefs.order.map((k) => sections[k]);
+        /* 🆕 T398 — **عمودان على الحاسوب العريض** (التصميم المعتمد `a_home`، أحمد ١٧ نوفمبر): «أسبوعك» و«القادم»
+           مواعيدُ تُلمح لا رفوفٌ تُتصفّح، فيسكنان عموداً جانبيّاً ضيّقاً بجانب الرفوف. **والترتيبُ ترتيبُ صاحبه**: ما
+           أخفاه من التخصيص لا يظهر في العمود أيضاً، وما دون الحاسوب يبقى بترتيبه في العمود الواحد (`desk:hidden`). */
+        const ASIDE: HomeSection[] = ["week", "upcoming"];
+        const main = prefs.order.map((k) =>
+          ASIDE.includes(k) && sections[k] ? (
+            <div key={k} className="desk:hidden">
+              {sections[k]}
+            </div>
+          ) : (
+            sections[k]
+          ),
+        );
+        const aside = prefs.order
+          .filter((k) => ASIDE.includes(k))
+          .map((k) =>
+            k === "week" ? (
+              <div key="aside-week" className="rounded-2xl border border-border bg-surface p-4">
+                <WeekStrip days={weekDays} entries={weekEntries} locale={locale} href="/calendar" variant="list" />
+              </div>
+            ) : upcomingRow.length > 0 ? (
+              <div key="aside-upcoming" className="rounded-2xl border border-border bg-surface p-4">
+                <Suspense fallback={<RailSkeleton count={3} />}>
+                  <UpcomingSection row={upcomingRow} cards={prefs.cards} t={t} view="compact" />
+                </Suspense>
+              </div>
+            ) : null,
+          );
+        return (
+          <div key="home-cols" className="desk:grid desk:grid-cols-[minmax(0,1fr)_320px] desk:items-start desk:gap-8">
+            <div className="min-w-0 space-y-3 sm:space-y-6">{main}</div>
+            {aside.some(Boolean) ? <aside className="hidden desk:block space-y-4">{aside}</aside> : null}
+          </div>
+        );
       })()}
 
       <span id="watching" className="block scroll-mt-20" />
@@ -1128,6 +1188,8 @@ function Section({
       action={action}
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact" || solo}
+      /* 🆕 T398 — على الحاسوب العريض شبكةٌ من صفّين (`a_home`): الخلفيّاتُ أعمدةٌ أعرض */
+      deskGrid={wide ? "wide" : "poster"}
     >
       {/* 🆕 **وصفٌّ ببطاقةٍ واحدة ليس صفّاً** (D-440، طلبُ أحمد بدائرةٍ
           حمراء حول بطاقة «أكمل المشاهدة»: «كبّر بوستر أكمل المشاهدة»).
@@ -1366,10 +1428,13 @@ async function UpcomingSection({
   row,
   cards,
   t,
+  view: forced,
 }: {
   row: MixedItem[];
   cards: ReturnType<typeof sanitizeHomePrefs>["cards"];
   t: T;
+  /** 🆕 T398 — العمودُ الجانبيُّ على الحاسوب يفرض المختصر (صفوفٌ لا رفّ) أيّاً كان اختيارُ العرض */
+  view?: SectionView;
 }) {
   const rows = await upcomingWithEpisodes(row, t);
 
@@ -1431,6 +1496,7 @@ async function UpcomingSection({
     </Section>
   );
 
+  if (forced) return rail(forced);
   return <ByHomeView section="upcoming" visual={rail("visual")} compact={rail("compact")} />;
 }
 

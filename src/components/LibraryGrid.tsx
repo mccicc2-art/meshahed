@@ -792,7 +792,7 @@ function LibraryCell({
       className="relative"
       style={held ? { contentVisibility: "visible", containIntrinsicSize: "auto" } : undefined}
     >
-      <LongPressable onLongPress={onHold}>
+      <LongPressable onLongPress={onHold} menuLabel={t.moreMenuTitle}>
         <PosterCard
           href={x.href}
           title={x.title}
