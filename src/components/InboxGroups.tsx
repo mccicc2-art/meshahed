@@ -10,7 +10,7 @@ import { KeyboardDock } from "./ui/KeyboardDock";
 import { sheetMenuItem, sheetMenuDivider, sheetScroll } from "./ui/controls";
 import { buttonClass } from "./ui/Button";
 import { ChatBackground } from "./ChatBackground";
-import { ChatComposer, uploadChatImage, v1Post, type Outgoing } from "./InboxComposer";
+import { ChatComposer, uploadChatImage, v1Get, v1Post, type Outgoing } from "./InboxComposer";
 import { ConvBubble, MsgDeleteSheet, MsgMenuSheet, MsgShell, canUnsend, deleteMessages } from "./InboxChat";
 import { getDict, type Locale } from "@/core/i18n";
 import { gifUrl } from "@/core/media";
@@ -792,14 +792,12 @@ function PeoplePicker({
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/v1/me/follows?dir=following", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j: { ok?: boolean; data?: { people?: Followed[] } }) => {
-        if (!alive) return;
-        if (j?.ok) setPeople(j.data?.people ?? []);
-        else setFailed(true);
-      })
-      .catch(() => alive && setFailed(true));
+    /* 🔴 T406 — الظرفُ `{ data }` لا `{ ok }` (`readV1`): كانت القائمةُ تقول «صار خلل» دائماً */
+    v1Get<{ people?: Followed[] }>("/api/v1/me/follows?dir=following").then((d) => {
+      if (!alive) return;
+      if (d) setPeople(d.people ?? []);
+      else setFailed(true);
+    });
     return () => {
       alive = false;
     };

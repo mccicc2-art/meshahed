@@ -7,7 +7,7 @@ import { Icon } from "./Icon";
 import { StarRatingRow } from "./ListReviewForm";
 import { buttonClass } from "./ui/Button";
 import { chipClass } from "./ui/controls";
-import { v1Post } from "./InboxComposer";
+import { v1Get, v1Post } from "./InboxComposer";
 import { getDict, type Locale } from "@/core/i18n";
 import { coalescedRefresh } from "@/core/refresh";
 import { tap } from "@/lib/haptics";
@@ -33,12 +33,6 @@ import type { ThreadReplyBody } from "@/core/contracts/thread";
 const BODY_MAX = 2000;
 type Answer = "yes" | "all" | "not" | null;
 type Dict = ReturnType<typeof getDict>;
-
-async function v1Get<T>(path: string): Promise<T | null> {
-  const res = await fetch(path, { cache: "no-store" }).catch(() => null);
-  const json = (await res?.json().catch(() => null)) as { ok?: boolean; data?: T } | null;
-  return json?.ok ? (json.data as T) : null;
-}
 
 export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string; avatar: string | null } }) {
   const t = getDict(locale);

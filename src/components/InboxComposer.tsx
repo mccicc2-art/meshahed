@@ -36,6 +36,21 @@ export type ReplyDraft = { id: string; who: string; line: string; thumb?: string
 
 type Dict = ReturnType<typeof getDict>;
 
+/**
+ * ظرفُ `/api/v1` كما يرسله `respond` في `lib/v1.ts`: النجاحُ `{ data, invalidates }` والرفضُ `{ error: { message_key } }`
+ * بحالة HTTP غيرِ ٢xx. 🔴 T406 — كانت هذه الدالّةُ تنتظر `{ ok: true }` (شكلَ `Result` داخل الخادم لا على السلك)، فكلُّ كتابةٍ
+ * ناجحةٍ قُرئت فشلاً: رفعُ الصورة لم يُعِد مساراً، وإرسالُ القروب والحذفُ والإنشاءُ أظهرت «صار خلل» بعد أن تمّت.
+ */
+export function readV1<T>(res: Response | null, json: unknown): { ok: true; data: T } | { ok: false; key: string | null } {
+  const j = (json ?? null) as { data?: T; error?: { message_key?: string } } | null;
+  if (res?.ok && j && "data" in j) return { ok: true, data: j.data as T };
+  return { ok: false, key: j?.error?.message_key ?? null };
+}
+
+function errText(key: string | null, t: Dict): string {
+  return key && typeof (t as Record<string, unknown>)[key] === "string" ? ((t as Record<string, unknown>)[key] as string) : t.apiInternal;
+}
+
 /** نداءُ كتابةٍ إلى `/api/v1` بجلسة الكوكي — الرفضُ يعود رسالةً مقروءةً من مفتاحه (`message_key`) لا «تعذّر» عامّ */
 export async function v1Post<T = unknown>(path: string, body: unknown, t: Dict): Promise<T> {
   const res = await fetch(path, {
@@ -44,11 +59,16 @@ export async function v1Post<T = unknown>(path: string, body: unknown, t: Dict):
     body: JSON.stringify(body),
     cache: "no-store",
   }).catch(() => null);
-  const json = (await res?.json().catch(() => null)) as { ok?: boolean; data?: T; error?: { message_key?: string } } | null;
-  if (json?.ok) return json.data as T;
-  const key = json?.error?.message_key;
-  const msg = key && typeof (t as Record<string, unknown>)[key] === "string" ? ((t as Record<string, unknown>)[key] as string) : t.apiInternal;
-  throw new Error(msg);
+  const r = readV1<T>(res, await res?.json().catch(() => null));
+  if (r.ok) return r.data;
+  throw new Error(errText(r.key, t));
+}
+
+/** قراءةٌ من `/api/v1` — `null` عند أيِّ رفض (من يقرأ يعرض فراغاً لا خطأ) */
+export async function v1Get<T>(path: string): Promise<T | null> {
+  const res = await fetch(path, { cache: "no-store" }).catch(() => null);
+  const r = readV1<T>(res, await res?.json().catch(() => null));
+  return r.ok ? r.data : null;
 }
 
 const OK_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -69,10 +89,9 @@ export async function uploadChatImage(file: File, t: Dict): Promise<string> {
   const form = new FormData();
   form.append("file", blob, "image.jpg");
   const res = await fetch("/api/v1/me/messages/image", { method: "POST", body: form, cache: "no-store" }).catch(() => null);
-  const json = (await res?.json().catch(() => null)) as { ok?: boolean; data?: { path: string }; error?: { message_key?: string } } | null;
-  if (json?.ok && json.data?.path) return json.data.path;
-  const key = json?.error?.message_key;
-  throw new Error(key && typeof (t as Record<string, unknown>)[key] === "string" ? ((t as Record<string, unknown>)[key] as string) : t.apiInternal);
+  const r = readV1<{ path: string }>(res, await res?.json().catch(() => null));
+  if (r.ok && r.data?.path) return r.data.path;
+  throw new Error(errText(r.ok ? null : r.key, t));
 }
 
 async function shrink(file: File): Promise<Blob> {
