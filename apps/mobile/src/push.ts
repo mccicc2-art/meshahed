@@ -11,6 +11,7 @@ import type { PushCap, PushForgetBody, PushRegisterBody } from "@/core/push";
 import { defineDmCategory } from "./notifications/dmReply";
 import { LoopzWidget } from "../modules/loopz-widget";
 import { hasWidgetToken, onWidgetToken } from "./widget/feed";
+import { mark } from "./perfMarks";
 
 /**
  * ====== إشعاراتُ الدفع في التطبيق — الإذنُ والرمزُ (D-1305) ======
@@ -118,7 +119,12 @@ async function readPermission(ask: boolean | "user"): Promise<State> {
     }
     /* سُئل بنافذة النظام نفسِها ⇒ هذه فرصتُه في هذا الدور، فلا تلحقها ورقةٌ تكرّر السؤال */
     markNudged();
+    /* 🆕 المهمّة ٣٩٩ — ظهرت النافذةُ؟ وبماذا أُجيبت؟ (كان لا يُعرف: عضوان سجّلا ١٧ نوفمبر بلا جهازٍ للإشعارات) */
+    const src = ask === "user" ? "user" : "auto";
+    const shownAt = Date.now();
+    mark("push.prompt", 0, { src });
     p = await Notifications.requestPermissionsAsync();
+    mark("push.answer", Date.now() - shownAt, { src, result: p.granted ? "granted" : p.canAskAgain ? "none" : "denied" });
   }
   canAskNow = !p.granted && p.canAskAgain;
   return p.granted ? "granted" : p.canAskAgain ? "undetermined" : "denied";

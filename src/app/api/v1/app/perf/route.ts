@@ -123,6 +123,10 @@ const NAMES = new Set([
   /* 🆕 المهمّة ٣٧٩ — البحثُ بالوصف من الضغطة إلى الجواب (ms، `result` ok · empty · short · plus · err · `count` النتائج ·
      `rtt` · `srv` ومراحلُه `sgt` `stz` `sai` `sgr` `sfb` `sfn` · `mdl` النموذجُ الذي أجاب · `try` نداءاتُه) — بلاغُ mesho «بطيء جداً» */
   "story.search",
+  /* 🆕 المهمّة ٣٩٩ — نافذةُ إذن الإشعارات: عُرضت (`push.prompt`، ms=0) · أُجيبت (`push.answer`، ms أمامه · `result` granted ·
+     denied · none) · `src` auto · user. عرضٌ بلا جواب = أُغلق التطبيقُ والنافذةُ مفتوحة */
+  "push.prompt",
+  "push.answer",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 /* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)

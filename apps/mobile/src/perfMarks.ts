@@ -114,7 +114,13 @@ export type PerfName =
   /* 🆕 D-1547 — قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة (`TabSlide.tsx`) */
   | "pane.warm"
   /* 🆕 المهمّة ٣٧٩ — البحثُ بالوصف من الضغطة إلى الجواب، ومراحلُ الخادم معه (بلاغُ mesho ١٢ نوفمبر: «بطيء جداً») */
-  | "story.search";
+  | "story.search"
+  /* 🆕 المهمّة ٣٩٩ — نافذةُ إذن الإشعارات (أحمد ١٨ نوفمبر: «نفذ القياس»، بعد أن سجّل عضوان من الآيفون بلا جهازٍ للإشعارات
+     ولم نعرف أظهرت لهما النافذةُ أم لا). `push.prompt` لحظةَ عرضِها (ms=0) و`push.answer` حين يُجاب عنها (ms = كم بقيت
+     أمامه · `result` granted · denied · none). عرضٌ بلا جواب = أُغلق التطبيقُ والنافذةُ مفتوحة. `src` = auto (بعد الترحيب
+     أو أوّلَ فتحٍ بعد التحديث) · user (صفُّ الإعدادات). بلا هويّة (D-881): تعدّ ولا تسمّي */
+  | "push.prompt"
+  | "push.answer";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -164,7 +170,8 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
     timer = setTimeout(flush, URGENT_MS);
   } else arm();
 }
-const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang", "gesture.stuck"]);
+/* 🆕 المهمّة ٣٩٩ — ونافذةُ الإشعارات كذلك: من يغلق التطبيقَ وهي أمامه لا تنتظره دفعةُ الثلاثين ثانية */
+const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer"]);
 const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {
