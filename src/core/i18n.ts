@@ -2094,6 +2094,9 @@ const ar = {
   planEndedPushNone: "أوقفنا ما زاد من تطبيقاتك — اختر ما يبقى",
   /** 🆕 لمن انتهت خطّتُه ولم يتوقّف له جهاز (أحمد ٦ نوفمبر: «اي احد ينتهي اشتراكه يجيه اشعار») — يفتح صفحةَ Loopz+ */
   planEndedPushFree: "حسابك الآن على الخطّة المجّانيّة",
+  /** 🆕 المهمّة ٤٠١ — منحةُ Loopz+ من لوحة الإدارة (أحمد ١٨ نوفمبر: «١أ نفذ شكل الاشعار المقترح»). `day` آخرُ يومٍ فيها */
+  plusGiftPushTitle: "هدية من Loopz",
+  plusGiftPushBody: (day: string) => `حصلت على Loopz Plus حتى ${day}. اضغط لترى ما انفتح لك.`,
   /* 🆕 ====== شاشةُ الاشتراك الأصليّة (بناء 1.14.0 — خطّةُ Loopz+ v2 §٣–§٤، لوحُ «المعمل» `Main`) ======
      الأسعارُ لا تُكتب هنا: نصُّ المتجر بعملة البلد يُمرَّر إلى الدوالّ (الخطّة §٢) */
   pwTierLabel: "نوع الاشتراك",
@@ -4907,6 +4910,8 @@ const en: Dict = {
   planEndedPushKept: (name: string) => `We kept ${name} — choose which apps stay`,
   planEndedPushNone: "Your extra apps are paused — choose what stays",
   planEndedPushFree: "Your account is on the free plan now",
+  plusGiftPushTitle: "A gift from Loopz",
+  plusGiftPushBody: (day: string) => `You've got Loopz Plus until ${day}. Tap to see what's unlocked.`,
   pwTierLabel: "Subscription type",
   pwTierPlus: "Plus",
   pwTierGold: "Gold",

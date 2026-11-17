@@ -345,6 +345,33 @@ export function notifyPlanEnded(input: { to: string; kept: string | null; stoppe
   );
 }
 
+/**
+ * 🆕 المهمّة ٤٠١ — **«هدية من Loopz»: مُنح Loopz+ من لوحة الإدارة** (أحمد ١٨ نوفمبر: «١أ نفذ شكل الاشعار المقترح»). المنحةُ
+ * اليدويّة كانت صامتة، فعضوان مُنحا ١٧ نوفمبر ولم يعرفا. يفتح صفحةَ Loopz+ (التطبيقُ يفتحها أصليّة) ليرى ما انفتح له.
+ * ⚖️ إشعارُ حسابٍ لا مجموعةَ له تُكتم (`group: null`، كإشعار الانتهاء). مفتاحُه العضوُ ويومُ النهاية: منحةٌ تُعاد بالتاريخ نفسِه
+ * لا ترنّ مرّتين. **يُنتظر ويعيد عددَ الأجهزة**: اللوحةُ تقول للمدير هل وصل أم لا جهازَ للعضو أصلاً (حالُ عضوَي ١٧ نوفمبر).
+ */
+export async function notifyPlusGift(input: { to: string; until: string }): Promise<number> {
+  try {
+    if (!hasServiceKey()) return 0;
+    const db = await createServiceClient();
+    const n = (await devicesOf(db, input.to)).length;
+    if (!n) return 0;
+    /* المنحةُ تنتهي عند منتصف الليل (بداية اليوم التالي بتوقيت الرياض)، فاليومُ المكتوب هو آخرُ يومٍ فيها لا اليومُ الذي يليه */
+    const last = new Date(new Date(input.until).getTime() - 1);
+    const day = (lang: Locale) => new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "ar-SA-u-ca-gregory-nu-latn", { day: "numeric", month: "long", timeZone: "Asia/Riyadh" }).format(last);
+    await deliver({
+      to: input.to,
+      group: null,
+      dedupe: `plusgift:${input.to}:${last.toISOString().slice(0, 10)}`,
+      build: (t, lang) => ({ title: t.plusGiftPushTitle, body: t.plusGiftPushBody(day(lang)), url: "/plus" }),
+    });
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
 /** نافذةُ جمع الحلقات: ما سُجّل تلقائياً من المسلسل نفسِه في الساعات الستّ الأخيرة ولم يُرَ — إشعارٌ واحدٌ بعدده */
 const AUTO_PUSH_WINDOW_MS = 6 * 60 * 60_000;
 

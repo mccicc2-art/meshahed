@@ -360,6 +360,8 @@ export const AUDIT_AR: Record<string, string> = {
   decide_verification: "قرار توثيق",
   decide_partner: "قرار شراكة",
   set_provider_link: "تعديل رابط منصّة",
+  /* 🆕 المهمّة ٤٠١ — «امنح Loopz+» (الهجرة ٢٤٨) */
+  grant_plus: "منح Loopz+",
 };
 
 /**
@@ -434,6 +436,12 @@ export const ADMIN_ERRORS: [string, string][] = [
   ["cannot_change_self", "لا تغيّر صلاحيةَ نفسك — لا أحدَ يفتح البابَ بعدها."],
   ["already_suspended", "الحساب موقوف أصلاً."],
   ["not_suspended", "الحساب ليس موقوفاً."],
+  /* 🆕 المهمّة ٤٠١ — «امنح Loopz+» (`admin_grant_plus`، الهجرة ٢٤٨) */
+  ["until_in_past", "اختر يوماً بعد اليوم."],
+  ["until_too_far", "المنحةُ من هنا سنتان على الأكثر."],
+  ["system_account", "حسابُ النظام لا يُمنح."],
+  ["user_suspended", "الحساب موقوف — فكّ إيقافه أولاً."],
+  ["bad_day", "تاريخ غير صالح."],
   ["already_paid", "الطلب صُرف — لا يُنقَض."],
   ["approve_first", "وافِق أولاً ثم سجّل الصرف."],
   ["not_pending", "الطلب لم يعد معلّقاً."],

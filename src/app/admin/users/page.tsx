@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getAmAdmin, getAdminUsers } from "@/lib/data";
 import { adminSuspendUser, adminUnsuspendUser } from "@/lib/actions";
 import { getAdminUserContent, USER_ITEM_AR } from "@/lib/admin";
-import { adminSetAdmin } from "@/lib/adminUsers";
+import { adminGrantPlus, adminSetAdmin } from "@/lib/adminUsers";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
 import { AdminNotice } from "@/components/admin/AdminNotice";
@@ -71,10 +71,39 @@ async function setAdmin(formData: FormData) {
   redirect(`${back}${back.includes("?") ? "&" : "?"}ok=admin`);
 }
 
+/**
+ * 🆕 المهمّة ٤٠١ — **«امنح Loopz+»** (أحمد ١٨ نوفمبر: «١أ نفذ شكل الاشعار المقترح»): يومٌ أخيرٌ وسببٌ إلزاميّ كحقلَي الإدارة
+ * والإيقاف (شكلٌ واحدٌ لأفعالٍ متشابهة)، والحارسُ في `admin_grant_plus` (الهجرة ٢٤٨). بعدها إشعارُ «هدية من Loopz».
+ * والردُّ يقول هل وصل الإشعار: عضوٌ بلا جهازٍ مسجّل لا يبلغه شيء (حالُ عضوَي ١٧ نوفمبر) فيُراسَل من حساب Loopz.
+ */
+async function grantPlus(formData: FormData) {
+  "use server";
+  const q = String(formData.get("q") ?? "");
+  const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const sep = back.includes("?") ? "&" : "?";
+  let res: { plusUntil: string | null; devices: number };
+  try {
+    res = await adminGrantPlus(
+      String(formData.get("user") ?? ""),
+      String(formData.get("day") ?? ""),
+      String(formData.get("reason") ?? ""),
+    );
+  } catch (e) {
+    redirect(`${back}${sep}err=${encodeURIComponent((e as Error).message.slice(0, 140))}`);
+  }
+  redirect(`${back}${sep}ok=plus&day=${encodeURIComponent(String(formData.get("day") ?? ""))}&dev=${res.devices}`);
+}
+
+/** آخرُ يومٍ في الشهر الجاري بتوقيت الرياض (`YYYY-MM-DD`) — القيمةُ الأولى لخانة «حتى» */
+function monthEndRiyadh(): string {
+  const now = new Date(Date.now() + 3 * 3_600_000);
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+}
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; u?: string; err?: string; ok?: string }>;
+  searchParams: Promise<{ q?: string; u?: string; err?: string; ok?: string; day?: string; dev?: string }>;
 }) {
   const admin = await getAmAdmin();
   if (!admin) notFound();
@@ -103,7 +132,15 @@ export default async function AdminUsersPage({
         <button type="submit" className={buttonClass({ size: "sm" })}>بحث</button>
       </form>
 
-      <AdminNotice err={sp.err} ok={sp.ok} />
+      <AdminNotice
+        err={sp.err}
+        ok={sp.ok}
+        okText={
+          sp.ok === "plus"
+            ? `مُنح Loopz+ حتى نهاية ${sp.day ?? "—"} — ${Number(sp.dev) > 0 ? "أُرسل إشعارُ الهدية" : "لا جهاز مسجّل له للإشعارات، فلم يصله إشعار"}`
+            : undefined
+        }
+      />
 
       {rows.length === 0 && <p className="text-14 text-muted">لا نتائج.</p>}
 
@@ -201,6 +238,39 @@ export default async function AdminUsersPage({
                 {u.isAdmin ? "اسحب صلاحية الإدارة" : "اجعله مديراً"}
               </button>
             </form>
+            )}
+
+            {/* 🆕 المهمّة ٤٠١ — «امنح Loopz+»: لا لحساب نظام ولا لموقوف (الحارسُ نفسُه في القاعدة) */}
+            {u.isSystem || suspended ? null : (
+              <form action={grantPlus} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="user" value={u.id} />
+                <input type="hidden" name="q" value={q} />
+                <label className="flex shrink-0 items-center gap-1.5 text-13 text-muted">
+                  حتى نهاية
+                  <input
+                    type="date"
+                    name="day"
+                    required
+                    defaultValue={monthEndRiyadh()}
+                    aria-label={`آخر يوم في منحة Loopz+ لـ ${name}`}
+                    className="rounded-input border border-border bg-surface-2 px-2 py-1.5 text-14"
+                    dir="ltr"
+                  />
+                </label>
+                <input
+                  type="text"
+                  name="reason"
+                  required
+                  minLength={3}
+                  maxLength={300}
+                  placeholder="سبب المنحة (إلزامي)"
+                  aria-label={`سبب منح Loopz+ لـ ${name}`}
+                  className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                />
+                <button type="submit" className={`shrink-0 ${buttonClass({ variant: "surface", size: "sm" })}`}>
+                  امنح Loopz+
+                </button>
+              </form>
             )}
 
             {open === u.id && (
