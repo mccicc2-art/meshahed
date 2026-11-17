@@ -518,7 +518,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             )}
             {/* 🆕 T402 — القصّةُ سطران في الترويسة على الحاسوب (`a_title`): هناك متّسعٌ بجانب الملصق، والقصّةُ كاملةً تبقى في «معلومات» */}
             {tv.overview ? (
-              <p className="hero-halo mt-3 hidden max-w-2xl text-sm leading-relaxed text-foreground/85 line-clamp-2 desk:block">{tv.overview}</p>
+              <p className="hero-halo mt-3 hidden max-w-2xl text-sm leading-relaxed text-foreground/85 desk:line-clamp-2">{tv.overview}</p>
             ) : null}
           </div>
         </div>
