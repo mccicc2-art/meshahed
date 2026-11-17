@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   getUser,
+  getProfile,
   getMyCommunities,
   getMyCommunityInvites,
   getCommunityRoom,
@@ -22,6 +23,7 @@ import {
   TalkedAboutWork,
 } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { NewPostBox } from "@/components/NewPostBox";
 import { applyTabPrefs, defaultTab } from "@/core/tabPrefs";
 import { localizeTitleRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
@@ -362,8 +364,20 @@ export default async function PeoplePage({
     feed: "all",
   }).toString()}`;
 
+  /* 🆕 T405 — وجهي واسمي لمربّع «منشور جديد» (`getProfile` مخبّأٌ في الطلب — لا نداءَ ثانٍ إن قرأه غيرُه) */
+  const meProfile = user ? await getProfile() : null;
+
   const activityBody = (
     <section className={READING}>
+            {/* 🆕 T405 — «منشورٌ جديد» مربّعٌ ثابتٌ أعلى الخطّ على الحاسوب (قرار أحمد «٣أ»، البند ١٤) — والجوالُ كما هو */}
+            {user ? (
+              <div className="mb-4 hidden lg:block">
+                <NewPostBox
+                  locale={locale}
+                  me={{ name: meProfile?.nickname || meProfile?.username || "", avatar: meProfile?.avatar_url ?? null }}
+                />
+              </div>
+            ) : null}
             {/* 🆕 D-1207 — «الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً» خرجا من الأدوات إلى فوق الخطّ — للعضو وحدَه (D-629) */}
             {user ? <TalkFilters locale={locale} kind="feed" mine={!showStrangers} sort={feedSort === "smart" ? "active" : "latest"} /> : null}
             <ActivityFeed
