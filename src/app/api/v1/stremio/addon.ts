@@ -36,10 +36,13 @@ export const CONFIGURE_PAGE = `${SITE_URL}/stremio`;
 export function addonManifest(opts: { configurationRequired: boolean }) {
   return {
     id: "com.loopztv.signals",
-    version: "1.3.1",
+    /* 🆕 1.3.2 — رفعُ الرقم ليعيد Stremio قراءةَ الوصف الجديد عند من ثبّتها */
+    version: "1.3.2",
     name: "Loopz",
+    /* 🆕 ١٧ نوفمبر (أحمد «عدل الوصف»): الربطُ عدُّ خاناتٍ لا قفلُ بلس (D-1640) — المجانيُّ يربط تطبيقاً واحداً، فعبارةُ
+       «For Loopz Plus members» كانت تصدّ من يراها في القائمة العامّة وهو يستطيع الربط مجاناً. النصُّ يطابق شارة صفحة `/stremio`. */
     description:
-      "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. For Loopz Plus members.",
+      "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. Free for one linked app with a Loopz account; up to 5 with Loopz Plus.",
     logo: `${SITE_URL}/loopz-mark.png`,
     background: `${SITE_URL}/loopz-cover.jpg`,
     resources: ["stream", "subtitles"],
