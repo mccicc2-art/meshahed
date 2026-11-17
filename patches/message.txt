@@ -1,9 +1,8 @@
-[deploy] Release R235 - campaign invite link LOOPZX for the Loopz X account, counted without rewards (T393)
+[deploy] Release R236 - campaign link reads "Join Loopz" and the app claims it without asking (T394)
 
-- Migration 247 (already run on production): referrals.source accepts 'campaign';
-  claim_referral attributes the official account's code as 'campaign'; LOOPZX code.
-- ownerOfCode returns 'campaign' for the official account (no friend gift shown).
-- Link: loopztv.com/join/LOOPZX
+- /invite/LOOPZX title: "Join Loopz" in Arabic and English.
+- App welcome: a campaign code is claimed silently; no "did Loopz invite you?".
+- GET /api/v1/me/referral returns no inviter for the official account.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FexM7EcvU9UUeVvv2UmuD8
