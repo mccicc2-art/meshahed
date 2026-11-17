@@ -4,7 +4,7 @@ import { ok } from "@/core/contracts/result";
 import { createClient } from "@/lib/supabase/server";
 import { codeForUsername, inviterById, ownerOfCode, referralState } from "@/lib/referral";
 import { cleanInviteCode } from "@/core/storeLinks";
-import type { ClaimReferralBody, ClaimReferralPayload, MyReferralPayload } from "@/core/contracts/referral";
+import type { ClaimReferralBody, ClaimReferralPayload, MyReferralPayload, ReferralSource } from "@/core/contracts/referral";
 
 /**
  * 🆕 `/api/v1/me/referral` — **نسبةُ الحساب الجديد إلى داعيه من التطبيق** (المهمة ٣٧٠، قرارُ أحمد ١٠ نوفمبر «1ب … نفذ أ»).
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
       let code = cleanInviteCode(body?.code);
       let ownerId: string | null = null;
-      let source: "friend" | "partner" | null = null;
+      let source: ReferralSource | null = null;
       if (code) {
         const owner = await ownerOfCode(code);
         ownerId = owner?.userId ?? null;

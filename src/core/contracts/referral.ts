@@ -14,11 +14,16 @@ export type InviterLite = {
   verified: boolean;
 };
 
+/**
+ * مصدرُ الكود: صديقٌ (هديّةُ المدعوّ ١٤ يوماً عند الاحتساب) · شريكٌ (بلا هديّة) · 🆕 حملةٌ (المهمة ٣٩٣، الهجرة ٢٤٧: كودُ الحساب
+ * الرسميّ في رابط حملة X — يُعَدّ ولا يُكافأ أحد)
+ */
+export type ReferralSource = "friend" | "partner" | "campaign";
+
 /** `GET /api/v1/referral/{code}` — عامٌّ: من صاحبُ هذا الكود؟ `inviter: null` = كودٌ لا يُعرف */
 export type ReferralPreviewPayload = {
   inviter: InviterLite | null;
-  /** صديقٌ (هديّةُ المدعوّ ١٤ يوماً عند الاحتساب) أو شريك (بلا هديّة) */
-  source: "friend" | "partner" | null;
+  source: ReferralSource | null;
 };
 
 /**
@@ -35,8 +40,8 @@ export type ClaimReferralBody = { code?: string; username?: string };
 export type ClaimReferralPayload = {
   claimed: boolean;
   inviter: InviterLite | null;
-  /** مصدرُ الكود الذي نُسب إليه: صديقٌ (هديّةُ ١٤ يوماً عند الاحتساب) أو شريك (بلا هديّة) */
-  source: "friend" | "partner" | null;
+  /** مصدرُ الكود الذي نُسب إليه (`ReferralSource`) */
+  source: ReferralSource | null;
   /**
    * 🆕 المراجعةُ المستقلّة — **لماذا لم تُنسب** حين `claimed: false`: رفضٌ دائمٌ لا يُقال له «حاول مجدداً».
    * `ineligible` حسابي لا يقبل نسبةً (قديم · تابع · نُسب) · `unknown` لا داعيَ بهذا الكود أو الاسم (أو لا يصحّ داعياً) ·

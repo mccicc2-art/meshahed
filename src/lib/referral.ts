@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isLoopz } from "@/core/loopz";
 import { isPersonaId } from "@/core/personas";
 import { cleanInviteCode } from "@/core/storeLinks";
-import type { InviterLite } from "@/core/contracts/referral";
+import type { InviterLite, ReferralSource } from "@/core/contracts/referral";
 
 /**
  * ====== 🆕 الدعوةُ من التطبيق — قراءاتُ الخادم وكتابتُه (المهمة ٣٧٠) ======
@@ -45,26 +45,34 @@ export async function inviterById(id: string): Promise<InviterLite | null> {
 /**
  * 🆕 المراجعةُ المستقلّة — **من لا يصحّ أن يكون داعياً**: الحسابُ الرسميّ، وشخصيّاتُ Loopz AI (ملفّاتٌ عاديّةٌ بلا `is_system`،
  * فيعيدها بحثُ الأعضاء — ولو اختيرت لمنحتها `qualify_referral` أيّاماً ومكافآت)، والموقوف (`suspended_at`، الهجرة ١٧٣).
+ * 🆕 المهمة ٣٩٣ — `campaign`: الحسابُ الرسميُّ يصحّ داعياً **بكوده وحدَه** (رابطُ حملة X، الهجرة ٢٤٧) لأنّ مصدرَه `campaign` لا
+ * مكافأةَ فيه. ولا يُختار بالاسم أبداً (`codeForUsername` لا يمرّر `campaign`): من كتب «لوبز» لم يأتِ من رابط الحملة.
  */
-async function canInvite(db: Awaited<ReturnType<typeof createServiceClient>>, id: string): Promise<boolean> {
-  if (isLoopz(id) || isPersonaId(id)) return false;
+async function canInvite(db: Awaited<ReturnType<typeof createServiceClient>>, id: string, campaign = false): Promise<boolean> {
+  if (isPersonaId(id) || (isLoopz(id) && !campaign)) return false;
   const { data, error } = await db.from("profiles").select("suspended_at").eq("id", id).maybeSingle();
   return !error && !!data && !data.suspended_at;
 }
 
-/** صاحبُ الكود ومصدرُه — بترتيب `claim_referral` نفسِه: كودُ صديقٍ أوّلاً، ثمّ كودُ شريك. ومن لا يصحّ داعياً كأنّ كودَه غائب */
-export async function ownerOfCode(raw: unknown): Promise<{ userId: string; source: "friend" | "partner" } | null> {
+/**
+ * صاحبُ الكود ومصدرُه — بترتيب `claim_referral` نفسِه: كودُ صديقٍ أوّلاً، ثمّ كودُ شريك. ومن لا يصحّ داعياً كأنّ كودَه غائب.
+ * 🆕 المهمة ٣٩٣ — كودُ الحساب الرسميّ مصدرُه `campaign` (كما تكتبه الدالّةُ في ٢٤٧): بلا «هديّة» في الصفحة ولا في التطبيق،
+ * لأنّ الهديّةَ تُرسم لـ`friend` وحدَه — والقارئُ القديمُ في التطبيق يقارن بـ`"friend"` فيرى قيمةً لا يعرفها بلا هديّةٍ أيضاً.
+ */
+export async function ownerOfCode(raw: unknown): Promise<{ userId: string; source: ReferralSource } | null> {
   const code = cleanInviteCode(raw);
   if (!code) return null;
   try {
     const db = await createServiceClient();
     const friend = await db.from("referral_codes").select("user_id").eq("code", code).maybeSingle();
-    let owner: { userId: string; source: "friend" | "partner" } | null = friend.data?.user_id ? { userId: String(friend.data.user_id), source: "friend" } : null;
+    let owner: { userId: string; source: ReferralSource } | null = friend.data?.user_id
+      ? { userId: String(friend.data.user_id), source: isLoopz(String(friend.data.user_id)) ? "campaign" : "friend" }
+      : null;
     if (!owner) {
       const partner = await db.from("partners").select("user_id").eq("code", code).maybeSingle();
       if (partner.data?.user_id) owner = { userId: String(partner.data.user_id), source: "partner" };
     }
-    return owner && (await canInvite(db, owner.userId)) ? owner : null;
+    return owner && (await canInvite(db, owner.userId, owner.source === "campaign")) ? owner : null;
   } catch {
     /* صفرٌ صامت */
   }
