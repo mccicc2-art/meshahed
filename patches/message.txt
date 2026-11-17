@@ -1,0 +1,12 @@
+[deploy] Release R233 - next and eslint-config-next 16.4.2 -> 16.4.6 (T391, A-60)
+
+Registry release 230 - task 391 (Ahmed: "A-60" execute, then push).
+- Fixer task 391: A-60 - bump next and eslint-config-next 16.4.2 -> 16.4.6.
+  Moves past a moderate advisory in next 16.3.0-16.4.4 (fixed in 16.4.6).
+  Lockfile changes only the next/@next packages (12 entries).
+Checks on the combined tree: web tsc 0 - eslint 0 errors / 10 warnings -
+tests 452/452 - next build OK - npm audit --omit=dev: moderate 0, low 1.
+Web only: no apps/mobile change, no OTA, no native build.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7B2tVmWDxUAEm3X8YF
