@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "./Icon";
-import { posterUrl } from "@/core/media";
+import { backdropUrl, posterUrl } from "@/core/media";
+import { webWords } from "./webWords";
 import { getDict, type Locale } from "@/core/i18n";
 import {
   CAL_EXPECTED,
@@ -32,7 +33,10 @@ export function CalendarMonth({
   byDay,
   locale,
   todayLabelText,
+  backdrops,
 }: {
+  /** 🆕 R268 — خلفيّةُ كلِّ عملٍ (`tv-123` ← مسارٌ خام) لصفوف الحاسوب العريضة — غائبةٌ ⇒ الملصقُ كما كان */
+  backdrops?: Record<string, string | null>;
   days: CalendarDay[];
   byDay: Map<string, CalendarEntry[]>;
   locale: Locale;
@@ -42,11 +46,23 @@ export function CalendarMonth({
   const t = getDict(locale);
   const heads = weekdayLabels(locale);
   const withEntries = days.filter((d) => d.inMonth && (byDay.get(d.date)?.length ?? 0) > 0);
+  const w = webWords(locale);
+  /* 🆕 R268 — ملخّصُ الشهر لعمود الحاسوب: حلقاتٌ وأفلامٌ وأعمالٌ مختلفة — من المداخل نفسِها، بلا نداء */
+  const monthEntries = withEntries.flatMap((d) => byDay.get(d.date) ?? []);
+  const sum = {
+    eps: monthEntries.filter((e) => e.media === "tv").length,
+    movies: monthEntries.filter((e) => e.media === "movie").length,
+    works: new Set(monthEntries.map((e) => `${e.media}-${e.tmdbId}`)).size,
+  };
 
   return (
-    <div className="space-y-6">
+    /* 🆕 R268 — **التقويمُ على الحاسوب عمودان** (أحمد ١٨ نوفمبر — «ب»): الأيامُ القادمة صفوفٌ عريضةٌ بخلفيّة العمل، وبجانبها
+       الشهرُ صغيراً ثابتاً (يومٌ فيه شيءٌ رابطٌ ينزل إليه — كما في الجوال) وتحته ملخّصُ الشهر. الشهرُ فيه أيامٌ فارغةٌ كثيرة،
+       والقائمةُ لا تعرض إلّا ما فيه شيء. وتحت ١٢٨٠ كما كان حرفاً: الشهرُ فوق والقائمةُ تحته. */
+    <div className="space-y-6 desk:space-y-0 desk:grid desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start desk:gap-x-10">
       {/* ═══ الخريطة ═══ */}
-      <div>
+      <div className="desk:col-start-2 desk:row-start-1 desk:sticky desk:top-6 desk:space-y-3">
+      <div className="desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-3">
         <div className="grid grid-cols-7 gap-1 mb-1">
           {heads.map((h, i) => (
             <span key={i} className="text-center text-[10px] text-muted leading-none py-1">
@@ -104,13 +120,32 @@ export function CalendarMonth({
         </div>
       </div>
 
+      {monthEntries.length ? (
+        <div className="hidden desk:block rounded-2xl border border-border bg-surface p-3.5">
+          <p className="mb-2 text-12 font-bold text-muted">{w.calThisMonth}</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {([
+              [sum.eps, w.calEpisodesN],
+              [sum.movies, w.calMoviesN],
+              [sum.works, w.calWorksN],
+            ] as const).map(([n, label]) => (
+              <div key={label} className="rounded-xl bg-surface-2 py-2.5">
+                <b className="block text-20 font-bold tabular-nums">{n}</b>
+                <span className="text-12 text-muted">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      </div>
+
       {/* ═══ المحتوى ═══ */}
       {withEntries.length === 0 ? (
-        <p className="text-14 text-muted text-center py-6" dir="auto">
+        <p className="text-14 text-muted text-center py-6 desk:col-start-1 desk:row-start-1" dir="auto">
           {t.calEmpty}
         </p>
       ) : (
-        <ul className="space-y-5">
+        <ul className="space-y-5 desk:col-start-1 desk:row-start-1">
           {withEntries.map((d) => (
             <li key={d.date} id={`d-${d.date}`} className="scroll-mt-24">
               <p className="text-12 font-semibold text-muted mb-2" dir="auto">
@@ -120,14 +155,20 @@ export function CalendarMonth({
               <ul className="space-y-2">
                 {(byDay.get(d.date) ?? []).map((e) => {
                   const url = posterUrl(e.posterPath, "w185");
+                  const bd = backdropUrl(backdrops?.[`${e.media}-${e.tmdbId}`] ?? null, "w780");
                   return (
                     <li key={e.key}>
                       <Link
                         href={e.media === "tv" ? `/show/${e.tmdbId}` : `/movie/${e.tmdbId}`}
                         prefetch={false}
-                        className={`flex items-center gap-3 rounded-xl border bg-surface p-2 hover:border-accent-2/60 transition ${e.expected ? "border-dashed border-border opacity-60" : "border-border"}`}
+                        className={`flex items-center gap-3 rounded-xl border bg-surface p-2 hover:border-accent-2/60 transition ${e.expected ? "border-dashed border-border opacity-60" : "border-border"} ${bd ? "desk:h-[92px] desk:gap-4 desk:overflow-hidden desk:rounded-2xl desk:p-0 desk:pe-4" : ""}`}
                       >
-                        <span className="relative block w-9 h-[54px] shrink-0 rounded-md overflow-hidden bg-surface-2">
+                        {bd ? (
+                          <span className="relative hidden desk:block h-full w-[164px] shrink-0 bg-surface-2">
+                            <Image src={bd} alt="" fill sizes="164px" className="object-cover" />
+                          </span>
+                        ) : null}
+                        <span className={`relative block w-9 h-[54px] shrink-0 rounded-md overflow-hidden bg-surface-2 ${bd ? "desk:hidden" : ""}`}>
                           {url ? (
                             <Image
                               src={url}
@@ -143,7 +184,7 @@ export function CalendarMonth({
                           )}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-14 font-medium truncate" dir="auto">
+                          <span className="block text-14 font-medium truncate desk:text-15 desk:font-bold" dir="auto">
                             {e.title}
                           </span>
                           {/* ⚠️ **ولا رقمَ حلقة**: رقمُها نداءُ TMDB لكلِّ

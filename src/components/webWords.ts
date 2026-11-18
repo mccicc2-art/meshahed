@@ -42,6 +42,11 @@ const AR = {
   /* 🆕 R267 — صفحةُ الممثّل على الحاسوب */
   personKnownFor: "أشهر أعماله",
   personAsRole: (r: string) => `بدور ${r}`,
+  /* 🆕 R268 — ملخّصُ الشهر في التقويم على الحاسوب */
+  calThisMonth: "هذا الشهر",
+  calEpisodesN: "حلقة",
+  calMoviesN: "فيلم",
+  calWorksN: "عمل",
 };
 
 const EN: typeof AR = {
@@ -76,6 +81,10 @@ const EN: typeof AR = {
   listNextUp: "Next:",
   personKnownFor: "Known for",
   personAsRole: (r: string) => `as ${r}`,
+  calThisMonth: "This month",
+  calEpisodesN: "Episodes",
+  calMoviesN: "Movies",
+  calWorksN: "Titles",
 };
 
 export type WebWords = typeof AR;

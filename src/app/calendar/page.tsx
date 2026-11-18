@@ -19,6 +19,7 @@ import {
   todayIn,
 } from "@/core/calendar";
 import { CalendarMonth } from "@/components/CalendarMonth";
+import { getMovie, getTv } from "@/lib/tmdb";
 import { airPlans } from "@/lib/airSchedule";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
@@ -127,8 +128,22 @@ export default async function CalendarPage({
     </span>
   );
 
+  /* 🆕 R268 — خلفيّاتُ أعمال الشهر لصفوف الحاسوب العريضة (كما يفعل «أسبوعك» في الرئيسيّة — `getTv`/`getMovie` مخبّآن).
+     عملٌ مختلفٌ مرّةً واحدة، والفشلُ يُبقي الملصق. والشهرُ المقفول لا يُرسم فلا تُطلب خلفيّاتُه. */
+  const backdrops: Record<string, string | null> = {};
+  if (!locked) {
+    const uniq = [...new Map(entries.filter((e) => monthOf(e.date) === month).map((e) => [`${e.media}-${e.tmdbId}`, e])).values()].slice(0, 30);
+    await Promise.all(
+      uniq.map(async (e) => {
+        const d = await (e.media === "tv" ? getTv(e.tmdbId) : getMovie(e.tmdbId)).catch(() => null);
+        backdrops[`${e.media}-${e.tmdbId}`] = (d as { backdrop_path?: string | null } | null)?.backdrop_path ?? null;
+      }),
+    );
+  }
+
   const body = (
     <CalendarMonth
+      backdrops={backdrops}
       days={days}
       byDay={byDay}
       locale={locale}
