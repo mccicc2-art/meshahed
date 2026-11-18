@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/core/i18n";
@@ -11,6 +11,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { RatingBox } from "./RatingBox";
 import { TitlePulse } from "./TitlePulse";
+import { Avatar } from "./Avatar";
 
 /**
  * ====== 🆕 D-1628 — «من قيّم العمل» في الويب ======
@@ -37,6 +38,7 @@ export function TitleRaters({
   avg,
   hearts,
   locale,
+  variant = "pulse",
 }: {
   kind: "tv" | "movie";
   tmdbId: number;
@@ -47,6 +49,9 @@ export function TitleRaters({
   avg: number;
   hearts: number;
   locale: Locale;
+  /** 🆕 R257 — `card`: **بطاقةُ «تقييمات المجتمع» في العمود الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»): الرقمُ كبيراً
+      ووجوهُ أوّل من قيّم، والضغطةُ تفتح الورقةَ نفسَها. والنبضُ الصغيرُ في الترويسة يغيب هناك فلا يتكرّر */
+  variant?: "pulse" | "card";
 }) {
   const t = getDict(locale);
   const w = WORDS[locale === "en" ? "en" : "ar"];
@@ -78,13 +83,50 @@ export function TitleRaters({
     if (d?.signed_in && !d.my_review) setView("rate");
   };
 
+  /* الوجوهُ تحتاج القائمة — تُجلب مرّةً عند ظهور البطاقة (الحاسوب وحده، ولعملٍ له تقييمات)، وهي نفسُ ما تفتحه الورقة */
+  useEffect(() => {
+    if (variant !== "card" || votes <= 0) return;
+    let alive = true;
+    fetch(`/api/v1/title/${kind}/${tmdbId}/community`, { cache: "no-store" })
+      .then((res) => res.json() as Promise<{ ok: boolean; data?: TitleCommunityPayload }>)
+      .then((body) => {
+        if (alive && body.ok && body.data) setData(body.data);
+      })
+      .catch(() => {
+        /* بلا وجوهٍ لا شيءَ ينكسر — الرقمُ مرسومٌ من الخادم */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [variant, votes, kind, tmdbId]);
+
   const rows = data?.raters ?? [];
   const hidden = data ? Math.max(0, votes - rows.length) : 0;
   const mine = data?.my_review ?? null;
 
   return (
     <>
-      {votes > 0 ? (
+      {votes > 0 && variant === "card" ? (
+        <button type="button" onClick={() => void openSheet()} aria-haspopup="dialog" className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-4 text-start hover:border-accent/40 transition">
+          <span className="min-w-0 flex-1">
+            <span className="block text-12 font-semibold text-muted">{w.title}</span>
+            <span className="mt-1 flex items-baseline gap-1.5">
+              <span className="self-center text-lg leading-none text-accent">★</span>
+              <span className="text-[26px] font-extrabold leading-none tabular-nums" dir="ltr">{(Math.round(avg * 10) / 10).toFixed(1)}</span>
+              <span className="text-sm text-muted tabular-nums">({num(votes, locale)})</span>
+            </span>
+          </span>
+          {rows.length ? (
+            <span className="flex shrink-0 ps-2">
+              {rows.slice(0, 4).map((r) => (
+                <span key={r.user_id} className="-ms-2 rounded-full ring-2 ring-[color:var(--surface)]">
+                  <Avatar src={r.avatar_url} name={r.name} size={30} alt="" />
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </button>
+      ) : votes > 0 ? (
         <button type="button" onClick={() => void openSheet()} aria-haspopup="dialog" className="rounded-md hover:opacity-80 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
           <TitlePulse hearts={hearts} votes={votes} avg={avg} locale={locale} />
         </button>

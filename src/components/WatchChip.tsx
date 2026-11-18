@@ -54,6 +54,7 @@ export function WatchChip({
   query = null,
   tmdbId,
   mediaType,
+  variant = "chip",
 }: {
   options: WatchOptions;
   /** البلد الذي جاءت منه هذه البيانات فعلاً */
@@ -68,6 +69,9 @@ export function WatchChip({
   /** 🆕 للأحداث بلا هويّة — غيابُهما يسكت التسجيلُ لا الشارة */
   tmdbId?: number;
   mediaType?: "tv" | "movie";
+  /** 🆕 R257 — `card`: **بطاقةُ «أين أشاهده» في العمود الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»): الشعارُ بحجمٍ يُقرأ
+      واسمُ المنصّة بجانبه، والضغطةُ نفسُها (رابطٌ مباشر أو ورقةُ البحث). والرقاقةُ في الترويسة تغيب هناك فلا تتكرّر */
+  variant?: "chip" | "card";
 }) {
   const t = getDict(locale);
   const [sheetFor, setSheetFor] = useState<Provider | null>(null);
@@ -118,51 +122,81 @@ export function WatchChip({
       <span className="text-12 font-semibold text-foreground/90">{p.provider_name}</span>
     );
 
+  /* بابُ المنصّة الواحد — رابطٌ مباشرٌ موثوق، أو ورقةُ «ابحث فيها» — والشكلُ وحدَه يختلف بين الرقاقة والبطاقة */
+  const door = (p: Provider, inner: React.ReactNode, className: string) => {
+    const raw = links[p.provider_id];
+    const direct = raw && isTrustedProviderUrl(p.provider_name, raw) ? raw : null;
+    return direct ? (
+      <a
+        key={p.provider_id}
+        href={direct}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        aria-label={`${t.watchWhereTitle}: ${p.provider_name}`}
+        title={p.provider_name}
+        className={className}
+        onClick={() => fire("provider_open_direct", p)}
+      >
+        {inner}
+      </a>
+    ) : (
+      <button
+        key={p.provider_id}
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={`${t.watchWhereTitle}: ${p.provider_name}`}
+        title={p.provider_name}
+        className={className}
+        onClick={() => {
+          tap(6);
+          fire("provider_link_missing", p);
+          setSheetFor(p);
+        }}
+      >
+        {inner}
+      </button>
+    );
+  };
+
   const searchUrl = sheetFor && query ? providerSearchUrl(sheetFor.provider_name, query) : null;
 
   return (
     <>
+      {variant === "card" ? (
+        <section className="rounded-2xl border border-border bg-surface p-4">
+          <h2 className="text-12 font-semibold text-muted">
+            {t.watchWhereTitle}
+            {elsewhere ? <span className="font-normal"> · {regionName(region, locale === "en" ? "en" : "ar")}</span> : null}
+          </h2>
+          <ul className="mt-2.5 space-y-2">
+            {shown.map((p) => (
+              <li key={p.provider_id}>
+                {door(
+                  p,
+                  <>
+                    {p.logo_path ? (
+                      <Image src={`${IMG}/w92${p.logo_path}`} alt="" width={36} height={36} className="rounded-[9px] shrink-0" />
+                    ) : (
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[9px] bg-surface-2 text-12 font-bold">{p.provider_name.slice(0, 1)}</span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-start text-14 font-bold">{p.provider_name}</span>
+                  </>,
+                  "flex w-full items-center gap-3 rounded-xl p-1 -m-1 hover:bg-surface-2 transition",
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
       <span className="inline-flex items-center gap-1.5 bg-surface-2 border border-border px-2 py-1 rounded-lg transition">
-        {shown.map((p) => {
-          const raw = links[p.provider_id];
-          const direct = raw && isTrustedProviderUrl(p.provider_name, raw) ? raw : null;
-          return direct ? (
-            <a
-              key={p.provider_id}
-              href={direct}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              aria-label={`${t.watchWhereTitle}: ${p.provider_name}`}
-              title={p.provider_name}
-              className="grid place-items-center active:scale-90 transition"
-              onClick={() => fire("provider_open_direct", p)}
-            >
-              {logo(p)}
-            </a>
-          ) : (
-            <button
-              key={p.provider_id}
-              type="button"
-              aria-haspopup="dialog"
-              aria-label={`${t.watchWhereTitle}: ${p.provider_name}`}
-              title={p.provider_name}
-              className="grid place-items-center active:scale-90 transition"
-              onClick={() => {
-                tap(6);
-                fire("provider_link_missing", p);
-                setSheetFor(p);
-              }}
-            >
-              {logo(p)}
-            </button>
-          );
-        })}
+        {shown.map((p) => door(p, logo(p), "grid place-items-center active:scale-90 transition"))}
         {elsewhere && (
           <span className="text-12 text-muted font-normal">
             {regionName(region, locale === "en" ? "en" : "ar")}
           </span>
         )}
       </span>
+      )}
 
       {sheetFor && (
         <Sheet

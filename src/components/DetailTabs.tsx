@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
 import { segmentedItem } from "./ui/controls";
 import { StickyStuck } from "./ui/StickyStuck";
@@ -27,6 +27,20 @@ export interface DetailTab {
 export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
   const available = tabs.filter((t) => t.content);
   const [active, setActive] = useState(available[0]?.key);
+  /* 🆕 R257 — **بابٌ من خارج الشريط**: بطاقةُ «طاقم العمل» في العمود الجانبيّ على الحاسوب تطلب «معلومات» بحدث
+     `lz-detail-tab` (المفتاحُ في `detail`) — فيُفتح التبويبُ ويصعد إليه، بلا حالةٍ ثانيةٍ ولا رابطٍ يعيد رسمَ الصفحة */
+  const root = useRef<HTMLDivElement>(null);
+  const keys = available.map((x) => x.key).join(",");
+  useEffect(() => {
+    const on = (e: Event) => {
+      const k = (e as CustomEvent<string>).detail;
+      if (!keys.split(",").includes(k)) return;
+      setActive(k);
+      root.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("lz-detail-tab", on);
+    return () => window.removeEventListener("lz-detail-tab", on);
+  }, [keys]);
   if (!available.length) return null;
 
   return (
@@ -38,7 +52,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
        يفصله وحدَه.
        **٢٠px تُشترى من فوق كلِّ لوحٍ في التطبيق** — والشريطُ نفسُه لم
        يتغيّر شكلُه، **ضاق فحسب.** */
-    <div className="mt-3">
+    <div ref={root} className="mt-3 scroll-mt-6">
       {/* شريط مقسّم واحد: خانات متساوية فوق خطٍّ فاصلٍ سفليّ، والمختار
           عليه خطٌّ بلون التمييز — أخفّ من كبسولةٍ بحدّ. والأسهم تنقل بين
           التبويبات (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ
@@ -116,5 +130,18 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** 🆕 R257 — زرٌّ خارج الشريط يفتح تبويباً فيه (`lz-detail-tab`) — «الكل» في بطاقة طاقم العمل على الحاسوب */
+export function DetailTabDoor({ tab, label }: { tab: string; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent("lz-detail-tab", { detail: tab }))}
+      className="text-12 font-medium text-muted hover:text-accent transition shrink-0"
+    >
+      {label}
+    </button>
   );
 }

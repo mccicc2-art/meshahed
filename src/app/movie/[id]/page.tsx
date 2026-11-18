@@ -45,6 +45,7 @@ import { WatchChip } from "@/components/WatchChip";
 import { bestSearchTitle } from "@/core/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
 import { TitleRaters } from "@/components/TitleRaters";
+import { TitleCastCard } from "@/components/TitleAside";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
@@ -276,7 +277,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               <h1 className="hero-halo text-22 sm:text-3xl font-bold leading-tight tracking-tight">
                 {title}
               </h1>
-              <span className="ms-auto shrink-0 -mt-0.5">
+              <span className="ms-auto shrink-0 -mt-0.5 desk:hidden">
                 {/* 🆕 D-1628 — النبضُ زرٌّ يفتح «من قيّم» (وتقييمي إن لم أقيّم) */}
                 <TitleRaters kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
@@ -388,7 +389,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 )}
                 {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
                 {watchWhere && (
-                  <div className={movie.genres.length > 0 ? "shrink-0" : "shrink-0 ms-auto"}>
+                  <div className={movie.genres.length > 0 ? "shrink-0 desk:hidden" : "shrink-0 ms-auto desk:hidden"}>
                     <WatchChip
                       options={watchWhere.options}
                       region={watchWhere.region}
@@ -456,7 +457,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
       {/* 🆕 T402 — الحاسوب: بطاقةُ الأفعال في العمود الجانبيّ، ثابتةٌ مع التمرير — أوّلُ ما يُفعل بالعمل في النظر دائماً */}
-      <div className="mt-4 px-1 desk:col-start-2 desk:row-start-2 desk:sticky desk:top-6 desk:mt-0 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
+      {/* 🆕 R257 — **العمودُ الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»، الصورة `title_aside`): الأفعالُ ثمّ «أين أشاهده» ثمّ
+          «تقييمات المجتمع» ثمّ «طاقم العمل» — كان العمودُ بطاقةَ الأفعال وحدها وتحتها فراغٌ بطول الحلقات. والعمودُ كلُّه ثابتٌ مع
+          التمرير، وما زاد على الشاشة يُمرَّر داخله. والشعارُ والنبضُ الصغيران في الترويسة يغيبان هنا فلا تُقال المعلومةُ مرّتين.
+          والجوّالُ كما هو: بطاقةُ الأفعال في مكانها والبطاقاتُ الثلاث لا تُرسم */}
+      <div className="desk:col-start-2 desk:row-start-2 desk:sticky desk:top-6 desk:max-h-[calc(100vh-3rem)] desk:overflow-y-auto desk:space-y-4 [scrollbar-width:none]">
+      <div className="mt-4 px-1 desk:mt-0 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
         <TitleActions
           tmdbId={movieId}
           mediaType="movie"
@@ -475,6 +481,29 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           collectionId={movie.belongs_to_collection?.id ?? null}
           initialFavorite={favs.has(artKey("movie", movieId))}
         />
+      </div>
+      <div className="hidden desk:block space-y-4">
+        {watchWhere ? (
+          <WatchChip
+              variant="card"
+                      options={watchWhere.options}
+                      region={watchWhere.region}
+                      userRegion={userRegion}
+                      locale={locale}
+                      links={providerLinks}
+                      query={{
+                        q: `${bestSearchTitle(movie.original_title, movie.title)} ${(movie.release_date ?? "").slice(0, 4)}`.trim(),
+                        qAr: /[؀-ۿ]/.test(movie.title) ? movie.title : null,
+                      }}
+                      tmdbId={movieId}
+                      mediaType="movie"
+                    />
+        ) : null}
+        <TitleRaters variant="card" kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+        <Suspense fallback={null}>
+          <TitleCastCard credits={creditsPromise} locale={locale} />
+        </Suspense>
+      </div>
       </div>
 
       {/* تبويب «تتبّع» حُذف من الأفلام: الفيلم إمّا شوهد أو لم يُشاهَد،
