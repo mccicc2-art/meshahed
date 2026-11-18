@@ -1,5 +1,5 @@
 import "server-only";
-import { getMovie, getTv } from "@/lib/tmdb";
+import { getMovieFor, getTvFor } from "@/lib/tmdb";
 
 /**
  * ====== بذورُ الترحيب — ٢٤ عملاً مثبَّتةً بالاسم: ١٢ مسلسلاً · ٨ أفلام · ٤ أنمي (D-1344) ======
@@ -81,9 +81,12 @@ export function isWelcomeShow(id: number): boolean {
   return SHOWS.some(([n]) => n === id) || ANIME.some(([n]) => n === id);
 }
 
-async function show([id, name]: readonly [number, string], shelf: "show" | "anime"): Promise<WelcomeSeed> {
+/** 🆕 المهمة ٤٢١ — لغةُ الجلب: بلا لغةٍ = لغةُ القارئ كما كانت؛ و`en-US` لصفحة الدعوة (انظر `welcomeSeeds`) */
+type SeedLanguage = "en-US" | null;
+
+async function show([id, name]: readonly [number, string], shelf: "show" | "anime", language: SeedLanguage): Promise<WelcomeSeed> {
   try {
-    const tv = await getTv(id);
+    const tv = await getTvFor(id, language);
     return {
       id,
       mediaType: "tv",
@@ -100,9 +103,9 @@ async function show([id, name]: readonly [number, string], shelf: "show" | "anim
   }
 }
 
-async function movie([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
+async function movie([id, name]: readonly [number, string], language: SeedLanguage): Promise<WelcomeSeed> {
   try {
-    const m = await getMovie(id);
+    const m = await getMovieFor(id, language);
     return {
       id,
       mediaType: "movie",
@@ -118,8 +121,18 @@ async function movie([id, name]: readonly [number, string]): Promise<WelcomeSeed
   }
 }
 
-export async function welcomeSeeds(): Promise<WelcomeSeed[]> {
-  const all = await Promise.all([...SHOWS.map((s) => show(s, "show")), ...MOVIES.map(movie), ...ANIME.map((s) => show(s, "anime"))]);
+/**
+ * 🆕 المهمة ٤٢١ — **`language` اختياريّة**: كلُّ قارئٍ قديمٍ يناديها بلا شيءٍ فيبقى على لغة القارئ حرفاً.
+ * وصفحةُ الدعوة (`/invite/[code]`) تطلبها `en-US`: قرارُ أحمد (١٨ نوفمبر) «الاعمال فالخلفية خلي بوستراتها بالانجليزي» —
+ * جدارُها واجهةُ حملةٍ يراها زائرٌ لم يختر لغةً بعد، والملصقُ الإنجليزيُّ هو المعروفُ في كلِّ بلد.
+ */
+export async function welcomeSeeds(opts: { language?: SeedLanguage } = {}): Promise<WelcomeSeed[]> {
+  const language = opts.language ?? null;
+  const all = await Promise.all([
+    ...SHOWS.map((s) => show(s, "show", language)),
+    ...MOVIES.map((m) => movie(m, language)),
+    ...ANIME.map((s) => show(s, "anime", language)),
+  ]);
   /* الشاشةُ تعرف العملَ برقمه وحدَه (`picked`) — ورقمُ مسلسلٍ قد يطابق رقمَ فيلمٍ عند TMDB: الثاني يسقط */
   const seen = new Set<number>();
   return all.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));

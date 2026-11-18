@@ -10,6 +10,18 @@ export const STORE_URL = {
   android: "https://play.google.com/store/apps/details?id=com.loopztv.app",
 } as const;
 
+/**
+ * 🆕 المهمة ٤٢١ — **تجربةُ أندرويد المغلقة** (قرارُ أحمد «٢ أ»، ١٨ نوفمبر): التطبيقُ على Google Play في اختبارٍ مغلقٍ حتى
+ * يُفتح للعموم (حسابٌ شخصيّ: ١٢ مختبِراً × ١٤ يوماً)، فرابطُ المتجر وحدَه يقول للزائر «غير متاح». الطريقُ: الانضمامُ إلى
+ * قروب المختبِرين (`group`) ثمّ تفعيلُ التجربة والتنزيل (`optIn`) بحساب Google نفسِه. **يومَ النشر للعموم**: `closed` يصير
+ * `false` فتعود صفحةُ الدعوة إلى رابط Play الحامل للكود (`playInviteLink`).
+ */
+export const ANDROID_TEST = {
+  closed: true,
+  group: "https://groups.google.com/g/loopz-testers",
+  optIn: "https://play.google.com/apps/testing/com.loopztv.app",
+} as const;
+
 /** عنوانُ التطبيق الخاصّ (`scheme` في `apps/mobile/app.json`) — زرُّ «افتح الدعوة في التطبيق» يفتحه بالكود */
 export const APP_SCHEME = "com.loopztv.app";
 
