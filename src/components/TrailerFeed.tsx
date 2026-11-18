@@ -358,7 +358,8 @@ export function TrailerFeed({
                   if (pinKey && trailerKeyOf(i) === pinKey) setDead((previous) => new Set(previous).add(k));
                   else retire(k);
                 }}
-                unavailableLabel={dead.has(k) ? t.trailerUnavailable : null}
+                /* T411 — والمطلوبُ بعينه بلا أيِّ مصدرٍ يحمل الوسمَ نفسَه من أوّل رسم */
+                unavailableLabel={dead.has(k) || (!i.videoKeys.length && !i.fileUrl) ? t.trailerUnavailable : null}
               />
 
               <div className="px-4 pt-3 pb-1.5">

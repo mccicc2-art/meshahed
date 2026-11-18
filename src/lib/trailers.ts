@@ -8,6 +8,7 @@ import {
   backdropUrl,
   yearOf,
   trending,
+  resultsByIds,
   ANIME_KEYWORD,
   type SearchResult,
   type TrailerVideo,
@@ -246,12 +247,15 @@ function interleaveClips(
   const depth = Math.max(1, perTitle);
   /* **بطاقاتُ كلِّ عملٍ وبدائلُه تُحسب مرّةً** — ودورانٌ يعيد حسابَها
      في كلِّ جولةٍ يكرّر العملَ بلا فائدة */
-  const plan = titles.map(({ base, videos }) => {
+  const plan = titles.map(({ base, videos }): { base: Omit<TrailerItem, "clipLabel">; cards: (TrailerVideo | null)[]; spares: string[] } => {
     /* **البطاقاتُ من الأنواع الثلاثة وحدَها** — وعملٌ لا يملك منها
        شيئاً يأخذ أوّلَ ما عنده بطاقةً واحدة: **إسقاطُه بالكامل خسارةُ
        عملٍ كاملٍ ثمناً لوسمٍ** (D-222: الصفرُ لا يُرسم، وهذا ليس صفراً). */
     const typed = videos.filter((v) => CLIP_TYPES.has(v.type));
     const cards = typed.length ? typed : videos.slice(0, 1);
+    /* 🆕 T411 — بلا مقطعٍ في يوتيوب (المطلوبُ بعينه وحدَه يصل هنا هكذا): بطاقةٌ واحدةٌ بلا مفتاح — تعمل من ملفّ آبل إن وُجد،
+       وإلّا تُرسم بوسم «غير متاح» */
+    if (!cards.length) return { base, cards: [null], spares: [] };
     /* 🔑 **والبدائلُ ما لم يصر بطاقةً** (D-756 محفوظةً): **سلسلةُ
        الاحتياط تبقى لكلِّ بطاقة** — **لكنّها لا تحمل مفتاحاً هو نفسُه
        بطاقةٌ مجاورة**، **وإلّا عرض الاحتياطُ ما تعرضه جارتُه.** */
@@ -263,10 +267,14 @@ function interleaveClips(
     for (const { base, cards, spares } of plan) {
       if (out.length >= limit) break;
       const v = cards[round];
+      if (v === null) {
+        out.push({ ...base, videoKey: "", videoKeys: [], clipLabel: null });
+        continue;
+      }
       if (!v) continue;
       /* **ورتبةُ الوسم داخل نوعه**: «الإعلان ٢» يعني ثانيَ إعلانٍ لا
          ثانيَ مقطعٍ أيّاً كان — **ورقمٌ يعدّ غيرَ ما يسمّيه يكذب.** */
-      const ordinal = cards.slice(0, round + 1).filter((x) => x.type === v.type).length;
+      const ordinal = cards.slice(0, round + 1).filter((x) => x?.type === v.type).length;
       out.push({
         ...base,
         videoKey: v.key,
@@ -300,6 +308,8 @@ async function shape(
      **وصفحةُ الترايلرات وحدَها تعمّق** — الطلبُ كان لها. */
   perTitle: number,
   note?: (r: SearchResult) => string | undefined,
+  /* 🆕 T411 — العملُ الذي فُتحت الصفحةُ عليه (`?at=`): لا يسقط إن لم يكن له مقطع (انظر أدناه) */
+  keep?: TrailerPin,
 ): Promise<TrailerItem[]> {
   const t = getDict(locale);
   const withKeys = await Promise.all(
@@ -318,18 +328,22 @@ async function shape(
           ? getAppleTrailerUrl(r.original_title ?? r.title, yearOf(r))
           : Promise.resolve(null),
       ]);
-      if (!trailer?.keys.length) return null;
+      /* 🆕 T411 (اختيارُ أحمد «ب») — **المطلوبُ بعينه يبقى ولو بلا مقطع**: بطاقتُه بصورته واسمه وتفاصيله ووسمِ «المقطع غير
+         متاح» (`TrailerFeed`)، كما تبقى منذ D-1308 حين يرفض يوتيوب مقاطعَه. من طلب عملاً لا يُعطى غيرَه بصمت؛ والباقي
+         يسقط كما كان (D-222). */
+      const kept = !!keep && keep.tmdbId === r.id && keep.mediaType === mediaType;
+      if (!trailer?.keys.length && !kept) return null;
       const g = r.genre_ids?.length ? browseGenreForId(r.genre_ids[0]) : null;
       const country: string | null =
         originAdjectives({ origin: r.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
       return {
-        videos: trailer.videos,
+        videos: trailer?.videos ?? [],
         base: {
         tmdbId: r.id,
         mediaType,
         title: titleOf(r),
-        videoKey: trailer.keys[0],
-        videoKeys: trailer.keys,
+        videoKey: trailer?.keys[0] ?? "",
+        videoKeys: trailer?.keys ?? [],
         fileUrl,
         /* 🆕 **والغلافُ `w1280` لا `w780`** (D-756): **البطاقةُ تبلغ
            ١٠٣٠px على سطح المكتب** (D-755) **فمصدرٌ بعرض ٧٨٠ يُمطّ**،
@@ -610,7 +624,7 @@ export async function getTrailerFeed(
   const scoped = scope === "anime"
     ? await animePool(all, locale)
     : await tabPool(all, scope === "movies" ? "movie" : scope === "shows" ? "tv" : "all");
-  if (!scoped.length && !(opts.filter && trailerFilterActive(opts.filter))) return [];
+  if (!scoped.length && !(opts.filter && trailerFilterActive(opts.filter)) && !(pin && page === 0)) return [];
   /* 🆕 D-1311 — **والفلترُ قبل النافذة والسَّبر لا بعدهما** (قاعدةُ D-731 في هذا الملفّ): ثلاثمئةُ اقتراحٍ
      مقروءةٌ أصلاً، فالتصفيةُ فيها بصفر نداء — ولو صُفّي ما سُبر لخرج العلفُ فارغاً في بِركةٍ مليئة. */
   const filter = opts.filter && trailerFilterActive(opts.filter) ? opts.filter : undefined;
@@ -651,6 +665,16 @@ export async function getTrailerFeed(
     inScope.slice(page * window, (page + 1) * window),
     drawKey() + page,
   ).filter((suggestion) => suggestion !== pinned);
+  /* 🔴 T411 (تسجيلُ خالد ١٨ نوفمبر: ضغط FROM في «تريلرات لك» ففتحت الصفحةُ على La Brea، وCasino على Spider-Man) —
+     **العملُ المطلوبُ بعينه لا يُشترط أن يكون في البِركة**: كان التثبيتُ يبحث عنه في اقتراحات هذه اللحظة وحدَها، فإن
+     لم يجده سكت وفتح الصفحةَ على غيره. والبِركةُ تتبدّل بين رسمِ الصفّ وضغطه (صفٌّ محفوظٌ على الجهاز حتى أسبوع، متابعةٌ
+     جديدة، بذرةٌ أخرى)، **وبابُ صفحة العمل يطلب عملاً يتابعه صاحبُه — والمتابَعُ مُستبعَدٌ من الاقتراحات أصلاً**، فلم
+     يكن يُثبَّت قطّ (قيس على حساب أحمد: Breaking Bad ⇒ Your Honor). الآن ما غاب عن البِركة يُجلب بنفسه (نداءٌ واحدٌ
+     مخبَّأ، ولا يقع إلا حين يغيب) ويوضع أوّلاً، **ولا يمرّ على الفلتر**: من ضغط عملاً طلبه هو لا ما يطابق فلتراً. */
+  const pinRow: SearchResult | undefined =
+    pin && page === 0 && !pinned
+      ? (await resultsByIds(pin.mediaType, [pin.tmdbId]).catch(() => [] as SearchResult[]))[0]
+      : undefined;
   const personal = (pinned && page === 0 ? [pinned, ...shuffled] : shuffled).slice(0, probe);
   /* 🆕 D-1313 — **وتحت فلترٍ تُكمَّل الدفعةُ من الكتالوج** (انظر `catalogueFill`): اقتراحاتُه المطابقةُ أوّلاً،
      وما نقص عن المسبار يملؤه الأشهرُ المطابقُ ممّا لم يره. **والنافذةُ في التكملة بعدد ما سبقها**: دفعاتُ
@@ -669,12 +693,13 @@ export async function getTrailerFeed(
       filter,
       probe * (page + 1),
       await seenByMedia(),
-      inScope.map((s) => s.result),
+      /* T411 — والمجلوبُ بعينه لا يعود في التكملة بطاقةً ثانية */
+      pinRow ? [pinRow, ...inScope.map((s) => s.result)] : inScope.map((s) => s.result),
     );
     fill = rows.slice(usedBefore, usedBefore + probe - personal.length);
   }
   const pool = personal;
-  if (!pool.length && !fill.length) return [];
+  if (!pool.length && !fill.length && !pinRow) return [];
 
   /**
    * 🔴 🆕 **ووصفةُ البطاقة واحدةٌ للتبويبات الخمسة** (D-756، القاعدة ٣):
@@ -694,11 +719,14 @@ export async function getTrailerFeed(
   );
 
   return shape(
-    [...pool.map((s) => s.result), ...fill],
+    [...(pinRow ? [pinRow] : []), ...pool.map((s) => s.result), ...fill],
     locale,
     limit,
-    probe,
+    /* T411 — المجلوبُ خارجَ البِركة يأخذ خانةً فوق المسبار لا من داخله: لو قُصّت الدفعةُ بقدره لسقط آخرُها، ودفعةُ «التالي»
+       تحسب ما أُخذ قبلها بالمسبار وحدَه فلا تعود إليه (مراجعةٌ مستقلّة). الثمنُ نداءُ مقطعٍ واحدٌ حين يُجلب، لا غير */
+    pinRow ? probe + 1 : probe,
     perTitle,
     (r) => noteOf.get(`${r.media_type === "movie" ? "movie" : "tv"}-${r.id}`),
+    pin && page === 0 ? pin : undefined,
   );
 }

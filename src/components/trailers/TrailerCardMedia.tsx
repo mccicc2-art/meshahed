@@ -80,10 +80,14 @@ export function TrailerCardMedia({
   const api = useTrailerPlayback();
   const snap = useTrailerSnapshot();
   const area = useRef<HTMLDivElement>(null);
+  /* 🆕 T411 — **بطاقةٌ بلا مصدرٍ تُرسم ولا تُسجَّل**: العملُ الذي فُتحت الصفحةُ عليه يبقى ولو لم يكن له مقطع (اختيارُ أحمد
+     «ب»)، ومشغّلٌ يُعطى بطاقةً بلا مفتاح سيحاول تشغيلَ لا شيء. فلا تدخل الدورَ أصلاً، ولا زرَّ تشغيلٍ يَعِد بما لا يأتي —
+     وسمُ «المقطع غير متاح» (`unavailableLabel`) يقول حالَها. */
+  const playable = item.keys.length > 0 || !!item.fileUrl;
 
   useEffect(() => {
     const el = area.current;
-    if (!el) return;
+    if (!el || !playable) return;
     if (onUnavailable) api.registerUnavailable(id, onUnavailable);
     return api.register(id, el, item);
     // البنودُ هويّةُ البطاقة — تسجيلٌ واحدٌ لعمرها
@@ -261,7 +265,7 @@ export function TrailerCardMedia({
           {unavailableLabel}
         </span>
       ) : null}
-      {true ? (
+      {playable ? (
         <button
           type="button"
           onClick={(e) => {
