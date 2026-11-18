@@ -20,6 +20,7 @@ import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, num, type Locale } from "@/core/i18n";
 import { webWords } from "./webWords";
+import { chipClass } from "./ui/controls";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import type { TitleState } from "@/lib/libState";
@@ -389,6 +390,7 @@ export function ListDetail({
   const watchedCount = libState ? visible.filter((it) => libState[keyOf(it)]?.watched).length : 0;
   const nextUp = libState ? (visible.find((it) => !libState[keyOf(it)]?.watched) ?? null) : null;
   const w = webWords(locale);
+  const [unseenOnly, setUnseenOnly] = useState(false);
 
   return (
     <div>
@@ -714,8 +716,19 @@ export function ListDetail({
         </RailScroll>
         </div>
         {/* 🆕 R266 — الشبكةُ على الحاسوب: البلاطةُ نفسُها (`PosterTile`) برقمها وزرّها وخيطِ حالتها — العرضُ وحده يتغيّر */}
+        {libState && watchedCount > 0 && watchedCount < visible.length ? (
+          /* 🆕 R272 — «لم أشاهدها» على الحاسوب: تُخفي ما شاهدته من الشبكة ويبقى رقمُ ترتيبه كما هو — رقاقاتُ العائلة نفسِها */
+          <div className="hidden desk:flex items-center gap-1.5 mb-3">
+            <button type="button" aria-pressed={!unseenOnly} onClick={() => setUnseenOnly(false)} className={chipClass(!unseenOnly, "sm")}>
+              {w.listAllItems}
+            </button>
+            <button type="button" aria-pressed={unseenOnly} onClick={() => setUnseenOnly(true)} className={chipClass(unseenOnly, "sm")}>
+              {w.listUnwatched} <span className="opacity-70 tabular-nums">{num(visible.length - watchedCount, locale)}</span>
+            </button>
+          </div>
+        ) : null}
         <div className="hidden desk:grid grid-cols-5 gap-4">
-          {visible.map((it, i) => (
+          {visible.map((it, i) => unseenOnly && libState?.[keyOf(it)]?.watched ? null : (
             <div key={keyOf(it)} className="min-w-0">
               <PosterTile
                 item={it}

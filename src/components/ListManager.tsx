@@ -35,6 +35,7 @@ export function ListManager({
   locale,
   toWatch,
   playlistIds,
+  progress,
 }: {
   lists: UserList[];
   /**
@@ -60,6 +61,8 @@ export function ListManager({
    */
   playlistIds?: string[];
   locale: Locale;
+  /** 🆕 R272 — كم شاهدتَ من كلِّ قائمة — شريطُ البطاقة على الحاسوب */
+  progress?: Record<string, { watched: number; total: number }>;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -175,6 +178,7 @@ export function ListManager({
                 <CommunityListCard
                   locale={locale}
                   className="w-full h-full"
+                  progress={progress?.[l.id]}
                   /* **قائمتي أنا**: لا حفظَ ولا تقييمَ لها (`can_*` غائبة)
                      — **وزرٌّ لا يستطيع أن يكتب وعدٌ كاذب** (D-217)،
                      **والأرقامُ تبقى ساكنةً فلا يفقد صاحبُها الحقيقة.** */

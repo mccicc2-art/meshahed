@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { isFollowingArtist } from "@/lib/data";
+import { getUser, isFollowingArtist } from "@/lib/data";
+import { getLibState } from "@/lib/libState";
+import type { Locale } from "@/core/i18n";
 import { FollowArtistButton } from "@/components/FollowArtistButton";
 import { getPerson, getPersonCredits, isTvProgram, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
 import { displayPersonName } from "@/lib/wikidata";
@@ -197,7 +199,7 @@ export default async function PersonPage({
             </div>
           }
         >
-          <PersonWorks personId={personId} t={t} worksTab={worksTab} />
+          <PersonWorks personId={personId} t={t} worksTab={worksTab} locale={locale} />
         </Suspense>
       </section>
     </div>
@@ -209,12 +211,18 @@ async function PersonWorks({
   personId,
   t,
   worksTab,
+  locale,
 }: {
   personId: number;
   t: Awaited<ReturnType<typeof getT>>["t"];
   worksTab: "all" | "movie" | "tv" | "show";
+  locale: Locale;
 }) {
-  const all = await getPersonCredits(personId);
+  /* 🆕 R272 — حالةُ مكتبتك لزرّ «+» (للعضو وحده؛ الزائرُ بلا زرّ) — النداءُ المخبّأ نفسُه الذي تقرؤه صفحةُ القائمة */
+  const [all, lib] = await Promise.all([
+    getPersonCredits(personId),
+    getUser().then((u) => (u ? getLibState() : null)).catch(() => null),
+  ]);
   if (all.length === 0) {
     return <p className="text-sm text-muted text-center py-10">{t.personNoWorks}</p>;
   }
@@ -260,18 +268,28 @@ async function PersonWorks({
         ))}
       </div>
       <p className="text-xs text-muted mb-3">{t.personWorksCount(works.length)}</p>
+      {/* 🆕 R272 — **على الحاسوب: زرُّ «+» وحالتُك واسمُ الدور تحت كلِّ عمل** (صورةُ «أ» المعتمدة). الزرُّ هو `QuickAdd` نفسُه
+          داخل `PosterCard`، يُخفى تحت ١٢٨٠ بصنفٍ على الغلاف فلا يتغيّر الجوال؛ والدورُ سطرٌ للحاسوب وحده. */}
+      <div className="[&_button.absolute]:hidden desk:[&_button.absolute]:grid">
       <PosterGrid>
-        {works.map((w) => (
-          <PosterCard
-            key={`${w.media_type}-${w.id}`}
-            href={`/${w.media_type === "tv" ? "show" : "movie"}/${w.id}`}
-            title={titleOf(w)}
-            posterPath={w.poster_path}
-            year={yearOf(w)}
-            badge={w.media_type === "tv" ? (isTvProgram(w) ? t.typeProgram : t.typeSeries) : t.typeMovie}
-          />
-        ))}
+        {works.map((w) => {
+          const role = ((w as { character?: string | null; job?: string | null }).character ?? (w as { job?: string | null }).job ?? "").trim();
+          return (
+            <div key={`${w.media_type}-${w.id}`} className="min-w-0">
+              <PosterCard
+                href={`/${w.media_type === "tv" ? "show" : "movie"}/${w.id}`}
+                title={titleOf(w)}
+                posterPath={w.poster_path}
+                year={yearOf(w)}
+                badge={w.media_type === "tv" ? (isTvProgram(w) ? t.typeProgram : t.typeSeries) : t.typeMovie}
+                quickAdd={lib && (w.media_type === "tv" || w.media_type === "movie") ? { tmdbId: w.id, mediaType: w.media_type, added: lib.of(w.id, w.media_type).added, locale } : undefined}
+              />
+              {role ? <p className="hidden desk:block -mt-1 truncate text-12 text-muted" dir="auto">{role}</p> : null}
+            </div>
+          );
+        })}
       </PosterGrid>
+      </div>
     </>
   );
 }

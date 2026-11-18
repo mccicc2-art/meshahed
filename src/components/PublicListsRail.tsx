@@ -50,9 +50,12 @@ export function PublicListsRail({
   headless = false,
   leading,
   leadingIndex = 0,
+  progress,
 }: {
   lists: PublicListCard[];
   locale: Locale;
+  /** 🆕 R272 — كم شاهدتَ من كلِّ قائمة (معرّفُها ← العدّ) — لشريط البطاقة على الحاسوب */
+  progress?: Record<string, { watched: number; total: number }>;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
   /**
@@ -99,7 +102,7 @@ export function PublicListsRail({
   if (!lists.length && !leading) return null;
 
   const cards = lists.map((l) => (
-    <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" />
+    <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" progress={progress?.[l.id]} />
   ));
 
   if (headless) {
@@ -201,6 +204,7 @@ export function CommunityListCard({
   countLabel,
   cover,
   action,
+  progress,
 }: {
   list: PublicListCard;
   locale: Locale;
@@ -225,6 +229,8 @@ export function CommunityListCard({
    * **فالعمودُ فارغٌ هناك وبابُ المشاركة يسكنه** بدل صفٍّ ثالث.
    */
   action?: React.ReactNode;
+  /** 🆕 R272 — كم شاهدتَ منها — شريطٌ أخضرُ رفيعٌ أسفل البطاقة على الحاسوب وحده (غائبٌ ⇒ لا شريط) */
+  progress?: { watched: number; total: number };
   /** عرض البطاقة — ثابتٌ في الصفّ الممرَّر، كاملٌ في الشبكة */
   className?: string;
 }) {
@@ -333,9 +339,15 @@ export function CommunityListCard({
       prefetch={false}
       /* **البطاقةُ بلا حشوة** (D-677): الأرضيّةُ تملأها والهيكلُ يحشو
          محتواه بنفسه — `overflow-hidden` يقصّ الملصقاتِ على زواياها. */
-      className={`block rounded-2xl border border-border bg-surface overflow-hidden hover:border-accent/40 transition ${className}`}
+      className={`relative block rounded-2xl border border-border bg-surface overflow-hidden hover:border-accent/40 transition ${className}`}
     >
       {body}
+      {/* 🆕 R272 — خيطُ «كم شاهدتَ منها» — لونُ النجاح الواحد، وعلى الحاسوب وحده (صورةُ القوائم المعتمدة) */}
+      {progress && progress.total > 0 && progress.watched > 0 ? (
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 hidden desk:block h-1 bg-surface-2">
+          <span className="block h-full bg-[color:var(--success)]" style={{ width: `${Math.round((progress.watched / progress.total) * 100)}%` }} />
+        </span>
+      ) : null}
     </Link>
   );
 }

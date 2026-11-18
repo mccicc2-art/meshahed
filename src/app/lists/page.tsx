@@ -17,6 +17,10 @@ import { HomeQueueSheetHost } from "@/components/HomeQueueOrder";
 import type { ReorderItem } from "@/components/ReorderSheet";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
+import { getListProgress } from "@/lib/listProgress";
+import { webWords } from "@/components/webWords";
+import { chipClass } from "@/components/ui/controls";
+import Link from "next/link";
 
 /**
  * قوائمي.
@@ -35,7 +39,7 @@ import { OneTimeHint } from "@/components/OneTimeHint";
  * القاعدة ٦.** **والمفتاحُ الذي يُرى في بابٍ ولا يُرى في الآخر يُبحث
  * عنه.**
  */
-export default async function ListsPage() {
+export default async function ListsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
@@ -86,6 +90,17 @@ export default async function ListsPage() {
     media_type: "movie" as const,
   }));
 
+  /* 🆕 R272 — شريطُ «كم شاهدت» على بطاقات الحاسوب، و«أكملتها» في المحفوظة (أحمد: «كمل اللي ما بنيته»). نداءٌ واحدٌ
+     لقوائمك ومحفوظاتك معاً — بعد الموجة الأولى لأنّ المعرّفاتِ منها */
+  const progress = await getListProgress([...lists.map((l) => l.id), ...saved.map((l) => l.id)]);
+  const doneOnly = (await searchParams).saved === "done";
+  const isDone = (id: string) => {
+    const p = progress[id];
+    return !!p && p.total > 0 && p.watched >= p.total;
+  };
+  const savedDesk = doneOnly ? saved.filter((l) => isDone(l.id)) : saved;
+  const w = webWords(locale);
+
   return (
     <div className="space-y-8">
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
@@ -103,6 +118,7 @@ export default async function ListsPage() {
         locale={locale}
         toWatch={toWatch}
         playlistIds={playlistIds}
+        progress={progress}
       />
       {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
           وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
@@ -117,10 +133,19 @@ export default async function ListsPage() {
           نفسُها (`grid` القائم في `PublicListsRail`)، والرفُّ الأفقيُّ يُخفي ما تملكه خلف الحافّة */}
       <div className="hidden desk:block">
       <PublicListsRail
-        lists={saved}
+        lists={savedDesk}
         locale={locale}
         grid
+        progress={progress}
         title={saved.length > 0 ? `${t.savedListsSection} · ${saved.length}` : t.savedListsSection}
+        action={
+          saved.some((l) => isDone(l.id)) ? (
+            <span className="flex items-center gap-1.5">
+              <Link href="/lists" scroll={false} className={chipClass(!doneOnly, "sm")}>{w.savedAll}</Link>
+              <Link href="/lists?saved=done" scroll={false} className={chipClass(doneOnly, "sm")}>{w.savedDone}</Link>
+            </span>
+          ) : undefined
+        }
       />
       </div>
     </div>
