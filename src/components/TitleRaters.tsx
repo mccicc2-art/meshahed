@@ -64,8 +64,9 @@ export function TitleRaters({
   const load = async (): Promise<TitleCommunityPayload | null> => {
     try {
       const res = await fetch(`/api/v1/title/${kind}/${tmdbId}/community`, { cache: "no-store" });
-      const body = (await res.json()) as { ok: boolean; data?: TitleCommunityPayload };
-      if (!body.ok || !body.data) throw new Error("bad");
+      /* غلافُ `/api/v1` هو `{ data }` بلا حقل `ok` — النجاحُ من حالة الردّ (`readV1`)؛ كان الشرطُ على `body.ok` فيسقط دائماً */
+      const body = (await res.json()) as { data?: TitleCommunityPayload };
+      if (!res.ok || !body.data) throw new Error("bad");
       setData(body.data);
       setFailed(false);
       return body.data;
@@ -88,9 +89,9 @@ export function TitleRaters({
     if (variant !== "card" || votes <= 0) return;
     let alive = true;
     fetch(`/api/v1/title/${kind}/${tmdbId}/community`, { cache: "no-store" })
-      .then((res) => res.json() as Promise<{ ok: boolean; data?: TitleCommunityPayload }>)
-      .then((body) => {
-        if (alive && body.ok && body.data) setData(body.data);
+      .then(async (res) => ({ ok: res.ok, body: (await res.json()) as { data?: TitleCommunityPayload } }))
+      .then(({ ok, body }) => {
+        if (alive && ok && body.data) setData(body.data);
       })
       .catch(() => {
         /* بلا وجوهٍ لا شيءَ ينكسر — الرقمُ مرسومٌ من الخادم */

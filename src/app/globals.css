@@ -1014,6 +1014,28 @@ summary:focus-visible,
   }
 }
 
+/* 🆕 R258 — **منصّةُ الترايلرات في ملء الشاشة** (`TrailerStage`): الجذرُ أسود، والمقطعُ ممركزٌ بأكبر 16:9 تسعه الشاشة، والقائمةُ
+   تغيب (زرُّ «التالي» في الشريط يقوم مقامها). **قاعدةٌ لا حالةٌ في المكوّن**: المتصفّحُ يعلن ملءَ الشاشة بـ`:fullscreen` قبل أن
+   يصل حدثُه، فلا إطارَ يُرسم بالتخطيط القديم. ولا `transform` على الجذر — يكسر تموضعَ طبقة المشغّل الثابتة */
+.lz-stage:fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.lz-stage:fullscreen .lz-stage-queue {
+  display: none;
+}
+.lz-stage:fullscreen .lz-stage-split {
+  display: block;
+}
+.lz-stage:fullscreen .lz-stage-card {
+  width: min(100vw, calc(100vh * 16 / 9)) !important;
+  margin-inline: auto;
+  border: 0;
+  border-radius: 0;
+}
+
 /* 🆕 T413 — **«إحصائياتك» على الحاسوب**: الأقسامُ الأربعة (الاتجاه · المحتوى · الذوق · العادات) عمودان بدل عمودٍ ممدودٍ على
    ١١٠٠ بكسل. جذرُ القسم (`space-y-8`) يصير شبكة، وأوّلُ أبنائه (صفُّ الخانات) وآخرُها (أفعالُ الذيل) بعرضها كلِّه، وما بينهما
    أزواجٌ. **قاعدةٌ هنا لا أصنافٌ في كلِّ قسم**: الأقسامُ تبقى كما هي للجوّال، والحاسوبُ يرتّب ما تعطيه. */

@@ -31,6 +31,7 @@ import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { TrailerRail } from "@/components/TrailerRail";
+import { TrailerStageDiscover } from "@/components/TrailerStage";
 import { getTrailerFeed, type TrailerScope } from "@/lib/trailers";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/core/universes";
@@ -2007,13 +2008,18 @@ async function TrailersSection({ locale, scope }: { locale: Locale; scope: Trail
     cookies(),
   ]);
   if (!items.length) return null;
+  const soundOn = parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value);
   return (
-    <TrailerRail
-      items={items}
-      locale={locale}
-      scope={scope}
-      soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
-    />
+    <>
+      <div className="desk:hidden">
+        <TrailerRail items={items} locale={locale} scope={scope} soundOn={soundOn} />
+      </div>
+      {/* 🆕 R258 — **وعلى الحاسوب منصّة** (أحمد: «ب٢ ممتازة» · «خل اربع فيديوهات بعدين المزيد»): المقطعُ كبيرٌ وقائمةُ «التالي»
+          بجواره من الحمولة نفسِها — المصدرُ «ترايلرات لك» بنطاق التبويب كما هو، و«الكل»/«المزيد» بابا صفحة الترايلرات */}
+      <div className="hidden desk:block">
+        <TrailerStageDiscover items={items} locale={locale} scope={scope} soundOn={soundOn} />
+      </div>
+    </>
   );
 }
 

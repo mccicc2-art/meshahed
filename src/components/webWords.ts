@@ -6,10 +6,21 @@ import type { Locale } from "@/core/i18n";
  */
 const AR = {
   msgSelect: "تحديد",
+  /* 🆕 R258 — منصّةُ الترايلرات على الحاسوب: قائمةُ «التالي» وبابُ الصفحة وملءُ الشاشة الحقيقيّ والتشغيلُ المتتالي */
+  trailerUpNext: "التالي",
+  trailerMore: "المزيد من الترايلرات ←",
+  trailerFullscreen: "ملء الشاشة",
+  trailerExitFullscreen: "الخروج من ملء الشاشة",
+  trailerAutoplay: "تلقائي",
 };
 
 const EN: typeof AR = {
   msgSelect: "Select",
+  trailerUpNext: "Up next",
+  trailerMore: "More trailers →",
+  trailerFullscreen: "Full screen",
+  trailerExitFullscreen: "Exit full screen",
+  trailerAutoplay: "Autoplay",
 };
 
 export type WebWords = typeof AR;

@@ -13,6 +13,7 @@ import {
 import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/core/trailerTabs";
 import { TrailerTabs } from "@/components/TrailerTabs";
 import { TrailerFeed } from "@/components/TrailerFeed";
+import { TrailerStageCinema } from "@/components/TrailerStage";
 import { TrailerBackButton } from "@/components/TrailerBackButton";
 import { TrailerFilterButton } from "@/components/TrailerFilterButton";
 import {
@@ -132,19 +133,33 @@ async function TrailerFeedSection({
       ? getTrailerFeed(TRAILER_FEED_LIMIT, locale, scope, pin, { perTitle: TRAILER_PER_TITLE, filter })
       : getTrailerTabFeed(active, TRAILER_FEED_LIMIT, locale, { perTitle: TRAILER_PER_TITLE, filter });
   const [items, store] = await Promise.all([itemsPromise, cookies()]);
+  const soundOn = parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value);
+  const params = filter ? trailerFilterParams(filter) : undefined;
 
-  return (
+  const feed = (
     <TrailerFeed
       items={items}
       locale={locale}
-      soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
+      soundOn={soundOn}
       emptyLabel={emptyLabel}
       emptyAction={emptyAction}
       tab={active}
       scope={scope}
-      filter={filter ? trailerFilterParams(filter) : undefined}
+      filter={params}
       pinKey={pin ? `${pin.mediaType}-${pin.tmdbId}` : undefined}
     />
+  );
+  /* فراغُ العلف يقول سببَه بعبارة العلف نفسِها على كلِّ عرض */
+  if (!items.length) return feed;
+  return (
+    <>
+      <div className="desk:hidden">{feed}</div>
+      {/* 🆕 R258 — **وضعُ السينما على الحاسوب** (التصميم ج، أحمد ١٨ نوفمبر): المقطعُ كبيرٌ وصفُّ «التالي» تحته، وزرُّ ملء الشاشة.
+          الحمولةُ والدفعاتُ التاليةُ هي العلفُ نفسُه — والمطلوبُ بـ`at` أوّلُها فيعمل أوّلاً */}
+      <div className="hidden desk:block">
+        <TrailerStageCinema items={items} locale={locale} soundOn={soundOn} tab={active} scope={scope} filter={params} />
+      </div>
+    </>
   );
 }
 
