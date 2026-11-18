@@ -44,6 +44,26 @@ export async function traktToken(code: string, redirectUri: string): Promise<str
   }
 }
 
+/**
+ * 🆕 R273 — **فكُّ الربط بعد الاستيراد** (أحمد ١٩ نوفمبر: «نبي نفعّل الاستيراد من تراكت»).
+ * الحسابُ المجانيُّ في Trakt يسمح اليوم بتطبيقٍ واحدٍ مربوطٍ فقط؛ ونحن لا نحتاج الربطَ إلّا لحظةَ الاستيراد. فالمفتاحُ يُلغى
+ * فورَ انتهاء الجلب — ومن ربط Plex أو Infuse لا يخسر مكانَه عندنا إلّا ثوانيَ الاستيراد. والفشلُ صمت: مفتاحٌ لم يُلغَ
+ * ينتهي وحدَه، ولا يستحقّ أن يُسقط استيراداً نجح.
+ */
+export async function traktRevoke(token: string): Promise<void> {
+  try {
+    await fetch(`${API}/oauth/revoke`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+      body: JSON.stringify({ token, client_id: process.env.TRAKT_CLIENT_ID, client_secret: process.env.TRAKT_CLIENT_SECRET }),
+    });
+  } catch {
+    /* صمت */
+  }
+}
+
 async function traktGet<T>(path: string, token: string): Promise<T | null> {
   try {
     const res = await fetch(`${API}${path}`, {

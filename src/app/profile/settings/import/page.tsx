@@ -5,6 +5,8 @@ import { traktConfigured } from "@/lib/trakt";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { ImportPanel } from "@/components/ImportPanel";
 import { PrivacyData } from "@/components/PrivacyData";
+import { Icon } from "@/components/Icon";
+import { webWords } from "@/components/webWords";
 
 /**
  * الاستيرادُ والتصدير — **بياناتُك داخلةً وخارجة** (D-462).
@@ -21,7 +23,14 @@ export default async function Page() {
   return (
     <SettingsPageLayout title={t.setImport}>
       <ImportPanel locale={locale} traktReady={traktConfigured()} />
-      <PrivacyData locale={locale} only={["export"]} />
+      {/* 🆕 R273 — على الحاسوب: «تصدير بياناتك» وجملةُ «يُقرأ في جهازك» جنباً إلى جنب تحت البطاقات — وتحت ١٢٨٠ كما كان */}
+      <div className="desk:grid desk:grid-cols-2 desk:items-start desk:gap-4">
+        <PrivacyData locale={locale} only={["export"]} />
+        <p className="hidden desk:flex items-center gap-3 rounded-2xl border border-dashed border-border p-4 text-12 leading-relaxed text-muted">
+          <Icon name="info" size={20} className="shrink-0 text-accent" />
+          {webWords(locale).importLocalNote}
+        </p>
+      </div>
     </SettingsPageLayout>
   );
 }

@@ -19,6 +19,7 @@ import { SettingsGroup } from "./settings/SettingsGroup";
 import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 import { sheetScroll } from "./ui/controls";
+import { webWords } from "./webWords";
 
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
 
@@ -239,89 +240,13 @@ export function ImportPanel({
     },
   ];
 
-  return (
-    <>
-      {/* ===== المصادرُ صفوفٌ ===== */}
-      <SettingsGroup label={t.importSection}>
-        {sources.map((src) => (
-          <SettingsRow
-            key={src.id}
-            icon="download"
-            title={src.title}
-            subtitle={src.hint}
-            onClick={() => setOpen(src.id)}
-          />
-        ))}
-        {/* **وTrakt صفٌّ في السجلِّ نفسِه** — **وبابٌ مغلقٌ في مكانه
-            أصدقُ من بابٍ محذوف** (D-155). **ويُعطَّل حين لا مفاتيح**
-            فلا يُفتح ليُقال له «غير متاح». */}
-        <SettingsRow
-          icon="share"
-          title={t.importTraktTitle}
-          subtitle={traktReady ? t.importTraktHint : t.importTraktWhy}
-          onClick={traktReady || traktMsg ? () => setOpen("trakt") : undefined}
-          value={traktReady ? undefined : t.settingsSoonTitle}
-        />
-      </SettingsGroup>
-      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">{t.importHint}</p>
-
-      {/* ===== ورقةُ كلِّ مصدر — **مصنعٌ واحدٌ يرسمها الثلاث** (D-153) ===== */}
-      {sources.map((src) => {
-        const mine = active === src.id;
-        /* **المرجعُ يُختار هنا لا يُخزَّن في السجلّ**: مرجعٌ داخل مصفوفةٍ
-           تُبنى في كلِّ رسمة يقرؤه المدقّقُ «قراءةَ مرجعٍ أثناء الرسم» */
-        const inputRef =
-          src.id === "imdb" ? imdbRef : src.id === "mal" ? malRef : src.id === "letterboxd" ? letterboxdRef : src.id === "simkl" ? simklRef : tvtimeRef;
-        return (
-          <SettingsBottomSheet
-            key={src.id}
-            open={open === src.id}
-            title={src.title}
-            onCancel={() => setOpen(null)}
-            onDone={() => setOpen(null)}
-            cancelLabel={t.cancelLabel}
-            doneLabel={t.doneLabel}
-          >
-            <div className={`${sheetScroll} px-4 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
-              <p className="text-12 text-muted leading-relaxed mb-3">{src.hint}</p>
-
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept={SOURCES[src.id].accept}
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files;
-                  if (f && f.length) run(f, src.id);
-                  e.target.value = "";
-                }}
-              />
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => inputRef.current?.click()}
-                  className={buttonClass({ variant: "surface", size: "md", className: "h-11" })}
-                >
-                  <Icon name="download" size={16} />
-                  {t.importPickFile}
-                </button>
-                {busy && mine && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      stop.current = true;
-                    }}
-                    className={buttonClass({ variant: "ghost", size: "md", className: "h-11" })}
-                  >
-                    {t.importCancel}
-                  </button>
-                )}
-              </div>
-              <p className="text-12 text-muted mt-2">{src.fileHint}</p>
-
+  const refOf = (id: SourceId) =>
+    id === "imdb" ? imdbRef : id === "mal" ? malRef : id === "letterboxd" ? letterboxdRef : id === "simkl" ? simklRef : tvtimeRef;
+  /* 🆕 R273 — حالُ الاستيراد (التقدّم · الخطأ · الحصيلة) دالّةٌ واحدةٌ تقرؤها الورقةُ على الجوال وبطاقةُ الحاسوب — لا نسختان */
+  const status = (id: SourceId) => {
+    const mine = active === id;
+    return (
+      <>
               {busy && mine && (
                 <div className="mt-4">
                   <p className="text-12 text-muted mb-1.5">{phaseLabel}</p>
@@ -367,6 +292,148 @@ export function ImportPanel({
                   )}
                 </div>
               )}
+      </>
+    );
+  };
+  const w = webWords(locale);
+  const FILES: Record<SourceId, string> = { imdb: "csv", mal: "xml · gz", letterboxd: "zip · csv", simkl: "zip · json · csv", tvtime: "zip" };
+
+  return (
+    <>
+      {/* ===== المصادرُ صفوفٌ ===== */}
+      {/* 🆕 R273 — حقولُ الملفّات خارج الأوراق: الورقةُ لا تُرسم مغلقةً، وزرُّ بطاقة الحاسوب يحتاج حقلَه حاضراً */}
+      {sources.map((src) => (
+        <input
+          key={`f-${src.id}`}
+          ref={refOf(src.id)}
+          type="file"
+          multiple
+          accept={SOURCES[src.id].accept}
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files;
+            if (f && f.length) run(f, src.id);
+            e.target.value = "";
+          }}
+        />
+      ))}
+
+      {/* 🆕 R273 — **الاستيرادُ على الحاسوب بطاقات** (أحمد ١٩ نوفمبر — «أ»): كلُّ مصدرٍ بطاقةٌ فيها طريقةُ التصدير وزرُّ رفع الملف
+          ظاهرين، والتقدّمُ والحصيلةُ داخلها — من يفتح الصفحةَ جاء من تطبيقٍ بعينه فيجده ويرفع بضغطة. وتحت ١٢٨٠ الصفوفُ والأوراقُ كما هي. */}
+      <section className="hidden desk:block">
+        <h2 className="mb-2.5 text-15 font-bold">{t.importSection}</h2>
+        <div className="grid grid-cols-3 gap-3.5">
+          {sources.map((src) => (
+            <div key={`c-${src.id}`} className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface p-4">
+              <div className="flex items-center gap-2">
+                <b className="text-15 font-bold">{src.title}</b>
+                <span className="ms-auto rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-muted" dir="ltr">{FILES[src.id]}</span>
+              </div>
+              <p className="flex-1 text-12 leading-relaxed text-muted">{src.hint}</p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => refOf(src.id).current?.click()}
+                className={buttonClass({ variant: "primary", size: "md", className: "w-full justify-center" })}
+              >
+                <Icon name="download" size={16} />
+                {t.importPickFile}
+              </button>
+              {busy && active === src.id ? (
+                <button type="button" onClick={() => { stop.current = true; }} className={buttonClass({ variant: "ghost", size: "sm", className: "self-center" })}>
+                  {t.importCancel}
+                </button>
+              ) : null}
+              {status(src.id)}
+            </div>
+          ))}
+          <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface p-4">
+            <b className="text-15 font-bold">{t.importTraktTitle}</b>
+            <p className="flex-1 text-12 leading-relaxed text-muted">{traktReady ? w.traktHint : w.traktOff}</p>
+            {traktReady ? (
+              <a href="/api/trakt/start" className={buttonClass({ variant: "primary", size: "md", className: "w-full justify-center" })}>
+                <Icon name="share" size={16} />
+                {t.importTraktConnect}
+              </a>
+            ) : (
+              <span className={buttonClass({ variant: "surface", size: "md", className: "w-full justify-center opacity-50 pointer-events-none" })}>{t.settingsSoonTitle}</span>
+            )}
+            {traktMsg ? <Alert tone={trakt === "ok" ? "success" : "error"}>{traktMsg}</Alert> : null}
+          </div>
+        </div>
+        <p className="mt-2.5 text-12 leading-relaxed text-muted">{t.importHint}</p>
+      </section>
+
+      <div className="desk:hidden space-y-4">
+      <SettingsGroup label={t.importSection}>
+        {sources.map((src) => (
+          <SettingsRow
+            key={src.id}
+            icon="download"
+            title={src.title}
+            subtitle={src.hint}
+            onClick={() => setOpen(src.id)}
+          />
+        ))}
+        {/* **وTrakt صفٌّ في السجلِّ نفسِه** — **وبابٌ مغلقٌ في مكانه
+            أصدقُ من بابٍ محذوف** (D-155). **ويُعطَّل حين لا مفاتيح**
+            فلا يُفتح ليُقال له «غير متاح». */}
+        <SettingsRow
+          icon="share"
+          title={t.importTraktTitle}
+          subtitle={traktReady ? w.traktHint : w.traktOff}
+          onClick={traktReady || traktMsg ? () => setOpen("trakt") : undefined}
+          value={traktReady ? undefined : t.settingsSoonTitle}
+        />
+      </SettingsGroup>
+      <p className="px-1 text-12 text-muted leading-relaxed">{t.importHint}</p>
+      </div>
+
+      {/* ===== ورقةُ كلِّ مصدر — **مصنعٌ واحدٌ يرسمها الثلاث** (D-153) ===== */}
+      {sources.map((src) => {
+        const mine = active === src.id;
+        /* **المرجعُ يُختار هنا لا يُخزَّن في السجلّ**: مرجعٌ داخل مصفوفةٍ
+           تُبنى في كلِّ رسمة يقرؤه المدقّقُ «قراءةَ مرجعٍ أثناء الرسم» */
+        const inputRef = refOf(src.id);
+        return (
+          <SettingsBottomSheet
+            key={src.id}
+            open={open === src.id}
+            title={src.title}
+            onCancel={() => setOpen(null)}
+            onDone={() => setOpen(null)}
+            cancelLabel={t.cancelLabel}
+            doneLabel={t.doneLabel}
+          >
+            <div className={`${sheetScroll} px-4 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
+              <p className="text-12 text-muted leading-relaxed mb-3">{src.hint}</p>
+
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => inputRef.current?.click()}
+                  className={buttonClass({ variant: "surface", size: "md", className: "h-11" })}
+                >
+                  <Icon name="download" size={16} />
+                  {t.importPickFile}
+                </button>
+                {busy && mine && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stop.current = true;
+                    }}
+                    className={buttonClass({ variant: "ghost", size: "md", className: "h-11" })}
+                  >
+                    {t.importCancel}
+                  </button>
+                )}
+              </div>
+              <p className="text-12 text-muted mt-2">{src.fileHint}</p>
+
+              {status(src.id)}
             </div>
           </SettingsBottomSheet>
         );
@@ -385,7 +452,7 @@ export function ImportPanel({
           {/* D-155: الوصفُ يتبع الحال. حين لا مفاتيح، وعدُ «نجلب مشاهداتك
               مباشرةً» كذبٌ يقرؤه المستخدم فوق سطرٍ يقول إنه غير متاح. */}
           <p className="text-12 text-muted leading-relaxed mb-3">
-            {traktReady ? t.importTraktHint : t.importTraktWhy}
+            {traktReady ? w.traktHint : w.traktOff}
           </p>
 
           {traktReady ? (

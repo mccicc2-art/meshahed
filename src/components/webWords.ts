@@ -62,6 +62,10 @@ const AR = {
   ratingsDist: "توزيع تقييماتك",
   ratingsDistHint: "اضغط رقماً لعرض أعماله فقط",
   ratingsDistClear: "اضغط الرقم نفسه لعرض الكل",
+  /* 🆕 R273 — Trakt والاستيراد على الويب (بدل جملة «VIP» القديمة التي لم تثبت) */
+  traktHint: "اربط حسابك في Trakt ونجلب مشاهداتك وتقييماتك مرة وحدة. بعد الاستيراد نفك الربط تلقائياً، فما ياخذ مكان تطبيقاتك الثانية المربوطة بـTrakt.",
+  traktOff: "ربط Trakt ما تفعّل بعد على Loopz. إلى أن يتفعّل: صدّر بياناتك من Trakt وارفع الملف في بطاقة Simkl — قارئها يقبل أي تصدير فيه معرّفات TMDB.",
+  importLocalNote: "يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
 };
 
 const EN: typeof AR = {
@@ -114,6 +118,9 @@ const EN: typeof AR = {
   ratingsDist: "Your ratings",
   ratingsDistHint: "Click a score to show only those titles",
   ratingsDistClear: "Click the same score to show all",
+  traktHint: "Connect your Trakt account and we bring in your watches and ratings once. Right after the import we disconnect, so it never takes the place of your other apps connected to Trakt.",
+  traktOff: "Trakt linking isn't enabled on Loopz yet. Until it is: export your data from Trakt and upload the file in the Simkl card — its reader accepts any export carrying TMDB ids.",
+  importLocalNote: "The file is read on your device and never uploaded — only titles are sent to be matched.",
 };
 
 export type WebWords = typeof AR;

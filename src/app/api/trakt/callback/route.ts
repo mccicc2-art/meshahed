@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { traktConfigured, traktToken, harvestTrakt } from "@/lib/trakt";
+import { traktConfigured, traktToken, harvestTrakt, traktRevoke } from "@/lib/trakt";
 import { IMPORT_CAPS } from "@/core/importer";
 import { revalidatePath } from "next/cache";
 
@@ -34,8 +34,11 @@ export async function GET(request: Request) {
   try {
     harvest = await harvestTrakt(token);
   } catch {
+    await traktRevoke(token);
     return back("trakt=failed");
   }
+  /* 🆕 R273 — المفتاحُ لا يلزم بعد الجلب: يُلغى الآن فلا يشغل «التطبيقَ الواحد» المسموحَ للحساب المجانيّ في Trakt */
+  await traktRevoke(token);
 
   const supabase = await createClient();
   // ختمٌ واحد يحلّ محلّ التاريخ الغائب — انظر السبب في applyImportChunk
