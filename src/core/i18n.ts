@@ -1856,7 +1856,7 @@ const ar = {
   /* 🆕 المهمة ٣٩٤ — رابطُ حملة الحساب الرسميّ (`LOOPZX`): «Loopz يدعوك إلى Loopz» يكرّر الاسم، فالحملةُ دعوةٌ بلا داعٍ (أحمد: «انضم الى لوبز») */
   invitePageTitleCampaign: "انضم إلى Loopz",
   /* 🆕 المهمة ٤٢١ — التصميمُ «ب» (قرارُ أحمد ١٨ نوفمبر): سطرٌ واحدٌ تحت العنوان، وثلاثُ شاراتٍ، وزرٌّ واحدٌ يتبدّل */
-  invitePageLine: "مسلسلاتك وأفلامك وأنميك في مكانٍ واحد.",
+  invitePageLine: "تابع ما تحب، شارك رأيك، واكتشف تجارب عشّاق الأفلام والمسلسلات والأنمي.",
   inviteChipNoAds: "بلا إعلانات",
   invitePageGift: "وهديّتك ١٤ يومًا من Loopz Plus بعد أن تتابع ٥ أعمال وتنشط ٣ أيام خلال أسبوعيك الأولين.",
   inviteAppStoreAlt: "تنزيل من App Store",
@@ -4695,7 +4695,7 @@ const en: Dict = {
   invitePageTitle: (name: string) => `${name} invited you to Loopz`,
   invitePageTitleAnon: "You're invited to Loopz",
   invitePageTitleCampaign: "Join Loopz",
-  invitePageLine: "Your series, movies and anime in one place.",
+  invitePageLine: "Follow what you love, share your thoughts, and discover the experiences of movie, series and anime fans.",
   inviteChipNoAds: "No ads",
   invitePageGift: "Your gift: 14 days of Loopz Plus after you track 5 titles and are active on 3 days within your first two weeks.",
   inviteAppStoreAlt: "Download on the App Store",

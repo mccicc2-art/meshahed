@@ -148,11 +148,9 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
           <h1 className="mt-3.5 text-[clamp(28px,8.6vw,36px)] font-extrabold leading-[1.2] [text-shadow:0_2px_12px_rgba(0,0,0,.7)]">
             {withBrand(title)}
           </h1>
-          <p
-            className={`mt-2.5 text-[clamp(13px,4vw,16px)] font-medium text-white/90 [text-shadow:0_1px_8px_rgba(0,0,0,.9)] ${
-              locale === "en" ? "text-balance" : "whitespace-nowrap"
-            }`}
-          >
+          {/* 🆕 المهمة ٤٣٩ — سطرُ أحمد (١٩ نوفمبر) أطولُ من سطرٍ واحد في اللغتين، فيلتفّ متوازناً بدل `whitespace-nowrap` الذي
+              كان يُبقي الجملةَ القصيرةَ القديمة على سطر */}
+          <p className="mt-2.5 text-balance text-[clamp(13px,4vw,16px)] font-medium text-white/90 [text-shadow:0_1px_8px_rgba(0,0,0,.9)]">
             {t.invitePageLine}
           </p>
 
