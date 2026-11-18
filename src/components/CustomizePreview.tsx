@@ -2,9 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import { useState } from "react";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { type Density } from "@/core/density";
+import { chipClass } from "./ui/controls";
 
 /**
  * المعاينةُ الحيّة في شاشة التخصيص (D-441).
@@ -41,6 +43,7 @@ export function CustomizePreview({
   counters,
   labels,
   showVisits = false,
+  deviceLabels,
 }: {
   kind: "home" | "profile";
   /** عنوانُ الكتلة — «معاينة حيّة» */
@@ -73,7 +76,15 @@ export function CustomizePreview({
     follow: string;
   };
   showVisits?: boolean;
+  /**
+   * 🆕 R262 — **معاينةٌ بجهازين على الحاسوب** (اختيارُ أحمد «ب»، ١٨ نوفمبر: «اللي بيرتب الرئيسية والملف فالحاسب بشوف شيء مختلف
+   * عن اللي عنده»): الترتيبُ واحدٌ للجهازين، فالمعاينةُ تبدأ على «كمبيوتر» ترسم رئيسيّةَ الحاسوب (شريطُ الأسبوع وشبكاتٌ عريضة)
+   * أو ملفَّه (غلافٌ أقصر والأرقامُ بجانب الاسم)، و«جوال» يعيد رسمَ الجوّال بإطاره. **على الجوّال لا مبدِّلَ** والمعاينةُ كما كانت.
+   */
+  deviceLabels?: { phone: string; desk: string; note: string };
 }) {
+  const [device, setDevice] = useState<"desk" | "phone">("desk");
+  const deskOn = !!deviceLabels && device === "desk";
   /** عرضُ الملصق المصغَّر — ثلثُ الحقيقيّ تقريباً، فالفرقُ يبقى مرئيّاً */
   const posterW =
     density === "compact" ? 30 : density === "large" ? 46 : 37;
@@ -88,8 +99,49 @@ export function CustomizePreview({
         {title}
       </span>
 
+      {deviceLabels ? (
+        <span role="radiogroup" aria-label={title} className="absolute top-2 end-3 z-10 hidden items-center gap-1.5 desk:inline-flex">
+          {(["phone", "desk"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={device === d}
+              onClick={() => setDevice(d)}
+              className={chipClass(device === d, "sm", "inline-flex items-center gap-1.5")}
+            >
+              <Icon name={d === "phone" ? "phone" : "tv"} size={13} />
+              {d === "phone" ? deviceLabels.phone : deviceLabels.desk}
+            </button>
+          ))}
+        </span>
+      ) : null}
+
+      {deskOn ? (
+        <DeskPreview
+          kind={kind}
+          name={name}
+          avatarUrl={avatarUrl}
+          rows={rows}
+          stats={stats}
+          showStats={showStats}
+          greeting={greeting}
+          username={username}
+          bio={bio}
+          coverUrl={coverUrl}
+          coverPos={coverPos}
+          avatarPos={avatarPos}
+        />
+      ) : null}
+
       <div
-        className="rounded-2xl bg-[color:var(--background)] p-3 pt-9 overflow-hidden"
+        className={`rounded-2xl bg-[color:var(--background)] p-3 pt-9 overflow-hidden ${
+          deskOn
+            ? "desk:hidden"
+            : deviceLabels
+              ? "desk:mx-auto desk:my-3 desk:mt-12 desk:max-w-[300px] desk:rounded-[22px] desk:border desk:border-border desk:pt-3"
+              : ""
+        }`}
         aria-hidden
       >
         {kind === "profile" ? (
@@ -240,6 +292,141 @@ export function CustomizePreview({
           )}
         </div>
       </div>
+      {deviceLabels ? (
+        <p className="hidden items-center gap-1.5 px-3 pb-3 text-12 text-muted desk:flex">
+          <Icon name="info" size={13} className="shrink-0" />
+          {deviceLabels.note}
+        </p>
+      ) : null}
     </section>
+  );
+}
+
+/**
+ * 🆕 R262 — **رسمُ الحاسوب في المعاينة** — مخطّطٌ لا صور (كمعاينة الجوّال، D-441: لا جلبَ من TMDB): الرئيسيّةُ أقسامُها بترتيب
+ * صاحبها بعرض الصفحة — «أسبوعك» شريطٌ بيومٍ ممتلئٍ عريض، «أكمل المشاهدة» ثلاثُ بطاقاتٍ عريضة، والباقي ستّةُ ملصقات؛ والملفُّ
+ * غلافٌ أقصر والأرقامُ بجانب الاسم والرفوفُ ثمانيةً — ما تعرضه الصفحتان على الحاسوب (R260/R262).
+ */
+function DeskPreview({
+  kind,
+  name,
+  avatarUrl,
+  rows,
+  stats,
+  showStats,
+  greeting,
+  username,
+  bio,
+  coverUrl,
+  coverPos,
+  avatarPos,
+}: {
+  kind: "home" | "profile";
+  name: string;
+  avatarUrl: string | null;
+  rows: { key: string; icon: IconName; label: string }[];
+  stats?: { key: string; icon: IconName; label: string }[];
+  showStats: boolean;
+  greeting?: string;
+  username?: string | null;
+  bio?: string | null;
+  coverUrl?: string | null;
+  coverPos?: number;
+  avatarPos?: number;
+}) {
+  const box = "block rounded-md border border-border bg-surface-2";
+  const cols = kind === "profile" ? 8 : 6;
+  return (
+    <div className="hidden overflow-hidden rounded-2xl bg-[color:var(--background)] p-4 pt-12 desk:block" aria-hidden>
+      {kind === "profile" ? (
+        <>
+          <div className="relative -mx-4 -mt-12 h-24 overflow-hidden bg-surface-2">
+            {coverUrl ? (
+              <img src={coverUrl} alt="" className="h-full w-full object-cover" style={{ objectPosition: `50% ${coverPos ?? 30}%` }} />
+            ) : null}
+            <span className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] to-transparent" />
+          </div>
+          <div className="relative -mt-8 flex items-end gap-3">
+            <Avatar src={avatarUrl} name={name} size={52} alt="" posY={avatarPos ?? 50} className="shrink-0 ring-2 ring-[color:var(--background)]" />
+            <span className="min-w-0 flex-1 pb-1">
+              <span className="block truncate text-[13px] font-bold">{name}</span>
+              {username ? (
+                <span className="block truncate text-[10px] text-muted" dir="ltr">
+                  @{username}
+                </span>
+              ) : null}
+              {bio ? (
+                <span className="block truncate text-[10px] text-muted" dir="auto">
+                  {bio}
+                </span>
+              ) : null}
+            </span>
+            {showStats ? (
+              <span className="mb-1 grid w-56 shrink-0 grid-cols-4 rounded-lg border border-border">
+                {(["tv", "film", "torii", "chart"] as IconName[]).map((ic, i) => (
+                  <span key={ic} className={`flex justify-center py-1.5 ${i > 0 ? "border-s border-[color:var(--divider)]" : ""}`}>
+                    <Icon name={ic} size={11} style={{ color: "var(--accent)" }} />
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Avatar src={avatarUrl} name={name} size={26} alt="" />
+          <span className="min-w-0 flex-1 truncate text-12">
+            <span className="text-muted">{greeting} </span>
+            <span className="font-bold">{name}</span>
+          </span>
+          {showStats && stats
+            ? stats.map((s) => (
+                <span key={s.key} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1">
+                  <Icon name={s.icon} size={11} style={{ color: "var(--accent)" }} />
+                  <span className="text-[9px] text-muted">{s.label}</span>
+                </span>
+              ))
+            : null}
+        </div>
+      )}
+
+      <div className="mt-3 space-y-3">
+        {rows.length === 0 ? (
+          <span className="block h-10 rounded-lg border border-dashed border-border" />
+        ) : (
+          rows.map((r) => (
+            <span key={r.key} className="block">
+              <span className="mb-1 flex items-center gap-1.5">
+                <Icon name={r.icon} size={11} style={{ color: "var(--accent)" }} />
+                <span className="truncate text-[10px] font-bold">{r.label}</span>
+              </span>
+              {kind === "home" && r.key === "week" ? (
+                <span className="flex h-10 gap-1">
+                  {Array.from({ length: 14 }, (_, n) =>
+                    n === 3 ? (
+                      <span key={n} className="block w-[72px] shrink-0 rounded-md border border-accent-2/60 bg-surface-2" />
+                    ) : (
+                      <span key={n} className={`${box} flex-1 ${n === 0 ? "!border-accent/60" : "opacity-70"}`} />
+                    ),
+                  )}
+                </span>
+              ) : kind === "home" && r.key === "continue" ? (
+                <span className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((n) => (
+                    <span key={n} className={`${box} aspect-video`} />
+                  ))}
+                </span>
+              ) : (
+                <span className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
+                  {Array.from({ length: cols }, (_, n) => (
+                    <span key={n} className={`${box} aspect-[2/3]`} />
+                  ))}
+                </span>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+    </div>
   );
 }

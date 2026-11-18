@@ -18,6 +18,7 @@ import {
   touchesPaidProfilePrefs,
 } from "@/core/profilePrefs";
 import { Alert } from "./ui/Alert";
+import { webWords } from "./webWords";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { SettingsGroup } from "./settings/SettingsGroup";
 import { SettingsRow } from "./settings/SettingsRow";
@@ -165,6 +166,8 @@ export function ProfileCustomize({
         showStats={prefs.stats}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
+        /* 🆕 R262 — على الحاسوب معاينةٌ بجهازين (الحجّةُ في `CustomizePreview`) */
+        deviceLabels={{ phone: webWords(locale).custPhone, desk: webWords(locale).custDesk, note: webWords(locale).custOneOrder }}
       />
 
       {/* 🆕 **قوالبُ التخصيص** (D-822) — **موضعُها هنا كموضعِها في توأمها**

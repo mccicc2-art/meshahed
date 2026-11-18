@@ -57,6 +57,7 @@ import {
 import { capCards } from "@/core/cardCount";
 import { densityVars } from "@/core/density";
 import { WeekStrip } from "@/components/WeekStrip";
+import { getTv } from "@/lib/tmdb";
 import { WatchSignalCard } from "@/components/links/WatchSignalCard";
 import { HomeOrderSheetHost } from "@/components/HomeSectionsOrder";
 import {
@@ -615,15 +616,24 @@ async function HomeBody({
           week: (
             <div key="week">
               <span id="week" className="block scroll-mt-20" />
-              <WeekStrip
-                days={weekDays}
-                entries={weekEntries}
-                locale={locale}
-                /* 🆕 **والعنوانُ بابُ التقويم** (D-828/D-198): **كلُّ صفٍّ
-                   يُعرض له بابٌ يُفتح على صفحةٍ كاملة** — **والشريطُ كان
-                   الصفَّ الوحيدَ بلا باب.** */
-                href="/calendar"
-              />
+              <div className="desk:hidden">
+                <WeekStrip
+                  days={weekDays}
+                  entries={weekEntries}
+                  locale={locale}
+                  /* 🆕 **والعنوانُ بابُ التقويم** (D-828/D-198): **كلُّ صفٍّ
+                     يُعرض له بابٌ يُفتح على صفحةٍ كاملة** — **والشريطُ كان
+                     الصفَّ الوحيدَ بلا باب.** */
+                  href="/calendar"
+                />
+              </div>
+              {/* 🆕 R262 — الحاسوب: شريطُ التطبيق بعرض الصفحة وبصورة المسلسل (الحجّةُ في `WeekStrip`). وصورُ الخلفيّة تُجلب خلف
+                  حاجزها فلا تؤخّر الرئيسية — وريثما تصل يُرسم الشريطُ نفسُه بالملصقات */}
+              <div className="hidden desk:block">
+                <Suspense fallback={<WeekStrip days={weekDays} entries={weekEntries} locale={locale} href="/calendar" variant="desk" />}>
+                  <DeskWeekStrip days={weekDays} entries={weekEntries} locale={locale} />
+                </Suspense>
+              </div>
             </div>
           ),
           towatch:
@@ -1002,46 +1012,14 @@ async function HomeBody({
             </Suspense>
           ) : null,
         };
-        /* 🆕 T398 — **عمودان على الحاسوب العريض** (التصميم المعتمد `a_home`، أحمد ١٧ نوفمبر): «أسبوعك» و«القادم»
-           مواعيدُ تُلمح لا رفوفٌ تُتصفّح، فيسكنان عموداً جانبيّاً ضيّقاً بجانب الرفوف. **والترتيبُ ترتيبُ صاحبه**: ما
-           أخفاه من التخصيص لا يظهر في العمود أيضاً، وما دون الحاسوب يبقى بترتيبه في العمود الواحد (`desk:hidden`). */
-        const ASIDE: HomeSection[] = ["week", "upcoming"];
-        const main = prefs.order.map((k) =>
-          ASIDE.includes(k) && sections[k] ? (
-            <div key={k} className="desk:hidden">
-              {sections[k]}
-            </div>
-          ) : (
-            sections[k]
-          ),
-        );
-        const aside = prefs.order
-          .filter((k) => ASIDE.includes(k))
-          .map((k) =>
-            k === "week" ? (
-              <div key="aside-week" className="rounded-2xl border border-border bg-surface p-4">
-                <WeekStrip days={weekDays} entries={weekEntries} locale={locale} href="/calendar" variant="list" />
-              </div>
-            ) : upcomingRow.length > 0 ? (
-              <div key="aside-upcoming" className="rounded-2xl border border-border bg-surface p-4">
-                <Suspense fallback={<RailSkeleton count={3} />}>
-                  <UpcomingSection row={upcomingRow} cards={prefs.cards} t={t} view="compact" />
-                </Suspense>
-              </div>
-            ) : null,
-          );
-        /* 🆕 T409 — «من تطبيقاتك — شفتها؟» (التصميم المعتمد `a_home`): أعلى العمود الجانبيّ على الحاسوب العريض، وأعلى الرفوف
-           فيما دونه. بطاقةٌ تجلب سؤالَها بعد الرسم ولا تُرسم إن لم ينتظر شيء — فلا تؤخّر الرئيسيّةَ ولا تترك فراغاً */
+        /* ⚖️ 🆕 R262 — **العمودُ الجانبيُّ سقط** (نقضُ T398 بحكم أحمد ١٨ نوفمبر: «أ» — شريطُ الأسبوع أعلى الرئيسية): كان «أسبوعك»
+           و«القادم» يسكنان عموداً ضيّقاً، **فلمّا خلا الأسبوعُ صار سبعةَ أسطرٍ فارغة، وتحته العمودُ فارغٌ حتى آخر الصفحة،
+           والرفوفُ محشورةٌ في الباقي**. الآن الأقسامُ كلُّها بترتيب صاحبها في عمودٍ واحدٍ بعرض الصفحة (الأسبوعُ شريطٌ، والقادمُ
+           رفُّه كما في الجوّال)، فتكبر الشبكات (`lz-deskgrid`: ٥–٦ ملصقات، ٣ بطاقات). وبطاقةُ «من تطبيقاتك — شفتها؟» أعلاها */
         return (
-          <div key="home-cols" className="desk:grid desk:grid-cols-[minmax(0,1fr)_320px] desk:items-start desk:gap-8">
-            <div className="min-w-0 space-y-3 sm:space-y-6">
-              <WatchSignalCard locale={locale} className="desk:hidden" />
-              {main}
-            </div>
-            <aside className="hidden desk:block space-y-4">
-              <WatchSignalCard locale={locale} />
-              {aside}
-            </aside>
+          <div key="home-cols" className="min-w-0 space-y-3 sm:space-y-6">
+            <WatchSignalCard locale={locale} />
+            {prefs.order.map((k) => sections[k])}
           </div>
         );
       })()}
@@ -1576,5 +1554,41 @@ async function TrendingSection({
         );
       })}
     </Section>
+  );
+}
+
+/**
+ * 🆕 R262 — **شريطُ الأسبوع على الحاسوب بصور المسلسلات**: الخلفيّةُ ليست في مداخل الأسبوع (الملصقُ وحدَه)، فتُجلب هنا لأعمال
+ * الأيّام الممتلئة فقط — أعمالٌ قليلة، و`getTv` مخبّأةٌ ساعة. **مكوّنٌ خلف حاجزه** (وصفةُ D-515): لا ينتظره شيءٌ في الصفحة،
+ * وفشلُ الجلب يعيد الملصق (`backdrops` الغائب).
+ */
+async function DeskWeekStrip({
+  days,
+  entries,
+  locale,
+}: {
+  days: React.ComponentProps<typeof WeekStrip>["days"];
+  entries: React.ComponentProps<typeof WeekStrip>["entries"];
+  locale: Locale;
+}) {
+  const ids = [...new Set(entries.map((e) => e.showTmdbId))].slice(0, 14);
+  const pairs = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        return [id, (await getTv(id))?.backdrop_path ?? null] as const;
+      } catch {
+        return [id, null] as const;
+      }
+    }),
+  );
+  return (
+    <WeekStrip
+      days={days}
+      entries={entries}
+      locale={locale}
+      href="/calendar"
+      variant="desk"
+      backdrops={Object.fromEntries(pairs)}
+    />
   );
 }

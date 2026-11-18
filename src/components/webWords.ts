@@ -16,6 +16,10 @@ const AR = {
   cpMore: "المزيد",
   cpLess: "أقلّ",
   cpTriHint: "ضغطة = أكثر · ضغطتان = أقلّ · الثالثة ترجعها عادية",
+  /* 🆕 R262 — معاينةُ التخصيص على الحاسوب بجهازين */
+  custPhone: "جوال",
+  custDesk: "كمبيوتر",
+  custOneOrder: "ترتيبٌ واحد للجهازين — ما تغيّره هنا يتغيّر في الآخر أيضاً",
 };
 
 const EN: typeof AR = {
@@ -28,6 +32,9 @@ const EN: typeof AR = {
   cpMore: "More",
   cpLess: "Less",
   cpTriHint: "Tap once = more · twice = less · a third time resets it",
+  custPhone: "Phone",
+  custDesk: "Computer",
+  custOneOrder: "One order for both devices — what you change here changes on the other too",
 };
 
 export type WebWords = typeof AR;

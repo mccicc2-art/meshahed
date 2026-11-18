@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getDict, type Locale } from "@/core/i18n";
-import { posterUrl } from "@/core/media";
+import { posterUrl, backdropUrl } from "@/core/media";
 import { Icon } from "./Icon";
 
 export interface WeekEntry {
@@ -47,6 +47,7 @@ export function WeekStrip({
   action,
   href,
   variant = "strip",
+  backdrops,
 }: {
   /** تواريخُ متتابعةٌ تبدأ من اليوم — أربعةَ عشرَ اليوم (D-491) */
   days: { date: string; weekday: string; dayNum: string }[];
@@ -62,7 +63,9 @@ export function WeekStrip({
    */
   href?: string;
   /** 🆕 T398 — `list`: الأيّامُ صفوفٌ بعضُها تحت بعض — للعمود الجانبيّ في رئيسيّة الحاسوب (`a_home`)، أسبوعٌ واحد */
-  variant?: "strip" | "list";
+  variant?: "strip" | "list" | "desk";
+  /** 🆕 R262 — صورُ المسلسلات (الخلفيّة) بمعرّف العمل، لشريط الحاسوب (`desk`) — الغائبُ يرجع إلى الملصق */
+  backdrops?: Record<number, string | null>;
 }) {
   const t = getDict(locale);
   const byDay = new Map<string, WeekEntry[]>();
@@ -74,6 +77,95 @@ export function WeekStrip({
   /* 🆕 T398 — **الأسبوعُ عموداً على الحاسوب** (التصميم المعتمد `a_home`): سبعةُ مربّعاتٍ بعرض الصفحة كانت فارغةَ
      الوسط (ع6 في تقرير المقارنة)، وفي العمود الجانبيّ يصير كلُّ يومٍ سطراً: رقمُه واسمُه، ثمّ ملصقاتُ ما ينزل فيه —
      والعنوانُ بابُ التقويم كما في الشريط. البياناتُ نفسُها والحكمُ نفسُه (المتوقَّعُ باهتٌ بحدٍّ متقطّع). */
+  /* 🆕 R262 — **شريطُ التطبيق على الحاسوب، بصورة المسلسل** (أحمد ١٨ نوفمبر: «أ» ثمّ «الأسبوع يكون أقصر وأعرض ويبان المسلسل
+     بالهيدر بدل البوستر» ثمّ «أصغر وأطول بشكل بسيط بحيث يوضح الهيدر كامل»): صفٌّ واحدٌ بعرض الصفحة أعلى الرئيسية بدل العمود
+     الجانبيّ ذي الأسطر الفارغة. **اليومُ الفارغ يتقاسم العرض** (اسمُه ورقمُه، باهت — الفراغُ معلومة D-491)، **ويومُ الحلقة
+     بطاقةٌ ٢٠٠×١١٣** — نسبةُ الصورة نفسُها فتُرى كاملة — عليها اليومُ والاسم؛ وأكثرُ من حلقةٍ في اليوم: الأولى و«+ن».
+     **والمتوقَّعُ باهتٌ بحدٍّ متقطّع** كما في التطبيق (D-1614). وأيّامٌ ممتلئةٌ كثيرةٌ تتضاءل إلى حدٍّ ثمّ يُمرَّر الصفّ. */
+  if (variant === "desk") {
+    return (
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="min-w-0 text-22 font-bold">
+            {href ? (
+              <Link href={href} className="flex items-center gap-2 hover:opacity-80 transition">
+                <Icon name="calendar" size={18} className="text-muted" />
+                <span className="truncate">{t.weekTitle}</span>
+                <span aria-hidden className="text-muted text-base">›</span>
+              </Link>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Icon name="calendar" size={18} className="text-muted" />
+                {t.weekTitle}
+              </span>
+            )}
+          </h2>
+          {entries.length === 0 ? (
+            <p className="min-w-0 flex-1 truncate text-12 text-muted" dir="auto">
+              {t.weekNothing}
+            </p>
+          ) : null}
+          {href ? (
+            <Link href={href} className="shrink-0 text-12 font-medium text-muted hover:text-accent transition">
+              {t.drawerCalendar} <span aria-hidden>›</span>
+            </Link>
+          ) : null}
+        </div>
+        <div className="flex h-[113px] gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {days.map((d, i) => {
+            const list = byDay.get(d.date) ?? [];
+            if (list.length === 0) {
+              return (
+                <div
+                  key={d.date}
+                  className={`flex min-w-11 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-xl border bg-surface ${
+                    i === 0 ? "border-accent/60" : "border-border opacity-70"
+                  }`}
+                >
+                  <span className="max-w-full truncate px-1 text-[11px] text-muted">{d.weekday}</span>
+                  <span className={`text-lg font-bold leading-none tabular-nums ${i === 0 ? "text-accent" : ""}`}>{d.dayNum}</span>
+                </div>
+              );
+            }
+            const first = list[0];
+            const guess = list.every((e) => e.expected);
+            const back = backdrops?.[first.showTmdbId] ?? null;
+            const src = back ? backdropUrl(back, "w500") : posterUrl(first.posterPath ?? null, "w342");
+            return (
+              <Link
+                key={d.date}
+                href={`/show/${first.showTmdbId}`}
+                prefetch={false}
+                aria-label={`${d.weekday} ${d.dayNum} · ${list.map((e) => e.title).join("، ")}`}
+                className={`relative block h-full min-w-[120px] shrink basis-[200px] overflow-hidden rounded-xl border bg-surface-2 transition hover:brightness-110 ${
+                  guess ? "border-dashed border-accent-2/40 opacity-60" : "border-accent-2/60"
+                }`}
+              >
+                {src ? <Image src={src} alt="" fill sizes="200px" className="object-cover" /> : null}
+                <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
+                <span className="absolute start-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[11px] text-white backdrop-blur-sm">
+                  {d.weekday}
+                  <b className={`text-[13px] font-bold tabular-nums ${i === 0 ? "text-accent" : "text-accent-2"}`}>{d.dayNum}</b>
+                </span>
+                {list.length > 1 ? (
+                  <span className="absolute end-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white tabular-nums">
+                    +{list.length - 1}
+                  </span>
+                ) : null}
+                <span className="absolute inset-x-2.5 bottom-2 flex min-w-0 items-baseline gap-2 text-white">
+                  <b className="min-w-0 truncate text-14 font-bold" dir="auto">
+                    {first.title}
+                  </b>
+                  {first.label ? <span className="shrink-0 text-[11px] text-white/80">{first.label}</span> : null}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
   if (variant === "list") {
     return (
       <section>

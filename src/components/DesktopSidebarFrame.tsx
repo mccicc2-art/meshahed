@@ -55,6 +55,9 @@ const NO_SIDEBAR = ["/welcome", "/login", "/app/"];
 /** الصفحاتُ التي تُنسب إلى «مكتبتي» — القائمةُ نفسُها في `BottomNav` (المرساةُ تضيء حيث جاء القارئ) */
 const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/diary", "/lists", "/ratings"];
 
+/** صفحاتٌ داخل الإعدادات لها بندُها في الشريط — فلا تضيء «الإعدادات» معها (R262) */
+const OWN_ITEMS = ["/profile/settings/home", "/profile/settings/invites", "/profile/settings/help"];
+
 const DAYLIGHT = "daylight";
 const DEFAULT_DARK = "loopz";
 
@@ -92,6 +95,13 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
     if (href === "/messages") return pathname.startsWith("/messages") && !alerts;
     if (href === "/messages?tab=alerts") return alerts;
     if (href.startsWith("/activity")) return pathname.startsWith("/activity");
+    /* 🆕 R262 — **بندٌ واحدٌ يضيء** (لاحظه أحمد في صفحة التخصيص): «الإعدادات» كانت تضيء مع كلِّ صفحاتها، ومنها ما له بندُه
+       في الشريط («التخصيص» · «ادعُ صديقاً» · «مركز المساعدة») — فيضيء اثنان معاً. صاحبُ البند الخاصّ أحقُّ بصفحته */
+    if (href === "/profile/settings")
+      return (
+        (pathname === href || pathname.startsWith(href + "/")) &&
+        !OWN_ITEMS.some((p) => pathname === p || pathname.startsWith(p + "/"))
+      );
     return pathname === href || pathname.startsWith(href + "/");
   };
 

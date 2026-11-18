@@ -20,6 +20,7 @@ import {
 } from "@/core/homePrefs";
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
+import { webWords } from "./webWords";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { chipClass, pillTrack } from "./ui/controls";
 import { SettingsGroup } from "./settings/SettingsGroup";
@@ -181,6 +182,8 @@ export function HomeCustomize({
         stats={prefs.statsPick.map((k) => ({ key: k, ...statMeta[k] }))}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
+        /* 🆕 R262 — على الحاسوب معاينةٌ بجهازين (الحجّةُ في `CustomizePreview`) */
+        deviceLabels={{ phone: webWords(locale).custPhone, desk: webWords(locale).custDesk, note: webWords(locale).custOneOrder }}
       />
 
       {/* 🆕 **قوالبُ التخصيص تحت المعاينة مباشرةً** (D-822): **الشكلُ
