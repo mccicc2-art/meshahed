@@ -17,6 +17,7 @@ import { ReadMore } from "@/components/ReadMore";
 import { Alert } from "@/components/ui/Alert";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { buttonClass } from "@/components/ui/Button";
+import { PersonKnownFor } from "@/components/person/PersonKnownFor";
 
 /**
  * صفحة ممثل أو مخرج.
@@ -96,8 +97,10 @@ export default async function PersonPage({
       {/* ترويسة بعمودين: الصورة إلى جانب الحقائق لا فوقها — صورةٌ بعرض
           الشاشة تدفع الاسم والأعمال تحت الطيّة، والصفحة تُفتح لتُقرأ لا
           لتُعجَب بالصورة */}
-      <div className="flex gap-4 sm:gap-5 items-start">
-        <div className="w-28 sm:w-40 shrink-0">
+      {/* 🆕 R267 — **رأسٌ عريضٌ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»): الصورةُ ٢٠٠px، والزرّان في صفٍّ لا عموداً، والنبذةُ
+          بجانب الاسم مطويّةً (أحمد: «فقط بالإنجليزي» — فلا تتصدّر الصفحة). وتحت ١٢٨٠ كما كان. */}
+      <div className="flex gap-4 sm:gap-5 desk:gap-8 items-start">
+        <div className="w-28 sm:w-40 desk:w-[200px] shrink-0">
           <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-border">
             {photo ? (
               <Image
@@ -130,24 +133,34 @@ export default async function PersonPage({
 
           {/* زرّ المتابعة أولاً (الفعل اليوميّ)، ثم «أضِف أعماله إلى قائمة»
               (فعل العمر) — كلاهما في ترويسة الفنان يملآن عمود البيانات */}
+          <div className="desk:mt-4 desk:flex desk:gap-2">
           <FollowArtistButton
             personId={personId}
             name={name}
             profilePath={person.profile_path}
             initialFollowing={following}
             locale={locale}
-            className="w-full justify-center mt-4"
+            className="w-full justify-center mt-4 desk:mt-0 desk:w-auto desk:px-6"
           />
           <AddWorksToList
             id={personId}
             locale={locale}
-            className="w-full justify-center mt-2"
+            className="w-full justify-center mt-2 desk:mt-0 desk:w-auto desk:px-5"
           />
+          </div>
+          {person.biography ? (
+            <div className="hidden desk:block mt-5 max-w-[860px]">
+              {person.biographyIsFallback && <Alert className="mb-2">{t.personBioEnglishOnly}</Alert>}
+              <div dir={person.biographyIsFallback ? "ltr" : undefined}>
+                <ReadMore text={person.biography} locale={locale} short />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
       {person.biography && (
-        <section className="mt-7">
+        <section className="mt-7 desk:hidden">
           <SectionTitle icon="info" className="mb-2.5">
             {t.personBioTitle}
           </SectionTitle>
@@ -162,6 +175,10 @@ export default async function PersonPage({
           </div>
         </section>
       )}
+
+      <Suspense fallback={null}>
+        <PersonKnownFor personId={personId} locale={locale} />
+      </Suspense>
 
       <section className="mt-8">
         {/* الزرّ انتقل إلى ترويسة الفنان (D-052)؛ هنا العنوان وحده */}

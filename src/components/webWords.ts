@@ -39,6 +39,9 @@ const AR = {
   listYourProgress: "تقدّمك",
   listOfWatched: (n: string) => `من ${n} شاهدتها`,
   listNextUp: "التالي:",
+  /* 🆕 R267 — صفحةُ الممثّل على الحاسوب */
+  personKnownFor: "أشهر أعماله",
+  personAsRole: (r: string) => `بدور ${r}`,
 };
 
 const EN: typeof AR = {
@@ -71,6 +74,8 @@ const EN: typeof AR = {
   listYourProgress: "Your progress",
   listOfWatched: (n: string) => `of ${n} watched`,
   listNextUp: "Next:",
+  personKnownFor: "Known for",
+  personAsRole: (r: string) => `as ${r}`,
 };
 
 export type WebWords = typeof AR;
