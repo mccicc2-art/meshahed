@@ -24,8 +24,7 @@ import { FeedbackSheet } from "./FeedbackSheet";
  * يفتح التطبيقَ يرى شريطَ التطبيق وحدَه، لا شريطين).
  * 🔑 **يُرسم فوراً بلا بيانات** (هيكلُ الحدود في `Suspense`): الروابطُ ثابتةٌ لا تنتظر الشبكة، والعدّاداتُ والاشتراكُ
  * والصورةُ تلحق حين يصل `DesktopSidebar` — **فالصفحةُ لا تقفز** حين تصل.
- * ⚠️ **«الربط» غائبٌ عمداً**: لا صفحةَ له في الويب بعد (البند 6 في `claude/WEB-APP-PARITY-2026-11-17.md`) —
- * بابٌ يفتح على لا شيء أسوأ من بابٍ لم يُرسم؛ يُضاف مع صفحته.
+ * 🆕 T409 — **«الربط» حاضرٌ** مع صفحته (`/links`، الجولة ٣ من مطابقة الويب).
  */
 
 export type SidebarData = {
@@ -200,6 +199,9 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
       <nav aria-label={t.drawerLabel} className="flex flex-col gap-0.5">
         {item("/activity", "clock", t.drawerHistory, { small: true })}
         {item("/reports", "chart", t.drawerReport, { small: true })}
+        {/* 🆕 T409 — «الربط» صار له بيتٌ في الويب (`/links`). الأيقونةُ «tv» لا «link»: رمزُ الرابط غيرُ موجودٍ في مجموعة الويب،
+            وإضافتُه تمسّ `src/core/iconNames.ts` فتُطلق تحديثَ التطبيق — تُضاف مع بناء التطبيق القادم */}
+        {item("/links", "tv", t.linksTitle, { small: true })}
         {item("/profile/settings/home", "sliders", t.drawerCustomize, { small: true })}
         {item("/profile/settings/invites", "share", t.drawerInvite, { small: true })}
       </nav>

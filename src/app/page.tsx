@@ -57,6 +57,7 @@ import {
 import { capCards } from "@/core/cardCount";
 import { densityVars } from "@/core/density";
 import { WeekStrip } from "@/components/WeekStrip";
+import { WatchSignalCard } from "@/components/links/WatchSignalCard";
 import { HomeOrderSheetHost } from "@/components/HomeSectionsOrder";
 import {
   type QueueRow,
@@ -1029,10 +1030,18 @@ async function HomeBody({
               </div>
             ) : null,
           );
+        /* 🆕 T409 — «من تطبيقاتك — شفتها؟» (التصميم المعتمد `a_home`): أعلى العمود الجانبيّ على الحاسوب العريض، وأعلى الرفوف
+           فيما دونه. بطاقةٌ تجلب سؤالَها بعد الرسم ولا تُرسم إن لم ينتظر شيء — فلا تؤخّر الرئيسيّةَ ولا تترك فراغاً */
         return (
           <div key="home-cols" className="desk:grid desk:grid-cols-[minmax(0,1fr)_320px] desk:items-start desk:gap-8">
-            <div className="min-w-0 space-y-3 sm:space-y-6">{main}</div>
-            {aside.some(Boolean) ? <aside className="hidden desk:block space-y-4">{aside}</aside> : null}
+            <div className="min-w-0 space-y-3 sm:space-y-6">
+              <WatchSignalCard locale={locale} className="desk:hidden" />
+              {main}
+            </div>
+            <aside className="hidden desk:block space-y-4">
+              <WatchSignalCard locale={locale} />
+              {aside}
+            </aside>
           </div>
         );
       })()}

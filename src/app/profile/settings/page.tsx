@@ -173,6 +173,8 @@ export default async function SettingsPage() {
           icon="download"
           title={t.setImport}
         />
+        {/* 🆕 T409 — «الربط» (مدارُ الأجهزة) كصفِّه في إعدادات التطبيق — وفي الحاسوب له بندٌ في الشريط الجانبيّ أيضاً */}
+        <SettingsRow href="/links" icon="tv" title={t.linksTitle} />
       </SettingsGroup>
 
       <SettingsGroup label={t.setGroupSupport}>
