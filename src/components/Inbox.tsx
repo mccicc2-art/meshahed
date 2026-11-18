@@ -22,7 +22,8 @@ import { sendDirectMessage, markConversationRead, hideConversation } from "@/lib
 import { DEFAULT_CHAT_BG, type ChatBg } from "@/core/chatBg";
 import { ChatBackground } from "./ChatBackground";
 import { ChatComposer, type Outgoing } from "./InboxComposer";
-import { ConvBubble, MsgDeleteSheet, MsgMenuSheet, MsgShell, canUnsend, deleteMessages, replyLineOf, replyRefOf } from "./InboxChat";
+import { ConvBubble, MsgDeleteSheet, MsgMenuSheet, MsgShell, canUnsend, clockOf, deleteMessages, replyLineOf, replyRefOf } from "./InboxChat";
+import { webWords } from "./webWords";
 import { CreateGroupSheet, GroupAvatar, GroupView, groupPreview } from "./InboxGroups";
 import type { MsgDeleteKind } from "@/core/contracts/messages";
 import type { MsgGroupConversation } from "@/core/contracts/groups";
@@ -422,6 +423,9 @@ function ConversationView({
   const [acting, setActing] = useState<ConvEvent | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  /* 🆕 R255 — **تحديدُ عدّة رسائل** (توأمُ D-1401/D-1441 في التطبيق): «تحديد» من قائمة الرسالة يُدخل الوضع، والضغطةُ بعدها
+     تحدِّد وتُلغي، وشريطُ «محدّد N · رد · نسخ · حذف» مكانَ الترويسة، وEsc أو ✕ يخرج. المفتاحُ `نوع-معرّف` (المعرّفاتُ من جداول شتّى) */
+  const [selected, setSelected] = useState<string[]>([]);
 
   /* فورية (م٥/D-069): Realtime على جداول الخيط يوقظ التجديد لحظةَ وصول
      رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
@@ -519,30 +523,54 @@ function ConversationView({
   const canReply = !!act && act.kind === "reply" && !!act.dm && !act.deleted;
   const copyText = act ? copyOf(act) : "";
   const kind = act ? delKind(act) : null;
-  const canAll = !!act && !!kind && canUnsend([act]) && !(act.kind === "reply" && act.deleted);
+  /* ما يُحذف: المحدَّدُ في وضع التحديد، وإلا رسالةُ القائمة وحدها */
+  const keyOfEv = (e: ConvEvent) => `${e.kind}-${e.id}`;
+  const selectedEvents = events.filter((e) => selected.includes(keyOfEv(e)));
+  const selecting = selected.length > 0;
+  const targets = selecting ? selectedEvents : act ? [act] : [];
+  const canAll = targets.length > 0 && targets.every((e) => !!delKind(e)) && canUnsend(targets) && targets.every((e) => !(e.kind === "reply" && e.deleted));
+  const canDeleteSel = selectedEvents.length > 0 && selectedEvents.every((e) => !!delKind(e));
+  const copySel = (() => {
+    /* كالتطبيق (`copyTextOf`): رسالةٌ واحدةٌ نصُّها وحدَه، وأكثرُ ⇐ «[الوقت] الاسم: النص» بترتيب المحادثة لا ترتيب اللمس */
+    const rows = [...selectedEvents].filter((e) => copyOf(e)).sort((a, b) => a.created_at.localeCompare(b.created_at));
+    if (rows.length === 1) return copyOf(rows[0]);
+    return rows.map((e) => `[${clockOf(e.created_at, t)}] ${e.mine ? t.convYou : name}: ${copyOf(e)}`).join("\n");
+  })();
+  const replyableSel =
+    selectedEvents.length === 1 && selectedEvents[0].kind === "reply" && !!selectedEvents[0].dm && !selectedEvents[0].deleted ? (selectedEvents[0] as ConvReplyEvent) : null;
+  const toggleSel = (e: ConvEvent) => setSelected((cur) => (cur.includes(keyOfEv(e)) ? cur.filter((k) => k !== keyOfEv(e)) : [...cur, keyOfEv(e)]));
+  /* Esc يخرج من التحديد — إلا وورقةُ الحذف مفتوحة (Esc لها أوّلاً) */
+  useEffect(() => {
+    if (!selecting || delOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected([]);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selecting, delOpen]);
 
   async function runDelete(scope: "me" | "all") {
-    const e = acting;
-    const k = e ? delKind(e) : null;
+    const list = targets.filter((e) => !!delKind(e));
     setDelOpen(false);
-    if (!e || !k) return;
+    setSelected([]);
+    if (!list.length) return;
     tap(8);
     try {
-      const res = await deleteMessages({ scope, items: [{ kind: k, id: e.id }] }, t);
-      if (res.refused.includes(e.id)) {
-        flashError(t.apiUnsendWindow);
-        return;
-      }
+      const res = await deleteMessages({ scope, items: list.map((e) => ({ kind: delKind(e)!, id: e.id })) }, t);
+      const refused = new Set(res.refused);
+      if (refused.size) flashError(scope === "all" ? t.apiUnsendWindow : t.apiInternal);
+      const done = new Set(list.filter((e) => !refused.has(e.id)).map(keyOfEv));
+      if (!done.size) return;
       setEvents((prev) =>
         prev.flatMap((x): ConvEvent[] =>
-          x.id !== e.id || x.kind !== e.kind
+          !done.has(keyOfEv(x))
             ? [x]
             : scope === "all" && x.kind === "reply"
               ? [{ kind: "reply", id: x.id, mine: x.mine, body: "", created_at: x.created_at, dm: true, deleted: true }]
               : [],
         ),
       );
-      if (replyTo?.id === e.id) setReplyTo(null);
+      if (replyTo && done.has(keyOfEv(replyTo))) setReplyTo(null);
       coalescedRefresh(router);
     } catch (err) {
       flashError((err as Error).message);
@@ -556,6 +584,55 @@ function ConversationView({
     <div className="relative z-[1] flex flex-col">
       {/* ترويسة: رجوع، صاحب المحادثة، إخفاء */}
       <div className="flex items-center gap-2.5 pb-3 border-b border-[color:var(--divider)] lg:sticky lg:top-0 lg:z-10 lg:-mt-6 lg:pt-6 lg:bg-[color:var(--background)]">
+        {selecting ? (
+          /* 🆕 R255 — شريطُ التحديد مكانَ الترويسة (التطبيق D-1401 كالواتس): ✕ يلغي · العدد · رد (لواحدة) · نسخ · حذف */
+          <>
+            <button type="button" onClick={() => setSelected([])} aria-label={t.msgSelectCancel} title={t.msgSelectCancel} className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition">
+              <Icon name="close" size={16} />
+            </button>
+            <span className="min-w-0 flex-1 truncate text-15 font-bold" aria-live="polite">
+              {t.msgSelectedCount(selected.length)}
+            </span>
+            {replyableSel ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected([]);
+                  setReplyTo(replyableSel);
+                }}
+                aria-label={t.msgReply}
+                title={t.msgReply}
+                className="shrink-0 grid place-items-center w-10 h-10 rounded-full text-foreground hover:bg-surface-2 transition"
+              >
+                <Icon name="reply" size={19} />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={!copySel}
+              onClick={() => {
+                navigator.clipboard?.writeText(copySel).then(() => copiedToast(t.msgCopied), () => {});
+                setSelected([]);
+              }}
+              aria-label={t.msgCopy}
+              title={t.msgCopy}
+              className="shrink-0 grid place-items-center w-10 h-10 rounded-full text-foreground hover:bg-surface-2 transition disabled:opacity-35"
+            >
+              <Icon name="copy" size={18} />
+            </button>
+            <button
+              type="button"
+              disabled={!canDeleteSel}
+              onClick={() => setDelOpen(true)}
+              aria-label={t.msgDelete}
+              title={t.msgDelete}
+              className="shrink-0 grid place-items-center w-10 h-10 rounded-full text-[color:var(--error)] hover:bg-surface-2 transition disabled:opacity-35"
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </>
+        ) : (
+        <>
         {/* 🆕 T397 — على الحاسوب القائمةُ بجانب الخيط فلا رجوع */}
         <Link
           href="/messages"
@@ -625,6 +702,8 @@ function ConversationView({
         >
           <Icon name="dots" size={16} />
         </button>
+        </>
+        )}
       </div>
 
       {/* ورقة «المزيد» — الملفّ ثم الإخفاء ثم الحظر، الأخطرُ أخيراً */}
@@ -714,6 +793,9 @@ function ConversationView({
               setActing(e);
               setMenuOpen(true);
             }}
+            selecting={selecting}
+            selected={selected.includes(keyOfEv(e))}
+            onToggle={() => toggleSel(e)}
           >
             <ConvBubble event={e} t={t} quoteWho={name} />
           </MsgShell>
@@ -774,8 +856,17 @@ function ConversationView({
             }
           : null
       }
+      onSelect={
+        act && !act.id.startsWith("tmp-")
+          ? () => {
+              setMenuOpen(false);
+              setSelected([keyOfEv(act)]);
+            }
+          : null
+      }
+      selectLabel={webWords(locale).msgSelect}
     />
-    <MsgDeleteSheet open={delOpen} canAll={canAll} onMe={() => void runDelete("me")} onAll={() => void runDelete("all")} onClose={() => setDelOpen(false)} t={t} />
+    <MsgDeleteSheet open={delOpen} count={targets.length} canAll={canAll} onMe={() => void runDelete("me")} onAll={() => void runDelete("all")} onClose={() => setDelOpen(false)} t={t} />
     {bgSheet !== null ? <ChatBgSheet open={bgSheet} onClose={() => setBgSheet(false)} locale={locale} /> : null}
     </>
   );

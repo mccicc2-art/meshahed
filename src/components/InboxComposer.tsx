@@ -192,7 +192,8 @@ export function ChatComposer({
     "shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 active:scale-95 transition disabled:opacity-40";
 
   return (
-    <div>
+    /* `relative`: منتقي GIF على الحاسوب نافذةٌ صغيرةٌ تقف فوق الخانة (R255 — «ب») */
+    <div className="relative">
       {reply ? (
         <div className="mb-2 flex items-stretch gap-2 overflow-hidden rounded-xl bg-surface-2">
           <span className="w-1 shrink-0 bg-accent" />
@@ -244,8 +245,10 @@ export function ChatComposer({
         </button>
         <button
           type="button"
-          onClick={() => setGifOpen(true)}
+          onClick={() => setGifOpen((v) => !v)}
           disabled={busy || !!pic}
+          data-gif-toggle
+          aria-expanded={!!gifOpen}
           aria-label={t.msgPickGif}
           title={t.msgPickGifSub}
           className={`${iconBtn} text-[11px] font-extrabold tracking-wide`}
@@ -279,7 +282,7 @@ export function ChatComposer({
           {busy ? <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" /> : t.shareReplySend}
         </button>
       </div>
-      {gifOpen !== null ? <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={pickGif} locale={locale} /> : null}
+      {gifOpen !== null ? <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={pickGif} locale={locale} variant="pop" /> : null}
     </div>
   );
 }

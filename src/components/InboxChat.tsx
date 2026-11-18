@@ -78,6 +78,9 @@ export function MsgShell({
   onMenu,
   label,
   className = "",
+  selecting = false,
+  selected = false,
+  onToggle,
   children,
 }: {
   mine: boolean;
@@ -85,6 +88,10 @@ export function MsgShell({
   onMenu: () => void;
   label: string;
   className?: string;
+  /** 🆕 R255 — **وضعُ التحديد** (توأمُ D-1401 في التطبيق): الضغطةُ تحدِّد وتُلغي بدل أن تفتح، والسطرُ كلُّه يُضاء */
+  selecting?: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
   children: React.ReactNode;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +102,37 @@ export function MsgShell({
     timer.current = null;
     start.current = null;
   };
+  if (selecting) {
+    /* السطرُ كلُّه هدفُ الضغطة (عرضُ الخيط لا عرضُ الفقاعة — كالواتس والتطبيق)، والروابطُ داخلها لا تُفتح وهو يحدِّد.
+       وما لا يُحدَّد (المتفائلةُ ومحذوفٌ بلا فعل) يبقى معتماً لا يستجيب */
+    return (
+      <div
+        role="checkbox"
+        aria-checked={selected}
+        aria-disabled={!enabled}
+        tabIndex={enabled ? 0 : -1}
+        onClickCapture={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (enabled) {
+            tap(6);
+            onToggle?.();
+          }
+        }}
+        onKeyDown={(e) => {
+          if (enabled && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            onToggle?.();
+          }
+        }}
+        className={`-mx-2 flex rounded-xl px-2 py-0.5 transition ${mine ? "justify-end" : "justify-start"} ${
+          enabled ? "cursor-pointer" : "opacity-50"
+        } ${selected ? "bg-[color:var(--accent)]/20" : enabled ? "hover:bg-surface-2/60" : ""}`}
+      >
+        <div className={`${className} pointer-events-none select-none`}>{children}</div>
+      </div>
+    );
+  }
   if (!enabled) return <div className={className}>{children}</div>;
   const button = (
     <button
@@ -157,6 +195,8 @@ export function MsgMenuSheet({
   onReply,
   onCopy,
   onDelete,
+  onSelect = null,
+  selectLabel = "",
 }: {
   open: boolean;
   onClose: () => void;
@@ -164,6 +204,9 @@ export function MsgMenuSheet({
   onReply: (() => void) | null;
   onCopy: (() => void) | null;
   onDelete: (() => void) | null;
+  /** 🆕 R255 — «تحديد» يدخل وضعَ التحديد بهذه الرسالة (على الحاسوب لا ضغطَ مطوَّلاً — فالبابُ هنا) */
+  onSelect?: (() => void) | null;
+  selectLabel?: string;
 }) {
   return (
     <Sheet open={open} onClose={onClose} closeLabel={t.closeLabel} variant="bottom" labelledBy="msg-menu-title">
@@ -183,6 +226,12 @@ export function MsgMenuSheet({
             {t.msgCopy}
           </button>
         ) : null}
+        {onSelect ? (
+          <button type="button" onClick={onSelect} className={sheetMenuItem}>
+            <Icon name="check" size={18} className="text-accent" />
+            {selectLabel}
+          </button>
+        ) : null}
         {onDelete ? (
           <button type="button" onClick={onDelete} className={sheetMenuItem}>
             <Icon name="trash" size={18} className="text-[color:var(--error)]" />
@@ -197,6 +246,7 @@ export function MsgMenuSheet({
 /** ورقةُ الحذف — نسخةُ `DeleteSheet` في التطبيق: «حذف للجميع» حين يحقّ، و«حذف عندي» دائماً */
 export function MsgDeleteSheet({
   open,
+  count = 1,
   canAll,
   onMe,
   onAll,
@@ -204,6 +254,8 @@ export function MsgDeleteSheet({
   t,
 }: {
   open: boolean;
+  /** 🆕 R255 — عددُ المحدَّد («حذف ٣ رسائل») */
+  count?: number;
   canAll: boolean;
   onMe: () => void;
   onAll: () => void;
@@ -213,7 +265,7 @@ export function MsgDeleteSheet({
   return (
     <Sheet open={open} onClose={onClose} closeLabel={t.closeLabel} variant="center" labelledBy="msg-del-title" className="p-5">
       <p id="msg-del-title" className="font-bold text-15 mb-1.5">
-        {t.msgDeleteTitle(1)}
+        {t.msgDeleteTitle(count)}
       </p>
       {canAll ? <p className="text-xs text-muted leading-relaxed mb-4">{t.msgDeleteForAllHint}</p> : <div className="mb-3" />}
       <div className="flex flex-col gap-2">

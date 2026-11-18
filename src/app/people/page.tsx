@@ -34,6 +34,7 @@ import { ScrollMemory } from "@/components/ScrollMemory";
 import { TabPager } from "@/components/TabPager";
 import { CommunityPagerProvider, CommunityTabs } from "@/components/CommunityPager";
 import { OneTimeHint } from "@/components/OneTimeHint";
+import { NowAiringAside } from "@/components/NowAiringAside";
 
 
 /**
@@ -219,7 +220,7 @@ export default async function PeoplePage({
      نسخةٍ ثانية (نهجُ `homeCore` في 11-H). الحججُ الكاملةُ لكلِّ نداءٍ في تاريخ هذا الملفّ. */
   const core = pagerTab
     ? /* 🆕 D-1605 — الويبُ يرسم شارةَ «AI» دائماً، فمراجعاتُ الشخصيّات المتابَعة في خطّه بلا شرط */
-      await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort, personas: true })
+      await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort, personas: true, talk: true })
     : null;
   const [myCommunities, myInvites] =
     tab === "all"
@@ -367,8 +368,11 @@ export default async function PeoplePage({
   /* 🆕 T405 — وجهي واسمي لمربّع «منشور جديد» (`getProfile` مخبّأٌ في الطلب — لا نداءَ ثانٍ إن قرأه غيرُه) */
   const meProfile = user ? await getProfile() : null;
 
+  /* 🆕 R255 — **«النشاط» على الحاسوب عمودان** (أحمد ١٨ نوفمبر — «ب» المحسَّن): الخطُّ بعرضٍ أوسع، وبجانبه «يُعرض الآن» ثابتاً
+     (`NowAiringAside`). وتحت ١٢٨٠ كما كان حرفاً: عمودُ القراءة وحده — والعمودُ الثاني لا يُرسم أصلاً */
   const activityBody = (
-    <section className={READING}>
+    <section className={`${READING} desk:max-w-[1080px] desk:grid desk:grid-cols-[minmax(0,1fr)_272px] desk:gap-12 desk:items-start`}>
+      <div className="min-w-0">
             {/* 🆕 T405 — «منشورٌ جديد» مربّعٌ ثابتٌ أعلى الخطّ على الحاسوب (قرار أحمد «٣أ»، البند ١٤) — والجوالُ كما هو */}
             {user ? (
               <div className="mb-4 hidden lg:block">
@@ -412,7 +416,20 @@ export default async function PeoplePage({
               locale={locale}
               limit={feedAll ? undefined : FEED_PAGE}
               moreHref={feedAll ? null : feedMoreHref}
+              talk={core?.talkFeed ?? []}
+              /* 🆕 R255 — فاصلُ «↑ منشورات جديدة» (D-1613b): للعضو وفي «الأحدث» وحدَه (D-1623)، والشريحةُ مفتاحُ ذاكرته */
+              fresh={user && feedSort !== "smart" ? `${showStrangers ? 1 : 0}|latest` : null}
             />
+      </div>
+      {user && core ? (
+        <NowAiringAside
+          rooms={core.rooms}
+          followed={core.followed}
+          nextAir={core.nextAir}
+          general={core.generalRoom ? { posts: core.generalRoom.posts } : null}
+          locale={locale}
+        />
+      ) : null}
     </section>
   );
 

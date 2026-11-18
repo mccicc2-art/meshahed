@@ -15,7 +15,8 @@ import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import type { SearchTitle } from "@/core/searchTypes";
 import type { TitlePayload } from "@/core/contracts/title";
-import type { RateBody, ShowRefBody, ToggleMovieBody } from "@/core/contracts/track";
+import type { EpisodeRateBody, RateBody, ShowRefBody, ToggleMovieBody } from "@/core/contracts/track";
+import { PenEpisodeSheet, type PenEpisode } from "./PenEpisodeSheet";
 import type { ThreadReplyBody } from "@/core/contracts/thread";
 
 /**
@@ -32,7 +33,8 @@ import type { ThreadReplyBody } from "@/core/contracts/thread";
  */
 
 const BODY_MAX = 2000;
-type Answer = "yes" | "all" | "not" | null;
+/* 🆕 R255 — `ep`: «حلقة ›» من ورقة «أي حلقة؟» (توأمُ التطبيق — R58) */
+type Answer = "yes" | "all" | "ep" | "not" | null;
 type Dict = ReturnType<typeof getDict>;
 
 export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string; avatar: string | null } }) {
@@ -44,6 +46,8 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
   const [answer, setAnswer] = useState<Answer>(null);
   const [rating, setRating] = useState(0);
   const [spoiler, setSpoiler] = useState(false);
+  const [ep, setEp] = useState<PenEpisode | null>(null);
+  const [sheet, setSheet] = useState(false);
   const [finding, setFinding] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -73,9 +77,22 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
   const myRating = info?.me.rating ?? null;
   const seriesDone = !!tv && tv.me.watched_count > 0 && tv.me.watched_count >= tv.aired_total;
   const movieWatched = !!mv && mv.me.watched === true;
+  /* 🆕 R255 — أين وصل (أعلى «م:ح» مشاهَدة) — الورقةُ تفتح عليه (قاعدةُ التطبيق) */
+  const at = (() => {
+    let best: { season: number; episode: number } | null = null;
+    for (const k of tv?.me.watched ?? []) {
+      const [sn, en] = k.split(":").map(Number);
+      if (!Number.isInteger(sn) || !Number.isInteger(en) || sn <= 0) continue;
+      if (!best || sn > best.season || (sn === best.season && en > best.episode)) best = { season: sn, episode: en };
+    }
+    return best;
+  })();
   const asks = !!pick && !!info && (mv ? !movieWatched : !seriesDone);
-  const watchedNow = movieWatched || seriesDone || answer === "yes" || answer === "all";
-  const showStars = !!pick && watchedNow && myRating == null && answer !== "not";
+  const watchedNow = movieWatched || seriesDone || answer === "yes" || answer === "all" || answer === "ep";
+  /* النجوم: حلقةٌ مختارةٌ لم تُقيَّم · أو العملُ شاهدتَه ولم تقيّمه (التطبيق حرفاً) */
+  const epStars = !!ep && ep.myRating == null;
+  const titleStars = !ep && !!pick && watchedNow && myRating == null && answer !== "not";
+  const showStars = epStars || titleStars;
   const stars = showStars && rating > 0 ? rating : null;
   const needsAnswer = asks && answer === null;
   const text = body.trim();
@@ -86,6 +103,7 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
     setInfo(null);
     setAnswer(null);
     setRating(0);
+    setEp(null);
     setFinding(false);
     setTimeout(() => box.current?.focus(), 30);
   }
@@ -94,6 +112,20 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
     setInfo(null);
     setAnswer(null);
     setRating(0);
+    setEp(null);
+  }
+  function pickEpisode(e: PenEpisode) {
+    setEp(e);
+    setAnswer(asks ? "ep" : answer);
+    setRating(0);
+    /* منشورٌ عن حلقةٍ بعينها محجوبٌ افتراضاً (أحمد «١ أ» في التطبيق) — ويُطفأ باليد */
+    setSpoiler(true);
+    setSheet(false);
+  }
+  function clearEpisode() {
+    setEp(null);
+    if (answer === "ep") setAnswer(null);
+    setSpoiler(false);
   }
 
   async function post() {
@@ -104,7 +136,14 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
       if (pick && answer === "yes" && mv && !movieWatched)
         await v1Post("/api/v1/track/movie", { movieTmdbId: pick.id, runtime: mv.runtime ?? null, watched: true } satisfies ToggleMovieBody, t);
       if (pick && answer === "all" && tv && !seriesDone) await v1Post("/api/v1/track/show-watched", { showTmdbId: pick.id } satisfies ShowRefBody, t);
-      if (pick && stars) {
+      if (pick && ep && stars) {
+        /* تقييمُ الحلقة — والخادمُ يعلّمها وما قبلها مشاهَدة */
+        await v1Post(
+          "/api/v1/track/episode-rate",
+          { showTmdbId: pick.id, season: ep.season, episode: ep.episode, rating: stars, review: text || null, spoiler } satisfies EpisodeRateBody,
+          t,
+        );
+      } else if (pick && stars) {
         await v1Post(
           "/api/v1/track/rate",
           {
@@ -126,6 +165,7 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
             body: text,
             has_spoiler: spoiler,
             via: "pen",
+            ...(pick && ep && pick.mediaType === "tv" ? { season: ep.season, episode: ep.episode } : {}),
           } satisfies ThreadReplyBody,
           t,
         );
@@ -144,9 +184,21 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
   const to = (() => {
     if (!pick) return `${t.penTo} ${t.talkGeneralTitle}`;
     if (needsAnswer) return t.penAnswer;
+    if (ep) return stars ? `${t.penTo} ${t.penToRating} · ${t.epChip(ep.season, ep.episode, 0)}` : `${t.penTo} ${t.penToEpisode(ep.episode)} — ${t.penCovered}`;
     if (stars) return `${t.penTo} ${t.penToRating} · ${pick.title}`;
     return `${t.penTo} ${t.penToGeneral(pick.title)}${myRating != null ? ` — ${t.penKeeps}` : ""}`;
   })();
+
+  /* «حلقة ›» — والمختارةُ حبّةٌ مضاءةٌ «م٢ · ح٤ ✕» تُلغى بضغطة */
+  const epPill = ep ? (
+    <button type="button" className={chipClass(true, "sm")} onClick={clearEpisode} aria-label={`${t.epChip(ep.season, ep.episode, 0)} — ${t.closeLabel}`}>
+      {t.epChip(ep.season, ep.episode, 0)}  ✕
+    </button>
+  ) : (
+    <button type="button" className={chipClass(false, "sm")} onClick={() => setSheet(true)} aria-haspopup="dialog">
+      {t.penEpisode} ›
+    </button>
+  );
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4">
@@ -186,19 +238,41 @@ export function NewPostBox({ locale, me }: { locale: Locale; me: { name: string;
             </>
           ) : (
             <>
-              <button type="button" className={chipClass(answer === "all", "sm")} onClick={() => setAnswer("all")}>
+              <button type="button" className={chipClass(answer === "all", "sm")} onClick={() => { clearEpisode(); setAnswer("all"); }}>
                 {t.penAll}
               </button>
-              <button type="button" className={chipClass(answer === "not", "sm")} onClick={() => { setAnswer("not"); setRating(0); }}>
+              {epPill}
+              <button type="button" className={chipClass(answer === "not", "sm")} onClick={() => { clearEpisode(); setAnswer("not"); setRating(0); }}>
                 {t.penNotYet}
               </button>
             </>
           )}
         </div>
-      ) : pick && info && myRating != null ? (
-        <p className="mt-2 ps-[52px] text-12 font-semibold text-[color:var(--success)]">
-          ✓ {t.penWatched} · {t.penYourRating} ★ {myRating}
-        </p>
+      ) : pick && info && (myRating != null || tv) ? (
+        /* 🆕 R255 — والمسلسلُ المخلَّص يبقى له «حلقة ›» في آخر السطر (التطبيق: «اذا بيحدد اخر حلقة») */
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 ps-[52px]">
+          {myRating != null ? (
+            <span className="text-12 font-semibold text-[color:var(--success)]">
+              ✓ {t.penWatched} · {t.penYourRating} ★ {myRating}
+            </span>
+          ) : null}
+          {tv ? epPill : null}
+        </div>
+      ) : null}
+      {sheet && tv && pick ? (
+        <PenEpisodeSheet
+          showId={pick.id}
+          seasons={tv.seasons}
+          at={at}
+          done={seriesDone}
+          locale={locale}
+          onPick={pickEpisode}
+          onGeneral={() => {
+            clearEpisode();
+            setSheet(false);
+          }}
+          onClose={() => setSheet(false)}
+        />
       ) : null}
 
       {showStars ? (

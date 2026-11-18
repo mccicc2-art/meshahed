@@ -8,6 +8,7 @@ import {
   type FeedItem,
   type LoopzNewsItem,
   type ListReviewSocial,
+  type TalkFeedPost,
 } from "@/lib/data";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
@@ -29,6 +30,8 @@ import { FeedReviewText } from "./FeedReviewText";
 import { NewsComment } from "./NewsComment";
 import { PostViews } from "./PostViews";
 import { actionTailItem } from "./ui/controls";
+import { FeedTalkRow } from "./FeedTalkRow";
+import { FeedFreshMark, FeedFreshSeen } from "./FeedFresh";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -87,9 +90,11 @@ import { actionTailItem } from "./ui/controls";
  */
 
 /** صفٌّ في الخطّ: تعليقُ إنسانٍ أو خبرٌ من عندنا — **والزمنُ يرتّبهما معاً** */
+type TalkRowItem = TalkFeedPost & { created_at: string };
 type Row =
   | { at: number; kind: "comment"; item: FeedItem }
-  | { at: number; kind: "news"; item: LoopzNewsItem };
+  | { at: number; kind: "news"; item: LoopzNewsItem }
+  | { at: number; kind: "talk"; item: TalkRowItem };
 
 /**
  * ارتفاعُ الصفّ = ارتفاعُ الملصق: عرضٌ ثابت ونسبة `2:3` (٩٢ × ١٣٨).
@@ -114,6 +119,8 @@ export type PostLikes = { counts: Record<string, number>; mine: ReadonlySet<stri
 
 export function ActivityFeed({
   comments,
+  talk,
+  fresh = null,
   news,
   meId,
   followed = new Set<string>(),
@@ -133,6 +140,10 @@ export function ActivityFeed({
   moreHref,
 }: {
   comments: FeedItem[];
+  /** 🆕 R255 — منشوراتُ النقاش (جذورُ القلم والغرفُ النشطة) — كانت للتطبيق وحدَه (R58)، والآن في خطّ الويب بالترتيب نفسِه */
+  talk?: TalkFeedPost[];
+  /** 🆕 R255 — فاصلُ «↑ N منشورات جديدة» (D-1613b) — مفتاحُ الشريحة، وغيابُه لا فاصل: «الأحدث» وحدَه للعضو، والصفحةُ تقرّره */
+  fresh?: string | null;
   /** أخبارُنا — **تُمرَّر فارغةً في نطاق «من أتابع»**، انظر الصفحة */
   news: LoopzNewsItem[];
   /** لتمييز تعليقي: مراجعتُك تعرض العدد بلا زرّ إعجاب */
@@ -224,9 +235,10 @@ export function ActivityFeed({
      وخبرٌ بلا صيغةٍ يسقط هنا لا عند الرسم (D-181) — `newsLine` يحتاج القاموس. */
   /* 🆕 D-1207 — «الأكثر تفاعلاً» يقول إن كان شهرُه صامتاً (فالخطُّ بالأحدث) */
   const report = { quiet: false };
-  /* 🆕 R58 — الويبُ لا يرسم منشوراتِ النقاش في الخطّ بعد (التطبيقُ وحدَه) — فلا `talk` هنا */
-  let shown: Row[] = orderCommunityFeed<FeedItem, LoopzNewsItem>({
+  /* 🆕 R255 — منشوراتُ النقاش في خطّ الويب أيضاً (كانت للتطبيق وحدَه منذ R58) — الترتيبُ والترشيحُ نفسُهما */
+  let shown: Row[] = orderCommunityFeed<FeedItem, LoopzNewsItem, TalkRowItem>({
     comments,
+    talk: (talk ?? []).map((p) => ({ ...p, created_at: p.createdAt })),
     news: news.filter((n) => newsLine(n, t, locale) !== null),
     meId,
     followingIds,
@@ -251,13 +263,41 @@ export function ActivityFeed({
   const hidden = limit && shown.length > limit ? shown.length - limit : 0;
   if (hidden) shown = shown.slice(0, limit);
 
+  /* 🆕 R255 — **مفتاحُ الصفّ نفسُه في التطبيق** (`communityPayload`): `c-…` · `t-…` · `n-…` — فما رآه على جواله يعدّه هنا */
+  const keyOf = (row: Row): string =>
+    row.kind === "talk"
+      ? `t-${row.item.id}`
+      : row.kind === "news"
+        ? `n-${row.item.key}`
+        : `c-${row.item.person.id}-${row.item.listId ?? `${row.item.media_type}-${row.item.tmdb_id}`}-${row.item.day}`;
+  /* منشوري لا يُعدّ في الفاصل — هو من كتبه (D-1613) */
+  const freshRows = fresh ? shown.map((row) => ({ key: keyOf(row), mine: !!meId && row.kind !== "news" && row.item.person.id === meId })) : null;
+
   return (
     <>
     {sort === "smart" && report.quiet ? <QuietHint text={t.activeQuietHint} /> : null}
+    {freshRows ? <FeedFreshSeen rows={freshRows} slice={fresh ?? ""} /> : null}
     <div className="divide-y divide-[color:var(--divider)]">
-      {shown.map((row) => {
+      {/* `flatMap` — الفاصلُ ابنٌ مفتاحيٌّ بجانب صفّه لا غلافاً حوله، فلا يمسّ `divide-y` ولا `first:pt-0` */}
+      {shown.flatMap((row) => {
+        const fk = keyOf(row);
+        const mark = freshRows ? <FeedFreshMark key={`f-${fk}`} at={fk} locale={locale} /> : null;
+        if (row.kind === "talk") {
+          const tk = `${row.item.mediaType}-${row.item.tmdbId}`;
+          return [
+            mark,
+            <FeedTalkRow
+              key={fk}
+              p={row.item}
+              meId={meId}
+              added={followed.has(tk)}
+              state={row.item.mediaType === "general" ? undefined : libState?.of(row.item.tmdbId, row.item.mediaType)}
+              locale={locale}
+            />,
+          ];
+        }
         const key = `${row.item.media_type}-${row.item.tmdb_id}`;
-        return row.kind === "comment" ? (
+        return [mark, row.kind === "comment" ? (
           <CommentRow
             key={`c-${row.item.person.id}-${row.item.listId ?? key}-${row.item.day}`}
             a={row.item}
@@ -285,7 +325,7 @@ export function ActivityFeed({
             followLoopz={followingIds?.has(LOOPZ_ID) ?? false}
             locale={locale}
           />
-        );
+        )];
       })}
       {/* **جزيرةٌ واحدة تعدّ الخطَّ كلَّه** (D-237): تلتقط الصفوفَ من
           سِمَتها `data-post-key` — **فلا عميلَ في كل صفّ** ولا نداءَ

@@ -7,6 +7,7 @@ import {
   toggleReviewLike,
   toggleReaction,
   toggleListReviewLike,
+  togglePostLike,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
@@ -33,6 +34,7 @@ export function LikeButton({
   tmdbId = 0,
   mediaType = "movie",
   listId,
+  postId,
   likes,
   likedByMe,
   isMine,
@@ -54,6 +56,8 @@ export function LikeButton({
   mediaType?: "tv" | "movie";
   /** 🆕 **القائمةُ المُعجَبُ برأيها** (D-370) — لوجهة `listReview` وحدَها */
   listId?: string;
+  /** 🆕 R255 — **منشورُ نقاشٍ في خطّ النشاط** (`talk`): قلبُه في `title_post_likes` بمعرّفه — كقلب الخيط في الغرفة */
+  postId?: string;
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
@@ -80,7 +84,7 @@ export function LikeButton({
    * القائمة). **ورمزٌ واحدٌ وعائلةٌ واحدة** (القاعدة ٦)، والفرقُ كلُّه
    * في أيِّ فعلٍ يُنادى.
    */
-  target?: "review" | "activity" | "post" | "listReview";
+  target?: "review" | "activity" | "post" | "listReview" | "talk";
   /** يوم الحدث (YYYY-MM-DD) — لازمٌ لوجهة النشاط وحدها */
   day?: string;
   locale: Locale;
@@ -120,6 +124,8 @@ export function LikeButton({
       try {
         if (target === "post") {
           await toggleReaction({ tmdbId, mediaType, on: !was });
+        } else if (target === "talk") {
+          await togglePostLike(postId ?? "", was);
         } else if (target === "listReview") {
           await toggleListReviewLike(reviewUserId, listId ?? "", was);
         } else if (target === "activity") {
