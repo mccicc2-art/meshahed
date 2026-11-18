@@ -7,6 +7,7 @@ import { haptic } from "../haptics";
 import { messageOf } from "../settings/api";
 import type { ToastHostRef } from "../HoldHost";
 import type { StremioSignal } from "@/core/contracts/stremio";
+import type { RateBody } from "../contracts";
 import { episodeLabel } from "./api";
 
 /** مدّةُ «تراجع» — وبعدها يُرسل الجواب */
@@ -23,14 +24,30 @@ const UNDO_MS = 4500;
  * ما راح»): الرئيسيّةُ تبقى مركّبةً خلف التبويبات فلا «إزالة»، والتطبيقُ في الخلفيّة يُوقف المؤقّتات وإغلاقُه يقتلها — فكان
  * الجوابُ يضيع ويعود السؤال. فمغادرةُ الشاشة أو التطبيق أثناء «تراجع» = تثبيتُ الجواب فوراً (لا تراجعَ لمن غادر).
  */
-export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
+export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: { rateInCard?: boolean }) {
+  /* T415 — النجومُ في بطاقة الرئيسيّة وحدَها؛ قائمةُ «عرض الكل» صفوفٌ صغيرةٌ تختفي بالجواب كما كانت */
+  const rateInCard = !!opts?.rateInCard;
   const { t } = useApp();
   const [hidden, setHidden] = useState<ReadonlySet<number>>(() => new Set());
+  /* 🆕 T415 — ما أُجيب عنه بـ✓ وينتظر نجومه، **بنسخته** لا برقمه: حين يُحفظ الجوابُ (مهلةُ «تراجع» أو مغادرةُ الشاشة) يُعاد جلبُ
+     الرئيسيّة والإشارةُ لم تعد «منتظرة» فتغيب من القائمة — والنجومُ يجب أن تبقى حتى يقيّم أو يتخطّى (مراجعةٌ مستقلّة) */
+  const [rating, setRating] = useState<ReadonlyMap<number, StremioSignal>>(() => new Map());
   const pending = useRef(new Map<number, { watched: boolean; timer: ReturnType<typeof setTimeout> }>());
+  /* 🆕 T415 — كتابةُ الجواب الجارية لكلِّ إشارة: النجومُ تنتظرها كي يُحفظ «شفتها» قبل التقييم */
+  const sent = useRef(new Map<number, Promise<unknown>>());
 
   const unhide = useCallback((id: number) => {
     setHidden((h) => {
       const n = new Set(h);
+      n.delete(id);
+      return n;
+    });
+  }, []);
+
+  const unrate = useCallback((id: number) => {
+    setRating((r) => {
+      if (!r.has(id)) return r;
+      const n = new Map(r);
       n.delete(id);
       return n;
     });
@@ -42,12 +59,16 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
       if (!p) return;
       clearTimeout(p.timer);
       pending.current.delete(id);
-      write("/api/v1/me/stremio/answer", { id, watched: p.watched }).catch((e: unknown) => {
+      const w = write("/api/v1/me/stremio/answer", { id, watched: p.watched });
+      sent.current.set(id, w);
+      w.catch((e: unknown) => {
+        sent.current.delete(id);
         unhide(id);
+        unrate(id);
         toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
       });
     },
-    [t, toast, unhide],
+    [t, toast, unhide, unrate],
   );
 
   const answer = useCallback(
@@ -60,7 +81,10 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
         return;
       }
       haptic.pick();
-      setHidden((h) => new Set(h).add(s.id));
+      /* 🆕 T415 — ✓ على فيلمٍ أو نهايةٍ (`rate`) لا يُخفي البطاقة: تنقلب إلى النجوم في مكانها، و«تراجع» يبقى في الإشعار */
+      const rateNext = rateInCard && watched && !!s.rate;
+      if (rateNext) setRating((r) => new Map(r).set(s.id, s));
+      else setHidden((h) => new Set(h).add(s.id));
       pending.current.set(s.id, { watched, timer: setTimeout(() => commit(s.id), UNDO_MS) });
       const text = !watched
         ? t.stremioDismissed
@@ -77,24 +101,78 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
             clearTimeout(p.timer);
             pending.current.delete(s.id);
             unhide(s.id);
+            unrate(s.id);
           },
         },
         UNDO_MS,
         watched ? "success" : "info",
       );
     },
-    [commit, t, toast, unhide],
+    [commit, rateInCard, t, toast, unhide, unrate],
   );
+
+  /**
+   * 🆕 T415 — **النجومُ تُثبّت الجواب**: «✓ شفتها» يُحفظ فوراً (لا ينتظر مهلةَ التراجع)، ثمّ التقييمُ — بهذا الترتيب، فلا يسبق
+   * التقييمُ المشاهدةَ (التقييمُ الأوّلُ لمسلسلٍ بلا حلقاتٍ مشاهَدة يعلّم كلَّ ما عُرض، D-1467). و«تراجع» يغيب من الإشعار لحظةَ
+   * اللمس (أحمد: «عند اختيار النجوم يختفي تراجع») — يحلّ محلَّه نصُّه نفسُه بلا فعل، و«انحفظ تقييمك ✓» بعد الحفظ لا قبله.
+   * فشلُ الجواب: إشعارُه وإعادةُ البطاقة سؤالاً عند من كتبه (`commit`/`flushAll`) — لا إشعارَ ثانٍ هنا. فشلُ التقييم وحدَه:
+   * النجومُ تفرغ ليعيد المحاولة. يعيد `true` إن حُفظ.
+   */
+  const rate = useCallback(
+    async (s: StremioSignal, stars: number): Promise<boolean> => {
+      commit(s.id);
+      toast.current?.say(s.kind === "movie" ? t.stremioMarkedMovie : t.stremioMarkedUpTo(episodeLabel(s, t.stremioMovie)), undefined, 2200, "success");
+      try {
+        await sent.current.get(s.id);
+      } catch {
+        return false;
+      }
+      try {
+        await write("/api/v1/track/rate", {
+          tmdbId: s.tmdb_id,
+          mediaType: s.kind,
+          rating: stars,
+          review: "",
+          title: s.title,
+          posterPath: s.poster_path ?? null,
+        } satisfies RateBody);
+      } catch (e) {
+        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+        return false;
+      }
+      haptic.success();
+      toast.current?.say(t.ratedThanks, undefined, 2200, "success");
+      setHidden((h) => new Set(h).add(s.id));
+      unrate(s.id);
+      sent.current.delete(s.id);
+      return true;
+    },
+    [commit, t, toast, unrate],
+  );
+
+  /** 🆕 T415 — «بدون تقييم»: تخرج البطاقة، والجوابُ باقٍ في مهلة «تراجع» كما كان */
+  const skipRate = useCallback((s: StremioSignal) => {
+    setHidden((h) => new Set(h).add(s.id));
+    unrate(s.id);
+    sent.current.delete(s.id);
+  }, [unrate]);
 
   /* إرسالُ كلِّ ما ينتظر — بلا رسائل: الشاشةُ غادرت أو التطبيقُ نزل إلى الخلفيّة */
   const flushAll = useCallback(() => {
     const map = pending.current;
     for (const [id, p] of map) {
       clearTimeout(p.timer);
-      void write("/api/v1/me/stremio/answer", { id, watched: p.watched }).catch(() => {});
+      const w = write("/api/v1/me/stremio/answer", { id, watched: p.watched });
+      sent.current.set(id, w);
+      /* T415 — جوابٌ لم يصل: البطاقةُ تعود سؤالاً (لا نجومَ تنتظر وعداً مرفوضاً إلى الأبد) */
+      void w.catch(() => {
+        sent.current.delete(id);
+        unhide(id);
+        unrate(id);
+      });
     }
     map.clear();
-  }, []);
+  }, [unhide, unrate]);
 
   /* الإزالة */
   useEffect(() => flushAll, [flushAll]);
@@ -110,5 +188,5 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>) {
     return () => sub.remove();
   }, [flushAll]);
 
-  return { hidden, answer };
+  return { hidden, answer, rating, rate, skipRate };
 }

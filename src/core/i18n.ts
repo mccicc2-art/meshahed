@@ -3279,6 +3279,10 @@ const ar = {
   /* 🆕 T365 — الفيلمُ يُخفى بلا تقييم (أحمد: «ما ابغى اقيمه كيف اشيله؟») */
   autoSkipRate: "بدون تقييم",
   autoOk: "حسناً",
+  /* 🆕 T415 — النجومُ بعد «✓ شفتها» (أحمد ١٨ نوفمبر «أ نفذ»): الفيلمُ، ونهايةُ المسلسل، وآخرُ حلقةٍ في آخر موسمٍ اكتمل */
+  signalRateShow: "قيّم المسلسل",
+  signalShowDone: "أكملت المسلسل",
+  signalSeasonDone: "أكملت الموسم",
   homeServersTitle: "سيرفرات البيت",
   homeServersIntro: "شغّل حلقة أو فيلم على سيرفرك في البيت، ولما تخلصه يسألك Loopz في الرئيسية: شفتها؟",
   homeServersHow2: "✕ تتجاهلها. ما نعلّم شيئاً بدون جوابك.",
@@ -5841,6 +5845,9 @@ const en: Dict = {
   autoRate: "Rate it",
   autoSkipRate: "Skip rating",
   autoOk: "OK",
+  signalRateShow: "Rate the show",
+  signalShowDone: "You finished the show",
+  signalSeasonDone: "You finished the season",
   homeServersTitle: "Home servers",
   homeServersIntro: "Play an episode or a movie on your home server, and when you finish it Loopz asks you on Home: watched it?",
   homeServersHow2: "✕ ignores it. Nothing is marked without your answer.",

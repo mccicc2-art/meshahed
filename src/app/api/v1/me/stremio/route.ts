@@ -28,6 +28,28 @@ const AUTO_DAYS = 14;
  * القائمةَ نفسَها بعلامة `auto` — البطاقةُ تعرضه «أضفناه لمكتبتك» بنجومٍ أو «حسناً» لا بـ✓/✕. نسخةٌ أقدمُ لا تطلبه فلا تسأل عمّا
  * عُلِّم. قبل الهجرة لا عمود: القراءةُ تفشل صامتةً والقائمةُ كما كانت.
  */
+/**
+ * 🆕 T415 (أحمد ١٨ نوفمبر: «يعرض بعد اخر حلقة من المسلسل بحيث يقيم المسلسل كامل» · «أ» · «واذا كان اخر موسم متوفر حاليا ايضا
+ * يظهر له تقييم») — هل هذه الحلقةُ نهايةٌ تستحقّ تقييمَ المسلسل؟
+ * - يجب أن تكون **آخرَ ما عُرض** (`last_episode_to_air`): نهايةُ موسمٍ قديمٍ ليست نهاية، ولا حلقةٌ وسطَ موسمٍ ما زال يُعرض.
+ * - و**آخرَ حلقات موسمها**: عددُ حلقاته كما يعدّها TMDB، أو وسمُه `finale` — موسمٌ أُعلنت حلقاتُه ولم تُعرض كلُّها لم يكتمل.
+ * - ولا حلقةَ قادمةً في الموسم نفسِه (`next_episode_to_air`) — توقّفُ منتصف الموسم ليس نهايتَه.
+ * مسلسلٌ انتهى عرضُه (`Ended` · `Canceled`) ⇒ `show`، وإلّا ⇒ `season`. والخاصّةُ (موسم ٠) لا تُحسب.
+ */
+function endOf(
+  show: { status?: string; seasons?: { season_number: number; episode_count: number }[]; last_episode_to_air: { season_number: number; episode_number: number; episode_type?: string | null } | null; next_episode_to_air: { season_number: number } | null },
+  season: number | null,
+  episode: number | null,
+): "show" | "season" | null {
+  const last = show.last_episode_to_air;
+  if (!last || season == null || episode == null || season < 1) return null;
+  if (last.season_number !== season || last.episode_number !== episode) return null;
+  const count = show.seasons?.find((x) => x.season_number === season)?.episode_count ?? 0;
+  if (episode !== count && last.episode_type !== "finale") return null;
+  if (show.next_episode_to_air && show.next_episode_to_air.season_number === season) return null;
+  return show.status === "Ended" || show.status === "Canceled" ? "show" : "season";
+}
+
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const auth = await requireUser();
@@ -106,12 +128,20 @@ export async function GET(req: NextRequest) {
       ),
     );
 
+    /* 🆕 T415 — ما قيّمه صاحبُه لا تُعرض له نجومٌ بعد «شفتها» (لا يُستبدل تقييمٌ قديمٌ بلا قصد) */
+    const allIds = [...new Set(rows.map((r) => r.tmdb_id))];
+    const { data: ratedRows } = allIds.length
+      ? await supabase.from("ratings").select("tmdb_id, media_type").eq("user_id", uid).in("tmdb_id", allIds)
+      : { data: [] };
+    const rated = new Set(((ratedRows ?? []) as { tmdb_id: number; media_type: string }[]).map((x) => `${x.media_type}-${x.tmdb_id}`));
+
     const items: StremioSignal[] = [];
     for (const r of rows) {
       if (r.media_type === "tv") {
         const show = tv.get(r.tmdb_id);
         if (!show) continue;
         const still = seasons.get(`${r.tmdb_id}:${r.season}`)?.episodes?.find((e) => e.episode_number === r.episode)?.still_path ?? null;
+        const end = rated.has(`tv-${r.tmdb_id}`) ? null : endOf(show, r.season, r.episode);
         items.push({
           id: r.id,
           kind: "tv",
@@ -123,6 +153,8 @@ export async function GET(req: NextRequest) {
           seen_at: r.seen_at,
           source: signalSourceOf(r.source),
           ...(r.auto ? { auto: true } : {}),
+          rate: end,
+          ...(end ? { poster_path: show.poster_path ?? null } : {}),
         });
       } else {
         const m = mv.get(r.tmdb_id);
@@ -139,6 +171,7 @@ export async function GET(req: NextRequest) {
           source: signalSourceOf(r.source),
           ...(r.auto ? { auto: true } : {}),
           ...(r.auto ? { poster_path: m.poster_path ?? null } : {}),
+          ...(rated.has(`movie-${r.tmdb_id}`) ? { rate: null } : { rate: "movie" as const, poster_path: m.poster_path ?? null }),
         });
       }
     }

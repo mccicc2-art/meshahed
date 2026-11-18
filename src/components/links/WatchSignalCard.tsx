@@ -14,6 +14,8 @@ import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
 import { getDict, type Locale } from "@/core/i18n";
 import { SIGNAL_SOURCE_NAME, signalSourceOf, type StremioAnswerBody, type StremioSignal, type StremioState } from "@/core/contracts/stremio";
+import type { RateBody } from "@/core/contracts/track";
+import { StarRatingRow } from "../ListReviewForm";
 
 /**
  * ====== 🆕 «من تطبيقاتك — شفتها؟» في رئيسيّة الويب (T409، التصميم المعتمد `a_home`) ======
@@ -56,6 +58,9 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
   const [items, setItems] = useState<StremioSignal[] | null>(null);
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  /* 🆕 T415 — ما أُجيب عنه بـ✓ وينتظر نجومه (فيلمٌ أو نهايةُ مسلسلٍ أو آخرُ موسمٍ اكتمل) — كالتطبيق، في البطاقة نفسِها */
+  const [rateFor, setRateFor] = useState<StremioSignal | null>(null);
+  const [stars, setStars] = useState(0);
 
   useEffect(() => {
     const on = (s: Shared) => {
@@ -69,7 +74,7 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     };
   }, []);
 
-  const it = items?.[0];
+  const it = rateFor ?? items?.[0];
   if (!it) return null;
   const source = SIGNAL_SOURCE_NAME[signalSourceOf(it.source)];
   const ep = episodeLabel(it);
@@ -80,6 +85,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     try {
       await v1Post("/api/v1/me/stremio/answer", { id: it.id, watched } satisfies StremioAnswerBody, t);
       toast(watched ? (ep ? t.stremioMarkedUpTo(ep) : t.stremioMarkedMovie) : t.stremioDismissed);
+      /* T415 — الجوابُ هنا يُحفظ في الحال (لا «تراجع» في الويب)، فالنجومُ تأتي بعده مباشرةً */
+      if (watched && it.rate) setRateFor(it);
       drop(it.id);
       if (watched) coalescedRefresh(router);
     } catch (e) {
@@ -88,6 +95,30 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
       setBusy(false);
     }
   };
+
+  const finishRate = () => {
+    setRateFor(null);
+    setStars(0);
+  };
+  const rate = async (n: number) => {
+    if (stars || n < 1) return;
+    setStars(n);
+    try {
+      await v1Post(
+        "/api/v1/track/rate",
+        { tmdbId: it.tmdb_id, mediaType: it.kind, rating: n, review: "", title: it.title, posterPath: it.poster_path ?? null } satisfies RateBody,
+        t,
+      );
+      toast(t.ratedThanks);
+      finishRate();
+      coalescedRefresh(router);
+    } catch (e) {
+      setStars(0);
+      flashError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const rating = rateFor !== null;
+  const done = it.kind === "movie" ? t.stremioMarkedMovie : it.rate === "show" ? t.signalShowDone : t.signalSeasonDone;
 
   return (
     <div className={`rounded-2xl border border-[#7b5cff]/50 bg-gradient-to-b from-[#7b5cff]/15 to-surface p-4 ${className}`}>
@@ -106,9 +137,29 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
           <span className="block text-12 text-muted">
             {[ep || t.stremioMovie, `${t.stremioOpened} ${timeAgo(it.seen_at, t)}`].join(" · ")}
           </span>
-          <span className="mt-1 block text-sm font-bold">{t.stremioAsk}</span>
+          {rating ? (
+            <span className="mt-1 block text-sm font-bold text-[color:var(--success)]">✓ {done}</span>
+          ) : (
+            <span className="mt-1 block text-sm font-bold">{t.stremioAsk}</span>
+          )}
         </span>
       </div>
+      {rating ? (
+        /* 🆕 T415 — صفُّ النجوم الواحد في الويب (`StarRatingRow`، D-701)، و«بدون تقييم» في طرف سطر الاسم كالتطبيق (T365) */
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-13 font-bold text-muted">
+            <span>{it.kind === "movie" ? t.autoRate : t.signalRateShow}</span>
+            {stars ? null : (
+              <button type="button" className="active:opacity-60" onClick={finishRate}>
+                {t.autoSkipRate}
+              </button>
+            )}
+          </div>
+          <div className="mt-1.5">
+            <StarRatingRow rating={stars} onPick={(n) => void rate(n)} locale={locale} label={it.kind === "movie" ? t.autoRate : t.signalRateShow} />
+          </div>
+        </div>
+      ) : (
       <div className="mt-3 flex gap-2">
         <button type="button" disabled={busy} className={buttonClass({ size: "sm", className: "flex-1" })} onClick={() => void answer(true)}>
           {t.stremioYes}
@@ -117,7 +168,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
           {t.stremioNo}
         </button>
       </div>
-      {count > 1 && <p className="mt-2 text-center text-12 text-muted">{w.waiting(count)}</p>}
+      )}
+      {!rating && count > 1 && <p className="mt-2 text-center text-12 text-muted">{w.waiting(count)}</p>}
     </div>
   );
 }

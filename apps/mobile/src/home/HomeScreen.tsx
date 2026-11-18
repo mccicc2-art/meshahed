@@ -212,23 +212,29 @@ export function HomeScreen() {
      ويُرسل بعد «تراجع» (`useStremioAnswer`)، وبلا منتظرةٍ لا قسم.
      🆕 هجرة ٢٣٧ — **لكلِّ عضو**: المجانيُّ يربط جهازاً واحداً فتصله أسئلتُه (كان لـLoopz+ وحده) */
   const stremioQ = useStremio(!!me);
-  const stremioAns = useStremioAnswer(toastHost);
+  const stremioAns = useStremioAnswer(toastHost, { rateInCard: true });
   const stremioNode = useMemo(() => {
     const st = stremioQ.data;
-    if (!st) return null;
-    const items = st.items.filter((x) => !stremioAns.hidden.has(x.id));
+    /* T415 — ما ينتظر نجومه يُرسم من نسخته أوّلاً: بعد حفظ الجواب تغيب الإشارةُ من «المنتظرة» عند إعادة الجلب */
+    const rated = [...stremioAns.rating.values()].filter((x) => !stremioAns.hidden.has(x.id));
+    if (!st && !rated.length) return null;
+    const ids = new Set(rated.map((x) => x.id));
+    const items = [...rated, ...(st?.items ?? []).filter((x) => !stremioAns.hidden.has(x.id) && !ids.has(x.id))];
     if (!items.length) return null;
     return (
       <StremioCard
         key="stremio"
         items={items}
-        count={Math.max(items.length, st.count - stremioAns.hidden.size)}
+        count={Math.max(items.length, (st?.count ?? 0) - stremioAns.hidden.size)}
         onAnswer={stremioAns.answer}
         onAll={() => router.push("/stremio")}
         onOpen={(x) => openTitle(x.kind, x.tmdb_id)}
+        rating={stremioAns.rating}
+        onRate={stremioAns.rate}
+        onSkipRate={stremioAns.skipRate}
       />
     );
-  }, [stremioQ.data, stremioAns.hidden, stremioAns.answer, router, openTitle]);
+  }, [stremioQ.data, stremioAns.hidden, stremioAns.answer, stremioAns.rating, stremioAns.rate, stremioAns.skipRate, router, openTitle]);
 
   const openHref = useCallback(
     (href: string) => {
