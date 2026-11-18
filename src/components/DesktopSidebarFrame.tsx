@@ -91,7 +91,7 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
     if (href === "/library") return LIBRARY_PREFIXES.some((p) => pathname.startsWith(p));
     if (href === "/messages") return pathname.startsWith("/messages") && !alerts;
     if (href === "/messages?tab=alerts") return alerts;
-    if (href === "/activity") return pathname.startsWith("/activity");
+    if (href.startsWith("/activity")) return pathname.startsWith("/activity");
     return pathname === href || pathname.startsWith(href + "/");
   };
 
@@ -197,7 +197,8 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
       <span aria-hidden className="block h-px bg-border my-2.5 mx-3 xl:mx-1" />
 
       <nav aria-label={t.drawerLabel} className="flex flex-col gap-0.5">
-        {item("/activity", "clock", t.drawerHistory, { small: true })}
+        {/* 🆕 T412 — يفتح على رقاقة «مشاهدة» كبابه في التطبيق (D-1504) */}
+        {item("/activity?scope=watch", "clock", t.drawerHistory, { small: true })}
         {item("/reports", "chart", t.drawerReport, { small: true })}
         {/* 🆕 T409 — «الربط» صار له بيتٌ في الويب (`/links`). الأيقونةُ «tv» لا «link»: رمزُ الرابط غيرُ موجودٍ في مجموعة الويب،
             وإضافتُه تمسّ `src/core/iconNames.ts` فتُطلق تحديثَ التطبيق — تُضاف مع بناء التطبيق القادم */}

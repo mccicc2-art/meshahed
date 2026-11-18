@@ -17,17 +17,18 @@ import { ActivityScreen } from "@/components/ActivityScreen";
  * **والتشكيلُ هنا والقسمةُ في العميل**: حدُّ اليوم يتبع ساعةَ القارئ
  * (انظر رأس `ActivityScreen`).
  */
-export default async function ActivityPage() {
+export default async function ActivityPage({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const items = await getMyActivityItems(locale);
+  const [items, sp] = await Promise.all([getMyActivityItems(locale), searchParams]);
 
   return (
     <div>
       <h1 className="sr-only">{t.activityTitle}</h1>
-      <ActivityScreen items={items} locale={locale} />
+      {/* 🆕 T412 — سجلُّك أنت: قابلٌ للتحرير، و`?scope=watch` يفتح على «مشاهدة» (باب «سجلّ المشاهدة») */}
+      <ActivityScreen items={items} locale={locale} editable initialScope={sp.scope === "watch" ? "watch" : "all"} />
     </div>
   );
 }

@@ -8,6 +8,9 @@ import { tap } from "@/lib/haptics";
 import { chipClass, chipRow } from "./ui/controls";
 import { Icon } from "./Icon";
 import { BackCrumb } from "./BackButton";
+import { HistoryRowMenu } from "./activity/HistoryRowMenu";
+import { WeekAside, sourceName } from "./activity/WeekAside";
+import { HISTORY_WORDS } from "./activity/historyWords";
 
 /**
  * **صفحةُ النشاط — ما فعلتَه أنت، يوماً بيوم** (D-537، تصميمُ أحمد
@@ -38,7 +41,7 @@ import { BackCrumb } from "./BackButton";
  */
 
 export type { ActivityKind, ActivityItem } from "@/core/activityDays";
-import { SCOPES, clock, episodeOf, groupDays, keep, label, nowDayKey, dayKey, shiftDay, verbOf, type ActivityItem, type Scope } from "@/core/activityDays";
+import { SCOPES, clock, episodeOf, groupDays, keep, label, nowDayKey, dayKey, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope } from "@/core/activityDays";
 
 
 /* الساعةُ مصدرٌ خارجيٌّ عن React — ولا اشتراكَ لأنها لا تُبثّ */
@@ -51,6 +54,8 @@ export function ActivityScreen({
   locale,
   crumb = true,
   initial,
+  editable = false,
+  initialScope = "all",
 }: {
   items: ActivityItem[];
   locale: Locale;
@@ -70,9 +75,16 @@ export function ActivityScreen({
    * **وجارٌ يمدّ ذيلَه بلا نهاية يدفن ما بعده.** فتُترك بلا قيمةٍ هناك.
    */
   initial?: number;
+  /**
+   * 🆕 T412 — **سجلُّك أنت قابلٌ للتحرير** (`/activity` وحدَها، لا تبويبُ «النشاط» في ملفّ شخصٍ آخر): ⋯ على صفِّ المشاهدة
+   * («غيّر يوم المشاهدة» · «ما شفتها، احذفها من السجل» — `HistoryRowMenu`)، وعمودُ الأسبوع الجانبيُّ على الحاسوب (`WeekAside`).
+   */
+  editable?: boolean;
+  /** 🆕 T412 — «سجلّ المشاهدة» في الشريط الجانبيّ يفتح على رقاقة «مشاهدة» (`?scope=watch`) كبابه في التطبيق (D-1504) */
+  initialScope?: Scope;
 }) {
   const t = getDict(locale);
-  const [scope, setScope] = useState<Scope>("all");
+  const [scope, setScope] = useState<Scope>(initialScope);
   /** `null` = بلا سقف — **وفتحُ السقف لا يُغلق** بتبديل الرقاقة */
   const [limit, setLimit] = useState<number | null>(initial ?? null);
   /** هل نحن في المتصفّح؟ **فتُقسَم الأيامُ بساعته لا بـUTC** */
@@ -102,13 +114,23 @@ export function ActivityScreen({
      زمنيٌّ يُقارَن بمنطقةٍ ومفاتيحُ تُجمَّع بأخرى هو كيف يقع صفٌّ في
      يومٍ ويُعدّ في غيره.** */
   const weekStart = shiftDay(todayKey, -6);
-  const weekCount = matching.filter((it) => dayKey(it.at, local) >= weekStart).length;
+  const weekRows = matching.filter((it) => dayKey(it.at, local) >= weekStart);
+  const weekCount = weekRows.length;
+  /* 🆕 T412 — رقاقةُ «مشاهدة» تعرض حصيلتَها بثلاثة أرقام كالتطبيق (D-1504)؛ وغيرُها سطرُ العدّ كما كان */
+  const week = scope === "watch" ? watchSummary(weekRows) : null;
+  const w = HISTORY_WORDS[locale === "en" ? "en" : "ar"];
 
   const days = groupDays(shown, local, t, locale, todayKey);
 
-  return (
-    <div className="space-y-4">
+  const body = (
+    <div className="min-w-0 space-y-4">
       {crumb && <BackCrumb label={t.navLibrary} fallback="/library" />}
+      {editable && (
+        <header aria-hidden className="hidden desk:block">
+          <h1 className="text-[28px] font-extrabold">{initialScope === "watch" ? t.drawerHistory : t.activityTitle}</h1>
+          <p className="mt-1 text-sm text-muted">{w.sub}</p>
+        </header>
+      )}
 
       <div className={chipRow}>
         <div className="flex items-center gap-2">
@@ -132,10 +154,25 @@ export function ActivityScreen({
 
       {/* **سطرُ الحصيلة** — يقول كم فعلتَ قبل أن تعدّ بعينك (D-374:
           والعدُّ يعدّ ما يعرضه جسمُه بشرطه نفسِه — فهو يتبع الرقاقة). */}
-      <div className="flex items-baseline justify-between gap-3 pb-2 border-b border-[color:var(--divider)] text-14">
-        <span className="text-muted">{t.activityThisWeek}</span>
-        <span className="text-muted tabular-nums">{t.activityCount(weekCount)}</span>
-      </div>
+      {week ? (
+        <div className={`grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-3.5 ${editable ? "desk:hidden" : ""}`}>
+          {[
+            { n: week.episodes, label: t.activityWeekEpisodes },
+            { n: week.movies, label: t.activityWeekMovies },
+            ...(week.hours != null ? [{ n: week.hours, label: t.activityWeekHours }] : []),
+          ].map((x) => (
+            <div key={x.label} className="min-w-0">
+              <p className="text-20 font-extrabold tabular-nums">{num(x.n, locale)}</p>
+              <p className="truncate text-12 text-muted">{x.label}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={`flex items-baseline justify-between gap-3 pb-2 border-b border-[color:var(--divider)] text-14 ${editable ? "desk:hidden" : ""}`}>
+          <span className="text-muted">{t.activityThisWeek}</span>
+          <span className="text-muted tabular-nums">{t.activityCount(weekCount)}</span>
+        </div>
+      )}
 
       {days.length === 0 ? (
         <p className="text-center text-muted py-16 px-5 leading-relaxed">{t.activityEmpty}</p>
@@ -154,12 +191,13 @@ export function ActivityScreen({
                   هو ما يقول «هذه لحظاتٌ متتابعة» (تصميمُ أحمد). */}
               <ol className="relative ms-1.5 ps-4 border-s border-[color:var(--divider)]">
                 {d.rows.map((r) => (
-                  <li key={r.id} className="relative py-2.5">
+                  <li key={r.id} className="group/row relative flex items-center gap-2 py-2.5">
                     <span
                       aria-hidden
                       className="absolute -start-[21px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border border-[color:var(--divider)] bg-[color:var(--background)]"
                     />
-                    <Row item={r} locale={locale} local={local} />
+                    <Row item={r} locale={locale} local={local} manual={w.manual} />
+                    {editable && r.kind === "watch" && <HistoryRowMenu item={r} locale={locale} local={local} todayKey={todayKey} />}
                   </li>
                 ))}
               </ol>
@@ -189,6 +227,17 @@ export function ActivityScreen({
       )}
     </div>
   );
+
+  if (!editable) return body;
+  /* 🆕 T412 — عمودان على الحاسوب العريض (التصميم «أ»): السجلُّ وعمودُ الأسبوع الثابت؛ وما دونه السجلُّ وحدَه كما كان */
+  return (
+    <div className="desk:grid desk:grid-cols-[minmax(0,1fr)_330px] desk:items-start desk:gap-8">
+      {body}
+      <aside className="hidden desk:flex desk:sticky desk:top-6 flex-col gap-4">
+        <WeekAside items={items} locale={locale} local={local} todayKey={todayKey} />
+      </aside>
+    </div>
+  );
 }
 
 
@@ -196,10 +245,12 @@ function Row({
   item,
   locale,
   local,
+  manual,
 }: {
   item: ActivityItem;
   locale: Locale;
   local: boolean;
+  manual: string;
 }) {
   const t = getDict(locale);
   const href = `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`;
@@ -208,7 +259,7 @@ function Row({
   const ep = episodeOf(item, t);
 
   return (
-    <Link href={href} prefetch={false} className="flex items-center gap-3 group">
+    <Link href={href} prefetch={false} className="flex min-w-0 flex-1 items-center gap-3 group">
       <span className="relative shrink-0 w-11 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
         {item.poster ? (
           <Image src={item.poster} alt="" fill sizes="44px" className="object-cover" />
@@ -242,6 +293,16 @@ function Row({
           <span className="tabular-nums" dir="ltr">
             {clock(item.at, locale, local)}
           </span>
+          {/* 🆕 T412 — شارةُ المصدر كالتطبيق (D-1505): «تلقائي» بلون التمييز، وغيرُه رماديّ؛ ويدويٌّ بلا شارة */}
+          {item.kind === "watch" && item.source && (
+            <span
+              className={`rounded-full px-2 py-px text-[10.5px] font-bold ${
+                item.source === "auto" ? "bg-accent/15 text-accent" : "bg-surface-2 text-muted"
+              }`}
+            >
+              <bdi>{sourceName(item.source, t, manual)}</bdi>
+            </span>
+          )}
         </span>
       </span>
     </Link>
