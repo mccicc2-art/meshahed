@@ -17,16 +17,19 @@ export function SettingsPageLayout({
   fallbackHref = "/profile/settings",
   action,
   onBack,
+  wide = false,
   children,
 }: {
   title: string;
   fallbackHref?: string;
   action?: ReactNode;
   onBack?: () => boolean | void;
+  /** 🆕 T416 — صفحةٌ تتّسع على الحاسوب (`desk:`) لتخطيطٍ بعمودين — «تعديل الملف» (تصميم ب). وما سواها على عمودها */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={`max-w-2xl mx-auto${wide ? " desk:max-w-[1100px]" : ""}`}>
       <SettingsHeader title={title} fallbackHref={fallbackHref} action={action} onBack={onBack} />
       {/* المسافةُ السفليّة تعوّض غيابَ الشريط السفليّ هنا (D-462): بلا
           شريطٍ لا حاجةَ لحجزِ ارتفاعه، **ويبقى هامشُ الإيماءة وحده.** */}

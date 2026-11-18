@@ -25,6 +25,7 @@ export function SettingsRow({
   danger = false,
   trailing,
   expanded,
+  leading,
 }: {
   href?: string;
   onClick?: () => void;
@@ -43,10 +44,14 @@ export function SettingsRow({
    * تُغادر.** **والغيابُ يعني صفّاً عاديّاً** فلا يتغيّر مستدعٍ قائم.
    */
   expanded?: boolean;
+  /** 🆕 T416 — رسمٌ مكانَ الأيقونة حين لا تكفي أيقونةُ المجموعة: علامةُ المزوّد في «طرق تسجيل الدخول» */
+  leading?: React.ReactNode;
 }) {
   const body = (
     <>
-      {icon && (
+      {leading ? (
+        <span className="shrink-0 grid place-items-center w-5 h-5">{leading}</span>
+      ) : icon && (
         <Icon
           name={icon}
           size={20}

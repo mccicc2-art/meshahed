@@ -25,6 +25,8 @@ export type PrivacyDataSection = "export" | "delete";
 export function PrivacyData({
   locale,
   only,
+  dangerLabel,
+  dangerLead,
 }: {
   locale: Locale;
   /** 🆕 **التصديرُ والحذفُ افترقا صفحتين** (D-462): **التصديرُ بياناتٌ
@@ -32,6 +34,9 @@ export function PrivacyData({
       «الحساب» في منطقة خطرٍ معلَّمة — **وفعلٌ يومئٌ وفعلٌ لا رجعةَ فيه لا
       يجلسان متلاصقين** (مواصفةُ أحمد). */
   only?: PrivacyDataSection[];
+  /** 🆕 T416 — مجموعةُ الحذف بعنوانٍ آخرَ وصفٍّ قبله: «إدارة الحساب» = تسجيلُ الخروج ثمّ الحذف (مجموعاتُ التطبيق الأربع) */
+  dangerLabel?: string;
+  dangerLead?: React.ReactNode;
 }) {
   const show = (k: PrivacyDataSection) => !only || only.includes(k);
   const t = getDict(locale);
@@ -109,7 +114,8 @@ export function PrivacyData({
 
       {show("delete") && (
         <>
-          <SettingsGroup label={t.setDangerZone}>
+          <SettingsGroup label={dangerLabel ?? t.setDangerZone}>
+            {dangerLead}
             <SettingsRow
               icon="trash"
               title={t.deleteAccountTitle}

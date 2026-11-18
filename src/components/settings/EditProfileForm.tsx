@@ -16,6 +16,7 @@ import { Icon } from "../Icon";
 import { type Socials } from "@/core/socials";
 import { XLinkRow } from "./XLinkRow";
 import { Alert } from "../ui/Alert";
+import { buttonClass } from "../ui/Button";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 import { SettingsRow } from "./SettingsRow";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
@@ -291,6 +292,7 @@ export function EditProfileForm({
   return (
     <SettingsPageLayout
       title={t.setEditProfile}
+      wide
       onBack={() => {
         if (dirty) {
           setAsk(true);
@@ -298,14 +300,34 @@ export function EditProfileForm({
         }
       }}
       action={
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || pending || uploading !== null}
-          className="h-11 px-2 -me-2 text-14 font-bold text-accent disabled:text-[color:var(--disabled)] transition active:scale-95 disabled:active:scale-100"
-        >
-          {pending ? t.saving : t.setSave}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!dirty || pending || uploading !== null}
+            className="desk:hidden h-11 px-2 -me-2 text-14 font-bold text-accent disabled:text-[color:var(--disabled)] transition active:scale-95 disabled:active:scale-100"
+          >
+            {pending ? t.saving : t.setSave}
+          </button>
+          {/* 🆕 T416 — على الحاسوب (تصميم ب، أحمد ١٨ نوفمبر): «حفظ» زرٌّ أصفرُ ظاهرٌ لا نصٌّ رماديٌّ في الزاوية، و«معاينة» بجانبه
+              (كانت تحت الصورة) — الزرُّ نفسُه وقفلُه نفسُه (`dirty`)؛ والجوالُ على نصّه كما هو */}
+          <span className="hidden desk:flex items-center gap-2.5">
+            {cleaned.length >= 3 && (
+              <Link href={`/u/${cleaned}`} className={buttonClass({ variant: "surface", size: "md" })}>
+                <Icon name="eye" size={16} />
+                {t.setPreviewProfile}
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={save}
+              disabled={!dirty || pending || uploading !== null}
+              className={buttonClass({ size: "md", className: "!px-7" })}
+            >
+              {pending ? t.saving : t.setSave}
+            </button>
+          </span>
+        </>
       }
     >
       {error && (
@@ -322,17 +344,21 @@ export function EditProfileForm({
           — **وبطاقتان تفصلان وجهَك عن اسمك تجعلانهما موضوعين.**
           **وهي `SettingsSection boxed` بروحها** (D-555): كتلةُ محتوًى
           مختلطٍ لا قائمةُ صفوف. */}
-      <section>
-        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
+      {/* 🆕 T416 — **على الحاسوب رأسُ الصفحة هو ملفُّك** (تصميم ب): الغلافُ بعرض الصفحة والصورةُ فوقه يُعدَّلان في مكانهما، وتحته
+          عمودان — الحقولُ في الأوّل، والرابطُ والظهورُ وحسابُ X في الثاني. **شجرةٌ واحدةٌ لا شجرتان**: البطاقةُ تصير `contents`
+          فتجلس أبناؤها في شبكة الصفحة — فلا يتكرّر حقلٌ ولا مرجعُ رفع. والجوالُ كما كان حرفاً. */}
+      <div className="space-y-4 desk:space-y-0 desk:grid desk:grid-cols-2 desk:gap-x-6 desk:gap-y-5 desk:items-start">
+      <section className="desk:contents">
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted desk:hidden">
           {t.setProfileDetails}
         </h2>
-        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden desk:contents desk:divide-y-0">
         {/* ⚠️ **وكتلةُ الصورة ابنٌ واحدٌ للبطاقة لا ثلاثة**: `divide-y`
             تفصل بين كلِّ ابنَين، **فغلافٌ وصورةٌ وتلميحٌ عراةً كانوا
             سيكتسبون خطَّين لا يفصلان معنًى.** */}
-        <div>
+        <div className="desk:col-span-2 desk:row-start-1">
         <div
-          className={`relative h-32 sm:h-40 bg-surface-2 ${
+          className={`relative h-32 sm:h-40 desk:h-[250px] desk:rounded-[20px] desk:overflow-hidden bg-surface-2 ${
             coverUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
           }`}
           role={coverUrl ? "slider" : undefined}
@@ -358,6 +384,14 @@ export function EditProfileForm({
               {t.noCover}
             </span>
           )}
+          {coverUrl && (
+            <span
+              aria-hidden
+              className="hidden desk:flex pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-xl border border-dashed border-white/35 bg-black/55 px-3 py-1.5 text-12 font-semibold text-white"
+            >
+              ↕ {t.repositionHint}
+            </span>
+          )}
 
           <input
             ref={coverRef}
@@ -376,9 +410,10 @@ export function EditProfileForm({
             onClick={() => coverRef.current?.click()}
             aria-label={t.setEditCover}
             title={t.setEditCover}
-            className="absolute top-2 end-2 grid place-items-center w-9 h-9 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition disabled:opacity-60"
+            className={`absolute top-2 end-2 desk:top-3.5 ${coverUrl ? "desk:end-[64px]" : "desk:end-3.5"} grid desk:flex place-items-center desk:items-center w-9 h-9 desk:w-auto desk:px-3.5 desk:gap-2 rounded-full desk:rounded-xl bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition disabled:opacity-60`}
           >
             <Icon name={uploading === "cover" ? "hourglass" : "image"} size={16} />
+            <span className="hidden desk:inline text-14 font-semibold">{t.setEditCover}</span>
           </button>
           {coverUrl && (
             <button
@@ -386,14 +421,14 @@ export function EditProfileForm({
               onClick={() => setCoverUrl(null)}
               aria-label={t.removeCover}
               title={t.removeCover}
-              className="absolute top-2 end-12 grid place-items-center w-9 h-9 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition"
+              className="absolute top-2 end-12 desk:top-3.5 desk:end-3.5 grid place-items-center w-9 h-9 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition"
             >
               <Icon name="trash" size={16} />
             </button>
           )}
         </div>
 
-        <div className="px-4 pb-3.5 flex items-end gap-3 -mt-9">
+        <div className="relative z-[1] px-4 pb-3.5 flex items-end gap-3 -mt-9 desk:-mt-[52px] desk:px-7 desk:pb-0 desk:gap-4">
           <span
             className={`relative shrink-0 ${
               avatarUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
@@ -411,10 +446,11 @@ export function EditProfileForm({
             <Avatar
               src={avatarUrl}
               name={nickname || email}
-              size={76}
+              size={120}
               alt={t.avatarAlt}
               posY={avatarPos}
-              className="pointer-events-none ring-4 ring-[color:var(--surface)]"
+              boxClass="w-[76px] h-[76px] desk:w-[120px] desk:h-[120px] text-2xl desk:text-4xl"
+              className="pointer-events-none ring-4 ring-[color:var(--surface)] desk:ring-[5px] desk:ring-[color:var(--background)]"
             />
             <input
               ref={avatarRef}
@@ -433,13 +469,22 @@ export function EditProfileForm({
               onClick={() => avatarRef.current?.click()}
               aria-label={t.setEditAvatar}
               title={t.setEditAvatar}
-              className="absolute bottom-0 end-0 grid place-items-center w-8 h-8 rounded-full bg-accent text-[color:var(--on-accent)] ring-2 ring-[color:var(--surface)] active:scale-95 transition disabled:opacity-60"
+              className="absolute bottom-0 end-0 desk:bottom-1.5 grid place-items-center w-8 h-8 desk:w-9 desk:h-9 rounded-full bg-accent text-[color:var(--on-accent)] ring-2 desk:ring-[3px] ring-[color:var(--surface)] desk:ring-[color:var(--background)] active:scale-95 transition disabled:opacity-60"
             >
               <Icon name={uploading === "avatar" ? "hourglass" : "image"} size={14} />
             </button>
           </span>
 
-          <span className="flex-1 min-w-0 flex justify-end pb-1">
+          {/* على الحاسوب: الاسمُ والمعرّفُ بجانب الصورة كما في الملفّ — يتبعان الحقولَ حرفاً حرفاً */}
+          <span className="hidden desk:block min-w-0 flex-1 pb-2">
+            <b className="block text-[24px] font-extrabold leading-tight truncate">{nickname || email}</b>
+            {cleaned && (
+              <span className="block text-14 text-muted truncate">
+                <bdi dir="ltr">@{cleaned}</bdi>
+              </span>
+            )}
+          </span>
+          <span className="flex-1 min-w-0 flex justify-end pb-1 desk:hidden">
             {cleaned.length >= 3 && (
               <Link
                 href={`/u/${cleaned}`}
@@ -454,9 +499,10 @@ export function EditProfileForm({
         {/* **السطرُ يُكتب حين يمكن السحبُ فقط** — **وتلميحٌ فوق صندوقٍ
             فارغٍ يشرح فعلاً لا يقع** (D-044) */}
         {(coverUrl || avatarUrl) && (
-          <p className="px-4 pb-3.5 text-12 text-muted leading-relaxed">{t.repositionHint}</p>
+          <p className="px-4 pb-3.5 text-12 text-muted leading-relaxed desk:hidden">{t.repositionHint}</p>
         )}
         </div>
+          <div className="divide-y divide-[color:var(--divider)] desk:col-start-1 desk:row-start-2 desk:row-span-2 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:overflow-hidden">
           {/* الاسمُ الظاهر — **واحدٌ لا اثنان**: كان «الاسم المستعار» في
               نموذجٍ و«الاسم الظاهر» في آخر لعمود `nickname` نفسِه
               (مواصفةُ أحمد: احذف المكرَّر). */}
@@ -528,7 +574,9 @@ export function EditProfileForm({
               className="w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none placeholder:text-[color:var(--disabled)]"
             />
           </div>
+          </div>
 
+          <div className="divide-y divide-[color:var(--divider)] desk:col-start-2 desk:row-start-2 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:overflow-hidden">
           {/* رابطُ الملفّ — **يُعرض حين يوجد اسمُ مستخدمٍ صالحٌ فقط**:
               **رابطٌ يُنسخ ولا يُفتح أسوأُ من غيابه** (D-217) */}
           {cleaned.length >= 3 && (
@@ -557,6 +605,7 @@ export function EditProfileForm({
             title={t.setProfileVisibility}
             value={isPrivate ? t.setVisibilityPrivate : t.setVisibilityPublic}
           />
+          </div>
         </div>
       </section>
 
@@ -570,7 +619,7 @@ export function EditProfileForm({
           من معرّفك معنًى، **وبُعدُها عنه سطراً واحداً لا يقطع تلك
           القرابة** — **بينما دَسُّها في منتصف الهويّة يقطع تسلسلَ
           قراءتها.** **فمجموعةٌ بعنوانها أصدقُ من جوارٍ يزاحم.** */}
-      <section hidden={!xEnabled}>
+      <section hidden={!xEnabled} className="desk:col-start-2 desk:row-start-3">
         <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
           {t.setXSection}
         </h2>
@@ -621,6 +670,7 @@ export function EditProfileForm({
           />
         </div>
       </section>
+      </div>
 
       {/* **بشارةُ الحفظ تمرّ ولا تُقيم**: سطرٌ ثابتٌ «حُفظ» يبقى صادقاً
           بعد تعديلٍ جديدٍ فيكذب (D-030) */}
