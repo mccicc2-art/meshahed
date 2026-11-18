@@ -24,6 +24,8 @@ import { Icon } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { chipClass } from "./ui/controls";
+import { WelcomeScene } from "./welcome/WelcomeScene";
+import type { WelcomeUpTo } from "@/core/contracts/welcome";
 
 /**
  * 🆕 D-1341 (Phase 11-U · U0) — **الترحيبُ خمسُ خطواتٍ وبوّابة**:
@@ -43,7 +45,7 @@ const PEOPLE = 5;
 type NameCheck = UsernameState | "idle" | "checking";
 
 /** الشكل الذي تُرجعه `people_to_follow` — مُعرَّفٌ هنا كي لا يستورد العميل `data.ts` */
-interface Suggested {
+export interface Suggested {
   id: string;
   nickname: string | null;
   username: string | null;
@@ -66,9 +68,15 @@ export interface SeedTitle {
   mediaType: "tv" | "movie";
   title: string;
   posterPath: string | null;
+  /* 🆕 T414 — ما يقرؤه «المشهد» على الحاسوب وحدَه (`welcomeSeeds`) — اختياريّةٌ، ووجهُ الجوال لا يقرؤها */
+  backdropPath?: string | null;
+  year?: string | null;
+  seasons?: number | null;
+  genres?: string[];
+  shelf?: "show" | "movie" | "anime";
 }
 
-type Progress = "none" | "some" | "done";
+export type Progress = "none" | "some" | "done";
 
 export function Onboarding({
   locale,
@@ -80,6 +88,9 @@ export function Onboarding({
   username,
   emptyHint,
   nameOnly = false,
+  email = null,
+  joinedAt = null,
+  genreArt = {},
 }: {
   locale: Locale;
   /** مجلّدُ صاحب الصورة في المخزن (`avatars/<id>/…`) */
@@ -95,6 +106,10 @@ export function Onboarding({
    * يوزر»، واختار أن يرى خطوةَ «هذا أنت» كاملةً): الخطوةُ الأولى وحدَها ثمّ الحفظ — لا أعمالَ ولا ختم، مكتبتُه كما هي.
    */
   nameOnly?: boolean;
+  /** 🆕 T414 — للمشهد العريض: البريدُ في رأسه («بدّل الحساب») · تاريخُ الانضمام على البطاقة · مشاهدُ الأنواع */
+  email?: string | null;
+  joinedAt?: string | null;
+  genreArt?: Record<number, string>;
 }) {
   const t = getDict(locale);
 
@@ -142,6 +157,20 @@ export function Onboarding({
         : "checking";
 
   const handleOk = check === "free" || check === "unknown";
+  const userInvalid = check === "taken" || check === "reserved" || check === "short";
+  /* سطرٌ واحدٌ تحت الحقل يقول حالَه — يقرؤه الوجهان: القاعدةُ، ثمّ ما سيُحفظ إن اختلف عمّا كُتب، ثمّ الحكم */
+  const userLine: { text: string; tone: "ok" | "bad" | "muted" } =
+    check === "free"
+      ? { text: t.obUserFree(cleanHandle), tone: "ok" }
+      : check === "taken" || check === "reserved"
+        ? { text: t.apiUsernameTaken, tone: "bad" }
+        : check === "short"
+          ? { text: t.usernameShort, tone: "bad" }
+          : check === "checking"
+            ? { text: t.obUserChecking, tone: "muted" }
+            : cleanHandle && cleanHandle !== handle.trim().toLowerCase()
+              ? { text: t.willSaveAs(cleanHandle), tone: "muted" }
+              : { text: t.obUserRule, tone: "muted" };
 
   /* الرفعُ بوصفة `EditProfileForm` حرفاً: تصغيرٌ ثمّ قياس، ومجلّدُ صاحبها. المحفوظةُ لا تُمسّ هنا —
      يحذفها `updateProfile` بعد أن يثبت الحفظ (D-1108)؛ ما يُحذف رفعةٌ سابقةٌ في هذه الجلسة لم تُحفظ. */
@@ -174,6 +203,9 @@ export function Onboarding({
   }
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [progress, setProgress] = useState<Record<number, Progress>>({});
+  /* 🆕 T414 — آخرُ حلقةٍ شاهدها («بدأته» بموضع) — يكتبه شريطُ الحلقات في المشهد العريض؛ وجهُ الجوال يبقى على «بدأته» وحدَها.
+     يُكتب بالفعل نفسِه الذي يكتب به التطبيقُ ورقتَه (`applyOnboardingProgress` · `upTo`) */
+  const [upTo, setUpTo] = useState<Record<number, WelcomeUpTo>>({});
   const [genres, setGenres] = useState<number[]>(initialGenres);
   const [pending, start] = useTransition();
 
@@ -226,7 +258,10 @@ export function Onboarding({
 
   /** «تخطّي» يتخطّى فعلاً: ما لم يُجب عنه يُحفظ فارغاً، لا ما كان ظاهراً على الشاشة */
   function skip() {
-    if (step === PROGRESS) setProgress({});
+    if (step === PROGRESS) {
+      setProgress({});
+      setUpTo({});
+    }
     if (step === TASTE) setGenres([]);
     go(step + 1);
   }
@@ -299,6 +334,7 @@ export function Onboarding({
             tmdbId: c.id,
             mediaType: c.mediaType,
             progress: progress[c.id] ?? "none",
+            upTo: progress[c.id] === "some" ? (upTo[c.id] ?? null) : null,
           })),
         );
       } catch {
@@ -345,8 +381,91 @@ export function Onboarding({
     });
   }
 
+  /* زرُّ الخطوة الأساسيّ — يقرؤه الوجهان فلا يختلف القفلُ بينهما */
+  const primaryDisabled =
+    pending || uploading || (step === ME && (!cleanHandle || !handleOk)) || (step === PICK && picked.size === 0);
+  const onPrimary = () => (nameOnly ? saveIdentity() : step < PEOPLE ? go(step + 1) : finish());
+  const primaryLabel = pending
+    ? t.obSaving
+    : nameOnly
+      ? t.setSave
+      : step === PICK
+        ? t.obPickedN(picked.size)
+        : step === PEOPLE
+          ? toFollow.size > 0
+            ? t.obPeopleNext(toFollow.size)
+            : t.obPeopleSkip
+          : t.obNext;
+
   return (
-    <div className="max-w-2xl mx-auto pb-32">
+    <>
+    {/* حقلُ الصورة خارج الوجهين: يفتحه زرُّ كلٍّ منهما، والمخفيُّ منهما لا يُخفيه */}
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*"
+      className="hidden"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) uploadPhoto(f);
+        e.target.value = "";
+      }}
+    />
+    {/* 🆕 T414 — «المشهد» على الحاسوب العريض (≥1280 خارج غلاف التطبيق) — وجهُ الجوال أدناه يغيب هناك (`.lz-wmobile`) */}
+    <WelcomeScene
+      locale={locale}
+      t={t}
+      nameOnly={nameOnly}
+      step={step}
+      go={go}
+      error={error}
+      pending={pending}
+      uploading={uploading}
+      email={email}
+      joinedAt={joinedAt}
+      name={name}
+      setName={setName}
+      handle={handle}
+      setHandle={setHandle}
+      cleanHandle={cleanHandle}
+      userLine={userLine}
+      userInvalid={userInvalid}
+      photo={photo}
+      pickPhoto={() => fileRef.current?.click()}
+      seeds={seeds}
+      picked={picked}
+      toggle={toggle}
+      progress={progress}
+      upTo={upTo}
+      setTitle={(id, pr, at) => {
+        setProgress((m) => ({ ...m, [id]: pr }));
+        setUpTo((m) => {
+          const next = { ...m };
+          if (at) next[id] = at;
+          else delete next[id];
+          return next;
+        });
+      }}
+      genres={genres}
+      toggleGenre={(id) => setGenres((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
+      genreArt={genreArt}
+      people={people}
+      peopleLoaded={peopleLoaded}
+      toFollow={toFollow}
+      toggleFollow={(id) =>
+        setToFollow((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        })
+      }
+      primaryLabel={primaryLabel}
+      primaryDisabled={primaryDisabled}
+      onPrimary={onPrimary}
+      onSkip={step === PROGRESS || step === TASTE ? skip : null}
+    />
+    <div className="lz-wmobile max-w-2xl mx-auto pb-32">
       <header className="text-center mb-6">
         {nameOnly ? null : <p className="text-xs font-bold text-accent">{t.obStep(step, STEPS)}</p>}
         <h1 className="text-2xl font-extrabold mt-2">
@@ -388,17 +507,6 @@ export function Onboarding({
           <div className="px-4 py-5 flex flex-col items-center gap-3">
             <span className="relative">
               <Avatar src={photo} name={name || cleanHandle} size={88} alt={t.avatarAlt} />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) uploadPhoto(f);
-                  e.target.value = "";
-                }}
-              />
               <button
                 type="button"
                 disabled={uploading}
@@ -442,34 +550,23 @@ export function Onboarding({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                aria-invalid={check === "taken" || check === "reserved" || check === "short"}
+                aria-invalid={userInvalid}
                 aria-describedby="ob-user-state"
                 className="flex-1 min-w-0 bg-transparent text-[16px] outline-none text-left placeholder:text-[color:var(--disabled)]"
               />
             </div>
-            {/* سطرٌ واحدٌ تحت الحقل يقول حالَه: القاعدةُ، ثمّ ما سيُحفظ إن اختلف عمّا كُتب، ثمّ الحكم */}
             <p
               id="ob-user-state"
               aria-live="polite"
               className={`text-12 mt-1.5 leading-relaxed ${
-                check === "free"
+                userLine.tone === "ok"
                   ? "text-[color:var(--success)]"
-                  : check === "taken" || check === "reserved" || check === "short"
+                  : userLine.tone === "bad"
                     ? "text-[color:var(--error)]"
                     : "text-muted"
               }`}
             >
-              {check === "free"
-                ? t.obUserFree(cleanHandle)
-                : check === "taken" || check === "reserved"
-                  ? t.apiUsernameTaken
-                  : check === "short"
-                    ? t.usernameShort
-                    : check === "checking"
-                      ? t.obUserChecking
-                      : cleanHandle && cleanHandle !== handle.trim().toLowerCase()
-                        ? t.willSaveAs(cleanHandle)
-                        : t.obUserRule}
+              {userLine.text}
             </p>
           </div>
         </div>
@@ -665,27 +762,8 @@ export function Onboarding({
       {/* شريط الإجراء الثابت */}
       <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)] to-transparent">
         <div className="max-w-2xl mx-auto">
-          <button
-            disabled={
-              pending ||
-              uploading ||
-              (step === ME && (!cleanHandle || !handleOk)) ||
-              (step === PICK && picked.size === 0)
-            }
-            onClick={() => (nameOnly ? saveIdentity() : step < PEOPLE ? go(step + 1) : finish())}
-            className={buttonClass({ size: "lg", full: true })}
-          >
-            {pending
-              ? t.obSaving
-              : nameOnly
-                ? t.setSave
-                : step === PICK
-                ? t.obPickedN(picked.size)
-                : step === PEOPLE
-                  ? toFollow.size > 0
-                    ? t.obPeopleNext(toFollow.size)
-                    : t.obPeopleSkip
-                  : t.obNext}
+          <button disabled={primaryDisabled} onClick={onPrimary} className={buttonClass({ size: "lg", full: true })}>
+            {primaryLabel}
           </button>
           {/* الصفُّ الثاني: رجوعٌ (بعد الأولى) و«تخطّي» (في الاختياريّتين وحدَهما). الخطوتان المقفولتان بلا
               «تخطّي»، والأخيرةُ زرُّها نفسُه يقول «أكمل بدون متابعة». لا بابَ هنا يخرج من الترحيب. */}
@@ -711,5 +789,6 @@ export function Onboarding({
         </div>
       </div>
     </div>
+    </>
   );
 }

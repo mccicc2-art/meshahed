@@ -906,6 +906,36 @@ summary:focus-visible,
   }
 }
 
+/* ====== 🆕 T414 — «المشهد»: الترحيبُ على الحاسوب العريض (التصميم «ج»، أحمد ١٨ نوفمبر) ======
+   🔑 **وجهان لمكوّنٍ واحد، والعرضُ يختار**: `.lz-wscene` (الشاشةُ الكاملة) يظهر ≥1280 خارج غلاف التطبيق، و`.lz-wmobile`
+   (وجهُ الجوال كما هو) يغيب هناك. ⚠️ **لا `desk:`**: ذاك يتبع الشريطَ الجانبيّ، والترحيبُ بوّابةٌ بلا شريط (`NO_SIDEBAR`).
+   والرقمُ رقمُ `desk:` نفسُه — ما دون 1280 يبقى على تخطيط الجوال في الموضعين. */
+.lz-wscene {
+  display: none;
+}
+@media (min-width: 1280px) {
+  html:not([data-app="1"]) .lz-wscene {
+    display: flex;
+  }
+  html:not([data-app="1"]) .lz-wmobile {
+    display: none !important;
+  }
+}
+/* خلفيّةُ الخطوة تتلاشى داخلةً — المفتاحُ مسارُها، فالصورةُ الجديدةُ تُرسم من جديد بلا قفزة */
+.lz-wfade {
+  animation: lz-wfade 0.5s ease;
+}
+@keyframes lz-wfade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lz-wfade {
+    animation: none;
+  }
+}
+
 /* ====== 🆕 T398 — رفوفُ الرئيسية شبكةٌ من صفّين على الحاسوب (التصميم المعتمد `a_home`) ======
    🔑 **الرفُّ نفسُه لا مكوّنٌ ثانٍ** (القاعدة ٣): `PosterRail` يعلّم قسمَه بـ`lz-deskgrid` (وبـ`lz-deskgrid-wide`
    لبطاقات الخلفيّة)، و`RailScroll` يعلّم أجزاءه بـ`data-rail-*` — وهنا وحدَه يصير الشريطُ المنزلقُ شبكةً: لا تمرير،

@@ -31,6 +31,16 @@ export interface WelcomeSeed {
   mediaType: "tv" | "movie";
   title: string;
   posterPath: string | null;
+  /* 🆕 T414 — **ما تحتاجه «المشهد» على الحاسوب وحدَه** (الترحيبُ العريض: خلفيّةُ العمل تملأ الشاشة وسطرُ وصفه تحت
+     اسمه). من النداء نفسِه الذي يجلب الاسمَ والملصق — لا نداءَ زائد — **واختياريّةٌ** فقارئٌ قديمٌ (جدارُ الملصقات) لا يتغيّر */
+  backdropPath?: string | null;
+  year?: string | null;
+  /** مسلسلٌ: عددُ مواسمه */
+  seasons?: number | null;
+  /** أوّلُ نوعين بلغة القارئ */
+  genres?: string[];
+  /** رفُّه في الخطوة الثانية على الحاسوب: مسلسلاتٌ · أفلامٌ · أنمي (القوائمُ الثلاث أدناه) */
+  shelf?: "show" | "movie" | "anime";
 }
 
 const SHOWS: readonly (readonly [number, string])[] = [
@@ -71,26 +81,45 @@ export function isWelcomeShow(id: number): boolean {
   return SHOWS.some(([n]) => n === id) || ANIME.some(([n]) => n === id);
 }
 
-async function show([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
+async function show([id, name]: readonly [number, string], shelf: "show" | "anime"): Promise<WelcomeSeed> {
   try {
     const tv = await getTv(id);
-    return { id, mediaType: "tv", title: tv.name || name, posterPath: tv.poster_path ?? null };
+    return {
+      id,
+      mediaType: "tv",
+      title: tv.name || name,
+      posterPath: tv.poster_path ?? null,
+      backdropPath: tv.backdrop_path ?? null,
+      year: tv.first_air_date?.slice(0, 4) || null,
+      seasons: tv.number_of_seasons || null,
+      genres: (tv.genres ?? []).slice(0, 2).map((g) => g.name),
+      shelf,
+    };
   } catch {
-    return { id, mediaType: "tv", title: name, posterPath: null };
+    return { id, mediaType: "tv", title: name, posterPath: null, shelf };
   }
 }
 
 async function movie([id, name]: readonly [number, string]): Promise<WelcomeSeed> {
   try {
     const m = await getMovie(id);
-    return { id, mediaType: "movie", title: m.title || name, posterPath: m.poster_path ?? null };
+    return {
+      id,
+      mediaType: "movie",
+      title: m.title || name,
+      posterPath: m.poster_path ?? null,
+      backdropPath: m.backdrop_path ?? null,
+      year: m.release_date?.slice(0, 4) || null,
+      genres: (m.genres ?? []).slice(0, 2).map((g) => g.name),
+      shelf: "movie",
+    };
   } catch {
-    return { id, mediaType: "movie", title: name, posterPath: null };
+    return { id, mediaType: "movie", title: name, posterPath: null, shelf: "movie" };
   }
 }
 
 export async function welcomeSeeds(): Promise<WelcomeSeed[]> {
-  const all = await Promise.all([...SHOWS.map(show), ...MOVIES.map(movie), ...ANIME.map(show)]);
+  const all = await Promise.all([...SHOWS.map((s) => show(s, "show")), ...MOVIES.map(movie), ...ANIME.map((s) => show(s, "anime"))]);
   /* الشاشةُ تعرف العملَ برقمه وحدَه (`picked`) — ورقمُ مسلسلٍ قد يطابق رقمَ فيلمٍ عند TMDB: الثاني يسقط */
   const seen = new Set<number>();
   return all.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));

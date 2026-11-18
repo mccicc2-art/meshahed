@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getFollows, getProfile, getOnboardState, getOnboardInfo } from "@/lib/data";
 import { welcomeSeeds } from "@/lib/welcomeSeeds";
+import { genreBackdrops } from "@/lib/welcomeScene";
 import { getT } from "@/lib/locale";
 import { Onboarding } from "@/components/Onboarding";
 import { AccountNotice } from "@/components/AccountNotice";
@@ -28,7 +29,8 @@ export default async function WelcomePage() {
      `unknown` (الختمُ لم يُقرأ: خطأٌ أو شيفرةٌ سبقت هجرتَها) ⇒ الحكمُ القديمُ حرفاً، لا قفل. */
   if (state === "done" || (state === "unknown" && follows.length > 0)) redirect("/");
 
-  const seeds = await welcomeSeeds();
+  /* 🆕 T414 — مشاهدُ الأنواع للمشهد العريض مع البذور لا بعدها (نداءاتُ رفٍّ مخبوءة) — وفشلُها خريطةٌ فارغة لا صفحةٌ ساقطة */
+  const [seeds, genreArt] = await Promise.all([welcomeSeeds(), genreBackdrops().catch(() => ({}))]);
 
   return (
     /* شريطُ التطبيق لا يُرسم هنا (`hidesAppHeader`) وهو من كان يحجز حافّةَ الشاشة العليا — فتحجزها الصفحة */
@@ -36,7 +38,11 @@ export default async function WelcomePage() {
       {/* 🆕 D-885: البريدُ الذي دخل به فوق أوّل خطوةٍ — **هنا بالضبط** ظنّ
           عضوٌ أنّ مكتبتَه ضاعت وهو على حساب جوجل آخر. **ولا يُرسم بلا بريد**.
           🆕 D-1341 — وهو بابُ الخروج الوحيدُ من البوّابة: «بدّل الحساب» يبقى في متناوله. */}
-      {user.email ? <AccountNotice email={user.email} locale={locale} /> : null}
+      {user.email ? (
+        <div className="lz-wmobile">
+          <AccountNotice email={user.email} locale={locale} />
+        </div>
+      ) : null}
       <Onboarding
         locale={locale}
         userId={user.id}
@@ -47,6 +53,9 @@ export default async function WelcomePage() {
         username={profile?.username ?? ""}
         emptyHint={t.emptyStart}
         nameOnly={nameOnly}
+        email={user.email ?? null}
+        joinedAt={user.created_at ?? null}
+        genreArt={genreArt}
       />
     </div>
   );

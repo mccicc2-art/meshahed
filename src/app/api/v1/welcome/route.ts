@@ -23,7 +23,8 @@ export async function GET() {
         username: profile?.username ?? "",
         avatar_url: profile?.avatar_url ?? null,
         genres: profile?.favorite_genres ?? [],
-        seeds,
+        /* 🆕 T414 — شكلُ العقد حرفاً: البذورُ صارت تحمل ما يحتاجه «المشهد» على الويب (خلفيّة · سنة · رفّ)، والتطبيقُ لا يقرؤه */
+        seeds: seeds.map(({ id, mediaType, title, posterPath }) => ({ id, mediaType, title, posterPath })),
         onboarded: gate.state === "done",
         /* 🆕 D-1354 — عضوٌ قائمٌ بلا اسم مستخدم: خطوةُ «هذا أنت» وحدَها ثمّ `welcome/identity` */
         mode: gate.mode,
