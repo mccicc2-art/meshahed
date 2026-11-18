@@ -47,6 +47,15 @@ const AR = {
   calEpisodesN: "حلقة",
   calMoviesN: "فيلم",
   calWorksN: "عمل",
+  /* 🆕 R269 — تقييماتي على الحاسوب */
+  ratingsNewest: "الأحدث",
+  ratingsTop: "الأعلى تقييماً",
+  ratingsAvg: "معدّلك",
+  ratingsCount: "تقييم",
+  ratingsHasComment: "بتعليق",
+  ratingsDist: "توزيع تقييماتك",
+  ratingsDistHint: "اضغط رقماً لعرض أعماله فقط",
+  ratingsDistClear: "اضغط الرقم نفسه لعرض الكل",
 };
 
 const EN: typeof AR = {
@@ -85,6 +94,14 @@ const EN: typeof AR = {
   calEpisodesN: "Episodes",
   calMoviesN: "Movies",
   calWorksN: "Titles",
+  ratingsNewest: "Newest",
+  ratingsTop: "Highest rated",
+  ratingsAvg: "Your average",
+  ratingsCount: "Ratings",
+  ratingsHasComment: "Commented",
+  ratingsDist: "Your ratings",
+  ratingsDistHint: "Click a score to show only those titles",
+  ratingsDistClear: "Click the same score to show all",
 };
 
 export type WebWords = typeof AR;
