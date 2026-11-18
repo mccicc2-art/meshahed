@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 
 /**
@@ -17,12 +17,75 @@ export function RailScroll({
   children,
   prevLabel,
   nextLabel,
+  mouseDrag = false,
 }: {
   children: React.ReactNode;
   prevLabel: string;
   nextLabel: string;
+  /** 🆕 R256 — **السحبُ بالفأرة** (أحمد ١٨ نوفمبر عن المكتبة: «لازم يقدر يتنقل لبقية القسم سواء بسهم او هولد ويحرك»):
+      يمسك الصفَّ ويحرّكه كالإصبع. اختياريٌّ لصفوف المكتبة وحدها اليوم — بقيّةُ الصفوف كما كانت */
+  mouseDrag?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  /* 🆕 R256 — **السهمُ يغيب عند طرفه**: سهمٌ يُضغط ولا يتحرّك شيءٌ يُقرأ عطلاً. فيزيائيّان كالزرّين: `canL` = في اليسار
+     بقيّة. وفي RTL يقيس Chrome `scrollLeft` من صفرٍ نزولاً، فالمسافةُ من البداية `-scrollLeft` */
+  const [edge, setEdge] = useState({ canL: true, canR: true });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    const from = rtl ? -el.scrollLeft : el.scrollLeft;
+    const canL = rtl ? from < max - 2 : from > 2;
+    const canR = rtl ? from > 2 : from < max - 2;
+    setEdge((e) => (e.canL === canL && e.canR === canR ? e : { canL, canR }));
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure]);
+
+  /* السحبُ: يبدأ بعد ٥px (ضغطةٌ عاديّةٌ تبقى ضغطةً تفتح الملصق)، والالتقاطُ يُطفأ أثناءه وإلا قاوم اليد، والنقرةُ التي تنهي
+     سحباً تُبتلع فلا يُفتح ملصقٌ لم يُقصد. للفأرة وحدها — اللمسُ يسحب بنفسه */
+  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+  const swallow = useRef(false);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!mouseDrag || e.pointerType !== "mouse" || e.button !== 0) return;
+    const el = ref.current;
+    if (!el) return;
+    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const el = ref.current;
+    if (!d || !el) return;
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) < 5) return;
+    if (!d.moved) {
+      d.moved = true;
+      el.style.scrollSnapType = "none";
+      el.style.cursor = "grabbing";
+      el.setPointerCapture(e.pointerId);
+    }
+    el.scrollLeft = d.left - dx;
+  };
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const el = ref.current;
+    drag.current = null;
+    if (!d?.moved || !el) return;
+    swallow.current = true;
+    el.style.cursor = "";
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    /* الالتقاطُ يعود بعد أن يستقرّ الصفّ — فيقف على حافّة ملصق */
+    requestAnimationFrame(() => {
+      el.style.scrollSnapType = "";
+    });
+  };
 
   function go(sign: 1 | -1) {
     const el = ref.current;
@@ -48,7 +111,20 @@ export function RailScroll({
       <div
         ref={ref}
         data-rail-scroller=""
-        className="-mx-4 px-4 scroll-px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={measure}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={(e) => {
+          if (swallow.current) {
+            swallow.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+        onDragStart={mouseDrag ? (e) => e.preventDefault() : undefined}
+        className={`-mx-4 px-4 scroll-px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mouseDrag ? "sm:cursor-grab select-none" : ""}`}
       >
         <div data-rail-track="" className="flex gap-3 w-max pb-1">{children}</div>
       </div>
@@ -59,6 +135,7 @@ export function RailScroll({
         aria-label={prevLabel}
         data-rail-arrow=""
         onClick={() => go(-1)}
+        hidden={!edge.canL}
         className={`${btn} left-0`}
       >
         <Icon name="chevron-down" size={18} className="rotate-90" />
@@ -68,6 +145,7 @@ export function RailScroll({
         aria-label={nextLabel}
         data-rail-arrow=""
         onClick={() => go(1)}
+        hidden={!edge.canR}
         className={`${btn} right-0`}
       >
         <Icon name="chevron-down" size={18} className="-rotate-90" />

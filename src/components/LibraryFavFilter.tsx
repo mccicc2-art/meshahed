@@ -49,7 +49,7 @@ export function FavFilterToggle({ label }: { label: string }) {
         tap(6);
         ctx.toggle();
       }}
-      className={`flex items-center justify-center px-4 rounded-2xl border transition active:scale-[0.99] ${
+      className={`flex items-center justify-center px-4 rounded-2xl border transition active:scale-[0.99] desk:h-10 desk:w-10 desk:px-0 desk:rounded-full ${
         ctx.on
           ? "border-accent bg-accent/10"
           : "border-border bg-surface hover:border-accent/40"

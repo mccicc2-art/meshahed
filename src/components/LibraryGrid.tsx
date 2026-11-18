@@ -17,6 +17,8 @@ import { PageTabs } from "./ui/PageTabs";
 import { ActiveFilterChips, type FilterChip } from "./ui/ActiveFilterChips";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { FavFilterContext } from "./LibraryFavFilter";
+import { SortCycle } from "./ui/SortCycle";
+import { Icon } from "./Icon";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -578,7 +580,47 @@ export function LibraryGrid({
             enabled: showSearchRow && favSet.size > 0,
           }}
         >
-          <div className="mt-3">{underTabs}</div>
+          {/* 🆕 R256 — **على الحاسوب صفٌّ واحدٌ مضغوط** (أحمد ١٨ نوفمبر — «أ»): بحثُ المكتبة والترتيب ظاهران في البداية،
+              والإحصائياتُ والنشاطُ والقلبُ أزرارٌ صغيرةٌ في النهاية — بدل زرّين عريضين يأكلان صفّاً وحدهما. البحثُ والترتيبُ
+              هما نفسُ حالة ورقة الأدوات (`q`/`sort`) — بابٌ ثانٍ لا حالةٌ ثانية، والورقةُ باقيةٌ للجوّال وللباقي */}
+          <div className="mt-3 desk:flex desk:items-center desk:gap-2.5">
+            {showSearchRow ? (
+              <>
+                <label className="relative hidden desk:flex w-full max-w-[420px] items-center">
+                  <Icon name="search" size={16} className="pointer-events-none absolute start-3.5 text-muted" />
+                  <input
+                    type="search"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={t.searchLibrary}
+                    aria-label={t.searchLibrary}
+                    dir="auto"
+                    className="h-10 w-full rounded-full border border-border bg-surface ps-10 pe-4 text-sm placeholder:text-muted outline-none focus:border-accent transition [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {q ? (
+                    <button type="button" onClick={() => setQ("")} aria-label={t.closeLabel} className="absolute end-2 grid h-7 w-7 place-items-center rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition">
+                      <Icon name="close" size={13} />
+                    </button>
+                  ) : null}
+                </label>
+                <span className="hidden desk:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border px-4 text-sm">
+                  <span className="text-muted">{t.librarySortGroup}:</span>
+                  <SortCycle
+                    label={t.librarySortGroup}
+                    value={sort}
+                    onChange={setSort}
+                    options={[
+                      { key: "smart", label: t.sortSmart },
+                      { key: "added", label: t.sortAdded },
+                      { key: "title", label: t.sortTitle },
+                      { key: "progress", label: t.sortProgress },
+                    ]}
+                  />
+                </span>
+              </>
+            ) : null}
+            <div className="desk:ms-auto desk:shrink-0">{underTabs}</div>
+          </div>
         </FavFilterContext.Provider>
       )}
 
@@ -717,15 +759,25 @@ export function LibraryGrid({
                   /* 🔴 **والمفتوحُ يخرج من جاري الصفّ** (D-428): شبكةٌ
                      داخل `RailScroll` تُرسم فارغةً — قِيس حيّاً. */
                   bare={open || solo}
-                  /* 🆕 T404 — على الحاسوب المجموعةُ شبكةٌ كاملة (قرار «أ»): لا سحبَ بالفأرة ولا سقف */
-                  deskGrid="all"
+                  /* ⚖️ 🆕 R256 — **على الحاسوب صفٌّ واحدٌ أكبر يُقلَّب ويُسحب** (أحمد ١٨ نوفمبر: «صف واحد لكل قسم وكبره بشكل
+                     بسيط و لازم يقدر يتقل لبقية القسم سواء بسهم او هولد ويحرك») — نقضُ شبكة T404 الكاملة: كانت المجموعةُ
+                     الأولى تأكل الشاشةَ فلا تُرى «لم أبدأها» إلا بعد تمرير. والشبكةُ الكاملةُ باقيةٌ خلف «الكل» */
+                  deskRail
                   action={
                     <button
                       type="button"
                       onClick={() => toggleGroup(g.status)}
                       className="text-12 text-muted hover:text-accent transition shrink-0 tabular-nums"
                     >
-                      {open ? t.closeLabel : `${g.items.length}`}
+                      {open ? (
+                        t.closeLabel
+                      ) : (
+                        <>
+                          {`${g.items.length}`}
+                          {/* على الحاسوب «الكل ←» بجانب العدد: الصفُّ يُقلَّب، والشبكةُ كاملةً بابُها هنا */}
+                          <span className="hidden desk:inline"> · {t.seeAll}</span>
+                        </>
+                      )}
                     </button>
                   }
                 >
@@ -736,7 +788,7 @@ export function LibraryGrid({
                       {g.items.map((x) => cell(x))}
                     </div>
                   ) : solo ? (
-                    <div className="w-[var(--poster-w,118px)] sm:w-[var(--poster-w-sm,138px)]">
+                    <div className="w-[var(--poster-w,118px)] sm:w-[var(--poster-w-sm,138px)] lz-deskrail-solo">
                       {cell(g.items[0])}
                     </div>
                   ) : (

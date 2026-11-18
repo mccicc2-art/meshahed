@@ -30,6 +30,7 @@ export function PosterRail({
   className,
   bare = false,
   deskGrid,
+  deskRail = false,
   children,
 }: {
   title: string;
@@ -81,9 +82,16 @@ export function PosterRail({
   /** 🆕 T398 — على الحاسوب العريض يصير الرفُّ شبكةً من صفّين (`.lz-deskgrid` في `globals.css`): ملصقاتٌ أو بطاقاتُ خلفيّة.
    *  🆕 T404 — `all`: شبكةٌ بكلِّ ما في الرفّ بلا سقف صفّين (المكتبة: المجموعةُ كلُّها في النظر، قرار «أ») */
   deskGrid?: "poster" | "wide" | "all";
+  /** 🆕 R256 — **صفٌّ واحدٌ على الحاسوب بملصقاتٍ أكبر** (`.lz-deskrail`: سبعةٌ وربعٌ في النظر) **يُقلَّب بالسهم ويُسحب
+      بالفأرة** — مكتبتي (أحمد ١٨ نوفمبر: «صف واحد لكل قسم وكبره بشكل بسيط»). لا يجتمع مع `deskGrid` */
+  deskRail?: boolean;
   children: React.ReactNode;
 }) {
-  const grid = deskGrid ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : deskGrid === "all" ? " lz-deskgrid-all" : ""}` : "";
+  const grid = deskRail
+    ? "lz-deskrail"
+    : deskGrid
+      ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : deskGrid === "all" ? " lz-deskgrid-all" : ""}`
+      : "";
   return (
     <section className={[className, grid].filter(Boolean).join(" ") || undefined}>
       {/* ⚖️ رأسُ القسم يتحرّك مع محتواه — لا لصقَ (نقضُ D-464، طلبُ
@@ -167,7 +175,7 @@ export function PosterRail({
       {bare ? (
         children
       ) : (
-        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
+        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next" mouseDrag={deskRail}>
           {children}
         </RailScroll>
       )}

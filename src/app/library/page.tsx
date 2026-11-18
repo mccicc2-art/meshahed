@@ -454,7 +454,8 @@ export default async function LibraryPage({
              **يغيب في التبويبات التي لا يُصفّيها** (D-217) — **وعمودٌ
              ثالثٌ محجوزٌ لغائبٍ يمطّ جارَه.** والرابطان `flex-1`
              فمنظرُهما لم يتبدّل بكسلاً حين يكون القلبُ حاضراً. */
-          <div className="flex gap-2.5">
+          /* 🆕 R256 — على الحاسوب الثلاثةُ أزرارٌ صغيرةٌ في نهاية صفِّ البحث والترتيب (`LibraryGrid`) — والجوّالُ كما هو */
+          <div className="flex gap-2.5 desk:gap-2">
             {(
               [
                 /* ⚖️ 🆕 **والزرُّ صار اسمَ وجهته** (D-675، حكمُ أحمد
@@ -478,7 +479,7 @@ export default async function LibraryPage({
               <Link
                 key={href}
                 href={href}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-14 font-bold transition hover:border-accent/40 active:scale-[0.99]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-14 font-bold transition hover:border-accent/40 active:scale-[0.99] desk:flex-none desk:h-10 desk:py-0 desk:px-4 desk:rounded-full desk:text-[13.5px]"
               >
                 <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
                 {label}
