@@ -6,6 +6,8 @@ import { getDict, type Locale } from "@/core/i18n";
 import { FONT_SIZES, type FontSize } from "@/core/fontPrefs";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
+import { SettingsBlock } from "./SettingsBlock";
+import { chipClass } from "../ui/controls";
 
 /**
  * «العرض وحجم الخط» — تحكّمان مستقلّان (طلب أحمد ١٩ أغسطس): حجم واجهة
@@ -34,10 +36,13 @@ export function FontSizeSection({
   locale,
   initialUi,
   initialContent,
+  layout = "row",
 }: {
   locale: Locale;
   initialUi: FontSize;
   initialContent: FontSize;
+  /** 🆕 R260 — `block` على الحاسوب: الحجمان ظاهران رقائقَ بلا فتح (إعداداتُ اللوحتين) */
+  layout?: "row" | "block";
 }) {
   const t = getDict(locale);
   const [ui, setUi] = useState<FontSize>(initialUi);
@@ -75,6 +80,45 @@ export function FontSizeSection({
           />
         ))}
       </SettingsOptionList>
+    );
+  }
+
+
+  function chips(label: string, value: FontSize, pick: (s: FontSize) => void) {
+    return (
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+        {FONT_SIZES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            role="radio"
+            aria-checked={s === value}
+            onClick={() => s !== value && pick(s)}
+            className={chipClass(s === value)}
+          >
+            {labels[s]}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (layout === "block") {
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <SettingsBlock icon="sliders" title={t.fontUiLabel}>
+          {chips(t.fontUiLabel, ui, (s) => {
+            setUi(s);
+            apply(s, content);
+          })}
+        </SettingsBlock>
+        <SettingsBlock icon="comment" title={t.fontContentLabel}>
+          {chips(t.fontContentLabel, content, (s) => {
+            setContent(s);
+            apply(ui, s);
+          })}
+        </SettingsBlock>
+      </div>
     );
   }
 

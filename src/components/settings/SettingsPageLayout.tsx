@@ -29,7 +29,7 @@ export function SettingsPageLayout({
   children: ReactNode;
 }) {
   return (
-    <div className={`max-w-2xl mx-auto${wide ? " desk:max-w-[1100px]" : ""}`}>
+    <div className={`lz-setpage max-w-2xl mx-auto${wide ? " desk:max-w-[1100px]" : ""}`}>
       <SettingsHeader title={title} fallbackHref={fallbackHref} action={action} onBack={onBack} />
       {/* المسافةُ السفليّة تعوّض غيابَ الشريط السفليّ هنا (D-462): بلا
           شريطٍ لا حاجةَ لحجزِ ارتفاعه، **ويبقى هامشُ الإيماءة وحده.** */}

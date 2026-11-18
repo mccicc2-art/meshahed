@@ -11,6 +11,7 @@ import { SettingsGroup, settingsCardRows } from "@/components/settings/SettingsG
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SignOutRow } from "@/components/settings/SignOutRow";
 import { FeedbackRow } from "@/components/FeedbackSheet";
+import { AppearancePane } from "@/components/settings/AppearancePane";
 
 /**
  * الإعدادات — **فهرسٌ لا لوحة** (D-462، مواصفةُ أحمد).
@@ -64,6 +65,13 @@ export default async function SettingsPage() {
   const displayName = profile?.nickname || username || (user.email ?? "").split("@")[0];
 
   return (
+    <>
+    {/* 🆕 R260 — على الحاسوب القائمةُ في القالب (`layout.tsx`)، فالفهرسُ لا يُكرَّر بجانبها: اللوحةُ الثانيةُ تفتح على «المظهر
+        واللغة» (أكثرُ قسمٍ يُزار) بدل أن تبقى فارغة. والجوّالُ يرى الفهرسَ كما كان */}
+    <div className="hidden desk:block">
+      <AppearancePane />
+    </div>
+    <div className="desk:hidden">
     <SettingsPageLayout title={t.settingsNavHeading} fallbackHref="/">
       {/* ===== بطاقةُ الحساب ===== */}
       <div className={settingsCardRows}>
@@ -191,5 +199,7 @@ export default async function SettingsPage() {
         <SignOutRow label={t.signOut} />
       </SettingsGroup>
     </SettingsPageLayout>
+    </div>
+    </>
   );
 }

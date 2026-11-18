@@ -60,7 +60,7 @@ export function SettingsHeader({
           type="button"
           onClick={back}
           aria-label={title}
-          className="shrink-0 grid place-items-center w-11 h-11 -ms-2 rounded-full text-foreground hover:text-accent active:scale-95 transition"
+          className="lz-set-back shrink-0 grid place-items-center w-11 h-11 -ms-2 rounded-full text-foreground hover:text-accent active:scale-95 transition"
         >
           {/* مُدارةٌ تتبع اتجاه الصفحة فلا تشير في العربية إلى الخارج */}
           <Icon name="chevron-down" size={24} className="rotate-90 rtl:-rotate-90" />

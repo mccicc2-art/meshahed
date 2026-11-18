@@ -5,6 +5,8 @@ import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
+import { SettingsBlock } from "./SettingsBlock";
+import { chipClass } from "../ui/controls";
 
 /**
  * لغةُ الواجهة — **صفٌّ يقول اللغةَ الحاليّة، ولوحٌ تحته يبدّلها**
@@ -23,7 +25,7 @@ import { SettingsExpandRow } from "./SettingsExpandRow";
  * ⚠️ **والورقةُ تُغلق باختيار اللغة نفسِه**: الصفحةُ ستُعاد كلُّها بعد
  * لحظة — **و«تمّ» فوق فعلٍ يُنفَّذ بمجرّد اللمس خطوةٌ زائدة.**
  */
-export function LanguageRow({ locale }: { locale: Locale }) {
+export function LanguageRow({ locale, layout = "row" }: { locale: Locale; layout?: "row" | "block" }) {
   const t = getDict(locale);
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -40,6 +42,29 @@ export function LanguageRow({ locale }: { locale: Locale }) {
       await setLocale(next);
       window.location.reload();
     });
+  }
+
+  /* 🆕 R260 — **على الحاسوب الخيارُ ظاهرٌ بلا فتح** (إعداداتُ اللوحتين، اختيارُ أحمد «ب»): رقائقُ العائلة الواحدة (`chipClass`)
+     بدل صفٍّ يُفتح ثمّ قائمة — ضغطةٌ بدل ضغطتين. والفعلُ نفسُه (`pick`) */
+  if (layout === "block") {
+    return (
+      <SettingsBlock icon="compass" title={t.languageSection}>
+        <div role="radiogroup" aria-label={t.languageSection} className={`flex flex-wrap gap-2 ${pending ? "opacity-60 pointer-events-none" : ""}`}>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={o.id === locale}
+              onClick={() => pick(o.id)}
+              className={chipClass(o.id === locale)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </SettingsBlock>
+    );
   }
 
   return (

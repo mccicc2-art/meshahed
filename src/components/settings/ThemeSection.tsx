@@ -9,6 +9,7 @@ import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
 import { Icon } from "../Icon";
 import { SettingsExpandRow } from "./SettingsExpandRow";
+import { SettingsBlock } from "./SettingsBlock";
 import { themeNeedsPlus } from "@/core/plan";
 import { openPlusGate } from "@/lib/plusGate";
 
@@ -45,7 +46,10 @@ export function ThemeSection({
   initialTheme,
   plus = false,
   carry,
+  layout = "row",
 }: {
+  /** 🆕 R260 — `block` على الحاسوب: الثيماتُ ظاهرةً شبكةً بلا فتح (إعداداتُ اللوحتين) */
+  layout?: "row" | "block";
   locale: Locale;
   initialTheme: string;
   /* 🆕 **الخطّة** (D-633): الملوّنةُ للبلس، **و`amber` و`daylight`
@@ -99,6 +103,60 @@ export function ThemeSection({
 
   const current = THEMES.find((item) => item.id === theme) ?? THEMES[0];
 
+  const grid = (
+    <div
+      role="radiogroup"
+      aria-label={t.themeSection}
+      className={`grid grid-cols-2 gap-2.5 ${layout === "block" ? "sm:grid-cols-5" : ""} ${pending ? "opacity-70 pointer-events-none" : ""}`}
+    >
+      {THEMES.map((th) => {
+        const on = th.id === theme;
+        return (
+          <button
+            key={th.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => pick(th.id)}
+            className={`rounded-lg overflow-hidden text-start transition active:scale-[0.98] ${
+              on ? "ring-1 ring-accent" : "bg-surface-2"
+            }`}
+          >
+            <span
+              className="block h-8 w-full"
+              style={{
+                background: `linear-gradient(120deg, ${th.vars.accent} 0%, ${th.vars.accent} 38%, ${th.vars["accent-2"]} 38%, ${th.vars["accent-2"]} 62%, ${th.vars.surface} 62%, ${th.vars.background} 100%)`,
+              }}
+            />
+            <span className="flex items-center gap-1.5 px-2.5 min-h-10 text-12 font-semibold">
+              <span className="min-w-0 flex-1 truncate">{themeName(th, locale)}</span>
+              {/* **الرمزُ يقول أيَّهما**: صحٌّ للمختار، ونجمةٌ لما يحتاج
+                  بلس — **ولا يجتمعان** لأن المختارَ مملوكٌ بالضرورة. */}
+              {on ? (
+                <Icon name="check" size={14} className="shrink-0 text-accent" />
+              ) : !plus && themeNeedsPlus(th.id) ? (
+                <Icon
+                  name="sparkle-star"
+                  size={13}
+                  className="shrink-0 text-accent/70"
+                  aria-label={t.plusLocked}
+                />
+              ) : null}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (layout === "block") {
+    return (
+      <SettingsBlock icon="palette" title={t.themeSection}>
+        {grid}
+      </SettingsBlock>
+    );
+  }
+
   return (
     /* ⚖️ 🆕 **والورقةُ السفليّةُ صارت توسّعاً في المكان** (D-569، طلبُ
        أحمد) — الحجّةُ في `SettingsExpandRow`. **واللوحُ لا يُغلق عند
@@ -112,49 +170,7 @@ export function ThemeSection({
       open={open}
       onToggle={() => setOpen((v) => !v)}
     >
-      <div
-        role="radiogroup"
-        aria-label={t.themeSection}
-        className={`grid grid-cols-2 gap-2.5 ${pending ? "opacity-70 pointer-events-none" : ""}`}
-      >
-        {THEMES.map((th) => {
-          const on = th.id === theme;
-          return (
-            <button
-              key={th.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => pick(th.id)}
-              className={`rounded-lg overflow-hidden text-start transition active:scale-[0.98] ${
-                on ? "ring-1 ring-accent" : "bg-surface-2"
-              }`}
-            >
-              <span
-                className="block h-8 w-full"
-                style={{
-                  background: `linear-gradient(120deg, ${th.vars.accent} 0%, ${th.vars.accent} 38%, ${th.vars["accent-2"]} 38%, ${th.vars["accent-2"]} 62%, ${th.vars.surface} 62%, ${th.vars.background} 100%)`,
-                }}
-              />
-              <span className="flex items-center gap-1.5 px-2.5 min-h-10 text-12 font-semibold">
-                <span className="min-w-0 flex-1 truncate">{themeName(th, locale)}</span>
-                {/* **الرمزُ يقول أيَّهما**: صحٌّ للمختار، ونجمةٌ لما يحتاج
-                    بلس — **ولا يجتمعان** لأن المختارَ مملوكٌ بالضرورة. */}
-                {on ? (
-                  <Icon name="check" size={14} className="shrink-0 text-accent" />
-                ) : !plus && themeNeedsPlus(th.id) ? (
-                  <Icon
-                    name="sparkle-star"
-                    size={13}
-                    className="shrink-0 text-accent/70"
-                    aria-label={t.plusLocked}
-                  />
-                ) : null}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {grid}
     </SettingsExpandRow>
   );
 }

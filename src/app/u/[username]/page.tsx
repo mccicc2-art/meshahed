@@ -313,6 +313,8 @@ export default async function PublicProfilePage({
     shows:
       shows.length > 0 ? (
         <PosterRail
+          /* R260 — على الحاسوب صفٌّ بمقاس المكتبة (سبعةٌ وربع) يُقلَّب بالسهم ويُسحب بالفأرة — كرفوف مكتبتي (R256) */
+          deskRail
           title={t.shortShows}
           /* 🆕 **مقبضُ الترتيب لصاحب الصفحة** (D-581) — نفسُ مقبض
              المفضّلة بالبكسل، والكاتبُ `profile_prefs.sectionOrder` */
@@ -347,6 +349,7 @@ export default async function PublicProfilePage({
     movies:
       movieFollows.length > 0 ? (
         <PosterRail
+          deskRail
           title={t.shortMovies}
           action={
             isMe ? (
@@ -383,6 +386,7 @@ export default async function PublicProfilePage({
     anime:
       anime.length > 0 ? (
         <PosterRail
+          deskRail
           title={t.discoverTabAnime}
           action={
             isMe ? (
@@ -481,7 +485,7 @@ export default async function PublicProfilePage({
 
     ratings:
       topRated.length > 0 ? (
-        <PosterRail title={t.profileTopRated}>
+        <PosterRail deskRail title={t.profileTopRated}>
           {topRated.slice(0, cap(16)).map((r) => (
             <RailItem key={`r-${r.media_type}-${r.tmdb_id}`}>
               <PosterCard
@@ -651,7 +655,10 @@ export default async function PublicProfilePage({
       style={{ ...densityVars(prefs.density), "--sticky-top": "var(--safe-top)" } as React.CSSProperties}
     >
       {/* ===== الغلاف ===== */}
-      <section>
+      {/* 🆕 R260 — **الملفُّ على الحاسوب: الحاليُّ نفسُه مضغوطاً** (اختيارُ أحمد «ج»، ١٨ نوفمبر): كان الغلافُ ٤٠٠px فلا يظهر
+          شيءٌ من المحتوى قبل التمرير. الغلافُ ٢٥٠، والهويّةُ وسطرُ الحقائق عمودٌ، **وبطاقةُ الأرقام بجانبهما** (`col-start-2`) بدل
+          سطرٍ كاملٍ تحتهما — والعمودُ الثاني `auto` فيغيب حين تغيب البطاقة (زائرٌ أخفى صاحبُها أرقامه). الجوّالُ كما هو حرفاً */}
+      <section className="desk:grid desk:grid-cols-[minmax(0,1fr)_auto] desk:items-center desk:gap-x-8">
         {/* 🔴 🆕 **والغلافُ استعاد ما أخذه النتوء** (D-651، بلاغُ أحمد
             بلقطتين: «الهامشُ بين سطر المشاركة والصورة جدّاً صغير، كبّره
             مثل قبل»).
@@ -694,7 +701,7 @@ export default async function PublicProfilePage({
             🆕 D-1132 — **ثمّ ٦٫٢٥rem** (أحمد بخطٍّ أزرق تحت سهم الرجوع: «فيه مساحة فاضية»): الهويّةُ
             تصعد ٢٤px أخرى، فتبدأ الصورةُ الشخصيّةُ (`-mt-10`) على بُعد ~١٠px تحت هدف لمس الرجوع
             (`safe-top` + ٦ + ٤٤) — أدنى من هذا وتلامسه. */}
-        <div className="relative h-[calc(6.25rem+var(--safe-top))] sm:h-[15rem] lg:h-[22rem] xl:h-[25rem] 2xl:h-[27rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        <div className="relative h-[calc(6.25rem+var(--safe-top))] sm:h-[15rem] lg:h-[22rem] xl:h-[25rem] 2xl:h-[27rem] desk:!h-[15.625rem] desk:col-span-2 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
           {/* 🆕 **والتدرّجُ أرضيّةٌ دائمةٌ لا فرعٌ مقابل** (D-657):
               **صورةٌ تفشل بعد الرسم لا تعيد تشغيل الفرع** — فيجب أن
               يكون تحتها أصلاً. **ومن سقط غلافُه يرى ما يراه من لا
@@ -865,7 +872,7 @@ export default async function PublicProfilePage({
         {/* 🆕 **والتراكبُ يتبع الدائرةَ في الدرجتين** (D-836):
             **٤٠ نصفُ ٨٠ و٥٥ نصفُ ١١٠** — **والقاعدةُ نفسُها لا رقمٌ
             ثانٍ يُذاق** (D-547: «الرقمُ مشتقٌّ من المقاس»). */}
-        <div className="flex items-start gap-3 pe-4 -mt-10 lg:-mt-[3.4375rem] relative z-10">
+        <div className="flex items-start gap-3 pe-4 -mt-10 lg:-mt-[3.4375rem] relative z-10 desk:col-start-1">
           {/* 🆕 **وصورةُ ملفّي بابُ تعديله** (D-571، طلبُ أحمد: «وصورة
               البروفايل توديني على إعدادات البروفايل»).
 
@@ -1156,7 +1163,7 @@ export default async function PublicProfilePage({
             نفسِه**، **وسطرٌ يفيض على شاشةٍ ضيّقةٍ ينزل ولا يُقصّ.**
             **والغلافُ لا يُرسم حين لا شيءَ فيه** (D-219/D-280). */}
         {(weeklyRanks.length > 0 || xUrl || (profile.joined_at && isPlus(profile))) && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <div className="desk:col-start-1 mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <WeeklyRanksDoor rows={weeklyRanks} locale={locale} />
 
             {/* 🆕 **وحسابُ X في الصفّ نفسِه** (D-839): **هو من
@@ -1216,7 +1223,7 @@ export default async function PublicProfilePage({
         {/* ===== غلاف «حساب خاص» ===== */}
         {/* 🆕 11-N دَين — **الحظرُ يُقال صريحاً** كما في الشاشة الأصليّة (D-1198): من حظرتُه ومعه رفعُ الحظر · ومن حظرني «غير متاح» */}
         {!canView && (blocked.byMe || blocked.me) ? (
-          <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
+          <div className="relative z-10 mt-6 desk:col-span-2 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
             <Icon name="shield" size={28} className={`mx-auto ${blocked.byMe ? "text-[color:var(--error)]" : "text-muted"}`} />
             <p className="text-14 leading-relaxed mt-3 max-w-[40ch] mx-auto">
               {blocked.byMe ? t.profileBlockedByMe : t.profileBlockedMe}
@@ -1228,7 +1235,7 @@ export default async function PublicProfilePage({
             )}
           </div>
         ) : !canView ? (
-          <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
+          <div className="relative z-10 mt-6 desk:col-span-2 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
             <Icon name="eye-off" size={28} className="mx-auto text-muted" />
             <p className="font-bold text-15 mt-3">{t.privateCoverTitle}</p>
             <p className="text-12 text-muted leading-relaxed mt-1 max-w-[36ch] mx-auto">
@@ -1258,7 +1265,7 @@ export default async function PublicProfilePage({
             التطبيق نفسِه تُقرآن رتبتين.** */}
         {/* 🆕 D-1617 — شخصيّةُ AI بلا بطاقة الأرقام: لا تتابع ولا تشاهد («احذف منهم الكاردات») */}
         {canView && prefs.stats && !persona && (
-          <div className="relative z-10 mt-3 rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden">
+          <div className="relative z-10 mt-3 desk:mt-0 desk:col-start-2 desk:row-start-2 desk:row-span-2 desk:w-[32rem] rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden">
             {/* 🆕 **الرقمُ واسمُه سطرٌ واحد، والبابُ على قدر كلمته**
                 (D-611، حكمُه: «الأفلام والمسلسلات تكون سطر واحد
                 والإحصائيات كلمة وحدة بحيث ياخذون راحتهم»): خانةُ
