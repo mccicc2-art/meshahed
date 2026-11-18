@@ -146,7 +146,7 @@ function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef
     [d.stats.reward_days, t.invStatRewards, t.invDayUnit],
   ];
   const how: [IconName, string][] = [
-    ["calendar", t.invHow14],
+    ["calendar", t.invHowFriend],
     ["people", t.invHow7],
     ["star", t.invHowSub],
   ];

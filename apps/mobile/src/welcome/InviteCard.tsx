@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { api } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
@@ -8,16 +9,14 @@ import { haptic } from "../haptics";
 import { radius, space } from "../theme";
 import { Avatar } from "../community/CommunityCards";
 import { IdentityBadges } from "../IdentityBadges";
-import { Sheet } from "../library/Sheet";
-import { Field, Group, Row } from "../settings/ui";
+import { Field, Group } from "../settings/ui";
 import { pendingInvite } from "../invite/pending";
+import { cleanInviteCode, inviteCodeFromText } from "@/core/storeLinks";
 import type {
   ClaimReferralBody,
   ClaimReferralPayload,
   InviterLite,
   MyReferralPayload,
-  ReferralPeoplePayload,
-  ReferralPerson,
   ReferralPreviewPayload,
 } from "@/core/contracts/referral";
 
@@ -37,12 +36,24 @@ import type {
  *  - 🆕 المهمة ٣٩٤ — **كودُ الحملة (`source: "campaign"`) يُنسب بلا سؤال ولا بطاقة**: لا يصل الكودُ إلى التطبيق إلّا من رابطنا،
  *    فسؤالُ «هل دعاك Loopz؟» لا يضيف شيئاً — و«لا» تُسقط العضوَ من عدّ الحملة. وفشلُ الشبكة يُبقي الكودَ لمحاولةٍ تالية.
  * ⚖️ **ليست خطوةً سادسة ولا قفلاً**: «التالي» يمضي بلا جواب، والسؤالُ صفٌّ تحت بطاقة «هذا أنت».
+ *
+ * 🆕 **المهمة ٤٢٨ — الكودُ وحدَه يَنسب، والبحثُ بالاسم أُلغي** (أحمد ١٨ نوفمبر: «اذا خليته يختار الشخص يسير فيه تلاعب»، ثمّ «اجل سوي ب»):
+ *  - الاسمُ ليس دليلَ دعوة؛ الكودُ لا يصل إلّا ممّن أرسل الرابط. وصفحةُ الدعوة تنسخ الرابطَ إلى الحافظة لحظةَ الضغط على المتجر.
+ *  - **iPhone: زرُّ «لصق» من Apple** (`ClipboardPasteButton` = `UIPasteControl`) — ضغطتُه إذنٌ فلا يظهر سؤالُ «السماح باللصق».
+ *    ولا نقرأ الحافظةَ بأنفسنا هناك أبداً (كلُّ قراءةٍ بلا تلك الضغطة تُظهر السؤال). يظهر الزرُّ لمن في حافظته نصٌّ فقط —
+ *    `hasStringAsync` يجيب «نعم/لا» بلا سؤال ولا يكشف النصّ.
+ *  - **أندرويد: قراءةٌ وحدَها مرّةً عند الظهور** (النظامُ لا يسأل، ويُظهر إشعاراً صغيراً)، فإن كان فيها رابطُ دعوةٍ ظهر «هل دعاك
+ *    أحمد؟» مباشرةً. وزرُّ «لصق» عاديٌّ لمن نسخ بعد ذلك.
+ *  - **وحقلُ الكود** لمن رفض اللصق أو جاءه الكودُ مكتوباً (أكوادُ الشركاء).
  */
 type State =
   | { kind: "none" }
   | { kind: "ask" }
   | { kind: "confirm"; who: InviterLite; by: ClaimReferralBody }
   | { kind: "done"; who: InviterLite | null; gift: boolean };
+
+/** ما كتبه العضو أو لصقه في الحقل: رابطُ دعوةٍ كامل أو الكودُ وحدَه */
+const typedCode = (raw: string) => inviteCodeFromText(raw, true) ?? cleanInviteCode(raw);
 
 /** 🆕 المهمة ٣٩٤ — نسبةُ كود الحملة بلا سؤال. فشلُ الشبكة يُبقي الكودَ في `pendingInvite` ليُعاد عند الظهور التالي */
 async function claimCampaign(code: string): Promise<void> {
@@ -59,9 +70,40 @@ export function InviteCard() {
   const [state, setState] = useState<State>({ kind: "none" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState(false);
+  const [typed, setTyped] = useState("");
+  /* iPhone: زرُّ Apple يظهر لمن في حافظته نصٌّ فقط — «نعم/لا» بلا قراءة */
+  const [canPaste, setCanPaste] = useState(false);
+  const autoRead = useRef(false);
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
+
+  /**
+   * 🆕 المهمة ٤٢٨ — كودٌ جاء من الحافظة أو الحقل: من صاحبُه؟ داعٍ ⇒ «هل دعاك فلان؟»؛ كودُ الحملة ⇒ يُنسب بلا سؤال؛ لا أحد ⇒
+   * `quiet` (القراءةُ الآليّة) لا تقول شيئاً، والضغطةُ تقول «لا نعرف هذا الكود». يعيد `true` إن صار للبطاقة حالٌ غيرُ السؤال.
+   */
+  const lookup = useCallback(
+    async (code: string, quiet = false): Promise<boolean> => {
+      try {
+        const pre = (await api<ReferralPreviewPayload>(`/api/v1/referral/${encodeURIComponent(code)}`)).data;
+        if (!alive.current) return true;
+        if (pre.inviter && pre.source === "campaign") {
+          await claimCampaign(code);
+          if (alive.current) setState({ kind: "none" });
+          return true;
+        }
+        if (pre.inviter) {
+          setError(null);
+          setState({ kind: "confirm", who: pre.inviter, by: { code } });
+          return true;
+        }
+        if (!quiet) setError(t.refCodeUnknown);
+      } catch {
+        if (!quiet && alive.current) setError(t.refFailed);
+      }
+      return false;
+    },
+    [t],
+  );
 
   /* يُقرأ عند الظهور، ومن جديد إن وصل رابطُ دعوةٍ والترحيبُ مفتوح */
   const load = useCallback(async () => {
@@ -88,12 +130,22 @@ export function InviteCard() {
         }
         await pendingInvite.clear();
       }
-      setState({ kind: "ask" });
+      /* أندرويد: الحافظةُ مرّةً واحدةً عند أوّل ظهور — رابطُ دعوةٍ فيها يُسأل عنه مباشرةً */
+      if (Platform.OS === "android" && !autoRead.current) {
+        autoRead.current = true;
+        const found = inviteCodeFromText(await Clipboard.getStringAsync().catch(() => ""));
+        if (found && (await lookup(found, true))) return;
+      }
+      if (Platform.OS === "ios" && Clipboard.isPasteButtonAvailable) {
+        const has = await Clipboard.hasStringAsync().catch(() => false);
+        if (alive.current) setCanPaste(has);
+      }
+      if (alive.current) setState({ kind: "ask" });
     } catch {
       /* سؤالٌ لا يُرسم خيرٌ من سؤالٍ يكسر الخطوة الأولى */
       if (alive.current) setState({ kind: "none" });
     }
-  }, []);
+  }, [lookup]);
   useEffect(() => {
     void load();
     return pendingInvite.subscribe(() => void load());
@@ -111,7 +163,7 @@ export function InviteCard() {
       if (out.claimed) setState({ kind: "done", who: out.inviter, gift: out.source === "friend" });
       else if (out.inviter) setState({ kind: "done", who: out.inviter, gift: false });
       /* 🆕 المراجعةُ المستقلّة — رفضٌ دائمٌ لا «حاول مجدداً»: حسابٌ لا يقبل نسبةً ⇒ يختفي السؤال؛ داعٍ لا يصحّ (اسمٌ غائب · كودي ·
-         حارسٌ تغيّر) ⇒ يعود سطرُ البحث بسطرٍ يقوله. «تعذّر» لخطأ الشبكة وحدَه (أدناه) */
+         حارسٌ تغيّر) ⇒ يعود السؤالُ بسطرٍ يقوله. «تعذّر» لخطأ الشبكة وحدَه (أدناه) */
       else if (out.reason === "ineligible") setState({ kind: "none" });
       else {
         setState({ kind: "ask" });
@@ -135,11 +187,61 @@ export function InviteCard() {
   return (
     <View style={{ marginTop: space.lg }}>
       {state.kind === "ask" ? (
-        <View style={{ gap: space.sm }}>
+        <View style={{ backgroundColor: tokens.surface, borderRadius: radius.card, padding: space.md, gap: space.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: tokens.accent }}>
+              <Icon name="person-plus" size={18} color={tokens.onAccent} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text size={15} weight="700">{t.refAsk}</Text>
+              <Text size={12} muted style={{ marginTop: 2, lineHeight: 18 }}>{t.refAskHint}</Text>
+            </View>
+          </View>
+          {/* iPhone: زرُّ Apple نفسُه — كلمتُه وأيقونتُه منه ولا تُغيَّران، ونختار لونَه وزواياه فقط */}
+          {Platform.OS === "ios" && canPaste ? (
+            <Clipboard.ClipboardPasteButton
+              acceptedContentTypes={["plain-text"]}
+              displayMode="iconAndLabel"
+              cornerStyle="medium"
+              backgroundColor={tokens.accent}
+              foregroundColor={tokens.onAccent}
+              style={{ height: 44, width: "100%" }}
+              onPress={(data) => {
+                if (data.type !== "text") return;
+                haptic.pick();
+                const code = inviteCodeFromText(data.text, true);
+                if (code) void lookup(code);
+                else setError(t.refCodeUnknown);
+              }}
+            />
+          ) : null}
+          {Platform.OS === "android" ? (
+            <Button
+              label={t.refPaste}
+              size="sm"
+              onPress={async () => {
+                haptic.pick();
+                const code = inviteCodeFromText(await Clipboard.getStringAsync().catch(() => ""), true);
+                if (code) void lookup(code);
+                else setError(t.refCodeUnknown);
+              }}
+            />
+          ) : null}
           <Group>
-            <Row icon="person-plus" title={t.refAsk} subtitle={t.refAskHint} onPress={() => { haptic.pick(); setError(null); setSearch(true); }} />
+            <Field label={t.refCodeLabel} value={typed} onChange={(v) => { setTyped(v); setError(null); }} placeholder={t.refCodePlaceholder} maxLength={80} ltr />
           </Group>
-          {error ? <Text size={12} color={tokens.error} style={{ paddingHorizontal: 4 }}>{error}</Text> : null}
+          <Button
+            label={t.refCodeGo}
+            size="sm"
+            variant="ghost"
+            busy={busy}
+            disabled={typedCode(typed).length < 4}
+            onPress={() => {
+              haptic.pick();
+              void lookup(typedCode(typed));
+            }}
+          />
+          {error ? <Text size={12} color={tokens.error}>{error}</Text> : null}
         </View>
       ) : (
         <View style={{ backgroundColor: tokens.surface, borderRadius: radius.card, padding: space.md, gap: space.md }}>
@@ -173,73 +275,6 @@ export function InviteCard() {
           {error ? <Text size={12} color={tokens.error}>{error}</Text> : null}
         </View>
       )}
-      {search ? (
-        <PeopleSheet
-          onClose={() => setSearch(false)}
-          onPick={(p) => {
-            setSearch(false);
-            setError(null);
-            setState({ kind: "confirm", who: p, by: { username: p.username } });
-          }}
-        />
-      ) : null}
     </View>
-  );
-}
-
-/** ورقةُ «من دعاك؟» — البحثُ بالاسم بعد حرفين، ونصفُ ثانيةٍ بين الكتابة والسؤال */
-function PeopleSheet({ onClose, onPick }: { onClose: () => void; onPick: (p: ReferralPerson) => void }) {
-  const { t, tokens } = useApp();
-  const [q, setQ] = useState("");
-  const [people, setPeople] = useState<ReferralPerson[] | null>(null);
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2) {
-      setPeople(null);
-      return;
-    }
-    let live = true;
-    const timer = setTimeout(() => {
-      api<ReferralPeoplePayload>(`/api/v1/me/referral/people?q=${encodeURIComponent(term)}`)
-        .then((r) => live && setPeople(r.data.people))
-        .catch(() => live && setPeople([]));
-    }, 350);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [q]);
-  return (
-    <Sheet title={t.refSearchTitle} onClose={onClose}>
-      <View style={{ gap: space.md }}>
-        <Group>
-          <Field label={t.refSearchLabel} value={q} onChange={setQ} placeholder={t.refSearchPlaceholder} maxLength={40} autoFocus />
-        </Group>
-        {people && people.length === 0 ? (
-          <Text size={14} muted style={{ textAlign: "center", paddingVertical: space.lg }}>{t.refSearchNone}</Text>
-        ) : null}
-        {people && people.length > 0 ? (
-          <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, overflow: "hidden" }}>
-            {people.map((p, i) => (
-              <Pressable
-                key={p.username}
-                accessibilityRole="button"
-                onPress={() => { haptic.pick(); onPick(p); }}
-                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}
-              >
-                <Avatar uri={p.avatar_url} size={40} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <Text size={14} weight="600" numberOfLines={1} style={{ flexShrink: 1 }}>{p.name ?? p.username}</Text>
-                    {p.verified ? <IdentityBadges flags={{ partner: false, plus: false, founder: false, verified: true }} nameSize={14} /> : null}
-                  </View>
-                  <Text size={12} muted numberOfLines={1} style={{ writingDirection: "ltr", textAlign: "auto" }}>{`@${p.username}`}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-      </View>
-    </Sheet>
   );
 }

@@ -407,7 +407,7 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
         <div className={settingsCardRows}>
           {(
             [
-              ["calendar", t.invHow14],
+              ["calendar", t.invHowFriend],
               ["people", t.invHow7],
               ["star", t.invHowSub],
             ] as const

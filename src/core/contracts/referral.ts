@@ -35,8 +35,11 @@ export type MyReferralPayload = {
   inviter: InviterLite | null;
 };
 
-/** `POST /api/v1/me/referral` — كودٌ (رابطُ الدعوة) أو معرّفُ عضوٍ (البحثُ بالاسم)، أحدُهما */
-export type ClaimReferralBody = { code?: string; username?: string };
+/**
+ * `POST /api/v1/me/referral` — الكودُ وحدَه: من زرّ «افتح Loopz»، أو ملصوقاً من الحافظة، أو مكتوباً.
+ * 🗑️ المهمة ٤٢٨ — `username` (النسبةُ باختيار الاسم) أُلغي: الاسمُ ليس دليلَ دعوة (قرارُ أحمد ١٨ نوفمبر).
+ */
+export type ClaimReferralBody = { code: string };
 export type ClaimReferralPayload = {
   claimed: boolean;
   inviter: InviterLite | null;
@@ -44,12 +47,10 @@ export type ClaimReferralPayload = {
   source: ReferralSource | null;
   /**
    * 🆕 المراجعةُ المستقلّة — **لماذا لم تُنسب** حين `claimed: false`: رفضٌ دائمٌ لا يُقال له «حاول مجدداً».
-   * `ineligible` حسابي لا يقبل نسبةً (قديم · تابع · نُسب) · `unknown` لا داعيَ بهذا الكود أو الاسم (أو لا يصحّ داعياً) ·
+   * `ineligible` حسابي لا يقبل نسبةً (قديم · تابع · نُسب) · `unknown` لا داعيَ بهذا الكود (أو لا يصحّ داعياً) ·
    * `self` الكودُ كودي · `refused` رفضت الدالّةُ لحارسٍ تغيّر بين الفحص والكتابة.
    */
   reason?: "ineligible" | "unknown" | "self" | "refused";
 };
 
-/** `GET /api/v1/me/referral/people?q=` — من يمكن أن يكون دعاني: بحثُ الأعضاء نفسُه بلا الحساب الرسميّ وبلا نفسي */
-export type ReferralPerson = InviterLite & { username: string };
-export type ReferralPeoplePayload = { people: ReferralPerson[] };
+/* 🗑️ المهمة ٤٢٨ — `GET /api/v1/me/referral/people` (البحثُ بالاسم) حُذف مع النسبة بالاسم. */

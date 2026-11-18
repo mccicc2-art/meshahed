@@ -89,10 +89,13 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
         { kind: "button", href: ANDROID_TEST.optIn, label: t.inviteAndroidInstall },
       ]
     : [{ kind: "button", href: code ? playInviteLink(code) : STORE_URL.android, label: "Google Play" }];
-  const badge = { badgeSrc: `/badges/app-store-${locale === "en" ? "en" : "ar"}.svg`, badgeAlt: t.inviteAppStoreAlt };
+  const badge = { badgeSrc: `/badges/app-store-${locale === "en" ? "en" : "ar"}.svg`, badgeAlt: t.inviteAppStoreAlt, copiedNote: t.inviteCopied };
 
   return (
-    <div className="fixed inset-x-0 top-16 bottom-0 overflow-hidden bg-[#050505] text-white">
+    /* 🆕 المهمة ٤٢٨ — **ملءُ الشاشة كلِّها لا ما تحت الشريط** (`inset-0 z-50`): الشريطان العلويُّ والسفليُّ يغيبان هنا (`isInvitePage`)،
+       والشريطُ الجانبيُّ للحاسوب (`z-40`) تغطّيه الصفحة — فلا بابَ إلى التطبيق إلّا «أو أكمل في المتصفح» (أحمد: «كلها شيلها»).
+       وكان `top-16` يترك على الحاسوب شريطاً أسودَ فارغاً فوق الجدار */
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#050505] text-white">
       {/* العتبةُ تُعلن نفسَها للغلاف فيخفي شريطَه (كصفحة الدخول) — الصفحةُ كلُّها بابٌ واحد */}
       <AppGateSignal />
       <Suspense fallback={null}>
@@ -110,7 +113,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
         aria-hidden
       />
 
-      <div className="relative z-10 flex h-full flex-col items-center overflow-y-auto px-[26px] py-6">
+      <div className="relative z-10 flex h-full flex-col items-center overflow-y-auto px-[26px] pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* `my-auto` لا `justify-center`: البطاقةُ تتوسّط ما دامت تتّسع، وعلى شاشةٍ أقصرَ منها تُمرَّر من أعلاها لا يُقصّ رأسُها */}
         <div className="my-auto w-full max-w-[380px] rounded-sheet border border-white/10 bg-black/40 px-5 pb-[22px] pt-[26px] text-center backdrop-blur-[5px] backdrop-saturate-[1.2]">
           {campaign || !inviter ? (

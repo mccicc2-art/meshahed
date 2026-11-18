@@ -8,7 +8,7 @@ import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
 import { openNative } from "./NativeLibraryFlag";
 import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
-import { isBareDoc } from "@/core/chromeRules";
+import { isBareDoc, isInvitePage } from "@/core/chromeRules";
 
 /* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
    كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
@@ -175,6 +175,8 @@ export function BottomNav({
     pathname === "/welcome" ||
     /* 🆕 D-1345 — الوثيقتان العاريتان: نصٌّ يُقرأ ثمّ يُغلق، بلا بابٍ إلى الموقع (`isBareDoc`) */
     isBareDoc(pathname) ||
+    /* 🆕 المهمة ٤٢٨ — صفحةُ الدعوة بابٌ واحد: مخرجاها زرُّ المتجر و«أو أكمل في المتصفح» (`isInvitePage`) */
+    isInvitePage(pathname) ||
     pathname === "/profile/edit" ||
     /* 🆕 **وملفُّ العضو** (D-643، بحكمه): **زيارةُ ملفٍّ رحلةٌ لها بدايةٌ
        ونهاية** كالإعدادات — دخلتَ لتقرأ عن شخصٍ ثمّ تخرج — **وبابُ

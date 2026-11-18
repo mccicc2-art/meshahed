@@ -47,6 +47,30 @@ export function cleanInviteCode(raw: unknown): string {
 }
 
 /**
+ * 🆕 المهمة ٤٢٨ — **رابطُ الدعوة الذي تنسخه صفحةُ الدعوة إلى حافظة الزائر** (قرارُ أحمد ١٨ نوفمبر «اجل سوي ب»): المتجرُ لا يحمل
+ * شيئاً إلى التطبيق، فمن ثبّت ولم يرجع إلى الصفحة يصل الترحيبَ والرابطُ في حافظته — فيلصقه بزرّ Apple (بلا سؤال النظام) أو
+ * يقرؤه أندرويد وحدَه. رابطٌ كاملٌ لا كودٌ مجرّد: إن لصقه الزائرُ في مكانٍ آخر بقي رابطاً يُفتح.
+ */
+export function inviteShareLink(code: string): string {
+  return `https://loopztv.com/join/${encodeURIComponent(cleanInviteCode(code))}`;
+}
+
+/**
+ * 🆕 المهمة ٤٢٨ — **الكودُ من نصٍّ لصقه العضو**: رابطُ دعوةٍ (`/join/` · `/p/` · `/invite/` على أيّ نطاقٍ لنا) أو الكودُ وحدَه.
+ * ⚖️ **صارمٌ عمداً**: الحافظةُ تحمل أيّ شيء (رقمَ هاتف، كلمةً، رابطاً غريباً)، ونصٌّ لا يشبه دعوتَنا يُقرأ «لا كود» — لا يُرسل
+ * إلى الخادم ليُسأل عنه. الكودُ وحدَه: ٤–١٠ من A-Z0-9 فيه رقمٌ وحرفٌ معاً (كلمةٌ عاديّةٌ منسوخة لا تمرّ). والحكمُ الأخير للخادم.
+ * `pasted`: نصٌّ لصقه العضوُ بيده (زرُّ «لصق») — قصدُه دعوةٌ، فيُقبل الكودُ حروفاً وحدَها أيضاً (كودُ شريكٍ بلا أرقام).
+ */
+export function inviteCodeFromText(raw: string | null | undefined, pasted = false): string | null {
+  const text = String(raw ?? "").trim();
+  if (!text || text.length > 300) return null;
+  const link = text.match(/(?:loopztv\.com|meshahed\.vercel\.app)\/(?:join|p|invite)\/([A-Za-z0-9]{1,10})(?![A-Za-z0-9])/i);
+  if (link) return link[1].toUpperCase();
+  if (/^[A-Za-z0-9]{4,10}$/.test(text) && (pasted || (/[0-9]/.test(text) && /[A-Za-z]/.test(text)))) return text.toUpperCase();
+  return null;
+}
+
+/**
  * 🆕 1.14.1 — عكسُ `playInviteLink`: الكودُ من نصّ مصدر التثبيت كما يعيده Google Play (`ref=ABC123`، مفكوكاً أو مرمَّزاً مرّةً)،
  * أو `null` لمصدرٍ بلا دعوة (`utm_source=google-play&utm_medium=organic`) أو كودٍ لا يصحّ شكلُه.
  */

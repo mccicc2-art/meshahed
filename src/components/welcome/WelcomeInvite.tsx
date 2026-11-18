@@ -7,9 +7,12 @@ import type {
   ClaimReferralPayload,
   InviterLite,
   MyReferralPayload,
-  ReferralPeoplePayload,
-  ReferralPerson,
+  ReferralPreviewPayload,
 } from "@/core/contracts/referral";
+import { cleanInviteCode, inviteCodeFromText } from "@/core/storeLinks";
+
+/** ما كتبه العضو أو لصقه: رابطُ دعوةٍ كامل أو الكودُ وحدَه */
+const typedCode = (raw: string) => inviteCodeFromText(raw, true) ?? cleanInviteCode(raw);
 import { v1Get, v1Post } from "../InboxComposer";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
@@ -30,6 +33,10 @@ type State =
  * ⚖️ **وبلا كودٍ معلَّق**: في الويب يصل الكودُ بكوكي الرابط ويُنسب عند الدخول (`/auth/callback`) — فمن جاء برابطٍ يجد «دعاك فلان»
  * جاهزاً، ومن لم يأتِ به يُسأل ويبحث بالاسم. والنسبةُ تُختم على البطاقة (`onStamp`) — «بدعوة من …».
  * ⚖️ **ليس قفلاً**: «التالي» يمضي بلا جواب، كالتطبيق.
+ *
+ * 🆕 **المهمة ٤٢٨ — الكودُ مكانَ البحث بالاسم** (أحمد ١٨ نوفمبر: «اذا خليته يختار الشخص يسير فيه تلاعب»): الاسمُ ليس دليلَ دعوة —
+ * من شاء اختار من شاء فذهب حقُّ الداعي أو عمولةُ الشريك إلى غيره. الكودُ لا يصل إلّا ممّن أرسل الرابط: يُكتب أو يُلصق هنا
+ * (لصقُ لوحة المفاتيح — لا نقرأ الحافظةَ في الحاسوب، فالمتصفّحُ يسأل عنها)، ثمّ «هل دعاك فلان؟» كما كان.
  */
 export function WelcomeInvite({
   t,
@@ -43,9 +50,7 @@ export function WelcomeInvite({
   const [state, setState] = useState<State>({ kind: "none" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState(false);
-  const [q, setQ] = useState("");
-  const [found, setFound] = useState<ReferralPerson[] | null>(null);
+  const [code, setCode] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -64,21 +69,26 @@ export function WelcomeInvite({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* البحثُ بعد حرفين ونصفِ ثانية — رقما ورقة التطبيق */
-  const term = q.trim();
-  useEffect(() => {
-    if (!search || term.length < 2) return;
-    let live = true;
-    const timer = setTimeout(() => {
-      v1Get<ReferralPeoplePayload>(`/api/v1/me/referral/people?q=${encodeURIComponent(term)}`).then((r) => {
-        if (live) setFound(r?.people ?? []);
-      });
-    }, 350);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [search, term]);
+  /* الكودُ أوّلاً: من صاحبُه؟ — ثمّ «هل دعاك فلان؟». كودُ الحملة يُنسب بلا سؤال (لا يأتي إلّا من رابطنا) */
+  async function look() {
+    const clean = typedCode(code);
+    if (busy || clean.length < 4) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const pre = await v1Get<ReferralPreviewPayload>(`/api/v1/referral/${encodeURIComponent(clean)}`);
+      if (!pre?.inviter) setError(t.refCodeUnknown);
+      else if (pre.source === "campaign") {
+        setBusy(false);
+        await claim({ code: clean });
+        return;
+      } else setState({ kind: "confirm", who: pre.inviter, by: { code: clean } });
+    } catch {
+      setError(t.refFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function claim(by: ClaimReferralBody) {
     if (busy) return;
@@ -109,15 +119,7 @@ export function WelcomeInvite({
   if (state.kind === "ask")
     return (
       <div className={box}>
-        <button
-          type="button"
-          onClick={() => {
-            setSearch((v) => !v);
-            setError(null);
-          }}
-          aria-expanded={search}
-          className="w-full flex items-center gap-3 text-start"
-        >
+        <div className="flex items-center gap-3">
           <span className="w-11 h-11 shrink-0 rounded-full grid place-items-center bg-[#ffd400] text-black">
             <Icon name="person-plus" size={20} />
           </span>
@@ -125,54 +127,34 @@ export function WelcomeInvite({
             <span className="block font-bold text-[15px]">{t.refAsk}</span>
             <span className="block text-12 text-white/65 mt-0.5">{t.refAskHint}</span>
           </span>
-          <Icon name="chevron-down" size={18} className={`text-white/70 transition ${search ? "rotate-180" : ""}`} />
-        </button>
-        {search && (
-          <div className="mt-3">
-            <label className="sr-only" htmlFor="ws-ref-q">
-              {t.refSearchLabel}
-            </label>
-            <input
-              id="ws-ref-q"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                if (e.target.value.trim().length < 2) setFound(null);
-              }}
-              maxLength={40}
-              autoFocus
-              placeholder={t.refSearchPlaceholder}
-              className="w-full h-11 rounded-xl border border-white/15 bg-black/50 px-3.5 text-[15px] outline-none focus:border-[#ffd400] placeholder:text-white/40"
-            />
-            {found && found.length === 0 && term.length >= 2 && (
-              <p className="text-12 text-white/60 mt-2.5 text-center">{t.refSearchNone}</p>
-            )}
-            {found && found.length > 0 && term.length >= 2 && (
-              <ul className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 divide-y divide-white/10 bg-black/40">
-                {found.slice(0, 6).map((p) => (
-                  <li key={p.username}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch(false);
-                        setState({ kind: "confirm", who: p, by: { username: p.username } });
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-white/5"
-                    >
-                      <Avatar src={p.avatar_url} name={p.name ?? p.username} size={34} />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold truncate">{p.name ?? p.username}</span>
-                        <span className="block text-12 text-white/55 truncate" dir="ltr">
-                          @{p.username}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        </div>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void look();
+          }}
+        >
+          <label className="sr-only" htmlFor="ws-ref-code">
+            {t.refCodeLabel}
+          </label>
+          <input
+            id="ws-ref-code"
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value);
+              setError(null);
+            }}
+            maxLength={80}
+            dir="ltr"
+            autoComplete="off"
+            placeholder={t.refCodePlaceholder}
+            className="flex-1 min-w-0 h-11 rounded-xl border border-white/15 bg-black/50 px-3.5 text-[15px] outline-none focus:border-[#ffd400] placeholder:text-white/40"
+          />
+          <button type="submit" disabled={busy || typedCode(code).length < 4} className={buttonClass({ size: "md" })}>
+            {t.refCodeGo}
+          </button>
+        </form>
         {error && <p className="text-12 text-[color:var(--error)] mt-2">{error}</p>}
       </div>
     );

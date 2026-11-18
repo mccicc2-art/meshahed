@@ -46,7 +46,7 @@ export async function inviterById(id: string): Promise<InviterLite | null> {
  * 🆕 المراجعةُ المستقلّة — **من لا يصحّ أن يكون داعياً**: الحسابُ الرسميّ، وشخصيّاتُ Loopz AI (ملفّاتٌ عاديّةٌ بلا `is_system`،
  * فيعيدها بحثُ الأعضاء — ولو اختيرت لمنحتها `qualify_referral` أيّاماً ومكافآت)، والموقوف (`suspended_at`، الهجرة ١٧٣).
  * 🆕 المهمة ٣٩٣ — `campaign`: الحسابُ الرسميُّ يصحّ داعياً **بكوده وحدَه** (رابطُ حملة X، الهجرة ٢٤٧) لأنّ مصدرَه `campaign` لا
- * مكافأةَ فيه. ولا يُختار بالاسم أبداً (`codeForUsername` لا يمرّر `campaign`): من كتب «لوبز» لم يأتِ من رابط الحملة.
+ * مكافأةَ فيه. (والاختيارُ بالاسم أُلغي كلُّه في المهمة ٤٢٨ — الكودُ وحدَه يَنسب.)
  */
 async function canInvite(db: Awaited<ReturnType<typeof createServiceClient>>, id: string, campaign = false): Promise<boolean> {
   if (isPersonaId(id) || (isLoopz(id) && !campaign)) return false;
@@ -98,39 +98,9 @@ export async function referralState(userId: string, createdAt: string | undefine
   }
 }
 
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-/**
- * كودُ العضو الذي اختاره المدعوّ بالاسم — كودُ شريكه إن كان شريكاً (فالنسبةُ تصل عمولتَه)، وإلّا كودُ صديقه، وإلّا يُولَّد له
- * كودٌ بأبجديّة `my_referral_code` نفسِها وطولِها (ثمانية): من لم يفتح صفحةَ دعواته قطّ قد دعا صديقاً بالكلام.
- * ⚖️ لا يُختار من لا يصحّ داعياً (`canInvite`) ولا حسابٌ مخفيُّ الاسم (لم يُعرض في البحث أصلاً) — والطلبُ المباشرُ
- * بالمعرّف يمرّ بالحارس نفسِه، لا بالبحث وحدَه.
- */
-export async function codeForUsername(username: string): Promise<{ code: string; userId: string; source: "friend" | "partner" } | null> {
-  const handle = username.trim().replace(/^@/, "").toLowerCase();
-  if (!handle) return null;
-  try {
-    const db = await createServiceClient();
-    const who = await db.from("public_profiles").select("id, hide_name").eq("username", handle).maybeSingle();
-    const id = who.data?.id ? String(who.data.id) : null;
-    if (!id || who.data?.hide_name || !(await canInvite(db, id))) return null;
-    const partner = await db.from("partners").select("code").eq("user_id", id).maybeSingle();
-    if (partner.data?.code) return { code: String(partner.data.code), userId: id, source: "partner" };
-    const friend = await db.from("referral_codes").select("code").eq("user_id", id).maybeSingle();
-    if (friend.data?.code) return { code: String(friend.data.code), userId: id, source: "friend" };
-    for (let i = 0; i < 6; i++) {
-      const candidate = Array.from({ length: 8 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join("");
-      const ins = await db.from("referral_codes").insert({ user_id: id, code: candidate });
-      if (!ins.error) return { code: candidate, userId: id, source: "friend" };
-      /* تصادمٌ على الكود أو سبقَنا صاحبُه فولّد كودَه — يُقرأ ما كُتب */
-      const again = await db.from("referral_codes").select("code").eq("user_id", id).maybeSingle();
-      if (again.data?.code) return { code: String(again.data.code), userId: id, source: "friend" };
-    }
-  } catch {
-    /* صفرٌ صامت */
-  }
-  return null;
-}
+/* 🗑️ المهمة ٤٢٨ — `codeForUsername` (النسبةُ باختيار الاسم) حُذف: قرارُ أحمد ١٨ نوفمبر «اذا خليته يختار الشخص يسير فيه تلاعب».
+   الاسمُ ليس دليلَ دعوة — المدعوُّ يختار من شاء فيذهب حقُّ الداعي الحقيقيّ أو عمولةُ شريكٍ إلى غيره. الكودُ وحدَه دليل:
+   لا يصل إلّا ممّن أرسل الرابط. */
 
 /**
  * 🆕 البند ٢ (قرارُ أحمد «٢ أ») — **الاحتسابُ يُعاد فحصُه مع نبضة الحضور**: كان لا يُفحص إلّا عند إضافة عملٍ أو إنهاء استيراد،

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { buttonClass } from "@/components/ui/Button";
+import { inviteShareLink } from "@/core/storeLinks";
 
 /**
  * ====== 🆕 زرُّ الدعوة الواحد — المهمة ٤٢١ (قرارُ أحمد ١٨ نوفمبر: «دمج الخطوتين») ======
@@ -20,6 +21,10 @@ import { buttonClass } from "@/components/ui/Button";
  * 🔑 **متى يتبدّل؟** حين **تعود الصفحةُ إلى الواجهة** بعد الضغط (`visibilitychange` · `pageshow`) لا لحظةَ الضغط: من
  * ضغط ولم يغادر لا يجد الزرَّ تغيّر تحت إصبعه. والمرحلةُ تُحفظ في `localStorage` لكلِّ كود **لحظةَ الضغط**، فمن رجع بـ«رجوع»
  * أعاد المتصفّحُ رسمَ الصفحة من جديد يجد المرحلةَ التالية أيضاً. ⚠️ التخزينُ قد يُرفض (تصفّحٌ خاصّ) — فيبقى التبدّلُ في الذاكرة.
+ *
+ * 🆕 **المهمة ٤٢٨ — ومع الضغطة يُنسخ رابطُ الدعوة إلى الحافظة** (قرارُ أحمد «اجل سوي ب»): من ثبّت التطبيقَ ودخله دون أن يرجع
+ * إلى هنا يجد في الترحيب زرَّ «لصق» (iPhone، زرُّ Apple بلا سؤال النظام) أو يقرؤه أندرويد وحدَه — فلا يضيع حقُّ داعيه.
+ * النسخُ داخل الضغطة نفسِها: المتصفّحُ لا يكتب في الحافظة إلّا بفعلٍ من صاحبها. وسطرٌ صغيرٌ يقول له ما حدث.
  */
 
 export type InviteStep = { kind: "badge"; href: string } | { kind: "button"; href: string; label: string };
@@ -29,6 +34,7 @@ export function InviteCta({
   code,
   badgeSrc,
   badgeAlt,
+  copiedNote,
 }: {
   /** مراحلُ هذا الجهاز بالترتيب — الأخيرةُ «افتح Loopz» لا تتقدّم */
   steps: InviteStep[];
@@ -36,10 +42,13 @@ export function InviteCta({
   code: string;
   badgeSrc: string;
   badgeAlt: string;
+  /** «نسخنا رابط دعوتك…» — يظهر بعد نسخٍ نجح */
+  copiedNote: string;
 }) {
   const key = `loopz:invite-step:${code}`;
   const last = steps.length - 1;
   const [at, setAt] = useState(0);
+  const [copied, setCopied] = useState(false);
   /* المرحلةُ التي تنتظر رجوعَ الزائر — تُعرض حين تعود الصفحةُ إلى الواجهة */
   const pending = useRef<number | null>(null);
 
@@ -69,6 +78,17 @@ export function InviteCta({
   const step = steps[Math.min(at, last)];
   const leave = () => {
     if (at >= last) return;
+    /* الحافظةُ قد تُرفض (متصفّحٌ داخل تطبيق، صفحةٌ بلا HTTPS) — يبقى زرُّ «افتح Loopz» وحقلُ الكود في الترحيب */
+    if (code) {
+      try {
+        void navigator.clipboard
+          ?.writeText(inviteShareLink(code))
+          .then(() => setCopied(true))
+          .catch(() => {});
+      } catch {
+        /* لا شيء */
+      }
+    }
     pending.current = at + 1;
     try {
       window.localStorage.setItem(key, String(at + 1));
@@ -79,21 +99,28 @@ export function InviteCta({
   /* المتجرُ والقروبُ في لسانٍ جديد فتبقى الصفحةُ حيّةً تنتظر الرجوع؛ و«افتح Loopz» عنوانُ التطبيق الخاصّ في اللسان نفسِه */
   const external = at < last;
 
+  const note = copied ? <p className="mt-2 text-center text-12 leading-relaxed text-white/80">{copiedNote}</p> : null;
   if (step.kind === "badge") {
     return (
-      <a href={step.href} target="_blank" rel="noopener" onClick={leave} className="block transition active:scale-[0.98]">
-        <Image src={badgeSrc} alt={badgeAlt} width={162} height={54} unoptimized priority className="h-[54px] w-auto" />
-      </a>
+      <div className="flex flex-col items-center">
+        <a href={step.href} target="_blank" rel="noopener" onClick={leave} className="block transition active:scale-[0.98]">
+          <Image src={badgeSrc} alt={badgeAlt} width={162} height={54} unoptimized priority className="h-[54px] w-auto" />
+        </a>
+        {note}
+      </div>
     );
   }
   return (
-    <a
-      href={step.href}
-      {...(external ? { target: "_blank", rel: "noopener" } : {})}
-      onClick={leave}
-      className={buttonClass({ size: "lg", full: true })}
-    >
-      {step.label}
-    </a>
+    <div className="w-full">
+      <a
+        href={step.href}
+        {...(external ? { target: "_blank", rel: "noopener" } : {})}
+        onClick={leave}
+        className={buttonClass({ size: "lg", full: true })}
+      >
+        {step.label}
+      </a>
+      {at < last ? note : null}
+    </div>
   );
 }

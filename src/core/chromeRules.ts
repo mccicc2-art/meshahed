@@ -108,9 +108,20 @@ export function isBareDoc(pathname: string): boolean {
   return pathname === "/app/terms" || pathname === "/app/privacy";
 }
 
+/**
+ * 🆕 المهمة ٤٢٨ — **صفحةُ الدعوة بابٌ واحد** (`/invite/<code>`، تسجيلُ خالد ورسالةُ أحمد ١٨ نوفمبر: «كلها شيلها — المفترض ما يقدر
+ * يتصفح التطبيق فالصفحة هذي الا اذا ضغط اكمل الى المتصفح»): شريطُ التطبيق والشريطُ السفليّ فوقها كانا يأخذان المدعوَّ إلى المجتمع
+ * والإعدادات قبل أن يصل المتجر. مخرجاها اثنان لا ثالث لهما: زرُّ المتجر و«أو أكمل في المتصفح». يسأله `HeaderShell` و`BottomNav`
+ * معاً — والشريطُ الجانبيُّ للحاسوب تغطّيه الصفحةُ نفسُها (`fixed inset-0 z-50` فوق `z-40`).
+ */
+export function isInvitePage(pathname: string): boolean {
+  return pathname.startsWith("/invite/");
+}
+
 export function hidesAppHeader(pathname: string): boolean {
   return (
     isBareDoc(pathname) ||
+    isInvitePage(pathname) ||
     /* 🆕 D-1341 — **الترحيبُ بوّابةٌ بلا أبوابٍ جانبيّة** (قرارُ أحمد ١٧): شريطُ التطبيق يحمل الظرفَ
        والجرسَ والإعدادات — ثلاثةُ مخارجَ فوق شاشةٍ لا يُخرج منها إلّا بإتمامها. الحارسُ (`proxy`) يردّ من
        يضغطها، وزرٌّ يُضغط فيعيدك إلى حيث كنت عطلٌ في عين صاحبه. الخروجُ الوحيدُ «بدّل الحساب». */
