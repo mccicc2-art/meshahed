@@ -1,6 +1,8 @@
 import { getT } from "@/lib/locale";
 import { SearchScreen } from "@/components/SearchScreen";
 import { trendingSearch } from "@/lib/searchCore";
+import { getFollows, getUser, getWatchedMovieIds } from "@/lib/data";
+import { getLibState } from "@/lib/libState";
 import type { SearchScope } from "@/core/searchTypes";
 
 /**
@@ -33,7 +35,25 @@ export default async function SearchPage({
 
   /* 🆕 «رائج اليوم» (٣ أكتوبر ٢٠٢٦): تُقرأ هنا لا من العميل — الصفحةُ تصل وقائمتُها فيها، بلا وميضِ
      نصّ «ابدأ» ثمّ قفزة. ومن جاء برابطٍ فيه نصٌّ لا يراها أصلاً فلا تُطلب له. لا ترمي (قائمةٌ فارغة). */
-  const trending = q.trim() ? [] : await trendingSearch();
+  const [trending, lib] = await Promise.all([q.trim() ? Promise.resolve([]) : trendingSearch(), libKeys()]);
 
-  return <SearchScreen locale={locale} initialQ={q} initialScope={scope} trending={trending} />;
+  return <SearchScreen locale={locale} initialQ={q} initialScope={scope} trending={trending} lib={lib} />;
+}
+
+/**
+ * 🆕 R265 — **مفاتيحُ مكتبتك لبوسترات الحاسوب** («+» حين لا يكون العملُ عندك، وعلامةُ «شاهدته»). نفسُ ما تقرؤه
+ * `getLibState` (المتابعاتُ والحلقاتُ والأفلامُ المشاهَدة — نداءاتٌ مخبَّأةٌ في الطلب)، مسطّحاً إلى سلاسلَ لأنّ الشاشةَ
+ * عميل. للزائر `undefined` فلا زرّ. ولا ترمي: مكتبةٌ لم تُقرأ تعني بوستراتٍ بلا علامة، لا صفحةً ساقطة.
+ */
+async function libKeys(): Promise<{ added: string[]; watched: string[] } | undefined> {
+  try {
+    if (!(await getUser())) return undefined;
+    const [follows, movies, state] = await Promise.all([getFollows(), getWatchedMovieIds(), getLibState()]);
+    const added = follows.map((f) => `${f.media_type}-${f.tmdb_id}`);
+    const watched = new Set<string>([...movies].map((id) => `movie-${id}`));
+    for (const f of follows) if (state.of(f.tmdb_id, f.media_type).watched) watched.add(`${f.media_type}-${f.tmdb_id}`);
+    return { added, watched: [...watched] };
+  } catch {
+    return undefined;
+  }
 }

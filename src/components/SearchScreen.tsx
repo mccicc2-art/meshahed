@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { getDict, type Locale } from "@/core/i18n";
 import { aiStorySearch } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
@@ -12,6 +12,7 @@ import { chipClass, chipRow } from "./ui/controls";
 import { Icon, type IconName } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
 import { PersonName } from "./PersonRow";
+import { PosterCard } from "./PosterCard";
 import { SettingsHeader } from "./settings/SettingsHeader";
 import { buttonClass } from "./ui/Button";
 import type {
@@ -66,8 +67,11 @@ export function SearchScreen({
   initialQ = "",
   initialScope = "all",
   trending = [],
+  lib,
 }: {
   locale: Locale;
+  /** 🆕 R265 — مفاتيحُ مكتبتك (`tv-123`) لزرّ «+» وعلامة «شاهدته» على بوسترات الحاسوب — `undefined` للزائر فلا زرّ */
+  lib?: { added: string[]; watched: string[] };
   /** نصُّ رابطٍ عميق (`?q=`) — والصفحةُ تُفتح به مكتوباً ومبحوثاً */
   initialQ?: string;
   initialScope?: SearchScope;
@@ -75,6 +79,7 @@ export function SearchScreen({
   trending?: SearchTrendingItem[];
 }) {
   const t = getDict(locale);
+  const libSets = useMemo(() => (lib ? { added: new Set<string>(lib.added), watched: new Set<string>(lib.watched) } : null), [lib]);
   const [q, setQ] = useState(initialQ);
   const [scope, setScope] = useState<SearchScope>(initialScope);
   const [data, setData] = useState<SearchPayload | null>(null);
@@ -408,6 +413,8 @@ export function SearchScreen({
                خطّة 11-G): الصفُّ صفُّ النتيجة نفسُه برقم ترتيبه، فلا تقفز الشاشةُ حين تحلّ النتائجُ محلَّه.
                **وبلا علامةِ «عندك»** («ما يحتاج تقله عندك، هذا ترند»). وإن غابت القائمةُ عاد النصُّ القديم. */
             trending.length ? (
+              <>
+              <div className="desk:hidden">
               <Section title={t.searchTrendingToday} show seeAll={null} t={t}>
                 {trending.map((r, i) => (
                   <TitleRow
@@ -419,6 +426,12 @@ export function SearchScreen({
                   />
                 ))}
               </Section>
+              </div>
+              {/* 🆕 R265 — «رائج اليوم» على الحاسوب بوسترات بأرقام الترتيب (أحمد ١٨ نوفمبر — «أ») */}
+              <DeskSection title={t.searchTrendingToday} seeAll={null} t={t}>
+                <DeskTitles items={trending} ranked lib={libSets} locale={locale} t={t} />
+              </DeskSection>
+              </>
             ) : (
               <p className="text-center text-muted py-16">{t.searchStart}</p>
             )
@@ -435,7 +448,57 @@ export function SearchScreen({
               </p>
             </div>
           ) : data ? (
-            <div className="space-y-6">
+            <>
+            {/* 🆕 R265 — **النتائجُ على الحاسوب شبكة** (أحمد ١٨ نوفمبر — «أ»): الأعمالُ بوسترات (البحثُ غالباً تعرّفٌ على عمل،
+                والبوسترُ أسرعُ من القراءة)، والفنانون صورٌ دائريّة في صفّ، والأعضاءُ والقوائمُ جنباً إلى جنب. الصفوفُ
+                نفسُها (`PersonName` · `ListRow`) والبطاقةُ `PosterCard` الواحدة (القاعدة ٣). وتحت ١٢٨٠ الصفوفُ كما هي. */}
+            <div className="hidden desk:block space-y-8">
+              {data.titles.length ? (
+                <DeskSection title={t.searchModeTitles} seeAll={scope === "all" && data.more.titles ? () => setScope("titles") : null} t={t}>
+                  <DeskTitles items={data.titles} lib={libSets} locale={locale} t={t} />
+                </DeskSection>
+              ) : null}
+              {data.artists.length ? (
+                <DeskSection title={t.searchTabArtists} seeAll={scope === "all" && data.more.artists ? () => setScope("artists") : null} t={t}>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-4">
+                    {data.artists.map((a) => (
+                      <Link key={a.id} href={`/person/${a.id}`} prefetch={false} className="group flex flex-col items-center gap-2 text-center">
+                        <span className="relative block h-24 w-24 overflow-hidden rounded-full bg-surface-2 border border-border">
+                          {a.photo ? <Image src={a.photo} alt="" fill sizes="96px" className="object-cover" /> : <span className="grid h-full w-full place-items-center text-muted"><Icon name="people" size={26} /></span>}
+                        </span>
+                        <span className="w-full truncate text-14 font-bold group-hover:text-accent transition">{a.name}</span>
+                        <span className="-mt-1.5 w-full truncate text-12 text-muted">{a.role}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </DeskSection>
+              ) : null}
+              {data.members.length || data.lists.length ? (
+                <div className="grid grid-cols-2 gap-6 items-start">
+                  {data.members.length ? (
+                    <DeskSection title={t.searchTabMembers} seeAll={scope === "all" && data.more.members ? () => setScope("members") : null} t={t}>
+                      <div className="rounded-2xl border border-border bg-surface px-4 py-1.5 divide-y divide-[color:var(--divider)]">
+                        {data.members.map((m) => (
+                          <div key={m.id} className="py-2.5">
+                            <PersonName person={m} t={t} size={40} sub={t.searchMemberRole} />
+                          </div>
+                        ))}
+                      </div>
+                    </DeskSection>
+                  ) : <span />}
+                  {data.lists.length ? (
+                    <DeskSection title={t.searchTabLists} seeAll={scope === "all" && data.more.lists ? () => setScope("lists") : null} t={t}>
+                      <div className="rounded-2xl border border-border bg-surface px-4 py-1.5 divide-y divide-[color:var(--divider)]">
+                        {data.lists.map((l) => (
+                          <ListRow key={l.id} l={l} t={t} />
+                        ))}
+                      </div>
+                    </DeskSection>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="space-y-6 desk:hidden">
               <Section
                 title={t.searchModeTitles}
                 show={data.titles.length > 0}
@@ -482,6 +545,7 @@ export function SearchScreen({
                 ))}
               </Section>
             </div>
+            </>
           ) : null}
         </div>
       )}
@@ -548,6 +612,72 @@ function Section({
 }
 
 /** ذيلُ الصفّ — سهمٌ يقول «هذا بابٌ يُفتح»، مُدارٌ مع الاتّجاه */
+/** 🆕 R265 — رأسُ قسمٍ للحاسوب: عنوانٌ أكبر و«عرض الكل» في طرفه — والقسمُ يُرسم في الحاسوب وحده */
+function DeskSection({ title, seeAll, t, children }: { title: string; seeAll: (() => void) | null; t: Dict; children: React.ReactNode }) {
+  return (
+    <section className="hidden desk:block">
+      <div className="mb-3 flex items-baseline gap-3">
+        <h2 className="text-20 font-bold">{title}</h2>
+        {seeAll ? (
+          <button type="button" onClick={seeAll} className="ms-auto shrink-0 text-14 font-bold text-accent hover:opacity-80 transition">
+            {t.searchSeeAll}
+          </button>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * 🆕 R265 — **أعمالُ البحث بوسترات** — `PosterCard` نفسُها بزرّ «+» حين لا يكون العملُ في مكتبتك (للعضو وحده)، وعلامةِ
+ * «شاهدته». و«رائج اليوم» يحمل رقمَ ترتيبه على البوستر كما يحمله الصفُّ في الجوال.
+ */
+function DeskTitles({
+  items,
+  ranked = false,
+  lib,
+  locale,
+  t,
+}: {
+  items: (SearchTitle & { anime?: boolean })[];
+  ranked?: boolean;
+  lib: { added: Set<string>; watched: Set<string> } | null;
+  locale: Locale;
+  t: Dict;
+}) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
+      {items.map((r, i) => {
+        const key = `${r.mediaType}-${r.id}`;
+        return (
+          <div key={key} className="relative min-w-0">
+            <PosterCard
+              href={`/${r.mediaType === "tv" ? "show" : "movie"}/${r.id}`}
+              title={r.title}
+              titleSecondary={r.titleSecondary ?? null}
+              posterPath={r.posterPath ?? null}
+              posterSize="w342"
+              year={[r.anime ? t.animeBadge : r.mediaType === "tv" ? t.typeSeries : t.typeMovie, r.year].filter(Boolean).join(" · ")}
+              watched={!!lib?.watched.has(key)}
+              quickAdd={lib ? { tmdbId: r.id, mediaType: r.mediaType, added: lib.added.has(key), locale } : undefined}
+              titleBelow
+            />
+            {ranked ? (
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute start-2 top-[calc(100%*0.62)] text-[44px] font-black leading-none tabular-nums [text-shadow:0_2px_10px_rgba(0,0,0,.8)] ${i < 3 ? "text-accent" : "text-white"}`}
+              >
+                {i + 1}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Tail() {
   return (
     <Icon
