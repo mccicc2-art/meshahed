@@ -8,7 +8,7 @@ import { limited } from "@/lib/v1";
 import { inviterById, ownerOfCode } from "@/lib/referral";
 import { welcomeSeeds } from "@/lib/welcomeSeeds";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
-import { ANDROID_TEST, appInviteLink, cleanInviteCode, playInviteLink, STORE_URL } from "@/core/storeLinks";
+import { androidOpenLink, ANDROID_TEST, appInviteLink, cleanInviteCode, playInviteLink, STORE_URL } from "@/core/storeLinks";
 import { Avatar } from "@/components/Avatar";
 import { AppGateSignal } from "@/components/AppGateSignal";
 import { InviteCta, type InviteStep } from "./InviteCta";
@@ -81,15 +81,36 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   const title = campaign ? t.invitePageTitleCampaign : name ? t.invitePageTitle(name) : t.invitePageTitleAnon;
 
   /* المراحلُ لكلِّ جهاز — «افتح Loopz» آخرُها على الجوّال وحدَه، ولا يكون بلا كود */
-  const open: InviteStep[] = code ? [{ kind: "button", href: appInviteLink(code), label: t.inviteOpenLoopz }] : [];
   const ios: InviteStep[] = [{ kind: "badge", href: STORE_URL.ios }];
-  const android: InviteStep[] = ANDROID_TEST.closed
+  const androidPages = ANDROID_TEST.closed
     ? [
-        { kind: "button", href: ANDROID_TEST.group, label: t.inviteAndroidJoin },
-        { kind: "button", href: ANDROID_TEST.optIn, label: t.inviteAndroidInstall },
+        { href: ANDROID_TEST.group, label: t.inviteAndroidJoin },
+        { href: ANDROID_TEST.optIn, label: t.inviteAndroidInstall },
       ]
-    : [{ kind: "button", href: code ? playInviteLink(code) : STORE_URL.android, label: "Google Play" }];
-  const badge = { badgeSrc: `/badges/app-store-${locale === "en" ? "en" : "ar"}.svg`, badgeAlt: t.inviteAppStoreAlt, copiedNote: t.inviteCopied };
+    : [{ href: code ? playInviteLink(code) : STORE_URL.android, label: "Google Play" }];
+  /* 🆕 المهمة ٤٣٤ — على أندرويد كلُّ زرٍّ يفتح Loopz إن كان مثبّتاً وإلّا صفحتَه (`androidOpenLink`)؛ الحاسوبُ يأخذ الصفحةَ نفسَها */
+  const android: InviteStep[] = androidPages.map((p) => ({
+    kind: "button" as const,
+    href: code && device === "android" ? androidOpenLink(code, p.href) : p.href,
+    label: p.label,
+  }));
+  /* iPhone: عنوانُ التطبيق الخاصّ (رجع من المتجر فالتطبيقُ مثبّت)؛ أندرويد: الرابطُ نفسُه يرجع إلى صفحة التجربة إن لم يكن */
+  const open: InviteStep[] = code
+    ? [
+        {
+          kind: "button",
+          href: device === "android" ? androidOpenLink(code, androidPages[0].href) : appInviteLink(code),
+          label: t.inviteOpenLoopz,
+        },
+      ]
+    : [];
+  const badge = {
+    badgeSrc: `/badges/app-store-${locale === "en" ? "en" : "ar"}.svg`,
+    badgeAlt: t.inviteAppStoreAlt,
+    copiedNote: t.inviteCopied,
+    noAppLabel: t.inviteNoApp,
+    newTab: device === "desktop",
+  };
 
   return (
     /* 🆕 المهمة ٤٢٨ — **ملءُ الشاشة كلِّها لا ما تحت الشريط** (`inset-0 z-50`): الشريطان العلويُّ والسفليُّ يغيبان هنا (`isInvitePage`)،

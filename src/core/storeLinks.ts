@@ -31,6 +31,18 @@ export function appInviteLink(code: string): string {
 }
 
 /**
+ * 🆕 المهمة ٤٣٤ — **زرُّ أندرويد يفتح Loopz إن كان مثبّتاً، وإلّا يذهب إلى `fallback`** (قرارُ أحمد ١٩ نوفمبر: «إذا ضغط والتطبيقُ
+ * عنده يدخله للتطبيق، وإذا ما عنده يوديه للمتجر»). رابطُ `intent://` يسأل Chrome أندرويد نفسَه: الحزمةُ مثبّتة ⇠ يُسلَّم
+ * `com.loopztv.app://join/<CODE>` للتطبيق (يقرؤه `+native-intent.tsx` كما يقرأ زرَّ «افتح Loopz»)، وغيرُ مثبّتة ⇠ يفتح
+ * `browser_fallback_url` بلا رسالة خطأ. ⚖️ لا شيءَ في التطبيق يتغيّر: العنوانُ الخاصُّ معلَنٌ في كلِّ بناءٍ منذ ٣٧٠.
+ * 🍎 iPhone لا يملك مثلَه في الويب — Safari لا يخبر الصفحةَ بما ثُبّت، ومحاولةُ الفتح بلا تطبيقٍ تُظهر خطأً — فشارتُه تذهب إلى
+ * App Store دائماً، ومن عنده التطبيقُ يجد هناك «فتح» (قرارُ أحمد «١ أ»).
+ */
+export function androidOpenLink(code: string, fallback: string): string {
+  return `intent://join/${encodeURIComponent(cleanInviteCode(code))}#Intent;scheme=${APP_SCHEME};package=${APP_SCHEME};S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
+}
+
+/**
  * 🆕 1.14.1 — **رابطُ Google Play في صفحة الدعوة يحمل الكود** (`referrer=ref%3D<CODE>`): Play يعيده للتطبيق بعد التثبيت
  * (`apps/mobile/src/invite/installReferrer.ts`) فيعرف الترحيبُ مَن دعا العضوَ دون أن يرجع للصفحة. App Store لا يحمل مثله.
  */

@@ -1867,6 +1867,7 @@ const ar = {
   inviteDesktopHint: "افتح هذا الرابط من جوالك لتنزيل التطبيق، أو أكمل هنا في المتصفح.",
   /* 🆕 المهمة ٤٢٨ — الكودُ وحدَه يَنسب (أحمد: «اذا خليته يختار الشخص يسير فيه تلاعب»): الصفحةُ تنسخ الرابط، والترحيبُ يلصقه */
   inviteCopied: "نسخنا رابط دعوتك، فإن دخلت التطبيق مباشرةً فالصقه في أول خطوة.",
+  inviteNoApp: "ما عندك التطبيق؟ نزّله",
   refAsk: "جاءك رابط دعوة؟",
   refAskHint: "الصقه أو اكتب كوده لتُحسب دعوتك — ودعوةُ الصديق تهديك ١٤ يومًا من Loopz Plus",
   refPaste: "لصق",
@@ -4704,6 +4705,7 @@ const en: Dict = {
   inviteContinueWeb: "Or continue in the browser",
   inviteDesktopHint: "Open this link on your phone to get the app, or continue here in the browser.",
   inviteCopied: "We copied your invite link — if you open the app directly, paste it in the first step.",
+  inviteNoApp: "Don't have the app? Get it",
   refAsk: "Got an invite link?",
   refAskHint: "Paste it or type its code so your invite counts — a friend's invite gives you 14 days of Loopz Plus",
   refPaste: "Paste",

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inviteCodeFromReferrer, inviteCodeFromText, inviteShareLink, playInviteLink } from "./storeLinks.ts";
+import { androidOpenLink, inviteCodeFromReferrer, inviteCodeFromText, inviteShareLink, playInviteLink } from "./storeLinks.ts";
 
 test("playInviteLink carries the code in Play's referrer parameter", () => {
   const url = new URL(playInviteLink("ab12"));
@@ -39,4 +39,12 @@ test("clipboard text that is not an invite yields nothing", () => {
   assert.equal(inviteCodeFromText("0551234567"), null);
   assert.equal(inviteCodeFromText("https://example.com/join/AB12"), null);
   assert.equal(inviteCodeFromText("loopztv.com/join/TOOLONGCODE1"), null);
+});
+
+test("androidOpenLink opens the app by its scheme and falls back to the given page", () => {
+  const link = androidOpenLink("7ysj-89cu", "https://groups.google.com/g/loopz-testers");
+  assert.equal(
+    link,
+    "intent://join/7YSJ89CU#Intent;scheme=com.loopztv.app;package=com.loopztv.app;S.browser_fallback_url=https%3A%2F%2Fgroups.google.com%2Fg%2Floopz-testers;end",
+  );
 });
