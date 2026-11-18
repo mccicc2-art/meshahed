@@ -29,6 +29,9 @@ export default async function Page() {
     <SettingsPageLayout title={t.setPrivacy}>
       {/* **بلا عنوانِ قسم**: هذه هي الصفحةُ نفسُها، **وعنوانٌ يكرّر
           عنوانَ الترويسة فوقه مباشرةً كلمةٌ ضائعة.** */}
+      {/* 🆕 R270 — **الخصوصيةُ على الحاسوب** (أحمد ١٩ نوفمبر): المفاتيحُ الثلاثة و«من يقدر يراسلني» جنباً إلى جنب، ثمّ
+          «من يرى مكتبتي» والمحظورون جنباً إلى جنب — المكوّناتُ نفسُها، والشبكةُ وحدها جديدة. وتحت ١٢٨٠ كما كانت. */}
+      <div className="desk:hidden space-y-4">
       <AccountSettings
         locale={locale}
         initialNickname={p?.nickname ?? ""}
@@ -48,6 +51,31 @@ export default async function Page() {
         <LibraryAccessList locale={locale} />
         <BlockedList locale={locale} />
       </SettingsGroup>
+      </div>
+      <div className="hidden desk:grid grid-cols-2 items-start gap-4">
+      <AccountSettings
+        locale={locale}
+        initialNickname={p?.nickname ?? ""}
+        avatarUrl={p?.avatar_url ?? null}
+        genres={p?.favorite_genres ?? []}
+        initialHideName={!!p?.hide_name}
+        initialIsPrivate={!!p?.is_private}
+        initialHideFollowLists={
+          !!(p as { hide_follow_lists?: boolean } | null)?.hide_follow_lists
+        }
+        only={["hideName", "privateAccount", "followLists"]}
+      />
+
+      <SettingsGroup label={t.setGroupPeople}>
+        <DmPolicySection locale={locale} initial={dmPolicy} />
+      </SettingsGroup>
+      <SettingsGroup>
+        <LibraryAccessList locale={locale} />
+      </SettingsGroup>
+      <SettingsGroup>
+        <BlockedList locale={locale} />
+      </SettingsGroup>
+      </div>
     </SettingsPageLayout>
   );
 }

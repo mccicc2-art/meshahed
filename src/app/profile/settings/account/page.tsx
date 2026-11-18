@@ -104,6 +104,9 @@ export default async function Page() {
         </Link>
       </section>
 
+      {/* 🆕 R270 — **الحسابُ على الحاسوب** (أحمد ١٩ نوفمبر): «معلومات الحساب» و«طرق تسجيل الدخول» جنباً إلى جنب في لوحة
+          الإعدادات العريضة — المجموعتان نفسُهما، والشبكةُ وحدها جديدة. وتحت ١٢٨٠ تحت بعضهما كما كانتا. */}
+      <div className="space-y-4 desk:grid desk:grid-cols-2 desk:items-start desk:gap-4 desk:space-y-0">
       <SettingsGroup label={t.appAccountInfo}>
         <SettingsRow
           href="/profile/edit"
@@ -154,6 +157,7 @@ export default async function Page() {
           )}
         </SettingsGroup>
       )}
+      </div>
 
       {/* 🆕 **بابُ التوثيق هنا بنصِّ أحمد** (D-775): «الأفضل يكون طلب
           التوثيق من: الإعدادات ← الحساب ← طلب التوثيق» — **وبابٌ
