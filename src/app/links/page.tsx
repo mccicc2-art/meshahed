@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { LinksView } from "@/components/links/LinksView";
-import { LINK_WORDS } from "@/components/links/linksApi";
+import { LINK_WORDS } from "@/components/links/linkWords";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
