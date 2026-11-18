@@ -20,6 +20,21 @@ const AR = {
   custPhone: "جوال",
   custDesk: "كمبيوتر",
   custOneOrder: "ترتيبٌ واحد للجهازين — ما تغيّره هنا يتغيّر في الآخر أيضاً",
+  /* 🆕 R264 — النقاشُ على الحاسوب */
+  talkRestMine: "من مكتبتك",
+  talkRestAll: "كل الغرف",
+  talkAbout: "عن العمل",
+  talkYourProgress: "تقدّمك",
+  talkYourRating: "تقييمك",
+  talkNextEpisode: "الحلقة القادمة",
+  talkInRoom: "في الغرفة",
+  talkPostsN: (n: number) => `${n} مشاركة`,
+  talkWorkPage: "صفحة العمل",
+  talkEnterRoom: "ادخل غرفة النقاش",
+  talkLibraryRooms: "غرف من مكتبتك",
+  talkAlsoInRoom: "أيضاً في الغرفة",
+  talkOtherReviews: "آراء أخرى",
+  talkAllReviews: "كل الآراء في صفحة العمل",
 };
 
 const EN: typeof AR = {
@@ -35,6 +50,20 @@ const EN: typeof AR = {
   custPhone: "Phone",
   custDesk: "Computer",
   custOneOrder: "One order for both devices — what you change here changes on the other too",
+  talkRestMine: "From your library",
+  talkRestAll: "All rooms",
+  talkAbout: "About the title",
+  talkYourProgress: "Your progress",
+  talkYourRating: "Your rating",
+  talkNextEpisode: "Next episode",
+  talkInRoom: "In the room",
+  talkPostsN: (n: number) => `${n} ${n === 1 ? "post" : "posts"}`,
+  talkWorkPage: "Title page",
+  talkEnterRoom: "Open the discussion",
+  talkLibraryRooms: "Rooms from your library",
+  talkAlsoInRoom: "Also in this room",
+  talkOtherReviews: "Other reviews",
+  talkAllReviews: "All reviews on the title page",
 };
 
 export type WebWords = typeof AR;

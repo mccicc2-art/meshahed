@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { webWords } from "@/components/webWords";
+import { TalkSide, TalkSideCard } from "@/components/talk/TalkSide";
+import { RoomPostsCard } from "@/components/talk/TalkSideLists";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -84,6 +87,7 @@ export default async function PostPage({
   ]);
 
   const src = newsSource(post);
+  const w = webWords(locale);
   const titleHref = `/${post.media_type === "tv" ? "show" : "movie"}/${post.tmdb_id}`;
   const likeKey = `${post.media_type}-${post.tmdb_id}`;
 
@@ -132,7 +136,10 @@ export default async function PostPage({
         }
       />
 
-      <div className="px-4 max-w-[680px] mx-auto">
+      {/* 🆕 R264 — **المنشورُ على الحاسوب بهيكل الغرفة** (أحمد ١٨ نوفمبر): المنشورُ والردودُ في العمود العريض، وبجانبه
+          «عن العمل» و«أيضاً في الغرفة». وتحت ١٢٨٠ كما كان حرفاً. */}
+      <div className="desk:mx-auto desk:grid desk:max-w-[1104px] desk:grid-cols-[minmax(0,760px)_300px] desk:items-start desk:justify-center desk:gap-8 desk:px-6">
+      <div className="px-4 max-w-[680px] mx-auto desk:mx-0 desk:max-w-none desk:px-0">
       {/* ============ النشرةُ نفسُها ============ */}
       <article className="pt-3">
         <div className="flex items-start gap-3">
@@ -218,6 +225,20 @@ export default async function PostPage({
         locale={locale}
         signedIn={!!user}
       />
+      </div>
+      <TalkSide>
+        <div className="pt-3 flex flex-col gap-3">
+          <TalkSideCard
+            icon={post.media_type === "tv" ? "tv" : "film"}
+            title={w.talkAbout}
+            rows={[{ label: post.media_type === "tv" ? t.typeSeries : t.typeMovie, value: <bdi>{post.title}</bdi> }]}
+            link={{ href: `/talk/${post.media_type}/${post.tmdb_id}`, label: w.talkEnterRoom }}
+          />
+          <Suspense fallback={null}>
+            <RoomPostsCard tmdbId={post.tmdb_id} mediaType={post.media_type} locale={locale} />
+          </Suspense>
+        </div>
+      </TalkSide>
       </div>
     </main>
   );

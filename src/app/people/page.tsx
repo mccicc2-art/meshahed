@@ -35,6 +35,8 @@ import { TabPager } from "@/components/TabPager";
 import { CommunityPagerProvider, CommunityTabs } from "@/components/CommunityPager";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { NowAiringAside } from "@/components/NowAiringAside";
+import { TalkDeskBoard } from "@/components/talk/TalkDeskBoard";
+import { TalkDeskAside } from "@/components/talk/TalkDeskAside";
 
 
 /**
@@ -587,8 +589,18 @@ export default async function PeoplePage({
     </section>
   );
 
+  /* 🆕 R264 — «الأنشط هذا الأسبوع» لعمود الحاسوب: من الغرف التي في الحمولة أصلاً — بلا نداء (نظيرُ `TalkSearch` في التطبيق) */
+  const activeRooms = [...rooms]
+    .filter((r) => r.postsWeek > 0)
+    .sort((a, b) => b.postsWeek - a.postsWeek)
+    .slice(0, 5)
+    .map((r) => ({ kind: r.mediaType, id: r.tmdbId, title: r.title ?? "", poster: r.posterPath, week: r.postsWeek }));
+
+  /* 🆕 R264 — **«نقاش» على الحاسوب عمودان** (أحمد ١٨ نوفمبر — «ب»): الغرفُ بطاقتين في الصفّ بأقسام التطبيق
+     (`TalkDeskBoard`)، وبجانبها البحثُ و«زرتها مؤخراً» و«الأنشط» ثابتة (`TalkDeskAside`). وتحت ١٢٨٠ كما كان حرفاً. */
   const talkBody = (
-    <section className={READING}>
+    <section className={`${READING} desk:max-w-[1080px] desk:grid desk:grid-cols-[minmax(0,1fr)_300px] desk:gap-10 desk:items-start`}>
+     <div className="min-w-0">
       {/* 🆕 D-1201 — «الكل · أعمالي» وسطرُ الترتيب (التصميمُ B) — للعضو وحدَه: تفضيلاتُ حسابٍ لا معنى لها عند الزائر (D-629) */}
       {user && rooms.length > 0 ? (
         <TalkFilters locale={locale} mine={talkFollowedOnly} sort={talkSort} count={roomsShown.length} quiet={talkSort === "active" && talkQuiet(roomsShown)} />
@@ -606,6 +618,8 @@ export default async function PeoplePage({
               {t.talkRoomsEmpty}
             </p>
           ) : (
+            <>
+            <div className="desk:hidden">
             <WorksTalk
               rooms={roomsShown}
               locale={locale}
@@ -614,7 +628,25 @@ export default async function PeoplePage({
               admin={amAdmin}
               activity={!!user && talkSort === "active" && !talkQuiet(roomsShown)}
             />
+            </div>
+            <div className="hidden desk:block">
+              <TalkDeskBoard
+                rooms={roomsShown}
+                followed={user && core ? core.followed : null}
+                nextAir={user && core ? core.nextAir : null}
+                general={core?.generalRoom ? { posts: core.generalRoom.posts } : null}
+                mineOnly={!!user && talkFollowedOnly}
+                pins={pins ?? undefined}
+                globalPins={globalPins ?? undefined}
+                admin={amAdmin}
+                activity={!!user && talkSort === "active" && !talkQuiet(roomsShown)}
+                locale={locale}
+              />
+            </div>
+            </>
         )}
+     </div>
+     <TalkDeskAside active={activeRooms} locale={locale} />
     </section>
   );
 

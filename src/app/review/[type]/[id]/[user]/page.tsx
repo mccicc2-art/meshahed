@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { webWords } from "@/components/webWords";
+import { TalkSide, TalkSideCard } from "@/components/talk/TalkSide";
+import { OtherReviewsCard } from "@/components/talk/TalkSideLists";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -147,6 +151,7 @@ export default async function ReviewPage({
      فيها فرعُ UUID) — **ولا حرفَ يُكتب في القاعدة.** */
   const whoHref = profileHref(r);
   const titleHref = `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`;
+  const w = webWords(locale);
 
   return (
     <main className="pb-24">
@@ -176,7 +181,10 @@ export default async function ReviewPage({
         }
       />
 
-      <div className="px-4 sm:px-6 max-w-[680px] mx-auto">
+      {/* 🆕 R264 — **الرأيُ على الحاسوب بهيكل الغرفة** (أحمد ١٨ نوفمبر): الرأيُ والردودُ في العمود العريض، وبجانبه
+          «عن العمل» و«آراءٌ أخرى». وتحت ١٢٨٠ كما كان حرفاً. */}
+      <div className="desk:mx-auto desk:grid desk:max-w-[1104px] desk:grid-cols-[minmax(0,760px)_300px] desk:items-start desk:justify-center desk:gap-8 desk:px-6">
+      <div className="px-4 sm:px-6 max-w-[680px] mx-auto desk:mx-0 desk:max-w-none desk:px-0">
       {/* ============ التعليقُ نفسُه ============ */}
       <article className="pt-4">
         <div className="flex items-start gap-3">
@@ -297,6 +305,23 @@ export default async function ReviewPage({
         locale={locale}
         signedIn={!!me}
       />
+      </div>
+      <TalkSide>
+        <div className="pt-3 flex flex-col gap-3">
+          <TalkSideCard
+            icon={mediaType === "tv" ? "tv" : "film"}
+            title={w.talkAbout}
+            rows={[
+              { label: mediaType === "tv" ? t.typeSeries : t.typeMovie, value: <bdi>{work}</bdi> },
+              ...(community.count ? [{ label: t.communityRating, value: <span className="text-accent tabular-nums">★ {Math.round(community.avg * 10) / 10}</span> }] : []),
+            ]}
+            link={{ href: titleHref, label: w.talkWorkPage }}
+          />
+          <Suspense fallback={null}>
+            <OtherReviewsCard tmdbId={tmdbId} mediaType={mediaType} exclude={authorId} locale={locale} />
+          </Suspense>
+        </div>
+      </TalkSide>
       </div>
     </main>
   );

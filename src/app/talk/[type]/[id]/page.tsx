@@ -29,6 +29,12 @@ import type { ThreadReply } from "@/components/thread/ReplyItem";
 import { Icon } from "@/components/Icon";
 import { Suspense } from "react";
 import { LoopzLogo } from "@/components/Logo";
+import { getMyRating } from "@/lib/data";
+import { formatDateShort } from "@/core/when";
+import { webWords } from "@/components/webWords";
+import { RememberRoom } from "@/components/talk/RememberRoom";
+import { TalkSide, TalkSideCard } from "@/components/talk/TalkSide";
+import { LibraryRoomsCard } from "@/components/talk/TalkSideLists";
 
 export const dynamic = "force-dynamic";
 
@@ -161,7 +167,11 @@ export default async function TalkPage({
     mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
   ]);
   /* 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (كلُّ ما أشّره) — غرفةُ ما لم يشاهده مغطّاة، وقائمتُها تقول «شاهدتها» */
-  const watchedEps = mediaType === "tv" && user ? [...(await getWatchedForShow(tmdbId, null).catch(() => new Set<string>()))] : [];
+  const [watchedEps, myRating] = await Promise.all([
+    mediaType === "tv" && user ? getWatchedForShow(tmdbId, null).then((s) => [...s]).catch(() => [] as string[]) : Promise.resolve([] as string[]),
+    /* 🆕 R264 — «تقييمك» في عمود الحاسوب — صفٌّ واحد، وبالتوازي مع الحلقات فلا رحلةَ تُضاف */
+    user ? getMyRating(tmdbId, mediaType) : Promise.resolve(null),
+  ]);
 
   /* 🆕 **وإعجاباتُ المشاركات بعد الخيط لا معه** (D-289): **مفاتيحُها هي
      معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
@@ -232,6 +242,13 @@ export default async function TalkPage({
     ).map((r) => [r.id, r]),
   );
   const seasons = mediaType === "tv" ? seasonsOf(details) : [];
+  /* 🆕 R264 — صفوفُ «عن العمل»: آخرُ حلقةٍ شاهدتها (أكبرُ موسمٍ ثمّ حلقة) وموعدُ القادمة من TMDB — كلاهما في يد الصفحة أصلاً */
+  const w = webWords(locale);
+  const lastEp = watchedEps
+    .map((k) => k.split(":").map(Number))
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && a > 0)
+    .reduce<{ s: number; e: number } | null>((m, [a, b]) => (!m || a > m.s || (a === m.s && b > m.e) ? { s: a, e: b } : m), null);
+  const nextEp = mediaType === "tv" ? ((details as { next_episode_to_air?: { air_date?: string | null } | null } | null)?.next_episode_to_air?.air_date ?? null) : null;
 
   return (
     <main className="pb-24">
@@ -315,7 +332,11 @@ export default async function TalkPage({
           ويسار فاضية»): **١٢px لا ١٦** على الجوال، **وتبقى ٢٤ على العريض**
           حيث المساحةُ ليست شحيحة. **ومع سقوط عمود الوجه صار المكسبُ
           ٥٦px في كلِّ سطر.** */}
-      <div className="px-3 sm:px-6 max-w-xl mx-auto mt-3">
+      {/* 🆕 R264 — **الغرفةُ على الحاسوب عمودان** (أحمد ١٨ نوفمبر — «أ»): الخيطُ أعرض (٧٦٠ بدل ٥٧٦)، وبجانبه «عن العمل»
+          و«غرفٌ من مكتبتك» ثابتين. وتحت ١٢٨٠ كما كان حرفاً: عمودُ القراءة وحده، والعمودُ الثاني لا يُرسم. */}
+      <RememberRoom kind={mediaType} id={tmdbId} title={rawTitle || title} poster={myArt?.poster_path ?? posterPath} />
+      <div className="desk:mx-auto desk:mt-3 desk:grid desk:max-w-[1104px] desk:grid-cols-[minmax(0,760px)_300px] desk:items-start desk:justify-center desk:gap-8 desk:px-6">
+      <div className="px-3 sm:px-6 max-w-xl mx-auto mt-3 desk:mx-0 desk:mt-0 desk:max-w-none desk:px-0">
         <ThreadReplies
           /* 🆕 **إعجاباتُ الغرفة — نداءٌ واحدٌ لكلِّ مشاركاتها** (D-289،
              الهجرة ٩٠). **بعد الخيط لأن مفاتيحَه هي مدخلُه**، **وقبل
@@ -392,6 +413,25 @@ export default async function TalkPage({
           locale={locale}
           signedIn={signedIn}
         />
+      </div>
+      <TalkSide>
+        <TalkSideCard
+          icon="tv"
+          title={w.talkAbout}
+          rows={[
+            ...(lastEp ? [{ label: w.talkYourProgress, value: t.diaryEpisode(lastEp.s, lastEp.e) }] : []),
+            ...(nextEp ? [{ label: w.talkNextEpisode, value: formatDateShort(nextEp, t) }] : []),
+            ...(myRating ? [{ label: w.talkYourRating, value: <span className="text-accent tabular-nums">★ {myRating.rating}</span> }] : []),
+            { label: w.talkInRoom, value: w.talkPostsN(thread.filter((p) => !p.kind).length + reviews.length) },
+          ]}
+          link={{ href, label: w.talkWorkPage }}
+        />
+        {user ? (
+          <Suspense fallback={null}>
+            <LibraryRoomsCard exclude={`${mediaType}-${tmdbId}`} locale={locale} />
+          </Suspense>
+        ) : null}
+      </TalkSide>
       </div>
     </main>
   );

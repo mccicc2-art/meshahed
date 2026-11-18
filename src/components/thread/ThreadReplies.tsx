@@ -26,6 +26,7 @@ import { tap } from "@/lib/haptics";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { KeyboardDock } from "@/components/ui/KeyboardDock";
 import { Icon } from "../Icon";
+import { Avatar } from "../Avatar";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
 import { TalkEpisodeBar } from "./TalkEpisodeBar";
@@ -408,6 +409,8 @@ export function ThreadReplies({
 
   /** شجرةٌ أم عمود؟ **القرارُ من الهدف لا من وسيطٍ يمرّره المستدعي** */
   const nested = target.kind === "talk";
+  /* 🆕 R264 — كلمةُ «اكتب» واحدةٌ للقلم وللصندوق الظاهر على الحاسوب */
+  const writeLabel = pick && tvTalk ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder;
 
   /* **الشجرةُ تُبنى في تمريرةٍ واحدة** — والأبناءُ يرثون ترتيبَ `all`
      الزمنيّ، **فحديثٌ متفرّعٌ يُقرأ داخلَ فرعه بترتيب وقوعه.**
@@ -488,6 +491,21 @@ export function ThreadReplies({
           covered={!!pick && tvTalk && !revealAll && !seenEps.has(talkEpisodeKey(pick.season, pick.episode))}
           myState={myState ?? null}
         />
+      ) : null}
+
+      {/* 🆕 R264 — **صندوقُ الكتابة ظاهرٌ أعلى الخيط على الحاسوب** (أحمد ١٨ نوفمبر — الغرفة «أ»): ليس صندوقاً ثانياً — هو
+          البابُ نفسُه الذي يفتحه القلمُ العائم (`setOpen("")`)، مرسوماً حيث تقع العينُ على الشاشة الواسعة. والقلمُ يغيب
+          هناك (`desk:hidden`) فلا بابان. والجوالُ كما هو: القلمُ وحده. */}
+      {signedIn && open !== "" && !focusId ? (
+        <button
+          type="button"
+          onClick={() => setOpen("")}
+          className="hidden desk:flex w-full items-center gap-3 my-3 rounded-2xl border border-border bg-surface px-3.5 py-2.5 text-start hover:border-accent transition"
+        >
+          <Avatar src={me?.avatar ?? null} name={me?.name ?? ""} size={32} alt="" />
+          <span className="min-w-0 flex-1 truncate text-14 text-muted">{writeLabel}</span>
+          <Icon name="edit" size={18} className="shrink-0 text-accent" />
+        </button>
       ) : null}
 
       {/* ===== الردود ===== */}
@@ -585,11 +603,11 @@ export function ThreadReplies({
              فوق كيبورده تُزاحم ما يكتبه** — **والفراغُ يبقى في التدفق**
              فلا يقفز ما تحته (D-046). */
           <>
-            <div aria-hidden className="h-14" />
+            <div aria-hidden className="h-14 desk:hidden" />
             <div
               className={`${
                 kbOpen ? "hidden" : ""
-              } fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:bottom-6 end-4 md:end-8 z-20 pointer-events-none`}
+              } desk:hidden fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:bottom-6 end-4 md:end-8 z-20 pointer-events-none`}
             >
             <button
               type="button"
@@ -597,8 +615,8 @@ export function ThreadReplies({
                 tap(6);
                 setOpen("");
               }}
-              aria-label={pick && tvTalk ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
-              title={pick && tvTalk ? t.talkWriteAboutEpisode(pick.episode) : tvTalk ? t.talkWriteAboutShow : nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+              aria-label={writeLabel}
+              title={writeLabel}
               className="pointer-events-auto w-12 h-12 rounded-full bg-surface-2 border border-border text-foreground grid place-items-center shadow-xl active:scale-95 transition hover:border-accent"
             >
               <Icon name="edit" size={20} />
