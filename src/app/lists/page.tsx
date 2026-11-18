@@ -106,11 +106,23 @@ export default async function ListsPage() {
       />
       {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
           وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
+      <div className="desk:hidden">
       <PublicListsRail
         lists={saved}
         locale={locale}
         title={saved.length > 0 ? `${t.savedListsSection} · ${saved.length}` : t.savedListsSection}
       />
+      </div>
+      {/* 🆕 R266 — **المحفوظةُ على الحاسوب شبكةٌ لا رفّ** (أحمد ١٨ نوفمبر): ثلاثُ بطاقاتٍ في الصفّ كقوائمك فوقها — البطاقةُ
+          نفسُها (`grid` القائم في `PublicListsRail`)، والرفُّ الأفقيُّ يُخفي ما تملكه خلف الحافّة */}
+      <div className="hidden desk:block">
+      <PublicListsRail
+        lists={saved}
+        locale={locale}
+        grid
+        title={saved.length > 0 ? `${t.savedListsSection} · ${saved.length}` : t.savedListsSection}
+      />
+      </div>
     </div>
   );
 }

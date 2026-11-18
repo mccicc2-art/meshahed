@@ -35,6 +35,10 @@ const AR = {
   talkAlsoInRoom: "أيضاً في الغرفة",
   talkOtherReviews: "آراء أخرى",
   talkAllReviews: "كل الآراء في صفحة العمل",
+  /* 🆕 R266 — القوائم على الحاسوب */
+  listYourProgress: "تقدّمك",
+  listOfWatched: (n: string) => `من ${n} شاهدتها`,
+  listNextUp: "التالي:",
 };
 
 const EN: typeof AR = {
@@ -64,6 +68,9 @@ const EN: typeof AR = {
   talkAlsoInRoom: "Also in this room",
   talkOtherReviews: "Other reviews",
   talkAllReviews: "All reviews on the title page",
+  listYourProgress: "Your progress",
+  listOfWatched: (n: string) => `of ${n} watched`,
+  listNextUp: "Next:",
 };
 
 export type WebWords = typeof AR;

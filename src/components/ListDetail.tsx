@@ -19,6 +19,7 @@ import { profileHref } from "@/core/people";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, num, type Locale } from "@/core/i18n";
+import { webWords } from "./webWords";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import type { TitleState } from "@/lib/libState";
@@ -384,8 +385,18 @@ export function ListDetail({
     </button>
   );
 
+  /* 🆕 R266 — حصيلةُ «تقدّمك» من حالة المكتبة التي تحملها البلاطاتُ أصلاً — والتالي أوّلُ عملٍ لم تشاهده بترتيب القائمة */
+  const watchedCount = libState ? visible.filter((it) => libState[keyOf(it)]?.watched).length : 0;
+  const nextUp = libState ? (visible.find((it) => !libState[keyOf(it)]?.watched) ?? null) : null;
+  const w = webWords(locale);
+
   return (
     <div>
+      {/* 🆕 R266 — **صفحةُ القائمة على الحاسوب عمودان** (أحمد ١٨ نوفمبر — «ب»): الرأسُ والأعمالُ (شبكةٌ خمسةً في الصفّ بدل
+          الرفّ) في العمود العريض، وبجانبه عمودٌ ثابتٌ فيه تقدّمُك في القائمة وصفُّ الحفظ والآراء ومفتاحُ «تابِع المشاهدة»
+          والآراء — في القوائم الطويلة تبقى أمامك وأنت تنزل. وتحت ١٢٨٠ كما كان حرفاً (الغلافان بلا صنفٍ هناك). */}
+      <div className="desk:grid desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start desk:gap-x-10">
+      <div className="min-w-0">
       {/* 🗑️ **وشريطُ الغلاف داخل الصفحة سقط** (D-848، حكمُ أحمد
           بلقطة: «الهيدر تبع اللسته إذا دخلت اللسته يطلع فوق وهذا غلط،
           احذفه ما يحتاج يكون هنا يكفي في الخارج»).
@@ -673,6 +684,8 @@ export function ListDetail({
            المشتركةُ هي التي تحمل السهمين في «القوائم المرتّبة» والمقاطع
            (`RankedRail` · `TrailerRail`) — **وسهمان يُرسمان مرّةً ثانيةً عائلةٌ
            ثانية** (القاعدة ٣). على الجوال تختفي والسحبُ كما كان. */
+        <>
+        <div className="desk:hidden">
         <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
           {visible.map((it, i) => (
             <div key={keyOf(it)} className="w-[126px] sm:w-[150px] shrink-0 snap-start">
@@ -699,6 +712,30 @@ export function ListDetail({
             </div>
           ))}
         </RailScroll>
+        </div>
+        {/* 🆕 R266 — الشبكةُ على الحاسوب: البلاطةُ نفسُها (`PosterTile`) برقمها وزرّها وخيطِ حالتها — العرضُ وحده يتغيّر */}
+        <div className="hidden desk:grid grid-cols-5 gap-4">
+          {visible.map((it, i) => (
+            <div key={keyOf(it)} className="min-w-0">
+              <PosterTile
+                item={it}
+                n={badges?.[keyOf(it)] ?? (numbered ? i + 1 : null)}
+                rating={ratings[keyOf(it)] ?? null}
+                canRemove={canEditItems}
+                onRemove={() => remove(it)}
+                addedBy={sharedRow && it.added_by ? (avatarOf.get(it.added_by) ?? null) : undefined}
+                quickAdd={
+                  libState && !isOwner
+                    ? { added: !!libState[keyOf(it)]?.added, locale }
+                    : undefined
+                }
+                state={libState?.[keyOf(it)]}
+                t={t}
+              />
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {/* 🆕 234 — **العضوُ يضيف أعمالاً** (٣أ): قائمةُ النقاط لصاحبها وحدَه، فالبابُ هنا تحت الرفّ */}
@@ -712,7 +749,30 @@ export function ListDetail({
           ⚠️ **والمفتاحُ لمن يملك صفّاً يكتب فيه وحدَه** (D-217/D-674):
           المالكُ في صفِّ قائمته، والحافظُ في صفِّ حفظه — **وزائرٌ
           بلا حسابٍ يرى الأرقامَ ساكنة.** */}
-      <div className="flex items-center gap-5 mt-4 mb-5 pb-4 border-b border-[color:var(--divider)] min-w-0">
+      </div>
+      <div className="desk:sticky desk:top-6 desk:mt-12 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
+      {/* 🆕 R266 — «تقدّمك» في القائمة — للعضو (حالةُ مكتبته في يد الصفحة أصلاً)، وعلى الحاسوب وحده */}
+      {libState && visible.length > 0 ? (
+        <div className="hidden desk:block mb-4 pb-4 border-b border-[color:var(--divider)]">
+          <p className="flex items-center gap-1.5 text-12 font-bold text-muted">
+            <Icon name="check" size={14} className="shrink-0" />
+            {w.listYourProgress}
+          </p>
+          <p className="mt-1.5 flex items-baseline gap-2">
+            <span className="text-24 font-bold tabular-nums">{num(watchedCount, locale)}</span>
+            <span className="text-14 text-muted">{w.listOfWatched(num(visible.length, locale))}</span>
+          </p>
+          <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <span className="block h-full rounded-full bg-[color:var(--success)]" style={{ width: `${Math.round((watchedCount / visible.length) * 100)}%` }} />
+          </span>
+          {nextUp ? (
+            <p className="mt-2 truncate text-12 text-muted">
+              {w.listNextUp} <bdi className="font-bold text-foreground">{nextUp.title}</bdi>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="flex items-center gap-5 mt-4 mb-5 pb-4 border-b border-[color:var(--divider)] min-w-0 desk:mt-0 desk:flex-wrap desk:gap-y-3">
         {canSave ? (
           <button
             type="button"
@@ -792,6 +852,8 @@ export function ListDetail({
       {/* **والآراءُ في القاع بلا تبويب** — `ListReviews` بعنوانه
           وصندوقِ كتابته كما هو، **والذي تبدّل بابُه لا جسدُه.** */}
       {reviewsSlot && <div className="mt-2">{reviewsSlot}</div>}
+      </div>
+      </div>
 
       {sheet === "add" && (
         <TitleSearchSheet
