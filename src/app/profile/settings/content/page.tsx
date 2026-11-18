@@ -27,12 +27,23 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setContent}>
-      <ContentPrefsSection locale={locale} initial={contentPrefs} signedIn />
+      <div className="space-y-4 desk:hidden">
+        <ContentPrefsSection locale={locale} initial={contentPrefs} signedIn />
 
-      <SettingsGroup>
-        <TitleModeSection locale={locale} initialMode={titleMode} />
-        <RegionSwitch locale={locale} region={region} />
-      </SettingsGroup>
+        <SettingsGroup>
+          <TitleModeSection locale={locale} initialMode={titleMode} />
+          <RegionSwitch locale={locale} region={region} />
+        </SettingsGroup>
+      </div>
+      {/* 🆕 R261 — الحاسوب (إعداداتُ اللوحتين، «ب»): الأنواعُ واللغاتُ رقائقُ بثلاث حالات، وأسماءُ الأعمال رقائقُ ظاهرة،
+          وبلدُ المشاهدة صفٌّ يُفتح كما هو — قائمةُ الدول أطولُ من أن تُعرض رقائق */}
+      <div className="hidden space-y-4 desk:block">
+        <ContentPrefsSection locale={locale} initial={contentPrefs} signedIn layout="block" />
+        <TitleModeSection locale={locale} initialMode={titleMode} layout="block" />
+        <SettingsGroup>
+          <RegionSwitch locale={locale} region={region} />
+        </SettingsGroup>
+      </div>
 
       <ContentPrefsReset locale={locale} />
     </SettingsPageLayout>

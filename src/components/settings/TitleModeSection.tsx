@@ -14,6 +14,8 @@ import {
 } from "@/core/titleMode";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
+import { SettingsBlock } from "./SettingsBlock";
+import { chipClass } from "../ui/controls";
 
 /**
  * **«عرض عناوين الأعمال»** (D-544، مواصفةُ أحمد المكتوبة).
@@ -46,9 +48,12 @@ import { SettingsExpandRow } from "./SettingsExpandRow";
 export function TitleModeSection({
   locale,
   initialMode,
+  layout = "row",
 }: {
   locale: Locale;
   initialMode: TitleMode;
+  /** 🆕 R261 — `block` على الحاسوب: الخياراتُ الأربعة رقائقُ ظاهرة، والمعاينةُ تحتها كما هي */
+  layout?: "row" | "block";
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -87,6 +92,51 @@ export function TitleModeSection({
     });
   }
 
+  const preview = (
+    <div className="mt-3 rounded-lg bg-surface-2 p-3 space-y-2">
+      <p className="text-12 text-muted">{t.cpPreview}</p>
+      {/* 🆕 D-1266 — اسمُ «Loopz» لا يشرح نفسَه، فسطرُه الشارحُ فوق الأمثلة حين يُختار (نصُّ أحمد) */}
+      {mode === "loopz" ? <p className="text-12 text-muted leading-snug">{t.titleModeLoopzNote}</p> : null}
+      {TITLE_SAMPLES.map((sample) => {
+        const result = resolveMediaTitle(sampleNames(sample, locale === "en" ? "en" : "ar"), mode);
+        return (
+          <div key={sample.original}>
+            <p className="text-14 font-semibold leading-tight" dir="auto">
+              {result.primary}
+            </p>
+            {result.secondary ? (
+              <p className="text-12 text-muted leading-tight mt-0.5" dir="auto">
+                {result.secondary}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (layout === "block") {
+    return (
+      <SettingsBlock icon="film" title={t.titleNamesTitle}>
+        <div role="radiogroup" aria-label={t.titleModeSection} className={`flex flex-wrap gap-2 ${pending ? "opacity-60 pointer-events-none" : ""}`}>
+          {options.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={m === mode}
+              onClick={() => pick(m)}
+              className={chipClass(m === mode)}
+            >
+              {label[m]}
+            </button>
+          ))}
+        </div>
+        {preview}
+      </SettingsBlock>
+    );
+  }
+
   return (
     <SettingsExpandRow
       icon="film"
@@ -109,26 +159,7 @@ export function TitleModeSection({
           ))}
         </SettingsOptionList>
 
-        <div className="mt-3 rounded-lg bg-surface-2 p-3 space-y-2">
-          <p className="text-12 text-muted">{t.cpPreview}</p>
-          {/* 🆕 D-1266 — اسمُ «Loopz» لا يشرح نفسَه، فسطرُه الشارحُ فوق الأمثلة حين يُختار (نصُّ أحمد) */}
-          {mode === "loopz" ? <p className="text-12 text-muted leading-snug">{t.titleModeLoopzNote}</p> : null}
-          {TITLE_SAMPLES.map((sample) => {
-            const result = resolveMediaTitle(sampleNames(sample, locale === "en" ? "en" : "ar"), mode);
-            return (
-              <div key={sample.original}>
-                <p className="text-14 font-semibold leading-tight" dir="auto">
-                  {result.primary}
-                </p>
-                {result.secondary ? (
-                  <p className="text-12 text-muted leading-tight mt-0.5" dir="auto">
-                    {result.secondary}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        {preview}
       </div>
     </SettingsExpandRow>
   );

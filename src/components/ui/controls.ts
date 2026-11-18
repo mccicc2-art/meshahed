@@ -124,6 +124,19 @@ export function chipClass(active: boolean, size: ChipSize = "md", className = ""
  * **والاستدارةُ من سلّم النظام لا `rounded-full`**: هذه رقاقةٌ تحمل
  * اسماً طويلاً و×، **وقرصٌ كاملُ الاستدارة يجعل طرفيها فراغاً.**
  */
+/**
+ * 🆕 R261 — **رقاقةٌ بثلاث حالات** (تفضيلاتُ المحتوى على الحاسوب، اختيارُ أحمد «ب» بعد أن قيل له إنها شكلٌ جديد): قائمةٌ واحدةٌ
+ * للأنواع وأخرى للّغات بدل قائمتين متقابلتين. **عائلةُ الرقاقة نفسُها لا عائلةٌ ثالثة**: «أكثر» هي `chipClass(true)` حرفاً،
+ * و«عادي» هي `chipClass(false)`، والجديدُ حالةٌ واحدة — «أقلّ» — بلون الخطأ الذي يقول «أبعِده». المقاسُ والانحناءُ والخطُّ واحد.
+ * ⚠️ للحاسوب وحدَه اليوم (الجوّالُ يبقى بقائمتيه)؛ ولا تُستعمل لخيارٍ ثنائيٍّ — ذاك `chipClass`.
+ */
+export function chipTriClass(state: "more" | "less" | null, size: ChipSize = "md", className = "") {
+  if (state !== "less") return chipClass(state === "more", size, className);
+  return `${CHIP_SIZE[size]} rounded-full border font-semibold whitespace-nowrap transition bg-[color-mix(in_srgb,var(--error)_10%,transparent)] text-[color:var(--error)] border-[color-mix(in_srgb,var(--error)_60%,transparent)]${
+    className ? ` ${className}` : ""
+  }`;
+}
+
 export function chipOutline(size: ChipSize = "md", className = "") {
   return `${CHIP_SIZE[size]} rounded-control border font-semibold whitespace-nowrap transition bg-transparent text-accent border-accent hover:bg-accent/10${
     className ? ` ${className}` : ""

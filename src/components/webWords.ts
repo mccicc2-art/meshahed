@@ -12,6 +12,10 @@ const AR = {
   trailerFullscreen: "ملء الشاشة",
   trailerExitFullscreen: "الخروج من ملء الشاشة",
   trailerAutoplay: "تلقائي",
+  /* 🆕 R261 — تفضيلاتُ المحتوى على الحاسوب: رقاقةٌ بثلاث حالات (أكثر · أقلّ · عادي) */
+  cpMore: "المزيد",
+  cpLess: "أقلّ",
+  cpTriHint: "ضغطة = أكثر · ضغطتان = أقلّ · الثالثة ترجعها عادية",
 };
 
 const EN: typeof AR = {
@@ -21,6 +25,9 @@ const EN: typeof AR = {
   trailerFullscreen: "Full screen",
   trailerExitFullscreen: "Exit full screen",
   trailerAutoplay: "Autoplay",
+  cpMore: "More",
+  cpLess: "Less",
+  cpTriHint: "Tap once = more · twice = less · a third time resets it",
 };
 
 export type WebWords = typeof AR;

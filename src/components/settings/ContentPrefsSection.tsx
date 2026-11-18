@@ -17,6 +17,9 @@ import { toast } from "@/lib/toast";
 import { SettingsPickerPanel } from "./SettingsPickerPanel";
 import { SettingsExpandRow } from "./SettingsExpandRow";
 import { SettingsGroup } from "./SettingsGroup";
+import { SettingsBlock } from "./SettingsBlock";
+import { chipTriClass } from "../ui/controls";
+import { webWords } from "../webWords";
 
 /**
  * **تخصيصُ ما يظهر لك** (D-545، مواصفةُ أحمد المكتوبة).
@@ -61,10 +64,13 @@ export function ContentPrefsSection({
   locale,
   initial,
   signedIn,
+  layout = "row",
 }: {
   locale: Locale;
   initial: ContentPrefs;
   signedIn: boolean;
+  /** 🆕 R261 — `block` على الحاسوب: قائمةٌ واحدةٌ للأنواع وأخرى للّغات برقائقَ بثلاث حالات (اختيارُ أحمد «ب») */
+  layout?: "row" | "block";
 }) {
   const t = getDict(locale);
   const loc = locale === "en" ? "en" : "ar";
@@ -190,6 +196,85 @@ export function ContentPrefsSection({
     if (items.length === 1) return items[0];
     return `${items[0]} · +${items.length - 1}`;
   };
+
+  /* 🆕 R261 — **رقاقةٌ تدور: عادي ← أكثر ← أقلّ ← عادي** (تفضيلاتُ المحتوى على الحاسوب، «ب»). **القائمتان في الحساب كما هما**
+     (`genres`/`unwantedGenres` و`languages`/`excludedLanguages`) والدورانُ ينقل العنصرَ بينهما — فما يُحفظ هنا يقرؤه الجوّالُ
+     بقائمتيه بلا ترجمة، و`commit` نفسُه بتأجيله وتراجعه. ⚠️ ترتيبُ اللغات المفضّلة هنا ترتيبُ اختيارها؛ تغييرُه بالسحب في الجوّال */
+  function cycle<K extends "genres" | "languages", V extends ContentPrefs[K][number]>(
+    more: K,
+    less: K extends "genres" ? "unwantedGenres" : "excludedLanguages",
+    v: V,
+  ) {
+    const inMore = (prefs[more] as V[]).includes(v);
+    const inLess = (prefs[less] as V[]).includes(v);
+    const moreNext = inMore ? (prefs[more] as V[]).filter((x) => x !== v) : inLess ? (prefs[more] as V[]) : [...(prefs[more] as V[]), v];
+    const lessNext = inMore ? [...(prefs[less] as V[]), v] : (prefs[less] as V[]).filter((x) => x !== v);
+    commit({ ...prefs, [more]: moreNext, [less]: lessNext } as ContentPrefs);
+  }
+
+  if (layout === "block") {
+    const w = webWords(locale);
+    const legend = (
+      <div className="-mt-1 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-12 text-muted">
+        <span>{w.cpTriHint}</span>
+        <span className="ms-auto inline-flex items-center gap-1.5">
+          <i aria-hidden className="h-2.5 w-2.5 rounded-full bg-accent" />
+          {w.cpMore}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <i aria-hidden className="h-2.5 w-2.5 rounded-full bg-[color:var(--error)]" />
+          {w.cpLess}
+        </span>
+      </div>
+    );
+    const stateWord = (st: "more" | "less" | null) => (st === "more" ? w.cpMore : st === "less" ? w.cpLess : "");
+    return (
+      <>
+        <SettingsBlock icon="sparkle-star" title={t.cpTaste}>
+          {legend}
+          <div className="flex flex-wrap gap-2">
+            {BROWSE_GENRES.map((g) => {
+              const id = idOf(g);
+              const st = prefs.genres.includes(id) ? "more" : prefs.unwantedGenres.includes(id) ? "less" : null;
+              const name = browseGenreName(g, loc);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => cycle("genres", "unwantedGenres", id)}
+                  aria-label={st ? `${name} — ${stateWord(st)}` : name}
+                  className={chipTriClass(st)}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </SettingsBlock>
+        <SettingsBlock icon="compass" title={t.cpLangsTitle}>
+          {legend}
+          <div className="flex flex-wrap gap-2">
+            {ALL_LANGS.map((l) => {
+              const st = prefs.languages.includes(l.code) ? "more" : prefs.excludedLanguages.includes(l.code) ? "less" : null;
+              const name = langName(l.code, loc);
+              return (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => cycle("languages", "excludedLanguages", l.code)}
+                  aria-label={st ? `${name} — ${stateWord(st)}` : name}
+                  className={chipTriClass(st)}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </SettingsBlock>
+        {!signedIn && <p className="px-1 text-12 text-muted leading-relaxed">{t.cpGuestNote}</p>}
+      </>
+    );
+  }
 
   return (
     <>
