@@ -139,7 +139,8 @@ export default async function PlusPage({ searchParams }: { searchParams: Promise
       </h2>
       <ul className="grid gap-3 sm:grid-cols-3">
         <GoldTile icon="star" title={t.pwGoldBadgeLine} />
-        <GoldTile icon="heart" title={gold ? t.pwGoldSupportMine : t.pwGoldSupport} sub={w.goldBoard} />
+        {/* 🆕 T413 — «ادعم لوبز» يفتح لوحةَ الداعمين (زرُّ «اللوحة» في صفحة الاشتراك بالتطبيق) */}
+        <GoldTile icon="heart" title={gold ? t.pwGoldSupportMine : t.pwGoldSupport} sub={w.goldBoard} href="/supporters" />
         <GoldTile icon="people" title={w.goldPartners} sub={w.goldPartnersSub} />
       </ul>
 
@@ -163,14 +164,26 @@ export default async function PlusPage({ searchParams }: { searchParams: Promise
   );
 }
 
-function GoldTile({ icon, title, sub }: { icon: IconName; title: string; sub?: string }) {
-  return (
-    <li className="flex items-center gap-3 rounded-2xl border border-[#d7a531]/50 bg-surface px-4 py-3.5">
+function GoldTile({ icon, title, sub, href }: { icon: IconName; title: string; sub?: string; href?: string }) {
+  const inner = (
+    <>
       <Icon name={icon} size={20} className="shrink-0 text-[#d7a531]" />
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold leading-snug">{title}</span>
         {sub && <span className="mt-0.5 block text-12 text-muted leading-snug">{sub}</span>}
       </span>
+    </>
+  );
+  const cls = "flex items-center gap-3 rounded-2xl border border-[#d7a531]/50 bg-surface px-4 py-3.5";
+  return (
+    <li>
+      {href ? (
+        <Link href={href} prefetch={false} className={`${cls} transition hover:border-[#d7a531]`}>
+          {inner}
+        </Link>
+      ) : (
+        <div className={cls}>{inner}</div>
+      )}
     </li>
   );
 }

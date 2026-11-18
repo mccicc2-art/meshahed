@@ -199,7 +199,8 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
       <nav aria-label={t.drawerLabel} className="flex flex-col gap-0.5">
         {/* 🆕 T412 — يفتح على رقاقة «مشاهدة» كبابه في التطبيق (D-1504) */}
         {item("/activity?scope=watch", "clock", t.drawerHistory, { small: true })}
-        {item("/reports", "chart", t.drawerReport, { small: true })}
+        {/* 🆕 T413 — «إحصائياتك» صفحةٌ واحدة (`/statistics`)؛ و`/reports` بابٌ يحوّل إليها */}
+        {item("/statistics", "chart", t.drawerReport, { small: true })}
         {/* 🆕 T409 — «الربط» صار له بيتٌ في الويب (`/links`). الأيقونةُ «tv» لا «link»: رمزُ الرابط غيرُ موجودٍ في مجموعة الويب،
             وإضافتُه تمسّ `src/core/iconNames.ts` فتُطلق تحديثَ التطبيق — تُضاف مع بناء التطبيق القادم */}
         {item("/links", "tv", t.linksTitle, { small: true })}

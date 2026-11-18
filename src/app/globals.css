@@ -965,3 +965,23 @@ summary:focus-visible,
     --dg-cols: 8;
   }
 }
+
+/* 🆕 T413 — **«إحصائياتك» على الحاسوب**: الأقسامُ الأربعة (الاتجاه · المحتوى · الذوق · العادات) عمودان بدل عمودٍ ممدودٍ على
+   ١١٠٠ بكسل. جذرُ القسم (`space-y-8`) يصير شبكة، وأوّلُ أبنائه (صفُّ الخانات) وآخرُها (أفعالُ الذيل) بعرضها كلِّه، وما بينهما
+   أزواجٌ. **قاعدةٌ هنا لا أصنافٌ في كلِّ قسم**: الأقسامُ تبقى كما هي للجوّال، والحاسوبُ يرتّب ما تعطيه. */
+@media (min-width: 1280px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2.5rem;
+    row-gap: 2rem;
+    align-items: start;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div > * {
+    margin-block: 0 !important;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div > :first-child,
+  html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div > :last-child {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { displayNameOf } from "@/lib/data";
+import { displayNameOf, getSupporterSince } from "@/lib/data";
+import { SUPPORTER_WORDS } from "@/components/supporters/supporterWords";
 import { getT } from "@/lib/locale";
 import { loadProfile } from "@/lib/profileCore";
 import { canMessage } from "@/lib/actions";
@@ -143,6 +144,14 @@ export default async function PublicProfilePage({
   const displayName = persona ? persona.name[pl] : displayNameOf(profile, t.anonymousUser);
   /* 🆕 D-1380 — «رسالة» تتبع البوّابَ (`can_message`) لا المتابعةَ المتبادلة: لغيري وحدي، وللمسجَّل وحده */
   const canMsg = isMe ? null : await canMessage(profile.id);
+  /* 🆕 T413 — «♡ داعم لوبز منذ …» تحت النبذة لعضو Gold (كالتطبيق — D-gold-perks): الحكمُ في `supporter_since` (Gold فعّالٌ لم
+     يُخفِ نفسه من اللوحة ولا اسمَه)، ولغير Gold لا نداء؛ والملفُّ المقفلُ أو المحظورُ لا يُظهره */
+  const supporterSince = profile.gold === true && !persona && canView ? await getSupporterSince(profile.id) : null;
+  const supporterLine = supporterSince
+    ? SUPPORTER_WORDS[pl].line(
+        new Intl.DateTimeFormat(pl === "en" ? "en-GB" : "ar", { month: "long", year: "numeric" }).format(new Date(supporterSince)),
+      )
+    : null;
 
   /* ⚖️ 🆕 **البطاقةُ صارت ثلاثَ خاناتٍ داخل إطار** (D-561، تصميمُ
      أحمد: «Movies · Shows · Full statistics ›»، ونقضٌ مُعلَنٌ لأربعةِ
@@ -1098,6 +1107,15 @@ export default async function PublicProfilePage({
               >
                 {bioText}
               </p>
+            )}
+            {supporterLine && (
+              <Link
+                href="/supporters"
+                prefetch={false}
+                className="hero-halo mt-2 inline-flex items-center rounded-full border border-[#d7a531]/60 bg-[#d7a531]/10 px-2.5 py-0.5 text-12 font-bold text-[#d7a531] transition hover:bg-[#d7a531]/20"
+              >
+                {supporterLine}
+              </Link>
             )}
           </div>
         </div>

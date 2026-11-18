@@ -72,7 +72,7 @@ export default async function StatsPage({
           بالضبط من يسأل «وماذا فعلتُ هذا الأسبوع؟» — **وبابٌ يقع حيث
           يولد السؤال لا يحتاج تعليماً.** */}
       <Link
-        href="/reports"
+        href="/statistics"
         className="mt-5 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 active:opacity-70 transition"
       >
         <Icon name="chart" size={18} className="text-accent shrink-0" />
