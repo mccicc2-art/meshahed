@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
+import { PixelRatio, Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { notePress } from "./perfMarks";
 import { touchTarget } from "./touchTargets";
 import { drawerStore } from "./drawer/store";
@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { useApp } from "./state";
 import { Icon } from "./icons";
 import { controlSize } from "./theme";
+import { SYSTEM_FONT_CAP, useFontScale } from "./fontScale";
 import { Logo } from "./Logo";
 import type { NativeRoot } from "./shell";
 import { queryClient } from "./api";
@@ -40,9 +41,14 @@ export function HeaderIconButton({
   const { tokens } = useApp();
   const ref = useRef<ViewInstance>(null);
   useEffect(() => (probe ? touchTarget(probe, (cb) => ref.current?.measureInWindow(cb), () => ref.current != null) : undefined), [probe]);
+  /* 🆕 ١٩ نوفمبر — الرمزُ يكبر مع الخطّ بمعامل النصّ نفسِه (أحمد: «خليها تكبر بنفس النسبة الي حاطينها للي يكبر الخط»): درجةُ Loopz
+     × خطُّ الجهاز إلى سقفه ١٫٣ (D-1378). والزرُّ يتّسع له بحاشيةٍ ٦ ولا يتجاوز ٥٢ — ارتفاعُ الرأس ٥٦ */
+  const k = useFontScale() * Math.min(PixelRatio.getFontScale(), SYSTEM_FONT_CAP);
+  const icon = Math.round(controlSize.headerIcon * k);
+  const btn = Math.min(52, Math.max(controlSize.headerBtn, icon + 12));
   return (
-    <Pressable ref={ref} onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, borderRadius: controlSize.headerBtn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
-      <Icon name={name} size={controlSize.headerIcon} color={color} />
+    <Pressable ref={ref} onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: btn, height: btn, borderRadius: btn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+      <Icon name={name} size={icon} color={color} />
       {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
     </Pressable>
   );

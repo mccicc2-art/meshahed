@@ -214,7 +214,7 @@ export function CommunityScreen() {
   const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
   /* 🆕 D-1448 — زرُّ القلم العائم للعضو: مسافةٌ تحت آخر بطاقةٍ بقدره فلا يغطّي ذيلَها */
   const canPost = !!d?.viewer.signed_in;
-  const bottomPad = navH + 24 + (canPost ? 72 : 0);
+  const bottomPad = navH + 24 + (canPost || tab === "people" ? 72 : 0);
   const { reveal } = chrome;
   useEffect(() => {
     reveal();
@@ -395,7 +395,19 @@ export function CommunityScreen() {
           onClose={() => setComposing(null)}
         />
       ) : null}
-      {canPost ? (
+      {tab === "people" ? (
+        /* 🆕 ١٩ نوفمبر — في تبويب الأعضاء الزرُّ العائمُ «ابحث عن عضو» لا القلم (أحمد «ب صغرها درجة»): يفتح البحثَ على رقاقة «أعضاء»
+           واللوحةُ ظاهرة. الكتابةُ باقيةٌ من «النشاط» و«النقاشات». يعدّل D-267 («لا مربّعَ بحث» في الأعضاء): زرٌّ إلى البحث لا مربّع */
+        <FloatButton
+          compact
+          icon="search"
+          label={t.findMembers}
+          onPress={() => router.navigate({ pathname: "/search", params: { focus: String(Date.now()), scope: "members" } })}
+          style={{ bottom: navH + 16 }}
+          hidden={chrome.hidden}
+          drop={navH + 16 + 44 + 8}
+        />
+      ) : canPost ? (
         /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
         <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
       ) : null}

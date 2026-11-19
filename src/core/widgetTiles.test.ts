@@ -233,3 +233,11 @@ test("قسمٌ في خانةٍ لا تتّسع ثمّ يُختار في الأو
   assert.equal(keys.filter((k) => k === "cine").length, 3);
   assert.equal(new Set(keys).size, 3);
 });
+
+test("🆕 ١٩ نوفمبر — ٤×٢ وصفُّ القادم يعرض أصدقاءك (لا قادم): «أصدقاؤك» لا يُذكر في «لا يتّسع»", () => {
+  const v = { ...defaultV3(), edited: true };
+  const l = A(178, v, ["up"]);
+  assert.ok(l.tiles.some((t) => t.k === "up" && t.s === "friends"));
+  assert.ok(!l.dropped.flat().includes("friends"));
+  assert.ok(l.dropped.flat().includes("cine"));
+});

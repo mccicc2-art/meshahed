@@ -28,6 +28,7 @@ export function FloatButton({
   style,
   hidden,
   drop = 0,
+  compact = false,
 }: {
   icon: IconName;
   label: string;
@@ -36,6 +37,8 @@ export function FloatButton({
   style?: StyleProp<ViewStyle>;
   hidden?: ChromeHidden;
   drop?: number;
+  /** 🆕 ١٩ نوفمبر — أصغرُ درجةً (أحمد «ب صغرها درجة»: «ابحث عن عضو» في المجتمع): ارتفاعُ ٤٤ ورمزُ ١٦ — الزرُّ نفسُه لا زرٌّ ثانٍ */
+  compact?: boolean;
 }) {
   const { tokens } = useApp();
   /* 🆕 D-1629 — يهبط مع الكسوة على Reanimated (`ChromeHide`) فموضعُ لمسه موضعُ رسمه؛ بلا كسوةٍ صفرٌ ثابت */
@@ -63,9 +66,9 @@ export function FloatButton({
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
-          height: showLabel ? 50 : 48,
+          height: showLabel ? (compact ? 44 : 50) : 48,
           width: showLabel ? undefined : 48,
-          paddingHorizontal: showLabel ? 20 : 0,
+          paddingHorizontal: showLabel ? (compact ? 16 : 20) : 0,
           borderRadius: radius.pill,
           backgroundColor: tokens.accent,
           shadowColor: "#000",
@@ -76,7 +79,7 @@ export function FloatButton({
           transform: [{ scale: pressed ? 0.96 : 1 }],
         })}
       >
-        <Icon name={icon} size={showLabel ? 18 : 20} color={tokens.onAccent} />
+        <Icon name={icon} size={showLabel ? (compact ? 16 : 18) : 20} color={tokens.onAccent} />
         {showLabel ? <Text size={14} weight="700" color={tokens.onAccent}>{label}</Text> : null}
       </Pressable>
     </Reanimated.View>

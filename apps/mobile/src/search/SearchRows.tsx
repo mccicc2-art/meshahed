@@ -117,7 +117,8 @@ export function MemberRow({ m, onPress }: { m: PersonLite; onPress: (() => void)
       <Thumb src={m.hide_name ? null : m.avatar_url} shape="circle" icon="people" />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text size={14} weight="600" numberOfLines={1}>{name}</Text>
-        <Text size={12} muted numberOfLines={1}>{t.searchMemberRole}</Text>
+        {/* 🆕 ١٩ نوفمبر — اسمُ المستخدم لا كلمةُ «عضو» المكرّرة (أحمد): ثلاثةٌ اسمُهم «Ahmed» يتميّزون. ومن أخفى اسمَه يبقى «عضو» */}
+        <Text size={12} muted numberOfLines={1}>{!m.hide_name && m.username ? `@${m.username}` : t.searchMemberRole}</Text>
       </View>
     </Row>
   );

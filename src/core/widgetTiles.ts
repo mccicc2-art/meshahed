@@ -251,7 +251,10 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   });
   /* الخطُّ العموديُّ بين النصّين: عرضُه ١ (نقطة) */
   for (const t of tiles) if (t.k === "hair" && t.w === 0) t.w = 1;
-  return { tiles, f, spare: Math.max(0, spare), dropped, shown: rows.flatMap((r) => (r.k === "slot" ? [r.i] : [])) };
+  /* 🆕 ١٩ نوفمبر — صفُّ «القادم» يعرض آخرَ نشاطٍ لأصدقائك حين لا قادم: «أصدقاؤك» ظاهرٌ إذن، فلا يُكتب في «لا يتّسع» (لقطةُ أحمد ٤×٢) */
+  const upShown = tiles.find((t): t is Extract<V4Tile, { k: "up" | "slim" }> => t.k === "up" || t.k === "slim")?.s;
+  const notShown = upShown ? dropped.map((g) => g.filter((k) => k !== upShown)).filter((g) => g.length) : dropped;
+  return { tiles, f, spare: Math.max(0, spare), dropped: notShown, shown: rows.flatMap((r) => (r.k === "slot" ? [r.i] : [])) };
 }
 
 /**

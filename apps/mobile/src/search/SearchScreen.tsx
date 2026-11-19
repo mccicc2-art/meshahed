@@ -28,6 +28,7 @@ import { openProfile, profileHandleOf } from "../member/open";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { sectionOrder, type SearchSection } from "@/core/searchOrder";
 
 /**
  * ====== شاشةُ البحث أصليّةً — Phase 11-G · G1–G3 (٢٢ سبتمبر ٢٠٢٦) ======
@@ -184,9 +185,11 @@ export function SearchScreen() {
 
   /* 🆕 شريطُ البحث في الودجت (`focus`): الصفحةُ تُفتح واللوحةُ ظاهرةٌ للكتابة مباشرة — قرارُ أحمد «١ ب» (١٤ أكتوبر).
      كلُّ لمسةٍ رمزٌ جديد فتعمل ولو كان التبويبُ مفتوحاً؛ والمهلةُ حتّى تستقرّ الشاشة (التركيزُ قبلها لا يفتح اللوحة) */
-  const { focus, q: fromSpotlight } = useLocalSearchParams<{ focus?: string; q?: string }>();
+  const { focus, q: fromSpotlight, scope: scopeParam } = useLocalSearchParams<{ focus?: string; q?: string; scope?: string }>();
   useEffect(() => {
     if (!focus || desc) return;
+    /* 🆕 ١٩ نوفمبر — «ابحث عن عضو» من تبويب الأعضاء في المجتمع (أحمد «ب»): البحثُ يُفتح على رقاقة «أعضاء» واللوحةُ ظاهرة */
+    if (scopeParam === "members" || scopeParam === "artists" || scopeParam === "titles" || scopeParam === "lists") setScope(scopeParam);
     /* 🆕 D-1500 — من Spotlight («ابحث في Loopz»): النصُّ مكتوبٌ والنتائجُ ظاهرة — لا لوحةَ تغطّيها */
     if (fromSpotlight) {
       setQ(fromSpotlight);
@@ -194,7 +197,22 @@ export function SearchScreen() {
     }
     const h = setTimeout(focusField, 350);
     return () => clearTimeout(h);
-  }, [focus, fromSpotlight, desc, focusField]);
+  }, [focus, fromSpotlight, scopeParam, desc, focusField]);
+
+  /*
+   * 🆕 ١٩ نوفمبر — **النتائجُ تُسحب فوق لوحة المفاتيح** (لقطةُ أحمد: «الكيبورد اذا كان ظاهر يغطي العضو تحت»، واختار «أ»): أندرويد
+   * يرسم اللوحةَ فوق التطبيق ولا يقصّر الشاشة، فآخرُ النتائج تحتها، والقائمةُ القصيرةُ لا تُسحب أصلاً. ما دامت ظاهرةً يطول ذيلُ القائمة
+   * بطولها فيصعد آخرُ قسمٍ فوقها — واللوحةُ تبقى مع السحب (لا `on-drag`) ليكمل الكتابةَ بعد أن ينظر.
+   */
+  const [kbH, setKbH] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (e) => setKbH(e.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setKbH(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const back = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -314,7 +332,7 @@ export function SearchScreen() {
         <HeaderEdges from="search" />
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: navH + 24, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={desc ? "on-drag" : "none"} contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: Math.max(navH, kbH) + 24, gap: 16 }} showsVerticalScrollIndicator={false}>
         {desc ? (
           <>
             {/* 🆕 D-1556 — خالد ٢٧ أكتوبر: «اذا ضغطت عالرجوع ما يختفي الكيبورد» — الإيماءةُ تُخفيه (النظامُ يغلقه أوّلاً) والزرُّ لا؛
@@ -391,7 +409,7 @@ export function SearchScreen() {
                 ref={inputRef}
                 value={q}
                 onChangeText={setQ}
-                placeholder={t.searchPlaceholder}
+                placeholder={scope === "all" ? t.searchPhAll : scope === "titles" ? t.searchPhTitles : scope === "artists" ? t.searchPhArtists : scope === "members" ? t.searchPhMembers : t.searchPhLists}
                 placeholderTextColor={tokens.muted}
                 returnKeyType="search"
                 autoCorrect={false}
@@ -511,28 +529,37 @@ export function SearchScreen() {
                 </Pressable>
               </View>
             ) : (
-              <View style={{ gap: 24, opacity: search.isPlaceholderData ? 0.6 : 1 }}>
-                <Section title={t.searchModeTitles} show={data.titles.length > 0} seeAll={seeAll("titles")} seeAllLabel={t.searchSeeAll}>
-                  {data.titles.map((r) => (
-                    <TitleRow key={`${r.mediaType}-${r.id}`} r={r} onPress={() => openTitle(r.mediaType, r.id)} />
-                  ))}
-                </Section>
-                <Section title={t.searchTabArtists} show={data.artists.length > 0} seeAll={seeAll("artists")} seeAllLabel={t.searchSeeAll}>
-                  {data.artists.map((a) => (
-                    <ArtistRow key={a.id} a={a} onPress={() => openPerson(a.id)} />
-                  ))}
-                </Section>
-                <Section title={t.searchTabMembers} show={data.members.length > 0} seeAll={seeAll("members")} seeAllLabel={t.searchSeeAll}>
-                  {data.members.map((m) => {
-                    const href = profileHref(m);
-                    return <MemberRow key={m.id} m={m} onPress={href ? () => leaveTo(href) : null} />;
-                  })}
-                </Section>
-                <Section title={t.searchTabLists} show={data.lists.length > 0} seeAll={seeAll("lists")} seeAllLabel={t.searchSeeAll}>
-                  {data.lists.map((l) => (
-                    <ListRow key={l.id} l={l} onPress={() => leaveTo(`/lists/${l.id}`)} />
-                  ))}
-                </Section>
+              /* 🆕 ١٩ نوفمبر — المسافةُ بين الأقسام ١٢ لا ٢٤ (أحمد: «قلل المساحة السوداء بين عنوان وفنان»)، والقسمُ الذي فيه اسمٌ
+                 يساوي الكلمةَ كاملةً أوّلاً (`sectionOrder`، أحمد «ب») — بلا تطابقٍ تامٍّ يبقى الترتيبُ المعتاد */
+              <View style={{ gap: 12, opacity: search.isPlaceholderData ? 0.6 : 1 }}>
+                {sectionOrder(data, term).map((k: SearchSection) =>
+                  k === "titles" ? (
+                    <Section key={k} title={t.searchModeTitles} show={data.titles.length > 0} seeAll={seeAll("titles")} seeAllLabel={t.searchSeeAll}>
+                      {data.titles.map((r) => (
+                        <TitleRow key={`${r.mediaType}-${r.id}`} r={r} onPress={() => openTitle(r.mediaType, r.id)} />
+                      ))}
+                    </Section>
+                  ) : k === "artists" ? (
+                    <Section key={k} title={t.searchTabArtists} show={data.artists.length > 0} seeAll={seeAll("artists")} seeAllLabel={t.searchSeeAll}>
+                      {data.artists.map((a) => (
+                        <ArtistRow key={a.id} a={a} onPress={() => openPerson(a.id)} />
+                      ))}
+                    </Section>
+                  ) : k === "members" ? (
+                    <Section key={k} title={t.searchTabMembers} show={data.members.length > 0} seeAll={seeAll("members")} seeAllLabel={t.searchSeeAll}>
+                      {data.members.map((m) => {
+                        const href = profileHref(m);
+                        return <MemberRow key={m.id} m={m} onPress={href ? () => leaveTo(href) : null} />;
+                      })}
+                    </Section>
+                  ) : (
+                    <Section key={k} title={t.searchTabLists} show={data.lists.length > 0} seeAll={seeAll("lists")} seeAllLabel={t.searchSeeAll}>
+                      {data.lists.map((l) => (
+                        <ListRow key={l.id} l={l} onPress={() => leaveTo(`/lists/${l.id}`)} />
+                      ))}
+                    </Section>
+                  ),
+                )}
               </View>
             )}
           </>

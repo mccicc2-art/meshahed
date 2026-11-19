@@ -374,6 +374,14 @@ const ar = {
   libAnimeEmpty: "لا أنمي في مكتبتك بعد — تابِع عملاً ليظهر هنا.",
   libAnimeEmptyCta: "تصفّح الأنمي",
   searchPlaceholder: "ابحث عن مسلسل أو فيلم…",
+  /* 🆕 ١٩ نوفمبر — نصُّ حقل البحث يتبع الرقاقة (أحمد: «بدل ابحث عن مسلسل فلم … خلها ابحث عن تايتل ارتيست ممبر») */
+  searchPhAll: "ابحث عن أعمال، فنانين، أعضاء…",
+  searchPhTitles: "ابحث عن عمل…",
+  searchPhArtists: "ابحث عن فنان…",
+  searchPhMembers: "ابحث عن عضو…",
+  searchPhLists: "ابحث عن قائمة…",
+  /* 🆕 ١٩ نوفمبر — زرُّ تبويب الأعضاء في المجتمع */
+  findMembers: "ابحث عن عضو",
   /* أوضاع ورقة البحث الثلاثة — كلمةٌ واحدة لكلٍّ: ثلاث خاناتٍ في ترويسة
      ورقةٍ على ٣٦٠px لا تحتمل «البحث عن الأشخاص» */
   /* «كم مضى» لا «متى وقع» — لخطّ النشاط (D-136) */
@@ -3796,6 +3804,12 @@ const en: Dict = {
     "No anime in your library yet — follow one and it shows up here.",
   libAnimeEmptyCta: "Browse anime",
   searchPlaceholder: "Search for a show or a movie…",
+  searchPhAll: "Search titles, artists, members…",
+  searchPhTitles: "Search titles…",
+  searchPhArtists: "Search artists…",
+  searchPhMembers: "Search members…",
+  searchPhLists: "Search lists…",
+  findMembers: "Find members",
   agoNow: "just now",
   agoMinutes: (n: number) => (n === 1 ? "1 min ago" : `${n} min ago`),
   agoHours: (n: number) => (n === 1 ? "1 hour ago" : `${n} hours ago`),

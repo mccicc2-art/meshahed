@@ -1,7 +1,7 @@
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { dockArea, dockPressIn, dockTouched, tabGone, tabPressed } from "./perfMarks";
-import { Pressable, View, type ViewInstance } from "react-native";
+import { Platform, Pressable, View, type ViewInstance } from "react-native";
 import Reanimated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
@@ -49,9 +49,18 @@ const TABS: { key: NavKey; icon: IconName; on: IconName }[] = [
 /** المهمّة ٣٢١ — الحشوةُ العلويّة للشريط، داخلَ الخانات لا حولها */
 const DOCK_PAD_TOP = 10;
 
+/**
+ * الحشوةُ تحت أسماء التبويبات. نصفُ مسافة النظام يكفي الآيفون (شريطُ العودة شفّاف) وأندرويد بالإيماءات (٢٤ تقريباً)، لكنّ
+ * 🆕 ١٩ نوفمبر — **أندرويد بأزرار النظام الثلاثة** (لقطةُ أحمد: «اللي معه اندرويد وحاط الخط اللي تحت يتغطى عنده الكلمات»): شريطُ
+ * الأزرار نحو ٤٨ ومعتمٌ يُرسم فوق التطبيق، فنصفُه يُخفي الأسماء — هناك تؤخذ المسافةُ كاملة. الحدُّ ٤٠: الإيماءاتُ تحته دائماً.
+ */
+export function navPad(insetBottom: number) {
+  return Platform.OS === "android" && insetBottom >= 40 ? insetBottom : Math.max(6, insetBottom * 0.5);
+}
+
 /** ارتفاعُ الشريط بأرضيّته — يقرؤه ذيلُ التمرير والإشعارُ فوقه */
 export function navHeight(insetBottom: number) {
-  return 66 + Math.max(6, insetBottom * 0.5);
+  return 66 + navPad(insetBottom);
 }
 
 export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onGo: (key: NavKey) => void; /** 🆕 11-M · M1 — شريطُ الغلاف فوق الويب: «المجتمع» يمرّ بـ`onGo` (نزعُ الباب قبل الانتقال) */ shell?: boolean }) {
@@ -75,7 +84,7 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
     }, []),
   );
   /* المهمّة ٣٢١ — الحشوتان كما كانتا على الحاوية، تُضافان الآن إلى كلِّ خانة */
-  const padBottom = Math.max(6, insets.bottom * 0.5);
+  const padBottom = navPad(insets.bottom);
   return (
     <View
       ref={navRef}

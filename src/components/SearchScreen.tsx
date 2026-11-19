@@ -304,8 +304,9 @@ export function SearchScreen({
                 ref={inputRef}
                 value={q}
                 onChange={(e) => changeQ(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                aria-label={t.searchPlaceholder}
+                /* 🆕 ١٩ نوفمبر — النصُّ يتبع الرقاقة كالتطبيق (أحمد: «ابحث عن تايتل ارتيست ممبر» ثمّ «ف الويب ايضا») */
+                placeholder={phOf(scope, t)}
+                aria-label={phOf(scope, t)}
                 type="search"
                 enterKeyHint="search"
                 autoComplete="off"
@@ -823,4 +824,9 @@ function Skeleton() {
       ))}
     </div>
   );
+}
+
+/** 🆕 ١٩ نوفمبر — نصُّ حقل البحث لكلِّ رقاقة — الكلماتُ نفسُها في التطبيق (`searchPh*`) */
+function phOf(scope: SearchScope, t: { searchPhAll: string; searchPhTitles: string; searchPhArtists: string; searchPhMembers: string; searchPhLists: string }): string {
+  return scope === "all" ? t.searchPhAll : scope === "titles" ? t.searchPhTitles : scope === "artists" ? t.searchPhArtists : scope === "members" ? t.searchPhMembers : t.searchPhLists;
 }
