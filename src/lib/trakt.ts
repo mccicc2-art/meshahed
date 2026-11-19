@@ -7,20 +7,40 @@
 
 const API = "https://api.trakt.tv";
 
+/**
+ * 🆕 R275 — **PKCE لا السرّ** (اكتُشف ١٩ نوفمبر عند إنشاء تطبيق Loopz في بوّابة مطوّري Trakt الجديدة): التطبيقاتُ الجديدة
+ * «Not issued» للـClient Secret — تسجّل الدخول بـPKCE وحده. فالمفتاحُ المطلوبُ واحد (`TRAKT_CLIENT_ID`)، والسرُّ إن وُجد
+ * (تطبيقٌ قديم) يُرسَل ولا يُشترط. والتحقّقُ في كلِّ رحلةٍ مُتحقِّقٌ عشوائيٌّ يُحفظ في كوكي ويُرسل بصمتُه (S256) فقط.
+ */
 export function traktConfigured() {
-  return !!process.env.TRAKT_CLIENT_ID && !!process.env.TRAKT_CLIENT_SECRET;
+  return !!process.env.TRAKT_CLIENT_ID;
 }
 
-export function traktAuthorizeUrl(redirectUri: string, state: string) {
+const b64url = (buf: ArrayBuffer | Uint8Array) =>
+  Buffer.from(buf instanceof Uint8Array ? buf : new Uint8Array(buf)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+/** مُتحقِّقُ PKCE (٤٣–١٢٨ حرفاً من الأبجديّة المسموحة) وبصمتُه S256 */
+export async function traktPkce(): Promise<{ verifier: string; challenge: string }> {
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  return { verifier, challenge };
+}
+
+export function traktAuthorizeUrl(redirectUri: string, state: string, challenge: string) {
   const u = new URL("https://trakt.tv/oauth/authorize");
   u.searchParams.set("response_type", "code");
   u.searchParams.set("client_id", process.env.TRAKT_CLIENT_ID ?? "");
   u.searchParams.set("redirect_uri", redirectUri);
   u.searchParams.set("state", state);
+  u.searchParams.set("code_challenge", challenge);
+  u.searchParams.set("code_challenge_method", "S256");
   return u.toString();
 }
 
-export async function traktToken(code: string, redirectUri: string): Promise<string | null> {
+/** السرُّ يُرفق إن وُجد (تطبيقٌ قديم) ولا يُشترط — تطبيقُ PKCE بلا سرّ */
+const secret = () => (process.env.TRAKT_CLIENT_SECRET ? { client_secret: process.env.TRAKT_CLIENT_SECRET } : {});
+
+export async function traktToken(code: string, redirectUri: string, verifier: string): Promise<string | null> {
   try {
     const res = await fetch(`${API}/oauth/token`, {
       method: "POST",
@@ -31,7 +51,8 @@ export async function traktToken(code: string, redirectUri: string): Promise<str
       body: JSON.stringify({
         code,
         client_id: process.env.TRAKT_CLIENT_ID,
-        client_secret: process.env.TRAKT_CLIENT_SECRET,
+        ...secret(),
+        code_verifier: verifier,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
@@ -57,7 +78,7 @@ export async function traktRevoke(token: string): Promise<void> {
       headers: { "content-type": "application/json" },
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
-      body: JSON.stringify({ token, client_id: process.env.TRAKT_CLIENT_ID, client_secret: process.env.TRAKT_CLIENT_SECRET }),
+      body: JSON.stringify({ token, client_id: process.env.TRAKT_CLIENT_ID, ...secret() }),
     });
   } catch {
     /* صمت */

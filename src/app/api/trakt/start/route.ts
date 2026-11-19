@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/data";
-import { traktAuthorizeUrl, traktConfigured } from "@/lib/trakt";
+import { traktAuthorizeUrl, traktConfigured, traktPkce } from "@/lib/trakt";
 
 /**
  * بداية ربط Trakt.
@@ -29,5 +29,15 @@ export async function GET(request: Request) {
     maxAge: 600,
   });
 
-  return NextResponse.redirect(traktAuthorizeUrl(redirectUri, state));
+  /* 🆕 R275 — مُتحقِّقُ PKCE يبقى عندنا (كوكي httpOnly عشر دقائق)، وبصمتُه وحدها تذهب إلى Trakt */
+  const { verifier, challenge } = await traktPkce();
+  store.set("trakt_verifier", verifier, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 600,
+  });
+
+  return NextResponse.redirect(traktAuthorizeUrl(redirectUri, state, challenge));
 }

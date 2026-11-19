@@ -20,14 +20,16 @@ export async function GET(request: Request) {
 
   const store = await cookies();
   const expected = store.get("trakt_state")?.value;
+  const verifier = store.get("trakt_verifier")?.value;
+  store.delete("trakt_verifier");
   const state = url.searchParams.get("state");
   const code = url.searchParams.get("code");
   store.delete("trakt_state");
 
   // الشِفرة بلا حالةٍ مطابقة لا تُصرف — انظر تعليق البداية
-  if (!code || !state || !expected || state !== expected) return back("trakt=denied");
+  if (!code || !state || !expected || state !== expected || !verifier) return back("trakt=denied");
 
-  const token = await traktToken(code, new URL("/api/trakt/callback", request.url).toString());
+  const token = await traktToken(code, new URL("/api/trakt/callback", request.url).toString(), verifier);
   if (!token) return back("trakt=failed");
 
   let harvest;
