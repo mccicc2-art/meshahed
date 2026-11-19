@@ -1,10 +1,9 @@
 import React from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { notePress } from "../perfMarks";
-import { ARABIC_RE } from "../fonts";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
 
@@ -53,10 +52,9 @@ export function Chip({
   const pad = size === "lg" ? { h: 18, v: 12 } : size === "md" ? { h: 14, v: 8 } : { h: 10, v: 4 };
   const fs = size === "lg" ? 16 : size === "md" ? 14 : 12;
   const color = active ? tokens.onAccent : ink === "accent" ? tokens.accent : tokens.muted;
-  /* 🆕 D-1537 — **الأيقونةُ على خطّ الحروف** (أحمد ٢٢ أكتوبر بلقطة: «الايقونة والكتابة مهي متساوية على نفس الخط»): في
-     أندرويد يزيد الخطُّ اللاتينيّ حشوةً تحت الحروف فيقع وسطُ صندوقه تحت وسطها — قيس على اللقطة: ٤px (≈١٫٥pt) في `lg`.
-     فالأيقونةُ ترتفع بقدرها، في هذه الحالة المقيسة وحدَها؛ والعربيّةُ وiOS بلا تعديلٍ حتى تُقاس لقطتُهما */
-  const lift = size === "lg" && Platform.OS === "android" && !ARABIC_RE.test(label) ? 1.5 : 0;
+  /* D-1537 — **الأيقونةُ على خطّ الحروف** (أحمد ٢٢ أكتوبر بلقطة: «الايقونة والكتابة مهي متساوية على نفس الخط»). كانت الأيقونةُ ترتفع
+     ١٫٥pt في `lg` على أندرويد لأنّ الحروفَ اللاتينيّة كانت تقع فوق وسط صندوقها؛ 🆕 T482 — **صُحّح الحرفُ نفسُه في `Text`** (`latinPadFit`)
+     فحُذف الرفعُ هنا كي لا يُصحَّح الصفُّ مرّتين (المراجعةُ المستقلّة) */
   return (
     <Pressable
       onPress={onPress}
@@ -82,7 +80,7 @@ export function Chip({
         backgroundColor: active ? tokens.accent : tokens.bg,
       }}
     >
-      {leading ? <View style={lift ? { transform: [{ translateY: -lift }] } : undefined}>{leading}</View> : null}
+      {leading ? <View>{leading}</View> : null}
       <Text size={fs} weight="600" color={color} numberOfLines={1}>
         {label}
       </Text>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BackHandler, I18nManager, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
+import { BackHandler, I18nManager, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -181,11 +181,9 @@ function SideDrawer({
   /* 🔴 D-1507 — **التاريخُ يُقرأ كاملاً** (تسجيلُ خالد ٢٧ أكتوبر: «Active until Decem…»): الشهرُ مختصرٌ بالإنجليزيّة («Dec 20»)
      وكاملٌ بالعربيّة («٢٠ نوفمبر» يتّسع) — والسطرُ يصغر قليلاً قبل أن يُقصّ إن ضاق العرضُ على هاتفٍ أصغر */
   const until = h?.plus_until ? new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { day: "numeric", month: locale === "ar" ? "long" : "short" }).format(new Date(h.plus_until)) : null;
-  /* 🔴 D-1507 — **النصُّ على خطِّ الأيقونة** (تسجيلُ خالد ٢٧ أكتوبر: «الأسطر مهي على نفس الخط مع الأيقونات»). مقيسٌ من التسجيل
-     (أندرويد، الإنجليزيّة): وسطُ الكلمة فوق وسط الأيقونة بـ٦–٧px في كلِّ صفّ ≈ ٠٫١٤ من مقاس الخطّ — صندوقُ سطر Poppins أطولُ من جسم
-     حروفه في أسفله. الحرفُ ينزل بالإزاحة والصفُّ لا يتغيّر ارتفاعُه. العربيُّ على الآيفون مصحَّحٌ في `Text` (D-1498)، وأندرويد العربيُّ
-     لم يُقَس — لا يُمسّ */
-  const lift = (size: number) => (Platform.OS === "android" && locale !== "ar" ? { transform: [{ translateY: Math.round(size * 1.4) / 10 }] } : null);
+  /* D-1507 — **النصُّ على خطِّ الأيقونة** (تسجيلُ خالد ٢٧ أكتوبر: «الأسطر مهي على نفس الخط مع الأيقونات»). كانت هنا إزاحةٌ مقيسةٌ
+     للإنجليزيّة في أندرويد (٠٫١٤ من مقاس الخطّ)؛ 🆕 T482 — **انتقل العلاجُ إلى `Text` لكلِّ نصٍّ لاتينيّ** (`latinPadFit`)، فحُذفت الإزاحة
+     هنا كي لا يُصحَّح الحرفُ مرّتين. القياسُ بعدها على جهاز خالد */
 
   const isLight = (themeId ?? settings?.appearance.theme) === "daylight";
   const toggleTheme = () => {
@@ -216,7 +214,7 @@ function SideDrawer({
     >
       {/* 🆕 T320 — الصفوفُ الصغيرة درجةً أصغر (خالد ٥ نوفمبر): الخطُّ ١٦ ⇐ ١٥ والأيقونةُ ٢٢ ⇐ ٢٠ — صارت ثلاثةً تحت الفاصل */}
       <Icon name={icon} size={opts?.small ? 20 : 24} color={tokens.fg} />
-      <Text size={opts?.small ? 15 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={[{ flex: 1 }, lift(opts?.small ? 15 : 18)]}>{label}</Text>
+      <Text size={opts?.small ? 15 : 18} weight={opts?.small ? "500" : "600"} numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
       {opts?.tag ? <PlusTag /> : null}
     </Pressable>
   );
@@ -383,7 +381,7 @@ function SideDrawer({
               <Pressable onPress={toggleLang} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={t.drawerLangAria(langNow)} hitSlop={4} style={({ pressed }) => ({ height: 44, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed || busy ? 0.6 : 1 })}>
                 {/* 🆕 T320 — الكرةُ ٢٤ ⇐ ٢٢ والاسمُ ١٦ ⇐ ١٥ (خالد ٥ نوفمبر) — بخطِّ الصفوف فوقه */}
                 <Icon name="globe" size={22} color={tokens.fg} />
-                <Text size={15} weight="500" style={lift(15)}>{langNow}</Text>
+                <Text size={15} weight="500">{langNow}</Text>
               </Pressable>
               <Pressable onPress={toggleTheme} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
                 {/* 🆕 T320 — الدائرةُ ٤٤ ⇐ ٤٠ والرمزُ ٢٠ ⇐ ١٨ (خالد: «اصغر درجة») — ومساحةُ اللمس كما كانت (٥٢) بـ`hitSlop` ٦ */}

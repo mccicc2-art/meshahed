@@ -199,6 +199,8 @@ export function StatsCard({ stats, onStat, trailing, seps = !!trailing }: { stat
      سطرين — D-620). ربعُ العرض (~٨٧) لا يتّسع لأيقونةٍ ورقمٍ واسمٍ في سطر («120d Time» يُقصّ)، فالخانةُ
      عند الأربعة **عموديّة**: الأيقونةُ والرقمُ فوق والاسمُ تحته — بالأحجام نفسِها. الاثنان والثلاثة كما هي. */
   const stacked = stats.length === 4;
+  /* 🆕 T482 — **اسمُ الخانة بوزن ٧٠٠ لا ٥٠٠، بمقاسه ١٢** (أحمد ٢٠ نوفمبر: «تحتاج تثقيل اكثر من تكبير»، ثم «مثقل اكثر» من أربع صور):
+     التثقيلُ يوضّحها ولا يأخذ عرضاً — ١٤ كان يقصّ «مسلسلات». والعربيُّ ٧٠٠ يُرسم ٨٠٠ (`familyOf`) */
   /* D-1093 — بطاقةُ الأرقام على لون الصفحة (`bg`) بلا فواصل بين الخانات (أحمد بلقطة: «خلّ خلفيّتها سوداء
      بدل رصاصي وبدون خطوط بينهم»): وصفةُ D-1081 — الإطارُ الخارجيُّ الرفيع وحده يحدّها، و`bg` لا `#000`
      كي تصحّ `daylight`. الفراغُ بين الأرقام الثلاثة يفصلها وحدَه؛ خطٌّ فوقه كان يكرّر الفصل. */
@@ -213,7 +215,7 @@ export function StatsCard({ stats, onStat, trailing, seps = !!trailing }: { stat
                 <Icon name={s.icon as never} size={16} color={tokens.accent} />
                 <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{s.value}</Text>
               </View>
-              <Text size={12} weight="500" muted numberOfLines={1} style={{ maxWidth: "100%" }}>{s.label}</Text>
+              <Text size={12} weight="700" muted numberOfLines={1} style={{ maxWidth: "100%" }}>{s.label}</Text>
             </Pressable>
           ) : (
             <Pressable key={s.key} onPress={() => onStat(s.href)} accessibilityRole="link" accessibilityLabel={`${s.value} ${s.label}`} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, paddingVertical: 10, opacity: pressed ? 0.7 : 1 }]}>
@@ -222,7 +224,7 @@ export function StatsCard({ stats, onStat, trailing, seps = !!trailing }: { stat
                   ١٥ (سطرُه الطبيعيّ ~٢٢) و١٤ تحت Tajawal ١٢ كانا يرفعان الرقمَ والاسمَ فوق وسط الأيقونة (~٢pt في اللقطة). السطرُ
                   الطبيعيُّ يتوسّط، والحشوةُ نقصت نقطتين فلا تكبر البطاقة إلّا قليلاً */}
               <Text size={15} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{s.value}</Text>
-              <Text size={12} weight="500" muted numberOfLines={1} style={{ flexShrink: 1 }}>{s.label}</Text>
+              <Text size={12} weight="700" muted numberOfLines={1} style={{ flexShrink: 1 }}>{s.label}</Text>
             </Pressable>
           ),
         ])}

@@ -93,7 +93,10 @@ export const THEMES: Theme[] = [
       // #F7F7F7 لا #FFFFFF: **الأبيضُ الخالص على أسودٍ عميقٍ يهتزّ**
       // (halation)، ودرجةٌ تحته تُريح العينَ بلا أن تفقد التباين (≈18:1)
       foreground: "#F7F7F7",
-      muted: "#B5B5B5",
+      // 🆕 T482 — #D6D6D6 لا #B5B5B5 (أحمد ٢٠ نوفمبر بلقطة خالد: الكلامُ «حدّته ونظافته مو عالية»): الكلماتُ الرماديّة الصغيرة
+      // (Shows · All · «5 left») بمقاس ١٢–١٤ كانت أنعمَ ما في الشاشة. السلّمُ كلُّه صعد درجةً ويبقى ثلاثَ درجاتٍ متميّزة:
+      // F7 للنصّ · D6 للخافت · A0 للثالث
+      muted: "#D6D6D6",
       // نصٌّ أسود على الأصفر لا أبيض: الأبيض على #FFD400 لا يُقرأ أصلاً
       // (تباين ~1.6)، والأسود عليه ~14 — لهذا وُجد رمز on-accent
       accent: "#FFD400",
@@ -105,8 +108,9 @@ export const THEMES: Theme[] = [
       divider: "rgba(255, 255, 255, 0.08)",
       "surface-inverse": "#F7F7F7",
       "on-surface-inverse": "#050505",
-      // النصُّ الخافت — الدرجةُ الثالثة في سلّم النصّ (#777777)
-      disabled: "#777777",
+      // النصُّ الخافت — الدرجةُ الثالثة في سلّم النصّ. 🆕 T482 — #A0A0A0 لا #777777: صعد مع `muted` (التبويباتُ غيرُ المختارة
+      // في الشريط السفليّ منه)
+      disabled: "#A0A0A0",
       verified: "#FFD400",
     },
     glowA: "rgba(255, 212, 0, 0.10)",
@@ -128,7 +132,8 @@ export const THEMES: Theme[] = [
       surface: "#171719",
       "surface-2": "#1F1F22",
       foreground: "#F5F5F5",
-      muted: "#B4B4B8",
+      // 🆕 T482 — صعد مع «لوبز» درجةً (كان #B4B4B8)، ببرودته نفسِها
+      muted: "#D5D5D9",
       accent: "#FFD400",
       "accent-2": "#F59E0B",
       border: "#2B2B2E",
@@ -138,7 +143,7 @@ export const THEMES: Theme[] = [
       divider: "rgba(255, 255, 255, 0.08)",
       "surface-inverse": "#F5F5F5",
       "on-surface-inverse": "#0D0D0F",
-      disabled: "#828286",
+      disabled: "#A3A3A7", // 🆕 T482 — كان #828286، صعد مع `muted`
       verified: "#FFD400",
     },
     glowA: "rgba(255, 212, 0, 0.10)",

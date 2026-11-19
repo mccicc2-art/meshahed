@@ -280,7 +280,8 @@ export const ReplyItem = memo(function ReplyItem({
                     accessibilityState={{ selected: row.my_vote === -1 }}
                     style={{ padding: 6 }}
                   >
-                    <Icon name="chevron-down" size={16} color={row.my_vote === -1 ? tokens.fg : tokens.muted} />
+                    {/* 🆕 T482 — المختارُ بالأصفر كأخيه «فوق»: صار الرماديُّ #D6D6D6 فلم يعد الأبيضُ يُميَّز عنه (تباينٌ ١٫٣٦) — واللونُ وحدَه هو العلامة هنا */}
+                    <Icon name="chevron-down" size={16} color={row.my_vote === -1 ? tokens.accent : tokens.muted} />
                   </Pressable>
                 </View>
               ) : null}

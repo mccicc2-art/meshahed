@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   I18nManager,
+  PixelRatio,
   Platform,
   Text as RNText,
   View,
@@ -168,6 +169,10 @@ export function Text({
      في أسفله، فتتوسّط الأيقونةُ الصندوقَ ويقع الحرفُ فوق وسطه — قيس في اللقطة نحو ٠٫١٢–٠٫١٨ من مقاس الخطّ. الحرفُ ينزل والمساحةُ
      التي يأخذها النصُّ لا تتغيّر (`arabicNudge` — D-1499). أندرويد يحسب السطرَ بمقاييس أخرى ولم يُقَس — لا يُمسّ */
   const nudge = Platform.OS === "ios" && runs.length > 0 && runs[0].ar ? arabicNudge([base, style]) : null;
+  /* 🆕 T482 — **اللاتينيُّ على خطِّ أيقونته في أندرويد، في كلِّ نصّ** (أحمد ٢٠ نوفمبر بلقطة خالد: «علامة To watch مهي على نفس الخط…
+     نفس الشيء فالباقين»). كان العلاجُ في عناوين الأقسام وحدَها (T332) وفي القائمة الجانبيّة بإزاحةٍ مقيسة (D-1507)، فبقي صفُّ الأرقام
+     و«All» أعلى من أيقوناتها بـ٣٫٥–٤٫٥ بكسل — والحسابُ من ملفّ الخطّ يتنبّأ بـ٣٫٧٥ لـ«All». العلاجُ هنا مرّةً للجميع (`latinPadFit`) */
+  const latinFit = Platform.OS === "android" && runs.length > 0 && runs.every((r) => !r.ar) ? latinPadFit([base, style], weight) : null;
   /* 🔴 D-981 — **النصُّ الفارغ بلا مقاطع**: `runs[0].ar` على `""` كان يُسقط الشجرةَ كلَّها
      (أوّلُ `AppCrash` في السجلّ، D-974: «Cannot read property 'ar' of undefined» في
      `TitleScreen` — الشاشةُ السوداء عند فتح فيلم بلا شعارٍ أو وصف). الفارغُ يُرسم فارغاً. */
@@ -175,10 +180,10 @@ export function Text({
     return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, style]}>{children}</RNText>;
   }
   if (runs.length === 1) {
-    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge]}>{children}</RNText>;
+    return <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge, latinFit]}>{children}</RNText>;
   }
   return (
-    <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge]}>
+    <RNText maxFontSizeMultiplier={SYSTEM_FONT_CAP} {...rest} style={[base, family(runs[0].ar), style, nudge, latinFit]}>
       {runs.map((r, i) => (
         <RNText key={i} style={family(r.ar)}>{r.s}</RNText>
       ))}
@@ -214,6 +219,42 @@ function arabicNudge(style: StyleProp<TextStyle>): TextStyle | null {
   if (pt === null || mt === null || mb === null) return null;
   const r = (x: number) => Math.round(x * 10) / 10;
   return { paddingTop: r(pt + fs * AR_HEAD), marginTop: r(mt - fs * AR_TOP), marginBottom: r(mb - fs * AR_DOWN) };
+}
+
+/**
+ * 🆕 T482 — **حشوةُ أندرويد للاتينيّ متناظرةً** (انظر رأسَ `Text`). أندرويد يحشو صندوقَ النصّ بحدودِ رسمِ الخطّ (`includeFontPadding`):
+ * فوقَه حتى أعلى نقطةٍ في Poppins وتحتَه حتى أدناها، وهي غيرُ متناظرة (من ملفّه، لكلِّ ١٠٠٠: ٤٠٠ ⇐ ١٠٦٥ فوق · ٥٧٢ تحت مقابلَ
+ * صعودٍ ١٠٥٠ وهبوطٍ ٣٥٠) — فيقع وسطُ الحروف فوق وسط الصندوق بنحو ٠٫١ من مقاس الخطّ، وتتوسّط الأيقونةُ الصندوقَ لا الحروف.
+ * بلا الحشوة يقع وسطُ الحروف الكبيرة (٣٥٠) على وسط الصندوق تماماً؛ **ونردّ الحشوةَ نفسَها نصفين متساويين** فلا يتغيّر ارتفاعُ أيّ صندوق
+ * ولا أيُّ مسافةٍ في التطبيق — الحرفُ وحدَه ينزل إلى الوسط.
+ * لا تُطبَّق على: نصٍّ بارتفاعِ سطرٍ صريح (أندرويد يوزّع السطرَ على الصعود والهبوط فيتوسّط أصلاً) · نصٍّ بارتفاعٍ صريح · نصٍّ كتب مستدعيه
+ * `includeFontPadding` بنفسه (عناوينُ الأقسام — T332 — تبقى كما اعتُمدت) · حشوةٍ نسبيّة. والعربيُّ لا يُمسّ (نقاطُ Tajawal تعلو صعودَه — D-1499).
+ */
+const LATIN_PAD: Record<"400" | "500" | "600" | "700", number> = {
+  /* (أعلى نقطة − ١٠٥٠ + أدنى نقطة − ٣٥٠) ÷ ٢ ÷ ١٠٠٠ — من `head` في ملفّات Poppins التي يحملها التطبيق */
+  "400": 0.1185,
+  "500": 0.1295,
+  "600": 0.142,
+  "700": 0.157,
+};
+function latinPadFit(style: StyleProp<TextStyle>, weight: Weight): TextStyle | null {
+  const f = StyleSheet.flatten(style) as TextStyle | undefined;
+  const fs = f?.fontSize;
+  if (!fs || f?.lineHeight != null || f?.height != null || f?.includeFontPadding != null) return null;
+  const num = (...v: unknown[]): number | null => {
+    for (const x of v) {
+      if (x == null) continue;
+      return typeof x === "number" ? x : null;
+    }
+    return 0;
+  };
+  const pt = num(f?.paddingTop, f?.paddingVertical, f?.padding);
+  const pb = num(f?.paddingBottom, f?.paddingVertical, f?.padding);
+  if (pt === null || pb === null) return null;
+  /* ٨٠٠ يسقط إلى ٧٠٠ في `familyOf` — فحشوتُه حشوةُ ٧٠٠. وأندرويد يضرب المقاسَ في خطّ النظام (حتى السقف) ولا يضرب الحشوة،
+     فتُضرب هنا بالمعامل نفسِه كي يبقى الصندوقُ بارتفاعه حرفاً (`PlanWordmark` يفعل مثله) */
+  const pad = fs * Math.min(PixelRatio.getFontScale(), SYSTEM_FONT_CAP) * LATIN_PAD[weight === "800" ? "700" : weight];
+  return { includeFontPadding: false, paddingTop: pt + pad, paddingBottom: pb + pad };
 }
 
 /**
