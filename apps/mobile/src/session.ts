@@ -89,14 +89,14 @@ let welcomeDoneMem = false;
  * المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة).
  */
 type WaitWhy = "noack" | "slow" | "stall" | "host" | "jwt" | "exp" | "clear" | "noinject" | "out";
-type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own"; count?: number }) => void;
+type WaitReport = (ms: number, extra: { result: "ok" | "none"; ready: 0 | 1; why?: WaitWhy; src?: "cookie" | "lib" | "own" | "disk"; count?: number }) => void;
 /**
  * 🆕 D-1143 — **لماذا انتهى الطلبُ الأخير** (يُقرأ مرّةً عند التبليغ): `noack` لم يصل الحدثُ الصفحةَ أصلاً ·
  * `slow` وصل ولم يُجب في ٨ث · `stall` الصفحةُ قالت إنّ مكتبتَها علقت · `host`/`jwt`/`exp` ردٌّ رُفض ·
  * `clear` الصفحةُ بلا جلسة. ومع النجاح: `src` من الكوكي أم من المكتبة.
  */
 let lastWhy: WaitWhy | undefined;
-let lastSrc: "cookie" | "lib" | "own" | undefined;
+let lastSrc: "cookie" | "lib" | "own" | "disk" | undefined;
 const waitListeners = new Set<WaitReport>();
 /** 🆕 D-1141 — طلبٌ واحدٌ في الطريق لكلِّ من يسأل — كان كلُّ نداءٍ في الطابور يرسل طلبَه بعد التحميل */
 let inflight: Promise<string | null> | null = null;
@@ -384,7 +384,8 @@ export const session = {
     if (!own.enabled()) return session.bridgeOnce();
     return own.ensure().then((t) => {
       if (t) {
-        lastSrc = "own";
+        /* A-69 — `disk`: رمزٌ أُعيد من الحفظ عند الإقلاع بلا رحلة تجديد (يُقاس به أثرُ الإصلاح) */
+        lastSrc = own.fromDisk(t) ? "disk" : "own";
         return t;
       }
       /* 🆕 R53 — **التجديدُ تعثّر بالشبكة ورمزُه باقٍ ⇒ تجديدٌ ثانٍ والجسرُ معاً، وأوّلُ رمزٍ يصل يكفي** (جوال أحمد ٢١ أكتوبر:

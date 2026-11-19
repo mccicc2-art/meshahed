@@ -552,6 +552,12 @@ const ar = {
   showOriginalText: "النص الأصلي",
   /* 🆕 **مفتاحُ الترجمة التلقائيّة** (D-309) */
   autoTranslate: "ترجمة تلقائية",
+  /* 🆕 **بطاقةُ «التقييمات بلا كتابة»** (T457) — ثلاثةٌ فأكثر، فلا مفردَ ولا مثنّى:
+     «أعمال» للثلاثة إلى العشرة و«عملاً» لما فوقها (D-733) */
+  feedRatedN: (n: number) => (n <= 10 ? `قيّم ${n} أعمال` : `قيّم ${n} عملاً`),
+  feedRatingsOnly: "تقييمات بلا كتابة",
+  feedRatingsToggle: "التقييمات بلا كتابة",
+  feedRatingsMore: (n: number) => `+${n}`,
   showTranslation: "الترجمة",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
@@ -3892,6 +3898,10 @@ const en: Dict = {
   talkFollowedOnly: "Only shows I follow",
   showOriginalText: "Original text",
   autoTranslate: "Auto-translate",
+  feedRatedN: (n: number) => `rated ${n} titles`,
+  feedRatingsOnly: "Ratings only",
+  feedRatingsToggle: "Ratings without reviews",
+  feedRatingsMore: (n: number) => `+${n}`,
   showTranslation: "Translation",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",

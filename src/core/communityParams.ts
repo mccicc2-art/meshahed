@@ -46,6 +46,8 @@ export type CommunityPrefsBody = {
   /** 🆕 D-1201 — ترتيبُ «النقاشات» */
   talk_sort?: "latest" | "active";
   translate?: boolean;
+  /** 🆕 T457 — بطاقاتُ التقييمات المجمّعة في النشاط */
+  ratings?: boolean;
 };
 
 export function parseCommunityPrefsBody(b: unknown): CommunityPrefsBody | null {
@@ -57,5 +59,6 @@ export function parseCommunityPrefsBody(b: unknown): CommunityPrefsBody | null {
   if (typeof o.talk_followed === "boolean") out.talk_followed = o.talk_followed;
   if (o.talk_sort === "latest" || o.talk_sort === "active") out.talk_sort = o.talk_sort;
   if (typeof o.translate === "boolean") out.translate = o.translate;
+  if (typeof o.ratings === "boolean") out.ratings = o.ratings;
   return Object.keys(out).length ? out : null;
 }

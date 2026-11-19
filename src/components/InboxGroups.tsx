@@ -241,7 +241,7 @@ export function GroupView({ g, meId, locale, chatBg }: { g: MsgGroupConversation
     if (first || near || lastMine) window.scrollTo({ top: doc.scrollHeight, behavior: first ? "auto" : "smooth" });
   }, [count, lastMine]);
 
-  async function send(m: Outgoing) {
+  async function send(m: Outgoing): Promise<boolean> {
     const quoted = m.reply_to ? events.find((e): e is GroupMsgEvent => e.kind === "msg" && e.id === m.reply_to) ?? null : null;
     const tmpId = `tmp-${idRef.current++}`;
     setEvents((prev) => [
@@ -273,11 +273,16 @@ export function GroupView({ g, meId, locale, chatBg }: { g: MsgGroupConversation
     try {
       await v1Post(`/api/v1/me/groups/${g.group_id}`, { body: m.body, gif_id: m.gif_id ?? null, image_path: m.image_path ?? null, reply_to: m.reply_to ?? null }, t);
       coalescedRefresh(router);
+      return true;
     } catch (e) {
       /* A-65 (المدقّق ١٨ نوفمبر) — الفقاعةُ المتفائلةُ تُرفع إن فشل الإرسال: كانت تبقى بساعتها كأنّها أُرسلت حتى يجدّد الخادمُ الخيط.
-         نهجُ التطبيق نفسُه (GroupScreen `deliver` يُسقطها عند الفشل) */
+         نهجُ التطبيق نفسُه (GroupScreen `deliver` يُسقطها ثمّ `undo`): الاقتباسُ يعود هنا، والنصُّ يعيده المؤلِّفُ حين نرجع `false`،
+         ورابطُ الصورة المحلّيُّ يُحرَّر (لا فقاعةَ تعرضه بعد الآن) */
       setEvents((prev) => prev.filter((x) => x.id !== tmpId));
+      if (m.local) URL.revokeObjectURL(m.local);
+      if (quoted) setReplyTo((cur) => cur ?? quoted);
       flashError((e as Error).message);
+      return false;
     }
   }
 

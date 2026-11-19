@@ -42,7 +42,7 @@ import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
 import { displayNameOf } from "@/core/people";
-import type { CommunityFeedPagePayload, CommunityFeedRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
+import type { CommunityFeedPagePayload, CommunityFeedRow, CommunityPostRow, CommunityLeaderRow, CommunityListCard, CommunityPayload, CommunityPeopleAllPayload, CommunityPrefs, HiddenRailsBody } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
 
 /**
@@ -73,8 +73,9 @@ const memory: { tab: Tab | null; all: BoardSection | null } = { tab: null, all: 
 
 async function fetchCommunity() {
   /* 🆕 D-1461 — اختيارُ الجهاز يلبس كلَّ ردٍّ قبل الكاش: الخادمُ لا يرى كوكيز التطبيق فيعيد الأصل («الكل» + «الأكثر تفاعلاً») */
-  /* 🆕 R58 — `talk=1`: منشوراتُ النقاش في الخطّ و«النقاش العام» (الخادمُ لا يرسلهما لنسخةٍ لا تعرفهما) */
-  return withFeedChoice((await api<CommunityPayload>("/api/v1/community?talk=1")).data);
+  /* 🆕 R58 — `talk=1`: منشوراتُ النقاش في الخطّ و«النقاش العام» (الخادمُ لا يرسلهما لنسخةٍ لا تعرفهما)
+     🆕 T457 — `ratings=1`: بطاقاتُ «التقييمات بلا كتابة» بالنهج نفسِه — والمفتاحُ يُخفيها في اليد (`feedView`) */
+  return withFeedChoice((await api<CommunityPayload>("/api/v1/community?talk=1&ratings=1")).data);
 }
 
 /** تسخينٌ اختياريّ — المفتاحُ مفتاحُ الشاشة فلا نداءَ يتكرّر */
@@ -111,7 +112,7 @@ export function CommunityScreen() {
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const say = useCallback((text: string, tone?: ToastTone) => toastHost.current?.say(text, undefined, undefined, tone), []);
   const acts = useCommunityActs(d, t, say);
-  const [composing, setComposing] = useState<CommunityFeedRow | null>(null);
+  const [composing, setComposing] = useState<CommunityPostRow | null>(null);
   const [tools, setTools] = useState(false);
   const share = useCallback((path: string, title: string) => {
     const url = `${CONFIG.apiBase}${path}`;
@@ -120,8 +121,8 @@ export function CommunityScreen() {
   }, []);
   /* 🆕 D-1448 — ورقةُ ⋯ في زاوية البطاقة */
   /* 🆕 D-1626 — ومعه مكانُ النقاط: القائمةُ تنسدل منها */
-  const [menuRow, setMenuRow] = useState<{ row: CommunityFeedRow; anchor: Anchor } | null>(null);
-  const openMenu = useCallback((row: CommunityFeedRow, anchor: Anchor) => setMenuRow({ row, anchor }), []);
+  const [menuRow, setMenuRow] = useState<{ row: CommunityPostRow; anchor: Anchor } | null>(null);
+  const openMenu = useCallback((row: CommunityPostRow, anchor: Anchor) => setMenuRow({ row, anchor }), []);
   const cardActs: CardActs = useMemo(
     () => ({ like: acts.like, signedIn: acts.signedIn, meId: acts.meId, comment: setComposing, share, menu: openMenu }),
     [acts.like, acts.signedIn, acts.meId, share, openMenu],
@@ -578,14 +579,16 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
   const feedView = useMemo(() => {
     const p = d.prefs;
     const v = p ? d.feed.variants?.find((x) => x.strangers === p.strangers && x.sort === p.sort) : undefined;
-    if (!v) return { rows: d.feed.rows, quiet: !!d.feed.quiet };
+    /* 🆕 T457 — مفتاحُ «التقييمات بلا كتابة» يُطبَّق هنا بلا جلب: الخادمُ يرسلها دائماً لمن طلبها، والغيابُ (خادمٌ أقدم) إظهار */
+    const keep = (r: CommunityFeedRow) => r.kind !== "ratings" || p?.ratings !== false;
+    if (!v) return { rows: d.feed.rows.filter(keep), quiet: !!d.feed.quiet };
     const byKey = new Map<string, CommunityFeedRow>();
     for (const r of d.feed.rows) byKey.set(r.key, r);
     for (const r of d.feed.extra ?? []) byKey.set(r.key, r);
     const rows: CommunityFeedRow[] = [];
     for (const k of v.keys) {
       const r = byKey.get(k);
-      if (r) rows.push(r);
+      if (r && keep(r)) rows.push(r);
     }
     return { rows, quiet: v.quiet };
   }, [d.feed, d.prefs]);

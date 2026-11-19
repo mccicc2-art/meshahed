@@ -1674,7 +1674,7 @@ export const ANIME_KEYWORD = "210024";
  * الشكلُ هنا مقرونٌ بنصّ الرمي: إن تغيّر أحدهما فليتغيّر الآخر.
  */
 export function isTmdbNotFound(e: unknown): boolean {
-  return e instanceof Error && /^TMDB \/(?:tv|movie)\/\d+\S* failed: 404$/.test(e.message);
+  return e instanceof Error && /^TMDB \/(?:tv|movie)\/\d+ failed: 404$/.test(e.message);
 }
 
 export function isAnime(tv: {

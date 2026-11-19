@@ -4,6 +4,7 @@ import {
   getT,
   getTabPrefs,
   getFeedStrangers,
+  getFeedRatings,
   getFeedSort,
   getTalkFollowedOnly,
   getTalkSort,
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
     if (lim) return lim;
 
     const { locale, t } = await getT();
-    const [tabPrefs, hiddenAll, showStrangers, feedSort, talkFollowedOnly, talkSort, translateOn] = await Promise.all([
+    const [tabPrefs, hiddenAll, showStrangers, feedSort, talkFollowedOnly, talkSort, translateOn, showRatings] = await Promise.all([
       getTabPrefs("community"),
       getHiddenRails(),
       getFeedStrangers(),
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
       getTalkFollowedOnly(),
       getTalkSort(),
       getTranslateEnabled(),
+      getFeedRatings(),
     ]);
     const scope: "all" | "following" =
       user && req.nextUrl.searchParams.get("scope") === "following" ? "following" : "all";
@@ -54,6 +56,8 @@ export async function GET(req: NextRequest) {
        (كان المفتاحُ يُرشِّح هنا — D-306)، والترتيبُ بتفضيله (`talkSort`). الويبُ يبقى يُرشِّح على الخادم. */
     /* 🆕 R58 — منشوراتُ النقاش و«النقاش العام» لمن يعرفهما وحدَه: نسخةٌ أقدم من التطبيق ترسم صفّاً لا تعرفه رأياً فتنكسر */
     const wantTalk = req.nextUrl.searchParams.get("talk") === "1";
+    /* 🆕 T457 — بطاقاتُ التقييمات المجمّعة لتطبيقٍ يعرفها وحدَه (نهجُ `talk` نفسُه) — والمفتاحُ يُخفيها في يده بلا جلب */
+    const wantRatings = req.nextUrl.searchParams.get("ratings") === "1";
     /* 🆕 D-1605 — مراجعاتُ الشخصيّات المتابَعة في الخطّ لتطبيقٍ يعرفها وحدَه (D-1565: الأقدمُ لا يرسم شارتَها) */
     const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk, personas: await personasAware() });
     await refreshCommunityAfter(true);
@@ -72,7 +76,7 @@ export async function GET(req: NextRequest) {
     const sort = user ? feedSort : "top";
     /* 🆕 D-1207 — المرتِّبُ يقول إن كان شهرُ «الأكثر تفاعلاً» صامتاً */
     const feedReport = { quiet: false };
-    const feedOut = feedRows(core, { meId, showStrangers, sort, t, locale, report: feedReport });
+    const feedOut = feedRows(core, { meId, showStrangers, sort, t, locale, report: feedReport, ratings: wantRatings });
     /* 🆕 D-1228 — **الشرائحُ الأربع في الردّ نفسِه** (تسجيلُ أحمد: «من أتابعهم» تتأخّر ~٢ث): كانت كلُّ ضغطةٍ تكتب التفضيلَ ثمّ تعيد
        جلبَ المجتمع كلِّه — نداءان متتاليان والخطُّ القديمُ ظاهرٌ بينهما. الترتيبُ دالّةٌ نقيّةٌ على البيانات نفسِها (`orderCommunityFeed`)،
        فتُحسب الأربعُ هنا ويبدّل التطبيقُ بينها في يده؛ الويبُ يبقى يرشّح على الخادم. */
@@ -84,7 +88,7 @@ export async function GET(req: NextRequest) {
         for (const vs of ["smart", "latest"] as const) {
           const same = strangers === showStrangers && vs === feedSort;
           const rep = { quiet: false };
-          const rows = same ? feedOut : feedRows(core, { meId, showStrangers: strangers, sort: vs, t, locale, report: rep });
+          const rows = same ? feedOut : feedRows(core, { meId, showStrangers: strangers, sort: vs, t, locale, report: rep, ratings: wantRatings });
           for (const r of rows)
             if (!seen.has(r.key)) {
               seen.add(r.key);
@@ -107,6 +111,7 @@ export async function GET(req: NextRequest) {
             talk_followed: talkFollowedOnly,
             talk_sort: talkSort,
             translate: translateOn,
+            ratings: showRatings,
             tabs: tabPrefs,
             hidden_rails: [...hiddenAll],
           }

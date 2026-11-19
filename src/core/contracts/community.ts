@@ -63,7 +63,26 @@ export type CommunityNewsItem = {
   published_at: string;
 };
 
+/** 🆕 T457 — عملٌ في بطاقة التقييمات المجمّعة */
+export type CommunityRatedItem = {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  rating: number;
+  lib: CommunityLibState;
+};
+
 export type CommunityFeedRow =
+  | {
+      /** 🆕 T457 — تقييماتُ شخصٍ تتابعه بلا كتابة في يومٍ واحد (٣ فأكثر) — لمن طلبها وحدَه (`?ratings=1`: نسخةٌ أقدم
+       *  من التطبيق ترسم ما لا تعرفه رأياً فتنكسر). الشخصُ والوقتُ في `item`، وبلا إعجابٍ ولا ردّ */
+      kind: "ratings";
+      /** `r-<person>-<day>` */
+      key: string;
+      view_key: string;
+      item: { person: PersonLite; day: string; updated_at: string; items: CommunityRatedItem[] };
+    }
   | {
       kind: "comment";
       /** مفتاحُ الرسم — `c-<person>-<list|media-tmdb>-<day>` كالويب */
@@ -203,6 +222,8 @@ export type CommunityPrefs = {
   /** 🆕 D-1201 — ترتيبُ «النقاشات» */
   talk_sort: "latest" | "active";
   translate: boolean;
+  /** 🆕 T457 — بطاقاتُ «التقييمات بلا كتابة» في النشاط (الغيابُ في خادمٍ أقدم = لا بطاقات) */
+  ratings?: boolean;
   /** ترتيبُ التبويبات وإخفاؤها (سطح `community`) */
   tabs: TabPref[];
   /** الصفوفُ المخفيّة كاملةً (`tab:key`) — كما يمرّرها الويبُ إلى اللوح */
@@ -210,6 +231,10 @@ export type CommunityPrefs = {
 };
 
 /** 🆕 D-1596 — `GET /api/v1/community/feed?before=`: صفحةٌ أقدم من الخطّ بشكل `feed.rows` — `next_before` مؤشّرُ التالية (`null` = انتهى) */
+/** 🆕 T457 — صفٌّ له كلامٌ يُعجَب به ويُردّ عليه: كلُّ صفوف الخطّ إلا بطاقةَ التقييمات المجمّعة */
+export type CommunityPostRow = Exclude<CommunityFeedRow, { kind: "ratings" }>;
+export type CommunityRatingsRow = Extract<CommunityFeedRow, { kind: "ratings" }>;
+
 export type CommunityFeedPagePayload = { rows: CommunityFeedRow[]; next_before: string | null };
 
 export type CommunityPayload = {

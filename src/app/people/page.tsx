@@ -10,7 +10,7 @@ import {
 } from "@/lib/data";
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { asCommunityTab as asTab, asBoardSection as asAll } from "@/core/communityParams";
-import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTalkSort, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTalkSort, getTranslateEnabled, getHiddenRails, getFeedRatings } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
 import { TalkFilters } from "@/components/TalkFilters";
 import { talkQuiet } from "@/core/talkSort";
@@ -135,6 +135,8 @@ export default async function PeoplePage({
   /* 🆕 D-1201 — ترتيبُ «النقاشات» (الأحدث · الأكثر تفاعلاً) */
   const talkSort = await getTalkSort();
   const translateOn = await getTranslateEnabled();
+  /* 🆕 T457 — بطاقاتُ «التقييمات بلا كتابة» — مفعّلةٌ ما لم يُطفئها صاحبُها */
+  const ratingsOn = await getFeedRatings();
 
   const {
     tab: tabParam,
@@ -406,6 +408,8 @@ export default async function PeoplePage({
               /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
+              /* 🆕 T457 — وللعضو وحدَه: البطاقةُ من متابَعيه، والزائرُ لا يتابع أحداً */
+              showRatings={!!user && ratingsOn}
               /* 🆕 والزائرُ على «الأفضل» (D-629): أعلى المراجعات
                  تقييماً تتصدّر — وكوكي ترتيبِ العضو لا شأنَ له به */
               sort={user ? feedSort : "top"}
@@ -722,6 +726,7 @@ export default async function PeoplePage({
               strangers={showStrangers}
               feedSort={feedSort}
               translate={translateOn}
+              ratings={ratingsOn}
             />
           ) : undefined
         }

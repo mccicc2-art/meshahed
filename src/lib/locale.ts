@@ -7,7 +7,9 @@ import {
   TAB_SURFACES,
   parseTabPrefs,
   FEED_STRANGERS_COOKIE,
+  FEED_RATINGS_COOKIE,
   parseFeedStrangers,
+  parseFeedRatings,
   type TabPref,
   type TabSurface,
   FEED_SORT_COOKIE,
@@ -82,6 +84,16 @@ export async function getFeedStrangers(): Promise<boolean> {
   try {
     const store = await cookies();
     return parseFeedStrangers(store.get(FEED_STRANGERS_COOKIE)?.value);
+  } catch {
+    return true;
+  }
+}
+
+/** 🆕 T457 — التقييماتُ المجمّعةُ في النشاط (الغيابُ إظهار) */
+export async function getFeedRatings(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return parseFeedRatings(store.get(FEED_RATINGS_COOKIE)?.value);
   } catch {
     return true;
   }

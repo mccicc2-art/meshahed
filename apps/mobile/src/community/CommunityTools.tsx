@@ -46,7 +46,8 @@ function SwitchRow({ icon, label, on, onToggle }: { icon: IconName; label: strin
 /** ما يخالف افتراضَه في التبويب المفتوح — الغرباءُ ظاهرون · «ذكيّ» · الترجمةُ تعمل (شريحتا «النقاشات» فوق الغرف لا هنا — D-1201) */
 export function toolsOnFor(tab: CommunityPagerTab, p: CommunityPrefs | null): number {
   if (!p) return 0;
-  const axes = tab === "activity" ? [!p.translate] : tab === "talk" ? [!p.translate] : [];
+  /* 🆕 T457 — و«التقييمات بلا كتابة» مفعّلةٌ افتراضاً: إطفاؤها يُعدّ (الغيابُ من خادمٍ أقدم = مفعّلة) */
+  const axes = tab === "activity" ? [!p.translate, p.ratings === false] : tab === "talk" ? [!p.translate] : [];
   return axes.filter(Boolean).length;
 }
 
@@ -80,6 +81,7 @@ export function CommunityTools({
     const patch: CommunityPrefsBody = {};
     if (tab === "activity") {
       if (!prefs.translate) patch.translate = true;
+      if (prefs.ratings === false) patch.ratings = true;
     } else if (tab === "talk") {
       if (!prefs.translate) patch.translate = true;
     }
@@ -108,6 +110,8 @@ export function CommunityTools({
                 {head(tabTitle)}
                 {/* 🗑️ D-1207 — «من يظهر» والترتيبُ صارا فوق الخطّ («الكل · من أتابعهم» و«الأحدث · الأكثر تفاعلاً») — بابان لفعلٍ واحدٍ خلل */}
                 <SwitchRow icon="sparkles" label={t.autoTranslate} on={prefs.translate} onToggle={() => onPrefs({ translate: !prefs.translate })} />
+                {/* 🆕 T457 — بطاقةٌ لكلّ متابَعٍ قيّم ثلاثةً فأكثر في يومه (أحمد: «خله مفعّل تلقائي ويقدر الشخص يشيله») — تُخفى في اليد بلا جلب */}
+                <SwitchRow icon="star" label={t.feedRatingsToggle} on={prefs.ratings !== false} onToggle={() => onPrefs({ ratings: prefs.ratings === false })} />
               </View>
             ) : tab === "talk" ? (
               <View>

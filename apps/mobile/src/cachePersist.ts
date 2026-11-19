@@ -165,9 +165,12 @@ function asLastGood(state: DehydratedState): DehydratedState {
   };
 }
 
-/** 🆕 A-56 — حالُ الملفّ لحظةَ السؤال (تقرؤه `home.open`): ٠ لا ملفَّ أو رُفض · ١ أُعيد · ٢ ما زال يُقرأ */
-let fileState: 0 | 1 | 2 = 2;
-export function cacheFileState(): 0 | 1 | 2 {
+/** 🆕 A-56 — حالُ الملفّ لحظةَ السؤال (تقرؤه `home.open`): ٠ لا ملفّ · ١ أُعيد · ٢ ما زال يُقرأ.
+ *  🆕 A-69 (المدقّق ١٩ نوفمبر، أحمد «٢ أ») — **وسببُ الرفض بدل صفرٍ واحد**: الرئيسيّةُ الباردةُ على آيفون فُتحت بلا ملفٍّ ١٣ مرّةً
+ *  بعد R228 (أندرويد مرّتين) والصفرُ يجمع أسباباً: ٣ رُفض لقِدَمه أو نسخته · ٤ لصاحبٍ آخر · ٥ تعذّرت قراءتُه · ٦ لغتُه غيرُ لغة التطبيق */
+type FileState = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+let fileState: FileState = 2;
+export function cacheFileState(): FileState {
   return fileState;
 }
 
@@ -209,7 +212,7 @@ export function startCachePersist() {
       const ok = s.v === CACHE_SCHEMA && s.locale === currentLocale() && typeof s.sub === "string" && typeof s.at === "number" && Date.now() - s.at <= MAX_AGE_MS && !!s.state;
       /* رمزٌ وصل قبل انتهاء القراءة يحسم الملكيّةَ هنا لا بعدها */
       if (!ok || (owner !== null && owner !== s.sub)) {
-        fileState = 0;
+        fileState = s.locale !== currentLocale() && s.v === CACHE_SCHEMA ? 6 : !ok ? 3 : 4;
         dropFile();
         return;
       }
@@ -217,7 +220,7 @@ export function startCachePersist() {
       hydrate(queryClient, s.state as DehydratedState);
       fileState = 1;
     } catch {
-      fileState = 0;
+      fileState = 5;
       dropFile();
     }
   })();

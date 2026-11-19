@@ -155,6 +155,9 @@ export type {
 export type {
   CommunityPayload,
   CommunityFeedRow,
+  CommunityPostRow,
+  CommunityRatingsRow,
+  CommunityRatedItem,
   CommunityRoom,
   CommunityBoard,
   CommunityLeaderRow,

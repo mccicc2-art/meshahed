@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { orderCommunityFeed, boardRows } from "./communityFeed.ts";
+import { orderCommunityFeed, boardRows, groupBareRatings } from "./communityFeed.ts";
 import { commentViewKey } from "./postKeys.ts";
 import {
   asCommunityTab,
@@ -152,4 +152,43 @@ test("talk rows: merged by time, filtered by circle, heat = likes + replies", ()
   assert.deepEqual(tid(orderCommunityFeed({ ...base, talk, showStrangers: true, sort: "smart" })).slice(0, 1), ["t:p2"]);
   /* بلا `talk` يبقى الخطُّ كما كان (الويب) */
   assert.deepEqual(tid(orderCommunityFeed({ ...base, showStrangers: true, sort: "latest" })), ["c:friend"]);
+});
+
+/* T457 — تقييماتٌ بلا كتابة: تُجمع لكلِّ شخصٍ تتابعه في اليوم، ومن ثلاثٍ فأكثر */
+test("groupBareRatings groups 3+ bare ratings per followed person per day", () => {
+  const r = (pid: string, id: number, at: string, extra: Record<string, unknown> = {}) => ({
+    person: { id: pid },
+    media_type: "movie" as const,
+    tmdb_id: id,
+    review: null as string | null,
+    updated_at: at,
+    kind: "rate",
+    rating: 8,
+    day: at.slice(0, 10),
+    ...extra,
+  });
+  const rows = [
+    r("a", 1, "2026-11-19T10:00:00Z"),
+    r("a", 2, "2026-11-19T11:00:00Z"),
+    r("a", 3, "2026-11-19T09:00:00Z"),
+    r("a", 4, "2026-11-18T09:00:00Z"),
+    r("b", 5, "2026-11-19T09:00:00Z"),
+    r("b", 6, "2026-11-19T09:10:00Z"),
+    r("b", 7, "2026-11-19T09:20:00Z", { review: "nice" }),
+    r("me", 8, "2026-11-19T09:00:00Z"),
+    r("me", 9, "2026-11-19T09:01:00Z"),
+    r("me", 10, "2026-11-19T09:02:00Z"),
+    r("x", 11, "2026-11-19T09:00:00Z"),
+    r("x", 12, "2026-11-19T09:01:00Z"),
+    r("x", 13, "2026-11-19T09:02:00Z"),
+  ];
+  const g = groupBareRatings(rows, { meId: "me", followingIds: new Set(["a", "b", "me"]) });
+  assert.equal(g.length, 1);
+  assert.equal(g[0].key, "r-a-2026-11-19");
+  assert.deepEqual(g[0].items.map((i) => i.tmdb_id), [2, 1, 3]);
+  assert.equal(g[0].updated_at, "2026-11-19T11:00:00Z");
+  /* والمجمّعةُ تدخل الخطَّ بزمنها، وبلا تفاعلٍ في «الأكثر تفاعلاً» */
+  const feed = orderCommunityFeed({ comments: [], news: [], meId: "me", showStrangers: false, sort: "latest", followingIds: new Set(["a"]), ratings: g });
+  assert.equal(feed.length, 1);
+  assert.equal(feed[0].kind, "ratings");
 });

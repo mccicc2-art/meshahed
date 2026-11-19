@@ -51,6 +51,7 @@ import {
 } from "@/core/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
+  FEED_RATINGS_COOKIE,
   FEED_SORT_COOKIE,
   TALK_FOLLOWED_COOKIE,
   TALK_SORT_COOKIE,
@@ -1119,6 +1120,16 @@ export async function setMyRows(raw: string, tab?: string) {
 export async function setFeedStrangers(show: boolean) {
   const store = await cookies();
   store.set(FEED_STRANGERS_COOKIE, show ? "1" : "0", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/** 🆕 T457 — مفتاحُ «التقييمات بلا كتابة» في أدوات المجتمع — كوكي كأخويه */
+export async function setFeedRatings(show: boolean) {
+  const store = await cookies();
+  store.set(FEED_RATINGS_COOKIE, show ? "1" : "0", {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

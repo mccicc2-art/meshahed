@@ -6,7 +6,7 @@ import { newsLine, newsSource } from "@/core/newsLine";
 import { bulletinLine, bulletinEpisodeShort } from "@/core/bulletinLine";
 import { roomAiring } from "@/core/talkEpisodes";
 import { toLibraryListCard } from "@/lib/listCard";
-import { orderCommunityFeed, type FeedSort } from "@/core/communityFeed";
+import { groupBareRatings, orderCommunityFeed, type FeedSort, type RatingsGroup } from "@/core/communityFeed";
 import { LOOPZ_ID } from "@/core/loopz";
 import type { CommunityData } from "@/lib/communityCore";
 import type {
@@ -50,12 +50,23 @@ export function libOf(core: Pick<CommunityData, "libState" | "followed">, tmdbId
 
 export function feedRows(
   core: FeedCore,
-  o: { meId: string; showStrangers: boolean; sort: FeedSort; t: Dict; locale: Locale; report?: { quiet: boolean } },
+  o: {
+    meId: string;
+    showStrangers: boolean;
+    sort: FeedSort;
+    t: Dict;
+    locale: Locale;
+    report?: { quiet: boolean };
+    /** 🆕 T457 — بطاقاتُ التقييمات المجمّعة — لتطبيقٍ يعرفها (`?ratings=1`)؛ المفتاحُ يُرشِّحها في يده */
+    ratings?: boolean;
+  },
 ): CommunityFeedRow[] {
   /* 🆕 R58 — منشوراتُ النقاش بشكل `FeedTalkLike` (الشخصُ والوقتُ والعدّادان) */
   const talk = core.talkFeed.map((p) => ({ ...p, created_at: p.createdAt }));
-  const ordered = orderCommunityFeed<FeedItem, LoopzNewsItem, (typeof talk)[number]>({
+  const ratings = o.ratings ? groupBareRatings(core.localized, { meId: o.meId, followingIds: core.followingIds }) : [];
+  const ordered = orderCommunityFeed<FeedItem, LoopzNewsItem, (typeof talk)[number], RatingsGroup<FeedItem>>({
     comments: core.localized,
+    ratings,
     talk,
     news: core.newsForMe.filter((n) => newsLine(n, o.t, o.locale) !== null),
     meId: o.meId,
@@ -68,6 +79,27 @@ export function feedRows(
     report: o.report,
   });
   return ordered.map((r): CommunityFeedRow => {
+    if (r.kind === "ratings") {
+      const g = r.item;
+      return {
+        kind: "ratings",
+        key: g.key,
+        view_key: g.key,
+        item: {
+          person: g.person,
+          day: g.day,
+          updated_at: g.updated_at,
+          items: g.items.map((a) => ({
+            tmdb_id: a.tmdb_id,
+            media_type: a.media_type,
+            title: a.title,
+            poster_path: a.poster_path,
+            rating: a.rating ?? 0,
+            lib: libOf(core, a.tmdb_id, a.media_type),
+          })),
+        },
+      };
+    }
     if (r.kind === "talk") {
       const p = r.item;
       const safe = typeof p.imagePath === "string" && p.imagePath.startsWith("https://") ? p.imagePath : null;

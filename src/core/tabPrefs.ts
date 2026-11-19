@@ -157,6 +157,16 @@ export function parseFeedStrangers(v: string | undefined): boolean {
 }
 
 /**
+ * 🆕 T457 — **«التقييمات بلا كتابة» في النشاط** (بطاقاتٌ مجمّعة — `groupBareRatings`): كوكي كأخيه فوقه.
+ * **والغيابُ إظهار** (أحمد: «خله مفعل تلقائي ويقدر الشخص يشيله») — «0» وحده يُخفي.
+ */
+export const FEED_RATINGS_COOKIE = "loopz_feed_ratings";
+
+export function parseFeedRatings(v: string | undefined): boolean {
+  return v !== "0";
+}
+
+/**
  * 🆕 **ترتيبُ خطّ النشاط** (D-306، طلبُ أحمد: «الترتيب بآخر منشور أو
  * ترتيب ذكي مثل الحالي») — كوكي كأخواته: تفضيلُ عرضٍ يخصّ الجهاز
  * ويُقرأ على الخادم قبل أوّل رسمة.

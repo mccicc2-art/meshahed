@@ -16,8 +16,9 @@ import { flag } from "./flags";
  * **لا يعود بالتصميم**. والتجديدُ `fetch` خامٌّ إلى `/auth/v1/token` لا عميلُ supabase-js: عميلُ `auth.tsx`
  * مضبوطٌ ألّا يحفظ ولا يجدّد (D-922)، وعميلٌ ثانٍ مخزَّنٌ في الذاكرة هو ما نتجنّبه.
  *
- * 🔒 **ما يُحفظ**: رمزُ التجديد ومعرّفُ صاحبه فقط، في SecureStore (مشفَّرٌ بمفتاح الجهاز). رمزُ الوصول في
- * الذاكرة وحدَها كما كان (B1 §٢.٢-ب). **ولا يُرسل أيٌّ منهما في علامة أداءٍ أو `console`.**
+ * 🔒 **ما يُحفظ**: رمزُ التجديد ومعرّفُ صاحبه، في SecureStore (مشفَّرٌ بمفتاح الجهاز). 🆕 A-69 (أحمد ١٩ نوفمبر «١ أ»):
+ * **ورمزُ الوصول وموعدُه أيضاً، في مفتاحٍ مستقلّ** — كان في الذاكرة وحدَها (B1 §٢.٢-ب) فكان كلُّ إقلاعٍ ينتظر تجديداً؛ ما في
+ * الحفظ أقوى منه أصلاً (رمزُ التجديد)، وفيه البريدُ والاسمُ والصورةُ كما في الويب. **ولا يُرسل أيٌّ منهما في علامة أداءٍ أو `console`.**
  *
  * 🔑 **الخروج**: الويبُ يخرج بـ`signOut()` الافتراضيّ = `global` ⇒ Supabase يُبطل هذه الجلسةَ أيضاً ⇒ أوّلُ
  * تجديدٍ يُرفض فتُمسح هنا. و`session:clear` من الصفحة يمسحها فوراً (`session.signOut`). **ولا نداءَ خروجٍ
@@ -27,6 +28,15 @@ import { flag } from "./flags";
  */
 
 const KEY = "loopz.own.v1";
+/**
+ * 🆕 A-69 (المدقّق ١٩ نوفمبر، أحمد «١ أ») — **رمزُ الوصول يُحفظ أيضاً، في مفتاحٍ مستقلّ**: كان في الذاكرة وحدَها، فكلُّ إقلاعٍ
+ * باردٍ ينتظر رحلةَ تجديدٍ كاملةً قبل أوّل طلب (`token.wait src=own ready=0`: p95 أندرويد ١٫٩ ⇐ ٣٫١ث وآيفون ١٫٥ ⇐ ٢٫٩ث في
+ * أسبوع ١٢–١٩ نوفمبر، وهو ما رفع `boot.fresh` و`messages.live` معاً). الآن إقلاعٌ خلال ساعة الرمز يبدأ به فوراً، **والتجديدُ
+ * يجري في الخلفيّة مع كلِّ إقلاعٍ كما كان** — فجلسةٌ أُبطلت (خروجٌ من الويب) تُكتشف وتُمسح في الرحلة نفسِها، والطلباتُ في
+ * أثنائها تحمل رمزاً كان صالحاً قبل لحظة. ⚖️ **مفتاحٌ مستقلّ لا حقلٌ في `KEY`**: رمزُ الوصول أطول (JWT)، وكتابةٌ رُفضت لطولها
+ * لا تُسقط رمزَ التجديد معها. ولا يُعاد رمزٌ لصاحبٍ غير صاحب الجلسة المحفوظة، ولا رمزٌ سقط بـ401 (`dropAccess` يمحوه).
+ */
+const ACCESS_KEY = "loopz.own.at.v1";
 /** قبل انتهاء الرمز بهذا يُعدّ شائخاً (كـ`session.get()`) */
 const SKEW_MS = 30_000;
 const TIMEOUT_MS = 8_000;
@@ -48,7 +58,7 @@ const MINT_BACKOFF_MS = 10 * 60_000;
 
 type Stored = { rt: string; uid: string };
 type Why = string;
-type EventName = "session.mint" | "session.renew";
+type EventName = "session.mint" | "session.renew" | "session.restore";
 /** من أين جاء رمزُ السكّ: الجسر · كوكي الويب · 🆕 K6a رمزُ الدخول نفسُه (كان يُوسَم `bridge` فيختلط بالجسر) */
 type Src = "bridge" | "cookie" | "login" | "ahead" | "wait";
 type EventExtra = { result: "ok" | "none"; why?: Why; src?: Src };
@@ -61,6 +71,16 @@ let renewing: Promise<string | null> | null = null;
 let minting: Promise<void> | null = null;
 let mintFailedAt = 0;
 let aheadTimer: ReturnType<typeof setTimeout> | null = null;
+/** A-69 — الرمزُ الذي أُعيد من الحفظ (يُوسم به `token.wait src=disk`)، و«أوّلُ تسخينٍ في التشغيلة» يجدّد ولو كان الرمزُ صالحاً */
+let restoredToken: string | null = null;
+let bootRenewDone = false;
+/** A-69 — الإعادةُ للرمز الأوّل في التشغيلة وحدَه: تُحسم مرّةً، وأيُّ رمزٍ يُعتمد أو يُرمى أو يُمسح بعدها يحسمها أيضاً —
+ *  فلا يُقرأ من الحفظ رمزٌ رُفض للتوّ قبل أن يصل محوُه (مراجعةٌ مستقلّة ١٩ نوفمبر) */
+let restoreTried = false;
+/** A-69 — جيلُ الجلسة: يزيد مع كلِّ `clear()`، فتجديدٌ بدأ قبل الخروج ثمّ نجح بعده لا يعيد رموزَ الخارج (إلى الذاكرة ولا إلى الحفظ) */
+let generation = 0;
+/** A-69 — كم مرّةً فشل تجديدُ الإقلاع بالشبكة والرمزُ المُعاد صالح: المحاولةُ التالية تتباعد (دقيقة · ٢ · ٤ … حتى ١٠) */
+let bootFails = 0;
 
 const changeListeners = new Set<() => void>();
 const eventListeners = new Set<(name: EventName, ms: number, extra: EventExtra) => void>();
@@ -92,11 +112,58 @@ function readStored(): Stored | null {
   return got;
 }
 
+/** A-69 — حفظُ رمز الوصول وموعده، **ومحوُهما كتابةُ فراغٍ متزامنة لا حذفٌ مؤجَّل**: حذفٌ لم يُنفَّذ بعدُ والتطبيقُ أُغلق عقب الخروج
+ *  كان سيترك رمزاً صالحاً يُعاد في الإقلاع التالي، وحذفٌ متأخّرٌ كان قد يمحو رمزاً كُتب بعده. فشلُ الكتابة لا يمسّ شيئاً */
+function writeAccess(a: string | null, e = 0) {
+  try {
+    SecureStore.setItem(ACCESS_KEY, a ? JSON.stringify({ a, e }) : "");
+  } catch {
+    /* لا شيء */
+  }
+}
+
+/**
+ * A-69 — رمزٌ محفوظٌ ما زال صالحاً لصاحب الجلسة المحفوظة ⇒ يُعاد إلى الذاكرة، **في الواجهة وحدَها**: إقلاعٌ في الخلفيّة (ودجت ·
+ * ردٌّ من الإشعار) لا يجري فيه تجديدُ الإقلاع الذي يكشف جلسةً أُبطلت، فيبقى على طريقه القديم (تجديدٌ قبل الطلب).
+ * والمحاولةُ تُحسم مرّةً — إلّا قراءةً في الخلفيّة لم تجد شيئاً (الخزنةُ قد تكون مقفلة)، كقاعدة `readStored`.
+ */
+function restoreAccess() {
+  if (access || restoreTried || AppState.currentState === "background") return;
+  const s = readStored();
+  if (!s) {
+    restoreTried = true;
+    report("session.restore", Date.now(), { result: "none", why: "nosession" });
+    return;
+  }
+  restoreTried = true;
+  const t0 = Date.now();
+  let why = "read";
+  try {
+    const raw = SecureStore.getItem(ACCESS_KEY);
+    const p = raw ? (JSON.parse(raw) as { a?: unknown; e?: unknown } | null) : null;
+    if (!p || typeof p.a !== "string" || typeof p.e !== "number") why = "none";
+    else if (p.e * 1000 - Date.now() < SKEW_MS) why = "expired";
+    else if (subOf(p.a) !== s.uid) why = "owner";
+    else {
+      access = p.a;
+      exp = p.e;
+      restoredToken = p.a;
+      /* تجديدٌ مسبقٌ قبل انتهائه كما يُجدوَل لأيِّ رمزٍ جديد — تجديدُ الإقلاع يعيد جدولته إن نجح */
+      scheduleAhead(exp * 1000 - AHEAD_MS - Date.now());
+      report("session.restore", t0, { result: "ok" });
+      return;
+    }
+  } catch {
+    why = "read";
+  }
+  report("session.restore", t0, { result: "none", why });
+}
+
 function writeStored(s: Stored | null) {
   stored = s;
   try {
-    if (s) SecureStore.setItem(KEY, JSON.stringify(s));
-    else SecureStore.deleteItemAsync(KEY).catch(() => {});
+    /* A-69 — المسحُ كتابةُ فراغٍ متزامنة: حذفٌ مؤجَّلٌ لم يُنفَّذ قبل إغلاق التطبيق كان يُبقي الجلسةَ بعد الخروج */
+    SecureStore.setItem(KEY, s ? JSON.stringify(s) : "");
   } catch {
     /* المخزنُ تعذّر: الجلسةُ تعيش في الذاكرة حتى الإغلاق، ثمّ يُسكّ غيرُها — لا أسوأ من اليوم */
   }
@@ -159,9 +226,11 @@ async function post(url: string, headers: Record<string, string>, body?: unknown
 }
 
 function adoptTokens(a: string, e: number, rt: string, uid: string) {
+  restoreTried = true;
   access = a;
   exp = e;
   writeStored({ rt, uid });
+  writeAccess(a, e);
   scheduleAhead(exp * 1000 - AHEAD_MS - Date.now());
   changed();
 }
@@ -182,6 +251,7 @@ function cancelAhead() {
 /** التجديدُ بنفسه — رمزٌ رُفض (4xx) يعني جلسةً انتهت (خروجٌ من الويب، إيقاف…) ⇒ تُمسح، والجسرُ يعود */
 async function renew(s: Stored, src: "ahead" | "wait"): Promise<string | null> {
   const t0 = Date.now();
+  const gen = generation;
   /* 🔴 M4-fix — **محاولةٌ قصيرةٌ ثمّ ثانيةٌ على اتّصالٍ جديد، لا انتظارُ ثماني ثوانٍ** (تسجيلُ أحمد ٢٨ سبتمبر: التطبيقُ
      مغلق ⇐ رسالةٌ من الويب ⇐ الفتح: لا شارةَ على الظرف، و«الرسائل» تدور ستَّ ثوانٍ). العلاماتُ من جوال خالد في تلك
      الدقائق: التجديدُ الأوّلُ بعد الإقلاع إمّا ٣٠٠–١١٠٠ms **أو يعلق حتى المهلة** (`8011 why=net` ثلاثَ مرّات، و`7932`
@@ -201,6 +271,11 @@ async function renew(s: Stored, src: "ahead" | "wait"): Promise<string | null> {
     }
     const j = r.json as { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown; user?: { id?: unknown }; error_code?: unknown } | null;
     if (r.status >= 200 && r.status < 300 && j && typeof j.access_token === "string" && typeof j.refresh_token === "string" && typeof j.expires_at === "number") {
+      /* A-69 — خرج صاحبُها والتجديدُ في الطريق: لا تعود رموزُه (أصبح الإقلاعُ يجدّد كلَّ مرّة فاتّسعت النافذة) */
+      if (gen !== generation) {
+        report("session.renew", t0, { result: "none", why: "gone", src });
+        return null;
+      }
       if (j.user?.id !== s.uid) {
         own.clear();
         report("session.renew", t0, { result: "none", why: "user", src });
@@ -211,7 +286,7 @@ async function renew(s: Stored, src: "ahead" | "wait"): Promise<string | null> {
       return j.access_token;
     }
     if (r.status >= 400 && r.status < 500 && r.status !== 429) {
-      own.clear();
+      if (gen === generation) own.clear();
       report("session.renew", t0, { result: "none", why: typeof j?.error_code === "string" ? j.error_code.slice(0, 16) : `h${r.status}`, src });
       return null;
     }
@@ -232,12 +307,18 @@ async function renew(s: Stored, src: "ahead" | "wait"): Promise<string | null> {
 async function mint(bridgeAccess: string | null, sub: string | null, from?: "login"): Promise<void> {
   const t0 = Date.now();
   const src: Src = from ?? (bridgeAccess ? "bridge" : "cookie");
+  const gen = generation;
   try {
     const r = await post(`${CONFIG.apiBase}/api/v1/session/mint`, bridgeAccess ? { Authorization: `Bearer ${bridgeAccess}` } : { "X-Loopz-App": "1" });
     const d = (r.json as { data?: { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown; user_id?: unknown }; error?: { code?: unknown } } | null) ?? null;
     const m = d?.data;
     const uid = typeof m?.user_id === "string" && m.user_id ? m.user_id : null;
     if (r.status === 200 && m && uid && typeof m.access_token === "string" && typeof m.refresh_token === "string" && typeof m.expires_at === "number" && (sub === null || uid === sub)) {
+      /* A-69 — خرج أو تبدّل صاحبُ الجلسة أثناء السكّ: لا تُعتمد رموزٌ لمن غادر، ولا يُعدّ فشلاً يحبس السكَّ التالي */
+      if (gen !== generation) {
+        report("session.mint", t0, { result: "none", src, why: "gone" });
+        return;
+      }
       adoptTokens(m.access_token, m.expires_at, m.refresh_token, uid);
       report("session.mint", t0, { result: "ok", src });
       return;
@@ -256,7 +337,9 @@ export const own = {
   },
   /** رمزُ الجلسة المملوكة إن كان صالحاً لثلاثين ثانيةً أخرى */
   get(): string | null {
-    if (!own.enabled() || !access) return null;
+    if (!own.enabled()) return null;
+    if (!access) restoreAccess();
+    if (!access) return null;
     if (exp * 1000 - Date.now() < SKEW_MS) return null;
     return access;
   },
@@ -283,14 +366,22 @@ export const own = {
     if (!own.enabled() || renewing || AppState.currentState === "background") return;
     const s = readStored();
     if (!s) return;
-    if (access && exp * 1000 - Date.now() > AHEAD_MS) return;
+    /* A-69 — حتى يُجاب تجديدُ الإقلاع جواباً قاطعاً (نجح، أو رُفض فمُسحت الجلسة) يجدّد كلُّ تسخينٍ ولو أُعيد رمزٌ صالحٌ من الحفظ:
+       هو ما يكشف جلسةً أُبطلت أثناء الغياب. فشلُ شبكةٍ لا يُعدّ جواباً — المحاولةُ بعد دقيقةٍ تجدّد فعلاً لا تعود فارغة */
+    if (bootRenewDone && access && exp * 1000 - Date.now() > AHEAD_MS) return;
     const p = renew(s, "ahead");
     renewing = p.finally(() => {
       renewing = null;
     });
     void p.then((t) => {
-      /* فشلٌ مؤقّت (شبكة · 5xx) ورمزُنا ما زال صالحاً ⇒ محاولةٌ بعد دقيقة؛ رفضٌ مسح الجلسةَ أصلاً فلا شيءَ يُعاد */
-      if (!t && access && exp * 1000 > Date.now()) scheduleAhead(AHEAD_RETRY_MS);
+      if (t || !readStored()) {
+        bootRenewDone = true;
+        bootFails = 0;
+      }
+      /* فشلٌ مؤقّت (شبكة · 5xx) ورمزُنا ما زال صالحاً ⇒ محاولةٌ بعد دقيقة؛ رفضٌ مسح الجلسةَ أصلاً فلا شيءَ يُعاد.
+         A-69 — وما دام تجديدُ الإقلاع لم يُجب (رمزٌ مُعادٌ يبقى فيه أكثرُ من خمس دقائق) تتباعد المحاولات: بلا شبكةٍ لا تُعاد
+         رحلةٌ كاملةٌ كلَّ دقيقةٍ ساعةً كاملة (البطّاريّة · ردودُ 429) */
+      if (!t && access && exp * 1000 > Date.now()) scheduleAhead(bootRenewDone ? AHEAD_RETRY_MS : Math.min(10 * 60_000, AHEAD_RETRY_MS * 2 ** bootFails++));
     });
   },
   /**
@@ -348,6 +439,10 @@ export const own = {
     }
     return null;
   },
+  /** A-69 — هل هذا الرمزُ هو المُعاد من الحفظ عند الإقلاع (لا المجدَّد)؟ لعلامة `token.wait src=disk` وحدها */
+  fromDisk(t: string | null): boolean {
+    return !!t && t === restoredToken;
+  },
   /** 🆕 D-1151 — جلسةٌ مملوكةٌ محفوظةٌ على الجهاز (رمزُ تجديدٍ لم يُرفض بعد) — دليلُ دخولٍ لـ`session.seen()` */
   hasStored(): boolean {
     return readStored() !== null;
@@ -356,6 +451,10 @@ export const own = {
   dropAccess() {
     access = null;
     exp = 0;
+    /* A-69 — رمزٌ رفضه الخادم لا يُعاد من الحفظ في الطلب التالي */
+    restoredToken = null;
+    restoreTried = true;
+    writeAccess(null);
     cancelAhead();
   },
   /** خروجٌ أو تبدّلُ مستخدمٍ أو جلسةٌ رُفضت — **محلّيٌّ فقط**، بلا نداء خروج */
@@ -366,7 +465,11 @@ export const own = {
     cancelAhead();
     /* D-1152 — الخروجُ يصفّر مهلةَ الفشل أيضاً: الدخولُ التالي يبدأ نظيفاً */
     mintFailedAt = 0;
+    restoredToken = null;
+    restoreTried = true;
+    generation++;
     writeStored(null);
+    writeAccess(null);
     if (had) changed();
   },
   onChange(l: () => void): () => void {

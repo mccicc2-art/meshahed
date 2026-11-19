@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
-import { setTranslateEnabled } from "@/lib/actions";
+import { setTranslateEnabled, setFeedRatings } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/core/tabPrefs";
@@ -112,6 +112,7 @@ export function CommunityTools({
   labels,
   activeTab: activeTabProp = "activity",
   translate: translateInitial = true,
+  ratings: ratingsInitial = true,
 }: {
   locale: Locale;
   /** تفضيلات التبويبات — تأتي من الخادم فلا يومض شيء */
@@ -131,6 +132,9 @@ export function CommunityTools({
    * السطحين اللذين يترجمان (النشاط والنقاشات): **بابان لمفتاحٍ واحد
    * أهونُ من مفتاحٍ في صفحةٍ لا تعرضه** (D-217). اختياريٌّ (D-028). */
   translate?: boolean;
+  /** 🆕 **بطاقاتُ «التقييمات بلا كتابة»** (T457) — تظهر افتراضاً ويطفئها صاحبُها؛
+   * مفتاحٌ للنشاط وحدَه لأن البطاقاتِ لا تُرسم إلا فيه. اختياريٌّ (D-028). */
+  ratings?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -140,6 +144,7 @@ export function CommunityTools({
   /* **تفاؤليٌّ بلا ارتداد**: كتابةُ كوكي لا تفشل عملياً، **والارتدادُ
      على مفتاحٍ في ورقةٍ مفتوحة يومض أكثر ممّا يُصلح** */
   const [translate, setTranslate] = useState(translateInitial);
+  const [ratings, setRatings] = useState(ratingsInitial);
   const [saving, save] = useTransition();
 
   function close() {
@@ -193,7 +198,7 @@ export function CommunityTools({
      **فالمحاورُ تُجمع لهذا التبويب**، والمسحُ يقع عليها وحدَها. */
   const axes: boolean[] =
     activeTab === "activity"
-      ? [!translate]
+      ? [!translate, !ratings]
       : activeTab === "talk"
         ? [!translate]
         : [];
@@ -214,6 +219,7 @@ export function CommunityTools({
     const jobs: Promise<unknown>[] = [];
     if (activeTab === "activity") {
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
+      if (!ratings) { setRatings(true); jobs.push(setFeedRatings(true)); }
     } else if (activeTab === "talk") {
       if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
     }
@@ -306,6 +312,24 @@ export function CommunityTools({
                         setTranslate(next);
                         save(async () => {
                           await setTranslateEnabled(next);
+                          router.refresh();
+                        });
+                      }}
+                    />
+                    {/* 🆕 **«التقييمات بلا كتابة»** (T457، أحمد: «خله مفعّل تلقائي ويقدر الشخص يشيله») —
+                        بطاقةٌ مجمّعةٌ لكلّ متابَعٍ قيّم ثلاثةً فأكثر في يومه؛ **ومن أطفأها لا يدفع
+                        ثمنَها في الخطّ**: الخادمُ يقرأ الكوكي نفسَه فلا يجمعها أصلاً. */}
+                    <SwitchRow
+                      icon="star"
+                      label={t.feedRatingsToggle}
+                      on={ratings}
+                      busy={saving}
+                      onToggle={() => {
+                        tap(8);
+                        const next = !ratings;
+                        setRatings(next);
+                        save(async () => {
+                          await setFeedRatings(next);
                           router.refresh();
                         });
                       }}

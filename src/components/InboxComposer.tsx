@@ -120,7 +120,8 @@ export function ChatComposer({
 }: {
   locale: Locale;
   /** يُنادى بعد رفع الصورة (إن وُجدت) — وصاحبُ الخيط يضيف الفقاعةَ المتفائلة ويرسل */
-  onSend: (m: Outgoing) => Promise<void> | void;
+  /** 🆕 A-65 — `false` = الإرسالُ فشل: النصُّ يعود إلى الخانة (الفقاعةُ المتفائلةُ رُفعت عند صاحب الخيط) */
+  onSend: (m: Outgoing) => Promise<boolean | void> | boolean | void;
   reply: ReplyDraft | null;
   onCancelReply: () => void;
   placeholder?: string;
@@ -161,7 +162,8 @@ export function ChatComposer({
     if (!pic) {
       setValue("");
       onCancelReply();
-      await onSend({ body, reply_to: replyTo });
+      /* A-65 — فشلٌ ⇒ النصُّ يعود ما لم يبدأ صاحبُه نصّاً جديداً (كـ`undo` في التطبيق) */
+      if ((await onSend({ body, reply_to: replyTo })) === false) setValue((cur) => cur || body);
       return;
     }
     setBusy(true);
@@ -172,7 +174,7 @@ export function ChatComposer({
       setPic(null);
       setValue("");
       onCancelReply();
-      await onSend({ body, image_path: path, reply_to: replyTo, local });
+      if ((await onSend({ body, image_path: path, reply_to: replyTo, local })) === false) setValue((cur) => cur || body);
     } catch (e) {
       flashError((e as Error).message);
     } finally {

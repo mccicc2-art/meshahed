@@ -4,6 +4,7 @@ import { haptic } from "../haptics";
 import type { Dict } from "@/core/i18n";
 import type {
   CommunityFeedRow,
+  CommunityPostRow,
   CommunityPayload,
   CommunityPeopleAllPayload,
   CommunityRoom,
@@ -37,8 +38,8 @@ export type CommunityActs = {
   signedIn: boolean;
   meId: string | null;
   admin: boolean;
-  like: (row: CommunityFeedRow) => void;
-  reply: (row: CommunityFeedRow, body: string) => Promise<boolean>;
+  like: (row: CommunityPostRow) => void;
+  reply: (row: CommunityPostRow, body: string) => Promise<boolean>;
   pin: (room: CommunityRoom) => void;
   followState: (userId: string, following: boolean) => FollowState;
   follow: (userId: string, following: boolean) => void;
@@ -50,19 +51,21 @@ function patchPayload(fn: (d: CommunityPayload) => CommunityPayload): void {
   queryClient.setQueryData<CommunityPayload>(KEY, (prev) => (prev ? fn(prev) : prev));
 }
 
-function patchRow(key: string, fn: (r: CommunityFeedRow) => CommunityFeedRow): void {
+function patchRow(key: string, fn: (r: CommunityPostRow) => CommunityPostRow): void {
+  /* 🆕 T457 — بطاقةُ التقييمات لا إعجابَ فيها ولا ردّ: لا تُرقَّع */
+  const on = (r: CommunityFeedRow): CommunityFeedRow => (r.key === key && r.kind !== "ratings" ? fn(r) : r);
   /* D-1228 — الصفُّ قد يكون في شريحةٍ أخرى (`extra`) — يُرقَّع حيث كان */
-  patchPayload((d) => ({ ...d, feed: { ...d.feed, rows: d.feed.rows.map((r) => (r.key === key ? fn(r) : r)), ...(d.feed.extra ? { extra: d.feed.extra.map((r) => (r.key === key ? fn(r) : r)) } : {}) } }));
+  patchPayload((d) => ({ ...d, feed: { ...d.feed, rows: d.feed.rows.map(on), ...(d.feed.extra ? { extra: d.feed.extra.map(on) } : {}) } }));
 }
 
 /** القلبُ في الحقل الذي يرسمه ذيلُ هذا الصفّ — رأيُ العمل · رأيُ القائمة (D-370) · خبرُنا */
-export function likeOf(row: CommunityFeedRow): { likes: number; liked: boolean } {
+export function likeOf(row: CommunityPostRow): { likes: number; liked: boolean } {
   if (row.kind === "news" || row.kind === "talk") return { likes: row.likes, liked: row.liked_by_me };
   if (row.item.listId) return { likes: row.list_social?.likes ?? 0, liked: row.list_social?.liked_by_me ?? false };
   return { likes: row.item.likes, liked: row.item.likedByMe };
 }
 
-function setLike(row: CommunityFeedRow, liked: boolean): CommunityFeedRow {
+function setLike(row: CommunityPostRow, liked: boolean): CommunityPostRow {
   const d = liked ? 1 : -1;
   if (row.kind === "news" || row.kind === "talk") return { ...row, liked_by_me: liked, likes: Math.max(0, row.likes + d) };
   if (row.item.listId) {
@@ -87,6 +90,7 @@ export type LikeRef =
   | { t: "post"; id: string };
 
 export function likeRefOf(row: CommunityFeedRow): LikeRef | null {
+  if (row.kind === "ratings") return null;
   if (row.kind === "talk") return { t: "post", id: row.item.id };
   if (row.kind === "news") return { t: "news", tmdb: row.item.tmdb_id, media: row.item.media_type };
   if (row.item.listId) return null;
@@ -106,7 +110,7 @@ export function mirrorFeedLike(ref: LikeRef, liked: boolean): void {
   const fix = (rows: CommunityFeedRow[]) => {
     let hit = false;
     const next = rows.map((r) => {
-      if (!sameLike(r, ref) || likeOf(r).liked === liked) return r;
+      if (r.kind === "ratings" || !sameLike(r, ref) || likeOf(r).liked === liked) return r;
       hit = true;
       return setLike(r, liked);
     });
@@ -139,7 +143,7 @@ export function mirrorThreadLike(ref: LikeRef, liked: boolean): void {
   });
 }
 
-function likeBody(row: Exclude<CommunityFeedRow, { kind: "talk" }>, on: boolean): LikeBody {
+function likeBody(row: Exclude<CommunityPostRow, { kind: "talk" }>, on: boolean): LikeBody {
   if (row.kind === "news") return { target: "post", tmdb_id: row.item.tmdb_id, media_type: row.item.media_type, on };
   if (row.item.listId) return { target: "list_review", user_id: row.item.person.id, list_id: row.item.listId, on };
   return { target: "review", user_id: row.item.person.id, tmdb_id: row.item.tmdb_id, media_type: row.item.media_type, on };
@@ -168,7 +172,7 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
     sayRef.current = say;
   }, [t, say]);
 
-  const like = useCallback((row: CommunityFeedRow) => {
+  const like = useCallback((row: CommunityPostRow) => {
     const k = `like:${row.key}`;
     if (busy.current.has(k)) return;
     busy.current.add(k);
@@ -196,7 +200,7 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
       .finally(() => busy.current.delete(k));
   }, []);
 
-  const reply = useCallback(async (row: CommunityFeedRow, body: string): Promise<boolean> => {
+  const reply = useCallback(async (row: CommunityPostRow, body: string): Promise<boolean> => {
     const b: ReplyBody | null =
       /* 🆕 R58 — منشورُ النقاش يُردّ عليه في غرفته لا من الخطّ (البطاقةُ تفتحها) */
       row.kind === "talk"
@@ -326,7 +330,7 @@ export function useViewCounter(enabled: boolean) {
   const take = useCallback(() => {
     for (const v of last.current) {
       const row = v.item;
-      if (row.kind === "fresh" || row.kind === "talk" || row.views == null || (row.kind === "comment" && row.item.listId)) continue;
+      if (row.kind === "fresh" || row.kind === "talk" || row.kind === "ratings" || row.views == null || (row.kind === "comment" && row.item.listId)) continue;
       if (counted.has(row.view_key)) continue;
       counted.add(row.view_key);
       pending.current.add(row.view_key);

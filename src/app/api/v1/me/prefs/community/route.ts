@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
-import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTalkSort, setTranslateEnabled } from "@/lib/actions";
+import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTalkSort, setTranslateEnabled, setFeedRatings } from "@/lib/actions";
 import { parseCommunityPrefsBody } from "@/core/communityParams";
 import { handle, requireUser, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 
 /**
  * `POST /api/v1/me/prefs/community` — مفاتيحُ ورقة أدوات المجتمع (Phase 11-M · M0):
- * `{strangers?, sort?, talk_followed?, translate?}` — جسمٌ جزئيّ، والمجهولُ يسقط.
+ * `{strangers?, sort?, talk_followed?, translate?, ratings?}` — جسمٌ جزئيّ، والمجهولُ يسقط.
  *
  * 🔑 **الأفعالُ نفسُها التي تكتبها `CommunityTools` في الويب** (D-255/D-306/D-309) — كوكيزٌ
  * يقرؤها الخادمُ قبل أوّل رسمة؛ وجرّةُ الكوكي مشتركةٌ في أندرويد (D-997)، فما يُضبط في
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       b.talk_followed !== undefined ? setTalkFollowedOnly(b.talk_followed) : null,
       b.talk_sort !== undefined ? setTalkSort(b.talk_sort) : null,
       b.translate !== undefined ? setTranslateEnabled(b.translate) : null,
+      b.ratings !== undefined ? setFeedRatings(b.ratings) : null,
     ]);
     return ok({ ok: true as const }, ["people"]);
   });

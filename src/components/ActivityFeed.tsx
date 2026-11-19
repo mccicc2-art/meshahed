@@ -12,7 +12,7 @@ import {
 } from "@/lib/data";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { commentViewKey, newsViewKey } from "@/core/postKeys";
-import { orderCommunityFeed } from "@/core/communityFeed";
+import { orderCommunityFeed, groupBareRatings, type RatingsGroup } from "@/core/communityFeed";
 import { curatedName } from "@/core/universes";
 import { profileHref } from "@/core/people";
 import { backdropUrl } from "@/core/media";
@@ -94,7 +94,9 @@ type TalkRowItem = TalkFeedPost & { created_at: string };
 type Row =
   | { at: number; kind: "comment"; item: FeedItem }
   | { at: number; kind: "news"; item: LoopzNewsItem }
-  | { at: number; kind: "talk"; item: TalkRowItem };
+  | { at: number; kind: "talk"; item: TalkRowItem }
+  /* 🆕 T457 — بطاقةُ «التقييمات بلا كتابة»: متابَعٌ واحدٌ ويومٌ واحد، ثلاثةُ تقييماتٍ فأكثر */
+  | { at: number; kind: "ratings"; item: RatingsGroup<FeedItem> };
 
 /**
  * ارتفاعُ الصفّ = ارتفاعُ الملصق: عرضٌ ثابت ونسبة `2:3` (٩٢ × ١٣٨).
@@ -129,6 +131,7 @@ export function ActivityFeed({
   views,
   followingIds,
   showStrangers = true,
+  showRatings = true,
   sort = "smart",
   translations,
   newsReplies,
@@ -181,6 +184,8 @@ export function ActivityFeed({
    * (D-152)، **ولأن مكوّناً يسبق مستهلكَه يأخذ حقلاً اختيارياً** (D-028).
    */
   showStrangers?: boolean;
+  /** 🆕 T457 — **بطاقاتُ «التقييمات بلا كتابة»** — مفتاحٌ في أدوات النشاط، مفعّلٌ افتراضاً (أحمد) */
+  showRatings?: boolean;
   /**
    * 🆕 **ترتيبُ الخطّ** (D-306، طلبُ أحمد: «الترتيب بآخر منشور أو ترتيب
    * ذكي مثل الحالي»). **و«آخر منشور» تخطٍّ للساعة المصحَّحة لا صيغةٌ
@@ -236,8 +241,10 @@ export function ActivityFeed({
   /* 🆕 D-1207 — «الأكثر تفاعلاً» يقول إن كان شهرُه صامتاً (فالخطُّ بالأحدث) */
   const report = { quiet: false };
   /* 🆕 R255 — منشوراتُ النقاش في خطّ الويب أيضاً (كانت للتطبيق وحدَه منذ R58) — الترتيبُ والترشيحُ نفسُهما */
-  let shown: Row[] = orderCommunityFeed<FeedItem, LoopzNewsItem, TalkRowItem>({
+  let shown: Row[] = orderCommunityFeed<FeedItem, LoopzNewsItem, TalkRowItem, RatingsGroup<FeedItem>>({
     comments,
+    /* 🆕 T457 — التجميعُ نفسُه الذي يرسله `/api/v1/community` للتطبيق (`core/communityFeed`) */
+    ratings: showRatings ? groupBareRatings(comments, { meId, followingIds }) : [],
     talk: (talk ?? []).map((p) => ({ ...p, created_at: p.createdAt })),
     news: news.filter((n) => newsLine(n, t, locale) !== null),
     meId,
@@ -267,6 +274,8 @@ export function ActivityFeed({
   const keyOf = (row: Row): string =>
     row.kind === "talk"
       ? `t-${row.item.id}`
+      : row.kind === "ratings"
+        ? row.item.key
       : row.kind === "news"
         ? `n-${row.item.key}`
         : `c-${row.item.person.id}-${row.item.listId ?? `${row.item.media_type}-${row.item.tmdb_id}`}-${row.item.day}`;
@@ -282,6 +291,9 @@ export function ActivityFeed({
       {shown.flatMap((row) => {
         const fk = keyOf(row);
         const mark = freshRows ? <FeedFreshMark key={`f-${fk}`} at={fk} locale={locale} /> : null;
+        if (row.kind === "ratings") {
+          return [mark, <RatingsRow key={fk} g={row.item} followed={followed} libState={libState} locale={locale} />];
+        }
         if (row.kind === "talk") {
           const tk = `${row.item.mediaType}-${row.item.tmdbId}`;
           return [
@@ -351,6 +363,99 @@ export function ActivityFeed({
       ) : null}
     </div>
     </>
+  );
+}
+
+/**
+ * 🆕 **بطاقةُ «التقييمات بلا كتابة»** (T457، الاقتراح «أ» على لقطة أحمد).
+ *
+ * **التقييمُ العاري كان يسقط من الخطّ** (`orderCommunityFeed` يشترط الكلام) — **وأحمد أراده يظهر
+ * «لاكن ما ابغاها تكون مزعجه»**: فبطاقةٌ واحدةٌ لكلّ متابَعٍ في يومه، **ولا تُرسم إلا لثلاثةٍ فأكثر**
+ * («لا يظهر اذا الشخص قيم عملين»)، **ولا ذيلَ أفعال** — لا كلامَ يُعجَب به أو يُردّ عليه.
+ * ⚖️ **وأربعةُ ملصقاتٍ ثمّ «+N»** — إلا الخامسَ وحدَه: خانةُ «+1» تأكل مكانَ الملصق الذي تخفيه.
+ */
+const RATINGS_SHOWN = 4;
+
+function RatingsRow({
+  g,
+  followed,
+  libState,
+  locale,
+}: {
+  g: RatingsGroup<FeedItem>;
+  followed: ReadonlySet<string>;
+  libState?: LibState;
+  locale: Locale;
+}) {
+  const t = getDict(locale);
+  const who = displayNameOf(g.person, t.anonymousUser);
+  const whoHref = profileHref(g.person) ?? "/people";
+  const n = g.items.length;
+  const cut = n > RATINGS_SHOWN + 1 ? RATINGS_SHOWN : n;
+  const rest = n - cut;
+  return (
+    <article className="py-4 first:pt-0">
+      <div className="flex items-center gap-2.5">
+        <Link href={whoHref} prefetch={false} className="shrink-0 active:opacity-80 transition">
+          <Avatar src={g.person.hide_name ? null : g.person.avatar_url} name={who} size={36} alt="" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+              <Link
+                href={whoHref}
+                prefetch={false}
+                className="min-w-0 truncate font-bold text-14 leading-tight text-foreground hover:text-accent transition"
+              >
+                <bdi>{who}</bdi>
+              </Link>
+              {g.person.hide_name ? null : <AccountBadges profile={g.person} t={t} />}
+            </span>
+            <span className="shrink-0 text-14 text-foreground/85">{t.feedRatedN(n)}</span>
+            <span className="ms-auto shrink-0 text-12 text-muted tabular-nums">{timeAgoShort(g.updated_at, t)}</span>
+          </div>
+          <p className="mt-px text-12 text-muted">{t.feedRatingsOnly}</p>
+        </div>
+      </div>
+      {/* **الشريطُ يبدأ من حافّة الوجه** — البطاقةُ قصيرةٌ فلا عمودَ ملصقٍ في طرفها كصفّ الكلام */}
+      <ul className="mt-2.5 flex items-start gap-2">
+        {g.items.slice(0, cut).map((it) => {
+          const st = libState?.of(it.tmdb_id, it.media_type);
+          const added = followed.has(`${it.media_type}-${it.tmdb_id}`);
+          const r = it.rating ?? 0;
+          return (
+            <li key={`${it.media_type}-${it.tmdb_id}`} className="w-[52px] shrink-0">
+              <PosterCard
+                href={`/${it.media_type === "tv" ? "show" : "movie"}/${it.tmdb_id}`}
+                title={it.title ?? ""}
+                posterPath={it.poster_path}
+                posterSize="w185"
+                fallbackIcon={it.media_type === "tv" ? "tv" : "film"}
+                hideTitle
+                saved={st?.added ?? added}
+                watched={st?.watched ?? false}
+                progress={st?.progress ?? 0}
+                dropped={st?.dropped ?? false}
+              />
+              <p className="mt-1 text-center text-12 font-bold text-accent tabular-nums" title={t.rateOutOf(r)}>
+                ★ <span dir="ltr">{Number.isInteger(r) ? r : r.toFixed(1)}</span>
+              </p>
+            </li>
+          );
+        })}
+        {rest > 0 && (
+          <li className="w-[52px] shrink-0">
+            <Link
+              href={whoHref}
+              prefetch={false}
+              className="aspect-[2/3] flex items-center justify-center rounded-poster bg-surface-2 border border-border text-14 font-bold text-muted tabular-nums hover:text-accent transition"
+            >
+              <span dir="ltr">{t.feedRatingsMore(rest)}</span>
+            </Link>
+          </li>
+        )}
+      </ul>
+    </article>
   );
 }
 

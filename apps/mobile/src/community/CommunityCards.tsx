@@ -18,7 +18,7 @@ import { displayNameOf, profileHref } from "@/core/people";
 import { curatedName } from "@/core/universes";
 import { LOOPZ_USERNAME } from "@/core/loopz";
 import { likeOf, type CommunityActs, type FollowState } from "./communityActs";
-import type { CommunityFeedRow, CommunityLeaderRow, CommunityRoom, CommunityTopReview } from "../contracts";
+import type { CommunityFeedRow, CommunityPostRow, CommunityRatingsRow, CommunityLeaderRow, CommunityRoom, CommunityTopReview } from "../contracts";
 
 /**
  * ====== بطاقاتُ «المجتمع» الأصليّة — Phase 11-M · M1 (قراءةٌ وحدَها) ======
@@ -97,10 +97,10 @@ export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: numb
 
 /** أفعالُ البطاقة — حالتُها في الكاش (`useCommunityActs`)، والتعليقُ والمشاركةُ ورقتان يملكهما المستدعي */
 export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
-  comment: (row: CommunityFeedRow) => void;
+  comment: (row: CommunityPostRow) => void;
   share: (path: string, title: string) => void;
   /** 🆕 D-1448 — ⋯ بجوار العمر: القائمةُ يملكها المستدعي (`FeedMenu`) · D-1626: ومعها مكانُ النقاط */
-  menu: (row: CommunityFeedRow, anchor: Anchor) => void;
+  menu: (row: CommunityPostRow, anchor: Anchor) => void;
 };
 
 /**
@@ -114,7 +114,7 @@ export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
  *   الكلمتان كانتا أعرضَ ما في الذيل وأوّلَ ما يُقصّ تحت خطٍّ كبير، والمشاهداتُ جنبهما رمزٌ ورقمٌ أصلاً. الكلمةُ باقيةٌ
  *   لقارئ الشاشة (`accessibilityLabel`) — العينُ ترى الرمز، والأذنُ تسمع الاسم.
  */
-function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardActs; onList?: () => void; share?: { path: string; title: string } }) {
+function Tail({ row, acts, onList, share }: { row: CommunityPostRow; acts: CardActs; onList?: () => void; share?: { path: string; title: string } }) {
   const { t, tokens, locale } = useApp();
   /* 🆕 D-1503 — **صفُّ تقييم الحلقة: مشاركةٌ وحدَها** — لا قلبَ ولا ردَّ لتقييم الحلقة في القاعدة بعد، وقلبٌ هنا كان سيُكتب
      على مراجعة العمل كلِّه (`likeBody` يعرف «مراجعة» و«قائمة» وحدَهما) */
@@ -177,7 +177,7 @@ function Tail({ row, acts, onList, share }: { row: CommunityFeedRow; acts: CardA
 }
 
 /** 🆕 D-1448 — `dark`: لا أخَ ملوّناً لملصقه الداكن (`poster_dark` من الخادم) ⇒ إطارٌ رفيعٌ بلون النصّ فلا يذوب في الخلفيّة */
-function RowPoster({ path, kind, lib, dark = false, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityFeedRow["lib"]; dark?: boolean; onPress: () => void }) {
+function RowPoster({ path, kind, lib, dark = false, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityPostRow["lib"]; dark?: boolean; onPress: () => void }) {
   const { tokens } = useApp();
   const uri = posterFor(path, POSTER_W);
   return (
@@ -273,12 +273,91 @@ function TalkRow({ row, doors, acts }: { row: Extract<CommunityFeedRow, { kind: 
   );
 }
 
+/**
+ * 🆕 T457 — **بطاقةُ «التقييمات بلا كتابة»** (الاقتراح «أ» على لقطة أحمد؛ نظيرُ `RatingsRow` في `ActivityFeed` على الويب):
+ * متابَعٌ واحدٌ في يومٍ واحد، **ثلاثةُ تقييماتٍ فأكثر** («لا يظهر اذا الشخص قيم عملين»)، **وبلا ذيل** — لا كلامَ يُعجَب به أو
+ * يُردّ عليه، فقلبٌ هنا كان سيُكتب على مراجعةٍ لا وجودَ لها. أربعةُ ملصقاتٍ ثمّ «+N» إلى ملفّه — إلا الخامسَ وحدَه.
+ */
+const RATED_W = 44;
+const RATED_SHOWN = 4;
+function RatingsGroupCard({ row, doors }: { row: CommunityRatingsRow; doors: CardDoors }) {
+  const { t, tokens, locale } = useApp();
+  const g = row.item;
+  const who = displayNameOf(g.person, t.anonymousUser);
+  const whoPath = profileHref(g.person);
+  const n = g.items.length;
+  const cut = n > RATED_SHOWN + 1 ? RATED_SHOWN : n;
+  const rest = n - cut;
+  return (
+    <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} accessibilityRole="link" accessibilityLabel={who}>
+          <Avatar uri={g.person.hide_name ? null : g.person.avatar_url} size={34} />
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Pressable onPress={() => whoPath && doors.onWeb(whoPath)} disabled={!whoPath} style={{ flexShrink: 1 }}>
+              <Text size={14} weight="700" numberOfLines={1}>{who}</Text>
+            </Pressable>
+            {g.person.hide_name ? null : <IdentityBadges flags={identityFlags(g.person)} nameSize={14} />}
+            <Text size={14} numberOfLines={1} style={{ flexShrink: 0, marginStart: 2 }}>{t.feedRatedN(n)}</Text>
+            <Text size={12} muted style={{ marginStart: "auto" }}>{timeAgoShort(g.updated_at, t)}</Text>
+          </View>
+          <Text size={12} muted>{t.feedRatingsOnly}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+        {g.items.slice(0, cut).map((it) => {
+          const uri = posterFor(it.poster_path, RATED_W);
+          const lib = it.lib;
+          return (
+            <Pressable
+              key={`${it.media_type}-${it.tmdb_id}`}
+              onPress={() => doors.onTitle(it.media_type, it.tmdb_id)}
+              accessibilityRole="link"
+              accessibilityLabel={`${it.title ?? ""} ${t.rateOutOf(it.rating)}`}
+              style={{ width: RATED_W }}
+            >
+              <View style={{ width: RATED_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" transition={120} /> : (
+                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name={it.media_type === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />
+                  </View>
+                )}
+                {lib.added || lib.watched || lib.progress > 0 || lib.dropped ? (
+                  <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+                    <StatusThread progress={lib.progress} completed={lib.watched} dropped={lib.dropped} saved={lib.added} />
+                  </View>
+                ) : null}
+              </View>
+              <Text size={12} weight="700" color={tokens.accent} style={{ textAlign: "center", marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                {`★ ${Number.isInteger(it.rating) ? num(it.rating, locale) : it.rating.toFixed(1)}`}
+              </Text>
+            </Pressable>
+          );
+        })}
+        {rest > 0 ? (
+          <Pressable
+            onPress={() => whoPath && doors.onWeb(whoPath)}
+            disabled={!whoPath}
+            accessibilityRole="link"
+            style={{ width: RATED_W, aspectRatio: 2 / 3, borderRadius: radius.poster, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text size={14} weight="700" muted style={{ fontVariant: ["tabular-nums"] }}>{t.feedRatingsMore(rest)}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: CommunityFeedRow; doors: CardDoors; acts: CardActs }) {
   if (row.kind === "talk") return <TalkRow row={row} doors={doors} acts={acts} />;
+  if (row.kind === "ratings") return <RatingsGroupCard row={row} doors={doors} />;
   return <ReviewOrNewsCard row={row} doors={doors} acts={acts} />;
 });
 
-function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityFeedRow, { kind: "talk" }>; doors: CardDoors; acts: CardActs }) {
+function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow, { kind: "talk" }>; doors: CardDoors; acts: CardActs }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
   /* «النص الأصلي» ⇄ «الترجمة» (`FeedReviewText`، D-307) — حالةُ ضغطةٍ في البطاقة لا تفضيل */

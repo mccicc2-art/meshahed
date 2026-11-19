@@ -8,7 +8,7 @@ import { DropMenu, type Anchor, type DropRow } from "../library/HoldMenu";
 import { CONFIG } from "../config";
 import { write } from "../api";
 import { displayNameOf, profileHref } from "@/core/people";
-import type { CommunityFeedRow, TrackResult, UnrateBody } from "../contracts";
+import type { CommunityPostRow, TrackResult, UnrateBody } from "../contracts";
 import type { CardDoors } from "./CommunityCards";
 
 /**
@@ -37,7 +37,7 @@ export function FeedMenu({
   onError,
 }: {
   /* 🆕 R58 — صفُّ النقاش بلا ⋯ (بابُه غرفتُه) */
-  row: Exclude<CommunityFeedRow, { kind: "talk" }>;
+  row: Exclude<CommunityPostRow, { kind: "talk" }>;
   /** 🆕 D-1626 — مكانُ ⋯ على الشاشة */
   anchor: Anchor;
   meId: string | null;

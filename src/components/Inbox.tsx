@@ -494,7 +494,7 @@ function ConversationView({
 
   /* 🆕 T397 — الإرسالُ: فقاعةٌ متفائلةٌ فوراً (بصورتها المحلّيّة أو الـGIF أو اقتباسها)، ثمّ الكتابة، ثمّ تجديدُ الخيط
      فيحلّ ما في الخادم محلَّها — نهجُ الحقل القديم نفسُه */
-  async function send(m: Outgoing) {
+  async function send(m: Outgoing): Promise<boolean> {
     const quoted = m.reply_to ? events.find((e): e is ConvReplyEvent => e.kind === "reply" && e.id === m.reply_to) ?? null : null;
     const tmpId = `tmp-${idRef.current++}`;
     setEvents((prev) => [
@@ -514,10 +514,15 @@ function ConversationView({
     try {
       await sendDirectMessage(conv.personId, m.body, { gif_id: m.gif_id ?? null, image_path: m.image_path ?? null, reply_to: m.reply_to ?? null });
       coalescedRefresh(router);
+      return true;
     } catch (e) {
-      /* A-65 (المدقّق ١٨ نوفمبر) — توأمُ القروب: الفقاعةُ المتفائلةُ تُرفع إن فشل الإرسال فلا تبقى كأنّها أُرسلت */
+      /* A-65 (المدقّق ١٨ نوفمبر) — توأمُ القروب: الفقاعةُ المتفائلةُ تُرفع إن فشل الإرسال فلا تبقى كأنّها أُرسلت،
+         والاقتباسُ يعود، والنصُّ يعيده المؤلِّفُ (`false`)، ورابطُ الصورة المحلّيُّ يُحرَّر */
       setEvents((prev) => prev.filter((x) => x.id !== tmpId));
+      if (m.local) URL.revokeObjectURL(m.local);
+      if (quoted) setReplyTo((cur) => cur ?? quoted);
       flashError((e as Error).message);
+      return false;
     }
   }
 

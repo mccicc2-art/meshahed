@@ -56,6 +56,8 @@ export type PerfName =
   /* 🆕 K4b — سكُّ جلسة التطبيق وتجديدُها بنفسه: المدّةُ ونتيجتُها (`result`/`why`) */
   | "session.mint"
   | "session.renew"
+  /* 🆕 A-69 — رمزُ الوصول أُعيد من الحفظ عند الإقلاع (`ok`) أو لِمَ لم يُعد (`why`: nosession · none · expired · owner · read) */
+  | "session.restore"
   /* 🆕 D-1152 — مراحلُ الدخول: نتيجةُ Google وتبادلِ الرمز (`auth.login`)، ثمّ وصولُ التسليم إلى الويب أو ارتدادُه
      إلى الترحيب (`auth.handoff`) — لتشخيص «أوّلُ محاولةٍ ترجع للترحيب» (ثلاثُ مرّاتٍ في تسجيلات ٢٧ سبتمبر) */
   | "auth.login"
