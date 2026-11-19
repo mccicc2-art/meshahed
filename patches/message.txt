@@ -1,4 +1,4 @@
-[deploy] Release R268 - T482: text clarity. Android Latin text centred on its icons (stats row, All, chips, drawer); Arabic one weight heavier; brighter muted grey in Loopz + Charcoal (app + web); home stat labels 700; selected down-vote in accent. OTA only - no native build
+[deploy] Release R269 - T483: header chat/bell icons 27 -> 30 (Ahmed: a); crisp header icons - bell, chat with the Loopz infinity, settings - rendered at 192px so they are never upscaled. OTA only - no native build
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FexM7Exn4VzMfAriUwd5p4
