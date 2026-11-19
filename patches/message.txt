@@ -1,9 +1,8 @@
-[deploy] Release R244 — lists: real like separate from save, Save chip and card bookmark, copy removed; awards by ceremony year + 2026 winners; Loopz avatar on list cards; like/save RLS hardening (T440, T443)
+[deploy] Release R246 — T442: event list pinned in «For you» + daily rotation
 
-- T440 Awards: ceremony year everywhere + 2026 winners; Loopz avatar on list cards
-- T440 Lists: like separate from save, Save chip and card bookmark, copy removed (migration 249)
-- T440 Lists: like/save only on public lists, no zero on any heart, one request in flight (four independent reviews)
-- T443 Lists: likes add/read/delete only, created_at pinned on likes and saves (migration 251, applied)
+- doomsday-road pinned first for everyone until 14 days after release (TMDB date, Riyadh day)
+- countdown label on the pinned card (Arabic agreement: غداً / يومين / N أيام / N يوماً)
+- For you hidden for guests; rotation migration 250 already applied
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FexM7EpuJ2443rgzjzmBU8
