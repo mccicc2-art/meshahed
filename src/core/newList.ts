@@ -1,6 +1,6 @@
 import type { Dict } from "./i18n";
 import { BROWSE_COUNTRIES, BROWSE_COUNTRY_TOP, BROWSE_ERAS, BROWSE_GENRES, BROWSE_LANGS, BROWSE_RATES, genreFitsType } from "./browse";
-import { MY_RATING_MIN } from "./smartListKeys";
+import { MY_RATING_MIN, ruleTypes, parseMix, defaultMix, formatMix } from "./smartListKeys";
 import type { PickerItem } from "./contracts/library";
 
 /**
@@ -144,7 +144,7 @@ export function withAxis<T extends Partial<Record<string, string>>>(cur: T, axis
  * فالشرطُ واحدٌ للإنشاء والتحديث.
  */
 export function ruleHasLimit(rule: Record<string, string>): boolean {
-  return !!rule.type && Object.keys(rule).some((k) => k !== "type" && k !== "sort" && k !== "hide");
+  return !!rule.type && Object.keys(rule).some((k) => k !== "type" && k !== "sort" && k !== "hide" && k !== "mix");
 }
 
 /**
@@ -193,4 +193,18 @@ export function filterPicker(
     if (minMy !== null && (x.my ?? 0) < minMy) return false;
     return true;
   });
+}
+
+/**
+ * 🆕 T467 — **تبديلُ الأنواع يحمل النسبةَ معه**: نوعٌ واحدٌ لا نسبةَ له · نوعان فأكثر يبدآن بالتساوي (`defaultMix`).
+ * **وتغيُّرُ الأنواع يعيد التساوي** — حصصٌ كانت لنوعين لا تُقرأ لثلاثة. **و`keepUnset`**: قائمةٌ قديمةٌ تُعدَّل بلا نسبة
+ * تبقى بالشعبيّة حتّى يلمس صاحبُها العدّاد (أحمد: «٢ ب»).
+ */
+export function withTypeMix(cur: Record<string, string>, type: string, keepUnset: boolean): Record<string, string> {
+  const next = withType(cur, type) as Record<string, string>;
+  const ts = ruleTypes(next.type);
+  const out = { ...next };
+  if (ts.length < 2 || (keepUnset && !parseMix(cur.mix, ruleTypes(cur.type)))) delete out.mix;
+  else out.mix = formatMix(defaultMix(ts), ts);
+  return out;
 }

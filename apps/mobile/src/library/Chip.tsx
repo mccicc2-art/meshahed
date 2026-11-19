@@ -5,6 +5,8 @@ import { Text } from "../ui";
 import { radius } from "../theme";
 import { notePress } from "../perfMarks";
 import { ARABIC_RE } from "../fonts";
+import { Icon } from "../icons";
+import { haptic } from "../haptics";
 
 /**
  * ====== الرقاقةُ — عائلةُ `chipClass` (الويب) بالبكسل ======
@@ -86,5 +88,69 @@ export function Chip({
       </Text>
       {trailing ? <View>{trailing}</View> : null}
     </Pressable>
+  );
+}
+
+/**
+ * 🆕 **العدّاد − / +** (T467، أحمد «١ج»: نسبةُ الأنواع في القائمة الذكيّة) — نظيرُ `components/ui/Stepper.tsx` في الويب.
+ *
+ * ⚠️ **عنصرٌ جديدٌ قيل لأحمد قبل بنائه**: الرقاقةُ والمقطعُ لا يحملان قيمةً تزيد وتنقص. **فيسكن بيتَ الرقاقة ويلبس جسدَها**
+ * (حدٌّ واحد · `radius.pill` · خلفيّةُ الصفحة · نصُّ `sm` بوزن ٦٠٠) — والفرقُ زرّان في طرفيه، **لكلٍّ منهما ٣٦ لمساً**
+ * (`hitSlop`) وإن رُسم الرمزُ ١٤. **والمطفأُ باهتٌ لا مخفيّ** فلا يتزحزح شيء.
+ */
+export function Stepper({
+  label,
+  canDec,
+  canInc,
+  onDec,
+  onInc,
+  decLabel,
+  incLabel,
+}: {
+  label: string;
+  canDec: boolean;
+  canInc: boolean;
+  onDec: () => void;
+  onInc: () => void;
+  decLabel: string;
+  incLabel: string;
+}) {
+  const { tokens } = useApp();
+  const side = (on: boolean, icon: "minus" | "plus", a11y: string, press: () => void) => (
+    <Pressable
+      onPress={() => {
+        haptic.pick();
+        press();
+      }}
+      disabled={!on}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ disabled: !on }}
+      style={{ width: 28, height: 28, alignItems: "center", justifyContent: "center", opacity: on ? 1 : 0.35 }}
+    >
+      <Icon name={icon} size={14} color={tokens.fg} />
+    </Pressable>
+  );
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+        paddingHorizontal: 2,
+        paddingVertical: 1,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: tokens.border,
+        backgroundColor: tokens.bg,
+      }}
+    >
+      {side(canDec, "minus", decLabel, onDec)}
+      <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 2, fontVariant: ["tabular-nums"] }}>
+        {label}
+      </Text>
+      {side(canInc, "plus", incLabel, onInc)}
+    </View>
   );
 }

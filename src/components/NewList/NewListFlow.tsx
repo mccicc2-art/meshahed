@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getDict, type Locale } from "@/core/i18n";
-import { ruleTypes, toggleRuleType, type SmartType } from "@/core/smartListKeys";
+import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, type SmartType } from "@/core/smartListKeys";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import {
   hideChipText,
@@ -22,6 +22,7 @@ import {
   sourceLabel,
   withAxis,
   withType,
+  withTypeMix,
   type NewListAxis,
   type NewListOpt,
   type NewListSource,
@@ -33,6 +34,7 @@ import { BackButton } from "@/components/BackButton";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
 import { ToggleRow } from "@/components/ui/SectionOrderList";
+import { Stepper } from "@/components/ui/Stepper";
 import { ListCardShell } from "@/components/PublicListsRail";
 import { createListFull, createSmartList, previewSmartList, addItemsToList, updateSmartListRule } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
@@ -382,7 +384,7 @@ export function NewListFlow({
                   key={o.value}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => setRule((r) => withType(r, toggleRuleType(r.type, o.value as SmartType)))}
+                  onClick={() => setRule((r) => withTypeMix(r, toggleRuleType(r.type, o.value as SmartType), !!editing))}
                   className={chipClass(on, "md")}
                 >
                   {o.label}
@@ -390,6 +392,38 @@ export function NewListFlow({
               );
             })}
           </div>
+          {/* 🆕 T467 — **التوزيع** (أحمد «١ج»): عدّادٌ لكلّ نوعٍ مختار بخطوات ١٠٪، ولا يظهر لنوعٍ واحد. والقائمةُ القديمةُ
+              بلا نسبة تبقى بالشعبيّة ويقول السطرُ ذلك — **والعدّادُ يعرض التساوي الذي ستبدأ منه أوّلُ لمسة** */}
+          {picked.length > 1 &&
+            (() => {
+              const set = parseMix(rule.mix, picked);
+              const mix = set ?? defaultMix(picked);
+              const labelOf = (ty: SmartType) => typeOpts.find((o) => o.value === ty)?.label ?? ty;
+              const step = (ty: SmartType, dir: 1 | -1) => setRule((r) => ({ ...r, mix: formatMix(stepMix(mix, picked, ty, dir), picked) }));
+              return (
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-12 font-semibold text-muted me-1">{t.nlMix}</span>
+                    {picked.map((ty) => {
+                      const can = mixCan(mix, picked, ty);
+                      return (
+                        <Stepper
+                          key={ty}
+                          label={t.nlMixShare(labelOf(ty), mix[ty] ?? 0)}
+                          canDec={can.down}
+                          canInc={can.up}
+                          onDec={() => step(ty, -1)}
+                          onInc={() => step(ty, 1)}
+                          decLabel={t.nlMixLess(labelOf(ty))}
+                          incLabel={t.nlMixMore(labelOf(ty))}
+                        />
+                      );
+                    })}
+                  </div>
+                  {!set && <p className="text-12 text-muted mt-1.5">{t.nlMixUnset}</p>}
+                </div>
+              );
+            })()}
           <AxisRow
             optsOf={optsOf}
             axisLabel={axisLabel}

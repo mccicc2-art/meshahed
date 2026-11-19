@@ -13,7 +13,7 @@ import {
 import { BROWSE_GENRES, BROWSE_ERAS, eraRange } from "@/core/browse";
 import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
 import type { SmartRule } from "@/lib/smartLists";
-import { ruleTypes } from "@/core/smartListKeys";
+import { ruleTypes, parseMix, interleaveByMix, type SmartType } from "@/core/smartListKeys";
 
 /**
  * ====== مقوِّمُ شرط المكتبة (D-876) — `rule_source = "library"` ======
@@ -139,8 +139,22 @@ export async function evaluateLibraryRule(
       : rule.sort === "title"
         ? (a: FollowRow, b: FollowRow) => a.title.localeCompare(b.title) || byAdded(a, b)
         : byAdded;
+  rows.sort(sorter);
+  /* 🆕 T467 — **ونسبةُ الأنواع هنا أيضاً**: صفٌّ لكلِّ نوعٍ بالمعاني نفسِها أعلاه (الأنمي علمٌ لا وسيط)، مرتّبٌ بترتيب القائمة،
+     ثمّ تتناوب بالحصص — **والمكتبةُ والكتالوجُ يقرآن الدالّةَ نفسَها** فلا معنيان للنسبة نفسِها. */
+  const mixTypes = ruleTypes(rule.type);
+  const mix = parseMix(rule.mix, mixTypes);
+  if (mix) {
+    const typeOf = (f: FollowRow): SmartType =>
+      animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true ? "all" : f.media_type === "tv" ? "tv" : "movie";
+    rows = interleaveByMix(
+      mixTypes.map((t) => rows.filter((f) => typeOf(f) === t)),
+      mixTypes.map((t) => mix[t] ?? 0),
+      limit,
+      (f) => `${f.media_type}-${f.tmdb_id}`,
+    );
+  }
   return rows
-    .sort(sorter)
     .slice(0, limit)
     .map((f) => ({
       tmdb_id: f.tmdb_id,

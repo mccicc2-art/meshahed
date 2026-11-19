@@ -1,6 +1,6 @@
 import { buildSection } from "@/lib/sections";
 import { titleOf, type SearchResult } from "@/lib/tmdb";
-import { ruleTypes } from "@/core/smartListKeys";
+import { ruleTypes, parseMix, interleaveByMix } from "@/core/smartListKeys";
 import { BROWSE_GENRES, genreFitsType } from "@/core/browse";
 import { browseToFilter, ruleMedia, ruleToBrowse, sanitizeRule, SMART_LIST_LIMIT, isRuleSource, type RuleSource, type SmartRule } from "@/lib/smartLists";
 import { evaluateLibraryRule } from "@/lib/librarySmart";
@@ -77,11 +77,22 @@ export async function evaluateSmartRule(
     ),
     hide ? hiddenKeys(hide) : Promise.resolve(null),
   ]);
+  const toItem = (r: SearchResult): ListItem => ({ tmdb_id: r.id, media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie", title: titleOf(r) || "", poster_path: r.poster_path ?? null, added_at: "", sort_order: null });
+  const shown = (r: ListItem) => !hidden || !hidden.has(`${r.media_type}-${r.tmdb_id}`);
+  /* 🆕 T467 — **بالنسبة إن وُجدت**: كلُّ نوعٍ يُرشَّح (الإخفاء) **قبل** التوزيع — وإلّا أكل الإخفاءُ من حصّة نوعٍ دون غيره —
+     ثمّ تتناوب الصفوفُ بالحصص (`interleaveByMix`). **وغيابُها الدمجُ بالترتيب كما كان** (أحمد: «٢ ب»). */
+  /* والنسبةُ تُقرأ على الأنواع كلِّها — نوعٌ أسقطه نوعٌ فنّيٌّ لا يناسبه يخرج بحصّته، والباقون يتقاسمون العرضَ بنسبهم */
+  const mix = parseMix(rule.mix, ruleTypes(rule.type));
+  if (mix && lists.length > 1) {
+    return interleaveByMix(
+      lists.map((l) => l.map(toItem).filter(shown)),
+      types.map((t) => mix[t] ?? 0),
+      limit,
+      (r) => `${r.media_type}-${r.tmdb_id}`,
+    );
+  }
   const rows = lists.length === 1 ? lists[0] : mergeBySort(lists, sort);
-  return rows
-    .map((r) => ({ tmdb_id: r.id, media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie", title: titleOf(r) || "", poster_path: r.poster_path ?? null, added_at: "", sort_order: null }))
-    .filter((r) => !hidden || !hidden.has(`${r.media_type}-${r.tmdb_id}`))
-    .slice(0, limit);
+  return rows.map(toItem).filter(shown).slice(0, limit);
 }
 
 /** دمجُ صفوفِ الأنواع بمفتاح الترتيب، بلا تكرار (عملٌ في صفّين — أنمي ومسلسل — يُعدّ مرّة) */

@@ -12,7 +12,7 @@ import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
 import { PAGE_PAD } from "../home/Section";
-import { Chip } from "../library/Chip";
+import { Chip, Stepper } from "../library/Chip";
 import { Segmented } from "../library/ToolsSheet";
 import { ListCard } from "../library/ListCard";
 import { SwitchPill } from "../settings/ui";
@@ -20,7 +20,7 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MIN_QUERY, useDebounced } from "../search/useSearch";
 import { useHomeDoor } from "../homeDoor";
 import { SYSTEM_FONT_CAP } from "../fontScale";
-import { ruleTypes, toggleRuleType, type SmartType } from "@/core/smartListKeys";
+import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, type SmartType } from "@/core/smartListKeys";
 import {
   hideChipText,
   isCatalogSource,
@@ -37,6 +37,7 @@ import {
   sourceLabel,
   withAxis,
   withType,
+  withTypeMix,
   type NewListAxis,
   type NewListOpt,
   type NewListSource,
@@ -421,10 +422,43 @@ export function NewListScreen({
                 label={o.label}
                 size="md"
                 active={ruleTypes(rule.type).includes(o.value as SmartType)}
-                onPress={() => setRule((r) => withType(r, toggleRuleType(r.type, o.value as SmartType)))}
+                onPress={() => setRule((r) => withTypeMix(r, toggleRuleType(r.type, o.value as SmartType), !!editId))}
               />
             ))}
           </View>
+          {/* 🆕 T467 — **التوزيع** (أحمد «١ج»): عدّادٌ لكلّ نوعٍ مختار بخطوات ١٠٪ — نظيرُ صفحة الويب بحرفها (`withTypeMix` ·
+              `stepMix`). والقائمةُ القديمةُ بلا نسبة تبقى بالشعبيّة ويقول السطرُ ذلك */}
+          {(() => {
+            const picked = ruleTypes(rule.type);
+            if (picked.length < 2) return null;
+            const set = parseMix(rule.mix, picked);
+            const mix = set ?? defaultMix(picked);
+            const labelOf = (ty: SmartType) => optsOf.type.find((o) => o.value === ty)?.label ?? ty;
+            return (
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                  <Text size={12} weight="600" muted style={{ marginEnd: 2 }}>{t.nlMix}</Text>
+                  {picked.map((ty) => {
+                    const can = mixCan(mix, picked, ty);
+                    const step = (dir: 1 | -1) => setRule((r) => ({ ...r, mix: formatMix(stepMix(mix, picked, ty, dir), picked) }));
+                    return (
+                      <Stepper
+                        key={ty}
+                        label={t.nlMixShare(labelOf(ty), mix[ty] ?? 0)}
+                        canDec={can.down}
+                        canInc={can.up}
+                        onDec={() => step(-1)}
+                        onInc={() => step(1)}
+                        decLabel={t.nlMixLess(labelOf(ty))}
+                        incLabel={t.nlMixMore(labelOf(ty))}
+                      />
+                    );
+                  })}
+                </View>
+                {!set ? <Text size={12} muted>{t.nlMixUnset}</Text> : null}
+              </View>
+            );
+          })()}
           <AxisRow axes={smartAxes} optsOf={optsOf} labels={labels} hideText={(v) => hideChipText(t, v)} values={rule} openAxis={smartOpen} onOpen={setSmartOpen} onPick={(a, v) => setRule((r) => withAxis(r, a, v))} />
           <View style={{ borderTopWidth: 1, borderTopColor: tokens.border, marginTop: 8, paddingTop: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
