@@ -63,6 +63,7 @@ export async function TitleCommunityTab({
   posterPath,
   backdropPath,
   locale,
+  ratingLocked = false,
 }: {
   tmdbId: number;
   mediaType: "tv" | "movie";
@@ -71,6 +72,8 @@ export async function TitleCommunityTab({
   posterPath: string | null;
   backdropPath?: string | null;
   locale: Locale;
+  /** 🆕 T474 — فيلمٌ لم يُعرض: صندوقُ الرأي يقول متى يُفتح بدل النجوم */
+  ratingLocked?: boolean;
 }) {
   /* **الخمسُ معاً**: لا شيء منها يعتمد على الآخر، **والتسلسلُ كان يضيف
      رحلةً لكلِّ واحدة** (D-071). */
@@ -207,6 +210,7 @@ export async function TitleCommunityTab({
             initialRating={myRating?.rating ?? null}
             initialReview={myRating?.review ?? null}
             initialHasSpoiler={Boolean(myRating?.has_spoiler)}
+            lockedNote={ratingLocked ? t.rateOpensOnRelease : undefined}
           />
         }
       />

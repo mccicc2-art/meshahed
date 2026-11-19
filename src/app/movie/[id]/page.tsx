@@ -49,6 +49,7 @@ import { TitleCastCard } from "@/components/TitleAside";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
+import { movieOut } from "@/core/release";
 
 /** 🆕 D-1374 — بطاقةُ معاينة الفيلم (`titleMetadata`): الاسمُ والسنةُ وسطرٌ عنه والبوستر. نداءُ TMDB نفسُه المخزَّن الذي ترسم به الصفحة */
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -161,6 +162,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       </div>
     );
   }
+
+  /* 🆕 T474 — **عُرض أم لا؟** — القاعدةُ الواحدةُ للخادم والصفحة والتطبيق (`core/release.ts`) */
+  const released = movieOut(movie.release_date, movie.status);
 
   /* العنوان بالعربية إن لم تترجمه TMDB (D-176) — نفس شرطَي `displayPersonName`
      ونفس صمته، وبعد حارس `!movie` لا قبله. */
@@ -279,7 +283,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               </h1>
               <span className="ms-auto shrink-0 -mt-0.5 desk:hidden">
                 {/* 🆕 D-1628 — النبضُ زرٌّ يفتح «من قيّم» (وتقييمي إن لم أقيّم) */}
-                <TitleRaters kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+                <TitleRaters locked={!released} kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
             </div>
             {/* 🆕 **لونٌ أقوى وهالة** (D-501) — نفسُ حجّة صفحة المسلسل */}
@@ -479,7 +483,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                       mediaType="movie"
                     />
         ) : null}
-        <TitleRaters variant="card" kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+        <TitleRaters locked={!released} variant="card" kind="movie" tmdbId={movieId} title={movie.title} posterPath={movie.poster_path} backdropPath={movie.backdrop_path} hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
         <Suspense fallback={null}>
           <TitleCastCard credits={creditsPromise} locale={locale} />
         </Suspense>
@@ -509,6 +513,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           initialDone={watched}
           collectionId={movie.belongs_to_collection?.id ?? null}
           initialFavorite={favs.has(artKey("movie", movieId))}
+          /* 🆕 T474 — لم يُعرض: «شاهدته» تقويمٌ بتاريخه (والغيابُ = مفتوح) */
+          lockedUntil={released ? undefined : (movie.release_date || null)}
         />
       </div>
       <DetailTabs
@@ -639,6 +645,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   posterPath={movie.poster_path}
                   backdropPath={movie.backdrop_path}
                   locale={locale}
+                  ratingLocked={!released}
                 />
               </Suspense>
             ),

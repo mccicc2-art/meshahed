@@ -1,8 +1,8 @@
 import { EDITORIAL } from "@/core/universes";
-import { eventWindow, orderForYou, riyadhMonth } from "@/core/listEvents";
+import { eventBadge, eventWindow, orderForYou, riyadhMonth } from "@/core/listEvents";
 import { AWARDS } from "@/core/awards";
 import { getDict, type Locale } from "@/core/i18n";
-import { movieTheatricalDate } from "@/lib/tmdb";
+import { getMovie, movieTheatricalDate } from "@/lib/tmdb";
 import { getListCardsByIds, type PublicListCard } from "@/lib/data";
 
 /**
@@ -19,7 +19,7 @@ export async function getActiveEventLists(
   curated: Map<string, string>,
   locale: Locale,
   now = Date.now(),
-): Promise<{ listId: string; label: string }[]> {
+): Promise<{ listId: string; label: string; badge: string; poster: string | null }[]> {
   const t = getDict(locale);
   const pinned = EDITORIAL.filter((e) => e.pin && curated.has(e.slug));
   const rows = await Promise.all(
@@ -28,10 +28,12 @@ export async function getActiveEventLists(
       const w = eventWindow(date, e.pin!.graceDays, now);
       if (!w.active) return null;
       const label = w.phase === "before" ? t.listEventIn(w.days) : w.phase === "today" ? t.listEventToday : t.listEventNow;
-      return { listId: curated.get(e.slug)!, label };
+      /* 🆕 T474 — ملصقُ الحدث: ما اختاره أحمد في `pin.poster`، وإلّا ملصقُ TMDB (مخبَّأٌ ساعةً في طبقة `tmdb`) */
+      const poster = e.pin!.poster ?? (await getMovie(e.pin!.tmdbId).catch(() => null))?.poster_path ?? null;
+      return { listId: curated.get(e.slug)!, label, badge: eventBadge(w, t), poster };
     }),
   );
-  return rows.filter((r): r is { listId: string; label: string } => r !== null);
+  return rows.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 /**
@@ -61,7 +63,7 @@ export async function forYouWithEvents(args: {
 }): Promise<{ forYou: PublicListCard[]; trending: PublicListCard[] }> {
   const t = getDict(args.locale);
   const pins = await getActiveEventLists(args.curated, args.locale).catch(() => []);
-  const label = new Map(pins.map((p) => [p.listId, p.label]));
+  const event = new Map(pins.map((p) => [p.listId, { poster: p.poster, badge: p.badge }]));
   const { ids, trending } = orderForYou(
     pins.map((p) => p.listId),
     args.forYouIds,
@@ -69,9 +71,11 @@ export async function forYouWithEvents(args: {
     seasonAwardLists(args.curated),
   );
   const cards = await getListCardsByIds(ids).catch(() => [] as PublicListCard[]);
+  /* 🆕 T474 — **العدُّ خرج من السطر إلى الملصق** (أحمد: «اوت ان ٢٧ داي تنحط …» ثمّ «١ ج · ٢ ب»): السطرُ «16 عملاً» وحدَه، والحدثُ
+     ملصقُه وشارتُه في `event` — **قاعدةٌ لكلِّ قائمة حدثٍ مثبّتة** لا لدومزداي وحدَه */
   const forYou = cards.map((c) => {
-    const l = label.get(c.id);
-    return l ? { ...c, count_label: `${t.listCount(c.item_count)} · ${l}` } : c;
+    const ev = event.get(c.id);
+    return ev ? { ...c, count_label: t.listCount(c.item_count), event: ev } : c;
   });
   return { forYou, trending };
 }

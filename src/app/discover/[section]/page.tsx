@@ -252,6 +252,8 @@ export default async function SectionPage({
       year: yearOf(r),
       tv,
       id: r.id,
+      /* 🆕 T474 — تاريخُ عرض الفيلم: قائمةُ الضغط المطوَّل لا تعرض «شاهدته» لفيلمٍ لم يأتِ يومُه */
+      release: tv ? undefined : (r.release_date ?? null),
     };
   });
 
@@ -300,6 +302,7 @@ export default async function SectionPage({
                 tmdbId: r.id,
                 mediaType: r.tv ? "tv" : "movie",
                 ...lib.of(r.id, r.tv ? "tv" : "movie"),
+                release: r.release,
                 locale,
               }}
             />

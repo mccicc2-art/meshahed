@@ -61,12 +61,14 @@ export async function RelatedTitles({
   if (!collection && related.length === 0) return null;
 
   /** حالةُ عملٍ في مكتبتك — تُمرَّر للضغط المطوّل، وتغيب للزائر */
-  const holdOf = (id: number, mt: MediaType | "person") =>
+  /* 🆕 T474 — و`release`: تاريخُ عرض الفيلم — تاريخٌ لم يأتِ يُخفي «شاهدته» من القائمة */
+  const holdOf = (id: number, mt: MediaType | "person", release?: string | null) =>
     lib && mt !== "person"
       ? {
           tmdbId: id,
           mediaType: (mt === "tv" ? "tv" : "movie") as "tv" | "movie",
           locale,
+          release: mt === "movie" ? (release ?? null) : undefined,
           ...lib.of(id, mt),
         }
       : undefined;
@@ -101,7 +103,7 @@ export async function RelatedTitles({
                 title={titleOf(p)}
                 posterPath={p.poster_path}
                 year={yearOf(p)}
-                hold={holdOf(p.id, "movie")}
+                hold={holdOf(p.id, "movie", p.release_date)}
               />
             </RailItem>
           ))}
@@ -121,7 +123,7 @@ export async function RelatedTitles({
                 title={titleOf(r)}
                 posterPath={r.poster_path}
                 year={yearOf(r)}
-                hold={holdOf(r.id, r.media_type)}
+                hold={holdOf(r.id, r.media_type, r.release_date)}
               />
             </RailItem>
           ))}

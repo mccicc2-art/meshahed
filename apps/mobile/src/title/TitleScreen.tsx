@@ -16,6 +16,8 @@ import { radius } from "../theme";
 import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
+import { movieOut } from "@/core/release";
+import { formatDateShort } from "@/core/when";
 import { SeasonAccordion, firstOpenSeason, seasonQuery } from "./SeasonAccordion";
 import { titleSeed, prefetchFirstSeason, titleQuery, takePress, seedSrc, takeNet } from "./seed";
 import { mark } from "../perfMarks";
@@ -113,10 +115,17 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   /* 🆕 D-1628 — **النجمةُ بابان** (أحمد ٢ نوفمبر: «بالأول يظهر له قيم و زر عرض جميع التقييمات و إذا كان قيمها يظهر له القائمة و زر
      تقيمي»): من لم يقيّم يفتح التقييمَ وتحته «عرض جميع التقييمات»؛ من قيّم — والزائرُ — يفتح «من قيّم» وفيه زرُّ تقييمي */
   const [ratersOpen, setRatersOpen] = useState(false);
+  /* 🆕 T474 — **فيلمٌ لم يُعرض** (`core/release.ts` — القاعدةُ نفسُها في الخادم والويب): لا «شاهدته» ولا تقييم، وكلُّ بابٍ
+     للتقييم يقول متى يُفتح بدل ورقةٍ يردّها الخادم. ومن أشّره قبل الحارس يبقى له التراجع */
+  const unreleased = d?.kind === "movie" && !movieOut(d.release_date, d.status);
+  const editReview = () => {
+    if (unreleased) setToast({ text: t.rateOpensOnRelease, tone: "info" });
+    else setReviewOpen("edit");
+  };
   const openPulse = () => {
     if (!d) return;
     if (guest || d.me.rating != null) setRatersOpen(true);
-    else setReviewOpen("edit");
+    else editReview();
   };
   /* 🆕 D-1118 — `title.open`: من فتح الشاشة إلى أوّل بيانات (`cached=1` إن رُسمت من الكاش/الملفّ) */
   const openMark = useRef<{ t0: number; cached: number } | null>({ t0: performance.now(), cached: q.data ? 1 : 0 });
@@ -513,11 +522,19 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 }
                 else if (k === "list") setListOpen(true);
                 else if (k === "favorite") favorite.mutate();
-                else if (d.kind === "movie") movieWatched.mutate(!d.me.watched);
+                else if (d.kind === "movie") {
+                  if (unreleased && !d.me.watched) setToast({ text: t.releaseLockedToast, tone: "info" });
+                  else movieWatched.mutate(!d.me.watched);
+                }
                 else if (done) showUnwatched.mutate();
                 else showWatched.mutate();
               }}
               onHoldWatch={d.kind === "tv" ? () => setRedCard(true) : undefined}
+              lockedLabel={
+                d.kind === "movie" && unreleased && !d.me.watched
+                  ? d.release_date ? formatDateShort(d.release_date, t) : t.trailerReleaseSoon
+                  : undefined
+              }
             />
             </View>
             {/* 🆕 D-1144 — الرمزُ لم يصل: قلها وأعطِ زرّاً، لا صفّاً خافتاً صامتاً */}
@@ -572,7 +589,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
             {tab === "community" ? (
-              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={() => setReviewOpen("edit")} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} onLikeReview={likeReview} />
+              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={editReview} locked={unreleased} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} onLikeReview={likeReview} />
             ) : tab === "episodes" && d.kind === "tv" ? (
               <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (
@@ -659,7 +676,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           data={community.data}
           votes={x?.pulse.votes ?? 0}
           myRating={guest ? undefined : d.me.rating}
-          onRate={() => { setRatersOpen(false); setReviewOpen("edit"); }}
+          onRate={() => { setRatersOpen(false); editReview(); }}
           onOpen={(u) => { setRatersOpen(false); openProfile(router, u, from); }}
           onClose={() => setRatersOpen(false)}
         />

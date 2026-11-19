@@ -1,4 +1,5 @@
 import "server-only";
+import { movieOut } from "@/core/release";
 import { tagSource } from "@/lib/watchSource";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -311,6 +312,8 @@ export async function widgetMovie(who: { userId: string; lang?: Locale }, movieT
   if (watched) {
     const m = await getMovie(movieTmdbId).catch(() => null);
     if (!m) return false;
+    /* 🆕 T474 — فيلمٌ لم يُعرض لا يُؤشَّر من الودجت أيضاً — القاعدةُ نفسُها في `toggleMovieWatched` */
+    if (!movieOut(m.release_date, m.status)) return false;
     const { error } = await db.from("watched_movies").upsert(
       { user_id: who.userId, movie_tmdb_id: movieTmdbId, runtime: m.runtime ?? null },
       { onConflict: "user_id,movie_tmdb_id" },
@@ -374,6 +377,7 @@ export async function widgetStart(who: { userId: string }, showTmdbId: number, s
 export async function widgetRate(who: { userId: string }, movieTmdbId: number, rating: number): Promise<boolean> {
   const m = await getMovie(movieTmdbId).catch(() => null);
   if (!m) return false;
+  if (!movieOut(m.release_date, m.status)) return false; // 🆕 T474 — لا نجمةَ لفيلمٍ لم يُعرض
   const db = await createServiceClient();
   const { error } = await db.from("ratings").upsert(
     {

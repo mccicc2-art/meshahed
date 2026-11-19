@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { knownUpcoming } from "@/core/release";
 import { useRouter } from "next/navigation";
 import { follow, unfollow, setWatchState, startRewatch } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
@@ -30,6 +31,8 @@ export interface HoldMenuItem {
   unstarted?: boolean;
   /** بلا صفِّ «الحلقة التالية» (D-1282) */
   noNext?: boolean;
+  /** 🆕 T474 — تاريخُ عرض الفيلم إن عُرف: تاريخٌ لم يأتِ يُخفي «شاهدته» (والغيابُ «لا أعرف» فيبقى) */
+  release?: string | null;
 }
 
 /**
@@ -155,7 +158,8 @@ export function LibraryHoldMenu({
             />
           )}
 
-          {/* **`check-line` كالمنسدلة لا `check`** (D-353) */}
+          {/* **`check-line` كالمنسدلة لا `check`** (D-353) — 🆕 T474: ويغيب لفيلمٍ تاريخُه معروفٌ ولم يأتِ */}
+          {isTv || !knownUpcoming(item.release) ? (
           <DropdownRow
             icon="check-line"
             label={!isTv && unstarted ? t.holdWatchedMovie : t.markAllWatched}
@@ -173,6 +177,7 @@ export function LibraryHoldMenu({
               )
             }
           />
+          ) : null}
 
           {/* **«ريفيو» ينتقل ولا يفتح** — ما يستحقّ صفحةً يأخذها (D-353) */}
           <DropdownRow

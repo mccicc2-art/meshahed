@@ -44,6 +44,7 @@ export function CommunityTab({
   onOpenTalk,
   onOpenReview,
   onLikeReview,
+  locked = false,
 }: {
   data: TitleCommunityPayload | undefined;
   myRating: number | null;
@@ -53,6 +54,8 @@ export function CommunityTab({
   onOpenReview?: (userId: string) => void;
   /** 🆕 D-1567 — قلبُ الرأي (الكتابةُ والكاشُ بيد الشاشة) */
   onLikeReview?: (r: TitleCommunityPayload["reviews"][number]) => void;
+  /** 🆕 T474 — فيلمٌ لم يُعرض: الحقلُ يقول متى يُفتح التقييم (تقويمٌ لا قلم) — والضغطُ يقوله توستاً بيد الشاشة */
+  locked?: boolean;
 }) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
@@ -96,8 +99,8 @@ export function CommunityTab({
             )
           ) : (
             <>
-              <View style={{ marginTop: 3 }}><Icon name="edit" size={13} color={tokens.muted} /></View>
-              <Text size={13} muted numberOfLines={1} style={{ flex: 1, lineHeight: 19 }}>{t.reviewPlaceholder}</Text>
+              <View style={{ marginTop: 3 }}><Icon name={locked ? "calendar" : "edit"} size={13} color={tokens.muted} /></View>
+              <Text size={13} muted numberOfLines={1} style={{ flex: 1, lineHeight: 19 }}>{locked ? t.rateOpensOnRelease : t.reviewPlaceholder}</Text>
             </>
           )}
         </View>

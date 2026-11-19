@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { knownUpcoming } from "@/core/release";
 import { follow, unfollow, unmarkEpisodes } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
 import { toast, flashError } from "@/lib/toast";
@@ -88,6 +89,7 @@ export function PosterHold({
   savedMark = true,
   extra,
   lib,
+  release,
   locale,
   children,
 }: {
@@ -130,6 +132,11 @@ export function PosterHold({
    * يُمرَّر من يعرف حالَ العمل — وغيابُه يُبقي القائمةَ كما كانت في كلِّ سطحٍ آخر.
    */
   lib?: { unstarted: boolean; paused: boolean; noNext?: boolean };
+  /**
+   * 🆕 T474 — **تاريخُ عرض الفيلم إن عرفه السطح** (`release_date`): تاريخٌ لم يأتِ يُخفي «أشّر مشاهَداً» (حكمُ أحمد «٢ أ»)،
+   * والغيابُ «لا أعرف» فيبقى الصفّ — والحارسُ في الخادم يمسك ما فات القائمة.
+   */
+  release?: string | null;
   locale: Locale;
   children: React.ReactNode;
 }) {
@@ -379,6 +386,7 @@ export function PosterHold({
             completed: seen,
             unstarted: lib.unstarted,
             noNext: lib.noNext,
+            release,
           }}
           t={t}
           onClose={() => setOpen(false)}
@@ -412,6 +420,8 @@ export function PosterHold({
             أحدَهما دائماً بلا معنى — **وخيارٌ لا ينطبق أسوأ من غيابه**
             (D-217). والحالةُ الثالثة (مُشاهَدٌ بلا إيصال) **تنقل إلى
             صفحة العمل**: نفسُ حكم «ريفيو» — ما يستحقّ صفحةً يأخذها. */}
+        {/* 🆕 T474 — فيلمٌ تاريخُه معروفٌ ولم يأتِ: لا صفَّ «شاهدته» (ومن أشّره قبل الحارس يبقى له صفُّ التراجع) */}
+        {seen || mediaType !== "movie" || !knownUpcoming(release) ? (
         <DropdownRow
           /* **`eye-off` لا سهمُ تراجع**: الزوجُ `eye`/`eye-off` قائمٌ في
              العائلة ويقول المعنى نفسَه — **ولا أيقونةَ جديدة لفعلٍ له
@@ -421,6 +431,7 @@ export function PosterHold({
           active={seen}
           onClick={seen ? (canUndo ? undoWatched : goToTitle) : markWatched}
         />
+        ) : null}
         <DropdownRow icon="star" label={t.reviewSectionTitle} onClick={goToTitle} />
         {/* 🆕 **البطاقةُ الحمراء — تظهر لما تتابعه وحدَه** (D-636).
             **وموضعُها قبل صفِّ السطح وبعد ما عداه**: فعلٌ له رجعةٌ

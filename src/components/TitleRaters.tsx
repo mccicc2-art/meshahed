@@ -39,6 +39,7 @@ export function TitleRaters({
   hearts,
   locale,
   variant = "pulse",
+  locked = false,
 }: {
   kind: "tv" | "movie";
   tmdbId: number;
@@ -52,6 +53,8 @@ export function TitleRaters({
   /** 🆕 R257 — `card`: **بطاقةُ «تقييمات المجتمع» في العمود الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»): الرقمُ كبيراً
       ووجوهُ أوّل من قيّم، والضغطةُ تفتح الورقةَ نفسَها. والنبضُ الصغيرُ في الترويسة يغيب هناك فلا يتكرّر */
   variant?: "pulse" | "card";
+  /** 🆕 T474 — فيلمٌ لم يُعرض: الصندوقُ يقول متى يُفتح التقييم، والورقةُ تفتح على القائمة لا على النجوم */
+  locked?: boolean;
 }) {
   const t = getDict(locale);
   const w = WORDS[locale === "en" ? "en" : "ar"];
@@ -81,7 +84,7 @@ export function TitleRaters({
     setView("list");
     const d = await load();
     /* لم يقيّم وهو صاحبُ جلسة ⇒ التقييمُ أوّلاً (والقائمةُ زرٌّ تحته) */
-    if (d?.signed_in && !d.my_review) setView("rate");
+    if (d?.signed_in && !d.my_review && !locked) setView("rate");
   };
 
   /* الوجوهُ تحتاج القائمة — تُجلب مرّةً عند ظهور البطاقة (الحاسوب وحده، ولعملٍ له تقييمات)، وهي نفسُ ما تفتحه الورقة */
@@ -147,6 +150,7 @@ export function TitleRaters({
                 initialRating={mine?.rating ?? null}
                 initialReview={mine?.review ?? null}
                 initialHasSpoiler={mine?.has_spoiler ?? false}
+                lockedNote={locked ? t.rateOpensOnRelease : undefined}
                 onSaved={() => {
                   coalescedRefresh(router);
                   void load().then(() => setView("list"));

@@ -53,6 +53,8 @@ export interface GridItem {
   /** للإجراءات السريعة بالضغطة المطوّلة */
   tmdbId?: number;
   mediaType?: "tv" | "movie";
+  /** 🆕 T474 — تاريخُ عرض الفيلم إن عُرف — لقائمة الضغط المطوَّل */
+  release?: string | null;
 }
 
 /**
@@ -874,6 +876,7 @@ function LibraryCell({
             paused: x.paused,
             completed: x.completed,
             unstarted: x.status === "unstarted",
+            release: x.release,
           }}
           t={t}
           onClose={onClose}

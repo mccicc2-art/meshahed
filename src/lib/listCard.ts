@@ -24,6 +24,7 @@ export function toLibraryListCard(l: PublicListCard, locale: string): LibraryLis
     rating: l.rating ?? null,
     count_label: l.count_label ?? null,
     cover: null,
+    ...(l.event ? { event: l.event } : {}),
     mine: !!l.mine,
     is_public: true,
     playlist: typeof l.playlist === "boolean" ? l.playlist : null,

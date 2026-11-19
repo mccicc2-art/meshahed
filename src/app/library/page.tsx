@@ -316,6 +316,8 @@ export default async function LibraryPage({
         dropped,
         // الفيلم بلا «أشاهده»: شاهدتُه أو لم أشاهده أو أوقفته
         status: movieStatusOf(f, done),
+        /* 🆕 T474 — تاريخُ العرض المخبَّأ في صفِّ المتابعة (`cacheMovieStats`): تاريخٌ لم يأتِ يُخفي «شاهدته» من القائمة */
+        release: f.next_air_date ?? null,
         rank: dropped ? 2 : done ? 1 : 0,
       };
     })

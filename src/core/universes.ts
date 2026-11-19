@@ -628,7 +628,15 @@ export interface EditorialList {
    * تأجّل الفيلمُ تأجّل التثبيتُ معه**، وتاريخٌ يُكتب بيدٍ يكذب يومَ يتأجّل. **ولجميع القرّاء** (٢ أ)،
    * **ويبقى `graceDays` بعد العرض** (٣ ب: أسبوعان) لأن كثيرين يلحقون المشاهدةَ بعد النزول.
    */
-  pin?: { tmdbId: number; graceDays: number };
+  pin?: {
+    tmdbId: number;
+    graceDays: number;
+    /**
+     * 🆕 T474 — **ملصقُ الحدث على بطاقة القائمة** (أحمد ١٩ نوفمبر: «تجي صورة افنجرز دومزداي … ويظهر فالمكان الاسود عاليسار ك
+     * استثناء»، ثمّ «لا خلي القناع ب»): مسارُ TMDB يختاره أحمد بالاسم — والغيابُ = ملصقُ TMDB الافتراضيّ للفيلم.
+     */
+    poster?: string;
+  };
 }
 
 export const EDITORIAL: EditorialList[] = [
@@ -639,7 +647,8 @@ export const EDITORIAL: EditorialList[] = [
     blurbAr: "ترتيب المشاهدة الذي أوصت به ديزني قبل الفيلم.",
     blurbEn: "The watch order Disney recommended before the film.",
     /* Avengers: Doomsday — معرّفُه في TMDB (١٠٠٣٥٩٦) كما في مكتبات الأعضاء */
-    pin: { tmdbId: 1003596, graceDays: 14 },
+    /* ملصقُ القناع على الأخضر — اختيارُ أحمد من ملصقات TMDB («لا خلي القناع ب») */
+    pin: { tmdbId: 1003596, graceDays: 14, poster: "/7UN7WiNgXnKNneFx7V4nDm92luk.jpg" },
   },
 ];
 

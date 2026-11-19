@@ -127,6 +127,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
                     likedByMe: item.liked_by_me,
                     canReview: !!item.can_review,
                     hasMyReview: !!item.my_review,
+                    event: item.event,
                   }}
                   onPress={() => {
                     setAllOf(null);
@@ -172,6 +173,7 @@ function ListsRailList({ lists, cardW, onOpenWeb }: { lists: LibraryListCard[]; 
               likedByMe: item.liked_by_me,
               canReview: !!item.can_review,
               hasMyReview: !!item.my_review,
+              event: item.event,
             }}
             onPress={() => onOpenWeb(`/lists/${item.id}`)}
           />

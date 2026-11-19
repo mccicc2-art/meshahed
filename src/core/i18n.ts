@@ -3042,6 +3042,15 @@ const ar = {
   apiUsernameTaken: "اسم المستخدم محجوز، جرّب غيره.",
   /* 🆕 D-1341 — ردُّ `/api/v1` لجلسةٍ لم تُتمّ الترحيب: التطبيقُ يقرأ المفتاحَ ويعود بصاحبه إليه */
   apiFinishWelcome: "أكمل خطوات الترحيب أولاً.",
+  /* 🆕 T474 — الحارسُ يردّ «شاهدته» والتقييمَ قبل يوم العرض (`core/release.ts`) */
+  apiNotReleased: "لم يُعرض بعد — التأشيرُ والتقييمُ يُفتحان يومَ عرضه.",
+  /* 🆕 T474 — صفحةُ فيلمٍ لم يُعرض: خانةُ «شاهدته» تحمل تاريخَه، وسطرُ التقييم يقول متى يُفتح */
+  releaseLockedToast: "يُفتح التأشيرُ يومَ عرضه",
+  rateOpensOnRelease: "التقييم يُفتح يوم العرض",
+  /* 🆕 T474 — شارةُ العدّ التنازليّ على ملصق قائمة الحدث (مطابقةُ العدد للمعدود) */
+  listEventBadge: (n: number) => (n === 1 ? "غداً" : n === 2 ? "يومان" : n <= 10 ? `${n} أيام` : `${n} يوماً`),
+  listEventBadgeToday: "اليوم",
+  listEventBadgeNow: "الآن",
   apiImageInvalid: "الرجاء اختيار ملف صورة.",
   apiImageTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   apiVerifyNotEligible: "لم تكتمل الشروط بعد.",
@@ -5727,6 +5736,13 @@ const en: Dict = {
   apiLinkSlotsFull: "Your slot is full: unlink the linked app first, or get Loopz Plus and link up to 5",
   apiUsernameTaken: "Username is taken, try another.",
   apiFinishWelcome: "Finish the welcome steps first.",
+  apiNotReleased: "Not released yet — marking and rating open on release day.",
+  releaseLockedToast: "You can mark it on release day",
+  rateOpensOnRelease: "Rating opens on release day",
+  /* «Tomorrow» أعرضُ من خانة الملصق فتمشي في شارتها (`MarqueeText`) لتُقرأ كاملة — أحمد: «خليها متحركه» */
+  listEventBadge: (n: number) => (n === 1 ? "Tomorrow" : `${n} days`),
+  listEventBadgeToday: "Today",
+  listEventBadgeNow: "Out now",
   apiImageInvalid: "Please choose an image file.",
   apiImageTooLarge: "Image too large — 2 MB maximum.",
   apiVerifyNotEligible: "Requirements not met yet.",

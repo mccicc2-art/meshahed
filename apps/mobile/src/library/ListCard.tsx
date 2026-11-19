@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { I18nManager, Pressable, StyleSheet, View } from "react-native";
+import { MarqueeText } from "./MarqueeText";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
@@ -73,6 +74,8 @@ export type ListCardData = {
   canReview?: boolean;
   hasMyReview?: boolean;
   dashed?: boolean;
+  /** 🆕 T474 — قائمةُ الحدث المثبَّتة: ملصقُه (مسارُ TMDB) في آخر خانةٍ وعليه شارةُ العدّ — بطاقةُ الويب نفسُها */
+  event?: { poster: string | null; badge: string };
 };
 
 export function ListCard({
@@ -107,6 +110,11 @@ export function ListCard({
   const sub2 = c.fg + "CC";
   /* D-1027 (F3) — شريحةُ الغلاف ~٩٦dp: المقاسُ من القاعدة الواحدة فيطابق رابطَ بطاقة المكتبة */
   const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
+  /* 🆕 T474 — **ملصقُ الحدث يأخذ أوضحَ خانة** (الأخيرةُ في جهة النهاية، أبعدُ ما يكون عن الحجاب) — `ListCardShell` الويب حرفاً */
+  const ev = card.event;
+  const slots: (string | null)[] = ev
+    ? [...posters.slice(0, 2), (ev.poster ? posterFor(ev.poster, 96) : null) ?? posters[2] ?? null]
+    : posters.slice(0, 3);
   const play =
     card.playlist === null ? null : (
       <PlayPill palette={c} on={!!card.playlist} label={t.listPlaylist} disabled={busy || !onPlaylist} onToggle={(on) => onPlaylist?.(on)} />
@@ -187,7 +195,7 @@ export function ListCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={card.name}
+      accessibilityLabel={ev ? `${card.name} · ${ev.badge}` : card.name}
       style={({ pressed }) => ({
         minHeight: MIN_H,
         borderRadius: radius.card,
@@ -205,11 +213,26 @@ export function ListCard({
       {/* الأرضيّة: الغلافُ كاملاً، وإلّا الملصقاتُ الثلاثة من جهة النهاية (`w-[72%]`) */}
       {card.cover ? (
         <Image source={{ uri: card.cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-      ) : posters.length > 0 ? (
+      ) : slots.length > 0 ? (
         <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
-          {posters.slice(0, 3).map((uri, i) => (
-            <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
-          ))}
+          {slots.map((uri, i) =>
+            ev && i === slots.length - 1 ? (
+              /* 🆕 T474 — خانةُ الحدث بتكبيرٍ متوسّط (نموذجُ أحمد): ٧٢٪ من عرض الملصق ملتصقاً بالقاع، وفوقه الملصقُ نفسُه مموّهاً
+                 معتماً يحمل الشارةَ الصفراء — فلا تغطّي الشارةُ وجهاً */
+              <View key={i} style={{ flex: 1, height: "100%" }}>
+                {uri ? (
+                  <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
+                    <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={12} cachePolicy="memory-disk" />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+                    <Image source={{ uri }} style={{ position: "absolute", bottom: 0, left: "-19.5%", width: "139%", aspectRatio: 2 / 3 }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+                  </View>
+                ) : null}
+                <EventBadge text={ev.badge} bg={c.accent} fg={c.onAccent} />
+              </View>
+            ) : uri ? (
+              <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+            ) : null,
+          )}
         </View>
       ) : null}
       {/* الحجابُ بلون الأرضيّة، من جهة البداية — يُقلب في RTL (D-1135: واحدٌ لكلِّ ثيم) */}
@@ -382,3 +405,33 @@ function Sep({ palette }: { palette?: Tokens }) {
 const styles = StyleSheet.create({
   nums: { fontVariant: ["tabular-nums"] },
 });
+
+/**
+ * 🆕 T474 — **شارةُ العدّ على ملصق الحدث**: صغيرةٌ ووسطَ الخانة لا تتجاوزها (أحمد: «لا تدخل عالعمل الثاني» ثمّ «أ»)، ونصٌّ أطولُ
+ * منها يمشي ولا يُقصّ («Tomorrow» — «خليها متحركه عشان تظهر بشكل كامل») بـ`MarqueeText` نفسِه.
+ * 📐 **عرضُها يُقاس**: مسارُ `MarqueeText` عريضٌ عمداً فيملأ ما يُعطى — فالشارةُ تأخذ عرضَ نصِّها الطبيعيّ (يُقاس خفيّاً) أو عرضَ
+ * الخانة أيّهما أصغر، **وتبقى مخفيّةً حتى يتمّ القياس** فلا تومض بعرض الخانة كلِّها.
+ */
+function EventBadge({ text, bg, fg }: { text: string; bg: string; fg: string }) {
+  const [room, setRoom] = useState(0);
+  const [natural, setNatural] = useState(0);
+  const PAD = 4;
+  const ready = room > 0 && natural > 0;
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: "absolute", top: 6, left: 3, right: 3, alignItems: "center" }}
+      onLayout={(e) => setRoom(e.nativeEvent.layout.width - PAD * 2)}
+    >
+      {/* القياسُ الخفيّ: صفٌّ عريضٌ يترك النصَّ بطوله (حيلةُ `MarqueeText` نفسُها) */}
+      <View style={{ position: "absolute", opacity: 0, width: 1000, flexDirection: "row" }}>
+        <Text size={9} weight="700" numberOfLines={1} style={{ flexShrink: 0 }} onLayout={(e) => setNatural(Math.ceil(e.nativeEvent.layout.width))}>
+          {text}
+        </Text>
+      </View>
+      <View style={{ opacity: ready ? 1 : 0, width: ready ? Math.min(natural, room) + PAD * 2 : undefined, borderRadius: 999, backgroundColor: bg, paddingHorizontal: PAD, paddingVertical: 1 }}>
+        <MarqueeText text={text} size={9} weight="700" color={fg} />
+      </View>
+    </View>
+  );
+}

@@ -18,6 +18,7 @@ import {
   myRatingFor,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
+import { formatDateShort } from "@/core/when";
 import type { MediaType } from "@/core/media";
 import { Icon, type IconName } from "./Icon";
 import { Sheet } from "./ui/Sheet";
@@ -86,6 +87,7 @@ export function TitleActions({
   initialDone,
   collectionId,
   initialFavorite = false,
+  lockedUntil,
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -107,6 +109,11 @@ export function TitleActions({
   collectionId?: number | null;
   /** في «مفضّلاتي» عند فتح الصفحة (D-130) */
   initialFavorite?: boolean;
+  /**
+   * 🆕 T474 — **فيلمٌ لم يُعرض**: تاريخُ عرضه (`null` = بلا تاريخٍ بعد)، والغيابُ = مفتوح. خانةُ «شاهدته» تصير تقويماً
+   * بتاريخه خافتاً («١ أ»)، وضغطتُها تقول متى تُفتح — والحارسُ الحقيقيُّ في الخادم (`assertMovieOut`).
+   */
+  lockedUntil?: string | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -386,16 +393,29 @@ export function TitleActions({
               aria: t.favAria,
               press: flipFavorite,
             },
-            {
-              key: "done",
-              icon: "check-line",
-              label: t.watchedAction,
-              on: done,
-              tone: "text-[color:var(--success)]",
-              aria: watchLabel,
-              press: markWatched,
-            },
-          ] as { key: string; icon: IconName; label: string; on: boolean; tone: string; aria?: string; press: () => void }[]
+            /* 🆕 T474 — **لم يُعرض: تقويمٌ بتاريخه لا ✓** (نموذجُ أحمد «١ أ» — «يُعرض ١٨ ديسمبر» قُصّت في الخانة فبقي التاريخُ
+               وحده، والأيقونةُ تقول الباقي). **ومن أشّره قبل الحارس يبقى له ✓ يلغيه** — التراجعُ مفتوحٌ دائماً */
+            lockedUntil !== undefined && !done
+              ? {
+                  key: "done",
+                  icon: "calendar",
+                  label: lockedUntil ? formatDateShort(lockedUntil, t) : t.trailerReleaseSoon,
+                  on: false,
+                  tone: "",
+                  aria: t.releaseLockedToast,
+                  locked: true,
+                  press: () => toast(t.releaseLockedToast, { tone: "info" }),
+                }
+              : {
+                  key: "done",
+                  icon: "check-line",
+                  label: t.watchedAction,
+                  on: done,
+                  tone: "text-[color:var(--success)]",
+                  aria: watchLabel,
+                  press: markWatched,
+                },
+          ] as { key: string; icon: IconName; label: string; on: boolean; tone: string; aria?: string; locked?: boolean; press: () => void }[]
         ).map((c) => (
           <button
             key={c.key}
@@ -406,7 +426,7 @@ export function TitleActions({
             /* الاسمُ المسموعُ هو المكتوب (WCAG 2.5.3: «اضغط شاهدته» يجده) — وجملةُ الفعل الكاملة في التلميح */
             title={c.aria}
             className={`flex min-w-0 flex-col items-center gap-1 px-1 py-2.5 text-12 font-semibold transition active:opacity-60 disabled:opacity-60 desk:py-3 desk:text-14 hover:bg-surface-2 ${
-              c.on ? c.tone : "text-foreground"
+              c.locked ? "text-muted" : c.on ? c.tone : "text-foreground"
             }`}
           >
             <Icon name={c.icon} size={20} strokeWidth={2} className={c.key === "done" && c.on ? "check-pop" : ""} />

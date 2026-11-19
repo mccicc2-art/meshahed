@@ -1,3 +1,4 @@
+import { knownUpcoming } from "@/core/release";
 import React, { useState } from "react";
 import { I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -128,11 +129,16 @@ export function HoldMenu({
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]
       : libraryRows(item, t);
 
+  /* 🆕 T474 — فيلمٌ تاريخُ عرضه معروفٌ ولم يأتِ: لا «شاهدته» (حكمُ أحمد «٢ أ» — `PosterHold` الويب نفسُه).
+     والصفُّ الأخضرُ الساكن («شاهدته كلّه» حالاً) يبقى: من أشّره قبل الحارس يرى حالَه */
+  const upcoming = item.kind === "movie" && knownUpcoming(item.release);
+  const shown = upcoming ? rows.filter((r) => r.key !== "all" || r.state) : rows;
+
   return (
     <DropMenu
       anchor={anchor}
       onClose={onClose}
-      rows={rows.map((r) => ({
+      rows={shown.map((r) => ({
         key: r.key,
         icon: r.icon,
         label: r.label,

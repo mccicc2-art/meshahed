@@ -22,6 +22,7 @@ export function RatingBox({
   initialHasSpoiler = false,
   variant = "stars",
   onSaved,
+  lockedNote,
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -55,6 +56,11 @@ export function RatingBox({
    * السلوك القائم حرفاً بحرف (قاعدة D-152: التفضيل الجديد افتراضُه ما كان).
    */
   onSaved?: () => void;
+  /**
+   * 🆕 T474 — **فيلمٌ لم يُعرض**: سطرٌ بتقويمٍ مكانَ النجوم («التقييم يُفتح يوم العرض» — نموذجُ أحمد «١ أ») بلا زرِّ حفظ،
+   * **فلا نجمةَ تُضغط ثم يردّها الخادم**. صندوقٌ واحدٌ بحالةٍ ثالثة لا عائلةُ تقييمٍ ثانية (D-139).
+   */
+  lockedNote?: string;
 }) {
   const t = getDict(locale);
   const [rating, setRating] = useState(initialRating ?? 0);
@@ -142,6 +148,20 @@ export function RatingBox({
       )}
     </div>
   );
+
+  if (lockedNote) {
+    return (
+      <div className={variant === "review" ? "" : "bg-surface border border-border rounded-2xl p-4 sm:p-5"}>
+        <h3 className={variant === "review" ? "font-bold text-15 mb-2.5" : "font-bold mb-3"}>
+          {variant === "review" ? t.reviewSectionTitle : t.rateTitle}
+        </h3>
+        <p className="flex items-center gap-2 text-14 text-muted">
+          <Icon name="calendar" size={16} className="shrink-0" />
+          <span>{lockedNote}</span>
+        </p>
+      </div>
+    );
+  }
 
   if (variant === "review") {
     /**

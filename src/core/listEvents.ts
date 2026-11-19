@@ -46,6 +46,18 @@ export function eventWindow(releaseDate: string | null | undefined, graceDays: n
 }
 
 /**
+ * 🆕 T474 — **شارةُ العدّ على ملصق الحدث** (أحمد ١٩ نوفمبر: «اوت ان ٢٧ داي … ورني اصفر»، ثمّ «١ ج»): العدُّ خرج من سطر العدّ
+ * إلى شارةٍ صفراءَ على الملصق، **فالكلمةُ قصيرةٌ** («27 يوماً» لا «يُعرض بعد 27 يوماً») — الملصقُ يقول «يُعرض». ومطابقةُ
+ * العدد للمعدود في القاموس (`listEventBadge`).
+ */
+export function eventBadge(
+  w: EventWindow,
+  t: { listEventBadge: (n: number) => string; listEventBadgeToday: string; listEventBadgeNow: string },
+): string {
+  return w.phase === "before" ? t.listEventBadge(w.days) : w.phase === "today" ? t.listEventBadgeToday : t.listEventBadgeNow;
+}
+
+/**
  * 🆕 442 — **ترتيبُ رفِّ «تناسبك» حول قائمة الحدث** — حسابٌ صافٍ يُختبر بلا قاعدةٍ ولا TMDB.
  *
  * الحدثُ أوّلاً، **ويُحذف من «الرائجة»** (صفّان متجاوران لا يحملان البطاقةَ نفسَها — D-366)،

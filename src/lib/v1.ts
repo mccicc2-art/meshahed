@@ -184,6 +184,8 @@ export async function handle<T>(
     if (msg.includes("غير مسجّل")) return respond(fail("unauthenticated"));
     if (msg.includes("طلبات كثيرة")) return respond(fail("rate_limited"));
     if (msg.includes("مدخل غير صالح")) return respond(fail("invalid_input"));
+    /* 🆕 T474 — فيلمٌ لم يُعرض: رفضٌ مقصودٌ لا خلل — يصل التطبيقَ بمفتاحه فيقوله بلغة الجهاز */
+    if (msg.includes("لم يُعرض بعد")) return respond(fail("forbidden", { message_key: "apiNotReleased" }));
     // استثناءٌ آخر = خللٌ عندنا لا عند المستخدم. يُسجَّل بلا هويّة.
     console.error("[api/v1]", msg || "unknown");
     return respond(fail("internal"));

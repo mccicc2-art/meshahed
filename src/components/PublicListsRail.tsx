@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar } from "./Avatar";
+import { MarqueeText } from "./MarqueeText";
 import { Icon } from "./Icon";
 import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
@@ -338,6 +339,7 @@ export function CommunityListCard({
       countText={countLabel ?? l.count_label ?? t.listCount(l.item_count)}
       posters={posters}
       cover={cover}
+      event={l.event ? { poster: posterUrl(l.event.poster, "w185") ?? null, badge: l.event.badge } : undefined}
     />
   );
 
@@ -402,6 +404,7 @@ export function ListCardShell({
   extra,
   posters,
   cover,
+  event,
 }: {
   name: string;
   /** رمزٌ قبل الاسم — لقوائم لوبز وطابور «للمشاهدة» */
@@ -422,7 +425,13 @@ export function ListCardShell({
   extra?: string;
   posters?: string[];
   cover?: string | null;
+  /** 🆕 T474 — قائمةُ الحدث: ملصقُه (رابطٌ جاهز) في آخر خانة وعليه شارةُ العدّ */
+  event?: { poster: string | null; badge: string };
 }) {
+  /* 🆕 T474 — **ملصقُ الحدث يأخذ أوضحَ خانة** (أحمد: «يظهر فالمكان الاسود عاليسار ك استثناء»): الخانةُ الأخيرةُ في جهة النهاية
+     أبعدُ ما يكون عن الحجاب، فتأخذ ملصقَ الحدث وما قبلها ملصقاتُ القائمة. وبلا ملصقٍ للحدث تبقى الثالثةُ وعليها الشارة */
+  const tiles = posters ?? [];
+  const slots = event ? [...tiles.slice(0, 2), event.poster ?? tiles[2] ?? null] : tiles.slice(0, 3);
   const stats = [heart, comments, star].filter(
     (x) => x !== undefined && x !== null && x !== false,
   );
@@ -458,14 +467,36 @@ export function ListCardShell({
       /* 🗑️ **وفرعُ اللون سقط** (D-848): **الأرضيّةُ غلافٌ مختارٌ
          وإلّا ملصقاتُ القائمة** — **ولا مرتبةَ ثالثةً بينهما.** */
       ) : (
-        posters &&
-        posters.length > 0 && (
+        slots.length > 0 && (
           <span aria-hidden className="absolute inset-y-0 end-0 w-[72%] flex justify-end">
-            {posters.slice(0, 3).map((url, i) => (
-              <span key={i} className="relative h-full flex-1 min-w-0">
-                <Image src={url} alt="" {...POSTER_INTRINSIC.w185} className="absolute inset-0 w-full h-full object-cover" />
-              </span>
-            ))}
+            {slots.map((url, i) =>
+              event && i === slots.length - 1 ? (
+                /* 🆕 T474 — **خانةُ الحدث: تكبيرٌ متوسّط** (نموذجُ أحمد «اليسار عاجبتني اكثر»): يظهر ٧٢٪ من عرض الملصق ملتصقاً
+                   بالقاع، وفوقه الملصقُ نفسُه مموّهاً معتماً يحمل الشارة — فالقناعُ والاسمُ واضحان والشارةُ لا تغطّي وجهاً.
+                   والحافّةُ العليا تذوب في المموّه (`mask-image`) لا خطٌّ يقطعها */
+                <span key={i} className="relative h-full flex-1 min-w-0">
+                  {url ? (
+                    <span className="absolute inset-0 overflow-hidden">
+                      <Image src={url} alt="" {...POSTER_INTRINSIC.w185} className="absolute inset-0 w-full h-full object-cover scale-110 blur-md brightness-[.55]" />
+                      <Image src={url} alt="" {...POSTER_INTRINSIC.w185} className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[139%] max-w-none h-auto [mask-image:linear-gradient(to_bottom,transparent,black_1.25rem)]" />
+                    </span>
+                  ) : null}
+                  {/* الشارةُ صفراءُ لونِ الهويّة — والجزيرةُ الداكنة (`data-ink`) تُبقيها هي نفسَها في «النهاري».
+                      ⚖️ **صغيرةٌ ووسطَ الخانة لا تتجاوزها** (أحمد: «الشارة الصفراء كبيرة … هي لعمل دومزداي فقط لا تدخل عالعمل
+                      الثاني» ثمّ «أ»): ٩px وحشوةٌ ٤، وسقفُها عرضُ الخانة. **ونصٌّ أطولُ منها يمشي ولا يُقصّ** («Tomorrow» — أحمد:
+                      «خليها متحركه عشان تظهر بشكل كامل»): `MarqueeText` نفسُه لا حركةٌ ثانية، ولا يحرّك إلا ما فاض */}
+                  <span className="absolute top-1.5 inset-x-0 flex justify-center px-1">
+                    <span className="min-w-0 max-w-full rounded-full bg-accent px-1 py-px text-[9px] font-bold leading-tight text-[color:var(--on-accent)] shadow-sm">
+                      <MarqueeText text={event.badge} />
+                    </span>
+                  </span>
+                </span>
+              ) : url ? (
+                <span key={i} className="relative h-full flex-1 min-w-0">
+                  <Image src={url} alt="" {...POSTER_INTRINSIC.w185} className="absolute inset-0 w-full h-full object-cover" />
+                </span>
+              ) : null,
+            )}
           </span>
         )
       )}
@@ -505,6 +536,8 @@ export function ListCardShell({
         <span className="mt-1 text-12 text-muted min-w-0 max-w-[58%] truncate">
           {countText}
           {extra ?? ""}
+          {/* الشارةُ في طبقة الملصقات المخفيّة عن قارئ الشاشة — فيُقال العدُّ هنا */}
+          {event ? <span className="sr-only"> · {event.badge}</span> : null}
         </span>
 
         {(stats.length > 0 || play || save) && (

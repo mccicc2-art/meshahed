@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { eventWindow, orderForYou, riyadhMonth } from "./listEvents.ts";
+import { eventBadge, eventWindow, orderForYou, riyadhMonth } from "./listEvents.ts";
 import { getDict } from "./i18n.ts";
 
 /* 442 — نافذةُ قائمة الحدث: قبل العرض، يومَه، ومهلةُ الأسبوعين بعده، وبتقويم الرياض */
@@ -61,4 +61,17 @@ test("the Riyadh month turns at Riyadh midnight", () => {
   /* ٢١:٠٠ UTC يومَ ٢٨ فبراير = منتصفُ ليل ١ مارس في الرياض */
   assert.equal(riyadhMonth(Date.parse("2027-02-28T20:59:00Z")), 2);
   assert.equal(riyadhMonth(Date.parse("2027-02-28T21:00:00Z")), 3);
+});
+
+/* T474 — شارةُ الملصق: قصيرةٌ ومطابقةٌ للمعدود */
+test("the poster badge counts days in short words", () => {
+  const ar = getDict("ar");
+  const en = getDict("en");
+  assert.equal(eventBadge({ active: true, phase: "before", days: 27 }, ar), "27 يوماً");
+  assert.equal(eventBadge({ active: true, phase: "before", days: 3 }, ar), "3 أيام");
+  assert.equal(eventBadge({ active: true, phase: "before", days: 2 }, ar), "يومان");
+  assert.equal(eventBadge({ active: true, phase: "before", days: 1 }, ar), "غداً");
+  assert.equal(eventBadge({ active: true, phase: "today", days: 0 }, ar), "اليوم");
+  assert.equal(eventBadge({ active: true, phase: "after", days: 4 }, en), "Out now");
+  assert.equal(eventBadge({ active: true, phase: "before", days: 27 }, en), "27 days");
 });

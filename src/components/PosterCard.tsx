@@ -138,6 +138,8 @@ export function PosterCard({
     dropped?: boolean;
     /** 🆕 D-1299 — صفوفُ «مكتبتي» (ابدأ · إيقاف مؤقّت · كمّل · إزالة) لصفٍّ كلُّه في المكتبة */
     lib?: { unstarted: boolean; paused: boolean; noNext?: boolean };
+    /** 🆕 T474 — تاريخُ عرض الفيلم إن عرفه السطح: تاريخٌ لم يأتِ يُخفي «شاهدته» من القائمة */
+    release?: string | null;
     locale: Locale;
   };
   /**
@@ -327,6 +329,7 @@ export function PosterCard({
       savedMark={savedMark}
       extra={holdExtra}
       lib={hold.lib}
+      release={hold.release}
       locale={hold.locale}
     >
       {card}

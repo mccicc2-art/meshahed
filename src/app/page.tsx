@@ -1550,6 +1550,8 @@ async function TrendingSection({
               added: followedKeys.has(`${mt}-${r.id}`),
               watched: seen,
               progress: seen ? 100 : 0,
+              /* 🆕 T474 — فيلمٌ رائجٌ لم يُعرض بعد: لا «شاهدته» في قائمته */
+              release: mt === "movie" ? (r.release_date ?? null) : undefined,
               locale,
             }}
           />

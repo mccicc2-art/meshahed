@@ -33,6 +33,7 @@ export function ActionRow({
   busy,
   onPress,
   onHoldWatch,
+  lockedLabel,
 }: {
   inWatch: boolean;
   inList: boolean;
@@ -42,13 +43,18 @@ export function ActionRow({
   onPress: (k: ActionKey) => void;
   /** البطاقةُ الحمراء — تغيب للأفلام */
   onHoldWatch?: () => void;
+  /** 🆕 T474 — فيلمٌ لم يُعرض: خانةُ «شاهدته» تقويمٌ بتاريخه خافتاً (نموذجُ أحمد «١ أ» — صفُّ الويب نفسُه) */
+  lockedLabel?: string;
 }) {
   const { t, tokens } = useApp();
+  const locked = lockedLabel !== undefined;
   const cells: { key: ActionKey; icon: IconName; label: string; on: boolean; color: string }[] = [
     { key: "watch", icon: "eye", label: t.toWatchAction, on: inWatch, color: tokens.accent },
     { key: "list", icon: "bookmark", label: inList ? t.inListAction : t.toListAction, on: inList, color: tokens.accent },
     { key: "favorite", icon: favorite ? "heart-filled" : "heart", label: t.favoriteAction, on: favorite, color: tokens.error },
-    { key: "watched", icon: "check-line", label: t.watchedAction, on: watched, color: tokens.success },
+    locked
+      ? { key: "watched", icon: "calendar", label: lockedLabel, on: false, color: tokens.muted }
+      : { key: "watched", icon: "check-line", label: t.watchedAction, on: watched, color: tokens.success },
   ];
   return (
     <View style={{ flexDirection: "row", borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
@@ -63,8 +69,8 @@ export function ActionRow({
           accessibilityLabel={c.label}
           style={({ pressed }) => ({ flex: 1, paddingVertical: 10, alignItems: "center", opacity: pressed || busy === c.key ? 0.55 : 1 })}
         >
-          <Icon name={c.icon} size={18} color={c.on ? c.color : tokens.fg} />
-          <Text size={11} numberOfLines={1} color={c.on ? c.color : tokens.fg} style={{ marginTop: 3 }}>{c.label}</Text>
+          <Icon name={c.icon} size={18} color={c.on || (locked && c.key === "watched") ? c.color : tokens.fg} />
+          <Text size={11} numberOfLines={1} color={c.on || (locked && c.key === "watched") ? c.color : tokens.fg} style={{ marginTop: 3 }}>{c.label}</Text>
         </Pressable>
       ))}
     </View>

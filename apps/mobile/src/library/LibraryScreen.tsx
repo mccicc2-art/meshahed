@@ -1176,6 +1176,8 @@ function toCard(x: LibraryItem): CardItem {
     /* D-1280 — حالُ القائمة: «لم يبدأ» من الوصفة الواحدة، و«موقوفٌ مؤقّتاً» لِما يُتابَع وحدَه */
     unstarted: x.status === "unstarted",
     paused: x.paused === true && x.status === "watching",
+    /* 🆕 T474 — تاريخُ عرض الفيلم المخبَّأ (`next_air_date` صفِّ المتابعة) — قائمةُ الضغط المطوَّل تُخفي «شاهدته» قبله */
+    release: isTv ? undefined : x.next_air_date,
   };
 }
 

@@ -6,6 +6,7 @@ import { requalify } from "@/lib/referral";
 import { closeSignal, ensureMovieInLibrary, ensureShowFollowed, markSignalWatched, markWatchedUpTo, safeImagePath } from "@/lib/watchMark";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { isPersonaId } from "@/core/personas";
+import { movieOut } from "@/core/release";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -1838,6 +1839,7 @@ export async function saveMovieProgress(input: {
 
   // الوصول للنهاية يعني أن الفيلم اكتمل: يُسجَّل كمشاهَد ويُزال من "قيد المشاهدة"
   if (input.runtimeMinutes && pos >= input.runtimeMinutes) {
+    await assertMovieOut(input.movieTmdbId); // 🆕 T474 — الختمُ بالوصول للنهاية «شاهدته» نفسُها
     await supabase
       .from("watched_movies")
       .upsert(
@@ -2232,6 +2234,23 @@ export async function repairImpossibleDays(): Promise<{
   return { moved: epPayload.length + mvPayload.length, remaining, stuck };
 }
 
+/**
+ * 🆕 T474 — **حارسُ الفيلم الذي لم يُعرض** (أحمد ١٩ نوفمبر: «افنجرز دومزداي … اقدر اعمل له مشاهدة !!!»): «شاهدته» والتقييمُ
+ * والرأيُ وختمُ نهاية المشاهدة كلُّها تمرّ من هنا — **في الخادم لا في الزرّ وحدَه**، فالتطبيقُ القديم والقائمةُ المطوّلة والودجت
+ * يلقون الجوابَ نفسَه. القاعدةُ في `core/release.ts` (التاريخُ الغائبُ = لم يُعرض، و«اليوم» يومُ أوّل منطقةٍ زمنيّة).
+ * ⚖️ **وTMDB البطيءُ لا يُقفل شيئاً**: مهلةُ ثانيتين ونصف كـ`watchedFromRating` — ومن لم نعرف تاريخَ فيلمه لا نردّه بلا بيّنة.
+ * والنصُّ ثنائيٌّ كأخواته، و`v1.ts` يترجمه للتطبيق إلى `apiNotReleased`.
+ */
+async function assertMovieOut(tmdbId: number): Promise<void> {
+  const m = await Promise.race([
+    getMovie(tmdbId).catch(() => null),
+    new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+  ]);
+  if (m && !movieOut(m.release_date, m.status)) {
+    throw new Error("لم يُعرض بعد — التأشيرُ والتقييمُ يُفتحان يومَ عرضه. / Not released yet — marking and rating open on release day.");
+  }
+}
+
 export async function toggleMovieWatched(input: {
   movieTmdbId: number;
   runtime: number | null;
@@ -2244,6 +2263,7 @@ export async function toggleMovieWatched(input: {
   };
   const { supabase, user } = await requireUser();
   if (input.watched) {
+    await assertMovieOut(input.movieTmdbId);
     await supabase.from("watched_movies").upsert(
       { user_id: user.id, movie_tmdb_id: input.movieTmdbId, runtime: input.runtime },
       { onConflict: "user_id,movie_tmdb_id" },
@@ -2413,6 +2433,8 @@ export async function saveRating(input: {
       input.backdropPath === undefined ? undefined : safeImagePath(input.backdropPath),
   };
   const { supabase, user } = await requireUser("rate", 20, 60_000);
+  /* 🆕 T474 — لا تقييمَ ولا رأيَ لفيلمٍ لم يُعرض (والحذفُ مفتوحٌ: `deleteRating` بلا حارس) */
+  if (input.mediaType === "movie") await assertMovieOut(input.tmdbId);
 
   const rating = Math.max(1, Math.min(10, Math.round(Number(input.rating) || 1)));
   const review = input.review.trim().slice(0, 2000);
