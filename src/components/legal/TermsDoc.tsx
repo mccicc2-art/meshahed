@@ -59,6 +59,11 @@ export function TermsDoc({ locale, bare = false }: { locale: Locale; bare?: bool
           )}
         </p>
 
+        {/* 🆕 R280 — سطرُ المصادر (TMDB · Trakt) كما في سياسة الخصوصية */}
+        {doc.note ? (
+          <p className="text-12 text-muted/70 leading-relaxed pt-4 border-t border-[color:var(--divider)]">{doc.note}</p>
+        ) : null}
+
         {bare ? null : (
           <p className="text-12 pt-4 border-t border-[color:var(--divider)]">
             <Link href="/privacy" className="text-muted hover:text-foreground transition">

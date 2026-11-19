@@ -19,6 +19,17 @@ export type LegalDoc = { title: string; updated: string; sections: LegalSection[
 
 export const LEGAL_CONTACT = "info@loopztv.com";
 
+/**
+ * سطرُ المصادر: TMDB وTrakt بالجملة التي يشترطها كلٌّ منهما. جملةُ Trakt بنصِّها الإنجليزيّ في النسختين: مراجعُهم يفتح
+ * الصفحة بلا كوكي لغة فقد يرى العربيّة. 🆕 R280 — **يُرسم في الوثيقتين**: نموذجُ اعتماد Trakt يرفض أن يكون رابطُ
+ * سياسة الخصوصية هو نفسُه رابطَ الجملة، فصارت الشروطُ (صفحةً عامّة) موضعَها الثاني.
+ */
+function attributionNote(ar: boolean): string {
+  return ar
+      ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB. ويستخدم Loopz خدمة Trakt، وهو غير معتمَد ولا موثَّق من Trakt (Loopz uses Trakt but is not endorsed or certified by Trakt.)"
+      : "This product uses the TMDB API but is not endorsed or certified by TMDB. Loopz uses Trakt but is not endorsed or certified by Trakt.";
+}
+
 export function privacyDoc(locale: Locale): LegalDoc {
   const ar = locale === "ar";
   return {
@@ -103,10 +114,7 @@ export function privacyDoc(locale: Locale): LegalDoc {
 
     ],
     contact: LEGAL_CONTACT,
-    /* جملةُ Trakt بنصِّها الإنجليزيّ في النسختين: مراجعُهم يفتح الصفحة بلا كوكي لغة فقد يرى العربيّة */
-    note: ar
-      ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB. ويستخدم Loopz خدمة Trakt، وهو غير معتمَد ولا موثَّق من Trakt (Loopz uses Trakt but is not endorsed or certified by Trakt.)"
-      : "This product uses the TMDB API but is not endorsed or certified by TMDB. Loopz uses Trakt but is not endorsed or certified by Trakt.",
+    note: attributionNote(ar),
   };
 }
 
@@ -172,7 +180,7 @@ export function termsDoc(locale: Locale): LegalDoc {
 
     ],
     contact: LEGAL_CONTACT,
-    note: null,
+    note: attributionNote(ar),
   };
 }
 
