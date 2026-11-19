@@ -218,7 +218,7 @@ export function PlexImportSheet({ onClose }: { onClose: () => void }) {
         {error ? <Note tone="error" body={error} /> : null}
         {phase === "done" && result ? (
           <>
-            <Note tone="success" title={t.importDone} body={t.importDoneBody(num(result.shows, locale), num(result.episodes, locale), num(result.movies, locale))} />
+            <Note tone="success" title={t.importDone} body={t.importDoneBody(result.shows, result.episodes, result.movies)} />
             {result.unmatched.length ? <Text size={12} muted style={{ lineHeight: 18 }}>{`${t.importUnmatchedTitle(num(result.unmatched.length, locale))}: ${result.unmatched.join(" · ")}`}</Text> : null}
           </>
         ) : null}

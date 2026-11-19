@@ -146,7 +146,7 @@ export function ImportScreen() {
       const r = await importFromTrakt();
       if (r.kind === "done") {
         haptic.success();
-        toast.current?.say(`${t.importDone} — ${t.importDoneBody(num(r.shows, locale), num(r.episodes, locale), num(r.movies, locale))}`);
+        toast.current?.say(`${t.importDone} — ${t.importDoneBody(r.shows, r.episodes, r.movies)}`);
       } else {
         toast.current?.say(r.kind === "cancel" ? t.importTraktDenied : t.importTraktFailed);
       }
@@ -231,7 +231,7 @@ export function ImportScreen() {
                 <Note
                   tone="success"
                   title={t.importDone}
-                  body={`${t.importDoneBody(num(result.shows, locale), num(result.episodes, locale), num(result.movies, locale))}${result.lists > 0 ? ` ${t.importDoneLists(num(result.lists, locale))}` : ""}`}
+                  body={`${t.importDoneBody(result.shows, result.episodes, result.movies)}${result.lists > 0 ? ` ${t.importDoneLists(num(result.lists, locale))}` : ""}`}
                 />
                 {result.listsSkipped > 0 ? <Note tone="error" body={t.importListsFull} /> : null}
                 {result.unmatched.length > 0 ? (

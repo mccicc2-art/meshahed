@@ -578,8 +578,16 @@ const ar = {
   importMatching: "جارٍ المطابقة…",
   importWriting: "جارٍ الإضافة إلى مكتبتك…",
   importDone: "تمّ الاستيراد",
-  importDoneBody: (shows: string, eps: string, movies: string) =>
-    `أُضيف ${shows} مسلسلاً و${eps} حلقة و${movies} فيلماً إلى مكتبتك.`,
+  // العدد يطابق المعدود (واحد · مثنّى · ٣–١٠ جمع · ١١+ مفرد منصوب)، والصفر يسقط من الجملة —
+  // «أُضيف 0 مسلسلاً و1 حلقة» كانت تظهر بعد استيراد Trakt لحلقة واحدة (طلب أحمد)
+  importDoneBody: (shows: number, eps: number, movies: number) => {
+    const parts = [
+      shows === 0 ? "" : shows === 1 ? "مسلسل واحد" : shows === 2 ? "مسلسلان" : shows <= 10 ? `${num(shows, "ar")} مسلسلات` : `${num(shows, "ar")} مسلسلاً`,
+      eps === 0 ? "" : eps === 1 ? "حلقة واحدة" : eps === 2 ? "حلقتان" : eps <= 10 ? `${num(eps, "ar")} حلقات` : `${num(eps, "ar")} حلقة`,
+      movies === 0 ? "" : movies === 1 ? "فيلم واحد" : movies === 2 ? "فيلمان" : movies <= 10 ? `${num(movies, "ar")} أفلام` : `${num(movies, "ar")} فيلماً`,
+    ].filter(Boolean);
+    return parts.length ? `أُضيف إلى مكتبتك ${parts.join(" و")}.` : "لا جديد — مكتبتك محدّثة بالفعل.";
+  },
   importNothing: "لم نتعرّف على أي بيانات في هذا الملف.",
   importUnmatchedTitle: (n: string) => `${n} عملاً لم نجده`,
   importUnmatchedHint:
@@ -3904,8 +3912,13 @@ const en: Dict = {
   importMatching: "Matching titles\u2026",
   importWriting: "Adding to your library\u2026",
   importDone: "Import complete",
-  importDoneBody: (shows: string, eps: string, movies: string) =>
-    `Added ${shows} shows, ${eps} episodes and ${movies} movies to your library.`,
+  importDoneBody: (shows: number, eps: number, movies: number) => {
+    const one = (n: number, w: string) => (n === 0 ? "" : `${num(n, "en")} ${w}${n === 1 ? "" : "s"}`);
+    const parts = [one(shows, "show"), one(eps, "episode"), one(movies, "movie")].filter(Boolean);
+    if (!parts.length) return "Nothing new — your library is already up to date.";
+    const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+    return `Added ${list} to your library.`;
+  },
   importNothing: "We couldn't recognise any data in this file.",
   importUnmatchedTitle: (n: string) => `${n} titles we couldn't find`,
   importUnmatchedHint:

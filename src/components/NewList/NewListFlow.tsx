@@ -121,8 +121,9 @@ export function NewListFlow({
           Object.entries(p).filter((e): e is [string, string | number] => e[1] !== undefined && e[1] !== "").map(([k, v]) => [k, String(v)]),
         );
         const res = await fetch(`/api/v1/lists/catalog?${qs}`, { signal: ctrl.signal });
-        const json = (await res.json()) as { ok: boolean; data?: { items: Pick[]; more: boolean } };
-        if (!json.ok || !json.data) throw new Error("catalog");
+        /* غلافُ `/api/v1` على السلك `{ data, invalidates }` (نجاحٌ) أو `{ error }` — لا رايةَ `ok` فيه: حالةُ HTTP هي الحكم */
+        const json = (await res.json()) as { data?: { items: Pick[]; more: boolean } };
+        if (!res.ok || !json.data) throw new Error("catalog");
         setRemote({ key: catalogKey, items: json.data.items, more: json.data.more });
       } catch {
         if (!ctrl.signal.aborted) setRemote({ key: catalogKey, items: [], more: false, failed: true });

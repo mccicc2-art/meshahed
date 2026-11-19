@@ -98,11 +98,7 @@ export function ImportPanel({
   const trakt = params.get("trakt");
   const traktMsg =
     trakt === "ok"
-      ? t.importDoneBody(
-          num(Number(params.get("sh") ?? 0), locale),
-          num(Number(params.get("ep") ?? 0), locale),
-          num(Number(params.get("mv") ?? 0), locale),
-        )
+      ? t.importDoneBody(Number(params.get("sh") ?? 0) || 0, Number(params.get("ep") ?? 0) || 0, Number(params.get("mv") ?? 0) || 0)
       : trakt === "off"
         ? t.importTraktOff
         : trakt === "denied"
@@ -270,11 +266,7 @@ export function ImportPanel({
                 <div className="mt-4 space-y-3">
                   <Alert tone="success">
                     <b className="block">{t.importDone}</b>
-                    {t.importDoneBody(
-                      num(result.shows, locale),
-                      num(result.episodes, locale),
-                      num(result.movies, locale),
-                    )}
+                    {t.importDoneBody(result.shows, result.episodes, result.movies)}
                     {result.lists > 0 && <> {t.importDoneLists(num(result.lists, locale))}</>}
                   </Alert>
                   {result.listsSkipped > 0 && <Alert tone="info">{t.importListsFull}</Alert>}
