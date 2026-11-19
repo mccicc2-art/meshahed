@@ -21,6 +21,11 @@
  * 🆕 **روابطُ الودجتات الجديدة** (`com.loopztv.app://w/…`) لا تخصّ الموجِّه: تُردّ فارغةً والتطبيقُ مفتوح،
  * وإلى البداية (`/`) حين تفتحه من الصفر — و`WidgetGate` يقرؤها من `Linking` وينفّذها بعد أن يُدفع الجذر.
  *
+ * 🆕 R282 — **عودةُ Trakt مثلُ عودة Google** (صورةُ أحمد ١٩ نوفمبر: «Unmatched Route» فوق استيرادٍ نجح): `importFromTrakt`
+ * يستلم `com.loopztv.app://trakt?code=…` من نافذة الدخول ويُكمل الاستيرادَ بنفسه، والموجِّهُ كان يلتقط الرابطَ نفسَه ويبحث عن
+ * شاشة `trakt` فلا يجدها. والتطبيقُ مفتوحٌ ⇐ فارغٌ فيبقى العضوُ في «الاستيراد والتصدير» ويرى الإشعار؛ ومن الصفر (أندرويد قتله
+ * أثناء النافذة) ⇐ البداية — الشِفرةُ بلا مُتحقِّقها لا تُصرف، فلا شيءَ يُستكمل.
+ *
  * 🆕 المهمة ٣٧٠ — **رابطُ الدعوة** (`com.loopztv.app://join/<CODE>`، زرُّ «افتح الدعوة في التطبيق» في `/invite/<code>`) لا
  * يخصّ الموجِّه أيضاً: الكودُ يُحفظ في الجهاز (`invite/pending.ts`) ويقرؤه الترحيبُ فيسأل «هل دعاك أحمد؟» — والتطبيقُ مفتوحٌ يبقى
  * حيث هو، ومن الصفر يبدأ من البداية كما يبدأ دائماً (الدخولُ ثمّ الترحيب).
@@ -29,6 +34,8 @@ import { inviteCodeOf, pendingInvite } from "../src/invite/pending";
 
 const APP_LINK = /^(?:https?:\/\/(?:www\.)?loopztv\.com)?\/(show|movie)\/(\d+)\/?(?:[?#].*)?$/i;
 const WIDGET_LINK = /^(?:com\.loopztv\.app:\/\/|\/)?w\/[a-z]+(?:[?#].*)?$/i;
+/* 🆕 R282 — عودةُ Trakt (`com.loopztv.app://trakt?code=…`، وقد تصل بثلاث شرطات) — انظر الفقرة أعلاه */
+const TRAKT_RETURN = /^(?:com\.loopztv\.app:\/\/\/?|\/)?trakt(?:[?#].*)?$/i;
 
 export function appLinkTarget(path: string): string | null {
   const m = APP_LINK.exec(path);
@@ -38,6 +45,7 @@ export function appLinkTarget(path: string): string | null {
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {
   try {
     if (!initial && path.includes("auth/callback")) return null;
+    if (TRAKT_RETURN.test(path)) return initial ? "/" : null;
     if (WIDGET_LINK.test(path)) return initial ? "/" : null;
     const invite = inviteCodeOf(path);
     if (invite) {
