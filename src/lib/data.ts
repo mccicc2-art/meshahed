@@ -5740,6 +5740,48 @@ export interface PublicListCard {
 }
 
 /**
+ * 🆕 T451 — **وجهُ البطاقة: العددُ الحقيقيُّ وأوّلُ أربعة ملصقات لكلِّ قائمة** (الهجرة ٢٥٢).
+ *
+ * ⚠️ **وغيابُ الدالّة يعيد الطريقَ القديم** (D-028): رفعٌ يسبق الهجرةَ لا يُسقط بطاقة — يعود إلى طلب
+ * الألف صفّ كما كان، بعطله المعروف، حتى تُطبَّق.
+ */
+async function listCardFaces(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[],
+): Promise<Map<string, { count: number; posters: string[] }>> {
+  const out = new Map<string, { count: number; posters: string[] }>();
+  if (!ids.length) return out;
+  /* الدالّةُ تقبل مئتي معرّفٍ في النداء — وما فوقها يُقسَّم ولا يُقصّ */
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 200) chunks.push(ids.slice(i, i + 200));
+  const replies = await Promise.all(chunks.map((c) => supabase.rpc("list_card_faces", { p_ids: c })));
+  const error = replies.find((r) => r.error)?.error ?? null;
+  const data = error ? null : replies.flatMap((r) => (Array.isArray(r.data) ? r.data : []));
+  if (!error && data) {
+    for (const r of data as { list_id: string; item_count: number; posters: string[] | null }[]) {
+      out.set(String(r.list_id), {
+        count: Number(r.item_count) || 0,
+        posters: (r.posters ?? []).filter((p): p is string => typeof p === "string" && p.length > 0).slice(0, 4),
+      });
+    }
+    return out;
+  }
+  const { data: items } = await supabase
+    .from("user_list_items")
+    .select("list_id, poster_path, added_at")
+    .in("list_id", ids)
+    .order("added_at", { ascending: false })
+    .limit(1000);
+  for (const r of items ?? []) {
+    const e = out.get(r.list_id) ?? { count: 0, posters: [] };
+    e.count += 1;
+    if (r.poster_path && e.posters.length < 4) e.posters.push(r.poster_path);
+    out.set(r.list_id, e);
+  }
+  return out;
+}
+
+/**
  * تشكيل بطاقات القوائم — العدّ وأربعة ملصقات وسطر الصاحب، في طلبين
  * مهما كثرت القوائم. مُشترَكٌ بين ثلاثة أبواب: «قوائم من المجتمع» في
  * اكتشف (D-063)، والمحفوظة في قوائمي، وقوائم الشخص في ملفّه (D-068) —
@@ -5760,13 +5802,11 @@ async function shapeListCards(
   const supabase = await createClient();
   const me = await getUser().catch(() => null);
   const ids = lists.map((l) => l.id);
-  const [items, owners, stats, savedRows, myReviews, likedRows] = await Promise.all([
-    supabase
-      .from("user_list_items")
-      .select("list_id, poster_path, added_at")
-      .in("list_id", ids)
-      .order("added_at", { ascending: false })
-      .limit(1000),
+  const [faces, owners, stats, savedRows, myReviews, likedRows] = await Promise.all([
+    /* 🔴 T451 — **العددُ والملصقاتُ لكلِّ قائمةٍ وحدَها** (`list_card_faces`، الهجرة ٢٥٢): كان طلباً واحداً لأعمال
+       القوائم كلِّها سقفُه ١٠٠٠ صفّ، الأحدثُ أوّلاً — فصفٌّ مجموعُ قوائمه فوق الألف يقصّ أعدادَها («Top 250 Movies ·
+       217») ويُسقط أقدمَها إلى صفرٍ فتُحذف بطاقتُها (دومزداي من «تناسبك» خالد، بفيديو أحمد). */
+    listCardFaces(supabase, ids),
     withOwner
       ? supabase
           .from("public_profiles")
@@ -5886,13 +5926,7 @@ async function shapeListCards(
     ]),
   );
 
-  const byList = new Map<string, { count: number; posters: string[] }>();
-  for (const r of items.data ?? []) {
-    const e = byList.get(r.list_id) ?? { count: 0, posters: [] };
-    e.count += 1;
-    if (r.poster_path && e.posters.length < 4) e.posters.push(r.poster_path);
-    byList.set(r.list_id, e);
-  }
+  const byList = faces;
   const nameOf = new Map(
     (owners.data ?? []).map((p) => [
       p.id,
