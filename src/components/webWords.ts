@@ -76,6 +76,8 @@ const AR = {
   stremioStep2B: "كل حلقة أو فيلم تشغّله في Stremio يصل إلى Loopz.",
   stremioStep3T: "أكّد بضغطة",
   stremioStep3B: "في الرئيسية يسألك Loopz: شفتها؟ ✓ تعلّمها وكل ما قبلها.",
+  /* 🆕 أرقامُ بطاقة الملفّ في التخصيص (كالتطبيق) */
+  profStatsHint: "اضغط بالترتيب اللي تبيه — حتى ٤، ولا شيء يخفي البطاقة.",
 };
 
 const EN: typeof AR = {
@@ -139,6 +141,7 @@ const EN: typeof AR = {
   stremioStep2B: "Every episode or movie you play in Stremio reaches Loopz.",
   stremioStep3T: "Confirm with a tap",
   stremioStep3B: "Your Loopz home asks: watched it? ✓ marks it and everything before it.",
+  profStatsHint: "Tap in the order you want — up to 4; none hides the card.",
 };
 
 export type WebWords = typeof AR;

@@ -9,6 +9,8 @@ import {
   defaultProfilePrefs,
   HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
+  PROFILE_STATS,
+  type ProfileStatKey,
   orderedProfileTabs,
   profileSectionMeta,
   profileTabMeta,
@@ -26,6 +28,8 @@ import { SettingsSaveBar } from "./settings/SettingsSaveBar";
 import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
+import { Icon, type IconName } from "./Icon";
+import { tap } from "@/lib/haptics";
 import { PrefTemplatesRow } from "./PrefTemplatesRow";
 import { type PrefTemplate } from "@/core/prefTemplates";
 import type { Density } from "@/core/density";
@@ -101,6 +105,22 @@ export function ProfileCustomize({
     setPrefs(next);
   }
 
+  /* 🆕 **أرقامُ بطاقة الملفّ — اختيارٌ وترتيبٌ بالضغط** (أحمد ١٩ نوفمبر «ب»: كالتطبيق حرفاً — `PickGrid` في
+     `apps/mobile/src/settings/CustomizeScreen.tsx`، D-1630). الضغطُ يضيف في آخر الترتيب أو يُخرج، **ولا شيءَ يُخفي البطاقة**؛
+     و`stats`/`statsLink` يُكتبان معه كما يكتبهما التطبيق (`stats` = في الشبكة شيء، `statsLink` = «الإحصائيات» فيها) */
+  const statMeta: Record<ProfileStatKey, { icon: IconName; label: string }> = {
+    shows: { icon: "tv", label: t.shortShows },
+    movies: { icon: "film", label: t.shortMovies },
+    anime: { icon: "torii", label: t.discoverTabAnime },
+    stats: { icon: "chart", label: t.statsPageTitle },
+  };
+  const statsPick: ProfileStatKey[] = prefs.stats ? prefs.statsPick : [];
+  function tapStat(k: ProfileStatKey) {
+    tap(6);
+    const next = statsPick.includes(k) ? statsPick.filter((x) => x !== k) : [...statsPick, k];
+    set(next.length ? { ...prefs, stats: true, statsPick: next, statsLink: next.includes("stats") } : { ...prefs, stats: false });
+  }
+
   /* **الاستعادةُ صعدت إلى الترويسة** (D-465): كانت زرَّ نصٍّ صغيراً داخل
      بطاقة الأقسام **فتستعيد ترتيبَها وحدَه**، **والآن تستعيد اللوحَ
      كلَّه** — وهو ما يقوله اسمُها في التصميم. */
@@ -163,7 +183,8 @@ export function ProfileCustomize({
           visits: t.visitsLabel,
           follow: t.followingUser,
         }}
-        showStats={prefs.stats}
+        showStats={statsPick.length > 0}
+        stats={statsPick.map((k) => ({ key: k, ...statMeta[k] }))}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
         /* 🆕 R262 — على الحاسوب معاينةٌ بجهازين (الحجّةُ في `CustomizePreview`) */
@@ -185,22 +206,34 @@ export function ProfileCustomize({
 
       {/* ===== ١) أعلى البروفايل ===== */}
       <SettingsGroup label={t.custProfileHeader}>
-        <ToggleRow
-          icon="chart"
-          label={t.custStatsShort}
-          checked={prefs.stats}
-          onChange={() => set({ ...prefs, stats: !prefs.stats })}
-        />
-        {/* 🆕 D-1130 — بابُ «الإحصائيات» يُخفى وحدَه؛ ولا معنى له والبطاقةُ نفسُها مخفيّة */}
-        {prefs.stats && (
-          <ToggleRow
-            icon="chart"
-            label={t.custStatsLink}
-            hint={t.custStatsLinkHint}
-            checked={prefs.statsLink}
-            onChange={() => set({ ...prefs, statsLink: !prefs.statsLink })}
-          />
-        )}
+        <div className="p-3.5">
+          <p className="mb-3 text-12 text-muted leading-relaxed">{webWords(locale).profStatsHint}</p>
+          <div className="grid grid-cols-4 gap-2.5">
+            {PROFILE_STATS.map((k) => {
+              const n = statsPick.indexOf(k);
+              const on = n >= 0;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => tapStat(k)}
+                  aria-pressed={on}
+                  className={`relative flex min-w-0 flex-col items-center gap-1.5 rounded-card border-[1.5px] px-1 py-3 text-[13px] font-bold transition active:scale-[0.98] ${
+                    on ? "border-accent bg-accent/10" : "border-border bg-surface-2 hover:border-accent/50"
+                  }`}
+                >
+                  {on && (
+                    <span className="absolute -top-2 -end-2 grid size-5 place-items-center rounded-full bg-accent text-12 font-bold text-[color:var(--on-accent)] tabular-nums">
+                      {n + 1}
+                    </span>
+                  )}
+                  <Icon name={statMeta[k].icon} size={20} className={on ? "text-accent" : "text-muted"} />
+                  <span className="max-w-full truncate">{statMeta[k].label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {/* 🗑️ ⚖️ **ومفتاحُ المستوى سقط معه** (D-807، حكمُ أحمد: «احذف
             نظام الليفل بالكامل»): **مفتاحٌ يضبط ما لا يُرسم وعدٌ بفعلٍ
             لا يقع** (D-217) — **وهو مصيرُ مفتاح الزيارات في D-584

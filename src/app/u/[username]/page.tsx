@@ -41,6 +41,7 @@ import {
   sectionKeyOf,
   orderedProfileTabs,
   type ProfileSection,
+  type ProfileStatKey,
 } from "@/core/profilePrefs";
 import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
@@ -78,6 +79,8 @@ const AVATAR_BOX =
  * الجداول: هذا تطبيقٌ اجتماعي ومكتبتك ملفّك، لكن الأعداد والملصقات فقط
  * هي ما يخرج — لا صفوف الحلقات ولا أوقات المشاهدة.
  */
+const STAT_ORDER = ["order-1", "order-2", "order-3", "order-4"] as const;
+
 export default async function PublicProfilePage({
   params,
   searchParams,
@@ -184,6 +187,9 @@ export default async function PublicProfilePage({
      ⚠️ **وخانةُ التقييمات سقطت**: عدَّها باقٍ في تبويب «مراجعات»
      نفسِه — **وثلاثةٌ هي التي طُلبت، ورابعةٌ زيادةٌ على الطلب** (درسُ
      D-644 بحرفه). */
+  /* ترتيبُ خانات البطاقة باختيار صاحبها (`statsPick`) — أصنافٌ مكتوبةٌ حرفاً كي يراها Tailwind، لا `order-${n}` مركَّبة */
+  const statsPick = prefs.statsPick;
+  const statsDoor = statsPick.includes("stats");
   const headerStats = [
     {
       key: "shows",
@@ -1283,7 +1289,10 @@ export default async function PublicProfilePage({
             الأصليّة بعينه** — الإطارُ الخارجيُّ وحده يجمع الخانات، **وبطاقتا أرقامٍ بشكلين في
             التطبيق نفسِه تُقرآن رتبتين.** */}
         {/* 🆕 D-1617 — شخصيّةُ AI بلا بطاقة الأرقام: لا تتابع ولا تشاهد («احذف منهم الكاردات») */}
-        {canView && prefs.stats && !persona && (
+        {/* 🆕 **الأرقامُ ما اختاره صاحبُ الملفّ وبترتيبه** (`statsPick` — D-1630؛ أحمد ١٩ نوفمبر «ب»): التطبيقُ يرسمها منذ
+            ٦ نوفمبر والويبُ كان يرسم الثلاثةَ الثابتة ويتجاهل الاختيار — **فزائرُ المتصفّح يرى بطاقةً غيرَ التي رتّبها صاحبُها.**
+            والترتيبُ بـ`order` على الخانات نفسِها: الشجرةُ كما هي (أوراقُ الأعمال والباب)، والشبكةُ ترتّب */}
+        {canView && prefs.stats && statsPick.length > 0 && !persona && (
           <div className="relative z-10 mt-3 desk:mt-0 desk:col-start-2 desk:row-start-2 desk:row-span-2 desk:w-[32rem] rounded-2xl border border-border bg-[color:var(--background)] overflow-hidden">
             {/* 🆕 **الرقمُ واسمُه سطرٌ واحد، والبابُ على قدر كلمته**
                 (D-611، حكمُه: «الأفلام والمسلسلات تكون سطر واحد
@@ -1304,17 +1313,19 @@ export default async function PublicProfilePage({
                  «Sh… Mo… Ani…»): كان `auto` ينكمش على كلمته والأرقامُ تتقاسم الباقي فتُقصّ أسماؤها.
                  الآن أرباعٌ سواء والخانةُ عموديّة — وجهُ بطاقة الرئيسية في التطبيق (D-1129). ومن
                  أخفى البابَ (`statsLink`) عادت خاناتُه أفقيّةً على العرض كلِّه. */
-              style={{ gridTemplateColumns: `repeat(${headerStats.length + (prefs.statsLink ? 1 : 0)}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${statsPick.length}, minmax(0, 1fr))` }}
             >
               {/* 🆕 **والخانةُ صارت باباً** (D-643): «١٦ مسلسلاً» رقمٌ
                   يُضغط، **ورقمٌ يُضغط ولا يفتح شيئاً وعدٌ فارغ** (D-217).
                   **ووجهتُه تبويبُه في الصفحة نفسِها** — لا صفحةٌ ثالثة.
                   ⚠️ **و`replace` هنا أيضاً**: نفسُ حكم التبويبات — **بابٌ
                   داخلَ الصفحة لا يكدّس تاريخاً.** */}
-              {headerStats.map((c) => {
-                const cellClass = prefs.statsLink
-                  ? "relative w-full min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] hover:text-accent transition"
-                  : "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
+              {headerStats.filter((c) => statsPick.includes(c.key as ProfileStatKey)).map((c) => {
+                const cellClass = `${STAT_ORDER[statsPick.indexOf(c.key as ProfileStatKey)]} ${
+                  statsDoor
+                    ? "relative w-full min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] hover:text-accent transition"
+                    : "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition"
+                }`;
                 /* 🆕 **وجهُ الخانة يُرسم مرّةً** ثمّ يلبس فعلَه (D-644):
                     المسلسلاتُ والأفلامُ تفتحان ورقةً، **والتقييماتُ رابطُ
                     تبويبٍ لأن تبويبَها قائمٌ أصلاً** — **ولا ورقةَ لما له
@@ -1323,7 +1334,7 @@ export default async function PublicProfilePage({
                    🆕 D-1131 — **بمقاسات بطاقة الرئيسيّة حرفاً** (أحمد بلقطتين: «مساحتها كبيرة، خلّها مثل
                    الهوم»): أيقونةٌ ١٦ · رقمٌ ١٥ · اسمٌ ١٢/١٤ · حشوةٌ ١١ — كانت ١٨ و١٤ و١٢ فعلت البطاقةُ ~٧pt.
                    ميزانُ D-699 (الاسمُ ١٤) للاسم **بجوار** رقمه؛ تحته يقرأ ١٢ كما في الرئيسيّة. */
-                const face = prefs.statsLink ? (
+                const face = statsDoor ? (
                   <>
                     <span className="flex items-center gap-1">
                       <Icon name={c.icon} size={16} style={{ color: "var(--accent)" }} className="shrink-0" />
@@ -1373,7 +1384,7 @@ export default async function PublicProfilePage({
                   وهو بعينه ما تمنعه D-217. **ولصاحبها مداها الكامل
                   بتبويباته، ولزائره سطحُ العضو** (`/u/<user>/stats`)
                   **بما تسمح به دوالُّ `definer` وحدَه.** */}
-              {prefs.statsLink && (
+              {statsDoor && (
               <Link
                 href={isMe ? "/stats" : `${base}/stats`}
                 /* ⚖️ 🆕 **وخطُّ الخانة الثالثة صار خطَّ أختيها** (D-676،
@@ -1385,7 +1396,7 @@ export default async function PublicProfilePage({
                    🔑 **والوزنُ يبقى `font-semibold`**: هو الفرقُ بين
                    **بابٍ يُضغط** وكلمةٍ تصف رقماً — **والمطلوبُ توحيدُ
                    المقاس لا محوُ الفرق.** */
-                className="min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] text-12 font-semibold text-muted hover:text-accent transition"
+                className={`${STAT_ORDER[statsPick.indexOf("stats")]} min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-[11px] text-12 font-semibold text-muted hover:text-accent transition`}
               >
                 {/* 🆕 D-1130 — خانةٌ عموديّةٌ كأخواتها: رمزُ الوجهة وسهمُها فوق، واسمُها تحت */}
                 <span className="flex items-center gap-1">

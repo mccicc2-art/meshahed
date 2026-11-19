@@ -19,7 +19,9 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   const name = profile?.nickname || username || (user.email ?? "").split("@")[0];
 
   return (
-    <div className="desk:mx-auto desk:grid desk:max-w-[70rem] desk:grid-cols-[18.5rem_minmax(0,1fr)] desk:items-start desk:gap-8">
+    /* 🆕 **بعرض باقي صفحات الموقع** (`max-w-shell`، أحمد ١٩ نوفمبر بلقطة شاشةٍ عريضة: «وفيه فراغ») — كانت ٧٠rem في الوسط
+       فيُفتح على الشاشات العريضة فراغٌ أكبر من هامش الرئيسية والمكتبة بين الشريط وقائمة الإعدادات؛ والزيادةُ كلُّها للّوحة */
+    <div className="desk:mx-auto desk:grid desk:max-w-shell desk:grid-cols-[18.5rem_minmax(0,1fr)] desk:items-start desk:gap-8">
       <aside className="hidden desk:sticky desk:top-6 desk:block">
         <SettingsDeskNav
           locale={locale}
