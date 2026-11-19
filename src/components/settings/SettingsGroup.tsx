@@ -34,11 +34,14 @@ export function SettingsGroup({
   label,
   children,
   className = "",
+  tiles = false,
 }: {
   /** عنوانُ المجموعة — يغيب فلا يُحجَز له مكان (D-044) */
   label?: string;
   children: ReactNode;
   className?: string;
+  /** 🆕 T476 — على الحاسوب العريض صفوفٌ قليلةٌ قصيرة تصير بطاقاتٍ متجاورة (`lz-settiles`)؛ الجوّالُ قائمةٌ كما هو */
+  tiles?: boolean;
 }) {
   return (
     <section className={className}>
@@ -47,7 +50,7 @@ export function SettingsGroup({
           {label}
         </h2>
       )}
-      <div className={settingsCardRows}>{children}</div>
+      <div className={tiles ? `${settingsCardRows} lz-settiles` : settingsCardRows}>{children}</div>
     </section>
   );
 }

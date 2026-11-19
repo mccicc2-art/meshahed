@@ -21,7 +21,7 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setNotifications}>
-      <SettingsGroup>
+      <SettingsGroup tiles>
         <SettingsRow
           icon="bell"
           title={t.setNotifInApp}

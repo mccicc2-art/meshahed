@@ -25,11 +25,11 @@ export default async function Page() {
       {/* التعرّف على التطبيق — الجولة تُعاد من هنا في أي وقت (شرطها)،
           والتلميحاتُ المطفأة تُعاد من جارتها. سطحان لا سطح: الجولة
           رحلةٌ عبر الصفحات، والتلميح سطرٌ في صفحته. */}
-      <SettingsGroup label={t.helpLearnGroup}>
+      <SettingsGroup tiles label={t.helpLearnGroup}>
         <HelpTourRows locale={locale} />
       </SettingsGroup>
 
-      <SettingsGroup label={t.helpSupportGroup}>
+      <SettingsGroup tiles label={t.helpSupportGroup}>
         <SettingsRow
           href="mailto:help@loopztv.com"
           icon="mail"

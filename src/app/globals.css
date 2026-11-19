@@ -1118,3 +1118,27 @@ summary:focus-visible,
     overscroll-behavior: contain;
   }
 }
+
+/* ====== 🆕 T476 — صفحاتُ الإعدادات القصيرة بطاقاتٍ على الحاسوب (أحمد «أ») ======
+   🔑 بعد أن صار الشريطُ علاماتٍ (T475) اتّسع اللوحُ إلى ~١٠٠٠ بكسل، فصار صفٌّ من سطرين أو ثلاثة (الإشعارات · المساعدة ·
+   «عن Loopz») يمتدّ بعرض الشاشة والكلامُ في طرفه. **المجموعةُ تصير بطاقاتٍ متجاورة** بعرضٍ أدنى ١٧rem — شكلُ الخصوصية
+   والاستيراد اللذين اتّسعا صحيحاً. الصفُّ نفسُه (`SettingsRow`) لا يتغيّر: يفقد الفاصلَ ويلبس أرضيّةَ البطاقة.
+   ⚠️ **بالاسم لا لكلّ مجموعة** (`<SettingsGroup tiles>`): مجموعاتُ الصفحات الطويلة (الحساب · الخصوصية) قوائمُ تُقرأ أسطراً. */
+@media (min-width: 1280px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-settiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.75rem;
+    background: transparent;
+    overflow: visible;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-settiles > * {
+    border-block: 0 !important;
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    overflow: hidden;
+    min-height: 5.5rem;
+    align-items: flex-start;
+    padding-top: 1rem;
+  }
+}

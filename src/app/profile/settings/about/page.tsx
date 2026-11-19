@@ -42,7 +42,7 @@ export default async function Page() {
         </p>
       </div>
 
-      <SettingsGroup>
+      <SettingsGroup tiles>
         <SettingsRow href="/features" icon="sparkle-star" title={t.setAboutFeatures} />
         <SettingsRow href="/terms" icon="book" title={t.setAboutTerms} />
         <SettingsRow href="/privacy" icon="shield" title={t.setAboutPrivacy} />
