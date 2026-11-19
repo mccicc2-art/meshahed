@@ -583,7 +583,13 @@ export function AnalysisView({
           {/* **والفجوةُ ورثت مكانَ الصفِّ المحذوف** (D-803): كانت `mt-1`
               لأنّ فوقها سطرَ السمات، **وشبكةٌ تلتصق بالعنوان بعد حذفه
               تُقرأ خطأَ تنضيد.** */}
-          <div className="mt-2.5 grid grid-cols-2 gap-x-4" style={{ textShadow: HERO_TEXT_SHADOW }}>
+          {/* 🆕 **ثلاثُ خاناتٍ في الصفّ على الحاسوب** (أحمد ١٩ نوفمبر، الخيار «أ» لصفحة الإحصائيات): الذوقُ كلُّه في شاشةٍ بلا
+              نزول. **والفاصلُ بين الصفوف صار من الشبكة لا من الخانة** — كان كلُّ خانةٍ تحمل `divider` بمكانها في عمودين، فلمّا
+              صارت ثلاثةً جلس خطٌّ فوق خانةٍ من الصفّ الأوّل. الآن: كلُّ ما بعد الصفِّ الأوّل يحمل خطَّه، أيّاً كان عددُ الأعمدة */}
+          <div
+            className="mt-2.5 grid grid-cols-2 gap-x-4 desk:grid-cols-3 [&>*]:border-[color:var(--divider)] [&>*:nth-child(n+3)]:border-t desk:[&>*:nth-child(3)]:border-t-0"
+            style={{ textShadow: HERO_TEXT_SHADOW }}
+          >
             {taste.genres.length > 0 && (
               <TasteCell title={t.tasteGenres} posters={taste.posters.genres} all={taste.all.genres} shown={taste.genres.length} locale={locale}>
                 {taste.genres.map((g) => (
@@ -599,7 +605,7 @@ export function AnalysisView({
               </TasteCell>
             )}
             {taste.languages.length > 0 && (
-              <TasteCell title={t.tasteLanguages} divider posters={taste.posters.languages} all={taste.all.languages} shown={taste.languages.length} locale={locale}>
+              <TasteCell title={t.tasteLanguages} posters={taste.posters.languages} all={taste.all.languages} shown={taste.languages.length} locale={locale}>
                 {taste.languages.map((l) => (
                   <TasteRow
                     key={l.code}
@@ -626,7 +632,7 @@ export function AnalysisView({
                  🗑️ **وماتت معها**: `diversityLevel` و`countryCount`
                  وخاصّيّةُ `note` ومفاتيحُ `tasteDiv*` الستّة —
                  **والعقدُ يُنظَّف بعد قارئه لا قبله** (D-702). */
-              <TasteCell title={t.tasteDiversity} divider posters={taste.posters.countries} all={taste.all.countries} shown={taste.countries.length} locale={locale}>
+              <TasteCell title={t.tasteDiversity} posters={taste.posters.countries} all={taste.all.countries} shown={taste.countries.length} locale={locale}>
                 {taste.countries.map((c) => (
                   <TasteRow
                     key={c.name}
@@ -640,7 +646,7 @@ export function AnalysisView({
               </TasteCell>
             )}
             {taste.directors.length > 0 && (
-              <TasteCell title={t.tasteDirectors} divider posters={taste.posters.directors} all={taste.all.directors} shown={taste.directors.length} locale={locale}>
+              <TasteCell title={t.tasteDirectors} posters={taste.posters.directors} all={taste.all.directors} shown={taste.directors.length} locale={locale}>
                 {taste.directors.map((d) => (
                   <TasteRow
                     key={d.name}
@@ -654,7 +660,7 @@ export function AnalysisView({
               </TasteCell>
             )}
             {taste.actors.length > 0 && (
-              <TasteCell title={t.tasteActors} divider posters={taste.posters.actors} all={taste.all.actors} shown={taste.actors.length} locale={locale}>
+              <TasteCell title={t.tasteActors} posters={taste.posters.actors} all={taste.all.actors} shown={taste.actors.length} locale={locale}>
                 {taste.actors.map((a) => (
                   <TasteRow
                     key={a.name}
@@ -679,7 +685,6 @@ export function AnalysisView({
     أقراصُ الأيقونات حُذفت، و⚖️ D-703: أقراصُ الحروف كذلك. */
 function TasteCell({
   title,
-  divider = false,
   posters,
   all,
   shown,
@@ -687,7 +692,6 @@ function TasteCell({
   children,
 }: {
   title: string;
-  divider?: boolean;
   /**
    * 🆕 **بقيّةُ تصنيفات هذه الخانة** (D-723) — **العنوانُ بابُها.**
    * **والفرقُ بينه وبين بابِ الصفّ فرقُ سؤالٍ لا فرقُ عمق**: الصفُّ
@@ -761,9 +765,7 @@ function TasteCell({
 
   return (
     <div
-      className={`relative overflow-hidden py-3 min-w-0 ${
-        divider ? "border-t border-[color:var(--divider)]" : ""
-      }`}
+      className="relative overflow-hidden py-3 min-w-0"
     >
       {/* 🆕 **الخلفيّة** (D-717، اختيارُه «مكتبتك خلفك»): **ملصقاتٌ لا
           رسمٌ** — واللوحان عُرضا عليه فاختار الصورةَ على الشارت.

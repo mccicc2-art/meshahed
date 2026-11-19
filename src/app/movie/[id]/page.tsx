@@ -455,33 +455,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
-      {/* 🆕 T402 — الحاسوب: بطاقةُ الأفعال في العمود الجانبيّ، ثابتةٌ مع التمرير — أوّلُ ما يُفعل بالعمل في النظر دائماً */}
-      {/* 🆕 R257 — **العمودُ الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»، الصورة `title_aside`): الأفعالُ ثمّ «أين أشاهده» ثمّ
+      {/* الإجراء الرئيسي — أربعُ خاناتٍ كالتطبيق منذ ١٩ نوفمبر (كان «أضف لقائمة» + دائرة «شاهدتُه») — نفس لغة صفحة المسلسل */}
+      {/* ⚖️ T402 → ١٩ نوفمبر: بطاقةُ الأفعال غادرت العمودَ الجانبيّ إلى فوق التبويبات (انظر تعليقَ الصفّ أدناه) */}
+      {/* 🆕 R257 — **العمودُ الجانبيّ على الحاسوب** (أحمد ١٨ نوفمبر — «أ»، الصورة `title_aside`؛ والأفعالُ خرجت منه في ١٩ نوفمبر): «أين أشاهده» ثمّ
           «تقييمات المجتمع» ثمّ «طاقم العمل» — كان العمودُ بطاقةَ الأفعال وحدها وتحتها فراغٌ بطول الحلقات. والعمودُ كلُّه ثابتٌ مع
           التمرير، وما زاد على الشاشة يُمرَّر داخله. والشعارُ والنبضُ الصغيران في الترويسة يغيبان هنا فلا تُقال المعلومةُ مرّتين.
           والجوّالُ كما هو: بطاقةُ الأفعال في مكانها والبطاقاتُ الثلاث لا تُرسم */}
       <div className="desk:col-start-2 desk:row-start-2 desk:sticky desk:top-6 desk:max-h-[calc(100vh-3rem)] desk:overflow-y-auto desk:space-y-4 [scrollbar-width:none]">
-      <div className="mt-4 px-1 desk:mt-0 desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
-        <TitleActions
-          tmdbId={movieId}
-          mediaType="movie"
-          title={movie.title}
-          posterPath={movie.poster_path}
-          /* 🆕 D-313 — غلافُ TMDB لا غلافي المختار: البطاقةُ يراها كلُّ
-             الناس، **وزينتي لا تسافر** (حجّةُ D-131 حرفاً) */
-          backdropPath={movie.backdrop_path}
-          locale={locale}
-          initialFollowing={followState.following}
-          lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
-          containing={inLists}
-          episodesTotal={null}
-          runtime={movie.runtime ?? null}
-          initialDone={watched}
-          collectionId={movie.belongs_to_collection?.id ?? null}
-          initialFavorite={favs.has(artKey("movie", movieId))}
-        />
-      </div>
       <div className="hidden desk:block space-y-4">
         {watchWhere ? (
           <WatchChip
@@ -509,6 +489,28 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       {/* تبويب «تتبّع» حُذف من الأفلام: الفيلم إمّا شوهد أو لم يُشاهَد،
           ودائرة ✓ في الترويسة تقول ذلك وتقلبه — لا يحتاج تبويباً كاملاً */}
       <div className="min-w-0 desk:col-start-1 desk:row-start-2">
+      {/* ⚖️ 🆕 **صفُّ الأفعال فوق التبويبات لا في العمود الجانبيّ** (أحمد ١٩ نوفمبر، الخيار «أ»: «وتكون فوق الحلقات وعن العمل
+          والمراجعات») — كالتطبيق؛ والعمودُ الجانبيُّ يبدأ بـ«أين تشاهده». وعلى الجوّال المكانُ نفسُه: بعد الترويسة وقبل التبويبات */}
+      <div className="mt-4 px-1 desk:mt-0 desk:px-0 desk:mb-2">
+        <TitleActions
+          tmdbId={movieId}
+          mediaType="movie"
+          title={movie.title}
+          posterPath={movie.poster_path}
+          /* 🆕 D-313 — غلافُ TMDB لا غلافي المختار: البطاقةُ يراها كلُّ
+             الناس، **وزينتي لا تسافر** (حجّةُ D-131 حرفاً) */
+          backdropPath={movie.backdrop_path}
+          locale={locale}
+          initialFollowing={followState.following}
+          lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
+          containing={inLists}
+          episodesTotal={null}
+          runtime={movie.runtime ?? null}
+          initialDone={watched}
+          collectionId={movie.belongs_to_collection?.id ?? null}
+          initialFavorite={favs.has(artKey("movie", movieId))}
+        />
+      </div>
       <DetailTabs
         tabs={[
           {

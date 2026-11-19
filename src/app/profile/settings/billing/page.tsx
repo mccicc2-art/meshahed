@@ -102,9 +102,15 @@ export default async function Page() {
 
       {/* ===== ٢ · ما يشمله / ما يفتحه ===== */}
       {unlocks.length > 0 && (
-        <SettingsGroup label={plus ? t.plusIncludes : t.subPlusUnlocks}>
+        /* 🆕 **بطاقتان في الصفّ على الحاسوب** (أحمد ١٩ نوفمبر): البنودُ العشرةُ قائمةٌ تُمرَّر في لوحةٍ عرضُها ثمانمئة —
+           **الشبكةُ تعرضها في شاشةٍ واحدة**. وصفُّ الجوّال كما هو: الوعاءُ نفسُه (`SettingsGroup`) يصير شبكةً بمحدِّداتٍ من هنا،
+           فلا نسخةٌ ثانيةٌ للوعاء ولا للصفوف */
+        <SettingsGroup
+          label={plus ? t.plusIncludes : t.subPlusUnlocks}
+          className="desk:[&>div]:grid desk:[&>div]:grid-cols-2 desk:[&>div]:gap-2.5 desk:[&>div]:divide-y-0 desk:[&>div]:overflow-visible desk:[&>div]:bg-transparent"
+        >
           {unlocks.map((f) => (
-            <div key={f.en} className="flex items-start gap-3 px-3.5 py-3">
+            <div key={f.en} className="flex items-start gap-3 px-3.5 py-3 desk:rounded-xl desk:bg-surface desk:px-4 desk:py-3.5">
               <Icon
                 name={f.icon}
                 size={18}
@@ -125,8 +131,10 @@ export default async function Page() {
 
       {/* ===== ٣ · البابُ إلى الصفحة الكاملة ===== */}
       <SettingsGroup>
+        {/* 🆕 **وغيرُ المشترك يذهب إلى صفحة البيع** (أحمد ١٩ نوفمبر: «ايه ضيفها»): «ترقية» كانت تفتح صفحةَ المزايا — وفيها
+            لا سعرَ ولا زرَّ اشتراك؛ **الأسعارُ والخططُ في `/plus`**. والمشتركُ يبقى على المزايا: لا شيءَ يشتريه */}
         <SettingsRow
-          href="/features"
+          href={plus ? "/features" : "/plus"}
           icon="sparkle-star"
           title={plus ? t.setViewPlans : t.subUpgrade}
           subtitle={plus ? undefined : t.plusPrice}

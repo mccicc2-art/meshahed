@@ -19,7 +19,7 @@ import {
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import type { MediaType } from "@/core/media";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { FranchisePanel } from "./FranchisePanel";
 import { RatingBox } from "./RatingBox";
@@ -47,7 +47,9 @@ function CheckBox({ on }: { on: boolean }) {
 }
 
 /**
- * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «شاهدتُه».
+ * صفّ الإجراء الرئيسي في صفحة العمل — ⚖️ 🆕 **أربعُ خاناتٍ كالتطبيق منذ ١٩ نوفمبر** (للمشاهدة · إلى قائمة · مفضّلة ·
+ * شاهدته؛ تفصيلُه عند الصفّ أدناه). ما تحته تاريخُ الصفِّ السابق («أضف لقائمة» + دائرة «شاهدتُه») — **وحجّتُه في «شاهدته» ما
+ * زالت قائمةً حرفاً** (ضغطةٌ واحدة والتراجعُ بعدها)؛ الذي تبدّل الشكلُ وموضعُ «للمشاهدة».
  *
  * **الدائرة تعني «شاهدتُه»، وورقة التأكيد لا تعود** (D-047، بصيغته
  * النهائية). جُرّب أن تعني «للمشاهدة» فتبيّن أنها تكرار: الزرّ الكبير
@@ -140,14 +142,12 @@ export function TitleActions({
   /* ⚖️ D-1251 — «للمشاهدة» = أريد مشاهدتَه ولم أُنهِه (أحمد: «يبقى في المكتبة بس ما يبقى في تو واتش»).
      المتابعةُ نفسُها لا تُمسّ (العملُ باقٍ في المكتبة، وموسمٌ جديدٌ يعيده)؛ الذي يتبدّل ما يُعرض ويُعدّ. */
   const wantsWatch = following && !done;
-  const badge = inLists.size + (wantsWatch ? 1 : 0);
 
   /**
-   * «للمشاهدة» — صفُّ ورقة القوائم وحده.
+   * «للمشاهدة» — خانتُها في صفّ الأفعال (كانت صفَّ ورقة القوائم حتى ١٩ نوفمبر).
    *
-   * بلا رسالةٍ عابرة: المربّع يمتلئ أمام العين داخل الورقة، ورسالةٌ خلفها
-   * لا تُقرأ. والحالة المطلوبة صريحةٌ لا مقلوبةٌ عن الحالية، فلا تُقرأ حالةٌ
-   * تغيّرت تحت الدالّة.
+   * بلا رسالةٍ عابرة: الخانةُ تصفرّ أمام العين. والحالة المطلوبة صريحةٌ لا مقلوبةٌ عن الحالية، فلا تُقرأ حالةٌ
+   * تغيّرت تحت الدالّة. ومن أنهى العملَ يُقال له السببُ بتوستٍ عند الخانة نفسِها (D-1251).
    */
   function setToWatch(next: boolean) {
     setFollowing(next);
@@ -352,72 +352,67 @@ export function TitleActions({
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        {/* أضف لقائمة: أبيض قبل الإضافة، وبلون الهوية بعدها — اللون هو
-            الإشارة لا رقمٌ يحتاج تفسيراً، والعلامة تمتلئ معه */}
-        {/* 🆕 **وارتفاعُ الصفّ ٤٤ لا ٤٨** (D-404، طلبُ أحمد على لقطة
-            الصفّ: «صغّر ارتفاعها شوي»). **و٤٤ قاعٌ لا اختيار**: هو حدُّ
-            هدف اللمس الذي يقيس به هذا التطبيق أزراره كلَّها (زرّا
-            الترويسة الزجاجيّان، وصفوفُ ورقة «المزيد») — **فالنزولُ درجةً
-            يقف عنده ولا يتجاوزه**، وأيُّ رقمٍ أصغر يشتري ٤px بثمنِ ضغطةٍ
-            تُخطئ. **والدائرتان تنزلان معه** فيبقى الصفُّ صفّاً واحداً لا
-            ثلاثةَ ارتفاعات. */}
-        <button
-          onClick={() => setSheetOpen(true)}
-          aria-pressed={badge > 0}
-          className={`flex-1 h-11 rounded-full font-bold text-15 flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
-            /* 🆕 **وظلٌّ واحدٌ لزرٍّ واحد** (D-405): كانت حالةُ
-               «محفوظ» تحمل هالةً **بنفسجيّة** (`rgba(124,58,237,…)`) —
-               **لونٌ لا وجود له في كتيّب الهويّة**، بقيّةُ لوحةٍ سابقة،
-               **ويُقرأ ضباباً ليلكيّاً على الورق الأبيض.** **واللونُ هو
-               الإشارة أصلاً** (السطر فوق)، فالهالةُ كانت تقول ما قيل
-               مرّتين — **وارتفاعٌ محايدٌ يكفي الحالتين.** */
-            badge > 0
-              ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-110"
-              : "bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-95"
-          }`}
-        >
-          <Icon
-            name="bookmark"
-            size={18}
-            strokeWidth={2.2}
-            style={badge > 0 ? { fill: "currentColor" } : undefined}
-          />
-          {t.listAddTo}
-        </button>
-
-        {/* القلب بين الحفظ والحالة (D-130): «أحببتُه» رأيٌ لا حالةَ
-            مشاهدة ولا حفظٌ في قائمة — فله موضعه، وأيقونته تمتلئ ولا
-            تتلوّن دائرتُها كي لا يزاحم ✓ في الوزن البصريّ */}
-        <button
-          onClick={flipFavorite}
-          aria-pressed={fav}
-          aria-label={t.favAria}
-          title={t.favAria}
-          className={`w-11 h-11 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
-            fav
-              ? "border-transparent bg-[color:var(--error)]/12 text-[color:var(--error)]"
-              : "border-border text-foreground/85 hover:border-accent/60"
-          }`}
-        >
-          <Icon name={fav ? "heart-filled" : "heart"} size={20} strokeWidth={2.2} />
-        </button>
-
-        {/* دائرة «شاهدتُه» — ضغطةٌ واحدة، بلا ورقة، والتراجع في الرسالة */}
-        <button
-          onClick={markWatched}
-          disabled={pending}
-          aria-pressed={done}
-          aria-label={watchLabel}
-          title={watchLabel}
-          className={`w-11 h-11 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
-            done
-              ? "border-transparent bg-[color:var(--success)]/15 text-[color:var(--success)]"
-              : "border-border text-foreground/85 hover:border-accent/60"
-          }`}
-        >
-          <Icon name="check-line" size={20} strokeWidth={2.2} className={done ? "check-pop" : ""} />
-        </button>
+      {/* ⚖️ 🆕 **صفُّ الأفعال الأربعة كالتطبيق** (أحمد ١٩ نوفمبر: «ابغى أغيّرها وأخلّي نظامها وشكلها مثل التطبيق، وتكون فوق
+          الحلقات وعن العمل والمراجعات» — الخيار «أ»). نقضٌ لصفِّ D-047/D-130 («أضف لقائمة» + قلب + ✓) بحكم صاحبه، **ونسخةُ
+          `apps/mobile/src/title/ActionRow.tsx` (D-1014) حرفاً**: إطارٌ واحدٌ بلا فواصل ولا خلفيّةٍ للخانة النشطة — **الذي يتبدّل
+          الأيقونةُ والكلمةُ ولونُهما**: الأصفرُ للحفظ، والأحمرُ للمفضّلة، ولونُ النجاح لـ«شاهدته».
+          🔑 **و«للمشاهدة» خرجت من ورقة القوائم إلى خانتها** (تصحيحُ أحمد في التطبيق: «مستقلٌّ تماماً») — فلا بابان لها. ومن أنهى
+          العملَ تبقى خانتُها مطفأةً وتقول السببَ بتوست (D-1251: الضغطةُ لا تحذف من المكتبة، والسببُ يُقال لا يُخمَّن). */}
+      <div className="grid grid-cols-4 rounded-card border border-border overflow-hidden">
+        {(
+          [
+            {
+              key: "watch",
+              icon: "eye",
+              label: t.toWatchAction,
+              on: wantsWatch,
+              tone: "text-accent",
+              press: () => (done ? toast(t.toWatchDone, { tone: "info" }) : setToWatch(!following)),
+            },
+            {
+              key: "list",
+              icon: "bookmark",
+              label: inLists.size > 0 ? t.inListAction : t.toListAction,
+              on: inLists.size > 0,
+              tone: "text-accent",
+              press: () => setSheetOpen(true),
+            },
+            {
+              key: "fav",
+              icon: fav ? "heart-filled" : "heart",
+              label: t.favoriteAction,
+              on: fav,
+              tone: "text-[color:var(--error)]",
+              aria: t.favAria,
+              press: flipFavorite,
+            },
+            {
+              key: "done",
+              icon: "check-line",
+              label: t.watchedAction,
+              on: done,
+              tone: "text-[color:var(--success)]",
+              aria: watchLabel,
+              press: markWatched,
+            },
+          ] as { key: string; icon: IconName; label: string; on: boolean; tone: string; aria?: string; press: () => void }[]
+        ).map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={c.press}
+            disabled={c.key === "done" && pending}
+            aria-pressed={c.on}
+            /* الاسمُ المسموعُ هو المكتوب (WCAG 2.5.3: «اضغط شاهدته» يجده) — وجملةُ الفعل الكاملة في التلميح */
+            title={c.aria}
+            className={`flex min-w-0 flex-col items-center gap-1 px-1 py-2.5 text-12 font-semibold transition active:opacity-60 disabled:opacity-60 desk:py-3 desk:text-14 hover:bg-surface-2 ${
+              c.on ? c.tone : "text-foreground"
+            }`}
+          >
+            <Icon name={c.icon} size={20} strokeWidth={2} className={c.key === "done" && c.on ? "check-pop" : ""} />
+            <span className="max-w-full truncate">{c.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* أجزاء السلسلة — تحت الصفّ مباشرةً، حيث وقعت الضغطة */}
@@ -435,29 +430,10 @@ export function TitleActions({
       >
         <>
           <p id="lists-sheet-title" className="text-center font-bold text-15 pt-5 pb-3">
-            {t.listAddTo}
+            {t.toListAction}
           </p>
 
-          {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة. صامتة هنا: المربّع
-              يمتلئ أمام العين، ورسالةٌ خلف الورقة لا تُقرأ */}
-          <button
-            /* D-1251 — المكتملُ: المربّعُ فارغٌ وضغطتُه لا تحذف من المكتبة. **والسببُ مكتوبٌ في الصفّ نفسِه
-               لا في إشعار**: رسالةٌ خلف الورقة لا تُقرأ (الحجّةُ أعلاه)، وصفٌّ خافتٌ بلا كلمةٍ يُقرأ عطلاً (D-142). */
-            onClick={() => {
-              if (!done) setToWatch(!following);
-            }}
-            aria-disabled={done}
-            className={`w-full flex items-center gap-3 px-5 py-3 text-start transition ${done ? "cursor-default" : "hover:bg-surface-2"}`}
-          >
-            <CheckBox on={wantsWatch} />
-            <span className={`text-14 font-semibold flex items-center gap-2 ${done ? "text-muted" : ""}`}>
-              <Icon name="bookmark" size={16} className="text-muted" />
-              {t.libToWatch}
-            </span>
-            {done && <span className="ms-auto text-12 text-muted">{t.toWatchDone}</span>}
-          </button>
-
-          <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
+          {/* «للمشاهدة» غادرت الورقة إلى خانتها في الصفّ (كالتطبيق) — الورقةُ لقوائمك وحدها */}
 
           {lists.length === 0 ? (
             <p className="px-5 py-3 text-xs text-muted">

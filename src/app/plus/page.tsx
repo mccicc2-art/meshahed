@@ -85,7 +85,8 @@ export default async function PlusPage({ searchParams }: { searchParams: Promise
   const headline = owned ? w.ownedTitle(owned.tier === "gold" ? "Loopz Gold" : "Loopz Plus") : t.pwHeadOffer.replace("\n", lang === "ar" ? "، " : " — ");
 
   return (
-    <article className="pb-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+    /* 🆕 **وعلى الشاشة العريضة ١٠٤٠ لا عرضُ الصفحة كلِّه** (الخيار «ب»): المزايا الخمسُ في الصفّ تتمدّد بلا داعٍ فوق ذلك */
+    <article className="pb-6 xl:mx-auto xl:max-w-[65rem]" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* ===== البطل ===== */}
       <section className="relative flex items-center gap-10 overflow-hidden rounded-3xl border border-border bg-surface px-6 py-8 md:px-10 md:py-10">
         <div aria-hidden className="pointer-events-none absolute -top-28 -start-20 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />

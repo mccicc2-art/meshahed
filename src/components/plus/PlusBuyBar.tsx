@@ -65,7 +65,7 @@ export function PlusBuyBar({
           </p>
         </div>
         {owned.tier === "plus" && (
-          <Cta device={device} label={w.upgrade} onSheet={() => setOpen(true)} />
+          <Cta device={device} locale={locale} label={w.upgrade} onSheet={() => setOpen(true)} />
         )}
         <StoreSheet open={open} onClose={() => setOpen(false)} locale={locale} plan="gold" />
       </Bar>
@@ -109,7 +109,7 @@ export function PlusBuyBar({
         </p>
         <p className="mt-0.5 text-12 text-muted leading-relaxed">{w.priceNote}</p>
       </div>
-      <Cta device={device} label={plan === "gold" ? w.ctaGold : w.cta} onSheet={() => setOpen(true)} />
+      <Cta device={device} locale={locale} label={plan === "gold" ? w.ctaGold : w.cta} onSheet={() => setOpen(true)} />
       <StoreSheet open={open} onClose={() => setOpen(false)} locale={locale} plan={plan} />
     </Bar>
   );
@@ -127,7 +127,7 @@ function Bar({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Cta({ device, label, onSheet }: { device: Device; label: string; onSheet: () => void }) {
+function Cta({ device, locale, label, onSheet }: { device: Device; locale: "ar" | "en"; label: string; onSheet: () => void }) {
   const cls = buttonClass({ size: "lg", className: "w-full md:w-auto shrink-0" });
   if (device === "ios")
     return (
@@ -141,10 +141,32 @@ function Cta({ device, label, onSheet }: { device: Device; label: string; onShee
         {label}
       </a>
     );
+  /* 🆕 **الحاسوبُ يرى الرمزَ نفسَه لا زرّاً يفتحه** (أحمد ١٩ نوفمبر، الخيار «ب» لصفحة Plus): الشراءُ لا يكون من المتصفّح،
+     فكانت الضغطةُ تفتح ورقةً كلُّ ما فيها رمزٌ يُمسح — **ضغطةٌ زائدةٌ قبل الشيء الوحيد الذي يُفعل هنا**. الرمزُ (`/get`) يفتح صفحةَ
+     التطبيق في المتجر (حكمُه: «يوديه لصفحة التطبيق كافي»)، **والورقةُ باقيةٌ خلف «طرقٌ أخرى»** لمن يريد شارةَ المتجر أو شرحَ
+     الدخول بالحساب نفسِه. وتحت ١٠٢٤ يعود الزرُّ: الشريطُ هناك يلتفّ ولا يتّسع لرمز */
+  const w = WORDS[locale];
   return (
-    <button type="button" onClick={onSheet} className={cls}>
-      {label}
-    </button>
+    <>
+      <div className="hidden shrink-0 items-center gap-3 lg:flex">
+        {/* الفعلُ نفسُه بكلمته (اشترك · Gold · الترقية) سطراً أوّل — **الرمزُ يقول «كيف» لا «ماذا»**، وبلا الكلمة يفقد المشتركُ
+            معنى «الترقية» ويفقد اختيارُ Gold عبارتَه (المراجعة المستقلّة) */}
+        <span className="text-end">
+          <span className="block text-14 font-bold">{label}</span>
+          <span className="mt-0.5 block text-12 text-muted">
+            {w.scan} ·{" "}
+            <button type="button" onClick={onSheet} className="font-semibold text-accent hover:underline">
+              {w.moreWays}
+            </button>
+          </span>
+        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- صورةٌ ثابتةٌ مولَّدةٌ مرّةً (`public/qr-get-plus.svg`) لا ملصق */}
+        <img src="/qr-get-plus.svg" alt="" width={76} height={76} className="h-[76px] w-[76px] rounded-lg bg-white p-1" />
+      </div>
+      <button type="button" onClick={onSheet} className={`${cls} lg:hidden`}>
+        {label}
+      </button>
+    </>
   );
 }
 

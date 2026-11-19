@@ -68,6 +68,14 @@ const AR = {
   traktNotice: "Loopz يستخدم Trakt، وهو غير معتمد ولا موثّق من Trakt (Loopz uses Trakt but is not endorsed or certified by Trakt).",
   traktOff: "ربط Trakt ما تفعّل بعد على Loopz. إلى أن يتفعّل: صدّر بياناتك من Trakt وارفع الملف في بطاقة Simkl — قارئها يقبل أي تصدير فيه معرّفات TMDB.",
   importLocalNote: "يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
+  /* 🆕 صفحةُ Stremio على الحاسوب: «كيف يشتغل» بجانب بطاقة الربط */
+  stremioHowTitle: "كيف يشتغل",
+  stremioStep1T: "ثبّت الإضافة",
+  stremioStep1B: "من البطاقة يفتح Stremio ويطلب تثبيت إضافة Loopz.",
+  stremioStep2T: "شغّل كالعادة",
+  stremioStep2B: "كل حلقة أو فيلم تشغّله في Stremio يصل إلى Loopz.",
+  stremioStep3T: "أكّد بضغطة",
+  stremioStep3B: "في الرئيسية يسألك Loopz: شفتها؟ ✓ تعلّمها وكل ما قبلها.",
 };
 
 const EN: typeof AR = {
@@ -124,6 +132,13 @@ const EN: typeof AR = {
   traktNotice: "Loopz uses Trakt but is not endorsed or certified by Trakt.",
   traktOff: "Trakt linking isn't enabled on Loopz yet. Until it is: export your data from Trakt and upload the file in the Simkl card — its reader accepts any export carrying TMDB ids.",
   importLocalNote: "The file is read on your device and never uploaded — only titles are sent to be matched.",
+  stremioHowTitle: "How it works",
+  stremioStep1T: "Install the addon",
+  stremioStep1B: "The card opens Stremio and asks to install the Loopz addon.",
+  stremioStep2T: "Play as usual",
+  stremioStep2B: "Every episode or movie you play in Stremio reaches Loopz.",
+  stremioStep3T: "Confirm with a tap",
+  stremioStep3B: "Your Loopz home asks: watched it? ✓ marks it and everything before it.",
 };
 
 export type WebWords = typeof AR;

@@ -8,6 +8,7 @@ import { isPlus } from "@/core/plan";
 import { GoogleButton } from "@/components/GoogleButton";
 import { buttonClass } from "@/components/ui/Button";
 import { StremioConnect } from "./StremioConnect";
+import { webWords } from "@/components/webWords";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function StremioPage() {
   const locale = await getLocale();
   const profile = user ? await getProfile() : null;
   const plus = isPlus(profile);
+  const w = webWords(locale);
   /* 🆕 هجرة ٢٣٧ — **العدُّ نفسُه الذي في التطبيق**: المجانيُّ يربط جهازاً واحداً، فالصفحةُ تفتح الربطَ لمن له خانة (أو Stremio
      مربوطٌ عنده أصلاً: رابطٌ جديدٌ استبدالٌ لا خانة). وقبل الهجرة الحكمُ القديم: بلس وحده. */
   const may = user ? await mayLinkDevice(user.id, "stremio") : null;
@@ -40,8 +42,13 @@ export default async function StremioPage() {
   const link = user && canLink ? await stremioLinkOf(user.id) : null;
 
   return (
-    <main className="max-w-md mx-auto px-4 py-10" dir={locale === "ar" ? "rtl" : "ltr"}>
-      <section className="rounded-card border border-border bg-surface p-6">
+    /* 🆕 **على الشاشة العريضة: البطاقةُ في الوسط وبجانبها «كيف يشتغل»** (أحمد ١٩ نوفمبر، الخيار «أ»): كانت بطاقةً صغيرةً ملتصقةً
+       بالأعلى وباقي الشاشة فارغ — **والربطُ بتطبيقٍ خارجيٍّ يحتاج أن يُفهم قبل أن يُضغط**. الخطواتُ الثلاث للحاسوب وحده؛ الجوّالُ كما هو */
+    <main
+      className="max-w-md mx-auto px-4 py-10 desk:flex desk:min-h-[calc(100dvh-4rem)] desk:max-w-5xl desk:items-center desk:justify-center desk:gap-14"
+      dir={locale === "ar" ? "rtl" : "ltr"}
+    >
+      <section className="rounded-card border border-border bg-surface p-6 desk:w-[26rem] desk:shrink-0">
         <div className="flex items-center gap-3">
           <Image src="/loopz-mark.png" alt="" width={52} height={52} className="rounded-control" />
           <div>
@@ -83,6 +90,33 @@ export default async function StremioPage() {
           <StremioConnect linked={!!link} locale={locale} />
         )}
       </section>
+
+      {/* الخطواتُ لمن يستطيع الربطَ الآن وحده: الزائرُ والمقفَلُ بطاقتُهما «ادخل» أو «اشترك»، و«من البطاقة يفتح Stremio» تَعِدهما
+          بما ليس أمامهما (المراجعة المستقلّة). و`desk:` لا `xl:` — غلافُ التطبيق على لوحٍ عريض لا يرى عمودَ الحاسوب */}
+      {canLink && (
+      <aside className="hidden desk:block desk:w-[26rem]">
+        <h2 className="text-22 font-bold">{w.stremioHowTitle}</h2>
+        <ol className="mt-5 space-y-5">
+          {(
+            [
+              [w.stremioStep1T, w.stremioStep1B],
+              [w.stremioStep2T, w.stremioStep2B],
+              [w.stremioStep3T, w.stremioStep3B],
+            ] as const
+          ).map(([title, body], i) => (
+            <li key={title} className="flex items-start gap-3.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-15 font-bold text-[color:var(--on-accent)] tabular-nums">
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <b className="block text-15">{title}</b>
+                <span className="mt-0.5 block text-14 leading-relaxed text-muted">{body}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </aside>
+      )}
     </main>
   );
 }

@@ -249,8 +249,12 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
   const toward = stats.qualified % 5;
   const shown = all ? invites : invites.slice(0, 6);
 
+  /* 🆕 **عمودان على الحاسوب** (أحمد ١٩ نوفمبر): التقدّمُ والرابطُ في عمود، والأرقامُ وآخرُ الدعوات وطريقةُ المكافآت في الثاني —
+     كان كلُّ شيءٍ عموداً واحداً بعرض اللوحة، **والأرقامُ وآخرُ الدعوات تحت الطَّيّ**. والترتيبُ في الشجرة كما هو، فالجوّالُ
+     يقرأ الصفحةَ بالتسلسل نفسِه حرفاً */
   return (
-    <>
+    <div className="space-y-4 desk:grid desk:grid-cols-2 desk:items-start desk:gap-5 desk:space-y-0">
+      <div className="space-y-4">
       {/* «N من ٥» — الدرجاتُ الخمس تُرسم لا تُشرح (نموذجه حرفاً) */}
       <div className={`${settingsCard} p-4`}>
         <p className="text-12 font-semibold uppercase tracking-wide text-muted">
@@ -297,6 +301,9 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
         )}
       </section>
 
+      </div>
+
+      <div className="space-y-4">
       {/* الأرقامُ الأربعة — انضمّوا · احتُسبوا · اشتركوا · مكافآتك */}
       <div className={`${settingsCard} grid grid-cols-4 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
         {(
@@ -441,7 +448,8 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
           {t.prtLearnMore}
         </Link>
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 
