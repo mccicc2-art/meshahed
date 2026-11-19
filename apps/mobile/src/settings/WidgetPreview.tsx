@@ -7,7 +7,8 @@ import { radius } from "../theme";
 import { type WidgetLayoutConfig, type WidgetPlatform, type WidgetSectionKey, type WidgetSize } from "@/core/widgetLayout";
 import type { WidgetLook } from "@/core/widgetLook";
 import { defaultV3 } from "@/core/widgetSlots";
-import { defaultV4Look, layoutV4, smallV4, type V4Tile, type WidgetV4Draw, type WidgetV4Look } from "@/core/widgetTiles";
+import { defaultV4Look, layoutV4, slotsFit, smallV4, type V4Tile, type WidgetV4Draw, type WidgetV4Look } from "@/core/widgetTiles";
+import type { WidgetV3 } from "@/core/widgetSlots";
 import type { WidgetFeed } from "@/core/contracts/widget";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { writtenFeed } from "../widget/feed";
@@ -29,6 +30,18 @@ const DESIGN: Record<WidgetPlatform, Record<WidgetSize, [number, number]>> = {
   android: { small: [160, 231], medium: [335, 178], large: [335, 372], xl: [335, 568] },
   ios: { small: [170, 170], medium: [364, 170], large: [364, 382], xl: [364, 594] },
 };
+
+/**
+ * 🆕 ١٩ نوفمبر — أيُّ الخانات تتّسع لما تعرضه المعاينةُ الآن: المقاسُ نفسُه (`designH` الحقيقيّ أو مقاسُ الحجم) وأرقامُ الشكل نفسُها —
+ * فما يبهت في المحرّر هو بالضبط ما لا يُرسم في المعاينة والودجت.
+ */
+export function previewSlotsFit(v3: WidgetV3, platform: WidgetPlatform, size: WidgetSize, designH?: number): boolean[] | undefined {
+  if (size === "small") return undefined;
+  const raw = (writtenFeed() as unknown as { w2?: { look4?: WidgetV4Look } } | null)?.w2?.look4;
+  const nums = (raw ?? defaultV4Look())[platform].nums;
+  const [, H0] = DESIGN[platform][size];
+  return slotsFit(v3, platform, nums.designW, designH && designH > 120 ? designH : H0, nums);
+}
 
 /** عنصرٌ في البطاقة كما يرسمه الودجت */
 interface Item {

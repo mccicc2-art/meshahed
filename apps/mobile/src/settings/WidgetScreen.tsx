@@ -13,7 +13,7 @@ import { Segmented } from "../library/ToolsSheet";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Chevron, RowsSkeleton } from "./ui";
 import { messageOf, useOpenWeb } from "./api";
-import { WidgetPreview } from "./WidgetPreview";
+import { WidgetPreview, previewSlotsFit } from "./WidgetPreview";
 import { SlotEditor, v3Summary } from "./WidgetSlots";
 import { defaultV3 } from "@/core/widgetSlots";
 import { refreshWidgets, ANDROID_WIDGET_LAYOUT, isAndroidWidgetLayout, emptySections, writtenFeed } from "../widget/feed";
@@ -395,7 +395,14 @@ export function WidgetScreen() {
 
       {/* 🆕 v3 — الخاناتُ للحجم المعروض فوق (المعاينةُ تتغيّر مع كلِّ لمسة) */}
       {/* 🆕 D-1575 — ترتيبٌ واحدٌ لكلِّ المقاسات: المحرِّرُ يعدّل خاناتِ الكبير جداً (والصغيرُ قسمَه) */}
-      <SlotEditor v3={cfg.v3 ?? defaultV3()} size={size === "small" ? "small" : "xl"} names={names} onChange={(v3) => edit((c) => ({ ...c, v3 }))} />
+      {/* 🆕 ١٩ نوفمبر — والخانةُ التي لا تتّسع لحجم المعاينة تبهت على «بدون» (أحمد «ب») */}
+      <SlotEditor
+        v3={cfg.v3 ?? defaultV3()}
+        size={size === "small" ? "small" : "xl"}
+        names={names}
+        fit={previewSlotsFit(cfg.v3 ?? defaultV3(), ios ? "ios" : "android", size, editingDesignH)}
+        onChange={(v3) => edit((c) => ({ ...c, v3 }))}
+      />
 
       <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{ios ? t.widgetIosHow : typeof editing === "number" ? t.widgetThisOnly : t.widgetAndroidHow}</Text>
     </SettingsScreen>

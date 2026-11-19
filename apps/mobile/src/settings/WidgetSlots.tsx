@@ -6,7 +6,7 @@ import { haptic } from "../haptics";
 import { Segmented } from "../library/ToolsSheet";
 import { Group, ExpandRow, OptionRow } from "./ui";
 import type { WidgetSectionKey, WidgetSize } from "@/core/widgetLayout";
-import { SLOT_SECTIONS, SMALL_SECTIONS, contOff, slotsFor, threeSlots, type SlotSection, type WidgetSlot, type WidgetV3 } from "@/core/widgetSlots";
+import { SLOT_SECTIONS, SMALL_SECTIONS, contOff, editorSlots, slotsFor, type SlotSection, type WidgetSlot, type WidgetV3 } from "@/core/widgetSlots";
 
 /**
  * ====== 🆕 محرّرُ الخانات (الودجت v3، خالد ٢٨ أكتوبر) ======
@@ -22,11 +22,17 @@ export function SlotEditor({
   v3,
   size,
   names,
+  fit,
   onChange: commit,
 }: {
   v3: WidgetV3;
   size: WidgetSize;
   names: Record<WidgetSectionKey, string>;
+  /**
+   * 🆕 ١٩ نوفمبر — أيُّ الخانات تُرسم في حجم هذا الودجت (`slotsFit`، بترتيب الخانات الظاهرة بلا «بدون»). ما لا يتّسع يبقى ظاهراً **باهتاً
+   * مقفلاً على «بدون»** ولا يحسب أقسامَه «مستخدمة» (أحمد «ب»: «واذا سار لها مساحة ينفك وتدخل مباشرة»). بلاه: كلُّها تتّسع.
+   */
+  fit?: boolean[];
   onChange: (next: WidgetV3) => void;
 }) {
   const { t } = useApp();
@@ -52,10 +58,16 @@ export function SlotEditor({
   /* 🆕 v4 — **ترتيبٌ واحدٌ لكلِّ المقاسات** (خاناتُ الكبير جداً)، والمتوسطُ يعرض الخانةَ الأولى وحدَها إن اختارها فوق */
   /* 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون» (أحمد: «يجبر الواحد يحط ثلاث صفوف او يقسم لاثنين»): ثلاثُ خاناتٍ لازمة بلا «بدون» */
   const off = contOff(v3);
-  const all: WidgetSlot[] = off ? threeSlots(v3) : v3.xl.slots;
+  const all: WidgetSlot[] = editorSlots(v3);
   const shown = off ? [0, 1, 2] : size === "medium" ? (v3.medium.top ? [] : [0]) : [0, 1];
+  /* موضعُ كلِّ خانةٍ في قائمة `fit` (تتخطّى «بدون» التي اختارها الشخص) — وما لا يتّسع لا مكانَ له: يبهت ولا يُحسب */
+  const noRoom = (i: number): boolean => {
+    if (!fit || all[i].mode === "off") return false;
+    const live = all.slice(0, i).filter((s) => s.mode !== "off").length;
+    return fit[live] === false;
+  };
   const used = (skip: string) =>
-    all.flatMap((s, i) => (s.mode === "off" ? [] : s.mode === "pair" ? [[`${i}:a`, s.a.s], [`${i}:b`, s.b.s]] : [[`${i}:a`, s.a.s]])).filter(([id]) => id !== skip).map(([, k]) => k as SlotSection);
+    all.flatMap((s, i) => (s.mode === "off" || noRoom(i) ? [] : s.mode === "pair" ? [[`${i}:a`, s.a.s], [`${i}:b`, s.b.s]] : [[`${i}:a`, s.a.s]])).filter(([id]) => id !== skip).map(([, k]) => k as SlotSection);
   const firstFree = (taken: SlotSection[]) => SLOT_SECTIONS.find((k) => !taken.includes(k)) ?? "act";
 
   const setSlot = (i: number, slot: WidgetSlot) => {
@@ -92,6 +104,21 @@ export function SlotEditor({
 
   const slotBox = (i: number) => {
     const slot = all[i];
+    /* 🆕 ١٩ نوفمبر — لا مكانَ لها في هذا الحجم: ظاهرةٌ باهتةٌ مقفلةٌ على «بدون» — وتنفكّ وحدَها حين يتّسع لها الودجت */
+    if (noRoom(i)) {
+      return (
+        <View key={i} style={{ gap: 6 }} pointerEvents="none">
+          <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{`${t.widgetSlotN(i + 1)} · ${t.widgetSlotNoRoom}`}</Text>
+          <View style={{ opacity: 0.4 }}>
+            <Group>
+              <View style={{ padding: 12 }}>
+                {seg([{ id: "full", label: t.widgetSlotFull }, { id: "pair", label: t.widgetSlotPair }, { id: "off", label: t.widgetSlotOff }], "off", () => {})}
+              </View>
+            </Group>
+          </View>
+        </View>
+      );
+    }
     const modes = [{ id: "full", label: t.widgetSlotFull }, { id: "pair", label: t.widgetSlotPair }, ...(i === 1 && !off ? [{ id: "off", label: t.widgetSlotOff }] : [])];
     return (
       <View key={i} style={{ gap: 6 }}>

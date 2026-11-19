@@ -116,6 +116,8 @@ export interface V4Layout {
   f: number;
   spare: number;
   dropped: SlotSection[][];
+  /** 🆕 ١٩ نوفمبر — مواضعُ الخانات المرسومة في قائمة الخانات الحيّة (بلا «بدون» ولا الفارغة) — للمحرّر: ما لا يُرسم يبهت */
+  shown?: number[];
 }
 
 /** الخاناتُ كما يراها هذا المقاس — النصُّ الفارغُ يجعل أخاه كاملاً، والخانةُ الفارغةُ تسقط */
@@ -138,7 +140,7 @@ function liveSlots(v3: WidgetV3, l3: boolean, empty: ReadonlySet<WidgetSectionKe
 
 type Row =
   | { k: "cont"; G: number; F: number; ex?: "up" | "slim"; posters: boolean; fill?: boolean }
-  | { k: "slot"; G: number; F: number; s: WidgetSlot; form: "tall" | "short" | "fill"; T: number; X?: number };
+  | { k: "slot"; G: number; F: number; s: WidgetSlot; form: "tall" | "short" | "fill"; T: number; X?: number; i: number };
 
 /**
  * يحسم ودجتاً بمقاس `W×H` بنقاط التصميم. `empty`: أقسامٌ بلا محتوى الآن.
@@ -169,21 +171,21 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
        والسينما المختارةُ غائبة، لقطةُ أحمد ٤×٢) */
     const hidden = off || !v3.medium.top ? slots.slice(1) : slots;
     for (const s of hidden) dropped.push(s.mode === "full" ? [s.a.s] : [s.a.s, s.b.s]);
-    if (off) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail });
-    else if (!v3.medium.top && slots[0]) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail });
+    if (off) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail, i: 0 });
+    else if (!v3.medium.top && slots[0]) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail, i: 0 });
     else if (posters) rows.push({ k: "cont", G: avail, F: 0, posters, fill: true });
     else if (upKey) rows.push({ k: "cont", G: contG, F: ios ? n.slim : n.upBig, ex: ios ? "slim" : "up", posters });
     else rows.push({ k: "cont", G: contG, F: 0, posters });
   } else {
     if (!off) rows.push({ k: "cont", G: contG, F: 0, posters });
-    for (const s of slots) {
+    for (const [i, s] of slots.entries()) {
       const isFull = s.mode === "full";
       const tall = isFull ? ((W - 2 * n.posterGap) / 3) * 1.5 : ((W - n.pairGap) / 2) * 1.5;
       /* القصيرُ بارتفاع البطاقة العريضة نفسِها — والقسمُ بلا صورةٍ عريضة يملؤه بثلاثة بوستراتٍ أقصر (تغطّي بالمطّ والقصّ) */
       const short = isFull ? (W - n.cardGap) / 2 / n.cardRatio : (W - n.pairGap) / 2 / n.cardRatio;
       const used = rows.reduce((a, r) => a + r.G + r.F + n.gap, 0);
-      if (used + tall <= avail / n.shrink) rows.push({ k: "slot", s, form: "tall", G: tall, F: 0, T: tall });
-      else if (used + short <= avail / n.shrink) rows.push({ k: "slot", s, form: "short", G: short, F: 0, T: tall });
+      if (used + tall <= avail / n.shrink) rows.push({ k: "slot", s, form: "tall", G: tall, F: 0, T: tall, i });
+      else if (used + short <= avail / n.shrink) rows.push({ k: "slot", s, form: "short", G: short, F: 0, T: tall, i });
       else dropped.push(s.mode === "full" ? [s.a.s] : [s.a.s, s.b.s]);
     }
   }
@@ -249,7 +251,7 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   });
   /* الخطُّ العموديُّ بين النصّين: عرضُه ١ (نقطة) */
   for (const t of tiles) if (t.k === "hair" && t.w === 0) t.w = 1;
-  return { tiles, f, spare: Math.max(0, spare), dropped };
+  return { tiles, f, spare: Math.max(0, spare), dropped, shown: rows.flatMap((r) => (r.k === "slot" ? [r.i] : [])) };
 }
 
 /**
@@ -390,4 +392,16 @@ export function sanitizeV4Look(raw: unknown): WidgetV4Look {
     }
   }
   return out;
+}
+
+/**
+ * 🆕 ١٩ نوفمبر — **أيُّ خانات الإعداد تتّسع لهذا المقاس** (أحمد: «المفترض طالما الشاشة صغيرة ومكفية لسلوت واحد … اللي تحت تكون نون»،
+ * واختار «ب» — تبقى ظاهرةً باهتةً على «بدون»، «واذا سار لها مساحة ينفك وتدخل مباشرة»). يُحسب بالمحرّك نفسِه وكأنّ الأقسامَ كلَّها
+ * فيها محتوى — فالجوابُ عن المقاس لا عن بيانات اللحظة. المدخلُ خاناتُ المحرّر (`slotsFor`) بترتيبها، والمخرجُ لكلٍّ منها: تُرسم أم لا.
+ */
+export function slotsFit(v3: WidgetV3, platform: WidgetPlatform, W: number, H: number, nums?: Partial<WidgetV4Nums>): boolean[] {
+  const all = slotsFor({ ...v3, edited: true }, "xl");
+  const l = layoutV4({ ...v3, edited: true }, platform, W, H, new Set(), nums);
+  const shown = new Set(l.shown ?? []);
+  return all.map((_, i) => shown.has(i));
 }

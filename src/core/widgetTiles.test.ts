@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { defaultV3, sanitizeV3, type WidgetV3 } from "./widgetSlots.ts";
-import { defaultV4Look, layoutV4, sanitizeV4Look, smallV4, type V4Tile } from "./widgetTiles.ts";
+import { defaultV4Look, layoutV4, sanitizeV4Look, slotsFit, smallV4, type V4Tile } from "./widgetTiles.ts";
 import { defaultWidgetConfigV3, resolveWidget } from "./widgetLayout.ts";
 
 /* المقاساتُ بنقاط التصميم — أرقامُ لوحات «المعمل — ٣٠ أكتوبر» */
@@ -210,4 +210,26 @@ test("sanitizeV3 يحفظ «بدون» والخانةَ الثالثة، وال�
   const l = A(568, s);
   const keys = cards(l.tiles).map((c) => c.slice(0, -1));
   assert.equal(new Set(keys).size, 4);
+});
+
+/* ───────── 🆕 ١٩ نوفمبر — الخاناتُ التي لا تتّسع للحجم تبهت في المحرّر (أحمد «ب») ───────── */
+test("slotsFit: بدون أكمل المشاهدة — ٤×٢ خانة، والكبير خانتان، والكبير جداً ثلاث", () => {
+  assert.deepEqual(slotsFit(OFF, "android", 335, 178), [true, false, false]);
+  assert.deepEqual(slotsFit(OFF, "android", 335, 372), [true, true, false]);
+  assert.deepEqual(slotsFit(OFF, "android", 335, 568), [true, true, true]);
+  assert.deepEqual(slotsFit(OFF, "ios", 364, 170), [true, false, false]);
+  assert.deepEqual(slotsFit(OFF, "ios", 364, 594), [true, true, true]);
+});
+
+test("slotsFit: مع أكمل المشاهدة — ٤×٢ لا خانة فيه، والكبير جداً خانتاه", () => {
+  const v = { ...defaultV3(), edited: true };
+  assert.deepEqual(slotsFit(v, "android", 335, 178), [false, false]);
+  assert.deepEqual(slotsFit(v, "android", 335, 568), [true, true]);
+});
+
+test("قسمٌ في خانةٍ لا تتّسع ثمّ يُختار في الأولى: حين تتّسع تدخل بأوّل قسمٍ حرّ — لا تكرار", () => {
+  const v: WidgetV3 = { ...OFF, xl: { ...OFF.xl, slots: [{ mode: "full", a: { s: "cine", v: "poster" }, b: { s: "act", v: "poster" } }, OFF.xl.slots[1]] } };
+  const keys = cards(A(568, v).tiles).map((c) => c.slice(0, -1));
+  assert.equal(keys.filter((k) => k === "cine").length, 3);
+  assert.equal(new Set(keys).size, 3);
 });

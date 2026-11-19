@@ -156,11 +156,19 @@ export function defaultSlot3(): WidgetSlot {
  * المكرّرُ يأخذ أوّلَ قسمٍ حرٍّ بالأولويّة. تُقرأ هكذا في كلِّ مكان (المحرّك، الرسّامُ الأقدم، المحرّر) فلا تختلف المعاينةُ عن الودجت.
  */
 export function threeSlots(v3: WidgetV3): [WidgetSlot, WidgetSlot, WidgetSlot] {
-  const raw = [v3.xl.slots[0], v3.xl.slots[1], v3.slot3 ?? defaultSlot3()];
+  const out = noRepeats([v3.xl.slots[0], v3.xl.slots[1], v3.slot3 ?? defaultSlot3()].map((s) => (s.mode === "off" ? { ...s, mode: "full" as const } : s)));
+  return [out[0], out[1], out[2]];
+}
+
+/**
+ * 🆕 ١٩ نوفمبر — **لا قسمَ مرّتين** عند القراءة: المحرّرُ لا يحسب «مستخدماً» إلّا ما يُرسم في حجم الودجت (أحمد: «لا يمنعني والشيء مو
+ * ظاهر اساسا»)، فقد يُختار في الخانة الأولى قسمٌ محفوظٌ في خانةٍ لا تتّسع الآن — وحين تتّسع «تنفك وتدخل مباشرة» بأوّل قسمٍ حرٍّ بالأولويّة.
+ */
+function noRepeats(raw: WidgetSlot[]): WidgetSlot[] {
   const taken: SlotSection[] = [];
   const free = () => SLOT_SECTIONS.find((k) => !taken.includes(k)) ?? "act";
-  const out = raw.map((s0): WidgetSlot => {
-    const s: WidgetSlot = s0.mode === "off" ? { ...s0, mode: "full" } : s0;
+  return raw.map((s): WidgetSlot => {
+    if (s.mode === "off") return s;
     let a = s.a;
     if (taken.includes(a.s)) a = part(free(), "poster");
     taken.push(a.s);
@@ -171,7 +179,11 @@ export function threeSlots(v3: WidgetV3): [WidgetSlot, WidgetSlot, WidgetSlot] {
     }
     return { mode: s.mode, a, b };
   });
-  return [out[0], out[1], out[2]];
+}
+
+/** 🆕 ١٩ نوفمبر — خاناتُ المحرّر كما تُقرأ في الودجت (بلا قسمٍ مكرّر): ثلاثٌ وأكملُ المشاهدة «بدون»، وإلّا اثنتان («بدون» الثانية تبقى) */
+export function editorSlots(v3: WidgetV3): WidgetSlot[] {
+  return contOff(v3) ? threeSlots(v3) : noRepeats([...v3.xl.slots]);
 }
 
 /** أقسامُ الخانة الظاهرة — منها يُعرف المستخدَمُ فلا يُختار مرّتين */
@@ -186,7 +198,7 @@ export function slotsFor(v3: WidgetV3, size: Exclude<WidgetSize, "small">): Widg
      وكلُّ حجمٍ يأخذ منها بالترتيب ما يتّسع (`resolveV3`). خاناتُ المتوسط والكبير القديمةُ تبقى محفوظةً ولا تُرسم */
   void size;
   if (contOff(v3)) return threeSlots(v3);
-  return v3.xl.slots.filter((s) => s.mode !== "off");
+  return noRepeats(v3.xl.slots.filter((s) => s.mode !== "off"));
 }
 
 /** القسمُ مستخدمٌ في الحجم نفسِه (لغير الموضع الذي يُعدَّل) — ورقةُ الاختيار ترسمه رماديّاً */
