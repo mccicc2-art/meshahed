@@ -127,7 +127,60 @@ async function traktGet<T>(path: string, token: string): Promise<T | null> {
   }
 }
 
+/** كم مسلسلاً فارغاً يُستكمل من السجلّ في الاستيراد الواحد */
+export const TRAKT_HISTORY_SHOW_CAP = 50;
+
+export interface TraktHistoryItem {
+  watched_at?: string;
+  type?: string;
+  episode?: { season?: number; number?: number };
+}
+
+/** حلقاتُ السجلّ ⇐ حلقاتُ المسلسل: المكرّرُ (إعادةُ مشاهدة) يُطوى على أحدث تاريخ، والصفوفُ بلا رقمٍ تُترك */
+export function episodesFromHistory(items: TraktHistoryItem[]): { s: number; e: number; at?: string }[] {
+  const out = new Map<string, { s: number; e: number; at?: string }>();
+  for (const it of items) {
+    if (it.type && it.type !== "episode") continue;
+    const s = it.episode?.season;
+    const e = it.episode?.number;
+    if (!Number.isInteger(s) || !Number.isInteger(e)) continue;
+    const k = `${s}-${e}`;
+    const prev = out.get(k);
+    if (!prev || (it.watched_at && (!prev.at || it.watched_at > prev.at))) {
+      out.set(k, { s: s as number, e: e as number, at: it.watched_at ?? prev?.at });
+    }
+  }
+  return [...out.values()];
+}
+
+/** سجلٌّ على صفحات: Trakt يقول عددَ الصفحات في `X-Pagination-Page-Count` — عشرُ صفحاتٍ حدٌّ أعلى (ألفُ مشاهدة) */
+async function traktHistoryAll(path: string, token: string, deadline: number): Promise<TraktHistoryItem[]> {
+  const out: TraktHistoryItem[] = [];
+  for (let page = 1; page <= 10 && Date.now() < deadline; page++) {
+    try {
+      const res = await fetch(`${API}${path}?page=${page}&limit=100`, {
+        headers: traktHeaders(token),
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        logFail("/sync/history/shows", res.status);
+        break;
+      }
+      const rows = (await res.json()) as TraktHistoryItem[];
+      out.push(...(Array.isArray(rows) ? rows : []));
+      const pages = Number(res.headers.get("x-pagination-page-count") ?? "1");
+      if (!Number.isFinite(pages) || page >= pages || !rows.length) break;
+    } catch (e) {
+      logFail("/sync/history/shows", e instanceof Error ? e.name : "error");
+      break;
+    }
+  }
+  return out;
+}
+
 interface TraktIds {
+  trakt?: number | null;
   tmdb?: number | null;
   tvdb?: number | null;
   imdb?: string | null;
@@ -162,6 +215,8 @@ export interface TraktHarvest {
   movies: { tmdbId: number; title: string; at?: string; rating?: number }[];
   /** ما لا معرّف TMDB له عند Trakt — يُعرض بالاسم بدل أن يُبتلع */
   unmatched: string[];
+  /** 🆕 R278 — مسلسلاتٌ وصلت من «المشاهَد» بلا حلقات فجُلبت حلقاتُها من سجلّ المشاهدة */
+  fromHistory: number;
 }
 
 /**
@@ -193,6 +248,7 @@ export async function harvestTrakt(token: string): Promise<TraktHarvest> {
   const unmatched: string[] = [];
 
   const shows: TraktHarvest["shows"] = [];
+  const emptyShows: { index: number; traktId: number }[] = [];
   for (const row of ws ?? []) {
     const tmdbId = row.show?.ids?.tmdb;
     const title = row.show?.title ?? "";
@@ -209,6 +265,7 @@ export async function harvestTrakt(token: string): Promise<TraktHarvest> {
         episodes.push({ s, e: ep.number, at: ep.last_watched_at ?? undefined });
       }
     }
+    if (!episodes.length && row.show?.ids?.trakt) emptyShows.push({ index: shows.length, traktId: row.show.ids.trakt });
     shows.push({ tmdbId, title, episodes, rating: showRating.get(tmdbId) });
   }
 
@@ -228,5 +285,25 @@ export async function harvestTrakt(token: string): Promise<TraktHarvest> {
     });
   }
 
-  return { shows, movies, unmatched };
+  /* 🆕 R278 — **«المشاهَد» ملخّصٌ و«السجلّ» أصل** (تجربة خالد ١٩ نوفمبر: «ONE PIECE» ٢٠٢٣ وصل من `/sync/watched/shows`
+     بلا موسمٍ ولا حلقة وهو شاهد الأولى، `noEps=1` في السجلّ). فالمسلسلُ الذي يصل فارغاً تُجلب حلقاتُه من سجلّ مشاهدته —
+     حلقةً حلقةً بتاريخها — بسقفٍ يحمي مهلةَ الردّ، والباقي يبقى فارغاً كما كان */
+  let fromHistory = 0;
+  /* موعدٌ نهائيّ لا عددُ طلبات: خمسون مسلسلاً بعشر صفحاتٍ قد تتجاوز مهلةَ الدالّة (٣٠٠ ث) مع الكتابة بعدها */
+  const deadline = Date.now() + 90_000;
+  const todo = emptyShows.slice(0, TRAKT_HISTORY_SHOW_CAP);
+  for (let i = 0; i < todo.length; i += 5) {
+    await Promise.all(
+      todo.slice(i, i + 5).map(async ({ index, traktId }) => {
+        const items = await traktHistoryAll(`/sync/history/shows/${traktId}`, token, deadline);
+        const eps = episodesFromHistory(items);
+        if (eps.length) {
+          shows[index].episodes = eps;
+          fromHistory++;
+        }
+      }),
+    );
+  }
+
+  return { shows, movies, unmatched, fromHistory };
 }

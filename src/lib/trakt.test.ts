@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { traktAuthorizeUrl, traktConfigured, traktHeaders, traktPkce } from "./trakt.ts";
+import { episodesFromHistory, traktAuthorizeUrl, traktConfigured, traktHeaders, traktPkce } from "./trakt.ts";
 
 test("PKCE verifier is 43–128 url-safe chars and the challenge is its S256", async () => {
   const { verifier, challenge } = await traktPkce();
@@ -49,4 +49,25 @@ test("every request carries Trakt's required headers; bearer only when a token i
   assert.equal(h["content-type"], "application/json");
   assert.equal("authorization" in h, false);
   assert.equal(traktHeaders("tok").authorization, "Bearer tok");
+});
+
+test("history → episodes: rewatches fold onto the latest date, non-episodes and bad rows are dropped", () => {
+  const eps = episodesFromHistory([
+    { type: "episode", watched_at: "2026-11-01T10:00:00.000Z", episode: { season: 1, number: 1 } },
+    { type: "episode", watched_at: "2026-11-18T10:00:00.000Z", episode: { season: 1, number: 1 } },
+    { type: "episode", watched_at: "2026-11-02T10:00:00.000Z", episode: { season: 1, number: 2 } },
+    { type: "movie", watched_at: "2026-11-02T10:00:00.000Z" },
+    { type: "episode", episode: { season: 1 } },
+  ]);
+  assert.deepEqual(
+    eps.sort((a, b) => a.e - b.e),
+    [
+      { s: 1, e: 1, at: "2026-11-18T10:00:00.000Z" },
+      { s: 1, e: 2, at: "2026-11-02T10:00:00.000Z" },
+    ],
+  );
+});
+
+test("history → episodes keeps a watch with no date (the import stamps it)", () => {
+  assert.deepEqual(episodesFromHistory([{ type: "episode", episode: { season: 0, number: 3 } }]), [{ s: 0, e: 3, at: undefined }]);
 });

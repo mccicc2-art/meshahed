@@ -222,7 +222,7 @@ export async function GET(request: Request) {
   const movieCount = new Set(movies.map((m) => m.tmdbId)).size;
   // أعدادٌ فقط — ما وصل من Trakt مقابل ما كُتب، كي يُرى أين يضيع شيء
   console.log(
-    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length}`,
+    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length} fromHistory=${harvest.fromHistory}`,
   );
 
   revalidatePath("/");
