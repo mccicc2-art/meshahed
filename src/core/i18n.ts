@@ -3287,7 +3287,7 @@ const ar = {
   widgetContOnly: "أكمل المشاهدة",
   widgetFixedTop: "ثابت فوق",
   widgetSlot: "الخانة",
-  widgetSlotN: (n: number) => `خانة ${n === 1 ? "١" : "٢"}`,
+  widgetSlotN: (n: number) => `خانة ${"١٢٣٤"[n - 1] ?? n}`,
   widgetSlotFull: "قسم كامل",
   widgetSlotPair: "نصّين",
   widgetSideA: "اليمين",

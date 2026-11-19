@@ -44,8 +44,14 @@ export interface WidgetV3 {
   medium: { top: boolean; slot: WidgetSlot };
   large: { slot: WidgetSlot };
   xl: { slots: [WidgetSlot, WidgetSlot]; line: SlotSection };
-  /** 🆕 v4 — أكملُ المشاهدة بطاقتان (الافتراضيّ) أو ٣ بوسترات (خالد ٠١:٤٩: «اكمل المشاهدة الثلاثي ممتاز اعتمده») */
-  cont?: "cards" | "posters";
+  /**
+   * 🆕 v4 — أكملُ المشاهدة بطاقتان (الافتراضيّ) أو ٣ بوسترات (خالد ٠١:٤٩: «اكمل المشاهدة الثلاثي ممتاز اعتمده»).
+   * 🆕 ١٩ نوفمبر — أو **«بدون»** (`off`، أحمد ١٩ نوفمبر: «ما يحتاج تصاميم جديده يجبر الواحد يحط ثلاث صفوف او يقسم لاثنين»): لا صفَّ له،
+   * فتصير الخاناتُ **ثلاثاً كلُّها لازمة** — قسمٌ كاملٌ أو نصّان، ولا «بدون» لأيٍّ منها — ويرسمها المحرّكُ بقواعده نفسِها بلا شكلٍ جديد.
+   */
+  cont?: "cards" | "posters" | "off";
+  /** 🆕 ١٩ نوفمبر — الخانةُ الثالثة: لا تُرسم إلّا وأكملُ المشاهدة «بدون»، ومحفوظةٌ حين يرجع فيرجع إليها كما كانت */
+  slot3?: WidgetSlot;
   /** 🆕 v4 — عدّله الشخص: قبلها يأخذ ٤×٣ افتراضيَّه (أصدقاؤك ٣ بوسترات) */
   edited?: boolean;
   /**
@@ -124,7 +130,8 @@ export function sanitizeV3(raw: unknown): WidgetV3 {
     xlSlots[1].mode === "full" && xlSlots[1].a.s === "friends" && xlSlots[1].a.v === "list" && xlLine === "act";
   return {
     small: typeof r.small === "string" && (SMALL_SECTIONS as readonly string[]).includes(r.small) ? (r.small as SmallSection) : base.small,
-    ...(r.cont === "posters" ? { cont: "posters" as const } : {}),
+    ...(r.cont === "posters" ? { cont: "posters" as const } : r.cont === "off" ? { cont: "off" as const } : {}),
+    ...(r.slot3 && typeof r.slot3 === "object" ? { slot3: cleanSlot(r.slot3, defaultSlot3()) } : {}),
     ...(r.edited === true ? { edited: true } : {}),
     medium: { top: typeof med.top === "boolean" ? med.top : base.medium.top, slot: cleanSlot(med.slot, base.medium.slot) },
     large: { slot: cleanSlot(lg.slot, base.large.slot) },
@@ -134,6 +141,37 @@ export function sanitizeV3(raw: unknown): WidgetV3 {
       line: oldXl ? base.xl.line : xlLine,
     },
   };
+}
+
+/** 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون»: لا صفَّ له، والخاناتُ ثلاثٌ لازمة */
+export const contOff = (v3: WidgetV3): boolean => v3.cont === "off";
+
+/** 🆕 ١٩ نوفمبر — الخانةُ الثالثةُ قبل أن يختارها الشخص: «للمشاهدة» كاملاً (الأقسامُ المكرّرةُ تُصلَح في `threeSlots`) */
+export function defaultSlot3(): WidgetSlot {
+  return { mode: "full", a: part("tw", "poster"), b: part("act", "poster") };
+}
+
+/**
+ * 🆕 ١٩ نوفمبر — **الخاناتُ الثلاث** وأكملُ المشاهدة «بدون»: كلُّها لازمة («بدون» المحفوظةُ للثانية تصير قسماً كاملاً)، ولا قسمَ مرّتين —
+ * المكرّرُ يأخذ أوّلَ قسمٍ حرٍّ بالأولويّة. تُقرأ هكذا في كلِّ مكان (المحرّك، الرسّامُ الأقدم، المحرّر) فلا تختلف المعاينةُ عن الودجت.
+ */
+export function threeSlots(v3: WidgetV3): [WidgetSlot, WidgetSlot, WidgetSlot] {
+  const raw = [v3.xl.slots[0], v3.xl.slots[1], v3.slot3 ?? defaultSlot3()];
+  const taken: SlotSection[] = [];
+  const free = () => SLOT_SECTIONS.find((k) => !taken.includes(k)) ?? "act";
+  const out = raw.map((s0): WidgetSlot => {
+    const s: WidgetSlot = s0.mode === "off" ? { ...s0, mode: "full" } : s0;
+    let a = s.a;
+    if (taken.includes(a.s)) a = part(free(), "poster");
+    taken.push(a.s);
+    let b = s.b;
+    if (s.mode === "pair") {
+      if (taken.includes(b.s)) b = part(free(), "poster");
+      taken.push(b.s);
+    }
+    return { mode: s.mode, a, b };
+  });
+  return [out[0], out[1], out[2]];
 }
 
 /** أقسامُ الخانة الظاهرة — منها يُعرف المستخدَمُ فلا يُختار مرّتين */
@@ -147,6 +185,7 @@ export function slotsFor(v3: WidgetV3, size: Exclude<WidgetSize, "small">): Widg
   /* 🆕 D-1575 — **ترتيبٌ واحدٌ لكلِّ المقاسات** (خالد ١٩:٣٦: «الترتيب اللي سويته لاكبر وحده ابغاه يطبق عالباقية»): خاناتُ الكبير جداً،
      وكلُّ حجمٍ يأخذ منها بالترتيب ما يتّسع (`resolveV3`). خاناتُ المتوسط والكبير القديمةُ تبقى محفوظةً ولا تُرسم */
   void size;
+  if (contOff(v3)) return threeSlots(v3);
   return v3.xl.slots.filter((s) => s.mode !== "off");
 }
 
@@ -253,7 +292,8 @@ export function resolveV3(
     return true;
   };
 
-  const top = size !== "medium" || v3.medium.top;
+  /* 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون»: لا صفَّ له — إلّا إن فرغت الخاناتُ كلُّها الآن، فيرجع بدل ودجتٍ فارغ */
+  const top = contOff(v3) ? slots.length === 0 : size !== "medium" || v3.medium.top;
   if (top) {
     const upLine = !upMoved;
     /* البطاقتان بنسبة ١٦:٩ بلا زوم (الرسّامُ يحسبها من عرضها الحقيقيّ) — وتحتهما صفُّ «القادم» المختصر ببوستره (الخطّة ٤×٢) */

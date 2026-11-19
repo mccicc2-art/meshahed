@@ -132,3 +132,14 @@ test("الإعدادُ المحفوظُ بالافتراضي القديم يصي
   const mine = { xl: { slots: [{ mode: "pair", a: { s: "tw", v: "poster" }, b: { s: "tonight", v: "poster" } }, { mode: "full", a: { s: "up", v: "list" }, b: { s: "act", v: "list" } }], line: "act" } };
   assert.equal(sanitizeV3(mine).xl.slots[1].a.s, "up");
 });
+
+test("🆕 ١٩ نوفمبر — الرسّامُ الأقدم (أندرويد ١١ وما قبله): أكملُ المشاهدة «بدون» ⇒ لا صفَّ له، والخاناتُ الثلاثُ بالترتيب", () => {
+  const v: WidgetV3 = { ...defaultV3(), cont: "off", slot3: { mode: "full", a: { s: "tw", v: "poster" }, b: { s: "act", v: "poster" } } };
+  const got = names(resolveV3(v, "xl", 590, rs()).rows);
+  assert.ok(!got.some((x) => x.startsWith("cont")));
+  assert.ok(got[0].startsWith("pair:friends+tonight"));
+  assert.ok(usedKeys(v, "xl").includes("tw"));
+  /* والخاناتُ فارغةٌ كلُّها الآن ⇒ يرجع أكملُ المشاهدة */
+  const empty = names(resolveV3(v, "xl", 590, rs(), new Set(["friends", "tonight", "cine", "tw"] as never[])).rows);
+  assert.ok(empty[0].startsWith("cont"));
+});

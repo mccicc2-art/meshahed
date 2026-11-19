@@ -6,7 +6,7 @@ import { haptic } from "../haptics";
 import { Segmented } from "../library/ToolsSheet";
 import { Group, ExpandRow, OptionRow } from "./ui";
 import type { WidgetSectionKey, WidgetSize } from "@/core/widgetLayout";
-import { SLOT_SECTIONS, SMALL_SECTIONS, slotsFor, type SlotSection, type WidgetSlot, type WidgetV3 } from "@/core/widgetSlots";
+import { SLOT_SECTIONS, SMALL_SECTIONS, contOff, slotsFor, threeSlots, type SlotSection, type WidgetSlot, type WidgetV3 } from "@/core/widgetSlots";
 
 /**
  * ====== 🆕 محرّرُ الخانات (الودجت v3، خالد ٢٨ أكتوبر) ======
@@ -50,16 +50,19 @@ export function SlotEditor({
   }
 
   /* 🆕 v4 — **ترتيبٌ واحدٌ لكلِّ المقاسات** (خاناتُ الكبير جداً)، والمتوسطُ يعرض الخانةَ الأولى وحدَها إن اختارها فوق */
-  const all = v3.xl.slots;
-  const shown = size === "medium" ? (v3.medium.top ? [] : [0]) : [0, 1];
+  /* 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون» (أحمد: «يجبر الواحد يحط ثلاث صفوف او يقسم لاثنين»): ثلاثُ خاناتٍ لازمة بلا «بدون» */
+  const off = contOff(v3);
+  const all: WidgetSlot[] = off ? threeSlots(v3) : v3.xl.slots;
+  const shown = off ? [0, 1, 2] : size === "medium" ? (v3.medium.top ? [] : [0]) : [0, 1];
   const used = (skip: string) =>
     all.flatMap((s, i) => (s.mode === "off" ? [] : s.mode === "pair" ? [[`${i}:a`, s.a.s], [`${i}:b`, s.b.s]] : [[`${i}:a`, s.a.s]])).filter(([id]) => id !== skip).map(([, k]) => k as SlotSection);
   const firstFree = (taken: SlotSection[]) => SLOT_SECTIONS.find((k) => !taken.includes(k)) ?? "act";
 
   const setSlot = (i: number, slot: WidgetSlot) => {
-    const next: [WidgetSlot, WidgetSlot] = [...all];
+    const next = [...all];
     next[i] = slot;
-    onChange({ ...v3, xl: { ...v3.xl, slots: next } });
+    /* الثالثةُ تُحفظ وحدَها (`slot3`) — والأوليان في مكانهما، فالرجوعُ إلى أكمل المشاهدة يجدهما */
+    onChange({ ...v3, xl: { ...v3.xl, slots: [next[0], next[1]] }, ...(next[2] ? { slot3: next[2] } : {}) });
   };
 
   /** اختيارُ قسمٍ في مكانٍ واحد: المستخدمُ في مكانٍ آخر رماديّ — بالأولويّة (خالد ٠٢:٠٤) */
@@ -89,7 +92,7 @@ export function SlotEditor({
 
   const slotBox = (i: number) => {
     const slot = all[i];
-    const modes = [{ id: "full", label: t.widgetSlotFull }, { id: "pair", label: t.widgetSlotPair }, ...(i === 1 ? [{ id: "off", label: t.widgetSlotOff }] : [])];
+    const modes = [{ id: "full", label: t.widgetSlotFull }, { id: "pair", label: t.widgetSlotPair }, ...(i === 1 && !off ? [{ id: "off", label: t.widgetSlotOff }] : [])];
     return (
       <View key={i} style={{ gap: 6 }}>
         <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{shown.length > 1 ? t.widgetSlotN(i + 1) : t.widgetSlot}</Text>
@@ -130,7 +133,11 @@ export function SlotEditor({
           <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{t.widgetContShape}</Text>
           <Group>
             <View style={{ padding: 12 }}>
-              {seg([{ id: "cards", label: t.widgetContCards }, { id: "posters", label: t.widgetContPosters }], v3.cont === "posters" ? "posters" : "cards", (v) => onChange({ ...v3, cont: v === "posters" ? "posters" : "cards" }))}
+              {seg(
+                [{ id: "cards", label: t.widgetContCards }, { id: "posters", label: t.widgetContPosters }, { id: "off", label: t.widgetSlotOff }],
+                v3.cont === "posters" ? "posters" : v3.cont === "off" ? "off" : "cards",
+                (v) => onChange({ ...v3, cont: v === "posters" ? "posters" : v === "off" ? "off" : "cards" }),
+              )}
             </View>
           </Group>
         </View>
@@ -145,7 +152,8 @@ export function v3Summary(v3: WidgetV3, size: WidgetSize, names: Record<WidgetSe
   if (size === "small") return names[v3.small];
   const slots = slotsFor(v3, size);
   const parts: string[] = [];
-  if (size !== "medium" || v3.medium.top) parts.push(names.cont);
-  for (const s of size === "medium" && v3.medium.top ? [] : size === "medium" ? slots.slice(0, 1) : slots) parts.push(s.mode === "pair" ? `${names[s.a.s]} + ${names[s.b.s]}` : names[s.a.s]);
+  const off = contOff(v3);
+  if (!off && (size !== "medium" || v3.medium.top)) parts.push(names.cont);
+  for (const s of size === "medium" && v3.medium.top && !off ? [] : size === "medium" ? slots.slice(0, 1) : slots) parts.push(s.mode === "pair" ? `${names[s.a.s]} + ${names[s.b.s]}` : names[s.a.s]);
   return parts.join(" · ");
 }

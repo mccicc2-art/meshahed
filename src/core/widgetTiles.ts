@@ -17,7 +17,7 @@
  */
 
 import type { WidgetPlatform, WidgetSectionKey } from "./widgetLayout.ts";
-import type { SlotSection, WidgetSlot, WidgetV3 } from "./widgetSlots.ts";
+import { contOff, slotsFor, type SlotSection, type WidgetSlot, type WidgetV3 } from "./widgetSlots.ts";
 
 /** أرقامُ المحرّك — تسافر في `look.v4` فتتعدّل من الخادم بلا بناء */
 export interface WidgetV4Nums {
@@ -121,7 +121,8 @@ export interface V4Layout {
 /** الخاناتُ كما يراها هذا المقاس — النصُّ الفارغُ يجعل أخاه كاملاً، والخانةُ الفارغةُ تسقط */
 function liveSlots(v3: WidgetV3, l3: boolean, empty: ReadonlySet<WidgetSectionKey>): WidgetSlot[] {
   /* ٤×٣ وإعدادُه لم يُعدَّل: تحت أكمل المشاهدة أصدقاؤك ٣ بوسترات (خالد ٠١:٣٦) */
-  const base: WidgetSlot[] = l3 && !v3.edited ? [{ mode: "full", a: { s: "friends", v: "poster" }, b: { s: "tonight", v: "poster" } }] : [...v3.xl.slots];
+  /* 🆕 ١٩ نوفمبر — وأكملُ المشاهدة «بدون»: الخاناتُ الثلاثُ اللازمة (`slotsFor`) */
+  const base: WidgetSlot[] = l3 && !v3.edited && !contOff(v3) ? [{ mode: "full", a: { s: "friends", v: "poster" }, b: { s: "tonight", v: "poster" } }] : slotsFor(v3, "xl");
   return base
     .filter((s) => s.mode !== "off")
     .map((s): WidgetSlot | null => {
@@ -158,13 +159,23 @@ export function layoutV4(v3: WidgetV3, platform: WidgetPlatform, W0: number, H: 
   const rows: Row[] = [];
   const dropped: SlotSection[][] = [];
 
+  /*
+   * 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون» (أحمد: «يجبر الواحد يحط ثلاث صفوف او يقسم لاثنين»): لا صفَّ له، والخاناتُ تأخذ مكانه
+   * بالقواعد نفسِها — المتوسطُ الخانةُ الأولى تملؤه، والأكبرُ ما يتّسع منها بالطويل ثمّ القصير. فرغت كلُّها الآن ⇒ يرجع أكملُ المشاهدة.
+   */
+  const off = contOff(v3) && slots.length > 0;
   if (medium) {
-    if (!v3.medium.top && slots[0]) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail });
+    /* 🆕 ١٩ نوفمبر — المتوسطُ وأكملُ المشاهدة فيه: الخاناتُ لا تُرسم — تُذكر في «لا يتّسع» (كانت المعاينةُ تقول «كل الأقسام تتّسع»
+       والسينما المختارةُ غائبة، لقطةُ أحمد ٤×٢) */
+    const hidden = off || !v3.medium.top ? slots.slice(1) : slots;
+    for (const s of hidden) dropped.push(s.mode === "full" ? [s.a.s] : [s.a.s, s.b.s]);
+    if (off) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail });
+    else if (!v3.medium.top && slots[0]) rows.push({ k: "slot", s: slots[0], form: "fill", G: avail, F: 0, T: avail });
     else if (posters) rows.push({ k: "cont", G: avail, F: 0, posters, fill: true });
     else if (upKey) rows.push({ k: "cont", G: contG, F: ios ? n.slim : n.upBig, ex: ios ? "slim" : "up", posters });
     else rows.push({ k: "cont", G: contG, F: 0, posters });
   } else {
-    rows.push({ k: "cont", G: contG, F: 0, posters });
+    if (!off) rows.push({ k: "cont", G: contG, F: 0, posters });
     for (const s of slots) {
       const isFull = s.mode === "full";
       const tall = isFull ? ((W - 2 * n.posterGap) / 3) * 1.5 : ((W - n.pairGap) / 2) * 1.5;

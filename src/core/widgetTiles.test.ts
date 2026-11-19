@@ -158,3 +158,56 @@ test("مخصّص: أكمل المشاهدة فوق ثمّ الخانتان بأ�
   assert.ok(xl.tiles.every((t) => t.k !== "card" || t.s.startsWith("slot")));
   assert.equal(smallV4({ ...defaultV3(), custom: { top: false, count: 1 } }).s, "slot1");
 });
+
+/* ───────── 🆕 ١٩ نوفمبر — أكملُ المشاهدة «بدون»: ثلاثُ خاناتٍ لازمة (أحمد: «يجبر الواحد يحط ثلاث صفوف او يقسم لاثنين») ───────── */
+const OFF: WidgetV3 = {
+  ...defaultV3(),
+  edited: true,
+  cont: "off",
+  /* الثانيةُ «بدون» محفوظة: مع «بدون» لأكمل المشاهدة تصير قسماً كاملاً */
+  xl: { ...defaultV3().xl, slots: [defaultV3().xl.slots[0], { ...defaultV3().xl.slots[1], mode: "off" }] },
+  slot3: { mode: "full", a: { s: "tw", v: "poster" }, b: { s: "act", v: "poster" } },
+};
+
+test("بدون أكمل المشاهدة: لا بطاقةَ له في أيِّ حجم، والمتوسطُ الخانةُ الأولى تملؤه وما بعدها «لا يتّسع»", () => {
+  for (const l of [A(178, OFF), A(290, OFF), A(372, OFF), A(568, OFF), I(170, OFF), I(382, OFF), I(594, OFF)]) {
+    assert.ok(!cards(l.tiles).some((c) => c.startsWith("cont")));
+  }
+  const m = A(178, OFF);
+  assert.deepEqual(cards(m.tiles), ["friendsp", "tonightp"]);
+  assert.deepEqual(m.dropped, [["cine"], ["tw"]]);
+});
+
+test("بدون أكمل المشاهدة: الكبيرُ جداً يرسم الخاناتِ الثلاث، والثانيةُ لا تكون «بدون» — بلا فراغٍ فوق وتحت", () => {
+  for (const l of [A(568, OFF), I(594, OFF)]) {
+    assert.deepEqual([...new Set(cards(l.tiles))], ["friendsp", "tonightp", "cinep", "twp"]);
+    assert.deepEqual(l.dropped, []);
+    assert.ok(l.spare < 1);
+  }
+});
+
+test("بدون أكمل المشاهدة: الكبيرُ خانتان والثالثةُ «لا يتّسع»", () => {
+  const l = A(372, OFF);
+  assert.deepEqual([...new Set(cards(l.tiles))].slice(0, 2), ["friendsp", "tonightp"]);
+  assert.ok(cards(l.tiles).some((c) => c.startsWith("cine")));
+  assert.deepEqual(l.dropped, [["tw"]]);
+});
+
+test("بدون أكمل المشاهدة والخاناتُ كلُّها فارغةٌ الآن: يرجع أكملُ المشاهدة بدل ودجتٍ فارغ", () => {
+  const l = A(372, OFF, ["friends", "tonight", "cine", "tw"]);
+  assert.deepEqual(cards(l.tiles), ["contb", "contb"]);
+});
+
+test("المتوسطُ وأكملُ المشاهدة فيه: الخاناتُ المختارةُ تُذكر «لا يتّسع» لا «كلُّها تتّسع»", () => {
+  const v = { ...defaultV3(), edited: true, cont: "posters" as const };
+  assert.deepEqual(A(178, v).dropped, [["friends", "tonight"], ["cine"]]);
+});
+
+test("sanitizeV3 يحفظ «بدون» والخانةَ الثالثة، والقسمُ المكرّرُ فيها يُصلَح عند القراءة", () => {
+  const s = sanitizeV3(JSON.parse(JSON.stringify({ ...OFF, slot3: { mode: "full", a: { s: "friends", v: "poster" }, b: { s: "act", v: "poster" } } })));
+  assert.equal(s.cont, "off");
+  /* أصدقاؤك في الأولى ⇒ الثالثةُ تأخذ أوّلَ قسمٍ حرٍّ بالأولويّة */
+  const l = A(568, s);
+  const keys = cards(l.tiles).map((c) => c.slice(0, -1));
+  assert.equal(new Set(keys).size, 4);
+});
