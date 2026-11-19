@@ -37,7 +37,10 @@ export function privacyDoc(locale: Locale): LegalDoc {
      قائمٌ في الآيفون (U4)، و«تطبيق أندرويد» للإشعارات والآيفونُ يستقبلها، ولا تذكر الاشتراكات وقد صارت تُباع. **ومراجعُ أبل
      يقرأ هذه الصفحة سطراً سطراً**: سياسةٌ تخالف ما يراه في التطبيق سببُ رفضٍ (5.1.1) — **وقبله: وعدٌ لم يعد صادقاً (D-221).** */
 
-    updated: ar ? "آخر تحديث: ١٠ نوفمبر ٢٠٢٦" : "Last updated: 10 November 2026",
+  /* 🆕 R279 (١٩ نوفمبر ٢٠٢٦) — **استيرادُ Trakt طرفٌ جديد نقرأ منه**: الفقرةُ كانت تقول «لا نربط حسابك في أي خدمةٍ أخرى»
+     وصار الربطُ بـTrakt قائماً (R275–R278) — وعدٌ لم يعد صادقاً (D-221). وTrakt يشترط جملتَه قبل اعتماد التطبيق للجميع،
+     ومراجعُهم يقرؤها هنا — فتقدّم التاريخ */
+    updated: ar ? "آخر تحديث: ١٩ نوفمبر ٢٠٢٦" : "Last updated: 19 November 2026",
     sections: [
       { title: ar ? "الخلاصة" : "The short version",
         body: ar
@@ -67,8 +70,8 @@ export function privacyDoc(locale: Locale): LegalDoc {
         : "Three, and no more: a Supabase session cookie that keeps you signed in, plus a language cookie and a theme cookie so the first paint is already in your language and colours. No advertising cookies, no third-party tracking cookies." },
       { title: ar ? "استيراد مكتبتك" : "Importing your library",
         body: ar
-        ? "ملف التصدير الذي تختاره — من Letterboxd أو IMDb أو MyAnimeList أو Simkl أو TV Time — يُقرأ داخل جهازك ولا يُرفع إلى أي خادم. ولا نربط حسابك في أي خدمةٍ أخرى ولا نطلب إذناً منها: ما يغادر جهازك هو أسماء الأعمال فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء."
-        : "The export file you choose — from Letterboxd, IMDb, MyAnimeList, Simkl or TV Time — is read on your device and never uploaded to any server. We do not link your account on any other service and we ask no permission from one: all that leaves your device is title names, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all." },
+        ? "ملف التصدير الذي تختاره — من Letterboxd أو IMDb أو MyAnimeList أو Simkl أو TV Time — يُقرأ داخل جهازك ولا يُرفع إلى أي خادم: ما يغادر جهازك هو أسماء الأعمال فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء. أمّا Trakt فتربطه أنت بإذنٍ منه: نقرأ مرّةً واحدة ما شاهدته من مسلسلاتٍ وأفلام وسجلَّ مشاهدتك وتقييماتك، ونكتبها في مكتبتك هنا دون أن نغيّر ما سجّلته في Loopz، ثم نلغي الإذن فوراً. لا نكتب في حسابك على Trakt شيئاً، ولا نحفظ مفتاح الدخول."
+        : "The export file you choose — from Letterboxd, IMDb, MyAnimeList, Simkl or TV Time — is read on your device and never uploaded to any server: all that leaves your device is title names, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all. Trakt is different: you connect it and grant permission there. We read, once, the shows and films you watched, your watch history and your ratings, add them to your library here without changing anything you already recorded in Loopz, and revoke the permission straight away. We never write to your Trakt account and we do not keep the access token." },
       /* 🆕 الربط (هجرات ٢٢٢ · ٢٣٥ · ٢٣٦ · ٢٣٧): طرفٌ جديدٌ يرسل إلينا — فذُكر ما يصلنا وما يُحفظ، وتقدّم التاريخ */
       { title: ar ? "ربط تطبيقاتك" : "Linking your apps",
         body: ar
@@ -100,9 +103,10 @@ export function privacyDoc(locale: Locale): LegalDoc {
 
     ],
     contact: LEGAL_CONTACT,
+    /* جملةُ Trakt بنصِّها الإنجليزيّ في النسختين: مراجعُهم يفتح الصفحة بلا كوكي لغة فقد يرى العربيّة */
     note: ar
-      ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB."
-      : "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+      ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB. ويستخدم Loopz خدمة Trakt، وهو غير معتمَد ولا موثَّق من Trakt (Loopz uses Trakt but is not endorsed or certified by Trakt.)"
+      : "This product uses the TMDB API but is not endorsed or certified by TMDB. Loopz uses Trakt but is not endorsed or certified by Trakt.",
   };
 }
 

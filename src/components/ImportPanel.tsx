@@ -349,7 +349,10 @@ export function ImportPanel({
           ))}
           <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface p-4">
             <b className="text-15 font-bold">{t.importTraktTitle}</b>
-            <p className="flex-1 text-12 leading-relaxed text-muted">{traktReady ? w.traktHint : w.traktOff}</p>
+            <div className="flex-1">
+              <p className="text-12 leading-relaxed text-muted">{traktReady ? w.traktHint : w.traktOff}</p>
+              {traktReady && <p className="mt-2 text-[11px] leading-relaxed text-muted">{w.traktNotice}</p>}
+            </div>
             {traktReady ? (
               <a href="/api/trakt/start" className={buttonClass({ variant: "primary", size: "md", className: "w-full justify-center" })}>
                 <Icon name="share" size={16} />
@@ -454,6 +457,7 @@ export function ImportPanel({
           <p className="text-12 text-muted leading-relaxed mb-3">
             {traktReady ? w.traktHint : w.traktOff}
           </p>
+          {traktReady && <p className="-mt-1 mb-3 text-[11px] leading-relaxed text-muted">{w.traktNotice}</p>}
 
           {traktReady ? (
             /* رابطٌ لا زرّ فعل: الوجهة خارجية ويجب أن تُرى في شريط العنوان

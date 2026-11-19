@@ -531,13 +531,14 @@ const ar = {
   importTraktTitle: "Trakt",
   importTraktHint: "اربط حسابك في Trakt ونجلب مشاهداتك وتقييماتك مباشرةً.",
   importTraktConnect: "الربط مع Trakt",
-  /* D-155: «بعد» تَعِدُ بما لن يأتي — تراكت مُسقَطٌ بقرار لا مؤجَّلٌ بانتظار
-     (D-154). فالنصّ يقول الحال، والسببَ، والطريقَ الذي يعمل فعلاً. */
+  /* D-155: النصّ يقول الحال والطريقَ الذي يعمل فعلاً. 🆕 R279 (أحمد ١٩ نوفمبر: «صحح النص فقط») — حجّةُ «VIP» سقطت:
+     تطبيقاتُ Trakt الجديدة مجّانيّة بـPKCE، والربطُ يُفكّ بعد الاستيراد فلا يأخذ مكانَ Plex أو Infuse (R274–R278).
+     والربطُ قائمٌ في الموقع؛ صفُّ التطبيق يدلّ عليه إلى أن يُبنى فيه. */
   importTraktOff: "ربط Trakt غير متاح على هذا الموقع.",
   importTraktWhy:
-    "تراكت لا يتيح هذا الربط مجاناً: إنشاء التطبيق يتطلّب اشتراك VIP، والحساب المجاني يسمح بتطبيقٍ خارجيّ واحد متصل فقط — فمن يستعمل Plex أو Infuse كان سيخسر ربطه الحالي ليصلنا.",
+    "ربط Trakt متاح من الموقع: افتح loopztv.com ← الإعدادات ← الاستيراد والتصدير، ونجلب مشاهداتك وتقييماتك مرة وحدة.",
   importTraktAlt:
-    "وإن كنت مشتركاً في VIP: صدّر بياناتك من تراكت وارفع الملف في بطاقة Simkl أعلاه — قارئُها يقبل أي تصديرٍ يحمل معرّفات TMDB.",
+    "وإن كان عندك ملف تصدير من تراكت: ارفعه في بطاقة Simkl أعلاه — قارئُها يقبل أي تصديرٍ يحمل معرّفات TMDB.",
   importTraktDenied: "أُلغي الربط.",
   importTraktFailed: "تعذّر الاتصال بـTrakt. حاول مرة أخرى.",
   importFileHint: "صيغ مقبولة: zip أو csv أو json.",
@@ -3801,9 +3802,9 @@ const en: Dict = {
   importTraktConnect: "Connect Trakt",
   importTraktOff: "Trakt linking is not available on this site.",
   importTraktWhy:
-    "Trakt does not offer this linking for free: creating the app requires a VIP subscription, and a free account allows only one connected third-party app — anyone using Plex or Infuse would have to give up their existing connection to reach us.",
+    "Trakt linking is available on the website: open loopztv.com → Settings → Import & export, and we bring in your watches and ratings once.",
   importTraktAlt:
-    "If you are a VIP subscriber: export your data from Trakt and upload the file in the Simkl card above — its reader accepts any export carrying TMDB ids.",
+    "If you have an export file from Trakt: upload it in the Simkl card above — its reader accepts any export carrying TMDB ids.",
   importTraktDenied: "Linking was cancelled.",
   importTraktFailed: "Couldn't reach Trakt. Please try again.",
   importFileHint: "Accepted: zip, csv or json.",
