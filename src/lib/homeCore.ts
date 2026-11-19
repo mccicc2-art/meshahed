@@ -49,6 +49,7 @@ import { skipKeysForTv } from "@/core/skipProgress";
 import { railGuard } from "@/lib/topChart";
 import { nextUnwatchedEpisode, airedEpisodeCount, percentOf } from "@/core/progress";
 import { whenLabel } from "@/core/when";
+import { countNoun } from "@/core/countNoun";
 import { watchStateOf } from "@/core/libraryStatus";
 import { localizeFollows, localizeRows } from "@/lib/localize";
 import { curatedName } from "@/core/universes";
@@ -367,6 +368,8 @@ export async function buildHomeHeader({
      تعديل** (القاعدة ٦). **والقيمةُ والوجهةُ تبقيان هنا**: هما بيانُ
      الصفحة لا وصفُ الخانة. */
   const statMeta = headerStatMeta(t);
+  /* 🆕 T469 — **اسمُ المعدود يتبع العدد** في «مسلسلات · أفلام · تقييماتي» (`countNoun`): «65 مسلسلات» كانت تُقصّ في
+     ثلث البطاقة، والعربيّةُ تقول بعد الأحد عشر مفرداً. **والاسمُ من الخادم**، فالتطبيقُ يتبعه بلا تحديث. */
   /* 🆕 T375 — **كلُّ خانةٍ تفتح مكانَها** (تسجيلُ أحمد ١٠ نوفمبر: «أفلام» فتحت المكتبةَ على «مسلسلات»). كانت أربعُ
      خاناتٍ تقول `/library` عارياً فتُفتح على آخر تبويب، واثنتان تقولان تبويبَهما والتطبيقُ يرميه. الآن:
      «للمشاهدة» قائمتُها في الرئيسيّة (`open=towatch` — التطبيقُ يفتح ورقةَ «الكل»، والويبُ يتجاهله) ·
@@ -378,7 +381,7 @@ export async function buildHomeHeader({
       key: "shows",
       icon: statMeta.shows.icon,
       value: String(libShows),
-      label: statMeta.shows.label,
+      label: countNoun(t.code, "shows", libShows, statMeta.shows.label),
       href: "/library?filter=tv",
       color: "var(--accent)",
     },
@@ -386,7 +389,7 @@ export async function buildHomeHeader({
       key: "movies",
       icon: statMeta.movies.icon,
       value: String(libMovies),
-      label: statMeta.movies.label,
+      label: countNoun(t.code, "movies", libMovies, statMeta.movies.label),
       href: "/library?filter=movie",
       color: "var(--accent)",
     },
@@ -443,7 +446,7 @@ export async function buildHomeHeader({
       key: "ratings",
       icon: statMeta.ratings.icon,
       value: String(myRatingsCount),
-      label: statMeta.ratings.label,
+      label: countNoun(t.code, "ratings", myRatingsCount, statMeta.ratings.label),
       href: "/ratings",
       color: "var(--accent)",
     },

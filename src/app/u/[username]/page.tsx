@@ -2,6 +2,7 @@ import Link from "next/link";
 import { displayNameOf, getSupporterSince } from "@/lib/data";
 import { SUPPORTER_WORDS } from "@/components/supporters/supporterWords";
 import { getT } from "@/lib/locale";
+import { countNoun } from "@/core/countNoun";
 import { loadProfile } from "@/lib/profileCore";
 import { canMessage } from "@/lib/actions";
 import { Avatar } from "@/components/Avatar";
@@ -188,13 +189,15 @@ export default async function PublicProfilePage({
       key: "shows",
       icon: "tv" as const,
       value: tvFollows.length,
-      label: t.shortShows,
+      /* 🆕 T469 — اسمُ المعدود يتبع العدد (`countNoun`)، كما في الرئيسيّة والتطبيق */
+      label: countNoun(locale, "shows", tvFollows.length, t.shortShows),
     },
     {
       key: "movies",
       icon: "film" as const,
       value: movieFollows.length,
-      label: t.shortMovies,
+      /* 🆕 T469 — اسمُ المعدود يتبع العدد (`countNoun`)، كما في الرئيسيّة والتطبيق */
+      label: countNoun(locale, "movies", movieFollows.length, t.shortMovies),
     },
     /* 🆕 **وخانةٌ ثالثةٌ للأنمي** (D-941c) — ⚖️ نقضٌ لذيل D-650 («ثلاثةٌ هي التي
        طُلبت، ورابعةٌ زيادةٌ على الطلب») **بطلبٍ صريحٍ من صاحبه**؛ رمزُها

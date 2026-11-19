@@ -32,6 +32,7 @@ import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
 import { DEFAULT_THEME, themeById, themeScheme } from "@/core/themes";
 import { num } from "@/core/i18n";
+import { countNoun } from "@/core/countNoun";
 import { PROFILE_SECTIONS, profileSectionMeta, profileTabMeta, sectionKeyOf } from "@/core/profilePrefs";
 import { profileUrl } from "@/core/media";
 import { browseGenreName, groupByGenre } from "@/core/browse";
@@ -448,9 +449,10 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
   const stats: StatCell[] = useMemo(() => {
     if (!d || !d.display.stats || d.locked) return [];
+    /* 🆕 T469 — اسمُ المعدود يتبع العدد كما في بطاقة الرئيسيّة («65 مسلسل» لا «65 مسلسلات» المقصوصة) — `countNoun` */
     const all: Record<"shows" | "movies" | "anime" | "stats", StatCell | null> = {
-      shows: { key: "shows", icon: "tv", value: num(d.counts.shows, locale), label: t.shortShows, href: "#shows" },
-      movies: { key: "movies", icon: "film", value: num(d.counts.movies, locale), label: t.shortMovies, href: "#movies" },
+      shows: { key: "shows", icon: "tv", value: num(d.counts.shows, locale), label: countNoun(locale, "shows", d.counts.shows, t.shortShows), href: "#shows" },
+      movies: { key: "movies", icon: "film", value: num(d.counts.movies, locale), label: countNoun(locale, "movies", d.counts.movies, t.shortMovies), href: "#movies" },
       /* الأنمي بلا أعمالٍ لا يُرسم صفراً — كما كان */
       anime: d.counts.anime > 0 ? { key: "anime", icon: "torii", value: num(d.counts.anime, locale), label: t.discoverTabAnime, href: "#anime" } : null,
       /* 🆕 N3 — بابي أنا `/stats` بمداها الكامل، ولزائري سطحُ العضو (D-650: `/stats` تقرأ صاحبَ الجلسة) */
