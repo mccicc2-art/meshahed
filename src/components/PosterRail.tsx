@@ -13,8 +13,9 @@ import { RailScroll } from "./RailScroll";
  * 🆕 **صنفُ «الكلّ» مُصدَّراً** (D-868) — **بابٌ غيرُ الرابط يلبسه
  * كما هو**: **وصفةٌ ثانيةٌ لزرٍّ واحدٍ هي العطلُ** (القاعدة ٣).
  */
+/* 🆕 R266 — ١٢ ⇐ ١٤ كالتطبيق (أحمد ٢٠ نوفمبر: «كبّر all درجة»، واختار ١٤) */
 export const seeAllClass =
-  "text-12 font-medium text-muted hover:text-accent transition shrink-0";
+  "text-14 font-medium text-muted hover:text-accent transition shrink-0";
 
 export function PosterRail({
   title,

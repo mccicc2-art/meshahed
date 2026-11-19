@@ -373,6 +373,16 @@ export function CustomizeScreen() {
                 </Card>
               </Section>
 
+              {/* 🆕 R266 — زرُّ عرض «أكمل المشاهدة» في رأس قسمه (أحمد ٢٠ نوفمبر: «يقدر يلغيها إذا عنده أكمل المشاهدة»). المفتاحُ
+                  يظهر والقسمُ ظاهرٌ فقط — بغيابه يغيب الزرُّ وحدَه فلا معنى لمفتاحٍ لا أثرَ له (D-346). مجّانيٌّ كوضع العرض: بلا شارة PLUS */}
+              {home.order.includes("continue") ? (
+                <Section label={t.custDisplay}>
+                  <Group>
+                    <Toggle icon="view-cards" label={t.custViewSwitch} hint={t.custViewSwitchHint} checked={home.viewSwitch} onChange={() => setHome({ ...home, viewSwitch: !home.viewSwitch })} />
+                  </Group>
+                </Section>
+              ) : null}
+
               {poster(home.density, (density) => setHome({ ...home, density }))}
             </>
           ) : (

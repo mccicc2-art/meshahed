@@ -49,7 +49,7 @@ export function HomeViewSwitch({
 
   /* 🆕 D-1321 — أوضاعٌ تدور؛ 🆕 D-1425 — وضعان: بصريّ ⇄ مزدوج («المختصر» حُذف بحكم أحمد ١٦ أكتوبر) */
   const next: HomeView = nextHomeView(current);
-  const nameOf = (v: HomeView) => (v === "mixed" ? t.viewMixed : t.viewVisual);
+  const nameOf = (v: HomeView) => (v === "mixed" ? t.cwViewRows : t.cwViewCards);
   /* ⚖️ 🆕 **والكلمةُ سقطت وبقي الرمز** (D-589، بلاغُ أحمد بلقطة: «هذي
      خلّها رمز فقط بدون نص») — **نقضُ شطرِ «الزرُّ يحمل اسمَ الوجهة» من
      D-434 بيد صاحبه**: **الرمزُ ما زال يحمل الوجهةَ لا الحال** (شبكةٌ
@@ -115,7 +115,7 @@ export function HomeViewSwitch({
          (وميضُ سطحٍ أو ظلّ) — **صنفٌ جديدٌ لحالةِ مؤشّرٍ لا يراها
          الجوّالُ أصلاً** (القاعدة ٣)، **والضغطةُ لها `active:scale-95`
          وهي التي تُحسّ باليد.** */
-      className="shrink-0 grid place-items-center w-10 h-10 rounded-full hover:bg-surface-2 active:scale-95 transition"
+      className="shrink-0 grid place-items-center w-10 h-10 -my-2 rounded-full hover:bg-surface-2 active:scale-95 transition"
     >
       {/* ⚖️ 🆕 **والحلّةُ سقطت والزرُّ صعد إلى صفِّ الأيقونات** (D-618،
           توزيعُ أحمد المرسوم): جيرانُه الظرفُ والجرسُ والترسُ كلُّهم
@@ -125,8 +125,9 @@ export function HomeViewSwitch({
           لا باباً عامّاً.** والرمزُ كان يصف الوجهةَ — ومنذ D-1321 يصف الحال. */}
       {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ مع الصفِّ كلِّه (D-620) */}
       <Icon
-        name={current === "mixed" ? "view-mixed" : "grid"}
-        size={18}
+        /* 🆕 R266 — مربّعان للبطاقات وخطّان للصفوف، في رأس «أكمل المشاهدة» بجانب «الكلّ» (حكمُ أحمد «أ») */
+        name={current === "mixed" ? "view-rows" : "view-cards"}
+        size={22}
         strokeWidth={2}
         style={{ color: "var(--accent)" }}
       />

@@ -277,6 +277,13 @@ export interface HomePrefs {
    * والصفُّ القديمُ بلا علامةٍ يبقى على قاعدة القيمة. **بلا هجرة**: داخل `home_prefs` القائم.
    */
   custom: HomeCustomField[];
+  /**
+   * 🆕 R266 — **زرُّ عرض «أكمل المشاهدة» في رأس القسم** (أحمد ٢٠ نوفمبر: «إذا الشخص أزال أكمل المشاهدة تروح معها،
+   * ويقدر يلغيها إذا عنده أكمل المشاهدة»). الزرُّ لا يغيّر إلّا هذا القسم (D-1425: «مزدوج» = أكمل المشاهدة صفوفاً)،
+   * فمكانُه رأسُه، ويغيب بغيابه بلا شرطٍ آخر؛ وهذه الرايةُ تُخفيه والقسمُ ظاهر. **مجّانيّةٌ** كوضع العرض نفسِه (D-1322).
+   * **والافتراضُ `true`** (D-028: الغيابُ هو السلوكُ القائم) — **بلا هجرة**: داخل `home_prefs` القائم.
+   */
+  viewSwitch: boolean;
 }
 
 export const HOME_CUSTOM_FIELDS = ["order", "statsPick"] as const satisfies readonly (keyof HomePrefs)[];
@@ -322,6 +329,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   listsOrder: [],
   towatchListOrder: [],
   custom: [],
+  viewSwitch: true,
 };
 
 /**
@@ -464,6 +472,7 @@ function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
     custom: Array.isArray(o.custom)
       ? HOME_CUSTOM_FIELDS.filter((f) => (o.custom as unknown[]).includes(f))
       : [],
+    viewSwitch: bool("viewSwitch") as boolean,
   };
 }
 

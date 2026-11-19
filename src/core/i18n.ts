@@ -212,7 +212,7 @@ const ar = {
   viewVisual: "بصري",
   /* 🆕 D-1321 — الوضعُ الثالث: «أكمل المشاهدة» مختصرٌ وما عداه بصريّ */
   viewMixed: "مزدوج",
-  viewSwitchAria: "طريقة عرض الرئيسية",
+  viewSwitchAria: "طريقة عرض «أكمل المشاهدة»",
   epsCount: (n: number) => `${n} حلقة`,
   episodeNo: (n: number) => `الحلقة ${n}`,
 
@@ -1850,6 +1850,10 @@ const ar = {
   custLayout: "عدد البطاقات في الصف",
   custPosterSize: "حجم الملصق",
   custStatsShort: "الأرقام",
+  custViewSwitch: "زر عرض «أكمل المشاهدة»",
+  custViewSwitchHint: "في رأس القسم، يبدّل بين البطاقات والصفوف",
+  cwViewCards: "بطاقات",
+  cwViewRows: "صفوف",
   /* D-1130 */
   custStatsLink: "زر الإحصائيات",
   custStatsLinkHint: "يظهر في آخر بطاقة الأرقام",
@@ -3670,7 +3674,7 @@ const en: Dict = {
   greetNeutral: "Welcome",
   viewVisual: "Visual",
   viewMixed: "Mixed",
-  viewSwitchAria: "Home layout",
+  viewSwitchAria: "Continue watching layout",
   epsCount: (n: number) => `${n} episodes`,
   episodeNo: (n: number) => `Episode ${n}`,
 
@@ -4804,6 +4808,10 @@ const en: Dict = {
   custLayout: "Cards per row",
   custPosterSize: "Poster size",
   custStatsShort: "Statistics",
+  custViewSwitch: "Continue watching view button",
+  custViewSwitchHint: "In the section header, switches between cards and rows",
+  cwViewCards: "Cards",
+  cwViewRows: "Rows",
   custStatsLink: "Stats button",
   custStatsLinkHint: "Shown at the end of the statistics card",
   custPosterS: "Small",

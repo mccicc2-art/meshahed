@@ -359,6 +359,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="13" y="11.5" width="7" height="8.5" rx="1.8" />
     </>
   ),
+  /* 🆕 R266 — زرُّ عرض «أكمل المشاهدة» في رأس القسم: مربّعان للبطاقات، وخطّان للصفوف (الرمزُ يصف الحال — D-1321) */
+  "view-cards": (
+    <>
+      <rect x="3" y="7" width="7" height="10" rx="2" />
+      <rect x="14" y="7" width="7" height="10" rx="2" />
+    </>
+  ),
+  "view-rows": <path d="M3.5 9h17M3.5 15h17" />,
   grid: (
     <>
       <rect x="4" y="4" width="7" height="7" rx="1.8" />

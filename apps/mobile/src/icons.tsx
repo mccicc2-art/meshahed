@@ -107,6 +107,10 @@ const ICONS = {
   grid: require("../assets/icons/grid.png"),
   /* 🆕 D-1321 — «مزدوج» من `Icon.tsx` بالطريقة نفسِها */
   "view-mixed": require("../assets/icons/view-mixed.png"),
+  /* 🆕 R266 — زرُّ عرض «أكمل المشاهدة» في رأس القسم (أحمد ٢٠ نوفمبر: «مربعين… إذا ضغط عليها تتحوّل لخطين»): مربّعان
+     للبطاقات وخطّان للصفوف، الرمزُ يصف الحال (D-1321). مسارا `Icon.tsx` الويب نفسُهما · ٧٢px · أبيض · خطٌّ ٢ */
+  "view-cards": require("../assets/icons/view-cards.png"),
+  "view-rows": require("../assets/icons/view-rows.png"),
   /* 🆕 11-M · M2 — دبّوسُ غرفة «الأعمال» (`RoomPinButton`: خطٌّ ٢٫٢ كما يمرّره الويب)، cairosvg · ٧٢px · أبيض.
      ⚠️ **صورةُ بياناتٍ لا ملفّ** — والحجّةُ سببُ الطريق لا الذوق: الدفعُ عبر `push_files` نصٌّ وحده، فملفٌّ ثنائيٌّ
      لا يعبر؛ و`expo-image` يقرأ `data:` ويلوّنها بـ`tintColor` كأخواتها — الرسمُ نفسُه والحجمُ ١٫٥KB. */

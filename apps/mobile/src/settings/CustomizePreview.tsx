@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
-import { Icon, iconOr } from "../icons";
+import { Icon, iconOr, type IconName } from "../icons";
 import { radius } from "../theme";
 import { Chevron } from "./ui";
 import type { Density } from "@/core/density";
@@ -98,15 +98,14 @@ function HomeMini({ who, prefs, values }: { who: PreviewWho; prefs: HomePrefs; v
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <Face url={who.avatarUrl} pos={who.avatarPos} size={26} />
         <Text size={13} weight="700" numberOfLines={1} style={{ flex: 1 }}>{who.name}</Text>
-        {/* الرمزُ رمزُ مبدّل الترويسة نفسُه — يصف الحال (D-1321) */}
-        <Icon name={prefs.view === "mixed" ? "view-mixed" : "grid"} size={13} color={tokens.accent} />
       </View>
       {prefs.stats ? (
         <StatsStrip items={prefs.statsPick.map((k) => ({ key: k, label: statMeta[k].label, value: values.get(k) ?? "—" }))} />
       ) : null}
       {prefs.order.map((k) => (
         <View key={k} style={{ gap: 5 }}>
-          <Head icon={meta[k].icon} label={meta[k].label} note={k === "week" ? null : t.allWord} />
+          {/* 🆕 R266 — مبدّلُ العرض في رأس «أكمل المشاهدة» كالرئيسيّة، ويغيب بمفتاحه. الرمزُ يصف الحال (D-1321) */}
+          <Head icon={meta[k].icon} label={meta[k].label} note={k === "week" ? null : t.allWord} lead={k === "continue" && prefs.viewSwitch ? (prefs.view === "mixed" ? "view-rows" : "view-cards") : undefined} />
           <HomeBody section={k} prefs={prefs} />
         </View>
       ))}
@@ -229,12 +228,13 @@ function Face({ url, pos, size }: { url: string | null; pos: number | null; size
   );
 }
 
-function Head({ icon, label, note }: { icon: string; label: string; note: string | null }) {
+function Head({ icon, label, note, lead }: { icon: string; label: string; note: string | null; /** R266 — رمزُ مبدّل العرض قبل «الكلّ» */ lead?: IconName }) {
   const { tokens } = useApp();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Icon name={iconOr(icon, "list")} size={12} color={tokens.accent} />
       <Text size={12} weight="700" numberOfLines={1} style={{ flex: 1 }}>{label}</Text>
+      {lead ? <Icon name={lead} size={13} color={tokens.accent} /> : null}
       {note ? <Text size={10} weight="600" color={tokens.accent} numberOfLines={1}>{note}</Text> : null}
     </View>
   );

@@ -57,6 +57,8 @@ export type IconName =
   | "palette"
   | "grid"
   | "view-mixed"
+  | "view-cards"
+  | "view-rows"
   | "card"
   | "phone"
   | "compass"

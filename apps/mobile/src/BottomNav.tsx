@@ -31,7 +31,7 @@ import { dockOf, useDockVersion } from "./navDock";
  * `color-mix`. **وشارةُ «جديد» ليست هنا** كما ليست هناك (D-392).
  *
  * 🔑 **والارتفاعُ يُقاس لا يُخمَّن**: حشوٌ علويٌّ ١٠ + خانةٌ ٥٦ (٨ + رمزٌ ٢٤ +
- * فجوةٌ ٤ + كلمةٌ ١٢ + ٨) = ٦٦، **وتحتها نصفُ منطقة الأمان بأرضيّةِ ٦** —
+ * فجوةٌ ٤ + كلمةٌ ١٢ + ٨) = ٦٦ (🆕 R266: ٥ + ٨ + رمزٌ ٢٨ + فجوةٌ ٣ + كلمةٌ ~١٤ + ٨ = ٦٦ — `DOCK_PAD_TOP`)، **وتحتها نصفُ منطقة الأمان بأرضيّةِ ٦** —
  * وصفةُ D-259 حرفاً: **الشريطُ لا يقف فوق شريط الإيماءة، يكفيه ألّا يُدفن
  * تحته.** `navHeight()` يصدّرها **لأنّ من يرسم تحته يحتاج رقمَه** — وذيلُ
  * التمرير يزيد بمقدارها وإلّا اختفى آخرُ صفٍّ خلفه (درسُ الويب في `layout`).
@@ -46,8 +46,12 @@ const TABS: { key: NavKey; icon: IconName; on: IconName }[] = [
   { key: "search", icon: "search", on: "search-filled" },
 ];
 
-/** المهمّة ٣٢١ — الحشوةُ العلويّة للشريط، داخلَ الخانات لا حولها */
-const DOCK_PAD_TOP = 10;
+/** المهمّة ٣٢١ — الحشوةُ العلويّة للشريط، داخلَ الخانات لا حولها.
+ * 🆕 R266 — ١٠ ⇐ ٥ (أحمد ٢٠ نوفمبر: «أكبر حجم الكتابة والأيقونة» ثمّ «لا تكبّر الدوك»، واعتمد ٢٨/١٢ من صورته): الرمزُ ٢٤ ⇐ ٢٨
+ * والكلمةُ ١٠ ⇐ ١٢ والفجوةُ ٤ ⇐ ٣ — والزيادةُ (≈٥) أُخذت من الفراغ فوق الرمز، فالشريطُ ٦٦ كما كان وأسفلُ الكلمات في مكانه */
+const DOCK_PAD_TOP = 5;
+const TAB_ICON = 28;
+const TAB_LABEL = 12;
 
 /**
  * الحشوةُ تحت أسماء التبويبات. نصفُ مسافة النظام يكفي الآيفون (شريطُ العودة شفّاف) وأندرويد بالإيماءات (٢٤ تقريباً)، لكنّ
@@ -128,10 +132,10 @@ export function BottomNav({ active, onGo, shell = false }: { active: NavKey; onG
             accessibilityState={{ selected: on }}
             accessibilityLabel={label[tb.key]}
             /* خاناتٌ متساويةُ العرض بشبكةٍ لا بحشوٍ لكلِّ خانة (حجّةُ الويب: «المجتمع» ضِعفا «بحث») */
-            style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 + DOCK_PAD_TOP, paddingBottom: 8 + padBottom }}
+            style={{ flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 3, paddingTop: 8 + DOCK_PAD_TOP, paddingBottom: 8 + padBottom }}
           >
-            <Icon name={on ? tb.on : tb.icon} size={24} color={color} />
-            <Text size={10} weight="600" numberOfLines={1} color={color}>{label[tb.key]}</Text>
+            <Icon name={on ? tb.on : tb.icon} size={TAB_ICON} color={color} />
+            <Text size={TAB_LABEL} weight="600" numberOfLines={1} color={color}>{label[tb.key]}</Text>
           </Pressable>
         );
       })}

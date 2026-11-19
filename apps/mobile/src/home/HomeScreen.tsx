@@ -625,7 +625,9 @@ export function HomeScreen() {
         s.continue.length > 0 ? (
           <View key="continue">
             {/* 🆕 D-1507 — بطاقةُ «طابور الأفلام» تفتح ورقتَه (ترتيبُه و✓) بدل صفحة أوّل فيلمٍ فيه */}
-            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => setAllSheet("continue")} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("continue")} />
+            {/* 🆕 R266 — مبدّلُ العرض في رأس القسم الذي يغيّره وحدَه (لا بطاقةُ الأرقام ولا الرأس): يغيب مع القسم، ويُخفيه
+                مفتاحُ «زر عرض أكمل المشاهدة» في التخصيص (`viewSwitch`؛ الغائبُ في حمولةٍ أقدم = ظاهر) */}
+            <SectionHeader title={t.continueWatching} icon="play" onTitle={() => setAllSheet("continue")} action={d.prefs.viewSwitch !== false ? <HomeViewSwitch view={view} onToggle={toggleView} /> : undefined} seeAll={d.queues.continue.length > 1 ? t.allWord : undefined} onSeeAll={() => setAllSheet("continue")} />
             {sectionView(view, "continue") === "compact" ? (
               <Column>{s.continue.map((c) => <ContinueCard key={c.key} card={c} size={contSize} variant="row" backdropPath={c.type === "show" ? c.backdrop_path : backdropOf(c.next.kind, c.next.id)} onPress={() => (c.type === "show" ? openTitle("tv", c.id) : c.type === "towatch" ? setAllSheet("queue") : openList(c.list_id))} onCheck={c.type === "show" ? () => void markNext(c) : () => void markListNext(c)} busy={busyKeys.has(c.key)} onHold={c.type === "show" ? (anchor) => holdLibOpen({ key: c.key, kind: "tv", id: c.id, title: c.title, posterPath: c.poster_path, progress: c.progress, completed: false, dropped: false, noNext: true }, anchor) : undefined} />)}</Column>
             ) : (
@@ -768,7 +770,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
-  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router]);
+  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView]);
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -787,7 +789,6 @@ export function HomeScreen() {
                «ملفك» تجعلها بابَ الملفّ فتُعلّمه الجولةُ ما يكذب بعد دقيقة (مراجعةُ أحمد ٩ نوفمبر «١أ») — والخطوةُ صارت القائمة */
             drawerStore.open("home")
           }
-          viewSwitch={d && !d.header.show_stats ? <HomeViewSwitch view={view} onToggle={toggleView} /> : null}
           unreadSignals={d?.header.unread_signals ?? 0}
           unreadShares={d?.header.unread_shares ?? 0}
           onInbox={() => router.push({ pathname: "/messages", params: { from: "home" } })}
@@ -812,7 +813,7 @@ export function HomeScreen() {
               الشخصيّ. **وبطاقةُ الأرقام باقيةٌ بشكلها لمن يريدها** («ابغاها ظاهره بنفس الشكل للي يبيها»): `show_stats`
               من تخصيص الرئيسيّة هو الذي يقرّر، كما كان. */}
           {/* 🆕 D-1429 — صفُّ الترحيب صعد إلى الرأس؛ البطاقةُ أوّلُ ما في الصفحة ومبدّلُ العرض خانتُها الأخيرة */}
-          <HomeStats h={d.header} onStat={openHref} viewSwitch={<HomeViewSwitch view={view} onToggle={toggleView} />} />
+          <HomeStats h={d.header} onStat={openHref} />
           {!d.hints.includes("home-customize") ? (
             <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
               <OneTimeHint id="home-customize" text={t.hintHomeApp} hidden={tourBusy} />

@@ -65,7 +65,8 @@ export function SectionHeader({
           {action}
           {seeAll && onSeeAll ? (
             <Pressable onPress={onSeeAll} hitSlop={8} accessibilityRole="button" accessibilityLabel={seeAllLabel}>
-              <Text size={12} weight="500" muted>{seeAll}</Text>
+              {/* 🆕 R266 — ١٢ ⇐ ١٤ (أحمد ٢٠ نوفمبر: «كبّر all درجة»، واختار ١٤ من صورةٍ بثلاثة مقاسات) — في كلِّ رأس قسم */}
+              <Text size={14} weight="500" muted>{seeAll}</Text>
             </Pressable>
           ) : null}
         </View>

@@ -3,7 +3,6 @@ import { getDict, type Locale } from "@/core/i18n";
 import { Icon, type IconName } from "./Icon";
 import { HEADER_ICON, headerIconControl } from "./ui/controls";
 import { HomeAvatarLink } from "./HomeAvatarLink";
-import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { Logo } from "./Logo";
 import { AccountIdentity } from "./AccountIdentity";
@@ -148,11 +147,7 @@ export function HomeHeader({
               className="text-22 font-bold leading-tight"
             />
           </div>
-          {/* **المبدّلُ على خطِّ «الكلّ»** (D-1233): هدفُ اللمس ٤٠ كما هو، والرمزُ (١٨) يُسنَد إلى حافّة الصفحة —
-            `(40 − 18) ÷ 2 = 11` تُسحب من الطرف. و`shrink-0`: الاسمُ هو ما يُقصّ عند الضيق لا الزرّ. */}
-          <span className="shrink-0 -me-[11px]">
-            <HomeViewSwitch locale={locale} />
-          </span>
+          {/* ⚖️ R266 — المبدّلُ غادر هذا الصفَّ إلى رأس «أكمل المشاهدة» (`ContinueSection`): لا يغيّر إلّا ذلك القسم، ويغيب بغيابه */}
         </div>
 
         {/* ===== بطاقةُ الأرقام — واحدةٌ في الوضعين (D-439) =====

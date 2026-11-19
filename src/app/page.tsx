@@ -46,6 +46,7 @@ import { posterUrl } from "@/core/media";
 import { HomeHeader } from "@/components/HomeHeader";
 /* **الشكلان يُرسمان معاً والعميلُ يختار** — لا رحلةَ خادمٍ لتبديل شكل */
 import { ByHomeView, HomeViewProvider } from "@/components/HomeViewProvider";
+import { HomeViewSwitch } from "@/components/HomeViewSwitch";
 import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
@@ -608,6 +609,7 @@ async function HomeBody({
                   continueExtra={continueExtra}
                   order={prefs.continueOrder}
                   canReorder={continueQueueItems.length > 1}
+                  viewSwitch={prefs.viewSwitch}
                   locale={locale}
                   t={t}
                 />
@@ -1237,6 +1239,7 @@ async function ContinueSection({
   continueExtra,
   order,
   canReorder,
+  viewSwitch,
   locale,
   t,
 }: {
@@ -1249,6 +1252,8 @@ async function ContinueSection({
   order: string[];
   /** وصفٌّ بعنصرٍ واحدٍ لا يُرتَّب (D-217) */
   canReorder: boolean;
+  /** 🆕 R266 — مبدّلُ العرض في رأس القسم (مفتاحُه في التخصيص) */
+  viewSwitch: boolean;
   locale: Locale;
   t: T;
 }) {
@@ -1289,6 +1294,8 @@ async function ContinueSection({
           word: canReorder,
           reorder: canReorder ? "continue" : undefined,
         })}
+        /* 🆕 R266 — مبدّلُ العرض هنا لا في صفِّ الترحيب: لا يغيّر إلّا هذا القسم، فيغيب بغيابه (أحمد ٢٠ نوفمبر) */
+        action={viewSwitch ? <HomeViewSwitch locale={locale} /> : undefined}
         view={view}
         wide
       >

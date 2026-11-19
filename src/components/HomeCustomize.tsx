@@ -263,6 +263,16 @@ export function HomeCustomize({
             </span>
           </span>
         </div>
+        {/* 🆕 R266 — مفتاحُ زرِّ العرض في رأس «أكمل المشاهدة» (أحمد ٢٠ نوفمبر): يظهر والقسمُ ظاهر فقط — بغيابه يغيب الزرُّ وحدَه */}
+        {prefs.order.includes("continue") && (
+          <ToggleRow
+            icon="view-cards"
+            label={t.custViewSwitch}
+            hint={t.custViewSwitchHint}
+            checked={prefs.viewSwitch}
+            onChange={() => set({ ...prefs, viewSwitch: !prefs.viewSwitch })}
+          />
+        )}
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
           <span className="shrink-0 text-15 font-semibold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">

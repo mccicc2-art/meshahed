@@ -71,6 +71,7 @@ export function HomeCover({ url, pos, height = COVER_H, fadeFrom = COVER_SOLID }
  * الصورةُ والاسمُ وشارةُ الاشتراك في البداية، والظرفُ والجرسُ والترسُ في الطرف — كان صفّين (الشعارُ والأزرار، ثمّ الترحيبُ ومبدّلُ
  * العرض). الرئيسيّةُ تُعرف بأيقونتها في الشريط السفليّ، وصفٌّ واحدٌ يعطي المحتوى ارتفاعَ صفٍّ كامل.
  * - مبدّلُ العرض نزل إلى بطاقة الأرقام خانةً أخيرة (`HomeStats`)؛ ومن أخفى البطاقةَ يجده هنا قبل الظرف.
+ *   ⚖️ R266 — ثمّ خرج من الاثنين إلى رأس «أكمل المشاهدة» (`HomeViewSwitch`).
  * - الطرفُ على `HEADER_END_INSET` لا هامش الصفحة: الجرسُ ثاني زرٍّ من الطرف في كلِّ ترويسة، فيقف حيث يقف في المكتبة واكتشف والمجتمع.
  * - **الصورةُ ٣٨ (D-1278) والاسمُ ٢٢/٧٠٠ (D-1233)** كما كانا في صفّ الترحيب.
  */
@@ -78,7 +79,7 @@ export function HomeCover({ url, pos, height = COVER_H, fadeFrom = COVER_SOLID }
 const AVATAR = 38;
 /** ارتفاعُ رأس الرئيسيّة — الرأسُ والشاشةُ (حشوةُ المحتوى تحته) يقرآنه من هنا فلا يفترقان */
 export const HOME_TOP_H = 56;
-const SWITCH_ICON = 18;
+const SWITCH_ICON = 24;
 /* مقاسُ الشارة مستقلٌّ عن الاسم: قرصُ اللقطات ~١٦ ارتفاعاً، وهو ما تعطيه `IdentityBadges` عند ٢٠ — الاسمُ كبر والشارةُ لا */
 const PILL_NAME_SIZE = 20;
 
@@ -90,7 +91,6 @@ export function HomeTopBar({
   onSignals,
   onAvatar,
   avatarRef,
-  viewSwitch,
 }: {
   /** قبل وصول الحمولة: الأزرارُ وحدها في مواضعها */
   h: HomeHeaderPayload | null;
@@ -101,8 +101,6 @@ export function HomeTopBar({
   onAvatar: () => void;
   /** D-1318 — مرساةُ الجولة: الحلقةُ و«اضغط هنا» تُقاسان على هذه الصورة */
   avatarRef?: React.Ref<ViewInstance>;
-  /** المبدّلُ هنا فقط حين تُخفى بطاقةُ الأرقام */
-  viewSwitch?: React.ReactNode;
 }) {
   const { t, tokens } = useApp();
   /* D-1424 — الزرُّ صار `HeaderIconButton` المشترك مع جرس ترويسات التبويبات */
@@ -153,7 +151,6 @@ export function HomeTopBar({
         <View style={{ flex: 1 }} />
       )}
       <View ref={endRef} collapsable={false} style={{ flexDirection: "row", alignItems: "center" }}>
-        {viewSwitch}
         {btn("chat", t.communityTabInbox, onInbox, unreadShares)}
         {btn("bell", t.notifTitle, onSignals, unreadSignals)}
         {/* 🗑️ D-1511 — زرُّ الإعدادات خرج من رأس الرئيسيّة (أحمد ٢٧ أكتوبر: «خلاص لها مكان في القائمة») — بابُه في القائمة الجانبيّة */}
@@ -164,33 +161,40 @@ export function HomeTopBar({
 
 /**
  * مبدّلُ العرض — **والرمزُ يصف الحالَ لا الوجهة** (D-1321، حكمُ أحمد ٨ أكتوبر: «الحالي»)؛ والوجهةُ في الاسم المنطوق.
- * 🆕 D-1425 — وضعان لا ثلاثة: المربّعات والمزدوج. هدفُ اللمس ٤٠ كأزرار الترويسة.
+ * 🆕 D-1425 — وضعان لا ثلاثة: المربّعات والمزدوج.
+ * 🆕 R266 — **صار زرَّ «أكمل المشاهدة» في رأس قسمها** (أحمد ٢٠ نوفمبر بلقطة: «To watch» مقصوصة في بطاقة الأرقام لأجل خانته،
+ * و«إذا الشخص أزال أكمل المشاهدة تروح معها»): الوضعُ لا يغيّر إلّا هذا القسم (`sectionView`)، فمكانُه رأسُه بجانب «الكلّ»،
+ * ويغيب بغيابه. **والشكلُ مربّعان ⇄ خطّان** (حكمُه «أ»): البطاقتان الظاهرتان أو الصفّان. الرمزُ ٢٤ في صندوقٍ ٣٠ كي لا يطول
+ * رأسُ القسم، ومنطقةُ اللمس ٤٦ بالـ`hitSlop`.
  */
+const SWITCH_BOX = 30;
 export function HomeViewSwitch({ view, onToggle }: { view: HomeView; onToggle: () => void }) {
   const { t, tokens } = useApp();
   const next = nextHomeView(view);
-  const nameOf = (v: HomeView) => (v === "mixed" ? t.viewMixed : t.viewVisual);
+  const nameOf = (v: HomeView) => (v === "mixed" ? t.cwViewRows : t.cwViewCards);
   return (
-    <Pressable onPress={onToggle} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`} hitSlop={6} style={({ pressed }) => [{ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
-      <Icon name={view === "mixed" ? "view-mixed" : "grid"} size={SWITCH_ICON} color={tokens.accent} />
+    <Pressable onPress={onToggle} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`} hitSlop={8} style={({ pressed }) => [{ width: SWITCH_BOX, height: SWITCH_BOX, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+      <Icon name={view === "mixed" ? "view-rows" : "view-cards"} size={SWITCH_ICON} color={tokens.accent} />
     </Pressable>
   );
 }
 
-/** 🆕 D-1429 — بطاقةُ الرئيسيّة تحمل مبدّلَ العرض خانةً أخيرةً بعد فاصل (صورةُ أحمد: «للمشاهدة | القادم | ▦») */
-export function HomeStats({ h, onStat, viewSwitch }: { h: HomeHeaderPayload; onStat: (href: string) => void; viewSwitch: React.ReactNode }) {
+/** بطاقةُ الرئيسيّة. ⚖️ R266 — **مبدّلُ العرض خرج منها إلى رأس «أكمل المشاهدة»** (نقضُ D-1429 بيد أحمد ٢٠ نوفمبر: خانتُه كانت
+ *  تقصّ «To watch»)، فعادت خاناتُ الأرقام تأخذ عرضَها كلَّه */
+export function HomeStats({ h, onStat }: { h: HomeHeaderPayload; onStat: (href: string) => void }) {
   if (!h.show_stats) return null;
-  return <StatsCard stats={h.stats} onStat={onStat} trailing={viewSwitch} />;
+  /* الفواصلُ باقيةٌ كما اعتمدها أحمد في صورة R266 — كانت تأتي مع الخانة الأخيرة وحدَها */
+  return <StatsCard stats={h.stats} onStat={onStat} seps />;
 }
 
 /** 🆕 11-N · N1 — بطاقةُ الأرقام نفسُها لملفّ الشخص الأصليّ (الويبُ يرسمها للرئيسيّة وللملفّ بوصفةٍ واحدة — D-561/D-650) */
 export type StatCell = { key: string; icon: string; value: string | number; label: string; href: string };
-export function StatsCard({ stats, onStat, trailing }: { stats: readonly StatCell[]; onStat: (href: string) => void; trailing?: React.ReactNode }) {
+export function StatsCard({ stats, onStat, trailing, seps = !!trailing }: { stats: readonly StatCell[]; onStat: (href: string) => void; trailing?: React.ReactNode; /** R266 — فواصلُ بلا خانةٍ أخيرة (بطاقةُ الرئيسيّة) */ seps?: boolean }) {
   const { tokens } = useApp();
   if (stats.length === 0 && !trailing) return null;
   /* 🆕 D-1429 — مع خانةٍ أخيرة (مبدّلُ الرئيسيّة) تعود الفواصلُ الرفيعةُ بين الخانات كما في صورة أحمد؛ بطاقةُ الملفّ بلا فواصل
      كما حكم في D-1093. فاصلٌ قصيرٌ في الوسط لا حدٌّ كامل، بلون الإطار نفسِه */
-  const sep = (key: string) => (trailing ? <View key={key} style={{ width: 1, alignSelf: "center", height: 22, backgroundColor: tokens.border }} /> : null);
+  const sep = (key: string) => (seps ? <View key={key} style={{ width: 1, alignSelf: "center", height: 22, backgroundColor: tokens.border }} /> : null);
   /* 🆕 D-1129 — **أربعةٌ في صفٍّ واحد** (أحمد بلقطة: «إذا كانت ٤ أبغاها خط واحد»؛ كانت عمودين ×
      سطرين — D-620). ربعُ العرض (~٨٧) لا يتّسع لأيقونةٍ ورقمٍ واسمٍ في سطر («120d Time» يُقصّ)، فالخانةُ
      عند الأربعة **عموديّة**: الأيقونةُ والرقمُ فوق والاسمُ تحته — بالأحجام نفسِها. الاثنان والثلاثة كما هي. */
