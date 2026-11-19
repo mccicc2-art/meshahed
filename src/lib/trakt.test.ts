@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { traktAuthorizeUrl, traktConfigured, traktPkce } from "./trakt.ts";
+import { traktAuthorizeUrl, traktConfigured, traktHeaders, traktPkce } from "./trakt.ts";
 
 test("PKCE verifier is 43–128 url-safe chars and the challenge is its S256", async () => {
   const { verifier, challenge } = await traktPkce();
@@ -32,4 +32,21 @@ test("configured needs only the client id (PKCE apps have no secret)", () => {
   assert.equal(traktConfigured(), true);
   delete process.env.TRAKT_CLIENT_ID;
   assert.equal(traktConfigured(), false);
+});
+
+test("authorize goes to auth.trakt.tv", () => {
+  process.env.TRAKT_CLIENT_ID = "test-id";
+  const u = new URL(traktAuthorizeUrl("https://loopztv.com/api/trakt/callback", "st", "ch"));
+  assert.equal(u.host, "auth.trakt.tv");
+});
+
+test("every request carries Trakt's required headers; bearer only when a token is given", () => {
+  process.env.TRAKT_CLIENT_ID = "test-id";
+  const h = traktHeaders();
+  assert.equal(h["trakt-api-key"], "test-id");
+  assert.equal(h["trakt-api-version"], "2");
+  assert.match(h["user-agent"], /^Loopz\//);
+  assert.equal(h["content-type"], "application/json");
+  assert.equal("authorization" in h, false);
+  assert.equal(traktHeaders("tok").authorization, "Bearer tok");
 });

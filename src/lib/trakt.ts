@@ -8,6 +8,24 @@
 const API = "https://api.trakt.tv";
 
 /**
+ * 🆕 R276 — **الترويساتُ المطلوبةُ في كلِّ طلب** (توثيقُ Trakt «Required Headers»: `trakt-api-key` و`trakt-api-version` و`User-Agent`).
+ * أوّلُ تجربةٍ حيّة (أحمد ١٩ نوفمبر) عادت من `/oauth/token` بـ403 «مفتاحٌ غير صالح أو تطبيقٌ غير معتمد» لأنّ طلبَ المفتاح
+ * كان يخرج بلا أيٍّ منها، وطلباتُ الجلب بلا `User-Agent`. فالترويساتُ في مكانٍ واحد يستعمله كلُّ طلبٍ إلى Trakt.
+ */
+export function traktHeaders(token?: string): Record<string, string> {
+  return {
+    "content-type": "application/json",
+    "user-agent": "Loopz/1.0",
+    "trakt-api-key": process.env.TRAKT_CLIENT_ID ?? "",
+    "trakt-api-version": "2",
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+/* الفشلُ يُسجَّل برمزه فقط — لا مفتاحَ ولا ردَّ ولا بياناتِ مستخدم — كي لا يعود تشخيصُه تخميناً */
+const logFail = (what: string, status: number | string) => console.error(`[trakt] ${what} failed: ${status}`);
+
+/**
  * 🆕 R275 — **PKCE لا السرّ** (اكتُشف ١٩ نوفمبر عند إنشاء تطبيق Loopz في بوّابة مطوّري Trakt الجديدة): التطبيقاتُ الجديدة
  * «Not issued» للـClient Secret — تسجّل الدخول بـPKCE وحده. فالمفتاحُ المطلوبُ واحد (`TRAKT_CLIENT_ID`)، والسرُّ إن وُجد
  * (تطبيقٌ قديم) يُرسَل ولا يُشترط. والتحقّقُ في كلِّ رحلةٍ مُتحقِّقٌ عشوائيٌّ يُحفظ في كوكي ويُرسل بصمتُه (S256) فقط.
@@ -27,7 +45,8 @@ export async function traktPkce(): Promise<{ verifier: string; challenge: string
 }
 
 export function traktAuthorizeUrl(redirectUri: string, state: string, challenge: string) {
-  const u = new URL("https://trakt.tv/oauth/authorize");
+  /* 🆕 R276 — صفحةُ الموافقة صار عنوانُها `auth.trakt.tv` في توثيق PKCE الجديد */
+  const u = new URL("https://auth.trakt.tv/oauth/authorize");
   u.searchParams.set("response_type", "code");
   u.searchParams.set("client_id", process.env.TRAKT_CLIENT_ID ?? "");
   u.searchParams.set("redirect_uri", redirectUri);
@@ -44,7 +63,7 @@ export async function traktToken(code: string, redirectUri: string, verifier: st
   try {
     const res = await fetch(`${API}/oauth/token`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: traktHeaders(),
       cache: "no-store",
       /* A-28 — مهلةٌ كي لا يحبس Trakt المتعثّرُ الطلبَ حتى حدّ الدالّة؛ تسقط في `catch` ⇒ null */
       signal: AbortSignal.timeout(10_000),
@@ -57,10 +76,14 @@ export async function traktToken(code: string, redirectUri: string, verifier: st
         grant_type: "authorization_code",
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logFail("token", res.status);
+      return null;
+    }
     const j = (await res.json()) as { access_token?: string };
     return j.access_token ?? null;
-  } catch {
+  } catch (e) {
+    logFail("token", e instanceof Error ? e.name : "error");
     return null;
   }
 }
@@ -75,7 +98,7 @@ export async function traktRevoke(token: string): Promise<void> {
   try {
     await fetch(`${API}/oauth/revoke`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: traktHeaders(),
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
       body: JSON.stringify({ token, client_id: process.env.TRAKT_CLIENT_ID, ...secret() }),
@@ -88,19 +111,18 @@ export async function traktRevoke(token: string): Promise<void> {
 async function traktGet<T>(path: string, token: string): Promise<T | null> {
   try {
     const res = await fetch(`${API}${path}`, {
-      headers: {
-        "content-type": "application/json",
-        "trakt-api-version": "2",
-        "trakt-api-key": process.env.TRAKT_CLIENT_ID ?? "",
-        authorization: `Bearer ${token}`,
-      },
+      headers: traktHeaders(token),
       cache: "no-store",
       /* A-28 — المهلةُ نفسُها */
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logFail(path, res.status);
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (e) {
+    logFail(path, e instanceof Error ? e.name : "error");
     return null;
   }
 }
