@@ -39,7 +39,7 @@ export function ProfileMenu({
   follow,
   variant = "cover",
   system = false,
-  messageButton = false,
+  messageOutside = false,
   locale,
 }: {
   person: PersonLite;
@@ -71,15 +71,12 @@ export function ProfileMenu({
    */
   system?: boolean;
   /**
-   * 🆕 **زرُّ «رسالة» ظاهرٌ بجانب النقاط** (D-438، خطّةُ أحمد: «Following
-   * وMessage وShare»).
-   *
-   * **ولا مكوّنٌ ثانٍ ولا ورقةٌ ثانية**: الورقةُ (`StartConversationSheet`)
-   * وحارسُها (المتابعةُ المتبادلة، D-051) **يسكنان هنا أصلاً** — **وزرٌّ
-   * خارجيٌّ كان سيعيد كتابة الحارس والتوست ثم يفترقان عند أوّل تعديل**
-   * (القاعدة ٦). **فالمقبضُ يُضاف، والفعلُ في مكانه.**
+   * 🆕 **«رسالة» خرجت زرّاً بجانب «متابعة»** (D-438 ثم طلبُ أحمد ١٩ نوفمبر: «إذا برسل لأحد
+   * لازم أضغط النقاط»): حيث يُرسم `MessageUserButton` ظاهراً يسقط صفُّها من القائمة —
+   * **بابان لفعلٍ واحدٍ على شاشةٍ واحدة لا يقعان** (القاعدة ٣). والفعلُ نفسُه (`useOpenMessage`)
+   * يسكن هذا الملفّ للاثنين، فلا يفترق الحارسُ والتوست عند أوّل تعديل.
    */
-  messageButton?: boolean;
+  messageOutside?: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -92,13 +89,10 @@ export function ProfileMenu({
   const [reported, setReported] = useState(false);
   const [pending, start] = useTransition();
 
+  const sendMessage = useOpenMessage(person, canMessage, locale);
   function openMessage() {
     setMenu(false);
-    if (canMessage === false) {
-      toast(t.msgNotAcceptingOf(displayNameOf(person, t.anonymousUser)), { tone: "info" });
-      return;
-    }
-    router.push(`/people?tab=inbox&with=${person.id}`);
+    sendMessage();
   }
 
   /** متابعةٌ تفاؤلية بارتداد — نفسُ عقد `FollowUserButton` بلا زرِّه */
@@ -162,8 +156,13 @@ export function ProfileMenu({
         </button>
       )}
 
+      {/* حيث الزرُّ ظاهرٌ بجانب المتابعة يختفي الصفُّ في الويب — ويبقى داخل التطبيق، حيث يغيب الزرّ */}
       {!system && (
-        <button onClick={openMessage} role="menuitem" className={itemClass}>
+        <button
+          onClick={openMessage}
+          role="menuitem"
+          className={`${itemClass}${messageOutside ? " ![display:none] [html[data-app='1']_&]:!flex" : ""}`}
+        >
           <Icon name="comment" size={18} className={canMessage !== false ? "text-accent" : "text-muted"} />
           <span className={canMessage !== false ? "" : "text-muted"}>{t.msgUserOption}</span>
         </button>
@@ -219,19 +218,6 @@ export function ProfileMenu({
           الصندوقَ الأطول فيعلو الزرُّ عن النصّ بمقدار ذلك الفراغ.
           **`inline-flex` تُلغي صندوقَ السطر، و`align-middle` تُلغي
           الجلوسَ على خطّ القاعدة.** */}
-      {/* 🆕 **والمقبضُ الظاهر أوّلاً** (D-438) — ويغيب عن حساب النظام
-          كما تغيب صفُّه في القائمة. */}
-      {messageButton && !system && (
-        <button
-          type="button"
-          onClick={openMessage}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-12 font-bold transition hover:border-accent/50 active:scale-95"
-        >
-          <Icon name="comment" size={15} className={canMessage !== false ? "text-accent" : "text-muted"} />
-          {t.msgUserOption}
-        </button>
-      )}
-
       {variant === "plain" ? (
         <span className="relative inline-flex items-center align-middle">
           <button
@@ -341,5 +327,54 @@ export function ProfileMenu({
         />
       )}
     </>
+  );
+}
+
+/**
+ * فعلُ «رسالة» وحارسُه في مكانٍ واحد (D-1380): من قفل الخاصَّ توستٌ يقول ذلك، وغيرُه يفتح الخيط.
+ * يناديه صفُّ القائمة والزرُّ الظاهر معاً — **نسختان من الحارس تفترقان عند أوّل تعديل** (القاعدة ٦).
+ */
+export function useOpenMessage(person: PersonLite, canMessage: boolean | null, locale: Locale) {
+  const t = getDict(locale);
+  const router = useRouter();
+  return () => {
+    if (canMessage === false) {
+      toast(t.msgNotAcceptingOf(displayNameOf(person, t.anonymousUser)), { tone: "info" });
+      return;
+    }
+    router.push(`/people?tab=inbox&with=${person.id}`);
+  };
+}
+
+/**
+ * 🆕 زرُّ «رسالة» الظاهر بجانب «متابعة» في ملفّ غيرك (طلبُ أحمد ١٩ نوفمبر، الخيار ب: المكتبُ وويبُ الجوال).
+ * **من سلّم `buttonClass` نفسِه** — سطحٌ رماديّ بمقاس `xs` كجاره، لا قرصٌ مكتوبٌ باليد (الحبّةُ القديمة
+ * في D-438 كانت عائلةً ثانية). ومن قفل الخاصَّ يبقى الزرُّ ظاهراً باهتَ الرمز ويقول السببَ بتوست —
+ * **الخيارُ الظاهرُ المعطَّل بتفسيرٍ خيرٌ من خيارٍ يختفي بلا سبب** (D-1380).
+ * ويغيب داخل التطبيق (`data-app`): ملفُّ التطبيق أصليٌّ وله بابُه، والطلبُ للويب وحده.
+ */
+export function MessageUserButton({
+  person,
+  canMessage = null,
+  locale,
+}: {
+  person: PersonLite;
+  canMessage?: boolean | null;
+  locale: Locale;
+}) {
+  const t = getDict(locale);
+  const open = useOpenMessage(person, canMessage, locale);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        tap(6);
+        open();
+      }}
+      className={buttonClass({ variant: "surface", size: "xs", className: "[html[data-app='1']_&]:hidden" })}
+    >
+      <Icon name="comment" size={14} className={canMessage !== false ? "text-accent" : "text-muted"} />
+      <span className={canMessage !== false ? "" : "text-muted"}>{t.msgUserOption}</span>
+    </button>
   );
 }

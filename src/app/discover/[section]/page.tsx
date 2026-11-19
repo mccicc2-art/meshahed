@@ -18,11 +18,15 @@ import {
   isSectionKey,
   isSectionMedia,
   SECTION_TITLE_KEY,
+  sectionHref,
+  type SectionKey,
   type SectionMedia,
 } from "@/lib/sections";
 import { PosterGrid } from "@/components/PosterGrid";
 import { PosterCard } from "@/components/PosterCard";
 import { BackButton } from "@/components/BackButton";
+import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
+import type { IconName } from "@/components/Icon";
 import type { Dict } from "@/core/i18n";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +66,32 @@ export const dynamic = "force-dynamic";
  * ولا يَعِد بما لا يأتي** (D-181).
  */
 const LIMIT = 60;
+
+/**
+ * 🆕 **تبويباتُ الأقسام على الحاسوب** (أحمد ١٩ نوفمبر، الخيار «ج» بعد رفض العمود الجانبيّ: «مسوّي زحمة»): كان
+ * الانتقالُ من «الرائج» إلى «الأعلى» رجوعاً ثم دخولاً؛ الآن سطرٌ واحدٌ تحت العنوان بخطّ `PageTabs` نفسِه.
+ * 🔑 **الأقسامُ هي أبوابُ «الكل» في تبويب «اكتشف» لكلِّ نوعٍ حرفاً** (`news/page.tsx`) — **لا بابَ هنا لقسمٍ ليس
+ * له بابٌ هناك**: «أفضل ٢٥» مُغلقٌ عمداً (D-827)، و«صفُّك» و«من فنّانيك» شخصيّان فلا يدخلان سطراً عامّاً.
+ * والجوّالُ كما هو: السطرُ للحاسوب وحده (`desk:`).
+ */
+const SECTION_TABS: Record<SectionMedia, { key: SectionKey; icon: IconName }[]> = {
+  movie: [
+    { key: "most-popular", icon: "trending" },
+    { key: "top-ten", icon: "trophy" },
+    { key: "in-cinemas", icon: "film" },
+    { key: "upcoming", icon: "calendar" },
+  ],
+  tv: [
+    { key: "most-popular", icon: "trending" },
+    { key: "top-ten", icon: "trophy" },
+    { key: "upcoming", icon: "calendar" },
+  ],
+  anime: [
+    { key: "airing-now", icon: "tv" },
+    { key: "most-popular", icon: "trending" },
+    { key: "upcoming", icon: "calendar" },
+  ],
+};
 const MAX_PAGES = 5;
 
 export default async function SectionPage({
@@ -151,6 +181,21 @@ export default async function SectionPage({
           return section === "top-ten" ? (t as Dict).top10Win(base, win) : base;
         })();
   const dict = t as Dict;
+  /* التبويبُ يحمل فلترَ القارئ كما يحمله «الكل» من الرفّ (`sectionHref`) — بلا صفحةِ «المزيد»، ونافذةُ «أفضل ١٠» له وحده */
+  const tabs: PageTab[] = SECTION_TABS[media].some((x) => x.key === section)
+    ? SECTION_TABS[media].map(({ key, icon }) => {
+        const q = new URLSearchParams(
+          Object.entries(sp).filter((e): e is [string, string] => typeof e[1] === "string" && e[0] !== "pg" && e[0] !== "m"),
+        );
+        if (key !== "top-ten") q.delete("w");
+        return {
+          key,
+          icon,
+          label: String((t as unknown as Record<string, string>)[SECTION_TITLE_KEY[key][media]] ?? key),
+          href: sectionHref(key, media, q.toString()),
+        };
+      })
+    : [];
   /* رابطُ الرجوع يحمل الفلتر نفسَه إلى تبويبه — لا إلى «اكتشف» عارياً */
   const backHref = browseHref({
     tab: media === "tv" ? "shows" : media === "anime" ? "anime" : "movies",
@@ -217,13 +262,19 @@ export default async function SectionPage({
             ولا تاريخَ عنده يرجع إليه */}
         <BackButton locale={locale} />
         <div className="min-w-0">
-          <h1 className="font-bold text-20 leading-tight truncate">{title}</h1>
+          <h1 className="font-bold text-20 desk:text-24 leading-tight truncate">{title}</h1>
           <Link href={backHref} className="text-12 text-muted hover:text-accent transition">
             {dict.navNews}
           </Link>
         </div>
         <span className="ms-auto shrink-0 text-12 text-muted tabular-nums">{rows.length}</span>
       </div>
+
+      {tabs.length > 1 && (
+        <div className="hidden desk:block -mt-2 mb-5">
+          <PageTabs items={tabs} active={section} ariaLabel={dict.navNews} asNav autoHide={false} />
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-center text-muted py-20">

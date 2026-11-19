@@ -84,11 +84,12 @@ export function PosterRail({
   deskGrid?: "poster" | "wide" | "all";
   /** 🆕 R256 — **صفٌّ واحدٌ على الحاسوب بملصقاتٍ أكبر** (`.lz-deskrail`: سبعةٌ وربعٌ في النظر) **يُقلَّب بالسهم ويُسحب
       بالفأرة** — مكتبتي (أحمد ١٨ نوفمبر: «صف واحد لكل قسم وكبره بشكل بسيط»). لا يجتمع مع `deskGrid` */
-  deskRail?: boolean;
+  /* 🆕 و`"wide"` لبطاقات الخلفيّة في الرئيسية (أحمد ١٩ نوفمبر: «صف واحد لكل قائمة وسهم عشان تلف»): ثلاثٌ وربعٌ في النظر */
+  deskRail?: boolean | "wide";
   children: React.ReactNode;
 }) {
   const grid = deskRail
-    ? "lz-deskrail"
+    ? `lz-deskrail${deskRail === "wide" ? " lz-deskrail-wide" : ""}`
     : deskGrid
       ? `lz-deskgrid${deskGrid === "wide" ? " lz-deskgrid-wide" : deskGrid === "all" ? " lz-deskgrid-all" : ""}`
       : "";
@@ -175,7 +176,7 @@ export function PosterRail({
       {bare ? (
         children
       ) : (
-        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next" mouseDrag={deskRail}>
+        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next" mouseDrag={!!deskRail}>
           {children}
         </RailScroll>
       )}

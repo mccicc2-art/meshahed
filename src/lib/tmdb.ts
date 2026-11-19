@@ -1668,6 +1668,15 @@ export const ANIME_KEYWORD = "210024";
  * الرسوم كان يصنّف «عائلة سمبسون» أنمي، والاكتفاء باليابان يصنّف كل دراما
  * يابانية أنمي.
  */
+/**
+ * A-68 (المدقّق ١٩ نوفمبر) — **عملٌ حذفه TMDB** يرمي `TMDB /tv/<id> failed: 404` (نصُّ الخطأ يُبنى في `tmdbFetch` أعلاه بهذا الشكل).
+ * يعرفه مسارُ العمل في الواجهة فيجيب «غير موجود» بدل خطأٍ عامٍّ يُسجَّل في مجموعات الأخطاء.
+ * الشكلُ هنا مقرونٌ بنصّ الرمي: إن تغيّر أحدهما فليتغيّر الآخر.
+ */
+export function isTmdbNotFound(e: unknown): boolean {
+  return e instanceof Error && /^TMDB \/(?:tv|movie)\/\d+\S* failed: 404$/.test(e.message);
+}
+
 export function isAnime(tv: {
   genres?: { id: number }[];
   origin_country?: string[];

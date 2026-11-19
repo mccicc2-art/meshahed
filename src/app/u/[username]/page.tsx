@@ -15,7 +15,7 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { AccountBadges, AiPill, badgeLabelsOf } from "@/components/AccountIdentity";
 import { personaOf } from "@/core/personas";
-import { ProfileMenu } from "@/components/ProfileMenu";
+import { ProfileMenu, MessageUserButton } from "@/components/ProfileMenu";
 import { WeeklyRanksDoor } from "@/components/WeeklyRanksDoor";
 import { isLoopz } from "@/core/loopz";
 import { BackButton } from "@/components/BackButton";
@@ -849,6 +849,7 @@ export default async function PublicProfilePage({
                 }}
                 canMessage={canMsg}
                 system={isLoopz(profile.id)}
+                messageOutside={!isLoopz(profile.id) && !blocked.byMe && !blocked.me}
                 locale={locale}
               />
             )}
@@ -990,7 +991,7 @@ export default async function PublicProfilePage({
               </div>
               {/* 🆕 11-N دَين — لا متابعةَ بين طرفين بينهما حظر (القاعدةُ ترفضها — D-1198)، فالزرُّ لا يُرسم */}
               {!isMe && !blocked.byMe && !blocked.me && (
-                <span className="shrink-0">
+                <span className="shrink-0 inline-flex items-center gap-1.5">
                   {/* 🆕 **ومقاسُه `xs` لا `sm`** (D-634): **جارُ كلمةٍ لا
                       فعلُ شاشة** — و`sm` كانت تجعله أطولَ من الاسم الذي
                       يجاوره. **والرتبةُ أُضيفت إلى سلّم `Button` نفسِه**
@@ -1002,6 +1003,21 @@ export default async function PublicProfilePage({
                     initialRequested={relation.requested}
                     size="xs"
                   />
+                  {/* 🆕 «رسالة» ظاهرةٌ بجانب المتابعة (طلبُ أحمد ١٩ نوفمبر: «لازم أضغط النقاط») —
+                      وصفُّها في النقاط يسقط حيث هي هنا (`messageOutside`)، ولا تُرسم لحساب Loopz */}
+                  {!isLoopz(profile.id) && (
+                    <MessageUserButton
+                      person={{
+                        id: profile.id,
+                        nickname: profile.nickname,
+                        username: profile.username,
+                        avatar_url: profile.avatar_url,
+                        hide_name: profile.hide_name ?? false,
+                      }}
+                      canMessage={canMsg}
+                      locale={locale}
+                    />
+                  )}
                 </span>
               )}
             </div>

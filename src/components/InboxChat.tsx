@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "./Icon";
@@ -102,6 +102,14 @@ export function MsgShell({
     timer.current = null;
     start.current = null;
   };
+  /* A-66 (المدقّق ١٨ نوفمبر) — مؤقّتُ الضغطة المطوّلة يُلغى عند مغادرة الفقاعة أيضاً: من ترك الخيط وإصبعُه عليها
+     كانت قائمتُها تُفتح بعد ٤٥٠ م.ث على شاشةٍ لم تعد موجودة */
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
   if (selecting) {
     /* السطرُ كلُّه هدفُ الضغطة (عرضُ الخيط لا عرضُ الفقاعة — كالواتس والتطبيق)، والروابطُ داخلها لا تُفتح وهو يحدِّد.
        وما لا يُحدَّد (المتفائلةُ ومحذوفٌ بلا فعل) يبقى معتماً لا يستجيب */

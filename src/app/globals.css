@@ -1009,6 +1009,10 @@ summary:focus-visible,
   html:not([data-app="1"]):has(.lz-desk) .lz-deskrail [data-rail-track] > * {
     width: calc((100cqw - 6 * 0.875rem) / 7.25);
   }
+  /* 🆕 بطاقاتُ الخلفيّة في الرئيسية: ثلاثٌ وربع — الربعُ يقول إن الصفَّ يكمل كما في الملصقات */
+  html:not([data-app="1"]):has(.lz-desk) .lz-deskrail-wide [data-rail-track] > * {
+    width: calc((100cqw - 2 * 0.875rem) / 3.25);
+  }
   html:not([data-app="1"]):has(.lz-desk) .lz-deskrail-solo {
     width: calc((100% - 6 * 0.875rem) / 7.25);
   }

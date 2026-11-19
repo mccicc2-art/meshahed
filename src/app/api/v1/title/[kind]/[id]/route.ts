@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getTv, getMovie, getTrailer, isAnime } from "@/lib/tmdb";
+import { getTv, getMovie, getTrailer, isAnime, isTmdbNotFound } from "@/lib/tmdb";
 import {
   getFollowState,
   getWatchedForShow,
@@ -48,8 +48,15 @@ export async function GET(
       const lim = limited(`v1:title:${uid ?? ip}`, 120, 60_000);
       if (lim) return lim;
 
-      const payload: TitlePayload =
-        kind === "tv" ? await tvPayload(tmdbId, !!uid, tm) : await moviePayload(tmdbId, !!uid, tm);
+      /* A-68 (المدقّق ١٩ نوفمبر) — عملٌ حذفه TMDB يجيب «غير موجود» (404) لا خطأً عامّاً: كان يصل غلافَ v1 فيُسجَّل
+         خطأً عامّاً (500) في مجموعات الأخطاء. ما سواه من الأعطال يمضي كما كان */
+      let payload: TitlePayload;
+      try {
+        payload = kind === "tv" ? await tvPayload(tmdbId, !!uid, tm) : await moviePayload(tmdbId, !!uid, tm);
+      } catch (e) {
+        if (isTmdbNotFound(e)) return fail("not_found");
+        throw e;
+      }
       return ok(payload);
     },
     // العملُ عامٌّ وثابتٌ لدقائق؛ **لكنّ الردَّ يحمل حالتي** — فالكاشُ خاصٌّ

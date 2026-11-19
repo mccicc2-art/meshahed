@@ -496,11 +496,12 @@ function ConversationView({
      فيحلّ ما في الخادم محلَّها — نهجُ الحقل القديم نفسُه */
   async function send(m: Outgoing) {
     const quoted = m.reply_to ? events.find((e): e is ConvReplyEvent => e.kind === "reply" && e.id === m.reply_to) ?? null : null;
+    const tmpId = `tmp-${idRef.current++}`;
     setEvents((prev) => [
       ...prev,
       {
         kind: "reply",
-        id: `tmp-${idRef.current++}`,
+        id: tmpId,
         mine: true,
         body: m.body,
         created_at: new Date().toISOString(),
@@ -514,6 +515,8 @@ function ConversationView({
       await sendDirectMessage(conv.personId, m.body, { gif_id: m.gif_id ?? null, image_path: m.image_path ?? null, reply_to: m.reply_to ?? null });
       coalescedRefresh(router);
     } catch (e) {
+      /* A-65 (المدقّق ١٨ نوفمبر) — توأمُ القروب: الفقاعةُ المتفائلةُ تُرفع إن فشل الإرسال فلا تبقى كأنّها أُرسلت */
+      setEvents((prev) => prev.filter((x) => x.id !== tmpId));
       flashError((e as Error).message);
     }
   }

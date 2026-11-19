@@ -243,11 +243,12 @@ export function GroupView({ g, meId, locale, chatBg }: { g: MsgGroupConversation
 
   async function send(m: Outgoing) {
     const quoted = m.reply_to ? events.find((e): e is GroupMsgEvent => e.kind === "msg" && e.id === m.reply_to) ?? null : null;
+    const tmpId = `tmp-${idRef.current++}`;
     setEvents((prev) => [
       ...prev,
       {
         kind: "msg",
-        id: `tmp-${idRef.current++}`,
+        id: tmpId,
         mine: true,
         sender_id: meId,
         body: m.body,
@@ -273,6 +274,9 @@ export function GroupView({ g, meId, locale, chatBg }: { g: MsgGroupConversation
       await v1Post(`/api/v1/me/groups/${g.group_id}`, { body: m.body, gif_id: m.gif_id ?? null, image_path: m.image_path ?? null, reply_to: m.reply_to ?? null }, t);
       coalescedRefresh(router);
     } catch (e) {
+      /* A-65 (المدقّق ١٨ نوفمبر) — الفقاعةُ المتفائلةُ تُرفع إن فشل الإرسال: كانت تبقى بساعتها كأنّها أُرسلت حتى يجدّد الخادمُ الخيط.
+         نهجُ التطبيق نفسُه (GroupScreen `deliver` يُسقطها عند الفشل) */
+      setEvents((prev) => prev.filter((x) => x.id !== tmpId));
       flashError((e as Error).message);
     }
   }
