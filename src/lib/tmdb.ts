@@ -2447,8 +2447,12 @@ export async function topByFilter(
      المُصفّى)، `popularity.desc` لأعلى سنةٍ، `vote_count.desc` للأعلى
      تاريخياً (الأكثر أصواتاً = الأكثر مشاهدةً). العتبةُ تبقى شرطاً في
      الأحوال كي لا يتصدّر عملٌ بصوتين. */
-  sort: "vote_average.desc" | "popularity.desc" | "vote_count.desc" = "vote_average.desc",
+  sort: "vote_average.desc" | "popularity.desc" | "vote_count.desc" | "release.desc" = "vote_average.desc",
 ): Promise<SearchResult[]> {
+  /* 🆕 T450 — «الأحدث» للقائمة الذكيّة: تاريخُ العرض بحقل جهته (الأفلامُ `primary_release_date`، والمسلسلاتُ
+     `first_air_date`) — اسمٌ واحدٌ عند المنادي لا اثنان يُنسى أحدُهما. */
+  const sortBy =
+    sort === "release.desc" ? (mediaType === "movie" ? "primary_release_date.desc" : "first_air_date.desc") : sort;
   let best: SearchResult[] = [];
   /* 🆕 **والصفحاتُ بقدر ما يُطلب لا صفحتان** (D-378، طلبُ أحمد: «اضغط
      المزيد إلى أن ترضى، ما يوقفني»): كان السقفُ صفحتين (٤٠ صفّاً) **فأيُّ
@@ -2462,7 +2466,7 @@ export async function topByFilter(
         pages.map((page) =>
           railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
             ...discoverParams(mediaType, f),
-            sort_by: sort,
+            sort_by: sortBy,
             "vote_count.gte": String(floor),
             page: String(page),
           }).catch(() => ({ results: [] as SearchResult[] })),

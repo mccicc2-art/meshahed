@@ -1,27 +1,26 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, ScrollView, TextInput, View, useWindowDimensions, type ScrollViewProps } from "react-native";
+import { FlatList, Pressable, ScrollView, View, useWindowDimensions, type ScrollViewProps } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { Button, Text, type ToastTone } from "../ui";
 import { radius } from "../theme";
-import { Icon } from "../icons";
 import { usePullRefresh } from "../pullRefresh";
 import { Sheet } from "./Sheet";
 import { ListCard, type ListCardData } from "./ListCard";
 import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
 import { ReorderSheet } from "./ReorderSheet";
 import { SmartListSheet } from "./SmartListSheet";
+import { NewListBar } from "../newlist/NewListBar";
 import { ShareListSheet } from "../list/ShareListSheet";
 import { profileUrl } from "@/core/media";
 import { posterFor } from "../poster";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import { OneTimeHint } from "./OneTimeHint";
-import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
+import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, QueueOrderBody } from "../contracts";
 import { scrollJank } from "../scrollJank";
 import { useRtlRailPin } from "../rtlRailPin";
-import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
  * ====== تبويبُ «قوائم» أصليّاً — نسخةُ `ListManager` + `listsExtra` (D-947) ======
@@ -56,8 +55,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     queryFn: async () => (await api<LibraryListsPayload>("/api/v1/me/library/lists")).data,
   });
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [smart, setSmart] = useState(false);
   /* G5 — تعديلُ شرطِ ذكيّةٍ من بطاقتها: الورقةُ نفسُها بوضع `editing` (كان باباً ويبيّاً `/library?edit=`) */
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [reorder, setReorder] = useState(false);
@@ -174,26 +171,9 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
       {/* فوق الزرّين: أوّلُ ما يُرى عند فتح التبويب — وقوائمُ الآخرين ليست هنا فيقول أين هي */}
       {hint ? <OneTimeHint id="lists-tab" text={t.hintListsTab} style={{ marginBottom: -16 }} /> : null}
       <View>
-        {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
-        {/* D-1018 — الزرّان في إطارٍ واحدٍ بخلفيّةٍ سوداء بلا فواصل (عائلةُ D-1014)
-            🆕 D-1212 — **بمقاس خانة «الإحصائيات · النشاط» حرفاً** (طلبُ أحمد بلقطة، ١ أكتوبر: «ابغاه نفس حجم اكتفتي وستات»):
-            صار الإطاران متجاورَين أثناء السحب بعد D-1210 فبان فرقُ الارتفاع. `py 9` · أيقونة ١٦ · كلمة ١٣ · فجوة ٨ (D-1076). */}
-        <View style={{ flexDirection: "row", marginBottom: 16, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
-          <Pressable
-            onPress={() => setCreating(true)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
-          >
-            <Icon name="plus" size={16} color={tokens.fg} />
-            <Text size={13} weight="700">{t.listNewGroup}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSmart(true)}
-            style={({ pressed }) => ({ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 9, opacity: pressed ? 0.6 : 1 })}
-          >
-            <Icon name="sparkle-star" size={16} color={tokens.accent} />
-            <Text size={13} weight="700">{t.smartListLabel}</Text>
-          </Pressable>
-        </View>
+        {/* 🆕 T450 — **الإطارُ نفسُه (D-1018/D-1212) صار `NewListBar`** ويدفع صفحةَ «قائمة جديدة» مقيّدةً بمكتبتك بدل ورقتَي
+            «اسمٍ وحده» والشروط — والإطارُ ذاتُه في «اكتشف ← القوائم» من الكتالوج كلِّه */}
+        <NewListBar from="library" style={{ marginBottom: 16 }} />
         {!p.has_smart ? (
           <Text size={12} muted style={{ marginTop: -8, marginBottom: 16, lineHeight: 18 }}>{t.smartListHint}</Text>
         ) : null}
@@ -300,18 +280,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
         </View>
       ) : null}
 
-      {creating ? (
-        <NewListSheet
-          onClose={() => setCreating(false)}
-          onCreated={(id, name) => {
-            setCreating(false);
-            say(t.listMadeToast(name), "success");
-            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
-            if (id) onOpenWeb(`/lists/${id}`);
-          }}
-          onError={fail}
-        />
-      ) : null}
       {sharing ? (
         <ShareListSheet
           listId={sharing.id}
@@ -341,23 +309,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
             say(t.smartListUpdated, "success");
             void queryClient.invalidateQueries({ queryKey: qk.list(id) });
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
-          }}
-          onError={fail}
-        />
-      ) : null}
-      {smart ? (
-        <SmartListSheet
-          onClose={() => setSmart(false)}
-          onNeedsPlus={() => {
-            setSmart(false);
-            onOpenWeb("/plus");
-          }}
-          onCreated={(id) => {
-            setSmart(false);
-            say(t.librarySmartCreated, "success");
-            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
-            void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
-            if (id) onOpenWeb(`/lists/${id}`);
           }}
           onError={fail}
         />
@@ -421,53 +372,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
         </Sheet>
       ) : null}
     </ScrollView>
-  );
-}
-
-/** ورقةُ «قائمة جديدة» — حقلُ الاسم وحدَه كما في `NewListForm` المطويّ (D-443)؛ Enter ينشئ */
-function NewListSheet({ onClose, onCreated, onError }: { onClose: () => void; onCreated: (id: string | null, name: string) => void; onError: (e: unknown) => void }) {
-  const { t, tokens } = useApp();
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const submit = async () => {
-    const clean = name.trim();
-    if (!clean) {
-      setErr(t.listNameRequired);
-      return;
-    }
-    setBusy(true);
-    try {
-      const r = await write<{ id: string | null }>("/api/v1/lists/create", { name: clean } satisfies CreateListBody);
-      onCreated(r.id, clean);
-    } catch (e) {
-      onError(e);
-      onClose();
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Sheet title={t.listNewGroup} onClose={onClose}>
-      <View>
-        <TextInput maxFontSizeMultiplier={SYSTEM_FONT_CAP}
-          value={name}
-          onChangeText={(v) => {
-            setName(v);
-            if (err) setErr(null);
-          }}
-          placeholder={t.listNamePlaceholder}
-          placeholderTextColor={tokens.muted}
-          autoFocus
-          maxLength={60}
-          returnKeyType="done"
-          onSubmitEditing={() => void submit()}
-          style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: radius.control, borderWidth: 1, borderColor: err ? tokens.error : tokens.border, backgroundColor: tokens.surface2, color: tokens.fg, fontSize: 15 }}
-        />
-        {err ? <Text size={12} color={tokens.error} style={{ marginTop: 6 }}>{err}</Text> : null}
-      </View>
-      <Button label={t.listCreate} busy={busy} onPress={() => void submit()} />
-    </Sheet>
   );
 }
 

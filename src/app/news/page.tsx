@@ -28,6 +28,7 @@ import { isPlus } from "@/core/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { forYouWithEvents } from "@/lib/listEvents";
 import { ListsFilters } from "@/components/ListsFilters";
+import { NewListBar } from "@/components/NewList/NewListBar";
 import { ListLikeHeart } from "@/components/ListLikeHeart";
 import { ListSaveMark } from "@/components/ListSaveChip";
 import { ListRateStar } from "@/components/ListRateStar";
@@ -595,6 +596,9 @@ async function ListsDiscovery({
       {/* الزرّ صعد إلى سطر التبويبات (داخل DiscoverFilters) — هنا
           رقائق المختار وحدها، كصفّ رقائق تبويب الأعمال (طلب أحمد) */}
       <ListsFilters variant="chips" {...listsFiltersProps(fr, lsrc, loc, t)} />
+      {/* 🆕 T450 — **بابا الإنشاء تحت الرقائق** («＋ قائمة جديدة | ✦ قائمة ذكيّة») إلى `/lists/new` من الكتالوج كلِّه
+          — قوائمُ ذكيّةٌ في «اكتشف» كما في Trakt (أحمد: «نبي قوائم ذكية ف اكتشف»). **للمسجَّل وحدَه**: الإنشاءُ بحساب. */}
+      {me && <NewListBar locale={locale} from="discover" />}
 
       {/* **الشخصيُّ يسبق العامّ** — نفسُ ترتيب تبويب الأعمال حرفاً
           («مقترح لك» ثم «من فنّانيك» ثم الرفوف العامّة). **ولا يظهران مع

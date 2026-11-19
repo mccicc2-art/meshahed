@@ -49,7 +49,6 @@ const ShareListSheet = dynamic(() => import("./ShareListSheet").then((m) => m.Sh
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const ListCoverSheet = dynamic(() => import("./ListCoverSheet").then((m) => m.ListCoverSheet), { ssr: false });
-import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 
 type Dict = ReturnType<typeof getDict>;
 
@@ -283,13 +282,8 @@ export function ListDetail({
   }
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<
-    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "add" | "cover" | null
+    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "cover" | null
   >(openShare ? "share" : null);
-  /* الأعمال المضافة في هذه الجلسة تُرسم فوراً ثم يلحق `router.refresh()`:
-     الانتظار كان سيجعل الورقة تُغلق على شبكةٍ لم تتغيّر، فيُقرأ الفعل
-     فاشلاً (نفس منطق الترتيب المحليّ أعلاه). */
-  const [added, setAdded] = useState<ListItem[]>([]);
-
   /* الترتيب المحليّ يسبق الخادم: بعد «تمّ» تتبدّل الأرقام في اللحظة نفسها،
      ثم يلحق `router.refresh()` بالتأكيد. الانتظار كان سيجعل أهم لحظةٍ في
      الميزة تبدو معطّلة نصف ثانية. */
@@ -300,14 +294,12 @@ export function ListDetail({
      يجعل الفشلَ يتراجع عن خمسةَ عشرَ شيئاً أمام العين.** فالانتظارُ
      ظاهرٌ في الزرّ، **والتجديدُ بعده يقلب علاماتِ الملصقات من الحقيقة.** */
   const visible = useMemo(() => {
-    const seen = new Set(items.map(keyOf));
-    const live = [...items, ...added.filter((a) => !seen.has(keyOf(a)))].filter(
-      (i) => !removed.has(keyOf(i)),
-    );
+    /* T450 — سقطت الإضافاتُ المتفائلة مع ورقة البحث: الإضافةُ صارت صفحةً تعود إلى هنا بعد الحفظ */
+    const live = items.filter((i) => !removed.has(keyOf(i)));
     if (!order) return live;
     const rank = new Map(order.map((k, i) => [k, i]));
     return [...live].sort((a, b) => (rank.get(keyOf(a)) ?? 1e9) - (rank.get(keyOf(b)) ?? 1e9));
-  }, [items, added, removed, order]);
+  }, [items, removed, order]);
 
   /* ⚖️ 🆕 **`startWatching` وزرُّها حُذفا** (D-681، حكمُ أحمد: «احذف
      ستارت واتشينغ») — **نقضٌ صريحٌ لـD-538 بيد صاحب تصميمها**: مفتاحُ
@@ -343,63 +335,6 @@ export function ListDetail({
     });
   }
 
-  /**
-   * إضافةُ عملٍ من داخل القائمة نفسها (D-167).
-   *
-   * **بلاغ أحمد:** «إضافة لستة ما تشتغل من قائمة اللستات بالمكتبة».
-   * ولم يكن زرٌّ معطّلاً بل **باباً غير موجود**: القائمة الفارغة كانت
-   * تقول «افتح أي عمل وأضفه من زر أضف لقائمة» — أي تُرسل صاحبها إلى
-   * مكانٍ آخر ليفعل ما جاء ليفعله هنا.
-   *
-   * ولا فعلَ خادمٍ جديد: `toggleInList` هي نفسها التي يستدعيها زرّ صفحة
-   * العمل، و`upsert` عندها يجعل الإضافة المكرّرة بلا أثر — فالرسالة
-   * تفرّق بين «أُضيف» و«موجودٌ أصلاً» بما نعرفه محلياً لا بنداءٍ ثانٍ.
-   */
-  function addPicked(p: PickedTitle) {
-    const key = `${p.kind}-${p.id}`;
-    if (visible.some((i) => keyOf(i) === key)) {
-      toast(t.listAlreadyIn, { tone: "info" });
-      return;
-    }
-    tap([12, 30]);
-    setAdded((prev) => [
-      ...prev,
-      {
-        tmdb_id: p.id,
-        media_type: p.kind,
-        title: p.title,
-        poster_path: p.posterPath,
-        /* الصفّ المتفائل كاملُ الشكل لا مقولَبٌ بـ`as`: القالب كان
-           سيُخفي أيّ حقلٍ يُضاف إلى `ListItem` غداً. والوقت في معالج
-           حدثٍ لا في الرسم، فلا يمسّ نقاء التصيير (D-073). */
-        added_at: new Date().toISOString(),
-        sort_order: null,
-      },
-    ]);
-    setRemoved((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    start(async () => {
-      try {
-        await toggleInList({
-          listId,
-          tmdbId: p.id,
-          mediaType: p.kind,
-          title: p.title,
-          posterPath: p.posterPath,
-          add: true,
-        });
-        toast(t.listAddedToast(p.title));
-        router.refresh();
-      } catch (e) {
-        setAdded((prev) => prev.filter((i) => keyOf(i) !== key));
-        flashError((e as Error).message);
-      }
-    });
-  }
 
   /* الزرّ نفسه في موضعين — الترويسة وحالةُ الفراغ — فوصفتُه هنا مرّةً
      واحدة (قاعدة D-145) */
@@ -408,9 +343,10 @@ export function ListDetail({
       type="button"
       onClick={() => {
         tap(8);
-        setSheet("add");
+        /* 🆕 T450 — **«أضف أعمالاً» صفحةُ الاختيار نفسُها** (`/lists/new?add=`): دفعةٌ من الملصقات بضغطةٍ
+           واحدة بدل بحثٍ يُضيف عملاً واحداً ويُغلق */
+        router.push(`/lists/new?add=${listId}`);
       }}
-      aria-haspopup="dialog"
       className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-14 font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
     >
       <Icon name="plus" size={14} strokeWidth={2.2} />
@@ -891,16 +827,6 @@ export function ListDetail({
       </div>
       </div>
 
-      {sheet === "add" && (
-        <TitleSearchSheet
-          locale={locale}
-          onClose={() => setSheet(null)}
-          onPick={(p) => {
-            addPicked(p);
-            setSheet(null);
-          }}
-        />
-      )}
 
       {sheet === "menu" && (
         <Sheet open onClose={() => setSheet(null)} closeLabel={t.closeLabel} labelledBy="list-menu-title">
@@ -918,7 +844,7 @@ export function ListDetail({
           {/* 🆕 **«أضف أعمالاً» أوّلَ القائمة** (D-681) — غادر الترويسةَ
               مع تصميمها، **والبابُ لا يُغلق**: هنا وفي حالة الفراغ. */}
           {canEditItems && (
-            <MenuRow icon="plus" label={t.listAddTitles} onClick={() => setSheet("add")} />
+            <MenuRow icon="plus" label={t.listAddTitles} onClick={() => router.push(`/lists/new?add=${listId}`)} />
           )}
           {/* 🆕 **ولا صفَّ تسميةٍ للمفضّلة** (D-860): **الحارسُ في
               `renameList` هو الحكم** — **وصفٌّ يُعرض ثم يُرفض عند الباب

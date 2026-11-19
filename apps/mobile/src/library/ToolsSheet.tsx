@@ -9,6 +9,7 @@ import { Sheet } from "./Sheet";
 import { moveTab, toggleTab, type TabPref } from "@/core/tabPrefs";
 import { railsOf, railToken, type RailTab } from "@/core/railPrefs";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { SwitchPill } from "../settings/ui";
 
 /**
  * ====== أدواتُ المكتبة — نسخةُ `LibraryToolsSheet.tsx` (الويب) ======
@@ -177,7 +178,7 @@ export function ViewPrefsPane({
                 style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8, opacity: lastVisible ? 0.45 : 1 }}
               >
                 <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
-                <Switch on={!pref.hidden} />
+                <SwitchPill checked={!pref.hidden} />
               </Pressable>
               <Arrow up disabled={i === 0} label={t.tabsPrefsMoveUp(label)} onPress={() => onTabs(moveTab(tabs, pref.key, -1))} />
               <Arrow disabled={i === tabs.length - 1} label={t.tabsPrefsMoveDown(label)} onPress={() => onTabs(moveTab(tabs, pref.key, 1))} />
@@ -205,7 +206,7 @@ export function ViewPrefsPane({
                 style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, paddingVertical: 8 }}
               >
                 <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{r.label(t, tab)}</Text>
-                <Switch on={!off} />
+                <SwitchPill checked={!off} />
               </Pressable>
             );
           })}
@@ -242,15 +243,8 @@ export function Segmented({ items, value, onChange }: { items: { id: string; lab
   );
 }
 
-/** المفتاحُ `h-5 w-9 rounded-full` وقرصُه `h-4 w-4` بلون الخلفيّة — وصفةُ `TabsPrefs` */
-export function Switch({ on }: { on: boolean }) {
-  const { tokens } = useApp();
-  return (
-    <View style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: on ? tokens.accent : tokens.border, justifyContent: "center" }}>
-      <View style={{ position: "absolute", start: on ? 18 : 2, width: 16, height: 16, borderRadius: 8, backgroundColor: tokens.bg }} />
-    </View>
-  );
-}
+/* 🆕 T450 — **سقط `Switch` (٣٦×٢٠)**: كان مفتاحاً ثانياً بجانب `SwitchPill` الإعدادات (٤٤×٢٦) — عائلتان لشيءٍ واحد
+   (القاعدة ٣). الأوراقُ الثلاث (الأدوات · فلاتر «اكتشف» · أدوات المجتمع) ترسم `SwitchPill` نفسَه الآن. */
 
 /** السهمان رأسيّان فلا ينقلبان مع الاتّجاه — «فوق» فوقٌ في اللغتين */
 export function Arrow({ up, disabled, label, onPress }: { up?: boolean; disabled: boolean; label: string; onPress: () => void }) {

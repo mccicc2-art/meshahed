@@ -143,10 +143,7 @@ export function SavedFiltersRow({
    * قبل أن يُخلَق** — **ورقاقةٌ تظهر ثمّ تختفي أسوأُ من انتظارٍ قصير.**
    */
   function saveSmart() {
-    if (!plus) {
-      openPlusGate();
-      return;
-    }
+    /* 🆕 T450 — القائمةُ الذكيّة مجّانيّة: لا بوّابةَ بلس قبلها (والفلترُ المحفوظُ وحدَه يبقى لبلس) */
     const clean = sanitizeFilterName(name);
     const type = sectionToRuleType(section);
     /* 🔴 **والجهةُ تُكتب في الشرط عند إنشائه** — **لأنّ `tab` ليست من
@@ -177,10 +174,6 @@ export function SavedFiltersRow({
      — **وصفةٌ واحدة** — **والفرقُ في الفعل والوجهة وحدَهما.** */
   function updateSmart() {
     if (!editing) return;
-    if (!plus) {
-      openPlusGate();
-      return;
-    }
     const type = sectionToRuleType(section);
     if (!current || !type) return;
     const rule = { ...Object.fromEntries(new URLSearchParams(current)), type };
@@ -257,7 +250,7 @@ export function SavedFiltersRow({
         {!editing && current && !naming && sectionToRuleType(section) && (
           <button
             type="button"
-            onClick={() => (plus ? setNaming("smart") : openPlusGate())}
+            onClick={() => setNaming("smart")}
             className={chipClass(false, "sm", "shrink-0 inline-flex items-center gap-1.5")}
           >
             <Icon name="sparkle-star" size={12} />

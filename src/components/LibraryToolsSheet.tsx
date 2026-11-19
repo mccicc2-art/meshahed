@@ -7,7 +7,7 @@ import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
-import { NewListForm } from "./NewListForm";
+import { NewListBar } from "./NewList/NewListBar";
 /* القسم الرابع في هذه الورقة — نفسُ المكوّن في اكتشف والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import { RailsPrefs } from "./RailsPrefs";
@@ -202,24 +202,18 @@ export function LibraryToolsSheet({
           </>
         )}
 
-        <div>
-          <span className="block text-12 font-bold text-muted mb-2">
-            {t.listNewGroup}
-          </span>
-          <NewListForm locale={locale} onCreated={onClose} />
-        </div>
-        {/* 🆕 **والقائمةُ الذكيّةُ من المكتبة تحت «قائمة جديدة»** (D-876،
-            حكمُ أحمد: «بابها ورقة أدوات المكتبة») — **فعلان لشيءٍ واحدٍ
-            متجاوران**: قائمةٌ تملؤها بيدك، وقائمةٌ تملأ نفسَها. **ولا تُرسم
-            في تبويبٍ بلا نوع** (الفنّانون · القوائم) — المكوّنُ يعود `null`. */}
-        <div className="border-t border-border pt-4">
+        {/* 🆕 T450 — **الإنشاءُ صفحةٌ لا نموذجٌ في الورقة**: بابا «قائمة جديدة | قائمة ذكيّة» إلى `/lists/new` مقيّدةً
+            بمكتبتك، **وتعديلُ شرطِ ذكيّةٍ قائمةٍ يبقى هنا** (`?edit=` — D-876) لأنه شرطٌ لا اختيار. */}
+        {smartEditing ? (
           <LibrarySmartForm
             locale={locale}
             libraryTab={libraryTab}
             editing={smartEditing}
             onDone={onClose}
           />
-        </div>
+        ) : (
+          <NewListBar locale={locale} from="library" />
+        )}
         </div>
         )}
 

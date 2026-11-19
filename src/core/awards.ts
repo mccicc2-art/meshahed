@@ -36,6 +36,9 @@ export interface Award {
   en: string;
   /** جهة الأعمال — تقرّر مسار البحث وتقييد السنة */
   kind: "movie" | "tv";
+  /** 🆕 T450 — **شهرُ الحفل** (١–١٢): في شهره تصعد قائمتُه إلى أوّل خمسِ بطاقاتٍ في «تناسبك» (أحمد ١٩ نوفمبر: «جينا
+   *  شهر الأوسكار تصعد جوائز الأوسكار ل توب ٥»). شهرُ الحفل المعتاد — **ويتكرّر كلَّ سنةٍ بلا تدخّل** */
+  month: number;
   /** اسم الجهة المانحة، لسطر البطاقة الثاني */
   bodyAr: string;
   bodyEn: string;
@@ -48,6 +51,7 @@ export interface Award {
 export const AWARDS: Award[] = [
   {
     slug: "oscar-best-picture",
+    month: 3,
     ar: "الأوسكار — أفضل فيلم",
     en: "Oscars — Best Picture",
     kind: "movie",
@@ -56,6 +60,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "oscar-international",
+    month: 3,
     ar: "الأوسكار — أفضل فيلم دولي",
     en: "Oscars — Best International Feature",
     kind: "movie",
@@ -64,6 +69,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "palme-dor",
+    month: 5,
     ar: "كان — السعفة الذهبية",
     en: "Cannes — Palme d'Or",
     kind: "movie",
@@ -72,6 +78,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "globe-drama",
+    month: 1,
     ar: "جولدن جلوب — أفضل فيلم دراما",
     en: "Golden Globes — Best Drama",
     kind: "movie",
@@ -80,6 +87,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "bafta-best-film",
+    month: 2,
     ar: "بافتا — أفضل فيلم",
     en: "BAFTA — Best Film",
     kind: "movie",
@@ -88,6 +96,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "golden-lion",
+    month: 9,
     ar: "فينيسيا — الأسد الذهبي",
     en: "Venice — Golden Lion",
     kind: "movie",
@@ -96,6 +105,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "golden-bear",
+    month: 2,
     ar: "برلين — الدبّ الذهبي",
     en: "Berlin — Golden Bear",
     kind: "movie",
@@ -104,6 +114,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "emmy-drama",
+    month: 9,
     ar: "إيمي — أفضل مسلسل دراما",
     en: "Emmys — Outstanding Drama Series",
     kind: "tv",
@@ -112,6 +123,7 @@ export const AWARDS: Award[] = [
   },
   {
     slug: "emmy-comedy",
+    month: 9,
     ar: "إيمي — أفضل مسلسل كوميدي",
     en: "Emmys — Outstanding Comedy Series",
     kind: "tv",

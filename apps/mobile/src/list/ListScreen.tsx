@@ -25,7 +25,6 @@ import { Chip } from "../library/Chip";
 import { ListEditSheet } from "./ListEditSheet";
 import { ListCoverSheet } from "./ListCoverSheet";
 import { ListReviews } from "./ListReviews";
-import { TitlePickerSheet } from "../search/TitlePickerSheet";
 import { ShareListSheet } from "./ShareListSheet";
 import { ListMembersSheet } from "./ListMembersSheet";
 import { ListInviteSheet } from "./ListInviteSheet";
@@ -34,7 +33,7 @@ import { haptic } from "../haptics";
 import { useRtlRailPin } from "../rtlRailPin";
 import type { HoldAction } from "../library/HoldMenu";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
-import type { CuratedCard, SearchTitle } from "../contracts";
+import type { CuratedCard } from "../contracts";
 import type {
   LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
   ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody, LikeListBody,
@@ -70,7 +69,7 @@ const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id,
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
 const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
 
-export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
+export function ListScreen({ id, from, invite = false }: { id: string; from: NativeRoot; invite?: boolean }) {
   const { t, tokens, locale, me } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
@@ -144,7 +143,14 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "add" | "share" | "rule" | "members" | "invite">(null);
+  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "share" | "rule" | "members" | "invite">(null);
+  /* 🆕 T450 — **`invite` يفتح ورقةَ الدعوة مرّةً حين تصل القائمة**: مفتاحُ «ادعُ أصدقاء» في «قائمة جديدة» يصل إلى الورقة نفسِها */
+  const invited = useRef(false);
+  useEffect(() => {
+    if (!invite || invited.current || !d?.can_invite) return;
+    invited.current = true;
+    setSheet("invite");
+  }, [invite, d?.can_invite]);
   const patch = useCallback((fn: (p: ListDetailPayload) => ListDetailPayload) => qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? fn(p) : p)), [qc, id]);
   const run = useCallback(
     async (optimistic: ((p: ListDetailPayload) => ListDetailPayload) | null, job: () => Promise<unknown>, done?: () => void) => {
@@ -214,26 +220,10 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
       ),
     [run, id, say, t],
   );
-  /* Phase 11-G (G4) — **إضافةُ عملٍ من المنتقي الأصليّ** (`ListDetail.addPicked` حرفاً): موجودٌ أصلاً ⇒ رسالةٌ بلا
-     نداء؛ وإلّا صفٌّ تفاؤليٌّ في آخر القائمة ثمّ `toggle-item` بـ`add:true` — المسارُ الذي تكتب به صفحةُ العمل نفسُها،
-     و`upsert` عنده يجعل التكرارَ بلا أثر. الورقةُ تبقى مفتوحةً لإضافةٍ ثانية (الويب يغلقها — لكنّ إضافةَ خمسة أعمالٍ
-     بخمس فتحاتٍ ثمنٌ يُرى على الهاتف أكثر) — ⚖️ افتراقٌ محصورٌ يُسجَّل. */
-  const addPicked = useCallback(
-    (p: SearchTitle) => {
-      const key = `${p.mediaType}-${p.id}`;
-      if (q.data?.items.some((x) => keyOf(x) === key)) {
-        say(t.listAlreadyIn, "info");
-        return;
-      }
-      haptic.success();
-      void run(
-        (prev) => ({ ...prev, items: [...prev.items, { kind: p.mediaType, id: p.id, title: p.title, poster_path: p.posterPath ?? null, badge: null, added_by: prev.members?.length ? (me?.id ?? null) : null }] }),
-        () => write<{ done: true }>("/api/v1/lists/toggle-item", { listId: id, tmdbId: p.id, mediaType: p.mediaType, title: p.title, posterPath: p.posterPath ?? null, add: true } satisfies ListToggleItemBody),
-        () => say(t.listAddedToast(p.title), "success"),
-      );
-    },
-    [q.data, run, id, say, t, me],
-  );
+  /* 🆕 T450 — **«أضف أعمالاً» صفحةُ الاختيار** (`/list/new?add=`): دفعةٌ من الملصقات — مكتبتُك بفلاترها والكتالوجُ بالبحث —
+     بدل منتقٍ يُضيف عملاً واحداً في كلِّ ضغطة (كان G4). **بلا `from`**: الإضافةُ تبحث في الكتالوج كلِّه دائماً كالويب —
+     قائمةٌ فُتحت من «المكتبة» لا تُحصر بما في مكتبتك. الكتابةُ `add-items` ووسمُها `list:<id>` يجدّد هذه الصفحةَ عند الرجوع */
+  const addTitles = useCallback(() => router.push({ pathname: "/list/new", params: { add: id } }), [router, id]);
   const removeList = useCallback(
     () =>
       void run(null, () => write<{ done: true }>("/api/v1/lists/delete", { listId: id } satisfies ListDeleteBody), () => {
@@ -587,7 +577,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
             {/* 🆕 234 — **العضو يضيف أعمالاً** (٣أ) — بلا «عدّل القائمة»: الاسمُ والترتيبُ والإعلانُ لصاحبها */}
             {d && !d.mine && d.can_edit_items ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
-                <Button label={t.listAddTitles} variant="ghost" onPress={() => setSheet("add")} />
+                <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} />
               </View>
             ) : null}
             {d?.mine ? (
@@ -611,7 +601,7 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
                     />
                   )
                 ) : (
-                  <Button label={t.listAddTitles} variant="ghost" onPress={() => setSheet("add")} />
+                  <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} />
                 )}
               </View>
             ) : null}
@@ -620,7 +610,6 @@ export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
 
         {sheet === "edit" && d ? <ListEditSheet list={d} busy={busy} onSave={saveMeta} onReorder={() => setSheet("reorder")} onCover={() => setSheet("cover")} onDelete={removeList} onClose={() => setSheet(null)} /> : null}
         {sheet === "reorder" && d ? <ReorderSheet items={queue} onClose={() => setSheet("edit")} onDone={saveOrder} /> : null}
-        {sheet === "add" && d ? <TitlePickerSheet onPick={addPicked} onClose={() => setSheet(null)} /> : null}
         {sheet === "share" && d ? (
           <ShareListSheet
             listId={id}

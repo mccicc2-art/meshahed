@@ -4,7 +4,8 @@ import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { Sheet } from "../library/Sheet";
-import { Segmented, Switch, ViewPrefsPane } from "../library/ToolsSheet";
+import { Segmented, ViewPrefsPane } from "../library/ToolsSheet";
+import { SwitchPill } from "../settings/ui";
 import type { CommunityPagerTab } from "@/core/communityParams";
 import type { CommunityPrefsBody } from "@/core/communityParams";
 import type { TabPref } from "@/core/tabPrefs";
@@ -37,7 +38,7 @@ function SwitchRow({ icon, label, on, onToggle }: { icon: IconName; label: strin
         <Icon name={icon} size={18} color={tokens.fg} />
         <Text size={15} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
       </View>
-      <Switch on={on} />
+      <SwitchPill checked={on} />
     </Pressable>
   );
 }

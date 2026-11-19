@@ -34,7 +34,7 @@ export function sectionToRuleType(section: string): "movie" | "tv" | "all" | nul
  *
  * 🆕 **ومفتاحان للمكتبة وحدَها**: `wst` حالةُ المشاهدة · `my` تقييمي.
  */
-export const LIBRARY_RULE_KEYS = ["type", "g", "era", "lang", "co", "wst", "my"] as const;
+export const LIBRARY_RULE_KEYS = ["type", "g", "era", "lang", "co", "wst", "my", "sort"] as const;
 export type LibraryRuleKey = (typeof LIBRARY_RULE_KEYS)[number];
 
 /** عتباتُ «تقييمي» — **ثلاثٌ كعتبات اكتشف** (`BROWSE_RATES`)، ولا عشرُ خانات */
@@ -44,3 +44,21 @@ export const MY_RATING_MIN = ["7", "8", "9"] as const;
 export function libraryTabToRuleType(tab: string): "movie" | "tv" | "all" | null {
   return tab === "movies" ? "movie" : tab === "shows" ? "tv" : tab === "anime" ? "all" : null;
 }
+
+/**
+ * ====== 🆕 T450 — مفتاحا صفحة «قائمة جديدة» (أحمد ١٩ نوفمبر: «موجوده ف تراكت») ======
+ *
+ * **قيمٌ مغلقةٌ لا نصٌّ حرّ** — المطهِّرُ يرفض ما سواها كما يرفض `wst`/`my` (D-475):
+ *  · `hide` (الكتالوج وحدَه): `watched` يُسقط ما شاهدتَه (فيلمٌ مشاهَد · مسلسلٌ بدأتَه)، و`library` يُسقط كلَّ ما في مكتبتك.
+ *  · `sort` (الكتالوج): `pop` الأشهر (الافتراضيّ — ترتيبُ «اكتشف» نفسُه) · `rate` الأعلى تقييماً · `new` الأحدث.
+ *  · `sort` (المكتبة): `added` الأحدث إضافةً (الافتراضيّ — ترتيبُها قبل اليوم) · `my` تقييمي · `title` الاسم.
+ * **والغائبُ هو الافتراضيُّ بحرفه** — فكلُّ شرطٍ حُفظ قبل اليوم يُقرأ كما كان (D-028).
+ */
+export const SMART_HIDE = ["watched", "library"] as const;
+export type SmartHide = (typeof SMART_HIDE)[number];
+export const SMART_SORT = ["pop", "rate", "new"] as const;
+export type SmartSort = (typeof SMART_SORT)[number];
+export const LIBRARY_SORT = ["added", "my", "title"] as const;
+export type LibrarySort = (typeof LIBRARY_SORT)[number];
+/** مفتاحا الكتالوج الزائدان على مفاتيح الفلاتر (`FILTER_KEYS`) */
+export const SMART_CATALOG_EXTRA = ["hide", "sort"] as const;

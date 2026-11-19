@@ -1,5 +1,6 @@
 import { EDITORIAL } from "@/core/universes";
-import { eventWindow, orderForYou } from "@/core/listEvents";
+import { eventWindow, orderForYou, riyadhMonth } from "@/core/listEvents";
+import { AWARDS } from "@/core/awards";
 import { getDict, type Locale } from "@/core/i18n";
 import { movieTheatricalDate } from "@/lib/tmdb";
 import { getListCardsByIds, type PublicListCard } from "@/lib/data";
@@ -34,6 +35,17 @@ export async function getActiveEventLists(
 }
 
 /**
+ * 🆕 T450 — **قوائمُ الجوائز في شهر حفلها** (`Award.month`): معرّفاتُها من خريطة قوائم لوبز (`award-<slug>`)،
+ * بترتيب `AWARDS` نفسِه. **والغائبُ من الخريطة يسقط صامتاً** — جائزةٌ لم تُبنَ قائمتُها لا تُرفع بطاقةً فارغة (D-217).
+ */
+export function seasonAwardLists(curated: Map<string, string>, now = Date.now()): string[] {
+  const month = riyadhMonth(now);
+  return AWARDS.filter((a) => a.month === month)
+    .map((a) => curated.get(`award-${a.slug}`))
+    .filter((id): id is string => !!id);
+}
+
+/**
  * 🆕 442 — **رفُّ «تناسبك» بقائمة الحدث في صدره** — وصفةٌ واحدةٌ للويب وواجهة التطبيق.
  *
  * - **الحدثُ أوّلاً ولا يتكرّر**: يُحذف من «الرائجة» إن كان فيها (صفّان شخصيّان متجاوران لا يحملان
@@ -50,7 +62,12 @@ export async function forYouWithEvents(args: {
   const t = getDict(args.locale);
   const pins = await getActiveEventLists(args.curated, args.locale).catch(() => []);
   const label = new Map(pins.map((p) => [p.listId, p.label]));
-  const { ids, trending } = orderForYou(pins.map((p) => p.listId), args.forYouIds, args.trending);
+  const { ids, trending } = orderForYou(
+    pins.map((p) => p.listId),
+    args.forYouIds,
+    args.trending,
+    seasonAwardLists(args.curated),
+  );
   const cards = await getListCardsByIds(ids).catch(() => [] as PublicListCard[]);
   const forYou = cards.map((c) => {
     const l = label.get(c.id);

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { inviteListMembers, peopleFollowsOf, removeListMember, respondListInvite } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { displayNameOf, type PersonLite } from "@/core/people";
@@ -50,7 +50,13 @@ export function ListMembersRow({
 }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [sheet, setSheet] = useState<null | "members" | "invite">(null);
+  /* 🆕 T450 — **`?invite=1` يفتح ورقةَ الدعوة من أوّل رسمة**: مفتاحُ «ادعُ أصدقاء» في صفحة «قائمة جديدة» يصل إلى
+     هنا بعد الإنشاء — الورقةُ نفسُها لا نسخةٌ منها، ثمّ يُمحى المعامل كي لا تعود مع التحديث */
+  const inviteParam = useSearchParams().get("invite") === "1";
+  const [sheet, setSheet] = useState<null | "members" | "invite">(() => (inviteParam && canInvite ? "invite" : null));
+  useEffect(() => {
+    if (inviteParam) router.replace(`/lists/${listId}`, { scroll: false });
+  }, [inviteParam, listId, router]);
   const [pending, start] = useTransition();
   const shown = members.filter((m) => m.role !== "pending");
   const amMember = !isOwner && !!meId && members.some((m) => m.id === meId && m.role === "member");

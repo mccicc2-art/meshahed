@@ -150,6 +150,9 @@ export type SectionMedia = "movie" | "tv" | "anime";
 
 export interface SectionCtx {
   media: SectionMedia;
+  /** 🆕 T450 — ترتيبُ صفِّ `my-row` وحدَه (القائمةُ الذكيّة: الأشهر · الأعلى تقييماً · الأحدث). الغائبُ = الشعبيّة
+      كما كان — **فكلُّ صفٍّ في «اكتشف» يُقرأ بحرفه** */
+  sort?: "popularity.desc" | "vote_average.desc" | "release.desc";
   /** الفلترُ مبنيّاً — يُحسب مرّةً في الصفحة ويُمرَّر (لا يُعاد بناؤه هنا) */
   base: DiscoverFilter;
   /** معرّفاتُ النوع الدرامي لهذه الجهة — تُضاف إلى `base` عند الطلب */
@@ -560,11 +563,16 @@ export async function buildSection(
            **والوسمُ والأنمي يصلان في `base.keywords`** كما تبنيهما
            الصفحة — **فما يفتحه العنوانُ هو ما يعرضه الصفّ، أعمقَ لا
            أغيرَ** (D-199). */
+        /* 🆕 T450 — **«الأحدث» لا يرى ما لم يُعرض بعد**: بلا سقفٍ لتاريخ العرض يتصدّر الإعلانُ عن فيلمٍ بعد سنتين.
+           السقفُ اليومُ ما لم يحدّه الشرطُ بحقبةٍ (`base.to`) — والحقبةُ أضيقُ منه فتغلبه. */
+        const sort = ctx.sort ?? "popularity.desc";
+        const today = new Date().toISOString().slice(0, 10);
         const rows = await topByFilter(
           media === "movie" ? "movie" : "tv",
-          { ...base, genreIds },
+          { ...base, genreIds, /* «الأحدث» يقصّ عند اليوم كي لا يتصدّر ما لم يُعرض — **إلّا حقبةً قادمةً كلُّها** (تبدأ اليومَ فما بعده — `eraRange` يضع «القادم» من اليوم نفسِه): قصُّها يُفرغها */
+            to: sort === "release.desc" && !(base.from && base.from >= today) ? (base.to && base.to < today ? base.to : today) : base.to },
           limit,
-          "popularity.desc",
+          sort,
         );
         return guard(rows);
       }

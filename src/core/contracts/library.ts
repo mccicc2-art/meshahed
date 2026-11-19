@@ -163,6 +163,39 @@ export type ListReviewDeleteBody = { listId: string };
 export type QueueOrderBody = { row: "continue" | "towatch" | "lists" | "towatchlist"; keys: string[] };
 export type SmartListBody = { name: string; rule: Record<string, string> };
 export type CreateListBody = { name: string };
+/** 🆕 T450 — صفحةُ «قائمة جديدة»: المعاينةُ الحيّة للقائمة الذكيّة، والإنشاءُ بالأعمال والتفاصيل دفعةً واحدة */
+export type SmartPreviewBody = { rule: Record<string, string>; source: "catalog" | "library" };
+export type SmartPreviewItem = { id: number; kind: TitleKind; title: string; poster_path: string | null };
+export type SmartPreviewResult = { items: SmartPreviewItem[]; count: number };
+export type SmartListCreateBody = { name: string; rule: Record<string, string>; source: "catalog" | "library" };
+export type NewListItem = { tmdbId: number; mediaType: TitleKind; title: string; posterPath: string | null };
+export type CreateListFullBody = {
+  name: string;
+  subtitle?: string | null;
+  isPublic: boolean;
+  kind: "regular" | "ranked" | "watch_order";
+  playlist: boolean;
+  items: NewListItem[];
+};
+/**
+ * 🆕 T450 — عملٌ في اختيار «قائمة جديدة»: ما يلزم لرقائق المصدر (`status` · `last`) وفلاتره (`genres` · `year` ·
+ * `my` · `anime`) **فتُصفّى في الجهاز بلا رحلة**. `last` آخرُ نشاطٍ عليه (آخرُ حلقةٍ أو تاريخُ الإضافة).
+ */
+export type PickerItem = {
+  id: number;
+  kind: TitleKind;
+  title: string;
+  poster_path: string | null;
+  status: "watching" | "unstarted" | "completed" | "dropped";
+  last: string;
+  genres: number[];
+  year: number | null;
+  my: number | null;
+  anime: boolean;
+};
+export type PickerPayload = { items: PickerItem[] };
+/** إضافةُ دفعةٍ إلى قائمةٍ قائمة (زرُّ «أضف أعمالاً» يفتح الاختيارَ نفسَه) */
+export type ListAddItemsBody = { listId: string; items: NewListItem[] };
 export type ListPlaylistBody = { listId: string; on: boolean };
 /** 🆕 D-1037 — كتاباتُ مالك القائمة من الشاشة الأصليّة (L2)؛ كلُّها فوق دوالّ الويب القائمة */
 export type ListUpdateBody = { listId: string; name: string; isPublic: boolean; subtitle?: string | null; kind?: "regular" | "ranked" | "watch_order" };

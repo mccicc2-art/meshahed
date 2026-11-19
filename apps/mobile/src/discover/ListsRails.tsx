@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
@@ -11,6 +11,8 @@ import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 import { scrollJank } from "../scrollJank";
 import { useRtlRailPin } from "../rtlRailPin";
+import { useAppAway } from "../appActive";
+import { NewListBar } from "../newlist/NewListBar";
 
 /**
  * ====== تبويبُ «القوائم» في «اكتشف» — نسخةُ `ListsDiscovery` (الويب) ======
@@ -36,7 +38,7 @@ export const listsQuery = {
 };
 
 export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, me } = useApp();
   const { width } = useWindowDimensions();
   const cardW = Math.min(CARD_W, width - PAGE_PAD * 2 - 24);
   const [src, setSrc] = useState<"all" | "curated" | "community">("all");
@@ -45,6 +47,16 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
   const [allOf, setAllOf] = useState<{ name: string; sets: LibraryListCard[] } | null>(null);
   const q = useQuery(listsQuery);
   const p = q.data;
+  /* 🆕 T450 — **العودةُ إلى التطبيق تجدّد القوائم** (أحمد: «لا تجددت اساسا»): التبويبُ يبقى مركَّباً، والتطبيقُ لا يجلب
+     عند التركيز (`refetchOnWindowFocus: false`) والكاشُ محفوظٌ في القرص — فكان «لك» يبقى على ترتيب أمس. فالرجوعُ بعد
+     دقيقةٍ فأكثر يجلب، بلا هيكل: البطاقاتُ القديمةُ مرسومةٌ حتى تصل الجديدة */
+  const away = useAppAway();
+  const wasAway = useRef(away);
+  const { refetch, dataUpdatedAt } = q;
+  useEffect(() => {
+    if (wasAway.current && !away && Date.now() - dataUpdatedAt > 60_000) void refetch();
+    wasAway.current = away;
+  }, [away, refetch, dataUpdatedAt]);
 
   const rail = (key: string, title: string, lists: LibraryListCard[], seeAll?: boolean) =>
     lists.length === 0 ? null : (
@@ -70,6 +82,8 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
         <Chip label={t.listsCurated} active={src === "curated"} onPress={() => setSrc("curated")} />
         <Chip label={t.publicListsRail} active={src === "community"} onPress={() => setSrc("community")} />
       </ScrollView>
+      {/* 🆕 T450 — بابا الإنشاء تحت الرقائق: قائمةٌ تملؤها بيدك من الكتالوج كلِّه، وذكيّةٌ تملأ نفسَها (مجّانيّةٌ للجميع) */}
+      {me ? <NewListBar from="discover" style={{ marginHorizontal: PAGE_PAD, marginTop: -12 }} /> : null}
       {!p ? (
         <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: PAGE_PAD }}>
           {[0, 1].map((i) => (

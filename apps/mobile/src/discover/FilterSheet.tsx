@@ -30,7 +30,8 @@ import { MY_ROWS_MAX, type MyRow } from "@/core/myRows";
 import { guardLastVisible, moveTab, toggleTab, type TabPref } from "@/core/tabPrefs";
 import { railsOf, railToken, railsHiddenFor, type RailTab } from "@/core/railPrefs";
 import { num } from "@/core/i18n";
-import { Switch, Arrow } from "../library/ToolsSheet";
+import { Arrow } from "../library/ToolsSheet";
+import { SwitchPill } from "../settings/ui";
 import { api } from "../api";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
@@ -279,7 +280,7 @@ export function FilterSheet({
                   >
                     <Icon name={pref.hidden ? "eye-off" : "eye"} size={16} color={pref.hidden ? tokens.muted : tokens.fg} />
                     <Text size={14} style={{ flex: 1 }} color={pref.hidden ? tokens.muted : tokens.fg}>{label}</Text>
-                    <Switch on={!pref.hidden} />
+                    <SwitchPill checked={!pref.hidden} />
                   </Pressable>
                   <Arrow up disabled={i === 0} label={t.tabsPrefsMoveUp(label)} onPress={() => onView({ tabs: moveTab(tabs, pref.key, -1) })} />
                   <Arrow disabled={i === tabs.length - 1} label={t.tabsPrefsMoveDown(label)} onPress={() => onView({ tabs: moveTab(tabs, pref.key, 1) })} />
@@ -309,7 +310,7 @@ export function FilterSheet({
                   >
                     <Icon name={off ? "eye-off" : "eye"} size={16} color={off ? tokens.muted : tokens.fg} />
                     <Text size={14} style={{ flex: 1 }} color={off ? tokens.muted : tokens.fg}>{r.label(t, railTab)}</Text>
-                    <Switch on={!off} />
+                    <SwitchPill checked={!off} />
                   </Pressable>
                 );
               })}

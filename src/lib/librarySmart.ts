@@ -58,7 +58,8 @@ export async function evaluateLibraryRule(
     getWatchSummary(),
     getWatchedMovieIds(),
     getMyAnimeFlags(),
-    rule.my ? getMyRatings() : Promise.resolve([]),
+    /* 🆕 T450 — والترتيبُ بتقييمي يقرأ التقييماتِ كعتبتها */
+    rule.my || rule.sort === "my" ? getMyRatings() : Promise.resolve([]),
   ]);
 
   /* **نفسُ احتياط صفحة المكتبة قبل `watch_summary`** — بلا دورات الإعادة
@@ -120,8 +121,18 @@ export async function evaluateLibraryRule(
   }
 
   /* **الأحدثُ إضافةً أوّلاً** — نفسُ افتراض «الأحدث» في الشبكة (D-350) */
+  /* 🆕 T450 — **ترتيبُ القائمة** (`sort`): الأحدثُ إضافةً (الافتراضيّ — ما كانت عليه) · تقييمي (والأحدثُ يحسم
+     التعادل، وغيرُ المقيَّم آخراً) · الاسم. */
+  const byAdded = (a: FollowRow, b: FollowRow) => (b.added_at > a.added_at ? 1 : b.added_at < a.added_at ? -1 : 0);
+  const sorter =
+    rule.sort === "my"
+      ? (a: FollowRow, b: FollowRow) =>
+          (myRating.get(`${b.media_type}-${b.tmdb_id}`) ?? -1) - (myRating.get(`${a.media_type}-${a.tmdb_id}`) ?? -1) || byAdded(a, b)
+      : rule.sort === "title"
+        ? (a: FollowRow, b: FollowRow) => a.title.localeCompare(b.title) || byAdded(a, b)
+        : byAdded;
   return rows
-    .sort((a, b) => (b.added_at > a.added_at ? 1 : b.added_at < a.added_at ? -1 : 0))
+    .sort(sorter)
     .slice(0, limit)
     .map((f) => ({
       tmdb_id: f.tmdb_id,

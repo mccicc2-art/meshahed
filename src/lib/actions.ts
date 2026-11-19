@@ -3323,7 +3323,7 @@ export async function createList(
  * الفلاتر** — **وشاشةُ إنشاءٍ تسأل عن نوعٍ ولغةٍ وسنةٍ هي ورقةُ فلاترَ
  * ثانيةٌ بلغةٍ ثانية** (D-145).
  *
- * 🔒 **وبلس** — **والحارسُ هنا لا في الرقاقة** (D-819/D-821).
+ * ⚖️ كانت بلس (D-819/D-821) — **صارت مجّانيّةً للجميع في T450** (انظر السطرَ أدناه).
  * ⚠️ **والشرطُ يُطهَّر في الخادم**: **العميلُ يُقترح والخادمُ يقرّر.**
  */
 export async function createSmartList(
@@ -3342,7 +3342,8 @@ export async function createSmartList(
   if (!clean_rule) throw new Error("empty rule");
 
   const { supabase, user } = await requireUser("list", 10, 60_000);
-  if (!(await viewerIsPlus())) return { id: null, needsPlus: true };
+  /* 🆕 T450 — **مجّانيّةٌ للجميع** (أحمد ١٩ نوفمبر: «القوائم الذكية ابغاها تسير بدون اشتراك») — سقط حارسُ بلس
+     هنا وفي تعديل الشرط والمعاينة. ونوعُ الردّ يبقى يحمل `needsPlus` الاختياريّ: نسخُ التطبيق القديمة تقرؤه. */
 
   const { count } = await supabase
     .from("user_lists")
@@ -3380,7 +3381,7 @@ export async function createSmartList(
  * يحمل `edit=<id>` فيصير زرُّ «قائمة ذكيّة» زرَّ «حدِّث «الاسم»».**
  * **ولا ورقةَ تعديلٍ ثانية** (D-145).
  *
- * 🔒 **وبلس كالإنشاء** — **والحارسُ هنا** (D-819/D-821). **والمنحُ
+ * ⚖️ كانت بلس كالإنشاء (D-819/D-821) — **مجّانيّةٌ منذ T450**. **والمنحُ
  * `update (rule, rule_source)` قائمٌ منذ الهجرة ١٦١** — **كُتب يومَها
  * لهذا اليوم.** ⚠️ **و`rule_source` لا يُمسّ**: **الشرطُ يتبدّل ومصدرُه
  * لا** — قائمةُ كتالوجٍ تبقى قائمةَ كتالوج.
@@ -3393,21 +3394,27 @@ export async function updateSmartListRule(
   const { sanitizeRule, isRuleSource } = await import("@/lib/smartLists");
 
   const { supabase, user } = await requireUser("list", 10, 60_000);
-  if (!(await viewerIsPlus())) return { ok: false, needsPlus: true };
+  /* 🆕 T450 — بلا حارس بلس (القائمةُ الذكيّة مجّانيّة) */
 
   /* 🆕 **المصدرُ يُقرأ من الصفِّ لا من العميل** (D-876): **الشرطُ يتبدّل
      ومصدرُه لا** — **وقائمةُ مكتبةٍ تُطهَّر بمفردات المكتبة** ولو أرسل
      العميلُ غيرَها. */
   const { data: row } = await supabase
     .from("user_lists")
-    .select("rule_source")
+    .select("rule_source, rule")
     .eq("id", listId)
     .eq("user_id", user.id)
     .eq("kind", "smart")
     .maybeSingle();
   if (!row) throw new Error("not your smart list");
   const source = isRuleSource(row.rule_source) ? row.rule_source : "catalog";
-  const clean_rule = sanitizeRule(rule, source);
+  /* 🆕 T450 — **الإخفاءُ والترتيبُ يبقيان** حين يأتي الشرطُ الجديد بلا ذكرهما: بابُ التعديل في «اكتشف» يحمل الفلاترَ
+     وحدَها، **فتحديثُ النوع لا يمحو «أخفِ ما شاهدته» الذي اختير في صفحة الإنشاء.** */
+  const prev = (row.rule && typeof row.rule === "object" ? row.rule : {}) as Record<string, unknown>;
+  const incoming = (rule && typeof rule === "object" && !Array.isArray(rule) ? rule : {}) as Record<string, unknown>;
+  const keep: Record<string, unknown> = {};
+  for (const k of ["hide", "sort"]) if (incoming[k] === undefined && prev[k] !== undefined) keep[k] = prev[k];
+  const clean_rule = sanitizeRule({ ...incoming, ...keep }, source);
   if (!clean_rule) throw new Error("empty rule");
 
   const { error, count } = await supabase
@@ -3423,6 +3430,163 @@ export async function updateSmartListRule(
   revalidatePath(`/lists/${listId}`);
   revalidatePath("/lists");
   return { ok: true };
+}
+
+/**
+ * 🆕 T450 — **معاينةُ القائمة الذكيّة قبل إنشائها** (صفحةُ «قائمة جديدة»: «ترى ما ستحصل عليه قبل أن تنشئها»).
+ *
+ * 🔑 **القارئُ نفسُه الذي تُفتح به القائمةُ بعد إنشائها** (`evaluateSmartRule`) — فالمعاينةُ وعدٌ يُوفى بحرفه
+ * (D-145). ويُطهَّر الشرطُ هنا كما يُطهَّر عند الحفظ. **والفشلُ فراغٌ لا خطأ** (TMDB خارجُنا).
+ * والعددُ عددُ ما تحمله القائمةُ فعلاً (سقفُها ستّون — `SMART_LIST_LIMIT`)، والملصقاتُ أوّلُ أربعٍ وعشرين منها.
+ */
+export async function previewSmartList(
+  rule: unknown,
+  source: "catalog" | "library" = "catalog",
+): Promise<{ items: { id: number; kind: "tv" | "movie"; title: string; poster_path: string | null }[]; count: number }> {
+  const { sanitizeRule, isRuleSource, SMART_LIST_LIMIT } = await import("@/lib/smartLists");
+  if (!isRuleSource(source)) throw new Error("bad source");
+  await requireUser("preview", 40, 60_000);
+  const clean = sanitizeRule(rule, source);
+  if (!clean) return { items: [], count: 0 };
+  const { evaluateSmartRule } = await import("@/lib/listItems");
+  const { getLocale } = await import("@/lib/locale");
+  try {
+    const rows = await evaluateSmartRule(clean, source, await getLocale(), SMART_LIST_LIMIT);
+    return {
+      items: rows.slice(0, 24).map((r) => ({ id: r.tmdb_id, kind: r.media_type, title: r.title ?? "", poster_path: r.poster_path })),
+      count: rows.length,
+    };
+  } catch {
+    return { items: [], count: 0 };
+  }
+}
+
+/**
+ * 🆕 T450 — **إنشاءُ قائمةٍ بأعمالها وتفاصيلها في نداءٍ واحد** (صفحةُ «قائمة جديدة»، الخطوة الثانية).
+ *
+ * كان الإنشاءُ اسماً وحدَه ثمّ عملاً عملاً من صفحة القائمة (أحمد: «تعب يقعد يكتب عمل عمل»). الآن الاسمُ والوصفُ
+ * والنوعُ والإعلانُ وقائمةُ التشغيل والأعمالُ المختارةُ تُكتب معاً. **ولا دمجَ بالاسم** (خلافَ `upsertListWithItems`):
+ * من ضغط «أنشئ» يريد قائمةً جديدة، وقائمةٌ قديمةٌ تبتلع اختيارَه بصمتٍ مفاجأة (D-217).
+ * والقائمةُ المرتّبةُ وترتيبُ المشاهدة يحفظان ترتيبَ الاختيار نفسَه (`sort_order`).
+ */
+export async function createListFull(input: {
+  name: string;
+  subtitle?: string | null;
+  isPublic: boolean;
+  kind: string;
+  playlist: boolean;
+  items: { tmdbId: number; mediaType: MediaType; title: string; posterPath: string | null }[];
+}): Promise<{ id: string }> {
+  const name = String(input?.name ?? "").trim().slice(0, 60);
+  if (!name) throw new Error("empty name");
+  const kind = ["regular", "ranked", "watch_order"].includes(String(input.kind)) ? String(input.kind) : "regular";
+  const seen = new Set<string>();
+  const items = (Array.isArray(input.items) ? input.items : [])
+    .map((r) => ({
+      tmdbId: intId(r.tmdbId),
+      mediaType: asMediaType(r.mediaType),
+      title: String(r.title ?? "").slice(0, 300),
+      posterPath: safeImagePath(r.posterPath),
+    }))
+    .filter((r) => {
+      const k = `${r.mediaType}-${r.tmdbId}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, 300);
+
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+  const { count } = await supabase
+    .from("user_lists")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  if ((count ?? 0) >= 50) throw new Error("too many lists");
+
+  const { data, error } = await supabase
+    .from("user_lists")
+    .insert({
+      user_id: user.id,
+      name,
+      is_public: !!input.isPublic,
+      subtitle: subtitleOf(input.subtitle),
+      kind,
+      is_playlist: !!input.playlist,
+    })
+    .select("id")
+    .single();
+  if (error) fail(error);
+  const listId = data!.id as string;
+
+  if (items.length) {
+    const ordered = kind !== "regular";
+    const { error: e2 } = await supabase.from("user_list_items").upsert(
+      items.map((it, i) => ({
+        list_id: listId,
+        tmdb_id: it.tmdbId,
+        media_type: it.mediaType,
+        title: it.title,
+        poster_path: it.posterPath,
+        ...(ordered ? { sort_order: i } : {}),
+      })),
+      { onConflict: "list_id,tmdb_id,media_type", ignoreDuplicates: true },
+    );
+    /* فشلُ الأعمال **يُرجع الإنشاءَ كلَّه**: قائمةٌ فارغةٌ تبقى ثمّ يعيد صاحبُها المحاولةَ فتولد ثانيةٌ باسمها — نسختان */
+    if (e2) {
+      await supabase.from("user_lists").delete().eq("id", listId);
+      fail(e2);
+    }
+  }
+
+  revalidatePath("/lists");
+  revalidatePath("/library");
+  revalidatePath(`/lists/${listId}`);
+  if (input.playlist) revalidatePath("/");
+  return { id: listId };
+}
+
+/**
+ * 🆕 T450 — **إضافةُ دفعةٍ إلى قائمةٍ قائمة** — زرُّ «أضف أعمالاً» في صفحة القائمة يفتح الاختيارَ نفسَه بالملصقات.
+ * الإدراجُ يتجاهل الموجود (`ignoreDuplicates`) كـ`toggleInList`، **والملكيّةُ والعضويّةُ تحرسهما سياساتُ الجدول**
+ * (صاحبُها وأعضاءُ القائمة المشتركة — ٢٣٤)، فلا شرطَ ثانٍ هنا. وما يُضاف إلى قائمةٍ مرتّبةٍ يلحق بآخرها.
+ */
+export async function addItemsToList(
+  listId: string,
+  rawItems: { tmdbId: number; mediaType: MediaType; title: string; posterPath: string | null }[],
+): Promise<{ added: number }> {
+  listId = uuid(listId);
+  const items = (Array.isArray(rawItems) ? rawItems : []).slice(0, 300).map((r) => ({
+    list_id: listId,
+    tmdb_id: intId(r.tmdbId),
+    media_type: asMediaType(r.mediaType),
+    title: String(r.title ?? "").slice(0, 300),
+    poster_path: safeImagePath(r.posterPath),
+  }));
+  if (!items.length) return { added: 0 };
+  const { supabase } = await requireUser("list", 20, 60_000);
+  /* القائمةُ الذكيّةُ تملأ نفسَها — صفوفٌ يدويّةٌ فيها يتيمةٌ لا يقرؤها أحد (RLS يمنع العضوَ وحدَه لا المالك) */
+  const { data: host } = await supabase.from("user_lists").select("kind").eq("id", listId).maybeSingle();
+  if (!host) fail({ message: "not found" });
+  if (host?.kind === "smart") return { added: 0 };
+  const { data: last } = await supabase
+    .from("user_list_items")
+    .select("sort_order")
+    .eq("list_id", listId)
+    .not("sort_order", "is", null)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const base = typeof last?.[0]?.sort_order === "number" ? (last[0].sort_order as number) + 1 : null;
+  const { data, error } = await supabase
+    .from("user_list_items")
+    .upsert(
+      items.map((it, i) => (base === null ? it : { ...it, sort_order: base + i })),
+      { onConflict: "list_id,tmdb_id,media_type", ignoreDuplicates: true },
+    )
+    .select("tmdb_id");
+  if (error) fail(error);
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+  return { added: data?.length ?? 0 };
 }
 
 export async function renameList(

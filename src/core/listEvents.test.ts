@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { eventWindow, orderForYou } from "./listEvents.ts";
+import { eventWindow, orderForYou, riyadhMonth } from "./listEvents.ts";
 import { getDict } from "./i18n.ts";
 
 /* 442 — نافذةُ قائمة الحدث: قبل العرض، يومَه، ومهلةُ الأسبوعين بعده، وبتقويم الرياض */
@@ -44,4 +44,21 @@ test("without an event the rail is the old one", () => {
   const r = orderForYou([], ["a", "t1", "b"], [{ id: "t1" }]);
   assert.deepEqual(r.ids, ["a", "b"]);
   assert.deepEqual(r.trending.map((c) => c.id), ["t1"]);
+});
+
+/* T450 — جوائزُ الموسم: بعد الحدث مباشرةً، داخل الخمس، وتسقط من «الرائجة» */
+test("season awards follow the event, stay inside the top five and leave trending", () => {
+  const r = orderForYou(["ev"], ["a", "osc", "b", "c", "d"], [{ id: "osc" }, { id: "t" }], ["osc", "intl"]);
+  assert.deepEqual(r.ids, ["ev", "osc", "intl", "a", "b", "c", "d"]);
+  assert.deepEqual(r.trending.map((c) => c.id), ["t"]);
+});
+
+test("without an event the season awards lead the rail", () => {
+  assert.deepEqual(orderForYou([], ["a", "b"], [], ["emmy1", "emmy2", "lion"]).ids, ["emmy1", "emmy2", "lion", "a", "b"]);
+});
+
+test("the Riyadh month turns at Riyadh midnight", () => {
+  /* ٢١:٠٠ UTC يومَ ٢٨ فبراير = منتصفُ ليل ١ مارس في الرياض */
+  assert.equal(riyadhMonth(Date.parse("2027-02-28T20:59:00Z")), 2);
+  assert.equal(riyadhMonth(Date.parse("2027-02-28T21:00:00Z")), 3);
 });

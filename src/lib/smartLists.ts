@@ -5,7 +5,7 @@ import { eraRange, lengthSpecFor, parseBrowse, seasonRange, type BrowseQuery } f
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
 import { FILTER_KEYS } from "@/core/savedFilters";
-import { LIBRARY_RULE_KEYS, MY_RATING_MIN } from "@/core/smartListKeys";
+import { LIBRARY_RULE_KEYS, MY_RATING_MIN, SMART_CATALOG_EXTRA, SMART_HIDE, SMART_SORT, LIBRARY_SORT } from "@/core/smartListKeys";
 import { isLibraryStatus } from "@/core/libraryStatus";
 import { keywordId, companyId, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import type { SectionMedia } from "@/lib/sections";
@@ -59,7 +59,10 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
      🆕 **والمفاتيحُ بمصدرها** (D-876): **الكتالوجُ `FILTER_KEYS`، والمكتبةُ
      `LIBRARY_RULE_KEYS`** — **ومفتاحٌ من غير مصدره يسقط صامتاً** (D-475).
      **ومطهِّرٌ واحدٌ لا اثنان**: **الفرقُ قائمةُ سماحٍ لا لغةٌ ثانية.** */
-  const keys: readonly string[] = source === "library" ? LIBRARY_RULE_KEYS : FILTER_KEYS;
+  /* 🆕 T450 — **والكتالوجُ يزيد مفتاحين** (`hide` · `sort`) على مفاتيح الفلاتر، **والمكتبةُ مفتاحاً** (`sort`)
+     — كلُّها قيمٌ مغلقة تُفحص هنا كأخواتها. */
+  const keys: readonly string[] =
+    source === "library" ? LIBRARY_RULE_KEYS : [...FILTER_KEYS, ...SMART_CATALOG_EXTRA];
   for (const k of keys) {
     const x = v[k];
     if (typeof x !== "string" || !VALUE_RE.test(x)) continue;
@@ -67,8 +70,13 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
        من ثلاث — **ونصٌّ حرٌّ في شرطٍ يُخزَّن ثغرةٌ تنتظر قارئاً.** */
     if (k === "wst" && !isLibraryStatus(x)) continue;
     if (k === "my" && !(MY_RATING_MIN as readonly string[]).includes(x)) continue;
+    if (k === "hide" && !(SMART_HIDE as readonly string[]).includes(x)) continue;
+    if (k === "sort" && !((source === "library" ? LIBRARY_SORT : SMART_SORT) as readonly string[]).includes(x)) continue;
     out[k] = x;
   }
+  /* ⚠️ **والترتيبُ والإخفاءُ وحدَهما ليسا شرطاً**: قائمةٌ لا يحدّها إلّا ترتيبُها أو ما تُسقطه هي الكتالوجُ كلُّه —
+     أو المكتبةُ كلُّها — والقاعدةُ تمنع الشرطَ الفارغ لهذا (D-636). */
+  if (Object.keys(out).every((k) => k === "sort" || k === "hide")) return null;
   return Object.keys(out).length ? out : null;
 }
 

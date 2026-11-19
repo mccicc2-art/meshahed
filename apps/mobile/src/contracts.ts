@@ -62,6 +62,15 @@ export type {
   FriendsPayload,
   FollowsPayload,
   CommunitiesPayload,
+  /* 🆕 T450 — صفحةُ «قائمة جديدة» */
+  SmartPreviewBody,
+  SmartPreviewResult,
+  SmartPreviewItem,
+  NewListItem,
+  CreateListFullBody,
+  PickerItem,
+  PickerPayload,
+  ListAddItemsBody,
 } from "@/core/contracts/library";
 export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload, TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";
 export type {

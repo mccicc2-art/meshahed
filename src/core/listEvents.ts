@@ -50,17 +50,32 @@ export function eventWindow(releaseDate: string | null | undefined, graceDays: n
  *
  * الحدثُ أوّلاً، **ويُحذف من «الرائجة»** (صفّان متجاوران لا يحملان البطاقةَ نفسَها — D-366)،
  * **ولا يتكرّر في «تناسبك»**، وما في «الرائجة» يسقط من «تناسبك» كما كان قبله.
+ *
+ * 🆕 T450 — **وجوائزُ الموسم بعده مباشرةً** (`seasonIds`): قائمةُ الجائزة في شهر حفلها تصعد إلى أوّل
+ * خمسِ بطاقات (أحمد: «جينا شهر الأوسكار تصعد جوائز الأوسكار ل توب ٥»)، **والحدثُ يبقى الأوّل** («نعم»
+ * على: الجائزةُ ثانيةً إن صادف حدثٌ حفلَها). تُحذف من «الرائجة» كالحدث، وتُقصّ إلى ما يُبقيها في الخمس.
  */
 export function orderForYou<T extends { id: string }>(
   pinIds: readonly string[],
   forYouIds: readonly string[],
   trending: readonly T[],
+  seasonIds: readonly string[] = [],
 ): { ids: string[]; trending: T[] } {
   const pinned = new Set(pinIds);
-  const kept = trending.filter((c) => !pinned.has(c.id));
+  const season = seasonIds.filter((id) => !pinned.has(id)).slice(0, Math.max(0, 5 - pinIds.length));
+  const lifted = new Set([...pinIds, ...season]);
+  const kept = trending.filter((c) => !lifted.has(c.id));
   const shown = new Set(kept.map((c) => c.id));
   return {
-    ids: [...pinIds, ...forYouIds.filter((id) => !shown.has(id) && !pinned.has(id))],
+    ids: [...pinIds, ...season, ...forYouIds.filter((id) => !shown.has(id) && !lifted.has(id))],
     trending: kept,
   };
+}
+
+/**
+ * 🆕 T450 — **شهرُ الرياض** (١–١٢) لـ«الآن» المعطى — بالإزاحة الثابتة نفسِها التي يعدّ بها `eventWindow` أيّامَه،
+ * فينقلب الشهرُ عند منتصف ليل الرياض لا عند منتصف ليل UTC.
+ */
+export function riyadhMonth(now: number): number {
+  return new Date(now + RIYADH_OFFSET).getUTCMonth() + 1;
 }

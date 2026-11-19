@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { backdropUrl } from "@/core/media";
 import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
-import { buttonClass } from "./ui/Button";
 import { CommunityListCard } from "./PublicListsRail";
 import { ToWatchListCard } from "./ToWatchListCard";
 import type { UserList } from "@/lib/data";
@@ -14,8 +13,7 @@ import dynamic from "next/dynamic";
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const ShareListSheet = dynamic(() => import("./ShareListSheet").then((m) => m.ShareListSheet), { ssr: false });
-import { NewListForm } from "./NewListForm";
-import { LibrarySmartForm } from "./LibrarySmartForm";
+import { NewListBar } from "./NewList/NewListBar";
 
 /**
  * إدارة القوائم.
@@ -69,60 +67,22 @@ export function ListManager({
   /* المشاركة من صفحة القوائم نفسها (طلب المالك): زرٌّ على البطاقة يفتح
      نفس ورقة مشاركة صفحة القائمة — مكوّنٌ واحد لا نسختان */
   const [shareFor, setShareFor] = useState<UserList | null>(null);
-  /* 🆕 **بابُ القائمة الذكيّة يفتح في مكانه** (D-877، حكمُ أحمد: «لا أريد
-     الزر ينقلني إلى الديسكفري لأنها غير مفهومة») — **زرٌّ لا رابط** (D-017):
-     **الوجهةُ صارت هنا لا صفحةً.** */
-  /* 🆕 D-947 — **`?smart=new` يفتح النموذجَ من أوّل رسمة**: الشاشةُ الأصليّة
-     لا تملك نموذجَ الشروط (ورقةُ فلاترَ كاملة — نسخُها لغةٌ ثانية، D-145)
-     فتفتح الويبَ على هذا الباب مباشرةً؛ **والرابطُ العاديُّ لا يتغيّر.** */
+  /* 🆕 D-947 ← T450 — **`?smart=new` بابٌ قديمٌ يُحوَّل** إلى الصفحة الجديدة على «قائمة ذكيّة»: روابطُ قديمة
+     (إشعارٌ، تلميحٌ، نسخةُ تطبيقٍ لم تتحدّث) تفتح ما كانت تفتحه، لا صفحةً بلا نموذج. */
   const smartParam = useSearchParams().get("smart") === "new";
-  const [smartOpen, setSmartOpen] = useState(smartParam);
+  useEffect(() => {
+    if (smartParam) router.replace("/lists/new?from=library&tab=smart");
+  }, [smartParam, router]);
   /* **مجموعةٌ لا مصفوفة**: البحثُ يقع مرّةً لكلِّ بطاقة، **و`includes`
      على مصفوفةٍ داخل `map` مسحٌ داخل مسح.** */
   const playlists = playlistIds ? new Set(playlistIds) : null;
 
   return (
     <div>
-      {/* نموذجُ الإنشاء صار مكوّناً مشتركاً (D-177): بابُه الثاني ورقةُ
-          أدوات المكتبة، **وتحصينات D-168 لا تُنسخ** */}
-      {/* 🆕 **زرٌّ لا حقلٌ دائم** (D-443) — انظر حجّتَه في `NewListForm` */}
-      {/* 🆕 **وبابُ القائمة الذكيّة بجانبه** (D-830، سؤالُ أحمد: «ما
-          عرفت كيف أسوي الليستات التلقائية؟»): **بابُها الوحيدُ كان
-          رقاقةً في «اكتشف» لا تُرسم إلّا بعد اختيار فلتر** — **وميزةٌ
-          لا يصل إليها إلّا من يعرف أنّها موجودة ليست مشحونة** (D-346).
-          ⚖️ 🆕 **ونُقض نصفُه في D-877** (حكمُ أحمد: «اجعلني أستطيع من
-          المكتبة تحديد الفلتر والإنشاء مباشرة، لا أريد الزر ينقلني إلى
-          الديسكفري لأنها غير مفهومة»): **كان رابطاً إلى «اكتشف» فصار
-          زرّاً يفتح الشروطَ هنا** — **بمفردات المكتبة (D-876) لا
-          الكتالوج**: **من يقف في قوائمه يريد قائمةً ممّا يملك.**
-          **وبابُ الكتالوج باقٍ في «اكتشف» لمن يبني شرطَه هناك** — بابان
-          لمصدرين لا لشيءٍ واحد. **وزرٌّ لا رابط** لأن الوجهةَ لم تعد
-          صفحة (D-017). */}
+      {/* 🆕 T450 — **بابا الإنشاء إطارٌ واحد** إلى صفحة «قائمة جديدة» مقيّدةً بمكتبتك (`from=library`) — بدل زرّ
+          النموذج المطويّ ونموذجِ الذكيّة المنسدل (D-443/D-877): الاختيارُ عشراتُ ملصقاتٍ لا حقلُ اسم. */}
       <div className="mb-4">
-        <NewListForm
-          locale={locale}
-          collapsed
-          trailing={
-            <button
-              type="button"
-              aria-expanded={smartOpen}
-              onClick={() => setSmartOpen((v) => !v)}
-              className={buttonClass({
-                variant: "surface",
-                size: "sm",
-                className: "gap-1.5",
-              })}
-            >
-              <Icon name="sparkle-star" size={14} />
-              {t.smartListLabel}
-            </button>
-          }
-        />
-        {smartOpen && (
-          <div className="mt-3 rounded-2xl border border-border bg-surface p-4">
-            <LibrarySmartForm locale={locale} onDone={() => setSmartOpen(false)} />
-          </div>
-        )}
+        <NewListBar locale={locale} from="library" />
         {/* 🔑 **والسطرُ يُقاس ولا يُفترض** (D-570): **يُرسم لمن لا قائمةَ
             ذكيّةَ له**، **ويسقط عن نفسه أوّلَ ما يصنع واحدة** — **ولا
             رايةَ تُخزَّن ولا سطرَ تعليمٍ يسكن الصفحةَ إلى الأبد**
