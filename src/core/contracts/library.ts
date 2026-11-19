@@ -194,6 +194,8 @@ export type PickerItem = {
   anime: boolean;
 };
 export type PickerPayload = { items: PickerItem[] };
+/** 🆕 T454 — اختيارُ الكتالوج (`GET /api/v1/lists/catalog?src=&type=&g=&era=&rate=&q=&n=`) — `more` = بقي ما يُحمَّل بـ«المزيد» */
+export type CatalogPickerPayload = { items: SmartPreviewItem[]; more: boolean };
 /** إضافةُ دفعةٍ إلى قائمةٍ قائمة (زرُّ «أضف أعمالاً» يفتح الاختيارَ نفسَه) */
 export type ListAddItemsBody = { listId: string; items: NewListItem[] };
 export type ListPlaylistBody = { listId: string; on: boolean };
@@ -304,7 +306,8 @@ export type ListDetailPayload = {
 
 /* ====== Phase 11-G · G5/G6 — شرطُ الذكيّة ومشاركةُ القائمة أصليّاً ====== */
 /** `POST /api/v1/lists/smart-rule` — تعديلُ شرطِ قائمةٍ ذكيّةٍ قائمة؛ المصدرُ يُقرأ من الصفّ عند الخادم (`updateSmartListRule`) */
-export type SmartRuleBody = { listId: string; rule: Record<string, string> };
+/** `full` (🆕 T454): الشرطُ كاملٌ من صفحة التعديل — بلا دمجِ «إخفاء»/«ترتيب» القديمين */
+export type SmartRuleBody = { listId: string; rule: Record<string, string>; full?: boolean };
 /** `POST /api/v1/lists/share-friend` — إرسالُ القائمة إلى صديق (متابعةٌ متبادلة)؛ `note` حتّى ٢٨٠ حرفاً */
 export type ShareFriendBody = { listId: string; recipientId: string; note?: string | null };
 /** `POST /api/v1/communities/post` — رسالةٌ في مجتمع (رابطُ القائمة في المشاركة) */

@@ -16,6 +16,7 @@ import {
   worksByPeople,
   type DiscoverFilter,
   dropKids,
+  dropExplicitAnime,
 } from "./tmdb";
 import { getFollowedArtists } from "./data";
 import { railGuard, topChartRail } from "./topChart";
@@ -300,11 +301,9 @@ export async function buildSection(
     const guarded = railGuard(rows, { anime, unmute });
     const kept = media === "anime" ? guarded : dropKids(guarded, media === "movie" ? "movie" : "tv");
     const prefs = await prefsP;
-    return (
-      prefs.excludedLanguages.length > 0
-        ? kept.filter((r) => !isExcludedLanguage(r, prefs))
-        : kept
-    ).slice(0, limit);
+    const allowed = prefs.excludedLanguages.length > 0 ? kept.filter((r) => !isExcludedLanguage(r, prefs)) : kept;
+    /* 🆕 T454 — الأنمي الفاضح (ecchi/hentai) يسقط من كلِّ رفّ — يُفحص ما سيُعرض وهامشُه وحدَه، لا البِركةُ كلُّها */
+    return (await dropExplicitAnime(allowed.slice(0, limit + 8))).slice(0, limit);
   };
 
   try {

@@ -227,7 +227,9 @@ export function ListCard({
               <Icon name={card.icon} size={15} color={c.accent} />
             </View>
           ) : null}
-          <Text size={15} weight="700" color={c.fg} numberOfLines={2} style={{ flex: 1, maxWidth: "58%", lineHeight: 20 }}>
+          {/* 🆕 T454 — **الكلماتُ تملأ السطرَ الأوّلَ قبل أن تنزل** (`simple`) وسقفُ العرض ٦٤٪ (أحمد: «خل تو تطلع فوق
+              وطلعها كاملة»): أندرويد يوازن السطرين افتراضاً (`highQuality`) فنزلت «to» وقُصّت «Doomsday» عند ٥٨٪ */}
+          <Text size={15} weight="700" color={c.fg} numberOfLines={2} textBreakStrategy="simple" style={{ flex: 1, maxWidth: "64%", lineHeight: 20 }}>
             {card.name}
           </Text>
           {/* 🆕 D-952 — رمزُ الفلاتر (`sliders`) قبل المشاركة: الويبُ يضع «عدّل الشرط»

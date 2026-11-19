@@ -1,5 +1,7 @@
 import { buildSection } from "@/lib/sections";
-import { titleOf } from "@/lib/tmdb";
+import { titleOf, type SearchResult } from "@/lib/tmdb";
+import { ruleTypes } from "@/core/smartListKeys";
+import { BROWSE_GENRES, genreFitsType } from "@/core/browse";
 import { browseToFilter, ruleMedia, ruleToBrowse, sanitizeRule, SMART_LIST_LIMIT, isRuleSource, type RuleSource, type SmartRule } from "@/lib/smartLists";
 import { evaluateLibraryRule } from "@/lib/librarySmart";
 import { getFollows, getWatchSummary, getWatchedMovieIds, getAllWatchedEpisodes } from "@/lib/data";
@@ -53,20 +55,53 @@ export async function evaluateSmartRule(
     const rows = await evaluateLibraryRule(rule, limit);
     return rows.map((r) => ({ tmdb_id: r.tmdb_id, media_type: r.media_type, title: r.title, poster_path: r.poster_path, added_at: r.added_at, sort_order: null }));
   }
-  const media = ruleMedia(rule);
-  const browse = ruleToBrowse(rule);
-  const region = await getWatchRegion();
-  const { base, genreIds } = await browseToFilter(browse, { media, watchRegion: region });
   const sort = rule.sort === "rate" ? "vote_average.desc" : rule.sort === "new" ? "release.desc" : "popularity.desc";
   const hide = rule.hide === "watched" || rule.hide === "library" ? rule.hide : null;
-  const [rows, hidden] = await Promise.all([
-    buildSection("my-row", { media, base, genreIds, active: browse.active, win: "week", winRange: null, locale, sort }, hide ? Math.min(limit * 2, 120) : limit),
+  const want = hide ? Math.min(limit * 2, 120) : limit;
+  const region = await getWatchRegion();
+  /* 🆕 T454 — **الأنواعُ المجموعة صفٌّ لكلِّ نوع** (`buildSection` جهةٌ واحدة)، **ثمّ دمجٌ بمفتاح الترتيب نفسِه**:
+     الأشهرُ بالشعبيّة، والأعلى بالتقييم، والأحدثُ بالتاريخ — لا تناوبٌ يضع فيلماً مغموراً بجانب أشهر مسلسل */
+  /* والنوعُ الفنّيُّ الذي لا يعرفه نوعٌ («أطفال» للأفلام) يُسقط ذلك النوعَ — لا صفَّ بلا فلتره يملأ القائمةَ بالأشهر عامّةً */
+  const genre = rule.g ? BROWSE_GENRES.find((g) => g.slug === rule.g) : null;
+  const types = ruleTypes(rule.type).filter((t) => !genre || genreFitsType(genre, t === "movie" ? "movie" : t === "tv" ? "tv" : "all"));
+  if (rule.type && !types.length) return [];
+  const singles = (types.length ? types : [undefined]).map((t) => (t ? { ...rule, type: t } : rule));
+  const [lists, hidden] = await Promise.all([
+    Promise.all(
+      singles.map(async (one) => {
+        const media = ruleMedia(one);
+        const browse = ruleToBrowse(one);
+        const { base, genreIds } = await browseToFilter(browse, { media, watchRegion: region });
+        return buildSection("my-row", { media, base, genreIds, active: browse.active, win: "week", winRange: null, locale, sort }, want);
+      }),
+    ),
     hide ? hiddenKeys(hide) : Promise.resolve(null),
   ]);
+  const rows = lists.length === 1 ? lists[0] : mergeBySort(lists, sort);
   return rows
     .map((r) => ({ tmdb_id: r.id, media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie", title: titleOf(r) || "", poster_path: r.poster_path ?? null, added_at: "", sort_order: null }))
     .filter((r) => !hidden || !hidden.has(`${r.media_type}-${r.tmdb_id}`))
     .slice(0, limit);
+}
+
+/** دمجُ صفوفِ الأنواع بمفتاح الترتيب، بلا تكرار (عملٌ في صفّين — أنمي ومسلسل — يُعدّ مرّة) */
+function mergeBySort(lists: SearchResult[][], sort: "popularity.desc" | "vote_average.desc" | "release.desc"): SearchResult[] {
+  const key = (r: SearchResult): number =>
+    sort === "vote_average.desc"
+      ? r.vote_average ?? 0
+      : sort === "release.desc"
+        ? Date.parse(r.release_date || r.first_air_date || "") || 0
+        : r.popularity ?? 0;
+  const seen = new Set<string>();
+  return lists
+    .flat()
+    .sort((a, b) => key(b) - key(a))
+    .filter((r) => {
+      const k = `${r.media_type}-${r.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
 }
 
 /** مفاتيحُ ما يُخفى (`movie-603` · `tv-1396`) — من جداولنا وحدَها، بلا نداء TMDB */

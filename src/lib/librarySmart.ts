@@ -13,6 +13,7 @@ import {
 import { BROWSE_GENRES, BROWSE_ERAS, eraRange } from "@/core/browse";
 import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
 import type { SmartRule } from "@/lib/smartLists";
+import { ruleTypes } from "@/core/smartListKeys";
 
 /**
  * ====== مقوِّمُ شرط المكتبة (D-876) — `rule_source = "library"` ======
@@ -78,16 +79,23 @@ export async function evaluateLibraryRule(
 
   /* **النوعُ من التبويب**: `movie` · `tv` · و`all` = الأنمي (كما في
      `sectionToRuleType`) — **والأنمي علمٌ على `follows` لا استنتاج** (D-648). */
-  const type = rule.type === "movie" ? "movie" : rule.type === "tv" ? "tv" : rule.type === "all" ? "anime" : null;
+  /* 🆕 T454 — أنواعٌ تُجمع (`movie,tv`): العملُ يمرّ إن طابق واحداً منها — والغائبُ = الكلّ كما كان */
+  const types = new Set(ruleTypes(rule.type));
   const genre = rule.g ? BROWSE_GENRES.find((g) => g.slug === rule.g) ?? null : null;
   const era = rule.era ? yearOfEra(rule.era) : null;
   const minMy = rule.my ? Number(rule.my) : null;
 
   const pre = follows.filter((f: FollowRow) => {
     const key = `${f.media_type}-${f.tmdb_id}`;
-    if (type === "movie" && f.media_type !== "movie") return false;
-    if (type === "tv" && (f.media_type !== "tv" || animeFlags.get(key) === true)) return false;
-    if (type === "anime" && animeFlags.get(key) !== true) return false;
+    if (types.size) {
+      /* المعاني القديمةُ نفسُها: «أفلام» كلُّ فيلم · «مسلسلات» بلا أنمي · «أنمي» علمُ الأنمي فيلماً كان أو مسلسلاً */
+      const anime = animeFlags.get(key) === true;
+      const fits =
+        (types.has("movie") && f.media_type === "movie") ||
+        (types.has("tv") && f.media_type === "tv" && !anime) ||
+        (types.has("all") && anime);
+      if (!fits) return false;
+    }
     if (genre) {
       const ids = f.media_type === "tv" ? genre.tv : genre.movie;
       if (!f.genres || !ids.some((id) => f.genres!.includes(id))) return false;

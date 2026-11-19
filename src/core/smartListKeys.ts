@@ -62,3 +62,23 @@ export const LIBRARY_SORT = ["added", "my", "title"] as const;
 export type LibrarySort = (typeof LIBRARY_SORT)[number];
 /** مفتاحا الكتالوج الزائدان على مفاتيح الفلاتر (`FILTER_KEYS`) */
 export const SMART_CATALOG_EXTRA = ["hide", "sort"] as const;
+
+/**
+ * 🆕 T454 — **أنواعُ القائمة الذكيّة تُجمع** (أحمد ١٩ نوفمبر: «تحدد فقط افلام او انمي او مسلسلات ما تقدر تخلط»):
+ * `type` يحمل نوعاً أو أكثر مفصولةً بفاصلة (`movie,tv`) — **والقيمةُ المفردةُ القديمة تُقرأ كما هي** فلا يتغيّر شرطٌ مخزَّن.
+ * `all` = الأنمي (خريطةُ `/news` — `ruleMedia`). الترتيبُ ثابتٌ (أفلام ← مسلسلات ← أنمي) فالشرطُ نفسُه نصٌّ واحد.
+ */
+export const SMART_TYPES = ["movie", "tv", "all"] as const;
+export type SmartType = (typeof SMART_TYPES)[number];
+
+export function ruleTypes(value: string | null | undefined): SmartType[] {
+  const parts = new Set(String(value ?? "").split(","));
+  return SMART_TYPES.filter((t) => parts.has(t));
+}
+
+/** تبديلُ نوعٍ في القائمة — **ولا يُفرَّغ**: آخرُ نوعٍ مختارٍ لا يُطفأ (الشرطُ يحمل نوعاً دائماً) */
+export function toggleRuleType(value: string | null | undefined, t: SmartType): string {
+  const cur = ruleTypes(value);
+  const next = cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t];
+  return (next.length ? SMART_TYPES.filter((x) => next.includes(x)) : cur).join(",");
+}

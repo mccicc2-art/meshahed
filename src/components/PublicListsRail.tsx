@@ -484,7 +484,7 @@ export function ListCardShell({
       <span className="relative flex h-full min-h-[10.5rem] flex-col p-3.5">
         <span className="flex items-start gap-1.5">
           {icon && <span className="shrink-0 mt-0.5">{icon}</span>}
-          <span dir="auto" className="min-w-0 flex-1 max-w-[58%] text-15 font-bold leading-snug line-clamp-2 break-words">
+          <span dir="auto" className="min-w-0 flex-1 max-w-[64%] text-15 font-bold leading-snug line-clamp-2 break-words">
             {name}
           </span>
           {action && <span className="shrink-0">{action}</span>}

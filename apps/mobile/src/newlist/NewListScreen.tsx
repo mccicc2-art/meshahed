@@ -17,10 +17,14 @@ import { Segmented } from "../library/ToolsSheet";
 import { ListCard } from "../library/ListCard";
 import { SwitchPill } from "../settings/ui";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
-import { MIN_QUERY, useDebounced, useSearch } from "../search/useSearch";
+import { MIN_QUERY, useDebounced } from "../search/useSearch";
 import { useHomeDoor } from "../homeDoor";
 import { SYSTEM_FONT_CAP } from "../fontScale";
+import { ruleTypes, toggleRuleType, type SmartType } from "@/core/smartListKeys";
 import {
+  hideChipText,
+  isCatalogSource,
+  PICK_AXES_CATALOG,
   axisLabels,
   axisOptions,
   chipText,
@@ -38,7 +42,7 @@ import {
   type NewListSource,
   type NewListTab,
 } from "@/core/newList";
-import type { CreateListFullBody, ListAddItemsBody, ListDetailPayload, PickerPayload, SmartListBody, SmartPreviewBody, SmartPreviewResult } from "../contracts";
+import type { CatalogPickerPayload, SmartRuleBody, CreateListFullBody, ListAddItemsBody, ListDetailPayload, PickerPayload, SmartListBody, SmartPreviewBody, SmartPreviewResult } from "../contracts";
 
 /**
  * ====== 🆕 T450 — «قائمة جديدة» أصليّاً — نسخةُ `NewListFlow` (الويب) ======
@@ -60,14 +64,33 @@ const keyOf = (x: { id: number; kind: string }) => `${x.kind}-${x.id}`;
 const COLS = 3;
 const GAP = 10;
 
-export function NewListScreen({ from, initialTab, addId }: { from: "discover" | "library"; initialTab: NewListTab; addId: string | null }) {
+export function NewListScreen({
+  from,
+  initialTab,
+  addId,
+  editId = null,
+}: {
+  from: "discover" | "library";
+  initialTab: NewListTab;
+  addId: string | null;
+  /** 🆕 T454 — تعديلُ شرطِ قائمةٍ ذكيّةٍ قائمة (أحمد «أ»): «قائمة ذكيّة» وحدَها، مملوءةً بشرطها، وزرُّها «حدّث القائمة» */
+  editId?: string | null;
+}) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const library = from === "library";
-  const [tab, setTab] = useState<NewListTab>(addId ? "list" : initialTab);
+  /* التعديلُ يقرأ مصدرَ الشرط من صفِّ القائمة (كالويب) لا من الرابط — وحتى يصل فمن الرابط */
+  const targetId = addId ?? editId;
+  const target = useQuery({
+    queryKey: qk.list(targetId ?? ""),
+    queryFn: async () => (await api<ListDetailPayload>(`/api/v1/lists/${targetId}`)).data,
+    enabled: !!targetId,
+    staleTime: 60_000,
+  });
+  const library = editId && target.data?.smart_source ? target.data.smart_source === "library" : from === "library";
+  const [tab, setTab] = useState<NewListTab>(editId ? "smart" : addId ? "list" : initialTab);
   const [step, setStep] = useState<1 | 2>(1);
   const [busy, setBusy] = useState(false);
 
@@ -103,38 +126,49 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
     queryFn: async () => (await api<PickerPayload>("/api/v1/lists/picker")).data,
     staleTime: 60_000,
   });
-  /* اسمُ القائمة التي يُضاف إليها — مفتاحُ صفحة القائمة نفسُه، فلا نداءَ إن كانت مفتوحةً تحتنا */
-  const target = useQuery({
-    queryKey: qk.list(addId ?? ""),
-    queryFn: async () => (await api<ListDetailPayload>(`/api/v1/lists/${addId}`)).data,
-    enabled: !!addId,
-    staleTime: 60_000,
-  });
+  /* اسمُ القائمة التي يُضاف إليها أو يُعدَّل شرطُها: `target` أعلاه — مفتاحُ صفحة القائمة نفسُه، فلا نداءَ إن كانت مفتوحةً تحتنا */
 
   /* ===== الخطوةُ الأولى ===== */
   const [selected, setSelected] = useState<Map<string, Pick>>(new Map());
-  const [source, setSource] = useState<NewListSource>("recent");
+  const [source, setSource] = useState<NewListSource>(library ? "recent" : "pop");
   const [filters, setFilters] = useState<Partial<Record<NewListAxis, string>>>({});
   const [open, setOpen] = useState<NewListAxis | null>(null);
   const [q, setQ] = useState("");
   const term = useDebounced(q);
   const searching = term.trim().length >= MIN_QUERY;
-  const remote = useSearch(library ? "" : term, "titles");
+  /* 🆕 T454 — «اكتشف» يقرأ الكتالوجَ كلَّه (أحمد: «ف اكتشف كل شيء يظهر»): الأشهر · الأعلى تقييماً · الأحدث، والبحثُ
+     كلُّه — بالفلاتر نفسِها في الخادم (`lists/catalog`، قارئُ الويب نفسُه). «من مكتبتي» والمكتبةُ تُصفّى في الجهاز */
+  /* الكتالوجُ يُسأل في خطوة الاختيار وحدَها — لا من «قائمة ذكيّة» ولا من التعديل */
+  const catalog = !library && !editId && tab === "list" && (isCatalogSource(source) || searching);
+  const axes = catalog ? PICK_AXES_CATALOG : PICK_AXES;
+  const [n, setN] = useState(40);
+  const catalogQs = new URLSearchParams({
+    src: isCatalogSource(source) ? source : "pop",
+    ...(filters.type ? { type: filters.type } : {}),
+    ...(filters.g ? { g: filters.g } : {}),
+    ...(filters.era ? { era: filters.era } : {}),
+    ...(filters.rate ? { rate: filters.rate } : {}),
+    ...(searching ? { q: term.trim() } : {}),
+    n: String(n),
+  }).toString();
+  const remote = useQuery({
+    queryKey: ["lists:catalog", catalogQs] as const,
+    queryFn: async () => (await api<CatalogPickerPayload>(`/api/v1/lists/catalog?${catalogQs}`)).data,
+    enabled: catalog,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    retry: 0,
+  });
 
   const grid: Pick[] = useMemo(() => {
-    const local = filterPicker(picker.data?.items ?? [], { source, filters, term: searching ? term : "" }).map((x) => ({
+    if (catalog) return (remote.data?.items ?? []).map((x) => ({ id: x.id, kind: x.kind, title: x.title, poster_path: x.poster_path }));
+    return filterPicker(picker.data?.items ?? [], { source, filters, term: searching ? term : "" }).map((x) => ({
       id: x.id,
       kind: x.kind,
       title: x.title,
       poster_path: x.poster_path,
     }));
-    if (!searching || library) return local;
-    const seen = new Set(local.map(keyOf));
-    const fromCatalog = (remote.data?.titles ?? [])
-      .map((r) => ({ id: r.id, kind: r.mediaType, title: r.title, poster_path: r.posterPath ?? null }))
-      .filter((r) => !seen.has(keyOf(r)));
-    return [...local, ...fromCatalog];
-  }, [picker.data, source, filters, term, searching, library, remote.data]);
+  }, [catalog, remote.data, picker.data, source, filters, term, searching]);
 
   const toggle = useCallback((p: Pick) => {
     haptic.pick();
@@ -194,6 +228,14 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
 
   /* ===== القائمةُ الذكيّة ===== */
   const [rule, setRule] = useState<Record<string, string>>({ type: "movie" });
+  /* 🆕 T454 — التعديلُ يبدأ من الشرط المخزَّن مرّةً حين يصل (`smart_rule` لصاحبها وحدَه) */
+  const seeded = useRef(false);
+  const storedRule = editId ? target.data?.smart_rule : null;
+  useEffect(() => {
+    if (seeded.current || !storedRule) return;
+    seeded.current = true;
+    setRule(storedRule);
+  }, [storedRule]);
   const [smartOpen, setSmartOpen] = useState<NewListAxis | null>(null);
   const [smartName, setSmartName] = useState("");
   const ruleKey = useDebounced(JSON.stringify(rule), 350);
@@ -212,6 +254,21 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
     placeholderData: keepPreviousData,
     retry: 0,
   });
+
+  const updateRule = async () => {
+    if (!editId || !hasRule || busy) return;
+    setBusy(true);
+    try {
+      await write<{ ok: boolean }>("/api/v1/lists/smart-rule", { listId: editId, rule, full: true } satisfies SmartRuleBody);
+      haptic.success();
+      say(t.smartListUpdated, "success");
+      if (router.canGoBack()) router.back();
+      else router.replace({ pathname: "/list/[id]", params: { id: editId, from } });
+    } catch (e) {
+      fail(e);
+      setBusy(false);
+    }
+  };
 
   const createSmart = async () => {
     const clean = smartName.trim();
@@ -246,7 +303,7 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
   };
   const trayPad = insets.bottom + 12;
 
-  const title = addId ? (target.data ? t.nlAddTo(target.data.name) : t.listAddTitles) : t.listNewGroup;
+  const title = editId ? t.nlEditTitle : addId ? (target.data ? t.nlAddTo(target.data.name) : t.listAddTitles) : t.listNewGroup;
   const header = (
     <View style={{ paddingTop: insets.top }}>
       <TopBar
@@ -256,7 +313,7 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
         backLabel={t.closeLabel}
         end={!addId && tab === "list" ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{t.nlStep(step)}</Text> : undefined}
       />
-      {!addId ? (
+      {!addId && !editId ? (
         <View style={{ paddingHorizontal: PAGE_PAD }}>
           <Segmented
             items={[
@@ -349,7 +406,7 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
 
   /* ---------- قائمة ذكيّة ---------- */
   if (tab === "smart") {
-    const axes = library ? SMART_AXES_LIBRARY : SMART_AXES_CATALOG;
+    const smartAxes = library ? SMART_AXES_LIBRARY : SMART_AXES_CATALOG;
     const items = preview.data?.items ?? [];
     return (
       <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -357,11 +414,18 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 14, gap: 12, paddingBottom: trayPad + 80 }}>
           <Text size={13} muted style={{ lineHeight: 19 }}>{library ? t.nlSmartHintLibrary : t.nlSmartHint}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {/* 🆕 T454 — الأنواعُ تُجمع (أحمد «٢ أ»): كلُّ رقاقةٍ تُشعل وتُطفئ، وآخرُ نوعٍ لا يُطفأ (`toggleRuleType`) */}
             {optsOf.type.map((o) => (
-              <Chip key={o.value || "any"} label={o.label} size="md" active={(rule.type ?? "") === o.value} onPress={() => setRule((r) => withType(r, o.value))} />
+              <Chip
+                key={o.value}
+                label={o.label}
+                size="md"
+                active={ruleTypes(rule.type).includes(o.value as SmartType)}
+                onPress={() => setRule((r) => withType(r, toggleRuleType(r.type, o.value as SmartType)))}
+              />
             ))}
           </View>
-          <AxisRow axes={axes} optsOf={optsOf} labels={labels} values={rule} openAxis={smartOpen} onOpen={setSmartOpen} onPick={(a, v) => setRule((r) => withAxis(r, a, v))} />
+          <AxisRow axes={smartAxes} optsOf={optsOf} labels={labels} hideText={(v) => hideChipText(t, v)} values={rule} openAxis={smartOpen} onOpen={setSmartOpen} onPick={(a, v) => setRule((r) => withAxis(r, a, v))} />
           <View style={{ borderTopWidth: 1, borderTopColor: tokens.border, marginTop: 8, paddingTop: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
               <Text size={15} weight="700">{t.nlPreview}</Text>
@@ -386,18 +450,28 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
           </View>
         </ScrollView>
         <View style={{ position: "absolute", start: 0, end: 0, bottom: 0, backgroundColor: tokens.bg, borderTopWidth: 1, borderTopColor: tokens.border, paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: trayPad, flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <TextInput
-            maxFontSizeMultiplier={SYSTEM_FONT_CAP}
-            value={smartName}
-            onChangeText={setSmartName}
-            onSubmitEditing={() => void createSmart()}
-            maxLength={60}
-            placeholder={t.nlSmartNamePh}
-            placeholderTextColor={tokens.muted}
-            returnKeyType="done"
-            style={[field, { flex: 1 }]}
-          />
-          <Button label={t.nlCreateSmart} busy={busy} disabled={!hasRule || !smartName.trim()} onPress={() => void createSmart()} />
+          {editId ? (
+            /* التعديلُ للشرط وحدَه — الاسمُ يُعدَّل من «عدّل القائمة» في صفحتها كسائر القوائم */
+            <>
+              <Text size={14} weight="600" numberOfLines={1} autoDir style={{ flex: 1 }}>{target.data?.name ?? ""}</Text>
+              <Button label={t.nlUpdateRule} busy={busy} disabled={!hasRule || !seeded.current} onPress={() => void updateRule()} />
+            </>
+          ) : (
+            <>
+              <TextInput
+                maxFontSizeMultiplier={SYSTEM_FONT_CAP}
+                value={smartName}
+                onChangeText={setSmartName}
+                onSubmitEditing={() => void createSmart()}
+                maxLength={60}
+                placeholder={t.nlSmartNamePh}
+                placeholderTextColor={tokens.muted}
+                returnKeyType="done"
+                style={[field, { flex: 1 }]}
+              />
+              <Button label={t.nlCreateSmart} busy={busy} disabled={!hasRule || !smartName.trim()} onPress={() => void createSmart()} />
+            </>
+          )}
         </View>
         <ToastHost hostRef={toastHost} bottom={trayPad + 72} />
       </View>
@@ -416,7 +490,12 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
         <TextInput
           maxFontSizeMultiplier={SYSTEM_FONT_CAP}
           value={q}
-          onChangeText={setQ}
+          onChangeText={(v) => {
+            setQ(v);
+            setN(40);
+            /* البحثُ من «اكتشف» يذهب إلى الكتالوج بفلاتره — «تقييمي» لا يُرى هناك */
+            if (!library && v.trim().length >= MIN_QUERY) setFilters((f) => withAxis(f, "my", ""));
+          }}
           placeholder={library ? t.nlSearchLibrary : t.nlSearchAll}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
@@ -428,11 +507,32 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
       {!searching ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
           {sources.map((s) => (
-            <Chip key={s} label={sourceLabel(t, s)} active={source === s} onPress={() => setSource(s)} />
+            <Chip
+              key={s}
+              label={sourceLabel(t, s)}
+              active={source === s}
+              onPress={() => {
+                setSource(s);
+                setN(40);
+                /* «تقييمي» لمكتبتك و«التقييم» العامّ للكتالوج — ما لا يُرى لا يبقى مختاراً */
+                setFilters((f) => withAxis(f, isCatalogSource(s) ? "my" : "rate", ""));
+              }}
+            />
           ))}
         </ScrollView>
       ) : null}
-      <AxisRow axes={PICK_AXES} optsOf={optsOf} labels={labels} values={filters} openAxis={open} onOpen={setOpen} onPick={(a, v) => setFilters((f) => (a === "type" ? withType(f, v) : withAxis(f, a, v)))} />
+      <AxisRow
+        axes={axes}
+        optsOf={optsOf}
+        labels={labels}
+        values={filters}
+        openAxis={open}
+        onOpen={setOpen}
+        onPick={(a, v) => {
+          setFilters((f) => (a === "type" ? withType(f, v) : withAxis(f, a, v)));
+          setN(40);
+        }}
+      />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
         <Icon name="sparkle-star" size={14} color={tokens.accent} />
         <Text size={15} weight="700">{heading}</Text>
@@ -444,7 +544,7 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {header}
       <FlatList
-        data={picker.data ? grid : []}
+        data={catalog ? grid : picker.data ? grid : []}
         keyExtractor={keyOf}
         numColumns={COLS}
         keyboardShouldPersistTaps="handled"
@@ -454,8 +554,30 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
         initialNumToRender={18}
         windowSize={7}
         renderItem={({ item }) => <Tile pick={item} w={tileW} selected={selected.has(keyOf(item))} onToggle={() => toggle(item)} />}
+        ListFooterComponent={
+          catalog && remote.data?.more && !remote.isFetching ? (
+            <View style={{ alignItems: "center", paddingTop: 16 }}>
+              <Button label={t.showMore} variant="ghost" onPress={() => setN((x) => Math.min(120, x + 40))} />
+            </View>
+          ) : undefined
+        }
         ListEmptyComponent={
-          !picker.data ? (
+          catalog ? (
+            remote.isError && !remote.data ? (
+              <View style={{ alignItems: "center", gap: 12, paddingVertical: 40 }}>
+                <Text muted>{t.apiInternal}</Text>
+                <Button label={t.errorRetry} variant="ghost" onPress={() => void remote.refetch()} />
+              </View>
+            ) : !remote.data || remote.isFetching ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
+                {Array.from({ length: 9 }, (_, i) => (
+                  <View key={i} style={{ width: tileW, aspectRatio: 2 / 3, borderRadius: radius.poster, backgroundColor: tokens.surface2 }} />
+                ))}
+              </View>
+            ) : (
+              <Text size={13} muted style={{ textAlign: "center", paddingVertical: 48 }}>{t.nlPreviewEmpty}</Text>
+            )
+          ) : !picker.data ? (
             picker.isError ? (
               <View style={{ alignItems: "center", gap: 12, paddingVertical: 40 }}>
                 <Text muted>{t.apiInternal}</Text>
@@ -469,7 +591,7 @@ export function NewListScreen({ from, initialTab, addId }: { from: "discover" | 
               </View>
             )
           ) : (
-            <Text size={13} muted style={{ textAlign: "center", paddingVertical: 48 }}>{library ? t.nlEmptyMine : t.nlEmptyLibrary}</Text>
+            <Text size={13} muted style={{ textAlign: "center", paddingVertical: 48 }}>{t.nlEmptyMine}</Text>
           )
         }
       />
@@ -501,6 +623,7 @@ function AxisRow({
   axes,
   optsOf,
   labels,
+  hideText,
   values,
   openAxis,
   onOpen,
@@ -509,6 +632,8 @@ function AxisRow({
   axes: NewListAxis[];
   optsOf: Record<NewListAxis, NewListOpt[]>;
   labels: Record<NewListAxis, string>;
+  /** «إخفاء: ما شاهدته» — قيمةُ «إخفاء» وحدَها تُقرأ عكسَها */
+  hideText?: (v: string | undefined) => string;
   values: Partial<Record<string, string>>;
   openAxis: NewListAxis | null;
   onOpen: (a: NewListAxis | null) => void;
@@ -524,7 +649,7 @@ function AxisRow({
           return (
             <Chip
               key={a}
-              label={chipText(optsOf[a], labels[a], v)}
+              label={a === "hide" && hideText ? hideText(v) : chipText(optsOf[a], labels[a], v)}
               active={!!v}
               onPress={() => onOpen(isOpen ? null : a)}
               trailing={<View style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}><Icon name="chevron-down" size={12} color={v ? tokens.onAccent : tokens.muted} /></View>}

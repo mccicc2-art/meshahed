@@ -5,7 +5,7 @@ import { eraRange, lengthSpecFor, parseBrowse, seasonRange, type BrowseQuery } f
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
 import { FILTER_KEYS } from "@/core/savedFilters";
-import { LIBRARY_RULE_KEYS, MY_RATING_MIN, SMART_CATALOG_EXTRA, SMART_HIDE, SMART_SORT, LIBRARY_SORT } from "@/core/smartListKeys";
+import { LIBRARY_RULE_KEYS, MY_RATING_MIN, SMART_CATALOG_EXTRA, SMART_HIDE, SMART_SORT, LIBRARY_SORT, ruleTypes } from "@/core/smartListKeys";
 import { isLibraryStatus } from "@/core/libraryStatus";
 import { keywordId, companyId, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import type { SectionMedia } from "@/lib/sections";
@@ -68,6 +68,13 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
     if (typeof x !== "string" || !VALUE_RE.test(x)) continue;
     /* **والمفتاحان الخاصّان بالمكتبة قيمُهما مغلقة**: حالةٌ من أربع، وعتبةٌ
        من ثلاث — **ونصٌّ حرٌّ في شرطٍ يُخزَّن ثغرةٌ تنتظر قارئاً.** */
+    /* 🆕 T454 — النوعُ نوعٌ أو أكثر من ثلاثةٍ مغلقة (`ruleTypes`)، مُطبَّعاً بترتيبٍ ثابت */
+    if (k === "type") {
+      const ts = ruleTypes(x);
+      if (!ts.length) continue;
+      out[k] = ts.join(",");
+      continue;
+    }
     if (k === "wst" && !isLibraryStatus(x)) continue;
     if (k === "my" && !(MY_RATING_MIN as readonly string[]).includes(x)) continue;
     if (k === "hide" && !(SMART_HIDE as readonly string[]).includes(x)) continue;
@@ -84,6 +91,9 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
 export function ruleToQuery(rule: SmartRule): string {
   const p = new URLSearchParams();
   for (const k of FILTER_KEYS) if (rule[k]) p.set(k, rule[k]);
+  /* 🆕 T454 — «اكتشف» تبويبٌ واحد: الشرطُ المختلط يُفتح على أوّل أنواعه */
+  const first = ruleTypes(rule.type)[0];
+  if (first) p.set("type", first);
   return p.toString();
 }
 

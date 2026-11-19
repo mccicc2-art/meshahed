@@ -11,6 +11,7 @@ import {
   type DiscoverFilter,
   companyId,
   dropKids,
+  dropExplicitAnime,
 } from "@/lib/tmdb";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { railGuard, topChartRail, animeMovieRail } from "@/lib/topChart";
@@ -331,11 +332,14 @@ export async function personalRails(
   ]);
   /* D-1217 — الأنمي بِركتُه `animePool`: بذورُ الأنمي تكمّل ما تقصر عنه البِركةُ العامّة */
   /* 🆕 D-1486 — والأفلامُ والمسلسلاتُ بدرجاتها الثلاث (`tabPool`): من أعماله ثمّ من أنواعه ثمّ «رائج الآن» */
-  const suggested = anime ? await animePool(pool, locale) : await tabPool(pool, wantMovies ? "movie" : "tv");
-  for (let i = suggested.length - 1; i > 0; i--) {
+  const drawn = anime ? await animePool(pool, locale) : await tabPool(pool, wantMovies ? "movie" : "tv");
+  for (let i = drawn.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
+    [drawn[i], drawn[j]] = [drawn[j], drawn[i]];
   }
+  /* 🆕 T454 — «اخترناه لك» بلا أنمي فاضح (ecchi/hentai): التوصياتُ تأتي من أعمالك ولا تقبل استبعادَ كلمة. **يُفحص
+     المسحوبُ بعد الخلط** (ستّون — صفحاتُ «اختر غيرها» كلُّها) لا البِركةُ كلُّها: مئاتُ النداءات على المسار الحرج */
+  const suggested = await dropExplicitAnime(drawn.slice(0, 60), (s) => s.result);
   const built = await Promise.all(
     uniqueMyRows(myRows).map(async (r) => {
       const g = BROWSE_GENRES.find((x) => x.slug === r.genre);
@@ -347,7 +351,9 @@ export async function personalRails(
       const items = await topByFilter(media, { watchRegion: region, genreIds: ids, ...(keywords.length ? { keywords } : {}) }, MY_ROW_POOL, "popularity.desc").catch(() => []);
       /* D-1289 — نوعُ Kids يسقط قبل القرعة، إلّا في تبويب الأنمي */
       const safe = railGuard(items, { anime: anime ? "only" : "drop" });
-      const guarded = drawMyRow(anime ? safe : dropKids(safe, media), `${tab}:${r.genre}.${r.tag ?? ""}`);
+      /* الأنمي الفاضح يُفحص في المسحوب وحدَه (اثنا عشر) لا في البِركة كلِّها (ستّون) */
+      const drawnRow = drawMyRow(anime ? safe : dropKids(safe, media), `${tab}:${r.genre}.${r.tag ?? ""}`);
+      const guarded = anime ? await dropExplicitAnime(drawnRow) : drawnRow;
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const p = new URLSearchParams();

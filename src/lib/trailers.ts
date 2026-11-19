@@ -10,6 +10,7 @@ import {
   trending,
   resultsByIds,
   ANIME_KEYWORD,
+  dropExplicitAnime,
   type SearchResult,
   type TrailerVideo,
 } from "@/lib/tmdb";
@@ -312,8 +313,10 @@ async function shape(
   keep?: TrailerPin,
 ): Promise<TrailerItem[]> {
   const t = getDict(locale);
+  /* 🆕 T454 — الأنمي الفاضح يسقط قبل سؤال المقاطع (ecchi/hentai — `dropExplicitAnime`) */
+  const clean = await dropExplicitAnime(rows.slice(0, probe + 6));
   const withKeys = await Promise.all(
-    rows
+    clean
       .slice(0, probe)
       .map(async (r): Promise<{ base: Omit<TrailerItem, "clipLabel">; videos: TrailerVideo[] } | null> => {
       const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);

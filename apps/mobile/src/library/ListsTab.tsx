@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
 import { FlatList, Pressable, ScrollView, View, useWindowDimensions, type ScrollViewProps } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import { Sheet } from "./Sheet";
 import { ListCard, type ListCardData } from "./ListCard";
 import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
 import { ReorderSheet } from "./ReorderSheet";
-import { SmartListSheet } from "./SmartListSheet";
 import { NewListBar } from "../newlist/NewListBar";
 import { ShareListSheet } from "../list/ShareListSheet";
 import { profileUrl } from "@/core/media";
@@ -39,6 +39,8 @@ import { useRtlRailPin } from "../rtlRailPin";
  * 🆕 Phase 11-G (G5/G6) — **أُقفلا**: المشاركةُ ورقةٌ أصليّة (`ShareListSheet`: إعلانٌ · صديقٌ · مجتمعٌ · رابط) للمعلنة
  * والخاصّة معاً، وتحريرُ شرطِ ذكيّةِ المكتبة في `SmartListSheet` بوضع `editing`. **ذكيّةُ الكتالوج** وحدَها تُعدَّل في
  * اكتشف من صفحتها كما في الويب (شرطُها شريطُ الفلاتر، D-145).
+ * 🆕 T450/T454 — **الإنشاءُ والتعديلُ صارا صفحةَ «قائمة جديدة»** (`newlist/NewListScreen`، `/list/new` و`?edit=`):
+ * سقطت ورقتا الاسمِ وحده والشروط (`SmartListSheet` حُذف) ووضعُ «حدِّث» في «اكتشف».
  *
  * 📐 الشبكةُ `grid-cols-1 sm:grid-cols-2` بفاصل `gap-2.5` ١٠ — عمودٌ على
  * الجوّال واثنان من ٦٤٠ (D-461).
@@ -47,6 +49,7 @@ const PAGE_PAD = 16;
 
 export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll, hint = false }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string, tone?: ToastTone) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"]; /** D-1318 (T2) — تلميحُ «قوائمك هنا» لمرّةٍ واحدة، بدوره (`useHintTurn` في المكتبة) */ hint?: boolean }) {
   const { t, tokens, locale } = useApp();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
   const refreshControl = usePullRefresh([qk.tag("me:lists")], topPad);
@@ -55,8 +58,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     queryFn: async () => (await api<LibraryListsPayload>("/api/v1/me/library/lists")).data,
   });
   const [busyId, setBusyId] = useState<string | null>(null);
-  /* G5 — تعديلُ شرطِ ذكيّةٍ من بطاقتها: الورقةُ نفسُها بوضع `editing` (كان باباً ويبيّاً `/library?edit=`) */
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [reorder, setReorder] = useState(false);
   const [rating, setRating] = useState<LibraryListCard | null>(null);
   const [group, setGroup] = useState<LibraryAutoGroup | null>(null);
@@ -214,8 +215,12 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                   onPlaylist={(on) => void setPlaylist(l, on)}
                   onShare={() => share(l)}
                   onEdit={
-                    l.smart_source === "library"
-                      ? { label: ar ? "عدّل الشرط في مكتبتي" : "Edit the rule in your library", onPress: () => setEditing({ id: l.id, name: l.name }) }
+                    l.smart_source
+                      ? {
+                          label: t.smartListUpdate(l.name),
+                          /* 🆕 T454 — صفحةُ «قائمة جديدة» على شرطها — للمكتبة والكتالوج معاً */
+                          onPress: () => router.push({ pathname: "/list/new", params: { edit: l.id, from: l.smart_source === "library" ? "library" : "discover" } }),
+                        }
                       : undefined
                   }
                 />
@@ -292,24 +297,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
           }}
           onToast={(s) => say(s, "success")}
-          onError={fail}
-        />
-      ) : null}
-      {editing ? (
-        <SmartListSheet
-          editing={editing}
-          onClose={() => setEditing(null)}
-          onNeedsPlus={() => {
-            setEditing(null);
-            onOpenWeb("/plus");
-          }}
-          onCreated={() => setEditing(null)}
-          onUpdated={(id) => {
-            setEditing(null);
-            say(t.smartListUpdated, "success");
-            void queryClient.invalidateQueries({ queryKey: qk.list(id) });
-            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
-          }}
           onError={fail}
         />
       ) : null}

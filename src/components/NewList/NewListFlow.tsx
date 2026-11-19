@@ -4,8 +4,12 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getDict, type Locale } from "@/core/i18n";
+import { ruleTypes, toggleRuleType, type SmartType } from "@/core/smartListKeys";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import {
+  hideChipText,
+  isCatalogSource,
+  PICK_AXES_CATALOG,
   axisLabels,
   axisOptions,
   chipText,
@@ -30,7 +34,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { chipClass, segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
 import { ToggleRow } from "@/components/ui/SectionOrderList";
 import { ListCardShell } from "@/components/PublicListsRail";
-import { createListFull, createSmartList, previewSmartList, addItemsToList } from "@/lib/actions";
+import { createListFull, createSmartList, previewSmartList, addItemsToList, updateSmartListRule } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 
 /**
@@ -63,12 +67,15 @@ export function NewListFlow({
   from,
   initialTab,
   addTo,
+  editing = null,
   items,
 }: {
   locale: Locale;
   from: "discover" | "library";
   initialTab: Tab;
   addTo: { id: string; name: string } | null;
+  /** 🆕 T454 — تعديلُ شرطِ قائمةٍ ذكيّةٍ قائمة: «قائمة ذكيّة» وحدَها، مملوءةً بشرطها، وزرُّها «حدّث القائمة» */
+  editing?: { id: string; name: string; rule: Record<string, string> } | null;
   items: PickerItem[];
 }) {
   const t = getDict(locale);
@@ -81,54 +88,61 @@ export function NewListFlow({
 
   /* ===== الخطوةُ الأولى — الاختيار ===== */
   const [selected, setSelected] = useState<Map<string, Pick>>(new Map());
-  const [source, setSource] = useState<Source>("recent");
+  const [source, setSource] = useState<Source>(library ? "recent" : "pop");
   const [filters, setFilters] = useState<Partial<Record<Axis, string>>>({});
   const [open, setOpen] = useState<Axis | null>(null);
   const [q, setQ] = useState("");
-  /* نتيجةُ الكتالوج **موسومةٌ بعبارتها**: تُعرض لما يطابق البحثَ الحاليّ وحدَه — فلا تفريغَ في أثرٍ عند مسح البحث */
-  const [remote, setRemote] = useState<{ term: string; items: Pick[] }>({ term: "", items: [] });
   const [shown, setShown] = useState(PAGE);
+  /* 🆕 T454 — الكتالوجُ بصفحاتٍ تكبر بـ«المزيد» (٤٠ ← ١٢٠) */
+  const [n, setN] = useState(40);
 
   const term = q.trim();
   const searching = term.length >= 2;
+  /* «اكتشف» يقرأ الكتالوجَ للأشهر والأعلى والأحدث وللبحث كلِّه؛ «من مكتبتي» والمكتبةُ تُصفّى في الجهاز */
+  /* الكتالوجُ يُسأل في خطوة الاختيار وحدَها — لا من تبويب «قائمة ذكيّة» ولا من صفحة التعديل */
+  const catalog = !library && !editing && tab === "list" && (isCatalogSource(source) || searching);
+  const axes = catalog ? PICK_AXES_CATALOG : PICK_AXES;
 
-  /* بحثُ الكتالوج كلِّه — من «اكتشف» وحدَها (المكتبةُ تبحث في نفسها) — بـ`/api/suggest` الذي يقرؤه بحثُ الأعمال */
+  /* نتيجةُ الكتالوج **موسومةٌ بطلبها** (`key`): «يحمّل» = لا نتيجةَ لهذا الطلب بعدُ — مشتقٌّ لا حالةٌ تُقلب في أثر */
+  const catalogKey = catalog
+    ? JSON.stringify({ src: isCatalogSource(source) ? source : "pop", type: filters.type, g: filters.g, era: filters.era, rate: filters.rate, q: searching ? term : "", n })
+    : "";
+  const [remote, setRemote] = useState<{ key: string; items: Pick[]; more: boolean; failed?: true } | null>(null);
+  const catalogLoading = catalog && remote?.key !== catalogKey;
+  /* `fetch` إلى `GET /api/v1/lists/catalog` (مسارُ التطبيق نفسُه) لا فعلُ خادم: أفعالُ الخادم تصطفّ واحداً بعد واحد ولا
+     تُلغى — وضغطاتُ الرقائق السريعة كانت تصفّ تقييماتٍ كاملةً لا يقرؤها أحد. `AbortController` يقطع ما سبق */
   useEffect(() => {
-    if (library || !searching) return;
+    if (!catalogKey) return;
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
-        const data = (await res.json()) as { results?: { kind: string; id: number; title: string; poster_path?: string | null }[] };
-        setRemote({
-          term,
-          items: (data.results ?? [])
-            .filter((r) => r.kind === "tv" || r.kind === "movie")
-            .map((r) => ({ id: r.id, kind: r.kind as "tv" | "movie", title: r.title, poster_path: r.poster_path ?? null })),
-        });
+        const p = JSON.parse(catalogKey) as Record<string, string | number | undefined>;
+        const qs = new URLSearchParams(
+          Object.entries(p).filter((e): e is [string, string | number] => e[1] !== undefined && e[1] !== "").map(([k, v]) => [k, String(v)]),
+        );
+        const res = await fetch(`/api/v1/lists/catalog?${qs}`, { signal: ctrl.signal });
+        const json = (await res.json()) as { ok: boolean; data?: { items: Pick[]; more: boolean } };
+        if (!json.ok || !json.data) throw new Error("catalog");
+        setRemote({ key: catalogKey, items: json.data.items, more: json.data.more });
       } catch {
-        /* أُلغي الطلب أو فشل — النتائجُ المحلّيّةُ تكفي */
+        if (!ctrl.signal.aborted) setRemote({ key: catalogKey, items: [], more: false, failed: true });
       }
     }, 300);
     return () => {
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [term, searching, library]);
+  }, [catalogKey]);
 
   const listed = useMemo(
     () => filterPicker(items, { source, filters, term: searching ? term : "" }),
     [items, filters, source, term, searching],
   );
 
-  /* نتائجُ البحث: ما في مكتبتك أوّلاً، ثمّ الكتالوجُ بلا تكرار */
   const grid: Pick[] = useMemo(() => {
-    const local: Pick[] = listed.map((x) => ({ id: x.id, kind: x.kind, title: x.title, poster_path: x.poster_path }));
-    if (!searching || library) return local;
-    const seen = new Set(local.map(keyOf));
-    const fresh = remote.term === term ? remote.items : [];
-    return [...local, ...fresh.filter((r) => !seen.has(keyOf(r)))];
-  }, [listed, remote, searching, library, term]);
+    if (catalog) return remote?.key === catalogKey ? remote.items : (remote?.items ?? []);
+    return listed.map((x) => ({ id: x.id, kind: x.kind, title: x.title, poster_path: x.poster_path }));
+  }, [catalog, catalogKey, remote, listed]);
 
   function toggle(p: Pick) {
     setSelected((prev) => {
@@ -188,7 +202,7 @@ export function NewListFlow({
   }
 
   /* ===== القائمةُ الذكيّة ===== */
-  const [rule, setRule] = useState<Record<string, string>>({ type: "movie" });
+  const [rule, setRule] = useState<Record<string, string>>(editing?.rule ?? { type: "movie" });
   const [smartOpen, setSmartOpen] = useState<Axis | null>(null);
   /* المعاينةُ **موسومةٌ بشرطها** (`key`): «يحمّل» = لا معاينةَ لهذا الشرط بعدُ — مشتقٌّ لا حالةٌ تُقلب في أثر */
   const [preview, setPreview] = useState<{ key: string; items: Pick[]; count: number; failed?: true } | null>(null);
@@ -213,6 +227,19 @@ export function NewListFlow({
     return () => clearTimeout(timer);
   }, [ruleKey, tab, hasRule, library]);
 
+  function updateRule() {
+    if (!editing || !hasRule) return;
+    start(async () => {
+      try {
+        await updateSmartListRule(editing.id, rule, true);
+        toast(t.smartListUpdated, { tone: "success" });
+        router.push(`/lists/${editing.id}`);
+      } catch (e) {
+        flashError((e as Error).message);
+      }
+    });
+  }
+
   function createSmart() {
     const clean = smartName.trim();
     if (!clean || !hasRule) return;
@@ -235,12 +262,12 @@ export function NewListFlow({
   const header = (
     <div className="flex items-center gap-3 mb-4">
       <BackButton locale={locale} />
-      <h1 className="font-bold text-20 leading-tight truncate flex-1 min-w-0">{addTo ? t.nlAddTo(addTo.name) : t.listNewGroup}</h1>
+      <h1 className="font-bold text-20 leading-tight truncate flex-1 min-w-0">{editing ? t.nlEditTitle : addTo ? t.nlAddTo(addTo.name) : t.listNewGroup}</h1>
       {!addTo && tab === "list" && <span dir="ltr" className="shrink-0 text-12 text-muted tabular-nums">{t.nlStep(step)}</span>}
     </div>
   );
 
-  const segments = addTo ? null : (
+  const segments = addTo || editing ? null : (
     <div className={`${segmentedTrackFull} mb-4`} role="tablist">
       {(["list", "smart"] as const).map((k) => (
         <button
@@ -337,8 +364,9 @@ export function NewListFlow({
   }
 
   if (tab === "smart") {
-    const axes = library ? SMART_AXES_LIBRARY : SMART_AXES_CATALOG;
-    const typeRow = typeOpts;
+    const smartAxes = library ? SMART_AXES_LIBRARY : SMART_AXES_CATALOG;
+    /* 🆕 T454 — الأنواعُ رقائقُ تُجمع (أحمد «٢ أ»): كلُّ رقاقةٍ تُطفئ وتُشعل، وآخرُ نوعٍ لا يُطفأ (`toggleRuleType`) */
+    const picked = ruleTypes(rule.type);
     return (
       <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40">
         {header}
@@ -346,14 +374,15 @@ export function NewListFlow({
         <p className="text-13 text-muted mb-3">{library ? t.nlSmartHintLibrary : t.nlSmartHint}</p>
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {typeRow.map((o) => {
-              const cur = rule.type ?? "";
+            {typeOpts.map((o) => {
+              const on = picked.includes(o.value as SmartType);
               return (
                 <button
-                  key={o.value || "any"}
+                  key={o.value}
                   type="button"
-                  onClick={() => setRule((r) => withType(r, o.value))}
-                  className={chipClass(cur === o.value, "md")}
+                  aria-pressed={on}
+                  onClick={() => setRule((r) => withType(r, toggleRuleType(r.type, o.value as SmartType)))}
+                  className={chipClass(on, "md")}
                 >
                   {o.label}
                 </button>
@@ -363,7 +392,8 @@ export function NewListFlow({
           <AxisRow
             optsOf={optsOf}
             axisLabel={axisLabel}
-            axes={axes}
+            hideText={(v) => hideChipText(t, v)}
+            axes={smartAxes}
             values={rule as Partial<Record<Axis, string>>}
             openAxis={smartOpen}
             onOpen={setSmartOpen}
@@ -392,6 +422,23 @@ export function NewListFlow({
         </div>
         <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border">
           <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-2">
+            {editing ? (
+              /* التعديلُ للشرط وحدَه — الاسمُ يُعدَّل من «عدّل القائمة» في صفحتها كسائر القوائم */
+              <>
+                <span className="flex-1 min-w-0 truncate text-14 font-semibold" dir="auto">
+                  {editing.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={updateRule}
+                  disabled={pending || !hasRule}
+                  className={buttonClass({ size: "lg", className: "shrink-0" })}
+                >
+                  {t.nlUpdateRule}
+                </button>
+              </>
+            ) : (
+            <>
             <input
               value={smartName}
               onChange={(e) => setSmartName(e.target.value)}
@@ -408,6 +455,8 @@ export function NewListFlow({
             >
               {t.nlCreateSmart}
             </button>
+            </>
+            )}
           </div>
         </div>
       </main>
@@ -428,6 +477,9 @@ export function NewListFlow({
           onChange={(e) => {
             setQ(e.target.value);
             setShown(PAGE);
+            setN(40);
+            /* البحثُ من «اكتشف» يذهب إلى الكتالوج بفلاتره — «تقييمي» لا يُرى هناك فلا يبقى مختاراً */
+            if (!library && e.target.value.trim().length >= 2) setFilters((f) => withAxis(f, "my", ""));
           }}
           type="search"
           placeholder={library ? t.nlSearchLibrary : t.nlSearchAll}
@@ -443,6 +495,9 @@ export function NewListFlow({
               onClick={() => {
                 setSource(s.k);
                 setShown(PAGE);
+                setN(40);
+                /* المحوران يفترقان بالمصدر: «تقييمي» لمكتبتك و«التقييم» العامّ للكتالوج — ما لا يُرى لا يبقى مختاراً */
+                setFilters((f) => withAxis(f, isCatalogSource(s.k) ? "my" : "rate", ""));
               }}
               className={chipClass(source === s.k, "sm")}
             >
@@ -454,31 +509,44 @@ export function NewListFlow({
       <AxisRow
         optsOf={optsOf}
         axisLabel={axisLabel}
-        axes={PICK_AXES}
+        axes={axes}
         values={filters}
         openAxis={open}
         onOpen={setOpen}
         onPick={(a, v) => {
           setFilters((f) => (a === "type" ? withType(f, v) : withAxis(f, a, v)));
           setShown(PAGE);
+          setN(40);
         }}
       />
       <h2 className="text-15 font-bold mt-5 mb-3 flex items-center gap-2">
         <Icon name="sparkle-star" size={15} className="text-accent" />
         {heading}
       </h2>
-      {grid.length === 0 ? (
-        <p className="text-13 text-muted py-12 text-center">{library ? t.nlEmptyMine : t.nlEmptyLibrary}</p>
+      {catalog && catalogLoading && grid.length === 0 ? (
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className="skeleton aspect-[2/3] rounded-poster border border-border" />
+          ))}
+        </div>
+      ) : grid.length === 0 ? (
+        <p className="text-13 text-muted py-12 text-center">
+          {catalog && remote?.failed ? t.apiInternal : library || source === "mine" ? t.nlEmptyMine : t.nlPreviewEmpty}
+        </p>
       ) : (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-            {grid.slice(0, shown).map((p) => (
+          <div className={`grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 transition-opacity ${catalogLoading ? "opacity-60" : ""}`}>
+            {(catalog ? grid : grid.slice(0, shown)).map((p) => (
               <Tile key={keyOf(p)} pick={p} selected={selected.has(keyOf(p))} onToggle={() => toggle(p)} />
             ))}
           </div>
-          {grid.length > shown && (
+          {(catalog ? !!remote?.more && !catalogLoading : grid.length > shown) && (
             <div className="text-center mt-5">
-              <button type="button" onClick={() => setShown((n) => n + PAGE)} className={buttonClass({ variant: "surface" })}>
+              <button
+                type="button"
+                onClick={() => (catalog ? setN((x) => Math.min(120, x + 40)) : setShown((x) => x + PAGE))}
+                className={buttonClass({ variant: "surface" })}
+              >
                 {t.showMore}
               </button>
             </div>
@@ -515,6 +583,7 @@ function AxisRow({
   axes,
   optsOf,
   axisLabel,
+  hideText,
   values,
   openAxis,
   onOpen,
@@ -523,6 +592,8 @@ function AxisRow({
   axes: Axis[];
   optsOf: Record<Axis, Opt[]>;
   axisLabel: Record<Axis, string>;
+  /** «إخفاء: ما شاهدته» — قيمةُ «إخفاء» وحدَها تُقرأ عكسَها */
+  hideText?: (v: string | undefined) => string;
   values: Partial<Record<Axis, string>>;
   openAxis: Axis | null;
   onOpen: (a: Axis | null) => void;
@@ -534,7 +605,7 @@ function AxisRow({
         {axes.map((a) => {
           const v = values[a];
           const on = !!v;
-          const label = chipText(optsOf[a], axisLabel[a], v);
+          const label = a === "hide" && hideText ? hideText(v) : chipText(optsOf[a], axisLabel[a], v);
           const isOpen = openAxis === a;
           return (
             <button

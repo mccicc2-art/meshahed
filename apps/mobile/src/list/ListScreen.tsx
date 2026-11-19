@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
-import { aimDiscoverEdit } from "../discover/aim";
 import { Image } from "expo-image";
 import { avatarSource } from "../avatarSource";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -28,7 +27,6 @@ import { ListReviews } from "./ListReviews";
 import { ShareListSheet } from "./ShareListSheet";
 import { ListMembersSheet } from "./ListMembersSheet";
 import { ListInviteSheet } from "./ListInviteSheet";
-import { SmartListSheet } from "../library/SmartListSheet";
 import { haptic } from "../haptics";
 import { useRtlRailPin } from "../rtlRailPin";
 import type { HoldAction } from "../library/HoldMenu";
@@ -143,7 +141,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "share" | "rule" | "members" | "invite">(null);
+  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "share" | "members" | "invite">(null);
   /* 🆕 T450 — **`invite` يفتح ورقةَ الدعوة مرّةً حين تصل القائمة**: مفتاحُ «ادعُ أصدقاء» في «قائمة جديدة» يصل إلى الورقة نفسِها */
   const invited = useRef(false);
   useEffect(() => {
@@ -583,23 +581,14 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
             {d?.mine ? (
               <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
                 <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
-                {/* Phase 11-G (G4/G5) — إضافةُ عملٍ بالمنتقي الأصليّ؛ وشرطُ ذكيّةِ المكتبة بورقتها الأصليّة. **ذكيّةُ الكتالوج
-                    وحدَها** تُعدَّل في «اكتشف» الويبيّة (شرطُها هو شريطُ الفلاتر نفسُه، D-145 — لا نموذجَ فلاترَ ثانياً هنا) */}
+                {/* 🆕 T454 — **شرطُ القائمة الذكيّة يُعدَّل في صفحة «قائمة جديدة» نفسِها** (أحمد «أ»)، مكتبةً كانت أو كتالوجاً
+                    — بدل ورقة الشروط ووضع «حدِّث» في «اكتشف» */}
                 {d.smart ? (
-                  d.smart_source === "library" ? (
-                    <Button label={t.smartListUpdate(d.name)} variant="ghost" onPress={() => setSheet("rule")} />
-                  ) : (
-                    /* 🆕 «لا ويب في التطبيق» ٣ — شرطُ الكتالوج يُعدَّل في «اكتشف» الأصليّة (حيث بُني — D-875): تبويبُه وفلاترُه
-                       ووضعُ «حدِّث». كان بابَ `/lists/<id>?from=app` الويبيّ */
-                    <Button
-                      label={t.smartListUpdate(d.name)}
-                      variant="ghost"
-                      onPress={() => {
-                        aimDiscoverEdit({ listId: id, name: d.name, rule: d.smart_rule ?? {} });
-                        router.navigate("/discover");
-                      }}
-                    />
-                  )
+                  <Button
+                    label={t.smartListUpdate(d.name)}
+                    variant="ghost"
+                    onPress={() => router.push({ pathname: "/list/new", params: { edit: id, from: d.smart_source === "library" ? "library" : "discover" } })}
+                  />
                 ) : (
                   <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} />
                 )}
@@ -623,23 +612,6 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
               void qc.invalidateQueries({ queryKey: ["me:lists"] });
             }}
             onToast={(s) => say(s, "success")}
-            onError={fail}
-          />
-        ) : null}
-        {sheet === "rule" && d && d.smart_source === "library" ? (
-          <SmartListSheet
-            editing={{ id, name: d.name, rule: d.smart_rule ?? undefined }}
-            onClose={() => setSheet(null)}
-            onNeedsPlus={() => {
-              setSheet(null);
-              openWeb("/plus");
-            }}
-            onCreated={() => setSheet(null)}
-            onUpdated={() => {
-              setSheet(null);
-              say(t.smartListUpdated, "success");
-              void q.refetch();
-            }}
             onError={fail}
           />
         ) : null}

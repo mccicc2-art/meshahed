@@ -70,6 +70,7 @@ export type {
   CreateListFullBody,
   PickerItem,
   PickerPayload,
+  CatalogPickerPayload,
   ListAddItemsBody,
 } from "@/core/contracts/library";
 export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload, TrailerCard, TrailersRailPayload } from "@/core/contracts/discover";

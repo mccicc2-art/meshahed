@@ -3389,6 +3389,8 @@ export async function createSmartList(
 export async function updateSmartListRule(
   listId: string,
   rule: unknown,
+  /** 🆕 T454 — صفحةُ التعديل ترسل الشرطَ كاملاً (الإخفاءُ والترتيبُ معه أو غيابُهما مقصود) فلا يُدمج بالقديم */
+  full = false,
 ): Promise<{ ok: boolean; needsPlus?: true }> {
   listId = uuid(listId);
   const { sanitizeRule, isRuleSource } = await import("@/lib/smartLists");
@@ -3413,7 +3415,7 @@ export async function updateSmartListRule(
   const prev = (row.rule && typeof row.rule === "object" ? row.rule : {}) as Record<string, unknown>;
   const incoming = (rule && typeof rule === "object" && !Array.isArray(rule) ? rule : {}) as Record<string, unknown>;
   const keep: Record<string, unknown> = {};
-  for (const k of ["hide", "sort"]) if (incoming[k] === undefined && prev[k] !== undefined) keep[k] = prev[k];
+  if (!full) for (const k of ["hide", "sort"]) if (incoming[k] === undefined && prev[k] !== undefined) keep[k] = prev[k];
   const clean_rule = sanitizeRule({ ...incoming, ...keep }, source);
   if (!clean_rule) throw new Error("empty rule");
 
@@ -3458,6 +3460,74 @@ export async function previewSmartList(
     };
   } catch {
     return { items: [], count: 0 };
+  }
+}
+
+/**
+ * 🆕 T454 — **اختيارُ «قائمة جديدة» من الكتالوج كلِّه** (أحمد: «نيو ليست ف اكتشف ما يظهر فيها الا اعمال المكتبة
+ * وذا خطأ … ف اكتشف كل شيء يظهر»). مصدرُه رقاقةٌ (الأشهر · الأعلى تقييماً · الأحدث) وفلاترُه النوعُ والتصنيفُ والحقبةُ
+ * والتقييم — **والقارئُ قارئُ القائمة الذكيّة نفسُه** (`evaluateSmartRule`): الشرطُ هنا شرطٌ لحظيٌّ لا يُخزَّن.
+ * والبحثُ (`q`) يمرّ على الفلاتر نفسِها في الخادم، فلا يظهر مسلسلٌ ومختارُك «أفلام».
+ * `n` يكبر بـ«المزيد» حتى ١٢٠، و`more` يقول هل بقي شيء.
+ */
+export async function catalogPicker(input: {
+  src?: string;
+  type?: string;
+  g?: string;
+  era?: string;
+  rate?: string;
+  q?: string;
+  n?: number;
+}): Promise<{ items: { id: number; kind: "tv" | "movie"; title: string; poster_path: string | null }[]; more: boolean }> {
+  await requireUser("preview", 60, 60_000);
+  const n = Math.min(120, Math.max(20, Math.floor(Number(input.n) || 40)));
+  const type = input.type === "movie" || input.type === "tv" ? input.type : input.type === "anime" ? "all" : "movie,tv,all";
+  const { getLocale } = await import("@/lib/locale");
+  const locale = await getLocale();
+  const q = String(input.q ?? "").trim().slice(0, 80);
+  try {
+    if (q.length >= 2) {
+      const { searchMulti, titleOf, dropExplicitAnime } = await import("@/lib/tmdb");
+      const { BROWSE_GENRES, BROWSE_ERAS } = await import("@/core/browse");
+      const genre = input.g ? BROWSE_GENRES.find((g) => g.slug === input.g) : null;
+      const era = input.era ? BROWSE_ERAS.find((e) => e.slug === input.era) : null;
+      const yFrom = era?.from ? Number(era.from.slice(0, 4)) : null;
+      const yTo = era?.to ? Number(era.to.slice(0, 4)) : null;
+      const minRate = input.rate ? Number(input.rate) : null;
+      /* البحثُ يمرّ على منع الأنمي الفاضح أيضاً — لا يُضاف بالبحث ما لا يُعرض في الصفوف */
+      const rows = (await dropExplicitAnime(await searchMulti(q))).filter((r) => {
+        const kind = r.media_type === "tv" ? "tv" : "movie";
+        /* الأنمي: رسومٌ (١٦) يابانيّةُ المنشأ أو اللغة — تعريفُ صفوف «اكتشف» نفسُه */
+        const anime = (r.genre_ids ?? []).includes(16) && ((r.origin_country ?? []).includes("JP") || r.original_language === "ja");
+        if (type === "movie" && kind !== "movie") return false;
+        if (type === "tv" && (kind !== "tv" || anime)) return false;
+        if (type === "all" && !anime) return false;
+        if (genre && !(kind === "tv" ? genre.tv : genre.movie).some((id) => (r.genre_ids ?? []).includes(id))) return false;
+        const year = Number((r.release_date || r.first_air_date || "").slice(0, 4)) || null;
+        if (era && (year === null || (yFrom !== null && year < yFrom) || (yTo !== null && year > yTo))) return false;
+        if (minRate !== null && (r.vote_average ?? 0) < minRate) return false;
+        return true;
+      });
+      return {
+        items: rows.slice(0, n).map((r) => ({ id: r.id, kind: r.media_type === "tv" ? "tv" : "movie", title: titleOf(r) || "", poster_path: r.poster_path ?? null })),
+        more: false,
+      };
+    }
+    const { sanitizeRule } = await import("@/lib/smartLists");
+    const { evaluateSmartRule } = await import("@/lib/listItems");
+    const clean = sanitizeRule(
+      { type, g: input.g, era: input.era, rate: input.rate, sort: input.src === "rate" ? "rate" : input.src === "new" ? "new" : undefined },
+      "catalog",
+    );
+    if (!clean) return { items: [], more: false };
+    /* هامشُ عشرين: الحراسُ (الأطفال · اللغاتُ المستبعدة · الأنمي الفاضح) تُسقط صفوفاً، و«المزيد» لا يختفي وتحته المزيد */
+    const rows = await evaluateSmartRule(clean, "catalog", locale, n + 20);
+    return {
+      items: rows.slice(0, n).map((r) => ({ id: r.tmdb_id, kind: r.media_type, title: r.title ?? "", poster_path: r.poster_path })),
+      more: rows.length > n && n < 120,
+    };
+  } catch {
+    return { items: [], more: false };
   }
 }
 

@@ -61,6 +61,9 @@ export default async function LibraryPage({
 
   const { locale, t } = await getT();
   const { filter, edit } = await searchParams;
+  /* 🆕 T454 — **تعديلُ الشرط صار صفحةَ «قائمة جديدة»** (`/lists/new?edit=`): الرابطُ القديم (إشعارٌ، نسخةُ تطبيقٍ لم
+     تتحدّث) يُحوَّل إليها — ورقةُ الأدوات لم تعد بابَه */
+  if (edit && isUuid(edit)) redirect(`/lists/new?edit=${edit}`);
   const tabPrefs = await getTabPrefs("library");
   /* 🆕 **صفوفُ الصفحة المخفيّة** (D-874، حكمُ أحمد: «نعم، للاثنين») —
      **الكاملةُ تمرّ إلى اللوح** (الفعلُ يستبدل القائمةَ كلَّها، D-462)

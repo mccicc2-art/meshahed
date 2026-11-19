@@ -11,22 +11,52 @@ import type { PickerItem } from "./contracts/library";
  */
 
 export type NewListTab = "list" | "smart";
-export type NewListSource = "recent" | "watched" | "watching" | "watchlist";
+/** المكتبةُ: `recent · watched · watching` — و«اكتشف» (🆕 T454): الكتالوجُ `pop · rate · new` ومكتبتُك `mine` */
+export type NewListSource = "recent" | "watched" | "watching" | "watchlist" | "pop" | "rate" | "new" | "mine";
 export type NewListAxis = "type" | "g" | "era" | "my" | "rate" | "lang" | "co" | "wst" | "hide" | "sort";
 export type NewListOpt = { value: string; label: string };
 
-/** محاورُ كلِّ وضع — الترتيبُ ترتيبُ الرقائق على الشاشة */
+/** محاورُ كلِّ وضع — الترتيبُ ترتيبُ الرقائق على الشاشة. الكتالوجُ بالتقييم العامّ (أغلبُه لم تقيّمه)، ومكتبتُك بتقييمك */
 export const PICK_AXES: NewListAxis[] = ["type", "g", "era", "my"];
+export const PICK_AXES_CATALOG: NewListAxis[] = ["type", "g", "era", "rate"];
+
+/** هل المصدرُ من الكتالوج (نداءُ الخادم) لا من مكتبتك (تصفيةٌ في الجهاز)؟ */
+export function isCatalogSource(s: NewListSource): boolean {
+  return s === "pop" || s === "rate" || s === "new";
+}
 export const SMART_AXES_CATALOG: NewListAxis[] = ["g", "era", "rate", "lang", "co", "hide", "sort"];
 /** ذكيّةُ المكتبة: الحالةُ «شاهدتُ/أشاهد» وحدَهما — «للمشاهدة» ليست ممّا شاهدتَه (أحمد: «واتش ليست لا لانه ما شافها») */
 export const SMART_AXES_LIBRARY: NewListAxis[] = ["wst", "my", "g", "era", "sort"];
 
+/** 🆕 T454 — «اكتشف» يعرض الكتالوجَ كلَّه أوّلاً ومكتبتُك رقاقةٌ بينها (أحمد «١ أ»)، والمكتبةُ أعمالُك وحدَها */
 export function newListSources(library: boolean): NewListSource[] {
-  return library ? ["recent", "watched", "watching"] : ["recent", "watched", "watching", "watchlist"];
+  return library ? ["recent", "watched", "watching"] : ["pop", "rate", "new", "mine"];
 }
 
 export function sourceLabel(t: Dict, s: NewListSource): string {
-  return s === "recent" ? t.nlSrcRecent : s === "watched" ? t.nlSrcWatched : s === "watching" ? t.nlSrcWatching : t.nlSrcWatchlist;
+  switch (s) {
+    case "recent":
+      return t.nlSrcRecent;
+    case "watched":
+      return t.nlSrcWatched;
+    case "watching":
+      return t.nlSrcWatching;
+    case "watchlist":
+      return t.nlSrcWatchlist;
+    case "pop":
+      return t.nlSortPop;
+    case "rate":
+      return t.nlSortRate;
+    case "new":
+      return t.nlSortNew;
+    case "mine":
+      return t.nlSrcMine;
+  }
+}
+
+/** نصُّ رقاقة «إخفاء» بقيمتها: «إخفاء: ما شاهدته» — القيمةُ وحدَها كانت تُقرأ «ما شاهدته فقط» وهي عكسُها */
+export function hideChipText(t: Dict, value: string | undefined): string {
+  return value === "watched" ? t.nlHideChip(t.nlHideWatched) : value === "library" ? t.nlHideChip(t.nlHideLibrary) : t.nlHide;
 }
 
 export function axisLabels(t: Dict): Record<NewListAxis, string> {
@@ -54,7 +84,7 @@ export function axisOptions(
   { tab, library, curType }: { tab: NewListTab; library: boolean; curType?: string },
 ): Record<NewListAxis, NewListOpt[]> {
   const any = { value: "", label: t.nlAny };
-  const fit = curType === "movie" ? "movie" : curType === "tv" ? "tv" : "all";
+  const fitsAny = (g: (typeof BROWSE_GENRES)[number]) => genreFitsTypes(g, curType);
   return {
     /* الشرطُ يحمل نوعاً دائماً (القائمتان الذكيّتان كلتاهما — محرّراهما القائمان يجمّدان النوعَ ويشترطانه)؛ «أيّ» للاختيار وحدَه */
     type: [
@@ -63,7 +93,7 @@ export function axisOptions(
       { value: "tv", label: t.shortShows },
       { value: tab === "smart" ? "all" : "anime", label: t.discoverTabAnime },
     ],
-    g: [any, ...BROWSE_GENRES.filter((g) => genreFitsType(g, fit)).map((g) => ({ value: g.slug, label: ar ? g.ar : g.en }))],
+    g: [any, ...BROWSE_GENRES.filter(fitsAny).map((g) => ({ value: g.slug, label: ar ? g.ar : g.en }))],
     era: [any, ...BROWSE_ERAS.filter((e) => !e.upcoming || (tab === "smart" && !library)).map((e) => ({ value: e.slug, label: ar ? e.ar : e.en }))],
     my: [any, ...MY_RATING_MIN.map((n) => ({ value: n, label: `${n}+` }))],
     rate: [any, ...BROWSE_RATES.map((n) => ({ value: String(n), label: `${n}+` }))],
@@ -110,19 +140,28 @@ export function withAxis<T extends Partial<Record<string, string>>>(cur: T, axis
 
 /**
  * هل في الشرط ما يحدّه؟ **النوعُ والترتيبُ والإخفاءُ وحدَها ليست شرطاً** (D-636: «كلُّ أفلامي» ليست ذكيّةً، هي تبويبُ
- * الأفلام) — **ومحرّرا الشرط القائمان** (`LibrarySmartForm` · `SmartListSheet`) يشترطان نوعاً ومفتاحاً بعده، فقائمةٌ
- * تُنشأ بأقلَّ من ذلك لا يُفتح لها زرُّ «حدّث» أبداً.
+ * الأفلام) — وكان محرّرا الشرط القديمان يشترطان نوعاً ومفتاحاً بعده؛ والتعديلُ اليومَ في الصفحة نفسِها (T454)
+ * فالشرطُ واحدٌ للإنشاء والتحديث.
  */
 export function ruleHasLimit(rule: Record<string, string>): boolean {
   return !!rule.type && Object.keys(rule).some((k) => k !== "type" && k !== "sort" && k !== "hide");
 }
 
-/** تبديلُ النوع يُسقط النوعَ الفنّيَّ الذي لا يناسبه (`genreFitsType`) — لا رقاقةَ مضاءةً باسمٍ عامّ لشرطٍ لا يُرى */
+/**
+ * يناسب النوعُ الفنّيُّ نوعاً واحداً على الأقلّ من المختار (`movie` · `tv` · `anime`/`all`، أو قائمةٌ مجموعة `movie,tv`)
+ * — `genreFitsType` لكلٍّ منها. والغائبُ = كلُّ الأنواع.
+ */
+export function genreFitsTypes(g: (typeof BROWSE_GENRES)[number], type: string | undefined): boolean {
+  const parts = (type ?? "").split(",").filter(Boolean);
+  if (!parts.length) return genreFitsType(g, "all");
+  return parts.some((p) => genreFitsType(g, p === "movie" ? "movie" : p === "tv" ? "tv" : "all"));
+}
+
+/** تبديلُ النوع يُسقط النوعَ الفنّيَّ الذي لا يناسبه — لا رقاقةَ مضاءةً باسمٍ عامّ لشرطٍ لا يُرى */
 export function withType<T extends Partial<Record<string, string>>>(cur: T, value: string): T {
   const next = withAxis(cur, "type", value) as Record<string, string | undefined>;
   const g = next.g ? BROWSE_GENRES.find((x) => x.slug === next.g) : null;
-  const fit = value === "movie" ? "movie" : value === "tv" ? "tv" : "all";
-  if (g && !genreFitsType(g, fit)) delete next.g;
+  if (g && !genreFitsTypes(g, value)) delete next.g;
   return next as T;
 }
 

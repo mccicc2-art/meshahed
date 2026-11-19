@@ -492,24 +492,16 @@ export function ListDetail({
               للكتالوج، وورقةُ أدوات المكتبة للمكتبة** (D-876) — **ولغيره
               الشرطُ للاطّلاع وحدَه**، **وشرطُ مكتبةٍ لا يُطّلع عليه في مكتبة
               غيرك** فلا رابطَ له. */}
-          {smartSource === "library" ? (
-            isOwner && (
-              <Link href={`/library?edit=${listId}`} className="text-accent hover:opacity-80 transition">
-                {locale === "en" ? "Edit the rule in your library" : "عدّل الشرط في مكتبتي"}
-              </Link>
-            )
-          ) : (
-            <Link
-              href={isOwner ? `/news?${smart}&edit=${listId}` : `/news?${smart}`}
-              className="text-accent hover:opacity-80 transition"
-            >
-              {isOwner
-                ? locale === "en"
-                  ? "Edit the rule in Discover"
-                  : "عدّل الشرط في اكتشف"
-                : locale === "en"
-                  ? "Open in Discover"
-                  : "افتحه في اكتشف"}
+          {/* 🆕 T454 — **لصاحبها: «عدّل الشرط» في صفحة «قائمة جديدة» نفسِها** (مكتبةً كانت أو كتالوجاً)، ولغيره «افتحه
+              في اكتشف» لشرطِ الكتالوج وحدَه */}
+          {isOwner && (
+            <Link href={`/lists/new?edit=${listId}`} className="text-accent hover:opacity-80 transition">
+              {locale === "en" ? "Edit the rule" : "عدّل الشرط"}
+            </Link>
+          )}
+          {smartSource !== "library" && (
+            <Link href={`/news?${smart}`} className="text-accent hover:opacity-80 transition">
+              {locale === "en" ? "Open in Discover" : "افتحه في اكتشف"}
             </Link>
           )}
         </p>

@@ -165,6 +165,8 @@ export default async function NewsPage({
      وملكيّتُه في المضيف** (`SavedFiltersHost`): **رابطٌ بمعرّفٍ غريبٍ لا
      يفتح وضعَ تعديل.** */
   const editId = sp.edit && isUuid(sp.edit) ? sp.edit : null;
+  /* 🆕 T454 — وضعُ «حدِّث» في «اكتشف» سقط: التعديلُ صفحةُ «قائمة جديدة» نفسُها، والرابطُ القديمُ يُحوَّل إليها */
+  if (editId) redirect(`/lists/new?edit=${editId}`);
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم — الجهة
      صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */

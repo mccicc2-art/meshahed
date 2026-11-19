@@ -9,6 +9,6 @@ import type { SmartRuleBody } from "@/core/contracts/library";
  * من الصفّ ويعقّم بمفرداته — فلا يستطيع عميلٌ قلبَ قائمةِ مكتبةٍ إلى كتالوج. بلس والملكيّةُ في الفعل نفسِه.
  */
 export const POST = bodyRoute<SmartRuleBody, { ok: boolean; needsPlus?: true }>(
-  (b) => updateSmartListRule(String(b.listId ?? ""), b.rule),
+  (b) => updateSmartListRule(String(b.listId ?? ""), b.rule, b.full === true),
   (b) => [listTag(String(b.listId ?? "")), "me:lists", "me:library"],
 );

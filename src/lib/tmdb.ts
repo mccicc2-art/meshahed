@@ -2887,3 +2887,41 @@ export async function groundByName(
     return null;
   }
 }
+
+/**
+ * ====== 🆕 T454 — لا أنمي فاضحاً في التريلرات و«اخترناه لك» وصفوف الأنمي ======
+ *
+ * أحمد ١٩ نوفمبر بلقطة («So, I Can't Play H!» في «تريلرات لك»): «دايم اشوف انمي زي ذا مقترح — العري الزائد لا يطلع».
+ * `include_adult=false` يمنع الإباحيَّ الصريح وحده، **وهذه أعمالٌ مصنَّفةٌ أنمي عاديّاً** تحمل عند TMDB كلمةَ «ecchi» أو
+ * «hentai» (حكمُه «٢ أ»: هاتان وحدهما — لا harem ولا fan service). فالكلماتُ تُسأل **للأنمي وحدَه** (رسومٌ يابانيّة) — بنداءٍ مخبَّأ ساعةً (`tmdbRaw`) وثمانيةٍ متوازية. **والفشلُ يُبقي العمل**: صفٌّ يفرغ كلُّه حين
+ * يتعثّر TMDB أسوأُ من عملٍ لم يُفحص.
+ */
+const EXPLICIT_KEYWORD_RE = /\b(ecchi|hentai)\b/i;
+const EXPLICIT_CONCURRENCY = 8;
+
+export async function dropExplicitAnime<T>(rows: T[], pick: (row: T) => SearchResult = (r) => r as unknown as SearchResult): Promise<T[]> {
+  const checks = rows.map((row) => {
+    const r = pick(row);
+    /* الأنمي وحدَه: رسومٌ يابانيّةُ المنشأ أو اللغة — Pixar وأخواتُها لا تُسأل */
+    return (r.genre_ids ?? []).includes(16) && ((r.origin_country ?? []).includes("JP") || r.original_language === "ja") ? r : null;
+  });
+  if (!checks.some(Boolean)) return rows;
+  const explicit: boolean[] = new Array(rows.length).fill(false);
+  let next = 0;
+  const worker = async () => {
+    while (next < rows.length) {
+      const i = next++;
+      const r = checks[i];
+      if (!r) continue;
+      const kind = r.media_type === "movie" ? "movie" : "tv";
+      try {
+        const d = await tmdbRaw<{ keywords?: { name?: string }[]; results?: { name?: string }[] }>(`/${kind}/${r.id}/keywords`, { language: "en-US" }, true);
+        explicit[i] = (d.keywords ?? d.results ?? []).some((k) => EXPLICIT_KEYWORD_RE.test(k.name ?? ""));
+      } catch {
+        /* لم يُفحص — يبقى */
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(EXPLICIT_CONCURRENCY, rows.length) }, worker));
+  return rows.filter((_, i) => !explicit[i]);
+}

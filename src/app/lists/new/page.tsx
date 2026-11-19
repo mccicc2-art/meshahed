@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; tab?: string; add?: string }>;
+  searchParams: Promise<{ from?: string; tab?: string; add?: string; edit?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -34,13 +34,34 @@ export default async function NewListPage({
     addTo = { id: data.list.id, name: data.list.name };
   }
 
+  /* 🆕 T454 — **`?edit=<id>` يفتح الصفحةَ نفسَها على شرط قائمةٍ ذكيّةٍ قائمة** (أحمد «أ»): مكانٌ واحدٌ للإنشاء والتعديل
+     بدل ورقة المكتبة ووضع «حدّث» في «اكتشف». لصاحبها وحدَه، ومصدرُها من صفِّها (مكتبةٌ أو كتالوج) لا من الرابط. */
+  let editing: { id: string; name: string; rule: Record<string, string> } | null = null;
+  let editSource: "library" | "catalog" | null = null;
+  if (sp.edit) {
+    const data = await getList(sp.edit);
+    const rule = data?.list.rule;
+    if (!data || data.list.user_id !== user.id || data.list.kind !== "smart" || !rule || typeof rule !== "object") {
+      redirect(data ? `/lists/${sp.edit}` : "/lists");
+    }
+    editing = {
+      id: data.list.id,
+      name: data.list.name,
+      rule: Object.fromEntries(Object.entries(rule as Record<string, unknown>).filter(([, v]) => typeof v === "string")) as Record<string, string>,
+    };
+    editSource = data.list.rule_source === "library" ? "library" : "catalog";
+  }
+
   const items = await getPickerItems(locale);
   return (
     <NewListFlow
+      /* صفحتا تعديلٍ متتاليتان على المسار نفسِه لا تتقاسمان حالة */
+      key={editing?.id ?? addTo?.id ?? "new"}
       locale={locale}
-      from={sp.from === "library" ? "library" : "discover"}
-      initialTab={sp.tab === "smart" ? "smart" : "list"}
+      from={editSource ? (editSource === "library" ? "library" : "discover") : sp.from === "library" ? "library" : "discover"}
+      initialTab={editing || sp.tab === "smart" ? "smart" : "list"}
       addTo={addTo}
+      editing={editing}
       items={items}
     />
   );
