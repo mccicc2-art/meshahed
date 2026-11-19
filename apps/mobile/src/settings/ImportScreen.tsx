@@ -19,6 +19,7 @@ import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
 import { setInflateRaw, type ParseOutcome } from "@/core/importParse";
 import { importRecords, type ImportResult } from "./importPipeline";
+import { importFromTrakt } from "./trakt";
 
 /**
  * ====== الاستيراد والتصدير (🆕 D-1369 · V-C · C6) — `settings/import/page.tsx` ======
@@ -31,7 +32,8 @@ import { importRecords, type ImportResult } from "./importPipeline";
  * هذا الملفّ (جافاسكربت خالص — لا يغيّر الثنائيّ).
  * ⚖️ **«تصدير بياناتك» هنا وحدَه** (قرارُ أحمد «7 أ»): انتقل من «الخصوصيّة» إلى حيث هو في الويب — بياناتُك داخلةً وخارجةً
  * في مكانٍ واحد (D-462)، و«الخصوصيّة» بقيت لمن يراك.
- * ⚖️ **Trakt صفٌّ مغلقٌ بسببه** («9 أ»): بابٌ مغلقٌ في مكانه أصدقُ من بابٍ محذوف (D-155)، ومسارُه الأصليُّ لا يُبنى لخدمةٍ مطفأة.
+ * 🆕 **Trakt صفٌّ يعمل** (R281، أحمد ١٩ نوفمبر): كان مغلقاً («9 أ» · D-155) والخدمةُ مطفأة؛ صار الربطُ قائماً في الموقع
+ * (R275–R280) فانتقل إلى هنا بنافذة الدخول نفسِها التي يربط بها Google (`trakt.ts`). والنتيجةُ إشعارٌ واحد من المضيف القائم.
  */
 setInflateRaw((data) => inflateSync(data));
 
@@ -134,6 +136,25 @@ export function ImportScreen() {
     }
   }
 
+  /* 🆕 R281 — Trakt: لا ملفَّ ولا مراحل — نافذةُ موافقةٍ ثمّ طلبٌ واحدٌ على الخادم؛ الصفُّ يدور حتى يعود */
+  const [traktBusy, setTraktBusy] = useState(false);
+  async function connectTrakt() {
+    if (traktBusy || busy) return;
+    haptic.pick();
+    setTraktBusy(true);
+    try {
+      const r = await importFromTrakt();
+      if (r.kind === "done") {
+        haptic.success();
+        toast.current?.say(`${t.importDone} — ${t.importDoneBody(num(r.shows, locale), num(r.episodes, locale), num(r.movies, locale))}`);
+      } else {
+        toast.current?.say(r.kind === "cancel" ? t.importTraktDenied : t.importTraktFailed);
+      }
+    } finally {
+      setTraktBusy(false);
+    }
+  }
+
   /** الوصفةُ في `PrivacyScreen` قبل D-1369 بحرفها (D-1359): كاشٌ ثمّ ورقةُ المشاركة، وتصديرٌ جديدٌ يمسح ما قبله */
   const [exporting, setExporting] = useState(false);
   async function exportData() {
@@ -175,7 +196,7 @@ export function ImportScreen() {
           {sources.map((s) => (
             <Row key={s.id} icon="download" title={s.title} subtitle={busy && active === s.id ? `${phaseLabel} ${num(pct, locale)}%` : s.hint} onPress={() => setOpen(s.id)} />
           ))}
-          <Row icon="share" title={t.importTraktTitle} subtitle={t.importTraktWhy} value={t.settingsSoonTitle} disabled />
+          <Row icon="share" title={t.importTraktTitle} subtitle={traktBusy ? t.importTraktWorking : t.importTraktHint} busy={traktBusy} onPress={() => void connectTrakt()} />
         </Group>
         <Text size={12} muted style={{ paddingHorizontal: 4, marginTop: 8, lineHeight: 19 }}>{t.importHint}</Text>
       </View>

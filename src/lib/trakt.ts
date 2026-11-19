@@ -44,6 +44,12 @@ export async function traktPkce(): Promise<{ verifier: string; challenge: string
   return { verifier, challenge };
 }
 
+/** 🆕 R281 — رحلةُ التطبيق: حالتُها تبدأ بهذا، والعودةُ تُحوَّل إلى مخطّط التطبيق (`app.json` → `scheme`) بعنوان `trakt` */
+export const TRAKT_APP_STATE = "app.";
+export const TRAKT_APP_RETURN = "com.loopztv.app://trakt";
+/** عنوانُ العودة المسجّلُ في Trakt — ثابتٌ للتطبيق (لا يُشتقّ من مضيف الطلب: نداؤه يأتي من `CONFIG.apiBase`) */
+export const TRAKT_REDIRECT = "https://loopztv.com/api/trakt/callback";
+
 export function traktAuthorizeUrl(redirectUri: string, state: string, challenge: string) {
   /* 🆕 R276 — صفحةُ الموافقة صار عنوانُها `auth.trakt.tv` في توثيق PKCE الجديد */
   const u = new URL("https://auth.trakt.tv/oauth/authorize");

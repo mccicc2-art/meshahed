@@ -533,7 +533,7 @@ const ar = {
   importTraktConnect: "الربط مع Trakt",
   /* D-155: النصّ يقول الحال والطريقَ الذي يعمل فعلاً. 🆕 R279 (أحمد ١٩ نوفمبر: «صحح النص فقط») — حجّةُ «VIP» سقطت:
      تطبيقاتُ Trakt الجديدة مجّانيّة بـPKCE، والربطُ يُفكّ بعد الاستيراد فلا يأخذ مكانَ Plex أو Infuse (R274–R278).
-     والربطُ قائمٌ في الموقع؛ صفُّ التطبيق يدلّ عليه إلى أن يُبنى فيه. */
+     🆕 R281: الربطُ صار في التطبيق أيضاً (`importTraktHint` سطرُ صفِّه)، و`importTraktWhy` يبقى لنسخٍ لم يصلها التحديث. */
   importTraktOff: "ربط Trakt غير متاح على هذا الموقع.",
   importTraktWhy:
     "ربط Trakt متاح من الموقع: افتح loopztv.com ← الإعدادات ← الاستيراد والتصدير، ونجلب مشاهداتك وتقييماتك مرة وحدة.",
@@ -541,6 +541,8 @@ const ar = {
     "وإن كان عندك ملف تصدير من تراكت: ارفعه في بطاقة Simkl أعلاه — قارئُها يقبل أي تصديرٍ يحمل معرّفات TMDB.",
   importTraktDenied: "أُلغي الربط.",
   importTraktFailed: "تعذّر الاتصال بـTrakt. حاول مرة أخرى.",
+  /* 🆕 R281 — الربطُ من التطبيق: الاستيرادُ يجري على الخادم في طلبٍ واحد وقد يطول بمكتبةٍ كبيرة، فالسطرُ يقول ما يلزم */
+  importTraktWorking: "نجلب مكتبتك من Trakt… خلّ التطبيق مفتوح",
   importFileHint: "صيغ مقبولة: zip أو csv أو json.",
   /* Letterboxd (D-153) — البديل المجاني عن تراكت للأفلام */
   importLetterboxdTitle: "Letterboxd",
@@ -3807,6 +3809,7 @@ const en: Dict = {
     "If you have an export file from Trakt: upload it in the Simkl card above — its reader accepts any export carrying TMDB ids.",
   importTraktDenied: "Linking was cancelled.",
   importTraktFailed: "Couldn't reach Trakt. Please try again.",
+  importTraktWorking: "Bringing in your Trakt library\u2026 keep the app open",
   importFileHint: "Accepted: zip, csv or json.",
   importLetterboxdTitle: "Letterboxd",
   importLetterboxdHint:
