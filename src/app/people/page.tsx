@@ -17,6 +17,7 @@ import { talkQuiet } from "@/core/talkSort";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
+  PeopleSideBoard,
   PersonaBoard,
   TopReviews,
   TopSavedLists,
@@ -222,7 +223,7 @@ export default async function PeoplePage({
      نسخةٍ ثانية (نهجُ `homeCore` في 11-H). الحججُ الكاملةُ لكلِّ نداءٍ في تاريخ هذا الملفّ. */
   const core = pagerTab
     ? /* 🆕 D-1605 — الويبُ يرسم شارةَ «AI» دائماً، فمراجعاتُ الشخصيّات المتابَعة في خطّه بلا شرط */
-      await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort, personas: true, talk: true })
+      await buildCommunity({ user, locale, scope, allView, translateOn, talkFollowedOnly, talkSort, personas: true, talk: true, preview: 5 })
     : null;
   const [myCommunities, myInvites] =
     tab === "all"
@@ -435,8 +436,11 @@ export default async function PeoplePage({
     </section>
   );
 
+  /* 🆕 R283 — **«الأعضاء» على الحاسوب عمودان** (أحمد ١٩ نوفمبر — «أ»): الوجوهُ والمحتوى في العريض، و«الأكثر مشاركة»
+     و«الصاعدون» صفوفاً ثابتةً بجانبه بزرّ «تابِع». بلا خانة بحث (D-267 — سُئل فأبقى حكمه). وتحت ١٢٨٠ كما كان حرفاً. */
+  const deskPeople = !peopleEmpty && !allView;
   const peopleBody = (
-    <section className={READING}>
+    <section className={deskPeople ? `${READING} desk:max-w-[1080px]` : READING}>
       {
             (/* **وفراغُ التبويب يُعلَن مرّةً واحدة** (D-181): كان الشرطُ
                على الاقتراحات وحدها، **والصفحةُ صارت خمسةَ أقسام** — فلو
@@ -520,7 +524,8 @@ export default async function PeoplePage({
                  ⚠️ **وقيل لأحمد قبل اختياره إن «المميّزين» سيكرّرون
                  وجوهَ «الأكثر مشاركة»** — واختار، **وحجّتُه أن الصدارةَ
                  على تسعين يوماً غيرُ صدارةِ سبتٍ واحد** وهي صحيحة. */
-              <>
+              <div className="desk:grid desk:grid-cols-[minmax(0,1fr)_300px] desk:gap-8 desk:items-start">
+               <div className="min-w-0">
                 {/* D-874: **الصفُّ المطفأُ يغيب بعنوانه** — الشرطُ هنا لا
                     داخل المكوّن، **كصفوف اكتشف حرفاً** (`railOff`). */}
                 {!railOff(hiddenRails, "featured") && (
@@ -528,12 +533,14 @@ export default async function PeoplePage({
                   rows={featured}
                   locale={locale}
                   mode="featured"
+                  deskFive
                   seeAllHref="/people?tab=people&all=featured"
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
                 )}
                 {!railOff(hiddenRails, "topweek") && (
+                <div className="desk:hidden">
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
@@ -542,12 +549,15 @@ export default async function PeoplePage({
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
+                </div>
                 )}
                 {!railOff(hiddenRails, "topreviews") && (
                 <TopReviews
                   rows={topReviews}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=reviews"
+                  phone={3}
+                  desk={4}
                 />
                 )}
                 {/* 🆕 **وقبل الرفّ: بطاقةُ العمل الذي يدور حوله الكلام**
@@ -569,9 +579,11 @@ export default async function PeoplePage({
                   cards={savedLists}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=lists"
+                  phone={3}
                 />
                 )}
                 {!railOff(hiddenRails, "rising") && (
+                <div className="desk:hidden">
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
@@ -580,10 +592,21 @@ export default async function PeoplePage({
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
+                </div>
                 )}
                 {/* 🆕 D-1608 — **آخرُ قسم: شخصيات لوبز AI** (أحمد ٣١ أكتوبر) — بابُ متابعتها، ومراجعاتُها في «النشاط» بعدها */}
                 <PersonaBoard rows={core?.personaBoard ?? []} locale={locale} meId={user?.id ?? ""} following={boardFollowing} />
-              </>
+               </div>
+               {/* 🆕 R283 — العمودُ الجانبيّ: يثبت وأنت تنزل، ويغيب صفُّه المطفأ كما يغيب في العريض (`railOff`) */}
+               <aside className="hidden desk:flex flex-col gap-3.5 sticky top-4">
+                 {!railOff(hiddenRails, "topweek") && (
+                   <PeopleSideBoard rows={board} locale={locale} mode="top" seeAllHref="/people?tab=people&all=top" meId={user?.id ?? ""} following={boardFollowing} />
+                 )}
+                 {!railOff(hiddenRails, "rising") && (
+                   <PeopleSideBoard rows={board} locale={locale} mode="rising" seeAllHref="/people?tab=people&all=rising" meId={user?.id ?? ""} following={boardFollowing} />
+                 )}
+               </aside>
+              </div>
             ))
       }
     </section>

@@ -158,20 +158,24 @@ export function BoardSection({
    و`searchPeople` باقيةٌ لقارئها القائم (ورقةُ المحادثات وبحثُ الشريط). */
 
 /** **ثلاثٌ في الصفّ على كل عرض** — وبطاقةُ الشخص واحدةٌ في الأقسام الثلاثة */
-function CardGrid({ children }: { children: React.ReactNode }) {
-  return <ul className="grid grid-cols-3 gap-2.5">{children}</ul>;
+function CardGrid({ children, deskFive = false }: { children: React.ReactNode; deskFive?: boolean }) {
+  /* 🆕 R283 — **خمسٌ في الصفّ على الحاسوب** (أحمد «أ»): العمودُ العريضُ يتّسع لخمس، والهاتفُ يبقى على ثلاث */
+  return <ul className={`grid grid-cols-3 gap-2.5 ${deskFive ? "desk:grid-cols-5 desk:gap-3" : ""}`}>{children}</ul>;
 }
 
 function PersonCard({
   children,
   as: Tag = "li",
+  deskOnly = false,
 }: {
   children: React.ReactNode;
+  /** 🆕 R283 — بطاقةٌ لا تُرسم إلّا على الحاسوب (الرابعةُ والخامسة في صفِّ الخمس) */
+  deskOnly?: boolean;
   /** 🆕 D-1608b — `div` في الصفّ الأفقيّ (`RailScroll` ليس قائمة `ul`) — البطاقةُ نفسُها */
   as?: "li" | "div";
 }) {
   return (
-    <Tag className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-surface border border-border">
+    <Tag className={`${deskOnly ? "hidden desk:flex" : "flex"} flex-col items-center gap-2 p-3 rounded-2xl bg-surface border border-border`}>
       {children}
     </Tag>
   );
@@ -232,11 +236,14 @@ export function PeopleLeaderboard({
   meId,
   following,
   follow = false,
+  deskFive = false,
 }: {
   rows: PeopleLeaderRow[];
   locale: Locale;
   mode: "top" | "rising" | "featured";
   limit?: number;
+  /** 🆕 R283 — صفُّ خمسٍ على الحاسوب: يُجلب خمسةٌ ويُخفى ما بعد `limit` على الهاتف */
+  deskFive?: boolean;
   seeAllHref?: string;
   /**
    * 🆕 **أتُعرض علامةُ المتابعة؟** (D-281) — **`false` في المعاينة
@@ -266,7 +273,7 @@ export function PeopleLeaderboard({
      **و«المميّزون» يُفرزون بالمجموع كـ«الأكثر»** — والفرقُ نافذتُهما
      لا قاعدةُ فرزهما، **و`prevTotal` تصل صفراً فيهم دائماً.** */
   /* 🆕 النصُّ في `core/communityFeed.ts` (M0) — البابُ يقصّ القسمَ بالدالّة نفسِها */
-  const list = boardRows(rows, mode, limit);
+  const list = boardRows(rows, mode, deskFive ? Math.max(limit, 5) : limit);
 
   if (!list.length) return null;
 
@@ -302,9 +309,9 @@ export function PeopleLeaderboard({
       seeAllHref={seeAllHref}
       seeAllLabel={t.seeAll}
     >
-      <CardGrid>
+      <CardGrid deskFive={deskFive}>
         {list.map((p, i) => (
-          <PersonCard key={p.id}>
+          <PersonCard key={p.id} deskOnly={deskFive && i >= limit}>
             <PersonName
               person={p}
               t={t}
@@ -416,7 +423,10 @@ export function TopSavedLists({
   cards,
   locale,
   seeAllHref,
+  phone,
 }: {
+  /** 🆕 R283 — سقفُ الصفّ على الهاتف حين تطلب الصفحةُ أكثرَ لشبكة الحاسوب */
+  phone?: number;
   /**
    * 🆕 **بطاقاتٌ مشكَّلةٌ من البوّابة نفسِها** (D-375، بلاغُ أحمد: «شكل
    * الليست في الأعضاء لازم تكون مثل شكلها في كل مكان، لها قلب ولها نجمة
@@ -438,6 +448,7 @@ export function TopSavedLists({
   if (!cards.length) return null;
 
   return (
+    <>
     <PosterRail
       title={t.peopleBoardSavedLists}
       icon="bookmark"
@@ -448,9 +459,9 @@ export function TopSavedLists({
          الكارد»): قسمُ `PosterRail` عارٍ لأن صفوفَ الصفحات الأخرى
          تُباعدها حاويتُها — **وهنا كلُّ قسمٍ يحمل هامشَه** (وصفةُ
          `BoardSection` حرفاً). */
-      className="mt-7 first:mt-0"
+      className="mt-7 first:mt-0 desk:hidden"
     >
-      {cards.map((c) => (
+      {(phone ? cards.slice(0, phone) : cards).map((c) => (
         /* **`wide` لا الافتراضي** — خانةُ الملصق أضيقُ من بطاقة قائمة
            (D-084)، **والبطاقاتُ كانت تتراكب.** */
         <RailItem key={c.id} size="list">
@@ -462,6 +473,19 @@ export function TopSavedLists({
         </RailItem>
       ))}
     </PosterRail>
+    {/* 🆕 R283 — **على الحاسوب شبكةُ أربع لا صفٌّ يُسحب** (أحمد «أ»): السحبُ إيماءةُ إصبع، والفأرةُ ترى أربعاً معاً */}
+    <div className="hidden desk:block mt-7">
+      <BoardSection icon="bookmark" tone="text-[#60A5FA]" title={t.peopleBoardSavedLists} seeAllHref={seeAllHref} seeAllLabel={seeAllHref ? t.seeAll : undefined}>
+        <ul className="grid grid-cols-4 gap-3">
+          {cards.slice(0, 4).map((c) => (
+            <li key={c.id} className="min-w-0">
+              <CommunityListCard list={c} locale={locale} className="w-full" />
+            </li>
+          ))}
+        </ul>
+      </BoardSection>
+    </div>
+    </>
   );
 }
 
@@ -525,10 +549,15 @@ export function TopReviews({
   rows,
   locale,
   seeAllHref,
+  phone,
+  desk,
 }: {
   rows: PeopleTopReviewRow[];
   locale: Locale;
   seeAllHref?: string;
+  /** 🆕 R283 — كم تعليقاً على الهاتف وكم على الحاسوب حين تطلب الصفحةُ خمساً (الحاسوبُ اثنان في الصفّ) */
+  phone?: number;
+  desk?: number;
 }) {
   const t = getDict(locale);
   if (!rows.length) return null;
@@ -541,9 +570,12 @@ export function TopReviews({
       seeAllHref={seeAllHref}
       seeAllLabel={t.seeAll}
     >
-      <ul className="space-y-2.5">
-        {rows.map((row) => {
+      {/* 🆕 R283 — اثنتان في الصفّ على الحاسوب (أحمد «أ») */}
+      <ul className="space-y-2.5 desk:space-y-0 desk:grid desk:grid-cols-2 desk:gap-3">
+        {rows.slice(0, Math.max(phone ?? rows.length, desk ?? 0)).map((row, i) => {
           const poster = posterUrl(row.posterPath, "w185");
+          /* ما بعد سقف الهاتف للحاسوب وحدَه، وما بعد سقف الحاسوب للهاتف وحدَه */
+          const vis = phone !== undefined && i >= phone ? "hidden desk:block" : desk !== undefined && i >= desk ? "desk:hidden" : "";
           /* 🆕 **الغلافُ الحقيقيُّ أوّلاً** (D-313، الهجرة ٩٨) — والملصقُ
              الممدودُ حزامَ الصفوف القديمة (D-179) */
           const bg = backdropUrl(row.backdropPath, "w780") ?? poster;
@@ -552,8 +584,8 @@ export function TopReviews({
           const titleHref =
             row.mediaType === "tv" ? `/show/${row.tmdbId}` : `/movie/${row.tmdbId}`;
           return (
-            <li key={`${row.id}-${row.mediaType}-${row.tmdbId}`}>
-              <article className="relative overflow-hidden flex gap-3 p-3.5 rounded-2xl bg-surface border border-border">
+            <li key={`${row.id}-${row.mediaType}-${row.tmdbId}`} className={`desk:h-full ${vis}`}>
+              <article className="relative overflow-hidden flex gap-3 p-3.5 rounded-2xl bg-surface border border-border desk:h-full">
                 {/* ============ غلافُ العمل خلف البطاقة (D-283) ============
                     **طلبُ أحمد: «حط الخلفية غلاف الفلم على أفضل الردود،
                     يستاهلون».** **ووصفةُ `WorksTalk` نفسُها حرفاً**
@@ -735,6 +767,7 @@ export function PersonaBoard({
       <p className="-mt-1.5 mb-3 text-12 text-muted">{PERSONA_BOARD.hint[lang]}</p>
       {/* 🆕 D-1608b — صفٌّ واحدٌ يُمرَّر (أحمد: «خلها صف واحد و تمرر فيه») بالشريط الأفقيّ نفسِه الذي تحمله القوائمُ في اللوحة،
           وبعرض الملصق (`RailItem`) فتظهر ثلاثٌ ونصف على الهاتف */}
+      <div className="desk:hidden">
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
         {rows.map((p) => (
           <RailItem key={p.id}>
@@ -760,6 +793,95 @@ export function PersonaBoard({
           </RailItem>
         ))}
       </RailScroll>
+      </div>
+      {/* 🆕 R283 — **على الحاسوب صفٌّ واحدٌ ثابتٌ بلا سحب** (أحمد «أ»): البطاقةُ نفسُها وعلامةُ المتابعة نفسُها */}
+      <ul className="hidden desk:grid grid-cols-5 gap-3">
+        {rows.slice(0, 5).map((p) => (
+          <PersonCard key={p.id}>
+            <PersonName
+              person={p}
+              t={t}
+              size={56}
+              vertical
+              corner={
+                meId && p.id !== meId ? (
+                  <FollowUserButton variant="corner" targetId={p.id} locale={locale} initialFollowing={following?.has(p.id) ?? false} />
+                ) : undefined
+              }
+              sub={
+                <>
+                  <span className="block text-12 font-bold tabular-nums text-accent">{personaReviewsLabel(p.reviews, locale)}</span>
+                  <span className="block mt-0.5 text-[10px] opacity-80">{personaOf(p.id)?.tastes[lang] ?? ""}</span>
+                </>
+              }
+            />
+          </PersonCard>
+        ))}
+      </ul>
     </BoardSection>
+  );
+}
+
+/**
+ * 🆕 R283 — **«الأكثر مشاركة» و«الصاعدون» في عمود الحاسوب** (أحمد ١٩ نوفمبر: «أ»، ثمّ «زر تابِع في العمود الجانبي»).
+ *
+ * صفوفٌ لا بطاقات: العمودُ ثلاثمئة بكسل، وبطاقةُ الوجه العموديّة تتّسع فيه لاثنتين فتُضيّع الترتيب. **والفرزُ فرزُ اللوحة
+ * نفسُها** (`boardRows`) فلا يختلف الجانبُ عن «عرض الكل».
+ * ⚖️ **وزرُّ «تابِع» هنا في المعاينة** خلافاً لـD-281 — حكمُ أحمد للحاسوب بعد أن سُئل عنه صراحةً؛ والهاتفُ على D-281 كما هو.
+ */
+export function PeopleSideBoard({
+  rows,
+  locale,
+  mode,
+  seeAllHref,
+  meId,
+  following,
+}: {
+  rows: PeopleLeaderRow[];
+  locale: Locale;
+  mode: "top" | "rising";
+  seeAllHref?: string;
+  meId?: string;
+  following?: Set<string>;
+}) {
+  const t = getDict(locale);
+  const list = boardRows(rows, mode, 5);
+  if (!list.length) return null;
+  return (
+    <section aria-label={mode === "top" ? t.peopleBoardTop : t.peopleBoardRising} className="rounded-2xl bg-surface border border-border p-4">
+      <header className="flex items-center justify-between gap-2 mb-1.5">
+        <h2 className="flex items-center gap-1.5 text-[13px] font-bold text-muted min-w-0">
+          <Icon name={mode === "top" ? "chart" : "trending"} size={15} className={`shrink-0 ${mode === "top" ? SECTION_TONE.top : SECTION_TONE.rising}`} />
+          <span className="truncate">{mode === "top" ? t.peopleBoardTop : t.peopleBoardRising}</span>
+        </h2>
+        {seeAllHref ? (
+          <Link href={seeAllHref} prefetch={false} className="shrink-0 text-12 text-muted hover:text-accent transition">
+            {t.seeAll}
+          </Link>
+        ) : null}
+      </header>
+      <ul>
+        {list.map((p, i) => (
+          <li key={p.id} className="flex items-center gap-2.5 py-2 border-b border-border last:border-b-0">
+            <span className={`w-4 shrink-0 text-center text-[13px] font-extrabold tabular-nums ${i < 3 ? "text-accent" : "text-muted"}`}>{num(i + 1, locale)}</span>
+            <div className="min-w-0 flex-1">
+              <PersonName
+                person={p}
+                t={t}
+                size={34}
+                sub={
+                  <span className={`block text-[11.5px] tabular-nums ${mode === "rising" ? "text-success" : "text-muted"}`}>
+                    {mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : t.peopleBoardActions(p.total)}
+                  </span>
+                }
+              />
+            </div>
+            {meId && p.id !== meId ? (
+              <FollowUserButton targetId={p.id} locale={locale} size="xs" initialFollowing={following?.has(p.id) ?? false} />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -81,6 +81,8 @@ export async function buildCommunity(o: {
   talk?: boolean;
   /** 🆕 D-1605 — مراجعاتُ شخصيّات لوبز AI التي يتابعها القارئ في الخطّ — لمن يعرفها (`personasAware`؛ الويبُ دائماً) */
   personas?: boolean;
+  /** 🆕 R283 — سقفُ المعاينة: الويبُ يطلب خمساً لصفوف الحاسوب (خمسةُ مميّزين · أربعُ تعليقات · أربعُ قوائم)، والتطبيقُ على الثلاث */
+  preview?: number;
 }) {
   const { user, locale, allView } = o;
 
@@ -136,12 +138,12 @@ export async function buildCommunity(o: {
       ? Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
       : Promise.resolve([null, null, false] as const),
     Promise.all([
-      need("featured") ? getPeopleFeatured(90, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
+      need("featured") ? getPeopleFeatured(90, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
       need("top") || need("rising")
         ? getPeopleLeaderboard(wantAll ? LEADERBOARD_POOL.all : LEADERBOARD_POOL.preview)
         : [],
-      need("reviews") ? getPeopleTopReviews(30, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
-      need("lists") ? getTopSavedListCards(7, wantAll ? BOARD_ALL : BOARD_PREVIEW) : [],
+      need("reviews") ? getPeopleTopReviews(30, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
+      need("lists") ? getTopSavedListCards(7, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
     ]),
     followingIdsP,
     /* 🆕 D-1608 — آخرُ أقسام اللوحة: الشخصيّاتُ الخمس بعدد مراجعاتها — للّوحة وحدَها (لا «عرض كلّ» لخمسة) */
