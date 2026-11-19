@@ -1,8 +1,9 @@
-[deploy] Release R236 - campaign link reads "Join Loopz" and the app claims it without asking (T394)
+[deploy] Release R244 — lists: real like separate from save, Save chip and card bookmark, copy removed; awards by ceremony year + 2026 winners; Loopz avatar on list cards; like/save RLS hardening (T440, T443)
 
-- /invite/LOOPZX title: "Join Loopz" in Arabic and English.
-- App welcome: a campaign code is claimed silently; no "did Loopz invite you?".
-- GET /api/v1/me/referral returns no inviter for the official account.
+- T440 Awards: ceremony year everywhere + 2026 winners; Loopz avatar on list cards
+- T440 Lists: like separate from save, Save chip and card bookmark, copy removed (migration 249)
+- T440 Lists: like/save only on public lists, no zero on any heart, one request in flight (four independent reviews)
+- T443 Lists: likes add/read/delete only, created_at pinned on likes and saves (migration 251, applied)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7EcvU9UUeVvv2UmuD8
+Claude-Session: https://claude.ai/code/session_01FexM7EpuJ2443rgzjzmBU8
