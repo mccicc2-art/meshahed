@@ -1,0 +1,7 @@
+[deploy] Release R253 — community activity groups ratings without reviews (T457); the app starts at once with its stored session token and still renews in the background (T463, A-64/A-69); home.open says why the cache file was not restored (T464); a failed web chat send gives back the text and the reply (T466)
+
+Registry release 253 — tasks 457, 463, 464, 466.
+JS only — same fingerprint, over-the-air on Android and iPhone, no native build.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7Avo8nCHk7wiesE5dQ
