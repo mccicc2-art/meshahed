@@ -91,6 +91,10 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
   const alerts = pathname.startsWith("/messages") && params?.get("tab") === "alerts";
   /* 🆕 T473 — «قائمة جديدة» من «اكتشف» تُضيء «اكتشف» لا «مكتبتي»: الصفحةُ واحدة، **والمرساةُ حيث جاء القارئ** (غيابُ
      `from` = اكتشف كما تقرؤه الصفحة). الإضافةُ إلى قائمةٍ وتعديلُ شرطها يبقيان في «مكتبتي» — قوائمُك هناك */
+  /* 🆕 T475 — **حيث تنفتح قائمةٌ جانبيّةٌ ثانية يصير الشريطُ علاماتٍ فقط** (أحمد «ب»: «طبق القائمة المصغرة … في كل مكان
+     تنفك فيه قائمة جانبية اخرى»): قائمةُ الإعدادات (`profile/settings/layout`) وقائمةُ المحادثات (`Inbox`، لا تبويبُ
+     الإشعارات). الشكلُ شكلُه تحت ١٢٨٠ نفسُه — `wide:` لا يعمل تحت `lz-rail` — والاسمُ في `title` عند المرور */
+  const rail = pathname.startsWith("/profile/settings") || (pathname.startsWith("/messages") && !alerts);
   const newListDiscover =
     pathname === "/lists/new" && params?.get("from") !== "library" && !params?.get("add") && !params?.get("edit");
   const isActive = (href: string) => {
@@ -147,27 +151,27 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
         title={label}
         aria-label={count > 0 ? `${label} (${num(count, locale)})` : label}
         aria-current={on ? "page" : undefined}
-        className={`group relative flex items-center gap-3.5 rounded-[var(--radius-control)] transition justify-center xl:justify-start mx-auto xl:mx-0 w-12 xl:w-auto ${
-          opts?.small ? "h-9 xl:px-3 text-[13.5px] font-medium text-foreground/80" : "h-11 xl:h-10 xl:px-3 text-[15px] font-semibold"
+        className={`group relative flex items-center gap-3.5 rounded-[var(--radius-control)] transition justify-center wide:justify-start mx-auto wide:mx-0 w-12 wide:w-auto ${
+          opts?.small ? "h-9 wide:px-3 text-[13.5px] font-medium text-foreground/80" : "h-11 wide:h-10 wide:px-3 text-[15px] font-semibold"
         } ${on ? "bg-surface-2 text-foreground" : "hover:bg-surface hover:text-foreground"}`}
       >
-        {on && <span aria-hidden className="absolute -start-2 xl:-start-3.5 top-2.5 bottom-2.5 w-[3px] rounded-full bg-accent" />}
+        {on && <span aria-hidden className="absolute -start-2 wide:-start-3.5 top-2.5 bottom-2.5 w-[3px] rounded-full bg-accent" />}
         <span className={`relative ${on ? "text-accent" : ""}`}>
           <Icon name={on && opts?.filled ? opts.filled : icon} size={opts?.small ? 19 : 21} />
           {count > 0 && (
             <span
               aria-hidden
-              className="xl:hidden absolute -top-1.5 -end-2 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-accent text-[10px] font-extrabold text-black tabular-nums"
+              className="wide:hidden absolute -top-1.5 -end-2 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-accent text-[10px] font-extrabold text-black tabular-nums"
             >
               {num(Math.min(count, 99), locale)}
             </span>
           )}
         </span>
-        <span className="hidden xl:inline truncate">{label}</span>
+        <span className="hidden wide:inline truncate">{label}</span>
         {count > 0 && (
           <span
             aria-hidden
-            className="hidden xl:grid ms-auto min-w-[20px] h-5 px-1.5 place-items-center rounded-full bg-accent text-[11px] font-extrabold text-black tabular-nums"
+            className="hidden wide:grid ms-auto min-w-[20px] h-5 px-1.5 place-items-center rounded-full bg-accent text-[11px] font-extrabold text-black tabular-nums"
           >
             {num(Math.min(count, 99), locale)}
           </span>
@@ -179,9 +183,9 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
   return (
     <aside
       aria-label={t.drawerLabel}
-      className="lz-desk fixed inset-y-0 start-0 z-40 w-[76px] xl:w-64 flex-col border-e border-border bg-[color:var(--background)] py-4 px-2 xl:px-3.5 overflow-y-auto overscroll-contain"
+      className={`lz-desk ${rail ? "lz-rail " : ""}fixed inset-y-0 start-0 z-40 w-[76px] wide:w-64 flex-col border-e border-border bg-[color:var(--background)] py-4 px-2 wide:px-3.5 overflow-y-auto overscroll-contain`}
     >
-      <Link href="/" prefetch={false} aria-label={t.brand} className="mx-auto xl:mx-0 xl:px-2 mb-3 shrink-0">
+      <Link href="/" prefetch={false} aria-label={t.brand} className="mx-auto wide:mx-0 wide:px-2 mb-3 shrink-0">
         <Logo size={40} plus={!!data?.plus} />
       </Link>
 
@@ -191,11 +195,11 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
         title={t.navSearch}
         aria-label={t.navSearch}
         aria-current={pathname.startsWith("/search") ? "page" : undefined}
-        className="mx-auto xl:mx-0 mb-3 shrink-0 flex items-center gap-2.5 w-12 h-11 xl:w-auto xl:h-10 justify-center xl:justify-start xl:px-3 rounded-[var(--radius-control)] xl:border border-border xl:bg-surface text-muted hover:text-foreground hover:bg-surface transition"
+        className="mx-auto wide:mx-0 mb-3 shrink-0 flex items-center gap-2.5 w-12 h-11 wide:w-auto wide:h-10 justify-center wide:justify-start wide:px-3 rounded-[var(--radius-control)] wide:border border-border wide:bg-surface text-muted hover:text-foreground hover:bg-surface transition"
       >
         <Icon name={pathname.startsWith("/search") ? "search-filled" : "search"} size={20} />
-        <span className="hidden xl:inline flex-1 truncate text-[13px]">{t.navSearch}</span>
-        <kbd className="hidden xl:inline text-[11px] font-medium text-muted border border-border rounded-md px-1.5 py-px" dir="ltr">
+        <span className="hidden wide:inline flex-1 truncate text-[13px]">{t.navSearch}</span>
+        <kbd className="hidden wide:inline text-[11px] font-medium text-muted border border-border rounded-md px-1.5 py-px" dir="ltr">
           /
         </kbd>
       </Link>
@@ -209,7 +213,7 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
         {item("/messages?tab=alerts", "bell", t.notifTitle, { count: data?.unreadSignals })}
       </nav>
 
-      <span aria-hidden className="block h-px bg-border my-2.5 mx-3 xl:mx-1" />
+      <span aria-hidden className="block h-px bg-border my-2.5 mx-3 wide:mx-1" />
 
       <nav aria-label={t.drawerLabel} className="flex flex-col gap-0.5">
         {/* 🆕 T412 — يفتح على رقاقة «مشاهدة» كبابه في التطبيق (D-1504) */}
@@ -230,7 +234,7 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
           href="/plus"
           prefetch={false}
           title={data.plus ? data.planName : t.drawerPlusCta}
-          className="hidden xl:block [@media(max-height:820px)]:hidden mb-3 rounded-[var(--radius-card)] border border-accent/30 bg-gradient-to-br from-accent/15 to-accent/[0.02] px-3 py-2.5 hover:border-accent/60 transition"
+          className="hidden wide:block [@media(max-height:820px)]:hidden mb-3 rounded-[var(--radius-card)] border border-accent/30 bg-gradient-to-br from-accent/15 to-accent/[0.02] px-3 py-2.5 hover:border-accent/60 transition"
         >
           <span className="block text-[13px] font-bold">{data.plus ? data.planName : t.drawerPlusCta}</span>
           <span className="block text-[11.5px] text-muted mt-0.5 leading-snug">
@@ -247,23 +251,23 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
           onClick={() => setFeedback(true)}
           title={t.fbRow}
           aria-label={t.fbRow}
-          className="flex items-center gap-3.5 h-9 rounded-[var(--radius-control)] justify-center xl:justify-start mx-auto xl:mx-0 w-12 xl:w-auto xl:px-3 text-[13.5px] font-medium text-foreground/80 hover:bg-surface hover:text-foreground transition"
+          className="flex items-center gap-3.5 h-9 rounded-[var(--radius-control)] justify-center wide:justify-start mx-auto wide:mx-0 w-12 wide:w-auto wide:px-3 text-[13.5px] font-medium text-foreground/80 hover:bg-surface hover:text-foreground transition"
         >
           <Icon name="send" size={19} />
-          <span className="hidden xl:inline truncate">{t.fbRow}</span>
+          <span className="hidden wide:inline truncate">{t.fbRow}</span>
         </button>
       </nav>
 
-      <div className="mt-2 pt-3 border-t border-border flex flex-col xl:flex-row items-center gap-2 xl:gap-2.5">
+      <div className="mt-2 pt-3 border-t border-border flex flex-col wide:flex-row items-center gap-2 wide:gap-2.5">
         <Link
           href="/profile"
           prefetch={false}
           title={t.drawerProfile}
           aria-label={data ? `${t.drawerProfile} — ${data.name}` : t.drawerProfile}
-          className="flex items-center gap-2.5 min-w-0 xl:flex-1 rounded-full hover:opacity-80 transition"
+          className="flex items-center gap-2.5 min-w-0 wide:flex-1 rounded-full hover:opacity-80 transition"
         >
           <Avatar src={data?.avatar} name={data?.name} size={34} posY={data?.avatarPos ?? null} />
-          <span className="hidden xl:block min-w-0">
+          <span className="hidden wide:block min-w-0">
             <span className="block text-[13px] font-bold truncate">{data?.name ?? ""}</span>
             {data?.username && (
               <span className="block text-[11px] text-muted truncate" dir="ltr">
@@ -278,7 +282,7 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
           disabled={pending}
           title={t.drawerLangAria(locale === "ar" ? t.arabicLang : t.englishLang)}
           aria-label={t.drawerLangAria(locale === "ar" ? t.arabicLang : t.englishLang)}
-          className="hidden xl:block shrink-0 h-8 min-w-8 px-2 rounded-lg border border-border text-[11px] font-bold text-muted hover:text-foreground hover:bg-surface transition disabled:opacity-60"
+          className="hidden wide:block shrink-0 h-8 min-w-8 px-2 rounded-lg border border-border text-[11px] font-bold text-muted hover:text-foreground hover:bg-surface transition disabled:opacity-60"
           dir="ltr"
         >
           {locale === "ar" ? "EN" : "AR"}
@@ -289,7 +293,7 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
           disabled={pending || !data}
           title={isLight ? t.drawerToDark : t.drawerToLight}
           aria-label={isLight ? t.drawerToDark : t.drawerToLight}
-          className="hidden xl:grid shrink-0 place-items-center w-8 h-8 rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface transition disabled:opacity-60"
+          className="hidden wide:grid shrink-0 place-items-center w-8 h-8 rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface transition disabled:opacity-60"
         >
           <Icon name="palette" size={16} />
         </button>

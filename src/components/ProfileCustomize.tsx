@@ -165,7 +165,7 @@ export function ProfileCustomize({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lz-custgrid">
       <CustomizePreview
         kind="profile"
         title={t.custPreview}

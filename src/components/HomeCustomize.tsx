@@ -168,7 +168,7 @@ export function HomeCustomize({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lz-custgrid">
       {/* 🆕 **المعاينةُ أوّلَ الشاشة** (D-441): **ما تُغيّره يُرى قبل أن
           تحفظ**، **وشاشةُ إعداداتٍ تصف أثرَها بالكلمات تجعل الحفظَ
           تخميناً.** */}

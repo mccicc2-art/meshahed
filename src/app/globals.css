@@ -2,6 +2,17 @@
 
 /* 🆕 T398 — **«desk:» = حاسوبٌ عريضٌ والقشرةُ حاضرة** (≥1280 خارج غلاف التطبيق، والشريطُ الجانبيُّ مرسوم): تخطيطُ الصفحة
    للحاسوب يتبع القشرةَ لا عرضَ النافذة وحده — لوحٌ عريضٌ يفتح الويبَ داخل التطبيق، أو زائرٌ بلا شريط، يبقى على تخطيط الجوال */
+/* 🆕 T475 — **«wide:» = عرضُ الشريط الجانبيّ بالأسماء** (≥1280) **إلّا حيث تنفتح قائمةٌ جانبيّةٌ ثانية** (`lz-rail`: الإعدادات
+   والرسائل) — هناك يبقى الشريطُ علاماتٍ فقط بشكله تحت ١٢٨٠ نفسِه، وتذهب المساحةُ للّوحين (أحمد: «القائمة الاساسية تبقى
+   علاماتها ويختفي الكلام»). يقرؤه `DesktopSidebarFrame` وحدَه مكانَ `xl:` */
+@custom-variant wide {
+  @media (min-width: 1280px) {
+    &:not(.lz-rail, .lz-rail *) {
+      @slot;
+    }
+  }
+}
+
 @custom-variant desk {
   @media (min-width: 1280px) {
     html:not([data-app="1"]):has(.lz-desk) & {
@@ -879,7 +890,7 @@ summary:focus-visible,
    🔑 **والإزاحةُ مشروطةٌ بحضوره** (`body:has(.lz-desk)`): الزائرُ والترحيبُ والدخولُ بلا شريطٍ فلا إزاحة،
    وبلا رايةٍ تُكتب من الخادم تُخطئ حين يغيب الشريط.
    🔑 **76 أيقوناتٌ فقط بين 1024 و1280، و256 بالأسماء فوقها** — الرقمان نفسُهما في `DesktopSidebarFrame`
-   (`w-[76px] xl:w-64`)؛ تغييرُ أحدهما بلا الآخر يُظهر فجوةً أو يدفن حافّةَ الصفحة تحت الشريط.
+   (`w-[76px] wide:w-64` — و`wide:` لا يعمل تحت `lz-rail`، فيبقى 76 حيث تنفتح قائمةٌ ثانية)؛ تغييرُ أحدهما بلا الآخر يُظهر فجوةً أو يدفن حافّةَ الصفحة تحت الشريط.
    🔑 **والشريطُ العلويُّ يغيب حين يحضر** (`lz-desk-hide` في `HeaderShell`) — بابان للشيء نفسه عطل. */
 .lz-desk {
   display: none;
@@ -901,7 +912,8 @@ summary:focus-visible,
   }
 }
 @media (min-width: 1280px) {
-  html:not([data-app="1"]) body:has(.lz-desk) {
+  /* 🆕 T475 — والشريطُ المصغَّر (`lz-rail`) يُبقي إزاحةَ الـ76 */
+  html:not([data-app="1"]) body:has(.lz-desk:not(.lz-rail)) {
     padding-inline-start: 16rem;
   }
 }
@@ -1075,5 +1087,34 @@ summary:focus-visible,
   html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div > :first-child,
   html:not([data-app="1"]):has(.lz-desk) .lz-statgrid > div > :last-child {
     grid-column: 1 / -1;
+  }
+}
+
+/* ====== 🆕 T475 — التخصيص على الحاسوب: المعاينةُ بجنب الإعدادات (أحمد «ب») ======
+   🔑 كانت المعاينةُ ترسم الرئيسيّةَ بعرض اللوح كلِّه (~٨٠٠ بكسل طولاً) والإعداداتُ تحتها، فلا يُرى الاثنان معاً ولا تُمرَّر
+   داخلها. **عمودان**: الإعداداتُ في جهة البداية بترتيبها، والمعاينةُ (أوّلُ ابنٍ — `CustomizePreview`) في الجهة الأخرى ثابتةً
+   بطول النافذة، تُمرَّر وحدَها إن طالت. وبنصف العرض تصغر ملصقاتُها معها فتُرى الصفحةُ كلُّها تقريباً.
+   ⚠️ **صنفٌ لا `desk:` في كلّ ابن**: الأبناءُ أقسامٌ كثيرةٌ في ملفّين (`HomeCustomize` · `ProfileCustomize`) — قاعدةٌ واحدةٌ هنا
+   خيرٌ من نسخها على كلّ قسم. والجوّالُ وما تحت ١٢٨٠ كما كانا (`space-y-5`). */
+@media (min-width: 1280px) {
+  html:not([data-app="1"]):has(.lz-desk) .lz-custgrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-custgrid > * {
+    grid-column: 1;
+    margin-block: 0 1.25rem;
+  }
+  html:not([data-app="1"]):has(.lz-desk) .lz-custgrid > :first-child {
+    grid-column: 2;
+    grid-row: 1 / span 40;
+    position: sticky;
+    /* تحت ترويسة الصفحة الملتصقة («التخصيص») لا خلفها */
+    top: 4rem;
+    max-height: calc(100dvh - 5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
