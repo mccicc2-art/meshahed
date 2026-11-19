@@ -1,4 +1,4 @@
-[deploy] Release R247 — T451: list cards get their true count and four posters per list (list_card_faces, migration 252, already applied): a rail whose lists held over 1000 items in total undercounted them («Top 250 Movies · 217») and dropped the oldest list to zero — the pinned «Your Road to Avengers: Doomsday» vanished from Khaled's «For you». Server only, no app update, no native build
+[deploy] Release R268 - T482: text clarity. Android Latin text centred on its icons (stats row, All, chips, drawer); Arabic one weight heavier; brighter muted grey in Loopz + Charcoal (app + web); home stat labels 700; selected down-vote in accent. OTA only - no native build
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7EpuJ2443rgzjzmBU8
+Claude-Session: https://claude.ai/code/session_01FexM7Exn4VzMfAriUwd5p4
