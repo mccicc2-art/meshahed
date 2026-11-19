@@ -161,7 +161,29 @@ export function ListsFilters({
     </div>
   );
 
-  if (variant === "chips") return chips || null;
+  /* 🆕 T473 — **رقائقُ المصدر الثلاث ظاهرةٌ دائماً فوق الصفوف** كتطبيق «اكتشف ← القوائم» (`ListsRails`: الكل · قوائم لوبز
+     · من المجتمع) — أحمد «أ». كانت هنا رقاقةُ «المختار وحده» تظهر بعد أن تختار من الورقة، فلا يعرف القارئُ أنّ المصدرَ
+     يُختار أصلاً. **وعالَمٌ مختارٌ يبقى رقاقةً تُزال بجانبها** كما كان؛ والورقةُ باقيةٌ للعوالم وترتيب التبويبات */
+  if (variant === "chips") {
+    const isOn = (k: "all" | "curated" | "community") => (k === "all" ? lsrc === "all" || lsrc === "friends" : lsrc === k);
+    return (
+      <div className="flex items-center gap-2 flex-wrap mb-2">
+        {(["all", "curated", "community"] as const).map((k) => (
+          <button key={k} type="button" aria-pressed={isOn(k)} className={chipClass(isOn(k), "sm")} onClick={() => push(fr ?? "", k)}>
+            {srcLabel[k]}
+          </button>
+        ))}
+        {fr && (
+          <button type="button" className={chipClass(true, "sm")} onClick={() => push("", lsrc)}>
+            <span className="inline-flex items-center gap-1">
+              {franchises.find((f) => f.slug === fr)?.label ?? fr}
+              <Icon name="close" size={12} />
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   /* بلا `createPortal` هنا (D-166): `Sheet` نفسها تُرسم في `document.body`
      منذ D-159، فبوّابةٌ حول بوّابة. وهذا اللفّ من ٨ أغسطس كان **علاج

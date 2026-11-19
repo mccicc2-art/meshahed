@@ -89,9 +89,14 @@ export function DesktopSidebarFrame({ locale, data }: { locale: Locale; data?: S
   if (NO_SIDEBAR.some((p) => (p.endsWith("/") ? pathname.startsWith(p) : pathname === p))) return null;
 
   const alerts = pathname.startsWith("/messages") && params?.get("tab") === "alerts";
+  /* 🆕 T473 — «قائمة جديدة» من «اكتشف» تُضيء «اكتشف» لا «مكتبتي»: الصفحةُ واحدة، **والمرساةُ حيث جاء القارئ** (غيابُ
+     `from` = اكتشف كما تقرؤه الصفحة). الإضافةُ إلى قائمةٍ وتعديلُ شرطها يبقيان في «مكتبتي» — قوائمُك هناك */
+  const newListDiscover =
+    pathname === "/lists/new" && params?.get("from") !== "library" && !params?.get("add") && !params?.get("edit");
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
-    if (href === "/library") return LIBRARY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (href === "/library") return !newListDiscover && LIBRARY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (href === "/news" && newListDiscover) return true;
     if (href === "/messages") return pathname.startsWith("/messages") && !alerts;
     if (href === "/messages?tab=alerts") return alerts;
     if (href.startsWith("/activity")) return pathname.startsWith("/activity");

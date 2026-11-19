@@ -300,7 +300,7 @@ export function NewListFlow({
       { k: "watch_order" as const, label: t.listTypeWatch, hint: t.listTypeWatchHint },
     ];
     return (
-      <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40">
+      <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40 desk:pb-10">
         {header}
         <div className="max-w-xl space-y-5">
           <div className="rounded-2xl border border-border overflow-hidden">
@@ -348,8 +348,9 @@ export function NewListFlow({
             <ToggleRow label={t.nlInvite} hint={t.nlInviteHint} checked={invite} onChange={() => setInvite((v) => !v)} />
           </div>
         </div>
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border">
-          <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-3">
+        {/* 🆕 T473 — على الحاسوب يقف الزرّان تحت الحقول لا مثبَّتَين في القاع فوق الشريط الجانبيّ */}
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border desk:static desk:z-auto desk:border-0 desk:bg-transparent desk:mt-6">
+          <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-3 desk:max-w-xl desk:mx-0 desk:px-0 desk:pt-0 desk:pb-0">
             <button type="button" onClick={() => setStep(1)} className={buttonClass({ variant: "surface", size: "lg" })}>
               {t.nlBack}
             </button>
@@ -372,11 +373,15 @@ export function NewListFlow({
     /* 🆕 T454 — الأنواعُ رقائقُ تُجمع (أحمد «٢ أ»): كلُّ رقاقةٍ تُطفئ وتُشعل، وآخرُ نوعٍ لا يُطفأ (`toggleRuleType`) */
     const picked = ruleTypes(rule.type);
     return (
-      <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40">
+      <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40 desk:pb-10">
         {header}
         {segments}
         <p className="text-13 text-muted mb-3">{library ? t.nlSmartHintLibrary : t.nlSmartHint}</p>
-        <div className="space-y-3">
+        {/* 🆕 T473 — **على الحاسوب: الشروطُ عمودٌ ثابتٌ والمعاينةُ بعرض الصفحة بجنبه** (أحمد «أ»، وللمكتبة واكتشف معاً):
+            ترى أثرَ كلِّ شرطٍ لحظتَها بدل أن تنزل تحت الفلاتر. والاسمُ وزرُّ الإنشاء آخرُ العمود — **العنصرُ نفسُه** الذي
+            يُثبَّت في قاع الجوّال (`fixed` هناك و`static` هنا)، فلا نسخةَ ثانيةً من الحقل */}
+        <div className="desk:grid desk:grid-cols-[25rem_minmax(0,1fr)] desk:gap-6 desk:items-start">
+        <div className="space-y-3 desk:sticky desk:top-5 desk:max-h-[calc(100dvh-2.5rem)] desk:overflow-y-auto desk:rounded-2xl desk:border desk:border-border desk:bg-surface desk:p-4">
           <div className="flex flex-wrap gap-2">
             {typeOpts.map((o) => {
               const on = picked.includes(o.value as SmartType);
@@ -453,8 +458,47 @@ export function NewListFlow({
             onOpen={setSmartOpen}
             onPick={(a, v) => setRule((r) => withAxis(r, a, v))}
           />
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border desk:static desk:z-auto desk:bg-transparent desk:pt-4 desk:mt-1">
+            <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-2 desk:flex-wrap desk:px-0 desk:pt-0 desk:pb-0">
+              {editing ? (
+                /* التعديلُ للشرط وحدَه — الاسمُ يُعدَّل من «عدّل القائمة» في صفحتها كسائر القوائم */
+                <>
+                  <span className="flex-1 min-w-0 truncate text-14 font-semibold" dir="auto">
+                    {editing.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={updateRule}
+                    disabled={pending || !hasRule}
+                    className={buttonClass({ size: "lg", className: "shrink-0" })}
+                  >
+                    {t.nlUpdateRule}
+                  </button>
+                </>
+              ) : (
+              <>
+              <input
+                value={smartName}
+                onChange={(e) => setSmartName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createSmart()}
+                maxLength={60}
+                placeholder={t.nlSmartNamePh}
+                className="flex-1 min-w-0 desk:basis-full min-h-11 rounded-control bg-surface-2 desk:bg-background border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+              />
+              <button
+                type="button"
+                onClick={createSmart}
+                disabled={pending || !hasRule || !smartName.trim()}
+                className={buttonClass({ size: "lg", className: "shrink-0 desk:w-full" })}
+              >
+                {t.nlCreateSmart}
+              </button>
+              </>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="border-t border-border mt-5 pt-4">
+        <div className="border-t border-border mt-5 pt-4 desk:border-0 desk:mt-0 desk:pt-0 min-w-0">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-15 font-bold">{t.nlPreview}</h2>
             {preview && !preview.failed && hasRule && <span className="text-12 text-muted tabular-nums">{t.listCount(preview.count)}</span>}
@@ -465,7 +509,7 @@ export function NewListFlow({
             /* الفشلُ يُقال فشلاً لا «لا أعمال» — شرطٌ صحيحٌ لا يُتَّهم بخطأ الشبكة */
             <p className="text-13 text-muted py-10 text-center">{preview.failed ? t.apiInternal : t.nlPreviewEmpty}</p>
           ) : (
-            <div className={`grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 transition-opacity ${previewing ? "opacity-60" : ""}`}>
+            <div className={`grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 desk:grid-cols-5 gap-3 transition-opacity ${previewing ? "opacity-60" : ""}`}>
               {(preview?.items ?? []).map((p) => (
                 <Tile key={keyOf(p)} pick={p} />
               ))}
@@ -474,44 +518,6 @@ export function NewListFlow({
             </div>
           )}
         </div>
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border">
-          <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-2">
-            {editing ? (
-              /* التعديلُ للشرط وحدَه — الاسمُ يُعدَّل من «عدّل القائمة» في صفحتها كسائر القوائم */
-              <>
-                <span className="flex-1 min-w-0 truncate text-14 font-semibold" dir="auto">
-                  {editing.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={updateRule}
-                  disabled={pending || !hasRule}
-                  className={buttonClass({ size: "lg", className: "shrink-0" })}
-                >
-                  {t.nlUpdateRule}
-                </button>
-              </>
-            ) : (
-            <>
-            <input
-              value={smartName}
-              onChange={(e) => setSmartName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && createSmart()}
-              maxLength={60}
-              placeholder={t.nlSmartNamePh}
-              className="flex-1 min-w-0 min-h-11 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
-            />
-            <button
-              type="button"
-              onClick={createSmart}
-              disabled={pending || !hasRule || !smartName.trim()}
-              className={buttonClass({ size: "lg", className: "shrink-0" })}
-            >
-              {t.nlCreateSmart}
-            </button>
-            </>
-            )}
-          </div>
         </div>
       </main>
     );
@@ -520,10 +526,30 @@ export function NewListFlow({
   /* القائمةُ — الخطوةُ الأولى */
   const sources = newListSources(library).map((k) => ({ k, label: sourceLabel(t, k) }));
   const heading = searching ? t.nlSrcSearch : sources.find((s) => s.k === source)?.label ?? "";
+  /* 🆕 T473 — **على الحاسوب: الملصقاتُ يميناً ولوحةُ «اخترتها» ثابتةً بجنبها** (أحمد «أ» على الصورة). الشريطُ السفليُّ
+     المثبَّت كان يمتدّ تحت الشريط الجانبيّ فيغطّي أسفلَه (`fixed inset-x-0` لا يعرف العمود)، والشاشةُ العريضة تتّسع
+     لأن ترى ما اخترتَه وأنت تختار. **والجوّالُ كما هو**: الشريطُ السفليُّ نفسُه، واللوحةُ لا تُرسم تحت `desk:` */
+  /* والاختياراتُ تمرَّر داخل اللوحة لا تمدّها: لوحةٌ ثابتةٌ أطولُ من الشاشة تُخفي زرَّ «التالي» تحتها */
+  const pickedTiles = (
+    <div className="grid grid-cols-4 gap-2 max-h-[45dvh] overflow-y-auto pt-1.5 pe-1.5 -mt-1.5 -me-1.5">
+      {picks.map((p) => (
+        <button key={keyOf(p)} type="button" onClick={() => toggle(p)} aria-label={p.title} className="relative block">
+          <span className="relative block aspect-[2/3] rounded-control overflow-hidden bg-surface-2 border border-border">
+            {p.poster_path && <Image src={posterUrl(p.poster_path, "w185")!} alt="" {...POSTER_INTRINSIC.w185} className="absolute inset-0 w-full h-full object-cover" />}
+          </span>
+          <span aria-hidden className="absolute -top-1.5 -end-1.5 grid place-items-center w-5 h-5 rounded-full bg-surface-2 border border-border">
+            <Icon name="close" size={10} />
+          </span>
+        </button>
+      ))}
+    </div>
+  );
   return (
-    <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40">
+    <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-40 desk:pb-10">
       {header}
       {segments}
+      <div className="desk:grid desk:grid-cols-[minmax(0,1fr)_20rem] desk:gap-6 desk:items-start">
+      <div className="min-w-0">
       <div className="relative mb-3">
         <Icon name="search" size={18} className="absolute inset-y-0 start-3 my-auto text-muted pointer-events-none" />
         <input
@@ -578,7 +604,7 @@ export function NewListFlow({
         {heading}
       </h2>
       {catalog && catalogLoading && grid.length === 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 desk:grid-cols-5 gap-3">
           {Array.from({ length: 12 }, (_, i) => (
             <div key={i} className="skeleton aspect-[2/3] rounded-poster border border-border" />
           ))}
@@ -589,7 +615,7 @@ export function NewListFlow({
         </p>
       ) : (
         <>
-          <div className={`grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 transition-opacity ${catalogLoading ? "opacity-60" : ""}`}>
+          <div className={`grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 desk:grid-cols-5 gap-3 transition-opacity ${catalogLoading ? "opacity-60" : ""}`}>
             {(catalog ? grid : grid.slice(0, shown)).map((p) => (
               <Tile key={keyOf(p)} pick={p} selected={selected.has(keyOf(p))} onToggle={() => toggle(p)} />
             ))}
@@ -607,7 +633,32 @@ export function NewListFlow({
           )}
         </>
       )}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border">
+      </div>
+      <aside className="hidden desk:block sticky top-5 rounded-2xl border border-border bg-surface p-4">
+        <h2 className="text-15 font-bold mb-3 tabular-nums">{t.listCount(picks.length)}</h2>
+        {picks.length > 0 ? pickedTiles : <div className="aspect-[4/1] rounded-control border border-dashed border-border" />}
+        {addTo ? (
+          <button type="button" onClick={addPicked} disabled={pending || !picks.length} className={buttonClass({ size: "lg", className: "w-full mt-4" })}>
+            {t.nlAddN(t.listCount(picks.length))}
+          </button>
+        ) : (
+          <>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={60}
+              placeholder={t.listNamePlaceholder}
+              aria-label={t.nlName}
+              className="w-full min-h-11 mt-4 rounded-control bg-background border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+            />
+            <button type="button" onClick={() => setStep(2)} className={buttonClass({ size: "lg", className: "w-full mt-3" })}>
+              {t.nlNext}
+            </button>
+          </>
+        )}
+      </aside>
+      </div>
+      <div className="desk:hidden fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border">
         <div className="max-w-shell mx-auto px-4 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-3">
           <div className="flex gap-1 shrink-0">
             {picks.slice(-5).map((p) => (

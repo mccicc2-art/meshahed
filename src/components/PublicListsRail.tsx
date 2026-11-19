@@ -52,9 +52,13 @@ export function PublicListsRail({
   leading,
   leadingIndex = 0,
   progress,
+  noPlay = false,
 }: {
   lists: PublicListCard[];
   locale: Locale;
+  /** 🆕 T473 — بلا رقاقة «شغّالة/متوقّفة» على البطاقات: «اكتشف» كالتطبيق (`ListsRails`: `playlist: null`) — الرايةُ
+      تُدار من «مكتبتي» وصفحةِ القائمة، وصفُّ الاكتشاف للتصفّح والحفظ والإعجاب */
+  noPlay?: boolean;
   /** 🆕 R272 — كم شاهدتَ من كلِّ قائمة (معرّفُها ← العدّ) — لشريط البطاقة على الحاسوب */
   progress?: Record<string, { watched: number; total: number }>;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
@@ -103,7 +107,7 @@ export function PublicListsRail({
   if (!lists.length && !leading) return null;
 
   const cards = lists.map((l) => (
-    <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" progress={progress?.[l.id]} />
+    <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" progress={progress?.[l.id]} noPlay={noPlay} />
   ));
 
   if (headless) {
@@ -206,9 +210,12 @@ export function CommunityListCard({
   cover,
   action,
   progress,
+  noPlay = false,
 }: {
   list: PublicListCard;
   locale: Locale;
+  /** 🆕 T473 — بلا رقاقة التشغيل (اكتشف) */
+  noPlay?: boolean;
   /**
    * 🆕 **بديلُ سطر العدّ** (D-290): البطاقةُ تقول «N عملاً» لأنها في
    * «اكتشف» تعرّف بحجم القائمة — **وفي قسم «ما يحفظه الناس» المقياسُ
@@ -254,7 +261,7 @@ export function CommunityListCard({
      ⚠️ **ولا مفتاحَ لقائمةٍ فارغة**: رايةٌ على قائمةٍ بلا أعمالٍ لا
      تُظهر شيئاً في «تابِع المشاهدة» (شرطُ D-563 حرفاً). */
   const play =
-    l.playlist === undefined || l.item_count <= 0 ? null : (
+    noPlay || l.playlist === undefined || l.item_count <= 0 ? null : (
       <ListPlayToggle
         listId={l.id}
         locale={locale}

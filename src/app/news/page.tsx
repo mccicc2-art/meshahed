@@ -606,7 +606,7 @@ async function ListsDiscovery({
           («مقترح لك» ثم «من فنّانيك» ثم الرفوف العامّة). **ولا يظهران مع
           فلتر عالَمٍ مختار**: من ضغط «مارفل» يريد مارفل لا اقتراحاً. */}
       {!fr && lsrc !== "curated" && forYou.length > 0 && (
-        <PublicListsRail lists={forYou} locale={locale} title={t.listsForYou} />
+        <PublicListsRail lists={forYou} locale={locale} title={t.listsForYou} noPlay />
       )}
       {/* ⚖️ 🆕 **«الرائجة الآن» مكانَ «يرشّحها لوبز»** (D-386، طلبُ أحمد:
           «احذف Picked by Loopz واعمل ترندينج ليست»).
@@ -620,7 +620,7 @@ async function ListsDiscovery({
           فاختار: «اشحنه كما هو — ويظهر بخمستها»** — **ويصير الاسمُ صادقاً
           حين يكثر الحفظ.** */}
       {!fr && lsrc !== "curated" && trending.length > 0 && (
-        <PublicListsRail lists={trending} locale={locale} title={t.listsTrending} />
+        <PublicListsRail lists={trending} locale={locale} title={t.listsTrending} noPlay />
       )}
 
       {/* 🔴 🆕 **وقوائمُ المجتمع صعدت إلى المرتبة الثالثة** (D-368، طلبُ
@@ -633,7 +633,7 @@ async function ListsDiscovery({
           والحيُّ لا يحتمله. **والثلاثةُ الأُوَل كلُّها أشخاص**: أنت، ثم
           نحن، ثم هم — **ثم الأرشيف.** */}
       {(lsrc === "all" || lsrc === "community") && !fr && community.length > 0 && (
-        <PublicListsRail lists={community} locale={locale} />
+        <PublicListsRail lists={community} locale={locale} noPlay />
       )}
 
       {(lsrc === "all" || lsrc === "curated") &&
