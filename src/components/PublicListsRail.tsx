@@ -328,7 +328,7 @@ export function CommunityListCard({
         l.owner ? <Avatar src={l.owner_avatar} name={l.owner} size={14} className="shrink-0" /> : null
       }
       ownerName={l.owner ?? null}
-      countText={countLabel ?? t.listCount(l.item_count)}
+      countText={countLabel ?? l.count_label ?? t.listCount(l.item_count)}
       posters={posters}
       cover={cover}
     />

@@ -1039,6 +1039,11 @@ const ar = {
      (D-002/D-292). و«الأكثر حفظاً» تصف الفعلَ الذي يقيسه العدّاد، لا
      «الأكثر شعبية» التي لا مقياسَ لها في الشاشة (D-219). */
   listsForYou: "قوائم تناسبك",
+  /* 🆕 442 — سطرُ قائمة الحدث المثبَّتة في «تناسبك»: العدُّ التنازليُّ ثمّ «يُعرض الآن» (مطابقةُ العدد للمعدود) */
+  listEventToday: "يُعرض اليوم",
+  listEventNow: "يُعرض الآن",
+  listEventIn: (n: number) =>
+    n === 1 ? "يُعرض غداً" : n === 2 ? "يُعرض بعد يومين" : n <= 10 ? `يُعرض بعد ${n} أيام` : `يُعرض بعد ${n} يوماً`,
   /* 🆕 **العملُ الذي يدور حوله الكلام** (D-291).
      ⚠️ **ولا «هذا الأسبوع» فيه** رغم أن الاقتراح كتبها: الرقمُ تحته
      **عدُّ المشاركات كلِّه** لا عدُّ الأسبوع، **وعنوانٌ يعِد بنافذةٍ لا
@@ -4162,6 +4167,9 @@ const en: Dict = {
   peopleBoardTopReview: "Most liked comments",
   peopleBoardSavedLists: "What people are saving",
   listsForYou: "Lists for you",
+  listEventToday: "Out today",
+  listEventNow: "Out now",
+  listEventIn: (n: number) => (n === 1 ? "Out tomorrow" : `Out in ${n} days`),
   // "this week" returned in D-311: the number is truly weekly now (mig. 96)
   peopleBoardTalked: "The work people are talking about this week",
   peopleBoardLikes: (n: number) =>

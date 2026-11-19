@@ -22,7 +22,7 @@ export function toLibraryListCard(l: PublicListCard, locale: string): LibraryLis
     likes: l.likes ?? 0,
     reviews: l.reviews ?? 0,
     rating: l.rating ?? null,
-    count_label: null,
+    count_label: l.count_label ?? null,
     cover: null,
     mine: !!l.mine,
     is_public: true,

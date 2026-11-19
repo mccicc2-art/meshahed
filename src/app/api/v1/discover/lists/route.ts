@@ -2,7 +2,6 @@ import {
   getPublicListsFeed,
   getForYouLists,
   getMySavedListIds, getMyLikedListIds,
-  getListCardsByIds,
   getCuratedListIds,
   getListCardStats,
   getCuratedCounts,
@@ -11,6 +10,7 @@ import {
   type PublicListCard,
 } from "@/lib/data";
 import { toLibraryListCard } from "@/lib/listCard";
+import { forYouWithEvents } from "@/lib/listEvents";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/core/universes";
 import { awardBySlug, awardBody } from "@/core/awards";
 import { awardWins } from "@/core/awardsWins";
@@ -33,7 +33,9 @@ import type { DiscoverListsPayload } from "@/core/contracts/discover";
  * تناسبك · الرائجةُ الآن · من المجتمع · ثمّ **العوالمُ المنسَّقة** بمجموعاتها
  * (`FRANCHISES` → `CuratedCard`): الأربعُ ملصقاتٍ من `awardWinners`/`topRatedRows`/
  * `resolveSetIds` — **كما تحلّها بطاقةُ الصفحة**، بخبيئة `tmdb()` نفسِها. **وما
- * يُكرَّر بين «الرائجة» و«تناسبك» يُحذف من الثانية** (`shown`) كما في الصفحة.
+ * يُكرَّر بين «الرائجة» و«تناسبك» يُحذف من الثانية** — 🆕 442 **إلّا قائمةَ الحدث**:
+ * تُثبَّت في صدر «تناسبك» وتُحذف هي من «الرائجة». والوصفتان في `forYouWithEvents`
+ * وحدَها، تقرؤها الصفحةُ أيضاً.
  * بطاقةُ لوبز تُشكَّل هنا (`LibraryListCard`): الاسمُ بلغة القارئ، الصاحبُ Loopz،
  * وسطرُ العدّ مع «بترتيب الأحداث»/جهةِ الجائزة.
  */
@@ -52,7 +54,7 @@ export async function GET() {
     stage("db-feed");
     const community = (await getPublicListsFeed(25).catch(() => [] as PublicListCard[])).slice(0, 15);
     stage("db-lists");
-    const [forYouRows, savedIds, curated, trending, likedIds] = await Promise.all([
+    const [forYouRows, savedIds, curated, trendingRows, likedIds] = await Promise.all([
       getForYouLists(12).catch(() => []),
       getMySavedListIds().catch(() => new Set<string>()),
       getCuratedListIds().catch(() => new Map<string, string>()),
@@ -60,8 +62,13 @@ export async function GET() {
       /* 🆕 249 — «أأعجبتني؟» لقلب بطاقات قوائم لوبز */
       getMyLikedListIds().catch(() => new Set<string>()),
     ]);
-    const shown = new Set(trending.map((c) => c.id));
-    const forYou = await getListCardsByIds(forYouRows.map((r) => r.listId).filter((id) => !shown.has(id))).catch(() => [] as PublicListCard[]);
+    /* 🆕 442 — قائمةُ الحدث في صدر «تناسبك» (الوصفةُ نفسُها في صفحة الويب) */
+    const { forYou, trending } = await forYouWithEvents({
+      curated,
+      locale,
+      forYouIds: forYouRows.map((r) => r.listId),
+      trending: trendingRows,
+    });
     stage("db-stats");
     const ids = [...curated.values()];
     const [stats, counts, mine] = await Promise.all([

@@ -4384,6 +4384,10 @@ export async function getTopSavedLists(
  */
 export async function getForYouLists(limit = 12): Promise<SavedListRow[]> {
   try {
+    /* 🆕 442 — **الزائرُ لا يُسأل عنه**: الدالّةُ لا تُعيد له شيئاً أصلاً (تقرأ مكتبةَ `auth.uid()`)،
+       **وسُحب منه تنفيذُها في ٢٥٠** — فنداؤه يُرفض ويترك سطرَ خطأٍ في سجلّ القاعدة لكلِّ زيارة.
+       `getUser` مخبَّأٌ للطلب، فلا نداءَ زائد. */
+    if (!(await getUser().catch(() => null))) return [];
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("for_you_lists", {
       p_limit: limit,
@@ -5731,6 +5735,8 @@ export interface PublicListCard {
   playlist?: boolean;
   /** **أهي قائمتي؟** — بها يُعرف أيُّ كاتبٍ يخدم المفتاح (D-674) */
   mine?: boolean;
+  /** 🆕 442 — بديلُ سطر العدّ (قائمةُ الحدث: «١٥ عملاً · يُعرض بعد ٢٩ يوماً») — يصل التطبيقَ في `count_label` */
+  count_label?: string | null;
 }
 
 /**

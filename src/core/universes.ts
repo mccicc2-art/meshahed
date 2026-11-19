@@ -620,6 +620,15 @@ export interface EditorialList {
   en: string;
   blurbAr: string;
   blurbEn: string;
+  /**
+   * 🆕 442 — **قائمةُ حدثٍ تُثبَّت في صدر «تناسبك»** (أحمد ١٩ نوفمبر ٢٠٢٦: «لازم يكون فيه لست طريقك
+   * الى افنجرز دومزداي وتكون ثابته ف فور يو لين ينزل الفلم»، ثمّ «١ ب · ٢ أ · ٣ ب تبقى اسبوعان»).
+   *
+   * **الموعدُ من TMDB لا من هنا** (١ ب): تاريخُ الصالات الرسميُّ (`movieTheatricalDate`) — **فإن
+   * تأجّل الفيلمُ تأجّل التثبيتُ معه**، وتاريخٌ يُكتب بيدٍ يكذب يومَ يتأجّل. **ولجميع القرّاء** (٢ أ)،
+   * **ويبقى `graceDays` بعد العرض** (٣ ب: أسبوعان) لأن كثيرين يلحقون المشاهدةَ بعد النزول.
+   */
+  pin?: { tmdbId: number; graceDays: number };
 }
 
 export const EDITORIAL: EditorialList[] = [
@@ -629,6 +638,8 @@ export const EDITORIAL: EditorialList[] = [
     en: "Your Road to Avengers: Doomsday",
     blurbAr: "ترتيب المشاهدة الذي أوصت به ديزني قبل الفيلم.",
     blurbEn: "The watch order Disney recommended before the film.",
+    /* Avengers: Doomsday — معرّفُه في TMDB (١٠٠٣٥٩٦) كما في مكتبات الأعضاء */
+    pin: { tmdbId: 1003596, graceDays: 14 },
   },
 ];
 

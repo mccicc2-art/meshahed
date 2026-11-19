@@ -6,7 +6,6 @@ import {
   getForYouLists,
   getMySavedListIds,
   getMyLikedListIds,
-  getListCardsByIds,
   getCuratedListIds,
   getListCardStats,
   getCuratedCounts,
@@ -27,6 +26,7 @@ import { FILTER_KEYS, defaultFor } from "@/core/savedFilters";
 import { redirect } from "next/navigation";
 import { isPlus } from "@/core/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
+import { forYouWithEvents } from "@/lib/listEvents";
 import { ListsFilters } from "@/components/ListsFilters";
 import { ListLikeHeart } from "@/components/ListLikeHeart";
 import { ListSaveMark } from "@/components/ListSaveChip";
@@ -500,7 +500,7 @@ async function ListsDiscovery({
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
   /* 🆕 **وسقط `getTopSavedLists` من هذه الصفحة مع رفّه** (D-363) —
      **ونداءٌ بلا قارئٍ يُحذف لا يُترك يدور** (D-214/D-257). */
-  const [forYouRows, savedIds, me, curated, trending, likedIds] = await Promise.all([
+  const [forYouRows, savedIds, me, curated, trendingRows, likedIds] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
     getUser().catch(() => null),
@@ -556,8 +556,9 @@ async function ListsDiscovery({
      يقول «عندك» **في مكانها** — **وحالةٌ تُعرض أصدقُ من صفٍّ يُحذف**
      (D-217). **والتكرارُ الباقي الوحيدُ ممنوع**: صفّان شخصيّان متجاوران
      لا يحملان البطاقةَ نفسَها — وذاك حكمُ جوارٍ لا حكمُ ملكيّة. */
-  const shown = new Set(trending.map((c) => c.id));
-  const forYouIds = forYouRows.map((r) => r.listId).filter((id) => !shown.has(id));
+  /* 🆕 442 — **قائمةُ الحدث في صدر «تناسبك»** (أحمد ١٩ نوفمبر ٢٠٢٦: «طريقك الى افنجرز دومزداي
+     … ثابته ف فور يو لين ينزل الفلم»): الوصفةُ في `forYouWithEvents` وحدَها، **وواجهةُ التطبيق
+     تقرأ منها نفسَها** — فالحذفُ من «الرائجة» والسطرُ والترتيبُ واحدٌ في الصفحتين (D-145). */
   /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
      الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
      الثلاث — **وهو ما أنهى «Empty» فوق ثلاثة ملصقات.** */
@@ -565,7 +566,12 @@ async function ListsDiscovery({
      حفظاً») — **ومعه نداؤه وحسابُ معرّفاته** (D-214: يُفحص المستهلك ثم
      يُحذف ما بقي بلا قارئ). **وأثرٌ ثانٍ مقصود**: القوائمُ التي كانت
      تُحجز له تعود إلى رفِّ عالَمِها بدل أن تسقط من الاثنين. */
-  const forYou = await getListCardsByIds(forYouIds);
+  const { forYou, trending } = await forYouWithEvents({
+    curated,
+    locale,
+    forYouIds: forYouRows.map((r) => r.listId),
+    trending: trendingRows,
+  });
   /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
      للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
      معرّفاتِها. */
