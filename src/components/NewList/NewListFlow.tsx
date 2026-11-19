@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getDict, type Locale } from "@/core/i18n";
-import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, type SmartType } from "@/core/smartListKeys";
+import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, SMART_COUNTS, SMART_COUNT_DEFAULT, isSmartCount, type SmartType } from "@/core/smartListKeys";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import {
   hideChipText,
@@ -205,7 +205,8 @@ export function NewListFlow({
   }
 
   /* ===== القائمةُ الذكيّة ===== */
-  const [rule, setRule] = useState<Record<string, string>>(editing?.rule ?? { type: "movie" });
+  /* 🆕 T471 — الجديدةُ تبدأ بثلاثين عملاً («٢ ب»)؛ والمعدَّلةُ بعددها، أو بلا عددٍ فتبقى ستّين حتّى تُلمس الشريحة («٣ ب») */
+  const [rule, setRule] = useState<Record<string, string>>(editing?.rule ?? { type: "movie", count: SMART_COUNT_DEFAULT });
   const [smartOpen, setSmartOpen] = useState<Axis | null>(null);
   /* المعاينةُ **موسومةٌ بشرطها** (`key`): «يحمّل» = لا معاينةَ لهذا الشرط بعدُ — مشتقٌّ لا حالةٌ تُقلب في أثر */
   const [preview, setPreview] = useState<{ key: string; items: Pick[]; count: number; failed?: true } | null>(null);
@@ -424,6 +425,24 @@ export function NewListFlow({
                 </div>
               );
             })()}
+          {/* 🆕 T471 — **العدد** (أحمد «ب»: شرائحُ ١٠ · ٢٠ · ٣٠ · ٥٠) — عائلةُ `chipClass` بمقاس رقائق المحاور */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-12 font-semibold text-muted me-1">{t.nlCount}</span>
+              {SMART_COUNTS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={rule.count === c}
+                  onClick={() => setRule((r) => ({ ...r, count: c }))}
+                  className={chipClass(rule.count === c, "sm", "min-w-10 tabular-nums")}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            {!isSmartCount(rule.count) && <p className="text-12 text-muted mt-1.5">{t.nlCountLegacy}</p>}
+          </div>
           <AxisRow
             optsOf={optsOf}
             axisLabel={axisLabel}

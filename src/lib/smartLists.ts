@@ -5,7 +5,7 @@ import { eraRange, lengthSpecFor, parseBrowse, seasonRange, type BrowseQuery } f
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
 import { FILTER_KEYS } from "@/core/savedFilters";
-import { LIBRARY_RULE_KEYS, MY_RATING_MIN, SMART_CATALOG_EXTRA, SMART_HIDE, SMART_SORT, LIBRARY_SORT, ruleTypes, parseMix } from "@/core/smartListKeys";
+import { LIBRARY_RULE_KEYS, MY_RATING_MIN, SMART_CATALOG_EXTRA, SMART_HIDE, SMART_SORT, LIBRARY_SORT, ruleTypes, parseMix, isSmartCount, smartLimit } from "@/core/smartListKeys";
 import { isLibraryStatus } from "@/core/libraryStatus";
 import { keywordId, companyId, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import type { SectionMedia } from "@/lib/sections";
@@ -27,8 +27,9 @@ import type { SectionMedia } from "@/lib/sections";
  * يعود فارغاً بلا سبب.**
  */
 
-/** حدُّ ما تعرضه القائمةُ الذكيّة — **جردٌ لا تصفّحٌ لا نهائيّ** */
+/** حدُّ ما تعرضه القائمةُ الذكيّة — **جردٌ لا تصفّحٌ لا نهائيّ**. 🆕 T471: سقفُ الشرط بلا عدد؛ والعددُ المختارُ من `smartLimit` */
 export const SMART_LIST_LIMIT = 60;
+export { smartLimit };
 
 /** مصادرُ الشرط — **وكلاهما مبنيٌّ منذ D-876** (كان `library` قيداً بلا قارئ من ١٦١) */
 export type RuleSource = "catalog" | "library";
@@ -83,6 +84,8 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
   }
   /* 🆕 T467 — **النسبةُ للمصدرين معاً، وتُقبل كاملةً أو تسقط**: نوعان فأكثر، ولكلٍّ حصّة، والمجموعُ ١٠٠ (`parseMix`).
      **ويُعاد كتابتُها بترتيب الأنواع** فالشرطُ نفسُه نصٌّ واحد. ونسبةٌ لنوعٍ واحدٍ لا معنى لها فتسقط صامتة. */
+  /* 🆕 T471 — **العددُ للمصدرين، من أربعٍ مغلقة** (`SMART_COUNTS`) — وغيرُها يسقط صامتاً فتبقى الستّون القديمة */
+  if (isSmartCount(v.count)) out.count = v.count;
   const mixRaw = v.mix;
   if (typeof mixRaw === "string" && VALUE_RE.test(mixRaw)) {
     const ts = ruleTypes(out.type);
@@ -91,7 +94,7 @@ export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): Sm
   }
   /* ⚠️ **والترتيبُ والإخفاءُ وحدَهما ليسا شرطاً**: قائمةٌ لا يحدّها إلّا ترتيبُها أو ما تُسقطه هي الكتالوجُ كلُّه —
      أو المكتبةُ كلُّها — والقاعدةُ تمنع الشرطَ الفارغ لهذا (D-636). */
-  if (Object.keys(out).every((k) => k === "sort" || k === "hide" || k === "mix")) return null;
+  if (Object.keys(out).every((k) => k === "sort" || k === "hide" || k === "mix" || k === "count")) return null;
   return Object.keys(out).length ? out : null;
 }
 

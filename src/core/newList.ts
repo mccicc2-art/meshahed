@@ -144,7 +144,7 @@ export function withAxis<T extends Partial<Record<string, string>>>(cur: T, axis
  * فالشرطُ واحدٌ للإنشاء والتحديث.
  */
 export function ruleHasLimit(rule: Record<string, string>): boolean {
-  return !!rule.type && Object.keys(rule).some((k) => k !== "type" && k !== "sort" && k !== "hide" && k !== "mix");
+  return !!rule.type && Object.keys(rule).some((k) => k !== "type" && k !== "sort" && k !== "hide" && k !== "mix" && k !== "count");
 }
 
 /**

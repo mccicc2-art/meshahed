@@ -53,12 +53,20 @@ const IOS_SPLASH: { w: number; h: number; r: number }[] = [
   { w: 1320, h: 2868, r: 3 }, // 16 Pro Max
 ];
 
-export const viewport: Viewport = {
-  themeColor: "#0D0D0D",
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-};
+/* لونُ شريط المتصفح في الجوال (theme-color) = خلفيةُ الثيم المختار.
+   كان ثابتاً على ‎#0D0D0D‎ فيظهر شريطٌ أسود فوق صفحةٍ فاتحة في «النهاري»،
+   بينما التطبيق يلوّن شريط الحالة بالثيم. يُقرأ من نفس كوكي `theme` الذي
+   يقرؤه الـ layout، فيتبع تغييرَ الثيم مع `router.refresh()` بلا كودٍ إضافي. */
+export async function generateViewport(): Promise<Viewport> {
+  const cookieStore = await cookies();
+  const theme = themeById(cookieStore.get("theme")?.value);
+  return {
+    themeColor: theme.vars.background,
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+  };
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

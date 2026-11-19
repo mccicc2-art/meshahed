@@ -3450,13 +3450,13 @@ export async function updateSmartListRule(
  *
  * 🔑 **القارئُ نفسُه الذي تُفتح به القائمةُ بعد إنشائها** (`evaluateSmartRule`) — فالمعاينةُ وعدٌ يُوفى بحرفه
  * (D-145). ويُطهَّر الشرطُ هنا كما يُطهَّر عند الحفظ. **والفشلُ فراغٌ لا خطأ** (TMDB خارجُنا).
- * والعددُ عددُ ما تحمله القائمةُ فعلاً (سقفُها ستّون — `SMART_LIST_LIMIT`)، والملصقاتُ أوّلُ أربعٍ وعشرين منها.
+ * والعددُ عددُ ما تحمله القائمةُ فعلاً (سقفُها عددُ الشرط — `smartLimit`، وستّون لشرطٍ قديمٍ بلا عدد)، والملصقاتُ أوّلُ أربعٍ وعشرين منها.
  */
 export async function previewSmartList(
   rule: unknown,
   source: "catalog" | "library" = "catalog",
 ): Promise<{ items: { id: number; kind: "tv" | "movie"; title: string; poster_path: string | null }[]; count: number }> {
-  const { sanitizeRule, isRuleSource, SMART_LIST_LIMIT } = await import("@/lib/smartLists");
+  const { sanitizeRule, isRuleSource, smartLimit } = await import("@/lib/smartLists");
   if (!isRuleSource(source)) throw new Error("bad source");
   await requireUser("preview", 40, 60_000);
   const clean = sanitizeRule(rule, source);
@@ -3464,7 +3464,7 @@ export async function previewSmartList(
   const { evaluateSmartRule } = await import("@/lib/listItems");
   const { getLocale } = await import("@/lib/locale");
   try {
-    const rows = await evaluateSmartRule(clean, source, await getLocale(), SMART_LIST_LIMIT);
+    const rows = await evaluateSmartRule(clean, source, await getLocale(), smartLimit(clean));
     return {
       items: rows.slice(0, 24).map((r) => ({ id: r.tmdb_id, kind: r.media_type, title: r.title ?? "", poster_path: r.poster_path })),
       count: rows.length,

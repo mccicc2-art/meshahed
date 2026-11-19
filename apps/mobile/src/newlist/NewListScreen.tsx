@@ -20,7 +20,7 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { MIN_QUERY, useDebounced } from "../search/useSearch";
 import { useHomeDoor } from "../homeDoor";
 import { SYSTEM_FONT_CAP } from "../fontScale";
-import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, type SmartType } from "@/core/smartListKeys";
+import { ruleTypes, toggleRuleType, parseMix, defaultMix, stepMix, mixCan, formatMix, SMART_COUNTS, SMART_COUNT_DEFAULT, isSmartCount, type SmartType } from "@/core/smartListKeys";
 import {
   hideChipText,
   isCatalogSource,
@@ -228,7 +228,8 @@ export function NewListScreen({
   };
 
   /* ===== القائمةُ الذكيّة ===== */
-  const [rule, setRule] = useState<Record<string, string>>({ type: "movie" });
+  /* 🆕 T471 — الجديدةُ تبدأ بثلاثين («٢ ب»)؛ والتعديلُ يبدأ من الشرط المخزَّن أدناه، وقديمُه بلا عدد يبقى ستّين («٣ ب») */
+  const [rule, setRule] = useState<Record<string, string>>({ type: "movie", count: SMART_COUNT_DEFAULT });
   /* 🆕 T454 — التعديلُ يبدأ من الشرط المخزَّن مرّةً حين يصل (`smart_rule` لصاحبها وحدَه) */
   const seeded = useRef(false);
   const storedRule = editId ? target.data?.smart_rule : null;
@@ -459,6 +460,16 @@ export function NewListScreen({
               </View>
             );
           })()}
+          {/* 🆕 T471 — **العدد** (أحمد «ب») — نظيرُ صفحة الويب: أربعُ رقائقَ مغلقة، وسطرٌ خافتٌ للقائمة القديمة بلا عدد */}
+          <View style={{ gap: 6 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <Text size={12} weight="600" muted style={{ marginEnd: 2 }}>{t.nlCount}</Text>
+              {SMART_COUNTS.map((c) => (
+                <Chip key={c} label={c} active={rule.count === c} onPress={() => setRule((r) => ({ ...r, count: c }))} />
+              ))}
+            </View>
+            {!isSmartCount(rule.count) ? <Text size={12} muted>{t.nlCountLegacy}</Text> : null}
+          </View>
           <AxisRow axes={smartAxes} optsOf={optsOf} labels={labels} hideText={(v) => hideChipText(t, v)} values={rule} openAxis={smartOpen} onOpen={setSmartOpen} onPick={(a, v) => setRule((r) => withAxis(r, a, v))} />
           <View style={{ borderTopWidth: 1, borderTopColor: tokens.border, marginTop: 8, paddingTop: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>

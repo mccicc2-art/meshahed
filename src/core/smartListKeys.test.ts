@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ruleTypes, toggleRuleType, parseMix, formatMix, defaultMix, stepMix, mixCan, interleaveByMix } from "./smartListKeys.ts";
+import { smartLimit, isSmartCount, ruleTypes, toggleRuleType, parseMix, formatMix, defaultMix, stepMix, mixCan, interleaveByMix } from "./smartListKeys.ts";
 
 /* T454 — الأنواعُ المجموعة: قراءةٌ تقبل القيمةَ المفردةَ القديمة، وترتيبٌ ثابت، وآخرُ نوعٍ لا يُطفأ */
 test("ruleTypes reads single and joined values in a fixed order", () => {
@@ -55,4 +55,16 @@ test("interleaveByMix follows the shares, dedupes, and fills from the rest", () 
   assert.deepEqual(interleaveByMix([["a", "x"], ["x", "b"]], [50, 50], 4, id), ["a", "x", "b"]);
   const short = interleaveByMix([["t1"], m], [90, 10], 4, id);
   assert.deepEqual(short, ["t1", "m1", "m2", "m3"]);
+});
+
+/* T471 — العددُ: أربعُ قيمٍ مغلقة، والغائبُ (قائمةٌ قديمة) ستّون */
+test("smartLimit reads the chosen count, else the legacy 60", () => {
+  assert.equal(smartLimit({ count: "20" }), 20);
+  assert.equal(smartLimit({ count: "50" }), 50);
+  assert.equal(smartLimit({ count: "60" }), 60);
+  assert.equal(smartLimit({ count: "45" }), 60);
+  assert.equal(smartLimit({}), 60);
+  assert.equal(smartLimit(null), 60);
+  assert.equal(isSmartCount("30"), true);
+  assert.equal(isSmartCount("100"), false);
 });

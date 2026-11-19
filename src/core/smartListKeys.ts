@@ -201,3 +201,24 @@ export function interleaveByMix<T>(lists: readonly (readonly T[])[], weights: re
   }
   return out;
 }
+
+/**
+ * ====== 🆕 T471 — عددُ أعمال القائمة الذكيّة (أحمد ١٩ نوفمبر: «يحدد عدد — ما يتجاوز ٥٠» ثمّ «ب»: شرائحُ جاهزة) ======
+ *
+ * **قيمٌ مغلقةٌ أربع** — الشريحةُ تحسم العددَ بلمسة، ولا خانةَ تفتح لوحةَ مفاتيح ولا عدّادَ ثانياً تحت سطر التوزيع.
+ * **والجديدةُ تبدأ بثلاثين** («٢ ب»). **وغيابُ المفتاح هو السقفُ القديمُ بحرفه** (ستّون — `SMART_LIST_LEGACY`):
+ * كلُّ قائمةٍ حُفظت قبل اليوم تبقى كما هي حتّى يعدّلها صاحبُها («٣ ب»).
+ */
+export const SMART_COUNTS = ["10", "20", "30", "50"] as const;
+export type SmartCount = (typeof SMART_COUNTS)[number];
+export const SMART_COUNT_DEFAULT: SmartCount = "30";
+export const SMART_LIST_LEGACY = 60;
+
+export function isSmartCount(v: unknown): v is SmartCount {
+  return typeof v === "string" && (SMART_COUNTS as readonly string[]).includes(v);
+}
+
+/** سقفُ القائمة من شرطها — العددُ المختار، أو الستّون القديمة لشرطٍ بلا عدد */
+export function smartLimit(rule: { count?: string } | null | undefined): number {
+  return isSmartCount(rule?.count) ? Number(rule.count) : SMART_LIST_LEGACY;
+}

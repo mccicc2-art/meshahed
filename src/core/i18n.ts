@@ -297,6 +297,9 @@ const ar = {
   nlMixMore: (type: string) => `زِد ${type}`,
   nlMixLess: (type: string) => `أنقِص ${type}`,
   nlMixUnset: "الترتيبُ الآن بالشعبية — غيّر حصّةً لتوزّعها.",
+  /* 🆕 T471 — عددُ أعمال القائمة الذكيّة، وسطرُ القائمة القديمة بلا عدد */
+  nlCount: "العدد",
+  nlCountLegacy: "تعرض الآن 60 — اختر عدداً.",
   nlSmartHintLibrary: "تمتلئ وحدها من مكتبتك بالشروط التي تختارها.",
   nlHide: "أخفِ",
   nlHideNone: "لا شيء",
@@ -3720,6 +3723,8 @@ const en: Dict = {
   nlMixMore: (type: string) => `More ${type}`,
   nlMixLess: (type: string) => `Fewer ${type}`,
   nlMixUnset: "Ordered by popularity now — change a share to set a mix.",
+  nlCount: "Count",
+  nlCountLegacy: "Shows 60 now — pick a count.",
   nlSmartHintLibrary: "Fills itself from your library with the rules you pick.",
   nlHide: "Hide",
   nlHideNone: "Nothing",

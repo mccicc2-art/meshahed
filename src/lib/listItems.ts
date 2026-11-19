@@ -2,7 +2,7 @@ import { buildSection } from "@/lib/sections";
 import { titleOf, type SearchResult } from "@/lib/tmdb";
 import { ruleTypes, parseMix, interleaveByMix } from "@/core/smartListKeys";
 import { BROWSE_GENRES, genreFitsType } from "@/core/browse";
-import { browseToFilter, ruleMedia, ruleToBrowse, sanitizeRule, SMART_LIST_LIMIT, isRuleSource, type RuleSource, type SmartRule } from "@/lib/smartLists";
+import { browseToFilter, ruleMedia, ruleToBrowse, sanitizeRule, smartLimit, isRuleSource, type RuleSource, type SmartRule } from "@/lib/smartLists";
 import { evaluateLibraryRule } from "@/lib/librarySmart";
 import { getFollows, getWatchSummary, getWatchedMovieIds, getAllWatchedEpisodes } from "@/lib/data";
 import { getWatchRegion } from "@/lib/locale";
@@ -30,7 +30,7 @@ export async function resolveSmartItems(
   const rule = list.kind === "smart" ? sanitizeRule(list.rule, source) : null;
   if (!rule) return { rule: null, source, rows: null };
   try {
-    return { rule, source, rows: await evaluateSmartRule(rule, source, locale, SMART_LIST_LIMIT) };
+    return { rule, source, rows: await evaluateSmartRule(rule, source, locale, smartLimit(rule)) };
   } catch {
     return { rule, source, rows: [] };
   }
