@@ -927,6 +927,9 @@ const ar = {
   /* 🆕 233 — **نسخ أحدٌ قائمتَك** (أحمد ٤ نوفمبر، ٣أ): الجملةُ تسمّي قائمتي لأن الضغطةَ تفتحها، لا نسختَه الخاصّة */
   notifListCopy: (who: string, list: string) =>
     list ? `نسخ ${who} قائمتك «${list}»` : `نسخ ${who} إحدى قوائمك`,
+  /* 🆕 249 (٤أ) — أعجب أحدٌ بقائمتك */
+  notifListLike: (who: string, list: string) =>
+    list ? `أعجب ${who} بقائمتك «${list}»` : `أعجب ${who} بإحدى قوائمك`,
   /* 🆕 234 — **دعاك إلى قائمةٍ مشتركة**: الضغطةُ تفتح القائمةَ وفوقها «قبول · لا شكراً» */
   notifListInvite: (who: string, list: string) =>
     list ? `دعاك ${who} إلى قائمة «${list}»` : `دعاك ${who} إلى قائمة مشتركة`,
@@ -2513,15 +2516,10 @@ const ar = {
   listSavedBtn: "محفوظة",
   listSavedToast: "أُضيفت إلى قوائمك — تبقى متصلةً بقائمة صاحبها ✓",
   listUnsavedToast: "أُزيلت من قوائمك",
-  /* 🆕 233 — **النسخُ فعلٌ ثانٍ بجانب الحفظ** (أحمد ٤ نوفمبر): ♥ «أضِفها» مرجعٌ حيّ، و«انسخها» قائمةٌ تملكها وتعدّلها */
-  listCopyBtn: "انسخها لقوائمي",
-  listCopiedToast: "نُسخت إلى قوائمك · خاصة",
-  listCopyPublish: "اعلنها",
-  listCopiedFrom: (who: string) => `من قائمة ${who}`,
-  /* لمن أخفى اسمه: الرابطُ يبقى بلا اسم (D-011) */
-  listCopiedFromHidden: "منسوخة من قائمة أخرى",
-  apiListCopyTooMany: "وصلت إلى 50 قائمة — احذف واحدة لتنسخ هذه",
-  apiListCopyUnavailable: "هذه القائمة لم تعد متاحة للنسخ",
+  /* 🆕 249 — **الإعجابُ منفصلٌ عن الحفظ** (أحمد ١٩ نوفمبر ٢٠٢٦): ♥ إعجاب، و«احفظ» يضيفها إلى قوائمك — والنسخُ أُزيل */
+  listSaveChip: "احفظ",
+  listLikeLabel: "أعجبتني",
+  listUnlikeLabel: "إلغاء الإعجاب",
   /* 🆕 234 — **القوائمُ المشتركة** (أحمد ٤ نوفمبر، البند ٢): صاحبُها يدعو من يتابعهم، والأعضاءُ يضيفون ويحذفون */
   listMemberYou: "أنت",
   listShared: "قائمة مشتركة",
@@ -4121,6 +4119,8 @@ const en: Dict = {
       : `${who} replied to you on a list`,
   notifListCopy: (who: string, list: string) =>
     list ? `${who} copied your list “${list}”` : `${who} copied one of your lists`,
+  notifListLike: (who: string, list: string) =>
+    list ? `${who} liked your list “${list}”` : `${who} liked one of your lists`,
   notifListInvite: (who: string, list: string) =>
     list ? `${who} invited you to the list “${list}”` : `${who} invited you to a shared list`,
   feedFilterGroup: "Activity type",
@@ -5251,13 +5251,9 @@ const en: Dict = {
   listSavedBtn: "Saved",
   listSavedToast: "Added to your lists — stays linked to its owner's list ✓",
   listUnsavedToast: "Removed from your lists",
-  listCopyBtn: "Copy to my lists",
-  listCopiedToast: "Copied to your lists · Private",
-  listCopyPublish: "Make public",
-  listCopiedFrom: (who: string) => `From ${who}'s list`,
-  listCopiedFromHidden: "Copied from another list",
-  apiListCopyTooMany: "You've reached 50 lists — delete one to copy this",
-  apiListCopyUnavailable: "This list can no longer be copied",
+  listSaveChip: "Save",
+  listLikeLabel: "Like",
+  listUnlikeLabel: "Unlike",
   listMemberYou: "You",
   listShared: "Shared list",
   listInvite: "Invite",

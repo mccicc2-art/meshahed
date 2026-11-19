@@ -1,4 +1,4 @@
-import { ListSaveHeart } from "./ListSaveHeart";
+import { ListSaveMark } from "./ListSaveChip";
 import type { Locale } from "@/core/i18n";
 
 /**
@@ -12,7 +12,7 @@ import type { Locale } from "@/core/i18n";
  * زرٌّ منفردٌ في عمود أزرارِ ترويسةٍ لا يقول أيَّ شيءٍ يحفظ، **ورمزٌ
  * وحدَه في هذا الموضع سؤالٌ لا فعل** (D-138: أداةٌ لا تُفهم لا تُستعمل).
  *
- * **ولا زرٌّ ثانٍ ولا حالةٌ ثانية**: القلبُ هو `ListSaveHeart` نفسُه بكلِّ
+ * **ولا زرٌّ ثانٍ ولا حالةٌ ثانية**: الحفظُ هو `ListSaveMark` نفسُه (🆕 249: الإشارةُ لا القلب — القلبُ صار إعجاباً) بكلِّ
  * تفاؤليّته وحارسه، **والكلمةُ عنصرٌ مجاورٌ لا داخلَه** — فلا تُنسخ
  * منطقةُ فعلٍ لتُلبَس ثوباً (D-002/D-145).
  */
@@ -30,7 +30,7 @@ export function UniverseSaveRow({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface ps-2.5 pe-1 h-9 text-14 font-semibold text-foreground/85">
       <span className="truncate">{label}</span>
-      <ListSaveHeart listId={listId} saved={saved} locale={locale} />
+      <ListSaveMark listId={listId} saved={saved} locale={locale} bare />
     </span>
   );
 }

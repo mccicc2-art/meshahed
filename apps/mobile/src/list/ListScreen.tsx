@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { aimDiscoverEdit } from "../discover/aim";
 import { Image } from "expo-image";
+import { avatarSource } from "../avatarSource";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,7 +37,7 @@ import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard, SearchTitle } from "../contracts";
 import type {
   LibraryPayload, ListCoverBody, ListDeleteBody, ListDetailItem, ListDetailPayload, ListPlaylistBody, ListReorderBody, ListReplyDeleteBody,
-  ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody, CopyListBody, CopyListPayload,
+  ListReviewLikeBody, ListReviewReplyBody, ListToggleItemBody, ListUpdateBody, QueueItem, SaveListBody, LikeListBody,
   ListMember, ListMembersBody, ListMembersPayload,
 } from "../contracts";
 import { openProfile, profileHandleOf } from "../member/open";
@@ -69,11 +70,7 @@ const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id,
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
 const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
 
-/**
- * 🆕 233 — `justCopied`: القائمةُ فُتحت لأنّي نسختُها الآن (`?copied=1` من رقاقة «انسخها لقوائمي»): إشعارُ «نُسخت · خاصة»
- * ببابِ إعلانها يُقال هنا مرّةً — **في القائمة الجديدة لا القديمة**، لأنّ الإعلانَ فعلٌ على النسخة.
- */
-export function ListScreen({ id, from, justCopied = false }: { id: string; from: NativeRoot; justCopied?: boolean }) {
+export function ListScreen({ id, from }: { id: string; from: NativeRoot }) {
   const { t, tokens, locale, me } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
@@ -192,19 +189,6 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
       ),
     [run, id, q, qc],
   );
-  /* 🆕 233 — بعد النسخ: «نُسخت إلى قوائمك · خاصة» (٤أ) وبابُ إعلانها في الإشعار نفسِه — مرّةً، ولنسختي وحدَها */
-  const copiedSaid = useRef(false);
-  useEffect(() => {
-    if (!justCopied || copiedSaid.current || !d || !d.mine) return;
-    copiedSaid.current = true;
-    if (d.is_public) return;
-    toastHost.current?.say(
-      t.listCopiedToast,
-      { label: t.listCopyPublish, onPress: () => saveMeta({ name: d.name, subtitle: d.subtitle, isPublic: true }) },
-      6000,
-      "success",
-    );
-  }, [justCopied, d, t, saveMeta]);
   const saveOrder = useCallback(
     (keys: string[]) =>
       void run(
@@ -307,12 +291,14 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
   );
   const toWatchOf = useCallback((c: CuratedCard) => toWatchState(store.mark(`${c.kind}-${c.id}`)), [store]);
 
-  /* الحفظُ تفاؤليّاً في كاش الصفحة — القلبُ هو الحفظ (D-324) وعدُّه يتبع الضغطة في مكانه */
-  const [saving, setSaving] = useState(false);
+  /* الحفظُ تفاؤليّاً في كاش الصفحة — 🆕 249 رقاقةُ «احفظ» في طرف شريط الحال (القلبُ صار إعجاباً) */
+  /* 🆕 249 — **حارسٌ في مرجعٍ لا في الحالة وحدَها**: ضغطتان في الإطار نفسِه كانتا تمرّان من حارس الحالة
+     معاً فيُحسب العدُّ مرّتين حتى يعود الطلب — والمرجعُ يتبدّل في اللحظة لا بعد الرسم. */
+  const saveBusy = useRef(false);
   const toggleSave = useCallback(async () => {
-    if (!d || !d.can_save || saving) return;
+    if (!d || !d.can_save || saveBusy.current) return;
+    saveBusy.current = true;
     const want = !d.saved_by_me;
-    setSaving(true);
     qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, saved_by_me: want, saves: Math.max(0, p.saves + (want ? 1 : -1)) } : p));
     try {
       await write<{ saved: boolean }>("/api/v1/lists/save", { listId: id, save: want } satisfies SaveListBody);
@@ -321,27 +307,31 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
     } catch (e) {
       fail(e);
     } finally {
-      setSaving(false);
+      saveBusy.current = false;
     }
-  }, [d, saving, qc, id, say, t, fail]);
+  }, [d, qc, id, say, t, fail]);
 
-  /* 🆕 233 — **النسخُ فعلٌ ثانٍ بجانب ♥** (أحمد ٤ نوفمبر): القلبُ مرجعٌ حيّ، والنسخةُ قائمتي أعدّلها. لا تفاؤلَ هنا:
-     الجوابُ معرّفُ قائمةٍ جديدةٍ تُفتح، **ونسختي الموجودة تُفتح ولا تُكرَّر** (`copy_list`) */
-  const [copying, setCopying] = useState(false);
-  const copy = useCallback(async () => {
-    if (!d || !d.can_copy || copying) return;
-    setCopying(true);
+  /* 🆕 249 — **الإعجابُ منفصلٌ عن الحفظ** (أحمد ١٩ نوفمبر ٢٠٢٦): القلبُ يُعجب ولا يضيفها إلى قوائمك — تفاؤليٌّ في كاش
+     الصفحة كأخيه، وعدُّه عددُ المعجبين. والنسخُ أُزيل («قراري ازالة النسخ — تقدر تحفظ اللستة») */
+  const [liking, setLiking] = useState(false);
+  const likeBusy = useRef(false);
+  const toggleLike = useCallback(async () => {
+    if (!d || !d.can_save || likeBusy.current) return;
+    likeBusy.current = true;
+    const want = !d.liked_by_me;
+    setLiking(true);
+    haptic.pick();
+    qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, liked_by_me: want, likes: Math.max(0, (p.likes ?? 0) + (want ? 1 : -1)) } : p));
     try {
-      const r = await write<CopyListPayload>("/api/v1/lists/copy", { listId: id } satisfies CopyListBody);
-      haptic.success();
-      /* «قوائمي» تُبطَل بوسوم الردّ نفسِها (`write` ⇐ `invalidateTags`) — لا إبطالَ يدويَّ ثانٍ */
-      router.push({ pathname: "/list/[id]", params: { id: r.id, from, copied: r.created ? "1" : "0" } });
+      await write<{ liked: boolean }>("/api/v1/lists/like", { listId: id, like: want } satisfies LikeListBody);
     } catch (e) {
+      qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, liked_by_me: !want, likes: Math.max(0, (p.likes ?? 0) + (want ? -1 : 1)) } : p));
       fail(e);
     } finally {
-      setCopying(false);
+      likeBusy.current = false;
+      setLiking(false);
     }
-  }, [d, copying, id, router, from, fail]);
+  }, [d, qc, id, fail]);
 
   /* 🆕 234 — **ردُّ المدعوّ** (٢أ): «قبول» يجعله عضواً فيصير «أضف أعمالاً» له؛ «لا شكراً» يحذف الدعوةَ ويرجع —
      القائمةُ الخاصّةُ لا يراها بعدها، فالبقاءُ في صفحتها يعرض فراغاً */
@@ -459,7 +449,7 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
               <View style={{ marginHorizontal: PAGE_PAD, marginBottom: 16, gap: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg }}>
                   <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-                    {d.owner?.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                    {d.owner?.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text size={14} weight="700" numberOfLines={2}>{t.listInviteBanner(d.owner?.name ?? t.anonymousUser)}</Text>
@@ -510,7 +500,7 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
                 ) : d?.owner ? (
                   <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" }}>
                     <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
-                      {d.owner.avatar ? <Image source={{ uri: d.owner.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                      {d.owner.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
                     </View>
                     <Text size={13} muted numberOfLines={1}>{d.owner.name}</Text>
                   </Pressable>
@@ -527,20 +517,6 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
                         </View>
                       ))
                     : null}
-                  {/* 🆕 233 — «من قائمة @فلان» (٢أ): صفةٌ في صفِّ الحقائق، والضغطةُ تفتح الأصل */}
-                  {d?.copied_from ? (
-                    <Pressable
-                      onPress={() => router.push({ pathname: "/list/[id]", params: { id: d.copied_from!.list_id, from } })}
-                      hitSlop={8}
-                      accessibilityRole="link"
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}
-                    >
-                      <Icon name="copy" size={14} color={tokens.accent} />
-                      <Text size={12} muted numberOfLines={1}>
-                        {d.copied_from.username ? t.listCopiedFrom(`@${d.copied_from.username}`) : t.listCopiedFromHidden}
-                      </Text>
-                    </Pressable>
-                  ) : null}
                 </View>
                 {d && d.playlist !== null ? (
                   <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
@@ -567,12 +543,12 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
               />
             )}
 
-            {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الحفظ · 💬 الآراء · ★ المتوسّط وبابُ رأيي. للمعلنة وحدَها */}
+            {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الإعجاب (249) · 💬 الآراء · ★ المتوسّط وبابُ رأيي · و«احفظ» في طرفه. للمعلنة وحدَها */}
             {d?.is_public ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 16, marginHorizontal: PAGE_PAD, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-                <Pressable disabled={!d.can_save || saving} onPress={() => void toggleSave()} hitSlop={8} accessibilityLabel={d.saved_by_me ? t.listUnsaveLabel : t.listSaveBtn} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Icon name={d.can_save && !d.saved_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
-                  <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.saves, locale)}</Text>
+                <Pressable disabled={!d.can_save || liking} onPress={() => void toggleLike()} hitSlop={8} accessibilityLabel={d.liked_by_me ? t.listUnlikeLabel : t.listLikeLabel} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Icon name={d.can_save && !d.liked_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
+                  {(d.likes ?? 0) > 0 ? <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.likes ?? 0, locale)}</Text> : null}
                 </Pressable>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Icon name="comment" size={18} color={tokens.accent} />
@@ -582,16 +558,16 @@ export function ListScreen({ id, from, justCopied = false }: { id: string; from:
                   <Icon name={d.my_review ? "star-filled" : "star"} size={18} color={tokens.accent} />
                   <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{d.rating !== null ? d.rating.toFixed(1) : num(0, locale)}</Text>
                 </Pressable>
-                {/* 🆕 233 — **«انسخها لقوائمي» في طرف الصفّ داخل إطار** (حكمُ أحمد بالصورة: «أ»، العلامةُ صفراءُ والكتابةُ
-                    رماديّة) — الرقاقةُ نفسُها (`Chip`)، لا زرٌّ ثالث. **قيس على ٣٦٠**: الصفُّ كاملٌ بلا سطرٍ ثانٍ */}
-                {d.can_copy ? (
+                {/* 🆕 249 — **«احفظ» مكانَ «انسخها لقوائمي»** بعد إزالة النسخ (صورةُ page-B المعتمدة): الرقاقةُ نفسُها
+                    (`Chip`)، الإشارةُ صفراءُ والكلمةُ رماديّة — ممتلئةً و«محفوظة» حين تكون في قوائمك */}
+                {d.can_save ? (
                   <View style={{ marginStart: "auto" }}>
                     <Chip
-                      label={t.listCopyBtn}
+                      label={d.saved_by_me ? t.listSavedBtn : t.listSaveChip}
                       active={false}
                       size="md"
-                      onPress={() => void copy()}
-                      leading={<Icon name="copy" size={16} color={tokens.accent} />}
+                      onPress={() => void toggleSave()}
+                      leading={<Icon name={d.saved_by_me ? "bookmark-filled" : "bookmark"} size={16} color={tokens.accent} />}
                     />
                   </View>
                 ) : null}

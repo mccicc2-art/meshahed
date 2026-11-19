@@ -61,7 +61,7 @@ export async function GET() {
 
     const [stats, metas] = await Promise.all([
       getListCardStats(shown.filter((l) => l.is_public).map((l) => l.id)).catch(
-        () => new Map<string, { saves: number; reviews: number; rating: number | null }>(),
+        () => new Map<string, { saves: number; likes: number; reviews: number; rating: number | null }>(),
       ),
       getTitleMetaFor(followRows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id }))).catch(
         () => new Map(),
@@ -108,6 +108,7 @@ export async function GET() {
         item_count: l.item_count,
         posters: l.posters ?? [],
         saves: st?.saves ?? 0,
+        likes: st?.likes ?? 0,
         reviews: st?.reviews ?? 0,
         rating: st?.rating ?? null,
         count_label:

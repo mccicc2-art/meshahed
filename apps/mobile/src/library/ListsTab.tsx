@@ -155,11 +155,12 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
     countText: l.count_label ?? t.listCount(l.item_count),
     posters: l.posters,
     cover: l.cover,
-    stats: { saves: l.saves, reviews: l.reviews, rating: l.rating },
+    stats: { saves: l.saves, likes: l.likes ?? 0, reviews: l.reviews, rating: l.rating },
     /* ولا مفتاحَ لقائمةٍ فارغة (شرطُ D-563 حرفاً) */
     playlist: l.playlist === null || l.item_count <= 0 ? null : l.playlist,
     canSave: l.can_save,
     savedByMe: l.saved_by_me,
+    likedByMe: l.liked_by_me,
     canReview: !!l.can_review,
     hasMyReview: !!l.my_review,
   });
@@ -228,6 +229,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                 <ListCard
                   card={toCard(l)}
                   busy={busyId === l.id}
+                  onError={fail}
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
                   onPlaylist={(on) => void setPlaylist(l, on)}
                   onShare={() => share(l)}
@@ -286,9 +288,10 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                 <ListCard
                   card={toCard(l)}
                   busy={busyId === l.id}
+                  onError={fail}
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
                   onPlaylist={(on) => void setPlaylist(l, on)}
-                  onSave={(save) => void setSaved(l, save)}
+                  onSave={(save) => setSaved(l, save)}
                   onRate={() => setRating(l)}
                 />
               </View>

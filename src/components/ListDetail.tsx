@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteList,
@@ -13,6 +13,7 @@ import {
   setSavedListPlaylist,
   toggleInList,
   saveList,
+  likeList,
 } from "@/lib/actions";
 import { posterUrl } from "@/core/media";
 import { profileHref } from "@/core/people";
@@ -32,7 +33,7 @@ import { buttonClass } from "./ui/Button";
 import { HEADER_ICON } from "./ui/controls";
 import { QuickAdd } from "./QuickAdd";
 import { RailScroll } from "./RailScroll";
-import { ListCopyChip } from "./ListCopyChip";
+import { ListSaveChip } from "./ListSaveChip";
 import { ListInviteBanner, ListMembersRow } from "./ListMembers";
 import type { ListMember } from "@/core/contracts/library";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
@@ -92,10 +93,9 @@ export function ListDetail({
   reviewsSlot,
   libState,
   initialPlaylist,
-  saves,
+  likes,
+  initialLiked,
   initialSavedPlaylist,
-  canCopy = false,
-  copiedFrom = null,
   members = [],
   myMembership = null,
   canInvite = false,
@@ -103,10 +103,10 @@ export function ListDetail({
 }: {
   /** 🆕 تجربةُ Loopz+ (D-773ب) — `isPlus || isPartner` عند المستدعي */
   brandPlus?: boolean;
-  /** 🆕 233 — رقاقةُ «انسخها لقوائمي» في طرف شريط الحال: لغيري، معلنةٌ، وليست من قوائم لوبز (٥ب) */
-  canCopy?: boolean;
-  /** 🆕 233 — «من قائمة @فلان» في صفِّ التعريف (٢أ) — الأصلُ المعلنُ وحدَه؛ `username` غائبٌ لمن أخفى اسمه */
-  copiedFrom?: { listId: string; username: string | null } | null;
+  /** 🆕 249 — عددُ المعجبين لخانة ♥ (القلبُ صار إعجاباً منفصلاً عن الحفظ) — الغيابُ صفر */
+  likes?: number;
+  /** 🆕 249 — «أأعجبتني؟» — `null`/غائبٌ لزائرٍ بلا حساب أو لصاحبها فالقلبُ ساكن */
+  initialLiked?: boolean | null;
   /** 🆕 234 — القائمةُ المشتركة: أعضاؤها (صاحبُها أوّلاً، والمعلّقون لصاحبها وحدَه) — `[]` لقائمةٍ لم تُشارَك */
   members?: ListMember[];
   /** 🆕 234 — عضويّتي: «pending» ⇒ الدعوةُ فوق القائمة · «active» ⇒ أضيف وأحذف (٣أ) */
@@ -192,7 +192,7 @@ export function ListDetail({
   libState?: Record<string, TitleState>;
   /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
   initialPlaylist?: boolean | null;
-  /** 🆕 **عددُ من حفظها** (D-677) — لخانة ♥ في شريط الحال؛ الغيابُ صفر */
+  /** عددُ من حفظها (D-677) — لم يعد يُعرض: خانةُ ♥ صارت للإعجاب (249) */
   saves?: number;
   /** 🆕 **رايةُ تشغيلي على المحفوظة** (D-674/١٤٩) — لغير المالك؛
       `null` = زائرٌ بلا حساب فلا مفتاح */
@@ -203,7 +203,34 @@ export function ListDetail({
   const [pending, start] = useTransition();
   /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
   const [saved, setSaved] = useState(initialSaved ?? false);
-  const canSave = !isOwner && initialSaved !== undefined && initialSaved !== null;
+  /* 🆕 249 — **والمعلنةُ وحدَها**: سياستا `list_saves` و`list_likes` تشترطان `is_public`،
+     فعضوُ قائمةٍ خاصّةٍ مشترَكة (٢٣٤) كان يرى ♥ و«احفظ» يتراجعان بخطأ عند كلِّ ضغطة —
+     وزرٌّ يفشل عند الضغط وعدٌ كاذب (D-217). وهو شرطُ `can_save` في واجهة التطبيق حرفاً. */
+  const canSave = isPublic && !isOwner && initialSaved !== undefined && initialSaved !== null;
+  /* 🆕 249 — الإعجابُ منفصلٌ عن الحفظ (أحمد ١٩ نوفمبر ٢٠٢٦): متفائلٌ مع تراجُع كأخيه، وشرطُه شرطُه */
+  const [liked, setLiked] = useState(!!initialLiked);
+  const canLike = canSave && initialLiked !== undefined && initialLiked !== null;
+  const likeCount = Math.max(0, (likes ?? 0) + (liked ? 1 : 0) - (initialLiked ? 1 : 0));
+  /* 🆕 249 — **نداءٌ واحدٌ في الطريق لكلِّ مفتاح**: ضغطاتٌ سريعةٌ متتالية كانت تُطلق
+     «أعجب/ألغِ/أعجب» معاً، **وإن وصلت بغير ترتيبها خالف الخادمُ ما تراه** — فالضغطةُ
+     أثناء الطلب تُهمَل حتى يعود. */
+  const likeBusy = useRef(false);
+  const saveBusy = useRef(false);
+  function toggleLike() {
+    if (likeBusy.current) return;
+    likeBusy.current = true;
+    const next = !liked;
+    tap(next ? [12, 30] : 8);
+    setLiked(next);
+    likeList(listId, next)
+      .catch((e) => {
+        setLiked(!next);
+        flashError((e as Error).message);
+      })
+      .finally(() => {
+        likeBusy.current = false;
+      });
+  }
   /* 🆕 رايةُ قائمة التشغيل (D-505) — متفائلةٌ مع تراجُع كالحفظ سواء.
      ⚖️ 🆕 **ولغير المالك رايتُه على صفِّ حفظه** (D-674/D-677): **حالةٌ
      واحدةٌ وكاتبان لأن المالكَ اثنان** — `setListPlaylist` لقائمتك
@@ -224,6 +251,8 @@ export function ListDetail({
   }
 
   function toggleSave() {
+    if (saveBusy.current) return;
+    saveBusy.current = true;
     const next = !saved;
     tap(next ? [12, 30] : 8);
     setSaved(next);
@@ -247,6 +276,9 @@ export function ListDetail({
       .catch((e) => {
         setSaved(!next);
         flashError((e as Error).message);
+      })
+      .finally(() => {
+        saveBusy.current = false;
       });
   }
   const [removed, setRemoved] = useState<Set<string>>(new Set());
@@ -649,17 +681,6 @@ export function ListDetail({
             {t.listShared}
           </span>
         )}
-        {copiedFrom && (
-          <Link
-            href={`/lists/${copiedFrom.listId}`}
-            className="inline-flex items-center gap-1.5 text-12 text-muted hover:text-foreground transition min-w-0"
-          >
-            <Icon name="copy" size={14} className="text-accent shrink-0" />
-            <span className="truncate">
-              {copiedFrom.username ? t.listCopiedFrom(`@${copiedFrom.username}`) : t.listCopiedFromHidden}
-            </span>
-          </Link>
-        )}
       </div>
 
 
@@ -786,30 +807,30 @@ export function ListDetail({
         </div>
       ) : null}
       <div className="flex items-center gap-5 mt-4 mb-5 pb-4 border-b border-[color:var(--divider)] min-w-0 desk:mt-0 desk:flex-wrap desk:gap-y-3">
-        {canSave ? (
+        {/* ⚖️ 🆕 249 — **القلبُ إعجابٌ لا حفظ** (أحمد ١٩ نوفمبر ٢٠٢٦) — ينقض D-324 «القلبُ هو الحفظ» بكلمة صاحبه:
+            كان يضيف القائمةَ إلى قوائمك. والحفظُ رقاقةُ «احفظ» في طرف الصفّ (صورةُ page-B). */}
+        {canLike ? (
           <button
             type="button"
-            onClick={toggleSave}
-            aria-pressed={saved}
-            aria-label={saved ? t.listSavedBtn : t.listSaveBtn}
-            title={saved ? t.listSavedBtn : t.listSaveBtn}
+            onClick={toggleLike}
+            aria-pressed={liked}
+            aria-label={liked ? t.listUnlikeLabel : t.listLikeLabel}
+            title={liked ? t.listUnlikeLabel : t.listLikeLabel}
             className="flex items-center gap-2 text-15 font-bold tabular-nums transition active:scale-95"
             dir="ltr"
           >
             <Icon
-              name={saved ? "heart-filled" : "heart"}
+              name={liked ? "heart-filled" : "heart"}
               size={19}
-              className={`text-accent ${saved ? "fill-current" : ""}`}
+              className={`text-accent ${liked ? "fill-current" : ""}`}
             />
-            {num(
-              Math.max(0, (saves ?? 0) + (saved ? 1 : 0) - (initialSaved ? 1 : 0)),
-              locale,
-            )}
+            {/* **والصفرُ لا يُطبع** (D-219) — قلبٌ فارغٌ يقول «لا أحد» بلا رقم */}
+            {likeCount > 0 && num(likeCount, locale)}
           </button>
         ) : (
           <span className="flex items-center gap-2 text-15 font-bold tabular-nums" dir="ltr">
             <Icon name="heart-filled" size={19} className="fill-current text-accent" />
-            {num(saves ?? 0, locale)}
+            {(likes ?? 0) > 0 && num(likes ?? 0, locale)}
           </span>
         )}
         <span className="flex items-center gap-2 text-15 font-bold tabular-nums" dir="ltr">
@@ -825,8 +846,8 @@ export function ListDetail({
             </span>
           )}
         </span>
-        {/* 🆕 233 — **النسخُ في طرف الصفّ** (حكمُ أحمد بالصورة: «أ» داخل إطار) */}
-        {canCopy && <ListCopyChip listId={listId} name={name} locale={locale} />}
+        {/* 🆕 249 — **«احفظ» في طرف الصفّ مكانَ «انسخها لقوائمي»** بعد إزالة النسخ (صورةُ page-B المعتمدة) */}
+        {canSave && <ListSaveChip on={saved} onToggle={toggleSave} locale={locale} />}
         {(isOwner
           ? initialPlaylist !== null && initialPlaylist !== undefined
           : initialSavedPlaylist !== null && initialSavedPlaylist !== undefined && saved) &&
@@ -839,7 +860,9 @@ export function ListDetail({
               aria-pressed={playlist}
               aria-label={t.listPlaylist}
               title={t.listPlaylist}
-              className="ms-auto shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95"
+              /* 🆕 249 — **و«احفظ» قبله يأخذ الدفعةَ إلى الطرف** (`ms-auto` فيه): دفعتان في صفٍّ واحدٍ
+                 تقسمان الفراغَ بينهما فتجلس الرقاقةُ في الوسط — فالمفتاحُ يلاصقها حين تُرسم. */
+              className={`${canSave ? "" : "ms-auto "}shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95`}
             >
               <span className={`text-14 font-bold ${playlist ? "" : "text-muted"}`}>
                 {playlist ? t.toWatchOn : t.toWatchOff}

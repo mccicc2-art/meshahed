@@ -6,7 +6,8 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { getDict, num, type Locale } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
-import { ListSaveHeart } from "./ListSaveHeart";
+import { ListLikeHeart } from "./ListLikeHeart";
+import { ListSaveMark } from "./ListSaveChip";
 import { ListPlayToggle } from "./ListPlayToggle";
 import { ListRateStar } from "./ListRateStar";
 import type { PublicListCard } from "@/lib/data";
@@ -289,12 +290,14 @@ export function CommunityListCard({
           </span>
         )
       }
+      /* 🆕 249 — **القلبُ إعجابٌ والحفظُ إشارةٌ في الزاوية السفلى** (أحمد ١٩ نوفمبر ٢٠٢٦، صورةُ card-B): كان القلبُ
+         يحفظ فيضيف القائمةَ إلى قوائمك؛ صار يُعجب وحدَه، ورقمُه عددُ المعجبين. */
       heart={
         l.can_save ? (
-          <ListSaveHeart
+          <ListLikeHeart
             listId={l.id}
-            saved={l.saved_by_me}
-            count={l.saves ?? 0}
+            liked={l.liked_by_me}
+            count={l.likes ?? 0}
             locale={locale}
           />
         ) : (
@@ -303,10 +306,12 @@ export function CommunityListCard({
             dir="ltr"
           >
             <Icon name="heart-filled" size={15} className="fill-current text-accent" />
-            {num(l.saves ?? 0, locale)}
+            {/* **والصفرُ لا يُطبع** (D-219) — كالقلب التفاعليّ جارِه */}
+            {(l.likes ?? 0) > 0 && num(l.likes ?? 0, locale)}
           </span>
         )
       }
+      save={l.can_save ? <ListSaveMark listId={l.id} saved={l.saved_by_me} locale={locale} /> : null}
       comments={
         <span
           className="shrink-0 flex items-center gap-1 text-12 text-muted tabular-nums"
@@ -380,6 +385,7 @@ export function ListCardShell({
   icon,
   star,
   play,
+  save,
   heart,
   comments,
   action,
@@ -396,6 +402,8 @@ export function ListCardShell({
   star?: React.ReactNode;
   /** رقاقةُ التشغيل/الإيقاف (D-674) — طرفُ شريط الحال */
   play?: React.ReactNode;
+  /** 🆕 249 — إشارةُ الحفظ في الزاوية السفلى (صورةُ card-B) — آخرُ شريط الحال بعد رقاقة التشغيل */
+  save?: React.ReactNode;
   heart?: React.ReactNode;
   /** 🆕 عدُّ الآراء (D-677) — خانةُ 💬 في شريط الحال */
   comments?: React.ReactNode;
@@ -492,7 +500,7 @@ export function ListCardShell({
           {extra ?? ""}
         </span>
 
-        {(stats.length > 0 || play) && (
+        {(stats.length > 0 || play || save) && (
           <span className="mt-auto pt-3 flex items-center min-w-0">
             {stats.length > 0 && (
               /* **هالةُ العنقود المحلّيّة** (D-686): أرضيّةٌ بعرض محتواه
@@ -509,7 +517,12 @@ export function ListCardShell({
                 ))}
               </span>
             )}
-            {play && <span className="ms-auto ps-2 shrink-0">{play}</span>}
+            {(play || save) && (
+              <span className="ms-auto ps-2 shrink-0 flex items-center gap-2">
+                {play}
+                {save}
+              </span>
+            )}
           </span>
         )}
       </span>

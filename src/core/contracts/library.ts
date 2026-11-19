@@ -110,6 +110,8 @@ export type LibraryListCard = {
   item_count: number;
   posters: string[];
   saves: number;
+  /** 🆕 249 — عددُ المعجبين (القلبُ صار إعجاباً). اختياريٌّ لترتيب الكوميتات (D-028) */
+  likes?: number;
   reviews: number;
   rating: number | null;
   /** «تمتلئ وحدَها» أو «N مسلسلاً · M فيلماً» — وإلّا `listCount` */
@@ -123,6 +125,8 @@ export type LibraryListCard = {
   /** أستطيع الحفظ/إلغاءه (قائمةُ غيري) و«هل حفظتُها» */
   can_save: boolean;
   saved_by_me: boolean;
+  /** 🆕 249 — «أأعجبتني؟» — شرطُ الإعجاب شرطُ الحفظ (`can_save`) */
+  liked_by_me?: boolean;
   /** D-948 — بابُ التقييم (قائمةٌ عامّةٌ ليست لي) ورأيي القائم — كـ`ListRateStar` */
   can_review?: boolean;
   my_review?: { rating: number; body: string | null; has_spoiler: boolean } | null;
@@ -171,9 +175,8 @@ export type ListReviewReplyBody = { listId: string; reviewUserId: string; body: 
 export type ListReplyDeleteBody = { listId: string; replyId: string };
 export type ListReplyRow = { reply_id: string; review_user_id: string; parent_id: string | null; name: string; username: string | null; avatar_url: string | null; body: string; created_at: string; mine: boolean };
 export type SaveListBody = { listId: string; save: boolean };
-/** 🆕 233 — `POST /api/v1/lists/copy`: نسخُ قائمةِ غيري إلى قوائمي. `created: false` = نسختي الموجودة أُعيدت */
-export type CopyListBody = { listId: string };
-export type CopyListPayload = { id: string; created: boolean };
+/** 🆕 249 — `POST /api/v1/lists/like`: إعجابٌ بقائمةِ غيري أو سحبُه (منفصلٌ عن الحفظ). والنسخُ أُزيل مع بابه */
+export type LikeListBody = { listId: string; like: boolean };
 /** 🆕 234 — `POST /api/v1/lists/members`: دعوةٌ (صاحبُها) · ردٌّ على دعوة (المدعوّ) · إزالةٌ أو مغادرة */
 export type ListMembersBody =
   | { listId: string; action: "invite"; userIds: string[] }
@@ -220,10 +223,12 @@ export type ListDetailPayload = {
   owner: { name: string; username: string | null; avatar: string | null } | null;
   items: ListDetailItem[];
   saves: number;
+  /** 🆕 249 — عددُ المعجبين لخانة ♥ — اختياريٌّ لترتيب الكوميتات */
+  likes?: number;
   reviews: number;
   rating: number | null;
   can_save: boolean;
-  /** 🆕 233 — رقاقةُ «انسخها لقوائمي»: لغيري، معلنةٌ، وليست من قوائم لوبز (٥ب). اختياريٌّ لترتيب الكوميتات (D-028) */
+  /** 🗑️ 249 — النسخُ أُزيل: الخادمُ يعيد `false` دائماً لتُخفي نسخُ التطبيق القديمة رقاقتَها */
   can_copy?: boolean;
   /** 🆕 233 — «من قائمة @فلان» (٢أ): الأصلُ المعلنُ وحدَه؛ `username` غائبٌ لمن أخفى اسمه */
   copied_from?: { list_id: string; username: string | null; name: string | null } | null;
@@ -236,6 +241,8 @@ export type ListDetailPayload = {
   /** 🆕 234 — إضافةُ الأعمال وحذفُها: لصاحبها وللعضو الفعّال (٣أ) — لا ترتيبَ ولا تحرير للعضو */
   can_edit_items?: boolean;
   saved_by_me: boolean;
+  /** 🆕 249 — «أأعجبتني؟» */
+  liked_by_me?: boolean;
   can_review: boolean;
   my_review: { rating: number; body: string | null; has_spoiler: boolean } | null;
   /** آراءُ الناس **للقراءة** (الأحدثُ، حتّى ٣٠) بشكل صفِّ رأي العمل نفسِه؛ الردودُ والقلوبُ أعدادٌ — كتابتُهما في الويب */

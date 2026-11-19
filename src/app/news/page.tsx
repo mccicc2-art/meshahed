@@ -5,6 +5,7 @@ import {
   getPublicListsFeed,
   getForYouLists,
   getMySavedListIds,
+  getMyLikedListIds,
   getListCardsByIds,
   getCuratedListIds,
   getListCardStats,
@@ -27,7 +28,8 @@ import { redirect } from "next/navigation";
 import { isPlus } from "@/core/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
-import { ListSaveHeart } from "@/components/ListSaveHeart";
+import { ListLikeHeart } from "@/components/ListLikeHeart";
+import { ListSaveMark } from "@/components/ListSaveChip";
 import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { TrailerRail } from "@/components/TrailerRail";
@@ -498,7 +500,7 @@ async function ListsDiscovery({
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
   /* 🆕 **وسقط `getTopSavedLists` من هذه الصفحة مع رفّه** (D-363) —
      **ونداءٌ بلا قارئٍ يُحذف لا يُترك يدور** (D-214/D-257). */
-  const [forYouRows, savedIds, me, curated, trending] = await Promise.all([
+  const [forYouRows, savedIds, me, curated, trending, likedIds] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
     getUser().catch(() => null),
@@ -515,6 +517,8 @@ async function ListsDiscovery({
        هادئ، **وصفٌّ يظهر ويختفي بلا سببٍ يراه القارئ أسوأُ من صفٍّ
        أبطأ.** */
     getTopSavedListCards(30, 12).catch(() => []),
+    /* 🆕 249 — «أأعجبتني؟» لقلب بطاقات قوائم لوبز (القلبُ صار إعجاباً منفصلاً عن الحفظ) */
+    getMyLikedListIds().catch(() => new Set<string>()),
   ]);
   /* 🔴 **وقوائمُ لوبز المنسّقة لا تُقترح في صفٍّ فوق صفوفها** (D-331).
      يومَ وُلِّدت الاثنتان والأربعون (D-330) صارت صفوفاً **حقيقيّةً** في
@@ -663,6 +667,7 @@ async function ListsDiscovery({
                       t={t}
                       listId={curated.get(u.slug) ?? ""}
                       saved={savedIds.has(curated.get(u.slug) ?? "")}
+                      liked={likedIds.has(curated.get(u.slug) ?? "")}
                       stats={curatedStats.get(curated.get(u.slug) ?? "") ?? null}
                       items={curatedCounts.get(curated.get(u.slug) ?? "")}
                       mine={curatedMine.get(curated.get(u.slug) ?? "") ?? null}
@@ -823,6 +828,7 @@ async function CuratedCard({
   t,
   listId,
   saved,
+  liked,
   mine,
   canReview,
   stats,
@@ -843,13 +849,15 @@ async function CuratedCard({
    */
   listId?: string;
   saved?: boolean;
+  /** 🆕 249 — «أأعجبتني؟» — القلبُ إعجابٌ والحفظُ إشارةٌ في الزاوية السفلى */
+  liked?: boolean;
   /** 🆕 رأيي القائم في هذه القائمة (D-352) — يملأ ورقةَ النجمة */
   mine?: { rating: number; body: string | null; hasSpoiler: boolean } | null;
   /** **قوائمُ لوبز عامّةٌ وليست لأحدٍ منّا** — فالشرطُ الباقي: أن يكون لك حساب */
   canReview?: boolean;
   /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
       رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
-  stats?: { saves: number; reviews?: number; rating: number | null } | null;
+  stats?: { saves: number; likes?: number; reviews?: number; rating: number | null } | null;
   /**
    * 🆕 **العدُّ الحقيقيُّ من القائمة المولَّدة** (البند ٢).
    *
@@ -957,13 +965,14 @@ async function CuratedCard({
             {num(stats?.reviews ?? 0, locale)}
           </span>
         }
-        /* 🔴 **القلبُ وحدَه — وسقط البوك‑مارك ومعه النسخ** (D-347) */
+        /* ⚖️ 🆕 249 — **القلبُ إعجابٌ والحفظُ إشارةٌ في الزاوية السفلى** (أحمد ١٩ نوفمبر ٢٠٢٦، صورةُ card-B) —
+           ينقض «القلبُ وحدَه — وسقط البوك‑مارك» (D-347) بكلمة صاحبه: القلبُ كان يحفظ فيضيفها إلى قوائمك. */
         heart={
           listId ? (
-            <ListSaveHeart
+            <ListLikeHeart
               listId={listId}
-              saved={saved}
-              count={stats?.saves ?? 0}
+              liked={liked}
+              count={stats?.likes ?? 0}
               locale={locale}
             />
           ) : (
@@ -972,10 +981,12 @@ async function CuratedCard({
               dir="ltr"
             >
               <Icon name="heart-filled" size={15} className="fill-current text-accent" />
-              {num(stats?.saves ?? 0, locale)}
+              {/* **والصفرُ لا يُطبع** (D-219) */}
+              {(stats?.likes ?? 0) > 0 && num(stats?.likes ?? 0, locale)}
             </span>
           )
         }
+        save={listId ? <ListSaveMark listId={listId} saved={saved} locale={locale} /> : null}
         ownerAvatar={
           <Avatar
             src={LOOPZ_PERSON.avatar_url}

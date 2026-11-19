@@ -5,7 +5,7 @@ import {
   getUser,
   getProfile,
   getList,
-  getListOrigin,
+  getMyListLike,
   getPublicList,
   getMyListSave,
   getListCardStats,
@@ -144,7 +144,7 @@ export default async function ListPage({
     social,
     replies,
     meProfile,
-    origin,
+    myLike,
   ] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
     /* 🆕 **الحالتان من صفِّ الحفظ نفسِه** (D-677): «أحفظتُها؟»
@@ -164,8 +164,8 @@ export default async function ListPage({
     data.list.is_public ? getListReviewSocial([id]) : Promise.resolve(new Map()),
     data.list.is_public ? getListReviewReplies(id) : Promise.resolve([]),
     getMyProfileLite().catch(() => null),
-    /* 🆕 233 — «من قائمة @فلان»: قراءةٌ خفيفةٌ للأصل المعلن، لا شيءَ للقوائم غير المنسوخة */
-    getListOrigin(data.list.copied_from),
+    /* 🆕 249 — «أأعجبتني؟» — لغير المالك وفي المعلنة وحدَها: الخاصّةُ لا يُعجَب بها (شرطُ `list_likes`) */
+    isOwner || !data.list.is_public ? Promise.resolve(null) : getMyListLike(id),
   ]);
 
   /* 🆕 234 — **أعضاءُ القائمة المشتركة** — القارئُ نفسُه الذي يقرأ منه مسارُ التطبيق (`shapeListMembers`) */
@@ -257,6 +257,8 @@ export default async function ListPage({
         locale={locale}
         initialSaved={isOwner ? null : mySave === null ? null : mySave.saved}
         saves={cardStats.get(id)?.saves ?? 0}
+        likes={cardStats.get(id)?.likes ?? 0}
+        initialLiked={isOwner ? null : myLike}
         initialSavedPlaylist={isOwner ? null : mySave === null ? null : mySave.playlist}
         /* 🆕 رايةُ قائمة التشغيل (D-505) — للمالك وحدَه، وغيابُ العمود
            (قبل هجرة ١٢٢) يصل `undefined` فلا يُرسم الصفُّ أصلاً */
@@ -264,8 +266,6 @@ export default async function ListPage({
           isOwner && data.list.is_playlist !== undefined ? !!data.list.is_playlist : null
         }
         /* 🆕 233 — النسخُ لغيري من المعلنة، ولا قوائمُ لوبز (٥ب) — والحارسُ الحقيقيُّ `copy_list` */
-        canCopy={!!user && !isOwner && data.list.is_public && !data.list.source_slug}
-        copiedFrom={origin ? { listId: origin.id, username: origin.username } : null}
         members={members}
         myMembership={myMembership}
         canInvite={isOwner && data.list.kind !== "smart" && !data.list.source_slug}

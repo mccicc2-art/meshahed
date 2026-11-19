@@ -38,6 +38,8 @@ export type ProfileList = {
   owner: string | null;
   owner_avatar: string | null;
   saves: number;
+  /** 🆕 249 — عددُ المعجبين (القلبُ صار إعجاباً). اختياريٌّ لترتيب الكوميتات */
+  likes?: number;
   reviews: number;
   rating: number | null;
 };

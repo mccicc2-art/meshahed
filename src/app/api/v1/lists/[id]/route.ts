@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getList, getListOrigin, getPublicList, getMyListSave, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, getListReviewReplies, listReviewKey, getUserId } from "@/lib/data";
+import { getList, getPublicList, getMyListSave, getMyListLike, getListCardStats, getMyListReview, getListReviews, getListReviewSocial, getListReviewReplies, listReviewKey, getUserId } from "@/lib/data";
 import { displayNameOf } from "@/core/people";
 import { shapeListMembers } from "@/lib/listMembers";
 import { getDict } from "@/core/i18n";
@@ -44,18 +44,18 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       const mine = !!uid && data.list.user_id === uid;
       const award = data.list.source_slug ? (universeBySlug(data.list.source_slug)?.award ?? null) : null;
 
-      const [pub, mySave, stats, myReview, smart, winners, reviews, social, replies, origin, memberRows] = await Promise.all([
+      const [pub, mySave, stats, myReview, smart, winners, reviews, social, replies, myLike, memberRows] = await Promise.all([
         mine ? Promise.resolve(null) : getPublicList(id),
         mine || !uid ? Promise.resolve(null) : getMyListSave(id),
-        data.list.is_public ? getListCardStats([id]).catch(() => new Map<string, { saves: number; reviews: number; rating: number | null }>()) : Promise.resolve(new Map<string, { saves: number; reviews: number; rating: number | null }>()),
+        data.list.is_public ? getListCardStats([id]).catch(() => new Map<string, { saves: number; likes: number; reviews: number; rating: number | null }>()) : Promise.resolve(new Map<string, { saves: number; likes: number; reviews: number; rating: number | null }>()),
         data.list.is_public && !mine && uid ? getMyListReview(id).catch(() => null) : Promise.resolve(null),
         resolveSmartItems(data.list, locale),
         award ? awardWinners(award).catch(() => []) : Promise.resolve([]),
         data.list.is_public ? getListReviews(id).catch(() => []) : Promise.resolve([]),
         data.list.is_public ? getListReviewSocial([id]).catch(() => new Map()) : Promise.resolve(new Map()),
         data.list.is_public ? getListReviewReplies(id).catch(() => []) : Promise.resolve([]),
-        /* 🆕 233 — «من قائمة @فلان» لكلِّ قارئ: النسخةُ المعلنةُ تنسب أصلَها لزوّارها أيضاً */
-        getListOrigin(data.list.copied_from),
+        /* 🆕 249 — «أأعجبتني؟» — القلبُ صار إعجاباً منفصلاً عن الحفظ */
+        mine || !uid ? Promise.resolve(null) : getMyListLike(id),
         /* 🆕 234 — قوائمُ لوبز لا تُشارَك: لا نداءَ لها */
         Promise.resolve(!data.list.source_slug),
       ]);
@@ -101,17 +101,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           added_by: members.length ? ((r as { added_by?: string | null }).added_by ?? null) : null,
         })),
         saves: st?.saves ?? 0,
+        likes: st?.likes ?? 0,
         reviews: st?.reviews ?? 0,
         rating: st?.rating ?? null,
         can_save: !!uid && !mine && data.list.is_public,
-        /* 🆕 233 — النسخُ لغيري من المعلنة، ولا قوائمُ لوبز (٥ب: حفظٌ فقط) — والحارسُ الحقيقيُّ `copy_list` */
-        can_copy: !!uid && !mine && data.list.is_public && !curated,
-        copied_from: origin ? { list_id: origin.id, username: origin.username, name: origin.nickname } : null,
+        /* 🗑️ 249 — **النسخُ أُزيل** (أحمد: «قراري ازالة النسخ — تقدر تحفظ اللستة»). `false` صريحٌ لا غياب: نسخُ
+           التطبيق التي لم يصلها التحديثُ بعدُ تقرأ الحقلَ فتُخفي رقاقتَها، والقاعدةُ ترفض النسخَ أصلاً (٢٤٩) */
+        can_copy: false,
+        copied_from: null,
         members,
         my_membership,
         can_invite: mine && !smart.rule && !curated,
         can_edit_items: (mine || my_membership === "active") && !smart.rule,
         saved_by_me: !!mySave?.saved,
+        liked_by_me: !!myLike,
         can_review: !!uid && !mine && data.list.is_public,
         review_rows: reviews.slice(0, 30).map((r) => {
           const soc = social.get(listReviewKey(id, r.userId));

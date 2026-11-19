@@ -148,7 +148,7 @@ export function LibraryGrid({
   playlistIds?: string[];
   /** 🆕 **أرقامُ قوائمي العامّة** (D-350) — تُقرأ في الصفحة مرّةً لا لكلِّ
       بطاقة (D-206)، **وغيابُها يعيد البطاقةَ كما كانت** (D-152) */
-  listStats?: Map<string, { saves: number; rating: number | null }>;
+  listStats?: Map<string, { saves: number; likes?: number; rating: number | null }>;
   /**
    * 🆕 **كم قائمةً محفوظةً عندي** (D-374) — **عدّادُ التبويب يجمع
    * قوائمي وما حفظتُه**، لأن اللوحَ تحته يعرض الاثنين. **ورقمٌ في رأس

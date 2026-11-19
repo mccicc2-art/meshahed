@@ -221,9 +221,9 @@ export default async function LibraryPage({
   const listStats =
     initialTab === "lists"
       ? await getListCardStats(lists.filter((l) => l.is_public).map((l) => l.id)).catch(
-          () => new Map<string, { saves: number; rating: number | null }>(),
+          () => new Map<string, { saves: number; likes?: number; rating: number | null }>(),
         )
-      : new Map<string, { saves: number; rating: number | null }>();
+      : new Map<string, { saves: number; likes?: number; rating: number | null }>();
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة — كانت الرئيسية وحدها تكتب،
   // فمن مدخله تبويب المكتبة يعيد دفع كلفة TMDB في كل زيارة

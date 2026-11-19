@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { I18nManager, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
@@ -6,6 +6,10 @@ import { Text } from "../ui";
 import { radius, tokensOf, type Tokens } from "../theme";
 import { Icon } from "../icons";
 import { posterFor } from "../poster";
+import { avatarSource } from "../avatarSource";
+import { qk, queryClient, write } from "../api";
+import { haptic } from "../haptics";
+import type { LikeListBody, SaveListBody } from "@/core/contracts/library";
 import { num } from "@/core/i18n";
 import { themeById, themeScheme } from "@/core/themes";
 
@@ -57,12 +61,14 @@ export type ListCardData = {
   posters: string[];
   cover: string | null;
   /** شريطُ الحال — يغيب كلُّه لبطاقة «للمشاهدة» (لا حفظَ لها ولا رأيَ ولا تقييم) */
-  stats: { saves: number; reviews: number; rating: number | null } | null;
+  stats: { saves: number; likes?: number; reviews: number; rating: number | null } | null;
   /** `null` = لا مفتاحَ (لا نعرف الراية أو القائمةُ فارغة — D-217) */
   playlist: boolean | null;
-  /** القلبُ فعلٌ (قائمةُ غيري) — وإلّا رقمٌ ساكن */
+  /** 🆕 249 — الحفظُ (قائمةُ غيري): إشارةٌ في الزاوية السفلى (صورةُ card-B) — والقلبُ صار إعجاباً */
   canSave?: boolean;
   savedByMe?: boolean;
+  /** 🆕 249 — القلبُ فعلُ إعجابٍ (شرطُه شرطُ الحفظ) — وإلّا رقمٌ ساكن */
+  likedByMe?: boolean;
   /** D-948 — ★ فعلٌ لقائمة غيري (`ListRateStar`): ممتلئةٌ ولونُ التمييز حين لي رأي */
   canReview?: boolean;
   hasMyReview?: boolean;
@@ -78,6 +84,7 @@ export function ListCard({
   onSave,
   onRate,
   busy,
+  onError,
 }: {
   card: ListCardData;
   onPress: () => void;
@@ -85,9 +92,12 @@ export function ListCard({
   onShare?: () => void;
   /** 🆕 D-952 — قائمةُ مكتبةٍ ذكيّةٌ لي: بابُ تعديل شرطها (`/library?edit=<id>`) */
   onEdit?: { label: string; onPress: () => void };
-  onSave?: (save: boolean) => void;
+  /** يُرجع وعدَ كتابته إن كان له — فيبقى حارسُ الضغطة المزدوجة قائماً حتى يستقرّ */
+  onSave?: (save: boolean) => void | Promise<unknown>;
   onRate?: () => void;
   busy?: boolean;
+  /** 🆕 249 — رسالةُ الفشل حين يتراجع ♥ أو الحفظ: السطحُ الذي يملك مضيفَ الرسائل يمرّرها، وغيابُها تراجعٌ صامت */
+  onError?: (e: unknown) => void;
 }) {
   const { t, tokens, locale, themeId } = useApp();
   const light = themeScheme(themeById(themeId)) === "light";
@@ -103,6 +113,76 @@ export function ListCard({
     );
 
   const stats = card.stats;
+  /* 🆕 249 — **القلبُ إعجابٌ والإشارةُ حفظ** (أحمد ١٩ نوفمبر ٢٠٢٦: «لازم يكون فيه اعجاب و الاضافة للقوائم منفصله
+     عنها»). البطاقةُ تكتبهما بنفسها (`/api/v1/lists/like` · `/save`) تفاؤليّاً مع تراجُع — فكلُّ سطحٍ يرسمها يحصل عليهما
+     بلا توصيلٍ في كلِّ مستدعٍ؛ ومن يمرّر `onSave` (محفوظاتُ المكتبة تُحدّث مخزنَها) يبقى كاتبَ الحفظ. */
+  const [liked, setLiked] = useState(!!card.likedByMe);
+  const [saved, setSaved] = useState(!!card.savedByMe);
+  useEffect(() => setLiked(!!card.likedByMe), [card.likedByMe]);
+  useEffect(() => setSaved(!!card.savedByMe), [card.savedByMe]);
+  const likes = Math.max(0, (stats?.likes ?? 0) + (liked === !!card.likedByMe ? 0 : liked ? 1 : -1));
+  /* 🆕 249 — **نداءٌ واحدٌ في الطريق لكلِّ مفتاح**: ضغطاتٌ سريعةٌ كانت تُطلق «أعجب/ألغِ/أعجب» معاً
+     فإن وصلت بغير ترتيبها خالف الخادمُ ما تراه. **وبعد النجاح تُبطَل صفحةُ القائمة المخزَّنة** فلا
+     تُفتح من المخزن بحالتها القديمة. */
+  const likeBusy = useRef(false);
+  const saveBusy = useRef(false);
+  const toggleLike = () => {
+    if (likeBusy.current) return;
+    likeBusy.current = true;
+    const next = !liked;
+    haptic.pick();
+    setLiked(next);
+    write<{ liked: boolean }>("/api/v1/lists/like", { listId: card.id, like: next } satisfies LikeListBody)
+      .then(() => void queryClient.invalidateQueries({ queryKey: qk.list(card.id) }))
+      .catch((e) => {
+        setLiked(!next);
+        onError?.(e);
+      })
+      .finally(() => {
+        likeBusy.current = false;
+      });
+  };
+  const toggleSave = () => {
+    /* والحارسُ قبل الفرعين: ضغطتان في الإطار نفسِه قبل أن يُرسم `busy` كانتا تمرّان إلى `onSave` معاً */
+    if (saveBusy.current) return;
+    if (onSave) {
+      const next = !saved;
+      haptic.pick();
+      setSaved(next);
+      saveBusy.current = true;
+      /* الكاتبُ هنا المستدعي، **ووعدُه يعود إلينا** فيُرفع الحارسُ حين يستقرّ لا قبله */
+      void Promise.resolve(onSave(next)).finally(() => {
+        saveBusy.current = false;
+      });
+      return;
+    }
+    saveBusy.current = true;
+    const next = !saved;
+    haptic.pick();
+    setSaved(next);
+    write<{ saved: boolean }>("/api/v1/lists/save", { listId: card.id, save: next } satisfies SaveListBody)
+      .then(() => void queryClient.invalidateQueries({ queryKey: qk.list(card.id) }))
+      .catch((e) => {
+        setSaved(!next);
+        onError?.(e);
+      })
+      .finally(() => {
+        saveBusy.current = false;
+      });
+  };
+  const saveMark = card.canSave ? (
+    <Pressable
+      onPress={toggleSave}
+      disabled={busy}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityState={{ selected: saved }}
+      accessibilityLabel={saved ? t.listUnsaveLabel : t.listSaveBtn}
+      style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: c.bg + "CC" }}
+    >
+      <Icon name={saved ? "bookmark-filled" : "bookmark"} size={15} color={saved ? c.accent : c.fg} />
+    </Pressable>
+  ) : null;
   return (
     <Pressable
       onPress={onPress}
@@ -177,7 +257,8 @@ export function ListCard({
         {card.owner ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, maxWidth: "58%" }}>
             {card.owner_avatar ? (
-              <Image source={{ uri: card.owner_avatar }} style={{ width: 14, height: 14, borderRadius: 7 }} contentFit="cover" />
+              /* ختمُ لوبز من الأصول لا من الشبكة (`avatarSource`)، وخلفيّتُه `surface2` لأن الرمزَ شفّافٌ — كأفاتاره في المجتمع */
+              <Image source={avatarSource(card.owner_avatar)} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.surface2 }} contentFit="cover" />
             ) : (
               <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.surface2, alignItems: "center", justifyContent: "center" }}>
                 <Text size={8} weight="700" color={c.muted}>{card.owner.slice(0, 1)}</Text>
@@ -190,7 +271,7 @@ export function ListCard({
           {card.countText}
         </Text>
 
-        {stats || play ? (
+        {stats || play || saveMark ? (
           <View style={{ marginTop: "auto", paddingTop: 12, flexDirection: "row", alignItems: "center" }}>
             {stats ? (
               <View
@@ -202,18 +283,23 @@ export function ListCard({
                   marginStart: -6,
                   paddingHorizontal: 8,
                   paddingVertical: 4,
+                  /* 🆕 249 — يتقلّص قبل إشارة الحفظ في البطاقات الضيّقة فلا تتراكب الأرقامُ عليها */
+                  flexShrink: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
                 }}
               >
-                {/* ♥ — فعلٌ لقائمة غيري، رقمٌ ساكنٌ لقائمتي */}
+                {/* ♥ — 🆕 249 إعجابٌ لقائمة غيري (لا حفظ)، رقمٌ ساكنٌ لقائمتي — والعددُ عددُ المعجبين */}
                 <Pressable
-                  disabled={!card.canSave || busy || !onSave}
-                  onPress={() => onSave?.(!card.savedByMe)}
+                  disabled={!card.canSave || busy}
+                  onPress={toggleLike}
                   hitSlop={6}
-                  accessibilityLabel={card.savedByMe ? t.listUnsaveLabel : t.listSaveBtn}
+                  accessibilityLabel={liked ? t.listUnlikeLabel : t.listLikeLabel}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
-                  <Icon name={card.canSave && !card.savedByMe ? "heart" : "heart-filled"} size={15} color={c.accent} />
-                  <Text size={12} color={c.muted} style={styles.nums}>{num(stats.saves, locale)}</Text>
+                  <Icon name={card.canSave && !liked ? "heart" : "heart-filled"} size={15} color={c.accent} />
+                  {/* **والصفرُ لا يُطبع** (D-219) — كقلب بطاقة الويب */}
+                  {likes > 0 ? <Text size={12} color={c.muted} style={styles.nums}>{num(likes, locale)}</Text> : null}
                 </Pressable>
                 <Sep palette={c} />
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -234,7 +320,13 @@ export function ListCard({
                 </Pressable>
               </View>
             ) : null}
-            {play ? <View style={{ marginStart: "auto", paddingStart: 8 }}>{play}</View> : null}
+            {/* رقاقةُ التشغيل ثمّ إشارةُ الحفظ في الزاوية السفلى (صورةُ card-B) — والعنقودُ قبلهما يتقلّص ولا يُدفع تحتهما */}
+            {play || saveMark ? (
+              <View style={{ marginStart: "auto", paddingStart: 8, flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                {play}
+                {saveMark}
+              </View>
+            ) : null}
           </View>
         ) : null}
       </View>

@@ -1420,7 +1420,7 @@ const listCardOf = (l: ProfileList, t: ReturnType<typeof useApp>["t"]) => ({
   countText: t.listCount(l.item_count),
   posters: l.posters,
   cover: null,
-  stats: { saves: l.saves, reviews: l.reviews, rating: l.rating },
+  stats: { saves: l.saves, likes: l.likes ?? 0, reviews: l.reviews, rating: l.rating },
   playlist: null,
 });
 

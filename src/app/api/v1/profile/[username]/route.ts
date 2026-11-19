@@ -34,6 +34,7 @@ const listOut = (l: PublicListCard): ProfileList => ({
   owner: l.owner,
   owner_avatar: l.owner_avatar ?? null,
   saves: l.saves ?? 0,
+  likes: l.likes ?? 0,
   reviews: l.reviews ?? 0,
   rating: l.rating ?? null,
 });

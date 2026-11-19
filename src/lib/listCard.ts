@@ -19,6 +19,7 @@ export function toLibraryListCard(l: PublicListCard, locale: string): LibraryLis
     item_count: l.item_count,
     posters: l.posters,
     saves: l.saves ?? 0,
+    likes: l.likes ?? 0,
     reviews: l.reviews ?? 0,
     rating: l.rating ?? null,
     count_label: null,
@@ -28,6 +29,7 @@ export function toLibraryListCard(l: PublicListCard, locale: string): LibraryLis
     playlist: typeof l.playlist === "boolean" ? l.playlist : null,
     can_save: !!l.can_save,
     saved_by_me: l.saved_by_me !== false,
+    liked_by_me: !!l.liked_by_me,
     can_review: !!l.can_review,
     my_review: l.my_review ? { rating: l.my_review.rating, body: l.my_review.body, has_spoiler: l.my_review.hasSpoiler } : null,
   };

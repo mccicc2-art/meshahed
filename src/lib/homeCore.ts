@@ -765,20 +765,20 @@ export async function buildHomeBody({
     .filter((l) => l.is_public && (l.item_count ?? 0) > 0)
     .map((l) => l.id);
   const listStatsP: Promise<
-    Map<string, { saves: number; reviews: number; rating: number | null }>
+    Map<string, { saves: number; likes?: number; reviews: number; rating: number | null }>
   > =
     publicOwnIds.length > 0
       ? getListCardStats(publicOwnIds).catch(
           () =>
             new Map<
               string,
-              { saves: number; reviews: number; rating: number | null }
+              { saves: number; likes?: number; reviews: number; rating: number | null }
             >(),
         )
       : Promise.resolve(
           new Map<
             string,
-            { saves: number; reviews: number; rating: number | null }
+            { saves: number; likes?: number; reviews: number; rating: number | null }
           >(),
         );
 
@@ -951,7 +951,7 @@ export async function buildHomeBody({
   const homeListCards = homeListCardsBase.map((c) => {
     const st = listStats.get(c.id);
     return st
-      ? { ...c, saves: st.saves, reviews: st.reviews, rating: st.rating }
+      ? { ...c, saves: st.saves, likes: st.likes ?? 0, reviews: st.reviews, rating: st.rating }
       : c;
   });
 

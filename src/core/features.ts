@@ -321,11 +321,11 @@ export const SECTIONS: Section[] = [
       },
       {
         icon: "share",
-        ar: "مشاركة وحفظ",
-        en: "Share & save",
-        /* 🆕 والنسخُ فعلٌ ثانٍ بجانب الحفظ (هجرة ٢٣٣) */
-        arBody: "شارك قائمتك برابط، واحفظ قوائم غيرك مرجعاً حيّاً يتحدّث مع صاحبه، أو انسخها لقوائمك وعدّلها كما تشاء.",
-        enBody: "Share a list by link, save other people’s lists as live references that stay in sync, or copy one into your lists and make it yours.",
+        ar: "مشاركة وإعجاب وحفظ",
+        en: "Share, like & save",
+        /* 🆕 249 — النسخُ أُزيل والإعجابُ منفصلٌ عن الحفظ (أحمد ١٩ نوفمبر ٢٠٢٦) */
+        arBody: "شارك قائمتك برابط، وأعجب بقوائم غيرك، واحفظها في قوائمك مرجعاً حيّاً يتحدّث مع صاحبها.",
+        enBody: "Share a list by link, like other people’s lists, and save them to your lists as live references that stay in sync.",
       },
       /* 🆕 هجرة ٢٣٤ (أحمد ٤ نوفمبر): الدعوةُ لمن تتابعهم، وعشرةٌ مع صاحبها، ومجّانيّةٌ للجميع (٧أ) */
       {

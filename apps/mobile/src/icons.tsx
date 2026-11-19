@@ -54,6 +54,8 @@ const ICONS = {
   minus: require("../assets/icons/minus.png"),
   "red-card": require("../assets/icons/red-card.png"),
   bookmark: require("../assets/icons/bookmark.png"),
+  /* 🆕 249 — المحفوظةُ: الإشارةُ نفسُها ممتلئةً (كـ`heart-filled`) — حفظُ القائمة صار رمزَه بعد أن صار القلبُ إعجاباً */
+  "bookmark-filled": require("../assets/icons/bookmark-filled.png"),
   "chevron-down": require("../assets/icons/chevron-down.png"),
   /* D-948 — مقبضُ الترتيب، وعينُ الحرق، والنجمةُ الممتلئة (`fill-current` في الويب) */
   grip: require("../assets/icons/grip.png"),

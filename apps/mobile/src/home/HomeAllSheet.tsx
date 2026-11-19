@@ -295,10 +295,11 @@ export function HomeAllSheet({
                         countText: c.count_label ?? t.listCount(c.item_count),
                         posters: c.posters,
                         cover: c.cover,
-                        stats: c.saves || c.reviews || c.rating ? { saves: c.saves, reviews: c.reviews, rating: c.rating } : null,
+                        stats: c.saves || c.likes || c.reviews || c.rating ? { saves: c.saves, likes: c.likes ?? 0, reviews: c.reviews, rating: c.rating } : null,
                         playlist: c.playlist,
                         canSave: c.can_save,
                         savedByMe: c.saved_by_me,
+                        likedByMe: c.liked_by_me,
                         canReview: !!c.can_review,
                         hasMyReview: !!c.my_review,
                       }}

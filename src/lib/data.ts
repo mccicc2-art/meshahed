@@ -5583,39 +5583,6 @@ export const getPublicList = cache(
 );
 
 /**
- * 🆕 **من أين نُسخت هذه القائمة** (هجرة ٢٣٣ — أحمد ٤ نوفمبر، ٢أ: «منسوخة من قائمة @فلان» برابطٍ للأصل).
- *
- * **قراءةٌ خفيفةٌ لا `public_list`**: سطرٌ واحدٌ يحتاج اسمَ صاحب الأصل ومعرّفَه، لا أعمالَه كلَّها.
- * والأصلُ **المعلنُ وحدَه** يُنسب (RLS لا تردّ الخاصّة أصلاً) — أصلٌ صار خاصّاً أو حُذف يُسقط السطرَ،
- * ومن أخفى اسمه لا يُسمّى (D-011): يبقى الرابطُ بلا اسم.
- */
-export async function getListOrigin(
-  sourceId: string | null | undefined,
-): Promise<{ id: string; username: string | null; nickname: string | null } | null> {
-  if (!sourceId || !/^[0-9a-f-]{36}$/i.test(sourceId)) return null;
-  try {
-    const supabase = await createClient();
-    const { data: src } = await supabase
-      .from("user_lists")
-      .select("id, user_id")
-      .eq("id", sourceId)
-      .eq("is_public", true)
-      .maybeSingle();
-    if (!src) return null;
-    const { data: owner } = await supabase
-      .from("public_profiles")
-      .select(PERSON_COLS)
-      .eq("id", (src as { user_id: string }).user_id)
-      .maybeSingle();
-    const o = owner as { nickname: string | null; username: string | null; hide_name: boolean | null } | null;
-    const hidden = !o || !!o.hide_name;
-    return { id: (src as { id: string }).id, username: hidden ? null : o!.username, nickname: hidden ? null : o!.nickname };
-  } catch {
-    return null;
-  }
-}
-
-/**
  * 🆕 **أعضاءُ القائمة المشتركة** (هجرة ٢٣٤ — أحمد ٤ نوفمبر، البند ٢).
  *
  * **ما يُرجَع هو ما يحقّ للقارئ رؤيتُه** (RLS `read list members`): صاحبُها يرى المعلّقين معهم، والعضوُ
@@ -5724,6 +5691,8 @@ export interface PublicListCard {
      أشوف عدد العاملين لها مفضلة وتقييمها»). **اختياريّةٌ لأن مستدعياً
      قديماً قد يصل قبل الهجرة** (D-028)، **والصفرُ لا يُطبع** (D-219). */
   saves?: number;
+  /** 🆕 249 — عددُ المعجبين: القلبُ صار إعجاباً منفصلاً عن الحفظ (أحمد ١٩ نوفمبر ٢٠٢٦) */
+  likes?: number;
   reviews?: number;
   rating?: number | null;
   /* 🆕 **وجهُ الصاحب** (D-335، طلبُ أحمد: «صورة الشخص الي عملها تظهر
@@ -5753,6 +5722,8 @@ export interface PublicListCard {
   /** ⚠️ `saved_by_me` لا `saved` — و`saves` فوقها عددُ الناس: **اسمان
       متقاربان لمعنيين متباعدين هو كيف يُقرأ عدّادٌ حالةً** (D-219). */
   saved_by_me?: boolean;
+  /** 🆕 249 — «أأعجبتني؟» — شرطُ الإعجاب شرطُ الحفظ نفسُه (`can_save`): قائمةٌ معلنةٌ ليست لي ولي حساب */
+  liked_by_me?: boolean;
   /* 🆕 **رايةُ التشغيل على البطاقة** (D-674): **حالتُها عندك أنت** —
      من قائمتك (`user_lists.is_playlist`، ١٢٢) أو من صفِّ حفظك لها
      (`list_saves.is_playlist`، ١٤٩). **وغيابُها يعني «لا أعرف»**
@@ -5775,13 +5746,15 @@ async function shapeListCards(
     name: string;
     kind: string | null;
     source_slug?: string | null;
+    /** 🆕 249 — `false` = خاصّةٌ مشترَكةٌ معي (٢٣٤) تمرّ من «المحفوظة»؛ الغيابُ = معلنةٌ (مصادرُ الشكّال الأخرى تشترطها) */
+    is_public?: boolean;
   }[],
   withOwner: boolean,
 ): Promise<PublicListCard[]> {
   const supabase = await createClient();
   const me = await getUser().catch(() => null);
   const ids = lists.map((l) => l.id);
-  const [items, owners, stats, savedRows, myReviews] = await Promise.all([
+  const [items, owners, stats, savedRows, myReviews, likedRows] = await Promise.all([
     supabase
       .from("user_list_items")
       .select("list_id, poster_path, added_at")
@@ -5842,7 +5815,22 @@ async function shapeListCards(
             has_spoiler: boolean;
           }[],
         }),
+    /* 🆕 249 — «أأعجبتني؟» — استعلامٌ واحدٌ للصفحة كلِّها كأخيه الحفظ؛ وقبل الهجرة يغيب الجدولُ فيعود فارغاً (D-028) */
+    me
+      ? supabase
+          .from("list_likes")
+          .select("list_id")
+          .eq("user_id", me.id)
+          .in("list_id", ids)
+          .then(
+            (r) => r,
+            () => ({ data: null }),
+          )
+      : Promise.resolve({ data: [] as { list_id: string }[] }),
   ]);
+  const likedSet = new Set(
+    ((likedRows?.data ?? []) as { list_id: string }[]).map((r) => String(r.list_id)),
+  );
   const savedSet = new Set(
     ((savedRows?.data ?? []) as { list_id: string }[]).map((r) =>
       String(r.list_id),
@@ -5877,6 +5865,7 @@ async function shapeListCards(
       (stats?.data ?? []) as {
         list_id: string;
         saves: number;
+        likes?: number;
         reviews: number;
         avg_rating: number | null;
       }[]
@@ -5884,6 +5873,7 @@ async function shapeListCards(
       String(r.list_id),
       {
         saves: Number(r.saves) || 0,
+        likes: Number(r.likes) || 0,
         reviews: Number(r.reviews) || 0,
         rating: r.avg_rating === null ? null : Number(r.avg_rating),
       },
@@ -5917,6 +5907,7 @@ async function shapeListCards(
         const st = statOf.get(l.id);
         return {
           saves: st?.saves ?? 0,
+          likes: st?.likes ?? 0,
           reviews: st?.reviews ?? 0,
           rating: st?.rating ?? null,
           id: l.id,
@@ -5930,11 +5921,15 @@ async function shapeListCards(
           /* **الحفظُ فعلُ من لا يملكها وحدَه** — نفسُ شرط `list_saves`
            حرفاً (قائمةٌ ليست لي)، **وحدٌّ في الواجهة وحدَها ليس حدّاً**
            (D-302) فالقاعدةُ تحرسه أيضاً. وزائرٌ بلا حساب لا زرَّ له. */
-          can_save: !!me && l.user_id !== me.id,
+          /* 🆕 249 — **والمعلنةُ وحدَها**: «المحفوظة» تخلط الخاصّةَ المشترَكةَ معي (٢٣٤) بهذا الشكّال،
+             وسياستا `list_saves` و`list_likes` تشترطان `is_public` — فقلبٌ وعلامةٌ عليها يفشلان عند
+             كلِّ ضغطة (D-217). وهو شرطُ صفحة القائمة نفسُه. */
+          can_save: !!me && l.user_id !== me.id && l.is_public !== false,
           saved_by_me: savedSet.has(l.id),
+          liked_by_me: likedSet.has(l.id),
           /* **والتقييمُ شرطُه شرطُ الحفظ نفسُه ومعه العلانية** — والبطاقاتُ
            هنا كلُّها من قوائمَ عامّة (مصادرُها تشترطها). */
-          can_review: !!me && l.user_id !== me.id,
+          can_review: !!me && l.user_id !== me.id && l.is_public !== false,
           my_review: mineOf.get(l.id) ?? null,
           /* 🆕 **رايةُ التشغيل ومالكُها** (D-674): **قائمتي رايتُها في
            صفِّها، والمحفوظةُ رايتُها في صفِّ حفظي** — **ومفتاحُ
@@ -6244,7 +6239,7 @@ export async function getCuratedCounts(
 export async function getListCardStats(
   ids: string[],
 ): Promise<
-  Map<string, { saves: number; reviews: number; rating: number | null }>
+  Map<string, { saves: number; likes: number; reviews: number; rating: number | null }>
 > {
   try {
     if (!ids.length) return new Map();
@@ -6258,6 +6253,7 @@ export async function getListCardStats(
         data as {
           list_id: string;
           saves: number;
+          likes?: number;
           reviews?: number;
           avg_rating: number | null;
         }[]
@@ -6265,6 +6261,8 @@ export async function getListCardStats(
         String(r.list_id),
         {
           saves: Number(r.saves) || 0,
+          /* 🆕 249 — عددُ المعجبين (عمودٌ أخيرٌ في الدالّة) — وقبل الهجرة يغيب فيُقرأ صفراً */
+          likes: Number(r.likes) || 0,
           /* 🆕 **وعدُّ الآراء معها** (D-677): الدالّةُ في القاعدة تعيده
              أصلاً (١٠٥) — **وكان يُرمى هنا وحدَه** بينما يقرؤه
              `shapeListCards` من النداء نفسِه. **شريطُ البطاقة الجديد
@@ -6566,6 +6564,20 @@ export async function getMySavedListIds(): Promise<Set<string>> {
       .from("list_saves")
       .select("list_id")
       .eq("user_id", user.id);
+    return new Set((data ?? []).map((r) => String(r.list_id)));
+  } catch {
+    return new Set();
+  }
+}
+
+/** 🆕 249 — القوائمُ التي أعجبتني — أختُ `getMySavedListIds` لبطاقات قوائم لوبز في «اكتشف» */
+export async function getMyLikedListIds(): Promise<Set<string>> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return new Set();
+    const { data, error } = await supabase.from("list_likes").select("list_id").eq("user_id", user.id);
+    if (error) return new Set();
     return new Set((data ?? []).map((r) => String(r.list_id)));
   } catch {
     return new Set();
@@ -7113,6 +7125,24 @@ export async function getMyListSave(
       saved: true,
       playlist: (data as { is_playlist?: boolean }).is_playlist === true,
     };
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 249 — «أأعجبتني؟» لقائمةٍ واحدة — أختُ `getMyListSave`. `null` = زائرٌ بلا حساب؛ وقبل الهجرة يعود `false` */
+export async function getMyListLike(listId: string): Promise<boolean | null> {
+  try {
+    if (!UUID_RE.test(listId)) return null;
+    const user = await getUser();
+    if (!user) return null;
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("list_likes")
+      .select("list_id")
+      .match({ user_id: user.id, list_id: listId })
+      .maybeSingle();
+    return !error && !!data;
   } catch {
     return null;
   }

@@ -2698,6 +2698,8 @@ export type SignalKind =
    * 🆕 **نسخ أحدٌ قائمتَك** (الهجرة ٢٣٣ — أحمد ٤ نوفمبر، ٣أ). يفتح قائمتي أنا (الأصل)، لا نسختَه الخاصّة.
    */
   | "list_copy"
+  /** 🆕 **أعجب أحدٌ بقائمتك** (الهجرة ٢٤٩ — أحمد ١٩ نوفمبر، ٤أ). يفتح القائمة */
+  | "list_like"
   /** 🆕 **دعاك أحدٌ إلى قائمةٍ مشتركة** (الهجرة ٢٣٤). يفتح القائمة وفوقها «قبول · لا شكراً» — وإن كانت خاصّة */
   | "list_invite";
 
@@ -4695,58 +4697,30 @@ export async function saveList(listId: string, save: boolean) {
 }
 
 /**
- * 🆕 **نسخُ قائمةِ غيري إلى قوائمي لأعدّلها** (أحمد ٤ نوفمبر ٢٠٢٦ — البند ١ من ستّة · الهجرة ٢٣٣).
- *
- * ⚖️ **فعلٌ ثانٍ بجانب ♥ لا بدلَه**: الحفظُ مرجعٌ حيٌّ يتبع صاحبَه (D-068، «مرجع حي لا نسخة»)، والنسخةُ
- * قائمةٌ مستقلّةٌ أملكها — **لا يمسّها تعديلُ الأصل بعد يومها.** الذكيّةُ تنسخ شرطَها (١أ)، والنسخةُ تبدأ
- * خاصّة (٤أ)، وقوائمُ لوبز لا تُنسخ (٥ب) — **والحرّاسُ كلُّهم في `copy_list` بالقاعدة** (D-302): ما هنا
- * ترجمةُ رفضها إلى سببٍ يُقرأ، لا حارسٌ ثانٍ.
- *
- * 🔑 **نسختي الموجودة تُعاد ولا تُكرَّر**: ضغطتان لا تصنعان قائمتين، **ولا جرسين لصاحب الأصل** — فالتنبيهُ
- * (٣أ) يرنّ لأوّل نسخةٍ وحدَها (`created`).
+ * 🆕 **إعجابٌ بقائمة غيرك أو سحبُه** (أحمد ١٩ نوفمبر ٢٠٢٦، الهجرة ٢٤٩): «لازم يكون فيه اعجاب و الاضافة للقوائم
+ * منفصله عنها» — القلبُ كان الحفظ، فصار إعجاباً لا يضيف القائمةَ إلى قوائمك.
+ * الحارسُ في SQL شرطُ الحفظ نفسُه: معلنةٌ وليست لي (`list_likes` في ٢٤٩). وصاحبُ القائمة يُبلَّغ بأوّل إعجابٍ (٤أ).
  */
-export type CopyListResult =
-  | { ok: true; id: string; created: boolean }
-  | { ok: false; reason: "too_many" | "unavailable" };
-
-export async function copyList(sourceId: string): Promise<CopyListResult> {
-  sourceId = uuid(sourceId);
-  const { supabase, user } = await requireUser("list", 10, 60_000);
-
-  const { data: src } = await supabase
-    .from("user_lists")
-    .select("id, user_id, is_public, source_slug")
-    .eq("id", sourceId)
-    .maybeSingle();
-  const s = src as { id: string; user_id: string; is_public: boolean; source_slug: string | null } | null;
-  if (!s || !s.is_public || s.source_slug || s.user_id === user.id) return { ok: false, reason: "unavailable" };
-
-  const { data: mine } = await supabase
-    .from("user_lists")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("copied_from", sourceId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const existing = (mine as { id?: string } | null)?.id;
-  if (existing) return { ok: true, id: existing, created: false };
-
-  const { data, error } = await supabase.rpc("copy_list", { p_src: sourceId });
-  if (error) {
-    const msg = String(error.message ?? "");
-    if (msg.includes("list_copy_too_many")) return { ok: false, reason: "too_many" };
-    if (msg.includes("list_not_found") || msg.includes("list_copy_own") || msg.includes("list_copy_curated")) {
-      return { ok: false, reason: "unavailable" };
-    }
-    fail(error);
+export async function likeList(listId: string, like: boolean) {
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  if (like) {
+    const { error } = await supabase
+      .from("list_likes")
+      .upsert({ user_id: user.id, list_id: listId }, { onConflict: "user_id,list_id", ignoreDuplicates: true });
+    if (error) fail(error);
+    const { data: l } = await supabase.from("user_lists").select("user_id").eq("id", listId).maybeSingle();
+    const owner = (l as { user_id?: string } | null)?.user_id;
+    if (owner) notifySignal({ to: owner, kind: "list_like", actorId: user.id, listId, dedupe: `list_like:${user.id}:${listId}` });
+  } else {
+    const { error } = await supabase
+      .from("list_likes")
+      .delete()
+      .match({ user_id: user.id, list_id: listId });
+    if (error) fail(error);
   }
-  const id = typeof data === "string" ? data : null;
-  if (!id) fail("copy_list returned no id");
-
-  notifySignal({ to: s.user_id, kind: "list_copy", actorId: user.id, listId: sourceId, dedupe: `list_copy:${user.id}:${sourceId}` });
   revalidatePath("/lists");
-  return { ok: true, id, created: true };
+  revalidatePath(`/lists/${listId}`);
 }
 
 /**

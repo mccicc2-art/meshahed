@@ -1,7 +1,7 @@
 import {
   getPublicListsFeed,
   getForYouLists,
-  getMySavedListIds,
+  getMySavedListIds, getMyLikedListIds,
   getListCardsByIds,
   getCuratedListIds,
   getListCardStats,
@@ -52,18 +52,20 @@ export async function GET() {
     stage("db-feed");
     const community = (await getPublicListsFeed(25).catch(() => [] as PublicListCard[])).slice(0, 15);
     stage("db-lists");
-    const [forYouRows, savedIds, curated, trending] = await Promise.all([
+    const [forYouRows, savedIds, curated, trending, likedIds] = await Promise.all([
       getForYouLists(12).catch(() => []),
       getMySavedListIds().catch(() => new Set<string>()),
       getCuratedListIds().catch(() => new Map<string, string>()),
       getTopSavedListCards(30, 12).catch(() => [] as PublicListCard[]),
+      /* 🆕 249 — «أأعجبتني؟» لقلب بطاقات قوائم لوبز */
+      getMyLikedListIds().catch(() => new Set<string>()),
     ]);
     const shown = new Set(trending.map((c) => c.id));
     const forYou = await getListCardsByIds(forYouRows.map((r) => r.listId).filter((id) => !shown.has(id))).catch(() => [] as PublicListCard[]);
     stage("db-stats");
     const ids = [...curated.values()];
     const [stats, counts, mine] = await Promise.all([
-      getListCardStats(ids).catch(() => new Map<string, { saves: number; reviews: number; rating: number | null }>()),
+      getListCardStats(ids).catch(() => new Map<string, { saves: number; likes: number; reviews: number; rating: number | null }>()),
       getCuratedCounts(ids).catch(() => new Map<string, number>()),
       getMyListReviews(ids).catch(() => new Map<string, { rating: number; body: string | null; hasSpoiler: boolean }>()),
     ]);
@@ -90,6 +92,7 @@ export async function GET() {
         item_count: count,
         posters: four.map((m) => m.poster_path).filter((p): p is string => !!p),
         saves: st?.saves ?? 0,
+        likes: st?.likes ?? 0,
         reviews: st?.reviews ?? 0,
         rating: st?.rating ?? null,
         count_label: t.listCount(count) + extra,
@@ -99,6 +102,7 @@ export async function GET() {
         playlist: null,
         can_save: true,
         saved_by_me: savedIds.has(listId),
+        liked_by_me: likedIds.has(listId),
         can_review: true,
         my_review: my ? { rating: my.rating, body: my.body, has_spoiler: my.hasSpoiler } : null,
       };
