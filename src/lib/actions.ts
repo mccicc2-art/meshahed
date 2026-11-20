@@ -4219,6 +4219,14 @@ export async function buildCuratedList(slug: string): Promise<{ slug: string; li
      — **والمصدرُ قد يسقط لحظةً** (D-063). */
   if (!items.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
 
+  /* 🆕 T495 — **بقاعدة لوبز لا بلغة جلسة الإدارة**: بُنيت القوائمُ من جلسةٍ عربيّة فخُزّنت أسماءٌ إنجليزيّة بملصقاتٍ
+     عربيّة، والقارئُ الإنجليزيُّ يراها كما خُزّنت. الأجنبيُّ ملصقُه إنجليزيّ، والعربيُّ الأصلِ اسمُه وملصقُه عربيّان */
+  {
+    const { loopzArtAll } = await import("@/lib/curatedArt");
+    const art = await loopzArtAll(items.map((i) => ({ tmdbId: i.tmdbId, mediaType: i.mediaType === "tv" ? ("tv" as const) : ("movie" as const), title: i.title ?? null, posterPath: i.posterPath ?? null })));
+    items = items.map((i, k) => ({ ...i, title: art[k]?.title ?? i.title, posterPath: art[k]?.posterPath ?? i.posterPath }));
+  }
+
   const { data, error } = await supabase.rpc("upsert_curated_list", {
     p_slug: clean,
     p_name: universeName(u, "ar").slice(0, 60),

@@ -11,7 +11,7 @@ import { Sheet } from "../library/Sheet";
 import { radius } from "../theme";
 import { posterUrl, profileUrl } from "@/core/media";
 import { num } from "@/core/i18n";
-import { ageBadge } from "@/core/ageRating";
+import { ageBadge, ageInfo, ageA11y, type AgeBadge } from "@/core/ageRating";
 import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
 import { haptic } from "../haptics";
 import { useRtlRailPin } from "../rtlRailPin";
@@ -83,7 +83,6 @@ export function Pulse({ x, mine, onPress }: { x: TitleExtrasPayload | undefined;
 
 /** 🆕 D-1506 — `onArt`: السطرُ فوق بطل صفحة العمل الداكن في كلِّ ثيم — الأرقامُ بيضاء (والعمرُ شارةٌ ملوّنة منذ T492) */
 export function RatingsLine({ x, compact = false, onArt = false }: { x: TitleExtrasPayload | undefined; compact?: boolean; onArt?: boolean }) {
-  const { t } = useApp();
   if (!x) return null;
   const r = x.ratings;
   const age = ageBadge(r?.rated);
@@ -107,15 +106,70 @@ export function RatingsLine({ x, compact = false, onArt = false }: { x: TitleExt
           <Text size={13} weight="700" color={onArt ? "#fff" : undefined} style={{ fontVariant: ["tabular-nums"] }}>{r.rt}</Text>
         </View>
       ) : null}
-      {/* ⚖️ T492 — **شارةٌ ملوّنةٌ بدرجةٍ يفهمها الناس** (G · +7 · +13 · +18 — `core/ageRating`، وصفةُ الويب نفسُها) بدل الإطار
-          الفاتح بالرمز الأمريكيّ؛ اللونُ ثابتٌ في كلّ ثيم كشارة IMDb، والرمزُ الأصليّ في اسم الإتاحة، وما لا درجةَ له لا يُرسم */}
-      {age ? (
-        <View accessible accessibilityLabel={`${t.ageRating}: ${age.code}`} style={{ backgroundColor: age.bg, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-          <Text size={10} weight="800" color={age.fg} style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>{age.text}</Text>
-        </View>
-      ) : null}
+      {/* ⚖️ T492 → 🆕 T494 — **الرمزُ الرسميُّ بلون درجته، والضغطُ يفتح تعريفه** (`AgeChip` — وصفةُ الويب نفسُها `core/ageRating`) */}
+      {age ? <AgeChip b={age} /> : null}
       {!compact ? <Pulse x={x} /> : null}
     </View>
+  );
+}
+
+/**
+ * 🆕 T494 — **شارةُ التصنيف العمريّ وورقةُ تعريفه** (أحمد ٢١ نوفمبر: «خلها بالأحرف مثل الرسمي و إذا ضغط عليها الشخص يطلع التعريف و شرح
+ * لها»، ثمّ «نفذ» على الصور): الرمزُ الرسميُّ (R · TV-MA · PG-13…) بلون درجته، والضغطُ يفتح الورقةَ الواحدة (`Sheet`): العنوانُ
+ * المعنى بكلمة، وتحته الشارةُ ومصدرُها، ثمّ الشرحُ، ثمّ «السُّلَّم» — رموزُ عائلته من الأطفال إلى الكبار، رمزُه مضاءٌ بحلقة والباقي
+ * باهت. النصُّ كلُّه من `ageInfo` — ما يقوله الويبُ حرفاً (`AgeMark.tsx`). مكوّنٌ مستقلٌّ لأنّ `RatingsLine` يعود مبكّراً قبل أيِّ hook.
+ */
+function AgeTag({ b, big = false }: { b: AgeBadge; big?: boolean }) {
+  return (
+    <View style={{ backgroundColor: b.bg, borderRadius: big ? 6 : 4, paddingHorizontal: big ? 8 : 5, paddingVertical: big ? 3 : 1 }}>
+      <Text size={big ? 13 : 10} weight="800" color={b.fg} style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>{b.text}</Text>
+    </View>
+  );
+}
+
+function AgeChip({ b }: { b: AgeBadge }) {
+  const { t, tokens, locale } = useApp();
+  const [open, setOpen] = useState(false);
+  const info = ageInfo(b, locale);
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={ageA11y(b, t.ageRating, locale)} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+        <AgeTag b={b} />
+      </Pressable>
+      {open ? (
+        <Sheet
+          title={info.name}
+          onClose={() => setOpen(false)}
+          header={
+            <View style={{ gap: 6 }}>
+              <Text size={17} weight="800">{info.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <AgeTag b={b} big />
+                <Text size={12} muted style={{ flexShrink: 1 }}>{info.source}</Text>
+              </View>
+            </View>
+          }
+        >
+          <View style={{ gap: 20, paddingBottom: 8 }}>
+            <Text size={15} style={{ lineHeight: 25 }}>{info.desc}</Text>
+            <View style={{ gap: 10 }}>
+              <Text size={12} weight="700" muted>{info.ladderLabel}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+                {info.ladder.map((x) => (
+                  <View key={x.text} style={x.on ? { borderRadius: 7, borderWidth: 2, borderColor: tokens.fg, padding: 2, margin: -4 } : { opacity: 0.35 }}>
+                    <AgeTag b={x} />
+                  </View>
+                ))}
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text size={11} muted>{info.young}</Text>
+                <Text size={11} muted>{info.old}</Text>
+              </View>
+            </View>
+          </View>
+        </Sheet>
+      ) : null}
+    </>
   );
 }
 

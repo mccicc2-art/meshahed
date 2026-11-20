@@ -21,35 +21,16 @@ import { resolveImdbId } from "@/lib/titleExtras";
  */
 
 import { ImdbMark, RtMark } from "./RatingMarks";
-import { ageBadge, type AgeBadge } from "@/core/ageRating";
+import { ageBadge, ageInfo, ageA11y } from "@/core/ageRating";
+import { AgeMark } from "./AgeMark";
+import { getLocale } from "@/lib/locale";
+import { getDict } from "@/core/i18n";
 export { ImdbMark, RtMark } from "./RatingMarks";
 
 /**
- * 🆕 **والتصنيفُ العمريُّ يركب هذا السطرَ نفسَه** (D-286، طلبُ أحمد:
- * «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
- *
- * **ولا نداءَ جديداً له:** OMDb تُرسل `Rated` في الردّ الذي ننادِيه هنا
- * أصلاً — **كان يصلنا فنرميه**، وهي سيرةُ `votes` بحرفها (D-132).
- *
- * ⚖️ **T492 — صار شارةً ملوّنةً بدرجةٍ يفهمها الناس** (G · +7 · +13 · +18 — `core/ageRating`)
- * بدل الإطار الرماديّ بالرمز الأمريكيّ (نقضُ «إطارٌ لا لون» من D-286 باختيار أحمد «٤ أ ٥ب ٦ أ»).
- * الرمزُ الأصليّ في اسم الإتاحة، وما لا درجةَ له لا يُرسم (`ageBadge` ⇐ `null`).
- * ⚠️ **و`dir="ltr"` عليها**: «+13» تنقلب علامتُها في سطرٍ عربيّ (D-015).
+ * 🆕 **والتصنيفُ العمريُّ يركب هذا السطرَ نفسَه** (D-286). **ولا نداءَ جديداً له:** OMDb تُرسل `Rated` في الردّ الذي ننادِيه هنا.
+ * ⚖️ T492 صار شارةً ملوّنة، و🆕 T494 **الرمزَ الرسميَّ بلون درجته وزرّاً يفتح تعريفه** — المكوّنُ في `AgeMark.tsx` (عميل).
  */
-function AgeMark({ badge, label, compact }: { badge: AgeBadge; label: string; compact?: boolean }) {
-  return (
-    <span
-      dir="ltr"
-      aria-label={`${label}: ${badge.code}`}
-      className={`inline-block rounded-md font-bold tabular-nums leading-none ${
-        compact ? "px-2 py-[4px] text-12" : "px-1.5 py-1 text-12"
-      }`}
-      style={{ backgroundColor: badge.bg, color: badge.fg }}
-    >
-      {badge.text}
-    </span>
-  );
-}
 
 export async function HeroRatings({
   imdbId,
@@ -128,6 +109,11 @@ export async function HeroRatings({
      D-297 بنفسِه**: «وفي الغلاف وحدَه… **وحين تُطلب، السطرُ هو هو**» —
      **فطُلب، وسقط شرطُ `compact`** ولم يتغيّر شيءٌ آخر. */
   const stacked = !!age && (!!ext.imdb || !!ext.rt);
+  /* T494 — الرمزُ وتعريفُه بلغة القارئ؛ الكوكي مقروءةٌ في الطلب أصلاً (`getLocale` مخبّأة) */
+  const locale = age ? await getLocale() : "ar";
+  const ageMark = age ? (
+    <AgeMark badge={age} info={ageInfo(age, locale)} label={ageA11y(age, ageLabel ?? getDict(locale).ageRating, locale)} closeLabel={getDict(locale).closeLabel} compact={compact} />
+  ) : null;
 
   const marks = (
     <div
@@ -153,9 +139,7 @@ export async function HeroRatings({
           </span>
         </span>
       )}
-      {age && !stacked && (
-        <AgeMark badge={age} label={ageLabel ?? "Age rating"} compact={compact} />
-      )}
+      {age && !stacked && ageMark}
     </div>
   );
 
@@ -166,7 +150,7 @@ export async function HeroRatings({
       {/* **سطرُه وحدَه، ومقاسُه أكبرُ قليلاً**: صار وحيدَ سطرِه **فلا
           يزاحمه شيء**، **وحجمٌ يُقرأ من بعيدٍ هو ما يجعل الشارةَ شارة.** */}
       <div className="mt-1">
-        <AgeMark badge={age!} label={ageLabel ?? "Age rating"} compact={compact} />
+        {ageMark}
       </div>
     </>
   );
