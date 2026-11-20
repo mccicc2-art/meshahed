@@ -75,7 +75,17 @@ export async function forYouWithEvents(args: {
      ملصقُه وشارتُه في `event` — **قاعدةٌ لكلِّ قائمة حدثٍ مثبّتة** لا لدومزداي وحدَه */
   const forYou = cards.map((c) => {
     const ev = event.get(c.id);
-    return ev ? { ...c, count_label: t.listCount(c.item_count), event: ev } : c;
+    /* 🆕 T486 — **لا يتكرّر الحدثُ في الغلاف** (أحمد: «ليش دومزداي جاي مرتين»): الصورُ مرتّبةٌ بالأحدث إضافةً،
+       فعملُ الحدث المضافُ أخيراً يأخذ الخانةَ الأولى وملصقُه نفسُه في خانة الحدث — نُسقطه من الخانات العاديّة
+       لأنّ خانةَ الحدث هي مكانُه، ويبقى العدُّ «16 عملاً» كما هو */
+    return ev
+      ? {
+          ...c,
+          posters: ev.poster ? c.posters.filter((p) => p !== ev.poster) : c.posters,
+          count_label: t.listCount(c.item_count),
+          event: ev,
+        }
+      : c;
   });
   return { forYou, trending };
 }
