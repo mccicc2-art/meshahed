@@ -428,8 +428,14 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
             <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.min(heroH + below, below + TEXT_VEIL) }} contentFit="fill" />
             {/* D-1020/D-1022 — ⋯ في زاوية الخلفيّة. 🆕 D-1479 — **بلا دائرة** كالويب: الظلُّ أعلاه يكفيه. (الرجوعُ في الشريط — D-1624) */}
             {/* 🆕 D-1625 — ⋯ في مكانه من أوّل إطار (معطَّلٌ حتى يصل العمل) — لا زرَّ يظهر فجأة */}
-            <Pressable ref={dotsRef} disabled={guest || !d} onPress={() => measureAnchor(dotsRef.current, setMenuOpen)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={{ position: "absolute", top: 10, end: PAGE_PAD, width: 34, height: 34, alignItems: "center", justifyContent: "center", opacity: d ? 1 : 0.5 }}>
-              <Icon name="dots" size={20} color="#fff" />
+            {/* 🆕 T492 — **مربّعُ ⋯ توأمُ مربّع «وين تشاهد»** (شكوى «النقاط مهي واضحة»، أحمد ٢٠ نوفمبر: «خل حجم المربع نفس حجم
+                المربع… وخله مساوي له فالموضع قيس بخط»): ٤٠ بزجاجه وحدِّه وزاويته (`WatchWhere`)، وعلى `PAGE_PAD` نفسِه فيقع الطرفان
+                على خطٍّ واحد. مركزُه حيث كان مركزُ الزرّ القديم (١٠ + ٣٤/٢ = ٢٧). النقاطُ مرسومةٌ لا صورة: قطرُ ٤ (≈١٠ بكسل على
+                جوال خالد) بخطوة ٨ — عرضُها ٢٠ وسطَ الأربعين فتبدأ على ١٠ من الحافّة، وهو `PULSE_INSET` فتبقى النجمةُ على خطّها */}
+            <Pressable ref={dotsRef} disabled={guest || !d} onPress={() => measureAnchor(dotsRef.current, setMenuOpen)} hitSlop={10} accessibilityLabel={t.moreMenuTitle} style={({ pressed }) => ({ position: "absolute", top: 27 - DOTS_BOX / 2, end: PAGE_PAD, width: DOTS_BOX, height: DOTS_BOX, borderRadius: radius.control, backgroundColor: "rgba(0,0,0,0.45)", borderWidth: 1, borderColor: "rgba(255,255,255,0.28)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: DOT_GAP, opacity: !d ? 0.5 : pressed ? 0.7 : 1 })}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: "#fff" }} />
+              ))}
             </Pressable>
           </View>
           {/* 🔴 D-1014 — **الملصقُ يعلو إلى حافّة الخلفيّة** (طلبُ أحمد بخطٍّ أحمر على لقطة الويب):
@@ -463,7 +469,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                   <Text size={22} weight="700" color="#fff" numberOfLines={2} style={[{ flex: 1, lineHeight: 28 }, styles.onArt]}>{d?.name ?? seed?.name ?? ""}</Text>
                   {/* 🆕 D-1628 — **طرفُ النجمة على خطِّ ⋯ فوقها** (أحمد ٢ نوفمبر بلقطة: «خلها موازيه للثلاث نقاط» — «١أ»): كانت تلتصق
                       بجهة الاسم فيتغيّر طرفُها بطول رقمها. الآن تلتصق بالحافّة الخارجيّة وتبتعد عنها `PULSE_INSET` — حيث يبدأ رسمُ النقاط
-                      (زرٌّ ٣٤ على `PAGE_PAD`، والنقاطُ في رمزٍ ٢٠ تبدأ عند ٣ من حافّته) — فيبقى الخطُّ واحداً مهما طال العدد */}
+                      (T492: مربّعٌ ٤٠ على `PAGE_PAD`، والنقاطُ تبدأ على ١٠ من حافّته — `PULSE_INSET` محسوبٌ منها) — فيبقى الخطُّ واحداً مهما طال العدد */}
                   <View style={{ width: PULSE_W, height: 28, justifyContent: "center", alignItems: "flex-end", paddingEnd: PULSE_INSET }}>
                     {d ? <Pulse x={x} mine={d.me.rating} onPress={openPulse} /> : null}
                   </View>
@@ -748,7 +754,11 @@ const VEIL = require("../../assets/poster-veil.png");
 /* D-1594 — ارتفاعُ الحجاب فوق أسفل الملصق: يغطّي كتلةَ الكتابة (اسمٌ بسطرين + تفاصيل + IMDb + الأنواع ≈ ١٥٠) ويبدأ تدرّجُه فوقها */
 const TEXT_VEIL = 180;
 /* 🆕 D-1625 — مقاساتُ الخانات الثابتة في كتلة الاسم: عرضُ النجمة (★ 9.0 (999))، سطرُ IMDb، وصفُّ الأنواع بمربّع المشاهدة (٤٠) */
-const PULSE_INSET = 10;
+/** T492 — مربّعُ ⋯ بمقاس مربّع «وين تشاهد»، ونقاطُه */
+const DOTS_BOX = 40;
+const DOT = 4;
+const DOT_GAP = 4;
+const PULSE_INSET = (DOTS_BOX - (DOT * 3 + DOT_GAP * 2)) / 2;
 const PULSE_W = 68 + PULSE_INSET;
 const RATINGS_H = 22;
 const GENRE_ROW_H = 40;

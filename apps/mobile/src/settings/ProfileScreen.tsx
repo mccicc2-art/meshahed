@@ -20,6 +20,7 @@ import type { ToastHostRef } from "../HoldHost";
 import type { ProfileEditPayload, ProfileImagePayload, ProfileSaveBody } from "../contracts";
 import { SettingsScreen, Row, Field, FieldCard, LinkedRow, Chevron, RowsSkeleton } from "./ui";
 import { radius } from "../theme";
+import { COVER_RATIO } from "@/core/coverRatio";
 import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
 
 /**
@@ -35,7 +36,8 @@ import { SETTINGS_KEY, messageOf, useOpenWeb } from "./api";
  * **ربطُ X بابٌ**: هويّةٌ تُثبت بتسجيل دخولٍ في جلسة الويب (D-932)، فصفُّه يعرض ويفتح الصفحة.
  */
 const BIO_MAX = 120;
-const COVER_H = 128;
+/** T492 — ارتفاعُ الصندوق قبل أن يُقاس عرضُه (إطارٌ أوّل)؛ بعده `عرضُه ÷ COVER_RATIO` — نسبةُ صفحة الملفّ نفسُها */
+const COVER_H0 = 128;
 const AVATAR = 88;
 const KEY = ["me:profile-edit"] as const;
 
@@ -119,7 +121,10 @@ export function ProfileScreen() {
      🆕 K2 — على خيط الواجهة (انظر `usePosDrag`): الصورةُ تتبع الإصبعَ بلا رسمٍ للنموذج كلِّه، والقيمةُ تُكتب مرّةً عند الرفع */
   const setRef = useRef(set);
   setRef.current = set;
-  const cover = usePosDrag(v?.coverPos ?? 50, COVER_H, !!v?.coverUrl, (n) => setRef.current("coverPos", n));
+  /* 🆕 T492 — **صندوقُ التعديل بنسبة صفحة الملفّ** (`COVER_RATIO` — بلاغُ خالد: «ابعاد الغلاف ف الملف غير عن ابعاد الغلاف ف التعديل»):
+     كان ارتفاعاً ثابتاً ١٢٨ (≈٢٫٨ إلى ١)، فما يضبطه صاحبُه هنا يُرى مكبَّراً هناك. الارتفاعُ من عرضه المقيس، والسحبُ يقرؤه */
+  const [coverH, setCoverH] = useState(COVER_H0);
+  const cover = usePosDrag(v?.coverPos ?? 50, coverH, !!v?.coverUrl, (n) => setRef.current("coverPos", n));
   const avatar = usePosDrag(v?.avatarPos ?? 50, AVATAR, !!v?.avatarUrl, (n) => setRef.current("avatarPos", n));
 
   /* ===== الحفظ ===== الخطُّ الأساسُ يتقدّم بعد النجاح وحدَه — لا يطفئ «حفظ» على ما لم يصل */
@@ -250,9 +255,9 @@ export function ProfileScreen() {
       <View style={{ borderRadius: radius.card, backgroundColor: tokens.surface, padding: 10, gap: 12 }}>
         <GestureHandlerRootView>
           <GestureDetector gesture={cover.gesture}>
-          <View style={{ height: COVER_H, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+          <View onLayout={(e) => setCoverH(Math.round(e.nativeEvent.layout.width / COVER_RATIO))} style={{ height: coverH, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
             {v.coverUrl ? (
-              <PosImage uri={v.coverUrl} value={v.coverPos} pos={cover.pos} boxH={COVER_H} />
+              <PosImage uri={v.coverUrl} value={v.coverPos} pos={cover.pos} boxH={coverH} />
             ) : (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                 <Text size={14} muted>{t.noCover}</Text>

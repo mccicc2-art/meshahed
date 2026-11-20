@@ -342,8 +342,10 @@ export function LibraryScreen() {
           patch(item.key, (x) => ({ ...x, paused: false, status: statusOf(x, x.watched, dropped) }));
           await write<unknown>("/api/v1/track/dropped", { tmdbId: item.id, mediaType: item.kind, dropped } satisfies SetDroppedBody);
         } else if (a === "next") {
-          patch(item.key, (x) => ({ ...x, paused: false, watched: x.watched + 1, status: statusOf(x, x.watched + 1, false) }));
+          /* T492 — القرصُ يُخفى حتى يقول الخادمُ أيُّ حلقةٍ صارت التالية: «+١» على الشاشة يخطئ عند حدّ الموسم والفلر */
+          patch(item.key, (x) => ({ ...x, paused: false, watched: x.watched + 1, next_ep: x.next_ep === undefined ? undefined : null, status: statusOf(x, x.watched + 1, false) }));
           await write<unknown>("/api/v1/track/next-episode", { showTmdbId: item.id } satisfies ShowRefBody);
+          void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
         } else if (a === "rewatch") {
           patch(item.key, (x) => ({ ...x, watched: 0, rewatch_count: x.rewatch_count + 1, status: statusOf(x, 0, false) }));
           await write<unknown>("/api/v1/track/rewatch", { showTmdbId: item.id } satisfies ShowRefBody);
@@ -1199,6 +1201,7 @@ function toCard(x: LibraryItem): CardItem {
   const done = x.status === "completed";
   const progress = isTv ? (aired > 0 ? Math.round((watched / aired) * 100) : 0) : done ? 100 : 0;
   const dropped = x.status === "dropped";
+  const hasLeft = isTv && !dropped && watched > 0 && aired > watched;
   return {
     key: `${isTv ? "tv" : "mv"}-${x.id}`,
     kind: x.kind,
@@ -1206,7 +1209,10 @@ function toCard(x: LibraryItem): CardItem {
     title: x.display_title ?? x.title,
     posterPath: x.display_poster_path === undefined ? x.poster_path : x.display_poster_path,
     progress,
-    count: isTv && !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
+    /* 🆕 T492 — حيث كانت شارةُ «كم باقي» يقف قرصُ الحلقة التالية («S2 E6»). `null` = لم تُعرف (تفاصيلٌ تأخّرت) ⇐ لا قرص؛
+       وخادمٌ أقدم لا يرسل الحقل (`undefined`) ⇐ يبقى العددُ القديم حتى يصل الويب */
+    next: hasLeft && x.next_ep ? `S${x.next_ep.s} E${x.next_ep.e}` : undefined,
+    count: hasLeft && x.next_ep === undefined ? aired - watched : undefined,
     completed: done,
     dropped,
     /* D-1280 — حالُ القائمة: «لم يبدأ» من الوصفة الواحدة، و«موقوفٌ مؤقّتاً» لِما يُتابَع وحدَه */

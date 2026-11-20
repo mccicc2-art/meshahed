@@ -11,6 +11,7 @@ import { Sheet } from "../library/Sheet";
 import { radius } from "../theme";
 import { posterUrl, profileUrl } from "@/core/media";
 import { num } from "@/core/i18n";
+import { ageBadge } from "@/core/ageRating";
 import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
 import { haptic } from "../haptics";
 import { useRtlRailPin } from "../rtlRailPin";
@@ -80,11 +81,12 @@ export function Pulse({ x, mine, onPress }: { x: TitleExtrasPayload | undefined;
   );
 }
 
-/** 🆕 D-1506 — `onArt`: السطرُ فوق بطل صفحة العمل الداكن في كلِّ ثيم — الأرقامُ بيضاء والعمرُ بإطارٍ فاتح */
+/** 🆕 D-1506 — `onArt`: السطرُ فوق بطل صفحة العمل الداكن في كلِّ ثيم — الأرقامُ بيضاء (والعمرُ شارةٌ ملوّنة منذ T492) */
 export function RatingsLine({ x, compact = false, onArt = false }: { x: TitleExtrasPayload | undefined; compact?: boolean; onArt?: boolean }) {
-  const { tokens } = useApp();
+  const { t } = useApp();
   if (!x) return null;
   const r = x.ratings;
+  const age = ageBadge(r?.rated);
   const p = x.pulse;
   if (!r && p.hearts === 0 && p.votes === 0) return null;
   if (compact && !r?.imdb && !r?.rt) return null;
@@ -105,9 +107,11 @@ export function RatingsLine({ x, compact = false, onArt = false }: { x: TitleExt
           <Text size={13} weight="700" color={onArt ? "#fff" : undefined} style={{ fontVariant: ["tabular-nums"] }}>{r.rt}</Text>
         </View>
       ) : null}
-      {r?.rated ? (
-        <View style={{ borderWidth: 1, borderColor: onArt ? "rgba(255,255,255,0.45)" : tokens.border, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-          <Text size={10} weight="700" muted={!onArt} color={onArt ? "rgba(255,255,255,0.85)" : undefined}>{r.rated}</Text>
+      {/* ⚖️ T492 — **شارةٌ ملوّنةٌ بدرجةٍ يفهمها الناس** (G · +7 · +13 · +18 — `core/ageRating`، وصفةُ الويب نفسُها) بدل الإطار
+          الفاتح بالرمز الأمريكيّ؛ اللونُ ثابتٌ في كلّ ثيم كشارة IMDb، والرمزُ الأصليّ في اسم الإتاحة، وما لا درجةَ له لا يُرسم */}
+      {age ? (
+        <View accessible accessibilityLabel={`${t.ageRating}: ${age.code}`} style={{ backgroundColor: age.bg, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+          <Text size={10} weight="800" color={age.fg} style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>{age.text}</Text>
         </View>
       ) : null}
       {!compact ? <Pulse x={x} /> : null}

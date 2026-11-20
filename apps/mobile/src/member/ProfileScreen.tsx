@@ -30,7 +30,7 @@ import { openProfile } from "./open";
 import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
 import { displayNameOf } from "@/core/people";
-import { DEFAULT_THEME, themeById, themeScheme } from "@/core/themes";
+import { COVER_RATIO } from "@/core/coverRatio";
 import { num } from "@/core/i18n";
 import { countNoun } from "@/core/countNoun";
 import { PROFILE_SECTIONS, profileSectionMeta, profileTabMeta, sectionKeyOf } from "@/core/profilePrefs";
@@ -98,8 +98,8 @@ const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
  * — كان على نصفها السفليّ (D-1427). فصار نصفُه الأعلى على الغلاف، والغلافُ يمتدّ تحته `COVER_BELOW` من مركز الصورة ويذوب على
  * `COVER_FADE`: «تظليلٌ متوسّط تقدر تقرا وتشوف الغلاف، بحيث ما يتسرّب في قصّة» (أحمد). في النهاريّ يبدأ الذوبانُ من تحت شريط الأزرار
  * (`COVER_FADE_LIGHT`) — فالنصُّ الداكنُ يقف على لون الصفحة الفاتح أكثرَ من الصورة (درسُ D-1427: الأبيضُ كان يضيع في «النهاري»).
+ * ⚖️ T492 — **طولُ الغلاف صار من نسبته** (`COVER_RATIO`) لا من موضع الاسم (`COVER_BELOW` حُذف): صندوقُ التعديل وصندوقُ الملفّ واحد.
  */
-const COVER_BELOW = 52;
 const COVER_FADE = 100;
 /** 🆕 D-1607b — طولُ التدرّج الذي يسبق لونَ الصفحة فوق الطبقة السفلى في الطيّ */
 const UNDER_FADE = 72;
@@ -115,7 +115,7 @@ export { profileKey };
 type Grid = "shows" | "movies" | "anime";
 
 export function ProfileScreen({ username, from }: { username: string; from: NativeRoot | "web" }) {
-  const { t, tokens, locale, themeId } = useApp();
+  const { t, tokens, locale } = useApp();
   const router = useRouter();
   const nav = useNavigationContainerRef();
   const qc = useQueryClient();
@@ -522,9 +522,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [topH, setTopH] = useState(0);
   const drop = d?.person.cover_url ? AV_DROP : AV_DROP_BARE;
   /* 🆕 D-1607 — الغلافُ ينزل حتى أسفل سطر الاسم (تحت الحافّة الآمنة)، والذوبانُ يمرّ خلف الاسم — أطولُ في النهاريّ */
-  const coverH = HEADER_H + drop + AV_MAX / 2 + COVER_BELOW;
-  const lightTheme = themeScheme(themeId ? themeById(themeId) : DEFAULT_THEME) === "light";
-  const coverFadeFrom = lightTheme ? HEADER_H : coverH - COVER_FADE;
+  /* 🆕 T492 — **صورةُ الغلاف بنسبة صندوق التعديل** (`COVER_RATIO` — بلاغُ خالد بلقطتين: «ابعاد الغلاف ف الملف غير عن ابعاد الغلاف ف
+     التعديل»، وأحمد «بعد ١»): كانت تملأ الرأسَ كلَّه (~١٫٦ إلى ١ مع الحافّة الآمنة) فتُكبَّر ~١٫٧ مرّةً عمّا ضبطه صاحبُه. الآن
+     صندوقُها من أعلى الشاشة بعرضها ÷ ٢٫٤ — **القصُّ نفسُه الذي رآه في التعديل** — وأسفلُه يذوب إلى لون الصفحة كما كان، والرأسُ
+     (الصورةُ والاسمُ والأزرار) في أماكنه. الذوبانُ يبدأ تحت شريط الأزرار في الثيمين (درسُ D-1427 للنهاريّ) ولا يقصر عن `COVER_FADE`
+     إن طال الصندوق. والأرقامُ تحت الحافّة الآمنة كما يقرؤها `HomeCover` */
+  const coverBox = Math.round(width / COVER_RATIO);
+  const coverArtH = Math.max(HEADER_H + 1, coverBox - insets.top);
+  const coverFadeFrom = Math.max(HEADER_H, coverArtH - COVER_FADE);
   /** ما يطويه الرأسُ العلويُّ من طوله: الفراغُ فوق الصورة + فرقُ قطرها */
   const shrink = drop + (AV_MAX - AV_MIN);
   const topMin = topH > 0 ? Math.max(0, topH - shrink) : 0;
@@ -696,7 +701,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-      {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} height={coverH} fadeFrom={coverFadeFrom} /> : null}
+      {d ? <HomeCover url={d.person.cover_url} pos={d.person.cover_pos} height={coverArtH} fadeFrom={coverFadeFrom} /> : null}
       <View style={{ paddingTop: insets.top, height: insets.top + HEADER_H, flexDirection: "row", alignItems: "center", paddingHorizontal: 8 }}>
         <RoundBtn icon="back" label={t.closeLabel} onPress={back} onLongPress={home} onArt={!!d?.person.cover_url} />
         <View style={{ flex: 1 }} />
@@ -760,7 +765,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               <Animated.View pointerEvents="none" style={{ position: "absolute", top: drop, left: 0, right: 0, height: topMin, overflow: "hidden", backgroundColor: tokens.bg, opacity: fold.veil }}>
                 {d.person.cover_url ? (
                   <>
-                    <Animated.View style={{ position: "absolute", left: 0, right: 0, top: -(insets.top + HEADER_H + drop), height: insets.top + coverH, transform: [{ translateY: fold.coverY }] }}>
+                    <Animated.View style={{ position: "absolute", left: 0, right: 0, top: -(insets.top + HEADER_H + drop), height: insets.top + coverArtH, transform: [{ translateY: fold.coverY }] }}>
                       <CoverArt url={d.person.cover_url} pos={d.person.cover_pos} />
                     </Animated.View>
                     <Image source={VEIL} tintColor={tokens.bg} style={{ position: "absolute", left: 0, right: 0, top: 0, height: VEIL_FADE }} contentFit="fill" />

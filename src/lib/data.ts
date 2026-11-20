@@ -836,6 +836,43 @@ export async function getWatchedForShow(
   );
 }
 
+/**
+ * 🆕 T492 — **مفاتيحُ المشاهدة لعدّة أعمالٍ باستعلامٍ واحد** (قرصُ «الحلقة التالية» على بطاقات «أشاهده» في المكتبة):
+ * `getWatchedForShow` نداءٌ لكلّ عمل، وعشراتُ الأعمال الجارية عشراتُ رحلات. هنا رحلةٌ واحدةٌ مقسَّمةٌ صفحات، وحدُّ
+ * الإعادة (`rewatch_started_at`) يُطبَّق لكلّ عملٍ بعد الجلب — المعنى نفسُه: ما شوهد قبل بدء الإعادة لا يُعدّ في الدورة.
+ */
+export async function getWatchedKeysForShows(
+  showIds: readonly number[],
+  rewatchSince: ReadonlyMap<number, string>,
+): Promise<Map<number, Set<string>>> {
+  const out = new Map<number, Set<string>>();
+  if (!showIds.length) return out;
+  const supabase = await createClient();
+  const uid = await getUserId();
+  if (!uid) return out;
+  const rows = await pageAll<{ show_tmdb_id: number; season_number: number; episode_number: number; watched_at: string }>(
+    (from, to) =>
+      supabase
+        .from("watched_episodes")
+        .select("show_tmdb_id, season_number, episode_number, watched_at")
+        .eq("user_id", uid)
+        .in("show_tmdb_id", [...showIds])
+        .order("show_tmdb_id", { ascending: true })
+        .order("season_number", { ascending: true })
+        .order("episode_number", { ascending: true })
+        .range(from, to),
+  );
+  const sinceMs = new Map([...rewatchSince].map(([id, at]) => [id, Date.parse(at)] as const));
+  for (const r of rows) {
+    const since = sinceMs.get(r.show_tmdb_id);
+    if (since !== undefined && Date.parse(r.watched_at) < since) continue;
+    let set = out.get(r.show_tmdb_id);
+    if (!set) out.set(r.show_tmdb_id, (set = new Set()));
+    set.add(episodeKey(r.season_number, r.episode_number));
+  }
+  return out;
+}
+
 /** هل أتابع هذا العمل؟ صفٌّ واحد بدل قراءة كل المتابعات لسؤال بنعم أو لا */
 export async function isFollowing(
   tmdbId: number,

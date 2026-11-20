@@ -358,7 +358,8 @@ export function EditProfileForm({
             سيكتسبون خطَّين لا يفصلان معنًى.** */}
         <div className="desk:col-span-2 desk:row-start-1">
         <div
-          className={`relative h-32 sm:h-40 desk:h-[250px] desk:rounded-[20px] desk:overflow-hidden bg-surface-2 ${
+          /* ⚖️ T492 — على الجوال ٢٫٤ إلى ١ (`COVER_RATIO`) — نسبةُ غلاف صفحة الملفّ نفسُها، فما يُضبط هنا يُرى هناك بلا تكبير */
+          className={`relative aspect-[12/5] sm:aspect-auto sm:h-40 desk:h-[250px] desk:rounded-[20px] desk:overflow-hidden bg-surface-2 ${
             coverUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
           }`}
           role={coverUrl ? "slider" : undefined}

@@ -710,7 +710,10 @@ export default async function PublicProfilePage({
             🆕 D-1132 — **ثمّ ٦٫٢٥rem** (أحمد بخطٍّ أزرق تحت سهم الرجوع: «فيه مساحة فاضية»): الهويّةُ
             تصعد ٢٤px أخرى، فتبدأ الصورةُ الشخصيّةُ (`-mt-10`) على بُعد ~١٠px تحت هدف لمس الرجوع
             (`safe-top` + ٦ + ٤٤) — أدنى من هذا وتلامسه. */}
-        <div className="relative h-[calc(6.25rem+var(--safe-top))] sm:h-[15rem] lg:h-[22rem] xl:h-[25rem] 2xl:h-[27rem] desk:!h-[15.625rem] desk:col-span-2 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        {/* ⚖️ T492 — **على الجوال نسبةٌ لا ارتفاع**: ٢٫٤ إلى ١ (`COVER_RATIO` في `core/coverRatio.ts`) — نسبةُ صندوق «تعديل الملف»
+            نفسُها في الويب والتطبيق (بلاغُ خالد: «ابعاد الغلاف ف الملف غير عن ابعاد الغلاف ف التعديل»، وأحمد «بعد ١»). كان ٦٫٢٥rem
+            (≈٣٫٩ إلى ١) فيُقصّ ما ضبطه صاحبُه في صندوقٍ ≈٢٫٨. الدرجاتُ الأعرضُ (sm وما فوق والحاسوب) كما كانت */}
+        <div className="relative aspect-[12/5] sm:aspect-auto sm:h-[15rem] lg:h-[22rem] xl:h-[25rem] 2xl:h-[27rem] desk:!h-[15.625rem] desk:col-span-2 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
           {/* 🆕 **والتدرّجُ أرضيّةٌ دائمةٌ لا فرعٌ مقابل** (D-657):
               **صورةٌ تفشل بعد الرسم لا تعيد تشغيل الفرع** — فيجب أن
               يكون تحتها أصلاً. **ومن سقط غلافُه يرى ما يراه من لا

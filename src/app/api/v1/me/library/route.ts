@@ -11,8 +11,12 @@ import {
   getMyLists,
   getSavedListsCount,
   getFollowedArtists,
+  getWatchedKeysForShows,
   artKey,
 } from "@/lib/data";
+import { getTv } from "@/lib/tmdb";
+import { nextUnwatchedEpisode } from "@/core/progress";
+import { skipKeysForTv } from "@/core/skipProgress";
 import { showStatusOf, movieStatusOf, watchStateOf } from "@/core/libraryStatus";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -81,9 +85,22 @@ export async function GET() {
     /* 🆕 D-1623 — من اختار إخفاء الفلر/الذهبيّ يرى عدَّ صفحة العمل (بلا المخفيّ) — لأعمال القوائم وحدَها، في الموجة نفسِها */
     const rewatch = new Map<number, string>();
     for (const f of followRows) if (f.media_type === "tv" && f.rewatch_started_at) rewatch.set(f.tmdb_id, f.rewatch_started_at);
-    const [localized, shown] = await Promise.all([
+    /* 🆕 T492 — **قرصُ «الحلقة التالية»** (أحمد ٢٠ نوفمبر: «بدل كم باقي حلقة اكتب وين واصل» — «S2 E6»): المرشَّحون مسلسلاتٌ جاريةٌ
+       بدأها صاحبُها (`summary` بلا عدِّ الإخفاء — مجموعةٌ أوسع تُصفّى بشرط البطاقة بعدُ)، **في الموجة الثانية نفسِها** فلا تزيد
+       الردَّ إلا بأبطأ نداء: تفاصيلُ العمل من خبيئة TMDB (`getTv` — ما تناديه «تابِع المشاهدة» لكلّ عملٍ أصلاً) ومفاتيحُ المشاهدة
+       باستعلامٍ واحد. الحدُّ ٨٠ بأحدث مشاهدة، وكلُّ تفاصيلٍ تتأخّر ثانيةً ونصفاً ⇐ `null` فلا قرصَ لها، لا ردٌّ عالق. */
+    const started = new Map<number, string | null>();
+    if (summary) for (const r of summary) if (r.watched > 0) started.set(r.show_tmdb_id, r.last_watched);
+    const nextIds = followRows
+      .filter((f) => f.media_type === "tv" && !f.dropped && (!summary || started.has(f.tmdb_id)))
+      .sort((a, b) => (started.get(b.tmdb_id) ?? "").localeCompare(started.get(a.tmdb_id) ?? ""))
+      .slice(0, NEXT_CAP)
+      .map((f) => f.tmdb_id);
+    const mode = skipModeOf(profileRow);
+    const [localized, shown, nextEp] = await Promise.all([
       localizeFollows(followRows, locale),
-      shownProgressFor(followRows.filter((f) => f.media_type === "tv" && !f.dropped).map((f) => f.tmdb_id), skipModeOf(profileRow), rewatch),
+      shownProgressFor(followRows.filter((f) => f.media_type === "tv" && !f.dropped).map((f) => f.tmdb_id), mode, rewatch),
+      nextEpisodes(nextIds, rewatch, mode).catch(() => new Map<number, { s: number; e: number } | null>()),
     ]);
 
     // خريطةُ العدّ: من الملخّص، وإلا من الصفوف الخام (السقوطُ نفسُه في الويب)
@@ -138,6 +155,7 @@ export async function GET() {
         is_anime: animeFlags.get(key) ?? null,
         is_favorite: favorites.has(key),
         paused: isTv && status === "watching" && watchStateOf(fs, w?.watched ?? 0) === "paused",
+        next_ep: isTv ? (nextEp.get(f.tmdb_id) ?? null) : undefined,
       };
     });
     const dt = defaultTab(tabPrefs, "shows");
@@ -163,4 +181,35 @@ export async function GET() {
     };
     return ok(payload);
   });
+}
+
+/** T492 — أقصى ما يُحسب له قرصُ «الحلقة التالية» في الطلب الواحد */
+const NEXT_CAP = 80;
+/** T492 — مهلةُ تفاصيل العمل الواحد: خبيئةٌ تردّ في أجزاء الثانية، ورحلةُ TMDB باردةٌ لا تحبس المكتبة */
+const NEXT_WAIT_MS = 1_500;
+
+/**
+ * T492 — الحلقةُ التالية لكلّ مسلسل: **`nextUnwatchedEpisode` نفسُها** التي تكتب «S2 E6» في «تابِع المشاهدة»، والمخفيُّ بالفلر
+ * لا يُقترح (`skipKeysForTv`) — فما يقوله القرصُ هو ما تقوله الرئيسيّةُ وصفحةُ العمل.
+ */
+async function nextEpisodes(
+  ids: readonly number[],
+  rewatch: ReadonlyMap<number, string>,
+  mode: ReturnType<typeof skipModeOf>,
+): Promise<Map<number, { s: number; e: number } | null>> {
+  const out = new Map<number, { s: number; e: number } | null>();
+  if (!ids.length) return out;
+  const timeout = <T,>(p: Promise<T>) =>
+    Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), NEXT_WAIT_MS))]);
+  const [keys, tvs] = await Promise.all([
+    getWatchedKeysForShows(ids, rewatch),
+    Promise.all(ids.map((id) => timeout(getTv(id)).catch(() => null))),
+  ]);
+  ids.forEach((id, n) => {
+    const tv = tvs[n];
+    if (!tv) return out.set(id, null);
+    const next = nextUnwatchedEpisode(tv, keys.get(id) ?? new Set(), skipKeysForTv(tv, mode));
+    out.set(id, next ? { s: next.season, e: next.episode } : null);
+  });
+  return out;
 }

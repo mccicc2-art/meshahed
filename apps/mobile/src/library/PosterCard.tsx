@@ -35,6 +35,8 @@ export type CardItem = {
   progress: number;
   /** الحلقاتُ المتبقية — شارةُ الزاوية */
   count?: number;
+  /** 🆕 T492 — «S2 E6»: الحلقةُ التالية — قرصٌ داكنٌ مكانَ شارة العدد (المكتبة). حين يحضر لا تُرسم شارةُ العدد */
+  next?: string;
   completed: boolean;
   dropped: boolean;
   /** 🆕 D-1280 — لم يبدأ: لا حلقةَ شوهدت ولا «ابدأ» ضُغط. القائمةُ تعرض «ابدأ» و«إزالة» بدل البطاقة الحمراء */
@@ -125,7 +127,16 @@ export const PosterCard = memo(function PosterCard({
             recyclingKey={item.key}
           />
         ) : null}
-        {typeof item.count === "number" && item.count > 0 ? (
+        {/* 🆕 T492 — **قرصُ الحلقة التالية** (أحمد ٢٠ نوفمبر: «بدل كم باقي حلقة اكتب وين واصل» — «١ ب ٢ الحلقة التالية»، «E كافي بدون P»):
+            توأمُ علامة الإيقاف في الطرف المقابل — الارتفاعُ ٢٤ نفسُه والبُعدُ ٨ نفسُه من الحافّة والأعلى («بالمسطرة» — أعلاهما وأسفلهما على
+            خطٍّ واحد)، وزجاجُها الداكنُ بحدّها الأبيض الخافت، فلا شكلَ جديدٌ فوق الملصق. النصُّ لاتينيٌّ دائماً فـ`ltr` */}
+        {item.next ? (
+          <View style={{ position: "absolute", top: 8, end: 8, height: 24, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
+            <Text size={11} weight="700" color="#fff" style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>
+              {item.next}
+            </Text>
+          </View>
+        ) : typeof item.count === "number" && item.count > 0 ? (
           <View
             style={{
               position: "absolute",

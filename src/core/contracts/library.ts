@@ -40,6 +40,9 @@ export type LibraryItem = {
   is_favorite?: boolean;
   /** 🆕 D-1280 — موقوفٌ مؤقّتاً (`follows.watch_state = 'paused'`): علامةٌ على الملصق و«كمّل» في القائمة */
   paused?: boolean;
+  /** 🆕 T492 — أوّلُ حلقةٍ معروضةٍ لم تُشاهد (`nextUnwatchedEpisode`، وصفةُ «تابِع المشاهدة» نفسُها): قرصُ «S2 E6» على
+      بطاقة المكتبة بدل عدد الباقي. `null` = لا تُعرف (تفاصيلٌ تأخّرت) فلا قرص؛ وخادمٌ أقدم لا يرسل الحقلَ أصلاً */
+  next_ep?: { s: number; e: number } | null;
 };
 
 /**

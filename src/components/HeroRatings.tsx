@@ -21,6 +21,7 @@ import { resolveImdbId } from "@/lib/titleExtras";
  */
 
 import { ImdbMark, RtMark } from "./RatingMarks";
+import { ageBadge, type AgeBadge } from "@/core/ageRating";
 export { ImdbMark, RtMark } from "./RatingMarks";
 
 /**
@@ -30,27 +31,22 @@ export { ImdbMark, RtMark } from "./RatingMarks";
  * **ولا نداءَ جديداً له:** OMDb تُرسل `Rated` في الردّ الذي ننادِيه هنا
  * أصلاً — **كان يصلنا فنرميه**، وهي سيرةُ `votes` بحرفها (D-132).
  *
- * **وشكلُه إطارٌ لا لون:** التصنيفُ **ليس حالةً** (D-003)، **وهو أيضاً
- * ليس رقماً يُقارَن** بالتقييمين بجانبه — فيُفصل عنهما بحدٍّ رفيعٍ يقول
- * «هذا صنفٌ آخر من المعلومة».
- * ⚠️ **و`dir="ltr"` عليه**: «PG-13» تنقلب شرطتُها في سطرٍ عربيّ (D-015).
+ * ⚖️ **T492 — صار شارةً ملوّنةً بدرجةٍ يفهمها الناس** (G · +7 · +13 · +18 — `core/ageRating`)
+ * بدل الإطار الرماديّ بالرمز الأمريكيّ (نقضُ «إطارٌ لا لون» من D-286 باختيار أحمد «٤ أ ٥ب ٦ أ»).
+ * الرمزُ الأصليّ في اسم الإتاحة، وما لا درجةَ له لا يُرسم (`ageBadge` ⇐ `null`).
+ * ⚠️ **و`dir="ltr"` عليها**: «+13» تنقلب علامتُها في سطرٍ عربيّ (D-015).
  */
-function AgeMark({ rated, label, compact }: { rated: string; label: string; compact?: boolean }) {
+function AgeMark({ badge, label, compact }: { badge: AgeBadge; label: string; compact?: boolean }) {
   return (
     <span
       dir="ltr"
-      aria-label={`${label}: ${rated}`}
-      className={`inline-block rounded-md border font-bold uppercase tracking-wide leading-none ${
-        compact
-          /* 🆕 **و`foreground` لا `white` في نسخة الغلاف** (D-318): هذه
-             الأسطرُ تقف على قاعٍ يذوب في `from-background` — أرضيّةٌ
-             تتبع الثيم، **والأبيضُ الصلبُ كان يموت عليها في النهاريّ.**
-             في الثيمات الداكنة `foreground` أبيضُ عمليّاً فلا يتغيّر شيء. */
-          ? "border-foreground/70 text-foreground px-2 py-[3px] text-12"
-          : "border-border text-muted px-1.5 py-1 text-12"
+      aria-label={`${label}: ${badge.code}`}
+      className={`inline-block rounded-md font-bold tabular-nums leading-none ${
+        compact ? "px-2 py-[4px] text-12" : "px-1.5 py-1 text-12"
       }`}
+      style={{ backgroundColor: badge.bg, color: badge.fg }}
     >
-      {rated}
+      {badge.text}
     </span>
   );
 }
@@ -111,7 +107,9 @@ export async function HeroRatings({
      ⚠️ **والتصنيفُ يدخل الشرط** (D-286): عملٌ بلا تقييمٍ وله تصنيفٌ
      عمريٌّ يستحقّ سطرَه — **وشرطٌ لم يُوسَّع مع ما يعرضه يُخفي الجديد
      صامتاً.** */
-  if (!ext || (!ext.imdb && !ext.rt && !ext.rated)) return null;
+  /* T492 — الشرطُ على الشارة لا على الرمز: رمزٌ لا درجةَ له (Approved…) لا يستحقّ سطراً وحدَه */
+  const age = ageBadge(ext?.rated);
+  if (!ext || (!ext.imdb && !ext.rt && !age)) return null;
 
   /**
    * 🆕 **والتصنيفُ نزل سطراً تحت التقييمات** (D-297، طلبُ أحمد: «يكون تحت
@@ -129,7 +127,7 @@ export async function HeroRatings({
      على لقطةٍ محوَّطة: «TV-MA تكون في سطر لوحدها»). **وهذا ما كتبه
      D-297 بنفسِه**: «وفي الغلاف وحدَه… **وحين تُطلب، السطرُ هو هو**» —
      **فطُلب، وسقط شرطُ `compact`** ولم يتغيّر شيءٌ آخر. */
-  const stacked = !!ext.rated && (!!ext.imdb || !!ext.rt);
+  const stacked = !!age && (!!ext.imdb || !!ext.rt);
 
   const marks = (
     <div
@@ -155,8 +153,8 @@ export async function HeroRatings({
           </span>
         </span>
       )}
-      {ext.rated && !stacked && (
-        <AgeMark rated={ext.rated} label={ageLabel ?? "Age rating"} compact={compact} />
+      {age && !stacked && (
+        <AgeMark badge={age} label={ageLabel ?? "Age rating"} compact={compact} />
       )}
     </div>
   );
@@ -168,7 +166,7 @@ export async function HeroRatings({
       {/* **سطرُه وحدَه، ومقاسُه أكبرُ قليلاً**: صار وحيدَ سطرِه **فلا
           يزاحمه شيء**، **وحجمٌ يُقرأ من بعيدٍ هو ما يجعل الشارةَ شارة.** */}
       <div className="mt-1">
-        <AgeMark rated={ext.rated!} label={ageLabel ?? "Age rating"} compact={compact} />
+        <AgeMark badge={age!} label={ageLabel ?? "Age rating"} compact={compact} />
       </div>
     </>
   );
