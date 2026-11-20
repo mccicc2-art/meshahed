@@ -25,7 +25,10 @@ export async function POST(req: NextRequest) {
     const movies = Array.isArray(body.movies) ? body.movies : [];
     /* 🆕 قوائمُ IMDb — اختياريّةٌ: تطبيقٌ لم يصله التحديث لا يرسلها */
     const lists = Array.isArray(body.lists) ? body.lists : [];
-    const done = await applyImportChunk({ shows, movies, lists });
+    /* 🆕 Bingers — المفضّلةُ واسمُها و«ما في Loopz يبقى» (`keep`): اختياريّةٌ كالقوائم، وتُمرَّر بأنواعها الصريحة لا بالجسم كلِّه */
+    const favorites = Array.isArray(body.favorites) ? body.favorites : [];
+    const favoritesName = typeof body.favoritesName === "string" ? body.favoritesName : undefined;
+    const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true });
     return ok(done, []);
   });
 }

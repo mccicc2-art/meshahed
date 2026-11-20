@@ -233,7 +233,9 @@ export const LIMITS = {
   supabaseStorageBytes: 1024 * 1024 * 1024,
   supabaseMau: 50_000,
   expectedOpenPolicies: 5, // supabase/README.md: user_follows · communities · imdb_ratings · imdb_chart · title_meta
-  expectedActiveCron: 1,   // loopz-title-communities (D-140)
+  /* M-01 (المراقب ٢٠ نوفمبر) — وظيفتان: مجتمعاتُ العناوين، وتنظيفُ `runtime_errors` بعد ٩٠ يوماً (A-11، منذ ٢٣ أكتوبر)؛
+     القيمةُ القديمة (1) جعلت البطاقةَ تنبّه كلَّ يومٍ على وضعٍ سليم */
+  expectedActiveCron: 2,   // loopz-title-communities (D-140) · loopz-runtime-errors-retention (A-11)
 } as const;
 
 export type Provider = {

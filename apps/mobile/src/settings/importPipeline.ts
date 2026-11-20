@@ -17,6 +17,8 @@ export type ImportResult = { shows: number; episodes: number; movies: number; li
 export async function importRecords(
   records: RawRecord[],
   hooks: { stopped: () => boolean; phase: (p: ImportPhase) => void; pct: (n: number) => void },
+  /** 🆕 Bingers — `keep`: «ما في Loopz يبقى» (`ImportPayload.keep`)، و`favoritesName`: اسمُ «المفضّلة» إن وُلدت بالاستيراد */
+  opts: { keep?: boolean; favoritesName?: string } = {},
 ): Promise<ImportResult | null> {
   // ===== المطابقة — ما وصل بمعرّف TMDB لا يمرّ من هنا (D-154) =====
   hooks.phase("matching");
@@ -31,7 +33,8 @@ export async function importRecords(
     hooks.pct(Math.round(((i + slice.length) / requests.length) * 100));
   }
 
-  const { shows, movies, lists, unmatched } = buildImport(records, resolved);
+  const { shows, movies, lists, favorites, unmatched } = buildImport(records, resolved);
+  const keep = opts.keep === true;
 
   // ===== الكتابة =====
   hooks.phase("writing");
@@ -42,21 +45,21 @@ export async function importRecords(
   let lC = 0;
   let lSkip = 0;
   const steps =
-    Math.ceil(shows.length / IMPORT_CHUNK.shows) + Math.ceil(movies.length / IMPORT_CHUNK.movies) + Math.ceil(lists.length / IMPORT_CHUNK.lists) || 1;
+    Math.ceil(shows.length / IMPORT_CHUNK.shows) + Math.ceil(movies.length / IMPORT_CHUNK.movies) + Math.ceil(lists.length / IMPORT_CHUNK.lists) + Math.ceil(favorites.length / IMPORT_CHUNK.favorites) || 1;
   let step = 0;
   /* `lists*` اختياريّان في الردّ: خادمٌ أقدمُ من هذا التطبيق لا يعيدهما (ولن تصله قوائم أصلاً) */
   const apply = async (payload: ImportPayload) =>
     (await api<{ shows: number; episodes: number; movies: number; lists?: number; listsSkipped?: number }>("/api/v1/me/import/apply", { method: "POST", body: payload })).data;
   for (let i = 0; i < shows.length; i += IMPORT_CHUNK.shows) {
     if (hooks.stopped()) break;
-    const r = await apply({ shows: shows.slice(i, i + IMPORT_CHUNK.shows), movies: [] });
+    const r = await apply({ shows: shows.slice(i, i + IMPORT_CHUNK.shows), movies: [], keep });
     sC += r.shows;
     eC += r.episodes;
     hooks.pct(Math.round((++step / steps) * 100));
   }
   for (let i = 0; i < movies.length; i += IMPORT_CHUNK.movies) {
     if (hooks.stopped()) break;
-    const r = await apply({ shows: [], movies: movies.slice(i, i + IMPORT_CHUNK.movies) });
+    const r = await apply({ shows: [], movies: movies.slice(i, i + IMPORT_CHUNK.movies), keep });
     mC += r.movies;
     hooks.pct(Math.round((++step / steps) * 100));
   }
@@ -66,6 +69,12 @@ export async function importRecords(
     const r = await apply({ shows: [], movies: [], lists: lists.slice(i, i + IMPORT_CHUNK.lists) });
     lC += r.lists ?? 0;
     lSkip += r.listsSkipped ?? 0;
+    hooks.pct(Math.round((++step / steps) * 100));
+  }
+  /* 🆕 مفضّلةُ Bingers بعد القوائم — تُضاف إلى «المفضّلة» الواحدة ولا تُقلَب */
+  for (let i = 0; i < favorites.length; i += IMPORT_CHUNK.favorites) {
+    if (hooks.stopped()) break;
+    await apply({ shows: [], movies: [], favorites: favorites.slice(i, i + IMPORT_CHUNK.favorites), favoritesName: opts.favoritesName });
     hooks.pct(Math.round((++step / steps) * 100));
   }
   /* `write`: الختامُ يحمل الوسوم — الرئيسيّةُ والمكتبةُ والإحصاءاتُ تُعاد مرّةً واحدةً لا مع كلِّ دفعة */

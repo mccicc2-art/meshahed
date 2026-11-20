@@ -17,6 +17,7 @@ import { parseLetterboxdFiles } from "@/core/letterboxd";
 import { parseTrackerExport } from "@/core/trackerExport";
 import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
+import { parseBingersFiles } from "@/core/bingers";
 import { setInflateRaw, type ParseOutcome } from "@/core/importParse";
 import { importRecords, type ImportResult } from "./importPipeline";
 import { importFromTrakt } from "./trakt";
@@ -37,7 +38,7 @@ import { importFromTrakt } from "./trakt";
  */
 setInflateRaw((data) => inflateSync(data));
 
-type SourceId = "imdb" | "mal" | "letterboxd" | "simkl" | "tvtime";
+type SourceId = "imdb" | "mal" | "letterboxd" | "simkl" | "bingers" | "tvtime";
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
 type Result = ImportResult;
 
@@ -49,6 +50,8 @@ const SOURCES: Record<SourceId, { parse: (f: { name: string; buf: ArrayBuffer }[
   mal: { parse: parseMalFiles, ext: [".gz", ".xml", ".zip"] },
   letterboxd: { parse: parseLetterboxdFiles, ext: [".zip", ".csv"] },
   simkl: { parse: parseTrackerExport, ext: [".zip", ".json", ".csv"] },
+  /* 🆕 Bingers — zip الأربعة كما نزل (أحمد ٢٠ نوفمبر) */
+  bingers: { parse: parseBingersFiles, ext: [".zip", ".csv"] },
   tvtime: { parse: parseTvTimeFiles, ext: [".zip", ".csv", ".json"] },
 };
 
@@ -125,7 +128,12 @@ export function ImportScreen() {
       }
 
       /* 🆕 المطابقةُ والتجميعُ والكتابةُ في `importPipeline.ts` — قارئُها الثاني استيرادُ Plex (هجرة ٢٣٥) */
-      const done = await importRecords(records, { stopped: () => stop.current, phase: setPhase, pct: setPct });
+      const done = await importRecords(
+        records,
+        { stopped: () => stop.current, phase: setPhase, pct: setPct },
+        /* 🆕 «ما في Loopz يبقى» لكلِّ ملفٍّ كما في الويب (أحمد ٢٠ نوفمبر «١ أ») — يُضاف الناقصُ ولا يُدهس الموجود */
+        { keep: true, favoritesName: t.favListName },
+      );
       if (!done) return void setPhase("idle");
       setResult(done);
       setPhase("done");
@@ -183,6 +191,7 @@ export function ImportScreen() {
     { id: "mal", title: t.importMalTitle, hint: t.importMalHint, fileHint: t.importMalFileHint },
     { id: "letterboxd", title: t.importLetterboxdTitle, hint: t.importLetterboxdHint, fileHint: t.importLetterboxdFileHint },
     { id: "simkl", title: t.importSimklTitle, hint: t.importSimklHint, fileHint: t.importSimklFileHint },
+    { id: "bingers", title: t.importBingersTitle, hint: t.importBingersHint, fileHint: t.importBingersFileHint },
     { id: "tvtime", title: t.importTvTimeTitle, hint: t.importTvTimeHint, fileHint: t.importFileHint },
   ];
   const src = sources.find((s) => s.id === open);

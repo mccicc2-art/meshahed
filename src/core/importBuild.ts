@@ -12,6 +12,8 @@ export interface BuiltImport {
   movies: ImportMovie[];
   /** 🆕 IMDb («٤ أ») — قوائمُ صاحبها بأعمالها مرتّبة؛ `[]` لكلِّ مصدرٍ آخر */
   lists: ImportList[];
+  /** 🆕 Bingers («٢ أ») — أعمالُ المفضّلة بترتيبها؛ `[]` لكلِّ مصدرٍ آخر */
+  favorites: ImportList["items"];
   /** ما لم يُطابَق — بالاسم كما ورد في التصدير، مرّةً واحدةً لكلِّ اسم */
   unmatched: string[];
 }
@@ -23,6 +25,8 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
   const unmatched = new Set<string>();
   /** 🆕 IMDb — اسمُ القائمة ⇐ أعمالُها بمواضعها (تُرتَّب وتُطوى في الختام) */
   const listMap = new Map<string, (ImportList["items"][number] & { pos: number })[]>();
+  /** 🆕 Bingers — المفضّلةُ قائمةٌ واحدةٌ بلا اسمٍ من المصدر (اسمُها اسمُ قائمة المفضّلة عند صاحبها) */
+  const favs: (ImportList["items"][number] & { pos: number })[] = [];
   /** 🆕 MyAnimeList — تقييماتُ مواسم العمل الواحد (يُؤخذ متوسّطها)، وحالةُ أبعدِ مواسمه */
   const malScores = new Map<number, number[]>();
   const malFront = new Map<number, { pos: number; state: ImportShow["state"] | "active" }>();
@@ -49,7 +53,23 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
       };
       sh.episodes.push(...r.episodes);
       if (r.rating != null) sh.rating = r.rating;
+      if (r.state) sh.state = r.state;
       showMap.set(r.tmdbId, sh);
+      continue;
+    }
+
+    /* 🆕 **عملُ قائمةٍ أو مفضّلة** (Bingers): بمعرّف TMDB يُبنى مباشرةً، وبـTVDB من المطابقة. والملصقُ يُستكمل على الخادم */
+    if (r.kind === "list-item") {
+      const hit = r.tmdbId
+        ? { tmdbId: r.tmdbId, mediaType: r.mediaType, title: r.title, posterPath: null as string | null }
+        : resolved.get(recordKey(r));
+      if (!hit) {
+        unmatched.add(r.title);
+        continue;
+      }
+      const item = { tmdbId: hit.tmdbId, mediaType: hit.mediaType, title: hit.title || r.title, posterPath: hit.posterPath, pos: r.pos };
+      if (r.list == null) favs.push(item);
+      else listMap.set(r.list, [...(listMap.get(r.list) ?? []), item]);
       continue;
     }
     if (r.kind === "tmdb-movie") {
@@ -147,9 +167,11 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
       const label =
         r.kind === "ep-name" || r.kind === "rating-show"
           ? r.show
-          : r.kind === "movie-name" || r.kind === "movie-watchlist"
+          : r.kind === "movie-name" || r.kind === "movie-watchlist" || r.kind === "ep-tvdbshow"
             ? r.name
-            : "";
+            : r.kind === "show-tvdb"
+              ? (r.name ?? "")
+              : "";
       if (label) unmatched.add(label);
       continue;
     }
@@ -162,7 +184,11 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
         addShow(hit).episodes.push({ s: hit.season, e: hit.episode, at: r.at });
       }
     } else if (r.kind === "show-tvdb") {
-      addShow(hit);
+      const sh = addShow(hit);
+      if (r.rating != null) sh.rating = r.rating;
+      if (r.state) sh.state = r.state;
+    } else if (r.kind === "ep-tvdbshow") {
+      addShow(hit).episodes.push({ s: r.s, e: r.e, at: r.at });
     } else if (r.kind === "rating-show") {
       addShow(hit).rating = r.rating;
     } else if (r.kind === "movie-watchlist") {
@@ -222,28 +248,27 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
     if (sh && f.state !== "active") sh.state = f.state;
   }
 
-  /* 🆕 القوائمُ بترتيب IMDb، والعملُ مرّةً في قائمته — وسقفاها سقفا `upsertListWithItems` وحساب القوائم */
-  const lists: ImportList[] = [...listMap].slice(0, IMPORT_CAPS.lists).map(([name, items]) => {
+  /* 🆕 القوائمُ بترتيب مصدرها، والعملُ مرّةً في قائمته — وسقفاها سقفا `upsertListWithItems` وحساب القوائم */
+  const ordered = (items: (ImportList["items"][number] & { pos: number })[]): ImportList["items"] => {
     const seen = new Set<string>();
-    return {
-      name,
-      items: items
-        .sort((a, b) => a.pos - b.pos)
-        .filter((it) => {
-          const k = `${it.mediaType}-${it.tmdbId}`;
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        })
-        .slice(0, IMPORT_CAPS.listItems)
-        .map(({ tmdbId, mediaType, title, posterPath }) => ({ tmdbId, mediaType, title, posterPath })),
-    };
-  });
+    return items
+      .sort((a, b) => a.pos - b.pos)
+      .filter((it) => {
+        const k = `${it.mediaType}-${it.tmdbId}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, IMPORT_CAPS.listItems)
+      .map(({ tmdbId, mediaType, title, posterPath }) => ({ tmdbId, mediaType, title, posterPath }));
+  };
+  const lists: ImportList[] = [...listMap].slice(0, IMPORT_CAPS.lists).map(([name, items]) => ({ name, items: ordered(items) }));
 
   return {
     shows: [...showMap.values()].slice(0, IMPORT_CAPS.shows),
     movies: [...movieMap.values()].slice(0, IMPORT_CAPS.movies),
     lists: lists.filter((l) => l.items.length),
+    favorites: ordered(favs),
     unmatched: [...unmatched],
   };
 }
@@ -255,4 +280,4 @@ export function showOfEpisodeTitle(name: string): string {
 }
 
 /** دفعاتُ الكتابة — خمسةُ مسلسلاتٍ أو ستّون فيلماً أو قائمةٌ في الطلب (تحت سقوف `applyImportChunk`) */
-export const IMPORT_CHUNK = { resolve: 40, shows: 5, movies: 60, lists: 1 } as const;
+export const IMPORT_CHUNK = { resolve: 40, shows: 5, movies: 60, lists: 1, favorites: 60 } as const;

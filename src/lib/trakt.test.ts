@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { episodesFromHistory, traktAuthorizeUrl, traktConfigured, traktHeaders, traktPkce } from "./trakt.ts";
+import { episodesFromHistory, pickOAuthError, traktAuthorizeUrl, traktConfigured, traktHeaders, traktPkce } from "./trakt.ts";
 
 test("PKCE verifier is 43–128 url-safe chars and the challenge is its S256", async () => {
   const { verifier, challenge } = await traktPkce();
@@ -70,4 +70,14 @@ test("history → episodes: rewatches fold onto the latest date, non-episodes an
 
 test("history → episodes keeps a watch with no date (the import stamps it)", () => {
   assert.deepEqual(episodesFromHistory([{ type: "episode", episode: { season: 0, number: 3 } }]), [{ s: 0, e: 3, at: undefined }]);
+});
+
+test("A-70: pickOAuthError keeps only a short OAuth error code", () => {
+  assert.equal(pickOAuthError({ error: "invalid_grant", error_description: "free text" }), "invalid_grant");
+  assert.equal(pickOAuthError({ error: "invalid_client" }), "invalid_client");
+  assert.equal(pickOAuthError({ error: "Bad Request with spaces" }), "-");
+  assert.equal(pickOAuthError({ error: 42 }), "-");
+  assert.equal(pickOAuthError({ message: "x" }), "-");
+  assert.equal(pickOAuthError(null), "-");
+  assert.equal(pickOAuthError("invalid_grant"), "-");
 });

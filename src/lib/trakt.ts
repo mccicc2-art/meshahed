@@ -26,6 +26,23 @@ export function traktHeaders(token?: string): Record<string, string> {
 const logFail = (what: string, status: number | string) => console.error(`[trakt] ${what} failed: ${status}`);
 
 /**
+ * A-70 — رمزُ خطأ OAuth من ردٍّ فاشل (`invalid_grant` و`invalid_client` و`unauthorized_client`…). يُقبل الرمزُ وحده إن كان
+ * حروفاً صغيرةً وشرطةً سفليّةً بطولٍ معقول؛ وما سواه (ردٌّ غيرُ JSON، أو حقلٌ غريب) يُكتب `-` كي لا يدخل السجلَّ نصٌّ حرّ.
+ */
+export function pickOAuthError(body: unknown): string {
+  const e = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
+  return typeof e === "string" && /^[a-z_]{3,40}$/.test(e) ? e : "-";
+}
+
+async function oauthErrorCode(res: Response): Promise<string> {
+  try {
+    return pickOAuthError(await res.json());
+  } catch {
+    return "-";
+  }
+}
+
+/**
  * 🆕 R275 — **PKCE لا السرّ** (اكتُشف ١٩ نوفمبر عند إنشاء تطبيق Loopz في بوّابة مطوّري Trakt الجديدة): التطبيقاتُ الجديدة
  * «Not issued» للـClient Secret — تسجّل الدخول بـPKCE وحده. فالمفتاحُ المطلوبُ واحد (`TRAKT_CLIENT_ID`)، والسرُّ إن وُجد
  * (تطبيقٌ قديم) يُرسَل ولا يُشترط. والتحقّقُ في كلِّ رحلةٍ مُتحقِّقٌ عشوائيٌّ يُحفظ في كوكي ويُرسل بصمتُه (S256) فقط.
@@ -83,7 +100,10 @@ export async function traktToken(code: string, redirectUri: string, verifier: st
       }),
     });
     if (!res.ok) {
-      logFail("token", res.status);
+      /* A-70 (المدقّق ٢٠ نوفمبر) — رقمُ الحالة وحده (400) لا يفرّق شِفرةً مستهلَكةً أو منتهيةً من عنوانِ عودةٍ لا يطابق أو مُتحقِّقٍ
+         خاطئ أو حسابٍ بلغ حدَّ تطبيقاته؛ فيُسجَّل معه **رمزُ الخطأ** الذي يعيده Trakt (`error` في OAuth) — كلمةٌ عامّةٌ من أبجديّةٍ
+         ضيّقة، لا الردَّ ولا وصفَه ولا الشِفرة */
+      logFail("token", `${res.status} ${await oauthErrorCode(res)}`);
       return null;
     }
     const j = (await res.json()) as { access_token?: string };

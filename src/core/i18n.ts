@@ -593,7 +593,7 @@ const ar = {
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
   importHint:
-    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر.",
+    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو Bingers أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر. وما في مكتبتك هنا يبقى كما هو — يُضاف إليه الناقص فقط.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "اطلب نسخة بياناتك من TV Time ثم ارفع الملف المضغوط هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
@@ -645,6 +645,12 @@ const ar = {
     "من Simkl: الإعدادات ← Import/Export ← نزّل نسخة JSON الاحتياطية (مجانية للجميع)، ثم ارفع الملف كما نزل. أعمالك تصل بمعرّفاتها فتُطابَق فوراً بلا بحثٍ بالاسم.",
   importSimklFileHint:
     "صيغ مقبولة: zip أو json أو csv. يعمل مع أي تصديرٍ يحمل معرّفات TMDB.",
+  /* 🆕 Bingers (أحمد ٢٠ نوفمبر: «١ أ · ٢ أ») — القوائمُ تدخل خاصّة، والمفضّلةُ مفضّلتَك، وما في Loopz يبقى كما هو */
+  importBingersTitle: "Bingers",
+  importBingersHint:
+    "من Bingers: الإعدادات ← Export My Data، ثم ارفع الملف المضغوط كما نزل. تصل مشاهداتك بتواريخها وتقييماتك وقوائمك ومفضّلتك.",
+  importBingersFileHint:
+    "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
   /* 🆕 IMDb (أحمد ٤ نوفمبر: «١ ب · ٢ أ · ٣ أ · ٤ أ») — التقييمُ مشاهدة، ويومُه يومُها، والقوائمُ تدخل خاصّة */
   importImdbTitle: "IMDb",
   importImdbHint:
@@ -3961,7 +3967,7 @@ const en: Dict = {
 
   importSection: "Import your library",
   importHint:
-    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl or TV Time — export your file from them and upload it here, no starting from scratch.",
+    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl, Bingers or TV Time — export your file from them and upload it here, no starting from scratch. Whatever is already in your Loopz library stays as it is — only what's missing is added.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "Request your data copy from TV Time, then upload the zip here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
@@ -4005,6 +4011,11 @@ const en: Dict = {
     "In Simkl: Settings → Import/Export → download the JSON backup (free for everyone), then upload the file as it downloaded. Titles arrive with their IDs, so they match instantly — no name search.",
   importSimklFileHint:
     "Accepted: zip, json or csv. Works with any export carrying TMDB ids.",
+  importBingersTitle: "Bingers",
+  importBingersHint:
+    "In Bingers: Settings → Export My Data, then upload the ZIP exactly as it downloaded. Your watches arrive with their dates, plus your ratings, lists and favourites.",
+  importBingersFileHint:
+    "Accepted: zip or csv. Ratings convert from five stars to ten points.",
   importImdbTitle: "IMDb",
   importImdbHint:
     "From IMDb: open Your ratings, your Watchlist or any of your lists → ⋯ → Export, then download the files from the Exports page and upload them here together. A rating means you watched it: the film, the whole series, or the episode and everything before it — on the day you rated it.",

@@ -6216,6 +6216,8 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   /** 🆕 IMDb — قوائمُ أُنشئت أو أُضيف إليها، وما لم يدخل منها (سقفُ الخمسين قائمة) */
   lists: number;
   listsSkipped: number;
+  /** 🆕 Bingers — أعمالٌ دخلت «المفضّلة» (ما كان فيها لا يُعدّ) */
+  favorites: number;
 }> {
   const session = await requireUser("import-apply", 90, 60_000);
   const { supabase, user } = session;
@@ -6229,6 +6231,10 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   const shows = (payload?.shows ?? []).slice(0, 5);
   const movies = (payload?.movies ?? []).slice(0, 60);
   let epCount = 0;
+  /* 🆕 **«ما في Loopz يبقى»** (`keep` — ملفّاتُ الاستيراد كلُّها، أحمد ٢٠ نوفمبر «١ أ»، قاعدةُ Trakt): كلُّ كتابةٍ تُضيف الناقصَ
+     ولا تمسّ الموجود (`ignoreDuplicates`). وغيابُه (Plex · تطبيقٌ قديم) يُبقي الكتابةَ القديمة */
+  const keep = payload?.keep === true;
+  const upsertOpts = (onConflict: string) => ({ onConflict, ...(keep ? { ignoreDuplicates: true } : {}) });
 
   /* 🆕 **IMDb — ما يُعلَّم ضمناً يُحسب هنا لا عند العميل** (R58): «المسلسلُ كلُّه» (`all`، «١ ب») و«الحلقةُ وما قبلها»
      (`upTo`، «٢ أ») يحتاجان مواسمَ العمل كما يعرفها TMDB اليوم — فتُجلب تفاصيلُه مرّةً لكلِّ مسلسلٍ منها (خمسةٌ في
@@ -6248,6 +6254,38 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
         }
       }),
   );
+
+  /* 🆕 **وفيلمٌ وصل بلا ملصق** (Simkl · Bingers · أفلامُ MyAnimeList) تُجلب تفاصيلُه كأخيه المسلسل أعلاه: التطبيقُ لا يشغّل
+     مزامنةَ ملصقات الويب، فعملٌ بلا ملصقٍ يبقى فارغاً فيه (درسُ Trakt، R277). عشرةٌ في المرّة، وفشلُ واحدٍ لا يوقف الدفعة */
+  const bare = movies.filter((mv) => !mv.posterPath);
+  for (let i = 0; i < bare.length; i += 10) {
+    await Promise.all(
+      bare.slice(i, i + 10).map(async (mv) => {
+        try {
+          const m = await (await import("@/lib/tmdb")).getMovie(intId(mv.tmdbId));
+          mv.posterPath = m.poster_path ?? null;
+          if (!mv.title) mv.title = m.title ?? "";
+        } catch {
+          /* يبقى بلا ملصق — تملؤه زيارتُه الأولى على الويب */
+        }
+      }),
+    );
+  }
+  for (const sh of shows) {
+    const tv = tvOf.get(intId(sh.tmdbId));
+    if (!sh.posterPath && tv?.poster_path) sh.posterPath = tv.poster_path;
+  }
+
+  /* 🆕 `keep`: ما كان في المكتبة قبل هذه الدفعة — حالتُه (متروك/موقوف) لا يكتبها الاستيراد */
+  const before = new Set<string>();
+  if (keep && (shows.length || movies.length)) {
+    const { data: had } = await supabase
+      .from("follows")
+      .select("tmdb_id, media_type")
+      .eq("user_id", user.id)
+      .in("tmdb_id", [...new Set([...shows, ...movies].map((x) => intId(x.tmdbId)))]);
+    for (const r of had ?? []) before.add(`${r.media_type}-${r.tmdb_id}`);
+  }
 
   /* 🆕 **الدفعةُ صفوفٌ لا حلقة**: كانت الدفعةُ (٥ مسلسلات + ٦٠ فيلماً)
      تُكتب رحلةً رحلةً — حتى ١٨٠ رحلةً متعاقبةً للأفلام وحدَها — والأفعال
@@ -6332,7 +6370,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   if (followRows.length) {
     await supabase
       .from("follows")
-      .upsert(followRows, { onConflict: "user_id,tmdb_id,media_type" });
+      .upsert(followRows, upsertOpts("user_id,tmdb_id,media_type"));
   }
 
   /* 🆕 **الضمنيُّ لا يدهس ما عند صاحبه**: حلقةٌ أشّرها في Loopz بتاريخها الحقيقيّ تبقى كما هي — فما شوهد يُقرأ أوّلاً
@@ -6397,14 +6435,14 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
     writes.push(
       supabase
         .from("watched_movies")
-        .upsert(watchedMovieRows, { onConflict: "user_id,movie_tmdb_id" }),
+        .upsert(watchedMovieRows, upsertOpts("user_id,movie_tmdb_id")),
     );
   }
   if (ratingRows.length) {
     writes.push(
       supabase
         .from("ratings")
-        .upsert(ratingRows, { onConflict: "user_id,tmdb_id,media_type" }),
+        .upsert(ratingRows, upsertOpts("user_id,tmdb_id,media_type")),
     );
   }
   // دفعات حتى لا يُرفض الطلب لضخامته — كما كان
@@ -6413,9 +6451,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
     writes.push(
       supabase
         .from("watched_episodes")
-        .upsert(slice, {
-          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
-        })
+        .upsert(slice, upsertOpts("user_id,show_tmdb_id,season_number,episode_number"))
         .then(({ error }) => {
           if (!error) epCount += slice.length;
         }),
@@ -6446,6 +6482,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   const withEpisodes = new Set([...episodeRows.map((r) => r.show_tmdb_id), ...[...have].map((k) => Number(k.split("-")[0]))]);
   await Promise.all(
     shows
+      .filter((sh) => !before.has(`tv-${intId(sh.tmdbId)}`))
       .filter((sh) => sh.state === "dropped" || (sh.state === "paused" && withEpisodes.has(intId(sh.tmdbId))))
       .map((sh) =>
         supabase
@@ -6461,12 +6498,15 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   let listCount = 0;
   let listsSkipped = 0;
   for (const l of (Array.isArray(payload?.lists) ? payload.lists : []).slice(0, 2)) {
-    const items = (Array.isArray(l?.items) ? l.items : []).map((it) => ({
-      tmdbId: it.tmdbId,
-      mediaType: it.mediaType,
-      title: it.title,
-      posterPath: it.posterPath,
-    }));
+    const items = await withPosters(
+      session,
+      (Array.isArray(l?.items) ? l.items : []).map((it) => ({
+        tmdbId: it.tmdbId,
+        mediaType: it.mediaType,
+        title: it.title,
+        posterPath: it.posterPath,
+      })),
+    );
     if (!items.length) continue;
     try {
       await upsertListWithItems(String(l.name ?? ""), items, "regular", { session, ordered: true });
@@ -6476,7 +6516,83 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
     }
   }
 
-  return { shows: shows.length, episodes: epCount, movies: movies.length, lists: listCount, listsSkipped };
+  /* 🆕 **المفضّلة** (Bingers «٢ أ»): تُضاف إلى قائمة «المفضّلة» الواحدة ولا تُقلَب — `toggle_favorite` يحذف ما كان مفضّلاً،
+     والاستيرادُ لا يحذف شيئاً. والقائمةُ تولد هنا إن غابت، باسمها بلغة الواجهة كما يولّدها القلب، والفهرسُ الفريدُ حارسُها */
+  let favorites = 0;
+  const favIn = (Array.isArray(payload?.favorites) ? payload.favorites : []).slice(0, IMPORT_CHUNK_FAV);
+  if (favIn.length) {
+    const favItems = await withPosters(session, favIn);
+    let { data: fav } = await supabase.from("user_lists").select("id").eq("user_id", user.id).eq("kind", "favorites").maybeSingle();
+    if (!fav) {
+      const name = String(payload?.favoritesName ?? "").trim().slice(0, 60) || "Favorites";
+      await supabase.from("user_lists").insert({ user_id: user.id, name, kind: "favorites", is_public: false });
+      ({ data: fav } = await supabase.from("user_lists").select("id").eq("user_id", user.id).eq("kind", "favorites").maybeSingle());
+    }
+    if (fav?.id && favItems.length) {
+      const seen = new Set<string>();
+      const rows = favItems
+        .map((it) => ({
+          list_id: fav!.id as string,
+          tmdb_id: intId(it.tmdbId),
+          media_type: asMediaType(it.mediaType),
+          title: String(it.title ?? "").slice(0, 300),
+          poster_path: safeImagePath(it.posterPath),
+        }))
+        .filter((r) => (seen.has(`${r.media_type}-${r.tmdb_id}`) ? false : (seen.add(`${r.media_type}-${r.tmdb_id}`), true)));
+      const { data: added } = await supabase
+        .from("user_list_items")
+        .upsert(rows, { onConflict: "list_id,tmdb_id,media_type", ignoreDuplicates: true })
+        .select("tmdb_id");
+      favorites = added?.length ?? 0;
+      if (favorites) await supabase.from("user_lists").update({ updated_at: stamp }).eq("id", fav.id);
+    }
+  }
+
+  return { shows: shows.length, episodes: epCount, movies: movies.length, lists: listCount, listsSkipped, favorites };
+}
+
+/** سقفُ أعمال المفضّلة في الطلب الواحد — `IMPORT_CHUNK.favorites` في `importBuild` */
+const IMPORT_CHUNK_FAV = 60;
+
+/**
+ * 🆕 **ملصقُ عملٍ في قائمةٍ مستوردة** (Bingers): المعرّفُ وصل بلا ملصق، وصفُّ القائمة لا تملؤه مزامنةٌ بعدُ — فيُؤخذ أوّلاً من
+ * مكتبة صاحبه (كُتبت قبل القوائم في الاستيراد نفسه)، وما بقي من TMDB: أربعون في الطلب، عشرةٌ في المرّة. والعنوانُ معه إن غاب.
+ */
+async function withPosters(
+  session: Awaited<ReturnType<typeof requireUser>>,
+  items: { tmdbId: number; mediaType: "tv" | "movie"; title: string; posterPath: string | null }[],
+) {
+  const out = items.map((it) => ({ ...it }));
+  const bare = out.filter((it) => !it.posterPath);
+  if (!bare.length) return out;
+  const { data: lib } = await session.supabase
+    .from("follows")
+    .select("tmdb_id, media_type, poster_path")
+    .eq("user_id", session.user.id)
+    .in("tmdb_id", [...new Set(bare.map((it) => intId(it.tmdbId)))]);
+  const known = new Map((lib ?? []).filter((r) => r.poster_path).map((r) => [`${r.media_type}-${r.tmdb_id}`, r.poster_path as string]));
+  const rest: typeof out = [];
+  for (const it of bare) {
+    const p = known.get(`${it.mediaType}-${intId(it.tmdbId)}`);
+    if (p) it.posterPath = p;
+    else rest.push(it);
+  }
+  const { getTv, getMovie } = await import("@/lib/tmdb");
+  const capped = rest.slice(0, 40);
+  for (let i = 0; i < capped.length; i += 10) {
+    await Promise.all(
+      capped.slice(i, i + 10).map(async (it) => {
+        try {
+          const d = it.mediaType === "tv" ? await getTv(intId(it.tmdbId)) : await getMovie(intId(it.tmdbId));
+          it.posterPath = d.poster_path ?? null;
+          if (!it.title) it.title = ("name" in d ? d.name : d.title) ?? "";
+        } catch {
+          /* يبقى بلا ملصق */
+        }
+      }),
+    );
+  }
+  return out;
 }
 
 /** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */

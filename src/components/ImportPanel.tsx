@@ -8,6 +8,7 @@ import { parseLetterboxdFiles } from "@/core/letterboxd";
 import { parseTrackerExport } from "@/core/trackerExport";
 import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
+import { parseBingersFiles } from "@/core/bingers";
 import { groupForResolve, type ParseOutcome } from "@/core/importParse";
 import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
 import type { ResolveResult } from "@/core/importer";
@@ -30,7 +31,7 @@ type Phase = "idle" | "reading" | "matching" | "writing" | "done";
  * الخدمة القادمة سطرٌ في هذا السجلّ، لا نسخةٌ ثانية من مسار الاستيراد
  * كلِّه — فالمراحل الثلاث (قراءة · مطابقة · كتابة) واحدةٌ للجميع.
  */
-type SourceId = "imdb" | "mal" | "tvtime" | "letterboxd" | "simkl";
+type SourceId = "imdb" | "mal" | "tvtime" | "letterboxd" | "simkl" | "bingers";
 
 const SOURCES: Record<
   SourceId,
@@ -43,6 +44,8 @@ const SOURCES: Record<
   tvtime: { parse: parseTvTimeFiles, accept: ".zip,.csv,.json" },
   letterboxd: { parse: parseLetterboxdFiles, accept: ".zip,.csv" },
   simkl: { parse: parseTrackerExport, accept: ".zip,.json,.csv" },
+  /* 🆕 Bingers — zip الأربعة كما نزل (أحمد ٢٠ نوفمبر) */
+  bingers: { parse: parseBingersFiles, accept: ".zip,.csv" },
 };
 
 /**
@@ -70,6 +73,7 @@ export function ImportPanel({
   const tvtimeRef = useRef<HTMLInputElement>(null);
   const letterboxdRef = useRef<HTMLInputElement>(null);
   const simklRef = useRef<HTMLInputElement>(null);
+  const bingersRef = useRef<HTMLInputElement>(null);
   const imdbRef = useRef<HTMLInputElement>(null);
   const malRef = useRef<HTMLInputElement>(null);
   const stop = useRef(false);
@@ -144,7 +148,10 @@ export function ImportPanel({
 
       // ===== التجميع: من سجلاتٍ متفرّقة إلى أعمالٍ بحلقاتها =====
       /* 🆕 D-1369 — **في `core/importBuild` لا هنا**: الاستيرادُ الأصليُّ يقرأ القواعدَ نفسَها بحرفها */
-      const { shows, movies, lists, unmatched } = buildImport(records, resolved);
+      const { shows, movies, lists, favorites, unmatched } = buildImport(records, resolved);
+      /* 🆕 **«ما في Loopz يبقى» لكلِّ ملف** (أحمد ٢٠ نوفمبر «١ أ»، قاعدةُ Trakt): العملُ الموجودُ يبقى باسمه وحاله، والمشاهدةُ
+         بتاريخها، وتقييمُ Loopz لا يُدهس — يُضاف الناقصُ وحدَه. كان الملفُّ يكتب فوق ما سجّله صاحبُه بيده */
+      const keep = true;
 
       // ===== الكتابة =====
       setPhase("writing");
@@ -157,19 +164,20 @@ export function ImportPanel({
       const steps =
         Math.ceil(shows.length / IMPORT_CHUNK.shows) +
           Math.ceil(movies.length / IMPORT_CHUNK.movies) +
-          Math.ceil(lists.length / IMPORT_CHUNK.lists) || 1;
+          Math.ceil(lists.length / IMPORT_CHUNK.lists) +
+          Math.ceil(favorites.length / IMPORT_CHUNK.favorites) || 1;
       let step = 0;
 
       for (let i = 0; i < shows.length; i += 5) {
         if (stop.current) break;
-        const r = await applyImportChunk({ shows: shows.slice(i, i + 5), movies: [] });
+        const r = await applyImportChunk({ shows: shows.slice(i, i + 5), movies: [], keep });
         sC += r.shows;
         eC += r.episodes;
         setPct(Math.round((++step / steps) * 100));
       }
       for (let i = 0; i < movies.length; i += 60) {
         if (stop.current) break;
-        const r = await applyImportChunk({ shows: [], movies: movies.slice(i, i + 60) });
+        const r = await applyImportChunk({ shows: [], movies: movies.slice(i, i + 60), keep });
         mC += r.movies;
         setPct(Math.round((++step / steps) * 100));
       }
@@ -179,6 +187,12 @@ export function ImportPanel({
         const r = await applyImportChunk({ shows: [], movies: [], lists: lists.slice(i, i + IMPORT_CHUNK.lists) });
         lC += r.lists;
         lSkip += r.listsSkipped;
+        setPct(Math.round((++step / steps) * 100));
+      }
+      /* 🆕 مفضّلةُ Bingers بعد القوائم — تُضاف إلى «المفضّلة» الواحدة، واسمُها بلغة الواجهة إن وُلدت الآن */
+      for (let i = 0; i < favorites.length; i += IMPORT_CHUNK.favorites) {
+        if (stop.current) break;
+        await applyImportChunk({ shows: [], movies: [], favorites: favorites.slice(i, i + IMPORT_CHUNK.favorites), favoritesName: t.favListName });
         setPct(Math.round((++step / steps) * 100));
       }
 
@@ -229,6 +243,12 @@ export function ImportPanel({
       fileHint: t.importSimklFileHint,
     },
     {
+      id: "bingers" as const,
+      title: t.importBingersTitle,
+      hint: t.importBingersHint,
+      fileHint: t.importBingersFileHint,
+    },
+    {
       id: "tvtime" as const,
       title: t.importTvTimeTitle,
       hint: t.importTvTimeHint,
@@ -237,7 +257,7 @@ export function ImportPanel({
   ];
 
   const refOf = (id: SourceId) =>
-    id === "imdb" ? imdbRef : id === "mal" ? malRef : id === "letterboxd" ? letterboxdRef : id === "simkl" ? simklRef : tvtimeRef;
+    id === "imdb" ? imdbRef : id === "mal" ? malRef : id === "letterboxd" ? letterboxdRef : id === "simkl" ? simklRef : id === "bingers" ? bingersRef : tvtimeRef;
   /* 🆕 R273 — حالُ الاستيراد (التقدّم · الخطأ · الحصيلة) دالّةٌ واحدةٌ تقرؤها الورقةُ على الجوال وبطاقةُ الحاسوب — لا نسختان */
   const status = (id: SourceId) => {
     const mine = active === id;
@@ -288,7 +308,7 @@ export function ImportPanel({
     );
   };
   const w = webWords(locale);
-  const FILES: Record<SourceId, string> = { imdb: "csv", mal: "xml · gz", letterboxd: "zip · csv", simkl: "zip · json · csv", tvtime: "zip" };
+  const FILES: Record<SourceId, string> = { imdb: "csv", mal: "xml · gz", letterboxd: "zip · csv", simkl: "zip · json · csv", bingers: "zip · csv", tvtime: "zip" };
 
   return (
     <>

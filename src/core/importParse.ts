@@ -18,7 +18,21 @@ import type { ResolveRequest } from "./importer";
 export type RawRecord =
   | { kind: "ep-name"; show: string; year?: number; s: number; e: number; at?: string }
   | { kind: "ep-tvdb"; episodeTvdbId: number; at?: string }
-  | { kind: "show-tvdb"; tvdbId: number }
+  /* `name` · `rating` · `state` 🆕 من Bingers (عملٌ بلا معرّف TMDB في تصديره) — اختياريّةٌ: TV Time لا يحملها */
+  | { kind: "show-tvdb"; tvdbId: number; name?: string; rating?: number; state?: "dropped" }
+  /* 🆕 **حلقةٌ بمعرّف مسلسلها في TVDB ورقمَيها** (Bingers) — مفتاحُها مفتاحُ `show-tvdb` نفسُه فتُطابَق مرّةً للمسلسل كلِّه */
+  | { kind: "ep-tvdbshow"; tvdbId: number; name: string; s: number; e: number; at?: string }
+  /* 🆕 **عملٌ في قائمةٍ من قوائم صاحبه** (`list`)، **أو في مفضّلته** (`list: null`) — بمعرّف TMDB، أو TVDB لمسلسلٍ بلا معرّف TMDB
+     (Bingers «١ أ» · «٢ أ»). القائمةُ تدخل قوائمَه الخاصّة باسمها وترتيبها، والمفضّلةُ قائمةَ «المفضّلة» الواحدة */
+  | {
+      kind: "list-item";
+      list: string | null;
+      pos: number;
+      mediaType: "tv" | "movie";
+      title: string;
+      tmdbId?: number;
+      tvdbId?: number;
+    }
   | { kind: "movie-name"; name: string; year?: number; at?: string; rating?: number }
   /* فيلمٌ في قائمة المشاهدة لاحقاً — يدخل المكتبة بلا صفّ مشاهدة (D-153).
      `applyImportChunk` يفهمه أصلاً: `watched:false` يكتب `follows` وحدها */
@@ -34,6 +48,8 @@ export type RawRecord =
       episodes: { s: number; e: number; at?: string }[];
       rating?: number;
       planned?: boolean;
+      /** 🆕 Bingers — «توقّفتُ عن مشاهدته» ⇐ متروك */
+      state?: "dropped";
     }
   | {
       kind: "tmdb-movie";
@@ -269,7 +285,11 @@ export function recordKey(r: RawRecord): string {
     case "movie-watchlist":
       return `mv:${r.name.toLowerCase()}:${r.year ?? ""}`;
     case "show-tvdb":
+    case "ep-tvdbshow":
       return `tvdb:${r.tvdbId}`;
+    /* بمعرّف TMDB ⇐ مفتاحُ العمل نفسُه (لا يُطلب)؛ وبـTVDB وحدَه ⇐ مفتاحُ مسلسله فيُطابَق مع حلقاته مرّةً واحدة */
+    case "list-item":
+      return r.tmdbId ? `${r.mediaType === "tv" ? "tmdbtv" : "tmdbmv"}:${r.tmdbId}` : `tvdb:${r.tvdbId}`;
     case "ep-tvdb":
       return `tvdbe:${r.episodeTvdbId}`;
     /* مفتاحٌ لا يُطلب من الخادم — موجودٌ ليكتمل الفرز وحده */
@@ -294,7 +314,10 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
     else if (r.kind === "rating-show") map.set(key, { kind: "name-tv", name: r.show });
     else if (r.kind === "movie-name" || r.kind === "movie-watchlist")
       map.set(key, { kind: "name-movie", name: r.name, year: r.year });
-    else if (r.kind === "show-tvdb") map.set(key, { kind: "tvdb-tv", id: r.tvdbId });
+    else if (r.kind === "show-tvdb" || r.kind === "ep-tvdbshow") map.set(key, { kind: "tvdb-tv", id: r.tvdbId });
+    else if (r.kind === "list-item") {
+      if (!r.tmdbId && r.tvdbId && r.mediaType === "tv") map.set(key, { kind: "tvdb-tv", id: r.tvdbId });
+    }
     else if (r.kind === "ep-tvdb") map.set(key, { kind: "tvdb-episode", id: r.episodeTvdbId });
     else if (r.kind === "imdb") map.set(key, { kind: "imdb", id: r.imdb, media: r.media });
     else if (r.kind === "mal") map.set(key, { kind: "mal", id: r.mal });

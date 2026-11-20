@@ -51,7 +51,10 @@ export function privacyDoc(locale: Locale): LegalDoc {
   /* 🆕 R279 (١٩ نوفمبر ٢٠٢٦) — **استيرادُ Trakt طرفٌ جديد نقرأ منه**: الفقرةُ كانت تقول «لا نربط حسابك في أي خدمةٍ أخرى»
      وصار الربطُ بـTrakt قائماً (R275–R278) — وعدٌ لم يعد صادقاً (D-221). وTrakt يشترط جملتَه قبل اعتماد التطبيق للجميع،
      ومراجعُهم يقرؤها هنا — فتقدّم التاريخ */
-    updated: ar ? "آخر تحديث: ١٩ نوفمبر ٢٠٢٦" : "Last updated: 19 November 2026",
+  /* 🆕 T487 (٢٠ نوفمبر ٢٠٢٦، أحمد «٢ أ» · «١ أ») — **Bingers مصدرٌ سادس للملفّات، والملفُّ لا يغيّر ما سجّلته**: القائمةُ كانت تعدّ
+     المصادرَ بأسمائها فصار ناقصُها وعداً أصغرَ من الحقيقة، وقاعدةُ Trakt («ما في Loopz يبقى») صارت للملفّات كلِّها — فتُقال هنا
+     كما قيلت لـTrakt. و«ما يغادر جهازك» صار «الأسماء والمعرّفات»: IMDb وMyAnimeList وTVDB تُطابَق بمعرّفاتها لا بأسمائها */
+    updated: ar ? "آخر تحديث: ٢٠ نوفمبر ٢٠٢٦" : "Last updated: 20 November 2026",
     sections: [
       { title: ar ? "الخلاصة" : "The short version",
         body: ar
@@ -81,8 +84,8 @@ export function privacyDoc(locale: Locale): LegalDoc {
         : "Three, and no more: a Supabase session cookie that keeps you signed in, plus a language cookie and a theme cookie so the first paint is already in your language and colours. No advertising cookies, no third-party tracking cookies." },
       { title: ar ? "استيراد مكتبتك" : "Importing your library",
         body: ar
-        ? "ملف التصدير الذي تختاره — من Letterboxd أو IMDb أو MyAnimeList أو Simkl أو TV Time — يُقرأ داخل جهازك ولا يُرفع إلى أي خادم: ما يغادر جهازك هو أسماء الأعمال فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء. أمّا Trakt فتربطه أنت بإذنٍ منه: نقرأ مرّةً واحدة ما شاهدته من مسلسلاتٍ وأفلام وسجلَّ مشاهدتك وتقييماتك، ونكتبها في مكتبتك هنا دون أن نغيّر ما سجّلته في Loopz، ثم نلغي الإذن فوراً. لا نكتب في حسابك على Trakt شيئاً، ولا نحفظ مفتاح الدخول."
-        : "The export file you choose — from Letterboxd, IMDb, MyAnimeList, Simkl or TV Time — is read on your device and never uploaded to any server: all that leaves your device is title names, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all. Trakt is different: you connect it and grant permission there. We read, once, the shows and films you watched, your watch history and your ratings, add them to your library here without changing anything you already recorded in Loopz, and revoke the permission straight away. We never write to your Trakt account and we do not keep the access token." },
+        ? "ملف التصدير الذي تختاره — من Letterboxd أو IMDb أو MyAnimeList أو Simkl أو Bingers أو TV Time — يُقرأ داخل جهازك ولا يُرفع إلى أي خادم: ما يغادر جهازك هو أسماء الأعمال أو معرّفاتها فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء. وما فيه يُضاف إلى مكتبتك دون أن يغيّر ما سجّلته في Loopz. أمّا Trakt فتربطه أنت بإذنٍ منه: نقرأ مرّةً واحدة ما شاهدته من مسلسلاتٍ وأفلام وسجلَّ مشاهدتك وتقييماتك، ونكتبها في مكتبتك هنا دون أن نغيّر ما سجّلته في Loopz، ثم نلغي الإذن فوراً. لا نكتب في حسابك على Trakt شيئاً، ولا نحفظ مفتاح الدخول."
+        : "The export file you choose — from Letterboxd, IMDb, MyAnimeList, Simkl, Bingers or TV Time — is read on your device and never uploaded to any server: all that leaves your device is title names or ids, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all. What it holds is added to your library without changing anything you already recorded in Loopz. Trakt is different: you connect it and grant permission there. We read, once, the shows and films you watched, your watch history and your ratings, add them to your library here without changing anything you already recorded in Loopz, and revoke the permission straight away. We never write to your Trakt account and we do not keep the access token." },
       /* 🆕 الربط (هجرات ٢٢٢ · ٢٣٥ · ٢٣٦ · ٢٣٧): طرفٌ جديدٌ يرسل إلينا — فذُكر ما يصلنا وما يُحفظ، وتقدّم التاريخ */
       { title: ar ? "ربط تطبيقاتك" : "Linking your apps",
         body: ar

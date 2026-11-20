@@ -650,6 +650,27 @@ export const EDITORIAL: EditorialList[] = [
     /* ملصقُ القناع على الأخضر — اختيارُ أحمد من ملصقات TMDB («لا خلي القناع ب») */
     pin: { tmdbId: 1003596, graceDays: 14, poster: "/7UN7WiNgXnKNneFx7V4nDm92luk.jpg" },
   },
+  /* 🆕 T490 — **قائمتا حدثٍ من مهمّة مراجعة القوائم الأسبوعيّة** (اقتراحُ ٢٠ نوفمبر ٢٠٢٦، وأحمد: «1 و3 نفذ»).
+     **الصفوفُ في القاعدة بالهجرة ٢٥٤** — وصفٌّ هنا بلا قائمةٍ هناك يسقط صامتاً (`getActiveEventLists`)،
+     فترتيبُ الرفع لا يكسر شيئاً. **ولا `poster`**: لم يختر أحمد ملصقاً بعد، فملصقُ TMDB الافتراضيُّ يكفي. */
+  {
+    slug: "dune-road",
+    ar: "طريقك إلى Dune: Part Three",
+    en: "Your Road to Dune: Part Three",
+    blurbAr: "كلُّ «كثيب» على الشاشة قبل خاتمة ثلاثيّة فيلنوف: من فيلم لينش إلى الجزء الثاني.",
+    blurbEn: "Every screen Dune before the end of Villeneuve's trilogy: from Lynch's film to Part Two.",
+    /* Dune: Part Three — معرّفُه في TMDB (١١٧٠٦٠٨)؛ الموعدُ من TMDB لا من هنا (١٨ ديسمبر ٢٠٢٦ يومَ كُتب) */
+    pin: { tmdbId: 1170608, graceDays: 14 },
+  },
+  {
+    slug: "reaping-road",
+    ar: "طريقك إلى Sunrise on the Reaping",
+    en: "Your Road to Sunrise on the Reaping",
+    blurbAr: "ألعاب الجوع بترتيب أحداث بانيم: من أغنية الطيور والأفاعي إلى الطائر المحاكي.",
+    blurbEn: "The Hunger Games in Panem's story order: from Songbirds & Snakes to Mockingjay.",
+    /* The Hunger Games: Sunrise on the Reaping — معرّفُه في TMDB (١٣٠٠٩٦٨)؛ عُرض ٢٠ نوفمبر ٢٠٢٦ فالتثبيتُ مهلتُه وحدَها */
+    pin: { tmdbId: 1300968, graceDays: 14 },
+  },
 ];
 
 function editorialBySlug(slug: string): EditorialList | null {
