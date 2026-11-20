@@ -7,8 +7,21 @@ import { haptic } from "../haptics";
 import { messageOf } from "../settings/api";
 import type { ToastHostRef } from "../HoldHost";
 import type { StremioSignal } from "@/core/contracts/stremio";
-import type { RateBody } from "../contracts";
+import type { EpisodeRateBody, RateBody } from "../contracts";
 import { episodeLabel } from "./api";
+
+/**
+ * 🆕 T485 — **مراحلُ النجوم بعد «✓»** (أحمد ٢٠ نوفمبر «١ أ · ٢ أ»): كلُّ حلقةٍ تُقيَّم هي أوّلاً (`ep` → `track/episode-rate`، تقييمُ
+ * الحلقة نفسِه في صفحة المسلسل)، ثمّ نهايةُ الموسم أو المسلسل تُقيِّم العملَ كلَّه (`work` → `track/rate`، T415 كما هو). الفيلمُ مرحلةُ
+ * العمل وحدَها. إشارةٌ بلا موسمٍ أو حلقةٍ معروفين لا مرحلةَ حلقةٍ لها. القائمةُ الفارغة = «حسناً» بلا نجوم.
+ */
+export type RateStage = "ep" | "work";
+export function rateStages(s: StremioSignal): RateStage[] {
+  const ep = s.kind === "tv" && s.season != null && s.episode != null;
+  /* `rate` غائبٌ = خادمٌ أقدم: التلقائيُّ يبقى كما كان (الفيلمُ بنجومه) — حكمُ T415 */
+  const work = s.rate !== undefined ? !!s.rate : !!s.auto && s.kind === "movie";
+  return [...(ep ? (["ep"] as const) : []), ...(work ? (["work"] as const) : [])];
+}
 
 /** مدّةُ «تراجع» — وبعدها يُرسل الجواب */
 const UNDO_MS = 4500;
@@ -81,8 +94,9 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
         return;
       }
       haptic.pick();
-      /* 🆕 T415 — ✓ على فيلمٍ أو نهايةٍ (`rate`) لا يُخفي البطاقة: تنقلب إلى النجوم في مكانها، و«تراجع» يبقى في الإشعار */
-      const rateNext = rateInCard && watched && !!s.rate;
+      /* 🆕 T415 — ✓ على فيلمٍ أو نهايةٍ (`rate`) لا يُخفي البطاقة: تنقلب إلى النجوم في مكانها، و«تراجع» يبقى في الإشعار.
+         🆕 T485 — وعلى أيِّ حلقة: نجومُ الحلقة أوّلاً (`rateStages`) */
+      const rateNext = rateInCard && watched && rateStages(s).length > 0;
       if (rateNext) setRating((r) => new Map(r).set(s.id, s));
       else setHidden((h) => new Set(h).add(s.id));
       pending.current.set(s.id, { watched, timer: setTimeout(() => commit(s.id), UNDO_MS) });
@@ -150,6 +164,38 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
     [commit, t, toast, unrate],
   );
 
+  /**
+   * 🆕 T485 — **نجومُ الحلقة** (`track/episode-rate`) بترتيب `rate` نفسِه: الجوابُ يُثبَّت أوّلاً ثمّ التقييم. `last` — لا مرحلةَ بعدها
+   * فتخرج البطاقة؛ وإلّا تبقى لنجوم العمل (`rate` ينتظر الجوابَ المحفوظ نفسَه، فلا يُكتب مرّتين).
+   */
+  const rateEpisode = useCallback(
+    async (s: StremioSignal, stars: number, last: boolean): Promise<boolean> => {
+      if (s.season == null || s.episode == null) return false;
+      commit(s.id);
+      toast.current?.say(t.stremioMarkedUpTo(episodeLabel(s, t.stremioMovie)), undefined, 2200, "success");
+      try {
+        await sent.current.get(s.id);
+      } catch {
+        return false;
+      }
+      try {
+        await write("/api/v1/track/episode-rate", { showTmdbId: s.tmdb_id, season: s.season, episode: s.episode, rating: stars } satisfies EpisodeRateBody);
+      } catch (e) {
+        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+        return false;
+      }
+      haptic.success();
+      toast.current?.say(t.ratedThanks, undefined, 2200, "success");
+      if (last) {
+        setHidden((h) => new Set(h).add(s.id));
+        unrate(s.id);
+        sent.current.delete(s.id);
+      }
+      return true;
+    },
+    [commit, t, toast, unrate],
+  );
+
   /** 🆕 T415 — «بدون تقييم»: تخرج البطاقة، والجوابُ باقٍ في مهلة «تراجع» كما كان */
   const skipRate = useCallback((s: StremioSignal) => {
     setHidden((h) => new Set(h).add(s.id));
@@ -188,5 +234,5 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
     return () => sub.remove();
   }, [flushAll]);
 
-  return { hidden, answer, rating, rate, skipRate };
+  return { hidden, answer, rating, rate, rateEpisode, skipRate };
 }

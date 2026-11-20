@@ -14,7 +14,7 @@ import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
 import { getDict, type Locale } from "@/core/i18n";
 import { SIGNAL_SOURCE_NAME, signalSourceOf, type StremioAnswerBody, type StremioSignal, type StremioState } from "@/core/contracts/stremio";
-import type { RateBody } from "@/core/contracts/track";
+import type { EpisodeRateBody, RateBody } from "@/core/contracts/track";
 import { StarRatingRow } from "../ListReviewForm";
 
 /**
@@ -61,6 +61,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
   /* 🆕 T415 — ما أُجيب عنه بـ✓ وينتظر نجومه (فيلمٌ أو نهايةُ مسلسلٍ أو آخرُ موسمٍ اكتمل) — كالتطبيق، في البطاقة نفسِها */
   const [rateFor, setRateFor] = useState<StremioSignal | null>(null);
   const [stars, setStars] = useState(0);
+  /* 🆕 T485 — المرحلةُ الجارية: نجومُ الحلقة أوّلاً (كلُّ حلقة)، ثمّ نجومُ العمل عند نهاية الموسم أو المسلسل — كالتطبيق (`rateStages`) */
+  const [stage, setStage] = useState<"ep" | "work">("work");
 
   useEffect(() => {
     const on = (s: Shared) => {
@@ -86,7 +88,11 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
       await v1Post("/api/v1/me/stremio/answer", { id: it.id, watched } satisfies StremioAnswerBody, t);
       toast(watched ? (ep ? t.stremioMarkedUpTo(ep) : t.stremioMarkedMovie) : t.stremioDismissed);
       /* T415 — الجوابُ هنا يُحفظ في الحال (لا «تراجع» في الويب)، فالنجومُ تأتي بعده مباشرةً */
-      if (watched && it.rate) setRateFor(it);
+      const hasEp = it.kind === "tv" && it.season != null && it.episode != null;
+      if (watched && (hasEp || it.rate)) {
+        setStage(hasEp ? "ep" : "work");
+        setRateFor(it);
+      }
       drop(it.id);
       if (watched) coalescedRefresh(router);
     } catch (e) {
@@ -100,17 +106,28 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     setRateFor(null);
     setStars(0);
   };
+  /* «بدون تقييم» أو بعد الحفظ: من نجوم الحلقة إلى نجوم العمل إن كان نهايةً، وإلّا تخرج البطاقة */
+  const nextStage = () => {
+    if (stage === "ep" && it.rate) {
+      setStage("work");
+      setStars(0);
+    } else finishRate();
+  };
   const rate = async (n: number) => {
     if (stars || n < 1) return;
     setStars(n);
     try {
-      await v1Post(
-        "/api/v1/track/rate",
-        { tmdbId: it.tmdb_id, mediaType: it.kind, rating: n, review: "", title: it.title, posterPath: it.poster_path ?? null } satisfies RateBody,
-        t,
-      );
+      if (stage === "ep" && it.season != null && it.episode != null) {
+        await v1Post("/api/v1/track/episode-rate", { showTmdbId: it.tmdb_id, season: it.season, episode: it.episode, rating: n } satisfies EpisodeRateBody, t);
+      } else {
+        await v1Post(
+          "/api/v1/track/rate",
+          { tmdbId: it.tmdb_id, mediaType: it.kind, rating: n, review: "", title: it.title, posterPath: it.poster_path ?? null } satisfies RateBody,
+          t,
+        );
+      }
       toast(t.ratedThanks);
-      finishRate();
+      nextStage();
       coalescedRefresh(router);
     } catch (e) {
       setStars(0);
@@ -118,7 +135,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     }
   };
   const rating = rateFor !== null;
-  const done = it.kind === "movie" ? t.stremioMarkedMovie : it.rate === "show" ? t.signalShowDone : t.signalSeasonDone;
+  const done = stage === "ep" ? t.signalEpisodeDone : it.kind === "movie" ? t.stremioMarkedMovie : it.rate === "show" ? t.signalShowDone : t.signalSeasonDone;
+  const rateLabel = stage === "ep" ? t.signalRateEpisode : it.kind === "movie" ? t.autoRate : t.signalRateShow;
 
   return (
     <div className={`rounded-2xl border border-[#7b5cff]/50 bg-gradient-to-b from-[#7b5cff]/15 to-surface p-4 ${className}`}>
@@ -148,15 +166,15 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
         /* 🆕 T415 — صفُّ النجوم الواحد في الويب (`StarRatingRow`، D-701)، و«بدون تقييم» في طرف سطر الاسم كالتطبيق (T365) */
         <div className="mt-3">
           <div className="flex items-center justify-between text-13 font-bold text-muted">
-            <span>{it.kind === "movie" ? t.autoRate : t.signalRateShow}</span>
+            <span>{rateLabel}</span>
             {stars ? null : (
-              <button type="button" className="active:opacity-60" onClick={finishRate}>
+              <button type="button" className="active:opacity-60" onClick={nextStage}>
                 {t.autoSkipRate}
               </button>
             )}
           </div>
           <div className="mt-1.5">
-            <StarRatingRow rating={stars} onPick={(n) => void rate(n)} locale={locale} label={it.kind === "movie" ? t.autoRate : t.signalRateShow} />
+            <StarRatingRow key={stage} rating={stars} onPick={(n) => void rate(n)} locale={locale} label={rateLabel} />
           </div>
         </div>
       ) : (

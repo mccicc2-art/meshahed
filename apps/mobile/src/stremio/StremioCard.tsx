@@ -6,7 +6,7 @@ import { Button, Text } from "../ui";
 import { StarRow } from "../title/StarRow";
 import { write } from "../api";
 import { haptic } from "../haptics";
-import type { RateBody } from "../contracts";
+import type { EpisodeRateBody, RateBody } from "../contracts";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { SectionHeader, PAGE_PAD } from "../home/Section";
@@ -14,6 +14,7 @@ import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
 import { SIGNAL_SOURCE_NAME, type StremioSignal } from "@/core/contracts/stremio";
 import { episodeLabel } from "./api";
+import { rateStages } from "./useAnswer";
 
 /** عرضُ اللقطة 16:9 (قرار ٦: ١١٦ نقطة) — والنصُّ بجانبها بارتفاعها */
 const STILL_W = 116;
@@ -55,6 +56,7 @@ export function StremioCard({
   onOpen,
   rating,
   onRate,
+  onRateEpisode,
   onSkipRate,
 }: {
   /** المنتظرةُ بعد إخفاء ما أُجيب عنه */
@@ -66,6 +68,8 @@ export function StremioCard({
   /** 🆕 T415 — ما أُجيب عنه بـ✓ وينتظر نجومه (`useStremioAnswer`) */
   rating?: ReadonlyMap<number, StremioSignal>;
   onRate?: (s: StremioSignal, stars: number) => Promise<boolean>;
+  /** 🆕 T485 — نجومُ الحلقة؛ `last` = لا نجومَ للعمل بعدها */
+  onRateEpisode?: (s: StremioSignal, stars: number, last: boolean) => Promise<boolean>;
   onSkipRate?: (s: StremioSignal) => void;
 }) {
   const { t, tokens } = useApp();
@@ -74,13 +78,32 @@ export function StremioCard({
   const ep = episodeLabel(s, t.stremioMovie);
   const src = s.source ?? "stremio";
   const movie = s.kind === "movie";
-  /* 🆕 T415 — اسمُ النجوم: الفيلمُ «قيّمه»، والمسلسلُ «قيّم المسلسل» — التقييمُ للعمل كلِّه لا للحلقة */
-  const rateLabel = movie ? t.autoRate : t.signalRateShow;
-  /* T415 — `rate` يصل دائماً من الخادم الجديد (`null` = بلا نجوم، كالمقيَّم من قبل)؛ غيابُه = خادمٌ أقدم: المسجَّلُ تلقائياً
-     يبقى كما كان (الفيلمُ بنجومه) */
-  const rateable = s.rate !== undefined ? !!s.rate : !!s.auto && movie;
-  /* 🆕 T361 — ما سجّله Loopz بنفسه (أحمد ١٠ نوفمبر «١ أ و ج»): «✓ أضفناه لمكتبتك»، والفيلمُ بنجومه والحلقةُ بـ«حسناً».
-     🆕 T415 — والحلقةُ الأخيرةُ (`rate`) بنجوم المسلسل، والفيلمُ المقيَّمُ من قبل بـ«حسناً» */
+  const stages = rateStages(s);
+  /* اسمُ نجوم العمل وحالتُه (T415): الفيلمُ «قيّمه»، والمسلسلُ «قيّم المسلسل» عند نهاية الموسم أو المسلسل */
+  const workLabel = movie ? t.autoRate : t.signalRateShow;
+  const workStatus = movie ? t.stremioMarkedMovie : s.rate === "show" ? t.signalShowDone : t.signalSeasonDone;
+  /* 🆕 T485 — كتابةُ نجوم الحلقة للتلقائيّ (المشاهدةُ محفوظةٌ قبله فلا جوابَ يُنتظر) */
+  const autoEp = async (n: number) => {
+    if (s.season == null || s.episode == null) return false;
+    try {
+      await write<unknown>("/api/v1/track/episode-rate", { showTmdbId: s.tmdb_id, season: s.season, episode: s.episode, rating: n } satisfies EpisodeRateBody);
+      haptic.success();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const autoWork = async (n: number) => {
+    try {
+      await write<unknown>("/api/v1/track/rate", { tmdbId: s.tmdb_id, mediaType: s.kind, rating: n, review: "", title: s.title, posterPath: s.poster_path ?? null } satisfies RateBody);
+      haptic.success();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  /* 🆕 T361 — ما سجّله Loopz بنفسه (أحمد ١٠ نوفمبر «١ أ و ج»): «✓ أضفناه لمكتبتك» ثمّ النجوم، و«حسناً» بلا نجوم.
+     🆕 T485 — والحلقةُ بنجومها أوّلاً (كانت «حسناً»)، ثمّ نجومُ المسلسل عند نهايته (T415) */
   if (s.auto) {
     return (
       <DoneCard
@@ -88,36 +111,36 @@ export function StremioCard({
         s={s}
         count={count}
         ep={ep}
-        status={movie ? t.autoAddedMovie : t.autoAddedEpisode}
-        rateLabel={rateable ? rateLabel : null}
-        onRate={async (n) => {
-          try {
-            await write<unknown>("/api/v1/track/rate", { tmdbId: s.tmdb_id, mediaType: s.kind, rating: n, review: "", title: s.title, posterPath: s.poster_path ?? null } satisfies RateBody);
-            haptic.success();
-            onAnswer(s, true);
-            return true;
-          } catch {
-            return false;
-          }
-        }}
+        steps={stages.map((st, i) => ({
+          status: i === 0 ? (movie ? t.autoAddedMovie : t.autoAddedEpisode) : workStatus,
+          plain: i === 0,
+          label: st === "ep" ? t.signalRateEpisode : workLabel,
+          rate: st === "ep" ? autoEp : autoWork,
+        }))}
+        okStatus={movie ? t.autoAddedMovie : t.autoAddedEpisode}
         onDone={() => onAnswer(s, true)}
         onAll={onAll}
         onOpen={onOpen}
       />
     );
   }
-  /* 🆕 T415 (أحمد ١٨ نوفمبر «أ نفذ») — **بعد «✓ شفتها» على فيلمٍ أو نهايةٍ تنقلب البطاقةُ إلى النجوم في مكانها** — صفُّ البطاقة
-     التلقائيّة نفسُه، لا نافذةٌ منبثقة (قرار ٥ من خطّة Stremio باقٍ). «تراجع» في الإشعار يعيدها سؤالاً */
-  if (rating?.has(s.id) && onRate && onSkipRate) {
+  /* 🆕 T415 (أحمد ١٨ نوفمبر «أ نفذ») — **بعد «✓ شفتها» تنقلب البطاقةُ إلى النجوم في مكانها** — صفُّ البطاقة التلقائيّة نفسُه، لا
+     نافذةٌ منبثقة (قرار ٥ من خطّة Stremio باقٍ). «تراجع» في الإشعار يعيدها سؤالاً.
+     🆕 T485 — كلُّ حلقةٍ بنجومها («قيّم الحلقة»)، ونهايةُ الموسم أو المسلسل بعدها بنجوم المسلسل */
+  if (rating?.has(s.id) && onRate && onSkipRate && stages.length) {
     return (
       <DoneCard
         key={`r${s.id}`}
         s={s}
         count={count}
         ep={ep}
-        status={movie ? t.stremioMarkedMovie : s.rate === "show" ? t.signalShowDone : t.signalSeasonDone}
-        rateLabel={rateLabel}
-        onRate={(n) => onRate(s, n)}
+        steps={stages.map((st, i) => ({
+          status: st === "ep" ? t.signalEpisodeDone : workStatus,
+          plain: false,
+          label: st === "ep" ? t.signalRateEpisode : workLabel,
+          rate: st === "ep" ? (n: number) => (onRateEpisode ? onRateEpisode(s, n, i === stages.length - 1) : Promise.resolve(false)) : (n: number) => onRate(s, n),
+        }))}
+        okStatus={workStatus}
         onDone={() => onSkipRate(s)}
         onAll={onAll}
         onOpen={onOpen}
@@ -171,9 +194,8 @@ function DoneCard({
   s,
   count,
   ep,
-  status,
-  rateLabel,
-  onRate,
+  steps,
+  okStatus,
   onDone,
   onAll,
   onOpen,
@@ -181,23 +203,40 @@ function DoneCard({
   s: StremioSignal;
   count: number;
   ep: string;
-  status: string;
-  /** `null` ⇒ «حسناً» بدل النجوم */
-  rateLabel: string | null;
-  onRate: (stars: number) => Promise<boolean>;
+  /**
+   * 🆕 T485 — **مراحلُ النجوم بالترتيب** (الحلقةُ ثمّ العمل): لكلٍّ سطرُ حالته واسمُ نجومه وكتابتُها. التقييمُ أو «بدون تقييم» ينقل
+   * إلى التالية، وبعد الأخيرة `onDone`. `plain` — سطرُ التلقائيّ (T361): «✓» وحدَها بلون النجاح والحالةُ بلونها. فارغةٌ ⇒ «حسناً».
+   */
+  steps: { status: string; plain: boolean; label: string; rate: (stars: number) => Promise<boolean> }[];
+  /** سطرُ الحالة حين لا نجوم («حسناً») */
+  okStatus: string;
   onDone: () => void;
   onAll: () => void;
   onOpen: (s: StremioSignal) => void;
 }) {
   const { t, tokens } = useApp();
+  const [step, setStep] = useState(0);
   const [stars, setStars] = useState(0);
   const src = s.source ?? "stremio";
   const movie = s.kind === "movie";
+  const cur = steps[step] ?? null;
+  const status = cur ? cur.status : okStatus;
+  const plain = cur ? cur.plain : !!s.auto;
+  const next = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+      setStars(0);
+    } else onDone();
+  };
   const rate = async (n: number) => {
-    if (stars || n < 1) return;
+    if (!cur || stars || n < 1) return;
     setStars(n);
     haptic.pick();
-    if (!(await onRate(n))) setStars(0);
+    if (!(await cur.rate(n))) {
+      setStars(0);
+      return;
+    }
+    next();
   };
   return (
     <View>
@@ -222,25 +261,26 @@ function DoneCard({
             {/* التلقائيُّ كما كان (T361): «✓» وحدَها بلون النجاح، والفيلمُ بلا «فيلم ·»، و«خلّصتها». والمُجابُ بـ✓ (T415، الصورةُ المعتمدة):
                 السطرُ كسطر السؤال «فيلم · …» والحالةُ كلُّها بلون النجاح، وسطرُ المصدر كما كان في السؤال */}
             <Text size={13} weight="500" numberOfLines={1}>
-              {movie ? (s.auto ? "" : `${t.stremioMovie} · `) : `${ep} · `}
-              <Text size={13} weight="700" color={tokens.success}>{s.auto ? "✓ " : `✓ ${status}`}</Text>
-              {s.auto ? status : ""}
+              {movie ? (plain ? "" : `${t.stremioMovie} · `) : `${ep} · `}
+              <Text size={13} weight="700" color={tokens.success}>{plain ? "✓ " : `✓ ${status}`}</Text>
+              {plain ? status : ""}
             </Text>
             <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && src === "stremio" ? t.stremioOpened : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
-        {rateLabel ? (
+        {cur ? (
           <View style={{ gap: 6, paddingHorizontal: 4, paddingBottom: 2 }}>
             {/* T365 — «بدون تقييم» في سطر الاسم نفسِه، في طرفه المنطقيّ فينقلب مع العربيّة */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text size={13} weight="700" muted>{rateLabel}</Text>
+              <Text size={13} weight="700" muted>{cur.label}</Text>
               {stars ? null : (
-                <Pressable onPress={onDone} accessibilityRole="button" hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+                <Pressable onPress={next} accessibilityRole="button" hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
                   <Text size={13} weight="700" muted>{t.autoSkipRate}</Text>
                 </Pressable>
               )}
             </View>
-            <View pointerEvents={stars ? "none" : "auto"}>
+            {/* `key` بالمرحلة: صفٌّ جديدٌ فارغٌ لنجوم العمل بعد نجوم الحلقة */}
+            <View key={step} pointerEvents={stars ? "none" : "auto"}>
               <StarRow spread size={22} value={stars || null} onChange={(n) => void rate(n ?? 0)} />
             </View>
           </View>

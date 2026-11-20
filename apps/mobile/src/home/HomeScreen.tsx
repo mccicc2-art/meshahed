@@ -231,10 +231,11 @@ export function HomeScreen() {
         onOpen={(x) => openTitle(x.kind, x.tmdb_id)}
         rating={stremioAns.rating}
         onRate={stremioAns.rate}
+        onRateEpisode={stremioAns.rateEpisode}
         onSkipRate={stremioAns.skipRate}
       />
     );
-  }, [stremioQ.data, stremioAns.hidden, stremioAns.answer, stremioAns.rating, stremioAns.rate, stremioAns.skipRate, router, openTitle]);
+  }, [stremioQ.data, stremioAns.hidden, stremioAns.answer, stremioAns.rating, stremioAns.rate, stremioAns.rateEpisode, stremioAns.skipRate, router, openTitle]);
 
   const openHref = useCallback(
     (href: string) => {
