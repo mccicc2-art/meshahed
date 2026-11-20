@@ -8,7 +8,7 @@ import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-route
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
-import { afterPaint, mark, notePress } from "../perfMarks";
+import { afterPaint, mark } from "../perfMarks";
 import { useApp } from "../state";
 import { BackChevron, Button, Text, Toast, toastReducer } from "../ui";
 import { Icon, iconOr } from "../icons";
@@ -1028,7 +1028,7 @@ function RoundBtn({ icon, label, onPress, onLongPress, onArt, btnRef }: { icon: 
   const { tokens } = useApp();
   const fg = onArt ? "#fff" : tokens.fg;
   return (
-    <Pressable ref={btnRef} onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable ref={btnRef} onPress={onPress} onLongPress={onLongPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       {icon === "back" ? (
         <BackChevron color={fg} />
       ) : (

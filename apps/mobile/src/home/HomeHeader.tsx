@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
-import { notePress } from "../perfMarks";
 import { touchTarget } from "../touchTargets";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -138,7 +137,7 @@ export function HomeTopBar({
     <View ref={rowRef} collapsable={false} style={{ height: HOME_TOP_H, flexDirection: "row", alignItems: "center", gap: 10, paddingStart: PAGE_PAD, paddingEnd: HEADER_END_INSET }}>
       {h ? (
         <>
-          <Pressable ref={setAvatar} onPress={onAvatar} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+          <Pressable ref={setAvatar} onPress={onAvatar} accessibilityRole="link" accessibilityLabel={h.display_name} hitSlop={6} style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             {h.avatar_url ? <Image source={{ uri: h.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="people" size={19} color={tokens.muted} />}
           </Pressable>
           {/* `flex: 1` للحاوية لا للاسم (D-634): الشارةُ تبقى ملتصقةً بالاسم والأزرارُ تُدفع إلى الطرف */}
@@ -173,7 +172,7 @@ export function HomeViewSwitch({ view, onToggle }: { view: HomeView; onToggle: (
   const next = nextHomeView(view);
   const nameOf = (v: HomeView) => (v === "mixed" ? t.cwViewRows : t.cwViewCards);
   return (
-    <Pressable onPress={onToggle} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`} hitSlop={8} style={({ pressed }) => [{ width: SWITCH_BOX, height: SWITCH_BOX, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable onPress={onToggle} accessibilityRole="button" accessibilityLabel={`${t.viewSwitchAria} — ${nameOf(next)}`} hitSlop={8} style={({ pressed }) => [{ width: SWITCH_BOX, height: SWITCH_BOX, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       <Icon name={view === "mixed" ? "view-rows" : "view-cards"} size={SWITCH_ICON} color={tokens.accent} />
     </Pressable>
   );

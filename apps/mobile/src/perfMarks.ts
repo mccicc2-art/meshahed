@@ -1,4 +1,4 @@
-import { AppState, Dimensions, I18nManager } from "react-native";
+import { AppState, I18nManager } from "react-native";
 import { File, Paths } from "expo-file-system";
 import { launchT0 } from "./perf";
 import { api, queryClient } from "./api";
@@ -81,18 +81,8 @@ export type PerfName =
      إلى `SUBSCRIBED` أو سقوطِها (`result` · `why` حالُ القناة) — «تظهر خلال ثانيتين» يُقاس لا يُصدَّق (خطّة §٩) */
   | "messages.open"
   | "messages.live"
-  /* 🩺 D-1256 — **رئيسيّةُ الويب انكشفت وللتطبيق رئيسيّةٌ أصليّة** (بلاغُ أحمد بلقطة، ٣ أكتوبر ٢٠٢٦: «فجأة رجع الهوم
-     للشكل القديم» — مرّةً واحدةً وسط أربع إقلاعاتٍ في ٢٥ث، ولم تتكرّر): تشخيصٌ لا قياس (`ms=0`). `why` = إقلاعٌ لم
-     يرفع الرئيسيّة (`boot.unseen`) أو آخرُ قرارِ رجوع (`search.pass`…) · `src` = مجموعةٌ من الإقلاع أم من الويب ·
-     `ready` = هل زيرت الرئيسيّةُ الأصليّة. تُحذف مع الإصلاح. */
-  | "web.home"
-  | "web.mount"
   /** 🆕 D-1465 — عمليّةُ صفحة الويب قُتلت (أندرويد: ذاكرة · iOS: انتهت) وأُعيد تحميلُها */
   | "web.gone"
-  /* 🩺 D-1346 — شاشةُ الدخول الأصليّة: رفعُها وسببُه (`why` = boot · signout · login · gate، `ms=0`) وكم بقيت
-     مرفوعةً قبل أن تُنزَل (`signin.hide`، ms). تشخيصٌ لعطل «خرجتُ فظهرت صفحةُ الويب»؛ تُحذف حين يثبت الإصلاح. */
-  | "signin.show"
-  | "signin.hide"
   /* 🩺 D-1347 — الترحيبُ الأصليّ: رُفع (`welcome.show`، ms=0) / أُنزل (`welcome.hide`: ms مرفوعاً، `count` الخطوةُ التي
      كان عليها). إنزالٌ في الخطوة ١ بعد لحظةٍ عطل؛ في الخامسة بعد دقيقةٍ إتمام. */
   | "welcome.show"
@@ -108,13 +98,7 @@ export type PerfName =
      ms = الثواني منذ الإقلاع ×١٠٠٠ · `screen` التبويب · `src` = `dock` (وصلت الشريطَ ولم يُضغط زرّ) أو `over` (شيءٌ فوق الشريط أخذها)
      · `mom` = قائمةٌ كانت تتحرّك (أوّلُ لمسةٍ توقفها فقط — سلوكُ النظام). تُحذف مع الإصلاح */
   | "dock.miss"
-  /* 🩺 D-1536 — نقرةٌ في شريط الرأس أو الدوك لم تضغط شيئاً (أحمد ٢٢ أكتوبر: «اللمسات ما تستجيب فالدوك او اعلى الصفحة»
-     وهو يمرّر الوسط): ms=0 · `band` top/bot · `x`/`y` موضعُها (pt) · `h` ارتفاعُ النافذة · `hid` الكسوةُ الذكيّة ٠..١٠٠ كما
-     يظنّها JS · `cago` منذ آخر تغييرٍ لها (ms) · `dock` أعلى الدوك مقيساً (pt، −١ بلا دوك) · `screen` · `mom`. تُحذف مع الإصلاح */
-  | "edge.tap"
   | "gesture.stuck"
-  /* 🆕 D-1547 — قياسٌ مؤقّت: ثقلُ تجهيز لوحٍ في الخلفيّة (`TabSlide.tsx`) */
-  | "pane.warm"
   /* 🆕 المهمّة ٣٧٩ — البحثُ بالوصف من الضغطة إلى الجواب، ومراحلُ الخادم معه (بلاغُ mesho ١٢ نوفمبر: «بطيء جداً») */
   | "story.search"
   /* 🆕 المهمّة ٣٩٩ — نافذةُ إذن الإشعارات (أحمد ١٨ نوفمبر: «نفذ القياس»، بعد أن سجّل عضوان من الآيفون بلا جهازٍ للإشعارات
@@ -173,7 +157,7 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
   } else arm();
 }
 /* 🆕 المهمّة ٣٩٩ — ونافذةُ الإشعارات كذلك: من يغلق التطبيقَ وهي أمامه لا تنتظره دفعةُ الثلاثين ثانية */
-const URGENT = new Set<PerfName>(["edge.tap", "dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer"]);
+const URGENT = new Set<PerfName>(["dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer"]);
 const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {
@@ -479,10 +463,8 @@ export function dockTouched() {
 }
 export function dockPressIn() {
   dockPressAt = Date.now();
-  pressAt = dockPressAt;
 }
 export function rootTouch(y: number, x = -1) {
-  edgeStart(x, y);
   const measure = dockMeasure;
   if (!measure) return;
   const at = Date.now();
@@ -509,68 +491,6 @@ export function rootTouch(y: number, x = -1) {
     });
     }, 450);
   });
-}
-/* ====== 🩺 D-1536 — `edge.tap` ======
- * **لماذا**: بلاغُ أحمد ٢٢ أكتوبر — الرأسُ والدوك لا يستجيبان والوسطُ يُمرَّر، ولا `js.hang` ولا `dock.miss`. و`dock.miss` أعمى
- * في موضعين: صفحةٌ مدفوعةٌ فوق التبويبات (لا دوكَ مسجَّلاً) ودوكٌ يقاس «مختبئاً». فهنا كلُّ نقرةٍ قصيرةٍ في شريطَي الحافّة
- * في أيِّ شاشة، ولم يُسجِّل زرٌّ من المصانع المشتركة ضغطتَه (`notePress`) خلال ٤٥٠ms ⇒ علامة، ومعها ما تظنّه الكسوةُ
- * الذكيّةُ عن نفسها. «مخفيّةٌ» وأحمد يراها ⇒ قيمتان مختلفتان بين JS والخيط الأصليّ. ⚖️ زرٌّ خارجَ المصانع قد يُقرأ «ميّتاً»:
- * `x`/`y` تقول أيُّ زرٍّ كان. أرقامٌ في الذاكرة، وعلامةٌ في الثانية على الأكثر */
-const EDGE_TOP = 120;
-const EDGE_BOT = 110;
-let pressAt = 0;
-let edgeAt = 0;
-let edgeY = 0;
-let edgeX = 0;
-let edgeMissAt = 0;
-let chromeV = 0;
-let chromeAt = 0;
-/** ضغطةٌ وصلت زرّاً من المصانع المشتركة (`Chip` · `Button` · الدوك · الرأس · `Segmented` · الزرّ العائم) */
-export function notePress() {
-  pressAt = Date.now();
-}
-/** من `ChromeHide`: القيمةُ التي طلبها JS للكسوة (٠ ظاهرة · ١ مخفيّة) */
-export function noteChrome(v: number) {
-  chromeV = v;
-  chromeAt = Date.now();
-}
-function edgeStart(x: number, y: number) {
-  edgeAt = Date.now();
-  edgeX = x;
-  edgeY = y;
-}
-export function rootTouchEnd(x: number, y: number) {
-  const at = edgeAt;
-  if (!at) return;
-  edgeAt = 0;
-  const now = Date.now();
-  /* نقرةٌ لا سحب: قصيرةٌ وفي مكانها */
-  if (now - at > 350 || Math.abs(x - edgeX) > 10 || Math.abs(y - edgeY) > 10) return;
-  const h = Dimensions.get("window").height;
-  const band = edgeY < EDGE_TOP ? "top" : edgeY > h - EDGE_BOT ? "bot" : "";
-  if (!band) return;
-  const measure = dockMeasure;
-  const tx = Math.round(edgeX);
-  const ty = Math.round(edgeY);
-  setTimeout(() => {
-    if (pressAt >= at - 50) return;
-    if (at - edgeMissAt < 1_000) return;
-    edgeMissAt = at;
-    const fields = {
-      band,
-      x: tx,
-      y: ty,
-      h: Math.round(h),
-      hid: Math.round(chromeV * 100),
-      cago: chromeAt ? Math.min(600_000, at - chromeAt) : -1,
-      screen: hangScreen || "?",
-      mom: at - lastScrollAt < 400 ? 1 : 0,
-    };
-    /* 🆕 المهمّة ٣١٩ — وما كان تحت الإصبع (`hit`: زرُّ رأسٍ مسجَّل · طبقةٌ فوق الشاشة · `none`) والأرقامُ الحيّة */
-    const send = (dock: number) => targetsAt(tx, ty, (hit) => mark("edge.tap", 0, { ...fields, dock, hit, ...touchStates() }));
-    if (measure) measure((top) => send(Math.round(top)));
-    else send(-1);
-  }, 450);
 }
 /** من `ChromeHide.onScroll`: آخرُ حدث تمرير (رقمٌ في الذاكرة — لا شيءَ آخرُ في مسار التمرير) */
 export function noteScroll() {

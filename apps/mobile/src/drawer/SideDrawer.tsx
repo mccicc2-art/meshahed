@@ -11,7 +11,6 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon, type IconName } from "../icons";
 import { haptic } from "../haptics";
-import { notePress } from "../perfMarks";
 import { touchState, touchTarget } from "../touchTargets";
 import { Chevron } from "../settings/ui";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
@@ -206,7 +205,6 @@ function SideDrawer({
       key={label}
       ref={opts?.anchor}
       onPress={onPress}
-      onPressIn={notePress}
       accessibilityRole="link"
       /* 🆕 D-1509 — **مسافاتُ «ب»** (أحمد ٢٧ أكتوبر بلقطة X: «تحسها ملمومة القوائم»؛ قيس من اللقطة: صفُّ X ~٥٦، وصفُّنا كان ٤٦):
          الصفُّ الرئيس بخطٍّ أخفّ (٦٠٠ لا ٧٠٠)، والثانويّ ٤٨ للمشترك و٤٤ لغيره. وصار الرئيسُ ٥٠ لا ٥٤ ومزايا البطاقة ثلاثاً لا خمساً (T345 — قائمةٌ ثابتة) */
@@ -226,7 +224,6 @@ function SideDrawer({
   const plusCard = (
             <Pressable
               onPress={() => go("/settings/plus")}
-              onPressIn={notePress}
               accessibilityRole="link"
               style={({ pressed }) => ({ marginTop: plus ? 0 : 16, marginBottom: plus ? 14 : 0, borderRadius: 18, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 14, gap: 8, opacity: pressed ? 0.85 : 1 })}
             >
@@ -301,7 +298,7 @@ function SideDrawer({
               contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 12, paddingHorizontal: 22 }}
             >
             {/* الحساب: الصورةُ بجوار الاسم (أحمد: «الصورة تكون كذا ماتكون فوق الاسم») ثمّ الرقمان */}
-            <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={`${t.drawerProfile} — ${name}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+            <Pressable onPress={openMe} accessibilityRole="link" accessibilityLabel={`${t.drawerProfile} — ${name}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                   {avatar ? <Image source={{ uri: avatar }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: `${h?.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /> : <Icon name="person" size={26} color={tokens.muted} />}
@@ -334,7 +331,6 @@ function SideDrawer({
                     {i > 0 ? <View style={{ width: 1, height: 14, backgroundColor: tokens.divider }} /> : null}
                     <Pressable
                       onPress={() => close(() => onFollows({ dir: c.dir, count: c.n, root: from ?? "home" }))}
-                      onPressIn={notePress}
                       accessibilityRole="button"
                       accessibilityLabel={`${num(c.n, locale)} ${c.label}`}
                       hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
@@ -378,12 +374,12 @@ function SideDrawer({
             {row("send", t.fbRow, () => close(onFeedback), { small: true })}
             {divider}
             <View style={{ height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Pressable onPress={toggleLang} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={t.drawerLangAria(langNow)} hitSlop={4} style={({ pressed }) => ({ height: 44, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed || busy ? 0.6 : 1 })}>
+              <Pressable onPress={toggleLang} disabled={busy} accessibilityRole="button" accessibilityLabel={t.drawerLangAria(langNow)} hitSlop={4} style={({ pressed }) => ({ height: 44, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed || busy ? 0.6 : 1 })}>
                 {/* 🆕 T320 — الكرةُ ٢٤ ⇐ ٢٢ والاسمُ ١٦ ⇐ ١٥ (خالد ٥ نوفمبر) — بخطِّ الصفوف فوقه */}
                 <Icon name="globe" size={22} color={tokens.fg} />
                 <Text size={15} weight="500">{langNow}</Text>
               </Pressable>
-              <Pressable onPress={toggleTheme} onPressIn={notePress} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
+              <Pressable onPress={toggleTheme} disabled={busy} accessibilityRole="button" accessibilityLabel={isLight ? t.drawerToDark : t.drawerToLight} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center", opacity: pressed || busy ? 0.6 : 1 })}>
                 {/* 🆕 T320 — الدائرةُ ٤٤ ⇐ ٤٠ والرمزُ ٢٠ ⇐ ١٨ (خالد: «اصغر درجة») — ومساحةُ اللمس كما كانت (٥٢) بـ`hitSlop` ٦ */}
                 <Icon name={isLight ? "sun" : "moon"} size={18} color={tokens.fg} />
               </Pressable>

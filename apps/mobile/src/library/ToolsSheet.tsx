@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
-import { notePress } from "../perfMarks";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -229,7 +228,6 @@ export function Segmented({ items, value, onChange }: { items: { id: string; lab
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             onPress={() => onChange(s.id)}
-            onPressIn={notePress}
             style={{ flex: 1, alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 }}
           >
             <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{s.label}</Text>

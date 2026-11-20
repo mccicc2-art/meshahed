@@ -9,7 +9,6 @@ import { CONFIG } from "../config";
 import { rootsBorn } from "../bootRoot";
 import { HOME_KEY, HOME_PATH } from "../home/useHome";
 import { webLocale } from "../i18n";
-import { mark } from "../perfMarks";
 import { opening } from "../opening/opening";
 import { Icon } from "../icons";
 import { Logo } from "../Logo";
@@ -94,12 +93,9 @@ export function SignInScreen() {
     const d = drawn.current?.p ?? Promise.resolve();
     await Promise.all([Promise.race([d, new Promise<void>((r) => setTimeout(r, 4000))]), ready.catch(() => {})]);
   }, []);
-  /* 🩺 D-1346 — كم بقيت الشاشةُ مرفوعة: إنزالٌ في جزءٍ من الثانية بلا دخولٍ هو العطلُ نفسُه (الخروجُ كان يُنزلها) */
+  /* D-1350 — شاشةُ الدخول لا تنتظر شبكة: أنميشنُ الفتح ينزل عنها متى اكتمل */
   useEffect(() => {
-    const t0 = Date.now();
-    /* D-1350 — شاشةُ الدخول لا تنتظر شبكة: أنميشنُ الفتح ينزل عنها متى اكتمل */
     opening.ready();
-    return () => mark("signin.hide", Date.now() - t0);
   }, []);
   const [failed, setFailed] = useState(false);
 

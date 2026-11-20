@@ -3,7 +3,6 @@ import { Pressable, View } from "react-native";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import { notePress } from "../perfMarks";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
 
@@ -58,7 +57,6 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={notePress}
       onLongPress={onLongPress}
       hitSlop={hitSlop}
       accessibilityRole="button"

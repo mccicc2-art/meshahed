@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from "react";
 import { Pressable, type StyleProp, type ViewInstance, type ViewStyle } from "react-native";
 import Reanimated, { interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import type { ChromeHidden } from "./ChromeHide";
-import { notePress } from "./perfMarks";
 import { touchTarget } from "./touchTargets";
 import { useApp } from "./state";
 import { Text } from "./ui";
@@ -58,7 +57,6 @@ export function FloatButton({
     <Reanimated.View ref={wrapRef} pointerEvents="box-none" style={[{ position: "absolute", end: 20 }, style, motion]}>
       <Pressable
         onPress={onPress}
-        onPressIn={notePress}
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => ({

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { PixelRatio, Pressable, StyleSheet, View, type ViewInstance } from "react-native";
-import { notePress } from "./perfMarks";
 import { touchTarget } from "./touchTargets";
 import { drawerStore } from "./drawer/store";
 import { Image } from "expo-image";
@@ -47,7 +46,7 @@ export function HeaderIconButton({
   const icon = Math.round(controlSize.headerIcon * k);
   const btn = Math.min(52, Math.max(controlSize.headerBtn, icon + 12));
   return (
-    <Pressable ref={ref} onPress={onPress} onPressIn={notePress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: btn, height: btn, borderRadius: btn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable ref={ref} onPress={onPress} accessibilityRole="button" accessibilityLabel={count > 0 ? `${label} (${count})` : label} hitSlop={4} style={({ pressed }) => [{ width: btn, height: btn, borderRadius: btn / 2, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}>
       <Icon name={name} size={icon} color={color} />
       {count > 0 ? <View style={{ position: "absolute", top: 7, end: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} /> : null}
     </Pressable>
@@ -85,7 +84,7 @@ export function HeaderEdges({ from, messages = false }: { from: NativeRoot; mess
   return (
     <>
       <View style={{ position: "absolute", start: HEADER_END_INSET, top: 0, bottom: 0, justifyContent: "center" }}>
-        <Pressable onPress={openMe} onPressIn={notePress} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Pressable onPress={openMe} accessibilityRole="link" accessibilityLabel={me?.nickname ?? me?.username ?? t.settingsNavHeading} hitSlop={5} style={({ pressed }) => ({ width: controlSize.headerBtn, height: controlSize.headerBtn, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
           <View style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: "hidden", borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
           </View>

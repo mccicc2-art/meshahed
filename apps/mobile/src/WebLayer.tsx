@@ -21,7 +21,7 @@ import { mark } from "./perfMarks";
 import { session } from "./session";
 import { own } from "./ownSession";
 import { shell, isReturnTo, rootOf, type NativeRoot, type ReturnTo, type SignInProvider, type SignInResult } from "./shell";
-import { doorBack, doorKept, rootsBorn, rootsState, lastBack } from "./bootRoot";
+import { doorBack, doorKept, rootsBorn } from "./bootRoot";
 /* D-1350 — الطبقةُ هي الشاشة (رابطُ الودجت) وانتهى تحميلُها ⇒ أنميشنُ الفتح ينزل عنها */
 import { opening } from "./opening/opening";
 import { rootStack, topOf, webLayer, type State } from "./webDoor";
@@ -409,8 +409,6 @@ export function WebLayer() {
   const showSignIn = useCallback((why: string) => {
     if (signInUp()) return;
     signInAt.current = Date.now();
-    /* 🩺 قياسٌ لكلِّ رفعٍ وسببِه — والإنزالُ تسجّله الشاشةُ نفسُها (`signin.hide`): الحكمُ بعد التجربة بالأرقام */
-    mark("signin.show", 0, { why });
     if (router.canDismiss()) router.dismissAll();
     router.push("/sign-in");
   }, [router, signInUp]);
@@ -464,7 +462,6 @@ export function WebLayer() {
     if (loading || source || !awake) return;
     if (lazyBoot.current === null) {
       lazyBoot.current = WEB_LAZY && !(typeof u === "string" && u) && (own.hasStored() || !session.seen());
-      if (WEB_LAZY && !lazyBoot.current) mark("web.mount", 0, { why: typeof u === "string" && u ? "widget" : "boot" });
     }
     if (lazyBoot.current) return;
     /* D-1090 — مع الإقلاع الأصليّ (الشرطُ نفسُه أدناه) تُسأل الصفحةُ الخفيفةُ أوّلاً؛ وإلّا `/` كما كان */
@@ -516,9 +513,6 @@ export function WebLayer() {
       rootsBorn(true);
       router.push("/home");
     } else {
-      /* 🩺 D-1256 — إقلاعٌ لم يرفع الرئيسيّةَ الأصليّة: إمّا زائرٌ حقّاً، وإمّا `seen()` أخطأ (قراءةُ SecureStore
-         ترمي فيُحفظ `false` للجلسة كلِّها — الفرضيّةُ الأولى لبلاغ أحمد). العلامةُ تفرّق بينهما بعدد مرّاتها. */
-      if (why === "boot") mark("web.home", 0, { why: "boot.unseen" });
       /* 🆕 D-1344 — لا أثرَ لجلسة ⇒ شاشةُ الدخول الأصليّة فوق الطبقة من أوّل رسمة (صفحةُ دخول الويب لا تُرى) */
       showSignIn(why);
     }
@@ -533,13 +527,12 @@ export function WebLayer() {
   /**
    * 🆕 D-1370 (V-D) — **حارسُ القاعدة**: أعلى المكدّس `web` يعني «الطبقةُ هي الشاشة» — وبلا صفحةٍ هي شاشةُ تحميلٍ لا تنتهي.
    * لا طريقَ معروفاً يوصل إليها (الجذورُ تخرج من التطبيق، والخروجُ يرفع شاشةَ الدخول)، فإن وصل أحدٌ بطريقٍ فاتنا يُعاد
-   * قرارُ الإقلاع بعد لحظةٍ ويُسجَّل (`web.home` · `why=lazy.base`) — العلامةُ تقول إنّ هناك طريقاً يُغلق.
+   * قرارُ الإقلاع بعد لحظة.
    */
   const topName = top?.name ?? "";
   useEffect(() => {
     if (!WEB_LAZY || !visible || source || !booted.current || topName !== "web") return;
     const timer = setTimeout(() => {
-      mark("web.home", 0, { why: "lazy.base" });
       raise("base");
     }, 700);
     return () => clearTimeout(timer);
@@ -565,17 +558,6 @@ export function WebLayer() {
     [showWelcome],
   );
 
-  /* 🩺 D-1256 — بعد الإقلاع: الطبقةُ صارت هي الشاشة وهي على رئيسيّة الويب، والتطبيقُ يعرف صاحبَه ⇒ انكشافٌ لا يُفترض.
-     يُسجَّل من أين: المجموعةُ وآخرُ قرارِ رجوع. تشخيصٌ فقط — لا يغيّر ما يُعرض. */
-  const homeDiagWas = useRef(visible);
-  useEffect(() => {
-    const was = homeDiagWas.current;
-    homeDiagWas.current = visible;
-    if (!visible || was || !booted.current || pathRef.current !== "/" || !session.seen()) return;
-    const r = rootsState();
-    mark("web.home", 0, { why: lastBack(), src: r.boot ? "boot" : "web", ready: r.homeSeen ? 1 : 0 });
-  }, [visible]);
-
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
   const flush = useCallback(() => {
@@ -591,7 +573,6 @@ export function WebLayer() {
     setFromSettings(!!shell.returnTo && shell.returnTo.startsWith("settings"));
     /* 🆕 D-1370 (V-D) — رابطٌ وصل والتطبيقُ مفتوحٌ بلا صفحة: الطبقةُ تُنشأ على هدفه مباشرةً (لا شيءَ يُنتظر تحميلُه قبله) */
     if (lazyBoot.current && !sourceRef.current) {
-      mark("web.mount", 0, { why: "widget" });
       setSource({ uri: CONFIG.apiBase + u, headers: langHeaders() });
       return;
     }
@@ -613,14 +594,12 @@ export function WebLayer() {
     if (!pair) {
       rescuing.current = false;
       setRescueUp(false);
-      mark("web.mount", 0, { why: "rescue", result: "none" });
       /* لا جلسةَ تُسلَّم ⇒ الحكمُ القديم: خروجٌ وشاشةُ الدخول */
       session.signOut();
       if (!signInUp() && router.canDismiss()) router.dismissAll();
       showSignIn("login");
       return;
     }
-    mark("web.mount", 0, { why: "rescue", result: "ok" });
     pending.current = back ? CONFIG.apiBase + back : null;
     handing.current = true;
     setSource({ uri: HANDOFF, method: "POST", headers: FORM_HEADERS, body: formBody({ access_token: pair.access, refresh_token: pair.refresh }) });
@@ -735,7 +714,6 @@ export function WebLayer() {
     handing.current = true;
     handT0.current = Date.now();
     leaving.current = false;
-    if (WEB_LAZY && !sourceRef.current) mark("web.mount", 0, { why: "login" });
     /* 🆕 D-1151 (الحلّ أ) — دخل فعلاً: الأثرُ الآن لا بعد رمزٍ عبر الجسر، فلا يعامله التطبيقُ زائراً */
     session.markSeen();
     /* 🆕 D-1152 — والجلسةُ المملوكةُ تُسكّ من رمز الدخول نفسِه الآن (لا تنتظر جسراً ولا كوكياً) */
@@ -941,7 +919,6 @@ export function WebLayer() {
     shell.attachPost((path) => {
       /* 🆕 D-1370 (V-D) — بلا صفحةٍ قائمة يُنشئ هذا المصدرُ الطبقةَ على طلب الخروج نفسِه (الطريقُ المجرَّب، D-1156) */
       if (path.includes("/auth/signout")) leaving.current = true;
-      if (WEB_LAZY && !sourceRef.current) mark("web.mount", 0, { why: "signout" });
       setSource({ uri: CONFIG.apiBase + path, method: "POST", headers: FORM_HEADERS, body: formBody({ n: String(Date.now()) }) });
     });
     return () => {
@@ -972,7 +949,6 @@ export function WebLayer() {
   useEffect(() => {
     if (!WEB_LAZY) return;
     shell.attachLoader((path, arm) => {
-      mark("web.mount", 0, { why: "door" });
       setColdArm(arm ? `try{if(!sessionStorage.getItem("loopz:cold")){sessionStorage.setItem("loopz:cold","1");${arm}}}catch(e){};` : "");
       setSource({ uri: CONFIG.apiBase + path, headers: langHeaders() });
     });
@@ -987,7 +963,6 @@ export function WebLayer() {
     if (!WEB_LAZY) return;
     return own.onChange(() => {
       if (own.hasStored() || sourceRef.current || handing.current || leaving.current || !session.seen()) return;
-      mark("web.mount", 0, { why: "lost" });
       setSource({ uri: BOOT });
     });
   }, []);

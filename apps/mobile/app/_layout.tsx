@@ -29,7 +29,7 @@ import { FirstLaunchUpdate } from "../src/firstLaunchUpdate";
 /* 🆕 1.14.1 — مصدرُ التثبيت من Google Play يحمل كودَ الدعوة (أندرويد، مرّةً في عمر التثبيت — `src/invite/installReferrer.ts`) */
 import { readInstallReferrerOnce } from "../src/invite/installReferrer";
 import "../src/presence";
-import { rootTouch, rootTouchEnd } from "../src/perfMarks";
+import { rootTouch } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
 import { UpdateBanner } from "../src/UpdateBanner";
@@ -111,7 +111,7 @@ function Shell() {
       {/* D-1125 — أيقوناتُ الشريط تتبع الثيم: البيضاءُ على «النهاري» لا تُرى */}
       <StatusBar style={statusBarStyleOf(themeId)} />
       {/* 🩺 R57 — `dock.miss`: كلُّ لمسةٍ في التطبيق تمرّ هنا (حدثٌ يصعد ولا يأخذ اللمسة) — لمسةٌ في منطقة الدوك لم تصل زرَّه تُسجَّل */}
-      <View style={{ flex: 1 }} onTouchStart={(e) => rootTouch(e.nativeEvent.pageY, e.nativeEvent.pageX)} onTouchEnd={(e) => rootTouchEnd(e.nativeEvent.pageX, e.nativeEvent.pageY)}>
+      <View style={{ flex: 1 }} onTouchStart={(e) => rootTouch(e.nativeEvent.pageY, e.nativeEvent.pageX)}>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: tokens.bg },

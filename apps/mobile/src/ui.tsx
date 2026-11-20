@@ -15,7 +15,6 @@ import {
   type TextStyle,
   type ViewProps,
 } from "react-native";
-import { notePress } from "./perfMarks";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { radius, space } from "./theme";
@@ -278,11 +277,6 @@ export function Button({
   return (
     <Pressable
       {...rest}
-      onPressIn={(e) => {
-        /* 🩺 D-1536 — `edge.tap` يعرف أنّ اللمسة وصلت زرّاً */
-        notePress();
-        rest.onPressIn?.(e);
-      }}
       disabled={busy || rest.disabled}
       style={({ pressed }) => [
         styles.button,
@@ -323,7 +317,7 @@ export const TOP_BAR_INSET = 8;
 export function BackButton({ onPress, onLongPress, label, color }: { onPress: () => void; onLongPress?: () => void; label: string; color?: string }) {
   const { tokens } = useApp();
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} onPressIn={notePress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+    <Pressable onPress={onPress} onLongPress={onLongPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
       <BackChevron color={color ?? tokens.fg} />
     </Pressable>
   );
