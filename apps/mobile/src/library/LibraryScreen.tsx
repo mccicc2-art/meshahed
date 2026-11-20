@@ -1113,11 +1113,47 @@ const RailRow = memo(function RailRow({ row, sight, onOpen, onHold }: { row: Ext
     ({ item }: { item: CardItem }) => <PosterCard item={item} width={RAIL_W} onPress={onOpen} onHold={onHold} marquee={seen} />,
     [onOpen, onHold, seen],
   );
+  /* 🆕 T484 — **الرفُّ يبدأ من أوّله كلّما عاد أو تبدّلت أعمالُه** (تسجيلُ أحمد ٢٠ نوفمبر: بعد إلغاء «مفضّلاتي» عاد
+     «لم أبدأها» و«موقوفة» بعنوانَيهما ومكانُهما فارغ، وسحبُ الرفِّ أظهر البوسترات — حكمُه «أ»). الرفُّ الذي غاب أثناء
+     المصفاة يُركَّب من جديد داخل خليّةٍ تتحرّك، فيبقى موضعُ التمرير الأصليّ في الاتّجاه العربيّ على طرف المحتوى البعيد
+     (حشوةُ ما لم يُرسم بعد)، والقائمةُ لا تعيد حسابَ ما تعرضه حتّى يتحرّك الإصبع. **العلاجُ في السبب لا في الشكل**:
+     بعد أن تُقاس المحتوياتُ يُرسى الرفُّ على بدايته المنطقيّة (`scrollToOffset(0)` يحوّلها للعربيّ بنفسه، ولا يُنادى
+     قبل القياس لأنّه يرفضه في العربيّ) — **مرّةً لكلِّ مجموعة أعمال**: تحديثُ البيانات بالأعمال نفسها لا يسحب من مرّر الرفّ.
+     ⚠️ **والقياسان معاً**: التحويلُ للعربيّ يطرح عرضَ الرفِّ الظاهر من طول محتواه — فلا يُرسى قبل أن يُعرف الاثنان
+     (`onLayout` يُعطي العرضَ و`onContentSizeChange` الطول)، وإلّا ذهب الرفُّ إلى ما وراء طرفه. */
+  const railRef = useRef<FlatList<CardItem>>(null);
+  const sig = useMemo(() => row.items.map(railKey).join("|"), [row.items]);
+  const sized = useRef(false);
+  const laid = useRef(false);
+  const anchored = useRef<string | null>(null);
+  const anchor = useCallback(() => {
+    if (!sized.current || !laid.current || anchored.current === sig) return;
+    anchored.current = sig;
+    railRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [sig]);
+  /* الخليّةُ نفسُها قد تُعطى رفّاً آخر (`key` يعيد تركيبَ القائمة) — فما قيس للأوّل لا يُحسب للثاني */
+  useEffect(() => {
+    sized.current = false;
+    laid.current = false;
+    anchored.current = null;
+  }, [row.key]);
+  useEffect(anchor, [anchor]);
+  const onContentSize = useCallback(() => {
+    sized.current = true;
+    anchor();
+  }, [anchor]);
+  const onRailLayout = useCallback(() => {
+    laid.current = true;
+    anchor();
+  }, [anchor]);
   return (
     <FlatList
+      ref={railRef}
       /* مراجعةُ ما قبل الرفع: صفٌّ أُعيد استعمالُه لرفٍّ آخر لا يرث موضعَ تمريره الأفقيّ */
       key={row.key}
       horizontal
+      onContentSizeChange={onContentSize}
+      onLayout={onRailLayout}
       data={row.items}
       keyExtractor={railKey}
       renderItem={renderItem}
