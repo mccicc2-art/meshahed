@@ -593,10 +593,11 @@ const ar = {
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
   importHint:
-    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو Bingers أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر. وما في مكتبتك هنا يبقى كما هو — يُضاف إليه الناقص فقط.",
+    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو Bingers أو TV Time — ارفع ملف التصدير هنا، بلا أن تبدأ من الصفر. وما في مكتبتك هنا يبقى كما هو — يُضاف إليه الناقص فقط.",
   importTvTimeTitle: "TV Time",
+  /* 🆕 T499 (أحمد ٢١ نوفمبر «٣ب نفذ»): TV Time أُغلق في ١٥ يوليو ٢٠٢٦ فلا نسخةَ تُطلب منه بعدها — السطرُ يخاطب من حفظ ملفّه قبل الإغلاق */
   importTvTimeHint:
-    "اطلب نسخة بياناتك من TV Time ثم ارفع الملف المضغوط هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
+    "إن كان عندك ملف بياناتك من TV Time فارفعه هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
   importPickFile: "اختر ملف التصدير",
   importReading: "جارٍ قراءة الملف…",
   importMatching: "جارٍ المطابقة…",
@@ -4023,10 +4024,10 @@ const en: Dict = {
 
   importSection: "Import your library",
   importHint:
-    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl, Bingers or TV Time — export your file from them and upload it here, no starting from scratch. Whatever is already in your Loopz library stays as it is — only what's missing is added.",
+    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl, Bingers or TV Time — upload your export file here, no starting from scratch. Whatever is already in your Loopz library stays as it is — only what's missing is added.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
-    "Request your data copy from TV Time, then upload the zip here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
+    "If you have your TV Time data file, upload it here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
   importPickFile: "Choose the export file",
   importReading: "Reading the file\u2026",
   importMatching: "Matching titles\u2026",
