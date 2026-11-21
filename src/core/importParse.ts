@@ -75,6 +75,22 @@ export type RawRecord =
       list?: string;
       pos?: number;
     }
+  /* 🆕 T500 — **صفٌّ من تطبيقٍ لا نعرفه** (`importAuto.ts`): ما فهمناه من أعمدته بعد مراجعة صاحبه. فيلمٌ أو مسلسل، بأقوى معرّفٍ
+     وُجد (TMDB ثمّ IMDb ثمّ TVDB ثمّ الاسمُ والسنة)، وحلقةٌ إن حمل موسماً ورقماً، وحالُه (`status`) لصفِّ العمل كلِّه */
+  | {
+      kind: "auto";
+      media: "movie" | "tv";
+      name: string;
+      year?: number;
+      tmdb?: number;
+      imdb?: string;
+      tvdb?: number;
+      s?: number;
+      e?: number;
+      status: "watched" | "watching" | "plan" | "dropped" | "paused";
+      rating?: number;
+      at?: string;
+    }
   /* 🆕 **صفٌّ من MyAnimeList** (`mal.ts`) — رقمُه هناك، وما سجّله منه (`watched` من `total`)، وحالتُه. ومعناه على مواسم TMDB
      يُعرف بعد المطابقة (جدولُ Fribb يعطي الموسمَ والإزاحة) — فالحلقاتُ تُحسب على الخادم لا هنا */
   | {
@@ -191,7 +207,8 @@ export async function readZip(buf: ArrayBuffer): Promise<ZipEntry[]> {
 //  CSV — قارئ RFC4180 مصغّر (اقتباسات، فواصل داخل الحقول، أسطر)
 // ============================================================
 
-export function parseCsv(text: string): string[][] {
+/** `delim` 🆕 T500 — المستوردُ العامّ يقرأ TSV وفاصلةً منقوطة (تصديرُ Excel في لغاتٍ كثيرة) بالقارئ نفسِه؛ الافتراضيُّ الفاصلة */
+export function parseCsv(text: string, delim = ","): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -206,7 +223,7 @@ export function parseCsv(text: string): string[][] {
         } else quoted = false;
       } else field += c;
     } else if (c === '"') quoted = true;
-    else if (c === ",") {
+    else if (c === delim) {
       row.push(field);
       field = "";
     } else if (c === "\n" || c === "\r") {
@@ -302,6 +319,15 @@ export function recordKey(r: RawRecord): string {
       return `imdb:${r.media}:${r.imdb}`;
     case "mal":
       return `mal:${r.mal}`;
+    /* T500 — أقوى معرّفٍ يحمله الصفّ؛ ومفاتيحُ الاسم مفاتيحُ `ep-name`/`movie-name` نفسُها فيُطابَق العملُ مرّةً مهما تكرّر */
+    case "auto":
+      return r.tmdb
+        ? `${r.media === "tv" ? "tmdbtv" : "tmdbmv"}:${r.tmdb}`
+        : r.imdb
+          ? `imdb:any:${r.imdb}`
+          : r.tvdb
+            ? `tvdb:${r.tvdb}`
+            : `${r.media === "tv" ? "tv" : "mv"}:${r.name.toLowerCase()}:${r.year ?? ""}`;
   }
 }
 
@@ -321,6 +347,13 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
     else if (r.kind === "ep-tvdb") map.set(key, { kind: "tvdb-episode", id: r.episodeTvdbId });
     else if (r.kind === "imdb") map.set(key, { kind: "imdb", id: r.imdb, media: r.media });
     else if (r.kind === "mal") map.set(key, { kind: "mal", id: r.mal });
+    else if (r.kind === "auto") {
+      /* بمعرّف TMDB لا يُطلب (D-154) */
+      if (r.tmdb) continue;
+      if (r.imdb) map.set(key, { kind: "imdb", id: r.imdb, media: "any" });
+      else if (r.tvdb) map.set(key, { kind: "tvdb-tv", id: r.tvdb });
+      else map.set(key, r.media === "tv" ? { kind: "name-tv", name: r.name, year: r.year } : { kind: "name-movie", name: r.name, year: r.year });
+    }
     /* `tmdb-*` لا يُطلب: معرّفه بيده. **وإدراجه هنا كان سيكلّف رحلةَ
        خادمٍ لكل عملٍ بلا فائدة** — وهي مئاتُ الطلبات في مكتبةٍ كبيرة */
   }

@@ -363,7 +363,8 @@ export function ProfileScreen() {
               status={t.linkGoogleLinked}
               actionLabel={t.appManage}
               busy={xBusy}
-              onPress={() => (dirty ? toast.current?.say(t.xSaveFirst) : setXAsk(true))}
+              /* 🆕 T503 — «احفظ أولاً» توجيهٌ لا خطأ: رماديّ */
+              onPress={() => (dirty ? toast.current?.say(t.xSaveFirst, undefined, undefined, "info") : setXAsk(true))}
             />
           ) : (
             <Row

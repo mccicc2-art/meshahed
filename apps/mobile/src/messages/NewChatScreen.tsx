@@ -99,7 +99,8 @@ export function NewChatScreen({ mode, groupId, from }: { mode: Mode; groupId?: s
   const openGroupCreate = () => {
     haptic.pick();
     if (d && d.can_create_group === false) {
-      say(t.grpPlusOnly);
+      /* 🆕 T503 — مزيّةٌ لـPlus تُقال رماديّةً: ليست خطأً، والصفحةُ تُفتح بعدها */
+      say(t.grpPlusOnly, "info");
       doors.openWeb("/plus");
       return;
     }

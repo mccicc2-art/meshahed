@@ -26,6 +26,9 @@ import { PERSONA_READ_IN, personaLang, personaOf } from "@/core/personas";
  * D3: نقاشٌ متشعّبٌ بعمقِ ٣ لا يُنسخ). **الكتابةُ الوحيدةُ هنا رأيي** — عبر
  * `track/rate` بحقل `review` (ورقةُ `ReviewSheet`)، بالحدود نفسِها.
  */
+/** 🆕 T502 — اسمُ باب الغرفة من تبويب المراجعات (كلمةٌ لسطحٍ واحد، كـ`RATERS_WORDS`) */
+const TALK_DOOR = { ar: "نقاش العمل", en: "Discussion" } as const;
+
 export const communityKey = (kind: "tv" | "movie", id: number) => ["title:community", kind, id] as const;
 
 export function useCommunity(kind: "tv" | "movie", id: number, enabled: boolean) {
@@ -128,7 +131,12 @@ export function CommunityTab({
         <Text size={13} muted style={{ textAlign: "center", paddingVertical: 12 }}>{ar ? "لا آراءَ بعد — كن أوّلَ من يكتب." : "No reviews yet — be the first."}</Text>
       ) : null}
 
-      <Button label={`${t.tabCommunity} ↗`} variant="ghost" onPress={() => onOpenTalk(data.talk_path)} />
+      {/* 🆕 T502 — **بابُ النقاش يقول إنه مكانٌ آخر** (أحمد ٢٢ نوفمبر: «المراجعات تفتح عالنقاش»، ثمّ «١ ب»): كان «Community ↗»
+          ملاصقاً لآخر مراجعة فبدا أن المراجعات نفسَها تُفتح في النقاش. اسمُه «نقاش العمل»، وخطٌّ يفصله عن المراجعات */}
+      {/* آخرُ مراجعةٍ تحمل خطَّها السفليّ — فالخطُّ هنا حين يسبق البابَ شيءٌ بلا خطّ (نشراتٌ أو سطرُ «لا آراء») فلا يتكرّر */}
+      <View style={{ borderTopWidth: data.bulletins.length || !data.reviews.length ? 1 : 0, borderTopColor: tokens.divider, paddingTop: data.bulletins.length || !data.reviews.length ? 12 : 0 }}>
+        <Button label={`${TALK_DOOR[ar ? "ar" : "en"]} ↗`} variant="ghost" onPress={() => onOpenTalk(data.talk_path)} />
+      </View>
     </View>
   );
 }

@@ -1056,53 +1056,53 @@ export default async function PublicProfilePage({
                 ⚠️ **ولا ١٣ في السلّم** (١٢ · ١٤ · ١٥ · ٢٠ · ٢٢ · ٢٤):
                 **فالنصفُ الضائعُ من ١٢٫٥ ثمنُ الانضمام إليه** — **ورتبةٌ
                 محسوبةٌ خيرٌ من نصفِ بكسلٍ يفلت من الإتاحة.** */}
-            <p className="hero-halo mt-0.5 flex items-center gap-1.5 text-12 text-muted leading-tight">
-              {profile.username && !profile.hide_name && (
-                <>
-                  {/* 🔴 و`text-white` كان عطلاً صامتاً في `daylight` —
-                      **و`--muted` يُقرأ على السمتين.** والاتّجاهُ LTR
-                      للمعرّف وحدَه فلا ينقلب @ في RTL. */}
-                  <span dir="ltr" className="min-w-0 truncate">
-                    @{profile.username}
-                  </span>
-                  <span aria-hidden className="shrink-0 opacity-60">
-                    •
-                  </span>
-                </>
-              )}
-              <span className="shrink-0 inline-flex items-center gap-2">
-                <FollowCountButton
-                  targetId={profile.id}
-                  dir="followers"
-                  count={stats.followers}
-                  label={t.followersLabel}
-                  sheetTitle={t.followsTabFollowers}
-                  locked={!isMe && !!profile.hide_follow_lists}
-                  compact
-                  labels={{
-                    close: t.closeLabel,
-                    empty: t.followListEmpty,
-                    anonymous: t.anonymousUser,
-                    badges: badgeLabelsOf(t),
-                  }}
-                />
-                <FollowCountButton
-                  targetId={profile.id}
-                  dir="following"
-                  count={stats.following}
-                  label={t.followingLabel}
-                  sheetTitle={t.followsTabFollowing}
-                  locked={!isMe && !!profile.hide_follow_lists}
-                  compact
-                  labels={{
-                    close: t.closeLabel,
-                    empty: t.followListEmpty,
-                    anonymous: t.anonymousUser,
-                    badges: badgeLabelsOf(t),
-                  }}
-                />
-              </span>
-            </p>
+            {/* 🆕 T502 — **المعرّفُ سطرٌ، والأعدادُ سطرٌ تحته بالكلمات** (أحمد ٢٢ نوفمبر بلقطة التطبيق: «الحجم صغير والقلب مو
+                مفهوم»، ثمّ «٦ ب ٧ د ٨ أ ٩ ب» — والويبُ مثلُه حرفاً): «20 متابِعًا   22 يتابع» بمقاس ١٤ لا رمزين بمقاس ١٢، والمعدودُ
+                بقاعدة العدد (`countNoun`)، ورقاقةُ «يتابعك» في آخر السطر لمن يتابعك. نقضٌ لرمزَي D-621 في الملفّ وحده. */}
+            {profile.username && !profile.hide_name ? (
+              <p className="hero-halo mt-0.5 text-12 text-muted leading-tight">
+                {/* 🔴 و`text-white` كان عطلاً صامتاً في `daylight` — **و`--muted` يُقرأ على السمتين.** والاتّجاهُ LTR للمعرّف وحدَه
+                    فلا ينقلب @ في RTL. */}
+                <span dir="ltr" className="block min-w-0 truncate">
+                  @{profile.username}
+                </span>
+              </p>
+            ) : null}
+            <div className="hero-halo mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-14">
+              <FollowCountButton
+                targetId={profile.id}
+                dir="followers"
+                count={stats.followers}
+                label={countNoun(locale, "followers", stats.followers, t.followersLabel)}
+                sheetTitle={t.followsTabFollowers}
+                locked={!isMe && !!profile.hide_follow_lists}
+                labels={{
+                  close: t.closeLabel,
+                  empty: t.followListEmpty,
+                  anonymous: t.anonymousUser,
+                  badges: badgeLabelsOf(t),
+                }}
+              />
+              <FollowCountButton
+                targetId={profile.id}
+                dir="following"
+                count={stats.following}
+                label={t.followingLabel}
+                sheetTitle={t.followsTabFollowing}
+                locked={!isMe && !!profile.hide_follow_lists}
+                labels={{
+                  close: t.closeLabel,
+                  empty: t.followListEmpty,
+                  anonymous: t.anonymousUser,
+                  badges: badgeLabelsOf(t),
+                }}
+              />
+              {!isMe && relation.followsMe ? (
+                <span className="inline-flex items-center rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-12 font-bold text-muted">
+                  {locale === "en" ? "Follows you" : "يتابعك"}
+                </span>
+              ) : null}
+            </div>
             {/* 🆕 **و`dir="auto"` على النبذة** (D-601، حكمُه: «البايو
                 خلّه يبدأ من يمين RTL»): نبذةٌ عربيّةٌ في واجهةٍ
                 إنجليزيّةٍ كانت تبدأ من اليسار — **والاتّجاهُ يتبع

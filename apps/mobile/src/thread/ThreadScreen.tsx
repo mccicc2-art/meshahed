@@ -29,6 +29,7 @@ import { SortCycle } from "../library/SortCycle";
 import { airedEpisodes, episodeBulletin, episodeRoomRows, episodeStats, episodeTitle, generalRows, latestBulletin, talkEpisodeKey, type EpisodeRef, type EpisodeStat } from "@/core/talkEpisodes";
 import { seasonQuery } from "../title/SeasonAccordion";
 import { PersonaAltButton } from "../title/TitleCommunity";
+import { askTitleTab, previousRoute } from "../title/tabAsk";
 import { rememberRoom } from "./recentRooms";
 import { Segmented } from "../library/ToolsSheet";
 import { formatDateShort, timeAgoShort } from "@/core/when";
@@ -234,6 +235,21 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     if (!d || d.work.media_type === "general") return;
     router.push({ pathname: "/title/[kind]/[id]", params: { kind: d.work.media_type, id: String(d.work.tmdb_id), from: from === "web" ? "web" : from } });
   }, [router, d, from]);
+  /* 🆕 T502 — صفُّ «المراجعات» يفتح تبويبَها في صفحة العمل (أحمد «٥ أ»): إن كانت صفحةُ العمل نفسُها تحت الغرفة رجع إليها
+     وتحوّل تبويبُها، وإلّا دُفعت مفتوحةً عليه — لا نسخةَ ثانيةً من الصفحة فوق الأولى (`tabAsk.ts`) */
+  const openReviews = useCallback(() => {
+    if (!d || d.work.media_type === "general") return;
+    const kind = d.work.media_type;
+    const id = d.work.tmdb_id;
+    haptic.pick();
+    askTitleTab(kind, id, "community");
+    const prev = previousRoute(nav.getRootState());
+    if (prev && prev.name === "title/[kind]/[id]" && prev.params.kind === kind && Number(prev.params.id) === id && router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: from === "web" ? "web" : from } });
+  }, [d, nav, router, from]);
   /* 🆕 R55 — صفحةُ السطر شاشةٌ فوق الغرفة (`?r=`)، فالرجوعُ خطوةٌ واحدة كتويتر؛ والمفتاحُ واحدٌ فالصفحةُ ترسم من الكاش فوراً */
   const openRow = useCallback(
     (row: ThreadRow) => {
@@ -717,6 +733,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       d={d}
       reportedHead={reported.has("head")}
       onTitle={openTitle}
+      onReviews={openReviews}
       onLike={likeHead}
       onShare={share}
       onReport={() => d.head.kind === "review" && report({ what: "review" }, "head")}
@@ -900,9 +917,12 @@ function Head({
   onShare,
   onReport,
   onProfile,
+  onReviews,
   talk,
 }: {
   d: ThreadPayload;
+  /** 🆕 T502 — صفُّ «المراجعات» تحت رأس الغرفة يفتح تبويبَها في صفحة العمل */
+  onReviews: () => void;
   /** 🆕 D-1495/D-1496 — أدواتُ الغرفة: منتقي الحلقة · «حرق الأحداث» · العددُ و«الأحدث ⌄» */
   talk: {
     pick: EpisodeRef | null;
@@ -1060,6 +1080,9 @@ function Head({
 
       {h.kind === "talk" ? (
         <View>
+          {/* 🆕 T502 — **المراجعاتُ لحالها والنقاشُ لحاله** (أحمد ٢٢ نوفمبر، «٢ ب ٣ أ ٤ أ»): خرجت المراجعاتُ من الغرفة، وبقي لها
+              صفٌّ واحدٌ تحت الرأس — عددُها وثلاثةُ وجوهٍ وسهم — يفتح تبويبَها. يغيب عند الصفر، وفي غرفة الحلقة (المراجعةُ عن العمل كلِّه) */}
+          {h.reviews && h.reviews.count > 0 && !talk.pick ? <ReviewsRow count={h.reviews.count} faces={h.reviews.faces} onPress={onReviews} /> : null}
           {talk.tv ? <TvTalkHead d={d} talk={talk} tv={talk.tv} /> : null}
           {/* 🆕 R53 — **سطرٌ واحد: العددُ في البداية، و«حرق» و«الأحدث ⌄» في الطرف** (صورةُ أحمد المعتمدة ٢١ أكتوبر): كان «حرق
               الأحداث» صفّاً وحدَه فوق سطر العدد — صفٌّ كاملٌ يدفع الكلامَ للأسفل. وفي غرفة حلقةٍ لم تُشاهَد يقول العددُ «مغطّاة»
@@ -1165,6 +1188,38 @@ function Head({
  * - **«الحلقات»**: شرائحُ المواسم، ثمّ الحلقاتُ من الأحدث بعدد ما قيل وآخره؛ ما لم يشاهده القارئُ مقفل 🔒.
  * - **غرفةُ الحلقة**: «‹ كل الحلقات»، وبطاقتُها (الاسم · التقييم · المدّة) مكانَ النشرة، وشريطُ «لم تشاهدها» بزرِّ «شاهدتها».
  */
+/** 🆕 T502 — صفُّ «المراجعات» في الغرفة: شكلُ بطاقة «آخر حلقة» نفسُه (حدٌّ بلون الإطار لا بلون التمييز — بابٌ لا خبر) */
+function ReviewsRow({ count, faces, onPress }: { count: number; faces: (string | null)[]; onPress: () => void }) {
+  const { t, tokens, locale } = useApp();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={`${t.tabTitleReviews} ${count}`}
+      style={({ pressed }) => ({ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, opacity: pressed ? 0.8 : 1 })}
+    >
+      {/* أيقونةُ تبويب المراجعات نفسُها (`people`) فيُعرف أنه البابُ نفسُه */}
+      <Icon name="people" size={16} color={tokens.accent} />
+      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Text size={14} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{t.tabTitleReviews}</Text>
+        <Text size={13} weight="600" color={tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(count, locale)}</Text>
+      </View>
+      {faces.length ? (
+        <View style={{ flexDirection: "row" }}>
+          {faces.map((uri, i) => (
+            <View key={i} style={{ width: 26, height: 26, borderRadius: 13, marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.surface, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+              {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <View style={{ transform: [{ rotate: I18nManager.isRTL ? "90deg" : "-90deg" }] }}>
+        <Icon name="chevron-down" size={14} color={tokens.muted} />
+      </View>
+    </Pressable>
+  );
+}
+
 function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRef | null }; tv: NonNullable<Parameters<typeof Head>[0]["talk"]["tv"]> }) {
   const { t, tokens } = useApp();
   const seasons = d.head.kind === "talk" ? d.head.seasons ?? [] : [];

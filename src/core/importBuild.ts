@@ -121,6 +121,43 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
       continue;
     }
 
+    /* 🆕 T500 — **صفٌّ من تطبيقٍ لا نعرفه** (`importAuto.ts`، بعد مراجعة صاحبه):
+       - فيلم ⇐ «شاهدته» يختمه مشاهَداً بتاريخه، وغيرُه («أنوي» · «أشاهده») يدخل المكتبةَ بلا مشاهدة — ومشاهدةٌ سابقةٌ تغلب.
+       - حلقة (موسمٌ ورقمٌ من الصفّ، أو من المطابقة لمعرّف حلقةٍ في IMDb) ⇐ مشاهَدةٌ بتاريخها، إلا ما وُسم «أنوي».
+       - مسلسلٌ بلا حلقة ⇐ حالُه: «شاهدته» كلُّه (`all` — يُحسب على الخادم كأخيه في IMDb)، «تركته» متروك، «أوقفته» موقوف،
+         وما سواه يدخل المكتبةَ وحدَه. والتقييمُ حيث ورد. */
+    if (r.kind === "auto") {
+      const hit = r.tmdb
+        ? { tmdbId: r.tmdb, mediaType: r.media, title: r.name, posterPath: null as string | null }
+        : resolved.get(recordKey(r));
+      if (!hit) {
+        unmatched.add(r.name);
+        continue;
+      }
+      if (hit.mediaType === "movie") {
+        const prev = movieMap.get(hit.tmdbId);
+        const watched = r.status === "watched";
+        movieMap.set(hit.tmdbId, {
+          tmdbId: hit.tmdbId,
+          title: hit.title || r.name,
+          posterPath: hit.posterPath,
+          watched: (prev?.watched ?? false) || watched,
+          at: watched ? earliest(prev?.at, r.at) : prev?.at,
+          rating: r.rating ?? prev?.rating,
+        });
+        continue;
+      }
+      /* معرّفُ حلقةٍ في IMDb يعيد اسمَ الحلقة لا المسلسل — فالعنوانُ من الملفّ */
+      const epHit = "season" in hit && hit.season != null && hit.episode != null ? { s: hit.season, e: hit.episode } : null;
+      const sh = addShow({ ...hit, title: epHit ? r.name : hit.title || r.name });
+      const ep = epHit ?? (r.s != null && r.e != null ? { s: r.s, e: r.e } : null);
+      if (ep) {
+        if (r.status !== "plan") sh.episodes.push({ ...ep, at: r.at });
+      } else if (r.status === "watched") sh.all = { at: earliest(sh.all?.at, r.at) };
+      else if (r.status === "dropped" || r.status === "paused") sh.state = r.status;
+      if (r.rating != null) sh.rating = r.rating;
+      continue;
+    }
     if (r.kind === "imdb") {
       const hit = resolved.get(recordKey(r));
       if (!hit) {

@@ -13,9 +13,8 @@ import {
   isMovieWatched,
   getWatchedForShow,
   getTitleReviews,
-  getReviewReplyCounts,
 } from "@/lib/data";
-import { commentViewKey } from "@/core/postKeys";
+import { compareReviews } from "@/core/reviewOrder";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
@@ -27,6 +26,7 @@ import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import type { ThreadReply } from "@/components/thread/ReplyItem";
 import { Icon } from "@/components/Icon";
+import { Avatar } from "@/components/Avatar";
 import { Suspense } from "react";
 import { LoopzLogo } from "@/components/Logo";
 import { getMyRating } from "@/lib/data";
@@ -177,10 +177,14 @@ export default async function TalkPage({
      معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
      للغرفة كلِّها** (D-164/D-205)، **وسقوطُه صامتٌ فيُرسم الزرُّ
      بصفر.** */
-  /* 🆕 R56 — مراجعاتُ صفحة العمل في «عام» (أحمد ٢١ أكتوبر؛ نجومٌ بلا نصٍّ لا تظهر — «٣ أ»). سطرُها `review:<صاحبها>`، وقلبُها
-     وعددُ ردودها من جداول المراجعة، فتُضاف إلى خريطة القلوب بمفتاحها — والخيطُ يكتب القلبَ إلى جدولها (`toggleReviewLike`) */
+  /* 🆕 T502 — **المراجعاتُ خرجت من الغرفة** (أحمد ٢٢ نوفمبر: «المراجعات لحال والنقاش لحال» — نقضُ R56/D-1518). تُقرأ هنا لصفِّ
+     «المراجعات» فوق الخيط وحده: عددُها وثلاثةُ وجوهٍ بترتيب تبويبها (`compareReviews`)، والضغطُ يفتح تبويبَها في صفحة العمل */
   const reviews = (await getTitleReviews(tmdbId, mediaType).catch(() => [])).filter((r) => r.review?.trim());
-  const reviewReplies = await getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, mediaType, tmdbId)));
+  const reviewFaces = reviews
+    .map((r) => ({ r, k: { mine: r.isMine, ai: !!r.persona, likes: r.likes, at: r.updated_at } }))
+    .sort((a, b) => compareReviews(a.k, b.k))
+    .slice(0, 3)
+    .map(({ r }) => r.avatar_url ?? null);
   const [postLikesRaw, postVotes] = await Promise.all([
     getPostLikes(thread.map((p) => p.postId)).catch(() => ({
       counts: {} as Record<string, number>,
@@ -190,10 +194,7 @@ export default async function TalkPage({
        اللحظة، **والسقوطُ صامتٌ بصفر** (D-179). */
     getPostVotes(thread.map((p) => p.postId)),
   ]);
-  const postLikes = {
-    counts: { ...postLikesRaw.counts, ...Object.fromEntries(reviews.map((r) => [`review:${r.id}`, r.likes])) },
-    mine: [...postLikesRaw.mine, ...reviews.filter((r) => r.likedByMe).map((r) => `review:${r.id}`)],
-  };
+  const postLikes = postLikesRaw;
 
   /* 🆕 **ترجمةُ كلام الأعضاء بلغة القارئ** (D-307) — **النشراتُ ثنائيّةُ
      اللغة أصلاً** (`name_ar`/`name_en`) فلا تدخل، **والمفتاحُ غائبٌ؟
@@ -202,7 +203,6 @@ export default async function TalkPage({
     ? await getBatchTranslations(
     [
       ...thread.filter((p) => !p.kind && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
-      ...reviews.filter((r) => !r.has_spoiler).map((r) => ({ id: `review:${r.id}`, text: r.review ?? "" })),
     ],
         locale === "ar" ? "ar" : "en",
       )
@@ -337,6 +337,29 @@ export default async function TalkPage({
       <RememberRoom kind={mediaType} id={tmdbId} title={rawTitle || title} poster={myArt?.poster_path ?? posterPath} />
       <div className="desk:mx-auto desk:mt-3 desk:grid desk:max-w-[1104px] desk:grid-cols-[minmax(0,760px)_300px] desk:items-start desk:justify-center desk:gap-8 desk:px-6">
       <div className="px-3 sm:px-6 max-w-xl mx-auto mt-3 desk:mx-0 desk:mt-0 desk:max-w-none desk:px-0">
+        {/* 🆕 T502 — **المراجعاتُ لحالها والنقاشُ لحاله** (أحمد ٢٢ نوفمبر، «٢ ب ٣ أ ٤ أ ٥ أ»): صفٌّ واحدٌ فوق الخيط — عددُها وثلاثةُ
+            وجوهٍ بترتيب تبويبها وسهم — يفتح صفحةَ العمل على تبويب المراجعات (`#community` يقرؤه `DetailTabs`). شكلُ سطر «آخر حلقة»
+            (`TalkTvBar`) بحدِّ الإطار لا التمييز. يغيب عند الصفر */}
+        {reviews.length ? (
+          <Link
+            href={`${href}#community`}
+            className="mb-1 flex w-full items-center gap-2.5 rounded-2xl border border-border bg-surface px-3 py-2.5 active:scale-[0.99] transition hover:border-accent"
+          >
+            <Icon name="people" size={16} className="shrink-0 text-accent" />
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="truncate text-14 font-bold">{t.tabTitleReviews}</span>
+              <span className="text-13 font-semibold text-muted tabular-nums">{reviews.length}</span>
+            </span>
+            <span className="flex shrink-0">
+              {reviewFaces.map((src, i) => (
+                <span key={i} className={`flex rounded-full ring-2 ring-surface ${i ? "-ms-2" : ""}`}>
+                  {src ? <Avatar src={src} size={26} alt="" /> : <span className="size-[26px] rounded-full border border-border bg-surface-2" />}
+                </span>
+              ))}
+            </span>
+            <Icon name="chevron-down" size={14} className="shrink-0 text-muted -rotate-90 rtl:rotate-90" />
+          </Link>
+        ) : null}
         <ThreadReplies
           /* 🆕 **إعجاباتُ الغرفة — نداءٌ واحدٌ لكلِّ مشاركاتها** (D-289،
              الهجرة ٩٠). **بعد الخيط لأن مفاتيحَه هي مدخلُه**، **وقبل
@@ -386,25 +409,6 @@ export default async function TalkPage({
             season: episodeOf.get(p.postId)?.season ?? null,
             episode: episodeOf.get(p.postId)?.episode ?? null,
           })),
-            ...reviews.map((r): ThreadReply => ({
-              replyId: `review:${r.id}`,
-              authorId: r.id,
-              nickname: r.nickname,
-              username: r.username,
-              avatar_url: r.avatar_url,
-              hide_name: r.hide_name,
-              plan: r.plan ?? null,
-              founder: r.founder ?? null,
-              verified_at: r.verified_at ?? null,
-              parentId: null,
-              body: r.review ?? "",
-              createdAt: r.updated_at,
-              isMine: r.isMine,
-              hasSpoiler: !!r.has_spoiler,
-              season: null,
-              episode: null,
-              review: { userId: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, mediaType, tmdbId)) ?? 0 },
-            })),
           ]}
           seasons={seasons}
           watchedEps={watchedEps}
@@ -422,7 +426,7 @@ export default async function TalkPage({
             ...(lastEp ? [{ label: w.talkYourProgress, value: t.diaryEpisode(lastEp.s, lastEp.e) }] : []),
             ...(nextEp ? [{ label: w.talkNextEpisode, value: formatDateShort(nextEp, t) }] : []),
             ...(myRating ? [{ label: w.talkYourRating, value: <span className="text-accent tabular-nums">★ {myRating.rating}</span> }] : []),
-            { label: w.talkInRoom, value: w.talkPostsN(thread.filter((p) => !p.kind).length + reviews.length) },
+            { label: w.talkInRoom, value: w.talkPostsN(thread.filter((p) => !p.kind).length) },
           ]}
           link={{ href, label: w.talkWorkPage }}
         />

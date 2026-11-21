@@ -92,8 +92,9 @@ export const IMPORT_CAPS = {
 export type ResolveRequest =
   | { kind: "tvdb-tv"; id: number }
   | { kind: "tvdb-episode"; id: number }
-  /* 🆕 `episode`: حلقةٌ بمعرّفها في IMDb — يعود منها المسلسلُ وموسمُها ورقمُها كما في `tvdb-episode` */
-  | { kind: "imdb"; id: string; media: "tv" | "movie" | "episode" }
+  /* 🆕 T500 — `any`: ملفٌّ من تطبيقٍ لا نعرفه يحمل `tt…` بلا نوع — يُجرَّب فيلماً ثمّ مسلسلاً ثمّ حلقةً (ما يجده TMDB أوّلاً)
+     🆕 `episode`: حلقةٌ بمعرّفها في IMDb — يعود منها المسلسلُ وموسمُها ورقمُها كما في `tvdb-episode` */
+  | { kind: "imdb"; id: string; media: "tv" | "movie" | "episode" | "any" }
   /* 🆕 MyAnimeList — رقمُ العمل هناك، يُربط بجدول Fribb (`lib/fribb.ts`) */
   | { kind: "mal"; id: number }
   | { kind: "name-tv"; name: string; year?: number }

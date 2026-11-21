@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
-import { useNavigationContainerRef, useRouter } from "expo-router";
+import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
 import { stackAboveRoots } from "../nativeStack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +31,7 @@ import { HomeLogo } from "../Logo";
 import { Clipboard } from "react-native";
 import { useExtras, RatingsLine, Pulse, WatchWhere, ListSheet, CastRail, RelatedRails, extrasKey } from "./TitleExtras";
 import { useCommunity, CommunityTab, ReviewSheet, RatersSheet, RATERS_WORDS, communityKey } from "./TitleCommunity";
+import { takeTitleTab } from "./tabAsk";
 import type {
   FavoriteBody,
   FollowBody,
@@ -80,7 +81,15 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const { width } = useWindowDimensions();
-  const [tab, setTab] = useState<"episodes" | "info" | "community">(kind === "tv" ? "episodes" : "info");
+  /* 🆕 T502 — صفُّ «المراجعات» في غرفة النقاش يطلب تبويبَها (`tabAsk.ts`): يُؤخذ عند التركيب إن دُفعت الصفحة، وعند عودة
+     التركيز إن رجع إليها من الغرفة */
+  const [tab, setTab] = useState<"episodes" | "info" | "community">(() => takeTitleTab(kind, id) ?? (kind === "tv" ? "episodes" : "info"));
+  useFocusEffect(
+    useCallback(() => {
+      const asked = takeTitleTab(kind, id);
+      if (asked) setTab(asked);
+    }, [kind, id]),
+  );
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
   const [more, setMore] = useState(false);

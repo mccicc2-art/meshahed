@@ -16,7 +16,6 @@ import {
   getTitleReviews,
   getTitleReplies,
   getWatchedForShow,
-  getReviewReplyCounts,
   type TitleReview,
 } from "@/lib/data";
 import { getMovie, getTv } from "@/lib/tmdb";
@@ -26,6 +25,7 @@ import { getBatchTranslations } from "@/lib/translate";
 import { bulletinLine, bulletinFacts, bulletinSpoiler, bulletinName } from "@/core/bulletinLine";
 import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { newsLine, newsSource } from "@/core/newsLine";
+import { compareReviews } from "@/core/reviewOrder";
 import { newsViewKey, commentViewKey } from "@/core/postKeys";
 import type { Locale } from "@/core/i18n";
 import type { PersonLite } from "@/core/people";
@@ -111,7 +111,7 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: 
     getTitleThread(tmdbId, kind),
     kind === "general" ? Promise.resolve({ following: false, dropped: false }) : getFollowState(tmdbId, kind).catch(() => ({ following: false, dropped: false })),
     kind === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
-    /* 🆕 R56 — مراجعاتُ صفحة العمل تظهر في «عام» (والغرفةِ كلِّها للفيلم)؛ نجومٌ بلا نصٍّ لا تظهر (أحمد «٣ أ») */
+    /* 🆕 T502 — المراجعاتُ لا تدخل الغرفة بعد اليوم؛ تُقرأ لصفِّ «المراجعات ٣» وحده (عددُها وثلاثةُ وجوه) */
     kind === "general" ? Promise.resolve([] as TitleReview[]) : getTitleReviews(tmdbId, kind).catch(() => [] as TitleReview[]),
   ]);
   const reviews = reviewsAll.filter((r) => r.review?.trim() && (opts.personas !== false || !r.persona));
@@ -119,19 +119,17 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: 
      لم يشاهدها، وقائمةُ «الحلقات» تقفلها. بلا جلسةٍ مصفوفةٌ فارغة (والغلقُ لكلِّ شيء — الزائرُ لا يُحرَق) */
   const watchedEpsP = kind === "tv" && user ? getWatchedForShow(tmdbId, null).then((s) => [...s]).catch(() => [] as string[]) : Promise.resolve([] as string[]);
   const ids = thread.map((p) => p.postId);
-  const [work, likes, votes, translations, me, reviewReplies] = await Promise.all([
+  const [work, likes, votes, translations, me] = await Promise.all([
     workP,
     getPostLikes(ids).catch(() => ({ counts: {} as Record<string, number>, mine: [] as string[] })),
     getPostVotes(ids),
     translationsOf(
       [
         ...thread.filter((p) => !p.kind && !p.hasSpoiler && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
-        ...reviews.filter((r) => !r.has_spoiler).map((r) => ({ id: `review:${r.id}`, text: r.review ?? "" })),
       ],
       locale,
     ),
     meP,
-    general ? Promise.resolve(new Map<string, number>()) : getReviewReplyCounts(reviews.map((r) => commentViewKey(r.id, kind as Kind, tmdbId))),
   ]);
   const mine = new Set(likes.mine);
   const rows: ThreadRow[] = inheritEpisodes(thread.map((p) => {
@@ -163,36 +161,20 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: 
       ...(bulletin ? (bulletinEpisode(p.data) ?? { season: null, episode: null }) : { season: p.season, episode: p.episode }),
     };
   }));
-  /* 🆕 R56 — المراجعةُ سطرٌ بلا أب، وقتُه آخرُ تعديلٍ لها، وقلبُها قلبُها (`community/like` بـ`target: review`) */
-  for (const r of reviews) {
-    rows.push({
-      id: `review:${r.id}`,
-      person: person(r, r.id),
-      parent_id: null,
-      body: r.review ?? "",
-      created_at: r.updated_at,
-      mine: r.isMine,
-      bulletin: null,
-      bulletin_vote: null,
-      bulletin_spoiler: null,
-      has_spoiler: !!r.has_spoiler,
-      image: null,
-      gif_id: null,
-      translated: translations[`review:${r.id}`] ?? null,
-      likes: r.likes,
-      liked_by_me: r.likedByMe,
-      score: 0,
-      my_vote: 0,
-      season: null,
-      episode: null,
-      review: { user_id: r.id, rating: r.rating, replies: reviewReplies.get(commentViewKey(r.id, kind as Kind, tmdbId)) ?? 0 },
-    });
-  }
+  /* 🆕 T502 — **المراجعاتُ لحالها والنقاشُ لحاله** (أحمد ٢٢ نوفمبر بمقطع: «المراجعات تفتح عالنقاش · ومراجعة الشخص موجودة فالنقاش
+     وهذا خطأ»، ثمّ «٢ ب ٣ أ ٤ أ ٥ أ») — نقضُ D-1518: كانت كلُّ مراجعةٍ مكتوبةٍ سطراً في «عام» (والغرفةِ كلِّها للفيلم)، فغرفةُ فيلمٍ
+     بلا منشورٍ واحدٍ تقول «3 posts» وكلُّها مراجعات. الآن الغرفةُ منشوراتُها وحدها، والمراجعاتُ صفٌّ واحدٌ تحت الرأس يعدّها ويُري
+     ثلاثةَ وجوهٍ ويفتح تبويبَها. الوجوهُ بترتيب التبويب نفسِه (`compareReviews`) فأوّلُ وجهٍ هو أوّلُ مراجعةٍ يراها من يضغط.
+     ⚠️ التطبيقُ الأقدم لا يعرف الصفَّ فلا يرى المراجعاتِ في الغرفة أصلاً — وذلك هو المطلوب. */
+  const ranked = reviews
+    .map((r) => ({ r, k: { mine: r.isMine, ai: !!r.persona, likes: r.likes, at: r.updated_at } }))
+    .sort((a, b) => compareReviews(a.k, b.k));
+  const reviewsHead = general ? undefined : { count: reviews.length, faces: ranked.slice(0, 3).map(({ r }) => r.avatar_url ?? null) };
   const w = asWork(work);
   return {
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
-    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons, watched_eps: await watchedEpsP },
+    head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons, watched_eps: await watchedEpsP, ...(reviewsHead ? { reviews: reviewsHead } : {}) },
     rows,
     nested: true,
     has_likes: true,

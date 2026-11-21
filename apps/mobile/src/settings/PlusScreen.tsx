@@ -162,7 +162,8 @@ export function PlusScreen() {
     const out = await buy(selected, active);
     setBusy(null);
     if (out.kind === "cancelled") return;
-    if (out.kind === "pending") return toast.current?.say(t.pwPending);
+    /* 🆕 T503 — الانتظارُ عند المتجر معلومةٌ لا خطأ: رماديّ */
+    if (out.kind === "pending") return toast.current?.say(t.pwPending, undefined, undefined, "info");
     if (out.kind === "failed") return toast.current?.say(t.pwFailed, undefined, undefined, "error");
     const got = reached(out.server, goldTab ? "gold" : "plus");
     if (got) haptic.success();

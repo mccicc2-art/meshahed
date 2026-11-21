@@ -1,3 +1,4 @@
+import type { ToastTone } from "../ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, queryClient, write } from "../api";
 import { haptic } from "../haptics";
@@ -28,7 +29,9 @@ import type {
  * **واللمسةُ الحسّيّة حيث ينادي الويبُ `tap`**: القلبُ والدبّوسُ والمتابعة (`pick`) ونجاحُ الردّ (`success`).
  */
 
-type Say = (text: string) => void;
+/* 🆕 T503 — **النغمةُ تُعلَن** (أحمد ٢٢ نوفمبر: «التنبيه اللي يجي تم ارسال رسالتك يكون باللون الاحمر»، ثمّ «الوان التنبيهات تكون
+   ثلاثة: اخضر · رمادي · احمر»): الإشعارُ بلا نغمةٍ خطأٌ أحمر (`Toast`، D-1323)، فكان «أُرسِل ردُّك» يُقرأ فشلاً. النجاحُ أخضرُ صراحةً */
+type Say = (text: string, tone?: ToastTone) => void;
 
 /** 🆕 D-1613 — صفُّ الخطّ أو فاصلُ «منشورات جديدة» بينه (`FreshMark` في الشاشة) — الفاصلُ لا يُعدّ مشاهدةً ولا قلبَ له */
 export type FeedItem = CommunityFeedRow | { kind: "fresh"; key: string; count: number };
@@ -215,7 +218,7 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
       await write<{ reply_id: string | null }>("/api/v1/community/reply", b);
       patchRow(row.key, (r) => ({ ...r, replies: r.replies + 1 }));
       haptic.success();
-      sayRef.current(tRef.current.replySentToast);
+      sayRef.current(tRef.current.replySentToast, "success");
       return true;
     } catch (e) {
       sayRef.current(errorText(tRef.current, e));
@@ -282,7 +285,7 @@ export function useCommunityActs(d: CommunityPayload | null, t: Dict, say: Say):
       write<FollowUserResult>("/api/v1/community/follow", { user_id: userId, on })
         .then((r) => {
           mark(r.state);
-          if (r.state === "requested") sayRef.current(tRef.current.followRequestSent);
+          if (r.state === "requested") sayRef.current(tRef.current.followRequestSent, "success");
           /* `following_ids` في الحمولتين تتبع الخادم — فالمعاينةُ و«عرض الكل» يتّفقان بعد الرجوع */
           const put = (ids: string[]) => (r.state === "following" ? [...new Set([...ids, userId])] : ids.filter((x) => x !== userId));
           patchPayload((x) => ({ ...x, following_ids: put(x.following_ids) }));

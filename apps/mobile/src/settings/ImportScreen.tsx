@@ -18,7 +18,9 @@ import { parseTrackerExport } from "@/core/trackerExport";
 import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
 import { parseBingersFiles } from "@/core/bingers";
-import { setInflateRaw, type ParseOutcome } from "@/core/importParse";
+import { setInflateRaw, type ParseOutcome, type RawRecord } from "@/core/importParse";
+import { autoRecords, readAuto, type AutoOptions, type AutoTable } from "@/core/importAuto";
+import { ImportAutoReview } from "./ImportAutoReview";
 import { importRecords, type ImportResult } from "./importPipeline";
 import { importFromTrakt } from "./trakt";
 
@@ -39,6 +41,9 @@ import { importFromTrakt } from "./trakt";
 setInflateRaw((data) => inflateSync(data));
 
 type SourceId = "imdb" | "mal" | "letterboxd" | "simkl" | "bingers" | "tvtime";
+/** 🆕 T500 — «من تطبيق آخر» ليس قارئاً في السجلّ: يتعرّف على الملفّ فيسلّمه لقارئه، أو يقرؤه بأعمدته بعد مراجعة صاحبه (`core/importAuto`) */
+type PanelId = SourceId | "auto";
+const AUTO_EXT = [".zip", ".csv", ".tsv", ".txt", ".json", ".gz", ".xml"] as const;
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
 type Result = ImportResult;
 
@@ -63,15 +68,18 @@ export function ImportScreen() {
   /* من غادر الشاشةَ والاستيرادُ يعمل يوقفه: حلقةٌ تكتب في الخلفيّة بلا شريطٍ يُرى ولا زرِّ إيقاف أسوأُ من توقّفٍ يُعاد (وكلُّ كتابةٍ `upsert`) */
   useEffect(() => () => void (stop.current = true), []);
 
-  const [open, setOpen] = useState<SourceId | null>(null);
-  const [active, setActive] = useState<SourceId | null>(null);
+  const [open, setOpen] = useState<PanelId | null>(null);
+  const [active, setActive] = useState<PanelId | null>(null);
+  /** 🆕 T500 — جداولُ ملفٍّ لا نعرفه تنتظر المراجعة، و«تعرّفنا على ملفّك» لمصدرٍ نعرفه */
+  const [review, setReview] = useState<{ tables: AutoTable[]; skipped: string[] } | null>(null);
+  const [known, setKnown] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const busy = phase === "reading" || phase === "matching" || phase === "writing";
 
-  async function pick(source: SourceId) {
+  async function pick(source: PanelId) {
     if (busy) return;
     haptic.pick();
     setError(null);
@@ -81,7 +89,7 @@ export function ImportScreen() {
       /* `*‎/*`: أنواعُ MIME للـcsv والـzip تختلف بين مديري الملفّات على أندرويد، وفلترٌ بها يُخفي الملفَّ الصحيح؛ الامتدادُ يُفحص هنا */
       const got = await Picker.getDocumentAsync({ type: "*/*", multiple: true, copyToCacheDirectory: true });
       if (got.canceled || !got.assets?.length) return;
-      const ext = SOURCES[source].ext;
+      const ext = source === "auto" ? AUTO_EXT : SOURCES[source].ext;
       const files = got.assets.filter((a) => ext.some((x) => a.name.toLowerCase().endsWith(x)));
       if (!files.length) {
         setActive(source);
@@ -98,11 +106,12 @@ export function ImportScreen() {
     }
   }
 
-  async function run(files: { name: string; uri: string }[], source: SourceId) {
+  async function run(files: { name: string; uri: string }[], source: PanelId) {
     stop.current = false;
     setActive(source);
     setError(null);
     setResult(null);
+    setKnown(null);
     setPct(0);
     setPhase("reading");
     /* خطأٌ قبل اكتمال القراءة ملفٌّ لم يُفهم؛ وبعدها شبكةٌ أو خادم — رسالتان لا واحدة تقول «لم نتعرّف» عن انقطاع الاتصال */
@@ -119,8 +128,53 @@ export function ImportScreen() {
           /* نسخةٌ لم تُحذف تبقى في كاشٍ يمسحه النظام — لا يوقف الاستيراد */
         }
       }
-      const { records } = await SOURCES[source].parse(bufs);
+      let records: RawRecord[];
+      if (source !== "auto") records = (await SOURCES[source].parse(bufs)).records;
+      else {
+        /* 🆕 T500 — ملفٌّ من مصدرٍ نعرفه يذهب لقارئه هو؛ وما سواه تُخمَّن أعمدتُه ثمّ ينتظر المراجعة */
+        const got = await readAuto(bufs);
+        if (got.kind === "tables") {
+          setPhase("idle");
+          /* ورقتان أصليّتان لا تُعرضان معاً (iOS لا يقدّم نافذتين في آنٍ): ورقةُ المصدر تُغلق والمراجعةُ تُفتح بعد انغلاقها */
+          setOpen(null);
+          setTimeout(() => setReview({ tables: got.tables, skipped: got.skipped }), 350);
+          return;
+        }
+        if (got.kind === "none") {
+          setPhase("idle");
+          return void setError(got.skipped.length ? `${t.importNothing} ${t.importAutoSkipped(got.skipped.join(" · "))}` : t.importNothing);
+        }
+        setKnown(t.importAutoKnown(sources.find((x) => x.id === got.source)?.title ?? got.source));
+        records = (await SOURCES[got.source].parse(bufs)).records;
+      }
       parsed = true;
+      await importParsed(records);
+    } catch (e) {
+      setPhase("idle");
+      setError(e instanceof ApiError ? messageOf(e, dict, t.apiInternal) : parsed ? t.apiInternal : t.importNothing);
+    }
+  }
+
+  /** 🆕 T500 — بعد المراجعة: الصفوفُ بالمعاني التي أقرّها ⇐ سجلّاتٌ في المسار نفسِه */
+  async function runReviewed(tables: AutoTable[], opts: AutoOptions) {
+    setReview(null);
+    /* والتقدّمُ في ورقة المصدر كما لكلِّ مصدر — تُفتح بعد انغلاق المراجعة */
+    setTimeout(() => setOpen("auto"), 350);
+    setError(null);
+    setResult(null);
+    setPhase("reading");
+    try {
+      await importParsed(autoRecords(tables, opts));
+    } catch (e) {
+      setPhase("idle");
+      setError(e instanceof ApiError ? messageOf(e, dict, t.apiInternal) : t.apiInternal);
+    }
+  }
+
+  /** المطابقةُ ثمّ التجميعُ ثمّ الكتابة — لكلِّ مصدر، و«من تطبيق آخر» بعد مراجعته. الأخطاءُ لمناديها */
+  async function importParsed(records: RawRecord[]) {
+    stop.current = false;
+    {
       if (!records.length) {
         setPhase("idle");
         setError(t.importNothing);
@@ -138,9 +192,6 @@ export function ImportScreen() {
       setResult(done);
       setPhase("done");
       haptic.success();
-    } catch (e) {
-      setPhase("idle");
-      setError(e instanceof ApiError ? messageOf(e, dict, t.apiInternal) : parsed ? t.apiInternal : t.importNothing);
     }
   }
 
@@ -185,7 +236,7 @@ export function ImportScreen() {
     }
   }
 
-  const sources: { id: SourceId; title: string; hint: string; fileHint: string }[] = [
+  const sources: { id: PanelId; title: string; hint: string; fileHint: string }[] = [
     /* IMDb أوّلاً كما في الويب: أوسعُ الأربعة جمهوراً وأدقُّها مطابقة */
     { id: "imdb", title: t.importImdbTitle, hint: t.importImdbHint, fileHint: t.importImdbFileHint },
     { id: "mal", title: t.importMalTitle, hint: t.importMalHint, fileHint: t.importMalFileHint },
@@ -193,6 +244,8 @@ export function ImportScreen() {
     { id: "simkl", title: t.importSimklTitle, hint: t.importSimklHint, fileHint: t.importSimklFileHint },
     { id: "bingers", title: t.importBingersTitle, hint: t.importBingersHint, fileHint: t.importBingersFileHint },
     { id: "tvtime", title: t.importTvTimeTitle, hint: t.importTvTimeHint, fileHint: t.importFileHint },
+    /* 🆕 T500 — آخرُها كما في الويب */
+    { id: "auto", title: t.importAutoTitle, hint: t.importAutoHint, fileHint: t.importAutoFileHint },
   ];
   const src = sources.find((s) => s.id === open);
   const mine = !!src && active === src.id;
@@ -233,6 +286,7 @@ export function ImportScreen() {
               </View>
             ) : null}
 
+            {known && mine ? <Text size={12} muted style={{ marginTop: 12 }}>{known}</Text> : null}
             {error && mine ? <Note tone="error" body={error} /> : null}
 
             {phase === "done" && result && mine ? (
@@ -255,6 +309,7 @@ export function ImportScreen() {
           </ScrollView>
         </Sheet>
       ) : null}
+      {review ? <ImportAutoReview tables={review.tables} skipped={review.skipped} onCancel={() => setReview(null)} onImport={(tables, opts) => void runReviewed(tables, opts)} /> : null}
     </SettingsScreen>
   );
 }

@@ -9,7 +9,8 @@ import { parseTrackerExport } from "@/core/trackerExport";
 import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
 import { parseBingersFiles } from "@/core/bingers";
-import { groupForResolve, type ParseOutcome } from "@/core/importParse";
+import { groupForResolve, type ParseOutcome, type RawRecord } from "@/core/importParse";
+import { autoRecords, readAuto, type AutoOptions, type AutoTable } from "@/core/importAuto";
 import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
 import type { ResolveResult } from "@/core/importer";
 import { resolveImportItems, applyImportChunk, finishImport } from "@/lib/actions";
@@ -21,6 +22,7 @@ import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 import { sheetScroll } from "./ui/controls";
 import { webWords } from "./webWords";
+import { ImportAutoReview } from "./ImportAutoReview";
 
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
 
@@ -32,6 +34,8 @@ type Phase = "idle" | "reading" | "matching" | "writing" | "done";
  * كلِّه — فالمراحل الثلاث (قراءة · مطابقة · كتابة) واحدةٌ للجميع.
  */
 type SourceId = "imdb" | "mal" | "tvtime" | "letterboxd" | "simkl" | "bingers";
+/** 🆕 T500 — «من تطبيق آخر» ليس قارئاً في السجلّ: يتعرّف على الملفّ فيسلّمه لقارئه، أو يقرؤه بأعمدته بعد مراجعة صاحبه */
+type PanelId = SourceId | "auto";
 
 const SOURCES: Record<
   SourceId,
@@ -76,15 +80,19 @@ export function ImportPanel({
   const bingersRef = useRef<HTMLInputElement>(null);
   const imdbRef = useRef<HTMLInputElement>(null);
   const malRef = useRef<HTMLInputElement>(null);
+  const autoRef = useRef<HTMLInputElement>(null);
   const stop = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
   /** أيُّ مصدرٍ يعمل الآن — الشريط والنتيجة يظهران تحت قسمه وحده */
-  const [active, setActive] = useState<SourceId | null>(null);
+  const [active, setActive] = useState<PanelId | null>(null);
+  /** 🆕 T500 — جداولُ ملفٍّ لا نعرفه تنتظر مراجعةَ صاحبها، و«تعرّفنا على ملفّك» حين يكون من مصدرٍ نعرفه */
+  const [review, setReview] = useState<{ tables: AutoTable[]; skipped: string[]; back: boolean } | null>(null);
+  const [known, setKnown] = useState<string | null>(null);
   /** أيُّ مصدرٍ ورقتُه مفتوحة — والمصادرُ صفوفٌ لا بطاقات (D-555) */
   /* **وتُفتح على Trakt إن عاد الرابطُ برسالة**: المستخدمُ عاد للتوّ من
      موقعٍ خارجيّ — **ونتيجةُ رحلته لا يجوز أن تكون خلف صفٍّ يُضغط.** */
-  const [open, setOpen] = useState<SourceId | "trakt" | null>(() =>
+  const [open, setOpen] = useState<PanelId | "trakt" | null>(() =>
     params.get("trakt") ? "trakt" : null,
   );
   const [pct, setPct] = useState(0);
@@ -111,19 +119,58 @@ export function ImportPanel({
             ? t.importTraktFailed
             : null;
 
-  async function run(files: FileList, source: SourceId) {
+  async function run(files: FileList, source: PanelId) {
     stop.current = false;
     setActive(source);
     setError(null);
     setResult(null);
+    setKnown(null);
     setPct(0);
     setPhase("reading");
-
     try {
       const bufs = await Promise.all(
         [...files].map(async (f) => ({ name: f.name, buf: await f.arrayBuffer() })),
       );
-      const { records } = await SOURCES[source].parse(bufs);
+      if (source !== "auto") return void (await importParsed((await SOURCES[source].parse(bufs)).records));
+      /* 🆕 T500 — ملفٌّ من مصدرٍ نعرفه يذهب لقارئه هو؛ وما سواه تُخمَّن أعمدتُه ثمّ ينتظر المراجعة */
+      const got = await readAuto(bufs);
+      if (got.kind === "known") {
+        setKnown(t.importAutoKnown(sources.find((x) => x.id === got.source)?.title ?? got.source));
+        return void (await importParsed((await SOURCES[got.source].parse(bufs)).records));
+      }
+      setPhase("idle");
+      if (got.kind === "tables") {
+        /* ورقةٌ واحدةٌ في كلِّ مرّة: ورقةُ المصدر (الجوال) تُغلق والمراجعةُ تُفتح، ثمّ تعود لتُري التقدّم */
+        setReview({ tables: got.tables, skipped: got.skipped, back: open === "auto" });
+        return void setOpen(null);
+      }
+      setError(got.skipped.length ? `${t.importNothing} ${t.importAutoSkipped(got.skipped.join(" · "))}` : t.importNothing);
+    } catch (e) {
+      setPhase("idle");
+      setError((e as Error).message);
+    }
+  }
+
+  /** 🆕 T500 — بعد المراجعة: الصفوفُ بالمعاني التي أقرّها ⇐ سجلّاتٌ في المسار نفسِه */
+  async function runReviewed(tables: AutoTable[], opts: AutoOptions) {
+    /* الحاسوبُ يرى التقدّمَ في بطاقته — والورقةُ تعود لمن جاء منها */
+    if (review?.back) setOpen("auto");
+    setReview(null);
+    setError(null);
+    setResult(null);
+    setPhase("reading");
+    try {
+      await importParsed(autoRecords(tables, opts));
+    } catch (e) {
+      setPhase("idle");
+      setError((e as Error).message);
+    }
+  }
+
+  /** المطابقةُ ثمّ التجميعُ ثمّ الكتابة — لكلِّ مصدر، و«من تطبيق آخر» بعد مراجعته. الأخطاءُ لمناديها */
+  async function importParsed(records: RawRecord[]) {
+    stop.current = false;
+    {
       if (!records.length) {
         setPhase("idle");
         setError(t.importNothing);
@@ -200,9 +247,6 @@ export function ImportPanel({
       setResult({ shows: sC, episodes: eC, movies: mC, lists: lC, listsSkipped: lSkip, unmatched: unmatched.slice(0, 60) });
       setPhase("done");
       router.refresh();
-    } catch (e) {
-      setPhase("idle");
-      setError((e as Error).message);
     }
   }
 
@@ -254,12 +298,19 @@ export function ImportPanel({
       hint: t.importTvTimeHint,
       fileHint: t.importFileHint,
     },
+    /* 🆕 T500 — آخرُها: من جاء من تطبيقٍ بعينه يجده فوقه، ومن لا يجده هنا يجد الباب */
+    {
+      id: "auto" as const,
+      title: t.importAutoTitle,
+      hint: t.importAutoHint,
+      fileHint: t.importAutoFileHint,
+    },
   ];
 
-  const refOf = (id: SourceId) =>
-    id === "imdb" ? imdbRef : id === "mal" ? malRef : id === "letterboxd" ? letterboxdRef : id === "simkl" ? simklRef : id === "bingers" ? bingersRef : tvtimeRef;
+  const refOf = (id: PanelId) =>
+    id === "auto" ? autoRef : id === "imdb" ? imdbRef : id === "mal" ? malRef : id === "letterboxd" ? letterboxdRef : id === "simkl" ? simklRef : id === "bingers" ? bingersRef : tvtimeRef;
   /* 🆕 R273 — حالُ الاستيراد (التقدّم · الخطأ · الحصيلة) دالّةٌ واحدةٌ تقرؤها الورقةُ على الجوال وبطاقةُ الحاسوب — لا نسختان */
-  const status = (id: SourceId) => {
+  const status = (id: PanelId) => {
     const mine = active === id;
     return (
       <>
@@ -276,6 +327,11 @@ export function ImportPanel({
                 </div>
               )}
 
+              {known && mine && (
+                <div className="mt-3">
+                  <Alert tone="info">{known}</Alert>
+                </div>
+              )}
               {error && mine && (
                 <div className="mt-3">
                   <Alert tone="error">{error}</Alert>
@@ -308,7 +364,7 @@ export function ImportPanel({
     );
   };
   const w = webWords(locale);
-  const FILES: Record<SourceId, string> = { imdb: "csv", mal: "xml · gz", letterboxd: "zip · csv", simkl: "zip · json · csv", bingers: "zip · csv", tvtime: "zip" };
+  const FILES: Record<PanelId, string> = { imdb: "csv", mal: "xml · gz", letterboxd: "zip · csv", simkl: "zip · json · csv", bingers: "zip · csv", tvtime: "zip", auto: "zip · csv · json" };
 
   return (
     <>
@@ -320,7 +376,7 @@ export function ImportPanel({
           ref={refOf(src.id)}
           type="file"
           multiple
-          accept={SOURCES[src.id].accept}
+          accept={src.id === "auto" ? ".zip,.csv,.tsv,.txt,.json,.gz,.xml" : SOURCES[src.id].accept}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files;
@@ -453,6 +509,17 @@ export function ImportPanel({
           </SettingsBottomSheet>
         );
       })}
+
+      {/* 🆕 T500 — مراجعةُ ملفٍّ لا نعرفه قبل أن يُكتب منه شيء */}
+      {review && (
+        <ImportAutoReview
+          locale={locale}
+          tables={review.tables}
+          skipped={review.skipped}
+          onCancel={() => setReview(null)}
+          onImport={(tables, opts) => void runReviewed(tables, opts)}
+        />
+      )}
 
       {/* ===== ورقةُ Trakt ===== */}
       <SettingsBottomSheet

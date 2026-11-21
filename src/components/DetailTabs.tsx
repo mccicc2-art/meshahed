@@ -41,6 +41,15 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
     window.addEventListener("lz-detail-tab", on);
     return () => window.removeEventListener("lz-detail-tab", on);
   }, [keys]);
+  /* 🆕 T502 — **وبابٌ من رابط**: صفُّ «المراجعات» في غرفة النقاش يفتح صفحةَ العمل على `#community` (أحمد «٥ أ») — يُقرأ مرّةً
+     بعد الرسم ثمّ يُمحى من العنوان، فلا يعيد التحديثُ التبويبَ بعد أن غيّره صاحبُه */
+  useEffect(() => {
+    const k = window.location.hash.slice(1);
+    if (!k || !keys.split(",").includes(k)) return;
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    /* البابُ نفسُه الذي يطرقه العمودُ الجانبيّ (أعلاه) — حالةٌ واحدةٌ وصعودٌ واحد، لا نسخةَ ثانيةً منهما هنا */
+    window.dispatchEvent(new CustomEvent("lz-detail-tab", { detail: k }));
+  }, [keys]);
   if (!available.length) return null;
 
   return (

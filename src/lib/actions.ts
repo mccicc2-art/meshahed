@@ -6251,18 +6251,31 @@ export async function resolveImportItems(
 
       if (req.kind === "imdb") {
         const found = await findByExternalId(String(req.id).slice(0, 20), "imdb_id");
+        /* 🆕 T500 — **`any`**: ملفٌّ من تطبيقٍ لا نعرفه يحمل `tt…` بلا نوع — المعرّفُ واحدٌ في IMDb فما يجده TMDB هو هو:
+           فيلمٌ، أو مسلسلٌ، أو حلقةٌ (فتعود بمسلسلها وموسمها ورقمها) */
+        const media: "tv" | "movie" | "episode" | null =
+          req.media !== "any"
+            ? req.media
+            : found?.movie_results?.[0]
+              ? "movie"
+              : found?.tv_results?.[0]
+                ? "tv"
+                : found?.tv_episode_results?.[0]
+                  ? "episode"
+                  : null;
+        if (!media) return null;
         /* 🆕 IMDb — **حلقةٌ بمعرّفها** تعطي المسلسلَ وموسمَها ورقمَها معاً، كمعرّف حلقة TVDB أعلاه */
-        if (req.media === "episode") {
+        if (media === "episode") {
           const ep = found?.tv_episode_results?.[0];
           if (!ep) return null;
           return { tmdbId: ep.show_id, mediaType: "tv", title: ep.name ?? "", posterPath: null, season: ep.season_number, episode: ep.episode_number };
         }
         const hit =
-          req.media === "tv" ? found?.tv_results?.[0] : found?.movie_results?.[0];
+          media === "tv" ? found?.tv_results?.[0] : found?.movie_results?.[0];
         if (!hit) return null;
         return {
           tmdbId: hit.id,
-          mediaType: req.media,
+          mediaType: media,
           title: titleOf(hit),
           posterPath: safeImagePath(hit.poster_path),
         };

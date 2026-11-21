@@ -273,7 +273,8 @@ export function WidgetScreen() {
     } catch {
       ok = false;
     }
-    if (!ok) toast.current?.say(t.widgetAddUnsupported);
+    /* 🆕 T503 — جهازٌ لا يدعم التثبيت معلومةٌ عنه لا فشلٌ منّا: رماديّ */
+    if (!ok) toast.current?.say(t.widgetAddUnsupported, undefined, undefined, "info");
   };
 
   /* أندرويد: القائمةُ أوّلاً — ولمسةُ ودجتٍ تفتح المحرّرَ له وحده */

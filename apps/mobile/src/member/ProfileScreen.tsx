@@ -33,6 +33,7 @@ import { displayNameOf } from "@/core/people";
 import { COVER_RATIO } from "@/core/coverRatio";
 import { num } from "@/core/i18n";
 import { countNoun } from "@/core/countNoun";
+import { StatusPill } from "../settings/ui";
 import { PROFILE_SECTIONS, profileSectionMeta, profileTabMeta, sectionKeyOf } from "@/core/profilePrefs";
 import { profileUrl } from "@/core/media";
 import { browseGenreName, groupByGenre } from "@/core/browse";
@@ -93,6 +94,11 @@ const AV_DROP_BARE = 8;
 const VEIL_FADE = 48;
 /** انزياحُ مركز الصورة لتصغر من ركنها: نصفُ ما نقص من قطرها */
 const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
+/** 🆕 T502 — سطرُ الأعداد تحت المعرّف: ارتفاعٌ ثابتٌ (نصٌّ ١٤ ورقاقة «يتابعك») يدخل حسابَ توسيط الاسم مطويّاً */
+const COUNTS_H = 22;
+const COUNTS_GAP = 3;
+/** 🆕 T502 — رقاقةُ «يتابعك» (كلمةٌ لسطحٍ واحد) */
+const FOLLOWS_YOU = { ar: "يتابعك", en: "Follows you" } as const;
 /**
  * 🆕 D-1607 — **الاسمُ يتوسّط ارتفاعَ الصورة** (أحمد ٣٠ أكتوبر بلقطتين ومربّعاتٍ زرقاء: «الاسم و الي معه خلها يتوسط ارتفاع الصوره»)
  * — كان على نصفها السفليّ (D-1427). فصار نصفُه الأعلى على الغلاف، والغلافُ يمتدّ تحته `COVER_BELOW` من مركز الصورة ويذوب على
@@ -106,8 +112,6 @@ const UNDER_FADE = 72;
 const PAGE_PAD = 16;
 const GAP = 10;
 
-/* ألوانُ النصّ فوق الغلاف — قيمُ `HomeGreeting` نفسُها */
-const ART_MUTED = "rgba(255,255,255,0.7)";
 
 /* 🆕 D-1238 — المفتاحُ في `profileData.ts` (الرئيسيّةُ تسخّن به ملفَّ صاحبها)؛ يُعاد تصديرُه لمن يستورده من هنا */
 export { profileKey };
@@ -553,10 +557,26 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       avScale: at(AV_MIN / AV_MAX, 1),
       nameX: at((AV_MAX - AV_MIN) * side),
       /* D-1607 — مركزُ الاسم على مركز الصورة: يصعد بقدر ما يصعد مركزُها وهي تصغر من ركنها */
-      nameY: at(-AV_SHIFT),
+      /* 🆕 T502 — وينزل نصفَ سطر الأعداد: السطرُ يتلاشى مطويّاً، فالاسمُ والمعرّفُ هما ما يتوسّط الصورةَ الصغيرة */
+      nameY: at(-AV_SHIFT + (COUNTS_H + COUNTS_GAP) / 2),
       bioY: at(-(AV_MAX - AV_MIN)),
     };
   }, [collapse, shrink, drop]);
+  /* 🆕 T502 — سطرُ الأعداد يتلاشى في نصف طيّ الصورة، ولا يلتقط لمساً بعده (يتدلّى مطويّاً فوق النبذة وسطرِ الداعم) */
+  const countsFade = useMemo(
+    () => collapse.interpolate({ inputRange: [0, Math.max(1, shrink * 0.5)], outputRange: [1, 0], extrapolate: "clamp" }),
+    [collapse, shrink],
+  );
+  const shrinkRef = useRef(shrink);
+  shrinkRef.current = shrink;
+  const [countsLive, setCountsLive] = useState(true);
+  const countsLiveRef = useRef(true);
+  const syncCountsLive = useCallback((c: number) => {
+    const live = c < shrinkRef.current * 0.5;
+    if (live === countsLiveRef.current) return;
+    countsLiveRef.current = live;
+    setCountsLive(live);
+  }, []);
   /* D-1542 — شفافيّةُ ما تحت النبذة: كاملةٌ مفكوكاً، صفرٌ قبل أن تدخل تحت النبذة.
      🆕 D-1607b — **أبكرُ: في نصف طيّ الصورة** (لقطةُ أحمد ٣٠ أكتوبر في منتصف الطيّ: الأرقامُ شبحٌ تحت النبذة، ثمّ «أ»). الطبقةُ السفلى
      تصعد بقدر الطيّ والعليا بـ`drop/shrink` منه — فالبطاقةُ تنزلق تحت النبذة من أوّل الطيّ؛ ثلاثةُ أخماس الطيّ كلِّه كانت تتركها
@@ -617,16 +637,18 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       if (p) p.y = y;
       if (k !== activeRef.current) return;
       collapseNow.current = Math.max(0, Math.min(y, maxCRef.current));
+      syncCountsLive(collapseNow.current);
     },
-    [panes],
+    [panes, syncCountsLive],
   );
   /* التبويبُ النشطُ تغيّر (سحبٌ أو ضغطة): الرأسُ يأخذ موضعَ لوحه الجديد، وسائرُ اللوحات تُزامَن معه */
   useEffect(() => {
     if (!active) return;
     const p = panes.get(active);
     collapseNow.current = Math.max(0, Math.min(p?.y ?? collapseNow.current, maxC));
+    syncCountsLive(collapseNow.current);
     syncOthers();
-  }, [active, maxC, panes, syncOthers]);
+  }, [active, maxC, panes, syncOthers, syncCountsLive]);
   const viewportH = height - insets.top - HEADER_H;
   /* 🆕 N3-fix — **اسحب للتحديث** (أحمد ٣٠ سبتمبر: «خليه فيه ريفريش اذا سحبته على تحت») — `usePullRefresh` نفسُه الذي في المكتبة
      واكتشف والمجتمع؛ كلُّ الألواح من حمولةٍ واحدة فمفتاحٌ واحد. الدوّارُ تحت الرأس (`headH`) لا خلفه. */
@@ -820,12 +842,18 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                       <Text size={20} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ flexShrink: 1, lineHeight: 24 }}>{name}</Text>
                       {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
                     </View>
-                    <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-                      {d.person.username && !d.person.hide_name ? <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>@{d.person.username}</Text> : null}
+                    {d.person.username && !d.person.hide_name ? <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>@{d.person.username}</Text> : null}
+                    {/* 🆕 T502 — **الأعدادُ سطرٌ وحدها تحت المعرّف، بالكلمات لا بالرموز** (أحمد ٢٢ نوفمبر بلقطة: «الحجم صغير والقلب مو
+                        مفهوم»، ثمّ «٦ ب ٧ د ٨ أ ٩ ب»): القلبُ كان «من يتابعهم» فيُقرأ إعجاباً، والرقمُ ١٢. الآن «20 متابِعًا   22 يتابع»
+                        بمقاس ١٤ — الرقمُ عريضٌ والكلمةُ باهتة، والمعدودُ بقاعدة العدد (`countNoun`). وفي ملفِّ من يتابعك رقاقةُ «يتابعك» في
+                        آخر السطر. يتلاشى السطرُ مع الطيّ (`countsFade`) ولا يلتقط لمساً مطويّاً (`countsLive`) — الطيُّ يصغّر الرأسَ إلى
+                        ارتفاع الصورة الصغيرة، وسطرٌ ثالثٌ لا يتّسع فيه */}
+                    <Animated.View pointerEvents={countsLive ? "box-none" : "none"} style={{ height: COUNTS_H, marginTop: COUNTS_GAP, flexDirection: "row", alignItems: "center", gap: 14, opacity: countsFade }}>
                       {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
-                      <CountBtn icon="people" value={d.counts.followers} label={t.followersLabel} locked={d.person.hide_follow_lists} onArt={false} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
-                      <CountBtn icon="heart" value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onArt={false} onPress={() => { setFollowsY(0); setFollows("following"); }} />
-                    </View>
+                      <CountBtn value={d.counts.followers} label={countNoun(locale, "followers", d.counts.followers, t.followersLabel)} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
+                      <CountBtn value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("following"); }} />
+                      {!d.viewer.is_me && d.relation.follows_me ? <StatusPill label={FOLLOWS_YOU[locale === "en" ? "en" : "ar"]} color={tokens.muted} /> : null}
+                    </Animated.View>
                   </View>
                   {/* 🆕 D-1427 — «تعديل الملفّ» في ملفّي (أحمد: «ضيف عدل البروفايل بس صغّرها شوي»): زرُّ المصنع الواحد بمقاسه الصغير */}
                   {d.viewer.is_me ? <Button size="sm" variant="ghost" label={t.setEditProfile} onPress={() => router.push("/settings/profile")} style={{ minHeight: 30 }} /> : null}
@@ -1111,13 +1139,12 @@ function CircleBtn({ icon, label, onPress, filled = false, dim = false, locked =
   );
 }
 
-function CountBtn({ icon, value, label, locked, onArt, onPress }: { icon: "people" | "heart"; value: number; label: string; locked: boolean; onArt: boolean; onPress: () => void }) {
+function CountBtn({ value, label, locked, onPress }: { value: number; label: string; locked: boolean; onPress: () => void }) {
   const { tokens, locale } = useApp();
-  const c = onArt ? ART_MUTED : tokens.muted;
   return (
-    <Pressable onPress={onPress} disabled={locked} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-      <Icon name={icon} size={12} color={c} />
-      <Text size={12} weight="600" color={c} style={{ fontVariant: ["tabular-nums"] }}>{num(value, locale)}</Text>
+    <Pressable onPress={onPress} disabled={locked} hitSlop={8} accessibilityRole="button" accessibilityLabel={`${num(value, locale)} ${label}`} style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+      <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(value, locale)}</Text>
+      <Text size={14} color={tokens.muted}>{label}</Text>
     </Pressable>
   );
 }
