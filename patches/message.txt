@@ -1,4 +1,4 @@
-[deploy] Release R269 - T483: header chat/bell icons 27 -> 30 (Ahmed: a); crisp header icons - bell, chat with the Loopz infinity, settings - rendered at 192px so they are never upscaled. OTA only - no native build
+[deploy] Release R277 - T499: TV Time import copy - TV Time shut down on 15 Jul 2026, so the row hint no longer asks to request a data copy and the import note no longer says export your file from them (Ahmed: 3b nfdh w arfa, 21 Nov). Text only - web + app OTA, no native build
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7Exn4VzMfAriUwd5p4
+Claude-Session: https://claude.ai/code/session_01FexM7EhotkJZCrtN86oBLb
