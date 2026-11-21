@@ -118,7 +118,7 @@ export function StremioListScreen() {
                   onPress={() => answer(s, true)}
                   hitSlop={4}
                   accessibilityRole="button"
-                  accessibilityLabel={`${t.stremioYes} — ${s.title} ${ep}`}
+                  accessibilityLabel={`${s.kind === "movie" ? t.stremioYesMovie : t.stremioYes} — ${s.title} ${ep}`}
                   style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
                 >
                   <Icon name="check" size={18} color={tokens.onAccent} />

@@ -101,7 +101,9 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
       else setHidden((h) => new Set(h).add(s.id));
       pending.current.set(s.id, { watched, timer: setTimeout(() => commit(s.id), UNDO_MS) });
       const text = !watched
-        ? t.stremioDismissed
+        ? s.kind === "movie"
+          ? t.stremioDismissedMovie
+          : t.stremioDismissed
         : s.kind === "movie"
           ? t.stremioMarkedMovie
           : t.stremioMarkedUpTo(episodeLabel(s, t.stremioMovie));

@@ -161,19 +161,20 @@ export function StremioCard({
         <Pressable
           onPress={() => onOpen(s)}
           accessibilityRole="button"
-          accessibilityLabel={`${s.title}، ${ep}، ${t.stremioAsk}`}
+          accessibilityLabel={`${s.title}، ${s.kind === "movie" ? t.stremioAskMovieLine : `${ep}، ${t.stremioAsk}`}`}
           style={({ pressed }) => ({ flexDirection: "row", gap: 12, opacity: pressed ? 0.85 : 1 })}
         >
           <SignalStill s={s} width={STILL_W} />
           <View style={{ flex: 1, minWidth: 0, height: STILL_H, justifyContent: "space-between" }}>
             <Text size={15} weight="700" numberOfLines={1}>{s.title}</Text>
-            <Text size={13} weight="500" numberOfLines={1}>{`${ep} · ${t.stremioAsk}`}</Text>
-            {/* 🆕 هجرة ٢٣٥ — «من أجهزتك» (البطاقة «أ»): المصدرُ اسمٌ في السطر، و«شغّلتها» لـStremio و«خلّصتها» لسيرفر البيت */}
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${src === "stremio" ? t.stremioOpened : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            {/* 🆕 T497 — السؤالُ يسمّي ما يسأل عنه: «S1 E1 · شاهدت الحلقة؟» و«شاهدت الفيلم؟» */}
+            <Text size={13} weight="500" numberOfLines={1}>{s.kind === "movie" ? t.stremioAskMovieLine : `${ep} · ${t.stremioAsk}`}</Text>
+            {/* 🆕 هجرة ٢٣٥ — «من أجهزتك» (البطاقة «أ»): المصدرُ اسمٌ في السطر، و«بدأ التشغيل» لـStremio و«شاهدتها/شاهدته» لسيرفر البيت */}
+            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${src === "stremio" ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <Button label={t.stremioYes} size="sm" style={styles.half} onPress={() => onAnswer(s, true)} />
+          <Button label={s.kind === "movie" ? t.stremioYesMovie : t.stremioYes} size="sm" style={styles.half} onPress={() => onAnswer(s, true)} />
           <Button label={t.stremioNo} size="sm" variant="ghost" style={styles.half} onPress={() => onAnswer(s, false)} />
         </View>
       </View>
@@ -265,7 +266,7 @@ function DoneCard({
               <Text size={13} weight="700" color={tokens.success}>{plain ? "✓ " : `✓ ${status}`}</Text>
               {plain ? status : ""}
             </Text>
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && src === "stremio" ? t.stremioOpened : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && src === "stremio" ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         {cur ? (

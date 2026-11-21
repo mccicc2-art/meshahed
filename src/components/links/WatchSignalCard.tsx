@@ -86,7 +86,7 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     setBusy(true);
     try {
       await v1Post("/api/v1/me/stremio/answer", { id: it.id, watched } satisfies StremioAnswerBody, t);
-      toast(watched ? (ep ? t.stremioMarkedUpTo(ep) : t.stremioMarkedMovie) : t.stremioDismissed);
+      toast(watched ? (ep ? t.stremioMarkedUpTo(ep) : t.stremioMarkedMovie) : it.kind === "movie" ? t.stremioDismissedMovie : t.stremioDismissed);
       /* T415 — الجوابُ هنا يُحفظ في الحال (لا «تراجع» في الويب)، فالنجومُ تأتي بعده مباشرةً */
       const hasEp = it.kind === "tv" && it.season != null && it.episode != null;
       if (watched && (hasEp || it.rate)) {
@@ -158,7 +158,7 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
           {rating ? (
             <span className="mt-1 block text-sm font-bold text-[color:var(--success)]">✓ {done}</span>
           ) : (
-            <span className="mt-1 block text-sm font-bold">{t.stremioAsk}</span>
+            <span className="mt-1 block text-sm font-bold">{it.kind === "movie" ? t.stremioAskMovie : t.stremioAsk}</span>
           )}
         </span>
       </div>
@@ -180,7 +180,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
       ) : (
       <div className="mt-3 flex gap-2">
         <button type="button" disabled={busy} className={buttonClass({ size: "sm", className: "flex-1" })} onClick={() => void answer(true)}>
-          {t.stremioYes}
+          {/* T497 — «شاهدته» للفيلم و«شاهدتها» للحلقة */}
+          {it.kind === "movie" ? t.stremioYesMovie : t.stremioYes}
         </button>
         <button type="button" disabled={busy} className={buttonClass({ variant: "surface", size: "sm", className: "flex-1" })} onClick={() => void answer(false)}>
           {t.stremioNo}
