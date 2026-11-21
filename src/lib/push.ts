@@ -16,6 +16,7 @@ import {
   localDayHour,
   messagePush,
   groupMessagePush,
+  groupAddedPush,
   talkMentionPush,
   parseMuted,
   signalPush,
@@ -226,7 +227,13 @@ async function deliver(input: { to: string; group: PushGroup | null; dedupe?: st
   if (input.group && (await mutedOf(db, input.to)).includes(input.group)) return;
   if (input.actorId) {
     /* من حظرتَه لا يرنّ عندك — الكتابةُ نفسُها تُرفض في أغلب الأفعال، وهذا حزامٌ ثانٍ لما لا يُرفض */
-    const { data } = await db.from("blocks").select("blocked_id").match({ blocker_id: input.to, blocked_id: input.actorId }).maybeSingle();
+    /* 🆕 T498 — **والاتّجاهان** كـ`is_blocked` في الجرس: من حظر المستلمَ لا يصل إليه بمنشنٍ ولا بغيره */
+    const { data } = await db
+      .from("blocks")
+      .select("blocked_id")
+      .or(`and(blocker_id.eq.${input.to},blocked_id.eq.${input.actorId}),and(blocker_id.eq.${input.actorId},blocked_id.eq.${input.to})`)
+      .limit(1)
+      .maybeSingle();
     if (data) return;
   }
   if (input.dedupe && !(await claim(db, input.dedupe))) return;
@@ -275,7 +282,12 @@ type SignalInput = {
   dedupe?: string;
   /** 🆕 T496 — صاحبُ التعليق الذي جرى فيه الردّ: وجهةُ الدفع صفحتُه لا صفحةُ المستلم (`ownerId` في `SignalRow`) */
   reviewOwner?: string | null;
+  /** 🆕 T498 — مفتاحُ خبر Loopz (`ref` في `SignalRow`) */
+  ref?: string | null;
 };
+
+/* 🆕 T498 — أنواعُ العضويّة في قائمةٍ مشتركة: تُدعى إليها وتُجاب وتُخرَج منها خاصّةً كانت أو معلنة */
+const MEMBER_KINDS = new Set<SignalKind>(["list_invite", "list_invite_accepted", "list_invite_declined", "list_removed"]);
 
 export function notifySignal(input: SignalInput) {
   if (!input.to || input.to === input.actorId) return;
@@ -308,7 +320,7 @@ async function signalNow(input: SignalInput): Promise<void> {
       const l = data as { name: string | null; source_slug: string | null; is_public: boolean | null } | null;
       /* قائمةٌ خاصّة لا تُنتج سطراً في الجرس أصلاً (`ul.is_public` في `my_signals`) —
          🆕 234 إلّا الدعوةَ إلى قائمةٍ مشتركة: هي تُدعى إليها خاصّةً كانت أو معلنة، وفرعُها في الجرس بلا هذا الشرط */
-      if (!l || (!l.is_public && input.kind !== "list_invite")) return;
+      if (!l || (!l.is_public && !MEMBER_KINDS.has(input.kind))) return;
       title = l.name;
       listSlug = l.source_slug;
     } else if (!title && input.tmdbId && input.mediaType) {
@@ -330,6 +342,7 @@ async function signalNow(input: SignalInput): Promise<void> {
       listId: input.listId ?? null,
       listSlug,
       ownerId: input.reviewOwner ?? null,
+      ref: input.ref ?? null,
     };
     await deliver({
       to: input.to,
@@ -524,28 +537,31 @@ export function notifyGroupMessage(input: {
 }
 
 /**
- * 🆕 D-1443 — **منشن في نقاش العمل**: الأسماءُ المذكورةُ بـ`@` تُطابَق بمن كتبوا في غرفة هذا العمل وحدهم (كأعضاء القروب في
- * `notifyGroupMessage`) — اسمٌ لم يشارك نصٌّ عاديّ لا دفع.
- * فئةُ «الردود» (من كتمها لا يصله)، ومفتاحٌ لكلِّ (مشاركة · مذكور).
+ * 🆕 D-1443 — **منشن في نقاش العمل**. فئةُ «الردود» (من كتمها لا يصله)، ومفتاحٌ لكلِّ (مشاركة · مذكور).
+ * 🆕 T498 (أحمد: البندان ٦ و٧) — **كلُّ عضوٍ مذكورٍ باسمه** لا من كتب في الغرفة وحدهم، **والنقاشُ العامّ معها**
+ * (`mediaType = "general"`، `tmdbId = 0`). والسطرُ نفسُه في الجرس (`mention_talk` في `my_signals_v3`).
  */
 export function notifyTalkMention(input: {
   postId: string;
   actorId: string;
   tmdbId: number;
-  mediaType: "tv" | "movie";
+  mediaType: "tv" | "movie" | "general";
   title: string | null;
   text: string;
   mentions: string[];
   /** المشاركةُ الأب — صاحبُها وصله «ردّ عليك» (`notifyReply`) فلا يرنّ مرّتين */
   parentId?: string | null;
+  /** 🆕 T498 — مشاركةٌ فيها حرق: النصُّ لا يظهر على الشاشة المقفلة لمن لم يشاهد */
+  hasSpoiler?: boolean;
 }) {
-  if (!input.mentions.length) return;
+  if (!input.mentions.length || tooManyMentions(input.text)) return;
   quiet(async () => {
     if (!hasServiceKey()) return;
     const db = await createServiceClient();
-    /* الأسماءُ أوّلاً (١٢ على الأكثر، صغيرةٌ كما تُخزَّن) ثمّ: هل كتب صاحبُها في هذه الغرفة؟ */
+    /* الأسماءُ (١٢ على الأكثر، صغيرةٌ كما تُخزَّن) */
+    /* 🆕 T498 — من `profiles` لا `public_profiles`: الأخيرةُ تُخفي اسمَ من أخفى اسمَه عن الخدمة، فكان الجرسُ يذكره والدفعُ لا */
     const [{ data: profs }, person] = await Promise.all([
-      db.from("public_profiles").select("id, username").in("username", input.mentions),
+      db.from("profiles").select("id, username").in("username", input.mentions),
       personOf(db, input.actorId),
     ]);
     if (!person) return;
@@ -554,15 +570,8 @@ export function notifyTalkMention(input: {
       const { data: par } = await db.from("title_posts").select("user_id").eq("id", input.parentId).maybeSingle();
       skip = (par as { user_id?: string } | null)?.user_id ?? null;
     }
-    const named = ((profs ?? []) as { id: string }[]).map((p) => p.id).filter((id) => id !== input.actorId && id !== skip);
-    if (!named.length) return;
-    const { data: posts } = await db
-      .from("title_posts")
-      .select("user_id")
-      .match({ tmdb_id: input.tmdbId, media_type: input.mediaType, hidden: false })
-      .in("user_id", named)
-      .limit(200);
-    const to = [...new Set(((posts ?? []) as { user_id: string }[]).map((p) => p.user_id))];
+    const to = [...new Set(((profs ?? []) as { id: string }[]).map((p) => p.id).filter((id) => id !== input.actorId && id !== skip))];
+    if (!to.length) return;
     await Promise.all(
       to.map((id) =>
         deliver({
@@ -577,7 +586,7 @@ export function notifyTalkMention(input: {
                 title: input.title ?? "",
                 tmdbId: input.tmdbId,
                 mediaType: input.mediaType,
-                text: input.text,
+                text: input.hasSpoiler ? null : input.text,
               },
               t,
             ),
@@ -661,6 +670,133 @@ export function notifyReply(input: {
       });
     }
   });
+}
+
+/**
+ * 🆕 T498 — **ذكرك في ردٍّ على تعليقٍ أو في ردٍّ في قائمة** (البند ٥): الأسماءُ بقاعدة `mentionsIn` نفسِها، ومن وصله
+ * «ردّ عليك» من الردِّ نفسِه (صاحبُ التعليق وصاحبُ الردّ الأب) لا يُذكَّر ثانية — الشرطُ نفسُه في `my_signals_v3`.
+ */
+export function notifyMentions(input: {
+  kind: "mention_reply" | "mention_list";
+  table: "review_replies" | "list_review_replies";
+  replyId: string;
+  actorId: string;
+  mentions: string[];
+  ownerId: string;
+  parentId?: string | null;
+  tmdbId?: number | null;
+  mediaType?: "tv" | "movie" | null;
+  listId?: string | null;
+  /** نصُّ الردّ — لحدِّ الأسماء الاثني عشر */
+  text: string;
+}) {
+  if (!input.mentions.length || tooManyMentions(input.text)) return;
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    const { data: profs } = await db.from("profiles").select("id").in("username", input.mentions);
+    let parent: string | null = null;
+    if (input.parentId) {
+      const { data } = await db.from(input.table).select("user_id").eq("id", input.parentId).maybeSingle();
+      parent = (data as { user_id?: string } | null)?.user_id ?? null;
+    }
+    const to = [...new Set(((profs ?? []) as { id: string }[]).map((p) => p.id))].filter(
+      (id) => id !== input.actorId && id !== input.ownerId && id !== parent,
+    );
+    /* تعليقُ حسابٍ خاصّ: لا يصل إلّا من يراه (متابِعٌ أو ممنوحٌ مكتبتَه) — شرطُ `can_view_profile` في الجرس */
+    let allowed = to;
+    if (input.kind === "mention_reply" && to.length) {
+      const { data: owner } = await db.from("profiles").select("is_private").eq("id", input.ownerId).maybeSingle();
+      if ((owner as { is_private?: boolean | null } | null)?.is_private) {
+        const [{ data: f }, { data: g }] = await Promise.all([
+          db.from("user_follows").select("follower_id").eq("following_id", input.ownerId).in("follower_id", to),
+          db.from("library_grants").select("grantee_id").eq("owner_id", input.ownerId).in("grantee_id", to),
+        ]);
+        const ok = new Set([...((f ?? []) as { follower_id: string }[]).map((r) => r.follower_id), ...((g ?? []) as { grantee_id: string }[]).map((r) => r.grantee_id)]);
+        allowed = to.filter((id) => ok.has(id));
+      }
+    }
+    for (const id of allowed) {
+      await signalNow({
+        to: id,
+        kind: input.kind,
+        actorId: input.actorId,
+        tmdbId: input.tmdbId,
+        mediaType: input.mediaType,
+        titleOwner: input.ownerId,
+        reviewOwner: input.ownerId,
+        listId: input.listId,
+        dedupe: `${input.kind}:${input.replyId}:${id}`,
+      });
+    }
+  });
+}
+
+/** 🆕 T498 — **ردّ على ردّك تحت خبرٍ من Loopz** (البند ٤): صاحبُ الردّ الأب وحدَه — الخبرُ لا صاحبَ له */
+export function notifyNewsReply(input: { postKey: string; parentId: string; actorId: string; replyId: string }) {
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    const [{ data: par }, { data: post }] = await Promise.all([
+      db.from("news_post_replies").select("user_id").eq("id", input.parentId).maybeSingle(),
+      db.from("news_posts").select("title").eq("key", input.postKey).maybeSingle(),
+    ]);
+    const to = (par as { user_id?: string } | null)?.user_id;
+    if (!to || to === input.actorId) return;
+    await signalNow({
+      to,
+      kind: "news_reply",
+      actorId: input.actorId,
+      title: (post as { title?: string | null } | null)?.title ?? null,
+      ref: input.postKey,
+      dedupe: `news_reply:${input.replyId}`,
+    });
+  });
+}
+
+/**
+ * 🆕 T498 — **أضافك إلى مجموعة رسائل** (البند ١٢): دفعٌ وحدَه مع «الرسائل». من صار عضواً فعلاً وحدَه يُخبَر —
+ * `dm_group_create` و`dm_group_add` يُسقطان من لا يجوز (البوّابُ والحدّ)، فالأعضاءُ يُقرؤون بعد الكتابة.
+ */
+export function notifyGroupAdded(input: { groupId: string; actorId: string; memberIds: string[] }) {
+  const ids = [...new Set(input.memberIds)].filter((id) => id !== input.actorId).slice(0, 20);
+  if (!ids.length) return;
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    const [{ data: group }, { data: members }, person] = await Promise.all([
+      db.from("dm_groups").select("name").eq("id", input.groupId).maybeSingle(),
+      db.from("dm_group_members").select("user_id").eq("group_id", input.groupId).in("user_id", ids),
+      personOf(db, input.actorId),
+    ]);
+    if (!group || !person) return;
+    const name = (group as { name: string | null }).name ?? "";
+    await Promise.all(
+      ((members ?? []) as { user_id: string }[]).map((m) =>
+        deliver({
+          to: m.user_id,
+          group: "messages",
+          dedupe: `group_added:${input.groupId}:${m.user_id}:${new Date().toISOString().slice(0, 10)}`,
+          actorId: input.actorId,
+          build: (t) =>
+            groupAddedPush(
+              { groupId: input.groupId, groupName: name, actorName: person.hide_name ? t.anonymousUser : person.nickname || person.username || t.anonymousUser },
+              t,
+            ),
+        }).catch(() => {}),
+      ),
+    );
+  });
+}
+
+/**
+ * 🆕 T498 — **أكثرُ من ١٢ اسماً لا يُبلَّغ أحد**: `mentionsIn` يقطع عند ١٢، فبدون هذا تصل الدفعةُ أوّلَ ١٢ ويرى الباقون السطرَ
+ * في الجرس — والشرطُ نفسُه في `my_signals_v3`. القاعدةُ قاعدةُ `mentionsIn` حرفاً.
+ */
+function tooManyMentions(text: string | null | undefined): boolean {
+  const names = new Set<string>();
+  for (const m of String(text ?? "").matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) names.add(m[2].toLowerCase());
+  return names.size > 12;
 }
 
 /* ================= حلقاتُ اليوم ================= */

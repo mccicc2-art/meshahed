@@ -130,16 +130,17 @@ export async function personasAware(): Promise<boolean> {
 }
 
 /**
- * 🆕 T496 — **هل يعرف السائلُ أنواعَ الجرس الجديدة؟** التطبيقُ الذي أخذ التحديثَ يقول ذلك بترويسة `x-loopz-signals: 2`
- * (`apps/mobile/src/api.ts`). نسخةٌ أقدم (أو بناءٌ أصليٌّ لا تصله التحديثات) تبني الجملةَ من قاموسها هي — ونوعٌ لا تعرفه يقع
- * فيها على «أعجب فلان بـ«…»» وملفِّ الفاعل، ولو كان ردّاً. فيُنزَّل لها كلُّ نوعٍ إلى أخيه القديم (`/api/v1/me/signals`).
+ * 🆕 T496 — **أيَّ أنواعِ الجرس يعرف السائل؟** التطبيقُ يقول ذلك بترويسة `x-loopz-signals` (`apps/mobile/src/api.ts`):
+ * ٢ = أنواعُ T496، و🆕 ٣ = أنواعُ T498. نسخةٌ أقدم (أو بناءٌ أصليٌّ لا تصله التحديثات) تبني الجملةَ من قاموسها هي — ونوعٌ لا
+ * تعرفه يقع فيها على «أعجب فلان بـ«…»» وملفِّ الفاعل، ولو كان ردّاً. فيُنزَّل لها أو يُحجب (`/api/v1/me/signals`).
  */
 export const SIGNALS_HEADER = "x-loopz-signals";
-export async function signalsAware(): Promise<boolean> {
+export async function signalsLevel(): Promise<number> {
   try {
-    return Number((await headers()).get(SIGNALS_HEADER)) >= 2;
+    const n = Number((await headers()).get(SIGNALS_HEADER));
+    return Number.isFinite(n) ? n : 0;
   } catch {
-    return false;
+    return 0;
   }
 }
 

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { groupErrorKey } from "@/lib/groupsCore";
+import { notifyGroupAdded } from "@/lib/push";
 import { fail, handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { parseGroupCreateBody, type GroupCreatePayload } from "@/core/contracts/groups";
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
       if (error.code === "22023" || error.code === "23514") return fail("invalid_input");
       throw new Error(`group create: ${error.message}`);
     }
+    /* 🆕 T498 (البند ١٢) — «أضافك إلى مجموعة»: دفعٌ لمن صار عضواً فعلاً (الدالّةُ تُسقط من لا يجوز) */
+    notifyGroupAdded({ groupId: String(data), actorId: auth.user.id, memberIds: b.member_ids });
     return ok({ group_id: String(data) }, ["me:messages"]);
   });
 }

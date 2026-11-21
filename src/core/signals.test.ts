@@ -73,3 +73,29 @@ test("T496 — الوجهة: الردُّ على ردّي يفتح تعليقَ 
   assert.equal(signalHref(row({ kind: "talk_like", tmdbId: 0 }), ME), "/talk/general/0");
   assert.equal(signalHref(row({ kind: "talk_reply", tmdbId: 0, mediaType: "general" as never }), ME), "/talk/general/0");
 });
+
+/* 🆕 T498 (أحمد ٢١ نوفمبر «نفذ البقيه وارفعها») */
+test("T498 — الجملُ والوجهاتُ الجديدة", () => {
+  const ar = getDict("ar");
+  const line = (x: Partial<SignalRow>, list = "") => {
+    const p = signalParts(row(x), ar, list);
+    return `${p.pre}${p.who}${p.post}`;
+  };
+  assert.equal(line({ kind: "news_reply", title: "حلقة جديدة" }), "ردّ مشعل على ردّك في «حلقة جديدة»");
+  assert.equal(line({ kind: "mention_reply", title: "Dark" }), "ذكرك مشعل في ردٍّ على «Dark»");
+  assert.equal(line({ kind: "mention_list" }, "Best Shows"), "ذكرك مشعل في ردٍّ في قائمة «Best Shows»");
+  assert.equal(line({ kind: "mention_talk", title: "Severance", tmdbId: 5, mediaType: "tv" }), "ذكرك مشعل في نقاش «Severance»");
+  assert.equal(line({ kind: "mention_talk", tmdbId: 0 }), "ذكرك مشعل في النقاش العام");
+  assert.equal(line({ kind: "list_invite_accepted" }, "L"), "قبل مشعل دعوتك إلى قائمة «L»");
+  assert.equal(line({ kind: "list_invite_declined" }, "L"), "اعتذر مشعل عن دعوتك إلى قائمة «L»");
+  assert.equal(line({ kind: "list_removed" }, "L"), "أخرجك مشعل من قائمة «L»");
+  assert.equal(line({ kind: "list_save" }, "L"), "حفظ مشعل قائمتك «L»");
+  const OWNER = "5b7c2a9e-4444-4a2b-9c3d-000000000004";
+  assert.equal(signalHref(row({ kind: "news_reply", ref: "ep:12/a b" }), ME), "/post/ep%3A12%2Fa%20b");
+  assert.equal(signalHref(row({ kind: "mention_reply", tmdbId: 3, mediaType: "tv", ownerId: OWNER }), ME), `/review/tv/3/${OWNER}`);
+  assert.equal(signalHref(row({ kind: "mention_list", listId: "L9" }), ME), "/lists/L9");
+  assert.equal(signalHref(row({ kind: "mention_talk", tmdbId: 0 }), ME), "/talk/general/0");
+  assert.equal(signalHref(row({ kind: "list_save", listId: "L1" }), ME), "/lists/L1");
+  /* من أُخرج من قائمةٍ قد تكون خاصّة لا يُرسَل إليها: ملفُّ من أخرجه */
+  assert.equal(signalHref(row({ kind: "list_removed", listId: "L2" }), ME), "/u/mishal");
+});

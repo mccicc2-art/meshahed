@@ -1,6 +1,6 @@
 import { mySignals } from "@/lib/actions";
 import { getIncomingFollowRequests } from "@/lib/data";
-import { handle, limited, requireUser, signalsAware } from "@/lib/v1";
+import { handle, limited, requireUser, signalsLevel } from "@/lib/v1";
 import type { Signal } from "@/lib/actions";
 import { ok } from "@/core/contracts/result";
 import type { SignalsPayload } from "@/core/contracts/messages";
@@ -21,9 +21,25 @@ const LEGACY: Partial<Record<Signal["kind"], Signal["kind"] | null>> = {
   request_accepted: null,
   library_grant: null,
 };
-function legacyRows(rows: Signal[]): Signal[] {
+/* 🆕 T498 — أنواعٌ لا أخَ قديمَ لها: نسخةٌ تعرف أنواعَ T496 وحدها (`x-loopz-signals: 2`) لا تُرسَل لها */
+const T498: ReadonlySet<Signal["kind"]> = new Set<Signal["kind"]>([
+  "list_save",
+  "list_invite_accepted",
+  "list_invite_declined",
+  "list_removed",
+  "news_reply",
+  "mention_reply",
+  "mention_list",
+  "mention_talk",
+]);
+function legacyRows(rows: Signal[], level: number): Signal[] {
   const out: Signal[] = [];
   for (const r of rows) {
+    if (T498.has(r.kind)) continue;
+    if (level >= 2) {
+      out.push(r);
+      continue;
+    }
     const to = LEGACY[r.kind];
     if (to === null) continue;
     out.push(to ? { ...r, kind: to } : r);
@@ -38,8 +54,8 @@ export async function GET() {
     const lim = limited(`v1:signals:${auth.user.id}`, 30, 60_000);
     if (lim) return lim;
     /* 🆕 N2-fix — الطلباتُ القائمةُ مع الإشعارات: صفُّ «طلب متابعة» يحمل قبولاً ورفضاً ما دام الطلبُ قائماً */
-    const [all, pending, aware] = await Promise.all([mySignals(), getIncomingFollowRequests(), signalsAware()]);
-    const rows = aware ? all : legacyRows(all);
+    const [all, pending, level] = await Promise.all([mySignals(), getIncomingFollowRequests(), signalsLevel()]);
+    const rows = level >= 3 ? all : legacyRows(all, level);
     return ok({ me_id: auth.user.id, rows, pending_requests: pending.map((p) => p.id) });
   });
 }

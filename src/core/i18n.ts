@@ -1054,6 +1054,24 @@ const ar = {
   /* 🆕 249 (٤أ) — أعجب أحدٌ بقائمتك */
   notifListLike: (who: string, list: string) =>
     list ? `أعجب ${who} بقائمتك «${list}»` : `أعجب ${who} بإحدى قوائمك`,
+  /* 🆕 T498 (أحمد ٢١ نوفمبر «نفذ البقيه وارفعها») — **ما لم يكن يُشعَر به بين شخصين**، الجملةُ تسمّي المكان لأنّ الضغطةَ تفتحه */
+  notifListSave: (who: string, list: string) =>
+    list ? `حفظ ${who} قائمتك «${list}»` : `حفظ ${who} إحدى قوائمك`,
+  notifListInviteAccepted: (who: string, list: string) =>
+    list ? `قبل ${who} دعوتك إلى قائمة «${list}»` : `قبل ${who} دعوتك إلى قائمتك المشتركة`,
+  notifListInviteDeclined: (who: string, list: string) =>
+    list ? `اعتذر ${who} عن دعوتك إلى قائمة «${list}»` : `اعتذر ${who} عن دعوتك إلى قائمتك المشتركة`,
+  notifListRemoved: (who: string, list: string) =>
+    list ? `أخرجك ${who} من قائمة «${list}»` : `أخرجك ${who} من قائمة مشتركة`,
+  notifNewsReply: (who: string, title: string) =>
+    title ? `ردّ ${who} على ردّك في «${title}»` : `ردّ ${who} على ردّك في خبر من Loopz`,
+  notifMentionReply: (who: string, title: string) =>
+    title ? `ذكرك ${who} في ردٍّ على «${title}»` : `ذكرك ${who} في ردّ`,
+  notifMentionList: (who: string, list: string) =>
+    list ? `ذكرك ${who} في ردٍّ في قائمة «${list}»` : `ذكرك ${who} في ردٍّ في إحدى القوائم`,
+  notifMentionTalk: (who: string, title: string) =>
+    title ? `ذكرك ${who} في نقاش «${title}»` : `ذكرك ${who} في نقاش`,
+  notifMentionGeneral: (who: string) => `ذكرك ${who} في النقاش العام`,
   /* 🆕 234 — **دعاك إلى قائمةٍ مشتركة**: الضغطةُ تفتح القائمةَ وفوقها «قبول · لا شكراً» */
   notifListInvite: (who: string, list: string) =>
     list ? `دعاك ${who} إلى قائمته المشتركة «${list}»` : `دعاك ${who} إلى قائمة مشتركة`,
@@ -2155,11 +2173,11 @@ const ar = {
   pushMessages: "الرسائل",
   pushMessagesSub: "عملٌ أو قائمة أرسلها صديق، والردود عليها",
   pushFollows: "المتابعات",
-  pushFollowsSub: "من بدأ متابعتك أو طلبها، أو قبِل طلبك، أو دعاك إلى قائمة، أو منحك الاطلاع على مكتبته",
+  pushFollowsSub: "من بدأ متابعتك أو طلبها، أو قبِل طلبك، أو دعاك إلى قائمة أو ردّ على دعوتك، أو منحك الاطلاع على مكتبته",
   pushLikes: "الإعجابات",
-  pushLikesSub: "إعجابٌ بتعليقك أو تقييمك أو مشاهدتك أو مشاركتك أو قائمتك",
+  pushLikesSub: "إعجابٌ بتعليقك أو تقييمك أو مشاهدتك أو مشاركتك أو قائمتك، أو حفظُ قائمتك",
   pushReplies: "الردود والتقييمات",
-  pushRepliesSub: "ردٌّ على تعليقك أو ردّك أو مشاركتك، أو تقييمٌ لقائمتك",
+  pushRepliesSub: "ردٌّ على تعليقك أو ردّك أو مشاركتك، أو ذِكرُ اسمك، أو تقييمٌ لقائمتك",
   pushEpisodes: "حلقات جديدة",
   pushEpisodesSub: "يوم عرض حلقةٍ من مسلسلٍ تتابعه",
   /* 🆕 T361 — هجرة ٢٤٢ (أحمد ١٠ نوفمبر «٣ أ») */
@@ -2210,6 +2228,9 @@ const ar = {
   /* 🆕 D-1443 — النقاش بخانة الرسائل */
   /* 🆕 T496 — الفعلُ أوّلاً، واسمُ العمل بين «» كسائر الجرس */
   pushTalkMention: (name: string, title: string) => `ذكرك ${name} في نقاش «${title}»`,
+  /* 🆕 T498 — النقاشُ العامّ بلا عنوانِ عمل، و«أضافك إلى مجموعة» (دفعٌ وحدَه، مكانُه الرسائل) */
+  pushTalkMentionGeneral: (name: string) => `ذكرك ${name} في النقاش العام`,
+  pushGroupAdded: (name: string, group: string) => `أضافك ${name} إلى مجموعة «${group}»`,
   talkMentionsNone: "لا أحدَ بهذا الاسم في النقاش",
   msgPickGifSub: "ابحث في GIPHY",
   /* 🆕 D-1401/D-1402/D-1403 — الدردشة كالواتس: التحديدُ والنسخ، الردُّ والاقتباس، علامتا الوصول والقراءة، عارضُ الصورة */
@@ -4378,6 +4399,23 @@ const en: Dict = {
     list ? `${who} copied your list “${list}”` : `${who} copied one of your lists`,
   notifListLike: (who: string, list: string) =>
     list ? `${who} liked your list “${list}”` : `${who} liked one of your lists`,
+  notifListSave: (who: string, list: string) =>
+    list ? `${who} saved your list “${list}”` : `${who} saved one of your lists`,
+  notifListInviteAccepted: (who: string, list: string) =>
+    list ? `${who} accepted your invite to “${list}”` : `${who} accepted your shared-list invite`,
+  notifListInviteDeclined: (who: string, list: string) =>
+    list ? `${who} declined your invite to “${list}”` : `${who} declined your shared-list invite`,
+  notifListRemoved: (who: string, list: string) =>
+    list ? `${who} removed you from the list “${list}”` : `${who} removed you from a shared list`,
+  notifNewsReply: (who: string, title: string) =>
+    title ? `${who} replied to your reply on “${title}”` : `${who} replied to your reply on a Loopz post`,
+  notifMentionReply: (who: string, title: string) =>
+    title ? `${who} mentioned you in a reply on “${title}”` : `${who} mentioned you in a reply`,
+  notifMentionList: (who: string, list: string) =>
+    list ? `${who} mentioned you in a reply on the list “${list}”` : `${who} mentioned you in a reply on a list`,
+  notifMentionTalk: (who: string, title: string) =>
+    title ? `${who} mentioned you in the “${title}” discussion` : `${who} mentioned you in a discussion`,
+  notifMentionGeneral: (who: string) => `${who} mentioned you in the general discussion`,
   notifListInvite: (who: string, list: string) =>
     list ? `${who} invited you to their shared list “${list}”` : `${who} invited you to a shared list`,
   feedFilterGroup: "Activity type",
@@ -5116,11 +5154,11 @@ const en: Dict = {
   pushMessages: "Messages",
   pushMessagesSub: "A title or list a friend sent, and replies to it",
   pushFollows: "Follows",
-  pushFollowsSub: "Someone followed you, requested to, accepted your request, invited you to a list, or shared their library",
+  pushFollowsSub: "Someone followed you, requested to, accepted your request, invited you to a list or answered your invite, or shared their library",
   pushLikes: "Likes",
-  pushLikesSub: "A like on your comment, rating, watch, post or list",
+  pushLikesSub: "A like on your comment, rating, watch, post or list, or a save of your list",
   pushReplies: "Replies and ratings",
-  pushRepliesSub: "A reply to your comment, reply or post, or a rating of your list",
+  pushRepliesSub: "A reply to your comment, reply or post, a mention, or a rating of your list",
   pushEpisodes: "New episodes",
   pushEpisodesSub: "The day an episode of a show you follow airs",
   pushAuto: "Auto-tracked",
@@ -5164,6 +5202,8 @@ const en: Dict = {
   searchPopularLists: "Popular lists",
   /* 🆕 D-1443 */
   pushTalkMention: (name: string, title: string) => `${name} mentioned you in the “${title}” discussion`,
+  pushTalkMentionGeneral: (name: string) => `${name} mentioned you in the general discussion`,
+  pushGroupAdded: (name: string, group: string) => `${name} added you to the group “${group}”`,
   talkMentionsNone: "No one by that name in this discussion",
   msgPickGifSub: "Search GIPHY",
   msgCopy: "Copy",

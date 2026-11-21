@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { groupErrorKey } from "@/lib/groupsCore";
+import { notifyGroupAdded } from "@/lib/push";
 import { fail, handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isGroupId, parseGroupManageBody } from "@/core/contracts/groups";
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       if (error.code === "22023" || error.code === "23514") return fail("invalid_input");
       throw new Error(`group ${b.action}: ${error.message}`);
     }
+    /* 🆕 T498 (البند ١٢) — «أضافك إلى مجموعة» لمن أُضيف الآن */
+    if (b.action === "add") notifyGroupAdded({ groupId: id, actorId: auth.user.id, memberIds: b.member_ids });
     /* القراءةُ لا تغيّر شيئاً يُعاد رسمُه عند غيري إلّا ✓✓ — والوسمُ نفسُه يجدّد الصندوق */
     return ok({ done: true as const }, ["me:messages"]);
   });

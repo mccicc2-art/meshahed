@@ -15,7 +15,7 @@ import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { mentionsIn } from "@/core/contracts/groups";
-import { notifyMessage, notifyReply, notifyShareReply, notifySignal, notifyTalkMention } from "@/lib/push";
+import { notifyMentions, notifyMessage, notifyNewsReply, notifyReply, notifyShareReply, notifySignal, notifyTalkMention } from "@/lib/push";
 import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/core/region";
 import { TITLE_MODE_COOKIE, parseTitleMode, accountTitleMode } from "@/core/titleMode";
@@ -2754,7 +2754,16 @@ export type SignalKind =
   /** 🆕 **أعجب أحدٌ بقائمتك** (الهجرة ٢٤٩ — أحمد ١٩ نوفمبر، ٤أ). يفتح القائمة */
   | "list_like"
   /** 🆕 **دعاك أحدٌ إلى قائمةٍ مشتركة** (الهجرة ٢٣٤). يفتح القائمة وفوقها «قبول · لا شكراً» — وإن كانت خاصّة */
-  | "list_invite";
+  | "list_invite"
+  /** 🆕 T498 (الهجرة ٢٥٦) — حفظ قائمتك · جوابُ دعوتك · أخرجك من قائمة · ردٌّ على ردّك تحت خبر · ذكرك في ردٍّ أو قائمةٍ أو نقاش */
+  | "list_save"
+  | "list_invite_accepted"
+  | "list_invite_declined"
+  | "list_removed"
+  | "news_reply"
+  | "mention_reply"
+  | "mention_list"
+  | "mention_talk";
 
 export interface Signal {
   kind: SignalKind;
@@ -2770,6 +2779,8 @@ export interface Signal {
   listSlug?: string | null;
   /** 🆕 T496 — صاحبُ التعليق الذي جرى فيه الردّ (`owner_id` في `my_signals_v2`) — وجهةُ «ردّ على ردّك» */
   ownerId?: string | null;
+  /** 🆕 T498 — مفتاحُ خبر Loopz (`ref` في `my_signals_v3`) */
+  ref?: string | null;
 }
 
 /**
@@ -2780,10 +2791,12 @@ export interface Signal {
  */
 export async function mySignals(): Promise<Signal[]> {
   const { supabase } = await requireUser();
-  /* 🆕 T496 — `my_signals_v2` (الهجرة ٢٥٥) تزيد `owner_id`. **الكودُ يسبق الهجرة**: غيابُها (PGRST202 · 42883) ⇐ الدالّةُ القديمة،
-     فلا يتعطّل الجرسُ بين الرفع والتشغيل */
-  let { data, error } = await supabase.rpc("my_signals_v2");
-  if (error && (error.code === "PGRST202" || error.code === "42883")) ({ data, error } = await supabase.rpc("my_signals"));
+  /* 🆕 T496 — `my_signals_v2` (الهجرة ٢٥٥) تزيد `owner_id`، و🆕 T498 `my_signals_v3` (٢٥٦) تزيد `ref`. **الكودُ يسبق الهجرة**:
+     غيابُ الأحدث (PGRST202 · 42883) ⇐ الذي قبله، فلا يتعطّل الجرسُ بين الرفع والتشغيل */
+  const missing = (e: { code?: string } | null) => !!e && (e.code === "PGRST202" || e.code === "42883");
+  let { data, error } = await supabase.rpc("my_signals_v3");
+  if (missing(error)) ({ data, error } = await supabase.rpc("my_signals_v2"));
+  if (missing(error)) ({ data, error } = await supabase.rpc("my_signals"));
   if (error) fail(error);
   const signals = ((data ?? []) as {
     kind: SignalKind;
@@ -2801,6 +2814,7 @@ export async function mySignals(): Promise<Signal[]> {
     list_id?: string | null;
     list_slug?: string | null;
     owner_id?: string | null;
+    ref?: string | null;
   }[]).map((r) => ({
     kind: r.kind,
     person: {
@@ -2818,6 +2832,7 @@ export async function mySignals(): Promise<Signal[]> {
     listId: r.list_id ?? null,
     listSlug: r.list_slug ?? null,
     ownerId: r.owner_id ?? null,
+    ref: r.ref ?? null,
   }));
   /* 🆕 **والشخصُ متداخلٌ هنا** (D-773ب) — فالإلحاقُ يدخل `person` نفسَه */
   return withPersonIdentities(signals);
@@ -5006,6 +5021,10 @@ export async function saveList(listId: string, save: boolean) {
       .from("list_saves")
       .upsert({ user_id: user.id, list_id: listId }, { onConflict: "user_id,list_id" });
     if (error) fail(error);
+    /* 🆕 T498 (البند ١٠) — صاحبُ القائمة يُخبَر بالحفظ؛ قائمةٌ خاصّة لا تُحفظ أصلاً، ومفتاحُ السجلّ يمنع رنّةً ثانية */
+    const { data: l } = await supabase.from("user_lists").select("user_id").eq("id", listId).maybeSingle();
+    const owner = (l as { user_id?: string } | null)?.user_id;
+    if (owner) notifySignal({ to: owner, kind: "list_save", actorId: user.id, listId, dedupe: `list_save:${user.id}:${listId}` });
   } else {
     const { error } = await supabase
       .from("list_saves")
@@ -5083,9 +5102,20 @@ export async function inviteListMembers(listId: string, userIds: string[]): Prom
 
 export async function respondListInvite(listId: string, accept: boolean): Promise<"active" | "declined"> {
   listId = uuid(listId);
-  const { supabase } = await requireUser("list", 20, 60_000);
+  const { supabase, user } = await requireUser("list", 20, 60_000);
+  /* 🆕 T498 (البند ٨) — من دعاك يُخبَر بجوابك: يُقرأ قبل الجواب لأنّ الاعتذارَ يحذف الصفّ */
+  const { data: inv } = await supabase
+    .from("list_members")
+    .select("invited_by")
+    .match({ list_id: listId, user_id: user.id, status: "pending" })
+    .maybeSingle();
   const { data, error } = await supabase.rpc("respond_list_invite", { p_list: listId, p_accept: !!accept });
   if (error) fail(error);
+  const inviter = (inv as { invited_by?: string | null } | null)?.invited_by;
+  if (inviter) {
+    const kind = data === "active" ? "list_invite_accepted" : "list_invite_declined";
+    notifySignal({ to: inviter, kind, actorId: user.id, listId, dedupe: `${kind}:${user.id}:${listId}:${new Date().toISOString().slice(0, 10)}` });
+  }
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
   return data === "active" ? "active" : "declined";
@@ -5095,9 +5125,16 @@ export async function respondListInvite(listId: string, accept: boolean): Promis
 export async function removeListMember(listId: string, userId: string): Promise<void> {
   listId = uuid(listId);
   userId = uuid(userId);
-  const { supabase } = await requireUser("list", 20, 60_000);
+  const { supabase, user } = await requireUser("list", 20, 60_000);
+  /* 🆕 T498 (البند ٩) — صاحبُها أخرج عضواً فعّالاً ⇒ يُخبَر؛ المغادرةُ وإلغاءُ دعوةٍ لم تُقبل صامتان (الشرطُ نفسُه في ٢٥٦) */
+  let wasActive = false;
+  if (userId !== user.id) {
+    const { data: m } = await supabase.from("list_members").select("status").match({ list_id: listId, user_id: userId }).maybeSingle();
+    wasActive = (m as { status?: string } | null)?.status === "active";
+  }
   const { error } = await supabase.rpc("remove_list_member", { p_list: listId, p_user: userId });
   if (error) fail(error);
+  if (wasActive) notifySignal({ to: userId, kind: "list_removed", actorId: user.id, listId, dedupe: `list_removed:${user.id}:${userId}:${listId}:${new Date().toISOString().slice(0, 10)}` });
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
 }
@@ -5240,6 +5277,8 @@ export async function addListReviewReply(input: {
     .single();
   if (error) fail(error);
   notifyReply({ kind: "list_reply", table: "list_review_replies", actorId: user.id, ownerId: reviewUserId, parentId, listId });
+  /* 🆕 T498 (البند ٥) — من ذُكر بـ`@` ولم يصله «ردّ عليك» من الردِّ نفسِه */
+  notifyMentions({ kind: "mention_list", table: "list_review_replies", replyId: String(data!.id), actorId: user.id, mentions: mentionsIn(body), text: body, ownerId: reviewUserId, parentId, listId });
 
   revalidatePath(`/lists/${listId}`);
 
@@ -7229,6 +7268,8 @@ export async function addReviewReply(input: {
     .single();
   if (error) fail(error);
   notifyReply({ kind: "reply", table: "review_replies", actorId: user.id, ownerId: reviewUserId, parentId, tmdbId, mediaType });
+  /* 🆕 T498 (البند ٥) — من ذُكر بـ`@` ولم يصله «ردّ عليك» من الردِّ نفسِه */
+  notifyMentions({ kind: "mention_reply", table: "review_replies", replyId: String(data!.id), actorId: user.id, mentions: mentionsIn(body), text: body, ownerId: reviewUserId, parentId, tmdbId, mediaType });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
 
@@ -7268,6 +7309,8 @@ export async function addNewsReply(input: {
     .select("id, created_at")
     .single();
   if (error) fail(error);
+  /* 🆕 T498 (البند ٤) — ردٌّ على ردّ ⇒ صاحبُ الردّ الأب يُخبَر (الخبرُ نفسُه لا صاحبَ له) */
+  if (parentId) notifyNewsReply({ postKey, parentId, actorId: user.id, replyId: String(data!.id) });
 
   revalidatePath("/people");
   revalidatePath("/post/[key]", "page");
@@ -7497,9 +7540,10 @@ export async function addTalkPost(input: {
   /* 🆕 R58 — منشورُ القلم عن حلقةٍ بلا نجوم: «شاهدها وما قبلها» (أحمد ٢١ أكتوبر). أثرٌ لا شرط */
   if (input.via === "pen" && !parentId && mediaType === "tv" && Number.isInteger(input.season) && Number.isInteger(input.episode))
     await markWatchedUpTo(supabase, user.id, tmdbId, input.season as number, input.episode as number, { title: input.title, posterPath: input.posterPath }).catch(() => 0);
-  /* 🆕 D-1443 — من ذُكر بـ`@` وكتب في هذه الغرفة: «ذكرك في نقاش…» (صاحبُ الأب يكفيه «ردّ عليك») */
-  const named = mediaType === "general" ? [] : mentionsIn(body);
-  if (named.length && mediaType !== "general") notifyTalkMention({ postId: String(data!.id), actorId: user.id, tmdbId, mediaType, title: input.title?.slice(0, 200) || null, text: body, mentions: named, parentId });
+  /* 🆕 D-1443 — من ذُكر بـ`@`: «ذكرك في نقاش…» (صاحبُ الأب يكفيه «ردّ عليك»). 🆕 T498 (البندان ٦ و٧) — كلُّ مذكورٍ باسمه
+     لا من كتب في الغرفة وحده، والنقاشُ العامّ معها */
+  const named = mentionsIn(body);
+  if (named.length) notifyTalkMention({ postId: String(data!.id), actorId: user.id, tmdbId: general ? 0 : tmdbId, mediaType, title: general ? null : input.title?.slice(0, 200) || null, text: body, mentions: named, parentId, hasSpoiler: input.hasSpoiler === true });
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
   /* **وتبويبُ «نقاش» يُبطَل معها**: البطاقةُ تحمل عدّاداً ووقتَ آخر

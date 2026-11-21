@@ -32,6 +32,17 @@ export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
   list_copy: "likes",
   /* 🆕 249 — أعجب أحدٌ بقائمتك: مع «الإعجابات» */
   list_like: "likes",
+  /* 🆕 T498 — الحفظُ تقديرٌ كالإعجاب والنسخ */
+  list_save: "likes",
+  /* 🆕 T498 — جوابُ دعوتك والإخراجُ من قائمة: أخواتُ الدعوة، مع «المتابعات» */
+  list_invite_accepted: "follows",
+  list_invite_declined: "follows",
+  list_removed: "follows",
+  /* 🆕 T498 — الردُّ تحت الخبر والمنشن: كلامٌ موجَّهٌ إليك، مع «الردود» */
+  news_reply: "replies",
+  mention_reply: "replies",
+  mention_list: "replies",
+  mention_talk: "replies",
   /* 🆕 234 — دعوةٌ من شخصٍ تتابعه: مع «المتابعات» (أختُ طلب المتابعة) */
   list_invite: "follows",
   list_review: "replies",
@@ -179,10 +190,20 @@ export function groupMessagePush(
  * 🆕 D-1443 — **ذُكرتَ في نقاش** («كل المزايا اللي عملناها في الرسائل الخاصة اعملها في المناقشات»): «فلان ذكرك في نقاش X: النصّ»،
  * والوجهةُ غرفةُ العمل نفسُها (وجهةُ `talk_reply` في `signalHref`).
  */
-export function talkMentionPush(m: { senderName: string; title: string; tmdbId: number; mediaType: "tv" | "movie"; text: string | null }, t: Dict): PushText {
+export function talkMentionPush(m: { senderName: string; title: string; tmdbId: number; mediaType: "tv" | "movie" | "general"; text: string | null }, t: Dict): PushText {
   const text = (m.text ?? "").replace(/\s+/g, " ").trim();
-  const head = t.pushTalkMention(m.senderName, m.title || APP);
-  return { title: APP, body: (text ? `${head}: ${text}` : head).slice(0, 240), url: `/talk/${m.mediaType}/${m.tmdbId}` };
+  /* 🆕 T498 — **النقاشُ العامّ** (البند ٦): بلا عملٍ يُسمّى، ووجهتُه `/talk/general/0` */
+  const general = m.mediaType === "general";
+  const head = general ? t.pushTalkMentionGeneral(m.senderName) : t.pushTalkMention(m.senderName, m.title || APP);
+  return { title: APP, body: (text ? `${head}: ${text}` : head).slice(0, 240), url: general ? "/talk/general/0" : `/talk/${m.mediaType}/${m.tmdbId}` };
+}
+
+/**
+ * 🆕 T498 — **أضافك إلى مجموعة رسائل** (البند ١٢): دفعٌ وحدَه — مكانُ المجموعات الرسائلُ لا الجرس —
+ * ويُكتم مع «الرسائل». الوجهةُ المجموعةُ نفسُها، **وبلا فئة `dm`**: لا ردَّ من الإشعار على خبرٍ لا على رسالة.
+ */
+export function groupAddedPush(m: { groupId: string; groupName: string; actorName: string }, t: Dict): PushText {
+  return { title: APP, body: t.pushGroupAdded(m.actorName, m.groupName || APP).slice(0, 240), url: `/messages?group=${m.groupId}` };
 }
 
 /** حلقاتُ اليوم ⇢ دفعٌ واحدٌ للمستخدم: عملٌ واحدٌ يفتح صفحتَه، وأكثرُ يفتح الرئيسيّة */

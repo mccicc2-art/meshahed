@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf, dmNativeOf, dmTargetOf, PUSH_CAPS, groupMessagePush, airingByDay, pushFailureLine } from "./push.ts";
+import { groupAddedPush, talkMentionPush, episodesPush, localDayHour, messagePush, parseMuted, PUSH_GROUP_OF, PUSH_TOKEN_RE, signalPush, dmDataOf, dmNativeOf, dmTargetOf, PUSH_CAPS, groupMessagePush, airingByDay, pushFailureLine } from "./push.ts";
 import { parseWidgetDmBody } from "./contracts/widget.ts";
 import { getDict } from "./i18n.ts";
 import type { SignalRow } from "./signals.ts";
@@ -22,7 +22,7 @@ test("دفعُ الجرس: الجملةُ كاملةً والوجهةُ من sig
 });
 
 test("كلُّ نوعٍ في الجرس له مفتاحٌ في الإعدادات", () => {
-  for (const k of ["follow", "request", "request_accepted", "library_grant", "like_review", "like_rating", "like_activity", "reply", "reply_reply", "talk_reply", "talk_like", "list_review", "like_list_review", "list_reply", "list_reply_reply", "list_copy", "list_invite", "list_like"] as const) assert.ok(PUSH_GROUP_OF[k]);
+  for (const k of ["follow", "request", "request_accepted", "library_grant", "like_review", "like_rating", "like_activity", "reply", "reply_reply", "talk_reply", "talk_like", "list_review", "like_list_review", "list_reply", "list_reply_reply", "list_copy", "list_invite", "list_like", "list_save", "list_invite_accepted", "list_invite_declined", "list_removed", "news_reply", "mention_reply", "mention_list", "mention_talk"] as const) assert.ok(PUSH_GROUP_OF[k]);
 });
 
 test("الرسالة: المرسلُ عنوان، والملاحظةُ تحت ما أُرسل، والوجهةُ خيطُه", () => {
@@ -148,4 +148,18 @@ test("T313 — سطرُ فشل الدفع: الأخطاءُ معدودة، وا�
   assert.doesNotMatch(line, /PushToken/);
   /* انقطاعٌ بلا تذاكر: الكلُّ فشل، والسببُ يُقال */
   assert.equal(pushFailureLine("episodes", [], 4, "TimeoutError: The operation was aborted"), "push episodes: 4/4 failed · missing×4 · TimeoutError: The operation was aborted");
+});
+
+/* 🆕 T498 — النقاشُ العامّ في دفع المنشن، و«أضافك إلى مجموعة» بلا فئة الردّ */
+test("T498 — منشنُ النقاش العامّ ووجهتُه، وإضافةُ المجموعة", () => {
+  const t = getDict("ar");
+  const g = talkMentionPush({ senderName: "مشعل", title: "", tmdbId: 0, mediaType: "general", text: "شوف" }, t);
+  assert.equal(g.body, "ذكرك مشعل في النقاش العام: شوف");
+  assert.equal(g.url, "/talk/general/0");
+  const w = talkMentionPush({ senderName: "مشعل", title: "Dark", tmdbId: 7, mediaType: "tv", text: null }, t);
+  assert.equal(w.url, "/talk/tv/7");
+  const a = groupAddedPush({ groupId: "G1", groupName: "الشلة", actorName: "مشعل" }, t);
+  assert.equal(a.body, "أضافك مشعل إلى مجموعة «الشلة»");
+  assert.equal(a.url, "/messages?group=G1");
+  assert.equal(a.category, undefined);
 });
