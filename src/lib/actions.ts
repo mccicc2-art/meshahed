@@ -2577,9 +2577,17 @@ export async function cancelFollowRequest(targetId: string) {
 /** قبول طلبٍ وارد — definer يُنشئ صفَّ متابعة الطالب لي */
 export async function acceptFollowRequest(requesterId: string) {
   requesterId = uuid(requesterId);
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+  /* 🆕 T496 — **الطلبُ موجودٌ قبل القبول** (سياسةُ «read own follow requests» تريه للهدف): بلا طلبٍ لا إشعارَ «قبل طلبك» —
+     والدالّةُ نفسُها لا تُنشئ متابعةً بلا طلبٍ من الهجرة ٢٥٥ */
+  const { data: pending } = await supabase
+    .from("follow_requests")
+    .select("requester_id")
+    .match({ requester_id: requesterId, target_id: user.id })
+    .maybeSingle();
   const { error } = await supabase.rpc("accept_follow_request", { requester: requesterId });
   if (error) fail(error);
+  if (pending) notifySignal({ to: requesterId, kind: "request_accepted", actorId: user.id, dedupe: `request_accepted:${user.id}:${requesterId}` });
   revalidatePath("/people");
   revalidatePath("/");
 }
@@ -2691,8 +2699,20 @@ export async function unblockUser(targetId: string) {
 export type SignalKind =
   | "follow"
   | "request"
+  /** 🆕 **قبل طلبَ متابعتك** (الهجرة ٢٥٥، T496). يفتح ملفَّ من قبِل */
+  | "request_accepted"
+  /** 🆕 **منحك الاطلاعَ على مكتبته** (T496). يفتح ملفَّ المانح */
+  | "library_grant"
+  /** إعجابٌ بتعليقٍ فيه نصّ — 🆕 T496: والتقييمُ بالنجوم وحدها صار `like_rating` (الجملةُ «تقييمك» لا «تعليقك») */
   | "like_review"
+  | "like_rating"
   | "like_activity"
+  /** 🆕 T496 — **ردٌّ على ردّك** في تعليق غيرك (`reply` بقي للردّ على تعليقك)، ووجهتُه صفحةُ صاحب التعليق (`ownerId`) */
+  | "reply_reply"
+  /** 🆕 T496 — **أعجب بمشاركتك في نقاش** (`title_post_likes`). يفتح الغرفة */
+  | "talk_like"
+  /** 🆕 T496 — ردٌّ على ردّك في قائمة */
+  | "list_reply_reply"
   | "reply"
   /**
    * **ردٌّ عليك داخل غرفة نقاش** (D-259، الهجرة ٧٩).
@@ -2748,6 +2768,8 @@ export interface Signal {
   listId?: string | null;
   /** slug قائمةِ لوبز — الاسمُ يُترجَم عند العرض (D-328) */
   listSlug?: string | null;
+  /** 🆕 T496 — صاحبُ التعليق الذي جرى فيه الردّ (`owner_id` في `my_signals_v2`) — وجهةُ «ردّ على ردّك» */
+  ownerId?: string | null;
 }
 
 /**
@@ -2758,7 +2780,10 @@ export interface Signal {
  */
 export async function mySignals(): Promise<Signal[]> {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("my_signals");
+  /* 🆕 T496 — `my_signals_v2` (الهجرة ٢٥٥) تزيد `owner_id`. **الكودُ يسبق الهجرة**: غيابُها (PGRST202 · 42883) ⇐ الدالّةُ القديمة،
+     فلا يتعطّل الجرسُ بين الرفع والتشغيل */
+  let { data, error } = await supabase.rpc("my_signals_v2");
+  if (error && (error.code === "PGRST202" || error.code === "42883")) ({ data, error } = await supabase.rpc("my_signals"));
   if (error) fail(error);
   const signals = ((data ?? []) as {
     kind: SignalKind;
@@ -2775,6 +2800,7 @@ export async function mySignals(): Promise<Signal[]> {
     /* 🆕 ذيلُ الهجرة ١٠٦ — يغيب قبلها فيُقرأ `null` (D-028) */
     list_id?: string | null;
     list_slug?: string | null;
+    owner_id?: string | null;
   }[]).map((r) => ({
     kind: r.kind,
     person: {
@@ -2791,6 +2817,7 @@ export async function mySignals(): Promise<Signal[]> {
     isNew: r.is_new,
     listId: r.list_id ?? null,
     listSlug: r.list_slug ?? null,
+    ownerId: r.owner_id ?? null,
   }));
   /* 🆕 **والشخصُ متداخلٌ هنا** (D-773ب) — فالإلحاقُ يدخل `person` نفسَه */
   return withPersonIdentities(signals);
@@ -4272,7 +4299,24 @@ export async function togglePostLike(postId: string, liked: boolean) {
   const { error } = liked
     ? await supabase.from("title_post_likes").delete().match(key)
     : await supabase.from("title_post_likes").insert(key);
+  /* 23505 = القلبُ موجودٌ أصلاً (نقرتان) — الحالةُ قائمة، ولا جرسَ ثانٍ (كـ`toggleReviewLike`) */
+  if (error?.code === "23505") return;
   if (error) fail(error);
+  /* 🆕 T496 — **أعجب بمشاركتك في نقاش** (`talk_like`): القلبُ لم يكن يُخبر صاحبَ المشاركة قط. صاحبُها وعملُها من صفّها،
+     والمشاركةُ المخفيّةُ لا ترنّ (شرطُ `my_signals_v2` نفسُه)، وشخصيّاتُ لوبز AI لا تُنبَّه (D-1563) */
+  if (!liked) {
+    const { data: post } = await supabase
+      .from("title_posts")
+      .select("user_id, tmdb_id, media_type, title, hidden")
+      .eq("id", postId)
+      .maybeSingle();
+    const p = post as { user_id: string; tmdb_id: number | null; media_type: string | null; title: string | null; hidden: boolean | null } | null;
+    if (p && !p.hidden && !isPersonaId(p.user_id)) {
+      const mt = p.media_type === "tv" || p.media_type === "movie" ? p.media_type : null;
+      /* النقاشُ العامّ: `tmdbId = 0` فتفتح الوجهةُ `/talk/general/0` (signalHref) */
+      notifySignal({ to: p.user_id, kind: "talk_like", actorId: user.id, tmdbId: mt ? p.tmdb_id : 0, mediaType: mt, title: p.title, dedupe: `talk_like:${user.id}:${postId}` });
+    }
+  }
 }
 
 /**
@@ -4939,6 +4983,8 @@ export async function setLibraryGrant(granteeId: string, grant: boolean) {
       .from("library_grants")
       .upsert({ owner_id: user.id, grantee_id: granteeId }, { onConflict: "owner_id,grantee_id" });
     if (error) fail(error);
+    /* 🆕 T496 (أحمد «نضيف إشعاره») — الممنوحُ يُخبَر؛ مفتاحُ السجلّ يمنع رنّةً ثانيةً لمنحٍ يُسحب ويُعاد */
+    notifySignal({ to: granteeId, kind: "library_grant", actorId: user.id, dedupe: `library_grant:${user.id}:${granteeId}` });
   } else {
     const { error } = await supabase
       .from("library_grants")
@@ -7447,7 +7493,7 @@ export async function addTalkPost(input: {
   if (error) fail(error);
 
   /* 🆕 D-1305 — ردٌّ داخل الغرفة ⇢ صاحبُ المشاركة الأب وحدَه (`talk_reply`)؛ مشاركةٌ جديدةٌ لا تُبلِّغ أحداً */
-  if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId: general ? null : tmdbId, mediaType: mediaType === "general" ? null : mediaType, title: input.title?.slice(0, 200) || null });
+  if (parentId) notifyReply({ kind: "talk_reply", table: "title_posts", actorId: user.id, parentId, tmdbId: general ? 0 : tmdbId, mediaType: mediaType === "general" ? null : mediaType, title: input.title?.slice(0, 200) || null });
   /* 🆕 R58 — منشورُ القلم عن حلقةٍ بلا نجوم: «شاهدها وما قبلها» (أحمد ٢١ أكتوبر). أثرٌ لا شرط */
   if (input.via === "pen" && !parentId && mediaType === "tv" && Number.isInteger(input.season) && Number.isInteger(input.episode))
     await markWatchedUpTo(supabase, user.id, tmdbId, input.season as number, input.episode as number, { title: input.title, posterPath: input.posterPath }).catch(() => 0);

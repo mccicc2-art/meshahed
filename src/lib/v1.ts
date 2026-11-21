@@ -129,6 +129,20 @@ export async function personasAware(): Promise<boolean> {
   }
 }
 
+/**
+ * 🆕 T496 — **هل يعرف السائلُ أنواعَ الجرس الجديدة؟** التطبيقُ الذي أخذ التحديثَ يقول ذلك بترويسة `x-loopz-signals: 2`
+ * (`apps/mobile/src/api.ts`). نسخةٌ أقدم (أو بناءٌ أصليٌّ لا تصله التحديثات) تبني الجملةَ من قاموسها هي — ونوعٌ لا تعرفه يقع
+ * فيها على «أعجب فلان بـ«…»» وملفِّ الفاعل، ولو كان ردّاً. فيُنزَّل لها كلُّ نوعٍ إلى أخيه القديم (`/api/v1/me/signals`).
+ */
+export const SIGNALS_HEADER = "x-loopz-signals";
+export async function signalsAware(): Promise<boolean> {
+  try {
+    return Number((await headers()).get(SIGNALS_HEADER)) >= 2;
+  } catch {
+    return false;
+  }
+}
+
 /** حالُ البوّابة كما يفهمها هذا السائل — لـ`/me` و`/welcome` (التطبيقُ يقرّر بها أيرفع الترحيب) */
 export async function clientOnboard(): Promise<{ state: OnboardState; mode: "full" | "username" }> {
   const [i, aware] = await Promise.all([getOnboardInfo(), gateAware()]);

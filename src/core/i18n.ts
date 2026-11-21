@@ -993,19 +993,42 @@ const ar = {
   notifTitle: "الإشعارات",
   notifEmpty: "لا إشعارات بعد — حين يتابعك أحدٌ أو يعجبه رأيك سيظهر هنا.",
   notifUnreadAria: (n: number) => `${n} إشعار جديد`,
-  notifFollow: (who: string) => `${who} بدأ متابعتك`,
-  notifRequest: (who: string) => `${who} طلب متابعتك`,
+  /* 🆕 T496 (أحمد ٢١ نوفمبر) — **الفعلُ قبل الاسم في كلّ سطر** كـ«أعجب فلان»: سطورُ الجرس تُقرأ على نسقٍ واحد */
+  notifFollow: (who: string) => `بدأ ${who} متابعتك`,
+  notifRequest: (who: string) => `طلب ${who} متابعتك`,
+  /* 🆕 T496 — **قبل طلبَ متابعتك** (`request_accepted`، الهجرة ٢٥٥): لم يكن له إشعارٌ قط، فينتظر صاحبُ الطلب بلا خبر */
+  notifRequestAccepted: (who: string) => `قبل ${who} طلب متابعتك`,
+  /* 🆕 T496 (أحمد «نضيف إشعاره») — **منحك الاطلاعَ على مكتبته** (`library_grant`): كان المنحُ صامتاً فلا يعرف الممنوحُ أنّ بابَ المكتبة فُتح له */
+  notifLibraryGrant: (who: string) => `منحك ${who} الاطلاع على مكتبته`,
+  /* 🔴 T496 — **الإعجابُ يسمّي ما أُعجب به** (أحمد: «اعجب بتعليق على … او بتقييمك او بقائمتك»): كان سطرٌ واحدٌ
+     «أعجب فلان بـ«العمل»» للتعليق والتقييم والمشاهدة معاً، وبالإنجليزيّة «liked your Ebenezer». **وهذا الآن احتياطُ نوعٍ
+     لا يعرفه هذا الإصدار وحده** — فجملتُه محايدة. */
   notifLike: (who: string, title: string) =>
-    title ? `أعجب ${who} بـ«${title}»` : `أعجب ${who} بنشاطك`,
+    title ? `أعجب ${who} بنشاطك على «${title}»` : `أعجب ${who} بنشاطك`,
+  /* `like_review` — تقييمٌ فيه نصّ */
+  notifCommentLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بتعليقك على «${title}»` : `أعجب ${who} بتعليقك`,
+  /* `like_rating` — نجومٌ بلا نصّ */
+  notifRatingLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بتقييمك لـ«${title}»` : `أعجب ${who} بتقييمك`,
+  /* `like_activity` — حلقةٌ أو فيلمٌ أنهيتَه (أحمد «١ أ») */
+  notifWatchLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بمشاهدتك لـ«${title}»` : `أعجب ${who} بمشاهدتك`,
   /* **الردّ** (D-218) — **فعلٌ ينتظر جواباً لا خبرٌ يُقرأ**، ولذلك صيغتُه
-     «ردّ عليك» لا «كتب ردّاً». والعملُ قد يغيب عنوانُه فجملتان لا فراغ. */
+     «ردّ عليك» لا «كتب ردّاً». والعملُ قد يغيب عنوانُه فجملتان لا فراغ.
+     🆕 T496 (أحمد «٢ أ») — **الردُّ على تعليقك غيرُ الردّ على ردّك**: «ردّ عليك» لم تكن تقول على أيّ شيء. */
   notifReply: (who: string, title: string) =>
-    title ? `ردّ ${who} عليك في «${title}»` : `ردّ ${who} عليك`,
+    title ? `ردّ ${who} على تعليقك على «${title}»` : `ردّ ${who} على تعليقك`,
+  notifReplyReply: (who: string, title: string) =>
+    title ? `ردّ ${who} على ردّك في «${title}»` : `ردّ ${who} على ردّك`,
   /* **وردُّ الغرفة جملتُه غيرُ جملة الردّ** (D-259): هناك ردٌّ على تعليقٍ
      كتبتَه في مكانٍ واحد، **وهنا ردٌّ عليك داخل حديثٍ لغيرِه سياق** —
      **والجملةُ تسمّي المكان لأن الضغطةَ ستُدخِلك إليه.** */
   notifTalkReply: (who: string, title: string) =>
-    title ? `ردّ ${who} عليك في نقاش «${title}»` : `ردّ ${who} عليك في النقاش`,
+    title ? `ردّ ${who} على مشاركتك في نقاش «${title}»` : `ردّ ${who} على مشاركتك في النقاش`,
+  /* 🆕 T496 — **أعجب بمشاركتك في نقاش** (`talk_like`): القلبُ في الغرفة لم يكن يُخبر صاحبَ المشاركة قط */
+  notifTalkLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بمشاركتك في نقاش «${title}»` : `أعجب ${who} بمشاركتك في النقاش`,
   /* 🆕 **قيّم أحدٌ قائمتَك** (الهجرة ١٠٦ — الخيطُ الثالث): **الجملةُ
      تسمّي القائمة لأن الضغطةَ تفتحها** — **ولا رقمَ فيها**: الرقمُ
      يُقرأ في صفحتها، **وعمودٌ يُضاف إلى دالّةٍ لأجل زينةٍ في سطر ليس
@@ -1016,12 +1039,15 @@ const ar = {
      الرأي** — لأن الضغطةَ تفتح القائمة، **والرأيُ يُقرأ فيها** (D-218). */
   notifListReviewLike: (who: string, list: string) =>
     list
-      ? `أعجب ${who} برأيك في «${list}»`
-      : `أعجب ${who} برأيك في إحدى القوائم`,
+      ? `أعجب ${who} بتقييمك لقائمة «${list}»`
+      : `أعجب ${who} بتقييمك لإحدى القوائم`,
   /* 🆕 **ردَّ عليك في قائمة** (الهجرة ١١٤): **جملةُ الردّ لا جملةُ
      الإعجاب** — وهما نوعان لأن الفعلين مختلفان وإن اتّحدت الوجهة. */
   notifListReply: (who: string, list: string) =>
-    list ? `ردّ ${who} عليك في «${list}»` : `ردّ ${who} عليك في إحدى القوائم`,
+    list ? `ردّ ${who} على تقييمك لقائمة «${list}»` : `ردّ ${who} على تقييمك لإحدى القوائم`,
+  /* 🆕 T496 — `list_reply_reply`: ردٌّ على ردّك تحت تقييمِ غيرك */
+  notifListReplyReply: (who: string, list: string) =>
+    list ? `ردّ ${who} على ردّك في قائمة «${list}»` : `ردّ ${who} على ردّك في إحدى القوائم`,
   /* 🆕 233 — **نسخ أحدٌ قائمتَك** (أحمد ٤ نوفمبر، ٣أ): الجملةُ تسمّي قائمتي لأن الضغطةَ تفتحها، لا نسختَه الخاصّة */
   notifListCopy: (who: string, list: string) =>
     list ? `نسخ ${who} قائمتك «${list}»` : `نسخ ${who} إحدى قوائمك`,
@@ -1030,7 +1056,7 @@ const ar = {
     list ? `أعجب ${who} بقائمتك «${list}»` : `أعجب ${who} بإحدى قوائمك`,
   /* 🆕 234 — **دعاك إلى قائمةٍ مشتركة**: الضغطةُ تفتح القائمةَ وفوقها «قبول · لا شكراً» */
   notifListInvite: (who: string, list: string) =>
-    list ? `دعاك ${who} إلى قائمة «${list}»` : `دعاك ${who} إلى قائمة مشتركة`,
+    list ? `دعاك ${who} إلى قائمته المشتركة «${list}»` : `دعاك ${who} إلى قائمة مشتركة`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -2129,11 +2155,11 @@ const ar = {
   pushMessages: "الرسائل",
   pushMessagesSub: "عملٌ أو قائمة أرسلها صديق، والردود عليها",
   pushFollows: "المتابعات",
-  pushFollowsSub: "من بدأ متابعتك أو طلبها",
+  pushFollowsSub: "من بدأ متابعتك أو طلبها، أو قبِل طلبك، أو دعاك إلى قائمة، أو منحك الاطلاع على مكتبته",
   pushLikes: "الإعجابات",
-  pushLikesSub: "إعجابٌ برأيك أو نشاطك",
+  pushLikesSub: "إعجابٌ بتعليقك أو تقييمك أو مشاهدتك أو مشاركتك أو قائمتك",
   pushReplies: "الردود والتقييمات",
-  pushRepliesSub: "ردٌّ عليك، أو تقييمٌ لقائمتك",
+  pushRepliesSub: "ردٌّ على تعليقك أو ردّك أو مشاركتك، أو تقييمٌ لقائمتك",
   pushEpisodes: "حلقات جديدة",
   pushEpisodesSub: "يوم عرض حلقةٍ من مسلسلٍ تتابعه",
   /* 🆕 T361 — هجرة ٢٤٢ (أحمد ١٠ نوفمبر «٣ أ») */
@@ -2150,7 +2176,7 @@ const ar = {
   pushNudgeLater: "لاحقاً",
   pushNewMessage: "رسالة جديدة",
   /* 🆕 D-1436 — «فلان ذكرك» في دفع القروب لمن نُودي بـ@ */
-  pushGroupMention: (name: string) => `${name} ذكرك`,
+  pushGroupMention: (name: string) => `ذكرك ${name}`,
   /* 🆕 D-1406 — أزرارُ إشعار الرسالة */
   pushMarkRead: "تمييز كمقروءة",
   pushReplySend: "إرسال",
@@ -2182,7 +2208,8 @@ const ar = {
   searchFeaturedMembers: "أعضاء مميّزون",
   searchPopularLists: "قوائم رائجة",
   /* 🆕 D-1443 — النقاش بخانة الرسائل */
-  pushTalkMention: (name: string, title: string) => `${name} ذكرك في نقاش ${title}`,
+  /* 🆕 T496 — الفعلُ أوّلاً، واسمُ العمل بين «» كسائر الجرس */
+  pushTalkMention: (name: string, title: string) => `ذكرك ${name} في نقاش «${title}»`,
   talkMentionsNone: "لا أحدَ بهذا الاسم في النقاش",
   msgPickGifSub: "ابحث في GIPHY",
   /* 🆕 D-1401/D-1402/D-1403 — الدردشة كالواتس: التحديدُ والنسخ، الردُّ والاقتباس، علامتا الوصول والقراءة، عارضُ الصورة */
@@ -4300,33 +4327,51 @@ const en: Dict = {
   notifEmpty: "Nothing yet — new followers and likes will show up here.",
   notifUnreadAria: (n: number) => `${n} new notifications`,
   notifFollow: (who: string) => `${who} started following you`,
-  notifRequest: (who: string) => `${who} asked to follow you`,
+  notifRequest: (who: string) => `${who} requested to follow you`,
+  notifRequestAccepted: (who: string) => `${who} accepted your follow request`,
+  notifLibraryGrant: (who: string) => `${who} gave you access to their library`,
   notifLike: (who: string, title: string) =>
-    title ? `${who} liked your ${title}` : `${who} liked your activity`,
+    title ? `${who} liked your activity on “${title}”` : `${who} liked your activity`,
+  notifCommentLike: (who: string, title: string) =>
+    title ? `${who} liked your comment on “${title}”` : `${who} liked your comment`,
+  notifRatingLike: (who: string, title: string) =>
+    title ? `${who} liked your rating of “${title}”` : `${who} liked your rating`,
+  notifWatchLike: (who: string, title: string) =>
+    title ? `${who} liked that you watched “${title}”` : `${who} liked what you watched`,
   notifReply: (who: string, title: string) =>
-    title ? `${who} replied to you about “${title}”` : `${who} replied to you`,
+    title ? `${who} replied to your comment on “${title}”` : `${who} replied to your comment`,
+  notifReplyReply: (who: string, title: string) =>
+    title ? `${who} replied to your reply on “${title}”` : `${who} replied to your reply`,
   notifTalkReply: (who: string, title: string) =>
     title
-      ? `${who} replied to you in the “${title}” discussion`
-      : `${who} replied to you in a discussion`,
+      ? `${who} replied to your post in the “${title}” discussion`
+      : `${who} replied to your post in a discussion`,
+  notifTalkLike: (who: string, title: string) =>
+    title
+      ? `${who} liked your post in the “${title}” discussion`
+      : `${who} liked your post in a discussion`,
   notifListReview: (who: string, list: string) =>
     list
       ? `${who} rated your list “${list}”`
       : `${who} rated one of your lists`,
   notifListReviewLike: (who: string, list: string) =>
     list
-      ? `${who} liked your review of “${list}”`
-      : `${who} liked your list review`,
+      ? `${who} liked your rating of the list “${list}”`
+      : `${who} liked your list rating`,
   notifListReply: (who: string, list: string) =>
     list
-      ? `${who} replied to you about “${list}”`
-      : `${who} replied to you on a list`,
+      ? `${who} replied to your rating of the list “${list}”`
+      : `${who} replied to your list rating`,
+  notifListReplyReply: (who: string, list: string) =>
+    list
+      ? `${who} replied to your reply on the list “${list}”`
+      : `${who} replied to your reply on a list`,
   notifListCopy: (who: string, list: string) =>
     list ? `${who} copied your list “${list}”` : `${who} copied one of your lists`,
   notifListLike: (who: string, list: string) =>
     list ? `${who} liked your list “${list}”` : `${who} liked one of your lists`,
   notifListInvite: (who: string, list: string) =>
-    list ? `${who} invited you to the list “${list}”` : `${who} invited you to a shared list`,
+    list ? `${who} invited you to their shared list “${list}”` : `${who} invited you to a shared list`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   watchWhereTitle: "Where to watch",
@@ -5063,11 +5108,11 @@ const en: Dict = {
   pushMessages: "Messages",
   pushMessagesSub: "A title or list a friend sent, and replies to it",
   pushFollows: "Follows",
-  pushFollowsSub: "Someone followed you or asked to",
+  pushFollowsSub: "Someone followed you, requested to, accepted your request, invited you to a list, or shared their library",
   pushLikes: "Likes",
-  pushLikesSub: "A like on your review or activity",
+  pushLikesSub: "A like on your comment, rating, watch, post or list",
   pushReplies: "Replies and ratings",
-  pushRepliesSub: "A reply to you, or a rating of your list",
+  pushRepliesSub: "A reply to your comment, reply or post, or a rating of your list",
   pushEpisodes: "New episodes",
   pushEpisodesSub: "The day an episode of a show you follow airs",
   pushAuto: "Auto-tracked",
@@ -5110,7 +5155,7 @@ const en: Dict = {
   searchFeaturedMembers: "Featured members",
   searchPopularLists: "Popular lists",
   /* 🆕 D-1443 */
-  pushTalkMention: (name: string, title: string) => `${name} mentioned you in the ${title} discussion`,
+  pushTalkMention: (name: string, title: string) => `${name} mentioned you in the “${title}” discussion`,
   talkMentionsNone: "No one by that name in this discussion",
   msgPickGifSub: "Search GIPHY",
   msgCopy: "Copy",

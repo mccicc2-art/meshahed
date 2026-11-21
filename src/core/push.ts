@@ -18,7 +18,14 @@ export type PushGroup = (typeof PUSH_GROUPS)[number];
 export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
   follow: "follows",
   request: "follows",
+  /* 🆕 T496 — قبولُ طلبك أختُ الطلب: مع «المتابعات» */
+  request_accepted: "follows",
+  /* 🆕 T496 — إذنُ مكتبةٍ من شخص: علاقةٌ بين اثنين كالمتابعة */
+  library_grant: "follows",
   like_review: "likes",
+  /* 🆕 T496 — التقييمُ وحده، والإعجابُ بمشاركة نقاش: مع «الإعجابات» كتوأمَيهما */
+  like_rating: "likes",
+  talk_like: "likes",
   like_activity: "likes",
   like_list_review: "likes",
   /* 🆕 233 — النسخُ تقديرٌ للقائمة كالإعجاب: يُكتم مع «الإعجابات» لا مفتاحاً سادساً */
@@ -29,8 +36,10 @@ export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
   list_invite: "follows",
   list_review: "replies",
   reply: "replies",
+  reply_reply: "replies",
   talk_reply: "replies",
   list_reply: "replies",
+  list_reply_reply: "replies",
 };
 
 /** رمزُ Expo كما تصدره `getExpoPushTokenAsync` — الشكلُ نفسُه في قيد الجدول (الهجرة ١٩٥) */

@@ -273,6 +273,8 @@ type SignalInput = {
   titleOwner?: string | null;
   listId?: string | null;
   dedupe?: string;
+  /** 🆕 T496 — صاحبُ التعليق الذي جرى فيه الردّ: وجهةُ الدفع صفحتُه لا صفحةُ المستلم (`ownerId` في `SignalRow`) */
+  reviewOwner?: string | null;
 };
 
 export function notifySignal(input: SignalInput) {
@@ -289,6 +291,18 @@ async function signalNow(input: SignalInput): Promise<void> {
     if (!person) return;
     let title = input.title ?? null;
     let listSlug: string | null = null;
+    let kind = input.kind;
+    /* 🆕 T496 — **تعليقٌ أم تقييمٌ وحده** يُقرأ من الصفّ نفسِه كما في `my_signals_v2`: الدفعُ والجرسُ جملةٌ واحدة (D-1183) */
+    if (kind === "like_review" && input.tmdbId && input.mediaType) {
+      const { data } = await db
+        .from("ratings")
+        .select("review, title")
+        .match({ user_id: input.to, tmdb_id: input.tmdbId, media_type: input.mediaType })
+        .maybeSingle();
+      const r = data as { review?: string | null; title?: string | null } | null;
+      if (!r?.review?.trim()) kind = "like_rating";
+      if (!title && r?.title) title = r.title;
+    }
     if (input.listId) {
       const { data } = await db.from("user_lists").select("name, source_slug, is_public").eq("id", input.listId).maybeSingle();
       const l = data as { name: string | null; source_slug: string | null; is_public: boolean | null } | null;
@@ -306,7 +320,7 @@ async function signalNow(input: SignalInput): Promise<void> {
       title = (data as { title?: string | null } | null)?.title ?? null;
     }
     const row: SignalRow = {
-      kind: input.kind,
+      kind,
       person,
       tmdbId: input.tmdbId ?? null,
       mediaType: input.mediaType ?? null,
@@ -315,10 +329,11 @@ async function signalNow(input: SignalInput): Promise<void> {
       isNew: true,
       listId: input.listId ?? null,
       listSlug,
+      ownerId: input.reviewOwner ?? null,
     };
     await deliver({
       to: input.to,
-      group: PUSH_GROUP_OF[input.kind],
+      group: PUSH_GROUP_OF[kind],
       dedupe: input.dedupe,
       actorId: input.actorId,
       build: (t, lang) => signalPush(row, t, curatedName(listSlug, title ?? "", lang), input.to),
@@ -601,7 +616,7 @@ export function notifyShareReply(input: { shareId: string; actorId: string; text
 }
 
 /**
- * ردٌّ على رأي ⇢ صاحبُ الرأي وصاحبُ الردّ الأب (الحالتان في `my_signals` بنوعٍ واحد) — كلٌّ مرّةً، ولا أحدَ لنفسه.
+ * ردٌّ على رأي ⇢ صاحبُ الرأي وصاحبُ الردّ الأب — كلٌّ مرّةً، ولا أحدَ لنفسه. 🆕 T496: نوعان لا نوعٌ واحد (`reply` · `reply_reply`).
  * `table`: جدولُ الردود الذي فيه الأب.
  */
 export function notifyReply(input: {
@@ -620,16 +635,22 @@ export function notifyReply(input: {
     const db = await createServiceClient();
     const to = new Set<string>();
     if (input.ownerId) to.add(input.ownerId);
+    let parent: string | undefined;
     if (input.parentId) {
       const { data } = await db.from(input.table).select("user_id").eq("id", input.parentId).maybeSingle();
-      const parent = (data as { user_id?: string } | null)?.user_id;
+      parent = (data as { user_id?: string } | null)?.user_id;
       if (parent) to.add(parent);
     }
     to.delete(input.actorId);
     for (const id of to) {
+      /* 🆕 T496 (أحمد «٢ أ») — **صاحبُ الردّ الأب يقرأ «ردّ على ردّك»** وصاحبُ التعليق «ردّ على تعليقك» — الشرطُ نفسُه في
+         `my_signals_v2` (أبو الردّ لي ⇐ `reply_reply`)، فالجرسُ والدفعُ لا يفترقان */
+      const kind: SignalKind =
+        id === parent && input.kind === "reply" ? "reply_reply" : id === parent && input.kind === "list_reply" ? "list_reply_reply" : input.kind;
       await signalNow({
         to: id,
-        kind: input.kind,
+        kind,
+        reviewOwner: input.ownerId ?? null,
         actorId: input.actorId,
         tmdbId: input.tmdbId,
         mediaType: input.mediaType,
