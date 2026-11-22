@@ -28,7 +28,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
     <div>
       <h1 className="sr-only">{t.activityTitle}</h1>
       {/* 🆕 T412 — سجلُّك أنت: قابلٌ للتحرير، و`?scope=watch` يفتح على «مشاهدة» (باب «سجلّ المشاهدة») */}
-      <ActivityScreen items={items} locale={locale} editable initialScope={sp.scope === "watch" ? "watch" : "all"} />
+      <ActivityScreen items={items} locale={locale} editable initialScope={sp.scope === "watch" ? "watch" : "all"} reviewOwner={user.id} />
     </div>
   );
 }

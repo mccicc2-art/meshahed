@@ -32,6 +32,7 @@ const PAGE_PAD = 16;
 export function ActivityList({
   rows,
   onTitle,
+  onReview,
   emptyText,
   initialScope = "all",
   onRemove,
@@ -39,6 +40,8 @@ export function ActivityList({
 }: {
   rows: ProfileActivity[];
   onTitle: (k: "tv" | "movie", id: number) => void;
+  /** 🆕 T525 — صفُّ «راجع» بنصّه يفتح المراجعةَ («٣أ»: سطران والضغطُ يفتحها)؛ غيابُه ⇒ صفحةُ العمل كما كانت */
+  onReview?: (k: "tv" | "movie", id: number) => void;
   emptyText: string;
   initialScope?: Scope;
   /** يرجع `true` إن حُذف — والفشلُ يقوله صاحبُ الشاشة بنخبه ويُبقي الورقةَ مفتوحة لمحاولةٍ ثانية */
@@ -105,6 +108,8 @@ export function ActivityList({
         listName: r.list_name,
         runtime: r.runtime ?? null,
         source: r.source ?? null,
+        review: r.review ?? null,
+        spoiler: r.spoiler ?? false,
       })),
     [rows],
   );
@@ -153,10 +158,12 @@ export function ActivityList({
             <View style={{ borderStartWidth: 1, borderStartColor: tokens.divider, marginStart: 6, paddingStart: 14 }}>
               {day.rows.map((r) => {
                 const ep = episodeOf(r, t);
+                /* 🆕 T525 — «راجع» يقول ما كُتب تحته، والضغطُ يفتح المراجعة نفسَها */
+                const written = r.kind === "review" && (r.review || r.spoiler) ? true : false;
                 return (
                   <Pressable
                     key={r.id}
-                    onPress={() => onTitle(r.mediaType, r.tmdbId)}
+                    onPress={() => (written && onReview ? onReview(r.mediaType, r.tmdbId) : onTitle(r.mediaType, r.tmdbId))}
                     onLongPress={onRemove && r.kind === "watch" ? () => (haptic.pick(), setMenu(r)) : undefined}
                     accessibilityRole="link"
                     style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: pressed ? 0.7 : 1 }]}>
@@ -182,6 +189,12 @@ export function ActivityList({
                         <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{clock(r.at, locale, true)}</Text>
                         {r.source ? <StatusPill label={sourceLabel(r.source, t)} color={r.source === "auto" ? tokens.accent : tokens.muted} /> : null}
                       </View>
+                      {/* 🆕 T525 — نصُّ المراجعة سطرين (أحمد: «الريفيو … مو ظاهر وش التعليق»)؛ اتّجاهُه من نصّه، والحرقُ يُقال ولا يُعرض */}
+                      {r.kind === "review" && r.spoiler ? (
+                        <Text size={12} muted style={{ marginTop: 4 }}>{t.spoilerMark}</Text>
+                      ) : r.kind === "review" && r.review ? (
+                        <Text autoDir size={13} muted numberOfLines={2} style={{ marginTop: 4, lineHeight: 19 }}>{r.review}</Text>
+                      ) : null}
                     </View>
                   </Pressable>
                 );

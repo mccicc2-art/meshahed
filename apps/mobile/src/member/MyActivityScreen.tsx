@@ -29,7 +29,7 @@ const PAGE_PAD = 16;
 export const myActivityKey = ["me:activity"] as const;
 
 export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; scope?: Scope }) {
-  const { t, tokens } = useApp();
+  const { t, tokens, me } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const q = useQuery({
@@ -101,6 +101,14 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
     (kind: "tv" | "movie", id: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from } }),
     [router, from],
   );
+  /* 🆕 T525 — «راجع» يفتح مراجعتَك نفسَها («٣أ») */
+  const openReview = useCallback(
+    (kind: "tv" | "movie", id: number) => {
+      if (!me) return;
+      router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind, id: String(id), user: me.id, from } });
+    },
+    [router, from, me],
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -130,7 +138,7 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
         )
       ) : (
         <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-          <ActivityList rows={q.data.items} onTitle={openTitle} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} onMoveDay={moveDay} />
+          <ActivityList rows={q.data.items} onTitle={openTitle} onReview={me ? openReview : undefined} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} onMoveDay={moveDay} />
         </ScrollView>
       )}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24} />

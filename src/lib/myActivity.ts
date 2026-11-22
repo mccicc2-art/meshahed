@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserId } from "@/lib/data";
 import { asSource, type WatchSource } from "@/lib/watchSource";
+import { reviewExcerpt } from "@/core/profileReviews";
 
 /**
  * **نشاطُك أنت — أربعةُ مصادرَ في خيطٍ واحد** (D-537، تصميمُ أحمد).
@@ -46,6 +47,9 @@ export interface ActivityRow {
   runtime?: number | null;
   /** 🆕 D-1505 — من سجّل (`watchSource`) — `null` بيده أو قبل العمود */
   source?: WatchSource | null;
+  /** 🆕 T525 — مقتطفُ المراجعة (`reviewExcerpt`) وعلامةُ الحرق — لصفِّ «راجع» وحدَه */
+  review?: string | null;
+  spoiler?: boolean;
 }
 
 interface EpRow {
@@ -67,6 +71,7 @@ interface RateRow {
   media_type: string;
   rating: number | null;
   review: string | null;
+  has_spoiler?: boolean | null;
   title: string | null;
   poster_path: string | null;
   created_at: string;
@@ -118,7 +123,7 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
       watchRows("watched_movies", "movie_tmdb_id, watched_at, runtime"),
       supabase
         .from("ratings")
-        .select("tmdb_id, media_type, rating, review, title, poster_path, created_at, updated_at")
+        .select("tmdb_id, media_type, rating, review, has_spoiler, title, poster_path, created_at, updated_at")
         .eq("user_id", uid)
         .order("updated_at", { ascending: false })
         .limit(perSource),
@@ -180,6 +185,8 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
         title: r.title,
         posterPath: r.poster_path,
         rating: r.rating,
+        /* 🆕 T525 — نصُّ «راجَع» يُرى تحت صفِّه («٣أ»)؛ مقتطفٌ لا النصُّ كلُّه، والضغطُ يفتح المراجعة */
+        ...(hasReview ? { review: reviewExcerpt(r.review), spoiler: !!r.has_spoiler } : {}),
       });
     }
 

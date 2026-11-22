@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { num } from "@/core/i18n";
 import { countNoun } from "@/core/countNoun";
 import { loadProfile } from "@/lib/profileCore";
 import { canMessage } from "@/lib/actions";
@@ -46,7 +47,8 @@ import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { ProfileUnblockButton } from "@/components/ProfileUnblockButton";
 import { capCards } from "@/core/cardCount";
-import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
+import { chipClass, chipRow, coverBareControl, HEADER_ICON } from "@/components/ui/controls";
+import { reviewsView, splitReviews } from "@/core/profileReviews";
 import { browseGenreName, groupByGenre } from "@/core/browse";
 import { densityVars } from "@/core/density";
 
@@ -85,7 +87,7 @@ export default async function PublicProfilePage({
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; view?: string }>;
 }) {
   /* 🆕 **البروفايلُ مفتوحٌ للزائر** (D-627): البوّابةُ سقطت — `me` يبقى
      قابلاً للفراغ، وكلُّ القراءات الشخصيّة (علاقةُ المتابعة، إعجاباتي،
@@ -97,7 +99,7 @@ export default async function PublicProfilePage({
   /* **التبويبُ في الرابط لا في حالةِ عميل** (D-438، نمطُ `/news`): الصفحةُ
      خادميّةٌ كلُّها، **وتبويبٌ يُفتح برابطٍ يُشارَك ويُفهرَس ويعود إليه
      زرُّ الرجوع** — وحالةُ عميلٍ لا تفعل واحدةً منها. */
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, view: rawView } = await searchParams;
 
   /* 🆕 Phase 11-N · N0 — القراءةُ والاشتقاقُ في `lib/profileCore.ts` (نفسُها التي يصوغ منها `/api/v1/profile` حمولةَ التطبيق) */
   const core = await loadProfile(decodeURIComponent(username), locale);
@@ -575,6 +577,11 @@ export default async function PublicProfilePage({
   const tab: ProfileTab | null =
     wantedTab && !tabHidden(wantedTab) ? wantedTab : firstVisible;
   const base = `/u/${encodeURIComponent(profile.username ?? username)}`;
+  /* 🆕 T525 — «المراجعات» تفتح على المكتوبة، والنجومُ وحدَها بضغطةٍ (`?view=ratings`)؛ ومن لا مكتوبةَ له يُفتح على النجوم
+     («٢أ»). والرقمُ على التبويب عددُ المكتوبة («١أ») — **العدّادُ يعدّ ما يفتح عليه التبويب** (D-374) */
+  const reviewSplit = splitReviews(reviewsNewest);
+  const reviewView = reviewsView(rawView, reviewSplit.written.length);
+  const reviewRows = reviewView === "written" ? reviewSplit.written : reviewSplit.ratings;
   const tabItemsAll: PageTab[] = [
     /* **وعنوانُه ثابتٌ لكلِّ حساب** (D-658) — ⚖️ 🆕 **ويُطفأ كغيره
        منذ D-667**، **والصفحةُ تفتح على أوّلِ ظاهرٍ لا على اسمٍ بعينه.** */
@@ -607,7 +614,7 @@ export default async function PublicProfilePage({
       key: "reviews",
       label: t.communityTabReviews,
       icon: "comment",
-      count: reviewsNewest.length,
+      count: reviewSplit.written.length,
       href: `${base}?tab=reviews`,
     },
     {
@@ -1567,6 +1574,7 @@ export default async function PublicProfilePage({
             locale={locale}
             crumb={false}
             initial={20}
+            reviewOwner={profile.id}
           />
         ))}
 
@@ -1581,14 +1589,38 @@ export default async function PublicProfilePage({
           ⚠️ **وما غاب غاب بحجّته**: لا نقاطَ قائمةٍ (بابُ المتابعة
           والحظر في رأس الصفحة نفسِها — بابان لفعلٍ واحدٍ زيادة) **ولا
           عدّادَ مشاهدات** (العدُّ عقدُ الخطِّ وحدَه — D-237). */}
+      {/* 🆕 T525 — رقاقتان من عائلة رقاقات «النشاط» (`chipClass`): المكتوبةُ والنجومُ وحدَها — روابطُ لا حالةُ عميل
+          (الصفحةُ خادميّة، D-438)، و`replace` فلا تملأ زرَّ الرجوع بتبديلٍ واحد. تغيبان معاً إن لم يكن شيءٌ يُعرض */}
+      {canView && tab === "reviews" && reviewsNewest.length > 0 && (
+        <div className={`${chipRow} mb-4`}>
+          <div className="flex items-center gap-2">
+            {(["written", "ratings"] as const).map((v) => (
+              <Link
+                key={v}
+                href={`${base}?tab=reviews&view=${v}`}
+                replace
+                scroll={false}
+                prefetch={false}
+                aria-current={reviewView === v ? "page" : undefined}
+                className={chipClass(reviewView === v)}
+              >
+                {v === "written" ? t.tabReviews : t.reviewsRatingsOnly}{" "}
+                <span className="tabular-nums opacity-80">
+                  {num((v === "written" ? reviewSplit.written : reviewSplit.ratings).length, locale)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       {canView && tab === "reviews" && (
         <div className="divide-y divide-border/60">
-          {reviewsNewest.length === 0 ? (
+          {reviewRows.length === 0 ? (
             <p className="text-center text-muted py-16 text-sm">
               {t.profileEmptyReviews}
             </p>
           ) : (
-            reviewsNewest.map((r) => {
+            reviewRows.map((r) => {
               const titleHref = `/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`;
               const reviewHref = `/review/${r.media_type}/${r.tmdb_id}/${profile.id}`;
               const social = reviewLikes.get(`${r.media_type}-${r.tmdb_id}`);

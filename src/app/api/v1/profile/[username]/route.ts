@@ -198,6 +198,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
               episode: a.episode ?? null,
               rating: a.rating ?? null,
               list_name: a.listName ?? null,
+              /* 🆕 T525 — مقتطفُ «راجع» وعلامةُ حرقه */
+              review: a.review ?? null,
+              spoiler: a.spoiler ?? false,
             })),
         reviews: locked ? [] : c.reviewsNewest.map(review),
         lists: locked ? { public: [], saved: [] } : { public: c.listsOrdered.map(listOut), saved: c.savedLists.map(listOut) },

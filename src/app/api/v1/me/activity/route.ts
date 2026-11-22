@@ -32,6 +32,9 @@ export async function GET() {
         list_name: it.listName ?? null,
         runtime: it.runtime ?? null,
         source: it.source ?? null,
+        /* 🆕 T525 — مقتطفُ «راجع» وعلامةُ حرقه (تطبيقٌ أقدم يتجاهلهما) */
+        review: it.review ?? null,
+        spoiler: it.spoiler ?? false,
       })),
     });
   });

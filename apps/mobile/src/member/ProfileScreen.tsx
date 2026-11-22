@@ -29,6 +29,8 @@ import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { openProfile } from "./open";
 import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
+import { Chip } from "../library/Chip";
+import { reviewsView, splitReviews, type ReviewsView } from "@/core/profileReviews";
 import { displayNameOf } from "@/core/people";
 import { COVER_RATIO } from "@/core/coverRatio";
 import { num } from "@/core/i18n";
@@ -360,6 +362,14 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     },
     [d, router, fromOut],
   );
+  /* 🆕 T525 — صفُّ «راجع» في النشاط يفتح المراجعةَ للقراءة («٣أ») — بلا `compose`: الضغطُ على نصٍّ قراءةٌ لا ردّ */
+  const openWrittenReview = useCallback(
+    (kind: "tv" | "movie", id: number) => {
+      if (!d) return;
+      router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind, id: String(id), user: d.person.id, from: fromOut } });
+    },
+    [d, router, fromOut],
+  );
 
   /* 🆕 N2-fix — قبولُ طلب متابعته أو رفضُه (الفعلُ نفسُه الذي في صفّ الإشعار) */
   const request = useMutation({
@@ -679,11 +689,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     return {
       favorites: <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
       overview: <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
-      activity: <ActivityList rows={d.activity} onTitle={openTitle} emptyText={t.profileEmptyActivity} />,
+      activity: <ActivityList rows={d.activity} onTitle={openTitle} onReview={openWrittenReview} emptyText={t.profileEmptyActivity} />,
       reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />,
       lists: <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={o ? { on: o.saved_lists, onToggle: setSaved } : undefined} />,
     } satisfies Record<ProfileTabKey, React.ReactNode>;
-  }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, setSaved, t.profileEmptyActivity]);
+  }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, openWrittenReview, setSaved, t.profileEmptyActivity]);
   /* دوالُّ كلِّ لوحٍ تُصنع مرّةً لعمر الشاشة — `panes`/`syncPane`/`onPaneScroll` ثابتةٌ أصلاً */
   const paneFns = useRef(new Map<ProfileTabKey, { register: (ref: ScrollViewInstance | null) => void; onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void; keep: Animated.AnimatedInterpolation<number> }>()).current;
   const fnsOf = (k: ProfileTabKey) => {
@@ -977,7 +987,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8 }} style={{ borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 14 }}>
                 {shown.map((k) => {
                   const on = k === (aim ?? active);
-                  const count = k === "activity" ? d.activity.length : k === "reviews" ? d.reviews.length : k === "lists" ? d.lists.public.length + d.lists.saved.length : null;
+                  const count = k === "activity" ? d.activity.length : k === "reviews" ? splitReviews(d.reviews).written.length : k === "lists" ? d.lists.public.length + d.lists.saved.length : null;
                   return (
                     <Pressable
                       key={k}
@@ -1502,10 +1512,28 @@ function ReviewsPane({
   const [shown, setShown] = useState<ReadonlySet<string>>(() => new Set());
   /* 🆕 T383 — مراجعاتُ الشخصيّة التي قُلبت إلى نصّها الآخر (مفتاحُ الصفّ نفسُه) */
   const [flipped, setFlipped] = useState<ReadonlySet<string>>(() => new Set());
+  /* 🆕 T525 — المكتوبةُ أوّلاً والنجومُ وحدَها برقاقة («يقدر الشخص يضغط يظهر التقييمات فقط»)؛ ومن لا مكتوبةَ له يُفتح على
+     النجوم («٢أ»). القسمةُ والقاعدةُ في `core/profileReviews` — قاعدةُ الويب نفسُها */
+  const split = useMemo(() => splitReviews(rows), [rows]);
+  const [asked, setAsked] = useState<ReviewsView | null>(null);
+  const view = reviewsView(asked, split.written.length);
+  const list = view === "written" ? split.written : split.ratings;
   if (!rows.length) return <Empty text={t.profileEmptyReviews} />;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 6 }}>
-      {rows.map((r, i) => {
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 14 }}>
+      {/* رقاقتا «النشاط» نفسُهما (`Chip`) — لا عائلةَ ثالثة */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginBottom: 4 }}>
+        {(["written", "ratings"] as const).map((v) => (
+          <Chip
+            key={v}
+            label={`${v === "written" ? t.tabReviews : t.reviewsRatingsOnly} ${num((v === "written" ? split.written : split.ratings).length, locale)}`}
+            active={view === v}
+            onPress={() => (v === view ? undefined : (haptic.pick(), setAsked(v)))}
+          />
+        ))}
+      </ScrollView>
+      {list.length === 0 ? <Empty text={t.profileEmptyReviews} /> : null}
+      {list.map((r, i) => {
         const k = `${r.media_type}-${r.tmdb_id}`;
         const hidden = r.has_spoiler && !shown.has(k);
         return (

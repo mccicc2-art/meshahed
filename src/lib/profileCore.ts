@@ -37,6 +37,7 @@ import { localizeRows } from "@/lib/localize";
 import { sanitizeSocials, socialUrl } from "@/core/socials";
 import type { ActivityItem } from "@/components/ActivityScreen";
 import { getProfileActivity } from "@/lib/myActivity";
+import { reviewExcerpt } from "@/core/profileReviews";
 import { posterUrl } from "@/core/media";
 import { getLibState } from "@/lib/libState";
 import { profileNextEpisodes } from "@/lib/profileNext";
@@ -234,8 +235,17 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     if (!actMeta.has(key) && r.title)
       actMeta.set(key, { title: r.title, poster: r.poster_path });
   }
+  /* 🆕 T525 — نصُّ «راجَع» تحت صفِّه («٣أ»): من صفوف `ratings` المقروءة أعلاه بحارسها (`user_ratings`) — **لا نداءَ ولا هجرة**:
+     صفُّ النشاط نفسُه لا يحمل إلّا «فيه مراجعة»، والنصُّ هو ما يعرضه تبويبُ «المراجعات» لهذا القارئ أصلاً. والمخفيُّ لا صفَّ
+     نشاطٍ له (`profile_activity` تُسقطه) فلا يُلصق نصُّه بشيء. */
+  const reviewOf = new Map<string, { review: string | null; spoiler: boolean }>();
+  for (const r of ratings) {
+    if (r.review?.trim())
+      reviewOf.set(`${r.media_type}-${r.tmdb_id}`, { review: reviewExcerpt(r.review), spoiler: !!r.has_spoiler });
+  }
   const activityItems: ActivityItem[] = activityRows.map((r, i) => {
     const info = actMeta.get(`${r.mediaType}-${r.tmdbId}`);
+    const written = r.kind === "review" ? reviewOf.get(`${r.mediaType}-${r.tmdbId}`) : undefined;
     return {
       id: `${r.kind}-${r.mediaType}-${r.tmdbId}-${r.at}-${i}`,
       kind: r.kind,
@@ -248,6 +258,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
       episode: r.episode ?? null,
       rating: r.rating ?? null,
       listName: r.listName ?? null,
+      ...(written ? { review: written.review, spoiler: written.spoiler } : {}),
     };
   });
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`

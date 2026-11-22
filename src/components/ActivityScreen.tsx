@@ -56,6 +56,7 @@ export function ActivityScreen({
   initial,
   editable = false,
   initialScope = "all",
+  reviewOwner,
 }: {
   items: ActivityItem[];
   locale: Locale;
@@ -82,6 +83,8 @@ export function ActivityScreen({
   editable?: boolean;
   /** 🆕 T412 — «سجلّ المشاهدة» في الشريط الجانبيّ يفتح على رقاقة «مشاهدة» (`?scope=watch`) كبابه في التطبيق (D-1504) */
   initialScope?: Scope;
+  /** 🆕 T525 — صاحبُ السجلّ: صفُّ «راجع» يفتح مراجعتَه (`/review/…/<id>`) لا صفحةَ العمل («٣أ»). غيابُه ⇒ صفحةُ العمل كما كانت */
+  reviewOwner?: string;
 }) {
   const t = getDict(locale);
   const [scope, setScope] = useState<Scope>(initialScope);
@@ -196,7 +199,7 @@ export function ActivityScreen({
                       aria-hidden
                       className="absolute -start-[21px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border border-[color:var(--divider)] bg-[color:var(--background)]"
                     />
-                    <Row item={r} locale={locale} local={local} manual={w.manual} />
+                    <Row item={r} locale={locale} local={local} manual={w.manual} reviewOwner={reviewOwner} />
                     {editable && r.kind === "watch" && <HistoryRowMenu item={r} locale={locale} local={local} todayKey={todayKey} />}
                   </li>
                 ))}
@@ -246,14 +249,20 @@ function Row({
   locale,
   local,
   manual,
+  reviewOwner,
 }: {
   item: ActivityItem;
   locale: Locale;
   local: boolean;
   manual: string;
+  reviewOwner?: string;
 }) {
   const t = getDict(locale);
-  const href = `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`;
+  /* 🆕 T525 — «راجع» بنصّه يفتح المراجعةَ نفسَها («٣أ»): الصفُّ صار يقول ما كُتب، فوجهتُه ما كُتب */
+  const written = item.kind === "review" && (item.review || item.spoiler) && reviewOwner;
+  const href = written
+    ? `/review/${item.mediaType}/${item.tmdbId}/${reviewOwner}`
+    : `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`;
   const verb = verbOf(item, t);
   /* **مدى الحلقات يسكن `listName` بعد الدمج** — وإلّا فحلقةٌ واحدة (`core/activityDays`) */
   const ep = episodeOf(item, t);
@@ -304,6 +313,17 @@ function Row({
             </span>
           )}
         </span>
+
+        {/* 🆕 T525 — نصُّ المراجعة تحت صفِّ «راجع» (أحمد: «الريفيو … مو ظاهر وش التعليق» · «٣أ»): سطران، واتّجاهُه من نصّه
+            (`dir="auto"`) فالعربيُّ في واجهةٍ إنجليزيّة يُقرأ من يمينه؛ والحرقُ يُقال ولا يُعرض */}
+        {item.kind === "review" &&
+          (item.spoiler ? (
+            <span className="mt-1 block text-12 text-muted">{t.spoilerMark}</span>
+          ) : item.review ? (
+            <span dir="auto" className="mt-1 block text-13 leading-snug text-muted line-clamp-2 [overflow-wrap:anywhere]">
+              {item.review}
+            </span>
+          ) : null)}
       </span>
     </Link>
   );

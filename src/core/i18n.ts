@@ -2629,6 +2629,8 @@ const ar = {
   activityTabWatched: "مشاهدة",
   activityTabRatings: "تقييمات",
   activityTabReviews: "آراء",
+  /* 🆕 T525 — رقاقةُ تبويب «المراجعات» في ملفّ الشخص: النجومُ بلا نصّ («يقدر الشخص يضغط يظهر التقييمات فقط») */
+  reviewsRatingsOnly: "تقييمات فقط",
   activityThisWeek: "هذا الأسبوع",
   activityCount: (n: number) =>
     n === 1
@@ -5622,6 +5624,7 @@ const en: Dict = {
   activityTabWatched: "Watched",
   activityTabRatings: "Ratings",
   activityTabReviews: "Reviews",
+  reviewsRatingsOnly: "Ratings only",
   activityThisWeek: "This week",
   activityCount: (n: number) =>
     `${num(n, "en")} ${n === 1 ? "activity" : "activities"}`,

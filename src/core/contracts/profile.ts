@@ -80,6 +80,10 @@ export type ProfileActivity = {
   runtime?: number | null;
   /** 🆕 D-1505 — من سجّل المشاهدة (`lib/watchSource`) — `null` بيده؛ سجلُّك وحدَه يرسله */
   source?: import("../activityDays").WatchSource | null;
+  /** 🆕 T525 — مقتطفُ المراجعة لصفِّ «راجع» (سطران في العارض)؛ تطبيقٌ أقدم يتجاهله */
+  review?: string | null;
+  /** 🆕 T525 — فيها حرق: «فيها حرق» مكانَ النصّ */
+  spoiler?: boolean;
 };
 
 /** 🆕 D-1213 — `GET /api/v1/me/activity`: سجلُّك أنت كاملاً (شاشةُ `/activity`) بصفِّ ملفِّ الشخص نفسِه — مكوّنٌ واحدٌ يرسمهما */

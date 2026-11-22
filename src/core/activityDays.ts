@@ -31,6 +31,10 @@ export interface ActivityItem {
   eps?: { s: number; e: number }[];
   /** 🆕 D-1505 — من سجّل المشاهدة: `stremio` · `widget` · `import` · `auto` — `null` بيده (شارةُ السجلّ) */
   source?: WatchSource | null;
+  /** 🆕 T525 — مقتطفُ المراجعة لصفِّ «راجع» (`reviewExcerpt`، «٣أ»: سطران والضغطُ يفتحها) — يغيب عن غيره وعن خادمٍ أقدم */
+  review?: string | null;
+  /** 🆕 T525 — المراجعةُ فيها حرق: يُرسم «فيها حرق» لا النصّ */
+  spoiler?: boolean;
 }
 
 export type Scope = "all" | "watch" | "rate" | "review" | "list";
