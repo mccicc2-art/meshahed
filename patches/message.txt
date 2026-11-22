@@ -1,0 +1,7 @@
+[deploy] Release R279 - T504 mention anyone in discussions, T506 Loopz account avatar on a black disc
+
+- T504: mention anyone in discussions - suggestions beyond the page, and every real @name is a link (app + web)
+- T506: Loopz account avatar - the mark on a black disc everywhere; every app avatar goes through avatarSource (Ahmed: 1A 2A, execute and push)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7CYN4nXcwnQXZpMEPb
