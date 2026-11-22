@@ -73,6 +73,7 @@ import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
 import { OneTimeHint } from "@/components/OneTimeHint";
+import { CinemaSection } from "@/components/CinemaSection";
 import { sanitizeUiState } from "@/lib/uiState";
 import { PRIVACY_HINT } from "@/core/privacyNotice";
 /* 🆕 D-1066: نواةُ الرئيسية — الحسابُ هناك، الرسمُ هنا */
@@ -996,6 +997,13 @@ async function HomeBody({
                 ))}
               </PosterRail>
             ) : null,
+          /* 🆕 T512 — **«في السينما» بحالتيه** (الآن · قريباً) من قراءة الصالات الأسبوعيّة: افتراضيُّ المشترك بعد «لمشاهدتها»،
+             وغيرُ المشترك يضيفه من التخصيص إن شاء (قرارُ أحمد ٢٢ نوفمبر). **خلف حاجزه**: جدولٌ ونداءُ TMDB لا ينتظرهما قسمٌ آخر */
+          cinema: prefs.order.includes("cinema") ? (
+            <Suspense key="cinema" fallback={<RailSkeleton count={6} />}>
+              <CinemaSection place="home" locale={locale} t={t} />
+            </Suspense>
+          ) : null,
           trending: prefs.order.includes("trending") ? (
             /* ⚖️ **«الرائج» يبثّ وحده** (جولة ٢٠ أغسطس): نداءُ TMDB
                  الوحيد الذي لا يخصّ مكتبتك — كان أبطأَ عضوٍ في الموجة

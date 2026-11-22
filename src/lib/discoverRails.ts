@@ -153,7 +153,8 @@ export async function curatedRail(
         nowPlayingMovies().catch(() => null),
       ]).catch(() => [[] as SearchResult[], null] as const);
       if (!results.length || !c) return none;
-      return { items: await attachImdbRatings(results), region: c.region };
+      /* T512 — القائمةُ قائمةُ صالات السعوديّة أيّاً كانت منطقةُ القارئ: الإصداراتُ القديمة من التطبيق تكتب «في السعودية» */
+      return { items: await attachImdbRatings(results), region: "SA" };
     }
     case "popular":
       return {

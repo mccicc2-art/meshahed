@@ -295,6 +295,7 @@ export function DropdownRow({
   tone,
   state = false,
   dim = false,
+  trail,
   onClick,
 }: {
   icon: IconName;
@@ -308,6 +309,8 @@ export function DropdownRow({
   state?: boolean;
   /** D-1328 — فعلٌ مطفأٌ يُضغط ليقول سببَه (لا `disabled` — ذاك يبتلع الضغطة) */
   dim?: boolean;
+  /** 🆕 T512 — ذيلُ الصفّ في طرفه: عددٌ باهتٌ وصحُّ المختار («الآن في السينما ٢٤ ✓») */
+  trail?: React.ReactNode;
   onClick?: () => void;
 }) {
   const color =
@@ -338,7 +341,8 @@ export function DropdownRow({
       className={dim ? `${dropdownItem} opacity-50` : dropdownItem}
     >
       <Icon name={icon} size={18} className={`${color} shrink-0`} />
-      <span className={active ? "text-accent" : undefined}>{label}</span>
+      <span className={`${active ? "text-accent" : ""}${trail ? " flex-1 text-start" : ""}` || undefined}>{label}</span>
+      {trail}
     </button>
   );
 }

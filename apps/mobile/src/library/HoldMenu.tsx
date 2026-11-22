@@ -181,6 +181,8 @@ export type DropRow = {
   selected?: boolean;
   /** الكلمةُ بلون الرمز (حذفُ تقييمي · حظرٌ — كما كانا في الورقة)؛ صفوفُ الضغط المطوَّل كلمتُها بيضاء */
   tint?: boolean;
+  /** 🆕 T512 — عددٌ باهتٌ في آخر الصفّ («الآن في السينما ٢٤» · «قريباً ١٨») */
+  trail?: string;
 };
 
 /** يقيس زرَّ ⋯ لحظةَ الضغط — المرساةُ مكانُه على الشاشة لا رقمٌ مكتوب */
@@ -270,7 +272,8 @@ export function DropMenu({ anchor, rows, onClose }: { anchor: Anchor; rows: Drop
                 })}
               >
                 {r.icon ? <Icon name={r.icon} size={18} color={color} /> : <View style={{ width: 18 }} />}
-                <Text size={14} numberOfLines={2} color={r.state || r.tint ? color : undefined} style={{ flexShrink: 1 }}>{r.label}</Text>
+                <Text size={14} numberOfLines={2} color={r.state || r.tint ? color : undefined} style={{ flexShrink: 1, flexGrow: r.trail ? 1 : 0 }}>{r.label}</Text>
+                {r.trail ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{r.trail}</Text> : null}
               </Pressable>
             </React.Fragment>
           );

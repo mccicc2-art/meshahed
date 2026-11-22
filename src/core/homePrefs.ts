@@ -10,6 +10,9 @@ export const HOME_SECTIONS = [
   "continue",
   "week",
   "towatch",
+  /* 🆕 T512 — «الآن في السينما» بقائمته «قريباً»: بعد «للمشاهدة» وقبل «أعمالُ أصدقائك» في ترتيب المشترك (أحمد ٢٢ نوفمبر «١ أ»)،
+     ومخفيٌّ لغير المشترك («غير المشترك لا يحتاج يضيفه») — بابُه له في «اكتشف ← أفلام» */
+  "cinema",
   /* 🆕 D-1487 — **ترتيبُ السجلّ هو ترتيبُ المخفيّ في «رتّب الأقسام»**: «أعمالُ أصدقائك» أوّلُ المخفيّ لغير المشترك،
      والرائجُ آخرُه للمشترك (جدولُ أحمد ٢٠ أكتوبر) — فنُقل «friends» من آخر السجلّ إلى هنا. */
   "friends",
@@ -37,6 +40,7 @@ export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; 
     continue: { icon: "play", label: t.continueWatching },
     week: { icon: "calendar", label: t.custWeekStrip },
     towatch: { icon: "bookmark", label: t.libToWatch },
+    cinema: { icon: "popcorn", label: t.cinemaNow },
     upcoming: { icon: "hourglass", label: t.libUpcoming },
     recap: { icon: "book", label: t.recapTitle },
     shows: { icon: "tv", label: t.myShows },
@@ -284,6 +288,12 @@ export interface HomePrefs {
    * **والافتراضُ `true`** (D-028: الغيابُ هو السلوكُ القائم) — **بلا هجرة**: داخل `home_prefs` القائم.
    */
   viewSwitch: boolean;
+  /**
+   * 🆕 T512 — **عرف صاحبُ الترتيب قسمَ السينما**: من رتّب أقسامَه قبل وصول القسم يُضاف له بعد «للمشاهدة» (أحمد «١ أ») —
+   * **مرّةً واحدة**: أوّلُ حفظٍ من «التخصيص» يرفع هذه الراية، فمن أخفاه بعدها يبقى مخفيّاً ولا يعود بالقراءة التالية.
+   * الافتراضُ `false` — **بلا هجرة**: داخل `home_prefs` القائم.
+   */
+  cinemaSeen: boolean;
 }
 
 export const HOME_CUSTOM_FIELDS = ["order", "statsPick"] as const satisfies readonly (keyof HomePrefs)[];
@@ -317,7 +327,8 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
      🔑 **وهو لا يظهر لك أنت**: `showTrending` مشروطٌ بأن تكون «تابِع
      المشاهدة» فارغة — **فيملأ الفراغَ لمن لا شيءَ عنده ويختفي وحدَه
      عند أوّل حلقة**، ولا يزحم رئيسيّتك بسطرٍ واحد. */
-  order: ["week", "continue", "towatch", "trending"],
+  /* 🆕 T512 — «أصدقاؤك» قبل «الرائج» لغير المشترك (أحمد ٢٢ نوفمبر: «خل غير المشترك … اصدقائك» ثمّ «بعد اصدقاءك الرائج») */
+  order: ["week", "continue", "towatch", "friends", "trending"],
   /* D-1487 — «مسلسلات · أفلام» لغير المشترك (كان «للمشاهدة · القادم») */
   statsPick: ["shows", "movies"],
   cards: "full",
@@ -330,6 +341,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   towatchListOrder: [],
   custom: [],
   viewSwitch: true,
+  cinemaSeen: false,
 };
 
 /**
@@ -344,10 +356,16 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
  * ⚖️ **والاستبدالُ حين تُمرَّر الخطّةُ وحدَها** (`sanitizeHomePrefs(raw, plus)`): الخادمُ يمرّرها عند القراءة،
  * والعميلُ يُنقّي ما وصله بلا خطّة **فلا يُعيد ترتيبَ المشترك افتراضيَّ غيرِ المشترك**.
  */
-export const PLUS_HOME_ORDER: HomeSection[] = ["week", "continue", "towatch", "friends"];
+export const PLUS_HOME_ORDER: HomeSection[] = ["week", "continue", "towatch", "cinema", "friends"];
 /* D-1491 — «أكملتها» خرجت من افتراضيّ المشترك (أحمد ٢٠ أكتوبر: «اكملتها خليه مخفي»): ثلاثُ خانات */
 export const PLUS_STATS_PICK: HeaderStatKey[] = ["shows", "movies", "time"];
-const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [DEFAULT_HOME_PREFS.order, PLUS_HOME_ORDER];
+const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [
+  DEFAULT_HOME_PREFS.order,
+  PLUS_HOME_ORDER,
+  /* افتراضيّا ما قبل T512 — من لم يرتّب ينتقل إلى الجديد (السينما للمشترك · الأصدقاء لغير المشترك) */
+  ["week", "continue", "towatch", "trending"],
+  ["week", "continue", "towatch", "friends"],
+];
 const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
   DEFAULT_HOME_PREFS.statsPick,
   PLUS_STATS_PICK,
@@ -372,7 +390,9 @@ export function homeOrderUntouched(raw: unknown): boolean {
  */
 export function markHomeCustom(prefs: HomePrefs, plus: boolean): HomePrefs {
   const plan = defaultHomePrefs(plus);
-  return { ...prefs, custom: HOME_CUSTOM_FIELDS.filter((f) => !sameList(prefs[f], plan[f])) };
+  /* T512 — حفظُ المشترك يُعلن أنّه رأى قسمَ السينما في ترتيبه: إخفاؤه بعدها اختيارٌ لا يُنقض. **وحفظُ غير المشترك لا يُعلنه**
+     — السينما ليست في رئيسيّته، فإن اشترك يومَها أُدرجت له مرّةً كما تُدرج لكلِّ مشترك */
+  return { ...prefs, cinemaSeen: prefs.cinemaSeen || plus, custom: HOME_CUSTOM_FIELDS.filter((f) => !sameList(prefs[f], plan[f])) };
 }
 
 /** افتراضيُّ خطّةٍ بعينها — زرُّ «رجّع الافتراضي» في شاشتي التخصيص */
@@ -397,11 +417,19 @@ export function sanitizeHomePrefs(raw: unknown, plus?: boolean): HomePrefs {
   /* D-1489 — المعلَّمُ «رتّبه بيده» يُحترم كما هو ولو ساوى افتراضيّاً؛ وقاعدةُ القيمة للصفّ بلا علامة */
   const untouched = (f: HomeCustomField, known: readonly (readonly string[])[]) =>
     !clean.custom.includes(f) && known.some((k) => sameList(k, clean[f]));
+  const order = untouched("order", KNOWN_HOME_ORDERS) ? plan.order : clean.order;
   return {
     ...clean,
-    order: untouched("order", KNOWN_HOME_ORDERS) ? plan.order : clean.order,
+    order: plus && !clean.cinemaSeen ? withCinema(order) : order,
     statsPick: untouched("statsPick", KNOWN_STATS_PICKS) ? plan.statsPick : clean.statsPick,
   };
+}
+
+/** T512 — ترتيبٌ رتّبه صاحبُه قبل القسم: السينما بعد «للمشاهدة» (أو آخرَ الظاهر إن أخفى «للمشاهدة») */
+function withCinema(order: HomeSection[]): HomeSection[] {
+  if (order.includes("cinema")) return order;
+  const at = order.indexOf("towatch");
+  return at < 0 ? [...order, "cinema"] : [...order.slice(0, at + 1), "cinema", ...order.slice(at + 1)];
 }
 
 function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
@@ -473,6 +501,7 @@ function sanitizeStoredHomePrefs(raw: unknown): HomePrefs {
       ? HOME_CUSTOM_FIELDS.filter((f) => (o.custom as unknown[]).includes(f))
       : [],
     viewSwitch: bool("viewSwitch") as boolean,
+    cinemaSeen: bool("cinemaSeen") as boolean,
   };
 }
 

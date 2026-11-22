@@ -57,6 +57,10 @@ const ICONS = {
   /* 🆕 249 — المحفوظةُ: الإشارةُ نفسُها ممتلئةً (كـ`heart-filled`) — حفظُ القائمة صار رمزَه بعد أن صار القلبُ إعجاباً */
   "bookmark-filled": require("../assets/icons/bookmark-filled.png"),
   "chevron-down": require("../assets/icons/chevron-down.png"),
+  /* 🆕 T512 — قسمُ السينما: مسارُ `popcorn` في `Icon.tsx` نفسُه */
+  popcorn: require("../assets/icons/popcorn.png"),
+  /* 🆕 T512 — سهمُ بابِ القائمة في عنوان السينما بخطٍّ ثقيل: `chevron-down` نفسُه بـ`strokeWidth={2.8}` كما في الويب */
+  "chevron-down-bold": require("../assets/icons/chevron-down-bold.png"),
   /* D-948 — مقبضُ الترتيب، وعينُ الحرق، والنجمةُ الممتلئة (`fill-current` في الويب) */
   grip: require("../assets/icons/grip.png"),
   eye: require("../assets/icons/eye.png"),

@@ -34,6 +34,26 @@ export type CuratedRailPayload = {
   items: CuratedCard[];
 };
 
+/* ====== قسمُ السينما — T512 (٢٢ نوفمبر ٢٠٢٦) ====== */
+/** منشأُ الفيلم لرقاقات القسم — «الكل · عربي · أجنبي» */
+export type CinemaOrigin = "arabic" | "foreign";
+
+/** بطاقةُ فيلمٍ في قسم السينما — بطاقةُ الصفّ نفسُها ومعها ما تحتاجه الرقاقاتُ وشارةُ التاريخ */
+export type CinemaCard = CuratedCard & {
+  origin: CinemaOrigin;
+  /** تاريخُ نزوله في السعودية (YYYY-MM-DD) — شارةُ «قريباً»؛ `null` في المعروض */
+  sa_date: string | null;
+};
+
+/**
+ * `GET /api/v1/cinema` — **الحالتان في ردٍّ واحد**: تبديلُ «الآن ⇄ قريباً» من قائمة العنوان لا ينتظر نداءً ثانياً.
+ * ⚠️ **لا أسماءَ صالاتٍ هنا** (أحمد: «لا تحط اسامي صالات السينما حاليا فقط الاعمال») — حتى نحصل على إذنها.
+ */
+export type CinemaPayload = {
+  now: CinemaCard[];
+  soon: CinemaCard[];
+};
+
 /* ====== الصفوفُ الشخصيّة — C2 (D-955) ====== */
 export type PersonalCard = CuratedCard & {
   /** سببُ الاقتراح («من «X»» · «من أنواعك المفضّلة») — «مقترحٌ لك» وحدَه */

@@ -15,6 +15,7 @@ import {
   getMyLists,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
+import { CinemaSection } from "@/components/CinemaSection";
 import { cookies } from "next/headers";
 import { parseMyRowsByTab, isMyRowsTab, uniqueMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName, lengthSpecFor } from "@/core/browse";
@@ -1377,8 +1378,10 @@ async function CuratedRails({
     <div className="space-y-6">
       {personal("head")}
       {wantMovies && !railOff(hidden, "cinemas") && (
+        /* 🆕 T512 — «في السينما» بحالتيه وقراءة الصالات الأسبوعيّة، **القسمُ نفسُه الذي في الرئيسيّة** والاسمُ تحت الملصق
+           كسائر صفوف «اكتشف». **وتحت الفلتر يغيب كما كان** (`buildSection` يعيد صفراً، D-075): القائمةُ لا تُصفّى بتصنيف TMDB */
         <Suspense fallback={<RailSkeleton count={6} />}>
-          <CinemasRail promises={promises} ctx={ctx} />
+          <CinemaSection place="discover" locale={ctx.locale} t={ctx.t} />
         </Suspense>
       )}
       {personal("artists")}
@@ -1646,11 +1649,6 @@ function SoonView({ soon, ctx }: { soon: CountdownItem[]; ctx: CuratedCtx }) {
 
 /* ===== المنتظِرون: كلٌّ ينتظر موعدَ رفِّه (وحالةَ المكتبة المخبّأة) =====
    `getLibState` مغلَّفةٌ بـ`cache` فهي رحلةٌ واحدةٌ مهما تنازعها الرفوف */
-
-async function CinemasRail({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
-  const [cinemas, state] = await Promise.all([promises.cinemas, getLibState()]);
-  return <CinemasView inCinemas={computeInCinemas(cinemas, ctx)} lib={{ locale: ctx.locale, state }} ctx={ctx} />;
-}
 
 async function PopularRail({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
   const [popular, state] = await Promise.all([promises.popular, getLibState()]);

@@ -662,6 +662,26 @@ export async function nowPlayingMovies(
   return null;
 }
 
+/**
+ * 🆕 T512 — **بحثُ أفلامٍ بالاسم الإنجليزيّ لمطابقة قسم السينما**: الصالاتُ تكتب الاسمَ بالإنجليزيّة (أو بحروفٍ لاتينيّة
+ * لاسمٍ عربيّ)، فالسؤالُ بالإنجليزيّة ثابتاً — ومفتاحُ تخبئةٍ واحدٌ للقارئين. المطابقةُ الصارمة عند المستدعي
+ * (`pickCinemaMatch`): هذا يعيد المرشّحين فقط.
+ */
+export async function searchMovieTitles(
+  query: string,
+  year?: number,
+): Promise<{ id: number; title?: string; original_title?: string; release_date?: string | null; popularity?: number }[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const params: Record<string, string> = { query: q, include_adult: "false", language: "en-US" };
+  if (year) params.primary_release_year = String(year);
+  const data = await railTmdb<{ results?: { id: number; title?: string; original_title?: string; release_date?: string | null; popularity?: number }[] }>(
+    "/search/movie",
+    params,
+  );
+  return data.results ?? [];
+}
+
 export async function airingTv(): Promise<SearchResult[]> {
   const data = await railTmdb<{ results: SearchResult[] }>("/tv/on_the_air");
   return fillSoon(

@@ -58,6 +58,7 @@ import { aimLibrary, libraryAimOf } from "../library/aim";
 import { useStremio } from "../stremio/api";
 import { useStremioAnswer } from "../stremio/useAnswer";
 import { StremioCard } from "../stremio/StremioCard";
+import { CinemaRail } from "../cinema/CinemaRail";
 import { useObserve } from "expo-observe";
 
 /**
@@ -762,6 +763,24 @@ export function HomeScreen() {
             </Rail>
           </View>
         ) : null,
+      /* 🆕 T512 — «في السينما» بحالتيه (الآن · قريباً) من قراءة الصالات الأسبوعيّة: افتراضيُّ المشترك بعد «لمشاهدتها» (قرارُ أحمد
+         ٢٢ نوفمبر). نداؤه وحدَه (`/api/v1/cinema`) فلا ينتظره قسمٌ آخر؛ والملصقُ ملصقُ الرئيسيّة بالاسم داخله، وتاريخُ «قريباً»
+         في قرص الحلقة التالية نفسِه. والتلميحُ بعد تلميحَي الرأس («لا تلميحتان معاً») */
+      cinema: d.prefs.order.includes("cinema") ? (
+        <CinemaRail
+          key="cinema"
+          place="home"
+          hintReady={!tourBusy && d.hints.includes("home-customize") && d.hints.includes(PRIVACY_HINT)}
+          renderCard={(c, badge) => (
+            <PosterCard
+              item={{ ...asItem({ key: `cn-${c.id}`, kind: "movie", id: c.id, title: c.title, poster_path: c.poster_path }), next: badge ?? undefined, release: c.sa_date }}
+              width={posterW}
+              onPress={pressItem}
+              onHold={holdDiscOpen}
+            />
+          )}
+        />
+      ) : null,
       trending:
         d.prefs.order.includes("trending") && (extras.data?.trending.length ?? 0) > 0 ? (
           <View key="trending">
@@ -771,7 +790,7 @@ export function HomeScreen() {
         ) : null,
     };
     return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
-  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView]);
+  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy]);
 
   return (
     <CardStoreContext.Provider value={store}>

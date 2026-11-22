@@ -43,7 +43,9 @@ export async function GET(req: NextRequest) {
       const back30 = new Date();
       back30.setUTCDate(back30.getUTCDate() - 30);
       const winRange = win === "month" ? { from: back30.toISOString().slice(0, 10), to: todayStr } : null;
-      const rows = await buildSection(section, { media, base, genreIds, active: browse.active, win, winRange, locale }, want);
+      /* 🆕 T512 — حالةُ قسم السينما من رابط «الكل» (`cs=soon`) */
+      const cinemaState = sp.get("cs") === "soon" ? ("soon" as const) : ("now" as const);
+      const rows = await buildSection(section, { media, base, genreIds, active: browse.active, win, winRange, locale, cinemaState }, want);
       /* 🔴 D-1046 (Phase 11-F · F5) — **الردُّ شريحةُ الصفحة لا ما تراكم قبلها**: البنّاءُ يحتاج `want = LIMIT × pg`
          صفّاً ليصل إلى الصفحة (وصفتُه تُعيد الترتيبَ من أوّلها)، **لكنّ الردَّ كان يحمل الصفوفَ كلَّها** — الصفحةُ
          الخامسةُ ٣٠٠ عنصرٍ لأجل ٦٠ جديدة، والتطبيقُ يُسقط المكرَّر. الآن تُقصّ هنا. **التطبيقُ وحدَه ينادي هذا

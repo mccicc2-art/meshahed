@@ -156,7 +156,7 @@ export default async function SectionPage({
     section,
     /* **بلا `sample`** — الصفحةُ جردٌ مرتَّب، والقرعةُ للصفّ وحده (D-202):
        قرعةٌ في صفحةٍ تُمرَّر تكرّر وتُسقط. و`locale` لمصدر الكلاسيكيّات. */
-    { media, base, genreIds, active: browse.active, win, winRange, locale },
+    { media, base, genreIds, active: browse.active, win, winRange, locale, cinemaState: sp.cs === "soon" ? "soon" : "now" },
     want,
   );
 
@@ -178,7 +178,9 @@ export default async function SectionPage({
              «على الإطلاق» **فالصفحةُ التي يفتحها يجب أن تقول مثلَه** —
              **وجملةٌ واحدةٌ تركّبها `top10Win` للاثنين**، فلا اسمان
              لقسمٍ واحد (D-198). وسائرُ الأقسام بلا نافذةٍ فبلا لاحقة. */
-          return section === "top-ten" ? (t as Dict).top10Win(base, win) : base;
+          if (section === "top-ten") return (t as Dict).top10Win(base, win);
+          /* 🆕 T512 — «الكل» من قسم السينما على «قريباً» يفتح القادمَ باسمه */
+          return section === "in-cinemas" && media === "movie" && sp.cs === "soon" ? (t as Dict).cinemaSoon : base;
         })();
   const dict = t as Dict;
   /* التبويبُ يحمل فلترَ القارئ كما يحمله «الكل» من الرفّ (`sectionHref`) — بلا صفحةِ «المزيد»، ونافذةُ «أفضل ١٠» له وحده */

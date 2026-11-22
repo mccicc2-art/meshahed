@@ -2,7 +2,7 @@ import React, { memo, useRef } from "react";
 import { Pressable, StyleSheet, View, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Text, firstStrongRtl } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
@@ -129,13 +129,10 @@ export const PosterCard = memo(function PosterCard({
         ) : null}
         {/* 🆕 T492 — **قرصُ الحلقة التالية** (أحمد ٢٠ نوفمبر: «بدل كم باقي حلقة اكتب وين واصل» — «١ ب ٢ الحلقة التالية»، «E كافي بدون P»):
             توأمُ علامة الإيقاف في الطرف المقابل — الارتفاعُ ٢٤ نفسُه والبُعدُ ٨ نفسُه من الحافّة والأعلى («بالمسطرة» — أعلاهما وأسفلهما على
-            خطٍّ واحد)، وزجاجُها الداكنُ بحدّها الأبيض الخافت، فلا شكلَ جديدٌ فوق الملصق. النصُّ لاتينيٌّ دائماً فـ`ltr` */}
+            خطٍّ واحد)، وزجاجُها الداكنُ بحدّها الأبيض الخافت، فلا شكلَ جديدٌ فوق الملصق. النصُّ لاتينيٌّ في الحلقات فـ`ltr`؛
+            🆕 T512 — **والقرصُ نفسُه يحمل تاريخَ نزول الفيلم في «قريباً»** («٢٦ نوفمبر»): اتّجاهُه من أوّل حرفٍ قويٍّ فيه */}
         {item.next ? (
-          <View style={{ position: "absolute", top: 8, end: 8, height: 24, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
-            <Text size={11} weight="700" color="#fff" style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>
-              {item.next}
-            </Text>
-          </View>
+          <PosterPill text={item.next} />
         ) : typeof item.count === "number" && item.count > 0 ? (
           <View
             style={{
@@ -199,3 +196,17 @@ export function StatusThread({ progress, completed, dropped, saved = false }: { 
 const styles = StyleSheet.create({
   shadow: { textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
 });
+
+/**
+ * 🆕 T512 — **القرصُ الزجاجيُّ أعلى طرف الملصق** خرج إلى مكوّنٍ واحد: الحلقةُ التالية هنا («S2 E6»)، وتاريخُ نزول الفيلم في
+ * «قريباً» السينما (`RailCard` في «اكتشف») — وصفةٌ واحدةٌ لا اثنتان (القاعدة ٣). اتّجاهُ النصّ من أوّل حرفٍ قويٍّ فيه.
+ */
+export function PosterPill({ text }: { text: string }) {
+  return (
+    <View style={{ position: "absolute", top: 8, end: 8, height: 24, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
+      <Text size={11} weight="700" color="#fff" style={{ writingDirection: firstStrongRtl(text) ? "rtl" : "ltr", fontVariant: ["tabular-nums"] }}>
+        {text}
+      </Text>
+    </View>
+  );
+}

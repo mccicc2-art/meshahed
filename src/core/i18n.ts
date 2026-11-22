@@ -2506,6 +2506,17 @@ const ar = {
   ratingsListTitle: "التقييمات — من الأعلى",
   inCinemas: "يُعرض الآن في السينما",
   inCinemasRegion: (c: string) => `في ${c}`,
+  /* 🆕 T512 — قسمُ السينما: عنوانٌ واحدٌ بحالتين تبدّلهما قائمةُ العنوان، ورقاقاتُ المنشأ */
+  cinemaNow: "الآن في السينما",
+  cinemaSoon: "قريباً",
+  cinemaInSaudi: "في السعودية",
+  cinemaArabic: "عربي",
+  cinemaForeign: "أجنبي",
+  cinemaSwitch: "بدّل بين المعروض الآن والقادم",
+  cinemaHint: "اضغط العنوان لترى الأفلام القادمة",
+  /* T512 — سهما تقليب الصفّ على الحاسوب */
+  railPrev: "السابق",
+  railNext: "التالي",
   /* ================= مواصفةُ اكتشف (D-195) =================
      «الأكثر شعبية» ليست «أفضل ١٠ هذا الأسبوع»: تلك حركةُ الأسبوع
      (`/trending`) وهذه مخزونُ شعبيةٍ تراكميّ (`/popular`). والاسمان
@@ -5523,6 +5534,15 @@ const en: Dict = {
   ratingsListTitle: "Ratings — highest first",
   inCinemas: "Now in cinemas",
   inCinemasRegion: (c: string) => `in ${c}`,
+  cinemaNow: "Now in cinemas",
+  cinemaSoon: "Coming soon",
+  cinemaInSaudi: "in Saudi Arabia",
+  cinemaArabic: "Arabic",
+  cinemaForeign: "Foreign",
+  cinemaSwitch: "Switch between now showing and coming soon",
+  cinemaHint: "Tap the title to see films coming soon",
+  railPrev: "Previous",
+  railNext: "Next",
   // Discover structure (D-195)
   mostPopularMovies: "Most popular movies",
   mostPopularSeries: "Most popular shows",

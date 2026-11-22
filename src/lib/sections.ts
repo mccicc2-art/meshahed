@@ -1,3 +1,4 @@
+import { cinemaSectionRows } from "@/lib/cinemaTitles";
 import { getContentPrefs } from "@/lib/data";
 import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/core/contentPrefs";
 import type { SearchResult } from "./tmdb";
@@ -184,6 +185,8 @@ export interface SectionCtx {
    * شاشةُ خطأ**.
    */
   locale?: Locale;
+  /** 🆕 T512 — حالةُ قسم السينما في «الكل» (`cs` في الرابط): المعروضُ أو القادم */
+  cinemaState?: "now" | "soon";
 }
 
 /** مفتاحُ الترجمة لعنوان القسم — الاسمُ يبقى في `i18n.ts` لا يُنسخ هنا */
@@ -491,6 +494,9 @@ export async function buildSection(
       }
 
       case "in-cinemas": {
+        /* 🆕 T512 — **قسمُ الأفلام يقرأ قائمةَ الصالات السعوديّة** (`cinema_titles`): «الكل» في رأس القسم يفتح ما رآه القارئُ
+           في الصفّ نفسِه، بحالته (`cs=soon` ⇒ القادم). والأنمي على قائمة TMDB كما كان. */
+        if (media === "movie") return active ? [] : guard(await cinemaSectionRows(ctx.cinemaState ?? "now"));
         /* `‎/now_playing` **لا يقبل نوعاً ولا لغةً** — يقبل المنطقة وحدها،
            فيغيب وقتَ الفلتر بدل أن يعرض ما لم يُطلب (D-075). */
         if (active) return [];

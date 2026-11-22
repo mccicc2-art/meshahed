@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import { StatusThread, type CardAnchor } from "../library/PosterCard";
+import { PosterPill, StatusThread, type CardAnchor } from "../library/PosterCard";
 import { posterFor } from "../poster";
 import { useCardState } from "../cardStore";
 import type { CuratedCard } from "../contracts";
@@ -46,6 +46,7 @@ export const RailCard = memo(function RailCard({
   held: heldProp = false,
   rankTone,
   width: cardW = RAIL_CARD_W,
+  badge = null,
 }: {
   card: CuratedCard;
   /** رقمُ الترتيب (١..) — للمرتَّب وحدَه */
@@ -62,6 +63,8 @@ export const RailCard = memo(function RailCard({
   rankTone?: "accent";
   /** 🆕 عرضُ البطاقة في الشبكات (`gridCards`) — الصفوفُ الأفقيّةُ تبقى على ١١٢ */
   width?: number;
+  /** 🆕 T512 — **تاريخُ النزول في «قريباً» السينما** — قرصُ الحلقة التالية نفسُه في `PosterCard` (زجاجٌ داكنٌ أعلى الطرف) */
+  badge?: string | null;
 }) {
   const { t, tokens } = useApp();
   /* D-1028 (F4) — تحت مخزنٍ («اكتشف») البطاقةُ تقرأ خيطَها وإطارَها بنفسها فتُعاد هي وحدَها؛
@@ -126,6 +129,7 @@ export const RailCard = memo(function RailCard({
             <Text size={12} weight="700" color="#fff" style={{ fontVariant: ["tabular-nums"] }}>{card.imdb_rating.toFixed(1)}</Text>
           </View>
         ) : null}
+        {badge ? <PosterPill text={badge} /> : null}
         {lib ? <StatusThread progress={lib.progress} completed={lib.completed} dropped={lib.dropped} saved={lib.saved} /> : null}
       </View>
       <Text size={12} weight="500" numberOfLines={2} style={{ marginTop: 6, lineHeight: 16 }}>

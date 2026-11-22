@@ -19,6 +19,7 @@ import { nativeListId } from "../list/route";
 import { Text, type ToastTone } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
+import { CinemaRail, cinemaQuery } from "../cinema/CinemaRail";
 import { posterFor } from "../poster";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
@@ -108,6 +109,11 @@ export function prefetchDiscover(): void {
     })
     .catch(() => {});
   for (const key of RAILS[tab]) {
+    /* T512 — صفُّ سينما الأفلام صار قسمَ `CinemaRail` بنداءٍ واحد (`/api/v1/cinema`): يُسخَّن هو لا الصفُّ القديم */
+    if (tab === "movies" && key === "cinemas") {
+      void queryClient.prefetchQuery(cinemaQuery);
+      continue;
+    }
     void queryClient.prefetchQuery({
       queryKey: ["discover:rail", tab, key, ""] as const,
       queryFn: async () => (await api<CuratedRailPayload>(`/api/v1/discover/rail?tab=${tab}&key=${key}`)).data,
@@ -728,6 +734,10 @@ const DiscoverPane = memo(function DiscoverPane({
   });
   const ps = personal.data;
   const lists = tab === "lists";
+  /* 🆕 T512 — تلميحُ السينما بعد تلميحَي «اكتشف» («لا تلميحتان معاً»، D-1273): المقروءُ من كاش المكتبة كجذر الشاشة */
+  const hintsRead = useQuery({ ...libraryQuery, enabled: false }).data?.hints;
+  /* تلميحا الشاشة وحدهما (لا «discover-rows» — ذاك داخل ورقة الفلتر، ومن لا يفتحها لن يراه أبداً: مراجعةُ T512) */
+  const cinemaHint = !!hintsRead && DISCOVER_HINTS.every((h) => hintsRead.includes(h)) && !tourStore.busy();
   const filtering = browseActive(browse);
   /* D-997 — الصفوفُ المخفيّة لهذا التبويب بمفاتيح `railPrefs` (top10/top50 تجمع نسختَي الصفّ) */
   const off = tab === "lists" ? new Set<string>() : railsHiddenFor(hiddenRails, tab);
@@ -961,9 +971,20 @@ const DiscoverPane = memo(function DiscoverPane({
           action={foryouPool.length > PICKED_PAGE ? { label: t.pickedRefresh, aria: t.pickedRefreshAria, icon: "repeat", onPress: morePicks } : null}
         />
       ) : null}
-      {!lists ? RAILS[tab].filter((key) => BEFORE_ARTISTS.includes(key) && !railOff(key)).map((key) => (
-        <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
-      )) : null}
+      {!lists ? RAILS[tab].filter((key) => BEFORE_ARTISTS.includes(key) && !railOff(key)).map((key) =>
+        /* 🆕 T512 — **«في السينما» للأفلام صار القسمَ نفسَه الذي في الرئيسيّة** (الآن · قريباً · المنشأ)، والاسمُ تحت الملصق كسائر
+           صفوف «اكتشف». وتحت الفلتر يبقى الصفُّ القديم — يغيب كما كان (`buildSection` يعيد صفراً، D-075). والأنمي على حاله */
+        tab === "movies" && key === "cinemas" && !bq ? (
+          <CinemaRail
+            key={`${tab}-${key}`}
+            place="discover"
+            hintReady={cinemaHint}
+            renderCard={(c, badge) => <RailCard card={c} rank={null} lib={null} onPress={onOpen} onHold={onHold} badge={badge} />}
+          />
+        ) : (
+          <Rail key={`${tab}-${key}`} tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
+        ),
+      ) : null}
       {!lists && ps && ps.artists.length > 0 && !off.has("artists") ? (
         <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={seeAll} />
       ) : null}
