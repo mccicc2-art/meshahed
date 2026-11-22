@@ -16,6 +16,7 @@ import { DM_POLICIES, type DmPolicy } from "@/core/dmPolicy";
 import { useSettings, saveSetting, patchSettings, messageOf, useOpenWeb } from "./api";
 import { displayNameOf, type PersonLite } from "@/core/people";
 import type { DmPolicyBody, FollowsPayload, PeoplePayload, PrivacyBody, LibraryGrantBody, UnblockBody } from "../contracts";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== الخصوصيّة (Phase 11-I · I2) — `privacy/page.tsx` ======
@@ -93,7 +94,7 @@ function PersonRow({ p, action, i, onOpen }: { p: PersonLite; action: React.Reac
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider }}>
       <Pressable onPress={onOpen} disabled={!onOpen} style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
         <View style={{ width: 36, height: 36, borderRadius: 18, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-          {!p.hide_name && p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Icon name="people" size={16} color={tokens.muted} />}
+          {!p.hide_name && p.avatar_url ? <Image source={avatarSource(p.avatar_url)} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Icon name="people" size={16} color={tokens.muted} />}
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

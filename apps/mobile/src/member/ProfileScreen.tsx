@@ -52,6 +52,7 @@ import type { ListReorderBody, QueueItem } from "@/core/contracts/library";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { usePosterSizes } from "../posterSizes";
 import { useHomeDoor } from "../homeDoor";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== ملفُّ الشخص أصليّاً — Phase 11-N · N1 (٢٩ سبتمبر ٢٠٢٦) ======
@@ -815,7 +816,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                     style={({ pressed }) => ({ width: AV_MAX, height: AV_MAX, borderRadius: AV_MAX / 2, overflow: "hidden", borderWidth: 3, borderColor: tokens.bg, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}
                   >
                     {!d.person.hide_name && d.person.avatar_url ? (
-                      <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /* D-1243 — قبل ملصقات الصفوف: كانت تنتظر دورَها خلف ~٢٠ ملصقاً فتظهر دائرةً رماديّةً ~٠٫٣ث */ priority="high" />
+                      <Image source={avatarSource(d.person.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" contentPosition={{ top: `${d.person.avatar_pos ?? 50}%`, left: "50%" }} cachePolicy="memory-disk" /* D-1243 — قبل ملصقات الصفوف: كانت تنتظر دورَها خلف ~٢٠ ملصقاً فتظهر دائرةً رماديّةً ~٠٫٣ث */ priority="high" />
                     ) : (
                       <Icon name="people" size={30} color={tokens.muted} />
                     )}

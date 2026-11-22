@@ -19,6 +19,7 @@ import { curatedName } from "@/core/universes";
 import { LOOPZ_USERNAME } from "@/core/loopz";
 import { likeOf, type CommunityActs, type FollowState } from "./communityActs";
 import type { CommunityFeedRow, CommunityPostRow, CommunityRatingsRow, CommunityLeaderRow, CommunityRoom, CommunityTopReview } from "../contracts";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== بطاقاتُ «المجتمع» الأصليّة — Phase 11-M · M1 (قراءةٌ وحدَها) ======
@@ -90,7 +91,7 @@ export function Avatar({ uri, size = AVATAR }: { uri: string | null; size?: numb
   const { tokens } = useApp();
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-      {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={size * 0.45} color={tokens.muted} />}
+      {uri ? <Image source={avatarSource(uri)} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={size * 0.45} color={tokens.muted} />}
     </View>
   );
 }

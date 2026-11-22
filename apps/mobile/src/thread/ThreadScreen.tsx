@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, type TextInput, View, type TextInputInstance, type ViewInstance } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, View, type TextInputInstance, type ViewInstance } from "react-native";
 import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { isGuest, softGet, useGuestUpgrade, write } from "../api";
+import { api, isGuest, softGet, useGuestUpgrade, write } from "../api";
 import { CONFIG } from "../config";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
@@ -34,7 +34,7 @@ import { rememberRoom } from "./recentRooms";
 import { Segmented } from "../library/ToolsSheet";
 import { formatDateShort, timeAgoShort } from "@/core/when";
 import type { PersonLite } from "@/core/people";
-import type { SearchTitle } from "../contracts";
+import type { FollowsPayload, SearchTitle } from "../contracts";
 import { rememberGif } from "./GifPicker";
 import { ReplyItem, TEMP } from "./ReplyItem";
 import { backdropUrl } from "@/core/media";
@@ -542,13 +542,24 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     setAttach(false);
     setTimeout(() => inputRef.current?.focus(), 120);
   }, [openRow]);
-  /* المنشن: من كتب هنا (غيري)، بلا تكرار */
+  /* المنشن: من كتب هنا (غيري)، ثمّ — 🆕 T504 («١٢ أ») — من أتابعهم، ثمّ أيُّ عضوٍ بالبحث (`useMentions` `search`). صاحبُ الرأي
+     في صفحة مراجعته أوّلُهم: هو المخاطَبُ الأوّلُ فيها وليس سطراً في الردود */
+  const following = useQuery({
+    queryKey: ["me:follows", "following", "me"],
+    queryFn: async () => (await api<FollowsPayload>("/api/v1/me/follows?dir=following")).data.people as PersonLite[],
+    staleTime: 60_000,
+    enabled: !!d?.viewer.signed_in,
+  });
   const people = useMemo(() => {
     const seen = new Map<string, PersonLite>();
+    if (d?.head.kind === "review" && !d.head.mine && d.head.author.username) seen.set(d.head.author.id, d.head.author);
     for (const r of d?.rows ?? []) if (!r.mine && !r.bulletin && r.person.username && !seen.has(r.person.id)) seen.set(r.person.id, r.person);
+    for (const p of following.data ?? []) if (p.username && !seen.has(p.id)) seen.set(p.id, p);
     return [...seen.values()];
-  }, [d?.rows]);
-  const { names: mentionNames, hits: mentionHits, pick: pickMention } = useMentions(text, setText, people, inputRef);
+  }, [d?.rows, d?.head, following.data]);
+  const { names: suggestedNames, hits: mentionHits, pick: pickMention } = useMentions(text, setText, people, inputRef, { search: !!d?.viewer.signed_in, exclude: d?.viewer.me_id ?? null });
+  /* 🆕 T504 — الرابطُ لكلِّ اسمٍ حقيقيّ: من اقتُرح + ما أكّده الخادمُ من أسماء الصفحة (`mentioned`) */
+  const mentionNames = useMemo(() => new Set([...suggestedNames, ...(d?.mentioned ?? [])]), [suggestedNames, d?.mentioned]);
 
   /* ——— ⋯: احذف ردّي · إبلاغ ——— */
   const [menu, setMenu] = useState<{ row: ThreadRow; anchor: Anchor } | null>(null);

@@ -6,6 +6,7 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import type { HomeFriendCard, HomeFriendWho } from "../contracts";
 import { friendBadge } from "@/core/contracts/home";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== 🆕 D-1353 — مَن يشاهد العمل من أصدقائك ======
@@ -26,7 +27,7 @@ function Face({ uri, size, ring }: { uri: string | null; size: number; ring: str
   const { tokens } = useApp();
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1.5, borderColor: ring, alignItems: "center", justifyContent: "center" }}>
-      {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={size * 0.5} color={tokens.muted} />}
+      {uri ? <Image source={avatarSource(uri)} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={size * 0.5} color={tokens.muted} />}
     </View>
   );
 }

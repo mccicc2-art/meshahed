@@ -10,6 +10,7 @@ import { Sheet } from "../library/Sheet";
 import { haptic } from "../haptics";
 import { displayNameOf } from "@/core/people";
 import type { FollowsPayload } from "../contracts";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ورقةُ «يتابعونني / أتابعهم» — `FollowCountButton` الويب (Phase 11-H، تقفل D-1066 §10).
@@ -74,7 +75,7 @@ export function FollowsSheet({
           style={({ pressed }) => [{ height: ROW_H, flexDirection: "row", alignItems: "center", gap: 12, borderTopWidth: 1, borderTopColor: index > 0 ? tokens.divider : "transparent", opacity: pressed ? 0.7 : 1 }]}
         >
           <View style={{ width: 36, height: 36, borderRadius: 18, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-            {!p.hide_name && p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
+            {!p.hide_name && p.avatar_url ? <Image source={avatarSource(p.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name="people" size={16} color={tokens.muted} />}
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text size={14} weight="600" numberOfLines={1}>{label}</Text>

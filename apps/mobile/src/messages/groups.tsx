@@ -8,6 +8,7 @@ import { patchKeep } from "./common";
 import { displayNameOf, type PersonLite } from "@/core/people";
 import type { Dict } from "@/core/i18n";
 import type { GroupMsgEvent, GroupSysEvent, MessagesPayload, MsgEvent, MsgGroupConversation } from "../contracts";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== القروبات في التطبيق — ما تتشاركه شاشاتُها (الهجرة ٢٠٥) ======
@@ -154,7 +155,7 @@ export function GroupAvatar({ g, meId, size = 44 }: { g: MsgGroupConversation; m
           ]}
         >
           {p && !p.hide_name && p.avatar_url ? (
-            <Image source={{ uri: p.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+            <Image source={avatarSource(p.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <Icon name="people" size={small * 0.45} color={tokens.muted} />
           )}

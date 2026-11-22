@@ -23,6 +23,7 @@ import { displayNameOf } from "@/core/people";
 import { num, worksParts } from "@/core/i18n";
 import type { MemberStatsPayload, MemberTaste, MemberTasteEntry, MemberTasteList, MemberTasteWork, MyStatsPayload, MyStatsRange } from "@/core/contracts/memberStats";
 import { useHomeDoor } from "../homeDoor";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== إحصاءاتُ العضو أصليّةً — Phase 11-N · N4 (٣٠ سبتمبر ٢٠٢٦) ======
@@ -306,7 +307,7 @@ function HeroCard({ d, rangeLabel }: { d: MemberStatsPayload; rangeLabel: string
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={{ width: 48, height: 48, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: tokens.accent + "B3", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             {!d.person.hide_name && d.person.avatar_url ? (
-              <Image source={{ uri: d.person.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+              <Image source={avatarSource(d.person.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
             ) : (
               <Icon name="people" size={20} color={tokens.muted} />
             )}

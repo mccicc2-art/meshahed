@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { realMentions } from "@/lib/mentionsCore";
 import { Suspense } from "react";
 import { webWords } from "@/components/webWords";
 import { TalkSide, TalkSideCard } from "@/components/talk/TalkSide";
@@ -304,6 +305,7 @@ export default async function ReviewPage({
         me={profile}
         locale={locale}
         signedIn={!!me}
+        mentioned={await realMentions([r.review, ...replies.map((x) => x.body)])}
       />
       </div>
       <TalkSide>

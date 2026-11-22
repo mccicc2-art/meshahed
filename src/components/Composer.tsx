@@ -10,6 +10,8 @@ import { Icon } from "./Icon";
 import { GifPicker } from "./GifPicker";
 import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 import { gifUrl } from "@/core/media";
+import type { PersonLite } from "@/core/people";
+import { MentionList, useMentionSuggest } from "./thread/MentionSuggest";
 
 /**
  * **صندوقُ الكتابة — واحدٌ لكل ردّ في التطبيق** (D-227).
@@ -34,8 +36,14 @@ export function Composer({
   onSend,
   onCancel,
   onSendTitle,
+  mentionPeople,
 }: {
   locale: Locale;
+  /**
+   * 🆕 T504 — **اقتراحُ المنشن** (أحمد «١٣ أ»): من كتبوا في الصفحة — ووجودُه يفتح الاقتراحَ كلَّه (ثمّ من أتابعهم، ثمّ أيُّ عضوٍ
+   * بالبحث). غائبٌ في صناديق الخطّ والأخبار كما كانت.
+   */
+  mentionPeople?: PersonLite[];
   hint?: string;
   autoFocus?: boolean;
   /**
@@ -80,6 +88,8 @@ export function Composer({
   const t = getDict(locale);
   const [titleOpen, setTitleOpen] = useState(false);
   const [body, setBody] = useState("");
+  /* 🆕 T504 — المنشن: يعمل حيث مرّر المستدعي `mentionPeople` (النقاشُ والردود) */
+  const mention = useMentionSuggest(body, setBody, mentionPeople ?? [], !!mentionPeople);
   const [spoiler, setSpoiler] = useState(false);
   const [img, setImg] = useState<string | null>(null);
   /* 🆕 **معرّفُ الـGIF لا رابطُه** (D-362) — والرابطُ يُركَّب للعرض وحدَه */
@@ -166,6 +176,7 @@ export function Composer({
         dir="auto"
         className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-base resize-y outline-none focus:border-accent/60"
       />
+      <MentionList hits={mention.hits} onPick={mention.pick} anonymous={t.anonymousUser} />
       {/* **والمعاينةُ فوق الصفّ لا داخله** — **ما يُرفع يُرى قبل أن
           يُرسل**، **وزرُّ إزالتها عليها** (D-047: تراجَع بعد لا أكِّد قبل). */}
       {img && (

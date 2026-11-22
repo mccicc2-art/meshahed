@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { realMentions } from "@/lib/mentionsCore";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -412,6 +413,7 @@ export default async function TalkPage({
           ]}
           seasons={seasons}
           watchedEps={watchedEps}
+          mentioned={await realMentions(thread.map((p) => p.body))}
           myState={watchedIt ? "watched" : follow.following ? "library" : null}
           me={me}
           locale={locale}
@@ -489,6 +491,7 @@ async function GeneralTalk({ signedIn }: { signedIn: boolean }) {
           votes={votes}
           translations={translations}
           target={{ kind: "talk", tmdbId: 0, mediaType: "general", title: null, posterPath: null, backdropPath: null }}
+          mentioned={await realMentions(thread.map((p) => p.body))}
           replies={thread.map((p): ThreadReply => ({
             replyId: p.postId,
             authorId: p.authorId,

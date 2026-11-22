@@ -28,6 +28,7 @@ import { KeyboardDock } from "@/components/ui/KeyboardDock";
 import { Icon } from "../Icon";
 import { Avatar } from "../Avatar";
 import { Composer } from "../Composer";
+import type { PersonLite } from "@/core/people";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
 import { TalkEpisodeBar } from "./TalkEpisodeBar";
 import { TalkTvBar } from "./TalkTvBar";
@@ -123,8 +124,11 @@ export function ThreadReplies({
   seasons,
   watchedEps,
   myState,
+  mentioned,
 }: {
   target: ReplyTarget;
+  /** 🆕 T504 — أسماءُ `@` المكتوبة في الصفحة وهي حساباتٌ قائمة (`realMentions`) — تُرسم روابطَ ولو لم يكتب أصحابُها هنا */
+  mentioned?: string[];
   /** 🆕 D-1495 — مواسمُ المسلسل لمنتقي الحلقة (الغرفةُ وحدَها؛ فارغةٌ للأفلام) */
   seasons?: { season: number; episodes: number }[];
   /** 🆕 D-1508 — حلقاتُ المسلسل التي شاهدها القارئ (`s:e`) — غرفةُ ما لم يشاهده مغطّاة */
@@ -337,7 +341,21 @@ export function ThreadReplies({
   }
 
   /* 🆕 D-1443 — من كتب هنا يُمنشَن: `@اسمه` في متنٍ رابطٌ إلى صفحته (والخادمُ يدفع له «ذكرك») */
-  const mentionNames = new Set(all.map((r) => r.username?.toLowerCase()).filter((n): n is string => !!n));
+  /* 🆕 T504 — ومن ذُكر وهو حسابٌ قائمٌ ولم يكتب هنا (`mentioned` من الخادم — `realMentions`) رابطٌ أيضاً */
+  const mentionNames = new Set([
+    ...all.map((r) => r.username?.toLowerCase()).filter((n): n is string => !!n),
+    ...(mentioned ?? []),
+  ]);
+  /* 🆕 T504 — اقتراحُ المنشن في الصندوق (أحمد «١٣ أ»): من كتبوا هنا أوّلاً (ثمّ من أتابعهم وأيُّ عضو — `MentionSuggest`) */
+  const mentionPeople: PersonLite[] = [];
+  {
+    const seen = new Set<string>();
+    for (const r of whole) {
+      if (r.isMine || r.kind || !r.username || r.hide_name || seen.has(r.authorId)) continue;
+      seen.add(r.authorId);
+      mentionPeople.push({ id: r.authorId, nickname: r.nickname, username: r.username, avatar_url: r.avatar_url, hide_name: r.hide_name });
+    }
+  }
 
   /**
    * 🆕 **ثم الجذورُ بالأصوات حيث توجد** (D-305، نصُّ أحمد: «أكثر ردّ
@@ -566,6 +584,7 @@ export function ThreadReplies({
           <KeyboardDock>
             <Composer
               locale={locale}
+              mentionPeople={mentionPeople}
               /* **والمفتاحُ حيث يُخزَّن وحدَه** (D-271): `has_spoiler`
                  عمودٌ على `title_posts` — **فلا يظهر على خيط رأيٍ ولا
                  نشرة**، وزرٌّ يُضغط بلا أثرٍ أسوأُ من زرٍّ غائب. */
@@ -731,6 +750,7 @@ export function ThreadReplies({
           <div className="pb-3 border-b border-[color:var(--divider)]">
             <Composer
               locale={locale}
+              mentionPeople={mentionPeople}
               hint={t.talkReplyingTo(nameOf.get(r.replyId) ?? "")}
               allowSpoiler={nested}
               /* **والصورةُ حيث تُخزَّن وحدَها** — النقاشُ اليوم (D-298) */

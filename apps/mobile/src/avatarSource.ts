@@ -9,11 +9,16 @@ import type { ImageSource } from "expo-image";
  * `/api/v1/` وحدَه — D-945). فظهر اسمُ «Loopz» على بطاقات القوائم بخانةٍ فارغة (أحمد، ١٩ نوفمبر
  * ٢٠٢٦: «حساب لوبز هنا جاي بدون شعار»). والرمزُ نفسُه في الأصول أصلاً (`assets/loopz-mark.png`،
  * يقرؤه المجتمعُ والنقاشُ بـ`require`) — **فيُعاد إليه بالاسم، نسبيّاً كان المسارُ أو كاملاً.**
+ *
+ * 🆕 ٢٢ نوفمبر ٢٠٢٦ (أحمد: «لوبز الحساب حاليا أيقونته سودا خلها لوقو لوبز»، «١أ ٢أ»): كانت بطاقاتُ القوائم
+ * وحدَها تمرّ من هنا وبقيت ~٢٠ دائرةً تطلب الرابطَ فتبقى فارغة — **فكلُّ وجهٍ في التطبيق يمرّ الآن من هنا.**
+ * والصورةُ `loopz-avatar.png`: الرمزُ نفسُه (D-145) مصغّراً على قرصِ لوبز الأسود `#050505` — **لأنّ الرمزَ
+ * أبيضُ على شفّاف فيذوب في دائرةِ `daylight` الفاتحة**، والقرصُ يُبقيه مقروءاً في كلّ ثيم.
  */
-const LOOPZ_MARK = require("../assets/loopz-mark.png");
+const LOOPZ_AVATAR = require("../assets/loopz-avatar.png");
 
 export function avatarSource(uri: string | null | undefined): ImageSource | number | null {
   if (!uri) return null;
-  if (/(^|\/)loopz-mark\.png(\?|#|$)/.test(uri)) return LOOPZ_MARK;
+  if (/(^|\/)loopz-mark\.png(\?|#|$)/.test(uri)) return LOOPZ_AVATAR;
   return { uri };
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { realMentions } from "@/lib/mentionsCore";
 import { webWords } from "@/components/webWords";
 import { TalkSide, TalkSideCard } from "@/components/talk/TalkSide";
 import { RoomPostsCard } from "@/components/talk/TalkSideLists";
@@ -224,6 +225,7 @@ export default async function PostPage({
         me={me}
         locale={locale}
         signedIn={!!user}
+        mentioned={await realMentions(replies.map((r) => r.body))}
       />
       </div>
       <TalkSide>

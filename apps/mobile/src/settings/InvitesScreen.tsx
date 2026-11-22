@@ -18,6 +18,7 @@ import { displayNameOf } from "@/core/people";
 import { timeAgo } from "@/core/when";
 import { PartnersTab } from "./PartnersTab";
 import type { MyInvite, MyInvitesPayload, MyPartnerPayload } from "@/core/contracts/profile";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== «الدعوات والمكافآت» أصليّاً — تبويبُ الأصدقاء (🆕 D-1360 · Phase 11-V · V-C · C4 — ١١ أكتوبر ٢٠٢٦) ======
@@ -231,7 +232,7 @@ function FriendsTab({ toast, onPartners }: { toast: React.RefObject<ToastHostRef
               return (
                 <Pressable key={r.id} disabled={!username} onPress={() => username && openProfile(router, username, "home")} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: tokens.divider, opacity: pressed ? 0.7 : 1 })}>
                   <View style={{ width: 40, height: 40, borderRadius: 20, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                    {r.person?.avatar_url ? <Image source={{ uri: r.person.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Icon name="people" size={18} color={tokens.muted} />}
+                    {r.person?.avatar_url ? <Image source={avatarSource(r.person.avatar_url)} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Icon name="people" size={18} color={tokens.muted} />}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

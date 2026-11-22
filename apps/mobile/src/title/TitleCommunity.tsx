@@ -16,6 +16,7 @@ import type { TitleCommunityPayload } from "../contracts";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { PERSONA_READ_IN, personaLang, personaOf } from "@/core/personas";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== تبويبُ المجتمع — نسخةُ `TitleCommunityTab` للقراءة (Phase 11-D · D3 · D-956) ======
@@ -176,7 +177,7 @@ export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["rev
     <Pressable disabled={!onOpen} onPress={onOpen} accessibilityRole={onOpen ? "link" : undefined} style={{ gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 28, height: 28, borderRadius: 14, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: persona ? 2 : 0, borderColor: persona?.color }}>
-          {r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+          {r.avatar_url ? <Image source={avatarSource(r.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -406,7 +407,7 @@ export function RatersSheet({
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.6 : 1 })}
               >
                 <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-                  {r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                  {r.avatar_url ? <Image source={avatarSource(r.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text size={14} weight={r.mine ? "700" : "600"} numberOfLines={1}>{r.name}</Text>

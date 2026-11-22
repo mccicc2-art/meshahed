@@ -472,7 +472,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
                         <View style={{ flexDirection: "row" }}>
                           {shown.slice(0, 3).map((m, i) => (
                             <View key={m.id} style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2 }}>
-                              {m.avatar ? <Image source={{ uri: m.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                              {m.avatar ? <Image source={avatarSource(m.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
                             </View>
                           ))}
                         </View>

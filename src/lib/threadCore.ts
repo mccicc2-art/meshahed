@@ -26,6 +26,7 @@ import { bulletinLine, bulletinFacts, bulletinSpoiler, bulletinName } from "@/co
 import { bulletinEpisode, inheritEpisodes, seasonsOf } from "@/core/talkEpisodes";
 import { newsLine, newsSource } from "@/core/newsLine";
 import { compareReviews } from "@/core/reviewOrder";
+import { realMentions } from "@/lib/mentionsCore";
 import { newsViewKey, commentViewKey } from "@/core/postKeys";
 import type { Locale } from "@/core/i18n";
 import type { PersonLite } from "@/core/people";
@@ -171,7 +172,7 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: 
     .sort((a, b) => compareReviews(a.k, b.k));
   const reviewsHead = general ? undefined : { count: reviews.length, faces: ranked.slice(0, 3).map(({ r }) => r.avatar_url ?? null) };
   const w = asWork(work);
-  return {
+  return withMentions({
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
     head: { kind: "talk", overview: work.overview, watched, in_library: !watched && follow.following, seasons: work.seasons, watched_eps: await watchedEpsP, ...(reviewsHead ? { reviews: reviewsHead } : {}) },
@@ -180,7 +181,7 @@ export async function talkPayload(tmdbId: number, kind: Kind | "general", opts: 
     has_likes: true,
     has_votes: true,
     share_path: `/talk/${kind}/${tmdbId}`,
-  };
+  });
 }
 
 /** منشورُ لوبز — `post/[key]/page.tsx` */
@@ -201,7 +202,7 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
     meP,
   ]);
   const w = asWork(work);
-  return {
+  return withMentions({
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     /* عنوانُ الخبر كما كُتب فيه — الويبُ يرسم `post.title` لا اسمَ TMDB */
     work: { ...w, title: post.title || w.title, poster_path: post.poster_path ?? w.poster_path },
@@ -222,7 +223,7 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
     has_likes: false,
     has_votes: false,
     share_path: `/post/${encodeURIComponent(key)}`,
-  };
+  });
 }
 
 /** الرأيُ وخيطُه — `review/[type]/[id]/[user]/page.tsx` */
@@ -241,7 +242,7 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
   const r = reviews.find((x) => x.id === authorId);
   if (!r || (r.persona && opts.personas === false)) return null;
   const w = asWork(work);
-  return {
+  return withMentions({
     viewer: { signed_in: !!user, me_id: user?.id ?? null, me: user ? me : null },
     work: w,
     head: {
@@ -265,7 +266,14 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
     has_likes: false,
     has_votes: false,
     share_path: `/review/${kind}/${tmdbId}/${authorId}`,
-  };
+  });
+}
+
+/* 🆕 T504 — أيُّ `@اسم` في الصفحة حسابٌ قائم (`realMentions`) — فالواجهةُ ترسمه رابطاً ولو لم يكتب صاحبُه هنا */
+async function withMentions(p: ThreadPayload): Promise<ThreadPayload> {
+  const head = p.head.kind === "review" ? p.head.review : null;
+  const mentioned = await realMentions([head, ...p.rows.map((r) => r.body)]);
+  return mentioned.length ? { ...p, mentioned } : p;
 }
 
 async function translationsOf(items: { id: string; text: string }[], locale: Locale): Promise<Record<string, string>> {

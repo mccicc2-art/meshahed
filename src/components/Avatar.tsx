@@ -43,6 +43,10 @@ export function Avatar({
   if (posY != null) style.objectPosition = `50% ${posY}%`;
 
   if (src) {
+    /* 🆕 ٢٢ نوفمبر ٢٠٢٦ (أحمد «٢أ»): ختمُ لوبز أبيضُ على شفّاف فيذوب في `bg-surface-2` الفاتحة في `daylight`،
+       وحبرُه بعرض الصورة تقريباً فتقصّ الدائرةُ طرفَي ∞ — **فيُرسم على قرصِ لوبز الأسود `#050505` بهامشٍ**،
+       كصورتِه في التطبيق (`apps/mobile/assets/loopz-avatar.png`) */
+    const mark = /(^|\/)loopz-mark\.png(\?|#|$)/.test(src);
     // next/image يقلّص الصورة لحجم العرض ويحوّلها WebP — كانت تُحمَّل بحجمها الأصلي
     return (
       <Image
@@ -51,7 +55,7 @@ export function Avatar({
         width={size}
         height={size}
         sizes={`${size}px`}
-        className={`rounded-full object-cover border border-border bg-surface-2 ${boxClass} ${className}`}
+        className={`rounded-full border border-border ${mark ? "object-contain p-[17%] bg-[#050505]" : "object-cover bg-surface-2"} ${boxClass} ${className}`}
         style={style}
       />
     );

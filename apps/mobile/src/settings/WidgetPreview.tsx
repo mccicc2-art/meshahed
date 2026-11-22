@@ -12,6 +12,7 @@ import type { WidgetV3 } from "@/core/widgetSlots";
 import type { WidgetFeed } from "@/core/contracts/widget";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { writtenFeed } from "../widget/feed";
+import { avatarSource } from "../avatarSource";
 
 /**
  * ====== معاينةُ ودجت لوبز — ما سيرسمه الودجتُ بالضبط ======
@@ -232,7 +233,7 @@ function Card(p: { it: Item | null; x: number; y: number; w: number; h: number; 
           {bottomBtn && it.btn ? <Circle glyph={it.btn} size={cd} style={{ bottom: small ? 7 : 4, [end]: small ? 7 : 4 }} /> : null}
           <View style={{ position: "absolute", [start]: pad, [end]: bottomBtn ? cd + (small ? 14 : 10) : pad, bottom: small ? d.textBottomSmall : d.textBottom, gap: 1, alignItems: rtl ? "flex-end" : "flex-start" }}>
             <View style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 4, maxWidth: "100%" }}>
-              {it.avatar ? <Image source={{ uri: it.avatar }} style={{ width: small ? d.avatarSmall : d.avatar, height: small ? d.avatarSmall : d.avatar, borderRadius: 999 }} /> : null}
+              {it.avatar ? <Image source={avatarSource(it.avatar)} style={{ width: small ? d.avatarSmall : d.avatar, height: small ? d.avatarSmall : d.avatar, borderRadius: 999 }} /> : null}
               <Text size={small ? d.nameSmall : w > 120 ? d.nameBig : d.name} weight="700" color={it.faded ? "rgba(247,247,247,0.55)" : "#FFFFFF"} numberOfLines={1} style={{ flexShrink: 1 }}>{it.name}</Text>
             </View>
             {it.line ? <Text size={small ? d.lineSmall : d.line} color={it.faded ? ACCENT : "#DDDDDD"} numberOfLines={1}>{it.line}</Text> : null}
@@ -256,7 +257,7 @@ function UpRow(p: { it: Item | null; x: number; y: number; w: number; h: number;
     return (
       <View style={{ position: "absolute", left: p.x, top: p.y, width: p.w, height: p.h, flexDirection: dir, alignItems: "center", gap: 6, overflow: "hidden" }}>
         <Text size={d.slimFont} weight="700" color={ACCENT} numberOfLines={1}>{p.head}</Text>
-        {p.friends && it?.avatar ? <Image source={{ uri: it.avatar }} style={{ width: d.slimAvatar, height: d.slimAvatar, borderRadius: 999 }} /> : null}
+        {p.friends && it?.avatar ? <Image source={avatarSource(it.avatar)} style={{ width: d.slimAvatar, height: d.slimAvatar, borderRadius: 999 }} /> : null}
         <Text size={d.slimFont} color="#F7F7F7" numberOfLines={1} style={{ flexShrink: 1 }}>{second}</Text>
       </View>
     );
@@ -269,7 +270,7 @@ function UpRow(p: { it: Item | null; x: number; y: number; w: number; h: number;
       <View style={{ flex: 1, alignItems: rtl ? "flex-end" : "flex-start" }}>
         <Text size={d.upTitle} weight="700" color={ACCENT} numberOfLines={1}>{p.head}</Text>
         <View style={{ flexDirection: dir, alignItems: "center", gap: 4 }}>
-          {p.friends && it?.avatar ? <Image source={{ uri: it.avatar }} style={{ width: d.avatar, height: d.avatar, borderRadius: 999 }} /> : null}
+          {p.friends && it?.avatar ? <Image source={avatarSource(it.avatar)} style={{ width: d.avatar, height: d.avatar, borderRadius: 999 }} /> : null}
           <Text size={d.upName} color="#F7F7F7" numberOfLines={1} style={{ flexShrink: 1 }}>{second}</Text>
         </View>
       </View>
