@@ -8,6 +8,7 @@ import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
 import { gauge, op } from "@/lib/reqTrace";
 import { lengthMatches } from "@/core/browse";
+import { directedFilms, isFeature, pickDirector } from "@/core/directors";
 
 export {
   IMG,
@@ -1113,6 +1114,7 @@ export async function resolveSetIds(
     movieIds?: number[];
     collectionId?: number;
     titles?: { title: string; year: number }[];
+    director?: string;
   },
   /**
    * 🆕 **حدُّ البطاقة** (D-388): بطاقةُ الرفّ تعرض ثلاثةَ ملصقات،
@@ -1123,6 +1125,8 @@ export async function resolveSetIds(
   limit?: number,
 ): Promise<number[]> {
   if (u.movieIds?.length) return limit ? u.movieIds.slice(0, limit) : u.movieIds;
+  /* 🆕 T517 — **قائمةُ مخرجٍ تُحلّ من رصيده في TMDB** (أحمد: «٢ ب»): الجديدُ يدخلها وحدَه يومَ يُعلَن */
+  if (u.director) return directorFilmIds(u.director, limit);
   /* 🆕 **قائمةٌ مشهورةٌ مكتوبةٌ بالأسماء** (D-388): **الاسمُ والسنةُ لا
      المعرّف** — **ومعرّفاتُ TMDB لا تُكتب باليد لمئة عملٍ بلا خطأ**
      (نصُّ `awards.ts` حرفاً)، **ومن لا يُطابَق يسقط بصمتٍ بدل أن يكسر
@@ -1146,6 +1150,47 @@ export async function resolveSetIds(
   const c = await getCollection(u.collectionId).catch(() => null);
   const ids = (c?.parts ?? []).map((p) => p.id);
   return limit ? ids.slice(0, limit) : ids;
+}
+
+/**
+ * 🆕 T517 — **أفلامُ المخرج الطويلة التي أخرجها بنفسه، بترتيب صدورها** (`core/directors.ts` يحمل القواعد).
+ *
+ * - **الشخصُ بالاسم لا بالمعرّف** (D-388): بحثٌ واحد، **ولا مطابقةَ تامّة = قائمةٌ فارغة** لا قائمةُ شخصٍ آخر —
+ *   والفراغُ لا يُكتب (`buildCuratedList`).
+ * - **الطولُ من تفاصيل كلِّ فيلم**: رصيدُ الشخص لا يحمله، **والتفاصيلُ مخبَّأةٌ ساعةً ويقرؤها `moviesByIds` بعدها
+ *   من الخبيئة نفسِها** — فلا يُدفع النداءُ مرّتين عند البناء.
+ * - **وحدُّ البطاقة يقطع الدورة** (`limit`، حجّةُ D-388): أربعةُ ملصقاتٍ لا تحتاج تفاصيلَ خمسين فيلماً لهيتشكوك.
+ * - **وفيلمٌ تعثّرت تفاصيلُه يسقط** — لا يُعرف أطويلٌ هو أم قصير، والقائمةُ أصدقُ بدونه (D-074).
+ */
+async function directorFilmIds(name: string, limit?: number): Promise<number[]> {
+  const hits = await tmdb<{ results?: { id: number; name: string; known_for_department?: string; popularity?: number }[] }>(
+    "/search/person",
+    { query: name, include_adult: "false" },
+  ).catch(() => null);
+  const who = pickDirector(hits?.results ?? [], name);
+  if (!who) return [];
+  const credits = await tmdb<{ crew?: { id: number; job?: string; release_date?: string; video?: boolean }[] }>(
+    `/person/${who.id}/movie_credits`,
+  ).catch(() => null);
+  const films = directedFilms(credits?.crew ?? []);
+  const today = new Date().toISOString().slice(0, 10);
+  const out: number[] = [];
+  const CHUNK = 10;
+  for (let i = 0; i < films.length && (!limit || out.length < limit); i += CHUNK) {
+    const part = films.slice(i, i + CHUNK);
+    const runtimes = await Promise.all(
+      part.map((f) =>
+        tmdb<{ runtime?: number | null }>(`/movie/${f.id}`)
+          .then((m) => m.runtime ?? null)
+          .catch(() => undefined),
+      ),
+    );
+    part.forEach((f, k) => {
+      const rt = runtimes[k];
+      if (rt !== undefined && isFeature(rt, f.release_date, today)) out.push(f.id);
+    });
+  }
+  return limit ? out.slice(0, limit) : out;
 }
 
 /**

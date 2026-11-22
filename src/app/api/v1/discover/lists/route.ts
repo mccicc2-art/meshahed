@@ -84,7 +84,7 @@ export async function GET() {
       const award = u.award ? awardBySlug(u.award) : null;
       const awardFour = u.award ? await awardWinners(u.award, 4).catch(() => []) : null;
       const topRows = u.top ? await topRatedRows(u.top, 8).catch(() => []) : null;
-      const setIds = topRows || awardFour ? [] : await resolveSetIds(u, u.titles ? 4 : undefined).catch(() => [] as number[]);
+      const setIds = topRows || awardFour ? [] : await resolveSetIds(u, u.titles || u.director ? 4 : undefined).catch(() => [] as number[]);
       const four = awardFour ?? (topRows ? topRows.slice(0, 4) : await moviesByIds(setIds.slice(0, 4)).catch(() => []));
       const count = counts.get(listId) ?? (award ? awardWins(award).length : topRows ? (u.topLimit ?? 250) : u.titles ? u.titles.length : setIds.length);
       const st = stats.get(listId);

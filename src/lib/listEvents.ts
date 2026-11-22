@@ -1,8 +1,8 @@
-import { EDITORIAL } from "@/core/universes";
+import { pinnedSets } from "@/core/universes";
 import { eventBadge, eventWindow, orderForYou, riyadhMonth } from "@/core/listEvents";
 import { AWARDS } from "@/core/awards";
 import { getDict, type Locale } from "@/core/i18n";
-import { getMovie, movieTheatricalDate } from "@/lib/tmdb";
+import { getMovie, movieTheatricalDate, searchByName } from "@/lib/tmdb";
 import { getListCardsByIds, type PublicListCard } from "@/lib/data";
 
 /**
@@ -21,15 +21,20 @@ export async function getActiveEventLists(
   now = Date.now(),
 ): Promise<{ listId: string; label: string; badge: string; poster: string | null }[]> {
   const t = getDict(locale);
-  const pinned = EDITORIAL.filter((e) => e.pin && curated.has(e.slug));
+  /* 🆕 T517 — **قوائمُ الأحداث والمنسَّقةُ المثبَّتة معاً** (`pinnedSets`)، **والفيلمُ بمعرّفه أو باسمه وسنته**:
+     لا مطابقةَ = لا تثبيت (D-217) — كما يسقط فشلُ TMDB صامتاً هنا */
+  const pinned = pinnedSets().filter((e) => curated.has(e.slug));
   const rows = await Promise.all(
     pinned.map(async (e) => {
-      const date = await movieTheatricalDate(e.pin!.tmdbId).catch(() => null);
-      const w = eventWindow(date, e.pin!.graceDays, now);
+      const tmdbId =
+        e.pin.tmdbId ?? (e.pin.film ? (await searchByName(e.pin.film.title, "movie", e.pin.film.year).catch(() => null))?.id : undefined);
+      if (!tmdbId) return null;
+      const date = await movieTheatricalDate(tmdbId).catch(() => null);
+      const w = eventWindow(date, e.pin.graceDays, now);
       if (!w.active) return null;
       const label = w.phase === "before" ? t.listEventIn(w.days) : w.phase === "today" ? t.listEventToday : t.listEventNow;
       /* 🆕 T474 — ملصقُ الحدث: ما اختاره أحمد في `pin.poster`، وإلّا ملصقُ TMDB (مخبَّأٌ ساعةً في طبقة `tmdb`) */
-      const poster = e.pin!.poster ?? (await getMovie(e.pin!.tmdbId).catch(() => null))?.poster_path ?? null;
+      const poster = e.pin.poster ?? (await getMovie(tmdbId).catch(() => null))?.poster_path ?? null;
       return { listId: curated.get(e.slug)!, label, badge: eventBadge(w, t), poster };
     }),
   );

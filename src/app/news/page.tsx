@@ -899,7 +899,7 @@ async function CuratedCard({
   const ids =
     topRows || awardFour
       ? []
-      : await resolveSetIds(u, u.titles ? 4 : undefined).catch(() => [] as number[]);
+      : await resolveSetIds(u, u.titles || u.director ? 4 : undefined).catch(() => [] as number[]);
   const four = awardFour ?? (topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []));
   /* ⚠️ **وعدُّ القائمة المكتوبة من قاموسها لا من المحلول** (D-388):
      البطاقةُ حلّت ثلاثةً فقط، **وعددُ القائمة مئة** — **والعدُّ الحقيقيُّ

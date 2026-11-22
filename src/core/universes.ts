@@ -57,6 +57,13 @@ export interface Universe {
    * تُفرز.** والسنةُ هنا **للبحث لا للعرض** (D-144).
    */
   titles?: { title: string; year: number }[];
+  /**
+   * 🆕 T517 — **قائمةُ مخرج**: اسمُه كما في TMDB (`DIRECTORS`). **الاسمُ لا المعرّف** (D-388)، وتُحلّ من رصيده
+   * عند الطلب فيدخلها فيلمُه الجديد وحدَه (`resolveSetIds` → `directorFilmIds`).
+   */
+  director?: string;
+  /** 🆕 T517 — **تثبيتٌ في صدر «تناسبك»** كقوائم `EDITORIAL` نفسِها (`pinnedSets`) — لقائمةٍ منسَّقةٍ يقع حدثُها الآن */
+  pin?: EventPin;
 }
 
 export const UNIVERSES: Universe[] = [
@@ -466,6 +473,37 @@ export const FAMOUS_LISTS: Universe[] = [
   },
 ];
 
+/**
+ * 🆕 T517 — **قوائمُ المخرجين** (أحمد ٢٢ نوفمبر ٢٠٢٦: «سوي قائمة للمخرجين .. وحط فيها المخرج واعماله»،
+ * ثمّ «ابغى اشهر وافضل ١٠ مخرجين — مخرج انمي مرفوض»).
+ *
+ * **الترتيبُ بعدد أفلامهم في IMDb Top 250** (TVOvermind، سبتمبر ٢٠٢٦: نولان ٩ · سكورسيزي وسبيلبرغ وكوبريك ٧ ·
+ * تارانتينو وكوروساوا ٦) **ثمّ الشهرة** (هيتشكوك · كوبولا · فينشر · فيلنوف). **وكلُّ قائمةٍ ما أخرجه صاحبُها
+ * بنفسه وحدَه** («هذي قوائم للمخرجين لا تخلطها»): لا ما كتبه ولا ما أنتجه.
+ *
+ * **وفينشر مثبَّتٌ مع Cliff Booth** («٤ ب»): الفيلمُ فيلمُه، **فقائمتُه بابُه لا قائمةُ تارانتينو**. والفيلمُ
+ * بالاسم والسنة لا بالمعرّف — لم يكن معرّفُه في يدنا يومَ كُتب، ومعرّفٌ يُخمَّن يثبّت فيلماً آخر (D-388).
+ */
+export const DIRECTORS: Universe[] = [
+  { slug: "director-nolan", ar: "أفلام كريستوفر نولان", en: "Christopher Nolan Films", director: "Christopher Nolan" },
+  { slug: "director-scorsese", ar: "أفلام مارتن سكورسيزي", en: "Martin Scorsese Films", director: "Martin Scorsese" },
+  { slug: "director-spielberg", ar: "أفلام ستيفن سبيلبرغ", en: "Steven Spielberg Films", director: "Steven Spielberg" },
+  { slug: "director-kubrick", ar: "أفلام ستانلي كوبريك", en: "Stanley Kubrick Films", director: "Stanley Kubrick" },
+  { slug: "director-tarantino", ar: "أفلام كوينتن تارانتينو", en: "Quentin Tarantino Films", director: "Quentin Tarantino" },
+  { slug: "director-kurosawa", ar: "أفلام أكيرا كوروساوا", en: "Akira Kurosawa Films", director: "Akira Kurosawa" },
+  { slug: "director-hitchcock", ar: "أفلام ألفريد هيتشكوك", en: "Alfred Hitchcock Films", director: "Alfred Hitchcock" },
+  { slug: "director-coppola", ar: "أفلام فرانسيس فورد كوبولا", en: "Francis Ford Coppola Films", director: "Francis Ford Coppola" },
+  {
+    slug: "director-fincher",
+    ar: "أفلام ديفيد فينشر",
+    en: "David Fincher Films",
+    director: "David Fincher",
+    /* Cliff Booth: صالاتُ IMAX ٢٥ نوفمبر ٢٠٢٦ ثمّ Netflix — والموعدُ من TMDB لا من هنا (`movieTheatricalDate`) */
+    pin: { film: { title: "The Further Mis-Adventures of Cliff Booth", year: 2026 }, graceDays: 14 },
+  },
+  { slug: "director-villeneuve", ar: "أفلام دوني فيلنوف", en: "Denis Villeneuve Films", director: "Denis Villeneuve" },
+];
+
 export interface Franchise {
   slug: string;
   ar: string;
@@ -474,7 +512,7 @@ export interface Franchise {
 }
 
 const bySlug = (slug: string): Universe =>
-  [...TOP_LISTS, ...FAMOUS_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find(
+  [...TOP_LISTS, ...FAMOUS_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2, ...DIRECTORS].find(
     (u) => u.slug === slug,
   )!;
 
@@ -554,6 +592,13 @@ export const FRANCHISES: Franchise[] = [
     en: "Adventure Worlds",
     sets: ["rings-saga", "jurassic", "hunger-games", "shrek", "toy-story"].map(bySlug),
   },
+  /* 🆕 T517 — **المخرجون آخرُ الصفوف** (أحمد: «مكان قائمة المخرجين اخر شيء») */
+  {
+    slug: "directors",
+    ar: "المخرجون",
+    en: "Directors",
+    sets: DIRECTORS,
+  },
 
 ];
 
@@ -575,6 +620,7 @@ export function allCuratedSets(): Universe[] {
     ...CURATED,
     ...SUBLISTS,
     ...SUBLISTS2,
+    ...DIRECTORS,
   ];
 }
 
@@ -614,6 +660,27 @@ export function universeBySlug(slug: string): Universe | null {
  * أسوأ من ألّا يُترجَم أيٌّ منهما** (D-214: الشرطُ يُوسَّع يومَ يُضاف
  * إليه).
  */
+/**
+ * 🆕 442 — **تثبيتُ قائمةٍ في صدر «تناسبك» حول فيلمٍ يُعرض** (أحمد ١٩ نوفمبر ٢٠٢٦: «لازم يكون فيه لست طريقك
+ * الى افنجرز دومزداي وتكون ثابته ف فور يو لين ينزل الفلم»، ثمّ «١ ب · ٢ أ · ٣ ب تبقى اسبوعان»).
+ *
+ * **الموعدُ من TMDB لا من هنا** (١ ب): تاريخُ الصالات الرسميُّ (`movieTheatricalDate`) — **فإن تأجّل الفيلمُ
+ * تأجّل التثبيتُ معه**. **ولجميع القرّاء** (٢ أ)، **ويبقى `graceDays` بعد العرض** (٣ ب: أسبوعان).
+ *
+ * 🆕 T517 — **والفيلمُ بمعرّفه أو باسمه وسنته** (`film`): ما لا معرّفَ له في يدنا يُبحث عنه كما تُبحث القوائمُ
+ * المكتوبةُ بالأسماء (D-388)، **ولا مطابقةَ = لا تثبيت** (`getActiveEventLists`).
+ */
+export interface EventPin {
+  tmdbId?: number;
+  film?: { title: string; year: number };
+  graceDays: number;
+  /**
+   * 🆕 T474 — **ملصقُ الحدث على بطاقة القائمة** (أحمد ١٩ نوفمبر: «تجي صورة افنجرز دومزداي … ويظهر فالمكان الاسود عاليسار ك
+   * استثناء»، ثمّ «لا خلي القناع ب»): مسارُ TMDB يختاره أحمد بالاسم — والغيابُ = ملصقُ TMDB الافتراضيّ للفيلم.
+   */
+  poster?: string;
+}
+
 export interface EditorialList {
   slug: string;
   ar: string;
@@ -628,15 +695,7 @@ export interface EditorialList {
    * تأجّل الفيلمُ تأجّل التثبيتُ معه**، وتاريخٌ يُكتب بيدٍ يكذب يومَ يتأجّل. **ولجميع القرّاء** (٢ أ)،
    * **ويبقى `graceDays` بعد العرض** (٣ ب: أسبوعان) لأن كثيرين يلحقون المشاهدةَ بعد النزول.
    */
-  pin?: {
-    tmdbId: number;
-    graceDays: number;
-    /**
-     * 🆕 T474 — **ملصقُ الحدث على بطاقة القائمة** (أحمد ١٩ نوفمبر: «تجي صورة افنجرز دومزداي … ويظهر فالمكان الاسود عاليسار ك
-     * استثناء»، ثمّ «لا خلي القناع ب»): مسارُ TMDB يختاره أحمد بالاسم — والغيابُ = ملصقُ TMDB الافتراضيّ للفيلم.
-     */
-    poster?: string;
-  };
+  pin?: EventPin;
 }
 
 export const EDITORIAL: EditorialList[] = [
@@ -675,6 +734,11 @@ export const EDITORIAL: EditorialList[] = [
 
 function editorialBySlug(slug: string): EditorialList | null {
   return EDITORIAL.find((e) => e.slug === slug) ?? null;
+}
+
+/** 🆕 T517 — **كلُّ ما يُثبَّت في «تناسبك»**: قوائمُ الأحداث التحريريّة ثمّ المنسَّقةُ التي تحمل `pin` (قائمةُ فينشر) */
+export function pinnedSets(): { slug: string; pin: EventPin }[] {
+  return [...EDITORIAL, ...allCuratedSets()].flatMap((e) => (e.pin ? [{ slug: e.slug, pin: e.pin }] : []));
 }
 
 export function universeName(u: Universe, locale: "ar" | "en") {
@@ -773,6 +837,13 @@ export function curatedBlurb(
     return en
       ? `The BFI's Sight & Sound critics' poll, taken once a decade — the 2022 edition, in its own order.`
       : `استفتاءُ نقّاد Sight & Sound من معهد الفيلم البريطاني، يُجرى مرّةً كلَّ عقد — نسخةُ ٢٠٢٢ برتبتها.`;
+  }
+
+  /* 🆕 T517 — **قائمةُ المخرج**: ما أخرجه بنفسه، وتتحدّث وحدها — **والجملةُ تصف البناءَ لا تمدح** (D-373) */
+  if (u.director) {
+    return en
+      ? `Every feature film ${u.director} directed himself, in release order — his next film joins it on its own.`
+      : `كلُّ فيلمٍ طويلٍ أخرجه ${name.replace(/^أفلام /, "")} بنفسه، بترتيب صدوره — وفيلمُه القادم يدخلها وحدَه.`;
   }
 
   /* **الجوائز** — الفائزون بأسمائهم وسنواتهم */
