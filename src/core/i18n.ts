@@ -672,6 +672,15 @@ const ar = {
   importRunReviews: (n: string) => `مراجعات: ${n}`,
   /* 🆕 T507 — المراجعاتُ المستوردة (أحمد ٢٢ نوفمبر «٢أ»: Letterboxd وTrakt وعمودُ «المراجعة» في أي ملف) */
   importDoneReviews: (n: string) => `والمراجعات المستوردة: ${n}.`,
+  /* 🆕 T516 — تعليقاتُ Trakt بلا تقييم: ورقةٌ تسأل عن نجوم كلٍّ منها (أحمد ٢٢ نوفمبر «٢أ») */
+  importPendingTitle: "قيّم تعليقاتك من Trakt",
+  importPendingHint: "هذه تعليقاتك في Trakt بلا تقييم. اختر نجوم كل واحد ليُحفظ مراجعةً في لوبز بتاريخ كتابته.",
+  importPendingStep: (i: string, n: string) => `${i} من ${n}`,
+  importPendingSkip: "تخطَّ",
+  importPendingSaved: (n: string) => `حُفظت مراجعاتك: ${n}.`,
+  importPendingFailed: "تعذّر حفظ هذه المراجعة. جرّب مرة أخرى.",
+  importTraktPendingWeb: (n: string) =>
+    `${n} من تعليقاتك في Trakt بلا تقييم ولم تُنقل. قيّمها في Trakt ثم أعد الاستيراد، أو استورد من التطبيق لتختار نجومها.`,
   importReviewsSkipped: (n: string) =>
     `مراجعاتٌ لم تُستورد (${n}): بلا تقييم، أو بلا تاريخ كتابة، أو لعملٍ تقييمُك له في Loopz غيرُ تقييمها.`,
   importReviewsSpoiler: "Letterboxd لا يقول أيُّ مراجعةٍ فيها حرق — راجع مراجعاتك المستوردة وعلّم ما يحتاج.",
@@ -4168,6 +4177,14 @@ const en: Dict = {
   importRunUnmatched: (n: string) => `${n} not found`,
   importRunReviews: (n: string) => `${n} reviews`,
   importDoneReviews: (n: string) => `We also imported ${n} reviews.`,
+  importPendingTitle: "Rate your Trakt comments",
+  importPendingHint: "These Trakt comments have no rating. Pick stars for each one to save it as a Loopz review, with the date you wrote it.",
+  importPendingStep: (i: string, n: string) => `${i} of ${n}`,
+  importPendingSkip: "Skip",
+  importPendingSaved: (n: string) => `Saved ${n} reviews.`,
+  importPendingFailed: "Couldn't save this review. Try again.",
+  importTraktPendingWeb: (n: string) =>
+    `${n} of your Trakt comments have no rating and weren't imported. Rate them on Trakt and import again, or import from the app to pick their stars.`,
   importReviewsSkipped: (n: string) =>
     `${n} reviews weren't imported: no rating, no date written, or your Loopz rating for that title is different.`,
   importReviewsSpoiler: "Letterboxd doesn't say which reviews have spoilers — check your imported reviews and mark any that do.",

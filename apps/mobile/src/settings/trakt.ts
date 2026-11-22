@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { api, write } from "../api";
+import type { TraktPending } from "./TraktPendingSheet";
 
 /**
  * ====== 🆕 R281 — استيرادُ Trakt من التطبيق ======
@@ -15,7 +16,8 @@ import { api, write } from "../api";
  */
 export type TraktOutcome =
   /* 🆕 T507 — `reviews`: تعليقاتُه على الأفلام والمسلسلات صارت مراجعات (خادمٌ قبل T507 لا يعيده ⇐ صفر) */
-  | { kind: "done"; shows: number; episodes: number; movies: number; reviews: number; unmatched: string[] }
+  /* 🆕 T516 — `pending`: تعليقاتُه بلا تقييم بنصوصها (خادمٌ قبل T516 لا يعيدها ⇐ لا ورقة) */
+  | { kind: "done"; shows: number; episodes: number; movies: number; reviews: number; unmatched: string[]; pending: TraktPending[] }
   | { kind: "cancel" }
   | { kind: "failed" };
 
@@ -58,8 +60,17 @@ export async function importFromTrakt(): Promise<TraktOutcome> {
     // حالةٌ لا تطابق ما أرسلناه ليست رحلتَنا — لا تُصرف شِفرتُها
     if (!code || param(back.url, "state") !== state) return { kind: "failed" };
 
-    const done = await write<{ shows: number; episodes: number; movies: number; reviews?: number; unmatched: string[] }>("/api/v1/me/import/trakt", { code, verifier });
-    return { kind: "done", ...done, reviews: Number(done.reviews) || 0, unmatched: Array.isArray(done.unmatched) ? done.unmatched : [] };
+    const done = await write<{ shows: number; episodes: number; movies: number; reviews?: number; unmatched: string[]; pending?: TraktPending[] }>(
+      "/api/v1/me/import/trakt",
+      { code, verifier },
+    );
+    return {
+      kind: "done",
+      ...done,
+      reviews: Number(done.reviews) || 0,
+      unmatched: Array.isArray(done.unmatched) ? done.unmatched : [],
+      pending: Array.isArray(done.pending) ? done.pending : [],
+    };
   } catch {
     return { kind: "failed" };
   }

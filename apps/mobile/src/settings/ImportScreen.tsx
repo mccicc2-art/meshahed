@@ -26,6 +26,7 @@ import { ImportAutoReview } from "./ImportAutoReview";
 import { ImportHistorySheet } from "./ImportHistorySheet";
 import { importRecords, type ImportResult } from "./importPipeline";
 import { importFromTrakt } from "./trakt";
+import { TraktPendingSheet, type TraktPending } from "./TraktPendingSheet";
 
 /**
  * ====== الاستيراد والتصدير (🆕 D-1369 · V-C · C6) — `settings/import/page.tsx` ======
@@ -234,6 +235,8 @@ export function ImportScreen() {
 
   /* 🆕 R281 — Trakt: لا ملفَّ ولا مراحل — نافذةُ موافقةٍ ثمّ طلبٌ واحدٌ على الخادم؛ الصفُّ يدور حتى يعود */
   const [traktBusy, setTraktBusy] = useState(false);
+  /** 🆕 T516 — تعليقاتُ Trakt التي تنتظر نجومَها */
+  const [pending, setPending] = useState<TraktPending[]>([]);
   async function connectTrakt() {
     if (traktBusy || busy) return;
     haptic.pick();
@@ -250,6 +253,8 @@ export function ImportScreen() {
           "success",
         );
         refreshRuns();
+        /* 🆕 T516 — تعليقاتٌ بلا تقييم ⇐ ورقةُ النجوم بعد الإشعار (أحمد ٢٢ نوفمبر «٢أ») */
+        if (r.pending.length) setPending(r.pending);
       } else {
         toast.current?.say(r.kind === "cancel" ? t.importTraktDenied : t.importTraktFailed);
       }
@@ -341,6 +346,17 @@ export function ImportScreen() {
       <Group>
         <Row icon="download" title={t.dataExportTitle} value={exporting ? t.dataExportBusy : undefined} busy={exporting} onPress={() => void exportData()} />
       </Group>
+
+      {/* ===== 🆕 T516 — ورقةُ نجوم تعليقات Trakt ===== */}
+      {pending.length ? (
+        <TraktPendingSheet
+          items={pending}
+          onClose={(saved) => {
+            setPending([]);
+            if (saved > 0) toast.current?.say(t.importPendingSaved(num(saved, locale)), undefined, undefined, "success");
+          }}
+        />
+      ) : null}
 
       {/* ===== ورقةُ الدليل: الشرحُ كاملاً وزرُّ «ارفع الملف الآن» (بقارئ هذا التطبيق أوّلاً) ===== */}
       {guide ? (

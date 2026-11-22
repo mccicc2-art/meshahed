@@ -117,9 +117,11 @@ export function ImportPanel({
   // رسالة العودة من Trakt — تُقرأ من الرابط الذي أعاده مسار الاستدعاء
   const trakt = params.get("trakt");
   const traktReviews = Number(params.get("rv") ?? 0) || 0;
+  /* 🆕 T516 — تعليقاتٌ بلا تقييم: نصوصُها لا تمرّ في الرابط، فالويبُ يقول عددَها وطريقَ نقلها (ورقةُ النجوم في التطبيق) */
+  const traktPending = Number(params.get("np") ?? 0) || 0;
   const traktMsg =
     trakt === "ok"
-      ? `${t.importDoneBody(Number(params.get("sh") ?? 0) || 0, Number(params.get("ep") ?? 0) || 0, Number(params.get("mv") ?? 0) || 0)}${traktReviews > 0 ? ` ${t.importDoneReviews(num(traktReviews, locale))}` : ""}`
+      ? `${t.importDoneBody(Number(params.get("sh") ?? 0) || 0, Number(params.get("ep") ?? 0) || 0, Number(params.get("mv") ?? 0) || 0)}${traktReviews > 0 ? ` ${t.importDoneReviews(num(traktReviews, locale))}` : ""}${traktPending > 0 ? ` ${t.importTraktPendingWeb(num(traktPending, locale))}` : ""}`
       : trakt === "off"
         ? t.importTraktOff
         : trakt === "denied"

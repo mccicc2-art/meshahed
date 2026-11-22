@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
     const done = await runTraktImport(token, auth.user.id, "app");
     if (!done.ok) return fail("upstream");
     return ok(
-      { shows: done.shows, episodes: done.episodes, movies: done.movies, reviews: done.reviews, unmatched: done.unmatched.slice(0, 200) },
+      /* 🆕 T516 — `pending`: تعليقاتُه بلا تقييم بنصوصها — التطبيقُ يفتح ورقةَ النجوم بها ثمّ يكتبها `import/review` */
+      { shows: done.shows, episodes: done.episodes, movies: done.movies, reviews: done.reviews, unmatched: done.unmatched.slice(0, 200), pending: done.pending },
       ["home", "me:library", "me:stats", "me:ratings", "me:diary"],
     );
   });

@@ -90,9 +90,9 @@ export async function writeImportedReviews(
   stamp: string,
   /** مصدرُ الآراء — يُكتب في `ratings.imported_from` (هجرة ٢٥٨) فتستثنيها دوالُّ النشاط والمجتمع و«أفضل الأسبوع» */
   from: "letterboxd" | "trakt" | "auto",
-): Promise<{ reviews: number; reviewsSkipped: number; reviewsKept: number }> {
+): Promise<{ reviews: number; reviewsSkipped: number; reviewsKept: number; needsRating: ReviewItem[] }> {
   const withReview = items.filter((it) => it.review);
-  if (!withReview.length) return { reviews: 0, reviewsSkipped: 0, reviewsKept: 0 };
+  if (!withReview.length) return { reviews: 0, reviewsSkipped: 0, reviewsKept: 0, needsRating: [] };
 
   const { data: existing, error: readErr } = await supabase
     .from("ratings")
@@ -101,9 +101,16 @@ export async function writeImportedReviews(
     .in("tmdb_id", [...new Set(withReview.map((it) => it.tmdbId))]);
   if (readErr) {
     console.error(`[import] reviews read failed: ${readErr.code || "unknown"}`);
-    return { reviews: 0, reviewsSkipped: withReview.length, reviewsKept: 0 };
+    return { reviews: 0, reviewsSkipped: withReview.length, reviewsKept: 0, needsRating: [] };
   }
   const plan = planReviewWrites(withReview, (existing ?? []) as ExistingRating[], stamp);
+  /* 🆕 T516 — **رأيٌ بلا تقييمٍ لعملٍ بلا تقييم** لا يُكتب (`ratings.rating` إلزاميّ) — كان يسقط عدداً في «لم تُستورد» وحده
+     (تعليقُ أحمد على موبلاند في Trakt، ٢٢ نوفمبر). يعود بنصّه كي يختار صاحبُه نجومَه ثم يُكتب بالطريق نفسِه */
+  const rated = new Set(((existing ?? []) as ExistingRating[]).map((r) => `${r.media_type}-${r.tmdb_id}`));
+  const needsRating = withReview.filter((it) => {
+    const raw = it.rating == null ? NaN : Math.round(Number(it.rating));
+    return !Number.isFinite(raw) && !rated.has(`${it.kind}-${it.tmdbId}`);
+  });
   const meta = new Map(withReview.map((it) => [`${it.kind}-${it.tmdbId}`, it]));
   let reviews = 0;
   let reviewsSkipped = plan.skipped;
@@ -175,5 +182,5 @@ export async function writeImportedReviews(
       else reviewsSkipped++;
     }
   }
-  return { reviews, reviewsSkipped, reviewsKept };
+  return { reviews, reviewsSkipped, reviewsKept, needsRating };
 }

@@ -11,8 +11,22 @@ import { reviewDate } from "@/core/importParse";
 /** 🆕 كم مسلسلاً «قُيِّم ولم يُعلَّم» تُجلب حلقاتُه من TMDB داخل الردّ — والباقي يدخل بتقييمه بلا حلقات */
 const TRAKT_ALL_AIRED_CAP = 40;
 
+/** 🆕 T516 — تعليقٌ من Trakt بلا تقييم (ولا تقييمَ له في Loopz): يعود بنصّه كي يختار صاحبُه نجومَه (`import/review`) */
+export type TraktPending = { kind: "tv" | "movie"; tmdbId: number; title: string; posterPath: string | null; text: string; at: string; spoiler: boolean };
+/** سقفُ ما يعود منها في الردّ الواحد — ورقةُ النجوم تمرّ عليها واحداً واحداً */
+export const TRAKT_PENDING_CAP = 50;
+
 export type TraktRunResult =
-  | { ok: true; shows: number; episodes: number; movies: number; reviews: number; reviewsSkipped: number; unmatched: string[] }
+  | {
+      ok: true;
+      shows: number;
+      episodes: number;
+      movies: number;
+      reviews: number;
+      reviewsSkipped: number;
+      unmatched: string[];
+      pending: TraktPending[];
+    }
   | { ok: false };
 
 /**
@@ -250,13 +264,19 @@ export async function runTraktImport(token: string, userId: string, platform: "w
   }
 
   const rv = await writeImportedReviews(supabase, userId, reviewItems, stamp, "trakt");
-  const reviewsSkipped = rv.reviewsSkipped + reviewItems.filter((it) => !it.review).length;
+  /* ما ينتظر نجومَه ليس «متروكاً»: يُعدّ في `pending` لا في «لم تُستورد» */
+  const pending: TraktPending[] = rv.needsRating.slice(0, TRAKT_PENDING_CAP).flatMap((it) =>
+    it.review
+      ? [{ kind: it.kind, tmdbId: it.tmdbId, title: it.title, posterPath: it.posterPath, text: it.review.text, at: it.review.at, spoiler: it.review.spoiler === true }]
+      : [],
+  );
+  const reviewsSkipped = rv.reviewsSkipped - rv.needsRating.length + reviewItems.filter((it) => !it.review).length;
 
   const showCount = new Set(shows.map((s) => s.tmdbId)).size;
   const movieCount = new Set(movies.map((m) => m.tmdbId)).size;
   // أعدادٌ فقط — ما وصل من Trakt مقابل ما كُتب، كي يُرى أين يضيع شيء
   console.log(
-    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length} fromHistory=${harvest.fromHistory} reviews=${rv.reviews}/${harvest.reviews.length}`,
+    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length} fromHistory=${harvest.fromHistory} reviews=${rv.reviews}/${harvest.reviews.length} pending=${rv.needsRating.length}`,
   );
   /* 🆕 T507 — سطرُ «استيراداتك»؛ والسطحُ من الطريق الذي نادى (عودةُ الموقع `web`، مسارُ التطبيق `app`) */
   await recordImportRun(
@@ -270,5 +290,5 @@ export async function runTraktImport(token: string, userId: string, platform: "w
   revalidatePath("/stats");
   revalidatePath("/diary");
 
-  return { ok: true, shows: showCount, episodes, movies: movieCount, reviews: rv.reviews, reviewsSkipped, unmatched: harvest.unmatched };
+  return { ok: true, shows: showCount, episodes, movies: movieCount, reviews: rv.reviews, reviewsSkipped, unmatched: harvest.unmatched, pending };
 }

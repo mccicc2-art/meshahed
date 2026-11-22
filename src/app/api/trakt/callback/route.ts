@@ -46,5 +46,6 @@ export async function GET(request: Request) {
 
   const done = await runTraktImport(token, user.id, "web");
   if (!done.ok) return back("trakt=failed");
-  return back(`trakt=ok&sh=${done.shows}&ep=${done.episodes}&mv=${done.movies}&rv=${done.reviews}&un=${done.unmatched.length}`);
+  /* 🆕 T516 — `np`: عددُ تعليقاته بلا تقييم وحدَه — النصوصُ لا تمرّ في رابط؛ الويبُ يقول العددَ وطريقَ نقلها */
+  return back(`trakt=ok&sh=${done.shows}&ep=${done.episodes}&mv=${done.movies}&rv=${done.reviews}&np=${done.pending.length}&un=${done.unmatched.length}`);
 }
