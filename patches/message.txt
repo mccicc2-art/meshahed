@@ -1,4 +1,1 @@
-[deploy] Release R277 - T499: TV Time import copy - TV Time shut down on 15 Jul 2026, so the row hint no longer asks to request a data copy and the import note no longer says export your file from them (Ahmed: 3b nfdh w arfa, 21 Nov). Text only - web + app OTA, no native build
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FexM7EhotkJZCrtN86oBLb
+[deploy] Release R283 - T516 Trakt comments without a rating; T517 director lists and for_you_lists v2; T518 cinema ratings on Now posters

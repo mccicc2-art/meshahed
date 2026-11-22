@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Release R277 (T499): base64 parts sit next to this script; sha256-checked before applying
+# Release R283 (registry release 283): T516, T517, T518 as git format-patch -k mbox
 set -euo pipefail
 D="$(cd "$(dirname "$0")" && pwd)"
-cat "$D"/r277-part-*.b64 | tr -d '\n' | base64 -d | xz -d > /tmp/d.patch
-echo "f3abfc034e0f6260541db8d4a2b9c3238e761d1102d72b9a2d1ef67c63eb3b68  /tmp/d.patch" | sha256sum -c -
-git apply --binary --whitespace=nowarn /tmp/d.patch
-echo APPLY_OK
+cat "$D/r283-part-0.b64" "$D/r283-part-1.b64" | tr -d '\n' | base64 -d | xz -d > /tmp/r283.mbox
+echo "3270f96fbc9b1c9f0278803c18c263f5c792e66cb0994e7e7c8de3bb230ee1f8  /tmp/r283.mbox" | sha256sum -c -
+git -c user.name=Claude -c user.email=noreply@anthropic.com am -3 -k /tmp/r283.mbox
+git log --oneline -4
