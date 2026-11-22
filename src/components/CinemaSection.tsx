@@ -42,6 +42,8 @@ export async function CinemaSection({
           /* التاريخُ بمنسّق التواريخ الواحد (`formatDateShort`) — نفسُه في التطبيق */
           badge={soon && c.sa_date ? formatDateShort(c.sa_date, t) : undefined}
           titleBelow={place === "discover"}
+          /* T518 — التقييمُ على ملصقات «الآن» وحدها: القادمُ لم يُعرض فلا رقمَ له، وشارتُه تاريخُه */
+          rating={soon ? undefined : { imdb: c.imdb_rating, tmdb: c.vote_average }}
           saved={st.added}
           watched={st.watched}
           hold={{

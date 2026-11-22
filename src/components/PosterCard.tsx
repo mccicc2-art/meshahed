@@ -3,6 +3,7 @@ import Image from "next/image";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
+import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { QuickAdd } from "./QuickAdd";
 import { PosterHold } from "./PosterHold";
 import { StatusThread } from "./StatusThread";
@@ -42,6 +43,7 @@ export function PosterCard({
   hold,
   holdExtra,
   quickAdd,
+  rating,
 }: {
   href: string;
   title: string;
@@ -54,6 +56,11 @@ export function PosterCard({
   posterPath: string | null;
   year?: string;
   badge?: string;
+  /**
+   * 🆕 T518 — **تقييمُ IMDb (وإلّا TMDB) بشعاره على الملصق** — قسمُ السينما وحدَه (أحمد ٢٢ نوفمبر: «فقط للسينما فالرئيسية»)،
+   * بشارة `RankedRail` نفسِها. الاسمُ داخل الملصق ⇒ الشارةُ أعلاه؛ الاسمُ تحته ⇒ أسفلُ الملصق كجيرانه في «اكتشف»
+   */
+  rating?: { imdb: number | null; tmdb: number };
   /** رقمٌ في دائرة على الزاوية المقابلة — ما بقي من الحلقات */
   count?: number;
   progress?: number; // 0..100
@@ -213,6 +220,14 @@ export function PosterCard({
             style={{ background: BADGE_BG[badgeTone] }}
           >
             {badge}
+          </span>
+        )}
+        {rating && (typeof rating.imdb === "number" || rating.tmdb > 0) && (
+          <span
+            className={`absolute ${titleBelow ? "bottom-1.5" : "top-2"} end-1.5 flex items-center gap-1 text-12 font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5`}
+          >
+            {typeof rating.imdb === "number" ? <ImdbMark className="text-[8px]" /> : <TmdbMark className="text-[8px]" />}
+            <span dir="ltr">{(typeof rating.imdb === "number" ? rating.imdb : rating.tmdb).toFixed(1)}</span>
           </span>
         )}
         {typeof count === "number" && count > 0 && (

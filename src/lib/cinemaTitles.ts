@@ -6,6 +6,7 @@ import { nowPlayingMovies, resultsByIds, searchMovieTitles, type SearchResult } 
 import { cinemaFresh, cinemaOrigin, cinemaStatus, pickCinemaMatch, riyadhToday } from "@/core/cinema";
 import { titleOf } from "@/core/media";
 import { railGuard } from "@/lib/topChart";
+import { attachImdbRatings } from "@/lib/omdb";
 import { getContentPrefs } from "@/lib/data";
 import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/core/contentPrefs";
 import type { CinemaCard, CinemaPayload } from "@/core/contracts/discover";
@@ -86,7 +87,8 @@ function card(r: SearchResult, extra: Pick<CinemaCard, "origin" | "sa_date">): C
     poster_path: r.poster_path,
     vote_average: r.vote_average ?? 0,
     year: date ? date.slice(0, 4) : null,
-    imdb_rating: null,
+    /* 🆕 تقييمُ IMDb لما يُعرض الآن (أحمد ٢٢ نوفمبر: «ابغى تقييم فالرئيسية ايضا — فقط للسينما») — والبطاقةُ تعود إلى TMDB إن غاب */
+    imdb_rating: r.imdb_rating ?? null,
     date: extra.sa_date ?? date,
     backdrop_path: r.backdrop_path ?? null,
     ...extra,
@@ -97,7 +99,9 @@ function card(r: SearchResult, extra: Pick<CinemaCard, "origin" | "sa_date">): C
 async function fallback(): Promise<CinemaPayload> {
   const c = await nowPlayingMovies(["SA"]).catch(() => null);
   return {
-    now: (await keepFor(c?.results ?? [])).map((r) => card(r, { origin: cinemaOrigin(r), sa_date: null })),
+    now: await keepFor(c?.results ?? [])
+      .then((rows) => attachImdbRatings(rows).catch(() => rows))
+      .then((rows) => rows.map((r) => card(r, { origin: cinemaOrigin(r), sa_date: null }))),
     soon: [],
   };
 }
@@ -147,7 +151,12 @@ export const getCinema = cache(async function getCinema(): Promise<CinemaPayload
   }
   if (byId.size === 0) return fallback();
 
-  const details = await keepFor(await resultsByIds("movie", [...byId.keys()]));
+  const kept = await keepFor(await resultsByIds("movie", [...byId.keys()]));
+  /* التقييمُ لما يُعرض الآن وحدَه — القادمُ لم يُشاهَد بعد فلا رقمَ له. والمخزنُ نفسُه الذي يقرؤه صفُّ «اكتشف» القديم،
+     وسقوطُه لا يُسقط القسم */
+  const rated = await attachImdbRatings(kept.filter((r) => byId.get(r.id)?.now)).catch(() => [] as SearchResult[]);
+  const ratingOf = new Map(rated.map((r) => [r.id, r.imdb_rating]));
+  const details = kept.map((r) => (ratingOf.has(r.id) ? { ...r, imdb_rating: ratingOf.get(r.id) } : r));
   const now: (CinemaCard & { p: number })[] = [];
   const soon: (CinemaCard & { p: number })[] = [];
   for (const r of details) {

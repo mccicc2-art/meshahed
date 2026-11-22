@@ -773,7 +773,7 @@ export function HomeScreen() {
           hintReady={!tourBusy && d.hints.includes("home-customize") && d.hints.includes(PRIVACY_HINT)}
           renderCard={(c, badge) => (
             <PosterCard
-              item={{ ...asItem({ key: `cn-${c.id}`, kind: "movie", id: c.id, title: c.title, poster_path: c.poster_path }), next: badge ?? undefined, release: c.sa_date }}
+              item={{ ...asItem({ key: `cn-${c.id}`, kind: "movie", id: c.id, title: c.title, poster_path: c.poster_path }), next: badge ?? undefined, release: c.sa_date, rating: badge || c.sa_date ? undefined : { imdb: c.imdb_rating, tmdb: c.vote_average } }}
               width={posterW}
               onPress={pressItem}
               onHold={holdDiscOpen}

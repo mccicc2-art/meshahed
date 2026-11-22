@@ -48,6 +48,8 @@ export type CardItem = {
   noNext?: boolean;
   /** 🆕 T474 — تاريخُ عرض الفيلم إن عرفه السطح: تاريخٌ لم يأتِ يُخفي «شاهدته» من قائمة الضغط المطوَّل */
   release?: string | null;
+  /** 🆕 T518 — تقييمُ IMDb (وإلّا TMDB) أعلى طرف الملصق — قسمُ السينما في الرئيسيّة وحدَه («فقط للسينما فالرئيسية») */
+  rating?: { imdb: number | null; tmdb: number };
 };
 
 /** الحجابُ `from-black/90 via-black/60 to-transparent` صورةٌ ١×٤٨ تُمدّ — بلا حزمةِ تدرّجٍ جديدة */
@@ -133,6 +135,12 @@ export const PosterCard = memo(function PosterCard({
             🆕 T512 — **والقرصُ نفسُه يحمل تاريخَ نزول الفيلم في «قريباً»** («٢٦ نوفمبر»): اتّجاهُه من أوّل حرفٍ قويٍّ فيه */}
         {item.next ? (
           <PosterPill text={item.next} />
+        ) : item.rating && (typeof item.rating.imdb === "number" || item.rating.tmdb > 0) ? (
+          /* شارةُ تقييم «اكتشف» نفسُها (`RailCard`): زجاجٌ داكنٌ وشعارُ المصدر بلونه — في مكان القرص لأنّ الاسمَ أسفلَ الملصق */
+          <View style={{ position: "absolute", top: 8, end: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+            <Text size={8} weight="800" color={typeof item.rating.imdb === "number" ? "#F5C518" : "#01B4E4"}>{typeof item.rating.imdb === "number" ? "IMDb" : "TMDB"}</Text>
+            <Text size={12} weight="700" color="#fff" style={{ fontVariant: ["tabular-nums"] }}>{(typeof item.rating.imdb === "number" ? item.rating.imdb : item.rating.tmdb).toFixed(1)}</Text>
+          </View>
         ) : typeof item.count === "number" && item.count > 0 ? (
           <View
             style={{
