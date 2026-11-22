@@ -27,7 +27,11 @@ export type ProfileTitle = {
   genres: number[] | null;
 };
 /** مسلسلٌ بتقدّم صاحب الملفّ (نسبةٌ مئويّة من المعروض) */
-export type ProfileShow = ProfileTitle & { progress: number };
+/**
+ * 🆕 T523 — `next`: الحلقةُ التالية لصاحب الملفّ («S2 E6» — قرصُ المكتبة، أحمد «١٩ مثل ف المكتبة»)؛ يغيب للمكتمل ولما لم يُحسب.
+ * اختياريٌّ فنسخُ التطبيق الأقدم لا تنكسر.
+ */
+export type ProfileShow = ProfileTitle & { progress: number; next?: { s: number; e: number } | null };
 export type ProfileArtist = { person_id: number; name: string | null; profile_path: string | null };
 export type ProfileList = {
   id: string;

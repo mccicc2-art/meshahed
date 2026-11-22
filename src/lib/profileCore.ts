@@ -39,6 +39,7 @@ import type { ActivityItem } from "@/components/ActivityScreen";
 import { getProfileActivity } from "@/lib/myActivity";
 import { posterUrl } from "@/core/media";
 import { getLibState } from "@/lib/libState";
+import { profileNextEpisodes } from "@/lib/profileNext";
 import { createClient } from "@/lib/supabase/server";
 import { applySectionOrder, profileLayoutUntouched, sanitizeProfilePrefs, sectionKeyOf, type ProfileSection } from "@/core/profilePrefs";
 
@@ -277,7 +278,10 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
      ⚖️ 🆕 **والعدُّ انقسم مع العرض** (D-941c، طلبُ أحمد: «أضف أنمي على اليمين
      قبل الإحصائيات»): خانةُ «مسلسلات» تعدّ ما في صفّها وخانةُ «أنمي» ما في
      صفّها — **رقمٌ فوق صفٍّ لا يطابقه يكذب** (D-217). */
-  const tvAll = follows.filter((f) => f.media_type === "tv" && !f.dropped);
+  /* 🆕 T523 — **الملفُّ يعرض ما شاهده لا ما ينوي مشاهدتَه** (أحمد ٢٢ نوفمبر: «تو واتش ابغى اشوف .. انا لسى ما شفته · فالملف الشخصي
+     المفترض اعمال انا شفتها او قاعد اشوفها»، «١٨ أ»): المسلسلُ والأنمي بحلقةٍ واحدةٍ على الأقلّ، والفيلمُ مشاهَد — وما لم يبدأه
+     يبقى في «To Watch» عنده. والخاناتُ تعدّ الصفوفَ نفسَها (D-941c: رقمٌ فوق صفٍّ لا يطابقه يكذب). */
+  const tvAll = follows.filter((f) => f.media_type === "tv" && !f.dropped && (watched.byShow.get(f.tmdb_id) ?? 0) > 0);
   const isAnime = (f: { media_type: "tv" | "movie"; tmdb_id: number }) =>
     !!animeFlags.get(artKey(f.media_type, f.tmdb_id));
   const tvFollows = applySectionOrder(
@@ -291,7 +295,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     (f) => sectionKeyOf.show(f.tmdb_id),
   );
   const movieFollows = applySectionOrder(
-    follows.filter((f) => f.media_type === "movie" && !f.dropped),
+    follows.filter((f) => f.media_type === "movie" && !f.dropped && watched.movies.has(f.tmdb_id)),
     secOrder.movies,
     (f) => sectionKeyOf.movie(f.tmdb_id),
   );
@@ -371,14 +375,27 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
     .filter((r) => r.rating != null || r.review?.trim())
     .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
 
-  const withProgress = (f: (typeof tvAll)[number]) => {
+  const progressOf = (f: (typeof tvAll)[number]) => {
     const aired = f.aired_episodes ?? f.total_episodes ?? 0;
     const w = Math.min(watched.byShow.get(f.tmdb_id) ?? 0, aired || Infinity);
+    return aired > 0 ? Math.round((w / aired) * 100) : 0;
+  };
+  /* 🆕 T523 — **«وين واصل»: قرصُ الحلقة التالية كالمكتبة** («١٩ مثل ف المكتبة») لما لم يكتمل، بحلقات صاحب الملفّ
+     (`profileNextEpisodes`، الهجرة ٢٦٢) — ولمن يرى الملفَّ وحدَه (`canView`)، فالحسابُ الخاصُّ لا يُدفع له نداء */
+  const nextEp = canView
+    ? await profileNextEpisodes(
+        profile.id,
+        [...tvFollows, ...animeFollows].filter((f) => progressOf(f) < 100).map((f) => f.tmdb_id),
+      )
+    : new Map<number, { s: number; e: number }>();
+  const withProgress = (f: (typeof tvAll)[number]) => {
+    const progress = progressOf(f);
     return {
       id: f.tmdb_id,
       title: f.title,
       posterPath: f.poster_path,
-      progress: aired > 0 ? Math.round((w / aired) * 100) : 0,
+      progress,
+      next: progress < 100 ? (nextEp.get(f.tmdb_id) ?? null) : null,
     };
   };
   const shows = tvFollows.map(withProgress);

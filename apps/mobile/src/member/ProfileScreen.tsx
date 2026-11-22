@@ -1191,6 +1191,8 @@ const asItem = (x: ProfileTitle | ProfileShow): CardItem => ({
   progress: "progress" in x ? x.progress : 0,
   completed: "progress" in x ? x.progress >= 100 : false,
   dropped: false,
+  /* 🆕 T523 — قرصُ الحلقة التالية كالمكتبة («١٩ مثل ف المكتبة»): «وين واصل» صاحبُ الملفّ — صيغتُها في المكتبة حرفاً */
+  next: "next" in x && x.next ? `S${x.next.s} E${x.next.e}` : undefined,
 });
 
 /* 🆕 N3 — مفاتيحُ الترتيب بصيغة الويب (`sectionKeyOf` · `listItemKey`) — ما تكتبه الورقةُ هو ما يقرؤه الخادمُ بحرفه */

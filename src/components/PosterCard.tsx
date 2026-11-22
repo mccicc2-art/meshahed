@@ -44,6 +44,7 @@ export function PosterCard({
   holdExtra,
   quickAdd,
   rating,
+  next,
 }: {
   href: string;
   title: string;
@@ -63,6 +64,11 @@ export function PosterCard({
   rating?: { imdb: number | null; tmdb: number };
   /** رقمٌ في دائرة على الزاوية المقابلة — ما بقي من الحلقات */
   count?: number;
+  /**
+   * 🆕 T523 — **قرصُ «الحلقة التالية»** («S2 E6») في زاوية النهاية — توأمُ قرص المكتبة في التطبيق (T492) بزجاجه الداكن وحدّه الأبيض
+   * الخافت وبُعده من الحافّة، وتوأمُ دائرة الإيقاف في الطرف المقابل. ملفُّ العضو أوّلُ قارئٍ له في الويب («١٩ مثل ف المكتبة»).
+   */
+  next?: string;
   progress?: number; // 0..100
   note?: string;
   /** waiting = حلقة جديدة تنتظرك (ذهبي) بدل الأخضر المعتاد */
@@ -228,6 +234,14 @@ export function PosterCard({
           >
             {typeof rating.imdb === "number" ? <ImdbMark className="text-[8px]" /> : <TmdbMark className="text-[8px]" />}
             <span dir="ltr">{(typeof rating.imdb === "number" ? rating.imdb : rating.tmdb).toFixed(1)}</span>
+          </span>
+        )}
+        {next && !(typeof count === "number" && count > 0) && (
+          <span
+            dir="ltr"
+            className="absolute top-2 end-2 h-6 px-2 grid place-items-center rounded-full border border-white/35 bg-black/55 text-white text-[11px] font-bold tabular-nums"
+          >
+            {next}
           </span>
         )}
         {typeof count === "number" && count > 0 && (

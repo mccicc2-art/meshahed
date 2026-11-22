@@ -282,6 +282,7 @@ export default async function PublicProfilePage({
           title={i.title}
           posterPath={i.posterPath}
           progress={i.progress}
+          next={i.next ? `S${i.next.s} E${i.next.e}` : undefined}
         />
       ),
     );
@@ -340,6 +341,7 @@ export default async function PublicProfilePage({
                 title={i.title}
                 posterPath={i.posterPath}
                 progress={i.progress}
+                next={i.next ? `S${i.next.s} E${i.next.e}` : undefined}
               />
             </RailItem>
           ))}
@@ -410,6 +412,7 @@ export default async function PublicProfilePage({
                 title={i.title}
                 posterPath={i.posterPath}
                 progress={i.progress}
+                next={i.next ? `S${i.next.s} E${i.next.e}` : undefined}
               />
             </RailItem>
           ))}

@@ -177,8 +177,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         overview: locked
           ? { shows: [], anime: [], movies: [], artists: [], lists: [], ratings: [] }
           : {
-              shows: c.shows.map((s) => ({ tmdb_id: s.id, media_type: "tv", title: s.title, poster_path: s.posterPath, genres: genresOf("tv", s.id), progress: s.progress })),
-              anime: c.anime.map((s) => ({ tmdb_id: s.id, media_type: "tv", title: s.title, poster_path: s.posterPath, genres: genresOf("tv", s.id), progress: s.progress })),
+              shows: c.shows.map((s) => ({ tmdb_id: s.id, media_type: "tv", title: s.title, poster_path: s.posterPath, genres: genresOf("tv", s.id), progress: s.progress, next: s.next })),
+              anime: c.anime.map((s) => ({ tmdb_id: s.id, media_type: "tv", title: s.title, poster_path: s.posterPath, genres: genresOf("tv", s.id), progress: s.progress, next: s.next })),
               movies: c.movieFollows.map(title),
               artists: c.artistsOrdered.map((a) => ({ person_id: a.person_id, name: a.name, profile_path: a.profile_path })),
               lists: c.listsOrdered.map(listOut),
