@@ -67,7 +67,8 @@ export interface Candidate {
  * القطعة تلو الأخرى — فالذاكرة ثابتةٌ مهما كبر الملف. وملفّ الحلقات
  * تسعةُ ملايين سطر: بلا بثٍّ لا يُقرأ أصلاً.
  */
-async function streamTsv(url: string, onLine: (line: string) => void): Promise<void> {
+/* 🆕 T522 — مُصدَّرٌ لقراءة السينما اليوميّة (`cinemaImdb.ts`) — البثُّ نفسُه لا نسخةٌ ثانيةٌ منه */
+export async function streamTsv(url: string, onLine: (line: string) => void): Promise<void> {
   const res = await tracedFetch(url, {
     // يومٌ كامل: IMDb تحدّثه مرّةً يومياً، وإعادة تنزيله بين الدفعات هدر
     next: { revalidate: 86_400 },

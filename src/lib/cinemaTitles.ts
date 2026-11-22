@@ -7,6 +7,8 @@ import { cinemaFresh, cinemaOrigin, cinemaStatus, pickCinemaMatch, riyadhToday }
 import { titleOf } from "@/core/media";
 import { railGuard } from "@/lib/topChart";
 import { attachImdbRatings } from "@/lib/omdb";
+import { streamTsv } from "@/lib/imdbChart";
+import { ratingLine } from "@/core/cinemaImdb";
 import { getContentPrefs } from "@/lib/data";
 import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/core/contentPrefs";
 import type { CinemaCard, CinemaPayload } from "@/core/contracts/discover";
@@ -95,6 +97,57 @@ function card(r: SearchResult, extra: Pick<CinemaCard, "origin" | "sa_date">): C
   };
 }
 
+/**
+ * 🆕 T522 — **تقييمُ IMDb لأفلام السينما من ملفّ IMDb نفسِه** — هنا لا في ملفٍّ مستقلّ لأن عميلَ الخدمة مسيَّجٌ
+ * بقائمة ملفّاتٍ (D-898) وهذا الملفُّ منها (أحمد: «imdb نحاول بقوة اذا ما قدرنا عادي tmdb»).
+ *
+ * `title.ratings.tsv.gz` تنشره IMDb يوميّاً وفيه **كلُّ عملٍ صوّت له أحد** — ومنه تُبنى «أفضل ٢٥٠» عندنا
+ * (`imdbChart.ts`). OMDb تتأخّر في الجديد أيّاماً، والملفُّ لا يتأخّر. فما بقي من أفلام السينما المعروضة بلا رقمٍ بعد
+ * OMDb والبِركة (`attachImdbRatings`) يُبحث عنه هنا **بعد الردّ** (`after`) ويُكتب في المخزن نفسِه.
+ *
+ * - **مرّةٌ كلَّ ست ساعات في كلِّ نسخةٍ من الخادم** لا في كلِّ طلب: الملفُّ ثمانيةُ ميغابايت مضغوطة يُبثّ سطراً سطراً
+ *   (ذاكرةٌ ثابتة)، والطلبُ الذي يجد كلَّ الأرقام لا يقرؤه أصلاً. والحارسُ في الذاكرة لا في القاعدة — بلا هجرة،
+ *   وأسوأُ ما فيه قراءةٌ زائدةٌ لنسخةٍ وُلدت حديثاً.
+ * - **لا يكتب إلّا رقماً وجده**: ما ليس في الملفّ يبقى كما هو، والبطاقةُ تعرض TMDB.
+ */
+const EVERY_MS = 6 * 60 * 60 * 1000;
+let lastRun = 0;
+
+async function refreshCinemaImdb(tmdbIds: number[]): Promise<void> {
+  if (tmdbIds.length === 0 || Date.now() - lastRun < EVERY_MS) return;
+  try {
+    const sb = await createServiceClient();
+    const { data } = await sb
+      .from("imdb_ratings")
+      .select("tmdb_id, imdb_id, imdb_rating")
+      .eq("media_type", "movie")
+      .in("tmdb_id", tmdbIds);
+    const byTconst = new Map<string, number>();
+    for (const r of (data ?? []) as { tmdb_id: number; imdb_id: string | null; imdb_rating: number | null }[]) {
+      if (r.imdb_rating == null && r.imdb_id && /^tt\d+$/.test(r.imdb_id)) byTconst.set(r.imdb_id, Number(r.tmdb_id));
+    }
+    if (byTconst.size === 0) return;
+    lastRun = Date.now();
+    const wanted = new Set(byTconst.keys());
+    const found: { media_type: "movie"; tmdb_id: number; imdb_id: string; imdb_rating: number; imdb_votes: number | null }[] = [];
+    await streamTsv("https://datasets.imdbws.com/title.ratings.tsv.gz", (line) => {
+      const hit = ratingLine(line, wanted);
+      if (!hit) return;
+      found.push({
+        media_type: "movie",
+        tmdb_id: byTconst.get(hit.tconst)!,
+        imdb_id: hit.tconst,
+        imdb_rating: hit.rating,
+        imdb_votes: hit.votes || null,
+      });
+    });
+    if (found.length) await sb.rpc("set_imdb_ratings", { p_rows: found });
+  } catch {
+    /* الملفُّ أو القاعدة تعثّرا — البطاقةُ تبقى على ما عندها، ويُعاد في الدورة التالية */
+    lastRun = 0;
+  }
+}
+
 /** احتياطُ الجدول الفارغ — قائمةُ TMDB للسعودية كما كانت قبل T512 */
 async function fallback(): Promise<CinemaPayload> {
   const c = await nowPlayingMovies(["SA"]).catch(() => null);
@@ -155,6 +208,10 @@ export const getCinema = cache(async function getCinema(): Promise<CinemaPayload
   /* التقييمُ لما يُعرض الآن وحدَه — القادمُ لم يُشاهَد بعد فلا رقمَ له. والمخزنُ نفسُه الذي يقرؤه صفُّ «اكتشف» القديم،
      وسقوطُه لا يُسقط القسم */
   const rated = await attachImdbRatings(kept.filter((r) => byId.get(r.id)?.now)).catch(() => [] as SearchResult[]);
+  /* 🆕 T522 — **وما بقي بلا رقمٍ يُقرأ من ملفّ IMDb نفسِه بعد الردّ** (`refreshCinemaImdb`): لا ينتظره القارئ، ويجده
+     القارئُ التالي في المخزن. وTMDB يبقى الاحتياطَ الأخير على البطاقة كما كان (أحمد: «اذا ما قدرنا عادي tmdb») */
+  const unrated = rated.filter((r) => r.imdb_rating == null).map((r) => r.id);
+  if (unrated.length) after(() => refreshCinemaImdb(unrated));
   const ratingOf = new Map(rated.map((r) => [r.id, r.imdb_rating]));
   const details = kept.map((r) => (ratingOf.has(r.id) ? { ...r, imdb_rating: ratingOf.get(r.id) } : r));
   const now: (CinemaCard & { p: number })[] = [];

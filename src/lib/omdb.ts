@@ -17,6 +17,7 @@ import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
 import { createClient } from "./supabase/server";
 import { createServiceClient } from "./supabase/service";
 import { tracedFetch } from "@/lib/reqTrace";
+import { isRecentRelease, keepKnown, RECENT_ABSENT_TTL_MS } from "@/core/cinemaImdb";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -302,6 +303,7 @@ function ttlFor(r: SearchResult): number {
 interface StoredRating {
   media_type: string;
   tmdb_id: number;
+  imdb_id?: string | null;
   imdb_rating: number | null;
   imdb_votes: number | null;
   updated_at: string;
@@ -459,6 +461,9 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
 
   // ===== ١ · المخزن: ما لم ينتهِ عمرُه المتدرّج يُعتمد كما هو =====
   const stale = new Map(out.map((r) => [keyOf(r), r]));
+  /* 🆕 T522 — ما يعرفه المخزنُ عن كلِّ عمل: معرّفُ IMDb (لسؤال البِركة) ورقمُه (لئلّا يمحوه جوابٌ متأخّر) */
+  const known = new Map<string, { imdb_id: string | null; rating: number | null; votes: number | null }>();
+  const now = Date.now();
   try {
     const supabase = await createClient();
     const ids = [...new Set(out.map((r) => r.id))];
@@ -470,15 +475,19 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
       Array.from({ length: Math.ceil(ids.length / CHUNK_IDS) }, (_, i) =>
         supabase
           .from("imdb_ratings")
-          .select("media_type, tmdb_id, imdb_rating, imdb_votes, updated_at")
+          .select("media_type, tmdb_id, imdb_id, imdb_rating, imdb_votes, updated_at")
           .in("tmdb_id", ids.slice(i * CHUNK_IDS, (i + 1) * CHUNK_IDS)),
       ),
     );
     const data = pages.flatMap((p) => p.data ?? []);
-    const now = Date.now();
     for (const s of (data ?? []) as StoredRating[]) {
       const r = stale.get(`${s.media_type}-${s.tmdb_id}`);
       if (!r) continue;
+      known.set(`${s.media_type}-${s.tmdb_id}`, {
+        imdb_id: s.imdb_id ?? null,
+        rating: s.imdb_rating == null ? null : Number(s.imdb_rating),
+        votes: s.imdb_votes == null ? null : Number(s.imdb_votes),
+      });
       r.imdb_rating = s.imdb_rating == null ? null : Number(s.imdb_rating);
       r.imdb_votes = s.imdb_votes == null ? null : Number(s.imdb_votes);
       /* صفٌّ مخزَّن بتقييمٍ فارغ **لا يُكتب إلا عن يقين** (انظر شرط الكتابة
@@ -487,7 +496,10 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
       /* الأصوات غائبة عن صفٍّ كُتب قبل الهجرة ٤٩ ومعه تقييم؟ يُعاد سؤاله:
          الترتيب البايزيّ بلا أصوات هو المتوسّط العاري الذي نصلحه */
       const missingVotes = s.imdb_rating != null && s.imdb_votes == null;
-      if (!missingVotes && now - new Date(s.updated_at).getTime() < ttlFor(r)) {
+      /* 🆕 T522 — **و«لا تقييم» لفيلمٍ جديدٍ عمرُه ستُّ ساعات لا يوم**: OMDb تتأخّر عن IMDb في الجديد، فيُعاد سؤالُها أسرع */
+      const ttl =
+        s.imdb_rating == null && isRecentRelease(r.release_date || r.first_air_date, now) ? RECENT_ABSENT_TTL_MS : ttlFor(r);
+      if (!missingVotes && now - new Date(s.updated_at).getTime() < ttl) {
         stale.delete(`${s.media_type}-${s.tmdb_id}`);
       }
     }
@@ -497,13 +509,14 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
 
   // ===== ٢ · OMDb: الغائب والمنتهي عمره فقط، بدفعات ٢٥ =====
   const toFetch = [...stale.values()];
-  const fetched: {
-    media_type: string;
-    tmdb_id: number;
-    imdb_id: string | null;
-    imdb_rating: number | null;
-    imdb_votes: number | null;
-  }[] = [];
+  /* 🆕 T522 — **صفٌّ واحدٌ لكلِّ عمل**: البِركةُ قد تكتب ما كتبته OMDb قبلها في الدفعة نفسِها، و`on conflict` في
+     إدراجٍ واحدٍ لا يمسّ الصفَّ مرّتين */
+  const writes = new Map<
+    string,
+    { media_type: string; tmdb_id: number; imdb_id: string | null; imdb_rating: number | null; imdb_votes: number | null }
+  >();
+  const fetched = { push: (w: { media_type: string; tmdb_id: number; imdb_id: string | null; imdb_rating: number | null; imdb_votes: number | null }) => writes.set(`${w.media_type}-${w.tmdb_id}`, w) };
+  const iidOf = new Map<string, string | null>();
   if (process.env.OMDB_API_KEY && toFetch.length) {
     /* أربعون في الدفعة لا خمسٌ وعشرون: مع اشتراك OMDb (قرار أحمد
        9 Aug مساءً) صارت الحصة مئة ألفٍ يومياً بدل ألف، فالخانق لم يعد
@@ -517,10 +530,34 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
         toFetch.slice(i, i + CHUNK).map(async (r) => {
           const iid =
             r.media_type === "tv" ? await tvImdbId(r.id) : await movieImdbId(r.id);
+          iidOf.set(keyOf(r), iid ?? null);
           const ext = await externalRatings(iid);
           const n = ext?.imdb ? Number(ext.imdb) : NaN;
           r.imdb_rating = Number.isFinite(n) ? n : null;
           r.imdb_votes = ext?.votes ?? null;
+          /* 🆕 T522 — **رقمٌ معروفٌ لا يُمحى بجوابٍ متأخّر** (`keepKnown`): ملفُّ IMDb أو البِركةُ أعطيا رقماً، وOMDb ما
+             زالت تقول «لا تقييم» — فيبقى الرقم، ويُكتب ثانيةً ليبدأ عمرُه من جديد */
+          const prev = known.get(keyOf(r));
+          /* وشبكةٌ ساقطة (`ext === null`) لا تمحو الرقمَ المعروفَ أيضاً — يُعرض ولا يُكتب، فيُسأل ثانيةً */
+          if (r.imdb_rating == null && prev?.rating != null && ext === null) {
+            r.imdb_rating = prev.rating;
+            r.imdb_votes = prev.votes;
+            r.imdb_absent = false;
+            return;
+          }
+          if (r.imdb_rating == null && prev?.rating != null && ext !== null) {
+            r.imdb_rating = keepKnown(null, prev.rating);
+            r.imdb_votes = prev.votes;
+            r.imdb_absent = false;
+            fetched.push({
+              media_type: r.media_type === "tv" ? "tv" : "movie",
+              tmdb_id: r.id,
+              imdb_id: iid ?? prev.imdb_id,
+              imdb_rating: r.imdb_rating,
+              imdb_votes: r.imdb_votes ?? null,
+            });
+            return;
+          }
           /* **يقينُ الغياب (D-172):** إمّا لا معرّف IMDb أصلاً، أو OMDb
              ردَّ ردّاً صحيحاً وقال «لا تقييم». وما عداهما — حصةٌ محروقة أو
              شبكةٌ ساقطة — **ليس يقيناً**، فلا بديلَ يُعرض ولا شيء يُخزَّن. */
@@ -551,12 +588,45 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
     }
   }
 
+  // ===== ٢ب · 🆕 T522 — البِركة: ملفُّ IMDb نفسُه لما قالت عنه OMDb «لا تقييم» =====
+  /* `imdb_pool` تُبنى من `title.ratings` الرسميّ (`/api/imdb-chart`) — **IMDb لا وسيطٌ عنها**. فعملٌ بلا رقمٍ من OMDb
+     ومعرّفُه في البِركة يأخذ رقمَها: «Godzilla Minus Zero» ‏٧٫٩ هناك و«لا تقييم» في OMDb (٢٢ نوفمبر) */
+  const missing = out
+    .map((r) => ({ r, iid: iidOf.get(keyOf(r)) ?? known.get(keyOf(r))?.imdb_id ?? null }))
+    .filter((x) => x.r.imdb_rating == null && !!x.iid && /^tt\d+$/.test(x.iid));
+  if (missing.length) {
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("imdb_pool")
+        .select("tconst, rating, votes")
+        .in("tconst", [...new Set(missing.map((x) => x.iid as string))]);
+      const pool = new Map(((data ?? []) as { tconst: string; rating: number | null; votes: number | null }[]).map((p) => [p.tconst, p]));
+      for (const { r, iid } of missing) {
+        const p = pool.get(iid as string);
+        if (p?.rating == null) continue;
+        r.imdb_rating = Number(p.rating);
+        r.imdb_votes = p.votes == null ? null : Number(p.votes);
+        r.imdb_absent = false;
+        fetched.push({
+          media_type: r.media_type === "tv" ? "tv" : "movie",
+          tmdb_id: r.id,
+          imdb_id: iid,
+          imdb_rating: r.imdb_rating,
+          imdb_votes: r.imdb_votes ?? null,
+        });
+      }
+    } catch {
+      /* البِركةُ احتياطٌ — سقوطُها يُبقي ما قالته OMDb */
+    }
+  }
+
   // ===== ٣ · الكتابة للمخزن — دفعةً واحدة، وفشلها لا يعطّل العرض =====
-  if (fetched.length) {
+  if (writes.size) {
     try {
       // الكتابةُ بعميل الخدمة (D-898): الدالّةُ لن تبقى ممنوحةً للمفتاح العامّ
       const supabase = await createServiceClient();
-      await supabase.rpc("set_imdb_ratings", { p_rows: fetched });
+      await supabase.rpc("set_imdb_ratings", { p_rows: [...writes.values()] });
     } catch {
       /* الهجرة لم تُشغَّل بعد — الخبيئة اليومية لطبقة fetch تبقى الشبكة */
     }
