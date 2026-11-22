@@ -1,7 +1,7 @@
 // تفضيلات الصفحة الرئيسية — ماذا يظهر وبأي ترتيب
 
-import { sanitizeCardCount, type CardCount } from "./cardCount";
-import { sanitizeDensity, type Density } from "./density";
+import { sanitizeCardCount, type CardCount } from "./cardCount.ts";
+import { sanitizeDensity, type Density } from "./density.ts";
 import type { Dict } from "./i18n";
 import type { IconName } from "./iconNames";
 
@@ -11,7 +11,8 @@ export const HOME_SECTIONS = [
   "week",
   "towatch",
   /* 🆕 T512 — «الآن في السينما» بقائمته «قريباً»: بعد «للمشاهدة» وقبل «أعمالُ أصدقائك» في ترتيب المشترك (أحمد ٢٢ نوفمبر «١ أ»)،
-     ومخفيٌّ لغير المشترك («غير المشترك لا يحتاج يضيفه») — بابُه له في «اكتشف ← أفلام» */
+     🆕 T524 — **ولغير المشترك في الموضع نفسِه** (أحمد ٢٢ نوفمبر «ضيف السينما لهم» · «١أ» · «نفذ») — عُدولٌ عن «غير المشترك
+     لا يحتاج يضيفه»: ما في الصالات اليومَ سؤالُ كلِّ زائرٍ لا ميزةٌ تُباع، والقسمُ ومصدرُه بلا شرط خطّة أصلاً */
   "cinema",
   /* 🆕 D-1487 — **ترتيبُ السجلّ هو ترتيبُ المخفيّ في «رتّب الأقسام»**: «أعمالُ أصدقائك» أوّلُ المخفيّ لغير المشترك،
      والرائجُ آخرُه للمشترك (جدولُ أحمد ٢٠ أكتوبر) — فنُقل «friends» من آخر السجلّ إلى هنا. */
@@ -328,7 +329,8 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
      المشاهدة» فارغة — **فيملأ الفراغَ لمن لا شيءَ عنده ويختفي وحدَه
      عند أوّل حلقة**، ولا يزحم رئيسيّتك بسطرٍ واحد. */
   /* 🆕 T512 — «أصدقاؤك» قبل «الرائج» لغير المشترك (أحمد ٢٢ نوفمبر: «خل غير المشترك … اصدقائك» ثمّ «بعد اصدقاءك الرائج») */
-  order: ["week", "continue", "towatch", "friends", "trending"],
+  /* 🆕 T524 — «الآن في السينما» بعد «للمشاهدة» كترتيب المشترك (أحمد «١أ»): الترتيبان يتطابقان حتى «أصدقائك»، والرائجُ لغير المشترك آخرَها */
+  order: ["week", "continue", "towatch", "cinema", "friends", "trending"],
   /* D-1487 — «مسلسلات · أفلام» لغير المشترك (كان «للمشاهدة · القادم») */
   statsPick: ["shows", "movies"],
   cards: "full",
@@ -365,6 +367,8 @@ const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [
   /* افتراضيّا ما قبل T512 — من لم يرتّب ينتقل إلى الجديد (السينما للمشترك · الأصدقاء لغير المشترك) */
   ["week", "continue", "towatch", "trending"],
   ["week", "continue", "towatch", "friends"],
+  /* T524 — افتراضيُّ غير المشترك قبل السينما: ترتيبُه لا يملكه (حقلٌ مدفوع) فكلُّهم «لم يرتّب» وينتقلون إليها */
+  ["week", "continue", "towatch", "friends", "trending"],
 ];
 const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
   DEFAULT_HOME_PREFS.statsPick,
@@ -391,7 +395,7 @@ export function homeOrderUntouched(raw: unknown): boolean {
 export function markHomeCustom(prefs: HomePrefs, plus: boolean): HomePrefs {
   const plan = defaultHomePrefs(plus);
   /* T512 — حفظُ المشترك يُعلن أنّه رأى قسمَ السينما في ترتيبه: إخفاؤه بعدها اختيارٌ لا يُنقض. **وحفظُ غير المشترك لا يُعلنه**
-     — السينما ليست في رئيسيّته، فإن اشترك يومَها أُدرجت له مرّةً كما تُدرج لكلِّ مشترك */
+     — ترتيبُه لا يملكه (حقلٌ مدفوع، والسينما فيه افتراضاً منذ T524)، فإن اشترك يومَها أُدرجت له مرّةً كما تُدرج لكلِّ مشترك */
   return { ...prefs, cinemaSeen: prefs.cinemaSeen || plus, custom: HOME_CUSTOM_FIELDS.filter((f) => !sameList(prefs[f], plan[f])) };
 }
 
