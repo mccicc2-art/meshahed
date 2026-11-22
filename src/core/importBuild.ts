@@ -5,7 +5,7 @@
 // المشاهدة لاحقاً») وتبقى خطأً في الأخرى — بلا خطأٍ يُرى، فقط مكتبةٌ مستوردةٌ تختلف بين الويب والتطبيق.
 
 import { recordKey, type RawRecord } from "./importParse.ts";
-import { earliestAt as earliest, IMPORT_CAPS, type ImportEpisode, type ImportList, type ImportMovie, type ImportShow, type ResolveResult } from "./importer.ts";
+import { earliestAt as earliest, IMPORT_CAPS, type ImportEpisode, type ImportList, type ImportReview, type ImportMovie, type ImportShow, type ResolveResult } from "./importer.ts";
 
 export interface BuiltImport {
   shows: ImportShow[];
@@ -144,6 +144,7 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
           watched: (prev?.watched ?? false) || watched,
           at: watched ? earliest(prev?.at, r.at) : prev?.at,
           rating: r.rating ?? prev?.rating,
+          review: latestReview(prev?.review, r.review ? { text: r.review, at: r.at } : undefined),
         });
         continue;
       }
@@ -156,6 +157,8 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
       } else if (r.status === "watched") sh.all = { at: earliest(sh.all?.at, r.at) };
       else if (r.status === "dropped" || r.status === "paused") sh.state = r.status;
       if (r.rating != null) sh.rating = r.rating;
+      /* 🆕 T507 — رأيُ صفِّ الحلقة رأيٌ في الحلقة لا في المسلسل — ورأيُ الحلقات ليس في هذا الاستيراد، فلا يُنسب للمسلسل */
+      if (!ep && r.review) sh.review = latestReview(sh.review, { text: r.review, at: r.at });
       continue;
     }
     if (r.kind === "imdb") {
@@ -250,6 +253,7 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
            وملفُّ «watched» يحمل يوم التسجيل — والأوّل أصدق */
         at: prev?.at && r.at ? (prev.at < r.at ? prev.at : r.at) : (prev?.at ?? r.at),
         rating: r.rating ?? prev?.rating,
+        review: latestReview(prev?.review, r.review ? { text: r.review, at: r.reviewAt } : undefined),
       });
     }
   }
@@ -308,6 +312,18 @@ export function buildImport(records: RawRecord[], resolved: Map<string, ResolveR
     favorites: ordered(favs),
     unmatched: [...unmatched],
   };
+}
+
+/**
+ * 🆕 T507 — **أحدثُ الرأيين** لعملٍ واحد: من شاهد فيلماً مرّتين في Letterboxd كتب رأيين، وآخرُهما ما انتهى إليه.
+ * رأيٌ بلا تاريخٍ لا يغلب رأياً مؤرَّخاً — لا نعرف أهو الأحدث.
+ */
+export function latestReview(a: ImportReview | undefined, b: ImportReview | undefined): ImportReview | undefined {
+  if (!a?.text) return b?.text ? b : undefined;
+  if (!b?.text) return a;
+  if (!a.at) return b;
+  if (!b.at) return a;
+  return b.at > a.at ? b : a;
 }
 
 /** «Breaking Bad: Pilot» ⇐ «Breaking Bad» — عنوانُ الحلقة في IMDb يحمل اسمَ مسلسلها قبل النقطتين */

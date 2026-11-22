@@ -33,7 +33,8 @@ export type RawRecord =
       tmdbId?: number;
       tvdbId?: number;
     }
-  | { kind: "movie-name"; name: string; year?: number; at?: string; rating?: number }
+  /* 🆕 T507 — `review`: رأيُ صاحبه بنصّه المنظَّف (`cleanReviewText`) ويومِ كتابته `reviewAt` (Letterboxd) */
+  | { kind: "movie-name"; name: string; year?: number; at?: string; rating?: number; review?: string; reviewAt?: string }
   /* فيلمٌ في قائمة المشاهدة لاحقاً — يدخل المكتبة بلا صفّ مشاهدة (D-153).
      `applyImportChunk` يفهمه أصلاً: `watched:false` يكتب `follows` وحدها */
   | { kind: "movie-watchlist"; name: string; year?: number }
@@ -90,6 +91,8 @@ export type RawRecord =
       status: "watched" | "watching" | "plan" | "dropped" | "paused";
       rating?: number;
       at?: string;
+      /** 🆕 T507 — نصُّ رأيه منظَّفاً */
+      review?: string;
     }
   /* 🆕 **صفٌّ من MyAnimeList** (`mal.ts`) — رقمُه هناك، وما سجّله منه (`watched` من `total`)، وحالتُه. ومعناه على مواسم TMDB
      يُعرف بعد المطابقة (جدولُ Fribb يعطي الموسمَ والإزاحة) — فالحلقاتُ تُحسب على الخادم لا هنا */
@@ -358,4 +361,54 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
        خادمٍ لكل عملٍ بلا فائدة** — وهي مئاتُ الطلبات في مكتبةٍ كبيرة */
   }
   return { requests: [...map.values()], keys: [...map.keys()] };
+}
+
+/** 🆕 T507 — سقفُ نصِّ الرأي هو سقفُ `saveRating` نفسُه: الرأيُ المستورد لا يملك مساحةً لا يملكها المكتوبُ بيد صاحبه */
+export const REVIEW_MAX = 2000;
+
+const ENTITY: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
+
+/** الوسومُ التي يكتبها محرّرو الآراء (Letterboxd) — **بأسمائها**: نزعُ كلِّ `<…>` كان يأكل «I <3 x > y» من نصِّ صاحبه */
+const REVIEW_TAG = /<\s*\/?\s*(a|b|i|em|strong|u|s|strike|del|ins|p|div|span|blockquote|ul|ol|li|h[1-6]|img|hr|code|pre|sup|sub|small|big|font|center|q|cite|abbr|tt)\b[^<>]*>/gi;
+
+/**
+ * 🆕 T507 — **نصُّ رأيٍ مستوردٍ إلى نصٍّ عاديّ**. Letterboxd يصدّر الرأيَ بوسوم HTML (`<br />` · `<p>` · `<i>` · `<a>` …)
+ * وكياناتها (`&amp;`)، ولوبز يعرض الرأيَ نصّاً — فلو حُفظ كما هو لظهرت الوسومُ حروفاً أمام القرّاء. فواصلُ الأسطر
+ * والفقرات تصير أسطراً، والوسومُ المعروفة تُنزع **ولا تُفسَّر** (لا رابطَ ولا تنسيقَ يعبر من ملفٍّ إلى صفحةٍ يقرؤها غيرُه)،
+ * وما سواها من `<` و`>` يبقى حرفاً كتبه صاحبُه. ويُقطع عند سقف `saveRating` بعلامة «…» لا في منتصف كلمةٍ بلا أثر.
+ */
+export function cleanReviewText(raw: string | undefined | null): string {
+  let s = String(raw ?? "");
+  if (!s.trim()) return "";
+  s = s
+    .replace(/\r\n?/g, "\n")
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*(p|div|blockquote|li)\s*>/gi, "\n\n")
+    .replace(REVIEW_TAG, "")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+      const k = e.toLowerCase();
+      const code = k.startsWith("#x") ? parseInt(k.slice(2), 16) : k.startsWith("#") ? parseInt(k.slice(1), 10) : NaN;
+      if (k.startsWith("#")) return Number.isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : m;
+      return ENTITY[k] ?? m;
+    })
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return s.length > REVIEW_MAX ? `${s.slice(0, REVIEW_MAX - 1).trimEnd()}…` : s;
+}
+
+/** 🆕 T507 — أبكرُ تاريخٍ يُقبل لرأيٍ مستورد: قبله لا تطبيقَ يُصدَّر منه، وتاريخٌ أقدمُ خطأُ ملفّ */
+export const REVIEW_EARLIEST = "2000-01-01T00:00:00.000Z";
+
+/**
+ * 🆕 T507 — **يومُ الرأي كما يقبله الخادم** (مراجعةُ الوكيل المستقلّ، البند ١): التاريخُ يأتي من ملفِّ صاحبه، ويصير
+ * `updated_at` الذي ترتّب به صفحاتُ المجتمع — فتاريخٌ في المستقبل يثبّت رأيه أعلى المجتمع ما بقي. يُقبل ما بين
+ * ٢٠٠٠ واللحظة (`now`) وحده، ويُعاد ISO؛ وما سواه `null` — **ولا رجوعَ إلى «الآن»**: رأيٌ بلا يومٍ صحيحٍ لا يُستورد،
+ * لأنّ «الآن» تُدخله نشاطَ الأصدقاء دفعةً واحدة (قرارُ أحمد ٢٢ نوفمبر «١ أ»).
+ */
+export function reviewDate(at: string | undefined | null, now: number): string | null {
+  if (!at) return null;
+  const t = Date.parse(at);
+  if (!Number.isFinite(t) || t < Date.parse(REVIEW_EARLIEST) || t > now) return null;
+  return new Date(t).toISOString();
 }

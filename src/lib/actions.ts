@@ -95,7 +95,9 @@ import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, 
 import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
 import type { ChatBgChoice, ChatBgPayload, ChatBgPostersPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
-import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
+import { IMPORT_CAPS, type ImportPayload, type ImportRun, type ResolveRequest, type ResolveResult } from "@/core/importer";
+import { readImportRuns, recordImportRun, writeImportedReviews } from "@/lib/importRuns";
+import { cleanReviewText, reviewDate } from "@/core/importParse";
 import { getTv, getMovie } from "@/lib/tmdb";
 import type { PersonLite, CommunityLite } from "@/lib/data";
 
@@ -2443,7 +2445,7 @@ export async function saveRating(input: {
      فتعديلُ نصِّ الرأي لاحقاً لا يعيد مشاهدةً ألغاها صاحبُها بيده */
   const { data: before } = await supabase
     .from("ratings")
-    .select("rating")
+    .select("rating, review")
     .match({ user_id: user.id, tmdb_id: input.tmdbId, media_type: input.mediaType })
     .maybeSingle();
 
@@ -2466,6 +2468,17 @@ export async function saveRating(input: {
     { onConflict: "user_id,tmdb_id,media_type" },
   );
   if (error) fail(error);
+  /* 🆕 T507 — **كتابةُ رأيٍ جديدٍ بيده تجعله رأيَه في Loopz**: علامةُ «مستورد» (`imported_from`، هجرة ٢٥٨) تُمحى فيدخل حيث تدخل
+     آراؤه. **وتغييرُ النجوم وحدها لا يمحوها** (مراجعةُ الوكيل الثاني، البند ٢): ورقةُ التقييم ترسل النصَّ نفسَه مع كلِّ حفظ، ومحوُها
+     هنا كان سينشر رأياً عمرُه سنواتٌ في نشاط الأصدقاء وأعلى المجتمع و«أفضل الأسبوع». كتابةٌ ثانيةٌ لا حقلٌ في الأولى عمداً: قبل
+     الهجرة لا عمود، وحقلٌ غائبٌ في الأولى كان سيُسقط كلَّ حفظِ تقييم — هنا يُتجاهل خطؤه */
+  if (review && review !== String(before?.review ?? "").trim()) {
+    await supabase
+      .from("ratings")
+      .update({ imported_from: null })
+      .match({ user_id: user.id, tmdb_id: input.tmdbId, media_type: input.mediaType })
+      .not("imported_from", "is", null);
+  }
 
   if (!before) await watchedFromRating(supabase, user.id, input);
 
@@ -6056,6 +6069,9 @@ export async function exportMyData(): Promise<string> {
       supabase.from("user_follows").select("*").or(`follower_id.eq.${user.id},following_id.eq.${user.id}`),
     ]);
 
+  /* 🆕 T507 — سجلُّ الاستيراد (هجرة ٢٥٧) بياناتُه أيضاً؛ وقبل الهجرة خطأٌ يصير قائمةً فارغة لا يُسقط التصدير */
+  const importRuns = await supabase.from("import_runs").select("*").eq("user_id", user.id);
+
   const listIds = (myLists.data ?? []).map((l: { id: string }) => l.id);
   const items = listIds.length
     ? await supabase.from("user_list_items").select("*").in("list_id", listIds)
@@ -6077,6 +6093,7 @@ export async function exportMyData(): Promise<string> {
       reactions: reactions.data ?? [],
       review_likes_given: likes.data ?? [],
       user_follows: uFollows.data ?? [],
+      import_runs: importRuns.data ?? [],
     },
     null,
     2,
@@ -6324,6 +6341,9 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   listsSkipped: number;
   /** 🆕 Bingers — أعمالٌ دخلت «المفضّلة» (ما كان فيها لا يُعدّ) */
   favorites: number;
+  /** 🆕 T507 — آراءٌ كُتبت، وآراءٌ لم تُكتب (بلا تقييم · بلا يومٍ صحيح · تقييمُ Loopz غيرُ تقييمها) */
+  reviews: number;
+  reviewsSkipped: number;
 }> {
   const session = await requireUser("import-apply", 90, 60_000);
   const { supabase, user } = session;
@@ -6440,10 +6460,32 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
       })),
     (r) => r.movie_tmdb_id,
   );
+  /* 🆕 T507 — **الرأيُ المستورد يُنقّى هنا من جديد** (R58: لا يُؤتمن العميل): نصُّه (`cleanReviewText`) ويومُه (`reviewDate`).
+     ورأيٌ بلا نصٍّ أو بلا يومٍ صحيحٍ كأنه لم يأتِ — فيمرّ تقييمُه في الصفوف العاديّة كما كان قبل T507 */
+  const nowMs = Date.now();
+  /* 🆕 T507 — **للآراء المستوردة سقفُها** (مراجعةُ الوكيل الثاني، البند ٣): هذا الفعلُ يناديه أيُّ حسابٍ بأيِّ جسم، ودفعةٌ فيها ستّون
+     رأياً — وحفظُ الرأي بيده عشرون في الدقيقة. فدفعاتُ الآراء عشرون في الدقيقة ومئتان في اليوم (تصديرُ Letterboxd بألف رأيٍ سبعَ
+     عشرةَ دفعة)، وما زاد يُكتب تقييماً بلا رأي ويُعدّ «لم يُستورد». والعدُّ لا يُستهلك إلّا لدفعةٍ تحمل آراءً */
+  const carriesReviews = [...(payload?.shows ?? []), ...(payload?.movies ?? [])].some((it) => it?.review && typeof it.review === "object");
+  const reviewsAllowed =
+    !carriesReviews || (allow(`${user.id}:import-reviews`, 20, 60_000) && allow(`${user.id}:import-reviews-day`, 200, 86_400_000));
+  const reviewFrom =
+    reviewsAllowed && (payload?.reviewFrom === "letterboxd" || payload?.reviewFrom === "auto") ? payload.reviewFrom : null;
+  const reviewOf = (it: { review?: ImportPayload["movies"][number]["review"] }) => {
+    const r = it.review;
+    if (!reviewFrom) return null;
+    if (!r || typeof r !== "object") return null;
+    const text = cleanReviewText(typeof r.text === "string" ? r.text : "");
+    const at = reviewDate(typeof r.at === "string" ? r.at : null, nowMs);
+    return text && at ? { text, at, spoiler: r.spoiler === true } : null;
+  };
+  /* رأيٌ وصل بنصٍّ ولم يُقبل يومُه — يُعدّ «لم يُستورد» ويقوله صاحبُه في الحصيلة */
+  const rawReviews = [...shows, ...movies].filter((it) => it.review && typeof it.review === "object" && String(it.review.text ?? "").trim()).length;
+
   const ratingRows = dedupe(
     [
       ...shows
-        .filter((sh) => sh.rating != null)
+        .filter((sh) => sh.rating != null && !reviewOf(sh))
         .map((sh) => ({
           user_id: user.id,
           tmdb_id: intId(sh.tmdbId),
@@ -6455,7 +6497,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
           updated_at: stamp,
         })),
       ...movies
-        .filter((mv) => mv.rating != null)
+        .filter((mv) => mv.rating != null && !reviewOf(mv))
         .map((mv) => ({
           user_id: user.id,
           tmdb_id: intId(mv.tmdbId),
@@ -6565,6 +6607,15 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   }
   await Promise.all(writes);
 
+  /* 🆕 T507 — **الآراءُ في كتابةٍ وحدَها** (مراجعةُ الوكيل، البند ٢): صفوفُها تحمل `created_at` والعاديّةُ لا — وخلطُ مفاتيح
+     الصفوف في طلبٍ واحدٍ يرسل الغائبَ `null` فيرفض القيدُ الطلبَ كلَّه ومعه تقييماتُ الدفعة، بصمت */
+  const { reviews, reviewsSkipped, reviewsKept } = await writeImportedReviews(supabase, user.id, [
+    ...shows.map((sh) => ({ kind: "tv" as const, tmdbId: intId(sh.tmdbId), title: sh.title, posterPath: sh.posterPath, rating: sh.rating, review: reviewOf(sh) })),
+    ...movies.map((mv) => ({ kind: "movie" as const, tmdbId: intId(mv.tmdbId), title: mv.title, posterPath: mv.posterPath, rating: mv.rating, review: reviewOf(mv) })),
+  ], stamp, reviewFrom ?? "auto");
+  /* ما لم يُكتب ولم يُردّ ولم يكن له رأيٌ قائم: وصل بنصٍّ ويومٍ لا يُقبل */
+  const reviewsDropped = Math.max(0, rawReviews - reviews - reviewsSkipped - reviewsKept);
+
   /* 🆕 **وإحصاءُ المتابعة يُكتب لما جُلبت تفاصيلُه** — كما يكتبه «شفته كله» (D-604): الرئيسيّةُ تحكم «انتهى»
      بـ`aired_episodes`، ومسلسلٌ استُورد كاملاً يجب أن يُرى منتهياً دون أن تُفتح صفحتُه. تحسينُ قراءةٍ لا شرطُ الكتابة. */
   await Promise.all(
@@ -6654,7 +6705,16 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
     }
   }
 
-  return { shows: shows.length, episodes: epCount, movies: movies.length, lists: listCount, listsSkipped, favorites };
+  return {
+    shows: shows.length,
+    episodes: epCount,
+    movies: movies.length,
+    lists: listCount,
+    listsSkipped,
+    favorites,
+    reviews,
+    reviewsSkipped: reviewsSkipped + reviewsDropped,
+  };
 }
 
 /** سقفُ أعمال المفضّلة في الطلب الواحد — `IMPORT_CHUNK.favorites` في `importBuild` */
@@ -6702,15 +6762,24 @@ async function withPosters(
 }
 
 /** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */
-export async function finishImport() {
-  const { supabase } = await requireUser("import-apply", 90, 60_000);
+export async function finishImport(summary?: unknown) {
+  const { supabase, user } = await requireUser("import-apply", 90, 60_000);
   /* 🆕 D-768: مستوردُ تاريخه تجاوز الأعمالَ الثلاثةَ دفعةً — دعوتُه
      تُحتسب هنا لا في انتظار متابعةٍ يدويّةٍ قد لا تأتي */
   await supabase.rpc("qualify_referral");
+  /* 🆕 T507 — سطرُ السجلّ؛ والسطحُ يقوله الطريقُ لا العميل: هذه دالّةُ الويب، وطريقُ التطبيق ينادي `recordImportRun` بـ`app`.
+     وثلاثون سطراً في اليوم سقفٌ (الختامُ فعلٌ يناديه أيُّ حساب) */
+  if (summary && allow(`${user.id}:import-run-log`, 30, 86_400_000)) await recordImportRun(user.id, summary, "web");
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath("/stats");
   revalidatePath("/diary");
+}
+
+/** 🆕 T507 — «استيراداتك»: آخرُ خمسين بأحدثها، لصاحبها وحده (RLS تحرس أيضاً) */
+export async function listImportRuns(): Promise<ImportRun[]> {
+  const { supabase, user } = await requireUser("import-runs", 60, 60_000);
+  return readImportRuns(supabase, user.id);
 }
 
 /* ============================== بحث الذكاء ============================== */

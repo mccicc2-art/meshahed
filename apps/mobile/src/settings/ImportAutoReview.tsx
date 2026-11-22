@@ -7,7 +7,7 @@ import { Sheet } from "../library/Sheet";
 import { Chip } from "../library/Chip";
 import { Segmented } from "../library/ToolsSheet";
 import { num } from "@/core/i18n";
-import { AUTO_ROLES, needsMedia, type AutoOptions, type AutoRole, type AutoTable } from "@/core/importAuto";
+import { AUTO_ROLES, needsMedia, type AutoOptions, type AutoRole, type AutoTable, type KnownSource } from "@/core/importAuto";
 
 /**
  * ====== 🆕 T500 — «هكذا فهمنا ملفّك» (مراجعةُ المستورد العامّ — نسخةُ `ImportAutoReview.tsx` في الويب) ======
@@ -22,11 +22,14 @@ export function ImportAutoReview({
   skipped,
   onCancel,
   onImport,
+  onPickSource,
 }: {
   tables: AutoTable[];
   skipped: string[];
   onCancel: () => void;
   onImport: (tables: AutoTable[], opts: AutoOptions) => void;
+  /** 🆕 T507 — «الملف من تطبيقٍ نعرفه؟»: ملفٌّ لم يتعرّف عليه الكاشفُ يُقرأ بقارئ تطبيقه (كما في الويب) */
+  onPickSource?: (source: KnownSource) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const [tables, setTables] = useState(initial);
@@ -57,6 +60,27 @@ export function ImportAutoReview({
             <Segmented items={[{ id: "watched", label: t.importAutoWatched }, { id: "plan", label: t.importAutoPlan }]} value={status} onChange={(v) => setStatus(v as AutoOptions["status"])} />
           </View>
           {askMedia && media == null ? <Text size={12} color={tokens.error}>{t.importAutoNeedMedia}</Text> : null}
+          {/* 🆕 T507 — «المراجعة» لا يختارها التخمين؛ ومن اختارها يُقال له إنها تظهر للناس */}
+          {tables.some((x) => x.roles.includes("review")) ? <Text size={12} muted style={{ lineHeight: 19 }}>{t.importAutoReviewPublic}</Text> : null}
+          {onPickSource ? (
+            <View style={{ gap: 6 }}>
+              <Text size={12} weight="600" muted>{t.importAutoFromApp}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {(
+                  [
+                    ["imdb", t.importImdbTitle],
+                    ["mal", t.importMalTitle],
+                    ["letterboxd", t.importLetterboxdTitle],
+                    ["simkl", t.importSimklTitle],
+                    ["bingers", t.importBingersTitle],
+                    ["tvtime", t.importTvTimeTitle],
+                  ] as [KnownSource, string][]
+                ).map(([id, label]) => (
+                  <Chip key={id} label={label} active={false} onPress={() => onPickSource(id)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {tables.map((x, ti) => (
             <View key={x.file} style={{ borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, overflow: "hidden" }}>

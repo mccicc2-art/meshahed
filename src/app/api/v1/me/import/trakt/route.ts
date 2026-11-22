@@ -51,10 +51,10 @@ export async function POST(req: NextRequest) {
 
     const token = await traktToken(code, TRAKT_REDIRECT, verifier);
     if (!token) return fail("upstream");
-    const done = await runTraktImport(token, auth.user.id);
+    const done = await runTraktImport(token, auth.user.id, "app");
     if (!done.ok) return fail("upstream");
     return ok(
-      { shows: done.shows, episodes: done.episodes, movies: done.movies, unmatched: done.unmatched.slice(0, 200) },
+      { shows: done.shows, episodes: done.episodes, movies: done.movies, reviews: done.reviews, unmatched: done.unmatched.slice(0, 200) },
       ["home", "me:library", "me:stats", "me:ratings", "me:diary"],
     );
   });

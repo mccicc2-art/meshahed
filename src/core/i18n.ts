@@ -593,7 +593,7 @@ const ar = {
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
   importHint:
-    "انقل ما شاهدته من IMDb أو MyAnimeList أو Letterboxd أو Simkl أو Bingers أو TV Time — ارفع ملف التصدير هنا، بلا أن تبدأ من الصفر. وما في مكتبتك هنا يبقى كما هو — يُضاف إليه الناقص فقط.",
+    "تطبيق آخر؟ ابحث في إعداداته عن «تصدير» أو «Export»، ثم ارفع الملف من الأعلى. وما في مكتبتك هنا يبقى كما هو — يُضاف إليه الناقص فقط.",
   importTvTimeTitle: "TV Time",
   /* 🆕 T499 (أحمد ٢١ نوفمبر «٣ب نفذ»): TV Time أُغلق في ١٥ يوليو ٢٠٢٦ فلا نسخةَ تُطلب منه بعدها — السطرُ يخاطب من حفظ ملفّه قبل الإغلاق */
   importTvTimeHint:
@@ -653,6 +653,30 @@ const ar = {
   importBingersFileHint:
     "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
   /* 🆕 T500 — «من تطبيق آخر» (أحمد ٢١ نوفمبر «1أ 2أ»): أيُّ تصديرٍ نقرؤه بأعمدته ويراجعه صاحبه، والملفُّ لا يغادر جهازه */
+  /* 🆕 T507 — **رفعٌ واحد** (أحمد ٢١ نوفمبر «١أ»): خانةٌ في الأعلى تتعرّف على المصدر، والتطبيقاتُ الستّة صارت أدلّةَ تصدير */
+  importUploadTitle: "ارفع ملفك من أي تطبيق",
+  importUploadHint: "نتعرّف على مصدره بأنفسنا. الملف يُقرأ على جهازك، ولا يُرسل منه إلا ما يلزم للاستيراد.",
+  importUploadPick: "اختر الملف",
+  importGuidesLabel: "كيف أحصل على ملفي؟",
+  importGuideUpload: "ارفع الملف الآن",
+  /* 🆕 T507 — «استيراداتك» (أحمد ٢٢ نوفمبر «١أ — واذا ضغط عليه تظهر له استيراداته») */
+  importLastRun: (name: string) => `آخر استيراد: ${name}`,
+  importRunsTitle: "استيراداتك",
+  importRunsHint: "ما دخل مكتبتك، ومن أين.",
+  importRunsEmpty: "لم تستورد شيئاً بعد.",
+  importRunDone: "اكتمل",
+  importRunCancelled: "أُوقف",
+  importRunWeb: "الويب",
+  importRunApp: "التطبيق",
+  importRunUnmatched: (n: string) => `لم نجد: ${n}`,
+  importRunReviews: (n: string) => `مراجعات: ${n}`,
+  /* 🆕 T507 — المراجعاتُ المستوردة (أحمد ٢٢ نوفمبر «٢أ»: Letterboxd وTrakt وعمودُ «المراجعة» في أي ملف) */
+  importDoneReviews: (n: string) => `والمراجعات المستوردة: ${n}.`,
+  importReviewsSkipped: (n: string) =>
+    `مراجعاتٌ لم تُستورد (${n}): بلا تقييم، أو بلا تاريخ كتابة، أو لعملٍ تقييمُك له في Loopz غيرُ تقييمها.`,
+  importReviewsSpoiler: "Letterboxd لا يقول أيُّ مراجعةٍ فيها حرق — راجع مراجعاتك المستوردة وعلّم ما يحتاج.",
+  importAutoReviewPublic: "عمود «المراجعة» يظهر للناس في صفحة العمل وفي ملفك — لا تختره لملاحظاتٍ كتبتها لنفسك.",
+  importAutoFromApp: "الملف من تطبيقٍ نعرفه؟",
   importAutoTitle: "من تطبيق آخر",
   importAutoHint:
     "تصدير من أي تطبيق تتبّع آخر: ارفع الملف كما نزل. نتعرّف على أعمدته بأنفسنا، وتراجعها قبل أن يُكتب شيء — والملف لا يغادر جهازك.",
@@ -685,6 +709,7 @@ const ar = {
     epcode: "الحلقة (S1E2)",
     date: "تاريخ المشاهدة",
     rating: "التقييم",
+    review: "المراجعة",
     status: "الحالة",
     skip: "تجاهل",
   },
@@ -4060,7 +4085,7 @@ const en: Dict = {
 
   importSection: "Import your library",
   importHint:
-    "Bring what you have watched over from IMDb, MyAnimeList, Letterboxd, Simkl, Bingers or TV Time — upload your export file here, no starting from scratch. Whatever is already in your Loopz library stays as it is — only what's missing is added.",
+    "Another app? Look in its settings for “Export”, then upload that file above. Whatever is already in your Loopz library stays as it is — only what's missing is added.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "If you have your TV Time data file, upload it here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
@@ -4109,6 +4134,27 @@ const en: Dict = {
     "In Bingers: Settings → Export My Data, then upload the ZIP exactly as it downloaded. Your watches arrive with their dates, plus your ratings, lists and favourites.",
   importBingersFileHint:
     "Accepted: zip or csv. Ratings convert from five stars to ten points.",
+  importUploadTitle: "Upload a file from any app",
+  importUploadHint: "We recognise where it came from. The file is read on your device, and only what the import needs is sent.",
+  importUploadPick: "Choose a file",
+  importGuidesLabel: "How do I get my file?",
+  importGuideUpload: "Upload the file now",
+  importLastRun: (name: string) => `Last import: ${name}`,
+  importRunsTitle: "Your imports",
+  importRunsHint: "What came into your library, and from where.",
+  importRunsEmpty: "You haven't imported anything yet.",
+  importRunDone: "Done",
+  importRunCancelled: "Cancelled",
+  importRunWeb: "Web",
+  importRunApp: "App",
+  importRunUnmatched: (n: string) => `${n} not found`,
+  importRunReviews: (n: string) => `${n} reviews`,
+  importDoneReviews: (n: string) => `We also imported ${n} reviews.`,
+  importReviewsSkipped: (n: string) =>
+    `${n} reviews weren't imported: no rating, no date written, or your Loopz rating for that title is different.`,
+  importReviewsSpoiler: "Letterboxd doesn't say which reviews have spoilers — check your imported reviews and mark any that do.",
+  importAutoReviewPublic: "The “Review” column shows to everyone on the title page and your profile — don't pick it for notes you wrote for yourself.",
+  importAutoFromApp: "Is this file from an app we know?",
   importAutoTitle: "From another app",
   importAutoHint:
     "An export from any other tracking app: upload the file as it downloaded. We work out its columns ourselves and you review them before anything is written — the file never leaves your device.",
@@ -4141,6 +4187,7 @@ const en: Dict = {
     epcode: "Episode (S1E2)",
     date: "Watch date",
     rating: "Rating",
+    review: "Review",
     status: "Status",
     skip: "Ignore",
   },

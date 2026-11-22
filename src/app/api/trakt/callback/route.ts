@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   const token = await traktToken(code, new URL("/api/trakt/callback", request.url).toString(), verifier);
   if (!token) return back("trakt=failed");
 
-  const done = await runTraktImport(token, user.id);
+  const done = await runTraktImport(token, user.id, "web");
   if (!done.ok) return back("trakt=failed");
-  return back(`trakt=ok&sh=${done.shows}&ep=${done.episodes}&mv=${done.movies}&un=${done.unmatched.length}`);
+  return back(`trakt=ok&sh=${done.shows}&ep=${done.episodes}&mv=${done.movies}&rv=${done.reviews}&un=${done.unmatched.length}`);
 }

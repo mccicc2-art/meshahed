@@ -5,9 +5,11 @@ import { IMPORT_CAPS } from "@/core/importer";
 import { planTraktImport, traktKey, type TraktKind } from "@/lib/traktImport";
 import { safeImagePath } from "@/lib/watchMark";
 import { revalidatePath } from "next/cache";
+import { recordImportRun, writeImportedReviews, type ReviewItem } from "@/lib/importRuns";
+import { reviewDate } from "@/core/importParse";
 
 export type TraktRunResult =
-  | { ok: true; shows: number; episodes: number; movies: number; unmatched: string[] }
+  | { ok: true; shows: number; episodes: number; movies: number; reviews: number; reviewsSkipped: number; unmatched: string[] }
   | { ok: false };
 
 /**
@@ -16,7 +18,7 @@ export type TraktRunResult =
  * عنها يومَ يُصلَح شيءٌ في إحداهما (حلقاتُ السجلّ R278 · حمايةُ المكتبة R277 أمثلةٌ قريبة). `createClient` يقرأ الكوكي أو
  * الـBearer — فالقواعدُ نفسُها (RLS) تحرس الطريقين. والمفتاحُ يُلغى هنا في كلِّ حال: بعد الجلب أو عند فشله.
  */
-export async function runTraktImport(token: string, userId: string): Promise<TraktRunResult> {
+export async function runTraktImport(token: string, userId: string, platform: "web" | "app"): Promise<TraktRunResult> {
   let harvest;
   try {
     harvest = await harvestTrakt(token);
@@ -180,8 +182,30 @@ export async function runTraktImport(token: string, userId: string): Promise<Tra
     logErr("watched_movies", error);
   }
 
+  /* 🆕 T507 — **آراءُ Trakt** (تعليقاتُه على ما شاهده): تُنقّى نصّاً ويوماً كما تُنقّى آراءُ الملفّات (`reviewDate`)، وتعليقٌ على
+     عملٍ لم يُستورد (لم يشاهده أو سقط صفُّه) يُترك — رأيٌ بلا عملٍ في مكتبته لا مكانَ له. وما حمل رأياً لا يمرّ في التقييمات
+     العاديّة: يكتبه `writeImportedReviews` تقييماً ورأياً معاً بيوم الرأي (لا بـ«الآن» فيدخل نشاطَ الأصدقاء) */
+  const imported = new Set([...shows.map((x) => traktKey("tv", x.tmdbId)), ...movies.map((x) => traktKey("movie", x.tmdbId))]);
+  const nowMs = Date.now();
+  const reviewItems: ReviewItem[] = [];
+  for (const rv of harvest.reviews) {
+    const k = traktKey(rv.kind, rv.tmdbId);
+    if (!imported.has(k) || failed.has(k)) continue;
+    const at = reviewDate(rv.at, nowMs);
+    const m = meta.get(k);
+    reviewItems.push({
+      kind: rv.kind,
+      tmdbId: rv.tmdbId,
+      title: (m?.title || rv.title).slice(0, 300),
+      posterPath: m?.poster ?? null,
+      rating: rv.rating,
+      review: at ? { text: rv.text, at, spoiler: rv.spoiler } : null,
+    });
+  }
+  const reviewed = new Set(reviewItems.filter((it) => it.review).map((it) => traktKey(it.kind, it.tmdbId)));
+
   // تقييمُ Trakt لما لا تقييمَ له في Loopz فقط — و`ignoreDuplicates` يحمي من تقييمٍ كُتب بين القراءة والكتابة
-  const rateRows = plan.rate.filter((r) => !failed.has(traktKey(r.kind, r.tmdbId))).map((r) => {
+  const rateRows = plan.rate.filter((r) => !failed.has(traktKey(r.kind, r.tmdbId)) && !reviewed.has(traktKey(r.kind, r.tmdbId))).map((r) => {
     const m = meta.get(traktKey(r.kind, r.tmdbId));
     return {
       user_id: userId,
@@ -201,11 +225,20 @@ export async function runTraktImport(token: string, userId: string): Promise<Tra
     logErr("ratings", error);
   }
 
+  const rv = await writeImportedReviews(supabase, userId, reviewItems, stamp, "trakt");
+  const reviewsSkipped = rv.reviewsSkipped + reviewItems.filter((it) => !it.review).length;
+
   const showCount = new Set(shows.map((s) => s.tmdbId)).size;
   const movieCount = new Set(movies.map((m) => m.tmdbId)).size;
   // أعدادٌ فقط — ما وصل من Trakt مقابل ما كُتب، كي يُرى أين يضيع شيء
   console.log(
-    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length} fromHistory=${harvest.fromHistory}`,
+    `[trakt] import: shows=${showCount} movies=${movieCount} eps=${epRows.length}/${episodes} noEps=${noEps} new=${plan.add.length} posters=${meta.size}/${plan.posters.length} rated=${plan.rate.length} unmatched=${harvest.unmatched.length} fromHistory=${harvest.fromHistory} reviews=${rv.reviews}/${harvest.reviews.length}`,
+  );
+  /* 🆕 T507 — سطرُ «استيراداتك»؛ والسطحُ من الطريق الذي نادى (عودةُ الموقع `web`، مسارُ التطبيق `app`) */
+  await recordImportRun(
+    userId,
+    { source: "trakt", status: "done", shows: showCount, episodes, movies: movieCount, reviews: rv.reviews, unmatched: harvest.unmatched.length },
+    platform,
   );
 
   revalidatePath("/");
@@ -213,5 +246,5 @@ export async function runTraktImport(token: string, userId: string): Promise<Tra
   revalidatePath("/stats");
   revalidatePath("/diary");
 
-  return { ok: true, shows: showCount, episodes, movies: movieCount, unmatched: harvest.unmatched };
+  return { ok: true, shows: showCount, episodes, movies: movieCount, reviews: rv.reviews, reviewsSkipped, unmatched: harvest.unmatched };
 }

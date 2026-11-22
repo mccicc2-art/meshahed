@@ -14,6 +14,7 @@
 // ولهذا الأعمدة **تُشَمّ بمرادفاتها** (`findCol`) ولا تُفترض حرفياً.
 
 import {
+  cleanReviewText,
   findCol,
   parseCsv,
   readZip,
@@ -22,7 +23,7 @@ import {
   toInt,
   type ParseOutcome,
   type RawRecord,
-} from "./importParse";
+} from "./importParse.ts";
 
 const COL = {
   name: ["name", "title", "film", "film name", "film title"],
@@ -34,6 +35,8 @@ const COL = {
   /** «Watched Date» في اليوميات = يوم المشاهدة، و«Date» = يوم التسجيل */
   watchedAt: ["watched date", "watched_date", "watcheddate"],
   loggedAt: ["date", "logged date"],
+  /** 🆕 T507 — نصُّ الرأي في `reviews.csv` وحدَه */
+  review: ["review", "review text"],
 } as const;
 
 /**
@@ -43,7 +46,7 @@ const COL = {
  * لصار **الإعجابُ مشاهدةً** و**قائمةُ الانتظار مكتبةً مُشاهَدة**. الاسم
  * هو ما يحمل المعنى هنا، والمجهول يُترك لا يُخمَّن.
  */
-type FileRole = "watched" | "watchlist" | "skip";
+type FileRole = "watched" | "reviews" | "watchlist" | "skip";
 
 function roleOf(path: string): FileRole {
   const p = path.toLowerCase();
@@ -52,6 +55,9 @@ function roleOf(path: string): FileRole {
   /* مجلّدات القوائم والإعجابات: أعمدتها كأعمدة المشاهدة تماماً — وقراءتُها
      مشاهدةً كذبٌ صريح على صاحبها. «أعجبني» ليس «شاهدته». */
   if (p.includes("lists/") || p.includes("likes/")) return "skip";
+  /* 🆕 T507 — **ما حذفه صاحبُه في Letterboxd لا يعود في Loopz**: الصندوق يحمل مجلّدَي `deleted/` و`orphaned/` بأعمدة
+     اليوميات والآراء نفسِها — قراءتُهما تُحيي مشاهدةً أو رأياً محاه صاحبُه بيده */
+  if (/(^|\/)(deleted|orphaned)\//.test(p)) return "skip";
 
   if (base.startsWith("watchlist")) return "watchlist";
 
@@ -61,12 +67,9 @@ function roleOf(path: string): FileRole {
      - diary   : بتاريخ المشاهدة الحقيقي والتقييم
      - reviews : مثل اليوميات ومعها نصّ لا نستورده
      - ratings : تقييمٌ يعني مشاهدةً عند Letterboxd */
-  if (
-    base.startsWith("watched") ||
-    base.startsWith("diary") ||
-    base.startsWith("reviews") ||
-    base.startsWith("ratings")
-  ) {
+  /* 🆕 T507 — الآراءُ مشاهدةٌ كما كانت، ومعها نصُّها الآن */
+  if (base.startsWith("reviews")) return "reviews";
+  if (base.startsWith("watched") || base.startsWith("diary") || base.startsWith("ratings")) {
     return "watched";
   }
 
@@ -105,6 +108,7 @@ function parseFile(path: string, text: string): RawRecord[] | null {
   const cRating10 = findCol(headers, COL.rating10);
   const cWatched = findCol(headers, COL.watchedAt);
   const cLogged = findCol(headers, COL.loggedAt);
+  const cReview = role === "reviews" ? findCol(headers, COL.review) : -1;
 
   const out: RawRecord[] = [];
   for (const r of rows.slice(1)) {
@@ -128,12 +132,15 @@ function parseFile(path: string, text: string): RawRecord[] | null {
       (cWatched >= 0 ? toDate(r[cWatched]) : undefined) ??
       (cLogged >= 0 ? toDate(r[cLogged]) : undefined);
 
+    /* 🆕 T507 — **يومُ الرأي يومُ كتابته** («Date» في `reviews.csv`)، لا يومُ المشاهدة: هو التاريخُ الذي يقرؤه الناس تحته */
+    const review = cReview >= 0 ? cleanReviewText(r[cReview]) : "";
     out.push({
       kind: "movie-name",
       name,
       year,
       at,
       rating: toTen(cRating >= 0 ? r[cRating] : undefined, cRating10 >= 0 ? r[cRating10] : undefined),
+      ...(review ? { review, reviewAt: (cLogged >= 0 ? toDate(r[cLogged]) : undefined) ?? at } : {}),
     });
   }
 

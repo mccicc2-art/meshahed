@@ -14,7 +14,8 @@ import { api, write } from "../api";
  * يغلب، والإذنُ يُلغى بعد الجلب. والطلبُ قد يطول بمكتبةٍ كبيرة — الشاشةُ تقول «خلّ التطبيق مفتوح».
  */
 export type TraktOutcome =
-  | { kind: "done"; shows: number; episodes: number; movies: number; unmatched: string[] }
+  /* 🆕 T507 — `reviews`: تعليقاتُه على الأفلام والمسلسلات صارت مراجعات (خادمٌ قبل T507 لا يعيده ⇐ صفر) */
+  | { kind: "done"; shows: number; episodes: number; movies: number; reviews: number; unmatched: string[] }
   | { kind: "cancel" }
   | { kind: "failed" };
 
@@ -57,8 +58,8 @@ export async function importFromTrakt(): Promise<TraktOutcome> {
     // حالةٌ لا تطابق ما أرسلناه ليست رحلتَنا — لا تُصرف شِفرتُها
     if (!code || param(back.url, "state") !== state) return { kind: "failed" };
 
-    const done = await write<{ shows: number; episodes: number; movies: number; unmatched: string[] }>("/api/v1/me/import/trakt", { code, verifier });
-    return { kind: "done", ...done, unmatched: Array.isArray(done.unmatched) ? done.unmatched : [] };
+    const done = await write<{ shows: number; episodes: number; movies: number; reviews?: number; unmatched: string[] }>("/api/v1/me/import/trakt", { code, verifier });
+    return { kind: "done", ...done, reviews: Number(done.reviews) || 0, unmatched: Array.isArray(done.unmatched) ? done.unmatched : [] };
   } catch {
     return { kind: "failed" };
   }

@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
     /* 🆕 Bingers — المفضّلةُ واسمُها و«ما في Loopz يبقى» (`keep`): اختياريّةٌ كالقوائم، وتُمرَّر بأنواعها الصريحة لا بالجسم كلِّه */
     const favorites = Array.isArray(body.favorites) ? body.favorites : [];
     const favoritesName = typeof body.favoritesName === "string" ? body.favoritesName : undefined;
-    const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true });
+    /* 🆕 T507 — مصدرُ الآراء يُمرَّر بقيمته المعروفة وحدها؛ والآراءُ نفسُها تُنقّى في `applyImportChunk` (نصّاً ويوماً) */
+    const reviewFrom = body.reviewFrom === "letterboxd" || body.reviewFrom === "auto" ? body.reviewFrom : undefined;
+    const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true, reviewFrom });
     return ok(done, []);
   });
 }

@@ -81,3 +81,24 @@ test("A-70: pickOAuthError keeps only a short OAuth error code", () => {
   assert.equal(pickOAuthError(null), "-");
   assert.equal(pickOAuthError("invalid_grant"), "-");
 });
+
+/* 🆕 T507 — تعليقاتُ Trakt ⇐ آراء */
+import { reviewsFromComments } from "./trakt.ts";
+
+test("Trakt comments: one latest review per title, spoiler tags stripped and flagged, episode comments ignored", () => {
+  const out = reviewsFromComments([
+    { type: "movie", movie: { title: "Dune", ids: { tmdb: 1 } }, comment: { comment: "old take", created_at: "2023-01-01T00:00:00Z", user_stats: { rating: 7 } } },
+    { type: "movie", movie: { title: "Dune", ids: { tmdb: 1 } }, comment: { comment: "new take [spoiler]he wins[/spoiler]", created_at: "2024-01-01T00:00:00Z" } },
+    { type: "episode", show: { title: "S", ids: { tmdb: 2 } }, comment: { comment: "ep words", created_at: "2024-01-01T00:00:00Z" } },
+    { type: "show", show: { title: "S", ids: { tmdb: 2 } }, comment: { comment: "show words", spoiler: true, created_at: "2024-02-01T00:00:00Z", user_stats: { rating: 9 } } },
+    { type: "movie", movie: { title: "No id", ids: {} }, comment: { comment: "x" } },
+  ]);
+  assert.equal(out.length, 2);
+  const dune = out.find((r) => r.kind === "movie");
+  assert.equal(dune?.text, "new take he wins");
+  assert.equal(dune?.spoiler, true);
+  assert.equal(dune?.rating, undefined);
+  const show = out.find((r) => r.kind === "tv");
+  assert.equal(show?.spoiler, true);
+  assert.equal(show?.rating, 9);
+});

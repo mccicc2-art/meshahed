@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { File, Paths } from "expo-file-system";
 import { inflateSync } from "fflate";
@@ -7,7 +7,7 @@ import { Text, Button } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
-import { downloadTo, ApiError } from "../api";
+import { api, downloadTo, ApiError } from "../api";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, Group, Row } from "./ui";
 import { messageOf } from "./api";
@@ -19,8 +19,10 @@ import { parseImdbFiles } from "@/core/imdb";
 import { parseMalFiles } from "@/core/mal";
 import { parseBingersFiles } from "@/core/bingers";
 import { setInflateRaw, type ParseOutcome, type RawRecord } from "@/core/importParse";
-import { autoRecords, readAuto, type AutoOptions, type AutoTable } from "@/core/importAuto";
+import { autoRecords, readAuto, runHeaders, type AutoOptions, type AutoTable, type KnownSource } from "@/core/importAuto";
+import { importRunCounts, importRunTitle, importRunWhen, type ImportRun, type ImportRunSource } from "@/core/importer";
 import { ImportAutoReview } from "./ImportAutoReview";
+import { ImportHistorySheet } from "./ImportHistorySheet";
 import { importRecords, type ImportResult } from "./importPipeline";
 import { importFromTrakt } from "./trakt";
 
@@ -37,28 +39,33 @@ import { importFromTrakt } from "./trakt";
  * في مكانٍ واحد (D-462)، و«الخصوصيّة» بقيت لمن يراك.
  * 🆕 **Trakt صفٌّ يعمل** (R281، أحمد ١٩ نوفمبر): كان مغلقاً («9 أ» · D-155) والخدمةُ مطفأة؛ صار الربطُ قائماً في الموقع
  * (R275–R280) فانتقل إلى هنا بنافذة الدخول نفسِها التي يربط بها Google (`trakt.ts`). والنتيجةُ إشعارٌ واحد من المضيف القائم.
+ * 🆕 T507 — **رفعٌ واحدٌ وأدلّةٌ ستّة** (أحمد ٢١–٢٢ نوفمبر «١أ»، و«آخر استيراد» «تحت تراكت»): صفُّ الرفع يتعرّف على مصدر الملفّ،
+ * والتطبيقاتُ الستّة أدلّةُ تصديرٍ تُفتح ورقتُها بشرحها وزرِّ «ارفع الملف الآن» (يُقرأ الملفُّ بقارئ ذلك التطبيق أوّلاً). والتقدّمُ
+ * والحصيلةُ في ورقة الرفع الواحدة — كما في الويب.
  */
 setInflateRaw((data) => inflateSync(data));
 
-type SourceId = "imdb" | "mal" | "letterboxd" | "simkl" | "bingers" | "tvtime";
-/** 🆕 T500 — «من تطبيق آخر» ليس قارئاً في السجلّ: يتعرّف على الملفّ فيسلّمه لقارئه، أو يقرؤه بأعمدته بعد مراجعة صاحبه (`core/importAuto`) */
-type PanelId = SourceId | "auto";
-const AUTO_EXT = [".zip", ".csv", ".tsv", ".txt", ".json", ".gz", ".xml"] as const;
+type SourceId = KnownSource;
+/** 🆕 T507 — الرفعُ الواحدُ يقبل صيغَ المصادر كلِّها: لا يعرف من أين جاء الملفّ قبل أن يقرأه */
+const ACCEPT_ALL = [".zip", ".csv", ".tsv", ".txt", ".json", ".gz", ".xml"] as const;
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
-type Result = ImportResult;
+type Result = ImportResult & { spoilerNote: boolean };
 
 /** سجلٌّ لا فرعُ شرط (D-153): مصدرٌ جديدٌ سطرٌ هنا لا نسخةٌ من المسار */
-const SOURCES: Record<SourceId, { parse: (f: { name: string; buf: ArrayBuffer }[]) => Promise<ParseOutcome>; ext: readonly string[] }> = {
+const SOURCES: Record<SourceId, { parse: (f: { name: string; buf: ArrayBuffer }[]) => Promise<ParseOutcome> }> = {
   /* 🆕 IMDb — ملفّاتٌ عدّة (التقييمات · قائمة المشاهدة · القوائم) تُختار معاً */
-  imdb: { parse: parseImdbFiles, ext: [".csv", ".zip"] },
+  imdb: { parse: parseImdbFiles },
   /* 🆕 MyAnimeList — `animelist_….xml.gz` كما نزل (يُفكّ بالفاكّ المسجَّل أعلاه) */
-  mal: { parse: parseMalFiles, ext: [".gz", ".xml", ".zip"] },
-  letterboxd: { parse: parseLetterboxdFiles, ext: [".zip", ".csv"] },
-  simkl: { parse: parseTrackerExport, ext: [".zip", ".json", ".csv"] },
+  mal: { parse: parseMalFiles },
+  letterboxd: { parse: parseLetterboxdFiles },
+  simkl: { parse: parseTrackerExport },
   /* 🆕 Bingers — zip الأربعة كما نزل (أحمد ٢٠ نوفمبر) */
-  bingers: { parse: parseBingersFiles, ext: [".zip", ".csv"] },
-  tvtime: { parse: parseTvTimeFiles, ext: [".zip", ".csv", ".json"] },
+  bingers: { parse: parseBingersFiles },
+  tvtime: { parse: parseTvTimeFiles },
 };
+
+/** ورقةٌ واحدةٌ مفتوحةٌ في كلِّ مرّة (iOS لا يقدّم نافذتين في آنٍ): دليلُ تطبيق، أو الرفعُ (تقدّمُه وحصيلتُه)، أو «استيراداتك» */
+type Open = SourceId | "upload" | "history" | null;
 
 export function ImportScreen() {
   const { t, tokens, locale } = useApp();
@@ -68,47 +75,67 @@ export function ImportScreen() {
   /* من غادر الشاشةَ والاستيرادُ يعمل يوقفه: حلقةٌ تكتب في الخلفيّة بلا شريطٍ يُرى ولا زرِّ إيقاف أسوأُ من توقّفٍ يُعاد (وكلُّ كتابةٍ `upsert`) */
   useEffect(() => () => void (stop.current = true), []);
 
-  const [open, setOpen] = useState<PanelId | null>(null);
-  const [active, setActive] = useState<PanelId | null>(null);
-  /** 🆕 T500 — جداولُ ملفٍّ لا نعرفه تنتظر المراجعة، و«تعرّفنا على ملفّك» لمصدرٍ نعرفه */
-  const [review, setReview] = useState<{ tables: AutoTable[]; skipped: string[] } | null>(null);
+  const [open, setOpen] = useState<Open>(null);
+  /** جداولُ ملفٍّ لا نعرفه تنتظر المراجعة — ومعها ملفّاتُه إن قال «هو من تطبيقٍ نعرفه» */
+  const [review, setReview] = useState<{ tables: AutoTable[]; skipped: string[]; bufs: { name: string; buf: ArrayBuffer }[] } | null>(null);
   const [known, setKnown] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [runs, setRuns] = useState<ImportRun[]>([]);
   const busy = phase === "reading" || phase === "matching" || phase === "writing";
 
-  async function pick(source: PanelId) {
+  /* 🆕 T507 — «استيراداتك»: تُقرأ عند فتح الشاشة وبعد كلِّ استيراد. خادمٌ قبل T507 أو خطأ ⇐ لا صفّ */
+  const refreshRuns = useCallback(() => {
+    api<{ runs: ImportRun[] }>("/api/v1/me/import/runs")
+      .then((r) => setRuns(Array.isArray(r.data?.runs) ? r.data.runs : []))
+      .catch(() => setRuns([]));
+  }, []);
+  useEffect(() => {
+    refreshRuns();
+  }, [refreshRuns]);
+
+  /** ورقتان أصليّتان لا تُعرضان معاً: تُغلق الأولى وتُفتح الثانية بعد انغلاقها */
+  const swap = (next: () => void) => {
+    setOpen(null);
+    setTimeout(next, 350);
+  };
+
+  async function pick(hint: SourceId | null) {
     if (busy) return;
     haptic.pick();
     setError(null);
+    /* 🆕 T507 — **ورقةٌ مفتوحةٌ تُغلق قبل المنتقي** (مراجعةُ الوكيل الثاني، البند ٥): المنتقي نافذةٌ أصليّةٌ ثالثة، وبعده تُفتح ورقةُ
+       الرفع — ودليلٌ ما زال مفتوحاً تحتهما يجعل iOS يُسقط إحداهما فيمضي الاستيرادُ بلا شريطٍ ولا «إيقاف» */
+    if (open) {
+      setOpen(null);
+      await new Promise((r) => setTimeout(r, 350));
+    }
     try {
       /* تُحمَّل عند الحاجة: أوّلُ استعمالٍ لمنتقي الملفّات (في البناء منذ 1.12.5، D-1350) — وإن غاب في ثنائيٍّ ما فرسالةٌ في الورقة لا سقوطُ الشاشة */
       const Picker = await import("expo-document-picker");
       /* `*‎/*`: أنواعُ MIME للـcsv والـzip تختلف بين مديري الملفّات على أندرويد، وفلترٌ بها يُخفي الملفَّ الصحيح؛ الامتدادُ يُفحص هنا */
       const got = await Picker.getDocumentAsync({ type: "*/*", multiple: true, copyToCacheDirectory: true });
       if (got.canceled || !got.assets?.length) return;
-      const ext = source === "auto" ? AUTO_EXT : SOURCES[source].ext;
-      const files = got.assets.filter((a) => ext.some((x) => a.name.toLowerCase().endsWith(x)));
+      const files = got.assets.filter((a) => ACCEPT_ALL.some((x) => a.name.toLowerCase().endsWith(x)));
+      setResult(null);
       if (!files.length) {
-        setActive(source);
-        setResult(null);
         setPhase("idle");
         setError(t.importNothing);
-        return;
+        return void setOpen("upload");
       }
-      await run(files.map((a) => ({ name: a.name, uri: a.uri })), source);
+      await run(files.map((a) => ({ name: a.name, uri: a.uri })), hint);
     } catch {
-      setActive(source);
       setPhase("idle");
       setError(t.apiInternal);
+      setOpen("upload");
     }
   }
 
-  async function run(files: { name: string; uri: string }[], source: PanelId) {
+  async function run(files: { name: string; uri: string }[], hint: SourceId | null) {
     stop.current = false;
-    setActive(source);
+    setOpen("upload");
     setError(null);
     setResult(null);
     setKnown(null);
@@ -128,43 +155,54 @@ export function ImportScreen() {
           /* نسخةٌ لم تُحذف تبقى في كاشٍ يمسحه النظام — لا يوقف الاستيراد */
         }
       }
-      let records: RawRecord[];
-      if (source !== "auto") records = (await SOURCES[source].parse(bufs)).records;
-      else {
-        /* 🆕 T500 — ملفٌّ من مصدرٍ نعرفه يذهب لقارئه هو؛ وما سواه تُخمَّن أعمدتُه ثمّ ينتظر المراجعة */
-        const got = await readAuto(bufs);
-        if (got.kind === "tables") {
-          setPhase("idle");
-          /* ورقتان أصليّتان لا تُعرضان معاً (iOS لا يقدّم نافذتين في آنٍ): ورقةُ المصدر تُغلق والمراجعةُ تُفتح بعد انغلاقها */
-          setOpen(null);
-          setTimeout(() => setReview({ tables: got.tables, skipped: got.skipped }), 350);
-          return;
+      /* 🆕 T507 — من جاء من دليل تطبيقٍ يُقرأ ملفُّه بقارئ ذلك التطبيق أوّلاً: طريقُه قبل التوحيد بحرفه (مراجعةُ الوكيل، البند ١٠) */
+      if (hint) {
+        const records = (await SOURCES[hint].parse(bufs)).records;
+        if (records.length) {
+          parsed = true;
+          return void (await importParsed(records, hint));
         }
-        if (got.kind === "none") {
-          setPhase("idle");
-          return void setError(got.skipped.length ? `${t.importNothing} ${t.importAutoSkipped(got.skipped.join(" · "))}` : t.importNothing);
-        }
-        setKnown(t.importAutoKnown(sources.find((x) => x.id === got.source)?.title ?? got.source));
-        records = (await SOURCES[got.source].parse(bufs)).records;
       }
+      const got = await readAuto(bufs);
+      if (got.kind === "tables") {
+        setPhase("idle");
+        return void swap(() => setReview({ tables: got.tables, skipped: got.skipped, bufs }));
+      }
+      if (got.kind === "none") {
+        setPhase("idle");
+        return void setError(got.skipped.length ? `${t.importNothing} ${t.importAutoSkipped(got.skipped.join(" · "))}` : t.importNothing);
+      }
+      setKnown(t.importAutoKnown(sourceTitle(got.source)));
+      const records = (await SOURCES[got.source].parse(bufs)).records;
       parsed = true;
-      await importParsed(records);
+      await importParsed(records, got.source);
     } catch (e) {
       setPhase("idle");
       setError(e instanceof ApiError ? messageOf(e, dict, t.apiInternal) : parsed ? t.apiInternal : t.importNothing);
     }
   }
 
-  /** 🆕 T500 — بعد المراجعة: الصفوفُ بالمعاني التي أقرّها ⇐ سجلّاتٌ في المسار نفسِه */
+  /** بعد المراجعة: الصفوفُ بالمعاني التي أقرّها ⇐ سجلّاتٌ في المسار نفسِه — والتقدّمُ في ورقة الرفع بعد انغلاق المراجعة */
   async function runReviewed(tables: AutoTable[], opts: AutoOptions) {
     setReview(null);
-    /* والتقدّمُ في ورقة المصدر كما لكلِّ مصدر — تُفتح بعد انغلاق المراجعة */
-    setTimeout(() => setOpen("auto"), 350);
+    setTimeout(() => setOpen("upload"), 350);
+    await guarded(() => importParsed(autoRecords(tables, opts), "auto", runHeaders(tables)));
+  }
+
+  /** 🆕 T507 — «الملف من تطبيقٍ نعرفه؟»: الملفّاتُ نفسُها بقارئ ذلك التطبيق */
+  async function runAs(source: SourceId) {
+    const bufs = review?.bufs ?? [];
+    setReview(null);
+    setTimeout(() => setOpen("upload"), 350);
+    await guarded(async () => importParsed((await SOURCES[source].parse(bufs)).records, source));
+  }
+
+  async function guarded(fn: () => Promise<void>) {
     setError(null);
     setResult(null);
     setPhase("reading");
     try {
-      await importParsed(autoRecords(tables, opts));
+      await fn();
     } catch (e) {
       setPhase("idle");
       setError(e instanceof ApiError ? messageOf(e, dict, t.apiInternal) : t.apiInternal);
@@ -172,27 +210,25 @@ export function ImportScreen() {
   }
 
   /** المطابقةُ ثمّ التجميعُ ثمّ الكتابة — لكلِّ مصدر، و«من تطبيق آخر» بعد مراجعته. الأخطاءُ لمناديها */
-  async function importParsed(records: RawRecord[]) {
+  async function importParsed(records: RawRecord[], source: ImportRunSource, headers?: string[]) {
     stop.current = false;
-    {
-      if (!records.length) {
-        setPhase("idle");
-        setError(t.importNothing);
-        return;
-      }
-
-      /* 🆕 المطابقةُ والتجميعُ والكتابةُ في `importPipeline.ts` — قارئُها الثاني استيرادُ Plex (هجرة ٢٣٥) */
-      const done = await importRecords(
-        records,
-        { stopped: () => stop.current, phase: setPhase, pct: setPct },
-        /* 🆕 «ما في Loopz يبقى» لكلِّ ملفٍّ كما في الويب (أحمد ٢٠ نوفمبر «١ أ») — يُضاف الناقصُ ولا يُدهس الموجود */
-        { keep: true, favoritesName: t.favListName },
-      );
-      if (!done) return void setPhase("idle");
-      setResult(done);
-      setPhase("done");
-      haptic.success();
+    if (!records.length) {
+      setPhase("idle");
+      setError(t.importNothing);
+      return;
     }
+    /* 🆕 المطابقةُ والتجميعُ والكتابةُ في `importPipeline.ts` — قارئُها الثاني استيرادُ Plex (هجرة ٢٣٥) */
+    const done = await importRecords(
+      records,
+      { stopped: () => stop.current, phase: setPhase, pct: setPct },
+      /* «ما في Loopz يبقى» لكلِّ ملفٍّ كما في الويب (أحمد ٢٠ نوفمبر «١ أ») · 🆕 T507 — المصدرُ وأعمدةُ الملفّ المجهول لـ«استيراداتك» */
+      { keep: true, favoritesName: t.favListName, source, headers },
+    );
+    refreshRuns();
+    if (!done) return void setPhase("idle");
+    setResult({ ...done, spoilerNote: source === "letterboxd" && done.reviews > 0 });
+    setPhase("done");
+    haptic.success();
   }
 
   /* 🆕 R281 — Trakt: لا ملفَّ ولا مراحل — نافذةُ موافقةٍ ثمّ طلبٌ واحدٌ على الخادم؛ الصفُّ يدور حتى يعود */
@@ -205,7 +241,10 @@ export function ImportScreen() {
       const r = await importFromTrakt();
       if (r.kind === "done") {
         haptic.success();
-        toast.current?.say(`${t.importDone} — ${t.importDoneBody(r.shows, r.episodes, r.movies)}`);
+        toast.current?.say(
+          `${t.importDone} — ${t.importDoneBody(r.shows, r.episodes, r.movies)}${r.reviews > 0 ? ` ${t.importDoneReviews(num(r.reviews, locale))}` : ""}`,
+        );
+        refreshRuns();
       } else {
         toast.current?.say(r.kind === "cancel" ? t.importTraktDenied : t.importTraktFailed);
       }
@@ -236,29 +275,50 @@ export function ImportScreen() {
     }
   }
 
-  const sources: { id: PanelId; title: string; hint: string; fileHint: string }[] = [
-    /* IMDb أوّلاً كما في الويب: أوسعُ الأربعة جمهوراً وأدقُّها مطابقة */
+  /* الأدلّةُ الستّة بترتيبها كما في الويب — IMDb أوّلاً: أوسعُها جمهوراً وأدقُّها مطابقة */
+  const guides: { id: SourceId; title: string; hint: string; fileHint: string }[] = [
     { id: "imdb", title: t.importImdbTitle, hint: t.importImdbHint, fileHint: t.importImdbFileHint },
     { id: "mal", title: t.importMalTitle, hint: t.importMalHint, fileHint: t.importMalFileHint },
     { id: "letterboxd", title: t.importLetterboxdTitle, hint: t.importLetterboxdHint, fileHint: t.importLetterboxdFileHint },
     { id: "simkl", title: t.importSimklTitle, hint: t.importSimklHint, fileHint: t.importSimklFileHint },
     { id: "bingers", title: t.importBingersTitle, hint: t.importBingersHint, fileHint: t.importBingersFileHint },
     { id: "tvtime", title: t.importTvTimeTitle, hint: t.importTvTimeHint, fileHint: t.importFileHint },
-    /* 🆕 T500 — آخرُها كما في الويب */
-    { id: "auto", title: t.importAutoTitle, hint: t.importAutoHint, fileHint: t.importAutoFileHint },
   ];
-  const src = sources.find((s) => s.id === open);
-  const mine = !!src && active === src.id;
+  function sourceTitle(id: SourceId): string {
+    return guides.find((g) => g.id === id)?.title ?? id;
+  }
+  const guide = guides.find((g) => g.id === open);
+  const last = runs[0] ?? null;
   const phaseLabel = phase === "reading" ? t.importReading : phase === "matching" ? t.importMatching : phase === "writing" ? t.importWriting : "";
 
   return (
     <SettingsScreen title={t.setImport} toast={toast}>
       <View>
         <Group label={t.importSection}>
-          {sources.map((s) => (
-            <Row key={s.id} icon="download" title={s.title} subtitle={busy && active === s.id ? `${phaseLabel} ${num(pct, locale)}%` : s.hint} onPress={() => setOpen(s.id)} />
-          ))}
+          {/* خانةُ الرفع الواحدة — والتقدّمُ في سطرها حين تُغلق الورقة */}
+          <Row
+            icon="download"
+            title={t.importUploadTitle}
+            subtitle={busy ? `${phaseLabel} ${num(pct, locale)}%` : t.importUploadHint}
+            onPress={() => (busy || phase === "done" || error ? setOpen("upload") : void pick(null))}
+          />
+          {/* **وTrakt صفٌّ في السجلِّ نفسِه**، و«آخر استيراد» تحته (أحمد ٢٢ نوفمبر «مكانها تحت تراكت») */}
           <Row icon="share" title={t.importTraktTitle} subtitle={traktBusy ? t.importTraktWorking : t.importTraktHint} busy={traktBusy} onPress={() => void connectTrakt()} />
+          {last ? (
+            <Row
+              icon="history"
+              title={t.importLastRun(importRunTitle(last.source, t))}
+              subtitle={`${importRunWhen(last.createdAt, locale === "en" ? "en" : "ar")} · ${importRunCounts(last, t, (n) => num(n, locale))}`}
+              onPress={() => setOpen("history")}
+            />
+          ) : null}
+        </Group>
+      </View>
+      <View>
+        <Group label={t.importGuidesLabel}>
+          {guides.map((g) => (
+            <Row key={g.id} icon="book" title={g.title} subtitle={g.hint} onPress={() => setOpen(g.id)} />
+          ))}
         </Group>
         <Text size={12} muted style={{ paddingHorizontal: 4, marginTop: 8, lineHeight: 19 }}>{t.importHint}</Text>
       </View>
@@ -266,17 +326,28 @@ export function ImportScreen() {
         <Row icon="download" title={t.dataExportTitle} value={exporting ? t.dataExportBusy : undefined} busy={exporting} onPress={() => void exportData()} />
       </Group>
 
-      {src ? (
-        <Sheet title={src.title} onClose={() => setOpen(null)}>
+      {/* ===== ورقةُ الدليل: الشرحُ كاملاً وزرُّ «ارفع الملف الآن» (بقارئ هذا التطبيق أوّلاً) ===== */}
+      {guide ? (
+        <Sheet title={guide.title} onClose={() => setOpen(null)}>
           <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
-            <Text size={12} muted style={{ lineHeight: 19, marginBottom: 12 }}>{src.hint}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Button label={t.importPickFile} variant="ghost" disabled={busy} onPress={() => void pick(src.id)} style={{ borderWidth: 1, borderColor: tokens.border, opacity: busy ? 0.5 : 1 }} />
-              {busy && mine ? <Button label={t.importCancel} variant="ghost" onPress={() => void (stop.current = true)} /> : null}
-            </View>
-            <Text size={12} muted style={{ marginTop: 8 }}>{src.fileHint}</Text>
+            <Text size={12} muted style={{ lineHeight: 19, marginBottom: 12 }}>{guide.hint}</Text>
+            <Button label={t.importGuideUpload} disabled={busy} onPress={() => void pick(guide.id)} style={{ opacity: busy ? 0.5 : 1 }} />
+            <Text size={12} muted style={{ marginTop: 8 }}>{guide.fileHint}</Text>
+          </ScrollView>
+        </Sheet>
+      ) : null}
 
-            {busy && mine ? (
+      {/* ===== ورقةُ الرفع: التقدّمُ والإيقافُ والحصيلة ===== */}
+      {open === "upload" ? (
+        <Sheet title={t.importUploadTitle} onClose={() => setOpen(null)}>
+          <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+            <Text size={12} muted style={{ lineHeight: 19, marginBottom: 12 }}>{t.importUploadHint}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Button label={t.importUploadPick} disabled={busy} onPress={() => void pick(null)} style={{ opacity: busy ? 0.5 : 1 }} />
+              {busy ? <Button label={t.importCancel} variant="ghost" onPress={() => void (stop.current = true)} /> : null}
+            </View>
+
+            {busy ? (
               <View style={{ marginTop: 16 }}>
                 <Text size={12} muted style={{ marginBottom: 6 }}>{phaseLabel}</Text>
                 {/* العرضُ بالنسبة والاتّجاهُ من الصفّ: في العربيّة يمتلئ من اليمين كما في الويب (`rtl:origin-right`) */}
@@ -286,17 +357,19 @@ export function ImportScreen() {
               </View>
             ) : null}
 
-            {known && mine ? <Text size={12} muted style={{ marginTop: 12 }}>{known}</Text> : null}
-            {error && mine ? <Note tone="error" body={error} /> : null}
+            {known ? <Text size={12} muted style={{ marginTop: 12 }}>{known}</Text> : null}
+            {error ? <Note tone="error" body={error} /> : null}
 
-            {phase === "done" && result && mine ? (
+            {phase === "done" && result ? (
               <>
                 <Note
                   tone="success"
                   title={t.importDone}
-                  body={`${t.importDoneBody(result.shows, result.episodes, result.movies)}${result.lists > 0 ? ` ${t.importDoneLists(num(result.lists, locale))}` : ""}`}
+                  body={`${t.importDoneBody(result.shows, result.episodes, result.movies)}${result.lists > 0 ? ` ${t.importDoneLists(num(result.lists, locale))}` : ""}${result.reviews > 0 ? ` ${t.importDoneReviews(num(result.reviews, locale))}` : ""}`}
                 />
                 {result.listsSkipped > 0 ? <Note tone="error" body={t.importListsFull} /> : null}
+                {result.reviewsSkipped > 0 ? <Text size={12} muted style={{ marginTop: 12, lineHeight: 19 }}>{t.importReviewsSkipped(num(result.reviewsSkipped, locale))}</Text> : null}
+                {result.spoilerNote ? <Text size={12} muted style={{ marginTop: 8, lineHeight: 19 }}>{t.importReviewsSpoiler}</Text> : null}
                 {result.unmatched.length > 0 ? (
                   <View style={{ marginTop: 12, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, padding: 12 }}>
                     <Text size={12} weight="700" style={{ marginBottom: 4 }}>{t.importUnmatchedTitle(num(result.unmatched.length, locale))}</Text>
@@ -309,7 +382,17 @@ export function ImportScreen() {
           </ScrollView>
         </Sheet>
       ) : null}
-      {review ? <ImportAutoReview tables={review.tables} skipped={review.skipped} onCancel={() => setReview(null)} onImport={(tables, opts) => void runReviewed(tables, opts)} /> : null}
+
+      {open === "history" ? <ImportHistorySheet runs={runs} onClose={() => setOpen(null)} /> : null}
+      {review ? (
+        <ImportAutoReview
+          tables={review.tables}
+          skipped={review.skipped}
+          onCancel={() => setReview(null)}
+          onImport={(tables, opts) => void runReviewed(tables, opts)}
+          onPickSource={(src) => void runAs(src)}
+        />
+      ) : null}
     </SettingsScreen>
   );
 }

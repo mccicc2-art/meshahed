@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getDict, num, type Locale } from "@/core/i18n";
-import { AUTO_ROLES, needsMedia, type AutoOptions, type AutoRole, type AutoTable } from "@/core/importAuto";
+import { AUTO_ROLES, needsMedia, type AutoOptions, type AutoRole, type AutoTable, type KnownSource } from "@/core/importAuto";
 import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 import { chipClass, segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 
@@ -22,12 +22,15 @@ export function ImportAutoReview({
   skipped,
   onCancel,
   onImport,
+  onPickSource,
 }: {
   locale: Locale;
   tables: AutoTable[];
   skipped: string[];
   onCancel: () => void;
   onImport: (tables: AutoTable[], opts: AutoOptions) => void;
+  /** 🆕 T507 — «الملف من تطبيقٍ نعرفه؟»: ملفٌّ لم يتعرّف عليه الكاشفُ (TV Time بصيغته الأخيرة مثلاً) يُقرأ بقارئ تطبيقه */
+  onPickSource?: (source: KnownSource) => void;
 }) {
   const t = getDict(locale);
   const [tables, setTables] = useState(initial);
@@ -74,6 +77,29 @@ export function ImportAutoReview({
         {askMedia && seg(t.importAutoMediaLabel, media, [["movie", t.importAutoMovies], ["tv", t.importAutoShows]], setMedia)}
         {seg(t.importAutoStatusLabel, status, [["watched", t.importAutoWatched], ["plan", t.importAutoPlan]], setStatus)}
         {askMedia && media == null && <p className="text-12 text-[color:var(--error)]">{t.importAutoNeedMedia}</p>}
+        {/* 🆕 T507 — «المراجعة» لا يختارها التخمين أبداً؛ ومن اختارها يُقال له قبل الاستيراد إنها تظهر للناس */}
+        {tables.some((x) => x.roles.includes("review")) && <p className="text-12 leading-relaxed text-muted">{t.importAutoReviewPublic}</p>}
+        {onPickSource && (
+          <div>
+            <p className="text-12 font-semibold text-muted mb-1">{t.importAutoFromApp}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["imdb", t.importImdbTitle],
+                  ["mal", t.importMalTitle],
+                  ["letterboxd", t.importLetterboxdTitle],
+                  ["simkl", t.importSimklTitle],
+                  ["bingers", t.importBingersTitle],
+                  ["tvtime", t.importTvTimeTitle],
+                ] as [KnownSource, string][]
+              ).map(([id, label]) => (
+                <button key={id} type="button" onClick={() => onPickSource(id)} className={chipClass(false, "sm")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {tables.map((x, ti) => (
           <section key={x.file} className="rounded-control border border-border bg-surface-2 overflow-hidden">

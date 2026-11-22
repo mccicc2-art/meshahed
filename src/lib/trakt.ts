@@ -5,6 +5,8 @@
 // المطابقة قراءةُ حقل. والمشاهدات تأتي مجمّعة: المسلسل ومواسمه وحلقاته
 // في كائنٍ واحد.
 
+import { cleanReviewText } from "../core/importParse.ts";
+
 const API = "https://api.trakt.tv";
 
 /**
@@ -179,30 +181,85 @@ export function episodesFromHistory(items: TraktHistoryItem[]): { s: number; e: 
   return [...out.values()];
 }
 
-/** سجلٌّ على صفحات: Trakt يقول عددَ الصفحات في `X-Pagination-Page-Count` — عشرُ صفحاتٍ حدٌّ أعلى (ألفُ مشاهدة) */
-async function traktHistoryAll(path: string, token: string, deadline: number): Promise<TraktHistoryItem[]> {
-  const out: TraktHistoryItem[] = [];
+/**
+ * قائمةٌ على صفحات: Trakt يقول عددَ الصفحات في `X-Pagination-Page-Count` — عشرُ صفحاتٍ حدٌّ أعلى (ألفُ صفّ).
+ * 🆕 T507 — عامّةٌ لا للسجلّ وحده (وتسجيلُ الفشل باسم ما طُلب `label`): يقرؤها السجلُّ والتعليقات.
+ */
+async function traktPaged<T>(path: string, token: string, deadline: number, label: string, query = ""): Promise<T[]> {
+  const out: T[] = [];
   for (let page = 1; page <= 10 && Date.now() < deadline; page++) {
     try {
-      const res = await fetch(`${API}${path}?page=${page}&limit=100`, {
+      const res = await fetch(`${API}${path}?page=${page}&limit=100${query}`, {
         headers: traktHeaders(token),
         cache: "no-store",
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
-        logFail("/sync/history/shows", res.status);
+        logFail(label, res.status);
         break;
       }
-      const rows = (await res.json()) as TraktHistoryItem[];
+      const rows = (await res.json()) as T[];
       out.push(...(Array.isArray(rows) ? rows : []));
       const pages = Number(res.headers.get("x-pagination-page-count") ?? "1");
       if (!Number.isFinite(pages) || page >= pages || !rows.length) break;
     } catch (e) {
-      logFail("/sync/history/shows", e instanceof Error ? e.name : "error");
+      logFail(label, e instanceof Error ? e.name : "error");
       break;
     }
   }
   return out;
+}
+
+const traktHistoryAll = (path: string, token: string, deadline: number) =>
+  traktPaged<TraktHistoryItem>(path, token, deadline, "/sync/history/shows");
+
+/** 🆕 T507 — تعليقُ صاحب الحساب على فيلمٍ أو مسلسل (`/users/me/comments/all/{movies|shows}`) */
+export interface TraktComment {
+  type?: string;
+  movie?: { title?: string; ids?: TraktIds };
+  show?: { title?: string; ids?: TraktIds };
+  comment?: {
+    comment?: string;
+    spoiler?: boolean;
+    created_at?: string;
+    user_stats?: { rating?: number | null } | null;
+  };
+}
+
+/** 🆕 T507 — رأيٌ واحدٌ لكلِّ عمل (أحدثُه) بنصّه منظَّفاً — والحرقُ إن علّمه Trakt أو لفّه بـ`[spoiler]` */
+export type TraktReview = { kind: "tv" | "movie"; tmdbId: number; title: string; text: string; at?: string; spoiler: boolean; rating?: number };
+
+/**
+ * 🆕 T507 — تعليقاتُ Trakt ⇐ آراء. «مراجعة» (طويلة) و«تعليقٌ قصير» كلاهما رأي (آراءُ Loopz قد تكون سطراً). تعليقٌ على حلقةٍ أو
+ * موسمٍ أو قائمةٍ لا يُطلب أصلاً (لا مكانَ له في `ratings`). ووسمُ الحرق `[spoiler]…[/spoiler]` يُنزع ويعلّم الرأيَ محروقاً.
+ */
+export function reviewsFromComments(rows: TraktComment[]): TraktReview[] {
+  const best = new Map<string, TraktReview>();
+  for (const r of rows) {
+    const kind = r.type === "movie" ? "movie" : r.type === "show" ? "tv" : null;
+    const item = kind === "movie" ? r.movie : r.show;
+    const tmdbId = item?.ids?.tmdb;
+    const raw = r.comment?.comment ?? "";
+    if (!kind || !tmdbId || !raw.trim()) continue;
+    const tagged = /\[spoiler\]/i.test(raw);
+    const text = cleanReviewText(raw.replace(/\[\/?spoiler\]/gi, ""));
+    if (!text) continue;
+    const at = r.comment?.created_at;
+    const rating = Number(r.comment?.user_stats?.rating);
+    const k = `${kind}-${tmdbId}`;
+    const prev = best.get(k);
+    if (prev && prev.at && (!at || at <= prev.at)) continue;
+    best.set(k, {
+      kind,
+      tmdbId,
+      title: item?.title ?? "",
+      text,
+      at,
+      spoiler: r.comment?.spoiler === true || tagged,
+      rating: Number.isFinite(rating) && rating >= 1 && rating <= 10 ? Math.round(rating) : undefined,
+    });
+  }
+  return [...best.values()];
 }
 
 interface TraktIds {
@@ -243,6 +300,8 @@ export interface TraktHarvest {
   unmatched: string[];
   /** 🆕 R278 — مسلسلاتٌ وصلت من «المشاهَد» بلا حلقات فجُلبت حلقاتُها من سجلّ المشاهدة */
   fromHistory: number;
+  /** 🆕 T507 — آراؤه (تعليقاته على الأفلام والمسلسلات) — تُجلب قبل إلغاء المفتاح */
+  reviews: TraktReview[];
 }
 
 /**
@@ -331,5 +390,17 @@ export async function harvestTrakt(token: string): Promise<TraktHarvest> {
     );
   }
 
-  return { shows, movies, unmatched, fromHistory };
+  /* 🆕 T507 — **الآراءُ قبل إلغاء المفتاح** (`traktRevoke` بعد هذه الدالّة مباشرةً)، وفي الموعد النهائيّ نفسِه: صفحاتُ الأفلام
+     والمسلسلات معاً، مئةٌ في الصفحة وبلا ردود (`include_replies=false` صريحةً). وتقييمُ الرأي تقييمُه **اليوم** (`/sync/ratings`)
+     قبل تقييمه يومَ كتب التعليق (`user_stats`) */
+  const [cm, cs] = await Promise.all([
+    traktPaged<TraktComment>("/users/me/comments/all/movies", token, deadline, "/users/me/comments/movies", "&include_replies=false"),
+    traktPaged<TraktComment>("/users/me/comments/all/shows", token, deadline, "/users/me/comments/shows", "&include_replies=false"),
+  ]);
+  const reviews = reviewsFromComments([...cm, ...cs]).map((rv) => ({
+    ...rv,
+    rating: (rv.kind === "movie" ? movieRating : showRating).get(rv.tmdbId) ?? rv.rating,
+  }));
+
+  return { shows, movies, unmatched, fromHistory, reviews };
 }

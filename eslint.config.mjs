@@ -45,6 +45,7 @@ const eslintConfig = defineConfig([
       "src/lib/billing.ts", // 🆕 المرحلة ١ (هجرة ٢٣٨) — ويبهوكُ RevenueCat يكتب `subscriptions` ودفترَ العمولات وختمَ الأحداث، ولا سياسةَ كتابةٍ لأحد
       "src/lib/linkTokens.ts", // 🆕 رموزُ الروابط الخاصّة (Stremio · سيرفراتُ البيت): `stremio_links` و`home_server_links` بلا سياسة، وتسجيلُ الإشارة (`record_watch_signal` للخادم وحده)
       "src/lib/referral.ts", // 🆕 المهمة ٣٧٠ — نسبةُ الدعوة من التطبيق: صاحبُ الكود (`referral_codes` · `partners`) ونسبتي ومتابعاتي تُقرأ عبر الحسابات (RLS لأصحابها)، وكودُ صديقٍ يُولَّد لمن اختاره المدعوّ بالاسم. النسبةُ نفسُها بجلسة المدعوّ
+      "src/lib/importRuns.ts", // 🆕 T507 — سجلُّ الاستيراد (`import_runs`، هجرة ٢٥٧): صاحبُه يقرؤه ولا يكتبه، والخادمُ يكتب سطرَه بعد تنقية الحصيلة
       "src/lib/sharedLimit.ts", // A-14 — عدّادُ الحدِّ المشترك (`rate_hit`) وسجلُّ السكّ (`session_mints`): جدولان بلا سياسة، لا يصلهما إلّا الخادم
     ],
     rules: {

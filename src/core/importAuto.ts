@@ -11,7 +11,8 @@
 //    `S02E06` حلقة، أربعةُ أرقامٍ سنة…). **ثمّ يراجعه صاحبُه** في شاشة «هكذا فهمنا ملفّك» — التخمينُ الخاطئ يكتب في مكتبته،
 //    فلا يُكتب شيءٌ قبل أن يراه. وبعد المراجعة `autoRecords` تحوّل الصفوفَ سجلّاتٍ (`kind: "auto"`) تمرّ من المسار نفسِه:
 //    المطابقةُ على الخادم، والتجميعُ في `buildImport`، والكتابةُ دفعاتٍ بقاعدة «ما في Loopz يبقى».
-import { gunzip, parseCsv, readZip, type RawRecord } from "./importParse.ts";
+import { cleanReviewText, gunzip, parseCsv, readZip, type RawRecord } from "./importParse.ts";
+import { headerOk } from "./importer.ts";
 
 export type AutoRole =
   | "title"
@@ -27,10 +28,12 @@ export type AutoRole =
   | "date"
   | "rating"
   | "status"
+  /** 🆕 T507 — نصُّ رأيه (أحمد ٢٢ نوفمبر «٢ أ»). والملاحظاتُ الشخصيّة ليست منه: كتبها صاحبُها لنفسه، والرأيُ يقرؤه الناس */
+  | "review"
   | "skip";
 
 /** ترتيبُ الرقاقات في شاشة المراجعة — الاسمُ والمعرّفاتُ أوّلاً، و«تجاهل» آخراً */
-export const AUTO_ROLES: readonly AutoRole[] = ["title", "show", "year", "type", "imdb", "tmdb", "tvdb", "season", "episode", "epcode", "date", "rating", "status", "skip"];
+export const AUTO_ROLES: readonly AutoRole[] = ["title", "show", "year", "type", "imdb", "tmdb", "tvdb", "season", "episode", "epcode", "date", "rating", "review", "status", "skip"];
 
 export type AutoEntry = { name: string; text: string };
 export type AutoTable = { file: string; headers: string[]; rows: string[][]; roles: AutoRole[] };
@@ -227,7 +230,9 @@ export function tablesOf(entries: AutoEntry[]): { tables: AutoTable[]; skipped: 
 // ---------- قواميسُ المعاني ----------
 
 const words = (s: string) => s.split(" ");
-const HEAD: Record<Exclude<AutoRole, "skip" | "epcode">, string[]> = {
+/* 🆕 T507 — «المراجعة» لا تُخمَّن أبداً (مراجعةُ الوكيل، البند ٨ب): عمودُ «تعليق» أو «ملاحظات» في أكثر التطبيقات ملاحظةٌ
+   كتبها صاحبُها لنفسه، والرأيُ في Loopz يقرؤه الناس — فلا يصير عمودٌ رأياً عامّاً إلّا بيد صاحبه في شاشة المراجعة */
+const HEAD: Record<Exclude<AutoRole, "skip" | "epcode" | "review">, string[]> = {
   title: ["title", "name", "movie", "film", "movie title", "movie name", "film title", "primary title", "english title", "original title", "العنوان", "الاسم", "اسم العمل", "العمل", "الفيلم", "اسم الفيلم"],
   show: ["show", "series", "show name", "series name", "tv show", "tv show name", "show title", "series title", "tv series", "المسلسل", "اسم المسلسل"],
   year: ["year", "release year", "released year", "start year", "release date", "released", "first air date", "premiere", "السنة", "سنة الإصدار", "سنة العرض", "تاريخ الإصدار"],
@@ -448,6 +453,7 @@ export function autoRecords(tables: AutoTable[], opts: AutoOptions): RawRecord[]
       date: col("date"),
       rating: col("rating"),
       status: col("status"),
+      review: col("review"),
     };
     const at = (r: string[], i: number) => (i < 0 ? "" : (r[i] ?? ""));
     /* تصديرُ Netflix يخلط الإعلاناتِ والمقاطعَ بالمشاهدات — عمودُها يقول ذلك، فتُترك */
@@ -498,6 +504,8 @@ export function autoRecords(tables: AutoTable[], opts: AutoOptions): RawRecord[]
         status,
         rating,
         at: parseDate(at(r, c.date), order) ?? undefined,
+        /* 🆕 T507 — الرأيُ نصُّه منظَّفاً. ويومُه يومُ الصفّ إن وُجد — وبلا يومٍ يُترك على الخادم (`applyImportChunk`) */
+        ...(cleanReviewText(at(r, c.review)) ? { review: cleanReviewText(at(r, c.review)) } : {}),
       });
     }
   }
@@ -522,4 +530,18 @@ export async function readAuto(files: { name: string; buf: ArrayBuffer }[]): Pro
   const t = tablesOf(entries);
   const all = [...skipped, ...t.skipped];
   return t.tables.length ? { kind: "tables", tables: t.tables, skipped: all } : { kind: "none", skipped: all };
+}
+
+/**
+ * 🆕 T507 — **أسماءُ الأعمدة لسجلّ الاستيراد** (أحمد «٢ أ»): نعرف بها أيَّ تطبيقٍ يكثر الاستيرادُ منه. جدولٌ لم يُعرف فيه
+ * عمودٌ واحد (كلُّه «تجاهل») لا تُؤخذ عناوينُه — الأرجحُ أنّ سطرَه الأوّل صفٌّ من سجلِّ صاحبه لا عناوين، وكلُّ اسمٍ يمرّ
+ * بـ`headerOk` (قصيرٌ بلا رابطٍ ولا تاريخٍ ولا رقم). والخادمُ يعيد الفحصَ نفسَه.
+ */
+export function runHeaders(tables: AutoTable[]): string[] {
+  const out: string[] = [];
+  for (const t of tables) {
+    if (!t.roles.some((r) => r !== "skip")) continue;
+    for (const h of t.headers) if (headerOk(h) && !out.includes(h.trim())) out.push(h.trim());
+  }
+  return out.slice(0, 60);
 }
