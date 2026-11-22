@@ -102,3 +102,25 @@ test("Trakt comments: one latest review per title, spoiler tags stripped and fla
   assert.equal(show?.spoiler, true);
   assert.equal(show?.rating, 9);
 });
+
+/* 🆕 ما قُيِّم أو عُلِّق عليه ولم يُعلَّم مشاهَداً ⇐ مشاهَد (أحمد ٢٢ نوفمبر) */
+import { unwatchedRatedOrReviewed } from "./trakt.ts";
+
+test("Trakt rated or commented but unwatched titles come in as watched; watched ones are left alone", () => {
+  const out = unwatchedRatedOrReviewed(
+    [
+      { rating: 8, rated_at: "2025-05-01T10:00:00Z", show: { title: "MobLand", ids: { tmdb: 247718 } } },
+      { rating: 9, rated_at: "2024-01-01T00:00:00Z", show: { title: "Watched", ids: { tmdb: 1 } } },
+    ],
+    [{ rating: 0, rated_at: "2024-01-01T00:00:00Z", movie: { title: "Bad rating", ids: { tmdb: 5 } } }],
+    [
+      { kind: "tv", tmdbId: 247718, title: "MobLand", text: "x", at: "2025-06-01T00:00:00Z", spoiler: false },
+      { kind: "movie", tmdbId: 7, title: "Commented only", text: "y", at: "2023-03-03T00:00:00Z", spoiler: false },
+    ],
+    { shows: [{ tmdbId: 1 }], movies: [] },
+  );
+  assert.deepEqual(out.shows, [{ tmdbId: 247718, title: "MobLand", episodes: [], rating: 8, allAired: true, at: "2025-05-01T10:00:00Z" }]);
+  assert.equal(out.movies.length, 2);
+  assert.equal(out.movies.find((m) => m.tmdbId === 5)?.rating, undefined);
+  assert.deepEqual(out.movies.find((m) => m.tmdbId === 7), { tmdbId: 7, title: "Commented only", at: "2023-03-03T00:00:00Z", rating: undefined });
+});

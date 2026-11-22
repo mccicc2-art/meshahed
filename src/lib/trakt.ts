@@ -282,10 +282,11 @@ interface TraktWatchedMovie {
   last_watched_at?: string;
 }
 
-interface TraktRating {
+export interface TraktRating {
   rating?: number;
-  show?: { ids?: TraktIds };
-  movie?: { ids?: TraktIds };
+  rated_at?: string;
+  show?: { title?: string; ids?: TraktIds };
+  movie?: { title?: string; ids?: TraktIds };
 }
 
 export interface TraktHarvest {
@@ -294,6 +295,9 @@ export interface TraktHarvest {
     title: string;
     episodes: { s: number; e: number; at?: string }[];
     rating?: number;
+    /** 🆕 قيّمه أو علّق عليه ولم يعلّمه مشاهَداً: تُعلَّم حلقاتُه المعروضةُ كلُّها عند الكتابة (`traktRun`) بيوم `at` */
+    allAired?: boolean;
+    at?: string;
   }[];
   movies: { tmdbId: number; title: string; at?: string; rating?: number }[];
   /** ما لا معرّف TMDB له عند Trakt — يُعرض بالاسم بدل أن يُبتلع */
@@ -302,6 +306,44 @@ export interface TraktHarvest {
   fromHistory: number;
   /** 🆕 T507 — آراؤه (تعليقاته على الأفلام والمسلسلات) — تُجلب قبل إلغاء المفتاح */
   reviews: TraktReview[];
+}
+
+/**
+ * 🆕 **ما قيّمه أو علّق عليه ولم يعلّمه مشاهَداً = مشاهَد** (أحمد ٢٢ نوفمبر: «اذا فيه تقييمه ومراجعته يسجل ك مشاهد له»،
+ * ثمّ «١ أ»: المسلسلُ بكلّ حلقاته المعروضة). كان الاستيرادُ يقرأ «المشاهَد» وحده، فعملٌ قُيِّم في Trakt بلا علامة مشاهدةٍ
+ * (موبلاند) يُترك ويُترك معه تقييمُه وتعليقُه. اليومُ يومُ التقييم، وإلّا يومُ التعليق؛ وما عُلِّم مشاهَداً لا يُمسّ هنا.
+ */
+export function unwatchedRatedOrReviewed(
+  ratedShows: TraktRating[],
+  ratedMovies: TraktRating[],
+  reviews: TraktReview[],
+  watched: { shows: { tmdbId: number }[]; movies: { tmdbId: number }[] },
+): Pick<TraktHarvest, "shows" | "movies"> {
+  const have = new Set([...watched.shows.map((x) => `tv-${x.tmdbId}`), ...watched.movies.map((x) => `movie-${x.tmdbId}`)]);
+  const out = new Map<string, { kind: "tv" | "movie"; tmdbId: number; title: string; at?: string; rating?: number }>();
+  const take = (kind: "tv" | "movie", tmdbId: number | null | undefined, title: string, at?: string, rating?: number) => {
+    if (!tmdbId || !Number.isInteger(tmdbId) || tmdbId <= 0) return;
+    const k = `${kind}-${tmdbId}`;
+    if (have.has(k)) return;
+    const prev = out.get(k);
+    out.set(k, {
+      kind,
+      tmdbId,
+      title: prev?.title || title,
+      at: prev?.at ?? at,
+      rating: prev?.rating ?? (rating && rating >= 1 && rating <= 10 ? Math.round(rating) : undefined),
+    });
+  };
+  for (const r of ratedShows) take("tv", r.show?.ids?.tmdb, r.show?.title ?? "", r.rated_at, r.rating);
+  for (const r of ratedMovies) take("movie", r.movie?.ids?.tmdb, r.movie?.title ?? "", r.rated_at, r.rating);
+  for (const rv of reviews) take(rv.kind, rv.tmdbId, rv.title, rv.at, rv.rating);
+  const shows: TraktHarvest["shows"] = [];
+  const movies: TraktHarvest["movies"] = [];
+  for (const it of out.values()) {
+    if (it.kind === "tv") shows.push({ tmdbId: it.tmdbId, title: it.title, episodes: [], rating: it.rating, allAired: true, at: it.at });
+    else movies.push({ tmdbId: it.tmdbId, title: it.title, at: it.at, rating: it.rating });
+  }
+  return { shows, movies };
 }
 
 /**
@@ -402,5 +444,6 @@ export async function harvestTrakt(token: string): Promise<TraktHarvest> {
     rating: (rv.kind === "movie" ? movieRating : showRating).get(rv.tmdbId) ?? rv.rating,
   }));
 
-  return { shows, movies, unmatched, fromHistory, reviews };
+  const extra = unwatchedRatedOrReviewed(rs ?? [], rm ?? [], reviews, { shows, movies });
+  return { shows: [...shows, ...extra.shows], movies: [...movies, ...extra.movies], unmatched, fromHistory, reviews };
 }

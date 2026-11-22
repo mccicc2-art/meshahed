@@ -514,7 +514,9 @@ export function ImportPanel({
         </SettingsGroup>
         <SettingsGroup label={t.importGuidesLabel}>
           {guides.map((g) => (
-            <SettingsRow key={g.id} icon="book" title={g.title} subtitle={g.hint} onClick={() => setOpen(g.id)} />
+            /* 🆕 الاسمُ وحدَه (أحمد ٢٢ نوفمبر «٣ أ»): الخطواتُ كاملةً في الورقة، وسطرُها في الصفّ كان يُقصّ — وبطاقاتُ الشاشة
+               العريضة تبقى بنصّها لأنّ فيها مكاناً له */
+            <SettingsRow key={g.id} icon="book" title={g.title} onClick={() => setOpen(g.id)} />
           ))}
         </SettingsGroup>
         <p className="px-1 text-12 text-muted leading-relaxed">{t.importHint}</p>

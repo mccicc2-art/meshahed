@@ -8,6 +8,9 @@ import { revalidatePath } from "next/cache";
 import { recordImportRun, writeImportedReviews, type ReviewItem } from "@/lib/importRuns";
 import { reviewDate } from "@/core/importParse";
 
+/** 🆕 كم مسلسلاً «قُيِّم ولم يُعلَّم» تُجلب حلقاتُه من TMDB داخل الردّ — والباقي يدخل بتقييمه بلا حلقات */
+const TRAKT_ALL_AIRED_CAP = 40;
+
 export type TraktRunResult =
   | { ok: true; shows: number; episodes: number; movies: number; reviews: number; reviewsSkipped: number; unmatched: string[] }
   | { ok: false };
@@ -34,6 +37,27 @@ export async function runTraktImport(token: string, userId: string, platform: "w
   const stamp = new Date().toISOString();
   const shows = harvest.shows.slice(0, IMPORT_CAPS.shows);
   const movies = harvest.movies.slice(0, IMPORT_CAPS.movies);
+
+  /* 🆕 مسلسلٌ قيّمه أو علّق عليه في Trakt ولم يعلّمه مشاهَداً ⇐ حلقاتُه المعروضةُ كلُّها (أحمد ٢٢ نوفمبر «١ أ»)، بالحسبة
+     نفسِها التي يكتب بها «شفته كله» (`airedEpisodesAll` — الترقيمُ المطلق D-603)، ويومُها يومُ التقييم أو التعليق. عشرةٌ
+     عشرةٌ بسقفٍ يحمي مهلةَ الردّ؛ وما لم يُجب عنه TMDB يدخل المكتبةَ بتقييمه بلا حلقات كما كان يدخل الفارغ */
+  const allAired = shows.filter((sh) => sh.allAired && !sh.episodes.length).slice(0, TRAKT_ALL_AIRED_CAP);
+  if (allAired.length) {
+    const { getTv } = await import("@/lib/tmdb");
+    const { airedEpisodesAll } = await import("@/core/progress");
+    for (let i = 0; i < allAired.length; i += 10) {
+      await Promise.all(
+        allAired.slice(i, i + 10).map(async (sh) => {
+          try {
+            const tv = await getTv(sh.tmdbId);
+            sh.episodes = airedEpisodesAll(tv).map(({ s, e }) => ({ s, e, at: sh.at }));
+          } catch {
+            /* TMDB لا يجيب الآن: يبقى بلا حلقات */
+          }
+        }),
+      );
+    }
+  }
 
   /* الأخطاءُ تُسجَّل باسم الجدول ورمزِ الخطأ فقط — كانت حلقاتُ «ONE PIECE» تسقط صامتةً (أحمد ١٩ نوفمبر).
      `||` لا `??`: خطأُ الشبكة في postgrest-js يحمل رمزاً فارغاً */

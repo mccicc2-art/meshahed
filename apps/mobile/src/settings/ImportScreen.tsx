@@ -4,6 +4,7 @@ import { File, Paths } from "expo-file-system";
 import { inflateSync } from "fflate";
 import { useApp } from "../state";
 import { Text, Button } from "../ui";
+import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
@@ -241,8 +242,12 @@ export function ImportScreen() {
       const r = await importFromTrakt();
       if (r.kind === "done") {
         haptic.success();
+        /* 🆕 نغمةُ النجاح صريحةً: الإشعارُ بلا نغمةٍ خطأٌ أحمر (D-1323) — فكان «تمّ الاستيراد» يظهر أحمرَ (أحمد ٢٢ نوفمبر) */
         toast.current?.say(
           `${t.importDone} — ${t.importDoneBody(r.shows, r.episodes, r.movies)}${r.reviews > 0 ? ` ${t.importDoneReviews(num(r.reviews, locale))}` : ""}`,
+          undefined,
+          undefined,
+          "success",
         );
         refreshRuns();
       } else {
@@ -295,15 +300,25 @@ export function ImportScreen() {
     <SettingsScreen title={t.setImport} toast={toast}>
       <View>
         <Group label={t.importSection}>
-          {/* خانةُ الرفع الواحدة — والتقدّمُ في سطرها حين تُغلق الورقة */}
-          <Row
-            icon="download"
-            title={t.importUploadTitle}
-            subtitle={busy ? `${phaseLabel} ${num(pct, locale)}%` : t.importUploadHint}
-            onPress={() => (busy || phase === "done" || error ? setOpen("upload") : void pick(null))}
-          />
-          {/* **وTrakt صفٌّ في السجلِّ نفسِه**، و«آخر استيراد» تحته (أحمد ٢٢ نوفمبر «مكانها تحت تراكت») */}
-          <Row icon="share" title={t.importTraktTitle} subtitle={traktBusy ? t.importTraktWorking : t.importTraktHint} busy={traktBusy} onPress={() => void connectTrakt()} />
+          {/* خانةُ الرفع الواحدة — 🆕 بطاقةٌ بزرٍّ أساسيّ لا صفٌّ بسهم (أحمد ٢٢ نوفمبر «١ أ»: هكذا اتّفقنا وهكذا هي في الويب؛
+              صفٌّ كصفوف الأدلّة تحته لا يُفرَّق عنها). والتقدّمُ في سطرها حين تُغلق الورقة، والزرُّ يفتحها ما دام عملٌ جارياً */}
+          <View style={{ padding: 14, gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+              <Icon name="download" size={20} color={tokens.muted} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text size={15} weight="600">{t.importUploadTitle}</Text>
+                <Text size={12} weight="500" muted style={{ marginTop: 2, lineHeight: 18 }}>{t.importUploadHint}</Text>
+              </View>
+            </View>
+            {/* أثناءَ العمل يحمل الزرُّ التقدّمَ ويبقى فعّالاً (لا `busy` الذي يعطّله): ضغطُه يفتح الورقةَ وفيها «إيقاف» */}
+            <Button
+              label={busy ? `${phaseLabel} ${num(pct, locale)}%` : t.importUploadPick}
+              onPress={() => (busy || phase === "done" || error ? setOpen("upload") : void pick(null))}
+            />
+          </View>
+          {/* **وTrakt صفٌّ في السجلِّ نفسِه**، و«آخر استيراد» تحته (أحمد ٢٢ نوفمبر «مكانها تحت تراكت»). 🆕 رمزُه الربطُ لا
+              سهمُ المشاركة: السهمُ الصاعد يُقرأ «تصدير» */}
+          <Row icon="link" title={t.importTraktTitle} subtitle={traktBusy ? t.importTraktWorking : t.importTraktHint} busy={traktBusy} onPress={() => void connectTrakt()} />
           {last ? (
             <Row
               icon="history"
@@ -317,7 +332,8 @@ export function ImportScreen() {
       <View>
         <Group label={t.importGuidesLabel}>
           {guides.map((g) => (
-            <Row key={g.id} icon="book" title={g.title} subtitle={g.hint} onPress={() => setOpen(g.id)} />
+            /* 🆕 الاسمُ وحدَه (أحمد ٢٢ نوفمبر «٣ أ»): الخطواتُ كاملةً في الورقة، وسطرُها في الصفّ كان يُقصّ بـ«…» */
+            <Row key={g.id} icon="book" title={g.title} onPress={() => setOpen(g.id)} />
           ))}
         </Group>
         <Text size={12} muted style={{ paddingHorizontal: 4, marginTop: 8, lineHeight: 19 }}>{t.importHint}</Text>
