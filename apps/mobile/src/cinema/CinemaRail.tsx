@@ -8,6 +8,7 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
 import { OneTimeHint } from "../library/OneTimeHint";
+import { libraryQuery } from "../library/LibraryScreen";
 import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { Rail, PAGE_PAD, latinTitleFit } from "../home/Section";
 import { formatDateShort } from "@/core/when";
@@ -34,14 +35,26 @@ export const cinemaQuery = {
 
 type Mode = "now" | "soon";
 
+/**
+ * 🆕 T519 — **تلميحٌ عُرض في هذا التشغيل لا يعود فيه** (خالد ٢٢ نوفمبر: «الهنت يجي كل ما ادخل … اضغط اكس وبرضوا يرجع»).
+ * المقروءُ في الحساب يصل مع بيانات الشاشة، وبياناتُ الرئيسيّة لا تتجدّد لحظةَ الإغلاق — فهذه الذاكرةُ تسدّ ما بينهما.
+ */
+const seenThisRun = new Set<string>();
+
 export function CinemaRail({
   place,
   hintReady,
+  hintsRead,
   renderCard,
 }: {
   place: "home" | "discover";
   /** «لا تلميحتان معاً» (D-1273): الشاشةُ تقول متى خلا دورُ التلميح */
   hintReady: boolean;
+  /**
+   * 🔴 T519 — **المقروءُ في الحساب** (بياناتُ الشاشة). في التطبيق الشاشةُ هي التي تقرّر أن تُظهر التلميح لا التلميحُ نفسُه،
+   * ونسيانُ هذا الفحص أظهره في كلِّ دخولٍ مهما أُغلق. غائبٌ ⇒ لا تلميح (D-1259)
+   */
+  hintsRead: readonly string[] | undefined;
   /** البطاقةُ ومعها تاريخُ نزولها إن كانت في «قريباً» */
   renderCard: (c: CinemaCard, badge: string | null) => React.ReactNode;
 }) {
@@ -52,16 +65,33 @@ export function CinemaRail({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const door = useRef<ViewInstance>(null);
   /* «يفتح دائماً على الآن» (حكمُ أحمد): الشاشتان جذرانِ لا يُنزعان، فالعودةُ إليهما بعد مغادرةٍ تُرجع الحالةَ الأولى */
+  const hintId = `cinema-switch-${place}`;
+  /* المقروءُ الذي يكتبه التلميحُ نفسُه عند الإغلاق (كاش المكتبة) — يُرى قبل أن تتجدّد بياناتُ الشاشة */
+  const libHints = useQuery({ ...libraryQuery, enabled: false }).data?.hints;
+  const [focused, setFocused] = useState(true);
+  const hintShown = useRef(false);
   useFocusEffect(
-    useCallback(
-      () => () => {
+    useCallback(() => {
+      setFocused(true);
+      return () => {
+        setFocused(false);
         setMode("now");
         setOrigin("all");
         setAnchor(null);
-      },
-      [],
-    ),
+        /* 🆕 T519 — **المغادرةُ بعد أوّل عرضٍ إعلانُ قراءة** (عُرفُ `useHintTurn`): الشاشتان جذرانِ لا تُنزعان، فالتلميحُ يُنزل
+           عند المغادرة (`focused`) فيكتب قراءتَه بنفسه، ولا يعود في هذا التشغيل */
+        if (hintShown.current) seenThisRun.add(hintId);
+      };
+    }, [hintId]),
   );
+  const showHint =
+    hintReady &&
+    focused &&
+    hintsRead !== undefined &&
+    !hintsRead.includes(hintId) &&
+    !(libHints ?? []).includes(hintId) &&
+    !seenThisRun.has(hintId);
+  if (showHint) hintShown.current = true;
 
   const data = q.data;
   const list = useMemo(() => (data ? (mode === "soon" ? data.soon : data.now) : []), [data, mode]);
@@ -77,8 +107,6 @@ export function CinemaRail({
     setMode(m);
     setOrigin("all");
   };
-  const hintId = `cinema-switch-${place}`;
-
   return (
     <View>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: home ? 4 : 6, paddingHorizontal: PAGE_PAD }}>
@@ -115,7 +143,7 @@ export function CinemaRail({
           ))}
         </ScrollView>
       </View>
-      {hintReady ? <OneTimeHint id={hintId} text={t.cinemaHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: 8 }} /> : null}
+      {showHint ? <OneTimeHint id={hintId} text={t.cinemaHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: 8 }} /> : null}
       {shown.length === 0 ? (
         <Text size={13} muted style={{ textAlign: "center", paddingVertical: 24 }}>{t.browseEmpty}</Text>
       ) : (

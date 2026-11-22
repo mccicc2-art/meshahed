@@ -979,6 +979,7 @@ const DiscoverPane = memo(function DiscoverPane({
             key={`${tab}-${key}`}
             place="discover"
             hintReady={cinemaHint}
+            hintsRead={hintsRead}
             renderCard={(c, badge) => <RailCard card={c} rank={null} lib={null} onPress={onOpen} onHold={onHold} badge={badge} />}
           />
         ) : (
