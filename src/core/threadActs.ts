@@ -78,7 +78,9 @@ export function parseThreadReportBody(b: unknown): ThreadReportBody | null {
 
 export function parseThreadLikeBody(b: unknown): ThreadLikeBody | null {
   const o = obj(b);
-  return o && str(o.post_id) && typeof o.on === "boolean" ? { post_id: o.post_id, on: o.on } : null;
+  if (!o || !str(o.post_id) || typeof o.on !== "boolean") return null;
+  const scope = o.scope === undefined || o.scope === null ? "talk" : o.scope;
+  return scope === "talk" || scope === "review" || scope === "news" ? { post_id: o.post_id, on: o.on, scope } : null;
 }
 
 export function parseThreadVoteBody(b: unknown): ThreadVoteBody | null {

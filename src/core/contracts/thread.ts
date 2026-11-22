@@ -177,7 +177,11 @@ export type ThreadRowBody = { target: ThreadTarget; reply_id: string };
 export type ThreadReportBody = { target: ThreadTarget; reply_id?: string; what?: "reply" | "review" };
 
 /** `POST /api/v1/thread/like` · `/vote` — منشوراتُ الغرفة وحدَها */
-export type ThreadLikeBody = { post_id: string; on: boolean };
+/**
+ * 🆕 T509 — `scope`: أيُّ جدولٍ يُقصد — مشاركةُ الغرفة (غائبٌ = `talk` كما كان، فالإصداراتُ القديمةُ لا تنكسر) أو ردٌّ تحت تعليق
+ * (`review`) أو تحت خبر (`news`)، الهجرة ٢٥٩. والمعرّفُ معرّفُ السطر في الخيط أيّاً كان جدولُه.
+ */
+export type ThreadLikeBody = { post_id: string; on: boolean; scope?: "talk" | "review" | "news" };
 export type ThreadVoteBody = { post_id: string; vote: -1 | 0 | 1; tmdb_id: number; media_type: TalkKind };
 
 /** `POST /api/v1/thread/image` (multipart) — رابطُ الصورة العامّ من مخزننا (نمطُ `Composer`) */

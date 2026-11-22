@@ -9,6 +9,7 @@ import { getMovieIn, getTvIn } from "@/lib/tmdb";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 import type { HomeServer } from "@/core/homeServer";
 import type { SignalKind, SignalRow } from "@/core/signals";
+import { isPersonaId } from "@/core/personas";
 import {
   EPISODE_PUSH_FROM_HOUR,
   PUSH_GROUP_OF,
@@ -284,6 +285,8 @@ type SignalInput = {
   reviewOwner?: string | null;
   /** 🆕 T498 — مفتاحُ خبر Loopz (`ref` في `SignalRow`) */
   ref?: string | null;
+  /** 🆕 T509 — الردُّ أو المشاركةُ نفسُها (`item` في `SignalRow`): الضغطُ على الدفع يفتح عليها كسطر الجرس */
+  item?: string | null;
 };
 
 /* 🆕 T498 — أنواعُ العضويّة في قائمةٍ مشتركة: تُدعى إليها وتُجاب وتُخرَج منها خاصّةً كانت أو معلنة */
@@ -343,6 +346,7 @@ async function signalNow(input: SignalInput): Promise<void> {
       listSlug,
       ownerId: input.reviewOwner ?? null,
       ref: input.ref ?? null,
+      item: input.item ?? null,
     };
     await deliver({
       to: input.to,
@@ -651,6 +655,8 @@ export function notifyReply(input: {
       if (parent) to.add(parent);
     }
     to.delete(input.actorId);
+    if (!to.size) return;
+    const item = await newestReplyOf(db, input);
     for (const id of to) {
       /* 🆕 T496 (أحمد «٢ أ») — **صاحبُ الردّ الأب يقرأ «ردّ على ردّك»** وصاحبُ التعليق «ردّ على تعليقك» — الشرطُ نفسُه في
          `my_signals_v2` (أبو الردّ لي ⇐ `reply_reply`)، فالجرسُ والدفعُ لا يفترقان */
@@ -667,9 +673,27 @@ export function notifyReply(input: {
         /* عنوانُ العمل من مكتبة صاحب الرأي — صاحبُ الردّ الأب قد لا يتابعه */
         titleOwner: input.ownerId ?? id,
         listId: input.listId,
+        item,
       });
     }
   });
+}
+
+/**
+ * 🆕 T509 — **الردُّ الذي كُتب للتوّ**: `notifyReply` لا يُعطى معرّفَه (نداؤه في `lib/actions` منذ T496)، فيُقرأ أحدثُ ردٍّ
+ * للفاعل في الموضع نفسِه — والدفعُ يجري بعد الإدراج (`after`)، فهو هو. يغيب ⇒ الدفعُ يفتح الصفحةَ كما كان.
+ */
+async function newestReplyOf(
+  db: SupabaseClient,
+  input: { table: "review_replies" | "list_review_replies" | "title_posts"; actorId: string; ownerId?: string | null; parentId?: string | null; tmdbId?: number | null; mediaType?: string | null },
+): Promise<string | null> {
+  if (input.table === "list_review_replies") return null;
+  let q = db.from(input.table).select("id").eq("user_id", input.actorId);
+  q = input.parentId ? q.eq("parent_id", input.parentId) : q.is("parent_id", null);
+  if (input.table === "review_replies" && input.ownerId) q = q.eq("review_user_id", input.ownerId);
+  if (input.tmdbId != null) q = q.eq("tmdb_id", input.tmdbId);
+  const { data } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+  return (data as { id?: string } | null)?.id ?? null;
 }
 
 /**
@@ -726,6 +750,7 @@ export function notifyMentions(input: {
         titleOwner: input.ownerId,
         reviewOwner: input.ownerId,
         listId: input.listId,
+        item: input.table === "list_review_replies" ? null : input.replyId,
         dedupe: `${input.kind}:${input.replyId}:${id}`,
       });
     }
@@ -737,19 +762,75 @@ export function notifyNewsReply(input: { postKey: string; parentId: string; acto
   quiet(async () => {
     if (!hasServiceKey()) return;
     const db = await createServiceClient();
-    const [{ data: par }, { data: post }] = await Promise.all([
+    const [{ data: par }, { data: post }, { data: mine }] = await Promise.all([
       db.from("news_post_replies").select("user_id").eq("id", input.parentId).maybeSingle(),
       db.from("news_posts").select("title").eq("key", input.postKey).maybeSingle(),
+      db.from("news_post_replies").select("body").eq("id", input.replyId).maybeSingle(),
     ]);
-    const to = (par as { user_id?: string } | null)?.user_id;
-    if (!to || to === input.actorId) return;
+    const title = (post as { title?: string | null } | null)?.title ?? null;
+    const to = (par as { user_id?: string } | null)?.user_id ?? null;
+    if (to && to !== input.actorId) {
+      await signalNow({
+        to,
+        kind: "news_reply",
+        actorId: input.actorId,
+        title,
+        ref: input.postKey,
+        item: input.replyId,
+        dedupe: `news_reply:${input.replyId}`,
+      });
+    }
+    /* 🆕 T509 — **الردُّ على ردٍّ بأسلوب إنستغرام** («١٦ أ»): يُكتب تحت التعليق الأعلى ويبدأ بـ«@اسم» صاحبِ الردّ — فالمذكورُ
+       يُخبَر (`mention_news`)، ومن وصله «ردّ على ردّك» من الردِّ نفسِه لا يُذكَّر ثانية (الشرطُ نفسُه في `my_signals_v4`) */
+    const text = (mine as { body?: string | null } | null)?.body ?? "";
+    const names = mentionNames(text);
+    if (!names.length || tooManyMentions(text)) return;
+    const { data: profs } = await db.from("profiles").select("id").in("username", names);
+    const ids = [...new Set(((profs ?? []) as { id: string }[]).map((p) => p.id))].filter((id) => id !== input.actorId && id !== to);
+    for (const id of ids) {
+      await signalNow({ to: id, kind: "mention_news", actorId: input.actorId, title, ref: input.postKey, item: input.replyId, dedupe: `mention_news:${input.replyId}:${id}` });
+    }
+  });
+}
+
+/**
+ * 🆕 T509 — **أعجب بردّك** (أحمد ٢٢ نوفمبر «١٥ أ»): تحت تعليقٍ (`reply_like`) أو تحت خبرٍ من Loopz (`news_reply_like`). صاحبُ
+ * الردِّ وموضعُه من صفّه — لا يُؤتمن عليهما العميل — والمخفيُّ لا يرنّ. مفتاحُ (فاعل · ردّ): السحبُ ثمّ القلبُ لا يرنّ مرّتين.
+ */
+export function notifyReplyLike(input: { scope: "review" | "news"; replyId: string; actorId: string }) {
+  quiet(async () => {
+    if (!hasServiceKey()) return;
+    const db = await createServiceClient();
+    if (input.scope === "review") {
+      const { data } = await db.from("review_replies").select("user_id, review_user_id, tmdb_id, media_type, hidden").eq("id", input.replyId).maybeSingle();
+      const r = data as { user_id: string; review_user_id: string; tmdb_id: number; media_type: "tv" | "movie"; hidden: boolean } | null;
+      /* شخصيّاتُ لوبز AI لا تُنبَّه (D-1563) */
+      if (!r || r.hidden || isPersonaId(r.user_id)) return;
+      await signalNow({
+        to: r.user_id,
+        kind: "reply_like",
+        actorId: input.actorId,
+        tmdbId: r.tmdb_id,
+        mediaType: r.media_type,
+        titleOwner: r.review_user_id,
+        reviewOwner: r.review_user_id,
+        item: input.replyId,
+        dedupe: `reply_like:${input.actorId}:${input.replyId}`,
+      });
+      return;
+    }
+    const { data } = await db.from("news_post_replies").select("user_id, post_key, hidden").eq("id", input.replyId).maybeSingle();
+    const r = data as { user_id: string; post_key: string; hidden: boolean | null } | null;
+    if (!r || r.hidden || isPersonaId(r.user_id)) return;
+    const { data: post } = await db.from("news_posts").select("title").eq("key", r.post_key).maybeSingle();
     await signalNow({
-      to,
-      kind: "news_reply",
+      to: r.user_id,
+      kind: "news_reply_like",
       actorId: input.actorId,
       title: (post as { title?: string | null } | null)?.title ?? null,
-      ref: input.postKey,
-      dedupe: `news_reply:${input.replyId}`,
+      ref: r.post_key,
+      item: input.replyId,
+      dedupe: `news_reply_like:${input.actorId}:${input.replyId}`,
     });
   });
 }
@@ -793,6 +874,13 @@ export function notifyGroupAdded(input: { groupId: string; actorId: string; memb
  * 🆕 T498 — **أكثرُ من ١٢ اسماً لا يُبلَّغ أحد**: `mentionsIn` يقطع عند ١٢، فبدون هذا تصل الدفعةُ أوّلَ ١٢ ويرى الباقون السطرَ
  * في الجرس — والشرطُ نفسُه في `my_signals_v3`. القاعدةُ قاعدةُ `mentionsIn` حرفاً.
  */
+/** الأسماءُ المذكورةُ بقاعدة `mentionsIn` نفسِها، صغيرةً كما تُخزَّن */
+function mentionNames(text: string | null | undefined): string[] {
+  const names = new Set<string>();
+  for (const m of String(text ?? "").matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) names.add(m[2].toLowerCase());
+  return [...names];
+}
+
 function tooManyMentions(text: string | null | undefined): boolean {
   const names = new Set<string>();
   for (const m of String(text ?? "").matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,24})(?![A-Za-z0-9_])/g)) names.add(m[2].toLowerCase());

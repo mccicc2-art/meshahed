@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getT } from "@/lib/locale";
-import { getUserId, getProfileByUsername, getIncomingFollowRequests, getSupporterSince } from "@/lib/data";
+import { getUserId, getProfileByUsername, getIncomingFollowRequests } from "@/lib/data";
 import { loadProfile } from "@/lib/profileCore";
 import { canMessage } from "@/lib/actions";
 import { handle, limited, fail } from "@/lib/v1";
@@ -123,9 +123,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
       /* 🆕 D-1563 — ملفُّ شخصيّةٍ AI: الاسمُ ووصفُها بلغة القارئ مكانَ الاسم والنبذة، وسطرُ الشرح الكامل في آخر النبذة
          («AI» بجانب الاسم يرسمها `IdentityBadges` من المعرّف)، وتبويبُ «مراجعات» وحدَه — صنوُ صفحة الويب */
       const persona = personaOf(profile.id);
-      /* 🆕 D-gold-perks — سطرُ «داعم لوبز منذ» لعضو Gold وحدَه (نداءٌ واحدٌ خفيف؛ لغيره لا نداء) */
-      /* ملفٌّ مقفلٌ أو محظورٌ لا يُظهر شيئاً — ولا سطرَ الداعم */
-      const supporterSince = profile.gold === true && !persona && !locked ? await getSupporterSince(profile.id) : null;
       const pl = locale === "ar" ? "ar" : "en";
       const payload: ProfilePayload = {
         viewer: { signed_in: !!c.me, is_me: c.isMe, density, can_message: canMsg },
@@ -149,7 +146,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
           joined_at: profile.joined_at && isPlus(profile) ? profile.joined_at : null,
           system: isLoopz(profile.id),
           x: xHandle,
-          supporter_since: supporterSince,
+          /* 🆕 T510 — سطرُ «داعم لوبز منذ» حُذف من الملفّ (أحمد ٢٢ نوفمبر)، فلا نداءَ له؛ و`null` يُسقطه من نسخ التطبيق الأقدم أيضاً */
+          supporter_since: null,
         },
         locked,
         relation: { following: c.relation.following, requested: c.relation.requested, follows_me: c.relation.followsMe, requested_me: requestedMe && !blockedEither, blocked_by_me: blockedByMe, blocked_me: blockedEither && !blockedByMe },

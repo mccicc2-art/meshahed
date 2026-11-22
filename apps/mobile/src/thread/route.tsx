@@ -37,17 +37,18 @@ export function openThreadPath(router: ReturnType<typeof useRouter>, path: strin
     router.push({ pathname: "/talk/[kind]/[id]", params: { kind: m[1], id: m[2], from, ...(m[3] ? { r: m[3] } : {}) } });
     return true;
   }
-  m = /^\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?$/i.exec(path);
+  /* 🆕 T509 — و`?r=<id>` في المراجعة والخبر: الشاشةُ تنزل إلى الردِّ وتُضيئه (وجهةُ الإشعار، «١٤ ب») */
+  m = /^\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?(?:\?r=([0-9a-f-]{36}))?$/i.exec(path);
   if (m) {
     warm({ t: "review", kind: m[1] === "movie" ? "movie" : "tv", id: Number(m[2]), user: m[3] });
-    router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: m[1], id: m[2], user: m[3], from } });
+    router.push({ pathname: "/review/[kind]/[id]/[user]", params: { kind: m[1], id: m[2], user: m[3], from, ...(m[4] ? { r: m[4] } : {}) } });
     return true;
   }
-  m = /^\/post\/([^/?#]+)\/?$/.exec(path);
+  m = /^\/post\/([^/?#]+)\/?(?:\?r=([0-9a-f-]{36}))?$/i.exec(path);
   if (m) {
     const key = decodeURIComponent(m[1]);
     warm({ t: "post", key });
-    router.push({ pathname: "/post/[key]", params: { key, from } });
+    router.push({ pathname: "/post/[key]", params: { key, from, ...(m[2] ? { r: m[2] } : {}) } });
     return true;
   }
   return false;

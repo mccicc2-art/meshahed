@@ -76,9 +76,12 @@ export function countUnder<T extends OrderRow>(tree: ThreadTree<T>, id: string):
   return (tree.kids.get(id) ?? []).reduce((n, c) => n + 1 + countUnder(tree, c.id), 0);
 }
 
-/** أيُمكن الردُّ على هذا السطر؟ — العمقُ في الغرفة، والجذرُ وحدَه في غيرها */
-export function canReplyTo(row: OrderRow, depth: number, nested: boolean): boolean {
-  return nested ? depth < MAX_DEPTH : !row.parent_id;
+/**
+ * أيُمكن الردُّ على هذا السطر؟ — العمقُ في الغرفة، و🆕 T509 **كلُّ سطرٍ في غيرها** (أحمد ٢٢ نوفمبر «١٦ أ»: «اقدر احدد رد عمر ارد
+ * عليه»): الردُّ على ردٍّ في المسطَّح يُكتب تحت أصله الأعلى بأسلوب إنستغرام — فحارسُ العمق في القاعدة باقٍ كما هو.
+ */
+export function canReplyTo(_row: OrderRow, depth: number, nested: boolean): boolean {
+  return nested ? depth < MAX_DEPTH : true;
 }
 
 /**

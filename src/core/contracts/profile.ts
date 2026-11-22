@@ -186,7 +186,7 @@ export type ProfilePayload = {
     system: boolean;
     /** حسابُ X الموثَّق وحدَه (D-839) */
     x: { handle: string; url: string } | null;
-    /** 🆕 D-gold-perks — «داعم لوبز منذ …»: عضو Gold ظاهرٌ في لوحة الداعمين، وإلا `null` (غائبٌ من خادمٍ أقدم) */
+    /** 🆕 D-gold-perks — «داعم لوبز منذ …». 🆕 T510 — السطرُ حُذف من الملفّ، فالخادمُ يرسل `null` دائماً (الحقلُ باقٍ لنسخٍ أقدم) */
     supporter_since?: string | null;
   };
   locked: boolean;

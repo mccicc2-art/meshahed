@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { displayNameOf, getSupporterSince } from "@/lib/data";
-import { SUPPORTER_WORDS } from "@/components/supporters/supporterWords";
+import { displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { countNoun } from "@/core/countNoun";
 import { loadProfile } from "@/lib/profileCore";
@@ -148,14 +147,6 @@ export default async function PublicProfilePage({
   const displayName = persona ? persona.name[pl] : displayNameOf(profile, t.anonymousUser);
   /* 🆕 D-1380 — «رسالة» تتبع البوّابَ (`can_message`) لا المتابعةَ المتبادلة: لغيري وحدي، وللمسجَّل وحده */
   const canMsg = isMe ? null : await canMessage(profile.id);
-  /* 🆕 T413 — «♡ داعم لوبز منذ …» تحت النبذة لعضو Gold (كالتطبيق — D-gold-perks): الحكمُ في `supporter_since` (Gold فعّالٌ لم
-     يُخفِ نفسه من اللوحة ولا اسمَه)، ولغير Gold لا نداء؛ والملفُّ المقفلُ أو المحظورُ لا يُظهره */
-  const supporterSince = profile.gold === true && !persona && canView ? await getSupporterSince(profile.id) : null;
-  const supporterLine = supporterSince
-    ? SUPPORTER_WORDS[pl].line(
-        new Intl.DateTimeFormat(pl === "en" ? "en-GB" : "ar", { month: "long", year: "numeric" }).format(new Date(supporterSince)),
-      )
-    : null;
 
   /* ⚖️ 🆕 **البطاقةُ صارت ثلاثَ خاناتٍ داخل إطار** (D-561، تصميمُ
      أحمد: «Movies · Shows · Full statistics ›»، ونقضٌ مُعلَنٌ لأربعةِ
@@ -1002,7 +993,7 @@ export default async function PublicProfilePage({
                 {/* 🆕 **شارةُ Loopz+ بجانب الاسم** (D-633، بحكمه) —
                     **خارجَ `truncate`**: اسمٌ طويلٌ يُقصّ ولا تُقصّ معه
                     الشارة، **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
-                <AccountBadges profile={profile} t={t} />
+                <AccountBadges profile={profile} t={t} goldHref="/supporters" />
               </div>
               {/* 🆕 11-N دَين — لا متابعةَ بين طرفين بينهما حظر (القاعدةُ ترفضها — D-1198)، فالزرُّ لا يُرسم */}
               {!isMe && !blocked.byMe && !blocked.me && (
@@ -1059,8 +1050,9 @@ export default async function PublicProfilePage({
             {/* 🆕 T502 — **المعرّفُ سطرٌ، والأعدادُ سطرٌ تحته بالكلمات** (أحمد ٢٢ نوفمبر بلقطة التطبيق: «الحجم صغير والقلب مو
                 مفهوم»، ثمّ «٦ ب ٧ د ٨ أ ٩ ب» — والويبُ مثلُه حرفاً): «20 متابِعًا   22 يتابع» بمقاس ١٤ لا رمزين بمقاس ١٢، والمعدودُ
                 بقاعدة العدد (`countNoun`)، ورقاقةُ «يتابعك» في آخر السطر لمن يتابعك. نقضٌ لرمزَي D-621 في الملفّ وحده. */}
+            {/* 🆕 T510 — المعرّفُ ١٣ (أحمد ٢٢ نوفمبر، «ب» من ١٢ · ١٣ · ١٤ — والتطبيقُ مثلُه): خارجَ السلّم فيُضرب بالمعامل بيده */}
             {profile.username && !profile.hide_name ? (
-              <p className="hero-halo mt-0.5 text-12 text-muted leading-tight">
+              <p className="hero-halo mt-0.5 text-[calc(13px*var(--fs))] text-muted leading-tight">
                 {/* 🔴 و`text-white` كان عطلاً صامتاً في `daylight` — **و`--muted` يُقرأ على السمتين.** والاتّجاهُ LTR للمعرّف وحدَه
                     فلا ينقلب @ في RTL. */}
                 <span dir="ltr" className="block min-w-0 truncate">
@@ -1097,8 +1089,9 @@ export default async function PublicProfilePage({
                   badges: badgeLabelsOf(t),
                 }}
               />
+              {/* 🆕 T510 — «يتابعك» أصغرُ من الأعداد بدرجة (١١ بوزن ٦٠٠) وبارتفاع سطرها ٢٢ (أحمد: «فولوز يو ما فيها تناسق») — كالتطبيق */}
               {!isMe && relation.followsMe ? (
-                <span className="inline-flex items-center rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-12 font-bold text-muted">
+                <span className="inline-flex h-[calc(22px*var(--fs))] items-center rounded-full border border-border bg-surface-2 px-[9px] text-[calc(11px*var(--fs))] font-semibold leading-none text-muted">
                   {locale === "en" ? "Follows you" : "يتابعك"}
                 </span>
               ) : null}
@@ -1146,15 +1139,7 @@ export default async function PublicProfilePage({
                 {bioText}
               </p>
             )}
-            {supporterLine && (
-              <Link
-                href="/supporters"
-                prefetch={false}
-                className="hero-halo mt-2 inline-flex items-center rounded-full border border-[#d7a531]/60 bg-[#d7a531]/10 px-2.5 py-0.5 text-12 font-bold text-[#d7a531] transition hover:bg-[#d7a531]/20"
-              >
-                {supporterLine}
-              </Link>
-            )}
+            {/* 🆕 T510 — سطرُ «♡ داعم لوبز منذ …» حُذف (أحمد ٢٢ نوفمبر)، والبابُ إلى اللوحة شارةُ GOLD بجانب الاسم (`goldHref`) */}
           </div>
         </div>
 

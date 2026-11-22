@@ -18,7 +18,7 @@ import { haptic } from "../haptics";
 import { shell, type NativeRoot } from "../shell";
 import { stackAboveRoots } from "../nativeStack";
 import { usePullRefresh } from "../pullRefresh";
-import { GoldButton, IdentityBadges, identityFlags } from "../IdentityBadges";
+import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { CoverArt, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
@@ -95,9 +95,15 @@ const AV_DROP_BARE = 8;
 const VEIL_FADE = 48;
 /** انزياحُ مركز الصورة لتصغر من ركنها: نصفُ ما نقص من قطرها */
 const AV_SHIFT = (AV_MAX - AV_MIN) / 2;
-/** 🆕 T502 — سطرُ الأعداد تحت المعرّف: ارتفاعٌ ثابتٌ (نصٌّ ١٤ ورقاقة «يتابعك») يدخل حسابَ توسيط الاسم مطويّاً */
+/** 🆕 T502 — سطرُ الأعداد: ارتفاعٌ ثابتٌ (نصٌّ ١٤ ورقاقة «يتابعك» بارتفاعه — `StatusPill size="sm"`).
+ *  🆕 T510 — **نزل تحت الصورة بعرض الصفحة** (أحمد ٢٢ نوفمبر بالمسطرة على لقطتين، «ترتيب ب»): كان سطراً ثالثاً في عمود الاسم
+ *  فتزاحم الرقاقةُ الدائرتين وتتداخل معهما. الآن يبدأ من حافّة الصورة وتنتهي الرقاقةُ على حافّة الدائرتين؛ ومع الطيّ يتلاشى
+ *  ويطوي الرأسُ مكانَه (`COUNTS_BLOCK` في `shrink`) فتلتصق النبذةُ بالصورة الصغيرة كما كانت */
 const COUNTS_H = 22;
-const COUNTS_GAP = 3;
+const COUNTS_GAP = 10;
+const COUNTS_BLOCK = COUNTS_GAP + COUNTS_H;
+/** نسبةُ الطيّ التي يغيب عندها سطرُ الأعداد */
+const COUNTS_FADE = 0.3;
 /** 🆕 T502 — رقاقةُ «يتابعك» (كلمةٌ لسطحٍ واحد) */
 const FOLLOWS_YOU = { ar: "يتابعك", en: "Follows you" } as const;
 /**
@@ -289,6 +295,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     haptic.pick();
     router.push({ pathname: "/messages/[peer]", params: { peer: d.person.id, from: fromOut } });
   }, [d, router, fromOut, t]);
+  /* 🆕 T510 — شارةُ GOLD بابُ لوحة الداعمين (بدلَ سطر «داعم لوبز منذ» المحذوف) */
+  const openSupporters = useCallback(() => router.push({ pathname: "/settings/[section]", params: { section: "supporters" } }), [router]);
   const report = useMutation({
     mutationFn: async () => (d ? write<{ done: true }>("/api/v1/profile/report", { user_id: d.person.id, reason: reason.trim() || null } satisfies ProfileReportBody) : null),
     onSuccess: () => {
@@ -536,7 +544,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const coverArtH = Math.max(HEADER_H + 1, coverBox - insets.top);
   const coverFadeFrom = Math.max(HEADER_H, coverArtH - COVER_FADE);
   /** ما يطويه الرأسُ العلويُّ من طوله: الفراغُ فوق الصورة + فرقُ قطرها */
-  const shrink = drop + (AV_MAX - AV_MIN);
+  const shrink = drop + (AV_MAX - AV_MIN) + COUNTS_BLOCK;
   const topMin = topH > 0 ? Math.max(0, topH - shrink) : 0;
   const maxC = Math.max(0, headH - barH - topMin);
   /* الطيُّ = موضعُ اللوح النشط مقصوصاً — بلا سالبٍ (السحبُ للتحديث) ولا أبعدَ من الالتصاق */
@@ -557,15 +565,18 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       avY: at(-AV_SHIFT),
       avScale: at(AV_MIN / AV_MAX, 1),
       nameX: at((AV_MAX - AV_MIN) * side),
-      /* D-1607 — مركزُ الاسم على مركز الصورة: يصعد بقدر ما يصعد مركزُها وهي تصغر من ركنها */
-      /* 🆕 T502 — وينزل نصفَ سطر الأعداد: السطرُ يتلاشى مطويّاً، فالاسمُ والمعرّفُ هما ما يتوسّط الصورةَ الصغيرة */
-      nameY: at(-AV_SHIFT + (COUNTS_H + COUNTS_GAP) / 2),
-      bioY: at(-(AV_MAX - AV_MIN)),
+      /* D-1607 — مركزُ الاسم على مركز الصورة: يصعد بقدر ما يصعد مركزُها وهي تصغر من ركنها
+         (🆕 T510 — بلا نصف سطر الأعداد: السطرُ خرج من عمود الاسم) */
+      nameY: at(-AV_SHIFT),
+      /* 🆕 T510 — سطرُ الأعداد يلحق أسفلَ الصورة وهي تصغر، والنبذةُ تصعد فوق مكانه أيضاً */
+      countsY: at(-(AV_MAX - AV_MIN)),
+      bioY: at(-(AV_MAX - AV_MIN) - COUNTS_BLOCK),
     };
   }, [collapse, shrink, drop]);
-  /* 🆕 T502 — سطرُ الأعداد يتلاشى في نصف طيّ الصورة، ولا يلتقط لمساً بعده (يتدلّى مطويّاً فوق النبذة وسطرِ الداعم) */
+  /* 🆕 T502 — سطرُ الأعداد يتلاشى مع أوّل الطيّ، ولا يلتقط لمساً بعده.
+     🆕 T510 — في ٠٫٣ من الطيّ لا نصفه: النبذةُ تصعد إلى مكانه أسرعَ منه، فيغيب قبل أن تبلغه */
   const countsFade = useMemo(
-    () => collapse.interpolate({ inputRange: [0, Math.max(1, shrink * 0.5)], outputRange: [1, 0], extrapolate: "clamp" }),
+    () => collapse.interpolate({ inputRange: [0, Math.max(1, shrink * COUNTS_FADE)], outputRange: [1, 0], extrapolate: "clamp" }),
     [collapse, shrink],
   );
   const shrinkRef = useRef(shrink);
@@ -573,7 +584,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const [countsLive, setCountsLive] = useState(true);
   const countsLiveRef = useRef(true);
   const syncCountsLive = useCallback((c: number) => {
-    const live = c < shrinkRef.current * 0.5;
+    const live = c < shrinkRef.current * COUNTS_FADE;
     if (live === countsLiveRef.current) return;
     countsLiveRef.current = live;
     setCountsLive(live);
@@ -750,6 +761,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                 <View style={{ height: 12, width: "35%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
               </View>
             </View>
+            {/* 🆕 T510 — سطرُ الأعداد صار تحت الصورة، فله مكانُه في الهيكل أيضاً */}
+            <View style={{ height: 14, width: "45%", borderRadius: 6, backgroundColor: tokens.surface2 }} />
             <View style={{ height: 60, borderRadius: 16, backgroundColor: tokens.surface2 }} />
           </View>
         )
@@ -836,25 +849,24 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
                   }}
                 >
                   <View pointerEvents="box-none" style={{ flex: 1, minWidth: 0 }}>
-                    <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    {/* 🆕 T510 — الصفُّ يمرّر اللمسَ إلى شارة GOLD وحدها (تفتح لوحةَ الداعمين)؛ والاسمُ لا يحبسه فيصل التمريرُ من فوقه */}
+                    <View pointerEvents="box-none" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       {/* 🆕 D-1381 — **الاسمُ الطويلُ يصغر ليظهر كاملاً** (أحمد ١٢ أكتوبر، «ج» من ثلاث صورٍ على ملفّ «Abdulrhman Aldossari»):
                           كان يُقصّ «Abdulrhman Ald…» قبل الشارة. يصغر حتى ٠٫٦٥ من ٢٠ (≈١٣) في سطرٍ واحدٍ مع الشارة، والاسمُ القصيرُ باقٍ ٢٠؛
-                          وما زاد بعد ذلك يُقصّ في آخره */}
-                      <Text size={20} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ flexShrink: 1, lineHeight: 24 }}>{name}</Text>
-                      {d.person.hide_name ? null : <IdentityBadges flags={identityFlags(d.person)} nameSize={20} />}
+                          وما زاد بعد ذلك يُقصّ في آخره.
+                          🆕 T510 — **والسطرُ ٢٨ لا ٢٤** (أحمد ٢٢ نوفمبر: «في اسم مقصوص منه»): ٢٤ أقصرُ من قامة Poppins الطبيعيّة
+                          (١٫٤ من الخطّ)، فالحروفُ ذواتُ العلامات فوقها وتحتها وخطوطُ الأسماء الزخرفيّة تُقصّ من أعلاها وأسفلها */}
+                      <View pointerEvents="none" style={{ flexShrink: 1, minWidth: 0 }}>
+                        <Text size={20} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ lineHeight: 28 }}>{name}</Text>
+                      </View>
+                      {d.person.hide_name ? null : (
+                        <View pointerEvents={identityFlags(d.person).gold ? "box-none" : "none"} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <IdentityBadges flags={identityFlags(d.person)} nameSize={20} onGold={openSupporters} />
+                        </View>
+                      )}
                     </View>
-                    {d.person.username && !d.person.hide_name ? <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>@{d.person.username}</Text> : null}
-                    {/* 🆕 T502 — **الأعدادُ سطرٌ وحدها تحت المعرّف، بالكلمات لا بالرموز** (أحمد ٢٢ نوفمبر بلقطة: «الحجم صغير والقلب مو
-                        مفهوم»، ثمّ «٦ ب ٧ د ٨ أ ٩ ب»): القلبُ كان «من يتابعهم» فيُقرأ إعجاباً، والرقمُ ١٢. الآن «20 متابِعًا   22 يتابع»
-                        بمقاس ١٤ — الرقمُ عريضٌ والكلمةُ باهتة، والمعدودُ بقاعدة العدد (`countNoun`). وفي ملفِّ من يتابعك رقاقةُ «يتابعك» في
-                        آخر السطر. يتلاشى السطرُ مع الطيّ (`countsFade`) ولا يلتقط لمساً مطويّاً (`countsLive`) — الطيُّ يصغّر الرأسَ إلى
-                        ارتفاع الصورة الصغيرة، وسطرٌ ثالثٌ لا يتّسع فيه */}
-                    <Animated.View pointerEvents={countsLive ? "box-none" : "none"} style={{ height: COUNTS_H, marginTop: COUNTS_GAP, flexDirection: "row", alignItems: "center", gap: 14, opacity: countsFade }}>
-                      {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
-                      <CountBtn value={d.counts.followers} label={countNoun(locale, "followers", d.counts.followers, t.followersLabel)} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
-                      <CountBtn value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("following"); }} />
-                      {!d.viewer.is_me && d.relation.follows_me ? <StatusPill label={FOLLOWS_YOU[locale === "en" ? "en" : "ar"]} color={tokens.muted} /> : null}
-                    </Animated.View>
+                    {/* 🆕 T510 — المعرّفُ ١٣ لا ١٢ (أحمد ٢٢ نوفمبر: «كبّر اسم اليوزر درجة»، ثمّ «ب» من ١٢ · ١٣ · ١٤) */}
+                    {d.person.username && !d.person.hide_name ? <Text size={13} muted numberOfLines={1} style={{ marginTop: 2 }}>@{d.person.username}</Text> : null}
                   </View>
                   {/* 🆕 D-1427 — «تعديل الملفّ» في ملفّي (أحمد: «ضيف عدل البروفايل بس صغّرها شوي»): زرُّ المصنع الواحد بمقاسه الصغير */}
                   {d.viewer.is_me ? <Button size="sm" variant="ghost" label={t.setEditProfile} onPress={() => router.push("/settings/profile")} style={{ minHeight: 30 }} /> : null}
@@ -883,18 +895,31 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
               )}
                 </Animated.View>
               </View>
+              {/* 🆕 T502 — **الأعدادُ بالكلمات لا بالرموز** (أحمد ٢٢ نوفمبر: «الحجم صغير والقلب مو مفهوم»): «20 متابِعًا   22 يتابع»
+                  بمقاس ١٤ — الرقمُ عريضٌ والكلمةُ باهتة، والمعدودُ بقاعدة العدد (`countNoun`). وفي ملفِّ من يتابعك رقاقةُ «يتابعك».
+                  🆕 T510 — **سطرٌ تحت الصورة بعرض الصفحة** («ترتيب ب»): يبدأ من حافّة الصورة، والرقاقةُ في آخره على حافّة الدائرتين،
+                  أصغرُ من الأعداد بدرجة (١١ بوزن ٦٠٠) وبارتفاع السطر نفسِه ومنتصفُها على منتصفه («فولوز يو ما فيها تناسق»).
+                  يتلاشى مع الطيّ (`countsFade`) ولا يلتقط لمساً مطويّاً (`countsLive`) */}
+              <Animated.View
+                pointerEvents={countsLive ? "box-none" : "none"}
+                style={{ height: COUNTS_H, marginTop: COUNTS_GAP, paddingHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", gap: 14, opacity: countsFade, transform: [{ translateY: fold.countsY }] }}
+              >
+                {/* القفلُ كالويب (`FollowCountButton.locked`): العددُ يُرى والورقةُ لا تُفتح */}
+                <CountBtn value={d.counts.followers} label={countNoun(locale, "followers", d.counts.followers, t.followersLabel)} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("followers"); }} />
+                <CountBtn value={d.counts.following} label={t.followingLabel} locked={d.person.hide_follow_lists} onPress={() => { setFollowsY(0); setFollows("following"); }} />
+                {!d.viewer.is_me && d.relation.follows_me ? (
+                  <View pointerEvents="none" style={{ marginStart: "auto" }}>
+                    <StatusPill size="sm" label={FOLLOWS_YOU[locale === "en" ? "en" : "ar"]} color={tokens.muted} />
+                  </View>
+                ) : null}
+              </Animated.View>
               {d.person.bio ? (
                 <Animated.View pointerEvents="none" style={{ transform: [{ translateY: fold.bioY }] }}>
                   <Text autoDir size={13} style={{ paddingHorizontal: PAGE_PAD, marginTop: 10, lineHeight: 19 }}>{d.person.bio}</Text>
                 </Animated.View>
               ) : null}
-              {/* 🆕 D-gold-perks — «♡ داعم لوبز منذ …» (أحمد ١٠ نوفمبر «٣ ب»): سطرٌ صغيرٌ تحت النبذة يفتح لوحةَ الداعمين.
-                  الخادمُ يرسله لعضو Gold الظاهر في اللوحة وحدَه (`supporter_since`)، فالإخفاءُ من اللوحة يُسقطه هنا أيضاً */}
-              {d.person.supporter_since && !d.person.hide_name ? (
-                <Animated.View pointerEvents="box-none" style={{ transform: [{ translateY: fold.bioY }], flexDirection: "row", paddingHorizontal: PAGE_PAD, marginTop: 8 }}>
-                  <GoldButton size="line" a11yRole="link" label={supporterLine(d.person.supporter_since, locale)} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "supporters" } })} />
-                </Animated.View>
-              ) : null}
+              {/* 🆕 T510 — **سطرُ «♡ داعم لوبز منذ …» حُذف** (أحمد ٢٢ نوفمبر: «سطر الداعمين الذهبي احذفه .. إذا أحد ضغط على قولد يوديه
+                  لصفحة الداعمين»): نقضٌ لـD-gold-perks «٣ ب» بيد صاحبه — والبابُ إلى اللوحة صار شارةَ GOLD نفسَها (`onGold`) */}
               {/* ما تحت النبذة يبدأ بعدها بقليل: فراغٌ ثابتٌ يطويه انزياحُ النبذة نفسُه */}
               <View pointerEvents="none" style={{ height: 4 }} />
             </Animated.View>
@@ -1665,12 +1690,4 @@ function GridSheet({
       />
     </Sheet>
   );
-}
-
-/** «♡ داعم لوبز منذ نوفمبر ٢٠٢٦» — الشهرُ والسنةُ بلغة الواجهة؛ تاريخٌ فاسدٌ يُسقط «منذ» ويُبقي الجملة */
-function supporterLine(iso: string, locale: string): string {
-  const ms = Date.parse(iso);
-  const when = Number.isNaN(ms) ? null : new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", { month: "long", year: "numeric" }).format(new Date(ms));
-  if (locale === "en") return when ? `♡ Loopz supporter since ${when}` : "♡ Loopz supporter";
-  return when ? `♡ داعم لوبز منذ ${when}` : "♡ داعم لوبز";
 }

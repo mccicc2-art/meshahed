@@ -251,7 +251,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   });
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
-  const bioText = profile.hide_name ? null : (profile.bio ?? null);
+  const bioText = profile.hide_name ? null : cleanBio(profile.bio);
 
   /* 🆕 **مرتبتُه في أوائل الأسبوع** (D-835) — **قراءةٌ واحدةٌ مخبَّأةٌ
      للطلب** (ثلاثةُ صفوفٍ من دالّةِ definer)، **والفراغُ يعني ألّا
@@ -445,3 +445,15 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
 }
 
 export type ProfileCore = NonNullable<Awaited<ReturnType<typeof loadProfile>>>;
+
+/**
+ * 🆕 T510 — **النبذةُ بلا رموزٍ خفيّة** (لقطةُ أحمد ٢٢ نوفمبر: «Just a cinephile ￼» — مربّعُ «OBJ» في آخرها): رمزُ الكائن
+ * المستبدَل (U+FFFC) يتركه لصقٌ من تطبيقٍ آخر مكانَ صورةٍ أو ملصق، فيُرسم مربّعاً. يُحذف هو والمسافاتُ الصفريّة (U+200B ·
+ * U+2060 · U+FEFF) ومحارفُ التحكّم — عدا السطر الجديد. ويبقى الوصلُ والفصلُ الصفريّان (U+200C · U+200D) لأنّ الإيموجي المركّب
+ * والفارسيّة يحتاجانهما. نبذةٌ لا يبقى منها شيءٌ لا تُرسم.
+ */
+export function cleanBio(bio: string | null | undefined): string | null {
+  if (!bio) return null;
+  const out = bio.replace(/[\uFFFC\u200B\u2060\uFEFF\u0000-\u0009\u000B-\u001F\u007F]/g, "").trim();
+  return out || null;
+}

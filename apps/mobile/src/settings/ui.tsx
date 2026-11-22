@@ -399,12 +399,15 @@ export function FieldCard({ icon, label, children }: { icon?: IconName; label: s
  * 🆕 وسمُ حالةٍ صغير (تصاميمُ الإعدادات، ١٩ أكتوبر) — «نشط» بجانب الاشتراك، ووسومُ «المميزات». **وسمٌ واحدٌ بلونٍ يُمرَّر**:
  * الإطارُ ٣٥٪ والخلفيّةُ ١٠٪ من اللون نفسِه (وصفةُ وسوم `/features` في الويب).
  */
-export function StatusPill({ label, color }: { label: string; color?: string }) {
+/* 🆕 T510 — `size="sm"`: مقاسٌ ثانٍ للوسم نفسِه لا وسمٌ ثانٍ — «يتابعك» في سطر أعداد الملفّ (أحمد ٢٢ نوفمبر: «ما فيها تناسق وصغّر
+   الكلمة درجة»): الكلمةُ ١١ بوزن ٦٠٠ (أصغرُ من الأعداد ١٤ بدرجة وأخفُّ منها)، وارتفاعٌ ثابتٌ ٢٢ هو ارتفاعُ السطر (`COUNTS_H`) */
+export function StatusPill({ label, color, size = "md" }: { label: string; color?: string; size?: "md" | "sm" }) {
   const { tokens } = useApp();
   const tone = color ?? tokens.accent;
+  const sm = size === "sm";
   return (
-    <View style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: tone + "59", backgroundColor: tone + "1A", paddingHorizontal: 10, paddingVertical: 3 }}>
-      <Text size={12} weight="700" color={tone} numberOfLines={1}>{label}</Text>
+    <View style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: tone + "59", backgroundColor: tone + "1A", paddingHorizontal: sm ? 9 : 10, paddingVertical: sm ? 0 : 3, height: sm ? 22 : undefined, justifyContent: "center" }}>
+      <Text size={sm ? 11 : 12} weight={sm ? "600" : "700"} color={tone} numberOfLines={1}>{label}</Text>
     </View>
   );
 }

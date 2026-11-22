@@ -22,7 +22,7 @@ import { num, type Dict } from "@/core/i18n";
 import { timeAgo } from "@/core/when";
 import { listStampOf } from "./chatFormat";
 import { displayNameOf } from "@/core/people";
-import { signalHref, signalParts } from "@/core/signals";
+import { signalHref, signalParts, signalPersonHref } from "@/core/signals";
 import { curatedName } from "@/core/universes";
 import type { MessagesPayload, MsgConversation, MsgEvent, MsgGroupConversation, SignalRow, SignalsPayload } from "../contracts";
 import { GroupAvatar, dropGroup, groupPreview } from "./groups";
@@ -433,6 +433,9 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
   const listName = curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar");
   const p = signalParts(s, t, listName);
   const href = signalHref(s, meId);
+  /* 🆕 T509 — **الصورةُ تفتح حسابَ صاحبها والسطرُ يفتح مكانَ التفاعل** (أحمد ٢٢ نوفمبر «١٤ ب»: «خل اذا ضغطت على افتار الشخص
+     يوديني حسابه · واذا عالكلام يودي لمكان الرد او اللايك»). ضغطةٌ داخليّةٌ تأخذها الصورةُ قبل السطر، ومن أخفى اسمه لا حسابَ له */
+  const who = signalPersonHref(s);
   return (
     <Pressable
       disabled={!href}
@@ -444,14 +447,21 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
           والختمُ فوق «أعجب KHLD». iOS يحدّد مكانَ العقدة قبل أن يرتّب الجملةَ المختلطة، فأيُّ عقدةٍ داخل نصٍّ عربيٍّ فيه اسمٌ
           لاتينيٌّ هشّة. **الجملةُ الآن نصٌّ خالص** فلا شيءَ يتداخل (خالد ٤ نوفمبر: «اعتمد المقترح»). حلقةٌ بلون الصفحة تفصل
           الختمَ عن الصورة. «AI» لا تُرسم هنا — الزاويةُ للتوثيق وحدَه. */}
-      <View style={{ width: 40, height: 40 }}>
+      <Pressable
+        disabled={!who}
+        onPress={() => who && (haptic.pick(), onOpen(who))}
+        hitSlop={4}
+        accessibilityRole={who ? "link" : undefined}
+        accessibilityLabel={who ? p.who : undefined}
+        style={({ pressed }) => ({ width: 40, height: 40, opacity: pressed ? 0.7 : 1 })}
+      >
         <Avatar uri={s.person.hide_name ? null : s.person.avatar_url} size={40} />
         {s.person.hide_name || !identityFlags(s.person).verified ? null : (
           <View style={{ position: "absolute", bottom: -3, end: -3, width: 18, height: 18, borderRadius: 9, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
             <IdentityBadges flags={{ ...identityFlags(s.person), ai: false }} nameSize={18} sealOnly />
           </View>
         )}
-      </View>
+      </Pressable>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         {/* الاسمُ معزولٌ (FSI…PDI) ما زال: اسمٌ لاتينيٌّ في جملةٍ عربيّة يبقى في مكانه منها */}
         <Text size={14} style={{ lineHeight: 20 }}>

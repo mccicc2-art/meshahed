@@ -353,6 +353,26 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     }
     return { items: out, tree: tr, nameOf: names, postCount: base.filter((r) => !r.bulletin).length };
   }, [d, nested, toggled, expanded, t.anonymousUser, pick, talkSort, tvTalk, tab, focus]);
+  /* 🆕 T509 — **الإشعارُ يفتح على الردِّ نفسِه** (أحمد «١٤ ب»): في المراجعة والخبر `?r=` لا صفحةَ له (الغرفةُ وحدَها لها صفحةُ
+     السطر، R55) — الشاشةُ تنزل إليه مرّةً وتُضيئه لحظة. ضغطٌ مؤجَّل: القائمةُ تحتاج رسمَ الصفوف قبل أن تقفز إليها */
+  const [lit, setLit] = useState<string | null>(null);
+  const flashed = useRef(false);
+  useEffect(() => {
+    if (nested || !focus || flashed.current) return;
+    const index = items.findIndex((it) => it.type === "row" && it.row.id === focus);
+    if (index < 0) return;
+    flashed.current = true;
+    const go = setTimeout(() => {
+      pendingY.current = null;
+      listRef.current?.scrollToIndex({ index, viewPosition: 0.35, animated: true });
+      setLit(focus);
+    }, 250);
+    const off = setTimeout(() => setLit(null), 2200);
+    return () => {
+      clearTimeout(go);
+      clearTimeout(off);
+    };
+  }, [nested, focus, items]);
   const toggle = useCallback((id: string) => {
     haptic.pick();
     setToggled((s) => {
@@ -387,7 +407,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       /* 🆕 R56 — مراجعةُ صفحة العمل: قلبُها قلبُ المراجعة نفسِها (المسارُ الذي تكتبه صفحتُها) لا جدولُ المنشورات */
       const req = row.review && d && d.work.media_type !== "general"
         ? write("/api/v1/community/like", { target: "review", user_id: row.review.user_id, tmdb_id: d.work.tmdb_id, media_type: d.work.media_type, on: !was } satisfies LikeBody)
-        : write("/api/v1/thread/like", { post_id: row.id, on: !was });
+        : write("/api/v1/thread/like", { post_id: row.id, on: !was, ...(route.t === "review" ? { scope: "review" as const } : route.t === "post" ? { scope: "news" as const } : {}) });
       req
         .catch((e: unknown) => {
           set(was);
@@ -395,7 +415,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
         })
         .finally(() => busy.current.delete(k));
     },
-    [patchRow, fail, d],
+    [patchRow, fail, d, route],
   );
   const vote = useCallback(
     (row: ThreadRow, v: -1 | 0 | 1) => {
@@ -427,11 +447,14 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     async (parent: ThreadRow | null, draft: Draft): Promise<boolean> => {
       if (!d) return false;
       const temp = `${TEMP}${Date.now()}`;
+      /* 🆕 T509 — **ردٌّ على ردٍّ في المسطَّح يُكتب تحت أصله الأعلى** (أحمد «١٦ أ»، أسلوبُ إنستغرام): حارسُ القاعدة يقبل ردّاً على
+         ردٍّ أعلى وحدَه، والنصُّ يبدأ بـ«@اسم» صاحبه (`beginReply`) فيصله الإشعار */
+      const parentId = !nested && parent?.parent_id ? parent.parent_id : parent?.id ?? null;
       const me = d.viewer.me;
       const row: ThreadRow = {
         id: temp,
         person: { id: d.viewer.me_id ?? "", nickname: me?.name ?? null, username: null, avatar_url: me?.avatar ?? null, hide_name: !me },
-        parent_id: parent?.id ?? null,
+        parent_id: parentId,
         body: draft.body,
         created_at: new Date().toISOString(),
         mine: true,
@@ -456,7 +479,7 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
         const r = await write<ThreadReplyResult>("/api/v1/thread/reply", {
           target: targetOf(route),
           body: draft.body,
-          parent_id: parent?.id ?? null,
+          parent_id: parentId,
           has_spoiler: row.has_spoiler,
           image_url: row.image,
           gif_id: row.gif_id,
@@ -539,9 +562,12 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     if (row.review) return openRow(row);
     haptic.pick();
     setReplyTo(row);
+    /* 🆕 T509 — الردُّ على ردٍّ في المسطَّح يبدأ بـ«@اسم» صاحبه (إنستغرام، «١٦ أ»): ردُّك يقع تحت أصله الأعلى، والاسمُ يوصل له الإشعار */
+    const handle = !nested && row.parent_id && !row.mine ? row.person.username : null;
+    if (handle) setText((cur) => (new RegExp(`(^|\\s)@${handle}(\\s|$)`, "i").test(cur) ? cur : `@${handle} ${cur.trimStart()}`));
     setAttach(false);
     setTimeout(() => inputRef.current?.focus(), 120);
-  }, [openRow]);
+  }, [openRow, nested]);
   /* المنشن: من كتب هنا (غيري)، ثمّ — 🆕 T504 («١٢ أ») — من أتابعهم، ثمّ أيُّ عضوٍ بالبحث (`useMentions` `search`). صاحبُ الرأي
      في صفحة مراجعته أوّلُهم: هو المخاطَبُ الأوّلُ فيها وليس سطراً في الردود */
   const following = useQuery({
@@ -711,9 +737,11 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           onTitle={(kind, id) => router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: from === "web" ? "web" : from } })}
         />
       );
-      return item.indented ? <View style={{ marginStart: 20, paddingStart: 12, borderStartWidth: 1, borderStartColor: tokens.divider }}>{body}</View> : body;
+      const shown = item.indented ? <View style={{ marginStart: 20, paddingStart: 12, borderStartWidth: 1, borderStartColor: tokens.divider }}>{body}</View> : body;
+      /* 🆕 T509 — الردُّ الذي جاء من أجله الإشعار يُضاء لحظة (لونُ الثيم نفسُه بشفافية) */
+      return r.id === lit ? <View style={{ backgroundColor: `${tokens.accent}26`, borderRadius: radius.md, marginHorizontal: -8, paddingHorizontal: 8 }}>{shown}</View> : shown;
     },
-    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from, revealAll, unwatchedRoom, openRow, focus, nameOf, d?.rows, watchedEps],
+    [tokens, t, nested, tree, toggled, signedIn, d?.has_likes, d?.has_votes, like, vote, toggle, openProfile, beginReply, mentionNames, openWeb, router, from, revealAll, unwatchedRoom, openRow, focus, nameOf, d?.rows, watchedEps, lit],
   );
 
   /* 🆕 D-1508 — «شاهدتها» من غرفة الحلقة: الكتابةُ نفسُها في صفحة العمل (`track/episode`)، والغطاءُ ينزل فوراً */
@@ -818,6 +846,11 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           }}
           scrollEventThrottle={64}
           onContentSizeChange={(_, h) => restoreTo(h)}
+          /* 🆕 T509 — القفزةُ إلى ردٍّ لم يُرسم بعد: تقريبٌ ثمّ محاولةٌ ثانية (`scrollToIndex` لا يعرف ارتفاعَ ما لم يُقس) */
+          onScrollToIndexFailed={(info) => {
+            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+            setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewPosition: 0.35, animated: true }), 120);
+          }}
           data={epList ? [] : items}
           keyExtractor={(it) => (it.type === "row" ? it.row.id : it.type === "more" ? `more:${it.rootId}` : it.type === "parent" ? `parent:${it.row.id}` : it.type === "heading" ? "heading" : `author-more:${it.parentId}`)}
           renderItem={renderItem}

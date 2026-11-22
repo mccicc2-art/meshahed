@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toggleReplyLike } from "@/lib/replyLikes";
 import {
   addReviewReply,
   addNewsReply,
@@ -179,6 +180,19 @@ export function ThreadReplies({
      تُفتح بـ`history.pushState` لا بتنقّلٍ إلى الخادم — الخيطُ كلُّه هنا أصلاً، فالصفحةُ ترسم فوراً و«رجوع» المتصفّح خطوةٌ واحدة */
   const search = useSearchParams();
   const focusId = target.kind === "talk" ? search.get("r") : null;
+  /* 🆕 T509 — **الإشعارُ يفتح على الردِّ نفسِه** (أحمد «١٤ ب»): في المراجعة والخبر والقائمة `?r=` لا صفحةَ له — الصفحةُ تنزل
+     إليه وتُضيئه لحظة، فيرى القارئُ ما جاء من أجله بين عشرات الردود */
+  const flashId = target.kind !== "talk" ? search.get("r") : null;
+  useEffect(() => {
+    if (!flashId || !/^[0-9a-f-]{36}$/i.test(flashId)) return;
+    const el = document.getElementById(`reply-${flashId}`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    /* الإضاءةُ صنفٌ على العنصر لا حالةٌ في المكوّن: تُرسم مرّةً ثمّ تنطفئ دون إعادة رسم الخيط */
+    el.classList.add("bg-accent/10");
+    const tm = window.setTimeout(() => el.classList.remove("bg-accent/10"), 1800);
+    return () => window.clearTimeout(tm);
+  }, [flashId]);
   const router = useRouter();
   const openRow = (id: string) => {
     if (target.kind !== "talk" || id === focusId || id.startsWith(TEMP)) return;
@@ -247,7 +261,13 @@ export function ThreadReplies({
     setLikeDelta((d) => ({ ...d, [id]: was ? -1 : 1 }));
     /* 🆕 R56 — مراجعةُ صفحة العمل في «عام»: قلبُها في جدول المراجعات لا المنشورات */
     const rv = all.find((x) => x.replyId === id)?.review;
-    const req = rv && target.kind === "talk" && target.mediaType !== "general" ? toggleReviewLike(rv.userId, target.tmdbId, target.mediaType, was) : togglePostLike(id, was);
+    /* 🆕 T509 — ردٌّ تحت تعليقٍ أو تحت خبر: جدولُه (الهجرة ٢٥٩) لا جدولُ المنشورات */
+    const req =
+      rv && target.kind === "talk" && target.mediaType !== "general"
+        ? toggleReviewLike(rv.userId, target.tmdbId, target.mediaType, was)
+        : target.kind === "review" || target.kind === "post"
+          ? toggleReplyLike(target.kind === "review" ? "review" : "news", id, was)
+          : togglePostLike(id, was);
     void req.catch(() => {
       setLikeDelta((d) => ({ ...d, [id]: was ? 1 : -1 }));
       setError(t.errorTitle);
@@ -660,7 +680,11 @@ export function ThreadReplies({
     const kid = nested ? (kids.get(r.replyId) ?? []) : [];
     const kidsOpen = isOpen(r);
     return (
-      <div key={r.replyId}>
+      <div
+        key={r.replyId}
+        id={`reply-${r.replyId}`}
+        className="rounded-2xl transition-colors duration-700"
+      >
         <ReplyItem
           /* 🆕 D-1508 — غرفةُ حلقةٍ لم يشاهدها القارئ: كلُّ سطرٍ خلف الحاجب ولو لم يعلن كاتبُه حرقاً */
           reply={(focusId ? tvTalk && r.season != null && r.episode != null && !seenEps.has(talkEpisodeKey(r.season, r.episode)) : unwatchedRoom) && !r.hasSpoiler ? { ...r, hasSpoiler: true } : r}
@@ -706,7 +730,9 @@ export function ThreadReplies({
           /* **وحدُّ الردّ حدُّ القاعدة لا حدُّ الرسم** (الهجرة ٧٨):
              `real` عمقُ الحوار، **والرسمُ صار درجةً واحدةً لا ثلاثاً** —
              **وزرٌّ يعِد بما تمنعه القاعدة وعدٌ كاذب** (D-217). */
-          canReply={nested ? real < MAX_DEPTH : !r.parentId}
+          /* 🆕 T509 — **وفي المسطَّح كلُّ ردٍّ يُردّ عليه** (أحمد «١٦ أ»، أسلوبُ إنستغرام): الردُّ على ردٍّ يُكتب تحت أصله الأعلى
+             (حارسُ العمق في القاعدة لا يتغيّر) ويبدأ بـ«@اسم» صاحبه فيصله الإشعار — انظر صندوقَ الكتابة تحته */
+          canReply={nested ? real < MAX_DEPTH : true}
           /* **والعددُ بجانب علامته** (D-284) — كلُّ الفرع لا أبناؤه وحدهم */
           replyCount={r.review ? r.review.replies : nested ? countUnder(r.replyId) : 0}
           /* **الإعجابُ في الغرفة وحدَها** (D-289): الجدولُ يشير إلى
@@ -758,8 +784,9 @@ export function ThreadReplies({
               /* 🆕 **وGIF حيث تُقبل الصورة** (D-362) — نفسُ الشرط، فالنقاشُ
                  وحدَه يخزّن حمولةً بصريّة (D-298/قرارُ ١٦ أغسطس). */
               allowGif={nested}
+              initial={!nested && r.parentId && !r.isMine && r.username ? `@${r.username} ` : undefined}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp, img, gif) => send(b, r.replyId, sp, img, gif)}
+              onSend={(b, sp, img, gif) => send(b, !nested && r.parentId ? r.parentId : r.replyId, sp, img, gif)}
               onSendTitle={nested && target.kind === "talk" ? (p) => send("", r.replyId, false, null, null, shareOfPick(p)) : undefined}
             />
           </div>

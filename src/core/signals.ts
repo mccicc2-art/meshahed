@@ -42,7 +42,11 @@ export type SignalKind =
   | "news_reply"
   | "mention_reply"
   | "mention_list"
-  | "mention_talk";
+  | "mention_talk"
+  /* 🆕 T509 (الهجرة ٢٥٩) — أعجب بردّك تحت تعليق · أعجب بردّك تحت خبر · ذكرك في ردٍّ تحت خبر */
+  | "reply_like"
+  | "news_reply_like"
+  | "mention_news";
 
 /** سطرُ الجرس كما تعيده `mySignals` — الشكلُ نفسُه (`Signal` في `lib/actions`) */
 export type SignalRow = {
@@ -62,6 +66,11 @@ export type SignalRow = {
   ownerId?: string | null;
   /** 🆕 T498 — مفتاحُ خبر Loopz لسطر «ردّ على ردّك في الخبر» (`ref` في `my_signals_v3`) — الضغطةُ تفتح `/post/<key>` */
   ref?: string | null;
+  /**
+   * 🆕 T509 — **الردُّ أو المشاركةُ التي جرى فيها التفاعل** (`item` في `my_signals_v4`). 🔴 لماذا: أحمد ٢٢ نوفمبر «اذا عالكلام
+   * يودي لمكان الرد او اللايك اللي سواه» — الوجهةُ كانت الصفحةَ كلَّها، فيبحث القارئ عن الردِّ بين عشرات. يغيب ⇒ الصفحةُ كما كانت.
+   */
+  item?: string | null;
 };
 
 /**
@@ -105,6 +114,9 @@ export function signalParts(s: SignalRow, t: Dict, listName: string): { pre: str
       case "news_reply": return t.notifNewsReply(NAME_SLOT, title);
       case "mention_reply": return t.notifMentionReply(NAME_SLOT, title);
       case "mention_list": return t.notifMentionList(NAME_SLOT, listName);
+      case "reply_like": return t.notifReplyLike(NAME_SLOT, title);
+      case "news_reply_like": return t.notifNewsReplyLike(NAME_SLOT, title);
+      case "mention_news": return t.notifMentionNews(NAME_SLOT, title);
       /* النقاشُ العامّ (`tmdb_id = 0`) بلا عنوانِ عمل: جملتُه تسمّيه */
       case "mention_talk": return isGeneralTalk(s) ? t.notifMentionGeneral(NAME_SLOT) : t.notifMentionTalk(NAME_SLOT, title);
       /* نوعٌ أحدثُ من هذا الإصدار (خادمٌ سبق التطبيق): جملةٌ محايدة لا جملةُ نوعٍ آخر */
@@ -118,7 +130,9 @@ export function signalParts(s: SignalRow, t: Dict, listName: string): { pre: str
 
 /* 🆕 T498 — `list_removed` ليس هنا عمداً: من أُخرج من قائمةٍ خاصّة لا يراها، فوجهتُه ملفُّ من أخرجه */
 const LIST_KINDS = new Set<SignalKind>(["list_review", "like_list_review", "list_reply", "list_reply_reply", "list_copy", "list_invite", "list_like", "list_save", "list_invite_accepted", "list_invite_declined", "mention_list"]);
-const REVIEW_KINDS = new Set<SignalKind>(["reply", "reply_reply", "like_review", "like_rating", "mention_reply"]);
+const REVIEW_KINDS = new Set<SignalKind>(["reply", "reply_reply", "like_review", "like_rating", "mention_reply", "reply_like"]);
+/* 🆕 T509 — ما يقع تحت خبرٍ من Loopz: الوجهةُ الخبرُ بمفتاحه (`ref`) */
+const NEWS_KINDS = new Set<SignalKind>(["news_reply", "news_reply_like", "mention_news"]);
 const TALK_KINDS = new Set<SignalKind>(["talk_reply", "talk_like", "mention_talk"]);
 
 /** النقاشُ العامّ: صفوفُه `tmdb_id = 0` و`media_type = 'general'` (الهجرة ٢١٩) */
@@ -133,21 +147,31 @@ function isGeneralTalk(s: SignalRow): boolean {
  */
 export function signalHref(s: SignalRow, myId: string | null): string | null {
   const titleHref = s.tmdbId ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}` : null;
+  /* 🆕 T509 — `?r=<معرّف>`: الصفحةُ تفتح على الردِّ نفسِه — في الغرفة صفحةُ المشاركة (R55)، وفي المراجعة والخبر تنزل إليه وتُضيئه */
+  const at = s.item && /^[0-9a-f-]{36}$/i.test(s.item) ? `?r=${s.item}` : "";
   if (LIST_KINDS.has(s.kind) && s.listId) return `/lists/${s.listId}`;
   if (TALK_KINDS.has(s.kind)) {
-    if (s.tmdbId) return `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`;
+    if (s.tmdbId) return `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}${at}`;
     /* 🆕 T496 — **النقاشُ العامّ** (`tmdb_id = 0`، الهجرة ٢١٩): الشرطُ أعلاه يُسقط الصفر، فكان الردُّ فيه يفتح ملفَّ الفاعل */
-    if (isGeneralTalk(s)) return "/talk/general/0";
+    if (isGeneralTalk(s)) return `/talk/general/0${at}`;
   }
   /* 🆕 T498 — ردٌّ على ردّك تحت خبر: الخبرُ نفسُه */
-  if (s.kind === "news_reply" && s.ref) return `/post/${encodeURIComponent(s.ref)}`;
+  if (NEWS_KINDS.has(s.kind) && s.ref) return `/post/${encodeURIComponent(s.ref)}${at}`;
   /* 🆕 D-1460 — **الإعجابُ يفتح ما أُعجب به لا من أعجبه** (أحمد ١٨ أكتوبر: «المفروض يفتح لي مكان التفاعل مايفتح لي حساب
      الشخص»). إعجابُ رأيك ⇐ صفحةُ رأيك كالردّ عليه؛ إعجابُ نشاطك (حلقةٌ أنهيتها — لا صفحةَ له) ⇐ صفحةُ العمل. */
   if (REVIEW_KINDS.has(s.kind) && s.tmdbId) {
     /* 🆕 T496 — صفحةُ التعليق الذي جرى فيه التفاعل: صاحبُه إن عُرف، وإلّا أنا (إعجابُ تعليقي وردٌّ عليه) */
     const owner = s.ownerId || myId;
-    return owner ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${owner}` : titleHref;
+    return owner ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${owner}${at}` : titleHref;
   }
   if (s.kind === "like_activity" && titleHref) return titleHref;
   return profileHref(s.person) ?? titleHref;
+}
+
+/**
+ * 🆕 T509 — **صورةُ الفاعل تفتح حسابَه** (أحمد ٢٢ نوفمبر «١٤ ب»: «اذا ضغطت على افتار الشخص يوديني حسابه»)، والسطرُ يفتح
+ * مكانَ التفاعل (`signalHref`). من أخفى اسمه لا حسابَ يُفتح — فتبقى صورتُه جزءاً من السطر.
+ */
+export function signalPersonHref(s: SignalRow): string | null {
+  return s.person.hide_name ? null : profileHref(s.person);
 }

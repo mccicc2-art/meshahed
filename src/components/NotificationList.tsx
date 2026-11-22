@@ -4,7 +4,7 @@ import { Avatar } from "./Avatar";
 import type { Signal } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { curatedName } from "@/core/universes";
-import { signalHref, signalParts } from "@/core/signals";
+import { signalHref, signalParts, signalPersonHref } from "@/core/signals";
 import { timeAgo } from "@/core/when";
 import { FollowRequestActions } from "./FollowRequestActions";
 
@@ -82,39 +82,49 @@ export function NotificationList({
           </>
         );
 
-        const body = (
-          <span className="flex items-center gap-3 py-3">
-            <Avatar
-              src={s.person.hide_name ? null : s.person.avatar_url}
-              name={s.person.hide_name ? t.anonymousUser : s.person.nickname}
-              size={40}
-            />
-            <span className="min-w-0 flex-1">
-              {/* 🆕 **والشارةُ صارت بجانب الاسم داخل الجملة** (D-775،
-                  تصحيحُ D-773ب) — **لا في آخر السطر.** والجملةُ تُشقُّ
-                  عند موضع الاسم (انظر `parts`).
-                  ⚠️ **والشارةُ داخلَ `<p>` لا خارجَها**: `inline-flex`
-                  يجعلها تسبح مع النصّ فتلتفّ معه في سطرٍ ثانٍ ولا تُترك
-                  وحدَها — **وشارةٌ في سطرٍ خالٍ أسوأُ من شارةٍ متأخّرة.** */}
-              <p className="text-14 leading-snug">{sentence}</p>
-              <span className="block text-12 text-muted mt-0.5">{timeAgo(s.at, t)}</span>
-            </span>
-            {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
-            {s.isNew && <span className="shrink-0 w-2 h-2 rounded-full bg-accent" aria-hidden />}
+        /* 🆕 T509 — **الصورةُ تفتح حسابَ صاحبها والسطرُ يفتح مكانَ التفاعل** (أحمد ٢٢ نوفمبر «١٤ ب»): كان السطرُ كلُّه رابطاً واحداً،
+           فلا طريقَ إلى حساب من ردّ أو أعجب إلّا من صفحة الردّ. رابطان متجاوران لا متداخلان (رابطٌ داخل رابطٍ لا يصحّ) */
+        const who = signalPersonHref(s);
+        const avatar = (
+          <Avatar
+            src={s.person.hide_name ? null : s.person.avatar_url}
+            name={s.person.hide_name ? t.anonymousUser : s.person.nickname}
+            size={40}
+          />
+        );
+        const text = (
+          <span className="block py-3">
+            {/* 🆕 **والشارةُ صارت بجانب الاسم داخل الجملة** (D-775،
+                تصحيحُ D-773ب) — **لا في آخر السطر.** والجملةُ تُشقُّ
+                عند موضع الاسم (انظر `parts`).
+                ⚠️ **والشارةُ داخلَ `<p>` لا خارجَها**: `inline-flex`
+                يجعلها تسبح مع النصّ فتلتفّ معه في سطرٍ ثانٍ ولا تُترك
+                وحدَها — **وشارةٌ في سطرٍ خالٍ أسوأُ من شارةٍ متأخّرة.** */}
+            <p className="text-14 leading-snug">{sentence}</p>
+            <span className="block text-12 text-muted mt-0.5">{timeAgo(s.at, t)}</span>
           </span>
         );
 
         return (
           <li key={`${s.kind}-${s.person.id}-${s.at}-${i}`} className="flex items-center gap-3">
+            {who ? (
+              <Link href={who} prefetch={false} aria-label={p.who} className="shrink-0 rounded-full">
+                {avatar}
+              </Link>
+            ) : (
+              <span className="shrink-0">{avatar}</span>
+            )}
             <span className="min-w-0 flex-1">
               {href ? (
                 <Link href={href} prefetch={false} className="block">
-                  {body}
+                  {text}
                 </Link>
               ) : (
-                body
+                text
               )}
             </span>
+            {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
+            {s.isNew && <span className="shrink-0 w-2 h-2 rounded-full bg-accent" aria-hidden />}
             {s.kind === "request" && pending.includes(s.person.id) ? <FollowRequestActions personId={s.person.id} locale={locale} /> : null}
           </li>
         );

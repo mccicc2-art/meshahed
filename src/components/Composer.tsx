@@ -37,8 +37,11 @@ export function Composer({
   onCancel,
   onSendTitle,
   mentionPeople,
+  initial,
 }: {
   locale: Locale;
+  /** 🆕 T509 — نصٌّ يبدأ به الصندوق: «@اسم » للردِّ على ردٍّ بأسلوب إنستغرام («١٦ أ») — يُكتب بعده ويُحذف إن شاء */
+  initial?: string;
   /**
    * 🆕 T504 — **اقتراحُ المنشن** (أحمد «١٣ أ»): من كتبوا في الصفحة — ووجودُه يفتح الاقتراحَ كلَّه (ثمّ من أتابعهم، ثمّ أيُّ عضوٍ
    * بالبحث). غائبٌ في صناديق الخطّ والأخبار كما كانت.
@@ -87,7 +90,7 @@ export function Composer({
 }) {
   const t = getDict(locale);
   const [titleOpen, setTitleOpen] = useState(false);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initial ?? "");
   /* 🆕 T504 — المنشن: يعمل حيث مرّر المستدعي `mentionPeople` (النقاشُ والردود) */
   const mention = useMentionSuggest(body, setBody, mentionPeople ?? [], !!mentionPeople);
   const [spoiler, setSpoiler] = useState(false);

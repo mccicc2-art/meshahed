@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { signalHref, signalParts, type SignalRow } from "./signals.ts";
+import { signalHref, signalParts, signalPersonHref, type SignalRow } from "./signals.ts";
 import { getDict } from "./i18n.ts";
 
 /**
@@ -98,4 +98,27 @@ test("T498 — الجملُ والوجهاتُ الجديدة", () => {
   assert.equal(signalHref(row({ kind: "list_save", listId: "L1" }), ME), "/lists/L1");
   /* من أُخرج من قائمةٍ قد تكون خاصّة لا يُرسَل إليها: ملفُّ من أخرجه */
   assert.equal(signalHref(row({ kind: "list_removed", listId: "L2" }), ME), "/u/mishal");
+});
+
+test("T509 — الوجهةُ على الردِّ نفسِه (`?r=`)، والصورةُ تفتح الحساب", () => {
+  const R = "5b7c2a9e-3333-4a2b-9c3d-000000000003";
+  const O = "5b7c2a9e-4444-4a2b-9c3d-000000000004";
+  assert.equal(signalHref(row({ kind: "reply_like", tmdbId: 7, mediaType: "movie", ownerId: O, item: R }), ME), `/review/movie/7/${O}?r=${R}`);
+  assert.equal(signalHref(row({ kind: "reply_reply", tmdbId: 7, mediaType: "tv", ownerId: O, item: R }), ME), `/review/tv/7/${O}?r=${R}`);
+  assert.equal(signalHref(row({ kind: "news_reply_like", ref: "abc", item: R }), ME), `/post/abc?r=${R}`);
+  assert.equal(signalHref(row({ kind: "mention_news", ref: "a b", item: R }), ME), `/post/a%20b?r=${R}`);
+  assert.equal(signalHref(row({ kind: "talk_like", tmdbId: 7, mediaType: "tv", item: R }), ME), `/talk/tv/7?r=${R}`);
+  assert.equal(signalHref(row({ kind: "mention_talk", tmdbId: 0, item: R }), ME), `/talk/general/0?r=${R}`);
+  /* معرّفٌ ليس بشكله لا يدخل الرابط — والقائمةُ تبقى صفحتَها */
+  assert.equal(signalHref(row({ kind: "reply", tmdbId: 7, mediaType: "movie", item: "x?y" }), ME), `/review/movie/7/${ME}`);
+  assert.equal(signalHref(row({ kind: "list_reply", listId: "L1", item: R }), ME), "/lists/L1");
+  assert.equal(signalPersonHref(row({ kind: "reply_like" })), "/u/mishal");
+  assert.equal(signalPersonHref(row({ kind: "reply_like", person: { ...P, hide_name: true } })), null);
+  for (const lang of ["ar", "en"] as const) {
+    for (const kind of ["reply_like", "news_reply_like", "mention_news"] as const) {
+      const p = signalParts(row({ kind, title: "Clayface" }), getDict(lang), "");
+      assert.equal(p.who, "مشعل");
+      assert.ok(`${p.pre}${p.post}`.includes("Clayface"));
+    }
+  }
 });

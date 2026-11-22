@@ -19,6 +19,7 @@ import {
   type TitleReview,
 } from "@/lib/data";
 import { getMovie, getTv } from "@/lib/tmdb";
+import { getReplyLikes } from "@/lib/threadLikes";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
 import { getBatchTranslations } from "@/lib/translate";
@@ -195,7 +196,7 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
   if (!line) return null;
   const likeKey = `${post.media_type}-${post.tmdb_id}`;
   const [replies, views, reactions, work, me] = await Promise.all([
-    getNewsThread(key),
+    getNewsThread(key).then((rows) => withReplyLikes("news", rows)),
     getPostViewCounts([newsViewKey(key)]),
     getReactions([post.tmdb_id]),
     workOf(post.tmdb_id, post.media_type, locale, post.title),
@@ -216,11 +217,13 @@ export async function postPayload(key: string): Promise<ThreadPayload | null> {
       likes: reactions.counts[likeKey] ?? 0,
       liked_by_me: reactions.mine.has(likeKey),
     },
-    rows: replies.map((r) =>
-      plainRow({ id: r.replyId, person: person(r, r.authorId), parent_id: r.parentId, body: r.body, created_at: r.createdAt, mine: r.isMine }),
-    ),
+    rows: replies.rows.map((r) => ({
+      ...plainRow({ id: r.replyId, person: person(r, r.authorId), parent_id: r.parentId, body: r.body, created_at: r.createdAt, mine: r.isMine }),
+      ...replies.likes(r.replyId),
+    })),
     nested: false,
-    has_likes: false,
+    /* 🆕 T509 — قلبٌ على كلِّ ردّ («١٥ أ») ما دام قارئُه قائماً (الهجرة ٢٥٩) */
+    has_likes: replies.ok,
     has_votes: false,
     share_path: `/post/${encodeURIComponent(key)}`,
   });
@@ -234,7 +237,7 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
   const [user, reviews, allReplies, views, work, me] = await Promise.all([
     getUser(),
     getTitleReviews(tmdbId, kind),
-    getTitleReplies(tmdbId, kind),
+    getTitleReplies(tmdbId, kind).then((rows) => withReplyLikes("review", rows.filter((x) => x.reviewUserId === authorId))),
     getPostViewCounts([commentViewKey(authorId, kind, tmdbId)]),
     tP.then(({ locale }) => workOf(tmdbId, kind, locale, "")),
     getMyProfileLite(),
@@ -259,14 +262,23 @@ export async function reviewPayload(tmdbId: number, kind: Kind, authorId: string
       liked_by_me: r.likedByMe,
       mine: r.isMine,
     },
-    rows: allReplies
-      .filter((x) => x.reviewUserId === authorId)
-      .map((x) => plainRow({ id: x.replyId, person: person(x, x.id), parent_id: x.parentId, body: x.body, created_at: x.createdAt, mine: x.isMine })),
+    rows: allReplies.rows.map((x) => ({
+      ...plainRow({ id: x.replyId, person: person(x, x.id), parent_id: x.parentId, body: x.body, created_at: x.createdAt, mine: x.isMine }),
+      ...allReplies.likes(x.replyId),
+    })),
     nested: false,
-    has_likes: false,
+    /* 🆕 T509 — قلبٌ على كلِّ ردّ («١٥ أ») ما دام قارئُه قائماً (الهجرة ٢٥٩) */
+    has_likes: allReplies.ok,
     has_votes: false,
     share_path: `/review/${kind}/${tmdbId}/${authorId}`,
   });
+}
+
+/** 🆕 T509 — الردودُ ومعها قلوبُها (`getReplyLikes`) — `ok: false` يُخفي القلب */
+async function withReplyLikes<T extends { replyId: string }>(scope: "review" | "news", rows: T[]) {
+  const l = await getReplyLikes(scope, rows.map((r) => r.replyId));
+  const mine = new Set(l.mine);
+  return { rows, ok: l.ok, likes: (id: string) => ({ likes: l.counts[id] ?? 0, liked_by_me: mine.has(id) }) };
 }
 
 /* 🆕 T504 — أيُّ `@اسم` في الصفحة حسابٌ قائم (`realMentions`) — فالواجهةُ ترسمه رابطاً ولو لم يكتب صاحبُه هنا */

@@ -19,10 +19,19 @@ import { hasGoldBadge, isAiPersona, isFounder, isPartner, isPlus, isVerified, ty
  *
  * الألوانُ ثابتةٌ هناك (`BRAND` · `INK`) لا ثيميّة — علامةٌ لا سطح؛ والمقاساتُ نسبةٌ من خطِّ الاسم (`PILL_EM`
  * ٠٫٨٢): العرضُ إلى الارتفاع ٣٨:١٦ (PLUS) و٦٢:١٦ (PARTNER)، نصفُ القطر ٥:١٦، الخطُّ ٩:١٦.
+ * 🆕 T510 — **قرصُ الكلمة (PLUS · PARTNER · AI) بقامة حروف الاسم** (`WORD_EM`، أحمد ٢٢ نوفمبر بالمسطرة على لقطة «KHALID
+ * ALSEHLI»: «يساوي أعلى الكلمة وأسفل الكلمة»، ثمّ «بلس ثقّلها»): كان أطولَ من الحروف الكبيرة (٠٫٨٢ من الخطّ، وقامتُها ٠٫٧)،
+ * فصار بقامتها، والكلمةُ بوزن ٨٠٠ والإطارُ ١٫٥ — فلا يخفّ وقد قصُر. والقرصُ عائلةٌ واحدة فتبعه PARTNER وAI؛ وGOLD باقٍ على
+ * `PILL_EM` (أحمد: «قولد ممتاز»).
  */
 const BRAND = "#FFD400";
 const INK = "#050505";
 const PILL_EM = 0.82;
+/** قامةُ الحرف الكبير في Poppins (٠٫٧ من الخطّ) — ارتفاعُ قرص الكلمة */
+const WORD_EM = 0.7;
+/** نِسَبُ قرص الكلمة من ارتفاعه (لوحُ T510): الخطُّ ٨٫٤:١٦، العرضُ ٣٢:١٦ (PLUS) · ٥٤:١٦ (PARTNER) · ٢١:١٦ (AI) */
+const WORD_FS = 8.4 / 16;
+const WORD_BORDER = 1.5;
 const VERIFIED = require("../assets/icons/verified-badge.png");
 
 /** الحالُ مقروءةً من صفّ الحساب (`PlanBearer`) — أو محسوبةً في الخادم كما في `/api/v1/me/settings` */
@@ -103,8 +112,12 @@ function GoldPill({ hgt, label }: { hgt: number; label: string }) {
  * 🆕 D-1454 — `sealOnly`: ختمُ التوثيق وحدَه بلا حبّة PARTNER/PLUS — للتنبيهات (أحمد ١٧ أكتوبر: «في التنبيهات لا تظهر علامة
  * شريك أو بلس، فقط الصح حقّ التوثيق»)، حيث الشارةُ عقدةٌ داخل جملةٍ عربيّةٍ والحبّةُ العريضةُ تتداخل مع الاسم على iOS.
  */
-export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: IdentityFlags; nameSize: number; sealOnly?: boolean }) {
-  const { t } = useApp();
+/**
+ * 🆕 T510 — `onGold`: شارةُ GOLD تُضغط فتفتح لوحةَ الداعمين (أحمد ٢٢ نوفمبر: «إذا أحد ضغط على قولد يوديه لصفحة الداعمين») —
+ * بدلَ سطر «♡ داعم لوبز منذ …» الذي حُذف من الملفّ. الشكلُ هو هو، واللمسُ يتّسع بـ`hitSlop` لأنّ القرصَ أصغرُ من الإصبع.
+ */
+export function IdentityBadges({ flags, nameSize, sealOnly = false, onGold }: { flags: IdentityFlags; nameSize: number; sealOnly?: boolean; onGold?: () => void }) {
+  const { t, fontsReady } = useApp();
   /* 🆕 D-1563 — «AI» تظهر حتى مع `sealOnly`: هي ما يقول من الكاتب، لا طبقةٌ تُخفى في التنبيهات */
   const ai = !!flags.ai;
   /* 🆕 ⚖️ **و«FOUNDER» حُذفت** (أحمد ٢ نوفمبر ٢٠٢٦: «فاندر شيلها»، نقضٌ لـD-833): **الشارةُ تقول الاشتراكَ وحدَه** — كالويب حرفاً
@@ -113,27 +126,38 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
   const gold = !sealOnly && !!flags.gold;
   const word = sealOnly || gold ? null : flags.partner ? "PARTNER" : flags.plus ? "PLUS" : null;
   const hgt = nameSize * PILL_EM;
+  /* 🆕 T510 — قرصُ الكلمة بقامة حروف الاسم (انظر `WORD_EM`) */
+  const wh = nameSize * WORD_EM;
+  const wfs = WORD_FS * wh;
   /* الختمُ بمقاس الرئيسيّة عند اسمٍ ٢٠ (١٦) — ويتناسب مع أيِّ اسم */
   const seal = Math.round((16 / 20) * nameSize);
+  const wordPill = (text: "PLUS" | "PARTNER" | "AI", w: number, tracking: number, label: string) => (
+    <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * wh, height: wh, borderRadius: (5 / 16) * wh, borderWidth: WORD_BORDER, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
+      <Text size={wfs} weight="700" color={BRAND} style={[{ letterSpacing: (tracking / 9) * wfs, lineHeight: wfs * 1.15, writingDirection: "ltr" }, fontsReady ? GOLD_WEIGHT : null, wordNudge(wfs)]}>{text}</Text>
+    </View>
+  );
   return (
     <>
-      {ai ? (
-        <View accessibilityRole="image" accessibilityLabel={t.aiBadge} style={{ width: (24 / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
-          <Text size={(9 / 16) * hgt} weight="700" color={BRAND} style={[{ letterSpacing: (0.6 / 9) * ((9 / 16) * hgt), lineHeight: (9 / 16) * hgt * 1.15, writingDirection: "ltr" }, wordNudge((9 / 16) * hgt)]}>AI</Text>
-        </View>
+      {ai ? wordPill("AI", 21, 0.6, t.aiBadge) : null}
+      {gold ? (
+        onGold ? (
+          <Pressable
+            onPress={() => {
+              haptic.pick();
+              onGold();
+            }}
+            accessibilityRole="link"
+            accessibilityLabel={t.goldBadge}
+            hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <GoldPill hgt={hgt} label={t.goldBadge} />
+          </Pressable>
+        ) : (
+          <GoldPill hgt={hgt} label={t.goldBadge} />
+        )
       ) : null}
-      {gold ? <GoldPill hgt={hgt} label={t.goldBadge} /> : null}
-      {word ? (() => {
-        const w = word === "PLUS" ? 38 : 62;
-        const tracking = word === "PLUS" ? 1.3 : 1.1;
-        const fs = (9 / 16) * hgt;
-        const label = word === "PARTNER" ? t.partnerBadge : t.plusBadge;
-        return (
-          <View accessibilityRole="image" accessibilityLabel={label} style={{ width: (w / 16) * hgt, height: hgt, borderRadius: (5 / 16) * hgt, borderWidth: 1, borderColor: BRAND, backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
-            <Text size={fs} weight="700" color={BRAND} style={[{ letterSpacing: (tracking / 9) * fs, lineHeight: fs * 1.15, writingDirection: "ltr" }, wordNudge(fs)]}>{word}</Text>
-          </View>
-        );
-      })() : null}
+      {word === "PLUS" ? wordPill("PLUS", 32, 1.3, t.plusBadge) : word === "PARTNER" ? wordPill("PARTNER", 54, 1.1, t.partnerBadge) : null}
       {flags.verified ? <Image source={VERIFIED} style={{ width: seal, height: seal }} contentFit="contain" accessibilityLabel={t.verifiedBadge} /> : null}
     </>
   );
@@ -142,13 +166,12 @@ export function IdentityBadges({ flags, nameSize, sealOnly = false }: { flags: I
 /**
  * 🆕 D-gold-perks — **زرُّ Gold المحدَّد** (أحمد ١٠ نوفمبر: «بدل سهم … خلي بنفس حجم قولد زر اللوحة وزر انضم»): إطارٌ ذهبيٌّ ونصٌّ
  * ذهبيٌّ على السطح، والشارةُ نفسُها ممتلئةٌ — فلا يُخلط الزرُّ بالشارة. مقاسان لا شكلان:
- * · `badge` — بارتفاع شارة GOLD بجانب اسمٍ ٢٠ (٠٫٨٢ منه) وعرضِها المقيس؛ في صفوف صفحة الاشتراك.
- * · `line` — سطرٌ قابلٌ للضغط تحت النبذة («♡ داعم لوبز منذ …» في الملفّ).
+ * بارتفاع شارة GOLD بجانب اسمٍ ٢٠ (٠٫٨٢ منه) وعرضِها المقيس؛ في صفوف صفحة الاشتراك.
+ * 🆕 T510 — مقاسُ `line` (سطرُ «♡ داعم لوبز منذ …» تحت النبذة) حُذف مع السطر: صار البابُ شارةَ GOLD نفسَها (`onGold`).
  * الارتفاعُ حدٌّ أدنى لا ثابت (خطُّ الواجهة الكبير يكبر ولا يُقصّ)، واللمسُ ٤٤ بـ`hitSlop` لأنّ الشكلَ أصغرُ منها.
  */
-export function GoldButton({ label, onPress, size = "badge", width, a11yRole = "button" }: { label: string; onPress: () => void; size?: "badge" | "line"; width?: number; a11yRole?: "button" | "link" }) {
+export function GoldButton({ label, onPress, width, a11yRole = "button" }: { label: string; onPress: () => void; width?: number; a11yRole?: "button" | "link" }) {
   const ink = useGoldText();
-  const badge = size === "badge";
   const hgt = 20 * 0.82;
   return (
     <Pressable
@@ -158,13 +181,13 @@ export function GoldButton({ label, onPress, size = "badge", width, a11yRole = "
       }}
       accessibilityRole={a11yRole}
       accessibilityLabel={label}
-      hitSlop={badge ? { top: 14, bottom: 14, left: 10, right: 10 } : 8}
+      hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }}
       style={({ pressed }) => ({
-        minWidth: badge ? width || 48 : undefined,
-        minHeight: badge ? hgt : undefined,
-        paddingHorizontal: badge ? 6 : 10,
-        paddingVertical: badge ? 0 : 3,
-        borderRadius: badge ? (5 / 16) * hgt : 999,
+        minWidth: width || 48,
+        minHeight: hgt,
+        paddingHorizontal: 6,
+        paddingVertical: 0,
+        borderRadius: (5 / 16) * hgt,
         borderWidth: 1,
         borderColor: GOLD_FRAME,
         flexDirection: "row",
@@ -173,7 +196,7 @@ export function GoldButton({ label, onPress, size = "badge", width, a11yRole = "
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Text size={badge ? 10 : 12} weight={badge ? "800" : "700"} color={ink} numberOfLines={1} style={badge ? { lineHeight: 13 } : undefined}>{label}</Text>
+      <Text size={10} weight="800" color={ink} numberOfLines={1} style={{ lineHeight: 13 }}>{label}</Text>
     </Pressable>
   );
 }

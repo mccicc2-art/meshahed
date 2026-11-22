@@ -7,6 +7,7 @@ import {
   type PlanBearer,
 } from "@/core/plan";
 import type { Dict } from "@/core/i18n";
+import Link from "next/link";
 
 /**
  * 🆕 **أصغرُ ما تحتاجه الشارةُ من القاموس** (D-773ب).
@@ -91,6 +92,12 @@ const INK = "#050505";
  * والختمَ معاً** فلا يفترقان.
  */
 const PILL_EM = 0.82;
+/**
+ * 🆕 T510 — **قرصُ الكلمة (PLUS · PARTNER · AI) بقامة حروف الاسم** (أحمد ٢٢ نوفمبر بالمسطرة: «يساوي أعلى الكلمة وأسفل
+ * الكلمة»، ثمّ «بلس ثقّلها»): ٠٫٧em هي قامةُ الحرف الكبير في Poppins، والكلمةُ ٨٫٤:١٦ منه بوزن ٨٠٠ والإطارُ ١٫٥ — صنوُ
+ * `IdentityBadges` في التطبيق. وGOLD باقٍ على `PILL_EM` («قولد ممتاز»).
+ */
+const WORD_EM = 0.7;
 
 /**
  * **قرصُ الطبقة** — مصنعٌ واحد، والفرقُ بين الحالتين **عرضٌ وكلمةٌ
@@ -129,19 +136,19 @@ function Pill({
            نفسِها.** ⚠️ **ونِسَبُ اللوح محفوظةٌ حرفاً**: العرضُ إلى
            الارتفاع ٣٨:١٦ و٦٢:١٦، ونصفُ القطر ٥:١٦، والخطُّ ٩:١٦ —
            **الشكلُ هو هو، والذي تغيّر وحدةُ قياسه.** */
-        width: `${(width / 16) * PILL_EM}em`,
-        height: `${PILL_EM}em`,
+        width: `${(width / 16) * WORD_EM}em`,
+        height: `${WORD_EM}em`,
         boxSizing: "border-box",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         flex: "0 0 auto",
         background: INK,
-        border: `1px solid ${BRAND}`,
-        borderRadius: `${(5 / 16) * PILL_EM}em`,
+        border: `1.5px solid ${BRAND}`,
+        borderRadius: `${(5 / 16) * WORD_EM}em`,
         color: BRAND,
         fontFamily: "var(--font-sans)",
-        fontWeight: 700,
+        fontWeight: 800,
         lineHeight: 1,
         textTransform: "uppercase",
         /* 🔴 **ولا `fontSize` على هذا العنصر — والسببُ فخٌّ وقعتُ فيه**:
@@ -174,7 +181,7 @@ function Pill({
       <span
         className="lz-pill-word"
         style={{
-          fontSize: `${(9 / 16) * PILL_EM}em`,
+          fontSize: `${(8.4 / 16) * WORD_EM}em`,
           letterSpacing: `${tracking / 9}em`,
         }}
       >
@@ -250,13 +257,13 @@ export function PlanPill({
   if (tier === "gold") return <GoldPill label={t.goldBadge} />;
   if (tier === "partner")
     return (
-      <Pill word="PARTNER" width={62} tracking={1.1} label={t.partnerBadge} />
+      <Pill word="PARTNER" width={54} tracking={1.1} label={t.partnerBadge} />
     );
   if (tier === "plus")
     return (
       <Pill
         word="PLUS"
-        width={38}
+        width={32}
         tracking={1.3}
         label={t.plusBadge}
       />
@@ -275,7 +282,7 @@ export function PlanPill({
  */
 /** 🆕 D-1563 — شارةُ شخصيّات لوبز AI: القرصُ نفسُه (`Pill`) بالكلمة «AI» — صغيرةٌ بجانب الاسم في كلِّ سطح (قرار أحمد «١أ») */
 export function AiPill({ t }: { t: BadgeLabels }) {
-  return <Pill word="AI" width={24} tracking={0.6} label={t.aiBadge} />;
+  return <Pill word="AI" width={21} tracking={0.6} label={t.aiBadge} />;
 }
 
 export function VerifiedBadge({ t }: { t: BadgeLabels }) {
@@ -351,10 +358,13 @@ export function AccountBadges({
   profile,
   t,
   className = "",
+  goldHref,
 }: {
   profile: PlanBearer | null | undefined;
   t: BadgeLabels;
   className?: string;
+  /** 🆕 T510 — شارةُ GOLD رابطٌ (رأسُ الملفّ: إلى لوحة الداعمين، بدلَ سطر «داعم لوبز منذ» المحذوف) */
+  goldHref?: string;
 }) {
   const { tier, verified, ai } = identityOf(profile);
   if (!tier && !verified && !ai) return null;
@@ -365,7 +375,13 @@ export function AccountBadges({
     >
       {/* 🆕 D-1563 — «AI» أوّلاً: هي ما يقول من الكاتب (والشخصيّةُ لا طبقةَ لها أصلاً) */}
       {ai ? <AiPill t={t} /> : null}
-      <PlanPill tier={tier} t={t} />
+      {tier === "gold" && goldHref ? (
+        <Link href={goldHref} prefetch={false} className="inline-flex transition hover:opacity-80">
+          <PlanPill tier={tier} t={t} />
+        </Link>
+      ) : (
+        <PlanPill tier={tier} t={t} />
+      )}
       {verified ? <VerifiedBadge t={t} /> : null}
     </span>
   );

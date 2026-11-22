@@ -2794,6 +2794,8 @@ export interface Signal {
   ownerId?: string | null;
   /** 🆕 T498 — مفتاحُ خبر Loopz (`ref` في `my_signals_v3`) */
   ref?: string | null;
+  /** 🆕 T509 — الردُّ أو المشاركةُ التي جرى فيها التفاعل (`item` في `my_signals_v4`) — الضغطةُ تفتح عليها */
+  item?: string | null;
 }
 
 /**
@@ -2807,7 +2809,9 @@ export async function mySignals(): Promise<Signal[]> {
   /* 🆕 T496 — `my_signals_v2` (الهجرة ٢٥٥) تزيد `owner_id`، و🆕 T498 `my_signals_v3` (٢٥٦) تزيد `ref`. **الكودُ يسبق الهجرة**:
      غيابُ الأحدث (PGRST202 · 42883) ⇐ الذي قبله، فلا يتعطّل الجرسُ بين الرفع والتشغيل */
   const missing = (e: { code?: string } | null) => !!e && (e.code === "PGRST202" || e.code === "42883");
-  let { data, error } = await supabase.rpc("my_signals_v3");
+  /* 🆕 T509 — و`my_signals_v4` (٢٥٩) تزيد `item` */
+  let { data, error } = await supabase.rpc("my_signals_v4");
+  if (missing(error)) ({ data, error } = await supabase.rpc("my_signals_v3"));
   if (missing(error)) ({ data, error } = await supabase.rpc("my_signals_v2"));
   if (missing(error)) ({ data, error } = await supabase.rpc("my_signals"));
   if (error) fail(error);
@@ -2828,6 +2832,7 @@ export async function mySignals(): Promise<Signal[]> {
     list_slug?: string | null;
     owner_id?: string | null;
     ref?: string | null;
+    item?: string | null;
   }[]).map((r) => ({
     kind: r.kind,
     person: {
@@ -2846,6 +2851,7 @@ export async function mySignals(): Promise<Signal[]> {
     listSlug: r.list_slug ?? null,
     ownerId: r.owner_id ?? null,
     ref: r.ref ?? null,
+    item: r.item ?? null,
   }));
   /* 🆕 **والشخصُ متداخلٌ هنا** (D-773ب) — فالإلحاقُ يدخل `person` نفسَه */
   return withPersonIdentities(signals);

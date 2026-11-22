@@ -1129,6 +1129,13 @@ const ar = {
     title ? `ردّ ${who} على ردّك في «${title}»` : `ردّ ${who} على ردّك في خبر من Loopz`,
   notifMentionReply: (who: string, title: string) =>
     title ? `ذكرك ${who} في ردٍّ على «${title}»` : `ذكرك ${who} في ردّ`,
+  /* 🆕 T509 — أعجب بردّك تحت تعليق · تحت خبر · وذكرُك في ردٍّ تحت خبر (الهجرة ٢٥٩) */
+  notifReplyLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بردّك على «${title}»` : `أعجب ${who} بردّك`,
+  notifNewsReplyLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بردّك في «${title}»` : `أعجب ${who} بردّك في خبر من Loopz`,
+  notifMentionNews: (who: string, title: string) =>
+    title ? `ذكرك ${who} في ردٍّ على «${title}»` : `ذكرك ${who} في ردٍّ على خبر من Loopz`,
   notifMentionList: (who: string, list: string) =>
     list ? `ذكرك ${who} في ردٍّ في قائمة «${list}»` : `ذكرك ${who} في ردٍّ في إحدى القوائم`,
   notifMentionTalk: (who: string, title: string) =>
@@ -4530,6 +4537,12 @@ const en: Dict = {
     title ? `${who} replied to your reply on “${title}”` : `${who} replied to your reply on a Loopz post`,
   notifMentionReply: (who: string, title: string) =>
     title ? `${who} mentioned you in a reply on “${title}”` : `${who} mentioned you in a reply`,
+  notifReplyLike: (who: string, title: string) =>
+    title ? `${who} liked your reply on “${title}”` : `${who} liked your reply`,
+  notifNewsReplyLike: (who: string, title: string) =>
+    title ? `${who} liked your reply on “${title}”` : `${who} liked your reply on a Loopz post`,
+  notifMentionNews: (who: string, title: string) =>
+    title ? `${who} mentioned you in a reply on “${title}”` : `${who} mentioned you in a reply on a Loopz post`,
   notifMentionList: (who: string, list: string) =>
     list ? `${who} mentioned you in a reply on the list “${list}”` : `${who} mentioned you in a reply on a list`,
   notifMentionTalk: (who: string, title: string) =>

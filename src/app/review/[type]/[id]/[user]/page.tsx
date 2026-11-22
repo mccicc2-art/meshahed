@@ -32,6 +32,7 @@ import { Icon } from "@/components/Icon";
 import { TitleHero } from "@/components/TitleHero";
 import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
+import { getReplyLikes } from "@/lib/threadLikes";
 
 export const dynamic = "force-dynamic";
 
@@ -306,6 +307,8 @@ export default async function ReviewPage({
         locale={locale}
         signedIn={!!me}
         mentioned={await realMentions([r.review, ...replies.map((x) => x.body)])}
+        /* 🆕 T509 — قلبٌ على كلِّ ردّ («١٥ أ»، الهجرة ٢٥٩) — يغيب إن غاب قارئُه فلا يُرسم زرّ */
+        likes={await getReplyLikes("review", replies.map((x) => x.replyId)).then((l) => (l.ok ? l : undefined))}
       />
       </div>
       <TalkSide>

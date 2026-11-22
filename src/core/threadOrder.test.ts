@@ -40,7 +40,8 @@ test("الردّ: حتى العمق ٣ في الغرفة، وتحت الجذر �
   assert.equal(canReplyTo(r("a", 1), MAX_DEPTH - 1, true), true);
   assert.equal(canReplyTo(r("a", 1), MAX_DEPTH, true), false);
   assert.equal(canReplyTo(r("a", 1), 0, false), true);
-  assert.equal(canReplyTo(r("b", 1, { parent: "a" }), 1, false), false);
+  /* 🆕 T509 — المسطَّحُ يقبل الردَّ على الردّ (يُكتب تحت أصله الأعلى) */
+  assert.equal(canReplyTo(r("b", 1, { parent: "a" }), 1, false), true);
 });
 
 test("أجسامُ الأفعال: الصورةُ والـGIF والحرقُ للغرفة وحدَها، والفارغُ يُرفض", () => {

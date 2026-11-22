@@ -43,6 +43,10 @@ export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
   mention_reply: "replies",
   mention_list: "replies",
   mention_talk: "replies",
+  /* 🆕 T509 — قلبٌ على ردّك مع «الإعجابات»، وذكرُك تحت خبر مع «الردود» كأخواته */
+  reply_like: "likes",
+  news_reply_like: "likes",
+  mention_news: "replies",
   /* 🆕 234 — دعوةٌ من شخصٍ تتابعه: مع «المتابعات» (أختُ طلب المتابعة) */
   list_invite: "follows",
   list_review: "replies",
