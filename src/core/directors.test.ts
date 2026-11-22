@@ -21,6 +21,11 @@ test("accents and case do not break the match, a different name never matches", 
   assert.equal(pickDirector([], "Denis Villeneuve"), null);
 });
 
+test("a translated name still matches through original_name", () => {
+  const hits = [{ id: 525, name: "كريستوفر نولان", original_name: "Christopher Nolan", known_for_department: "Directing", popularity: 30 }];
+  assert.equal(pickDirector(hits, "Christopher Nolan")?.id, 525);
+});
+
 test("keeps only what he directed himself, in release order, once", () => {
   const crew = [
     { id: 30, job: "Director", release_date: "2019-07-26" },

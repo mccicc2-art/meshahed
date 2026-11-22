@@ -1163,10 +1163,11 @@ export async function resolveSetIds(
  * - **وفيلمٌ تعثّرت تفاصيلُه يسقط** — لا يُعرف أطويلٌ هو أم قصير، والقائمةُ أصدقُ بدونه (D-074).
  */
 async function directorFilmIds(name: string, limit?: number): Promise<number[]> {
-  const hits = await tmdb<{ results?: { id: number; name: string; known_for_department?: string; popularity?: number }[] }>(
-    "/search/person",
-    { query: name, include_adult: "false" },
-  ).catch(() => null);
+  /* 🔴 T520 — **البحثُ بالإنجليزيّة صراحةً**: TMDB يردّ اسمَ الشخص بلغة الطلب («كريستوفر نولان» لجلسةٍ عربيّة —
+     رُئي على الإنتاج: القوائمُ العشر بُنيت فارغة)، والقاموسُ يكتبه بالإنجليزيّة. `language` تُبقي الردَّ كما هو (`tmdb()`) */
+  const hits = await tmdb<{
+    results?: { id: number; name: string; original_name?: string; known_for_department?: string; popularity?: number }[];
+  }>("/search/person", { query: name, include_adult: "false", language: "en-US" }).catch(() => null);
   const who = pickDirector(hits?.results ?? [], name);
   if (!who) return [];
   const credits = await tmdb<{ crew?: { id: number; job?: string; release_date?: string; video?: boolean }[] }>(

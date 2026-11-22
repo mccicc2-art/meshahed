@@ -14,6 +14,8 @@
 export interface PersonHit {
   id: number;
   name: string;
+  /** الاسمُ الأصليّ بحروفه — لا يُترجم مع لغة الطلب (T520) */
+  original_name?: string | null;
   known_for_department?: string | null;
   popularity?: number | null;
 }
@@ -40,7 +42,8 @@ const norm = (s: string) =>
 /** الشخصُ الذي اسمُه هذا تماماً، **ومن قسم الإخراج إن وُجد** — والأشهرُ عند التساوي. لا مطابقةَ تامّة = لا أحد. */
 export function pickDirector(results: readonly PersonHit[], name: string): PersonHit | null {
   const want = norm(name);
-  const exact = results.filter((r) => norm(r.name ?? "") === want);
+  /* 🔴 T520 — **والاسمُ الأصليُّ يُقبل أيضاً**: `name` يُترجم بلغة الطلب، و`original_name` لا */
+  const exact = results.filter((r) => norm(r.name ?? "") === want || norm(r.original_name ?? "") === want);
   if (!exact.length) return null;
   const byPop = (a: PersonHit, b: PersonHit) => (b.popularity ?? 0) - (a.popularity ?? 0);
   const directing = exact.filter((r) => r.known_for_department === "Directing").sort(byPop);
