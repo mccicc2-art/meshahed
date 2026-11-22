@@ -51,8 +51,12 @@ export function pickDirector(results: readonly PersonHit[], name: string): Perso
 }
 
 /** ما أخرجه بنفسه، بترتيب صدوره (الأقدمُ أوّلاً)، بلا تكرار ولا فيديو منزليّ ولا عملٍ بلا تاريخ */
-export function directedFilms(crew: readonly CrewCredit[]): { id: number; release_date: string }[] {
-  const seen = new Set<number>();
+export function directedFilms(
+  crew: readonly CrewCredit[],
+  /** 🆕 T521 — معرّفاتُ TMDB لما يُستبعد بالاسم من قائمة هذا المخرج (`Universe.directorSkip`) */
+  skip: readonly number[] = [],
+): { id: number; release_date: string }[] {
+  const seen = new Set<number>(skip);
   const out: { id: number; release_date: string }[] = [];
   for (const c of crew) {
     if (c.job !== "Director" || c.video) continue;
@@ -73,4 +77,17 @@ export function directedFilms(crew: readonly CrewCredit[]): { id: number; releas
 export function isFeature(runtime: number | null | undefined, releaseDate: string, today: string): boolean {
   if (runtime && runtime > 0) return runtime >= FEATURE_MINUTES;
   return releaseDate > today;
+}
+
+/**
+ * 🆕 T521 — **فيلمٌ مجمَّع؟** (أحمد «نفذ أ»): ثلاثةُ مخرجين فأكثر = فيلمٌ من مقاطع لكلِّ مخرجٍ مقطعُه
+ * (Four Rooms · Twilight Zone: The Movie · New York Stories · Cosmos) — **ليس فيلمَ المخرج، وقائمتُه لا تُخلط**
+ * («هذي قوائم للمخرجين لا تخلطها»). **ومخرجان يبقيان**: الإخراجُ المشترك عملٌ واحدٌ لهما معاً (Personality Crisis
+ * لسكورسيزي وتيديسكي).
+ */
+export const MAX_CO_DIRECTORS = 2;
+
+export function isAnthology(crew: readonly { id: number; job?: string | null }[]): boolean {
+  const ids = new Set(crew.filter((c) => c.job === "Director").map((c) => c.id));
+  return ids.size > MAX_CO_DIRECTORS;
 }

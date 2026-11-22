@@ -8,7 +8,7 @@ import { normalizeTerm, type MediaType } from "@/core/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
 import { gauge, op } from "@/lib/reqTrace";
 import { lengthMatches } from "@/core/browse";
-import { directedFilms, isFeature, pickDirector } from "@/core/directors";
+import { directedFilms, isAnthology, isFeature, pickDirector } from "@/core/directors";
 
 export {
   IMG,
@@ -1115,6 +1115,7 @@ export async function resolveSetIds(
     collectionId?: number;
     titles?: { title: string; year: number }[];
     director?: string;
+    directorSkip?: number[];
   },
   /**
    * 🆕 **حدُّ البطاقة** (D-388): بطاقةُ الرفّ تعرض ثلاثةَ ملصقات،
@@ -1126,7 +1127,7 @@ export async function resolveSetIds(
 ): Promise<number[]> {
   if (u.movieIds?.length) return limit ? u.movieIds.slice(0, limit) : u.movieIds;
   /* 🆕 T517 — **قائمةُ مخرجٍ تُحلّ من رصيده في TMDB** (أحمد: «٢ ب»): الجديدُ يدخلها وحدَه يومَ يُعلَن */
-  if (u.director) return directorFilmIds(u.director, limit);
+  if (u.director) return directorFilmIds(u.director, limit, u.directorSkip);
   /* 🆕 **قائمةٌ مشهورةٌ مكتوبةٌ بالأسماء** (D-388): **الاسمُ والسنةُ لا
      المعرّف** — **ومعرّفاتُ TMDB لا تُكتب باليد لمئة عملٍ بلا خطأ**
      (نصُّ `awards.ts` حرفاً)، **ومن لا يُطابَق يسقط بصمتٍ بدل أن يكسر
@@ -1162,7 +1163,7 @@ export async function resolveSetIds(
  * - **وحدُّ البطاقة يقطع الدورة** (`limit`، حجّةُ D-388): أربعةُ ملصقاتٍ لا تحتاج تفاصيلَ خمسين فيلماً لهيتشكوك.
  * - **وفيلمٌ تعثّرت تفاصيلُه يسقط** — لا يُعرف أطويلٌ هو أم قصير، والقائمةُ أصدقُ بدونه (D-074).
  */
-async function directorFilmIds(name: string, limit?: number): Promise<number[]> {
+async function directorFilmIds(name: string, limit?: number, skip: readonly number[] = []): Promise<number[]> {
   /* 🔴 T520 — **البحثُ بالإنجليزيّة صراحةً**: TMDB يردّ اسمَ الشخص بلغة الطلب («كريستوفر نولان» لجلسةٍ عربيّة —
      رُئي على الإنتاج: القوائمُ العشر بُنيت فارغة)، والقاموسُ يكتبه بالإنجليزيّة. `language` تُبقي الردَّ كما هو (`tmdb()`) */
   const hits = await tmdb<{
@@ -1173,22 +1174,30 @@ async function directorFilmIds(name: string, limit?: number): Promise<number[]> 
   const credits = await tmdb<{ crew?: { id: number; job?: string; release_date?: string; video?: boolean }[] }>(
     `/person/${who.id}/movie_credits`,
   ).catch(() => null);
-  const films = directedFilms(credits?.crew ?? []);
+  const films = directedFilms(credits?.crew ?? [], skip);
   const today = new Date().toISOString().slice(0, 10);
   const out: number[] = [];
   const CHUNK = 10;
   for (let i = 0; i < films.length && (!limit || out.length < limit); i += CHUNK) {
     const part = films.slice(i, i + CHUNK);
-    const runtimes = await Promise.all(
+    /* 🆕 T521 — **والمجمَّعُ يسقط** (`isAnthology`): طاقمُ الفيلم يعرف مخرجيه كلَّهم، ورصيدُ الشخص لا يعرف إلّا نفسَه.
+       `/credits` بلا أعمالٍ في ردِّها فلا يُسأل مرّتين (`NO_WORKS`)، ومخبَّأٌ ساعةً كالتفاصيل؛ **وتعثُّرُه لا يُسقط الفيلم** —
+       الطولُ وحدَه شرطُ البقاء، والمجمَّعُ استبعادٌ لا يُبنى على غياب */
+    const facts = await Promise.all(
       part.map((f) =>
-        tmdb<{ runtime?: number | null }>(`/movie/${f.id}`)
-          .then((m) => m.runtime ?? null)
-          .catch(() => undefined),
+        Promise.all([
+          tmdb<{ runtime?: number | null }>(`/movie/${f.id}`)
+            .then((m) => m.runtime ?? null)
+            .catch(() => undefined),
+          tmdb<{ crew?: { id: number; job?: string }[] }>(`/movie/${f.id}/credits`)
+            .then((c) => isAnthology(c.crew ?? []))
+            .catch(() => false),
+        ]),
       ),
     );
     part.forEach((f, k) => {
-      const rt = runtimes[k];
-      if (rt !== undefined && isFeature(rt, f.release_date, today)) out.push(f.id);
+      const [rt, anthology] = facts[k];
+      if (rt !== undefined && !anthology && isFeature(rt, f.release_date, today)) out.push(f.id);
     });
   }
   return limit ? out.slice(0, limit) : out;

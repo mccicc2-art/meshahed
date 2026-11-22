@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { directedFilms, isFeature, pickDirector } from "./directors.ts";
+import { directedFilms, isAnthology, isFeature, pickDirector } from "./directors.ts";
 
 /* T517 — قوائمُ المخرجين: الشخصُ الصحيح، وما أخرجه بنفسه وحده، وأفلامُه الطويلة */
 
@@ -48,4 +48,19 @@ test("a feature is an hour or more; an upcoming film without a runtime stays", (
   assert.equal(isFeature(62, "1953-03-31", today), true);
   assert.equal(isFeature(null, "2026-12-18", today), true);
   assert.equal(isFeature(0, "1960-01-01", today), false);
+});
+
+test("three or more directors is an anthology; two co-directors stay", () => {
+  const d = (id: number) => ({ id, job: "Director" });
+  assert.equal(isAnthology([d(1), d(2), d(3), d(4)]), true);
+  assert.equal(isAnthology([d(1), d(2), { id: 3, job: "Writer" }]), false);
+  assert.equal(isAnthology([d(1), d(1)]), false);
+});
+
+test("the skip list drops a title by its TMDB id", () => {
+  const crew = [
+    { id: 414419, job: "Director", release_date: "2011-03-27" },
+    { id: 24, job: "Director", release_date: "2003-10-10" },
+  ];
+  assert.deepEqual(directedFilms(crew, [414419]).map((f) => f.id), [24]);
 });

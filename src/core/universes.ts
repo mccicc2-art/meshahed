@@ -62,6 +62,13 @@ export interface Universe {
    * عند الطلب فيدخلها فيلمُه الجديد وحدَه (`resolveSetIds` → `directorFilmIds`).
    */
   director?: string;
+  /**
+   * 🆕 T521 — **ما يُستبعد من قائمة المخرج بمعرّفه في TMDB** (أحمد «نفذ أ»): نسخةٌ أُعيد مونتاجُها (Kill Bill: The Whole
+   * Bloody Affair)، وتصويرُ حفل، ونسخةٌ بلغةٍ أخرى للفيلم نفسِه، وفيلمٌ كان فيه مساعداً لا مخرجاً. **المعرّفاتُ من القوائم
+   * المبنيّة نفسِها لا من الذاكرة** (رُئيت في القاعدة يومَ ٢٢ نوفمبر بعد البناء الأوّل)، **والمجمَّعُ يسقط بقاعدته** (`isAnthology`)
+   * — وما فيها هنا من المجمَّع احتياطٌ لا يضرّ.
+   */
+  directorSkip?: number[];
   /** 🆕 T517 — **تثبيتٌ في صدر «تناسبك»** كقوائم `EDITORIAL` نفسِها (`pinnedSets`) — لقائمةٍ منسَّقةٍ يقع حدثُها الآن */
   pin?: EventPin;
 }
@@ -486,22 +493,74 @@ export const FAMOUS_LISTS: Universe[] = [
  */
 export const DIRECTORS: Universe[] = [
   { slug: "director-nolan", ar: "أفلام كريستوفر نولان", en: "Christopher Nolan Films", director: "Christopher Nolan" },
-  { slug: "director-scorsese", ar: "أفلام مارتن سكورسيزي", en: "Martin Scorsese Films", director: "Martin Scorsese" },
-  { slug: "director-spielberg", ar: "أفلام ستيفن سبيلبرغ", en: "Steven Spielberg Films", director: "Steven Spielberg" },
+  {
+    slug: "director-scorsese",
+    ar: "أفلام مارتن سكورسيزي",
+    en: "Martin Scorsese Films",
+    director: "Martin Scorsese",
+    /* Street Scenes 1970 (عملُ مجموعة) · The Concert for New York City (تصويرُ حفل) · New York Stories (مجمَّع) */
+    directorSkip: [421510, 75009, 9686],
+  },
+  {
+    slug: "director-spielberg",
+    ar: "أفلام ستيفن سبيلبرغ",
+    en: "Steven Spielberg Films",
+    director: "Steven Spielberg",
+    /* Night Gallery · Twilight Zone: The Movie · Amazing Stories — مجمَّعاتٌ أخرج فيها مقطعاً */
+    directorSkip: [391069, 15301, 576510],
+  },
   { slug: "director-kubrick", ar: "أفلام ستانلي كوبريك", en: "Stanley Kubrick Films", director: "Stanley Kubrick" },
-  { slug: "director-tarantino", ar: "أفلام كوينتن تارانتينو", en: "Quentin Tarantino Films", director: "Quentin Tarantino" },
-  { slug: "director-kurosawa", ar: "أفلام أكيرا كوروساوا", en: "Akira Kurosawa Films", director: "Akira Kurosawa" },
-  { slug: "director-hitchcock", ar: "أفلام ألفريد هيتشكوك", en: "Alfred Hitchcock Films", director: "Alfred Hitchcock" },
-  { slug: "director-coppola", ar: "أفلام فرانسيس فورد كوبولا", en: "Francis Ford Coppola Films", director: "Francis Ford Coppola" },
+  {
+    slug: "director-tarantino",
+    ar: "أفلام كوينتن تارانتينو",
+    en: "Quentin Tarantino Films",
+    director: "Quentin Tarantino",
+    /* Four Rooms (مجمَّع) · Kill Bill: The Whole Bloody Affair (الجزءان نفسُهما بمونتاجٍ واحد) */
+    directorSkip: [5, 414419],
+  },
+  {
+    slug: "director-kurosawa",
+    ar: "أفلام أكيرا كوروساوا",
+    en: "Akira Kurosawa Films",
+    director: "Akira Kurosawa",
+    /* Song of the Horse (Uma، ١٩٤١): فيلمُ كاجيرو ياماموتو، وكوروساوا فيه مساعد */
+    directorSkip: [365536],
+  },
+  {
+    slug: "director-hitchcock",
+    ar: "أفلام ألفريد هيتشكوك",
+    en: "Alfred Hitchcock Films",
+    director: "Alfred Hitchcock",
+    /* Elstree Calling (استعراضٌ مجمَّع) · Mary (النسخةُ الألمانيّة من Murder! وهو في القائمة) */
+    directorSkip: [75793, 97867],
+  },
+  {
+    slug: "director-coppola",
+    ar: "أفلام فرانسيس فورد كوبولا",
+    en: "Francis Ford Coppola Films",
+    director: "Francis Ford Coppola",
+    /* Battle Beyond the Sun (فيلمٌ سوفييتيٌّ أعاد مونتاجَه) · The Bellboy and the Playgirls (مشاهدُ أُضيفت لفيلمٍ ألمانيّ) ·
+       New York Stories (مجمَّع) */
+    directorSkip: [72838, 989207, 9686],
+  },
   {
     slug: "director-fincher",
     ar: "أفلام ديفيد فينشر",
     en: "David Fincher Films",
     director: "David Fincher",
+    /* Rick Springfield: The Beat of the Live Drum — تصويرُ حفلٍ موسيقيّ (١٩٨٥) */
+    directorSkip: [384953],
     /* Cliff Booth: صالاتُ IMAX ٢٥ نوفمبر ٢٠٢٦ ثمّ Netflix — والموعدُ من TMDB لا من هنا (`movieTheatricalDate`) */
     pin: { film: { title: "The Further Mis-Adventures of Cliff Booth", year: 2026 }, graceDays: 14 },
   },
-  { slug: "director-villeneuve", ar: "أفلام دوني فيلنوف", en: "Denis Villeneuve Films", director: "Denis Villeneuve" },
+  {
+    slug: "director-villeneuve",
+    ar: "أفلام دوني فيلنوف",
+    en: "Denis Villeneuve Films",
+    director: "Denis Villeneuve",
+    /* Cosmos · Un cri au bonheur — مجمَّعان أخرج فيهما مقطعاً */
+    directorSkip: [124818, 747109],
+  },
 ];
 
 export interface Franchise {
