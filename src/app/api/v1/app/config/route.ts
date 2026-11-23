@@ -1,6 +1,6 @@
 import { handle } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import type { AppConfig } from "@/core/contracts/appConfig";
+import type { AppConfig, WhatsNewItem } from "@/core/contracts/appConfig";
 import { STORE_URL } from "@/core/storeLinks";
 
 /**
@@ -13,8 +13,20 @@ import { STORE_URL } from "@/core/storeLinks";
  */
 const MIN_VERSION: string | null = null;
 
+/**
+ * 🆕 T535 — **شاشةُ التحديث الإلزاميّة، رقمٌ لكلِّ منصّة** (أحمد ٢٤ نوفمبر: «الزامية من اول مره» · «١ أ»).
+ * ⚠️ **لا يُضبط رقمٌ إلّا بعد أن تظهر النسخةُ في متجر منصّته للجميع** (آبل: بعد الاعتماد · جوجل: بعد اكتمال النشر لا
+ * التدريجيّ) — وبكلمة أحمد: من دونها لحظةَ التشغيل يقف كلُّ صاحب نسخةٍ أقدم أمام زرٍّ لا يجد ما يُحدِّث إليه.
+ */
+const MIN_VERSIONS: AppConfig["min_versions"] = { ios: null, android: null };
+
+/** 🆕 T535 — «ما الجديد» في الإصدار المطلوب (الفكرة «ب»). يُكتب مع كلِّ رقم؛ فارغاً تبقى الشاشةُ بجملتها وزرّها */
+const WHATS_NEW: WhatsNewItem[] = [];
+
 const CONFIG: AppConfig = {
   min_version: MIN_VERSION,
+  min_versions: MIN_VERSIONS,
+  whats_new: WHATS_NEW,
   /* 🆕 المهمة ٣٧٠ — الرابطان من `core/storeLinks.ts` (صفحةُ الدعوة تقرؤهما أيضاً) */
   store_url: { ...STORE_URL },
 };

@@ -32,7 +32,7 @@ import "../src/presence";
 import { rootTouch } from "../src/perfMarks";
 /* D-1140 — مفاتيحُ الخادم تُسأل من الإقلاع (بعد ثوانٍ) لا من أوّل «مكتبة»: القيمةُ تصل قبل أن تُحتاج */
 import "../src/flags";
-import { UpdateBanner } from "../src/UpdateBanner";
+import { UpdateGate } from "../src/UpdateGate";
 import { identify as identifyBuyer } from "../src/billing/purchases";
 import { ObserveRoot } from "expo-observe";
 
@@ -210,8 +210,9 @@ function Shell() {
       {/* 🆕 D-1505 — القائمةُ الجانبيّة: تُفتح من صورة الحساب وتُرسم مرّةً فوق المكدّس (`src/drawer/SideDrawer.tsx`) */}
       <DrawerHost />
       <TourHost />
-      {/* 🆕 لافتةُ «نسخة جديدة في المتجر» — مطفأةٌ حتى يُشغّلها الخادم (`src/UpdateBanner.tsx`) */}
-      <UpdateBanner />
+      {/* 🆕 T535 — شاشةُ «حدِّث Loopz» الإلزاميّة (خلفُ لافتة «نسخة جديدة في المتجر») — مطفأةٌ حتى يُشغّلها الخادمُ لكلِّ منصّة
+          (`src/UpdateGate.tsx`). فوق الطبقة والجولة والقائمة، وتحت ستار الفتح وحدَه */}
+      <UpdateGate />
       {/* 🆕 1.14.1 — يقرأ حالَ `expo-updates` في أوّل فتحةٍ بعد التثبيت ويُعيد التحميلَ خلف الستار إن نزل تحديث */}
       <FirstLaunchUpdate />
       {/* 🆕 D-1350 — أنميشنُ الفتح: ستارٌ فوق كلِّ شيءٍ حتى يُرسم الشعارُ وتجهز الشاشةُ تحته (`src/opening/Opening.tsx`) */}

@@ -150,6 +150,11 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
+/** 🆕 T535 — اسمٌ جاء من الخادم (شاشةُ التحديث) هل هو في هذه المجموعة؟ نسخةٌ قديمةٌ لا تعرف اسماً أُضيف بعدها */
+export function isIconName(name: string | undefined): name is IconName {
+  return !!name && Object.prototype.hasOwnProperty.call(ICONS, name);
+}
+
 /**
  * 🆕 علامةُ Google بألوانها — **صورةٌ لا أيقونة**: الأيقوناتُ تُلوَّن بلونٍ واحد (`tintColor`)، والعلامةُ تفقد معناها إن لُوِّنت.
  * تُرسم في صفِّ «طرق تسجيل الدخول» وحدَه (تصميمُ أحمد، ١٩ أكتوبر).

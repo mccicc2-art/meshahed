@@ -450,6 +450,11 @@ export function WelcomeScreen() {
       <ScrollView
         ref={scroll}
         keyboardShouldPersistTaps="handled"
+        /* 🆕 T535 — **الصفحةُ لا ترتدّ حين يتّسع محتواها في الشاشة** (فيديو آيباد ١٨ نوفمبر: «ما قدر يختار اللي يعجبه»؛
+           أُعيد على محاكي آيباد ٢٤ نوفمبر): لمسةٌ يتحرّك فيها الإصبعُ نحو عشر نقاطٍ على رقاقة نوعٍ كانت تبدأ سحباً للصفحة
+           — والصفحةُ أقصرُ من الشاشة فلا شيءَ يُمرَّر — فيلغي التمريرُ ضغطةَ الرقاقة ولا يُختار شيء. الخطواتُ الطويلة
+           (شبكةُ الأعمال) تتمرّر كما كانت */
+        alwaysBounceVertical={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: PAD, paddingTop: space.md, paddingBottom: space.xl }}
       >
