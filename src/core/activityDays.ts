@@ -205,10 +205,9 @@ export function clock(iso: string, locale: Locale, local: boolean): string {
 
 /** فعلُ الصفّ («أنهى» · «شاهد» · «قيّم» · «راجع» · «أضاف») — `Row` الويب */
 export function verbOf(item: ActivityItem, t: Dict): string {
+  /* 🆕 T526 — «شاهدت» للحلقة أيضاً: «أنهيت House» كانت توحي بأنّ المسلسل كلَّه انتهى، والصفُّ حلقتان */
   return item.kind === "watch"
-    ? item.mediaType === "tv"
-      ? t.actVerbFinished
-      : t.actVerbWatched
+    ? t.actVerbWatched
     : item.kind === "rate"
       ? t.actVerbRated
       : item.kind === "review"
@@ -243,4 +242,103 @@ export function watchSummary(items: ActivityItem[]): { episodes: number; movies:
     }
   }
   return { episodes, movies, hours: known ? Math.round(minutes / 60) : null };
+}
+
+
+/**
+ * ====== 🆕 T526 — السجلُّ بالأسابيع (أحمد ٢٣ نوفمبر: «١أ» السحبُ بين الرقاقات · «ج» نصُّ المراجعة تحت العنوان · «نفذ وارفع») ======
+ *
+ * الأسبوعُ **سبعةُ أيّامٍ تنتهي باليوم** لا أسبوعُ تقويم: «هذا الأسبوع» هنا هو «هذا الأسبوع» في بطاقة الحصيلة منذ D-1504
+ * (`shiftDay(today, -6)`) — ومبدآن للأسبوع في شاشةٍ واحدةٍ يتناقضان أمام القارئ (D-374). وبه لا نسأل: أيبدأ الأسبوعُ بالأحد أم الإثنين.
+ * والعنوانُ يحمل حصيلتَه من صفوفه **قبل الدمج** (ثلاثُ حلقاتٍ في صفٍّ واحدٍ تُعدّ ثلاثاً — قاعدةُ `watchSummary`).
+ */
+export interface WeekTotals {
+  episodes: number;
+  movies: number;
+  /** مسلسلاتٌ مختلفةٌ شوهدت منها حلقة */
+  shows: number;
+  ratings: number;
+  reviews: number;
+  lists: number;
+}
+
+export interface WeekGroup {
+  /** `0` هذا الأسبوع · `1` الماضي · … */
+  index: number;
+  label: string;
+  totals: WeekTotals;
+  days: DayGroup[];
+}
+
+export function weekTotals(items: ActivityItem[]): WeekTotals {
+  const shows = new Set<number>();
+  const out: WeekTotals = { episodes: 0, movies: 0, shows: 0, ratings: 0, reviews: 0, lists: 0 };
+  for (const it of items) {
+    if (it.kind === "watch") {
+      if (it.mediaType === "tv") {
+        out.episodes++;
+        shows.add(it.tmdbId);
+      } else out.movies++;
+    } else if (it.kind === "rate") out.ratings++;
+    else if (it.kind === "review") out.reviews++;
+    else out.lists++;
+  }
+  out.shows = shows.size;
+  return out;
+}
+
+/** سطرُ الحصيلة: ما ليس صفراً وحدَه — «مراجعة واحدة · ٣ حلقات» — وصفرٌ كلُّه ⇒ فراغ */
+export function totalsLine(x: WeekTotals, t: Dict): string {
+  const parts: string[] = [];
+  if (x.reviews) parts.push(t.actNReviews(x.reviews));
+  if (x.ratings) parts.push(t.actNRatings(x.ratings));
+  if (x.episodes) parts.push(t.actNEpisodes(x.episodes));
+  if (x.movies) parts.push(t.actNMovies(x.movies));
+  if (x.lists) parts.push(t.actNListAdds(x.lists));
+  return parts.join(" · ");
+}
+
+/** كم يوماً بين مفتاحين (`YYYY-MM-DD`) — بالأيّام التقويميّة لا بالساعات، فلا يُخطئ يومُ تغيير الساعة */
+function daysBetween(from: string, to: string): number {
+  const at = (k: string) => {
+    const [y, m, d] = k.split("-").map(Number);
+    return Date.UTC(y, (m ?? 1) - 1, d ?? 1);
+  };
+  return Math.round((at(to) - at(from)) / 86_400_000);
+}
+
+/** مدى الأسبوع رقم `index` — «٢٦ أكتوبر – ١ نوفمبر» */
+export function weekRange(todayKey: string, index: number, locale: Locale): string {
+  const end = shiftDay(todayKey, -7 * index);
+  const start = shiftDay(end, -6);
+  const fmt = (k: string) => {
+    const [y, m, d] = k.split("-").map(Number);
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { day: "numeric", month: "short" }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
+  };
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+export function groupWeeks(
+  items: ActivityItem[],
+  local: boolean,
+  t: Dict,
+  locale: Locale,
+  todayKey: string,
+): WeekGroup[] {
+  const byWeek = new Map<number, ActivityItem[]>();
+  for (const it of items) {
+    /* صفٌّ بتاريخٍ بعد «اليوم» (ساعةُ جهازٍ متأخّرة) يُعدّ من هذا الأسبوع لا أسبوعاً سالباً */
+    const idx = Math.max(0, Math.floor(daysBetween(dayKey(it.at, local), todayKey) / 7));
+    const list = byWeek.get(idx);
+    if (list) list.push(it);
+    else byWeek.set(idx, [it]);
+  }
+  return [...byWeek.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([index, rows]) => ({
+      index,
+      label: index === 0 ? t.activityThisWeek : index === 1 ? t.activityLastWeek : weekRange(todayKey, index, locale),
+      totals: weekTotals(rows),
+      days: groupDays(rows, local, t, locale, todayKey),
+    }));
 }

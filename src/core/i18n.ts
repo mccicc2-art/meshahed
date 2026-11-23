@@ -2655,6 +2655,18 @@ const ar = {
   activityWeekEpisodes: "حلقة هذا الأسبوع",
   activityWeekMovies: "فيلم",
   activityWeekHours: "ساعة مشاهدة",
+  /* 🆕 T526 — سجلُّ المشاهدة بالأسابيع (أحمد ٢٣ نوفمبر: «١أ» · «ج» · «نفذ وارفع»): عنوانُ الأسبوع بحصيلته، والعددُ على قاعدة العربيّة
+     (١ واحد · ٢ مثنّى · ٣–١٠ جمع · ١١–٩٩ مفردٌ منوَّن · ١٠٠ فأكثر مفرد — قاعدةُ `countNoun`، T469/T502) */
+  activityLastWeek: "الأسبوع الماضي",
+  actNEpisodes: (n: number) => arCount(n, "حلقة واحدة", "حلقتان", "حلقات", "حلقةً", "حلقة"),
+  actNMovies: (n: number) => arCount(n, "فيلم واحد", "فيلمان", "أفلام", "فيلمًا", "فيلم"),
+  actNShows: (n: number) => arCount(n, "مسلسل واحد", "مسلسلان", "مسلسلات", "مسلسلًا", "مسلسل"),
+  actNRatings: (n: number) => arCount(n, "تقييم واحد", "تقييمان", "تقييمات", "تقييمًا", "تقييم"),
+  actNReviews: (n: number) => arCount(n, "مراجعة واحدة", "مراجعتان", "مراجعات", "مراجعةً", "مراجعة"),
+  actNListAdds: (n: number) => arCount(n, "إضافة واحدة", "إضافتان", "إضافات", "إضافةً", "إضافة"),
+  /* 🆕 T526 — سطرُ «افتح المراجعة» تحت سطري المراجعة في نشاط الملفّ («في اكتفتي الملف يبقى أ»)؛ وزرُّ ⋯ على صفِّ المشاهدة */
+  activityOpenReview: "افتح المراجعة",
+  historyRowMenu: "خيارات المشاهدة",
   historyRemove: "لم أشاهدها، احذفها من السجل",
   historyRemoveConfirm: "بتنشال هذي المشاهدة من سجلّك ومن تقدّمك في العمل وإحصائياتك. ما فيه تراجع.",
   historyRemoveAction: "احذف من السجل",
@@ -5642,6 +5654,15 @@ const en: Dict = {
   activityWeekEpisodes: "Episodes this week",
   activityWeekMovies: "Movies",
   activityWeekHours: "Hours watched",
+  activityLastWeek: "Last week",
+  actNEpisodes: (n: number) => enCount(n, "episode", "episodes"),
+  actNMovies: (n: number) => enCount(n, "movie", "movies"),
+  actNShows: (n: number) => enCount(n, "show", "shows"),
+  actNRatings: (n: number) => enCount(n, "rating", "ratings"),
+  actNReviews: (n: number) => enCount(n, "review", "reviews"),
+  actNListAdds: (n: number) => enCount(n, "list add", "list adds"),
+  activityOpenReview: "Open review",
+  historyRowMenu: "Watch options",
   historyRemove: "Didn't watch it \u2014 remove from history",
   historyRemoveConfirm: "This removes the watch from your history, your progress in the title and your stats. It can't be undone.",
   historyRemoveAction: "Remove from history",
@@ -6522,6 +6543,21 @@ export function worksParts(
 export function num(n: number, _locale: Locale) {
   void _locale;
   return n.toLocaleString("en-US");
+}
+
+/**
+ * 🆕 T526 — العددُ ومعدودُه بالعربيّة لحصيلة الأسبوع في السجلّ: الواحدُ والاثنان بكلمتهما («حلقة واحدة» · «حلقتان»)، ومن ٣ إلى
+ * ١٠ جمع، ومن ١١ إلى ٩٩ مفردٌ منوَّن، ومن ١٠٠ مفردٌ بلا تنوين — قاعدةُ `countNoun` نفسُها (T469/T502) بصيغها كاملةً هنا.
+ */
+function arCount(n: number, one: string, two: string, few: string, tan: string, sing: string): string {
+  if (n === 1) return one;
+  if (n === 2) return two;
+  if (n <= 10) return `${num(n, "ar")} ${few}`;
+  return `${num(n, "ar")} ${n <= 99 ? tan : sing}`;
+}
+
+function enCount(n: number, one: string, many: string): string {
+  return `${num(n, "en")} ${n === 1 ? one : many}`;
 }
 
 /**

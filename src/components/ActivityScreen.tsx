@@ -41,7 +41,7 @@ import { HISTORY_WORDS } from "./activity/historyWords";
  */
 
 export type { ActivityKind, ActivityItem } from "@/core/activityDays";
-import { SCOPES, clock, episodeOf, groupDays, keep, label, nowDayKey, dayKey, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope } from "@/core/activityDays";
+import { SCOPES, clock, episodeOf, groupWeeks, keep, label, nowDayKey, dayKey, shiftDay, totalsLine, verbOf, watchSummary, weekRange, weekTotals, type ActivityItem, type Scope } from "@/core/activityDays";
 
 
 /* الساعةُ مصدرٌ خارجيٌّ عن React — ولا اشتراكَ لأنها لا تُبثّ */
@@ -118,12 +118,14 @@ export function ActivityScreen({
      يومٍ ويُعدّ في غيره.** */
   const weekStart = shiftDay(todayKey, -6);
   const weekRows = matching.filter((it) => dayKey(it.at, local) >= weekStart);
-  const weekCount = weekRows.length;
   /* 🆕 T412 — رقاقةُ «مشاهدة» تعرض حصيلتَها بثلاثة أرقام كالتطبيق (D-1504)؛ وغيرُها سطرُ العدّ كما كان */
   const week = scope === "watch" ? watchSummary(weekRows) : null;
   const w = HISTORY_WORDS[locale === "en" ? "en" : "ar"];
 
-  const days = groupDays(shown, local, t, locale, todayKey);
+  /* 🆕 T526 — أسابيعُ بعناوينها وحصيلتها (`groupWeeks`)؛ وعلى «مشاهدة» بطاقةُ هذا الأسبوع فوقها بلا عنوانٍ مكرّر */
+  const weeks = groupWeeks(shown, local, t, locale, todayKey);
+  const thisWeek = weekTotals(weekRows);
+  const card = scope === "watch" && (thisWeek.episodes || thisWeek.movies) ? thisWeek : null;
 
   const body = (
     <div className="min-w-0 space-y-4">
@@ -155,55 +157,55 @@ export function ActivityScreen({
         </div>
       </div>
 
-      {/* **سطرُ الحصيلة** — يقول كم فعلتَ قبل أن تعدّ بعينك (D-374:
-          والعدُّ يعدّ ما يعرضه جسمُه بشرطه نفسِه — فهو يتبع الرقاقة). */}
-      {week ? (
-        <div className={`grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-3.5 ${editable ? "desk:hidden" : ""}`}>
-          {[
-            { n: week.episodes, label: t.activityWeekEpisodes },
-            { n: week.movies, label: t.activityWeekMovies },
-            ...(week.hours != null ? [{ n: week.hours, label: t.activityWeekHours }] : []),
-          ].map((x) => (
-            <div key={x.label} className="min-w-0">
-              <p className="text-20 font-extrabold tabular-nums">{num(x.n, locale)}</p>
-              <p className="truncate text-12 text-muted">{x.label}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className={`flex items-baseline justify-between gap-3 pb-2 border-b border-[color:var(--divider)] text-14 ${editable ? "desk:hidden" : ""}`}>
-          <span className="text-muted">{t.activityThisWeek}</span>
-          <span className="text-muted tabular-nums">{t.activityCount(weekCount)}</span>
+      {/* **بطاقةُ الأسبوع** على «مشاهدة» — ما ليس صفراً وحدَه (لا «٠ أفلام»)، والساعاتُ إن عُرفت المدّة؛ وغيرُ «مشاهدة» يقرأ
+          حصيلتَه في عنوان أسبوعه (T526). على الحاسوب يقولها عمودُ الأسبوع الجانبيّ */}
+      {card && (
+        <div className={`rounded-2xl border border-border bg-surface p-4 ${editable ? "desk:hidden" : ""}`}>
+          <div className="flex items-baseline justify-between gap-3 text-13 text-muted">
+            <span>{t.activityThisWeek}</span>
+            <span className="tabular-nums">{weekRange(todayKey, 0, locale)}</span>
+          </div>
+          <p className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-17 font-bold">
+            {[
+              card.episodes ? t.actNEpisodes(card.episodes) : null,
+              card.shows ? t.actNShows(card.shows) : null,
+              card.movies ? t.actNMovies(card.movies) : null,
+              week?.hours ? `${num(week.hours, locale)} ${t.activityWeekHours}` : null,
+            ]
+              .filter((x): x is string => !!x)
+              .map((x) => (
+                <span key={x}>{x}</span>
+              ))}
+          </p>
         </div>
       )}
 
-      {days.length === 0 ? (
+      {weeks.length === 0 ? (
         <p className="text-center text-muted py-16 px-5 leading-relaxed">{t.activityEmpty}</p>
       ) : (
         <div className="space-y-6">
-          {days.map((d) => (
-            <section key={d.key}>
-              <div className="flex items-baseline gap-2 mb-1">
-                <h2 className="text-15 font-bold">{d.label}</h2>
-                <span className="text-12 text-muted tabular-nums">
-                  {num(d.rows.length, locale)}
-                </span>
-              </div>
-
-              {/* **الخيطُ الرأسيُّ على حافّة البداية والنقطُ عليه** —
-                  هو ما يقول «هذه لحظاتٌ متتابعة» (تصميمُ أحمد). */}
-              <ol className="relative ms-1.5 ps-4 border-s border-[color:var(--divider)]">
-                {d.rows.map((r) => (
-                  <li key={r.id} className="group/row relative flex items-center gap-2 py-2.5">
-                    <span
-                      aria-hidden
-                      className="absolute -start-[21px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border border-[color:var(--divider)] bg-[color:var(--background)]"
-                    />
-                    <Row item={r} locale={locale} local={local} manual={w.manual} reviewOwner={reviewOwner} />
-                    {editable && r.kind === "watch" && <HistoryRowMenu item={r} locale={locale} local={local} todayKey={todayKey} />}
-                  </li>
-                ))}
-              </ol>
+          {weeks.map((wk) => (
+            <section key={wk.index}>
+              {card && wk.index === 0 ? null : (
+                <div className="flex items-baseline justify-between gap-3 pb-2 mb-1 border-b border-[color:var(--divider)]">
+                  <h2 className="text-17 font-extrabold">{wk.label}</h2>
+                  <span className="truncate text-12 text-muted">{totalsLine(wk.totals, t)}</span>
+                </div>
+              )}
+              {wk.days.map((d) => (
+                <div key={d.key} className="mt-3">
+                  {/* اليومُ عنوانٌ صغيرٌ فوق صفوفه — كان عنواناً كبيراً بعدّاده ثمّ صفّاً واحداً ثمّ فراغاً (T526) */}
+                  <h3 className="text-13 font-semibold text-muted">{d.label}</h3>
+                  <ol>
+                    {d.rows.map((r) => (
+                      <li key={r.id} className="group/row relative flex items-center gap-2 py-2">
+                        <Row item={r} locale={locale} local={local} manual={w.manual} reviewOwner={reviewOwner} verb={scope !== "watch"} openHint={!editable} />
+                        {editable && r.kind === "watch" && <HistoryRowMenu item={r} locale={locale} local={local} todayKey={todayKey} />}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
             </section>
           ))}
 
@@ -250,12 +252,18 @@ function Row({
   local,
   manual,
   reviewOwner,
+  verb: showVerb = true,
+  openHint = false,
 }: {
   item: ActivityItem;
   locale: Locale;
   local: boolean;
   manual: string;
   reviewOwner?: string;
+  /** 🆕 T526 — الفعلُ سطرٌ صغيرٌ فوق العنوان؛ ويسقط على «مشاهدة» (كلُّ صفٍّ هناك مشاهدة) */
+  verb?: boolean;
+  /** 🆕 T526 — «افتح المراجعة ›» في نشاط الملفّ وحدَه («في اكتفتي الملف يبقى أ»)؛ سجلُّك بلاه («١ب») */
+  openHint?: boolean;
 }) {
   const t = getDict(locale);
   /* 🆕 T525 — «راجع» بنصّه يفتح المراجعةَ نفسَها («٣أ»): الصفُّ صار يقول ما كُتب، فوجهتُه ما كُتب */
@@ -279,20 +287,34 @@ function Row({
         )}
       </span>
 
-      <span className="min-w-0 flex-1">
-        <span className="block text-14 leading-snug truncate">
-          <span className="text-muted">{verb} </span>
-          <span className="font-bold group-hover:text-accent transition-colors">{item.title}</span>
-          {ep && <span className="text-muted"> · {ep}</span>}
-          {item.kind === "list" && item.listName && (
-            <>
-              <span className="text-muted"> {t.actVerbTo} </span>
-              <span className="text-muted">{item.listName}</span>
-            </>
-          )}
-        </span>
+      <span className="min-w-0 flex-1 space-y-1">
+        {/* 🆕 T526 — الفعلُ سطرٌ صغيرٌ فوق العنوان، والعنوانُ وحدَه بخطٍّ عريض («ج» أحمد ٢٣ نوفمبر) */}
+        {showVerb && (
+          <span className="block truncate text-12 text-muted">
+            {verb}
+            {item.kind === "list" && item.listName ? ` ${t.actVerbTo} ${item.listName}` : ""}
+          </span>
+        )}
+        <span className="block truncate text-15 font-bold leading-snug group-hover:text-accent transition-colors">{item.title}</span>
 
-        <span className="mt-0.5 flex items-center gap-2 text-12 text-muted">
+        {/* نصُّ المراجعة مكانَ السطر الثاني تحت العنوان (T526 «ج»، بعد T525 «٣أ»): سطران، واتّجاهُه من نصّه (`dir="auto"`)؛
+            والحرقُ يُقال ولا يُعرض */}
+        {item.kind === "review" &&
+          (item.spoiler ? (
+            <span className="block text-12 text-muted">{t.spoilerMark}</span>
+          ) : item.review ? (
+            <span dir="auto" className="block text-13 leading-snug text-foreground/85 line-clamp-2 [overflow-wrap:anywhere]">
+              {item.review}
+            </span>
+          ) : null)}
+
+        <span className="flex flex-wrap items-center gap-2 text-12 text-muted">
+          {/* قرصُ الحلقة بشكل قرص المكتبة — «S1 · E1–2» لا «أنهيت … · حلقتان» */}
+          {ep && (
+            <span dir="ltr" className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-12 font-semibold text-foreground tabular-nums">
+              {ep}
+            </span>
+          )}
           {item.rating != null && (
             <span className="inline-flex items-center gap-1 font-bold text-foreground">
               <Icon name="star" size={12} style={{ color: "var(--accent)" }} />
@@ -313,17 +335,9 @@ function Row({
             </span>
           )}
         </span>
-
-        {/* 🆕 T525 — نصُّ المراجعة تحت صفِّ «راجع» (أحمد: «الريفيو … مو ظاهر وش التعليق» · «٣أ»): سطران، واتّجاهُه من نصّه
-            (`dir="auto"`) فالعربيُّ في واجهةٍ إنجليزيّة يُقرأ من يمينه؛ والحرقُ يُقال ولا يُعرض */}
-        {item.kind === "review" &&
-          (item.spoiler ? (
-            <span className="mt-1 block text-12 text-muted">{t.spoilerMark}</span>
-          ) : item.review ? (
-            <span dir="auto" className="mt-1 block text-13 leading-snug text-muted line-clamp-2 [overflow-wrap:anywhere]">
-              {item.review}
-            </span>
-          ) : null)}
+        {written && openHint && !item.spoiler && (
+          <span className="block text-12 font-bold text-accent">{t.activityOpenReview} ›</span>
+        )}
       </span>
     </Link>
   );

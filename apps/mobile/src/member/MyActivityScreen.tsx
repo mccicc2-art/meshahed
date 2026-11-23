@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +11,10 @@ import { usePullRefresh } from "../pullRefresh";
 import { ActivityList } from "./ActivityList";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { errorText } from "../community/communityActs";
-import type { ActivityItem, Scope } from "@/core/activityDays";
+import { SCOPES, label as scopeLabel, type ActivityItem, type Scope } from "@/core/activityDays";
+import { Chip } from "../library/Chip";
+import { haptic } from "../haptics";
+import { TabSlide, useTabAim } from "../TabSlide";
 import type { MoveWatchDayBody, ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
 import type { MyActivityPayload } from "@/core/contracts/profile";
 import { useHomeDoor } from "../homeDoor";
@@ -30,6 +33,10 @@ export const myActivityKey = ["me:activity"] as const;
 
 export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; scope?: Scope }) {
   const { t, tokens, me } = useApp();
+  /* 🆕 T526 — الرقاقةُ هنا لا في القائمة: اللوحُ يُسحب إليها */
+  const [tab, setTab] = useState<Scope>(scope ?? "all");
+  const [aim, setAim] = useTabAim<Scope>(tab);
+  const lit = aim ?? tab;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const q = useQuery({
@@ -137,9 +144,38 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
           </View>
         )
       ) : (
-        <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-          <ActivityList rows={q.data.items} onTitle={openTitle} onReview={me ? openReview : undefined} emptyText={t.activityEmpty} initialScope={scope} onRemove={removeWatch} onMoveDay={moveDay} />
-        </ScrollView>
+        /* 🆕 T526 — **الرقاقاتُ تُسحب** (أحمد ٢٣ نوفمبر: «امكانية اللف بالايماء» · «١أ»): `TabSlide` نفسُه (المكتبة · المجتمع ·
+           الإحصاءات)، لوحٌ لكلِّ رقاقةٍ من حمولةٍ واحدة، والرقاقاتُ فوقه تُضيء الوجهةَ لحظةَ رفع الإصبع (`useTabAim`) */
+        <View style={{ flex: 1 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 14, paddingBottom: 4 }}>
+            {SCOPES.map((s) => (
+              <Chip
+                key={s}
+                label={scopeLabel(s, t)}
+                active={lit === s}
+                onPress={() => {
+                  if (s === tab) return;
+                  haptic.pick();
+                  setAim(s);
+                  setTab(s);
+                }}
+              />
+            ))}
+          </ScrollView>
+          <TabSlide
+            order={SCOPES}
+            tab={tab}
+            onTab={setTab}
+            onAim={setAim}
+            keepVisited
+            style={{ flex: 1 }}
+            render={(s) => (
+              <ScrollView refreshControl={refresh} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+                <ActivityList rows={q.data!.items} scope={s} onTitle={openTitle} onReview={me ? openReview : undefined} emptyText={t.activityEmpty} onRemove={removeWatch} onMoveDay={moveDay} />
+              </ScrollView>
+            )}
+          />
+        </View>
       )}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
     </View>

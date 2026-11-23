@@ -9,9 +9,10 @@ import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { StatusPill } from "../settings/ui";
 import { num } from "@/core/i18n";
-import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupDays, keep, label as scopeLabel, shiftDay, verbOf, watchSummary, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
+import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupWeeks, keep, label as scopeLabel, shiftDay, totalsLine, verbOf, watchSummary, weekRange, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
 import type { ProfileActivity } from "@/core/contracts/profile";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
+import { tabSwipeBlocksPress } from "../TabSlide";
 
 /**
  * 🆕 D-1213 — **قائمةُ النشاط مكوّنٌ واحدٌ لشاشتين** (القاعدة ٣): تبويبُ «النشاط» في ملفّ الشخص (N1) وشاشةُ «النشاط»
@@ -35,6 +36,7 @@ export function ActivityList({
   onReview,
   emptyText,
   initialScope = "all",
+  scope: scopeIn,
   onRemove,
   onMoveDay,
 }: {
@@ -44,13 +46,20 @@ export function ActivityList({
   onReview?: (k: "tv" | "movie", id: number) => void;
   emptyText: string;
   initialScope?: Scope;
+  /**
+   * 🆕 T526 — **رقاقةٌ يملكها صاحبُ الشاشة**: سجلُّك (`MyActivityScreen`) يرسم الرقاقاتِ فوق `TabSlide` ولوحاً لكلِّ رقاقةٍ يُسحب إليه
+   * («١أ»: «امكانية اللف بالايماء»)؛ فيمرّر رقاقةَ اللوح هنا ولا تُرسم الرقاقاتُ مرّةً ثانية. غيابُه ⇒ الرقاقاتُ هنا كما كانت (ملفُّ الشخص،
+   * وسحبُه الأفقيُّ ملكُ تبويبات الملفّ).
+   */
+  scope?: Scope;
   /** يرجع `true` إن حُذف — والفشلُ يقوله صاحبُ الشاشة بنخبه ويُبقي الورقةَ مفتوحة لمحاولةٍ ثانية */
   onRemove?: (item: ActivityItem) => Promise<boolean>;
   /** 🆕 D-1505 — «غيّر يوم المشاهدة»: إزاحةُ أيّام (سالبةٌ إلى الماضي) — سجلُّك وحدَه، كـ`onRemove` */
   onMoveDay?: (item: ActivityItem, shiftDays: number) => Promise<boolean>;
 }) {
   const { t, tokens, locale } = useApp();
-  const [scope, setScope] = useState<Scope>(initialScope);
+  const [scopeOwn, setScope] = useState<Scope>(initialScope);
+  const scope = scopeIn ?? scopeOwn;
   const [menu, setMenu] = useState<ActivityItem | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -115,91 +124,111 @@ export function ActivityList({
   );
   const matching = items.filter((it) => keep(it, scope));
   const today = dayKey(new Date().toISOString(), true);
-  const weekRows = matching.filter((it) => dayKey(it.at, true) >= shiftDay(today, -6));
-  const weekCount = weekRows.length;
-  const week = scope === "watch" ? watchSummary(weekRows) : null;
-  const days = groupDays(matching, true, t, locale, today);
+  /* 🆕 T526 — أسابيعُ بعناوينها وحصيلتها (`groupWeeks`)، وعلى «مشاهدة» بطاقةُ هذا الأسبوع فوقها بلا عنوانٍ مكرّر */
+  const weeks = groupWeeks(matching, true, t, locale, today);
+  const thisWeek = weeks[0]?.index === 0 ? weeks[0] : null;
+  const card = scope === "watch" && thisWeek ? thisWeek.totals : null;
+  const hours = card && thisWeek ? watchSummary(thisWeek.days.flatMap((d) => d.rows)).hours : null;
+  /* سطرُ «افتح المراجعة» في نشاط الملفّ وحدَه («في اكتفتي الملف يبقى أ»)؛ سجلُّك يكتفي بأنّ الصفَّ يُضغط («١ب») */
+  const openHint = !onRemove;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 14 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {SCOPES.map((s) => (
-          <Chip key={s} label={scopeLabel(s, t)} active={scope === s} onPress={() => (s === scope ? undefined : (haptic.pick(), setScope(s)))} />
-        ))}
-      </ScrollView>
-      {week ? (
-        /* 🆕 D-1504 — حصيلةُ المشاهدة بثلاثة أرقام؛ والساعاتُ تغيب إن لم تصل مدّة (لا صفرَ كاذب) */
-        <View style={{ flexDirection: "row", marginTop: 12, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 14, gap: 8 }}>
-          {[
-            { n: week.episodes, label: t.activityWeekEpisodes },
-            { n: week.movies, label: t.activityWeekMovies },
-            ...(week.hours != null ? [{ n: week.hours, label: t.activityWeekHours }] : []),
-          ].map((x) => (
-            <View key={x.label} style={{ flex: 1, gap: 2 }}>
-              <Text size={20} weight="800" style={{ fontVariant: ["tabular-nums"] }}>{num(x.n, locale)}</Text>
-              <Text size={12} muted numberOfLines={1}>{x.label}</Text>
-            </View>
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: scopeIn ? 6 : 14 }}>
+      {scopeIn ? null : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {SCOPES.map((s) => (
+            <Chip key={s} label={scopeLabel(s, t)} active={scope === s} onPress={() => (s === scope ? undefined : (haptic.pick(), setScope(s)))} />
           ))}
-        </View>
-      ) : (
-        <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, marginTop: 10 }}>
-          <Text size={13} muted>{t.activityThisWeek}</Text>
-          <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{t.activityCount(weekCount)}</Text>
-        </View>
+        </ScrollView>
       )}
-      {days.length === 0 ? (
+      {card ? (
+        /* بطاقةُ الأسبوع: ما ليس صفراً وحدَه (لا «0 أفلام»)، والساعاتُ إن عُرفت المدّة */
+        <View style={{ marginTop: 12, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 8 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+            <Text size={13} muted>{t.activityThisWeek}</Text>
+            <Text size={12} muted>{weekRange(today, 0, locale)}</Text>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 22, rowGap: 4 }}>
+            {[
+              card.episodes ? t.actNEpisodes(card.episodes) : null,
+              card.shows ? t.actNShows(card.shows) : null,
+              card.movies ? t.actNMovies(card.movies) : null,
+              hours ? `${num(hours, locale)} ${t.activityWeekHours}` : null,
+            ]
+              .filter((x): x is string => !!x)
+              .map((x) => (
+                <Text key={x} size={17} weight="700">{x}</Text>
+              ))}
+          </View>
+        </View>
+      ) : null}
+      {weeks.length === 0 ? (
         <Text muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: PAGE_PAD }}>{emptyText}</Text>
       ) : (
-        days.map((day) => (
-          <View key={day.key} style={{ marginTop: 16 }}>
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-              <Text size={15} weight="700">{day.label}</Text>
-              <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(day.rows.length, locale)}</Text>
-            </View>
-            <View style={{ borderStartWidth: 1, borderStartColor: tokens.divider, marginStart: 6, paddingStart: 14 }}>
-              {day.rows.map((r) => {
-                const ep = episodeOf(r, t);
-                /* 🆕 T525 — «راجع» يقول ما كُتب تحته، والضغطُ يفتح المراجعة نفسَها */
-                const written = r.kind === "review" && (r.review || r.spoiler) ? true : false;
-                return (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => (written && onReview ? onReview(r.mediaType, r.tmdbId) : onTitle(r.mediaType, r.tmdbId))}
-                    onLongPress={onRemove && r.kind === "watch" ? () => (haptic.pick(), setMenu(r)) : undefined}
-                    accessibilityRole="link"
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: pressed ? 0.7 : 1 }]}>
-                    <View style={{ position: "absolute", start: -19, width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: tokens.divider, backgroundColor: tokens.bg }} />
-                    <View style={{ width: 44, aspectRatio: 2 / 3, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                      {r.poster ? <Image source={{ uri: r.poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name={r.mediaType === "tv" ? "tv" : "film"} size={14} color={tokens.muted} />}
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text size={14} numberOfLines={1}>
-                        <Text size={14} muted>{verbOf(r, t)} </Text>
-                        <Text size={14} weight="700">{r.title}</Text>
-                        {ep ? <Text size={14} muted> · {ep}</Text> : null}
-                        {(r.eps?.length ?? 0) > 1 ? <Text size={14} weight="700"> · {t.actEpisodesN(r.eps?.length ?? 0)}</Text> : null}
-                        {r.kind === "list" && r.listName ? <Text size={14} muted> {t.actVerbTo} {r.listName}</Text> : null}
-                      </Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-                        {r.rating != null ? (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                            <Icon name="star" size={12} color={tokens.accent} />
-                            <Text size={12} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(r.rating, locale)}</Text>
-                          </View>
-                        ) : null}
-                        <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{clock(r.at, locale, true)}</Text>
-                        {r.source ? <StatusPill label={sourceLabel(r.source, t)} color={r.source === "auto" ? tokens.accent : tokens.muted} /> : null}
+        weeks.map((w) => (
+          <View key={w.index} style={{ marginTop: 18 }}>
+            {card && w.index === 0 ? null : (
+              <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+                <Text size={16} weight="800">{w.label}</Text>
+                <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{totalsLine(w.totals, t)}</Text>
+              </View>
+            )}
+            {w.days.map((day) => (
+              <View key={day.key} style={{ marginTop: 12 }}>
+                <Text size={13} weight="600" muted style={{ marginBottom: 2 }}>{day.label}</Text>
+                {day.rows.map((r) => {
+                  const ep = episodeOf(r, t);
+                  /* «راجع» يقول ما كُتب، والضغطُ يفتح المراجعة نفسَها (T525 · «٣أ») */
+                  const written = r.kind === "review" && (r.review || r.spoiler) ? true : false;
+                  const menuable = !!onRemove && r.kind === "watch";
+                  return (
+                    <Pressable
+                      key={r.id}
+                      onPress={() => {
+                        /* سحبةٌ بين اللوحين لا تفتح صفّاً (حارسُ `TabSlide` في أبواب الفتح) */
+                        if (tabSwipeBlocksPress()) return;
+                        if (written && onReview) onReview(r.mediaType, r.tmdbId);
+                        else onTitle(r.mediaType, r.tmdbId);
+                      }}
+                      onLongPress={menuable ? () => (haptic.pick(), setMenu(r)) : undefined}
+                      accessibilityRole="link"
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: pressed ? 0.7 : 1 }]}>
+                      <View style={{ width: 44, aspectRatio: 2 / 3, borderRadius: 6, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                        {r.poster ? <Image source={{ uri: r.poster }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name={r.mediaType === "tv" ? "tv" : "film"} size={14} color={tokens.muted} />}
                       </View>
-                      {/* 🆕 T525 — نصُّ المراجعة سطرين (أحمد: «الريفيو … مو ظاهر وش التعليق»)؛ اتّجاهُه من نصّه، والحرقُ يُقال ولا يُعرض */}
-                      {r.kind === "review" && r.spoiler ? (
-                        <Text size={12} muted style={{ marginTop: 4 }}>{t.spoilerMark}</Text>
-                      ) : r.kind === "review" && r.review ? (
-                        <Text autoDir size={13} muted numberOfLines={2} style={{ marginTop: 4, lineHeight: 19 }}>{r.review}</Text>
+                      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                        {/* الفعلُ سطرٌ صغيرٌ فوق العنوان — وعلى «مشاهدة» يسقط: كلُّ صفٍّ هناك مشاهدة */}
+                        {scope === "watch" ? null : <Text size={12} muted numberOfLines={1}>{verbOf(r, t)}{r.kind === "list" && r.listName ? ` ${t.actVerbTo} ${r.listName}` : ""}</Text>}
+                        <Text size={15} weight="700" numberOfLines={1}>{r.title}</Text>
+                        {/* 🆕 T526 «ج» — نصُّ المراجعة مكانَ السطر الثاني تحت العنوان، والنجمةُ والوقتُ بعده؛ والحرقُ يُقال ولا يُعرض */}
+                        {r.kind === "review" && r.spoiler ? (
+                          <Text size={12} muted>{t.spoilerMark}</Text>
+                        ) : r.kind === "review" && r.review ? (
+                          <Text autoDir size={13} numberOfLines={2} style={{ lineHeight: 19, opacity: 0.85 }}>{r.review}</Text>
+                        ) : null}
+                        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          {ep ? <StatusPill label={ep} color={tokens.fg} /> : null}
+                          {r.rating != null ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                              <Icon name="star" size={12} color={tokens.accent} />
+                              <Text size={12} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(r.rating, locale)}</Text>
+                            </View>
+                          ) : null}
+                          <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{clock(r.at, locale, true)}</Text>
+                          {r.source ? <StatusPill label={sourceLabel(r.source, t)} color={r.source === "auto" ? tokens.accent : tokens.muted} /> : null}
+                        </View>
+                        {written && onReview && openHint && !r.spoiler ? <Text size={12} weight="700" color={tokens.accent}>{`${t.activityOpenReview} ›`}</Text> : null}
+                      </View>
+                      {/* زرُّ ⋯ ظاهرٌ على صفِّ المشاهدة في سجلّك — كانت الورقةُ خلف ضغطةٍ مطوّلةٍ لا يعرفها أحد (والمطوّلةُ باقية) */}
+                      {menuable ? (
+                        <Pressable onPress={() => (haptic.pick(), setMenu(r))} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.historyRowMenu} style={{ padding: 4 }}>
+                          <Icon name="dots" size={18} color={tokens.muted} />
+                        </Pressable>
                       ) : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </View>
         ))
       )}
