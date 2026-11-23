@@ -2,6 +2,10 @@ import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies, headers } from "next/headers";
 import { tracedFetch } from "@/lib/reqTrace";
+import { withDefaultTimeout } from "@/lib/supabase/dbFetch";
+
+/* A-77 (المدقّق ٢٣ نوفمبر) — نداءٌ عالقٌ بالقاعدة يفشل بعد ١٥ث بدل أن يعلّق الطلبَ حتى قطع Vercel (dbFetch.ts) */
+const dbFetch = withDefaultTimeout(tracedFetch);
 
 /**
  * عميل Supabase للخادم.
@@ -29,7 +33,7 @@ export const createClient = cache(async () => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         /* D-1336 — `fetch` نفسُها، ونداؤها مسجَّلٌ في أثر الطلب البطيء */
-        global: { headers: { Authorization: `Bearer ${bearer}` }, fetch: tracedFetch },
+        global: { headers: { Authorization: `Bearer ${bearer}` }, fetch: dbFetch },
         cookies: {
           getAll() {
             return [];
@@ -51,7 +55,7 @@ export const createClient = cache(async () => {
       // كوكيز الجلسة بخيارات صريحة لا افتراضات المكتبة:
       // lax يمنع إرسالها مع طلبات مواقع أخرى، وsecure يمنعها عن HTTP
       cookieOptions: { sameSite: "lax", secure: true, path: "/" },
-      global: { fetch: tracedFetch },
+      global: { fetch: dbFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();
