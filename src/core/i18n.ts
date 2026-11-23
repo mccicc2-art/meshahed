@@ -910,8 +910,9 @@ const ar = {
   // المفضّلات (D-130) — قائمةٌ مثبّتة لا جدولٌ جديد
   favAria: "أضِفه إلى مفضّلاتي",
   favListName: "المفضّلة",
-  followersLabel: "متابِع",
-  followingLabel: "يتابع",
+  /* 🆕 T529 — بصيغة X العربيّة (أحمد ٢٣ نوفمبر): «المتابِعون» بالكسرة و«متابَع» بالفتحة — الحركةُ تفرّق بين الكلمتين */
+  followersLabel: "المتابِعون",
+  followingLabel: "متابَع",
   followListEmpty: "لا أحد هنا بعد",
   /* المفتاحان وُلدا لصفحة `/follows` (D-565) **وبقيا بعد حذفها لأن
      قارئَهما تبدّل** — تبويبا ترويسة الملفّ و`HomeHeader` (جُرد في D-873:
@@ -1862,6 +1863,11 @@ const ar = {
      **ثلاثةُ قائلين لمعنىً واحد، فيبقى أوضحُهم.** */
   shortRatings: "تقييماتي",
   shortWatchTime: "الوقت",
+  /* 🆕 T529 — أسماءُ خاناتٍ في بطاقة الأرقام تُقرأ بعد العدد (أحمد ٢٣ نوفمبر): «١٢ يومًا من المشاهدة» · «٥ قادم» · «٤٠ مكتمل».
+     أسماءُ التبويبات نفسُها («القادم» · «أكملتها») باقيةٌ في المكتبة وفي قائمة الاختيار */
+  cardWatchTime: "من المشاهدة",
+  cardUpcoming: "قادم",
+  cardCompleted: "مكتمل",
   /* تبويب المكتبة الرابع (D-128) — كلمةٌ واحدة كإخوته: أربعة عناوين
      عربية في صفٍّ واحد على ٣٦٠px لا تحتمل «الفنانون المفضّلون» */
   shortArtists: "فنانون",
@@ -4988,6 +4994,9 @@ const en: Dict = {
   shortMovies: "Movies",
   shortRatings: "Ratings",
   shortWatchTime: "Time",
+  cardWatchTime: "Time",
+  cardUpcoming: "Upcoming",
+  cardCompleted: "Finished",
   shortArtists: "Artists",
   artistWorksWatched: (n: number) =>
     n === 1 ? "1 title watched" : `${n} titles watched`,
