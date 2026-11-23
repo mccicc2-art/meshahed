@@ -1776,6 +1776,13 @@ const ar = {
   /* 🆕 T530 — «بانتظار تقييمك» (أحمد ٢٣ نوفمبر: «١أ» قائمة · «٢» بطاقةٌ مدمجة · إشعارٌ أسبوعيّ). العددُ بقاعدة D-1659:
      ٣–١٠ جمعٌ، ١١–٩٩ منصوبٌ منوَّن، ١٠٠ فما فوق مفرد — والرقمُ يصل منسَّقاً (`num`) */
   /* 🆕 T530 — مشاركةُ المراجعة: «المراجعة كاملة» أو «التقييم فقط» (أحمد «١أ»)، وشريطُ «حمّل لوبز» لزائر الصفحة، و«قيّم لوبز» */
+  /* 🆕 T532 — تبويبُ المراجعات في صفحة العمل: المكتوبُ والتقييمُ وحده معاً، ورقاقاتٌ تفصلهما (أحمد «أ») */
+  titleRevAll: (n: string) => `الكل ${n}`,
+  titleRevWritten: (n: string) => `مراجعات ${n}`,
+  titleRevRatings: (n: string) => `تقييمات ${n}`,
+  titleRevRated: (date: string) => `قيّمه · ${date}`,
+  titleRevNoWritten: "لا مراجعات مكتوبة بعد.",
+  titleRevRatingsChip: "التقييمات",
   shareReviewTitle: "مشاركة المراجعة",
   shareReviewFull: "المراجعة كاملة",
   shareReviewRating: "التقييم فقط",
@@ -4976,6 +4983,12 @@ const en: Dict = {
     `A ${n}-episode journey, complete. Well done!`,
   rateQuestion: "How would you rate it?",
   ratedThanks: "Rating saved ✓",
+  titleRevAll: (n: string) => `All ${n}`,
+  titleRevWritten: (n: string) => `Reviews ${n}`,
+  titleRevRatings: (n: string) => `Ratings ${n}`,
+  titleRevRated: (date: string) => `Rated · ${date}`,
+  titleRevNoWritten: "No written reviews yet.",
+  titleRevRatingsChip: "Ratings",
   shareReviewTitle: "Share review",
   shareReviewFull: "Full review",
   shareReviewRating: "Rating only",

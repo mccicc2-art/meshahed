@@ -81,6 +81,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
           rating: r.rating as number,
           has_review: !!r.review?.trim(),
           mine: r.isMine,
+          /* 🆕 T532 — تاريخُ التقييم: صفُّ «قيّمه» في تبويب المراجعات يقول متى (أحمد «أ») */
+          updated_at: r.updated_at,
         }))
         .sort((a, b) => Number(b.mine) - Number(a.mine)),
       bulletins: [

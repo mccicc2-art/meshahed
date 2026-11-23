@@ -604,7 +604,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
           {d ? (
           <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 16, gap: 16 }}>
             {tab === "community" ? (
-              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={editReview} locked={unreleased} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} onLikeReview={likeReview} />
+              <CommunityTab data={community.data} myRating={d.me.rating} onEditReview={editReview} locked={unreleased} onOpenPerson={(u) => openProfile(router, u, from)} onOpenTalk={(p) => { const who = profileHandleOf(p); if (who) return openProfile(router, who, from); return openThreadPath(router, p, from) || openWeb("", p); }} onOpenReview={(user) => openThreadPath(router, `/review/${kind}/${id}/${user}`, from)} onLikeReview={likeReview} />
             ) : tab === "episodes" && d.kind === "tv" ? (
               <SeasonAccordion show={d} watched={watchedSet} onError={fail} onSettled={settle} pending={guest} />
             ) : (

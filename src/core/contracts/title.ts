@@ -195,7 +195,7 @@ export type TitleCommunityPayload = {
    * 🆕 D-1628 — **من قيّم العمل** (برقمٍ أو بمراجعة): الناسُ وحدَهم (لا شخصيّاتُ لوبز — لا تدخل المتوسّط)، تقييمي أوّلاً ثمّ الأحدث.
    * الحسابُ الخاصُّ الذي لا أتابعه لا يُرسل (`can_view_profile`) — يُعدّ من نبض الترويسة ولا يُسمّى. اختياريٌّ: خادمٌ أقدم لا يرسله.
    */
-  raters?: { user_id: string; name: string; username: string | null; avatar_url: string | null; rating: number; has_review: boolean; mine: boolean }[];
+  raters?: { user_id: string; name: string; username: string | null; avatar_url: string | null; rating: number; has_review: boolean; mine: boolean; /** 🆕 T532 — يغيب من خادمٍ أقدم */ updated_at?: string }[];
 };
 
 /** `POST /api/v1/track/favorite` — تبديلُ المفضّل؛ يعود بالحالة الحقيقيّة */

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { chipClass, chipRow } from "./ui/controls";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 
 /** 🆕 D-1563 — `persona`: مراجعاتُ شخصيّات لوبز AI، برقاقتها */
-export type FeedKind = "review" | "news" | "persona";
+/* 🆕 T532 — «rating»: من قيّم بلا كتابة (أحمد «أ») */
+export type FeedKind = "review" | "news" | "persona" | "rating";
 
 export interface FeedItem {
   kind: FeedKind;
@@ -39,6 +40,8 @@ export interface FeedItem {
  * **والترشيحُ إخفاءٌ لا حذف** (نفسُ حجّة `DetailTabs`): كلُّ الصفوف
  * مرسومةٌ على الخادم، **فالتبديلُ فوريٌّ بلا طلبٍ ولا وميض.**
  */
+const FEED_KIND_KEY = "loopz:title-feed-kind";
+
 export function TitleCommunityFeed({
   items,
   locale,
@@ -47,12 +50,34 @@ export function TitleCommunityFeed({
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const [kind, setKind] = useState<FeedKind | "all">("all");
+  const [kind, setKindState] = useState<FeedKind | "all">("all");
+  /* 🆕 T532 — **الرقاقةُ المختارة محفوظةٌ في المتصفّح** كالتطبيق: تُقرأ بعد الترطيب (الخادمُ لا يعرفها، فيرسم «الكل» أوّلاً) */
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(FEED_KIND_KEY);
+    } catch {
+      /* تخزينٌ مرفوض — «الكل» */
+    }
+    if (saved === "review" || saved === "rating" || saved === "persona" || saved === "news") {
+      const v = saved;
+      queueMicrotask(() => setKindState(v));
+    }
+  }, []);
+  const setKind = (k: FeedKind | "all") => {
+    setKindState(k);
+    try {
+      localStorage.setItem(FEED_KIND_KEY, k);
+    } catch {
+      /* لا شيء */
+    }
+  };
 
   const has = (k: FeedKind) => items.some((i) => i.kind === k);
   const chips: { key: FeedKind | "all"; label: string }[] = [
     { key: "all", label: t.feedFilterAll },
     ...(has("review") ? [{ key: "review" as const, label: t.tabReviews }] : []),
+    ...(has("rating") ? [{ key: "rating" as const, label: t.titleRevRatingsChip }] : []),
     ...(has("persona") ? [{ key: "persona" as const, label: t.personaFeedChip }] : []),
     ...(has("news") ? [{ key: "news" as const, label: t.communityTabNews }] : []),
   ];
@@ -68,7 +93,9 @@ export function TitleCommunityFeed({
     );
   }
 
-  const shown = kind === "all" ? items : items.filter((i) => i.kind === kind);
+  /* رقاقةٌ محفوظةٌ لصنفٍ غائبٍ عن هذا العمل لا تُفرغ الخطّ */
+  const active = kind === "all" || has(kind) ? kind : "all";
+  const shown = active === "all" ? items : items.filter((i) => i.kind === active);
 
   return (
     <div className="mt-3">
@@ -81,12 +108,12 @@ export function TitleCommunityFeed({
               <button
                 key={c.key}
                 type="button"
-                aria-pressed={kind === c.key}
+                aria-pressed={active === c.key}
                 onClick={() => {
                   tap(8);
                   setKind(c.key);
                 }}
-                className={chipClass(kind === c.key, "sm")}
+                className={chipClass(active === c.key, "sm")}
               >
                 {c.label}
               </button>

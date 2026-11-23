@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as SecureStore from "expo-secure-store";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { SYSTEM_FONT_CAP } from "../fontScale";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { PERSONA_READ_IN, personaLang, personaOf } from "@/core/personas";
 import { avatarSource } from "../avatarSource";
+import { formatDateShort } from "@/core/when";
 
 /**
  * ====== تبويبُ المجتمع — نسخةُ `TitleCommunityTab` للقراءة (Phase 11-D · D3 · D-956) ======
@@ -41,6 +43,26 @@ export function useCommunity(kind: "tv" | "movie", id: number, enabled: boolean)
   });
 }
 
+/**
+ * ====== 🆕 T532 — المراجعةُ والتقييمُ وحده معاً، ورقاقاتٌ تفصلهما (أحمد ٢٣ نوفمبر: «في صفحة الفلم اعرض التقييم والرفيو سوى …
+ * خل فيه خيار للشخص يفصلها»، ثمّ «أ» على صورته من Zootopia) ======
+ *
+ * كان التبويبُ للمكتوب وحده، ومن قيّم بالنجوم يظهر في ورقة النجمة فقط (D-1628) — فقال «The Irishman» «لا آراءَ بعد» وقد قيّمه
+ * ثلاثة. الآن «الكل» (الافتراض): المراجعاتُ بترتيبها ثمّ التقييماتُ بلا كتابةٍ صفوفاً صغيرةً بالأحدث، و«مراجعات» و«تقييمات»
+ * تفصلهما. **والاختيارُ محفوظٌ في الجهاز** كترتيب المواسم (D-1500). تقييمي لا يُكرَّر هنا: هو في بطاقتي أعلى التبويب. ملفُّ العضو
+ * لا يتغيّر (قرارُ ٢٣ نوفمبر هناك باقٍ).
+ */
+type RevFilter = "all" | "written" | "ratings";
+const REV_FILTER_KEY = "loopz.titleReviewsFilter";
+function readRevFilter(): RevFilter {
+  try {
+    const v = SecureStore.getItem(REV_FILTER_KEY);
+    return v === "written" || v === "ratings" ? v : "all";
+  } catch {
+    return "all";
+  }
+}
+
 export function CommunityTab({
   data,
   myRating,
@@ -48,6 +70,7 @@ export function CommunityTab({
   onOpenTalk,
   onOpenReview,
   onLikeReview,
+  onOpenPerson,
   locked = false,
 }: {
   data: TitleCommunityPayload | undefined;
@@ -60,9 +83,22 @@ export function CommunityTab({
   onLikeReview?: (r: TitleCommunityPayload["reviews"][number]) => void;
   /** 🆕 T474 — فيلمٌ لم يُعرض: الحقلُ يقول متى يُفتح التقييم (تقويمٌ لا قلم) — والضغطُ يقوله توستاً بيد الشاشة */
   locked?: boolean;
+  /** 🆕 T532 — صفُّ التقييم وحده يفتح ملفَّ صاحبه */
+  onOpenPerson?: (username: string) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const ar = locale !== "en";
+  const [filter, setFilterState] = useState<RevFilter>(readRevFilter);
+  const setFilter = (f: RevFilter) => {
+    setFilterState(f);
+    SecureStore.setItemAsync(REV_FILTER_KEY, f).catch(() => {});
+  };
+  /* من قيّم بلا كتابة — غيري، والأحدثُ أوّلاً (خادمٌ أقدمُ بلا تاريخ: بترتيبه) */
+  const bare = (data?.raters ?? [])
+    .filter((r) => !r.has_review && !r.mine)
+    .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
+  /* الرقاقةُ المحفوظةُ لا تُبقي التبويبَ فارغاً على عملٍ لا تقييمَ فيه بلا كتابة */
+  const shown: RevFilter = bare.length ? filter : "all";
   if (!data) {
     return (
       <View style={{ gap: 10 }}>
@@ -110,9 +146,30 @@ export function CommunityTab({
         </View>
       </Pressable>
 
-      {data.reviews.map((r) => (
-        <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} onLike={onLikeReview ? () => onLikeReview(r) : undefined} />
-      ))}
+      {/* 🆕 T532 — الرقاقاتُ حين يوجد من قيّم بلا كتابة؛ وإلّا فالتبويبُ كما كان */}
+      {bare.length ? (
+        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+          <Chip label={t.titleRevAll(num(data.reviews.length + bare.length, locale))} active={shown === "all"} onPress={() => setFilter("all")} />
+          <Chip label={t.titleRevWritten(num(data.reviews.length, locale))} active={shown === "written"} onPress={() => setFilter("written")} />
+          <Chip label={t.titleRevRatings(num(bare.length, locale))} active={shown === "ratings"} onPress={() => setFilter("ratings")} />
+        </View>
+      ) : null}
+
+      {shown !== "ratings"
+        ? data.reviews.map((r) => (
+            <ReviewRow key={r.user_id} r={r} onOpen={onOpenReview ? () => onOpenReview(r.user_id) : undefined} onLike={onLikeReview ? () => onLikeReview(r) : undefined} />
+          ))
+        : null}
+      {shown === "written" && !data.reviews.length ? (
+        <Text size={13} muted style={{ textAlign: "center", paddingVertical: 12 }}>{t.titleRevNoWritten}</Text>
+      ) : null}
+      {shown !== "written" && bare.length ? (
+        <View>
+          {bare.map((r) => (
+            <RatedRow key={r.user_id} r={r} onOpen={onOpenPerson} />
+          ))}
+        </View>
+      ) : null}
 
       {data.bulletins.length ? (
         <View style={{ gap: 8 }}>
@@ -128,7 +185,7 @@ export function CommunityTab({
         </View>
       ) : null}
 
-      {data.reviews.length === 0 && data.bulletins.length === 0 ? (
+      {data.reviews.length === 0 && data.bulletins.length === 0 && !bare.length ? (
         <Text size={13} muted style={{ textAlign: "center", paddingVertical: 12 }}>{ar ? "لا آراءَ بعد — كن أوّلَ من يكتب." : "No reviews yet — be the first."}</Text>
       ) : null}
 
@@ -139,6 +196,28 @@ export function CommunityTab({
         <Button label={`${TALK_DOOR[ar ? "ar" : "en"]} ↗`} variant="ghost" onPress={() => onOpenTalk(data.talk_path)} />
       </View>
     </View>
+  );
+}
+
+/** 🆕 T532 — **صفُّ التقييم وحده**: صورةُ صاحبه واسمُه و«قيّمه · التاريخ» ونجمتُه — أصغرُ من صفِّ المراجعة ومن شكله (الصورةُ والاسمُ
+    والنجمةُ في مواضعها هناك)، ويفتح ملفَّه */
+function RatedRow({ r, onOpen }: { r: NonNullable<TitleCommunityPayload["raters"]>[number]; onOpen?: (username: string) => void }) {
+  const { t, tokens, locale } = useApp();
+  const go = r.username && onOpen ? () => onOpen(r.username as string) : undefined;
+  return (
+    <Pressable disabled={!go} onPress={go} accessibilityRole={go ? "link" : undefined} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: pressed ? 0.6 : 1 })}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+        {r.avatar_url ? <Image source={avatarSource(r.avatar_url)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text size={13} weight="700" numberOfLines={1}>{r.name}</Text>
+        {r.updated_at ? <Text size={11} muted numberOfLines={1}>{t.titleRevRated(formatDateShort(r.updated_at, t))}</Text> : null}
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+        <Icon name="star-filled" size={12} color={tokens.accent} />
+        <Text size={12} weight="700" color={tokens.accent}>{num(r.rating, locale)}</Text>
+      </View>
+    </Pressable>
   );
 }
 

@@ -13,7 +13,7 @@ import { compareReviews, type RankedReview } from "@/core/reviewOrder";
 import { TitleReviewRow } from "./TitleReviewRow";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";
 import { TitleJoinCard } from "./TitleJoinCard";
-import { TitleRatingsCard } from "./TitleRatingsCard";
+import { TitleRatedRow } from "./TitleRatedRow";
 import { TitleNewsRow } from "./TitleNewsRow";
 
 /**
@@ -143,6 +143,15 @@ export async function TitleCommunityTab({
           />
         ),
       })),
+    /* 🆕 T532 — **ومن قيّم بلا كتابةٍ صفٌّ في الخطّ** (أحمد «أ»): كانت بطاقةً فوقه (D-538)، والآن مع المراجعات ورقاقةُ «التقييمات»
+       تفصلها. غيري وحدَه — تقييمي في صندوقي أعلاه — والشخصيّاتُ لا درجةَ لها */
+    ...reviews
+      .filter((r): r is typeof r & { rating: number } => r.rating != null && !r.persona && !r.isMine && !r.review?.trim() && !replyCounts.has(r.id))
+      .map((r) => ({
+        kind: "rating" as const,
+        at: r.updated_at,
+        node: <TitleRatedRow key={`rated-${r.id}`} r={r} locale={locale} />,
+      })),
     /* **نشرةُ الغرفة خبرٌ أيضاً** (D-400): صفٌّ في `title_posts` بـ`kind`،
        **جملتُه من `bulletinLine` ووجهتُه الغرفةُ نفسُها** — وردودُه
        تُعدُّ عليه كما تُعدُّ على أيّ مشاركة. **وبلا صيغةٍ يسقط الصفّ**
@@ -188,9 +197,15 @@ export async function TitleCommunityTab({
     /* 🆕 D-1567 — **المراجعاتُ أوّلاً بترتيبها** (`compareReviews`: مراجعتي · الأعضاءُ بالإعجاب · شخصيّاتُ لوبز تحتهم — القاعدةُ
        نفسُها في التطبيق)، **ثمّ النشراتُ والأخبارُ الأحدثُ أوّلاً** كما كانت. والمقارنةُ نصّيةٌ لا زمنيّة: الطوابعُ ISO من الخادم
        نفسِه، فترتيبُ حروفها هو ترتيبُ زمنها. */
-    .sort((a: Dated, b: Dated) =>
-      a.rank && b.rank ? compareReviews(a.rank, b.rank) : a.rank ? -1 : b.rank ? 1 : a.at < b.at ? 1 : a.at > b.at ? -1 : 0,
-    );
+    /* 🆕 T532 — ثمّ التقييماتُ بلا كتابةٍ الأحدثُ أوّلاً، ثمّ النشراتُ والأخبار */
+    .sort((a: Dated, b: Dated) => {
+      if (a.rank && b.rank) return compareReviews(a.rank, b.rank);
+      if (a.rank || b.rank) return a.rank ? -1 : 1;
+      const ra = a.kind === "rating" ? 0 : 1;
+      const rb = b.kind === "rating" ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return a.at < b.at ? 1 : a.at > b.at ? -1 : 0;
+    });
 
   return (
     <div>
@@ -215,29 +230,7 @@ export async function TitleCommunityTab({
         }
       />
 
-      {/* 🆕 **ومن قيّم يُرى باسمه** (D-538) — **بطاقةٌ فوق الخطّ لا
-          صفوفٌ فيه**: الخطُّ مجرى قراءةٍ لآراءٍ مكتوبة، **وسطرٌ بلا كلامٍ
-          بينها يقطعه** (وهي حجّةُ الترشيح أعلاه، وتبقى). **والصفوفُ هي
-          `reviews` نفسُها بلا نداءٍ ثانٍ** (D-205). */}
-      <TitleRatingsCard
-        tmdbId={tmdbId}
-        mediaType={mediaType}
-        title={title}
-        posterPath={posterPath}
-        /* 🆕 D-1563 — **من قيّم** وحدَهم: الشخصيّاتُ لا درجةَ لها، فلا مكانَ لها في بطاقة المقيِّمين */
-        raters={reviews.filter((r): r is typeof r & { rating: number } => r.rating != null && !r.persona).map((r) => ({
-          id: r.id,
-          nickname: r.nickname,
-          username: r.username,
-          avatar_url: r.avatar_url,
-          hide_name: r.hide_name,
-          rating: r.rating,
-          review: r.review,
-          isMine: r.isMine,
-        }))}
-        locale={locale}
-      />
-
+      {/* 🆕 T532 — بطاقةُ «من قيّم» (D-538) غادرت: صفوفُها صارت في الخطّ نفسِه برقاقة «التقييمات» (أحمد «أ») */}
       <TitleCommunityFeed items={items} locale={locale} />
     </div>
   );
