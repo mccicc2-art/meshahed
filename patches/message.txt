@@ -1,1 +1,1 @@
-[deploy] Release R286 - T521 director lists clean-up; T522 IMDb rating harder for cinema
+[deploy] Release R294 - T535: welcome genre chips no longer lost on iPad (page stops bouncing when it fits) + mandatory store-update screen, per platform, with "what's new" (off until set)
