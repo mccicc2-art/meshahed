@@ -14,6 +14,7 @@ import type { NativeRoot } from "../shell";
 import { usePullRefresh } from "../pullRefresh";
 import type { MyRating, MyRatingsPayload } from "@/core/contracts/profile";
 import { useHomeDoor } from "../homeDoor";
+import { RATE_QUEUE_KEY, RateQueueEntry } from "./rateQueue";
 
 /**
  * ====== «تقييماتي» أصليّاً (🆕 D-1357 · Phase 11-V · V-C · C1 — ١١ أكتوبر ٢٠٢٦) ======
@@ -46,7 +47,7 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
     getNextPageParam: (last) => last.next_offset ?? undefined,
     staleTime: 60_000,
   });
-  const refresh = usePullRefresh([myRatingsKey], 0);
+  const refresh = usePullRefresh([myRatingsKey, RATE_QUEUE_KEY], 0);
 
   /* 🆕 D-1611 — ضغطةٌ مطوّلةٌ على الرجوع ترجع إلى أوّل التبويب (`useHomeDoor`) */
   const home = useHomeDoor();
@@ -151,10 +152,14 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
           ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={tokens.accent} style={{ paddingVertical: 20 }} /> : undefined}
           ItemSeparatorComponent={Gap}
           ListHeaderComponent={
+            <>
+            {/* 🆕 T530 — بابُ «بانتظار تقييمك» أعلى «تقييماتي» (أحمد «٢أ»)؛ يغيب إن لم ينتظر شيء */}
+            <RateQueueEntry from={from} style={{ marginTop: 6 }} />
             <View style={{ flexDirection: "row", gap: 8, paddingTop: 6, paddingBottom: 12 }}>
               <Chip label={`${t.ratingsAll} ${totalAll}`} active={!onlyComments} onPress={() => setOnlyComments(false)} />
               <Chip label={`${t.ratingsWithComment} ${totalComments}`} active={onlyComments} onPress={() => setOnlyComments(true)} />
             </View>
+            </>
           }
           ListEmptyComponent={<Text muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.ratingsEmpty}</Text>}
           contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 40 }}

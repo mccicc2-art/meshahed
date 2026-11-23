@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { runEpisodePush } from "@/lib/push";
+import { runEpisodePush, runRateQueuePush } from "@/lib/push";
 import { runPlanEndNotices } from "@/lib/billing";
 import { getUnreadShares, getUnreadSignals } from "@/lib/data";
 import { handle, limited, requireUser } from "@/lib/v1";
@@ -22,6 +22,8 @@ export async function GET() {
     /* 🆕 D-1305 — «حلقةٌ جديدة اليوم» بحركة المرور (نمطُ D-210، بلا cron): هذا أكثرُ مسارٍ يُسأل من التطبيق، والدورةُ
        تحرس نفسَها (عشرُ دقائق في الذاكرة ثمّ نافذةُ ساعتين في القاعدة) — فأغلبُ النداءات مقارنةُ رقمين */
     after(() => runEpisodePush().then(() => undefined).catch(() => undefined));
+    /* 🆕 T530 — «بانتظار تقييمك» الأسبوعيّ بالنمط نفسِه: خارجَ الخميس (بأيِّ منطقة) يعود قبل أيِّ استعلام */
+    after(() => runRateQueuePush().then(() => undefined).catch(() => undefined));
     /* 🆕 المرحلة ١ — «اشتراكك انتهى، أبقينا X» لمن انتهى بلسُه بلا ويبهوك (المؤسِّسون ٣٠ نوفمبر) — النمطُ نفسُه: مرّةً في الساعة */
     after(() => runPlanEndNotices().then(() => undefined).catch(() => undefined));
     return ok({ messages, signals });

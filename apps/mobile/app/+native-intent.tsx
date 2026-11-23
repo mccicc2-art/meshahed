@@ -37,9 +37,16 @@ const WIDGET_LINK = /^(?:com\.loopztv\.app:\/\/|\/)?w\/[a-z]+(?:[?#].*)?$/i;
 /* 🆕 R282 — عودةُ Trakt (`com.loopztv.app://trakt?code=…`، وقد تصل بثلاث شرطات) — انظر الفقرة أعلاه */
 const TRAKT_RETURN = /^(?:com\.loopztv\.app:\/\/\/?|\/)?trakt(?:[?#].*)?$/i;
 
+/* 🆕 T530 — رابطُ المراجعة من X يفتح التطبيق (أحمد «١أ»: الآيفون الآن عبر `APP_LINK_PATHS`، وأندرويد في البناء المدفوع القادم).
+   **إلى شاشة المراجعة الأصليّة مباشرةً** (`app/review/[kind]/[id]/[user].tsx`) لا إلى الويب — كما كانت الحزمُ الأقدمُ تصلها حين
+   يمرّ المسارُ كما هو (مراجعةُ الوكيل ٢، البند ٥)؛ و`?card=rating` يخصّ صورةَ المشاركة وحدَها فيسقط */
+const REVIEW_LINK = /^(?:https?:\/\/(?:www\.)?loopztv\.com)?\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?(?:[?#].*)?$/i;
+
 export function appLinkTarget(path: string): string | null {
   const m = APP_LINK.exec(path);
-  return m ? `/web?u=${encodeURIComponent(`/${m[1].toLowerCase()}/${m[2]}`)}` : null;
+  if (m) return `/web?u=${encodeURIComponent(`/${m[1].toLowerCase()}/${m[2]}`)}`;
+  const r = REVIEW_LINK.exec(path);
+  return r ? `/review/${r[1].toLowerCase()}/${r[2]}/${r[3].toLowerCase()}` : null;
 }
 
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string | null {

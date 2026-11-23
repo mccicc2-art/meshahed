@@ -26,7 +26,8 @@ import { Avatar } from "@/components/Avatar";
 import { SpoilerText } from "@/components/SpoilerText";
 import { FeedReviewText } from "@/components/FeedReviewText";
 import { LikeButton } from "@/components/LikeButton";
-import { ShareTitleButton } from "@/components/ShareTitleButton";
+import { ShareReviewButton } from "@/components/ShareReviewButton";
+import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import { ReportButton } from "@/components/ReportButton";
 import { Icon } from "@/components/Icon";
 import { TitleHero } from "@/components/TitleHero";
@@ -61,10 +62,13 @@ export const dynamic = "force-dynamic";
  */
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ type: string; id: string; user: string }>;
+  searchParams: Promise<{ card?: string }>;
 }): Promise<Metadata> {
   const { type, id, user } = await params;
+  const { card } = await searchParams;
   if (type !== "tv" && type !== "movie") return {};
   const tmdbId = Number(id);
   if (!Number.isFinite(tmdbId)) return {};
@@ -74,7 +78,23 @@ export async function generateMetadata({
   if (!r) return {};
   const who = displayNameOf(r, t.anonymousUser);
   const work = await workTitle(tmdbId, type, locale);
+  /* 🆕 T530 — صورةُ المشاركة من `card/route.tsx`: المراجعةُ كاملةً، أو التقييمُ وحده لرابطٍ يحمل `?card=rating` (أحمد «١أ»).
+     ورأيٌ بلا درجة (شخصيّةُ AI) لا صورةَ له — تُورَّث صورةُ الجذر */
+  const v = Date.parse(r.updated_at) || 0;
+  const image = r.rating != null ? `/review/${type}/${tmdbId}/${user}/card?${card === "rating" ? "card=rating&" : ""}v=${v}` : null;
   return {
+    ...(image
+      ? {
+          /* الجذرُ يُستبدل لا يُدمج: الاسمُ والنوعُ واللغةُ تُعاد هنا وإلّا سقطت (مراجعةُ الوكيل ٢، البند ٧) */
+          openGraph: {
+            type: "website",
+            siteName: t.brand,
+            locale: locale === "ar" ? "ar_SA" : "en_US",
+            images: [{ url: image, width: 1200, height: 630, alt: t.reviewPageMeta(who, work) }],
+          },
+          twitter: { card: "summary_large_image", images: [image] },
+        }
+      : {}),
     title: t.reviewPageMeta(who, work),
     /* 🆕 D-315 — **الوصفُ لا يكشف ما حجبه كاتبُه**: بطاقةُ مشاركةٍ تعرض
        الحرقَ في المعاينة تكسر الحاجبَ قبل أن يُفتح */
@@ -281,7 +301,13 @@ export default async function ReviewPage({
           readOnly={!me}
           locale={locale}
         />
-        <ShareTitleButton path={titleHref} title={work} locale={locale} />
+        {/* 🆕 T530 — يشارك المراجعةَ لا العمل، ويسأل «المراجعة كاملة» أم «التقييم فقط» حين فيها نصّ (أحمد «١أ») */}
+        <ShareReviewButton
+          path={`/review/${mediaType}/${tmdbId}/${authorId}`}
+          title={work}
+          hasText={!!r.review?.trim() && r.rating != null}
+          locale={locale}
+        />
         {/* **بابُ البلاغ يعود إلى سطحه** (بند ١٦): غادر خطَّ `/talk` مع
             D-242 لأن قائمةَ الخطّ لا تحمل بلاغاً لكلّ صفّ — **فبقي كلامُ
             الناس على سطحٍ عامٍّ بلا بابِ بلاغ، وهذا نقصٌ لا اختصار.**
@@ -299,6 +325,9 @@ export default async function ReviewPage({
           />
         )}
       </ThreadActionBar>
+
+      {/* 🆕 T530 — «حمّل لوبز» لمن وصل بلا حساب (أحمد «٢أ»): زرُّ صفحة الدعوة نفسُه بمراحله لكلِّ جهاز */}
+      {!me ? <DownloadLoopzBar locale={locale} /> : null}
 
       <ThreadReplies
         target={{ kind: "review", reviewUserId: authorId, tmdbId, mediaType }}

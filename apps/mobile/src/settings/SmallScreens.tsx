@@ -31,7 +31,7 @@ import { tourStore } from "../tour/store";
  * الإذنُ مرفوضٌ ⇒ صفٌّ واحدٌ يفتح إعداداتِ النظام (أندرويد لا يعرض النافذةَ ثانيةً)، والمفاتيحُ معطَّلةٌ تحته.
  */
 const PUSH_PREFS_KEY = ["me:push-prefs"] as const;
-const PUSH_ROWS: { group: PushGroup; icon: "chat" | "person-check" | "heart" | "comment" | "tv" | "repeat"; label: "pushMessages" | "pushFollows" | "pushLikes" | "pushReplies" | "pushEpisodes" | "pushAuto"; hint: "pushMessagesSub" | "pushFollowsSub" | "pushLikesSub" | "pushRepliesSub" | "pushEpisodesSub" | "pushAutoSub" }[] = [
+const PUSH_ROWS: { group: PushGroup; icon: "chat" | "person-check" | "heart" | "comment" | "tv" | "repeat" | "star"; label: "pushMessages" | "pushFollows" | "pushLikes" | "pushReplies" | "pushEpisodes" | "pushAuto" | "pushRate"; hint: "pushMessagesSub" | "pushFollowsSub" | "pushLikesSub" | "pushRepliesSub" | "pushEpisodesSub" | "pushAutoSub" | "pushRateSub" }[] = [
   { group: "messages", icon: "chat", label: "pushMessages", hint: "pushMessagesSub" },
   { group: "follows", icon: "person-check", label: "pushFollows", hint: "pushFollowsSub" },
   { group: "likes", icon: "heart", label: "pushLikes", hint: "pushLikesSub" },
@@ -39,6 +39,8 @@ const PUSH_ROWS: { group: PushGroup; icon: "chat" | "person-check" | "heart" | "
   { group: "episodes", icon: "tv", label: "pushEpisodes", hint: "pushEpisodesSub" },
   /* 🆕 T361 — هجرة ٢٤٢ (أحمد «٣ أ»): ما سجّله Loopz بنفسه من التطبيقات المربوطة — رمزُه رمزُ «سجّل بلا سؤال» في صفحة الجهاز */
   { group: "auto", icon: "repeat", label: "pushAuto", hint: "pushAutoSub" },
+  /* 🆕 T530 — هجرة ٢٦٣: «بانتظار تقييمك» الأسبوعيّ */
+  { group: "rate", icon: "star", label: "pushRate", hint: "pushRateSub" },
 ];
 
 export function NotificationsScreen() {
@@ -90,7 +92,7 @@ export function NotificationsScreen() {
                 ]
               : []),
             ...(!q.data
-              ? [<RowsSkeleton key="sk" rows={5} />]
+              ? [<RowsSkeleton key="sk" rows={7} />]
               : PUSH_ROWS.map((r) => <Toggle key={r.group} icon={r.icon} label={t[r.label]} hint={t[r.hint]} checked={!muted.includes(r.group)} onChange={() => flip(r.group)} disabled={off} />)),
           ]}
         </Group>

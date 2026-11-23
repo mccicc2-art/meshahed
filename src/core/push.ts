@@ -12,7 +12,8 @@ import { signalHref, signalParts, type SignalKind, type SignalRow } from "./sign
 
 /* 🆕 هجرة ٢٤٢ — «auto»: ما سجّله Loopz بنفسه من أجهزة العضو (أحمد ١٠ نوفمبر «٣ أ») — مفتاحٌ سادسٌ لأنّه نيّةٌ أخرى: من يكتمه
    لا يكتم الحلقاتِ الجديدة. ⚠️ قيدُ `push_prefs.muted` يقبله من الهجرة ٢٤٢ — قبلها يُرفض كتمُه وحدَه، ولا يتعطّل شيءٌ آخر */
-export const PUSH_GROUPS = ["messages", "follows", "likes", "replies", "episodes", "auto"] as const;
+/* 🆕 T530 — «rate»: تذكيرُ «بانتظار تقييمك» الأسبوعيّ (هجرة ٢٦٣ توسّع قيدَ `push_prefs.muted`) */
+export const PUSH_GROUPS = ["messages", "follows", "likes", "replies", "episodes", "auto", "rate"] as const;
 export type PushGroup = (typeof PUSH_GROUPS)[number];
 
 export const PUSH_GROUP_OF: Record<SignalKind, PushGroup> = {
@@ -216,6 +217,14 @@ export function episodesPush(shows: { tmdbId: number; title: string }[], t: Dict
   if (shows.length === 1) return { title: APP, body: t.pushNewEpisode(shows[0].title), url: `/show/${shows[0].tmdbId}` };
   const [a, b, ...rest] = shows;
   return { title: APP, body: t.pushNewEpisodes(a.title, b.title, rest.length), url: "/" };
+}
+
+/**
+ * 🆕 T530 — **«بانتظار تقييمك»** أسبوعيّاً: العددُ بقاعدة العدّ العربيّة وآخرُ عملٍ شاهده، والوجهةُ القائمةُ نفسُها
+ * (`/ratings/pending` — والتطبيقُ يفتحها أصليّةً). الرقمُ بأرقام لغة الجهاز.
+ */
+export function rateQueuePush(total: number, first: string | null, t: Dict, digits: (n: number) => string): PushText {
+  return { title: APP, body: t.rateQueuePush(t.rateQueueWorks(total, digits(total)), first), url: "/ratings/pending", tag: "rate-queue" };
 }
 
 /** «اليوم» و«الساعة» في منطقة القارئ — منطقةٌ مجهولةٌ أو غائبة ⇒ UTC */

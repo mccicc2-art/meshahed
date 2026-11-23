@@ -2,7 +2,10 @@ import "server-only";
 import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
-import { getDict, type Dict, type Locale } from "@/core/i18n";
+import { getDict, num, type Dict, type Locale } from "@/core/i18n";
+import { RATE_PUSH_FROM_HOUR, RATE_PUSH_WEEKDAY, RATE_QUEUE_MIN, rateWeekOf } from "@/core/rateQueue";
+import { countRateQueueFor } from "@/lib/rateQueue";
+import { sanitizeUiState } from "@/lib/uiState";
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { curatedName } from "@/core/universes";
 import { getMovieIn, getTvIn } from "@/lib/tmdb";
@@ -26,6 +29,7 @@ import {
   type PushText,
   airingByDay,
   pushFailureLine,
+  rateQueuePush,
   type ExpoTicket,
 } from "@/core/push";
 
@@ -1011,6 +1015,90 @@ export async function runEpisodePush(nowMs = Date.now()): Promise<{ ran: boolean
   }
   const { sent, failed } = await send(db, batch, "episodes");
   const release = [...claimed.values()].filter((c) => c.at.length && c.at.every((n) => failed.has(n))).flatMap((c) => c.keys);
+  if (release.length) await db.from("push_sent").delete().in("key", release);
+  return { ran: true, users: users.length, sent };
+}
+
+/* ================= 🆕 T530 — «بانتظار تقييمك» أسبوعيّاً ================= */
+
+let rateLastTry = 0;
+/** أعضاءٌ يُحسب عددُهم في الدورة الواحدة — الحسابُ أربعةُ استعلاماتٍ للعضو، والدورةُ في `after` لا تطول */
+const RATE_PUSH_PER_RUN = 60;
+
+/**
+ * **«N عملاً بانتظار تقييمك»** — مرّةً في الأسبوع، **الخميس بعد السابعة مساءً بتوقيت صاحبه** (أوّلُ العطلة)، لمن ينتظره
+ * عشرةُ أعمالٍ فأكثر (أحمد ٢٣ نوفمبر «٢ أ وب وج»). بحركة المرور كالحلقات (`me/badges` → `after`)، والمفتاحُ في `push_sent`
+ * لكلِّ (عضو · أسبوع) — فلا يرنّ مرّتين في أسبوعٍ واحد، ويُردّ إن لم يقبل Expo رسالتَه فتعيده الدورةُ التالية.
+ *
+ * 🔑 **العددُ بقرار القائمة نفسِه** (`countRateQueueFor` → `pickToRate`) ومعه «تخطَّ» من حسابه — فالرقمُ في الإشعار هو
+ * ما يجده حين يفتح القائمة. ومفتاحُ «تذكير التقييم» في الإعدادات يكتمه (`rate`).
+ */
+export async function runRateQueuePush(nowMs = Date.now()): Promise<{ ran: boolean; users: number; sent: number }> {
+  const idle = { ran: false, users: 0, sent: 0 };
+  if (!hasServiceKey()) return idle;
+  if (nowMs - rateLastTry < TRY_EVERY_MS) return idle;
+  rateLastTry = nowMs;
+  /* الخميسُ بعد السابعة مساءً بأيِّ منطقةٍ (UTC−12 … UTC+14) يقع بين الخميس ٠٥:٠٠ والجمعة ١١:٠٠ بتوقيت غرينتش — خارجها لا عملَ ولا
+     استعلام (مراجعةُ الوكيل، البند ٨: الأربعاءُ لا يدخلها أبداً) */
+  const utcDay = new Date(nowMs).getUTCDay();
+  if (utcDay !== 4 && utcDay !== 5) return idle;
+  const db = await createServiceClient();
+  /* نافذةُ ساعةٍ لا ساعتين: ليلةُ الخميس في الرياض خمسُ دوراتٍ لا ثلاث */
+  if (!(await claim(db, `job:ratequeue:${dayOf(nowMs)}:${new Date(nowMs).getUTCHours()}`))) return idle;
+
+  const { data: tok } = await db.from("device_tokens").select("user_id, token, lang").limit(5000);
+  const tokens = (tok ?? []) as { user_id: string; token: string; lang: string }[];
+  const all = [...new Set(tokens.map((x) => x.user_id))].sort();
+  if (!all.length) return { ran: true, users: 0, sent: 0 };
+  /* البدايةُ تدور كلَّ دورة (البند ٨): بلا ترتيبٍ ثابتٍ يُحرم مَن بعد سقف الدورات كلَّ أسبوع — والمفتاحُ يحجز مَن حُسب له فلا يُعاد */
+  const start = Math.floor(nowMs / 3_600_000) % all.length;
+  const users = [...all.slice(start), ...all.slice(0, start)];
+
+  /* مَن وقتُه الآن: الخميسُ بعد السابعة بتوقيته، ولم يكتم «تذكير التقييم»، ولم يُرسَل له هذا الأسبوع */
+  const due: { user: string; key: string; skipped: Set<string> }[] = [];
+  for (let i = 0; i < users.length && due.length < RATE_PUSH_PER_RUN; i += 200) {
+    const part = users.slice(i, i + 200);
+    const [prefs, profs] = await Promise.all([
+      db.from("push_prefs").select("user_id, muted").in("user_id", part),
+      db.from("profiles").select("id, timezone, ui_state").in("id", part),
+    ]);
+    const muted = new Set(((prefs.data ?? []) as { user_id: string; muted: unknown }[]).filter((p) => parseMuted(p.muted).includes("rate")).map((p) => p.user_id));
+    const keyed: { user: string; key: string; skipped: Set<string> }[] = [];
+    for (const p of (profs.data ?? []) as { id: string; timezone: string | null; ui_state: unknown }[]) {
+      if (muted.has(p.id)) continue;
+      const { day, hour } = localDayHour(nowMs, p.timezone);
+      if (new Date(`${day}T00:00:00Z`).getUTCDay() !== RATE_PUSH_WEEKDAY || hour < RATE_PUSH_FROM_HOUR) continue;
+      keyed.push({ user: p.id, key: `rq:${p.id}:${rateWeekOf(day)}`, skipped: new Set(sanitizeUiState(p.ui_state).rateSkip) });
+    }
+    if (!keyed.length) continue;
+    const { data: sentRows } = await db.from("push_sent").select("key").in("key", keyed.map((k) => k.key));
+    const already = new Set(((sentRows ?? []) as { key: string }[]).map((r) => r.key));
+    for (const k of keyed) if (!already.has(k.key) && due.length < RATE_PUSH_PER_RUN) due.push(k);
+  }
+  if (!due.length) return { ran: true, users: users.length, sent: 0 };
+
+  const batch: { token: string; text: PushText }[] = [];
+  const claimed = new Map<string, { key: string; at: number[] }>();
+  for (let i = 0; i < due.length; i += 10) {
+    const counts = await Promise.all(
+      due.slice(i, i + 10).map(async (d) => ({ d, c: await countRateQueueFor(db, d.user, d.skipped).catch(() => null) })),
+    );
+    for (const { d, c } of counts) {
+      if (!c) continue;
+      /* المفتاحُ يُحجز لمن حُسب له ولو قلّ عن عشرة: حُكمُ أسبوعه صدر، ولا يُعاد حسابُه كلَّ نافذةٍ فيحجب الدورَ عمّن بعده */
+      if (!(await claim(db, d.key))) continue;
+      if (c.total < RATE_QUEUE_MIN) continue;
+      const at: number[] = [];
+      for (const dev of tokens.filter((x) => x.user_id === d.user)) {
+        const lang: Locale = dev.lang === "en" ? "en" : "ar";
+        at.push(batch.length);
+        batch.push({ token: dev.token, text: rateQueuePush(c.total, c.first, getDict(lang), (n) => num(n, lang)) });
+      }
+      claimed.set(d.user, { key: d.key, at });
+    }
+  }
+  const { sent, failed } = await send(db, batch, "ratequeue");
+  const release = [...claimed.values()].filter((c) => c.at.length && c.at.every((n) => failed.has(n))).map((c) => c.key);
   if (release.length) await db.from("push_sent").delete().in("key", release);
   return { ran: true, users: users.length, sent };
 }

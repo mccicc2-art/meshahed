@@ -11,7 +11,8 @@
  */
 export const APP_ID = "com.loopztv.app";
 export const APPLE_TEAM_ID = "GZFYZ4FGW4";
-export const APP_LINK_PATHS = ["/show/*", "/movie/*"] as const;
+/* 🆕 T530 — `/review/*`: رابطُ المراجعة المشارَك في X يفتح التطبيقَ على الآيفون (أحمد «١أ»؛ أندرويد ينتظر البناءَ المدفوع القادم) */
+export const APP_LINK_PATHS = ["/show/*", "/movie/*", "/review/*"] as const;
 
 /**
  * بصماتُ الشهادتين (SHA-256)، منقولةٌ من Play Console ← توقيع التطبيق (١٢ أكتوبر). ليست سرّاً — تُقرأ من أيِّ APK.

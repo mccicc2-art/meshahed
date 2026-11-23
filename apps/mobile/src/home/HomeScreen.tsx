@@ -43,6 +43,8 @@ import { afterPaint, coldStartOnce, span, tabLanded } from "../perfMarks";
 import { cacheFileState } from "../cachePersist";
 import { HOME_TOP_H, HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader";
 import { WeekStrip } from "./WeekStrip";
+import { RateQueueCard } from "./RateQueueCard";
+import { RATE_QUEUE_KEY } from "../member/rateQueue";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
@@ -569,7 +571,8 @@ export function HomeScreen() {
   /* ——— الرأسُ يختفي بالتمرير كالويب (`chrome-top`)، والغلافُ ثابتٌ خلفه ——— */
   const chrome = useChromeHide();
   const topH = insets.top + HEADER_H;
-  const refresh = usePullRefresh([HOME_KEY, HOME_EXTRAS_KEY], topH);
+  /* 🆕 T530 — والسحبُ يجدّد عددَ «بانتظار تقييمك» مع الرئيسيّة */
+  const refresh = usePullRefresh([HOME_KEY, HOME_EXTRAS_KEY, RATE_QUEUE_KEY], topH);
   /* 🆕 D-1377 — لا خطَّ تحت رأس الرئيسيّة أبداً (أحمد: «شيل الخط»؛ كان يظهر بعد أوّل تمرير — D-1233)، فلا حالةَ تُتابَع هنا */
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => chrome.onScroll(e), [chrome]);
   const bottomPad = navH + 24;
@@ -848,6 +851,8 @@ export function HomeScreen() {
               <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} hidden={tourBusy} />
             </View>
           ) : null}
+          {/* 🆕 T530 — «بانتظار تقييمك» تحت بطاقة الأرقام (أحمد «٢»: البطاقةُ المدمجة)، لمن ينتظره عشرةٌ فأكثر */}
+          <RateQueueCard />
           {/* D-1615 — بين بطاقة الأرقام وأوّل قسمٍ أقلُّ من بين الأقسام: هي رأسُ الصفحة لا قسمٌ — والفراغُ فوق المحتوى هو ما طُلب تقليلُه (T333: بين الأقسام رجع ٢٦) */}
           <Gap size={16} />
           {sections?.map((node, i) => (

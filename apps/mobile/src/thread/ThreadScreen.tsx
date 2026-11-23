@@ -7,6 +7,7 @@ import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, isGuest, softGet, useGuestUpgrade, write } from "../api";
 import { CONFIG } from "../config";
+import { ReviewShareSheet, ratingOnlyPath } from "../community/ReviewShareSheet";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
 import { Button, Text, TopBar, type ToastTone } from "../ui";
@@ -264,11 +265,22 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
     },
     [route, focus, router, from],
   );
+  /* 🆕 T530 — مراجعةٌ فيها نصٌّ: «المراجعة كاملة» أم «التقييم فقط» قبل المشاركة (`ReviewShareSheet`) */
+  const [sharePick, setSharePick] = useState(false);
+  const shareNow = useCallback(
+    (ratingOnly: boolean) => {
+      if (!d) return;
+      const url = `${CONFIG.apiBase}${ratingOnly ? ratingOnlyPath(d.share_path) : d.share_path}`;
+      void Share.share({ message: `${d.work.title} — ${url}`, url }).catch(() => {});
+    },
+    [d],
+  );
   const share = useCallback(() => {
     if (!d) return;
-    const url = `${CONFIG.apiBase}${d.share_path}`;
-    void Share.share({ message: `${d.work.title} — ${url}`, url }).catch(() => {});
-  }, [d]);
+    /* حيث يُغيّر الاختيارُ شيئاً: نصٌّ بلا حرق، ودرجةٌ (شخصيّةُ AI بلا درجةٍ لا صورةَ لها) */
+    if (d.head.kind === "review" && d.head.review?.trim() && d.head.rating != null && !d.head.has_spoiler) setSharePick(true);
+    else shareNow(false);
+  }, [d, shareNow]);
 
   /* ——— الكاش: كلُّ فعلٍ يعدّل الحمولةَ ويُرجعها عند الفشل ——— */
   const patch = useCallback((fn: (p: ThreadPayload) => ThreadPayload) => qc.setQueryData<ThreadPayload>(key, (p) => (p ? fn(p) : p)), [qc, key]);
@@ -948,6 +960,15 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
         </View>
       ) : null}
       <ToastHost hostRef={toastHost} bottom={insets.bottom + 84} />
+      {sharePick ? (
+        <ReviewShareSheet
+          onClose={() => setSharePick(false)}
+          onPick={(ratingOnly) => {
+            setSharePick(false);
+            shareNow(ratingOnly);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

@@ -273,6 +273,9 @@ function guestOpen(pathname: string): boolean {
     pathname.startsWith("/p/") ||
     pathname.startsWith("/invite/") ||
     pathname.startsWith("/i/") ||
+    /* 🆕 T530 — صفحةُ المراجعة مفتوحةٌ للزائر (أحمد ٢٣ نوفمبر «١» ثمّ «نفذ وارفع»): من وصل من X يقرأ المراجعةَ وردودَها ويجد تحتها
+       «حمّل لوبز» — الكتابةُ والإعجابُ للمسجَّلين كما كانت، وما سواها من الموقع مغلقٌ كما هو */
+    pathname.startsWith("/review/") ||
     pathname.startsWith("/.well-known/") ||
     pathname.includes("opengraph-image") ||
     pathname.includes("twitter-image") ||

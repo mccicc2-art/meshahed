@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { Icon } from "../icons";
 import { haptic } from "../haptics";
 import { SettingsScreen, Group, Row, Chevron, RowsSkeleton, StatusPill } from "./ui";
 import { THEMES, themeName } from "@/core/themes";
+import { STORE_REVIEW_URL } from "@/core/storeLinks";
 import { useSettings, useOpenWeb } from "./api";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { useLinks } from "../links/api";
@@ -123,6 +124,8 @@ export function SettingsIndexScreen() {
         {/* 🆕 D-1499 — أوّلَ «الدعم»: أسرعُ طريقٍ لمشكلةٍ أو اقتراح؛ والبريدُ باقٍ داخل «المساعدة» («ب») */}
         <Row icon="send" title={t.fbRow} subtitle={t.fbRowSub} onPress={() => { haptic.pick(); setFbOpen(true); }} />
         <Row icon="comment" title={t.setHelp} onPress={() => go("help")} />
+        {/* 🆕 T530 — «قيّم لوبز» (أحمد «٢أ»): صفحةُ كتابة التقييم في متجر هذا الجهاز، بلا مكافأة */}
+        <Row icon="star" title={t.rateLoopz} subtitle={t.rateLoopzSub} onPress={() => { haptic.pick(); void Linking.openURL(Platform.OS === "ios" ? STORE_REVIEW_URL.ios : STORE_REVIEW_URL.android).catch(() => {}); }} />
         <Row icon="info" title={t.setAbout} onPress={() => go("about")} />
       </Group>
 

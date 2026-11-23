@@ -72,6 +72,7 @@ import { LandingShowcase } from "@/components/LandingShowcase";
 import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
+import { RateQueueHomeServer } from "@/components/RateQueueServer";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { CinemaSection } from "@/components/CinemaSection";
 import { sanitizeUiState } from "@/lib/uiState";
@@ -282,6 +283,10 @@ export default async function HomePage() {
         {seenHints.includes("home-customize") && !seenHints.includes(PRIVACY_HINT) && (
           <OneTimeHint id={PRIVACY_HINT} text={t.hintPrivacy} closeLabel={t.closeLabel} />
         )}
+        {/* 🆕 T530 — «بانتظار تقييمك» تحت الرأس (أحمد «٢»: البطاقةُ المدمجة) لمن ينتظره عشرةٌ فأكثر — في `Suspense` فلا تؤخّر الصفحة */}
+        <Suspense fallback={null}>
+          <RateQueueHomeServer locale={locale} />
+        </Suspense>
         <Suspense
           fallback={
             <div className="space-y-8" aria-hidden>

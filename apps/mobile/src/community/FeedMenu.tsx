@@ -10,6 +10,7 @@ import { write } from "../api";
 import { displayNameOf, profileHref } from "@/core/people";
 import type { CommunityPostRow, TrackResult, UnrateBody } from "../contracts";
 import type { CardDoors } from "./CommunityCards";
+import { ReviewShareSheet, ratingOnlyPath } from "./ReviewShareSheet";
 
 /**
  * ====== 🆕 D-1448 — ورقةُ ⋯ في بطاقة «المجتمع» ======
@@ -22,7 +23,8 @@ import type { CardDoors } from "./CommunityCards";
  * وحدَه: القائمةُ وتقييمُ الحلقة لا هدفَ بلاغٍ لهما في الخادم، ورأيُك لا تُبلغ عنه، والزائرُ لا يُبلغ (`requireUser`).
  * الحدُّ والتكرارُ في الخادم (عشرةٌ في الدقيقة · `ignoreDuplicates`)، فالبلاغُ الثاني على الرأي نفسِه لا يضرّ.
  */
-type Item = { icon: IconName; label: string; run: () => void; danger?: boolean };
+/** `keep`: الضغطةُ لا تغلق اللوح — تفتح خطوةً ثانيةً فيه (🆕 T530: اختيارُ صورة المشاركة) */
+type Item = { icon: IconName; label: string; run: () => void; danger?: boolean; keep?: boolean };
 
 export function FeedMenu({
   row,
@@ -53,6 +55,8 @@ export function FeedMenu({
   const { t } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  /* 🆕 T530 — نسخُ رابط مراجعةٍ فيها نصٌّ أو مشاركتُه يسأل أوّلاً: «المراجعة كاملة» أم «التقييم فقط» */
+  const [pick, setPick] = useState<null | "copy" | "share">(null);
   const it = row.item;
   const titlePath = `/${it.media_type === "tv" ? "show" : "movie"}/${it.tmdb_id}`;
   const items: Item[] = [];
@@ -80,11 +84,16 @@ export function FeedMenu({
     if (who && !mine) items.push({ icon: "people", label: t.viewProfileOf(name), run: () => doors.onWeb(who) });
     shareTitle = a.title ?? "";
   }
-  items.push({ icon: "link", label: t.shareCopyLink, run: () => {
-    Clipboard.setString(`${CONFIG.apiBase}${link}`);
+  const copy = (path: string) => {
+    Clipboard.setString(`${CONFIG.apiBase}${path}`);
     onCopied();
-  } });
-  items.push({ icon: "share", label: t.shareLinkLabel, run: () => onShare(link, shareTitle) });
+  };
+  /* رأيٌ مكتوبٌ (لا قائمةٌ ولا حلقة) ⇒ يُسأل؛ وما سواه يُنسخ كما كان */
+  /* والسؤالُ حيث يُغيّر شيئاً: ما فيه حرقٌ صورتُه التقييمُ وحده أصلاً (مراجعةُ الوكيل ٢، البند ٨) */
+  const asks =
+    row.kind === "comment" && !row.item.listId && row.item.kind !== "ep_rate" && !!row.item.review?.trim() && row.item.rating != null && !row.item.hasSpoiler;
+  items.push({ icon: "link", label: t.shareCopyLink, keep: asks, run: () => (asks ? setPick("copy") : copy(link)) });
+  items.push({ icon: "share", label: t.shareLinkLabel, keep: asks, run: () => (asks ? setPick("share") : onShare(link, shareTitle)) });
 
   const remove = async () => {
     if (row.kind !== "comment") return;
@@ -107,6 +116,20 @@ export function FeedMenu({
       .catch(onError);
   };
 
+  if (pick) {
+    return (
+      <ReviewShareSheet
+        onClose={onClose}
+        onPick={(ratingOnly) => {
+          const path = ratingOnly ? ratingOnlyPath(link) : link;
+          onClose();
+          if (pick === "copy") copy(path);
+          else onShare(path, shareTitle);
+        }}
+      />
+    );
+  }
+
   if (confirm) {
     return (
       <Sheet title={t.deleteRating} onClose={onClose} placement="center">
@@ -128,7 +151,7 @@ export function FeedMenu({
     icon: x.icon,
     label: x.label,
     onPress: () => {
-      onClose();
+      if (!x.keep) onClose();
       x.run();
     },
   }));

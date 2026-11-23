@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { shownProgressFor, skipModeOf } from "@/lib/skipProgress";
 import Link from "next/link";
+import { RateQueueEntryServer } from "@/components/RateQueueServer";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -402,6 +404,10 @@ export default async function LibraryPage({
       <FollowMetaSync rows={metaToCache} />
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
+      {/* 🆕 T530 — بابُ «بانتظار تقييمك» (أحمد «٢أ»: سطرٌ بالعدد في المكتبة كـ«تقييماتي»)؛ يغيب إن لم ينتظر شيء */}
+      <Suspense fallback={null}>
+        <RateQueueEntryServer locale={locale} className="mb-4" />
+      </Suspense>
 
       {/* 🆕 **مضيفُ ورقة ترتيب بطاقة «للمشاهدة»** (D-719) — **حيث تُرسم
           البطاقةُ يُركَّب مضيفُها**: **بطاقةٌ تُوعد بورقةٍ ولا مضيفَ

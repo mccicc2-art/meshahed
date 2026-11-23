@@ -29,6 +29,7 @@ import { scrollJank } from "../scrollJank";
 import { navHeight } from "../BottomNav";
 import { DockLink } from "../navDock";
 import { OneTimeHint } from "./OneTimeHint";
+import { RateQueueEntry } from "../member/rateQueue";
 import { useHintTurn } from "./useHintTurn";
 import { createRowSight, useRowSeen, type RowSight } from "./rowSight";
 import { Icon } from "../icons";
@@ -888,6 +889,8 @@ function LibraryPane({
     () => (
       <>
         <View style={{ paddingHorizontal: PAGE_PAD }}>{head}</View>
+        {/* 🆕 T530 — بابُ «بانتظار تقييمك» (أحمد «٢أ»: سطرٌ بالعدد في المكتبة كـ«تقييماتي»)؛ يغيب إن لم ينتظر شيء */}
+        <RateQueueEntry from="library" style={{ marginHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }} />
         {holdHint ? <OneTimeHint id="library-hold" text={t.longPressHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: SHELF_GAP }} /> : null}
       </>
     ),

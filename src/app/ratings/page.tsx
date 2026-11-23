@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -9,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { chipClass } from "@/components/ui/controls";
 import { PosterCard } from "@/components/PosterCard";
 import { webWords } from "@/components/webWords";
+import { RateQueueEntryServer } from "@/components/RateQueueServer";
 
 /**
  * تقييماتي وتعليقاتي.
@@ -72,6 +74,10 @@ export default async function RatingsPage({
     <div>
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.ratingsTitle}</h1>
+      {/* 🆕 T530 — بابُ «بانتظار تقييمك» أعلى الصفحة (أحمد «٢أ») — في `Suspense`: حسابُه لا يؤخّر «تقييماتي» ولا يُسقطها إن فشل */}
+      <Suspense fallback={null}>
+        <RateQueueEntryServer locale={locale} className="mb-4" />
+      </Suspense>
 
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
         {chips.map((c) => (

@@ -20,6 +20,7 @@ import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 import { sanitizeTourState, type TourState } from "@/core/tour";
 import { sanitizeChatBg, type ChatBg } from "@/core/chatBg";
 import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
+import { sanitizeRateSkip, sanitizeRateCard } from "@/core/rateQueue";
 
 /* 🆕 D-1318 — **شكلُ حالة الجولة وقواعدُها انتقلت إلى `core/tour.ts`**: التطبيقُ يقرؤها ويكتبها
    (T1) ولا يستورد من `lib`. وتُعاد تصديراً هنا فلا يتغيّر مستدعٍ واحد. */
@@ -63,6 +64,13 @@ export interface UiState {
    * المطهِّرُ يسقط في أوّل كتابةٍ لتلميح. والمنطقُ في `core/widgetFeedV2.ts`؛ وشرطُ كتابته البلس (W41).
    */
   widget: ReturnType<typeof sanitizeStoredWidget>;
+  /**
+   * 🆕 T530 — **«تخطَّ» في «بانتظار تقييمك»** (`tv-123`/`movie-45`). في الحساب لا في الجهاز: عددُ البطاقة والإشعارُ يُحسبان
+   * على الخادم. 🔴 ويمرّ هنا كالودجت: مفتاحٌ لا يعرفه المطهِّرُ يسقط في أوّل كتابةٍ لتلميح. والمنطقُ في `core/rateQueue.ts`.
+   */
+  rateSkip: string[];
+  /** 🆕 T530 — حتى متى أخفى صاحبُها بطاقةَ «بانتظار تقييمك» في الرئيسيّة (✕ = أسبوع) */
+  rateCard: string | null;
 }
 
 /** معرّف تلميح صالح — يدخل مفاتيح localStorage وعمودَ jsonb فيُقيَّد شكله */
@@ -72,7 +80,7 @@ const HINTS_CAP = 100;
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
 export function sanitizeUiState(value: unknown): UiState {
-  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null), widget: null };
+  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null), widget: null, rateSkip: [], rateCard: null };
   if (!value || typeof value !== "object") return out;
   const v = value as Record<string, unknown>;
   if (Array.isArray(v.hints)) {
@@ -86,6 +94,8 @@ export function sanitizeUiState(value: unknown): UiState {
   out.tpl = sanitizePrefTemplates(v.tpl);
   out.chatBg = sanitizeChatBg(v.chatBg);
   out.widget = sanitizeStoredWidget(v.widget);
+  out.rateSkip = sanitizeRateSkip(v.rateSkip);
+  out.rateCard = sanitizeRateCard(v.rateCard);
   return out;
 }
 

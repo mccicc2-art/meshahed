@@ -136,6 +136,8 @@ export function useDoors(from: Origin) {
       if (openThreadPath(router, path, from)) return;
       /* 🆕 إشعارُ «اشتراكك انتهى — اختر ما يبقى» ⇐ صفحةُ «الربط» الأصليّة (لا صفحةَ ويبٍ لها) */
       if (path === "/links") return router.push("/links");
+      /* 🆕 T530 — إشعارُ «بانتظار تقييمك» الأسبوعيّ ⇐ قائمتُها الأصليّة */
+      if (path === "/ratings/pending") return router.push({ pathname: "/rate-queue", params: { from } });
       openWeb(path);
     },
     [openList, openTitle, openWeb, router, from],

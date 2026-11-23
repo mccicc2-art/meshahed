@@ -93,6 +93,7 @@ import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
 import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, type ChatBg } from "@/core/chatBg";
 import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
+import { addRateSkip, sanitizeRateCard } from "@/core/rateQueue";
 import type { ChatBgChoice, ChatBgPayload, ChatBgPostersPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ImportRun, type ResolveRequest, type ResolveResult } from "@/core/importer";
@@ -735,6 +736,10 @@ export async function updateUiState(patch: {
   chatBg?: ChatBg;
   /** 🆕 **ودجت لوبز** (W40 · W41) — يستبدل المخزَّن؛ يُطهَّر هنا، **وكتابتُه شرطُها البلس** */
   widget?: unknown;
+  /** 🆕 T530 — عملٌ يُضاف إلى «تخطَّ» في «بانتظار تقييمك» (اتحادٌ بسقف، `addRateSkip`) */
+  addRateSkip?: string;
+  /** 🆕 T530 — إخفاءُ بطاقة «بانتظار تقييمك» في الرئيسيّة حتى هذا التاريخ */
+  rateCard?: string;
 }): Promise<{ ok: boolean; needsPlus?: true }> {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
@@ -779,6 +784,9 @@ export async function updateUiState(patch: {
       tpl: patch.tpl !== undefined ? sanitizePrefTemplates(patch.tpl) : current.tpl,
       chatBg: chatBg ?? current.chatBg,
       widget: patch.widget !== undefined ? sanitizeStoredWidget(patch.widget) : current.widget,
+      /* 🆕 T530 — التخطّي اتحادٌ (جهازان يتخطّيان معاً لا يمحو أحدُهما الآخر)، والإخفاءُ يستبدل */
+      rateSkip: patch.addRateSkip !== undefined ? addRateSkip(current.rateSkip, patch.addRateSkip) : current.rateSkip,
+      rateCard: patch.rateCard !== undefined ? sanitizeRateCard(patch.rateCard) : current.rateCard,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
     return { ok: true };
@@ -2434,7 +2442,8 @@ export async function saveRating(input: {
     backdropPath:
       input.backdropPath === undefined ? undefined : safeImagePath(input.backdropPath),
   };
-  const { supabase, user } = await requireUser("rate", 20, 60_000);
+  /* 🆕 T530 — ٤٠ في الدقيقة لا ٢٠: «بانتظار تقييمك» قائمةٌ يُقيَّم منها عملٌ كلَّ ثانيةٍ أو ثانيتين، والتقييمُ صفٌّ واحد */
+  const { supabase, user } = await requireUser("rate", 40, 60_000);
   /* 🆕 T474 — لا تقييمَ ولا رأيَ لفيلمٍ لم يُعرض (والحذفُ مفتوحٌ: `deleteRating` بلا حارس) */
   if (input.mediaType === "movie") await assertMovieOut(input.tmdbId);
 
