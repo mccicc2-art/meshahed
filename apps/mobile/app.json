@@ -15,7 +15,15 @@
       "backgroundColor": "#050505"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
+      "infoPlist": {
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      },
       "bundleIdentifier": "com.loopztv.app",
       "appleTeamId": "GZFYZ4FGW4",
       "associatedDomains": [
