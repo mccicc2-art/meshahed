@@ -1,0 +1,7 @@
+[deploy] Release R290 - A-77 default 15 s timeout on server DB calls, A-78 remove the temporary admin route curated/art
+
+- Fixer task 527: A-77 — default 15 s timeout on server Supabase client calls that carry no signal (member/guest clients; service client untouched)
+- Fixer task 528: A-78 — remove the temporary read-only admin route curated/art (T495, one-off use done)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7D12BVDuenyii8bLT5
