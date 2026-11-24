@@ -16,7 +16,7 @@ import { shell, type NativeRoot } from "../shell";
 import { haptic } from "../haptics";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { controlSize, type Tokens } from "../theme";
-import { FitScroll, H3, PlusLock, PlusPill, REPORT_STALE, ReportBody, SvgGuard, Tile, TopThree, bucketName, hm, myReportKey, useShareReport } from "./ReportScreen";
+import { FitScroll, H3, PlusLock, REPORT_STALE, ReportBody, SvgGuard, Tile, TopThree, bucketName, hm, myReportKey, useShareReport } from "./ReportScreen";
 import { primeLabel } from "@/core/statsFormat";
 import { profileUrl } from "@/core/media";
 import type { MyReportPayload, ReportPeriod, ReportStats } from "@/core/contracts/report";
@@ -132,7 +132,7 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
           title={
             <>
               <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{en ? "Your Stats" : "إحصائياتك"}</Text>
-              {d?.plus ? <PlusPill /> : null}
+              {/* 🗑️ T540 — لا شارةَ PLUS: الإحصاءاتُ الكاملةُ صارت للجميع، و`plus` في الجواب علمُ «مفتوح» */}
             </>
           }
           end={

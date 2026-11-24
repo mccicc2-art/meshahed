@@ -832,9 +832,14 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
           onBackLong={home}
           backLabel={t.backAria}
           end={
-            <Pressable onPress={share} disabled={!d} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-              <Icon name="share" size={18} color={tokens.fg} />
-            </Pressable>
+            /* 🆕 T539 (أحمد ٢٤ نوفمبر — «أ»): المراجعةُ والخبرُ يحملان زرَّ المشاركة في شريطهما بجانب الإعجاب،
+               فزرُّ الشريط العلويّ معه تكرارٌ لنفس الفعل — يبقى حيث لا شريطَ للمنشور: غرفُ النقاش وصفحةُ الردّ،
+               ولا يظهر قبل وصول الصفحة كي لا يومض ثم يختفي في المراجعة */
+            !d || (header && d.head.kind !== "talk") ? null : (
+              <Pressable onPress={share} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="share" size={18} color={tokens.fg} />
+              </Pressable>
+            )
           }
         />
       </View>

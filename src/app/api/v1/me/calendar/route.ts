@@ -3,7 +3,7 @@ import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { getLocale } from "@/lib/locale";
 import { getFollows, getProfile } from "@/lib/data";
-import { isPlus } from "@/core/plan";
+import { hasFullStats, isPlus } from "@/core/plan";
 import { asTimeZone } from "@/core/zone";
 import { sanitizeUiState } from "@/lib/uiState";
 import { airPlans } from "@/lib/airSchedule";
@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       if (lim) return lim;
 
       const [locale, profile, follows] = await Promise.all([getLocale(), getProfile(), getFollows()]);
+      /* 🆕 T540 — كلُّ الشهور للجميع (`hasFullStats`)؛ و`plus` في الجواب يبقى خطّتَه الحقيقيّة لمن يقرؤه */
       const plus = isPlus(profile);
       const today = todayIn(asTimeZone(profile?.timezone));
       const now = monthOf(today);
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
 
       /* 🆕 D-1614 — مواعيدُ الموسم المعلنة والإيقاعُ الأسبوعيّ (`airPlans`) — والشهرُ المقفولُ لغير المشترك بلا نداء */
       const until = monthEnd(month);
-      const locked = !plus && month !== now;
+      const locked = !hasFullStats(profile) && month !== now;
       const plans = locked ? undefined : await airPlans(follows, { today, until });
       const entries = calendarEntries(follows, { today, until, plans });
       const byDay = groupByDate(entries.filter((e) => monthOf(e.date) === month));

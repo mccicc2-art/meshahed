@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { getDict, type Locale } from "@/core/i18n";
-import { aiStorySearch } from "@/lib/actions";
+import { aiStorySearch, storyTrialsLeft } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
@@ -15,6 +15,7 @@ import { PersonName } from "./PersonRow";
 import { PosterCard } from "./PosterCard";
 import { SettingsHeader } from "./settings/SettingsHeader";
 import { buttonClass } from "./ui/Button";
+import { STORY_DAILY_FREE } from "@/core/storyQuota";
 import type {
   SearchArtist,
   SearchList,
@@ -91,6 +92,19 @@ export function SearchScreen({
   /* 🆕 D-1259 — النتائجُ من المسار البديل (بلا نموذج) تُسمّى فوقها */
   const [descFallback, setDescFallback] = useState(false);
   const [descPending, startDesc] = useTransition();
+  /* 🆕 T540 — **الباقي اليوم من البحث بالوصف** (خمسٌ للمجانيّ): `null` بلا حدّ (Plus)، و`undefined` لم يُعرف بعد. يُقرأ عند فتح
+     وضع الوصف ويُحدَّث من جواب كلِّ بحث — السطرُ تحت الحقل كما في التطبيق («لازم يظهر له ان عنده حد») */
+  const [descLeft, setDescLeft] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (!desc) return;
+    let live = true;
+    storyTrialsLeft()
+      .then((n) => live && setDescLeft(n))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [desc]);
   const inputRef = useRef<HTMLInputElement>(null);
   /* 🆕 D-1442 — ما تحت رقاقات «فنانون/أعضاء/قوائم» قبل الكتابة: يُطلب مرّةً لكلِّ رقاقةٍ حين تُختار ويُحفظ للجلسة */
   const [scoped, setScoped] = useState<Partial<Record<SearchScope, SearchTrendingPayload>>>({});
@@ -169,12 +183,13 @@ export function SearchScreen({
     startDesc(async () => {
       try {
         const res = await aiStorySearch(text);
+        if (res.left !== undefined) setDescLeft(res.left);
         if (!res.ok) {
           /* 🆕 بوّابةُ بلس (قُلبت ١٠ نوفمبر، هجرة ٢٤٣): الويبُ لا يبيع — يدلّ على التطبيق. **ولا «لم أجد» تحتها**:
              القائمةُ الفارغةُ تقول «لا مطابقة» والتنبيهُ يقول «اشترك»، فتُترك القائمةُ كما قبل البحث */
           setDescItems(res.reason === "plus" ? null : []);
           setDescFallback(false);
-          if (res.reason === "plus") flashError(t.aiSearchPlus);
+          if (res.reason === "plus") flashError(t.aiSearchPlus(STORY_DAILY_FREE)); // T540 — الحدُّ اليوميّ لا «اشترك»
           return;
         }
         setDescFallback(!!res.fallback);
@@ -269,6 +284,15 @@ export function SearchScreen({
           >
             {descPending ? t.peopleSearching : t.aiSearchRun}
           </button>
+          {typeof descLeft === "number" ? (
+            <p className="text-12 text-muted">
+              {descLeft >= STORY_DAILY_FREE
+                ? `${t.aiSearchDailyAll(STORY_DAILY_FREE)} — ${t.aiSearchCountsOnResults}`
+                : descLeft > 0
+                  ? t.aiSearchDailyLeft(descLeft, STORY_DAILY_FREE)
+                  : t.aiSearchPlus(STORY_DAILY_FREE)}
+            </p>
+          ) : null}
 
           <div className="divide-y divide-[color:var(--divider)]">
             {descPending ? (

@@ -3,7 +3,7 @@ import { handle, limited, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { getLocale } from "@/lib/locale";
 import { getProfile } from "@/lib/data";
-import { isPlus } from "@/core/plan";
+import { hasFullStats } from "@/core/plan";
 import { asTimeZone } from "@/core/zone";
 import { asOffset, buildPeriodStats, type StatsPeriod } from "@/lib/periodStats";
 import type { MyReportPayload } from "@/core/contracts/report";
@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
     const [locale, profile] = await Promise.all([getLocale(), getProfile().catch(() => null)]);
     const s = await buildPeriodStats(period, offset, locale, asTimeZone(profile?.timezone));
     return ok({
-      plus: isPlus(profile),
+      /* 🆕 T540 — الإحصاءاتُ الكاملةُ للجميع: `plus` هنا علمُ «مفتوح» الذي يقرؤه التطبيق (والنسخُ القديمةُ تُفتح معه) */
+      plus: hasFullStats(profile),
       stats: { ...s, range: { label: s.range.label, days: s.range.days, can_go_next: s.range.canGoNext } },
     });
   });

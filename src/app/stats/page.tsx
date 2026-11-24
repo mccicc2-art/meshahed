@@ -12,7 +12,6 @@ import { ShareCard } from "@/components/ShareCard";
 import { StatsRangeMenu } from "@/components/StatsRangeMenu";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { Icon } from "@/components/Icon";
-import { PlusPill } from "@/components/ui/PlusPill";
 
 /**
  * الإحصائيات — **شكلٌ سلّمه أحمد** (D-493).
@@ -88,14 +87,7 @@ export default async function StatsPage({
             {locale === "en" ? "Your week, month and year." : "أسبوعك وشهرك وسنتك."}
           </span>
         </span>
-        {/* 🆕 **والوسمُ رقاقةٌ لا نجمة** (D-803، حكمُ أحمد على لقطةٍ
-            محوَّطة): **«من مزايا Loopz+» جملةٌ في سطرِ الشرح، والرقاقةُ
-            تقولها بلا كلمة** — **ووسمٌ وجملةٌ يقولان الشيءَ مرّتين.**
-            🔑 **وهي `PlusPill` نفسُها التي في ترويستَي «تقريرك»
-            و«الإحصائيات الكاملة»** (D-801) — **فالقارئُ يرى الوسمَ
-            نفسَه عند الباب وخلفه**، **ونجمةٌ هنا ورقاقةٌ هناك وسمان
-            لمعنًى واحد** (القاعدة ٣). */}
-        <PlusPill />
+        {/* 🗑️ T540 — رقاقةُ PLUS سقطت: «تقاريرك» صارت للجميع (أحمد ٢٤ نوفمبر «١ و٢ خله مجاني») */}
       </Link>
     </div>
   );

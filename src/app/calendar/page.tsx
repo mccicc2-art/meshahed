@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getFollows, getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { getDict } from "@/core/i18n";
-import { isPlus } from "@/core/plan";
+import { hasFullStats } from "@/core/plan";
 import { asTimeZone } from "@/core/zone";
 import {
   MONTHS_AHEAD,
@@ -23,7 +23,6 @@ import { getMovie, getTv } from "@/lib/tmdb";
 import { airPlans } from "@/lib/airSchedule";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
-import { PlusPill } from "@/components/ui/PlusPill";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 
 /**
@@ -65,14 +64,15 @@ export default async function CalendarPage({
   ]);
   const t = getDict(locale);
   const ar = locale !== "en";
-  const plus = isPlus(profile);
+  /* 🆕 T540 — **التقويمُ لكلِّ الشهور للجميع** (أحمد ٢٤ نوفمبر): `hasFullStats` لا `isPlus` */
+  const full = hasFullStats(profile);
 
   /* 🆕 **وتقويمُ الصفحة تقويمُ القارئ** (D-806) — والغائبُ غرينتش */
   const tz = asTimeZone(profile?.timezone);
   const today = todayIn(tz);
   const now = monthOf(today);
   const month = asMonth(params.m, today);
-  const locked = !plus && month !== now;
+  const locked = !full && month !== now;
 
   const days = monthDays(month, today);
   /* 🆕 D-1614 — مواعيدُ الموسم المعلنة والإيقاعُ الأسبوعيّ لما يُعرض (`airPlans`) — والشهرُ المقفول للزائر بلا بلس يبقى بلا نداء */
@@ -155,7 +155,6 @@ export default async function CalendarPage({
     <div>
       <SettingsHeader
         title={t.calTitle}
-        badge={plus ? <PlusPill /> : undefined}
         fallbackHref="/"
         action={monthNav}
       />

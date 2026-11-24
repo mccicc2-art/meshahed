@@ -314,7 +314,8 @@ export function CustomizeScreen() {
   ) : null;
 
   const poster = (value: Density, onPick: (v: Density) => void) => (
-    <Section label={t.custPosterSize} plus={locks}>
+    /* 🆕 T540 — حجمُ الملصق مجّانيّ (أحمد ٢٤ نوفمبر «٢ ب»): بلا شارة PLUS، والخادمُ لا يعدّه حقلاً مدفوعاً (`PLUS_*_FIELDS`) */
+    <Section label={t.custPosterSize}>
       <View style={{ flexDirection: "row", gap: 8 }}>
         {DENSITIES.map((k) => (
           <PosterTile
@@ -358,7 +359,8 @@ export function CustomizeScreen() {
         <View collapsable={false} style={{ gap: 16 }}>
           {tab === "home" ? (
             <>
-              <Section label={t.custHeaderSection} hint={w.statsHint} plus={locks}>
+              {/* 🆕 T540 — أرقامُ ترويسة الرئيسيّة مجّانيّة (أحمد ٢٤ نوفمبر «٢ ب»): بلا شارة PLUS */}
+              <Section label={t.custHeaderSection} hint={w.statsHint}>
                 {homePick.length === 0 ? (
                   <View style={{ minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
                     <Text size={13} muted>{w.statsHidden}</Text>

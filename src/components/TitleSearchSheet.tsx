@@ -11,6 +11,7 @@ import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { segmentedItem, segmentedTrack, sheetScroll } from "./ui/controls";
+import { STORY_DAILY_FREE } from "@/core/storyQuota";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
 const MIN = 2;
@@ -132,7 +133,7 @@ export function TitleSearchSheet({
           /* 🆕 بوّابةُ بلس (قُلبت ١٠ نوفمبر، هجرة ٢٤٣): الويبُ لا يبيع — يدلّ على التطبيق، بلا «لم أجد» تحت التنبيه */
           setAiItems(res.reason === "plus" ? null : []);
           setAiFallback(false);
-          if (res.reason === "plus") flashError(t.aiSearchPlus);
+          if (res.reason === "plus") flashError(t.aiSearchPlus(STORY_DAILY_FREE)); // T540 — الحدُّ اليوميّ لا «اشترك»
           return;
         }
         setAiFallback(!!res.fallback);

@@ -42,7 +42,7 @@ const FEATURES: { icon: IconName; key: keyof Dict; skipForGold?: boolean }[] = [
   { icon: "palette", key: "pwFThemes" },
   { icon: "image", key: "pwFArt" },
   { icon: "widget", key: "pwFWidget" },
-  { icon: "chart", key: "pwFStats" },
+  /* 🗑️ T540 — «إحصاءاتك وتقاريرك كاملة، وتقويمك لكل الشهور» خرجت: صارت للجميع (أحمد ٢٤ نوفمبر) */
   { icon: "list", key: "pwFLists" },
   { icon: "star", key: "pwFBadge", skipForGold: true },
   { icon: "people", key: "pwFGroups" },

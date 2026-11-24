@@ -62,6 +62,8 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
  * أثاثَ بيته ومن يشتري غرفةً جديدة.**
  * 🗑️ **و`title` كان ثانيَهما وقد حُذف** (D-807).
  */
+/* 🆕 T540 — **حجمُ الملصق وعددُ البطاقات خرجا** (أحمد ٢٤ نوفمبر «٢ ب»: «شكل البطاقة» مجّانيّ) — الحقلان نفسُهما في الرئيسيّة
+   والملفّ، فلا يكون الملصقُ مجّانيّاً في لوحٍ ومدفوعاً في جاره. وأرقامُ الملفّ وتبويباتُه وأقسامُه باقيةٌ في بلس. */
 export const PLUS_PROFILE_FIELDS = [
   "stats",
   "statsPick",
@@ -69,8 +71,6 @@ export const PLUS_PROFILE_FIELDS = [
   "visitsWho",
   "savedLists",
   "order",
-  "density",
-  "cards",
   "hiddenTabs",
   "tabOrder",
 ] as const satisfies readonly (keyof ProfilePrefs)[];

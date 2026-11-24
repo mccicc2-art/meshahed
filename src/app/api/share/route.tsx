@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { isFounder, isPartner, isPlus, isVerified } from "@/core/plan";
+import { hasFullStats, isFounder, isPartner, isPlus, isVerified } from "@/core/plan";
 import {
   getUser,
   getProfile,
@@ -369,7 +369,8 @@ function clip(s: string, max: number): string {
  */
 async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolean, t: Dict) {
   const profile = await getProfile();
-  if (!isPlus(profile)) return new Response("plus required", { status: 403 });
+  /* 🆕 T540 — التقريرُ للجميع (أحمد ٢٤ نوفمبر): الحارسُ يسأل `hasFullStats` فيبقى حيث كان إن عاد القرار */
+  if (!hasFullStats(profile)) return new Response("plus required", { status: 403 });
 
   const period = rawPeriod ? asStatsPeriod(rawPeriod) : "month";
   const tz = asTimeZone(profile?.timezone);
@@ -407,7 +408,8 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
         range={statsRange(period, 0, locale, tz).label}
         name={profile?.nickname?.trim() || profile?.username || "Loopz"}
         avatar={avatar}
-        tier={isPartner(profile) ? "partner" : "plus"}
+        /* T540 — المجّانيُّ صار يولّدها: الشارةُ شارتُه الحقيقيّة لا «plus» مفترضة */
+        tier={isPartner(profile) ? "partner" : isPlus(profile) ? "plus" : null}
         founder={isFounder(profile)}
         verified={isVerified(profile)}
         time={hm(stats.minutes, locale)}

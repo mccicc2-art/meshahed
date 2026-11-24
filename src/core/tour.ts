@@ -1,7 +1,6 @@
 // الجولة التعريفية — سجلُّها الواحد وحالتُها (Phase 11-T · T0)
 
 import type { Dict } from "./i18n.ts";
-import { AI_STORY_SEARCH_PLUS_ONLY } from "./plan.ts";
 
 /**
  * 🆕 D-1318 — **جولةٌ واحدةٌ، وسجلٌّ واحدٌ يقرؤه الويبُ والتطبيق.** (سبعُ خطواتٍ في الويب وثمانٍ في التطبيق منذ T357 —
@@ -199,8 +198,7 @@ export const TOUR_STEPS: TourStep[] = [
     anchor: "search-describe",
     title: (t) => t.tourSearchTitle,
     body: (t) => t.tourSearchBody,
-    /* الوسمُ يتبع البوّابةَ لا يسبقها — قُلبت ١٠ نوفمبر (هجرة ٢٤٣)، وللمجانيّ ثلاثُ تجاربَ تُعرض تحت الحقل نفسِه */
-    plusTag: (plus) => AI_STORY_SEARCH_PLUS_ONLY && !plus,
+    /* 🗑️ T540 — لا وسمَ PLUS: البحثُ بالوصف صار للجميع بخمسٍ يوميّاً، والحدُّ يُقال تحت الحقل نفسِه */
   },
   {
     id: "track",

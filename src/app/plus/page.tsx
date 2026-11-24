@@ -38,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * App Store (١٧ نوفمبر) وفي تجربة أندرويد، **فالزرُّ يعود — لكنّه لا يبيع هنا**: يحوّل إلى التطبيق (`PlusBuyBar`).
  * وقاعدةُ D-217 الباقية محفوظة: لا سعرَ يُقال لا يدفعه المتجر (`plusStore.ts` › `PRICES`).
  *
- * 🔑 **المحتوى محتوى شاشة التطبيق نفسُه** (`apps/mobile/src/settings/PlusScreen.tsx`): العنوانُ ومزايا بلس العشر بترتيب الخطّة
+ * 🔑 **المحتوى محتوى شاشة التطبيق نفسُه** (`apps/mobile/src/settings/PlusScreen.tsx`): العنوانُ ومزايا بلس التسع (عشرٌ قبل T540) بترتيب الخطّة
  * (`pwF*`) ومزايا Gold وسطرُ المجّانيّ — من القاموس كما هي، فلا تفترق الصفحتان في ميزة. **والتخطيطُ للويب**: بطلٌ عريضٌ
  * بالاسم، وبلاطاتٌ في خمسة أعمدة، وشريطُ اشتراكٍ ملتصقٌ بالأسفل. ما دون الحاسوب يلتفّ عموداً.
  * 🔑 **قائمتا «الجاهز» و«قريباً» القديمتان حُذفتا**: كُتبتا قبل أن تُبنى المزايا، واليومَ قائمةُ التطبيق هي الحقيقة.
@@ -50,7 +50,7 @@ const FEATURES: { icon: IconName; key: keyof Dict }[] = [
   { icon: "palette", key: "pwFThemes" },
   { icon: "image", key: "pwFArt" },
   { icon: "view-mixed", key: "pwFWidget" },
-  { icon: "chart", key: "pwFStats" },
+  /* 🗑️ T540 — بندُ الإحصاءات خرج كما في التطبيق: صارت للجميع */
   { icon: "list", key: "pwFLists" },
   { icon: "star", key: "pwFBadge" },
   { icon: "people", key: "pwFGroups" },

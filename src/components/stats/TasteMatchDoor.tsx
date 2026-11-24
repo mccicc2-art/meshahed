@@ -4,7 +4,7 @@ import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { buttonClass } from "@/components/ui/Button";
 import { getProfile } from "@/lib/data";
 import { loadTasteMatch, genreLabel } from "@/lib/memberStatsCore";
-import { isPlus } from "@/core/plan";
+import { hasFullStats } from "@/core/plan";
 import { getDict, num, type Locale } from "@/core/i18n";
 
 /**
@@ -183,7 +183,8 @@ export async function TasteMatchDoor({
          المجموعة** (D-634). */
       className="ms-auto shrink-0 -my-2 py-2 active:opacity-70 transition"
       content={
-        isPlus(me) ? (
+        /* 🆕 T540 — التفصيلُ للجميع (أحمد ٢٤ نوفمبر): `hasFullStats` لا `isPlus` */
+        hasFullStats(me) ? (
           <>
             {open}
             {locked}

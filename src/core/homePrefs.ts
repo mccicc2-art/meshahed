@@ -164,14 +164,13 @@ export function sanitizeHomeView(raw: unknown): HomeView {
  * وقفلُها يُقرأ تضييقاً لا بيعاً** — **وترتيبُ عناصر الطوابير يدويّاً**
  * (D-719): **ترتيبُ ما تملكه ليس تنسيقَ صفحة.**
  */
+/* 🆕 T540 — **بطاقةُ الأرقام وشكلُ البطاقة خرجا من القائمة** (أحمد ٢٤ نوفمبر «٢ ب»: بندا «شكل البطاقة وإحصاءات ترويستك»
+   مجّانيّان): `stats` و`statsPick` (أيُّ أرقامٍ في الترويسة، ومنها إخفاؤها) و`density` (حجمُ الملصق) و`cards` (عددُ البطاقات
+   في الصفّ). **وما بقي هو ما بقي في بلس**: ترتيبُ الأقسام وإظهارُها (`order`) وعناصرُ الترويسة الأخرى. */
 export const PLUS_HOME_FIELDS = [
-  "stats",
   "followers",
   "social",
   "order",
-  "statsPick",
-  "cards",
-  "density",
 ] as const satisfies readonly (keyof HomePrefs)[];
 
 /**

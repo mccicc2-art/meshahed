@@ -23,7 +23,7 @@ import { HeaderEdges } from "../HeaderEnd";
 import { MIN_QUERY, refreshTrending, trendingShown, useDebounced, useScopedTrending, useSearch, useTrending } from "./useSearch";
 import { afterPaint, coldStartVoid, mark, span, tabLanded } from "../perfMarks";
 import type { SearchScope, SearchStoryBody, SearchStoryItem, SearchStoryPayload, SearchStoryTrialsPayload } from "../contracts";
-import { STORY_FREE_TRIALS } from "@/core/plan";
+import { STORY_DAILY_FREE, storyResetHours } from "@/core/storyQuota";
 import { openProfile, profileHandleOf } from "../member/open";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
@@ -128,7 +128,7 @@ export function SearchScreen() {
   const [descText, setDescText] = useState("");
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
-  /* 🆕 هجرة ٢٤٣ — **رصيدُ تجارب المجانيّ** (٣ مدى الحياة، تُحسب حين يجد البحثُ نتائج). يُقرأ عند فتح وضع الوصف
+  /* 🆕 هجرة ٢٤٣ · T540 — **الباقي اليوم للمجانيّ** (خمسٌ يوميّاً منذ T540، تُحسب حين يجد البحثُ نتائج). يُقرأ عند فتح وضع الوصف
      وعند كلِّ عودةٍ إلى الشاشة وهو مفتوح (`useFocusEffect` تحت — صفحةُ الاشتراك تُدفع فوقها فلا تُعاد تركيبها)،
      ويُحدَّث من جواب كلِّ بحثٍ بلا نداءٍ ثانٍ. `null` = بلا حدّ (Plus) */
   const trials = useQuery({
@@ -345,13 +345,22 @@ export function SearchScreen() {
             </Pressable>
             {/* textarea ٣ أسطر: `rounded-xl bg-surface-2 border px-4 py-3 text-base` — ١٦ بكسلاً لا أصغر */}
             {locked ? (
-              /* 🆕 هجرة ٢٤٣ — **البطاقةُ مكانَ الحقل لا تحته**: حقلٌ يُكتب فيه وصفٌ لن يُبحث وعدٌ كاذب. شكلُ بوّابة
-                 Plus في «الإحصاءات» حرفاً (نجمةٌ وعنوانٌ وزرٌّ واحد) — لا بطاقةَ اشتراكٍ ثانية */
-              <View style={{ alignItems: "center", gap: 8, paddingVertical: 32, paddingHorizontal: 8 }}>
-                <Icon name="star" size={24} color={tokens.accent} />
-                <Text size={15} weight="700" style={{ textAlign: "center" }}>{t.aiSearchPlusTitle}</Text>
-                <Text size={13} muted style={{ textAlign: "center", lineHeight: 20 }}>{t.aiSearchPlusBody}</Text>
+              /* 🆕 هجرة ٢٤٣ · T540 — **البطاقةُ مكانَ الحقل لا تحته**: حقلٌ يُكتب فيه وصفٌ لن يُبحث وعدٌ كاذب. الصورةُ التي اعتمدها
+                 أحمد (٢٤ نوفمبر): ساعةٌ في دائرة · «استخدمت بحثك اليوم كاملاً» · الشرطاتُ الخمسُ منطفئة · متى يتجدّد · ومع PLUS بلا حدّ ·
+                 زرّان. شكلُ بوّابة Plus نفسُها (نجمةٌ صارت ساعةً لأنّ المعنى «انتظر أو اشترك» لا «اشترك» وحدها) */
+              <View style={{ alignItems: "center", gap: 10, paddingVertical: 28, paddingHorizontal: 8 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tokens.accent + "1F", alignItems: "center", justifyContent: "center" }}>
+                  <Icon name="clock" size={22} color={tokens.accent} />
+                </View>
+                <Text size={16} weight="700" style={{ textAlign: "center" }}>{t.aiSearchLimitTitle}</Text>
+                <QuotaDots left={0} label={t.aiSearchOf(STORY_DAILY_FREE, STORY_DAILY_FREE)} />
+                <Text size={13} muted style={{ textAlign: "center", lineHeight: 21 }}>
+                  {t.aiSearchLimitBody(STORY_DAILY_FREE, storyResetHours(Date.now()))}
+                  {"\n"}
+                  {t.aiSearchLimitPlusA} <Text size={12} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>PLUS</Text> {t.aiSearchLimitPlusB}
+                </Text>
                 <Button size="sm" label={t.plusLearnMore} onPress={openPlus} />
+                <Button size="sm" variant="ghost" label={t.aiSearchBack} onPress={() => { Keyboard.dismiss(); setDesc(false); }} />
               </View>
             ) : (
             <>
@@ -365,8 +374,15 @@ export function SearchScreen() {
               textAlignVertical="top"
               style={{ minHeight: 96, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: tokens.fg, textAlign: "left" }}
             />
-            {/* 🆕 ٢ أ — الرصيدُ سطرٌ خافتٌ تحت الحقل، للمجانيّ وحدَه */}
-            {typeof left === "number" ? <Text size={12} muted>{left > 0 ? t.aiSearchTrialsLeft(left, STORY_FREE_TRIALS) : t.aiSearchPlusBody}</Text> : null}
+            {/* 🆕 T540 — **الحدُّ ظاهرٌ من أوّل مرّة** (أحمد: «لازم يظهر له ان عنده حد»): سطرٌ وشرطاتٌ خمسٌ تنطفئ مع كلِّ بحثٍ وجد
+                نتائج — للمجانيّ وحدَه (`left` رقم)، والمشتركُ لا يرى شيئاً */}
+            {typeof left === "number" ? (
+              <QuotaDots
+                left={left}
+                label={left >= STORY_DAILY_FREE ? t.aiSearchDailyAll(STORY_DAILY_FREE) : left > 0 ? t.aiSearchDailyLeft(left, STORY_DAILY_FREE) : t.aiSearchDailyUsed(STORY_DAILY_FREE)}
+                spread
+              />
+            ) : null}
             {/* نفدت والنتائجُ الأخيرةُ ظاهرة: زرُّ الاشتراك مكانَ «ابحث» — وإلّا بقي «اشترك» سطراً بلا باب حتى تُعاد الشاشة (المراجعة المستقلّة) */}
             {left === 0 ? (
               <Button size="sm" label={t.plusLearnMore} onPress={openPlus} />
@@ -376,7 +392,9 @@ export function SearchScreen() {
             {story.isPending ? (
               <Text size={14} muted style={{ textAlign: "center", paddingVertical: 32 }}>{t.peopleSearching}</Text>
             ) : descItems === null ? (
-              <Text size={12} muted style={{ textAlign: "center", paddingVertical: 32 }}>{t.aiSearchHint}</Text>
+              <Text size={12} muted style={{ textAlign: "center", paddingVertical: 32, lineHeight: 20 }}>
+                {typeof left === "number" ? `${t.aiSearchHint}\n${t.aiSearchCountsOnResults}` : t.aiSearchHint}
+              </Text>
             ) : descItems.length === 0 ? (
               <Text size={14} muted style={{ textAlign: "center", paddingVertical: 32 }}>{t.aiSearchEmpty}</Text>
             ) : (
@@ -619,6 +637,29 @@ function Section({ title, show, seeAll, seeAllLabel, children }: { title: string
         ) : null}
       </View>
       <Divided>{children}</Divided>
+    </View>
+  );
+}
+
+/**
+ * 🆕 T540 — **سطرُ الحدّ اليوميّ** (الصورةُ المعتمدة ٢٤ نوفمبر): الكلمةُ ثمّ خمسُ شرطاتٍ صغيرة — المضيئةُ ما بقي اليوم، من جهة
+ * البداية (يمينُ العربيّة) فتنطفئ من الطرف الآخر مع كلِّ بحث. `spread` تحت الحقل (الكلمةُ في البداية والشرطاتُ في الطرف)،
+ * وبلاها في بطاقة «استخدمت بحثك اليوم كاملاً» (متوسّطةً). ⚖️ عنصرٌ جديدٌ في التطبيق — اعتُمد في الصورة نفسِها.
+ */
+function QuotaDots({ left, label, spread = false }: { left: number; label: string; spread?: boolean }) {
+  const { tokens } = useApp();
+  return (
+    <View
+      accessible
+      accessibilityLabel={label}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: spread ? "space-between" : "center", gap: 10 }}
+    >
+      <Text size={12} muted style={spread ? { flexShrink: 1 } : undefined}>{label}</Text>
+      <View style={{ flexDirection: "row", gap: 4 }}>
+        {Array.from({ length: STORY_DAILY_FREE }, (_, i) => (
+          <View key={i} style={{ width: 14, height: 6, borderRadius: 3, backgroundColor: i < left ? tokens.accent : tokens.border }} />
+        ))}
+      </View>
     </View>
   );
 }

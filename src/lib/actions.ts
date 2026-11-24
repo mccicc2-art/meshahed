@@ -1050,7 +1050,8 @@ export async function setWatchRegion(value: string) {
  * الافتراضية، **والأخيرُ الظاهر لا يُخفى** مهما أرسل العميل.
  */
 /**
- * 🔒 🆕 **وترتيبُ التبويبات وإظهارُها صارا بلس** (D-819، حكمُ أحمد:
+ * ⚖️ **نُقض في T540** (أحمد ٢٤ نوفمبر «٢ ب»: الترتيبُ والإخفاءُ للجميع) — وما يلي تاريخُ D-819 كما كان:
+ * 🔒 **وترتيبُ التبويبات وإظهارُها صارا بلس** (D-819، حكمُ أحمد:
  * «الفيو في كلّ التولز خلّها للبلس فقط»).
  *
  * 🔑 **والحارسُ هنا لا في الأوراق الأربع**: **هذا الفعلُ هو الكاتبُ
@@ -1072,9 +1073,8 @@ export async function setTabPrefs(
   prefs: TabPref[],
 ): Promise<{ ok: boolean; needsPlus?: true }> {
   if (!isTabSurface(surface)) return { ok: false };
-  /* **ولا كتابةَ قبل الحكم** — **كوكيٌّ يُكتب ثمّ تُفتح بوّابةٌ يترك
-     التفضيلَ محفوظاً ويقول «اشترِ»**، وهو أسوأُ من الاثنين. */
-  if (!(await viewerIsPlus())) return { ok: false, needsPlus: true };
+  /* 🆕 T540 — **ترتيبُ التبويبات وإخفاؤها صار للجميع** (أحمد ٢٤ نوفمبر «٢ ب»): سقط حارسُ بلس، و`needsPlus` يبقى في
+     الشكل فقط لأنّ الويبَ والتطبيقَ يقرآنه — لا يعود من هنا بعد اليوم. */
   const clean = parseTabPrefs(surface, serializeTabPrefs(prefs));
   const store = await cookies();
   store.set(surfaceCookie(surface), serializeTabPrefs(clean), {
@@ -6886,28 +6886,36 @@ export async function aiStorySearch(
   const desc = String(description ?? "").trim().slice(0, 600);
   if (desc.length < 8) return { ok: false, reason: "short" };
 
-  /* 🆕 **البحثُ بالوصف لبلس، وللمجانيّ ثلاثُ تجارب** (هجرة ٢٤٣ · أحمد ١٠ نوفمبر). `used: null` = بلا حدّ (Plus،
-     أو البوّابةُ مطفأة، أو تعذّرت القراءة). والفحصُ بعد «قصير» عمداً: الوصفُ الناقص لا يُدعى للاشتراك.
-     `reason: "plus"` يقرؤه 1.13.x نتيجةً فارغة، والويبُ يقول «اشترك من التطبيق». */
-  const { STORY_FREE_TRIALS } = await import("@/core/plan");
-  const used = await storyTrialUsed(user.id);
-  if (used !== null && used >= STORY_FREE_TRIALS) return { ok: false, reason: "plus", left: 0 };
+  /* 🆕 T540 — **البحثُ بالوصف مجّانيٌّ بحدٍّ يوميّ** (أحمد ٢٤ نوفمبر: خمسٌ في اليوم للمجانيّ، والمشتركُ بلا حدّ) — كان لبلس
+     بثلاث تجاربٍ مدى الحياة (هجرة ٢٤٣). `quota: null` = بلا حدّ (Plus، أو تعذّرت القراءة). والفحصُ بعد «قصير» عمداً: الوصفُ
+     الناقصُ لا يُدعى للاشتراك. `reason: "plus"` يقرؤه 1.13.x نتيجةً فارغة، والتطبيقُ بطاقةَ «استخدمت بحثك اليوم كاملاً». */
+  const { STORY_DAILY_FREE, storyLeft } = await import("@/core/storyQuota");
+  const quota = await storyQuota(user.id);
+  if (quota !== null && quota.today >= STORY_DAILY_FREE) return { ok: false, reason: "plus", left: 0 };
   lap("gate");
 
-  /** التجربةُ تُحسب إذا رجع البحثُ بنتائج فقط (١ أ) — فهذه تُنادى عند الخروج بنتائج لا قبله */
+  /** البحثُ يُحسب إذا رجع بنتائج فقط (١ أ) — فهذه تُنادى عند الخروج بنتائج لا قبله */
   const spend = async (): Promise<number | null> => {
-    if (used === null) return null;
+    if (quota === null) return null;
     try {
       const svc = await createServiceClient();
-      const { data, error } = await svc.rpc("ai_story_trial_bump", { p_user: user.id });
+      /* اليومُ الجديدُ يكتب ١ ولا يزيد على عدِّ أمس (`fresh`)؛ وفي اليوم نفسِه الزيادةُ الذرّيّةُ نفسُها (`ai_story_trial_bump`) */
+      const { data, error } = quota.fresh
+        ? await svc
+            .from("ai_story_trials")
+            .upsert({ user_id: user.id, used: 1, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+            .select("used")
+            .maybeSingle()
+            .then((r) => ({ data: r.data?.used ?? null, error: r.error }))
+        : await svc.rpc("ai_story_trial_bump", { p_user: user.id });
       // بلا معرّفات: الرمزُ وحدَه يكفي ليظهر في السجلّ أنّ عدّاً ضاع
       if (error) console.error("[story-trials] bump failed", error.code);
-      const now = !error && typeof data === "number" ? data : used + 1;
-      return Math.max(0, STORY_FREE_TRIALS - now);
+      const now = !error && typeof data === "number" ? data : quota.today + 1;
+      return storyLeft(now);
     } catch {
-      // العدُّ تحسينٌ لا شرط: النتائجُ وصلت، والرصيدُ المعروضُ تقديرٌ من القراءة
+      // العدُّ تحسينٌ لا شرط: النتائجُ وصلت، والباقي المعروضُ تقديرٌ من القراءة
       console.error("[story-trials] bump threw");
-      return Math.max(0, STORY_FREE_TRIALS - used - 1);
+      return storyLeft(quota.today + 1);
     }
   };
 
@@ -7074,7 +7082,8 @@ export async function aiStorySearch(
 }
 
 /**
- * 🆕 **كم بحثاً بالوصف استهلك المجانيُّ؟** (هجرة ٢٤٣) — `null` = بلا حدّ.
+ * 🆕 **كم بحثاً بالوصف استهلك المجانيُّ اليوم؟** (هجرة ٢٤٣، ويوميّاً منذ T540) — `null` = بلا حدّ.
+ * `today` عدُّ اليوم (عدُّ يومٍ سابقٍ يُقرأ صفراً)، و`fresh` أنّ المحفوظَ ليس من اليوم فالبحثُ التالي يكتب ١ لا يزيد.
  *
  * الجدولُ للخادم وحده (لا يقرؤه العضوُ فلا يصفّره)، فالقراءةُ بعميل الخدمة. **وأيُّ فشلٍ يفتح البحث**:
  * لا نقفل ميزةً على عضوٍ بسبب عطلٍ عندنا — أسوأُ ما يحدث تجربةٌ زائدة. **لكنّ الفتحَ يُسجَّل** (المراجعة المستقلّة):
@@ -7082,19 +7091,20 @@ export async function aiStorySearch(
  * **وتعذّرُ قراءة الملفّ الشخصيّ لا يُعامَل «مجانيّاً»**: `getProfile` تبتلع أخطاءها فتردّ `null`، ومشترِكٌ يدفع لا يُخصم
  * منه ولا يُدعى للاشتراك بسبب عطلٍ عابر — فهو «بلا حدّ» كبقيّة حالات الفشل.
  */
-async function storyTrialUsed(userId: string): Promise<number | null> {
-  const [{ AI_STORY_SEARCH_PLUS_ONLY, isPlus }, { getProfile: me }] = await Promise.all([import("@/core/plan"), import("@/lib/data")]);
-  if (!AI_STORY_SEARCH_PLUS_ONLY) return null;
+async function storyQuota(userId: string): Promise<{ today: number; fresh: boolean } | null> {
+  const [{ isPlus }, { storyUsedToday }, { getProfile: me }] = await Promise.all([import("@/core/plan"), import("@/core/storyQuota"), import("@/lib/data")]);
   const profile = await me().catch(() => null);
   if (!profile || isPlus(profile)) return null;
   try {
     const svc = await createServiceClient();
-    const { data, error } = await svc.from("ai_story_trials").select("used").eq("user_id", userId).maybeSingle();
+    const { data, error } = await svc.from("ai_story_trials").select("used, updated_at").eq("user_id", userId).maybeSingle();
     if (error) {
       console.error("[story-trials] read failed — gate open", error.code);
       return null;
     }
-    return typeof data?.used === "number" ? data.used : 0;
+    const today = storyUsedToday(typeof data?.used === "number" ? data.used : 0, data?.updated_at ?? null, Date.now());
+    /* لا صفَّ بعد ⇒ `fresh` أيضاً: الكتابةُ الأولى إدراجٌ بـ١ */
+    return { today, fresh: today === 0 };
   } catch {
     console.error("[story-trials] read threw — gate open");
     return null;
@@ -7102,14 +7112,14 @@ async function storyTrialUsed(userId: string): Promise<number | null> {
 }
 
 /**
- * 🆕 **رصيدُ التجارب المتبقّي** — للسطر تحت حقل الوصف قبل أوّل بحث (٢ أ). `null` = بلا حدّ (Plus).
+ * 🆕 **الباقي اليوم من البحث بالوصف** — للسطر تحت حقل الوصف قبل أوّل بحث. `null` = بلا حدّ (Plus). يوميٌّ منذ T540.
  */
 export async function storyTrialsLeft(): Promise<number | null> {
   const { user } = await requireUser();
-  const used = await storyTrialUsed(user.id);
-  if (used === null) return null;
-  const { STORY_FREE_TRIALS } = await import("@/core/plan");
-  return Math.max(0, STORY_FREE_TRIALS - used);
+  const quota = await storyQuota(user.id);
+  if (quota === null) return null;
+  const { storyLeft } = await import("@/core/storyQuota");
+  return storyLeft(quota.today);
 }
 
 // ============================================================

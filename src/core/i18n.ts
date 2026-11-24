@@ -180,7 +180,8 @@ const ar = {
   tourMenuTap: "اضغط «التخصيص».",
   tourShapeBodyApp:
     "اختر أقسام رئيسيتك وملفك وترتيبها وحجم الملصق، وشاهد النتيجة في المعاينة فوراً. واسحب جانباً لتنتقل بين «الرئيسية» و«الملف».",
-  tourShapeSaveFree: "والحفظ لمشتركي Plus.",
+  /* T540 — الأرقامُ وحجمُ الملصق صارا للجميع: ما يبقى لبلس ترتيبُ الأقسام */
+  tourShapeSaveFree: "وحفظ ترتيب الأقسام لمشتركي Plus.",
   tourCommunityTitleApp: "المجتمع والرسائل",
   /* 🆕 T362 — مرحلتان (أحمد ١٠ نوفمبر «٢أ»): على المجتمع تدعوه إلى زرّ الرسائل في رأسه، ثمّ تصف «الرسائل» التي فتحها بنفسه */
   tourCommunityLeadApp:
@@ -443,18 +444,23 @@ const ar = {
     "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
   aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
   /* 🆕 بوّابةُ المرحلة ٥ (مطفأةٌ اليوم) — الويبُ لا يبيع، فيدلّ على التطبيق */
-  aiSearchPlus: "البحث بوصف القصة من مزايا Loopz Plus — اشترك من التطبيق.",
-  /* 🆕 هجرة ٢٤٣ — رصيدُ المجانيّ سطرٌ تحت حقل الوصف (٢ أ)، وبطاقةُ الاشتراك حين ينفد. التجربةُ تُحسب حين يجد نتائج (١ أ) */
-  aiSearchTrialsLeft: (n: number, of: number) =>
-    n >= of
-      ? `لك ${of} تجارب مجانية للبحث بالوصف، تُحسب التجربة حين أجد نتائج.`
-      : n === 2
-        ? `بقيت لك تجربتان مجانيتان من ${of}.`
-        : n === 1
-          ? `بقيت لك تجربة مجانية واحدة من ${of}.`
-          : `بقيت لك ${n} تجارب مجانية من ${of}.`,
-  aiSearchPlusTitle: "البحث بالوصف لمشتركي Loopz Plus",
-  aiSearchPlusBody: "انتهت تجاربك المجانية. اشترك لتبحث بوصف القصة متى شئت.",
+  /* 🆕 T540 — **البحثُ بالوصف مجّانيٌّ بحدٍّ يوميّ** (أحمد ٢٤ نوفمبر: «حد ٥ عمليات بحث يومي للمجاني» و«لازم يظهر له ان
+     عنده حد وانه تجاوزه»، ثمّ اعتمد الصورة). يحلّ محلَّ «ثلاث تجارب مدى الحياة» (هجرة ٢٤٣). الويبُ يقول الحدَّ في رسالةٍ واحدة */
+  aiSearchPlus: (of: number) => `استخدمت بحثك بالوصف اليوم كاملاً (${of} من ${of}). يتجدّد بعد منتصف الليل، ومع Loopz Plus تبحث بلا حدّ.`,
+  aiSearchDailyAll: (of: number) => `لك ${of} عمليات بحث بالوصف كل يوم`,
+  aiSearchDailyLeft: (n: number, of: number) => `بقي لك اليوم ${n} من ${of}`,
+  aiSearchDailyUsed: (of: number) => `استخدمت اليوم ${of} من ${of}`,
+  aiSearchOf: (n: number, of: number) => `${n} من ${of}`,
+  aiSearchCountsOnResults: "لا يُحسب البحث إلا إذا وجدتُ نتائج.",
+  aiSearchLimitTitle: "استخدمت بحثك اليوم كاملاً",
+  /* الساعاتُ بقاعدة العدد: ساعة · ساعتين · ٣–١٠ ساعات · ١١ فأكثر ساعة */
+  aiSearchLimitBody: (of: number, hours: number) =>
+    `لك ${of} عمليات بحث بالوصف كل يوم، وتتجدّد بعد منتصف الليل — بعد ${
+      hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : hours <= 10 ? `${hours} ساعات` : `${hours} ساعة`
+    } تقريباً.`,
+  /* «ومع PLUS تبحث بلا حدّ» — الشارةُ بين الجزأين كما في الصورة المعتمدة */
+  aiSearchLimitPlusA: "ومع",
+  aiSearchLimitPlusB: "تبحث بلا حدّ.",
   /* 🆕 D-1259 — **المسارُ البديل يُسمّى**: نتائجُ الكلمات المفتاحيّة أضعفُ من
      النموذج، وعرضُها بلا كلمةٍ يجعل الذكاءَ يبدو رديئاً وهو غائب. */
   aiSearchFallback: "البحث الذكي غير متاح الآن — هذه نتائج تقريبية بالكلمات.",
@@ -2418,16 +2424,16 @@ const ar = {
   pwGoldAllPlus: "وكل مزايا Plus:",
   /* البندُ الأوّلُ (الخطّة §٣) — تطبيقاتٌ لا منصّات: أُلغي Younify (أحمد ١٥ نوفمبر) */
   pwFLink: "اربط حتى ٥ تطبيقات، ومشاهدتك تتسجّل وحدها",
-  pwFStory: "ابحث بوصف القصة، والذكاء يجد العمل",
+  /* T540 — البحثُ بالوصف للجميع بخمسٍ يوميّاً: ما يبيعه بلس هو «بلا حدّ» */
+  pwFStory: "ابحث بوصف القصة بلا حدّ، والذكاء يجد العمل",
   pwFHome: "رئيسيتك وملفّك الشخصي على ذوقك",
   pwFThemes: "ثيمات ملوّنة",
   pwFArt: "بوستر وخلفية لكل عمل",
   pwFWidget: "ودجت تخصّصه بأحجامه الكبيرة",
-  pwFStats: "إحصاءاتك وتقاريرك كاملة، وتقويمك لكل الشهور",
   pwFLists: "فلاترك المحفوظة تعود إليها بضغطة",
   pwFBadge: "شارة PLUS بجانب اسمك",
   pwFGroups: "أنشئ قروبات حتى ١٦ شخصاً، والانضمام مجاني",
-  pwFreeNote: "المتابعة والقوائم والمجتمع والبحث العادي مجّانيةٌ للجميع دائماً، وLoopz بلا إعلانات لأحد.",
+  pwFreeNote: "المتابعة والقوائم والمجتمع والإحصاءات والتقويم والبحث العادي مجّانيةٌ للجميع دائماً، والبحث بالوصف خمس مرات يومياً، وLoopz بلا إعلانات لأحد.",
   pwYearly: "سنوي",
   pwMonthly: "شهري",
   pwBest: "الأوفر",
@@ -2513,7 +2519,7 @@ const ar = {
   appLegalLoadFailed: "تعذّر تحميل الوثيقة",
   featuresTagSoon: "قريباً",
   featuresTagPlusSoon: "Loopz Plus قريباً",
-  featuresFoot: "المتابعة والقوائم والمجتمع والبحث العادي والترجمة مجّانيةٌ للجميع دائماً، وLoopz بلا إعلاناتٍ لأحد.",
+  featuresFoot: "المتابعة والقوائم والمجتمع والإحصاءات والتقويم والبحث العادي والترجمة مجّانيةٌ للجميع دائماً، وLoopz بلا إعلاناتٍ لأحد.",
   setAboutTerms: "شروط الاستخدام",
   setAboutPrivacy: "سياسة الخصوصية",
   setAboutBuild: "الإصدار",
@@ -2742,8 +2748,9 @@ const ar = {
   drawerPlusCta: "اشترك في Plus",
   drawerPlusUntil: (d: string) => `مفعّل حتى ${d}`,
   drawerPlusActive: "Plus مفعّل",
-  drawerPlusFeats: ["تتبّع تلقائي لما تشاهده", "ابحث بوصف القصة", "رئيسيتك وملفّك على ذوقك"] as readonly string[],
-  drawerPlusMore: "+٧ مزايا أخرى",
+  drawerPlusFeats: ["تتبّع تلقائي لما تشاهده", "ابحث بوصف القصة بلا حدّ", "رئيسيتك وملفّك على ذوقك"] as readonly string[],
+  /* T540 — تسعُ مزايا في شاشة الاشتراك بعد خروج الإحصاءات: ثلاثٌ هنا وستٌّ أخرى */
+  drawerPlusMore: "+٦ مزايا أخرى",
   drawerProfile: "الملف الشخصي",
   drawerHistory: "سجل المشاهدة",
   drawerCalendar: "التقويم",
@@ -3088,7 +3095,7 @@ const ar = {
   plusName: "Loopz Plus",
   plusGateTitle: "هذي من مزايا Loopz Plus",
   plusGateHint:
-    "المتابعة والقوائم والمجتمع والبحث العادي تبقى مجّانيةً للجميع — و Loopz Plus للثيمات وتنسيق صفحاتك كما تحبّ.",
+    "المتابعة والقوائم والمجتمع والإحصاءات والتقويم والبحث العادي تبقى مجّانيةً للجميع — و Loopz Plus للثيمات وتنسيق صفحاتك كما تحبّ.",
   /* 🆕 **الثمنُ بحكم أحمد (٢٩ أغسطس، D-786)** — **نقضٌ مسجَّلٌ لـ«٩٩
      ريالاً سنويّاً» في D-633**، والفرقُ ليس صياغةً بل ضعفٌ تقريباً.
      **وسعرُ السنة الأولى دائمٌ لكلِّ مشترِكٍ جديد** لا عرضَ إطلاقٍ
@@ -3876,7 +3883,7 @@ const en: Dict = {
   tourMenuTap: "Tap \u201cCustomize\u201d.",
   tourShapeBodyApp:
     "Pick your Home and profile sections, their order and poster size, and see it in the preview right away. Swipe sideways to switch between Home and Profile.",
-  tourShapeSaveFree: "Saving is for Plus subscribers.",
+  tourShapeSaveFree: "Saving the section order is for Plus subscribers.",
   tourCommunityTitleApp: "Community and messages",
   tourCommunityLeadApp:
     "Three tabs: Activity from people you follow, Discussions about titles, and Members. Your messages are behind the button at the top \u2014 tap it.",
@@ -4074,15 +4081,17 @@ const en: Dict = {
   aiSearchHint:
     "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
   aiSearchEmpty: "No matches found — try a broader description or add details.",
-  aiSearchPlus: "Searching by story is a Loopz Plus feature — subscribe in the app.",
-  aiSearchTrialsLeft: (n: number, of: number) =>
-    n >= of
-      ? `You have ${of} free story searches — one is used only when I find results.`
-      : n === 1
-        ? `1 free story search left of ${of}.`
-        : `${n} free story searches left of ${of}.`,
-  aiSearchPlusTitle: "Story search is for Loopz Plus members",
-  aiSearchPlusBody: "Your free searches are used up. Subscribe to search by story any time.",
+  aiSearchPlus: (of: number) => `You've used today's story searches (${of} of ${of}). They renew after midnight, and with Loopz Plus there's no limit.`,
+  aiSearchDailyAll: (of: number) => `${of} story searches a day`,
+  aiSearchDailyLeft: (n: number, of: number) => `${n} of ${of} left today`,
+  aiSearchDailyUsed: (of: number) => `${of} of ${of} used today`,
+  aiSearchOf: (n: number, of: number) => `${n} of ${of}`,
+  aiSearchCountsOnResults: "A search counts only when I find results.",
+  aiSearchLimitTitle: "You've used today's searches",
+  aiSearchLimitBody: (of: number, hours: number) =>
+    `You get ${of} story searches a day. They renew after midnight — in about ${hours} ${hours === 1 ? "hour" : "hours"}.`,
+  aiSearchLimitPlusA: "With",
+  aiSearchLimitPlusB: "there's no limit.",
   aiSearchFallback: "Smart search isn't available right now — these are rough keyword matches.",
   hintSearchDesc: "Tap the star to search by describing the story or the mood",
 
@@ -5529,16 +5538,15 @@ const en: Dict = {
   pwGoldSupportMine: "You're supporting Loopz",
   pwGoldAllPlus: "And everything in Plus:",
   pwFLink: "Link up to 5 apps, tracked automatically",
-  pwFStory: "Describe the story, AI finds the title",
+  pwFStory: "Search by story with no limit — AI finds the title",
   pwFHome: "Your home and profile, your way",
   pwFThemes: "Colour themes",
   pwFArt: "Your own poster and backdrop",
   pwFWidget: "A widget you customise, in large sizes",
-  pwFStats: "Full stats and reports, every month in your calendar",
   pwFLists: "Saved filters you return to in one tap",
   pwFBadge: "A PLUS badge beside your name",
   pwFGroups: "Create groups of up to 16, joining is free",
-  pwFreeNote: "Tracking, lists, community and regular search stay free for everyone, always — and Loopz has no ads for anyone.",
+  pwFreeNote: "Tracking, lists, community, stats, the calendar and regular search stay free for everyone, always — story search five times a day — and Loopz has no ads for anyone.",
   pwYearly: "Yearly",
   pwMonthly: "Monthly",
   pwBest: "Best value",
@@ -5621,7 +5629,7 @@ const en: Dict = {
   appLegalLoadFailed: "Couldn't load the document",
   featuresTagSoon: "Soon",
   featuresTagPlusSoon: "Loopz Plus soon",
-  featuresFoot: "Tracking, lists, community, regular search and translation are free for everyone, always — and Loopz shows no ads to anyone.",
+  featuresFoot: "Tracking, lists, community, stats, the calendar, regular search and translation are free for everyone, always — and Loopz shows no ads to anyone.",
   setAboutTerms: "Terms of use",
   setAboutPrivacy: "Privacy policy",
   setAboutBuild: "Version",
@@ -5788,8 +5796,8 @@ const en: Dict = {
   drawerPlusUntil: (d: string) => `Active until ${d}`,
   drawerPlusActive: "Plus is active",
   /* D-1509 — كلُّ ميزةٍ في سطرٍ واحد: الجملُ الطويلة كانت تُقصّ بنقاط على عرض البطاقة («Everything you watch is…») */
-  drawerPlusFeats: ["Auto-track what you watch", "Search by story", "Your home & profile, your way"] as readonly string[],
-  drawerPlusMore: "+7 more features",
+  drawerPlusFeats: ["Auto-track what you watch", "Unlimited story search", "Your home & profile, your way"] as readonly string[],
+  drawerPlusMore: "+6 more features",
   drawerProfile: "Profile",
   drawerHistory: "Watch history",
   drawerCalendar: "Calendar",
@@ -6034,7 +6042,7 @@ const en: Dict = {
   plusName: "Loopz Plus",
   plusGateTitle: "This is a Loopz Plus feature",
   plusGateHint:
-    "Tracking, lists, community and regular search stay free for everyone — Loopz Plus is for themes and shaping your pages the way you like.",
+    "Tracking, lists, community, stats, the calendar and regular search stay free for everyone — Loopz Plus is for themes and shaping your pages the way you like.",
   plusPrice: "SAR 99.99 for your first year",
   plusPriceRenew: "then SAR 119.99 a year · or 12.99 a month",
   goldPrice: "SAR 199.99 a year",

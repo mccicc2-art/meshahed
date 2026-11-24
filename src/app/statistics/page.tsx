@@ -3,13 +3,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { isPlus } from "@/core/plan";
+import { hasFullStats } from "@/core/plan";
 import { asTimeZone } from "@/core/zone";
 import { asOffset, asStatsPeriod, buildPeriodStats, statsRange, type StatsPeriod } from "@/lib/periodStats";
 import { ContentTab, HabitsTab, OverviewTab, TasteTab } from "@/components/stats/FullStatsTabs";
 import { ReportView } from "@/components/ReportView";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
-import { PlusPill } from "@/components/ui/PlusPill";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 import { ShareCard } from "@/components/ShareCard";
 import { chipClass } from "@/components/ui/controls";
@@ -43,9 +42,10 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
   const [{ locale }, params, profile] = await Promise.all([getT(), searchParams, getProfile()]);
   const ar = locale !== "en";
   const period: StatsPeriod = params.p ? asStatsPeriod(params.p) : "month";
-  const plus = isPlus(profile);
-  /* الإزاحةُ للمشترك وحدَه، ولا إزاحةَ في «كلّ الأوقات» */
-  const offset = plus && period !== "all" ? asOffset(params.o) : 0;
+  /* 🆕 T540 — **الإحصاءاتُ الكاملةُ للجميع** (أحمد ٢٤ نوفمبر «١ و٢ خله مجاني»): السؤالُ `hasFullStats` لا `isPlus` */
+  const full = hasFullStats(profile);
+  /* الإزاحةُ لمن يرى الإحصاءاتِ كاملةً، ولا إزاحةَ في «كلّ الأوقات» */
+  const offset = full && period !== "all" ? asOffset(params.o) : 0;
   const tab = asTab(params.t);
   const tz = asTimeZone(profile?.timezone);
   const range = statsRange(period, offset, locale, tz);
@@ -78,7 +78,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
           </Link>
         ))}
       </div>
-      {plus && period !== "all" && (
+      {full && period !== "all" && (
         <span className="flex items-center gap-0.5">
           <Link
             href={href({ o: offset - 1 })}
@@ -113,9 +113,9 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
     <div>
       <SettingsHeader
         title={ar ? "إحصائياتك" : "Your stats"}
-        badge={plus ? <PlusPill /> : undefined}
+        /* T540 — لا شارةَ PLUS: الصفحةُ لم تعد من مزايا الاشتراك */
         fallbackHref="/stats"
-        action={plus ? <ShareCard locale={locale} kind={period === "all" ? "stats" : "report"} period={period} icon /> : undefined}
+        action={full ? <ShareCard locale={locale} kind={period === "all" ? "stats" : "report"} period={period} icon /> : undefined}
       />
 
       <div className="mt-2 flex flex-col gap-3 desk:flex-row desk:items-center desk:justify-between">
@@ -144,7 +144,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
       </div>
 
       <Suspense key={`${period}:${offset}:${tab}`} fallback={<StatsSkeleton />}>
-        <Body period={period} offset={offset} tab={tab} locale={locale} tz={tz} preview={!plus} />
+        <Body period={period} offset={offset} tab={tab} locale={locale} tz={tz} preview={!full} />
       </Suspense>
     </div>
   );

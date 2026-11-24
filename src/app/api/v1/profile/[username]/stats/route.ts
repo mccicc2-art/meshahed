@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadMemberAnalysis, loadTasteMatch, genreLabel } from "@/lib/memberStatsCore";
 import { handle, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { isPlus } from "@/core/plan";
+import { hasFullStats } from "@/core/plan";
 import { parseProfileHandle } from "@/core/contracts/profile";
 import type { MemberStatsPayload } from "@/core/contracts/memberStats";
 
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
         hero_posters: data.heroPosters,
         taste: data.taste,
         match: got
-          ? { pct: got.match.pct, shared: got.match.shared.map(named), apart: got.match.apart.map(named), picks: got.picks, plus: isPlus(me) }
+          ? { pct: got.match.pct, shared: got.match.shared.map(named), apart: got.match.apart.map(named), picks: got.picks, plus: hasFullStats(me) /* T540 — تطابقُ الذوق كاملاً للجميع */ }
           : null,
       };
       return ok(payload);

@@ -261,7 +261,7 @@ function HeadBtn({ icon, label, onPress, btnRef }: { icon: IconName; label: stri
   );
 }
 
-/** بابُ «تقاريرك» — `Link` ذيل `/stats` في الويب بنصّه (D-796/D-803): أيقونةٌ · سطران · رقاقةُ PLUS */
+/** بابُ «تقاريرك» — `Link` ذيل `/stats` في الويب بنصّه (D-796/D-803): أيقونةٌ · سطران (رقاقةُ PLUS سقطت في T540) */
 function ReportsDoor({ onPress }: { onPress: () => void }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
@@ -272,10 +272,7 @@ function ReportsDoor({ onPress }: { onPress: () => void }) {
         <Text size={14} weight="700">{en ? "Your reports" : "تقاريرك"}</Text>
         <Text size={12} muted style={{ marginTop: 2 }}>{en ? "Your week, month and year." : "أسبوعك وشهرك وسنتك."}</Text>
       </View>
-      {/* `PlusPill` الويب: «PLUS» علامةٌ لا تُترجم، بلون التمييز على أرضيّته الشفيفة */}
-      <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: tokens.accent + "26" }}>
-        <Text size={12} weight="700" color={tokens.accent} style={{ writingDirection: "ltr", letterSpacing: 0.5 }}>PLUS</Text>
-      </View>
+      {/* 🗑️ T540 — رقاقةُ PLUS سقطت كما في الويب: «تقاريرك» صارت للجميع */}
     </Pressable>
   );
 }

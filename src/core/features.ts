@@ -101,17 +101,17 @@ export const SECTIONS: Section[] = [
         icon: "bell",
         ar: "تقويم الحلقات وتنبيهاتها",
         en: "Episode calendar and alerts",
-        arBody: "تقويمٌ لما يُعرض هذا الشهر من أعمالك، وتنبيهٌ على جوالك عند كل حلقةٍ جديدة.",
-        enBody: "A calendar of what airs this month from your titles, and a phone alert for every new episode.",
+        /* T540 — كلُّ الشهور للجميع (كان الشهرُ الحاليُّ وحدَه) */
+        arBody: "تقويمٌ لما يُعرض من أعمالك في كل الشهور، وتنبيهٌ على جوالك عند كل حلقةٍ جديدة.",
+        enBody: "A calendar of what airs from your titles in every month, and a phone alert for every new episode.",
       },
-      /* ونصُّ البند سطرُ شاشة الاشتراك حرفاً (الخطّة §٣/٧) — **قائمتان تقولان الشيءَ نفسَه بلفظين تفترقان** (D-145) */
+      /* 🆕 T540 — **الإحصاءاتُ الكاملةُ مجّانيّة** (أحمد ٢٤ نوفمبر «١ و٢ خله مجاني»): البندُ خرج من بلس، والتقويمُ في بنده أعلاه */
       {
         icon: "chart",
-        ar: "إحصاءاتك وتقاريرك كاملة، وتقويمك لكل الشهور",
-        en: "Full stats and reports, and your calendar for every month",
-        arBody: "كل تبويبات الإحصاءات ومدّاتها، وتقريرك الشهري، وتطابق ذوقك مع أصدقائك، والتقويم لما مضى وما سيأتي.",
-        enBody: "Every stats tab and period, your monthly report, taste match with friends, and the calendar for past and coming months.",
-        plus: true,
+        ar: "إحصاءاتك وتقاريرك كاملة",
+        en: "Full stats and reports",
+        arBody: "كل تبويبات الإحصاءات ومدّاتها، وتقريرك الشهري، وتطابق ذوقك مع أصدقائك.",
+        enBody: "Every stats tab and period, your monthly report, and taste match with friends.",
       },
     ],
   },
@@ -134,9 +134,9 @@ export const SECTIONS: Section[] = [
         icon: "card",
         ar: "شكل البطاقة وإحصاءات ترويستك",
         en: "Card layout and header stats",
-        arBody: "اختر ما يظهر على بطاقة العمل، وأي أرقامٍ تراها في ترويسة رئيسيتك.",
-        enBody: "Choose what appears on a title card, and which numbers sit in your home header.",
-        plus: true,
+        /* 🆕 T540 — مجّانيّ (أحمد ٢٤ نوفمبر «٢ ب»)، والنصُّ يقول ما يُختار فعلاً: حجمُ الملصق وأرقامُ الترويسة */
+        arBody: "اختر حجم الملصق، وأي أرقامٍ تراها في ترويسة رئيسيتك.",
+        enBody: "Choose the poster size, and which numbers sit in your home header.",
       },
       {
         icon: "palette",
@@ -215,8 +215,7 @@ export const SECTIONS: Section[] = [
         en: "Reorder and hide tabs",
         arBody: "رتّب تبويبات المكتبة والمجتمع والاكتشاف كما تحبّ، وأخفِ ما لا تستعمله.",
         enBody: "Order the tabs in Library, Community and Discover the way you like, and hide the ones you never use.",
-        /* 🆕 خطّةُ Loopz+ v2 §٣ — «الترتيبُ والإخفاءُ يبقيان لبلس (2ب)، ونصُّ صفحة المزايا يُصحَّح»: كانت «مجّاناً للجميع» */
-        plus: true,
+        /* 🆕 T540 — **عاد مجّانيّاً** (أحمد ٢٤ نوفمبر «٢ ب») — كان لبلس بخطّة v2 §٣ («2ب») */
       },
       {
         icon: "globe",
@@ -283,11 +282,11 @@ export const SECTIONS: Section[] = [
       },
       {
         icon: "search",
-        ar: "بحث الذكاء",
-        en: "AI search",
-        /* 🆕 **قُلب لبلس ١٠ نوفمبر** (`AI_STORY_SEARCH_PLUS_ONLY`، وثلاثُ تجاربٍ مدى الحياة — `STORY_FREE_TRIALS`) */
-        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل. ولكل حسابٍ ثلاث تجارب مجّانية.",
-        enBody: "Describe a story in your own words — AI finds the title. Every account gets three free tries.",
+        ar: "بحث الذكاء بلا حدّ",
+        en: "Unlimited AI search",
+        /* 🆕 T540 — للجميع خمسٌ يوميّاً، وما يبيعه بلس «بلا حدّ» (`storyQuota.ts`) — كان ثلاثَ تجاربٍ مدى الحياة */
+        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل. وللحساب المجاني خمس عمليات بحث كل يوم.",
+        enBody: "Describe a story in your own words — AI finds the title. A free account gets five searches a day.",
         plus: true,
       },
       /* 🆕 صفحةُ الإعلانات التشويقيّة شُحنت (`/trailers`) ولم تُذكر */
