@@ -595,7 +595,7 @@ export function WebLayer() {
       rescuing.current = false;
       setRescueUp(false);
       /* لا جلسةَ تُسلَّم ⇒ الحكمُ القديم: خروجٌ وشاشةُ الدخول */
-      session.signOut();
+      session.signOut(true, "rescue");
       if (!signInUp() && router.canDismiss()) router.dismissAll();
       showSignIn("login");
       return;
@@ -656,7 +656,8 @@ export function WebLayer() {
     } else if (outUrl || loginUrl) {
       rescuing.current = false;
       setRescueUp(false);
-      session.signOut(); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
+      /* 🩺 T542 — السببُ في العلامة: عنوانُ الخروج، أم صفحةُ الدخول — وهل سبقها إنقاذٌ في هذه التشغيلة (`relogin`) */
+      session.signOut(true, outUrl ? "webout" : rescued.current ? "relogin" : "weblogin"); /* D-1026: خروجٌ ⇒ يُمسح الكاشُ المحفوظ أيضاً */
       /* D-1075 — صفحةُ الدخول تحت شاشةٍ أصليّةٍ مرفوعةٍ عند الإقلاع (كوكي شاخت مثلاً): تُنزَل الشاشاتُ
          كلُّها فيرى المستخدمُ الدخولَ لا رئيسيّةً بلا بيانات */
       /* 🔴 D-1346 — **إلّا شاشةَ الدخول**: هذا السطرُ يجري مع كلِّ حدثِ تنقّلٍ على العنوانين، والحدثُ الثاني كان يُنزل

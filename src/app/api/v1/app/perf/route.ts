@@ -120,6 +120,9 @@ const NAMES = new Set([
      denied · none) · `src` auto · user. عرضٌ بلا جواب = أُغلق التطبيقُ والنافذةُ مفتوحة */
   "push.prompt",
   "push.answer",
+  /* 🩺 T542 — خروجٌ محلّيٌّ وطريقُه (`why` screen · webout · weblogin · relogin · rescue · clear)، و`live` جلسةٌ مملوكةٌ محفوظةٌ
+     لحظتَه، و`result`/`src`/`cago` آخرُ سكٍّ أو تجديدٍ قبله، و`ago` ثوانٍ منذ الإقلاع — خالد خرج وحده وجلستُه عند الخادم حيّة */
+  "session.out",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 /* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)

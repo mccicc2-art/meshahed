@@ -119,6 +119,15 @@ const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 /** D-1026 (F2) — من يسمع **الخروج** (لا مجرّدَ شيخوخة الرمز): كاشُ الملفّ يُمسح هنا وحدَه */
 const signOutListeners = new Set<() => void>();
+/**
+ * 🩺 T542 — **أيُّ طريقٍ أخرج صاحبَ الجهاز** (أحمد ٢٤ نوفمبر «أ نفذ»): خالد خرج وحده مرّتين (٢٣ و٢٤ نوفمبر) وجلستُه عند الخادم
+ * حيّةٌ لم تُبطل — التطبيقُ مسحها بنفسه، والرئيسيّةُ بقيت مرسومةً من الحفظ فبدت القائمةُ الجانبيّةُ «لا تعمل». خمسةُ طرقٍ تمسح،
+ * والعلامةُ لم تكن تقول أيُّها: `screen` شاشةُ الخروج · `webout` عنوانُ الخروج في الـWebView · `weblogin` صفحةُ الدخول فيه ·
+ * `relogin` صفحةُ الدخول مرّةً ثانيةً بعد إنقاذٍ في التشغيلة نفسِها · `rescue` الإنقاذُ لم يجد جلسةً يسلّمها · `clear` الصفحةُ
+ * قالت «بلا جلسة». قياسٌ فقط: لا يغيّر خروجاً ولا يمنعه. المستمعُ في `perfMarks.ts` (الاتّجاهُ من هناك إلى هنا — استيرادُه من هنا دائرة)
+ */
+export type OutWhy = "screen" | "webout" | "weblogin" | "relogin" | "rescue" | "clear";
+const outListeners = new Set<(why: OutWhy, stored: 0 | 1) => void>();
 
 function emit() {
   for (const l of listeners) l();
@@ -308,7 +317,10 @@ export const session = {
    * D-1026 (F2) — **خروجٌ أو تبدّلُ مستخدم**، لا رمزٌ شاخ: `clear()` تُنادى كلَّ ساعةٍ وبعد كلِّ
    * خلفيّةٍ طويلة ولا تعني أنّ صاحبَ الجهاز تغيّر؛ هذه تعنيه — فيُمسح معها ما حُفظ له.
    */
-  signOut(toLogin = true) {
+  signOut(toLogin: boolean, why: OutWhy) {
+    /* 🩺 T542 — يُبلَّغ قبل المسح: هل كانت الجلسةُ المملوكةُ محفوظةً لحظتَها (بعده تكون ممسوحةً دائماً) */
+    const stored = own.hasStored() ? 1 : 0;
+    for (const l of outListeners) l(why, stored);
     session.clear();
     /* A-50 — بعد المسح: من ينتظر الآن أُجيب بـ`null`، ومن يسأل بعده يُجاب فوراً حتى يدخل أحد.
        **إلّا مسحاً جاء من الصفحة نفسِها** (`session:clear`، `toLogin=false`): من أرسله جسرٌ مركَّبٌ يسمع، وقد يرسله بلا خروجٍ
@@ -366,6 +378,11 @@ export const session = {
     return mine;
   },
   /** 🆕 D-1141 — مستمعُ `token.wait` */
+  /** 🩺 T542 — من يسمع **سببَ** الخروج (العلامة) — `onSignOut` يسمع الخروجَ نفسَه */
+  onOut(l: (why: OutWhy, stored: 0 | 1) => void): () => void {
+    outListeners.add(l);
+    return () => outListeners.delete(l);
+  },
   onWait(l: WaitReport): () => void {
     waitListeners.add(l);
     return () => waitListeners.delete(l);
@@ -476,7 +493,7 @@ export const session = {
   receive(msg: Record<string, unknown>, hostOk: boolean): boolean {
     if (msg.type === "session:clear") {
       lastWhy = "clear";
-      session.signOut(false);
+      session.signOut(false, "clear");
       return true;
     }
     /* 🆕 D-1143 — «وصلني» من الصفحة: لا يُنهي الطلب، يوسمه فقط (المهلةُ بعده `slow` لا `noack`) */

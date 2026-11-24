@@ -106,7 +106,10 @@ export type PerfName =
      أمامه · `result` granted · denied · none). عرضٌ بلا جواب = أُغلق التطبيقُ والنافذةُ مفتوحة. `src` = auto (بعد الترحيب
      أو أوّلَ فتحٍ بعد التحديث) · user (صفُّ الإعدادات). بلا هويّة (D-881): تعدّ ولا تسمّي */
   | "push.prompt"
-  | "push.answer";
+  | "push.answer"
+  /* 🩺 T542 — خروجٌ محلّيّ: `why` الطريقُ (انظر `OutWhy` في `session.ts`) · `live` الجلسةُ المملوكةُ محفوظةٌ لحظتَه ·
+     `result`/`src` آخرُ سكٍّ أو تجديدٍ قبله (`never` = لم يقع في التشغيلة) · `cago` ثوانٍ منذ ذاك · `ago` ثوانٍ منذ الإقلاع. ms=0 */
+  | "session.out";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -157,7 +160,8 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
   } else arm();
 }
 /* 🆕 المهمّة ٣٩٩ — ونافذةُ الإشعارات كذلك: من يغلق التطبيقَ وهي أمامه لا تنتظره دفعةُ الثلاثين ثانية */
-const URGENT = new Set<PerfName>(["dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer"]);
+/* 🩺 T542 — والخروجُ كذلك: التشغيلةُ التي خرجت قد تُغلق بعده بلحظة، وما قبله في الدفعة (تجديدٌ تعثّر) يخرج معه */
+const URGENT = new Set<PerfName>(["dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer", "session.out"]);
 const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {
@@ -254,7 +258,22 @@ session.subscribe(() => {
 /* 🆕 D-1141 — كلُّ طلبِ رمزٍ مرّةً: كم انتظر، وهل وصل، وهل كانت الصفحةُ جاهزة */
 session.onWait((ms, extra) => mark("token.wait", ms, extra));
 /* 🆕 K4b — الجلسةُ المملوكة: كلُّ سكٍّ وكلُّ تجديدٍ مرّةً (بلا رمزٍ في العلامة — مدّةٌ ونتيجةٌ وسبب) */
-own.onEvent((name, ms, extra) => mark(name, ms, extra));
+/* 🩺 T542 — آخرُ سكٍّ أو تجديدٍ قبل الخروج: «تجديدٌ تعثّر بالشبكة ثمّ خروج» نمطُ ٢٣ نوفمبر، فيُقرأ من صفٍّ واحد */
+let lastOwn: { result: string; src: string; at: number } | null = null;
+own.onEvent((name, ms, extra) => {
+  mark(name, ms, extra);
+  if (name !== "session.restore") lastOwn = { result: extra.result, src: extra.why ?? extra.src ?? name.slice(8), at: performance.now() };
+});
+session.onOut((why, stored) => {
+  const now = performance.now();
+  mark("session.out", 0, {
+    why,
+    live: stored,
+    result: lastOwn?.result ?? "never",
+    ...(lastOwn ? { src: lastOwn.src, cago: Math.round((now - lastOwn.at) / 1000) } : {}),
+    ago: Math.round((now - launchT0) / 1000),
+  });
+});
 
 /**
  * ====== إطاراتُ السحب الضائعة (`gesture.jank`) — D-1128، «قبل» K2 ======

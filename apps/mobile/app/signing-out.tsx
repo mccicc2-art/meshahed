@@ -27,7 +27,7 @@ export default function SigningOut() {
       shell.leaveHold = true;
       /* الطلبُ قبل المسح: `WebLayer` يعلّم «خروجٌ من الغلاف» عنده، فلا يُقرأ سقوطُ الجلسة المملوكة بعده «جلسةٌ ضاعت» (V-D) */
       shell.post("/auth/signout");
-      session.signOut();
+      session.signOut(true, "screen");
     }
     /* لا رجوعَ من منتصف الخروج */
     const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
