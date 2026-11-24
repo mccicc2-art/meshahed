@@ -1455,17 +1455,25 @@ export async function getProfileByUsername(
  * فالفشل يُرجع صفراً ولا يُسقط الصفحة.
  */
 /** مكتبة مستخدمٍ آخر — القراءة العامة أُذن بها في سياسات الجداول */
-export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
+export async function getFollowsOf(
+  userId: string,
+  /** 🆕 T536 — صفحةٌ واحدة تكفي من يريد الأحدثَ فقط (ملصقاتُ الترحيب) — الملفُّ يقرأ المكتبةَ كلَّها */
+  opts?: { firstPageOnly?: boolean },
+): Promise<FollowRow[]> {
   try {
     // جداول المكتبة مقصورة على صاحبها بالسياسات — القراءة المباشرة كانت
     // ترجع صفراً بصمت. المكتبة عامة بحكم المنتج، فتخرج من دالة definer
-    // محدودة الأعمدة والعدد (انظر supabase/security2.sql)
+    // محدودة الأعمدة (انظر supabase/security2.sql)
+    /* 🆕 T536 — **وعلى صفحات** (هجرة ٢٦٤ أزالت سقفَ الألف من الدالّة، وPostgREST يقصّ كلَّ ردٍّ عند ألف): عضوةٌ استوردت ١٣٥٨
+       فيلماً بعد مسلسلاتها فصار ملفُّها «٠ مسلسل» — المسلسلاتُ الأقدم خرجت من أحدث ألف. الترتيبُ ثابتٌ في الدالّة فلا تتداخل الصفحات */
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_public_follows", {
-      target: userId,
-    });
-    if (error) return [];
-    return (data as FollowRow[]) ?? [];
+    const page = (from: number, to: number) =>
+      supabase.rpc("user_public_follows", { target: userId }).range(from, to);
+    if (opts?.firstPageOnly) {
+      const { data, error } = await page(0, 999);
+      return error ? [] : ((data as FollowRow[]) ?? []);
+    }
+    return await pageAll<FollowRow>((from, to) => page(from, to) as unknown as PromiseLike<{ data: FollowRow[] | null }>);
   } catch {
     return [];
   }
@@ -1596,27 +1604,29 @@ export async function getWatchedOf(
   };
   try {
     const supabase = await createClient();
+    /* 🆕 T536 — صفحاتٌ لا ردٌّ واحد: أفلامُها المشاهدةُ تجاوزت الألفَ فكانت الدالّةُ تقف عنده (هجرة ٢٦٤)، والردُّ يُقصّ عنده أيضاً */
     const [eps, mvs] = await Promise.all([
-      supabase.rpc("user_watch_overview", { target: userId }),
-      supabase.rpc("user_watched_movie_ids", { target: userId }),
+      pageAll<{ show_tmdb_id: number; watched: number }>((from, to) =>
+        supabase.rpc("user_watch_overview", { target: userId }).range(from, to) as unknown as PromiseLike<{
+          data: { show_tmdb_id: number; watched: number }[] | null;
+        }>,
+      ),
+      pageAll<{ movie_tmdb_id: number }>((from, to) =>
+        supabase.rpc("user_watched_movie_ids", { target: userId }).range(from, to) as unknown as PromiseLike<{
+          data: { movie_tmdb_id: number }[] | null;
+        }>,
+      ),
     ]);
     const byShow = new Map<number, number>();
     let episodes = 0;
-    for (const r of (eps.data ?? []) as {
-      show_tmdb_id: number;
-      watched: number;
-    }[]) {
+    for (const r of eps) {
       byShow.set(r.show_tmdb_id, Number(r.watched));
       episodes += Number(r.watched);
     }
     return {
       byShow,
       episodes,
-      movies: new Set(
-        ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map(
-          (m) => m.movie_tmdb_id,
-        ),
-      ),
+      movies: new Set(mvs.map((m) => m.movie_tmdb_id)),
     };
   } catch {
     return empty;

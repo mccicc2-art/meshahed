@@ -1,6 +1,7 @@
 // TMDB API client (v3). Requires TMDB_API_KEY in the environment.
 // Server-only: never expose the key to the browser.
 
+import { exactByTitle, pickByTitle } from "@/core/nameMatch";
 import { cache } from "react";
 import { applyLoopzNames, collectEnglish, missingEnglish, applyOriginalNames } from "@/core/loopzNames";
 import { cookies } from "next/headers";
@@ -2864,18 +2865,32 @@ export async function searchByName(
   if (!q) return null;
   const base: Record<string, string> = { query: q, include_adult: "false" };
   const hasYear = !!year && year > 1870 && year < 2200;
-  const pick = (rows: SearchResult[]) =>
-    rows.find((r) => r.poster_path) ?? rows[0] ?? null;
   const run = async (params: Record<string, string>) => {
     const data = await tmdb<{ results: SearchResult[] }>(`/search/${media}`, params);
     return (data.results ?? []).map((r) => ({ ...r, media_type: media }));
   };
+  /* 🆕 T536 — **الاسمُ المطابقُ يتقدّم على الأشهر** (`core/nameMatch`، أحمد ٢٤ نوفمبر «٢أ»): «Harmony» ٢٠١٠ صار «Harmony and Me».
+     والمطابقةُ على الإنجليزيّة أيضاً: الملفّاتُ تكتب الاسمَ إنجليزيّاً أو أصليّاً، وصفُّ الواجهة قد يحمل اسماً معرَّباً لا يطابق
+     شيئاً — فتُسأل TMDB بالإنجليزيّة معاً، ويُختار المعرّفُ بالمطابقة، ويعود صفُّه بلغة الواجهة إن وُجد. لا مطابقَ ⇐ القاعدةُ القديمة */
+  const runBoth = async (params: Record<string, string>) => {
+    const [own, en] = await Promise.all([run(params), run({ ...params, language: "en-US" }).catch(() => [] as SearchResult[])]);
+    return { own, en };
+  };
+  const choose = (own: SearchResult[], en: SearchResult[]): SearchResult | null => {
+    const hit = exactByTitle(en, q) ?? exactByTitle(own, q);
+    if (hit) return own.find((r) => r.id === hit.id) ?? hit;
+    return pickByTitle(own, q);
+  };
 
   try {
-    if (!hasYear) return pick(await run(base));
+    if (!hasYear) {
+      const { own, en } = await runBoth(base);
+      return choose(own, en);
+    }
 
     const key = media === "tv" ? "first_air_date_year" : "year";
-    const exact = pick(await run({ ...base, [key]: String(year) }));
+    const inYear = await runBoth({ ...base, [key]: String(year) });
+    const exact = choose(inYear.own, inYear.en);
     if (exact) return exact;
 
     /* السنة مُرشِّحٌ صارم في TMDB: لا نتيجة = صفٌّ يسقط **بصمت**. وهذا
@@ -2884,13 +2899,14 @@ export async function searchByName(
        ١٩٥٦ وإصدارُه ١٩٥٤، وفائزُ كان يُعرض في المهرجان قبل إصداره.
        فبدل السقوط: بحثٌ بلا سنة، ثم **أقرب إصدارٍ داخل ثلاث سنوات**.
        والحدُّ مقصود — بلا سقفٍ يصير «هاملت ١٩٤٨» أيَّ هاملت. */
-    const all = await run(base);
+    const all = await runBoth(base);
     const yearOf = (r: SearchResult) =>
       Number((r.release_date || r.first_air_date || "").slice(0, 4)) || 0;
-    const near = all
-      .filter((r) => yearOf(r) && Math.abs(yearOf(r) - year!) <= 3)
-      .sort((a, b) => Math.abs(yearOf(a) - year!) - Math.abs(yearOf(b) - year!));
-    return near.find((r) => r.poster_path) ?? near[0] ?? null;
+    const nearOf = (rows: SearchResult[]) =>
+      rows
+        .filter((r) => yearOf(r) && Math.abs(yearOf(r) - year!) <= 3)
+        .sort((a, b) => Math.abs(yearOf(a) - year!) - Math.abs(yearOf(b) - year!));
+    return choose(nearOf(all.own), nearOf(all.en));
   } catch {
     return null;
   }

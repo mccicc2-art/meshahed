@@ -24,7 +24,8 @@ export async function peoplePosters(ids: string[]): Promise<Record<string, strin
   const want = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === "string" && UUID.test(id)).slice(0, 6);
   const rows = await Promise.all(
     want.map(async (id) => {
-      const follows = await getFollowsOf(id).catch(() => []);
+      /* أحدثُ الأعمال فقط — صفحةٌ واحدة لا المكتبةُ كلُّها (T536) */
+      const follows = await getFollowsOf(id, { firstPageOnly: true }).catch(() => []);
       const posters = [...follows]
         .sort((a, b) => (b.added_at ?? "").localeCompare(a.added_at ?? ""))
         .map((f) => f.poster_path)
