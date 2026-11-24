@@ -1,3 +1,4 @@
+import { fixPairsFrom, type FixPair } from "@/core/importFix";
 import { api, write } from "../api";
 import { groupForResolve, type RawRecord } from "@/core/importParse";
 import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
@@ -22,6 +23,8 @@ export type ImportResult = {
   reviews: number;
   reviewsSkipped: number;
   unmatched: string[];
+  /** 🆕 T537 — أفلامٌ اختارتها المطابقةُ القديمة غيرَ ما تختاره اليوم: تُعرض على الخادم بشروطها لتُصحَّح بتأكيده */
+  fixPairs: FixPair[];
 };
 
 export async function importRecords(
@@ -114,5 +117,15 @@ export async function importRecords(
     throw e;
   }
   await finish({ status: hooks.stopped() ? "cancelled" : "done", shows: sC, episodes: eC, movies: mC, reviews: rC, unmatched: unmatched.length });
-  return { shows: sC, episodes: eC, movies: mC, lists: lC, listsSkipped: lSkip, reviews: rC, reviewsSkipped: rSkip, unmatched: unmatched.slice(0, 60) };
+  return {
+    shows: sC,
+    episodes: eC,
+    movies: mC,
+    lists: lC,
+    listsSkipped: lSkip,
+    reviews: rC,
+    reviewsSkipped: rSkip,
+    unmatched: unmatched.slice(0, 60),
+    fixPairs: fixPairsFrom(resolved.values()),
+  };
 }

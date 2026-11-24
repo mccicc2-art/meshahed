@@ -13,7 +13,8 @@ import { groupForResolve, type ParseOutcome, type RawRecord } from "@/core/impor
 import { autoRecords, readAuto, runHeaders, type AutoOptions, type AutoTable, type KnownSource } from "@/core/importAuto";
 import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
 import type { ImportRun, ImportRunSource, ImportRunSummary, ResolveResult } from "@/core/importer";
-import { resolveImportItems, applyImportChunk, finishImport, listImportRuns } from "@/lib/actions";
+import { resolveImportItems, applyImportChunk, finishImport, listImportRuns, findImportFixesAction } from "@/lib/actions";
+import { fixPairsFrom, type FixItem } from "@/core/importFix";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
@@ -24,6 +25,7 @@ import { sheetScroll } from "./ui/controls";
 import { webWords } from "./webWords";
 import { ImportAutoReview } from "./ImportAutoReview";
 import { ImportHistorySheet } from "./ImportHistorySheet";
+import { ImportFixSheet } from "./ImportFixSheet";
 import { importRunCounts, importRunTitle, importRunWhen } from "@/core/importer";
 
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
@@ -89,6 +91,10 @@ export function ImportPanel({
   /** أيُّ ورقةٍ مفتوحة: دليلُ تطبيق، أو Trakt — **وتُفتح على Trakt إن عاد الرابطُ برسالة** (نتيجةُ رحلته لا تُخبّأ خلف صفّ) */
   const [open, setOpen] = useState<SourceId | "trakt" | null>(() => (params.get("trakt") ? "trakt" : null));
   const [historyOpen, setHistoryOpen] = useState(false);
+  /* 🆕 T537 — أخطاءُ استيرادٍ سابقٍ وجدتها إعادةُ الرفع (بشروط الخادم)، وحصيلةُ تصحيحها */
+  const [fixes, setFixes] = useState<FixItem[]>([]);
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixMsg, setFixMsg] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [runs, setRuns] = useState<ImportRun[] | null>(null);
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -319,6 +325,17 @@ export function ImportPanel({
     });
     setPhase("done");
     router.refresh();
+    /* 🆕 T537 — هل أدخل استيرادٌ سابقٌ غيرَ ما في هذا الملفّ؟ الخادمُ يقرّر بشروطه، والفشلُ صمتٌ لا يمسّ ما تمّ */
+    setFixes([]);
+    setFixMsg(null);
+    const pairs = fixPairsFrom(resolved.values());
+    if (pairs.length) {
+      try {
+        setFixes(await findImportFixesAction(pairs));
+      } catch {
+        /* لا عرض */
+      }
+    }
   }
 
   const busy = phase === "reading" || phase === "matching" || phase === "writing";
@@ -384,6 +401,13 @@ export function ImportPanel({
           {result.listsSkipped > 0 && <Alert tone="info">{t.importListsFull}</Alert>}
           {result.reviewsSkipped > 0 && <Alert tone="info">{t.importReviewsSkipped(num(result.reviewsSkipped, locale))}</Alert>}
           {result.spoilerNote && <Alert tone="info">{t.importReviewsSpoiler}</Alert>}
+          {/* 🆕 T537 — بابُ التصحيح: سطرٌ من صفوف الإعدادات نفسِها، يفتح ورقتَه */}
+          {fixes.length > 0 && (
+            <SettingsGroup>
+              <SettingsRow icon="repeat" title={t.importFixTitle} value={num(fixes.length, locale)} onClick={() => setFixOpen(true)} />
+            </SettingsGroup>
+          )}
+          {fixMsg && <Alert tone={fixMsg.tone}>{fixMsg.text}</Alert>}
           {result.unmatched.length > 0 && (
             <div className="rounded-control border border-border bg-surface-2 p-3">
               <p className="text-12 font-bold mb-1">{t.importUnmatchedTitle(num(result.unmatched.length, locale))}</p>
@@ -564,6 +588,24 @@ export function ImportPanel({
       )}
 
       <ImportHistorySheet locale={locale} open={historyOpen} runs={runs ?? []} onClose={() => setHistoryOpen(false)} />
+
+      {fixOpen && fixes.length > 0 && (
+        <ImportFixSheet
+          locale={locale}
+          items={fixes}
+          onClose={(done) => {
+            setFixOpen(false);
+            if (!done) return;
+            setFixes([]);
+            setFixMsg(
+              done.failed > 0
+                ? { tone: "error", text: t.importFixFailed }
+                : { tone: "success", text: t.importFixDone(num(done.fixed, locale)) },
+            );
+            router.refresh();
+          }}
+        />
+      )}
 
       {/* ===== ورقةُ Trakt ===== */}
       <SettingsBottomSheet

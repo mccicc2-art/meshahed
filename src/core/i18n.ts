@@ -673,6 +673,15 @@ const ar = {
   /* 🆕 T507 — المراجعاتُ المستوردة (أحمد ٢٢ نوفمبر «٢أ»: Letterboxd وTrakt وعمودُ «المراجعة» في أي ملف) */
   importDoneReviews: (n: string) => `والمراجعات المستوردة: ${n}.`,
   /* 🆕 T516 — تعليقاتُ Trakt بلا تقييم: ورقةٌ تسأل عن نجوم كلٍّ منها (أحمد ٢٢ نوفمبر «٢أ») */
+  /* 🆕 T537 — تصحيحُ مطابقةٍ قديمة عند إعادة الاستيراد (أحمد ٢٤ نوفمبر «١أ») */
+  importFixTitle: "أعمال دخلت بالغلط سابقاً",
+  importFixHint: (n: string) =>
+    `في استيرادٍ سابق دخلت أفلامٌ غير التي في ملفك (${n}). نصحّحها: تنتقل مشاهدتك وتقييمك ومراجعتك إلى الفيلم الصحيح بتاريخها، ويُحذف الخطأ من مكتبتك.`,
+  importFixWas: (title: string) => `بدل «${title}»`,
+  importFixApply: (n: string) => `صحّح ${n}`,
+  importFixSkip: "لا، اتركها",
+  importFixDone: (n: string) => `صُحّحت الأعمال: ${n}.`,
+  importFixFailed: "تعذّر تصحيح بعضها. جرّب مرة أخرى.",
   importPendingTitle: "قيّم تعليقاتك من Trakt",
   importPendingHint: "هذه تعليقاتك في Trakt بلا تقييم. اختر نجوم كل واحد ليُحفظ مراجعةً في لوبز بتاريخ كتابته.",
   importPendingStep: (i: string, n: string) => `${i} من ${n}`,
@@ -4242,6 +4251,14 @@ const en: Dict = {
   importRunUnmatched: (n: string) => `${n} not found`,
   importRunReviews: (n: string) => `${n} reviews`,
   importDoneReviews: (n: string) => `We also imported ${n} reviews.`,
+  importFixTitle: "Titles that came in wrong before",
+  importFixHint: (n: string) =>
+    `An earlier import brought in films that aren't the ones in your file (${n}). We'll fix them: your watch, rating and review move to the right film with their dates, and the wrong one leaves your library.`,
+  importFixWas: (title: string) => `instead of “${title}”`,
+  importFixApply: (n: string) => `Fix ${n}`,
+  importFixSkip: "No, leave them",
+  importFixDone: (n: string) => `Fixed ${n} titles.`,
+  importFixFailed: "Some couldn't be fixed. Try again.",
   importPendingTitle: "Rate your Trakt comments",
   importPendingHint: "These Trakt comments have no rating. Pick stars for each one to save it as a Loopz review, with the date you wrote it.",
   importPendingStep: (i: string, n: string) => `${i} of ${n}`,

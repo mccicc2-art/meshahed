@@ -130,6 +130,8 @@ export type ResolveResult =
       episode?: number;
       /** 🆕 MyAnimeList — أين يقع هذا العملُ من مسلسل TMDB (جدولُ Fribb): موسمُه (`null` = ترقيمٌ متّصلٌ من أوّل العمل) وإزاحتُه */
       span?: { season: number | null; offset: number };
+      /** 🆕 T537 — فيلمٌ بالاسم: ما كانت القاعدةُ القديمة ستختاره حين يخالف الاختيارَ الجديد — مرشَّحُ «تصحيح استيرادٍ سابق» */
+      was?: { tmdbId: number; title: string };
     }
   | null;
 

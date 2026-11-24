@@ -9,6 +9,7 @@ import { isPersonaId } from "@/core/personas";
 import { movieOut } from "@/core/release";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
+import type { FixItem } from "@/core/importFix";
 import { cookies, headers } from "next/headers";
 import { PERSON_COLS } from "@/core/people";
 import { withIdentities, withPersonIdentities } from "@/lib/data";
@@ -6230,7 +6231,7 @@ export async function resolveImportItems(
 ): Promise<ResolveResult[]> {
   await requireUser("import-resolve", 90, 60_000);
   const list = (requests ?? []).slice(0, 40);
-  const { findByExternalId, searchByName, titleOf } = await import("@/lib/tmdb");
+  const { findByExternalId, searchByNameBoth, titleOf } = await import("@/lib/tmdb");
 
   /* 🆕 **MyAnimeList ⇐ جدولُ Fribb** (`lib/fribb.ts`): رقمُ MAL يعطي مسلسلَ TMDB وموسمَه وإزاحتَه — لا بحثَ بالاسم (موسمُ أنمي
      باسمٍ ياباني يطابق خطأً). يُحمَّل مرّةً للدفعة وحين تطلبه وحدَه. **وتعذُّرُه خطأٌ يُقال** لا «لم نجد» على كلِّ عمل: من يرى
@@ -6314,13 +6315,15 @@ export async function resolveImportItems(
       }
 
       const media = req.kind === "name-tv" ? "tv" : "movie";
-      const hit = await searchByName(String(req.name ?? "").slice(0, 200), media, req.year);
+      const { hit, legacy } = await searchByNameBoth(String(req.name ?? "").slice(0, 200), media, req.year);
       if (!hit) return null;
       return {
         tmdbId: hit.id,
         mediaType: media,
         title: titleOf(hit),
         posterPath: safeImagePath(hit.poster_path),
+        /* 🆕 T537 — الأفلامُ وحدها: حلقاتُ مسلسلٍ لا تُنقل إلى مسلسلٍ آخر برقمها */
+        ...(media === "movie" && legacy && legacy.id !== hit.id ? { was: { tmdbId: legacy.id, title: titleOf(legacy) } } : {}),
       };
     } catch {
       return null;
@@ -6472,6 +6475,8 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
         movie_tmdb_id: intId(mv.tmdbId),
         runtime: null as number | null,
         watched_at: mv.at ?? stamp,
+        /* 🆕 T537 — المستوردُ موسومٌ (أحمد ٢٤ نوفمبر «٢أ»): تصحيحٌ قادمٌ يعرف ما جاء من ملفٍّ يقيناً لا بوقت إضافته */
+        source: "import" as const,
       })),
     (r) => r.movie_tmdb_id,
   );
@@ -6573,6 +6578,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
         episode_number: ep.e,
         runtime: runtime as number | null,
         watched_at: ep.at ?? stamp,
+        source: "import" as const,
       }));
   });
 
@@ -6587,6 +6593,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
           episode_number: intIn(ep.e, 0, 20_000),
           runtime: null as number | null,
           watched_at: ep.at ?? stamp,
+          source: "import" as const,
         })),
       ),
     ],
@@ -6777,6 +6784,23 @@ async function withPosters(
 }
 
 /** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */
+/** 🆕 T537 — ما يُعرض من أخطاء استيرادٍ سابق (الشروطُ في `lib/importFix`) */
+export async function findImportFixesAction(pairs: unknown): Promise<FixItem[]> {
+  const { supabase, user } = await requireUser("import-fix", 20, 10 * 60_000);
+  const { cleanFixPairs, findImportFixes } = await import("@/lib/importFix");
+  return findImportFixes(supabase, user.id, cleanFixPairs(pairs));
+}
+
+/** 🆕 T537 — التصحيحُ بعد تأكيده — الشروطُ تُعاد على الخادم */
+export async function applyImportFixesAction(pairs: unknown): Promise<{ fixed: number; failed: number }> {
+  const { supabase, user } = await requireUser("import-fix", 20, 10 * 60_000);
+  const { applyImportFixes, cleanFixPairs } = await import("@/lib/importFix");
+  const done = await applyImportFixes(supabase, user.id, cleanFixPairs(pairs));
+  revalidatePath("/");
+  revalidatePath("/library");
+  return done;
+}
+
 export async function finishImport(summary?: unknown) {
   const { supabase, user } = await requireUser("import-apply", 90, 60_000);
   /* 🆕 D-768: مستوردُ تاريخه تجاوز الأعمالَ الثلاثةَ دفعةً — دعوتُه

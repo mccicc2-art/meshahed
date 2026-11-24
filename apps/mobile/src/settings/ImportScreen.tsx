@@ -24,6 +24,8 @@ import { autoRecords, readAuto, runHeaders, type AutoOptions, type AutoTable, ty
 import { importRunCounts, importRunTitle, importRunWhen, type ImportRun, type ImportRunSource } from "@/core/importer";
 import { ImportAutoReview } from "./ImportAutoReview";
 import { ImportHistorySheet } from "./ImportHistorySheet";
+import { ImportFixSheet } from "./ImportFixSheet";
+import type { FixItem } from "@/core/importFix";
 import { importRecords, type ImportResult } from "./importPipeline";
 import { importFromTrakt } from "./trakt";
 import { TraktPendingSheet, type TraktPending } from "./TraktPendingSheet";
@@ -67,7 +69,7 @@ const SOURCES: Record<SourceId, { parse: (f: { name: string; buf: ArrayBuffer }[
 };
 
 /** ورقةٌ واحدةٌ مفتوحةٌ في كلِّ مرّة (iOS لا يقدّم نافذتين في آنٍ): دليلُ تطبيق، أو الرفعُ (تقدّمُه وحصيلتُه)، أو «استيراداتك» */
-type Open = SourceId | "upload" | "history" | null;
+type Open = SourceId | "upload" | "history" | "fix" | null;
 
 export function ImportScreen() {
   const { t, tokens, locale } = useApp();
@@ -78,6 +80,8 @@ export function ImportScreen() {
   useEffect(() => () => void (stop.current = true), []);
 
   const [open, setOpen] = useState<Open>(null);
+  /** 🆕 T537 — أخطاءُ استيرادٍ سابقٍ وجدتها إعادةُ الرفع (تُعرض بشروطها من الخادم) */
+  const [fixes, setFixes] = useState<FixItem[]>([]);
   /** جداولُ ملفٍّ لا نعرفه تنتظر المراجعة — ومعها ملفّاتُه إن قال «هو من تطبيقٍ نعرفه» */
   const [review, setReview] = useState<{ tables: AutoTable[]; skipped: string[]; bufs: { name: string; buf: ArrayBuffer }[] } | null>(null);
   const [known, setKnown] = useState<string | null>(null);
@@ -231,6 +235,16 @@ export function ImportScreen() {
     setResult({ ...done, spoilerNote: source === "letterboxd" && done.reviews > 0 });
     setPhase("done");
     haptic.success();
+    /* 🆕 T537 — هل أدخل استيرادٌ سابقٌ غيرَ ما في هذا الملفّ؟ الخادمُ يقرّر بشروطه، والفشلُ صمتٌ لا يمسّ ما تمّ */
+    setFixes([]);
+    if (done.fixPairs.length) {
+      try {
+        const r = await api<{ items: FixItem[] }>("/api/v1/me/import/fix", { method: "POST", body: { pairs: done.fixPairs, apply: false } });
+        setFixes(Array.isArray(r.data?.items) ? r.data.items : []);
+      } catch {
+        /* لا عرض */
+      }
+    }
   }
 
   /* 🆕 R281 — Trakt: لا ملفَّ ولا مراحل — نافذةُ موافقةٍ ثمّ طلبٌ واحدٌ على الخادم؛ الصفُّ يدور حتى يعود */
@@ -402,6 +416,22 @@ export function ImportScreen() {
                 {result.listsSkipped > 0 ? <Note tone="error" body={t.importListsFull} /> : null}
                 {result.reviewsSkipped > 0 ? <Text size={12} muted style={{ marginTop: 12, lineHeight: 19 }}>{t.importReviewsSkipped(num(result.reviewsSkipped, locale))}</Text> : null}
                 {result.spoilerNote ? <Text size={12} muted style={{ marginTop: 8, lineHeight: 19 }}>{t.importReviewsSpoiler}</Text> : null}
+                {/* 🆕 T537 — بابُ التصحيح: الورقةُ تُغلق ثمّ تُفتح ورقتُه (ورقتان معاً لا تُرسمان على iOS) */}
+                {fixes.length ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Group>
+                      <Row
+                        icon="repeat"
+                        title={t.importFixTitle}
+                        value={num(fixes.length, locale)}
+                        onPress={() => {
+                          setOpen(null);
+                          setTimeout(() => setOpen("fix"), 350);
+                        }}
+                      />
+                    </Group>
+                  </View>
+                ) : null}
                 {result.unmatched.length > 0 ? (
                   <View style={{ marginTop: 12, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, padding: 12 }}>
                     <Text size={12} weight="700" style={{ marginBottom: 4 }}>{t.importUnmatchedTitle(num(result.unmatched.length, locale))}</Text>
@@ -416,6 +446,18 @@ export function ImportScreen() {
       ) : null}
 
       {open === "history" ? <ImportHistorySheet runs={runs} onClose={() => setOpen(null)} /> : null}
+      {open === "fix" && fixes.length ? (
+        <ImportFixSheet
+          items={fixes}
+          onClose={(done) => {
+            setOpen(null);
+            if (!done) return;
+            setFixes([]);
+            if (done.fixed > 0) toast.current?.say(t.importFixDone(num(done.fixed, locale)), undefined, undefined, "success");
+            if (done.failed > 0) toast.current?.say(t.importFixFailed);
+          }}
+        />
+      ) : null}
       {review ? (
         <ImportAutoReview
           tables={review.tables}

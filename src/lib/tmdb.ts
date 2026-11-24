@@ -2861,8 +2861,22 @@ export async function searchByName(
   media: "tv" | "movie",
   year?: number,
 ): Promise<SearchResult | null> {
+  return (await searchByNameBoth(name, media, year)).hit;
+}
+
+/**
+ * 🆕 T537 — **الاختيارُ الجديد ومعه ما كانت القاعدةُ القديمة ستختاره** (`legacy`) من الردّ نفسِه — بلا طلبٍ زائد.
+ * لماذا: استيرادٌ سابقٌ بالاسم أدخل «Harmony and Me» مكان «Harmony» ٢٠١٠؛ والقاعدةُ القديمة ثابتة (أوّلُ نتيجةٍ بملصقٍ بلغة
+ * الواجهة)، فإعادةُ الاستيراد تعرف أين أخطأت المرّةُ السابقة حين يختلف الاختياران — وتعرضه على صاحبه ليصحّحه (أحمد ٢٤ نوفمبر «١أ»).
+ */
+export async function searchByNameBoth(
+  name: string,
+  media: "tv" | "movie",
+  year?: number,
+): Promise<{ hit: SearchResult | null; legacy: SearchResult | null }> {
+  const none = { hit: null, legacy: null };
   const q = name.trim();
-  if (!q) return null;
+  if (!q) return none;
   const base: Record<string, string> = { query: q, include_adult: "false" };
   const hasYear = !!year && year > 1870 && year < 2200;
   const run = async (params: Record<string, string>) => {
@@ -2881,17 +2895,19 @@ export async function searchByName(
     if (hit) return own.find((r) => r.id === hit.id) ?? hit;
     return pickByTitle(own, q);
   };
+  /* القاعدةُ قبل T536 حرفاً: أوّلُ نتيجةٍ بملصقٍ من ردِّ لغة الواجهة، ثمّ الأولى */
+  const old = (own: SearchResult[]) => own.find((r) => r.poster_path) ?? own[0] ?? null;
 
   try {
     if (!hasYear) {
       const { own, en } = await runBoth(base);
-      return choose(own, en);
+      return { hit: choose(own, en), legacy: old(own) };
     }
 
     const key = media === "tv" ? "first_air_date_year" : "year";
     const inYear = await runBoth({ ...base, [key]: String(year) });
     const exact = choose(inYear.own, inYear.en);
-    if (exact) return exact;
+    if (exact) return { hit: exact, legacy: old(inYear.own) };
 
     /* السنة مُرشِّحٌ صارم في TMDB: لا نتيجة = صفٌّ يسقط **بصمت**. وهذا
        يقع كثيراً في الجوائز لأن سنة الجائزة ليست دائماً سنة الإصدار —
@@ -2906,9 +2922,9 @@ export async function searchByName(
       rows
         .filter((r) => yearOf(r) && Math.abs(yearOf(r) - year!) <= 3)
         .sort((a, b) => Math.abs(yearOf(a) - year!) - Math.abs(yearOf(b) - year!));
-    return choose(nearOf(all.own), nearOf(all.en));
+    return { hit: choose(nearOf(all.own), nearOf(all.en)), legacy: old(nearOf(all.own)) };
   } catch {
-    return null;
+    return none;
   }
 }
 

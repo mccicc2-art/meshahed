@@ -180,6 +180,8 @@ export async function runTraktImport(token: string, userId: string, platform: "w
       episode_number: ep.e,
       runtime: null as number | null,
       watched_at: ep.at ?? stamp,
+      /* 🆕 T537 — المستوردُ موسومٌ (أحمد ٢٤ نوفمبر «٢أ») */
+      source: "import" as const,
     })),
   ).filter((r) => {
     const k = `${r.show_tmdb_id}-${r.season_number}-${r.episode_number}`;
@@ -212,6 +214,7 @@ export async function runTraktImport(token: string, userId: string, platform: "w
     movie_tmdb_id: mv.tmdbId,
     runtime: null as number | null,
     watched_at: mv.at ?? stamp,
+    source: "import" as const,
   }));
   for (let i = 0; i < mvRows.length; i += 500) {
     const { error } = await supabase
