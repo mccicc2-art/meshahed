@@ -5,6 +5,7 @@ import { getT } from "@/lib/locale";
 import { welcomeSeeds } from "@/lib/welcomeSeeds";
 import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { GoogleButton } from "@/components/GoogleButton";
+import { AppleButton } from "@/components/AppleButton";
 import { Icon, type IconName } from "@/components/Icon";
 import { AppGateSignal } from "@/components/AppGateSignal";
 
@@ -131,7 +132,11 @@ export async function LandingHero({
         {/* الدخول: زرٌّ أبيض واحد لا نموذج — أقل قرارٍ ممكن قبل البدء */}
         <div className="mt-[clamp(16px,3.2vh,36px)] w-full max-w-[360px] px-6">
           {configured ? (
-            <GoogleButton locale={locale} next={next} />
+            <>
+              <GoogleButton locale={locale} next={next} />
+              {/* 🆕 T538 — أبل تحت Google في كلِّ المتصفّحات (أحمد ٢٤ نوفمبر «٢أ»)؛ يغيب داخل تطبيقنا */}
+              <AppleButton locale={locale} next={next} />
+            </>
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}

@@ -69,8 +69,11 @@ export type AppleExchange = { ok: true; refresh: string } | { ok: false; why: "r
  * رمزُ التفويض ⇒ رمزُ تجديد. **الرمزُ المُعاد يجب أن يحمل `appleSub`** (معرّفُ العضو عند أبل كما في هويّته عندنا):
  * رمزُ تفويضٍ لحساب أبل آخر لا يُعلَّق على هذا العضو.
  */
-export async function appleExchange(key: AppleKey, code: string, appleSub: string, post: ApplePost, nowSec?: number): Promise<AppleExchange> {
-  const r = await post(APPLE_TOKEN_URL, { client_id: key.clientId, client_secret: appleClientSecret(key, nowSec), code, grant_type: "authorization_code" });
+export async function appleExchange(key: AppleKey, code: string, appleSub: string, post: ApplePost, nowSec?: number, redirectUri?: string): Promise<AppleExchange> {
+  /* 🆕 T538 — رمزُ تفويضٍ من دخول الويب يُبدَّل **بعنوان العودة الذي طُلب به** (توثيقُ أبل: «إن وُجد»)؛ التطبيقُ بلا عنوان */
+  const fields: Record<string, string> = { client_id: key.clientId, client_secret: appleClientSecret(key, nowSec), code, grant_type: "authorization_code" };
+  if (redirectUri) fields.redirect_uri = redirectUri;
+  const r = await post(APPLE_TOKEN_URL, fields);
   const refresh = r.json?.refresh_token;
   if (r.status !== 200 || typeof refresh !== "string" || !refresh)
     return { ok: false, why: "rejected", detail: `${r.status} ${typeof r.json?.error === "string" ? r.json.error.slice(0, 40) : ""}`.trim() };

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getDict, type Locale } from "@/core/i18n";
+import { authButtonClass } from "./authButton";
 
 /**
  * الدخول بحساب Google.
@@ -150,8 +151,40 @@ export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: st
     }
   }, [t, next]);
 
+  /**
+   * 🆕 T538 — **الآيفون والآيباد: رمزُ الهويّة بالتحويل، والعودةُ إلى صفحتنا** (`core/googleRedirect`) — فتطبع شاشةُ الموافقة
+   * `loopztv.com` لا عنوانَ Supabase (أحمد ٢٤ نوفمبر «١أ»). والطريقُ القديمُ باقٍ: بلا معرّف عميل، أو حين تطلبه صفحةُ العودة
+   * بعد فشلٍ (`?door=old`) — بابُ الدخول لا يكون له مفتاحٌ واحد.
+   */
+  const googleReturnSignIn = useCallback(async () => {
+    if (!CLIENT_ID || inApp() || new URLSearchParams(window.location.search).get("door") === "old") return redirectSignIn();
+    setLoading(true);
+    try {
+      const { GOOGLE_STASH_KEY, GOOGLE_RETURN_ORIGINS, googleAuthUrl } = await import("@/core/googleRedirect");
+      if (!(GOOGLE_RETURN_ORIGINS as readonly string[]).includes(window.location.origin)) return redirectSignIn();
+      const [raw, hashed] = await makeNonce();
+      const state = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("");
+      window.sessionStorage.setItem(GOOGLE_STASH_KEY, JSON.stringify({ state, nonce: raw, next, at: Date.now() }));
+      /* أصلُ هذه الصفحة نفسُه لا أصلٌ مُحلَّل: الطلبُ المحفوظُ في `sessionStorage` لا يُقرأ إلا من الأصل الذي كتبه */
+      window.location.assign(googleAuthUrl({ clientId: CLIENT_ID, origin: window.location.origin, state, hashedNonce: hashed, locale }));
+    } catch {
+      /* تخزينُ الجلسة محجوبٌ (تصفّحٌ خاصٌّ قديم) — الطريقُ القديم */
+      return redirectSignIn();
+    }
+  }, [redirectSignIn, next, locale]);
+
   /* D-922: الغلافُ يبثّ هذا الحدثَ حين يُلغي المستخدمُ الدخولَ من متصفّح
      النظام — فيعود الزرُّ إلى حاله بدل أن يبقى «يحوّل…» إلى الأبد. */
+  /* 🆕 T538 (مراجعةُ الوكيل، البند ١١) — «رجوع» من صفحة Google يعيد هذه الصفحةَ من خبيئة المتصفّح كما تُركت: الزرُّ معطَّلٌ على
+     «جارٍ التحويل…». الصفحةُ المستعادةُ (`persisted`) تفكّه */
+  useEffect(() => {
+    const restore = (e: PageTransitionEvent) => {
+      if (e.persisted) setLoading(false);
+    };
+    window.addEventListener("pageshow", restore);
+    return () => window.removeEventListener("pageshow", restore);
+  }, []);
+
   useEffect(() => {
     if (!inApp()) return;
     const back = () => setLoading(false);
@@ -275,9 +308,9 @@ export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: st
       {/* الزرّ القديم يظهر وحده حين لا تُحمَّل مكتبة Google أصلاً */}
       {!gsiReady ? (
         <button
-          onClick={redirectSignIn}
+          onClick={() => void (isIOS() ? googleReturnSignIn() : redirectSignIn())}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] font-bold text-[16px] py-4 rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.25)] hover:brightness-95 active:scale-[0.98] transition disabled:opacity-60"
+          className={authButtonClass}
         >
           <GoogleMark size={20} />
           {loading ? t.loginRedirecting : t.loginContinueGoogle}

@@ -3025,6 +3025,8 @@ const ar = {
   calRelease: "يصدر",
   userNotFound: "لا يوجد مستخدم بهذا الاسم.",
   loginContinueGoogle: "المتابعة عبر Google",
+  /* 🆕 T538 — «الدخول بأبل» في المتصفّح */
+  loginContinueApple: "المتابعة عبر Apple",
   /* 🆕 D-1344 — شاشةُ الدخول الأصليّة (Phase 11-U · U1). النقاطُ الثلاثُ صيغةُ أحمد بتحسينٍ وافق عليه
      («علّم» لا «تابع»: «تابع» في التطبيق إضافةُ العمل للمكتبة). وجملةُ الموافقة إقرارٌ قانونيٌّ باسمه — اعتمد نصَّها. */
   signInPoint1: "علّم كل حلقة شاهدتها",
@@ -5992,6 +5994,7 @@ const en: Dict = {
   calRelease: "Out",
   userNotFound: "No user with that name.",
   loginContinueGoogle: "Continue with Google",
+  loginContinueApple: "Continue with Apple",
   signInPoint1: "Mark every episode you watch",
   signInPoint2: "Know when your next episode drops",
   signInPoint3: "See what your friends are watching",

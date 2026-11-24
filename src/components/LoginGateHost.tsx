@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { GoogleButton } from "@/components/GoogleButton";
+import { AppleButton } from "@/components/AppleButton";
 import { LOGIN_GATE_EVENT } from "@/lib/loginGate";
 import { getDict, type Locale } from "@/core/i18n";
 
@@ -39,7 +40,11 @@ export function LoginGateHost({ locale }: { locale: Locale }) {
       <div className="px-5 pt-3 pb-5 flex flex-col gap-4">
         <p className="text-14 text-muted leading-relaxed">{t.loginGateHint}</p>
         {/* زرُّ الدخول نفسُه لا نسخةٌ عنه — والعودةُ إلى الصفحة الحاليّة */}
-        <GoogleButton locale={locale} next={pathname || "/"} />
+        {/* 🆕 T538 — وأبل تحته كما في شاشة الدخول (أحمد ٢٤ نوفمبر «٢أ») */}
+        <div>
+          <GoogleButton locale={locale} next={pathname || "/"} />
+          <AppleButton locale={locale} next={pathname || "/"} />
+        </div>
       </div>
     </Sheet>
   );

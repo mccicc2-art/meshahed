@@ -36,7 +36,14 @@ type Action =
 /** `com.loopztv.app://w/title?k=tv&id=1` ⇐ فعلٌ معروف، وكلُّ ما سواه يُهمل */
 export function widgetActionOf(url: string | null): Action | null {
   if (!url) return null;
-  const m = /^com\.loopztv\.app:\/\/w\/([a-z]+)(?:\?(.*))?$/i.exec(url);
+  /* 🆕 T538 — رابطُ العمل المشارَك (`https://loopztv.com/show/4607` من واتساب) يفتح صفحةَ العمل الأصليّة بطريق لمسة الودجت
+     نفسِه (ينتظر الجذرَ والجلسة) — لا نسخةَ الويب داخل التطبيق كما كان (أحمد ٢٤ نوفمبر «٢أ») */
+  const link = APP_TITLE_LINK.exec(url);
+  if (link) {
+    const id = Number(link[2]);
+    return Number.isInteger(id) && id > 0 ? { do: "title", kind: link[1].toLowerCase() === "movie" ? "movie" : "tv", id } : null;
+  }
+  const m =/^com\.loopztv\.app:\/\/w\/([a-z]+)(?:\?(.*))?$/i.exec(url);
   if (!m) return null;
   const q = new URLSearchParams(m[2] ?? "");
   const id = Number(q.get("id"));
@@ -79,6 +86,9 @@ export function widgetActionOf(url: string | null): Action | null {
       return null;
   }
 }
+
+/** مسارا العمل اللذان يعلنهما `app.json` (`intentFilters`) و`src/lib/appLinks.ts` في الويب — انظر `+native-intent` */
+const APP_TITLE_LINK = /^https?:\/\/(?:www\.)?loopztv\.com\/(show|movie)\/(\d+)\/?(?:[?#].*)?$/i;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -143,7 +153,9 @@ export function WidgetGate() {
       setPending(null);
       return;
     }
-    if (!top || top === "web" || top === "index") {
+    /* 🆕 T538 (مراجعةُ الوكيل، البند ٣) — رابطُ العمل المشارَك يصل من لم يُكمل الترحيبَ أيضاً: لا يُدفع فوق الترحيب ولا شاشات
+       الدخول — ينتظر مثلها، ويسقط بعد المهلة */
+    if (!top || top === "web" || top === "index" || top === "welcome" || top === "sign-in" || top === "signing-out" || top === "auth") {
       const t = setTimeout(() => setPending((p) => (p && Date.now() - p.at > WAIT_MS ? null : p ? { ...p } : p)), 1500);
       return () => clearTimeout(t);
     }

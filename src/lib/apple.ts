@@ -1,6 +1,7 @@
 import "server-only";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { appleExchange, appleRevoke, normalizePem, type AppleKey, type ApplePost } from "@/lib/appleSecret";
+import { APPLE_WEB_CLIENT_ID } from "@/core/appleRedirect";
 
 /**
  * ====== 🆕 D-1350 — رمزُ أبل: يُحفظ عند الدخول ويُلغى عند حذف الحساب (Phase 11-U · U4) ======
@@ -50,11 +51,13 @@ export type KeepResult = "stored" | "unconfigured" | "rejected" | "mismatch" | "
  * رمزُ التفويض ⇒ رمزُ تجديدٍ محفوظ. `appleSub`: معرّفُ العضو عند أبل كما في هويّته عندنا — **الرمزُ الذي تعيده أبل
  * يجب أن يكون له هو**، وإلّا لا يُحفظ (`appleExchange` — منطقُ النداءين في `appleSecret.ts` حيث يُختبر).
  */
-export async function keepAppleToken(userId: string, appleSub: string, code: string): Promise<KeepResult> {
-  const key = appleKey();
+export async function keepAppleToken(userId: string, appleSub: string, code: string, clientId?: string, redirectUri?: string): Promise<KeepResult> {
+  /* 🆕 T538 — رمزُ التفويض يُبدَّل بالمعرّف الذي طُلب به: دخولُ الويب بـ`com.loopztv.web`، والتطبيقُ بمعرّف الحزمة */
+  const base = appleKey();
+  const key = base && clientId ? { ...base, clientId } : base;
   if (!key || !hasServiceKey()) return "unconfigured";
   try {
-    const x = await appleExchange(key, code, appleSub, post);
+    const x = await appleExchange(key, code, appleSub, post, undefined, redirectUri);
     if (!x.ok) {
       if (x.why === "rejected") console.warn(`[apple] token exchange refused: ${x.detail}`);
       return x.why;
@@ -88,12 +91,16 @@ export async function revokeAppleFor(userId: string): Promise<RevokeResult> {
     if (!token) return "none";
     const key = appleKey();
     if (!key) return "unconfigured";
-    const r = await appleRevoke(key, token, post);
-    if (!r.ok) {
-      console.warn(`[apple] revoke refused: ${r.detail}`);
-      return "failed";
+    /* 🆕 T538 — الرمزُ لا يُلغى إلّا بالمعرّف الذي صدر له، والجدولُ لا يحفظ أيَّهما (بلا تغييرٍ في المخطّط): معرّفُ التطبيق
+       أوّلاً — أغلبُ الأعضاء — ثمّ معرّفُ الويب إن رُفض */
+    let detail = "";
+    for (const clientId of [key.clientId, APPLE_WEB_CLIENT_ID]) {
+      const r = await appleRevoke({ ...key, clientId }, token, post);
+      if (r.ok) return "revoked";
+      detail = r.detail;
     }
-    return "revoked";
+    console.warn(`[apple] revoke refused: ${detail}`);
+    return "failed";
   } catch (e) {
     console.error("[apple] revoke", e instanceof Error ? e.name : "error");
     return "failed";

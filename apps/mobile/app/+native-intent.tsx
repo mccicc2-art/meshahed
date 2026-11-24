@@ -17,6 +17,8 @@
  * بعد أن يتحقّق النظامُ من `/.well-known/` — ويُترجم إلى **طريق الودجت نفسِه** (`/web?u=/show/4607`) لا إلى شاشةٍ
  * جديدة: ذاك الطريقُ يعرف الجلسةَ والترحيبَ والدخولَ وينتظر الكوكي قبل أن ينتقل (D-910)، ومجرّبٌ على الأجهزة.
  * المساران هما ما يعلنه `app.json` (`intentFilters`) و`src/lib/appLinks.ts` في الويب — الثلاثةُ معاً.
+ * 🆕 T538 (أحمد ٢٤ نوفمبر «٢أ»): **صار يفتح صفحةَ العمل الأصليّة لا نسخةَ الويب** — الرابطُ يُردّ كرابط الودجت (فارغاً والتطبيقُ
+ * مفتوح، و`/` من الصفر) و`WidgetGate` يدفع `/title/[kind]/[id]` بعد الجذر والجلسة، الطريقُ المجرَّبُ للمسة الودجت.
  *
  * 🆕 **روابطُ الودجتات الجديدة** (`com.loopztv.app://w/…`) لا تخصّ الموجِّه: تُردّ فارغةً والتطبيقُ مفتوح،
  * وإلى البداية (`/`) حين تفتحه من الصفر — و`WidgetGate` يقرؤها من `Linking` وينفّذها بعد أن يُدفع الجذر.
@@ -43,8 +45,6 @@ const TRAKT_RETURN = /^(?:com\.loopztv\.app:\/\/\/?|\/)?trakt(?:[?#].*)?$/i;
 const REVIEW_LINK = /^(?:https?:\/\/(?:www\.)?loopztv\.com)?\/review\/(tv|movie)\/(\d+)\/([0-9a-f-]{36})\/?(?:[?#].*)?$/i;
 
 export function appLinkTarget(path: string): string | null {
-  const m = APP_LINK.exec(path);
-  if (m) return `/web?u=${encodeURIComponent(`/${m[1].toLowerCase()}/${m[2]}`)}`;
   const r = REVIEW_LINK.exec(path);
   return r ? `/review/${r[1].toLowerCase()}/${r[2]}/${r[3].toLowerCase()}` : null;
 }
@@ -54,6 +54,8 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
     if (!initial && path.includes("auth/callback")) return null;
     if (TRAKT_RETURN.test(path)) return initial ? "/" : null;
     if (WIDGET_LINK.test(path)) return initial ? "/" : null;
+    /* 🆕 T538 — رابطُ العمل مثلُ رابط الودجت: `WidgetGate` يقرؤه من `Linking` ويدفع صفحةَ العمل الأصليّة بعد الجذر */
+    if (APP_LINK.test(path)) return initial ? "/" : null;
     const invite = inviteCodeOf(path);
     if (invite) {
       void pendingInvite.set(invite);

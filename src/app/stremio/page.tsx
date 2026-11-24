@@ -6,6 +6,7 @@ import { stremioLinkOf } from "@/lib/stremio";
 import { mayLinkDevice } from "@/lib/linkTokens";
 import { isPlus } from "@/core/plan";
 import { GoogleButton } from "@/components/GoogleButton";
+import { AppleButton } from "@/components/AppleButton";
 import { buttonClass } from "@/components/ui/Button";
 import { StremioConnect } from "./StremioConnect";
 import { webWords } from "@/components/webWords";
@@ -71,6 +72,7 @@ export default async function StremioPage() {
               ))}
             </ul>
             <GoogleButton locale={locale} next="/stremio" />
+            <AppleButton locale={locale} next="/stremio" />
             <p className="mt-4 text-center text-12 text-muted">{t.stremioNeedAccount}</p>
           </>
         ) : !canLink ? (
