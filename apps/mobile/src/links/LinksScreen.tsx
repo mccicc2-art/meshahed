@@ -338,7 +338,7 @@ export function LinksScreen() {
         ) : null}
       </View>
 
-      {/* ───── 🆕 منصّاتُ البثّ (هجرة ٢٦٥) — نتفليكس لـLoopz+ وحده؛ المربوطةُ في المدار، وغيرُها هنا ───── */}
+      {/* ───── 🆕 منصّاتُ البثّ (هجرة ٢٦٥) — المربوطةُ في المدار، وغيرُها هنا. 🆕 T551 — للجميع في خاناتهم: بلا قفلٍ ولا بهتان ───── */}
       {!netflixLinked ? (
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
@@ -355,17 +355,12 @@ export function LinksScreen() {
               }}
               accessibilityRole="button"
               accessibilityLabel={t.linksLinkAction("Netflix")}
-              style={{ width: LIST_TILE + 8, alignItems: "center", opacity: free ? 0.45 : 1 }}
+              style={{ width: LIST_TILE + 8, alignItems: "center" }}
             >
               <View>
                 <PlatformMark size={LIST_TILE} state={netflixStopped ? "paused" : "idle"} />
-                {free ? (
-                  <View style={{ position: "absolute", top: -4, end: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="lock" size={11} color={tokens.muted} />
-                  </View>
-                ) : null}
               </View>
-              <DeviceLabel name="Netflix" muted={free} />
+              <DeviceLabel name="Netflix" />
               {netflixStopped ? <Text size={10} muted>{t.linksStopped}</Text> : null}
             </Pressable>
           </View>

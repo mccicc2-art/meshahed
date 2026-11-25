@@ -143,7 +143,7 @@ export async function linkPlatform(userId: string, platform: PlatformKind, profi
   if (!hasServiceKey()) return { ok: false, reason: "upstream" };
   const st = await deviceLinksOf(userId);
   if (!st) return { ok: false, reason: "upstream" };
-  if (st.tier === "free") return { ok: false, reason: "plus" };
+  /* 🆕 T551 — لا «اشترك» للمجّانيّ: المنصّةُ تأخذ خانتَه الواحدة كأيِّ جهاز، والممتلئةُ `limit` («فك ربط تطبيقك أولاً») */
   if (!canLinkPlatform(st.rows, platform, st.tier)) return { ok: false, reason: "limit" };
   const db = await createServiceClient();
   const now = new Date().toISOString();

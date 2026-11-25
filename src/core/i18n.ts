@@ -3826,7 +3826,6 @@ const ar = {
   nfxNothingNew: "لا جديد منذ آخر مزامنة",
   nfxSyncFailed: "تعذّرت المزامنة. حاول لاحقاً.",
   nfxEmpty: "لا شيء هنا بعد",
-  nfxPlusOnly: "الربط مع Netflix لمشتركي Loopz Plus",
 };
 
 export type Dict = typeof ar;
@@ -6720,7 +6719,6 @@ const en: Dict = {
   nfxNothingNew: "Nothing new since the last sync",
   nfxSyncFailed: "Couldn't sync. Try again later.",
   nfxEmpty: "Nothing here yet",
-  nfxPlusOnly: "Linking Netflix is for Loopz Plus members",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

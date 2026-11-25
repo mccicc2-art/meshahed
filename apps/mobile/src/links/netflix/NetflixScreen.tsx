@@ -61,12 +61,12 @@ export function NetflixScreen() {
     else if (o.reason !== "signed-out" && o.reason !== "stopped") toast.current?.say(t.nfxSyncFailed);
   }, [sync.last, uid, t]);
 
-  /* غيرُ مربوطة ⇐ ورقةُ الموافقة أوّلَ ما تُفتح الصفحة (للمشترك) */
+  /* غيرُ مربوطة ⇐ ورقةُ الموافقة أوّلَ ما تُفتح الصفحة (🆕 T551 — للجميع) */
   const asked = useRef(false);
   useEffect(() => {
     if (!d || asked.current) return;
     asked.current = true;
-    if (!nfx && d.tier !== "free") setOverlay("consent");
+    if (!nfx) setOverlay("consent");
   }, [d, nfx]);
 
   const openLogin = (w: LoginWhy) => {
@@ -163,18 +163,7 @@ export function NetflixScreen() {
     );
   }
 
-  /* المجانيّ: بابُ الاشتراك */
-  if (d.tier === "free") {
-    return (
-      <SettingsScreen title="Netflix" toast={toast}>
-        <View style={{ alignItems: "center", gap: 12, paddingTop: 12 }}>
-          <PlatformMark size={64} />
-          <Text size={15} weight="700" style={{ textAlign: "center", lineHeight: 22 }}>{t.nfxPlusOnly}</Text>
-          <Button label={t.introCta} onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "plus" } })} />
-        </View>
-      </SettingsScreen>
-    );
-  }
+  /* 🗑️ T551 — بابُ الاشتراك للمجّانيّ خرج: نتفليكس تُربط في خانته الواحدة (أحمد ٢٥ نوفمبر)، والممتلئةُ يردّها الخادم «فك ربط تطبيقك أولاً» */
 
   /* غيرُ مربوطة: الموافقةُ فوق صفحةٍ فارغةٍ هادئة */
   if (!nfx) {

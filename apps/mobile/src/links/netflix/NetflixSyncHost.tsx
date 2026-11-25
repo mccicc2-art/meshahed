@@ -97,11 +97,11 @@ export function NetflixSyncHost() {
   const busy = useRef(false);
   const lastCheck = useRef(0);
   const uid = me?.id ?? null;
-  const plus = !!me?.plus;
+  /* 🆕 T551 — المزامنةُ الصامتةُ للجميع (أحمد «أ»): المجّانيُّ الذي ربط نتفليكس في خانته تتزامن كالمشترك */
 
   /* ───── المزامنةُ الصامتة عند الفتح ───── */
   const check = useCallback(async () => {
-    if (!uid || !plus || state.job) return;
+    if (!uid || state.job) return;
     const now = Date.now();
     if (now - lastCheck.current < CHECK_GAP_MS) return;
     lastCheck.current = now;
@@ -109,7 +109,7 @@ export function NetflixSyncHost() {
     const p = netflixOf(d);
     if (!syncDue(p) || readLocal(uid).expired) return;
     requestNetflixSync("auto");
-  }, [uid, plus]);
+  }, [uid]);
 
   useEffect(() => {
     void check();

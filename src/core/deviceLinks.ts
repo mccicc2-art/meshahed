@@ -108,15 +108,12 @@ export function partition(rows: LinkRow[], limit: number, now = Date.now()): { k
 }
 
 /**
- * 🆕 **حكمُ الطبقة كلِّه** (هجرة ٢٦٥): الخاناتُ كما في `partition`، و**المنصّاتُ لـLoopz+ وحده** (أحمد ٢١ نوفمبر «٣ب») —
- * فالمجّانيُّ تُوقف منصّتُه ولا تأخذ خانتَه الواحدة (تبقى لجهازٍ من «من أجهزتك»). ونزولٌ من بلس يُوقفها ولا يحذفها: يعود
- * باشتراكٍ جديد بملفّه وسجلّه.
+ * 🆕 **حكمُ الطبقة كلِّه** (هجرة ٢٦٥): الخاناتُ كما في `partition`. كانت المنصّاتُ لـLoopz+ وحده («٣ب»)؛ 🆕 T551 — صارت
+ * خانةً كأيِّ جهاز للجميع. والإيقافُ لا يحذف: ما زاد على الخانات يعود باشتراكٍ جديد أو بفكِّ غيره، بملفّه وسجلّه.
  */
 export function partitionTier(rows: LinkRow[], tier: LinkTier, now = Date.now()): { keep: LinkRow[]; stop: LinkRow[] } {
-  if (tier !== "free") return partition(rows, slotLimit(tier), now);
-  const plats = rows.filter((r) => r.table === "platform_links" && isAlive(r, now));
-  const p = partition(rows.filter((r) => r.table !== "platform_links"), slotLimit(tier), now);
-  return { keep: p.keep, stop: [...p.stop, ...plats] };
+  /* 🆕 T551 — المنصّةُ خانةٌ كأيِّ جهاز للطبقات كلِّها: النازلُ إلى المجّانيّ يبقى له أحدثُ ما استعمله، منصّةً كان أو جهازاً */
+  return partition(rows, slotLimit(tier), now);
 }
 
 /** الخاناتُ المستعملةُ الآن (الشغّالُ الحيّ وحده) */
@@ -140,8 +137,9 @@ export function canIssue(rows: LinkRow[], kind: DeviceKind, limit: number, now =
  * والجديدةُ تحتاج خانةً فارغة كأيِّ جهاز.
  */
 export function canLinkPlatform(rows: LinkRow[], platform: PlatformKind, tier: LinkTier, now = Date.now()): boolean {
-  /* المنصّاتُ لـLoopz+ وحده (أحمد ٢١ نوفمبر «٣ب») */
-  if (tier === "free") return false;
+  /* 🆕 T551 — **كلُّ منصّةٍ للمجّانيّ في خانته الواحدة** (أحمد ٢٥ نوفمبر: «خل جميع التطبيقات متاحة للغير مشترك وهو يختار واحد
+     منها فقط حتى لو اختار نتفليكس» ثمّ «اي تطبيق نضيفه يكون مجاني بعد») — نقضٌ لـ«٣ب» (٢١ نوفمبر). ⚖️ **ولا استثناءَ باسم منصّة**:
+     القاعدةُ للنوع كلِّه، فما يُضاف غداً يدخل تحتها. والفرقُ بين الطبقات عددُ الخانات وحده */
   const limit = slotLimit(tier);
   const own = rows.find((r) => r.table === "platform_links" && r.platform === platform && isAlive(r, now) && !r.stopped_at);
   return own ? true : usedSlots(rows, now) + 1 <= limit;
