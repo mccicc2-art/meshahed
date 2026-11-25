@@ -25,7 +25,9 @@ export const HOME_SECTIONS = [
   // وأفلامي — يعودان من التخصيص لمن يريدهما
   "ratings",
   "lists",
-  "trending",
+  /* 🗑️ T543 — **«رائج هذا الأسبوع» غادر الرئيسيّة** (أحمد ٢٥ نوفمبر: «في تخصيص الرئيسية احذف رائج الان» · «نفذ وارفع»): وُضع
+     ليملأ رئيسيّةَ من تخطّى الترحيبَ بلا عمل (D-497)، وتملؤها اليومَ «الآن في السينما». مفتاحُه المحفوظُ يُهمَل بصمت
+     (`sanitizeStoredHomePrefs` تُصفّي بالسجلّ)، والرائجُ باقٍ في «اكتشف» والودجت. */
   /* «أعمالُ أصدقائك الآن» (البند ٧) — انتقل أعلى السجلّ (D-1487). يُخفي نفسَه لمن لا يتابع أحداً (D-181). */
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
@@ -49,7 +51,6 @@ export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; 
     ratings: { icon: "star", label: t.panelRatings },
     /* 🆕 D-703: اسمُ الصفِّ في لوح التخصيص هو اسمُه في الرئيسية */
     lists: { icon: "list", label: t.listsTitle },
-    trending: { icon: "trending", label: t.trendingWeek },
     friends: { icon: "people", label: t.railFriendsNow },
   };
 }
@@ -329,9 +330,11 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
      عند أوّل حلقة**، ولا يزحم رئيسيّتك بسطرٍ واحد. */
   /* 🆕 T512 — «أصدقاؤك» قبل «الرائج» لغير المشترك (أحمد ٢٢ نوفمبر: «خل غير المشترك … اصدقائك» ثمّ «بعد اصدقاءك الرائج») */
   /* 🆕 T524 — «الآن في السينما» بعد «للمشاهدة» كترتيب المشترك (أحمد «١أ»): الترتيبان يتطابقان حتى «أصدقائك»، والرائجُ لغير المشترك آخرَها */
-  order: ["week", "continue", "towatch", "cinema", "friends", "trending"],
-  /* D-1487 — «مسلسلات · أفلام» لغير المشترك (كان «للمشاهدة · القادم») */
-  statsPick: ["shows", "movies"],
+  /* 🆕 T543 — **غيرُ المشترك بافتراضيّ المشترك** (أحمد ٢٥ نوفمبر: «تخصيص الرئيسية للغير مشترك خليها مثل المشترك» · «١أ»: الشكلُ
+     لا التعديل — الترتيبُ وخاناتُ الأرقام تبقى حقولاً تُباع في بلس، `PLUS_HOME_FIELDS`). والرائجُ خرج (انظر `HOME_SECTIONS`) */
+  order: ["week", "continue", "towatch", "cinema", "friends"],
+  /* 🆕 T543 — خاناتُ المشترك الثلاث للجميع (كانت «مسلسلات · أفلام» لغير المشترك، D-1487) */
+  statsPick: ["shows", "movies", "time"],
   cards: "full",
   view: "visual",
   density: "comfortable",
@@ -357,21 +360,22 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
  * ⚖️ **والاستبدالُ حين تُمرَّر الخطّةُ وحدَها** (`sanitizeHomePrefs(raw, plus)`): الخادمُ يمرّرها عند القراءة،
  * والعميلُ يُنقّي ما وصله بلا خطّة **فلا يُعيد ترتيبَ المشترك افتراضيَّ غيرِ المشترك**.
  */
-export const PLUS_HOME_ORDER: HomeSection[] = ["week", "continue", "towatch", "cinema", "friends"];
+/* 🆕 T543 — والافتراضيّان صارا واحداً: يبقى الاسمان لقارئيهما، والقيمةُ قيمةُ `DEFAULT_HOME_PREFS` */
+export const PLUS_HOME_ORDER: HomeSection[] = [...DEFAULT_HOME_PREFS.order];
 /* D-1491 — «أكملتها» خرجت من افتراضيّ المشترك (أحمد ٢٠ أكتوبر: «اكملتها خليه مخفي»): ثلاثُ خانات */
-export const PLUS_STATS_PICK: HeaderStatKey[] = ["shows", "movies", "time"];
+export const PLUS_STATS_PICK: HeaderStatKey[] = [...DEFAULT_HOME_PREFS.statsPick];
 const KNOWN_HOME_ORDERS: readonly (readonly string[])[] = [
   DEFAULT_HOME_PREFS.order,
   PLUS_HOME_ORDER,
-  /* افتراضيّا ما قبل T512 — من لم يرتّب ينتقل إلى الجديد (السينما للمشترك · الأصدقاء لغير المشترك) */
-  ["week", "continue", "towatch", "trending"],
+  /* افتراضيّاتٌ قديمة بعد سقوط «trending» منها بالتصفية (T543) — من لم يرتّب ينتقل إلى الجديد:
+     ما قبل T512 (`week · continue · towatch · trending` / `… · friends`)، وما قبل T524 (`… · friends · trending`) */
+  ["week", "continue", "towatch"],
   ["week", "continue", "towatch", "friends"],
-  /* T524 — افتراضيُّ غير المشترك قبل السينما: ترتيبُه لا يملكه (حقلٌ مدفوع) فكلُّهم «لم يرتّب» وينتقلون إليها */
-  ["week", "continue", "towatch", "friends", "trending"],
 ];
 const KNOWN_STATS_PICKS: readonly (readonly string[])[] = [
   DEFAULT_HOME_PREFS.statsPick,
   PLUS_STATS_PICK,
+  ["shows", "movies"], // افتراضيُّ غير المشترك قبل T543 — ينتقل إلى الثلاث
   ["towatch", "upcoming"], // افتراضيُّ ما قبل D-1487
   ["shows", "movies", "completed", "time"], // افتراضيُّ المشترك في D-1487 — من لم يرتّب ينتقل إلى الثلاث (D-1491)
 ];

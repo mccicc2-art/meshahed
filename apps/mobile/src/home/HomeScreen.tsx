@@ -785,13 +785,6 @@ export function HomeScreen() {
           )}
         />
       ) : null,
-      trending:
-        d.prefs.order.includes("trending") && (extras.data?.trending.length ?? 0) > 0 ? (
-          <View key="trending">
-            <SectionHeader title={t.trendingWeek} icon="trending" accent={false} />
-            {posterRow((extras.data?.trending ?? []).slice(0, cap(12)).map((r) => asItem({ key: `tr-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched })), holdDiscOpen)}
-          </View>
-        ) : null,
     };
     return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
   }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy]);

@@ -1,7 +1,7 @@
 // تفضيلات البروفايل — ماذا يرى زائرُ صفحتك وبأي ترتيب (D-129)
 
-import { sanitizeCardCount, type CardCount } from "./cardCount";
-import { sanitizeDensity, type Density } from "./density";
+import { sanitizeCardCount, type CardCount } from "./cardCount.ts";
+import { sanitizeDensity, type Density } from "./density.ts";
 import type { Dict } from "./i18n";
 import type { IconName } from "./iconNames";
 
@@ -329,7 +329,10 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      الأعمال») سقطت مع سقوط العدّ نفسِه (D-128: الصفُّ بلا سطرِ «شاهدتَ له ٧
      أعمال»)، **فلم يبقَ للإبعاد سبب.** */
   /* D-1487 — غيرُ المشترك والجديد: الثلاثةُ الأولى ظاهرة (جدولُ أحمد ٢٠ أكتوبر)؛ الستّةُ للمشترك (`PLUS_PROFILE_ORDER`) */
-  order: ["shows", "movies", "anime"],
+  /* 🆕 T543 — **غيرُ المشترك بافتراضيّ المشترك** (أحمد ٢٥ نوفمبر: «خل الغير مشترك مثل المشترك في كل شيء» · «أ»: الشكلُ لا التعديل —
+     الترتيبُ والإخفاءُ يبقيان حقولاً تُباع في بلس، `PLUS_PROFILE_FIELDS`): الأقسامُ الستّة ظاهرة، فتسقط بطاقاتُ «مخفيٌّ عن الزوّار» المنقّطة
+     التي كانت تملأ نصفَ ملفِّه وهو لا يملك إظهارَها. كانت «مسلسلات · أفلام · أنمي» (D-1487) */
+  order: ["shows", "movies", "anime", "ratings", "artists", "lists"],
   density: "comfortable",
   cards: "full",
   /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
@@ -346,7 +349,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      فيو مقفل») ولـD-653 («لازم الكل فيفوريت») **بكلمةِ صاحبهما**،
      **والحجّةُ صفحةٌ تبدأ بمكتبته لا بقائمةٍ فارغة** («لا مفضّلات بعد»
      كانت أوّلَ ما يراه الزائر). ⚠️ **ويمسّ من لم يخصّص وحدَه** (ق٨). */
-  hiddenTabs: ["activity", "favorites", "lists"],
+  /* 🆕 T543 — تبويباتُ المشترك للجميع: نظرة عامة · النشاط · المراجعات · المفضّلة، والقوائمُ مطفأة (كانت للمشترك وحدَه، D-1487) */
+  hiddenTabs: ["lists"],
   tabOrder: ["overview", "activity", "reviews", "favorites", "lists"],
   custom: [],
 };
@@ -359,17 +363,20 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
  * 🔑 **ومن لم يرتّب يتبع خطّتَه** — قاعدةُ `homePrefs` نفسُها: مخزونٌ يساوي أحدَ الافتراضيّات المعروفة
  * (والقديمَ منها) يُقرأ «لم يرتّب». والاستبدالُ حين تُمرَّر الخطّةُ وحدَها.
  */
-export const PLUS_PROFILE_ORDER: ProfileSection[] = ["shows", "movies", "anime", "ratings", "artists", "lists"];
-export const PLUS_HIDDEN_TABS: HideableProfileTab[] = ["lists"];
+/* 🆕 T543 — والافتراضيّان صارا واحداً: يبقى الاسمان لقارئيهما، والقيمةُ قيمةُ `DEFAULT_PROFILE_PREFS` */
+export const PLUS_PROFILE_ORDER: ProfileSection[] = [...DEFAULT_PROFILE_PREFS.order];
+export const PLUS_HIDDEN_TABS: HideableProfileTab[] = [...DEFAULT_PROFILE_PREFS.hiddenTabs];
 const KNOWN_PROFILE_ORDERS: readonly (readonly string[])[] = [
   DEFAULT_PROFILE_PREFS.order,
   PLUS_PROFILE_ORDER,
   ["shows", "movies", "anime", "ratings", "lists", "artists"], // افتراضيُّ ما قبل D-1487 (D-941b)
+  ["shows", "movies", "anime"], // افتراضيُّ غير المشترك قبل T543 — من لم يرتّب ينتقل إلى الستّة
 ];
 const KNOWN_HIDDEN_TABS: readonly (readonly string[])[] = [
   DEFAULT_PROFILE_PREFS.hiddenTabs,
   PLUS_HIDDEN_TABS,
   ["favorites", "lists"], // افتراضيُّ ما قبل D-1487 (D-940)
+  ["activity", "favorites", "lists"], // افتراضيُّ غير المشترك قبل T543
 ];
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));

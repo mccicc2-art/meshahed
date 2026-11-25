@@ -20,10 +20,6 @@ import {
   getUnreadSignals,
   getUnreadShares,
 } from "@/lib/data";
-import {
-  titleOf,
-  yearOf,
-} from "@/lib/tmdb";
 /* حارسُ الرفوف — نفسُ الملفّ الذي يحرس اكتشف، **لا نسخةٌ ثانية** (D-321) */
 import {
   getNewsGenStale,
@@ -84,7 +80,6 @@ import {
   freshenFollows,
   continueBackdrops,
   upcomingWithEpisodes,
-  trendingRail,
   type T,
   type Item,
   type MixedItem,
@@ -1009,23 +1004,6 @@ async function HomeBody({
               <CinemaSection place="home" locale={locale} t={t} />
             </Suspense>
           ) : null,
-          trending: prefs.order.includes("trending") ? (
-            /* ⚖️ **«الرائج» يبثّ وحده** (جولة ٢٠ أغسطس): نداءُ TMDB
-                 الوحيد الذي لا يخصّ مكتبتك — كان أبطأَ عضوٍ في الموجة
-                 فيحكم في ظهور كلِّ الأقسام. **وشرطُ الظهور صار التفضيلَ
-                 وحدَه (D-599)**؛ وسقوطُ الجلب كلِّه يُسقط القسمَ صامتاً
-                 كما كان (`catch` إلى صفوفٍ صفر). */
-            <Suspense key="trending" fallback={<RailSkeleton count={6} />}>
-              <TrendingSection
-                watchedMovieIds={watchedMovieIds}
-                doneShowIds={doneShowIds}
-                followedKeys={followedKeys}
-                cards={prefs.cards}
-                locale={locale}
-                t={t}
-              />
-            </Suspense>
-          ) : null,
         };
         /* ⚖️ 🆕 R262 — **العمودُ الجانبيُّ سقط** (نقضُ T398 بحكم أحمد ١٨ نوفمبر: «أ» — شريطُ الأسبوع أعلى الرئيسية): كان «أسبوعك»
            و«القادم» يسكنان عموداً ضيّقاً، **فلمّا خلا الأسبوعُ صار سبعةَ أسطرٍ فارغة، وتحته العمودُ فارغٌ حتى آخر الصفحة،
@@ -1509,77 +1487,6 @@ async function UpcomingSection({
   return <ByHomeView section="upcoming" visual={rail("visual")} compact={rail("compact")} />;
 }
 
-/**
- * قسم «الرائج» — احتياطُ من لا شيء في يده الآن، يجلب صفّه بنفسه.
- *
- * 🆕 **والحارسُ على فم «الرائج» هنا أيضاً** (D-321): هذا الصفُّ كان
- * ينادي `/trending` عارياً منذ أوّل يوم — حارسُ D-194 وُلد في
- * `news/page.tsx` وحدَه. و`anime: "keep"` مقصودة — الرئيسيةُ ليست
- * تبويبَ أفلامٍ ولا مسلسلات، ولم يطلب أحدٌ إخراجَ الأنمي منها.
- * **والمساران صارا مساراً واحداً** بعد أن غادر «الرائج» الموجةَ إلى
- * هذا القسم — نسخةٌ واحدةٌ محروسةٌ لا اثنتان (درسُ D-175).
- */
-async function TrendingSection({
-  watchedMovieIds,
-  doneShowIds,
-  followedKeys,
-  cards,
-  locale,
-  t,
-}: {
-  watchedMovieIds: Set<number>;
-  doneShowIds: Set<number>;
-  followedKeys: Set<string>;
-  cards: ReturnType<typeof sanitizeHomePrefs>["cards"];
-  locale: Locale;
-  t: T;
-}) {
-  const trend = await trendingRail();
-  if (trend.length === 0) return null;
-
-  const cap = (n: number) => capCards(n, cards);
-  return (
-    <Section
-      key="trending"
-      title={t.trendingWeek}
-      icon="trending"
-    >
-      {trend.slice(0, cap(12)).map((r) => {
-        const mt = r.media_type === "tv" ? "tv" : "movie";
-        const seen =
-          mt === "movie" ? watchedMovieIds.has(r.id) : doneShowIds.has(r.id);
-        /* ⚖️ 🆕 **بطاقةُ «الرائج» صارت كسائر البطاقات** (D-609، حكمُ
-           أحمد بلقطة: «شيل علامة البوكمارك والصح وخلّها مثل الباقي —
-           أسوّي عليها هولد ويكون تحتها خطّ أخضر/أزرق حسب حالتها»):
-           زرُّ الحفظ السريع وصحُّه العائمان سقطا — **وهما بقيّةُ ما
-           منعته D-434 («لا أزرار عائمة فوق البوسترات») في صفٍّ واحدٍ
-           شذّ** — والحالةُ في خيط `StatusThread` (أخضرُ مُشاهَدٌ ·
-           سماويٌّ محفوظ) والأفعالُ في قائمة الضغط المطوّل (D-229:
-           بابٌ واحدٌ لأفعال الملصق في كلِّ سطح). */
-        return (
-          <PosterCard
-            key={`${r.media_type}-${r.id}`}
-            href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
-            title={titleOf(r)}
-            posterPath={r.poster_path}
-            year={yearOf(r)}
-            badge={mt === "tv" ? t.typeSeries : t.typeMovie}
-            hold={{
-              tmdbId: r.id,
-              mediaType: mt,
-              added: followedKeys.has(`${mt}-${r.id}`),
-              watched: seen,
-              progress: seen ? 100 : 0,
-              /* 🆕 T474 — فيلمٌ رائجٌ لم يُعرض بعد: لا «شاهدته» في قائمته */
-              release: mt === "movie" ? (r.release_date ?? null) : undefined,
-              locale,
-            }}
-          />
-        );
-      })}
-    </Section>
-  );
-}
 
 /**
  * 🆕 R262 — **شريطُ الأسبوع على الحاسوب بصور المسلسلات**: الخلفيّةُ ليست في مداخل الأسبوع (الملصقُ وحدَه)، فتُجلب هنا لأعمال

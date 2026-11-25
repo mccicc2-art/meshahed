@@ -95,8 +95,11 @@ export function Rail({ children }: { children: React.ReactNode }) {
   /* 🆕 D-1597 — **التباطؤُ الطبيعيّ كصفوف المكتبة** (تسجيلُ أحمد ٣٠ أكتوبر: «ليه وقت التمرير ماهي ناعمه وتتزحلق مثل المكتبة؟»):
      كان الصفُّ بـ`decelerationRate="fast"` فيقف لحظةَ رفع الإصبع؛ صفوفُ المكتبة على الافتراضيّ فتنساب وتهدأ. لا التقاطَ للبطاقات
      هنا يبرّر «سريع» — فالصفُّ الأفقيُّ في التطبيق يتحرّك بإحساسٍ واحد */
+  /* 🆕 T543 — **صفٌّ أقصرُ من الشاشة يبدأ من جهة القراءة** (أحمد ٢٥ نوفمبر: «اكمل المشاهدة اذا باقي عمل واحد … فاللغة العربية يروح
+     يسار مع ان القائمة الرئيسية يمين»): المحتوى كان بعرض بطاقاته فيلتصق بالطرف الأيسر في اللغتين؛ `flexGrow: 1` يمدّه بعرض الإطار فتبدأ
+     البطاقاتُ من بداية الصفّ — يمينٌ بالعربيّ ويسارٌ بالإنجليزيّ. والصفُّ الأطولُ من الشاشة لا يتغيّر (المحتوى أعرضُ أصلاً) */
   return (
-    <ScrollView ref={ref} onContentSizeChange={rtlIos ? pinStart : undefined} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }}>
+    <ScrollView ref={ref} onContentSizeChange={rtlIos ? pinStart : undefined} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: PAGE_PAD, gap: RAIL_GAP }}>
       {children}
     </ScrollView>
   );

@@ -66,8 +66,8 @@ export async function GET() {
     const [{ nextBackdrops }, upRows, trend] = await Promise.all([
       continueBackdrops({ toWatchCard: body.toWatchCard, playlistCards: body.playlistCards, listCards: body.listCards }),
       upcomingWithEpisodes(body.upcomingRow, t),
-      // شرطُ الظهور التفضيلُ وحدَه (D-599) — من أخفاه لا يدفع نداءَه
-      prefs.order.includes("trending") ? trendingRail() : Promise.resolve([]),
+      /* 🗑️ T543 — «الرائج» غادر الرئيسيّة: لا نداءَ له، والحقلُ يبقى فارغاً لتطبيقٍ أقدم يقرؤه (يُخفي القسمَ حين يفرغ) */
+      Promise.resolve([] as Awaited<ReturnType<typeof trendingRail>>),
     ]);
 
     const upcoming_eps: Record<string, string> = {};
