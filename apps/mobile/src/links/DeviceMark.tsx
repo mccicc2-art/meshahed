@@ -22,7 +22,8 @@ const LOGO: Partial<Record<DeviceKind, { d: string; color: string; scale: number
   plex: { d: PLEX, color: "#EBAF00", scale: 0.82 },
   emby: { d: EMBY, color: "#52B54B", scale: 0.62 },
 };
-const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
+/* 🆕 Nuvio — رمزُ «تشغيل» العامُّ بلا صبغ (D-1646: لا شعارَ بلا إذنٍ مكتوب، ولا ألوانَ ندّعيها) */
+const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", nuvio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
 /**
  * 🆕 T354 — **Jellyfin بألوانه لا بشعاره** (أحمد ٩ نوفمبر: «نفذ المقترح … ما راح نرسل»): دليلُ هويّتهم يقصر الشعارَ على المشاريع
  * المفتوحة المصدر، ويُبيح ألوانَهم المتدرّجة مع شكلٍ غيرِ شكل شعارهم. فرمزُ «فيلم» العامُّ نفسُه يُصبغ بتدرّجهم (بنفسجيٌّ إلى أزرق)

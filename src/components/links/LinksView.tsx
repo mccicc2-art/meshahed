@@ -69,6 +69,7 @@ export function LinksView({ locale }: { locale: Locale }) {
   const counter = free ? t.linksCounterFree(d.used) : d.limit == null ? t.linksCounterGold(d.used) : t.linksCounterPlus(d.used, d.limit);
   const needs: Record<DeviceKind, string> = {
     stremio: w.stremioNeeds,
+    nuvio: w.nuvioNeeds,
     plex: t.devicePlexNeeds,
     jellyfin: t.deviceJellyfinNeeds,
     emby: t.deviceEmbyNeeds,

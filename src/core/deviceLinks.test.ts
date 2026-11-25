@@ -120,3 +120,16 @@ test("المنصّة: خانةٌ واحدة، ولا يستبدلها جهاز،
   assert.deepEqual(q.keep.map((r) => r.token_hash), ["uuid-2"], "المنصّةُ الأحدثُ استعمالاً تبقى");
   assert.deepEqual(partitionTier([nfx, stremio], "plus", NOW).stop, []);
 });
+
+test("🆕 Nuvio جهازٌ لحاله: خانتُه غيرُ خانة Stremio، ورابطُه لا يستبدل رابطَ Stremio (أحمد ٢٦ نوفمبر)", () => {
+  const nuvio = row({ table: "nuvio_links", token_hash: "n", last_used_at: ago(2) });
+  /* الاثنان خانتان — المجانيُّ يربط أحدَهما، وبلس يربطهما معاً */
+  assert.equal(usedSlots([stremio, nuvio], NOW), 2);
+  assert.equal(canIssue([stremio], "nuvio", slotLimit("free"), NOW), false, "المجانيُّ وخانتُه لـStremio لا يربط Nuvio");
+  assert.equal(canIssue([stremio], "nuvio", slotLimit("plus"), NOW), true);
+  /* رابطٌ جديدٌ لـNuvio المربوط استبدالٌ لا خانة — ولا يمسّ Stremio */
+  assert.equal(canIssue([nuvio], "nuvio", slotLimit("free"), NOW), true);
+  assert.equal(canIssue([nuvio], "stremio", slotLimit("free"), NOW), false);
+  /* النزولُ يُبقي الأحدثَ استعمالاً منهما */
+  assert.deepEqual(partition([stremio, nuvio], 1, NOW).keep.map((r) => r.token_hash), ["s"]);
+});

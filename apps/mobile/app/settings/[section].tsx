@@ -15,7 +15,7 @@ import { FeaturesScreen } from "../../src/settings/FeaturesScreen";
 import { PlusScreen } from "../../src/settings/PlusScreen";
 import { SupportersScreen } from "../../src/settings/SupportersScreen";
 import { HomeServersScreen } from "../../src/settings/HomeServersScreen";
-import { HomeDeviceScreen, KodiDeviceScreen, StremioDeviceScreen } from "../../src/links/DeviceScreens";
+import { HomeDeviceScreen, KodiDeviceScreen, NuvioDeviceScreen, StremioDeviceScreen } from "../../src/links/DeviceScreens";
 import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
 import { LinksScreen } from "../../src/links/LinksScreen";
 import { NetflixScreen } from "../../src/links/netflix/NetflixScreen";
@@ -52,6 +52,8 @@ const SCREENS = {
   supporters: SupportersScreen,
   /* 🆕 هجرة ٢٣٧ — صفحةٌ لكلِّ جهازٍ برابطه (وقبل الهجرة تعرض كلٌّ منها الشاشةَ القديمة)، و«اربط أجهزتك» قبل الاشتراك */
   stremio: StremioDeviceScreen,
+  /* 🆕 هجرة ٢٦٧ — Nuvio: إضافةُ Stremio نفسُها برابطه وخانته */
+  nuvio: NuvioDeviceScreen,
   plex: () => <HomeDeviceScreen kind="plex" />,
   jellyfin: () => <HomeDeviceScreen kind="jellyfin" />,
   emby: () => <HomeDeviceScreen kind="emby" />,

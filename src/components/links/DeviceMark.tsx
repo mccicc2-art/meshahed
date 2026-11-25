@@ -22,7 +22,8 @@ const LOGO: Partial<Record<DeviceKind, { d: string; color: string; scale: number
   plex: { d: PLEX, color: "#EBAF00", scale: 0.76 },
   emby: { d: EMBY, color: "#52B54B", scale: 0.62 },
 };
-const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
+/* 🆕 Nuvio — رمزُ «تشغيل» العامُّ بلا صبغ (D-1646: لا شعارَ بلا إذنٍ مكتوب، ولا ألوانَ ندّعيها) */
+const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", nuvio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
 const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"], stremio: ["#8B80F5", "#685CEE"] };
 
 export type MarkState = "idle" | "on" | "waiting" | "paused";

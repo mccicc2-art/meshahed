@@ -72,12 +72,23 @@ function rowOf(table: LinkTableName, r: Record<string, unknown>): LinkRow {
 
 /** صفوفُ العضو في الجداول الثلاثة — `null` قبل الهجرة (عمودٌ غائب) أو إن فشلت القراءة */
 async function readRows(db: Db, userId: string): Promise<LinkRow[] | null> {
-  const [res, platforms] = await Promise.all([
+  const [res, platforms, nuvio] = await Promise.all([
     Promise.all(TABLES.map((table) => db.from(table).select(table === "home_server_links" ? HOME_COLS : LINK_COLS).eq("user_id", userId).limit(10))),
     readPlatformRows(db, userId),
+    readNuvioRows(db, userId),
   ]);
   if (res.some((r) => r.error)) return null;
-  return [...res.flatMap((r, i) => ((r.data ?? []) as unknown as Record<string, unknown>[]).map((row) => rowOf(TABLES[i], row))), ...platforms];
+  return [...res.flatMap((r, i) => ((r.data ?? []) as unknown as Record<string, unknown>[]).map((row) => rowOf(TABLES[i], row))), ...nuvio, ...platforms];
+}
+
+/**
+ * 🆕 هجرة ٢٦٧ — **رابطُ Nuvio** (إضافةُ Stremio نفسُها في Nuvio، برابطٍ وخانةٍ لحاله). ⚠️ **قراءتُه لا تُسقط قراءةَ الأجهزة**:
+ * قبل الهجرة يغيب الجدول ⇐ لا Nuvio، والأجهزةُ الخمسة كما كانت — لو دخل `TABLES` لعاد الكلُّ إلى حكم «بلس وحده» حتى تُشغّل.
+ */
+async function readNuvioRows(db: Db, userId: string): Promise<LinkRow[]> {
+  const { data, error } = await db.from("nuvio_links").select(LINK_COLS).eq("user_id", userId).limit(10);
+  if (error) return [];
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => rowOf("nuvio_links", row));
 }
 
 /* ============================================================
@@ -307,7 +318,7 @@ export async function issueLinkToken(table: LinkTable, prefix: string, userId: s
     const { error } = await db.from(table).upsert(fresh, { onConflict: "user_id" });
     return error ? { ok: false, reason: "upstream" } : { ok: true, token };
   }
-  const kind: DeviceKind | null = table === "stremio_links" ? "stremio" : table === "kodi_links" ? "kodi" : (server ?? null);
+  const kind: DeviceKind | null = table === "stremio_links" ? "stremio" : table === "nuvio_links" ? "nuvio" : table === "kodi_links" ? "kodi" : (server ?? null);
   const legacy = st.rows.find((r) => r.table === "home_server_links" && !r.server);
   /* رابطٌ بلا نوع (تطبيقُ 1.13.x) يستبدل القديمَ بلا نوع إن وُجد — وإلّا يحتاج خانةً كأيِّ جهازٍ جديد */
   const room = kind ? canIssue(st.rows, kind, st.limit) : (!!legacy && !legacy.stopped_at) || usedSlots(st.rows) + 1 <= st.limit;
@@ -429,13 +440,13 @@ export async function linkOwner(table: LinkTable, token: string, shape: RegExp, 
 
 /**
  * 🆕 «سجّل بلا سؤال» — حدثُ «انتهت» من سيرفر البيت أو Kodi لمن فعّله: السؤالُ يُسجَّل ثمّ يُجاب ✓ في الحال، **بالتعليم
- * نفسِه الذي يفعله ✓ العضو** (`watchMark.ts`) وشارةِ المصدر. ⚖️ Stremio لا يصل هنا أبداً: «فتحها» ليس «خلّصها».
+ * نفسِه الذي يفعله ✓ العضو** (`watchMark.ts`) وشارةِ المصدر. ⚖️ Stremio وNuvio لا يصلان هنا أبداً: «شغّلها» ليس «خلّصها».
  */
 /**
  * 🆕 T361 — **يعيد رقمَ الإشارة المعلَّمة** (أو `null`) ويختمها `auto_at` (هجرة ٢٤٢): منها بطاقةُ الرئيسيّة «أضفناه لمكتبتك» وإشعارُ
  * «وصل من …». الختمُ صامتٌ إن فشل — قبل الهجرة لا عمود، فيبقى التعليمُ كما كان بلا بطاقةٍ ولا إشعار.
  */
-export async function autoMarkSignal(userId: string, source: Exclude<SignalSource, "stremio">, kind: "tv" | "movie", tmdbId: number, season: number | null, episode: number | null): Promise<number | null> {
+export async function autoMarkSignal(userId: string, source: Exclude<SignalSource, "stremio" | "nuvio">, kind: "tv" | "movie", tmdbId: number, season: number | null, episode: number | null): Promise<number | null> {
   try {
     const db = await createServiceClient();
     let q = db

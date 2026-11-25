@@ -31,20 +31,23 @@ export const CONFIGURE_PAGE = `${SITE_URL}/stremio`;
  * 🆕 **بيانُ الإضافة الواحد** (D-1512، ٢٢ أكتوبر «١ أ ٢ أ ٣ أ»): العامُّ (قائمةُ Community Addons) والشخصيُّ يفترقان
  * في سطرٍ واحد — `configurationRequired`: العامُّ لا يُثبَّت بلا إعداد، فيفتح Stremio صفحتَنا بدل التثبيت.
  *  - **الوصفُ إنجليزيٌّ وحدَه**: Stremio يرسم العربيَّ والإنجليزيَّ في سطرٍ واحدٍ ملتصقين (لقطةُ أحمد) — والقائمةُ عالميّة.
- *  - **الشعارُ علامةُ Loopz المربّعة والخلفيّةُ غلافُها** — لا علامةَ لـStremio في شيء (شروطُه).
+ *  - **الشعارُ أيقونةُ تطبيق Loopz والخلفيّةُ غلافُها** — لا علامةَ لـStremio في شيء (شروطُه).
  */
 export function addonManifest(opts: { configurationRequired: boolean }) {
   return {
     id: "com.loopztv.signals",
-    /* 🆕 1.3.2 — رفعُ الرقم ليعيد Stremio قراءةَ الوصف الجديد عند من ثبّتها */
-    version: "1.3.2",
+    /* 🆕 1.3.2 — رفعُ الرقم ليعيد Stremio قراءةَ الوصف الجديد عند من ثبّتها. 🆕 1.3.3 — الشعارُ والغلافُ من `/api/v1/` (أدناه) */
+    version: "1.3.3",
     name: "Loopz",
     /* 🆕 ١٧ نوفمبر (أحمد «عدل الوصف»): الربطُ عدُّ خاناتٍ لا قفلُ بلس (D-1640) — المجانيُّ يربط تطبيقاً واحداً، فعبارةُ
        «For Loopz Plus members» كانت تصدّ من يراها في القائمة العامّة وهو يستطيع الربط مجاناً. النصُّ يطابق شارة صفحة `/stremio`. */
     description:
       "Mark what you watch in Loopz. Adds one entry, “✓ Mark it in Loopz”, under each episode and movie; anything you play is asked about on your Loopz home. Streams nothing. Free for one linked app with a Loopz account; up to 5 with Loopz Plus.",
-    logo: `${SITE_URL}/loopz-mark.png`,
-    background: `${SITE_URL}/loopz-cover.jpg`,
+    /* 🆕 T554 — **أيقونةُ التطبيق تحت `/api/v1/`** (إعادةُ كتابةٍ في `next.config.ts` إلى `icon-512.png`): Nuvio يجلب الصورةَ
+       بـ`okhttp` فيتحدّاه الجدارُ خارج هذه البادئة (D-945) وتغيب الأيقونة. وأيقونةُ التطبيق المعتمةُ لا العلامةُ البيضاءُ الشفّافة:
+       تُرى على أيِّ خلفيّةٍ يرسمها مشغّل */
+    logo: `${SITE_URL}/api/v1/stremio/logo.png`,
+    background: `${SITE_URL}/api/v1/stremio/cover.jpg`,
     resources: ["stream", "subtitles"],
     /* 🆕 1.3.1 — `anime`: Stremio يسأل عن أنمي كتالوج Kitsu بهذا النوع، وبلا إعلانه لا يصلنا الطلبُ أصلاً */
     types: ["movie", "series", "anime"],

@@ -15,6 +15,7 @@ import { JELLYFIN_TEMPLATE } from "@/core/homeServer";
 import type { Dict } from "@/core/i18n";
 import type { HomeServerLinkResult, KodiResult } from "@/core/contracts/homeServer";
 import type { StremioLinkResult } from "@/core/contracts/stremio";
+import type { AddonClient } from "@/core/stremioId";
 import type { DeviceKind, DeviceLinksState, HomeKind } from "@/core/contracts/deviceLinks";
 
 /**
@@ -52,8 +53,8 @@ export function DeviceSheet({
       <div className={sheetScroll}>
         {confirm ? (
           <UnlinkBody kind={kind} works={info?.works ?? 0} t={t} onState={onState} onDone={onClose} onBack={() => setConfirm(false)} />
-        ) : kind === "stremio" ? (
-          <StremioBody d={d} t={t} onReload={onReload} onUnlink={() => setConfirm(true)} />
+        ) : kind === "stremio" || kind === "nuvio" ? (
+          <StremioBody client={kind} d={d} t={t} onReload={onReload} onUnlink={() => setConfirm(true)} />
         ) : kind === "kodi" ? (
           <KodiBody d={d} t={t} onReload={onReload} onUnlink={() => setConfirm(true)} />
         ) : (
@@ -332,15 +333,16 @@ function KodiBody({ d, t, onReload, onUnlink }: { d: DeviceLinksState; t: Dict; 
   );
 }
 
-/* ============================================================ Stremio */
-function StremioBody({ d, t, onReload, onUnlink }: { d: DeviceLinksState; t: Dict; onReload: () => Promise<unknown>; onUnlink: () => void }) {
-  const info = d.devices.find((x) => x.kind === "stremio");
+/* ============================================================ Stremio و🆕 Nuvio — الإضافةُ نفسُها، ولكلٍّ رابطُه وخانتُه (هجرة ٢٦٧) */
+function StremioBody({ client, d, t, onReload, onUnlink }: { client: AddonClient; d: DeviceLinksState; t: Dict; onReload: () => Promise<unknown>; onUnlink: () => void }) {
+  const info = d.devices.find((x) => x.kind === client);
+  const nuvio = client === "nuvio";
   const [fresh, setFresh] = useState<StremioLinkResult | null>(null);
   const [busy, setBusy] = useState(false);
   const issue = async (thenOpen: boolean) => {
     setBusy(true);
     try {
-      const r = await v1Post<StremioLinkResult>("/api/v1/me/stremio/link", { action: "issue" }, t);
+      const r = await v1Post<StremioLinkResult>("/api/v1/me/stremio/link", { action: "issue", client }, t);
       setFresh(r);
       void onReload();
       if (thenOpen && r.install_url) window.location.href = r.install_url;
@@ -351,16 +353,17 @@ function StremioBody({ d, t, onReload, onUnlink }: { d: DeviceLinksState; t: Dic
     }
   };
   const linked = !!info?.linked || !!fresh?.linked;
-  const can = canLinkNow(d, "stremio");
+  const can = canLinkNow(d, client);
+  const install = nuvio ? t.nuvioInstall : t.stremioInstall;
   return (
     <div className="pb-5">
-      <Head kind="stremio" d={d} t={t} intro={t.stremioIntro} needs={t.stremioCoverage} />
+      <Head kind={client} d={d} t={t} intro={nuvio ? t.nuvioIntro : t.stremioIntro} needs={nuvio ? t.nuvioHow : t.stremioCoverage} />
       <div className="mx-5 mt-4 space-y-2">
         {fresh?.manifest_url ? (
           <>
             {fresh.install_url && (
               <a href={fresh.install_url} className={buttonClass({ full: true })}>
-                {t.stremioInstall}
+                {install}
               </a>
             )}
             <Group>
@@ -377,7 +380,7 @@ function StremioBody({ d, t, onReload, onUnlink }: { d: DeviceLinksState; t: Dic
         ) : !linked && can ? (
           <>
             <button type="button" disabled={busy} className={buttonClass({ full: true })} onClick={() => void issue(true)}>
-              {t.stremioInstall}
+              {install}
             </button>
             <button type="button" disabled={busy} className={buttonClass({ variant: "ghost", full: true })} onClick={() => void issue(false)}>
               {t.stremioCopy}
@@ -393,7 +396,7 @@ function StremioBody({ d, t, onReload, onUnlink }: { d: DeviceLinksState; t: Dic
           <RowBtn icon="trash" title={t.stremioRevoke} danger onClick={onUnlink} />
         </Group>
       )}
-      <p className="mx-6 mt-3 text-12 text-muted leading-relaxed">{t.stremioAlwaysAsks}</p>
+      <p className="mx-6 mt-3 text-12 text-muted leading-relaxed">{nuvio ? t.nuvioAlwaysAsks : t.stremioAlwaysAsks}</p>
     </div>
   );
 }

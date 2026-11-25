@@ -16,6 +16,7 @@ import { timeAgo } from "@/core/when";
 import { JELLYFIN_TEMPLATE } from "@/core/homeServer";
 import type { HomeServerLinkResult, KodiResult } from "@/core/contracts/homeServer";
 import type { StremioLinkResult } from "@/core/contracts/stremio";
+import type { AddonClient } from "@/core/stremioId";
 import type { DeviceKind, DeviceLinksState, HomeKind } from "@/core/contracts/deviceLinks";
 import { DeviceMark } from "./DeviceMark";
 import { episodeLabel } from "../stremio/api";
@@ -23,7 +24,7 @@ import { UnlinkSheet } from "./UnlinkSheet";
 import { canLinkNow, deviceName, linkedNames, linksWrite, useLinks } from "./api";
 
 /**
- * ====== 🆕 صفحاتُ الأجهزة — Stremio · Plex · Jellyfin · Emby · Kodi (خطّةُ Loopz+ v2، المرحلة ٠؛ التصاميمُ المعتمدة) ======
+ * ====== 🆕 صفحاتُ الأجهزة — Stremio · Nuvio · Plex · Jellyfin · Emby · Kodi (خطّةُ Loopz+ v2، المرحلة ٠؛ التصاميمُ المعتمدة) ======
  *
  * 🔑 **صفحةٌ لكلِّ جهاز برابطه** (أحمد ٥ نوفمبر: «رابطٌ لكلِّ نوع»): الرأسُ (الشارةُ والاسمُ و«مجاناً» والحالُ وآخرُ ما وصل)،
  * ثمّ «مع Loopz+»، ثمّ الخطواتُ والرابطُ داخلها، ثمّ «رابط جديد» و«ألغِ الربط». والرابطُ يظهر **مرّةً واحدة** كما كان.
@@ -372,22 +373,36 @@ export function KodiDeviceScreen() {
 }
 
 /* ============================================================
- * Stremio — الإضافةُ تُثبَّت، ويسأل دائماً
- * ============================================================ */
+ * Stremio و🆕 Nuvio — الإضافةُ تُثبَّت، ويسأل دائماً
+ * ============================================================
+ * 🆕 هجرة ٢٦٧ (أحمد ٢٦ نوفمبر: «ربط ستريميو لحال ونوفيو لحال»): Nuvio يثبّت إضافةَ Stremio نفسَها — فالصفحةُ واحدة، ولكلِّ تطبيقٍ
+ * رابطُه وخانتُه (`client`). فرقُ Nuvio: زرُّ التثبيت باسمه (Nuvio يفهم `stremio://…/manifest.json`)، وسطرُ «الإضافات ← أضف إضافة
+ * عبر الرابط» مكان «Stremio Web» (لا معنى له هنا). */
 export function StremioDeviceScreen() {
+  return <AddonDeviceScreen client="stremio" />;
+}
+
+export function NuvioDeviceScreen() {
+  return <AddonDeviceScreen client="nuvio" />;
+}
+
+function AddonDeviceScreen({ client }: { client: AddonClient }) {
   const { t } = useApp();
   const router = useRouter();
   const toast = useRef<ToastHostRef>(null);
-  const { q, d, info } = useDevice("stremio");
+  const { q, d, info } = useDevice(client);
   const [fresh, setFresh] = useState<StremioLinkResult | null>(null);
   const [busy, setBusy] = useState<"issue" | "revoke" | null>(null);
   const [confirm, setConfirm] = useState(false);
   const say = (e: unknown) => toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+  const nuvio = client === "nuvio";
+  const title = deviceName(client);
 
-  if ((d && !d.ready) || (!d && q.isError)) return <StremioScreen />;
+  /* الشاشةُ القديمةُ قبل هجرة ٢٣٧ لـStremio وحده — وNuvio قبلها لا رابطَ له أصلاً */
+  if ((d && !d.ready) || (!d && q.isError)) return nuvio ? null : <StremioScreen />;
   if (!d) {
     return (
-      <SettingsScreen title="Stremio" toast={toast}>
+      <SettingsScreen title={title} toast={toast}>
         <RowsSkeleton rows={4} />
       </SettingsScreen>
     );
@@ -395,7 +410,7 @@ export function StremioDeviceScreen() {
   const issue = async (thenOpen: boolean) => {
     setBusy("issue");
     try {
-      const r = await write<StremioLinkResult>("/api/v1/me/stremio/link", { action: "issue" });
+      const r = await write<StremioLinkResult>("/api/v1/me/stremio/link", { action: "issue", client });
       setFresh(r);
       haptic.pick();
       if (thenOpen && r.install_url) void Linking.openURL(r.install_url).catch(() => {});
@@ -408,7 +423,7 @@ export function StremioDeviceScreen() {
   const revoke = async () => {
     setBusy("revoke");
     try {
-      await linksWrite({ action: "revoke", kind: "stremio" });
+      await linksWrite({ action: "revoke", kind: client });
       setFresh(null);
       setConfirm(false);
       toast.current?.say(t.stremioRevoked, undefined, undefined, "success");
@@ -424,14 +439,15 @@ export function StremioDeviceScreen() {
     toast.current?.say(t.stremioCopied, undefined, undefined, "success");
   };
   const linked = !!info?.linked || !!fresh?.linked;
-  const can = canLinkNow(d, "stremio");
+  const can = canLinkNow(d, client);
+  const install = nuvio ? t.nuvioInstall : t.stremioInstall;
 
   return (
-    <SettingsScreen title="Stremio" toast={toast}>
-      <DeviceHead kind="stremio" d={d} intro={t.stremioIntro} needs={t.stremioCoverage} />
+    <SettingsScreen title={title} toast={toast}>
+      <DeviceHead kind={client} d={d} intro={nuvio ? t.nuvioIntro : t.stremioIntro} needs={nuvio ? t.nuvioHow : t.stremioCoverage} />
       {fresh?.manifest_url ? (
         <>
-          {fresh.install_url ? <Button label={t.stremioInstall} onPress={() => void Linking.openURL(fresh.install_url!).catch(() => {})} /> : null}
+          {fresh.install_url ? <Button label={install} onPress={() => void Linking.openURL(fresh.install_url!).catch(() => {})} /> : null}
           <Group>
             <Row icon="copy" title={t.stremioCopy} onPress={() => copy(fresh.manifest_url!)} />
             {fresh.web_install_url ? <Row icon="compass" title={t.stremioInstallWeb} onPress={() => void Linking.openURL(fresh.web_install_url!).catch(() => {})} /> : null}
@@ -440,7 +456,7 @@ export function StremioDeviceScreen() {
         </>
       ) : !linked && can ? (
         <>
-          <Button label={t.stremioInstall} busy={busy === "issue"} onPress={() => void issue(true)} />
+          <Button label={install} busy={busy === "issue"} onPress={() => void issue(true)} />
           <Button label={t.stremioCopy} variant="ghost" disabled={busy === "issue"} onPress={() => void issue(false)} />
           <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{t.stremioLinkOnce}</Text>
         </>
@@ -449,13 +465,13 @@ export function StremioDeviceScreen() {
       ) : null}
       {linked ? (
         <Group label={t.deviceAfter}>
-          <Row icon="list" title={t.stremioPendingRow} subtitle={t.stremioPendingRowSub} onPress={() => router.push("/stremio")} />
+          <Row icon="list" title={nuvio ? t.nuvioPendingRow : t.stremioPendingRow} subtitle={t.stremioPendingRowSub} onPress={() => router.push("/stremio")} />
           <Row icon="repeat" title={t.stremioNewLink} subtitle={t.stremioNewLinkSub} busy={busy === "issue"} onPress={() => void issue(false)} />
           <Row icon="trash" title={t.stremioRevoke} danger busy={busy === "revoke"} onPress={() => setConfirm(true)} />
         </Group>
       ) : null}
-      <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{t.stremioAlwaysAsks}</Text>
-      {confirm ? <UnlinkSheet kind="stremio" works={info?.works ?? 0} onClose={() => setConfirm(false)} onConfirm={revoke} /> : null}
+      <Text size={12} muted style={{ paddingHorizontal: 4, lineHeight: 18 }}>{nuvio ? t.nuvioAlwaysAsks : t.stremioAlwaysAsks}</Text>
+      {confirm ? <UnlinkSheet kind={client} works={info?.works ?? 0} onClose={() => setConfirm(false)} onConfirm={revoke} /> : null}
     </SettingsScreen>
   );
 }

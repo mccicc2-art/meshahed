@@ -10,7 +10,8 @@ export type ActivityKind = "watch" | "rate" | "review" | "list";
 /** 🆕 D-1505 — من سجّل المشاهدة (`lib/watchSource`) — وغيابُه «بيده» */
 /* 🆕 هجرة ٢٣٥ — سيرفراتُ البيت: ما أجاب عنه العضو من سؤال Plex أو Jellyfin أو Emby */
 /* 🆕 `netflix` — مزامنةُ نتفليكس (هجرة ٢٦٥) */
-export type WatchSource = "stremio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix";
+/* 🆕 `nuvio` — إضافةُ Stremio في Nuvio برابطه (هجرة ٢٦٧) */
+export type WatchSource = "stremio" | "nuvio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix";
 
 export interface ActivityItem {
   id: string;

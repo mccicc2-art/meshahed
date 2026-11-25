@@ -167,6 +167,23 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+
+  /*
+   * 🆕 T554 — **صورتا إضافة Stremio/Nuvio تحت `/api/v1/`** (أحمد ٢٦ نوفمبر: أيقونةُ لوبز غائبةٌ داخل Nuvio بعد الربط): Nuvio
+   * يجلب الشعارَ بـ`okhttp` لا بمتصفّح، وحمايةُ البوتات تتحدّى كلَّ عميلٍ غيرِ متصفّحٍ خارج `/api/v1/` (D-945) — فيعود HTML بدل
+   * الصورة. البيانُ نفسُه مرّ لأنّه تحت `/api/v1/`. فالرابطان هنا إعادةُ كتابةٍ إلى الملفّين الثابتين: الجدارُ يرى المسارَ الأصليّ
+   * (`/api/v1/…` ⇐ يمرّ)، وVercel يقدّم الملفَّ من الحافّة بلا دالّةٍ ولا كلفة.
+   */
+  async rewrites() {
+    return {
+      beforeFiles: [
+        { source: "/api/v1/stremio/logo.png", destination: "/icon-512.png" },
+        { source: "/api/v1/stremio/cover.jpg", destination: "/loopz-cover.jpg" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
 };
 
 export default nextConfig;

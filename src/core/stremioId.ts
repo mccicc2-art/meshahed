@@ -92,3 +92,17 @@ export function parseSubtitlesVideo(type: string, parts: string[]): StremioRef |
 
 /** رمزُ ربط Stremio: `ls_` + ٤٣ محرفاً (٣٢ بايتاً base64url) — يُفحص شكلُه قبل أيِّ نداءٍ للقاعدة */
 export const STREMIO_TOKEN_RE = /^ls_[A-Za-z0-9_-]{43}$/;
+
+/**
+ * 🆕 **رمزُ ربط Nuvio**: `ln_` + ٤٣ محرفاً (هجرة ٢٦٧ — أحمد ٢٦ نوفمبر: «ربط ستريميو لحال ونوفيو لحال»).
+ * Nuvio يثبّت إضافاتِ Stremio نفسَها (جُرّب على جهاز ٢٦ نوفمبر)، فالإضافةُ واحدةٌ ومساراتُها واحدة — **والبادئةُ وحدها تقول
+ * أيُّ تطبيقٍ هذا**: الإضافةُ لا تعرف من يسألها، ورابطٌ لكلِّ تطبيقٍ يجعل الإشارةَ تحمل اسمَ مصدرها بلا تخمين.
+ */
+export const NUVIO_TOKEN_RE = /^ln_[A-Za-z0-9_-]{43}$/;
+
+export type AddonClient = "stremio" | "nuvio";
+
+/** أيُّ تطبيقٍ يحمل هذا الرمز — `null` لرمزٍ لا شكلَ له (يُرفض قبل القاعدة) */
+export function addonClientOf(token: string): AddonClient | null {
+  return STREMIO_TOKEN_RE.test(token) ? "stremio" : NUVIO_TOKEN_RE.test(token) ? "nuvio" : null;
+}

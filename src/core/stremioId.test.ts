@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseStremioRef, parseStremioVideo, parseSubtitlesVideo, STREMIO_TOKEN_RE } from "./stremioId.ts";
+import { addonClientOf, NUVIO_TOKEN_RE, parseStremioRef, parseStremioVideo, parseSubtitlesVideo, STREMIO_TOKEN_RE } from "./stremioId.ts";
 
 test("فيلمٌ وحلقةٌ بصيغة Cinemeta", () => {
   assert.deepEqual(parseStremioVideo("movie", "tt15239678.json"), { kind: "movie", imdb: "tt15239678" });
@@ -66,4 +66,13 @@ test("شكلُ الرمز", () => {
   assert.ok(STREMIO_TOKEN_RE.test("ls_" + "a".repeat(43)));
   assert.ok(!STREMIO_TOKEN_RE.test("lw_" + "a".repeat(43)));
   assert.ok(!STREMIO_TOKEN_RE.test("ls_" + "a".repeat(42)));
+});
+
+test("🆕 رمزُ Nuvio يُعرف ببادئته — والإضافةُ واحدة", () => {
+  assert.ok(NUVIO_TOKEN_RE.test("ln_" + "a".repeat(43)));
+  assert.ok(!NUVIO_TOKEN_RE.test("ls_" + "a".repeat(43)));
+  assert.equal(addonClientOf("ls_" + "a".repeat(43)), "stremio");
+  assert.equal(addonClientOf("ln_" + "b".repeat(43)), "nuvio");
+  assert.equal(addonClientOf("lk_" + "a".repeat(43)), null);
+  assert.equal(addonClientOf("ln_" + "a".repeat(42)), null);
 });

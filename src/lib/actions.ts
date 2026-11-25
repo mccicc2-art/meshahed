@@ -1731,7 +1731,9 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
     .maybeSingle();
   const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
   /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
-  const src: WatchSource = sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" ? sig.source : "stremio";
+  /* 🆕 هجرة ٢٦٧ — و`nuvio`: ✓ على سؤالٍ جاء من Nuvio يكتب شارتَه في السجلّ */
+  const src: WatchSource =
+    sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" ? sig.source : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
   /* 🆕 هجرة ٢٣٧ — التعليمُ نفسُه في `watchMark.ts`: يقرؤه التسجيلُ بلا سؤال أيضاً */
   if (!watched) {

@@ -210,9 +210,10 @@ async function commission(db: Db, ev: RcEvent, key: string, uid: string): Promis
 }
 
 /** اسمُ الجهاز للإشعار — أسماءُ علمٍ لا تُترجم */
-const NAME: Record<string, string> = { stremio: "Stremio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi" };
+const NAME: Record<string, string> = { stremio: "Stremio", nuvio: "Nuvio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi" };
 function nameOf(r: LinkRow): string {
   if (r.table === "stremio_links") return NAME.stremio;
+  if (r.table === "nuvio_links") return NAME.nuvio;
   if (r.table === "kodi_links") return NAME.kodi;
   const k = r.server ?? r.kinds[0];
   return (k && NAME[k]) || "Plex";

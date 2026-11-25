@@ -191,6 +191,8 @@ export async function POST(req: NextRequest) {
       const done =
         kind === "stremio"
           ? await revokeLinkToken("stremio_links", uid)
+          : kind === "nuvio"
+            ? await revokeLinkToken("nuvio_links", uid)
           : kind === "kodi"
             ? await revokeLinkToken("kodi_links", uid)
             : isHomeKind(kind) && (await revokeLinkToken("home_server_links", uid, kind));

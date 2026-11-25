@@ -7,7 +7,9 @@ export const LINK_WORDS = {
   ar: {
     sub: "تطبيقاتك التي تشاهد منها — ما تُنهيه عليها يصل Loopz",
     stremioNeeds: "إضافة Loopz في Stremio",
-    stremioAsks: "Stremio يسأل دائماً",
+    /* 🆕 هجرة ٢٦٧ — الإضافةُ نفسُها برابطٍ لحاله */
+    nuvioNeeds: "إضافة Loopz في Nuvio",
+    stremioAsks: "Stremio وNuvio يسألان دائماً",
     dragHint: "اسحب تطبيقاً من القائمة إلى خانة فارغة، أو اضغط «اربط»",
     tapHint: "اضغط «اربط» بجانب التطبيق، أو خانةً فارغة",
     link: "اربط",
@@ -22,7 +24,8 @@ export const LINK_WORDS = {
   en: {
     sub: "The apps you watch on — what you finish there reaches Loopz",
     stremioNeeds: "The Loopz add-on in Stremio",
-    stremioAsks: "Stremio always asks",
+    nuvioNeeds: "The Loopz add-on in Nuvio",
+    stremioAsks: "Stremio and Nuvio always ask",
     dragHint: "Drag an app from the list onto an empty slot, or press Link",
     tapHint: "Press Link beside an app, or an empty slot",
     link: "Link",

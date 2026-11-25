@@ -1,6 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { stremioOwner } from "@/lib/stremio";
-import { STREMIO_TOKEN_RE } from "@/core/stremioId";
+import { addonClientOf } from "@/core/stremioId";
 import { addonJson, addonManifest, addonOptions } from "../../addon";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
-  if (!STREMIO_TOKEN_RE.test(token)) return addonJson({ error: "not_found" }, 404);
+  /* 🆕 رمزُ Stremio أو Nuvio (هجرة ٢٦٧) — البيانُ واحد، والبادئةُ تختار جدولَ الرابط في `stremioOwner` */
+  if (!addonClientOf(token)) return addonJson({ error: "not_found" }, 404);
   after(() => stremioOwner(token).catch(() => null));
   return addonJson(addonManifest({ configurationRequired: false }));
 }

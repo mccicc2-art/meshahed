@@ -475,18 +475,18 @@ export const SECTIONS: Section[] = [
         ar: "اربط تطبيقك",
         en: "Link your app",
         arBody:
-          "اربط Stremio أو سيرفرك في البيت (Plex · Jellyfin · Emby · Kodi)، وكل ما تشاهده هناك يسألك عنه Loopz في الرئيسية: شفتها؟ ✓ تعلّمها وكل ما قبلها. الحساب المجاني يربط تطبيقاً واحداً.",
+          "اربط Stremio أو Nuvio أو سيرفرك في البيت (Plex · Jellyfin · Emby · Kodi)، وكل ما تشاهده هناك يسألك عنه Loopz في الرئيسية: شفتها؟ ✓ تعلّمها وكل ما قبلها. الحساب المجاني يربط تطبيقاً واحداً.",
         enBody:
-          "Link Stremio or your home server (Plex · Jellyfin · Emby · Kodi), and everything you watch there asks you one thing on Loopz Home: watched it? ✓ marks it and everything before it. A free account links one app.",
+          "Link Stremio, Nuvio or your home server (Plex · Jellyfin · Emby · Kodi), and everything you watch there asks you one thing on Loopz Home: watched it? ✓ marks it and everything before it. A free account links one app.",
       },
       {
         icon: "repeat",
         ar: "اربط حتى ٥ تطبيقات، ومشاهدتك تتسجّل وحدها",
         en: "Link up to 5 apps, and your watching is tracked automatically",
         arBody:
-          "خمسة تطبيقات في مدارك (وبلا حدّ مع Gold)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio يسألك دائماً، لأنه لا يخبرنا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
+          "خمسة تطبيقات في مدارك (وبلا حدّ مع Gold)، و«التتبّع التلقائي»: ما تُنهيه على Plex أو Jellyfin أو Emby أو Kodi يدخل مكتبتك دون أن يسألك (Stremio وNuvio يسألانك دائماً، لأنهما لا يخبراننا أنّك أنهيت). واستورد تاريخك القديم من Plex.",
         enBody:
-          "Five apps in your orbit (no limit with Gold), and Auto-track: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library without asking (Stremio always asks, because it doesn't tell us you finished). And import your old Plex history.",
+          "Five apps in your orbit (no limit with Gold), and Auto-track: what you finish on Plex, Jellyfin, Emby or Kodi goes into your library without asking (Stremio and Nuvio always ask, because they don't tell us you finished). And import your old Plex history.",
         plus: true,
       },
     ],

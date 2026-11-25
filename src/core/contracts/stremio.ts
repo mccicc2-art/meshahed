@@ -43,14 +43,18 @@ export interface StremioNoticeBody {
   id: number;
 }
 
-export type SignalSource = "stremio" | "plex" | "jellyfin" | "emby" | "kodi";
-export const SIGNAL_SOURCES: readonly SignalSource[] = ["stremio", "plex", "jellyfin", "emby", "kodi"];
+/* 🆕 هجرة ٢٦٧ — `nuvio`: إضافةُ Stremio نفسُها مثبّتةً في Nuvio برابطه الخاصّ، فالسؤالُ يقول من أين جاء */
+export type SignalSource = "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
+export const SIGNAL_SOURCES: readonly SignalSource[] = ["stremio", "nuvio", "plex", "jellyfin", "emby", "kodi"];
 /** قيمةٌ معروفةٌ أو Stremio — صفٌّ قبل العمود، أو قيمةٌ لا نعرفها */
 export function signalSourceOf(v: unknown): SignalSource {
   return typeof v === "string" && (SIGNAL_SOURCES as readonly string[]).includes(v) ? (v as SignalSource) : "stremio";
 }
 /** اسمُ المصدر كما يُكتب — أسماءُ منتجاتٍ لا تُترجم */
-export const SIGNAL_SOURCE_NAME: Record<SignalSource, string> = { stremio: "Stremio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi" };
+export const SIGNAL_SOURCE_NAME: Record<SignalSource, string> = { stremio: "Stremio", nuvio: "Nuvio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi" };
+
+/** 🆕 مصدرٌ يسأل دائماً — إضافةٌ تعرف «شغّلها» لا «خلّصها» (Stremio وNuvio): «سجّل بلا سؤال» لا يمسّه أبداً */
+export const ALWAYS_ASKS: readonly SignalSource[] = ["stremio", "nuvio"];
 
 export interface StremioState {
   /** Loopz+ — الميزةُ له وحدَه (قرار ١)؛ `false` ⇒ الشاشةُ تعرض الترقية ولا تُصدر رابطاً */
@@ -65,6 +69,8 @@ export interface StremioState {
 
 export interface StremioLinkBody {
   action: "issue" | "revoke";
+  /** 🆕 هجرة ٢٦٧ — أيُّ تطبيقٍ يحمل الإضافة: رابطٌ لكلٍّ منهما وخانة. الغيابُ = Stremio (التطبيقُ الأقدم لا يرسله) */
+  client?: "stremio" | "nuvio";
 }
 
 export interface StremioLinkResult {

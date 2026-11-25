@@ -2,7 +2,7 @@ import { after, type NextRequest } from "next/server";
 import { resolveStremioRef, traceRejected } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
-import { STREMIO_TOKEN_RE, parseSubtitlesVideo } from "@/core/stremioId";
+import { addonClientOf, parseSubtitlesVideo } from "@/core/stremioId";
 import { addonJson, addonOptions } from "../../../../addon";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ const EMPTY = { subtitles: [] as unknown[] };
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: string; type: string; rest: string[] }> }) {
   const { token, type, rest } = await ctx.params;
-  if (!STREMIO_TOKEN_RE.test(token)) return addonJson(EMPTY);
+  if (!addonClientOf(token)) return addonJson(EMPTY);
   if (!allow(`stremio-sub:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
   const ref = parseSubtitlesVideo(type, rest ?? []);
   if (!ref) return traceRejected(type, (rest ?? []).join("/")), addonJson(EMPTY);
@@ -30,7 +30,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   if (!owner?.active) return addonJson(EMPTY);
   const hit = await resolveStremioRef(ref);
   if (!hit) return addonJson(EMPTY);
-  after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true));
+  /* 🆕 Nuvio يطلب الترجمةَ عند بدء التشغيل كـStremio (جُرّب على جهاز ٢٦ نوفمبر) — والسؤالُ باسم تطبيقه */
+  after(() => recordStremioSignal(owner.userId, hit.video, hit.tmdbId, true, owner.client));
   return addonJson(EMPTY);
 }
 

@@ -12,7 +12,7 @@ import { radius } from "../theme";
 import { SectionHeader, PAGE_PAD } from "../home/Section";
 import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
-import { SIGNAL_SOURCE_NAME, type StremioSignal } from "@/core/contracts/stremio";
+import { ALWAYS_ASKS, SIGNAL_SOURCE_NAME, type StremioSignal } from "@/core/contracts/stremio";
 import { episodeLabel } from "./api";
 import { rateStages } from "./useAnswer";
 
@@ -170,7 +170,7 @@ export function StremioCard({
             {/* 🆕 T497 — السؤالُ يسمّي ما يسأل عنه: «S1 E1 · شاهدت الحلقة؟» و«شاهدت الفيلم؟» */}
             <Text size={13} weight="500" numberOfLines={1}>{s.kind === "movie" ? t.stremioAskMovieLine : `${ep} · ${t.stremioAsk}`}</Text>
             {/* 🆕 هجرة ٢٣٥ — «من أجهزتك» (البطاقة «أ»): المصدرُ اسمٌ في السطر، و«بدأ التشغيل» لـStremio و«شاهدتها/شاهدته» لسيرفر البيت */}
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${src === "stremio" ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${ALWAYS_ASKS.includes(src) ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -266,7 +266,7 @@ function DoneCard({
               <Text size={13} weight="700" color={tokens.success}>{plain ? "✓ " : `✓ ${status}`}</Text>
               {plain ? status : ""}
             </Text>
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && src === "stremio" ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && ALWAYS_ASKS.includes(src) ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         {cur ? (

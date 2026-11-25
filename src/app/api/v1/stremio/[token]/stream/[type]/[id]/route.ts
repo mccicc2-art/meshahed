@@ -3,7 +3,7 @@ import { SITE_URL } from "@/lib/site";
 import { resolveStremioRef, traceRejected } from "@/lib/stremioResolve";
 import { recordStremioSignal, stremioOwner } from "@/lib/stremio";
 import { allow } from "@/core/ratelimit";
-import { STREMIO_TOKEN_RE, parseStremioRef } from "@/core/stremioId";
+import { addonClientOf, parseStremioRef } from "@/core/stremioId";
 import { addonJson, addonOptions } from "../../../../addon";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ const EMPTY = { streams: [] as unknown[] };
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: string; type: string; id: string }> }) {
   const { token, type, id } = await ctx.params;
-  if (!STREMIO_TOKEN_RE.test(token)) return addonJson(EMPTY);
+  if (!addonClientOf(token)) return addonJson(EMPTY);
   /* الحدُّ قبل القاعدة: Stremio قد يسأل عن الحلقة التالية مسبقاً، وستّون في الدقيقة فوق أيِّ تصفّحٍ بشريّ */
   if (!allow(`stremio:${token.slice(0, 16)}`, 60, 60_000)) return addonJson(EMPTY);
   /* 🆕 أنمي Kitsu أيضاً (`kitsu:{id}:{ep}`) — يُترجم إلى عملٍ وحلقةٍ في TMDB؛ و«S/E» في السطر حلقةُ TMDB لا رقمُ Kitsu */
@@ -36,7 +36,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   const hit = await resolveStremioRef(ref);
   if (!hit) return addonJson(EMPTY);
   const { video, tmdbId } = hit;
-  after(() => recordStremioSignal(owner.userId, video, tmdbId));
+  /* 🆕 باسم التطبيق الذي يحمل الرابط (Stremio أو Nuvio — هجرة ٢٦٧) */
+  after(() => recordStremioSignal(owner.userId, video, tmdbId, false, owner.client));
   const where = video.kind === "tv" ? `S${video.season} E${video.episode}` : "";
   return addonJson({
     streams: [

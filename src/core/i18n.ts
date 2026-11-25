@@ -3707,6 +3707,8 @@ const ar = {
   deviceWaitHint: (kind: string): string =>
     kind === "stremio"
       ? "ثبّت الإضافة في Stremio، وأول ما يفتحها نتأكد من الربط."
+      : kind === "nuvio"
+        ? "ثبّت الإضافة في Nuvio، وأول ما يفتحها نتأكد من الربط."
       : kind === "jellyfin"
         ? "شغّل أي شيء على Jellyfin، وأول ما يبدأ نتأكد من الربط."
         : kind === "kodi"
@@ -3740,6 +3742,12 @@ const ar = {
   stremioPendingRow: "ما شغّلته في Stremio",
   stremioPendingRowSub: "ينتظر جوابك «شاهدته؟»",
   stremioAlwaysAsks: "Stremio يسألك دائماً حتى مع «التتبّع التلقائي»، لأنه يخبرنا أنك شغّلت الحلقة، لا أنك شاهدتها.",
+  /* 🆕 هجرة ٢٦٧ — Nuvio جهازٌ لحاله: إضافةُ Stremio نفسُها برابطٍ وخانةٍ لحاله (أحمد ٢٦ نوفمبر) */
+  nuvioIntro: "ثبّت إضافة Loopz في Nuvio، وكل حلقة أو فيلم تشغّله هناك يسألك عنه Loopz في الرئيسية: شاهدته؟",
+  nuvioInstall: "ثبّت في Nuvio",
+  nuvioHow: "في Nuvio: الإضافات ← «أضف إضافة عبر الرابط»، والصق الرابط. على التلفاز اعرض رمز QR وافتحه من جوالك.",
+  nuvioPendingRow: "ما شغّلته في Nuvio",
+  nuvioAlwaysAsks: "Nuvio يسألك دائماً حتى مع «التتبّع التلقائي»، لأنه يخبرنا أنك شغّلت الحلقة، لا أنك شاهدتها.",
   introTitle1: "اربط تطبيقاتك",
   introTitle2: "ومشاهدتك تتسجّل وحدها",
   introSub: "شاهد على Stremio أو سيرفرك في البيت، ولوبز يضيف ما شاهدته إلى مكتبتك",
@@ -6605,6 +6613,8 @@ const en: Dict = {
   deviceWaitHint: (kind: string) =>
     kind === "stremio"
       ? "Install the add-on in Stremio; as soon as Stremio opens it, we know it's linked."
+      : kind === "nuvio"
+        ? "Install the add-on in Nuvio; as soon as Nuvio opens it, we know it's linked."
       : kind === "jellyfin"
         ? "Play anything on Jellyfin; as soon as it starts, we know it's linked."
         : kind === "kodi"
@@ -6638,6 +6648,11 @@ const en: Dict = {
   stremioPendingRow: "What you played in Stremio",
   stremioPendingRowSub: "Waiting for your “watched it?”",
   stremioAlwaysAsks: "Stremio always asks, even with Auto-track on, because it tells us you played an episode, not that you finished it.",
+  nuvioIntro: "Install the Loopz add-on in Nuvio, and every episode or movie you play there shows up on Home with one question: watched it?",
+  nuvioInstall: "Install in Nuvio",
+  nuvioHow: "In Nuvio: Addons → “Add addon by URL”, then paste the link. On a TV, show the QR code and open it on your phone.",
+  nuvioPendingRow: "What you played in Nuvio",
+  nuvioAlwaysAsks: "Nuvio always asks, even with Auto-track on, because it tells us you played an episode, not that you finished it.",
   introTitle1: "Link your apps",
   introTitle2: "and your watching is tracked automatically",
   introSub: "Watch on Stremio or your home server, and Loopz adds what you finished to your library",

@@ -5,7 +5,7 @@
  * والحسبةُ هنا وحدها (D-145) — يقرؤها بابُ الإصدار، وبابُ الاستقبال (`linkOwner`)، وصفحةُ «الربط»، و«اختر ما يبقى».
  *
  * - **الخانةُ تُعدّ من لحظة الإصدار** (أو ربطِ Kodi) لا من أوّل حدث.
- * - **رابطٌ لكلِّ نوع**: Plex وJellyfin وEmby كلٌّ برابطه، وKodi وStremio كذلك — فخمسةُ أجهزةٍ أقصى ما يُربط اليوم.
+ * - **رابطٌ لكلِّ نوع**: Plex وJellyfin وEmby كلٌّ برابطه، وKodi وStremio كذلك — 🆕 وNuvio (هجرة ٢٦٧): ستّةُ أجهزة.
  * - **الرابطُ القديمُ بلا نوع** (`server = null` — قبل ٢٣٧، أو من تطبيق 1.13.x) لا يُقسم: يُعدّ خانةً لكلِّ نوعٍ أرسل منه، وخانةً
  *   واحدةً قبل أوّل إرسال.
  * - **النزولُ لا يحذف**: ما زاد على الخانات يُوقف (`stopped_at`)، والباقي أحدثُها استعمالاً — والموقوفُ يعود حين تتّسع الخانات
@@ -13,11 +13,11 @@
  * ⚠️ **هذا الملفّ لا يقرأ القاعدة** — يأخذ الصفوفَ ويعيد الحكم، فيُختبر بلا خادم (`deviceLinks.test.ts`).
  */
 
-export type DeviceKind = "stremio" | "plex" | "jellyfin" | "emby" | "kodi";
+export type DeviceKind = "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
 export type HomeKind = "plex" | "jellyfin" | "emby";
 
-/** ترتيبُ «من أجهزتك» ثابت (أحمد: «ترتيبٌ ثابتٌ للمنصّات») */
-export const DEVICE_KINDS: readonly DeviceKind[] = ["stremio", "plex", "jellyfin", "emby", "kodi"];
+/** ترتيبُ «من أجهزتك» ثابت (أحمد: «ترتيبٌ ثابتٌ للمنصّات») — 🆕 Nuvio بعد Stremio: الإضافةُ نفسُها، برابطٍ وخانةٍ لحاله (هجرة ٢٦٧) */
+export const DEVICE_KINDS: readonly DeviceKind[] = ["stremio", "nuvio", "plex", "jellyfin", "emby", "kodi"];
 export const HOME_KINDS: readonly HomeKind[] = ["plex", "jellyfin", "emby"];
 
 export function isDeviceKind(v: unknown): v is DeviceKind {
@@ -35,7 +35,7 @@ export function slotLimit(tier: LinkTier): number {
   return tier === "gold" ? Infinity : tier === "plus" ? 5 : 1;
 }
 
-export type LinkTableName = "stremio_links" | "home_server_links" | "kodi_links" | "platform_links";
+export type LinkTableName = "stremio_links" | "nuvio_links" | "home_server_links" | "kodi_links" | "platform_links";
 
 /**
  * 🆕 **منصّاتُ البثّ** (هجرة ٢٦٥، خطّةُ مزامنة نتفليكس): تأخذ خانةً كأيِّ جهاز، لكنّها ليست «من أجهزتك» — فلا تدخل `DeviceKind`
@@ -75,6 +75,7 @@ export function kindsOf(r: LinkRow): DeviceKind[] {
   /* منصّةٌ ليست جهازاً — خانتُها واحدة (`slotsOf`) ولا تظهر في «من أجهزتك» */
   if (r.table === "platform_links") return [];
   if (r.table === "stremio_links") return ["stremio"];
+  if (r.table === "nuvio_links") return ["nuvio"];
   if (r.table === "kodi_links") return ["kodi"];
   return r.server ? [r.server] : [...r.kinds];
 }
@@ -150,6 +151,7 @@ export function replacedBy(r: LinkRow, kind: DeviceKind): boolean {
   /* ⚠️ قبل `server`: صفُّ المنصّة بلا `server` ولا `kinds` — لولا هذا السطرُ لقُرئ رابطَ سيرفرٍ قديماً يستبدله أيُّ سيرفر */
   if (r.table === "platform_links") return false;
   if (r.table === "stremio_links") return kind === "stremio";
+  if (r.table === "nuvio_links") return kind === "nuvio";
   if (r.table === "kodi_links") return kind === "kodi";
   if (r.server) return r.server === kind;
   return isHomeKind(kind) && (r.kinds.length === 0 || r.kinds.includes(kind));
