@@ -6,10 +6,15 @@ import {
   buildNetflixRecords,
   historyRequest,
   mergeSeasonPages,
+  moviesRequest,
+  moviesToFetch,
+  NETFLIX_MOVIES_PER_REQUEST,
+  parseMovieProgress,
   parseSeasonEpisodes,
   parseViewingHistory,
   seasonRequest,
   seasonsToFetch,
+  type NetflixMovieProgress,
   type NetflixPartial,
   type NetflixSeason,
   type NetflixViewing,
@@ -139,6 +144,19 @@ export async function readSeasons(web: NetflixWebRef, ready: NfxReady, items: Ne
   return out;
 }
 
+/** 🆕 تقدّمُ الأفلام — أربعون فيلماً في الطلب، واحداً بعد الآخر. ما لم يُجب يبقى «بدأته» (`buildNetflixRecords`) لا يُخمَّن */
+export async function readMovies(web: NetflixWebRef, ready: NfxReady, items: NetflixViewing[], stopped: () => boolean): Promise<Map<number, NetflixMovieProgress>> {
+  const out = new Map<number, NetflixMovieProgress>();
+  if (!ready.moviesId) return out;
+  const ids = moviesToFetch(items);
+  for (let i = 0; i < ids.length && !stopped(); i += NETFLIX_MOVIES_PER_REQUEST) {
+    const part = parseMovieProgress(await web.gql(moviesRequest(ready.moviesId, ids.slice(i, i + NETFLIX_MOVIES_PER_REQUEST))));
+    for (const [id, p] of part) out.set(id, p);
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return out;
+}
+
 export type SyncPhase = "reading" | ImportPhase;
 export type SyncOutcome =
   | { ok: true; episodes: number; movies: number; shows: number; newest: number | null }
@@ -161,8 +179,9 @@ export async function runNetflixSync(
   if (!items) return { ok: false, reason: "unreadable" };
   const fresh = after == null ? items : items.filter((i) => i.at > after);
   const seasons = await readSeasons(web, ready, fresh, hooks.stopped);
+  const progress = await readMovies(web, ready, fresh, hooks.stopped);
   if (hooks.stopped()) return { ok: false, reason: "stopped" };
-  const built = buildNetflixRecords(fresh, seasons, new Map(), { after });
+  const built = buildNetflixRecords(fresh, seasons, progress, { after });
   let episodes = 0;
   let movies = 0;
   let shows = 0;

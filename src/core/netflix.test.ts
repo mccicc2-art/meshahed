@@ -5,6 +5,9 @@ import {
   historyRequest,
   isWatched,
   mergeSeasonPages,
+  moviesRequest,
+  moviesToFetch,
+  parseMovieProgress,
   parseSeasonEpisodes,
   parseViewingHistory,
   persistedIdIn,
@@ -136,6 +139,54 @@ test("الأفلام: بلا تقدّمٍ معروف «بدأته» لا مشا�
   assert.equal(buildNetflixRecords(items, new Map()).partial.length, 1);
   const done = buildNetflixRecords(items, new Map(), new Map([[7, { runtimeSec: 8400, positionSec: 8000 }]]));
   assert.deepEqual(done.records, [{ kind: "movie-name", name: "Glass Onion", at: new Date(10).toISOString() }]);
+});
+
+/* ردُّ `PreviewModalVideoTitleGroup` كما أعادته نتفليكس لملفّ خالد (٢٥ نوفمبر ٢٠٢٦) — الحقولُ التي نقرؤها وحدها */
+const MOVIES = {
+  data: {
+    videos: [
+      { __typename: "Movie", videoId: 81763251, title: "Apex", bookmark: { __typename: "VideoBookmark", position: 5491 }, displayRuntimeSec: 5871, latestYear: 2026 },
+      { __typename: "Movie", videoId: 70226288, title: "The Hobbit: An Unexpected Journey", bookmark: { __typename: "VideoBookmark", position: 9876 }, displayRuntimeSec: 10196, latestYear: 2012 },
+      { __typename: "Movie", videoId: 70262639, title: "World War Z", bookmark: { __typename: "VideoBookmark", position: 0 }, displayRuntimeSec: 7020, latestYear: 2013 },
+      { __typename: "Show", videoId: 1, title: "Not a movie" },
+    ],
+  },
+};
+
+test("طلبُ الأفلام: معرّفاتٌ في طلبٍ واحد، والردُّ ⇐ موضعٌ ومدّةٌ وسنة", () => {
+  const r = moviesRequest("abc", [1, 2]);
+  assert.equal(r.operationName, "PreviewModalVideoTitleGroup");
+  assert.deepEqual(r.variables, { videoIds: [1, 2] });
+  const m = parseMovieProgress(MOVIES);
+  assert.equal(m.size, 3);
+  assert.deepEqual(m.get(81763251), { positionSec: 5491, runtimeSec: 5871, year: 2026 });
+  assert.equal(parseMovieProgress({ errors: [] }).size, 0);
+});
+
+test("الأفلام: ٩٠٪ تدخل بسنتها، وموضعٌ صفرٌ يبقى «بدأته» (أحمد «١أ»)", () => {
+  const items = parseViewingHistory({
+    data: {
+      profile: {
+        viewingHistoryPaginated: {
+          edges: [
+            { node: { lastWatchedTimeMs: 30, video: { __typename: "Movie", videoId: 81763251, title: "Apex" } } },
+            { node: { lastWatchedTimeMs: 20, video: { __typename: "Movie", videoId: 70226288, title: "The Hobbit: An Unexpected Journey" } } },
+            { node: { lastWatchedTimeMs: 10, video: { __typename: "Movie", videoId: 70262639, title: "World War Z" } } },
+          ],
+        },
+      },
+    },
+  }).items;
+  assert.deepEqual(moviesToFetch([...items, ...items]), [81763251, 70226288, 70262639]);
+  const b = buildNetflixRecords(items, new Map(), parseMovieProgress(MOVIES));
+  assert.deepEqual(
+    b.records.map((r) => (r.kind === "movie-name" ? [r.name, r.year] : null)),
+    [
+      ["Apex", 2026],
+      ["The Hobbit: An Unexpected Journey", 2012],
+    ],
+  );
+  assert.deepEqual(b.partial.map((p) => [p.title, p.share]), [["World War Z", 0]]);
 });
 
 test("موسمٌ يخفي أرقامَ حلقاته لا يُعتمد رقمُه", () => {

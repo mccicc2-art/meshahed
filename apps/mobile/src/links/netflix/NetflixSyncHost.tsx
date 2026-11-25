@@ -185,7 +185,8 @@ export function NetflixSyncHost() {
       if (s === "signed-out") {
         if (uid) writeLocal(uid, { expired: true });
         finish({ ok: false, reason: "signed-out" });
-      } else if (s === "no-profile" || s === "error") {
+      } else if (s === "no-profile" || s === "error" || s === "gate") {
+        /* 🆕 «gate»: نتفليكس تسأل «مَن يشاهد؟» بدل السجلّ — لا ملفَّ مختاراً؛ المزامنةُ الصامتة لا تختار عن العضو */
         finish({ ok: false, reason: "unreadable" });
       }
     },

@@ -156,6 +156,9 @@ export function DeviceLabel({ name, muted }: { name: string; muted?: boolean }) 
  * 🆕 **شارةُ منصّة البثّ** (هجرة ٢٦٥ — نتفليكس): الإطارُ نفسُه بحالاته، وفي وسطه **الاسمُ مكتوباً لا الشعار** — شعارُهم بإذنٍ
  * مكتوبٍ فقط (قاعدةُ الشعارات: «لا نرسم شعاراً بأيدينا»)، كالتصميم المعتمد ٢٥ نوفمبر.
  */
+/** أحمرُ نتفليكس — لونُ الكلمة وحدها */
+const NETFLIX_RED = "#E50914";
+
 export function PlatformMark({ size = 56, state = "idle" }: { size?: number; state?: "idle" | "on" | "paused" }) {
   const { tokens } = useApp();
   return (
@@ -172,7 +175,9 @@ export function PlatformMark({ size = 56, state = "idle" }: { size?: number; sta
         opacity: state === "paused" ? 0.55 : 1,
       }}
     >
-      <Text size={Math.max(7, Math.round(size * 0.17))} weight="800" style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
+      {/* 🆕 الكلمةُ بأحمر نتفليكس وبخطّ التطبيق — كتابةٌ لا نسخةٌ من الشعار (أحمد ٢٥ نوفمبر «١أ»: لا شعار بلا إذن). والأحمرُ يُقرأ على
+          الداكن والفاتح معاً، فلا يتبع لونَ النصّ */}
+      <Text size={Math.max(7, Math.round(size * 0.17))} weight="800" color={NETFLIX_RED} style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
         NETFLIX
       </Text>
     </View>

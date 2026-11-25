@@ -10,6 +10,8 @@
  *   المشاهدة بالملّي ثانية. **بلا رقم حلقة ولا مدّة.**
  * - **الموسم** (`PreviewModalEpisodeSelectorSeasonEpisodes`): رقمُه، ولكلِّ حلقةٍ رقمُها واسمُها ومدّتُها و**أين توقّف العضو**.
  *   فمعرّفُ الحلقة يقرن الردّين بلا تخمين، والنسبةُ تحكم: **٩٠٪ فأكثر = شوهدت** (أحمد ٢٢ نوفمبر «١ ب»).
+ * - **الأفلام** (`PreviewModalVideoTitleGroup`، مقيس ٢٥ نوفمبر على ملفّ خالد): أفلامٌ كثيرةٌ في طلبٍ واحد (`videoIds`)، ولكلٍّ
+ *   أين توقّف العضو (`bookmark.position`) ومدّتُه (`displayRuntimeSec`) وسنتُه (`latestYear`). والقاعدةُ نفسُها: ٩٠٪.
  * - **الأسماء بالإنجليزيّة دائماً** (ترويسةُ اللغة): الملفُّ العربيّ يعطي «الوسيط الروحي» لـ«The Mentalist» — اسمٌ يطابق عملاً آخر.
  * - **رقمُ الطلب المحفوظ يتغيّر** مع نشرات نتفليكس: يُقرأ من حزمة الصفحة عند كلِّ مزامنة (`persistedIdIn`) ولا يُكتب ثابتاً.
  */
@@ -25,7 +27,11 @@ export const NETFLIX_LANG_HEADER = { "x-netflix.request.client.languages": "en-U
 export const NETFLIX_OPS = {
   history: "ViewingHistoryPaginated",
   season: "PreviewModalEpisodeSelectorSeasonEpisodes",
+  movies: "PreviewModalVideoTitleGroup",
 } as const;
+
+/** أفلامٌ في الطلب الواحد — دفعةٌ معقولةٌ لا تُثقل على نتفليكس في الاستيراد الأوّل الطويل */
+export const NETFLIX_MOVIES_PER_REQUEST = 40;
 
 /** نسخةُ الطلب المحفوظ التي يقبلها الخادم (مقيس، ٢٥ نوفمبر) */
 export const NETFLIX_PQ_VERSION = 102;
@@ -69,10 +75,13 @@ export interface NetflixSeason {
   next: string | null;
 }
 
-/** تقدّمُ فيلم — يأتي من طلبٍ ثالثٍ لم يُتحقَّق منه بعد (الأفلام: يُختبر في أوّل تجربةٍ للمختبرين) */
+/** تقدّمُ فيلم (`PreviewModalVideoTitleGroup`) — موضعُ التوقّف صفرٌ يبقى «بدأته ولم تكمله»: قد تعيده نتفليكس إلى البداية بعد الانتهاء،
+ *  ولا دليلَ أنه اكتمل (أحمد ٢٥ نوفمبر «١أ») */
 export interface NetflixMovieProgress {
   runtimeSec: number | null;
   positionSec: number | null;
+  /** سنةُ الفيلم في نتفليكس — تُعين المطابقةَ في TMDB حين يتشابه الاسم (البحثُ يتسامح بثلاث سنوات) */
+  year?: number | null;
 }
 
 type Obj = Record<string, unknown>;
@@ -106,6 +115,34 @@ export function seasonRequest(id: string, seasonId: number, count: number, curso
     variables: { seasonId, count, opaqueImageFormat: "WEBP", artworkContext: {}, ...(cursor ? { cursor } : {}) },
     extensions: { persistedQuery: { id, version: NETFLIX_PQ_VERSION } },
   };
+}
+
+/** جسمُ طلب الأفلام — معرّفاتٌ في طلبٍ واحد */
+export function moviesRequest(id: string, videoIds: number[]) {
+  return {
+    operationName: NETFLIX_OPS.movies,
+    variables: { videoIds },
+    extensions: { persistedQuery: { id, version: NETFLIX_PQ_VERSION } },
+  };
+}
+
+/** ردُّ الأفلام ⇐ تقدّمُ كلِّ فيلمٍ بمعرّفه. ما ليس فيلماً أو بلا معرّفٍ يُتخطّى */
+export function parseMovieProgress(json: unknown): Map<number, NetflixMovieProgress> {
+  const out = new Map<number, NetflixMovieProgress>();
+  const videos = obj(obj(json)?.data)?.videos;
+  if (!Array.isArray(videos)) return out;
+  for (const v of videos) {
+    const o = obj(v);
+    const id = num(o?.videoId);
+    if (!o || id == null || o.__typename !== "Movie") continue;
+    out.set(id, { positionSec: num(obj(o.bookmark)?.position), runtimeSec: num(o.displayRuntimeSec) ?? num(o.runtimeSec), year: num(o.latestYear) });
+  }
+  return out;
+}
+
+/** أفلامُ السجلّ التي يلزم طلبُ تقدّمها — مرّةً لكلِّ فيلم */
+export function moviesToFetch(items: NetflixViewing[]): number[] {
+  return [...new Set(items.filter((i) => i.kind === "movie").map((i) => i.videoId))];
 }
 
 /** ردُّ السجلّ ⇐ مشاهدات. ما لا يُفهم يُتخطّى بصمت — ردٌّ معطوبٌ لا يُسقط المزامنة كلَّها */
@@ -216,7 +253,7 @@ export interface NetflixBuild {
  * المشاهداتُ ⇐ صفوفُ استيراد.
  * - `after`: ما شوهد عند هذه اللحظة أو قبلها لا يُقرأ — آخرُ مزامنة (`last_item_at`) أو «من الآن فقط» (`since_at`)، أيُّهما أحدث.
  * - الحلقةُ: موسمُها مقروءٌ وفيه رقمُها ⇐ `ep-name` برقمَي نتفليكس، ومعرّفُ مسلسلها واسمُ حلقةٍ منه يُطابَق بهما المسلسلُ في TMDB.
- * - الفيلمُ: يدخل إن عُرف تقدّمُه وبلغ ٩٠٪ — وإن لم يُعرف (طلبُ الأفلام لم يُتحقَّق منه) فهو «بدأته» لا مشاهدة.
+ * - الفيلمُ: يدخل إن عُرف تقدّمُه وبلغ ٩٠٪ — وإن لم يُعرف (طلبُ الأفلام لم يُجب) أو كان موضعُه صفراً فهو «بدأته» لا مشاهدة.
  */
 export function buildNetflixRecords(
   items: NetflixViewing[],
@@ -257,7 +294,7 @@ export function buildNetflixRecords(
         partial.push({ title: it.title, show: null, season: null, episode: null, share: p ? watchedShare(p.positionSec, p.runtimeSec) : null, at });
         continue;
       }
-      records.push({ kind: "movie-name", name: it.title, at });
+      records.push({ kind: "movie-name", name: it.title, at, ...(p.year && p.year > 1870 ? { year: p.year } : {}) });
     } else {
       skipped++;
     }

@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
     const favoritesName = typeof body.favoritesName === "string" ? body.favoritesName : undefined;
     /* 🆕 T507 — مصدرُ الآراء يُمرَّر بقيمته المعروفة وحدها؛ والآراءُ نفسُها تُنقّى في `applyImportChunk` (نصّاً ويوماً) */
     const reviewFrom = body.reviewFrom === "letterboxd" || body.reviewFrom === "auto" ? body.reviewFrom : undefined;
-    const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true, reviewFrom });
+    /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — عدّادُ صفحتها وشارتُها يقرآن هذا الوسم. كان يسقط هنا
+       فيُكتب ما جاء من نتفليكس «استيراداً» ويبقى العدّادُ صفراً (أوّلُ تجربةٍ على جهاز، ٢٥ نوفمبر) */
+    const source = body.source === "netflix" ? ("netflix" as const) : undefined;
+    const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true, reviewFrom, ...(source ? { source } : {}) });
     return ok(done, []);
   });
 }

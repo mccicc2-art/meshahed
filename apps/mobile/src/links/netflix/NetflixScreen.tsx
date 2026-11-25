@@ -15,7 +15,7 @@ import { timeAgo } from "@/core/when";
 import { PlatformMark } from "../DeviceMark";
 import { UnlinkSheet } from "../UnlinkSheet";
 import { useLinks } from "../api";
-import { NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
+import { NETFLIX_GATE, NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
 import { clearLocal, linkNetflix, netflixOf, readHistory, readLocal, unlinkNetflix, writeLocal, type NfxLocal } from "./sync";
 import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./NetflixSyncHost";
 
@@ -119,7 +119,7 @@ export function NetflixScreen() {
   const sheets = (
     <>
       {overlay === "consent" ? <ConsentSheet onClose={() => (nfx ? setOverlay(null) : router.back())} onContinue={() => openLogin("link")} /> : null}
-      {overlay === "login" ? <LoginOverlay start={why === "profile" ? `${NETFLIX_LOGIN.replace("/login", "/browse")}` : NETFLIX_LOGIN} onClose={() => setOverlay(null)} onReady={onLoggedIn} /> : null}
+      {overlay === "login" ? <LoginOverlay start={why === "profile" ? NETFLIX_GATE : NETFLIX_LOGIN} onClose={() => setOverlay(null)} onReady={onLoggedIn} /> : null}
       {overlay === "ask" && found ? <AskSheet found={found} busy={busy} onClose={() => setOverlay(null)} onChoose={(a) => void choose(a)} /> : null}
       {overlay === "unlink" ? <UnlinkSheet name="Netflix" works={nfx?.works ?? 0} onClose={() => setOverlay(null)} onConfirm={unlink} /> : null}
       {overlay === "added" ? (
@@ -299,18 +299,20 @@ function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue
   );
 }
 
-/** صفحةُ دخول نتفليكس كاملةَ الشاشة — شريطٌ علويٌّ فيه الإغلاقُ و«تم» وسطرُ الإرشاد */
+/**
+ * صفحةُ دخول نتفليكس كاملةَ الشاشة — شريطٌ علويٌّ فيه الإغلاقُ وسطرُ الإرشاد، **بلا زرّ «تم»** (أحمد ٢٥ نوفمبر «٢ب»): اختيارُ الملفّ
+ * الشخصيّ هو الانتهاء. السكربتُ يقول حالَ الصفحة («gate»: «مَن يشاهد؟» أو رمزُ القفل · «browse»: الرئيسيّةُ مستقرّة)، وهنا القرار:
+ * - رأينا «مَن يشاهد؟» ثمّ الرئيسيّة ⇐ اختار ملفَّه: إلى صفحة السجلّ، فتقرأ الملفَّ المختار.
+ * - الرئيسيّةُ بلا «مَن يشاهد؟» (كان مسجّلاً من قبل فدخلت نتفليكس بآخر ملفّ) ⇐ نفتح «مَن يشاهد؟» مرّةً، فلا يُقرأ ملفٌّ لم يختره.
+ */
 function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
   const { t, tokens } = useApp();
   const insets = useSafeAreaInsets();
   const web = useRef<NetflixWebRef>(null);
   const [waiting, setWaiting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const done = () => {
-    setWaiting(true);
-    setNote(null);
-    web.current?.go(NETFLIX_VIEWED);
-  };
+  const gateSeen = useRef(false);
+  const sentToGate = useRef(false);
   return (
     <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
@@ -318,7 +320,6 @@ function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () 
           <Icon name="close" size={18} color={tokens.muted} />
         </Pressable>
         <Text size={13} muted style={{ flex: 1, lineHeight: 18 }}>{note ?? (waiting ? t.nfxReading : t.nfxLoginHint)}</Text>
-        <Button size="sm" label={t.nfxLoginDone} busy={waiting} onPress={done} />
       </View>
       <View style={{ flex: 1 }}>
         <NetflixWeb
@@ -330,9 +331,29 @@ function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () 
             void onReady(web.current as NetflixWebRef, r);
           }}
           onPageState={(s) => {
+            if (s === "gate") {
+              gateSeen.current = true;
+              /* أرسلناه إلى السجلّ فسألت نتفليكس «مَن يشاهد؟»: لا ملفَّ مختاراً بعد — ينتظر اختيارَه من جديد */
+              if (waiting) setWaiting(false);
+              return;
+            }
+            if (s === "browse" && !waiting) {
+              if (gateSeen.current || sentToGate.current) {
+                setWaiting(true);
+                setNote(null);
+                web.current?.go(NETFLIX_VIEWED);
+              } else {
+                sentToGate.current = true;
+                web.current?.go(NETFLIX_GATE);
+              }
+              return;
+            }
             if (!waiting) return;
             if (s === "signed-out" || s === "no-profile") {
+              /* عاد إلى الدخول أو لا ملفّ: يبدأ من جديد — والاختيارُ القادم يُرى من أوّله */
               setWaiting(false);
+              gateSeen.current = false;
+              sentToGate.current = false;
               setNote(t.nfxNotSignedIn);
             }
           }}
