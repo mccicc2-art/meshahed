@@ -3817,6 +3817,9 @@ const ar = {
   nfxStoppedTitle: "توقّفت المزامنة",
   nfxStoppedSub: "خرجت نتفليكس من حسابك على هذا الجهاز. ما دخل مكتبتك باقٍ.",
   nfxRelogin: "أعد تسجيل الدخول",
+  nfxProfileTitle: "اختر ملفك من جديد",
+  nfxProfileSub: "طلبت نتفليكس اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
+  nfxPickProfile: "اختر الملف الشخصي",
   nfxAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `أُضيفت من Netflix ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
@@ -6710,6 +6713,9 @@ const en: Dict = {
   nfxStoppedTitle: "Sync stopped",
   nfxStoppedSub: "Netflix signed you out on this device. Everything already in your library stays.",
   nfxRelogin: "Sign in again",
+  nfxProfileTitle: "Pick your profile again",
+  nfxProfileSub: "Netflix asked which profile is watching before it showed your history, so syncing stopped.",
+  nfxPickProfile: "Pick profile",
   nfxAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `Added from Netflix: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`

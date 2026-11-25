@@ -90,4 +90,16 @@ export interface PlatformLinkResult {
   linked: boolean;
 }
 
+/** 🆕 T552 — `GET /api/v1/me/links/netflix`: «ما دخل» من المكتبة نفسِها (كلُّ ما عليه وسمُ `netflix`)، الأحدثُ أوّلاً —
+ *  فتطابق الأرقامَ الثلاثة دائماً، وتظهر على أيِّ جهاز، ولا تُمسح بإعادة الربط */
+export interface NetflixAddedItem {
+  title: string;
+  season: number | null;
+  episode: number | null;
+  at: string;
+}
+export interface NetflixAddedList {
+  items: NetflixAddedItem[];
+}
+
 export type { DeviceKind, HomeKind, LinkTier, PlatformKind };

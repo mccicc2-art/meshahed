@@ -5,6 +5,7 @@ import { useApp } from "../../state";
 import { ToastHost, type ToastHostRef } from "../../HoldHost";
 import { NETFLIX_SIGNOUT, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
 import { afterOf, fetchLinks, netflixOf, readLocal, runNetflixSync, syncDue, writeLocal, type SyncOutcome, type SyncPhase } from "./sync";
+import { mark } from "../../perfMarks";
 
 /**
  * ====== 🆕 مضيفُ مزامنة نتفليكس — مرّةً فوق المكدّس (خطّة `PLAN-NETFLIX-SYNC.md`، أحمد «٢ب» و«٣ب») ======
@@ -107,7 +108,9 @@ export function NetflixSyncHost() {
     lastCheck.current = now;
     const d = await fetchLinks();
     const p = netflixOf(d);
-    if (!syncDue(p) || readLocal(uid).expired) return;
+    const loc = readLocal(uid);
+    /* 🆕 T552 — ملفٌّ لم يُختر («مَن يشاهد؟») كانتهاء الجلسة: لا محاولةَ صامتةً حتى يختاره العضوُ بنفسه */
+    if (!syncDue(p) || loc.expired || loc.profile) return;
     requestNetflixSync("auto");
   }, [uid]);
 
@@ -143,10 +146,25 @@ export function NetflixSyncHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job]);
 
+  const startedAt = useRef(0);
+  useEffect(() => {
+    if (job && job.kind !== "signout") startedAt.current = Date.now();
+  }, [job]);
+
   const finish = useCallback(
     (outcome: SyncOutcome) => {
       const kind = state.job?.kind;
       if (!kind) return;
+      /* 🆕 T552 — كلُّ مزامنةٍ تُقاس: نتيجتُها وسببُها وأعدادُها — فشلٌ صامتٌ (كاستيراد ٢٥ نوفمبر) يُقرأ لا يُخمَّن */
+      if (kind !== "signout") {
+        const s = outcome.ok ? outcome.stats : undefined;
+        mark("nfx.sync", Math.max(0, Date.now() - startedAt.current), {
+          kind,
+          result: outcome.ok ? "ok" : outcome.reason,
+          ...(outcome.ok ? { ep: outcome.episodes, mv: outcome.movies } : {}),
+          ...(s ? { items: s.items, rec: s.rec, part: s.part, skip: s.skip, unm: s.unm } : {}),
+        });
+      }
       set({ job: null, phase: null, pct: 0, last: { at: Date.now(), kind, outcome } });
       if (kind === "auto" && outcome.ok && outcome.episodes + outcome.movies > 0) {
         toast.current?.say(t.nfxAdded(outcome.episodes, outcome.movies), undefined, undefined, "success");
@@ -185,8 +203,12 @@ export function NetflixSyncHost() {
       if (s === "signed-out") {
         if (uid) writeLocal(uid, { expired: true });
         finish({ ok: false, reason: "signed-out" });
-      } else if (s === "no-profile" || s === "error" || s === "gate") {
-        /* 🆕 «gate»: نتفليكس تسأل «مَن يشاهد؟» بدل السجلّ — لا ملفَّ مختاراً؛ المزامنةُ الصامتة لا تختار عن العضو */
+      } else if (s === "gate" || s === "pin") {
+        /* 🆕 «gate»: نتفليكس تسأل «مَن يشاهد؟» بدل السجلّ — لا ملفَّ مختاراً؛ المزامنةُ الصامتة لا تختار عن العضو.
+           🆕 T552: يُعلَّم على الجهاز فتقول صفحةُ نتفليكس «اختر ملفك من جديد» بزرّ — لا توقّفَ صامت */
+        if (uid) writeLocal(uid, { profile: true });
+        finish({ ok: false, reason: "profile" });
+      } else if (s === "no-profile" || s === "error") {
         finish({ ok: false, reason: "unreadable" });
       }
     },

@@ -16,7 +16,9 @@ import { NETFLIX_LANG_HEADER, NETFLIX_OPS } from "@/core/netflix";
  * بنصف ثانية ويقول حالها فقط: «gate» — صفحةُ «مَن يشاهد؟» أو خاناتُ رمز القفل ظاهرة، و«browse» — الصفحةُ الرئيسيّة مستقرّةً
  * ثانيةً ونصفاً بلا شيءٍ منهما. والقرارُ (الانتقالُ إلى السجلّ) في التطبيق لا هنا. لا نقرةَ ولا قراءةَ حقل.
  * العلاماتُ مقيسةٌ في Chrome المكتب (٢٥ نوفمبر): `profile-gate-screen` على «مَن يشاهد؟»، ثمّ تختفي بعد الاختيار ويبقى شريطُ
- * `navigation` على `/browse`. وخاناتُ الرمز لم تُرَ بعد (لا ملفَّ مقفلاً في الحساب المقيس) — فعلاماتُها أعمُّ: حقلٌ رقميّ أو بخانةٍ واحدة.
+ * `navigation` على `/browse`. وخاناتُ الرمز لم تُرَ بعد (لا ملفَّ مقفلاً في الحساب المقيس) — فعلاماتُها أعمُّ: حقلٌ رقميّ أو بخانةٍ واحدة،
+ * و🆕 T552: **على صفحات نتفليكس الداخليّة وحدها** (`/browse` · `/profiles`) — صفحةُ رمز البريد عند الدخول خاناتُها مثلُها، فكانت تُحسب
+ * «مَن يشاهد؟» ظهرت واختفت، فيُقرأ ملفٌّ لم يختره العضو. والاختيارُ لا يُحسب إلا من `profile-gate-screen` نفسِها.
  *
  * ⚖️ **وكيلُ المستخدم سطحُ مكتبٍ عن قصد**: كلُّ ما قيس في الفحص S0 (٢٥ نوفمبر) قيس على Chrome المكتب؛ وصفحاتُ نتفليكس للجوّال
  * قد تحوّل إلى «حمّل التطبيق» فلا حزمةَ فيها ولا طلبات.
@@ -31,7 +33,9 @@ const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 export type NfxReady = { guid: string; name: string; historyId: string | null; seasonId: string | null; moviesId: string | null };
 /** 🆕 `left`: «مَن يشاهد؟» اختفت لتوّها بعد أن ظهرت — يُقال فوراً لتغطّي شاشةُ التحميل نتفليكس، و`browse` يؤكّد بعده */
-export type NfxPageState = "signed-out" | "page" | "no-profile" | "error" | "gate" | "left" | "browse";
+/** 🆕 T552 — `pin`: خاناتُ رمز قفل الملفّ على صفحات نتفليكس الداخليّة — لا تُعدّ «مَن يشاهد؟» (خاناتُ رمز البريد عند الدخول
+ *  أوهمت بأنّ الملفّ اختير، أحمد ٢٥ نوفمبر) */
+export type NfxPageState = "signed-out" | "page" | "no-profile" | "error" | "gate" | "pin" | "left" | "browse";
 
 /** السكربتُ المحقون بعد كلِّ تحميل — لا يقرأ حقلاً في صفحة الدخول ولا يلمس نموذجاً */
 export function netflixBootScript(): string {
@@ -58,11 +62,13 @@ export function netflixBootScript(): string {
     setInterval(function () {
       var q = location.pathname || "/";
       if (q.indexOf("/login") === 0 || q.indexOf("/signup") === 0 || q === "/") { calm = 0; return; }
-      var gate = !!document.querySelector('[data-uia="profile-gate-screen"],[data-uia*="profile-lock" i],[data-uia*="pin-entry" i],[data-uia*="pin-input" i],[data-uia*="pin-number" i],input[inputmode="numeric"],input[maxlength="1"]');
+      var inner = q.indexOf("/browse") === 0 || q.indexOf("/profiles") === 0 || q.indexOf("/ProfilesGate") === 0;
+      var gate = !!document.querySelector('[data-uia="profile-gate-screen"]');
+      var pin = inner && !gate && !!document.querySelector('[data-uia*="profile-lock" i],[data-uia*="pin-entry" i],[data-uia*="pin-input" i],[data-uia*="pin-number" i],input[inputmode="numeric"],input[maxlength="1"]');
       var nav = !!document.querySelector('[data-uia="navigation"],[data-uia="navigation+logo"]');
       if (gate) had = true;
-      else if (had) { had = false; post({ t: "state", state: "left", path: q }); }
-      var s = gate ? "gate" : nav && q.indexOf("/browse") === 0 ? "browse" : "";
+      else if (had && !pin) { had = false; post({ t: "state", state: "left", path: q }); }
+      var s = gate ? "gate" : pin ? "pin" : nav && q.indexOf("/browse") === 0 ? "browse" : "";
       if (s === "browse") { calm++; if (calm < 3) return; } else calm = 0;
       if (s && s !== last) { last = s; post({ t: "state", state: s, path: q }); }
     }, 500);

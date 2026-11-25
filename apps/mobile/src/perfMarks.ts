@@ -109,7 +109,9 @@ export type PerfName =
   | "push.answer"
   /* 🩺 T542 — خروجٌ محلّيّ: `why` الطريقُ (انظر `OutWhy` في `session.ts`) · `live` الجلسةُ المملوكةُ محفوظةٌ لحظتَه ·
      `result`/`src` آخرُ سكٍّ أو تجديدٍ قبله (`never` = لم يقع في التشغيلة) · `cago` ثوانٍ منذ ذاك · `ago` ثوانٍ منذ الإقلاع. ms=0 */
-  | "session.out";
+  | "session.out"
+  /* 🆕 T552 — مزامنةُ نتفليكس: مدّتُها ونتيجتُها وأعدادُها — فشلٌ صامتٌ يُقرأ هنا لا يُخمَّن */
+  | "nfx.sync";
 
 type Extra = Record<string, number | string>;
 type Mark = { name: PerfName; ms: number; extra?: Extra };
@@ -161,7 +163,7 @@ export function mark(name: PerfName, ms: number, extra?: Extra) {
 }
 /* 🆕 المهمّة ٣٩٩ — ونافذةُ الإشعارات كذلك: من يغلق التطبيقَ وهي أمامه لا تنتظره دفعةُ الثلاثين ثانية */
 /* 🩺 T542 — والخروجُ كذلك: التشغيلةُ التي خرجت قد تُغلق بعده بلحظة، وما قبله في الدفعة (تجديدٌ تعثّر) يخرج معه */
-const URGENT = new Set<PerfName>(["dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer", "session.out"]);
+const URGENT = new Set<PerfName>(["dock.miss", "js.hang", "gesture.stuck", "push.prompt", "push.answer", "session.out", "nfx.sync"]);
 const URGENT_MS = 1_500;
 /** مؤقّتُ الدفعة التالية — يضبطه أوّلُ ما ينتظر الإرسال (علامةٌ أو مجموعُ تمرير) */
 function arm() {

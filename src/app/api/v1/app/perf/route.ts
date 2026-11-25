@@ -123,6 +123,9 @@ const NAMES = new Set([
   /* 🩺 T542 — خروجٌ محلّيٌّ وطريقُه (`why` screen · webout · weblogin · relogin · rescue · clear)، و`live` جلسةٌ مملوكةٌ محفوظةٌ
      لحظتَه، و`result`/`src`/`cago` آخرُ سكٍّ أو تجديدٍ قبله، و`ago` ثوانٍ منذ الإقلاع — خالد خرج وحده وجلستُه عند الخادم حيّة */
   "session.out",
+  /* 🆕 T552 — كلُّ مزامنة نتفليكس: نتيجتُها (`result` ok · signed-out · profile · unreadable · server · stopped) و`kind` auto · manual ·
+     import، وأعدادُها: `items` ما قُرئ · `rec` ما بُني صفوفاً · `ep` `mv` ما دخل · `part` بدأه ولم يكمله · `skip` ما لم يُفهم · `unm` لم يُطابَق */
+  "nfx.sync",
 ]);
 /* 🆕 D-1140 — `k2` (0/1: أيُّ مسارٍ للسحب رسم هذه العلامة) و`thread` (js/ui: على أيِّ خيطٍ عُدَّت الإطارات) */
 /* 🆕 D-1208 — مراحلُ `tab.switch`: `from` (التبويبُ المتروك) · `go` · `focus` (ms من الضغطة) · `drop` (إطاراتٌ ضائعة على JS)
@@ -140,7 +143,9 @@ const EXTRA_KEYS = new Set(["count", "screen", "tab", "cached", "dur", "k2", "th
   "sgt", "stz", "sai", "sgr", "sfb", "sfn", "mdl", "try",
   /* 🆕 A-56 — `file` في `home.open`: حالُ ملفّ الكاش لحظةَ التركيب (٠ لا ملفّ · ١ أُعيد · ٢ ما زال يُقرأ ·
      🆕 A-69: ٣ رُفض لقِدَمه أو نسخته · ٤ لصاحبٍ آخر · ٥ تعذّرت قراءتُه · ٦ لغتُه غيرُ لغة التطبيق) — رقمٌ كأخواته، لا تحقّقَ جديد */
-  "file"]);
+  "file",
+  /* 🆕 T552 — أعدادُ `nfx.sync` ونوعُها */
+  "kind", "items", "rec", "ep", "mv", "part", "skip", "unm"]);
 const MAX_MARKS = 40;
 const WORD = /^[\w.-]{1,16}$/;
 const ROW_CHARS = 380;

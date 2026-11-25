@@ -19,7 +19,8 @@ import {
   type NetflixSeason,
   type NetflixViewing,
 } from "@/core/netflix";
-import type { DeviceLinksState, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult } from "@/core/contracts/deviceLinks";
+import { useQuery } from "@tanstack/react-query";
+import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult } from "@/core/contracts/deviceLinks";
 import type { NetflixWebRef, NfxReady } from "./bridge";
 
 /**
@@ -42,6 +43,8 @@ const KEEP = 100;
 export type NfxAdded = { title: string; season: number | null; episode: number | null; at: string };
 export type NfxLocal = {
   expired?: boolean;
+  /** 🆕 T552 — نتفليكس سألت «مَن يشاهد؟» بدل السجلّ: لا ملفَّ مختاراً — «اختر ملفك من جديد» في صفحة نتفليكس */
+  profile?: boolean;
   added?: NfxAdded[];
   unmatched?: string[];
   partial?: NetflixPartial[];
@@ -77,6 +80,18 @@ export function clearLocal(uid: string): void {
   } catch {
     /* لا شيء */
   }
+}
+
+/** 🆕 T552 — «ما دخل» من الخادم. المفتاحُ تحت `me:links` فيُسقطه كلُّ ما يُسقط حالَ الربط (مزامنةٌ · ربطٌ · فكّ) */
+export const NETFLIX_ADDED_KEY = [...LINKS_KEY, "netflix-added"] as const;
+
+export function useNetflixAdded(enabled: boolean) {
+  return useQuery({
+    queryKey: NETFLIX_ADDED_KEY,
+    queryFn: async () => (await api<NetflixAddedList>("/api/v1/me/links/netflix")).data,
+    enabled,
+    staleTime: 30_000,
+  });
 }
 
 /** الحدُّ الذي لا يُقرأ ما قبله: «من الآن فقط» أو آخرُ مزامنة — أيُّهما أحدث */
@@ -159,8 +174,11 @@ export async function readMovies(web: NetflixWebRef, ready: NfxReady, items: Net
 
 export type SyncPhase = "reading" | ImportPhase;
 export type SyncOutcome =
-  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null }
-  | { ok: false; reason: "signed-out" | "unreadable" | "server" | "stopped" };
+  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null; stats?: SyncStats }
+  | { ok: false; reason: "signed-out" | "profile" | "unreadable" | "server" | "stopped" };
+
+/** 🆕 T552 — أعدادُ المزامنة لعلامة الأداء `nfx.sync`: ما قُرئ · ما بُني صفوفاً · بدأه ولم يكمله · لم يُفهم · لم يُطابَق */
+export type SyncStats = { items: number; rec: number; part: number; skip: number; unm: number };
 
 /**
  * مزامنةٌ كاملة على صفحة `/settings/viewed` الجاهزة: يقرأ، ويطابق، ويكتب، ويختم. `uid` لملفّ الجهاز.
@@ -207,12 +225,13 @@ export async function runNetflixSync(
   );
   writeLocal(uid, {
     expired: false,
+    profile: false,
     added: [...added, ...(prev.added ?? [])].slice(0, KEEP),
     unmatched: [...new Set([...unmatched, ...(prev.unmatched ?? [])])].slice(0, KEEP),
     partial: [...built.partial, ...(prev.partial ?? [])].slice(0, KEEP),
   });
   await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
-  return { ok: true, episodes, movies, shows, newest };
+  return { ok: true, episodes, movies, shows, newest, stats: { items: fresh.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
 }
 
 /** الربطُ على الخادم بعد سؤال الاستيراد — `import_all`: «استيراد الكل»؛ وإلّا «من الآن فقط» */

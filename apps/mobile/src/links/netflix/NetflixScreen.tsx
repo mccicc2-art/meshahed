@@ -18,7 +18,7 @@ import { useLinks } from "../api";
 import { Orbit } from "../Orbit";
 import type { DeviceLinksState } from "@/core/contracts/deviceLinks";
 import { NETFLIX_GATE, NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
-import { clearLocal, linkNetflix, netflixOf, readHistory, readLocal, unlinkNetflix, writeLocal, type NfxLocal } from "./sync";
+import { clearLocal, linkNetflix, netflixOf, readHistory, readLocal, unlinkNetflix, useNetflixAdded, writeLocal, type NfxLocal } from "./sync";
 import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./NetflixSyncHost";
 
 /**
@@ -41,6 +41,8 @@ export function NetflixScreen() {
   const d = q.data;
   const nfx = netflixOf(d);
   const sync = useNetflixSync();
+  /* 🆕 T552 — «ما دخل» من المكتبة على الخادم، لا من ملفّ الجهاز — يطابق الأرقامَ فوقها ولا يُمسح بإعادة الربط */
+  const added = useNetflixAdded(!!nfx);
   const uid = me?.id ?? "";
   const [local, setLocal] = useState<NfxLocal>(() => (uid ? readLocal(uid) : {}));
   const [overlay, setOverlay] = useState<Overlay>(null);
@@ -58,7 +60,8 @@ export function NetflixScreen() {
     if (sync.last.kind === "auto") return;
     const o = sync.last.outcome;
     if (o.ok) toast.current?.say(o.episodes + o.movies > 0 ? t.nfxAdded(o.episodes, o.movies) : t.nfxNothingNew, undefined, undefined, o.episodes + o.movies > 0 ? "success" : undefined);
-    else if (o.reason !== "signed-out" && o.reason !== "stopped") toast.current?.say(t.nfxSyncFailed);
+    /* «profile» تقوله بطاقةُ المزامنة بزرّها — لا رسالةَ فوقها */
+    else if (o.reason !== "signed-out" && o.reason !== "stopped" && o.reason !== "profile") toast.current?.say(t.nfxSyncFailed);
   }, [sync.last, uid, t]);
 
   /* غيرُ مربوطة ⇐ ورقةُ الموافقة أوّلَ ما تُفتح الصفحة (🆕 T551 — للجميع) */
@@ -77,7 +80,7 @@ export function NetflixScreen() {
   /* «تم» في صفحة الدخول ⇐ السجلُّ يُقرأ ليُعدّ (إعادةُ الدخول للملفّ نفسِه لا تسأل) */
   const onLoggedIn = useCallback(
     async (web: NetflixWebRef, ready: NfxReady) => {
-      if (uid) setLocal(writeLocal(uid, { expired: false }));
+      if (uid) setLocal(writeLocal(uid, { expired: false, profile: false }));
       if (why === "relogin" && nfx?.profile_label && nfx.profile_label === ready.name) {
         setOverlay(null);
         requestNetflixSync("manual");
@@ -129,7 +132,7 @@ export function NetflixScreen() {
       {overlay === "added" ? (
         <ListSheet
           title={t.nfxShowImported}
-          rows={(local.added ?? []).map((a) => ({ title: a.title, sub: a.season != null && a.episode != null ? `S${a.season} E${a.episode}` : undefined }))}
+          rows={(added.data?.items ?? []).map((a) => ({ title: a.title, sub: a.season != null && a.episode != null ? `S${a.season} E${a.episode}` : undefined }))}
           onClose={() => setOverlay(null)}
         />
       ) : null}
@@ -179,6 +182,7 @@ export function NetflixScreen() {
   }
 
   const expired = !!local.expired;
+  const needProfile = !expired && !!local.profile;
   const running = !!sync.job && sync.job.kind !== "signout";
   const pill = nfx.stopped
     ? { label: t.linksStopped, color: tokens.muted }
@@ -225,6 +229,12 @@ export function NetflixScreen() {
               <View style={{ height: 4, width: `${Math.max(4, sync.pct)}%`, backgroundColor: tokens.accent }} />
             </View>
             <Text size={12} muted>{t.nfxSyncingSub}</Text>
+          </>
+        ) : needProfile ? (
+          <>
+            <Text size={15} weight="700">{t.nfxProfileTitle}</Text>
+            <Text size={13} muted style={{ lineHeight: 20 }}>{t.nfxProfileSub}</Text>
+            <Button label={t.nfxPickProfile} onPress={() => openLogin("profile")} />
           </>
         ) : expired ? (
           <>
@@ -331,6 +341,12 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
               gateSeen.current = true;
               /* أرسلناه إلى السجلّ فسألت نتفليكس «مَن يشاهد؟»، أو ظهرت خاناتُ الرمز: لا ملفَّ مختاراً بعد — ترتفع التغطية
                  وينتظر اختيارَه من جديد */
+              if (waiting) setWaiting(false);
+              setCover(false);
+              return;
+            }
+            if (s === "pin") {
+              /* رمزُ قفل الملفّ: العضوُ يكتبه بنفسه — التغطيةُ ترتفع ولا يُحسب اختيارٌ بعد */
               if (waiting) setWaiting(false);
               setCover(false);
               return;
