@@ -1,0 +1,4 @@
+[deploy] Release R310 — T554 Nuvio as its own device: own link (ln_, nuvio_links, migration 267 already run), own slot, source nuvio; add-on icon served under /api/v1 so Nuvio can load it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FexM7AUVqGnuepVypsHwot
