@@ -86,6 +86,11 @@ export interface ImportPayload {
    */
   keep?: boolean;
   /**
+   * 🆕 **مصدرُ الكتابة** — `netflix`: مزامنةُ نتفليكس (هجرة ٢٦٥): شارةُ المصدر وعدُّ «الـN عملاً تبقى في مكتبتك» عند الفكّ.
+   * غيابُه = `import` كما كان.
+   */
+  source?: "netflix";
+  /**
    * 🆕 T507 — **مصدرُ الآراء في هذه الدفعة** (`ratings.imported_from`، هجرة ٢٥٨): `letterboxd` أو `auto` (ملفٌّ بعمود «مراجعة»).
    * غيابُه أو قيمةٌ غيرُهما ⇐ لا تُكتب آراءُ الدفعة (تطبيقٌ قديمٌ لا يرسل آراءً أصلاً). وTrakt يكتب آراءه على الخادم.
    */
@@ -118,6 +123,9 @@ export type ResolveRequest =
   /* 🆕 MyAnimeList — رقمُ العمل هناك، يُربط بجدول Fribb (`lib/fribb.ts`) */
   | { kind: "mal"; id: number }
   | { kind: "name-tv"; name: string; year?: number }
+  /* 🆕 نتفليكس — المسلسلُ باسمه **وحلقةٍ منه** (موسمُها ورقمُها واسمُها بالإنجليزيّة): يُختار من نتائج البحث ما في موسمه حلقةٌ
+     بهذا الاسم وهذا الرقم، وإلّا فالمطابقةُ بالاسم كما هي. `show` معرّفُه في نتفليكس — للمفتاح وحده */
+  | { kind: "netflix-tv"; name: string; show: string; s: number; e: number; title: string }
   | { kind: "name-movie"; name: string; year?: number };
 
 export type ResolveResult =

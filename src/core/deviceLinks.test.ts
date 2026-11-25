@@ -92,3 +92,26 @@ test("حدثٌ على الرابط القديم: يُربط بأوّل نوع، 
   assert.deepEqual(acceptOnUnbound([sawPlex, dedicated], sawPlex, "emby", 5, NOW), { ok: false, bind: false });
   assert.deepEqual(acceptOnUnbound([{ ...sawPlex, stopped_at: ago(0) }], { ...sawPlex, stopped_at: ago(0) }, "plex", 5, NOW), { ok: false, bind: false });
 });
+
+/* ===== 🆕 هجرة ٢٦٥ — منصّاتُ البثّ (نتفليكس): خانةٌ كأيِّ جهاز، ولبلس وحده ===== */
+test("المنصّة: خانةٌ واحدة، ولا يستبدلها جهاز، ولا تظهر في «من أجهزتك»", async () => {
+  const { canLinkPlatform, partitionTier, kindsOf, replacedBy } = await import("./deviceLinks.ts");
+  const nfx = row({ table: "platform_links", token_hash: "uuid-1", platform: "netflix", last_used_at: ago(2) });
+  assert.deepEqual(kindsOf(nfx), []);
+  assert.equal(slotsOf(nfx), 1);
+  assert.equal(replacedBy(nfx, "plex"), false, "صفٌّ بلا server ولا kinds ليس رابطَ سيرفرٍ قديماً");
+  const stremio = row({ table: "stremio_links", token_hash: "a".repeat(64), last_used_at: ago(1) });
+  assert.equal(usedSlots([nfx, stremio], NOW), 2);
+  /* إعادةُ الربط لا تأخذ خانة؛ والجديدةُ تحتاج خانة؛ والمجّانيُّ لا يربط منصّة */
+  assert.equal(canLinkPlatform([nfx], "netflix", "plus", NOW), true);
+  assert.equal(canLinkPlatform([], "netflix", "free", NOW), false);
+  const four = ["stremio_links", "kodi_links"].map((t, i) => row({ table: t as LinkRow["table"], token_hash: String(i).repeat(64), last_used_at: ago(1) }));
+  const homes = (["plex", "jellyfin", "emby"] as const).map((s, i) => row({ table: "home_server_links", token_hash: String(i + 5).repeat(64), server: s, last_used_at: ago(1) }));
+  assert.equal(canLinkPlatform([...four, ...homes], "netflix", "plus", NOW), false, "خمسُ خاناتٍ ممتلئة");
+  assert.equal(canLinkPlatform([...four, ...homes], "netflix", "gold", NOW), true);
+  /* النزولُ إلى المجّانيّ يُوقف المنصّة ويُبقي الجهازَ في خانته الواحدة */
+  const p = partitionTier([nfx, stremio], "free", NOW);
+  assert.deepEqual(p.keep.map((r) => r.token_hash), [stremio.token_hash]);
+  assert.deepEqual(p.stop.map((r) => r.token_hash), ["uuid-1"]);
+  assert.deepEqual(partitionTier([nfx, stremio], "plus", NOW).stop, []);
+});

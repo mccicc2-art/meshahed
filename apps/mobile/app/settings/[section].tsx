@@ -18,6 +18,7 @@ import { HomeServersScreen } from "../../src/settings/HomeServersScreen";
 import { HomeDeviceScreen, KodiDeviceScreen, StremioDeviceScreen } from "../../src/links/DeviceScreens";
 import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
 import { LinksScreen } from "../../src/links/LinksScreen";
+import { NetflixScreen } from "../../src/links/netflix/NetflixScreen";
 import { useLinks } from "../../src/links/api";
 
 /**
@@ -56,6 +57,8 @@ const SCREENS = {
   emby: () => <HomeDeviceScreen kind="emby" />,
   kodi: KodiDeviceScreen,
   "link-intro": LinkIntroScreen,
+  /* 🆕 هجرة ٢٦٥ — صفحةُ نتفليكس (الفكرة «ب»): الموافقةُ والدخولُ وسؤالُ الاستيراد والمزامنة */
+  netflix: NetflixScreen,
   /* «سيرفرات البيت» (هجرة ٢٣٥) — رابطٌ قديمٌ قد يفتحها: قبل الهجرة شاشتُها، وبعدها المدار */
   "home-servers": HomeServersEntry,
 } as const;

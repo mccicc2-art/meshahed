@@ -1,7 +1,7 @@
 // TMDB API client (v3). Requires TMDB_API_KEY in the environment.
 // Server-only: never expose the key to the browser.
 
-import { exactByTitle, pickByTitle } from "@/core/nameMatch";
+import { exactByTitle, normTitle, pickByTitle } from "@/core/nameMatch";
 import { cache } from "react";
 import { applyLoopzNames, collectEnglish, missingEnglish, applyOriginalNames } from "@/core/loopzNames";
 import { cookies } from "next/headers";
@@ -2862,6 +2862,34 @@ export async function searchByName(
   year?: number,
 ): Promise<SearchResult | null> {
   return (await searchByNameBoth(name, media, year)).hit;
+}
+
+/**
+ * 🆕 **مسلسلٌ بحلقةٍ منه** — مزامنةُ نتفليكس (`core/netflix.ts`): الاسمُ وحده يخطئ حين يتشارك عملان اسماً («One Piece» الحيّ ٢٠٢٣
+ * و«One Piece» الأنمي ١٩٩٩)، ونتفليكس تعطينا مع الاسم حلقةً بموسمها ورقمها واسمها الإنجليزيّ. فمن أوّل خمس نتائج يُختار ما في
+ * موسمه حلقةٌ بهذا الرقم وهذا الاسم. لا مطابقَ ⇐ `null`، والمنادي يرجع إلى البحث بالاسم (`searchByNameBoth`).
+ * الصفُّ المُعاد بلغة الواجهة إن وُجد في ردِّها (الاسمُ والملصقُ كما يراهما العضو)، وإلّا الإنجليزيّ.
+ */
+export async function tvByEpisode(name: string, season: number, episode: number, episodeTitle: string): Promise<SearchResult | null> {
+  const q = name.trim();
+  const want = normTitle(episodeTitle);
+  if (!q || !want || !Number.isInteger(season) || !Number.isInteger(episode)) return null;
+  try {
+    const params = { query: q, include_adult: "false" };
+    const [own, en] = await Promise.all([
+      tmdb<{ results: SearchResult[] }>("/search/tv", params).then((d) => d.results ?? []).catch(() => [] as SearchResult[]),
+      tmdb<{ results: SearchResult[] }>("/search/tv", { ...params, language: "en-US" }).then((d) => d.results ?? []),
+    ]);
+    const same = (a: string, b: string) => a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a)));
+    for (const c of en.slice(0, 5)) {
+      const s = await tmdb<SeasonDetails>(`/tv/${c.id}/season/${season}`, { language: "en-US" }).catch(() => null);
+      const ep = s?.episodes?.find((x) => x.episode_number === episode);
+      if (ep && same(normTitle(ep.name), want)) return { ...(own.find((r) => r.id === c.id) ?? c), media_type: "tv" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**

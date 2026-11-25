@@ -17,6 +17,7 @@ import { shell } from "../src/shell";
 import { PushGate } from "../src/PushGate";
 import { PushNudge } from "../src/PushNudge";
 import { WidgetGate } from "../src/WidgetGate";
+import { NetflixSyncHost } from "../src/links/netflix/NetflixSyncHost";
 import { startWidgetFeed } from "../src/widget/feed";
 import { TourHost } from "../src/tour/TourHost";
 import { DrawerHost } from "../src/drawer/SideDrawer";
@@ -206,6 +207,8 @@ function Shell() {
       {/* 🆕 T348 — مرّةً لمن رفض إذنَ الإشعارات: ورقةٌ تفتح صفحةَ Loopz في إعدادات الجهاز (`src/PushNudge.tsx`) */}
       <PushNudge />
       <WidgetGate />
+      {/* 🆕 هجرة ٢٦٥ — مزامنةُ نتفليكس: متصفّحٌ مخفيٌّ للمهمّة وحدَها، وعند الفتح بعد ستِّ ساعاتٍ لمشترك Loopz+ (`src/links/netflix`) */}
+      <NetflixSyncHost />
       {/* 🆕 D-1318 — الجولةُ أصليّةً: بطاقةٌ فوق المكدّس وفوق الطبقة، وتصمت في الحالة الشائعة (`src/tour/TourHost.tsx`) */}
       {/* 🆕 D-1505 — القائمةُ الجانبيّة: تُفتح من صورة الحساب وتُرسم مرّةً فوق المكدّس (`src/drawer/SideDrawer.tsx`) */}
       <DrawerHost />

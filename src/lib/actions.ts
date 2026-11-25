@@ -6231,7 +6231,7 @@ export async function resolveImportItems(
 ): Promise<ResolveResult[]> {
   await requireUser("import-resolve", 90, 60_000);
   const list = (requests ?? []).slice(0, 40);
-  const { findByExternalId, searchByNameBoth, titleOf } = await import("@/lib/tmdb");
+  const { findByExternalId, searchByNameBoth, titleOf, tvByEpisode } = await import("@/lib/tmdb");
 
   /* 🆕 **MyAnimeList ⇐ جدولُ Fribb** (`lib/fribb.ts`): رقمُ MAL يعطي مسلسلَ TMDB وموسمَه وإزاحتَه — لا بحثَ بالاسم (موسمُ أنمي
      باسمٍ ياباني يطابق خطأً). يُحمَّل مرّةً للدفعة وحين تطلبه وحدَه. **وتعذُّرُه خطأٌ يُقال** لا «لم نجد» على كلِّ عمل: من يرى
@@ -6314,6 +6314,13 @@ export async function resolveImportItems(
         };
       }
 
+      /* 🆕 نتفليكس — المسلسلُ بحلقةٍ منه أوّلاً (`tvByEpisode`)، ثمّ بالاسم كأيِّ ملفّ */
+      if (req.kind === "netflix-tv") {
+        const hit = (await tvByEpisode(String(req.name ?? "").slice(0, 200), intIn(req.s, 0, 100), intIn(req.e, 0, 20_000), String(req.title ?? "").slice(0, 300))) ?? (await searchByNameBoth(String(req.name ?? "").slice(0, 200), "tv")).hit;
+        if (!hit) return null;
+        return { tmdbId: hit.id, mediaType: "tv", title: titleOf(hit), posterPath: safeImagePath(hit.poster_path) };
+      }
+
       const media = req.kind === "name-tv" ? "tv" : "movie";
       const { hit, legacy } = await searchByNameBoth(String(req.name ?? "").slice(0, 200), media, req.year);
       if (!hit) return null;
@@ -6378,6 +6385,8 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   /* 🆕 **«ما في Loopz يبقى»** (`keep` — ملفّاتُ الاستيراد كلُّها، أحمد ٢٠ نوفمبر «١ أ»، قاعدةُ Trakt): كلُّ كتابةٍ تُضيف الناقصَ
      ولا تمسّ الموجود (`ignoreDuplicates`). وغيابُه (Plex · تطبيقٌ قديم) يُبقي الكتابةَ القديمة */
   const keep = payload?.keep === true;
+  /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — الشارةُ وعدُّ ما يبقى عند الفكّ. وكلُّ شيءٍ آخر `import` كما كان */
+  const source = payload?.source === "netflix" ? ("netflix" as const) : ("import" as const);
   const upsertOpts = (onConflict: string) => ({ onConflict, ...(keep ? { ignoreDuplicates: true } : {}) });
 
   /* 🆕 **IMDb — ما يُعلَّم ضمناً يُحسب هنا لا عند العميل** (R58): «المسلسلُ كلُّه» (`all`، «١ ب») و«الحلقةُ وما قبلها»
@@ -6476,7 +6485,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
         runtime: null as number | null,
         watched_at: mv.at ?? stamp,
         /* 🆕 T537 — المستوردُ موسومٌ (أحمد ٢٤ نوفمبر «٢أ»): تصحيحٌ قادمٌ يعرف ما جاء من ملفٍّ يقيناً لا بوقت إضافته */
-        source: "import" as const,
+        source,
       })),
     (r) => r.movie_tmdb_id,
   );
@@ -6578,7 +6587,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
         episode_number: ep.e,
         runtime: runtime as number | null,
         watched_at: ep.at ?? stamp,
-        source: "import" as const,
+        source,
       }));
   });
 
@@ -6593,7 +6602,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
           episode_number: intIn(ep.e, 0, 20_000),
           runtime: null as number | null,
           watched_at: ep.at ?? stamp,
-          source: "import" as const,
+          source,
         })),
       ),
     ],

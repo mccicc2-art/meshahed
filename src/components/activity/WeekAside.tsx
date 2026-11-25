@@ -91,5 +91,7 @@ export function WeekAside({ items, locale, local, todayKey }: { items: ActivityI
 export function sourceName(s: WatchSource | null, t: ReturnType<typeof getDict>, manual: string): string {
   if (!s) return manual;
   if (s === "plex" || s === "jellyfin" || s === "emby" || s === "kodi" || s === "stremio") return SIGNAL_SOURCE_NAME[s];
+  /* 🆕 هجرة ٢٦٥ — اسمُ منتجٍ لا يُترجم */
+  if (s === "netflix") return "Netflix";
   return s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

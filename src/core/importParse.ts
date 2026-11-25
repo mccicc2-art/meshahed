@@ -16,7 +16,9 @@ import type { ResolveRequest } from "./importer";
 
 /** سجلٌّ خام كما فُهم من الملف — قبل مطابقته مع TMDB */
 export type RawRecord =
-  | { kind: "ep-name"; show: string; year?: number; s: number; e: number; at?: string }
+  /* 🆕 `nfx` — حلقةٌ من مزامنة نتفليكس (`core/netflix.ts`): معرّفُ مسلسلها هناك واسمُ الحلقة بالإنجليزيّة. المسلسلُ يُطابَق بهما
+     (`netflix-tv`) لا بالاسم وحده: «One Piece» الحيّ و«One Piece» الأنمي اسمٌ واحد، وحلقةٌ منه تفرّق بينهما */
+  | { kind: "ep-name"; show: string; year?: number; s: number; e: number; at?: string; nfx?: { show: string; title: string } }
   | { kind: "ep-tvdb"; episodeTvdbId: number; at?: string }
   /* `name` · `rating` · `state` 🆕 من Bingers (عملٌ بلا معرّف TMDB في تصديره) — اختياريّةٌ: TV Time لا يحملها */
   | { kind: "show-tvdb"; tvdbId: number; name?: string; rating?: number; state?: "dropped" }
@@ -298,7 +300,8 @@ export interface GroupedRaw {
 export function recordKey(r: RawRecord): string {
   switch (r.kind) {
     case "ep-name":
-      return `tv:${r.show.toLowerCase()}:${r.year ?? ""}`;
+      /* 🆕 نتفليكس ⇐ مفتاحُ مسلسلها هناك: مسلسلان باسمٍ واحد لا يندمجان في مطابقةٍ واحدة */
+      return r.nfx ? `nfx:${r.nfx.show}` : `tv:${r.show.toLowerCase()}:${r.year ?? ""}`;
     case "rating-show":
       return `tv:${r.show.toLowerCase()}:`;
     case "movie-name":
@@ -339,7 +342,8 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
   for (const r of records) {
     const key = recordKey(r);
     if (map.has(key)) continue;
-    if (r.kind === "ep-name") map.set(key, { kind: "name-tv", name: r.show, year: r.year });
+    if (r.kind === "ep-name")
+      map.set(key, r.nfx ? { kind: "netflix-tv", name: r.show, show: r.nfx.show, s: r.s, e: r.e, title: r.nfx.title } : { kind: "name-tv", name: r.show, year: r.year });
     else if (r.kind === "rating-show") map.set(key, { kind: "name-tv", name: r.show });
     else if (r.kind === "movie-name" || r.kind === "movie-watchlist")
       map.set(key, { kind: "name-movie", name: r.name, year: r.year });

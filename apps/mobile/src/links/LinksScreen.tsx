@@ -14,12 +14,13 @@ import { Sheet } from "../library/Sheet";
 import { SettingsScreen, Group, Row, RowsSkeleton, StatusPill, Toggle, OptionRow, OptionList } from "../settings/ui";
 import { messageOf } from "../settings/api";
 import { PlexImportSheet } from "../settings/PlexImport";
-import { DeviceLabel, DeviceMark } from "./DeviceMark";
+import { DeviceLabel, DeviceMark, PlatformMark } from "./DeviceMark";
 import { UnlinkSheet } from "./UnlinkSheet";
 import { Orbit, OrbitCounter, physLeft, slotPoints, slotsOf, type Slot } from "./Orbit";
-import { canLinkNow, deviceName, linksWrite, useLinks } from "./api";
+import { canLinkNetflix, canLinkNow, deviceName, linksWrite, useLinks } from "./api";
+import { requestNetflixSync } from "./netflix/NetflixSyncHost";
 import { DEVICE_KINDS } from "@/core/deviceLinks";
-import type { DeviceKind, DeviceLinksState } from "@/core/contracts/deviceLinks";
+import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
 
 /**
  * ====== 🆕 «الربط» — مدارُ الأجهزة (خطّةُ Loopz+ v2، المرحلة ٠؛ أحمد ٥ نوفمبر «اعتمدها» ثمّ «نفذ») ======
@@ -48,6 +49,8 @@ export function LinksScreen() {
   const q = useLinks();
   const d = q.data;
   const [hold, setHold] = useState<DeviceKind | null>(null);
+  /* 🆕 هجرة ٢٦٥ — الضغطُ المطوَّل على منصّةٍ في المدار */
+  const [holdP, setHoldP] = useState<PlatformKind | null>(null);
   const [confirm, setConfirm] = useState<DeviceKind | null>(null);
   const [keepOpen, setKeepOpen] = useState(false);
   const [plexOpen, setPlexOpen] = useState(false);
@@ -219,12 +222,16 @@ export function LinksScreen() {
 
   const free = d.tier === "free";
   const full = d.limit != null && d.used >= d.limit;
+  const netflix = d.platforms?.find((p) => p.platform === "netflix") ?? null;
+  const netflixLinked = !!netflix && !netflix.stopped;
+  const netflixStopped = !!netflix?.stopped;
   const unlinked = DEVICE_KINDS.filter((k) => !d.devices.find((x) => x.kind === k)?.linked || d.devices.find((x) => x.kind === k)?.stopped);
   /* الرابطُ القديمُ قبل أوّل إرسالٍ لا يُختار في الورقة (لا جهازَ معروفاً له) — صفُّه تحت «من أجهزتك» يفكّه */
   const stopped = d.devices.filter((x) => x.stopped).length;
   /* 🆕 الخانةُ الفارغةُ تفتح «أضف جهازاً» فيختار العضو (أحمد ٦ نوفمبر: «لا تقترح بلكس») — كانت تفتح أوّلَ ما لم يُربط */
   const onSlot = (s: Slot) => {
     if (s.type === "device") return open(s.kind);
+    if (s.type === "platform") return open(s.platform);
     if (s.type === "locked") return intro();
     haptic.pick();
     setAddOpen(true);
@@ -246,6 +253,19 @@ export function LinksScreen() {
             <Ghost key={k} kind={k} idx={DEVICE_KINDS.indexOf(k)} dragK={dragK} gx={gx} gy={gy} lift={lift} />
           ))}
           {addOpen ? <AddSheet kinds={unlinked} d={d} onClose={() => setAddOpen(false)} onPick={pickDevice} /> : null}
+          {holdP ? (
+            <PlatformHoldSheet
+              onClose={() => setHoldP(null)}
+              onSync={() => {
+                setHoldP(null);
+                if (requestNetflixSync("manual")) toast.current?.say(t.nfxSyncing);
+              }}
+              onOpen={() => {
+                setHoldP(null);
+                open("netflix");
+              }}
+            />
+          ) : null}
           {hold ? <HoldSheet kind={hold} onClose={() => setHold(null)} onOpen={() => { setHold(null); open(hold); }} onUnlink={() => { setHold(null); setConfirm(hold); }} /> : null}
           {confirm ? <UnlinkSheet kind={confirm} works={d.devices.find((x) => x.kind === confirm)?.works ?? 0} onClose={() => setConfirm(null)} onConfirm={() => revoke(confirm)} /> : null}
           {keepOpen ? <KeepSheet d={d} onClose={() => setKeepOpen(false)} onError={say} /> : null}
@@ -255,7 +275,7 @@ export function LinksScreen() {
     >
       {/* ───── المدار والعدّاد ───── */}
       <Reanimated.View ref={orbitRef} collapsable={false}>
-        <Orbit d={d} width={orbitW} onSlot={onSlot} onHold={(k) => { haptic.pick(); setHold(k); }} hot={hot} hotSlot={hotSlot} />
+        <Orbit d={d} width={orbitW} onSlot={onSlot} onHold={(k) => { haptic.pick(); setHold(k); }} onHoldPlatform={(p) => { haptic.pick(); setHoldP(p); }} hot={hot} hotSlot={hotSlot} />
       </Reanimated.View>
       <OrbitCounter d={d} />
       {stopped > 0 ? (
@@ -317,6 +337,40 @@ export function LinksScreen() {
           </View>
         ) : null}
       </View>
+
+      {/* ───── 🆕 منصّاتُ البثّ (هجرة ٢٦٥) — نتفليكس لـLoopz+ وحده؛ المربوطةُ في المدار، وغيرُها هنا ───── */}
+      {!netflixLinked ? (
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
+            <Text size={16} weight="800">{t.nfxSection}</Text>
+            <View style={{ flex: 1 }} />
+          </View>
+          <View style={{ flexDirection: "row", paddingHorizontal: 4 }}>
+            <Pressable
+              onPress={() => {
+                haptic.pick();
+                if (netflixStopped) setKeepOpen(true);
+                else if (canLinkNetflix(d)) open("netflix");
+                else intro();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t.linksLinkAction("Netflix")}
+              style={{ width: LIST_TILE + 8, alignItems: "center", opacity: free ? 0.45 : 1 }}
+            >
+              <View>
+                <PlatformMark size={LIST_TILE} state={netflixStopped ? "paused" : "idle"} />
+                {free ? (
+                  <View style={{ position: "absolute", top: -4, end: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="lock" size={11} color={tokens.muted} />
+                  </View>
+                ) : null}
+              </View>
+              <DeviceLabel name="Netflix" muted={free} />
+              {netflixStopped ? <Text size={10} muted>{t.linksStopped}</Text> : null}
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {/* ───── مع Loopz+ ───── */}
       <Group label={t.linksWithPlus}>
@@ -402,6 +456,19 @@ function PlusLock() {
   );
 }
 
+/** 🆕 الضغطُ المطوَّل على منصّةٍ في المدار: «زامن الآن · افتح صفحتها» (خطّةُ Loopz+ v2 §5: «حدّث الآن» للمنصّة) */
+function PlatformHoldSheet({ onClose, onSync, onOpen }: { onClose: () => void; onSync: () => void; onOpen: () => void }) {
+  const { t } = useApp();
+  return (
+    <Sheet title="Netflix" onClose={onClose}>
+      <Group>
+        <Row icon="repeat" title={t.nfxSyncNow} onPress={onSync} />
+        <Row icon="link" title={t.linksOpenPage} onPress={onOpen} />
+      </Group>
+    </Sheet>
+  );
+}
+
 /** الضغطُ المطوَّل على مربوط: «افتح صفحته · فك الربط» */
 function HoldSheet({ kind, onClose, onOpen, onUnlink }: { kind: DeviceKind; onClose: () => void; onOpen: () => void; onUnlink: () => void }) {
   const { t } = useApp();
@@ -422,8 +489,11 @@ function HoldSheet({ kind, onClose, onOpen, onUnlink }: { kind: DeviceKind; onCl
 function KeepSheet({ d, onClose, onError }: { d: DeviceLinksState; onClose: () => void; onError: (e: unknown) => void }) {
   const { t } = useApp();
   const linked = d.devices.filter((x) => x.linked);
-  const limit = d.limit ?? linked.length;
+  /* 🆕 هجرة ٢٦٥ — المنصّاتُ تُختار مع الأجهزة وتُعدّ معها */
+  const plats = d.platforms ?? [];
+  const limit = d.limit ?? linked.length + plats.length;
   const [pick, setPick] = useState<DeviceKind[]>(linked.filter((x) => !x.stopped).map((x) => x.kind));
+  const [pickP, setPickP] = useState<PlatformKind[]>(plats.filter((p) => !p.stopped).map((p) => p.platform));
   const [busy, setBusy] = useState(false);
   /* الأجهزةُ التي تمرّ في الرابط القديم المشترك رابطٌ واحد: تُختار معاً وتُعدّ معاً — كما يعدّها الخادم */
   const shared = linked.filter((x) => x.shared).map((x) => x.kind);
@@ -434,13 +504,14 @@ function KeepSheet({ d, onClose, onError }: { d: DeviceLinksState; onClose: () =
       if (cur.includes(k)) return cur.filter((x) => !g.includes(x));
       let next = [...cur.filter((x) => !g.includes(x)), ...g];
       /* فوق الحدّ: يسقط الأقدمُ اختياراً (ومجموعتُه معه) حتى يتّسع */
-      while (next.length > limit && next.length > g.length) next = next.filter((x) => !group(next[0]).includes(x));
+      while (next.length + pickP.length > limit && next.length > g.length) next = next.filter((x) => !group(next[0]).includes(x));
       return next;
     });
+  const toggleP = (p: PlatformKind) => setPickP((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : pick.length + cur.length + 1 <= limit ? [...cur, p] : cur));
   const save = async () => {
     setBusy(true);
     try {
-      await linksWrite({ action: "keep", kinds: pick });
+      await linksWrite({ action: "keep", kinds: pick, ...(plats.length ? { platforms: pickP } : {}) });
       haptic.pick();
       onClose();
     } catch (e) {
@@ -457,8 +528,13 @@ function KeepSheet({ d, onClose, onError }: { d: DeviceLinksState; onClose: () =
           {linked.map((x) => (
             <OptionRow key={x.kind} selected={pick.includes(x.kind)} title={deviceName(x.kind)} subtitle={x.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggle(x.kind)} />
           ))}
+          {d.tier !== "free"
+            ? plats.map((p) => (
+                <OptionRow key={p.platform} selected={pickP.includes(p.platform)} title="Netflix" subtitle={p.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggleP(p.platform)} />
+              ))
+            : null}
         </OptionList>
-        <Button label={t.keepSave} busy={busy} disabled={!pick.length} onPress={() => void save()} />
+        <Button label={t.keepSave} busy={busy} disabled={!pick.length && !pickP.length} onPress={() => void save()} />
       </View>
     </Sheet>
   );

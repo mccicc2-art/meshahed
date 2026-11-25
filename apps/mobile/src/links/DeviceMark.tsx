@@ -151,3 +151,30 @@ export function DeviceLabel({ name, muted }: { name: string; muted?: boolean }) 
     </Text>
   );
 }
+
+/**
+ * 🆕 **شارةُ منصّة البثّ** (هجرة ٢٦٥ — نتفليكس): الإطارُ نفسُه بحالاته، وفي وسطه **الاسمُ مكتوباً لا الشعار** — شعارُهم بإذنٍ
+ * مكتوبٍ فقط (قاعدةُ الشعارات: «لا نرسم شعاراً بأيدينا»)، كالتصميم المعتمد ٢٥ نوفمبر.
+ */
+export function PlatformMark({ size = 56, state = "idle" }: { size?: number; state?: "idle" | "on" | "paused" }) {
+  const { tokens } = useApp();
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius.md,
+        borderWidth: state === "on" ? 1.5 : 1,
+        borderColor: state === "on" ? tokens.accent : tokens.border,
+        backgroundColor: tokens.surface,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: state === "paused" ? 0.55 : 1,
+      }}
+    >
+      <Text size={Math.max(7, Math.round(size * 0.17))} weight="800" style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
+        NETFLIX
+      </Text>
+    </View>
+  );
+}

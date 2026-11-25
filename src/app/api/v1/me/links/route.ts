@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
-import { deviceLinksOf, keepDevices, kodiDeviceOf, kodiPairPending, revokeLinkToken, revokePendingLegacy, setAutoMark } from "@/lib/linkTokens";
+import { deviceLinksOf, keepDevices, kodiDeviceOf, kodiPairPending, platformLinksOf, revokeLinkToken, revokePendingLegacy, setAutoMark } from "@/lib/linkTokens";
 import { sharedLimited } from "@/lib/sharedLimit";
 import { createClient } from "@/lib/supabase/server";
 import { getMovie, getTv } from "@/lib/tmdb";
 import { handle, requireUser, limited, fail } from "@/lib/v1";
-import { DEVICE_KINDS, isDeviceKind, isHomeKind, kindsOf, slotLimit, usedSlots, type LinkRow } from "@/core/deviceLinks";
+import { DEVICE_KINDS, PLATFORM_KINDS, isDeviceKind, isHomeKind, isPlatformKind, kindsOf, slotLimit, usedSlots, type LinkRow } from "@/core/deviceLinks";
 import { ok, type Result } from "@/core/contracts/result";
-import type { DeviceLinkInfo, DeviceLinksBody, DeviceLinksState } from "@/core/contracts/deviceLinks";
+import type { DeviceLinkInfo, DeviceLinksBody, DeviceLinksState, PlatformLinkInfo } from "@/core/contracts/deviceLinks";
 
 /**
  * `GET /api/v1/me/links` — **مدارُ الأجهزة** لصفحة «الربط» (هجرة ٢٣٧): الطبقةُ وخاناتُها، وكلُّ جهازٍ من الخمسة مربوطٌ أم لا،
@@ -24,7 +24,8 @@ export async function GET() {
 }
 
 async function stateOf(uid: string): Promise<DeviceLinksState> {
-  const [st, device, pairing, works, last] = await Promise.all([deviceLinksOf(uid), kodiDeviceOf(uid), kodiPairPending(uid), worksBySource(uid), lastBySource(uid)]);
+  const [st, device, pairing, sources, last, plats] = await Promise.all([deviceLinksOf(uid), kodiDeviceOf(uid), kodiPairPending(uid), worksBySource(uid), lastBySource(uid), platformLinksOf(uid)]);
+  const { works, split } = sources;
   if (!st) {
     return {
       tier: "free",
@@ -36,6 +37,7 @@ async function stateOf(uid: string): Promise<DeviceLinksState> {
       kodi_device: null,
       kodi_pairing: false,
       ready: false,
+      platforms: [],
     };
   }
   const rowFor = (kind: (typeof DEVICE_KINDS)[number]): LinkRow | undefined =>
@@ -65,6 +67,21 @@ async function stateOf(uid: string): Promise<DeviceLinksState> {
     kodi_device: devices.find((d) => d.kind === "kodi")?.linked ? device : null,
     kodi_pairing: pairing,
     ready: true,
+    /* 🆕 هجرة ٢٦٥ — المنصّاتُ بحالها بعد حكم الخانات (`deviceLinksOf` أنزله على صفوفها أيضاً) */
+    platforms: plats.map((p): PlatformLinkInfo => {
+      const r = st.rows.find((x) => x.table === "platform_links" && x.platform === p.platform);
+      return {
+        platform: p.platform,
+        stopped: !!(r?.stopped_at ?? p.stopped_at),
+        profile_label: p.profile_label,
+        linked_at: p.created_at,
+        synced_at: p.last_used_at,
+        last_item_at: p.last_item_at,
+        since_at: p.since_at,
+        works: works.get(p.platform) ?? 0,
+        counts: split.get(p.platform) ?? { shows: 0, episodes: 0, movies: 0 },
+      };
+    }),
   };
 }
 
@@ -105,23 +122,37 @@ async function lastBySource(uid: string): Promise<Map<string, { title: string; s
  * كم عملاً في مكتبة العضو سجّله كلُّ جهاز (`source` في السجلّ، D-1505) — نداءان بجلسته (RLS: صفوفُه وحدها)، والعدُّ أعمالٌ لا حلقات.
  * ⚖️ فشلُهما صمت: التأكيدُ يُقال بلا رقم.
  */
-async function worksBySource(uid: string): Promise<Map<string, number>> {
+async function worksBySource(uid: string): Promise<{ works: Map<string, number>; split: Map<string, { shows: number; episodes: number; movies: number }> }> {
   const out = new Map<string, number>();
+  /* 🆕 هجرة ٢٦٥ — الأرقامُ الثلاثة لصفحة نتفليكس من القراءة نفسِها: مسلسلاتٌ (مميّزة) وحلقاتٌ (صفوف) وأفلامٌ (مميّزة) */
+  const split = new Map<string, { shows: number; episodes: number; movies: number }>();
+  const bump = (src: string, k: "shows" | "episodes" | "movies") => {
+    const c = split.get(src) ?? { shows: 0, episodes: 0, movies: 0 };
+    c[k]++;
+    split.set(src, c);
+  };
   try {
     const supabase = await createClient();
     const [eps, mvs] = await Promise.all([
-      supabase.from("watched_episodes").select("source, show_tmdb_id").eq("user_id", uid).in("source", [...DEVICE_KINDS]).limit(20_000),
-      supabase.from("watched_movies").select("source, movie_tmdb_id").eq("user_id", uid).in("source", [...DEVICE_KINDS]).limit(20_000),
+      supabase.from("watched_episodes").select("source, show_tmdb_id").eq("user_id", uid).in("source", [...DEVICE_KINDS, ...PLATFORM_KINDS]).limit(20_000),
+      supabase.from("watched_movies").select("source, movie_tmdb_id").eq("user_id", uid).in("source", [...DEVICE_KINDS, ...PLATFORM_KINDS]).limit(20_000),
     ]);
     const seen = new Map<string, Set<string>>();
     const add = (src: string, key: string) => (seen.get(src) ?? seen.set(src, new Set()).get(src)!).add(key);
-    for (const r of (eps.data ?? []) as { source: string; show_tmdb_id: number }[]) add(r.source, `tv:${r.show_tmdb_id}`);
-    for (const r of (mvs.data ?? []) as { source: string; movie_tmdb_id: number }[]) add(r.source, `mv:${r.movie_tmdb_id}`);
+    for (const r of (eps.data ?? []) as { source: string; show_tmdb_id: number }[]) {
+      if (!seen.get(r.source)?.has(`tv:${r.show_tmdb_id}`)) bump(r.source, "shows");
+      add(r.source, `tv:${r.show_tmdb_id}`);
+      bump(r.source, "episodes");
+    }
+    for (const r of (mvs.data ?? []) as { source: string; movie_tmdb_id: number }[]) {
+      if (!seen.get(r.source)?.has(`mv:${r.movie_tmdb_id}`)) bump(r.source, "movies");
+      add(r.source, `mv:${r.movie_tmdb_id}`);
+    }
     for (const [k, v] of seen) out.set(k, v.size);
   } catch {
     /* بلا رقم */
   }
-  return out;
+  return { works: out, split };
 }
 
 /**
@@ -148,8 +179,12 @@ export async function POST(req: NextRequest) {
       if (!(await setAutoMark(uid, body.value))) return fail("upstream");
     } else if (body?.action === "keep") {
       const kinds = Array.isArray(body.kinds) ? body.kinds.filter(isDeviceKind) : [];
-      if (!kinds.length || kinds.length !== body.kinds.length) return fail("invalid_input");
-      if (!(await keepDevices(uid, kinds))) return fail("conflict", { message_key: "apiLinkSlotsFull" });
+      /* 🆕 المنصّاتُ تُختار مع الأجهزة (هجرة ٢٦٥) — اختيارُ نتفليكس وحدها صحيح */
+      const platforms = Array.isArray(body.platforms) ? body.platforms.filter(isPlatformKind) : [];
+      if (!Array.isArray(body.kinds) || kinds.length !== body.kinds.length) return fail("invalid_input");
+      if (body.platforms !== undefined && (!Array.isArray(body.platforms) || platforms.length !== body.platforms.length)) return fail("invalid_input");
+      if (!kinds.length && !platforms.length) return fail("invalid_input");
+      if (!(await keepDevices(uid, kinds, platforms))) return fail("conflict", { message_key: "apiLinkSlotsFull" });
     } else if (body?.action === "revoke") {
       const kind = body.kind;
       if (!isDeviceKind(kind)) return fail("invalid_input");

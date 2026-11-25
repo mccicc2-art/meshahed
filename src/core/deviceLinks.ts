@@ -35,7 +35,17 @@ export function slotLimit(tier: LinkTier): number {
   return tier === "gold" ? Infinity : tier === "plus" ? 5 : 1;
 }
 
-export type LinkTableName = "stremio_links" | "home_server_links" | "kodi_links";
+export type LinkTableName = "stremio_links" | "home_server_links" | "kodi_links" | "platform_links";
+
+/**
+ * 🆕 **منصّاتُ البثّ** (هجرة ٢٦٥، خطّةُ مزامنة نتفليكس): تأخذ خانةً كأيِّ جهاز، لكنّها ليست «من أجهزتك» — فلا تدخل `DeviceKind`
+ * (قوائمُ الأجهزة الخمسة وصفحاتُها لا تتغيّر)، ولها ترتيبُها وقائمتُها هنا.
+ */
+export type PlatformKind = "netflix";
+export const PLATFORM_KINDS: readonly PlatformKind[] = ["netflix"];
+export function isPlatformKind(v: unknown): v is PlatformKind {
+  return typeof v === "string" && (PLATFORM_KINDS as readonly string[]).includes(v);
+}
 
 /** صفُّ رابطٍ كما يقرؤه الخادم من الجداول الثلاثة */
 export interface LinkRow {
@@ -45,6 +55,8 @@ export interface LinkRow {
   server: HomeKind | null;
   /** للرابط القديم وحده: الأنواعُ التي أرسلت منه */
   kinds: HomeKind[];
+  /** 🆕 `platform_links` وحده: المنصّة. ومفتاحُ صفِّها (`id`) يُحمل في `token_hash` — لا رمزَ لها، والحكمُ يحتاج مفتاحاً واحداً */
+  platform?: PlatformKind | null;
   created_at: string;
   last_used_at: string | null;
   stopped_at: string | null;
@@ -60,6 +72,8 @@ export function isAlive(r: LinkRow, now = Date.now()): boolean {
 
 /** الأجهزةُ التي يمثّلها الصفّ — والرابطُ القديمُ قبل أوّل إرسالٍ لا جهازَ معروفاً له */
 export function kindsOf(r: LinkRow): DeviceKind[] {
+  /* منصّةٌ ليست جهازاً — خانتُها واحدة (`slotsOf`) ولا تظهر في «من أجهزتك» */
+  if (r.table === "platform_links") return [];
   if (r.table === "stremio_links") return ["stremio"];
   if (r.table === "kodi_links") return ["kodi"];
   return r.server ? [r.server] : [...r.kinds];
@@ -93,6 +107,18 @@ export function partition(rows: LinkRow[], limit: number, now = Date.now()): { k
   return { keep, stop };
 }
 
+/**
+ * 🆕 **حكمُ الطبقة كلِّه** (هجرة ٢٦٥): الخاناتُ كما في `partition`، و**المنصّاتُ لـLoopz+ وحده** (أحمد ٢١ نوفمبر «٣ب») —
+ * فالمجّانيُّ تُوقف منصّتُه ولا تأخذ خانتَه الواحدة (تبقى لجهازٍ من «من أجهزتك»). ونزولٌ من بلس يُوقفها ولا يحذفها: يعود
+ * باشتراكٍ جديد بملفّه وسجلّه.
+ */
+export function partitionTier(rows: LinkRow[], tier: LinkTier, now = Date.now()): { keep: LinkRow[]; stop: LinkRow[] } {
+  if (tier !== "free") return partition(rows, slotLimit(tier), now);
+  const plats = rows.filter((r) => r.table === "platform_links" && isAlive(r, now));
+  const p = partition(rows.filter((r) => r.table !== "platform_links"), slotLimit(tier), now);
+  return { keep: p.keep, stop: [...p.stop, ...plats] };
+}
+
 /** الخاناتُ المستعملةُ الآن (الشغّالُ الحيّ وحده) */
 export function usedSlots(rows: LinkRow[], now = Date.now()): number {
   return rows.filter((r) => isAlive(r, now) && !r.stopped_at).reduce((n, r) => n + slotsOf(r), 0);
@@ -109,8 +135,22 @@ export function canIssue(rows: LinkRow[], kind: DeviceKind, limit: number, now =
   return usedSlots(rows, now) - freed + 1 <= limit;
 }
 
+/**
+ * 🆕 هل تُربط هذه المنصّة؟ — **إعادةُ ربطها لا تأخذ خانة** (دخولٌ جديدٌ بعد انتهاء الجلسة، أو ملفٌّ شخصيٌّ آخر: الصفُّ نفسُه)،
+ * والجديدةُ تحتاج خانةً فارغة كأيِّ جهاز.
+ */
+export function canLinkPlatform(rows: LinkRow[], platform: PlatformKind, tier: LinkTier, now = Date.now()): boolean {
+  /* المنصّاتُ لـLoopz+ وحده (أحمد ٢١ نوفمبر «٣ب») */
+  if (tier === "free") return false;
+  const limit = slotLimit(tier);
+  const own = rows.find((r) => r.table === "platform_links" && r.platform === platform && isAlive(r, now) && !r.stopped_at);
+  return own ? true : usedSlots(rows, now) + 1 <= limit;
+}
+
 /** هل يحلّ رابطُ هذا الجهاز محلَّ الصفّ (كلِّه أو نوعٍ منه)؟ */
 export function replacedBy(r: LinkRow, kind: DeviceKind): boolean {
+  /* ⚠️ قبل `server`: صفُّ المنصّة بلا `server` ولا `kinds` — لولا هذا السطرُ لقُرئ رابطَ سيرفرٍ قديماً يستبدله أيُّ سيرفر */
+  if (r.table === "platform_links") return false;
   if (r.table === "stremio_links") return kind === "stremio";
   if (r.table === "kodi_links") return kind === "kodi";
   if (r.server) return r.server === kind;

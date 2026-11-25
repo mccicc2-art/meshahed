@@ -7,11 +7,13 @@ import { markSignalWatched, type SignalRow } from "@/lib/watchMark";
 import {
   acceptOnUnbound,
   canIssue,
+  canLinkPlatform,
   HOME_KINDS,
   isAlive,
   isHomeKind,
+  isPlatformKind,
   kindsOf,
-  partition,
+  partitionTier,
   slotLimit,
   slotsOf,
   usedSlots,
@@ -20,6 +22,7 @@ import {
   type LinkRow,
   type LinkTableName,
   type LinkTier,
+  type PlatformKind,
 } from "@/core/deviceLinks";
 
 /**
@@ -69,11 +72,123 @@ function rowOf(table: LinkTableName, r: Record<string, unknown>): LinkRow {
 
 /** صفوفُ العضو في الجداول الثلاثة — `null` قبل الهجرة (عمودٌ غائب) أو إن فشلت القراءة */
 async function readRows(db: Db, userId: string): Promise<LinkRow[] | null> {
-  const res = await Promise.all(
-    TABLES.map((table) => db.from(table).select(table === "home_server_links" ? HOME_COLS : LINK_COLS).eq("user_id", userId).limit(10)),
-  );
+  const [res, platforms] = await Promise.all([
+    Promise.all(TABLES.map((table) => db.from(table).select(table === "home_server_links" ? HOME_COLS : LINK_COLS).eq("user_id", userId).limit(10))),
+    readPlatformRows(db, userId),
+  ]);
   if (res.some((r) => r.error)) return null;
-  return res.flatMap((r, i) => ((r.data ?? []) as unknown as Record<string, unknown>[]).map((row) => rowOf(TABLES[i], row)));
+  return [...res.flatMap((r, i) => ((r.data ?? []) as unknown as Record<string, unknown>[]).map((row) => rowOf(TABLES[i], row))), ...platforms];
+}
+
+/* ============================================================
+ * 🆕 هجرة ٢٦٥ — منصّاتُ البثّ (نتفليكس أوّلاً، خطّة `PLAN-NETFLIX-SYNC.md`)
+ * ============================================================
+ * 🔑 **صفٌّ بلا رمز**: الدخولُ إلى نتفليكس يعيش في متصفّح التطبيق على جهاز العضو، والخادمُ يعرف الربطَ وملفَّه الشخصيّ ومتى زامن.
+ * يأخذ خانةً كأيِّ جهاز ويُوقفه النزولُ كإخوته (`settle`) — ومفتاحُه `id` يُحمل في `token_hash` لأنّ الحكمَ يعرف مفتاحاً واحداً.
+ * ⚠️ **قراءتُه لا تُسقط قراءةَ الأجهزة**: قبل الهجرة يغيب الجدول ⇐ لا منصّات، والأجهزةُ تعمل كما كانت (لا `null`).
+ */
+const PLATFORM_COLS = "id, platform, profile_label, created_at, last_used_at, last_item_at, since_at, stopped_at";
+const keyCol = (table: LinkTableName) => (table === "platform_links" ? "id" : "token_hash");
+
+export interface PlatformLinkRow {
+  platform: PlatformKind;
+  profile_label: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  last_item_at: string | null;
+  since_at: string | null;
+  stopped_at: string | null;
+}
+
+async function readPlatformRows(db: Db, userId: string): Promise<LinkRow[]> {
+  const { data, error } = await db.from("platform_links").select(PLATFORM_COLS).eq("user_id", userId).limit(10);
+  if (error) return [];
+  return ((data ?? []) as unknown as Record<string, unknown>[])
+    .filter((r) => isPlatformKind(r.platform))
+    .map((r) => ({
+      table: "platform_links" as const,
+      token_hash: String(r.id),
+      server: null,
+      kinds: [],
+      platform: r.platform as PlatformKind,
+      created_at: String(r.created_at),
+      last_used_at: (r.last_used_at as string | null) ?? null,
+      stopped_at: (r.stopped_at as string | null) ?? null,
+    }));
+}
+
+/** منصّاتُ العضو بتفاصيلها لصفحة «الربط» — `[]` قبل الهجرة أو إن فشلت القراءة */
+export async function platformLinksOf(userId: string): Promise<PlatformLinkRow[]> {
+  if (!hasServiceKey()) return [];
+  try {
+    const db = await createServiceClient();
+    const { data, error } = await db.from("platform_links").select(PLATFORM_COLS).eq("user_id", userId).limit(10);
+    if (error) return [];
+    return ((data ?? []) as unknown as PlatformLinkRow[]).filter((r) => isPlatformKind(r.platform) && (r.last_used_at ?? r.created_at) >= aliveSince());
+  } catch {
+    return [];
+  }
+}
+
+export type PlatformLinkOutcome = { ok: true } | { ok: false; reason: "plus" | "limit" | "upstream" | "not_ready" };
+
+/**
+ * يربط منصّةً (أو يعيد ربطها): **الصفُّ نفسُه يُحدَّث** — دخولٌ جديدٌ بعد انتهاء الجلسة لا يأخذ خانةً ثانية.
+ * - `profileLabel`: اسمُ الملفّ الشخصيّ في المنصّة كما يراه العضو (للعرض وحده).
+ * - `importAll`: «استيراد الكل» ⇐ `since_at = null`؛ «من الآن فقط» ⇐ `since_at = الآن` — وما شوهد قبله لا يدخل أبداً.
+ * ⚖️ إعادةُ الربط تبدأ المزامنةَ من جديد (`last_item_at = null`): ملفٌّ شخصيٌّ آخر له سجلٌّ آخر — وما في المكتبة يبقى
+ *   (الكتابةُ «ما في Loopz يبقى»، `keep`).
+ */
+export async function linkPlatform(userId: string, platform: PlatformKind, profileLabel: string | null, importAll: boolean): Promise<PlatformLinkOutcome> {
+  if (!hasServiceKey()) return { ok: false, reason: "upstream" };
+  const st = await deviceLinksOf(userId);
+  if (!st) return { ok: false, reason: "upstream" };
+  if (st.tier === "free") return { ok: false, reason: "plus" };
+  if (!canLinkPlatform(st.rows, platform, st.tier)) return { ok: false, reason: "limit" };
+  const db = await createServiceClient();
+  const now = new Date().toISOString();
+  const label = (profileLabel ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 80) || null;
+  const { error } = await db.from("platform_links").upsert(
+    { user_id: userId, platform, profile_label: label, created_at: now, last_used_at: now, last_item_at: null, since_at: importAll ? null : now, stopped_at: null },
+    { onConflict: "user_id,platform" },
+  );
+  if (error) return { ok: false, reason: error.code === "42P01" ? "not_ready" : "upstream" };
+  return { ok: true };
+}
+
+/**
+ * مزامنةٌ تمّت على الجهاز: «آخرُ استعمال» الآن، وأحدثُ مشاهدةٍ قُرئت (لا يتراجع: مزامنتان متداخلتان لا تُرجعان المؤشّر).
+ * يعيد `false` إن لم يكن الربطُ قائماً أو كان موقوفاً — فالتطبيقُ لا يكتب مزامنةً لربطٍ فُكّ أو نزل من خاناته.
+ */
+export async function recordPlatformSync(userId: string, platform: PlatformKind, lastItemAt: string | null): Promise<boolean> {
+  if (!hasServiceKey()) return false;
+  try {
+    /* الحكمُ أوّلاً (`deviceLinksOf` يُنزل الخاناتِ والطبقة): مزامنةٌ لمنصّةٍ أوقفها النزولُ لا تُكتب */
+    const st = await deviceLinksOf(userId);
+    const linked = st?.rows.find((r) => r.table === "platform_links" && r.platform === platform);
+    if (!linked || linked.stopped_at) return false;
+    const db = await createServiceClient();
+    const { data } = await db.from("platform_links").select("last_item_at, stopped_at").eq("user_id", userId).eq("platform", platform).maybeSingle();
+    const row = data as { last_item_at: string | null; stopped_at: string | null } | null;
+    if (!row || row.stopped_at) return false;
+    const next = lastItemAt && (!row.last_item_at || Date.parse(lastItemAt) > Date.parse(row.last_item_at)) ? lastItemAt : row.last_item_at;
+    const { error } = await db
+      .from("platform_links")
+      .update({ last_used_at: new Date().toISOString(), last_item_at: next })
+      .eq("user_id", userId)
+      .eq("platform", platform);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/** فكُّ منصّة — الصفُّ يُحذف وتنفتح خانتُه. **ما دخل المكتبة يبقى** (أحمد: «ما استُورد يبقى») */
+export async function revokePlatform(userId: string, platform: PlatformKind): Promise<boolean> {
+  if (!hasServiceKey()) return false;
+  const db = await createServiceClient();
+  const { error } = await db.from("platform_links").delete().eq("user_id", userId).eq("platform", platform);
+  return !error;
 }
 
 /** الملفُّ للحكم — و`auto_mark` يُقرأ إن وُجد (قبل الهجرة: `null`) */
@@ -93,13 +208,13 @@ function tierOf(p: Profile | null): LinkTier {
   return isGold(b) ? "gold" : isPlus(b) ? "plus" : "free";
 }
 
-/** يُنزل حكمَ الخانات على الصفوف (يُوقف الزائد ويُعيد ما اتّسع له) ويعيد الصفوفَ بعده */
-async function settle(db: Db, rows: LinkRow[], limit: number): Promise<LinkRow[]> {
-  const { keep, stop } = partition(rows, limit);
+/** يُنزل حكمَ الخانات على الصفوف (يُوقف الزائد ويُعيد ما اتّسع له) ويعيد الصفوفَ بعده — 🆕 بالطبقة: المنصّاتُ لبلس وحده */
+async function settle(db: Db, rows: LinkRow[], tier: LinkTier): Promise<LinkRow[]> {
+  const { keep, stop } = partitionTier(rows, tier);
   const now = new Date().toISOString();
   const writes: PromiseLike<unknown>[] = [];
-  for (const r of stop) if (!r.stopped_at) writes.push(db.from(r.table).update({ stopped_at: now }).eq("token_hash", r.token_hash));
-  for (const r of keep) if (r.stopped_at) writes.push(db.from(r.table).update({ stopped_at: null }).eq("token_hash", r.token_hash));
+  for (const r of stop) if (!r.stopped_at) writes.push(db.from(r.table).update({ stopped_at: now }).eq(keyCol(r.table), r.token_hash));
+  for (const r of keep) if (r.stopped_at) writes.push(db.from(r.table).update({ stopped_at: null }).eq(keyCol(r.table), r.token_hash));
   if (writes.length) await Promise.all(writes);
   const stopped = new Set(stop.map((r) => r.token_hash));
   return rows.map((r) => (stopped.has(r.token_hash) ? { ...r, stopped_at: r.stopped_at ?? now } : keep.some((k) => k.token_hash === r.token_hash) ? { ...r, stopped_at: null } : r));
@@ -114,7 +229,7 @@ export async function deviceLinksOf(userId: string): Promise<{ tier: LinkTier; l
     if (!rows) return null;
     const tier = tierOf(p);
     const limit = slotLimit(tier);
-    const settled = await settle(db, rows, limit);
+    const settled = await settle(db, rows, tier);
     return { tier, limit, rows: settled.filter((r) => isAlive(r)), autoMark: p?.auto_mark !== false, plus: tier !== "free" };
   } catch {
     return null;
@@ -140,11 +255,17 @@ export async function mayLinkUnbound(userId: string): Promise<boolean | null> {
  * «اختر ما يبقى» — يبقى ما اختاره العضو (بحدود خاناته) ويُوقف الباقي. صفٌّ قديمٌ بلا نوع يبقى إن اختير أيُّ نوعٍ فيه.
  * يعيد `false` إن زاد المختارُ على الخانات أو قبل الهجرة.
  */
-export async function keepDevices(userId: string, kinds: DeviceKind[]): Promise<boolean> {
+export async function keepDevices(userId: string, kinds: DeviceKind[], platforms: PlatformKind[] = []): Promise<boolean> {
   const st = await deviceLinksOf(userId);
   if (!st) return false;
   const want = new Set(kinds);
-  const chosen = st.rows.filter((r) => kindsOf(r).some((k) => want.has(k)) || (kindsOf(r).length === 0 && HOME_KINDS.some((k) => want.has(k))));
+  const wantPlatforms = new Set(platforms);
+  /* 🆕 المنصّةُ تُختار باسمها (`platforms`) — صفُّها بلا أنواع، فلولا الفرزُ الأوّل لقُرئ رابطَ سيرفرٍ قديماً */
+  const chosen = st.rows.filter((r) =>
+    r.table === "platform_links"
+      ? !!r.platform && wantPlatforms.has(r.platform)
+      : kindsOf(r).some((k) => want.has(k)) || (kindsOf(r).length === 0 && HOME_KINDS.some((k) => want.has(k))),
+  );
   if (chosen.reduce((n, r) => n + slotsOf(r), 0) > st.limit) return false;
   const db = await createServiceClient();
   const now = new Date().toISOString();
@@ -154,7 +275,7 @@ export async function keepDevices(userId: string, kinds: DeviceKind[]): Promise<
       db
         .from(r.table)
         .update({ stopped_at: pick.has(r.token_hash) ? null : (r.stopped_at ?? now) })
-        .eq("token_hash", r.token_hash),
+        .eq(keyCol(r.table), r.token_hash),
     ),
   );
   return true;
@@ -284,7 +405,7 @@ export async function linkOwner(table: LinkTable, token: string, shape: RegExp, 
     const plus = tier !== "free";
     let active = plus;
     if (rows) {
-      const settled = await settle(db, rows, slotLimit(tier));
+      const settled = await settle(db, rows, tier);
       const me = settled.find((x) => x.token_hash === hash);
       active = !!me && !me.stopped_at;
       if (me && active && me.table === "home_server_links" && !me.server) {

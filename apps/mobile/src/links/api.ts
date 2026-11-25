@@ -40,3 +40,10 @@ export function canLinkNow(d: DeviceLinksState, kind: DeviceKind): boolean {
 export function linkedNames(d: DeviceLinksState): string[] {
   return d.devices.filter((x) => x.linked && !x.stopped).map((x) => deviceName(x.kind));
 }
+
+/** 🆕 هجرة ٢٦٥ — هل للعضو أن يربط نتفليكس الآن؟ لـLoopz+ وحده (أحمد «٣ب»)، والمربوطةُ إعادةٌ لا خانة، وإلّا خانةٌ فارغة */
+export function canLinkNetflix(d: DeviceLinksState): boolean {
+  if (d.tier === "free") return false;
+  if (d.platforms?.some((p) => p.platform === "netflix" && !p.stopped)) return true;
+  return d.limit == null || d.used < d.limit;
+}

@@ -6,9 +6,9 @@ import { useApp } from "../state";
 import { Icon } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import { DeviceLabel, DeviceMark } from "./DeviceMark";
+import { DeviceLabel, DeviceMark, PlatformMark } from "./DeviceMark";
 import { deviceName } from "./api";
-import type { DeviceKind, DeviceLinksState } from "@/core/contracts/deviceLinks";
+import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
 
 const MARK = require("../../assets/loopz-mark.png");
 
@@ -43,12 +43,17 @@ export function slotPoints(n: number, width: number): { x: number; y: number }[]
 
 export type Slot =
   | { type: "device"; kind: DeviceKind; paused: boolean; waiting: boolean }
+  /* 🆕 هجرة ٢٦٥ — منصّةُ بثٍّ في المدار نفسِه (أحمد ٥ نوفمبر: «مدارٌ واحدٌ للأجهزة والمنصّات») */
+  | { type: "platform"; platform: PlatformKind }
   | { type: "empty" }
   | { type: "locked" };
 
 /** الخاناتُ بالترتيب — المربوطُ بترتيب «من أجهزتك» الثابت، ثمّ ما بقي */
 export function slotsOf(d: DeviceLinksState): Slot[] {
-  const linked: Slot[] = d.devices.filter((x) => x.linked && !x.stopped).map((x) => ({ type: "device", kind: x.kind, paused: false, waiting: !x.used_at }));
+  const linked: Slot[] = [
+    ...d.devices.filter((x) => x.linked && !x.stopped).map((x): Slot => ({ type: "device", kind: x.kind, paused: false, waiting: !x.used_at })),
+    ...(d.platforms ?? []).filter((p) => !p.stopped).map((p): Slot => ({ type: "platform", platform: p.platform })),
+  ];
   const limit = d.limit ?? Math.min(8, Math.max(5, d.used + 1));
   const total = d.limit == null ? limit : 5;
   const out: Slot[] = [...linked];
@@ -66,6 +71,7 @@ export function Orbit({
   width,
   onSlot,
   onHold,
+  onHoldPlatform,
   hot,
   hotSlot,
 }: {
@@ -75,6 +81,8 @@ export function Orbit({
   onSlot: (slot: Slot) => void;
   /** الضغطُ المطوَّل على جهازٍ مربوط — «افتح صفحته · فك الربط» */
   onHold: (kind: DeviceKind) => void;
+  /** 🆕 الضغطُ المطوَّل على منصّةٍ مربوطة — «زامن الآن · افتح صفحتها» */
+  onHoldPlatform?: (p: PlatformKind) => void;
   /** جهازٌ يُسحب فوق المدار الآن — الحلقةُ تتوهّج */
   hot?: boolean;
   /** 🆕 أقربُ خانةٍ فارغةٍ إلى الإصبع أثناء السحب — تضيء بـ«أفلت هنا» (أحمد ٦ نوفمبر) */
@@ -99,7 +107,7 @@ export function Orbit({
         <Circle cx={cx} cy={cy} r={R} fill="none" stroke={hot ? tokens.accent : tokens.border} strokeOpacity={hot ? 0.7 : 1} />
         <Circle cx={cx} cy={cy} r={HUB / 2 + 12} fill="none" stroke={tokens.accent} strokeOpacity={0.25} />
         {slots.map((s, i) =>
-          s.type === "device" ? (
+          s.type === "device" || s.type === "platform" ? (
             <Line key={i} x1={cx} y1={cy} x2={pos[i].x} y2={pos[i].y} stroke={tokens.accent} strokeOpacity={0.7} strokeWidth={1.5} />
           ) : null,
         )}
@@ -128,6 +136,22 @@ export function Orbit({
               <DeviceMark kind={s.kind} size={TILE} state={s.waiting ? "waiting" : "on"} />
               <DeviceLabel name={name} />
               {s.waiting ? <Text size={10} muted numberOfLines={1}>{t.linksWaiting}</Text> : null}
+            </Pressable>
+          );
+        }
+        if (s.type === "platform") {
+          return (
+            <Pressable
+              key={`p-${s.platform}`}
+              onPress={() => onSlot(s)}
+              onLongPress={() => onHoldPlatform?.(s.platform)}
+              delayLongPress={350}
+              accessibilityRole="button"
+              accessibilityLabel={`Netflix، ${t.stremioLinked}`}
+              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
+            >
+              <PlatformMark size={TILE} state="on" />
+              <DeviceLabel name="Netflix" />
             </Pressable>
           );
         }

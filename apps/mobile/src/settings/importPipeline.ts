@@ -32,7 +32,7 @@ export async function importRecords(
   hooks: { stopped: () => boolean; phase: (p: ImportPhase) => void; pct: (n: number) => void },
   /** 🆕 Bingers — `keep`: «ما في Loopz يبقى» (`ImportPayload.keep`)، و`favoritesName`: اسمُ «المفضّلة» إن وُلدت بالاستيراد.
    *  🆕 T507 — `source`: مصدرُ الملفّ لسطر «استيراداتك» (غيابُه ⇐ لا سطر، كاستيراد Plex اليوم)، و`headers`: أسماءُ أعمدة الملفّ المجهول */
-  opts: { keep?: boolean; favoritesName?: string; source?: ImportRunSource; headers?: string[] } = {},
+  opts: { keep?: boolean; favoritesName?: string; source?: ImportRunSource; headers?: string[]; writeSource?: ImportPayload["source"] } = {},
 ): Promise<ImportResult | null> {
   /* 🆕 T507 — الختامُ يحمل الحصيلة: الخادمُ يكتب منها سطرَ «استيراداتك» والسطحُ `app` من طريقه. `write`: الختامُ يحمل الوسوم —
      الرئيسيّةُ والمكتبةُ والإحصاءاتُ تُعاد مرّةً واحدةً لا مع كلِّ دفعة */
@@ -83,7 +83,8 @@ export async function importRecords(
   try {
     for (let i = 0; i < shows.length; i += IMPORT_CHUNK.shows) {
       if (hooks.stopped()) break;
-      const r = await apply({ shows: shows.slice(i, i + IMPORT_CHUNK.shows), movies: [], keep, reviewFrom });
+      /* 🆕 `writeSource` — مزامنةُ نتفليكس تُوسم صفوفُها `netflix` (هجرة ٢٦٥)؛ وغيابُه `import` كما كان */
+      const r = await apply({ shows: shows.slice(i, i + IMPORT_CHUNK.shows), movies: [], keep, reviewFrom, ...(opts.writeSource ? { source: opts.writeSource } : {}) });
       sC += r.shows;
       eC += r.episodes;
       rC += r.reviews ?? 0;
@@ -92,7 +93,7 @@ export async function importRecords(
     }
     for (let i = 0; i < movies.length; i += IMPORT_CHUNK.movies) {
       if (hooks.stopped()) break;
-      const r = await apply({ shows: [], movies: movies.slice(i, i + IMPORT_CHUNK.movies), keep, reviewFrom });
+      const r = await apply({ shows: [], movies: movies.slice(i, i + IMPORT_CHUNK.movies), keep, reviewFrom, ...(opts.writeSource ? { source: opts.writeSource } : {}) });
       mC += r.movies;
       rC += r.reviews ?? 0;
       rSkip += r.reviewsSkipped ?? 0;
