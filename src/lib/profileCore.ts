@@ -7,7 +7,7 @@ import "server-only";
  * **الصفحةُ ترسم منها، و`GET /api/v1/profile/{username}` يصوغ منها حمولةَ التطبيق** — فلا حسابَ ثانٍ يختلف عن الأوّل
  * (نهجُ `homeCore` · `communityCore` · `messagesCore`). لا نصَّ مترجماً هنا: ما يحتاج القاموسَ (`t`) يبقى عند من يرسم.
  */
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { isPersonaId, personaAlt, personaText, type PersonaAlt } from "@/core/personas";
 import {
   getUser,
@@ -74,7 +74,7 @@ export async function loadProfile(handle: string, locale: Locale, opts: { record
   /* التخصيص يُقرأ قبل الجلب لا بعده (D-129): قسمٌ أخفاه صاحبه لا يستحقّ
      نداءً — و«فنّانوك» خاصّةً دالّةٌ إضافية لا داعي لدفعها لمن أطفأها */
   /* D-1487 — افتراضيُّ الملفّ يتبع خطّةَ صاحبه */
-  const prefs = sanitizeProfilePrefs(profile.profile_prefs, isPlus(profile));
+  const prefs = sanitizeProfilePrefs(profile.profile_prefs, hasPerks(profile));
 
   /* 🗑️ **ولونُ صاحبِ الصفحة سقط** (D-848): **كان يُقرأ من العرض العامّ
      ويُركَّب على جذر الصفحة** — **وزائرُ ملفِّك يراه بثيمه هو منذ

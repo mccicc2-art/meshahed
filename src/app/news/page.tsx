@@ -25,7 +25,7 @@ import { SavedFiltersRow } from "@/components/SavedFiltersRow";
 import { sanitizeUiState } from "@/lib/uiState";
 import { FILTER_KEYS, defaultFor } from "@/core/savedFilters";
 import { redirect } from "next/navigation";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { forYouWithEvents } from "@/lib/listEvents";
 import { ListsFilters } from "@/components/ListsFilters";
@@ -2233,7 +2233,7 @@ async function SavedFiltersHost({
       locale={locale}
       section={section}
       saved={filters}
-      plus={isPlus(profile)}
+      plus={hasPerks(profile)}
       editing={editing ? { id: editing.id, name: editing.name } : null}
     />
   );

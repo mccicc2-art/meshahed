@@ -22,7 +22,7 @@ import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { getLocale, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab, applyTabPrefs } from "@/core/tabPrefs";
-import { viewerIsPlus } from "@/lib/actions";
+import { viewerHasPerks } from "@/lib/actions";
 import { sanitizeUiState } from "@/lib/uiState";
 import { liveTour } from "@/core/tour";
 import { localizeFollows } from "@/lib/localize";
@@ -78,7 +78,7 @@ export async function GET() {
         getSavedListsCount().catch(() => 0),
         getFollowedArtists(60).catch(() => []),
         getHiddenRails().catch(() => new Set<string>()),
-        viewerIsPlus().catch(() => false),
+        viewerHasPerks().catch(() => false),
         /* D-954 — `getProfile` مخبّأةٌ للطلب (`cache`) فلا رحلةَ إضافيّةً فعليّاً */
         getProfile().catch(() => null),
       ]);

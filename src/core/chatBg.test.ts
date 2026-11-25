@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sanitizeChatBg, effectiveChatBg, chatBgNeedsPlus, sameChatBg, DEFAULT_CHAT_BG } from "./chatBg.ts";
+import { PERKS_FREE } from "./plan.ts";
 
 /* 🆕 D-1382 — خلفيّةُ المحادثات: الافتراضيُّ Loopz، والغريبُ يسقط إليه، وخلفيّةُ العمل للمشترك وحدَه عند العرض */
 test("خلفية المحادثات: الافتراضي Loopz والفاسد يسقط إليه", () => {
@@ -20,10 +21,11 @@ test("خلفية المحادثات: الافتراضي Loopz والفاسد ي�
 
 test("خلفية المحادثات: العمل للمشترك، وغيره يرى Loopz واختياره محفوظ", () => {
   const title = sanitizeChatBg({ k: "poster", type: "movie", id: 242, path: "/g.jpg" });
-  assert.equal(chatBgNeedsPlus(title), true);
+  /* 🆕 T547 — خلفيّةُ العمل للجميع ما دامت `PERKS_FREE`؛ والقاعدةُ القديمةُ تُختبر إن قُلبت الراية */
+  assert.equal(chatBgNeedsPlus(title), !PERKS_FREE);
   assert.equal(chatBgNeedsPlus({ k: "plain" }), false);
   assert.deepEqual(effectiveChatBg(title, true), title);
-  assert.deepEqual(effectiveChatBg(title, false), DEFAULT_CHAT_BG);
+  assert.deepEqual(effectiveChatBg(title, false), PERKS_FREE ? title : DEFAULT_CHAT_BG);
   assert.deepEqual(effectiveChatBg({ k: "plain" }, false), { k: "plain" });
   assert.equal(sameChatBg(title, { ...title }), true);
   assert.equal(sameChatBg(title, { ...title, id: 243 } as typeof title), false);

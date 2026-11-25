@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { PERSON_COLS, type PersonLite } from "@/core/people";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import type { Dict } from "@/core/i18n";
 import type { MsgImage } from "@/core/contracts/messages";
 import { GROUP_RANK_LEVEL, rankOf, type GroupEvent, type GroupMember, type GroupReplyRef, type GroupRole, type GroupSys, type GroupTitleRef, type MsgGroupConversation } from "@/core/contracts/groups";
@@ -70,7 +70,7 @@ export async function getGroups(): Promise<{ groups: MsgGroupConversation[]; can
       supabase.from("dm_group_members").select("group_id, user_id, role, joined_at, last_read_at, muted").eq("user_id", me),
       supabase.from("profiles").select("plan, plus_until").eq("id", me).maybeSingle(),
     ]);
-    const canCreate = isPlus(prof as { plan?: string | null; plus_until?: string | null } | null);
+    const canCreate = hasPerks(prof as { plan?: string | null; plus_until?: string | null } | null);
     if (error || !mine?.length) return { groups: [], canCreate };
     const ids = (mine as MemberRow[]).map((m) => m.group_id);
 

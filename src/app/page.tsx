@@ -6,7 +6,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getDict, type Locale } from "@/core/i18n";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -414,7 +414,7 @@ async function HomeBody({
         lists={listsQueueItems}
         towatchList={toWatchListItems}
         /* 🆕 D-918: تبويبُ «عرض» في ورقة «الكل» — بابُ ترتيب الأقسام للمشترك */
-        plus={isPlus(profile)}
+        plus={hasPerks(profile)}
       />
 
       {empty && (

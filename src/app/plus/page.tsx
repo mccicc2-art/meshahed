@@ -23,8 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Loopz Plus",
     description: ar
-      ? "Loopz Plus — اربط تطبيقاتك ومشاهدتك تتسجّل وحدها، وابحث بوصف القصة، ورئيسيتك وثيماتك على ذوقك. والمتابعة والقوائم والمجتمع مجّانيةٌ للجميع دائماً."
-      : "Loopz Plus — link your apps and your watching is tracked for you, search by describing the story, and shape your home and themes. Tracking, lists and community stay free for everyone, always.",
+      ? "Loopz Plus — اربط حتى ٥ تطبيقات ومشاهدتك تتسجّل وحدها، وابحث بوصف القصة بلا حدّ، وشارة PLUS بجانب اسمك. وكل ما سوى ذلك في Loopz مجّانيٌّ للجميع دائماً."
+      : "Loopz Plus — link up to 5 apps and your watching is tracked for you, search by describing the story with no limit, and a PLUS badge by your name. Everything else in Loopz is free for everyone, always.",
     keywords: seoKeywords(locale),
     alternates: { canonical: "/plus" },
     openGraph: { type: "article", url: "/plus" },
@@ -46,14 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
 const FEATURES: { icon: IconName; key: keyof Dict }[] = [
   { icon: "tv", key: "pwFLink" },
   { icon: "search", key: "pwFStory" },
-  { icon: "grid", key: "pwFHome" },
-  { icon: "palette", key: "pwFThemes" },
-  { icon: "image", key: "pwFArt" },
-  { icon: "view-mixed", key: "pwFWidget" },
   /* 🗑️ T540 — بندُ الإحصاءات خرج كما في التطبيق: صارت للجميع */
-  { icon: "list", key: "pwFLists" },
+  /* 🗑️ T547 — التخصيصُ والثيماتُ والبوسترُ والودجتُ والفلاترُ والقروباتُ خرجت: صارت للجميع (أحمد ٢٥ نوفمبر «خل كل شيء مجاني
+     .. ما عدا الربط»). يبقى ما يبيعه الاشتراكُ حقّاً: الربطُ حتى ٥ · البحثُ بالوصف بلا حدّ · الشارة */
   { icon: "star", key: "pwFBadge" },
-  { icon: "people", key: "pwFGroups" },
 ];
 
 export default async function PlusPage({ searchParams }: { searchParams: Promise<{ tier?: string }> }) {
@@ -119,7 +115,8 @@ export default async function PlusPage({ searchParams }: { searchParams: Promise
         <Icon name="sparkle-star" size={18} className="text-accent" />
         {w.plusFeatures}
       </h2>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {/* T547 — ثلاثُ مزايا: عمودٌ في الجوّال وثلاثةٌ من الشاشة المتوسّطة — لا بلاطةَ يتيمةً ولا أعمدةَ فارغة */}
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {FEATURES.map((f) => (
           <li key={f.key} className="relative min-h-[118px] rounded-2xl border border-border bg-surface p-4">
             <Icon name={f.icon} size={22} className="text-accent" />

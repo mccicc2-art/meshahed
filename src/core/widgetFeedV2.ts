@@ -5,7 +5,7 @@
  * قراراتُ أحمد، فتُختبر هنا بلا شبكةٍ ولا قاعدة — ومسارٌ يخلط الاثنين لا يُختبر إلّا بحسابٍ حقيقيّ.
  */
 import type { Dict } from "./i18n.ts";
-import { asPlan, isPlus, type PlanBearer } from "./plan.ts";
+import { asPlan, hasPerks, type PlanBearer } from "./plan.ts";
 import { sanitizeWidgetConfig, defaultWidgetConfigV3, type WidgetLayoutConfig } from "./widgetLayout.ts";
 import type {
   WidgetActivityItem,
@@ -69,7 +69,8 @@ export function sanitizeWidgetStore(raw: unknown, defaultName: string): WidgetSt
 
 /** `lapsed`: كان مشتركاً وانتهى تاريخُه — يُقفل عليه ويبقى إعدادُه (رسالةُ «جدّد» لا «اشترك») */
 export function widgetPlanState(p: PlanBearer | null | undefined): { plus: boolean; lapsed: boolean } {
-  const plus = isPlus(p);
+  /* 🆕 T547 — الودجتُ بأحجامه وتخصيصه للجميع (`hasPerks`): لا قفلَ ولا «جدّد» ما دامت المزايا مجّانيّة */
+  const plus = hasPerks(p);
   if (plus || !p) return { plus, lapsed: false };
   const until = p.plus_until ? Date.parse(p.plus_until) : NaN;
   return { plus: false, lapsed: asPlan(p.plan) !== "free" && !Number.isNaN(until) && until <= Date.now() };

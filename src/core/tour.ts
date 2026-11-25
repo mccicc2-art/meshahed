@@ -1,6 +1,7 @@
 // الجولة التعريفية — سجلُّها الواحد وحالتُها (Phase 11-T · T0)
 
 import type { Dict } from "./i18n.ts";
+import { PERKS_FREE } from "./plan.ts";
 
 /**
  * 🆕 D-1318 — **جولةٌ واحدةٌ، وسجلٌّ واحدٌ يقرؤه الويبُ والتطبيق.** (سبعُ خطواتٍ في الويب وثمانٍ في التطبيق منذ T357 —
@@ -237,8 +238,9 @@ export const TOUR_STEPS: TourStep[] = [
     screen: "customize",
     title: (t) => t.tourShapeTitle,
     body: (t) => t.tourShapeBody,
-    appBody: (t, plus) => (plus ? t.tourShapeBodyApp : `${t.tourShapeBodyApp} ${t.tourShapeSaveFree}`),
-    plusTag: (plus) => !plus,
+    /* 🆕 T547 — التخصيصُ للجميع (`PERKS_FREE`): لا سطرَ «الحفظُ للمشترك» ولا وسمَ PLUS */
+    appBody: (t, plus) => (plus || PERKS_FREE ? t.tourShapeBodyApp : `${t.tourShapeBodyApp} ${t.tourShapeSaveFree}`),
+    plusTag: (plus) => !PERKS_FREE && !plus,
   },
   {
     /* 🆕 T362 — **مرحلتان كالقائمة** (أحمد ١٠ نوفمبر: «رقم ٧ ما شاف بعدها الرسايل» ثمّ «٢أ»): الحلقةُ على زرّ الرسائل في رأس

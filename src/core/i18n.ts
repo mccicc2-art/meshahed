@@ -2408,7 +2408,8 @@ const ar = {
   pwTierPlus: "Plus",
   pwTierGold: "Gold",
   pwTierPlusMine: "Plus · اشتراكك",
-  pwHeadOffer: "لوبز على ذوقك\nومشاهدتك تتسجّل وحدها",
+  /* 🆕 T547 — التخصيصُ صار للجميع: العنوانُ يقول ما يبيعه الاشتراكُ اليوم (الربطُ والبحثُ بلا حدّ) */
+  pwHeadOffer: "مشاهدتك تتسجّل وحدها\nوبحثك بالوصف بلا حدّ",
   pwHeadGold: "أحببت لوبز؟\nاختر Gold",
   pwHeadSub: "شكراً لاشتراكك.\nكل مزايا Loopz Plus مفتوحة لك.",
   /** 🆕 T340 — العنوانُ بجزأيه حول اسم الخطّة الملوّن (`PlanWordmark`): «كل مزايا ⟨Loopz Gold⟩ مفتوحة لك» — يُقسَّم كلماتٍ فيلتفّ كالنصّ */
@@ -2424,16 +2425,11 @@ const ar = {
   pwGoldAllPlus: "وكل مزايا Plus:",
   /* البندُ الأوّلُ (الخطّة §٣) — تطبيقاتٌ لا منصّات: أُلغي Younify (أحمد ١٥ نوفمبر) */
   pwFLink: "اربط حتى ٥ تطبيقات، ومشاهدتك تتسجّل وحدها",
-  /* T540 — البحثُ بالوصف للجميع بخمسٍ يوميّاً: ما يبيعه بلس هو «بلا حدّ» */
+  /* T540 — البحثُ بالوصف للجميع بحدٍّ يوميّ (عشرٌ منذ T547): ما يبيعه بلس هو «بلا حدّ» */
   pwFStory: "ابحث بوصف القصة بلا حدّ، والذكاء يجد العمل",
-  pwFHome: "رئيسيتك وملفّك الشخصي على ذوقك",
-  pwFThemes: "ثيمات ملوّنة",
-  pwFArt: "بوستر وخلفية لكل عمل",
-  pwFWidget: "ودجت تخصّصه بأحجامه الكبيرة",
-  pwFLists: "فلاترك المحفوظة تعود إليها بضغطة",
   pwFBadge: "شارة PLUS بجانب اسمك",
-  pwFGroups: "أنشئ قروبات حتى ١٦ شخصاً، والانضمام مجاني",
-  pwFreeNote: "المتابعة والقوائم والمجتمع والإحصاءات والتقويم والبحث العادي مجّانيةٌ للجميع دائماً، والبحث بالوصف خمس مرات يومياً، وLoopz بلا إعلانات لأحد.",
+  /* 🆕 T547 — كلُّ ما سوى الربط والبحث بلا حدّ والشارة مجّانيٌّ للجميع (أحمد ٢٥ نوفمبر)، والبحثُ بالوصف عشرٌ يوميّاً */
+  pwFreeNote: "كل ما سوى ذلك مجّانيٌّ للجميع دائماً: المتابعة والقوائم والمجتمع والإحصاءات والتقويم، وتخصيص رئيسيتك وملفّك، والثيمات كلها، والودجت، والقروبات — والبحث بالوصف عشر مرات يومياً، وLoopz بلا إعلانات لأحد.",
   pwYearly: "سنوي",
   pwMonthly: "شهري",
   pwBest: "الأوفر",
@@ -2748,9 +2744,9 @@ const ar = {
   drawerPlusCta: "اشترك في Plus",
   drawerPlusUntil: (d: string) => `مفعّل حتى ${d}`,
   drawerPlusActive: "Plus مفعّل",
-  drawerPlusFeats: ["تتبّع تلقائي لما تشاهده", "ابحث بوصف القصة بلا حدّ", "رئيسيتك وملفّك على ذوقك"] as readonly string[],
-  /* T540 — تسعُ مزايا في شاشة الاشتراك بعد خروج الإحصاءات: ثلاثٌ هنا وستٌّ أخرى */
-  drawerPlusMore: "+٦ مزايا أخرى",
+  /* 🆕 T547 — مزايا الاشتراك صارت ثلاثاً بعدد شاشته (أحمد ٢٥ نوفمبر): البطاقةُ تقولها كلَّها، والسطرُ تحتها يقول إنّ الباقي مجّانيّ */
+  drawerPlusFeats: ["اربط حتى ٥ تطبيقات", "ابحث بوصف القصة بلا حدّ", "شارة PLUS بجانب اسمك"] as readonly string[],
+  drawerPlusMore: "وكل ما سواها مجاني للجميع",
   drawerProfile: "الملف الشخصي",
   drawerHistory: "سجل المشاهدة",
   drawerCalendar: "التقويم",
@@ -3095,7 +3091,7 @@ const ar = {
   plusName: "Loopz Plus",
   plusGateTitle: "هذي من مزايا Loopz Plus",
   plusGateHint:
-    "المتابعة والقوائم والمجتمع والإحصاءات والتقويم والبحث العادي تبقى مجّانيةً للجميع — و Loopz Plus للثيمات وتنسيق صفحاتك كما تحبّ.",
+    "كل ما سواها في Loopz مجّانيٌّ للجميع — وLoopz Plus لربط حتى ٥ تطبيقات، والبحث بوصف القصة بلا حدّ، وشارة PLUS بجانب اسمك.",
   /* 🆕 **الثمنُ بحكم أحمد (٢٩ أغسطس، D-786)** — **نقضٌ مسجَّلٌ لـ«٩٩
      ريالاً سنويّاً» في D-633**، والفرقُ ليس صياغةً بل ضعفٌ تقريباً.
      **وسعرُ السنة الأولى دائمٌ لكلِّ مشترِكٍ جديد** لا عرضَ إطلاقٍ
@@ -5583,7 +5579,7 @@ const en: Dict = {
   pwTierPlus: "Plus",
   pwTierGold: "Gold",
   pwTierPlusMine: "Plus · yours",
-  pwHeadOffer: "Loopz, your way\nYour watching, tracked for you",
+  pwHeadOffer: "Your watching, tracked for you\nStory search with no limit",
   pwHeadGold: "Love Loopz?\nGo Gold",
   pwHeadSub: "Thanks for subscribing.\nEvery Loopz Plus feature is yours.",
   pwHeadSubPre: "Thanks for subscribing.\nEvery ",
@@ -5596,14 +5592,8 @@ const en: Dict = {
   pwGoldAllPlus: "And everything in Plus:",
   pwFLink: "Link up to 5 apps, tracked automatically",
   pwFStory: "Search by story with no limit — AI finds the title",
-  pwFHome: "Your home and profile, your way",
-  pwFThemes: "Colour themes",
-  pwFArt: "Your own poster and backdrop",
-  pwFWidget: "A widget you customise, in large sizes",
-  pwFLists: "Saved filters you return to in one tap",
   pwFBadge: "A PLUS badge beside your name",
-  pwFGroups: "Create groups of up to 16, joining is free",
-  pwFreeNote: "Tracking, lists, community, stats, the calendar and regular search stay free for everyone, always — story search five times a day — and Loopz has no ads for anyone.",
+  pwFreeNote: "Everything else is free for everyone, always: tracking, lists, community, stats, the calendar, shaping your home and profile, every theme, the widget and groups — story search ten times a day — and Loopz has no ads for anyone.",
   pwYearly: "Yearly",
   pwMonthly: "Monthly",
   pwBest: "Best value",
@@ -5853,8 +5843,8 @@ const en: Dict = {
   drawerPlusUntil: (d: string) => `Active until ${d}`,
   drawerPlusActive: "Plus is active",
   /* D-1509 — كلُّ ميزةٍ في سطرٍ واحد: الجملُ الطويلة كانت تُقصّ بنقاط على عرض البطاقة («Everything you watch is…») */
-  drawerPlusFeats: ["Auto-track what you watch", "Unlimited story search", "Your home & profile, your way"] as readonly string[],
-  drawerPlusMore: "+6 more features",
+  drawerPlusFeats: ["Link up to 5 apps", "Unlimited story search", "A PLUS badge by your name"] as readonly string[],
+  drawerPlusMore: "Everything else is free for everyone",
   drawerProfile: "Profile",
   drawerHistory: "Watch history",
   drawerCalendar: "Calendar",
@@ -6099,7 +6089,7 @@ const en: Dict = {
   plusName: "Loopz Plus",
   plusGateTitle: "This is a Loopz Plus feature",
   plusGateHint:
-    "Tracking, lists, community, stats, the calendar and regular search stay free for everyone — Loopz Plus is for themes and shaping your pages the way you like.",
+    "Everything else in Loopz is free for everyone — Loopz Plus adds linking up to 5 apps, unlimited story search, and a PLUS badge by your name.",
   plusPrice: "SAR 99.99 for your first year",
   plusPriceRenew: "then SAR 119.99 a year · or 12.99 a month",
   goldPrice: "SAR 199.99 a year",

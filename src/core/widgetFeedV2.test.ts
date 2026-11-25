@@ -1,3 +1,4 @@
+import { PERKS_FREE } from "./plan.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -38,9 +39,10 @@ test("الاشتراك: مشترك، منتهي، مجاني", () => {
   const past = new Date(Date.now() - 86_400_000).toISOString();
   assert.deepEqual(widgetPlanState({ plan: "plus", plus_until: future }), { plus: true, lapsed: false });
   assert.deepEqual(widgetPlanState({ plan: "plus", plus_until: null }), { plus: true, lapsed: false });
-  assert.deepEqual(widgetPlanState({ plan: "plus", plus_until: past }), { plus: false, lapsed: true });
-  assert.deepEqual(widgetPlanState({ plan: "free" }), { plus: false, lapsed: false });
-  assert.deepEqual(widgetPlanState(null), { plus: false, lapsed: false });
+  /* 🆕 T547 — الودجتُ للجميع ما دامت `PERKS_FREE`: لا قفلَ ولا «جدّد» */
+  assert.deepEqual(widgetPlanState({ plan: "plus", plus_until: past }), PERKS_FREE ? { plus: true, lapsed: false } : { plus: false, lapsed: true });
+  assert.deepEqual(widgetPlanState({ plan: "free" }), { plus: PERKS_FREE, lapsed: false });
+  assert.deepEqual(widgetPlanState(null), { plus: PERKS_FREE, lapsed: false });
 });
 
 /* W35 */

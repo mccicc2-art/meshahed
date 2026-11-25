@@ -7,7 +7,7 @@ import {
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { CustomizeScreen } from "@/components/settings/CustomizeScreen";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { sanitizeHomePrefs } from "@/core/homePrefs";
 import { sanitizeProfilePrefs } from "@/core/profilePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
@@ -40,8 +40,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       avatarUrl={p?.avatar_url ?? null}
       genres={p?.favorite_genres ?? []}
       /* D-1487 — ما يُعرض هو الفعّال لخطّته، والعميلُ لا يعيد حسابَه */
-      homePrefs={sanitizeHomePrefs(p?.home_prefs, isPlus(p))}
-      profilePrefs={sanitizeProfilePrefs(p?.profile_prefs, isPlus(p))}
+      homePrefs={sanitizeHomePrefs(p?.home_prefs, hasPerks(p))}
+      profilePrefs={sanitizeProfilePrefs(p?.profile_prefs, hasPerks(p))}
       username={p?.username ?? null}
       bio={p?.bio ?? null}
       coverUrl={p?.cover_url ?? null}
@@ -52,7 +52,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
          `getProfile`**: **لا نداءَ ثانٍ ولا هجرة** (D-475/D-515). */
       templates={sanitizeUiState(p?.ui_state).tpl}
       /* 🆕 D-633 — والحكمُ من `lib/plan.ts` وحدَه */
-      plus={isPlus(p)}
+      plus={hasPerks(p)}
       initialTab={tab === "profile" ? "profile" : "home"}
     />
   );

@@ -1,4 +1,5 @@
 // خلفيّةُ المحادثات — D-1382
+import { PERKS_FREE } from "./plan.ts";
 
 /**
  * 🆕 D-1382 — **خلفيّةٌ واحدةٌ لكلِّ المحادثات** (أحمد ١٢ أكتوبر: «صورة واحده لكل المحادثات · نعتمد ١ و ٣»).
@@ -49,7 +50,8 @@ export function sanitizeChatBg(raw: unknown): ChatBg {
 
 /** هل يحتاج هذا الاختيارُ Loopz+؟ — حكمٌ واحدٌ يقرؤه الخادمُ والسطحان */
 export function chatBgNeedsPlus(bg: ChatBg): boolean {
-  return bg.k === "poster";
+  /* 🆕 T547 — خلفيّةُ العمل للجميع (`PERKS_FREE`، أحمد ٢٥ نوفمبر) */
+  return !PERKS_FREE && bg.k === "poster";
 }
 
 /** ما يُرسم فعلاً: اختيارُ المشترك كما هو، **وغيرُ المشترك يرى Loopz بدل خلفيّةِ عمل** */

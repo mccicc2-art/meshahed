@@ -30,7 +30,7 @@ import {
   serializeContentPrefs,
 } from "@/core/contentPrefs";
 import { GENRES, type MediaType } from "@/core/media";
-import { isPlus, themeNeedsPlus } from "@/core/plan";
+import { isPlus, themeNeedsPlus, hasPerks, PERKS_FREE } from "@/core/plan";
 import { BROWSE_GENRES } from "@/core/browse";
 import { cleanHandle } from "@/core/socials";
 import { cleanUsername, isReservedUsername, usernameIssue } from "@/core/username";
@@ -313,7 +313,7 @@ export async function updateProfile(input: {
       .select("plan, plus_until, home_prefs, profile_prefs")
       .eq("id", user.id)
       .maybeSingle();
-    plus = isPlus(data);
+    plus = hasPerks(data);
     storedRow = data ?? null;
   }
 
@@ -526,7 +526,7 @@ export async function saveHomeSectionOrder(order: string[]) {
      المقروء أصلاً فلا استعلامَ ثانٍ.** **والصمتُ لا خطأ**: الواجهةُ
      تحرس قبله، **ومن بلغ هنا بنداءٍ مباشرٍ لا يستحقّ رسالةً تشرح له
      كيف يعيد المحاولة.** */
-  if (!isPlus(data)) return;
+  if (!hasPerks(data)) return;
 
   /* D-1489 — الفعّالُ لخطّته ثمّ علامةُ «رتّبه بيده» (`markHomeCustom`) */
   const prefs = sanitizeHomePrefs(data?.home_prefs, true);
@@ -758,17 +758,17 @@ export async function updateUiState(patch: {
        ⚠️ **والفرعُ وحدَه محروس**: **التلميحاتُ والجولةُ مجّانيّتان
        لكلِّ أحد** — **ومن قفلَ `updateUiState` كلَّها أطفأ إرشادَ
        التطبيق عن غير المشترك.** */
-    if ((patch.filters !== undefined || patch.tpl !== undefined) && !isPlus(data)) {
+    if ((patch.filters !== undefined || patch.tpl !== undefined) && !hasPerks(data)) {
       return { ok: false, needsPlus: true };
     }
     /* 🆕 D-1382 — **وخلفيّةُ العمل وحدَها محروسة**: Loopz والسوداء لكلِّ أحد */
     const chatBg = patch.chatBg !== undefined ? sanitizeChatBg(patch.chatBg) : undefined;
-    if (chatBg && chatBgNeedsPlus(chatBg) && !isPlus(data)) {
+    if (chatBg && chatBgNeedsPlus(chatBg) && !hasPerks(data)) {
       return { ok: false, needsPlus: true };
     }
 
     /* 🆕 W41 — **التخصيصُ للمشترك**: والحارسُ هنا لا في الشاشة (درسُ D-819). ومن انتهى اشتراكُه يبقى إعدادُه كما هو */
-    if (patch.widget !== undefined && !isPlus(data)) return { ok: false, needsPlus: true };
+    if (patch.widget !== undefined && !hasPerks(data)) return { ok: false, needsPlus: true };
 
     const current = sanitizeUiState(data?.ui_state);
     const next: UiState = {
@@ -816,7 +816,7 @@ export async function setHiddenRails(
   keys: string[],
 ): Promise<{ ok: boolean; needsPlus?: true }> {
   const clean = serializeHiddenRails(Array.isArray(keys) ? keys : []);
-  if (clean && !(await viewerIsPlus())) return { ok: false, needsPlus: true };
+  if (clean && !(await viewerHasPerks())) return { ok: false, needsPlus: true };
 
   const store = await cookies();
   store.set(RAILS_COOKIE, clean, {
@@ -3958,7 +3958,7 @@ export async function setProfileSavedLists(on: boolean) {
   if (error) fail(error);
 
   /* 🔴 🆕 **وإظهارُ أقسام الملفّ من البلس** (D-791) — كأختها أعلاه */
-  if (!isPlus(data)) return;
+  if (!hasPerks(data)) return;
 
   const prefs = sanitizeProfilePrefs(data?.profile_prefs);
   prefs.savedLists = on === true;
@@ -5450,7 +5450,7 @@ export async function setDmPolicy(policy: DmPolicy) {
 export async function getChatBgState(withChoices = false): Promise<ChatBgPayload> {
   const { getProfile, getProfileFavorites } = await import("@/lib/data");
   const p = await getProfile();
-  const plus = isPlus(p);
+  const plus = hasPerks(p);
   const bg = sanitizeUiState(p?.ui_state).chatBg;
   let choices: ChatBgChoice[] | null = null;
   if (withChoices && p) {
@@ -7176,7 +7176,12 @@ export async function viewerIsPlus(): Promise<boolean> {
  * صورهم** — **يُحسم قبل فتح الدفع لا بعده.**
  */
 export async function canUseArt(): Promise<boolean> {
-  return viewerIsPlus();
+  return viewerHasPerks();
+}
+
+/** 🆕 T547 — نظيرُ `viewerIsPlus` لأقفال المزايا (`hasPerks`): البوسترُ والخلفيّة · إخفاءُ الأقسام · المكتبة — للجميع ما دامت `PERKS_FREE` */
+export async function viewerHasPerks(): Promise<boolean> {
+  return PERKS_FREE || viewerIsPlus();
 }
 
 /**

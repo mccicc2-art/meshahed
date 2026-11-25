@@ -14,7 +14,7 @@ import {
 } from "@/lib/data";
 import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/core/homePrefs";
 import { buildAutoGroups } from "@/core/autoGroups";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { backdropUrl } from "@/core/media";
 import { getDict } from "@/core/i18n";
 import { toLibraryListCard } from "@/lib/listCard";
@@ -143,7 +143,7 @@ export async function GET() {
         photo: g.photo,
         items: g.items.map((x) => ({ key: x.key, media_type: x.media_type, tmdb_id: x.tmdb_id, title: x.title, poster: x.poster })),
       })),
-      plus: isPlus(profileRow),
+      plus: hasPerks(profileRow),
       has_smart: shown.some((l) => l.kind === "smart"),
     };
     return ok(payload);

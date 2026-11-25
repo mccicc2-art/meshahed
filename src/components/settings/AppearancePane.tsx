@@ -8,7 +8,7 @@ import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/core/fontPrefs";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 
 /**
  * 🆕 R260 — **محتوى «المظهر واللغة» مكوّنٌ واحد** تستدعيه صفحتُه، وتستدعيه صفحةُ الإعدادات على الحاسوب لتملأ لوحتَها الثانية
@@ -60,7 +60,7 @@ export async function AppearancePane() {
       <div className="desk:hidden">
         <SettingsGroup>
           <LanguageRow locale={locale} />
-          <ThemeSection locale={locale} initialTheme={theme} plus={isPlus(p)} carry={carry} />
+          <ThemeSection locale={locale} initialTheme={theme} plus={hasPerks(p)} carry={carry} />
           {/* 🗑️ **وقسمُ «لونُك» سقط** (D-848، حكمُ أحمد بلقطةٍ محوَّطة: «ألوان الثيم الإضافيّة هذي احذفها بالكامل»).
               🔑 **والثيمُ يعود مصدرَ اللون الوحيد** — والثيماتُ كلُّها باقيةٌ كما هي. */}
           <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
@@ -69,7 +69,7 @@ export async function AppearancePane() {
       {/* 🆕 R260 — الحاسوب (إعداداتُ اللوحتين، «ب»): الخياراتُ ظاهرةٌ بلا فتح — رقائقُ للّغة والأحجام وشبكةٌ للثيمات */}
       <div className="hidden desk:block space-y-4">
         <LanguageRow locale={locale} layout="block" />
-        <ThemeSection locale={locale} initialTheme={theme} plus={isPlus(p)} carry={carry} layout="block" />
+        <ThemeSection locale={locale} initialTheme={theme} plus={hasPerks(p)} carry={carry} layout="block" />
         <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} layout="block" />
       </div>
     </SettingsPageLayout>

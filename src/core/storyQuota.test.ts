@@ -19,11 +19,11 @@ test("العدّ المحفوظ يُحسب لليوم نفسه فقط", () => {
 });
 
 test("الباقي لا ينزل تحت الصفر", () => {
-  assert.equal(STORY_DAILY_FREE, 5);
-  assert.equal(storyLeft(0), 5);
-  assert.equal(storyLeft(2), 3);
-  assert.equal(storyLeft(5), 0);
-  assert.equal(storyLeft(9), 0);
+  assert.equal(STORY_DAILY_FREE, 10);
+  assert.equal(storyLeft(0), 10);
+  assert.equal(storyLeft(2), 8);
+  assert.equal(storyLeft(10), 0);
+  assert.equal(storyLeft(14), 0);
 });
 
 test("ساعات التجدّد حتى منتصف ليل الرياض", () => {

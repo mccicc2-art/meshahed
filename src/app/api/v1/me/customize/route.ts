@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getProfile } from "@/lib/data";
 import { updateProfile } from "@/lib/actions";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { sanitizeHomePrefs, touchesPaidHomePrefs } from "@/core/homePrefs";
 import { sanitizeProfilePrefs, touchesPaidProfilePrefs } from "@/core/profilePrefs";
 import { sanitizeUiState } from "@/lib/uiState";
@@ -23,10 +23,10 @@ import type { CustomizePayload, CustomizeSaveBody, CustomizeSaveResult } from "@
 function payloadOf(p: Awaited<ReturnType<typeof getProfile>>): CustomizePayload {
   return {
     /* D-1487 — الفعّالُ لخطّته: من لم يرتّب يرى ترتيبَ خطّته */
-    home: sanitizeHomePrefs(p?.home_prefs, isPlus(p)),
-    profile: sanitizeProfilePrefs(p?.profile_prefs, isPlus(p)),
+    home: sanitizeHomePrefs(p?.home_prefs, hasPerks(p)),
+    profile: sanitizeProfilePrefs(p?.profile_prefs, hasPerks(p)),
     templates: sanitizeUiState(p?.ui_state).tpl,
-    plus: isPlus(p),
+    plus: hasPerks(p),
   };
 }
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     /* 🆕 D-1322 — **البوّابةُ على الحقل المدفوع لا على الطلب كلِّه** (حكمُ أحمد ٨ أكتوبر): غيرُ المشترك يجرّب في
        المعاينة، وما هو مجّانيٌّ (وضعُ العرض) يُحفظ له؛ و`needsPlus` يعود **قبل الكتابة** حين يمسّ الوارِدُ حقلاً
        يبيعه بلس — فلا يُعلَن نجاحٌ وقد أُسقط نصفُ ما اختير (D-217). `keepPaid*` في `updateProfile` حارسٌ ثانٍ. */
-    if (!isPlus(p)) {
+    if (!hasPerks(p)) {
       const paid =
         /* D-1489 — المعروضُ (الفعّالُ لخطّته) مقابلَ الوارد كما أُرسل: الواردُ لا يُعاد تفسيرُه بالخطّة */
         (b.home !== undefined && touchesPaidHomePrefs(sanitizeHomePrefs(p?.home_prefs, false), sanitizeHomePrefs(b.home))) ||

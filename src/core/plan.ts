@@ -97,6 +97,23 @@ export function hasFullStats(p: PlanBearer | null | undefined): boolean {
 /* 🗑️ T540 — `AI_STORY_SEARCH_PLUS_ONLY` و`STORY_FREE_TRIALS` (ثلاثُ تجاربٍ مدى الحياة، ١٠ نوفمبر) خرجتا: البحثُ بالوصف صار
    مجّانيّاً بحدٍّ يوميّ — قاعدتُه وحدُّه في `storyQuota.ts` */
 
+/**
+ * 🆕 T547 — **كلُّ المزايا مجّانيّةٌ إلّا الربط** (أحمد ٢٥ نوفمبر: «خل كل شيء مجاني .. ما عدا الربط يكمل ب اشتراك»).
+ * التخصيصُ (الرئيسيّةُ والملفّ والتبويباتُ والأقسام) · الثيماتُ كلُّها · بوسترُ العمل وخلفيّتُه · الودجتُ بأحجامه · الفلاترُ
+ * المحفوظة والقوالب · التجميعُ في المكتبة · خلفيّةُ المحادثة · إنشاءُ القروبات — للجميع.
+ *
+ * ⚖️ **وما يبقى للمشترك يسأل `isPlus` لا هذه**: خاناتُ الربط (`linkTokens`/`deviceLinks` — واحدةٌ للمجّانيّ وخمسٌ للمشترك)،
+ * والبحثُ بالوصف بلا حدّ (`storyQuota` — عشرٌ يوميّاً للمجّانيّ)، والشارةُ والشعارُ وترتيبُ الردود (هويّةُ مشتركٍ لا ميزة)،
+ * وتاريخُ الانضمام في الملفّ العامّ (عرضٌ لبيانات العضو اختاره المشترك — لا يُكشف لغيره بقرار سعر).
+ * 🔑 **والسؤالُ سؤالٌ لا ثابت** (نهجُ `hasFullStats`): كلُّ قفلِ ميزةٍ يسأل `hasPerks`، فإن عاد القرارُ تُقلب الراية وحدها.
+ */
+export const PERKS_FREE = true;
+
+/** هل يملك صاحبُ الحساب مزايا التخصيص والزينة؟ — للجميع ما دامت `PERKS_FREE` */
+export function hasPerks(p: PlanBearer | null | undefined): boolean {
+  return PERKS_FREE || isPlus(p);
+}
+
 /** الطبقةُ العليا — البارتنر. **مبنيّةُ البنية، ولمّا تُبنَ سطوحُها** */
 export function isPartner(p: PlanBearer | null | undefined): boolean {
   return !!p && asPlan(p.plan) === "partner" && isPlus(p);
@@ -159,7 +176,8 @@ export function isFounder(p: PlanBearer | null | undefined): boolean {
 export const FREE_THEMES: readonly string[] = ["loopz", "charcoal", "amber", "daylight"] as const;
 
 export function themeNeedsPlus(themeId: string): boolean {
-  return !FREE_THEMES.includes(themeId);
+  /* 🆕 T547 — الثيماتُ كلُّها للجميع (`PERKS_FREE`): القائمةُ أعلاه تبقى لو عاد القرار */
+  return !PERKS_FREE && !FREE_THEMES.includes(themeId);
 }
 
 /**

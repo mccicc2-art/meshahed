@@ -249,7 +249,8 @@ function SideDrawer({
                       <Text size={14} muted numberOfLines={1} style={{ flex: 1 }}>{f}</Text>
                     </View>
                   ))}
-                  <Text size={13} weight="700" color={tokens.accent} style={{ paddingStart: 26 }}>{t.drawerPlusMore}</Text>
+                  {/* T547 — السطرُ صار خبراً لا وعداً بمزيد («وكل ما سواها مجاني للجميع»): خافتٌ لا بلون الدعوة */}
+                  <Text size={13} weight="600" muted style={{ paddingStart: 26 }}>{t.drawerPlusMore}</Text>
                 </View>
               )}
             </Pressable>

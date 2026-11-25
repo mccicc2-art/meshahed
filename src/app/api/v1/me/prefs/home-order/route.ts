@@ -1,6 +1,6 @@
 import { saveHomeSectionOrder } from "@/lib/actions";
 import { getProfile } from "@/lib/data";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { bodyRoute } from "@/lib/v1body";
 import type { HomeOrderBody } from "@/core/contracts/home";
 
@@ -14,7 +14,7 @@ import type { HomeOrderBody } from "@/core/contracts/home";
 export const POST = bodyRoute<HomeOrderBody, { ok: boolean; needsPlus?: true }>(
   async (b) => {
     const order = Array.isArray(b.order) ? b.order.filter((s) => typeof s === "string").slice(0, 32) : [];
-    const plus = isPlus(await getProfile());
+    const plus = hasPerks(await getProfile());
     if (!plus) return { ok: false, needsPlus: true };
     await saveHomeSectionOrder(order);
     return { ok: true };

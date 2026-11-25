@@ -38,14 +38,10 @@ const FEATURES: { icon: IconName; key: keyof Dict; skipForGold?: boolean }[] = [
   /* 🆕 D-gold-perks — «حتى ٥ تطبيقات» يبقى تحت Gold أيضاً (أحمد ١٠ نوفمبر: «حاليا عندنا ٥ بس») — لا «بلا حدّ» */
   { icon: "tv", key: "pwFLink" },
   { icon: "search", key: "pwFStory" },
-  { icon: "grid", key: "pwFHome" },
-  { icon: "palette", key: "pwFThemes" },
-  { icon: "image", key: "pwFArt" },
-  { icon: "widget", key: "pwFWidget" },
   /* 🗑️ T540 — «إحصاءاتك وتقاريرك كاملة، وتقويمك لكل الشهور» خرجت: صارت للجميع (أحمد ٢٤ نوفمبر) */
-  { icon: "list", key: "pwFLists" },
+  /* 🗑️ T547 — التخصيصُ والثيماتُ والبوسترُ والودجتُ والفلاترُ والقروباتُ خرجت: صارت للجميع (أحمد ٢٥ نوفمبر «خل كل شيء مجاني
+     .. ما عدا الربط»). يبقى ما يبيعه الاشتراكُ حقّاً: الربطُ حتى ٥ · البحثُ بالوصف بلا حدّ · الشارة */
   { icon: "star", key: "pwFBadge", skipForGold: true },
-  { icon: "people", key: "pwFGroups" },
 ];
 
 /** نصوصُ مزايا Gold الجديدة محلّيّة — كـ`RATERS_WORDS` (ملفُّ النصوص المشترك تلمسه مهامُّ كثيرة) */
@@ -72,7 +68,8 @@ const GOLD_WORDS = {
   },
 } as const;
 
-const TOP_ICONS: IconName[] = ["tv", "palette", "grid", "widget"];
+/* T547 — رموزُ الرأس تقول ما يبيعه الاشتراكُ اليوم: الربطُ · البحثُ بالوصف · الشارة (الثيماتُ والتخصيصُ والودجتُ صارت للجميع) */
+const TOP_ICONS: IconName[] = ["tv", "search", "star"];
 /* 🆕 T340 — حدُّ بطاقة الذهبيّ (`GOLD_FRAME`) انتقل إلى `IdentityBadges` مع لون الشارة: تتشاركه الآن لوحةُ الداعمين والشركاءُ والملفّ */
 
 export function PlusScreen() {

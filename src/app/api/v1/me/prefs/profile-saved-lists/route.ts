@@ -1,6 +1,6 @@
 import { setProfileSavedLists } from "@/lib/actions";
 import { getProfile } from "@/lib/data";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { bodyRoute } from "@/lib/v1body";
 import type { ProfileSavedListsBody } from "@/core/contracts/profile";
 
@@ -11,7 +11,7 @@ import type { ProfileSavedListsBody } from "@/core/contracts/profile";
  */
 export const POST = bodyRoute<ProfileSavedListsBody, { ok: boolean; needsPlus?: true }>(
   async (b) => {
-    if (!isPlus(await getProfile())) return { ok: false, needsPlus: true as const };
+    if (!hasPerks(await getProfile())) return { ok: false, needsPlus: true as const };
     await setProfileSavedLists(b.on === true);
     return { ok: true };
   },

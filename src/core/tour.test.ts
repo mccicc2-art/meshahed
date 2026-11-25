@@ -1,3 +1,4 @@
+import { PERKS_FREE } from "./plan.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
@@ -82,9 +83,10 @@ test("🆕 T362 — «إنهاء» الجولة يفتح صفحةَ الاشتر
 test("ما يُقفل على غير المشترك يُقال له وحدَه (حكمُ أحمد «٥أ»)", () => {
   const t = getDict("ar");
   const shape = TOUR_STEPS.find((s) => s.id === "shape")!;
-  assert.equal(shape.plusTag?.(false), true);
+  /* 🆕 T547 — التخصيصُ للجميع ما دامت `PERKS_FREE`: لا وسمَ ولا سطرَ «الحفظُ للمشترك» لأحد */
+  assert.equal(shape.plusTag?.(false), !PERKS_FREE);
   assert.equal(shape.plusTag?.(true), false);
-  assert.ok(appBodyOf(shape, t, false).includes(t.tourShapeSaveFree));
+  assert.equal(appBodyOf(shape, t, false).includes(t.tourShapeSaveFree), !PERKS_FREE);
   assert.ok(!appBodyOf(shape, t, true).includes(t.tourShapeSaveFree));
   const links = TOUR_STEPS.find((s) => s.id === "links")!;
   assert.equal(links.plusTag, undefined, "الربطُ مجّانيٌّ بتطبيقٍ واحد — لا وسم");

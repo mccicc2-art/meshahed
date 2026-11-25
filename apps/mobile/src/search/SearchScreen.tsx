@@ -657,7 +657,8 @@ function QuotaDots({ left, label, spread = false }: { left: number; label: strin
       <Text size={12} muted style={spread ? { flexShrink: 1 } : undefined}>{label}</Text>
       <View style={{ flexDirection: "row", gap: 4 }}>
         {Array.from({ length: STORY_DAILY_FREE }, (_, i) => (
-          <View key={i} style={{ width: 14, height: 6, borderRadius: 3, backgroundColor: i < left ? tokens.accent : tokens.border }} />
+          /* 🆕 T547 — عشرُ شَرَطاتٍ لا خمس: الشرطةُ ٨ لا ١٤ فيبقى الصفُّ (١١٦ نقطة) بجانب نصِّه على أضيق هاتف */
+          <View key={i} style={{ width: STORY_DAILY_FREE > 5 ? 8 : 14, height: 6, borderRadius: 3, backgroundColor: i < left ? tokens.accent : tokens.border }} />
         ))}
       </View>
     </View>

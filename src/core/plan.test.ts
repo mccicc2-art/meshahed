@@ -1,16 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  asPlan,
-  isPlus,
-  isPartner,
-  isVerified,
-  isFounder,
-  themeNeedsPlus,
-  FREE_THEMES,
-  planNameOf,
-  planReasonOf,
-} from "./plan.ts";
+import { asPlan, isPlus, isPartner, isVerified, isFounder, themeNeedsPlus, FREE_THEMES, planNameOf, planReasonOf, PERKS_FREE, hasPerks } from "./plan.ts";
 
 /**
  * ====== أوّلُ اختباراتٍ في المستودع (`LOOPZ-AUD-0001`) ======
@@ -96,7 +86,17 @@ test("الثيماتُ المجّانيّة ثلاث: الرسميُّ الاف�
   assert.equal(themeNeedsPlus("loopz"), false);
   assert.equal(themeNeedsPlus("amber"), false);
   assert.equal(themeNeedsPlus("daylight"), false);
-  assert.equal(themeNeedsPlus("midnight"), true);
+  /* 🆕 T547 — الثيماتُ كلُّها للجميع ما دامت `PERKS_FREE` */
+  assert.equal(themeNeedsPlus("midnight"), !PERKS_FREE);
+});
+
+test("T547 — المزايا للجميع وما يبيعه الاشتراكُ يبقى على `isPlus`", () => {
+  assert.equal(PERKS_FREE, true);
+  assert.equal(hasPerks(null), true);
+  assert.equal(hasPerks({ plan: "free" }), true);
+  assert.equal(hasPerks({ plan: "plus", plus_until: null }), true);
+  /* الربطُ والبحثُ بلا حدّ والشارةُ تسأل `isPlus` — المجّانيُّ ليس مشتركاً */
+  assert.equal(isPlus({ plan: "free" }), false);
 });
 
 /* T336 — خطّةٌ واحدةٌ «ذهبي» تشمل بلس: الاسمُ ذهبيّ، ولا «شريك» ولا «مؤسِّس» تحته */

@@ -128,7 +128,6 @@ export const SECTIONS: Section[] = [
           "أظهِر الأقسام التي تهمّك في رئيسيتك وملفّك وأخفِ ما لا يهمّك ورتّبها كما تحب: أكمل المشاهدة، للمشاهدة، تقييماتي، قوائمي، ملخّص أسبوعك…",
         enBody:
           "Show the sections you care about on your home and profile, hide the ones you do not, and order them your way: continue watching, to watch, my ratings, my lists, your week…",
-        plus: true,
       },
       {
         icon: "card",
@@ -143,9 +142,8 @@ export const SECTIONS: Section[] = [
         ar: "ثيمات ملوّنة",
         en: "Colour themes",
         /* 🆕 كان «خمسة ثيمات — لوبز…»: **و«لوبز» والفحمي والعنبر مجّانيّةٌ** (`FREE_THEMES`، D-1387) — فالبيعُ بها كذب */
-        arBody: "أربعة ثيمات تبدّل مظهر التطبيق كاملاً — المحيط، البنفسجي، القرمزي، الغابة. ولوبز والفحمي والعنبر مجّانية للجميع.",
-        enBody: "Four themes that change the whole look — Ocean, Violet, Crimson, Forest. Loopz, Charcoal and Amber are free for everyone.",
-        plus: true,
+        arBody: "كل الثيمات للجميع: لوبز والفحمي والعنبر والنهاري، والمحيط والبنفسجي والقرمزي والغابة — تبدّل مظهر التطبيق كاملاً.",
+        enBody: "Every theme is free: Loopz, Charcoal, Amber and Daylight, plus Ocean, Violet, Crimson and Forest — each changes the whole look.",
       },
       /* ⚖️ **والنهاريُّ وحجمُ الخطّ خارج البلس** (D-633، بموافقة أحمد على
          الإتاحة): **من يكبّر الخطّ يفعلها لعينه لا لذوقه**، ومن يقرأ في
@@ -161,10 +159,8 @@ export const SECTIONS: Section[] = [
         en: "Your own poster and backdrop",
         arBody: "اختر ملصق العمل وخلفيته كما تحبّ — والأثر لا يتعدّى أسطحك أنت.",
         enBody: "Pick the poster and backdrop you want — it only ever changes your own surfaces.",
-        plus: true,
       },
-      /* 🆕 **الودجت شُحن (D-929، ثم v2) ولم يُكتب** — الصغيرُ للجميع، والتخصيصُ والأحجامُ الكبيرة لبلس (`needsPlus` في
-         `me/prefs/widget`، الخطّة §٣/٦) */
+      /* 🆕 **الودجت شُحن (D-929، ثم v2) ولم يُكتب** — كان الصغيرُ للجميع والتخصيصُ والأحجامُ الكبيرة لبلس؛ 🆕 T547 — كلُّه للجميع */
       {
         icon: "grid",
         ar: "ودجت لشاشتك",
@@ -178,7 +174,6 @@ export const SECTIONS: Section[] = [
         en: "A widget you customise, in its larger sizes",
         arBody: "اختر ما يعرضه الودجت — أكمل المشاهدة، فيلم الليلة، أصدقاؤك، الآن في السينما — وبأحجامه الكبيرة.",
         enBody: "Choose what the widget shows — continue watching, tonight's movie, your friends, now in cinemas — in its larger sizes.",
-        plus: true,
       },
       {
         icon: "image",
@@ -186,7 +181,6 @@ export const SECTIONS: Section[] = [
         en: "Chat backgrounds",
         arBody: "اختر خلفية محادثاتك وقروباتك من بوسترات الأعمال.",
         enBody: "Pick the background of your chats and groups from title posters.",
-        plus: true,
       },
       {
         icon: "sparkles",
@@ -285,8 +279,8 @@ export const SECTIONS: Section[] = [
         ar: "بحث الذكاء بلا حدّ",
         en: "Unlimited AI search",
         /* 🆕 T540 — للجميع خمسٌ يوميّاً، وما يبيعه بلس «بلا حدّ» (`storyQuota.ts`) — كان ثلاثَ تجاربٍ مدى الحياة */
-        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل. وللحساب المجاني خمس عمليات بحث كل يوم.",
-        enBody: "Describe a story in your own words — AI finds the title. A free account gets five searches a day.",
+        arBody: "صِف قصةً تذكرها بكلماتك — والذكاء يجد لك العمل. وللحساب المجاني عشر عمليات بحث كل يوم.",
+        enBody: "Describe a story in your own words — AI finds the title. A free account gets ten searches a day.",
         plus: true,
       },
       /* 🆕 صفحةُ الإعلانات التشويقيّة شُحنت (`/trailers`) ولم تُذكر */
@@ -341,7 +335,6 @@ export const SECTIONS: Section[] = [
         en: "Smart lists that update themselves, and filters you save",
         arBody: "اكتب شرط القائمة مرّة فتمتلئ وتتحدّث وحدها، واحفظ فلاترك لتعود إليها بضغطة.",
         enBody: "Set a list's rule once and it fills and updates itself, and save your filters to come back to in one tap.",
-        plus: true,
       },
     ],
   },
@@ -369,9 +362,8 @@ export const SECTIONS: Section[] = [
         icon: "comment",
         ar: "قروبات حتى ١٦ شخصاً",
         en: "Groups of up to 16",
-        arBody: "أنشئ قروباً لأصحابك حتى ١٦ شخصاً معك، والانضمام إليه مجّاني للجميع.",
-        enBody: "Start a group of up to 16 people, you included — joining one is free for everyone.",
-        plus: true,
+        arBody: "أنشئ قروباً لأصحابك حتى ١٦ شخصاً معك.",
+        enBody: "Start a group of up to 16 people, you included.",
       },
       {
         icon: "home",

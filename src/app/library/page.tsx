@@ -38,7 +38,7 @@ import { FavFilterToggle } from "@/components/LibraryFavFilter";
 import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
 import { buildAutoGroups } from "@/core/autoGroups";
 import { AutoGroups } from "@/components/AutoGroups";
-import { isPlus } from "@/core/plan";
+import { hasPerks } from "@/core/plan";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";
@@ -513,7 +513,7 @@ export default async function LibraryPage({
           {/* D-874: **الصفُّ المطفأُ يغيب بعنوانه** — والشرطُ هنا لا داخل
               المكوّن، **كصفوف اكتشف حرفاً** (`railOff`). */}
           {!railOff(hiddenRails, "autogroups") && (
-            <AutoGroups locale={locale} groups={autoGroups} plus={isPlus(profileRow)} />
+            <AutoGroups locale={locale} groups={autoGroups} plus={hasPerks(profileRow)} />
           )}
           {!railOff(hiddenRails, "savedlists") && (
           <PublicListsRail
