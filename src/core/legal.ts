@@ -1,5 +1,6 @@
 import { getDict, type Locale } from "./i18n";
 import { FOUNDER_PLUS_UNTIL } from "./plan";
+import { isolateLatinText } from "./latinIsolate";
 
 /**
  * ====== الوثيقتان القانونيّتان نصّاً لا JSX — مصدرٌ واحدٌ لثلاثة قرّاء (شريحةُ «لا ويب في التطبيق» ٢، ١٩ أكتوبر ٢٠٢٦) ======
@@ -19,6 +20,17 @@ export type LegalDoc = { title: string; updated: string; sections: LegalSection[
 
 export const LEGAL_CONTACT = "info@loopztv.com";
 
+function isolateLatin(doc: LegalDoc, locale: Locale): LegalDoc {
+  if (locale !== "ar") return doc;
+  return {
+    ...doc,
+    title: isolateLatinText(doc.title),
+    updated: isolateLatinText(doc.updated),
+    sections: doc.sections.map((x) => ({ ...x, title: isolateLatinText(x.title), body: isolateLatinText(x.body) })),
+    note: doc.note === null ? null : isolateLatinText(doc.note),
+  };
+}
+
 /**
  * سطرُ المصادر: TMDB وTrakt بالجملة التي يشترطها كلٌّ منهما. جملةُ Trakt بنصِّها الإنجليزيّ في النسختين: مراجعُهم يفتح
  * الصفحة بلا كوكي لغة فقد يرى العربيّة. 🆕 R280 — **يُرسم في الوثيقتين**: نموذجُ اعتماد Trakt يرفض أن يكون رابطُ
@@ -31,6 +43,10 @@ function attributionNote(ar: boolean): string {
 }
 
 export function privacyDoc(locale: Locale): LegalDoc {
+  return isolateLatin(privacyDocRaw(locale), locale);
+}
+
+function privacyDocRaw(locale: Locale): LegalDoc {
   const ar = locale === "ar";
   return {
     title: ar ? "سياسة الخصوصية" : "Privacy Policy",
@@ -122,6 +138,10 @@ export function privacyDoc(locale: Locale): LegalDoc {
 }
 
 export function termsDoc(locale: Locale): LegalDoc {
+  return isolateLatin(termsDocRaw(locale), locale);
+}
+
+function termsDocRaw(locale: Locale): LegalDoc {
   const ar = locale === "ar";
   const t = getDict(locale);
   return {
