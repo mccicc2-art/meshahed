@@ -31,7 +31,10 @@ import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import { ReportButton } from "@/components/ReportButton";
 import { Icon } from "@/components/Icon";
 import { TitleHero } from "@/components/TitleHero";
-import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
+import { ThreadActionBar } from "@/components/thread/ThreadShell";
+import { ThreadReplyButton } from "@/components/thread/ThreadReplyButton";
+import { StatChip } from "@/components/ActivityFeed";
+import { timeAgoShort } from "@/core/when";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { getReplyLikes } from "@/lib/threadLikes";
 
@@ -242,6 +245,12 @@ export default async function ReviewPage({
                 </span>
               )}
               {r.hide_name ? null : <AccountBadges profile={r} t={t} />}
+              {/* 🆕 T544 — الوقتُ نسبيٌّ بجانب الاسم و«⋯» (البلاغ) في طرفه، كبطاقة المجتمع والردود (أحمد «نفس الترتيب هنا»، «1أ»).
+                  ⚠️ «⋯» لا يُرسم للزائر ولا لصاحب الرأي — البلاغُ وحدَه فيه، وزرُّ بلاغٍ على كلامك عبث */}
+              <span className="ms-auto ps-2 shrink-0 text-12 text-muted tabular-nums">{timeAgoShort(r.updated_at, t)}</span>
+              {me && !r.isMine ? (
+                <ReportButton reviewUserId={authorId} tmdbId={tmdbId} mediaType={mediaType} locale={locale} />
+              ) : null}
             </span>
             {/* **اسمُ العمل وتقييمُه في سطرٍ واحد** — نفسُ سطر خطّ النشاط
                 حرفاً (D-228)، **فمن ضغط الصفَّ يجد ما ضغطه.** */}
@@ -283,12 +292,8 @@ export default async function ReviewPage({
           ))}
       </article>
 
-      <ThreadDateLine
-        iso={r.updated_at}
-        views={views.get(commentViewKey(authorId, mediaType, tmdbId)) ?? 0}
-        locale={locale}
-      />
-
+      {/* 🆕 T544 (أحمد ٢٥ نوفمبر — «نفس الترتيب هنا»): ترتيبُ بطاقة المجتمع حرفاً — إعجابٌ · ردودٌ · مشاهداتٌ · مشاركة — بأماكنَ ثابتة.
+          سطرُ التاريخ المستقلّ سقط (الوقتُ بجانب الاسم)، و«٧ شاهدوا المنشور» نصّاً صار علامةَ الأعمدة (`StatChip`)، والبلاغُ صعد إلى «⋯» */}
       <ThreadActionBar>
         <LikeButton
           reviewUserId={authorId}
@@ -301,6 +306,8 @@ export default async function ReviewPage({
           readOnly={!me}
           locale={locale}
         />
+        <ThreadReplyButton count={replies.length} signedIn={!!me} locale={locale} />
+        <StatChip icon="chart" n={views.get(commentViewKey(authorId, mediaType, tmdbId)) ?? 0} label={t.postViewsHint} />
         {/* 🆕 T530 — يشارك المراجعةَ لا العمل، ويسأل «المراجعة كاملة» أم «التقييم فقط» حين فيها نصّ (أحمد «١أ») */}
         <ShareReviewButton
           path={`/review/${mediaType}/${tmdbId}/${authorId}`}
@@ -308,22 +315,6 @@ export default async function ReviewPage({
           hasText={!!r.review?.trim() && r.rating != null}
           locale={locale}
         />
-        {/* **بابُ البلاغ يعود إلى سطحه** (بند ١٦): غادر خطَّ `/talk` مع
-            D-242 لأن قائمةَ الخطّ لا تحمل بلاغاً لكلّ صفّ — **فبقي كلامُ
-            الناس على سطحٍ عامٍّ بلا بابِ بلاغ، وهذا نقصٌ لا اختصار.**
-            وموضعُه هنا صحيح: **صفحةُ التعليق تخصّ تعليقاً واحداً**، فالبلاغ
-            فيها لا يحتاج أن يسأل «على أيّهم؟».
-            ⚠️ **وشرطان لا واحد**: لا يظهر للزائر (`me`) لأن الكتابةَ
-            للمسجَّلين وحدهم (D-221)، ولا لصاحب الرأي — **زرُّ بلاغٍ على
-            كلامك أنت عبثٌ يُقرأ عطلاً.** */}
-        {me && !r.isMine && (
-          <ReportButton
-            reviewUserId={authorId}
-            tmdbId={tmdbId}
-            mediaType={mediaType}
-            locale={locale}
-          />
-        )}
       </ThreadActionBar>
 
       {/* 🆕 T530 — «حمّل لوبز» لمن وصل بلا حساب (أحمد «٢أ»): زرُّ صفحة الدعوة نفسُه بمراحله لكلِّ جهاز */}

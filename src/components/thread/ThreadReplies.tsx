@@ -26,6 +26,7 @@ import { displayNameOf } from "@/core/people";
 import { tap } from "@/lib/haptics";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { KeyboardDock } from "@/components/ui/KeyboardDock";
+import { THREAD_WRITE_EVENT } from "./ThreadShell";
 import { Icon } from "../Icon";
 import { Avatar } from "../Avatar";
 import { Composer } from "../Composer";
@@ -169,6 +170,12 @@ export function ThreadReplies({
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   /** الصندوقُ المفتوح: `""` للمنشور نفسِه، أو معرّفُ ردٍّ يُردّ عليه */
   const [open, setOpen] = useState<string | null>(null);
+  /* 🆕 T544 — زرُّ الردود في شريط أفعال المراجعة/النشرة (`ThreadReplyButton`) يفتح الصندوقَ نفسَه الذي يفتحه القلم */
+  useEffect(() => {
+    const onWrite = () => setOpen("");
+    window.addEventListener(THREAD_WRITE_EVENT, onWrite);
+    return () => window.removeEventListener(THREAD_WRITE_EVENT, onWrite);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   /* 🆕 **قياسٌ واحدٌ للكيبورد يقرؤه المرسى والقلم** (D-359) — خرج إلى
      `lib/useKeyboard` عند قارئه الثاني (D-002). */

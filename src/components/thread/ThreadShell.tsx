@@ -27,49 +27,12 @@ import { getDict, type Locale } from "@/core/i18n";
    (D-002/D-214). **وسيرتُه في `07` إن عاد له قارئ.** */
 
 
-/**
- * **سطرُ التاريخ والمشاهدات** — بين النصّ وشريط الأفعال، بفاصلٍ فوقه
- * وتحته. **وهو ما يجعل المنشورَ الرئيسيَّ يبدو رئيسياً**: الردودُ
- * تحمل وسماً زمنياً صغيراً بجانب الاسم، **وصاحبُ الصفحة وحده يأخذ
- * سطراً كاملاً لتاريخه.**
- */
-export function ThreadDateLine({
-  iso,
-  views,
-  locale,
-}: {
-  iso: string;
-  views?: number;
-  locale: Locale;
-}) {
-  const t = getDict(locale);
-  const d = new Date(iso);
-  /* **التقويمُ يتبع لغةَ الواجهة لا لغةَ الجهاز**: من اختار الإنجليزية
-     في Loopz يقرأ تاريخَه بالإنجليزية ولو كان هاتفُه عربياً (D-048). */
-  const stamp = Number.isNaN(d.getTime())
-    ? ""
-    : new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", {
-        hour: "numeric",
-        minute: "2-digit",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(d);
-  return (
-    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-12 text-muted">
-      <span dir="ltr">{stamp}</span>
-      {/* **والصفرُ لا يُرسم** (D-222): «٠ مشاهدة» تحت منشورٍ تقرؤه أنت
-          الآن تناقضٌ ظاهر — والعدُّ يبدأ بعد الهجرة ٧٤. */}
-      {!!views && views > 0 && (
-        <>
-          <span aria-hidden>·</span>
-          <span className="font-bold text-foreground tabular-nums">{views}</span>
-          <span>{t.postViewsHint}</span>
-        </>
-      )}
-    </div>
-  );
-}
+/* 🗑️ T544 — **`ThreadDateLine` حُذف** (أحمد ٢٥ نوفمبر: «نفس الترتيب هنا» — صورةُ بطاقة المجتمع): الوقتُ صار نسبيّاً بجانب
+   الاسم كالبطاقة، والمشاهداتُ علامةُ الأعمدة في شريط الأفعال (`StatChip`) بدل «٧ شاهدوا المنشور» نصّاً. قارئاه كانا صفحتَي
+   المراجعة والنشرة، وكلتاهما لبست الشكلَ الجديد في يومه. */
+
+/** 🆕 T544 — زرُّ الردود في شريط الأفعال يفتح صندوقَ الكتابة في `ThreadReplies` (حالتُه هناك، والزرُّ في الصفحة الخادمة) */
+export const THREAD_WRITE_EVENT = "loopz:thread-write";
 
 /**
  * **شريطُ الأفعال الرئيسيّ** — موزَّعٌ على عرض العمود كشريط تويتر،
@@ -78,7 +41,9 @@ export function ThreadDateLine({
  */
 export function ThreadActionBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="py-1.5 -mx-0.5 border-b border-[color:var(--divider)] flex items-center justify-between">
+    /* 🆕 T544 — بترتيب بطاقة المجتمع: إعجابٌ · ردودٌ · مشاهداتٌ · مشاركة، بأماكنَ ثابتة (البلاغُ صار في «⋯» بجانب الاسم)،
+       وفاصلٌ فوقه بعد أن غاب سطرُ التاريخ الذي كان يحمله */
+    <div className="mt-3 py-1.5 -mx-0.5 border-y border-[color:var(--divider)] flex items-center justify-between">
       {children}
     </div>
   );

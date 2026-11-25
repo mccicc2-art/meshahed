@@ -18,7 +18,7 @@ import { posterFor } from "../poster";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { Sheet } from "../library/Sheet";
-import { DropMenu, type Anchor } from "../library/HoldMenu";
+import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { afterPaint, span } from "../perfMarks";
 import { errorText, mirrorFeedLike, mirrorThreadLike, type LikeRef } from "../community/communityActs";
 import { type Draft } from "./Composer";
@@ -601,6 +601,8 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
 
   /* ——— ⋯: احذف ردّي · إبلاغ ——— */
   const [menu, setMenu] = useState<{ row: ThreadRow; anchor: Anchor } | null>(null);
+  /* 🆕 T544 — «⋯» رأسِ المراجعة (البلاغُ انتقل إليه من شريط الأزرار) */
+  const [headMenu, setHeadMenu] = useState<Anchor | null>(null);
   const [reported, setReported] = useState<ReadonlySet<string>>(() => new Set());
   const remove = useCallback(
     (row: ThreadRow) => {
@@ -782,12 +784,20 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   const header = d && !(focus && nested) ? (
     <Head
       d={d}
-      reportedHead={reported.has("head")}
       onTitle={openTitle}
       onReviews={openReviews}
       onLike={likeHead}
       onShare={share}
-      onReport={() => d.head.kind === "review" && report({ what: "review" }, "head")}
+      onHeadMenu={setHeadMenu}
+      onReply={
+        d.viewer.signed_in
+          ? () => {
+              setReplyTo(null);
+              setAttach(false);
+              setTimeout(() => inputRef.current?.focus(), 120);
+            }
+          : null
+      }
       onProfile={openProfile}
       talk={{
         pick,
@@ -953,6 +963,17 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
         />
       ) : null}
 
+      {headMenu && d?.head.kind === "review" ? (
+        <DropMenu
+          anchor={headMenu}
+          onClose={() => setHeadMenu(null)}
+          rows={[{ key: "report", icon: "shield", label: reported.has("head") ? t.reportDone : t.reportLabel, dim: reported.has("head"), disabled: reported.has("head"), onPress: () => {
+            setHeadMenu(null);
+            report({ what: "review" }, "head");
+          } }]}
+        />
+      ) : null}
+
       {image ? (
         <Sheet title={t.talkImageAlt} onClose={() => setImage(null)} placement="center">
           <Image source={{ uri: image }} style={{ width: "100%", aspectRatio: 3 / 4 }} contentFit="contain" cachePolicy="memory-disk" />
@@ -981,11 +1002,11 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
 /** رأسُ الباب — `TitleHero` مصغّراً ثمّ ما يخصّ كلَّ باب (نبذةُ الغرفة · جملةُ لوبز · الرأيُ بصاحبه) */
 function Head({
   d,
-  reportedHead,
   onTitle,
   onLike,
   onShare,
-  onReport,
+  onHeadMenu,
+  onReply,
   onProfile,
   onReviews,
   talk,
@@ -1015,11 +1036,13 @@ function Head({
       onWatched: (ep: EpisodeRef) => void;
     } | null;
   };
-  reportedHead: boolean;
   onTitle: () => void;
   onLike: () => void;
   onShare: () => void;
-  onReport: () => void;
+  /** 🆕 T544 — «⋯» رأسِ المراجعة: البلاغُ فيه (`DropMenu` الردود نفسُه) */
+  onHeadMenu: (a: Anchor) => void;
+  /** 🆕 T544 — زرُّ الردود: يفتح الخانةَ؛ `null` للزائر */
+  onReply: (() => void) | null;
   onProfile: (p: ThreadPayload["rows"][number]["person"]) => void;
 }) {
   const { t, tokens, locale } = useApp();
@@ -1032,50 +1055,42 @@ function Head({
   const h = d.head;
   const signedIn = d.viewer.signed_in;
 
-  const dateLine = (iso: string, views: number) => {
-    const at = new Date(iso);
-    const stamp = Number.isNaN(at.getTime())
-      ? ""
-      : new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { hour: "numeric", minute: "2-digit", day: "numeric", month: "short", year: "numeric" }).format(at);
+  /* 🆕 T544 (أحمد ٢٥ نوفمبر — «نفس الترتيب هنا»، «1أ 1أ»): رأسُ المراجعة والخبر بترتيب بطاقة المجتمع (`CommunityCards` `Tail`) —
+     إعجابٌ · ردودٌ · مشاهداتٌ بعلامة الأعمدة · مشاركةٌ، موزَّعةً على السطر **بأماكنَ ثابتة**: كان البلاغُ زرّاً ثالثاً يظهر لغيرك ويغيب
+     في مراجعتك والخبر، فتنتقل المشاركةُ بين الوسط والطرف. البلاغُ صار في «⋯» بجانب الاسم كالردود، والوقتُ نسبيٌّ بجانبه كالبطاقة،
+     وسطرُ التاريخ المستقلّ («… شاهدوا المنشور» نصّاً) حُذف */
+  const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingVertical: 8, paddingHorizontal: 10, minHeight: 36 };
+  const dotsRef = useRef<ViewInstance>(null);
+  const actionBar = (likes: number, liked: boolean, canLike: boolean, views: number) => {
+    const heart = liked ? tokens.accent : tokens.muted;
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: tokens.divider, marginTop: 12 }}>
-        <Text size={12} muted>{stamp}</Text>
-        {views > 0 ? (
-          <>
-            <Text size={12} muted>·</Text>
-            <Text size={12} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(views, locale)}</Text>
-            <Text size={12} muted>{t.postViewsHint}</Text>
-          </>
-        ) : null}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingVertical: 4, paddingHorizontal: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: tokens.divider }}>
+        {canLike ? (
+          <Pressable onPress={onLike} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.likesLabel} accessibilityState={{ selected: liked }} style={pad}>
+            <Icon name={liked ? "heart-filled" : "heart"} size={16} color={heart} />
+            {likes > 0 ? <Text size={12} color={heart} style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text> : null}
+          </Pressable>
+        ) : (
+          /* القلبُ يبقى في مكانه ولو لم يُضغط (صاحبُ الرأي، الزائر) — غيابُه كان سيُزيح ما بعده */
+          <View accessibilityLabel={likes > 0 ? `${t.likesLabel}: ${likes}` : undefined} style={pad}>
+            <Icon name="heart" size={16} color={tokens.muted} />
+            {likes > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(likes, locale)}</Text> : null}
+          </View>
+        )}
+        <Pressable onPress={onReply ?? undefined} disabled={!onReply} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.actionComment} style={pad}>
+          <Icon name="comment" size={15} color={tokens.muted} />
+          {talk.count > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(talk.count, locale)}</Text> : null}
+        </Pressable>
+        <View style={[pad, { gap: 4 }]} accessibilityLabel={views > 0 ? `${t.postViewsHint}: ${views}` : undefined}>
+          <Icon name="chart" size={14} color={views > 0 ? tokens.muted : tokens.muted + "59"} />
+          {views > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(views, locale)}</Text> : null}
+        </View>
+        <Pressable onPress={onShare} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.shareLinkLabel} style={pad}>
+          <Icon name="share" size={16} color={tokens.muted} />
+        </Pressable>
       </View>
     );
   };
-  const actionBar = (likes: number, liked: boolean, canLike: boolean, canReport: boolean) => (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-      {canLike ? (
-        <Pressable onPress={onLike} hitSlop={4} accessibilityLabel={t.likesLabel} accessibilityState={{ selected: liked }} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8 }}>
-          <Icon name={liked ? "heart-filled" : "heart"} size={16} color={liked ? tokens.accent : tokens.muted} />
-          {likes > 0 ? <Text size={12} color={liked ? tokens.accent : tokens.muted}>{num(likes, locale)}</Text> : null}
-        </Pressable>
-      ) : likes > 0 ? (
-        <View accessibilityLabel={`${t.likesLabel}: ${likes}`} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8 }}>
-          <Icon name="heart" size={16} color={tokens.muted} />
-          <Text size={12} muted>{num(likes, locale)}</Text>
-        </View>
-      ) : (
-        <View />
-      )}
-      <Pressable onPress={onShare} hitSlop={4} accessibilityLabel={t.shareLinkLabel} style={{ padding: 8 }}>
-        <Icon name="share" size={16} color={tokens.muted} />
-      </Pressable>
-      {canReport ? (
-        <Pressable onPress={onReport} disabled={reportedHead} hitSlop={4} accessibilityLabel={t.reportLabel} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 8, opacity: reportedHead ? 0.5 : 1 }}>
-          <Icon name="shield" size={16} color={tokens.muted} />
-          <Text size={12} muted>{reportedHead ? t.reportDone : t.reportLabel}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
 
   return (
     <View>
@@ -1200,11 +1215,11 @@ function Head({
               <Image source={require("../../assets/loopz-mark.png")} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             </View>
             <Text size={15} weight="700" style={{ writingDirection: "ltr" }}>Loopz</Text>
+            <Text size={12} muted>· {timeAgoShort(h.published_at, t)}</Text>
           </View>
           <Text size={15} weight="600" style={{ marginTop: 12, lineHeight: 23 }}>{h.line}</Text>
           {h.source ? <Text size={12} muted style={{ marginTop: 6 }}>{t.newsPerSource(h.source.name)}</Text> : null}
-          {dateLine(h.published_at, h.views)}
-          {actionBar(h.likes, h.liked_by_me, signedIn, false)}
+          {actionBar(h.likes, h.liked_by_me, signedIn, h.views)}
         </View>
       ) : (
         <View style={{ paddingTop: 16 }}>
@@ -1218,6 +1233,12 @@ function Head({
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Text size={15} weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{displayNameOf(h.author, t.anonymousUser)}</Text>
                 {h.author.hide_name ? null : <IdentityBadges flags={identityFlags(h.author)} nameSize={15} />}
+                <Text size={12} muted style={{ marginStart: "auto", paddingStart: 8 }}>{timeAgoShort(h.updated_at, t)}</Text>
+                {signedIn && !h.mine ? (
+                  <Pressable ref={dotsRef} onPress={() => measureAnchor(dotsRef.current, onHeadMenu)} hitSlop={8} accessibilityLabel={t.moreMenuTitle} style={{ width: 32, height: 24, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="dots" size={16} color={tokens.muted} />
+                  </Pressable>
+                ) : null}
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{w.title}</Text>
@@ -1243,8 +1264,7 @@ function Head({
               </View>
             )
           ) : null}
-          {dateLine(h.updated_at, h.views)}
-          {actionBar(h.likes, h.liked_by_me, signedIn && !h.mine, signedIn && !h.mine)}
+          {actionBar(h.likes, h.liked_by_me, signedIn && !h.mine, h.views)}
         </View>
       )}
     </View>

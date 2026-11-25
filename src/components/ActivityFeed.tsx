@@ -555,7 +555,8 @@ export function RowPoster({
  * (D-222): **الحجزُ للتخطيط والإخفاءُ للصدق**، ولا يتنازعان.
  * (D-046 نفسُها: لا شيء يتغيّر موضعُه بعد أن يُرسم.)
  */
-function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string }) {
+/** 🆕 T544 — يُصدَّر لشريط أفعال صفحتي المراجعة والنشرة (علامةُ المشاهدات الواحدة) */
+export function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string }) {
   const has = n > 0;
   return (
     <span

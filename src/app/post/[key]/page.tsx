@@ -23,7 +23,10 @@ import { LikeButton } from "@/components/LikeButton";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { TitleHero } from "@/components/TitleHero";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
-import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
+import { ThreadActionBar } from "@/components/thread/ThreadShell";
+import { timeAgoShort } from "@/core/when";
+import { ThreadReplyButton } from "@/components/thread/ThreadReplyButton";
+import { StatChip } from "@/components/ActivityFeed";
 import { LOOPZ_USERNAME } from "@/core/loopz";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { getReplyLikes } from "@/lib/threadLikes";
@@ -155,7 +158,7 @@ export default async function PostPage({
           >
             <Avatar src="/loopz-mark.png" name="Loopz" size={44} alt="" />
           </Link>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 flex items-center gap-1.5">
             <Link
               href={`/u/${LOOPZ_USERNAME}`}
               prefetch={false}
@@ -164,6 +167,9 @@ export default async function PostPage({
             >
               Loopz
             </Link>
+            {/* 🆕 T544 — الوقتُ نسبيٌّ بجانب الاسم كبطاقة المجتمع؛ سطرُ التاريخ المستقلّ سقط (أحمد «نفس الترتيب هنا») */}
+            <span aria-hidden className="shrink-0 text-12 text-muted">·</span>
+            <span className="shrink-0 text-12 text-muted tabular-nums">{timeAgoShort(post.published_at, t)}</span>
             {/* ⚖️ 🆕 **وسطرُ «الاسم · النوع» سقط** (D-299): **صعد كلُّه إلى
                 الغلاف** — الاسمُ في `h1` والنوعُ في أيقونة الملصق —
                 **وسطرٌ يُعيد ما فوقه بحجمٍ أصغر تكرارٌ لا سياق** (D-224).
@@ -200,12 +206,6 @@ export default async function PostPage({
             سطرُ D-298 نفسُه يوم يصل إلى النشرات. */}
       </article>
 
-      <ThreadDateLine
-        iso={post.published_at}
-        views={views.get(newsViewKey(key)) ?? 0}
-        locale={locale}
-      />
-
       <ThreadActionBar>
         <LikeButton
           target="post"
@@ -217,6 +217,9 @@ export default async function PostPage({
           readOnly={!user}
           locale={locale}
         />
+        {/* 🆕 T544 — ترتيبُ بطاقة المجتمع: إعجابٌ · ردودٌ · مشاهداتٌ (علامةُ الأعمدة) · مشاركة */}
+        <ThreadReplyButton count={replies.length} signedIn={!!user} locale={locale} />
+        <StatChip icon="chart" n={views.get(newsViewKey(key)) ?? 0} label={t.postViewsHint} />
         <ShareTitleButton path={titleHref} title={post.title} locale={locale} />
       </ThreadActionBar>
 

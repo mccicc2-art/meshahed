@@ -9,6 +9,7 @@ import type { MediaType } from "@/core/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { Dropdown, dropdownItem } from "./ui/Dropdown";
 
 /**
  * الإبلاغ عن رأي — بديلُ «عدم الإعجاب».
@@ -40,6 +41,7 @@ export function ReportButton({
 }) {
   const t = getDict(locale);
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState(false);
   const [reason, setReason] = useState("");
   const [sent, setSent] = useState(false);
   const [pending, start] = useTransition();
@@ -59,35 +61,41 @@ export function ReportButton({
     });
   }
 
-  // بعد الإبلاغ لا يعود الزرّ قابلاً للضغط: البلاغ الثاني من الشخص نفسه
-  // لا يُحتسب أصلاً (المفتاح الأساسي)، وزرٌّ يقبل ضغطةً لا أثر لها يكذب
-  if (sent) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 text-12 text-muted"
-        title={t.reportDone}
-      >
-        <Icon name="check-line" size={13} strokeWidth={2.2} />
-        {t.reportDone}
-      </span>
-    );
-  }
-
+  /* 🆕 T544 (أحمد ٢٥ نوفمبر — «نفس الترتيب هنا»، «1أ»): **البلاغُ في «⋯» بجانب الاسم** كالردود (`ReplyItem`) لا رمزاً ثالثاً في
+     شريط الأفعال — كان يحضر لغيرك ويغيب في رأيك والنشرة، فتنتقل المشاركةُ بين الوسط والطرف. والورقةُ بعده كما كانت حرفاً.
+     وبعد الإبلاغ يبقى السطرُ «تم الإبلاغ» معطَّلاً: البلاغ الثاني من الشخص نفسه لا يُحتسب أصلاً (المفتاح الأساسي) */
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          tap(6);
-          setOpen(true);
-        }}
-        disabled={pending}
-        aria-label={t.reportLabel}
-        title={t.reportLabel}
-        className="grid place-items-center w-8 h-8 rounded-full text-muted/70 hover:text-[color:var(--error)] hover:bg-surface-2 active:scale-95 transition"
-      >
-        <Icon name="shield" size={15} strokeWidth={1.9} />
-      </button>
+      <span className="shrink-0 relative">
+        <button
+          type="button"
+          onClick={() => {
+            tap(6);
+            setMenu((v) => !v);
+          }}
+          aria-expanded={menu}
+          aria-label={t.moreMenuTitle}
+          className="w-8 h-8 -my-1 rounded-full grid place-items-center text-muted hover:text-foreground transition"
+        >
+          <Icon name="dots" size={16} />
+        </button>
+        <Dropdown open={menu} onClose={() => setMenu(false)} align="end" caret>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={sent || pending}
+            onClick={() => {
+              setMenu(false);
+              setOpen(true);
+            }}
+            className={`${dropdownItem} disabled:opacity-50`}
+            lang={locale}
+          >
+            <Icon name={sent ? "check-line" : "shield"} size={16} className="shrink-0 text-muted" />
+            <span>{sent ? t.reportDone : t.reportLabel}</span>
+          </button>
+        </Dropdown>
+      </span>
 
       <Sheet
         open={open}
