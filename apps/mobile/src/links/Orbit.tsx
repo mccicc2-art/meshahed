@@ -44,7 +44,8 @@ export function slotPoints(n: number, width: number): { x: number; y: number }[]
 export type Slot =
   | { type: "device"; kind: DeviceKind; paused: boolean; waiting: boolean }
   /* 🆕 هجرة ٢٦٥ — منصّةُ بثٍّ في المدار نفسِه (أحمد ٥ نوفمبر: «مدارٌ واحدٌ للأجهزة والمنصّات») */
-  | { type: "platform"; platform: PlatformKind }
+  /* 🆕 T556 — `waiting`: رُبطت ولم تكتمل أوّلُ مزامنة (ساعةٌ رمليّة كالجهاز الذي لم يتّصل) */
+  | { type: "platform"; platform: PlatformKind; waiting: boolean }
   | { type: "empty" }
   | { type: "locked" };
 
@@ -52,7 +53,7 @@ export type Slot =
 export function slotsOf(d: DeviceLinksState): Slot[] {
   const linked: Slot[] = [
     ...d.devices.filter((x) => x.linked && !x.stopped).map((x): Slot => ({ type: "device", kind: x.kind, paused: false, waiting: !x.used_at })),
-    ...(d.platforms ?? []).filter((p) => !p.stopped).map((p): Slot => ({ type: "platform", platform: p.platform })),
+    ...(d.platforms ?? []).filter((p) => !p.stopped).map((p): Slot => ({ type: "platform", platform: p.platform, waiting: !p.synced_at })),
   ];
   const limit = d.limit ?? Math.min(8, Math.max(5, d.used + 1));
   const total = d.limit == null ? limit : 5;
@@ -156,15 +157,16 @@ export function Orbit({
               onLongPress={() => onHoldPlatform?.(s.platform)}
               delayLongPress={350}
               accessibilityRole="button"
-              accessibilityLabel={`Netflix، ${t.stremioLinked}`}
+              accessibilityLabel={`Netflix، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
               style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center", opacity: linking && s.platform !== linking ? 0.35 : 1 }}
             >
               {linking === s.platform ? (
                 /* توهّجُ المنصّة الجارية بأحمرها — حلقةٌ خلف الشارة لا ظلٌّ (ظلُّ أندرويد لا يُلوَّن) */
                 <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: "#E5091433" }} />
               ) : null}
-              <PlatformMark size={TILE} state="on" />
+              <PlatformMark size={TILE} state={s.waiting ? "waiting" : "on"} />
               <DeviceLabel name="Netflix" />
+              {s.waiting && linking !== s.platform ? <Text size={10} muted numberOfLines={1}>{t.linksWaiting}</Text> : null}
             </Pressable>
           );
         }
@@ -220,7 +222,7 @@ function withLinking(slots: Slot[], linking?: PlatformKind): Slot[] {
   if (!linking || slots.some((s) => s.type === "platform" && s.platform === linking)) return slots;
   const out = [...slots];
   const at = out.findIndex((s) => s.type === "empty");
-  out[at >= 0 ? at : out.length - 1] = { type: "platform", platform: linking };
+  out[at >= 0 ? at : out.length - 1] = { type: "platform", platform: linking, waiting: true };
   return out;
 }
 

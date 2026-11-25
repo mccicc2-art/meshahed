@@ -121,25 +121,35 @@ export function DeviceMark({
       ) : (
         <Icon name={GENERIC[kind]} size={glyph} color={tokens.muted} />
       )}
-      {state !== "idle" ? (
-        <View
-          style={{
-            position: "absolute",
-            bottom: -5,
-            end: -5,
-            width: 18,
-            height: 18,
-            borderRadius: 9,
-            backgroundColor: state === "on" ? tokens.success : tokens.surface2,
-            borderWidth: 2,
-            borderColor: tokens.bg,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon name={state === "on" ? "check" : state === "waiting" ? "hourglass" : "pause"} size={10} color={state === "on" ? "#fff" : tokens.muted} />
-        </View>
-      ) : null}
+      <StateBadge state={state} />
+    </View>
+  );
+}
+
+/**
+ * 🆕 T556 — **علامةُ الحالة في زاوية الشارة**، واحدةٌ للأجهزة والمنصّات (أحمد ٢٦ نوفمبر: نتفليكس في المدار بلا ✓ وجيرانُها بها):
+ * ✓ أخضرُ لما اتّصل فعلاً · ساعةٌ رمليّةٌ لما رُبط ولم يتّصل بعد · إيقافٌ لما توقّف. نسختان منها كانتا ستتباعدان مع الوقت.
+ */
+function StateBadge({ state }: { state: "idle" | "on" | "waiting" | "paused" }) {
+  const { tokens } = useApp();
+  if (state === "idle") return null;
+  return (
+    <View
+      style={{
+        position: "absolute",
+        bottom: -5,
+        end: -5,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: state === "on" ? tokens.success : tokens.surface2,
+        borderWidth: 2,
+        borderColor: tokens.bg,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Icon name={state === "on" ? "check" : state === "waiting" ? "hourglass" : "pause"} size={10} color={state === "on" ? "#fff" : tokens.muted} />
     </View>
   );
 }
@@ -160,7 +170,7 @@ export function DeviceLabel({ name, muted }: { name: string; muted?: boolean }) 
 /** أحمرُ نتفليكس — لونُ الكلمة وحدها */
 const NETFLIX_RED = "#E50914";
 
-export function PlatformMark({ size = 56, state = "idle" }: { size?: number; state?: "idle" | "on" | "paused" }) {
+export function PlatformMark({ size = 56, state = "idle" }: { size?: number; state?: "idle" | "on" | "waiting" | "paused" }) {
   const { tokens } = useApp();
   return (
     <View
@@ -168,8 +178,8 @@ export function PlatformMark({ size = 56, state = "idle" }: { size?: number; sta
         width: size,
         height: size,
         borderRadius: radius.md,
-        borderWidth: state === "on" ? 1.5 : 1,
-        borderColor: state === "on" ? tokens.accent : tokens.border,
+        borderWidth: state === "on" || state === "waiting" ? 1.5 : 1,
+        borderColor: state === "on" || state === "waiting" ? tokens.accent : tokens.border,
         backgroundColor: tokens.surface,
         alignItems: "center",
         justifyContent: "center",
@@ -181,6 +191,7 @@ export function PlatformMark({ size = 56, state = "idle" }: { size?: number; sta
       <Text size={Math.max(7, Math.round(size * 0.17))} weight="800" color={NETFLIX_RED} style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
         NETFLIX
       </Text>
+      <StateBadge state={state} />
     </View>
   );
 }
